@@ -629,7 +629,7 @@ This project uses the [Claude Agent SDK](https://www.npmjs.com/package/@anthropi
 
 ## 开发
 
-个人 fork 自用，无上游 PR 流程。常用命令：`bun install`（依赖）、`bun run electron:start`（起应用）、`bun test`（测试）。
+常用命令：`bun install`（依赖）、`bun run electron:start`（起应用）、`bun test`（测试）。
 
 规划与施工票见 `.scratch/craft-fork/`。
 
