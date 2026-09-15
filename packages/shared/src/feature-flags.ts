@@ -28,16 +28,6 @@ export function isDevRuntime(): boolean {
 }
 
 /**
- * Runtime-evaluated check for developer feedback feature.
- * Explicit env override has precedence over dev-runtime defaults.
- */
-export function isDeveloperFeedbackEnabled(): boolean {
-  const override = parseBooleanEnv(getEnv('CRAFT_FEATURE_DEVELOPER_FEEDBACK'));
-  if (override !== undefined) return override;
-  return isDevRuntime();
-}
-
-/**
  * Runtime-evaluated check for craft-agents-cli integration.
  *
  * Defaults to disabled. Override with CRAFT_FEATURE_CRAFT_AGENTS_CLI=1|0.
@@ -79,15 +69,6 @@ export function isPagesSharingEnabled(): boolean {
 export const FEATURE_FLAGS = {
   /** Enable Opus 4.7 fast mode (speed:"fast" + beta header). 6x pricing. */
   fastMode: false,
-  /**
-   * Enable agent developer feedback tool.
-   *
-   * Defaults to enabled in explicit development runtimes; disabled otherwise.
-   * Override with CRAFT_FEATURE_DEVELOPER_FEEDBACK=1|0.
-   */
-  get developerFeedback(): boolean {
-    return isDeveloperFeedbackEnabled();
-  },
   /**
    * Enable craft-agent CLI guidance and guardrails.
    *

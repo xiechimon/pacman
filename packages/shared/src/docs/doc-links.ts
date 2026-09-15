@@ -3,7 +3,7 @@
  * Summaries provide quick context; "Learn more" opens the full docs.
  */
 
-const DOC_BASE_URL = 'https://thecraftagents.com/docs'
+const DOC_BASE_URL = '' // pacman has no hosted product docs; agents should rely on bundled guides
 
 export type DocFeature =
   | 'sources'

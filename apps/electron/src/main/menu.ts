@@ -234,7 +234,7 @@ export async function rebuildMenu(): Promise<void> {
       submenu: [
         {
           label: i18n.t("menu.helpAndDocs"),
-          click: () => shell.openExternal('https://thecraftagents.com/docs')
+          click: () => shell.openExternal('#')
         },
         {
           label: i18n.t("menu.keyboardShortcuts"),

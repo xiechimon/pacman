@@ -35,9 +35,6 @@ export type {
   TextContent,
   ToolResult,
 
-  // Developer feedback
-  DeveloperFeedback,
-
   // Validation types
   ValidationIssue,
   ValidationResult,
@@ -178,8 +175,6 @@ export {
   handleScriptSandbox,
   // Render Template
   handleRenderTemplate,
-  // Send Developer Feedback
-  handleSendDeveloperFeedback,
   // Pages
   handleListPages,
   handleGetPage,
@@ -204,7 +199,6 @@ export type {
   TransformDataArgs,
   ScriptSandboxArgs,
   RenderTemplateArgs,
-  SendDeveloperFeedbackArgs,
   ListPagesArgs,
   GetPageArgs,
   CreatePageArgs,
@@ -230,8 +224,6 @@ export {
   RenderTemplateSchema,
   // Browser tool schema
   BrowserToolSchema,
-  // Developer feedback schema
-  SendDeveloperFeedbackSchema,
   // Pages schemas
   ListPagesSchema,
   GetPageSchema,

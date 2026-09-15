@@ -7,7 +7,7 @@ import { type OAuthSessionContext, buildOAuthDeeplinkUrl } from './types.ts';
 import type { PreparedOAuthFlow, OAuthExchangeParams, OAuthExchangeResult } from './oauth-flow-types.ts';
 
 export interface OAuthConfig {
-  mcpUrl: string; // Full MCP URL including path (e.g., https://mcp.craft.do/my/mcp)
+  mcpUrl: string; // Full MCP URL including path (e.g., https://mcp.example.com/my/mcp)
 }
 
 export interface OAuthTokens {

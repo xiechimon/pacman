@@ -33,7 +33,6 @@ import { handleUpdatePreferences } from './handlers/update-preferences.ts';
 import { handleTransformData } from './handlers/transform-data.ts';
 import { handleScriptSandbox } from './handlers/script-sandbox.ts';
 import { handleRenderTemplate } from './handlers/render-template.ts';
-import { handleSendDeveloperFeedback } from './handlers/send-developer-feedback.ts';
 import { handleSetSessionLabels } from './handlers/set-session-labels.ts';
 import { handleSetSessionStatus } from './handlers/set-session-status.ts';
 import { handleGetSessionInfo } from './handlers/get-session-info.ts';
@@ -157,10 +156,6 @@ export const RenderTemplateSchema = z.object({
   source: z.string().describe('Source slug (e.g., "linear", "gmail")'),
   template: z.string().describe('Template ID (e.g., "issue-detail", "issue-list")'),
   data: z.record(z.string(), z.unknown()).describe('JSON data to render into the template'),
-});
-
-export const SendDeveloperFeedbackSchema = z.object({
-  message: z.string().describe('Freeform markdown feedback — be detailed, use headings, lists, code blocks. Include what happened, what you expected, what would help, or any ideas/suggestions.'),
 });
 
 // Browser tool schema (single CLI-like tool for all browser actions)
@@ -533,10 +528,6 @@ Optional overrides: \`model\`, \`llmConnection\`, \`permissionMode\`, \`thinking
 The spawned session appears in the session list and runs fire-and-forget.
 Only use 'attachments' for existing file paths on disk — the tool reads them automatically.`,
 
-  send_developer_feedback: `Send freeform feedback to the Craft Agent development team.
-
-Use this to share anything that would help improve the product — issues you hit, ideas for better tools, suggestions for improved workflows, or patterns you notice. Write in markdown with as much detail as possible. This is your direct line to the developers.`,
-
   set_session_labels: `Set labels on the current session or a specific session by ID. Replaces all existing labels.
 
 Use this to tag sessions for filtering or to trigger label-based automations (LabelAdd/LabelRemove events).
@@ -680,7 +671,6 @@ export const SESSION_TOOL_DEFS: SessionToolDef[] = [
   { name: 'transform_data', description: TOOL_DESCRIPTIONS.transform_data, inputSchema: TransformDataSchema, executionMode: 'registry', safeMode: 'allow', handler: handleTransformData },
   { name: 'script_sandbox', description: TOOL_DESCRIPTIONS.script_sandbox, inputSchema: ScriptSandboxSchema, executionMode: 'registry', safeMode: 'allow', handler: handleScriptSandbox },
   { name: 'render_template', description: TOOL_DESCRIPTIONS.render_template, inputSchema: RenderTemplateSchema, executionMode: 'registry', safeMode: 'allow', handler: handleRenderTemplate },
-  { name: 'send_developer_feedback', description: TOOL_DESCRIPTIONS.send_developer_feedback, inputSchema: SendDeveloperFeedbackSchema, executionMode: 'registry', safeMode: 'allow', handler: handleSendDeveloperFeedback },
   { name: 'call_llm', description: TOOL_DESCRIPTIONS.call_llm, inputSchema: CallLlmSchema, executionMode: 'backend', safeMode: 'allow', readOnly: true, handler: null },
   { name: 'spawn_session', description: TOOL_DESCRIPTIONS.spawn_session, inputSchema: SpawnSessionSchema, executionMode: 'backend', safeMode: 'block', handler: null },
   // Browser tool (backend-specific — requires BrowserPaneManager in Electron)
@@ -709,8 +699,7 @@ export const SESSION_TOOL_DEFS: SessionToolDef[] = [
 ];
 
 export interface SessionToolFilterOptions {
-  /** Include the experimental send_developer_feedback tool. */
-  includeDeveloperFeedback?: boolean;
+  // Reserved for future per-tool filtering options.
 }
 
 /**
@@ -719,15 +708,8 @@ export interface SessionToolFilterOptions {
  * Callers should use this helper instead of filtering ad hoc so tool visibility
  * stays consistent across Claude, Pi, and session-mcp-server backends.
  */
-export function getSessionToolDefs(options?: SessionToolFilterOptions): SessionToolDef[] {
-  const includeDeveloperFeedback = options?.includeDeveloperFeedback ?? true;
-
-  return SESSION_TOOL_DEFS.filter(def => {
-    if (!includeDeveloperFeedback && def.name === 'send_developer_feedback') {
-      return false;
-    }
-    return true;
-  });
+export function getSessionToolDefs(_options?: SessionToolFilterOptions): SessionToolDef[] {
+  return SESSION_TOOL_DEFS;
 }
 
 /**
@@ -831,15 +813,13 @@ export interface JsonSchemaToolDef {
  * Convert session tool definitions to JSON Schema format.
  *
  * @param opts.prefix - Optional prefix for tool names (e.g., 'mcp__session__' for Pi)
- * @param opts.includeDeveloperFeedback - Include experimental feedback tool in output
  * @returns Array of tool definitions with JSON Schema inputSchema
  */
 export function getToolDefsAsJsonSchema(opts?: {
   prefix?: string;
-  includeDeveloperFeedback?: boolean;
 }): JsonSchemaToolDef[] {
   const prefix = opts?.prefix || '';
-  const defs = getSessionToolDefs({ includeDeveloperFeedback: opts?.includeDeveloperFeedback });
+  const defs = getSessionToolDefs();
 
   return defs.map(def => {
     // Explicit `as any` avoids TS2589 ("type instantiation is excessively deep")

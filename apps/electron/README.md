@@ -154,7 +154,7 @@ bun run sync-secrets
 
 **Creating your own OAuth credentials:**
 1. Go to [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
-2. Create OAuth Client ID (Web application type) — add `https://thecraftagents.com/auth/callback` as an authorized redirect URI
+2. Create OAuth Client ID (Web application type) — add `http://localhost:1455/auth/callback` as an authorized redirect URI (Codex CLI relay port; pacman does not host a relay)
 3. Enable required scopes in OAuth consent screen:
    - `https://www.googleapis.com/auth/gmail.readonly`
    - `https://www.googleapis.com/auth/userinfo.email`

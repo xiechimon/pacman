@@ -32,7 +32,7 @@ import { deletePage, loadPageConfig, setPageShareState } from './storage.ts';
 import { buildPageShareBundle, PageShareError } from './share-bundle.ts';
 
 /** Default publication API base (the agents-router forwards /p/* to the Worker) */
-export const DEFAULT_PAGES_SHARE_API_BASE_URL = 'https://thecraftagents.com/p/api';
+export const DEFAULT_PAGES_SHARE_API_BASE_URL = '';
 
 /**
  * Resolve the publication API base URL. `CRAFT_PAGES_SHARE_API_URL` overrides
@@ -80,7 +80,7 @@ export interface PagePublisherOptions {
   tokenStore: PagePublishTokenStore;
   /** Injectable for tests (defaults to global fetch) */
   fetchFn?: typeof fetch;
-  /** Publication API base, e.g. https://thecraftagents.com/p/api */
+  /** Publication API base (must be provided by caller; pacman has no hosted publisher) */
   apiBaseUrl?: string;
   log?: (message: string) => void;
 }

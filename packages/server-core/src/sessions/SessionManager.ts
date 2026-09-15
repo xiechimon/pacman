@@ -529,7 +529,6 @@ async function resolveToolDisplayMeta(
           'transform_data': 'Transform Data',
           'render_template': 'Render Template',
           'update_user_preferences': 'Update Preferences',
-          'send_developer_feedback': 'Send Feedback',
           'browser_tool': 'Browser',
         },
       }

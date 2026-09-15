@@ -1,15 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { init as sentryInit } from '@sentry/electron/renderer'
-import * as Sentry from '@sentry/react'
-import { captureConsoleIntegration } from '@sentry/react'
 import { Provider as JotaiProvider, useAtomValue } from 'jotai'
 import App from './App'
 import { ThemeProvider } from './context/ThemeContext'
 import { windowWorkspaceIdAtom } from './atoms/sessions'
 import { Toaster } from '@/components/ui/sonner'
 import { setupI18n, i18n } from '@craft-agent/shared/i18n'
-import { redactSensitiveHeadersInPlace, redactSensitiveKeysInPlace } from '@craft-agent/shared/utils/redaction'
 import { initReactI18next } from 'react-i18next'
 import LanguageDetector from 'i18next-browser-languagedetector'
 import './index.css'
@@ -25,9 +21,8 @@ setupI18n([LanguageDetector, initReactI18next])
 // the language in Appearance.
 const resolvedLanguage = i18n.resolvedLanguage
 // Diagnostic: console-log the bootstrap push so it shows up in DevTools and
-// (via captureConsoleIntegration) in Sentry, alongside the main-process
-// [i18n] startup hydration log. If these two diverge, the renderer's
-// localStorage isn't tracking the user's Appearance selection.
+// matches the main-process [i18n] startup hydration log. If these two diverge,
+// the renderer's localStorage isn't tracking the user's Appearance selection.
 console.info('[i18n] renderer bootstrap push', {
   resolvedLanguage: resolvedLanguage ?? null,
   localStorageI18nextLng: typeof window !== 'undefined' ? window.localStorage?.getItem('i18nextLng') : null,
@@ -36,58 +31,8 @@ if (resolvedLanguage) {
   void window.electronAPI?.changeLanguage?.(resolvedLanguage)
 }
 
-// Known-harmless console messages that should NOT be sent to Sentry.
-// These are dev-mode noise or expected warnings that aren't actionable.
-const IGNORED_CONSOLE_PATTERNS = [
-  // React StrictMode dev warnings about non-boolean DOM attributes
-  'Received `true` for a non-boolean attribute',
-  'Received `false` for a non-boolean attribute',
-  // Duplicate Shiki theme registration (expected on HMR reload)
-  'theme name already registered',
-]
-
-// Initialize Sentry in the renderer process using the dual-init pattern.
-// Combines Electron IPC transport (sentryInit) with React error boundary support (sentryReactInit).
-// DSN and config are inherited from the main process init.
-//
-// captureConsoleIntegration promotes console.error calls into Sentry events,
-// giving Sentry the same rich context visible in DevTools without needing sourcemaps.
-//
-// NOTE: Source map upload is intentionally disabled — see main/index.ts for details.
-sentryInit(
-  {
-    integrations: [captureConsoleIntegration({ levels: ['error'] })],
-
-    beforeSend(event) {
-      // Drop events matching known-harmless console patterns to avoid Sentry quota waste
-      const message = event.message || event.exception?.values?.[0]?.value || ''
-      if (IGNORED_CONSOLE_PATTERNS.some((pattern) => message.includes(pattern))) {
-        return null
-      }
-
-      // Scrub sensitive data (shared logic with the main process hook).
-      // The header scrub was previously missing here — renderer drift, fixed
-      // by moving both hooks onto @craft-agent/shared/utils redaction.ts.
-      if (event.request?.headers) {
-        redactSensitiveHeadersInPlace(event.request.headers)
-      }
-      if (event.breadcrumbs) {
-        for (const breadcrumb of event.breadcrumbs) {
-          if (breadcrumb.data) {
-            redactSensitiveKeysInPlace(breadcrumb.data)
-          }
-        }
-      }
-
-      return event
-    },
-  },
-  Sentry.init,
-)
-
 /**
  * Minimal fallback UI shown when the entire React tree crashes.
- * Sentry.ErrorBoundary captures the error and sends it to Sentry automatically.
  */
 function CrashFallback() {
   return (
@@ -102,6 +47,27 @@ function CrashFallback() {
       </button>
     </div>
   )
+}
+
+/**
+ * Minimal error boundary for the React tree. Logs to console; the user-facing
+ * fallback is rendered by CrashFallback.
+ */
+class RootErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[RootErrorBoundary] tree crashed:', error, info.componentStack)
+  }
+  render() {
+    if (this.state.hasError) return <CrashFallback />
+    return this.props.children
+  }
 }
 
 /**
@@ -122,10 +88,10 @@ function Root() {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <Sentry.ErrorBoundary fallback={<CrashFallback />}>
+    <RootErrorBoundary>
       <JotaiProvider>
         <Root />
       </JotaiProvider>
-    </Sentry.ErrorBoundary>
+    </RootErrorBoundary>
   </React.StrictMode>
 )

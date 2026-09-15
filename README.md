@@ -39,8 +39,6 @@ We built Craft Agents because we wanted a better, more opinionated (and preferab
 **How do I connect to Linear, Gmail, Slack...?**
 Tell the agent "add Linear as a source." It finds public APIs and MCP servers, reads their docs, sets up credentials, and configures everything. No config files, no setup wizards.
 
-[Check out how I just connected to Slack →](https://thecraftagents.com/s/DRNQEiy8w2e1v5LPgKl8b)
-
 **I already have my MCP config JSON.**
 Paste it. The agent handles the rest.
 
@@ -56,8 +54,6 @@ Craft Agents connects to anything. We have it hooked up to a direct Postgres DB 
 **How do I import my Claude Code skills and MCPs?**
 Tell the agent you want to import your skills from Claude Code. It handles the migration.
 
-[Here I imported all my skills in one go →](https://thecraftagents.com/s/gWCFqwhObFWaNJIEJmd6j)
-
 **How do I create a new skill?**
 Describe what the skill should do, give it context. The agent takes care of the rest.
 
@@ -69,18 +65,6 @@ Yes. That's the core idea behind agent-native software. You describe what you wa
 
 
 ## Installation
-
-### One-Line Install (Recommended)
-
-**macOS / Linux:**
-```bash
-curl -fsSL https://thecraftagents.com/install-app.sh | bash
-```
-
-**Windows (PowerShell):**
-```powershell
-irm https://thecraftagents.com/install-app.ps1 | iex
-```
 
 ### Build from Source
 
@@ -97,7 +81,6 @@ bun run electron:start
 - **Claude Code Experience**: Streaming responses, tool visualization, real-time updates
 - **Multiple LLM Connections**: Add multiple AI providers and set per-workspace defaults
 - **Multi-Provider Support**: Run sessions with Google AI Studio, ChatGPT Plus, GitHub Copilot, or OpenAI API keys alongside Anthropic
-- **Craft MCP Integration**: Access to 32+ Craft document tools (blocks, collections, search, tasks)
 - **Sources**: Connect to MCP servers, REST APIs (Google, Slack, Microsoft), and local filesystems
 - **Permission Modes**: Three-level system (Explore, Ask to Edit, Auto) with customizable rules
 - **Background Tasks**: Run long-running operations with progress tracking
@@ -435,9 +418,9 @@ Go to **APIs & Services → Library** and enable the APIs you need:
 
 1. Go to **APIs & Services → Credentials**
 2. Click **Create Credentials → OAuth Client ID**
-3. Application type: **Web application** (not "Desktop app" — Craft Agent routes every OAuth flow through a hosted callback, which a Desktop-app client rejects with `redirect_uri_mismatch`)
-4. Name: e.g., "Craft Agent"
-5. Under **Authorized redirect URIs**, add: `https://thecraftagents.com/auth/callback`
+3. Application type: **Desktop app** (pacman uses the system browser via loopback redirect — no hosted callback relay)
+4. Name: e.g., "Pacman"
+5. Under **Authorized redirect URIs**, add: `http://localhost:1455/auth/callback` (matches the Codex CLI relay port; pacman does not use a hosted relay)
 6. Click **Create**
 7. Note the **Client ID** and **Client Secret**
 
@@ -557,7 +540,7 @@ Or configure manually in `~/.craft-agent/workspaces/{id}/automations.json`:
 
 **Supported events:** `LabelAdd`, `LabelRemove`, `PermissionModeChange`, `FlagChange`, `SessionStatusChange`, `SchedulerTick`, `PreToolUse`, `PostToolUse`, `SessionStart`, `SessionEnd`, and more.
 
-See the [Automations documentation](https://thecraftagents.com/docs/automations/overview) for the full reference.
+See `packages/shared/src/automations/` for the canonical matcher adapters and schema definitions.
 
 ## Advanced Features
 

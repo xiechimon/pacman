@@ -30,7 +30,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { isDeveloperFeedbackEnabled } from '@craft-agent/shared/feature-flags';
 // Import from session-tools-core
 import {
   type SessionToolContext,
@@ -238,15 +237,6 @@ function createCodexContext(config: SessionConfig): SessionToolContext {
       }
     },
 
-    // Developer feedback: write one JSON file per entry to {configDir}/feedback/
-    submitFeedback: (feedback) => {
-      const configDir = process.env.CRAFT_CONFIG_DIR || join(workspaceRootPath, '..', '..');
-      const feedbackDir = join(configDir, 'feedback');
-      mkdirSync(feedbackDir, { recursive: true });
-      const filePath = join(feedbackDir, `${feedback.id}.json`);
-      writeFileSync(filePath, JSON.stringify(feedback, null, 2), 'utf-8');
-    },
-
     // Note: saveSourceConfig, validators, renderMermaid
     // are not available in Codex context (require Electron internals)
   };
@@ -256,10 +246,8 @@ function createCodexContext(config: SessionConfig): SessionToolContext {
 // Tool Definitions (from canonical registry)
 // ============================================================
 
-function createSessionTools(includeDeveloperFeedback: boolean): Tool[] {
-  return getToolDefsAsJsonSchema({
-    includeDeveloperFeedback,
-  }).map(def => ({
+function createSessionTools(): Tool[] {
+  return getToolDefsAsJsonSchema().map(def => ({
     name: def.name,
     description: def.description,
     inputSchema: def.inputSchema as Tool['inputSchema'],
@@ -435,8 +423,7 @@ async function main() {
   // Create the Codex context
   const ctx = createCodexContext(config);
 
-  const includeDeveloperFeedback = isDeveloperFeedbackEnabled();
-  const sessionToolRegistry = getSessionToolRegistry({ includeDeveloperFeedback });
+  const sessionToolRegistry = getSessionToolRegistry();
 
   // Create MCP server
   const server = new Server(

@@ -2008,7 +2008,6 @@ export function shouldAllowToolInMode(
     if (toolName.startsWith('mcp__session__')) {
       const safeAllowedSessionTools = getSessionSafeAllowedToolNames({
         prefix: 'mcp__session__',
-        includeDeveloperFeedback: FEATURE_FLAGS.developerFeedback,
       });
 
       if (safeAllowedSessionTools.has(toolName)) {

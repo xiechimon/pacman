@@ -264,9 +264,11 @@ export function prepareSlackOAuth(options: PrepareSlackOAuthOptions): PreparedOA
   const userScopes = getSlackScopes(options);
   const state = generateState();
 
-  // Slack requires HTTPS → use Cloudflare relay when using callbackPort
+  // Slack requires HTTPS. pacman does not run a hosted relay; when no callbackUrl
+  // is provided the Slack OAuth flow will fail at the provider (empty redirect_uri).
+  // Users can supply their own relay URL via `options.callbackUrl`.
   const redirectUri = options.callbackUrl
-    ?? `https://thecraftagents.com/auth/slack/callback?port=${options.callbackPort}`;
+    ?? '';
 
   const authUrl = new URL(SLACK_AUTH_URL);
   authUrl.searchParams.set('client_id', SLACK_CLIENT_ID);
@@ -355,9 +357,9 @@ export async function startSlackOAuth(options: SlackOAuthOptions = {}): Promise<
     const localUrl = new URL(callbackServer.url);
     const port = localUrl.port;
 
-    // Use Cloudflare Worker relay for Slack OAuth (Slack requires HTTPS)
-    // The relay redirects: https://thecraftagents.com/auth/slack/callback → http://localhost:{port}/callback
-    const redirectUri = `https://thecraftagents.com/auth/slack/callback?port=${port}`;
+    // Slack requires HTTPS; pacman does not run a hosted relay so the redirect
+    // is left empty. The provider will reject empty redirect_uri, failing fast.
+    const redirectUri = '';
 
     // Build authorization URL
     // Use user_scope (not scope) to get a user token instead of bot token

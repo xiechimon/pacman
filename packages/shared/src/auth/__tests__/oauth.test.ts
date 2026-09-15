@@ -65,38 +65,38 @@ describe('discoverOAuthMetadata', () => {
   describe('RFC 9728 protected resource discovery', () => {
     it('discovers metadata via WWW-Authenticate resource_metadata hint', async () => {
       const protectedResourceMetadata = {
-        resource: 'https://mcp.craft.do/my',
-        authorization_servers: ['https://mcp.craft.do/my/auth'],
+        resource: 'https://mcp.example.com/my',
+        authorization_servers: ['https://mcp.example.com/my/auth'],
       };
 
       const authServerMetadata = {
-        authorization_endpoint: 'https://mcp.craft.do/my/auth/authorize',
-        token_endpoint: 'https://mcp.craft.do/my/auth/token',
-        registration_endpoint: 'https://mcp.craft.do/my/auth/register',
+        authorization_endpoint: 'https://mcp.example.com/my/auth/authorize',
+        token_endpoint: 'https://mcp.example.com/my/auth/token',
+        registration_endpoint: 'https://mcp.example.com/my/auth/register',
       };
 
       mockFetch.mockImplementation((url: string, options?: RequestInit) => {
         // HEAD request to MCP endpoint returns 401 with resource_metadata hint
-        if (url === 'https://mcp.craft.do/my/mcp' && options?.method === 'HEAD') {
+        if (url === 'https://mcp.example.com/my/mcp' && options?.method === 'HEAD') {
           return Promise.resolve(new Response(null, {
             status: 401,
             headers: {
-              'WWW-Authenticate': 'Bearer error="invalid_token", resource_metadata="https://mcp.craft.do/.well-known/oauth-protected-resource/my"',
+              'WWW-Authenticate': 'Bearer error="invalid_token", resource_metadata="https://mcp.example.com/.well-known/oauth-protected-resource/my"',
             },
           }));
         }
         // Protected resource metadata
-        if (url === 'https://mcp.craft.do/.well-known/oauth-protected-resource/my') {
+        if (url === 'https://mcp.example.com/.well-known/oauth-protected-resource/my') {
           return Promise.resolve(new Response(JSON.stringify(protectedResourceMetadata), { status: 200 }));
         }
         // Authorization server metadata
-        if (url === 'https://mcp.craft.do/my/auth/.well-known/oauth-authorization-server') {
+        if (url === 'https://mcp.example.com/my/auth/.well-known/oauth-authorization-server') {
           return Promise.resolve(new Response(JSON.stringify(authServerMetadata), { status: 200 }));
         }
         return Promise.resolve(new Response('Not Found', { status: 404 }));
       });
 
-      const result = await discoverOAuthMetadata('https://mcp.craft.do/my/mcp');
+      const result = await discoverOAuthMetadata('https://mcp.example.com/my/mcp');
       expect(result).toEqual(authServerMetadata);
     });
 

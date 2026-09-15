@@ -59,10 +59,6 @@ export type { ScriptSandboxArgs } from './script-sandbox.ts';
 export { handleRenderTemplate } from './render-template.ts';
 export type { RenderTemplateArgs } from './render-template.ts';
 
-// Send Developer Feedback
-export { handleSendDeveloperFeedback } from './send-developer-feedback.ts';
-export type { SendDeveloperFeedbackArgs } from './send-developer-feedback.ts';
-
 // Session Self-Management
 export { handleSetSessionLabels } from './set-session-labels.ts';
 export type { SetSessionLabelsArgs } from './set-session-labels.ts';

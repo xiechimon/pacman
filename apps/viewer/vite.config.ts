@@ -30,9 +30,11 @@ export default defineConfig({
     port: 5174, // Different from Electron dev server
     open: true,
     proxy: {
-      // Proxy API requests to production R2 during local dev
+      // Proxy API requests during local dev — target intentionally empty (pacman
+      // does not proxy through the original distribution backend). Set the target
+      // here to enable.
       '/s/api': {
-        target: 'https://thecraftagents.com',
+        target: '',
         changeOrigin: true,
         secure: true,
       },

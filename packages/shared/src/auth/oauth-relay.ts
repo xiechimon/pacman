@@ -1,6 +1,10 @@
 import type { PreparedOAuthFlow } from './oauth-flow-types.ts';
 
-export const OAUTH_RELAY_CALLBACK_URL = 'https://thecraftagents.com/auth/callback';
+// pacman does not relay OAuth callbacks through an external service.
+// Empty string forces providers to reject the redirect_uri at the authorization
+// endpoint, making any Slack/Google/Microsoft OAuth attempt fail fast and
+// ensuring no state is ever sent to a third-party relay.
+export const OAUTH_RELAY_CALLBACK_URL = '';
 const OAUTH_RELAY_STATE_PREFIX = 'ca1.';
 const OAUTH_RELAY_STATE_VERSION = 1;
 

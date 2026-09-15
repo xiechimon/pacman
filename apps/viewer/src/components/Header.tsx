@@ -38,9 +38,9 @@ export function Header({ hasSession, sessionTitle, isDark, onToggleTheme, onClea
   const { t } = useTranslation()
   return (
     <header className="shrink-0 grid grid-cols-[auto_1fr_auto] items-center px-4 py-3">
-      {/* Logo - links to main site */}
+      {/* Logo - links to local viewer index */}
       <a
-        href="https://thecraftagents.com"
+        href="./"
         className="hover:opacity-80 transition-opacity"
         title="Craft Agent"
       >
