@@ -12,7 +12,6 @@
 # Craft Agents
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 ## How it Works (Video)
 To understand what Craft Agents does and how it works watch this video.
@@ -628,9 +627,11 @@ This project uses the [Claude Agent SDK](https://www.npmjs.com/package/@anthropi
 
 "Craft" and "Craft Agents" are trademarks of Craft Docs Ltd. See [TRADEMARK.md](TRADEMARK.md) for usage guidelines.
 
-## Contributing
+## 开发
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+个人 fork 自用，无上游 PR 流程。常用命令：`bun install`（依赖）、`bun run electron:start`（起应用）、`bun test`（测试）。
+
+规划与施工票见 `.scratch/craft-fork/`。
 
 ## Security
 
