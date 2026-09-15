@@ -46,6 +46,9 @@ effort: craft-fork
 ## Not yet specified
 
 - 上游同步节奏（何时从 vendor/upstream 捡修复、怎么捡）——等 spec 成形后细化
+- **Copilot model catalog bug**：OAuth 阶段 pi-server 用 `tier1-httpApi` 端点拉回的 enabled 模型清单（gpt-5.4-mini / gpt-5.6-luna / claude-haiku-4.5 / mai-code-1.* 等 10 个）与 `/v1/responses` 实际接受的清单不一致，所有 catalog enabled 模型都被 server 拒（`model_not_supported`）。是 pi-server 上游问题，pacman 控不了——但要把 retry 走通需要绕过：要么用 Copilot 的其他 catalog 端点（tier1-internal / user-snapshots）让 pi-server 探到，要么等 pi-server 上游修。**决策时机**：等下次跑 B4 或修 Copilot 时出票处理。
+- pacman 默认模型选择策略：当前会选 catalog enabled 列表里的 `mai-code-1.1-flash`，但用户实际 tier 不接受。修复方向——默认选 enabled 列表里**最低 tier 稳接受**的（如 `gpt-5.4-mini` / `gpt-4.1`），或发送 400 后给用户明确"换这个试试"提示。
+- IPC 超时设短：GitHub Copilot OAuth 全流程 ~40 秒（设备码 + 用户授权 + token 换 Copilot + 启用模型），但 `copilot:startOAuth` IPC 超时只设 30 秒，UI 在 token 完成前报 timeout。修法：handler 立即返回 "started" + push 进度事件，或把超时调长到 60+ 秒。
 - 自用稳定后的差异化特性（方向未探，当前不设票）
 - 打包分发给他人（超出自用范围时的签名/公证）——等 v0.1 验收后再议
 
