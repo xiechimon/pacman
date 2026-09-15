@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test'
-import type { RpcServer } from '@craft-agent/server-core/transport'
+import type { RpcServer } from '@pacman/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 
 const registeredChannels: string[] = []
@@ -109,25 +109,25 @@ async function getExpectedChannels(): Promise<Set<string>> {
     projects,
     pages,
   ] = await Promise.all([
-    import('@craft-agent/server-core/handlers/rpc/auth'),
-    import('@craft-agent/server-core/handlers/rpc/automations'),
-    import('@craft-agent/server-core/handlers/rpc/files'),
-    import('@craft-agent/server-core/handlers/rpc/labels'),
-    import('@craft-agent/server-core/handlers/rpc/llm-connections'),
-    import('@craft-agent/server-core/handlers/rpc/oauth'),
-    import('@craft-agent/server-core/handlers/rpc/sessions'),
-    import('@craft-agent/server-core/handlers/rpc/settings'),
-    import('@craft-agent/server-core/handlers/rpc/skills'),
-    import('@craft-agent/server-core/handlers/rpc/sources'),
-    import('@craft-agent/server-core/handlers/rpc/statuses'),
-    import('@craft-agent/server-core/handlers/rpc/system'),
-    import('@craft-agent/server-core/handlers/rpc/workspace'),
-    import('@craft-agent/server-core/handlers/rpc/onboarding'),
-    import('@craft-agent/server-core/handlers/rpc/resources'),
-    import('@craft-agent/server-core/handlers/rpc/transfer'),
-    import('@craft-agent/server-core/handlers/rpc/tasks'),
-    import('@craft-agent/server-core/handlers/rpc/projects'),
-    import('@craft-agent/server-core/handlers/rpc/pages'),
+    import('@pacman/server-core/handlers/rpc/auth'),
+    import('@pacman/server-core/handlers/rpc/automations'),
+    import('@pacman/server-core/handlers/rpc/files'),
+    import('@pacman/server-core/handlers/rpc/labels'),
+    import('@pacman/server-core/handlers/rpc/llm-connections'),
+    import('@pacman/server-core/handlers/rpc/oauth'),
+    import('@pacman/server-core/handlers/rpc/sessions'),
+    import('@pacman/server-core/handlers/rpc/settings'),
+    import('@pacman/server-core/handlers/rpc/skills'),
+    import('@pacman/server-core/handlers/rpc/sources'),
+    import('@pacman/server-core/handlers/rpc/statuses'),
+    import('@pacman/server-core/handlers/rpc/system'),
+    import('@pacman/server-core/handlers/rpc/workspace'),
+    import('@pacman/server-core/handlers/rpc/onboarding'),
+    import('@pacman/server-core/handlers/rpc/resources'),
+    import('@pacman/server-core/handlers/rpc/transfer'),
+    import('@pacman/server-core/handlers/rpc/tasks'),
+    import('@pacman/server-core/handlers/rpc/projects'),
+    import('@pacman/server-core/handlers/rpc/pages'),
   ])
 
   // GUI handler channels (remain in electron)
@@ -199,7 +199,7 @@ describe('RPC handler registration', () => {
   })
 
   it('keeps onboarding channels in registration coverage', async () => {
-    const { HANDLED_CHANNELS } = await import('@craft-agent/server-core/handlers/rpc/onboarding')
+    const { HANDLED_CHANNELS } = await import('@pacman/server-core/handlers/rpc/onboarding')
     const { registerAllRpcHandlers } = await import('../index')
 
     registerAllRpcHandlers(createMockServer(), createMockDeps())

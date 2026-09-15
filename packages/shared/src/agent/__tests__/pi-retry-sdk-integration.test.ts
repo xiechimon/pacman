@@ -7,7 +7,7 @@
  * runtime keep these tests independent of disk state, credentials, and network.
  */
 import { describe, expect, it } from 'bun:test';
-import type { AgentEvent as CraftAgentEvent } from '@craft-agent/core/types';
+import type { AgentEvent as PacmanEvent } from '@pacman/core/types';
 import {
   createAgentSession,
   createExtensionRuntime,
@@ -56,14 +56,14 @@ interface Attempt {
 
 interface TraceEntry {
   sdkEvent: AgentSessionEvent;
-  adapted: CraftAgentEvent[];
+  adapted: PacmanEvent[];
   completedQueue: boolean;
 }
 
 interface ScenarioResult {
   callCount: number;
   trace: TraceEntry[];
-  events: CraftAgentEvent[];
+  events: PacmanEvent[];
   queueCompletionSdkEvents: AgentSessionEvent['type'][];
   isHoldingTurn: boolean;
   hasExtraQueueCompletion: boolean;

@@ -97,8 +97,8 @@ export default [
       'react-hooks/exhaustive-deps': 'warn',
 
       // Custom Craft Agent rules
-      'craft-agent/no-direct-navigation-state': 'error',
-      'craft-agent/no-localstorage': 'warn',
+      'pacman/no-direct-navigation-state': 'error',
+      'pacman/no-localstorage': 'warn',
 
       // Custom platform detection rule
       'craft-platform/no-direct-platform-check': 'error',
@@ -166,16 +166,16 @@ export default [
       'no-restricted-imports': ['error', {
         paths: [
           {
-            name: '@craft-agent/shared/codex',
-            message: 'Use provider-agnostic APIs from @craft-agent/shared/agent/backend instead.',
+            name: '@pacman/shared/codex',
+            message: 'Use provider-agnostic APIs from @pacman/shared/agent/backend instead.',
           },
           {
-            name: '@craft-agent/shared/agent/claude-agent',
-            message: 'Provider backends must stay behind @craft-agent/shared/agent/backend.',
+            name: '@pacman/shared/agent/claude-agent',
+            message: 'Provider backends must stay behind @pacman/shared/agent/backend.',
           },
           {
-            name: '@craft-agent/shared/agent/pi-agent',
-            message: 'Provider backends must stay behind @craft-agent/shared/agent/backend.',
+            name: '@pacman/shared/agent/pi-agent',
+            message: 'Provider backends must stay behind @pacman/shared/agent/backend.',
           },
         ],
       }],
@@ -189,7 +189,7 @@ export default [
       'no-restricted-syntax': ['error',
         {
           selector: "CallExpression[callee.name='fetch']",
-          message: 'Do not call provider APIs directly in Electron model fetchers. Delegate to fetchBackendModels() from @craft-agent/shared/agent/backend.',
+          message: 'Do not call provider APIs directly in Electron model fetchers. Delegate to fetchBackendModels() from @pacman/shared/agent/backend.',
         },
         {
           selector: "ImportDeclaration[source.value='@anthropic-ai/claude-agent-sdk']",

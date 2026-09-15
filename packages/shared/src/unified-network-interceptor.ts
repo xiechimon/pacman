@@ -37,13 +37,13 @@ import { resolveRequestContext } from './interceptor-request-utils.ts';
 type HeadersInitType = Headers | Record<string, string> | string[][];
 
 /**
- * When `CRAFT_DEBUG_SSE_RAW=1`, the OpenAI strip streams dump every raw SSE
+ * When `PACMAN_DEBUG_SSE_RAW=1`, the OpenAI strip streams dump every raw SSE
  * line they see (in) and emit (out) to interceptor.log. Used to diagnose
  * upstream SSE shape issues (e.g. DeepSeek's two-phase tool_call emission).
  * Independent of the broader DEBUG flag — opt-in only because raw chunks are
  * verbose and may contain user prompts/tool args.
  */
-const DEBUG_SSE_RAW = process.env.CRAFT_DEBUG_SSE_RAW === '1';
+const DEBUG_SSE_RAW = process.env.PACMAN_DEBUG_SSE_RAW === '1';
 
 // ============================================================================
 // PROXY CONFIGURATION (from env vars injected by parent process)
@@ -1795,7 +1795,7 @@ const adapters: ApiAdapter[] = [anthropicAdapter, openAiResponsesAdapter, openAi
  * Example values: anthropic-messages, openai-completions, openai-responses.
  */
 function getPiApiHint(): string | undefined {
-  const hint = process.env.CRAFT_PI_MODEL_API?.trim();
+  const hint = process.env.PACMAN_PI_MODEL_API?.trim();
   return hint || undefined;
 }
 
@@ -2112,7 +2112,7 @@ function synthesizeMalformedBodyResponse(
     error: {
       type: 'invalid_request_error',
       code: err.code,
-      message: `Craft Agents blocked an outgoing request that the API would reject: ${err.detail}. ` +
+      message: `Pacmans blocked an outgoing request that the API would reject: ${err.detail}. ` +
         `This typically indicates a streaming-reassembly bug in the upstream endpoint or a stale ` +
         `tool history. Try starting a new session or switching to a different model/endpoint.`,
       param: 'tool_calls',
@@ -2123,7 +2123,7 @@ function synthesizeMalformedBodyResponse(
 
   setStoredError({
     status: 400,
-    statusText: 'Bad Request (blocked by Craft Agents)',
+    statusText: 'Bad Request (blocked by Pacmans)',
     message: err.detail,
     timestamp: Date.now(),
   });
@@ -2277,7 +2277,7 @@ const fetchProxy = new Proxy(interceptedFetch, {
 });
 
 // Auto-install in runtime subprocesses. Tests can disable this side effect.
-if (process.env.CRAFT_INTERCEPTOR_DISABLE_AUTO_INSTALL !== '1') {
+if (process.env.PACMAN_INTERCEPTOR_DISABLE_AUTO_INSTALL !== '1') {
   (globalThis as unknown as { fetch: unknown }).fetch = fetchProxy;
   debugLog('Unified fetch interceptor installed');
 }

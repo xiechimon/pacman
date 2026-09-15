@@ -24,16 +24,16 @@ function parseBooleanEnv(value: string | undefined): boolean | undefined {
  */
 export function isDevRuntime(): boolean {
   const nodeEnv = (getEnv('NODE_ENV') || '').toLowerCase();
-  return nodeEnv === 'development' || nodeEnv === 'dev' || getEnv('CRAFT_DEBUG') === '1';
+  return nodeEnv === 'development' || nodeEnv === 'dev' || getEnv('PACMAN_DEBUG') === '1';
 }
 
 /**
- * Runtime-evaluated check for craft-agents-cli integration.
+ * Runtime-evaluated check for pacmans-cli integration.
  *
- * Defaults to disabled. Override with CRAFT_FEATURE_CRAFT_AGENTS_CLI=1|0.
+ * Defaults to disabled. Override with PACMAN_FEATURE_CLI=1|0.
  */
-export function isCraftAgentsCliEnabled(): boolean {
-  const override = parseBooleanEnv(getEnv('CRAFT_FEATURE_CRAFT_AGENTS_CLI'));
+export function isPacmanCliEnabled(): boolean {
+  const override = parseBooleanEnv(getEnv('PACMAN_FEATURE_CLI'));
   if (override !== undefined) return override;
   return false;
 }
@@ -41,10 +41,10 @@ export function isCraftAgentsCliEnabled(): boolean {
 /**
  * Runtime-evaluated check for embedded server settings page.
  *
- * Defaults to disabled. Override with CRAFT_FEATURE_EMBEDDED_SERVER=1|0.
+ * Defaults to disabled. Override with PACMAN_FEATURE_EMBEDDED_SERVER=1|0.
  */
 export function isEmbeddedServerEnabled(): boolean {
-  const override = parseBooleanEnv(getEnv('CRAFT_FEATURE_EMBEDDED_SERVER'));
+  const override = parseBooleanEnv(getEnv('PACMAN_FEATURE_EMBEDDED_SERVER'));
   if (override !== undefined) return override;
   return false;
 }
@@ -58,10 +58,10 @@ export function isEmbeddedServerEnabled(): boolean {
  *
  * Defaults to ENABLED as of 2026-08-27 (the Cloudflare publication Worker is
  * deployed and verified live). Publishing sends the page bundle to Cloudflare,
- * so this is opt-out: set CRAFT_FEATURE_PAGES_SHARING=0 to hide the Share UI.
+ * so this is opt-out: set PACMAN_FEATURE_PAGES_SHARING=0 to hide the Share UI.
  */
 export function isPagesSharingEnabled(): boolean {
-  const override = parseBooleanEnv(getEnv('CRAFT_FEATURE_PAGES_SHARING'));
+  const override = parseBooleanEnv(getEnv('PACMAN_FEATURE_PAGES_SHARING'));
   if (override !== undefined) return override;
   return true;
 }
@@ -70,17 +70,17 @@ export const FEATURE_FLAGS = {
   /** Enable Opus 4.7 fast mode (speed:"fast" + beta header). 6x pricing. */
   fastMode: false,
   /**
-   * Enable craft-agent CLI guidance and guardrails.
+   * Enable pacman CLI guidance and guardrails.
    *
-   * Defaults to disabled. Override with CRAFT_FEATURE_CRAFT_AGENTS_CLI=1|0.
+   * Defaults to disabled. Override with PACMAN_FEATURE_CLI=1|0.
    */
   get craftAgentsCli(): boolean {
-    return isCraftAgentsCliEnabled();
+    return isPacmanCliEnabled();
   },
   /**
    * Enable embedded server settings page.
    *
-   * Defaults to disabled. Override with CRAFT_FEATURE_EMBEDDED_SERVER=1|0.
+   * Defaults to disabled. Override with PACMAN_FEATURE_EMBEDDED_SERVER=1|0.
    */
   get embeddedServer(): boolean {
     return isEmbeddedServerEnabled();
@@ -89,7 +89,7 @@ export const FEATURE_FLAGS = {
    * Enable Pages sharing (publish to Cloudflare).
    *
    * Defaults to ENABLED (Worker deployed 2026-08-27). Opt out with
-   * CRAFT_FEATURE_PAGES_SHARING=0.
+   * PACMAN_FEATURE_PAGES_SHARING=0.
    */
   get pagesSharing(): boolean {
     return isPagesSharingEnabled();

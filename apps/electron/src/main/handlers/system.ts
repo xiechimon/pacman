@@ -2,19 +2,19 @@ import { resolve } from 'path'
 import { join } from 'path'
 import { homedir } from 'os'
 import { execSync } from 'child_process'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { getGitBashPath, setGitBashPath, clearGitBashPath } from '@craft-agent/shared/config'
-import { classifyExternalUrl, formatBlockedUrlError } from '@craft-agent/shared/utils/url-safety'
-import { isUsableGitBashPath, validateGitBashPath } from '@craft-agent/server-core/services'
-import { validateFilePath, getWorkspaceAllowedDirs } from '@craft-agent/server-core/handlers'
-import type { RpcServer } from '@craft-agent/server-core/transport'
+import { RPC_CHANNELS } from '@pacman/shared/protocol'
+import { getGitBashPath, setGitBashPath, clearGitBashPath } from '@pacman/shared/config'
+import { classifyExternalUrl, formatBlockedUrlError } from '@pacman/shared/utils/url-safety'
+import { isUsableGitBashPath, validateGitBashPath } from '@pacman/server-core/services'
+import { validateFilePath, getWorkspaceAllowedDirs } from '@pacman/server-core/handlers'
+import type { RpcServer } from '@pacman/server-core/transport'
 import type { HandlerDeps } from './handler-deps'
 import {
   requestClientOpenExternal,
   requestClientOpenPath,
   requestClientShowInFolder,
   requestClientOpenFileDialog,
-} from '@craft-agent/server-core/transport'
+} from '@pacman/server-core/transport'
 
 export const CORE_HANDLED_CHANNELS = [
   RPC_CHANNELS.theme.GET_SYSTEM_PREFERENCE,
@@ -95,12 +95,12 @@ export function registerSystemCoreHandlers(server: RpcServer, deps: HandlerDeps)
 
   // Release notes
   server.handle(RPC_CHANNELS.releaseNotes.GET, async () => {
-    const { getCombinedReleaseNotes } = require('@craft-agent/shared/release-notes') as typeof import('@craft-agent/shared/release-notes')
+    const { getCombinedReleaseNotes } = require('@pacman/shared/release-notes') as typeof import('@pacman/shared/release-notes')
     return getCombinedReleaseNotes()
   })
 
   server.handle(RPC_CHANNELS.releaseNotes.GET_LATEST_VERSION, async () => {
-    const { getLatestReleaseVersion } = require('@craft-agent/shared/release-notes') as typeof import('@craft-agent/shared/release-notes')
+    const { getLatestReleaseVersion } = require('@pacman/shared/release-notes') as typeof import('@pacman/shared/release-notes')
     return getLatestReleaseVersion()
   })
 
@@ -202,7 +202,7 @@ export function registerSystemCoreHandlers(server: RpcServer, deps: HandlerDeps)
     deps.platform.logger.info('[renderer]', ...args)
   })
 
-  // Shell operations - open URL in external browser (or handle craftagents:// internally)
+  // Shell operations - open URL in external browser (or handle pacman:// internally)
   server.handle(RPC_CHANNELS.shell.OPEN_URL, async (ctx, url: string) => {
     deps.platform.logger.info('[OPEN_URL] Received request:', url)
     try {
@@ -211,7 +211,7 @@ export function registerSystemCoreHandlers(server: RpcServer, deps: HandlerDeps)
         throw new Error(formatBlockedUrlError(classification))
       }
 
-      // Handle craftagents:// URLs internally via deep link handler (GUI only)
+      // Handle pacman:// URLs internally via deep link handler (GUI only)
       if (classification.kind === 'internal-deeplink') {
         if (!windowManager) return
         deps.platform.logger.info('[OPEN_URL] Handling as deep link')
@@ -285,12 +285,12 @@ export function registerSystemGuiHandlers(server: RpcServer, deps: HandlerDeps):
   })
 
   server.handle(RPC_CHANNELS.update.DISMISS, async (_ctx, version: string) => {
-    const { setDismissedUpdateVersion } = await import('@craft-agent/shared/config')
+    const { setDismissedUpdateVersion } = await import('@pacman/shared/config')
     setDismissedUpdateVersion(version)
   })
 
   server.handle(RPC_CHANNELS.update.GET_DISMISSED, async () => {
-    const { getDismissedUpdateVersion } = await import('@craft-agent/shared/config')
+    const { getDismissedUpdateVersion } = await import('@pacman/shared/config')
     return getDismissedUpdateVersion()
   })
 
@@ -398,12 +398,12 @@ export function registerSystemGuiHandlers(server: RpcServer, deps: HandlerDeps):
   })
 
   server.handle(RPC_CHANNELS.notification.GET_ENABLED, async () => {
-    const { getNotificationsEnabled } = await import('@craft-agent/shared/config/storage')
+    const { getNotificationsEnabled } = await import('@pacman/shared/config/storage')
     return getNotificationsEnabled()
   })
 
   server.handle(RPC_CHANNELS.notification.SET_ENABLED, async (_ctx, enabled: boolean) => {
-    const { setNotificationsEnabled } = await import('@craft-agent/shared/config/storage')
+    const { setNotificationsEnabled } = await import('@pacman/shared/config/storage')
     setNotificationsEnabled(enabled)
 
     if (enabled) {

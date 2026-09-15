@@ -2,14 +2,14 @@
  * Pi SDK Event Adapter
  *
  * Maps Pi Agent Core events (AgentEvent / AgentSessionEvent) to
- * Craft Agent's AgentEvent format for UI compatibility.
+ * Pacman's AgentEvent format for UI compatibility.
  *
  * Pi emits fine-grained lifecycle events. We translate them into
  * the same event vocabulary the renderer already understands from
  * Claude / Codex / Copilot backends.
  */
 
-import type { AgentEvent as CraftAgentEvent } from '@craft-agent/core/types';
+import type { AgentEvent as PacmanEvent } from '@pacman/core/types';
 import type {
   AgentEvent as PiAgentEvent,
 } from '@earendil-works/pi-agent-core';
@@ -65,7 +65,7 @@ const RETRYABLE_PROVIDER_SIDE_PATTERN =
 type PiEvent = PiAgentEvent | AgentSessionEvent;
 
 /**
- * Maps Pi SDK events to Craft AgentEvents for UI compatibility.
+ * Maps Pi SDK events to PacmanEvents for UI compatibility.
  *
  * Event mapping:
  * - message_update (text_delta in assistantMessageEvent) → text_delta
@@ -145,7 +145,7 @@ export class PiEventAdapter extends BaseEventAdapter {
   //   recovering ──agent_end───────────► none          (normal complete)
   //   awaitingRetry|backoff ──auto_retry_end{success:false}──► none (release, complete)
   private retryState: 'none' | 'held' | 'awaitingRetry' | 'backoff' | 'recovering' = 'none';
-  private heldRetryError: CraftAgentEvent | null = null;
+  private heldRetryError: PacmanEvent | null = null;
   private retryFallbackTimerId: ReturnType<typeof setTimeout> | null = null;
 
   /** Set when the adapter wants the caller to call `eventQueue.complete()`
@@ -155,7 +155,7 @@ export class PiEventAdapter extends BaseEventAdapter {
   /** Caller-supplied callbacks for the asynchronous fallback timer paths —
    *  the timers fire outside `adaptEvent()` so we can't yield through the
    *  generator. */
-  private onFallbackEvent: ((event: CraftAgentEvent) => void) | null = null;
+  private onFallbackEvent: ((event: PacmanEvent) => void) | null = null;
   private onFallbackComplete: (() => void) | null = null;
 
   constructor() {
@@ -177,7 +177,7 @@ export class PiEventAdapter extends BaseEventAdapter {
    * parked error, then `onComplete` to terminate the iterator.
    */
   setRecoveryFallbackHandlers(
-    onEvent: (event: CraftAgentEvent) => void,
+    onEvent: (event: PacmanEvent) => void,
     onComplete: () => void,
   ): void {
     this.onFallbackEvent = onEvent;
@@ -223,7 +223,7 @@ export class PiEventAdapter extends BaseEventAdapter {
    * machine. Used when the SDK will not retry (disabled/exhausted) or when a
    * retry was cancelled.
    */
-  private *releaseHeldRetryError(): Generator<CraftAgentEvent> {
+  private *releaseHeldRetryError(): Generator<PacmanEvent> {
     const held = this.heldRetryError;
     this.heldRetryError = null;
     this.retryState = 'none';
@@ -243,7 +243,7 @@ export class PiEventAdapter extends BaseEventAdapter {
       this.retryFallbackTimerId = null;
       if (this.retryState !== armedState) return;
       this.log.warn(`Auto-retry fallback fired — ${reason}`, { timeoutMs, state: armedState });
-      const held: CraftAgentEvent = this.heldRetryError ?? {
+      const held: PacmanEvent = this.heldRetryError ?? {
         type: 'error',
         message: 'The model request failed and the automatic retry did not start. Please try again.',
       };
@@ -271,7 +271,7 @@ export class PiEventAdapter extends BaseEventAdapter {
    * "socket hang up", "stream ended before message_stop", …) become typed
    * connection/service errors so the UI offers Retry instead of a raw string.
    */
-  private classifyAssistantError(message: AssistantMessage, errorMessage: string): CraftAgentEvent {
+  private classifyAssistantError(message: AssistantMessage, errorMessage: string): PacmanEvent {
     const parsed = parseError(new Error(errorMessage));
     if (parsed.code !== 'unknown_error') {
       return { type: 'typed_error', error: parsed };
@@ -349,14 +349,14 @@ export class PiEventAdapter extends BaseEventAdapter {
   }
 
   /**
-   * Adapt a Pi SDK event to zero or more Craft AgentEvents.
+   * Adapt a Pi SDK event to zero or more PacmanEvents.
    */
-  *adaptEvent(event: PiEvent): Generator<CraftAgentEvent> {
+  *adaptEvent(event: PiEvent): Generator<PacmanEvent> {
     // Craft-injected event from pi-agent-server (not part of the Pi SDK).
     // The subprocess emits this immediately after each `message_end` to deliver
     // the correct `sdkTurnAnchor` (the leaf id AFTER the SDK has appended the
     // assistant entry). We forward it through as-is — SessionManager correlates
-    // it to a Craft assistant message via `sdkMessageId`. See craft-agents-oss#782.
+    // it to a Craft assistant message via `sdkMessageId`. See pacmans-oss#782.
     if ((event as { type?: string }).type === 'pi_turn_anchor') {
       const e = event as unknown as { sdkMessageId?: string; sdkTurnAnchor?: string };
       if (e.sdkMessageId && e.sdkTurnAnchor) {

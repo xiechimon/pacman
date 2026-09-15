@@ -1,5 +1,5 @@
 import { describe, expect, it, mock } from 'bun:test'
-import type { AnnotationV1 } from '@craft-agent/core/types'
+import type { AnnotationV1 } from '@pacman/core/types'
 
 mock.module('electron', () => ({
   app: {
@@ -21,7 +21,7 @@ mock.module('../notifications', () => ({
   updateBadgeCount: () => {},
 }))
 
-const { SessionManager } = await import('@craft-agent/server-core/sessions')
+const { SessionManager } = await import('@pacman/server-core/sessions')
 
 function makeAnnotation(id: string, extraMeta?: Record<string, unknown>): AnnotationV1 {
   return {

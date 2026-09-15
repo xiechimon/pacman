@@ -1,7 +1,7 @@
 /**
- * @craft-agent/messaging-gateway
+ * @pacman/messaging-gateway
  *
- * Messaging gateway for Craft Agent — Telegram & WhatsApp.
+ * Messaging gateway for Pacman — Telegram & WhatsApp.
  */
 
 export { MessagingGateway, type GatewayOptions } from './gateway'

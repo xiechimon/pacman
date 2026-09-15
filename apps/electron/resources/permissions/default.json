@@ -102,44 +102,44 @@
       "comment": "CLI tools: bare invocation (prints help)"
     },
     {
-      "pattern": "^craft-agent\\s+label\\s+(list|get|auto-rule-list|auto-rule-validate)\\b",
-      "comment": "craft-agent label read-only operations"
+      "pattern": "^pacman\\s+label\\s+(list|get|auto-rule-list|auto-rule-validate)\\b",
+      "comment": "pacman label read-only operations"
     },
     {
-      "pattern": "^craft-agent\\s+source\\s+(list|get|validate|test|auth-help)\\b",
-      "comment": "craft-agent source read-only operations"
+      "pattern": "^pacman\\s+source\\s+(list|get|validate|test|auth-help)\\b",
+      "comment": "pacman source read-only operations"
     },
     {
-      "pattern": "^craft-agent\\s+skill\\s+(list|get|validate|where)\\b",
-      "comment": "craft-agent skill read-only operations"
+      "pattern": "^pacman\\s+skill\\s+(list|get|validate|where)\\b",
+      "comment": "pacman skill read-only operations"
     },
     {
-      "pattern": "^craft-agent\\s+automation\\s+(list|get|validate|history|last-executed|test|lint)\\b",
-      "comment": "craft-agent automation read-only operations"
+      "pattern": "^pacman\\s+automation\\s+(list|get|validate|history|last-executed|test|lint)\\b",
+      "comment": "pacman automation read-only operations"
     },
     {
-      "pattern": "^craft-agent\\s+permission\\s+(list|get|validate)\\b",
-      "comment": "craft-agent permission read-only operations"
+      "pattern": "^pacman\\s+permission\\s+(list|get|validate)\\b",
+      "comment": "pacman permission read-only operations"
     },
     {
-      "pattern": "^craft-agent\\s+theme\\s+(get|validate|list-presets|get-preset)\\b",
-      "comment": "craft-agent theme read-only operations"
+      "pattern": "^pacman\\s+theme\\s+(get|validate|list-presets|get-preset)\\b",
+      "comment": "pacman theme read-only operations"
     },
     {
-      "pattern": "^craft-agent\\s*$",
-      "comment": "craft-agent bare invocation (prints help)"
+      "pattern": "^pacman\\s*$",
+      "comment": "pacman bare invocation (prints help)"
     },
     {
-      "pattern": "^craft-agent\\s+(label|source|skill|automation|permission|theme)\\s*$",
-      "comment": "craft-agent entity help"
+      "pattern": "^pacman\\s+(label|source|skill|automation|permission|theme)\\s*$",
+      "comment": "pacman entity help"
     },
     {
-      "pattern": "^craft-agent\\s+(label|source|skill|automation|permission|theme)\\s+--help\\b",
-      "comment": "craft-agent entity help flags"
+      "pattern": "^pacman\\s+(label|source|skill|automation|permission|theme)\\s+--help\\b",
+      "comment": "pacman entity help flags"
     },
     {
-      "pattern": "^craft-agent\\s+--(help|version|discover)\\b",
-      "comment": "craft-agent global flags"
+      "pattern": "^pacman\\s+--(help|version|discover)\\b",
+      "comment": "pacman global flags"
     },
     {
       "pattern": "^find\\b",

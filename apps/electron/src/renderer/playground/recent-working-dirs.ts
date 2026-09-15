@@ -3,20 +3,20 @@ export type RecentDirScenario = 'none' | 'few' | 'many'
 const RECENT_DIR_SCENARIO_DATA: Record<RecentDirScenario, string[]> = {
   none: [],
   few: [
-    '/Users/demo/projects/craft-agent',
-    '/Users/demo/projects/craft-agent/apps/electron',
-    '/Users/demo/projects/craft-agent/packages/shared',
+    '/Users/demo/projects/pacman',
+    '/Users/demo/projects/pacman/apps/electron',
+    '/Users/demo/projects/pacman/packages/shared',
   ],
   many: [
-    '/Users/demo/projects/craft-agent',
-    '/Users/demo/projects/craft-agent/apps/electron',
-    '/Users/demo/projects/craft-agent/apps/viewer',
-    '/Users/demo/projects/craft-agent/apps/cli',
-    '/Users/demo/projects/craft-agent/packages/shared',
-    '/Users/demo/projects/craft-agent/packages/server-core',
-    '/Users/demo/projects/craft-agent/packages/pi-agent-server',
-    '/Users/demo/projects/craft-agent/packages/ui',
-    '/Users/demo/projects/craft-agent/scripts',
+    '/Users/demo/projects/pacman',
+    '/Users/demo/projects/pacman/apps/electron',
+    '/Users/demo/projects/pacman/apps/viewer',
+    '/Users/demo/projects/pacman/apps/cli',
+    '/Users/demo/projects/pacman/packages/shared',
+    '/Users/demo/projects/pacman/packages/server-core',
+    '/Users/demo/projects/pacman/packages/pi-agent-server',
+    '/Users/demo/projects/pacman/packages/ui',
+    '/Users/demo/projects/pacman/scripts',
   ],
 }
 

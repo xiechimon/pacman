@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { getSystemPrompt } from '../prompts/system.ts';
 import { BaseAgent, type MiniAgentConfig, MINI_AGENT_TOOLS, MINI_AGENT_MCP_KEYS } from './base-agent.ts';
 import type { BackendConfig, PostInitResult, PermissionRequestType, SdkMcpServerConfig } from './backend/types.ts';
-// Plan types are used by UI components; not needed in craft-agent.ts since Safe Mode is user-controlled
+// Plan types are used by UI components; not needed in pacman.ts since Safe Mode is user-controlled
 import { parseError, type AgentError } from './errors.ts';
 import { mapClaudeSdkAssistantError, type ClaudeSdkApiError } from './claude-sdk-error-mapper.ts';
 import { runErrorDiagnostics } from './diagnostics.ts';
@@ -111,10 +111,10 @@ export {
   PERMISSION_MODE_ORDER,
   PERMISSION_MODE_CONFIG,
 } from './mode-manager.ts';
-// Documentation is served via local files at ~/.craft-agent/docs/
+// Documentation is served via local files at ~/.craft/docs/
 
 // Import and re-export AgentEvent from core (single source of truth)
-import type { AgentEvent } from '@craft-agent/core/types';
+import type { AgentEvent } from '@pacman/core/types';
 export type { AgentEvent };
 
 // Stateless tool matching — pure functions for SDK message → AgentEvent conversion
@@ -514,8 +514,8 @@ export class ClaudeAgent extends BaseAgent {
    * WS2 keep-alive: when true, use one long-lived streaming-input `query()` per
    * session so background sub-agents survive across turns (instead of a fresh
    * per-turn subprocess that tears them down at turn end). Resolved once from
-   * `CRAFT_KEEP_BG_AGENTS_ALIVE` via the shared resolver. Default is ON (opt-out);
-   * set `CRAFT_KEEP_BG_AGENTS_ALIVE=0` to force the per-turn kill-switch path.
+   * `PACMAN_KEEP_BG_AGENTS_ALIVE` via the shared resolver. Default is ON (opt-out);
+   * set `PACMAN_KEEP_BG_AGENTS_ALIVE=0` to force the per-turn kill-switch path.
    */
   private readonly keepBackgroundTasksAlive: boolean = resolveKeepBackgroundTasksAlive();
 
@@ -1156,7 +1156,7 @@ export class ClaudeAgent extends BaseAgent {
       // without an explicit opt-in. The betas header only works for API key users;
       // for OAuth the [1m] model suffix is the way. Use the suffix unconditionally
       // since it works for both auth paths. See: anthropics/claude-agent-sdk-typescript#238
-      // Gated by enable1MContext in global config (~/.craft-agent/config.json).
+      // Gated by enable1MContext in global config (~/.craft/config.json).
       // The interceptor also reads this to strip the SDK-injected beta header.
       const use1M = this.config.enable1MContext !== false;
       const effectiveModel = use1M && getModelContextWindow(model) === 1_000_000
@@ -1258,7 +1258,7 @@ export class ClaudeAgent extends BaseAgent {
           // Build user-defined hooks from automations.json using the workspace-level AutomationSystem
           const userHooks: Partial<Record<string, SdkAutomationCallbackMatcher[]>> = this.automationSystem?.buildSdkHooks() ?? {};
           if (Object.keys(userHooks).length > 0) {
-            debug('[CraftAgent] User SDK hooks loaded:', Object.keys(userHooks).join(', '));
+            debug('[Pacman] User SDK hooks loaded:', Object.keys(userHooks).join(', '));
           }
 
           // Internal hooks for permission handling and logging
@@ -2229,7 +2229,7 @@ This is a branched conversation. All prior messages in this conversation are par
               message:
                 'The Claude Agent SDK binary expected on disk is not present. ' +
                 'This usually means the app bundle is incomplete (interrupted download, partial update, ' +
-                'or a security tool removed it). Reinstalling Craft Agents typically fixes this.',
+                'or a security tool removed it). Reinstalling Pacmans typically fixes this.',
               details: [
                 probedBinary ? `Expected binary: ${probedBinary}` : 'Binary path: unknown',
                 probedCwd ? `Subprocess cwd: ${probedCwd} (${cwdExists ? 'exists' : 'missing'})` : '',
@@ -3165,11 +3165,11 @@ This is a branched conversation. All prior messages in this conversation are par
 // ============================================================
 // Backward Compatibility Exports
 // ============================================================
-// These aliases allow gradual migration from CraftAgent to ClaudeAgent.
+// These aliases allow gradual migration from Pacman to ClaudeAgent.
 // Once all consumers are updated, these can be removed.
 
 /** @deprecated Use ClaudeAgent instead */
-export { ClaudeAgent as CraftAgent };
+export { ClaudeAgent as Pacman };
 
 /** @deprecated Use ClaudeAgentConfig instead */
-export type { ClaudeAgentConfig as CraftAgentConfig };
+export type { ClaudeAgentConfig as PacmanConfig };

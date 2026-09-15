@@ -8,16 +8,16 @@ import { handleTransformData } from './transform-data.ts';
 describe('transform_data path containment', () => {
 // Pin dev-mode runtime resolution for the duration of this suite. These tests
 // assert dev behavior (PATH fallback allowed); when the suite itself runs
-// under a packaged Craft Agents host (agent Bash sessions inherit
-// CRAFT_IS_PACKAGED=true), resolveScriptRuntime would otherwise flip into
+// under a packaged Pacmans host (agent Bash sessions inherit
+// PACMAN_IS_PACKAGED=true), resolveScriptRuntime would otherwise flip into
 // packaged-mode hardening and change the outcomes.
-const SAVED_IS_PACKAGED = process.env.CRAFT_IS_PACKAGED;
+const SAVED_IS_PACKAGED = process.env.PACMAN_IS_PACKAGED;
 beforeAll(() => {
-  process.env.CRAFT_IS_PACKAGED = '0';
+  process.env.PACMAN_IS_PACKAGED = '0';
 });
 afterAll(() => {
-  if (SAVED_IS_PACKAGED === undefined) delete process.env.CRAFT_IS_PACKAGED;
-  else process.env.CRAFT_IS_PACKAGED = SAVED_IS_PACKAGED;
+  if (SAVED_IS_PACKAGED === undefined) delete process.env.PACMAN_IS_PACKAGED;
+  else process.env.PACMAN_IS_PACKAGED = SAVED_IS_PACKAGED;
 });
 
   let rootDir: string;

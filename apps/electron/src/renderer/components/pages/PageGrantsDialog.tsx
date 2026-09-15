@@ -8,8 +8,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Spinner } from '@craft-agent/ui'
-import type { LoadedPage } from '@craft-agent/shared/pages/types'
+import { Spinner } from '@pacman/ui'
+import type { LoadedPage } from '@pacman/shared/pages/types'
 import { describeGrantAction, describeGrantStatus, grantKindIcon, useGrantRemoval } from './grant-visuals'
 
 /**

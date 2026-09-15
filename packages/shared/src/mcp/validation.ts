@@ -409,7 +409,7 @@ export async function validateStdioMcpConnection(
     });
 
     client = new Client(
-      { name: 'craft-agent-validator', version: '1.0.0' },
+      { name: 'pacman-validator', version: '1.0.0' },
       { capabilities: {} }
     );
 

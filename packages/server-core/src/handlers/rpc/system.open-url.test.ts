@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test'
-import { RPC_CHANNELS } from '@craft-agent/shared/protocol'
-import { CLIENT_OPEN_EXTERNAL } from '@craft-agent/server-core/transport'
-import type { RpcServer, HandlerFn, RequestContext } from '@craft-agent/server-core/transport'
+import { RPC_CHANNELS } from '@pacman/shared/protocol'
+import { CLIENT_OPEN_EXTERNAL } from '@pacman/server-core/transport'
+import type { RpcServer, HandlerFn, RequestContext } from '@pacman/server-core/transport'
 import type { HandlerDeps } from '../handler-deps'
 import { registerSystemCoreHandlers } from './system'
 
@@ -67,7 +67,7 @@ describe('registerSystemCoreHandlers OPEN_URL', () => {
   it('routes craftagents action links internally via deeplink:navigate', async () => {
     const { openUrl, ctx, invokeClientCalls, pushCalls } = createTestHarness()
 
-    await openUrl(ctx, 'craftagents://action/new-session?input=sg&send=true')
+    await openUrl(ctx, 'pacman://action/new-session?input=sg&send=true')
 
     expect(invokeClientCalls).toHaveLength(0)
     expect(pushCalls).toHaveLength(1)
@@ -81,7 +81,7 @@ describe('registerSystemCoreHandlers OPEN_URL', () => {
   it('routes workspace deep links to workspace target when URL workspace differs', async () => {
     const { openUrl, ctx, invokeClientCalls, pushCalls } = createTestHarness({ workspaceId: 'ws-1' })
 
-    await openUrl(ctx, 'craftagents://workspace/ws-2/action/new-session?input=hello')
+    await openUrl(ctx, 'pacman://workspace/ws-2/action/new-session?input=hello')
 
     expect(invokeClientCalls).toHaveLength(0)
     expect(pushCalls).toHaveLength(1)
@@ -95,14 +95,14 @@ describe('registerSystemCoreHandlers OPEN_URL', () => {
   it('falls back to client openExternal for craftagents window-mode links', async () => {
     const { openUrl, ctx, invokeClientCalls, pushCalls } = createTestHarness()
 
-    await openUrl(ctx, 'craftagents://action/new-session?window=focused')
+    await openUrl(ctx, 'pacman://action/new-session?window=focused')
 
     expect(pushCalls).toHaveLength(0)
     expect(invokeClientCalls).toHaveLength(1)
     expect(invokeClientCalls[0]).toEqual({
       clientId: 'client-1',
       channel: CLIENT_OPEN_EXTERNAL,
-      args: ['craftagents://action/new-session?window=focused'],
+      args: ['pacman://action/new-session?window=focused'],
     })
   })
 

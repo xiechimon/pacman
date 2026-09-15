@@ -10,19 +10,19 @@ import {
   PAGE_DATA_PATCH_MAX_BYTES,
 } from './data-write.ts';
 import { PageDataStore, PAGE_DATA_MAX_KV_KEYS, PAGE_DATA_MAX_SERIES } from './data-store.ts';
-import type { PageDataSnapshot } from '@craft-agent/core';
+import type { PageDataSnapshot } from '@pacman/core';
 
 // Pin dev-mode runtime resolution: this suite spawns the real Bun runtime via
 // resolveScriptRuntime and must assert dev behavior (PATH fallback allowed)
-// even when the suite runs under a packaged Craft Agents host (agent Bash
-// sessions inherit CRAFT_IS_PACKAGED=true).
-const SAVED_IS_PACKAGED = process.env.CRAFT_IS_PACKAGED;
+// even when the suite runs under a packaged Pacmans host (agent Bash
+// sessions inherit PACMAN_IS_PACKAGED=true).
+const SAVED_IS_PACKAGED = process.env.PACMAN_IS_PACKAGED;
 beforeAll(() => {
-  process.env.CRAFT_IS_PACKAGED = '0';
+  process.env.PACMAN_IS_PACKAGED = '0';
 });
 afterAll(() => {
-  if (SAVED_IS_PACKAGED === undefined) delete process.env.CRAFT_IS_PACKAGED;
-  else process.env.CRAFT_IS_PACKAGED = SAVED_IS_PACKAGED;
+  if (SAVED_IS_PACKAGED === undefined) delete process.env.PACMAN_IS_PACKAGED;
+  else process.env.PACMAN_IS_PACKAGED = SAVED_IS_PACKAGED;
 });
 
 describe('page data write (spawned Bun one-shot)', () => {

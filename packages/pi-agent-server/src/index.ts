@@ -67,7 +67,7 @@ registerBunOAuthFlows();
 import { resolvePiModel, isDeniedMiniModelId, isModelNotFoundError } from './model-resolution.ts';
 import { pickProviderAppropriateMiniModel } from './pick-mini-model.ts';
 import {
-  CRAFT_PI_EPHEMERAL_QUERY_DEADLINE_MS,
+  PACMAN_PI_EPHEMERAL_QUERY_DEADLINE_MS,
   createCraftSettingsManager,
 } from './session-settings.ts';
 import {
@@ -407,18 +407,18 @@ function shouldPreferCustomEndpoint(): boolean {
  */
 function setInterceptorApiHints(model: { api?: string; provider?: string; baseUrl?: string } | undefined): void {
   if (!model) {
-    delete process.env.CRAFT_PI_MODEL_API;
-    delete process.env.CRAFT_PI_MODEL_PROVIDER;
-    delete process.env.CRAFT_PI_MODEL_BASE_URL;
+    delete process.env.PACMAN_PI_MODEL_API;
+    delete process.env.PACMAN_PI_MODEL_PROVIDER;
+    delete process.env.PACMAN_PI_MODEL_BASE_URL;
     return;
   }
 
-  process.env.CRAFT_PI_MODEL_API = model.api || '';
-  process.env.CRAFT_PI_MODEL_PROVIDER = model.provider || '';
-  process.env.CRAFT_PI_MODEL_BASE_URL = model.baseUrl || '';
+  process.env.PACMAN_PI_MODEL_API = model.api || '';
+  process.env.PACMAN_PI_MODEL_PROVIDER = model.provider || '';
+  process.env.PACMAN_PI_MODEL_BASE_URL = model.baseUrl || '';
 
   debugLog(
-    `[interceptor-hint] api=${process.env.CRAFT_PI_MODEL_API || '-'} provider=${process.env.CRAFT_PI_MODEL_PROVIDER || '-'} baseUrl=${process.env.CRAFT_PI_MODEL_BASE_URL || '-'}`,
+    `[interceptor-hint] api=${process.env.PACMAN_PI_MODEL_API || '-'} provider=${process.env.PACMAN_PI_MODEL_PROVIDER || '-'} baseUrl=${process.env.PACMAN_PI_MODEL_BASE_URL || '-'}`,
   );
 }
 
@@ -598,7 +598,7 @@ async function ensureSession(): Promise<AgentSession> {
   // IMPORTANT: resolve dynamically on each search call so token_update refreshes
   // are used without recreating the session.
   // The active model is passed so the ChatGPT backend search provider uses a model the
-  // account supports instead of a hardcoded one (craft-agents-oss#1023). Resolved per call
+  // account supports instead of a hardcoded one (pacmans-oss#1023). Resolved per call
   // (alongside the provider) so set_model / token_update refreshes are picked up live.
   const activeSearchModel = () => (initConfig?.model ? stripPiPrefix(initConfig.model) : undefined);
   const searchProvider = {
@@ -1158,7 +1158,7 @@ function runEphemeralLlmQuery(
 ): Promise<LLMQueryResult> {
   return ephemeralQueries.run(
     id,
-    CRAFT_PI_EPHEMERAL_QUERY_DEADLINE_MS,
+    PACMAN_PI_EPHEMERAL_QUERY_DEADLINE_MS,
     lifecycle => queryLlm(request, lifecycle),
   );
 }
@@ -1225,7 +1225,7 @@ function handleSessionEvent(event: AgentSessionEvent): void {
       // a plain text turn is the user message that triggered the response.
       // Recording that wrong anchor and using it for `branch()` makes the next
       // turn a sibling of the assistant message, dropping the assistant reply
-      // from the LLM's view of history (craft-agents-oss#782).
+      // from the LLM's view of history (pacmans-oss#782).
       //
       // Instead, attach the SDK's message id to the forwarded event so the main
       // process can correlate this turn, then queue a microtask to read the
@@ -1374,7 +1374,7 @@ async function handleInit(msg: Extract<InboundMessage, { type: 'init' }>): Promi
  * Wait for any in-flight compaction to finish before sending a prompt or
  * starting another compaction. Prevents a race in the Pi SDK where concurrent
  * _runAutoCompaction calls crash on a shared AbortController
- * (see craft-agents-oss#464). Default timeout matches the RPC compact timeout
+ * (see pacmans-oss#464). Default timeout matches the RPC compact timeout
  * in PiAgent.requestCompact (300 s), since GPT compactions can legitimately
  * take 60–120 s.
  */
@@ -1426,7 +1426,7 @@ async function handlePrompt(msg: Extract<InboundMessage, { type: 'prompt' }>): P
     }
     unsubscribeEvents = session.subscribe(handleSessionEvent);
 
-    // Wait for any in-flight auto-compaction to avoid race (craft-agents-oss#464)
+    // Wait for any in-flight auto-compaction to avoid race (pacmans-oss#464)
     await waitForCompaction(session);
 
     // Fire prompt — use followUp when session is already streaming so the
