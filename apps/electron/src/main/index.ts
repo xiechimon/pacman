@@ -51,7 +51,6 @@ import { loadWindowState, saveWindowState } from './window-state'
 import { getWorkspaces, getWorkspaceByNameOrId, loadStoredConfig, addWorkspace, saveConfig } from '@pacman/shared/config'
 import { getDefaultWorkspacesDir } from '@pacman/shared/workspaces'
 import { initializeDocs } from '@pacman/shared/docs'
-import { initializeReleaseNotes } from '@pacman/shared/release-notes'
 import { ensureDefaultPermissions } from '@pacman/shared/agent/permissions-config'
 import { ensureToolIcons, ensurePresetThemes } from '@pacman/shared/config'
 import { setBundledAssetsRoot } from '@pacman/shared/utils'
@@ -352,9 +351,6 @@ app.whenReady().then(async () => {
 
   // Initialize bundled docs
   initializeDocs()
-
-  // Initialize bundled release notes
-  initializeReleaseNotes()
 
   // Ensure default permissions file exists (copies bundled default.json on first run)
   ensureDefaultPermissions()
