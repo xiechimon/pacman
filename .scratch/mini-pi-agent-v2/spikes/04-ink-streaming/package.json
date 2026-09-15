@@ -1,0 +1,21 @@
+{
+  "name": "@mini-pi/tui-spike",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Throwaway spike: Ink streaming text render for mini-pi v2 TUI",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/app.tsx"
+  },
+  "dependencies": {
+    "ink": "^4.4.1",
+    "ink-text-input": "^5.0.0",
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "@types/react": "^18.3.12",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
