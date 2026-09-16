@@ -2,7 +2,7 @@
   "name": "pacman",
   "version": "0.13.3",
   "license": "Apache-2.0",
-  "description": "Claude Code-like agent for Craft documents",
+  "description": "Pacman — a desktop coding agent",
   "type": "module",
   "private": true,
   "trustedDependencies": [

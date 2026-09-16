@@ -376,7 +376,7 @@ function compileBlockedCommandHint(hint: BlockedCommandHintRule): CompiledBlocke
 }
 
 function shouldCompileBashPattern(pattern: string): boolean {
-  if (!FEATURE_FLAGS.craftAgentsCli && pattern.startsWith('^pacman\\s')) {
+  if (!FEATURE_FLAGS.pacmanCli && pattern.startsWith('^pacman\\s')) {
     return false;
   }
   return true;

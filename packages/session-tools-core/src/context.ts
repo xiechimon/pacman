@@ -333,7 +333,7 @@ export interface SessionToolContext {
   resolveStatus?(status: string): ResolvedStatusResult;
 
   /**
-   * Create a Pacmans Task (board card + task.yaml + orchestrator session)
+   * Create a Pacman Task (board card + task.yaml + orchestrator session)
    * WITHOUT running it. Slug derivation, node synthesis, and spec validation
    * happen behind this callback where the task primitives live. Injected by
    * backend (SessionManager); undefined in backends that don't run alongside

@@ -85,7 +85,7 @@ mock.module('../../../skills/storage.ts', () => ({
 let mockPacmanCliFlag = false;
 mock.module('../../../feature-flags.ts', () => ({
   FEATURE_FLAGS: {
-    get craftAgentsCli() {
+    get pacmanCli() {
       return mockPacmanCliFlag;
     },
     get developerFeedback() {

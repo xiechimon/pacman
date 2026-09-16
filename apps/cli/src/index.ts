@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * craft-cli — Terminal client for Pacman server.
+ * pacman — Terminal client for the Pacman server.
  *
  * Connects over WebSocket (ws:// or wss://) to a running Pacman server
  * and provides commands for listing resources, managing sessions, sending
@@ -1389,7 +1389,7 @@ export function getValidateSteps(): ValidateStep[] {
 mkdir -p "${skillDir}" && cat > "${skillDir}/SKILL.md" << 'SKILLEOF'
 ---
 name: "CLI Validate Skill"
-description: "Validation skill created by craft-cli"
+description: "Validation skill created by pacman"
 requiredSources:
   - "${sourceSlug}"
 ---
@@ -1908,9 +1908,9 @@ export async function runValidation(
 // ---------------------------------------------------------------------------
 
 function printHelp(): void {
-  process.stdout.write(`craft-cli — Terminal client for Pacman server
+  process.stdout.write(`pacman — Terminal client for Pacman server
 
-Usage: craft-cli [options] <command> [args...]
+Usage: pacman [options] <command> [args...]
 
 Connection:
   --url <ws[s]://...>    Server URL (default: $PACMAN_SERVER_URL)
@@ -1953,21 +1953,21 @@ Commands:
                          --verbose, -v       Show server stderr output
 
 Examples:
-  craft-cli run "What files are in the current directory?"
-  craft-cli run --source craft-kb "Summarize today's daily note"
-  craft-cli run --workspace-dir .github/agents --source craft-public "Read the doc"
-  craft-cli run --provider openai --model gpt-4o "Summarize this repo"
-  OPENAI_API_KEY=sk-... craft-cli run --provider openai "Hello"
-  GOOGLE_API_KEY=... craft-cli run --provider google --model gemini-2.0-flash "Hello"
-  DEEPSEEK_API_KEY=sk-... craft-cli run --provider deepseek --model deepseek-v4-flash "Hello"
-  echo "Analyze this code" | craft-cli run
-  craft-cli ping
-  craft-cli sessions
-  craft-cli send abc-123 "What files are in the current directory?"
-  echo "Summarize this" | craft-cli send abc-123
-  craft-cli --validate-server
-  craft-cli invoke system:homeDir
-  craft-cli --json workspaces | jq '.[].name'
+  pacman run "What files are in the current directory?"
+  pacman run --source craft-kb "Summarize today's daily note"
+  pacman run --workspace-dir .github/agents --source craft-public "Read the doc"
+  pacman run --provider openai --model gpt-4o "Summarize this repo"
+  OPENAI_API_KEY=sk-... pacman run --provider openai "Hello"
+  GOOGLE_API_KEY=... pacman run --provider google --model gemini-2.0-flash "Hello"
+  DEEPSEEK_API_KEY=sk-... pacman run --provider deepseek --model deepseek-v4-flash "Hello"
+  echo "Analyze this code" | pacman run
+  pacman ping
+  pacman sessions
+  pacman send abc-123 "What files are in the current directory?"
+  echo "Summarize this" | pacman send abc-123
+  pacman --validate-server
+  pacman invoke system:homeDir
+  pacman --json workspaces | jq '.[].name'
 `)
 }
 
@@ -1976,6 +1976,12 @@ Examples:
 // ---------------------------------------------------------------------------
 
 export async function main(argv: string[] = process.argv): Promise<void> {
+  // Deprecation notice for the legacy bin name (kept as a symlinked alias in package.json).
+  const invokedAs = argv[1]?.split('/').pop()
+  if (invokedAs === 'craft-cli') {
+    process.stderr.write('Warning: "craft-cli" is deprecated; use "pacman" instead.\n\n')
+  }
+
   const args = parseArgs(argv)
 
   // Set custom CA before any WS connections

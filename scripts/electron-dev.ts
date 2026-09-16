@@ -87,9 +87,9 @@ function detectInstance(): void {
     const instanceNum = match[1];
     process.env.PACMAN_INSTANCE_NUMBER = instanceNum;
     process.env.PACMAN_VITE_PORT = `${instanceNum}173`;
-    process.env.PACMAN_APP_NAME = `Pacmans [${instanceNum}]`;
+    process.env.PACMAN_APP_NAME = `Pacman [${instanceNum}]`;
     process.env.PACMAN_CONFIG_DIR = join(process.env.HOME || "", `.pacman-${instanceNum}`);
-    process.env.PACMAN_DEEPLINK_SCHEME = `craftagents${instanceNum}`;
+    process.env.PACMAN_DEEPLINK_SCHEME = `pacman${instanceNum}`;
     console.log(`🔢 Instance ${instanceNum} detected: port=${process.env.PACMAN_VITE_PORT}, config=${process.env.PACMAN_CONFIG_DIR}`);
   }
 }
@@ -285,8 +285,8 @@ function getElectronEnv(): Record<string, string> {
     ...process.env as Record<string, string>,
     VITE_DEV_SERVER_URL: `http://localhost:${vitePort}`,
     PACMAN_CONFIG_DIR: process.env.PACMAN_CONFIG_DIR || "",
-    PACMAN_APP_NAME: process.env.PACMAN_APP_NAME || "Pacmans",
-    PACMAN_DEEPLINK_SCHEME: process.env.PACMAN_DEEPLINK_SCHEME || "craftagents",
+    PACMAN_APP_NAME: process.env.PACMAN_APP_NAME || "Pacman",
+    PACMAN_DEEPLINK_SCHEME: process.env.PACMAN_DEEPLINK_SCHEME || "pacman",
     PACMAN_INSTANCE_NUMBER: process.env.PACMAN_INSTANCE_NUMBER || "",
   };
 }

@@ -3,7 +3,7 @@ interface PacmanSymbolProps {
 }
 
 /**
- * Pacmans "E" symbol - the small pixel art icon
+ * Pacman "E" symbol - the small pixel art icon
  * Uses accent color from theme (currentColor from className)
  */
 export function PacmanSymbol({ className }: PacmanSymbolProps) {

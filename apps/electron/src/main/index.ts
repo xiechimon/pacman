@@ -118,16 +118,6 @@ if (isDebugMode) {
   }
 
   process.env.PACMAN_SCRIPTS = scriptsDir
-  process.env.PACMAN_COMMANDS_ENTRY = app.isPackaged
-    ? join(app.getAppPath(), 'packages', 'pacmans-commands', 'src', 'main.ts')
-    : join(process.cwd(), 'packages', 'pacmans-commands', 'src', 'main.ts')
-  process.env.PACMAN_CLI_ENTRY = app.isPackaged
-    ? join(app.getAppPath(), 'packages', 'craft-cli', 'src', 'cli.ts')
-    : join(process.cwd(), 'packages', 'craft-cli', 'src', 'cli.ts')
-  process.env.PACMAN_COMMANDS_DOC_PATH = app.isPackaged
-    ? join(resourcesBase, 'resources', 'docs', 'craft-cli.md')
-    : join(process.cwd(), 'apps', 'electron', 'resources', 'docs', 'craft-cli.md')
-  process.env.PACMAN_CLI_DOC_PATH = process.env.PACMAN_COMMANDS_DOC_PATH
   process.env.PACMAN_AGENT_VERSION = app.getVersion()
   // Prepend both generic wrappers dir and platform uv dir:
   // - binDir exposes wrapper commands (pdf-tool, docx-tool, ...)
@@ -153,8 +143,8 @@ registerPiModelResolver((piAuthProvider) =>
 )
 
 // Custom URL scheme for deeplinks (e.g., pacman://auth-complete)
-// Supports multi-instance dev: PACMAN_DEEPLINK_SCHEME env var (craftagents1, craftagents2, etc.)
-const DEEPLINK_SCHEME = process.env.PACMAN_DEEPLINK_SCHEME || 'craftagents'
+// Supports multi-instance dev: PACMAN_DEEPLINK_SCHEME env var (pacman1, pacman2, etc.)
+const DEEPLINK_SCHEME = process.env.PACMAN_DEEPLINK_SCHEME || 'pacman'
 
 let windowManager: WindowManager | null = null
 let sessionManager: SessionManager | null = null
@@ -174,8 +164,8 @@ let messagingHandle: MessagingBootstrapHandle | null = null
 let pendingDeepLink: string | null = null
 
 // Set app name early (before app.whenReady) to ensure correct macOS menu bar title
-// Supports multi-instance dev: PACMAN_APP_NAME env var (e.g., "Pacmans [1]")
-app.setName(process.env.PACMAN_APP_NAME || 'Pacmans')
+// Supports multi-instance dev: PACMAN_APP_NAME env var (e.g., "Pacman [1]")
+app.setName(process.env.PACMAN_APP_NAME || 'Pacman')
 
 // Register as default protocol client for pacman:// URLs
 // This must be done before app.whenReady() on some platforms
@@ -1067,7 +1057,7 @@ app.whenReady().then(async () => {
         type: 'error',
         title: 'Update failed',
         message: 'The update could not be installed.',
-        detail: 'Pacmans will restart now. The update will be retried on the next launch.',
+        detail: 'Pacman will restart now. The update will be retried on the next launch.',
       })
       app.relaunch()
       app.exit(0)

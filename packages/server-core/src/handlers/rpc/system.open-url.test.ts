@@ -64,7 +64,7 @@ function createTestHarness(overrides?: { workspaceId?: string | null }) {
 }
 
 describe('registerSystemCoreHandlers OPEN_URL', () => {
-  it('routes craftagents action links internally via deeplink:navigate', async () => {
+  it('routes pacman action links internally via deeplink:navigate', async () => {
     const { openUrl, ctx, invokeClientCalls, pushCalls } = createTestHarness()
 
     await openUrl(ctx, 'pacman://action/new-session?input=sg&send=true')
@@ -92,7 +92,7 @@ describe('registerSystemCoreHandlers OPEN_URL', () => {
     })
   })
 
-  it('falls back to client openExternal for craftagents window-mode links', async () => {
+  it('falls back to client openExternal for pacman window-mode links', async () => {
     const { openUrl, ctx, invokeClientCalls, pushCalls } = createTestHarness()
 
     await openUrl(ctx, 'pacman://action/new-session?window=focused')

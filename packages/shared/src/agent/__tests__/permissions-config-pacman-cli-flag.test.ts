@@ -44,7 +44,7 @@ afterEach(() => {
   else process.env.PACMAN_FEATURE_CLI = originalCliFlag
 })
 
-describe('permissions config pacmans-cli feature flag', () => {
+describe('permissions config pacman CLI feature flag', () => {
   it('skips compiling pacman bash allowlist patterns when feature is disabled', () => {
     const tempConfigDir = mkdtempSync(join(tmpdir(), 'craft-permissions-'))
     try {

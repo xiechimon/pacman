@@ -163,7 +163,7 @@ interface PendingEphemeralRequest<T> {
  * planning heuristics, config watching, usage tracking).
  */
 export class PiAgent extends BaseAgent {
-  protected backendName = 'Pacmans Backend';
+  protected backendName = 'Pacman Backend';
 
   // ============================================================
   // Subprocess State
@@ -2059,7 +2059,7 @@ export class PiAgent extends BaseAgent {
         this.config.workspace.rootPath,
         this.config.session?.workingDirectory,
         this.config.systemPromptPreset,
-        'Pacmans Backend', // backendName
+        'Pacman Backend', // backendName
         getCoAuthorPreference(), // respect user's includeCoAuthoredBy preference (#576)
         projectContext ?? undefined,
       );

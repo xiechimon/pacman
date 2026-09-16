@@ -133,7 +133,7 @@ describe('createBuiltInConnection seeds midStreamBehavior', () => {
     expect(conn.midStreamBehavior).toBe('steer')
   })
 
-  it("Pi API key (Pacmans Backend) → 'steer'", () => {
+  it("Pi API key (Pacman Backend) → 'steer'", () => {
     const conn = createBuiltInConnection('pi-api-key')
     expect(conn.providerType).toBe('pi')
     expect(conn.midStreamBehavior).toBe('steer')

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "tools": [
-    { "id": "pacman", "displayName": "Craft Agent", "icon": "pacman.svg", "commands": ["pacman"] },
+    { "id": "pacman", "displayName": "Pacman", "icon": "pacman.svg", "commands": ["pacman"] },
     { "id": "git", "displayName": "Git", "icon": "git.ico", "commands": ["git"] },
     { "id": "github", "displayName": "GitHub", "icon": "github.png", "commands": ["gh"] },
     { "id": "npm", "displayName": "npm", "icon": "npm.png", "commands": ["npm", "npx"] },

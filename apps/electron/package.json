@@ -1,14 +1,11 @@
 {
   "name": "@pacman/electron",
   "version": "0.13.3",
-  "description": "Electron desktop app for Craft Agents",
+  "description": "Electron desktop app for Pacman",
   "main": "dist/main.cjs",
   "private": true,
-  "author": {
-    "name": "Craft Docs Ltd.",
-    "email": "support@craft.do"
-  },
-  "homepage": "https://thecraftagents.com",
+  "author": "xiechimon",
+  "homepage": "https://github.com/xiechimon/pacman",
   "license": "Apache-2.0",
   "type": "module",
   "engines": {

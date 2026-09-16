@@ -18,7 +18,7 @@ describe('auth barrel exports', () => {
     const { buildOAuthDeeplinkUrl } = await import('../index.ts');
     const result = buildOAuthDeeplinkUrl({
       sessionId: 'test-123',
-      deeplinkScheme: 'craftagents',
+      deeplinkScheme: 'pacman',
     });
     expect(result).toBe('pacman://allSessions/session/test-123');
   });
@@ -39,7 +39,7 @@ describe('sessionContext plumbing in provider files', () => {
     // If sessionContext is accepted in options, this compiles and runs
     const options = {
       service: 'gmail' as const,
-      sessionContext: { sessionId: 'abc', deeplinkScheme: 'craftagents' },
+      sessionContext: { sessionId: 'abc', deeplinkScheme: 'pacman' },
     };
     const scopes = getGoogleScopes(options);
     expect(scopes.length).toBeGreaterThan(0);
@@ -49,7 +49,7 @@ describe('sessionContext plumbing in provider files', () => {
     const { getSlackScopes } = await import('../slack-oauth.ts');
     const options = {
       service: 'full' as const,
-      sessionContext: { sessionId: 'abc', deeplinkScheme: 'craftagents' },
+      sessionContext: { sessionId: 'abc', deeplinkScheme: 'pacman' },
     };
     const scopes = getSlackScopes(options);
     expect(scopes.length).toBeGreaterThan(0);
@@ -59,7 +59,7 @@ describe('sessionContext plumbing in provider files', () => {
     const { getMicrosoftScopes } = await import('../microsoft-oauth.ts');
     const options = {
       service: 'outlook' as const,
-      sessionContext: { sessionId: 'abc', deeplinkScheme: 'craftagents' },
+      sessionContext: { sessionId: 'abc', deeplinkScheme: 'pacman' },
     };
     const scopes = getMicrosoftScopes(options);
     expect(scopes.length).toBeGreaterThan(0);

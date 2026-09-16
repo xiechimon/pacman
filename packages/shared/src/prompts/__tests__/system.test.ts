@@ -13,7 +13,7 @@ import { getSystemPrompt, formatProjectContextForPrompt } from '../system'
 import type { ProjectPromptContext } from '../../projects/types.ts'
 
 const GIT_CONVENTIONS_HEADING = '## Git Conventions'
-const CO_AUTHOR_TRAILER = 'Co-Authored-By: Pacman <agents-noreply@craft.do>'
+const CO_AUTHOR_TRAILER = 'Co-Authored-By: Pacman <agents-noreply@pacman.invalid>'
 
 describe('system prompt guidance', () => {
   it('uses backend-neutral debug log querying guidance (rg/grep via Bash)', () => {
@@ -86,7 +86,7 @@ describe('includeCoAuthoredBy handling', () => {
       '/tmp/workspace',
       '/tmp/workspace',
       undefined,
-      'Pacmans Backend'
+      'Pacman Backend'
       // 7th arg omitted — must not regress to `true` default
     )
 

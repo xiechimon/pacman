@@ -83,7 +83,7 @@ export interface SessionScopedToolCallbacks {
   getMessagingBindingsFn?: (sessionId: string) => Array<{ platform: string; channelId: string; threadId?: number; channelName?: string; enabled: boolean }>;
   /** Unbind messaging channels from a session. Returns count of removed bindings. */
   unbindMessagingChannelFn?: (sessionId: string, platform?: string) => number;
-  /** Create a Pacmans Task (board card + task.yaml + orchestrator session) without running it. */
+  /** Create a Pacman Task (board card + task.yaml + orchestrator session) without running it. */
   createTaskFn?: (
     input: import('@pacman/session-tools-core').CreateTaskInput
   ) => Promise<import('@pacman/session-tools-core').CreateTaskResult>;

@@ -32,7 +32,7 @@ function piModelToDefinition(m: Model<Api>): ModelDefinition {
     id: `pi/${m.id}`,
     name: m.name,
     shortName,
-    description: `${m.provider} model via Pacmans Backend`,
+    description: `${m.provider} model via Pacman Backend`,
     provider: 'pi',
     contextWindow: m.contextWindow,
     supportsThinking: m.reasoning,
@@ -84,22 +84,69 @@ function isBareBedrockClaudeModel(modelId: string): boolean {
 }
 
 /**
+ * Copilot fallback models — verified live 2026-09-16 against a real
+ * (free-tier) Copilot account via direct /chat/completions probes. The Pi
+ * SDK's static github-copilot catalog contains ONLY the newer models
+ * (claude-*, gpt-5.x, kimi, grok, mai-code) — all of which this tier rejects
+ * with `model_not_supported` on every endpoint. These older OpenAI models
+ * are the only ones that complete, and they are absent from the SDK catalog,
+ * so pacman registers them itself (runtime registration lives in
+ * pi-agent-server — see registerCopilotFallbackModels).
+ *
+ * Order = preference: gpt-4.1 is the default (cheapest stable), then 4o-mini
+ * for the fast tier, then 4o.
+ */
+export const COPILOT_FALLBACK_MODEL_IDS = ['gpt-4.1', 'gpt-4o-mini', 'gpt-4o'] as const;
+
+/** ModelDefinition rows for the fallback list above (pi/-prefixed ids). */
+function copilotFallbackDefinitions(): ModelDefinition[] {
+  const meta: Record<string, { name: string; contextWindow: number }> = {
+    'gpt-4.1': { name: 'GPT-4.1', contextWindow: 1_047_576 },
+    'gpt-4o-mini': { name: 'GPT-4o mini', contextWindow: 128_000 },
+    'gpt-4o': { name: 'GPT-4o', contextWindow: 128_000 },
+  };
+  return COPILOT_FALLBACK_MODEL_IDS.map(id => ({
+    id: `pi/${id}`,
+    name: meta[id]?.name ?? id,
+    shortName: meta[id]?.name ?? id,
+    description: 'github-copilot model via Pacman Backend',
+    provider: 'pi' as const,
+    contextWindow: meta[id]?.contextWindow ?? 128_000,
+    supportsThinking: false,
+  }));
+}
+
+/**
  * Get Pi models for a specific auth provider directly from the Pi SDK.
  */
 export function getPiModelsForAuthProvider(piAuthProvider: string): ModelDefinition[] {
   try {
     const models = getModels(piAuthProvider as Parameters<typeof getModels>[0]);
     if (models.length > 0) {
-      return models
+      const defs = models
         .filter(m => !isExcludedPiModel(m.id))
         // Bedrock: exclude bare Claude models without region prefix — they're
         // always rejected by Bedrock which requires inference profiles (us.*/eu.*/global.*).
         // Regional variants from the same catalog are kept.
         .filter(m => piAuthProvider !== 'amazon-bedrock' || !isBareBedrockClaudeModel(m.id))
         .map(piModelToDefinition);
+      // Copilot: the SDK catalog lacks the older OpenAI models that are the
+      // only ones a free-tier account can actually call. Union them in so the
+      // picker and default-model resolution can land on a working model.
+      if (piAuthProvider === 'github-copilot') {
+        const present = new Set(defs.map(d => d.id));
+        for (const fb of copilotFallbackDefinitions()) {
+          if (!present.has(fb.id)) defs.push(fb);
+        }
+      }
+      return defs;
     }
   } catch {
     // Provider not recognized by SDK — fall through
+  }
+  // Copilot fallback still applies when the SDK catalog is missing/empty.
+  if (piAuthProvider === 'github-copilot') {
+    return copilotFallbackDefinitions();
   }
   return [];
 }

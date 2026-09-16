@@ -14,7 +14,7 @@ import type { PageDataSnapshot } from '@pacman/core';
 
 // Pin dev-mode runtime resolution: this suite spawns the real Bun runtime via
 // resolveScriptRuntime and must assert dev behavior (PATH fallback allowed)
-// even when the suite runs under a packaged Pacmans host (agent Bash
+// even when the suite runs under a packaged Pacman host (agent Bash
 // sessions inherit PACMAN_IS_PACKAGED=true).
 const SAVED_IS_PACKAGED = process.env.PACMAN_IS_PACKAGED;
 beforeAll(() => {

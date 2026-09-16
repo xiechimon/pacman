@@ -28,7 +28,7 @@ export function isDevRuntime(): boolean {
 }
 
 /**
- * Runtime-evaluated check for pacmans-cli integration.
+ * Runtime-evaluated check for pacman CLI integration.
  *
  * Defaults to disabled. Override with PACMAN_FEATURE_CLI=1|0.
  */
@@ -74,7 +74,7 @@ export const FEATURE_FLAGS = {
    *
    * Defaults to disabled. Override with PACMAN_FEATURE_CLI=1|0.
    */
-  get craftAgentsCli(): boolean {
+  get pacmanCli(): boolean {
     return isPacmanCliEnabled();
   },
   /**

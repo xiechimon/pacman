@@ -1,11 +1,6 @@
-<div align="center">
-  <a href="https://trendshift.io/repositories/20714" target="_blank"><img src="https://trendshift.io/api/badge/repositories/20714" alt="craft-ai-agents%2Fcraft-agents-oss | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
-</div>
-
 # pacman
 
-> A desktop coding agent, forked from [craft-agents-oss](https://github.com/craft-ai-agents/craft-agents-oss) v0.13.3 (Apache-2.0).
-> 本文档以下内容来自上游，仍在换皮过程中——品牌、包名、配置目录尚未全部替换为 pacman。
+> Pacman is a desktop coding agent forked from [craft-agents-oss](https://github.com/craft-ai-agents/craft-agents-oss) v0.13.3 (Apache-2.0). The "Craft" and "Craft Agents" names and marks are trademarks of Craft Docs Ltd — see [LICENSE](./LICENSE) for Apache terms and the fork notice.
 
 ---
 
@@ -224,8 +219,10 @@ A terminal client that connects to a running Pacman server over WebSocket (`ws:/
 bun run apps/cli/src/index.ts --help
 
 # Or add to your PATH
-alias craft-cli="bun run $(pwd)/apps/cli/src/index.ts"
+alias pacman="bun run $(pwd)/apps/cli/src/index.ts"
 ```
+
+> **Renamed from `craft-cli`.** The CLI binary is now `pacman`; the old `craft-cli` name still works as a deprecated alias that prints a warning.
 
 ### Connection
 
@@ -237,7 +234,7 @@ export PACMAN_SERVER_URL=ws://127.0.0.1:9100
 export PACMAN_SERVER_TOKEN=<your-token>
 
 # Or via flags
-craft-cli --url ws://127.0.0.1:9100 --token <token> ping
+pacman --url ws://127.0.0.1:9100 --token <token> ping
 ```
 
 For TLS connections (`wss://`), use `--tls-ca <path>` for self-signed certificates.
@@ -284,38 +281,38 @@ The `run` command is fully self-contained — it spawns a headless server, creat
 
 ```bash
 # Quick connectivity check
-craft-cli ping
+pacman ping
 
 # List sessions (human-readable)
-craft-cli sessions
+pacman sessions
 
 # Send a message and stream the AI response
-craft-cli send abc-123 "What files are in the current directory?"
+pacman send abc-123 "What files are in the current directory?"
 
 # Pipe input
-echo "Summarize this" | craft-cli send abc-123
+echo "Summarize this" | pacman send abc-123
 
 # JSON output for scripting
-craft-cli --json workspaces | jq '.[].name'
+pacman --json workspaces | jq '.[].name'
 
 # Self-contained run (spawns its own server)
-craft-cli run "Summarize the README"
-craft-cli run --workspace-dir ./my-project --source github "List open PRs"
+pacman run "Summarize the README"
+pacman run --workspace-dir ./my-project --source github "List open PRs"
 
 # Multi-provider support
-craft-cli run --provider openai --model gpt-4o "Summarize this repo"
-GOOGLE_API_KEY=... craft-cli run --provider google --model gemini-2.0-flash "Hello"
-craft-cli run --provider anthropic --base-url https://openrouter.ai/api/v1 --api-key $OR_KEY "Hello"
+pacman run --provider openai --model gpt-4o "Summarize this repo"
+GOOGLE_API_KEY=... pacman run --provider google --model gemini-2.0-flash "Hello"
+pacman run --provider anthropic --base-url https://openrouter.ai/api/v1 --api-key $OR_KEY "Hello"
 
 # Validate the server (auto-spawns if no --url)
-craft-cli --validate-server
-craft-cli --validate-server --url ws://127.0.0.1:9100 --token <token>
+pacman --validate-server
+pacman --validate-server --url ws://127.0.0.1:9100 --token <token>
 ```
 
 ## Architecture
 
 ```
-craft-agent/
+pacman/
 ├── apps/
 │   ├── cli/                   # Terminal client (CLI)
 │   └── electron/              # Desktop GUI (primary)
@@ -348,7 +345,7 @@ bun run electron:start
 # Type checking
 bun run typecheck:all
 
-# Debug logging (writes to ~/Library/Logs/@pacman/electron/)
+# Debug logging (writes to ~/Library/Logs/Pacman/)
 # Logs are automatically enabled in development
 ```
 
@@ -559,12 +556,12 @@ To launch the packaged app with verbose logging enabled, use `-- --debug` (note 
 
 **macOS:**
 ```bash
-/Applications/Craft\ Agents.app/Contents/MacOS/Craft\ Agents -- --debug
+/Applications/Pacman.app/Contents/MacOS/Pacman -- --debug
 ```
 
 **Windows (PowerShell):**
 ```powershell
-& "$env:LOCALAPPDATA\Programs\@craft\Pacman.exe" -- --debug
+& "$env:LOCALAPPDATA\Programs\Pacman\Pacman.exe" -- --debug
 ```
 
 **Linux:**
@@ -573,9 +570,9 @@ To launch the packaged app with verbose logging enabled, use `-- --debug` (note 
 ```
 
 Logs are written to:
-- **macOS:** `~/Library/Logs/@pacman/electron/main.log`
-- **Windows:** `%APPDATA%\@craft\electron\logs\main.log`
-- **Linux:** `~/.config/@pacman/electron/logs/main.log`
+- **macOS:** `~/Library/Logs/Pacman/main.log`
+- **Windows:** `%APPDATA%\Pacman\logs\main.log`
+- **Linux:** `~/.config/Pacman/logs/main.log`
 
 ## License
 
@@ -584,10 +581,6 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 ### Third-Party Licenses
 
 This project uses the [Claude Agent SDK](https://www.npmjs.com/package/@anthropic-ai/claude-agent-sdk), which is subject to [Anthropic's Commercial Terms of Service](https://www.anthropic.com/legal/commercial-terms).
-
-### Trademark
-
-"Craft" and "Pacman" are trademarks of Craft Docs Ltd. See [TRADEMARK.md](TRADEMARK.md) for usage guidelines.
 
 ## 开发
 

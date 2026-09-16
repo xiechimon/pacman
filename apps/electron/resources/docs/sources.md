@@ -1,10 +1,10 @@
 # Sources Configuration Guide
 
-This guide explains how to configure sources (MCP servers, APIs, local filesystems) in Craft Agent.
+This guide explains how to configure sources (MCP servers, APIs, local filesystems) in Pacman.
 
-> **CLI-first workflow (recommended):** Use `craft-agent source ...` commands instead of editing source config files directly.
-> - `craft-agent source --help`
-> - Canonical command reference: [craft-cli.md](./craft-cli.md)
+> **CLI-first workflow (recommended):** Use `pacman source ...` commands instead of editing source config files directly.
+> - `pacman source --help`
+> - Canonical command reference: [pacman-cli.md](./pacman-cli.md)
 
 ## Source Setup Process
 

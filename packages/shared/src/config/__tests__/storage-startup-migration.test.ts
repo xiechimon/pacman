@@ -99,7 +99,7 @@ describe('startup migration (integration)', () => {
     writeRootConfig(configPath, workspaceRoot, [
       {
         slug: 'pi-api-key',
-        name: 'Pacmans Backend (OpenAI)',
+        name: 'Pacman Backend (OpenAI)',
         providerType: 'pi',
         authType: 'api_key',
         piAuthProvider: 'openai-codex',
@@ -126,7 +126,7 @@ describe('startup migration (integration)', () => {
     writeRootConfig(configPath, workspaceRoot, [
       {
         slug: 'pi-api-key',
-        name: 'Pacmans Backend (Anthropic)',
+        name: 'Pacman Backend (Anthropic)',
         providerType: 'pi',
         authType: 'api_key',
         piAuthProvider: 'anthropic',
@@ -152,7 +152,7 @@ describe('startup migration (integration)', () => {
     writeRootConfig(configPath, workspaceRoot, [
       {
         slug: 'pi-api-key',
-        name: 'Pacmans Backend (Anthropic)',
+        name: 'Pacman Backend (Anthropic)',
         providerType: 'pi',
         authType: 'api_key',
         piAuthProvider: 'anthropic',
@@ -180,7 +180,7 @@ describe('startup migration (integration)', () => {
     writeRootConfig(configPath, workspaceRoot, [
       {
         slug: 'pi-api-key',
-        name: 'Pacmans Backend (Anthropic)',
+        name: 'Pacman Backend (Anthropic)',
         providerType: 'pi',
         authType: 'api_key',
         piAuthProvider: 'anthropic',
@@ -206,7 +206,7 @@ describe('startup migration (integration)', () => {
     writeRootConfig(configPath, workspaceRoot, [
       {
         slug: 'pi-api-key',
-        name: 'Pacmans Backend (Anthropic)',
+        name: 'Pacman Backend (Anthropic)',
         providerType: 'pi',
         authType: 'api_key',
         piAuthProvider: 'anthropic',
@@ -246,7 +246,7 @@ describe('startup migration (integration)', () => {
     writeRootConfig(configPath, workspaceRoot, [
       {
         slug: 'pi-api-key',
-        name: 'Pacmans Backend (OpenRouter)',
+        name: 'Pacman Backend (OpenRouter)',
         providerType: 'pi',
         authType: 'api_key',
         piAuthProvider: 'openrouter',
@@ -394,7 +394,7 @@ describe('legacy Opus migration to default Opus (integration)', () => {
       },
       {
         slug: 'pi-api-key',
-        name: 'Pacmans Backend (Anthropic)',
+        name: 'Pacman Backend (Anthropic)',
         providerType: 'pi',
         authType: 'api_key',
         piAuthProvider: 'anthropic',
@@ -473,7 +473,7 @@ describe('legacy Opus migration to default Opus (integration)', () => {
     writeRootConfig(configPath, workspaceRoot, [
       {
         slug: 'pi-api-key',
-        name: 'Pacmans Backend (Anthropic)',
+        name: 'Pacman Backend (Anthropic)',
         providerType: 'pi',
         authType: 'api_key',
         piAuthProvider: 'anthropic',
@@ -501,7 +501,7 @@ describe('legacy Opus migration to default Opus (integration)', () => {
     writeRootConfig(configPath, workspaceRoot, [
       {
         slug: 'pi-api-key',
-        name: 'Pacmans Backend (Bedrock)',
+        name: 'Pacman Backend (Bedrock)',
         providerType: 'pi',
         authType: 'iam_credentials',
         piAuthProvider: 'amazon-bedrock',
@@ -529,7 +529,7 @@ describe('legacy Opus migration to default Opus (integration)', () => {
     writeRootConfig(configPath, workspaceRoot, [
       {
         slug: 'pi-api-key',
-        name: 'Pacmans Backend (Anthropic)',
+        name: 'Pacman Backend (Anthropic)',
         providerType: 'pi',
         authType: 'api_key',
         piAuthProvider: 'anthropic',

@@ -55,8 +55,8 @@ const providerDisplayNames: Record<string, string> = {
   minimax: 'Minimax',
   ollama: 'Ollama',
   openrouter: 'OpenRouter',
-  pi: 'Pacmans Backend',
-  pi_compat: 'Pacmans Backend',
+  pi: 'Pacman Backend',
+  pi_compat: 'Pacman Backend',
   vercel: 'Vercel',
 }
 

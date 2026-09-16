@@ -810,7 +810,7 @@ export function runPreToolUseChecks(ctx: PreToolUseInput): PreToolUseCheckResult
   }
 
   // 5b. Config-domain Bash guard (block direct labels/automations path operations unless using pacman)
-  if (FEATURE_FLAGS.craftAgentsCli && toolName === 'Bash') {
+  if (FEATURE_FLAGS.pacmanCli && toolName === 'Bash') {
     const configDomainBashRedirect = getConfigDomainBashRedirect(currentInput, workspaceRootPath, workingDirectory);
     if (configDomainBashRedirect) {
       return { type: 'block', reason: configDomainBashRedirect.message };
@@ -824,7 +824,7 @@ export function runPreToolUseChecks(ctx: PreToolUseInput): PreToolUseCheckResult
   }
 
   // 5d. Config file CLI redirect (labels + automations)
-  if (FEATURE_FLAGS.craftAgentsCli) {
+  if (FEATURE_FLAGS.pacmanCli) {
     const cliRedirect = getConfigCliRedirect(toolName, currentInput, workspaceRootPath, workingDirectory);
     if (cliRedirect) {
       return { type: 'block', reason: cliRedirect.message };

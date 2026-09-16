@@ -3,7 +3,7 @@ interface PacmanLogoProps {
 }
 
 /**
- * Pacmans pixel art logo - uses accent color from theme
+ * Pacman pixel art logo - uses accent color from theme
  * Apply text-accent class to get the brand purple color
  */
 export function PacmanLogo({ className }: PacmanLogoProps) {

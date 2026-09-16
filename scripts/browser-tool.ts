@@ -2,7 +2,7 @@
 /**
  * browser-tool (secondary path)
  *
- * CLI helper for browser automation workflows in Pacmans.
+ * CLI helper for browser automation workflows in Pacman.
  *
  * This helper is intentionally thin and deterministic:
  * - It provides command discovery via --help
@@ -52,7 +52,7 @@ const TOOL_TEMPLATES: Record<string, Record<string, unknown>> = {
 };
 
 function printHelp(io: Io): void {
-  io.log('browser-tool - Browser automation helper for Pacmans');
+  io.log('browser-tool - Browser automation helper for Pacman');
   io.log('');
   io.log('Usage:');
   io.log('  bun run browser-tool <command> [args]');

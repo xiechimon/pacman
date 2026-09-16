@@ -507,7 +507,7 @@ function createRootConfig(config: ServerBuildConfig): void {
 
   // Root package.json with workspaces (Bun resolves @pacman/* through this)
   const rootPkg = {
-    name: 'craft-server-dist',
+    name: 'pacman-server-dist',
     version,
     private: true,
     workspaces: ['packages/*'],
@@ -569,8 +569,8 @@ function createEntryScripts(config: ServerBuildConfig): void {
   const binDir = join(outputDir, 'bin');
   mkdirSync(binDir, { recursive: true });
 
-  // bin/craft-server — main entry wrapper
-  const craftServer = `#!/bin/sh
+  // bin/pacman-server — main entry wrapper
+  const pacmanServer = `#!/bin/sh
 set -e
 
 # Resolve the distribution root
@@ -593,13 +593,13 @@ export PATH="$ROOT/resources/bin:$ROOT/vendor/bun:$PATH"
 # Use bundled Bun runtime
 exec "$ROOT/vendor/bun/bun" run "$ROOT/packages/server/src/index.ts" "$@"
 `;
-  writeFileSync(join(binDir, 'craft-server'), craftServer);
+  writeFileSync(join(binDir, 'pacman-server'), pacmanServer);
 
   // start.sh — convenience entry
   const startSh = `#!/bin/sh
 # Pacman Server — convenience entry point
 DIR="$(cd "$(dirname "$0")" && pwd)"
-exec "$DIR/bin/craft-server" "$@"
+exec "$DIR/bin/pacman-server" "$@"
 `;
   writeFileSync(join(outputDir, 'start.sh'), startSh);
 
@@ -613,7 +613,7 @@ echo "=== Pacman Server Setup ==="
 echo ""
 
 # Make binaries executable
-chmod +x "$DIR/bin/craft-server" "$DIR/start.sh"
+chmod +x "$DIR/bin/pacman-server" "$DIR/start.sh"
 [ -f "$DIR/vendor/bun/bun" ] && chmod +x "$DIR/vendor/bun/bun"
 [ -f "$DIR/resources/bin/uv" ] && chmod +x "$DIR/resources/bin/uv"
 
@@ -650,8 +650,8 @@ if [ "\${1:-}" = "--systemd" ]; then
     exit 1
   fi
 
-  SERVICE_USER="\${PACMAN_USER:-\$(logname 2>/dev/null || echo craft)}"
-  SERVICE_FILE="/etc/systemd/system/craft-server.service"
+  SERVICE_USER="\${PACMAN_USER:-\$(logname 2>/dev/null || echo pacman)}"
+  SERVICE_FILE="/etc/systemd/system/pacman-server.service"
 
   cat > "$SERVICE_FILE" <<UNIT
 [Unit]
@@ -665,7 +665,7 @@ WorkingDirectory=$DIR
 EnvironmentFile=$DIR/.env
 Environment=PACMAN_RPC_HOST=127.0.0.1
 Environment=PACMAN_RPC_PORT=9100
-ExecStart=$DIR/bin/craft-server
+ExecStart=$DIR/bin/pacman-server
 Restart=on-failure
 RestartSec=5
 
@@ -674,13 +674,13 @@ WantedBy=multi-user.target
 UNIT
 
   systemctl daemon-reload
-  systemctl enable craft-server
+  systemctl enable pacman-server
 
   echo ""
   echo "Systemd service installed."
-  echo "  Start:   sudo systemctl start craft-server"
-  echo "  Status:  sudo systemctl status craft-server"
-  echo "  Logs:    journalctl -u craft-server -f"
+  echo "  Start:   sudo systemctl start pacman-server"
+  echo "  Status:  sudo systemctl status pacman-server"
+  echo "  Logs:    journalctl -u pacman-server -f"
   echo ""
   exit 0
 fi
@@ -697,7 +697,7 @@ echo ""
 
   // Make scripts executable at build time
   for (const script of [
-    join(binDir, 'craft-server'),
+    join(binDir, 'pacman-server'),
     join(outputDir, 'start.sh'),
     join(outputDir, 'install.sh'),
   ]) {
@@ -720,7 +720,7 @@ WORKDIR /app
 COPY . .
 
 # Make binaries executable
-RUN chmod +x bin/craft-server vendor/bun/bun resources/bin/uv && \\
+RUN chmod +x bin/pacman-server vendor/bun/bun resources/bin/uv && \\
     for f in resources/bin/*; do [ -f "$f" ] && chmod +x "$f"; done
 
 ENV PACMAN_IS_PACKAGED=true
@@ -735,13 +735,13 @@ ENV PATH="/app/resources/bin:/app/vendor/bun:\${PATH}"
 
 EXPOSE 9100
 
-ENTRYPOINT ["/app/bin/craft-server"]
+ENTRYPOINT ["/app/bin/pacman-server"]
 `;
   writeFileSync(join(outputDir, 'Dockerfile'), dockerfile);
 
   const dockerCompose = `version: "3.8"
 services:
-  craft-server:
+  pacman-server:
     build: .
     ports:
       - "9100:9100"
@@ -752,13 +752,13 @@ services:
       # - PACMAN_RPC_TLS_CERT=/certs/cert.pem
       # - PACMAN_RPC_TLS_KEY=/certs/key.pem
     volumes:
-      - craft-data:/root/.pacman
+      - pacman-data:/root/.pacman
       # TLS — mount cert directory
       # - ./certs:/certs:ro
     restart: unless-stopped
 
 volumes:
-  craft-data:
+  pacman-data:
 `;
   writeFileSync(join(outputDir, 'docker-compose.yml'), dockerCompose);
 }
@@ -885,7 +885,7 @@ async function main(): Promise<void> {
 
   // Compress if requested
   if (config.compress) {
-    const archiveName = `craft-server-${version}-${platform}-${arch}.tar.gz`;
+    const archiveName = `pacman-server-${version}-${platform}-${arch}.tar.gz`;
     const archivePath = join(dirname(outputDir), archiveName);
     console.log(`\nCompressing to ${archiveName}...`);
     await $`tar -czf ${archivePath} -C ${outputDir} .`;

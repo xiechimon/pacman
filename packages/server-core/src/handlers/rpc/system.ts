@@ -66,7 +66,7 @@ function collectDeepLinkParams(parsed: URL, pathId?: string): Record<string, str
 }
 
 function parseInternalPacmanDeepLink(parsed: URL): ParsedInternalDeepLink | null {
-  if (parsed.protocol !== 'craftagents:') return null
+  if (parsed.protocol !== 'pacman:') return null
 
   const host = parsed.hostname
   const pathParts = parsed.pathname.split('/').filter(Boolean)

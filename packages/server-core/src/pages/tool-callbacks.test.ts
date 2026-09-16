@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import { buildPagesToolCallbacks } from './tool-callbacks'
 
 // Pin dev-mode runtime resolution: write_page_data spawns the real Bun runtime
-// via resolveScriptRuntime; under a packaged Pacmans host (agent Bash
+// via resolveScriptRuntime; under a packaged Pacman host (agent Bash
 // sessions inherit PACMAN_IS_PACKAGED=true) it would flip into packaged-mode
 // hardening and block the PATH fallback this suite relies on.
 const SAVED_IS_PACKAGED = process.env.PACMAN_IS_PACKAGED

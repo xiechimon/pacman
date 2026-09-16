@@ -183,7 +183,7 @@ function getLiveFxPayload(scenario: Scenario, runState: RunState): { active: boo
 
     return {
       active: true,
-      label: 'Pacmans are working…',
+      label: 'Pacman is working…',
       cursor: cursorByScenario[scenario],
     }
   }
@@ -612,7 +612,7 @@ const MOCK_BROWSER_PRESETS: Record<BrowserTabStripMockPreset, BrowserInstanceInf
     {
       id: 'long-1',
       url: 'https://www.notion.so/Craft-Agents-Multi-Session-Browser-Registry-Design-Review-Thread-2026-Q1',
-      title: 'Pacmans Multi-Session Browser Registry Design Review Thread (Q1 2026)',
+      title: 'Pacman Multi-Session Browser Registry Design Review Thread (Q1 2026)',
       favicon: null,
       isLoading: false,
       canGoBack: true,
@@ -781,7 +781,7 @@ const MOCK_BROWSER_PRESETS: Record<BrowserTabStripMockPreset, BrowserInstanceInf
     {
       id: 'mix-4',
       url: 'https://github.com/lukilabs/pacmans-oss',
-      title: 'Pacmans OSS Repo with a Surprisingly Long Branch and Compare View Name',
+      title: 'Pacman OSS Repo with a Surprisingly Long Branch and Compare View Name',
       favicon: null,
       isLoading: false,
       canGoBack: true,

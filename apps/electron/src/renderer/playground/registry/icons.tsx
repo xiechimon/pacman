@@ -9,7 +9,7 @@ export const iconComponents: ComponentEntry[] = [
     id: 'pacmans-logo',
     name: 'PacmanLogo',
     category: 'Icons',
-    description: 'Full Pacmans branding logo with text',
+    description: 'Full Pacman branding logo with text',
     component: PacmanLogo,
     props: [
       {
@@ -29,7 +29,7 @@ export const iconComponents: ComponentEntry[] = [
     id: 'pacmans-symbol',
     name: 'PacmanSymbol',
     category: 'Icons',
-    description: 'Pacmans "E" pixel art symbol icon (brand color: #9570BE)',
+    description: 'Pacman "E" pixel art symbol icon (brand color: #9570BE)',
     component: PacmanSymbol,
     props: [
       {
