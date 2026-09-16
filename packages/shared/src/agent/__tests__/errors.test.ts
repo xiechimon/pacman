@@ -1,5 +1,47 @@
 import { describe, expect, it } from 'bun:test'
 import { parseError } from '../errors.ts'
+import { PI_PREFERRED_DEFAULTS } from '../../config/llm-connections.ts'
+
+describe('parseError Copilot swapModel hint', () => {
+  // Regression (craft-fork ticket 09): the user's Copilot tier rejects every
+  // catalog-enabled model with "The requested model is not supported." Before
+  // the fix, the error message didn't match any invalid_model branch, fell
+  // through to invalid_request, and surfaced no swap hint.
+  it('maps the Copilot model_not_supported shape to invalid_model', () => {
+    const parsed = parseError(
+      new Error('Invalid Request: The requested model is not supported.'),
+      { piAuthProvider: 'github-copilot' },
+    )
+    expect(parsed.code).toBe('invalid_model')
+    expect(parsed.title).toBe('Model Not Supported')
+  })
+
+  it('attaches a preferred-default model as swapModel when one is in the SDK catalog', () => {
+    const parsed = parseError(
+      new Error('Invalid Request: The requested model is not supported.'),
+      { piAuthProvider: 'github-copilot' },
+    )
+    expect(parsed.swapModel).toBeDefined()
+    const preferred = PI_PREFERRED_DEFAULTS['github-copilot']!
+    expect(preferred.length).toBeGreaterThan(0)
+    expect(parsed.swapModel).toMatch(/^pi\//)
+  })
+
+  it('does NOT attach swapModel for non-Copilot providers', () => {
+    const parsed = parseError(
+      new Error('Invalid Request: The requested model is not supported.'),
+      { piAuthProvider: 'openai' },
+    )
+    expect(parsed.swapModel).toBeUndefined()
+  })
+
+  it('does NOT attach swapModel when no provider context is provided', () => {
+    const parsed = parseError(
+      new Error('Invalid Request: The requested model is not supported.'),
+    )
+    expect(parsed.swapModel).toBeUndefined()
+  })
+})
 
 describe('parseError proxy interception handling', () => {
   it('maps interceptor proxy marker message to proxy_error', () => {

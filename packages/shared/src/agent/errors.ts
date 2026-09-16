@@ -11,6 +11,8 @@
 
 import type { ErrorCode } from '@pacman/core/types';
 import { getProviderMetadata } from '../config/provider-metadata.ts';
+import { PI_PREFERRED_DEFAULTS } from '../config/llm-connections.ts';
+import { getPiModelsForAuthProvider } from '../config/models-pi.ts';
 
 export type { ErrorCode };
 
@@ -55,6 +57,12 @@ export interface AgentError {
   details?: string[];
   /** Provider info for user-facing context */
   providerInfo?: ProviderInfo;
+  /**
+   * Suggested model id to swap to. Set by the server for invalid_model errors
+   * when a known-good alternative exists in the provider's preferred-defaults
+   * list (currently only github-copilot — see craft-fork ticket 09).
+   */
+  swapModel?: string;
 }
 
 /**
@@ -182,8 +190,8 @@ const ERROR_DEFINITIONS: Record<ErrorCode, Omit<AgentError, 'code' | 'originalEr
     canRetry: false,
   },
   invalid_model: {
-    title: 'Invalid Model',
-    message: 'The selected model was not found. Please check your model configuration in settings.',
+    title: 'Model Not Supported',
+    message: 'Your subscription tier doesn\'t accept this model. Click "Switch to X" below to use a known-good one, or pick another in Settings → AI.',
     actions: [
       { key: 's', label: 'Change model', command: '/settings', action: 'settings' },
     ],
@@ -233,7 +241,7 @@ const ERROR_DEFINITIONS: Record<ErrorCode, Omit<AgentError, 'code' | 'originalEr
     message:
       'The Claude Agent SDK binary expected on disk is not present. ' +
       'This usually means the app bundle is incomplete (interrupted download, partial update, ' +
-      'or a security tool removed it). Reinstalling Pacmans typically fixes this.',
+      'or a security tool removed it). Reinstalling Pacman typically fixes this.',
     actions: [
       { key: 'r', label: 'Retry', action: 'retry' },
     ],
@@ -403,7 +411,14 @@ export function parseError(
     // refusals without these broad fallbacks.
   ) {
     code = 'model_no_tool_support';
-  } else if (lowerMessage.includes('is not a valid model') || lowerMessage.includes('model not found') || lowerMessage.includes('invalid model') || lowerMessage.includes('model identifier is invalid')) {
+  } else if (
+    lowerMessage.includes('is not a valid model') ||
+    lowerMessage.includes('model not found') ||
+    lowerMessage.includes('invalid model') ||
+    lowerMessage.includes('model identifier is invalid') ||
+    // Copilot /v1/responses rejection (verified 2026-09-15): "The requested model is not supported."
+    lowerMessage.includes('model is not supported')
+  ) {
     code = 'invalid_model';
   // HTML-intercepted responses (proxy/firewall/captive portal).
   // Must be checked BEFORE status codes: a 502 Cloudflare page or 401 proxy login
@@ -490,12 +505,44 @@ export function parseError(
     }
   }
 
+  // For invalid_model on github-copilot, suggest the first known-good preferred
+  // model as a one-click swap. The renderer's error UI reads AgentError.swapModel
+  // and renders a "Switch to X" button that updates the connection's
+  // defaultModel and resends the failed message. See craft-fork ticket 09.
+  let swapModel: string | undefined;
+  if (code === 'invalid_model' && providerContext?.piAuthProvider === 'github-copilot') {
+    swapModel = pickPreferredCopilotFallback();
+  }
+
   return {
     code,
     ...definition,
     originalError: errorMessage,
     providerInfo,
+    ...(swapModel ? { swapModel } : {}),
   };
+}
+
+/**
+ * Pick the first github-copilot preferred-default model that the runtime SDK
+ * catalog actually exposes. The preferred list is curated from real OAuth
+ * flows (see craft-fork ticket 09); this gates it on "exists in the local
+ * SDK catalog" so we never suggest a model the user can't reach.
+ */
+function pickPreferredCopilotFallback(): string | undefined {
+  try {
+    const preferred = PI_PREFERRED_DEFAULTS['github-copilot'];
+    if (!preferred || preferred.length === 0) return undefined;
+    const catalog = getPiModelsForAuthProvider('github-copilot');
+    const catalogIds = new Set(catalog.map(m => m.id));
+    for (const id of preferred) {
+      const candidate = `pi/${id}`;
+      if (catalogIds.has(candidate)) return candidate;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
