@@ -98,11 +98,11 @@ describe('groupConnectionsByProvider', () => {
     expect(groupConnectionsByProvider([])).toEqual([])
   })
 
-  test('groups anthropic providers into "Anthropic"', () => {
+  test('groups anthropic providers into the "anthropic" id', () => {
     const a = conn('a', 'anthropic')
     const b = conn('b', 'anthropic')
     const result = groupConnectionsByProvider([a, b])
-    expect(result).toEqual([['Anthropic', [a, b]]])
+    expect(result).toEqual([['anthropic', [a, b]]])
   })
 
   test('preserves intra-group order', () => {
@@ -113,31 +113,31 @@ describe('groupConnectionsByProvider', () => {
     expect(result[0][1].map(c => c.slug)).toEqual(['first', 'second', 'third'])
   })
 
-  test('places "Anthropic" group before pi groups (display order)', () => {
+  test('places "anthropic" group before pi groups (display order)', () => {
     const piConn = conn('pi-1', 'pi')
     const anth = conn('anthropic-1', 'anthropic')
     const result = groupConnectionsByProvider([piConn, anth])
-    expect(result.map(([k]) => k)).toEqual(['Anthropic', 'Pacman Backend'])
+    expect(result.map(([k]) => k)).toEqual(['anthropic', 'pacman_backend'])
   })
 
-  test('"pi_compat" with localhost baseUrl goes to "Local"', () => {
+  test('"pi_compat" with localhost baseUrl goes to "local"', () => {
     const local = conn('ollama', 'pi_compat', { baseUrl: 'http://localhost:11434' })
     const result = groupConnectionsByProvider([local])
-    expect(result).toEqual([['Local', [local]]])
+    expect(result).toEqual([['local', [local]]])
   })
 
-  test('"pi_compat" with remote baseUrl goes to "Pacman Backend"', () => {
+  test('"pi_compat" with remote baseUrl goes to "pacman_backend"', () => {
     const remote = conn('openrouter', 'pi_compat', { baseUrl: 'https://openrouter.ai/api/v1' })
     const result = groupConnectionsByProvider([remote])
-    expect(result).toEqual([['Pacman Backend', [remote]]])
+    expect(result).toEqual([['pacman_backend', [remote]]])
   })
 
   test('drops empty groups from the output', () => {
     const a = conn('a', 'anthropic')
     const result = groupConnectionsByProvider([a])
-    // Only "Anthropic" appears; "Local" and "Pacman Backend" are dropped.
+    // Only "anthropic" appears; "local" and "pacman_backend" are dropped.
     expect(result.length).toBe(1)
-    expect(result[0][0]).toBe('Anthropic')
+    expect(result[0][0]).toBe('anthropic')
   })
 
   test('full mixed input — anthropic + local + remote pi_compat + pi', () => {
@@ -147,9 +147,9 @@ describe('groupConnectionsByProvider', () => {
     const pi = conn('p', 'pi')
     const result = groupConnectionsByProvider([anth, local, remote, pi])
     expect(result.map(([k, conns]) => [k, conns.map(c => c.slug)])).toEqual([
-      ['Anthropic', ['a']],
-      ['Local', ['ollama']],
-      ['Pacman Backend', ['or', 'p']],
+      ['anthropic', ['a']],
+      ['local', ['ollama']],
+      ['pacman_backend', ['or', 'p']],
     ])
   })
 })

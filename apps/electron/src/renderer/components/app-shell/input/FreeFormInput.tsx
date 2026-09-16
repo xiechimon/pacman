@@ -88,6 +88,7 @@ import { CompactModelSelector } from './CompactModelSelector'
 import {
   formatTokenCount,
   groupConnectionsByProvider,
+  connectionGroupLabel,
   stripPiPrefixForDisplay,
 } from './model-picker-helpers'
 import { useModelVisionToggle } from './useModelVisionToggle'
@@ -2152,11 +2153,11 @@ export function FreeFormInput({
                 })()
               ) : pickerMode === 'switcher' ? (
                 /* Hierarchical view: Provider → Connection → Models (empty session with multiple connections — lets the user switch BEFORE the first message locks the connection) */
-                connectionsByProvider.map(([providerName, connections], index) => (
-                  <React.Fragment key={providerName}>
+                connectionsByProvider.map(([providerId, connections], index) => (
+                  <React.Fragment key={providerId}>
                     {/* Provider group label */}
                     <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wide select-none">
-                      {providerName}
+                      {connectionGroupLabel(providerId, t)}
                     </div>
                     {connections.map((conn) => {
                       const isCurrentConnection = effectiveConnection === conn.slug

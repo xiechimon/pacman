@@ -28,28 +28,59 @@ export function stripPiPrefixForDisplay(value: string): string {
 export type ConnectionGroup = [groupName: string, connections: LlmConnection[]]
 
 /**
+ * Stable group identifiers returned by `groupConnectionsByProvider`.
+ * Callers localize these via `t()` at render time (see CLAUDE.md i18n rules).
+ * The internal keys are intentionally English/brand-stable; the displayed
+ * labels are resolved against `t('onboarding.apiSetup.pacmanBackend')` etc.
+ */
+export type ConnectionGroupId = 'anthropic' | 'local' | 'pacman_backend'
+
+/**
+ * Resolve the user-facing label for a connection group id.
+ * Anthropic and "Local" are kept as English literals (brand per CLAUDE.md i18n
+ * rule); the Pacman group is translated so the brand name doesn't drift if
+ * locales rename it.
+ */
+export function connectionGroupLabel(
+  id: ConnectionGroupId,
+  t: (key: string) => string,
+): string {
+  switch (id) {
+    case 'anthropic':
+      return 'Anthropic'
+    case 'local':
+      return 'Local'
+    case 'pacman_backend':
+      return t('onboarding.apiSetup.pacmanBackend')
+  }
+}
+
+/**
  * Group connections by provider type for hierarchical picker rendering.
  * Each provider section can contain multiple connections (API Key, OAuth, …).
- * Order is significant for UI: Anthropic, Local, Pacman Backend.
- * Empty groups are dropped.
+ * Order is significant for UI: anthropic, local, pacman_backend.
+ * Empty groups are dropped. The first tuple element is a stable group id;
+ * callers translate it via `t()` for display.
  */
 export function groupConnectionsByProvider<T extends LlmConnection>(
   connections: readonly T[],
-): Array<[string, T[]]> {
-  const groups: Record<string, T[]> = {
-    'Anthropic': [],
-    'Local': [],
-    'Pacman Backend': [],
+): Array<[ConnectionGroupId, T[]]> {
+  const groups: Record<ConnectionGroupId, T[]> = {
+    'anthropic': [],
+    'local': [],
+    'pacman_backend': [],
   }
   for (const conn of connections) {
     const provider = conn.providerType || 'anthropic'
     if (provider === 'anthropic') {
-      groups['Anthropic'].push(conn)
+      groups['anthropic'].push(conn)
     } else if (provider === 'pi_compat' && isLocalConnection(conn)) {
-      groups['Local'].push(conn)
+      groups['local'].push(conn)
     } else if (provider === 'pi' || provider === 'pi_compat') {
-      groups['Pacman Backend'].push(conn)
+      groups['pacman_backend'].push(conn)
     }
   }
-  return Object.entries(groups).filter(([, conns]) => conns.length > 0)
+  return (Object.entries(groups) as Array<[ConnectionGroupId, T[]]>).filter(
+    ([, conns]) => conns.length > 0,
+  )
 }

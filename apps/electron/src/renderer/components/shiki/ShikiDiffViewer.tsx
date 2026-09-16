@@ -3,7 +3,7 @@
  *
  * Connects the base component to Electron's ThemeContext, passing the
  * app's Shiki theme (e.g. dracula, nord) so the diff viewer uses matching
- * syntax highlighting. Falls back to craft-dark/craft-light (transparent bg)
+ * syntax highlighting. Falls back to pacman-dark/pacman-light (transparent bg)
  * when no Shiki theme is configured.
  */
 

@@ -79,7 +79,7 @@ export default [
         },
       },
       // Custom style rules
-      'craft-styles': {
+      'pacman-styles': {
         rules: {
           'no-hardcoded-z-index': noHardcodedZIndex,
           'no-nonstandard-shadows': noNonstandardShadows,
@@ -113,10 +113,10 @@ export default [
       'craft-sources/no-inline-source-auth-check': 'error',
 
       // Custom style rule — use z-index token scale instead of hardcoded literals
-      'craft-styles/no-hardcoded-z-index': 'error',
+      'pacman-styles/no-hardcoded-z-index': 'error',
 
       // Custom style rule — enforce approved shadow classes/tokens only
-      'craft-styles/no-nonstandard-shadows': ['error', {
+      'pacman-styles/no-nonstandard-shadows': ['error', {
         allowedClasses: [
           'shadow-none',
           'shadow-xs',
@@ -155,7 +155,7 @@ export default [
       'src/renderer/playground/**/*.{ts,tsx}',
     ],
     rules: {
-      'craft-styles/no-nonstandard-shadows': 'off',
+      'pacman-styles/no-nonstandard-shadows': 'off',
     },
   },
 

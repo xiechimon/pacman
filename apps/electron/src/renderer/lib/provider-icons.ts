@@ -44,7 +44,10 @@ export const providerIcons = {
 
 export type ProviderIconKey = keyof typeof providerIcons
 
-/** Human-readable provider names */
+/** Human-readable provider names. Brand names stay English (CLAUDE.md i18n
+ * rule). Non-brand entries are intentionally absent: callers render those via
+ * `t('onboarding.apiSetup.pacmanBackend')` etc., keeping the brand string in
+ * one place (i18n locale files). */
 const providerDisplayNames: Record<string, string> = {
   anthropic: 'Anthropic',
   openai: 'OpenAI',
@@ -55,8 +58,6 @@ const providerDisplayNames: Record<string, string> = {
   minimax: 'Minimax',
   ollama: 'Ollama',
   openrouter: 'OpenRouter',
-  pi: 'Pacman Backend',
-  pi_compat: 'Pacman Backend',
   vercel: 'Vercel',
 }
 

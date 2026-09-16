@@ -486,7 +486,7 @@ export function ApiKeyInput({
                   onClick={() => handlePresetSelect(preset)}
                   className="justify-between"
                 >
-                  {preset.label}
+                  {preset.key === 'pi' ? `${t('onboarding.apiSetup.pacmanBackend')} (Direct)` : preset.label}
                   <Check className={cn("size-3", activePreset === preset.key ? "opacity-100" : "opacity-0")} />
                 </StyledDropdownMenuItem>
               ))}

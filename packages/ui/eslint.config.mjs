@@ -33,7 +33,7 @@ export default [
       },
     },
     plugins: {
-      'craft-styles': {
+      'pacman-styles': {
         rules: {
           'no-hardcoded-z-index': noHardcodedZIndex,
           'no-floating-z-tokens-in-island': noFloatingZTokensInIsland,
@@ -53,13 +53,13 @@ export default [
       }],
 
       // Enforce centralized z-index token scale
-      'craft-styles/no-hardcoded-z-index': 'error',
+      'pacman-styles/no-hardcoded-z-index': 'error',
 
       // Enforce dedicated island z-index tokens in island components
-      'craft-styles/no-floating-z-tokens-in-island': 'error',
+      'pacman-styles/no-floating-z-tokens-in-island': 'error',
 
       // Enforce approved shadow utility classes/tokens only
-      'craft-styles/no-nonstandard-shadows': ['error', {
+      'pacman-styles/no-nonstandard-shadows': ['error', {
         allowedClasses: [
           'shadow-none',
           'shadow-xs',
@@ -86,7 +86,7 @@ export default [
       'src/components/ui/__tests__/styled-dropdown.test.ts',
     ],
     rules: {
-      'craft-styles/no-nonstandard-shadows': 'off',
+      'pacman-styles/no-nonstandard-shadows': 'off',
     },
   },
 
