@@ -87,6 +87,14 @@ mac:
   icon: resources/icon.icns
   # macOS 26+ Liquid Glass: Tell macOS to look for icon in Assets.car
   # The value must match --app-icon used in actool (see afterPack.js)
+  # Register pacman:// as a URL scheme so macOS LaunchServices routes
+  # pacman://allSessions/... links to this app. Without this entry the
+  # packaged .app cannot receive deep links (dev mode's
+  # app.setAsDefaultProtocolClient is not enough on macOS).
+  protocols:
+    - name: Pacman Deep Link
+      schemes:
+        - pacman
   extendInfo:
     CFBundleIconName: AppIcon
     # Required for macOS to list the app under Privacy & Security > Local Network
