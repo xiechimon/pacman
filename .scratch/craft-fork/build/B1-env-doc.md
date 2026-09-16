@@ -1,6 +1,7 @@
 ---
 labels: [build, ready-for-agent]
-status: open
+status: done
+resolution: docs/environment.md（干净克隆全链路复现通过 2026-09-16）
 blockedBy: []
 ---
 

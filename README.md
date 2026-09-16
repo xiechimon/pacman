@@ -70,6 +70,8 @@ bun install
 bun run electron:start
 ```
 
+环境前提与已知坑（bun 缓存目录、postinstall 放行、Electron 下载镜像）见 [docs/environment.md](./docs/environment.md)。
+
 ## Features
 
 - **Multi-Session Inbox**: Desktop app with session management, status workflow, and flagging
