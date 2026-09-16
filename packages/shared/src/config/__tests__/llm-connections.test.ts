@@ -108,6 +108,23 @@ describe('getDefaultModelForConnection', () => {
     expect(modelIds).toContain(defaultModel)
   })
 
+  // Regression (craft-fork ticket 09 / model catalog bug): Copilot's tier1-httpApi
+  // catalog includes models the user's subscription tier rejects. The default
+  // MUST land on a model the lowest common tier accepts.
+  it('Pi github-copilot default lands on a preferred model present in the SDK catalog', () => {
+    const defaultModel = getDefaultModelForConnection('pi', 'github-copilot')
+    const preferred = PI_PREFERRED_DEFAULTS['github-copilot']!
+    const models = getDefaultModelsForConnection('pi', 'github-copilot')
+    const modelIds = models.map(m => typeof m === 'string' ? m : m.id)
+    expect(modelIds).toContain(defaultModel)
+    const bare = defaultModel.replace(/^pi\//, '')
+    const firstPresent = preferred.find(p =>
+      modelIds.some(id => id === `pi/${p}` || id.startsWith(`pi/${p}-`))
+    )
+    expect(firstPresent).toBeDefined()
+    expect(bare).toBe(firstPresent!)
+  })
+
   it('Pi openai and openai-codex default to GPT-6 Astra with GPT-5.6 Sol ranked next', () => {
     for (const provider of ['openai', 'openai-codex'] as const) {
       const ids = getDefaultModelsForConnection('pi', provider).map(m => typeof m === 'string' ? m : m.id)

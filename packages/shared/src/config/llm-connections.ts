@@ -625,7 +625,16 @@ export const PI_PREFERRED_DEFAULTS: Record<string, string[]> = {
   // so 3-tier setups get a sensible summarizer default.
   moonshotai: ['kimi-k3', 'kimi-k2.6'],
   'moonshotai-cn': ['kimi-k3', 'kimi-k2.6'],
-  'github-copilot': ['claude-sonnet-4-6', 'gpt-5', 'o4-mini', 'claude-haiku-4-5'],
+  // github-copilot: live probe 2026-09-16 (free tier) — EVERY model in the Pi
+  // SDK catalog (claude-*, gpt-5.x, kimi, grok, mai-code) is rejected with
+  // `model_not_supported` on both /responses and /chat/completions. The only
+  // completing models are gpt-4.1 / gpt-4o / gpt-4o-mini via
+  // /chat/completions, and those are absent from the SDK catalog (pacman
+  // registers them itself — see models-pi.ts COPILOT_FALLBACK_MODEL_IDS).
+  // Default MUST land on a model the lowest common tier accepts → gpt-4.1
+  // first. Newer models stay listed as preference for paid tiers.
+  // See craft-fork ticket 09.
+  'github-copilot': ['gpt-4.1', 'gpt-4o-mini', 'gpt-4o', 'claude-haiku-4-5', 'claude-sonnet-4-6', 'gpt-5.4-mini'],
   'amazon-bedrock': ['claude-opus-4-8', 'claude-opus-4-7', 'claude-opus-4-6', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-4-5'],
 };
 

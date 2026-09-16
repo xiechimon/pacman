@@ -65,6 +65,7 @@ registerBunOAuthFlows();
 
 // Model resolution (extracted for testability + custom-endpoint precedence)
 import { resolvePiModel, isDeniedMiniModelId, isModelNotFoundError } from './model-resolution.ts';
+import { COPILOT_FALLBACK_MODEL_IDS } from '../../shared/src/config/models-pi.ts';
 import { pickProviderAppropriateMiniModel } from './pick-mini-model.ts';
 import {
   PACMAN_PI_EPHEMERAL_QUERY_DEADLINE_MS,
@@ -496,6 +497,64 @@ function registerCustomEndpointModels(
 }
 
 /**
+ * Headers the Copilot API requires to recognize us as the VS Code Copilot
+ * Chat integrator — same values as the SDK's catalog entries carry per model.
+ */
+const COPILOT_MODEL_HEADERS = {
+  'User-Agent': 'GitHubCopilotChat/0.35.0',
+  'Editor-Version': 'vscode/1.107.0',
+  'Editor-Plugin-Version': 'copilot-chat/0.35.0',
+  'Copilot-Integration-Id': 'vscode-chat',
+} as const;
+
+/**
+ * Register gpt-4.1 / gpt-4o-mini / gpt-4o under the github-copilot provider.
+ * registerProvider merges per-field, but `models` replaces wholesale — so the
+ * full existing provider list is re-passed alongside the fallback additions.
+ */
+function registerCopilotFallbackModels(registry: PiModelRegistry): void {
+  const existing = (registry.getAll() as Array<Record<string, unknown>>)
+    .filter(m => (m as { provider?: string }).provider === 'github-copilot');
+  const existingIds = new Set(existing.map(m => (m as { id?: string }).id));
+  const fallbackMeta: Record<string, { name: string; contextWindow: number }> = {
+    'gpt-4.1': { name: 'GPT-4.1', contextWindow: 1_047_576 },
+    'gpt-4o-mini': { name: 'GPT-4o mini', contextWindow: 128_000 },
+    'gpt-4o': { name: 'GPT-4o', contextWindow: 128_000 },
+  };
+  const additions = COPILOT_FALLBACK_MODEL_IDS
+    .filter(id => !existingIds.has(id))
+    .map(id => ({
+      id,
+      name: fallbackMeta[id]?.name ?? id,
+      api: 'openai-completions',
+      provider: 'github-copilot',
+      baseUrl: 'https://api.individual.githubcopilot.com',
+      reasoning: false,
+      input: ['text'],
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: fallbackMeta[id]?.contextWindow ?? 128_000,
+      maxTokens: 16_384,
+      headers: { ...COPILOT_MODEL_HEADERS },
+      compat: {
+        supportsStore: false,
+        supportsDeveloperRole: false,
+        supportsReasoningEffort: false,
+      },
+    }));
+  if (additions.length === 0) return;
+  try {
+    registry.registerProvider('github-copilot', {
+      models: [...existing, ...additions] as never,
+    });
+    debugLog(`Registered ${additions.length} Copilot fallback model(s): ${additions.map(a => a.id).join(', ')}`);
+  } catch (err) {
+    // Registration must never break the runtime — worst case the fallbacks
+    // just don't resolve and behavior matches the pre-fix state.
+    debugLog(`Copilot fallback registration failed (non-fatal): ${(err as Error).message}`);
+  }
+}
+
+/**
  * Get the shared credential store + model runtime + registry, (re-)injecting
  * the user's credentials on every call. Used by both the main session and
  * ephemeral queryLlm sessions.
@@ -547,6 +606,18 @@ async function createAuthenticatedRuntime(): Promise<{
         modelsStore: new InMemoryModelsStore(),
       });
       const modelRegistry = new PiModelRegistry(modelRuntime);
+
+      // Copilot: register known-good fallback models. Live probe 2026-09-16
+      // (free-tier account) — every model in the SDK's github-copilot catalog
+      // (claude-*, gpt-5.x, kimi, grok, mai-code) is rejected with
+      // `model_not_supported` on both /responses and /chat/completions; the
+      // only completing models are gpt-4.1 / gpt-4o / gpt-4o-mini via
+      // /chat/completions, and they are absent from the SDK catalog. Without
+      // this registration, resolvePiModel can't resolve the one model that
+      // actually works, so every send 400s. See craft-fork ticket 09.
+      if (initConfig?.piAuth?.provider === 'github-copilot') {
+        registerCopilotFallbackModels(modelRegistry);
+      }
 
       // Register custom endpoint models dynamically via Pi SDK's registerProvider API.
       // This makes arbitrary OpenAI/Anthropic-compatible endpoints work through the Pi SDK

@@ -1,7 +1,7 @@
 import type { ProviderDriver, DriverTestConnectionArgs } from '../driver-types.ts';
 import type { ModelDefinition } from '../../../../config/models.ts';
 import { getAllPiModels, getPiModelsForAuthProvider } from '../../../../config/models-pi.ts';
-import { getPiProviderBaseUrl } from '../../../../config/models-pi.ts';
+import { getPiProviderBaseUrl, COPILOT_FALLBACK_MODEL_IDS } from '../../../../config/models-pi.ts';
 
 // ── Copilot model types ────────────────────────────────────────────────
 type RawCopilotModel = {
@@ -91,15 +91,16 @@ async function listModelsViaHttp(
   }
 }
 
-/** Model ID prefixes to exclude — legacy models that clutter the selector. */
-const EXCLUDED_MODEL_PREFIXES = ['gpt-4', 'gpt-3.5'];
-
-/** Filter raw models to only those explicitly enabled by policy, excluding legacy models. */
+/**
+ * NOTE: no prefix-based exclusion here. The /models list is already scoped to
+ * the account's policy, and on free-tier accounts the ONLY models that pass
+ * `/chat/completions` are gpt-4.1 / gpt-4o (verified by live probe
+ * 2026-09-16 — every claude-* / gpt-5.x / kimi / grok / mai-code model returns
+ * `model_not_supported`). Hiding "legacy" ids was what made those accounts
+ * unusable. See craft-fork ticket 09.
+ */
 function filterEnabledModels(models: RawCopilotModel[]): RawCopilotModel[] {
-  return models.filter(m =>
-    m.policy?.state === 'enabled'
-    && !EXCLUDED_MODEL_PREFIXES.some(prefix => m.id.startsWith(prefix)),
-  );
+  return models.filter(m => m.policy?.state === 'enabled');
 }
 
 /** Convert raw Copilot models to our ModelDefinition format. */
@@ -151,7 +152,26 @@ async function fetchCopilotModels(
       logModelBreakdown('tier1-httpApi', raw);
       const enabled = filterEnabledModels(raw);
       if (enabled.length > 0) {
-        return toModelDefinitions(enabled);
+        // Union in the known-good fallback ids. The /models enabled list is
+        // NOT a reliable proxy for "completes on /chat/completions" — e.g.
+        // gpt-4o passes the probe but is missing from the enabled list on
+        // free-tier accounts. See craft-fork ticket 09.
+        const defs = toModelDefinitions(enabled);
+        const present = new Set(defs.map(d => d.id));
+        for (const fbId of COPILOT_FALLBACK_MODEL_IDS) {
+          if (!present.has(fbId)) {
+            defs.push({
+              id: fbId,
+              name: fbId,
+              shortName: fbId,
+              description: '',
+              provider: 'pi' as const,
+              contextWindow: 128_000,
+              supportsThinking: false,
+            });
+          }
+        }
+        return defs;
       }
       // All models disabled by policy — unusual but possible.
       // Log it clearly and fall through to static catalog.
