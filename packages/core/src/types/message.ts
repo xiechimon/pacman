@@ -391,6 +391,12 @@ export interface StoredMessage {
     url?: string;
     sourceSlug?: string;
   }>;
+  /**
+   * Suggested model id the renderer can offer to swap to. Set by the server
+   * for `invalid_model` errors when a known-good alternative exists (currently
+   * only github-copilot — see craft-fork ticket 09).
+   */
+  errorSwapModel?: string;
   // Plan-specific fields (for role='plan')
   planPath?: string;
   // Auth-request-specific fields (for role='auth-request')
@@ -497,6 +503,14 @@ export interface TypedError {
   details?: string[];
   /** Original error message for debugging */
   originalError?: string;
+  /**
+   * Suggested model id the renderer can offer to swap to. Set by the server
+   * for `invalid_model` errors when a known-good alternative exists in the
+   * provider's preferred-defaults list (currently only github-copilot — see
+   * craft-fork ticket 09). Mirrors `AgentError.swapModel` from
+   * `@pacman/shared/agent/errors`.
+   */
+  swapModel?: string;
 }
 
 /**

@@ -1661,6 +1661,30 @@ export const ChatDisplay = React.forwardRef<ChatDisplayHandle, ChatDisplayProps>
                                 onSendMessage(lastUserMsg.content)
                               }
                             } : undefined}
+                            onSwapModel={turn.message.role === 'error' ? async (newModel) => {
+                              // One-click swap-and-resend for invalid_model errors
+                              // (currently github-copilot tier rejection — see craft-fork
+                              // ticket 09). Persist the new defaultModel on the
+                              // connection, then resend the failed user message.
+                              if (!session?.llmConnection) return
+                              try {
+                                await window.electronAPI.setupLlmConnection({
+                                  slug: session.llmConnection,
+                                  defaultModel: newModel,
+                                  updateOnly: true,
+                                })
+                              } catch (err) {
+                                console.error('[ChatDisplay] Failed to swap model', err)
+                                return
+                              }
+                              const msgs = session?.messages
+                              if (!msgs) return
+                              const errorIdx = msgs.findIndex(m => m.id === turn.message.id)
+                              const lastUserMsg = msgs.slice(0, errorIdx).findLast(m => m.role === 'user')
+                              if (lastUserMsg) {
+                                onSendMessage(lastUserMsg.content)
+                              }
+                            } : undefined}
                           />
                         </div>
                       )
@@ -2140,12 +2164,18 @@ interface MessageBubbleProps {
   compactMode?: boolean
   /** Callback to resend the user message that preceded an error */
   onRetry?: () => void
+  /**
+   * Callback to swap the session's connection defaultModel to a new id and
+   * resend. Wired to the "Switch to X" button on invalid_model errors
+   * (currently github-copilot tier rejection — craft-fork ticket 09).
+   */
+  onSwapModel?: (newModel: string) => void
 }
 
 /**
  * ErrorMessage - Separate component for error messages to allow useState hook
  */
-function ErrorMessage({ message, onOpenUrl, sessionId, onRetry }: { message: Message; onOpenUrl?: (url: string) => void; sessionId?: string; onRetry?: () => void }) {
+function ErrorMessage({ message, onOpenUrl, sessionId, onRetry, onSwapModel }: { message: Message; onOpenUrl?: (url: string) => void; sessionId?: string; onRetry?: () => void; onSwapModel?: (newModel: string) => void }) {
   const { t } = useTranslation()
   const hasDetails = (message.errorDetails && message.errorDetails.length > 0) || message.errorOriginal
   const [detailsOpen, setDetailsOpen] = React.useState(false)
@@ -2190,6 +2220,21 @@ function ErrorMessage({ message, onOpenUrl, sessionId, onRetry }: { message: Mes
           </div>
         )}
 
+        {/* One-click model swap for invalid_model errors (github-copilot tier
+            rejection — craft-fork ticket 09). Server attaches `errorSwapModel`
+            when a known-good preferred default exists; clicking swaps the
+            connection's defaultModel and resends the failed message. */}
+        {message.errorSwapModel && onSwapModel && (
+          <div className="mt-2">
+            <button
+              onClick={() => onSwapModel(message.errorSwapModel!)}
+              className="text-xs px-2 py-0.5 rounded border border-info/30 text-info hover:bg-info/10 transition-colors"
+            >
+              Switch to {message.errorSwapModel.replace(/^pi\//, '')} and resend
+            </button>
+          </div>
+        )}
+
         {/* Collapsible Details Toggle */}
         {hasDetails && (
           <div className="mt-2">
@@ -2227,6 +2272,7 @@ function MessageBubble({
   onPopOut,
   compactMode,
   onRetry,
+  onSwapModel,
 }: MessageBubbleProps) {
   const { t } = useTranslation()
 
@@ -2292,7 +2338,7 @@ function MessageBubble({
 
   // === ERROR MESSAGE: Red bordered bubble with warning icon and collapsible details ===
   if (message.role === 'error') {
-    return <ErrorMessage message={message} onOpenUrl={onOpenUrl} sessionId={sessionId} onRetry={onRetry} />
+    return <ErrorMessage message={message} onOpenUrl={onOpenUrl} sessionId={sessionId} onRetry={onRetry} onSwapModel={onSwapModel} />
   }
 
   // === STATUS MESSAGE: Matches ProcessingIndicator layout for visual consistency ===

@@ -188,6 +188,11 @@ export function handleTypedError(
       url: a.url,
       sourceSlug: a.sourceSlug,
     })),
+    // One-click model swap hint for invalid_model errors (Copilot).
+    // See craft-fork ticket 09 — AgentError.swapModel is set by the parser
+    // when the rejected model has a known-good alternative in the provider's
+    // preferred-defaults list.
+    errorSwapModel: event.error.swapModel,
   }
 
   return {
