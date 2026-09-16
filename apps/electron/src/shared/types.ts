@@ -32,8 +32,11 @@ import type { ThinkingLevel } from '@pacman/shared/agent/thinking-levels';
 export type { ThinkingLevel };
 export { THINKING_LEVELS, DEFAULT_THINKING_LEVEL } from '@pacman/shared/agent/thinking-levels';
 
+// Re-exports with public-name aliases. Source names are the locally-renamed
+// imports above (CoreMessageRole, CoreTokenUsage, etc. — Core's actual export
+// names are MessageRole/TokenUsage/etc., not Core-prefixed). The `as` here
+// does NOT use a `from` clause — these are local re-exports, not external.
 export type {
-  CoreMessage as Message,
   CoreMessageRole as MessageRole,
   TypedError,
   CoreTokenUsage as TokenUsage,
@@ -44,6 +47,23 @@ export type {
   ContentBadge,
   ToolDisplayMeta,
   AnnotationV1,
+}
+
+// Local Message extension — mirrors CoreMessage + craft-fork ticket 09 fields.
+// The base CoreMessage comes from @pacman/core/types (imported above as
+// `Message as CoreMessage`); the extension lives here because the electron
+// app's tsc resolves @pacman/core through node_modules and doesn't always
+// pick up newly-added fields there.
+export type Message = CoreMessage & {
+  /**
+   * Suggested model id the renderer can offer to swap to. Set by the server
+   * for `invalid_model` errors when a known-good alternative exists in the
+   * provider's preferred-defaults list (currently only github-copilot).
+   */
+  errorSwapModel?: string;
+}
+
+export type {
 };
 
 // Auth types for onboarding
@@ -425,11 +445,13 @@ export interface ElectronAPI {
   chatGptLogout(connectionSlug: string): Promise<{ success: boolean }>
 
   // GitHub Copilot OAuth
-  startCopilotOAuth(connectionSlug: string): Promise<{ success: boolean; error?: string }>
+  startCopilotOAuth(connectionSlug: string): Promise<{ success: boolean; pending?: boolean; error?: string }>
   cancelCopilotOAuth(): Promise<{ success: boolean }>
   getCopilotAuthStatus(connectionSlug: string): Promise<{ authenticated: boolean }>
   copilotLogout(connectionSlug: string): Promise<{ success: boolean }>
   onCopilotDeviceCode(callback: (data: { userCode: string; verificationUri: string }) => void): () => void
+  /** Terminal OAuth result pushed after the device flow settles. */
+  onCopilotAuthResult(callback: (data: { success: boolean; error?: string }) => void): () => void
 
   /** Unified LLM connection setup */
   setupLlmConnection(setup: LlmConnectionSetup): Promise<{ success: boolean; error?: string }>

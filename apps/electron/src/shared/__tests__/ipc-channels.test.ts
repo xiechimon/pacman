@@ -69,6 +69,7 @@ const EXPECTED_CHANNELS: string[] = [
   'chatgpt:getAuthStatus',
   'chatgpt:logout',
   'chatgpt:startOAuth',
+  'copilot:authResult',
   'copilot:cancelOAuth',
   'copilot:deviceCode',
   'copilot:getAuthStatus',
