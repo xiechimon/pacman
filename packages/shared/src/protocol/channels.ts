@@ -214,6 +214,8 @@ export const RPC_CHANNELS = {
     GET_AUTH_STATUS: 'copilot:getAuthStatus',
     LOGOUT: 'copilot:logout',
     DEVICE_CODE: 'copilot:deviceCode',
+    /** Pushed after the OAuth device flow completes. */
+    AUTH_RESULT: 'copilot:authResult',
   },
   settings: {
     SETUP_LLM_CONNECTION: 'settings:setupLlmConnection',

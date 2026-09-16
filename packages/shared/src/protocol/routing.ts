@@ -314,6 +314,7 @@ export const REMOTE_ELIGIBLE_CHANNELS = new Set<string>([
   RPC_CHANNELS.copilot.GET_AUTH_STATUS,
   RPC_CHANNELS.copilot.LOGOUT,
   RPC_CHANNELS.copilot.DEVICE_CODE,
+  RPC_CHANNELS.copilot.AUTH_RESULT,
 
   // Claude OAuth — runs on workspace server so credentials and connection config
   // end up on the same server that will use them. Browser opening is client-side.

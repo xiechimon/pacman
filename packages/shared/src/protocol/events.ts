@@ -66,6 +66,9 @@ export interface BroadcastEventMap {
   // Copilot device code event
   [RPC_CHANNELS.copilot.DEVICE_CODE]: [data: { userCode: string; verificationUri: string }]
 
+  // Copilot OAuth terminal result. Pushed after the background device-flow Promise settles.
+  [RPC_CHANNELS.copilot.AUTH_RESULT]: [data: { success: boolean; error?: string }]
+
   // Menu events (per-window, no payload)
   [RPC_CHANNELS.menu.NEW_CHAT]: []
   [RPC_CHANNELS.menu.OPEN_SETTINGS]: []
