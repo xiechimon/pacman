@@ -570,19 +570,62 @@ export function useOnboarding({
         return
       }
 
-      // Copilot OAuth (device flow — polls for token after user enters code on GitHub)
+      // Copilot OAuth (device flow — polls for token after user enters code on GitHub).
+      //
+      // The RPC layer enforces REQUEST_TIMEOUT_MS = 30_000, shorter than the
+      // real device flow (~40s typical). The handler therefore returns
+      // { success: true, pending: true } as soon as the device code is issued;
+      // the terminal outcome arrives via `onCopilotAuthResult`.
       if (effectiveMethod === 'pi_copilot_oauth') {
         const effectiveEditingSlug = connectionSlugOverride ?? editingSlug
         const isReauth = !!effectiveEditingSlug
         const connectionSlug = apiSetupMethodToConnectionSetup(effectiveMethod, {}, effectiveEditingSlug, existingSlugs).slug
 
-        // Subscribe to device code event before starting the flow
-        const cleanup = window.electronAPI.onCopilotDeviceCode((data) => {
+        // Subscribe to BOTH events before starting the flow.
+        const cleanupDevice = window.electronAPI.onCopilotDeviceCode((data) => {
           setCopilotDeviceCode(data)
+        })
+        let authResultSettled = false
+        const authResultPromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+          const cleanupResult = window.electronAPI.onCopilotAuthResult((data) => {
+            authResultSettled = true
+            cleanupResult()
+            resolve(data)
+          })
         })
 
         try {
-          const result = await window.electronAPI.startCopilotOAuth(connectionSlug)
+          const startResult = await window.electronAPI.startCopilotOAuth(connectionSlug)
+
+          if (!startResult.success) {
+            setState(s => ({
+              ...s,
+              credentialStatus: 'error',
+              errorMessage: startResult.error || 'GitHub authentication failed',
+            }))
+            return
+          }
+          if (!startResult.pending) {
+            // Legacy path (server hasn't been rebuilt): the handler awaited
+            // the full flow. Treat its result as the terminal outcome.
+            await saveAndValidateConnection(connectionSlug, effectiveMethod, undefined, isReauth)
+            return
+          }
+
+          // Wait for the terminal push. Hard cap at 5 minutes — beyond that
+          // the device code has expired on GitHub's side anyway.
+          const timeoutHandle = setTimeout(() => {
+            if (!authResultSettled) {
+              setState(s => ({
+                ...s,
+                credentialStatus: 'error',
+                errorMessage: 'GitHub authentication timed out waiting for device authorization',
+              }))
+            }
+          }, 5 * 60_000)
+
+          const result = await authResultPromise
+          clearTimeout(timeoutHandle)
 
           if (result.success) {
             await saveAndValidateConnection(connectionSlug, effectiveMethod, undefined, isReauth)
@@ -594,7 +637,7 @@ export function useOnboarding({
             }))
           }
         } finally {
-          cleanup()
+          cleanupDevice()
           setCopilotDeviceCode(undefined)
         }
         return
