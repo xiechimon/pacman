@@ -152,10 +152,10 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
       // Skip when custom endpoint protocol is driving routing.
       if (setup.piAuthProvider && !isCustomEndpointCompat) {
         updates.piAuthProvider = setup.piAuthProvider
-        // Update connection name to show the actual provider (e.g. "Pacmans Backend (Google AI Studio)")
+        // Update connection name to show the actual provider (e.g. "Pacman Backend (Google AI Studio)")
         const providerName = piAuthProviderDisplayName(setup.piAuthProvider)
         if (providerName) {
-          updates.name = `Pacmans Backend (${providerName})`
+          updates.name = `Pacman Backend (${providerName})`
         }
         // Only set default models when using standard Pi provider AND user didn't pick explicit models
         if (!hasConfiguredBaseUrl && !setup.models?.length) {
@@ -772,8 +772,21 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
   // ============================================================
 
   // Start GitHub Copilot OAuth flow (device flow via Pi SDK)
+  // Start GitHub Copilot OAuth flow (device flow via Pi SDK).
+  //
+  // Device flow + token exchange can take 30-60s on a real GitHub account. The
+  // RPC layer enforces REQUEST_TIMEOUT_MS = 30_000 (see
+  // packages/shared/src/protocol/types.ts:158), so we cannot await the full
+  // flow here without tripping the timeout in the renderer. Instead:
+  //   1. Kick off `loginGitHubCopilot` in the background.
+  //   2. Return { success: true, pending: true } as soon as the device code
+  //      is surfaced (well under 5s typical).
+  //   3. When the background flow settles, push `copilot:authResult` with the
+  //      terminal success/error — the renderer awaits this push before calling
+  //      saveAndValidateConnection.
   server.handle(RPC_CHANNELS.copilot.START_OAUTH, async (ctx, connectionSlug: string): Promise<{
     success: boolean
+    pending?: boolean
     error?: string
   }> => {
     try {
@@ -783,48 +796,56 @@ export function registerLlmConnectionsHandlers(server: RpcServer, deps: HandlerD
       // Cancel any previous in-flight flow
       copilotOAuthAbort?.abort()
       copilotOAuthAbort = new AbortController()
+      const signal = copilotOAuthAbort.signal
+      const clientId = ctx.clientId
 
       deps.platform.logger?.info(`Starting GitHub Copilot OAuth device flow for connection: ${connectionSlug}`)
 
-      // App-owned login flow (pi-ai 0.81.x no longer exports one) — handles the
-      // device code flow AND the critical Copilot token exchange that determines
-      // the correct API endpoint for the user's subscription tier via proxy-ep.
-      const credentials = await loginGitHubCopilot({
+      const flow = loginGitHubCopilot({
         onDeviceCode: ({ userCode, verificationUri }) => {
           deps.platform.logger?.info(`[GitHub OAuth] Device code: ${userCode}`)
-          pushTyped(server, RPC_CHANNELS.copilot.DEVICE_CODE, { to: 'client', clientId: ctx.clientId }, {
+          pushTyped(server, RPC_CHANNELS.copilot.DEVICE_CODE, { to: 'client', clientId }, {
             userCode,
             verificationUri,
           })
-          // Open GitHub device code page on the client's machine
-          server.invokeClient(ctx.clientId, CLIENT_OPEN_EXTERNAL, verificationUri).catch(err => {
+          server.invokeClient(clientId, CLIENT_OPEN_EXTERNAL, verificationUri).catch(err => {
             deps.platform.logger?.warn(`Failed to open browser for GitHub OAuth: ${err}`)
           })
         },
         onProgress: (message) => {
           deps.platform.logger?.info(`[GitHub OAuth] ${message}`)
         },
-        signal: copilotOAuthAbort.signal,
+        signal,
       })
+        .then(async credentials => {
+          await credentialManager.setLlmOAuth(connectionSlug, {
+            accessToken: credentials.access,
+            refreshToken: credentials.refresh,
+            expiresAt: credentials.expires,
+          })
+          deps.platform.logger?.info('GitHub Copilot OAuth completed successfully')
+          refreshModelsInBackground(connectionSlug, 'Copilot auth')
+          pushTyped(server, RPC_CHANNELS.copilot.AUTH_RESULT, { to: 'client', clientId }, { success: true })
+        })
+        .catch(error => {
+          if (!signal.aborted) {
+            const message = error instanceof Error ? error.message : 'OAuth authentication failed'
+            deps.platform.logger?.error('GitHub Copilot OAuth failed:', error)
+            pushTyped(server, RPC_CHANNELS.copilot.AUTH_RESULT, { to: 'client', clientId }, {
+              success: false,
+              error: message,
+            })
+          }
+        })
+        .finally(() => {
+          if (copilotOAuthAbort?.signal === signal) copilotOAuthAbort = null
+        })
 
-      copilotOAuthAbort = null
-
-      // Store the full OAuth credential:
-      // - accessToken = Copilot API token (contains proxy-ep for correct endpoint)
-      // - refreshToken = GitHub access token (used to refresh the Copilot token)
-      // - expiresAt = Copilot token expiry (short-lived, ~1 hour)
-      await credentialManager.setLlmOAuth(connectionSlug, {
-        accessToken: credentials.access,
-        refreshToken: credentials.refresh,
-        expiresAt: credentials.expires,
-      })
-
-      deps.platform.logger?.info('GitHub Copilot OAuth completed successfully')
-      refreshModelsInBackground(connectionSlug, 'Copilot auth')
-      return { success: true }
+      void flow
+      return { success: true, pending: true }
     } catch (error) {
       copilotOAuthAbort = null
-      deps.platform.logger?.error('GitHub Copilot OAuth failed:', error)
+      deps.platform.logger?.error('GitHub Copilot OAuth failed to start:', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'OAuth authentication failed',
