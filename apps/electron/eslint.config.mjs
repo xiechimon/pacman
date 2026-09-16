@@ -48,32 +48,32 @@ export default [
       react: reactPlugin,
       'react-hooks': reactHooksPlugin,
       // Custom plugin for Craft Agent rules
-      'craft-agent': {
+      'pacman-agent': {
         rules: {
           'no-direct-navigation-state': noDirectNavigationState,
           'no-localstorage': noLocalStorage,
         },
       },
       // Custom plugin for platform detection rules
-      'craft-platform': {
+      'pacman-platform': {
         rules: {
           'no-direct-platform-check': noDirectPlatformCheck,
         },
       },
       // Custom plugin for cross-platform path rules
-      'craft-paths': {
+      'pacman-paths': {
         rules: {
           'no-hardcoded-path-separator': noHardcodedPathSeparator,
         },
       },
       // Custom plugin for link interceptor enforcement
-      'craft-links': {
+      'pacman-links': {
         rules: {
           'no-direct-file-open': noDirectFileOpen,
         },
       },
       // Custom plugin for source auth checks (shared with packages/shared)
-      'craft-sources': {
+      'pacman-sources': {
         rules: {
           'no-inline-source-auth-check': noInlineSourceAuthCheck,
         },
@@ -101,16 +101,16 @@ export default [
       'pacman/no-localstorage': 'warn',
 
       // Custom platform detection rule
-      'craft-platform/no-direct-platform-check': 'error',
+      'pacman-platform/no-direct-platform-check': 'error',
 
       // Custom cross-platform path rule
-      'craft-paths/no-hardcoded-path-separator': 'warn',
+      'pacman-paths/no-hardcoded-path-separator': 'warn',
 
       // Custom link interceptor rule — prevents bypassing in-app file preview
-      'craft-links/no-direct-file-open': 'error',
+      'pacman-links/no-direct-file-open': 'error',
 
       // Custom source auth check rule — use isSourceUsable() instead of inline checks
-      'craft-sources/no-inline-source-auth-check': 'error',
+      'pacman-sources/no-inline-source-auth-check': 'error',
 
       // Custom style rule — use z-index token scale instead of hardcoded literals
       'pacman-styles/no-hardcoded-z-index': 'error',
