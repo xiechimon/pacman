@@ -79,7 +79,3 @@ credentials.enc
 # Claude
 .claude/
 .codegraph/
-
-# graphify skill caches (per-project knowledge graph output)
-graphify-out/
-packages/graphify-out/
