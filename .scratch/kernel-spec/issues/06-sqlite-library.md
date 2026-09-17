@@ -1,5 +1,5 @@
 Type: research
-Status: open
+Status: resolved
 
 # SQLite library for a single process
 
@@ -23,3 +23,13 @@ Write findings on branch `research/sqlite-library` and leave a path pointer unde
 
 ## Findings
 `.scratch/kernel-spec/research/sqlite-library.md` on branch `research/sqlite-library`
+
+## Answer
+
+Cited comparison is `.scratch/kernel-spec/research/sqlite-library.md` on `research/sqlite-library` (`6142b0c`).
+
+- Driver: `better-sqlite3`. Query: Drizzle (`drizzle-orm/better-sqlite3`).
+- Migrations: `drizzle-kit generate` SQL, applied at process start (`migrate()` / `__drizzle_migrations`).
+- Node-first (`engines.node >= 22`, native addon). Does not force Bun.
+- If [Kernel process stack](07-process-stack.md) later picks Bun: keep `sqlite-core` schema and SQL folder; swap constructor to `drizzle-orm/bun-sqlite` + `bun:sqlite`.
+- Rejected for kernel now: `bun:sqlite` (Bun-only), `node:sqlite` (experimental/RC on Node 22/24), `@libsql/client` (async, replica/remote product).
