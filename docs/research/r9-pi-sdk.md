@@ -173,3 +173,49 @@ pi monorepo 相关包（`packages/`）：
 | concurrency_safe=read_only∧¬exclusive | `executionMode` 手工标注 | 形变（S1.6#4） |
 | 错误分级（SSRF 标记、workspace 越界计数） | 无 | 缝（作者策略层自建） |
 | MCP wrapper 超时/瞬态重试 | 无内置 MCP（见 S5） | 缺口 |
+
+---
+
+## S3 SessionManager —— JSONL tree 格式与上游 schema 兼容度
+
+### S3.1 coding-agent SessionManager（AgentSession 层持久化）
+
+- **文件格式**：JSONL，**树结构**。`CURRENT_SESSION_VERSION = 3`（`coding-agent/src/core/session-manager.ts:30`）。首行 header `{type:"session", version, id(uuidv7), timestamp, cwd, parentSession?}`（:32-39）；其后每行一个 entry，**每条 entry 带 `id`（8-hex 短 uuid，冲突重试）+ `parentId`**（:46-51,220-228）——同一文件内多分支共存，`leafId` 指针决定当前分支（:1374-1394）。
+- **entry 类型全集**（:144-153）：`message`（AgentMessage 原样）、`thinking_level_change`、`model_change`、`compaction{summary,firstKeptEntryId,tokensBefore,details?,usage?,fromHook?}`（:69-80）、`branch_summary{fromId,summary,...}`（:82-92）、`custom{customType,data}`（**不进 LLM 上下文**，扩展状态持久化，:94-108）、`custom_message{customType,content,details,display}`（**进上下文**转 user 消息，:123-141）、`label{targetId,label}`（书签，:110-115）、`session_info{name}`（:117-121）。
+- **上下文重建**：`buildSessionContext(entries, leafId)` = leaf→root 路径反转（:334-360）→ compaction-aware 裁剪（最新 compaction entry + firstKeptEntryId 起的保留段 + 之后全部，:410-454）→ `sessionEntryToContextMessages` 投影（:379-408；null content 归一 :386-393）+ 路径上的 model/thinkingLevel 状态折叠（:362-377）。
+- **文件命名/目录**：`<ISO时间戳(:.→-)>_<sessionId>.jsonl`（:947-951）；默认目录 `~/.pi/agent/sessions/--<cwd 路径编码(/,\:→-)>--/`（:476-489）。
+- **写入节奏**：每 entry `appendFileSync` 一行（:1029-1056）。**懒创建**：第一条 assistant 消息到达前不落盘（内存缓冲，`flushed` 状态机；文件以 `wx` 一次性写入全部缓冲 entry）——空会话不产生文件。**无文件锁、无 fsync、无原子重写**（对照 r2 §附3 nanobot FileLock+原子重写+sidecar 分层：pi 是纯 append-only 单节奏）。迁移时才 `_rewriteFile`（:993-1003）。
+- **损坏容错**：坏行跳过（:503-511）；末行不完整补 `\n`（:548-556）；header 非法则整体拒读（:550-553）。
+- **版本迁移**：v1→v2 补 id/parentId + firstKeptEntryIndex→Id（:230-257）；v2→v3 hookMessage→custom role（:259-275）。
+- **fork/branch 家族**：`branch(id)`/`resetLeaf()`（同文件内切 leaf，:1374-1394）；`branchWithSummary`（弃分支摘要 entry，:1395-1420）；`createBranchedSession(leafId)`（**提取单路径到新文件**，label entry 去除后重链 parentId，:1421-1470）；`static forkFrom(sourcePath, targetCwd)`（全量复制 entry 到新文件、header 记 parentSession，:1611-1662）；`static open/create/continueRecent/inMemory/list/listAll`（:1551-1700+）。`inMemory(cwd, options, entries)` = 无持久化实例（:1600）。
+- **与上游 schema 兼容度判定**（对照 r2 §3.3）：
+  - metadata 行 → pi 分散为 `session_info`/`label`/`custom` entry + header.cwd/parentSession；上游 per-session metadata dict 可用 `custom` entry 承载（扩展已在用此机制存状态）。
+  - provider_state 行 → **无对应物**（pi 无 provider conversation state 概念；thinking signature 等留在 message 内）。
+  - checkpoint sidecar → **无对应物**（AgentSession 层）；harness 层的事务性 pending entry/operation state 是其 durable 等价（S1.4；`agent/src/harness/session/jsonl/storage.ts:204,230` 事务重放、`drive/tools.ts:250-260` pendingEntry）。
+  - 消息回放保留键（tool_calls/thinking_blocks 等）→ pi 消息是结构化对象原样落盘（AgentMessage 联合类型），无需保留键清单。
+  - 上游「会话 key = channel:chat_id、base64url 文件名、workspace 命名空间、0600/0700 权限」→ pi 是「cwd 命名空间 + 时间戳文件名」，**无会话 key 概念、无权限收紧**（grep 未见 chmod；对照 r2 manager.py:565-566,606）——多租户/多渠道会话索引属上层职责（缝）。
+- **自定义后端可行性**：SessionManager 是具体类非接口，但 `createAgentSession({sessionManager})` 可注入任意实例（sdk.ts:81-82,183）；`inMemory` 证明可脱离文件。彻底换后端 = 复制 SessionManager 公开面（ReadonlySessionManager Pick 清单 :190-206 是最小读面）。SettingsManager 有正式 `SettingsStorage` 抽象（`SettingsManager.fromStorage`，settings-manager.ts:352-355）——settings 可换后端，session 不可（判定：session 后端要 fork/重写，settings 不用）。
+
+### S3.2 harness session（durable 层，对照参考）
+
+- 独立于 coding-agent SessionManager：`agent/src/harness/session/`（types/commit/fork/memory/mutation-line/fork-policy）+ `session/jsonl/`（codec/repo/storage/legacy-v3）。存储是 **value/事务模型**：`Write`（setValue/deleteValue）、`replayCommitted` 重放已提交事务（jsonl/storage.ts:204,230）、pending entry 两阶段提交（drive/tools.ts:250-260 settle 时 `pendingEntry` 转正 + 删除 memo）。
+- Entry 模型带 `Operation/OperationState/OperationResultRecord`、`InboxItem`（steer/followUp/nextRun/write 四种队列项持久化，`agent-harness.ts:229-247`）、lane 配置值。session 不变量错误类型化：`SessionInvariantError/SessionPendingAssistantMessageError`（lane.ts:36-37 import）。
+- `legacy-v3.ts` 表明 harness 可读 coding-agent v3 JSONL【推断：文件名与迁移用途，未逐行验证】。
+
+---
+
+## S4 ModelRuntime / pi-ai —— provider、OAuth、catalog、timeout/cancel、fallback
+
+### S4.1 ModelRuntime（coding-agent）
+
+- `ModelRuntime implements Models`（pi-ai 集合接口，`coding-agent/src/core/model-runtime.ts:130`）。`ModelRuntime.create({credentials?, authPath?, modelsPath?, modelsStore?, allowModelNetwork?, modelRefreshTimeoutMs?, catalogBaseUrl?, signal?, refreshOnCreate?})`（:66-82,172-217）。
+- **三层 provider 组合**（`recomposeProvider`，:245-267）：builtin（pi-ai `providers/all` catalog）← `models.json` 配置 overlay（ModelConfig）← extension 注册（`registerProvider(name, ProviderConfigInput)` 或 `registerNativeProvider(Provider)`，:741-794；合并语义：重注册 merge 已定义值，:755-762）。组合失败记录 `compositionErrors` 并回退 base（:262-266），`getError()` 聚合诊断（:426-435）。
+- **openai-compat 自定义 baseUrl/模型注入**：两条正路——① `models.json`（`~/.pi/agent/models.json`，config.ts:543）里的 provider 配置（baseUrl/apiKey/models）；② 扩展 `pi.registerProvider("my-proxy", {baseUrl, apiKey:"$ENV_VAR", api:"openai-completions"|"openai-responses"|"anthropic-messages"|…, models:[{id,name,reasoning,input,cost,contextWindow,maxTokens,headers?,compat?}], headers?, authHeader?, streamSimple?, refreshModels?, oauth?})`（extensions/types.ts:1434-1556 完整契约与示例；apiKey 支持 `$ENV`/`${ENV}`/`!command` 插值 :1518-1519）。**`streamSimple` 字段 = 完全自定义 wire 协议的官方注入点**（:1522-1528，须回调 onPayload/onResponse）。
+- **认证**：`getAuth(model|providerId, overrides)` 每请求解析（含 OAuth 刷新、`minOAuthValidityMs` 默认 5 分钟，:84-89）；credential 操作按 provider 串行队列（`enqueueCredentialOperation`，:494-512）；`login(providerId, type, interaction)`/`logout`；`setRuntimeApiKey/removeRuntimeApiKey`（进程内 key，不落盘）；凭据源优先级 runtime > stored > configured > environment（`getProviderAuthStatus`，:561-571）；同步失败类型化 `CredentialSynchronizationError`（凭据已提交但快照失败，:93-111）。存储：`~/.pi/agent/auth.json`（AuthStorage，config.ts:548）。
+- **Anthropic OAuth 原生**：pi-ai `auth/oauth/` 有 `anthropic.ts`（Claude 订阅 OAuth）、`openai-codex.ts`、`github-copilot.ts`、`xai.ts`、`kimi-coding.ts`、`openrouter.ts`、`radius.ts`、`device-code.ts`、`pkce.ts`（目录清单实测）。`isUsingOAuth/isUsingSubscription`（model-runtime.ts:458-464）。
+- **catalog 更新机制**：内置模型表是**生成代码**（`ai/src/models.generated.ts` + 每 provider `*.models.ts`；`getBuiltinModelDataGeneratedAt()` 时间戳，providers/all.ts:74）；运行时叠加 **pi.dev 远程 catalog overlay**（`withRemoteCatalog`：默认 `https://pi.dev`，4h 刷新间隔，ETag 304 重验证，持久化到 `models-store.json`，本地生成时间新于远程则忽略，`coding-agent/src/core/remote-catalog-provider.ts:1-80+`）；`PI_OFFLINE` env 关闭模型网络（model-runtime.ts:196）；`allowModelNetwork` 默认 false（create 时不联网，:73-74,200）。动态 provider 可自实现 `refreshModels(context)`（含 `publish({persist})` 世代检查发布，ai/src/models.ts:44-61,131-138）。
+- **timeout/cancel**：每请求 `ProviderRequestOptions{signal, timeoutMs, maxRetries, maxRetryDelayMs(默认60s，服务器要求更长延迟→立即失败交上层), fetch(自定义 fetch 注入), env(provider 级环境覆盖), headers(null=删默认头), onPayload, onResponse}` + `StreamOptions{temperature, samplingParams(任意 body 参数直merge——llama.cpp/vLLM 定制点), maxTokens, transport:"sse"|"websocket"|"websocket-cached"|"auto", cacheRetention, sessionId, websocketConnectTimeoutMs, metadata}` + `SimpleStreamOptions{toolChoice, reasoning, deferred, thinkingBudgets}`（ai/src/types.ts:124-243,314-321）。coding-agent 侧默认值来自 settings：`httpIdleTimeoutMs`（0→2^31-1 技巧，sdk.ts:315-321）、`providerRetry{timeoutMs,maxRetries,maxRetryDelayMs}`、`websocketConnectTimeoutMs`（settings-manager.ts:890-914）。
+- **重试**：pi-ai `utils/retry.ts` 词表分类（retryable：overloaded/rate-limit/429/5xx/524/网络词表含 ENOTFOUND/socket hang up 等；non-retryable：quota/billing/订阅限额，:7-60+）；`isRetryableAssistantError` 供 AgentSession 自动重试（S1.4）。**SDK 客户端 maxRetries 与 AgentSession 层 auto-retry 双层**（settings.retry 默认 enabled/maxRetries 3/baseDelayMs 2000 → 2s/4s/8s，settings-manager.ts:31-33）。
+- **fallback 判定**：**pi 无 FallbackProvider 同形物**（grep 全仓无 provider 级 failover 链；`AnthropicAllowedFallbackModel` 是 Anthropic wire 协议自身的 fallback 模型字段，ai/src/types.ts:307,723，与上游 `agents.defaults.fallback_models` 语义无关）。模型失败转移需上层自建：可行挂点 = 自定义 `streamFn`（Agent.streamFunction 可替换，agent.ts:181,222）或 `shouldStopAfterTurn`+`setModel`+`continue()` 组合，或扩展 `registerProvider` 包一个内部做 failover 的 provider【推断：由接口面推得的构造方案，非仓内现成物】。
+- **deferred/长任务**：`streamDeferred/fetchDeferred/cancelDeferred`（provider 可选能力，model-runtime.ts:647-679）+ `SimpleStreamOptions.deferred:{window:"15m"|"1h"|"24h"}`（ai/src/types.ts:317-318）+ harness `run_suspend{deferred}`（S1.4）——上游无同形物，是 pi 多出的能力面（OpenAI Codex 类异步任务）。
+- **radius**：内置 gateway provider（`radiusProvider({id,name,gateway})`，models.json 里 `oauth:"radius"`+baseUrl 触发动态实例化，model-runtime.ts:186-188,219-234）——pi 自家的多 provider 网关【推断：由 configureRadiusProviders 逻辑判断】。
