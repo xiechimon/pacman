@@ -219,3 +219,43 @@ pi monorepo 相关包（`packages/`）：
 - **fallback 判定**：**pi 无 FallbackProvider 同形物**（grep 全仓无 provider 级 failover 链；`AnthropicAllowedFallbackModel` 是 Anthropic wire 协议自身的 fallback 模型字段，ai/src/types.ts:307,723，与上游 `agents.defaults.fallback_models` 语义无关）。模型失败转移需上层自建：可行挂点 = 自定义 `streamFn`（Agent.streamFunction 可替换，agent.ts:181,222）或 `shouldStopAfterTurn`+`setModel`+`continue()` 组合，或扩展 `registerProvider` 包一个内部做 failover 的 provider【推断：由接口面推得的构造方案，非仓内现成物】。
 - **deferred/长任务**：`streamDeferred/fetchDeferred/cancelDeferred`（provider 可选能力，model-runtime.ts:647-679）+ `SimpleStreamOptions.deferred:{window:"15m"|"1h"|"24h"}`（ai/src/types.ts:317-318）+ harness `run_suspend{deferred}`（S1.4）——上游无同形物，是 pi 多出的能力面（OpenAI Codex 类异步任务）。
 - **radius**：内置 gateway provider（`radiusProvider({id,name,gateway})`，models.json 里 `oauth:"radius"`+baseUrl 触发动态实例化，model-runtime.ts:186-188,219-234）——pi 自家的多 provider 网关【推断：由 configureRadiusProviders 逻辑判断】。
+
+---
+
+## S5 MCP 判定
+
+- **pi 核心零 MCP**：coding-agent/agent/ai 三包源码 grep "mcp" 仅两处无关命中（`coding-agent/src/utils/tool-result-images.ts:15` 注释提 "MCP bridges" 作为图片来源例子；anthropic oauth 无关文件）。官方文档 pi.dev/docs/latest/sdk 与 /extensions 均**不含 MCP 字样**（WebFetch 实测 2026-09-18）；extensions 文档定位「Extensions are TypeScript modules that extend pi's behavior」，即**扩展体系是 pi 唯一官方可扩展机制**。
+- **社区一等替代品**：`pi-mcp-adapter`（npm，v2.34.0，2026-09-14 发布；repo nicobailon/pi-mcp-adapter：1490 stars、2026-09-15 push、MIT、10 open issues，gh api 实测 2026-09-18）。以 pi extension 形式把 MCP server 的 tools 桥接进 pi（keywords 含 `pi-package`，走 pi 自带 npm/git 包管理器分发，`coding-agent/src/core/package-manager.ts:101,139`）。周边生态已出现（`pi-figma-remote-auth`、`@geohar/pi-mcp-combiner`，npm search 实测）。
+- **判定**：MCP = 「非一等、社区成熟」。对照 r3 S3（nanobot 内建 MCPProvider：三类 wrapper、OAuth、SSRF/DNS pinning、重连、webui presets）——pi 核心完全没有这层；若政策需要 MCP，路线是 a) 依赖 pi-mcp-adapter（社区维护、版本跟随 pi 快）或 b) 作者用官方 `@modelcontextprotocol/sdk` 自写 defineTool 桥（可控但自担 r3 S3 全部语义：超时/瞬态重试/terminated 重连/命名 sanitize/OAuth）。pi 扩展 `registerTool` 的动态注册/注销面足够承载 wrapper 模式（S2.1）。
+
+---
+
+## S6 版本策略 / license / Node 矩阵
+
+- **发布节奏（gh api releases 实测 2026-09-18）**：极快。2026-06 以来 minor 约每周一个：0.80.0（6/23）→ 0.81.0（7/21）→ 0.82.0（7/24）→ 0.83.0（7/29）→ 0.84.0（8/6）→ 0.85.0（9/4），patch 高频（0.80.x 十个、0.79.x 十个）。latest = v0.85.1（9/5，研究日 13 天前）。repo pushed_at 2026-09-18（当天），106,689 stars。
+- **0.x breaking 常态化**：v0.85.0 release notes 自带 "Breaking Changes" 段（gh api 实读）：`AgentHarness`/v2 session **从 experimental 子路径提升为 pi-agent-core 默认导出并删除 experimental 子路径**；删除 legacy JSONL/in-memory repo API（改 v4 `JsonlSessionRepo`/`InMemorySessionRepo` + `SessionRepo` 契约）；`ModelsStreamTransforms`→`ModelsRequestTransforms` 更名。0.81 曾把 `streamFn` 变为必填（`coding-agent/src/core/sdk.ts:34-37` "Preserve the pre-0.81 fallback" 注释为证）。仓内无 CHANGELOG 文件，变更记录只在 GitHub Releases。
+- **对本票的含义**：harness 于 0.85.0（2026-09-04）刚转正——「AgentSession 稳定面 + harness 新默认导出」并存是当前快照；钉版策略必须精确到 patch（craft 即钉 `0.85.1` 三等号，见 S7），升级要过 release notes 的 Breaking 段。
+- **license**：MIT（`LICENSE`，Copyright (c) 2025 Mario Zechner）。全 monorepo 包一致【推断：以 coding-agent package.json `"license":"MIT"` 与根 LICENSE 为据，未逐包核对】。
+- **Node 支持矩阵**：所有包 `engines.node >= 22.19.0`（十处 package.json grep 实测一致）；npm dist-tag `legacy-node20 → 0.74.2`（冻结线，npm view 实测）。craft 用 bun 构建 target bun（S7）。
+
+---
+
+## S7 嵌入实例近读：craft-ai-agents/craft-agents-oss `packages/pi-agent-server`
+
+- **形态**：`@craft-agent/pi-agent-server@0.13.3`（Apache-2.0），「Out-of-process Pi agent server communicating via JSONL over stdio」——**没用 pi 的 RPC mode**，自建 stdio JSONL 协议与宿主进程通信；bun build --target=bun；依赖**精确钉版** `@earendil-works/pi-{coding-agent,agent-core,ai}: 0.85.1`（package.json 实读 2026-09-18，gh api main 分支）。
+- **会话装配**（`src/index.ts:583-757` ensureSession）：
+  - 全内存模型运行时：`ModelRuntime.create({credentials: InMemoryCredentialStore, modelsPath: null, modelsStore: InMemoryModelsStore})`——无 auth.json/models.json 文件 IO、create 时不联网（index.ts:544-548）；宿主凭据经 `adaptCredentialForPiSdk` 写入 store（`credentials.modify(provider,…)`，index.ts:527-540）；模块级缓存 runtime+registry，注释明确「RuntimeCredentials 读穿 store 不缓存，token_update 立即可见」（index.ts:503-512）。
+  - 自定义 openai/anthropic-compat 端点：`registry.registerProvider('custom-endpoint', {baseUrl, apiKey, api, authHeader:true, models:[…]})`；**registerProvider 是整体替换语义**，craft 自维护全量 model id Set 每次全量传（index.ts:461-497）。
+  - 工具面：**不用 pi 内置实例**，重新 `createReadToolDefinition(cwd)` 等 7 个 + 自制 web_search/web_fetch（pi 无内置 web 工具）+ proxy tools，全部 `wrapToolsWithHooks` 后经 `customTools` 传入，`tools` allowlist 给全名单（index.ts:619-650）。注释记录 SDK 0.70.0 契约坑：「customTools 收 ToolDefinition[]；tools 必须是 string[]，传对象会静默零工具；同名 custom tool 在 `_refreshToolRegistry` 覆盖内置实现」（index.ts:619-627）——与 S2.1 源码判定一致。
+  - 权限：wrapSingleTool 内 execute 前 `requestPreToolUseApproval(sdkToolName, input, toolCallId)` stdio 握手到宿主进程（可改参/可 block），execute 后大响应摘要（阈值随 `agent.state.model.contextWindow` 动态取）（index.ts:788-880+）。
+  - 设置隔离：`createCraftSettingsManager` = `SettingsManager.inMemory(buildCraftPiSettings())`，注释明确动机：默认 SettingsManager 会合并 `<cwd>/.pi/settings.json`（**工作目录里的 repo 能翻转 retry/compaction/tool 默认值**）并把 SDK 侧写入落到全局文件——嵌入式场景两者都不要（session-settings.ts 头注释实读）。retry 双层显式钉死：agent 层 {enabled,maxRetries:4,baseDelayMs:2000} + provider 层 {maxRetries:2,maxRetryDelayMs:60000}（Pi SDK provider 层默认 0）（session-settings.ts:33-52）。
+  - 扩展隔离：`agentDir` 指到会话目录下临时 `.pi-agent/`，防加载 `~/.pi/agent` 全局扩展（index.ts:652-658）。
+  - 会话续跑/分支：`SessionManager.continueRecent(cwd, sessionDir)`（每 Craft 会话独立 `.pi-sessions/` 目录，跨子进程重启续跑）；分支 = `forkFrom(parentFile)` + `branch(anchorEntryId)`（「Pi 版 resumeSessionAt」，anchor 不存在则 fail-closed 拒绝降级为新会话）（index.ts:660-695）。
+  - 临时会话（queryLlm/标题/摘要）：`createAgentSession({sessionManager: SessionManager.inMemory(), …})` + 独立小 retry 预算 + deadline（index.ts:1017-1028；session-settings.ts:56-75）。
+- **踩坑清单（带 issue 号的一手证据，全部实测于其 main 分支源码注释）**：
+  1. **systemPrompt 无公开 per-turn API**：`state.systemPrompt` 直接赋值会在每次 `session.prompt()` 被 `_baseSystemPrompt` 冲掉；craft 的 workaround 是同时钉三个内部字段 `state.systemPrompt`/`_baseSystemPrompt`/`_rebuildSystemPrompt`（system-prompt-override.ts 全文实读；「Remove once the SDK exposes a public per-turn system-prompt API」；同款模式指向 OpenClaw pi-embedded-runner）。0.85.1 源码复核：`_systemPromptOverride` 仍 private（agent-session.ts:1297-1305），公开面只有扩展 `before_agent_start` 返回 systemPrompt（extensions/types.ts:1156-1160）——**缝仍在**。
+  2. **message_end 先于持久化**：SDK 在 `appendMessage` 之前同步 emit `message_end`（0.85.1 复核：agent-session.ts:667-691 顺序未变），事件时刻 `getLeafId()` 还指向上一条 → 用它做 branch anchor 会把下一轮变成 assistant 消息的兄弟、从 LLM 视野里丢掉 assistant 回复（craft-agents-oss#782）。craft 用 `queueMicrotask` 在 append 后读 leaf 再补发 `pi_turn_anchor` 事件（index.ts:1208-1260）。
+  3. **压缩竞态**：wrapper 侧并行 `session.compact()` 与 SDK `_runAutoCompaction` 竞态导致 AbortController 崩溃（craft-agents-oss#464）；现在 prompt/compact 前都 `waitForCompaction(session)` 串行化（index.ts:1429-1432,1571-1584），并明确「overflow 恢复交给 SDK 的 compact-and-retry-once，不自建」（index.ts:1440-1446 注释）。
+  4. **并发 prompt 抛错**：会话流式期间新消息必须 `streamingBehavior:'followUp'` 排队，否则 "Agent is already processing"（index.ts:1433-1437）——印证 S1.6#1 判定。
+  5. **工具面变更 = 整会话重建**：动态改 tools 不走 `_buildRuntime()`（私有），而是 dispose + `continueRecent()` 重建（index.ts:1401-1412）。
+- **对本票的含义**：craft 验证了「纯 SDK（无扩展文件）+ 全内存 services + customTools 同名覆盖 + stdio 自建协议」的嵌入路线可行且已生产化；同时其 workaround 清单就是 AgentSession 层公开面的**缝清单实证**（systemPrompt、事件-持久化顺序、压缩竞态、工具热更）。
