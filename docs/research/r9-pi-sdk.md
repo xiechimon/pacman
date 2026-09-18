@@ -44,7 +44,7 @@ pi monorepo 相关包（`packages/`）：
 **harness 事件**（`HarnessEventPayload`，`agent/src/harness/agent-harness.ts:258-340`）：
 `run_start/run_resume/run_suspend{deferred}/run_end{status:completed|aborted|failed}/operation_abort{steer,followUp}`、`fault`、`handler_error`、`turn_start/turn_end`、`retry_scheduled/retry_start/retry_end`、`message_start{recovery?}/message_update{frame?}/message_end{entryId?}`、`tool_start/tool_update/tool_end{terminate}`、`entry_added{entry}`、`queue_update`、`value_update`、`config_update`。带 `lane`/`runId` 维度，且 message 事件可标 `recovery:true`（恢复期合成消息，见 S1.4）。
 
-对照 r2 §3.2（nanobot Progress/StreamDelta/StreamEnd/TurnEnd/Goal…）：pi 事件粒度**更细且类型化**（message_update 携带 provider 级 AssistantMessageEvent 增量），无 goal/runtime-admitted 类事件（nanobot 产品语义，pi 无处安放也不需安放——判定见 S7）。
+对照 r2 §3.2（nanobot Progress/StreamDelta/StreamEnd/TurnEnd/Goal…）：pi 事件粒度**更细且类型化**（message_update 携带 provider 级 AssistantMessageEvent 增量），无 goal/runtime-admitted 类事件（nanobot 产品语义，pi 无处安放也不需安放——判定见 S8）。
 
 ### S1.2 消息排队（steering / follow-up / nextTurn）
 
@@ -111,7 +111,7 @@ pi monorepo 相关包（`packages/`）：
 
 补充判定（r2 附录其余观察）：
 - **持久化两层节奏**（r2 附3：全量原子重写 + sidecar checkpoint）：AgentSession 层是**单节奏 append**——每条 message_end 即 `sessionManager.appendMessage`（增量 append 到 JSONL tree，非全量重写，见 S3）；无 sidecar。harness 层是事务性 write batch（`session/jsonl/storage.ts:204,230` replayCommitted）+ pending entry 机制（`drive/tools.ts:250-260` pendingEntry/setValue）——两层节奏的 durable 等价物。
-- **会话缓存/LRU、bus 无界队列、AutoCompact TTL 空闲压缩**：pi 无对应物（单活跃会话模型使 LRU 无意义；空闲 TTL 压缩不存在——压缩只在运行边界触发）。dream/memory 子系统 pi 完全没有（见 S7 缺口）。
+- **会话缓存/LRU、bus 无界队列、AutoCompact TTL 空闲压缩**：pi 无对应物（单活跃会话模型使 LRU 无意义；空闲 TTL 压缩不存在——压缩只在运行边界触发）。dream/memory 子系统 pi 完全没有（见 S8 缺口）。
 
 ---
 
@@ -156,7 +156,7 @@ pi monorepo 相关包（`packages/`）：
 - **沙箱注入点结论**：上游 bwrap/seatbelt 矩阵（r3 S1 sandbox.py 的命令字符串包装语义）有**两个官方挂点**：
   1. `BashOperations`——docstring 明言 "Override these to delegate command execution to remote systems (for example SSH)"（tools/bash.ts:55-58）。作者可实现 `createSandboxedBashOperations()`：把 command 包进 `bwrap …` / `sandbox-exec -p …` 再交给本地 spawn，即完整复刻 r3 `_wrap_<name>` 后端表；`AgentSession.executeBash` 也接受 per-call `options.operations`（agent-session.ts:2981-3000），`user_bash` 扩展事件可返回替换 operations 或整体接管（extensions/types.ts:1136-1142）。
   2. `BashSpawnHook`——更轻：只改 `{command, cwd, env}` 三元组（tools/bash.ts:158-192），包装命令字符串即可，无需自管进程。
-- 本地默认实现 `createLocalShellOperations`：detached spawn（非 win32）、进程树 kill（`killProcessTree`）、timeout→kill 进程树、abort→kill、cwd 存在性检查、输出经 `OutputAccumulator` 截断（尾 `DEFAULT_MAX_LINES` 行或 `DEFAULT_MAX_BYTES`，全量存 temp 文件并给路径）（tools/bash.ts:79-146,235,307-335）。**无 deny patterns、无路径围栏、无 SSRF 检查**——r3 的 `_guard_command` 全套（allow/deny、path traversal、内网 URL）在 pi 内置 bash 不存在；需要作者在 Operations/spawnHook/beforeToolCall 三选一中自建（判定见 S7）。
+- 本地默认实现 `createLocalShellOperations`：detached spawn（非 win32）、进程树 kill（`killProcessTree`）、timeout→kill 进程树、abort→kill、cwd 存在性检查、输出经 `OutputAccumulator` 截断（尾 `DEFAULT_MAX_LINES` 行或 `DEFAULT_MAX_BYTES`，全量存 temp 文件并给路径）（tools/bash.ts:79-146,235,307-335）。**无 deny patterns、无路径围栏、无 SSRF 检查**——r3 的 `_guard_command` 全套（allow/deny、path traversal、内网 URL）在 pi 内置 bash 不存在；需要作者在 Operations/spawnHook/beforeToolCall 三选一中自建（判定见 S8）。
 - bash 错误语义映射：exit≠0 → **throw** `Error(output + "Command exited with code N")`（tools/bash.ts:364-366）→ loop 转 isError result；abort → throw "…Command aborted"；timeout → throw "…timed out after Ns"（:349-359）。对照上游 `ToolResult.error`：pi 的 `isError:true` + content 文本即同形物；`details` 承载结构化截断信息（`BashToolDetails{truncation,fullOutputPath}`，:50-53）。
 - 流式部分结果：`onUpdate` 节流推送（BASH_UPDATE_THROTTLE_MS，tools/bash.ts:255-299）→ `tool_execution_update` 事件。
 - 文件工具写序列化：`withFileMutationQueue`（tools/file-mutation-queue.ts，导出 index.ts:20）——文件变更排队【推断：跨 tool 实例的 mutation 串行化，未逐行读】。
@@ -259,3 +259,81 @@ pi monorepo 相关包（`packages/`）：
   4. **并发 prompt 抛错**：会话流式期间新消息必须 `streamingBehavior:'followUp'` 排队，否则 "Agent is already processing"（index.ts:1433-1437）——印证 S1.6#1 判定。
   5. **工具面变更 = 整会话重建**：动态改 tools 不走 `_buildRuntime()`（私有），而是 dispose + `continueRecent()` 重建（index.ts:1401-1412）。
 - **对本票的含义**：craft 验证了「纯 SDK（无扩展文件）+ 全内存 services + customTools 同名覆盖 + stdio 自建协议」的嵌入路线可行且已生产化；同时其 workaround 清单就是 AgentSession 层公开面的**缝清单实证**（systemPrompt、事件-持久化顺序、压缩竞态、工具热更）。
+
+---
+
+## S8 缺口清单 —— 上游语义在 pi 的安放判定
+
+判定档位：**用 pi**（原生同形物）/ **外置-host**（宿主编排层自建，用 pi 公开原语）/ **外置-tool**（defineTool/customTools 外置）/ **重写**（pi 无接缝，需复制实现或换 harness 层）/ **放弃**（语义在 pi 模型下无意义）。逐条含 r 出处。
+
+### A. agent core（对照 r2）
+
+| # | 上游语义 | pi 现状 | 判定 |
+|---|---|---|---|
+| A1 | MessageBus + 多渠道编排（r2 §1, §5） | 无。pi 是单会话实例模型，无 bus/channel 概念 | **外置-host**：宿主维护 inbound/outbound 队列与 channel adapter，pi 只当「每会话一个 AgentSession」的执行原语 |
+| A2 | per-session 串行锁 + 全局并发闸（r2 §5 锁清单） | 形变：Agent activeRun 守卫（并发 prompt 抛错，agent.ts:351-355）；无跨会话锁表/semaphore | **外置-host**：key→AgentSession 映射 + 宿主排队；harness lane（LaneBusy）是 durable 替代 |
+| A3 | mid-turn 注入 pending queue（有界 20、QueueFull 回退、finally 回发，r2 §5） | steering/followUp 无界、无回发（S1.2） | **部分放弃**：有界与回发语义宿主补（订阅 queue_update 自行限流）；harness InboxItem 有持久化队列（agent-harness.ts:229-247） |
+| A4 | runtime checkpoint sidecar（awaiting_tools/tools_completed/final_response，r2 §3.3, §4.8） | AgentSession 层无；harness 事务性 operation state 同形（S1.4, S3.2） | **用 harness** 或 **放弃**（接受 pi append-only + 宿主层中断物化） |
+| A5 | 中断物化不重放（recovery.py "Error: Task interrupted"，r2 §4.6） | AgentSession 层无（sequential abort 留孤儿 toolCall，S1.6#2/#3）；harness 原生（INTERRUPTION_MARKER + replay:"safe" 双向声明才重放，drive/tools.ts:44-45,520-537） | **用 harness**；AgentSession 路线则 **外置-host**（重启后读 transcript 给孤儿 toolCall 补合成 toolResult——公开 `transformContext` 回调即可做且不污染落盘，agent-loop.ts:286-290） |
+| A6 | tool_call 配对校验/落盘清洗（未声明/重复 result 丢弃、base64 图片占位，r2 §3.3） | 部分：deferred flush 防插队（agent-session.ts:1505-1510,3034-3044）、null content 归一、图片有 auto-resize/blockImages 治理（sdk.ts:267-302）；无孤儿修复 | **外置-host**（同 A5 transformContext 点） |
+| A7 | SubagentManager（spawn/run_inline、容量 sem、独立 registry、bus 回注、300s terminal wait，r2 §5） | 无任何 subagent 原语（grep 实测 core 无 subagent） | **外置-tool + host**：spawn tool = 新建 `createAgentSession({sessionManager: inMemory()})` 跑完返回（craft 的 ephemeral session 即此模式，index.ts:1017-1090）；后台并发/回注由宿主编排 |
+| A8 | Memory/Dream 子系统（MEMORY.md/history.jsonl/Dream cron/SOUL/USER，r2 §3.4） | 完全无 | **放弃或纯作者**：与 pi 无耦合点，宿主自建（文件工具用 pi read/write/edit 即可） |
+| A9 | AutoCompact 空闲 TTL 后台归档（r2 §5） | 无（压缩只在运行边界触发，S1.4） | **外置-host**：idle 定时器 → 公开 `session.compact()`；或放弃 |
+| A10 | max_iterations=200 + sustained-goal 续跑（r2 §3.5；r3 goal turns） | 无迭代上限原生等价物；loop 由「无 tool call 且无排队」终止 | **外置-host**：`shouldStopAfterTurn` 计数（公开回调）；goal 语义放弃或宿主实现 |
+| A11 | provider_state（Responses 有状态会话续传，r2 §3.3/§3.5） | 无。pi 消息即状态（thinking signature 内嵌消息，transform-messages.ts:96-120）；pi-ai 另有 sessionId/websocket-cached/deferred 承担 cache 亲和 | **放弃**（模型不同） |
+| A12 | TurnDelivery/流 segment/渠道路由（r2 §3.2） | 无。pi 事件即流（message_update 带增量），路由不存在 | **外置-host** |
+| A13 | contextvars turn 隔离（r2 §5；r3 RequestContext） | 无 AsyncLocalStorage；显式 ctx 参数 + 实例隔离 + PI_* env（S1.6#6） | **放弃**（机制替换，语义已达成） |
+| A14 | AgentRunSpec 回调面（checkpoint/injection/continuation/consolidation，r2 §3.5） | 同形物齐全（S1.5/S1.6#5），唯 checkpoint 回调缺（→A4） | **用 pi** |
+| A15 | 会话缓存 LRU/weak overflow、file lock 跨进程（r2 §5） | 无（单活跃会话 + append-only 无锁，S3.1） | **放弃**（pi 文件模型下无意义）；多进程写同一 session 文件需宿主自己避免【推断：无锁 append 并发写会交错，pi 未设防】 |
+
+### B. tools / MCP / cron（对照 r3）
+
+| # | 上游语义 | pi 现状 | 判定 |
+|---|---|---|---|
+| B1 | 沙箱矩阵 bwrap/seatbelt + deny patterns + 路径围栏 + SSRF（r3 S1） | bash 裸跑无任何围栏（S2.2）；但 **BashOperations/BashSpawnHook/各文件工具 Operations 接口是官方注入缝**（bash.ts:55-77,158-205） | **外置-tool**：作者实现 sandboxed Operations（命令包装 = r3 `_wrap_<name>` 平移）；read/write/edit 围栏经 Operations 或 `tool_call` hook（可 block/改参，extensions/types.ts:939-954）。**不需 fork** |
+| B2 | web_search/web_fetch（13 provider、SSRF、Jina/readability，r3 S2 §5） | 无内置 web 工具 | **外置-tool**（craft 已示范 createSearchTool/createWebFetchTool，index.ts:604-616） |
+| B3 | exec_session/list_exec_sessions（长任务进程会话、stdin、wait_for/until_exit，r3 S1） | 无（bash 一次性 + timeout；deferred 是 provider 侧异步响应，不同物） | **外置-tool**：作者实现 session manager tool |
+| B4 | MCP 子系统（三类 wrapper、OAuth、重连、presets，r3 S3） | 核心零 MCP（S5） | **外置**：pi-mcp-adapter（社区，活跃）或作者以官方 MCP SDK + `registerTool` 自建桥；r3 S3 的超时/瞬态/重连语义全部自担 |
+| B5 | cron 子系统 + heartbeat（jobs.json/action.jsonl/runs 审计/defer-until-idle，r3 S4） | 无 | **纯作者**：宿主调度器 + `session.prompt()/steer()` 注入即等价 `submit_cron_turn`；defer-until-idle = 宿主看 `isIdle`/queue_update |
+| B6 | message/sessions/goal/my/cli_apps/image_generation 工具族（r3 S2 §8-14） | 全无 | **外置-tool**（message/sessions 依赖宿主 bus 与 SessionManager.list 数据面）；generate_image 可用 pi-ai Images API 做客户端（`ai/src/images.ts`、`builtinImagesProviders()`，providers/all.ts:144-149）；goal/my/cli_apps 放弃或作者 |
+| B7 | tool contract 系统提示注入（r3 S1 模板） | pi 有 per-tool `promptSnippet/promptGuidelines` + SYSTEM.md/APPEND_SYSTEM.md 资源（trust 门控，trust-manager.ts:30-38） | **用 pi** |
+| B8 | 工具错误引导语 "[Analyze the error above…]"、错误分级计数（r3 S1） | 无 | **外置**：`tool_result`/afterToolCall hook 统一追加；分级计数宿主自建。或放弃 |
+| B9 | apply_patch 多文件原子补丁（r3 S2 §3） | pi 是 edit（单文件 oldText/newText 替换）+ write；无多文件原子补丁 | **外置-tool**（作者平移 apply_patch 为 defineTool）或放弃（edit/write 覆盖多数场景） |
+
+### C. providers / config / security（对照 r4）
+
+| # | 上游语义 | pi 现状 | 判定 |
+|---|---|---|---|
+| C1 | provider 自动选择算法（keyword/前缀/本地 fallback 链，r4 §1） | 无。显式 model 选择 + `getAvailable()`（有 auth 的模型集）+ `resolveCliModel` 辅助（coding-agent/src/index.ts:177-184） | **外置-host**：模型解析归作者（craft 示范 resolvePiModel + provider 兼容校验，index.ts:700-730） |
+| C2 | FallbackProvider 失败转移（r4 §3） | **无同形物**（S4.1 判定） | **外置**：包装 provider（registerProvider + 自定义 streamSimple 内部 failover）或自定义 `agent.streamFunction`；或放弃 |
+| C3 | ProviderSpec 数据表（~35 wire 怪癖开关，r4 §1.3） | pi 对应物 = 生成代码 catalog（`*.models.ts` + `models.generated.ts`）+ `Model.compat` 字段 + per-provider 实现文件（~40 家） | **用 pi**（怪癖表已内化在 pi-ai，且由 pi 维护更新——这正是「有的用 pi」最大红利） |
+| C4 | config 单树 + ${VAR} 插值 + 热更 watcher（r4 §4） | pi 多文件：settings.json（全局+项目 deep merge）/models.json/auth.json/trust store；$ENV/!command 插值在 provider 注册（extensions/types.ts:1518-1519）；热更 = 手动 `SettingsManager.reload()`/`session.reload()`，无 watcher | **用 pi 形态 + 外置-host**（作者 config→pi settings 映射；watcher 宿主 fs.watch→reload()）；嵌入式建议 craft 路线 `SettingsManager.inMemory()` 全屏蔽文件面 |
+| C5 | SSRF/DNS pinning/workspace 围栏（r4 §5.1-5.2） | 无。pi 安全模型 = **project trust**（项目供给的 settings/extensions/skills/prompts/themes/SYSTEM.md 需信任门控，trust-manager.ts:30-38 + `project_trust` 事件）——供应链防护而非运行时围栏 | **放弃 pi 侧 + 作者自建**（SSRF 在作者 web tools 内实现；路径围栏见 B1） |
+| C6 | OAuth provider 面（codex/copilot/grok，r4 §1.5） | pi 原生更多：anthropic（订阅 OAuth）/openai-codex/github-copilot/xai/kimi-coding/openrouter/radius/device-code/pkce（ai/src/auth/oauth/ 目录实测） | **用 pi** |
+| C7 | Langfuse 观测（r4 §2.1） | pi 有 `before_provider_request/after_provider_response` + onPayload/onResponse + `@earendil-works/pi-telemetry`（OTel 风格 span/event schema，agent/src/index.ts:2-40） | **用 pi** |
+| C8 | CLI 命令面/onboard（r4 §6） | pi `main()` 自带完整 CLI（interactive/print/rpc 三 mode）；嵌入场景通常绕开 | **放弃**（宿主自建入口；pi CLI 仅开发者本地用） |
+
+### D. 需「重写/半 fork」的项（无纯 fork 必要项）
+
+| # | 项 | 说明 |
+|---|---|---|
+| D1 | SessionManager 自定义存储后端 | 具体类无 storage 抽象（S3.1）；三条路：a) `inMemory()` + 宿主订阅 `entry_appended`/事件自行持久化；b) 复制 SessionManager 公开面重写；c) **harness 层有官方 `SessionRepo` 契约**（v4 JsonlSessionRepo/InMemorySessionRepo 实现之，v0.85.0 release notes）→ durable 路线的存储可插拔。判定：**重写（非 fork pi）** |
+| D2 | per-turn systemPrompt 公开 API | 缝（S7 踩坑1）：workaround = inline extension `before_agent_start` 返回 systemPrompt（公开扩展面）或 craft 式内部字段钉写。判定：**外置（inline extension），无需 fork**；可向上游提 API 请求 |
+| D3 | message_end 先于持久化的事件时序 | craft#782 workaround（queueMicrotask 读 leaf）。判定：**接受 + host workaround**；harness 事件带 entryId 无此缝（agent-harness.ts message_end{entryId}） |
+
+### E. pi 多出上游没有的能力（政策「有的用 pi」白赚项）
+
+session tree（分支/fork/树导航/弃分支摘要/label）、harness durable runtime（事务、恢复、deferred/suspend、InboxItem 持久队列）、RPC mode + JSON 事件流（`runRpcMode`/`JsonAgentSessionEvent`，coding-agent/src/index.ts:348-365）、extension 生态 + npm/git 包管理器、skills/prompt templates/SYSTEM.md 资源体系（trust 门控）、project trust、pi-ai Images API、pi-telemetry、HTML/JSONL 会话导出、TUI 组件库、deferred responses（15m/1h/24h 窗口）、radius gateway provider、~40 家 provider catalog 由上游持续生成更新（pi.dev 远程 catalog 4h 刷新）。
+
+---
+
+## S9 摘要（设计票改写输入）
+
+1. **必保语义存活率**（r2 六项点名清单）：AgentRunSpec 回调面 = 原生齐全；中断物化不重放 + checkpoint = **harness 层原生**（0.85.0 刚转正为默认导出）、AgentSession 层缺；per-session 串行 = 形变为实例守卫（并发抛错而非排队），跨会话编排整体是宿主职责；tool_call 配对 = 防插队有、孤儿修复无（公开 `transformContext` 是干净的外置修复点）；concurrency_safe 分批 = 形变为 per-tool `executionMode` 且批粒度更粗（一个 sequential 拖全批）；contextvars 隔离 = 机制替换（显式 ctx + 实例隔离），语义达成。**零项硬缺口，全部可外置安放，无需 fork pi。**
+2. **两层 SDK 是本票核心结构事实**：AgentSession（稳定、产品化、缝多）vs AgentHarness（durable、事务、恢复重放原生、0.85.0 转正、coding-agent 内仅 experimental 消费）。设计票应先决路线：走 AgentSession = craft 已验证 + workaround 清单现成；走 harness = 上游语义同形物最多但产品接线自研（server/protocol 包可参考）。
+3. **沙箱注入点结论**：`BashOperations`（docstring 明言可委托远程执行）与 `BashSpawnHook`（改 command/cwd/env 三元组）是官方缝，r3 bwrap/seatbelt 命令包装矩阵可平移；文件工具同理有 Operations 接口；`tool_call` hook 可 block/改参兜底。**pi 内置 bash 无任何围栏（无 deny patterns/路径检查/SSRF），默认裸跑**——上游整套 guard 必须作者外置。
+4. **MCP 判定**：核心零 MCP、官方文档零提及；社区 `pi-mcp-adapter@2.34.0`（1490 stars、研究日前 3 天 push、MIT、经 pi 包管理器分发）是事实标准。政策建议：MCP 归「作者/社区」栏，桥接实现二选一（依赖 adapter vs 官方 MCP SDK 自建 defineTool 桥）。
+5. **缺口清单头部**（全表 S8）：cron 子系统、MessageBus/多会话编排、Memory/Dream、web tools、exec_session、沙箱围栏、FallbackProvider、subagent、SSRF——全部判「外置-host/外置-tool/纯作者」；仅 SessionManager 自定义后端判「重写」（harness `SessionRepo` 契约是正路）。
+6. **版本策略警示**：0.x minor 周更且带 Breaking 段（0.85.0 移 experimental 子路径/删 legacy repo API）；钉版必须精确到 patch（craft 钉 0.85.1）；Node >=22.19.0（legacy-node20 冻结在 0.74.2）；MIT。
+7. **craft 实证的四条缝**（S7 踩坑清单）：systemPrompt per-turn 无公开 API（内部字段钉写 workaround，OpenClaw 同款）、message_end 先于持久化（craft#782）、压缩竞态（craft#464，waitForCompaction 串行化）、工具热更需整会话重建。设计票若走 AgentSession 路线，这四条 workaround 应直接进作者层需求。
+8. **「有的用 pi」最大红利**：pi-ai ~40 家 provider wire 怪癖表 + 生成式 catalog + pi.dev 远程 catalog 更新 + OAuth 全家桶（含 anthropic 订阅）+ 重试词表分类——对应 r4 §1.3/§2 的整块自研成本可直接删掉。
