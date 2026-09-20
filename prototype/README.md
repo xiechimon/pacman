@@ -43,6 +43,16 @@ python3 -m http.server 8742
   目测手绘 inline SVG（lucide 风 stroke），仅 r1 §6 记录的 3 枚 path（check/X/clock）为实测原文。
   逐枚形状/stroke 偏差是叠图鬼影的主要来源之一。
 
+## r5 补拍后（第二轮，#48 素材）
+
+- 图标：45 枚目测手绘 SVG 已全量替换为 `icons.json` 真 markup（r5 dump，viewBox 24 单源、currentColor 主题无关）。
+- 几何改按 r5 DOM/像素实测：content-left 43、列宽 307/gap 15、列底固定 y=840（banner 有无决定列顶 62/145）、
+  面板 560（DOM）但 fresh 截图实测 ~492 —— **面板宽随状态变，开放项**；顶栏标题居中公式不成立
+  （r5-02 中心 1013、r5-05 中心 600，均非几何中心），暂按 02 的 65.3% 硬编码 —— 开放项。
+- 新基线 SSIM：看板 light state=r5 vs r5-02（去 toast 带）**0.911**；fresh 面板 vs r5-05 **0.915**。
+- 站点漂移实锤：r2（09-19）与 r5（09-20）同元素不同位（列 left 276→283、标题居中→偏右、banner 消失）。
+  **像素平价必须钉死单一截图批次为基线**，否则验收标准随上游漂移。
+
 ## 像素级复刻难点清单（票面产出 1）
 
 1. **字体许可**：Inter / JetBrains Mono 为 OFL 可内嵌；但 Agent 头像字体 Lorelei 仅 CC0 素材含 attribution 义务（r1 §2.2），

@@ -10,12 +10,12 @@
   header button { background: #222; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 4px 10px; font: inherit; cursor: pointer; }
   header button.on { background: #4f46e5; border-color: #4f46e5; }
   header input { width: 160px; }
-  #stage { position: relative; width: 1280px; height: 800px; margin: 12px auto; outline: 1px solid #333; overflow: hidden; background: #18181b; }
-  #stage iframe { position: absolute; inset: 0; width: 1280px; height: 800px; border: 0; }
-  #stage img.real { position: absolute; left: 0; top: 0; width: 1280px; height: 800px; object-fit: fill; pointer-events: none; }
-  .sbs #stage { width: 2576px; display: flex; gap: 16px; overflow: visible; background: none; outline: none; }
-  .sbs #stage iframe { position: static; flex: 0 0 1280px; outline: 1px solid #333; }
-  .sbs #stage img.real { position: static; flex: 0 0 1280px; outline: 1px solid #333; }
+  #stage { position: relative; width: 1422px; height: 800px; margin: 12px auto; outline: 1px solid #333; overflow: hidden; background: #18181b; }
+  #stage iframe { position: absolute; inset: 0; width: 1422px; height: 800px; border: 0; }
+  #stage img.real { position: absolute; left: 0; top: 0; width: 1422px; height: 800px; object-fit: fill; pointer-events: none; }
+  .sbs #stage { width: 2860px; display: flex; gap: 16px; overflow: visible; background: none; outline: none; }
+  .sbs #stage iframe { position: static; flex: 0 0 1422px; outline: 1px solid #333; }
+  .sbs #stage img.real { position: static; flex: 0 0 1422px; outline: 1px solid #333; }
   .sbs #stage .pane-label { position: absolute; }
   label { display: flex; gap: 6px; align-items: center; }
 </style>
@@ -23,11 +23,11 @@
 <body>
 <header>
   <span>对拍 #42</span>
-  <button data-pair="board-dark" class="on">看板 dark / 28</button>
-  <button data-pair="board-light">看板 light / 01</button>
-  <button data-pair="detail-fresh">详情 fresh / 47</button>
-  <button data-pair="detail-plan">详情 plan / 58</button>
-  <button data-pair="detail-review">详情 review / 63</button>
+  <button data-pair="board-dark" class="on">看板 dark / r5·03</button>
+  <button data-pair="board-light">看板 light / r5·02</button>
+  <button data-pair="detail-fresh">详情 fresh / r5·05</button>
+  <button data-pair="detail-exec">详情 exec / r5·06</button>
+  <button data-pair="detail-plan">详情 plan / r3·58</button>
   <button id="mode">mode: overlay</button>
   <label>real opacity <input id="op" type="range" min="0" max="100" value="50"></label>
 </header>
@@ -39,11 +39,11 @@
 </div>
 <script>
   const PAIRS = {
-    'board-dark':  ['board.html?theme=dark&noharness=1',  '../docs/research/assets/r2/28-看板-有卡片.png'],
-    'board-light': ['board.html?theme=light&noharness=1', '../docs/research/assets/r2/01-board-空态.png'],
-    'detail-fresh': ['todo-detail.html?noharness=1&phase=fresh', '../docs/research/assets/r3/47-task-panel-fresh.png'],
+    'board-dark':  ['board.html?theme=dark&noharness=1&state=r5',  '../docs/research/assets/r5/03-board-dark-探针卡.png'],
+    'board-light': ['board.html?theme=light&noharness=1&state=r5', '../docs/research/assets/r5/02-board-light-探针卡.png'],
+    'detail-fresh': ['todo-detail.html?noharness=1&phase=fresh', '../docs/research/assets/r5/05-task-panel-fresh-light.png'],
+    'detail-exec': ['todo-detail.html?noharness=1&phase=review', '../docs/research/assets/r5/06-task-panel-executing-r3card-light.png'],
     'detail-plan': ['todo-detail.html?noharness=1&phase=plan', '../docs/research/assets/r3/58-plan-card.png'],
-    'detail-review': ['todo-detail.html?noharness=1&phase=review', '../docs/research/assets/r3/63-run-transcript.png'],
   };
   const rep = document.getElementById('rep'), real = document.getElementById('real');
   const set = (k) => {
