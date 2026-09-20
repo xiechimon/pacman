@@ -37,7 +37,7 @@ _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的�
 | 机器 | Machine | `machine` | 登记的执行主机（`tds` daemon + 内嵌 pi runtime），领取并运行 build 步。一个机器可承载多个 Agent 的步；它不是 Agent 的属性。 |
 | Agent | Agent | `agent` | 配了模型、职责、技能、工具、密钥、MCP 与记忆的执行角色；运行在某台机器上。 |
 | 总管 | Chief | `chief` | 每「用户×团队」一个的调度与对话代理，负责分派任务；领域上区别于干活的 worker Agent。 |
-| 记忆 | Memory | `memory` | Agent 在工作中沉淀的经验条目。[机制黑盒：写入路径未实测] |
+| 记忆 | Memory | `memory` | Agent 在工作中沉淀的经验条目。todos.dev 写入路径未实测 [黑盒]；复刻采最小机制（02-架构平价 §4.4，全标 [推断]，待 #46 校准）。 |
 
 边界裁决：Agent ≠ Machine（一个是配置好的角色，一个是承载它的物理主机）。Chief 是单独概念，不作为普通 Agent 的子类型混称。
 
