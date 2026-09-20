@@ -1,0 +1,128 @@
+<!doctype html>
+<!-- PROTOTYPE — throwaway pixel replica, issue #42. Screen 1: 看板主页. Open directly in browser. -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>prototype · 看板</title>
+<link rel="stylesheet" href="replica.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="team-head">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+      <span>Xmon Dai's team</span>
+      <span class="spacer"></span>
+      <button class="icon-btn" aria-label="收起侧边栏"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button>
+    </div>
+    <button class="nav-row" style="margin-top:13px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>搜索<span class="kbd">⌘K</span></button>
+    <button class="nav-row active"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="4" height="16" rx="1"/><rect x="10" y="4" width="4" height="10" rx="1"/><rect x="16" y="4" width="4" height="13" rx="1"/></svg>看板</button>
+    <button class="nav-row"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>定时</button>
+    <div class="group-head"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>项目</div>
+    <button class="nav-row nav-sub"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>新建项目</button>
+    <button class="nav-row nav-sub"><span class="proj-avatar">R</span>r2-inventory 测试</button>
+    <div class="group-head"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>资源</div>
+    <button class="nav-row nav-sub"><span class="res-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M8 13l-2 8 6-3 6 3-2-8"/></svg></span>技能</button>
+    <button class="nav-row nav-sub"><span class="res-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7V3M15 7V3M7 7h10v4a5 5 0 0 1-10 0zM12 16v5"/></svg></span>MCP</button>
+    <button class="nav-row nav-sub"><span class="res-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l2 2M14 9l2 2"/></svg></span>密钥</button>
+    <button class="nav-row nav-sub"><span class="res-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg></span>机器</button>
+    <button class="nav-row nav-sub"><span class="res-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/></svg></span>模型服务</button>
+    <div class="bottom">
+      <button class="nav-row"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>安装 App</button>
+      <button class="user-chip">
+        <svg width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#57534e"/><circle cx="12" cy="9.5" r="4" fill="#fafaf9"/><path d="M4 21c1-4.5 4.5-6.5 8-6.5s7 2 8 6.5" fill="#fafaf9"/></svg>
+        Xmon Dai
+      </button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="title">看板</span>
+      <div class="right">
+        <button class="btn-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>任务</button>
+        <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 .3c0 1.7-2.5 2.2-2.5 3.7M12 17h.01"/></svg></button>
+      </div>
+    </div>
+    <div class="content">
+      <div class="banner">
+        <span class="bell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span>
+        <div>
+          <div class="t">浏览器通知未开启</div>
+          <div class="s">标签页切换到后台时，通过桌面通知提醒你。</div>
+        </div>
+        <button class="btn-primary">开启</button>
+      </div>
+      <div class="cols">
+        <div class="col">
+          <div class="col-head"><span class="dot" style="background:var(--gray-400)"></span>待开始<span class="count">1</span>
+            <button class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 6 4 4 4-4M8 18l4-4 4 4"/></svg></button>
+          </div>
+          <div class="col-body">
+            <div class="card">
+              <div class="row1"><span class="proj-avatar" style="width:16px;height:16px;flex-basis:16px;font-size:9px;border-radius:4px">R</span><span class="pname">r2-inventory 测试</span><span class="seq">#1</span>
+                <button class="icon-btn" style="width:20px;height:20px" aria-label="分支与 PR"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg></button>
+              </div>
+              <div class="ttl">r2-盘点测试任务：在 README 加一行说明</div>
+              <div class="row3">
+                <span class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#e8e2d9"/><rect x="6" y="8" width="12" height="9" rx="3" fill="#57534e"/><circle cx="9.5" cy="12.5" r="1.4" fill="#fafaf9"/><circle cx="14.5" cy="12.5" r="1.4" fill="#fafaf9"/><path d="M12 5v3" stroke="#57534e" stroke-width="1.5"/></svg><span class="badge"></span></span>
+                <span class="ago">22 分钟前</span>
+                <button class="btn-primary">开始</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="col-head"><span class="dot" style="background:var(--blue-500)"></span>规划中<span class="count">0</span>
+            <button class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 6 4 4 4-4M8 18l4-4 4 4"/></svg></button>
+          </div>
+          <div class="col-body"><div class="col-empty">没有规划中的任务</div></div>
+        </div>
+        <div class="col">
+          <div class="col-head"><span class="dot" style="background:var(--amber-500)"></span>待确认<span class="count">0</span>
+            <button class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 6 4 4 4-4M8 18l4-4 4 4"/></svg></button>
+          </div>
+          <div class="col-body"><div class="col-empty">没有等你确认的方案</div></div>
+        </div>
+        <div class="col">
+          <div class="col-head"><span class="dot" style="background:var(--blue-400)"></span>执行中<span class="count">0</span>
+            <button class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 6 4 4 4-4M8 18l4-4 4 4"/></svg></button>
+          </div>
+          <div class="col-body"><div class="col-empty">没有执行中的任务</div></div>
+        </div>
+        <div class="col">
+          <div class="col-head"><span class="dot" style="background:var(--amber-500)"></span>待验收<span class="count">0</span>
+            <button class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 6 4 4 4-4M8 18l4-4 4 4"/></svg></button>
+          </div>
+          <div class="col-body"><div class="col-empty">没有等你验收的任务</div></div>
+        </div>
+        <div class="col">
+          <div class="col-head"><span class="dot" style="background:var(--green-500)"></span>已完成<span class="count">0</span><span class="count">最近 7 天</span>
+            <button class="icon-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 6 4 4 4-4M8 18l4-4 4 4"/></svg></button>
+          </div>
+          <div class="col-body"><div class="col-empty">最近 7 天没有完成的任务</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="harness">
+  <span>PROTOTYPE #42</span>
+  <button id="t-dark" class="on">dark</button>
+  <button id="t-light">light</button>
+</div>
+<script>
+  const set = (light) => {
+    document.documentElement.classList.toggle('light', light);
+    document.getElementById('t-dark').classList.toggle('on', !light);
+    document.getElementById('t-light').classList.toggle('on', light);
+  };
+  document.getElementById('t-dark').onclick = () => set(false);
+  document.getElementById('t-light').onclick = () => set(true);
+  const q = new URLSearchParams(location.search);
+  if (q.get('theme') === 'light') set(true);
+  if (q.get('noharness')) document.querySelector('.harness').remove();
+</script>
+</body>
+</html>
