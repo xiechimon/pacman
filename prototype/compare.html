@@ -25,9 +25,9 @@
   <span>对拍 #42</span>
   <button data-pair="board-dark" class="on">看板 dark / r5·03</button>
   <button data-pair="board-light">看板 light / r5·02</button>
-  <button data-pair="detail-fresh">详情 fresh / r5·05</button>
-  <button data-pair="detail-exec">详情 exec / r5·06</button>
-  <button data-pair="detail-plan">详情 plan / r3·58</button>
+  <button data-pair="detail-confirm">详情 待确认 / r5b·05b</button>
+  <button data-pair="detail-review">详情 审核 / r5b·06b</button>
+  <button data-pair="detail-done">详情 完成 / r5b·10b</button>
   <button id="mode">mode: overlay</button>
   <label>real opacity <input id="op" type="range" min="0" max="100" value="50"></label>
 </header>
@@ -39,11 +39,11 @@
 </div>
 <script>
   const PAIRS = {
-    'board-dark':  ['board.html?theme=dark&noharness=1&state=r5&panel=exec',  '../docs/research/assets/r5/03-board-dark-探针卡.png'],
+    'board-dark':  ['board.html?theme=dark&noharness=1&state=r5',  '../docs/research/assets/r5/03-board-dark-探针卡.png'],
     'board-light': ['board.html?theme=light&noharness=1&state=r5', '../docs/research/assets/r5/02-board-light-探针卡.png'],
-    'detail-fresh': ['todo-detail.html?noharness=1&phase=fresh', '../docs/research/assets/r5/05-task-panel-fresh-light.png'],
-    'detail-exec': ['todo-detail.html?noharness=1&phase=review', '../docs/research/assets/r5/06-task-panel-executing-r3card-light.png'],
-    'detail-plan': ['todo-detail.html?noharness=1&phase=plan', '../docs/research/assets/r3/58-plan-card.png'],
+    'detail-confirm': ['todo-detail.html?noharness=1&phase=confirm', '../docs/research/assets/r5b/05b-待确认-详情transcript-light.png'],
+    'detail-review': ['todo-detail.html?noharness=1&phase=review', '../docs/research/assets/r5b/06b-执行transcript-确认轮-light.png'],
+    'detail-done': ['todo-detail.html?noharness=1&phase=done', '../docs/research/assets/r5b/10b-完成态-详情transcript-light.png'],
   };
   const rep = document.getElementById('rep'), real = document.getElementById('real');
   const set = (k) => {

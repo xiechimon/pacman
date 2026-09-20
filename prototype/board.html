@@ -210,6 +210,11 @@
   if (q.get('theme') === 'light') set(true);
   if (q.get('noharness')) document.querySelector('.harness').remove();
   const panelPhase = q.get('panel');
+  if (!panelPhase) {
+    document.querySelector('.panel').hidden = true;
+    const fb = document.querySelector('.chief-fab');
+    if (fb) fb.remove();
+  }
   if (panelPhase) {
     const pn = document.querySelector('.panel');
     const chip = pn.querySelector('.chip');
