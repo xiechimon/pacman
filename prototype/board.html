@@ -227,6 +227,10 @@
       stream.hidden = true; comp.hidden = true;
     } else if (panelPhase === 'exec') {
       stream.hidden = false;
+      chip.style.color = 'var(--blue-400)';
+      chip.style.background = 'color-mix(in srgb, var(--blue-400) 12%, transparent)';
+      chip.innerHTML = '执行中' + chip.querySelector('svg').outerHTML;
+      pn.querySelector('.seq').textContent = '#2';
     }
     if (fab) fab.style.right = '577px';
   }
