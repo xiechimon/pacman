@@ -1,0 +1,64 @@
+/* Design token layer. Dual-source priority (issue #52): app-surface
+   screenshot sampling from prototype #42 replica.css wins, r1 §4.2 public
+   CSS table fills the rest. Dark = :root default, light = .light on the
+   root element. Font stacks: --font-inter / --font-jetbrains-mono come
+   from the 859B font stylesheet (fonts.css, r1 §4.1); the consuming
+   stacks below follow the r1 records verbatim. */
+
+:root {
+  --active-text: #a0a0a5;
+  --surface: #161618;
+  --surface-secondary: #1f1f23;
+  --surface-tertiary: #27272a;
+  --surface-inset: #09090b;
+  --surface-elevated: #1f1f23;
+  --surface-hover: #1f1f23;
+  --text-primary: #fafaf9;
+  --text-secondary: #d4d4d8;
+  --text-tertiary: #71717a;
+  --text-dim: #52525b;
+  --border-default: #27272a;
+  --border-strong: #3f3f46;
+  --nav-bg: rgba(24, 24, 27, 0.85);
+  --font-sans:
+    var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+  --font-mono: ui-monospace, "JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, monospace;
+  --indigo-600: #4f46e5;
+  --indigo-500: #6366f1;
+  --indigo-400: #818cf8;
+  --blue-500: #3b82f6;
+  --blue-400: #60a5fa;
+  --amber-500: #f59e0b;
+  --green-500: #22c55e;
+  --rose-500: #f43f5e;
+  --gray-400: #9ca3af;
+  /* board palette, sampled from r2/r7 captures (differs from landing tokens) */
+  --col-bg: #09090b;
+  --card-bg: #1f1f23;
+  --card-border: #27272a;
+  --col-head-text: #bebec1;
+  color-scheme: dark light;
+}
+
+.light {
+  --active-text: #6e6b69;
+  --surface: #faf7f2;
+  --surface-secondary: #f2ede6;
+  --surface-tertiary: #e8e2d9;
+  --surface-inset: #f2ede6;
+  --surface-elevated: #fdfaf6;
+  --surface-hover: #f2ede6;
+  --text-primary: #1c1917;
+  --text-secondary: #57534e;
+  --text-tertiary: #78716c;
+  --text-dim: #a8a29e;
+  --border-default: #e2dbd1;
+  --border-strong: #cec6bb;
+  --nav-bg: rgba(250, 250, 249, 0.85);
+  --indigo-400: #6366f1;
+  --col-bg: #f2ede6;
+  --card-bg: #ffffff;
+  --card-border: #e2dbd1;
+  --col-head-text: #57534e;
+}
