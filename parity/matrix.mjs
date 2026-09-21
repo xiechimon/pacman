@@ -17,6 +17,37 @@
 export const VIEWPORT = { width: 1440, height: 732 };
 
 export const matrix = [
+  // gate rows (issue #54): r7 board captures, threshold 0.85
+  {
+    id: 'board-light-scrollL',
+    route: '/app',
+    scenario: '01',
+    theme: 'light',
+    baseline: '01-board-light-scrollL.png',
+  },
+  {
+    id: 'board-light-scrollR',
+    route: '/app',
+    scenario: '01b',
+    theme: 'light',
+    scrollLeft: 'max',
+    baseline: '01b-board-light-scrollR.png',
+  },
+  {
+    id: 'board-dark-scrollL',
+    route: '/app',
+    scenario: '02',
+    theme: 'dark',
+    baseline: '02-board-dark-scrollL.png',
+  },
+  {
+    id: 'board-dark-scrollR',
+    route: '/app',
+    scenario: '02b',
+    theme: 'dark',
+    scrollLeft: 'max',
+    baseline: '02b-board-dark-scrollR.png',
+  },
   // smoke rows (issue #53 gate: self-compare SSIM = 1.0)
   { id: 'board-dark', route: '/app', scenario: '02', theme: 'dark' },
   {

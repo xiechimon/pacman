@@ -1,0 +1,212 @@
+/* ---- sidebar (240px, r7 01/02 + r6 §3.1 structure) ---- */
+
+.board-sidebar {
+  flex: none;
+  width: 240px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-team-row {
+  flex: none;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  padding-left: 19px;
+  color: var(--text-primary);
+}
+
+.sidebar-team-name {
+  position: relative;
+  top: 1px;
+  margin-left: 11px;
+  font-size: 14px;
+  line-height: 24px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-team-collapse {
+  margin-right: 14px;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.sidebar-nav {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  padding-top: 11.5px;
+}
+
+.sidebar-row {
+  position: relative;
+  flex: none;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.sidebar-row--selected {
+  margin: 0 8px;
+  padding-left: 10px; /* 8 inset + 10 = icon at x18 like unselected rows */
+  border-radius: 6px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+}
+
+.sidebar-row-icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.sidebar-row-label {
+  margin-left: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-kbd {
+  position: absolute;
+  right: 21px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+/* group headers (项目 / 资源): chevron at x19, label at x45 */
+.sidebar-group {
+  position: relative;
+  flex: none;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding-left: 19px;
+  border: none;
+  background: transparent;
+  width: 100%;
+  cursor: pointer;
+}
+
+.sidebar-group-chevron {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+.sidebar-group-label {
+  margin-left: 11px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+/* second-level rows: icon at x34, label at x62 */
+.sidebar-subrow {
+  position: relative;
+  flex: none;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding-left: 34px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.sidebar-subrow-label {
+  margin-left: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-new-project {
+  color: var(--text-secondary);
+}
+
+.sidebar-spacer {
+  flex: 1;
+}
+
+/* 安装 App accent pill: tinted rounded rect, icon + label (r7 01/02) */
+.sidebar-install {
+  flex: none;
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 22px;
+  margin: 0 8px 6px;
+  padding: 0 6px 0 6px;
+  border: none;
+  border-radius: 6px;
+  background: var(--install-bg);
+  color: var(--install-fg);
+  font-size: 13px;
+  line-height: 16px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.sidebar-user {
+  flex: none;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  border: none;
+  border-top: 1px solid var(--border-default);
+  background: transparent;
+  cursor: pointer;
+}
+
+.sidebar-user img {
+  width: 24px;
+  height: 24px;
+  display: block;
+  border-radius: 9999px;
+}
+
+.sidebar-user-name {
+  position: relative;
+  top: -1px;
+  margin-left: 9px;
+  font-size: 14px;
+  line-height: 14px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.sidebar-user-more {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-tertiary);
+}

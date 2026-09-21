@@ -1,0 +1,366 @@
+/* Board screen styles (issue #54). All values measured from the r7
+   captures at 1440×732 (docs/research/r7-rebaseline.md §3.1 + pixel
+   probes): sidebar 240, topbar 43 + 1px border, board scroller padding
+   12/17/13 with column pitch 292 (278 body + 14 gap, radius 10), cards
+   262×114.5 radius 8. Colors sampled from 01/01b (light) and 02/02b
+   (dark); they override the landing-page samples where they differ. */
+
+.board-shell {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.board-main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+/* ---- topbar ---- */
+
+.board-topbar {
+  position: relative;
+  height: 44px; /* 43 content + 1px border, r7 §3.1 顶栏 43+border */
+  flex: none;
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+}
+
+/* title centers on the content area (r6 §4.2 formula: (240 + viewport)/2),
+   which is simply the center of .board-main */
+.board-topbar-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 22px;
+}
+
+.board-topbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding-right: 12px;
+}
+
+.board-new-task {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  width: 59.5px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--indigo-500);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.board-guide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 6px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+/* ---- board scroller ---- */
+
+.board-scroller {
+  position: absolute;
+  top: 44px; /* topbar + border */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: flex;
+  gap: 14px;
+  padding: 12px 17px 13px;
+  background: var(--surface);
+}
+
+.board-column {
+  position: relative;
+  flex: none;
+  width: 278px;
+  height: 100%;
+  border-top: 1px solid var(--col-top-border);
+  border-radius: 10px;
+  background: var(--col-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.board-column-header {
+  flex: none;
+  /* ticket #54 says 列头 44, but the r7 bitmaps measure 37: column body
+     starts y57, first card top y94 (01/02 pixel probes). Capture wins. */
+  height: 37px;
+  display: flex;
+  align-items: center;
+  /* content center sits at y77, 2px below the header's geometric center
+     (r7 capture: name ink 72–82 in header 57–94) */
+  padding: 3px 13px 0;
+}
+
+.board-column-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+}
+
+.board-column-name {
+  margin-left: 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.board-column-count {
+  margin-left: 9px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.board-column-label {
+  margin-left: 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.board-column-collapse {
+  margin-left: auto;
+  margin-right: -3.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.board-column-list {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  padding: 0 7.25px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.board-column-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+  /* capture: text sits 12px above the list-area center */
+  transform: translateY(-12px);
+}
+
+/* ---- todo card ---- */
+
+.todo-card {
+  flex: none;
+  width: 262px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  padding: 9.5px 13.5px 11.5px;
+}
+
+.todo-card-row1 {
+  display: flex;
+  align-items: center;
+  height: 16px;
+}
+
+.project-avatar {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: #e97b35;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 16px;
+  text-align: center;
+}
+
+.todo-project-name {
+  margin-left: 4px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.todo-card-seq {
+  flex: none;
+  margin-left: auto;
+  margin-right: 13px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.todo-card-branch {
+  flex: none;
+  margin-right: -1.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.todo-card-title {
+  margin-top: 4px;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+
+.todo-card-bottom {
+  margin-top: 7.5px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+}
+
+.todo-agent-avatar {
+  position: relative;
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.todo-agent-avatar img {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.todo-agent-badge {
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.todo-agent-badge--attention {
+  background: var(--badge-attention);
+}
+
+.todo-agent-badge--done {
+  background: var(--badge-done);
+}
+
+.todo-card-time {
+  position: relative;
+  top: 1.5px;
+  margin-left: 7px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.todo-card-metric {
+  flex: none;
+  margin-left: 10.5px;
+  display: flex;
+  align-items: center;
+  color: var(--text-tertiary);
+}
+
+.todo-card-metric + .todo-card-metric {
+  margin-left: 2px;
+}
+
+.todo-card-spacer {
+  flex: 1;
+}
+
+.todo-card-action {
+  flex: none;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 26px;
+  padding: 0 7.25px;
+  border: none;
+  cursor: pointer;
+}
+
+.todo-card-action--primary {
+  background: var(--card-button);
+  color: #ffffff;
+}
+
+.todo-card-action--ghost {
+  background: transparent;
+  border: 1px solid var(--card-ghost-border);
+  color: var(--text-secondary);
+  line-height: 24px;
+}
+
+/* ---- chief fab ---- */
+
+.chief-fab {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  border: none;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--fab-shadow);
+}
