@@ -10,12 +10,12 @@
   header button { background: #222; color: #eee; border: 1px solid #444; border-radius: 6px; padding: 4px 10px; font: inherit; cursor: pointer; }
   header button.on { background: #4f46e5; border-color: #4f46e5; }
   header input { width: 160px; }
-  #stage { position: relative; width: 1422px; height: 800px; margin: 12px auto; outline: 1px solid #333; overflow: hidden; background: #18181b; }
-  #stage iframe { position: absolute; inset: 0; width: 1422px; height: 800px; border: 0; }
-  #stage img.real { position: absolute; left: 0; top: 0; width: 1422px; height: 800px; object-fit: fill; pointer-events: none; }
-  .sbs #stage { width: 2860px; display: flex; gap: 16px; overflow: visible; background: none; outline: none; }
-  .sbs #stage iframe { position: static; flex: 0 0 1422px; outline: 1px solid #333; }
-  .sbs #stage img.real { position: static; flex: 0 0 1422px; outline: 1px solid #333; }
+  #stage { position: relative; width: 1440px; height: 732px; margin: 12px auto; outline: 1px solid #333; overflow: hidden; background: #18181b; }
+  #stage iframe { position: absolute; inset: 0; width: 1440px; height: 732px; border: 0; }
+  #stage img.real { position: absolute; left: 0; top: 0; width: 1440px; height: 732px; object-fit: fill; pointer-events: none; }
+  .sbs #stage { width: 2896px; display: flex; gap: 16px; overflow: visible; background: none; outline: none; }
+  .sbs #stage iframe { position: static; flex: 0 0 1440px; outline: 1px solid #333; }
+  .sbs #stage img.real { position: static; flex: 0 0 1440px; outline: 1px solid #333; }
   .sbs #stage .pane-label { position: absolute; }
   label { display: flex; gap: 6px; align-items: center; }
 </style>
@@ -23,27 +23,25 @@
 <body>
 <header>
   <span>对拍 #42</span>
-  <button data-pair="board-dark" class="on">看板 dark / r5·03</button>
-  <button data-pair="board-light">看板 light / r5·02</button>
-  <button data-pair="detail-confirm">详情 待确认 / r5b·05b</button>
-  <button data-pair="detail-review">详情 审核 / r5b·06b</button>
-  <button data-pair="detail-done">详情 完成 / r5b·10b</button>
+  <button data-pair="board-light" class="on">看板 light / r7·01</button>
+  <button data-pair="board-dark">看板 dark / r7·02</button>
+  <button data-pair="detail-fresh">详情 fresh / r7·23</button>
+  <button data-pair="detail-done">详情 完成 / r7·36</button>
   <button id="mode">mode: overlay</button>
   <label>real opacity <input id="op" type="range" min="0" max="100" value="50"></label>
 </header>
 <div id="wrap">
   <div id="stage">
-    <iframe id="rep" src="board.html?theme=dark"></iframe>
+    <iframe id="rep" src="board.html?theme=light&noharness=1&state=r7"></iframe>
     <img class="real" id="real" alt="real screenshot">
   </div>
 </div>
 <script>
   const PAIRS = {
-    'board-dark':  ['board.html?theme=dark&noharness=1&state=r5&panel=exec',  '../docs/research/assets/r5/03-board-dark-探针卡.png'],
-    'board-light': ['board.html?theme=light&noharness=1&state=r5', '../docs/research/assets/r5/02-board-light-探针卡.png'],
-    'detail-confirm': ['todo-detail.html?noharness=1&phase=confirm', '../docs/research/assets/r5b/05b-待确认-详情transcript-light.png'],
-    'detail-review': ['todo-detail.html?noharness=1&phase=review', '../docs/research/assets/r5b/06b-执行transcript-确认轮-light.png'],
-    'detail-done': ['todo-detail.html?noharness=1&phase=done', '../docs/research/assets/r5b/10b-完成态-详情transcript-light.png'],
+    'board-light': ['board.html?theme=light&noharness=1&state=r7', '../docs/research/assets/r7/01-board-light-scrollL.png'],
+    'board-dark':  ['board.html?theme=dark&noharness=1&state=r7',  '../docs/research/assets/r7/02-board-dark-scrollL.png'],
+    'detail-fresh': ['todo-detail.html?noharness=1&phase=confirm', '../docs/research/assets/r7/23-detail-fresh-light.png'],
+    'detail-done': ['todo-detail.html?noharness=1&phase=done', '../docs/research/assets/r7/36-完成态-详情-light.png'],
   };
   const rep = document.getElementById('rep'), real = document.getElementById('real');
   const set = (k) => {

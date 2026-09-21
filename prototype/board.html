@@ -40,7 +40,7 @@
     <div class="topbar">
       <span class="title">看板</span>
       <div class="right">
-        <button class="btn-primary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>任务</button>
+        <button class="btn-text"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>任务</button>
         <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg></button>
       </div>
     </div>
@@ -240,7 +240,35 @@
     if (fab) fab.style.right = '577px';
   }
 
-  if (q.get('state') === 'r5') {
+  if (q.get('state') === 'r7') {
+    document.querySelector('.banner').remove();
+    document.documentElement.style.setProperty('--colh', '658px');
+    [...document.querySelectorAll('.nav-sub')].forEach(e => { if (e.textContent.includes('r2-inventory')) e.remove(); });
+    // col1 empty
+    const c1 = document.querySelector('.col .col-body');
+    c1.innerHTML = '<div class="col-empty">没有等待开始的任务</div>';
+    document.querySelector('.col-head .count').textContent = '0';
+    // col4 执行中: r3 leftover with 回复
+    const runCol = document.querySelectorAll('.col')[3];
+    runCol.querySelector('.count').textContent = '1';
+    runCol.querySelector('.col-empty').outerHTML = `
+      <div class="card">
+        <div class="row1"><span class="proj-avatar" style="width:16px;height:16px;flex-basis:16px;font-size:9px;border-radius:4px">R</span><span class="pname">r3-lifecycle</span><span class="seq">#1</span>
+          <button class="icon-btn" style="width:20px;height:20px" aria-label="分支与 PR"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
+        </div>
+        <div class="ttl">在 README.md 末尾追加一行「r3 lifecycle probe」</div>
+        <div class="row3">
+          <span class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#e8e2d9"/><circle cx="7" cy="9" r="3" fill="#52525b" stroke="none"></circle><circle cx="17" cy="9" r="3" fill="#52525b" stroke="none"></circle><line x1="7.5" y1="17" x2="16.5" y2="17" stroke="#52525b" stroke-width="2.5"></line></svg><span class="badge" style="background:var(--amber-500)"></span></span>
+          <span class="ago">2 天前</span>
+          <button class="btn-ghost2" style="margin-left:auto">回复</button>
+        </div>
+      </div>`;
+    // install pill + user ⋮
+    const inst = [...document.querySelectorAll('.nav-row')].find(e => e.textContent.includes('安装 App'));
+    if (inst) inst.classList.add('install');
+    const uc = document.querySelector('.user-chip');
+    if (uc && !uc.querySelector('.tail')) uc.insertAdjacentHTML('beforeend', '<svg class="tail" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="12" cy="19" r="1.6"></circle></svg>');
+  } else if (q.get('state') === 'r5') {
     document.querySelector('.banner').remove();
     document.documentElement.style.setProperty('--colh', '778px');
     document.querySelectorAll('.nav-sub').forEach(e => e.remove());

@@ -73,6 +73,17 @@ python3 -m http.server 8742
 - 图标 dump 刷新：r6 `icons.json` 383 条/83 唯一（15 scope），与 r5 差异：+21/−31；侧栏图标全组换代。
 - 原型改动：标题/tab 组回退内容区居中（50%）、详情流列右贴（宽 876 右缘 16）、nav 图标 16×16、行距 pitch 39、tab 组 68×28。
 
+## r7 全量重拍后（第五轮，#51 素材 —— 最终基线）
+
+- **截图法定型**：窗口正常化 1450×829（`Browser.setWindowBounds`）+ 清 override → 真实视口 1440×732，零钳制。
+  此前四轮全部右缘缺口：r2/r3 左裁切、r5/r6 override 超物理窗口被钳（成因 = 窗口 DIP ÷ tab 缩放 110%）。
+- 位图资产全部换 r7（`assets/r7/` 53 张 1440×732 1:1）；r5/r6 位图已 git rm；DOM 表全部沿用。
+- **DOM 基线 @1440**：列 pitch 292、rail 40、详情 header 图标组 pitch 33 + 主按钮 50.5×28、composer 左锚 737 宽 687、
+  弹层 448 居中、标题/tab 居中 = 内容区中心 (240+viewport)/2。
+- 复刻同步：`state=r7` 板态（回复 ghost 钮、安装 App 高亮 pill、用户芯片 ⋮）、详情列 687 右贴、nav 图标 16×16、
+  行距 pitch 39.5、列头 44。
+- SSIM（真 1:1 同视口）：看板 light vs r7-01 **0.891**。残余 = CJK 抗锯齿管线差 + ±1–2px 微位置 + FAB 投影。
+
 ## 像素级复刻难点清单（票面产出 1）
 
 1. **字体许可**：Inter / JetBrains Mono 为 OFL 可内嵌；但 Agent 头像字体 Lorelei 仅 CC0 素材含 attribution 义务（r1 §2.2），
