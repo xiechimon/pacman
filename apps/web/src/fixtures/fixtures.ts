@@ -102,15 +102,41 @@ function probeTodo(phase: TodoRecord['phase'], phaseAt: number): TodoRecord {
     latestBuildId: phase === 'todo' ? null : R7_BUILD_ID,
     lastRunAt: phase === 'todo' ? null : r7(13, 21),
     hasChanges: phase === 'review' || phase === 'done',
-    // r7 02: the confirm card shows the 方案 metric icon; 22 (fresh) shows
-    // none. Card icon presence for planning/building is not exercised by
-    // the #54 gate captures — [推断] plan surfaces from confirm on.
-    hasPlan: phase === 'confirm' || phase === 'review' || phase === 'done',
+    // r7 02/21 (confirm) and 33 (review) show the 方案 icon; 35 (done) shows
+    // the 变更 icon alone on #9's card — plan-icon presence is modelled per
+    // phase, dropping at done. r3 #2 (01b, done) keeps both icons, so the
+    // flag stays per-todo data, not a phase rule.
+    hasPlan: phase === 'confirm' || phase === 'review',
     buildHistory: phase === 'todo' ? [] : [{ buildId: R7_BUILD_ID, createdAt: r7(13, 21) }],
     sourceTodo: null,
     v: 2,
   };
 }
+
+/** r7 dark fresh probe #10 — created 13:55, captured immediately, deleted
+ *  right after (r7 §5). id is synthetic: the record never survived the
+ *  session ([推断] identifier, content verbatim from the 22d capture). */
+const darkFreshProbe: TodoRecord = {
+  id: 'r7-dark-fresh-probe-10',
+  teamId: TEAM_ID,
+  projectId: PROJECT_ID,
+  title: 'r7-dark-fresh 探针（拍完即删）',
+  spec: 'r7-dark-fresh 探针（拍完即删）',
+  phase: 'todo',
+  phaseAt: r7(13, 55),
+  seqNum: 10,
+  orderIndex: 0,
+  tagIds: [],
+  assignment: null,
+  agent: null,
+  latestBuildId: null,
+  lastRunAt: null,
+  hasChanges: false,
+  hasPlan: false,
+  buildHistory: [],
+  sourceTodo: null,
+  v: 2,
+};
 
 /** Board default: only the r3 legacy pair (r7 01/35). Captured before the
  *  probe existed, ~13:10–13:21. */
@@ -118,14 +144,25 @@ export const boardDefault: FixtureSet = { todos: [legacyReview, legacyDone], now
 
 /** Board with the probe in the given phase (r7 02/22/21/33 …). The dark
  *  board pair (02/02b) shows `9 分钟前` on the confirm card → captured
- *  ~13:35 with phaseAt 13:26. */
+ *  ~13:35 with phaseAt 13:26. Done-phase boards (35/35d) list #9 ahead of
+ *  #2 in the 已完成 column (r7 35, #9 card first at y94). */
 export function boardWithProbe(
   phase: TodoRecord['phase'],
   phaseAt: number,
   now: number,
 ): FixtureSet {
-  return { todos: [legacyReview, legacyDone, probeTodo(phase, phaseAt)], now };
+  const probe = probeTodo(phase, phaseAt);
+  const todos =
+    phase === 'done' ? [legacyReview, probe, legacyDone] : [legacyReview, legacyDone, probe];
+  return { todos, now };
 }
+
+/** r7 22d: board at ~13:55 — #10 fresh (刚刚), #9 already done (13:52),
+ *  r3 legacy pair untouched. */
+export const boardDarkFresh: FixtureSet = {
+  todos: [legacyReview, legacyDone, probeTodo('done', r7(13, 52)), darkFreshProbe],
+  now: r7(13, 55),
+};
 
 /** Detail page content for a single todo. */
 export function detailFor(phase: TodoRecord['phase'], phaseAt: number, now: number): FixtureSet {

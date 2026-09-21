@@ -210,3 +210,112 @@
   height: 24px;
   color: var(--text-tertiary);
 }
+
+/* ---- collapsed rail (40px, r7 03 pixel probes) ----
+   bg = page surface with a 1px right border, divider under the toggle row,
+   16px icons centered at x12–28, nav rows 32px pitch from y48, selected
+   row = 24px pill inset 4px vertically / 8px horizontally, 安装 App icon
+   and 24px user chip (white pill) pinned at the bottom. */
+
+.board-sidebar--collapsed {
+  width: 40px;
+  border-right: 1px solid var(--border-default);
+}
+
+.rail-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  /* 42px team row + 1px divider, r7 03: icon band y15–27, divider at y43 */
+  height: 43px;
+  margin: 0;
+  border: none;
+  border-bottom: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.rail-nav {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  padding-top: 5px;
+}
+
+.rail-row {
+  position: relative;
+  flex: none;
+  width: 40px;
+  height: 32px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.rail-row--selected::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 4px;
+  bottom: 4px;
+  /* r7 03: 看板 row pill x8–30 / y84–107 = 24px, radius matches the
+     expanded selected row */
+  border-radius: 6px;
+  background: var(--surface-secondary);
+}
+
+.rail-row > svg,
+.rail-row .project-avatar {
+  position: relative;
+}
+
+.rail-row .project-avatar {
+  width: 16px;
+  height: 16px;
+}
+
+.rail-install {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 32px;
+  margin: 0;
+  border: none;
+  background: transparent;
+  /* r7 03: indigo, matching --indigo-500 rather than the expanded pill fg */
+  color: var(--indigo-500);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.rail-user {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 38px;
+  /* r7 03: user chip y698–721, 11px gap to the viewport bottom */
+  margin: 0 0 11px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rail-user img {
+  width: 24px;
+  height: 24px;
+  display: block;
+  border-radius: 9999px;
+}

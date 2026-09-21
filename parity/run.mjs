@@ -19,6 +19,7 @@ const BASELINE_DIR = resolve(ROOT, 'docs/research/assets/r7');
 const PORT = 8390;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const THEME_KEY = 'tds-theme'; // same key as apps/web/src/theme.ts THEME_STORAGE_KEY
+const SIDEBAR_KEY = 'tds.sidebar-collapsed'; // apps/web/src/routes/board-page.tsx SIDEBAR_STORAGE_KEY
 
 mkdirSync(OUT_DIR, { recursive: true });
 
@@ -62,10 +63,11 @@ async function captureEntry(entry, browser) {
     deviceScaleFactor: 1,
   });
   await context.addInitScript(
-    ([key, theme]) => {
+    ([key, theme, sidebarKey, sidebarCollapsed]) => {
       localStorage.setItem(key, theme);
+      if (sidebarCollapsed != null) localStorage.setItem(sidebarKey, sidebarCollapsed);
     },
-    [THEME_KEY, entry.theme],
+    [THEME_KEY, entry.theme, SIDEBAR_KEY, entry.sidebarCollapsed ? '1' : null],
   );
   const page = await context.newPage();
   const url = `${BASE_URL}${entry.route}?scenario=${entry.scenario}`;
