@@ -121,16 +121,56 @@ export const matrix = [
     scrollLeft: 'max',
   },
   {
+    id: 'detail-fresh-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '23',
+    theme: 'light',
+    baseline: '23-detail-fresh-light.png',
+  },
+  {
     id: 'detail-fresh-dark',
     route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
     scenario: '23d',
     theme: 'dark',
+    baseline: '23d-detail-fresh-dark.png',
+  },
+  {
+    id: 'detail-planning-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '16',
+    theme: 'light',
+    baseline: '16-规划中-streaming-light.png',
+  },
+  {
+    // r7 filed this bitmap under the planning name; its pixels are the
+    // confirm surface, dark, with the user-menu popover (see the r7
+    // rebaseline doc §1 write-back)
+    id: 'detail-confirm-popover-dark',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '16d',
+    theme: 'dark',
+    baseline: '16d-规划中-streaming-dark.png',
   },
   {
     id: 'detail-confirm-light',
     route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
     scenario: '17',
     theme: 'light',
+    baseline: '17-待确认-chat视图-light.png',
+  },
+  {
+    id: 'detail-confirm-dark',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '17d',
+    theme: 'dark',
+    baseline: '17d-待确认-chat视图-dark.png',
+  },
+  {
+    id: 'detail-confirm-split-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '17b',
+    theme: 'light',
+    baseline: '17b-待确认-方案文档分栏-light.png',
   },
 ];
 

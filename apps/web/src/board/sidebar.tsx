@@ -37,8 +37,10 @@ import {
 import './sidebar.css';
 
 interface BoardSidebarProps {
-  collapsed: boolean;
-  onToggle: () => void;
+  collapsed?: boolean;
+  onToggle?: () => void;
+  /** Todos waiting on confirmation — the 看板 nav badge (r7 02/17). */
+  attention?: number;
 }
 
 /** Leaf nav rows shared by both sidebar states — each renders full in the
@@ -76,7 +78,7 @@ function RailGroupChevron({ label }: { label: string }) {
   );
 }
 
-export function BoardSidebar({ collapsed, onToggle }: BoardSidebarProps) {
+export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: BoardSidebarProps) {
   if (collapsed) {
     return (
       <aside className="board-sidebar board-sidebar--collapsed">
@@ -150,6 +152,7 @@ export function BoardSidebar({ collapsed, onToggle }: BoardSidebarProps) {
             <Kanban />
           </span>
           <span className="sidebar-row-label">看板</span>
+          {attention > 0 && <span className="sidebar-badge">{attention}</span>}
         </a>
         <a className="sidebar-row" href="/app/schedules">
           <span className="sidebar-row-icon">

@@ -1,0 +1,55 @@
+// Phase → UI copy matrix (issue #56): the single table both the detail
+// header and the board card action read (one source for 开始/确认/完成/
+// 重开). Two word lists again (CONTEXT.md
+// ruling): board column names vs the detail chip words — `待验收`≡`审核`,
+// `待确认`≡`确认`, fresh≡`待处理`. Chip pills, main-button copy and
+// composer placeholders measured from the r7 captures (23 light/dark, 16
+// light, 17 light/dark) and r5b §3.3/§3.6 + r6 §4.4 (main-button copy
+// table incl. `重开`). Rows no capture exercises carry [推断].
+
+import type { Phase } from './fixtures/records.js';
+
+export interface PhaseUi {
+  /** Status chip word. */
+  chip: string;
+  /** Chip color tone. */
+  tone: 'idle' | 'plan' | 'confirm' | 'done';
+  /** Header primary button copy; null = no button (planning/building). */
+  action: string | null;
+  /** Composer textarea placeholder; null = no composer (fresh). */
+  placeholder: string | null;
+  /** 文档|聊天 tab group visible from planning on (r7 23 shows none). */
+  tabs: boolean;
+}
+
+export const PHASE_UI: Record<Phase, PhaseUi> = {
+  todo: { chip: '待处理', tone: 'idle', action: '开始', placeholder: null, tabs: false },
+  queued: { chip: '待处理', tone: 'idle', action: '开始', placeholder: null, tabs: false },
+  planning: {
+    chip: '规划中',
+    tone: 'plan',
+    action: null,
+    placeholder: '向 Agent 补充说明，执行过程中即可送达',
+    tabs: true,
+  },
+  confirm: { chip: '确认', tone: 'confirm', action: '确认', placeholder: '请求修改…', tabs: true },
+  // [推断] building/failed/closed never appear in a capture: chip and
+  // placeholder follow the planning family, action stays hidden.
+  building: {
+    chip: '规划中',
+    tone: 'plan',
+    action: null,
+    placeholder: '向 Agent 补充说明，执行过程中即可送达',
+    tabs: true,
+  },
+  review: { chip: '审核', tone: 'confirm', action: '完成', placeholder: '请求修改…', tabs: true },
+  done: { chip: '已完成', tone: 'done', action: '重开', placeholder: '请求修改…', tabs: true },
+  failed: {
+    chip: '规划中',
+    tone: 'plan',
+    action: null,
+    placeholder: '向 Agent 补充说明，执行过程中即可送达',
+    tabs: true,
+  },
+  closed: { chip: '待处理', tone: 'idle', action: null, placeholder: null, tabs: false },
+};

@@ -7,6 +7,7 @@
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { BoardSurface } from '../board/board.js';
+import { attentionCount } from '../board/columns.js';
 import { BoardSidebar } from '../board/sidebar.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 
@@ -27,7 +28,11 @@ export function BoardPage() {
   }, [collapsed]);
   return (
     <div className="board-shell h-full" data-route="board">
-      <BoardSidebar collapsed={collapsed} onToggle={toggle} />
+      <BoardSidebar
+        collapsed={collapsed}
+        onToggle={toggle}
+        attention={attentionCount(fixture.todos)}
+      />
       <BoardSurface fixture={fixture} />
     </div>
   );

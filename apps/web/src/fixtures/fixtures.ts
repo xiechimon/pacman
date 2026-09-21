@@ -5,7 +5,7 @@
 // (parity/match-text.mjs) in #54; all other strings come from the research
 // records.
 
-import type { FixtureSet, TodoRecord } from './records.js';
+import type { DetailContent, DocBlock, FixtureSet, TodoRecord, TranscriptItem } from './records.js';
 
 export const TEAM_ID = 'BoZYfvqKSGanlxsXVbXSa';
 export const TEAM_NAME = "Xmon Dai's team";
@@ -14,6 +14,8 @@ export const PROJECT_NAME = 'r3-lifecycle';
 /** Sidebar/card project avatar initial (r2 §1.1 首字母头像). */
 export const PROJECT_INITIAL = 'r';
 export const USER_NAME = 'Xmon Dai';
+/** User-menu popover mail line (r7 17 head row). */
+export const USER_MAIL = 'xiechimon@qq.com';
 export const MACHINE_NAME = 'xmonsMac-3574.local';
 export const MACHINE_ID = 'TlZ2sSD4EJCxjNJqVhdo_';
 export const R7_BUILD_ID = '01a0c26e-23ea-734f-9847-cf9cdbce7802';
@@ -164,7 +166,125 @@ export const boardDarkFresh: FixtureSet = {
   now: r7(13, 55),
 };
 
+/** r7 probe #10 — the dark fresh capture (23d) is a separate throwaway
+ *  todo: title/seq/creation time all read off that bitmap. */
+const probe10: TodoRecord = {
+  ...probeTodo('todo', r7(13, 40)),
+  id: 'r7-probe-10',
+  title: 'r7-dark-fresh 探针（拍完即删）',
+  spec: 'r7-dark-fresh 探针（拍完即删）',
+  seqNum: 10,
+};
+
+/** Plan document of probe #9, verbatim from the r7 17 doc pane. */
+const PROBE_PLAN_DOC: DocBlock[] = [
+  {
+    kind: 'para',
+    segments: [
+      {
+        text: 'Context: 仓库根目录的 README.md 当前末尾一行为 "r6 rebaseline probe"(文件以换行符结尾)。需求是在文件末尾追加新的一行 "r7 rebaseline probe"。',
+      },
+    ],
+  },
+  { kind: 'para', segments: [{ text: 'Changes:' }] },
+  {
+    kind: 'bullet',
+    segments: [
+      {
+        text: 'README.md:在文件末尾追加一行新内容 "r7 rebaseline probe",保持与现有行一致的格式(纯文本行,行尾换行符),不改动文件中已有的其他内容。',
+      },
+    ],
+  },
+  { kind: 'para', segments: [{ text: 'Edge cases: 无。' }] },
+  { kind: 'para', segments: [{ text: 'Verification:' }] },
+  {
+    kind: 'bullet',
+    segments: [
+      { text: '执行 ' },
+      { text: 'tail -n 3 README.md', code: true },
+      {
+        text: ' 确认最后一行为 "r7 rebaseline probe",且原有的 "r6 rebaseline probe" 一行保留在其上一行。',
+      },
+    ],
+  },
+  {
+    kind: 'bullet',
+    segments: [
+      { text: '执行 ' },
+      { text: 'git diff README.md', code: true },
+      { text: ' 确认改动仅为新增一行,未影响其他行。' },
+    ],
+  },
+];
+
+/** Probe #9 transcript while planning (r7 16): stamp, start bubble, live
+ *  step row. */
+const PROBE_RUN_OPEN: TranscriptItem[] = [
+  { kind: 'run', at: '13:26', machine: MACHINE_NAME },
+  {
+    kind: 'user',
+    text: '开始执行任务',
+    seq: 9,
+    title: '在 README.md 末尾追加一行「r7 rebaseline probe」',
+  },
+];
+
+/** Probe #9 transcript while planning (r7 16): run open + live step row. */
+const PROBE_PLANNING_TRANSCRIPT: TranscriptItem[] = [
+  ...PROBE_RUN_OPEN,
+  { kind: 'streaming', seconds: 3, label: '准备工作区...' },
+];
+
+/** Probe #9 transcript once the plan landed (r7 17/17b/17d, and 16d which
+ *  the r7 manifest filed under the streaming name). */
+const PROBE_CONFIRM_TRANSCRIPT: TranscriptItem[] = [
+  ...PROBE_RUN_OPEN,
+  {
+    kind: 'robot',
+    text: '任务简单明确:在 README.md 末尾追加一行新文本,文件已有末尾换行行,直接追加即可。',
+  },
+  {
+    kind: 'plan',
+    title: '方案 · v1',
+    preview:
+      'Context: 仓库根目录的 README.md 当前末尾一行为 "r6 rebaseline probe"(文件以换行符结尾)。需求是在文件末尾追加新的一行 "r7 rebaseline probe"。  Changes: README.md:在文件末尾追加一行新内容 "r7 rebaseline probe",保持与现有行一致的格式(纯文本行,行尾换行符),不改动文件中已有的其他内容。',
+    seconds: 21,
+  },
+];
+
 /** Detail page content for a single todo. */
-export function detailFor(phase: TodoRecord['phase'], phaseAt: number, now: number): FixtureSet {
-  return { todos: [probeTodo(phase, phaseAt)], now };
+export function detailFor(
+  phase: TodoRecord['phase'],
+  phaseAt: number,
+  now: number,
+  detail?: DetailContent,
+): FixtureSet {
+  return { todos: [probeTodo(phase, phaseAt)], now, detail };
+}
+
+/** Detail fresh state (r7 23): no transcript, no doc pane. */
+export const detailFresh: FixtureSet = {
+  todos: [probeTodo('todo', r7(13, 21))],
+  now: r7(13, 22),
+};
+
+/** Detail fresh state, dark capture (r7 23d = probe #10). */
+export const detailFreshDark: FixtureSet = { todos: [probe10], now: r7(13, 41) };
+
+/** Detail planning state (r7 16): live transcript, empty doc pane. */
+export const detailPlanning: FixtureSet = {
+  todos: [probeTodo('planning', r7(13, 26))],
+  now: r7(13, 26),
+  detail: { transcript: PROBE_PLANNING_TRANSCRIPT },
+};
+
+/** Detail confirm state (r7 17/17b/17d, plus 16d = same surface dark with
+ *  the popover). `userMenuOpen` reproduces the popover the 17 and 16d
+ *  captures include. */
+export function detailConfirm(userMenuOpen: boolean): FixtureSet {
+  return {
+    todos: [probeTodo('confirm', r7(13, 26))],
+    now: r7(13, 28),
+    detail: { transcript: PROBE_CONFIRM_TRANSCRIPT, doc: PROBE_PLAN_DOC, userMenuOpen },
+  };
 }
