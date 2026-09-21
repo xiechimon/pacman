@@ -85,8 +85,8 @@
   --indigo-500: #6366f1;
   --indigo-400: #6366f1;
   --col-bg: #f2ede6;
-  --card-bg: #fcfcfc;
-  --card-border: #ffffff;
+  --card-bg: #ffffff;
+  --card-border: #e2dbd1;
   --col-head-text: #57534e;
   --bell-mix: 10%;
 }
@@ -139,6 +139,7 @@ svg { display: block; }
   margin-bottom: 5px;
   padding: 0 10px;
   color: var(--text-secondary);
+  font-weight: 500;
   font-size: 14px;
   flex: 0 0 34.5px;
 }
@@ -146,15 +147,15 @@ svg { display: block; }
 .nav-row.active { background: var(--surface-secondary); color: var(--text-primary); }
 .nav-row .kbd {
   margin-left: auto;
-  font-family: var(--font-mono);
-  font-size: 11px; color: var(--text-dim);
+  font-family: var(--font-inter);
+  font-size: 11px; color: var(--text-tertiary);
   border: 1px solid var(--border-default);
-  border-radius: 4px; padding: 0 4px; line-height: 16px;
+  border-radius: 6px; padding: 1px 5px; line-height: 14px;
 }
 .group-head {
   display: flex; align-items: center; gap: 6px;
   height: 34.5px; margin-bottom: 5px; padding: 0 10px;
-  color: var(--text-tertiary); font-size: 13px;
+  color: var(--text-secondary); font-weight: 500; font-size: 14px;
 }
 .nav-sub { padding-left: 26px; }
 .proj-avatar {
@@ -165,12 +166,11 @@ svg { display: block; }
   flex: 0 0 20px;
 }
 .res-icon {
-  width: 20px; height: 20px; border-radius: 5px;
-  background: color-mix(in srgb, var(--amber-500) 18%, transparent);
-  color: var(--amber-500);
   display: inline-flex; align-items: center; justify-content: center;
-  flex: 0 0 20px;
+  color: var(--text-secondary);
+  flex: 0 0 16px;
 }
+.res-icon svg { width: 16px; height: 16px; }
 .sidebar .bottom { margin-top: auto; padding-bottom: 12px; }
 .user-chip {
   display: flex; align-items: center; gap: 8px;
@@ -273,13 +273,15 @@ svg { display: block; }
 
 /* avatars */
 .avatar { position: relative; width: 20px; height: 20px; flex: 0 0 20px; }
-.avatar svg { width: 20px; height: 20px; border-radius: 50%; }
+.avatar svg, .avatar img { width: 20px; height: 20px; border-radius: 50%; display: block; }
 .avatar .badge {
-  position: absolute; right: -2px; top: -2px;
-  width: 9px; height: 9px; border-radius: 50%;
-  background: var(--gray-400);
-  border: 2px solid var(--card-bg);
+  position: absolute; right: -3px; top: -3px;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--amber-500);
+  border: 1.5px solid var(--card-bg);
+  display: flex; align-items: center; justify-content: center;
 }
+.avatar .badge svg { width: 6px; height: 6px; }
 
 /* ---------- project page (screen 2) ---------- */
 .tabs {
@@ -295,6 +297,7 @@ svg { display: block; }
   font-size: 12px; color: var(--text-tertiary);
 }
 .tabs button.on { background: var(--surface-elevated); color: var(--text-primary); font-weight: 500; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
+.tabs .tdiv { width: 1px; align-self: stretch; margin: 5px 0; background: var(--border-default); }
 .light .tabs button.on { background: #fff; }
 
 .listbar { display: flex; align-items: center; gap: 12px; padding: 16px 16px 12px; }
@@ -362,6 +365,7 @@ svg { display: block; }
 .bubble .kick { font-weight: 500; margin-bottom: 6px; }
 .bubble .taskline { display: flex; align-items: center; gap: 8px; }
 .bubble .taskline .n {
+  display: inline-flex; align-items: center; gap: 2px;
   font-family: var(--font-mono); font-size: 12px; color: var(--text-tertiary);
   background: var(--surface-tertiary); border-radius: 4px; padding: 0 5px;
 }
@@ -419,7 +423,7 @@ svg { display: block; }
   display: flex; align-items: center; justify-content: center;
   z-index: 10;
 }
-.panel ~ .chief-fab, .app .chief-fab.with-panel { right: 577px; }
+.panel:not([hidden]) ~ .chief-fab, .app .chief-fab.with-panel { right: 577px; }
 
 /* ---------- full-page detail (/app/todo/:id) ---------- */
 .detail { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -427,6 +431,7 @@ svg { display: block; }
   height: 48px; flex: 0 0 48px;
   display: flex; align-items: center; gap: 8px;
   padding: 0 12px;
+  border-bottom: 1px solid var(--border-default);
 }
 .dhead .seq { font-size: 13px; color: var(--text-tertiary); font-family: var(--font-mono); }
 .dhead .right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
@@ -469,10 +474,11 @@ svg { display: block; }
 /* r7: ghost card button (回复) + install pill + user-chip dots */
 .btn-ghost2 {
   display: inline-flex; align-items: center;
-  height: 25.8px; padding: 0 12px; border-radius: 6px;
-  border: 1px solid var(--border-strong);
-  background: transparent; color: var(--text-secondary);
+  height: 26px; padding: 0 12px; border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg); color: var(--text-secondary);
   font-size: 12px; font-weight: 500;
 }
 .nav-row.install { background: color-mix(in srgb, var(--indigo-500) 10%, transparent); color: var(--indigo-600); }
 .user-chip .tail { margin-left: auto; color: var(--text-dim); }
+.user-chip img { width: 20px; height: 20px; border-radius: 50%; flex: 0 0 20px; }

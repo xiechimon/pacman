@@ -26,9 +26,8 @@
     <button class="nav-row nav-sub"><span class="res-icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="8" rx="2"></rect><rect x="2" y="13" width="20" height="8" rx="2"></rect><path d="M6 7h.01M6 17h.01"></path></svg></span>机器</button>
     <button class="nav-row nav-sub"><span class="res-icon"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"></path><path d="m3 13 9 5 9-5"></path></svg></span>模型服务</button>
     <div class="bottom">
-      <button class="nav-row"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--indigo-500)"><rect x="6" y="2" width="12" height="20" rx="2"></rect><path d="M11 18h2"></path></svg>安装 App</button>
       <button class="user-chip">
-        <svg width="20" height="20" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#57534e"/><circle cx="12" cy="9.5" r="4" fill="#fafaf9"/><path d="M4 21c1-4.5 4.5-6.5 8-6.5s7 2 8 6.5" fill="#fafaf9"/></svg>
+        <img src="assets/avatar-user.png" alt="">
         Xmon Dai
       </button>
     </div>
@@ -39,7 +38,7 @@
       <button class="icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"></path></svg></button>
       <span class="seq">#4</span>
       <span class="chip" id="chip" style="color:var(--amber-500);background:color-mix(in srgb, var(--amber-500) 12%, transparent)">确认<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg></span>
-      <div class="tabs"><button id="tab-doc">文档</button><button class="on" id="tab-chat">聊天</button></div>
+      <div class="tabs"><button id="tab-doc" aria-label="文档"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg></button><span class="tdiv"></span><button class="on" id="tab-chat" aria-label="聊天"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></button></div>
       <div class="right">
         <button class="icon-btn" aria-label="更多"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="12" cy="19" r="1.6"></circle></svg></button>
         <button class="icon-btn" aria-label="分支与 PR"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></button>
@@ -64,7 +63,7 @@
         <div class="stamp">22:45<br>运行在 <a href="#">xmonsMac-3574.local</a> 上</div>
 
         <div class="msg">
-          <span class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#1c1917"/><circle cx="12" cy="10" r="5" fill="#fafaf9"/><path d="M5 20c1-4 3.5-6 7-6s6 2 7 6" fill="#fafaf9"/></svg></span>
+          <span class="avatar"><img src="assets/avatar-user.png" alt=""></span>
           <div class="body">
             <div class="bubble">
               <div class="kick">开始执行任务</div>
@@ -78,7 +77,7 @@
         </div>
 
         <div class="msg">
-          <span class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#e8e2d9"/><circle cx="7" cy="9" r="3" fill="#52525b" stroke="none"></circle><circle cx="17" cy="9" r="3" fill="#52525b" stroke="none"></circle><line x1="7.5" y1="17" x2="16.5" y2="17" stroke="#52525b" stroke-width="2.5"></line></svg></span>
+          <span class="avatar"><img src="assets/avatar-robot-2.svg" alt=""></span>
           <div class="body plain">
             <p>这是一个极简任务:在仓库根目录的 README.md 末尾追加一行文本,文件当前以换行符结尾,直接追加新行即可。</p>
             <div class="plancard">
@@ -93,12 +92,12 @@
         </div>
 
         <div class="msg after-confirm">
-          <span class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#1c1917"/><circle cx="12" cy="10" r="5" fill="#fafaf9"/><path d="M5 20c1-4 3.5-6 7-6s6 2 7 6" fill="#fafaf9"/></svg></span>
+          <span class="avatar"><img src="assets/avatar-user.png" alt=""></span>
           <div class="body"><div class="bubble" style="display:inline-block">确认</div></div>
         </div>
 
         <div class="msg after-confirm">
-          <span class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#e8e2d9"/><circle cx="7" cy="9" r="3" fill="#52525b" stroke="none"></circle><circle cx="17" cy="9" r="3" fill="#52525b" stroke="none"></circle><line x1="7.5" y1="17" x2="16.5" y2="17" stroke="#52525b" stroke-width="2.5"></line></svg></span>
+          <span class="avatar"><img src="assets/avatar-robot-2.svg" alt=""></span>
           <div class="body plain">
             <p>修改已完成并验证通过:README.md 现共四行,末行为 <span class="codechip">r5b lifecycle probe</span>。</p>
             <div class="ft" style="display:flex;align-items:center;gap:6px;color:var(--text-dim);font-size:12px">
@@ -114,7 +113,7 @@
         </div>
 
         <div class="msg after-review">
-          <span class="avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="12" fill="#e8e2d9"/><circle cx="7" cy="9" r="3" fill="#52525b" stroke="none"></circle><circle cx="17" cy="9" r="3" fill="#52525b" stroke="none"></circle><line x1="7.5" y1="17" x2="16.5" y2="17" stroke="#52525b" stroke-width="2.5"></line></svg></span>
+          <span class="avatar"><img src="assets/avatar-robot-2.svg" alt=""></span>
           <div class="body plain">
             <p><span style="font-weight:500">Xmon Dai 发起了合并</span> · git merge origin/main 结果为 "Already up to date",无需处理任何冲突。完成 28s</p>
             <p>🎉 任务已完成</p>
@@ -134,6 +133,7 @@
   </div>
 </div>
 
+<button class="chief-fab" aria-label="总管"><svg width="31" height="31" viewBox="0 0 24 24" fill="none" stroke="#52525b" stroke-width="2.5" stroke-linecap="round"><circle cx="7" cy="9" r="3" fill="#52525b" stroke="none"></circle><circle cx="17" cy="9" r="3" fill="#52525b" stroke="none"></circle><line x1="7.5" y1="17" x2="16.5" y2="17"></line></svg></button>
 <div class="harness">
   <span>PROTOTYPE #42 · detail</span>
   <button id="p-fresh">fresh</button>
