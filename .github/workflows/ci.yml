@@ -1,0 +1,37 @@
+name: ci
+
+on:
+  push:
+    branches: [main, 'web/**', 'prototype/**']
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4 # reads packageManager from package.json
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint (biome ci)
+        run: pnpm lint
+
+      - name: Parity smoke gate
+        run: pnpm parity
