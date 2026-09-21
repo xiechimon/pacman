@@ -1,5 +1,7 @@
 # R6 · 基线重拍（站点漂移第三数据点）
 
+> ⚠️ **像素位图作废（右缘缺口），以 r7 为准**：本批 PNG 沿用 override 法被物理窗口钳制（截图面 1293×727，右 ~130 CSS px 缺失），已从 main 删除（git 历史可查）；权威位图见 `r7-rebaseline.md` + `assets/r7/`（1440×732 全窗）。下文 DOM 实测表与 icons.json 仍然有效。
+
 > 目的：todos.dev 再次更新（r2→r5→r5b 三天内已漂移三次），为 #42 像素对拍重立基线——全量重拍两屏相关状态 + 刷新图标 dump，并逐区 diff 出「这次到底变了什么」。
 > 素材：Ego 浏览器 TaskSpace「todos.dev 复刻盘点」，free 档已登录账号（Xmon Dai / xiechimon@qq.com / 团队 Xmon Dai's team `BoZYfvqKSGanlxsXVbXSa`）。
 > 盘点时间：2026-09-21（截图 11:07–11:59 由前一轮 agent 完成；icons dump 与 DOM 复核 12:10–12:40 由本轮补齐，探针 `#8` 12:18 创建、12:30 前后删除）。

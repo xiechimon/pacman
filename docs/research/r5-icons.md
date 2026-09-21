@@ -1,5 +1,7 @@
 # R5 · todos.dev 全窗补拍 + workspace 内联 SVG 图标集 dump
 
+> ⚠️ **像素位图作废（右缘缺口），以 r7 为准**：本批 PNG 拍摄于 110% tab 缩放 + override 钳制期，右缘 ~130 CSS px 缺失，已从 main 删除（git 历史可查）；权威位图见 `r7-rebaseline.md` + `assets/r7/`（1440×732 全窗）。下文 DOM 实测表与 icons dump 仍然有效。
+
 > 目的：闭合 #42 原型对拍的两个素材缺口——①全窗截图（面板右缘完整可见）②workspace 内联 SVG 图标的 DOM dump（替换目测手绘图标的权威源）。
 > 素材：Ego 浏览器 TaskSpace 2「todos.dev 复刻盘点」，free 档已登录账号（Xmon Dai / xiechimon@qq.com / 团队 Xmon Dai's team）。
 > 盘点时间：2026-09-20（探针任务 13:37 创建、约 13:45 删除）。
