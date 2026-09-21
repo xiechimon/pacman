@@ -7,40 +7,41 @@
 // the fixture loader, this param becomes dev/test-only.
 // Unknown or absent ids fall back to the default board set.
 
-import { at, boardDefault, boardWithProbe, detailFor } from './fixtures.js';
+import { boardDefault, boardWithProbe, detailFor, r7 } from './fixtures.js';
 import type { FixtureSet } from './records.js';
 
 export const SCENARIO_PARAM = 'scenario';
 
 /** r7 capture number → fixture set. Board rows bind board scenarios,
- *  detail rows bind single-todo detail scenarios. */
+ *  detail rows bind single-todo detail scenarios. `now` inside each set
+ *  is the capture instant (keeps relative labels deterministic). */
 export const SCENARIOS: Record<string, FixtureSet> = {
   // board (r7 01–03, 21–22, 33, 35)
   '01': boardDefault,
   '01b': boardDefault,
-  '02': boardWithProbe('confirm', at(13, 26)),
-  '02b': boardWithProbe('confirm', at(13, 26)),
+  '02': boardWithProbe('confirm', r7(13, 26), r7(13, 35)),
+  '02b': boardWithProbe('confirm', r7(13, 26), r7(13, 35)),
   '03': boardDefault,
-  '21': boardWithProbe('confirm', at(13, 26)),
-  '22': boardWithProbe('todo', at(13, 21)),
-  '22d': boardWithProbe('todo', at(13, 21)),
-  '33': boardWithProbe('review', at(13, 37)),
+  '21': boardWithProbe('confirm', r7(13, 26), r7(13, 35)),
+  '22': boardWithProbe('todo', r7(13, 21), r7(13, 22)),
+  '22d': boardWithProbe('todo', r7(13, 21), r7(13, 22)),
+  '33': boardWithProbe('review', r7(13, 37), r7(13, 45)),
   '35': boardDefault,
   '35d': boardDefault,
   // detail (r7 16–17, 23, 26–27, 36, 38)
-  '16': detailFor('planning', at(13, 23)),
-  '16d': detailFor('planning', at(13, 23)),
-  '17': detailFor('confirm', at(13, 26)),
-  '17b': detailFor('confirm', at(13, 26)),
-  '17d': detailFor('confirm', at(13, 26)),
-  '23': detailFor('todo', at(13, 21)),
-  '23d': detailFor('todo', at(13, 21)),
-  '26': detailFor('building', at(13, 35)),
-  '26d': detailFor('building', at(13, 35)),
-  '27': detailFor('review', at(13, 37)),
-  '27d': detailFor('review', at(13, 37)),
-  '36': detailFor('done', at(13, 52)),
-  '36d': detailFor('done', at(13, 52)),
+  '16': detailFor('planning', r7(13, 23), r7(13, 24)),
+  '16d': detailFor('planning', r7(13, 23), r7(13, 24)),
+  '17': detailFor('confirm', r7(13, 26), r7(13, 28)),
+  '17b': detailFor('confirm', r7(13, 26), r7(13, 28)),
+  '17d': detailFor('confirm', r7(13, 26), r7(13, 28)),
+  '23': detailFor('todo', r7(13, 21), r7(13, 22)),
+  '23d': detailFor('todo', r7(13, 21), r7(13, 22)),
+  '26': detailFor('building', r7(13, 35), r7(13, 36)),
+  '26d': detailFor('building', r7(13, 35), r7(13, 36)),
+  '27': detailFor('review', r7(13, 37), r7(13, 40)),
+  '27d': detailFor('review', r7(13, 37), r7(13, 40)),
+  '36': detailFor('done', r7(13, 52), r7(13, 55)),
+  '36d': detailFor('done', r7(13, 52), r7(13, 55)),
   '38': boardDefault,
 };
 

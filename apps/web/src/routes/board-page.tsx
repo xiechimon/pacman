@@ -1,11 +1,17 @@
-// Board route shell (issue #53): geometry and components land in #54/#55,
-// which consume the scenario-selected fixture set. Renders the app
-// surface with the horizontal board scroller element the parity harness
-// drives via scrollLeft (data-parity-scroll).
+// Board route (issue #54): app shell = sidebar + board surface, content
+// picked by the scenario fixture (issue #52 mechanism).
+import { useSearchParams } from 'react-router';
+import { BoardSurface } from '../board/board.js';
+import { BoardSidebar } from '../board/sidebar.js';
+import { resolveScenario } from '../fixtures/scenario.js';
+
 export function BoardPage() {
+  const [searchParams] = useSearchParams();
+  const fixture = resolveScenario(searchParams);
   return (
-    <div className="h-full overflow-hidden bg-surface text-content" data-route="board">
-      <div className="h-full overflow-x-auto overflow-y-hidden" data-parity-scroll="" />
+    <div className="board-shell h-full" data-route="board">
+      <BoardSidebar />
+      <BoardSurface fixture={fixture} />
     </div>
   );
 }

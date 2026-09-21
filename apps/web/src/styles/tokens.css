@@ -1,13 +1,16 @@
 /* Design token layer. Dual-source priority (issue #52): app-surface
-   screenshot sampling from prototype #42 replica.css wins, r1 §4.2 public
-   CSS table fills the rest. Dark = :root default, light = .light on the
-   root element. Font stacks: --font-inter / --font-jetbrains-mono come
-   from the 859B font stylesheet (fonts.css, r1 §4.1); the consuming
-   stacks below follow the r1 records verbatim. */
+   screenshot sampling wins, r1 §4.2 public CSS table fills the rest.
+   #54 re-sampled the app surface from the r7 board captures (01/01b light,
+   02/02b dark): dark surface #18181b and light surface #faf7f3 replace the
+   landing-page samples, and the board palette below is measured from the
+   same bitmaps. Dark = :root default, light = .light on the root element.
+   Font stacks: --font-inter / --font-jetbrains-mono come from the 859B
+   font stylesheet (fonts.css, r1 §4.1); the consuming stacks below follow
+   the r1 records verbatim. */
 
 :root {
   --active-text: #a0a0a5;
-  --surface: #161618;
+  --surface: #18181b;
   --surface-secondary: #1f1f23;
   --surface-tertiary: #27272a;
   --surface-inset: #09090b;
@@ -25,7 +28,9 @@
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
   --font-mono: ui-monospace, "JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, monospace;
   --indigo-600: #4f46e5;
-  --indigo-500: #6366f1;
+  /* r7 01b/02 sampled: +任务 text and card buttons land on #6466e9, not the
+     landing-page #6366f1; both themes share the dark-captured value */
+  --indigo-500: #6466e9;
   --indigo-400: #818cf8;
   --blue-500: #3b82f6;
   --blue-400: #60a5fa;
@@ -33,18 +38,32 @@
   --green-500: #22c55e;
   --rose-500: #f43f5e;
   --gray-400: #9ca3af;
-  /* board palette, sampled from r2/r7 captures (differs from landing tokens) */
+  /* board palette, sampled from r7 captures (differs from landing tokens) */
   --col-bg: #09090b;
+  --col-top-border: #27272a;
   --card-bg: #1f1f23;
   --card-border: #27272a;
+  --card-button: #4e47dd;
+  --card-ghost-border: #2e2e33;
   --col-head-text: #bebec1;
+  --col-dot-idle: #9ea3ae;
+  --col-dot-planning: #4e81ee;
+  --col-dot-confirm: #e9a23b;
+  --col-dot-building: #4e81ee;
+  --col-dot-review: #e9a23b;
+  --col-dot-done: #5ec26a;
+  --badge-attention: #e9a23b;
+  --badge-done: #5ec26a;
+  --install-bg: #28293b;
+  --install-fg: #6063df;
+  --fab-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
   color-scheme: dark light;
 }
 
 .light {
   --active-text: #6e6b69;
-  --surface: #faf7f2;
-  --surface-secondary: #f2ede6;
+  --surface: #faf7f3;
+  --surface-secondary: #f1ede7;
   --surface-tertiary: #e8e2d9;
   --surface-inset: #f2ede6;
   --surface-elevated: #fdfaf6;
@@ -57,8 +76,22 @@
   --border-strong: #cec6bb;
   --nav-bg: rgba(250, 250, 249, 0.85);
   --indigo-400: #6366f1;
-  --col-bg: #f2ede6;
+  --col-bg: #f1ede7;
+  --col-top-border: #e3ded5;
   --card-bg: #ffffff;
-  --card-border: #e2dbd1;
+  --card-border: #e1dbd2;
+  --card-button: #4e47dd;
+  --card-ghost-border: #f2f0ec;
   --col-head-text: #57534e;
+  --col-dot-idle: #9ea3ae;
+  --col-dot-planning: #4e81ee;
+  --col-dot-confirm: #e9a23b;
+  --col-dot-building: #4e81ee;
+  --col-dot-review: #e9a23b;
+  --col-dot-done: #5ec26a;
+  --badge-attention: #e9a23b;
+  --badge-done: #5ec26a;
+  --install-bg: #ebe8f2;
+  --install-fg: #6c6ee9;
+  --fab-shadow: 0 5px 14px rgb(28 25 23 / 0.14);
 }
