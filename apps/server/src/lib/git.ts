@@ -138,6 +138,50 @@ export const systemGitOps: GitOps = {
     }
   },
 
+  async seedInitialCommit(dir, message) {
+    // 空树 sha = 常量（`git hash-object -t tree /dev/null`）；plumbing 直落
+    // refs/heads/main（bare 无检出面，commit-tree + update-ref 即够）。
+    const emptyTree = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
+    const env: NodeJS.ProcessEnv = {
+      GIT_AUTHOR_NAME: 'pacman-git',
+      GIT_AUTHOR_EMAIL: 'git@localhost',
+      GIT_COMMITTER_NAME: 'pacman-git',
+      GIT_COMMITTER_EMAIL: 'git@localhost',
+    };
+    const ct = await runGit(['commit-tree', emptyTree, '-m', message], {
+      cwd: dir,
+      env,
+      timeoutMs: META_TIMEOUT_MS,
+    });
+    if (ct.code !== 0) throw new Error(`git commit-tree failed: ${ct.stderr}`);
+    const sha = ct.stdout.toString('utf8').trim();
+    const up = await runGit(['update-ref', `refs/heads/${DEFAULT_HEAD_BRANCH}`, sha], {
+      cwd: dir,
+      timeoutMs: META_TIMEOUT_MS,
+    });
+    if (up.code !== 0) throw new Error(`git update-ref failed: ${up.stderr}`);
+    return sha;
+  },
+
+  async isAncestor(dir, ancestor, commit) {
+    const r = await runGit(['merge-base', '--is-ancestor', '--end-of-options', ancestor, commit], {
+      cwd: dir,
+      timeoutMs: META_TIMEOUT_MS,
+    });
+    return r.code === 0;
+  },
+
+  async updateBranchRef(dir, branch, commit) {
+    if (!/^[\w./-]+$/.test(branch) || !/^[0-9a-f]{40,64}$/.test(commit)) {
+      throw new Error(`unsafe ref update: ${branch} ${commit}`);
+    }
+    const r = await runGit(['update-ref', `refs/heads/${branch}`, commit], {
+      cwd: dir,
+      timeoutMs: META_TIMEOUT_MS,
+    });
+    if (r.code !== 0) throw new Error(`git update-ref failed: ${r.stderr}`);
+  },
+
   async resolveCommit(dir, ref) {
     // --end-of-options：ref 位的 flag 样串不被当选项消费（git ≥ 2.24）。
     const r = await runGit(['rev-parse', '--verify', '--end-of-options', `${ref}^{commit}`], {

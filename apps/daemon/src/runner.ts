@@ -7,18 +7,21 @@
 // claimed → running → awaiting-upload →（done | failed）；中断残留由
 // machine-loop recover 面对账续跑。
 
-import { mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type {
   AgentBackend,
   AgentSessionHandle,
   AgentTokenUsage,
   ClaimedStep,
+  PreparedWorkspace,
   ProviderConfig,
   SessionOpts,
+  WorktreeOps,
 } from '@pacman/shared';
-import { REMOTE_TOOL_RETRY_DELAYS_MS, STREAM_TIMEOUTS_MS } from '@pacman/shared';
+import { PLAN_FILE_NAME, REMOTE_TOOL_RETRY_DELAYS_MS, STREAM_TIMEOUTS_MS } from '@pacman/shared';
 import { SessionNotResumableError } from './backend/errors.js';
+import { clearCredentials, pushCredential } from './credentials.js';
 import { type StepJournal, TranscriptBuffer } from './journal.js';
 import type { DaemonLogger } from './log.js';
 import type { MachineApi } from './machine-client.js';
@@ -32,6 +35,9 @@ export interface RunStepDeps {
   paths: StatePaths;
   workspacesDir: string;
   maxConcurrent: number;
+  /** worktree 契约面（02 §5.5；machine-loop 注入共享实例——projectLock 跨步
+   * 串行化需要单例）。缺省且步带 repo 绑定 = 配置错误，按 failed 收尾。 */
+  workspace?: WorktreeOps;
   /** heartbeat 节奏 [设计]（r3 未采具体值；presence 同族 ~30s）。 */
   heartbeatIntervalMs?: number;
   now?: () => number;
@@ -116,21 +122,47 @@ export async function runStep(
     claimed,
   });
 
-  // per-step 凭证下发（02 §5.4/§8：内存持有，不落盘常驻）。
+  // per-step 凭证下发（02 §5.4/§8：内存持有，不落盘常驻；push_credential
+  // 对照 = credentials.ts）。
   const tokenRes = await client.token(stepId);
+  const creds = pushCredential(tokenRes);
   const agent = claimed.agent;
   const provider: ProviderConfig | null =
-    tokenRes.provider ?? (agent?.provider ? { kind: 'api_key', providerId: agent.provider } : null);
+    creds.provider ?? (agent?.provider ? { kind: 'api_key', providerId: agent.provider } : null);
   if (!agent?.modelId || !provider) {
+    clearCredentials(creds);
     await failStep(deps, stepId, 'no agent/model on claimed step');
     return;
   }
   logger.raw(`using model ${provider.providerId}/${agent.modelId}`);
 
-  // workspace 准备（M3a = 任务目录；worktree/git 契约归 M3b，02 §5.5）。
-  const cwd = join(deps.workspacesDir, convId);
-  mkdirSync(cwd, { recursive: true });
+  // workspace 准备（02 §5.5 worktree 契约：基座 clone + `worktree add -b`；
+  // 项目未绑 repo = 裸任务目录退化形 [设计]，M3a 兼容）。
   logger.workspace('准备工作区...');
+  let ws: PreparedWorkspace | null = null;
+  const repo = claimed.project.repo;
+  if (repo !== null && repo.kind === 'hosted') {
+    if (!deps.workspace) {
+      clearCredentials(creds);
+      await failStep(deps, stepId, 'workspace ops unavailable for repo-bound step');
+      return;
+    }
+    try {
+      ws = await deps.workspace.prepare({
+        projectId: claimed.project.id,
+        conversationId: convId,
+        cloneUrl: repo.cloneUrl,
+        workspacesRoot: deps.workspacesDir,
+        credentials: creds.git,
+      });
+    } catch (err) {
+      clearCredentials(creds);
+      await failStep(deps, stepId, err instanceof Error ? err.message : String(err));
+      return;
+    }
+  }
+  const cwd = ws?.cwd ?? join(deps.workspacesDir, convId);
+  if (!ws) mkdirSync(cwd, { recursive: true });
 
   const sessionOpts: SessionOpts = {
     provider,
@@ -271,6 +303,7 @@ export async function runStep(
   } catch (err) {
     clearInterval(heartbeat);
     if (watchdog) clearTimeout(watchdog);
+    clearCredentials(creds);
     await failStep(deps, stepId, err instanceof Error ? err.message : String(err));
     return;
   }
@@ -279,22 +312,82 @@ export async function runStep(
   if (timedOut)
     lastError = `stream timeout (first=${STREAM_TIMEOUTS_MS.streamFirstEvent}ms idle=${STREAM_TIMEOUTS_MS.streamIdle}ms)`;
 
+  // —— git 收尾（02 §5.5：每步结束自动 commit + push 本 conversation 工作
+  // 分支；合并步先走 `git merge --no-edit origin/<default>`，r3 §3.6）——
+  let headCommit: string | null = null;
+  let hasChanges = sawChangeTool; // 未绑 repo 退化形 = transcript 写类工具行 [推断骨架]
+  if (ws !== null && deps.workspace && lastError === null) {
+    const git = deps.workspace;
+    try {
+      // 提交身份 [设计]（r3 未采 committer 词表）：Agent 名 + 机器位。
+      const identity = {
+        name: claimed.agent?.displayName ?? 'tds-agent',
+        email: `${claimed.step.machineId ?? 'machine'}@tds.local`,
+      };
+      const committed = await git.commitAll(
+        ws.cwd,
+        `${claimed.step.kind}: ${claimed.todo.title}`,
+        identity,
+      );
+      if (claimed.step.kind === 'merge') {
+        const merged = await git.mergeDefaultBranch(ws.cwd, ws.defaultBranch);
+        // 合并结果行进 transcript（r3 §3.6 时间线样本「git merge origin/main
+        // 结果为 "Already up to date"…」同形）。
+        transcript.upsert({
+          id: `merge-${stepId}`,
+          role: 'system',
+          content: `git merge origin/${ws.defaultBranch} 结果为 "${merged.output || 'OK'}"`,
+          createdAt: now(),
+        });
+      }
+      if (
+        committed.committed ||
+        claimed.step.kind === 'merge' ||
+        (await git.countAhead(ws.cwd, ws.defaultBranch)) > 0
+      ) {
+        await git.push(ws.cwd, ws.branch, creds.git);
+        logger.raw(`pushed ${ws.branch}`);
+      }
+      headCommit = committed.head ?? (await git.headCommit(ws.cwd));
+      // hasChanges = conv 分支领先默认分支的提交在位（02 §4.1/r5 §8 列位双键；
+      // git 真值面取代 M3a transcript 推断骨架）。
+      hasChanges = (await git.countAhead(ws.cwd, ws.defaultBranch)) > 0;
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+    }
+  }
+
   const status = lastError === null ? 'success' : 'failed';
+  if (lastError !== null) logger.step(`step failed: ${lastError}`);
   journal.update(stepId, { state: 'awaiting-upload' });
 
-  // upload-urls → transcript 终稿回传落库（02 §1.3 数据所有权）。
+  // upload-urls → transcript 终稿 + plan.md 产物回传落库（02 §1.3 数据所有权；
+  // plan 即文件、版本 = 文件版本——规划步收尾上传当前版，02 §4.2/r5 §4）。
   try {
     const messages = transcript.messages();
-    const { uploads } = await client.uploadUrls(stepId, [
+    const files: { name: string; size?: number }[] = [
       { name: 'transcript.json', size: JSON.stringify(messages).length },
-    ]);
-    const upload = uploads[0];
-    if (upload) {
-      await client.putUpload(upload.url, upload.headers, { stepId, messages });
+    ];
+    let planContent: string | null = null;
+    if (ws !== null && claimed.step.kind === 'plan') {
+      const planPath = join(ws.cwd, PLAN_FILE_NAME);
+      if (existsSync(planPath)) {
+        planContent = readFileSync(planPath, 'utf8');
+        files.push({ name: PLAN_FILE_NAME, size: planContent.length });
+      }
+    }
+    const { uploads } = await client.uploadUrls(stepId, files);
+    for (const upload of uploads) {
+      if (upload.name === PLAN_FILE_NAME && planContent !== null) {
+        await client.putUpload(upload.url, upload.headers, planContent, 'text/markdown');
+      } else if (upload.name === 'transcript.json') {
+        await client.putUpload(upload.url, upload.headers, { stepId, messages });
+      }
     }
   } catch (err) {
     // 回传失败 = journal 残留 awaiting-upload，recover 面重传 [设计]。
     logger.step(`transcript upload failed: ${err instanceof Error ? err.message : String(err)}`);
+    clearCredentials(creds);
     return;
   }
 
@@ -304,12 +397,17 @@ export async function runStep(
       ...(lastError !== null ? { errorMessage: lastError } : {}),
       sessionId: handle.sessionId,
       usage: [...usage],
-      hasChanges: sawChangeTool,
+      hasChanges,
+      // per-step checkpoint（done 回传 commit：「恢复到此处」数据源 + 合并步
+      // fast-forward 落地键，r3 §3.5/§3.9 [设计]）。
+      ...(headCommit !== null ? { commit: headCommit } : {}),
     });
   } catch (err) {
     logger.step(`done report failed: ${err instanceof Error ? err.message : String(err)}`);
+    clearCredentials(creds);
     return; // journal 残留，recover 面补报
   }
+  clearCredentials(creds);
   journal.remove(stepId);
   logger.raw(`finished (${running - 1}/${deps.maxConcurrent} running)`);
 }

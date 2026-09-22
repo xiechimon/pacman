@@ -105,7 +105,19 @@ export const claimedStepSchema = z.object({
     title: z.string(),
     spec: z.string(),
   }),
-  project: z.object({ id: recordId, name: z.string() }),
+  project: z.object({
+    id: recordId,
+    name: z.string(),
+    /** repo 绑定位（M3b worktree 契约接线，02 §3/§5.5）：cloneUrl = 托管
+     * `<origin>/git/<teamId>/<repoName>`（02 §5.8 gitHostDomain 槽本地代位）
+     * 或 GitHub https 派生；null = 项目未绑 repo（工作区退化为裸目录）。 */
+    repo: z
+      .object({
+        kind: z.enum(['hosted', 'github']),
+        cloneUrl: z.string(),
+      })
+      .nullable(),
+  }),
   /** 执行 Agent（assignment 按步类取槽，02 §4.2/r5 §5）；null = 未指派
    * （不可执行，server 侧不派发 [设计]）。 */
   agent: z
@@ -216,6 +228,10 @@ export const machineDoneBodySchema = z.object({
   usage: z.array(modelUsageSchema).optional(),
   /** review 列位双键之一（02 §4.1/r5 §8）。 */
   hasChanges: z.boolean().optional(),
+  /** 步收尾时 conv 分支 HEAD sha [设计]（M3b）：per-step checkpoint 数据源
+   * （「恢复到此处」r3 §3.5/02 §4.2）+ 合并步 fast-forward 落地键
+   * （「目标提交 <12hex>」r3 §3.9 面板同族）。 */
+  commit: z.string().optional(),
 });
 export type MachineDoneBody = z.infer<typeof machineDoneBodySchema>;
 export const machineDoneResponseSchema = machineOkResponseSchema;

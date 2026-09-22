@@ -8,7 +8,11 @@
 
 import { type ChildProcess, spawn } from 'node:child_process';
 import type { AgentBackend, ClaimedStep } from '@pacman/shared';
-import { CLAIM_BACKOFF_CAP_MS, CLAIM_POLL_INTERVAL_MS } from '@pacman/shared';
+import {
+  CLAIM_BACKOFF_CAP_MS,
+  CLAIM_POLL_INTERVAL_MS,
+  ORPHAN_WORKTREE_TTL_MS,
+} from '@pacman/shared';
 import { createPiBackend } from './backend/pi.js';
 import type { DaemonConfig } from './config.js';
 import { StepJournal } from './journal.js';
@@ -26,6 +30,7 @@ import {
   saveMachineJson,
 } from './state.js';
 import { DAEMON_VERSION } from './version.js';
+import { WorkspaceManager } from './workspace.js';
 
 export interface MachineLoopOpts {
   config: DaemonConfig;
@@ -48,6 +53,8 @@ export interface MachineLoopOpts {
   /** 闲置防睡（darwin caffeinate；linux systemd-inhibit [推断] 可缺省，
    * 01 §4.3）。测试关闭。 */
   idleSleepPrevention?: boolean;
+  /** 孤儿 worktree 回收 TTL（缺省 7×24h，02 §5.5/r3 §1.4；测试注入缩短）。 */
+  orphanTtlMs?: number;
 }
 
 export interface MachineHandle {
@@ -137,6 +144,37 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   }
 
   const journal = new StepJournal(paths.outboxDir);
+  // worktree 契约面（02 §5.5；单例共享 = projectLock 跨步串行化前提）。
+  const workspace = new WorkspaceManager({
+    logger,
+    ...(opts.orphanTtlMs !== undefined ? { orphanTtlMs: opts.orphanTtlMs } : {}),
+  });
+
+  // 孤儿 worktree 回收（r3 §1.4 cleanupOrphanWorktrees(ttlMs = 7*24h)）：
+  // 上线一次 + 每日节奏 [设计]（观测仅函数名，节奏未采）。活步 = journal
+  // pending 面的 conversationId 集。
+  const sweepOrphans = () => {
+    workspace
+      .cleanupOrphans({
+        workspacesRoot: config.workspacesDir,
+        ttlMs: opts.orphanTtlMs ?? ORPHAN_WORKTREE_TTL_MS,
+        now: Date.now(),
+        activeConversationIds: journal.pending().map((e) => e.conversationId),
+      })
+      .then((removed) => {
+        if (removed.length > 0) {
+          logger.workspace(`orphan worktrees recycled: ${removed.length} (${removed.join(', ')})`);
+        }
+      })
+      .catch((err: unknown) => {
+        logger.workspace(
+          `orphan cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+  };
+  sweepOrphans();
+  const orphanTimer = setInterval(sweepOrphans, 24 * 60 * 60 * 1000);
+  orphanTimer.unref?.();
 
   // —— [recover] 步 journal 恢复（server 真值对账 + continue session 续跑）——
   const recovered = await client.recover();
@@ -228,6 +266,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       backend,
       logger,
       paths,
+      workspace,
       workspacesDir: config.workspacesDir,
       maxConcurrent: config.maxConcurrent,
       ...(opts.heartbeatIntervalMs !== undefined
@@ -267,6 +306,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     stopping = true;
     logger.machine('Shutting down…');
     clearInterval(presenceTimer);
+    clearInterval(orphanTimer);
     streamCtrl.abort();
     claimCtrl.abort();
     caffeinate?.kill();

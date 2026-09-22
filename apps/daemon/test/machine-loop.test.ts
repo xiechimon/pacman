@@ -47,7 +47,7 @@ const CLAIMED: ClaimedStep = {
   conversationId: 'conv-1',
   session: { action: 'new', sessionId: null },
   todo: { id: 't1', seqNum: 3, title: '探针任务', spec: '写一行探针' },
-  project: { id: 'p1', name: 'demo' },
+  project: { id: 'p1', name: 'demo', repo: null },
   agent: {
     id: 'a1',
     displayName: 'stub-builder',

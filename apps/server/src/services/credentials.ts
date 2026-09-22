@@ -12,8 +12,9 @@
 import type { ProviderApi, SecretBox } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { agent, build, step, todo } from '../db/schema.js';
+import { agent, apiKey, build, step, todo } from '../db/schema.js';
 import { notFound } from '../lib/errors.js';
+import { createApiKey } from './api-keys.js';
 import { openProviderKey, type ProviderDeps } from './providers.js';
 import { openSecretEnv, type SecretDeps } from './secrets.js';
 
@@ -22,8 +23,42 @@ export interface CredentialsDeps {
   box: SecretBox;
 }
 
+/** per-step 一次性 git 凭证（M3b，02 §5.4/§8「模型 key + 托管 repo git
+ * 凭证」的 git 半；relay 工具名对照 = `push_credential`，r5 §3.1）。
+ * [设计]：发行 = apiKey 行（gitAccess=true，name `git-step-<stepId>` 幂等键，
+ * 服务端只存哈希）；明文仅出现在 token/{stepId} 响应（daemon 内存持有，
+ * 不落盘常驻）；步收尾（done，成败均）即回收 = 撤销面随 per-step 生命周期，
+ * 非全局撤销（apiKey「撤销面未观测」纪律不破——本行类型是本服务自发的
+ * 内部凭证，不进用户 api-keys 管理面语义）。 */
+export function issueStepGitCredential(
+  deps: { db: Db },
+  input: { teamId: string; stepId: string },
+): { username: string; password: string } {
+  revokeStepGitCredential(deps, input.stepId); // 幂等重取（recover 二次 token）
+  const issued = createApiKey(deps, {
+    teamId: input.teamId,
+    name: stepGitKeyName(input.stepId),
+    gitAccess: true,
+    mcpAccess: false,
+    toolGrants: { read: [], write: [] },
+  });
+  return { username: 'git', password: issued.plaintext };
+}
+
+export function revokeStepGitCredential(deps: { db: Db }, stepId: string): void {
+  deps.db
+    .delete(apiKey)
+    .where(eq(apiKey.name, stepGitKeyName(stepId)))
+    .run();
+}
+
+function stepGitKeyName(stepId: string): string {
+  return `git-step-${stepId}`;
+}
+
 /** 下发载荷 [推断]（02 §5.4 token 端点注 =「模型 key + 托管 repo git 凭证」；
- * git 槽待 M2b 托管 repo 面落地接线，当前恒 null）。 */
+ * git 槽 = issueStepGitCredential 发行面（M3b），解析链本层仍恒 null——发行
+ * 需 teamId/step 上下文，归 machines.stepToken 组装）。 */
 export interface StepCredentialBundle {
   /** 模型凭证（provider key 明文，内存 only）；null = 未指派 / provider 未配。 */
   provider: {
@@ -42,7 +77,8 @@ export interface StepCredentialBundle {
   } | null;
   /** 团队 Secret → 任务 shell 环境变量（仅 agent 授权集，02 §8/r2 权限开关）。 */
   env: Record<string, string>;
-  /** 托管 repo git 凭证槽（02 §5.4）；M2b git 面接线，当前恒 null。 */
+  /** 托管 repo git 凭证槽（02 §5.4）；发行面 = issueStepGitCredential，
+   * 组装在 machines.stepToken（本解析链不带 step 所有权上下文，恒 null）。 */
   git: null;
 }
 

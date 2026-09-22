@@ -59,19 +59,22 @@ export async function uniqueRepoName(
 }
 
 /** bare repo 目录（托管形态唯一存储位；数据根 = 01 §4.2 单一数据根）。 */
-export function repoDirFor(ctx: AppContext, teamId: string, repoName: string): string {
-  return join(ctx.reposDir, teamId, `${repoName}.git`);
+export function repoDirFor(reposDir: string, teamId: string, repoName: string): string {
+  return join(reposDir, teamId, `${repoName}.git`);
 }
 
-/** 托管形态落地：init 本地 bare repo（02 §3 锁定；HEAD 指默认分支）。 */
+/** 托管形态落地：init 本地 bare repo（02 §3 锁定；HEAD 指默认分支）+ 种子
+ * 提交立 main（M3b [设计]：空库无 ref 不能 worktree add——02 §5.5 base=
+ * `origin/<defaultBranch>` 前提；merge 步 fast-forward 亦需 main 在位）。 */
 export async function provisionHostedRepo(
   ctx: AppContext,
   teamId: string,
   repoName: string,
 ): Promise<string> {
-  const dir = repoDirFor(ctx, teamId, repoName);
+  const dir = repoDirFor(ctx.reposDir, teamId, repoName);
   mkdirSync(join(ctx.reposDir, teamId), { recursive: true });
   await systemGitOps.initBareRepo(dir);
+  await systemGitOps.seedInitialCommit(dir, `init ${repoName}`);
   return dir;
 }
 
@@ -116,7 +119,7 @@ export function requireHostedRepoDir(ctx: AppContext, projectId: string): string
   if (row.repoKind !== 'hosted' || row.repoName === null) {
     throw notFound(`hosted repo for project ${projectId}`);
   }
-  return repoDirFor(ctx, row.teamId, row.repoName);
+  return repoDirFor(ctx.reposDir, row.teamId, row.repoName);
 }
 
 // —— tree/file/branches 面（响应封套单源 = shared projectTree/File/Branches

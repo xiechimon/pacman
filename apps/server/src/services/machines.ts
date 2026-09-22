@@ -19,7 +19,7 @@ import type {
   UserRecord,
 } from '@pacman/shared';
 import { MAX_CONCURRENT_DEFAULT } from '@pacman/shared';
-import { and, asc, eq, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
   agent,
@@ -27,17 +27,24 @@ import {
   build,
   machine,
   message,
+  plan as planTable,
   project,
   step,
   todo,
   tokenUsage,
 } from '../db/schema.js';
+import { systemGitOps } from '../lib/git.js';
 import { hashCredential } from '../lib/hash.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { newMachineToken } from '../lib/keys.js';
 import { completeStep, NotFoundError } from './builds.js';
-import { resolveStepCredentials } from './credentials.js';
+import {
+  issueStepGitCredential,
+  resolveStepCredentials,
+  revokeStepGitCredential,
+} from './credentials.js';
 import type { TeamStreamHub } from './events.js';
+import { githubCloneUrl, hostedCloneUrl, repoDirFor } from './git.js';
 import { canTransitionPhase } from './phase.js';
 import { setTodoPhase } from './todos.js';
 
@@ -49,6 +56,8 @@ export interface MachineDeps {
   box: SecretBox;
   /** 通知收件人（completeStep → setTodoPhase 通知漏斗，02 §9.1/M2c）。 */
   user: UserRecord;
+  /** 托管 bare repo 存储根（merge 步 fast-forward 落地，02 §4.2/A6）。 */
+  reposDir: string;
 }
 
 // —— wake 通道（claim 长轮询等待者 + SSE stream 订阅者，按 team 分组）—————————
@@ -282,7 +291,12 @@ function agentForStep(
   return deps.db.select().from(agent).where(eq(agent.id, agentId)).get() ?? null;
 }
 
-function tryClaim(deps: MachineDeps, machineId: string, teamId: string): ClaimedStep | null {
+function tryClaim(
+  deps: MachineDeps,
+  machineId: string,
+  teamId: string,
+  origin: string,
+): ClaimedStep | null {
   const { db } = deps;
   const machineRow = db.select().from(machine).where(eq(machine.id, machineId)).get();
   if (!machineRow) return null;
@@ -323,6 +337,17 @@ function tryClaim(deps: MachineDeps, machineId: string, teamId: string): Claimed
       .from(project)
       .where(eq(project.id, cand.todoRow.projectId))
       .get();
+    // repo 绑定位（M3b worktree 契约接线，02 §3/§5.5）：托管 = `<origin>/git/
+    // <teamId>/<repoName>`（本地主机代位）；github = https 派生（凭证面归后票）。
+    const repo =
+      projectRow?.repoKind === 'hosted' && projectRow.repoName !== null
+        ? {
+            kind: 'hosted' as const,
+            cloneUrl: hostedCloneUrl(origin, teamId, projectRow.repoName),
+          }
+        : projectRow?.repoKind === 'github' && projectRow.githubRepo !== null
+          ? { kind: 'github' as const, cloneUrl: githubCloneUrl(projectRow.githubRepo) }
+          : null;
     return {
       step: {
         id: cand.stepRow.id,
@@ -339,7 +364,7 @@ function tryClaim(deps: MachineDeps, machineId: string, teamId: string): Claimed
         title: cand.todoRow.title,
         spec: cand.todoRow.spec,
       },
-      project: { id: cand.todoRow.projectId, name: projectRow?.name ?? '' },
+      project: { id: cand.todoRow.projectId, name: projectRow?.name ?? '', repo },
       agent: {
         id: agentRow.id,
         displayName: agentRow.displayName,
@@ -354,17 +379,19 @@ function tryClaim(deps: MachineDeps, machineId: string, teamId: string): Claimed
 }
 
 /** 长轮询 claim：先试领；空手则等 wake/超时后再试一次（节奏 ≈ holdMs ≈ 75s，
- * r3 §1.5 实测 ~75–76s；wake = 低延迟派发，02 §5.4）。 */
+ * r3 §1.5 实测 ~75–76s；wake = 低延迟派发，02 §5.4）。origin = 请求源
+ * （托管 cloneUrl 本地主机代位段，02 §5.8 gitHostDomain 槽）。 */
 export async function claimStep(
   deps: MachineDeps,
   machineId: string,
   teamId: string,
   holdMs: number,
+  origin: string,
 ): Promise<ClaimedStep | null> {
-  const first = tryClaim(deps, machineId, teamId);
+  const first = tryClaim(deps, machineId, teamId, origin);
   if (first) return first;
   await deps.machineHub.waitWake(teamId, holdMs);
-  return tryClaim(deps, machineId, teamId);
+  return tryClaim(deps, machineId, teamId, origin);
 }
 
 // —— journal：heartbeat / tool / token / upload-urls / done（02 §5.4）——————————
@@ -438,6 +465,16 @@ export function stepToken(
     ? deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get()
     : undefined;
   const agentRow = stepRow && todoRow ? agentForStep(deps, todoRow, stepRow.kind) : null;
+  // 托管 repo git 凭证 per-step 发行（02 §3 凭证纪律：仅 per-step 注入，手动
+  // fetch 无凭证失败；relay 工具名对照 push_credential，r5 §3.1）。GitHub
+  // 形态凭证面归后票（02 §3 接入形态）。
+  const projectRow = todoRow
+    ? deps.db.select().from(project).where(eq(project.id, todoRow.projectId)).get()
+    : undefined;
+  const git =
+    projectRow?.repoKind === 'hosted' && todoRow
+      ? issueStepGitCredential(deps, { teamId: todoRow.teamId, stepId })
+      : null;
   const provider: ProviderConfig | null = bundle.provider
     ? {
         kind: 'http', // custom 端点（baseUrl 在位；r3 §2 记录形状投影）
@@ -452,7 +489,7 @@ export function stepToken(
     : agentRow?.provider
       ? { kind: 'api_key', providerId: agentRow.provider } // preset（38 目录）无 custom 行
       : null;
-  return { provider, env: bundle.env, git: bundle.git };
+  return { provider, env: bundle.env, git };
 }
 
 // —— upload-urls（预签名产物上传，r3 §1.6；self-host = server 自出一次性
@@ -486,6 +523,30 @@ export function createUploadUrls(
   return { uploads: out };
 }
 
+/** plan.md 产物落库（M3b；02 §4.2/r5 §4「plan 即文件（plan.md），版本 =
+ * 文件版本」）：每上传一版插一行 plan（version = max+1，驳回重规划轮自然
+ * v2）+ build.planDocId 指向最新版（documents/{id}/diff 的 {id} 同值，
+ * diff 端点面归 M4）。 */
+export function receivePlanUpload(deps: MachineDeps, upload: PendingUpload, content: string): void {
+  ownedStep(deps, upload.machineId, upload.stepId);
+  const stepRow = deps.db.select().from(step).where(eq(step.id, upload.stepId)).get();
+  const buildId = stepRow?.buildId;
+  if (!buildId) throw new NotFoundError(`step ${upload.stepId}`);
+  const last = deps.db
+    .select({ version: planTable.version })
+    .from(planTable)
+    .where(eq(planTable.buildId, buildId))
+    .orderBy(desc(planTable.version))
+    .limit(1)
+    .get();
+  const id = newRecordId();
+  deps.db
+    .insert(planTable)
+    .values({ id, buildId, version: (last?.version ?? 0) + 1, content, createdAt: nowMs() })
+    .run();
+  deps.db.update(build).set({ planDocId: id }).where(eq(build.id, buildId)).run();
+}
+
 /** transcript 终稿落库（02 §1.3 数据所有权：transcript 消息/工具行经上传回传
  * 落 server DB）；id 幂等 upsert（与 tool live 行去重）。 */
 export function receiveUpload(
@@ -511,19 +572,36 @@ export function receiveUpload(
 
 // —— done（步骤收尾 + phase 推进 + token 记账，02 §5.4/§4.2）——————————————————
 
-export function finishStep(
+export async function finishStep(
   deps: MachineDeps,
   machineId: string,
   stepId: string,
   body: MachineDoneBody,
-): void {
+): Promise<void> {
   const { db } = deps;
   const stepRow = ownedStep(deps, machineId, stepId);
   if (body.sessionId !== undefined) {
     db.update(step).set({ sessionId: body.sessionId }).where(eq(step.id, stepId)).run();
   }
+  // per-step checkpoint（M3b done 回传 commit：「恢复到此处」数据源 +
+  // 合并步落地键，r3 §3.5/§3.9）。
+  if (body.commit !== undefined) {
+    db.update(step).set({ checkpointCommit: body.commit }).where(eq(step.id, stepId)).run();
+  }
+  // per-step 一次性 git 凭证回收（步收尾即撤销，成败均回收——凭证生命周期 =
+  // 步生命周期，02 §8 运行时层「不落盘常驻」的 server 半）。
+  revokeStepGitCredential(deps, stepId);
+  // 合并步落地（02 §4.2：merge 202 delegated → 机器 git merge + push → server
+  // bare repo 默认分支 fast-forward [设计]；r3 §3.6「服务端 main 验证」同语义）。
+  // 落地失败（非快进/无 commit）= 步按 failed 收尾（失败仅人工重跑，02/A6）。
+  const landingError =
+    stepRow.kind === 'merge' && body.status === 'success'
+      ? await applyMergeLanding(deps, stepRow, body.commit ?? null)
+      : null;
+  const outcome: MachineDoneBody =
+    landingError !== null ? { ...body, status: 'failed', errorMessage: landingError } : body;
   // token 记账（02 §6.2：build × model × 四维）。
-  for (const u of body.usage ?? []) {
+  for (const u of outcome.usage ?? []) {
     db.insert(tokenUsage)
       .values({
         buildId: stepRow.buildId,
@@ -544,8 +622,8 @@ export function finishStep(
       })
       .run();
   }
-  if (body.status === 'success') {
-    completeStep(deps, stepId, { hasChanges: body.hasChanges });
+  if (outcome.status === 'success') {
+    completeStep(deps, stepId, { hasChanges: outcome.hasChanges });
     return;
   }
   // failed / stopped（stopped = 人工停止 [设计]，同 failed 收尾）：步级失败无
@@ -554,7 +632,7 @@ export function finishStep(
   const buildRow = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
   if (buildRow) {
     db.update(build)
-      .set({ errorMessage: body.errorMessage ?? `step ${body.status}` })
+      .set({ errorMessage: outcome.errorMessage ?? `step ${outcome.status}` })
       .where(eq(build.id, buildRow.id))
       .run();
     const todoRow = db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
@@ -562,4 +640,39 @@ export function finishStep(
       setTodoPhase(deps, todoRow.id, 'failed');
     }
   }
+}
+
+/** 合并落地（M3b [设计]，02 §4.2 merge 202 delegated 的 server 半）：机器合并
+ * 步 push 后，bare repo 默认分支 fast-forward 到 done 回传的 conv 分支 HEAD。
+ * 护栏：现 tip 必须是该 commit 祖先（非快进 = main 在合并窗口被推进 → 步按
+ * failed 收尾，人工重跑，02/A6）。GitHub 形态不落地本地 ref（PR 面归后票，
+ * 02 §3 接入形态）。返回 null = 落地成功/不适用；string = 失败原因。 */
+async function applyMergeLanding(
+  deps: MachineDeps,
+  stepRow: typeof step.$inferSelect,
+  commit: string | null,
+): Promise<string | null> {
+  const buildRow = deps.db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
+  const todoRow = buildRow
+    ? deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get()
+    : undefined;
+  const projectRow = todoRow
+    ? deps.db.select().from(project).where(eq(project.id, todoRow.projectId)).get()
+    : undefined;
+  if (!todoRow || projectRow?.repoKind !== 'hosted' || projectRow.repoName === null) {
+    return null; // 未绑托管 repo：无可落地 ref（github 形态 PR 面归后票）。
+  }
+  if (commit === null) return 'merge step reported no commit';
+  const dir = repoDirFor(deps.reposDir, todoRow.teamId, projectRow.repoName);
+  const { defaultBranch } = await systemGitOps.listBranches(dir);
+  const branch = defaultBranch ?? 'main'; // main 正典值（r3 §3.6 origin/main）
+  const tip = await systemGitOps.resolveCommit(dir, `refs/heads/${branch}`);
+  if (tip !== null && tip !== commit) {
+    const ancestor = await systemGitOps.isAncestor(dir, tip, commit);
+    if (!ancestor) {
+      return `merge landing refused: ${branch} moved (non-fast-forward) — rerun the task`;
+    }
+  }
+  await systemGitOps.updateBranchRef(dir, branch, commit);
+  return null;
 }

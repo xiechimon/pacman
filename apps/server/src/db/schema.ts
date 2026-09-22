@@ -134,6 +134,10 @@ export const step = sqliteTable('step', {
   /** [内部] 引擎会话标识（done 回传；continue session 复用面——合并轮/重规划轮
    * 同 conv 续跑，02 §4.2/§5.7）。 */
   sessionId: text('sessionId'),
+  /** [内部] 步收尾时 conv 分支 HEAD sha（M3b done 回传 commit 字段）：
+   * per-step checkpoint（「恢复到此处」数据源，r3 §3.5/02 §4.2 [推断] 语义）
+   * + 合并步 fast-forward 落地键（r3 §3.9「目标提交」同族）。 */
+  checkpointCommit: text('checkpointCommit'),
   /** [内部] claim 时刻（陈旧领取判定用 [设计]）。 */
   claimedAt: epochMs('claimedAt'),
   /** [内部] heartbeat/<stepId> 续活时刻（02 §5.4）。 */
