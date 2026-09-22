@@ -382,20 +382,5 @@
   line-height: 24px;
 }
 
-/* ---- chief fab ---- */
-
-.chief-fab {
-  position: absolute;
-  right: 16px;
-  bottom: 16px;
-  width: 48px;
-  height: 48px;
-  border-radius: 9999px;
-  border: none;
-  background: var(--surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: var(--fab-shadow);
-}
+/* ---- chief fab ---- (rule moved to chief/chief.css with the #72 surfaces;
+   the FAB is rendered by the board route beside the drawer/settings) */

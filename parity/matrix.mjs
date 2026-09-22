@@ -4,7 +4,11 @@
 // Entry contract:
 //   id         stable pair name (output artefacts are named after it)
 //   route      app route to capture
-//   scenario   r7 capture number → fixture set via ?scenario=
+//   scenario   research capture number → fixture set via ?scenario=;
+//              board/detail rows use r7 numbers, chief rows r5 numbers
+//              (the chief surfaces have no r7 shot — r7 §6 gap table, #72);
+//              surfaces with no research capture number at all (issue #70
+//              secondary routes) use a named id instead and ride smoke pairs
 //   theme      'dark' | 'light' (injected via localStorage tds-theme)
 //   scrollLeft optional: number, or 'max' for rightmost board scroll,
 //              applied to the element carrying [data-parity-scroll]
@@ -386,6 +390,42 @@ export const matrix = [
     scenario: 'r2-24c',
     theme: 'dark',
   },
+  // gate rows (issue #70): secondary routes batch B — team and account
+  // carry r7 baselines; api-keys/feedback have no r7 capture (r2 19/32
+  // are the shape reference only), so those rows are smoke pairs, and
+  // the dark rows ride the same surfaces without baselines
+  {
+    id: 'team-light',
+    route: '/app/team',
+    scenario: '12',
+    theme: 'light',
+    baseline: '12-team.png',
+  },
+  { id: 'team-dark', route: '/app/team', scenario: '12', theme: 'dark' },
+  {
+    id: 'account-light',
+    route: '/app/account',
+    scenario: '13',
+    theme: 'light',
+    baseline: '13-account.png',
+  },
+  { id: 'account-dark', route: '/app/account', scenario: '13', theme: 'dark' },
+  { id: 'api-keys-light', route: '/app/api-keys', scenario: 'api-keys', theme: 'light' },
+  {
+    id: 'api-keys-created-light',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'light',
+  },
+  {
+    id: 'api-keys-created-dark',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'dark',
+  },
+  { id: 'api-keys-dark', route: '/app/api-keys', scenario: 'api-keys', theme: 'dark' },
+  { id: 'feedback-light', route: '/app/feedback', scenario: 'feedback', theme: 'light' },
+  { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' },
   // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // (28) — artefacts + score recorded, not gated
   {
@@ -404,6 +444,30 @@ export const matrix = [
     baseline: '28-执行transcript-工具行展开-light.png',
     threshold: 0,
   },
+  // chief rows (issue #72): drawer + 总管设置 surfaces, scenarios numbered
+  // after the r5 captures (100–116). The r5 batch sits outside the r7
+  // baseline batch (04 §2 A6), so these enter CI as smoke rows; baseline
+  // promotion waits on the r8 随拍 — see docs/research/r8-chief-panel-
+  // adhoc.md for the gap registration.
+  { id: 'chief-gated-light', route: '/app', scenario: '100', theme: 'light' },
+  { id: 'chief-gated-dark', route: '/app', scenario: '100', theme: 'dark' },
+  { id: 'chief-ready-light', route: '/app', scenario: '111', theme: 'light' },
+  { id: 'chief-thread-light', route: '/app', scenario: '114', theme: 'light' },
+  { id: 'chief-threads-open-light', route: '/app', scenario: '116', theme: 'light' },
+  { id: 'chief-settings-agent-light', route: '/app', scenario: '101', theme: 'light' },
+  { id: 'chief-settings-agent-dark', route: '/app', scenario: '101', theme: 'dark' },
+  { id: 'chief-settings-charter-light', route: '/app', scenario: '102', theme: 'light' },
+  { id: 'chief-settings-memory-light', route: '/app', scenario: '103', theme: 'light' },
+  { id: 'chief-settings-watches-light', route: '/app', scenario: '104', theme: 'light' },
+  // 04 §2 增量规则: 深色面随票覆盖 — the chief dark values are [推断] on the
+  // shared tokens (no dark chief capture exists in any batch; r2 16 is the
+  // pre-drift layout), registered in docs/research/r8-chief-panel-adhoc.md
+  { id: 'chief-ready-dark', route: '/app', scenario: '111', theme: 'dark' },
+  { id: 'chief-thread-dark', route: '/app', scenario: '114', theme: 'dark' },
+  { id: 'chief-threads-open-dark', route: '/app', scenario: '116', theme: 'dark' },
+  { id: 'chief-settings-charter-dark', route: '/app', scenario: '102', theme: 'dark' },
+  { id: 'chief-settings-memory-dark', route: '/app', scenario: '103', theme: 'dark' },
+  { id: 'chief-settings-watches-dark', route: '/app', scenario: '104', theme: 'dark' },
 ];
 
 export const DEFAULT_BASELINE_THRESHOLD = 0.85;
