@@ -10,7 +10,7 @@ import { Link, useLocation } from 'react-router';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar, type SidebarSelected } from '../board/sidebar.js';
 import type { FixtureSet } from '../fixtures/records.js';
-import { ChiefFab, ChevronLeft } from '../icons/index.js';
+import { ChevronLeft, ChiefFab } from '../icons/index.js';
 import './secondary.css';
 
 interface SecondaryShellProps {
