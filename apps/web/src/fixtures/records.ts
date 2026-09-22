@@ -181,10 +181,65 @@ export interface FixtureSet {
   team?: TeamContent;
   /** API-keys route content (issue #70); absent = empty state (r2 19). */
   apiKeys?: ApiKeysContent;
+  /** Resource-route display content (issue #69): the row sets of the six
+   *  resource surfaces, verbatim from the r7 06–10 captures. Board and
+   *  detail scenarios leave it absent. */
+  resources?: ResourcesContent;
   /** Chief surface content (issue #72): the 总管 drawer overlay or the
    *  full-content 总管设置 view, verbatim from the r5 100–116 captures.
    *  Board scenarios without a chief surface leave it absent. */
   chief?: ChiefContent;
+}
+
+/** Skill row (r7 08): name + one-line description. */
+export interface SkillRow {
+  name: string;
+  description: string;
+}
+
+/** MCP server row (r7 09): name + type label + endpoint url + relative
+ *  creation label, all verbatim from the capture. */
+export interface McpRow {
+  name: string;
+  kind: string;
+  url: string;
+  ago: string;
+}
+
+/** Machine row (r7 06): the hosted-machine card row plus one row per
+ *  claimed machine (name + online dot + id-tail subline). */
+export interface MachineRow {
+  /** The `Todos 托管机器` row (indigo tile); claimed machines omit it. */
+  hosted?: boolean;
+  name: string;
+  /** Subline under the name (`…NJqVhdo_ · max 3`); absent on the hosted row. */
+  sub?: string;
+  online?: boolean;
+  /** Right-side status pill (`未启用`); absent on online machines. */
+  pill?: string;
+  /** Row description line (hosted row only). */
+  description?: string;
+}
+
+/** Model-provider row (r7 07): built-in card plus custom gateways. */
+export interface ProviderRow {
+  name: string;
+  /** `N 模型` subline. */
+  models: string;
+  /** Orange `自定义` tag beside the name; absent on the built-in row. */
+  custom?: boolean;
+  /** Right-side status pill (`未启用`); absent on custom rows. */
+  pill?: string;
+}
+
+/** The six resource surfaces' row sets (issue #69). */
+export interface ResourcesContent {
+  skills: SkillRow[];
+  mcpServers: McpRow[];
+  machines: MachineRow[];
+  providers: ProviderRow[];
+  /** 新建技能 tab selected on capture (r8 79/80); absent = 从文件夹. */
+  importTab?: 'folder' | 'github';
 }
 
 /** Inline text run inside a plan-document block; `code` renders the
