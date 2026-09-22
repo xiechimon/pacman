@@ -39,9 +39,20 @@ import './sidebar.css';
 
 /** Which sidebar row carries the active pill: a nav row (看板 / 定时 /
  *  the project row — r7 01/11, r2 07e/24b/24c), the team head row on
- *  team/account (r7 12/13), or none (/app/project/new r2 07, and the
- *  user-menu-only routes r2 19/32). */
-export type SidebarSelected = 'board' | 'schedules' | 'project' | 'team' | 'none';
+ *  team/account (r7 12/13), a 资源 subrow by href (issue #69, r7 06–10),
+ *  or none (/app/project/new r2 07, and the user-menu-only routes
+ *  r2 19/32). */
+export type SidebarSelected =
+  | 'board'
+  | 'schedules'
+  | 'project'
+  | 'team'
+  | 'none'
+  | '/app/resources/skills'
+  | '/app/resources/mcp-servers'
+  | '/app/resources/secrets'
+  | '/app/resources/machines'
+  | '/app/resources/providers';
 
 interface BoardSidebarProps {
   collapsed?: boolean;
@@ -52,6 +63,8 @@ interface BoardSidebarProps {
   onSearch?: () => void;
   /** Render the 用量 nav row (present from the 05b capture day on). */
   usageNav?: boolean;
+  /** Route carrying the selected pill: #71 named slots, #69 resource
+   *  hrefs (r7 06–10), 'none' = no pill. */
   selected?: SidebarSelected;
   /** Indigo dot right of the 机器 row (r5 100/101/114/116: machine online). */
   machineOnline?: boolean;
@@ -149,7 +162,13 @@ export function BoardSidebar({
           </a>
           <RailGroupChevron label="资源" />
           {resourceRows.map(({ label, href, Icon }) => (
-            <a key={href} className="rail-row" href={href} aria-label={label}>
+            <a
+              key={href}
+              className={rowClass('rail-row', selected === href)}
+              href={href}
+              aria-current={selected === href ? 'page' : undefined}
+              aria-label={label}
+            >
               <Icon />
             </a>
           ))}
@@ -233,7 +252,12 @@ export function BoardSidebar({
 
         <GroupHeader label="资源" />
         {resourceRows.map(({ label, href, Icon }) => (
-          <a key={href} className="sidebar-subrow" href={href}>
+          <a
+            key={href}
+            className={rowClass('sidebar-subrow', selected === href)}
+            href={href}
+            aria-current={selected === href ? 'page' : undefined}
+          >
             <span className="sidebar-row-icon">
               <Icon />
             </span>

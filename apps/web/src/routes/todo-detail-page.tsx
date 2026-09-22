@@ -1,14 +1,19 @@
 // Todo detail route (issue #56): app shell sidebar + dhead + phase-driven
 // body — fresh block (23/23d) or doc pane + chat column (16/17 family) —
 // plus composer, 总管 FAB and the capture-frozen user-menu popover.
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { AcceptDialog } from '../detail/accept-dialog.js';
+import { BranchDialog } from '../detail/branch-dialog.js';
 import { Composer } from '../detail/composer.js';
 import { DetailHead } from '../detail/dhead.js';
 import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
+import { HistoryDialog } from '../detail/history-dialog.js';
+import { TokenDialog } from '../detail/token-dialog.js';
 import { Transcript } from '../detail/transcript.js';
 import { UserMenu } from '../detail/user-menu.js';
+import type { OverlayState } from '../fixtures/records.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { MoreMenu } from '../overlay/more-menu.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
@@ -17,6 +22,7 @@ import '../detail/detail.css';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar } from '../board/sidebar.js';
 import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
+import { overlayContent } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { ChiefFab } from '../icons/index.js';
 import { readStoredTheme } from '../theme.js';
@@ -37,7 +43,13 @@ export function TodoDetailPage() {
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
   const todos = withoutDeleted(fixture.todos);
   const todo = todos.find((t) => t.id === id) ?? todos[0];
+  // Modal overlays (issue #68): the scenario fixture opens one for capture
+  // determinism; the header buttons and the review-phase 完成 button open
+  // the same set interactively.
+  const [overlay, setOverlay] = useState<OverlayState | null>(fixture.overlay ?? null);
+  const closeOverlay = useCallback(() => setOverlay(null), []);
   if (todo == null) return null;
+  const content = overlayContent(todo.id);
   const ui = PHASE_UI[todo.phase];
   const detail = fixture.detail;
   const streaming = detail?.transcript.some((item) => item.kind === 'streaming') ?? false;
@@ -58,6 +70,11 @@ export function TodoDetailPage() {
           tab={tab}
           onTab={setTab}
           onMore={() => setMoreOpen(true)}
+          onOverlay={(kind) => setOverlay({ kind })}
+          onAction={() => {
+            // r7 34: the review-phase 完成 button opens the accept dialog
+            if (todo.phase === 'review') setOverlay({ kind: 'accept' });
+          }}
           chipPopoverOpen={fixture.ui?.chipPopoverOpen === true}
         />
         {detail == null ? (
@@ -93,6 +110,9 @@ export function TodoDetailPage() {
         )}
         <button type="button" className="detail-fab" aria-label="总管">
           <ChiefFab />
+          {fixture.chiefUnread != null && fixture.chiefUnread > 0 && (
+            <span className="fab-badge">{fixture.chiefUnread}</span>
+          )}
         </button>
       </div>
       {detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
@@ -116,6 +136,16 @@ export function TodoDetailPage() {
           }}
         />
       )}
+      {overlay?.kind === 'token' && content != null && (
+        <TokenDialog stats={content.token} onClose={closeOverlay} />
+      )}
+      {overlay?.kind === 'branch' && content != null && (
+        <BranchDialog info={content.branch} onClose={closeOverlay} />
+      )}
+      {overlay?.kind === 'history' && content != null && (
+        <HistoryDialog runs={content.runs} onClose={closeOverlay} />
+      )}
+      {overlay?.kind === 'accept' && <AcceptDialog onClose={closeOverlay} />}
       {search.open && (
         <SearchPanel
           fixture={fixture}

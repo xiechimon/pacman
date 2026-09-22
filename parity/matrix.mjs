@@ -24,6 +24,8 @@
 //              (centering law still holds, r7 §3.5 formula)
 //   baseline   optional r7 filename under docs/research/assets/r7/ —
 //              present = real parity pair (threshold 0.85);
+//              `r8/<file>` form points at post-r7 companion captures
+//              (04 册 §2 baseline batch discipline, issue #68 dark set);
 //              absent  = smoke pair, capture compared against itself
 //              (pipeline gate, SSIM must be exactly 1.0).
 //              Rows switched to a later capture batch (04 §2 A6) use a
@@ -241,6 +243,75 @@ export const matrix = [
     scenario: '38',
     theme: 'light',
     baseline: '38-r3遗留卡-详情-light.png',
+  },
+  // gate rows (issue #68): overlay open states, light half — Token 用量 /
+  // 分支与 PR / 运行历史 over the expanded review surface, 验收确认 over
+  // the scrollRight board (r7 30/31/32/34)
+  {
+    id: 'overlay-token-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '30',
+    theme: 'light',
+    baseline: '30-Token用量弹层-light.png',
+  },
+  {
+    id: 'overlay-branch-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '31',
+    theme: 'light',
+    baseline: '31-分支与PR弹层-light.png',
+  },
+  {
+    id: 'overlay-history-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '32',
+    theme: 'light',
+    baseline: '32-运行历史弹层-light.png',
+  },
+  {
+    id: 'overlay-accept-light',
+    route: '/app',
+    scenario: '34',
+    theme: 'light',
+    scrollLeft: 'max',
+    baseline: '34-验收确认弹层-light.png',
+  },
+  // gate rows (issue #68): dark half of the overlay set — companion
+  // captures taken on the live site for this ticket (04 册附录 C 随拍),
+  // filed under assets/r8/ per the baseline batch discipline. Provenance:
+  // ego-browser (shared logged-in profile), 2026-09-23, viewport 1440×732
+  // DPR1, theme via a per-document tds-theme read shim (stored key never
+  // written); surface = r3 legacy #1 detail as it stands since its
+  // 2026-09-22 18:30 schedule re-run; dialogs settled ~700ms past open.
+  // 82/83 (更多/删除 dark) are stored for overlay batch A's rows — those
+  // two components land with #66, whose dual-theme rows complete the set.
+  {
+    id: 'overlay-token-dark',
+    route: '/app/todo/r3-legacy-1',
+    scenario: '30d',
+    theme: 'dark',
+    baseline: 'r8/78-Token用量弹层-dark.png',
+  },
+  {
+    id: 'overlay-branch-dark',
+    route: '/app/todo/r3-legacy-1',
+    scenario: '31d',
+    theme: 'dark',
+    baseline: 'r8/79-分支与PR弹层-dark.png',
+  },
+  {
+    id: 'overlay-history-dark',
+    route: '/app/todo/r3-legacy-1',
+    scenario: '32d',
+    theme: 'dark',
+    baseline: 'r8/80-运行历史弹层-dark.png',
+  },
+  {
+    id: 'overlay-accept-dark',
+    route: '/app/todo/r3-legacy-1',
+    scenario: '34d',
+    theme: 'dark',
+    baseline: 'r8/81-验收确认弹层-dark.png',
   },
   // gate rows (issue #67): overlay batch B — ⌘K panel empty (05) and
   // results state (05b, supplementary capture), chip popover on the
@@ -488,7 +559,7 @@ export const matrix = [
   {
     id: 'overlay-new-task-dark',
     route: '/app',
-    scenario: '78',
+    scenario: 'r8-78',
     theme: 'dark',
     clicks: ['.board-new-task'],
     viewport: { width: 1440, height: 710 },
@@ -498,7 +569,7 @@ export const matrix = [
     // gated dark delete twin on the drift-light fresh surface (82)
     id: 'overlay-delete-fresh-dark',
     route: '/app/todo/r8-delete-17',
-    scenario: '82',
+    scenario: 'r8-82',
     theme: 'dark',
     clicks: ['.detail-head-icon--more', '.more-menu-item[data-action="delete"]'],
     viewport: { width: 1440, height: 710 },
@@ -515,7 +586,7 @@ export const matrix = [
     // rebaseline = A6 ticket.
     id: 'overlay-delete-dark',
     route: '/app/todo/u_B5ngeVOlKdKbG_4H9Cl',
-    scenario: '79',
+    scenario: 'r8-79',
     theme: 'dark',
     clicks: ['.detail-head-icon--more', '.more-menu-item[data-action="delete"]'],
     viewport: { width: 1440, height: 710 },
@@ -525,7 +596,7 @@ export const matrix = [
   {
     id: 'overlay-more-confirm-dark',
     route: '/app/todo/u_B5ngeVOlKdKbG_4H9Cl',
-    scenario: '80',
+    scenario: 'r8-80',
     theme: 'dark',
     clicks: ['.detail-head-icon--more'],
     viewport: { width: 1440, height: 710 },
@@ -535,12 +606,124 @@ export const matrix = [
   {
     id: 'overlay-more-fresh-dark',
     route: '/app/todo/u_B5ngeVOlKdKbG_4H9Cl',
-    scenario: '81',
+    scenario: 'r8-81',
     theme: 'dark',
     clicks: ['.detail-head-icon--more'],
     viewport: { width: 1440, height: 710 },
     baseline: 'r8/81-fresh-更多菜单-dark.png',
   },
+  // gate rows (issue #69): resources batch A — six route surfaces, light
+  // (r7 captured no dark resource screen). The two 新建技能 rows stay
+  // smoke: their r8 79/80 baselines (committed with this ticket) carry
+  // live-site state the frozen shell contract does not reproduce — the
+  // 用量 nav row, the 看板 attention badge and the avatar FAB — so gating
+  // them waits on the A6 rebaseline decision
+  {
+    id: 'resources-machines-light',
+    route: '/app/resources/machines',
+    scenario: '06',
+    theme: 'light',
+    baseline: '06-resources-machines.png',
+  },
+  // gate rows (issue #70): secondary routes batch B — team and account
+  // carry r7 baselines; api-keys/feedback have no r7 capture (r2 19/32
+  // are the shape reference only), so those rows are smoke pairs, and
+  // the dark rows ride the same surfaces without baselines
+  {
+    id: 'team-light',
+    route: '/app/team',
+    scenario: '12',
+    theme: 'light',
+    baseline: '12-team.png',
+  },
+  { id: 'team-dark', route: '/app/team', scenario: '12', theme: 'dark' },
+  {
+    id: 'account-light',
+    route: '/app/account',
+    scenario: '13',
+    theme: 'light',
+    baseline: '13-account.png',
+  },
+  { id: 'account-dark', route: '/app/account', scenario: '13', theme: 'dark' },
+  { id: 'api-keys-light', route: '/app/api-keys', scenario: 'api-keys', theme: 'light' },
+  {
+    id: 'api-keys-created-light',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'light',
+  },
+  {
+    id: 'api-keys-created-dark',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'dark',
+  },
+  { id: 'api-keys-dark', route: '/app/api-keys', scenario: 'api-keys', theme: 'dark' },
+  { id: 'feedback-light', route: '/app/feedback', scenario: 'feedback', theme: 'light' },
+  { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' },
+  {
+    id: 'resources-providers-light',
+    route: '/app/resources/providers',
+    scenario: '07',
+    theme: 'light',
+    baseline: '07-resources-providers.png',
+  },
+  {
+    id: 'resources-skills-light',
+    route: '/app/resources/skills',
+    scenario: '08',
+    theme: 'light',
+    baseline: '08-resources-skills.png',
+  },
+  {
+    id: 'resources-mcp-servers-light',
+    route: '/app/resources/mcp-servers',
+    scenario: '09',
+    theme: 'light',
+    baseline: '09-resources-mcp-servers.png',
+  },
+  {
+    id: 'resources-secrets-light',
+    route: '/app/resources/secrets',
+    scenario: '10',
+    theme: 'light',
+    baseline: '10-resources-secrets.png',
+  },
+  // dark smoke rows (issue #69, 双主题按需): no frozen dark resource
+  // baseline exists (r7 captured light only), so dark rides as pipeline
+  // smoke until the A6 rebaseline decision supplies gated dark pairs
+  {
+    id: 'resources-machines-dark',
+    route: '/app/resources/machines',
+    scenario: '06',
+    theme: 'dark',
+  },
+  {
+    id: 'resources-providers-dark',
+    route: '/app/resources/providers',
+    scenario: '07',
+    theme: 'dark',
+  },
+  { id: 'resources-skills-dark', route: '/app/resources/skills', scenario: '08', theme: 'dark' },
+  {
+    id: 'resources-mcp-servers-dark',
+    route: '/app/resources/mcp-servers',
+    scenario: '09',
+    theme: 'dark',
+  },
+  { id: 'resources-secrets-dark', route: '/app/resources/secrets', scenario: '10', theme: 'dark' },
+  {
+    id: 'resources-skills-import-folder-light',
+    route: '/app/resources/skills/import',
+    scenario: '79',
+    theme: 'light',
+  },
+  {
+    id: 'resources-skills-import-github-light',
+    route: '/app/resources/skills/import',
+    scenario: '80',
+    theme: 'light',
+  }, // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // (28) — artefacts + score recorded, not gated
   {

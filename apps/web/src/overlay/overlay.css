@@ -243,7 +243,7 @@
 }
 
 .new-task-start:disabled {
-  background: var(--primary-disabled);
+  background: var(--new-task-primary-disabled);
   color: var(--disabled-fg);
   cursor: default;
 }

@@ -57,6 +57,52 @@ export interface TodoRecord {
   awaitingReply?: boolean;
 }
 
+/** Token 用量 overlay content (issue #68, r7 30): the cumulative-run
+ *  figures of the dialog, verbatim strings from the capture. */
+export interface TokenUsageContent {
+  total: string;
+  model: string;
+  modelTotal: string;
+  input: string;
+  output: string;
+  cacheRead: string;
+  cacheWrite: string;
+}
+
+/** 分支与 PR overlay content (issue #68, r7 31): sync-tab fields. */
+export interface BranchInfoContent {
+  branch: string;
+  commit: string;
+  machine: string;
+  directory: string;
+}
+
+/** One 运行历史 overlay row. r7 32 froze the single-row state (ring glyph);
+ *  the r8 80 dark capture adds the multi-row forms: failed runs carry a
+ *  stop-colored ×, succeeded ones a done-colored check (r8 80). */
+export interface RunHistoryRow {
+  label: string;
+  meta: string;
+  status: 'current' | 'failed' | 'done';
+}
+
+/** Modal surface rendered over a route (issue #68). The scenario fixture
+ *  opens one for capture determinism; the header/card buttons open the same
+ *  set interactively. Token/branch/history payloads are build-scoped
+ *  display data — outside the 02 §6.2 record contract — resolved per todo
+ *  from the fixture layer; the accept dialog carries no payload. */
+export type OverlayKind = 'token' | 'branch' | 'history' | 'accept';
+
+export interface OverlayState {
+  kind: OverlayKind;
+}
+
+/** The three build-scoped overlay payloads travelling together (issue #68). */
+export interface BuildOverlayContent {
+  token: TokenUsageContent;
+  branch: BranchInfoContent;
+  runs: RunHistoryRow[];
+}
 /** Overlay open-states a scenario freezes (issue #67): the ⌘K search
  *  panel, the detail status-chip popover and the doc-pane 方案▾ dropdown.
  *  Pure initial UI state — the overlays stay interactive afterwards. */
@@ -158,6 +204,12 @@ export interface FixtureSet {
    *  document of the selected todo, verbatim from the r7 captures. Board
    *  scenarios leave it absent. */
   detail?: DetailContent;
+  /** Modal overlay open over the route (issue #68): detail overlays ride
+   *  the detail surface, `accept` the board surface. */
+  overlay?: OverlayState;
+  /** Unread chief messages — the blue count badge on the 总管 FAB
+   *  (r8 78–81 dark captures; absent from the r7 light set). */
+  chiefUnread?: number;
   /** Overlay open-states (issue #67); absent = all closed. */
   ui?: OverlayUi;
   /** Sidebar 用量 nav row present (issue #67): the live site grew it
@@ -181,12 +233,69 @@ export interface FixtureSet {
   team?: TeamContent;
   /** API-keys route content (issue #70); absent = empty state (r2 19). */
   apiKeys?: ApiKeysContent;
+  /** Resource-route display content (issue #69): the row sets of the six
+   *  resource surfaces, verbatim from the r7 06–10 captures. Board and
+   *  detail scenarios leave it absent. */
+  resources?: ResourcesContent;
   /** Chief surface content (issue #72): the 总管 drawer overlay or the
    *  full-content 总管设置 view, verbatim from the r5 100–116 captures.
    *  Board scenarios without a chief surface leave it absent. */
   chief?: ChiefContent;
 }
 
+/** Skill row (r7 08): name + one-line description. */
+export interface SkillRow {
+  name: string;
+  description: string;
+}
+
+/** MCP server row (r7 09): name + type label + endpoint url + relative
+ *  creation label, all verbatim from the capture. */
+export interface McpRow {
+  name: string;
+  kind: string;
+  url: string;
+  ago: string;
+}
+
+/** Machine row (r7 06): the hosted-machine card row plus one row per
+ *  claimed machine (name + online dot + id-tail subline). */
+export interface MachineRow {
+  /** The `Todos 托管机器` row (indigo tile); claimed machines omit it. */
+  hosted?: boolean;
+  name: string;
+  /** Subline under the name (`…NJqVhdo_ · max 3`); absent on the hosted row. */
+  sub?: string;
+  online?: boolean;
+  /** Right-side status pill (`未启用`); absent on online machines. */
+  pill?: string;
+  /** Row description line (hosted row only). */
+  description?: string;
+}
+
+/** Model-provider row (r7 07): built-in card plus custom gateways. */
+export interface ProviderRow {
+  name: string;
+  /** `N 模型` subline. */
+  models: string;
+  /** Orange `自定义` tag beside the name; absent on the built-in row. */
+  custom?: boolean;
+  /** Right-side status pill (`未启用`); absent on custom rows. */
+  pill?: string;
+}
+
+/** The six resource surfaces' row sets (issue #69). */
+export interface ResourcesContent {
+  skills: SkillRow[];
+  mcpServers: McpRow[];
+  machines: MachineRow[];
+  providers: ProviderRow[];
+  /** 新建技能 tab selected on capture (r8 79/80); absent = 从文件夹. */
+  importTab?: 'folder' | 'github';
+}
+
+/** Inline text run inside a plan-document block; `code` renders the
+ *  monospace chip (r7 17: `tail -n 3 README.md` style). */
 /** Inline text run inside a plan-document block: plain text, the
  *  monospace chip (r7 17: `tail -n 3 README.md` style) or the blue
  *  file/commit reference span (r8 56: `README.md`, `2f47b62`). */
