@@ -4,7 +4,12 @@
 
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { BRAND, ENV_VARS, TEAM_STREAM_PING_INTERVAL_MS } from '@pacman/shared';
+import {
+  BRAND,
+  CLAIM_POLL_INTERVAL_MS,
+  ENV_VARS,
+  TEAM_STREAM_PING_INTERVAL_MS,
+} from '@pacman/shared';
 import { z } from 'zod';
 
 export const serverConfigSchema = z.object({
@@ -19,6 +24,9 @@ export const serverConfigSchema = z.object({
   keyfilePath: z.string(),
   /** team stream ping 心跳间隔；默认 ~15s（02 §1.2/r3 §8.1 实测节奏）。 */
   pingIntervalMs: z.number().int().positive(),
+  /** claim 长轮询 hold；默认 ~75s（r3 §1.5 实测节奏 ~75–76s，wake SSE 提供
+   * 低延迟派发，02 §5.4）。 */
+  claimHoldMs: z.number().int().positive(),
   /** cron 调度循环 tick 间隔（02 §9.2 宿主自持；触发精度 = 分档最细 15min，
    * 默认 15s 远细于档位粒度 [设计]）。 */
   schedulerTickMs: z.number().int().positive(),
@@ -43,6 +51,7 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     dbPath: join(dataDir, 'server.db'),
     keyfilePath: join(dataDir, 'secretbox.key'),
     pingIntervalMs: TEAM_STREAM_PING_INTERVAL_MS,
+    claimHoldMs: CLAIM_POLL_INTERVAL_MS,
     schedulerTickMs: 15_000,
     ...overrides,
   });

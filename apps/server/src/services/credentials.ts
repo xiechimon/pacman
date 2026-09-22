@@ -34,6 +34,9 @@ export interface StepCredentialBundle {
     authHeader: boolean;
     /** 明文密钥；无密钥网关 = null（r3 §2「无密钥网关可留空」）。 */
     apiKey: string | null;
+    /** 目录模型集（r3 §2 `探测模型` 面）；M3a：daemon 侧 pi models.json
+     * 物化需要（backend/pi.ts materializeProvider）。 */
+    models: { id: string; name: string }[];
     /** Agent 侧选定模型（r3 §1.5 `using model <provider>/<modelId>`）。 */
     modelId: string | null;
   } | null;
@@ -70,6 +73,7 @@ export function resolveStepCredentials(
         api: opened.row.api,
         authHeader: opened.row.authHeader,
         apiKey: opened.apiKey,
+        models: opened.row.models,
         modelId: agentRow.modelId,
       };
     }

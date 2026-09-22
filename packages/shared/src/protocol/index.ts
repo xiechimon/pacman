@@ -1,6 +1,7 @@
 export * from './client-state.js';
 export * from './executor.js';
 export * from './machine-api.js';
+export * from './machine-wire.js';
 export * from './mcp.js';
 export * from './rest.js';
 export * from './search.js';

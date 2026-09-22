@@ -114,9 +114,14 @@ async function expectErrorShape(res: Response, status: number): Promise<void> {
 
 describe('路由面 = 02 §6.1 词表', () => {
   const { app } = bootServer();
+  // 机器面 /api/machine/* 归 02 §5 词表（machine-wire.test.ts 逐字段对拍），
+  // 不入本 web 面（02 §6.1）路由集合。
   const have = new Set(
     app.routes
-      .filter((r) => r.method !== 'ALL' && r.path.startsWith('/api'))
+      .filter(
+        (r) =>
+          r.method !== 'ALL' && r.path.startsWith('/api') && !r.path.startsWith('/api/machine'),
+      )
       .map((r) => `${r.method} ${normalizePath(r.path)}`),
   );
   const canon = new Set([

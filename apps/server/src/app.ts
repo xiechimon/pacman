@@ -6,12 +6,14 @@ import type { Logger } from 'pino';
 import type { AppContext } from './context.js';
 import { HttpError } from './lib/errors.js';
 import { registerRoutes } from './routes.js';
+import { registerMachineRoutes } from './routes-machine.js';
 import { NotFoundError } from './services/builds.js';
 import { PhaseTransitionError } from './services/phase.js';
 
 export function createApp(ctx: AppContext, logger?: Logger): Hono {
   const app = new Hono();
   registerRoutes(app, ctx);
+  registerMachineRoutes(app, ctx);
 
   app.notFound((c) => c.json({ error: 'Not found' }, 404));
   app.onError((err, c) => {
