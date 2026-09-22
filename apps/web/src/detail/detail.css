@@ -394,6 +394,22 @@
   text-indent: -12px;
 }
 
+/* markdown heading inside a plan doc (r8 56: Context / 假设 / Changes /
+   Verification), measured off the 56 capture: 16px semibold, 18px gap */
+/* heading bands measured off r8 56: section gap 6 above, 9 below, first
+   head sits 3px into the pane body */
+.doc-block--head {
+  margin-top: 6px;
+  margin-bottom: 9px;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+.doc-block--head:first-child {
+  margin-top: 3px;
+}
+
 .doc-code {
   margin: 0 2px;
   padding: 1px 4px;
@@ -403,6 +419,11 @@
   font-size: 11px;
   /* chip stays text-tight (r7 17b/26d measure the bg rect at 13–15px);
      it must not grow the 24px line box */
+}
+
+/* file/commit reference span (r8 56): same chip, plan-blue ink */
+.doc-code--link {
+  color: var(--chip-plan-fg);
 }
 
 /* ---- chat column ---- */

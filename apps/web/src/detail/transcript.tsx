@@ -24,6 +24,12 @@ interface TranscriptProps {
   transcript: TranscriptItem[];
 }
 
+/** Elapsed label: `Ns` under a minute (r7 21s/19s), `Nm Ns` above
+ *  (r8 56 plan card `完成 2m 41s`). */
+function formatElapsed(seconds: number): string {
+  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+}
+
 /** `完成 Ns` row with the history glyph — shared by the plan card, the
  *  tool group header (chevron appended) and the bare elapsed row (solo =
  *  standalone, wider top margin). */
@@ -40,7 +46,7 @@ function ElapsedRow({
     <div className={solo ? 'chat-done chat-done--solo' : 'chat-done'}>
       <History width={15} height={15} />
       <span className="chat-done-label">
-        完成 {seconds}s
+        完成 {formatElapsed(seconds)}
         {expanded != null &&
           (expanded ? (
             <ChevronDown width={10} height={10} />

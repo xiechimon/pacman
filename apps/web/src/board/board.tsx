@@ -21,9 +21,11 @@ const BOARD_SCROLL_KEY = 'tds.board-scroll-left';
 
 interface BoardProps {
   fixture: FixtureSet;
+  /** #66: opens the new-task dialog from the topbar `+ 任务` button. */
+  onNewTask?: () => void;
 }
 
-export function BoardSurface({ fixture }: BoardProps) {
+export function BoardSurface({ fixture, onNewTask }: BoardProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   // Restore after mount, before paint — a returning user never sees the
@@ -41,7 +43,7 @@ export function BoardSurface({ fixture }: BoardProps) {
       <header className="board-topbar">
         <div className="board-topbar-title">看板</div>
         <div className="board-topbar-actions">
-          <button type="button" className="board-new-task">
+          <button type="button" className="board-new-task" onClick={onNewTask}>
             <Plus width={13} height={13} />
             任务
           </button>

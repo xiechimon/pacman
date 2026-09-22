@@ -37,6 +37,9 @@
   position: absolute;
   left: 0;
   right: 0;
+  /* pure label: the centered band spans the topbar and would otherwise
+     swallow clicks on the +任务 / 看板指南 actions (#66 parity clicks) */
+  pointer-events: none;
   text-align: center;
   font-size: 14px;
   font-weight: 500;

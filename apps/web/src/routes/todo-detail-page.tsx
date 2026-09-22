@@ -2,13 +2,15 @@
 // body — fresh block (23/23d) or doc pane + chat column (16/17 family) —
 // plus composer, 总管 FAB and the capture-frozen user-menu popover.
 import { useState } from 'react';
-import { useParams, useSearchParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { Composer } from '../detail/composer.js';
 import { DetailHead } from '../detail/dhead.js';
 import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
 import { Transcript } from '../detail/transcript.js';
 import { UserMenu } from '../detail/user-menu.js';
+import { DeleteConfirm } from '../overlay/delete-confirm.js';
+import { MoreMenu } from '../overlay/more-menu.js';
 import { PHASE_UI } from '../phase.js';
 import '../detail/detail.css';
 import { attentionCount } from '../board/columns.js';
@@ -20,11 +22,18 @@ import { readStoredTheme } from '../theme.js';
 export function TodoDetailPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   // 文档|聊天 tabs (issue #56): 文档 = doc pane + chat column, 聊天 = chat
   // column alone. Pure render state — the captures all sit on 文档.
   const [tab, setTab] = useState<'doc' | 'chat'>('doc');
+  // 更多 menu + delete confirm (#66): the delete flow removes the todo
+  // from this client-side set and returns to /app (r2 §5.4); the fixture
+  // phase has no backend to persist it to.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const fixture = resolveScenario(searchParams);
-  const todo = fixture.todos.find((t) => t.id === id) ?? fixture.todos[0];
+  const [todos, setTodos] = useState(fixture.todos);
+  const todo = todos.find((t) => t.id === id) ?? todos[0];
   if (todo == null) return null;
   const ui = PHASE_UI[todo.phase];
   const detail = fixture.detail;
@@ -35,9 +44,9 @@ export function TodoDetailPage() {
 
   return (
     <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
-      <BoardSidebar attention={attentionCount(fixture.todos)} />
+      <BoardSidebar attention={attentionCount(todos)} />
       <div className="detail-main">
-        <DetailHead todo={todo} tab={tab} onTab={setTab} />
+        <DetailHead todo={todo} tab={tab} onTab={setTab} onMore={() => setMoreOpen(true)} />
         {detail == null ? (
           <div className="detail-body detail-body--single">
             <FreshBlock todo={todo} />
@@ -67,6 +76,26 @@ export function TodoDetailPage() {
         </button>
       </div>
       {detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
+      {moreOpen && (
+        <MoreMenu
+          onClose={() => setMoreOpen(false)}
+          onDelete={() => {
+            setMoreOpen(false);
+            setDeleteOpen(true);
+          }}
+        />
+      )}
+      {deleteOpen && (
+        <DeleteConfirm
+          todo={todo}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={() => {
+            setDeleteOpen(false);
+            setTodos((prev) => prev.filter((t) => t.id !== todo.id));
+            navigate('/app');
+          }}
+        />
+      )}
     </div>
   );
 }

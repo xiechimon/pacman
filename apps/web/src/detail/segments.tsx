@@ -15,9 +15,12 @@ export function Segments({ segments, codeClassName }: SegmentsProps) {
   return (
     <>
       {segments.map((seg, j) =>
-        seg.code ? (
+        seg.code || seg.link ? (
           // fixture order is stable; segments carry no ids
-          <code key={j} className={codeClassName}>
+          <code
+            key={j}
+            className={seg.link ? `${codeClassName} ${codeClassName}--link` : codeClassName}
+          >
             {seg.text}
           </code>
         ) : (

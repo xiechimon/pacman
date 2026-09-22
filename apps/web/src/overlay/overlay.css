@@ -1,0 +1,410 @@
+/* Overlay batch A (issue #66): new-task dialog (r7 04/14), delete confirm
+   (r7 25), 更多 menu (r7 18/24). Geometry from the r7 DOM table (§3.2/§3.5):
+   dialog 672×439 centered, delete 448×142 centered, menu 220×165 anchored
+   top-right at (1052.5, 39.5). Colors pixel-probed from the same bitmaps:
+   backdrop rgb(0 0 0 / .6) over both themes, dialog head/body/footer =
+   popover/surface/surface-secondary, menu row bands 40/37/41/45 measured
+   off the 18/24 separators. Dark values ride the token layer; the r8
+   dark captures (54–57) are the check surface. */
+
+/* ---- shared modal backdrop ---- */
+/* a button so keyboard users get the same dismiss path as the click */
+
+.overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  border: none;
+  padding: 0;
+  background: rgb(0 0 0 / 0.6);
+  cursor: default;
+  z-index: 20;
+}
+
+/* ---- new-task dialog (r7 04/14: 672×439, centered both axes) ---- */
+
+.new-task-dialog {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 672px;
+  height: 439px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--dialog-shadow);
+  z-index: 21;
+}
+
+.new-task-head {
+  flex: none;
+  height: 44px; /* 43 + 1px border, r7 04 head band 146.5–189.5 */
+  border-bottom: 1px solid var(--border-default);
+  background: var(--popover-bg);
+  display: flex;
+  align-items: center;
+  padding: 0 4px 0 12px;
+  position: relative;
+}
+
+.new-task-project {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.new-task-project-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--project-avatar);
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 20px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.new-task-project-name {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-primary);
+}
+
+.new-task-project svg {
+  color: var(--text-tertiary);
+}
+
+.new-task-title-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  pointer-events: none;
+}
+
+.new-task-close {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.new-task-body {
+  flex: 1;
+  min-height: 0;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px;
+}
+
+.new-task-input {
+  flex: none;
+  height: 58px; /* 190.5–248.5 incl. the divider below */
+  border: none;
+  border-bottom: 1px solid var(--border-default);
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 500;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.new-task-input::placeholder {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.new-task-spec {
+  flex: 1;
+  min-height: 0;
+  margin-top: 16px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  resize: none;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.new-task-spec::placeholder {
+  color: var(--text-dim);
+}
+
+.new-task-footer {
+  flex: none;
+  border-top: 1px solid var(--border-default);
+  background: var(--surface-secondary);
+  padding: 11px 12px 12px 16px;
+}
+
+.new-task-tags {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  height: 20px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.new-task-tag-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9999px;
+  background: transparent;
+  padding: 0;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.new-task-actions {
+  display: flex;
+  align-items: center;
+  margin-top: 9px;
+  height: 30px;
+}
+
+.new-task-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.new-task-tools button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.new-task-buttons {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.new-task-save {
+  width: 50px;
+  height: 30px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.new-task-start {
+  width: 87px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  font-size: 12px;
+  line-height: 16px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.new-task-start:disabled {
+  background: var(--primary-disabled);
+  color: var(--disabled-fg);
+  cursor: default;
+}
+
+/* ---- delete confirm (r7 25: 448×142, centered both axes) ---- */
+
+.delete-confirm {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 448px;
+  height: 142px;
+  border-radius: 12px;
+  background: var(--dialog-bg);
+  box-shadow: var(--dialog-shadow);
+  z-index: 21;
+}
+
+.delete-confirm-head {
+  height: 47px; /* 295–342 incl. the divider below */
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  padding: 0 8px 0 16px;
+}
+
+.delete-confirm-title {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.delete-confirm-close {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.delete-confirm-summary {
+  margin: 16px 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 16px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.delete-confirm-seq {
+  color: var(--text-tertiary);
+}
+
+.delete-confirm-actions {
+  margin: 20px 16px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  height: 30px;
+}
+
+.delete-confirm-cancel {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.delete-confirm-delete {
+  width: 50px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: var(--danger);
+  font-size: 12px;
+  line-height: 16px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+/* ---- 更多 menu (r7 18/24: 220×165 @ 1052.5,39.5, right-anchored) ---- */
+
+/* transparent click catcher: closes on outside click without dimming */
+.more-menu-catcher {
+  position: fixed;
+  inset: 0;
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+  z-index: 20;
+}
+
+.more-menu {
+  position: fixed;
+  top: 39.5px;
+  right: 167.5px; /* 1440 − 1272.5, r7 §3.5 right-edge anchor */
+  width: 220px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--popover-bg);
+  box-shadow: var(--fab-shadow);
+  z-index: 21;
+}
+
+.more-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 0 16px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+/* row bands measured off the 18/24 separator positions: 40/37/41/45 */
+.more-menu-item:nth-child(1) {
+  height: 40px;
+}
+.more-menu-item:nth-child(2) {
+  height: 37px;
+  border-top: 1px solid var(--border-default);
+}
+.more-menu-item:nth-child(3) {
+  height: 41px;
+  border-top: 1px solid var(--border-default);
+}
+.more-menu-item:nth-child(4) {
+  height: 45px;
+  border-top: 1px solid var(--border-default);
+  color: var(--stop);
+}
+
+.more-menu-item svg {
+  flex: none;
+  /* light rows ink the icons with the label (r7 18); dark softens them
+     to tertiary (r8 56) */
+  color: var(--menu-icon);
+}
+
+.more-menu-item[data-action="delete"] svg {
+  color: var(--stop);
+}

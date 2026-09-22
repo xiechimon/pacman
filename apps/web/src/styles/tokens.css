@@ -78,6 +78,19 @@
      the chip-done family) */
   --diff-add-bg: #16281d;
   --diff-add-fg: #478266;
+  /* overlay batch A (#66): dialog shadow probed off r7 04 (stronger than
+     --fab-shadow over the backdrop); danger red off r7 25 删除 button;
+     disabled primary = primary at 50% over the footer surface (04 vs 14) */
+  --dialog-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
+  --danger: #b2342d;
+  --primary-disabled: #373380;
+  /* delete-confirm surface (r8 55), one step above --surface in dark */
+  --dialog-bg: #1c1c20;
+  /* disabled primary label + 更多 menu row icons, probed off r8 54/56 */
+  --disabled-fg: #a0a0a5;
+  --menu-icon: #71717a;
+  /* project chip avatar, sampled r7 04 / board.css .project-avatar */
+  --project-avatar: #e97b35;
   color-scheme: dark light;
 }
 
@@ -134,4 +147,10 @@
      row tint #eaf1e8 */
   --diff-add-bg: #eaf1e8;
   --diff-add-fg: #499771;
+  /* overlay batch A (#66), light values probed off r7 04/25 */
+  --danger: #ca3a32;
+  --primary-disabled: #9f9ae2;
+  --dialog-bg: #fdfaf7;
+  --disabled-fg: #ffffff;
+  --menu-icon: #1c1917;
 }

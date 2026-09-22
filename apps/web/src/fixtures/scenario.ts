@@ -12,6 +12,7 @@
 import {
   boardDarkFresh,
   boardDefault,
+  boardR8Overlay,
   boardWithProbe,
   detailBuilding,
   detailConfirm,
@@ -20,6 +21,8 @@ import {
   detailFreshDark,
   detailLegacy,
   detailPlanning,
+  detailR8Confirm,
+  detailR8Fresh,
   detailReview,
   r7,
 } from './fixtures.js';
@@ -69,6 +72,11 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '36': detailDone(),
   '36d': detailDone(),
   '38': detailLegacy,
+  // r8 overlay batch (#66): the dark capture set, ids = r8 filenames
+  '54': boardR8Overlay,
+  '55': detailR8Confirm(),
+  '56': detailR8Confirm(),
+  '57': detailR8Fresh,
 };
 
 /** #58 gate: scenario selection exists only in dev (`vite dev`) and in the

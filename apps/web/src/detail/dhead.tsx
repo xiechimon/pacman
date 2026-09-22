@@ -23,9 +23,11 @@ interface DetailHeadProps {
   todo: TodoRecord;
   tab: 'doc' | 'chat';
   onTab: (tab: 'doc' | 'chat') => void;
+  /** #66: opens the 更多 menu popover. */
+  onMore?: () => void;
 }
 
-export function DetailHead({ todo, tab, onTab }: DetailHeadProps) {
+export function DetailHead({ todo, tab, onTab, onMore }: DetailHeadProps) {
   const ui = PHASE_UI[todo.phase];
   const { search } = useLocation();
   return (
@@ -63,7 +65,12 @@ export function DetailHead({ todo, tab, onTab }: DetailHeadProps) {
       )}
 
       <div className="detail-head-actions">
-        <button type="button" className="detail-head-icon detail-head-icon--more" aria-label="更多">
+        <button
+          type="button"
+          className="detail-head-icon detail-head-icon--more"
+          aria-label="更多"
+          onClick={onMore}
+        >
           <EllipsisVertical />
         </button>
         <button type="button" className="detail-head-icon" aria-label="分支与 PR">
