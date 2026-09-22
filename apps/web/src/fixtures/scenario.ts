@@ -7,7 +7,7 @@
 // the fixture loader, this param becomes dev/test-only.
 // Unknown or absent ids fall back to the default board set.
 
-import { boardDefault, boardWithProbe, detailFor, r7 } from './fixtures.js';
+import { boardDarkFresh, boardDefault, boardWithProbe, detailFor, r7 } from './fixtures.js';
 import type { FixtureSet } from './records.js';
 
 export const SCENARIO_PARAM = 'scenario';
@@ -23,11 +23,14 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '02b': boardWithProbe('confirm', r7(13, 26), r7(13, 35)),
   '03': boardDefault,
   '21': boardWithProbe('confirm', r7(13, 26), r7(13, 35)),
-  '22': boardWithProbe('todo', r7(13, 21), r7(13, 22)),
-  '22d': boardWithProbe('todo', r7(13, 21), r7(13, 22)),
+  // 22: capture shows `刚刚` (21px ink) — now must sit under a minute past
+  // phaseAt, so pin the same whole minute (13:22 would hit the exact
+  // 60s boundary and render `1 分钟前`).
+  '22': boardWithProbe('todo', r7(13, 21), r7(13, 21)),
+  '22d': boardDarkFresh,
   '33': boardWithProbe('review', r7(13, 37), r7(13, 45)),
-  '35': boardDefault,
-  '35d': boardDefault,
+  '35': boardWithProbe('done', r7(13, 52), r7(13, 55)),
+  '35d': boardWithProbe('done', r7(13, 52), r7(13, 55)),
   // detail (r7 16–17, 23, 26–27, 36, 38)
   '16': detailFor('planning', r7(13, 23), r7(13, 24)),
   '16d': detailFor('planning', r7(13, 23), r7(13, 24)),

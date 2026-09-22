@@ -54,6 +54,8 @@
   --col-dot-done: #5ec26a;
   --badge-attention: #e9a23b;
   --badge-done: #5ec26a;
+  /* fresh-card owner badge (r7 22/22d), same gray in both themes */
+  --badge-idle: #9ea3ae;
   --install-bg: #28293b;
   --install-fg: #6063df;
   --fab-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
@@ -91,6 +93,7 @@
   --col-dot-done: #5ec26a;
   --badge-attention: #e9a23b;
   --badge-done: #5ec26a;
+  --badge-idle: #9ea3ae;
   --install-bg: #ebe8f2;
   --install-fg: #6c6ee9;
   --fab-shadow: 0 5px 14px rgb(28 25 23 / 0.14);

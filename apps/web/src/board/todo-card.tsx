@@ -2,10 +2,21 @@
 // captures — project chip row, two-line 14px title, bottom row with agent
 // avatar + status badge, relative time, 方案/变更 metric icons and the
 // phase-driven action button (确认/完成 indigo, 回复 ghost).
+// #55 adds the variant matrix: fresh cards swap the robot for the owner
+// placeholder (UserCircle + gray idle badge + 开始 primary — r7 22/22d),
+// review cards gain the amber attention badge (r7 33) on top of the #54
+// states.
 
 import { PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { TodoRecord } from '../fixtures/records.js';
-import { CheckWhite, Download, FileText, GitCommit, SearchWhite } from '../icons/index.js';
+import {
+  CheckWhite,
+  Download,
+  FileText,
+  GitCommit,
+  SearchWhite,
+  UserCircle,
+} from '../icons/index.js';
 import { cardAction } from './columns.js';
 import { relativeTime } from './rel-time.js';
 
@@ -15,17 +26,23 @@ interface TodoCardProps {
 }
 
 /** Badge on the agent avatar: amber magnifier while the run is waiting on
- *  the user (待确认 / 等待回复, r7 01 #1 + 02 #9), green check once done
- *  (r7 01b #2). Other phases show no badge in the gate captures. */
-function badgeFor(todo: TodoRecord): 'attention' | 'done' | null {
+ *  the user (待确认 02 #9, 待验收 33 #9, 等待回复 01 #1), green check once
+ *  done (r7 01b #2, 35 #9). Fresh cards carry a gray idle badge with the
+ *  same magnifier glyph (r7 22/22d — badge shape pixel-matches the amber
+ *  one at gray #9ea3ae). */
+function badgeFor(todo: TodoRecord): 'idle' | 'attention' | 'done' | null {
   if (todo.phase === 'done') return 'done';
-  if (todo.phase === 'confirm' || todo.awaitingReply === true) return 'attention';
+  if (todo.phase === 'confirm' || todo.phase === 'review' || todo.awaitingReply === true) {
+    return 'attention';
+  }
+  if (todo.phase === 'todo' || todo.phase === 'queued') return 'idle';
   return null;
 }
 
 export function TodoCard({ todo, now }: TodoCardProps) {
   const action = cardAction(todo);
   const badge = badgeFor(todo);
+  const fresh = badge === 'idle';
   return (
     <article className="todo-card">
       <div className="todo-card-row1">
@@ -41,7 +58,17 @@ export function TodoCard({ todo, now }: TodoCardProps) {
 
       <div className="todo-card-bottom">
         <span className="todo-agent-avatar">
-          <img src="/avatar-robot-1.svg" alt="" />
+          {fresh ? (
+            // owner placeholder while no agent run exists (r7 22/22d)
+            <UserCircle width={20} height={20} />
+          ) : (
+            <img src="/avatar-robot-1.svg" alt="" />
+          )}
+          {badge === 'idle' && (
+            <span className="todo-agent-badge todo-agent-badge--idle">
+              <SearchWhite width={9} height={9} />
+            </span>
+          )}
           {badge === 'attention' && (
             <span className="todo-agent-badge todo-agent-badge--attention">
               <SearchWhite width={9} height={9} />

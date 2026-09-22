@@ -291,6 +291,18 @@
   justify-content: center;
 }
 
+/* fresh-card owner placeholder (r7 22/22d): UserCircle icon in the 20px
+   avatar slot, gray in both themes */
+.todo-agent-avatar > svg {
+  width: 20px;
+  height: 20px;
+  color: var(--badge-idle);
+}
+
+.todo-agent-badge--idle {
+  background: var(--badge-idle);
+}
+
 .todo-agent-badge--attention {
   background: var(--badge-attention);
 }

@@ -8,6 +8,8 @@
 //   theme      'dark' | 'light' (injected via localStorage tds-theme)
 //   scrollLeft optional: number, or 'max' for rightmost board scroll,
 //              applied to the element carrying [data-parity-scroll]
+//   sidebarCollapsed  optional: true → injects tds.sidebar-collapsed=1
+//              before load so the 40px rail renders (r7 03)
 //   baseline   optional r7 filename under docs/research/assets/r7/ —
 //              present = real parity pair (threshold 0.85);
 //              absent  = smoke pair, capture compared against itself
@@ -47,6 +49,59 @@ export const matrix = [
     theme: 'dark',
     scrollLeft: 'max',
     baseline: '02b-board-dark-scrollR.png',
+  },
+  // gate rows (issue #55): card variant matrix + rail collapse
+  {
+    id: 'board-fresh-light',
+    route: '/app',
+    scenario: '22',
+    theme: 'light',
+    baseline: '22-board-fresh探针-light.png',
+  },
+  {
+    id: 'board-fresh-dark',
+    route: '/app',
+    scenario: '22d',
+    theme: 'dark',
+    baseline: '22d-board-fresh探针-dark.png',
+  },
+  {
+    id: 'board-confirm-card-light',
+    route: '/app',
+    scenario: '21',
+    theme: 'light',
+    baseline: '21-待确认-看板卡片-light.png',
+  },
+  {
+    id: 'board-review-card-light',
+    route: '/app',
+    scenario: '33',
+    theme: 'light',
+    scrollLeft: 'max',
+    baseline: '33-待验收-看板卡片-完成钮-light.png',
+  },
+  {
+    id: 'board-done-light',
+    route: '/app',
+    scenario: '35',
+    theme: 'light',
+    scrollLeft: 'max',
+    baseline: '35-完成态-看板-light.png',
+  },
+  {
+    id: 'board-done-dark',
+    route: '/app',
+    scenario: '35d',
+    theme: 'dark',
+    baseline: '35d-完成态-看板-dark.png',
+  },
+  {
+    id: 'board-rail-light',
+    route: '/app',
+    scenario: '03',
+    theme: 'light',
+    sidebarCollapsed: true,
+    baseline: '03-board-sidebar-collapsed-light.png',
   },
   // smoke rows (issue #53 gate: self-compare SSIM = 1.0)
   { id: 'board-dark', route: '/app', scenario: '02', theme: 'dark' },
