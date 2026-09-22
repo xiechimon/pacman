@@ -11,11 +11,14 @@ import {
   boardDarkFresh,
   boardDefault,
   boardWithProbe,
+  detailBuilding,
   detailConfirm,
-  detailFor,
+  detailDone,
   detailFresh,
   detailFreshDark,
+  detailLegacy,
   detailPlanning,
+  detailReview,
   r7,
 } from './fixtures.js';
 import type { FixtureSet } from './records.js';
@@ -44,7 +47,7 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '33': boardWithProbe('review', r7(13, 37), r7(13, 45)),
   '35': boardWithProbe('done', r7(13, 52), r7(13, 55)),
   '35d': boardWithProbe('done', r7(13, 52), r7(13, 55)),
-  // detail (r7 16–17, 23, 26–27, 36, 38)
+  // detail (r7 16–17, 23, 26–28, 36, 38)
   '16': detailPlanning,
   '16d': detailConfirm(true),
   '17': detailConfirm(true),
@@ -52,13 +55,18 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '17d': detailConfirm(false),
   '23': detailFresh,
   '23d': detailFreshDark,
-  '26': detailFor('building', r7(13, 35), r7(13, 36)),
-  '26d': detailFor('building', r7(13, 35), r7(13, 36)),
-  '27': detailFor('review', r7(13, 37), r7(13, 40)),
-  '27d': detailFor('review', r7(13, 37), r7(13, 40)),
-  '36': detailFor('done', r7(13, 52), r7(13, 55)),
-  '36d': detailFor('done', r7(13, 52), r7(13, 55)),
-  '38': boardDefault,
+  // 26: light froze at 处理中...; 26d (dark) caught the later bash tool
+  // row and has the user menu open
+  '26': detailBuilding(false),
+  '26d': detailBuilding(true),
+  // 27d (dark) carries the user-menu popover; 27 light does not
+  '27': detailReview({ userMenuOpen: false }),
+  '27d': detailReview({ userMenuOpen: true }),
+  '27b': detailReview({ userMenuOpen: false, changesExpanded: true }),
+  '28': detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
+  '36': detailDone(),
+  '36d': detailDone(),
+  '38': detailLegacy,
 };
 
 /** Resolve the scenario for a URL. Signature takes URLSearchParams so

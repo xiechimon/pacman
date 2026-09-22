@@ -5,7 +5,13 @@
 // (parity/match-text.mjs) in #54; all other strings come from the research
 // records.
 
-import type { DetailContent, DocBlock, FixtureSet, TodoRecord, TranscriptItem } from './records.js';
+import type {
+  ChangesContent,
+  DocBlock,
+  FixtureSet,
+  TodoRecord,
+  TranscriptItem,
+} from './records.js';
 
 export const TEAM_ID = 'BoZYfvqKSGanlxsXVbXSa';
 export const TEAM_NAME = "Xmon Dai's team";
@@ -241,7 +247,9 @@ const PROBE_CONFIRM_TRANSCRIPT: TranscriptItem[] = [
   ...PROBE_RUN_OPEN,
   {
     kind: 'robot',
-    text: '任务简单明确:在 README.md 末尾追加一行新文本,文件已有末尾换行行,直接追加即可。',
+    paragraphs: [
+      [{ text: '任务简单明确:在 README.md 末尾追加一行新文本,文件已有末尾换行行,直接追加即可。' }],
+    ],
   },
   {
     kind: 'plan',
@@ -252,14 +260,113 @@ const PROBE_CONFIRM_TRANSCRIPT: TranscriptItem[] = [
   },
 ];
 
-/** Detail page content for a single todo. */
-export function detailFor(
-  phase: TodoRecord['phase'],
-  phaseAt: number,
-  now: number,
-  detail?: DetailContent,
-): FixtureSet {
-  return { todos: [probeTodo(phase, phaseAt)], now, detail };
+/** Execution round open, shared by the 26/26d/27/27b/28/36 surfaces: plan
+ *  round + 13:35 stamp + the user's 确认 bubble (r7 §5 时序). */
+const PROBE_BUILD_OPEN: TranscriptItem[] = [
+  ...PROBE_CONFIRM_TRANSCRIPT,
+  { kind: 'note', text: '13:35' },
+  { kind: 'user', text: '确认' },
+];
+
+/** Agent result message closing the execution round (r7 26d/27/36;
+ *  straight quotes + fullwidth commas per the captures). */
+const PROBE_BUILD_RESULT: TranscriptItem = {
+  kind: 'robot',
+  paragraphs: [
+    [
+      {
+        text: '已在 README.md 末尾追加一行"r7 rebaseline probe"，验证通过，未影响其他内容。',
+      },
+    ],
+  ],
+};
+
+/** The two tool calls of the execution round (r7 28 expanded form:
+ *  `edit README.md` + the verification `bash …` pill). The bash label is
+ *  also the 26d streaming row's 调用工具 text — the capture runs it to
+ *  the chat edge with an ellipsis. */
+const PROBE_TOOL_PILLS = [
+  'edit README.md',
+  'bash cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && tail -n 3 README.md && echo …',
+];
+
+/** Tool-call group row of the execution round (r7 27 collapsed `完成
+ *  19s ▸`; r7 28 expanded with pills + 收起). */
+function probeTools(expanded: boolean): TranscriptItem {
+  return { kind: 'tools', seconds: 19, expanded, pills: PROBE_TOOL_PILLS };
+}
+
+/** Merge round appended on completion (r7 36/36d): announcement stamp,
+ *  merge-result message with the mono command chip, elapsed row, 🎉
+ *  banner. */
+const PROBE_MERGE_ROUND: TranscriptItem[] = [
+  { kind: 'note', text: 'Xmon Dai 发起了合并' },
+  {
+    kind: 'robot',
+    paragraphs: [
+      [
+        { text: 'git merge origin/main', code: true },
+        { text: ' 结果为 "Already up to date"，无需处理冲突。' },
+      ],
+    ],
+  },
+  { kind: 'elapsed', seconds: 17 },
+  { kind: 'note', text: '🎉 任务已完成' },
+];
+
+/** r3 legacy #1 transcript (r7 38): schedule-triggered run waiting on the
+ *  user's reply — stamp + 由定时发起 + start bubble + the agent's
+ *  no-op analysis (code chips around the probe line and the commit
+ *  subject) + 完成 32s. */
+const LEGACY_REVIEW_TRANSCRIPT: TranscriptItem[] = [
+  { kind: 'run', at: '星期六 14:30', machine: 'r3-mbp' },
+  { kind: 'scheduled' },
+  {
+    kind: 'user',
+    text: '开始执行任务',
+    seq: 1,
+    title: '在 README.md 末尾追加一行「r3 lifecycle probe」',
+  },
+  {
+    kind: 'robot',
+    paragraphs: [
+      [
+        { text: 'README.md 中已存在这行内容（' },
+        { text: 'r3 lifecycle probe', code: true },
+        { text: '），且历史提交记录显示已有一次' },
+      ],
+      [
+        { text: 'docs（readme）：append lifecycle probe line', code: true },
+        { text: ' 的提交完成了这项任务。当前工作区无待提交更改，' },
+      ],
+      [{ text: '任务已满足，无需重复修改。' }],
+    ],
+  },
+  { kind: 'elapsed', seconds: 32 },
+];
+
+/** The probe's one-file changeset (r7 27/27b/36): README.md +1 line. */
+function probeChanges(expanded: boolean): ChangesContent {
+  return {
+    expanded,
+    files: [
+      {
+        path: 'README.md',
+        added: 1,
+        hunks: [
+          {
+            header: '@@ -3,3 +3,4 @@ r3 lifecycle probe',
+            lines: [
+              { kind: 'context', text: 'r3 lifecycle probe2', oldNo: 3, newNo: 3 },
+              { kind: 'context', text: 'r5b lifecycle probe', oldNo: 4, newNo: 4 },
+              { kind: 'context', text: 'r6 rebaseline probe', oldNo: 5, newNo: 5 },
+              { kind: 'add', text: 'r7 rebaseline probe', newNo: 6 },
+            ],
+          },
+        ],
+      },
+    ],
+  };
 }
 
 /** Detail fresh state (r7 23): no transcript, no doc pane. */
@@ -288,3 +395,79 @@ export function detailConfirm(userMenuOpen: boolean): FixtureSet {
     detail: { transcript: PROBE_CONFIRM_TRANSCRIPT, doc: PROBE_PLAN_DOC, userMenuOpen },
   };
 }
+
+/** Detail building state (r7 26/26d): execution streaming. The light
+ *  capture froze at `3s › 处理中...`; the dark one (with the user menu
+ *  open) caught the later `19s › 调用工具：bash …` after the result
+ *  message landed. `lateCapture` selects the dark capture's later
+ *  moment — the theme itself comes from the matrix row. */
+export function detailBuilding(lateCapture: boolean): FixtureSet {
+  const tail: TranscriptItem[] = lateCapture
+    ? [
+        PROBE_BUILD_RESULT,
+        {
+          kind: 'streaming',
+          seconds: 19,
+          // full command rides the label; CSS ellipsis cuts it at the
+          // chat edge exactly like the capture
+          label: `调用工具：${PROBE_TOOL_PILLS[1]}`,
+        },
+      ]
+    : [{ kind: 'streaming', seconds: 3, label: '处理中...' }];
+  return {
+    todos: [probeTodo('building', r7(13, 35))],
+    now: r7(13, 36),
+    detail: {
+      transcript: [...PROBE_BUILD_OPEN, ...tail],
+      doc: PROBE_PLAN_DOC,
+      userMenuOpen: lateCapture,
+    },
+  };
+}
+
+/** Detail review state (r7 27/27d collapsed, 27b diff-expanded, 28 diff +
+ *  tools expanded). The dark capture carries the user-menu popover. */
+export function detailReview(opts: {
+  userMenuOpen: boolean;
+  changesExpanded?: boolean;
+  toolsExpanded?: boolean;
+}): FixtureSet {
+  return {
+    todos: [probeTodo('review', r7(13, 37))],
+    now: r7(13, 40),
+    detail: {
+      transcript: [
+        ...PROBE_BUILD_OPEN,
+        PROBE_BUILD_RESULT,
+        probeTools(opts.toolsExpanded ?? false),
+      ],
+      changes: probeChanges(opts.changesExpanded ?? false),
+      userMenuOpen: opts.userMenuOpen,
+    },
+  };
+}
+
+/** Detail done state (r7 36/36d): review surface + merge round. */
+export function detailDone(): FixtureSet {
+  return {
+    todos: [probeTodo('done', r7(13, 52))],
+    now: r7(13, 55),
+    detail: {
+      transcript: [
+        ...PROBE_BUILD_OPEN,
+        PROBE_BUILD_RESULT,
+        probeTools(false),
+        ...PROBE_MERGE_ROUND,
+      ],
+      changes: probeChanges(false),
+    },
+  };
+}
+
+/** r3 legacy #1 detail (r7 38): read-only review surface, schedule
+ *  marker, no changes to show (`暂无可显示的变更`). */
+export const detailLegacy: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 58),
+  detail: { transcript: LEGACY_REVIEW_TRANSCRIPT },
+};

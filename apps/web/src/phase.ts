@@ -33,17 +33,18 @@ export const PHASE_UI: Record<Phase, PhaseUi> = {
     tabs: true,
   },
   confirm: { chip: '确认', tone: 'confirm', action: '确认', placeholder: '请求修改…', tabs: true },
-  // [推断] building/failed/closed never appear in a capture: chip and
-  // placeholder follow the planning family, action stays hidden.
+  // building chip copy from the r7 26 capture (`执行中`); failed/closed
+  // rows stay [推断] (no capture exercises them).
   building: {
-    chip: '规划中',
+    chip: '执行中',
     tone: 'plan',
     action: null,
     placeholder: '向 Agent 补充说明，执行过程中即可送达',
     tabs: true,
   },
   review: { chip: '审核', tone: 'confirm', action: '完成', placeholder: '请求修改…', tabs: true },
-  done: { chip: '已完成', tone: 'done', action: '重开', placeholder: '请求修改…', tabs: true },
+  // done drops the composer (r7 36/36d show none) — placeholder null
+  done: { chip: '已完成', tone: 'done', action: '重开', placeholder: null, tabs: true },
   failed: {
     chip: '规划中',
     tone: 'plan',

@@ -90,26 +90,83 @@ export interface DocBlock {
   segments: DocSegment[];
 }
 
-/** Transcript row kinds observed in the r7 detail captures (16/17).
- *  CONTEXT.md canon: the message flow is `transcript`, not stream. */
+/** Transcript row kinds observed in the r7 detail captures (16/17/26/27/
+ *  28/36/38). CONTEXT.md canon: the message flow is `transcript`, not
+ *  stream. */
 export type TranscriptItem =
   /** Run stamp: time line + `运行在 <machine> 上` line, centered. */
   | { kind: 'run'; at: string; machine: string }
-  /** User bubble (`开始执行任务`) plus the taskline chip + title below it. */
-  | { kind: 'user'; text: string; seq: number; title: string }
-  /** Agent prose paragraph (robot avatar row). */
-  | { kind: 'robot'; text: string }
-  /** Live planning row: elapsed seconds + `›` + step label (r7 16). */
+  /** User bubble (`开始执行任务` / `确认`); the taskline chip + title ride
+   *  along only on the task-start bubble (r7 26: the 确认 bubble renders
+   *  bubble + icon pair alone). */
+  | { kind: 'user'; text: string; seq?: number; title?: string }
+  /** Agent prose: one or more paragraphs of inline segments; `code`
+   *  segments render the mono chip (r7 36 merge row, r7 38 legacy rows). */
+  | { kind: 'robot'; paragraphs: DocSegment[][] }
+  /** Live planning/execution row: elapsed seconds + `›` + step label
+   *  (r7 16 `准备工作区...`, r7 26 `处理中...`, r7 26d `调用工具：bash …`). */
   | { kind: 'streaming'; seconds: number; label: string }
   /** Collapsed plan card: `方案 · v1` row, clamped preview, `完成 Ns` row. */
-  | { kind: 'plan'; title: string; preview: string; seconds: number };
+  | { kind: 'plan'; title: string; preview: string; seconds: number }
+  /** Tool-call group of a finished run: collapsed = `完成 Ns ▸` single row
+   *  (r7 27/36); expanded = `完成 Ns ▾` + one pill per tool call + the
+   *  `收起 ^` link (r7 28). */
+  | { kind: 'tools'; seconds: number; expanded: boolean; pills: string[] }
+  /** Bare elapsed row: `完成 Ns` with the history glyph (r7 36 merge
+   *  round, r7 38 legacy card). */
+  | { kind: 'elapsed'; seconds: number }
+  /** Centered dim line: a bare time stamp (`13:35`, r7 26), the merge
+   *  announcement (`Xmon Dai 发起了合并`, r7 36) or the completion banner
+   *  (`🎉 任务已完成`, r7 36). */
+  | { kind: 'note'; text: string }
+  /** Schedule-origin marker: clock glyph + `由定时发起`, left aligned
+   *  (r7 38, 02 §9.2 闭环语义). */
+  | { kind: 'scheduled' };
 
-/** Detail-route content of a scenario (issue #56). */
+/** One changed file in the diff pane (r7 27/27b): collapsed = file row
+ *  only; expanded = unified-diff hunks below it. */
+export interface DiffFile {
+  path: string;
+  /** Added-line count shown right-aligned on the file row (`+1`). */
+  added: number;
+  hunks: DiffHunk[];
+}
+
+/** Unified-diff hunk: header row (`@@ -3,3 +3,4 @@` + trailing section
+ *  text, r7 27b) plus numbered lines. */
+export interface DiffHunk {
+  header: string;
+  lines: DiffLine[];
+}
+
+export interface DiffLine {
+  kind: 'context' | 'add';
+  text: string;
+  /** Line numbers per side; the add row leaves `oldNo` blank (r7 27b
+   *  gutter). */
+  oldNo?: number;
+  newNo?: number;
+}
+
+/** The 变更 document set behind the diff pane (r7 27/27b/36): header
+ *  `变更▾ v1▾ · N 个文件改动 +N` (counts derived from `files`), one row
+ *  per file, hunks rendered when `expanded`. */
+export interface ChangesContent {
+  files: DiffFile[];
+  /** Capture-state flag: 27/36 collapsed, 27b/28 expanded. */
+  expanded: boolean;
+}
+
+/** Detail-route content of a scenario (issue #56, extended in #57). */
 export interface DetailContent {
   /** Transcript rows, top to bottom. */
   transcript: TranscriptItem[];
   /** Plan document for the left pane; absent = `暂无方案` placeholder. */
   doc?: DocBlock[];
-  /** User-menu popover rendered over the sidebar (r7 17 / 16d captures). */
+  /** 变更 pane data; absent = the centered `暂无可显示的变更` placeholder
+   *  (r7 38 legacy card). Only consulted in changes mode. */
+  changes?: ChangesContent;
+  /** User-menu popover rendered over the sidebar (r7 17 / 16d / 26d /
+   *  27d captures). */
   userMenuOpen?: boolean;
 }

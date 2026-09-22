@@ -227,13 +227,38 @@
   margin-left: 18px;
 }
 
+/* changes mode (r7 27/36): stat cluster + right-aligned expand toggle */
+.doc-changes-stat {
+  margin-left: 18px;
+  color: var(--text-tertiary);
+}
+
+.doc-changes-add {
+  color: var(--diff-add-fg);
+}
+
+.doc-expand-all {
+  margin-left: auto;
+  margin-right: 17px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+/* file row rides on surface-secondary (r7 27 light/dark), chevron +
+   path + 👁 + right-aligned +N */
 .doc-file-row {
   flex: none;
   display: flex;
   align-items: center;
   gap: 6px;
   height: 32px;
-  padding-left: 17px;
+  padding-left: 13px;
+  background: var(--surface-secondary);
   font-size: 13px;
   line-height: 16px;
   color: var(--text-secondary);
@@ -241,6 +266,93 @@
 
 .doc-file-row svg {
   color: var(--text-tertiary);
+}
+
+.doc-file-eye {
+  display: flex;
+  color: var(--text-dim);
+}
+
+.doc-file-add {
+  margin-left: auto;
+  padding-right: 17px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--diff-add-fg);
+}
+
+/* unified diff (r7 27b): hunk header band, numbered lines, expander */
+.diff-hunk-head {
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+  background: var(--surface-secondary);
+  padding-left: 53px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 22px;
+  color: var(--text-dim);
+}
+
+.diff-line {
+  display: flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--text-secondary);
+}
+
+.diff-line--add {
+  background: var(--diff-add-bg);
+}
+
+/* gutter: old/new line-number cells, right-aligned (r7 27b: old ends
+   x255, new ends x274 from pane edge 240) */
+.diff-no {
+  flex: none;
+  width: 18px;
+  padding-right: 3px;
+  text-align: right;
+  color: var(--text-dim);
+}
+
+.diff-no--new {
+  width: 19px;
+}
+
+.diff-mark {
+  flex: none;
+  width: 11px;
+  text-align: center;
+  color: var(--diff-add-fg);
+}
+
+.diff-text {
+  padding-left: 6px;
+  white-space: pre;
+}
+
+.diff-expand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 27px;
+  padding-left: 13px;
+  border: none;
+  background: var(--surface-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+/* changes-empty placeholder (r7 38): centered across the whole pane, no
+   header above it */
+.doc-empty--full {
+  position: static;
+  flex: 1;
 }
 
 .doc-pane-body {
@@ -284,15 +396,13 @@
 
 .doc-code {
   margin: 0 2px;
-  padding: 4px 5px;
+  padding: 1px 4px;
   border-radius: 4px;
   background: var(--code-bg);
   font-family: var(--font-mono);
   font-size: 11px;
-  /* inline-block so the chip row grows to the captured 28px line box */
-  display: inline-block;
-  line-height: 20px;
-  vertical-align: baseline;
+  /* chip stays text-tight (r7 17b/26d measure the bg rect at 13–15px);
+     it must not grow the 24px line box */
 }
 
 /* ---- chat column ---- */
@@ -336,6 +446,12 @@
   margin-top: 21px;
 }
 
+/* consecutive agent rows pack tighter (r7 26d: result → streaming gap
+   14px, not the default 21) */
+.chat-row--agent + .chat-row--agent {
+  margin-top: 14px;
+}
+
 .chat-avatar {
   flex: none;
   width: 20px;
@@ -346,6 +462,12 @@
   width: 20px;
   height: 20px;
   display: block;
+}
+
+/* agent avatar rides 4px above the text line box (r7 26/27/36: avatar
+   top = text top − 4) */
+.chat-row--agent .chat-avatar {
+  margin-top: -4px;
 }
 
 .chat-bubble {
@@ -403,8 +525,69 @@
   margin-left: 11px;
   font-size: 15px;
   line-height: 20px;
-  color: var(--text-secondary);
+  /* r7 27/36/38 robot rows sample to text-primary (#56 used secondary —
+     blends showed the darker ink is the captured one) */
+  color: var(--text-primary);
   overflow-wrap: break-word;
+}
+
+/* the agent text box sits 1px higher than the flex-start default (r7
+   26/27/36 glyph baselines) */
+.chat-row--agent .chat-text {
+  margin-top: -1px;
+}
+
+.chat-para {
+  margin: 0;
+}
+
+.chat-para + .chat-para {
+  /* r7 38: multi-paragraph robot message lines pitch 27 = 20 + 7 */
+  margin-top: 7px;
+}
+
+/* mono chip inside chat text (r7 36 `git merge origin/main`, r7 38
+   commit subject): tighter than .doc-code — 11px, 13px box */
+.chat-code {
+  margin: 0 2px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--code-bg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 13px;
+}
+
+/* centered dim single line: bare time stamp (13:35), merge announcement,
+   🎉 任务已完成 banner (r7 26/36). Rows after a note pack tight (r7 26:
+   note→确认 gap is much smaller than the default row margin). */
+.chat-note {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.chat-note + .chat-row {
+  margin-top: 6px;
+}
+
+/* standalone elapsed row (r7 36 merge round, r7 38): a bit more air than
+   the in-card 完成 Ns row */
+.chat-done--solo {
+  margin-top: 13px;
+}
+
+/* schedule-origin marker (r7 38: clock + 由定时发起, left aligned) */
+.chat-scheduled {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
 }
 
 .chat-streaming {
@@ -416,10 +599,83 @@
   font-size: 12px;
   line-height: 16px;
   color: var(--text-tertiary);
+  /* long 调用工具 labels (r7 26d) truncate instead of wrapping */
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .chat-streaming-label {
   color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* frozen spinner frame (r7 26/26d: a braille glyph mid-animation) */
+.chat-spinner {
+  color: var(--text-dim);
+}
+
+.chat-done-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* tool-call group (r7 28): full-width pills under the 完成 Ns ▾ header */
+.chat-tools {
+  margin-top: 13px;
+  padding-left: 31px;
+  padding-right: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chat-tool-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 18px;
+  padding-left: 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  background: var(--surface-secondary);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.chat-tool-pill svg {
+  flex: none;
+}
+
+.chat-tool-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 收起 link under the expanded tool pills (r7 28) */
+.chat-collapse {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 14px;
+  margin-left: 31px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.chat-collapse-icon {
+  transform: rotate(180deg);
 }
 
 .chat-plan {
@@ -448,11 +704,13 @@
 }
 
 .chat-preview {
-  margin-top: 12px;
+  /* r7 26/27: preview lines pitch 20 (12px text, lh 20), first line
+     8px under the plan title row */
+  margin-top: 8px;
   padding-left: 31px;
   padding-right: 22px;
   font-size: 12px;
-  line-height: 22px;
+  line-height: 20px;
   color: var(--text-tertiary);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -633,14 +891,14 @@
   flex: none;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 12px;
+  gap: 11px;
+  padding: 14px 12px 14px 14px;
   border-bottom: 1px solid var(--border-default);
 }
 
 .user-menu-head img {
-  width: 24px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 9999px;
 }
 

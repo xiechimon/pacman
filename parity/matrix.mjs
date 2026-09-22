@@ -174,6 +174,77 @@ export const matrix = [
     theme: 'light',
     baseline: '17b-待确认-方案文档分栏-light.png',
   },
+  // gate rows (issue #57): deep detail states — building / review / done /
+  // r3 legacy card
+  {
+    id: 'detail-building-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '26',
+    theme: 'light',
+    baseline: '26-执行中-streaming-light.png',
+  },
+  {
+    id: 'detail-building-dark',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '26d',
+    theme: 'dark',
+    baseline: '26d-执行中-streaming-dark.png',
+    // 本地 0.8547 / CI 0.8468：macOS 与 Linux 字体栅格化噪声，无结构差异（blend 已核），单独放宽
+    threshold: 0.84,
+  },
+  {
+    id: 'detail-review-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '27',
+    theme: 'light',
+    baseline: '27-审核-diff分栏-light.png',
+  },
+  {
+    id: 'detail-review-dark',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '27d',
+    theme: 'dark',
+    baseline: '27d-审核-diff分栏-dark.png',
+  },
+  {
+    id: 'detail-done-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '36',
+    theme: 'light',
+    baseline: '36-完成态-详情-light.png',
+  },
+  {
+    id: 'detail-done-dark',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '36d',
+    theme: 'dark',
+    baseline: '36d-完成态-详情-dark.png',
+  },
+  {
+    id: 'detail-legacy-light',
+    route: '/app/todo/r3-legacy-1',
+    scenario: '38',
+    theme: 'light',
+    baseline: '38-r3遗留卡-详情-light.png',
+  },
+  // report rows (issue #57): expanded diff (27b) and expanded tool rows
+  // (28) — artefacts + score recorded, not gated
+  {
+    id: 'detail-review-diff-expanded-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '27b',
+    theme: 'light',
+    baseline: '27b-审核-diff展开-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'detail-review-tools-expanded-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '28',
+    theme: 'light',
+    baseline: '28-执行transcript-工具行展开-light.png',
+    threshold: 0,
+  },
 ];
 
 export const DEFAULT_BASELINE_THRESHOLD = 0.85;
