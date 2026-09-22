@@ -39,12 +39,19 @@ describe('九值权威（02 §4.1）', () => {
     expect(canTransitionPhase('closed', 'todo')).toBe(true); // reopen [推断]
   });
 
+  test('定时重跑边（02 §9.2 触发→新 build 全新重跑）', () => {
+    expect(canTransitionPhase('done', 'queued')).toBe(true); // done 复跑（r3 §9 实测）
+    expect(canTransitionPhase('review', 'queued')).toBe(true); // 停驻轮顶替（r5 §8 Cancelled+新轮）
+    expect(canTransitionPhase('confirm', 'queued')).toBe(true); // 同上（方案关口停驻轮）
+  });
+
   test('非法边拒绝（跳跃/回退/终态出边）', () => {
     expect(canTransitionPhase('todo', 'done')).toBe(false);
     expect(canTransitionPhase('todo', 'building')).toBe(false);
     expect(canTransitionPhase('building', 'confirm')).toBe(false);
     expect(canTransitionPhase('review', 'building')).toBe(false);
-    expect(canTransitionPhase('done', 'todo')).toBe(false);
+    expect(canTransitionPhase('done', 'todo')).toBe(false); // done 出边仅定时/重跑 queued（r3 §9）
+    expect(canTransitionPhase('done', 'building')).toBe(false);
     for (const from of PHASE_VALUES) {
       expect(canTransitionPhase(from, from)).toBe(false); // 恒恰处一个 phase，自环无意义
     }

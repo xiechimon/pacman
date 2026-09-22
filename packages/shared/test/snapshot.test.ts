@@ -16,6 +16,7 @@ import {
   CLI_START_OPTIONS,
   CONFIG_KINDS,
   conversationMessagesResponseSchema,
+  createScheduleBodySchema,
   createTodoBodySchema,
   DAEMON_LOG_PREFIXES,
   DB_TABLES,
@@ -45,6 +46,9 @@ import {
   PROXY_ENV_VARS,
   PROXY_PROBE_LOG_CANON,
   patchChiefBodySchema,
+  projectBranchesResponseSchema,
+  projectFileResponseSchema,
+  projectTreeResponseSchema,
   // record 24 表投影
   RECORD_SCHEMAS,
   RELAY_TOOLS,
@@ -72,6 +76,10 @@ describe('record 形状 24 表投影——zod → JSON Schema 快照', () => {
 describe('body/封套 schema 快照', () => {
   const bodies = {
     createTodoBody: createTodoBodySchema,
+    createScheduleBody: createScheduleBodySchema,
+    projectTreeResponse: projectTreeResponseSchema,
+    projectFileResponse: projectFileResponseSchema,
+    projectBranchesResponse: projectBranchesResponseSchema,
     startBuildsBody: startBuildsBodySchema,
     mergeAcceptedResponse: mergeAcceptedResponseSchema,
     buildStepActionBody: buildStepActionBodySchema,
