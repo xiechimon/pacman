@@ -657,6 +657,37 @@ const LEGACY_BRANCH_INFO: BranchInfoContent = {
   directory: '~/preview/project',
 };
 
+/** r8 57 surface: #12's failed build whose single history row IS the
+ *  failed current run — 当前 chip + footer 重跑 (r8 57); title/seq verbatim
+ *  from the r8 54/57 captures. The failed-detail background behind the
+ *  dialog is a later ticket, so the parity pair rides smoke for now. */
+const FAILED_CURRENT_ID = 'r8-failed-12';
+const failedCurrentTodo: TodoRecord = {
+  ...probeTodo('failed', at('2026-09-22', 12, 30)),
+  id: FAILED_CURRENT_ID,
+  seqNum: 12,
+  title: 'README 文档目录 + 新建 CHANGELOG.md + scripts/hello.js',
+  spec: 'README 文档目录 + 新建 CHANGELOG.md + scripts/hello.js',
+};
+
+const FAILED_CURRENT_RUNS: RunHistoryRow[] = [
+  {
+    label: '第 1 次运行',
+    meta: '6 小时前 · 72.1k tokens · Machine offline',
+    status: 'failed-current',
+  },
+];
+
+export function detailFailedCurrent(): FixtureSet {
+  return {
+    todos: [failedCurrentTodo],
+    now: at('2026-09-22', 18, 30),
+    // the failed-state transcript surface is a later ticket; the smoke
+    // pair only gates the dialog over whatever the detail route renders
+    detail: { transcript: [] },
+  };
+}
+
 const LEGACY_RUN_HISTORY: RunHistoryRow[] = [
   { label: '第 4 次运行', meta: '6 小时前 · 66.1k tokens', status: 'current' },
   { label: '第 3 次运行', meta: '3 天前 · Cancelled', status: 'failed' },
@@ -746,6 +777,9 @@ export function detailLegacyNow(overlay: OverlayState['kind']): FixtureSet {
 export function overlayContent(todoId: string): BuildOverlayContent | null {
   if (todoId === PROBE_ID) {
     return { token: PROBE_TOKEN_USAGE, branch: PROBE_BRANCH_INFO, runs: PROBE_RUN_HISTORY };
+  }
+  if (todoId === FAILED_CURRENT_ID) {
+    return { token: PROBE_TOKEN_USAGE, branch: PROBE_BRANCH_INFO, runs: FAILED_CURRENT_RUNS };
   }
   if (todoId === legacyReview.id) {
     return { token: LEGACY_TOKEN_USAGE, branch: LEGACY_BRANCH_INFO, runs: LEGACY_RUN_HISTORY };

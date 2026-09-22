@@ -408,3 +408,8 @@
 .more-menu-item[data-action="delete"] svg {
   color: var(--stop);
 }
+
+/* #73 pop enter/exit scales from the anchor edge (motion.css overlay-pop) */
+.more-menu {
+  transform-origin: top right;
+}

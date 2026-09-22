@@ -323,6 +323,7 @@ export const EN: Record<string, string> = {
   缓存读取: 'Cache read',
   缓存写入: 'Cache write',
   当前: 'Current',
+  重跑: 'Rerun',
   构建分支: 'Build branch',
   目标提交: 'Target commit',
   同步到机器: 'Sync to machine',

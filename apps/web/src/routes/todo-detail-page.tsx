@@ -118,44 +118,53 @@ export function TodoDetailPage() {
         </button>
       </div>
       {detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
-      {moreOpen && (
-        <MoreMenu
-          onClose={() => setMoreOpen(false)}
-          onDelete={() => {
-            setMoreOpen(false);
-            setDeleteOpen(true);
-          }}
+      <MoreMenu
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        onDelete={() => {
+          setMoreOpen(false);
+          setDeleteOpen(true);
+        }}
+      />
+      <DeleteConfirm
+        open={deleteOpen}
+        todo={todo}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => {
+          setDeleteOpen(false);
+          markDeleted(todo.id);
+          navigate('/app');
+        }}
+      />
+      {content != null && (
+        <TokenDialog
+          open={overlay?.kind === 'token'}
+          stats={content.token}
+          onClose={closeOverlay}
         />
       )}
-      {deleteOpen && (
-        <DeleteConfirm
-          todo={todo}
-          onClose={() => setDeleteOpen(false)}
-          onConfirm={() => {
-            setDeleteOpen(false);
-            markDeleted(todo.id);
-            navigate('/app');
-          }}
+      {content != null && (
+        <BranchDialog
+          open={overlay?.kind === 'branch'}
+          info={content.branch}
+          onClose={closeOverlay}
         />
       )}
-      {overlay?.kind === 'token' && content != null && (
-        <TokenDialog stats={content.token} onClose={closeOverlay} />
-      )}
-      {overlay?.kind === 'branch' && content != null && (
-        <BranchDialog info={content.branch} onClose={closeOverlay} />
-      )}
-      {overlay?.kind === 'history' && content != null && (
-        <HistoryDialog runs={content.runs} onClose={closeOverlay} />
-      )}
-      {overlay?.kind === 'accept' && <AcceptDialog onClose={closeOverlay} />}
-      {search.open && (
-        <SearchPanel
-          fixture={fixture}
-          query={search.query}
-          onQuery={search.setQuery}
-          onClose={() => search.setOpen(false)}
+      {content != null && (
+        <HistoryDialog
+          open={overlay?.kind === 'history'}
+          runs={content.runs}
+          onClose={closeOverlay}
         />
       )}
+      <AcceptDialog open={overlay?.kind === 'accept'} onClose={closeOverlay} />
+      <SearchPanel
+        open={search.open}
+        fixture={fixture}
+        query={search.query}
+        onQuery={search.setQuery}
+        onClose={() => search.setOpen(false)}
+      />
     </div>
   );
 }

@@ -400,3 +400,17 @@
   display: flex;
   color: var(--indigo-500);
 }
+
+/* #73 pop enter/exit origins: anchored popovers scale from their anchor,
+   the ⌘K palette from the top center (motion.css overlay-pop) */
+.chip-popover {
+  transform-origin: top left;
+}
+
+.plan-dropdown {
+  transform-origin: top right;
+}
+
+.search-panel {
+  transform-origin: 50% 0;
+}

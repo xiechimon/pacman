@@ -8,7 +8,7 @@
 // curly quotes verbatim). Geometry measured off the r7 bitmaps: input row
 // 40 + 1px divider, group label block 31, rows 40 inset 8 with radius 8.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { relativeTime } from '../board/rel-time.js';
 import { PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { AgentRef, FixtureSet, TodoRecord } from '../fixtures/records.js';
@@ -26,6 +26,7 @@ import {
   Users,
 } from '../icons/index.js';
 import { PHASE_UI } from '../phase.js';
+import { OverlayMount } from './dismiss.js';
 import './overlays.css';
 
 /** 前往 group rows, top to bottom. Canon is the r7 05 bitmap, not r2
@@ -47,6 +48,8 @@ interface SearchPanelProps {
   fixture: FixtureSet;
   query: string;
   onQuery: (query: string) => void;
+  /** #73 retained-mount open flag. */
+  open: boolean;
   onClose: () => void;
 }
 
@@ -73,8 +76,12 @@ function TodoRow({ todo, now, selected }: { todo: TodoRecord; now: number; selec
   );
 }
 
-export function SearchPanel({ fixture, query, onQuery, onClose }: SearchPanelProps) {
+export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPanelProps) {
   const { t } = useI18n();
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
   const q = query.trim().toLowerCase();
   const todos = q === '' ? [] : fixture.todos.filter((t) => t.title.toLowerCase().includes(q));
   const agents =
@@ -87,18 +94,23 @@ export function SearchPanel({ fixture, query, onQuery, onClose }: SearchPanelPro
   const hitCount = todos.length + agents.length + (projectHit ? 1 : 0);
 
   return (
-    <>
+    <OverlayMount open={open}>
       {/* scrim as its own control: click outside the panel closes it
           (Escape does too, via useSearchState) — [推断] affordance, no
           capture exercises either */}
-      <button type="button" className="search-scrim" aria-label={t('关闭搜索')} onClick={onClose} />
-      <div className="search-panel" role="dialog" aria-label={t('搜索')}>
+      <button
+        type="button"
+        className="search-scrim anim-fade"
+        aria-label={t('关闭搜索')}
+        onClick={onClose}
+      />
+      <div className="search-panel anim-pop" role="dialog" aria-label={t('搜索')}>
         <div className="search-input-row">
           <Search width={13} height={13} />
           <input
             // the live panel opens focused (r7 05/05b show the caret);
-            // ref-focus keeps the caret without the autoFocus attribute
-            ref={(input) => input?.focus()}
+            // retained mount refocuses on every open instead of mount
+            ref={inputRef}
             value={query}
             placeholder={t('搜索任务、项目、成员…')}
             onChange={(event) => onQuery(event.target.value)}
@@ -172,7 +184,7 @@ export function SearchPanel({ fixture, query, onQuery, onClose }: SearchPanelPro
           </div>
         )}
       </div>
-    </>
+    </OverlayMount>
   );
 }
 

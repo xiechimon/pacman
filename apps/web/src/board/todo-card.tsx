@@ -57,7 +57,13 @@ export function TodoCard({ todo, now, onAction, onBranch }: TodoCardProps) {
   const fresh = badge === 'idle';
   const { search } = useLocation();
   return (
-    <article className="todo-card">
+    <article
+      className="todo-card"
+      data-todo-id={todo.id}
+      // the title is an <a>: kill the native link drag so the pointer
+      // stream stays with dnd-kit (changelog 2026-09-14 hygiene)
+      onDragStart={(event) => event.preventDefault()}
+    >
       <div className="todo-card-row1">
         <span className="project-avatar">{PROJECT_INITIAL}</span>
         <span className="todo-project-name">{PROJECT_NAME}</span>

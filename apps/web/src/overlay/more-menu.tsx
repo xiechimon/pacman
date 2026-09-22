@@ -8,30 +8,33 @@
 
 import { useI18n } from '../i18n/provider.js';
 import { Ban, Check, Copy, Trash2 } from '../icons/index.js';
+import { OverlayMount } from '../overlays/dismiss.js';
 import { useEscClose } from './use-esc.js';
 import './overlay.css';
 
 interface MoreMenuProps {
+  /** #73: retained-mount open flag — the exit pop outlives the close. */
+  open: boolean;
   onClose: () => void;
   onDelete: () => void;
 }
 
-export function MoreMenu({ onClose, onDelete }: MoreMenuProps) {
+export function MoreMenu({ open, onClose, onDelete }: MoreMenuProps) {
   const { t } = useI18n();
-  useEscClose(onClose);
+  useEscClose(onClose, open);
   const copyLink = () => {
     void navigator.clipboard?.writeText(window.location.href);
     onClose();
   };
   return (
-    <>
+    <OverlayMount open={open}>
       <button
         type="button"
-        className="more-menu-catcher"
+        className="more-menu-catcher anim-fade"
         aria-label={t('关闭菜单')}
         onClick={onClose}
       />
-      <div className="more-menu" role="menu" aria-label={t('更多')}>
+      <div className="more-menu anim-pop" role="menu" aria-label={t('更多')}>
         <button type="button" role="menuitem" className="more-menu-item" onClick={onClose}>
           <Check />
           {t('完成')}
@@ -55,6 +58,6 @@ export function MoreMenu({ onClose, onDelete }: MoreMenuProps) {
           {t('删除')}
         </button>
       </div>
-    </>
+    </OverlayMount>
   );
 }
