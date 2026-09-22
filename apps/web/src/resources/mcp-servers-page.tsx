@@ -15,7 +15,13 @@ export function McpServersPage() {
   const servers = fixture.resources?.mcpServers ?? [];
 
   return (
-    <ResourceShell title="MCP 服务器" href={MCP_HREF} backHref="/app" fixture={fixture}>
+    <ResourceShell
+      title="MCP 服务器"
+      href={MCP_HREF}
+      backHref="/app"
+      selected={MCP_HREF}
+      fixture={fixture}
+    >
       {servers.length === 0 ? (
         <EmptyState
           Icon={Network}

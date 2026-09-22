@@ -15,7 +15,13 @@ export function SecretsPage() {
   const fixture = resolveScenario(searchParams);
 
   return (
-    <ResourceShell title="密钥" href={SECRETS_HREF} backHref="/app" fixture={fixture}>
+    <ResourceShell
+      title="密钥"
+      href={SECRETS_HREF}
+      backHref="/app"
+      selected={SECRETS_HREF}
+      fixture={fixture}
+    >
       <EmptyState
         Icon={KeyThin}
         title="尚无密钥。"

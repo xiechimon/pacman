@@ -18,7 +18,14 @@ export function MachinesPage() {
   return (
     // r7 06: the machines topbar carries no `+ 新建` — the dashed 添加机器
     // button is the page's only add action
-    <ResourceShell title="机器" href={MACHINES_HREF} backHref="/app" hideNew fixture={fixture}>
+    <ResourceShell
+      title="机器"
+      href={MACHINES_HREF}
+      backHref="/app"
+      selected={MACHINES_HREF}
+      hideNew
+      fixture={fixture}
+    >
       <div className="res-card res-group">
         {machines.map((machine, i) => (
           <div className={`res-grow${i > 0 ? ' res-grow--divided' : ''}`} key={machine.name}>

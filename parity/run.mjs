@@ -18,10 +18,8 @@ import { DEFAULT_BASELINE_THRESHOLD, matrix, SMOKE_THRESHOLD, VIEWPORT } from '.
 
 const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const OUT_DIR = resolve(ROOT, 'parity/output');
-const BASELINE_DIR = resolve(ROOT, 'docs/research/assets/r7');
-// r8 batch baselines carry an `r8/` prefix in the matrix (04 §2 A6: batches
-// never mix, but a row may point at the newer batch explicitly)
-const R8_DIR = resolve(ROOT, 'docs/research/assets/r8');
+const ASSETS_DIR = resolve(ROOT, 'docs/research/assets');
+const BASELINE_DIR = resolve(ASSETS_DIR, 'r7');
 const PORT = 8390;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const THEME_KEY = 'tds-theme'; // same key as apps/web/src/theme.ts THEME_STORAGE_KEY
@@ -131,10 +129,9 @@ async function main() {
 
     for (const entry of matrix) {
       const capture = await captureEntry(entry, browser);
+      // baseline = bare r7 filename, or `r8/…` once a row switches batch (04 §2 A6)
       const baseline = entry.baseline
-        ? entry.baseline.startsWith('r8/')
-          ? resolve(R8_DIR, entry.baseline.slice(3))
-          : resolve(BASELINE_DIR, entry.baseline)
+        ? resolve(entry.baseline.includes('/') ? ASSETS_DIR : BASELINE_DIR, entry.baseline)
         : capture; // smoke row: compare the capture against itself
       const threshold =
         entry.threshold ?? (entry.baseline ? DEFAULT_BASELINE_THRESHOLD : SMOKE_THRESHOLD);

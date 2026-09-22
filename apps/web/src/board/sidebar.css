@@ -18,6 +18,17 @@
   color: var(--text-primary);
 }
 
+/* team/account routes (r7 12/13): the head row carries the active pill
+   (x8..231 y6..38) and the content insets by the pill margin */
+.sidebar-team-row--active {
+  height: 32px;
+  margin: 6px 8px 4px;
+  padding-left: 14px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+
+/* anchor since #70 (team name navigates to /app/team, r2 §1.1) */
 .sidebar-team-name {
   position: relative;
   top: 1px;
@@ -25,9 +36,14 @@
   font-size: 14px;
   line-height: 24px;
   color: var(--text-primary);
+  text-decoration: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.sidebar-team-row--active .sidebar-team-name {
+  margin-left: 6px;
 }
 
 .sidebar-team-collapse {
@@ -150,6 +166,16 @@
   line-height: 16px;
   color: var(--text-secondary);
   text-decoration: none;
+}
+
+/* selected project row (r2 07e/24b/24c): same pill as the level-1 selected
+   row, inset to the subrow indent */
+.sidebar-subrow--selected {
+  margin: 0 8px;
+  padding-left: 26px; /* 8 inset + 26 = avatar at x34 like unselected subrows */
+  border-radius: 6px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
 }
 
 .sidebar-subrow-label {
@@ -343,4 +369,17 @@
   height: 24px;
   display: block;
   border-radius: 9999px;
+}
+
+/* machine-online dot (r5 100/101/114/116): 5px indigo, right of the 机器
+   row at x≈219 (sidebar right padding 16) */
+.sidebar-online-dot {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  translate: 0 -50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--indigo-500);
 }

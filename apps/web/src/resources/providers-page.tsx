@@ -16,7 +16,13 @@ export function ProvidersPage() {
   const providers = fixture.resources?.providers ?? [];
 
   return (
-    <ResourceShell title="模型服务" href={PROVIDERS_HREF} backHref="/app" fixture={fixture}>
+    <ResourceShell
+      title="模型服务"
+      href={PROVIDERS_HREF}
+      backHref="/app"
+      selected={PROVIDERS_HREF}
+      fixture={fixture}
+    >
       <div className="res-card res-group">
         {providers.map((provider, i) => (
           <div className={`res-grow${i > 0 ? ' res-grow--divided' : ''}`} key={provider.name}>

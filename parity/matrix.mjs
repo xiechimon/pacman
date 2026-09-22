@@ -4,18 +4,23 @@
 // Entry contract:
 //   id         stable pair name (output artefacts are named after it)
 //   route      app route to capture
-//   scenario   r7 (or r8-continuation) capture number → fixture set via
-//              ?scenario=
+//   scenario   research capture number → fixture set via ?scenario=;
+//              board/detail rows use r7 numbers, chief rows r5 numbers
+//              (the chief surfaces have no r7 shot — r7 §6 gap table, #72);
+//              surfaces with no research capture number at all (issue #70
+//              secondary routes) use a named id instead and ride smoke pairs
 //   theme      'dark' | 'light' (injected via localStorage tds-theme)
 //   scrollLeft optional: number, or 'max' for rightmost board scroll,
 //              applied to the element carrying [data-parity-scroll]
 //   sidebarCollapsed  optional: true → injects tds.sidebar-collapsed=1
 //              before load so the 40px rail renders (r7 03)
-//   baseline   optional r7 filename under docs/research/assets/r7/
-//              (r8 batch: prefix `r8/`, resolved under assets/r8/) —
+//   baseline   optional r7 filename under docs/research/assets/r7/ —
 //              present = real parity pair (threshold 0.85);
 //              absent  = smoke pair, capture compared against itself
-//              (pipeline gate, SSIM must be exactly 1.0)
+//              (pipeline gate, SSIM must be exactly 1.0).
+//              Rows switched to a later capture batch (04 §2 A6) use a
+//              batch-prefixed path, e.g. 'r8/57-运行历史-失败态单行-light.png';
+//              run.mjs resolves prefixed paths under docs/research/assets/.
 //   threshold  optional per-pair SSIM override
 
 export const VIEWPORT = { width: 1440, height: 732 };
@@ -229,9 +234,201 @@ export const matrix = [
     theme: 'light',
     baseline: '38-r3遗留卡-详情-light.png',
   },
+  // gate rows (issue #67): overlay batch B — ⌘K panel empty (05) and
+  // results state (05b, supplementary capture), chip popover on the
+  // confirm/review split (19/29), 方案▾ dropdown (20). Both board rows
+  // sit on the max-scrolled board, as captured.
+  {
+    // 05 was captured on the scroll-0 board (待开始 first), unlike 05b
+    id: 'search-empty-light',
+    route: '/app',
+    scenario: '05',
+    theme: 'light',
+    baseline: '05-搜索面板-light.png',
+  },
+  {
+    id: 'search-results-light',
+    route: '/app',
+    scenario: '05b',
+    theme: 'light',
+    scrollLeft: 'max',
+    baseline: '05b-搜索面板-结果态-light.png',
+  },
+  {
+    id: 'chip-popover-confirm-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '19',
+    theme: 'light',
+    baseline: '19-状态芯片弹层-待确认-light.png',
+  },
+  {
+    id: 'chip-popover-review-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '29',
+    theme: 'light',
+    baseline: '29-状态芯片弹层-审核-light.png',
+  },
+  {
+    id: 'plan-dropdown-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '20',
+    theme: 'light',
+    baseline: '20-方案类型下拉-light.png',
+  },
+  // smoke rows (issue #67): dark overlays — r7 §6 leaves dark overlays
+  // uncaptured, so these self-compare (SSIM 1.0) and gate the theme
+  // render + pipeline only
+  { id: 'search-empty-dark', route: '/app', scenario: '05', theme: 'dark' },
+  {
+    id: 'search-results-dark',
+    route: '/app',
+    scenario: '05b',
+    theme: 'dark',
+    scrollLeft: 'max',
+  },
+  {
+    id: 'chip-popover-confirm-dark',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '19',
+    theme: 'dark',
+  },
+  {
+    id: 'chip-popover-review-dark',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '29',
+    theme: 'dark',
+  },
+  {
+    id: 'plan-dropdown-dark',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '20',
+    theme: 'dark',
+  },
+  // gate rows (issue #71): schedules empty state vs the r7 route capture
+  {
+    id: 'schedules-empty-light',
+    route: '/app/schedules',
+    scenario: '11',
+    theme: 'light',
+    baseline: '11-schedules.png',
+  },
+  // smoke rows (issue #71): schedules dark + list/form states, then the
+  // four project surfaces — no r7 baseline exists for these, so each row
+  // proves the pipeline (self-compare) and pins the surface for review.
+  // The r3-derived rows capture with the expanded sidebar: r3 92/92b/93
+  // happened to be shot on the collapsed rail (session state), while
+  // r2 05b and r7 11 show these surfaces with the sidebar expanded.
+  { id: 'schedules-empty-dark', route: '/app/schedules', scenario: '11', theme: 'dark' },
+  {
+    id: 'schedules-list-light',
+    route: '/app/schedules',
+    scenario: 'r3-93',
+    theme: 'light',
+  },
+  { id: 'schedules-list-dark', route: '/app/schedules', scenario: 'r3-93', theme: 'dark' },
+  { id: 'schedules-form-light', route: '/app/schedules', scenario: 'r3-92', theme: 'light' },
+  { id: 'schedules-form-dark', route: '/app/schedules', scenario: 'r3-92', theme: 'dark' },
+  {
+    id: 'schedules-form-once-light',
+    route: '/app/schedules',
+    scenario: 'r3-92b',
+    theme: 'light',
+  },
+  {
+    id: 'schedules-form-once-dark',
+    route: '/app/schedules',
+    scenario: 'r3-92b',
+    theme: 'dark',
+  },
+  { id: 'project-new-light', route: '/app/project/new', scenario: 'r2-07', theme: 'light' },
+  { id: 'project-new-dark', route: '/app/project/new', scenario: 'r2-07', theme: 'dark' },
+  {
+    id: 'project-files-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24',
+    theme: 'light',
+  },
+  {
+    id: 'project-files-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24',
+    theme: 'dark',
+  },
+  {
+    id: 'project-tasks-empty-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24b',
+    theme: 'light',
+  },
+  {
+    id: 'project-tasks-empty-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24b',
+    theme: 'dark',
+  },
+  {
+    id: 'project-tasks-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'prj-tasks',
+    theme: 'light',
+  },
+  {
+    id: 'project-tasks-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'prj-tasks',
+    theme: 'dark',
+  },
+  {
+    id: 'project-settings-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings',
+    scenario: 'r2-24c',
+    theme: 'light',
+  },
+  {
+    id: 'project-settings-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings',
+    scenario: 'r2-24c',
+    theme: 'dark',
+  },
+  // gate rows (issue #70): secondary routes batch B — team and account
+  // carry r7 baselines; api-keys/feedback have no r7 capture (r2 19/32
+  // are the shape reference only), so those rows are smoke pairs, and
+  // the dark rows ride the same surfaces without baselines
+  {
+    id: 'team-light',
+    route: '/app/team',
+    scenario: '12',
+    theme: 'light',
+    baseline: '12-team.png',
+  },
+  { id: 'team-dark', route: '/app/team', scenario: '12', theme: 'dark' },
+  {
+    id: 'account-light',
+    route: '/app/account',
+    scenario: '13',
+    theme: 'light',
+    baseline: '13-account.png',
+  },
+  { id: 'account-dark', route: '/app/account', scenario: '13', theme: 'dark' },
+  { id: 'api-keys-light', route: '/app/api-keys', scenario: 'api-keys', theme: 'light' },
+  {
+    id: 'api-keys-created-light',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'light',
+  },
+  {
+    id: 'api-keys-created-dark',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'dark',
+  },
+  { id: 'api-keys-dark', route: '/app/api-keys', scenario: 'api-keys', theme: 'dark' },
+  { id: 'feedback-light', route: '/app/feedback', scenario: 'feedback', theme: 'light' },
+  { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' },
   // gate rows (issue #69): resources batch A — six route surfaces, light
   // (r7 captured no dark resource screen). The two 新建技能 rows stay
-  // smoke: their r8 69/70 baselines (committed with this ticket) carry
+  // smoke: their r8 79/80 baselines (committed with this ticket) carry
   // live-site state the frozen shell contract does not reproduce — the
   // 用量 nav row, the 看板 attention badge and the avatar FAB — so gating
   // them waits on the A6 rebaseline decision
@@ -242,6 +439,42 @@ export const matrix = [
     theme: 'light',
     baseline: '06-resources-machines.png',
   },
+  // gate rows (issue #70): secondary routes batch B — team and account
+  // carry r7 baselines; api-keys/feedback have no r7 capture (r2 19/32
+  // are the shape reference only), so those rows are smoke pairs, and
+  // the dark rows ride the same surfaces without baselines
+  {
+    id: 'team-light',
+    route: '/app/team',
+    scenario: '12',
+    theme: 'light',
+    baseline: '12-team.png',
+  },
+  { id: 'team-dark', route: '/app/team', scenario: '12', theme: 'dark' },
+  {
+    id: 'account-light',
+    route: '/app/account',
+    scenario: '13',
+    theme: 'light',
+    baseline: '13-account.png',
+  },
+  { id: 'account-dark', route: '/app/account', scenario: '13', theme: 'dark' },
+  { id: 'api-keys-light', route: '/app/api-keys', scenario: 'api-keys', theme: 'light' },
+  {
+    id: 'api-keys-created-light',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'light',
+  },
+  {
+    id: 'api-keys-created-dark',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'dark',
+  },
+  { id: 'api-keys-dark', route: '/app/api-keys', scenario: 'api-keys', theme: 'dark' },
+  { id: 'feedback-light', route: '/app/feedback', scenario: 'feedback', theme: 'light' },
+  { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' },
   {
     id: 'resources-providers-light',
     route: '/app/resources/providers',
@@ -296,15 +529,15 @@ export const matrix = [
   {
     id: 'resources-skills-import-folder-light',
     route: '/app/resources/skills/import',
-    scenario: '69',
+    scenario: '79',
     theme: 'light',
   },
   {
     id: 'resources-skills-import-github-light',
     route: '/app/resources/skills/import',
-    scenario: '70',
+    scenario: '80',
     theme: 'light',
-  },
+  }, // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // (28) — artefacts + score recorded, not gated
   {
@@ -323,6 +556,30 @@ export const matrix = [
     baseline: '28-执行transcript-工具行展开-light.png',
     threshold: 0,
   },
+  // chief rows (issue #72): drawer + 总管设置 surfaces, scenarios numbered
+  // after the r5 captures (100–116). The r5 batch sits outside the r7
+  // baseline batch (04 §2 A6), so these enter CI as smoke rows; baseline
+  // promotion waits on the r8 随拍 — see docs/research/r8-chief-panel-
+  // adhoc.md for the gap registration.
+  { id: 'chief-gated-light', route: '/app', scenario: '100', theme: 'light' },
+  { id: 'chief-gated-dark', route: '/app', scenario: '100', theme: 'dark' },
+  { id: 'chief-ready-light', route: '/app', scenario: '111', theme: 'light' },
+  { id: 'chief-thread-light', route: '/app', scenario: '114', theme: 'light' },
+  { id: 'chief-threads-open-light', route: '/app', scenario: '116', theme: 'light' },
+  { id: 'chief-settings-agent-light', route: '/app', scenario: '101', theme: 'light' },
+  { id: 'chief-settings-agent-dark', route: '/app', scenario: '101', theme: 'dark' },
+  { id: 'chief-settings-charter-light', route: '/app', scenario: '102', theme: 'light' },
+  { id: 'chief-settings-memory-light', route: '/app', scenario: '103', theme: 'light' },
+  { id: 'chief-settings-watches-light', route: '/app', scenario: '104', theme: 'light' },
+  // 04 §2 增量规则: 深色面随票覆盖 — the chief dark values are [推断] on the
+  // shared tokens (no dark chief capture exists in any batch; r2 16 is the
+  // pre-drift layout), registered in docs/research/r8-chief-panel-adhoc.md
+  { id: 'chief-ready-dark', route: '/app', scenario: '111', theme: 'dark' },
+  { id: 'chief-thread-dark', route: '/app', scenario: '114', theme: 'dark' },
+  { id: 'chief-threads-open-dark', route: '/app', scenario: '116', theme: 'dark' },
+  { id: 'chief-settings-charter-dark', route: '/app', scenario: '102', theme: 'dark' },
+  { id: 'chief-settings-memory-dark', route: '/app', scenario: '103', theme: 'dark' },
+  { id: 'chief-settings-watches-dark', route: '/app', scenario: '104', theme: 'dark' },
 ];
 
 export const DEFAULT_BASELINE_THRESHOLD = 0.85;

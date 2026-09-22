@@ -1,4 +1,4 @@
-// 新建技能 route (issue #69, r2 08b/08c structure, r8 69/70 geometry): 总管 hint line, the
+// 新建技能 route (issue #69, r2 08b/08c structure, r8 79/80 geometry): 总管 hint line, the
 // 从文件夹 / 从 GitHub tablist, then either the folder form (dropzone +
 // 名称 + 描述 + full-width 创建技能) or the GitHub form (链接 input + 扫描
 // + help line). The tab is real state; parity scenarios pin it via the
@@ -11,7 +11,7 @@ import { SKILLS_HREF } from './skills-page.js';
 
 export const SKILLS_IMPORT_HREF = '/app/resources/skills/import';
 
-/** The two import tabs (r2 08b/08c, r8 69/70). */
+/** The two import tabs (r2 08b/08c, r8 79/80). */
 const IMPORT_TABS: { id: 'folder' | 'github'; label: string }[] = [
   { id: 'folder', label: '从文件夹' },
   { id: 'github', label: '从 GitHub' },
@@ -28,7 +28,7 @@ export function SkillsImportPage() {
     <ResourceShell
       title="新建技能"
       href={SKILLS_IMPORT_HREF}
-      selectedHref={SKILLS_HREF}
+      selected={SKILLS_HREF}
       backHref={SKILLS_HREF}
       hideNew
       fixture={fixture}

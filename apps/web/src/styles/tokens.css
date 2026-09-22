@@ -56,6 +56,14 @@
   --badge-done: #5ec26a;
   /* fresh-card owner badge (r7 22/22d), same gray in both themes */
   --badge-idle: #9ea3ae;
+  /* secondary routes (issue #70): team agent avatar disc (r7 12 light
+     sample #eff1f5) and the selected feedback chip tint (r2 32); dark
+     values are [推断], derived from the chip-idle/plan dark family */
+  --agent-avatar-bg: #202733;
+  --chip-active-bg: #26243a;
+  --chip-active-border: #3b3866;
+  /* [推断] indigo-500 at 55% over surface-secondary, mirroring the light sample */
+  --send-disabled: #454690;
   --install-bg: #28293b;
   --install-fg: #6063df;
   --fab-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
@@ -72,6 +80,11 @@
   --popover-bg: #1f1f23;
   --tab-group-bg: #27272a;
   --seg-active: #3f3f46;
+  /* text-tab chip on the #71 secondary routes (r2 24b/24c probe: group bg
+     is --surface-secondary in both themes, the active chip is not) */
+  --tab-chip-bg: #27272a;
+  /* 删除项目 primary danger (r2 24c probe) */
+  --danger: #ca3a32;
   --stop: #dd524c;
   /* diff pane (r7 27d dark sample for the stat green; the expanded diff
      surface was only captured light — dark add-bg is [推断], derived from
@@ -88,8 +101,13 @@
   --tile-hero-bg: #33221b;
   --pill-idle-bg: #27272a;
   --dash-border: #3f3f46;
-  /* disabled primary (r8 69 light sample); dark [推断], indigo family dimmed */
-  --primary-disabled: #3d3a8f;
+  /* disabled primary (r8 79 light sample); dark [推断], indigo family dimmed */
+  --primary-disabled: #3d3a8f; /* chief surfaces (r5 100–104, #72): drawer shadow sampled from the r5
+     100 edge gradient; tab strip colors from the r5 101 group/active pill
+     (dark values [推断] on the detail-tab family, r2 16 dark panel) */
+  --chief-shadow: 0 4px 24px rgb(0 0 0 / 0.35);
+  --chief-tab-bg: #27272a;
+  --chief-tab-active: #3f3f46;
   color-scheme: dark light;
 }
 
@@ -127,6 +145,11 @@
   --badge-idle: #9ea3ae;
   --install-bg: #ebe8f2;
   --install-fg: #6c6ee9;
+  /* secondary routes (issue #70), sampled from r7 12 / r2 32 light */
+  --agent-avatar-bg: #eff1f5;
+  --chip-active-bg: #ebe8f2;
+  --chip-active-border: #cdc9f0;
+  --send-disabled: #9f9ae2;
   --fab-shadow: 0 5px 14px rgb(28 25 23 / 0.14);
   /* detail palette, sampled from the r7 23/16/17 captures (#56) */
   --chip-idle-bg: #f3f4f6;
@@ -141,6 +164,8 @@
   --popover-bg: #fdfaf7;
   --tab-group-bg: transparent;
   --seg-active: #e7e2da;
+  --tab-chip-bg: #faf7f3;
+  --danger: #ca3a32;
   --stop: #dd524c;
   /* diff pane, sampled from r7 27/27b: stat/ gutter green #499771, added
      row tint #eaf1e8 */
@@ -154,5 +179,9 @@
   --tile-hero-bg: #f8ead8;
   --pill-idle-bg: #e7e2da;
   --dash-border: #e8e2db;
-  --primary-disabled: #a49fe8;
+  --primary-disabled: #a49fe8; /* chief surfaces (r5 100–104, #72): shadow from the r5 100 edge
+     gradient, tab strip from the r5 101 group bg / active pill */
+  --chief-shadow: 0 4px 24px rgb(28 25 23 / 0.16);
+  --chief-tab-bg: #eeeae4;
+  --chief-tab-active: #f7f4ef;
 }

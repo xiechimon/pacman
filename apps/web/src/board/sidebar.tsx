@@ -36,15 +36,33 @@ import {
 } from '../icons/index.js';
 import './sidebar.css';
 
+/** Which sidebar row carries the active pill: a nav row (看板 / 定时 /
+ *  the project row — r7 01/11, r2 07e/24b/24c), the team head row on
+ *  team/account (r7 12/13), a 资源 subrow by href (issue #69, r7 06–10),
+ *  or none (/app/project/new r2 07, and the user-menu-only routes
+ *  r2 19/32). */
+export type SidebarSelected =
+  | 'board'
+  | 'schedules'
+  | 'project'
+  | 'team'
+  | 'none'
+  | '/app/resources/skills'
+  | '/app/resources/mcp-servers'
+  | '/app/resources/secrets'
+  | '/app/resources/machines'
+  | '/app/resources/providers';
+
 interface BoardSidebarProps {
   collapsed?: boolean;
   onToggle?: () => void;
   /** Todos waiting on confirmation — the 看板 nav badge (r7 02/17). */
   attention?: number;
-  /** Route href carrying the selected pill (issue #69): the board pages
-   *  leave it at `/app`, resource routes pass their own href so the
-   *  matching 资源 subrow renders selected (r7 06–10). */
-  selected?: string;
+  /** Route carrying the selected pill: #71 named slots, #69 resource
+   *  hrefs (r7 06–10), 'none' = no pill. */
+  selected?: SidebarSelected;
+  /** Indigo dot right of the 机器 row (r5 100/101/114/116: machine online). */
+  machineOnline?: boolean;
 }
 
 /** Leaf nav rows shared by both sidebar states — each renders full in the
@@ -62,6 +80,10 @@ const RESOURCE_ROWS: {
 ];
 
 const PROJECT_HREF = `/app/project/${PROJECT_ID}`;
+
+/** Selected-pill class pair for a nav row (expanded + rail variants). */
+const rowClass = (base: string, selected: boolean) =>
+  selected ? `${base} ${base}--selected` : base;
 
 function GroupHeader({ label }: { label: string }) {
   return (
@@ -86,7 +108,8 @@ export function BoardSidebar({
   collapsed = false,
   onToggle,
   attention = 0,
-  selected = '/app',
+  selected = 'board',
+  machineOnline = false,
 }: BoardSidebarProps) {
   if (collapsed) {
     return (
@@ -99,18 +122,28 @@ export function BoardSidebar({
             <Search />
           </a>
           <a
-            className={`rail-row${selected === '/app' ? ' rail-row--selected' : ''}`}
+            className={rowClass('rail-row', selected === 'board')}
             href="/app"
-            aria-current={selected === '/app' ? 'page' : undefined}
+            aria-current={selected === 'board' ? 'page' : undefined}
             aria-label="看板"
           >
             <Kanban />
           </a>
-          <a className="rail-row" href="/app/schedules" aria-label="定时">
+          <a
+            className={rowClass('rail-row', selected === 'schedules')}
+            href="/app/schedules"
+            aria-current={selected === 'schedules' ? 'page' : undefined}
+            aria-label="定时"
+          >
             <Clock />
           </a>
           <RailGroupChevron label="项目" />
-          <a className="rail-row" href={PROJECT_HREF} aria-label={PROJECT_NAME}>
+          <a
+            className={rowClass('rail-row', selected === 'project')}
+            href={PROJECT_HREF}
+            aria-current={selected === 'project' ? 'page' : undefined}
+            aria-label={PROJECT_NAME}
+          >
             <span className="project-avatar">{PROJECT_INITIAL}</span>
           </a>
           <RailGroupChevron label="资源" />
@@ -139,11 +172,14 @@ export function BoardSidebar({
 
   return (
     <aside className="board-sidebar">
-      <div className="sidebar-team-row">
+      <div className={`sidebar-team-row${selected === 'team' ? ' sidebar-team-row--active' : ''}`}>
         <span className="sidebar-row-icon">
           <Users />
         </span>
-        <span className="sidebar-team-name">{TEAM_NAME}</span>
+        {/* r2 §1.1: clicking the team name navigates to /app/team */}
+        <a className="sidebar-team-name" href="/app/team">
+          {TEAM_NAME}
+        </a>
         <button
           type="button"
           className="sidebar-team-collapse"
@@ -163,9 +199,9 @@ export function BoardSidebar({
           <span className="sidebar-kbd">⌘K</span>
         </a>
         <a
-          className={`sidebar-row${selected === '/app' ? ' sidebar-row--selected' : ''}`}
+          className={rowClass('sidebar-row', selected === 'board')}
           href="/app"
-          aria-current={selected === '/app' ? 'page' : undefined}
+          aria-current={selected === 'board' ? 'page' : undefined}
         >
           <span className="sidebar-row-icon">
             <Kanban />
@@ -173,7 +209,11 @@ export function BoardSidebar({
           <span className="sidebar-row-label">看板</span>
           {attention > 0 && <span className="sidebar-badge">{attention}</span>}
         </a>
-        <a className="sidebar-row" href="/app/schedules">
+        <a
+          className={selected === 'schedules' ? 'sidebar-row sidebar-row--selected' : 'sidebar-row'}
+          href="/app/schedules"
+          aria-current={selected === 'schedules' ? 'page' : undefined}
+        >
           <span className="sidebar-row-icon">
             <Clock />
           </span>
@@ -187,7 +227,11 @@ export function BoardSidebar({
           </span>
           <span className="sidebar-subrow-label">新建项目</span>
         </a>
-        <a className="sidebar-subrow" href={PROJECT_HREF}>
+        <a
+          className={rowClass('sidebar-subrow', selected === 'project')}
+          href={PROJECT_HREF}
+          aria-current={selected === 'project' ? 'page' : undefined}
+        >
           <span className="project-avatar">{PROJECT_INITIAL}</span>
           <span className="sidebar-subrow-label">{PROJECT_NAME}</span>
         </a>
@@ -196,7 +240,7 @@ export function BoardSidebar({
         {RESOURCE_ROWS.map(({ label, href, Icon }) => (
           <a
             key={href}
-            className={`sidebar-subrow${selected === href ? ' sidebar-subrow--selected' : ''}`}
+            className={rowClass('sidebar-subrow', selected === href)}
             href={href}
             aria-current={selected === href ? 'page' : undefined}
           >
@@ -204,6 +248,7 @@ export function BoardSidebar({
               <Icon />
             </span>
             <span className="sidebar-subrow-label">{label}</span>
+            {machineOnline && label === '机器' && <span className="sidebar-online-dot" />}
           </a>
         ))}
       </nav>

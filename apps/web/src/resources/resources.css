@@ -4,7 +4,7 @@
    content area, `+ 新建` 13px indigo at right ink margin 21; content
    column 768 wide (x456..1223) with 16px pad-top; row cards on
    surface-secondary with card-border and 10px radius. Import-page form
-   geometry probed from the r8 69/70 captures (structure per r2 §6.1). */
+   geometry probed from the r8 79/80 captures (structure per r2 §6.1). */
 
 .res-shell {
   display: flex;
@@ -379,7 +379,7 @@
 }
 
 .res-primary:disabled {
-  /* lavender sampled from the r8 69 capture (light #a49fe8); dark [推断] */
+  /* lavender sampled from the r8 78 capture (light #a49fe8); dark [推断] */
   background: var(--primary-disabled);
   cursor: default;
 }
@@ -415,7 +415,7 @@
   line-height: 18px;
 }
 
-/* 新建技能 (r8 69/70 geometry, structure per r2 §6.1) */
+/* 新建技能 (r8 79/80 geometry, structure per r2 §6.1) */
 .res-import-hint {
   margin: 4px 0 0;
   font-size: 13px;
@@ -445,7 +445,7 @@
   cursor: pointer;
 }
 
-/* r8 69: the active tab is a bare white pill on the group background */
+/* r8 78: the active tab is a bare white pill on the group background */
 .res-tab--active {
   background: var(--surface);
   color: var(--text-primary);

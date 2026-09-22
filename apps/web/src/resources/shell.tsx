@@ -5,7 +5,7 @@
 // pinned like on the detail route.
 import type { ReactNode } from 'react';
 import { attentionCount } from '../board/columns.js';
-import { BoardSidebar } from '../board/sidebar.js';
+import { BoardSidebar, type SidebarSelected } from '../board/sidebar.js';
 import type { FixtureSet } from '../fixtures/records.js';
 import { ChevronLeft, ChiefFab, Plus } from '../icons/index.js';
 import './resources.css';
@@ -13,10 +13,11 @@ import './resources.css';
 interface ResourceShellProps {
   /** Centered topbar title (`技能` / `MCP 服务器` / …). */
   title: string;
-  /** This route's href (data-route + default selected pill carrier). */
+  /** This route's href (data-route). */
   href: string;
-  /** Sidebar pill override: the import page keeps 技能 selected (r8 69/70). */
-  selectedHref?: string;
+  /** Sidebar selected pill: resource hrefs, or 技能 on the import page
+   *  (r8 79/80). Absent = 看板. */
+  selected?: SidebarSelected;
   /** Back-chevron target: the board, or the skills list on the import page. */
   backHref: string;
   /** Href for the right `+ 新建` action; absent renders a bare button
@@ -31,7 +32,7 @@ interface ResourceShellProps {
 export function ResourceShell({
   title,
   href,
-  selectedHref,
+  selected,
   backHref,
   newHref,
   hideNew = false,
@@ -52,7 +53,7 @@ export function ResourceShell({
 
   return (
     <div className="res-shell" data-route={href}>
-      <BoardSidebar selected={selectedHref ?? href} attention={attentionCount(fixture.todos)} />
+      <BoardSidebar selected={selected} attention={attentionCount(fixture.todos)} />
       <div className="res-main">
         <header className="res-topbar">
           <a className="res-back" href={backHref} aria-label="返回">

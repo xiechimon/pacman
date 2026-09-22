@@ -6,10 +6,18 @@
 // records.
 
 import type {
+  ApiKeyRecord,
   ChangesContent,
+  ChiefContent,
+  ChiefExample,
+  ChiefSettingsTab,
+  ChiefThreadRef,
   DocBlock,
   FixtureSet,
+  ProjectContent,
   ResourcesContent,
+  ScheduleRecord,
+  TeamContent,
   TodoRecord,
   TranscriptItem,
 } from './records.js';
@@ -147,9 +155,28 @@ const darkFreshProbe: TodoRecord = {
   v: 2,
 };
 
+/** Repo surface of the fixture project (r2 07e/24/24c read off the
+ *  r3-lifecycle hosted repo): main branch, single README.md row. */
+export const projectContent: ProjectContent = {
+  name: PROJECT_NAME,
+  branch: 'main',
+  files: ['README.md'],
+  repoName: PROJECT_NAME,
+  hosted: true,
+  defaultBranch: 'main',
+  description: null,
+};
+
 /** Board default: only the r3 legacy pair (r7 01/35). Captured before the
- *  probe existed, ~13:10–13:21. */
-export const boardDefault: FixtureSet = { todos: [legacyReview, legacyDone], now: r7(13, 14) };
+ *  probe existed, ~13:10–13:21. Carries the project repo surface and an
+ *  empty schedule list so the #71 routes also render in scenario-blind
+ *  production builds (resolveScenario falls back here). */
+export const boardDefault: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  schedules: [],
+  project: projectContent,
+};
 
 /** Board with the probe in the given phase (r7 02/22/21/33 …). The dark
  *  board pair (02/02b) shows `9 分钟前` on the confirm card → captured
@@ -473,7 +500,87 @@ export const detailLegacy: FixtureSet = {
   detail: { transcript: LEGACY_REVIEW_TRANSCRIPT },
 };
 
-/** Resource surfaces (r7 06–10, issue #69): the r3 session left one skill,
+// ---- issue #71: schedules + project route sets ----
+
+/** r3 93 list card: the once rule built in r3 §9 (fired 14:30, todo #1 went
+ *  done, rule still listed with 下次 今天 14:30 at capture time ~13:50).
+ *  Record shape verbatim from r3 §8.3; `createdBy` id is [推断] (masked in
+ *  the capture, never rendered). */
+const scheduleOnce: ScheduleRecord = {
+  id: 'r3-schedule-1',
+  teamId: TEAM_ID,
+  projectId: PROJECT_ID,
+  todoId: 'r3-legacy-1',
+  kind: 'once',
+  at: at(R3_DAY, 14, 30),
+  tz: 'Asia/Shanghai',
+  machineId: null,
+  nextRunAt: at(R3_DAY, 14, 30),
+  createdBy: 'u-xmon-dai',
+  todo: {
+    seqNum: 1,
+    title: legacyReview.title,
+    phase: 'done',
+    projectName: PROJECT_NAME,
+    ownerId: 'u-xmon-dai',
+  },
+};
+
+/** r7 11: the schedules empty state. Dedicated set (not a boardDefault
+ *  alias) so edits to the board fixture can never drift the only gated
+ *  baseline row of this batch (scenario contract, scenario.ts header). */
+export const schedulesEmpty: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  schedules: [],
+  project: projectContent,
+};
+
+/** r3 93: list with the single once rule. Capture instant ~13:50 keeps
+ *  `下次 今天 14:30` in the future. */
+export const schedulesList: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: at(R3_DAY, 13, 50),
+  schedules: [scheduleOnce],
+  project: projectContent,
+};
+
+/** r3 92: 新建定时 dialog open on the 每天 tab (the default frequency). */
+export const schedulesFormDaily: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: at(R3_DAY, 13, 50),
+  schedules: [],
+  scheduleForm: 'daily',
+  project: projectContent,
+};
+
+/** r3 92b: same dialog on 单次 — the 日期 row appears above 时间. */
+export const schedulesFormOnce: FixtureSet = {
+  ...schedulesFormDaily,
+  scheduleForm: 'once',
+};
+
+/** The project routes share one content set; the route picks the page and
+ *  `projectTab` picks the 任务|文件 surface (r2 07 / 07e·24 / 24b·26 / 24c).
+ *  Default tab = 文件 (r2 §2 route table). */
+export const projectFixture: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  project: projectContent,
+};
+
+/** r2 26: 任务 tab with the two legacy rows (checkbox + title + rel time
+ *  + owner avatar). */
+export const projectTasks: FixtureSet = { ...projectFixture, projectTab: 'tasks' };
+
+/** r2 24b: 任务 tab of a project without todos — the 暂无内容 empty state
+ *  with the `+ 任务` entry (the r2 session's r2-inventory project). */
+export const projectTasksEmpty: FixtureSet = {
+  todos: [],
+  now: r7(13, 14),
+  project: projectContent,
+  projectTab: 'tasks',
+}; /** Resource surfaces (r7 06–10, issue #69): the r3 session left one skill,
  *  one MCP server, the online r3 machine and a custom gateway on the free
  *  team, so the captures show populated rows rather than empty states
  *  (secrets excepted — its empty state is the capture). Row content is
@@ -509,13 +616,232 @@ const RESOURCES: ResourcesContent = {
   ],
 };
 
+// ── Chief surfaces (issue #72, r5 100–116) ───────────────────────────────
+// Copy verbatim from the r5 captures: 100 gate bar + hero + draft, 101–104
+// settings tabs, 111 bound hero, 114 dispatch-report stream, 116 switcher.
+// The r5 batch is 1438×730 (off the r7 baseline batch), so these sets back
+// smoke rows only — see parity/matrix.mjs and docs/research/r8-chief-
+// panel-adhoc.md for the baseline gap registration.
+
+/** r5 100/111 hero grid, card order = capture order. */
+const CHIEF_EXAMPLES: ChiefExample[] = [
+  { icon: 'user-plus', text: '帮我组建 Agent 团队' },
+  { icon: 'folder', text: '帮我创建一个新项目' },
+  { icon: 'grid', text: '总结一下我所有项目现在的进展' },
+  { icon: 'bars', text: '查一下这个月的 token 用量' },
+];
+
+/** r5 100/111 composer draft (localStorage tds.cache.chief-draft-v1, the
+ *  capture shows it restored into the textarea). */
+const CHIEF_DRAFT =
+  '我想做一个能在浏览器里直接玩的网页小游戏 （比如贪吃蛇或打砖块）： 单文件 HTML + Canvas， 不用任何构建工具，做完能在项目的文件页直接试玩。请在现有的入门项目里做， 组建 Agent 团队把游戏逻辑、 画面手感、 难度调优拆成并行任务， 然后向我汇报方案， 等我确认后再开始动工。';
+
+/** r5 116 switcher rows: the two threads of the r5 session, active first. */
+const CHIEF_THREADS: ChiefThreadRef[] = [
+  { title: '给 r3-lifecycle 做三件小事…', active: true },
+  { title: '帮 r3-lifecycle 写一份…' },
+];
+
+/** r5 100: drawer on a fresh thread, no agent bound — gate bar + hero. */
+export const chiefGated: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  chief: {
+    view: 'drawer',
+    bound: false,
+    threadTitle: '新主题',
+    examples: CHIEF_EXAMPLES,
+    draft: CHIEF_DRAFT,
+  },
+};
+
+/** r5 111: same fresh-thread drawer once an agent is bound — model slot
+ *  filled, gate bar gone. */
+export const chiefReady: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  chief: {
+    view: 'drawer',
+    bound: true,
+    modelSlot: 'claude-sonnet-5 · 默认',
+    threadTitle: '新主题',
+    examples: CHIEF_EXAMPLES,
+    draft: CHIEF_DRAFT,
+  },
+};
+
+/** r5 114: thread view with the dispatch report of todo #11 — user bubble,
+ *  chief report paragraphs with the #11 / r5-scribe chips, 完成 44s footer. */
+export const chiefThread: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  chief: {
+    view: 'drawer',
+    bound: true,
+    modelSlot: 'claude-sonnet-5 · 默认',
+    threadTitle: '帮 r3-lifecycle 写一份…',
+    stream: [
+      { kind: 'note', text: '17:26' },
+      { kind: 'note', text: '运行在 ', machineName: MACHINE_NAME },
+      {
+        kind: 'user',
+        text: '帮 r3-lifecycle 写一份 CONTRIBUTING.md 贡献指南，说明怎么给 Agent 提任务、怎么验收改动，写完放到项目根目录。',
+      },
+      {
+        kind: 'robot',
+        paragraphs: [
+          [
+            { text: '已创建并派工 ' },
+            { text: '', todo: 11 },
+            { text: ' 「编写 CONTRIBUTING.md 贡献指南」， 由文档专职 Agent ' },
+            { text: '', agent: 'r5-scribe' },
+            { text: ' 承接，正在编写中。' },
+          ],
+          [
+            {
+              text: '要求内容涵盖：如何给 Agent 提任务、如何验收改动，文件写入项目根目录 CONTRIBUTING.md。完成或需要确认时我会跟进汇报。',
+            },
+          ],
+        ],
+        seconds: '44s',
+      },
+    ],
+  },
+};
+
+/** r5 116: the 三件小事 thread with the header switcher popover open —
+ *  the visible stream tail is the merge-check report (bullets + #12 ask). */
+export const chiefThreadsOpen: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  chief: {
+    view: 'drawer',
+    bound: true,
+    modelSlot: 'claude-sonnet-5 · 默认',
+    threadTitle: '给 r3-lifecycle 做三件小事…',
+    threadsOpen: true,
+    threads: CHIEF_THREADS,
+    stream: [
+      {
+        kind: 'robot',
+        paragraphs: [
+          [
+            { text: '顺带说明： CONTRIBUTING.md 本身由 ' },
+            { text: '', todo: 11 },
+            {
+              text: ' 负责编写，目前在 review 阶段尚未合并进 main，我在新任务里已注明"只需在 README 里列出该条目，不必等它合并"。',
+            },
+          ],
+          [{ text: '等它落到 review/完成时我会来汇报，到时候也会补上记忆总结。' }],
+        ],
+        seconds: '1m 4s',
+      },
+      {
+        kind: 'robot',
+        paragraphs: [[{ text: '三项改动都已核对，符合要求：' }]],
+        bullets: [
+          [
+            { text: 'README.md:', strong: true },
+            { text: '新增 「文档目录」 节，列出 ' },
+            { text: 'CONTRIBUTING.md', code: true },
+            { text: ' 链接。' },
+          ],
+          [
+            { text: 'CHANGELOG.md:', strong: true },
+            { text: '新建,含 「未发布」 初始条目，列出本次三项变更。' },
+          ],
+          [
+            { text: 'scripts/hello.js:', strong: true },
+            { text: 'node scripts/hello.js', code: true },
+            { text: ' 打印 ' },
+            { text: 'hello', code: true },
+            { text: '，构建里已本地验证过。' },
+          ],
+        ],
+        seconds: '31s',
+      },
+      {
+        kind: 'robot',
+        paragraphs: [
+          [
+            { text: '', todo: 12 },
+            { text: ' 现在停在 review 阶段等你确认合并。要我现在 merge 吗?' },
+          ],
+        ],
+        seconds: '31s',
+      },
+    ],
+  },
+};
+
+/** r5 101–104: the 总管设置 view, one set per tab (unbound agent). */
+export function chiefSettings(tab: ChiefSettingsTab): FixtureSet {
+  return {
+    todos: [legacyReview, legacyDone],
+    now: r7(13, 14),
+    chief: { view: 'settings', tab, bound: false, threadTitle: '新主题' },
+  };
+}
+
+/** Default drawer content for a FAB-opened drawer on a scenario without a
+ *  chief surface (dev interactivity; parity rows always carry a set). */
+export const chiefDefault: ChiefContent = {
+  view: 'drawer',
+  bound: false,
+  threadTitle: '新主题',
+  examples: CHIEF_EXAMPLES,
+};
+
+/** Team route roster (r7 12): `1 个成员` stats bar + the single agent card
+ *  (`claude-sonnet-5 · 默认`, role unset) beside the dashed 创建 Agent slot. */
+export const TEAM_R7: TeamContent = {
+  members: 1,
+  agents: [
+    {
+      id: R3_BUILDER.id,
+      displayName: R3_BUILDER.displayName,
+      model: 'claude-sonnet-5',
+      isDefault: true,
+      role: null,
+    },
+  ],
+};
+
+/** Team route fixture (r7 12): the board todos never render here, the
+ *  roster is the whole surface. */
+export const teamGrid: FixtureSet = {
+  todos: boardDefault.todos,
+  now: boardDefault.now,
+  team: TEAM_R7,
+};
+
+/** One created API key exercising both r3 §6 display rules: the list row
+ *  mask and the one-time plaintext (02 §8 canon copy rides along in the
+ *  page). Mask prefix `tds_afe07565` is the r3 §6 observed sample. */
+const API_KEY_CREATED: ApiKeyRecord = {
+  id: 'apikey-r7-1',
+  name: null,
+  masked: 'tds_afe07565…',
+  gitAccess: true,
+  mcpAccess: true,
+  plaintext: 'tds_afe07565b3c9d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0',
+};
+
+/** API-keys route fixture with the created key; the empty state (r2 19)
+ *  is the fixture-less fallback. */
+export const apiKeysCreated: FixtureSet = {
+  todos: boardDefault.todos,
+  now: boardDefault.now,
+  apiKeys: { keys: [API_KEY_CREATED] },
+};
+
 export const resourcesDefault: FixtureSet = {
   todos: [legacyReview, legacyDone],
   now: r7(13, 14),
   resources: RESOURCES,
 };
 
-/** 新建技能 route (r8 69/70, issue #69): same team state as the resource
+/** 新建技能 route (r8 79/80, issue #69): same team state as the resource
  *  rows, with the import tab the capture sits on. */
 export function resourcesImport(tab: 'folder' | 'github'): FixtureSet {
   return {

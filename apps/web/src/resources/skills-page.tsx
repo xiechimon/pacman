@@ -19,6 +19,7 @@ export function SkillsPage() {
       title="技能"
       href={SKILLS_HREF}
       backHref="/app"
+      selected={SKILLS_HREF}
       newHref={`${SKILLS_HREF}/import`}
       fixture={fixture}
     >
