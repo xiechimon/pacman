@@ -14,6 +14,11 @@ import {
   boardDarkFresh,
   boardDefault,
   boardWithProbe,
+  chiefGated,
+  chiefReady,
+  chiefSettings,
+  chiefThread,
+  chiefThreadsOpen,
   detailBuilding,
   detailConfirm,
   detailDone,
@@ -102,6 +107,17 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   'api-keys': boardDefault,
   'api-keys-created': apiKeysCreated,
   feedback: boardDefault,
+  // chief (issue #72): ids follow the r5 capture numbers — the chief
+  // surfaces have no r7 shot (r7 §6 gap table), so r5 100–116 number these
+  // rows. Dark rows reuse the same ids with theme: 'dark' in the matrix.
+  '100': chiefGated,
+  '101': chiefSettings('agent'),
+  '102': chiefSettings('charter'),
+  '103': chiefSettings('memory'),
+  '104': chiefSettings('watches'),
+  '111': chiefReady,
+  '114': chiefThread,
+  '116': chiefThreadsOpen,
 };
 
 /** #58 gate: scenario selection exists only in dev (`vite dev`) and in the

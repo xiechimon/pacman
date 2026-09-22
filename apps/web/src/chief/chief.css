@@ -1,0 +1,579 @@
+/* Chief surfaces (issue #72). Geometry measured from the r5 captures
+   (1438×730, dpr 1): drawer 418 wide, top 42, right 17, bottom 16, radius
+   12; gate bar 54 high inset 17; example grid 2×170 cards, 64 high, gap 10,
+   inset 33; composer inset 17/10. Settings column 766 wide centered on the
+   content area; header 57; tabs 30 high at y60; agent card 44 at y107;
+   compress card 62 at y169. Dark values ride the shared tokens (r2 16
+   sample: panel #18181b, inner cards #1f1f23). */
+
+/* ---- drawer ---- */
+
+.chief-drawer {
+  position: absolute;
+  top: 42px;
+  right: 17px;
+  bottom: 16px;
+  width: 418px;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--chief-shadow);
+  display: flex;
+  flex-direction: column;
+  z-index: 30;
+}
+
+.chief-head {
+  position: relative;
+  padding: 5px 17px 12px;
+}
+
+.chief-head-row {
+  display: flex;
+  align-items: center;
+}
+
+.chief-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.chief-chip-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 210px;
+}
+
+.chief-head-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.chief-head-actions button {
+  border: none;
+  background: none;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.chief-model {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* thread switcher popover (r5 116) */
+.chief-switcher {
+  position: absolute;
+  top: 32px;
+  left: 12px;
+  width: 262px;
+  padding: 4px;
+  background: var(--popover-bg);
+  border-radius: 8px;
+  box-shadow: var(--chief-shadow);
+  z-index: 5;
+}
+
+.chief-switcher-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.chief-switcher-row.is-active {
+  background: var(--surface-hover);
+}
+
+.chief-switcher-row svg {
+  color: var(--text-dim);
+  flex: none;
+}
+
+.chief-switcher-row span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- drawer body ---- */
+
+.chief-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chief-gate {
+  display: flex;
+  align-items: center;
+  height: 54px;
+  margin: 0 17px;
+  padding: 0 12px 0 20px;
+  background: var(--surface-secondary);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.chief-gate-btn {
+  margin-left: auto;
+  width: 50px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: var(--card-button);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  flex: none;
+}
+
+.chief-hero {
+  margin: 54px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.chief-gate + .chief-hero {
+  margin-top: 62px;
+}
+
+.chief-examples {
+  margin: 12px 33px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.chief-example {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 64px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.chief-example-tile {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--seg-active);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+}
+
+.chief-example-text {
+  /* 12px: r5 100 wraps 帮我组建 Agent 团/队 but keeps 帮我创建一个新项目
+     on one line inside the 170-wide card */
+  font-size: 12px;
+  line-height: 21px;
+  color: var(--text-secondary);
+}
+
+/* ---- message flow (r5 114/116) ---- */
+
+.chief-stream {
+  padding: 14px 17px 0;
+}
+
+.chief-note {
+  margin: 10px 0;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.chief-msg {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.chief-avatar {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+.chief-msg-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.chief-bubble {
+  background: var(--surface-secondary);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 24px;
+  color: var(--text-primary);
+}
+
+.chief-msg-tools {
+  display: flex;
+  gap: 10px;
+  margin-top: 7px;
+  color: var(--text-dim);
+}
+
+.chief-para {
+  font-size: 14px;
+  line-height: 24px;
+  color: var(--text-primary);
+}
+
+.chief-para + .chief-para {
+  margin-top: 2px;
+}
+
+.chief-bullet {
+  display: flex;
+  gap: 7px;
+  margin-top: 2px;
+  font-size: 14px;
+  line-height: 24px;
+  color: var(--text-primary);
+}
+
+.chief-bullet-dot {
+  flex: none;
+}
+
+.chief-code {
+  background: var(--code-bg);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.chief-chip-todo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 2px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--chip-plan-bg);
+  color: var(--chip-plan-fg);
+  font-size: 12px;
+  vertical-align: 1px;
+}
+
+.chief-chip-agent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 2px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--seg-active);
+  color: var(--text-secondary);
+  font-size: 12px;
+  vertical-align: 1px;
+}
+
+.chief-msg-foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 9px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* ---- composer ---- */
+
+.chief-composer {
+  margin: 10px 17px;
+  padding: 12px 12px 10px;
+  background: var(--surface-secondary);
+  border-radius: 12px;
+}
+
+.chief-composer-input {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  resize: none;
+  outline: none;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-primary);
+}
+
+.chief-composer-input::placeholder {
+  color: var(--text-dim);
+}
+
+.chief-composer-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.chief-composer-bar button[aria-label]:not(.chief-send) {
+  border: none;
+  background: none;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.chief-send {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: var(--seg-active);
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.chief-send.is-on {
+  background: var(--indigo-500);
+  color: #fff;
+}
+
+/* ---- settings view (r5 101–104) ---- */
+
+.chief-settings {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chief-set-head {
+  position: relative;
+  height: 57px;
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.chief-set-back {
+  margin-left: 14px;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.chief-set-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chief-set-col {
+  width: 766px;
+  margin: 0 auto;
+}
+
+.chief-tabs {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--chief-tab-bg);
+}
+
+.chief-tab {
+  height: 26px;
+  padding: 0 11px;
+  border: none;
+  background: none;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.chief-tab.is-active {
+  background: var(--chief-tab-active);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.chief-agent-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 44px;
+  margin-top: 17px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.chief-agent-row svg:first-child {
+  color: var(--text-tertiary);
+}
+
+.chief-agent-chev {
+  margin-left: auto;
+  color: var(--text-dim);
+}
+
+.chief-compress {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 62px;
+  margin-top: 18px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+
+.chief-compress-text h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chief-compress-text p {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.chief-select {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  height: 30px;
+  min-width: 160px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  flex: none;
+}
+
+.chief-select svg {
+  color: var(--text-tertiary);
+}
+
+.chief-charter-empty {
+  display: grid;
+  place-items: center;
+  height: 78px;
+  margin-top: 17px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.chief-charter-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.chief-edit-btn {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.chief-memo,
+.chief-watches {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  margin-top: 17px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  font-size: 13px;
+}
+
+.chief-memo {
+  color: var(--text-secondary);
+}
+
+.chief-watches {
+  justify-content: center;
+  color: var(--text-tertiary);
+}
