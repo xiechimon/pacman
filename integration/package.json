@@ -1,0 +1,22 @@
+{
+  "name": "@pacman/integration",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@hono/node-server": "2.1.1",
+    "@pacman/cli": "workspace:*",
+    "@pacman/server": "workspace:*",
+    "@pacman/shared": "workspace:*",
+    "hono": "4.13.8",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "drizzle-orm": "0.45.2"
+  }
+}

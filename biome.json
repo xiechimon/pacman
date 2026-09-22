@@ -23,6 +23,14 @@
       "apps/server/package.json",
       "apps/server/tsconfig.json",
       "apps/server/drizzle.config.ts",
+      "apps/daemon/src/**",
+      "apps/daemon/test/**/*.ts",
+      "apps/daemon/build.mjs",
+      "apps/daemon/package.json",
+      "apps/daemon/tsconfig.json",
+      "integration/test/**/*.ts",
+      "integration/*.ts",
+      "integration/package.json",
       "vitest.config.ts",
       "parity/*.mjs",
       "scripts/**",
@@ -42,9 +50,38 @@
       "preset": "recommended",
       "suspicious": {
         "noUnknownAtRules": "off"
+      },
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["@earendil-works/*", "@earendil-works/*/*"],
+                "message": "缝纪律（01 §5/§7.3）：pi 系包只许经 AgentBackend 缝消费——实现落 apps/daemon/src/backend/，其余模块 import 缝接口（@pacman/shared agent-backend）。"
+              }
+            ],
+            "paths": {
+              "cron-parser": "缝纪律（01 §3/§7.3）：cron-parser 只许 Scheduler 缝实现消费（02 §9.2 词表的自建调度循环内）。",
+              "@modelcontextprotocol/sdk": "缝纪律（00/D4、01 §7.3）：MCP sdk 只许自建薄桥模块消费（server /api/mcp 面与 daemon per-turn client 桥）。"
+            }
+          }
+        }
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["apps/daemon/src/backend/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
+    }
+  ],
   "javascript": {
     "formatter": {
       "quoteStyle": "single",

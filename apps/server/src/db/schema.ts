@@ -122,11 +122,18 @@ export const step = sqliteTable('step', {
     .references(() => build.id, { onDelete: 'cascade' }),
   kind: text('kind').$type<StepKind>().notNull(),
   machineId: text('machineId'),
-  /** [内部] journal 状态（02 §5.4 recover 细节归 M3 展开，不预发明 wire 形）。 */
+  /** [内部] journal 状态（02 §5.4；M3a 展开：claimed = 机器领取未收尾）。 */
   status: text('status')
     .$type<'pending' | 'claimed' | 'done' | 'failed'>()
     .notNull()
     .default('pending'),
+  /** [内部] 引擎会话标识（done 回传；continue session 复用面——合并轮/重规划轮
+   * 同 conv 续跑，02 §4.2/§5.7）。 */
+  sessionId: text('sessionId'),
+  /** [内部] claim 时刻（陈旧领取判定用 [设计]）。 */
+  claimedAt: epochMs('claimedAt'),
+  /** [内部] heartbeat/<stepId> 续活时刻（02 §5.4）。 */
+  lastHeartbeatAt: epochMs('lastHeartbeatAt'),
   createdAt: epochMs('createdAt').notNull(),
 });
 
@@ -322,6 +329,9 @@ export const machine = sqliteTable('machine', {
   maxConcurrent: integer('maxConcurrent').notNull().default(3),
   /** [内部] 机器 token 哈希（64hex 原文不落库，02 §8）。 */
   tokenHash: text('tokenHash'),
+  /** [内部] 注册用 API key（重注册复用同一 machineId = 按 key/team 认机器，
+   * r3 §1.2 实测 + [推断]）。 */
+  apiKeyId: text('apiKeyId'),
   latestCliVersion: text('latestCliVersion'),
 });
 

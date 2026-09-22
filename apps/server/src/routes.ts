@@ -88,7 +88,7 @@ async function jsonBody(c: { req: { json(): Promise<unknown> } }): Promise<unkno
 }
 
 export function registerRoutes(app: Hono, ctx: AppContext): void {
-  const svc = { db: ctx.db, hub: ctx.hub };
+  const svc = { db: ctx.db, hub: ctx.hub, machineHub: ctx.machineHub };
 
   // —— 认证保形（02 §2.1：自动登录，无登录页）———————————————————————————
   app.use('/api/*', async (c, next) => {

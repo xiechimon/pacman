@@ -8,6 +8,7 @@ import { loadConfig } from './config.js';
 import { openDbWithHandle } from './db/client.js';
 import { seed } from './db/seed.js';
 import { TeamStreamHub } from './services/events.js';
+import { MachineWakeHub } from './services/machines.js';
 
 const config = loadConfig();
 const logger = pino({
@@ -23,12 +24,25 @@ const app = createApp(
   {
     db,
     hub: new TeamStreamHub(),
+    machineHub: new MachineWakeHub(),
     user: seeded.user,
     team: seeded.team,
     pingIntervalMs: config.pingIntervalMs,
+    claimHoldMs: config.claimHoldMs,
+    uploads: new Map(),
+    enrollments: new Map(),
   },
   logger,
 );
+
+// bootstrap API key 一次性明文展示（02 §8/r3 §6「仅显示一次」语义；机器注册
+// `tds start --api-key <key> --team <id>`，02 §5.2 路径二）。
+if (seeded.bootstrapApiKey) {
+  logger.info(
+    { apiKey: seeded.bootstrapApiKey.plain, teamId: seeded.team.id },
+    'bootstrap API key created (shown once) — enroll a machine with: tds start --api-key <key> --team <teamId>',
+  );
+}
 
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   logger.info(

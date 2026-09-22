@@ -5,20 +5,36 @@ import { createApp } from '../src/app.js';
 import { openMemoryDb } from '../src/db/client.js';
 import { seed } from '../src/db/seed.js';
 import { TeamStreamHub } from '../src/services/events.js';
+import { MachineWakeHub } from '../src/services/machines.js';
 
-export function bootServer(opts: { pingIntervalMs?: number } = {}) {
+export function bootServer(opts: { pingIntervalMs?: number; claimHoldMs?: number } = {}) {
   const db = openMemoryDb();
-  const { user, team } = seed(db);
+  const { user, team, bootstrapApiKey } = seed(db);
   const hub = new TeamStreamHub();
+  const machineHub = new MachineWakeHub();
   const app = createApp({
     db,
     hub,
+    machineHub,
     user,
     team,
     // 默认拉长 ping 间隔，避免噪音；SSE 测试显式缩短。
     pingIntervalMs: opts.pingIntervalMs ?? 3_600_000,
+    // claim 长轮询 hold 默认缩短，时序测试显式给值。
+    claimHoldMs: opts.claimHoldMs ?? 250,
+    uploads: new Map(),
+    enrollments: new Map(),
   });
-  return { app, db, hub, user, team, svc: { db, hub } };
+  return {
+    app,
+    db,
+    hub,
+    machineHub,
+    user,
+    team,
+    bootstrapApiKey,
+    svc: { db, hub, machineHub },
+  };
 }
 export type TestServer = ReturnType<typeof bootServer>;
 

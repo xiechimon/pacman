@@ -15,6 +15,8 @@ import {
   CLI_COMMANDS,
   CLI_START_OPTIONS,
   CONFIG_KINDS,
+  // AgentBackend 缝（01 §5）+ 机器面 wire（02 §5）
+  claimedStepSchema,
   conversationMessagesResponseSchema,
   createTodoBodySchema,
   DAEMON_LOG_PREFIXES,
@@ -29,10 +31,22 @@ import {
   LOCAL_STORAGE_KEYS,
   MACHINE_CUSTOM_TOOLS,
   MACHINE_ENDPOINTS,
+  MACHINE_WIRE,
   MCP_CAPABILITY_GROUPS,
   MCP_TOOLS_READ,
   MCP_TOOLS_WRITE,
+  machineClaimBodySchema,
+  machineClaimResponseSchema,
+  machineDoneBodySchema,
+  machineEnrollBodySchema,
+  machineEnrollResponseSchema,
   machineJsonSchema,
+  machinePresenceBodySchema,
+  machineRecoverResponseSchema,
+  machineStreamEventSchema,
+  machineTokenResponseSchema,
+  machineUploadUrlsBodySchema,
+  machineUploadUrlsResponseSchema,
   mergeAcceptedResponseSchema,
   NON_REPLICATED_ENDPOINTS,
   notificationsResponseSchema,
@@ -54,8 +68,10 @@ import {
   searchResponseSchema,
   setSecretBodySchema,
   startBuildsBodySchema,
+  stepEventSchema,
   THIRD_PARTY_CLIENT_KEYS,
   teamStreamEventSchema,
+  transcriptUploadSchema,
   WEB_FETCH_CHAR_LIMIT,
   WEB_REST_ENDPOINTS,
   WORKTREE_CONTRACT,
@@ -87,6 +103,38 @@ describe('body/封套 schema 快照', () => {
   } as const;
 
   for (const [name, schema] of Object.entries(bodies)) {
+    it(`${name}`, () => {
+      expect(z.toJSONSchema(schema)).toMatchSnapshot(`${name}.json`);
+    });
+  }
+});
+
+describe('AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canonical）', () => {
+  it('stepEvent = 02 §5.6 pi 词表会话内 15 件 1:1（01 §5 锁定）', () => {
+    expect(z.toJSONSchema(stepEventSchema)).toMatchSnapshot('stepEvent.json');
+  });
+
+  it('机器面 13 端点动词 + 路径（MACHINE_WIRE，动词 [推断] 登记面）', () => {
+    expect(MACHINE_WIRE.map(({ method, path }) => `${method} ${path}`)).toMatchSnapshot();
+  });
+
+  const machineBodies = {
+    claimedStep: claimedStepSchema,
+    machineClaimBody: machineClaimBodySchema,
+    machineClaimResponse: machineClaimResponseSchema,
+    machineDoneBody: machineDoneBodySchema,
+    machineEnrollBody: machineEnrollBodySchema,
+    machineEnrollResponse: machineEnrollResponseSchema,
+    machinePresenceBody: machinePresenceBodySchema,
+    machineRecoverResponse: machineRecoverResponseSchema,
+    machineStreamEvent: machineStreamEventSchema,
+    machineTokenResponse: machineTokenResponseSchema,
+    machineUploadUrlsBody: machineUploadUrlsBodySchema,
+    machineUploadUrlsResponse: machineUploadUrlsResponseSchema,
+    transcriptUpload: transcriptUploadSchema,
+  } as const;
+
+  for (const [name, schema] of Object.entries(machineBodies)) {
     it(`${name}`, () => {
       expect(z.toJSONSchema(schema)).toMatchSnapshot(`${name}.json`);
     });

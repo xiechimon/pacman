@@ -1,10 +1,13 @@
 packages:
   - apps/*
   - packages/*
+  - integration
 
 allowBuilds:
+  '@google/genai': set this to true or false
   better-sqlite3: true
   esbuild: true
+  protobufjs: set this to true or false
 
 catalog:
   '@biomejs/biome': 2.5.14

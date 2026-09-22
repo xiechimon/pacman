@@ -4,7 +4,12 @@
 
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { BRAND, ENV_VARS, TEAM_STREAM_PING_INTERVAL_MS } from '@pacman/shared';
+import {
+  BRAND,
+  CLAIM_POLL_INTERVAL_MS,
+  ENV_VARS,
+  TEAM_STREAM_PING_INTERVAL_MS,
+} from '@pacman/shared';
 import { z } from 'zod';
 
 export const serverConfigSchema = z.object({
@@ -16,6 +21,9 @@ export const serverConfigSchema = z.object({
   dbPath: z.string(),
   /** team stream ping 心跳间隔；默认 ~15s（02 §1.2/r3 §8.1 实测节奏）。 */
   pingIntervalMs: z.number().int().positive(),
+  /** claim 长轮询 hold；默认 ~75s（r3 §1.5 实测节奏 ~75–76s，wake SSE 提供
+   * 低延迟派发，02 §5.4）。 */
+  claimHoldMs: z.number().int().positive(),
 });
 export type ServerConfig = z.infer<typeof serverConfigSchema>;
 
@@ -36,6 +44,7 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     dataDir,
     dbPath: join(dataDir, 'server.db'),
     pingIntervalMs: TEAM_STREAM_PING_INTERVAL_MS,
+    claimHoldMs: CLAIM_POLL_INTERVAL_MS,
     ...overrides,
   });
 }
