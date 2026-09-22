@@ -127,12 +127,12 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   'api-keys-created': apiKeysCreated,
   feedback: boardDefault,
   // r8 overlay batch (#66): the dark capture set, ids = r8 filenames
-  // (numbering continues after #64's 54–77 and #72's 78)
-  '79': boardR8Overlay,
+  // (numbering continues after #64's 54–77)
+  '78': boardR8Overlay,
+  '79': detailR8Confirm(),
   '80': detailR8Confirm(),
-  '81': detailR8Confirm(),
-  '82': detailR8Fresh,
-  '83': detailR8DeleteFresh,
+  '81': detailR8Fresh,
+  '82': detailR8DeleteFresh,
   // chief (issue #72): ids follow the r5 capture numbers — the chief
   // surfaces have no r7 shot (r7 §6 gap table), so r5 100–116 number these
   // rows. Dark rows reuse the same ids with theme: 'dark' in the matrix.

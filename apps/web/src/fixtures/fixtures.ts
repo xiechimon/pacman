@@ -1155,6 +1155,7 @@ const R8_CONFIRM_TRANSCRIPT: TranscriptItem[] = [
 export const boardR8Overlay: FixtureSet = {
   todos: [dyn15('planning'), dyn12Failed, legacyReview, ...R8_LEFTOVERS, legacyDone],
   now: r8(23, 44),
+  usageNav: true,
 };
 
 /** r8 81: probe #16 fresh detail at 23:43 (#15 already confirm → badge 3). */
@@ -1168,6 +1169,7 @@ export const detailR8Fresh: FixtureSet = {
     legacyDone,
   ],
   now: r8(23, 43),
+  usageNav: true,
 };
 
 /** r8 82: probe #17 (created 2026-09-23 00:34, deleted 00:36 — zero
@@ -1199,6 +1201,7 @@ const probe17Fresh: TodoRecord = {
 export const detailR8DeleteFresh: FixtureSet = {
   todos: [probe17Fresh, dyn15('done'), dyn12Failed, legacyReview, ...R8_LEFTOVERS, legacyDone],
   now: at('2026-09-23', 0, 35),
+  usageNav: true,
 };
 
 /** r8 80/79: probe #16 confirm detail at 23:44 (badge 4), the surface the
@@ -1214,6 +1217,7 @@ export function detailR8Confirm(): FixtureSet {
       legacyDone,
     ],
     now: r8(23, 44),
+    usageNav: true,
     detail: { transcript: R8_CONFIRM_TRANSCRIPT, doc: R8_PLAN_DOC },
   };
 }
