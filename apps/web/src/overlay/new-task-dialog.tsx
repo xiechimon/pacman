@@ -7,10 +7,12 @@
 // board's client-side set (r2 §4.2 count coupling, 刚刚 label); the
 // start-task overlay behind 保存并开始 is a later ticket (03 §M0+).
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { ChevronDown, Grid2x2, Mic, Paperclip, PlusSmall, X } from '../icons/index.js';
+import { OverlayMount } from '../overlays/dismiss.js';
 import { useEscClose } from './use-esc.js';
+import { FADE_EXIT_MS } from './use-overlay-mount.js';
 import './overlay.css';
 
 /** Spec textarea template, verbatim r2 §5.2 / r7 04 placeholder block. */
@@ -23,18 +25,35 @@ const SPEC_TEMPLATE = [
 ].join('\n');
 
 interface NewTaskDialogProps {
+  /** #73: retained-mount open flag — the exit fade outlives the close. */
+  open: boolean;
   onClose: () => void;
   onSave: (title: string) => void;
 }
 
-export function NewTaskDialog({ onClose, onSave }: NewTaskDialogProps) {
+export function NewTaskDialog({ open, onClose, onSave }: NewTaskDialogProps) {
   const [title, setTitle] = useState('');
-  useEscClose(onClose);
+  useEscClose(onClose, open);
+  // retained mount means reopen is not a remount — refocus like a fresh one
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
   const save = () => onSave(title.trim());
   return (
-    <>
-      <button type="button" className="overlay-backdrop" aria-label="关闭" onClick={onClose} />
-      <div className="new-task-dialog" role="dialog" aria-modal="true" aria-label="新建任务">
+    <OverlayMount open={open} exitMs={FADE_EXIT_MS}>
+      <button
+        type="button"
+        className="overlay-backdrop anim-fade"
+        aria-label="关闭"
+        onClick={onClose}
+      />
+      <div
+        className="new-task-dialog anim-fade"
+        role="dialog"
+        aria-modal="true"
+        aria-label="新建任务"
+      >
         <div className="new-task-head">
           <button type="button" className="new-task-project">
             <span className="new-task-project-avatar">{PROJECT_INITIAL}</span>
@@ -48,6 +67,7 @@ export function NewTaskDialog({ onClose, onSave }: NewTaskDialogProps) {
         </div>
         <div className="new-task-body">
           <input
+            ref={inputRef}
             className="new-task-input"
             placeholder="需要做什么？"
             value={title}
@@ -90,6 +110,6 @@ export function NewTaskDialog({ onClose, onSave }: NewTaskDialogProps) {
           </div>
         </div>
       </div>
-    </>
+    </OverlayMount>
   );
 }

@@ -17,7 +17,7 @@ import {
   FileText,
   UnfoldVertical,
 } from '../icons/index.js';
-import { ClickCatcher, useEscapeClose } from '../overlays/dismiss.js';
+import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { PlanDropdown } from '../overlays/plan-dropdown.js';
 import { Segments } from './segments.js';
 
@@ -125,12 +125,10 @@ export function DocPane({ mode, doc, changes, planDropdownOpen }: DocPaneProps) 
               方案
               <ChevronDown width={12} height={12} />
             </button>
-            {typeOpen && (
-              <>
-                <ClickCatcher onClose={() => setTypeOpen(false)} />
-                <PlanDropdown />
-              </>
-            )}
+            <OverlayMount open={typeOpen}>
+              <ClickCatcher onClose={() => setTypeOpen(false)} />
+              <PlanDropdown />
+            </OverlayMount>
           </span>
           <button type="button" className="doc-pane-select">
             v1

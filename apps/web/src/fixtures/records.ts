@@ -83,7 +83,10 @@ export interface BranchInfoContent {
 export interface RunHistoryRow {
   label: string;
   meta: string;
-  status: 'current' | 'failed' | 'done';
+  /** r8 57: `failed-current` = the failed run that is still the current
+   *  one — carries the 当前 chip and the dialog's footer 重跑 action; a
+   *  failed PAST run under a live current one carries neither (r8 77/80). */
+  status: 'current' | 'failed' | 'done' | 'failed-current';
 }
 
 /** Modal surface rendered over a route (issue #68). The scenario fixture

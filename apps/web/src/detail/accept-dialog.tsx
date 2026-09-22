@@ -9,13 +9,15 @@ import { CheckWhite } from '../icons/index.js';
 import { DialogShell } from './dialog-shell.js';
 
 interface AcceptDialogProps {
+  /** #73 retained-mount open flag. */
+  open?: boolean;
   onClose: () => void;
 }
 
-export function AcceptDialog({ onClose }: AcceptDialogProps) {
+export function AcceptDialog({ open, onClose }: AcceptDialogProps) {
   const [merge, setMerge] = useState(true);
   return (
-    <DialogShell title="完成任务" onClose={onClose}>
+    <DialogShell title="完成任务" open={open} onClose={onClose}>
       <div className="dlg-accept">
         <label className="dlg-accept-check" data-on={merge}>
           <input

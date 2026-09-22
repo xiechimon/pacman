@@ -7,24 +7,32 @@
 // land with the backend line (03 §M2+), so they only dismiss the menu.
 
 import { Ban, Check, Copy, Trash2 } from '../icons/index.js';
+import { OverlayMount } from '../overlays/dismiss.js';
 import { useEscClose } from './use-esc.js';
 import './overlay.css';
 
 interface MoreMenuProps {
+  /** #73: retained-mount open flag — the exit pop outlives the close. */
+  open: boolean;
   onClose: () => void;
   onDelete: () => void;
 }
 
-export function MoreMenu({ onClose, onDelete }: MoreMenuProps) {
-  useEscClose(onClose);
+export function MoreMenu({ open, onClose, onDelete }: MoreMenuProps) {
+  useEscClose(onClose, open);
   const copyLink = () => {
     void navigator.clipboard?.writeText(window.location.href);
     onClose();
   };
   return (
-    <>
-      <button type="button" className="more-menu-catcher" aria-label="关闭菜单" onClick={onClose} />
-      <div className="more-menu" role="menu" aria-label="更多">
+    <OverlayMount open={open}>
+      <button
+        type="button"
+        className="more-menu-catcher anim-fade"
+        aria-label="关闭菜单"
+        onClick={onClose}
+      />
+      <div className="more-menu anim-pop" role="menu" aria-label="更多">
         <button type="button" role="menuitem" className="more-menu-item" onClick={onClose}>
           <Check />
           完成
@@ -48,6 +56,6 @@ export function MoreMenu({ onClose, onDelete }: MoreMenuProps) {
           删除
         </button>
       </div>
-    </>
+    </OverlayMount>
   );
 }

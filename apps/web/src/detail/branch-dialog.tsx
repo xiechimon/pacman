@@ -12,6 +12,8 @@ import { ChevronDown, Copy } from '../icons/index.js';
 import { DialogShell } from './dialog-shell.js';
 
 interface BranchDialogProps {
+  /** #73 retained-mount open flag. */
+  open?: boolean;
   info: BranchInfoContent;
   onClose: () => void;
 }
@@ -29,7 +31,7 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-export function BranchDialog({ info, onClose }: BranchDialogProps) {
+export function BranchDialog({ info, open, onClose }: BranchDialogProps) {
   const [tab, setTab] = useState<'sync' | 'git'>('sync');
   const [force, setForce] = useState(false);
 
@@ -74,6 +76,7 @@ export function BranchDialog({ info, onClose }: BranchDialogProps) {
           </button>
         </div>
       }
+      open={open}
       onClose={onClose}
     >
       {tab === 'sync' ? (

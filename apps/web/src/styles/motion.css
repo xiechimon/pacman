@@ -1,0 +1,152 @@
+/* Motion layer (issue #73) — the replica's transition registry.
+   Values mirror the official production stylesheet
+   (docs/research/assets/r1/f965382e067739e9.css, the single Tailwind sheet
+   /app ships per r1 scan-resource-identity):
+     mount fade        fade-in 200ms ease-out         (.animate-[fade-in_200ms_ease-out])
+     standard step     150ms cubic-bezier(.4,0,.2,1)  (Tailwind default transition)
+     pop/drawer easing cubic-bezier(.22,1,.36,1)      (the sheet's only custom easing)
+     duration steps    150 / 200 / 300 / 500ms
+   Overlays use the official manual enter/exit pair (opacity + translate /
+   scale driven by a state attribute, transition-[opacity,visibility] shape):
+   the element stays mounted under data-overlay-state="closed" until the
+   exit transition ends (useOverlayMount), visibility flipping last so the
+   closed surface leaves the hit-test and a11y trees.
+   Centered dialogs (translate(-50%,-50%) positioning) fade only — the r8
+   capture note measures exactly an opening opacity animation there. */
+
+@keyframes overlay-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* retained-mount wrapper: display:contents keeps the fixed/absolute
+   geometry of the children untouched */
+.overlay-mount {
+  display: contents;
+}
+
+.overlay-mount[data-overlay-state="closed"] {
+  visibility: hidden;
+  pointer-events: none;
+  transition: visibility 0s linear var(--dur-fast);
+}
+
+.overlay-mount[data-overlay-state="open"] {
+  transition: visibility 0s;
+}
+
+/* enter = keyframe on first mount; reopen / exit = transition on the state
+   flip (the keyframe does not rerun on a retained element) */
+.anim-fade {
+  opacity: 1;
+  animation: overlay-fade var(--dur-overlay) var(--ease-out);
+  transition: opacity var(--dur-overlay) var(--ease-out);
+}
+
+.overlay-mount[data-overlay-state="closed"] .anim-fade {
+  opacity: 0;
+}
+
+.anim-pop {
+  opacity: 1;
+  transform: none;
+  animation: overlay-pop var(--dur-fast) var(--ease-pop);
+  transition:
+    opacity var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-pop);
+}
+
+.overlay-mount[data-overlay-state="closed"] .anim-pop {
+  opacity: 0;
+  transform: scale(0.95) translateY(-4px);
+}
+
+.anim-drawer {
+  transform: none;
+  animation: drawer-in var(--dur-drawer) var(--ease-pop);
+  transition: transform var(--dur-drawer) var(--ease-pop);
+}
+
+.overlay-mount[data-overlay-state="closed"] .anim-drawer {
+  transform: translateX(100%);
+}
+
+/* r1 §4.3 convention: the whole site degrades motion under
+   prefers-reduced-motion — the replica mirrors it */
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade,
+  .anim-pop,
+  .anim-drawer {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ---- hover / press states (#73) ----
+   Row and menu surfaces tint with the official --surface-hover token over
+   the standard 150ms color step; hover is gated to fine pointers like the
+   official sheet's @media (hover:hover) and (pointer:fine) block, and coarse
+   pointers zero the transition on press (same sheet, pointer:coarse block).
+   Board cards carry NO hover styling: r2 28 vs 28b (hover-moment recapture)
+   are pixel-identical, so a card hover lift/tint would be a divergence. */
+@media (hover: hover) and (pointer: fine) {
+  .more-menu-item,
+  .plan-dropdown-row,
+  .search-row,
+  .chip-popover-row,
+  .todo-card-branch,
+  .dlg-close,
+  .new-task-close,
+  .delete-confirm-close {
+    transition: background-color var(--dur-fast) var(--ease-standard);
+  }
+
+  .more-menu-item:hover,
+  .plan-dropdown-row:hover,
+  .search-row:hover,
+  .chip-popover-row:hover,
+  .todo-card-branch:hover,
+  .dlg-close:hover,
+  .new-task-close:hover,
+  .delete-confirm-close:hover {
+    background-color: var(--surface-hover);
+  }
+}
+
+button:active,
+[role="button"]:active,
+a:active {
+  opacity: 0.85;
+}
+
+@media (pointer: coarse) {
+  button:active,
+  [role="button"]:active,
+  a:active {
+    transition-duration: 0s;
+  }
+}

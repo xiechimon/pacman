@@ -5,21 +5,35 @@
 
 import type { TodoRecord } from '../fixtures/records.js';
 import { X } from '../icons/index.js';
+import { OverlayMount } from '../overlays/dismiss.js';
 import { useEscClose } from './use-esc.js';
+import { FADE_EXIT_MS } from './use-overlay-mount.js';
 import './overlay.css';
 
 interface DeleteConfirmProps {
   todo: TodoRecord;
+  /** #73: retained-mount open flag — the exit fade outlives the close. */
+  open: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }
 
-export function DeleteConfirm({ todo, onClose, onConfirm }: DeleteConfirmProps) {
-  useEscClose(onClose);
+export function DeleteConfirm({ todo, open, onClose, onConfirm }: DeleteConfirmProps) {
+  useEscClose(onClose, open);
   return (
-    <>
-      <button type="button" className="overlay-backdrop" aria-label="关闭" onClick={onClose} />
-      <div className="delete-confirm" role="alertdialog" aria-modal="true" aria-label="删除任务">
+    <OverlayMount open={open} exitMs={FADE_EXIT_MS}>
+      <button
+        type="button"
+        className="overlay-backdrop anim-fade"
+        aria-label="关闭"
+        onClick={onClose}
+      />
+      <div
+        className="delete-confirm anim-fade"
+        role="alertdialog"
+        aria-modal="true"
+        aria-label="删除任务"
+      >
         <div className="delete-confirm-head">
           <div className="delete-confirm-title">确定删除该任务？此操作不可撤销。</div>
           <button
@@ -44,6 +58,6 @@ export function DeleteConfirm({ todo, onClose, onConfirm }: DeleteConfirmProps) 
           </button>
         </div>
       </div>
-    </>
+    </OverlayMount>
   );
 }

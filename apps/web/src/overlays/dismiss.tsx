@@ -5,8 +5,35 @@
 // clickable-through nowhere while an overlay is open. Close affordances are
 // [推断] — no capture exercises them; pixels are unaffected.
 
-import { useEffect } from 'react';
+import { type CSSProperties, type ReactNode, useEffect } from 'react';
+import { OVERLAY_EXIT_MS, useOverlayMount } from '../overlay/use-overlay-mount.js';
 import './overlays.css';
+
+/** #73: retained-mount wrapper — children keep their fixed/absolute
+ *  geometry (display:contents) while the exit transition plays. `exitMs`
+ *  must match the family's exit transition (motion.css); it drives both
+ *  the unmount timer and the wrapper's visibility flip via --exit-ms. */
+export function OverlayMount({
+  open,
+  exitMs = OVERLAY_EXIT_MS,
+  children,
+}: {
+  open: boolean;
+  exitMs?: number;
+  children: ReactNode;
+}) {
+  const { mounted, state } = useOverlayMount(open, exitMs);
+  if (!mounted) return null;
+  return (
+    <div
+      className="overlay-mount"
+      data-overlay-state={state}
+      style={{ '--exit-ms': `${exitMs}ms` } as CSSProperties}
+    >
+      {children}
+    </div>
+  );
+}
 
 export function useEscapeClose(open: boolean, onClose: () => void) {
   useEffect(() => {

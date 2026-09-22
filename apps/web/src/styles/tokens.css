@@ -9,6 +9,16 @@
    the r1 records verbatim. */
 
 :root {
+  /* motion registry (issue #73, mirrors the official sheet — motion.css):
+     150ms standard step, 200ms mount fade, 300ms drawer slide; Tailwind
+     default cubic-bezier(.4,0,.2,1), ease-out, and the sheet's single
+     custom easing cubic-bezier(.22,1,.36,1) */
+  --dur-fast: 150ms;
+  --dur-overlay: 200ms;
+  --dur-drawer: 300ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-pop: cubic-bezier(0.22, 1, 0.36, 1);
   --active-text: #a0a0a5;
   --surface: #18181b;
   --surface-secondary: #1f1f23;

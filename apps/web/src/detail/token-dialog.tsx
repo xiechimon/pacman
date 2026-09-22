@@ -7,11 +7,13 @@ import type { TokenUsageContent } from '../fixtures/records.js';
 import { DialogShell } from './dialog-shell.js';
 
 interface TokenDialogProps {
+  /** #73 retained-mount open flag. */
+  open?: boolean;
   stats: TokenUsageContent;
   onClose: () => void;
 }
 
-export function TokenDialog({ stats, onClose }: TokenDialogProps) {
+export function TokenDialog({ stats, open, onClose }: TokenDialogProps) {
   const rows: Array<[string, string]> = [
     ['输入', stats.input],
     ['输出', stats.output],
@@ -19,7 +21,7 @@ export function TokenDialog({ stats, onClose }: TokenDialogProps) {
     ['缓存写入', stats.cacheWrite],
   ];
   return (
-    <DialogShell title="Token 用量" onClose={onClose}>
+    <DialogShell title="Token 用量" open={open} onClose={onClose}>
       <div className="dlg-token-total">
         <span className="dlg-token-num">{stats.total}</span>
         <span className="dlg-token-unit">tokens</span>
