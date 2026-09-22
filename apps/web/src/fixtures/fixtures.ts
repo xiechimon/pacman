@@ -9,6 +9,7 @@ import type {
   ChangesContent,
   DocBlock,
   FixtureSet,
+  ResourcesContent,
   TodoRecord,
   TranscriptItem,
 } from './records.js';
@@ -471,3 +472,54 @@ export const detailLegacy: FixtureSet = {
   now: r7(13, 58),
   detail: { transcript: LEGACY_REVIEW_TRANSCRIPT },
 };
+
+/** Resource surfaces (r7 06–10, issue #69): the r3 session left one skill,
+ *  one MCP server, the online r3 machine and a custom gateway on the free
+ *  team, so the captures show populated rows rather than empty states
+ *  (secrets excepted — its empty state is the capture). Row content is
+ *  verbatim from the bitmaps; `2 天前` on the MCP row is the capture's own
+ *  relative label (created on the r3 day), carried verbatim like the
+ *  board's relative labels. */
+const RESOURCES: ResourcesContent = {
+  skills: [{ name: 'r3-probe-skill', description: 'R3 盘点测试技能' }],
+  mcpServers: [
+    {
+      name: 'r3-mcp',
+      kind: '远程（HTTP）',
+      url: 'https://example.invalid/mcp',
+      ago: '2 天前',
+    },
+  ],
+  machines: [
+    {
+      hosted: true,
+      name: 'Todos 托管机器',
+      description: '随时在线，构建速度快。空闲自动休眠，仅在运行时消耗积分。',
+      pill: '未启用',
+    },
+    {
+      name: MACHINE_NAME,
+      sub: `…${MACHINE_ID.slice(-8)} · max 3`,
+      online: true,
+    },
+  ],
+  providers: [
+    { name: 'Todos（内置）', models: '8 模型', pill: '未启用' },
+    { name: 'R3 网关', models: '12 模型', custom: true },
+  ],
+};
+
+export const resourcesDefault: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  resources: RESOURCES,
+};
+
+/** 新建技能 route (r8 69/70, issue #69): same team state as the resource
+ *  rows, with the import tab the capture sits on. */
+export function resourcesImport(tab: 'folder' | 'github'): FixtureSet {
+  return {
+    ...resourcesDefault,
+    resources: { ...RESOURCES, importTab: tab },
+  };
+}

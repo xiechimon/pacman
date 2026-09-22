@@ -41,6 +41,10 @@ interface BoardSidebarProps {
   onToggle?: () => void;
   /** Todos waiting on confirmation — the 看板 nav badge (r7 02/17). */
   attention?: number;
+  /** Route href carrying the selected pill (issue #69): the board pages
+   *  leave it at `/app`, resource routes pass their own href so the
+   *  matching 资源 subrow renders selected (r7 06–10). */
+  selected?: string;
 }
 
 /** Leaf nav rows shared by both sidebar states — each renders full in the
@@ -78,7 +82,12 @@ function RailGroupChevron({ label }: { label: string }) {
   );
 }
 
-export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: BoardSidebarProps) {
+export function BoardSidebar({
+  collapsed = false,
+  onToggle,
+  attention = 0,
+  selected = '/app',
+}: BoardSidebarProps) {
   if (collapsed) {
     return (
       <aside className="board-sidebar board-sidebar--collapsed">
@@ -90,9 +99,9 @@ export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: Boa
             <Search />
           </a>
           <a
-            className="rail-row rail-row--selected"
+            className={`rail-row${selected === '/app' ? ' rail-row--selected' : ''}`}
             href="/app"
-            aria-current="page"
+            aria-current={selected === '/app' ? 'page' : undefined}
             aria-label="看板"
           >
             <Kanban />
@@ -106,7 +115,13 @@ export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: Boa
           </a>
           <RailGroupChevron label="资源" />
           {RESOURCE_ROWS.map(({ label, href, Icon }) => (
-            <a key={href} className="rail-row" href={href} aria-label={label}>
+            <a
+              key={href}
+              className={`rail-row${selected === href ? ' rail-row--selected' : ''}`}
+              href={href}
+              aria-current={selected === href ? 'page' : undefined}
+              aria-label={label}
+            >
               <Icon />
             </a>
           ))}
@@ -147,7 +162,11 @@ export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: Boa
           <span className="sidebar-row-label">搜索</span>
           <span className="sidebar-kbd">⌘K</span>
         </a>
-        <a className="sidebar-row sidebar-row--selected" href="/app" aria-current="page">
+        <a
+          className={`sidebar-row${selected === '/app' ? ' sidebar-row--selected' : ''}`}
+          href="/app"
+          aria-current={selected === '/app' ? 'page' : undefined}
+        >
           <span className="sidebar-row-icon">
             <Kanban />
           </span>
@@ -175,7 +194,12 @@ export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: Boa
 
         <GroupHeader label="资源" />
         {RESOURCE_ROWS.map(({ label, href, Icon }) => (
-          <a key={href} className="sidebar-subrow" href={href}>
+          <a
+            key={href}
+            className={`sidebar-subrow${selected === href ? ' sidebar-subrow--selected' : ''}`}
+            href={href}
+            aria-current={selected === href ? 'page' : undefined}
+          >
             <span className="sidebar-row-icon">
               <Icon />
             </span>

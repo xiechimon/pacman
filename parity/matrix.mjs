@@ -4,13 +4,15 @@
 // Entry contract:
 //   id         stable pair name (output artefacts are named after it)
 //   route      app route to capture
-//   scenario   r7 capture number → fixture set via ?scenario=
+//   scenario   r7 (or r8-continuation) capture number → fixture set via
+//              ?scenario=
 //   theme      'dark' | 'light' (injected via localStorage tds-theme)
 //   scrollLeft optional: number, or 'max' for rightmost board scroll,
 //              applied to the element carrying [data-parity-scroll]
 //   sidebarCollapsed  optional: true → injects tds.sidebar-collapsed=1
 //              before load so the 40px rail renders (r7 03)
-//   baseline   optional r7 filename under docs/research/assets/r7/ —
+//   baseline   optional r7 filename under docs/research/assets/r7/
+//              (r8 batch: prefix `r8/`, resolved under assets/r8/) —
 //              present = real parity pair (threshold 0.85);
 //              absent  = smoke pair, capture compared against itself
 //              (pipeline gate, SSIM must be exactly 1.0)
@@ -226,6 +228,82 @@ export const matrix = [
     scenario: '38',
     theme: 'light',
     baseline: '38-r3遗留卡-详情-light.png',
+  },
+  // gate rows (issue #69): resources batch A — six route surfaces, light
+  // (r7 captured no dark resource screen). The two 新建技能 rows stay
+  // smoke: their r8 69/70 baselines (committed with this ticket) carry
+  // live-site state the frozen shell contract does not reproduce — the
+  // 用量 nav row, the 看板 attention badge and the avatar FAB — so gating
+  // them waits on the A6 rebaseline decision
+  {
+    id: 'resources-machines-light',
+    route: '/app/resources/machines',
+    scenario: '06',
+    theme: 'light',
+    baseline: '06-resources-machines.png',
+  },
+  {
+    id: 'resources-providers-light',
+    route: '/app/resources/providers',
+    scenario: '07',
+    theme: 'light',
+    baseline: '07-resources-providers.png',
+  },
+  {
+    id: 'resources-skills-light',
+    route: '/app/resources/skills',
+    scenario: '08',
+    theme: 'light',
+    baseline: '08-resources-skills.png',
+  },
+  {
+    id: 'resources-mcp-servers-light',
+    route: '/app/resources/mcp-servers',
+    scenario: '09',
+    theme: 'light',
+    baseline: '09-resources-mcp-servers.png',
+  },
+  {
+    id: 'resources-secrets-light',
+    route: '/app/resources/secrets',
+    scenario: '10',
+    theme: 'light',
+    baseline: '10-resources-secrets.png',
+  },
+  // dark smoke rows (issue #69, 双主题按需): no frozen dark resource
+  // baseline exists (r7 captured light only), so dark rides as pipeline
+  // smoke until the A6 rebaseline decision supplies gated dark pairs
+  {
+    id: 'resources-machines-dark',
+    route: '/app/resources/machines',
+    scenario: '06',
+    theme: 'dark',
+  },
+  {
+    id: 'resources-providers-dark',
+    route: '/app/resources/providers',
+    scenario: '07',
+    theme: 'dark',
+  },
+  { id: 'resources-skills-dark', route: '/app/resources/skills', scenario: '08', theme: 'dark' },
+  {
+    id: 'resources-mcp-servers-dark',
+    route: '/app/resources/mcp-servers',
+    scenario: '09',
+    theme: 'dark',
+  },
+  { id: 'resources-secrets-dark', route: '/app/resources/secrets', scenario: '10', theme: 'dark' },
+  {
+    id: 'resources-skills-import-folder-light',
+    route: '/app/resources/skills/import',
+    scenario: '69',
+    theme: 'light',
+  },
+  {
+    id: 'resources-skills-import-github-light',
+    route: '/app/resources/skills/import',
+    scenario: '70',
+    theme: 'light',
   },
   // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // (28) — artefacts + score recorded, not gated

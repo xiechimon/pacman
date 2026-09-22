@@ -22,13 +22,16 @@ import {
   detailPlanning,
   detailReview,
   r7,
+  resourcesDefault,
+  resourcesImport,
 } from './fixtures.js';
 import type { FixtureSet } from './records.js';
 
 export const SCENARIO_PARAM = 'scenario';
 
 /** r7 capture number → fixture set. Board rows bind board scenarios,
- *  detail rows bind single-todo detail scenarios. `now` inside each set
+ *  detail rows bind single-todo detail scenarios, resource rows (06–10)
+ *  bind the shared resources set. `now` inside each set
  *  is the capture instant (keeps relative labels deterministic).
  *  Detail ids follow the r7 manifest filenames: 16d is the dark confirm
  *  capture with the user-menu popover, 17/17d/17b the confirm surface
@@ -69,6 +72,16 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '36': detailDone(),
   '36d': detailDone(),
   '38': detailLegacy,
+  // resources (r7 06–10, issue #69): one shared row set — the captures
+  // differ per route, not per content state
+  '06': resourcesDefault,
+  '07': resourcesDefault,
+  '08': resourcesDefault,
+  '09': resourcesDefault,
+  '10': resourcesDefault,
+  // 新建技能 (r8 69/70, captured with this ticket): tab per scenario
+  '69': resourcesImport('folder'),
+  '70': resourcesImport('github'),
 };
 
 /** #58 gate: scenario selection exists only in dev (`vite dev`) and in the

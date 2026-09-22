@@ -1,0 +1,538 @@
+/* Resource surfaces (issue #69): 二级页 shell + six pixel surfaces.
+   Geometry probed from the r7 06–10 captures @1440×732: topbar 44 (border
+   y43), back button 28×28 at content-left+12, 16px title centered on the
+   content area, `+ 新建` 13px indigo at right ink margin 21; content
+   column 768 wide (x456..1223) with 16px pad-top; row cards on
+   surface-secondary with card-border and 10px radius. Import-page form
+   geometry probed from the r8 69/70 captures (structure per r2 §6.1). */
+
+.res-shell {
+  display: flex;
+  height: 100%;
+}
+
+.res-main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.res-topbar {
+  position: relative;
+  flex: none;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.res-back {
+  position: absolute;
+  left: 12px;
+  top: 8px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+}
+
+/* title centers on the content area, same law as the board topbar */
+.res-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 22px;
+  color: var(--text-primary);
+}
+
+.res-new {
+  margin-left: auto;
+  margin-right: 21px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--indigo-500);
+  font-size: 13px;
+  line-height: 16px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.res-col {
+  flex: 1;
+  width: 768px;
+  margin: 0 auto;
+  padding-top: 16px;
+  overflow: hidden;
+}
+
+.res-fab {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-default);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--fab-shadow);
+}
+
+/* skills: search input + 排序 button row (both 32px, 8px gap) */
+.res-searchrow {
+  display: flex;
+  gap: 8px;
+}
+
+.res-search {
+  flex: 1;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 6px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-tertiary);
+  font-size: 14px;
+  line-height: 16px;
+}
+
+.res-sort {
+  flex: none;
+  width: 88px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  padding: 0 11px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.res-sort > span {
+  margin-left: 8px;
+  flex: none;
+  white-space: nowrap;
+}
+
+.res-sort > svg:last-of-type {
+  margin-left: 4px;
+}
+
+/* row cards: skills/mcp single row (64/62px), machines/providers grouped */
+.res-card {
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--surface-secondary);
+}
+
+.res-rowcard {
+  margin-top: 16px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.res-rowcard--mcp {
+  height: 62px;
+}
+
+.res-group {
+  overflow: hidden;
+}
+
+.res-grow {
+  display: flex;
+  align-items: center;
+  height: 60px;
+  padding: 0 16px;
+}
+
+.res-grow--divided {
+  height: 59px;
+  border-top: 1px solid var(--card-border);
+}
+
+/* icon tiles: 20px row glyph, 28px grouped-row glyph, 48px empty hero */
+.res-tile {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.res-tile--sm {
+  width: 20px;
+  height: 20px;
+}
+
+.res-tile--lg {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.res-tile--hero {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+}
+
+.res-tile--orange {
+  background: var(--tile-orange-bg);
+  color: var(--tile-orange-fg);
+}
+
+.res-tile--hero.res-tile--orange {
+  background: var(--tile-hero-bg);
+}
+
+.res-tile--indigo {
+  background: var(--tile-indigo-bg);
+  color: var(--tile-indigo-fg);
+}
+
+.res-row-text {
+  margin-left: 12px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.res-tile--lg + .res-row-text {
+  margin-left: 16px;
+}
+
+.res-row-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.res-row-title {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* 12px dim sublines (machine/mcp/provider rows): 16px line box, probed
+   from the r7 ink bands */
+.res-row-desc {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* skills card description: 13px, one step darker, 20px line box */
+.res-row-desc--strong {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.res-row-kind {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.res-row-ago {
+  margin-left: auto;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.res-row-more {
+  margin-left: 16px;
+  display: flex;
+  color: var(--text-tertiary);
+}
+
+.res-row-chev {
+  margin-left: auto;
+  display: flex;
+  color: var(--text-dim);
+}
+
+.res-pill ~ .res-row-chev,
+.res-row-more ~ .res-row-chev {
+  margin-left: 15px;
+}
+
+/* 未启用 status pill (r7 06/07) */
+.res-pill {
+  margin-left: auto;
+  flex: none;
+  height: 20px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  background: var(--pill-idle-bg);
+  color: var(--text-dim);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+/* online dot after a machine name (r7 06) */
+.res-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--col-dot-done);
+}
+
+/* orange 自定义 tag beside custom provider names (r7 07) */
+.res-tag {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--tile-orange-fg);
+}
+
+/* dashed full-width 添加机器 button (r7 06) */
+.res-add {
+  margin-top: 16px;
+  width: 100%;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed var(--dash-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+/* empty state (r7 10): hero tile, heading, two-line description,
+   primary + 查看文档, optional 总管 hint */
+.res-empty {
+  padding-top: 24px;
+}
+
+.res-empty-title {
+  margin: 16px 0 0;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.res-empty-desc {
+  margin: 6px 0 0;
+  max-width: 450px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-tertiary);
+}
+
+.res-empty-actions {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.res-primary {
+  height: 28px;
+  padding: 0 11px;
+  display: flex;
+  align-items: center;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.res-primary:disabled {
+  /* lavender sampled from the r8 69 capture (light #a49fe8); dark [推断] */
+  background: var(--primary-disabled);
+  cursor: default;
+}
+
+.res-primary--block {
+  margin-top: 20px;
+  width: 100%;
+  height: 34px;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.res-doclink {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.res-empty-hint {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* 新建技能 (r8 69/70 geometry, structure per r2 §6.1) */
+.res-import-hint {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-tertiary);
+}
+
+.res-tabs {
+  margin-top: 16px;
+  display: flex;
+  width: max-content;
+  padding: 4px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+
+.res-tab {
+  height: 20px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+/* r8 69: the active tab is a bare white pill on the group background */
+.res-tab--active {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.res-form {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.res-label {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.res-form > .res-label:first-child {
+  margin-top: 0;
+}
+
+.res-input {
+  height: 36px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0 12px;
+  font-size: 14px;
+  line-height: 16px;
+  color: var(--text-primary);
+}
+
+.res-input::placeholder {
+  color: var(--text-dim);
+}
+
+.res-dropzone {
+  height: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed var(--dash-border);
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.res-dropzone-title {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.res-dropzone-sub {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.res-scanrow {
+  display: flex;
+  gap: 8px;
+}
+
+.res-scanrow > .res-input {
+  flex: 1;
+}
+
+.res-scan {
+  flex: none;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.res-help {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
