@@ -10,6 +10,7 @@
 // Unknown or absent ids fall back to the default board set.
 
 import {
+  apiKeysCreated,
   boardDarkFresh,
   boardDefault,
   boardR8Overlay,
@@ -25,7 +26,15 @@ import {
   detailR8DeleteFresh,
   detailR8Fresh,
   detailReview,
+  projectFixture,
+  projectTasks,
+  projectTasksEmpty,
   r7,
+  schedulesEmpty,
+  schedulesFormDaily,
+  schedulesFormOnce,
+  schedulesList,
+  teamGrid,
 } from './fixtures.js';
 import type { FixtureSet } from './records.js';
 
@@ -73,12 +82,35 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '36': detailDone(),
   '36d': detailDone(),
   '38': detailLegacy,
-  // r8 overlay batch (#66): the dark capture set, ids = r8 filenames
-  '54': boardR8Overlay,
-  '55': detailR8Confirm(),
-  '56': detailR8Confirm(),
-  '57': detailR8Fresh,
-  '58': detailR8DeleteFresh,
+  // schedules (issue #71): 11 = the r7 empty-state capture; the list and
+  // form states come from r3 93/92/92b, so their ids carry the source
+  '11': schedulesEmpty,
+  'r3-93': schedulesList,
+  'r3-92': schedulesFormDaily,
+  'r3-92b': schedulesFormOnce,
+  // project routes (issue #71): one content set, the route + tab pick the
+  // surface; the ids name the r2 capture each row binds to. prj-tasks =
+  // the populated 任务 list, which r2 only ever shows beside the open todo
+  // panel (26), so it carries no clean capture number of its own
+  'r2-07': projectFixture,
+  'r2-24': projectFixture,
+  'r2-24b': projectTasksEmpty,
+  'prj-tasks': projectTasks,
+  'r2-24c': projectFixture,
+  // secondary routes (issue #70): 12/13 are the r7 team/account captures;
+  // the api-keys/feedback ids have no r7 capture (smoke matrix rows) and
+  // pick their surface by name — the account/feedback pages render no
+  // fixture content at all, so they ride the default set
+  '12': teamGrid,
+  '13': boardDefault,
+  'api-keys': boardDefault,
+  'api-keys-created': apiKeysCreated,
+  feedback: boardDefault, // r8 overlay batch (#66): the dark capture set, ids = r8 filenames
+  '78': boardR8Overlay,
+  '79': detailR8Confirm(),
+  '80': detailR8Confirm(),
+  '81': detailR8Fresh,
+  '82': detailR8DeleteFresh,
 };
 
 /** #58 gate: scenario selection exists only in dev (`vite dev`) and in the

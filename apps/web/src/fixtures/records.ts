@@ -6,19 +6,11 @@
 // observed waiting-on-user board placement.
 // Timestamps are epoch milliseconds (02 §6.2 schedule record precedent).
 
-export const PHASE_VALUES = [
-  'todo',
-  'queued',
-  'planning',
-  'confirm',
-  'building',
-  'review',
-  'done',
-  'failed',
-  'closed',
-] as const;
+// phase 九值枚举单源 = @pacman/shared（02 §4.1；#65 M1 收口），本地不再定义。
+import { PHASE_VALUES, type Phase } from '@pacman/shared';
 
-export type Phase = (typeof PHASE_VALUES)[number];
+export type { Phase };
+export { PHASE_VALUES };
 
 /** Agent reference embedded in a todo record (02 §6.2 agent shape subset). */
 export interface AgentRef {
@@ -65,6 +57,84 @@ export interface TodoRecord {
   awaitingReply?: boolean;
 }
 
+/** Scheduled rule (02 §9.2 / r3 §8.3 wire shape, copied verbatim:
+ *  `{id, teamId, projectId, todoId, kind, at, tz, machineId, nextRunAt,
+ *  createdBy, todo{seqNum,title,phase,projectName,ownerId}}`). */
+export interface ScheduleRecord {
+  id: string;
+  teamId: string;
+  projectId: string;
+  todoId: string;
+  /** 频率 tab (02 §9.2): 每小时/每天/每周/单次. */
+  kind: 'hourly' | 'daily' | 'weekly' | 'once';
+  at: number;
+  tz: string;
+  /** null = 自动 (r3 §9 机器 row). */
+  machineId: string | null;
+  nextRunAt: number;
+  createdBy: string;
+  todo: {
+    seqNum: number;
+    title: string;
+    phase: Phase;
+    projectName: string;
+    ownerId: string;
+  };
+}
+
+/** Repo surface of a project route (r2 07e/24 file tree + 24c settings
+ *  rows): branch chip, file rows and the settings card values. */
+export interface ProjectContent {
+  /** Display name (r2 24c 名称 row); the repo slug is a separate attribute
+   *  (CONTEXT.md 租户层级: repo belongs to the project, not the reverse). */
+  name: string;
+  branch: string;
+  files: string[];
+  repoName: string;
+  /** True = the `Todos 托管` chip rides beside the repo name (r2 24c). */
+  hosted: boolean;
+  defaultBranch: string;
+  description: string | null;
+}
+
+/** Team-route agent card (r7 12): avatar + name + model line + role line. */
+export interface TeamAgentCard {
+  id: string;
+  displayName: string;
+  /** Model line lead (`claude-sonnet-5 · 默认`, r7 12). */
+  model: string;
+  /** Model line carries the `· 默认` suffix for the team's default agent. */
+  isDefault: boolean;
+  /** Role line text; null renders the `未设置职责` placeholder (r7 12). */
+  role: string | null;
+}
+
+/** Team-route content (r7 12): stats-bar count + the agent card grid. */
+export interface TeamContent {
+  /** Stats bar `N 个成员` — the member count includes agents (r3 §4). */
+  members: number;
+  agents: TeamAgentCard[];
+}
+
+/** API-key row (02 §6.2 apiKey shape subset + r3 §6 display rules). */
+export interface ApiKeyRecord {
+  id: string;
+  /** Optional key name (r3 §6 `密钥名称（可选）`); null shows the mask alone. */
+  name: string | null;
+  /** List-row mask `tds_afe07565…` (r3 §6); the value is never readable again. */
+  masked: string;
+  gitAccess: boolean;
+  mcpAccess: boolean;
+  /** One-time plaintext right after creation (02 §8): rendered once beside
+   *  the `请立即复制密钥，它仅显示一次。` canon, absent on every later view. */
+  plaintext?: string;
+}
+
+/** API-keys route content; absent = the empty state (r2 19). */
+export interface ApiKeysContent {
+  keys: ApiKeyRecord[];
+}
+
 /** One deterministic content set behind a scenario id. `now` is the frozen
  *  reference instant for relative labels (capture time of the r7 shot), so
  *  parity output never drifts with wall-clock time. */
@@ -75,6 +145,27 @@ export interface FixtureSet {
    *  document of the selected todo, verbatim from the r7 captures. Board
    *  scenarios leave it absent. */
   detail?: DetailContent;
+  /** Schedule list of the /app/schedules route (issue #71); absent or
+   *  empty = the `尚无定时。` empty state (r7 11). */
+  schedules?: ScheduleRecord[];
+  /** Open state of the 新建定时 dialog (r3 92/92b): the selected 频率 tab.
+   *  Absent = dialog closed. */
+  scheduleForm?: 'hourly' | 'daily' | 'weekly' | 'once';
+  /** Project route content (issue #71); absent = the r3-lifecycle repo
+   *  defaults so production builds still render the pages. */
+  project?: ProjectContent;
+  /** Capture-state flag for /app/project/:id (r2 24 vs 24b): which of the
+   *  任务|文件 tabs the capture sits on. Absent = 文件, the route default
+   *  (r2 §2 route table). */
+  projectTab?: 'tasks' | 'files';
+  /** Team-route content (issue #70, r7 12); absent = the r7 roster. */
+  team?: TeamContent;
+  /** API-keys route content (issue #70); absent = empty state (r2 19). */
+  apiKeys?: ApiKeysContent;
+  /** Chief surface content (issue #72): the 总管 drawer overlay or the
+   *  full-content 总管设置 view, verbatim from the r5 100–116 captures.
+   *  Board scenarios without a chief surface leave it absent. */
+  chief?: ChiefContent;
 }
 
 /** Inline text run inside a plan-document block: plain text, the
@@ -171,4 +262,72 @@ export interface DetailContent {
   /** User-menu popover rendered over the sidebar (r7 17 / 16d / 26d /
    *  27d captures). */
   userMenuOpen?: boolean;
+}
+
+// ── Chief surface (issue #72) ────────────────────────────────────────────
+// r5 §2/§3.6 canon: the 总管 panel is a right-anchored drawer over the
+// board; the 设置 gear swaps the whole content area to the 总管设置 view
+// (4 tabs). Captures 100–104 (unbound) + 111/114/116 (bound) supply the
+// static copy below.
+
+/** Hero example card of a fresh thread (r5 100/111 2×2 grid). */
+export interface ChiefExample {
+  /** Traced glyph per card position (r5 100 crops). */
+  icon: 'user-plus' | 'folder' | 'grid' | 'bars';
+  text: string;
+}
+
+/** Inline run inside a chief stream paragraph; `todo`/`agent` render the
+ *  entity chips (r5 114: `#11` indigo chip, `r5-scribe` gray chip). */
+export interface ChiefSegment {
+  text: string;
+  code?: boolean;
+  todo?: number;
+  agent?: string;
+  /** Bold lead-in of a bullet (r5 116 `README.md:` row heads). */
+  strong?: boolean;
+}
+
+/** One row of the chief message flow (r5 114/116, r3 §3.6 roles). */
+export type ChiefStreamItem =
+  /** Centered dim stamp (`17:26`) or machine line (`运行在 … 上`, the
+   *  machine name underlined per r5 114 — `machineName` carries it). */
+  | { kind: 'note'; text: string; machineName?: string }
+  /** User bubble with avatar + the copy/restore icon pair below it. */
+  | { kind: 'user'; text: string }
+  /** Chief prose paragraphs + optional bullets + the `完成 Ns ›` footer
+   *  row (r5 116 verification report). */
+  | { kind: 'robot'; paragraphs: ChiefSegment[][]; bullets?: ChiefSegment[][]; seconds: string };
+
+/** Thread row of the header switcher popover (r5 116). */
+export interface ChiefThreadRef {
+  title: string;
+  /** True on the row the drawer currently shows. */
+  active?: boolean;
+}
+
+export type ChiefSettingsTab = 'agent' | 'charter' | 'memory' | 'watches';
+
+/** The chief surface a scenario renders. `view: 'drawer'` overlays the
+ *  board; `view: 'settings'` replaces the content area (r5 101–104). */
+export interface ChiefContent {
+  view: 'drawer' | 'settings';
+  /** Settings tab rendered when `view: 'settings'`. */
+  tab?: ChiefSettingsTab;
+  /** Agent bound to the chief: hides the gate bar, fills the model slot
+   *  and swaps the header icon set (r5 100 vs 111/114). */
+  bound: boolean;
+  /** Model slot line when bound (`claude-sonnet-5 · 默认`); `n/a` else. */
+  modelSlot?: string;
+  /** Header thread-chip label (`新主题` on a fresh thread). */
+  threadTitle: string;
+  /** Switcher popover open over the drawer (r5 116). */
+  threadsOpen?: boolean;
+  threads?: ChiefThreadRef[];
+  /** Hero grid of a fresh thread; absent on a thread view. */
+  examples?: ChiefExample[];
+  /** Composer draft text (r5 100/111 persisted draft). */
+  draft?: string;
+  /** Message flow of an existing thread (r5 114/116). */
+  stream?: ChiefStreamItem[];
 }

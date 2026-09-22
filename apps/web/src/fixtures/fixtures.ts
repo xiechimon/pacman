@@ -6,9 +6,13 @@
 // records.
 
 import type {
+  ApiKeyRecord,
   ChangesContent,
   DocBlock,
   FixtureSet,
+  ProjectContent,
+  ScheduleRecord,
+  TeamContent,
   TodoRecord,
   TranscriptItem,
 } from './records.js';
@@ -146,7 +150,17 @@ const darkFreshProbe: TodoRecord = {
   v: 2,
 };
 
-/** Client-created todo of the fixture phase (#66 new-task dialog): lands
+/** Repo surface of the fixture project (r2 07e/24/24c read off the
+ *  r3-lifecycle hosted repo): main branch, single README.md row. */
+export const projectContent: ProjectContent = {
+  name: PROJECT_NAME,
+  branch: 'main',
+  files: ['README.md'],
+  repoName: PROJECT_NAME,
+  hosted: true,
+  defaultBranch: 'main',
+  description: null,
+}; /** Client-created todo of the fixture phase (#66 new-task dialog): lands
  *  in 待开始 with the 刚刚 label against the fixture clock (r2 §4.2/§5.2).
  *  Record shape lives here with every other TodoRecord factory. */
 export function localTodo(seqNum: number, title: string, now: number): TodoRecord {
@@ -172,10 +186,16 @@ export function localTodo(seqNum: number, title: string, now: number): TodoRecor
     v: 2,
   };
 }
-
 /** Board default: only the r3 legacy pair (r7 01/35). Captured before the
- *  probe existed, ~13:10–13:21. */
-export const boardDefault: FixtureSet = { todos: [legacyReview, legacyDone], now: r7(13, 14) };
+ *  probe existed, ~13:10–13:21. Carries the project repo surface and an
+ *  empty schedule list so the #71 routes also render in scenario-blind
+ *  production builds (resolveScenario falls back here). */
+export const boardDefault: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  schedules: [],
+  project: projectContent,
+};
 
 /** Board with the probe in the given phase (r7 02/22/21/33 …). The dark
  *  board pair (02/02b) shows `9 分钟前` on the confirm card → captured
@@ -499,7 +519,130 @@ export const detailLegacy: FixtureSet = {
   detail: { transcript: LEGACY_REVIEW_TRANSCRIPT },
 };
 
-/* ---- r8 overlay batch (#66): dark captures 54–57, shot 2026-09-22
+// ---- issue #71: schedules + project route sets ----
+
+/** r3 93 list card: the once rule built in r3 §9 (fired 14:30, todo #1 went
+ *  done, rule still listed with 下次 今天 14:30 at capture time ~13:50).
+ *  Record shape verbatim from r3 §8.3; `createdBy` id is [推断] (masked in
+ *  the capture, never rendered). */
+const scheduleOnce: ScheduleRecord = {
+  id: 'r3-schedule-1',
+  teamId: TEAM_ID,
+  projectId: PROJECT_ID,
+  todoId: 'r3-legacy-1',
+  kind: 'once',
+  at: at(R3_DAY, 14, 30),
+  tz: 'Asia/Shanghai',
+  machineId: null,
+  nextRunAt: at(R3_DAY, 14, 30),
+  createdBy: 'u-xmon-dai',
+  todo: {
+    seqNum: 1,
+    title: legacyReview.title,
+    phase: 'done',
+    projectName: PROJECT_NAME,
+    ownerId: 'u-xmon-dai',
+  },
+};
+
+/** r7 11: the schedules empty state. Dedicated set (not a boardDefault
+ *  alias) so edits to the board fixture can never drift the only gated
+ *  baseline row of this batch (scenario contract, scenario.ts header). */
+export const schedulesEmpty: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  schedules: [],
+  project: projectContent,
+};
+
+/** r3 93: list with the single once rule. Capture instant ~13:50 keeps
+ *  `下次 今天 14:30` in the future. */
+export const schedulesList: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: at(R3_DAY, 13, 50),
+  schedules: [scheduleOnce],
+  project: projectContent,
+};
+
+/** r3 92: 新建定时 dialog open on the 每天 tab (the default frequency). */
+export const schedulesFormDaily: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: at(R3_DAY, 13, 50),
+  schedules: [],
+  scheduleForm: 'daily',
+  project: projectContent,
+};
+
+/** r3 92b: same dialog on 单次 — the 日期 row appears above 时间. */
+export const schedulesFormOnce: FixtureSet = {
+  ...schedulesFormDaily,
+  scheduleForm: 'once',
+};
+
+/** The project routes share one content set; the route picks the page and
+ *  `projectTab` picks the 任务|文件 surface (r2 07 / 07e·24 / 24b·26 / 24c).
+ *  Default tab = 文件 (r2 §2 route table). */
+export const projectFixture: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  project: projectContent,
+};
+
+/** r2 26: 任务 tab with the two legacy rows (checkbox + title + rel time
+ *  + owner avatar). */
+export const projectTasks: FixtureSet = { ...projectFixture, projectTab: 'tasks' };
+
+/** r2 24b: 任务 tab of a project without todos — the 暂无内容 empty state
+ *  with the `+ 任务` entry (the r2 session's r2-inventory project). */
+export const projectTasksEmpty: FixtureSet = {
+  todos: [],
+  now: r7(13, 14),
+  project: projectContent,
+  projectTab: 'tasks',
+};
+
+/** Team route roster (r7 12): `1 个成员` stats bar + the single agent card
+ *  (`claude-sonnet-5 · 默认`, role unset) beside the dashed 创建 Agent slot. */
+export const TEAM_R7: TeamContent = {
+  members: 1,
+  agents: [
+    {
+      id: R3_BUILDER.id,
+      displayName: R3_BUILDER.displayName,
+      model: 'claude-sonnet-5',
+      isDefault: true,
+      role: null,
+    },
+  ],
+};
+
+/** Team route fixture (r7 12): the board todos never render here, the
+ *  roster is the whole surface. */
+export const teamGrid: FixtureSet = {
+  todos: boardDefault.todos,
+  now: boardDefault.now,
+  team: TEAM_R7,
+};
+
+/** One created API key exercising both r3 §6 display rules: the list row
+ *  mask and the one-time plaintext (02 §8 canon copy rides along in the
+ *  page). Mask prefix `tds_afe07565` is the r3 §6 observed sample. */
+const API_KEY_CREATED: ApiKeyRecord = {
+  id: 'apikey-r7-1',
+  name: null,
+  masked: 'tds_afe07565…',
+  gitAccess: true,
+  mcpAccess: true,
+  plaintext: 'tds_afe07565b3c9d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0',
+};
+
+/** API-keys route fixture with the created key; the empty state (r2 19)
+ *  is the fixture-less fallback. */
+export const apiKeysCreated: FixtureSet = {
+  todos: boardDefault.todos,
+  now: boardDefault.now,
+  apiKeys: { keys: [API_KEY_CREATED] },
+}; /* ---- r8 overlay batch (#66): dark captures 78–81, shot 2026-09-22
    23:41–23:45 on the live space. The board behind them carries the
    session's own probe #16 plus the concurrent r8-dynamic ticket's #15
    and its #11–#14 leftovers; all transcribed off the captures, never
@@ -727,7 +870,7 @@ const R8_PLAN_DOC: DocBlock[] = [
   },
 ];
 
-/** Probe #16 transcript at confirm (r8 56): stamp, start bubble with the
+/** Probe #16 transcript at confirm (r8 80): stamp, start bubble with the
  *  taskline, the agent's spec-empty note, plan card `完成 2m 41s`. */
 const R8_CONFIRM_TRANSCRIPT: TranscriptItem[] = [
   { kind: 'run', at: '23:43', machine: MACHINE_NAME },
@@ -755,7 +898,7 @@ const R8_CONFIRM_TRANSCRIPT: TranscriptItem[] = [
   },
 ];
 
-/** r8 54: board at 23:41 — #15 planning (streaming card behind the
+/** r8 78: board at 23:41 — #15 planning (streaming card behind the
  *  dialog), #12 failed with 重试, the legacy pair in 待验收/已完成 plus
  *  the dynamic ticket's done leftovers. */
 export const boardR8Overlay: FixtureSet = {
@@ -763,7 +906,7 @@ export const boardR8Overlay: FixtureSet = {
   now: r8(23, 44),
 };
 
-/** r8 57: probe #16 fresh detail at 23:43 (#15 already confirm → badge 3). */
+/** r8 81: probe #16 fresh detail at 23:43 (#15 already confirm → badge 3). */
 export const detailR8Fresh: FixtureSet = {
   todos: [
     probe16('todo', r8(23, 42)),
@@ -776,10 +919,10 @@ export const detailR8Fresh: FixtureSet = {
   now: r8(23, 43),
 };
 
-/** r8 58: probe #17 (created 2026-09-23 00:34, deleted 00:36 — zero
+/** r8 82: probe #17 (created 2026-09-23 00:34, deleted 00:36 — zero
  *  residue), fresh detail under the delete confirm. Badge 2 in the
  *  capture → #15 already out of confirm by then; the fresh surface keeps
- *  this pair clear of the doc-pane/taskline drift the 55/56 pairs hit. */
+ *  this pair clear of the doc-pane/taskline drift the 79/80 pairs hit. */
 const probe17Fresh: TodoRecord = {
   id: 'r8-delete-17',
   teamId: TEAM_ID,
@@ -807,7 +950,7 @@ export const detailR8DeleteFresh: FixtureSet = {
   now: at('2026-09-23', 0, 35),
 };
 
-/** r8 56/55: probe #16 confirm detail at 23:44 (badge 4), the surface the
+/** r8 80/79: probe #16 confirm detail at 23:44 (badge 4), the surface the
  *  更多 menu and the delete confirm sit over. */
 export function detailR8Confirm(): FixtureSet {
   return {

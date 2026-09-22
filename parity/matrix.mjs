@@ -4,7 +4,9 @@
 // Entry contract:
 //   id         stable pair name (output artefacts are named after it)
 //   route      app route to capture
-//   scenario   r7 capture number → fixture set via ?scenario=
+//   scenario   r7 capture number → fixture set via ?scenario=; surfaces
+//              with no r7 capture (issue #70 secondary routes) use a
+//              named id instead and ride smoke pairs
 //   theme      'dark' | 'light' (injected via localStorage tds-theme)
 //   scrollLeft optional: number, or 'max' for rightmost board scroll,
 //              applied to the element carrying [data-parity-scroll]
@@ -14,17 +16,17 @@
 //              rAF settle between each — opens overlay surfaces (#66)
 //   fills    optional: [{selector, text}] typed after the clicks, for
 //              filled-input states (r7 14 enabled-primary twin)
-//   batch    optional baseline batch dir under docs/research/assets/
-//              (default r7; #66 dark rows ride r8 54–57)
 //   viewport optional per-row capture viewport; the physical window of
-//              the r8 session capped its dark baselines at 1440×710, so
-//              those rows capture at the same size (centering law still
-//              holds, r7 §3.5 formula)
-//   baseline   optional filename under the batch dir (docs/research/
-//              assets/<batch>/, r7 unless `batch` says otherwise) —
+//              the r8 overlay session capped its dark baselines at
+//              1440×710, so those rows capture at the same size
+//              (centering law still holds, r7 §3.5 formula)
+//   baseline   optional r7 filename under docs/research/assets/r7/ —
 //              present = real parity pair (threshold 0.85);
 //              absent  = smoke pair, capture compared against itself
-//              (pipeline gate, SSIM must be exactly 1.0)
+//              (pipeline gate, SSIM must be exactly 1.0).
+//              Rows switched to a later capture batch (04 §2 A6) use a
+//              batch-prefixed path, e.g. 'r8/57-运行历史-失败态单行-light.png';
+//              run.mjs resolves prefixed paths under docs/research/assets/.
 //   threshold  optional per-pair SSIM override
 
 export const VIEWPORT = { width: 1440, height: 732 };
@@ -238,10 +240,131 @@ export const matrix = [
     theme: 'light',
     baseline: '38-r3遗留卡-详情-light.png',
   },
-  // gate rows (issue #66): overlay batch A open states — new-task dialog
+  // gate rows (issue #71): schedules empty state vs the r7 route capture
+  {
+    id: 'schedules-empty-light',
+    route: '/app/schedules',
+    scenario: '11',
+    theme: 'light',
+    baseline: '11-schedules.png',
+  },
+  // smoke rows (issue #71): schedules dark + list/form states, then the
+  // four project surfaces — no r7 baseline exists for these, so each row
+  // proves the pipeline (self-compare) and pins the surface for review.
+  // The r3-derived rows capture with the expanded sidebar: r3 92/92b/93
+  // happened to be shot on the collapsed rail (session state), while
+  // r2 05b and r7 11 show these surfaces with the sidebar expanded.
+  { id: 'schedules-empty-dark', route: '/app/schedules', scenario: '11', theme: 'dark' },
+  {
+    id: 'schedules-list-light',
+    route: '/app/schedules',
+    scenario: 'r3-93',
+    theme: 'light',
+  },
+  { id: 'schedules-list-dark', route: '/app/schedules', scenario: 'r3-93', theme: 'dark' },
+  { id: 'schedules-form-light', route: '/app/schedules', scenario: 'r3-92', theme: 'light' },
+  { id: 'schedules-form-dark', route: '/app/schedules', scenario: 'r3-92', theme: 'dark' },
+  {
+    id: 'schedules-form-once-light',
+    route: '/app/schedules',
+    scenario: 'r3-92b',
+    theme: 'light',
+  },
+  {
+    id: 'schedules-form-once-dark',
+    route: '/app/schedules',
+    scenario: 'r3-92b',
+    theme: 'dark',
+  },
+  { id: 'project-new-light', route: '/app/project/new', scenario: 'r2-07', theme: 'light' },
+  { id: 'project-new-dark', route: '/app/project/new', scenario: 'r2-07', theme: 'dark' },
+  {
+    id: 'project-files-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24',
+    theme: 'light',
+  },
+  {
+    id: 'project-files-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24',
+    theme: 'dark',
+  },
+  {
+    id: 'project-tasks-empty-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24b',
+    theme: 'light',
+  },
+  {
+    id: 'project-tasks-empty-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24b',
+    theme: 'dark',
+  },
+  {
+    id: 'project-tasks-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'prj-tasks',
+    theme: 'light',
+  },
+  {
+    id: 'project-tasks-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'prj-tasks',
+    theme: 'dark',
+  },
+  {
+    id: 'project-settings-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings',
+    scenario: 'r2-24c',
+    theme: 'light',
+  },
+  {
+    id: 'project-settings-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings',
+    scenario: 'r2-24c',
+    theme: 'dark',
+  },
+  // gate rows (issue #70): secondary routes batch B — team and account
+  // carry r7 baselines; api-keys/feedback have no r7 capture (r2 19/32
+  // are the shape reference only), so those rows are smoke pairs, and
+  // the dark rows ride the same surfaces without baselines
+  {
+    id: 'team-light',
+    route: '/app/team',
+    scenario: '12',
+    theme: 'light',
+    baseline: '12-team.png',
+  },
+  { id: 'team-dark', route: '/app/team', scenario: '12', theme: 'dark' },
+  {
+    id: 'account-light',
+    route: '/app/account',
+    scenario: '13',
+    theme: 'light',
+    baseline: '13-account.png',
+  },
+  { id: 'account-dark', route: '/app/account', scenario: '13', theme: 'dark' },
+  { id: 'api-keys-light', route: '/app/api-keys', scenario: 'api-keys', theme: 'light' },
+  {
+    id: 'api-keys-created-light',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'light',
+  },
+  {
+    id: 'api-keys-created-dark',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'dark',
+  },
+  { id: 'api-keys-dark', route: '/app/api-keys', scenario: 'api-keys', theme: 'dark' },
+  { id: 'feedback-light', route: '/app/feedback', scenario: 'feedback', theme: 'light' },
+  { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' }, // gate rows (issue #66): overlay batch A open states — new-task dialog
   // (04), delete confirm over the done detail (25), 更多 menu over the
-  // confirm (18) and fresh (24) details. Dark twins ride the r8 54–57
-  // baselines captured with this ticket.
+  // confirm (18) and fresh (24) details. Dark twins ride the r8 78–81
+  // baselines captured with this ticket (numbering continues #64's 54–77).
   {
     id: 'overlay-new-task-light',
     route: '/app',
@@ -288,68 +411,63 @@ export const matrix = [
   },
   // gate rows (issue #66): the dark twins, baselines captured with this
   // ticket at 1440×710 (r8 session window cap) — new-task dialog over the
-  // board (54), delete confirm (55) and 更多 menu (56) over the probe #16
-  // confirm detail, 更多 menu over its fresh detail (57)
+  // board (78), delete confirm (79) and 更多 menu (80) over the probe #16
+  // confirm detail, 更多 menu over its fresh detail (81)
   {
     id: 'overlay-new-task-dark',
     route: '/app',
-    scenario: '54',
+    scenario: '78',
     theme: 'dark',
     clicks: ['.board-new-task'],
-    batch: 'r8',
     viewport: { width: 1440, height: 710 },
-    baseline: '54-新建任务dialog-dark.png',
+    baseline: 'r8/78-新建任务dialog-dark.png',
   },
   {
-    // gated dark delete twin on the drift-light fresh surface (58)
+    // gated dark delete twin on the drift-light fresh surface (82)
     id: 'overlay-delete-fresh-dark',
     route: '/app/todo/r8-delete-17',
-    scenario: '58',
+    scenario: '82',
     theme: 'dark',
     clicks: ['.detail-head-icon--more', '.more-menu-item[data-action="delete"]'],
-    batch: 'r8',
     viewport: { width: 1440, height: 710 },
-    baseline: '58-删除确认弹窗-fresh-dark.png',
+    baseline: 'r8/82-删除确认弹窗-fresh-dark.png',
   },
   {
-    // report-only: the r8 55/56 surfaces sit on the probe-#16 confirm
+    // report-only: the r8 79/80 surfaces sit on the probe-#16 confirm
     // detail, which the live site restyled after the r7 freeze (doc-pane
     // inline-code spacing, sidebar 用量 row, attention-badge formula,
     // taskline seq chip, FAB badge — all 09-22 drift, blend-verified
     // outside the overlay itself). The r7-frozen replica cannot gate
     // both eras; per 04 §2 these pairs report, the overlay geometry is
-    // gated by the 54/57/58 twins on drift-light surfaces. Site-drift
+    // gated by the 78/81/82 twins on drift-light surfaces. Site-drift
     // rebaseline = A6 ticket.
     id: 'overlay-delete-dark',
     route: '/app/todo/u_B5ngeVOlKdKbG_4H9Cl',
-    scenario: '55',
+    scenario: '79',
     theme: 'dark',
     clicks: ['.detail-head-icon--more', '.more-menu-item[data-action="delete"]'],
-    batch: 'r8',
     viewport: { width: 1440, height: 710 },
-    baseline: '55-删除确认弹窗-dark.png',
+    baseline: 'r8/79-删除确认弹窗-dark.png',
     threshold: 0,
   },
   {
     id: 'overlay-more-confirm-dark',
     route: '/app/todo/u_B5ngeVOlKdKbG_4H9Cl',
-    scenario: '56',
+    scenario: '80',
     theme: 'dark',
     clicks: ['.detail-head-icon--more'],
-    batch: 'r8',
     viewport: { width: 1440, height: 710 },
-    baseline: '56-待确认-更多菜单-dark.png',
+    baseline: 'r8/80-待确认-更多菜单-dark.png',
     threshold: 0,
   },
   {
     id: 'overlay-more-fresh-dark',
     route: '/app/todo/u_B5ngeVOlKdKbG_4H9Cl',
-    scenario: '57',
+    scenario: '81',
     theme: 'dark',
     clicks: ['.detail-head-icon--more'],
-    batch: 'r8',
     viewport: { width: 1440, height: 710 },
-    baseline: '57-fresh-更多菜单-dark.png',
+    baseline: 'r8/81-fresh-更多菜单-dark.png',
   },
   // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // (28) — artefacts + score recorded, not gated
