@@ -58,6 +58,8 @@
 | `38-r3遗留卡-详情-light.png` | r3 #1 详情（只读） | chip `审核`、等待回复态；**composer 无 `AI 审核` 钮**（§4.1） |
 | `39-安装App-install页.png` | 安装 App | 侧栏项 = 路由跳 `https://todos.dev/zh/install`（站内 install 页，非弹层） |
 
+> 更正（#56 像素复核回写）：`16d-规划中-streaming-dark.png` 的位图内容实为**待确认面 dark + 用户菜单弹层**（= 17d 加弹层），非规划中 streaming；规划中 streaming 的 dark 位图不在本批。`17-待确认-chat视图-light.png` 同样带用户菜单弹层（17b/17d 不带）。对拍矩阵按位图内容绑定场景。
+
 ## 2. 图标 dump（`assets/r7/icons.json`）与 r6 漂移复核
 
 方法同 r6 §2（`querySelectorAll('svg')` → outerHTML 去重；`{route, context, w, h, svg, count, contexts}`），两处收窄：overlay scope（搜索面板/新建任务 dialog/用户菜单）改为 **dialog 内限定**（r6 为整页 dump，overlay 计数含页面背景）；detail 三个动态 scope（fresh/更多/审核）本票不落 JSON，改用 markup 集合级 diff 复核（探针删后 DOM 已消失，全局比对见下）。

@@ -7,14 +7,27 @@
 // the fixture loader, this param becomes dev/test-only.
 // Unknown or absent ids fall back to the default board set.
 
-import { boardDarkFresh, boardDefault, boardWithProbe, detailFor, r7 } from './fixtures.js';
+import {
+  boardDarkFresh,
+  boardDefault,
+  boardWithProbe,
+  detailConfirm,
+  detailFor,
+  detailFresh,
+  detailFreshDark,
+  detailPlanning,
+  r7,
+} from './fixtures.js';
 import type { FixtureSet } from './records.js';
 
 export const SCENARIO_PARAM = 'scenario';
 
 /** r7 capture number → fixture set. Board rows bind board scenarios,
  *  detail rows bind single-todo detail scenarios. `now` inside each set
- *  is the capture instant (keeps relative labels deterministic). */
+ *  is the capture instant (keeps relative labels deterministic).
+ *  Detail ids follow the r7 manifest filenames: 16d is the dark confirm
+ *  capture with the user-menu popover, 17/17d/17b the confirm surface
+ *  with/without it. */
 export const SCENARIOS: Record<string, FixtureSet> = {
   // board (r7 01–03, 21–22, 33, 35)
   '01': boardDefault,
@@ -32,13 +45,13 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '35': boardWithProbe('done', r7(13, 52), r7(13, 55)),
   '35d': boardWithProbe('done', r7(13, 52), r7(13, 55)),
   // detail (r7 16–17, 23, 26–27, 36, 38)
-  '16': detailFor('planning', r7(13, 23), r7(13, 24)),
-  '16d': detailFor('planning', r7(13, 23), r7(13, 24)),
-  '17': detailFor('confirm', r7(13, 26), r7(13, 28)),
-  '17b': detailFor('confirm', r7(13, 26), r7(13, 28)),
-  '17d': detailFor('confirm', r7(13, 26), r7(13, 28)),
-  '23': detailFor('todo', r7(13, 21), r7(13, 22)),
-  '23d': detailFor('todo', r7(13, 21), r7(13, 22)),
+  '16': detailPlanning,
+  '16d': detailConfirm(true),
+  '17': detailConfirm(true),
+  '17b': detailConfirm(false),
+  '17d': detailConfirm(false),
+  '23': detailFresh,
+  '23d': detailFreshDark,
   '26': detailFor('building', r7(13, 35), r7(13, 36)),
   '26d': detailFor('building', r7(13, 35), r7(13, 36)),
   '27': detailFor('review', r7(13, 37), r7(13, 40)),

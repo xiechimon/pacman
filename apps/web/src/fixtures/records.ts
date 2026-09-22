@@ -71,4 +71,45 @@ export interface TodoRecord {
 export interface FixtureSet {
   todos: TodoRecord[];
   now: number;
+  /** Detail-route display content (issue #56): the transcript and plan
+   *  document of the selected todo, verbatim from the r7 captures. Board
+   *  scenarios leave it absent. */
+  detail?: DetailContent;
+}
+
+/** Inline text run inside a plan-document block; `code` renders the
+ *  monospace chip (r7 17: `tail -n 3 README.md` style). */
+export interface DocSegment {
+  text: string;
+  code?: boolean;
+}
+
+/** One plan-document block: free paragraph or bullet (r7 17 doc pane). */
+export interface DocBlock {
+  kind: 'para' | 'bullet';
+  segments: DocSegment[];
+}
+
+/** Transcript row kinds observed in the r7 detail captures (16/17).
+ *  CONTEXT.md canon: the message flow is `transcript`, not stream. */
+export type TranscriptItem =
+  /** Run stamp: time line + `运行在 <machine> 上` line, centered. */
+  | { kind: 'run'; at: string; machine: string }
+  /** User bubble (`开始执行任务`) plus the taskline chip + title below it. */
+  | { kind: 'user'; text: string; seq: number; title: string }
+  /** Agent prose paragraph (robot avatar row). */
+  | { kind: 'robot'; text: string }
+  /** Live planning row: elapsed seconds + `›` + step label (r7 16). */
+  | { kind: 'streaming'; seconds: number; label: string }
+  /** Collapsed plan card: `方案 · v1` row, clamped preview, `完成 Ns` row. */
+  | { kind: 'plan'; title: string; preview: string; seconds: number };
+
+/** Detail-route content of a scenario (issue #56). */
+export interface DetailContent {
+  /** Transcript rows, top to bottom. */
+  transcript: TranscriptItem[];
+  /** Plan document for the left pane; absent = `暂无方案` placeholder. */
+  doc?: DocBlock[];
+  /** User-menu popover rendered over the sidebar (r7 17 / 16d captures). */
+  userMenuOpen?: boolean;
 }

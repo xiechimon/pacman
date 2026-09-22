@@ -59,6 +59,20 @@
   --install-bg: #28293b;
   --install-fg: #6063df;
   --fab-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
+  /* detail palette, sampled from the r7 23/16/17 captures (#56) */
+  --chip-idle-bg: #202733;
+  --chip-idle-fg: #9ea3ae;
+  --chip-plan-bg: #1c2740;
+  --chip-plan-fg: #8b93f8;
+  --chip-confirm-bg: #33221b;
+  --chip-confirm-fg: #f2c24b;
+  --chip-done-bg: #14291c;
+  --chip-done-fg: #5ec26a;
+  --code-bg: #27272a;
+  --popover-bg: #1f1f23;
+  --tab-group-bg: #27272a;
+  --seg-active: #3f3f46;
+  --stop: #dd524c;
   color-scheme: dark light;
 }
 
@@ -97,4 +111,18 @@
   --install-bg: #ebe8f2;
   --install-fg: #6c6ee9;
   --fab-shadow: 0 5px 14px rgb(28 25 23 / 0.14);
+  /* detail palette, sampled from the r7 23/16/17 captures (#56) */
+  --chip-idle-bg: #f3f4f6;
+  --chip-idle-fg: #4d5562;
+  --chip-plan-bg: #eff2fe;
+  --chip-plan-fg: #4e47dd;
+  --chip-confirm-bg: #fffbed;
+  --chip-confirm-fg: #a85923;
+  --chip-done-bg: #ecfdf3;
+  --chip-done-fg: #15803d;
+  --code-bg: #e7e2da;
+  --popover-bg: #fdfaf7;
+  --tab-group-bg: transparent;
+  --seg-active: #e7e2da;
+  --stop: #dd524c;
 }

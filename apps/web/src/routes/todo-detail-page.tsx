@@ -1,12 +1,64 @@
-import { useParams } from 'react-router';
+// Todo detail route (issue #56): app shell sidebar + dhead + phase-driven
+// body — fresh block (23/23d) or doc pane + chat column (16/17 family) —
+// plus composer, 总管 FAB and the capture-frozen user-menu popover.
+import { useState } from 'react';
+import { useParams, useSearchParams } from 'react-router';
+import { Composer } from '../detail/composer.js';
+import { DetailHead } from '../detail/dhead.js';
+import { DocPane } from '../detail/docpane.js';
+import { FreshBlock } from '../detail/fresh-block.js';
+import { Transcript } from '../detail/transcript.js';
+import { UserMenu } from '../detail/user-menu.js';
+import { PHASE_UI } from '../phase.js';
+import '../detail/detail.css';
+import { attentionCount } from '../board/columns.js';
+import { BoardSidebar } from '../board/sidebar.js';
+import { resolveScenario } from '../fixtures/scenario.js';
+import { ChiefFab } from '../icons/index.js';
+import { readStoredTheme } from '../theme.js';
 
-// Todo detail full-page shell (issue #53): phase matrix and stream
-// elements land in #56/#57, consuming the scenario-selected fixture set.
 export function TodoDetailPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  // 文档|聊天 tabs (issue #56): 文档 = doc pane + chat column, 聊天 = chat
+  // column alone. Pure render state — the captures all sit on 文档.
+  const [tab, setTab] = useState<'doc' | 'chat'>('doc');
+  const fixture = resolveScenario(searchParams);
+  const todo = fixture.todos.find((t) => t.id === id) ?? fixture.todos[0];
+  if (todo == null) return null;
+  const ui = PHASE_UI[todo.phase];
+  const detail = fixture.detail;
+  const streaming = detail?.transcript.some((item) => item.kind === 'streaming') ?? false;
+
   return (
-    <div className="h-full overflow-hidden bg-surface text-content" data-route="todo-detail">
-      <div data-todo-id={id} />
+    <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
+      <BoardSidebar attention={attentionCount(fixture.todos)} />
+      <div className="detail-main">
+        <DetailHead todo={todo} tab={tab} onTab={setTab} />
+        {detail == null ? (
+          <div className="detail-body detail-body--single">
+            <FreshBlock todo={todo} />
+          </div>
+        ) : (
+          <div className="detail-body">
+            {tab === 'doc' && <DocPane doc={detail.doc} hasChanges={todo.hasChanges} />}
+            <div className="chat-col">
+              <Transcript transcript={detail.transcript} />
+            </div>
+          </div>
+        )}
+        {ui.placeholder != null && (
+          <Composer
+            placeholder={ui.placeholder}
+            aiReview={todo.phase === 'confirm' || todo.phase === 'review'}
+            streaming={streaming}
+          />
+        )}
+        <button type="button" className="detail-fab" aria-label="总管">
+          <ChiefFab />
+        </button>
+      </div>
+      {detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
     </div>
   );
 }

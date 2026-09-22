@@ -6,6 +6,7 @@
 // a column is not modelled yet — cards render in fixture order.
 
 import type { TodoRecord } from '../fixtures/records.js';
+import { PHASE_UI } from '../phase.js';
 
 export interface BoardColumnDef {
   id: string;
@@ -69,19 +70,17 @@ export const COLUMNS: BoardColumnDef[] = [
   },
 ];
 
-/** Phase → primary card action. Waiting-on-user todos get the ghost
- *  回复 button (r3 §3.0 引导 P2 词表 + r5b §3.15). */
+/** Phase → primary card action, copy from the shared PHASE_UI table.
+ *  Waiting-on-user todos get the ghost 回复 button (r3 §3.0 引导 P2 词表 +
+ *  r5b §3.15). */
 export function cardAction(todo: TodoRecord): { kind: 'primary' | 'ghost'; label: string } | null {
   if (todo.awaitingReply === true) return { kind: 'ghost', label: '回复' };
-  switch (todo.phase) {
-    case 'todo':
-    case 'queued':
-      return { kind: 'primary', label: '开始' };
-    case 'confirm':
-      return { kind: 'primary', label: '确认' };
-    case 'review':
-      return { kind: 'primary', label: '完成' };
-    default:
-      return null;
-  }
+  const label = PHASE_UI[todo.phase].action;
+  return label == null ? null : { kind: 'primary', label };
+}
+
+/** Todos waiting on confirmation — the 看板 nav badge (r7 02/17 show `1`
+ *  while probe #9 sits in 待确认). */
+export function attentionCount(todos: TodoRecord[]): number {
+  return todos.filter((t) => t.phase === 'confirm').length;
 }
