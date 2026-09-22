@@ -7,6 +7,7 @@ import { createApp } from './app.js';
 import { loadConfig } from './config.js';
 import { openDbWithHandle } from './db/client.js';
 import { seed } from './db/seed.js';
+import { createKeyfileSecretBox } from './lib/secret-box.js';
 import { TeamStreamHub } from './services/events.js';
 
 const config = loadConfig();
@@ -18,11 +19,15 @@ const logger = pino({
 });
 
 const { db, close } = openDbWithHandle(config.dbPath);
+// keyfile 首启生成（0600）；丢失再生成 = 存量密文报废需重录（02 §8 护栏，
+// README 落文档）。坏 keyfile 启动即抛，不静默降级。
+const secretBox = createKeyfileSecretBox(config.keyfilePath);
 const seeded = seed(db);
 const app = createApp(
   {
     db,
     hub: new TeamStreamHub(),
+    secretBox,
     user: seeded.user,
     team: seeded.team,
     pingIntervalMs: config.pingIntervalMs,

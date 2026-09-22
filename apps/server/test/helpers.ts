@@ -4,21 +4,25 @@ import type { Hono } from 'hono';
 import { createApp } from '../src/app.js';
 import { openMemoryDb } from '../src/db/client.js';
 import { seed } from '../src/db/seed.js';
+import { createEphemeralSecretBox } from '../src/lib/secret-box.js';
 import { TeamStreamHub } from '../src/services/events.js';
 
 export function bootServer(opts: { pingIntervalMs?: number } = {}) {
   const db = openMemoryDb();
   const { user, team } = seed(db);
   const hub = new TeamStreamHub();
+  // 随机 key 驻内存（keyfile 落盘面 = test/secret-box.test.ts 专测）。
+  const secretBox = createEphemeralSecretBox();
   const app = createApp({
     db,
     hub,
+    secretBox,
     user,
     team,
     // 默认拉长 ping 间隔，避免噪音；SSE 测试显式缩短。
     pingIntervalMs: opts.pingIntervalMs ?? 3_600_000,
   });
-  return { app, db, hub, user, team, svc: { db, hub } };
+  return { app, db, hub, secretBox, user, team, svc: { db, hub, user } };
 }
 export type TestServer = ReturnType<typeof bootServer>;
 
