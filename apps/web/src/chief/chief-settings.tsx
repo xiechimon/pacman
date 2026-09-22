@@ -18,7 +18,7 @@ const TABS: { id: ChiefSettingsTab; label: string }[] = [
 export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: () => void }) {
   const [tab, setTab] = useState<ChiefSettingsTab>(chief.tab ?? 'agent');
   return (
-    <div className="chief-settings" data-route-surface="chief-settings">
+    <div className="chief-settings">
       <header className="chief-set-head">
         <button type="button" className="chief-set-back" aria-label="返回" onClick={onBack}>
           <ChevronLeft width={16} height={16} />

@@ -18,8 +18,8 @@ import { ChiefSettings } from '../chief/chief-settings.js';
 import { chiefDefault } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { ChiefFab } from '../icons/index.js';
-// shell + FAB styles live with the board surface; the settings view
-// (101–104) unmounts BoardSurface, so the route imports them too
+// shell styles live with the board surface; the settings view (101–104)
+// unmounts BoardSurface but keeps the shell, so the route imports them too
 import '../board/board.css';
 
 export const SIDEBAR_STORAGE_KEY = 'tds.sidebar-collapsed'; // mirrored in parity/run.mjs
@@ -38,8 +38,9 @@ export function BoardPage() {
     setCollapsed(next);
   }, [collapsed]);
   const chief = fixture.chief;
-  const [drawerOpen, setDrawerOpen] = useState(chief?.view === 'drawer');
-  const [settingsOpen, setSettingsOpen] = useState(chief?.view === 'settings');
+  // one three-state view: drawer and settings are mutually exclusive by
+  // construction (r5: the gear swaps the drawer for the full-content view)
+  const [chiefView, setChiefView] = useState<'none' | 'drawer' | 'settings'>(chief?.view ?? 'none');
   const chiefData = chief ?? chiefDefault;
   return (
     <div className="board-shell h-full" data-route="board">
@@ -47,36 +48,26 @@ export function BoardPage() {
         collapsed={collapsed}
         onToggle={toggle}
         attention={attentionCount(fixture.todos)}
+        selected={chiefView === 'settings' ? 'none' : 'board'}
+        machineOnline={chief != null}
       />
-      {settingsOpen ? (
-        <ChiefSettings
-          chief={chiefData}
-          onBack={() => {
-            setSettingsOpen(false);
-            setDrawerOpen(true);
-          }}
-        />
+      {chiefView === 'settings' ? (
+        <ChiefSettings chief={chiefData} onBack={() => setChiefView('drawer')} />
       ) : (
         <BoardSurface fixture={fixture} />
       )}
-      {drawerOpen && !settingsOpen && (
+      {chiefView === 'drawer' && (
         <ChiefDrawer
           chief={chiefData}
-          onSettings={() => {
-            setDrawerOpen(false);
-            setSettingsOpen(true);
-          }}
-          onClose={() => setDrawerOpen(false)}
+          onSettings={() => setChiefView('settings')}
+          onClose={() => setChiefView('none')}
         />
       )}
       <button
         type="button"
         className="chief-fab"
         aria-label="总管"
-        onClick={() => {
-          setSettingsOpen(false);
-          setDrawerOpen(true);
-        }}
+        onClick={() => setChiefView('drawer')}
       >
         <ChiefFab />
       </button>

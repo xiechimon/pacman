@@ -88,6 +88,7 @@ const EXTRA_ICONS = [
     svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L3 21"></path></svg>',
     contexts: ['project new avatar tile (traced from r2 07)'],
     trace: 'a 1:1 trace of the r2 07 bitmap (project routes predate the r7 dump)',
+  },
   // Chief surfaces (issue #72): the r5 icon dump never scoped the drawer or
   // the 总管设置 view (r5/icons.json carries 12 chief-adjacent entries, none
   // of these glyphs), so all seven are 1:1 traces of the r5 100/101/111
@@ -133,6 +134,13 @@ const EXTRA_ICONS = [
     svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>',
     contexts: ['chief example card 帮我创建一个新项目 (traced from r5 100)'],
     trace: 'a 1:1 trace of the r5 100 bitmap example glyph (lucide folder shape)',
+  },
+  {
+    name: 'ChiefUserSolid',
+    size: [24, 24],
+    svg: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="8" r="4"></circle><path d="M4 19c0-3.5 3.6-5.5 8-5.5s8 2 8 5.5v1.5H4Z"></path></svg>',
+    contexts: ['chief stream user avatar (traced from r5 114)'],
+    trace: 'a 1:1 trace of the r5 114 bitmap solid user avatar',
   },
   {
     name: 'ChiefPi',

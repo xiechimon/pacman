@@ -1,8 +1,10 @@
-// Scenario mechanism (issue #52): `?scenario=<r7编号>` query parameter
-// selects a deterministic fixture set, one id per r7 capture so parity
-// matrix rows never drift in content. Route behaviour never branches on
-// the parameter — it only picks data inside the fixture layer, which is
-// the app's whole data source in this fixture-driven phase.
+// Scenario mechanism (issue #52): `?scenario=<研究截图编号>` query parameter
+// selects a deterministic fixture set, one id per research capture so parity
+// matrix rows never drift in content — r7 numbers for the board/detail
+// rows, r5 numbers for the chief rows (#72; the chief surfaces have no r7
+// shot). Route behaviour never branches on the parameter — it only picks
+// data inside the fixture layer, which is the app's whole data source in
+// this fixture-driven phase.
 // #58 gate: the parameter is dev/test-only — honoured by `vite dev`
 // (import.meta.env.DEV) and by the parity harness's `vite build --mode
 // parity`; a plain production build ignores it and always serves the

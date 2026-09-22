@@ -17,6 +17,7 @@ export { ChiefGear } from './ChiefGear.js';
 export { ChiefHash } from './ChiefHash.js';
 export { ChiefPi } from './ChiefPi.js';
 export { ChiefUserPlus } from './ChiefUserPlus.js';
+export { ChiefUserSolid } from './ChiefUserSolid.js';
 export { Clock } from './Clock.js';
 export { ClockThin } from './ClockThin.js';
 export { Copy } from './Copy.js';

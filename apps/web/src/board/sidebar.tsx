@@ -48,6 +48,8 @@ interface BoardSidebarProps {
   /** Todos waiting on confirmation — the 看板 nav badge (r7 02/17). */
   attention?: number;
   selected?: SidebarSelected;
+  /** Indigo dot right of the 机器 row (r5 100/101/114/116: machine online). */
+  machineOnline?: boolean;
 }
 
 /** Leaf nav rows shared by both sidebar states — each renders full in the
@@ -94,6 +96,7 @@ export function BoardSidebar({
   onToggle,
   attention = 0,
   selected = 'board',
+  machineOnline = false,
 }: BoardSidebarProps) {
   if (collapsed) {
     return (
@@ -221,6 +224,7 @@ export function BoardSidebar({
               <Icon />
             </span>
             <span className="sidebar-subrow-label">{label}</span>
+            {machineOnline && label === '机器' && <span className="sidebar-online-dot" />}
           </a>
         ))}
       </nav>
