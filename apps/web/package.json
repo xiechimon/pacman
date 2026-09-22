@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@pacman/shared": "workspace:*",
+    "diff": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router": "catalog:"

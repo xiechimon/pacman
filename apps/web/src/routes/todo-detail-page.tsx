@@ -19,7 +19,7 @@ import { PHASE_UI } from '../phase.js';
 import '../detail/detail.css';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar } from '../board/sidebar.js';
-import type { Phase, TranscriptItem } from '../fixtures/records.js';
+import type { DetailContent, Phase, PlanDiffContent, TranscriptItem } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { ChiefFab } from '../icons/index.js';
 import { readStoredTheme } from '../theme.js';
@@ -28,6 +28,45 @@ import { readStoredTheme } from '../theme.js';
  *  streaming = the replan round (r8 67); landed = v(N+1) 待确认 (r8 68);
  *  building = the 确认 round opened after the chain's last step. */
 type ChainState = 'idle' | 'streaming' | 'landed' | 'building';
+
+/** Reject-chain view derivation (AC3): the streaming round borrows the
+ *  planning surface (r8 67), the landed round the confirm surface with
+ *  the new version's doc/dropdown, the building round the execution
+ *  surface. Kept out of the component so the capture-state render stays
+ *  readable. */
+function chainView(
+  detail: DetailContent | undefined,
+  chain: ChainState,
+  diff: PlanDiffContent | undefined,
+) {
+  const revision = detail?.revision;
+  const transcript: TranscriptItem[] = [...(detail?.transcript ?? [])];
+  if (chain === 'streaming' && revision != null) {
+    transcript.push(
+      { kind: 'user', text: revision.feedback },
+      { kind: 'streaming', seconds: revision.streaming.seconds, label: revision.streaming.label },
+    );
+  }
+  if ((chain === 'landed' || chain === 'building') && revision != null) {
+    transcript.push({ kind: 'user', text: revision.feedback }, ...revision.landed.transcriptTail);
+  }
+  if (chain === 'building' && revision != null) {
+    transcript.push({ kind: 'streaming', seconds: 1, label: '处理中...' });
+  }
+  const landed = chain === 'landed' || chain === 'building';
+  return {
+    phaseOverride:
+      chain === 'streaming'
+        ? ('planning' as Phase)
+        : chain === 'building'
+          ? ('building' as Phase)
+          : null,
+    transcript,
+    doc: landed ? revision?.landed.doc : detail?.doc,
+    planVersions: landed ? revision?.landed.planVersions : detail?.planVersions,
+    planDiff: chain === 'streaming' ? (revision?.planDiff ?? diff) : diff,
+  };
+}
 
 export function TodoDetailPage() {
   const { id } = useParams();
@@ -43,45 +82,18 @@ export function TodoDetailPage() {
   const [dialog, setDialog] = useState<'rerun' | 'reuse' | 'history' | undefined>(detail0?.dialog);
   const [chain, setChain] = useState<ChainState>('idle');
 
-  const revision = detail0?.revision;
-  // Chain view overrides: the streaming round borrows the planning
-  // surface (r8 67), the landed round the confirm surface with the new
-  // version's doc/dropdown, the building round the execution surface.
-  const phase: Phase =
-    chain === 'streaming'
-      ? 'planning'
-      : chain === 'building'
-        ? 'building'
-        : (todo?.phase ?? 'todo');
-  const transcript: TranscriptItem[] = [...(detail0?.transcript ?? [])];
-  if (chain === 'streaming' && revision != null) {
-    transcript.push(
-      { kind: 'user', text: revision.feedback },
-      { kind: 'streaming', seconds: revision.streaming.seconds, label: revision.streaming.label },
-    );
-  }
-  if ((chain === 'landed' || chain === 'building') && revision != null) {
-    transcript.push({ kind: 'user', text: revision.feedback }, ...revision.landed.transcriptTail);
-  }
-  if (chain === 'building' && revision != null) {
-    transcript.push({ kind: 'streaming', seconds: 1, label: '处理中...' });
-  }
-  const doc = chain === 'landed' || chain === 'building' ? revision?.landed.doc : detail0?.doc;
-  const planVersions =
-    chain === 'landed' || chain === 'building'
-      ? revision?.landed.planVersions
-      : detail0?.planVersions;
-  const planDiff = chain === 'streaming' ? (revision?.planDiff ?? diff) : diff;
+  const view = chainView(detail0, chain, diff);
+  const phase: Phase = view.phaseOverride ?? todo?.phase ?? 'todo';
 
   if (todo == null) return null;
   const ui = PHASE_UI[phase];
   const detail = detail0;
-  const streaming = transcript.some((item) => item.kind === 'streaming');
+  const streaming = view.transcript.some((item) => item.kind === 'streaming');
   // The doc pane flips to the 变更 surface once a run produced changes
   // (r7 27/36, r8 54/73); the plan-version diff surface wins while open
   // (r8 65–72); the plan surface serves todo→building (r7 16/17/26).
   const docMode =
-    planDiff != null
+    view.planDiff != null
       ? 'diff'
       : phase === 'review' || phase === 'done' || phase === 'failed'
         ? 'changes'
@@ -96,7 +108,13 @@ export function TodoDetailPage() {
           phase={phase}
           tab={tab}
           onTab={setTab}
-          onAction={chain === 'landed' && revision != null ? () => setChain('building') : undefined}
+          onAction={
+            chain === 'landed' && detail0?.revision != null
+              ? () => setChain('building')
+              : phase === 'failed'
+                ? () => setDialog('rerun')
+                : undefined
+          }
         />
         {detail == null ? (
           <div className="detail-body detail-body--single">
@@ -107,23 +125,24 @@ export function TodoDetailPage() {
             {tab === 'doc' && (
               <DocPane
                 mode={docMode}
-                doc={doc}
+                now={fixture.now}
+                doc={view.doc}
                 changes={detail.changes}
-                planVersions={planVersions}
+                planVersions={view.planVersions}
                 versionMenu={menu}
                 onVersionMenu={setMenu}
                 onCompare={() => {
                   // 上一版本 (r8 64 → 65/71): opens the previous-version
                   // diff — the fixture's compare target, or the chain's
                   // landed diff once the reject loop produced one
-                  setDiff(detail0?.compareTarget ?? revision?.landed.planDiff);
+                  setDiff(detail0?.compareTarget ?? detail0?.revision?.landed.planDiff);
                   setMenu(undefined);
                 }}
                 onBase={() => {
                   setDiff(undefined);
                   setMenu(undefined);
                 }}
-                planDiff={planDiff}
+                planDiff={view.planDiff}
                 onToggleExpand={() =>
                   setDiff((d) => (d != null ? { ...d, expanded: !d.expanded } : d))
                 }
@@ -135,7 +154,7 @@ export function TodoDetailPage() {
                   transcripts top-aligned — no scroll scripting, so the
                   parity capture is deterministic */}
               <div className="chat-pin">
-                <Transcript transcript={transcript} />
+                <Transcript transcript={view.transcript} />
               </div>
             </div>
           </div>
@@ -151,7 +170,7 @@ export function TodoDetailPage() {
             }
             streaming={streaming}
             onSend={
-              revision != null && chain === 'idle'
+              detail0?.revision != null && chain === 'idle'
                 ? () => {
                     setChain('streaming');
                     window.setTimeout(() => setChain('landed'), 900);
@@ -166,9 +185,24 @@ export function TodoDetailPage() {
       </div>
       {detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
       {dialog === 'rerun' && (
-        <RerunDialog reuse={todo.hasPlan} onReuse={() => setDialog('reuse')} />
+        <RerunDialog
+          reuse={todo.hasPlan}
+          agent={
+            detail?.rerunAgent ?? {
+              name: todo.agent?.displayName ?? '未指派',
+              model: '默认',
+            }
+          }
+          onReuse={() => setDialog('reuse')}
+        />
       )}
-      {dialog === 'reuse' && <ReusePanel onBack={() => setDialog('rerun')} />}
+      {dialog === 'reuse' && (
+        <ReusePanel
+          onBack={() => setDialog('rerun')}
+          onView={() => setDialog(undefined)}
+          onDirect={() => setDialog(undefined)}
+        />
+      )}
       {dialog === 'history' && <HistoryDialog rows={detail?.runHistory ?? []} />}
     </div>
   );

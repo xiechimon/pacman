@@ -5,6 +5,7 @@
 // (parity/match-text.mjs) in #54; all other strings come from the research
 // records.
 
+import { diffLines } from 'diff';
 import type {
   ChangesContent,
   DiffHunk,
@@ -870,34 +871,38 @@ const NO_NEWLINE = '\\ No newline at end of file';
  *  The trailing no-newline marker rides per side when both sides change
  *  at EOF (r8 72: del marker between the last del and the first add). */
 function planHunk(from: string[], to: string[]): DiffHunk {
+  // 01-stack-v2 §4.1 pins the diff data layer to npm `diff` 9.0.0 (render
+  // stays hand-rolled); the fixture hunks go through the same pin.
   const lines: DiffLine[] = [];
-  let i = 0;
-  let j = 0;
-  while (i < from.length || j < to.length) {
-    if (i < from.length && j < to.length && from[i] === to[j]) {
-      lines.push({ kind: 'context', text: from[i] ?? '', oldNo: i + 1, newNo: j + 1 });
-      i++;
-      j++;
-    } else {
-      // emit the del run then the add run of this differing stretch
-      const delStart = i;
-      while (i < from.length && !to.slice(j).includes(from[i] ?? '')) i++;
-      const addStart = j;
-      while (j < to.length && !from.slice(delStart).includes(to[j] ?? '')) j++;
-      for (let d = delStart; d < i; d++)
-        lines.push({ kind: 'del', text: from[d] ?? '', oldNo: d + 1 });
-      for (let a = addStart; a < j; a++)
-        lines.push({ kind: 'add', text: to[a] ?? '', newNo: a + 1 });
+  let oldNo = 0;
+  let newNo = 0;
+  for (const part of diffLines(from.join('\n'), to.join('\n'))) {
+    const rows = part.value.split('\n');
+    if (rows[rows.length - 1] === '') rows.pop(); // trailing join separator
+    for (const text of rows) {
+      if (part.added === true) {
+        newNo++;
+        lines.push({ kind: 'add', text, newNo });
+      } else if (part.removed === true) {
+        oldNo++;
+        lines.push({ kind: 'del', text, oldNo });
+      } else {
+        oldNo++;
+        newNo++;
+        lines.push({ kind: 'context', text, oldNo, newNo });
+      }
     }
   }
+  // r8 72 renders the no-newline marker per side when both sides change
+  // at EOF; add-only diffs (r8 66) carry the single trailing marker
   const lastDel = lines.findLastIndex((l) => l.kind === 'del');
   const firstAdd = lines.findIndex((l) => l.kind === 'add');
-  const split = lastDel !== -1 && lastDel > firstAdd;
-  const tail: DiffLine[] = [{ kind: 'marker', text: NO_NEWLINE }];
-  if (split) lines.splice(lastDel + 1, 0, { kind: 'marker', text: NO_NEWLINE });
+  if (lastDel !== -1 && lastDel > firstAdd) {
+    lines.splice(lastDel + 1, 0, { kind: 'marker', text: NO_NEWLINE });
+  }
   return {
     header: `@@ -1,${from.length} +1,${to.length} @@`,
-    lines: [...lines, ...tail],
+    lines: [...lines, { kind: 'marker', text: NO_NEWLINE }],
   };
 }
 
@@ -1028,8 +1033,8 @@ function detailV2(now: number): FixtureSet {
       transcript: RUN1_TO_V2,
       doc: DOC_V2,
       planVersions: [
-        { v: 'v2', rel: '1 分钟前' },
-        { v: 'v1', rel: '10 分钟前' },
+        { v: 'v2', at: r8(23, 53) },
+        { v: 'v1', at: r8(23, 44) },
       ],
     },
   };
@@ -1052,9 +1057,9 @@ function detailV3(now: number): FixtureSet {
       transcript: RUN1_TO_V3,
       doc: DOC_V3,
       planVersions: [
-        { v: 'v3', rel: '2 分钟前' },
-        { v: 'v2', rel: '5 分钟前' },
-        { v: 'v1', rel: '14 分钟前' },
+        { v: 'v3', at: r8(23, 56) },
+        { v: 'v2', at: r8(23, 53) },
+        { v: 'v1', at: r8(23, 44) },
       ],
       planDiff: planDiff('v1', 'v3', LINES_V1, LINES_V3, false),
     },
@@ -1164,7 +1169,10 @@ export const boardFailed: FixtureSet = {
 };
 
 /** r8 56: rerun dialog over #12 (no plan doc → no 复用方案 button). */
-export const rerunDialog12: FixtureSet = withDetail(detailFailed12, { dialog: 'rerun' });
+export const rerunDialog12: FixtureSet = withDetail(detailFailed12, {
+  dialog: 'rerun',
+  rerunAgent: { name: R3_BUILDER.displayName, model: 'claude-sonnet-5' },
+});
 
 /** r8 57: run history of #12 past midnight (昨天 stamp, 6 小时前 row). */
 export const history12: FixtureSet = {
@@ -1219,8 +1227,8 @@ export const revisionStreaming: FixtureSet = {
     ],
     doc: DOC_V2,
     planVersions: [
-      { v: 'v2', rel: '1 分钟前' },
-      { v: 'v1', rel: '10 分钟前' },
+      { v: 'v2', at: r8(23, 53) },
+      { v: 'v1', at: r8(23, 44) },
     ],
     planDiff: planDiff('v1', 'v2', LINES_V1, LINES_V2, true),
   },
@@ -1249,6 +1257,7 @@ export const detailFailed15Set: FixtureSet = detailFailed15(r8n(0, 1));
 /** r8 74: rerun dialog with the 复用方案 button (#15 has a plan doc). */
 export const rerunDialog15: FixtureSet = withDetail(detailFailed15(r8n(0, 1)), {
   dialog: 'rerun',
+  rerunAgent: { name: R3_BUILDER.displayName, model: 'claude-sonnet-5' },
 });
 
 /** r8 75: 复用方案 sub-panel. */
@@ -1293,14 +1302,14 @@ export const revisionChain: FixtureSet = {
   detail: {
     transcript: RUN1_TO_V2.slice(0, 4),
     doc: DOC_V1,
-    planVersions: [{ v: 'v1', rel: '1 分钟前' }],
+    planVersions: [{ v: 'v1', at: r8(23, 44) }],
     revision: {
       feedback: REJECT_FEEDBACK,
       streaming: { seconds: 1, label: '处理中...' },
       landed: {
         planVersions: [
-          { v: 'v2', rel: '刚刚' },
-          { v: 'v1', rel: '2 分钟前' },
+          { v: 'v2', at: r8(23, 45) },
+          { v: 'v1', at: r8(23, 44) },
         ],
         doc: DOC_V2,
         transcriptTail: [

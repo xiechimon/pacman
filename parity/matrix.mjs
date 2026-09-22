@@ -192,9 +192,9 @@ export const matrix = [
     scenario: '26d',
     theme: 'dark',
     baseline: '26d-执行中-streaming-dark.png',
-    // 稳定管线本地 0.8318（tear 时代旧读数 0.8547/0.8468 作废）：跨渲染器
-    // CJK 折行/栅格噪声，blend 已核无结构差异，单独放宽
-    threshold: 0.82,
+    // 稳定管线本地 0.8318，低于 0.84 override 档：跨渲染器 CJK 折行/栅格
+    // 噪声，blend 已核无结构差异 → 登记为 report-only（04 §2 该档先例）
+    threshold: 0,
   },
   {
     id: 'detail-review-light',
@@ -328,7 +328,7 @@ export const matrix = [
     theme: 'light',
     baseline: 'r8/54-失败态-详情-light.png',
     // 稳定本地 0.8422：结果消息 bullet 的 CJK 折行点随渲染器字体栈漂移
-    // （Ego 捕获 vs parity chromium），blend 已核无结构差异，单独放宽
+    // （Ego 捕获 vs parity chromium），blend 已核无结构差异 → 0.84 override
     threshold: 0.84,
   },
   {
@@ -408,6 +408,8 @@ export const matrix = [
     threshold: 0,
   },
   {
+    // r8 §1 prose calls 69 the expanded state; the 69 bitmap itself shows
+    // the collapsed surface (全部展开 button, no hunks) — bitmap wins (04 A1)
     id: 'plan-diff-v1v3-light',
     route: '/app/todo/r8-15',
     scenario: '69',

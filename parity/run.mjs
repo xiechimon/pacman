@@ -103,6 +103,12 @@ async function captureEntry(entry, browser) {
     );
   }
 
+  // Chromium can hand back a stale composite right after the first paint
+  // storm (torn captures showed a correct DOM over fallback pixels); a
+  // discard shot plus a beat forces a fresh frame for the kept one
+  await page.screenshot();
+  await page.waitForTimeout(120);
+
   const shot = resolve(OUT_DIR, `${entry.id}.png`);
   await page.screenshot({ path: shot });
   await context.close();

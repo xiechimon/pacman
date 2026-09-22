@@ -240,14 +240,19 @@ export interface ChangesContent {
  *  (r8 63/70): version word + relative age, newest first. */
 export interface PlanVersion {
   v: string;
-  rel: string;
+  /** Version landing instant; the dropdown label is `relativeTime(at,
+   *  now)` like every other relative label in the fixture contract. */
+  at: number;
 }
 
 /** One row of the 运行历史 dialog (r8 57/77). */
 export interface RunHistoryRow {
   n: number;
   current: boolean;
-  /** Sub-row lead: `6 小时前` / `刚刚`; absent = sub-row starts at tokens. */
+  /** Sub-row lead (`6 小时前` / `刚刚`). Baked, not computed: r8 57 shows
+   *  `6 小时前` beside the `昨天 17:38` run stamp of the same capture —
+   *  the history sub-row buckets time-only while stamps bucket by
+   *  calendar day, so rel-time.ts cannot serve both. */
   rel?: string;
   tokens?: string;
   /** Trailing errorMessage of the sub-row (`Machine offline`). */
@@ -313,6 +318,8 @@ export interface DetailContent {
   dialog?: 'rerun' | 'reuse' | 'history';
   /** Rows of the 运行历史 dialog; absent = single current row. */
   runHistory?: RunHistoryRow[];
+  /** Agent row of the rerun dialog (r8 56/74): the previous run's agent. */
+  rerunAgent?: { name: string; model: string };
   /** Interactive reject-loop script (issue #75 AC3). */
   revision?: RevisionStep;
 }

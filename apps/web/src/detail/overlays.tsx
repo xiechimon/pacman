@@ -47,7 +47,16 @@ function PanelHead({
 /** 开始任务 dialog in its rerun form (r8 56/74): the agent row carries the
  *  previous run's agent; `reuse` adds the indigo third button and demotes
  *  立即执行 to secondary. */
-export function RerunDialog({ reuse, onReuse }: { reuse: boolean; onReuse?: () => void }) {
+export function RerunDialog({
+  reuse,
+  agent,
+  onReuse,
+}: {
+  reuse: boolean;
+  /** Previous run's agent (fixture data, r8 56/74 agent row). */
+  agent: { name: string; model: string };
+  onReuse?: () => void;
+}) {
   return (
     <Overlay>
       <PanelHead title="开始任务" />
@@ -58,8 +67,8 @@ export function RerunDialog({ reuse, onReuse }: { reuse: boolean; onReuse?: () =
             <img src="/avatar-robot-1.svg" alt="" />
           </span>
           <span className="rerun-agent-text">
-            <span className="rerun-agent-name">r3-builder</span>
-            <span className="rerun-agent-model">claude-sonnet-5</span>
+            <span className="rerun-agent-name">{agent.name}</span>
+            <span className="rerun-agent-model">{agent.model}</span>
           </span>
           <ChevronRight width={14} height={14} />
         </button>
@@ -92,17 +101,25 @@ export function RerunDialog({ reuse, onReuse }: { reuse: boolean; onReuse?: () =
 
 /** 复用方案 sub-panel (r8 75): independent dialog face, back arrow returns
  *  to the rerun dialog. */
-export function ReusePanel({ onBack }: { onBack?: () => void }) {
+export function ReusePanel({
+  onBack,
+  onView,
+  onDirect,
+}: {
+  onBack?: () => void;
+  onView?: () => void;
+  onDirect?: () => void;
+}) {
   return (
     <Overlay>
       <PanelHead title="复用方案" back onBack={onBack} />
       <div className="overlay-body reuse-body">
         <div className="reuse-prompt">选择接下来如何使用这个方案</div>
         <div className="overlay-actions">
-          <button type="button" className="overlay-btn">
+          <button type="button" className="overlay-btn" onClick={onView}>
             查看方案
           </button>
-          <button type="button" className="overlay-btn overlay-btn--primary">
+          <button type="button" className="overlay-btn overlay-btn--primary" onClick={onDirect}>
             直接执行
           </button>
         </div>

@@ -11,6 +11,7 @@
 // submenu (r8 64: 上一版本 alone) and the plan-version diff surface
 // (r8 65–72: range chip `v1 → v2`, `+A −B` stats, del/add/marker rows).
 
+import { relativeTime } from '../board/rel-time.js';
 import type {
   ChangesContent,
   DiffFile,
@@ -35,6 +36,8 @@ interface DocPaneProps {
   mode: 'plan' | 'changes' | 'diff';
   doc: DocBlock[] | undefined;
   changes: ChangesContent | undefined;
+  /** Fixture instant the relative version ages are measured against. */
+  now: number;
   /** Version dropdown rows, newest first (r8 63/70). */
   planVersions?: PlanVersion[];
   /** Open menu on the version chip / range chip (r8 63/64). */
@@ -98,13 +101,14 @@ function DiffFileBlock({ file, expanded }: { file: DiffFile; expanded: boolean }
   );
 }
 
-/** The floating version menu under the version chip / range chip: the
- *  version list (current row bold, restore glyph right), then
- *  与其他版本对比… (right label = the open diff's `from`, r8 70) and —
- *  only while a diff is open — 回到与 base 对比. */
+/** The floating menu under the version chip / range chip: the version
+ *  list (current row bold, restore glyph right, ages computed from the
+ *  fixture instant), then 与其他版本对比… (right label = the open diff's
+ *  `from`, r8 70) and — only while a diff is open — 回到与 base 对比. */
 function VersionMenu({
   versions,
   menu,
+  now,
   diffOpen,
   diffFrom,
   onMenu,
@@ -113,6 +117,7 @@ function VersionMenu({
 }: {
   versions: PlanVersion[];
   menu: 'versions' | 'compare';
+  now: number;
   diffOpen: boolean;
   diffFrom?: string;
   onMenu: (menu: 'versions' | 'compare' | undefined) => void;
@@ -138,7 +143,7 @@ function VersionMenu({
           onClick={() => onMenu(undefined)}
         >
           <span>
-            {row.v} · {row.rel}
+            {row.v} · {relativeTime(row.at, now)}
           </span>
           <Restore width={13} height={13} />
         </button>
@@ -156,10 +161,64 @@ function VersionMenu({
   );
 }
 
+/** Version chip + its menu anchor, shared by the plan-mode select and
+ *  the diff-mode range chip (r8 63/70 anchor the panel to the chip's
+ *  right edge). */
+function VersionControl({
+  range,
+  label,
+  planVersions,
+  versionMenu,
+  now,
+  onVersionMenu,
+  onCompare,
+  onBase,
+}: {
+  /** Range chip (`v1 → v2`) when a diff is open; plain select otherwise. */
+  range?: { from: string; to: string };
+  label?: string;
+  planVersions?: PlanVersion[];
+  versionMenu?: 'versions' | 'compare';
+  now: number;
+  onVersionMenu?: (menu: 'versions' | 'compare' | undefined) => void;
+  onCompare?: () => void;
+  onBase?: () => void;
+}) {
+  const toggle = () => onVersionMenu?.(versionMenu === 'versions' ? undefined : 'versions');
+  return (
+    <span className="doc-range-wrap">
+      {range != null ? (
+        <button type="button" className="doc-range-chip" onClick={toggle}>
+          {range.from} → {range.to}
+          <ChevronDown width={12} height={12} />
+        </button>
+      ) : (
+        <button type="button" className="doc-pane-select" onClick={toggle}>
+          {label}
+          <ChevronDown width={12} height={12} />
+        </button>
+      )}
+      {versionMenu != null && onVersionMenu != null && planVersions != null && (
+        <VersionMenu
+          versions={planVersions}
+          menu={versionMenu}
+          now={now}
+          diffOpen={range != null}
+          diffFrom={range?.from}
+          onMenu={onVersionMenu}
+          onCompare={() => onCompare?.()}
+          onBase={() => onBase?.()}
+        />
+      )}
+    </span>
+  );
+}
+
 export function DocPane({
   mode,
   doc,
   changes,
+  now,
   planVersions,
   versionMenu,
   onVersionMenu,
@@ -187,52 +246,25 @@ export function DocPane({
                 <ChevronDown width={12} height={12} />
               </button>
               {mode === 'diff' && planDiff != null ? (
-                <span className="doc-range-wrap">
-                  <button
-                    type="button"
-                    className="doc-range-chip"
-                    onClick={() =>
-                      onVersionMenu?.(versionMenu === 'versions' ? undefined : 'versions')
-                    }
-                  >
-                    {planDiff.from} → {planDiff.to}
-                    <ChevronDown width={12} height={12} />
-                  </button>
-                  {versionMenu != null && onVersionMenu != null && planVersions != null && (
-                    <VersionMenu
-                      versions={planVersions}
-                      menu={versionMenu}
-                      diffOpen
-                      diffFrom={planDiff.from}
-                      onMenu={onVersionMenu}
-                      onCompare={() => onCompare?.()}
-                      onBase={() => onBase?.()}
-                    />
-                  )}
-                </span>
+                <VersionControl
+                  range={{ from: planDiff.from, to: planDiff.to }}
+                  planVersions={planVersions}
+                  versionMenu={versionMenu}
+                  now={now}
+                  onVersionMenu={onVersionMenu}
+                  onCompare={onCompare}
+                  onBase={onBase}
+                />
               ) : (
-                <span className="doc-range-wrap">
-                  <button
-                    type="button"
-                    className="doc-pane-select"
-                    onClick={() =>
-                      onVersionMenu?.(versionMenu === 'versions' ? undefined : 'versions')
-                    }
-                  >
-                    {planVersions?.[0]?.v ?? 'v1'}
-                    <ChevronDown width={12} height={12} />
-                  </button>
-                  {versionMenu != null && onVersionMenu != null && planVersions != null && (
-                    <VersionMenu
-                      versions={planVersions}
-                      menu={versionMenu}
-                      diffOpen={false}
-                      onMenu={onVersionMenu}
-                      onCompare={() => onCompare?.()}
-                      onBase={() => onBase?.()}
-                    />
-                  )}
-                </span>
+                <VersionControl
+                  label={planVersions?.[0]?.v ?? 'v1'}
+                  planVersions={planVersions}
+                  versionMenu={versionMenu}
+                  now={now}
+                  onVersionMenu={onVersionMenu}
+                  onCompare={onCompare}
+                  onBase={onBase}
+                />
               )}
               <span className="doc-changes-stat">
                 · {fileCount} 个文件改动 <span className="doc-changes-add">+{added}</span>
@@ -260,26 +292,15 @@ export function DocPane({
             方案
             <ChevronDown width={12} height={12} />
           </button>
-          <span className="doc-range-wrap">
-            <button
-              type="button"
-              className="doc-pane-select"
-              onClick={() => onVersionMenu?.(versionMenu === 'versions' ? undefined : 'versions')}
-            >
-              {planVersions?.[0]?.v ?? 'v1'}
-              <ChevronDown width={12} height={12} />
-            </button>
-            {versionMenu != null && onVersionMenu != null && planVersions != null && (
-              <VersionMenu
-                versions={planVersions}
-                menu={versionMenu}
-                diffOpen={false}
-                onMenu={onVersionMenu}
-                onCompare={() => onCompare?.()}
-                onBase={() => onBase?.()}
-              />
-            )}
-          </span>
+          <VersionControl
+            label={planVersions?.[0]?.v ?? 'v1'}
+            planVersions={planVersions}
+            versionMenu={versionMenu}
+            now={now}
+            onVersionMenu={onVersionMenu}
+            onCompare={onCompare}
+            onBase={onBase}
+          />
         </header>
       )}
       <div className="doc-pane-body">
