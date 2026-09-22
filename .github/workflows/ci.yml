@@ -30,6 +30,9 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      - name: Test (vitest, schema snapshots)
+        run: pnpm test
+
       - name: Lint (biome ci)
         run: pnpm lint
 

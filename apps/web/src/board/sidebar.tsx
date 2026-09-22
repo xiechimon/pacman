@@ -37,6 +37,12 @@ import {
 } from '../icons/index.js';
 import './sidebar.css';
 
+/** Which nav row carries the selected pill. Board routes default to 看板;
+ *  the #71 routes move it (r7 11: 定时 selected; r2 07e/24b/24c: the project
+ *  row). 'none' = no pill (/app/project/new, r2 07: the session's project
+ *  list does not contain the page being created). */
+export type SidebarSelected = 'board' | 'schedules' | 'project' | 'none';
+
 interface BoardSidebarProps {
   collapsed?: boolean;
   onToggle?: () => void;
@@ -46,6 +52,7 @@ interface BoardSidebarProps {
   onSearch?: () => void;
   /** Render the 用量 nav row (present from the 05b capture day on). */
   usageNav?: boolean;
+  selected?: SidebarSelected;
 }
 
 /** Leaf nav rows shared by both sidebar states — each renders full in the
@@ -67,6 +74,10 @@ const RESOURCE_ROWS: {
 const USAGE_ROW = { label: '用量', href: '/app/usage', Icon: BarChart3 };
 
 const PROJECT_HREF = `/app/project/${PROJECT_ID}`;
+
+/** Selected-pill class pair for a nav row (expanded + rail variants). */
+const rowClass = (base: string, selected: boolean) =>
+  selected ? `${base} ${base}--selected` : base;
 
 function GroupHeader({ label }: { label: string }) {
   return (
@@ -93,6 +104,7 @@ export function BoardSidebar({
   attention = 0,
   onSearch,
   usageNav = false,
+  selected = 'board',
 }: BoardSidebarProps) {
   const resourceRows = usageNav
     ? [...RESOURCE_ROWS.slice(0, 4), USAGE_ROW, ...RESOURCE_ROWS.slice(4)]
@@ -108,18 +120,28 @@ export function BoardSidebar({
             <Search />
           </button>
           <a
-            className="rail-row rail-row--selected"
+            className={rowClass('rail-row', selected === 'board')}
             href="/app"
-            aria-current="page"
+            aria-current={selected === 'board' ? 'page' : undefined}
             aria-label="看板"
           >
             <Kanban />
           </a>
-          <a className="rail-row" href="/app/schedules" aria-label="定时">
+          <a
+            className={rowClass('rail-row', selected === 'schedules')}
+            href="/app/schedules"
+            aria-current={selected === 'schedules' ? 'page' : undefined}
+            aria-label="定时"
+          >
             <Clock />
           </a>
           <RailGroupChevron label="项目" />
-          <a className="rail-row" href={PROJECT_HREF} aria-label={PROJECT_NAME}>
+          <a
+            className={rowClass('rail-row', selected === 'project')}
+            href={PROJECT_HREF}
+            aria-current={selected === 'project' ? 'page' : undefined}
+            aria-label={PROJECT_NAME}
+          >
             <span className="project-avatar">{PROJECT_INITIAL}</span>
           </a>
           <RailGroupChevron label="资源" />
@@ -165,14 +187,22 @@ export function BoardSidebar({
           <span className="sidebar-row-label">搜索</span>
           <span className="sidebar-kbd">⌘K</span>
         </button>
-        <a className="sidebar-row sidebar-row--selected" href="/app" aria-current="page">
+        <a
+          className={rowClass('sidebar-row', selected === 'board')}
+          href="/app"
+          aria-current={selected === 'board' ? 'page' : undefined}
+        >
           <span className="sidebar-row-icon">
             <Kanban />
           </span>
           <span className="sidebar-row-label">看板</span>
           {attention > 0 && <span className="sidebar-badge">{attention}</span>}
         </a>
-        <a className="sidebar-row" href="/app/schedules">
+        <a
+          className={selected === 'schedules' ? 'sidebar-row sidebar-row--selected' : 'sidebar-row'}
+          href="/app/schedules"
+          aria-current={selected === 'schedules' ? 'page' : undefined}
+        >
           <span className="sidebar-row-icon">
             <Clock />
           </span>
@@ -186,7 +216,11 @@ export function BoardSidebar({
           </span>
           <span className="sidebar-subrow-label">新建项目</span>
         </a>
-        <a className="sidebar-subrow" href={PROJECT_HREF}>
+        <a
+          className={rowClass('sidebar-subrow', selected === 'project')}
+          href={PROJECT_HREF}
+          aria-current={selected === 'project' ? 'page' : undefined}
+        >
           <span className="project-avatar">{PROJECT_INITIAL}</span>
           <span className="sidebar-subrow-label">{PROJECT_NAME}</span>
         </a>
