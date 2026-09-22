@@ -6,8 +6,8 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { PROJECT_INITIAL } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
-import { ChevronDown, ChiefFab, SquarePen } from '../icons/index.js';
-import { PageShell } from './shell.js';
+import { ChevronDown, SquarePen } from '../icons/index.js';
+import { PageShell, TabGroup } from './shell.js';
 import './pages.css';
 
 const TABS = [
@@ -26,18 +26,7 @@ export function ProjectSettingsPage() {
       <div className="page-col page-col--settings prj-set-body">
         {/* r2 24c: the tab group sits in the content column, not the topbar */}
         <div className="prj-set-tabs">
-          <div className="page-tabs-group">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={`page-tab${tab === t.id ? ' page-tab--active' : ''}`}
-                onClick={() => setTab(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          <TabGroup tabs={TABS} tab={tab} onTab={setTab} />
         </div>
         <div className="prj-set-card">
           <div className="prj-set-head">
@@ -49,7 +38,7 @@ export function ProjectSettingsPage() {
           <div className="prj-set-row">
             <span className="prj-set-label">名称</span>
             <span className="prj-set-value">
-              {project?.repoName ?? ''}
+              {project?.name ?? ''}
               <SquarePen width={14} height={14} />
             </span>
           </div>
@@ -86,9 +75,6 @@ export function ProjectSettingsPage() {
           </button>
         </div>
       </div>
-      <button type="button" className="page-fab" aria-label="总管">
-        <ChiefFab />
-      </button>
     </PageShell>
   );
 }

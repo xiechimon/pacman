@@ -8,7 +8,6 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import {
   ChevronDown,
   ChevronRight,
-  ChiefFab,
   Clock,
   EllipsisVertical,
   ExternalLink,
@@ -21,17 +20,33 @@ import { PHASE_UI } from '../phase.js';
 import { PageShell } from './shell.js';
 import './pages.css';
 
+/** Capture-timezone offset (+08:00) — same convention as board/rel-time.ts:
+ *  wall-clock labels are formatted in the capture tz so parity output never
+ *  drifts with the runner locale (CI runs UTC). */
+const TZ_OFFSET = 8 * 3_600_000;
 const pad = (n: number) => String(n).padStart(2, '0');
-const hm = (ts: number) => {
-  const d = new Date(ts);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const hourMinute = (ts: number) => {
+  const d = new Date(ts + TZ_OFFSET);
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 };
-const md = (ts: number) => {
-  const d = new Date(ts);
-  return `${d.getMonth() + 1}月${d.getDate()}日`;
+const monthDay = (ts: number) => {
+  const d = new Date(ts + TZ_OFFSET);
+  return `${d.getUTCMonth() + 1}月${d.getUTCDate()}日`;
 };
 /** r3 93 line 3 day word: same calendar day as the capture = 今天. */
-const dayWord = (ts: number, now: number) => (md(ts) === md(now) ? '今天' : md(ts));
+const dayWord = (ts: number, now: number) =>
+  monthDay(ts) === monthDay(now) ? '今天' : monthDay(ts);
+
+/** 频率 tab words (02 §9.2 canon order). */
+const FREQ_LABEL: Record<ScheduleRecord['kind'], string> = {
+  hourly: '每小时',
+  daily: '每天',
+  weekly: '每周',
+  once: '单次',
+};
+/** 分档 canon (02 §9.2 / r3 §9): four minute steps. Hours run 00–23. */
+const MINUTE_STEPS = ['00', '15', '30', '45'];
+const HOURS = Array.from({ length: 24 }, (_, h) => pad(h));
 
 /** r3 93 line 2 per frequency; only 单次 was observed (r3 §9), the rest
  *  are [推断] from the 频率 tab words. */
@@ -52,10 +67,10 @@ function ScheduleCard({ schedule, now }: { schedule: ScheduleRecord; now: number
       <div className="sched-card-body">
         <div className="sched-card-title">{`#${schedule.todo.seqNum} ${schedule.todo.title}`}</div>
         <div className="sched-card-line">
-          {`${md(schedule.at)} ${hm(schedule.at)} ${RUN_WORD[schedule.kind]}`}
+          {`${monthDay(schedule.at)} ${hourMinute(schedule.at)} ${RUN_WORD[schedule.kind]}`}
         </div>
         <div className="sched-card-line sched-card-line--dim">
-          {`下次 ${dayWord(schedule.nextRunAt, now)} ${hm(schedule.nextRunAt)}`}
+          {`下次 ${dayWord(schedule.nextRunAt, now)} ${hourMinute(schedule.nextRunAt)}`}
           <span className="sched-card-sep">·</span>
           <Server width={12} height={12} />
           {schedule.machineId == null ? '自动' : schedule.machineId}
@@ -113,7 +128,7 @@ function ScheduleForm({
                 type="button"
                 className={`sched-form-freq-tab${k === kind ? ' sched-form-freq-tab--active' : ''}`}
               >
-                {{ hourly: '每小时', daily: '每天', weekly: '每周', once: '单次' }[k]}
+                {FREQ_LABEL[k]}
               </button>
             ))}
           </div>
@@ -121,26 +136,34 @@ function ScheduleForm({
             <>
               <div className="sched-form-field">日期</div>
               <div className="sched-form-selects">
-                <button type="button" className="sched-form-select">
-                  今天
+                <span className="sched-form-select">
+                  <select className="sched-form-date" aria-label="日期" defaultValue="今天">
+                    {/* r3 92b observes 今天; further entries unrecorded */}
+                    <option>今天</option>
+                  </select>
                   <ChevronDown width={12} height={12} />
-                </button>
+                </span>
               </div>
             </>
           )}
-          {/* 时间 selects render closed (r3 92/92b pixel surface); the open
-              option sets are canon per 02 §9.2 / r3 §9 — 时 00–23, 分 four
-              steps 00/15/30/45 — and belong to the overlay ticket. */}
           <div className="sched-form-field">时间</div>
           <div className="sched-form-selects sched-form-selects--time">
-            <button type="button" className="sched-form-select">
-              09
+            <span className="sched-form-select">
+              <select aria-label="时" defaultValue="09">
+                {HOURS.map((h) => (
+                  <option key={h}>{h}</option>
+                ))}
+              </select>
               <ChevronDown width={12} height={12} />
-            </button>
-            <button type="button" className="sched-form-select">
-              00
+            </span>
+            <span className="sched-form-select">
+              <select aria-label="分" defaultValue="00">
+                {MINUTE_STEPS.map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
+              </select>
               <ChevronDown width={12} height={12} />
-            </button>
+            </span>
           </div>
           <div className="sched-form-tz">按你的本地时区运行（Asia/Shanghai）</div>
           <div className="sched-form-row">
@@ -212,9 +235,6 @@ export function SchedulesPage() {
       {fixture.scheduleForm != null && (
         <ScheduleForm kind={fixture.scheduleForm} fixture={fixture} />
       )}
-      <button type="button" className="page-fab" aria-label="总管">
-        <ChiefFab />
-      </button>
     </PageShell>
   );
 }

@@ -10,7 +10,6 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import {
   ArrowUpDown,
   ChevronDown,
-  ChiefFab,
   FileTab,
   Funnel,
   Grid2x2,
@@ -136,7 +135,7 @@ export function ProjectPage() {
     <PageShell
       fixture={fixture}
       selected="project"
-      leftTitle={project?.repoName ?? ''}
+      leftTitle={project?.name ?? ''}
       tabs={[
         { id: 'tasks', label: '任务' },
         { id: 'files', label: '文件' },
@@ -152,9 +151,6 @@ export function ProjectPage() {
       ) : (
         <TasksPane todos={todos} now={fixture.now} />
       )}
-      <button type="button" className="page-fab" aria-label="总管">
-        <ChiefFab />
-      </button>
     </PageShell>
   );
 }

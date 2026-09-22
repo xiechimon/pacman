@@ -3,7 +3,7 @@
 // 创建项目 primary (disabled until the form is filled, r2 07 muted indigo).
 import { useSearchParams } from 'react-router';
 import { resolveScenario } from '../fixtures/scenario.js';
-import { ChevronRight, ChiefFab, ImageFrame } from '../icons/index.js';
+import { ChevronRight, ImageFrame } from '../icons/index.js';
 import { PageShell } from './shell.js';
 import './pages.css';
 
@@ -32,9 +32,6 @@ export function ProjectNewPage() {
           创建项目
         </button>
       </div>
-      <button type="button" className="page-fab" aria-label="总管">
-        <ChiefFab />
-      </button>
     </PageShell>
   );
 }

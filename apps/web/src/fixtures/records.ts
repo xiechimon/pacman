@@ -93,6 +93,9 @@ export interface ScheduleRecord {
 /** Repo surface of a project route (r2 07e/24 file tree + 24c settings
  *  rows): branch chip, file rows and the settings card values. */
 export interface ProjectContent {
+  /** Display name (r2 24c 名称 row); the repo slug is a separate attribute
+   *  (CONTEXT.md 租户层级: repo belongs to the project, not the reverse). */
+  name: string;
   branch: string;
   files: string[];
   repoName: string;

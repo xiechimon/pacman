@@ -151,6 +151,7 @@ const darkFreshProbe: TodoRecord = {
 /** Repo surface of the fixture project (r2 07e/24/24c read off the
  *  r3-lifecycle hosted repo): main branch, single README.md row. */
 export const projectContent: ProjectContent = {
+  name: PROJECT_NAME,
   branch: 'main',
   files: ['README.md'],
   repoName: PROJECT_NAME,
@@ -516,6 +517,16 @@ const scheduleOnce: ScheduleRecord = {
     projectName: PROJECT_NAME,
     ownerId: 'u-xmon-dai',
   },
+};
+
+/** r7 11: the schedules empty state. Dedicated set (not a boardDefault
+ *  alias) so edits to the board fixture can never drift the only gated
+ *  baseline row of this batch (scenario contract, scenario.ts header). */
+export const schedulesEmpty: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  schedules: [],
+  project: projectContent,
 };
 
 /** r3 93: list with the single once rule. Capture instant ~13:50 keeps

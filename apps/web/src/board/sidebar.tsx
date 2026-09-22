@@ -66,6 +66,10 @@ const RESOURCE_ROWS: {
 
 const PROJECT_HREF = `/app/project/${PROJECT_ID}`;
 
+/** Selected-pill class pair for a nav row (expanded + rail variants). */
+const rowClass = (base: string, selected: boolean) =>
+  selected ? `${base} ${base}--selected` : base;
+
 function GroupHeader({ label }: { label: string }) {
   return (
     <button type="button" className="sidebar-group" aria-label={`收起${label}`}>
@@ -102,7 +106,7 @@ export function BoardSidebar({
             <Search />
           </a>
           <a
-            className={selected === 'board' ? 'rail-row rail-row--selected' : 'rail-row'}
+            className={rowClass('rail-row', selected === 'board')}
             href="/app"
             aria-current={selected === 'board' ? 'page' : undefined}
             aria-label="看板"
@@ -110,7 +114,7 @@ export function BoardSidebar({
             <Kanban />
           </a>
           <a
-            className={selected === 'schedules' ? 'rail-row rail-row--selected' : 'rail-row'}
+            className={rowClass('rail-row', selected === 'schedules')}
             href="/app/schedules"
             aria-current={selected === 'schedules' ? 'page' : undefined}
             aria-label="定时"
@@ -119,7 +123,7 @@ export function BoardSidebar({
           </a>
           <RailGroupChevron label="项目" />
           <a
-            className={selected === 'project' ? 'rail-row rail-row--selected' : 'rail-row'}
+            className={rowClass('rail-row', selected === 'project')}
             href={PROJECT_HREF}
             aria-current={selected === 'project' ? 'page' : undefined}
             aria-label={PROJECT_NAME}
@@ -170,7 +174,7 @@ export function BoardSidebar({
           <span className="sidebar-kbd">⌘K</span>
         </a>
         <a
-          className={selected === 'board' ? 'sidebar-row sidebar-row--selected' : 'sidebar-row'}
+          className={rowClass('sidebar-row', selected === 'board')}
           href="/app"
           aria-current={selected === 'board' ? 'page' : undefined}
         >
@@ -199,9 +203,7 @@ export function BoardSidebar({
           <span className="sidebar-subrow-label">新建项目</span>
         </a>
         <a
-          className={
-            selected === 'project' ? 'sidebar-subrow sidebar-subrow--selected' : 'sidebar-subrow'
-          }
+          className={rowClass('sidebar-subrow', selected === 'project')}
           href={PROJECT_HREF}
           aria-current={selected === 'project' ? 'page' : undefined}
         >
