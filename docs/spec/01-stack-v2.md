@@ -240,17 +240,17 @@ migration 纪律：drizzle-kit 生成、进 repo、CI 校验 drift；**不发明
 | 项 | 去向 |
 |---|---|
 | 图标字形提取（登录态抓 workspace bundle/SVG）、字体 woff2 与位图图标下载、emoji 常用网格子集、PWA 品牌槽替换 | **#44 素材清单增补** |
-| 像素 diff 验收工具与逐屏 UI 规格切分 | 地图雾，待 UI 规格票 graduate（本册只锁对拍义务，§7.5） |
-| pi 0.86.0 升级窗口评估（读 Breaking 段） | 首个 D6 升级窗口；#45 排期 |
-| TS 7.0.2 / react-router 8.4.0 / Tailwind 4.x 升级票 | 复刻验收后各自成票（承旧「升级票」纪律）；#45 汇编节奏 |
+| 像素 diff 验收工具与逐屏 UI 规格切分 | 已落地：#53 parity harness 建成，验收规则正典 = 04 册 §2（本册 §7.5 对拍义务已兑现） |
+| pi 0.86.0 升级窗口评估（读 Breaking 段） | 首个 D6 升级窗口；排期 = 03 册 §3（M3 期间） |
+| TS 7.0.2 / react-router 8.4.0 / Tailwind 4.x 升级票 | 复刻验收后各自成票（承旧「升级票」纪律）；节奏 = 03 册 §3（M6 后） |
 | turbo 引入 | CI 时长成痛点时触发（承旧） |
 | transcript 虚拟滚动（@tanstack/react-virtual 候选） | 实现期按实测定，不预锁 |
-| `preview-token`/`tds-tunnel` | 维持地图雾（02 §9.3 在册不设计） |
+| `preview-token`/`tds-tunnel` | 02 §9.3 在册不设计；触发条件 = 04 册附录 B |
 | daemon 防睡 linux 路径（`systemd-inhibit` [推断]） | 实现期按平台实测 |
 
 ## 10. 对下游票的影响
 
-- **#45 ROADMAP**：§7 验收要点汇入；§9 升级窗口/升级票节奏汇编；构建顺序可按 §3 包切分排（shared → server → daemon → web 或并行段）。
+- **#45 ROADMAP**：已完成（2026-09-22）——§7 验收要点汇入 04 册；§9 升级窗口/升级票节奏汇编入 03 册 §3；构建顺序按 §3 包切分落 03 册 §2（两线并行，后端段 shared → server → daemon → 编排）。
 - **#44 发布与素材**：§9 素材清单增补四项；02 §5.8 + 本册品牌位（localStorage 前缀、env 前缀、数据目录、包名）一次性替换面完整。
 - **#42 原型双屏**：前端栈即本册 §4.1（React 19 + Tailwind 3.4.19 + Radix + TQ），原型可直接按 pin 表起。
 - **#46 Chief 实验**：Chief = 挂团队工具的 pi 会话（02 §4.3），跑在 `AgentBackend` 缝上，实验产物回填不改本册。
