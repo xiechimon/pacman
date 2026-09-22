@@ -9,7 +9,9 @@
 
 import { useLayoutEffect, useRef } from 'react';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
-import { ChiefFab, HelpCircle, Plus, UnfoldVertical } from '../icons/index.js';
+// #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
+// drawer/settings overlays sit beside it in one place.
+import { HelpCircle, Plus, UnfoldVertical } from '../icons/index.js';
 import { COLUMNS } from './columns.js';
 import { TodoCard } from './todo-card.js';
 import './board.css';
@@ -101,10 +103,6 @@ export function BoardSurface({ fixture, onAction, onBranch }: BoardProps) {
           );
         })}
       </div>
-
-      <button type="button" className="chief-fab" aria-label="总管">
-        <ChiefFab />
-      </button>
     </div>
   );
 }

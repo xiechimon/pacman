@@ -89,6 +89,66 @@ const EXTRA_ICONS = [
     contexts: ['project new avatar tile (traced from r2 07)'],
     trace: 'a 1:1 trace of the r2 07 bitmap (project routes predate the r7 dump)',
   },
+  // Chief surfaces (issue #72): the r5 icon dump never scoped the drawer or
+  // the 总管设置 view (r5/icons.json carries 12 chief-adjacent entries, none
+  // of these glyphs), so all seven are 1:1 traces of the r5 100/101/111
+  // bitmaps — same provenance class as the traced trio above.
+  {
+    name: 'ChiefHash',
+    size: [13, 13],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="9" y2="9"></line><line x1="4" x2="20" y1="15" y2="15"></line><line x1="10" x2="8" y1="3" y2="21"></line><line x1="16" x2="14" y1="3" y2="21"></line></svg>',
+    contexts: ['chief drawer header thread glyph (traced from r5 100)'],
+    trace: 'a 1:1 trace of the r5 100 bitmap header glyph',
+  },
+  {
+    name: 'ChiefGear',
+    size: [18, 18],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
+    contexts: ['aria:总管设置 (traced from r5 100)'],
+    trace: 'a 1:1 trace of the r5 100 bitmap gear (lucide settings shape)',
+  },
+  {
+    name: 'ChiefExpand',
+    size: [16, 16],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 4 4 4 4 8"></polyline><line x1="4" x2="11" y1="4" y2="11"></line><polyline points="16 20 20 20 20 16"></polyline><line x1="20" x2="13" y1="20" y2="13"></line></svg>',
+    contexts: ['aria:全屏 (traced from r5 100)'],
+    trace: 'a 1:1 trace of the r5 100 bitmap diagonal-arrows glyph',
+  },
+  {
+    name: 'ChiefFaceDashed',
+    size: [24, 24],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"></circle><circle cx="9" cy="10" r="1.7" fill="currentColor" stroke="none"></circle><circle cx="15" cy="10" r="1.7" fill="currentColor" stroke="none"></circle><line x1="9" y1="15" x2="15" y2="15"></line></svg>',
+    contexts: ['chief 设置 Agent row unbound face (traced from r5 101)'],
+    trace: 'a 1:1 trace of the r5 101 bitmap dashed-circle face',
+  },
+  {
+    name: 'ChiefUserPlus',
+    size: [16, 16],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" x2="19" y1="8" y2="14"></line><line x1="22" x2="16" y1="11" y2="11"></line></svg>',
+    contexts: ['chief example card 帮我组建 Agent 团队 (traced from r5 100)'],
+    trace: 'a 1:1 trace of the r5 100 bitmap example glyph (lucide user-plus shape)',
+  },
+  {
+    name: 'ChiefFolder',
+    size: [16, 16],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg>',
+    contexts: ['chief example card 帮我创建一个新项目 (traced from r5 100)'],
+    trace: 'a 1:1 trace of the r5 100 bitmap example glyph (lucide folder shape)',
+  },
+  {
+    name: 'ChiefUserSolid',
+    size: [24, 24],
+    svg: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="8" r="4"></circle><path d="M4 19c0-3.5 3.6-5.5 8-5.5s8 2 8 5.5v1.5H4Z"></path></svg>',
+    contexts: ['chief stream user avatar (traced from r5 114)'],
+    trace: 'a 1:1 trace of the r5 114 bitmap solid user avatar',
+  },
+  {
+    name: 'ChiefPi',
+    size: [12, 12],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 7h11"></path><path d="M5 12h5"></path><path d="M14 7v10"></path></svg>',
+    contexts: ['chief model slot glyph (traced from r5 111)'],
+    trace: 'a 1:1 trace of the r5 111 bitmap model-slot glyph',
+  },
 ];
 
 /** Attr names JSX renders in camelCase. */

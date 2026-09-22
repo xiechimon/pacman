@@ -1,8 +1,10 @@
-// Scenario mechanism (issue #52): `?scenario=<r7编号>` query parameter
-// selects a deterministic fixture set, one id per r7 capture so parity
-// matrix rows never drift in content. Route behaviour never branches on
-// the parameter — it only picks data inside the fixture layer, which is
-// the app's whole data source in this fixture-driven phase.
+// Scenario mechanism (issue #52): `?scenario=<研究截图编号>` query parameter
+// selects a deterministic fixture set, one id per research capture so parity
+// matrix rows never drift in content — r7 numbers for the board/detail
+// rows, r5 numbers for the chief rows (#72; the chief surfaces have no r7
+// shot). Route behaviour never branches on the parameter — it only picks
+// data inside the fixture layer, which is the app's whole data source in
+// this fixture-driven phase.
 // #58 gate: the parameter is dev/test-only — honoured by `vite dev`
 // (import.meta.env.DEV) and by the parity harness's `vite build --mode
 // parity`; a plain production build ignores it and always serves the
@@ -10,9 +12,15 @@
 // Unknown or absent ids fall back to the default board set.
 
 import {
+  apiKeysCreated,
   boardDarkFresh,
   boardDefault,
   boardWithProbe,
+  chiefGated,
+  chiefReady,
+  chiefSettings,
+  chiefThread,
+  chiefThreadsOpen,
   detailBuilding,
   detailConfirm,
   detailDone,
@@ -30,6 +38,7 @@ import {
   schedulesFormDaily,
   schedulesFormOnce,
   schedulesList,
+  teamGrid,
 } from './fixtures.js';
 import type { FixtureSet } from './records.js';
 
@@ -116,6 +125,26 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   'r2-24b': projectTasksEmpty,
   'prj-tasks': projectTasks,
   'r2-24c': projectFixture,
+  // secondary routes (issue #70): 12/13 are the r7 team/account captures;
+  // the api-keys/feedback ids have no r7 capture (smoke matrix rows) and
+  // pick their surface by name — the account/feedback pages render no
+  // fixture content at all, so they ride the default set
+  '12': teamGrid,
+  '13': boardDefault,
+  'api-keys': boardDefault,
+  'api-keys-created': apiKeysCreated,
+  feedback: boardDefault,
+  // chief (issue #72): ids follow the r5 capture numbers — the chief
+  // surfaces have no r7 shot (r7 §6 gap table), so r5 100–116 number these
+  // rows. Dark rows reuse the same ids with theme: 'dark' in the matrix.
+  '100': chiefGated,
+  '101': chiefSettings('agent'),
+  '102': chiefSettings('charter'),
+  '103': chiefSettings('memory'),
+  '104': chiefSettings('watches'),
+  '111': chiefReady,
+  '114': chiefThread,
+  '116': chiefThreadsOpen,
 };
 
 /** #58 gate: scenario selection exists only in dev (`vite dev`) and in the
