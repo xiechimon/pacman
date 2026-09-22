@@ -15,4 +15,6 @@ export interface AppContext {
   team: TeamRecord;
   /** team stream ping 节奏（默认 ~15s，02 §1.2）。 */
   pingIntervalMs: number;
+  /** 托管 bare repo 存储根（数据根子目录，01 §4.2；`<reposDir>/<teamId>/<repoName>.git`）。 */
+  reposDir: string;
 }

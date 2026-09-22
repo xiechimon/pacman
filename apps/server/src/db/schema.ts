@@ -37,7 +37,7 @@ export const team = sqliteTable('team', {
   avatarStyle: text('avatarStyle'),
 });
 
-// —— project（repo 双形态：托管 bare / GitHub 接入，02 §3/A4；repo 细面归 M2b）——
+// —— project（repo 双形态：托管 bare / GitHub 接入，02 §3/A4）————————————————
 export const project = sqliteTable('project', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -45,6 +45,10 @@ export const project = sqliteTable('project', {
     .notNull()
     .references(() => team.id),
   repoKind: text('repoKind').$type<'hosted' | 'github'>(),
+  /** 托管形态：bare repo 名段（远端 URL `<teamId>/<repoName>`，r3 §1.4）。 */
+  repoName: text('repoName'),
+  /** GitHub 接入形态：`owner/repo`（02 §3；字段名 [推断]）。 */
+  githubRepo: text('githubRepo'),
 });
 
 // —— todo（02 §4.1 字段表全量；tagIds/buildHistory/agent 为派生面不存列）——————
@@ -163,7 +167,7 @@ export const documentDiff = sqliteTable('document_diff', {
   createdAt: epochMs('createdAt').notNull(),
 });
 
-// —— schedule（02 §6.2/§9.2；cron 闭环归 M2b）————————————————————————————
+// —— schedule（02 §6.2/§9.2；cron 闭环 = services/schedules + scheduler）——————
 export const schedule = sqliteTable('schedule', {
   id: text('id').primaryKey(),
   teamId: text('teamId')

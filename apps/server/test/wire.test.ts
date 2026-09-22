@@ -29,6 +29,7 @@ const INFERRED_ROUTES = [
   'POST /api/projects', // 项目创建流（02 §3/r2 §9 UI 证据，wire 未采）
   'PATCH /api/todos/{id}', // update_todo 面（r5 §3.1 词表证据；02 §6.1 PATCH 未抓）
   'DELETE /api/todos/{id}', // DELETE_FACE 'todos' 同名 DELETE（02 §6.1 [推断] 规则）
+  'DELETE /api/schedules/{id}', // DELETE_FACE 'schedules'（unschedule_todo r5 §3.1；once 出队 r3 §9）
   // —— 密钥三面（页/弹窗实测存在 r2 §6.3/§6.5/§6.7、r3 §2/§6，wire 未采；
   // 路径 = REST 同名 [推断]，02 §6.1 规则族）——
   'DELETE /api/teams/{id}/providers/{pid}', // DELETE_FACE 'teams/{id}/providers'（「可以替换或删除」r2 §6.5）
@@ -40,7 +41,8 @@ const INFERRED_ROUTES = [
   'POST /api/teams/{id}/api-keys', // 创建 → 一次性明文（r3 §6 展示规则）
 ];
 
-/** M2a 核心面（todo/build CRUD + team stream + seed 保形）。 */
+/** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；
+ * M2b：repo 文件浏览面 02 §3 + 定时面 02 §9.2）。 */
 const CORE_ROUTES = [
   'GET /api/auth/session',
   'GET /api/user/me',
@@ -52,15 +54,20 @@ const CORE_ROUTES = [
   'GET /api/projects/{id}/todos',
   'GET /api/projects/{id}/builds',
   'GET /api/projects/{id}/tags',
+  'GET /api/projects/{id}/branches',
+  'GET /api/projects/{id}/tree',
+  'GET /api/projects/{id}/file',
   'GET /api/todos',
   'GET /api/todos/{id}',
   'GET /api/builds/{id}',
   'GET /api/builds/{id}/steps',
   'GET /api/conversations/{id}/messages',
+  'GET /api/schedules',
   'POST /api/projects/{id}/todos',
   'POST /api/projects/{id}/builds',
   'POST /api/builds/{id}/merge',
   'POST /api/builds/{id}/steps',
+  'POST /api/schedules',
 ];
 
 /** M2c 核心面（密钥三面 + 搜索，#78；通知走既有 team stream 通道无新路由）。 */
@@ -411,15 +418,21 @@ describe('build 面 + phase 九值流转（02 §4.2 主时序 server 侧脊柱�
     // 合并步成 → done（🎉 时间线面归 web；phase 落位 = server 侧脊柱终点）
     completeStep(s.svc, last(steps4).id);
     expect(await phaseOf()).toBe('done');
-    // done 终态：再启动 → 409（失败仅人工重跑自 failed，done 无出边）
-    await expectErrorShape(
-      await req(s.app, 'POST', `/api/projects/${s.projectId}/builds`, {
-        todoIds: [s.todoDoc.id],
-        assignment: { plan: null, build: null },
-        withPlan: true,
-      }),
-      409,
+    // 定时复跑边（r3 §9 实测：done todo 到点全新重跑回到执行中→待验收）：
+    // done→queued 合法，新 build prevPhase=done。流转表对触发源不敏感
+    // （手动自 done 重跑未分离观测 [推断]，与 failed 重跑同口径放行；
+    // wire 补采后收紧，04 附录 A）。
+    const rerun = await req(s.app, 'POST', `/api/projects/${s.projectId}/builds`, {
+      todoIds: [s.todoDoc.id],
+      assignment: { plan: null, build: null },
+      withPlan: false,
+    });
+    expect(rerun.status).toBe(201);
+    const rerunBuild = buildRecordSchema.parse(
+      ((await rerun.json()) as { builds: unknown[] }).builds[0],
     );
+    expect(rerunBuild.prevPhase).toBe('done');
+    expect(await phaseOf()).toBe('queued');
   });
 
   test('失败重跑边：failed→queued 经 POST builds（r3 §3.7）', async () => {

@@ -1,16 +1,22 @@
-// 核心 REST 面 + SSE team stream——词表单源 = shared WEB_REST_ENDPOINTS
-// （02 §6.1 canonical；路由对拍测试 = test/wire.test.ts）。
+// M2 核心 REST 面 + SSE team stream + repo 托管双形态 git 面——词表单源 =
+// shared WEB_REST_ENDPOINTS（02 §6.1 canonical；路由对拍测试 = test/wire.test.ts）。
 // 未观测响应封套按 [推断] 投影（04 §3 不判负口径），逐处标注。
-// 覆盖面 = todo/build CRUD + team stream + 密钥三面（provider/secret/apiKey，
-// 02 §8）+ 搜索（02 §6.3）；git 托管/cron 归 M2b，machine/chief 面归 M3/M4。
+// 覆盖面 = M2a 核心 CRUD + team stream + repo 双形态（02 §3/A4：托管 bare
+// `git http-backend` + GitHub 接入记录面 + tree/file/branches 文件浏览）+
+// schedule CRUD（02 §9.2，M2b）+ 密钥三面（provider/secret/apiKey，02 §8）+
+// 搜索（02 §6.3，M2c）；machine/chief 面归 M3/M4。
 
+import { timingSafeEqual } from 'node:crypto';
+import { join } from 'node:path';
 import {
   type AgentRecord,
   apiKeyRecordSchema,
   type BuildRecord,
   buildStepActionBodySchema,
+  createScheduleBodySchema,
   createTodoBodySchema,
   phaseSchema,
+  projectRepoKindSchema,
   providerApiSchema,
   providerModelSchema,
   setSecretBodySchema,
@@ -18,14 +24,16 @@ import {
   type TeamMember,
   type TodoRecord,
 } from '@pacman/shared';
-import { eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Hono } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import type { AppContext } from './context.js';
-import { agent, build, message, notification, project, tag, todo } from './db/schema.js';
-import { conflict, notFound, parseWith } from './lib/errors.js';
+import { agent, apiKey, build, message, notification, project, tag, todo } from './db/schema.js';
+import { sha256Hex } from './lib/crypto.js';
+import { conflict, HttpError, notFound, parseWith } from './lib/errors.js';
+import { systemGitOps } from './lib/git.js';
 import { newRecordId } from './lib/ids.js';
 import { createApiKey, listApiKeys } from './services/api-keys.js';
 import {
@@ -37,6 +45,16 @@ import {
   toBuildRecord,
 } from './services/builds.js';
 import { createSerialConnection } from './services/events.js';
+import {
+  isGithubRepoRef,
+  provisionHostedRepo,
+  readBranches,
+  readFile,
+  readTree,
+  slugifyRepoName,
+  toProjectRecord,
+  uniqueRepoName,
+} from './services/git.js';
 import { PhaseTransitionError } from './services/phase.js';
 import {
   createProvider,
@@ -44,12 +62,16 @@ import {
   getProvidersEnvelope,
   updateProvider,
 } from './services/providers.js';
+import { createSchedule, deleteSchedule, listSchedules } from './services/schedules.js';
 import { search } from './services/search.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './services/secrets.js';
 import { createTodo, deleteTodo, getTodo, listTodos, updateTodo } from './services/todos.js';
 
 /** 会话 cookie 名 [设计]（01 §4.2：httpOnly cookie 自设；品牌槽归 #44）。 */
 export const SESSION_COOKIE = 'tds_session';
+
+/** git http 认证域 [设计]（Basic realm；品牌槽归 #44）。 */
+const GIT_AUTH_REALM = 'pacman-git';
 
 function requireTeam(ctx: AppContext, id: string): void {
   // team 恒 seed 一行（02 §2.2）；其余 id 一律 404。
@@ -72,11 +94,14 @@ const patchTodoBodySchema = z.object({
   orderIndex: z.number().optional(),
 });
 
-/** POST /api/projects body [推断]（项目创建流两分支 UI 按 r2 §9，wire 未采；
- * repo 形态细面归 M2b）。 */
+/** POST /api/projects body [推断]（项目创建流两分支 UI 按 r2 §9 D 组截图为靶，
+ * 02 §3；wire 未采）。repoKind 缺省 = 未绑定 repo（M2a 兼容形状）。 */
 const createProjectBodySchema = z.object({
   name: z.string(),
   teamId: z.string().optional(),
+  repoKind: projectRepoKindSchema.optional(),
+  /** GitHub 接入 `owner/repo`（repoKind=github 必填）。 */
+  githubRepo: z.string().optional(),
 });
 
 /** POST/PATCH /api/teams/{id}/providers body [推断]（r3 §2 表单实测字段投影，
@@ -125,6 +150,30 @@ function agentRecordOf(row: typeof agent.$inferSelect): AgentRecord {
 
 async function jsonBody(c: { req: { json(): Promise<unknown> } }): Promise<unknown> {
   return c.req.json().catch(() => null);
+}
+
+/** 请求源（托管 cloneUrl 的本地主机代位段，02 §5.8 gitHostDomain 槽）。 */
+function requestOrigin(c: { req: { url: string } }): string {
+  return new URL(c.req.url).origin;
+}
+
+/** git Basic auth → api_key 行 id。凭证 = key 明文（用户名位忽略，PAT 同款
+ * [设计]）；校验 = sha256 哈希比对（存哈希不存可逆值，02 §8）+ gitAccess 白名单
+ * （02 §6.2）。key 发行端点归 M2c；未命中 = undefined（401 面，02 §3 凭证纪律
+ * 「手动 fetch 无凭证失败」）。 */
+function verifyGitBasicAuth(ctx: AppContext, header: string): string | undefined {
+  const match = /^Basic\s+(.+)$/i.exec(header);
+  if (!match) return undefined;
+  const decoded = Buffer.from(match[1] ?? '', 'base64').toString('utf8');
+  const sep = decoded.indexOf(':');
+  if (sep < 0) return undefined;
+  const secret = decoded.slice(sep + 1);
+  if (secret === '') return undefined;
+  const hash = Buffer.from(sha256Hex(secret));
+  const rows = ctx.db.select().from(apiKey).where(eq(apiKey.gitAccess, true)).all();
+  return rows.find(
+    (r) => r.keyHash.length === hash.byteLength && timingSafeEqual(Buffer.from(r.keyHash), hash), // 定长比较（哈希面卫生）
+  )?.id;
 }
 
 export function registerRoutes(app: Hono, ctx: AppContext): void {
@@ -214,15 +263,9 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
 
   app.get('/api/projects', (c) => {
     const teamId = c.req.query('teamId') ?? ctx.team.id;
+    const origin = requestOrigin(c);
     const rows = ctx.db.select().from(project).where(eq(project.teamId, teamId)).all();
-    return c.json(
-      rows.map((r) => ({
-        id: r.id,
-        name: r.name,
-        teamId: r.teamId,
-        ...(r.repoKind !== null ? { repoKind: r.repoKind } : {}),
-      })),
-    );
+    return c.json(rows.map((r) => toProjectRecord(r, origin)));
   });
 
   app.get('/api/projects/:id/todos', (c) => {
@@ -248,6 +291,27 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const row = requireProject(ctx, c.req.param('id'));
     const tags = ctx.db.select().from(tag).where(eq(tag.projectId, row.id)).all();
     return c.json(tags.map((t) => ({ id: t.id, projectId: t.projectId, name: t.name })));
+  });
+
+  // —— repo 文件浏览面（02 §3：读裸库 ref 树与单文件，server 端实现，无检出
+  // 要求；服务 `Tasks | Files` 分段开关，r1 §461。响应形状 [推断]）———————————
+  app.get('/api/projects/:id/tree', async (c) => {
+    const row = requireProject(ctx, c.req.param('id'));
+    return c.json(await readTree(ctx, row.id, c.req.query('ref')));
+  });
+
+  app.get('/api/projects/:id/file', async (c) => {
+    const row = requireProject(ctx, c.req.param('id'));
+    const path = c.req.query('path');
+    if (path === undefined || path === '') {
+      throw new HttpError(400, 'invalid query path: required');
+    }
+    return c.json(await readFile(ctx, row.id, path, c.req.query('ref')));
+  });
+
+  app.get('/api/projects/:id/branches', async (c) => {
+    const row = requireProject(ctx, c.req.param('id'));
+    return c.json(await readBranches(ctx, row.id));
   });
 
   app.get('/api/todos', (c) => {
@@ -299,15 +363,46 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     });
   });
 
+  // —— 定时面（02 §9.2/r3 §9；record = shared scheduleRecordSchema）————————————
+  app.get('/api/schedules', (c) => {
+    // 查询参数名 `team`（02 §6.1 `schedules?team=` 实测原样）。
+    const teamId = c.req.query('team') ?? ctx.team.id;
+    requireTeam(ctx, teamId);
+    return c.json(listSchedules(svc, teamId));
+  });
+
   // —— POST 面 ————————————————————————————————————————————————————————————————
   app.post('/api/projects', async (c) => {
-    // [推断] REST 同名（02 §6.1 POST 面未观测；项目创建流 UI 证据 02 §3/r2 §9）。
+    // [推断] REST 同名（02 §6.1 POST 面未观测；项目创建流两分支 UI 证据 02 §3/r2 §9）。
     const body = parseWith(createProjectBodySchema, await jsonBody(c), 'body');
     const teamId = body.teamId ?? ctx.team.id;
     requireTeam(ctx, teamId);
+    if (
+      body.repoKind === 'github' &&
+      (body.githubRepo === undefined || !isGithubRepoRef(body.githubRepo))
+    ) {
+      throw new HttpError(400, 'invalid body at githubRepo: expected "owner/repo"');
+    }
     const id = newRecordId();
-    ctx.db.insert(project).values({ id, name: body.name, teamId, repoKind: null }).run();
-    return c.json({ id, name: body.name, teamId }, 201);
+    let repoName: string | null = null;
+    if (body.repoKind === 'hosted') {
+      // 托管形态落地：init 本地 bare repo（02 §3 锁定）。
+      repoName = await uniqueRepoName(ctx, teamId, slugifyRepoName(body.name));
+      await provisionHostedRepo(ctx, teamId, repoName);
+    }
+    ctx.db
+      .insert(project)
+      .values({
+        id,
+        name: body.name,
+        teamId,
+        repoKind: body.repoKind ?? null,
+        repoName,
+        githubRepo: body.repoKind === 'github' ? (body.githubRepo ?? null) : null,
+      })
+      .run();
+    const row = requireProject(ctx, id);
+    return c.json(toProjectRecord(row, requestOrigin(c)), 201);
   });
 
   app.post('/api/projects/:id/todos', async (c) => {
@@ -364,6 +459,17 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json({ delegated: true }, 202);
   });
 
+  app.post('/api/schedules', async (c) => {
+    const body = parseWith(createScheduleBodySchema, await jsonBody(c), 'body');
+    // 响应封套 [推断]：201 全记录（record 形状 = r3 §8.3 实测原样）。
+    const record = createSchedule(svc, {
+      ...body,
+      teamId: ctx.team.id,
+      createdBy: ctx.user.id,
+    });
+    return c.json(record, 201);
+  });
+
   // —— PATCH / DELETE 面（[推断] REST 同名，02 §6.1/DELETE_FACE）—————————————————
   app.patch('/api/todos/:id', async (c) => {
     const id = c.req.param('id');
@@ -382,6 +488,12 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.delete('/api/todos/:id', (c) => {
     const id = c.req.param('id');
     if (!deleteTodo(svc, id)) throw notFound(`todo ${id}`);
+    return c.body(null, 204);
+  });
+
+  app.delete('/api/schedules/:id', (c) => {
+    const id = c.req.param('id');
+    if (!deleteSchedule(svc, id)) throw notFound(`schedule ${id}`);
     return c.body(null, 204);
   });
 
@@ -483,5 +595,61 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     // 创建响应含明文一次（02 §8/r3 §6；封套 [推断]；文案 canon =
     // shared API_KEY_ONE_TIME_COPY，web 面渲染）。
     return c.json(created, 201);
+  });
+
+  // —— 托管 repo git 面（02 §3/A4：`git http-backend` CGI，不引第三方 git host；
+  // 远端 URL 形状 = `<origin>/git/<teamId>/<repoName>`，对应 r3 §1.4
+  // `https://git.todos.dev/<teamId>/<repoName>`，域名段 = 本地主机代位 +
+  // 同源 `/git` 前缀 [设计]）。凭证纪律（r3 §1.4 实测手动 fetch 无凭证失败）：
+  // Basic auth → api_key(gitAccess) 哈希比对，未认证一律 401。 ————————————————
+  app.all('/git/*', async (c) => {
+    const url = new URL(c.req.url);
+    const segments = url.pathname.slice('/git/'.length).split('/');
+    const teamId = segments[0] ?? '';
+    const repoName = segments[1] ?? '';
+    const rest = segments.slice(2).join('/');
+    if (teamId !== ctx.team.id || repoName === '' || rest === '') {
+      throw notFound('git endpoint');
+    }
+    const row = ctx.db
+      .select()
+      .from(project)
+      .where(
+        and(
+          eq(project.teamId, teamId),
+          eq(project.repoKind, 'hosted'),
+          eq(project.repoName, repoName),
+        ),
+      )
+      .get();
+    if (!row?.repoName) throw notFound(`repo ${teamId}/${repoName}`);
+
+    const method = c.req.method;
+    if (method !== 'GET' && method !== 'POST') return c.body(null, 405);
+
+    const authorization = c.req.header('authorization');
+    const remoteUser =
+      authorization === undefined ? undefined : verifyGitBasicAuth(ctx, authorization);
+    if (remoteUser === undefined) {
+      c.header('WWW-Authenticate', `Basic realm="${GIT_AUTH_REALM}"`);
+      return c.json({ error: 'git authentication required' }, 401);
+    }
+
+    const body = method === 'POST' ? new Uint8Array(await c.req.arrayBuffer()) : new Uint8Array(0);
+    const contentType = c.req.header('content-type');
+    const cgi = await systemGitOps.httpBackend({
+      projectRoot: join(ctx.reposDir, teamId),
+      pathInfo: `/${row.repoName}.git/${rest}`, // repoName 取库行（slug 安全字符集）
+      queryString: url.search.replace(/^\?/, ''),
+      method,
+      ...(contentType !== undefined ? { contentType } : {}),
+      remoteUser,
+      body,
+    });
+    return c.body(
+      new Uint8Array(cgi.body),
+      cgi.status as 200, // CGI Status 头透传（git 协议面 200/403/404 族）
+      Object.fromEntries(cgi.headers),
+    );
   });
 }

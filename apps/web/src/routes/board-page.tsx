@@ -15,9 +15,14 @@ import { attentionCount } from '../board/columns.js';
 import { BoardSidebar } from '../board/sidebar.js';
 import { ChiefDrawer } from '../chief/chief-drawer.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
-import { chiefDefault } from '../fixtures/fixtures.js';
+import { AcceptDialog } from '../detail/accept-dialog.js';
+import { BranchDialog } from '../detail/branch-dialog.js';
+import { withoutDeleted } from '../fixtures/deletions.js';
+import { chiefDefault, localTodo, overlayContent } from '../fixtures/fixtures.js';
+import type { FixtureSet, OverlayState, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { ChiefFab } from '../icons/index.js';
+import { NewTaskDialog } from '../overlay/new-task-dialog.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 // shell styles live with the board surface; the settings view (101–104)
 // unmounts BoardSurface but keeps the shell, so the route imports them too
@@ -33,23 +38,53 @@ export function BoardPage() {
   const [searchParams] = useSearchParams();
   const [collapsed, setCollapsed] = useState(() => readCollapsed(localStorage));
   const fixture = resolveScenario(searchParams);
+  // New-task dialog (#66): fixture phase has no backend, so a saved task
+  // lives in this client-side set — the card lands in 待开始 with the
+  // 刚刚 label and the column count couples (r2 §4.2/§5.2). Deletions
+  // made on the detail route ride along via the deletions overlay.
+  const [todos, setTodos] = useState<TodoRecord[]>(() => withoutDeleted(fixture.todos));
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
+  // Modal overlays over the board (issue #68): the accept dialog opens from
+  // the review card's 完成 button (r7 34) or the scenario fixture; the
+  // branch dialog from the card's branch icon.
+  const [overlay, setOverlay] = useState<OverlayState | null>(fixture.overlay ?? null);
+  const [overlayTodo, setOverlayTodo] = useState<TodoRecord | null>(null);
+  const closeOverlay = useCallback(() => setOverlay(null), []);
+  const openFor = (todo: TodoRecord, kind: OverlayState['kind']) => {
+    setOverlayTodo(todo);
+    setOverlay({ kind });
+  };
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
   const toggle = useCallback(() => {
     const next = !collapsed;
     localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0');
     setCollapsed(next);
   }, [collapsed]);
+  const createTodo = useCallback(
+    (title: string) => {
+      setTodos((prev) => [
+        ...prev,
+        // fixture.now is the session's reference instant, so the fresh
+        // card reads 刚刚 against the same clock as the frozen labels
+        localTodo(prev.reduce((max, t) => Math.max(max, t.seqNum), 0) + 1, title, fixture.now),
+      ]);
+      setNewTaskOpen(false);
+    },
+    [fixture],
+  );
+  const content = overlayTodo != null ? overlayContent(overlayTodo.id) : null;
   const chief = fixture.chief;
   // one three-state view: drawer and settings are mutually exclusive by
   // construction (r5: the gear swaps the drawer for the full-content view)
   const [chiefView, setChiefView] = useState<'none' | 'drawer' | 'settings'>(chief?.view ?? 'none');
   const chiefData = chief ?? chiefDefault;
+  const fixtureWithTodos: FixtureSet = { ...fixture, todos };
   return (
     <div className="board-shell h-full" data-route="board">
       <BoardSidebar
         collapsed={collapsed}
         onToggle={toggle}
-        attention={attentionCount(fixture.todos)}
+        attention={attentionCount(todos)}
         onSearch={() => search.setOpen(true)}
         usageNav={fixture.usageNav === true}
         selected={chiefView === 'settings' ? 'none' : 'board'}
@@ -58,7 +93,16 @@ export function BoardPage() {
       {chiefView === 'settings' ? (
         <ChiefSettings chief={chiefData} onBack={() => setChiefView('drawer')} />
       ) : (
-        <BoardSurface fixture={fixture} />
+        <BoardSurface
+          fixture={fixtureWithTodos}
+          onNewTask={() => setNewTaskOpen(true)}
+          onAction={(todo) => {
+            // r7 34: review-phase 完成 opens the accept dialog; 回复/确认
+            // stay inert until their own tickets
+            if (todo.phase === 'review' && todo.awaitingReply !== true) openFor(todo, 'accept');
+          }}
+          onBranch={(todo) => openFor(todo, 'branch')}
+        />
       )}
       {search.open && (
         <SearchPanel
@@ -75,6 +119,7 @@ export function BoardPage() {
           onClose={() => setChiefView('none')}
         />
       )}
+      {newTaskOpen && <NewTaskDialog onClose={() => setNewTaskOpen(false)} onSave={createTodo} />}
       <button
         type="button"
         className="chief-fab"
@@ -82,7 +127,14 @@ export function BoardPage() {
         onClick={() => setChiefView('drawer')}
       >
         <ChiefFab />
+        {fixture.chiefUnread != null && fixture.chiefUnread > 0 && (
+          <span className="fab-badge">{fixture.chiefUnread}</span>
+        )}
       </button>
+      {overlay?.kind === 'accept' && <AcceptDialog onClose={closeOverlay} />}
+      {overlay?.kind === 'branch' && content != null && (
+        <BranchDialog info={content.branch} onClose={closeOverlay} />
+      )}
     </div>
   );
 }

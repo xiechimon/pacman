@@ -98,7 +98,9 @@ export function startBuilds(
     todoIds: string[];
     assignment: Assignment;
     withPlan: boolean;
-    triggerSource?: TriggerSource; // 默认 user；chief/schedule 触发面归 M4/M2b
+    triggerSource?: TriggerSource; // 默认 user；schedule = 定时触发（services/scheduler.ts）；chief 面归 M4
+    /** 钉选机器（schedule.machineId 透传，null = 自动，r3 §9/02 §6.2）。 */
+    pinnedMachineId?: string | null;
   },
 ): BuildRecord[] {
   const triggerSource = input.triggerSource ?? 'user';
@@ -120,7 +122,7 @@ export function startBuilds(
         withPlan: input.withPlan,
         prevPhase: todoRecord.phase,
         triggerSource,
-        pinnedMachineId: null,
+        pinnedMachineId: input.pinnedMachineId ?? null,
         planDocId: null,
         errorMessage: null,
         prUrl: null,

@@ -28,6 +28,11 @@ import { relativeTime } from './rel-time.js';
 interface TodoCardProps {
   todo: TodoRecord;
   now: number;
+  /** Card action button (确认/完成/回复); the page decides what it does
+   *  (issue #68: review-phase 完成 opens the accept dialog). */
+  onAction?: (todo: TodoRecord) => void;
+  /** Card branch icon (issue #68): opens the 分支与 PR dialog. */
+  onBranch?: (todo: TodoRecord) => void;
 }
 
 /** Badge on the agent avatar: amber magnifier while the run is waiting on
@@ -44,7 +49,7 @@ function badgeFor(todo: TodoRecord): 'idle' | 'attention' | 'done' | null {
   return null;
 }
 
-export function TodoCard({ todo, now }: TodoCardProps) {
+export function TodoCard({ todo, now, onAction, onBranch }: TodoCardProps) {
   const action = cardAction(todo);
   const badge = badgeFor(todo);
   const fresh = badge === 'idle';
@@ -55,7 +60,12 @@ export function TodoCard({ todo, now }: TodoCardProps) {
         <span className="project-avatar">{PROJECT_INITIAL}</span>
         <span className="todo-project-name">{PROJECT_NAME}</span>
         <span className="todo-card-seq">#{todo.seqNum}</span>
-        <button type="button" className="todo-card-branch" aria-label="分支与 PR">
+        <button
+          type="button"
+          className="todo-card-branch"
+          aria-label="分支与 PR"
+          onClick={() => onBranch?.(todo)}
+        >
           <Download />
         </button>
       </div>
@@ -103,12 +113,20 @@ export function TodoCard({ todo, now }: TodoCardProps) {
         )}
         <span className="todo-card-spacer" />
         {action?.kind === 'primary' && (
-          <button type="button" className="todo-card-action todo-card-action--primary">
+          <button
+            type="button"
+            className="todo-card-action todo-card-action--primary"
+            onClick={() => onAction?.(todo)}
+          >
             {action.label}
           </button>
         )}
         {action?.kind === 'ghost' && (
-          <button type="button" className="todo-card-action todo-card-action--ghost">
+          <button
+            type="button"
+            className="todo-card-action todo-card-action--ghost"
+            onClick={() => onAction?.(todo)}
+          >
             {action.label}
           </button>
         )}
