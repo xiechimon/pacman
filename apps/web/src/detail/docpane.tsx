@@ -1,16 +1,18 @@
-// Doc pane (issue #56, extended in #57 for the 变更 surface and in #75
-// for the r8 plan-version surfaces): plan mode keeps the 方案▾ / vN▾
-// header over the plan markdown (or the centered 暂无方案 placeholder in
-// planning, r7 16). Changes mode (review/done/failed) renders the diff
-// header 变更▾ v1▾ · N 个文件改动 +N with the 全部展开/全部收起 toggle
-// (r7 §3.6), one file row per changed file (chevron + name + 👁 +
-// right-aligned +N), the unified-diff hunks when expanded (r7 27b) and
-// the centered 暂无可显示的变更 placeholder when there is nothing to show
-// (r7 38). #75 adds the version dropdown under the version chip (r8
-// 63/70: version rows + 与其他版本对比… + 回到与 base 对比), the compare
-// submenu (r8 64: 上一版本 alone) and the plan-version diff surface
-// (r8 65–72: range chip `v1 → v2`, `+A −B` stats, del/add/marker rows).
+// Doc pane (issue #56, extended in #57 for the 变更 surface, in #67 for
+// the 方案▾ type dropdown and in #75 for the r8 plan-version surfaces):
+// plan mode keeps the 方案▾ / vN▾ header over the plan markdown (or the
+// centered 暂无方案 placeholder in planning, r7 16). Changes mode
+// (review/done/failed) renders the diff header 变更▾ v1▾ · N 个文件改动
+// +N with the 全部展开/全部收起 toggle (r7 §3.6), one file row per changed
+// file (chevron + name + 👁 + right-aligned +N), the unified-diff hunks
+// when expanded (r7 27b) and the centered 暂无可显示的变更 placeholder
+// when there is nothing to show (r7 38). #75 adds the version dropdown
+// under the version chip (r8 63/70: version rows + 与其他版本对比… +
+// 回到与 base 对比), the compare submenu (r8 64: 上一版本 alone) and the
+// plan-version diff surface (r8 65–72: range chip `v1 → v2`, `+A −B`
+// stats, del/add/marker rows).
 
+import { useState } from 'react';
 import { relativeTime } from '../board/rel-time.js';
 import type {
   ChangesContent,
@@ -19,6 +21,7 @@ import type {
   PlanDiffContent,
   PlanVersion,
 } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import {
   ChevronDown,
   ChevronRight,
@@ -28,6 +31,8 @@ import {
   Restore,
   UnfoldVertical,
 } from '../icons/index.js';
+import { ClickCatcher, useEscapeClose } from '../overlays/dismiss.js';
+import { PlanDropdown } from '../overlays/plan-dropdown.js';
 import { Segments } from './segments.js';
 
 interface DocPaneProps {
@@ -38,6 +43,8 @@ interface DocPaneProps {
   changes: ChangesContent | undefined;
   /** Fixture instant the relative version ages are measured against. */
   now: number;
+  /** Scenario-frozen initial open state of the 方案▾ dropdown (#67). */
+  planDropdownOpen?: boolean;
   /** Version dropdown rows, newest first (r8 63/70). */
   planVersions?: PlanVersion[];
   /** Open menu on the version chip / range chip (r8 63/64). */
@@ -53,6 +60,7 @@ interface DocPaneProps {
 }
 
 function DiffFileBlock({ file, expanded }: { file: DiffFile; expanded: boolean }) {
+  const { t } = useI18n();
   return (
     <div className="diff-file">
       <div className="doc-file-row">
@@ -93,7 +101,7 @@ function DiffFileBlock({ file, expanded }: { file: DiffFile; expanded: boolean }
           ))}
           <button type="button" className="diff-expand">
             <UnfoldVertical width={12} height={12} />
-            显示完整文件
+            {t('显示完整文件')}
           </button>
         </div>
       )}
@@ -124,11 +132,12 @@ function VersionMenu({
   onCompare: () => void;
   onBase: () => void;
 }) {
+  const { t } = useI18n();
   if (menu === 'compare') {
     return (
       <div className="version-menu version-menu--sub">
         <button type="button" className="version-menu-row" onClick={onCompare}>
-          上一版本
+          {t('上一版本')}
         </button>
       </div>
     );
@@ -143,18 +152,18 @@ function VersionMenu({
           onClick={() => onMenu(undefined)}
         >
           <span>
-            {row.v} · {relativeTime(row.at, now)}
+            {row.v} · {relativeTime(row.at, now, t)}
           </span>
           <Restore width={13} height={13} />
         </button>
       ))}
       <button type="button" className="version-menu-row" onClick={() => onMenu('compare')}>
-        <span>与其他版本对比…</span>
+        <span>{t('与其他版本对比…')}</span>
         {diffOpen && diffFrom != null && <span className="version-menu-label">{diffFrom}</span>}
       </button>
       {diffOpen && (
         <button type="button" className="version-menu-row" onClick={onBase}>
-          <span>回到与 base 对比</span>
+          <span>{t('回到与 base 对比')}</span>
         </button>
       )}
     </div>
@@ -219,6 +228,7 @@ export function DocPane({
   doc,
   changes,
   now,
+  planDropdownOpen,
   planVersions,
   versionMenu,
   onVersionMenu,
@@ -227,6 +237,9 @@ export function DocPane({
   planDiff,
   onToggleExpand,
 }: DocPaneProps) {
+  const { t } = useI18n();
+  const [typeOpen, setTypeOpen] = useState(planDropdownOpen === true);
+  useEscapeClose(typeOpen, () => setTypeOpen(false));
   if (mode === 'changes' || mode === 'diff') {
     const files = mode === 'diff' ? (planDiff?.files ?? []) : (changes?.files ?? []);
     const expanded = mode === 'diff' ? (planDiff?.expanded ?? false) : (changes?.expanded ?? false);
@@ -236,13 +249,13 @@ export function DocPane({
     return (
       <section className="doc-pane">
         {mode === 'changes' && changes == null ? (
-          <div className="doc-empty doc-empty--full">暂无可显示的变更</div>
+          <div className="doc-empty doc-empty--full">{t('暂无可显示的变更')}</div>
         ) : (
           <>
             <header className="doc-pane-head">
               <FileTab width={14} height={14} />
               <button type="button" className="doc-pane-select">
-                {mode === 'diff' ? '方案' : '变更'}
+                {mode === 'diff' ? t('方案') : t('变更')}
                 <ChevronDown width={12} height={12} />
               </button>
               {mode === 'diff' && planDiff != null ? (
@@ -267,11 +280,12 @@ export function DocPane({
                 />
               )}
               <span className="doc-changes-stat">
-                · {fileCount} 个文件改动 <span className="doc-changes-add">+{added}</span>
+                {t('· {n} 个文件改动', { n: fileCount })}{' '}
+                <span className="doc-changes-add">+{added}</span>
                 {removed > 0 && <span className="doc-changes-del"> −{removed}</span>}
               </span>
               <button type="button" className="doc-expand-all" onClick={onToggleExpand}>
-                {expanded ? '全部收起' : '全部展开'}
+                {expanded ? t('全部收起') : t('全部展开')}
               </button>
             </header>
             {files.map((file) => (
@@ -288,10 +302,23 @@ export function DocPane({
       {doc != null && (
         <header className="doc-pane-head">
           <FileTab width={14} height={14} />
-          <button type="button" className="doc-pane-select">
-            方案
-            <ChevronDown width={12} height={12} />
-          </button>
+          <span className="doc-select-wrap">
+            <button
+              type="button"
+              className="doc-pane-select"
+              aria-expanded={typeOpen}
+              onClick={() => setTypeOpen((value) => !value)}
+            >
+              {t('方案')}
+              <ChevronDown width={12} height={12} />
+            </button>
+            {typeOpen && (
+              <>
+                <ClickCatcher onClose={() => setTypeOpen(false)} />
+                <PlanDropdown />
+              </>
+            )}
+          </span>
           <VersionControl
             label={planVersions?.[0]?.v ?? 'v1'}
             planVersions={planVersions}
@@ -305,7 +332,7 @@ export function DocPane({
       )}
       <div className="doc-pane-body">
         {doc == null ? (
-          <div className="doc-empty">暂无方案</div>
+          <div className="doc-empty">{t('暂无方案')}</div>
         ) : (
           doc.map((block, i) => (
             <p

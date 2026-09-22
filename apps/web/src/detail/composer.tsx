@@ -4,6 +4,7 @@
 // overlaps the send button in every capture (r7 §3.4), so the page renders
 // the FAB after the composer and it covers the send pixels.
 
+import { useI18n } from '../i18n/provider.js';
 import { ArrowUp, Grid2x2, Mic, Paperclip, SearchPlus } from '../icons/index.js';
 
 interface ComposerProps {
@@ -18,27 +19,28 @@ interface ComposerProps {
 }
 
 export function Composer({ placeholder, aiReview, streaming, onSend }: ComposerProps) {
+  const { t } = useI18n();
   return (
     <div className="composer">
-      <div className="composer-placeholder">{placeholder}</div>
+      <div className="composer-placeholder">{t(placeholder)}</div>
       <div className="composer-toolbar">
-        <button type="button" className="composer-tool" aria-label="语音输入">
+        <button type="button" className="composer-tool" aria-label={t('语音输入')}>
           <Mic />
         </button>
-        <button type="button" className="composer-tool" aria-label="添加附件">
+        <button type="button" className="composer-tool" aria-label={t('添加附件')}>
           <Paperclip />
         </button>
         {aiReview && (
-          <button type="button" className="composer-tool" aria-label="AI 审核">
+          <button type="button" className="composer-tool" aria-label={t('AI 审核')}>
             <SearchPlus />
           </button>
         )}
-        <button type="button" className="composer-tool" aria-label="提及">
+        <button type="button" className="composer-tool" aria-label={t('提及')}>
           <Grid2x2 />
         </button>
       </div>
-      {streaming && <button type="button" className="composer-stop" aria-label="停止" />}
-      <button type="button" className="composer-send" aria-label="发送" onClick={onSend}>
+      {streaming && <button type="button" className="composer-stop" aria-label={t('停止')} />}
+      <button type="button" className="composer-send" aria-label={t('发送')} onClick={onSend}>
         <ArrowUp width={14} height={14} />
       </button>
     </div>

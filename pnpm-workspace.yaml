@@ -2,6 +2,10 @@ packages:
   - apps/*
   - packages/*
 
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+
 catalog:
   '@biomejs/biome': 2.5.14
   diff: 9.0.0

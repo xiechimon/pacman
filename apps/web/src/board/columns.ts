@@ -72,11 +72,15 @@ export const COLUMNS: BoardColumnDef[] = [
 
 /** Phase → primary card action, copy from the shared PHASE_UI table.
  *  Waiting-on-user todos get the ghost 回复 button (r3 §3.0 引导 P2 词表 +
- *  r5b §3.15). Failed cards read `重试` while the detail header reads
- *  `重跑` (r8 §2.2 vs §2.1 — a new instance of the CONTEXT.md
- *  two-word-list pattern: board card copy ≠ detail chip copy). */
+ *  r5b §3.15). Done cards carry no button: 重开 lives only in the detail
+ *  header (r7 §3.3) — the 01b/05b board captures show zero indigo pixels
+ *  in the 已完成 column, so PHASE_UI[done].action must not leak here.
+ *  Failed cards read `重试` while the detail header reads `重跑` (r8 §2.2
+ *  vs §2.1 — a new instance of the CONTEXT.md two-word-list pattern:
+ *  board card copy ≠ detail chip copy). */
 export function cardAction(todo: TodoRecord): { kind: 'primary' | 'ghost'; label: string } | null {
   if (todo.awaitingReply === true) return { kind: 'ghost', label: '回复' };
+  if (todo.phase === 'done') return null;
   // r8 §2.2 prose reads the card chip as a ghost button, but the 55
   // bitmap samples a solid #4e47dd fill with white ink — pixels win (04 A1)
   if (todo.phase === 'failed') return { kind: 'primary', label: '重试' };

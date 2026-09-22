@@ -8,8 +8,11 @@
 // position (module key below; per-tab storage, cleared with the tab).
 
 import { useLayoutEffect, useRef } from 'react';
-import type { FixtureSet } from '../fixtures/records.js';
-import { ChiefFab, HelpCircle, Plus, UnfoldVertical } from '../icons/index.js';
+import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
+// #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
+// drawer/settings overlays sit beside it in one place.
+import { useI18n } from '../i18n/provider.js';
+import { HelpCircle, Plus, UnfoldVertical } from '../icons/index.js';
 import { COLUMNS } from './columns.js';
 import { TodoCard } from './todo-card.js';
 import './board.css';
@@ -21,9 +24,15 @@ const BOARD_SCROLL_KEY = 'tds.board-scroll-left';
 
 interface BoardProps {
   fixture: FixtureSet;
+  /** #66: opens the new-task dialog from the topbar `+ 任务` button. */
+  onNewTask?: () => void;
+  /** Card callbacks (issue #68): the page owns the modal overlays. */
+  onAction?: (todo: TodoRecord) => void;
+  onBranch?: (todo: TodoRecord) => void;
 }
 
-export function BoardSurface({ fixture }: BoardProps) {
+export function BoardSurface({ fixture, onNewTask, onAction, onBranch }: BoardProps) {
+  const { t } = useI18n();
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   // Restore after mount, before paint — a returning user never sees the
@@ -39,13 +48,13 @@ export function BoardSurface({ fixture }: BoardProps) {
   return (
     <div className="board-main">
       <header className="board-topbar">
-        <div className="board-topbar-title">看板</div>
+        <div className="board-topbar-title">{t('看板')}</div>
         <div className="board-topbar-actions">
-          <button type="button" className="board-new-task">
+          <button type="button" className="board-new-task" onClick={onNewTask}>
             <Plus width={13} height={13} />
-            任务
+            {t('任务')}
           </button>
-          <button type="button" className="board-guide" aria-label="看板指南">
+          <button type="button" className="board-guide" aria-label={t('看板指南')}>
             <HelpCircle />
           </button>
         </div>
@@ -62,38 +71,42 @@ export function BoardSurface({ fixture }: BoardProps) {
         {COLUMNS.map((column) => {
           const todos = fixture.todos.filter(column.accepts);
           return (
-            <section key={column.id} className="board-column" aria-label={column.name}>
+            <section key={column.id} className="board-column" aria-label={t(column.name)}>
               <header className="board-column-header">
                 <span className="board-column-dot" style={{ background: column.dot }} />
-                <span className="board-column-name">{column.name}</span>
+                <span className="board-column-name">{t(column.name)}</span>
                 {/* count always renders, `0` included (r2 §4.1 计数 0/1;
                     r7 02/01b: digit present on empty columns, x = name+9) */}
                 <span className="board-column-count">{todos.length}</span>
-                {column.label && <span className="board-column-label">{column.label}</span>}
+                {column.label && <span className="board-column-label">{t(column.label)}</span>}
                 <button
                   type="button"
                   className="board-column-collapse"
                   // aria-label = column name, r7 icons.json `aria:待开始` ×6
-                  aria-label={column.name}
+                  aria-label={t(column.name)}
                 >
                   <UnfoldVertical />
                 </button>
               </header>
               <div className="board-column-list">
                 {todos.length === 0 ? (
-                  <div className="board-column-empty">{column.empty}</div>
+                  <div className="board-column-empty">{t(column.empty)}</div>
                 ) : (
-                  todos.map((todo) => <TodoCard key={todo.id} todo={todo} now={fixture.now} />)
+                  todos.map((todo) => (
+                    <TodoCard
+                      key={todo.id}
+                      todo={todo}
+                      now={fixture.now}
+                      onAction={onAction}
+                      onBranch={onBranch}
+                    />
+                  ))
                 )}
               </div>
             </section>
           );
         })}
       </div>
-
-      <button type="button" className="chief-fab" aria-label="总管">
-        <ChiefFab />
-      </button>
     </div>
   );
 }

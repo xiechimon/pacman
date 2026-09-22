@@ -27,6 +27,14 @@ jobs:
       - name: Install Playwright chromium
         run: pnpm exec playwright install chromium --with-deps
 
+      # migration 纪律（01 §6）：drizzle-kit 生成、进 repo、CI 校验 drift——
+      # schema 改动未带 migration 再生成 = 红。
+      - name: Drizzle migration drift check
+        run: |
+          pnpm --filter @pacman/server db:generate
+          git add -N apps/server/drizzle
+          git diff --exit-code apps/server/drizzle
+
       - name: Typecheck
         run: pnpm typecheck
 

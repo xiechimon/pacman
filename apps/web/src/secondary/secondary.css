@@ -1,0 +1,746 @@
+/* Secondary route surfaces (issue #70): shell head + team / account /
+   api-keys / feedback. Geometry from r7 12/13 pixel probes @1440×732
+   (head 44, centered 766 column at x457, team cards y99 h76, account
+   card y60 h310) and the r2 19/32 captures — those bitmaps are 1:1 CSS
+   px with the known right-edge crop, so vertical rhythm and column-
+   relative offsets transfer unchanged. Colors sample to the existing
+   token families; dark values ride the same tokens ([推断] where the
+   dark capture does not exist). */
+
+.secondary-shell {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.secondary-main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+.secondary-head {
+  position: relative;
+  height: 44px;
+  flex: none;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.secondary-back {
+  position: absolute;
+  left: 12px;
+  top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--text-tertiary);
+  border-radius: 6px;
+}
+
+.secondary-back svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* centers on the content area like the board topbar title */
+.secondary-title {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.secondary-title svg {
+  color: var(--text-dim);
+}
+
+.secondary-head-right {
+  position: absolute;
+  right: 20px; /* r7 12: 设置 ink ends x1417..1420 */
+  top: 0;
+  height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.secondary-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  color: var(--indigo-500);
+  cursor: pointer;
+}
+
+.secondary-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* 总管 FAB, same geometry as the detail surface (r7 §3.4: 48×48 @
+   right/bottom 16) — present in the r7 12/13 baselines too */
+.secondary-fab {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  border: 1px solid var(--border-default);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--fab-shadow);
+  color: var(--text-tertiary);
+}
+
+.secondary-col {
+  width: 766px;
+  margin: 0 auto;
+}
+
+/* ---- team (r7 12) ---- */
+
+.team-toprow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  margin-top: 18px; /* stats text band y71..80, tablist y62..90 */
+}
+
+.team-stats {
+  display: flex;
+  align-items: center;
+}
+
+.team-members {
+  margin-right: 6px; /* ink ends ~x500, badge pill starts x507 */
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.team-plan {
+  margin-right: 12px; /* pill x507..543, 升级 ink from x555 */
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--seg-active);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.team-upgrade {
+  font-size: 12px;
+}
+
+.team-layout-tabs {
+  display: flex;
+  gap: 2px;
+  width: 68px;
+  height: 28px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+
+.team-layout-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.team-layout-tab svg {
+  width: 16px;
+  height: 16px;
+}
+
+.team-layout-tab--active {
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 9px; /* cards y99, toprow ends y90 */
+}
+
+.team-agent-card {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* avatar x473..525, text ink from x537 */
+  height: 76px;
+  padding: 0 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.team-agent-avatar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--agent-avatar-bg);
+  overflow: hidden;
+}
+
+.team-agent-avatar img {
+  width: 52px; /* svg carries its own inner margin (r7 12 face ink 45px) */
+  height: 52px;
+}
+
+/* line boxes 18/18/16 with no gaps reproduce the r7 12 ink bands
+   (y115/135/150) inside the centered 76px card */
+.team-agent-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.team-agent-name {
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.team-agent-model {
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--text-tertiary);
+}
+
+.team-agent-role {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.team-create-agent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 76px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 10px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.team-create-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+}
+
+.team-create-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ---- account (r7 13) ---- */
+
+.account-card {
+  margin-top: 16px; /* card top y60 */
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface);
+  /* visible: the 语言 dropdown (issue #74) must escape the card; the
+     corner clipping the head/last row used to get from overflow:hidden
+     moves onto those two children instead */
+  overflow: visible;
+}
+
+.account-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 120px;
+  padding-top: 16px; /* avatar circle y77..141 */
+  border-radius: 11px 11px 0 0; /* inner radius = card 12 − 1px border */
+  background: var(--surface);
+}
+
+.account-card > .account-row:last-child {
+  border-radius: 0 0 11px 11px;
+}
+
+.account-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--card-bg);
+  overflow: hidden;
+}
+
+.account-avatar img {
+  width: 64px;
+  height: 64px;
+  display: block;
+}
+
+.account-avatar-actions {
+  display: flex;
+  gap: 11px; /* 更换 x809..835, 删除 x846..872 (r7 13) */
+  margin-top: 10px; /* 更换/删除 band y151..161 */
+}
+
+.account-avatar-actions button {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.account-swap {
+  color: var(--indigo-500);
+}
+
+.account-delete {
+  color: var(--text-tertiary);
+}
+
+.account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 41px; /* 40 inner + the 1px divider (r7 13 row bounds) */
+  padding: 0 16px;
+  border-top: 1px solid var(--border-default);
+  background: var(--surface-secondary);
+}
+
+.account-row--name {
+  height: 49px;
+}
+
+.account-row--tall {
+  height: 57px;
+}
+
+.account-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.account-value {
+  display: flex;
+  align-items: center;
+  gap: 14px; /* value ink ends x1175, edit glyph x1189..1203 (r7 13) */
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.account-value svg {
+  color: var(--text-tertiary);
+}
+
+.account-value--muted {
+  font-size: 12px; /* mail ink w76 @ r7 13 */
+  color: var(--text-tertiary);
+}
+
+.account-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px; /* box x1120..1207 = 87 wide, text ink from x1134 (r7 13) */
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.account-select svg {
+  color: var(--text-tertiary);
+}
+
+.account-switch {
+  position: relative;
+  width: 29px;
+  height: 16px;
+  border: none;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--indigo-500);
+  cursor: default;
+}
+
+.account-switch-knob {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.account-logout {
+  width: 100%;
+  height: 38px;
+  margin-top: 16px; /* box y386..424 */
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 14px;
+  color: var(--stop);
+  cursor: pointer;
+}
+
+/* ---- api keys (r2 19 empty, r3 §6 rows) ---- */
+
+.keys-empty-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-top: 41px; /* tile y85 */
+  border-radius: 10px;
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+}
+
+.keys-empty-tile svg {
+  width: 20px;
+  height: 20px;
+}
+
+.keys-empty-title {
+  margin: 21px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.keys-empty-desc {
+  margin: 11px 0 0;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.keys-empty-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 22px; /* button row y208..238 */
+}
+
+.keys-create {
+  height: 30px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  font-size: 13px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.keys-docs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.keys-docs svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* created-key surface: one-time plaintext block + masked list rows.
+   Row/block shapes are [推断] — no capture exists (r2 §9-12, r3 §6 图失);
+   the mask and the canon copy are the observed contract. */
+.keys-once {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-secondary);
+}
+
+.keys-once-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.keys-once-copy {
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  font-size: 12px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.keys-once-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.keys-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.keys-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 62px;
+  padding: 0 16px;
+  border-radius: 10px;
+  background: var(--surface-secondary);
+}
+
+.keys-row-icon {
+  display: flex;
+  color: var(--text-tertiary);
+}
+
+.keys-row-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.keys-row-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.keys-row-name {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.keys-row-mask {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.keys-row-chevron {
+  color: var(--text-dim);
+}
+
+/* ---- feedback (r2 32) ---- */
+
+.fb-intro {
+  margin: 20px 0 0; /* intro band y64..75 */
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.fb-types {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 21px; /* chips y96..120 */
+}
+
+.fb-types-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.fb-chip {
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.fb-chip--active {
+  border-color: var(--chip-active-border);
+  background: var(--chip-active-bg);
+  color: var(--indigo-500);
+}
+
+.fb-composer {
+  margin-top: 9px; /* card y129..292 */
+  border-radius: 12px;
+  background: var(--surface-secondary);
+  overflow: hidden;
+}
+
+.fb-input {
+  display: block;
+  width: 100%;
+  height: 121px; /* placeholder band y144..158 inside */
+  padding: 14px 16px 0;
+  border: none;
+  background: transparent;
+  resize: none;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.fb-input::placeholder {
+  color: var(--text-dim);
+}
+
+.fb-input:focus {
+  outline: none;
+}
+
+.fb-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 20px; /* icon pitch 36 with 16px glyphs */
+  height: 42px;
+  padding: 0 16px 0 22px;
+}
+
+.fb-toolbar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.fb-toolbar button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* disabled 发送 (r2 32 sample #9f9ae2); the selector outranks the
+   transparent toolbar-button reset above */
+.fb-toolbar .fb-send {
+  margin-left: auto;
+  width: 48px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: var(--send-disabled);
+  font-size: 12px;
+  color: #ffffff;
+}
+
+.fb-toolbar .fb-send:disabled {
+  cursor: default;
+}
+
+.fb-history-title {
+  margin: 19px 0 0; /* 你的反馈 band y312..322 */
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fb-history-empty {
+  margin: 13px 0 0; /* 尚未提交过反馈。 band y336..346 */
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* 语言 dropdown (issue #74): open-state shape is [设计] — the official
+   option list was never captured (r2 §11 Q19). Geometry follows the
+   plan-dropdown family (overlays.css): popover bg, radius 10, 12px rows,
+   indigo check on the active locale. */
+.account-select-wrap {
+  position: relative;
+  display: flex;
+}
+
+.lang-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 140px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  background: var(--popover-bg);
+  border-radius: 10px;
+  box-shadow: var(--fab-shadow);
+  z-index: 30;
+}
+
+.lang-dropdown-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.lang-dropdown-check {
+  margin-left: auto;
+  display: flex;
+  color: var(--indigo-500);
+}

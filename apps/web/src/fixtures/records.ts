@@ -57,6 +57,74 @@ export interface TodoRecord {
   awaitingReply?: boolean;
 }
 
+/** Token 用量 overlay content (issue #68, r7 30): the cumulative-run
+ *  figures of the dialog, verbatim strings from the capture. */
+export interface TokenUsageContent {
+  total: string;
+  model: string;
+  modelTotal: string;
+  input: string;
+  output: string;
+  cacheRead: string;
+  cacheWrite: string;
+}
+
+/** 分支与 PR overlay content (issue #68, r7 31): sync-tab fields. */
+export interface BranchInfoContent {
+  branch: string;
+  commit: string;
+  machine: string;
+  directory: string;
+}
+
+/** One 运行历史 overlay row. r7 32 froze the single-row state (ring glyph);
+ *  the r8 80 dark capture adds the multi-row forms: failed runs carry a
+ *  stop-colored ×, succeeded ones a done-colored check (r8 80). */
+export interface RunHistoryRow {
+  label: string;
+  meta: string;
+  status: 'current' | 'failed' | 'done';
+  /** r8 57: a failed run can still be the current one (× glyph + 当前
+   *  chip together); absent on status:'current' rows (r7 32/r8 80). */
+  current?: boolean;
+  /** Row-level 重跑 button: failed todo's current row only (r8 §3.3
+   *  state-gated, overriding the r7 §4.1.5 hover reading). */
+  rerun?: boolean;
+}
+
+/** Modal surface rendered over a route (issue #68). The scenario fixture
+ *  opens one for capture determinism; the header/card buttons open the same
+ *  set interactively. Token/branch/history payloads are build-scoped
+ *  display data — outside the 02 §6.2 record contract — resolved per todo
+ *  from the fixture layer; the accept dialog carries no payload. */
+export type OverlayKind = 'token' | 'branch' | 'history' | 'accept' | 'rerun' | 'reuse';
+
+export interface OverlayState {
+  kind: OverlayKind;
+}
+
+/** The three build-scoped overlay payloads travelling together (issue #68). */
+export interface BuildOverlayContent {
+  token: TokenUsageContent;
+  branch: BranchInfoContent;
+  runs: RunHistoryRow[];
+}
+/** Overlay open-states a scenario freezes (issue #67): the ⌘K search
+ *  panel, the detail status-chip popover and the doc-pane 方案▾ dropdown.
+ *  Pure initial UI state — the overlays stay interactive afterwards. */
+export interface OverlayUi {
+  /** ⌘K panel open; absent query = the empty 前往 surface (r7 05). */
+  searchOpen?: boolean;
+  searchQuery?: string;
+  /** Status-chip popover open over the detail header (r7 19 / 29). */
+  chipPopoverOpen?: boolean;
+  /** 方案▾ document-type dropdown open in the doc pane (r7 20). */
+  planDropdownOpen?: boolean;
+  /** Account 语言 dropdown open (issue #74; open state [设计] — the
+   *  official option list was never captured, r2 §11 Q19). */
+  langDropdownOpen?: boolean;
+}
+
 /** Scheduled rule (02 §9.2 / r3 §8.3 wire shape, copied verbatim:
  *  `{id, teamId, projectId, todoId, kind, at, tz, machineId, nextRunAt,
  *  createdBy, todo{seqNum,title,phase,projectName,ownerId}}`). */
@@ -97,6 +165,44 @@ export interface ProjectContent {
   description: string | null;
 }
 
+/** Team-route agent card (r7 12): avatar + name + model line + role line. */
+export interface TeamAgentCard {
+  id: string;
+  displayName: string;
+  /** Model line lead (`claude-sonnet-5 · 默认`, r7 12). */
+  model: string;
+  /** Model line carries the `· 默认` suffix for the team's default agent. */
+  isDefault: boolean;
+  /** Role line text; null renders the `未设置职责` placeholder (r7 12). */
+  role: string | null;
+}
+
+/** Team-route content (r7 12): stats-bar count + the agent card grid. */
+export interface TeamContent {
+  /** Stats bar `N 个成员` — the member count includes agents (r3 §4). */
+  members: number;
+  agents: TeamAgentCard[];
+}
+
+/** API-key row (02 §6.2 apiKey shape subset + r3 §6 display rules). */
+export interface ApiKeyRecord {
+  id: string;
+  /** Optional key name (r3 §6 `密钥名称（可选）`); null shows the mask alone. */
+  name: string | null;
+  /** List-row mask `tds_afe07565…` (r3 §6); the value is never readable again. */
+  masked: string;
+  gitAccess: boolean;
+  mcpAccess: boolean;
+  /** One-time plaintext right after creation (02 §8): rendered once beside
+   *  the `请立即复制密钥，它仅显示一次。` canon, absent on every later view. */
+  plaintext?: string;
+}
+
+/** API-keys route content; absent = the empty state (r2 19). */
+export interface ApiKeysContent {
+  keys: ApiKeyRecord[];
+}
+
 /** One deterministic content set behind a scenario id. `now` is the frozen
  *  reference instant for relative labels (capture time of the r7 shot), so
  *  parity output never drifts with wall-clock time. */
@@ -107,6 +213,18 @@ export interface FixtureSet {
    *  document of the selected todo, verbatim from the r7 captures. Board
    *  scenarios leave it absent. */
   detail?: DetailContent;
+  /** Modal overlay open over the route (issue #68): detail overlays ride
+   *  the detail surface, `accept` the board surface. */
+  overlay?: OverlayState;
+  /** Unread chief messages — the blue count badge on the 总管 FAB
+   *  (r8 78–81 dark captures; absent from the r7 light set). */
+  chiefUnread?: number;
+  /** Overlay open-states (issue #67); absent = all closed. */
+  ui?: OverlayUi;
+  /** Sidebar 用量 nav row present (issue #67): the live site grew it
+   *  between the r7 captures (2026-09-21, absent) and the 05b results
+   *  capture (2026-09-22, present) — nav set is per-capture content. */
+  usageNav?: boolean;
   /** Schedule list of the /app/schedules route (issue #71); absent or
    *  empty = the `尚无定时。` empty state (r7 11). */
   schedules?: ScheduleRecord[];
@@ -120,34 +238,86 @@ export interface FixtureSet {
    *  任务|文件 tabs the capture sits on. Absent = 文件, the route default
    *  (r2 §2 route table). */
   projectTab?: 'tasks' | 'files';
+  /** Team-route content (issue #70, r7 12); absent = the r7 roster. */
+  team?: TeamContent;
+  /** API-keys route content (issue #70); absent = empty state (r2 19). */
+  apiKeys?: ApiKeysContent;
+  /** Resource-route display content (issue #69): the row sets of the six
+   *  resource surfaces, verbatim from the r7 06–10 captures. Board and
+   *  detail scenarios leave it absent. */
+  resources?: ResourcesContent;
+  /** Chief surface content (issue #72): the 总管 drawer overlay or the
+   *  full-content 总管设置 view, verbatim from the r5 100–116 captures.
+   *  Board scenarios without a chief surface leave it absent. */
+  chief?: ChiefContent;
+}
+
+/** Skill row (r7 08): name + one-line description. */
+export interface SkillRow {
+  name: string;
+  description: string;
+}
+
+/** MCP server row (r7 09): name + type label + endpoint url + relative
+ *  creation label, all verbatim from the capture. */
+export interface McpRow {
+  name: string;
+  kind: string;
+  url: string;
+  ago: string;
+}
+
+/** Machine row (r7 06): the hosted-machine card row plus one row per
+ *  claimed machine (name + online dot + id-tail subline). */
+export interface MachineRow {
+  /** The `Todos 托管机器` row (indigo tile); claimed machines omit it. */
+  hosted?: boolean;
+  name: string;
+  /** Subline under the name (`…NJqVhdo_ · max 3`); absent on the hosted row. */
+  sub?: string;
+  online?: boolean;
+  /** Right-side status pill (`未启用`); absent on online machines. */
+  pill?: string;
+  /** Row description line (hosted row only). */
+  description?: string;
+}
+
+/** Model-provider row (r7 07): built-in card plus custom gateways. */
+export interface ProviderRow {
+  name: string;
+  /** `N 模型` subline. */
+  models: string;
+  /** Orange `自定义` tag beside the name; absent on the built-in row. */
+  custom?: boolean;
+  /** Right-side status pill (`未启用`); absent on custom rows. */
+  pill?: string;
+}
+
+/** The six resource surfaces' row sets (issue #69). */
+export interface ResourcesContent {
+  skills: SkillRow[];
+  mcpServers: McpRow[];
+  machines: MachineRow[];
+  providers: ProviderRow[];
+  /** 新建技能 tab selected on capture (r8 79/80); absent = 从文件夹. */
+  importTab?: 'folder' | 'github';
 }
 
 /** Inline text run inside a plan-document block; `code` renders the
- *  monospace chip (r7 17: `tail -n 3 README.md` style), `link` the
- *  indigo link-styled chip (r8 63/76 first `README.md` mention). */
+ *  monospace chip (r7 17: `tail -n 3 README.md` style). */
+/** Inline text run inside a plan-document block: plain text, the
+ *  monospace chip (r7 17: `tail -n 3 README.md` style) or the blue
+ *  file/commit reference span (r8 56: `README.md`, `2f47b62`). */
 export interface DocSegment {
   text: string;
-  code?: boolean;
-  link?: boolean;
+  style?: 'code' | 'link';
 }
 
 /** One plan-document block: free paragraph, bullet (r7 17 doc pane) or
- *  bold section head (`Context` / `改动` / `验证`, r8 63/76 plan.md). */
+ *  markdown heading (r8 56: Context / 假设 / Changes / Verification). */
 export interface DocBlock {
   kind: 'para' | 'bullet' | 'head';
   segments: DocSegment[];
-}
-
-/** One paragraph of a robot message (r7 prose; r8 adds the AI-review
- *  quote block and numbered finding rows, r8 60/65). */
-export interface RobotPara {
-  segments: DocSegment[];
-  /** Indented tinted block with a left border (r8 65 review quote). */
-  quote?: boolean;
-  /** Numbered-list ordinal rendered as a hanging `N.` (r8 65 findings). */
-  ordinal?: number;
-  /** `• ` bullet marker (r8 54 result message). */
-  bullet?: boolean;
 }
 
 /** Transcript row kinds observed in the r7 detail captures (16/17/26/27/
@@ -162,21 +332,17 @@ export type TranscriptItem =
    *  along only on the task-start bubble (r7 26: the 确认 bubble renders
    *  bubble + icon pair alone). */
   | { kind: 'user'; text: string; seq?: number; title?: string }
-  /** Agent prose: one or more paragraphs of inline segments; `code`
-   *  segments render the mono chip (r7 36 merge row, r7 38 legacy rows).
-   *  `footer` renders the message action row (copy + optional restore +
-   *  optional `| 完成 Ns` + optional `›`, r8 60/65). */
+  /** Agent prose: one or more paragraphs of inline segments (r7 36 merge
+   *  row, r7 38 legacy rows). `footer` renders the message action row
+   *  (copy + optional restore + optional `| 完成 Ns` + optional `›`,
+   *  r8 60/65); paragraph kinds carry the r8 quote/ordinal/bullet forms. */
   | {
       kind: 'robot';
-      paragraphs: RobotPara[];
-      footer?: { restore?: boolean; seconds?: number; chevron?: boolean };
+      /** Object form carries the r8 quote/ordinal/bullet paragraph
+       *  kinds; the plain segment-array form is the r7 prose shape. */
+      paragraphs: (RobotPara | DocSegment[])[];
+      footer?: RobotFooter;
     }
-  /** Chief-origin marker: avatar + `由总管发起` (r8 54, chief-launched
-   *  build; the schedule twin is `scheduled`). */
-  | { kind: 'chief' }
-  /** Failed-run message: orange title line + body line + link row
-   *  (`查看原始错误` / `排查指南`, r8 54/73, r5 §7 canon). */
-  | { kind: 'fail'; title: string; body: string; links: string[] }
   /** Live planning/execution row: elapsed seconds + `›` + step label
    *  (r7 16 `准备工作区...`, r7 26 `处理中...`, r7 26d `调用工具：bash …`). */
   | { kind: 'streaming'; seconds: number; label: string }
@@ -185,17 +351,46 @@ export type TranscriptItem =
    *  (reused-plan card, r8 76); `chevron` adds the trailing `›` of the
    *  r8 plan cards (63/68/73). */
   | { kind: 'plan'; title: string; preview: string; seconds?: number; chevron?: boolean }
-  /** Tool-call group of a finished run: collapsed = action row
-   *  `完成 Ns ▸` (r7 27/36); expanded = `完成 Ns ▾` + one pill per tool
-   *  call + the `收起 ^` link (r7 28). */
+  /** Tool-call group of a finished run: collapsed = `完成 Ns ▸` single row
+   *  (r7 27/36); expanded = `完成 Ns ▾` + one pill per tool call + the
+   *  `收起 ^` link (r7 28). */
   | { kind: 'tools'; seconds: number; expanded: boolean; pills: string[] }
+  /** Bare elapsed row: `完成 Ns` action row (r7 36 merge round, r7 38
+   *  legacy card). */
+  | { kind: 'elapsed'; seconds: number }
   /** Centered dim line: a bare time stamp (`13:35`, r7 26), the merge
    *  announcement (`Xmon Dai 发起了合并`, r7 36) or the completion banner
    *  (`🎉 任务已完成`, r7 36). */
   | { kind: 'note'; text: string }
   /** Schedule-origin marker: clock glyph + `由定时发起`, left aligned
    *  (r7 38, 02 §9.2 闭环语义). */
-  | { kind: 'scheduled' };
+  | { kind: 'scheduled' }
+  /** Chief-origin marker: avatar + `由总管发起` (r8 54, chief-launched
+   *  build; the schedule twin is `scheduled`). */
+  | { kind: 'chief' }
+  /** Failed-run message: orange title line + body line + link row
+   *  (`查看原始错误` / `排查指南`, r8 54/73, r5 §7 canon). */
+  | { kind: 'fail'; title: string; body: string; links: string[] };
+
+/** One paragraph of a robot message (r7 prose; r8 adds the AI-review
+ *  quote block and numbered finding rows, r8 60/65). */
+export interface RobotPara {
+  segments: DocSegment[];
+  /** Indented tinted block with a left border (r8 65 review quote). */
+  quote?: boolean;
+  /** Numbered-list ordinal rendered as a hanging `N.` (r8 65 findings). */
+  ordinal?: number;
+  /** `• ` bullet marker (r8 54 result message). */
+  bullet?: boolean;
+}
+
+/** Message action row payload (r8 60/65): copy + optional restore +
+ *  optional `| 完成 Ns` + optional trailing chevron. */
+export interface RobotFooter {
+  restore?: boolean;
+  seconds?: number;
+  chevron?: boolean;
+}
 
 /** One changed file in the diff pane (r7 27/27b): collapsed = file row
  *  only; expanded = unified-diff hunks below it. */
@@ -236,31 +431,48 @@ export interface ChangesContent {
   expanded: boolean;
 }
 
+/** Detail-route content of a scenario (issue #56, extended in #57). */
+export interface DetailContent {
+  /** Transcript rows, top to bottom. */
+  transcript: TranscriptItem[];
+  /** Plan document for the left pane; absent = `暂无方案` placeholder. */
+  doc?: DocBlock[];
+  /** 变更 pane data; absent = the centered `暂无可显示的变更` placeholder
+   *  (r7 38 legacy card). Only consulted in changes mode. */
+  changes?: ChangesContent;
+  /** User-menu popover rendered over the sidebar (r7 17 / 16d / 26d /
+   *  27d captures). */
+  userMenuOpen?: boolean;
+  /** Version dropdown rows under the doc-pane version chip, newest
+   *  first (r8 63/70); absent = the chip renders the plain v1 select. */
+  planVersions?: PlanVersion[];
+  /** Capture-state open menu on the version chip (r8 63/64). */
+  versionMenu?: 'versions' | 'compare';
+  /** Plan-version diff surface replacing the plan markdown (r8 65–72). */
+  planDiff?: PlanDiffContent;
+  /** Diff the compare submenu's 上一版本 opens (r8 64 → 65, 70 → 71). */
+  compareTarget?: PlanDiffContent;
+  /** Agent row of the rerun dialog (r8 56/74): the previous run's agent. */
+  rerunAgent?: { name: string; model: string };
+  /** Interactive reject-loop script (issue #75 AC3). */
+  revision?: RevisionStep;
+}
+
 /** One row of the version dropdown under the doc-pane version chip
- *  (r8 63/70): version word + relative age, newest first. */
+ *  (r8 63/70): version word + relative age from the fixture instant. */
 export interface PlanVersion {
   v: string;
-  /** Version landing instant; the dropdown label is `relativeTime(at,
-   *  now)` like every other relative label in the fixture contract. */
+  /** Version landing instant; the label is `relativeTime(at, now)`. */
   at: number;
 }
 
-/** One row of the 运行历史 dialog (r8 57/77). */
-export interface RunHistoryRow {
-  n: number;
-  current: boolean;
-  /** Sub-row lead (`6 小时前` / `刚刚`). Baked, not computed: r8 57 shows
-   *  `6 小时前` beside the `昨天 17:38` run stamp of the same capture —
-   *  the history sub-row buckets time-only while stamps bucket by
-   *  calendar day, so rel-time.ts cannot serve both. */
-  rel?: string;
-  tokens?: string;
-  /** Trailing errorMessage of the sub-row (`Machine offline`). */
-  error?: string;
-  /** Row state glyph: hollow circle = running/current, red × = failed. */
-  state: 'open' | 'failed';
-  /** Row-level 重跑 button (failed todo's current row only, r8 §3.3). */
-  rerun?: boolean;
+/** The plan-version diff surface of the doc pane (r8 65–72): range chip
+ *  `v1 → v2`, file-level unified diff of plan.md. */
+export interface PlanDiffContent {
+  from: string;
+  to: string;
+  files: DiffFile[];
+  expanded: boolean;
 }
 
 /** Client-side reject-loop script (issue #75 AC3): what the composer send
@@ -283,43 +495,70 @@ export interface RevisionStep {
   };
 }
 
-/** The plan-version diff surface of the doc pane (r8 65–72): range chip
- *  `v1 → v2`, file-level unified diff of plan.md. */
-export interface PlanDiffContent {
-  from: string;
-  to: string;
-  files: DiffFile[];
-  expanded: boolean;
+// ── Chief surface (issue #72) ────────────────────────────────────────────
+// r5 §2/§3.6 canon: the 总管 panel is a right-anchored drawer over the
+// board; the 设置 gear swaps the whole content area to the 总管设置 view
+// (4 tabs). Captures 100–104 (unbound) + 111/114/116 (bound) supply the
+// static copy below.
+
+/** Hero example card of a fresh thread (r5 100/111 2×2 grid). */
+export interface ChiefExample {
+  /** Traced glyph per card position (r5 100 crops). */
+  icon: 'user-plus' | 'folder' | 'grid' | 'bars';
+  text: string;
 }
 
-/** Detail-route content of a scenario (issue #56, extended in #57). */
-export interface DetailContent {
-  /** Transcript rows, top to bottom. */
-  transcript: TranscriptItem[];
-  /** Plan document for the left pane; absent = `暂无方案` placeholder. */
-  doc?: DocBlock[];
-  /** 变更 pane data; absent = the centered `暂无可显示的变更` placeholder
-   *  (r7 38 legacy card). Only consulted in changes mode. */
-  changes?: ChangesContent;
-  /** User-menu popover rendered over the sidebar (r7 17 / 16d / 26d /
-   *  27d captures). */
-  userMenuOpen?: boolean;
-  /** Version dropdown rows under the doc-pane version chip (r8 63/70);
-   *  absent = the chip renders the plain `v1` select (r7). */
-  planVersions?: PlanVersion[];
-  /** Capture-state open menu on the version chip (r8 63/64). */
-  versionMenu?: 'versions' | 'compare';
-  /** Plan-version diff surface replacing the plan markdown (r8 65–72). */
-  planDiff?: PlanDiffContent;
-  /** Diff the compare submenu's 上一版本 opens (r8 64 → 65, 70 → 71). */
-  compareTarget?: PlanDiffContent;
-  /** Open overlay: rerun = 开始任务 dialog (r8 56/74), reuse = 复用方案
-   *  sub-panel (r8 75), history = 运行历史 dialog (r8 57/77). */
-  dialog?: 'rerun' | 'reuse' | 'history';
-  /** Rows of the 运行历史 dialog; absent = single current row. */
-  runHistory?: RunHistoryRow[];
-  /** Agent row of the rerun dialog (r8 56/74): the previous run's agent. */
-  rerunAgent?: { name: string; model: string };
-  /** Interactive reject-loop script (issue #75 AC3). */
-  revision?: RevisionStep;
+/** Inline run inside a chief stream paragraph; `todo`/`agent` render the
+ *  entity chips (r5 114: `#11` indigo chip, `r5-scribe` gray chip). */
+export interface ChiefSegment {
+  text: string;
+  code?: boolean;
+  todo?: number;
+  agent?: string;
+  /** Bold lead-in of a bullet (r5 116 `README.md:` row heads). */
+  strong?: boolean;
+}
+
+/** One row of the chief message flow (r5 114/116, r3 §3.6 roles). */
+export type ChiefStreamItem =
+  /** Centered dim stamp (`17:26`) or machine line (`运行在 … 上`, the
+   *  machine name underlined per r5 114 — `machineName` carries it). */
+  | { kind: 'note'; text: string; machineName?: string }
+  /** User bubble with avatar + the copy/restore icon pair below it. */
+  | { kind: 'user'; text: string }
+  /** Chief prose paragraphs + optional bullets + the `完成 Ns ›` footer
+   *  row (r5 116 verification report). */
+  | { kind: 'robot'; paragraphs: ChiefSegment[][]; bullets?: ChiefSegment[][]; seconds: string };
+
+/** Thread row of the header switcher popover (r5 116). */
+export interface ChiefThreadRef {
+  title: string;
+  /** True on the row the drawer currently shows. */
+  active?: boolean;
+}
+
+export type ChiefSettingsTab = 'agent' | 'charter' | 'memory' | 'watches';
+
+/** The chief surface a scenario renders. `view: 'drawer'` overlays the
+ *  board; `view: 'settings'` replaces the content area (r5 101–104). */
+export interface ChiefContent {
+  view: 'drawer' | 'settings';
+  /** Settings tab rendered when `view: 'settings'`. */
+  tab?: ChiefSettingsTab;
+  /** Agent bound to the chief: hides the gate bar, fills the model slot
+   *  and swaps the header icon set (r5 100 vs 111/114). */
+  bound: boolean;
+  /** Model slot line when bound (`claude-sonnet-5 · 默认`); `n/a` else. */
+  modelSlot?: string;
+  /** Header thread-chip label (`新主题` on a fresh thread). */
+  threadTitle: string;
+  /** Switcher popover open over the drawer (r5 116). */
+  threadsOpen?: boolean;
+  threads?: ChiefThreadRef[];
+  /** Hero grid of a fresh thread; absent on a thread view. */
+  examples?: ChiefExample[];
+  /** Composer draft text (r5 100/111 persisted draft). */
+  draft?: string;
+  /** Message flow of an existing thread (r5 114/116). */
+  stream?: ChiefStreamItem[];
 }

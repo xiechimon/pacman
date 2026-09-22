@@ -17,7 +17,9 @@ import {
   TEAM_NAME,
   USER_NAME,
 } from '../fixtures/fixtures.js';
+import { useI18n } from '../i18n/provider.js';
 import {
+  BarChart3,
   ChevronDown,
   Clock,
   EllipsisVertical,
@@ -36,18 +38,37 @@ import {
 } from '../icons/index.js';
 import './sidebar.css';
 
-/** Which nav row carries the selected pill. Board routes default to 看板;
- *  the #71 routes move it (r7 11: 定时 selected; r2 07e/24b/24c: the project
- *  row). 'none' = no pill (/app/project/new, r2 07: the session's project
- *  list does not contain the page being created). */
-export type SidebarSelected = 'board' | 'schedules' | 'project' | 'none';
+/** Which sidebar row carries the active pill: a nav row (看板 / 定时 /
+ *  the project row — r7 01/11, r2 07e/24b/24c), the team head row on
+ *  team/account (r7 12/13), a 资源 subrow by href (issue #69, r7 06–10),
+ *  or none (/app/project/new r2 07, and the user-menu-only routes
+ *  r2 19/32). */
+export type SidebarSelected =
+  | 'board'
+  | 'schedules'
+  | 'project'
+  | 'team'
+  | 'none'
+  | '/app/resources/skills'
+  | '/app/resources/mcp-servers'
+  | '/app/resources/secrets'
+  | '/app/resources/machines'
+  | '/app/resources/providers';
 
 interface BoardSidebarProps {
   collapsed?: boolean;
   onToggle?: () => void;
   /** Todos waiting on confirmation — the 看板 nav badge (r7 02/17). */
   attention?: number;
+  /** Opens the ⌘K search panel (issue #67); the 搜索 rows are triggers. */
+  onSearch?: () => void;
+  /** Render the 用量 nav row (present from the 05b capture day on). */
+  usageNav?: boolean;
+  /** Route carrying the selected pill: #71 named slots, #69 resource
+   *  hrefs (r7 06–10), 'none' = no pill. */
   selected?: SidebarSelected;
+  /** Indigo dot right of the 机器 row (r5 100/101/114/116: machine online). */
+  machineOnline?: boolean;
 }
 
 /** Leaf nav rows shared by both sidebar states — each renders full in the
@@ -64,6 +85,10 @@ const RESOURCE_ROWS: {
   { label: '模型服务', href: '/app/resources/providers', Icon: Layers },
 ];
 
+/** 用量 nav row — the live site grew it between the r7 captures and the
+ *  #67 05b capture, so it renders only for scenarios that set usageNav. */
+const USAGE_ROW = { label: '用量', href: '/app/usage', Icon: BarChart3 };
+
 const PROJECT_HREF = `/app/project/${PROJECT_ID}`;
 
 /** Selected-pill class pair for a nav row (expanded + rail variants). */
@@ -71,19 +96,25 @@ const rowClass = (base: string, selected: boolean) =>
   selected ? `${base} ${base}--selected` : base;
 
 function GroupHeader({ label }: { label: string }) {
+  const { t } = useI18n();
   return (
-    <button type="button" className="sidebar-group" aria-label={`收起${label}`}>
+    <button
+      type="button"
+      className="sidebar-group"
+      aria-label={t('收起{label}', { label: t(label) })}
+    >
       <span className="sidebar-group-chevron">
         <ChevronDown />
       </span>
-      <span className="sidebar-group-label">{label}</span>
+      <span className="sidebar-group-label">{t(label)}</span>
     </button>
   );
 }
 
 function RailGroupChevron({ label }: { label: string }) {
+  const { t } = useI18n();
   return (
-    <button type="button" className="rail-row" aria-label={`收起${label}`}>
+    <button type="button" className="rail-row" aria-label={t('收起{label}', { label: t(label) })}>
       <ChevronDown />
     </button>
   );
@@ -93,23 +124,35 @@ export function BoardSidebar({
   collapsed = false,
   onToggle,
   attention = 0,
+  onSearch,
+  usageNav = false,
   selected = 'board',
+  machineOnline = false,
 }: BoardSidebarProps) {
+  const { t } = useI18n();
+  const resourceRows = usageNav
+    ? [...RESOURCE_ROWS.slice(0, 4), USAGE_ROW, ...RESOURCE_ROWS.slice(4)]
+    : RESOURCE_ROWS;
   if (collapsed) {
     return (
       <aside className="board-sidebar board-sidebar--collapsed">
-        <button type="button" className="rail-toggle" aria-label="展开侧边栏" onClick={onToggle}>
+        <button
+          type="button"
+          className="rail-toggle"
+          aria-label={t('展开侧边栏')}
+          onClick={onToggle}
+        >
           <PanelLeftOpen />
         </button>
         <nav className="rail-nav">
-          <a className="rail-row" href="/app" aria-label="搜索">
+          <button type="button" className="rail-row" aria-label={t('搜索')} onClick={onSearch}>
             <Search />
-          </a>
+          </button>
           <a
             className={rowClass('rail-row', selected === 'board')}
             href="/app"
             aria-current={selected === 'board' ? 'page' : undefined}
-            aria-label="看板"
+            aria-label={t('看板')}
           >
             <Kanban />
           </a>
@@ -117,7 +160,7 @@ export function BoardSidebar({
             className={rowClass('rail-row', selected === 'schedules')}
             href="/app/schedules"
             aria-current={selected === 'schedules' ? 'page' : undefined}
-            aria-label="定时"
+            aria-label={t('定时')}
           >
             <Clock />
           </a>
@@ -131,14 +174,20 @@ export function BoardSidebar({
             <span className="project-avatar">{PROJECT_INITIAL}</span>
           </a>
           <RailGroupChevron label="资源" />
-          {RESOURCE_ROWS.map(({ label, href, Icon }) => (
-            <a key={href} className="rail-row" href={href} aria-label={label}>
+          {resourceRows.map(({ label, href, Icon }) => (
+            <a
+              key={href}
+              className={rowClass('rail-row', selected === href)}
+              href={href}
+              aria-current={selected === href ? 'page' : undefined}
+              aria-label={t(label)}
+            >
               <Icon />
             </a>
           ))}
         </nav>
         <div className="sidebar-spacer" />
-        <a className="rail-install" href="/zh/install" aria-label="安装 App">
+        <a className="rail-install" href="/zh/install" aria-label={t('安装 App')}>
           <Smartphone />
         </a>
         <button type="button" className="rail-user" aria-label={USER_NAME}>
@@ -150,15 +199,18 @@ export function BoardSidebar({
 
   return (
     <aside className="board-sidebar">
-      <div className="sidebar-team-row">
+      <div className={`sidebar-team-row${selected === 'team' ? ' sidebar-team-row--active' : ''}`}>
         <span className="sidebar-row-icon">
           <Users />
         </span>
-        <span className="sidebar-team-name">{TEAM_NAME}</span>
+        {/* r2 §1.1: clicking the team name navigates to /app/team */}
+        <a className="sidebar-team-name" href="/app/team">
+          {TEAM_NAME}
+        </a>
         <button
           type="button"
           className="sidebar-team-collapse"
-          aria-label="收起侧边栏"
+          aria-label={t('收起侧边栏')}
           onClick={onToggle}
         >
           <PanelLeftClose />
@@ -166,13 +218,13 @@ export function BoardSidebar({
       </div>
 
       <nav className="sidebar-nav">
-        <a className="sidebar-row" href="/app">
+        <button type="button" className="sidebar-row" onClick={onSearch}>
           <span className="sidebar-row-icon">
             <Search />
           </span>
-          <span className="sidebar-row-label">搜索</span>
+          <span className="sidebar-row-label">{t('搜索')}</span>
           <span className="sidebar-kbd">⌘K</span>
-        </a>
+        </button>
         <a
           className={rowClass('sidebar-row', selected === 'board')}
           href="/app"
@@ -181,7 +233,7 @@ export function BoardSidebar({
           <span className="sidebar-row-icon">
             <Kanban />
           </span>
-          <span className="sidebar-row-label">看板</span>
+          <span className="sidebar-row-label">{t('看板')}</span>
           {attention > 0 && <span className="sidebar-badge">{attention}</span>}
         </a>
         <a
@@ -192,7 +244,7 @@ export function BoardSidebar({
           <span className="sidebar-row-icon">
             <Clock />
           </span>
-          <span className="sidebar-row-label">定时</span>
+          <span className="sidebar-row-label">{t('定时')}</span>
         </a>
 
         <GroupHeader label="项目" />
@@ -200,7 +252,7 @@ export function BoardSidebar({
           <span className="sidebar-row-icon">
             <Plus />
           </span>
-          <span className="sidebar-subrow-label">新建项目</span>
+          <span className="sidebar-subrow-label">{t('新建项目')}</span>
         </a>
         <a
           className={rowClass('sidebar-subrow', selected === 'project')}
@@ -212,12 +264,18 @@ export function BoardSidebar({
         </a>
 
         <GroupHeader label="资源" />
-        {RESOURCE_ROWS.map(({ label, href, Icon }) => (
-          <a key={href} className="sidebar-subrow" href={href}>
+        {resourceRows.map(({ label, href, Icon }) => (
+          <a
+            key={href}
+            className={rowClass('sidebar-subrow', selected === href)}
+            href={href}
+            aria-current={selected === href ? 'page' : undefined}
+          >
             <span className="sidebar-row-icon">
               <Icon />
             </span>
-            <span className="sidebar-subrow-label">{label}</span>
+            <span className="sidebar-subrow-label">{t(label)}</span>
+            {machineOnline && label === '机器' && <span className="sidebar-online-dot" />}
           </a>
         ))}
       </nav>
@@ -226,7 +284,7 @@ export function BoardSidebar({
 
       <a className="sidebar-install" href="/zh/install">
         <Smartphone />
-        <span className="sidebar-install-label">安装 App</span>
+        <span className="sidebar-install-label">{t('安装 App')}</span>
       </a>
       <button type="button" className="sidebar-user" aria-label={USER_NAME}>
         <img src="/avatar-user.png" alt="" />

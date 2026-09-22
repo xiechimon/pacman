@@ -37,6 +37,9 @@
   position: absolute;
   left: 0;
   right: 0;
+  /* pure label: the centered band spans the topbar and would otherwise
+     swallow clicks on the +任务 / 看板指南 actions (#66 parity clicks) */
+  pointer-events: none;
   text-align: center;
   font-size: 14px;
   font-weight: 500;
@@ -231,8 +234,8 @@
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  background: #e97b35;
-  color: #ffffff;
+  background: var(--project-avatar-bg);
+  color: var(--project-avatar-fg);
   font-size: 10px;
   font-weight: 500;
   line-height: 16px;
@@ -408,3 +411,5 @@
   font-weight: 700;
   line-height: 1;
 }
+/* ---- chief fab ---- (rule moved to chief/chief.css with the #72 surfaces;
+   the FAB is rendered by the board route beside the drawer/settings) */

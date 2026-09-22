@@ -15,12 +15,13 @@ export function Segments({ segments, codeClassName }: SegmentsProps) {
   return (
     <>
       {segments.map((seg, j) =>
-        seg.code ? (
-          // fixture order is stable; segments carry no ids; `link` adds
-          // the indigo link-styled chip (r8 63/76 first README.md mention)
+        seg.style != null ? (
+          // fixture order is stable; segments carry no ids
           <code
             key={j}
-            className={seg.link ? `${codeClassName} ${codeClassName}--link` : codeClassName}
+            className={
+              seg.style === 'link' ? `${codeClassName} ${codeClassName}--link` : codeClassName
+            }
           >
             {seg.text}
           </code>

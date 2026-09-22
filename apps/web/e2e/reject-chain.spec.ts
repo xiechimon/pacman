@@ -41,7 +41,7 @@ test('reject loop: 请求修改 → v2 → diff → 确认', async ({ page }) =>
   await expect(page.locator('.diff-line--add').first()).toBeVisible();
 
   // 确认 closes the chain into the execution round
-  await page.getByRole('button', { name: '确认', exact: true }).click();
+  await page.locator('.detail-head-action').click();
   await expect(page.locator('.detail-chip')).toHaveText(/执行中/);
   await expect(page.locator('.chat-streaming-label').last()).toHaveText('处理中...');
 });

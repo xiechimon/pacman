@@ -10,6 +10,8 @@
 // names the message flow `transcript`.
 
 import type { RobotPara, TranscriptItem } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
+import type { TFunc } from '../i18n/translate.js';
 import {
   ChevronDown,
   ChevronRight,
@@ -26,6 +28,13 @@ interface TranscriptProps {
   transcript: TranscriptItem[];
 }
 
+/** Elapsed label: `Ns` under a minute (r7 21s/19s), `Nm Ns` above
+ *  (r8 56 plan card `完成 2m 41s`, #74 dict template). */
+function formatElapsed(seconds: number, t: TFunc): string {
+  const elapsed = seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  return t('完成 {elapsed}', { elapsed });
+}
+
 /** Message action row (r7 17/28, r8 63/65/73): copy icon, optional
  *  restore icon, then the optional `| 完成 Ns` elapsed tail with an
  *  optional trailing chevron. Every footer variant observed is a subset
@@ -35,6 +44,7 @@ function ActionRow({
   seconds,
   bare,
   chevron,
+  t,
 }: {
   restore?: boolean;
   seconds?: number;
@@ -42,13 +52,16 @@ function ActionRow({
   bare?: boolean;
   /** `›` on plan cards / collapsed tool groups, `⌄` on expanded ones. */
   chevron?: 'right' | 'down';
+  t: TFunc;
 }) {
   return (
     <div className="chat-row-icons">
       <Copy width={13} height={13} />
       {restore === true && <Restore width={13} height={13} />}
       {(seconds != null || bare === true) && (
-        <span className="chat-foot-elapsed">完成{seconds != null ? ` ${seconds}s` : ''}</span>
+        <span className="chat-foot-elapsed">
+          {seconds != null ? formatElapsed(seconds, t) : t('完成')}
+        </span>
       )}
       {chevron === 'right' && <ChevronRight width={10} height={10} className="chat-foot-chevron" />}
       {chevron === 'down' && <ChevronDown width={10} height={10} className="chat-foot-chevron" />}
@@ -79,7 +92,7 @@ function Para({ para }: { para: RobotPara }) {
   );
 }
 
-function Row({ item }: { item: TranscriptItem }) {
+function Row({ item, t }: { item: TranscriptItem; t: TFunc }) {
   switch (item.kind) {
     case 'run':
       return (
@@ -87,7 +100,18 @@ function Row({ item }: { item: TranscriptItem }) {
           {item.at != null && <div>{item.at}</div>}
           {item.machine != null && (
             <div className="chat-stamp-machine">
-              运行在 <span>{item.machine}</span> 上
+              {t('运行在 {m} 上', { m: item.machine ?? '' })
+                .split(item.machine ?? '')
+                .map((part, i) =>
+                  i === 0 ? (
+                    <span key={i}>
+                      {part}
+                      <span>{item.machine}</span>
+                    </span>
+                  ) : (
+                    <span key={i}>{part}</span>
+                  ),
+                )}
             </div>
           )}
         </div>
@@ -98,7 +122,7 @@ function Row({ item }: { item: TranscriptItem }) {
       return (
         <div className="chat-scheduled">
           <Clock width={13} height={13} />
-          由定时发起
+          {t('由定时发起')}
         </div>
       );
     case 'chief':
@@ -107,7 +131,7 @@ function Row({ item }: { item: TranscriptItem }) {
           <span className="chat-avatar">
             <img src="/avatar-robot-2.svg" alt="" />
           </span>
-          <span className="chat-chief">由总管发起</span>
+          <span className="chat-chief">{t('由总管发起')}</span>
         </div>
       );
     case 'user':
@@ -138,9 +162,9 @@ function Row({ item }: { item: TranscriptItem }) {
             <img src="/avatar-robot-1.svg" alt="" />
           </span>
           <span className="chat-text">
-            {item.paragraphs.map((para, i) => (
+            {item.paragraphs.map((raw, i) => (
               // fixture order is stable; paragraphs carry no ids
-              <Para key={i} para={para} />
+              <Para key={i} para={Array.isArray(raw) ? { segments: raw } : raw} />
             ))}
           </span>
           {item.footer != null && (
@@ -148,6 +172,7 @@ function Row({ item }: { item: TranscriptItem }) {
               restore={item.footer.restore}
               seconds={item.footer.seconds}
               chevron={item.footer.chevron === true ? 'right' : undefined}
+              t={t}
             />
           )}
         </div>
@@ -169,7 +194,7 @@ function Row({ item }: { item: TranscriptItem }) {
               ))}
             </p>
           </span>
-          <ActionRow />
+          <ActionRow t={t} />
         </div>
       );
     case 'streaming':
@@ -203,13 +228,14 @@ function Row({ item }: { item: TranscriptItem }) {
             seconds={item.seconds}
             bare={item.seconds == null}
             chevron={item.chevron === true ? 'right' : undefined}
+            t={t}
           />
         </>
       );
     case 'tools':
       return (
         <>
-          <ActionRow seconds={item.seconds} chevron={item.expanded ? 'down' : 'right'} />
+          <ActionRow seconds={item.seconds} chevron={item.expanded ? 'down' : 'right'} t={t} />
           {item.expanded && (
             <>
               <div className="chat-tools">
@@ -221,22 +247,25 @@ function Row({ item }: { item: TranscriptItem }) {
                 ))}
               </div>
               <button type="button" className="chat-collapse">
-                收起
+                {t('收起')}
                 <ChevronDown width={10} height={10} className="chat-collapse-icon" />
               </button>
             </>
           )}
         </>
       );
+    case 'elapsed':
+      return <ActionRow seconds={item.seconds} t={t} />;
   }
 }
 
 export function Transcript({ transcript }: TranscriptProps) {
+  const { t } = useI18n();
   return (
     <>
       {transcript.map((item, i) => (
         // fixture order is stable; items carry no ids
-        <Row key={i} item={item} />
+        <Row key={i} item={item} t={t} />
       ))}
     </>
   );

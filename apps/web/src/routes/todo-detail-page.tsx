@@ -1,25 +1,41 @@
 // Todo detail route (issue #56): app shell sidebar + dhead + phase-driven
 // body — fresh block (23/23d) or doc pane + chat column (16/17 family) —
 // plus composer, 总管 FAB and the capture-frozen user-menu popover.
+// #66/#68 add the 更多/删除 and token/branch/history/accept overlays;
 // #75 adds the deep dynamic states: the version dropdown / compare
 // submenu / plan-version diff surface of the doc pane, the rerun dialog +
-// 复用方案 sub-panel + 运行历史 overlays (r8 56/74/75/57/77) and the
-// interactive reject chain (请求修改 → replan streaming → v(N+1) → diff
-// → 确认, issue #75 AC3) walked client-side over the fixture script.
-import { useState } from 'react';
-import { useParams, useSearchParams } from 'react-router';
+// 复用方案 sub-panel (r8 56/74/75) and the interactive reject chain
+// (请求修改 → replan streaming → v(N+1) → diff → 确认, AC3) walked
+// client-side over the fixture script.
+import { useCallback, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { AcceptDialog } from '../detail/accept-dialog.js';
+import { BranchDialog } from '../detail/branch-dialog.js';
 import { Composer } from '../detail/composer.js';
 import { DetailHead } from '../detail/dhead.js';
 import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
-import { HistoryDialog, RerunDialog, ReusePanel } from '../detail/overlays.js';
+import { HistoryDialog } from '../detail/history-dialog.js';
+import { RerunDialog, ReusePanel } from '../detail/overlays.js';
+import { TokenDialog } from '../detail/token-dialog.js';
 import { Transcript } from '../detail/transcript.js';
 import { UserMenu } from '../detail/user-menu.js';
+import type {
+  DetailContent,
+  OverlayState,
+  Phase,
+  PlanDiffContent,
+  TranscriptItem,
+} from '../fixtures/records.js';
+import { DeleteConfirm } from '../overlay/delete-confirm.js';
+import { MoreMenu } from '../overlay/more-menu.js';
+import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
 import '../detail/detail.css';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar } from '../board/sidebar.js';
-import type { DetailContent, Phase, PlanDiffContent, TranscriptItem } from '../fixtures/records.js';
+import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
+import { overlayContent } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { ChiefFab } from '../icons/index.js';
 import { readStoredTheme } from '../theme.js';
@@ -71,23 +87,37 @@ function chainView(
 export function TodoDetailPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   // 文档|聊天 tabs (issue #56): 文档 = doc pane + chat column, 聊天 = chat
   // column alone. Pure render state — the captures all sit on 文档.
   const [tab, setTab] = useState<'doc' | 'chat'>('doc');
+  // 更多 menu + delete confirm (#66): confirming a delete marks the todo
+  // in the deletions overlay and returns to /app (r2 §5.4) — the board
+  // route then renders without it; the fixture phase has no backend.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const fixture = resolveScenario(searchParams);
-  const todo = fixture.todos.find((t) => t.id === id) ?? fixture.todos[0];
-  const detail0 = fixture.detail;
-  const [menu, setMenu] = useState<'versions' | 'compare' | undefined>(detail0?.versionMenu);
-  const [diff, setDiff] = useState(detail0?.planDiff);
-  const [dialog, setDialog] = useState<'rerun' | 'reuse' | 'history' | undefined>(detail0?.dialog);
+  const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
+  const todos = withoutDeleted(fixture.todos);
+  const todo = todos.find((t) => t.id === id) ?? todos[0];
+  // Modal overlays (issue #68, extended in #75 with rerun/reuse): the
+  // scenario fixture opens one for capture determinism; the header
+  // buttons and the review/failed action buttons open the same set
+  // interactively.
+  const [overlay, setOverlay] = useState<OverlayState | null>(fixture.overlay ?? null);
+  const closeOverlay = useCallback(() => setOverlay(null), []);
+  // #75 version-menu + plan-version diff state: scenario-frozen for the
+  // captures, interactive afterwards (63–72).
+  const [menu, setMenu] = useState<'versions' | 'compare' | undefined>(fixture.detail?.versionMenu);
+  const [diff, setDiff] = useState(fixture.detail?.planDiff);
   const [chain, setChain] = useState<ChainState>('idle');
 
-  const view = chainView(detail0, chain, diff);
-  const phase: Phase = view.phaseOverride ?? todo?.phase ?? 'todo';
-
+  const view = chainView(fixture.detail, chain, diff);
   if (todo == null) return null;
+  const content = overlayContent(todo.id);
+  const phase: Phase = view.phaseOverride ?? todo.phase;
   const ui = PHASE_UI[phase];
-  const detail = detail0;
+  const detail = fixture.detail;
   const streaming = view.transcript.some((item) => item.kind === 'streaming');
   // The doc pane flips to the 变更 surface once a run produced changes
   // (r7 27/36, r8 54/73); the plan-version diff surface wins while open
@@ -101,20 +131,30 @@ export function TodoDetailPage() {
 
   return (
     <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
-      <BoardSidebar attention={attentionCount(fixture.todos)} />
+      <BoardSidebar
+        attention={attentionCount(todos)}
+        onSearch={() => search.setOpen(true)}
+        usageNav={fixture.usageNav === true}
+      />
       <div className="detail-main">
         <DetailHead
           todo={todo}
           phase={phase}
           tab={tab}
           onTab={setTab}
-          onAction={
-            chain === 'landed' && detail0?.revision != null
-              ? () => setChain('building')
-              : phase === 'failed'
-                ? () => setDialog('rerun')
-                : undefined
-          }
+          onMore={() => setMoreOpen(true)}
+          onOverlay={(kind) => setOverlay({ kind })}
+          onAction={() => {
+            if (chain === 'landed' && detail?.revision != null) {
+              setChain('building');
+              return;
+            }
+            // r7 34: the review-phase 完成 button opens the accept dialog;
+            // r8 54: the failed 重跑 button opens the rerun dialog
+            if (phase === 'review') setOverlay({ kind: 'accept' });
+            if (phase === 'failed') setOverlay({ kind: 'rerun' });
+          }}
+          chipPopoverOpen={fixture.ui?.chipPopoverOpen === true}
         />
         {detail == null ? (
           <div className="detail-body detail-body--single">
@@ -125,9 +165,10 @@ export function TodoDetailPage() {
             {tab === 'doc' && (
               <DocPane
                 mode={docMode}
-                now={fixture.now}
                 doc={view.doc}
                 changes={detail.changes}
+                now={fixture.now}
+                planDropdownOpen={fixture.ui?.planDropdownOpen === true}
                 planVersions={view.planVersions}
                 versionMenu={menu}
                 onVersionMenu={setMenu}
@@ -135,7 +176,7 @@ export function TodoDetailPage() {
                   // 上一版本 (r8 64 → 65/71): opens the previous-version
                   // diff — the fixture's compare target, or the chain's
                   // landed diff once the reject loop produced one
-                  setDiff(detail0?.compareTarget ?? detail0?.revision?.landed.planDiff);
+                  setDiff(detail.compareTarget ?? detail.revision?.landed.planDiff);
                   setMenu(undefined);
                 }}
                 onBase={() => {
@@ -170,7 +211,7 @@ export function TodoDetailPage() {
             }
             streaming={streaming}
             onSend={
-              detail0?.revision != null && chain === 'idle'
+              detail?.revision != null && chain === 'idle'
                 ? () => {
                     setChain('streaming');
                     window.setTimeout(() => setChain('landed'), 900);
@@ -181,10 +222,43 @@ export function TodoDetailPage() {
         )}
         <button type="button" className="detail-fab" aria-label="总管">
           <ChiefFab />
+          {fixture.chiefUnread != null && fixture.chiefUnread > 0 && (
+            <span className="fab-badge">{fixture.chiefUnread}</span>
+          )}
         </button>
       </div>
       {detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
-      {dialog === 'rerun' && (
+      {moreOpen && (
+        <MoreMenu
+          onClose={() => setMoreOpen(false)}
+          onDelete={() => {
+            setMoreOpen(false);
+            setDeleteOpen(true);
+          }}
+        />
+      )}
+      {deleteOpen && (
+        <DeleteConfirm
+          todo={todo}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={() => {
+            setDeleteOpen(false);
+            markDeleted(todo.id);
+            navigate('/app');
+          }}
+        />
+      )}
+      {overlay?.kind === 'token' && content != null && (
+        <TokenDialog stats={content.token} onClose={closeOverlay} />
+      )}
+      {overlay?.kind === 'branch' && content != null && (
+        <BranchDialog info={content.branch} onClose={closeOverlay} />
+      )}
+      {overlay?.kind === 'history' && content != null && (
+        <HistoryDialog runs={content.runs} onClose={closeOverlay} />
+      )}
+      {overlay?.kind === 'accept' && <AcceptDialog onClose={closeOverlay} />}
+      {overlay?.kind === 'rerun' && (
         <RerunDialog
           reuse={todo.hasPlan}
           agent={
@@ -193,17 +267,24 @@ export function TodoDetailPage() {
               model: '默认',
             }
           }
-          onReuse={() => setDialog('reuse')}
+          onReuse={() => setOverlay({ kind: 'reuse' })}
         />
       )}
-      {dialog === 'reuse' && (
+      {overlay?.kind === 'reuse' && (
         <ReusePanel
-          onBack={() => setDialog('rerun')}
-          onView={() => setDialog(undefined)}
-          onDirect={() => setDialog(undefined)}
+          onBack={() => setOverlay({ kind: 'rerun' })}
+          onView={closeOverlay}
+          onDirect={closeOverlay}
         />
       )}
-      {dialog === 'history' && <HistoryDialog rows={detail?.runHistory ?? []} />}
+      {search.open && (
+        <SearchPanel
+          fixture={fixture}
+          query={search.query}
+          onQuery={search.setQuery}
+          onClose={() => search.setOpen(false)}
+        />
+      )}
     </div>
   );
 }

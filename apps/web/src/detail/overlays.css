@@ -1,0 +1,468 @@
+/* Modal overlay surfaces (issue #68, r7 §3.5): 448-wide dialogs centered on
+   both axes over a 60% black backdrop (sampled r7 30: #faf7f3 → #646361).
+   Light geometry scanned from r7 30/31/32/34; dark values sampled from the
+   r8 78–81 captures. Header 48 + 1px divider (card-border), close glyph 16
+   centered 12 from the right edge. */
+
+.dlg-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.6);
+}
+
+.dlg {
+  width: 448px;
+  background: var(--dialog-bg);
+  border-radius: 12px;
+  box-shadow: 0 18px 45px rgb(0 0 0 / 0.25);
+  overflow: hidden;
+}
+
+.dlg-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+/* 分支与PR header: centered segmented tabs, no divider (r7 31) */
+.dlg-head--plain {
+  justify-content: center;
+  border-bottom: 0;
+}
+
+.dlg-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.dlg-close {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+/* --- segmented control (同步到机器 | Git) --- */
+
+.dlg-seg {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 3px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--seg-container-bg);
+}
+
+.dlg-seg-tab {
+  height: 24px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.dlg-seg-tab[data-active="true"] {
+  background: var(--seg-tab-active-bg);
+  color: var(--text-primary);
+}
+
+/* --- Token 用量 (r7 30): 60px total row, 38px model row, 27px stat rows --- */
+
+.dlg-token-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  /* 60px content + 1px divider (border-box would eat the divider) */
+  height: 61px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.dlg-token-num {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+
+.dlg-token-unit {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.dlg-token-model {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 39px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--card-border);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.dlg-token-model-name {
+  color: var(--text-secondary);
+}
+
+.dlg-token-model-total {
+  color: var(--text-tertiary);
+}
+
+.dlg-token-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 27px;
+  padding: 0 16px;
+  font-size: 12px;
+}
+
+.dlg-token-label {
+  color: var(--text-tertiary);
+}
+
+.dlg-token-value {
+  color: var(--text-primary);
+}
+
+/* --- 分支与 PR (r7 31) --- */
+
+.dlg-branch-body {
+  padding: 16px;
+}
+
+.dlg-branch-box {
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--dialog-box-bg);
+}
+
+.dlg-branch-row {
+  display: flex;
+  align-items: center;
+  height: 42px;
+  padding: 0 12px 0 15px;
+}
+
+.dlg-branch-row + .dlg-branch-row {
+  border-top: 1px solid var(--card-border);
+}
+
+.dlg-branch-label {
+  width: 76px;
+  flex: none;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.dlg-branch-value {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.dlg-copy {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+/* field label rhythm scanned from r7 31: box→label 9, label→control 8,
+   18px line box (block gaps 36 / 34 between controls) */
+.dlg-field-label {
+  margin: 9px 0 8px;
+  line-height: 18px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.dlg-machine {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 14px 0 11px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dlg-machine-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--badge-done);
+}
+
+.dlg-machine svg {
+  color: var(--text-tertiary);
+}
+
+.dlg-dir {
+  height: 32px;
+  line-height: 32px;
+  padding: 0 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.dlg-force {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.dlg-force-text {
+  flex: 1;
+}
+
+.dlg-force-text .dlg-field-label {
+  margin: 0;
+}
+
+.dlg-force-desc {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-tertiary);
+}
+
+.dlg-toggle {
+  flex: none;
+  position: relative;
+  display: inline-block;
+  width: 28px;
+  height: 16px;
+  /* track rides the first description line (r7 31: y 469–485) */
+  margin-top: 17px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--toggle-track);
+  cursor: pointer;
+}
+
+.dlg-toggle input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.dlg-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ffffff;
+  transition: left 120ms ease;
+}
+
+.dlg-toggle[data-on="true"] {
+  background: var(--indigo-500);
+}
+
+.dlg-toggle[data-on="true"] .dlg-toggle-knob {
+  left: 14px;
+}
+
+.dlg-sync {
+  width: 100%;
+  height: 38px;
+  margin-top: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--indigo-disabled);
+  color: var(--indigo-disabled-fg);
+  font-size: 13px;
+  cursor: default;
+}
+
+/* --- 运行历史 (r7 32) --- */
+
+.dlg-history {
+  padding: 24px 16px 26px;
+}
+
+.dlg-history-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+/* multi-row form (r8 80): 52px pitch = 35 content + 8 + divider + 8 */
+.dlg-history-row + .dlg-history-row {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--card-border);
+}
+
+.dlg-history-glyph {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-left: 1px;
+}
+
+.dlg-history-glyph--failed {
+  color: var(--stop);
+}
+
+.dlg-history-glyph--done {
+  color: var(--badge-done);
+}
+
+.dlg-history-ring {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin-left: 1px;
+  border: 1.5px solid var(--dialog-ring);
+  border-radius: 50%;
+}
+
+.dlg-history-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 18px;
+}
+
+.dlg-history-label {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.dlg-history-chip {
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--code-bg);
+  font-size: 11px;
+  line-height: 18px;
+  color: var(--text-tertiary);
+}
+
+.dlg-history-meta {
+  height: 17px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* --- 验收确认 (r7 34) --- */
+
+.dlg-accept {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 17px 16px 0;
+}
+
+.dlg-accept-check {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--card-button);
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.dlg-accept-check[data-on="false"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+.dlg-accept-label {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.dlg-accept-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 17px 16px 14px;
+}
+
+.dlg-accept-cancel {
+  border: 0;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.dlg-accept-done {
+  width: 50px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--card-button);
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* row-level 重跑 button: failed todo's current row only (r8 §3.3
+   state-gated, overriding the r7 §4.1.5 hover reading) */
+.dlg-history-rerun {
+  margin-left: auto;
+  align-self: center;
+  height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: var(--card-button);
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 30px;
+  cursor: pointer;
+}
