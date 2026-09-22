@@ -147,10 +147,15 @@
      row tint #eaf1e8 */
   --diff-add-bg: #eaf1e8;
   --diff-add-fg: #499771;
-  /* overlay batch A (#66), light values probed off r7 04/25 */
+  /* overlay batch A (#66), light values probed off r7 04/25; the dialog
+     shadow and project avatar are theme-invariant (shadow probed light,
+     r8 54 dark shows the same orange avatar) — mirrored explicitly so
+     .light stays the full semantic-token mirror */
   --danger: #ca3a32;
   --primary-disabled: #9f9ae2;
   --dialog-bg: #fdfaf7;
   --disabled-fg: #ffffff;
   --menu-icon: #1c1917;
+  --dialog-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
+  --project-avatar: #e97b35;
 }

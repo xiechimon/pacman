@@ -22,6 +22,7 @@ import {
   detailLegacy,
   detailPlanning,
   detailR8Confirm,
+  detailR8DeleteFresh,
   detailR8Fresh,
   detailReview,
   r7,
@@ -77,6 +78,7 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '55': detailR8Confirm(),
   '56': detailR8Confirm(),
   '57': detailR8Fresh,
+  '58': detailR8DeleteFresh,
 };
 
 /** #58 gate: scenario selection exists only in dev (`vite dev`) and in the

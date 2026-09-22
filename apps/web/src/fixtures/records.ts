@@ -77,13 +77,12 @@ export interface FixtureSet {
   detail?: DetailContent;
 }
 
-/** Inline text run inside a plan-document block; `code` renders the
- *  monospace chip (r7 17: `tail -n 3 README.md` style), `link` the blue
+/** Inline text run inside a plan-document block: plain text, the
+ *  monospace chip (r7 17: `tail -n 3 README.md` style) or the blue
  *  file/commit reference span (r8 56: `README.md`, `2f47b62`). */
 export interface DocSegment {
   text: string;
-  code?: boolean;
-  link?: boolean;
+  style?: 'code' | 'link';
 }
 
 /** One plan-document block: free paragraph, bullet (r7 17 doc pane) or

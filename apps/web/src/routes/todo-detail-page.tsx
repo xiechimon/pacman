@@ -15,6 +15,7 @@ import { PHASE_UI } from '../phase.js';
 import '../detail/detail.css';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar } from '../board/sidebar.js';
+import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { ChiefFab } from '../icons/index.js';
 import { readStoredTheme } from '../theme.js';
@@ -26,13 +27,13 @@ export function TodoDetailPage() {
   // 文档|聊天 tabs (issue #56): 文档 = doc pane + chat column, 聊天 = chat
   // column alone. Pure render state — the captures all sit on 文档.
   const [tab, setTab] = useState<'doc' | 'chat'>('doc');
-  // 更多 menu + delete confirm (#66): the delete flow removes the todo
-  // from this client-side set and returns to /app (r2 §5.4); the fixture
-  // phase has no backend to persist it to.
+  // 更多 menu + delete confirm (#66): confirming a delete marks the todo
+  // in the deletions overlay and returns to /app (r2 §5.4) — the board
+  // route then renders without it; the fixture phase has no backend.
   const [moreOpen, setMoreOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const fixture = resolveScenario(searchParams);
-  const [todos, setTodos] = useState(fixture.todos);
+  const todos = withoutDeleted(fixture.todos);
   const todo = todos.find((t) => t.id === id) ?? todos[0];
   if (todo == null) return null;
   const ui = PHASE_UI[todo.phase];
@@ -91,7 +92,7 @@ export function TodoDetailPage() {
           onClose={() => setDeleteOpen(false)}
           onConfirm={() => {
             setDeleteOpen(false);
-            setTodos((prev) => prev.filter((t) => t.id !== todo.id));
+            markDeleted(todo.id);
             navigate('/app');
           }}
         />

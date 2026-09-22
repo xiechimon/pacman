@@ -97,6 +97,14 @@ async function captureEntry(entry, browser) {
     }
   }
 
+  // filled-input states (#66, r7 14): type after the clicks opened the surface
+  if (entry.fills != null) {
+    for (const fill of entry.fills) {
+      await page.fill(fill.selector, fill.text);
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
+    }
+  }
+
   const shot = resolve(OUT_DIR, `${entry.id}.png`);
   await page.screenshot({ path: shot });
   await context.close();

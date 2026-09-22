@@ -12,13 +12,16 @@
 //              before load so the 40px rail renders (r7 03)
 //   clicks   optional: CSS selectors clicked in order after load, one
 //              rAF settle between each — opens overlay surfaces (#66)
+//   fills    optional: [{selector, text}] typed after the clicks, for
+//              filled-input states (r7 14 enabled-primary twin)
 //   batch    optional baseline batch dir under docs/research/assets/
 //              (default r7; #66 dark rows ride r8 54–57)
 //   viewport optional per-row capture viewport; the physical window of
 //              the r8 session capped its dark baselines at 1440×710, so
 //              those rows capture at the same size (centering law still
 //              holds, r7 §3.5 formula)
-//   baseline   optional r7 filename under docs/research/assets/r7/ —
+//   baseline   optional filename under the batch dir (docs/research/
+//              assets/<batch>/, r7 unless `batch` says otherwise) —
 //              present = real parity pair (threshold 0.85);
 //              absent  = smoke pair, capture compared against itself
 //              (pipeline gate, SSIM must be exactly 1.0)
@@ -248,6 +251,18 @@ export const matrix = [
     baseline: '04-新建任务dialog-light.png',
   },
   {
+    // 14 = the filled-title twin: primary button flips disabled → enabled
+    id: 'overlay-new-task-filled-light',
+    route: '/app',
+    scenario: '01',
+    theme: 'light',
+    clicks: ['.board-new-task'],
+    fills: [
+      { selector: '.new-task-input', text: '在 README.md 末尾追加一行「r7 rebaseline probe」' },
+    ],
+    baseline: '14-新建任务-已填标题-light.png',
+  },
+  {
     id: 'overlay-delete-light',
     route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
     scenario: '36',
@@ -286,13 +301,25 @@ export const matrix = [
     baseline: '54-新建任务dialog-dark.png',
   },
   {
+    // gated dark delete twin on the drift-light fresh surface (58)
+    id: 'overlay-delete-fresh-dark',
+    route: '/app/todo/r8-delete-17',
+    scenario: '58',
+    theme: 'dark',
+    clicks: ['.detail-head-icon--more', '.more-menu-item[data-action="delete"]'],
+    batch: 'r8',
+    viewport: { width: 1440, height: 710 },
+    baseline: '58-删除确认弹窗-fresh-dark.png',
+  },
+  {
     // report-only: the r8 55/56 surfaces sit on the probe-#16 confirm
     // detail, which the live site restyled after the r7 freeze (doc-pane
     // inline-code spacing, sidebar 用量 row, attention-badge formula,
     // taskline seq chip, FAB badge — all 09-22 drift, blend-verified
     // outside the overlay itself). The r7-frozen replica cannot gate
     // both eras; per 04 §2 these pairs report, the overlay geometry is
-    // gated by the 54/57 twins. Site-drift rebaseline = A6 ticket.
+    // gated by the 54/57/58 twins on drift-light surfaces. Site-drift
+    // rebaseline = A6 ticket.
     id: 'overlay-delete-dark',
     route: '/app/todo/u_B5ngeVOlKdKbG_4H9Cl',
     scenario: '55',

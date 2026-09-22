@@ -234,7 +234,7 @@
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  background: #e97b35;
+  background: var(--project-avatar);
   color: #ffffff;
   font-size: 10px;
   font-weight: 500;

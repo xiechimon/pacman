@@ -146,6 +146,33 @@ const darkFreshProbe: TodoRecord = {
   v: 2,
 };
 
+/** Client-created todo of the fixture phase (#66 new-task dialog): lands
+ *  in 待开始 with the 刚刚 label against the fixture clock (r2 §4.2/§5.2).
+ *  Record shape lives here with every other TodoRecord factory. */
+export function localTodo(seqNum: number, title: string, now: number): TodoRecord {
+  return {
+    id: `local-${seqNum}`,
+    teamId: TEAM_ID,
+    projectId: PROJECT_ID,
+    title,
+    spec: title,
+    phase: 'todo',
+    phaseAt: now,
+    seqNum,
+    orderIndex: 0,
+    tagIds: [],
+    assignment: null,
+    agent: null,
+    latestBuildId: null,
+    lastRunAt: null,
+    hasChanges: false,
+    hasPlan: false,
+    buildHistory: [],
+    sourceTodo: null,
+    v: 2,
+  };
+}
+
 /** Board default: only the r3 legacy pair (r7 01/35). Captured before the
  *  probe existed, ~13:10–13:21. */
 export const boardDefault: FixtureSet = { todos: [legacyReview, legacyDone], now: r7(13, 14) };
@@ -207,7 +234,7 @@ const PROBE_PLAN_DOC: DocBlock[] = [
     kind: 'bullet',
     segments: [
       { text: '执行 ' },
-      { text: 'tail -n 3 README.md', code: true },
+      { text: 'tail -n 3 README.md', style: 'code' },
       {
         text: ' 确认最后一行为 "r7 rebaseline probe",且原有的 "r6 rebaseline probe" 一行保留在其上一行。',
       },
@@ -217,7 +244,7 @@ const PROBE_PLAN_DOC: DocBlock[] = [
     kind: 'bullet',
     segments: [
       { text: '执行 ' },
-      { text: 'git diff README.md', code: true },
+      { text: 'git diff README.md', style: 'code' },
       { text: ' 确认改动仅为新增一行,未影响其他行。' },
     ],
   },
@@ -305,7 +332,7 @@ const PROBE_MERGE_ROUND: TranscriptItem[] = [
     kind: 'robot',
     paragraphs: [
       [
-        { text: 'git merge origin/main', code: true },
+        { text: 'git merge origin/main', style: 'code' },
         { text: ' 结果为 "Already up to date"，无需处理冲突。' },
       ],
     ],
@@ -332,11 +359,11 @@ const LEGACY_REVIEW_TRANSCRIPT: TranscriptItem[] = [
     paragraphs: [
       [
         { text: 'README.md 中已存在这行内容（' },
-        { text: 'r3 lifecycle probe', code: true },
+        { text: 'r3 lifecycle probe', style: 'code' },
         { text: '），且历史提交记录显示已有一次' },
       ],
       [
-        { text: 'docs（readme）：append lifecycle probe line', code: true },
+        { text: 'docs（readme）：append lifecycle probe line', style: 'code' },
         { text: ' 的提交完成了这项任务。当前工作区无待提交更改，' },
       ],
       [{ text: '任务已满足，无需重复修改。' }],
@@ -606,27 +633,27 @@ const R8_PLAN_DOC: DocBlock[] = [
     kind: 'para',
     segments: [
       { text: 'r3-lifecycle 是一个纯静态单页仓库（' },
-      { text: 'index.html', link: true },
+      { text: 'index.html', style: 'link' },
       { text: ' + ' },
-      { text: 'README.md', link: true },
+      { text: 'README.md', style: 'link' },
       { text: '，无构建/测试/CI）。历史上每一轮 rN 探针任务（r3、r5b、r6、r7，见 ' },
-      { text: 'README.md', link: true },
+      { text: 'README.md', style: 'link' },
       { text: ' 现有内容及对应 commit ' },
-      { text: '2f47b62', link: true },
+      { text: '2f47b62', style: 'link' },
       { text: '、' },
-      { text: '386b8e4', link: true },
+      { text: '386b8e4', style: 'link' },
       { text: '、' },
-      { text: '1cecf83', link: true },
+      { text: '1cecf83', style: 'link' },
       { text: '、' },
-      { text: '2cceb9d', link: true },
+      { text: '2cceb9d', style: 'link' },
       { text: '）都遵循同一套路：在 ' },
-      { text: 'README.md', link: true },
+      { text: 'README.md', style: 'link' },
       { text: ' 末尾追加一行 "' },
-      { text: '<探针名> probe', link: true },
+      { text: '<探针名> probe', style: 'link' },
       { text: '" 文本，作为该轮次生命周期/rebaseline 探针的可验证产物，commit message 统一为 ' },
-      { text: 'docs(readme): append <探针名> probe line', link: true },
+      { text: 'docs(readme): append <探针名> probe line', style: 'link' },
       { text: '。本次任务 ' },
-      { text: 'r8-overlay-dark 探针', link: true },
+      { text: 'r8-overlay-dark 探针', style: 'link' },
       {
         text: ' 的 Spec 未给出具体文案，按同一约定执行：追加对应的第 r8 轮探针行，保持仓库内探针记录的连续性。',
       },
@@ -637,13 +664,13 @@ const R8_PLAN_DOC: DocBlock[] = [
     kind: 'bullet',
     segments: [
       { text: 'Spec 为空，按仓库既有 r3/r5b/r6/r7 探针的命名与格式惯例，在 ' },
-      { text: 'README.md', link: true },
+      { text: 'README.md', style: 'link' },
       { text: ' 末尾新增一行：' },
-      { text: 'r8 overlay-dark probe', link: true },
+      { text: 'r8 overlay-dark probe', style: 'link' },
       { text: '（对应标题中的 ' },
-      { text: 'r8-overlay-dark', link: true },
+      { text: 'r8-overlay-dark', style: 'link' },
       { text: '，与既有行如 ' },
-      { text: 'r7 rebaseline probe', link: true },
+      { text: 'r7 rebaseline probe', style: 'link' },
       { text: ' 的措辞风格一致）。' },
     ],
   },
@@ -651,11 +678,11 @@ const R8_PLAN_DOC: DocBlock[] = [
     kind: 'bullet',
     segments: [
       { text: '不改动 ' },
-      { text: 'index.html', link: true },
+      { text: 'index.html', style: 'link' },
       { text: '、' },
-      { text: 'CONTRIBUTING.md', link: true },
+      { text: 'CONTRIBUTING.md', style: 'link' },
       { text: '，本轮探针只涉及 ' },
-      { text: 'README.md', link: true },
+      { text: 'README.md', style: 'link' },
       { text: '。' },
     ],
   },
@@ -663,11 +690,11 @@ const R8_PLAN_DOC: DocBlock[] = [
   {
     kind: 'bullet',
     segments: [
-      { text: 'README.md', link: true },
+      { text: 'README.md', style: 'link' },
       { text: '：在文件末尾追加一行 ' },
-      { text: 'r8 overlay-dark probe', link: true },
+      { text: 'r8 overlay-dark probe', style: 'link' },
       { text: '，与现有 5 行探针记录（' },
-      { text: 'r3 lifecycle probe', link: true },
+      { text: 'r3 lifecycle probe', style: 'link' },
       { text: ' 等）保持相同的纯文本追加方式，不改动已有内容、不加空行。' },
     ],
   },
@@ -675,18 +702,18 @@ const R8_PLAN_DOC: DocBlock[] = [
   {
     kind: 'bullet',
     segments: [
-      { text: 'git diff README.md', code: true },
+      { text: 'git diff README.md', style: 'code' },
       { text: ' 确认只新增一行 ' },
-      { text: 'r8 overlay-dark probe', link: true },
+      { text: 'r8 overlay-dark probe', style: 'link' },
       { text: '，无其他改动。' },
     ],
   },
   {
     kind: 'bullet',
     segments: [
-      { text: 'git log --oneline -1', code: true },
+      { text: 'git log --oneline -1', style: 'code' },
       { text: ' 确认提交信息符合约定：' },
-      { text: 'docs(readme): append r8 overlay-dark probe line', link: true },
+      { text: 'docs(readme): append r8 overlay-dark probe line', style: 'link' },
       { text: '。' },
     ],
   },
@@ -712,7 +739,7 @@ const R8_CONFIRM_TRANSCRIPT: TranscriptItem[] = [
         {
           text: '该任务的 Spec 为空，只有标题「r8-overlay-dark 探针」。参照仓库里 r3~r7 同类型探针 commit（如 ',
         },
-        { text: 'docs(readme): append r7 rebaseline probe line', code: true },
+        { text: 'docs(readme): append r7 rebaseline probe line', style: 'code' },
         {
           text: '）的固定套路——在 README.md 末尾追加一行与探针名对应的文本——我按同一约定生成本次改动的具体文案，并在计划中的「假设」里写明。',
         },
@@ -747,6 +774,37 @@ export const detailR8Fresh: FixtureSet = {
     legacyDone,
   ],
   now: r8(23, 43),
+};
+
+/** r8 58: probe #17 (created 2026-09-23 00:34, deleted 00:36 — zero
+ *  residue), fresh detail under the delete confirm. Badge 2 in the
+ *  capture → #15 already out of confirm by then; the fresh surface keeps
+ *  this pair clear of the doc-pane/taskline drift the 55/56 pairs hit. */
+const probe17Fresh: TodoRecord = {
+  id: 'r8-delete-17',
+  teamId: TEAM_ID,
+  projectId: PROJECT_ID,
+  title: 'r8-delete-dark 探针',
+  spec: 'r8-delete-dark 探针',
+  phase: 'todo',
+  phaseAt: at('2026-09-23', 0, 34),
+  seqNum: 17,
+  orderIndex: 0,
+  tagIds: [],
+  assignment: null,
+  agent: null,
+  latestBuildId: null,
+  lastRunAt: null,
+  hasChanges: false,
+  hasPlan: false,
+  buildHistory: [],
+  sourceTodo: null,
+  v: 2,
+};
+
+export const detailR8DeleteFresh: FixtureSet = {
+  todos: [probe17Fresh, dyn15('done'), dyn12Failed, legacyReview, ...R8_LEFTOVERS, legacyDone],
+  now: at('2026-09-23', 0, 35),
 };
 
 /** r8 56/55: probe #16 confirm detail at 23:44 (badge 4), the surface the
