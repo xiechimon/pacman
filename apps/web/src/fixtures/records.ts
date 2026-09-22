@@ -65,6 +65,19 @@ export interface TodoRecord {
   awaitingReply?: boolean;
 }
 
+/** Overlay open-states a scenario freezes (issue #67): the ⌘K search
+ *  panel, the detail status-chip popover and the doc-pane 方案▾ dropdown.
+ *  Pure initial UI state — the overlays stay interactive afterwards. */
+export interface OverlayUi {
+  /** ⌘K panel open; absent query = the empty 前往 surface (r7 05). */
+  searchOpen?: boolean;
+  searchQuery?: string;
+  /** Status-chip popover open over the detail header (r7 19 / 29). */
+  chipPopoverOpen?: boolean;
+  /** 方案▾ document-type dropdown open in the doc pane (r7 20). */
+  planDropdownOpen?: boolean;
+}
+
 /** One deterministic content set behind a scenario id. `now` is the frozen
  *  reference instant for relative labels (capture time of the r7 shot), so
  *  parity output never drifts with wall-clock time. */
@@ -75,6 +88,12 @@ export interface FixtureSet {
    *  document of the selected todo, verbatim from the r7 captures. Board
    *  scenarios leave it absent. */
   detail?: DetailContent;
+  /** Overlay open-states (issue #67); absent = all closed. */
+  ui?: OverlayUi;
+  /** Sidebar 用量 nav row present (issue #67): the live site grew it
+   *  between the r7 captures (2026-09-21, absent) and the 05b results
+   *  capture (2026-09-22, present) — nav set is per-capture content. */
+  usageNav?: boolean;
 }
 
 /** Inline text run inside a plan-document block; `code` renders the

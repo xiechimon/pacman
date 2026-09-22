@@ -231,8 +231,8 @@
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  background: #e97b35;
-  color: #ffffff;
+  background: var(--project-avatar-bg);
+  color: var(--project-avatar-fg);
   font-size: 10px;
   font-weight: 500;
   line-height: 16px;

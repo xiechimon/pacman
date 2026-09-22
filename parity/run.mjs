@@ -118,6 +118,13 @@ async function main() {
     ],
     { cwd: ROOT, stdio: 'ignore', detached: true },
   );
+  // a squatter on PORT (stale harness run) would otherwise answer
+  // waitForServer with an old bundle and silently fake the verdicts
+  preview.on('exit', (code, signal) => {
+    if (code === 0 || signal != null) return;
+    console.error(`preview server exited early (code ${code}) — is port ${PORT} taken?`);
+    process.exit(1);
+  });
   let browser;
   const results = [];
   try {

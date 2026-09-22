@@ -9,6 +9,7 @@ import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
 import { Transcript } from '../detail/transcript.js';
 import { UserMenu } from '../detail/user-menu.js';
+import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
 import '../detail/detail.css';
 import { attentionCount } from '../board/columns.js';
@@ -24,6 +25,7 @@ export function TodoDetailPage() {
   // column alone. Pure render state — the captures all sit on 文档.
   const [tab, setTab] = useState<'doc' | 'chat'>('doc');
   const fixture = resolveScenario(searchParams);
+  const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
   const todo = fixture.todos.find((t) => t.id === id) ?? fixture.todos[0];
   if (todo == null) return null;
   const ui = PHASE_UI[todo.phase];
@@ -35,16 +37,32 @@ export function TodoDetailPage() {
 
   return (
     <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
-      <BoardSidebar attention={attentionCount(fixture.todos)} />
+      <BoardSidebar
+        attention={attentionCount(fixture.todos)}
+        onSearch={() => search.setOpen(true)}
+        usageNav={fixture.usageNav === true}
+      />
       <div className="detail-main">
-        <DetailHead todo={todo} tab={tab} onTab={setTab} />
+        <DetailHead
+          todo={todo}
+          tab={tab}
+          onTab={setTab}
+          chipPopoverOpen={fixture.ui?.chipPopoverOpen === true}
+        />
         {detail == null ? (
           <div className="detail-body detail-body--single">
             <FreshBlock todo={todo} />
           </div>
         ) : (
           <div className="detail-body">
-            {tab === 'doc' && <DocPane mode={docMode} doc={detail.doc} changes={detail.changes} />}
+            {tab === 'doc' && (
+              <DocPane
+                mode={docMode}
+                doc={detail.doc}
+                changes={detail.changes}
+                planDropdownOpen={fixture.ui?.planDropdownOpen === true}
+              />
+            )}
             <div className="chat-col">
               <Transcript transcript={detail.transcript} />
             </div>
@@ -67,6 +85,14 @@ export function TodoDetailPage() {
         </button>
       </div>
       {detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
+      {search.open && (
+        <SearchPanel
+          fixture={fixture}
+          query={search.query}
+          onQuery={search.setQuery}
+          onClose={() => search.setOpen(false)}
+        />
+      )}
     </div>
   );
 }

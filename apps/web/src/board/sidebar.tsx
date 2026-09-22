@@ -18,6 +18,7 @@ import {
   USER_NAME,
 } from '../fixtures/fixtures.js';
 import {
+  BarChart3,
   ChevronDown,
   Clock,
   EllipsisVertical,
@@ -41,6 +42,10 @@ interface BoardSidebarProps {
   onToggle?: () => void;
   /** Todos waiting on confirmation — the 看板 nav badge (r7 02/17). */
   attention?: number;
+  /** Opens the ⌘K search panel (issue #67); the 搜索 rows are triggers. */
+  onSearch?: () => void;
+  /** Render the 用量 nav row (present from the 05b capture day on). */
+  usageNav?: boolean;
 }
 
 /** Leaf nav rows shared by both sidebar states — each renders full in the
@@ -56,6 +61,10 @@ const RESOURCE_ROWS: {
   { label: '机器', href: '/app/resources/machines', Icon: Server },
   { label: '模型服务', href: '/app/resources/providers', Icon: Layers },
 ];
+
+/** 用量 nav row — the live site grew it between the r7 captures and the
+ *  #67 05b capture, so it renders only for scenarios that set usageNav. */
+const USAGE_ROW = { label: '用量', href: '/app/usage', Icon: BarChart3 };
 
 const PROJECT_HREF = `/app/project/${PROJECT_ID}`;
 
@@ -78,7 +87,16 @@ function RailGroupChevron({ label }: { label: string }) {
   );
 }
 
-export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: BoardSidebarProps) {
+export function BoardSidebar({
+  collapsed = false,
+  onToggle,
+  attention = 0,
+  onSearch,
+  usageNav = false,
+}: BoardSidebarProps) {
+  const resourceRows = usageNav
+    ? [...RESOURCE_ROWS.slice(0, 4), USAGE_ROW, ...RESOURCE_ROWS.slice(4)]
+    : RESOURCE_ROWS;
   if (collapsed) {
     return (
       <aside className="board-sidebar board-sidebar--collapsed">
@@ -86,9 +104,9 @@ export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: Boa
           <PanelLeftOpen />
         </button>
         <nav className="rail-nav">
-          <a className="rail-row" href="/app" aria-label="搜索">
+          <button type="button" className="rail-row" aria-label="搜索" onClick={onSearch}>
             <Search />
-          </a>
+          </button>
           <a
             className="rail-row rail-row--selected"
             href="/app"
@@ -105,7 +123,7 @@ export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: Boa
             <span className="project-avatar">{PROJECT_INITIAL}</span>
           </a>
           <RailGroupChevron label="资源" />
-          {RESOURCE_ROWS.map(({ label, href, Icon }) => (
+          {resourceRows.map(({ label, href, Icon }) => (
             <a key={href} className="rail-row" href={href} aria-label={label}>
               <Icon />
             </a>
@@ -140,13 +158,13 @@ export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: Boa
       </div>
 
       <nav className="sidebar-nav">
-        <a className="sidebar-row" href="/app">
+        <button type="button" className="sidebar-row" onClick={onSearch}>
           <span className="sidebar-row-icon">
             <Search />
           </span>
           <span className="sidebar-row-label">搜索</span>
           <span className="sidebar-kbd">⌘K</span>
-        </a>
+        </button>
         <a className="sidebar-row sidebar-row--selected" href="/app" aria-current="page">
           <span className="sidebar-row-icon">
             <Kanban />
@@ -174,7 +192,7 @@ export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: Boa
         </a>
 
         <GroupHeader label="资源" />
-        {RESOURCE_ROWS.map(({ label, href, Icon }) => (
+        {resourceRows.map(({ label, href, Icon }) => (
           <a key={href} className="sidebar-subrow" href={href}>
             <span className="sidebar-row-icon">
               <Icon />

@@ -10,6 +10,7 @@ import { BoardSurface } from '../board/board.js';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar } from '../board/sidebar.js';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 
 export const SIDEBAR_STORAGE_KEY = 'tds.sidebar-collapsed'; // mirrored in parity/run.mjs
 
@@ -21,6 +22,7 @@ export function BoardPage() {
   const [searchParams] = useSearchParams();
   const [collapsed, setCollapsed] = useState(() => readCollapsed(localStorage));
   const fixture = resolveScenario(searchParams);
+  const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
   const toggle = useCallback(() => {
     const next = !collapsed;
     localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0');
@@ -32,8 +34,18 @@ export function BoardPage() {
         collapsed={collapsed}
         onToggle={toggle}
         attention={attentionCount(fixture.todos)}
+        onSearch={() => search.setOpen(true)}
+        usageNav={fixture.usageNav === true}
       />
       <BoardSurface fixture={fixture} />
+      {search.open && (
+        <SearchPanel
+          fixture={fixture}
+          query={search.query}
+          onQuery={search.setQuery}
+          onClose={() => search.setOpen(false)}
+        />
+      )}
     </div>
   );
 }

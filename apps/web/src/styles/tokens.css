@@ -56,6 +56,9 @@
   --badge-done: #5ec26a;
   /* fresh-card owner badge (r7 22/22d), same gray in both themes */
   --badge-idle: #9ea3ae;
+  /* project initial avatar (board card, sidebar, overlays), both themes */
+  --project-avatar-bg: #e97b35;
+  --project-avatar-fg: #ffffff;
   --install-bg: #28293b;
   --install-fg: #6063df;
   --fab-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
@@ -78,6 +81,13 @@
      the chip-done family) */
   --diff-add-bg: #16281d;
   --diff-add-fg: #478266;
+  /* overlay batch B (issue #67): search-row select/icon tiles and the
+     popover dividers/indigo select. Light values measured off r7 05/05b/
+     19; dark has no capture (r7 §6) — [推断] from the surface ramp */
+  --row-selected: #27272a;
+  --row-icon-bg: #3f3f46;
+  --overlay-divider: #2a2a2e;
+  --overlay-select-indigo: #2a2740;
   color-scheme: dark light;
 }
 
@@ -134,4 +144,10 @@
      row tint #eaf1e8 */
   --diff-add-bg: #eaf1e8;
   --diff-add-fg: #499771;
+  /* overlay batch B (issue #67), measured off r7 05/05b/19: selected row
+     tile, result icon tile, popover hairline, indigo select block */
+  --row-selected: #f1ede7;
+  --row-icon-bg: #e7e2da;
+  --overlay-divider: #efebe5;
+  --overlay-select-indigo: #edebf6;
 }

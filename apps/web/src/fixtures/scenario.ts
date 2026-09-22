@@ -10,6 +10,7 @@
 // Unknown or absent ids fall back to the default board set.
 
 import {
+  boardChiefProbes,
   boardDarkFresh,
   boardDefault,
   boardWithProbe,
@@ -69,6 +70,18 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '36': detailDone(),
   '36d': detailDone(),
   '38': detailLegacy,
+  // overlays (issue #67): frozen open-states on top of the surface each
+  // r7 capture sits on — 05 the empty ⌘K panel over the default board,
+  // 05b the results state over the #46-session board, 19/29 the chip
+  // popover on the confirm/review split, 20 the 方案▾ dropdown.
+  '05': { ...boardDefault, ui: { searchOpen: true } },
+  '05b': {
+    ...boardChiefProbes,
+    ui: { searchOpen: true, searchQuery: 'r3 lifecycle probe' },
+  },
+  '19': { ...detailConfirm(false), ui: { chipPopoverOpen: true } },
+  '20': { ...detailConfirm(false), ui: { planDropdownOpen: true } },
+  '29': { ...detailReview({ userMenuOpen: false }), ui: { chipPopoverOpen: true } },
 };
 
 /** #58 gate: scenario selection exists only in dev (`vite dev`) and in the
