@@ -28,6 +28,7 @@ import {
   detailFresh,
   detailFreshDark,
   detailLegacy,
+  detailLegacyNow,
   detailPlanning,
   detailReview,
   projectFixture,
@@ -89,6 +90,30 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '36': detailDone(),
   '36d': detailDone(),
   '38': detailLegacy,
+  // overlay open states (issue #68): 30/31/32 sit on the review surface
+  // with diff + tool rows expanded, exactly as the captures froze them
+  '30': {
+    ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
+    overlay: { kind: 'token' },
+  },
+  '31': {
+    ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
+    overlay: { kind: 'branch' },
+  },
+  '32': {
+    ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
+    overlay: { kind: 'history' },
+  },
+  // 34: board scrollRight, probe #9 in 待验收 (`4 分钟前` → now 13:41)
+  '34': { ...boardWithProbe('review', r7(13, 37), r7(13, 41)), overlay: { kind: 'accept' } },
+  // dark overlay pairs (r8 78–81): probe #9 is gone from the live account,
+  // so the dark captures ride the r3 legacy #1 surface as it stands now
+  // (re-run 2026-09-22 18:30); the accept dialog opens from the header
+  // 完成 button on the same detail surface
+  '30d': detailLegacyNow('token'),
+  '31d': detailLegacyNow('branch'),
+  '32d': detailLegacyNow('history'),
+  '34d': detailLegacyNow('accept'),
   // overlays (issue #67): frozen open-states on top of the surface each
   // r7 capture sits on — 05 the empty ⌘K panel over the default board,
   // 05b the results state over the #46-session board, 19/29 the chip

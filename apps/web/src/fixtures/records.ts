@@ -57,6 +57,52 @@ export interface TodoRecord {
   awaitingReply?: boolean;
 }
 
+/** Token 用量 overlay content (issue #68, r7 30): the cumulative-run
+ *  figures of the dialog, verbatim strings from the capture. */
+export interface TokenUsageContent {
+  total: string;
+  model: string;
+  modelTotal: string;
+  input: string;
+  output: string;
+  cacheRead: string;
+  cacheWrite: string;
+}
+
+/** 分支与 PR overlay content (issue #68, r7 31): sync-tab fields. */
+export interface BranchInfoContent {
+  branch: string;
+  commit: string;
+  machine: string;
+  directory: string;
+}
+
+/** One 运行历史 overlay row. r7 32 froze the single-row state (ring glyph);
+ *  the r8 80 dark capture adds the multi-row forms: failed runs carry a
+ *  stop-colored ×, succeeded ones a done-colored check (r8 80). */
+export interface RunHistoryRow {
+  label: string;
+  meta: string;
+  status: 'current' | 'failed' | 'done';
+}
+
+/** Modal surface rendered over a route (issue #68). The scenario fixture
+ *  opens one for capture determinism; the header/card buttons open the same
+ *  set interactively. Token/branch/history payloads are build-scoped
+ *  display data — outside the 02 §6.2 record contract — resolved per todo
+ *  from the fixture layer; the accept dialog carries no payload. */
+export type OverlayKind = 'token' | 'branch' | 'history' | 'accept';
+
+export interface OverlayState {
+  kind: OverlayKind;
+}
+
+/** The three build-scoped overlay payloads travelling together (issue #68). */
+export interface BuildOverlayContent {
+  token: TokenUsageContent;
+  branch: BranchInfoContent;
+  runs: RunHistoryRow[];
+}
 /** Overlay open-states a scenario freezes (issue #67): the ⌘K search
  *  panel, the detail status-chip popover and the doc-pane 方案▾ dropdown.
  *  Pure initial UI state — the overlays stay interactive afterwards. */
@@ -158,6 +204,12 @@ export interface FixtureSet {
    *  document of the selected todo, verbatim from the r7 captures. Board
    *  scenarios leave it absent. */
   detail?: DetailContent;
+  /** Modal overlay open over the route (issue #68): detail overlays ride
+   *  the detail surface, `accept` the board surface. */
+  overlay?: OverlayState;
+  /** Unread chief messages — the blue count badge on the 总管 FAB
+   *  (r8 78–81 dark captures; absent from the r7 light set). */
+  chiefUnread?: number;
   /** Overlay open-states (issue #67); absent = all closed. */
   ui?: OverlayUi;
   /** Sidebar 用量 nav row present (issue #67): the live site grew it

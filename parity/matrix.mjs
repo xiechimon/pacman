@@ -16,6 +16,8 @@
 //              before load so the 40px rail renders (r7 03)
 //   baseline   optional r7 filename under docs/research/assets/r7/ —
 //              present = real parity pair (threshold 0.85);
+//              `r8/<file>` form points at post-r7 companion captures
+//              (04 册 §2 baseline batch discipline, issue #68 dark set);
 //              absent  = smoke pair, capture compared against itself
 //              (pipeline gate, SSIM must be exactly 1.0).
 //              Rows switched to a later capture batch (04 §2 A6) use a
@@ -233,6 +235,75 @@ export const matrix = [
     scenario: '38',
     theme: 'light',
     baseline: '38-r3遗留卡-详情-light.png',
+  },
+  // gate rows (issue #68): overlay open states, light half — Token 用量 /
+  // 分支与 PR / 运行历史 over the expanded review surface, 验收确认 over
+  // the scrollRight board (r7 30/31/32/34)
+  {
+    id: 'overlay-token-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '30',
+    theme: 'light',
+    baseline: '30-Token用量弹层-light.png',
+  },
+  {
+    id: 'overlay-branch-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '31',
+    theme: 'light',
+    baseline: '31-分支与PR弹层-light.png',
+  },
+  {
+    id: 'overlay-history-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '32',
+    theme: 'light',
+    baseline: '32-运行历史弹层-light.png',
+  },
+  {
+    id: 'overlay-accept-light',
+    route: '/app',
+    scenario: '34',
+    theme: 'light',
+    scrollLeft: 'max',
+    baseline: '34-验收确认弹层-light.png',
+  },
+  // gate rows (issue #68): dark half of the overlay set — companion
+  // captures taken on the live site for this ticket (04 册附录 C 随拍),
+  // filed under assets/r8/ per the baseline batch discipline. Provenance:
+  // ego-browser (shared logged-in profile), 2026-09-23, viewport 1440×732
+  // DPR1, theme via a per-document tds-theme read shim (stored key never
+  // written); surface = r3 legacy #1 detail as it stands since its
+  // 2026-09-22 18:30 schedule re-run; dialogs settled ~700ms past open.
+  // 82/83 (更多/删除 dark) are stored for overlay batch A's rows — those
+  // two components land with #66, whose dual-theme rows complete the set.
+  {
+    id: 'overlay-token-dark',
+    route: '/app/todo/r3-legacy-1',
+    scenario: '30d',
+    theme: 'dark',
+    baseline: 'r8/78-Token用量弹层-dark.png',
+  },
+  {
+    id: 'overlay-branch-dark',
+    route: '/app/todo/r3-legacy-1',
+    scenario: '31d',
+    theme: 'dark',
+    baseline: 'r8/79-分支与PR弹层-dark.png',
+  },
+  {
+    id: 'overlay-history-dark',
+    route: '/app/todo/r3-legacy-1',
+    scenario: '32d',
+    theme: 'dark',
+    baseline: 'r8/80-运行历史弹层-dark.png',
+  },
+  {
+    id: 'overlay-accept-dark',
+    route: '/app/todo/r3-legacy-1',
+    scenario: '34d',
+    theme: 'dark',
+    baseline: 'r8/81-验收确认弹层-dark.png',
   },
   // gate rows (issue #67): overlay batch B — ⌘K panel empty (05) and
   // results state (05b, supplementary capture), chip popover on the

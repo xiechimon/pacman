@@ -18,6 +18,8 @@ import { DEFAULT_BASELINE_THRESHOLD, matrix, SMOKE_THRESHOLD, VIEWPORT } from '.
 
 const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const OUT_DIR = resolve(ROOT, 'parity/output');
+// Baselines live per capture batch under docs/research/assets/ (04 册 §2):
+// bare filenames resolve to r7/, `r8/<file>` rows to the companion batch.
 const ASSETS_DIR = resolve(ROOT, 'docs/research/assets');
 const BASELINE_DIR = resolve(ASSETS_DIR, 'r7');
 // parallel sessions (worktrees) run this harness concurrently — PARITY_PORT

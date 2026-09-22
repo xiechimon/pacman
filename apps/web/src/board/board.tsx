@@ -8,7 +8,7 @@
 // position (module key below; per-tab storage, cleared with the tab).
 
 import { useLayoutEffect, useRef } from 'react';
-import type { FixtureSet } from '../fixtures/records.js';
+import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
 // drawer/settings overlays sit beside it in one place.
 import { HelpCircle, Plus, UnfoldVertical } from '../icons/index.js';
@@ -23,9 +23,12 @@ const BOARD_SCROLL_KEY = 'tds.board-scroll-left';
 
 interface BoardProps {
   fixture: FixtureSet;
+  /** Card callbacks (issue #68): the page owns the modal overlays. */
+  onAction?: (todo: TodoRecord) => void;
+  onBranch?: (todo: TodoRecord) => void;
 }
 
-export function BoardSurface({ fixture }: BoardProps) {
+export function BoardSurface({ fixture, onAction, onBranch }: BoardProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   // Restore after mount, before paint — a returning user never sees the
@@ -85,7 +88,15 @@ export function BoardSurface({ fixture }: BoardProps) {
                 {todos.length === 0 ? (
                   <div className="board-column-empty">{column.empty}</div>
                 ) : (
-                  todos.map((todo) => <TodoCard key={todo.id} todo={todo} now={fixture.now} />)
+                  todos.map((todo) => (
+                    <TodoCard
+                      key={todo.id}
+                      todo={todo}
+                      now={fixture.now}
+                      onAction={onAction}
+                      onBranch={onBranch}
+                    />
+                  ))
                 )}
               </div>
             </section>

@@ -24,15 +24,29 @@ import { ChipPopover } from '../overlays/chip-popover.js';
 import { ClickCatcher, useEscapeClose } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
 
+/** Header icon overlays the right icon group opens (issue #68). */
+export type HeadOverlay = 'branch' | 'token' | 'history';
+
 interface DetailHeadProps {
   todo: TodoRecord;
   tab: 'doc' | 'chat';
   onTab: (tab: 'doc' | 'chat') => void;
+  /** Right icon group (issue #68): 分支与PR / Token 用量 / 运行历史. */
+  onOverlay: (kind: HeadOverlay) => void;
+  /** Primary button (开始/确认/完成/重开); the page decides what it does. */
+  onAction: () => void;
   /** Scenario-frozen initial open state of the chip popover (#67). */
   chipPopoverOpen?: boolean;
 }
 
-export function DetailHead({ todo, tab, onTab, chipPopoverOpen }: DetailHeadProps) {
+export function DetailHead({
+  todo,
+  tab,
+  onTab,
+  onOverlay,
+  onAction,
+  chipPopoverOpen,
+}: DetailHeadProps) {
   const ui = PHASE_UI[todo.phase];
   const { search } = useLocation();
   const [popover, setPopover] = useState(chipPopoverOpen === true);
@@ -90,17 +104,32 @@ export function DetailHead({ todo, tab, onTab, chipPopoverOpen }: DetailHeadProp
         <button type="button" className="detail-head-icon detail-head-icon--more" aria-label="更多">
           <EllipsisVertical />
         </button>
-        <button type="button" className="detail-head-icon" aria-label="分支与 PR">
+        <button
+          type="button"
+          className="detail-head-icon"
+          aria-label="分支与 PR"
+          onClick={() => onOverlay('branch')}
+        >
           <Download width={15} height={15} />
         </button>
-        <button type="button" className="detail-head-icon" aria-label="Token 用量">
+        <button
+          type="button"
+          className="detail-head-icon"
+          aria-label="Token 用量"
+          onClick={() => onOverlay('token')}
+        >
           <BarChart3 />
         </button>
-        <button type="button" className="detail-head-icon" aria-label="运行历史">
+        <button
+          type="button"
+          className="detail-head-icon"
+          aria-label="运行历史"
+          onClick={() => onOverlay('history')}
+        >
           <History />
         </button>
         {ui.action != null && (
-          <button type="button" className="detail-head-action">
+          <button type="button" className="detail-head-action" onClick={onAction}>
             {ui.action}
           </button>
         )}

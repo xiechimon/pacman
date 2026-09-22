@@ -94,6 +94,18 @@
      the chip-done family) */
   --diff-add-bg: #16281d;
   --diff-add-fg: #478266;
+  /* modal dialogs (issue #68): panel/box fills sampled from the r8 78–81
+     dark captures; disabled 同步 + toggle track likewise */
+  --dialog-bg: #1f1f23;
+  /* dark box rides the panel fill with a border only (r8 79 scan) */
+  --dialog-box-bg: #1f1f23;
+  --indigo-disabled: #4e47dd;
+  --indigo-disabled-fg: #afabf0;
+  --toggle-track: #27272a;
+  --dialog-ring: #44444b;
+  /* dark seg control inverts the light fills (r8 79 scan) */
+  --seg-container-bg: #1f1f23;
+  --seg-tab-active-bg: #27272a;
   /* resource surfaces (r7 06–10, #69): row-card tile tints + status pill +
      dashed add-machine border, sampled light; dark values are [推断] from
      the chip families (no dark resource capture exists) */
@@ -182,6 +194,17 @@
      row tint #eaf1e8 */
   --diff-add-bg: #eaf1e8;
   --diff-add-fg: #499771;
+  /* modal dialogs (issue #68), sampled from r7 30/31: panel #fdfaf7, inset
+     box #f1ede7, disabled 同步 #a5a1ea, off-toggle track #e7e2da */
+  --dialog-bg: #fdfaf7;
+  --dialog-box-bg: #f1ede7;
+  --indigo-disabled: #a5a1ea;
+  --indigo-disabled-fg: #ffffff;
+  --toggle-track: #e7e2da;
+  --seg-container-bg: #f1ede7;
+  --seg-tab-active-bg: #fdfaf7;
+  /* 运行历史 row ring (r7 32 scan) */
+  --dialog-ring: #cbc8c4;
   /* resource surfaces (r7 06–10, #69), sampled from the light captures */
   --tile-orange-bg: #f0e5d5;
   --tile-orange-fg: #e9a23b;

@@ -7,6 +7,8 @@
 
 import type {
   ApiKeyRecord,
+  BranchInfoContent,
+  BuildOverlayContent,
   ChangesContent,
   ChiefContent,
   ChiefExample,
@@ -14,11 +16,14 @@ import type {
   ChiefThreadRef,
   DocBlock,
   FixtureSet,
+  OverlayState,
   ProjectContent,
   ResourcesContent,
+  RunHistoryRow,
   ScheduleRecord,
   TeamContent,
   TodoRecord,
+  TokenUsageContent,
   TranscriptItem,
 } from './records.js';
 
@@ -35,6 +40,35 @@ export const MACHINE_NAME = 'xmonsMac-3574.local';
 export const MACHINE_ID = 'TlZ2sSD4EJCxjNJqVhdo_';
 export const R7_BUILD_ID = '01a0c26e-23ea-734f-9847-cf9cdbce7802';
 export const R7_BUILD_BRANCH = `tds/conv-${R7_BUILD_ID}`;
+/** Target commit of the probe's build branch (r7 31 分支与PR overlay). */
+export const R7_TARGET_COMMIT = '2cceb9dbf7a8';
+
+/** Token 用量 overlay of probe #9 (r7 30): cumulative-run calibre per r7
+ *  §4.1.6 — the dialog totals the whole conversation, the 运行历史 row
+ *  counts single runs (38.3k there vs 82.9k here). */
+export const PROBE_TOKEN_USAGE: TokenUsageContent = {
+  total: '82.9k',
+  model: 'r3-gw/claude-sonnet-5',
+  modelTotal: '82.9k',
+  input: '12',
+  output: '854',
+  cacheRead: '54.2k',
+  cacheWrite: '27.8k',
+};
+
+/** 分支与 PR overlay of probe #9 (r7 31), sync tab as captured. */
+export const PROBE_BRANCH_INFO: BranchInfoContent = {
+  branch: R7_BUILD_BRANCH,
+  commit: R7_TARGET_COMMIT,
+  machine: MACHINE_NAME,
+  directory: '~/preview/project',
+};
+
+/** 运行历史 overlay of probe #9 (r7 32): single-row state, `重跑` is a
+ *  hover-only control and absent from the capture (r7 §4.1.5). */
+export const PROBE_RUN_HISTORY: RunHistoryRow[] = [
+  { label: '第 1 次运行', meta: '12 分钟前 · 38.3k tokens', status: 'current' },
+];
 
 /** Timestamp helper: absolute date at +08:00, whole minutes. */
 export const at = (date: string, h: number, m: number) =>
@@ -571,6 +605,128 @@ export const detailLegacy: FixtureSet = {
   detail: { transcript: LEGACY_REVIEW_TRANSCRIPT },
 };
 
+/** Overlay payloads of the r3 legacy #1 build as the r8 78–80 dark captures
+ *  froze them (issue #68): probe #9 no longer exists on the live account, so
+ *  the dark overlay pairs bind to this todo's own build data. #1 re-ran on
+ *  2026-09-22 18:30 (schedule trigger), which replaced the r7 38 surface:
+ *  new run stamp, four-run history, a real changeset, no awaiting-reply. */
+const LEGACY_TOKEN_USAGE: TokenUsageContent = {
+  total: '66.1k',
+  model: 'r3-gw/claude-sonnet-5',
+  modelTotal: '66.1k',
+  input: '10',
+  output: '424',
+  cacheRead: '52.3k',
+  cacheWrite: '13.4k',
+};
+
+const LEGACY_BRANCH_INFO: BranchInfoContent = {
+  // capture 79 truncates the branch after `2488`; the tail is unobservable
+  // and only needs to keep the mono row overflowing at the same glyph
+  branch: 'tds/conv-01a0c8aa-9e64-742b-acbd-2488a1b2c3d4',
+  commit: 'f3ce121ba492',
+  machine: MACHINE_NAME,
+  directory: '~/preview/project',
+};
+
+const LEGACY_RUN_HISTORY: RunHistoryRow[] = [
+  { label: '第 4 次运行', meta: '6 小时前 · 66.1k tokens', status: 'current' },
+  { label: '第 3 次运行', meta: '3 天前 · Cancelled', status: 'failed' },
+  { label: '第 2 次运行', meta: '3 天前', status: 'done' },
+  { label: '第 1 次运行', meta: '4 天前 · Machine offline', status: 'failed' },
+];
+
+/** r3 legacy #2 overlay payload — [推断]: no capture ever opened an overlay
+ *  on this build; the values exist so the done card's branch icon opens a
+ *  dialog instead of dead-clicking. No parity row rides them. */
+const LEGACY2_OVERLAY: BuildOverlayContent = {
+  token: {
+    total: '41.7k',
+    model: 'r3-gw/claude-sonnet-5',
+    modelTotal: '41.7k',
+    input: '9',
+    output: '388',
+    cacheRead: '31.6k',
+    cacheWrite: '9.4k',
+  },
+  branch: {
+    branch: 'tds/conv-r3-legacy-2',
+    commit: 'b7e1f0a9c4d2',
+    machine: MACHINE_NAME,
+    directory: '~/preview/project',
+  },
+  runs: [{ label: '第 1 次运行', meta: '2 天前 · 41.7k tokens', status: 'done' }],
+};
+
+/** r3 legacy #1 as of the r8 dark captures (2026-09-23): review phase,
+ *  schedule-triggered run of 2026-09-22 18:30, single-paragraph result. */
+const legacyNow: TodoRecord = {
+  ...legacyReview,
+  phaseAt: at('2026-09-22', 18, 30),
+  lastRunAt: at('2026-09-22', 18, 30),
+  hasChanges: true,
+  hasPlan: true,
+  awaitingReply: false,
+  buildHistory: [
+    { buildId: 'r3-conv-legacy-1', createdAt: at(R3_DAY, 13, 5) },
+    { buildId: 'r3-conv-legacy-1b', createdAt: at('2026-09-22', 18, 30) },
+  ],
+};
+
+/** Two synthetic confirm-phase todos: the dark captures show the sidebar
+ *  看板 badge at 2 (live board had two confirm cards); the detail route
+ *  renders nothing of them but the badge. */
+const darkBadgeFillers: TodoRecord[] = [1, 2].map((n) => ({
+  ...legacyNow,
+  id: `dark-badge-filler-${n}`,
+  phase: 'confirm',
+}));
+
+const LEGACY_NOW_TRANSCRIPT: TranscriptItem[] = [
+  { kind: 'run', at: '昨天 18:30', machine: MACHINE_NAME },
+  { kind: 'scheduled' },
+  {
+    kind: 'user',
+    text: '开始执行任务',
+    seq: 1,
+    title: '在 README.md 末尾追加一行「r3 lifecycle probe」',
+  },
+  {
+    kind: 'robot',
+    paragraphs: [[{ text: '已在 README.md 末尾追加了一行「r3 lifecycle probe」。' }]],
+  },
+  { kind: 'elapsed', seconds: 25 },
+];
+
+/** Dark capture set (r8 78–81): legacy #1's current surface with an overlay
+ *  open; `chiefUnread` reproduces the FAB badge the captures carry. */
+export function detailLegacyNow(overlay: OverlayState['kind']): FixtureSet {
+  return {
+    todos: [legacyNow, ...darkBadgeFillers],
+    now: at('2026-09-23', 0, 13),
+    chiefUnread: 1,
+    detail: { transcript: LEGACY_NOW_TRANSCRIPT, changes: probeChanges(false) },
+    overlay: { kind: overlay },
+  };
+}
+
+/** Build-scoped overlay display data per todo (issue #68): the dialog
+ *  payloads are not record fields (02 §6.2), so the fixture layer maps the
+ *  captured builds — probe #9 (r7 30/31/32) and r3 legacy #1 (r8 78–80) —
+ *  plus one [推断] set for legacy #2 so its card's branch icon is not a
+ *  dead control; no parity row rides the [推断] values. */
+export function overlayContent(todoId: string): BuildOverlayContent | null {
+  if (todoId === PROBE_ID) {
+    return { token: PROBE_TOKEN_USAGE, branch: PROBE_BRANCH_INFO, runs: PROBE_RUN_HISTORY };
+  }
+  if (todoId === legacyReview.id) {
+    return { token: LEGACY_TOKEN_USAGE, branch: LEGACY_BRANCH_INFO, runs: LEGACY_RUN_HISTORY };
+  }
+  if (todoId === legacyDone.id) {
+    return LEGACY2_OVERLAY;
+  }
+  return null;
+}
 // ---- issue #71: schedules + project route sets ----
 
 /** r3 93 list card: the once rule built in r3 §9 (fired 14:30, todo #1 went
