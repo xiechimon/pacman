@@ -83,6 +83,16 @@
      the chip-done family) */
   --diff-add-bg: #16281d;
   --diff-add-fg: #478266;
+  /* r8 dynamic states (#75): failed chip + fail message + del diff row +
+     rerun-dialog agent row + range chip. Light values sampled from the
+     r8 captures; the dark set is [推断] (r8 §5: dark 动态面未拍). */
+  --chip-failed-bg: #351c1a;
+  --chip-failed-fg: #dd524c;
+  --fail-fg: #d98b4a;
+  --diff-del-bg: #2e1c1a;
+  --dialog-row-bg: #27272a;
+  --range-chip-bg: #27272a;
+  --range-chip-border: #3f3f46;
   color-scheme: dark light;
 }
 
@@ -141,4 +151,15 @@
      row tint #eaf1e8 */
   --diff-add-bg: #eaf1e8;
   --diff-add-fg: #499771;
+  /* r8 dynamic states (#75), sampled from the r8 light captures: failed
+     chip #fcf3f2/#ca3a32 (54), fail title #cc7c2e (54), del row tint
+     #f8e6e4 (72), rerun-dialog agent row #f1ede7 (56), range chip
+     #eeebe7 / border #d1cdc9 (65) */
+  --chip-failed-bg: #fcf3f2;
+  --chip-failed-fg: #ca3a32;
+  --fail-fg: #cc7c2e;
+  --diff-del-bg: #f8e6e4;
+  --dialog-row-bg: #f1ede7;
+  --range-chip-bg: #eeebe7;
+  --range-chip-border: #d1cdc9;
 }

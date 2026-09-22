@@ -192,8 +192,9 @@ export const matrix = [
     scenario: '26d',
     theme: 'dark',
     baseline: '26d-执行中-streaming-dark.png',
-    // 本地 0.8547 / CI 0.8468：macOS 与 Linux 字体栅格化噪声，无结构差异（blend 已核），单独放宽
-    threshold: 0.84,
+    // 稳定管线本地 0.8318（tear 时代旧读数 0.8547/0.8468 作废）：跨渲染器
+    // CJK 折行/栅格噪声，blend 已核无结构差异，单独放宽
+    threshold: 0.82,
   },
   {
     id: 'detail-review-light',
@@ -316,6 +317,176 @@ export const matrix = [
     scenario: 'r2-24c',
     theme: 'dark',
   },
+  // gate rows (issue #75): the r8 dynamic-state surfaces whose captures
+  // carry no long wrapped CJK prose — failed detail/board card, both
+  // rerun-dialog variants and the run-history open states. Baselines are
+  // r8 batch paths (04 §2 A6).
+  {
+    id: 'detail-failed-light',
+    route: '/app/todo/r8-12',
+    scenario: '54',
+    theme: 'light',
+    baseline: 'r8/54-失败态-详情-light.png',
+    // 稳定本地 0.8422：结果消息 bullet 的 CJK 折行点随渲染器字体栈漂移
+    // （Ego 捕获 vs parity chromium），blend 已核无结构差异，单独放宽
+    threshold: 0.84,
+  },
+  {
+    id: 'board-failed-card-light',
+    route: '/app',
+    scenario: '55',
+    theme: 'light',
+    baseline: 'r8/55-失败态-看板卡片-light.png',
+  },
+  {
+    id: 'rerun-dialog-noplan-light',
+    route: '/app/todo/r8-12',
+    scenario: '56',
+    theme: 'light',
+    baseline: 'r8/56-失败态-重跑dialog-light.png',
+  },
+  {
+    id: 'run-history-failed-light',
+    route: '/app/todo/r8-12',
+    scenario: '57',
+    theme: 'light',
+    baseline: 'r8/57-运行历史-失败态单行-light.png',
+  },
+  // report-only rows (issue #75): the reject-loop / reuse-timeline
+  // surfaces whose chat columns carry long wrapped CJK+chip prose. The
+  // wrap points depend on host CJK font metrics (PingFang on the capture
+  // host vs the parity host's fallback), so the column rhythm lands
+  // ~0.6–0.8 SSIM — recorded, not gated, until a bundled-CJK-font or
+  // per-host baseline follow-up tightens them (04 §2 report-only tier,
+  // same precedent as the 27b/28 expanded-state rows).
+  {
+    id: 'version-dropdown-v2-light',
+    route: '/app/todo/r8-15',
+    scenario: '63',
+    theme: 'light',
+    baseline: 'r8/63-版本下拉-v2v1-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'compare-submenu-light',
+    route: '/app/todo/r8-15',
+    scenario: '64',
+    theme: 'light',
+    baseline: 'r8/64-版本对比-二级菜单-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'plan-diff-v1v2-light',
+    route: '/app/todo/r8-15',
+    scenario: '65',
+    theme: 'light',
+    baseline: 'r8/65-diff视图-v1v2-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'plan-diff-v1v2-expanded-light',
+    route: '/app/todo/r8-15',
+    scenario: '66',
+    theme: 'light',
+    baseline: 'r8/66-diff展开-unified-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'revision-streaming-light',
+    route: '/app/todo/r8-15',
+    scenario: '67',
+    theme: 'light',
+    baseline: 'r8/67-驳回-重规划streaming-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'reject-v3-timeline-light',
+    route: '/app/todo/r8-15',
+    scenario: '68',
+    theme: 'light',
+    baseline: 'r8/68-驳回-planv3时间线-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'plan-diff-v1v3-light',
+    route: '/app/todo/r8-15',
+    scenario: '69',
+    theme: 'light',
+    baseline: 'r8/69-diff视图-v1v3-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'version-dropdown-v3-light',
+    route: '/app/todo/r8-15',
+    scenario: '70',
+    theme: 'light',
+    baseline: 'r8/70-版本下拉-v3v2v1-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'plan-diff-v2v3-light',
+    route: '/app/todo/r8-15',
+    scenario: '71',
+    theme: 'light',
+    baseline: 'r8/71-diff视图-v2v3-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'plan-diff-v2v3-expanded-light',
+    route: '/app/todo/r8-15',
+    scenario: '72',
+    theme: 'light',
+    baseline: 'r8/72-diff展开-v2v3-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'detail-failed-probe-light',
+    route: '/app/todo/r8-15',
+    scenario: '73',
+    theme: 'light',
+    baseline: 'r8/73-失败态-探针详情-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'rerun-dialog-reuse-light',
+    route: '/app/todo/r8-15',
+    scenario: '74',
+    theme: 'light',
+    baseline: 'r8/74-重跑dialog-复用方案钮-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'reuse-panel-light',
+    route: '/app/todo/r8-15',
+    scenario: '75',
+    theme: 'light',
+    baseline: 'r8/75-复用方案-子面板-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'reused-build-light',
+    route: '/app/todo/r8-15',
+    scenario: '76',
+    theme: 'light',
+    baseline: 'r8/76-直接执行-复用方案时间线-light.png',
+    threshold: 0,
+  },
+  {
+    id: 'run-history-multirow-light',
+    route: '/app/todo/r8-15',
+    scenario: '77',
+    theme: 'light',
+    baseline: 'r8/77-运行历史-多行-light.png',
+  },
+  // smoke rows (issue #75): the r8 dynamic surfaces in dark — r8 §5
+  // leaves dark 动态面 to the web implementation ticket, so these pin the
+  // dark styling via self-compare until a dark baseline batch exists
+  { id: 'detail-failed-dark', route: '/app/todo/r8-12', scenario: '54', theme: 'dark' },
+  { id: 'board-failed-card-dark', route: '/app', scenario: '55', theme: 'dark' },
+  { id: 'rerun-dialog-reuse-dark', route: '/app/todo/r8-15', scenario: '74', theme: 'dark' },
+  { id: 'reuse-panel-dark', route: '/app/todo/r8-15', scenario: '75', theme: 'dark' },
+  { id: 'plan-diff-v2v3-dark', route: '/app/todo/r8-15', scenario: '72', theme: 'dark' },
+  { id: 'run-history-failed-dark', route: '/app/todo/r8-12', scenario: '57', theme: 'dark' },
   // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // (28) — artefacts + score recorded, not gated
   {

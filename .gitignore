@@ -83,3 +83,7 @@ parity/output/
 
 # playwright MCP session dir
 .playwright-mcp/
+
+# playwright test artefacts
+test-results/
+playwright-report/

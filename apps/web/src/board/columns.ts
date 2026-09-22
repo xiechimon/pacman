@@ -72,15 +72,21 @@ export const COLUMNS: BoardColumnDef[] = [
 
 /** Phase → primary card action, copy from the shared PHASE_UI table.
  *  Waiting-on-user todos get the ghost 回复 button (r3 §3.0 引导 P2 词表 +
- *  r5b §3.15). */
+ *  r5b §3.15). Failed cards read `重试` while the detail header reads
+ *  `重跑` (r8 55 vs 54 — the two-word-list ruling, CONTEXT.md). */
 export function cardAction(todo: TodoRecord): { kind: 'primary' | 'ghost'; label: string } | null {
   if (todo.awaitingReply === true) return { kind: 'ghost', label: '回复' };
+  if (todo.phase === 'failed') return { kind: 'primary', label: '重试' };
   const label = PHASE_UI[todo.phase].action;
   return label == null ? null : { kind: 'primary', label };
 }
 
-/** Todos waiting on confirmation — the 看板 nav badge (r7 02/17 show `1`
- *  while probe #9 sits in 待确认). */
+/** Todos waiting on the user — the 看板 nav badge (r7 02/17 show `1`
+ *  while probe #9 sits in 待确认; r8 55/57 show failed todos and
+ *  non-waiting review todos counted too, awaiting-reply cards not). */
 export function attentionCount(todos: TodoRecord[]): number {
-  return todos.filter((t) => t.phase === 'confirm').length;
+  return todos.filter(
+    (t) =>
+      t.phase === 'confirm' || t.phase === 'failed' || (t.phase === 'review' && !t.awaitingReply),
+  ).length;
 }

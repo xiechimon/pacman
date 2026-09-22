@@ -399,3 +399,12 @@
   cursor: pointer;
   box-shadow: var(--fab-shadow);
 }
+
+/* failed-card red `!` badge (r8 55) */
+.todo-agent-badge--failed {
+  background: var(--stop);
+  color: #ffffff;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+}

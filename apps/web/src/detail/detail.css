@@ -407,13 +407,24 @@
 
 /* ---- chat column ---- */
 
+/* column-reverse + auto bottom margin: at scroll 0 an overflowing
+   transcript shows its newest rows (the live app scrolls to the bottom,
+   r8 63–77) while a short one keeps its top alignment (r7) — pure
+   layout, no scroll scripting, so parity captures are deterministic */
+.chat-pin {
+  margin-bottom: auto;
+}
+
 .chat-col {
   flex: 1;
   min-width: 0;
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
   overflow-y: auto;
+  /* bottom padding: the composer overlays the column bottom, and a
+     bottom-pinned transcript's last row ends ~114px above the viewport
+     edge (r8 63–77 measure the last footer row at y602–618) */
   padding: 19px 16px 92px 19px;
 }
 
@@ -523,8 +534,12 @@
 
 .chat-text {
   margin-left: 11px;
-  font-size: 15px;
-  line-height: 20px;
+  /* r8 63–77: robot ink measures ~13px on a 24px pitch and the bubble
+     string widths (r8 68 bubble = 475px) only fit at 13px; the r7 rows
+     carried short single-line messages, so the older 15/20 guess went
+     unexercised there */
+  font-size: 13px;
+  line-height: 24px;
   /* r7 27/36/38 robot rows sample to text-primary (#56 used secondary —
      blends showed the darker ink is the captured one) */
   color: var(--text-primary);
@@ -705,16 +720,21 @@
 
 .chat-preview {
   /* r7 26/27: preview lines pitch 20 (12px text, lh 20), first line
-     8px under the plan title row */
+     8px under the plan title row. Two-line cut = max-height; the fixture
+     strings carry the capture's own truncation `…` (the -webkit-box
+     line-clamp idiom computes to flow-root + zero height on the parity
+     chromium, so the clamp cannot be used). */
   margin-top: 8px;
   padding-left: 31px;
   padding-right: 22px;
   font-size: 12px;
   line-height: 20px;
   color: var(--text-tertiary);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  max-height: 40px;
+  /* overflow:hidden drops the flex item's automatic minimum height, so
+     without flex:none the overflowing chat column crushes the preview
+     to zero height */
+  flex: none;
   overflow: hidden;
 }
 
@@ -953,4 +973,451 @@
   border-color: transparent;
   background: var(--seg-active);
   color: var(--text-secondary);
+}
+
+/* ---- issue #75: r8 dynamic states ---- */
+
+/* failed chip (r8 54/73): red word on the light red pill */
+.detail-chip--failed {
+  background: var(--chip-failed-bg);
+  color: var(--chip-failed-fg);
+}
+
+/* chief-origin marker (r8 54): avatar + dim 12px line */
+.chat-row--chief {
+  margin-top: 4px;
+}
+
+.chat-chief {
+  margin-left: 11px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+/* failed-run message (r8 54/73): orange title, tertiary body, dim links */
+.chat-para--fail {
+  color: var(--fail-fg);
+}
+
+.chat-para--failbody {
+  color: var(--text-tertiary);
+}
+
+.chat-fail-links {
+  display: flex;
+  gap: 12px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 15px;
+  color: var(--text-dim);
+}
+
+/* message action-row elapsed tail (r7 17/28, r8 63/65/73): `| 完成 Ns ›` */
+.chat-foot-elapsed {
+  white-space: nowrap;
+  padding-left: 9px;
+  border-left: 1px solid var(--border-strong);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.chat-foot-chevron {
+  color: var(--text-dim);
+}
+
+/* AI-review quote block (r8 65): 4px left border, 15px gap, tinted band
+   clipped to the content box so the gap stays transparent */
+.chat-para--quote {
+  padding: 6px 8px 6px 15px;
+  border-left: 4px solid var(--border-default);
+  background: var(--code-bg);
+  background-clip: content-box;
+  color: var(--text-secondary);
+}
+
+/* numbered finding row (r8 65): hanging `N.` ordinal */
+.chat-para--num {
+  position: relative;
+  padding-left: 19px;
+}
+
+.chat-num-mark {
+  position: absolute;
+  left: 0;
+}
+
+/* plan.md section head (r8 63/76): bold 14px line */
+.doc-block--head {
+  font-weight: 600;
+}
+
+/* link-styled mono chip (r8 63/76 first README.md mention) */
+.doc-code--link,
+.chat-code--link {
+  background: var(--chip-plan-bg);
+  color: var(--chip-plan-fg);
+}
+
+/* version chip dropdown anchor (r8 63/70) */
+.doc-range-wrap {
+  position: relative;
+  display: inline-flex;
+  margin-left: 18px;
+}
+
+.doc-range-wrap .doc-pane-select {
+  margin-left: 0;
+}
+
+/* plan-version range chip (r8 65): 24h bordered pill `v1 → v2 ⌄` */
+.doc-range-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--range-chip-border);
+  border-radius: 6px;
+  background: var(--range-chip-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+/* floating version menu: 212 wide, right-aligned to the chip, rows 37
+   pitch with separators, restore glyph right (r8 §2.7) */
+.version-menu {
+  position: absolute;
+  top: 30px;
+  right: -2px;
+  z-index: 30;
+  width: 212px;
+  padding: 4px 0;
+  border-radius: 10px;
+  background: var(--popover-bg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
+}
+
+.version-menu--sub {
+  width: auto;
+  min-width: 69px;
+}
+
+.version-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  height: 37px;
+  padding: 0 7px;
+  border: none;
+  border-bottom: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.version-menu--sub .version-menu-row {
+  padding: 0 8px;
+  color: var(--text-secondary);
+}
+
+.version-menu-row:last-child {
+  border-bottom: none;
+}
+
+.version-menu-row--current {
+  font-weight: 600;
+}
+
+.version-menu-row svg {
+  color: var(--text-dim);
+}
+
+.version-menu-label {
+  color: var(--text-tertiary);
+}
+
+/* `−N` stat / file-row half (r8 69/71) */
+.doc-changes-del,
+.doc-file-del {
+  color: var(--danger);
+}
+
+/* del + marker rows of plan-version diffs (r8 72) */
+.diff-line--del {
+  background: var(--diff-del-bg);
+}
+
+.diff-line--marker {
+  background: transparent;
+  color: var(--text-dim);
+}
+
+/* ---- centered modal overlays (r8 56/74/75/57/77) ---- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.6);
+}
+
+.overlay-panel {
+  width: 448px;
+  border-radius: 12px;
+  background: var(--popover-bg);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.25);
+}
+
+.overlay-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 48px;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.overlay-title {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.overlay-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-left: -4px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.overlay-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.overlay-body {
+  padding: 12px 16px 16px;
+}
+
+.rerun-agent-label {
+  margin: 2px 0 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.rerun-agent-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: 54px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--dialog-row-bg);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.rerun-agent-avatar {
+  display: flex;
+  width: 28px;
+  height: 28px;
+}
+
+.rerun-agent-avatar img {
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+}
+
+.rerun-agent-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.rerun-agent-name {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.rerun-agent-model {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--text-dim);
+}
+
+.rerun-agent-row > svg {
+  color: var(--text-dim);
+}
+
+.rerun-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+.rerun-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 9999px;
+  background: var(--text-dim);
+}
+
+.rerun-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #ffffff;
+}
+
+.overlay-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.overlay-actions--history {
+  margin-top: 0;
+  padding: 4px 16px 16px;
+}
+
+.overlay-btn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  background: var(--popover-bg);
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.overlay-btn--primary {
+  border-color: var(--card-button);
+  background: var(--card-button);
+  color: #ffffff;
+}
+
+/* 复用方案 sub-panel (r8 75): centered prompt over the button row */
+.reuse-body {
+  padding-top: 0;
+}
+
+.reuse-prompt {
+  padding: 30px 16px 4px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+/* 运行历史 rows (r8 57/77) */
+.history-row {
+  display: flex;
+  gap: 12px;
+  padding: 9px 16px;
+}
+
+.history-row + .history-row {
+  border-top: 1px solid var(--border-default);
+}
+
+.history-glyph {
+  flex: none;
+  margin-top: 2px;
+  width: 12px;
+  height: 16px;
+}
+
+.history-glyph--failed::before {
+  content: "✕";
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 700;
+  color: var(--stop);
+}
+
+.history-glyph--open::before {
+  content: "";
+  display: block;
+  margin: 2px 1px;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--text-dim);
+  border-radius: 9999px;
+}
+
+.history-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history-row-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-primary);
+}
+
+.history-current {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--code-bg);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.history-row-sub {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
 }

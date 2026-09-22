@@ -78,6 +78,10 @@ async function captureEntry(entry, browser) {
   await page.goto(url, { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
+  // settle: the router's first commit can land a frame after the rAF above
+  // (torn captures showed a header/body mix), so give it a beat before the
+  // screenshot — fixture renders are static, the delay changes no content
+  await page.waitForTimeout(600);
 
   if (entry.scrollLeft != null) {
     await page.evaluate((value) => {
@@ -86,6 +90,17 @@ async function captureEntry(entry, browser) {
       el.scrollLeft = value === 'max' ? el.scrollWidth - el.clientWidth : value;
     }, entry.scrollLeft);
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
+  }
+
+  if (process.env.PARITY_DEBUG != null) {
+    console.log(
+      `debug ${entry.id}:`,
+      await page.evaluate(() => ({
+        todoId: document.querySelector('[data-todo-id]')?.getAttribute('data-todo-id'),
+        overlay: document.querySelector('.overlay') != null,
+        href: location.href,
+      })),
+    );
   }
 
   const shot = resolve(OUT_DIR, `${entry.id}.png`);
@@ -127,7 +142,10 @@ async function main() {
     // Chromium would otherwise route 127.0.0.1 through it
     browser = await chromium.launch({ args: ['--no-proxy-server'] });
 
-    for (const entry of matrix) {
+    // PARITY_ONLY=id1,id2 limits the run to those row ids (local
+    // iteration; CI runs the full matrix)
+    const only = process.env.PARITY_ONLY?.split(',').filter(Boolean);
+    for (const entry of matrix.filter((e) => only == null || only.includes(e.id))) {
       const capture = await captureEntry(entry, browser);
       // baseline = bare r7 filename, or `r8/…` once a row switches batch (04 §2 A6)
       const baseline = entry.baseline

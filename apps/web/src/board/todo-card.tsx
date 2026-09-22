@@ -35,8 +35,10 @@ interface TodoCardProps {
  *  done (r7 01b #2, 35 #9). Fresh cards carry a gray idle badge with the
  *  same magnifier glyph (r7 22/22d — badge shape pixel-matches the amber
  *  one at gray #9ea3ae). */
-function badgeFor(todo: TodoRecord): 'idle' | 'attention' | 'done' | null {
+function badgeFor(todo: TodoRecord): 'idle' | 'attention' | 'done' | 'failed' | null {
   if (todo.phase === 'done') return 'done';
+  // r8 55: the failed card's avatar carries the red `!` badge
+  if (todo.phase === 'failed') return 'failed';
   if (todo.phase === 'confirm' || todo.phase === 'review' || todo.awaitingReply === true) {
     return 'attention';
   }
@@ -87,6 +89,11 @@ export function TodoCard({ todo, now }: TodoCardProps) {
           {badge === 'done' && (
             <span className="todo-agent-badge todo-agent-badge--done">
               <CheckWhite width={9} height={9} />
+            </span>
+          )}
+          {badge === 'failed' && (
+            <span className="todo-agent-badge todo-agent-badge--failed" aria-hidden="true">
+              !
             </span>
           )}
         </span>

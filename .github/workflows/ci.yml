@@ -38,3 +38,6 @@ jobs:
 
       - name: Parity smoke gate
         run: pnpm parity
+
+      - name: E2E (reject-loop chain, #75 AC3)
+        run: pnpm --filter @pacman/web e2e

@@ -21,12 +21,17 @@ import { PHASE_UI } from '../phase.js';
 
 interface DetailHeadProps {
   todo: TodoRecord;
+  /** Rendered phase; the reject chain overrides the record's phase
+   *  (replan streaming / building rounds, issue #75). */
+  phase?: TodoRecord['phase'];
   tab: 'doc' | 'chat';
   onTab: (tab: 'doc' | 'chat') => void;
+  /** Primary-button click (the reject chain's 确认 step). */
+  onAction?: () => void;
 }
 
-export function DetailHead({ todo, tab, onTab }: DetailHeadProps) {
-  const ui = PHASE_UI[todo.phase];
+export function DetailHead({ todo, phase, tab, onTab, onAction }: DetailHeadProps) {
+  const ui = PHASE_UI[phase ?? todo.phase];
   const { search } = useLocation();
   return (
     <header className="detail-head">
@@ -76,7 +81,7 @@ export function DetailHead({ todo, tab, onTab }: DetailHeadProps) {
           <History />
         </button>
         {ui.action != null && (
-          <button type="button" className="detail-head-action">
+          <button type="button" className="detail-head-action" onClick={onAction}>
             {ui.action}
           </button>
         )}

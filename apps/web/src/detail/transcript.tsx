@@ -1,12 +1,15 @@
 // Chat column transcript (issue #56, extended in #57 for the deep
-// states): centered run stamps and dim note lines, the scheduled marker,
-// user bubbles with optional taskline, robot paragraphs with mono code
-// chips, the collapsed plan card, the live streaming row, the tool-call
-// group (collapsed `完成 Ns ▸` / expanded pills + 收起) and the bare
-// elapsed row. Row geometry from the r7 16/17/26/27/28/36/38 captures;
-// CONTEXT.md canon names the message flow `transcript`.
+// states and in #75 for the r8 dynamic states): centered run stamps and
+// dim note lines, the scheduled marker, user bubbles with optional
+// taskline, robot paragraphs with mono code chips / quote blocks /
+// numbered findings, message action rows (copy + optional restore +
+// optional `| 完成 Ns` + optional chevron, r7 17/28 + r8 63/65/73), the
+// chief-origin marker, the failed-run message (r8 54/73), the collapsed
+// plan card, the live streaming row and the tool-call group. Row geometry
+// from the r7 16/17/26/27/28/36/38 and r8 54–77 captures; CONTEXT.md canon
+// names the message flow `transcript`.
 
-import type { TranscriptItem } from '../fixtures/records.js';
+import type { RobotPara, TranscriptItem } from '../fixtures/records.js';
 import {
   ChevronDown,
   ChevronRight,
@@ -14,7 +17,6 @@ import {
   Copy,
   ExternalLink,
   FileTab,
-  History,
   Restore,
   Terminal,
 } from '../icons/index.js';
@@ -24,31 +26,56 @@ interface TranscriptProps {
   transcript: TranscriptItem[];
 }
 
-/** `完成 Ns` row with the history glyph — shared by the plan card, the
- *  tool group header (chevron appended) and the bare elapsed row (solo =
- *  standalone, wider top margin). */
-function ElapsedRow({
+/** Message action row (r7 17/28, r8 63/65/73): copy icon, optional
+ *  restore icon, then the optional `| 完成 Ns` elapsed tail with an
+ *  optional trailing chevron. Every footer variant observed is a subset
+ *  of this one row. */
+function ActionRow({
+  restore,
   seconds,
-  expanded,
-  solo,
+  bare,
+  chevron,
 }: {
-  seconds: number;
-  expanded?: boolean;
-  solo?: boolean;
+  restore?: boolean;
+  seconds?: number;
+  /** `完成` with no seconds (reused-plan card, r8 76). */
+  bare?: boolean;
+  /** `›` on plan cards / collapsed tool groups, `⌄` on expanded ones. */
+  chevron?: 'right' | 'down';
 }) {
   return (
-    <div className={solo ? 'chat-done chat-done--solo' : 'chat-done'}>
-      <History width={15} height={15} />
-      <span className="chat-done-label">
-        完成 {seconds}s
-        {expanded != null &&
-          (expanded ? (
-            <ChevronDown width={10} height={10} />
-          ) : (
-            <ChevronRight width={10} height={10} />
-          ))}
-      </span>
+    <div className="chat-row-icons">
+      <Copy width={13} height={13} />
+      {restore === true && <Restore width={13} height={13} />}
+      {(seconds != null || bare === true) && (
+        <span className="chat-foot-elapsed">完成{seconds != null ? ` ${seconds}s` : ''}</span>
+      )}
+      {chevron === 'right' && <ChevronRight width={10} height={10} className="chat-foot-chevron" />}
+      {chevron === 'down' && <ChevronDown width={10} height={10} className="chat-foot-chevron" />}
     </div>
+  );
+}
+
+function Para({ para }: { para: RobotPara }) {
+  if (para.quote === true) {
+    return (
+      <p className="chat-para chat-para--quote">
+        <Segments segments={para.segments} codeClassName="chat-code" />
+      </p>
+    );
+  }
+  if (para.ordinal != null) {
+    return (
+      <p className="chat-para chat-para--num" data-ordinal={para.ordinal}>
+        <span className="chat-num-mark">{para.ordinal}.</span>
+        <Segments segments={para.segments} codeClassName="chat-code" />
+      </p>
+    );
+  }
+  return (
+    <p className="chat-para">
+      <Segments segments={para.segments} codeClassName="chat-code" />
+    </p>
   );
 }
 
@@ -57,10 +84,12 @@ function Row({ item }: { item: TranscriptItem }) {
     case 'run':
       return (
         <div className="chat-stamp">
-          <div>{item.at}</div>
-          <div className="chat-stamp-machine">
-            运行在 <span>{item.machine}</span> 上
-          </div>
+          {item.at != null && <div>{item.at}</div>}
+          {item.machine != null && (
+            <div className="chat-stamp-machine">
+              运行在 <span>{item.machine}</span> 上
+            </div>
+          )}
         </div>
       );
     case 'note':
@@ -70,6 +99,15 @@ function Row({ item }: { item: TranscriptItem }) {
         <div className="chat-scheduled">
           <Clock width={13} height={13} />
           由定时发起
+        </div>
+      );
+    case 'chief':
+      return (
+        <div className="chat-row chat-row--chief">
+          <span className="chat-avatar">
+            <img src="/avatar-robot-2.svg" alt="" />
+          </span>
+          <span className="chat-chief">由总管发起</span>
         </div>
       );
     case 'user':
@@ -102,11 +140,36 @@ function Row({ item }: { item: TranscriptItem }) {
           <span className="chat-text">
             {item.paragraphs.map((para, i) => (
               // fixture order is stable; paragraphs carry no ids
-              <p key={i} className="chat-para">
-                <Segments segments={para} codeClassName="chat-code" />
-              </p>
+              <Para key={i} para={para} />
             ))}
           </span>
+          {item.footer != null && (
+            <ActionRow
+              restore={item.footer.restore}
+              seconds={item.footer.seconds}
+              chevron={item.footer.chevron === true ? 'right' : undefined}
+            />
+          )}
+        </div>
+      );
+    case 'fail':
+      return (
+        <div className="chat-row chat-row--agent">
+          <span className="chat-avatar">
+            <img src="/avatar-robot-1.svg" alt="" />
+          </span>
+          <span className="chat-text">
+            <p className="chat-para chat-para--fail">{item.title}</p>
+            <p className="chat-para chat-para--failbody">{item.body}</p>
+            <p className="chat-fail-links">
+              {item.links.map((link) => (
+                <span key={link} className="chat-fail-link">
+                  {link}
+                </span>
+              ))}
+            </p>
+          </span>
+          <ActionRow />
         </div>
       );
     case 'streaming':
@@ -136,13 +199,17 @@ function Row({ item }: { item: TranscriptItem }) {
             </span>
           </div>
           <div className="chat-preview">{item.preview}</div>
-          <ElapsedRow seconds={item.seconds} />
+          <ActionRow
+            seconds={item.seconds}
+            bare={item.seconds == null}
+            chevron={item.chevron === true ? 'right' : undefined}
+          />
         </>
       );
     case 'tools':
       return (
         <>
-          <ElapsedRow seconds={item.seconds} expanded={item.expanded} />
+          <ActionRow seconds={item.seconds} chevron={item.expanded ? 'down' : 'right'} />
           {item.expanded && (
             <>
               <div className="chat-tools">
@@ -161,8 +228,6 @@ function Row({ item }: { item: TranscriptItem }) {
           )}
         </>
       );
-    case 'elapsed':
-      return <ElapsedRow seconds={item.seconds} solo />;
   }
 }
 
