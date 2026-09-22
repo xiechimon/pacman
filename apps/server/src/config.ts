@@ -16,6 +16,9 @@ export const serverConfigSchema = z.object({
   dbPath: z.string(),
   /** team stream ping 心跳间隔；默认 ~15s（02 §1.2/r3 §8.1 实测节奏）。 */
   pingIntervalMs: z.number().int().positive(),
+  /** cron 调度循环 tick 间隔（02 §9.2 宿主自持；触发精度 = 分档最细 15min，
+   * 默认 15s 远细于档位粒度 [设计]）。 */
+  schedulerTickMs: z.number().int().positive(),
 });
 export type ServerConfig = z.infer<typeof serverConfigSchema>;
 
@@ -36,6 +39,13 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     dataDir,
     dbPath: join(dataDir, 'server.db'),
     pingIntervalMs: TEAM_STREAM_PING_INTERVAL_MS,
+    schedulerTickMs: 15_000,
     ...overrides,
   });
+}
+
+/** 托管 bare repo 存储根 = 数据根子目录 `repos` [设计]（01 §4.2 单一数据根：
+ * DB 文件 + keyfile + bare repo 存储同根，备份 = 拷目录）。 */
+export function reposDirOf(config: ServerConfig): string {
+  return join(config.dataDir, 'repos');
 }
