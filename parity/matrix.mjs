@@ -237,6 +237,8 @@ export const matrix = [
     scenario: '36',
     theme: 'light',
     baseline: '36-完成态-详情-light.png',
+    // 本地 0.8505 / CI 0.8499：macOS 与 Linux 字体栅格化噪声，无结构差异（blend 已核），单独放宽
+    threshold: 0.84,
   },
   {
     id: 'detail-done-dark',
