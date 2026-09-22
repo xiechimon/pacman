@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import type { BranchInfoContent } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, Copy } from '../icons/index.js';
 import { DialogShell } from './dialog-shell.js';
 
@@ -19,31 +20,33 @@ interface BranchDialogProps {
 }
 
 function CopyButton({ value }: { value: string }) {
+  const { t } = useI18n();
   const copy = () => {
     void navigator.clipboard?.writeText(value).catch(() => {
       // clipboard unavailable (headless/permissions) — copy is best-effort
     });
   };
   return (
-    <button type="button" className="dlg-copy" aria-label="复制" onClick={copy}>
+    <button type="button" className="dlg-copy" aria-label={t('复制')} onClick={copy}>
       <Copy width={14} height={14} />
     </button>
   );
 }
 
 export function BranchDialog({ info, open, onClose }: BranchDialogProps) {
+  const { t } = useI18n();
   const [tab, setTab] = useState<'sync' | 'git'>('sync');
   const [force, setForce] = useState(false);
 
   const box = (
     <div className="dlg-branch-box">
       <div className="dlg-branch-row">
-        <span className="dlg-branch-label">构建分支</span>
+        <span className="dlg-branch-label">{t('构建分支')}</span>
         <span className="dlg-branch-value">{info.branch}</span>
         <CopyButton value={info.branch} />
       </div>
       <div className="dlg-branch-row">
-        <span className="dlg-branch-label">目标提交</span>
+        <span className="dlg-branch-label">{t('目标提交')}</span>
         <span className="dlg-branch-value">{info.commit}</span>
         <CopyButton value={info.commit} />
       </div>
@@ -53,7 +56,7 @@ export function BranchDialog({ info, open, onClose }: BranchDialogProps) {
   return (
     <DialogShell
       headerCenter={
-        <div className="dlg-seg" role="tablist" aria-label="分支与 PR">
+        <div className="dlg-seg" role="tablist" aria-label={t('分支与 PR')}>
           <button
             type="button"
             role="tab"
@@ -62,7 +65,7 @@ export function BranchDialog({ info, open, onClose }: BranchDialogProps) {
             data-active={tab === 'sync'}
             onClick={() => setTab('sync')}
           >
-            同步到机器
+            {t('同步到机器')}
           </button>
           <button
             type="button"
@@ -82,25 +85,25 @@ export function BranchDialog({ info, open, onClose }: BranchDialogProps) {
       {tab === 'sync' ? (
         <div className="dlg-branch-body">
           {box}
-          <div className="dlg-field-label">目标机器</div>
+          <div className="dlg-field-label">{t('目标机器')}</div>
           <button type="button" className="dlg-machine">
             <span className="dlg-machine-dot" />
             <span className="dlg-machine-name">{info.machine}</span>
             <ChevronDown width={12} height={12} />
           </button>
-          <div className="dlg-field-label">同步目录</div>
+          <div className="dlg-field-label">{t('同步目录')}</div>
           <div className="dlg-dir">{info.directory}</div>
           <div className="dlg-force">
             <div className="dlg-force-text">
-              <div className="dlg-field-label">强制同步</div>
+              <div className="dlg-field-label">{t('强制同步')}</div>
               <div className="dlg-force-desc">
-                丢弃代码修改并删除非忽略的未跟踪文件；保留忽略内容。仅本次生效。
+                {t('丢弃代码修改并删除非忽略的未跟踪文件；保留忽略内容。仅本次生效。')}
               </div>
             </div>
             <label className="dlg-toggle" data-on={force}>
               <input
                 type="checkbox"
-                aria-label="强制同步"
+                aria-label={t('强制同步')}
                 checked={force}
                 onChange={(event) => setForce(event.target.checked)}
               />
@@ -108,14 +111,14 @@ export function BranchDialog({ info, open, onClose }: BranchDialogProps) {
             </label>
           </div>
           <button type="button" className="dlg-sync" disabled>
-            同步
+            {t('同步')}
           </button>
         </div>
       ) : (
         <div className="dlg-branch-body">
           {box}
           <div className="dlg-field-label">Pull Request</div>
-          <div className="dlg-dir">未创建</div>
+          <div className="dlg-dir">{t('未创建')}</div>
         </div>
       )}
     </DialogShell>

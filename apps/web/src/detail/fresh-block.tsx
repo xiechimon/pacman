@@ -2,22 +2,41 @@
 // and the creation-time meta row with its three action icons.
 
 import type { TodoRecord } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
+import type { TFunc } from '../i18n/translate.js';
 import { Copy, PlusSmall, SquarePen, Tag } from '../icons/index.js';
 
 /** 「2026年9月21日 13:21 创建」 — capture-verbatim format, pinned to the
- *  +08:00 zone the r7 session ran in so parity never drifts with host TZ. */
-export function formatCreatedAt(ms: number): string {
-  const parts = new Intl.DateTimeFormat('zh-CN', {
+ *  +08:00 zone the r7 session ran in so parity never drifts with host TZ.
+ *  #74: the line is one dict template — the zh vars reproduce the capture
+ *  byte-for-byte; the en value consumes {monthShort} ([设计], no observed
+ *  en workspace). */
+export function formatCreatedAt(ms: number, t: TFunc): string {
+  const base = {
     timeZone: 'Asia/Shanghai',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
+  } as const;
+  const parts = new Intl.DateTimeFormat('zh-CN', {
+    ...base,
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   }).formatToParts(ms);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
-  return `${get('year')}年${get('month')}月${get('day')}日 ${get('hour')}:${get('minute')} 创建`;
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const monthShort =
+    new Intl.DateTimeFormat('en-US', { ...base, month: 'short' })
+      .formatToParts(ms)
+      .find((p) => p.type === 'month')?.value ?? '';
+  return t('{y}年{mo}月{d}日 {hh}:{mm} 创建', {
+    y: get('year'),
+    mo: get('month'),
+    d: get('day'),
+    hh: get('hour'),
+    mm: get('minute'),
+    monthShort,
+  });
 }
 
 interface FreshBlockProps {
@@ -25,6 +44,7 @@ interface FreshBlockProps {
 }
 
 export function FreshBlock({ todo }: FreshBlockProps) {
+  const { t } = useI18n();
   return (
     <div className="fresh-block">
       <h2 className="fresh-title">{todo.title}</h2>
@@ -32,12 +52,12 @@ export function FreshBlock({ todo }: FreshBlockProps) {
         <Tag width={14} height={14} />
         <PlusSmall width={9} height={9} />
       </div>
-      <div className="fresh-nodesc">尚无描述</div>
+      <div className="fresh-nodesc">{t('尚无描述')}</div>
       <div className="fresh-meta">
         <SquarePen width={13} height={13} />
         <Copy width={13} height={13} />
         <Copy width={13} height={13} />
-        <span className="fresh-meta-time">{formatCreatedAt(todo.phaseAt)}</span>
+        <span className="fresh-meta-time">{formatCreatedAt(todo.phaseAt, t)}</span>
       </div>
     </div>
   );

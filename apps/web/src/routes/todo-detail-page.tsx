@@ -24,10 +24,12 @@ import { BoardSidebar } from '../board/sidebar.js';
 import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import { overlayContent } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { ChiefFab } from '../icons/index.js';
 import { readStoredTheme } from '../theme.js';
 
 export function TodoDetailPage() {
+  const { t } = useI18n();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -108,7 +110,7 @@ export function TodoDetailPage() {
             streaming={streaming}
           />
         )}
-        <button type="button" className="detail-fab" aria-label="总管">
+        <button type="button" className="detail-fab" aria-label={t('总管')}>
           <ChiefFab />
           {fixture.chiefUnread != null && fixture.chiefUnread > 0 && (
             <span className="fab-badge">{fixture.chiefUnread}</span>

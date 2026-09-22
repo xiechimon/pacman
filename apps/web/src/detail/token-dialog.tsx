@@ -4,6 +4,7 @@
 // and the model row (r7 30 scan: y 285/346/385).
 
 import type { TokenUsageContent } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import { DialogShell } from './dialog-shell.js';
 
 interface TokenDialogProps {
@@ -14,6 +15,7 @@ interface TokenDialogProps {
 }
 
 export function TokenDialog({ stats, open, onClose }: TokenDialogProps) {
+  const { t } = useI18n();
   const rows: Array<[string, string]> = [
     ['输入', stats.input],
     ['输出', stats.output],
@@ -21,7 +23,7 @@ export function TokenDialog({ stats, open, onClose }: TokenDialogProps) {
     ['缓存写入', stats.cacheWrite],
   ];
   return (
-    <DialogShell title="Token 用量" open={open} onClose={onClose}>
+    <DialogShell title={t('Token 用量')} open={open} onClose={onClose}>
       <div className="dlg-token-total">
         <span className="dlg-token-num">{stats.total}</span>
         <span className="dlg-token-unit">tokens</span>
@@ -33,7 +35,7 @@ export function TokenDialog({ stats, open, onClose }: TokenDialogProps) {
       <div className="dlg-token-rows">
         {rows.map(([label, value]) => (
           <div key={label} className="dlg-token-row">
-            <span className="dlg-token-label">{label}</span>
+            <span className="dlg-token-label">{t(label)}</span>
             <span className="dlg-token-value">{value}</span>
           </div>
         ))}

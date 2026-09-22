@@ -10,6 +10,7 @@ import { Link, useLocation } from 'react-router';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar, type SidebarSelected } from '../board/sidebar.js';
 import type { FixtureSet } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChiefFab } from '../icons/index.js';
 import './secondary.css';
 
@@ -34,6 +35,7 @@ export function SecondaryShell({
   sidebarSelected = 'none',
   children,
 }: SecondaryShellProps) {
+  const { t } = useI18n();
   // the back chevron carries the scenario string home like dhead (#58)
   const { search } = useLocation();
   return (
@@ -41,7 +43,7 @@ export function SecondaryShell({
       <BoardSidebar attention={attentionCount(fixture.todos)} selected={sidebarSelected} />
       <div className="secondary-main">
         <header className="secondary-head">
-          <Link className="secondary-back" to={{ pathname: '/app', search }} aria-label="返回">
+          <Link className="secondary-back" to={{ pathname: '/app', search }} aria-label={t('返回')}>
             <ChevronLeft />
           </Link>
           <div className="secondary-title">{title}</div>
@@ -51,7 +53,7 @@ export function SecondaryShell({
           <div className="secondary-col">{children}</div>
         </div>
         {/* 总管 FAB rides every surface (r7 12/13 bottom-right circle) */}
-        <button type="button" className="secondary-fab" aria-label="总管">
+        <button type="button" className="secondary-fab" aria-label={t('总管')}>
           <ChiefFab />
         </button>
       </div>

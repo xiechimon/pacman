@@ -8,18 +8,30 @@
 // 机器侧执行（claim/心跳/phase 推进 planning→confirm→…）归 M3；本层只持有
 // 队列与人工触发的 phase 流转。
 
-import type { Assignment, BuildRecord, StepRecord, TriggerSource } from '@pacman/shared';
+import type {
+  Assignment,
+  BuildRecord,
+  StepRecord,
+  TriggerSource,
+  UserRecord,
+} from '@pacman/shared';
 import { asc, eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { build, message, step, todo } from '../db/schema.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
 import type { TeamStreamHub } from './events.js';
+import type { MachineWakeHub } from './machines.js';
 import { assertPhaseTransition } from './phase.js';
 import { getTodo, setTodoPhase } from './todos.js';
 
 export interface BuildDeps {
   db: Db;
   hub: TeamStreamHub;
+  /** 机器 wake 通道（入队即唤醒 claim 长轮询 + machine stream，02 §5.4）；
+   * 缺省 = 无机器面（M2a 编排测试形态）。 */
+  machineHub?: MachineWakeHub;
+  /** 通知收件人（completeStep 经 setTodoPhase 漏斗发三事件，02 §9.1）。 */
+  user: UserRecord;
 }
 
 type BuildRow = typeof build.$inferSelect;
@@ -48,13 +60,20 @@ function publishBuild(deps: BuildDeps, row: BuildRow): BuildRecord {
   return record;
 }
 
-function enqueueStep(deps: BuildDeps, buildId: string, kind: StepRecord['kind']): StepRecord {
+function enqueueStep(
+  deps: BuildDeps,
+  buildId: string,
+  kind: StepRecord['kind'],
+  teamId: string,
+): StepRecord {
   const id = newRecordId(); // base64 样 21 字符（r5 §3.1 claim step=…）
   const createdAt = nowMs();
   deps.db
     .insert(step)
     .values({ id, buildId, kind, machineId: null, status: 'pending', createdAt })
     .run();
+  // 入队即 wake（低延迟派发，02 §1.2/§5.4；claim 长轮询等待者 + SSE 双通道）。
+  deps.machineHub?.wake(teamId);
   return { id, buildId, kind, machineId: null, createdAt };
 }
 
@@ -124,7 +143,7 @@ export function startBuilds(
       })
       .run();
     // 首步：先做规划 = 规划步；立即执行 = 执行步（02 §4.2 开始 dialog 两分支）。
-    enqueueStep(deps, id, input.withPlan ? 'plan' : 'build');
+    enqueueStep(deps, id, input.withPlan ? 'plan' : 'build', todoRecord.teamId);
     setTodoPhase(deps, todoId, 'queued', {
       assignment: input.assignment,
       latestBuildId: id,
@@ -157,7 +176,7 @@ export function applyBuildStepAction(
 
   if (body.action === 'confirm') {
     setTodoPhase(deps, todoRecord.id, 'building');
-    enqueueStep(deps, buildId, 'build');
+    enqueueStep(deps, buildId, 'build', todoRecord.teamId);
     return;
   }
   // revision：用户驳回消息行进 transcript（role user，r5 §3.6/§4 时间线呈现）。
@@ -172,7 +191,7 @@ export function applyBuildStepAction(
     })
     .run();
   setTodoPhase(deps, todoRecord.id, 'planning');
-  enqueueStep(deps, buildId, 'plan');
+  enqueueStep(deps, buildId, 'plan', todoRecord.teamId);
 }
 
 /** 合并（02 §4.2/A6：merge = 202 delegated 机器执行；机器领合并步 continue
@@ -184,7 +203,7 @@ export function requestMerge(deps: BuildDeps, buildId: string): { delegated: tru
   if (!todoRow) throw new NotFoundError(`todo ${row.todoId}`);
   // 合并关口 = review（「将改动合并到默认分支」确认弹层，r3 §3.6）。
   assertPhaseTransition(todoRow.phase, 'done');
-  enqueueStep(deps, buildId, 'merge');
+  enqueueStep(deps, buildId, 'merge', todoRow.teamId);
   return { delegated: true };
 }
 

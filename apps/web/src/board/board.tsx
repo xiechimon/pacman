@@ -31,6 +31,7 @@ import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from '
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
 // drawer/settings overlays sit beside it in one place.
+import { useI18n } from '../i18n/provider.js';
 import { HelpCircle, Plus, UnfoldVertical } from '../icons/index.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
 import { DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
@@ -73,6 +74,7 @@ interface BoardProps {
 }
 
 export function BoardSurface({ fixture, onNewTask, onAction, onBranch, onReorder }: BoardProps) {
+  const { t } = useI18n();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<ColumnView | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -188,13 +190,13 @@ export function BoardSurface({ fixture, onNewTask, onAction, onBranch, onReorder
   return (
     <div className="board-main">
       <header className="board-topbar">
-        <div className="board-topbar-title">看板</div>
+        <div className="board-topbar-title">{t('看板')}</div>
         <div className="board-topbar-actions">
           <button type="button" className="board-new-task" onClick={onNewTask}>
             <Plus width={13} height={13} />
-            任务
+            {t('任务')}
           </button>
-          <button type="button" className="board-guide" aria-label="看板指南">
+          <button type="button" className="board-guide" aria-label={t('看板指南')}>
             <HelpCircle />
           </button>
         </div>
@@ -222,27 +224,27 @@ export function BoardSurface({ fixture, onNewTask, onAction, onBranch, onReorder
               <section
                 key={column.id}
                 className="board-column"
-                aria-label={column.name}
+                aria-label={t(column.name)}
                 data-column={column.id}
                 data-drop={dropColumnId === column.id ? 'true' : undefined}
               >
                 <header className="board-column-header">
                   <span className="board-column-dot" style={{ background: column.dot }} />
-                  <span className="board-column-name">{column.name}</span>
+                  <span className="board-column-name">{t(column.name)}</span>
                   {/* count always renders, `0` included (r2 §4.1 计数 0/1;
                       r7 02/01b: digit present on empty columns, x = name+9) */}
                   <span className="board-column-count">{todos.length}</span>
-                  {column.label && <span className="board-column-label">{column.label}</span>}
+                  {column.label && <span className="board-column-label">{t(column.label)}</span>}
                   <button
                     type="button"
                     className="board-column-collapse"
                     // aria-label = column name, r7 icons.json `aria:待开始` ×6
-                    aria-label={column.name}
+                    aria-label={t(column.name)}
                   >
                     <UnfoldVertical />
                   </button>
                 </header>
-                <ColumnList columnId={column.id} empty={column.empty} count={todos.length}>
+                <ColumnList columnId={column.id} empty={t(column.empty)} count={todos.length}>
                   <SortableContext
                     items={todos.map((t) => t.id)}
                     strategy={verticalListSortingStrategy}

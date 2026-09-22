@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { relativeTime } from '../board/rel-time.js';
 import { PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { AgentRef, FixtureSet, TodoRecord } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import {
   Clock,
   FileCheck,
@@ -53,6 +54,7 @@ interface SearchPanelProps {
 }
 
 function TodoRow({ todo, now, selected }: { todo: TodoRecord; now: number; selected: boolean }) {
+  const { t } = useI18n();
   const ui = PHASE_UI[todo.phase];
   return (
     <button
@@ -68,13 +70,14 @@ function TodoRow({ todo, now, selected }: { todo: TodoRecord; now: number; selec
         </span>
         <span className="search-row-sub">{PROJECT_NAME}</span>
       </span>
-      <span className="search-row-time">{relativeTime(todo.phaseAt, now)}</span>
-      <span className={`search-row-chip search-row-chip--${ui.tone}`}>{ui.chip}</span>
+      <span className="search-row-time">{relativeTime(todo.phaseAt, now, t)}</span>
+      <span className={`search-row-chip search-row-chip--${ui.tone}`}>{t(ui.chip)}</span>
     </button>
   );
 }
 
 export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPanelProps) {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -98,10 +101,10 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPa
       <button
         type="button"
         className="search-scrim anim-fade"
-        aria-label="关闭搜索"
+        aria-label={t('关闭搜索')}
         onClick={onClose}
       />
-      <div className="search-panel anim-pop" role="dialog" aria-label="搜索">
+      <div className="search-panel anim-pop" role="dialog" aria-label={t('搜索')}>
         <div className="search-input-row">
           <Search width={13} height={13} />
           <input
@@ -109,13 +112,13 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPa
             // retained mount refocuses on every open instead of mount
             ref={inputRef}
             value={query}
-            placeholder="搜索任务、项目、成员…"
+            placeholder={t('搜索任务、项目、成员…')}
             onChange={(event) => onQuery(event.target.value)}
           />
         </div>
         {q === '' ? (
           <div className="search-list">
-            <div className="search-group-label">前往</div>
+            <div className="search-group-label">{t('前往')}</div>
             {NAV_ROWS.map(({ label, Icon }, index) => (
               <button
                 type="button"
@@ -123,17 +126,17 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPa
                 className={`search-row${index === 0 ? ' search-row--selected' : ''}`}
               >
                 <Icon width={16} height={16} />
-                {label}
+                {t(label)}
               </button>
             ))}
           </div>
         ) : hitCount === 0 ? (
-          <div className="search-empty">没有与“{query.trim()}”匹配的结果</div>
+          <div className="search-empty">{t('没有与“{q}”匹配的结果', { q: query.trim() })}</div>
         ) : (
           <div className="search-list">
             {todos.length > 0 && (
               <>
-                <div className="search-group-label">任务</div>
+                <div className="search-group-label">{t('任务')}</div>
                 {todos.map((todo, index) => (
                   <TodoRow key={todo.id} todo={todo} now={fixture.now} selected={index === 0} />
                 ))}
@@ -141,7 +144,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPa
             )}
             {projectHit && (
               <>
-                <div className="search-group-label">项目</div>
+                <div className="search-group-label">{t('项目')}</div>
                 <button
                   type="button"
                   className={`search-row search-row--todo${todos.length === 0 ? ' search-row--selected' : ''}`}

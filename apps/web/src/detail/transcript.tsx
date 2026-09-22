@@ -7,6 +7,7 @@
 // CONTEXT.md canon names the message flow `transcript`.
 
 import type { TranscriptItem } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import {
   ChevronDown,
   ChevronRight,
@@ -42,11 +43,12 @@ function ElapsedRow({
   expanded?: boolean;
   solo?: boolean;
 }) {
+  const { t } = useI18n();
   return (
     <div className={solo ? 'chat-done chat-done--solo' : 'chat-done'}>
       <History width={15} height={15} />
       <span className="chat-done-label">
-        完成 {formatElapsed(seconds)}
+        {t('完成 {elapsed}', { elapsed: formatElapsed(seconds) })}
         {expanded != null &&
           (expanded ? (
             <ChevronDown width={10} height={10} />
@@ -59,13 +61,14 @@ function ElapsedRow({
 }
 
 function Row({ item }: { item: TranscriptItem }) {
+  const { t } = useI18n();
   switch (item.kind) {
     case 'run':
       return (
         <div className="chat-stamp">
           <div>{item.at}</div>
           <div className="chat-stamp-machine">
-            运行在 <span>{item.machine}</span> 上
+            {t('运行在')} <span>{item.machine}</span> {t('上')}
           </div>
         </div>
       );
@@ -75,7 +78,7 @@ function Row({ item }: { item: TranscriptItem }) {
       return (
         <div className="chat-scheduled">
           <Clock width={13} height={13} />
-          由定时发起
+          {t('由定时发起')}
         </div>
       );
     case 'user':
@@ -127,7 +130,7 @@ function Row({ item }: { item: TranscriptItem }) {
             <span className="chat-spinner">⠙</span>
             {item.seconds}s
             <ChevronRight width={10} height={10} />
-            <span className="chat-streaming-label">{item.label}</span>
+            <span className="chat-streaming-label">{t(item.label)}</span>
           </span>
         </div>
       );
@@ -136,7 +139,7 @@ function Row({ item }: { item: TranscriptItem }) {
         <>
           <div className="chat-plan">
             <FileTab width={14} height={14} />
-            <span className="chat-plan-title">{item.title}</span>
+            <span className="chat-plan-title">{t(item.title)}</span>
             <span className="chat-plan-open">
               <ExternalLink width={12} height={12} />
             </span>
@@ -160,7 +163,7 @@ function Row({ item }: { item: TranscriptItem }) {
                 ))}
               </div>
               <button type="button" className="chat-collapse">
-                收起
+                {t('收起')}
                 <ChevronDown width={10} height={10} className="chat-collapse-icon" />
               </button>
             </>

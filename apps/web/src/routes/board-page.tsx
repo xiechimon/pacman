@@ -21,6 +21,7 @@ import { withoutDeleted } from '../fixtures/deletions.js';
 import { chiefDefault, localTodo, overlayContent } from '../fixtures/fixtures.js';
 import type { FixtureSet, OverlayState, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { ChiefFab } from '../icons/index.js';
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
@@ -35,6 +36,7 @@ function readCollapsed(storage: Storage): boolean {
 }
 
 export function BoardPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const [collapsed, setCollapsed] = useState(() => readCollapsed(localStorage));
   const fixture = resolveScenario(searchParams);
@@ -124,7 +126,7 @@ export function BoardPage() {
       <button
         type="button"
         className="chief-fab"
-        aria-label="总管"
+        aria-label={t('总管')}
         onClick={() => setChiefView('drawer')}
       >
         <ChiefFab />

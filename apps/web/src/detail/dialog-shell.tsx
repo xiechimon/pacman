@@ -6,6 +6,7 @@
 // landing on the backdrop itself dismiss.
 
 import { type ReactNode, useEffect } from 'react';
+import { useI18n } from '../i18n/provider.js';
 import { X } from '../icons/index.js';
 import { FADE_EXIT_MS } from '../overlay/use-overlay-mount.js';
 import { OverlayMount } from '../overlays/dismiss.js';
@@ -29,6 +30,7 @@ export function DialogShell({
   onClose,
   children,
 }: DialogShellProps) {
+  const { t } = useI18n();
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -39,7 +41,8 @@ export function DialogShell({
   }, [onClose, open]);
 
   // backdrop click closes; Esc is the keyboard path (handler above), so
-  // the click surface carries no key handler of its own
+  // the click surface carries no key handler of its own; titles arrive
+  // pre-translated from the call sites (#74), so the shell renders them raw
   return (
     <OverlayMount open={open} exitMs={FADE_EXIT_MS}>
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: Esc closes — see comment */}
@@ -55,7 +58,7 @@ export function DialogShell({
           <div className={`dlg-head${headerCenter != null ? ' dlg-head--plain' : ''}`}>
             {title != null && <span className="dlg-title">{title}</span>}
             {headerCenter}
-            <button type="button" className="dlg-close" aria-label="关闭" onClick={onClose}>
+            <button type="button" className="dlg-close" aria-label={t('关闭')} onClick={onClose}>
               <X width={16} height={16} />
             </button>
           </div>

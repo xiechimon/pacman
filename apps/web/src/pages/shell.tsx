@@ -10,6 +10,7 @@ import { Link, useLocation } from 'react-router';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar, type SidebarSelected } from '../board/sidebar.js';
 import type { FixtureSet } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChiefFab } from '../icons/index.js';
 
 export interface PageTab {
@@ -28,16 +29,17 @@ export function TabGroup({
   tab: string;
   onTab?: (id: string) => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="page-tabs-group">
-      {tabs.map((t) => (
+      {tabs.map((item) => (
         <button
-          key={t.id}
+          key={item.id}
           type="button"
-          className={`page-tab${tab === t.id ? ' page-tab--active' : ''}`}
-          onClick={() => onTab?.(t.id)}
+          className={`page-tab${tab === item.id ? ' page-tab--active' : ''}`}
+          onClick={() => onTab?.(item.id)}
         >
-          {t.label}
+          {t(item.label)}
         </button>
       ))}
     </div>
@@ -71,17 +73,18 @@ export function PageShell({
   action,
   children,
 }: PageShellProps) {
+  const { t } = useI18n();
   const { search } = useLocation();
   return (
     <div className="page-shell">
       <BoardSidebar attention={attentionCount(fixture.todos)} selected={selected} />
       <div className="page-main">
         <header className="page-topbar">
-          <Link className="page-back" to={{ pathname: '/app', search }} aria-label="返回">
+          <Link className="page-back" to={{ pathname: '/app', search }} aria-label={t('返回')}>
             <ChevronLeft />
           </Link>
           {leftTitle != null && <span className="page-left-title">{leftTitle}</span>}
-          {title != null && <div className="page-topbar-title">{title}</div>}
+          {title != null && <div className="page-topbar-title">{t(title)}</div>}
           {tabs != null && tab != null && (
             <div className="page-tabs">
               <TabGroup tabs={tabs} tab={tab} onTab={onTab} />
@@ -90,7 +93,7 @@ export function PageShell({
           {action != null && <div className="page-topbar-actions">{action}</div>}
         </header>
         {children}
-        <button type="button" className="page-fab" aria-label="总管">
+        <button type="button" className="page-fab" aria-label={t('总管')}>
           <ChiefFab />
         </button>
       </div>

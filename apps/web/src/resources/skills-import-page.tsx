@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { ResourceShell } from './shell.js';
 import { SKILLS_HREF } from './skills-page.js';
 
@@ -18,6 +19,7 @@ const IMPORT_TABS: { id: 'folder' | 'github'; label: string }[] = [
 ];
 
 export function SkillsImportPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   const [tab, setTab] = useState<'folder' | 'github'>(
@@ -33,7 +35,9 @@ export function SkillsImportPage() {
       hideNew
       fixture={fixture}
     >
-      <p className="res-import-hint">你也可以直接让总管从 GitHub 安装技能，或帮你制作新技能。</p>
+      <p className="res-import-hint">
+        {t('你也可以直接让总管从 GitHub 安装技能，或帮你制作新技能。')}
+      </p>
       <div className="res-tabs" role="tablist">
         {IMPORT_TABS.map(({ id, label }) => (
           <button
@@ -44,35 +48,35 @@ export function SkillsImportPage() {
             className={`res-tab${tab === id ? ' res-tab--active' : ''}`}
             onClick={() => setTab(id)}
           >
-            {label}
+            {t(label)}
           </button>
         ))}
       </div>
       {tab === 'folder' ? (
         <div className="res-form">
           <label className="res-label" htmlFor="skill-folder">
-            技能文件夹
+            {t('技能文件夹')}
           </label>
           <button type="button" className="res-dropzone" id="skill-folder">
-            <span className="res-dropzone-title">点击或拖入技能文件夹</span>
-            <span className="res-dropzone-sub">必须包含 SKILL.md</span>
+            <span className="res-dropzone-title">{t('点击或拖入技能文件夹')}</span>
+            <span className="res-dropzone-sub">{t('必须包含 SKILL.md')}</span>
           </button>
           <label className="res-label" htmlFor="skill-name">
-            名称
+            {t('名称')}
           </label>
-          <input className="res-input" id="skill-name" placeholder="例如：deploy" />
+          <input className="res-input" id="skill-name" placeholder={t('例如：deploy')} />
           <label className="res-label" htmlFor="skill-desc">
-            描述
+            {t('描述')}
           </label>
-          <input className="res-input" id="skill-desc" placeholder="简要描述该技能的功能" />
+          <input className="res-input" id="skill-desc" placeholder={t('简要描述该技能的功能')} />
           <button type="button" className="res-primary res-primary--block" disabled>
-            创建技能
+            {t('创建技能')}
           </button>
         </div>
       ) : (
         <div className="res-form">
           <label className="res-label" htmlFor="skill-repo">
-            GitHub 链接
+            {t('GitHub 链接')}
           </label>
           <div className="res-scanrow">
             <input
@@ -81,10 +85,10 @@ export function SkillsImportPage() {
               placeholder="https://github.com/owner/repo"
             />
             <button type="button" className="res-scan">
-              扫描
+              {t('扫描')}
             </button>
           </div>
-          <p className="res-help">输入仓库链接以扫描其中的技能，或直接指向某个技能目录。</p>
+          <p className="res-help">{t('输入仓库链接以扫描其中的技能，或直接指向某个技能目录。')}</p>
         </div>
       )}
     </ResourceShell>

@@ -6,10 +6,12 @@
 // 保留（04 §3 不判负口径），补采真值 → 回写 02 §11 后收紧。
 // 消费方向（01 §3）：web / server / daemon → shared，三端互不依赖，shared 零反向。
 
+export * from './agent-backend.js';
 export * from './brand.js';
 export * from './git-ops.js';
 export * from './phase.js';
 export * from './protocol/index.js';
 export * from './records/index.js';
 export * from './scheduler.js';
+export * from './secret-box.js';
 export * from './tables.js';

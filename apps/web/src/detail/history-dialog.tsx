@@ -7,6 +7,7 @@
 // (r8 77/80). r7 32's single current row therefore stays button-free.
 
 import type { RunHistoryRow } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import { Check, X } from '../icons/index.js';
 import { DialogShell } from './dialog-shell.js';
 
@@ -26,28 +27,29 @@ interface HistoryDialogProps {
 }
 
 export function HistoryDialog({ runs, open, onClose }: HistoryDialogProps) {
+  const { t } = useI18n();
   const rerunnable = runs.some((run) => run.status === 'failed-current');
   return (
-    <DialogShell title="运行历史" open={open} onClose={onClose}>
+    <DialogShell title={t('运行历史')} open={open} onClose={onClose}>
       <div className="dlg-history">
         {runs.map((run) => (
           <div key={run.label} className="dlg-history-row">
             <RunGlyph status={run.status} />
             <div className="dlg-history-text">
               <div className="dlg-history-line">
-                <span className="dlg-history-label">{run.label}</span>
+                <span className="dlg-history-label">{t(run.label)}</span>
                 {(run.status === 'current' || run.status === 'failed-current') && (
-                  <span className="dlg-history-chip">当前</span>
+                  <span className="dlg-history-chip">{t('当前')}</span>
                 )}
               </div>
-              <div className="dlg-history-meta">{run.meta}</div>
+              <div className="dlg-history-meta">{t(run.meta)}</div>
             </div>
           </div>
         ))}
         {rerunnable && (
           <div className="dlg-history-footer">
             <button type="button" className="dlg-history-rerun" onClick={onClose}>
-              重跑
+              {t('重跑')}
             </button>
           </div>
         )}

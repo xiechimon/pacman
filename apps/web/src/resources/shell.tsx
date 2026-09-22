@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar, type SidebarSelected } from '../board/sidebar.js';
 import type { FixtureSet } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChiefFab, Plus } from '../icons/index.js';
 import './resources.css';
 
@@ -39,15 +40,16 @@ export function ResourceShell({
   fixture,
   children,
 }: ResourceShellProps) {
+  const { t } = useI18n();
   const newAction = hideNew ? null : newHref == null ? (
     <button type="button" className="res-new">
       <Plus width={13} height={13} />
-      新建
+      {t('新建')}
     </button>
   ) : (
     <a className="res-new" href={newHref}>
       <Plus width={13} height={13} />
-      新建
+      {t('新建')}
     </a>
   );
 
@@ -56,14 +58,14 @@ export function ResourceShell({
       <BoardSidebar selected={selected} attention={attentionCount(fixture.todos)} />
       <div className="res-main">
         <header className="res-topbar">
-          <a className="res-back" href={backHref} aria-label="返回">
+          <a className="res-back" href={backHref} aria-label={t('返回')}>
             <ChevronLeft width={16} height={16} />
           </a>
-          <h1 className="res-title">{title}</h1>
+          <h1 className="res-title">{t(title)}</h1>
           {newAction}
         </header>
         <div className="res-col">{children}</div>
-        <button type="button" className="res-fab" aria-label="总管">
+        <button type="button" className="res-fab" aria-label={t('总管')}>
           <ChiefFab />
         </button>
       </div>

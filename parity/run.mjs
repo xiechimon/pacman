@@ -28,6 +28,7 @@ const PORT = Number(process.env.PARITY_PORT ?? 8390);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const THEME_KEY = 'tds-theme'; // same key as apps/web/src/theme.ts THEME_STORAGE_KEY
 const SIDEBAR_KEY = 'tds.sidebar-collapsed'; // apps/web/src/routes/board-page.tsx SIDEBAR_STORAGE_KEY
+const LOCALE_KEYS = ['tds.locale', 'tds-locale']; // apps/web/src/i18n/locale.ts dual-key contract (r2 §1.5)
 
 mkdirSync(OUT_DIR, { recursive: true });
 
@@ -107,11 +108,19 @@ async function captureEntry(entry, browser) {
     deviceScaleFactor: 1,
   });
   await context.addInitScript(
-    ([key, theme, sidebarKey, sidebarCollapsed]) => {
+    ([key, theme, sidebarKey, sidebarCollapsed, localeKeys, locale]) => {
       localStorage.setItem(key, theme);
       if (sidebarCollapsed != null) localStorage.setItem(sidebarKey, sidebarCollapsed);
+      if (locale != null) for (const k of localeKeys) localStorage.setItem(k, locale);
     },
-    [THEME_KEY, entry.theme, SIDEBAR_KEY, entry.sidebarCollapsed ? '1' : null],
+    [
+      THEME_KEY,
+      entry.theme,
+      SIDEBAR_KEY,
+      entry.sidebarCollapsed ? '1' : null,
+      LOCALE_KEYS,
+      entry.locale ?? null,
+    ],
   );
   const page = await context.newPage();
   const url = `${BASE_URL}${entry.route}?scenario=${entry.scenario}`;
@@ -174,6 +183,21 @@ async function captureEntry(entry, browser) {
   if (entry.hover != null) {
     await page.hover(entry.hover);
     await settle(page);
+  }
+
+  // expectText gives the no-baseline (smoke) rows content teeth: the string
+  // must appear in the rendered text or the serialized DOM (aria labels)
+  if (entry.expectText != null) {
+    const hit = await page.evaluate(
+      (needle) =>
+        document.body.innerText.includes(needle) ||
+        document.documentElement.outerHTML.includes(needle),
+      entry.expectText,
+    );
+    if (!hit) {
+      await context.close();
+      throw new Error(`${entry.id}: expectText ${JSON.stringify(entry.expectText)} not found`);
+    }
   }
 
   // paint grace: under CI load a screenshot can race a committing frame
