@@ -6,11 +6,13 @@
 // records.
 
 import type {
+  ApiKeyRecord,
   ChangesContent,
   DocBlock,
   FixtureSet,
   ProjectContent,
   ScheduleRecord,
+  TeamContent,
   TodoRecord,
   TranscriptItem,
 } from './records.js';
@@ -573,4 +575,47 @@ export const projectTasksEmpty: FixtureSet = {
   now: r7(13, 14),
   project: projectContent,
   projectTab: 'tasks',
+};
+
+/** Team route roster (r7 12): `1 个成员` stats bar + the single agent card
+ *  (`claude-sonnet-5 · 默认`, role unset) beside the dashed 创建 Agent slot. */
+export const TEAM_R7: TeamContent = {
+  members: 1,
+  agents: [
+    {
+      id: R3_BUILDER.id,
+      displayName: R3_BUILDER.displayName,
+      model: 'claude-sonnet-5',
+      isDefault: true,
+      role: null,
+    },
+  ],
+};
+
+/** Team route fixture (r7 12): the board todos never render here, the
+ *  roster is the whole surface. */
+export const teamGrid: FixtureSet = {
+  todos: boardDefault.todos,
+  now: boardDefault.now,
+  team: TEAM_R7,
+};
+
+/** One created API key exercising both r3 §6 display rules: the list row
+ *  mask and the one-time plaintext (02 §8 canon copy rides along in the
+ *  page). Mask prefix `tds_afe07565` is the r3 §6 observed sample. */
+const API_KEY_CREATED: ApiKeyRecord = {
+  id: 'apikey-r7-1',
+  name: null,
+  masked: 'tds_afe07565…',
+  gitAccess: true,
+  mcpAccess: true,
+  plaintext: 'tds_afe07565b3c9d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0',
+};
+
+/** API-keys route fixture with the created key; the empty state (r2 19)
+ *  is the fixture-less fallback. */
+export const apiKeysCreated: FixtureSet = {
+  todos: boardDefault.todos,
+  now: boardDefault.now,
+  apiKeys: { keys: [API_KEY_CREATED] },
 };
