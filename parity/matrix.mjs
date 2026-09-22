@@ -13,7 +13,10 @@
 //   baseline   optional r7 filename under docs/research/assets/r7/ —
 //              present = real parity pair (threshold 0.85);
 //              absent  = smoke pair, capture compared against itself
-//              (pipeline gate, SSIM must be exactly 1.0)
+//              (pipeline gate, SSIM must be exactly 1.0).
+//              Rows switched to a later capture batch (04 §2 A6) use a
+//              batch-prefixed path, e.g. 'r8/57-运行历史-失败态单行-light.png';
+//              run.mjs resolves prefixed paths under docs/research/assets/.
 //   threshold  optional per-pair SSIM override
 
 export const VIEWPORT = { width: 1440, height: 732 };
