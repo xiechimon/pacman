@@ -13,6 +13,7 @@
 
 import {
   apiKeysCreated,
+  boardChiefProbes,
   boardDarkFresh,
   boardDefault,
   boardWithProbe,
@@ -110,6 +111,18 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '31d': detailLegacyNow('branch'),
   '32d': detailLegacyNow('history'),
   '34d': detailLegacyNow('accept'),
+  // overlays (issue #67): frozen open-states on top of the surface each
+  // r7 capture sits on — 05 the empty ⌘K panel over the default board,
+  // 05b the results state over the #46-session board, 19/29 the chip
+  // popover on the confirm/review split, 20 the 方案▾ dropdown.
+  '05': { ...boardDefault, ui: { searchOpen: true } },
+  '05b': {
+    ...boardChiefProbes,
+    ui: { searchOpen: true, searchQuery: 'r3 lifecycle probe' },
+  },
+  '19': { ...detailConfirm(false), ui: { chipPopoverOpen: true } },
+  '20': { ...detailConfirm(false), ui: { planDropdownOpen: true } },
+  '29': { ...detailReview({ userMenuOpen: false }), ui: { chipPopoverOpen: true } },
   // schedules (issue #71): 11 = the r7 empty-state capture; the list and
   // form states come from r3 93/92/92b, so their ids carry the source
   '11': schedulesEmpty,

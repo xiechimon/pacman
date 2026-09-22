@@ -226,6 +226,77 @@ export function boardWithProbe(
   return { todos, now };
 }
 
+/** #67 results-state capture day (05b supplementary shot, 2026-09-22
+ *  23:21 +08:00) — the r5 Chief observation session (#46) left probes
+ *  #11–#14 on the board and the r3 legacy pair aged to `5 小时前` /
+ *  `3 天前`. Titles/seqs/phases verbatim from the 05b capture. */
+/** Agent model suffix on the chip popover's 执行对话 row (r7 19 verbatim:
+ *  `r3-builder · claude-sonnet-5 · 默认`). */
+export const AGENT_MODEL_LINE = 'claude-sonnet-5 · 默认';
+
+const CHIEF_DAY = '2026-09-22';
+const chief = (h: number, m: number) => at(CHIEF_DAY, h, m);
+const CHIEF_NOW = chief(23, 21);
+const HOUR_MS = 3_600_000;
+const DAY_MS = 86_400_000;
+
+function chiefProbe(
+  seqNum: number,
+  title: string,
+  phase: TodoRecord['phase'],
+  phaseAt: number,
+): TodoRecord {
+  return {
+    id: `chief-${seqNum}`,
+    teamId: TEAM_ID,
+    projectId: PROJECT_ID,
+    title,
+    spec: title,
+    phase,
+    phaseAt,
+    seqNum,
+    orderIndex: 0,
+    tagIds: [],
+    assignment: { agentId: R3_BUILDER.id },
+    agent: R3_BUILDER,
+    latestBuildId: `chief-conv-${seqNum}`,
+    lastRunAt: phaseAt,
+    hasChanges: phase === 'review' || phase === 'done',
+    hasPlan: phase !== 'done',
+    buildHistory: [{ buildId: `chief-conv-${seqNum}`, createdAt: phaseAt }],
+    sourceTodo: null,
+    v: 2,
+  };
+}
+
+/** Board behind the 05b search-results capture: 执行中 #12 (failed),
+ *  待验收 #1 + #13, 已完成 #14/#11/#2 — column order as captured (#1
+ *  above #13 despite the lower seq: card order is fixture order). */
+export const boardChiefProbes: FixtureSet = {
+  todos: [
+    chiefProbe(
+      12,
+      'README 文档目录 + 新建 CHANGELOG.md + scripts/hello.js',
+      'failed',
+      CHIEF_NOW - 5 * HOUR_MS - 2 * 60_000,
+    ),
+    // #1 sits in 待验收 with a 完成 button in the 05b capture — the chief
+    // session answered it, so the waiting-on-user flag is gone by then
+    { ...legacyReview, phaseAt: CHIEF_NOW - 5 * HOUR_MS - 2 * 60_000, awaitingReply: false },
+    chiefProbe(
+      13,
+      '给 README.md 增加「项目结构」一节并链接贡献指南',
+      'review',
+      CHIEF_NOW - 5 * HOUR_MS - 2 * 60_000,
+    ),
+    chiefProbe(14, '给 index.html 的页面标题加上项目名后缀', 'done', CHIEF_NOW - 5 * HOUR_MS),
+    chiefProbe(11, '编写 CONTRIBUTING.md 贡献指南', 'done', CHIEF_NOW - 5 * HOUR_MS),
+    { ...legacyDone, phaseAt: CHIEF_NOW - 3 * DAY_MS - 2 * 60_000 },
+  ],
+  now: CHIEF_NOW,
+  usageNav: true,
+};
+
 /** r7 22d: board at ~13:55 — #10 fresh (刚刚), #9 already done (13:52),
  *  r3 legacy pair untouched. */
 export const boardDarkFresh: FixtureSet = {

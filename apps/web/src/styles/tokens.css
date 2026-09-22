@@ -56,6 +56,9 @@
   --badge-done: #5ec26a;
   /* fresh-card owner badge (r7 22/22d), same gray in both themes */
   --badge-idle: #9ea3ae;
+  /* project initial avatar (board card, sidebar, overlays), both themes */
+  --project-avatar-bg: #e97b35;
+  --project-avatar-fg: #ffffff;
   /* secondary routes (issue #70): team agent avatar disc (r7 12 light
      sample #eff1f5) and the selected feedback chip tint (r2 32); dark
      values are [推断], derived from the chip-idle/plan dark family */
@@ -103,6 +106,13 @@
   /* dark seg control inverts the light fills (r8 79 scan) */
   --seg-container-bg: #1f1f23;
   --seg-tab-active-bg: #27272a;
+  /* overlay batch B (issue #67): search-row select/icon tiles and the
+     popover dividers/indigo select. Light values measured off r7 05/05b/
+     19; dark has no capture (r7 §6) — [推断] from the surface ramp */
+  --row-selected: #27272a;
+  --row-icon-bg: #3f3f46;
+  --overlay-divider: #2a2a2e;
+  --overlay-select-indigo: #2a2740;
   /* chief surfaces (r5 100–104, #72): drawer shadow sampled from the r5
      100 edge gradient; tab strip colors from the r5 101 group/active pill
      (dark values [推断] on the detail-tab family, r2 16 dark panel) */
@@ -183,6 +193,12 @@
   --seg-tab-active-bg: #fdfaf7;
   /* 运行历史 row ring (r7 32 scan) */
   --dialog-ring: #cbc8c4;
+  /* overlay batch B (issue #67), measured off r7 05/05b/19: selected row
+     tile, result icon tile, popover hairline, indigo select block */
+  --row-selected: #f1ede7;
+  --row-icon-bg: #e7e2da;
+  --overlay-divider: #efebe5;
+  --overlay-select-indigo: #edebf6;
   /* chief surfaces (r5 100–104, #72): shadow from the r5 100 edge
      gradient, tab strip from the r5 101 group bg / active pill */
   --chief-shadow: 0 4px 24px rgb(28 25 23 / 0.16);

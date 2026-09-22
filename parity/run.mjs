@@ -22,7 +22,9 @@ const OUT_DIR = resolve(ROOT, 'parity/output');
 // bare filenames resolve to r7/, `r8/<file>` rows to the companion batch.
 const ASSETS_DIR = resolve(ROOT, 'docs/research/assets');
 const BASELINE_DIR = resolve(ASSETS_DIR, 'r7');
-const PORT = 8390;
+// parallel sessions (worktrees) run this harness concurrently — PARITY_PORT
+// lets each pick its own preview port instead of fighting over 8390
+const PORT = Number(process.env.PARITY_PORT ?? 8390);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const THEME_KEY = 'tds-theme'; // same key as apps/web/src/theme.ts THEME_STORAGE_KEY
 const SIDEBAR_KEY = 'tds.sidebar-collapsed'; // apps/web/src/routes/board-page.tsx SIDEBAR_STORAGE_KEY
@@ -121,6 +123,13 @@ async function main() {
     ],
     { cwd: ROOT, stdio: 'ignore', detached: true },
   );
+  // a squatter on PORT (stale harness run) would otherwise answer
+  // waitForServer with an old bundle and silently fake the verdicts
+  preview.on('exit', (code, signal) => {
+    if (code === 0 || signal != null) return;
+    console.error(`preview server exited early (code ${code}) — is port ${PORT} taken?`);
+    process.exit(1);
+  });
   let browser;
   const results = [];
   try {

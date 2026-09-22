@@ -62,9 +62,11 @@
   align-items: center;
   gap: 3px;
   padding: 0 7px;
+  border: none;
   border-radius: 9999px;
   font-size: 11px;
   line-height: 16px;
+  cursor: pointer;
 }
 
 .detail-chip--idle {
@@ -223,7 +225,8 @@
   cursor: pointer;
 }
 
-.doc-pane-select + .doc-pane-select {
+.doc-pane-select + .doc-pane-select,
+.doc-select-wrap + .doc-pane-select {
   margin-left: 18px;
 }
 

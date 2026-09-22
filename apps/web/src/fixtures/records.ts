@@ -103,6 +103,19 @@ export interface BuildOverlayContent {
   branch: BranchInfoContent;
   runs: RunHistoryRow[];
 }
+/** Overlay open-states a scenario freezes (issue #67): the ⌘K search
+ *  panel, the detail status-chip popover and the doc-pane 方案▾ dropdown.
+ *  Pure initial UI state — the overlays stay interactive afterwards. */
+export interface OverlayUi {
+  /** ⌘K panel open; absent query = the empty 前往 surface (r7 05). */
+  searchOpen?: boolean;
+  searchQuery?: string;
+  /** Status-chip popover open over the detail header (r7 19 / 29). */
+  chipPopoverOpen?: boolean;
+  /** 方案▾ document-type dropdown open in the doc pane (r7 20). */
+  planDropdownOpen?: boolean;
+}
+
 /** Scheduled rule (02 §9.2 / r3 §8.3 wire shape, copied verbatim:
  *  `{id, teamId, projectId, todoId, kind, at, tz, machineId, nextRunAt,
  *  createdBy, todo{seqNum,title,phase,projectName,ownerId}}`). */
@@ -197,6 +210,12 @@ export interface FixtureSet {
   /** Unread chief messages — the blue count badge on the 总管 FAB
    *  (r8 78–81 dark captures; absent from the r7 light set). */
   chiefUnread?: number;
+  /** Overlay open-states (issue #67); absent = all closed. */
+  ui?: OverlayUi;
+  /** Sidebar 用量 nav row present (issue #67): the live site grew it
+   *  between the r7 captures (2026-09-21, absent) and the 05b results
+   *  capture (2026-09-22, present) — nav set is per-capture content. */
+  usageNav?: boolean;
   /** Schedule list of the /app/schedules route (issue #71); absent or
    *  empty = the `尚无定时。` empty state (r7 11). */
   schedules?: ScheduleRecord[];

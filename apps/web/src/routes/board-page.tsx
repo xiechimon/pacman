@@ -21,6 +21,7 @@ import { chiefDefault, overlayContent } from '../fixtures/fixtures.js';
 import type { OverlayState, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { ChiefFab } from '../icons/index.js';
+import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 // shell styles live with the board surface; the settings view (101–104)
 // unmounts BoardSurface but keeps the shell, so the route imports them too
 import '../board/board.css';
@@ -45,6 +46,7 @@ export function BoardPage() {
     setOverlayTodo(todo);
     setOverlay({ kind });
   };
+  const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
   const toggle = useCallback(() => {
     const next = !collapsed;
     localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0');
@@ -62,6 +64,8 @@ export function BoardPage() {
         collapsed={collapsed}
         onToggle={toggle}
         attention={attentionCount(fixture.todos)}
+        onSearch={() => search.setOpen(true)}
+        usageNav={fixture.usageNav === true}
         selected={chiefView === 'settings' ? 'none' : 'board'}
         machineOnline={chief != null}
       />
@@ -76,6 +80,14 @@ export function BoardPage() {
             if (todo.phase === 'review' && todo.awaitingReply !== true) openFor(todo, 'accept');
           }}
           onBranch={(todo) => openFor(todo, 'branch')}
+        />
+      )}
+      {search.open && (
+        <SearchPanel
+          fixture={fixture}
+          query={search.query}
+          onQuery={search.setQuery}
+          onClose={() => search.setOpen(false)}
         />
       )}
       {chiefView === 'drawer' && (
