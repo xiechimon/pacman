@@ -227,6 +227,75 @@ export const matrix = [
     theme: 'light',
     baseline: '38-r3遗留卡-详情-light.png',
   },
+  // gate rows (issue #71): schedules empty state vs the r7 route capture
+  {
+    id: 'schedules-empty-light',
+    route: '/app/schedules',
+    scenario: '11',
+    theme: 'light',
+    baseline: '11-schedules.png',
+  },
+  // smoke rows (issue #71): schedules dark + list/form states, then the
+  // four project surfaces — no r7 baseline exists for these, so each row
+  // proves the pipeline (self-compare) and pins the surface for review
+  { id: 'schedules-empty-dark', route: '/app/schedules', scenario: '11', theme: 'dark' },
+  {
+    id: 'schedules-list-light',
+    route: '/app/schedules',
+    scenario: 'r3-93',
+    theme: 'light',
+  },
+  { id: 'schedules-form-light', route: '/app/schedules', scenario: 'r3-92', theme: 'light' },
+  {
+    id: 'schedules-form-once-light',
+    route: '/app/schedules',
+    scenario: 'r3-92b',
+    theme: 'light',
+  },
+  { id: 'project-new-light', route: '/app/project/new', scenario: 'r2-07', theme: 'light' },
+  { id: 'project-new-dark', route: '/app/project/new', scenario: 'r2-07', theme: 'dark' },
+  {
+    id: 'project-files-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24',
+    theme: 'light',
+  },
+  {
+    id: 'project-files-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24',
+    theme: 'dark',
+  },
+  {
+    id: 'project-tasks-empty-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24b',
+    theme: 'light',
+  },
+  {
+    id: 'project-tasks-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-26',
+    theme: 'light',
+  },
+  {
+    id: 'project-tasks-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-26',
+    theme: 'dark',
+  },
+  {
+    id: 'project-settings-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings',
+    scenario: 'r2-24c',
+    theme: 'light',
+  },
+  {
+    id: 'project-settings-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings',
+    scenario: 'r2-24c',
+    theme: 'dark',
+  },
   // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // (28) — artefacts + score recorded, not gated
   {

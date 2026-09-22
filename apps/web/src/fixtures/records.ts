@@ -65,6 +65,43 @@ export interface TodoRecord {
   awaitingReply?: boolean;
 }
 
+/** Scheduled rule (02 §9.2 / r3 §8.3 wire shape, copied verbatim:
+ *  `{id, teamId, projectId, todoId, kind, at, tz, machineId, nextRunAt,
+ *  createdBy, todo{seqNum,title,phase,projectName,ownerId}}`). */
+export interface ScheduleRecord {
+  id: string;
+  teamId: string;
+  projectId: string;
+  todoId: string;
+  /** 频率 tab (02 §9.2): 每小时/每天/每周/单次. */
+  kind: 'hourly' | 'daily' | 'weekly' | 'once';
+  at: number;
+  tz: string;
+  /** null = 自动 (r3 §9 机器 row). */
+  machineId: string | null;
+  nextRunAt: number;
+  createdBy: string;
+  todo: {
+    seqNum: number;
+    title: string;
+    phase: Phase;
+    projectName: string;
+    ownerId: string;
+  };
+}
+
+/** Repo surface of a project route (r2 07e/24 file tree + 24c settings
+ *  rows): branch chip, file rows and the settings card values. */
+export interface ProjectContent {
+  branch: string;
+  files: string[];
+  repoName: string;
+  /** True = the `Todos 托管` chip rides beside the repo name (r2 24c). */
+  hosted: boolean;
+  defaultBranch: string;
+  description: string | null;
+}
+
 /** One deterministic content set behind a scenario id. `now` is the frozen
  *  reference instant for relative labels (capture time of the r7 shot), so
  *  parity output never drifts with wall-clock time. */
@@ -75,6 +112,19 @@ export interface FixtureSet {
    *  document of the selected todo, verbatim from the r7 captures. Board
    *  scenarios leave it absent. */
   detail?: DetailContent;
+  /** Schedule list of the /app/schedules route (issue #71); absent or
+   *  empty = the `尚无定时。` empty state (r7 11). */
+  schedules?: ScheduleRecord[];
+  /** Open state of the 新建定时 dialog (r3 92/92b): the selected 频率 tab.
+   *  Absent = dialog closed. */
+  scheduleForm?: 'hourly' | 'daily' | 'weekly' | 'once';
+  /** Project route content (issue #71); absent = the r3-lifecycle repo
+   *  defaults so production builds still render the pages. */
+  project?: ProjectContent;
+  /** Capture-state flag for /app/project/:id (r2 24 vs 24b): which of the
+   *  任务|文件 tabs the capture sits on. Absent = 文件, the route default
+   *  (r2 §2 route table). */
+  projectTab?: 'tasks' | 'files';
 }
 
 /** Inline text run inside a plan-document block; `code` renders the

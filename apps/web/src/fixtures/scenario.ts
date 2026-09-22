@@ -21,7 +21,13 @@ import {
   detailLegacy,
   detailPlanning,
   detailReview,
+  projectFixture,
+  projectTasks,
+  projectTasksEmpty,
   r7,
+  schedulesFormDaily,
+  schedulesFormOnce,
+  schedulesList,
 } from './fixtures.js';
 import type { FixtureSet } from './records.js';
 
@@ -69,6 +75,19 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '36': detailDone(),
   '36d': detailDone(),
   '38': detailLegacy,
+  // schedules (issue #71): 11 = the r7 empty-state capture; the list and
+  // form states come from r3 93/92/92b, so their ids carry the source
+  '11': boardDefault,
+  'r3-93': schedulesList,
+  'r3-92': schedulesFormDaily,
+  'r3-92b': schedulesFormOnce,
+  // project routes (issue #71): one content set, the route + tab pick the
+  // surface; the ids name the r2 capture each row binds to
+  'r2-07': projectFixture,
+  'r2-24': projectFixture,
+  'r2-24b': projectTasksEmpty,
+  'r2-26': projectTasks,
+  'r2-24c': projectFixture,
 };
 
 /** #58 gate: scenario selection exists only in dev (`vite dev`) and in the

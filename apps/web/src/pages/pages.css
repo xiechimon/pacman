@@ -1,0 +1,1071 @@
+/* Secondary-route styles (issue #71). Schedules empty state is pixel-bound
+   to r7 11 (probe geometry @1440×732: 768 column at x456, tile 48 @ y84,
+   title y151, desc y176/196 pitch 20, primary 75×30 @ y228, hint y276);
+   list card from r3 93 (92px card, 28 tile, 3-line body); dialog from
+   r3 92/92b (488 wide, 46 header, 36 rows); project surfaces from r2
+   07/07e/24/24b/24c (768 form column, 760 settings column, 276 tree pane,
+   44 topbar shared with board/detail). */
+
+.page-shell {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
+.page-main {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+/* ---- topbar (43 + 1px border, r7 §3.1) ---- */
+
+.page-topbar {
+  position: relative;
+  flex: none;
+  height: 44px;
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  padding-left: 12px;
+}
+
+.page-back {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--text-tertiary);
+  text-decoration: none;
+}
+
+.page-left-title {
+  margin-left: 4px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-topbar-title {
+  position: absolute;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+  color: var(--text-primary);
+  pointer-events: none;
+}
+
+.page-tabs {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.page-tabs-group {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  pointer-events: auto;
+}
+
+.page-tab {
+  height: 24px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  line-height: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.page-tab--active {
+  background: var(--tab-chip-bg);
+  color: var(--text-primary);
+}
+
+.page-topbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding-right: 20px;
+}
+
+/* + 新建 (r7 11: indigo icon+text, ink x1379–1418) */
+.page-new-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--indigo-500);
+  font-size: 14px;
+  line-height: 22px;
+  cursor: pointer;
+}
+
+/* centered content column: 768 wide = r7 11 empty block at x456 */
+.page-col {
+  width: 768px;
+  margin: 0 auto;
+}
+
+.page-col--settings {
+  width: 760px; /* r2 24c card column */
+}
+
+/* 总管 FAB (r7 §3.4: 48×48 @ right 16 / bottom 16) */
+.page-fab {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 9999px;
+  background: var(--surface-elevated);
+  box-shadow: var(--fab-shadow);
+  cursor: pointer;
+}
+
+/* ---- schedules empty state (r7 11) ---- */
+
+.schedules-body {
+  padding-top: 40px; /* tile top y84 = topbar 44 + 40 */
+}
+
+.sched-empty-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+}
+
+.sched-empty-title {
+  margin-top: 20px; /* ink y151, tile bottom 131 */
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--text-primary);
+}
+
+.sched-empty-desc {
+  margin: 12px 0 0; /* ink y176 */
+  max-width: 448px; /* wraps after 从头开始 like r7 11 */
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-tertiary);
+}
+
+.sched-empty-actions {
+  margin-top: 20px; /* button top y228 */
+  display: flex;
+  align-items: center;
+}
+
+.sched-empty-new {
+  width: 75px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  font-size: 13px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.sched-empty-docs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 17px; /* link ink x547, button right 530 */
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.sched-empty-hint {
+  margin-top: 19px; /* ink y276 */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+/* ---- schedules list (r3 93) ---- */
+
+.sched-card {
+  display: flex;
+  align-items: center;
+  height: 92px;
+  padding: 0 16px;
+  border-radius: 12px;
+  background: var(--surface-secondary);
+}
+
+.sched-card + .sched-card {
+  margin-top: 12px;
+}
+
+.sched-card-tile {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface-tertiary);
+  color: var(--text-secondary);
+}
+
+.sched-card-body {
+  min-width: 0;
+  margin-left: 24px; /* text col at card+68 (r3 93) */
+  flex: 1;
+}
+
+.sched-card-title {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sched-card-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-secondary);
+}
+
+.sched-card-line--dim {
+  color: var(--text-dim);
+}
+
+.sched-card-sep {
+  color: var(--text-dim);
+}
+
+.sched-card-chip {
+  flex: none;
+  margin-right: 12px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.sched-card-chip--done {
+  background: var(--chip-done-bg);
+  color: var(--chip-done-fg);
+}
+
+.sched-card-chip--confirm {
+  background: var(--chip-confirm-bg);
+  color: var(--chip-confirm-fg);
+}
+
+.sched-card-chip--plan,
+.sched-card-chip--idle {
+  background: var(--chip-idle-bg);
+  color: var(--chip-idle-fg);
+}
+
+.sched-card-more {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+/* ---- 新建定时 dialog (r3 92/92b) ---- */
+
+.sched-form-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.6);
+}
+
+.sched-form {
+  width: 488px;
+  border-radius: 12px;
+  background: var(--surface-elevated);
+  box-shadow: var(--fab-shadow);
+}
+
+.sched-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 46px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.sched-form-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--text-primary);
+}
+
+.sched-form-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.sched-form-body {
+  padding: 16px;
+}
+
+.sched-form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  margin-top: 12px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+}
+
+.sched-form-body > :first-child {
+  margin-top: 0;
+}
+
+.sched-form-label {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.sched-form-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-primary);
+}
+
+.sched-form-value svg {
+  flex: none;
+  color: var(--text-dim);
+}
+
+.sched-form-freq {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  height: 28px;
+  margin-top: 12px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+
+.sched-form-freq-tab {
+  height: 24px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  line-height: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.sched-form-freq-tab--active {
+  background: var(--surface-elevated);
+  color: var(--text-primary);
+}
+
+.sched-form-field {
+  margin: 16px 0 8px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+/* hour at column left, minute at column center (r3 92 probe) */
+.sched-form-selects--time {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.sched-form-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 56px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.sched-form-select svg {
+  color: var(--text-dim);
+}
+
+.sched-form-tz {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.sched-form-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.sched-form-cancel {
+  height: 30px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.sched-form-save {
+  height: 30px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  font-size: 13px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+/* ---- new project (r2 07) ---- */
+
+.prj-new-body {
+  padding-top: 16px; /* tile top y60 = topbar 44 + 16 */
+  display: flex;
+  flex-direction: column;
+}
+
+.prj-new-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto;
+  border-radius: 16px;
+  background: var(--surface-secondary);
+  color: var(--text-dim);
+}
+
+.prj-new-caption {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.prj-new-label {
+  margin: 24px 0 8px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.prj-new-label + .prj-new-label {
+  margin-top: 16px;
+}
+
+.prj-new-input {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.prj-new-input::placeholder {
+  color: var(--text-dim);
+}
+
+.prj-new-repo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.prj-new-repo-placeholder {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.prj-new-repo svg {
+  color: var(--text-dim);
+}
+
+.prj-new-submit {
+  margin-top: 20px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  font-size: 14px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.prj-new-submit:disabled {
+  opacity: 0.55; /* r2 07 muted indigo before the form is filled */
+  cursor: default;
+}
+
+/* ---- project files / tasks (r2 07e/24/24b/26) ---- */
+
+.prj-files {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.prj-files-pane {
+  flex: none;
+  width: 276px; /* r2 07e tree pane 240..516 */
+  border-right: 1px solid var(--border-default);
+  padding: 8px 8px 8px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.prj-files-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 8px;
+}
+
+.prj-branch-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--surface-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.prj-branch-chip svg {
+  color: var(--text-dim);
+}
+
+.prj-files-share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.prj-files-seg {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  width: fit-content;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+
+.prj-files-seg-tab {
+  height: 24px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  line-height: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.prj-files-seg-tab--active {
+  background: var(--tab-chip-bg);
+  color: var(--text-primary);
+}
+
+.prj-files-list {
+  margin-top: 12px;
+}
+
+.prj-file-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 30px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.prj-file-row svg {
+  flex: none;
+  color: var(--text-dim);
+}
+
+.prj-file-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.prj-files-viewer {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.prj-tasks-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.prj-tasks-toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.prj-tasks-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  color: var(--text-dim);
+}
+
+.prj-tasks-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.prj-tasks-search input::placeholder {
+  color: var(--text-dim);
+}
+
+.prj-tasks-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.prj-tasks-filter svg:last-of-type {
+  color: var(--text-dim);
+}
+
+.prj-tasks-view {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+
+.prj-tasks-view-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.prj-tasks-view-btn--active {
+  background: var(--tab-chip-bg);
+  color: var(--text-primary);
+}
+
+.prj-tasks-list {
+  padding: 0 16px;
+}
+
+.prj-task-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+
+.prj-task-row + .prj-task-row {
+  margin-top: 8px;
+}
+
+.prj-task-check {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+}
+
+.prj-task-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prj-task-time {
+  flex: none;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.prj-task-avatar {
+  position: relative;
+  flex: none;
+  width: 20px;
+  height: 20px;
+}
+
+.prj-task-avatar img {
+  width: 20px;
+  height: 20px;
+  border-radius: 9999px;
+}
+
+.prj-task-avatar::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--surface);
+  border-radius: 9999px;
+  background: var(--badge-idle);
+}
+
+.prj-tasks-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.prj-tasks-empty-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+}
+
+.prj-tasks-empty-title {
+  margin-top: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--text-primary);
+}
+
+.prj-tasks-empty-desc {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.prj-tasks-empty-new {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 16px;
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  font-size: 13px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+/* ---- project settings (r2 24c) ---- */
+
+.prj-set-body {
+  padding-top: 20px; /* tab group top y63 ≈ topbar 44 + 20 */
+}
+
+.prj-set-body .page-tabs-group {
+  margin: 0;
+}
+
+.prj-set-tabs {
+  display: flex;
+}
+
+.prj-set-card {
+  margin-top: 16px;
+  border-radius: 12px;
+  background: var(--surface-secondary);
+  overflow: hidden;
+}
+
+.prj-set-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+}
+
+.prj-set-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 9999px;
+  background: var(--surface-tertiary);
+  font-size: 20px;
+  color: var(--text-secondary);
+}
+
+.prj-set-change {
+  margin-top: 8px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--indigo-400);
+  cursor: pointer;
+}
+
+.prj-set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 6px 16px;
+  border-top: 1px solid var(--border-default);
+}
+
+.prj-set-label {
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.prj-set-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-primary);
+}
+
+.prj-set-value svg {
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.prj-set-value--dim {
+  color: var(--text-dim);
+}
+
+.prj-set-chip {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--surface-tertiary);
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--text-dim);
+}
+
+.prj-set-branch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--surface-elevated);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.prj-set-branch svg {
+  color: var(--text-dim);
+}
+
+.prj-set-danger-label {
+  margin: 16px 0 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.prj-set-card--danger {
+  padding: 16px;
+}
+
+.prj-set-danger-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--text-primary);
+}
+
+.prj-set-danger-desc {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-tertiary);
+}
+
+.prj-set-delete {
+  margin-top: 12px;
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: var(--danger);
+  font-size: 13px;
+  color: #ffffff;
+  cursor: pointer;
+}

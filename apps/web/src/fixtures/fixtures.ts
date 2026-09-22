@@ -9,6 +9,8 @@ import type {
   ChangesContent,
   DocBlock,
   FixtureSet,
+  ProjectContent,
+  ScheduleRecord,
   TodoRecord,
   TranscriptItem,
 } from './records.js';
@@ -146,9 +148,27 @@ const darkFreshProbe: TodoRecord = {
   v: 2,
 };
 
+/** Repo surface of the fixture project (r2 07e/24/24c read off the
+ *  r3-lifecycle hosted repo): main branch, single README.md row. */
+export const projectContent: ProjectContent = {
+  branch: 'main',
+  files: ['README.md'],
+  repoName: PROJECT_NAME,
+  hosted: true,
+  defaultBranch: 'main',
+  description: null,
+};
+
 /** Board default: only the r3 legacy pair (r7 01/35). Captured before the
- *  probe existed, ~13:10–13:21. */
-export const boardDefault: FixtureSet = { todos: [legacyReview, legacyDone], now: r7(13, 14) };
+ *  probe existed, ~13:10–13:21. Carries the project repo surface and an
+ *  empty schedule list so the #71 routes also render in scenario-blind
+ *  production builds (resolveScenario falls back here). */
+export const boardDefault: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  schedules: [],
+  project: projectContent,
+};
 
 /** Board with the probe in the given phase (r7 02/22/21/33 …). The dark
  *  board pair (02/02b) shows `9 分钟前` on the confirm card → captured
@@ -470,4 +490,76 @@ export const detailLegacy: FixtureSet = {
   todos: [legacyReview, legacyDone],
   now: r7(13, 58),
   detail: { transcript: LEGACY_REVIEW_TRANSCRIPT },
+};
+
+// ---- issue #71: schedules + project route sets ----
+
+/** r3 93 list card: the once rule built in r3 §9 (fired 14:30, todo #1 went
+ *  done, rule still listed with 下次 今天 14:30 at capture time ~13:50).
+ *  Record shape verbatim from r3 §8.3; `createdBy` id is [推断] (masked in
+ *  the capture, never rendered). */
+const scheduleOnce: ScheduleRecord = {
+  id: 'r3-schedule-1',
+  teamId: TEAM_ID,
+  projectId: PROJECT_ID,
+  todoId: 'r3-legacy-1',
+  kind: 'once',
+  at: at(R3_DAY, 14, 30),
+  tz: 'Asia/Shanghai',
+  machineId: null,
+  nextRunAt: at(R3_DAY, 14, 30),
+  createdBy: 'u-xmon-dai',
+  todo: {
+    seqNum: 1,
+    title: legacyReview.title,
+    phase: 'done',
+    projectName: PROJECT_NAME,
+    ownerId: 'u-xmon-dai',
+  },
+};
+
+/** r3 93: list with the single once rule. Capture instant ~13:50 keeps
+ *  `下次 今天 14:30` in the future. */
+export const schedulesList: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: at(R3_DAY, 13, 50),
+  schedules: [scheduleOnce],
+  project: projectContent,
+};
+
+/** r3 92: 新建定时 dialog open on the 每天 tab (the default frequency). */
+export const schedulesFormDaily: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: at(R3_DAY, 13, 50),
+  schedules: [],
+  scheduleForm: 'daily',
+  project: projectContent,
+};
+
+/** r3 92b: same dialog on 单次 — the 日期 row appears above 时间. */
+export const schedulesFormOnce: FixtureSet = {
+  ...schedulesFormDaily,
+  scheduleForm: 'once',
+};
+
+/** The project routes share one content set; the route picks the page and
+ *  `projectTab` picks the 任务|文件 surface (r2 07 / 07e·24 / 24b·26 / 24c).
+ *  Default tab = 文件 (r2 §2 route table). */
+export const projectFixture: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  project: projectContent,
+};
+
+/** r2 26: 任务 tab with the two legacy rows (checkbox + title + rel time
+ *  + owner avatar). */
+export const projectTasks: FixtureSet = { ...projectFixture, projectTab: 'tasks' };
+
+/** r2 24b: 任务 tab of a project without todos — the 暂无内容 empty state
+ *  with the `+ 任务` entry (the r2 session's r2-inventory project). */
+export const projectTasksEmpty: FixtureSet = {
+  todos: [],
+  now: r7(13, 14),
+  project: projectContent,
+  projectTab: 'tasks',
 };
