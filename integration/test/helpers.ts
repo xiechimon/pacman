@@ -28,6 +28,8 @@ export interface RealServer {
   teamId: string;
   apiKey: string;
   db: ReturnType<typeof openMemoryDb>;
+  /** 托管 bare repo 存储根（M3b git 面断言用）。 */
+  reposDir: string;
   /** POST /api/machine/tasks/claim 请求计数（cadence 时序实测面）。 */
   claimCount: () => number;
   todoPhase(todoId: string): string;
@@ -37,6 +39,8 @@ export interface RealServer {
 export async function bootRealServer(opts: {
   providerBaseUrl: string;
   claimHoldMs?: number;
+  /** seed Agent 职责文本（systemPrompt 注入面；缺省 = M3a 无工具文案）。 */
+  agentDescription?: string;
 }): Promise<RealServer> {
   const db = openMemoryDb();
   const { user, team } = seed(db);
@@ -109,7 +113,8 @@ export async function bootRealServer(opts: {
       id: AGENT_ID,
       teamId: team.id,
       displayName: 'it-builder',
-      description: '你是集成测试执行 Agent：直接简短回答，不使用任何工具。',
+      description:
+        opts.agentDescription ?? '你是集成测试执行 Agent：直接简短回答，不使用任何工具。',
       provider: 'stub-gw',
       modelId: 'stub-model',
     })
@@ -120,6 +125,7 @@ export async function bootRealServer(opts: {
     teamId: team.id,
     apiKey: issuedKey.plaintext,
     db,
+    reposDir,
     claimCount: () => claims,
     todoPhase(todoId: string) {
       return db.select().from(todoTable).where(eq(todoTable.id, todoId)).get()?.phase ?? '';
@@ -159,8 +165,14 @@ export async function seedWorld(
   url: string,
   teamId: string,
   todo: { title: string; spec: string },
+  opts: { repoKind?: 'hosted' | 'github'; projectName?: string } = {},
 ): Promise<WorldIds> {
-  const project = await api(url, 'POST', '/api/projects', { name: 'it-project', teamId });
+  const name = opts.projectName ?? 'it-project';
+  const project = await api(url, 'POST', '/api/projects', {
+    name,
+    teamId,
+    ...(opts.repoKind !== undefined ? { repoKind: opts.repoKind } : {}),
+  });
   const projectId = (project.body as { id: string }).id;
   const res = await api(url, 'POST', `/api/projects/${projectId}/todos`, todo);
   const todoId = (res.body as { id: string }).id;

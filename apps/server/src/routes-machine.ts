@@ -15,6 +15,7 @@ import {
   machineRecordSchema,
   machineToolBodySchema,
   machineUploadUrlsBodySchema,
+  PLAN_FILE_NAME,
   transcriptUploadSchema,
 } from '@pacman/shared';
 import type { Context, Hono } from 'hono';
@@ -33,6 +34,7 @@ import {
   heartbeatStep,
   markOffline,
   markPresence,
+  receivePlanUpload,
   receiveUpload,
   recoverSteps,
   reportTool,
@@ -68,6 +70,7 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     machineHub: ctx.machineHub,
     box: ctx.secretBox,
     user: ctx.user,
+    reposDir: ctx.reposDir,
   };
 
   // 机器 token 认证中间件（enroll 三件除外——其认证 = apiKey）。
@@ -170,7 +173,7 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
   app.post('/api/machine/tasks/claim', async (c) => {
     const row = me(c);
     parseWith(machineClaimBodySchema, (await jsonBody(c)) ?? {}, 'body');
-    const step = await claimStep(deps, row.id, row.teamId, ctx.claimHoldMs);
+    const step = await claimStep(deps, row.id, row.teamId, ctx.claimHoldMs, originOf(c));
     return c.json({ step });
   });
 
@@ -226,23 +229,28 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     );
   });
 
-  // —— PUT /api/machine/upload/{uploadId}（[设计] 预签名落地点）————————————————
+  // —— PUT /api/machine/upload/{uploadId}（[设计] 预签名落地点；按登记 name
+  // 分流：transcript.json = 终稿消息行集、plan.md = 方案文件版本，02 §1.3/§4.2）——
   app.put('/api/machine/upload/:uploadId', async (c) => {
     const row = me(c);
     const uploadId = c.req.param('uploadId');
     const upload = ctx.uploads.get(uploadId);
     if (!upload || upload.machineId !== row.id) throw new HttpError(404, 'upload not found');
-    const body = parseWith(transcriptUploadSchema, await jsonBody(c), 'body');
-    receiveUpload(deps, upload, body);
+    if (upload.name === PLAN_FILE_NAME) {
+      receivePlanUpload(deps, upload, await c.req.text());
+    } else {
+      const body = parseWith(transcriptUploadSchema, await jsonBody(c), 'body');
+      receiveUpload(deps, upload, body);
+    }
     ctx.uploads.delete(uploadId); // 一次性
     return c.json({ ok: true as const });
   });
 
-  // —— POST /api/machine/done/{stepId}（收尾 + phase 推进 + 记账）——————————————
+  // —— POST /api/machine/done/{stepId}（收尾 + phase 推进 + 记账 + 合并落地）———
   app.post('/api/machine/done/:stepId', async (c) => {
     const row = me(c);
     const body = parseWith(machineDoneBodySchema, await jsonBody(c), 'body');
-    finishStep(deps, row.id, c.req.param('stepId'), body);
+    await finishStep(deps, row.id, c.req.param('stepId'), body);
     return c.json({ ok: true as const });
   });
 }

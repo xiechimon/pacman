@@ -64,7 +64,12 @@ export interface MachineApi {
   ): Promise<{
     uploads: { name: string; url: string; method: 'PUT'; headers: Record<string, string> }[];
   }>;
-  putUpload(url: string, headers: Record<string, string>, body: TranscriptUpload): Promise<void>;
+  putUpload(
+    url: string,
+    headers: Record<string, string>,
+    body: TranscriptUpload | string,
+    contentType?: string,
+  ): Promise<void>;
   done(stepId: string, body: MachineDoneBody): Promise<void>;
   stream(
     signal: AbortSignal,
@@ -222,22 +227,24 @@ export class MachineClient implements MachineApi {
   }
 
   /** 预签名 PUT（绝对 URL；一次性）。机器 token 仅同源附带（预签名 URL 若
-   * 指向异源存储，不得外泄 Bearer [设计]）。 */
+   * 指向异源存储，不得外泄 Bearer [设计]）。body 双形：transcript.json =
+   * JSON；plan.md = 原文 text/markdown（02 §4.2 plan 即文件）。 */
   async putUpload(
     url: string,
     headers: Record<string, string>,
-    body: TranscriptUpload,
+    body: TranscriptUpload | string,
+    contentType?: string,
   ): Promise<void> {
     const sameOrigin = new URL(url).origin === new URL(this.opts.serverUrl).origin;
     const token = sameOrigin ? this.opts.getToken?.() : undefined;
     const res = await this.fetchImpl(url, {
       method: 'PUT',
       headers: {
-        'content-type': 'application/json',
+        'content-type': contentType ?? 'application/json',
         ...headers,
         ...(token ? { authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify(body),
+      body: typeof body === 'string' ? body : JSON.stringify(body),
     });
     if (!res.ok) throw new MachineApiError(res.status, await res.text());
     machineOkResponseSchema.parse(await res.json());

@@ -203,6 +203,18 @@ export function requestMerge(deps: BuildDeps, buildId: string): { delegated: tru
   if (!todoRow) throw new NotFoundError(`todo ${row.todoId}`);
   // 合并关口 = review（「将改动合并到默认分支」确认弹层，r3 §3.6）。
   assertPhaseTransition(todoRow.phase, 'done');
+  // 时间线「发起了合并」行（r3 §3.6 实测：`15:06 Xmon Dai 发起了合并`；
+  // 行形 [设计]——role user 纯文本，呈现层拼装时间/actor）。
+  deps.db
+    .insert(message)
+    .values({
+      id: newRecordId(),
+      conversationId: buildId,
+      role: 'user',
+      content: '发起了合并',
+      createdAt: nowMs(),
+    })
+    .run();
   enqueueStep(deps, buildId, 'merge', todoRow.teamId);
   return { delegated: true };
 }
@@ -235,8 +247,19 @@ export function completeStep(
     });
     return;
   }
-  // merge 步成 → done + 🎉（时间线「发起了合并」+ 结果行，r3 §3.6）。
+  // merge 步成 → done + 🎉（时间线「发起了合并」+ 结果行 + `🎉 任务已完成`，
+  // r3 §3.6；celebration 行 [设计] = role system 纯文本）。
   setTodoPhase(deps, todoRow.id, 'done');
+  deps.db
+    .insert(message)
+    .values({
+      id: newRecordId(),
+      conversationId: buildRow.id,
+      role: 'system',
+      content: '🎉 任务已完成',
+      createdAt: nowMs(),
+    })
+    .run();
 }
 
 export class NotFoundError extends Error {

@@ -16,7 +16,7 @@ const claimed: ClaimedStep = {
   conversationId: 'b1',
   session: { action: 'new', sessionId: null },
   todo: { id: 't1', seqNum: 1, title: '探针', spec: '写一行' },
-  project: { id: 'p1', name: 'demo' },
+  project: { id: 'p1', name: 'demo', repo: null },
   agent: null,
 };
 
