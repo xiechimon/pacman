@@ -543,7 +543,7 @@ const LEGACY_TOKEN_USAGE: TokenUsageContent = {
 };
 
 const LEGACY_BRANCH_INFO: BranchInfoContent = {
-  // capture 55 truncates the branch after `2488`; the tail is unobservable
+  // capture 79 truncates the branch after `2488`; the tail is unobservable
   // and only needs to keep the mono row overflowing at the same glyph
   branch: 'tds/conv-01a0c8aa-9e64-742b-acbd-2488a1b2c3d4',
   commit: 'f3ce121ba492',
@@ -557,6 +557,28 @@ const LEGACY_RUN_HISTORY: RunHistoryRow[] = [
   { label: '第 2 次运行', meta: '3 天前', status: 'done' },
   { label: '第 1 次运行', meta: '4 天前 · Machine offline', status: 'failed' },
 ];
+
+/** r3 legacy #2 overlay payload — [推断]: no capture ever opened an overlay
+ *  on this build; the values exist so the done card's branch icon opens a
+ *  dialog instead of dead-clicking. No parity row rides them. */
+const LEGACY2_OVERLAY: BuildOverlayContent = {
+  token: {
+    total: '41.7k',
+    model: 'r3-gw/claude-sonnet-5',
+    modelTotal: '41.7k',
+    input: '9',
+    output: '388',
+    cacheRead: '31.6k',
+    cacheWrite: '9.4k',
+  },
+  branch: {
+    branch: 'tds/conv-r3-legacy-2',
+    commit: 'b7e1f0a9c4d2',
+    machine: MACHINE_NAME,
+    directory: '~/preview/project',
+  },
+  runs: [{ label: '第 1 次运行', meta: '2 天前 · 41.7k tokens', status: 'done' }],
+};
 
 /** r3 legacy #1 as of the r8 dark captures (2026-09-23): review phase,
  *  schedule-triggered run of 2026-09-22 18:30, single-paragraph result. */
@@ -612,13 +634,18 @@ export function detailLegacyNow(overlay: OverlayState['kind']): FixtureSet {
 
 /** Build-scoped overlay display data per todo (issue #68): the dialog
  *  payloads are not record fields (02 §6.2), so the fixture layer maps the
- *  two known builds — probe #9 (r7 30/31/32) and r3 legacy #1 (r8 78–80). */
+ *  captured builds — probe #9 (r7 30/31/32) and r3 legacy #1 (r8 78–80) —
+ *  plus one [推断] set for legacy #2 so its card's branch icon is not a
+ *  dead control; no parity row rides the [推断] values. */
 export function overlayContent(todoId: string): BuildOverlayContent | null {
   if (todoId === PROBE_ID) {
     return { token: PROBE_TOKEN_USAGE, branch: PROBE_BRANCH_INFO, runs: PROBE_RUN_HISTORY };
   }
   if (todoId === legacyReview.id) {
     return { token: LEGACY_TOKEN_USAGE, branch: LEGACY_BRANCH_INFO, runs: LEGACY_RUN_HISTORY };
+  }
+  if (todoId === legacyDone.id) {
+    return LEGACY2_OVERLAY;
   }
   return null;
 }
