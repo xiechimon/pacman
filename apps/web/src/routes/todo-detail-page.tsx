@@ -29,6 +29,9 @@ export function TodoDetailPage() {
   const ui = PHASE_UI[todo.phase];
   const detail = fixture.detail;
   const streaming = detail?.transcript.some((item) => item.kind === 'streaming') ?? false;
+  // The doc pane flips to the 变更 surface once a run produced changes
+  // (r7 27/36); the plan surface serves todo→building (r7 16/17/26).
+  const docMode = todo.phase === 'review' || todo.phase === 'done' ? 'changes' : 'plan';
 
   return (
     <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
@@ -41,7 +44,7 @@ export function TodoDetailPage() {
           </div>
         ) : (
           <div className="detail-body">
-            {tab === 'doc' && <DocPane doc={detail.doc} hasChanges={todo.hasChanges} />}
+            {tab === 'doc' && <DocPane mode={docMode} doc={detail.doc} changes={detail.changes} />}
             <div className="chat-col">
               <Transcript transcript={detail.transcript} />
             </div>
@@ -50,7 +53,12 @@ export function TodoDetailPage() {
         {ui.placeholder != null && (
           <Composer
             placeholder={ui.placeholder}
-            aiReview={todo.phase === 'confirm' || todo.phase === 'review'}
+            aiReview={
+              // r7 §4.1: the AI 审核 button only shows on writable
+              // confirm/review surfaces; the waiting-on-user legacy card
+              // (r7 38) renders the toolbar without it
+              (todo.phase === 'confirm' || todo.phase === 'review') && !todo.awaitingReply
+            }
             streaming={streaming}
           />
         )}

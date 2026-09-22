@@ -1,14 +1,55 @@
-// Chat column transcript (issue #56, r5b §3.8 / r7 16/17; CONTEXT.md canon
-// names the message flow `transcript`): centered run
-// stamp, user bubble + taskline, copy/restore icon pair, robot prose,
-// collapsed plan card with clamped preview and the 完成 Ns row, and the
-// live planning row (avatar + Ns + › + step label).
+// Chat column transcript (issue #56, extended in #57 for the deep
+// states): centered run stamps and dim note lines, the scheduled marker,
+// user bubbles with optional taskline, robot paragraphs with mono code
+// chips, the collapsed plan card, the live streaming row, the tool-call
+// group (collapsed `完成 Ns ▸` / expanded pills + 收起) and the bare
+// elapsed row. Row geometry from the r7 16/17/26/27/28/36/38 captures;
+// CONTEXT.md canon names the message flow `transcript`.
 
 import type { TranscriptItem } from '../fixtures/records.js';
-import { ChevronRight, Copy, ExternalLink, FileTab, History, Restore } from '../icons/index.js';
+import {
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Copy,
+  ExternalLink,
+  FileTab,
+  History,
+  Restore,
+  Terminal,
+} from '../icons/index.js';
+import { Segments } from './segments.js';
 
 interface TranscriptProps {
   transcript: TranscriptItem[];
+}
+
+/** `完成 Ns` row with the history glyph — shared by the plan card, the
+ *  tool group header (chevron appended) and the bare elapsed row (solo =
+ *  standalone, wider top margin). */
+function ElapsedRow({
+  seconds,
+  expanded,
+  solo,
+}: {
+  seconds: number;
+  expanded?: boolean;
+  solo?: boolean;
+}) {
+  return (
+    <div className={solo ? 'chat-done chat-done--solo' : 'chat-done'}>
+      <History width={15} height={15} />
+      <span className="chat-done-label">
+        完成 {seconds}s
+        {expanded != null &&
+          (expanded ? (
+            <ChevronDown width={10} height={10} />
+          ) : (
+            <ChevronRight width={10} height={10} />
+          ))}
+      </span>
+    </div>
+  );
 }
 
 function Row({ item }: { item: TranscriptItem }) {
@@ -22,6 +63,15 @@ function Row({ item }: { item: TranscriptItem }) {
           </div>
         </div>
       );
+    case 'note':
+      return <div className="chat-note">{item.text}</div>;
+    case 'scheduled':
+      return (
+        <div className="chat-scheduled">
+          <Clock width={13} height={13} />
+          由定时发起
+        </div>
+      );
     case 'user':
       return (
         <>
@@ -31,10 +81,12 @@ function Row({ item }: { item: TranscriptItem }) {
             </span>
             <span className="chat-bubble">{item.text}</span>
           </div>
-          <div className="chat-taskline">
-            <span className="chat-taskline-seq">#{item.seq}</span>
-            <span className="chat-taskline-title">{item.title}</span>
-          </div>
+          {item.seq != null && item.title != null && (
+            <div className="chat-taskline">
+              <span className="chat-taskline-seq">#{item.seq}</span>
+              <span className="chat-taskline-title">{item.title}</span>
+            </div>
+          )}
           <div className="chat-row-icons">
             <Copy width={13} height={13} />
             <Restore width={13} height={13} />
@@ -47,7 +99,14 @@ function Row({ item }: { item: TranscriptItem }) {
           <span className="chat-avatar">
             <img src="/avatar-robot-1.svg" alt="" />
           </span>
-          <span className="chat-text">{item.text}</span>
+          <span className="chat-text">
+            {item.paragraphs.map((para, i) => (
+              // fixture order is stable; paragraphs carry no ids
+              <p key={i} className="chat-para">
+                <Segments segments={para} codeClassName="chat-code" />
+              </p>
+            ))}
+          </span>
         </div>
       );
     case 'streaming':
@@ -57,6 +116,9 @@ function Row({ item }: { item: TranscriptItem }) {
             <img src="/avatar-robot-1.svg" alt="" />
           </span>
           <span className="chat-streaming">
+            {/* frozen braille spinner frame before the elapsed seconds
+                (r7 16/26/26d rows all show it) */}
+            <span className="chat-spinner">⠙</span>
             {item.seconds}s
             <ChevronRight width={10} height={10} />
             <span className="chat-streaming-label">{item.label}</span>
@@ -74,12 +136,33 @@ function Row({ item }: { item: TranscriptItem }) {
             </span>
           </div>
           <div className="chat-preview">{item.preview}</div>
-          <div className="chat-done">
-            <History width={15} height={15} />
-            完成 {item.seconds}s
-          </div>
+          <ElapsedRow seconds={item.seconds} />
         </>
       );
+    case 'tools':
+      return (
+        <>
+          <ElapsedRow seconds={item.seconds} expanded={item.expanded} />
+          {item.expanded && (
+            <>
+              <div className="chat-tools">
+                {item.pills.map((pill) => (
+                  <div key={pill} className="chat-tool-pill">
+                    <Terminal width={12} height={12} />
+                    <span className="chat-tool-label">{pill}</span>
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="chat-collapse">
+                收起
+                <ChevronDown width={10} height={10} className="chat-collapse-icon" />
+              </button>
+            </>
+          )}
+        </>
+      );
+    case 'elapsed':
+      return <ElapsedRow seconds={item.seconds} solo />;
   }
 }
 
