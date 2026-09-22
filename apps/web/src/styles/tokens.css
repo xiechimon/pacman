@@ -91,6 +91,12 @@
      the chip-done family) */
   --diff-add-bg: #16281d;
   --diff-add-fg: #478266;
+  /* chief surfaces (r5 100–104, #72): drawer shadow sampled from the r5
+     100 edge gradient; tab strip colors from the r5 101 group/active pill
+     (dark values [推断] on the detail-tab family, r2 16 dark panel) */
+  --chief-shadow: 0 4px 24px rgb(0 0 0 / 0.35);
+  --chief-tab-bg: #27272a;
+  --chief-tab-active: #3f3f46;
   color-scheme: dark light;
 }
 
@@ -154,4 +160,9 @@
      row tint #eaf1e8 */
   --diff-add-bg: #eaf1e8;
   --diff-add-fg: #499771;
+  /* chief surfaces (r5 100–104, #72): shadow from the r5 100 edge
+     gradient, tab strip from the r5 101 group bg / active pill */
+  --chief-shadow: 0 4px 24px rgb(28 25 23 / 0.16);
+  --chief-tab-bg: #eeeae4;
+  --chief-tab-active: #f7f4ef;
 }

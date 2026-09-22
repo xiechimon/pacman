@@ -360,3 +360,16 @@
   display: block;
   border-radius: 9999px;
 }
+
+/* machine-online dot (r5 100/101/114/116): 5px indigo, right of the 机器
+   row at x≈219 (sidebar right padding 16) */
+.sidebar-online-dot {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  translate: 0 -50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--indigo-500);
+}
