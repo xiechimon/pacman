@@ -5,12 +5,13 @@
 // agent 行）、buildHistory（build 表投影 {buildId, createdAt}，records/todo.ts
 // 最小投影 [推断]）。
 
-import type { Phase, TodoRecord } from '@pacman/shared';
+import type { Phase, TodoRecord, UserRecord } from '@pacman/shared';
 import { and, asc, eq, max, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { agent, build, todo, todoTag } from '../db/schema.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import type { TeamStreamHub } from './events.js';
+import { notifyTodoPhase } from './notifications.js';
 import { assertPhaseTransition } from './phase.js';
 
 type TodoRow = typeof todo.$inferSelect;
@@ -18,6 +19,15 @@ type TodoRow = typeof todo.$inferSelect;
 export interface TodoDeps {
   db: Db;
   hub: TeamStreamHub;
+  /** 通知收件人（phase 漏斗挂 plan_ready/build_review，02 §9.1）。 */
+  user: UserRecord;
+}
+
+/** phase 漏斗的通知挂接：进 confirm/review 发 in-app 事件（r5 §7.2 矩阵；
+ * done/failed 无事件照抄）。setTodoPhase 与 updateTodo 两路共用。 */
+function notifyPhaseEntry(deps: TodoDeps, record: TodoRecord, from: Phase, to: Phase): void {
+  if (from === to) return;
+  if (to === 'confirm' || to === 'review') notifyTodoPhase(deps, record, to);
 }
 
 export function toTodoRecord(deps: TodoDeps, row: TodoRow): TodoRecord {
@@ -197,6 +207,7 @@ export function updateTodo(
   const record = getTodo(deps, id);
   if (!record) return null;
   hub.publishTodoDoc(record.teamId, record);
+  if (patch.phase !== undefined) notifyPhaseEntry(deps, record, row.phase, patch.phase);
   return record;
 }
 
@@ -220,6 +231,7 @@ export function setTodoPhase(
   const record = getTodo(deps, id);
   if (!record) return null;
   deps.hub.publishTodoDoc(record.teamId, record);
+  notifyPhaseEntry(deps, record, row.phase, to);
   return record;
 }
 

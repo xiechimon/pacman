@@ -10,18 +10,22 @@ import { apiKey } from '../src/db/schema.js';
 import { seed } from '../src/db/seed.js';
 import { sha256Hex } from '../src/lib/crypto.js';
 import { newRecordId } from '../src/lib/ids.js';
+import { createEphemeralSecretBox } from '../src/lib/secret-box.js';
 import { TeamStreamHub } from '../src/services/events.js';
 
 export function bootServer(opts: { pingIntervalMs?: number; reposDir?: string } = {}) {
   const db = openMemoryDb();
   const { user, team } = seed(db);
   const hub = new TeamStreamHub();
+  // 随机 key 驻内存（keyfile 落盘面 = test/secret-box.test.ts 专测）。
+  const secretBox = createEphemeralSecretBox();
   // 自建临时 reposDir（git 托管面实走用）；显式传入时由调用方管理生命周期。
   const ownReposDir = opts.reposDir === undefined;
   const reposDir = opts.reposDir ?? mkdtempSync(join(tmpdir(), 'pacman-server-repos-'));
   const app = createApp({
     db,
     hub,
+    secretBox,
     user,
     team,
     // 默认拉长 ping 间隔，避免噪音；SSE 测试显式缩短。
@@ -32,10 +36,11 @@ export function bootServer(opts: { pingIntervalMs?: number; reposDir?: string } 
     app,
     db,
     hub,
+    secretBox,
     user,
     team,
     reposDir,
-    svc: { db, hub },
+    svc: { db, hub, user },
     dispose(): void {
       if (ownReposDir) rmSync(reposDir, { recursive: true, force: true });
     },

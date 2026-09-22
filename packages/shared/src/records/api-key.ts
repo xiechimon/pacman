@@ -6,6 +6,7 @@
 // MCP Bearer 两路；调用以 key 属主身份执行（02 §7.2）。
 
 import { z } from 'zod';
+import { BRAND } from '../brand.js';
 
 /** 02 §6.2 形状原样：{name(可选), gitAccess:bool, mcpAccess:bool,
  * toolGrants:{read[],write[]}}。行标识/掩码展示列的 wire 字段未采到，
@@ -26,6 +27,13 @@ export type ApiKeyRecord = z.infer<typeof apiKeyRecordSchema>;
 
 /** 一次性展示提示 canon（r3 §6 原文）。 */
 export const API_KEY_ONE_TIME_COPY = '请立即复制密钥，它仅显示一次。';
+
+/** 列表行掩码（r3 §6 实测展示规则）：明文 `tds_<48hex>` → `tds_afe07565…`
+ * = 品牌前缀 + 前 8 位 hex + 省略号（样例掩码与省略号字形原样）。
+ * server 建行与 web 展示同吃本函数（掩码规则单源）。 */
+export function maskApiKey(plaintext: string): string {
+  return `${plaintext.slice(0, BRAND.apiKeyPrefix.length + 8)}…`;
+}
 
 /** 页首说明 canon（r3 §6 原文；品牌串无涉）。 */
 export const API_KEY_PAGE_COPY = 'API 密钥用于从命令行接入机器，也让 MCP 客户端能访问你的看板。';
