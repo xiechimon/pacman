@@ -4713,7 +4713,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > 步骤生命周期行序
     "Online (machineId=…); polling <url>",
     "Idle-sleep prevention active (caffeinate)",
     "[recover] no pending steps found",
-    "maxConcurrent changed -> 3",
+    "maxConcurrent changed null -> 3",
     "[wake] push channel connected",
   ],
   "STEP_LIFECYCLE_LOG_LINES": [

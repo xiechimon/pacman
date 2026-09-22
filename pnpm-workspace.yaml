@@ -4,10 +4,11 @@ packages:
   - integration
 
 allowBuilds:
-  '@google/genai': set this to true or false
+  # pi 传递依赖（@earendil-works/* 的下游）无需 postinstall 构建脚本。
+  '@google/genai': false
   better-sqlite3: true
   esbuild: true
-  protobufjs: set this to true or false
+  protobufjs: false
 
 catalog:
   '@biomejs/biome': 2.5.14

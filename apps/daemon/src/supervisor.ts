@@ -5,8 +5,8 @@
 
 import { spawn } from 'node:child_process';
 import { openSync } from 'node:fs';
-import { CLAIM_BACKOFF_CAP_MS } from '@pacman/shared';
 import { createDaemonLogger } from './log.js';
+import { nextBackoffMs } from './machine-loop.js';
 import { clearDaemonJson, loadDaemonJson, statePaths, writeDaemonJson } from './state.js';
 
 export interface SupervisorOpts {
@@ -77,7 +77,7 @@ export async function runSupervisor(opts: SupervisorOpts): Promise<void> {
     if (stopping) break;
     logger.supervisor(`runner exited (code ${exitCode ?? 'signal'}) — restarting in ${backoff}ms`);
     await new Promise((r) => setTimeout(r, backoff));
-    backoff = Math.min(backoff * 2, CLAIM_BACKOFF_CAP_MS);
+    backoff = nextBackoffMs(backoff);
   }
   clearDaemonJson(paths);
   logger.supervisor('stopped');

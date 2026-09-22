@@ -217,6 +217,18 @@ export const machineDoneBodySchema = z.object({
 export type MachineDoneBody = z.infer<typeof machineDoneBodySchema>;
 export const machineDoneResponseSchema = machineOkResponseSchema;
 
+/** 词表外 [设计] 附加端点（wire diff 白名单化用，04 §1/§3 divergence 登记
+ * 机制同族）：upload-urls 预签名的落地点——self-host 无对象存储，server 自出
+ * 一次性 PUT URL。非协议面外扩：13 端点词表（MACHINE_ENDPOINTS）不改形状，
+ * 本表逐条带登记理由；server 路由面对拍测试单源消费。 */
+export const MACHINE_WIRE_EXTENSIONS = [
+  {
+    method: 'PUT',
+    path: '/api/machine/upload/{uploadId}',
+    reason: '[设计] upload-urls 预签名落地（self-host 无对象存储）；一次性 uploadId',
+  },
+] as const;
+
 /** 机器面 wire 对拍表（04 §3：端点路径/动词/请求/响应形状逐字段进 CI）。
  * 路径单源 = MACHINE_ENDPOINTS（machine-api.ts）；本表 = 动词 + schema 面，
  * `{stepId}` 归一同 02 §6.1 记法。 */

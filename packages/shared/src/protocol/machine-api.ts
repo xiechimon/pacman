@@ -45,12 +45,13 @@ export const REMOTE_TOOL_TIMEOUT_MS = 10_000;
  * （r3 实测 + [推断] 按 key/team 认机器）。 */
 export const ENROLL_PATHS = ['browser', 'api-key'] as const;
 
-/** 上线序列 canon 行（02 §5.4/r3 §1.5 daemon.log 实测）。 */
+/** 上线序列 canon 行（02 §5.4/r3 §1.5 daemon.log 实测；maxConcurrent 行取
+ * r3 §1.5 一手原文 `null -> 3`，02 §5.4 引文同步回写——02 §11 纪律）。 */
 export const ONLINE_SEQUENCE_CANON = [
   'Loading pi runtime…',
   'Online (machineId=…); polling <url>',
   'Idle-sleep prevention active (caffeinate)',
   '[recover] no pending steps found',
-  'maxConcurrent changed -> 3',
+  'maxConcurrent changed null -> 3',
   '[wake] push channel connected',
 ] as const;

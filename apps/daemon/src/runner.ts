@@ -65,6 +65,8 @@ const CHANGE_TOOLS = new Set(['edit', 'write', 'bash']);
 async function withRetries<T>(
   fn: () => Promise<T>,
   delaysMs: readonly number[],
+  logger: DaemonLogger,
+  label: string,
 ): Promise<T | null> {
   let lastErr: unknown;
   for (let i = 0; i <= delaysMs.length; i++) {
@@ -77,7 +79,10 @@ async function withRetries<T>(
       await new Promise((r) => setTimeout(r, delay));
     }
   }
-  void lastErr;
+  // 重试预算耗尽：原因上浮日志（不再静默吞错）。
+  logger.step(
+    `${label} retry exhausted: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
+  );
   return null;
 }
 
@@ -188,8 +193,9 @@ export async function runStep(
   let lastError: string | null = null;
   let messageSeq = 0;
   let sawChangeTool = false;
-  // 流超时护栏（02 §5.6 r3 bundle 原文数值）：首事件 streamFirstEvent、
-  // 事件间空闲 streamIdle；超时 = 中断会话并按 failed 收尾。
+  // 流超时护栏（02 §5.6 r3 bundle 原文三值全用）：首事件 streamFirstEvent、
+  // 事件间空闲 streamIdle、流 body 总时长 streamBodyTimeout；超时 = 中断会话
+  // 并按 failed 收尾。
   let timedOut = false;
   let watchdog: NodeJS.Timeout | null = null;
   const armWatchdog = (ms: number) => {
@@ -201,6 +207,11 @@ export async function runStep(
     watchdog.unref?.();
   };
   armWatchdog(STREAM_TIMEOUTS_MS.streamFirstEvent);
+  const bodyTimeout = setTimeout(() => {
+    timedOut = true;
+    void handle.stop();
+  }, STREAM_TIMEOUTS_MS.streamBodyTimeout);
+  bodyTimeout.unref?.();
   try {
     for await (const ev of handle.events) {
       armWatchdog(STREAM_TIMEOUTS_MS.streamIdle);
@@ -219,6 +230,8 @@ export async function runStep(
             const ok = await withRetries(
               () => client.tool(stepId, ev.call),
               REMOTE_TOOL_RETRY_DELAYS_MS,
+              logger,
+              `tool relay ${ev.call.id}`,
             );
             if (ok === null)
               logger.step(`tool relay failed for ${ev.call.id} (transcript upload will carry it)`);
@@ -305,10 +318,12 @@ async function failStep(deps: RunStepDeps, stepId: string, message: string): Pro
   deps.logger.step(`failed: ${message}`);
   try {
     await deps.client.done(stepId, { status: 'failed', errorMessage: message });
-    deps.journal.update(stepId, { state: 'failed' });
     deps.journal.remove(stepId);
-  } catch {
-    // 离线：journal 残留 claimed/running，recover 面对账（02 §5.4）。
-    deps.journal.update(stepId, { state: 'failed' });
+  } catch (err) {
+    // 离线：journal 保持 claimed/running（pending 面），recover 对账重报
+    // （02 §5.4）；原因上浮日志。
+    deps.logger.step(
+      `done(failed) report unreachable: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }

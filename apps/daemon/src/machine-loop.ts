@@ -62,8 +62,7 @@ export interface MachineHandle {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** 指数退避封顶 30s（r3 §1.5「断网 claim 指数退避封顶 30s」）。 */
-export function nextBackoffMs(current: number, base = 1_000, cap = CLAIM_BACKOFF_CAP_MS): number {
-  void base;
+export function nextBackoffMs(current: number, cap = CLAIM_BACKOFF_CAP_MS): number {
   return Math.min(current * 2, cap);
 }
 
@@ -174,7 +173,11 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   logger.raw(`maxConcurrent changed null -> ${config.maxConcurrent}`);
 
   // —— wake SSE（低延迟派发通道；断线持续重连不退出，r3 §1.5）——
+  // 双通道语义（02 §5.4）：server 侧入队会直接解决挂起的 claim hold；客户端
+  // wake 事件兜底 = 中断在飞 claim 立即重发（覆盖 hold 未被解决的边界）。
   const streamCtrl = new AbortController();
+  // 盒装引用：规避 TS 对捕获 let 的初始化收窄（wake 回调与 claim 循环异步互访）。
+  const flight: { claim: AbortController | null } = { claim: null };
   void (async () => {
     let backoff = 1_000;
     let announced = false;
@@ -183,6 +186,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
         await client.stream(
           streamCtrl.signal,
           (ev) => {
+            if (ev.type === 'wake') flight.claim?.abort(new Error('wake'));
             if (ev.type === 'shutdown') void stop();
           },
           () => {
@@ -198,7 +202,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       }
       if (streamCtrl.signal.aborted) return;
       await sleep(backoff);
-      backoff = Math.min(backoff * 2, CLAIM_BACKOFF_CAP_MS);
+      backoff = nextBackoffMs(backoff);
     }
   })();
 

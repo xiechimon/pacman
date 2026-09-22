@@ -100,10 +100,22 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
   });
 
   // —— 浏览器授权流（02 §5.2 路径一）[设计] 骨架：web 授权页归 M5 ——————————————
+  // enroll 位卫生 [设计]：TTL 10min + 容量上限 100（FIFO 淘汰），防无界增长。
+  const ENROLL_TTL_MS = 600_000;
+  const ENROLL_CAP = 100;
   app.post('/api/machine/enroll/start', async (c) => {
     const body = parseWith(machineEnrollStartBodySchema, await jsonBody(c), 'body');
+    const now = Date.now();
+    for (const [id, e] of ctx.enrollments) {
+      if (now - e.createdAt > ENROLL_TTL_MS) ctx.enrollments.delete(id);
+    }
+    while (ctx.enrollments.size >= ENROLL_CAP) {
+      const oldest = ctx.enrollments.keys().next().value;
+      if (oldest === undefined) break;
+      ctx.enrollments.delete(oldest);
+    }
     const enrollId = newRecordId();
-    ctx.enrollments.set(enrollId, { teamId: body.teamId ?? ctx.team.id, createdAt: Date.now() });
+    ctx.enrollments.set(enrollId, { teamId: body.teamId ?? ctx.team.id, createdAt: now });
     return c.json({
       enrollId,
       url: `${originOf(c)}/app/machines/authorize?enroll=${enrollId}`,
@@ -113,7 +125,9 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
   app.post('/api/machine/enroll/poll', async (c) => {
     const body = parseWith(machineEnrollPollBodySchema, await jsonBody(c), 'body');
     const pending = ctx.enrollments.get(body.enrollId);
-    if (!pending) return c.json({ status: 'expired' });
+    if (!pending || Date.now() - pending.createdAt > ENROLL_TTL_MS) {
+      return c.json({ status: 'expired' });
+    }
     return c.json({ status: 'pending' }); // 授权完成面归 M5（web 侧接线）
   });
 

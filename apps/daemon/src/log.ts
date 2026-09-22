@@ -5,8 +5,10 @@
 
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { DAEMON_LOG_PREFIXES } from '@pacman/shared';
 import pino from 'pino';
-import { DAEMON_LOG_PREFIXES, type DaemonLogPrefix } from './log-vocab.js';
+
+export type DaemonLogPrefix = (typeof DAEMON_LOG_PREFIXES)[number];
 
 export interface DaemonLogger {
   /** canon 原文行（无前缀）：`claim step=<id>`、`Online (…)` 族。 */

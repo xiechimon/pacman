@@ -11,6 +11,7 @@ import {
   claimedStepSchema,
   MACHINE_ENDPOINTS,
   MACHINE_WIRE,
+  MACHINE_WIRE_EXTENSIONS,
   machineClaimResponseSchema,
   machineEnrollResponseSchema,
   machineOkResponseSchema,
@@ -161,10 +162,10 @@ describe('机器面路由 = 02 §5 词表（13 端点单源对拍）', () => {
     expect(MACHINE_ENDPOINTS.map((e) => e.path)).toEqual(MACHINE_WIRE.map((w) => w.path));
   });
 
-  test('词表外仅登记 [设计] 附加端点（预签名落地 PUT upload/{uploadId}）', () => {
+  test('词表外仅登记 [设计] 附加端点（单源 = shared MACHINE_WIRE_EXTENSIONS）', () => {
     const wire = new Set(MACHINE_WIRE.map((w) => `${w.method} ${w.path}`));
     const extra = [...have].filter((r) => !wire.has(r));
-    expect(extra).toEqual(['PUT /api/machine/upload/{uploadId}']);
+    expect(extra).toEqual(MACHINE_WIRE_EXTENSIONS.map((e) => `${e.method} ${e.path}`));
   });
 
   test('生产默认 claim hold = 75s（r3 §1.5 ~75–76s 节奏；wire 常量单源）', () => {

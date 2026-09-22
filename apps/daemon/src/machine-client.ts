@@ -54,7 +54,7 @@ export interface MachineApi {
   me(): Promise<MachineRecord>;
   presence(body: { maxConcurrent?: number; cliVersion?: string }): Promise<void>;
   recover(): Promise<MachineRecoverResponse>;
-  claim(signal?: AbortSignal): Promise<ClaimedStep | null>;
+  claim(signal?: AbortSignal, running?: number): Promise<ClaimedStep | null>;
   heartbeat(stepId: string): Promise<void>;
   tool(stepId: string, call: ToolCallRecord): Promise<void>;
   token(stepId: string): Promise<MachineTokenResponse>;
@@ -174,13 +174,14 @@ export class MachineClient implements MachineApi {
     });
   }
 
-  /** claim 长轮询（server hold ~75s，r3 §1.5）；调用方给 signal 控制中断。 */
-  async claim(signal?: AbortSignal): Promise<ClaimedStep | null> {
+  /** claim 长轮询（server hold ~75s，r3 §1.5）；调用方给 signal 控制中断；
+   * running = 本机在跑步数（machineClaimBodySchema 字段，并发门面）。 */
+  async claim(signal?: AbortSignal, running = 0): Promise<ClaimedStep | null> {
     const res = await this.request<{ step: ClaimedStep | null }>(
       'POST',
       '/api/machine/tasks/claim',
       {
-        body: {},
+        body: { running },
         signal,
         parse: (raw) => machineClaimResponseSchema.parse(raw) as { step: ClaimedStep | null },
       },
@@ -220,13 +221,15 @@ export class MachineClient implements MachineApi {
     });
   }
 
-  /** 预签名 PUT（绝对 URL；一次性）。 */
+  /** 预签名 PUT（绝对 URL；一次性）。机器 token 仅同源附带（预签名 URL 若
+   * 指向异源存储，不得外泄 Bearer [设计]）。 */
   async putUpload(
     url: string,
     headers: Record<string, string>,
     body: TranscriptUpload,
   ): Promise<void> {
-    const token = this.opts.getToken?.();
+    const sameOrigin = new URL(url).origin === new URL(this.opts.serverUrl).origin;
+    const token = sameOrigin ? this.opts.getToken?.() : undefined;
     const res = await this.fetchImpl(url, {
       method: 'PUT',
       headers: {
