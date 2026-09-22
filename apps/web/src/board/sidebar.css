@@ -191,6 +191,16 @@
   text-overflow: ellipsis;
 }
 
+/* selected resource row (r7 06–10): same 8px-inset pill as the level-1
+   selected row, label promoted to primary ink */
+.sidebar-subrow--selected {
+  margin: 0 8px;
+  padding-left: 26px; /* 8 inset + 26 = icon at x34 like unselected subrows */
+  border-radius: 6px;
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+}
+
 .sidebar-new-project {
   color: var(--text-secondary);
 }

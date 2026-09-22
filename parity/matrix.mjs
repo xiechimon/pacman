@@ -497,6 +497,118 @@ export const matrix = [
   { id: 'api-keys-dark', route: '/app/api-keys', scenario: 'api-keys', theme: 'dark' },
   { id: 'feedback-light', route: '/app/feedback', scenario: 'feedback', theme: 'light' },
   { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' },
+  // gate rows (issue #69): resources batch A — six route surfaces, light
+  // (r7 captured no dark resource screen). The two 新建技能 rows stay
+  // smoke: their r8 79/80 baselines (committed with this ticket) carry
+  // live-site state the frozen shell contract does not reproduce — the
+  // 用量 nav row, the 看板 attention badge and the avatar FAB — so gating
+  // them waits on the A6 rebaseline decision
+  {
+    id: 'resources-machines-light',
+    route: '/app/resources/machines',
+    scenario: '06',
+    theme: 'light',
+    baseline: '06-resources-machines.png',
+  },
+  // gate rows (issue #70): secondary routes batch B — team and account
+  // carry r7 baselines; api-keys/feedback have no r7 capture (r2 19/32
+  // are the shape reference only), so those rows are smoke pairs, and
+  // the dark rows ride the same surfaces without baselines
+  {
+    id: 'team-light',
+    route: '/app/team',
+    scenario: '12',
+    theme: 'light',
+    baseline: '12-team.png',
+  },
+  { id: 'team-dark', route: '/app/team', scenario: '12', theme: 'dark' },
+  {
+    id: 'account-light',
+    route: '/app/account',
+    scenario: '13',
+    theme: 'light',
+    baseline: '13-account.png',
+  },
+  { id: 'account-dark', route: '/app/account', scenario: '13', theme: 'dark' },
+  { id: 'api-keys-light', route: '/app/api-keys', scenario: 'api-keys', theme: 'light' },
+  {
+    id: 'api-keys-created-light',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'light',
+  },
+  {
+    id: 'api-keys-created-dark',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'dark',
+  },
+  { id: 'api-keys-dark', route: '/app/api-keys', scenario: 'api-keys', theme: 'dark' },
+  { id: 'feedback-light', route: '/app/feedback', scenario: 'feedback', theme: 'light' },
+  { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' },
+  {
+    id: 'resources-providers-light',
+    route: '/app/resources/providers',
+    scenario: '07',
+    theme: 'light',
+    baseline: '07-resources-providers.png',
+  },
+  {
+    id: 'resources-skills-light',
+    route: '/app/resources/skills',
+    scenario: '08',
+    theme: 'light',
+    baseline: '08-resources-skills.png',
+  },
+  {
+    id: 'resources-mcp-servers-light',
+    route: '/app/resources/mcp-servers',
+    scenario: '09',
+    theme: 'light',
+    baseline: '09-resources-mcp-servers.png',
+  },
+  {
+    id: 'resources-secrets-light',
+    route: '/app/resources/secrets',
+    scenario: '10',
+    theme: 'light',
+    baseline: '10-resources-secrets.png',
+  },
+  // dark smoke rows (issue #69, 双主题按需): no frozen dark resource
+  // baseline exists (r7 captured light only), so dark rides as pipeline
+  // smoke until the A6 rebaseline decision supplies gated dark pairs
+  {
+    id: 'resources-machines-dark',
+    route: '/app/resources/machines',
+    scenario: '06',
+    theme: 'dark',
+  },
+  {
+    id: 'resources-providers-dark',
+    route: '/app/resources/providers',
+    scenario: '07',
+    theme: 'dark',
+  },
+  { id: 'resources-skills-dark', route: '/app/resources/skills', scenario: '08', theme: 'dark' },
+  {
+    id: 'resources-mcp-servers-dark',
+    route: '/app/resources/mcp-servers',
+    scenario: '09',
+    theme: 'dark',
+  },
+  { id: 'resources-secrets-dark', route: '/app/resources/secrets', scenario: '10', theme: 'dark' },
+  {
+    id: 'resources-skills-import-folder-light',
+    route: '/app/resources/skills/import',
+    scenario: '79',
+    theme: 'light',
+  },
+  {
+    id: 'resources-skills-import-github-light',
+    route: '/app/resources/skills/import',
+    scenario: '80',
+    theme: 'light',
+  }, // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // (28) — artefacts + score recorded, not gated
   {
