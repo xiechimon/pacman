@@ -230,6 +230,92 @@ export const matrix = [
     theme: 'light',
     baseline: '38-r3遗留卡-详情-light.png',
   },
+  // gate rows (issue #71): schedules empty state vs the r7 route capture
+  {
+    id: 'schedules-empty-light',
+    route: '/app/schedules',
+    scenario: '11',
+    theme: 'light',
+    baseline: '11-schedules.png',
+  },
+  // smoke rows (issue #71): schedules dark + list/form states, then the
+  // four project surfaces — no r7 baseline exists for these, so each row
+  // proves the pipeline (self-compare) and pins the surface for review.
+  // The r3-derived rows capture with the expanded sidebar: r3 92/92b/93
+  // happened to be shot on the collapsed rail (session state), while
+  // r2 05b and r7 11 show these surfaces with the sidebar expanded.
+  { id: 'schedules-empty-dark', route: '/app/schedules', scenario: '11', theme: 'dark' },
+  {
+    id: 'schedules-list-light',
+    route: '/app/schedules',
+    scenario: 'r3-93',
+    theme: 'light',
+  },
+  { id: 'schedules-list-dark', route: '/app/schedules', scenario: 'r3-93', theme: 'dark' },
+  { id: 'schedules-form-light', route: '/app/schedules', scenario: 'r3-92', theme: 'light' },
+  { id: 'schedules-form-dark', route: '/app/schedules', scenario: 'r3-92', theme: 'dark' },
+  {
+    id: 'schedules-form-once-light',
+    route: '/app/schedules',
+    scenario: 'r3-92b',
+    theme: 'light',
+  },
+  {
+    id: 'schedules-form-once-dark',
+    route: '/app/schedules',
+    scenario: 'r3-92b',
+    theme: 'dark',
+  },
+  { id: 'project-new-light', route: '/app/project/new', scenario: 'r2-07', theme: 'light' },
+  { id: 'project-new-dark', route: '/app/project/new', scenario: 'r2-07', theme: 'dark' },
+  {
+    id: 'project-files-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24',
+    theme: 'light',
+  },
+  {
+    id: 'project-files-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24',
+    theme: 'dark',
+  },
+  {
+    id: 'project-tasks-empty-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24b',
+    theme: 'light',
+  },
+  {
+    id: 'project-tasks-empty-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24b',
+    theme: 'dark',
+  },
+  {
+    id: 'project-tasks-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'prj-tasks',
+    theme: 'light',
+  },
+  {
+    id: 'project-tasks-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'prj-tasks',
+    theme: 'dark',
+  },
+  {
+    id: 'project-settings-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings',
+    scenario: 'r2-24c',
+    theme: 'light',
+  },
+  {
+    id: 'project-settings-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings',
+    scenario: 'r2-24c',
+    theme: 'dark',
+  },
   // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // (28) — artefacts + score recorded, not gated
   {

@@ -53,6 +53,42 @@ const EXTRA_ICONS = [
     contexts: ['transcript tool pill (traced from r7 28)'],
     trace: 'a 1:1 trace of the r7 28 bitmap (r5b §3.8 records the pill, not its markup)',
   },
+  {
+    // 筛选 funnel on the project 任务 toolbar (r2 24b/26; the r7 dump never
+    // captured the project routes, so the markup is traced from the bitmap)
+    name: 'Funnel',
+    size: [14, 14],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"></path></svg>',
+    contexts: ['project 任务 toolbar (traced from r2 24b)'],
+    trace: 'a 1:1 trace of the r2 24b bitmap (project routes predate the r7 dump)',
+  },
+  {
+    // list view glyph of the 任务 toolbar view toggle (r2 26), paired with
+    // the existing Grid2x2 grid glyph
+    name: 'ListLines',
+    size: [16, 16],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg>',
+    contexts: ['project 任务 view toggle (traced from r2 26)'],
+    trace: 'a 1:1 trace of the r2 26 bitmap (project routes predate the r7 dump)',
+  },
+  {
+    // repo share/export glyph top-right of the project 文件 tree pane
+    // (r2 07e/24)
+    name: 'Upload',
+    size: [16, 16],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><polyline points="16 6 12 2 8 6"></polyline><line x1="12" x2="12" y1="2" y2="15"></line></svg>',
+    contexts: ['project 文件 pane (traced from r2 07e)'],
+    trace: 'a 1:1 trace of the r2 07e bitmap (project routes predate the r7 dump)',
+  },
+  {
+    // avatar placeholder glyph on /app/project/new (r2 07): image frame
+    // with dot + mountain
+    name: 'ImageFrame',
+    size: [24, 24],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L3 21"></path></svg>',
+    contexts: ['project new avatar tile (traced from r2 07)'],
+    trace: 'a 1:1 trace of the r2 07 bitmap (project routes predate the r7 dump)',
+  },
 ];
 
 /** Attr names JSX renders in camelCase. */
