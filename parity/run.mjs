@@ -92,7 +92,6 @@ async function captureEntry(entry, browser) {
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
 
-
   if (entry.scrollLeft != null) {
     await page.evaluate((value) => {
       const el = document.querySelector('[data-parity-scroll]');
