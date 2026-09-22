@@ -30,6 +30,7 @@ import {
   detailDone,
   detailFailed12,
   detailFailed15Set,
+  detailFailedCurrent,
   detailFresh,
   detailFreshDark,
   detailLegacy,
@@ -121,6 +122,8 @@ export const SCENARIOS: Record<string, FixtureSet> = {
     ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
     overlay: { kind: 'branch' },
   },
+  // r8 57: history dialog over the failed-current run (footer 重跑 surface)
+  '57f': { ...detailFailedCurrent(), overlay: { kind: 'history' } },
   '32': {
     ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
     overlay: { kind: 'history' },

@@ -104,24 +104,25 @@ export function BoardPage() {
             if (todo.phase === 'review' && todo.awaitingReply !== true) openFor(todo, 'accept');
           }}
           onBranch={(todo) => openFor(todo, 'branch')}
+          // #73: drag drops commit into the same client-side todo set as
+          // create/delete — column counts and folds re-derive from it
+          onReorder={(next) => setTodos(next)}
         />
       )}
-      {search.open && (
-        <SearchPanel
-          fixture={fixture}
-          query={search.query}
-          onQuery={search.setQuery}
-          onClose={() => search.setOpen(false)}
-        />
-      )}
-      {chiefView === 'drawer' && (
-        <ChiefDrawer
-          chief={chiefData}
-          onSettings={() => setChiefView('settings')}
-          onClose={() => setChiefView('none')}
-        />
-      )}
-      {newTaskOpen && <NewTaskDialog onClose={() => setNewTaskOpen(false)} onSave={createTodo} />}
+      <SearchPanel
+        open={search.open}
+        fixture={fixture}
+        query={search.query}
+        onQuery={search.setQuery}
+        onClose={() => search.setOpen(false)}
+      />
+      <ChiefDrawer
+        open={chiefView === 'drawer'}
+        chief={chiefData}
+        onSettings={() => setChiefView('settings')}
+        onClose={() => setChiefView('none')}
+      />
+      <NewTaskDialog open={newTaskOpen} onClose={() => setNewTaskOpen(false)} onSave={createTodo} />
       <button
         type="button"
         className="chief-fab"
@@ -133,9 +134,13 @@ export function BoardPage() {
           <span className="fab-badge">{fixture.chiefUnread}</span>
         )}
       </button>
-      {overlay?.kind === 'accept' && <AcceptDialog onClose={closeOverlay} />}
-      {overlay?.kind === 'branch' && content != null && (
-        <BranchDialog info={content.branch} onClose={closeOverlay} />
+      <AcceptDialog open={overlay?.kind === 'accept'} onClose={closeOverlay} />
+      {content != null && (
+        <BranchDialog
+          open={overlay?.kind === 'branch'}
+          info={content.branch}
+          onClose={closeOverlay}
+        />
       )}
     </div>
   );

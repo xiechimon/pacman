@@ -66,6 +66,42 @@ async function waitForServer(url, tries = 100) {
   throw new Error(`preview server never came up at ${url}`);
 }
 
+// #73: enter/exit transitions are real animations now — a lone rAF would
+// catch them mid-flight. Wait for every finite animation/transition to
+// finish (capped at 2s so an infinite spinner can never hang a capture),
+// then one more frame so the settled style is what gets shot.
+async function settle(page) {
+  await page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const cap = setTimeout(() => resolve(null), 2000);
+        let quiet = 0;
+        const wait = () => {
+          const live = document.getAnimations().filter((anim) => {
+            const timing = anim.effect?.getTiming();
+            return timing?.iterations !== Infinity && anim.playState !== 'finished';
+          });
+          if (live.length === 0) {
+            quiet += 1;
+            // a few quiet frames: the enter animation is created one style
+            // recalc after mount, and under CI load the compositor can lag
+            // the timeline — both would otherwise shoot mid-fade
+            if (quiet >= 4) {
+              clearTimeout(cap);
+              requestAnimationFrame(() => resolve(null));
+            } else {
+              requestAnimationFrame(wait);
+            }
+            return;
+          }
+          quiet = 0;
+          Promise.all(live.map((anim) => anim.finished.catch(() => null))).then(wait);
+        };
+        wait();
+      }),
+  );
+}
+
 async function captureEntry(entry, browser) {
   const context = await browser.newContext({
     viewport: entry.viewport ?? VIEWPORT,
@@ -90,11 +126,7 @@ async function captureEntry(entry, browser) {
   const url = `${BASE_URL}${entry.route}?scenario=${entry.scenario}`;
   await page.goto(url, { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
-  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
-  // settle: the router's first commit can land a frame after the rAF above
-  // (torn captures showed a header/body mix), so give it a beat before the
-  // screenshot — fixture renders are static, the delay changes no content
-  await page.waitForTimeout(600);
+  await settle(page);
 
   if (entry.scrollLeft != null) {
     await page.evaluate((value) => {
@@ -122,7 +154,7 @@ async function captureEntry(entry, browser) {
   if (entry.clicks != null) {
     for (const selector of entry.clicks) {
       await page.click(selector);
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
+      await settle(page);
     }
   }
 
@@ -130,8 +162,38 @@ async function captureEntry(entry, browser) {
   if (entry.fills != null) {
     for (const fill of entry.fills) {
       await page.fill(fill.selector, fill.text);
-      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
+      await settle(page);
     }
+  }
+
+  // drag gestures (#73): a real pointer sequence — the board's dnd layer
+  // needs trusted pointermoves past its 5px threshold. `at` picks the
+  // vertical drop point inside the target box (top = insertion index 0).
+  if (entry.drag != null) {
+    const fromBox = await page.locator(entry.drag.from).first().boundingBox();
+    const toBox = await page.locator(entry.drag.to).first().boundingBox();
+    if (fromBox == null || toBox == null) throw new Error(`drag boxes missing: ${entry.id}`);
+    const at = entry.drag.at ?? 'center';
+    const targetY =
+      at === 'top'
+        ? toBox.y + 30
+        : at === 'bottom'
+          ? toBox.y + toBox.height * 0.85
+          : toBox.y + toBox.height / 2;
+    await page.mouse.move(fromBox.x + fromBox.width / 2, fromBox.y + fromBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(fromBox.x + fromBox.width / 2 + 8, fromBox.y + fromBox.height / 2 + 6, {
+      steps: 4,
+    });
+    await page.mouse.move(toBox.x + toBox.width / 2, targetY, { steps: 12 });
+    await page.mouse.up();
+    await settle(page);
+  }
+
+  // hover states (#73): park the pointer on the selector for the shot
+  if (entry.hover != null) {
+    await page.hover(entry.hover);
+    await settle(page);
   }
 
   // expectText gives the no-baseline (smoke) rows content teeth: the string
@@ -151,9 +213,10 @@ async function captureEntry(entry, browser) {
 
   // Chromium can hand back a stale composite right after the first paint
   // storm (torn captures showed a correct DOM over fallback pixels); a
-  // discard shot plus a beat forces a fresh frame for the kept one
+  // discard shot plus the #73 paint grace forces a fresh frame for the
+  // kept one
   await page.screenshot();
-  await page.waitForTimeout(120);
+  await page.waitForTimeout(100);
 
   const shot = resolve(OUT_DIR, `${entry.id}.png`);
   await page.screenshot({ path: shot });

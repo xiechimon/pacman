@@ -5,6 +5,7 @@ import { applyLocaleLang, readStoredLocale } from './i18n/locale.js';
 import { applyTheme, readStoredTheme } from './theme.js';
 import './styles/fonts.css';
 import './styles/tokens.css';
+import './styles/motion.css';
 import './styles/app.css';
 
 applyTheme(readStoredTheme(localStorage));

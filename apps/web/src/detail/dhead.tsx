@@ -22,7 +22,7 @@ import {
   MessageSquare,
 } from '../icons/index.js';
 import { ChipPopover } from '../overlays/chip-popover.js';
-import { ClickCatcher, useEscapeClose } from '../overlays/dismiss.js';
+import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
 
 /** Header icon overlays the right icon group opens (issue #68). */
@@ -79,12 +79,10 @@ export function DetailHead({
         <span className="detail-chip-chevron">
           <ChevronDown width={12} height={12} />
         </span>
-        {popover && (
-          <>
-            <ClickCatcher onClose={() => setPopover(false)} />
-            <ChipPopover todo={todo} />
-          </>
-        )}
+        <OverlayMount open={popover}>
+          <ClickCatcher onClose={() => setPopover(false)} />
+          <ChipPopover todo={todo} />
+        </OverlayMount>
       </span>
 
       {ui.tabs && (

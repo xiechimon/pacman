@@ -451,18 +451,21 @@
   cursor: pointer;
 }
 
-/* row-level 重跑 button: failed todo's current row only (r8 §3.3
-   state-gated, overriding the r7 §4.1.5 hover reading) */
+/* 重跑 footer (r8 57): renders only when the current run is the failed one;
+   a failed past run under a live current run carries none (r8 77/80). */
+.dlg-history-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 0 0;
+}
+
 .dlg-history-rerun {
-  margin-left: auto;
-  align-self: center;
-  height: 30px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 6px;
+  height: 28px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 8px;
   background: var(--card-button);
   color: #ffffff;
-  font-size: 12px;
-  line-height: 30px;
+  font-size: 13px;
   cursor: pointer;
 }

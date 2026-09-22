@@ -413,3 +413,24 @@
 }
 /* ---- chief fab ---- (rule moved to chief/chief.css with the #72 surfaces;
    the FAB is rendered by the board route beside the drawer/settings) */
+
+/* ---- drag & drop (#73) ---- */
+/* while a gesture is in flight the whole board stops selecting text
+   (changelog 2026-09-14 hygiene) and the pointer reads as grabbing */
+body.board-dragging {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.todo-card[data-dragging="true"] {
+  opacity: 0.6;
+  box-shadow: var(--dialog-shadow);
+  cursor: grabbing;
+}
+
+/* the column under the pointer tints with the hover token */
+.board-column[data-drop="true"] .board-column-list {
+  background: var(--surface-hover);
+  border-radius: 8px;
+}

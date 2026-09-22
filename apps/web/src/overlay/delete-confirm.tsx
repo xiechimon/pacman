@@ -6,23 +6,32 @@
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { X } from '../icons/index.js';
+import { OverlayMount } from '../overlays/dismiss.js';
 import { useEscClose } from './use-esc.js';
+import { FADE_EXIT_MS } from './use-overlay-mount.js';
 import './overlay.css';
 
 interface DeleteConfirmProps {
   todo: TodoRecord;
+  /** #73: retained-mount open flag — the exit fade outlives the close. */
+  open: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }
 
-export function DeleteConfirm({ todo, onClose, onConfirm }: DeleteConfirmProps) {
+export function DeleteConfirm({ todo, open, onClose, onConfirm }: DeleteConfirmProps) {
   const { t } = useI18n();
-  useEscClose(onClose);
+  useEscClose(onClose, open);
   return (
-    <>
-      <button type="button" className="overlay-backdrop" aria-label={t('关闭')} onClick={onClose} />
+    <OverlayMount open={open} exitMs={FADE_EXIT_MS}>
+      <button
+        type="button"
+        className="overlay-backdrop anim-fade"
+        aria-label={t('关闭')}
+        onClick={onClose}
+      />
       <div
-        className="delete-confirm"
+        className="delete-confirm anim-fade"
         role="alertdialog"
         aria-modal="true"
         aria-label={t('删除任务')}
@@ -51,6 +60,6 @@ export function DeleteConfirm({ todo, onClose, onConfirm }: DeleteConfirmProps) 
           </button>
         </div>
       </div>
-    </>
+    </OverlayMount>
   );
 }

@@ -14,10 +14,15 @@
 //              applied to the element carrying [data-parity-scroll]
 //   sidebarCollapsed  optional: true → injects tds.sidebar-collapsed=1
 //              before load so the 40px rail renders (r7 03)
-//   clicks   optional: CSS selectors clicked in order after load, one
-//              rAF settle between each — opens overlay surfaces (#66)
+//   clicks   optional: CSS selectors clicked in order after load, an
+//              animation-settle between each — opens overlay surfaces (#66)
 //   fills    optional: [{selector, text}] typed after the clicks, for
 //              filled-input states (r7 14 enabled-primary twin)
+//   drag     optional {from, to, at?}: a real pointer gesture (#73) —
+//              down on `from`, past the 5px threshold, across to `to`,
+//              up; `at` = 'top' | 'center' | 'bottom' drop point inside
+//              the `to` box (top = insertion index 0)
+//   hover    optional selector the pointer parks on before the shot (#73)
 //   viewport optional per-row capture viewport; the physical window of
 //              the r8 overlay session capped its dark baselines at
 //              1440×710, so those rows capture at the same size
@@ -948,6 +953,80 @@ export const matrix = [
   { id: 'chief-settings-charter-dark', route: '/app', scenario: '102', theme: 'dark' },
   { id: 'chief-settings-memory-dark', route: '/app', scenario: '103', theme: 'dark' },
   { id: 'chief-settings-watches-dark', route: '/app', scenario: '104', theme: 'dark' },
+  // motion + dnd terminal states (issue #73): the drag step runs a real
+  // pointer gesture and the settle waits the enter/exit transitions out,
+  // so the shot is the static post-drop / hover surface. No official
+  // capture exists for any of these (r3 85/86 caught the onboarding
+  // carousel, not a drag state), so all four ride smoke pairs.
+  {
+    id: 'dnd-drop-building-to-done-light',
+    route: '/app',
+    scenario: '01',
+    theme: 'light',
+    drag: { from: '[data-column="building"] .todo-card', to: '[data-column="done"]', at: 'top' },
+  },
+  {
+    id: 'dnd-drop-building-to-done-dark',
+    route: '/app',
+    scenario: '02',
+    theme: 'dark',
+    drag: { from: '[data-column="building"] .todo-card', to: '[data-column="done"]', at: 'top' },
+  },
+  {
+    id: 'dnd-reorder-done-light',
+    route: '/app',
+    scenario: '35',
+    theme: 'light',
+    drag: {
+      from: '[data-column="done"] .board-column-list > div:first-child .todo-card',
+      to: '[data-column="done"] .board-column-list > div:nth-child(2) .todo-card',
+      at: 'bottom',
+    },
+  },
+  {
+    id: 'hover-more-menu-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '36',
+    theme: 'light',
+    clicks: ['.detail-head-icon--more'],
+    hover: '.more-menu-item',
+  },
+  {
+    id: 'hover-more-menu-dark',
+    route: '/app/todo/u_B5ngeVOlKdKbG_4H9Cl',
+    scenario: 'r8-80',
+    theme: 'dark',
+    viewport: { width: 1440, height: 710 },
+    clicks: ['.detail-head-icon--more'],
+    hover: '.more-menu-item',
+  },
+  {
+    id: 'dnd-reorder-done-dark',
+    route: '/app',
+    scenario: '35d',
+    theme: 'dark',
+    drag: {
+      from: '[data-column="done"] .board-column-list > div:first-child .todo-card',
+      to: '[data-column="done"] .board-column-list > div:nth-child(2) .todo-card',
+      at: 'bottom',
+    },
+  },
+  // r8 57 surface (重跑 footer over the failed-current run, #73): the
+  // replica's failed-detail background behind the dialog lands with the
+  // failed-state ticket, so this pair rides smoke now — promote to the
+  // r8/57 baseline when that surface exists (04 §2 A6 batch switch).
+  {
+    id: 'overlay-history-failed-current-light',
+    route: '/app/todo/r8-failed-12',
+    scenario: '57f',
+    theme: 'light',
+  },
+  {
+    id: 'overlay-history-failed-current-dark',
+    route: '/app/todo/r8-failed-12',
+    scenario: '57f',
+    theme: 'dark',
+  },
   // i18n bilingual spot-check rows (issue #74): zh is the pixel-gated
   // default on every row above; these prove the en fallback renders across
   // the screen families (board / detail / schedules / account / team /
