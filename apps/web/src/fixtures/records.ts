@@ -75,6 +75,10 @@ export interface FixtureSet {
    *  document of the selected todo, verbatim from the r7 captures. Board
    *  scenarios leave it absent. */
   detail?: DetailContent;
+  /** Chief surface content (issue #72): the 总管 drawer overlay or the
+   *  full-content 总管设置 view, verbatim from the r5 100–116 captures.
+   *  Board scenarios without a chief surface leave it absent. */
+  chief?: ChiefContent;
 }
 
 /** Inline text run inside a plan-document block; `code` renders the
@@ -169,4 +173,71 @@ export interface DetailContent {
   /** User-menu popover rendered over the sidebar (r7 17 / 16d / 26d /
    *  27d captures). */
   userMenuOpen?: boolean;
+}
+
+// ── Chief surface (issue #72) ────────────────────────────────────────────
+// r5 §2/§3.6 canon: the 总管 panel is a right-anchored drawer over the
+// board; the 设置 gear swaps the whole content area to the 总管设置 view
+// (4 tabs). Captures 100–104 (unbound) + 111/114/116 (bound) supply the
+// static copy below.
+
+/** Hero example card of a fresh thread (r5 100/111 2×2 grid). */
+export interface ChiefExample {
+  /** Traced glyph per card position (r5 100 crops). */
+  icon: 'user-plus' | 'folder' | 'grid' | 'bars';
+  text: string;
+}
+
+/** Inline run inside a chief stream paragraph; `todo`/`agent` render the
+ *  entity chips (r5 114: `#11` indigo chip, `r5-scribe` gray chip). */
+export interface ChiefSegment {
+  text: string;
+  code?: boolean;
+  todo?: number;
+  agent?: string;
+  /** Bold lead-in of a bullet (r5 116 `README.md:` row heads). */
+  strong?: boolean;
+}
+
+/** One row of the chief message flow (r5 114/116, r3 §3.6 roles). */
+export type ChiefStreamItem =
+  /** Centered dim stamp (`17:26`) or machine line (`运行在 … 上`). */
+  | { kind: 'note'; text: string; machine?: boolean }
+  /** User bubble with avatar + the copy/restore icon pair below it. */
+  | { kind: 'user'; text: string }
+  /** Chief prose paragraphs + optional bullets + the `完成 Ns ›` footer
+   *  row (r5 116 verification report). */
+  | { kind: 'robot'; paragraphs: ChiefSegment[][]; bullets?: ChiefSegment[][]; seconds: string };
+
+/** Thread row of the header switcher popover (r5 116). */
+export interface ChiefThreadRef {
+  title: string;
+  /** True on the row the drawer currently shows. */
+  active?: boolean;
+}
+
+export type ChiefSettingsTab = 'agent' | 'charter' | 'memory' | 'watches';
+
+/** The chief surface a scenario renders. `view: 'drawer'` overlays the
+ *  board; `view: 'settings'` replaces the content area (r5 101–104). */
+export interface ChiefContent {
+  view: 'drawer' | 'settings';
+  /** Settings tab rendered when `view: 'settings'`. */
+  tab?: ChiefSettingsTab;
+  /** Agent bound to the chief: hides the gate bar, fills the model slot
+   *  and swaps the header icon set (r5 100 vs 111/114). */
+  bound: boolean;
+  /** Model slot line when bound (`claude-sonnet-5 · 默认`); `n/a` else. */
+  modelSlot?: string;
+  /** Header thread-chip label (`新主题` on a fresh thread). */
+  threadTitle: string;
+  /** Switcher popover open over the drawer (r5 116). */
+  threadsOpen?: boolean;
+  threads?: ChiefThreadRef[];
+  /** Hero grid of a fresh thread; absent on a thread view. */
+  examples?: ChiefExample[];
+  /** Composer draft text (r5 100/111 persisted draft). */
+  draft?: string;
+  /** Message flow of an existing thread (r5 114/116). */
+  stream?: ChiefStreamItem[];
 }

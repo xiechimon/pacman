@@ -245,6 +245,21 @@ export const matrix = [
     baseline: '28-执行transcript-工具行展开-light.png',
     threshold: 0,
   },
+  // chief rows (issue #72): drawer + 总管设置 surfaces, scenarios numbered
+  // after the r5 captures (100–116). The r5 batch sits outside the r7
+  // baseline batch (04 §2 A6), so these enter CI as smoke rows; baseline
+  // promotion waits on the r8 随拍 — see docs/research/r8-chief-panel-
+  // adhoc.md for the gap registration.
+  { id: 'chief-gated-light', route: '/app', scenario: '100', theme: 'light' },
+  { id: 'chief-gated-dark', route: '/app', scenario: '100', theme: 'dark' },
+  { id: 'chief-ready-light', route: '/app', scenario: '111', theme: 'light' },
+  { id: 'chief-thread-light', route: '/app', scenario: '114', theme: 'light' },
+  { id: 'chief-threads-open-light', route: '/app', scenario: '116', theme: 'light' },
+  { id: 'chief-settings-agent-light', route: '/app', scenario: '101', theme: 'light' },
+  { id: 'chief-settings-agent-dark', route: '/app', scenario: '101', theme: 'dark' },
+  { id: 'chief-settings-charter-light', route: '/app', scenario: '102', theme: 'light' },
+  { id: 'chief-settings-memory-light', route: '/app', scenario: '103', theme: 'light' },
+  { id: 'chief-settings-watches-light', route: '/app', scenario: '104', theme: 'light' },
 ];
 
 export const DEFAULT_BASELINE_THRESHOLD = 0.85;
