@@ -72,6 +72,11 @@
   --popover-bg: #1f1f23;
   --tab-group-bg: #27272a;
   --seg-active: #3f3f46;
+  /* text-tab chip on the #71 secondary routes (r2 24b/24c probe: group bg
+     is --surface-secondary in both themes, the active chip is not) */
+  --tab-chip-bg: #27272a;
+  /* 删除项目 primary danger (r2 24c probe) */
+  --danger: #ca3a32;
   --stop: #dd524c;
   /* diff pane (r7 27d dark sample for the stat green; the expanded diff
      surface was only captured light — dark add-bg is [推断], derived from
@@ -141,6 +146,8 @@
   --popover-bg: #fdfaf7;
   --tab-group-bg: transparent;
   --seg-active: #e7e2da;
+  --tab-chip-bg: #faf7f3;
+  --danger: #ca3a32;
   --stop: #dd524c;
   /* diff pane, sampled from r7 27/27b: stat/ gutter green #499771, added
      row tint #eaf1e8 */

@@ -21,7 +21,7 @@ const OUT_DIR = resolve(ROOT, 'parity/output');
 // Baselines live per capture batch under docs/research/assets/ (04 册 §2):
 // bare filenames resolve to r7/, `r8/<file>` rows to the companion batch.
 const ASSETS_DIR = resolve(ROOT, 'docs/research/assets');
-const resolveBaseline = (name) => resolve(ASSETS_DIR, name.includes('/') ? name : `r7/${name}`);
+const BASELINE_DIR = resolve(ASSETS_DIR, 'r7');
 const PORT = 8390;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const THEME_KEY = 'tds-theme'; // same key as apps/web/src/theme.ts THEME_STORAGE_KEY
@@ -131,7 +131,10 @@ async function main() {
 
     for (const entry of matrix) {
       const capture = await captureEntry(entry, browser);
-      const baseline = entry.baseline ? resolveBaseline(entry.baseline) : capture; // smoke row: compare the capture against itself
+      // baseline = bare r7 filename, or `r8/…` once a row switches batch (04 §2 A6)
+      const baseline = entry.baseline
+        ? resolve(entry.baseline.includes('/') ? ASSETS_DIR : BASELINE_DIR, entry.baseline)
+        : capture; // smoke row: compare the capture against itself
       const threshold =
         entry.threshold ?? (entry.baseline ? DEFAULT_BASELINE_THRESHOLD : SMOKE_THRESHOLD);
 

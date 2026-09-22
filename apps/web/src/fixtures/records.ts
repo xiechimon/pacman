@@ -6,19 +6,11 @@
 // observed waiting-on-user board placement.
 // Timestamps are epoch milliseconds (02 §6.2 schedule record precedent).
 
-export const PHASE_VALUES = [
-  'todo',
-  'queued',
-  'planning',
-  'confirm',
-  'building',
-  'review',
-  'done',
-  'failed',
-  'closed',
-] as const;
+// phase 九值枚举单源 = @pacman/shared（02 §4.1；#65 M1 收口），本地不再定义。
+import { PHASE_VALUES, type Phase } from '@pacman/shared';
 
-export type Phase = (typeof PHASE_VALUES)[number];
+export type { Phase };
+export { PHASE_VALUES };
 
 /** Agent reference embedded in a todo record (02 §6.2 agent shape subset). */
 export interface AgentRef {
@@ -111,10 +103,49 @@ export interface BuildOverlayContent {
   branch: BranchInfoContent;
   runs: RunHistoryRow[];
 }
+/** Scheduled rule (02 §9.2 / r3 §8.3 wire shape, copied verbatim:
+ *  `{id, teamId, projectId, todoId, kind, at, tz, machineId, nextRunAt,
+ *  createdBy, todo{seqNum,title,phase,projectName,ownerId}}`). */
+export interface ScheduleRecord {
+  id: string;
+  teamId: string;
+  projectId: string;
+  todoId: string;
+  /** 频率 tab (02 §9.2): 每小时/每天/每周/单次. */
+  kind: 'hourly' | 'daily' | 'weekly' | 'once';
+  at: number;
+  tz: string;
+  /** null = 自动 (r3 §9 机器 row). */
+  machineId: string | null;
+  nextRunAt: number;
+  createdBy: string;
+  todo: {
+    seqNum: number;
+    title: string;
+    phase: Phase;
+    projectName: string;
+    ownerId: string;
+  };
+}
 
-/** One deterministic content set behind a scenario id. `now` inside each set
- *  is the frozen reference instant for relative labels (capture time of the
- *  r7 shot), so parity output never drifts with wall-clock time. */
+/** Repo surface of a project route (r2 07e/24 file tree + 24c settings
+ *  rows): branch chip, file rows and the settings card values. */
+export interface ProjectContent {
+  /** Display name (r2 24c 名称 row); the repo slug is a separate attribute
+   *  (CONTEXT.md 租户层级: repo belongs to the project, not the reverse). */
+  name: string;
+  branch: string;
+  files: string[];
+  repoName: string;
+  /** True = the `Todos 托管` chip rides beside the repo name (r2 24c). */
+  hosted: boolean;
+  defaultBranch: string;
+  description: string | null;
+}
+
+/** One deterministic content set behind a scenario id. `now` is the frozen
+ *  reference instant for relative labels (capture time of the r7 shot), so
+ *  parity output never drifts with wall-clock time. */
 export interface FixtureSet {
   todos: TodoRecord[];
   now: number;
@@ -128,6 +159,19 @@ export interface FixtureSet {
   /** Unread chief messages — the blue count badge on the 总管 FAB
    *  (r8 78–81 dark captures; absent from the r7 light set). */
   chiefUnread?: number;
+  /** Schedule list of the /app/schedules route (issue #71); absent or
+   *  empty = the `尚无定时。` empty state (r7 11). */
+  schedules?: ScheduleRecord[];
+  /** Open state of the 新建定时 dialog (r3 92/92b): the selected 频率 tab.
+   *  Absent = dialog closed. */
+  scheduleForm?: 'hourly' | 'daily' | 'weekly' | 'once';
+  /** Project route content (issue #71); absent = the r3-lifecycle repo
+   *  defaults so production builds still render the pages. */
+  project?: ProjectContent;
+  /** Capture-state flag for /app/project/:id (r2 24 vs 24b): which of the
+   *  任务|文件 tabs the capture sits on. Absent = 文件, the route default
+   *  (r2 §2 route table). */
+  projectTab?: 'tasks' | 'files';
 }
 
 /** Inline text run inside a plan-document block; `code` renders the
