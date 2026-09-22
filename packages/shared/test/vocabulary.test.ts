@@ -20,6 +20,7 @@ import {
   MACHINE_CUSTOM_TOOLS,
   MACHINE_ENDPOINTS,
   MACHINE_TOKEN_PATTERN,
+  MACHINE_WIRE,
   MAX_CONCURRENT_DEFAULT,
   MCP_CAPABILITY_GROUPS,
   MCP_TOOLS_READ,
@@ -32,6 +33,7 @@ import {
   RECORD_SCHEMAS,
   SECRET_BOX_ENVELOPE_VERSION,
   SSE_CHANNELS,
+  STEP_EVENT_TYPES,
   STEP_LIFECYCLE_LOG_LINES,
   STREAM_TIMEOUTS_MS,
   WEB_REST_ENDPOINTS,
@@ -362,5 +364,29 @@ describe('24-table record projection (01 §6 / 03 M1)', () => {
   it('record shapes cover exactly the 24 wire tables (todo_tag join has none)', () => {
     expect(Object.keys(RECORD_SCHEMAS)).toHaveLength(24);
     expect(Object.keys(RECORD_SCHEMAS)).toEqual(DB_TABLES.filter((t) => t !== 'todo_tag'));
+  });
+});
+
+describe('AgentBackend seam (01 §5, 00/D1 缝)', () => {
+  it('StepEvent types = 02 §5.6 pi vocabulary session-facing 15 items, 1:1 no rename', () => {
+    // PI_STREAM_EVENTS 17 件 = 会话内 15 件 + 机器控制 wake/shutdown（走机器
+    // stream 通道，protocol/sse.ts）；缝事件面锁定前 15 件（01 §5）。
+    expect(STEP_EVENT_TYPES).toHaveLength(15);
+    expect(STEP_EVENT_TYPES).toEqual(PI_STREAM_EVENTS.slice(0, 15));
+  });
+});
+
+describe('machine wire (02 §5 canonical, wire 层进 CI)', () => {
+  it('MACHINE_WIRE covers exactly the 13 endpoint paths (single source)', () => {
+    expect(MACHINE_WIRE).toHaveLength(13);
+    expect(MACHINE_WIRE.map((w) => w.path)).toEqual(MACHINE_ENDPOINTS.map((e) => e.path));
+  });
+
+  it('claim/stream verbs match observed evidence (long-poll claim + SSE stream)', () => {
+    const byPath = Object.fromEntries(MACHINE_WIRE.map((w) => [w.path, w.method]));
+    expect(byPath['/api/machine/tasks/claim']).toBe('POST'); // 长轮询（r3 §1.5）
+    expect(byPath['/api/machine/stream']).toBe('GET'); // SSE wake（02 §1.2）
+    expect(byPath['/api/machine/me']).toBe('GET');
+    expect(byPath['/api/machine/token/{stepId}']).toBe('GET');
   });
 });

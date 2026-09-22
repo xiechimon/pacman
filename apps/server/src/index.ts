@@ -10,6 +10,7 @@ import { openDbWithHandle } from './db/client.js';
 import { seed } from './db/seed.js';
 import { createKeyfileSecretBox } from './lib/secret-box.js';
 import { TeamStreamHub } from './services/events.js';
+import { MachineWakeHub } from './services/machines.js';
 import { createScheduler } from './services/scheduler.js';
 
 const config = loadConfig();
@@ -32,10 +33,14 @@ const app = createApp(
   {
     db,
     hub,
+    machineHub: new MachineWakeHub(),
     secretBox,
     user: seeded.user,
     team: seeded.team,
     pingIntervalMs: config.pingIntervalMs,
+    claimHoldMs: config.claimHoldMs,
+    uploads: new Map(),
+    enrollments: new Map(),
     reposDir,
   },
   logger,
@@ -52,7 +57,7 @@ scheduler.start();
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   logger.info(
     { port: info.port, dataDir: config.dataDir, teamId: seeded.team.id },
-    'pacman-server online',
+    'pacman-server online — 机器注册：POST /api/teams/{id}/api-keys 取 key 后 tds start --api-key <key> --team <teamId>',
   );
 });
 

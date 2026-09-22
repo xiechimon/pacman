@@ -177,7 +177,7 @@ function verifyGitBasicAuth(ctx: AppContext, header: string): string | undefined
 }
 
 export function registerRoutes(app: Hono, ctx: AppContext): void {
-  const svc = { db: ctx.db, hub: ctx.hub, user: ctx.user };
+  const svc = { db: ctx.db, hub: ctx.hub, machineHub: ctx.machineHub, user: ctx.user };
 
   // —— 认证保形（02 §2.1：自动登录，无登录页）———————————————————————————
   app.use('/api/*', async (c, next) => {
