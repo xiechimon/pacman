@@ -8,6 +8,7 @@ import { assignmentSchema } from './todo.js';
 
 /** 触发源（r5 §7.2 build doc 实测三值：`chief`/`user`/`schedule`）。 */
 export const triggerSourceSchema = z.enum(['user', 'chief', 'schedule']);
+export type TriggerSource = z.infer<typeof triggerSourceSchema>;
 
 export const buildRecordSchema = z.object({
   id: recordId, // ≡ conversationId（UUIDv7，r3 §3.0）
