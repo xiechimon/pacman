@@ -12,5 +12,4 @@ export * from './phase.js';
 export * from './protocol/index.js';
 export * from './records/index.js';
 export * from './scheduler.js';
-export * from './secret-box.js';
 export * from './tables.js';

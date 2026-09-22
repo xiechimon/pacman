@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 import type { ChangesContent, DiffFile, DocBlock } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import {
   ChevronDown,
   ChevronRight,
@@ -31,6 +32,7 @@ interface DocPaneProps {
 }
 
 function DiffFileBlock({ file, expanded }: { file: DiffFile; expanded: boolean }) {
+  const { t } = useI18n();
   return (
     <div className="diff-file">
       <div className="doc-file-row">
@@ -64,7 +66,7 @@ function DiffFileBlock({ file, expanded }: { file: DiffFile; expanded: boolean }
           ))}
           <button type="button" className="diff-expand">
             <UnfoldVertical width={12} height={12} />
-            显示完整文件
+            {t('显示完整文件')}
           </button>
         </div>
       )}
@@ -73,6 +75,7 @@ function DiffFileBlock({ file, expanded }: { file: DiffFile; expanded: boolean }
 }
 
 export function DocPane({ mode, doc, changes, planDropdownOpen }: DocPaneProps) {
+  const { t } = useI18n();
   const [typeOpen, setTypeOpen] = useState(planDropdownOpen === true);
   useEscapeClose(typeOpen, () => setTypeOpen(false));
   if (mode === 'changes') {
@@ -81,13 +84,13 @@ export function DocPane({ mode, doc, changes, planDropdownOpen }: DocPaneProps) 
     return (
       <section className="doc-pane">
         {changes == null ? (
-          <div className="doc-empty doc-empty--full">暂无可显示的变更</div>
+          <div className="doc-empty doc-empty--full">{t('暂无可显示的变更')}</div>
         ) : (
           <>
             <header className="doc-pane-head">
               <FileTab width={14} height={14} />
               <button type="button" className="doc-pane-select">
-                变更
+                {t('变更')}
                 <ChevronDown width={12} height={12} />
               </button>
               <button type="button" className="doc-pane-select">
@@ -95,10 +98,11 @@ export function DocPane({ mode, doc, changes, planDropdownOpen }: DocPaneProps) 
                 <ChevronDown width={12} height={12} />
               </button>
               <span className="doc-changes-stat">
-                · {fileCount} 个文件改动 <span className="doc-changes-add">+{added}</span>
+                {t('· {n} 个文件改动', { n: fileCount })}{' '}
+                <span className="doc-changes-add">+{added}</span>
               </span>
               <button type="button" className="doc-expand-all">
-                {changes.expanded ? '全部收起' : '全部展开'}
+                {changes.expanded ? t('全部收起') : t('全部展开')}
               </button>
             </header>
             {changes.files.map((file) => (
@@ -122,7 +126,7 @@ export function DocPane({ mode, doc, changes, planDropdownOpen }: DocPaneProps) 
               aria-expanded={typeOpen}
               onClick={() => setTypeOpen((value) => !value)}
             >
-              方案
+              {t('方案')}
               <ChevronDown width={12} height={12} />
             </button>
             {typeOpen && (
@@ -140,7 +144,7 @@ export function DocPane({ mode, doc, changes, planDropdownOpen }: DocPaneProps) 
       )}
       <div className="doc-pane-body">
         {doc == null ? (
-          <div className="doc-empty">暂无方案</div>
+          <div className="doc-empty">{t('暂无方案')}</div>
         ) : (
           doc.map((block, i) => (
             <p

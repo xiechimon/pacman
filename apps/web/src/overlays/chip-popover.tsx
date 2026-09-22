@@ -12,6 +12,7 @@ import {
   USER_NAME,
 } from '../fixtures/fixtures.js';
 import type { TodoRecord } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import { Check, Settings } from '../icons/index.js';
 import './overlays.css';
 
@@ -20,8 +21,9 @@ interface ChipPopoverProps {
 }
 
 export function ChipPopover({ todo }: ChipPopoverProps) {
+  const { t } = useI18n();
   return (
-    <div className="chip-popover" role="dialog" aria-label="任务分配">
+    <div className="chip-popover" role="dialog" aria-label={t('任务分配')}>
       <div className="chip-popover-head">
         <span className="chip-popover-avatar">{PROJECT_INITIAL}</span>
         <span className="chip-popover-project">{PROJECT_NAME}</span>
@@ -30,18 +32,18 @@ export function ChipPopover({ todo }: ChipPopoverProps) {
       <div className="chip-popover-title">{todo.title}</div>
       <div className="chip-popover-divider" />
       <div className="chip-popover-section">
-        <div className="chip-popover-label">任务</div>
+        <div className="chip-popover-label">{t('任务')}</div>
         <div className="chip-popover-row">
           <img src="/avatar-user.png" alt="" />
           {USER_NAME}
         </div>
       </div>
       <div className="chip-popover-section chip-popover-section--selected">
-        <div className="chip-popover-label">执行对话</div>
+        <div className="chip-popover-label">{t('执行对话')}</div>
         <div className="chip-popover-row">
           <img src="/avatar-robot-1.svg" alt="" />
           {/* 未指派 fallback is [推断]: every capture shows an assigned agent */}
-          {todo.agent?.displayName ?? '未指派'} · {AGENT_MODEL_LINE}
+          {todo.agent?.displayName ?? t('未指派')} · {AGENT_MODEL_LINE}
           <span className="chip-popover-check">
             <Check width={14} height={14} />
           </span>
@@ -50,7 +52,7 @@ export function ChipPopover({ todo }: ChipPopoverProps) {
       <div className="chip-popover-divider" />
       <button type="button" className="chip-popover-edit">
         <Settings width={14} height={14} />
-        编辑分配
+        {t('编辑分配')}
       </button>
     </div>
   );

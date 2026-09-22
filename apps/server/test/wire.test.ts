@@ -30,15 +30,6 @@ const INFERRED_ROUTES = [
   'PATCH /api/todos/{id}', // update_todo 面（r5 §3.1 词表证据；02 §6.1 PATCH 未抓）
   'DELETE /api/todos/{id}', // DELETE_FACE 'todos' 同名 DELETE（02 §6.1 [推断] 规则）
   'DELETE /api/schedules/{id}', // DELETE_FACE 'schedules'（unschedule_todo r5 §3.1；once 出队 r3 §9）
-  // —— 密钥三面（页/弹窗实测存在 r2 §6.3/§6.5/§6.7、r3 §2/§6，wire 未采；
-  // 路径 = REST 同名 [推断]，02 §6.1 规则族）——
-  'DELETE /api/teams/{id}/providers/{pid}', // DELETE_FACE 'teams/{id}/providers'（「可以替换或删除」r2 §6.5）
-  'GET /api/teams/{id}/secrets', // 密钥页实测存在（r2 §6.3）
-  'POST /api/teams/{id}/secrets', // body = shared setSecretBodySchema（r2 §6.3 表单三字段）
-  'PATCH /api/teams/{id}/secrets/{sid}', // 覆盖面（「保存后只能覆盖或删除」r2 §6.3）
-  'DELETE /api/teams/{id}/secrets/{sid}', // DELETE_FACE 'teams/{id}/secrets'
-  'GET /api/teams/{id}/api-keys', // API 密钥页实测存在（r2 §6.7/r3 §6）
-  'POST /api/teams/{id}/api-keys', // 创建 → 一次性明文（r3 §6 展示规则）
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；
@@ -68,21 +59,6 @@ const CORE_ROUTES = [
   'POST /api/builds/{id}/merge',
   'POST /api/builds/{id}/steps',
   'POST /api/schedules',
-];
-
-/** M2c 核心面（密钥三面 + 搜索，#78；通知走既有 team stream 通道无新路由）。 */
-const M2C_ROUTES = [
-  'GET /api/search',
-  'GET /api/teams/{id}/providers',
-  'POST /api/teams/{id}/providers',
-  'PATCH /api/teams/{id}/providers/{pid}',
-  'DELETE /api/teams/{id}/providers/{pid}',
-  'GET /api/teams/{id}/secrets',
-  'POST /api/teams/{id}/secrets',
-  'PATCH /api/teams/{id}/secrets/{sid}',
-  'DELETE /api/teams/{id}/secrets/{sid}',
-  'GET /api/teams/{id}/api-keys',
-  'POST /api/teams/{id}/api-keys',
 ];
 
 function normalizePath(path: string): string {
@@ -126,12 +102,6 @@ describe('路由面 = 02 §6.1 词表', () => {
 
   test('M2a 核心面全部在位', () => {
     for (const route of CORE_ROUTES) {
-      expect(have.has(route), `missing ${route}`).toBe(true);
-    }
-  });
-
-  test('M2c 密钥/搜索面全部在位', () => {
-    for (const route of M2C_ROUTES) {
       expect(have.has(route), `missing ${route}`).toBe(true);
     }
   });

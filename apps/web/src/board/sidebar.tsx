@@ -17,6 +17,7 @@ import {
   TEAM_NAME,
   USER_NAME,
 } from '../fixtures/fixtures.js';
+import { useI18n } from '../i18n/provider.js';
 import {
   BarChart3,
   ChevronDown,
@@ -95,19 +96,25 @@ const rowClass = (base: string, selected: boolean) =>
   selected ? `${base} ${base}--selected` : base;
 
 function GroupHeader({ label }: { label: string }) {
+  const { t } = useI18n();
   return (
-    <button type="button" className="sidebar-group" aria-label={`收起${label}`}>
+    <button
+      type="button"
+      className="sidebar-group"
+      aria-label={t('收起{label}', { label: t(label) })}
+    >
       <span className="sidebar-group-chevron">
         <ChevronDown />
       </span>
-      <span className="sidebar-group-label">{label}</span>
+      <span className="sidebar-group-label">{t(label)}</span>
     </button>
   );
 }
 
 function RailGroupChevron({ label }: { label: string }) {
+  const { t } = useI18n();
   return (
-    <button type="button" className="rail-row" aria-label={`收起${label}`}>
+    <button type="button" className="rail-row" aria-label={t('收起{label}', { label: t(label) })}>
       <ChevronDown />
     </button>
   );
@@ -122,24 +129,30 @@ export function BoardSidebar({
   selected = 'board',
   machineOnline = false,
 }: BoardSidebarProps) {
+  const { t } = useI18n();
   const resourceRows = usageNav
     ? [...RESOURCE_ROWS.slice(0, 4), USAGE_ROW, ...RESOURCE_ROWS.slice(4)]
     : RESOURCE_ROWS;
   if (collapsed) {
     return (
       <aside className="board-sidebar board-sidebar--collapsed">
-        <button type="button" className="rail-toggle" aria-label="展开侧边栏" onClick={onToggle}>
+        <button
+          type="button"
+          className="rail-toggle"
+          aria-label={t('展开侧边栏')}
+          onClick={onToggle}
+        >
           <PanelLeftOpen />
         </button>
         <nav className="rail-nav">
-          <button type="button" className="rail-row" aria-label="搜索" onClick={onSearch}>
+          <button type="button" className="rail-row" aria-label={t('搜索')} onClick={onSearch}>
             <Search />
           </button>
           <a
             className={rowClass('rail-row', selected === 'board')}
             href="/app"
             aria-current={selected === 'board' ? 'page' : undefined}
-            aria-label="看板"
+            aria-label={t('看板')}
           >
             <Kanban />
           </a>
@@ -147,7 +160,7 @@ export function BoardSidebar({
             className={rowClass('rail-row', selected === 'schedules')}
             href="/app/schedules"
             aria-current={selected === 'schedules' ? 'page' : undefined}
-            aria-label="定时"
+            aria-label={t('定时')}
           >
             <Clock />
           </a>
@@ -167,14 +180,14 @@ export function BoardSidebar({
               className={rowClass('rail-row', selected === href)}
               href={href}
               aria-current={selected === href ? 'page' : undefined}
-              aria-label={label}
+              aria-label={t(label)}
             >
               <Icon />
             </a>
           ))}
         </nav>
         <div className="sidebar-spacer" />
-        <a className="rail-install" href="/zh/install" aria-label="安装 App">
+        <a className="rail-install" href="/zh/install" aria-label={t('安装 App')}>
           <Smartphone />
         </a>
         <button type="button" className="rail-user" aria-label={USER_NAME}>
@@ -197,7 +210,7 @@ export function BoardSidebar({
         <button
           type="button"
           className="sidebar-team-collapse"
-          aria-label="收起侧边栏"
+          aria-label={t('收起侧边栏')}
           onClick={onToggle}
         >
           <PanelLeftClose />
@@ -209,7 +222,7 @@ export function BoardSidebar({
           <span className="sidebar-row-icon">
             <Search />
           </span>
-          <span className="sidebar-row-label">搜索</span>
+          <span className="sidebar-row-label">{t('搜索')}</span>
           <span className="sidebar-kbd">⌘K</span>
         </button>
         <a
@@ -220,7 +233,7 @@ export function BoardSidebar({
           <span className="sidebar-row-icon">
             <Kanban />
           </span>
-          <span className="sidebar-row-label">看板</span>
+          <span className="sidebar-row-label">{t('看板')}</span>
           {attention > 0 && <span className="sidebar-badge">{attention}</span>}
         </a>
         <a
@@ -231,7 +244,7 @@ export function BoardSidebar({
           <span className="sidebar-row-icon">
             <Clock />
           </span>
-          <span className="sidebar-row-label">定时</span>
+          <span className="sidebar-row-label">{t('定时')}</span>
         </a>
 
         <GroupHeader label="项目" />
@@ -239,7 +252,7 @@ export function BoardSidebar({
           <span className="sidebar-row-icon">
             <Plus />
           </span>
-          <span className="sidebar-subrow-label">新建项目</span>
+          <span className="sidebar-subrow-label">{t('新建项目')}</span>
         </a>
         <a
           className={rowClass('sidebar-subrow', selected === 'project')}
@@ -261,7 +274,7 @@ export function BoardSidebar({
             <span className="sidebar-row-icon">
               <Icon />
             </span>
-            <span className="sidebar-subrow-label">{label}</span>
+            <span className="sidebar-subrow-label">{t(label)}</span>
             {machineOnline && label === '机器' && <span className="sidebar-online-dot" />}
           </a>
         ))}
@@ -271,7 +284,7 @@ export function BoardSidebar({
 
       <a className="sidebar-install" href="/zh/install">
         <Smartphone />
-        <span className="sidebar-install-label">安装 App</span>
+        <span className="sidebar-install-label">{t('安装 App')}</span>
       </a>
       <button type="button" className="sidebar-user" aria-label={USER_NAME}>
         <img src="/avatar-user.png" alt="" />

@@ -8,13 +8,7 @@
 // 机器侧执行（claim/心跳/phase 推进 planning→confirm→…）归 M3；本层只持有
 // 队列与人工触发的 phase 流转。
 
-import type {
-  Assignment,
-  BuildRecord,
-  StepRecord,
-  TriggerSource,
-  UserRecord,
-} from '@pacman/shared';
+import type { Assignment, BuildRecord, StepRecord, TriggerSource } from '@pacman/shared';
 import { asc, eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { build, message, step, todo } from '../db/schema.js';
@@ -26,8 +20,6 @@ import { getTodo, setTodoPhase } from './todos.js';
 export interface BuildDeps {
   db: Db;
   hub: TeamStreamHub;
-  /** 通知收件人（completeStep 经 setTodoPhase 漏斗发三事件，02 §9.1）。 */
-  user: UserRecord;
 }
 
 type BuildRow = typeof build.$inferSelect;

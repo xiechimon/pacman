@@ -5,6 +5,7 @@
 // fixture cord).
 
 import { useState } from 'react';
+import { useI18n } from '../i18n/provider.js';
 import { CheckWhite } from '../icons/index.js';
 import { DialogShell } from './dialog-shell.js';
 
@@ -13,9 +14,10 @@ interface AcceptDialogProps {
 }
 
 export function AcceptDialog({ onClose }: AcceptDialogProps) {
+  const { t } = useI18n();
   const [merge, setMerge] = useState(true);
   return (
-    <DialogShell title="完成任务" onClose={onClose}>
+    <DialogShell title={t('完成任务')} onClose={onClose}>
       <div className="dlg-accept">
         <label className="dlg-accept-check" data-on={merge}>
           <input
@@ -25,14 +27,14 @@ export function AcceptDialog({ onClose }: AcceptDialogProps) {
           />
           <CheckWhite width={12} height={12} />
         </label>
-        <span className="dlg-accept-label">将改动合并到默认分支</span>
+        <span className="dlg-accept-label">{t('将改动合并到默认分支')}</span>
       </div>
       <div className="dlg-accept-footer">
         <button type="button" className="dlg-accept-cancel" onClick={onClose}>
-          取消
+          {t('取消')}
         </button>
         <button type="button" className="dlg-accept-done" onClick={onClose}>
-          完成
+          {t('完成')}
         </button>
       </div>
     </DialogShell>

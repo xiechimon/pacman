@@ -4,6 +4,7 @@
 // block (hero tile + heading + description + primary action + 查看文档
 // link + optional 总管 hint, layout probed from r7 10, copy from r2 §6).
 import type { ComponentType, SVGProps } from 'react';
+import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, ExternalLink, Lock } from '../icons/index.js';
 
 /** Icon tile: tinted rounded square carrying the row glyph. */
@@ -26,7 +27,8 @@ export function Tile({
 
 /** Right-side status pill (`未启用`, r7 06/07). */
 export function StatusPill({ label }: { label: string }) {
-  return <span className="res-pill">{label}</span>;
+  const { t } = useI18n();
+  return <span className="res-pill">{t(label)}</span>;
 }
 
 /** Row-end `>` chevron (r7 06–10 row right edge). */
@@ -53,24 +55,25 @@ export function EmptyState({
   actionLabel: string;
   hint?: string;
 }) {
+  const { t } = useI18n();
   return (
     <div className="res-empty">
       <Tile Icon={Icon} size="hero" tone="orange" />
-      <h2 className="res-empty-title">{title}</h2>
-      <p className="res-empty-desc">{description}</p>
+      <h2 className="res-empty-title">{t(title)}</h2>
+      <p className="res-empty-desc">{t(description)}</p>
       <div className="res-empty-actions">
         <button type="button" className="res-primary">
-          {actionLabel}
+          {t(actionLabel)}
         </button>
         <button type="button" className="res-doclink">
-          查看文档
+          {t('查看文档')}
           <ExternalLink width={11} height={11} />
         </button>
       </div>
       {hint != null && (
         <p className="res-empty-hint">
           <Lock width={11} height={11} />
-          {hint}
+          {t(hint)}
         </p>
       )}
     </div>

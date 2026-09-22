@@ -25,12 +25,10 @@ import {
   MCP_TOOLS_READ,
   MCP_TOOLS_WRITE,
   MEMORY_QUOTA_PER_AGENT,
-  maskApiKey,
   ORPHAN_WORKTREE_TTL_MS,
   PHASE_VALUES,
   PI_STREAM_EVENTS,
   RECORD_SCHEMAS,
-  SECRET_BOX_ENVELOPE_VERSION,
   SSE_CHANNELS,
   STEP_LIFECYCLE_LOG_LINES,
   STREAM_TIMEOUTS_MS,
@@ -339,17 +337,6 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     expect(API_KEY_PATTERN.test('tds_short')).toBe(false);
     expect(MACHINE_TOKEN_PATTERN.test('a'.repeat(64))).toBe(true);
     expect(DEVICE_ID_PATTERN.test('b'.repeat(32))).toBe(true);
-  });
-
-  it('API-key list-row mask follows the r3 §6 display rule', () => {
-    // 明文 tds_<48hex> → 行掩码 `tds_afe07565…`（r3 §6 样例原形）。
-    const plaintext = `tds_afe07565${'0'.repeat(40)}`;
-    expect(API_KEY_PATTERN.test(plaintext)).toBe(true);
-    expect(maskApiKey(plaintext)).toBe('tds_afe07565…');
-  });
-
-  it('SecretBox envelope version word is v1 (01 §4.2)', () => {
-    expect(SECRET_BOX_ENVELOPE_VERSION).toBe('v1');
   });
 });
 

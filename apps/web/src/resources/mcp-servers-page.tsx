@@ -3,6 +3,7 @@
 // below, relative creation label + overflow dots at the right edge.
 import { useSearchParams } from 'react-router';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { EllipsisVertical, Network } from '../icons/index.js';
 import { EmptyState, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
@@ -10,6 +11,7 @@ import { ResourceShell } from './shell.js';
 export const MCP_HREF = '/app/resources/mcp-servers';
 
 export function McpServersPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   const servers = fixture.resources?.mcpServers ?? [];
@@ -36,11 +38,11 @@ export function McpServersPage() {
             <span className="res-row-text">
               <span className="res-row-line">
                 <span className="res-row-title">{server.name}</span>
-                <span className="res-row-kind">{server.kind}</span>
+                <span className="res-row-kind">{t(server.kind)}</span>
               </span>
               <span className="res-row-desc">{server.url}</span>
             </span>
-            <span className="res-row-ago">{server.ago}</span>
+            <span className="res-row-ago">{t(server.ago)}</span>
             <span className="res-row-more">
               <EllipsisVertical width={16} height={16} />
             </span>

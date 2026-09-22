@@ -5,6 +5,7 @@
 // `重跑` stays hover-only and uncaptured (r7 §4.1.5).
 
 import type { RunHistoryRow } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import { Check, X } from '../icons/index.js';
 import { DialogShell } from './dialog-shell.js';
 
@@ -22,18 +23,19 @@ interface HistoryDialogProps {
 }
 
 export function HistoryDialog({ runs, onClose }: HistoryDialogProps) {
+  const { t } = useI18n();
   return (
-    <DialogShell title="运行历史" onClose={onClose}>
+    <DialogShell title={t('运行历史')} onClose={onClose}>
       <div className="dlg-history">
         {runs.map((run) => (
           <div key={run.label} className="dlg-history-row">
             <RunGlyph status={run.status} />
             <div className="dlg-history-text">
               <div className="dlg-history-line">
-                <span className="dlg-history-label">{run.label}</span>
-                {run.status === 'current' && <span className="dlg-history-chip">当前</span>}
+                <span className="dlg-history-label">{t(run.label)}</span>
+                {run.status === 'current' && <span className="dlg-history-chip">{t('当前')}</span>}
               </div>
-              <div className="dlg-history-meta">{run.meta}</div>
+              <div className="dlg-history-meta">{t(run.meta)}</div>
             </div>
           </div>
         ))}

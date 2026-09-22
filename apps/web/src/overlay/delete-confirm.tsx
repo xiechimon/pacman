@@ -4,6 +4,7 @@
 // §5.4 / r6 §4.2 — unchanged across r5b→r7.
 
 import type { TodoRecord } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import { X } from '../icons/index.js';
 import { useEscClose } from './use-esc.js';
 import './overlay.css';
@@ -15,17 +16,23 @@ interface DeleteConfirmProps {
 }
 
 export function DeleteConfirm({ todo, onClose, onConfirm }: DeleteConfirmProps) {
+  const { t } = useI18n();
   useEscClose(onClose);
   return (
     <>
-      <button type="button" className="overlay-backdrop" aria-label="关闭" onClick={onClose} />
-      <div className="delete-confirm" role="alertdialog" aria-modal="true" aria-label="删除任务">
+      <button type="button" className="overlay-backdrop" aria-label={t('关闭')} onClick={onClose} />
+      <div
+        className="delete-confirm"
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={t('删除任务')}
+      >
         <div className="delete-confirm-head">
-          <div className="delete-confirm-title">确定删除该任务？此操作不可撤销。</div>
+          <div className="delete-confirm-title">{t('确定删除该任务？此操作不可撤销。')}</div>
           <button
             type="button"
             className="delete-confirm-close"
-            aria-label="关闭"
+            aria-label={t('关闭')}
             onClick={onClose}
           >
             <X />
@@ -37,10 +44,10 @@ export function DeleteConfirm({ todo, onClose, onConfirm }: DeleteConfirmProps) 
         </div>
         <div className="delete-confirm-actions">
           <button type="button" className="delete-confirm-cancel" onClick={onClose}>
-            取消
+            {t('取消')}
           </button>
           <button type="button" className="delete-confirm-delete" onClick={onConfirm}>
-            删除
+            {t('删除')}
           </button>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { PROJECT_INITIAL } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, SquarePen } from '../icons/index.js';
 import { PageShell, TabGroup } from './shell.js';
 import './pages.css';
@@ -17,6 +18,7 @@ const TABS = [
 ];
 
 export function ProjectSettingsPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   const [tab, setTab] = useState('basic');
@@ -32,25 +34,25 @@ export function ProjectSettingsPage() {
           <div className="prj-set-head">
             <span className="prj-set-avatar">{PROJECT_INITIAL}</span>
             <button type="button" className="prj-set-change">
-              更换
+              {t('更换')}
             </button>
           </div>
           <div className="prj-set-row">
-            <span className="prj-set-label">名称</span>
+            <span className="prj-set-label">{t('名称')}</span>
             <span className="prj-set-value">
               {project?.name ?? ''}
               <SquarePen width={14} height={14} />
             </span>
           </div>
           <div className="prj-set-row">
-            <span className="prj-set-label">仓库</span>
+            <span className="prj-set-label">{t('仓库')}</span>
             <span className="prj-set-value">
               {project?.repoName ?? ''}
-              {project?.hosted === true && <span className="prj-set-chip">Todos 托管</span>}
+              {project?.hosted === true && <span className="prj-set-chip">{t('Todos 托管')}</span>}
             </span>
           </div>
           <div className="prj-set-row">
-            <span className="prj-set-label">目标分支</span>
+            <span className="prj-set-label">{t('目标分支')}</span>
             <span className="prj-set-value">
               <button type="button" className="prj-set-branch">
                 {project?.defaultBranch ?? 'main'}
@@ -59,19 +61,21 @@ export function ProjectSettingsPage() {
             </span>
           </div>
           <div className="prj-set-row">
-            <span className="prj-set-label">描述</span>
+            <span className="prj-set-label">{t('描述')}</span>
             <span className="prj-set-value prj-set-value--dim">
-              {project?.description ?? '尚无描述'}
+              {project?.description ?? t('尚无描述')}
               <SquarePen width={14} height={14} />
             </span>
           </div>
         </div>
-        <div className="prj-set-danger-label">危险操作</div>
+        <div className="prj-set-danger-label">{t('危险操作')}</div>
         <div className="prj-set-card prj-set-card--danger">
-          <div className="prj-set-danger-title">删除项目</div>
-          <div className="prj-set-danger-desc">将永久删除所有任务与执行记录，此操作不可恢复。</div>
+          <div className="prj-set-danger-title">{t('删除项目')}</div>
+          <div className="prj-set-danger-desc">
+            {t('将永久删除所有任务与执行记录，此操作不可恢复。')}
+          </div>
           <button type="button" className="prj-set-delete">
-            删除
+            {t('删除')}
           </button>
         </div>
       </div>

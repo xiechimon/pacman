@@ -14,6 +14,7 @@
 import { Link, useLocation } from 'react-router';
 import { PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { TodoRecord } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import {
   CheckWhite,
   Download,
@@ -50,6 +51,7 @@ function badgeFor(todo: TodoRecord): 'idle' | 'attention' | 'done' | null {
 }
 
 export function TodoCard({ todo, now, onAction, onBranch }: TodoCardProps) {
+  const { t } = useI18n();
   const action = cardAction(todo);
   const badge = badgeFor(todo);
   const fresh = badge === 'idle';
@@ -63,7 +65,7 @@ export function TodoCard({ todo, now, onAction, onBranch }: TodoCardProps) {
         <button
           type="button"
           className="todo-card-branch"
-          aria-label="分支与 PR"
+          aria-label={t('分支与 PR')}
           onClick={() => onBranch?.(todo)}
         >
           <Download />
@@ -100,14 +102,14 @@ export function TodoCard({ todo, now, onAction, onBranch }: TodoCardProps) {
             </span>
           )}
         </span>
-        <span className="todo-card-time">{relativeTime(todo.phaseAt, now)}</span>
+        <span className="todo-card-time">{relativeTime(todo.phaseAt, now, t)}</span>
         {todo.hasPlan && (
-          <span className="todo-card-metric" role="img" aria-label="方案">
+          <span className="todo-card-metric" role="img" aria-label={t('方案')}>
             <FileText />
           </span>
         )}
         {todo.hasChanges && (
-          <span className="todo-card-metric" role="img" aria-label="变更">
+          <span className="todo-card-metric" role="img" aria-label={t('变更')}>
             <GitCommit />
           </span>
         )}
@@ -118,7 +120,7 @@ export function TodoCard({ todo, now, onAction, onBranch }: TodoCardProps) {
             className="todo-card-action todo-card-action--primary"
             onClick={() => onAction?.(todo)}
           >
-            {action.label}
+            {t(action.label)}
           </button>
         )}
         {action?.kind === 'ghost' && (
@@ -127,7 +129,7 @@ export function TodoCard({ todo, now, onAction, onBranch }: TodoCardProps) {
             className="todo-card-action todo-card-action--ghost"
             onClick={() => onAction?.(todo)}
           >
-            {action.label}
+            {t(action.label)}
           </button>
         )}
       </div>

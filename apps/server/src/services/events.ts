@@ -3,11 +3,10 @@
 // - {"type":"ping","seq":n} ~15s 心跳（r3 §8.1）
 // - {"type":"todo"|"build",seq,v,doc} 全文档推送（r5 §7.2；seq = 连接内递增
 //   序号，v = 记录版本号）
-// - {"type":"notification",notification} 通知事件（r5 §7.2 原样，无 seq/v 位）
-// - machine_presence 事件面归 M3（hub 通道已具备）。
+// - machine_presence / notification 事件面归 M3/M2c（hub 通道已具备）。
 // SSE 写入按连接串行化（promise 链），避免交错。
 
-import type { BuildRecord, NotificationRecord, TodoRecord } from '@pacman/shared';
+import type { BuildRecord, TodoRecord } from '@pacman/shared';
 
 /** 单条 SSE 连接的写入口；seq 由 hub 按连接分配。 */
 export interface TeamStreamConnection {
@@ -45,13 +44,6 @@ export class TeamStreamHub {
    * 事件版本位取 1 [推断]——观测样本 v 值未随 build doc 采齐）。 */
   publishBuildDoc(teamId: string, doc: BuildRecord): void {
     this.publish(teamId, (conn) => ({ type: 'build', seq: conn.nextSeq(), v: 1, doc }));
-  }
-
-  /** notification 事件（r5 §7.2 原样：{type:"notification",notification:{…}}，
-   * 观测形状无 seq/v 位——不消耗连接序号）。三事件触发矩阵与站内未读联动见
-   * services/notifications.ts。 */
-  publishNotification(teamId: string, record: NotificationRecord): void {
-    this.publish(teamId, () => ({ type: 'notification', notification: record }));
   }
 
   /** 通用发布：每连接独立组帧（seq 连接内递增）。 */

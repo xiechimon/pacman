@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# server demo：curl 增删改查 Todo + SSE 出事件（#76）+ 密钥三面/搜索（#78）。
+# M2a demo：curl 增删改查 Todo + SSE 出事件（issue #76 验收 demo 面）。
 set -euo pipefail
 BASE=http://127.0.0.1:8791
 cd "$(mktemp -d)"
@@ -47,18 +47,3 @@ curl -s -X POST $BASE/api/projects/$PROJ/todos -H 'content-type: application/jso
 wait $SSE_PID || true
 echo '== 11. SSE 捕获（ping + todo/build 文档事件，形状 = r5 §7.2）=='
 cat sse-capture.txt
-
-echo '== 12. provider 面：POST 带 apiKey → GET 只读掩码面（02 §8 写只读）=='
-curl -s -X POST $BASE/api/teams/$TEAM/providers -H 'content-type: application/json' -d '{"providerId":"my-relay","label":"r3-gw","baseUrl":"https://api.example.com/v1","api":"anthropic-messages","apiKey":"sk-demo-secret"}' | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const p=JSON.parse(d);console.log(JSON.stringify({id:p.id,providerId:p.providerId,hasApiKeyField:'apiKey' in p}))})"
-curl -s $BASE/api/teams/$TEAM/providers | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const e=JSON.parse(d);console.log('presets:',e.presets.length,'providers:',e.providers.length,'leaked:',d.includes('sk-demo-secret'))})"
-
-echo '== 13. secret 面：值只写不读（r2 §6.3）=='
-curl -s -X POST $BASE/api/teams/$TEAM/secrets -H 'content-type: application/json' -d '{"name":"STRIPE_API_KEY","description":"演示","value":"sk_live_demo"}' | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log('created keys:',Object.keys(JSON.parse(d)).join(',')))"
-curl -s $BASE/api/teams/$TEAM/secrets | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log('list leaked value:',d.includes('sk_live_demo')))"
-
-echo '== 14. apiKey 面：明文一次 + 行掩码（r3 §6）=='
-curl -s -X POST $BASE/api/teams/$TEAM/api-keys -H 'content-type: application/json' -d '{"gitAccess":true,"mcpAccess":false,"toolGrants":{"read":["Todos"],"write":[]}}' | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{const k=JSON.parse(d);console.log(JSON.stringify({masked:k.masked,plaintextShape:/^tds_[0-9a-f]{48}$/.test(k.plaintext)}))})"
-curl -s $BASE/api/teams/$TEAM/api-keys | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log('list row:',JSON.stringify(JSON.parse(d)[0])))"
-
-echo '== 15. 搜索：GET /api/search?q=（02 §6.3 自设）=='
-curl -s "$BASE/api/search?q=$(node -e 'console.log(encodeURIComponent("贡献"))')" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.stringify(JSON.parse(d))))"
