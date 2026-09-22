@@ -1,20 +1,25 @@
 // M2 核心 REST 面 + SSE team stream + repo 托管双形态 git 面——词表单源 =
 // shared WEB_REST_ENDPOINTS（02 §6.1 canonical；路由对拍测试 = test/wire.test.ts）。
 // 未观测响应封套按 [推断] 投影（04 §3 不判负口径），逐处标注。
-// 本票面（M2b）= M2a 核心 CRUD + team stream + repo 双形态（02 §3/A4：托管
-// bare `git http-backend` + GitHub 接入记录面 + tree/file/branches 文件浏览）+
-// schedule CRUD（02 §9.2）；密钥/搜索/通知 SSE 归 M2c，machine/chief 面归 M3/M4。
+// 覆盖面 = M2a 核心 CRUD + team stream + repo 双形态（02 §3/A4：托管 bare
+// `git http-backend` + GitHub 接入记录面 + tree/file/branches 文件浏览）+
+// schedule CRUD（02 §9.2，M2b）+ 密钥三面（provider/secret/apiKey，02 §8）+
+// 搜索（02 §6.3，M2c）；machine/chief 面归 M3/M4。
 
 import { timingSafeEqual } from 'node:crypto';
 import { join } from 'node:path';
 import {
   type AgentRecord,
+  apiKeyRecordSchema,
   type BuildRecord,
   buildStepActionBodySchema,
   createScheduleBodySchema,
   createTodoBodySchema,
   phaseSchema,
   projectRepoKindSchema,
+  providerApiSchema,
+  providerModelSchema,
+  setSecretBodySchema,
   startBuildsBodySchema,
   type TeamMember,
   type TodoRecord,
@@ -30,6 +35,7 @@ import { sha256Hex } from './lib/crypto.js';
 import { conflict, HttpError, notFound, parseWith } from './lib/errors.js';
 import { systemGitOps } from './lib/git.js';
 import { newRecordId } from './lib/ids.js';
+import { createApiKey, listApiKeys } from './services/api-keys.js';
 import {
   applyBuildStepAction,
   getBuild,
@@ -50,7 +56,15 @@ import {
   uniqueRepoName,
 } from './services/git.js';
 import { PhaseTransitionError } from './services/phase.js';
+import {
+  createProvider,
+  deleteProvider,
+  getProvidersEnvelope,
+  updateProvider,
+} from './services/providers.js';
 import { createSchedule, deleteSchedule, listSchedules } from './services/schedules.js';
+import { search } from './services/search.js';
+import { createSecret, deleteSecret, listSecrets, updateSecret } from './services/secrets.js';
 import { createTodo, deleteTodo, getTodo, listTodos, updateTodo } from './services/todos.js';
 
 /** 会话 cookie 名 [设计]（01 §4.2：httpOnly cookie 自设；品牌槽归 #44）。 */
@@ -89,6 +103,33 @@ const createProjectBodySchema = z.object({
   /** GitHub 接入 `owner/repo`（repoKind=github 必填）。 */
   githubRepo: z.string().optional(),
 });
+
+/** POST/PATCH /api/teams/{id}/providers body [推断]（r3 §2 表单实测字段投影，
+ * wire 未采）：record 可写面 + apiKey 只写位（02 §8；null = 清除——「凭证
+ * 只写不读：可以替换或删除」r2 §6.5）。 */
+const createProviderBodySchema = z.object({
+  providerId: z.string(),
+  label: z.string(),
+  baseUrl: z.string(),
+  api: providerApiSchema,
+  authHeader: z.boolean().optional(),
+  compat: z.object({ supportsDeveloperRole: z.boolean() }).optional(),
+  models: z.array(providerModelSchema).optional(),
+  apiKey: z.string().nullish(),
+});
+const patchProviderBodySchema = createProviderBodySchema.partial();
+
+/** PATCH /api/teams/{id}/secrets/{sid} body [推断]（覆盖面 =「保存后只能
+ * 覆盖或删除」r2 §6.3；POST body = shared setSecretBodySchema 单源）。 */
+const patchSecretBodySchema = z.object({
+  name: z.string().optional(),
+  description: z.string().nullish(),
+  value: z.string().optional(),
+});
+
+/** POST /api/teams/{id}/api-keys body = shared apiKeyRecordSchema（02 §6.2
+ * 形状原样）+ name 放宽可选（表单「密钥名称（可选）」r3 §6）。 */
+const createApiKeyBodySchema = apiKeyRecordSchema.extend({ name: z.string().nullish() });
 
 function agentRecordOf(row: typeof agent.$inferSelect): AgentRecord {
   return {
@@ -136,7 +177,7 @@ function verifyGitBasicAuth(ctx: AppContext, header: string): string | undefined
 }
 
 export function registerRoutes(app: Hono, ctx: AppContext): void {
-  const svc = { db: ctx.db, hub: ctx.hub };
+  const svc = { db: ctx.db, hub: ctx.hub, user: ctx.user };
 
   // —— 认证保形（02 §2.1：自动登录，无登录页）———————————————————————————
   app.use('/api/*', async (c, next) => {
@@ -181,7 +222,9 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.get('/api/teams/:id/notifications', (c) => {
     const id = c.req.param('id');
     requireTeam(ctx, id);
-    // {unreadThreadIds}（02 §9.1）：chief 线程未读 entityId 集；通知事件面归 M2c。
+    // {unreadThreadIds}（02 §9.1）：未读 entityId 集（todo/chief 线程）；事件面
+    // = services/notifications.ts（SSE 三事件，r5 §7.2）。已读写路径无观测端点，
+    // 未读集随新事件 upsert 重置（04 附录 A 补采口径）。
     const unread = ctx.db
       .selectDistinct({ entityId: notification.entityId })
       .from(notification)
@@ -452,6 +495,106 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const id = c.req.param('id');
     if (!deleteSchedule(svc, id)) throw notFound(`schedule ${id}`);
     return c.body(null, 204);
+  });
+
+  // —— ⌘K 搜索（02 §6.3 [设计] 自设；wire 无外部真值，面板行为对 r2 04）———————
+  app.get('/api/search', (c) =>
+    c.json(search(svc, { teamId: ctx.team.id, q: c.req.query('q') ?? null })),
+  );
+
+  // —— 密钥三面（02 §8：API 面写只读掩码 + apiKey 存哈希；at-rest 经 SecretBox）。
+  // provider 三面 = 词表内（GET/POST/PATCH，r3 §2/§8.2）+ DELETE（DELETE_FACE
+  // 「可以替换或删除」r2 §6.5）；secret/apiKey 路径 = REST 同名 [推断]
+  // （页与弹窗实测存在 r2 §6.3/§6.7/r3 §6，wire 未采；登记 test/wire.test.ts）。
+  const keysvc = { db: ctx.db, box: ctx.secretBox };
+
+  app.get('/api/teams/:id/providers', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    // 封套 [推断]：presets[] 字段实测在位（r3 §2），并列 providers 包络形未采。
+    return c.json(getProvidersEnvelope(keysvc, teamId));
+  });
+
+  app.post('/api/teams/:id/providers', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(createProviderBodySchema, await jsonBody(c), 'body');
+    const record = createProvider(keysvc, { teamId, body, createdBy: ctx.user.id });
+    return c.json(record, 201); // 封套 [推断]：全记录（安全超集，永不含 apiKey）
+  });
+
+  app.patch('/api/teams/:id/providers/:pid', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(patchProviderBodySchema, await jsonBody(c), 'body');
+    return c.json(updateProvider(keysvc, teamId, c.req.param('pid'), body));
+  });
+
+  app.delete('/api/teams/:id/providers/:pid', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    if (!deleteProvider(keysvc, teamId, c.req.param('pid'))) {
+      throw notFound(`provider ${c.req.param('pid')}`);
+    }
+    return c.body(null, 204);
+  });
+
+  app.get('/api/teams/:id/secrets', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    return c.json(listSecrets(keysvc, teamId)); // SecretRecord[]：value 永不出现（02 §8）
+  });
+
+  app.post('/api/teams/:id/secrets', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(setSecretBodySchema, await jsonBody(c), 'body');
+    const record = createSecret(keysvc, {
+      teamId,
+      name: body.name,
+      description: body.description ?? null,
+      value: body.value,
+    });
+    return c.json(record, 201); // 封套 [推断]：全记录（值只写不读）
+  });
+
+  app.patch('/api/teams/:id/secrets/:sid', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(patchSecretBodySchema, await jsonBody(c), 'body');
+    return c.json(updateSecret(keysvc, teamId, c.req.param('sid'), body));
+  });
+
+  app.delete('/api/teams/:id/secrets/:sid', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    if (!deleteSecret(keysvc, teamId, c.req.param('sid'))) {
+      throw notFound(`secret ${c.req.param('sid')}`);
+    }
+    return c.body(null, 204);
+  });
+
+  app.get('/api/teams/:id/api-keys', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    // 掩码行 [推断]（r3 §6 展示规则；行标识/掩码列 wire 字段未采）。
+    return c.json(listApiKeys(svc, teamId));
+  });
+
+  app.post('/api/teams/:id/api-keys', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(createApiKeyBodySchema, await jsonBody(c), 'body');
+    const created = createApiKey(svc, {
+      teamId,
+      name: body.name ?? null,
+      gitAccess: body.gitAccess,
+      mcpAccess: body.mcpAccess,
+      toolGrants: body.toolGrants,
+    });
+    // 创建响应含明文一次（02 §8/r3 §6；封套 [推断]；文案 canon =
+    // shared API_KEY_ONE_TIME_COPY，web 面渲染）。
+    return c.json(created, 201);
   });
 
   // —— 托管 repo git 面（02 §3/A4：`git http-backend` CGI，不引第三方 git host；
