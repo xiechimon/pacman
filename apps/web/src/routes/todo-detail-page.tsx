@@ -2,7 +2,7 @@
 // body — fresh block (23/23d) or doc pane + chat column (16/17 family) —
 // plus composer, 总管 FAB and the capture-frozen user-menu popover.
 import { useCallback, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
 import { Composer } from '../detail/composer.js';
@@ -14,11 +14,14 @@ import { TokenDialog } from '../detail/token-dialog.js';
 import { Transcript } from '../detail/transcript.js';
 import { UserMenu } from '../detail/user-menu.js';
 import type { OverlayState } from '../fixtures/records.js';
+import { DeleteConfirm } from '../overlay/delete-confirm.js';
+import { MoreMenu } from '../overlay/more-menu.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
 import '../detail/detail.css';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar } from '../board/sidebar.js';
+import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import { overlayContent } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { ChiefFab } from '../icons/index.js';
@@ -27,12 +30,19 @@ import { readStoredTheme } from '../theme.js';
 export function TodoDetailPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   // 文档|聊天 tabs (issue #56): 文档 = doc pane + chat column, 聊天 = chat
   // column alone. Pure render state — the captures all sit on 文档.
   const [tab, setTab] = useState<'doc' | 'chat'>('doc');
+  // 更多 menu + delete confirm (#66): confirming a delete marks the todo
+  // in the deletions overlay and returns to /app (r2 §5.4) — the board
+  // route then renders without it; the fixture phase has no backend.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const fixture = resolveScenario(searchParams);
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
-  const todo = fixture.todos.find((t) => t.id === id) ?? fixture.todos[0];
+  const todos = withoutDeleted(fixture.todos);
+  const todo = todos.find((t) => t.id === id) ?? todos[0];
   // Modal overlays (issue #68): the scenario fixture opens one for capture
   // determinism; the header buttons and the review-phase 完成 button open
   // the same set interactively.
@@ -50,7 +60,7 @@ export function TodoDetailPage() {
   return (
     <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
       <BoardSidebar
-        attention={attentionCount(fixture.todos)}
+        attention={attentionCount(todos)}
         onSearch={() => search.setOpen(true)}
         usageNav={fixture.usageNav === true}
       />
@@ -59,6 +69,7 @@ export function TodoDetailPage() {
           todo={todo}
           tab={tab}
           onTab={setTab}
+          onMore={() => setMoreOpen(true)}
           onOverlay={(kind) => setOverlay({ kind })}
           onAction={() => {
             // r7 34: the review-phase 完成 button opens the accept dialog
@@ -105,6 +116,26 @@ export function TodoDetailPage() {
         </button>
       </div>
       {detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
+      {moreOpen && (
+        <MoreMenu
+          onClose={() => setMoreOpen(false)}
+          onDelete={() => {
+            setMoreOpen(false);
+            setDeleteOpen(true);
+          }}
+        />
+      )}
+      {deleteOpen && (
+        <DeleteConfirm
+          todo={todo}
+          onClose={() => setDeleteOpen(false)}
+          onConfirm={() => {
+            setDeleteOpen(false);
+            markDeleted(todo.id);
+            navigate('/app');
+          }}
+        />
+      )}
       {overlay?.kind === 'token' && content != null && (
         <TokenDialog stats={content.token} onClose={closeOverlay} />
       )}

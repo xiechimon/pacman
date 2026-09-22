@@ -31,6 +31,8 @@ interface DetailHeadProps {
   todo: TodoRecord;
   tab: 'doc' | 'chat';
   onTab: (tab: 'doc' | 'chat') => void;
+  /** #66: opens the 更多 menu popover. */
+  onMore?: () => void;
   /** Right icon group (issue #68): 分支与PR / Token 用量 / 运行历史. */
   onOverlay: (kind: HeadOverlay) => void;
   /** Primary button (开始/确认/完成/重开); the page decides what it does. */
@@ -43,6 +45,7 @@ export function DetailHead({
   todo,
   tab,
   onTab,
+  onMore,
   onOverlay,
   onAction,
   chipPopoverOpen,
@@ -101,7 +104,12 @@ export function DetailHead({
       )}
 
       <div className="detail-head-actions">
-        <button type="button" className="detail-head-icon detail-head-icon--more" aria-label="更多">
+        <button
+          type="button"
+          className="detail-head-icon detail-head-icon--more"
+          aria-label="更多"
+          onClick={onMore}
+        >
           <EllipsisVertical />
         </button>
         <button

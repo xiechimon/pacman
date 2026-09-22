@@ -16,6 +16,7 @@ import {
   boardChiefProbes,
   boardDarkFresh,
   boardDefault,
+  boardR8Overlay,
   boardWithProbe,
   chiefGated,
   chiefReady,
@@ -30,6 +31,9 @@ import {
   detailLegacy,
   detailLegacyNow,
   detailPlanning,
+  detailR8Confirm,
+  detailR8DeleteFresh,
+  detailR8Fresh,
   detailReview,
   projectFixture,
   projectTasks,
@@ -160,6 +164,13 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   // 新建技能 (r8 78/79, captured with this ticket): tab per scenario
   '79': resourcesImport('folder'),
   '80': resourcesImport('github'),
+  // r8 overlay batch (#66): the dark capture set; ids carry the r8 batch
+  // prefix like the r2/r3 rows (numbering continues after #64's 54–77)
+  'r8-78': boardR8Overlay,
+  'r8-79': detailR8Confirm(),
+  'r8-80': detailR8Confirm(),
+  'r8-81': detailR8Fresh,
+  'r8-82': detailR8DeleteFresh,
   // chief (issue #72): ids follow the r5 capture numbers — the chief
   // surfaces have no r7 shot (r7 §6 gap table), so r5 100–116 number these
   // rows. Dark rows reuse the same ids with theme: 'dark' in the matrix.

@@ -14,6 +14,14 @@
 //              applied to the element carrying [data-parity-scroll]
 //   sidebarCollapsed  optional: true → injects tds.sidebar-collapsed=1
 //              before load so the 40px rail renders (r7 03)
+//   clicks   optional: CSS selectors clicked in order after load, one
+//              rAF settle between each — opens overlay surfaces (#66)
+//   fills    optional: [{selector, text}] typed after the clicks, for
+//              filled-input states (r7 14 enabled-primary twin)
+//   viewport optional per-row capture viewport; the physical window of
+//              the r8 overlay session capped its dark baselines at
+//              1440×710, so those rows capture at the same size
+//              (centering law still holds, r7 §3.5 formula)
 //   baseline   optional r7 filename under docs/research/assets/r7/ —
 //              present = real parity pair (threshold 0.85);
 //              `r8/<file>` form points at post-r7 companion captures
@@ -496,7 +504,114 @@ export const matrix = [
   },
   { id: 'api-keys-dark', route: '/app/api-keys', scenario: 'api-keys', theme: 'dark' },
   { id: 'feedback-light', route: '/app/feedback', scenario: 'feedback', theme: 'light' },
-  { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' },
+  { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' }, // gate rows (issue #66): overlay batch A open states — new-task dialog
+  // (04), delete confirm over the done detail (25), 更多 menu over the
+  // confirm (18) and fresh (24) details. Dark twins ride the r8 78–81
+  // baselines captured with this ticket (numbering continues #64's 54–77).
+  {
+    id: 'overlay-new-task-light',
+    route: '/app',
+    scenario: '01',
+    theme: 'light',
+    clicks: ['.board-new-task'],
+    baseline: '04-新建任务dialog-light.png',
+  },
+  {
+    // 14 = the filled-title twin: primary button flips disabled → enabled
+    id: 'overlay-new-task-filled-light',
+    route: '/app',
+    scenario: '01',
+    theme: 'light',
+    clicks: ['.board-new-task'],
+    fills: [
+      { selector: '.new-task-input', text: '在 README.md 末尾追加一行「r7 rebaseline probe」' },
+    ],
+    baseline: '14-新建任务-已填标题-light.png',
+  },
+  {
+    id: 'overlay-delete-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '36',
+    theme: 'light',
+    clicks: ['.detail-head-icon--more', '.more-menu-item[data-action="delete"]'],
+    baseline: '25-删除确认弹窗-light.png',
+  },
+  {
+    id: 'overlay-more-confirm-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '17b',
+    theme: 'light',
+    clicks: ['.detail-head-icon--more'],
+    baseline: '18-待确认-更多菜单-light.png',
+  },
+  {
+    id: 'overlay-more-fresh-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '23',
+    theme: 'light',
+    clicks: ['.detail-head-icon--more'],
+    baseline: '24-fresh-更多菜单-light.png',
+  },
+  // gate rows (issue #66): the dark twins, baselines captured with this
+  // ticket at 1440×710 (r8 session window cap) — new-task dialog over the
+  // board (78), delete confirm (79) and 更多 menu (80) over the probe #16
+  // confirm detail, 更多 menu over its fresh detail (81)
+  {
+    id: 'overlay-new-task-dark',
+    route: '/app',
+    scenario: 'r8-78',
+    theme: 'dark',
+    clicks: ['.board-new-task'],
+    viewport: { width: 1440, height: 710 },
+    baseline: 'r8/78-新建任务dialog-dark.png',
+  },
+  {
+    // gated dark delete twin on the drift-light fresh surface (82)
+    id: 'overlay-delete-fresh-dark',
+    route: '/app/todo/r8-delete-17',
+    scenario: 'r8-82',
+    theme: 'dark',
+    clicks: ['.detail-head-icon--more', '.more-menu-item[data-action="delete"]'],
+    viewport: { width: 1440, height: 710 },
+    baseline: 'r8/82-删除确认弹窗-fresh-dark.png',
+  },
+  {
+    // report-only: the r8 79/80 surfaces sit on the probe-#16 confirm
+    // detail, which the live site restyled after the r7 freeze (doc-pane
+    // inline-code spacing, sidebar 用量 row, attention-badge formula,
+    // taskline seq chip, FAB badge — all 09-22 drift, blend-verified
+    // outside the overlay itself). The r7-frozen replica cannot gate
+    // both eras; per 04 §2 these pairs report, the overlay geometry is
+    // gated by the 78/81/82 twins on drift-light surfaces. Site-drift
+    // rebaseline = A6 ticket.
+    id: 'overlay-delete-dark',
+    route: '/app/todo/u_B5ngeVOlKdKbG_4H9Cl',
+    scenario: 'r8-79',
+    theme: 'dark',
+    clicks: ['.detail-head-icon--more', '.more-menu-item[data-action="delete"]'],
+    viewport: { width: 1440, height: 710 },
+    baseline: 'r8/79-删除确认弹窗-dark.png',
+    threshold: 0,
+  },
+  {
+    id: 'overlay-more-confirm-dark',
+    route: '/app/todo/u_B5ngeVOlKdKbG_4H9Cl',
+    scenario: 'r8-80',
+    theme: 'dark',
+    clicks: ['.detail-head-icon--more'],
+    viewport: { width: 1440, height: 710 },
+    baseline: 'r8/80-待确认-更多菜单-dark.png',
+    threshold: 0,
+  },
+  {
+    id: 'overlay-more-fresh-dark',
+    route: '/app/todo/u_B5ngeVOlKdKbG_4H9Cl',
+    scenario: 'r8-81',
+    theme: 'dark',
+    clicks: ['.detail-head-icon--more'],
+    viewport: { width: 1440, height: 710 },
+    baseline: 'r8/81-fresh-更多菜单-dark.png',
+  },
   // gate rows (issue #69): resources batch A — six route surfaces, light
   // (r7 captured no dark resource screen). The two 新建技能 rows stay
   // smoke: their r8 79/80 baselines (committed with this ticket) carry

@@ -296,14 +296,18 @@ export interface ResourcesContent {
 
 /** Inline text run inside a plan-document block; `code` renders the
  *  monospace chip (r7 17: `tail -n 3 README.md` style). */
+/** Inline text run inside a plan-document block: plain text, the
+ *  monospace chip (r7 17: `tail -n 3 README.md` style) or the blue
+ *  file/commit reference span (r8 56: `README.md`, `2f47b62`). */
 export interface DocSegment {
   text: string;
-  code?: boolean;
+  style?: 'code' | 'link';
 }
 
-/** One plan-document block: free paragraph or bullet (r7 17 doc pane). */
+/** One plan-document block: free paragraph, bullet (r7 17 doc pane) or
+ *  markdown heading (r8 56: Context / 假设 / Changes / Verification). */
 export interface DocBlock {
-  kind: 'para' | 'bullet';
+  kind: 'para' | 'bullet' | 'head';
   segments: DocSegment[];
 }
 
