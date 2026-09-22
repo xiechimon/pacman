@@ -2,9 +2,11 @@
 // selects a deterministic fixture set, one id per r7 capture so parity
 // matrix rows never drift in content. Route behaviour never branches on
 // the parameter — it only picks data inside the fixture layer, which is
-// the app's whole data source in this fixture-driven phase (the parity
-// harness runs against the production build). Once a real API replaces
-// the fixture loader, this param becomes dev/test-only.
+// the app's whole data source in this fixture-driven phase.
+// #58 gate: the parameter is dev/test-only — honoured by `vite dev`
+// (import.meta.env.DEV) and by the parity harness's `vite build --mode
+// parity`; a plain production build ignores it and always serves the
+// default board set, so the param can never leak into shipped behaviour.
 // Unknown or absent ids fall back to the default board set.
 
 import {
@@ -69,9 +71,15 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '38': detailLegacy,
 };
 
+/** #58 gate: scenario selection exists only in dev (`vite dev`) and in the
+ *  parity harness build (`vite build --mode parity`, parity/run.mjs). A
+ *  plain production build folds this to false at compile time. */
+const SCENARIOS_ENABLED = import.meta.env.DEV || import.meta.env.MODE === 'parity';
+
 /** Resolve the scenario for a URL. Signature takes URLSearchParams so
  *  callers can pass through without coupling to window.location. */
 export function resolveScenario(search: URLSearchParams): FixtureSet {
+  if (!SCENARIOS_ENABLED) return boardDefault;
   const id = search.get(SCENARIO_PARAM);
   return (id != null ? SCENARIOS[id] : undefined) ?? boardDefault;
 }

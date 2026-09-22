@@ -3,18 +3,39 @@
 // pitch 292 (278 body + 14 gap), radius 10, header 37 with dot/name/count,
 // empty-state copy centered. The scroller carries [data-parity-scroll] for
 // the parity harness scrollLeft driving.
+// #58: the scroller's scrollLeft is mirrored to sessionStorage on scroll
+// and restored on mount, so 详情 → 返回 lands on the same board scroll
+// position (module key below; per-tab storage, cleared with the tab).
 
+import { useLayoutEffect, useRef } from 'react';
 import type { FixtureSet } from '../fixtures/records.js';
 import { ChiefFab, HelpCircle, Plus, UnfoldVertical } from '../icons/index.js';
 import { COLUMNS } from './columns.js';
 import { TodoCard } from './todo-card.js';
 import './board.css';
 
+/** sessionStorage key for the board scroller's scrollLeft (#58 back-nav
+ *  restore). [推断] key shape — the official key is unobservable; collision
+ *  with a future real key is harmless (worst case: a stale offset). */
+const BOARD_SCROLL_KEY = 'tds.board-scroll-left';
+
 interface BoardProps {
   fixture: FixtureSet;
 }
 
 export function BoardSurface({ fixture }: BoardProps) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  // Restore after mount, before paint — a returning user never sees the
+  // board jump. The parity harness drives scrollLeft itself after load, so
+  // this is a no-op under fresh browser contexts (empty sessionStorage).
+  useLayoutEffect(() => {
+    const el = scrollerRef.current;
+    if (el == null) return;
+    const saved = sessionStorage.getItem(BOARD_SCROLL_KEY);
+    if (saved != null) el.scrollLeft = Number(saved);
+  }, []);
+
   return (
     <div className="board-main">
       <header className="board-topbar">
@@ -30,7 +51,14 @@ export function BoardSurface({ fixture }: BoardProps) {
         </div>
       </header>
 
-      <div className="board-scroller" data-parity-scroll="">
+      <div
+        className="board-scroller"
+        data-parity-scroll=""
+        ref={scrollerRef}
+        onScroll={(e) =>
+          sessionStorage.setItem(BOARD_SCROLL_KEY, String(e.currentTarget.scrollLeft))
+        }
+      >
         {COLUMNS.map((column) => {
           const todos = fixture.todos.filter(column.accepts);
           return (
