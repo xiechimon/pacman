@@ -41,6 +41,11 @@ interface BoardSidebarProps {
   onToggle?: () => void;
   /** Todos waiting on confirmation — the 看板 nav badge (r7 02/17). */
   attention?: number;
+  /** False drops the 看板 selected pill — the chief 设置 view renders the
+   *  sidebar with no active item (r5 101–104). */
+  active?: boolean;
+  /** Indigo dot right of the 机器 row (r5 100/101/114/116: machine online). */
+  machineOnline?: boolean;
 }
 
 /** Leaf nav rows shared by both sidebar states — each renders full in the
@@ -78,7 +83,13 @@ function RailGroupChevron({ label }: { label: string }) {
   );
 }
 
-export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: BoardSidebarProps) {
+export function BoardSidebar({
+  collapsed = false,
+  onToggle,
+  attention = 0,
+  active = true,
+  machineOnline = false,
+}: BoardSidebarProps) {
   if (collapsed) {
     return (
       <aside className="board-sidebar board-sidebar--collapsed">
@@ -90,9 +101,9 @@ export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: Boa
             <Search />
           </a>
           <a
-            className="rail-row rail-row--selected"
+            className={active ? 'rail-row rail-row--selected' : 'rail-row'}
             href="/app"
-            aria-current="page"
+            aria-current={active ? 'page' : undefined}
             aria-label="看板"
           >
             <Kanban />
@@ -147,7 +158,11 @@ export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: Boa
           <span className="sidebar-row-label">搜索</span>
           <span className="sidebar-kbd">⌘K</span>
         </a>
-        <a className="sidebar-row sidebar-row--selected" href="/app" aria-current="page">
+        <a
+          className={active ? 'sidebar-row sidebar-row--selected' : 'sidebar-row'}
+          href="/app"
+          aria-current={active ? 'page' : undefined}
+        >
           <span className="sidebar-row-icon">
             <Kanban />
           </span>
@@ -180,6 +195,7 @@ export function BoardSidebar({ collapsed = false, onToggle, attention = 0 }: Boa
               <Icon />
             </span>
             <span className="sidebar-subrow-label">{label}</span>
+            {machineOnline && label === '机器' && <span className="sidebar-online-dot" />}
           </a>
         ))}
       </nav>

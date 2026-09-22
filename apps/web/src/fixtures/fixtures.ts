@@ -542,7 +542,7 @@ export const chiefThread: FixtureSet = {
     threadTitle: '帮 r3-lifecycle 写一份…',
     stream: [
       { kind: 'note', text: '17:26' },
-      { kind: 'note', text: '运行在 xmonsMac-3574.local 上', machine: true },
+      { kind: 'note', text: '运行在 ', machineName: MACHINE_NAME },
       {
         kind: 'user',
         text: '帮 r3-lifecycle 写一份 CONTRIBUTING.md 贡献指南，说明怎么给 Agent 提任务、怎么验收改动，写完放到项目根目录。',

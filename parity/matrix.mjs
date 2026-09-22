@@ -4,7 +4,9 @@
 // Entry contract:
 //   id         stable pair name (output artefacts are named after it)
 //   route      app route to capture
-//   scenario   r7 capture number → fixture set via ?scenario=
+//   scenario   research capture number → fixture set via ?scenario=;
+//              board/detail rows use r7 numbers, chief rows r5 numbers
+//              (the chief surfaces have no r7 shot — r7 §6 gap table, #72)
 //   theme      'dark' | 'light' (injected via localStorage tds-theme)
 //   scrollLeft optional: number, or 'max' for rightmost board scroll,
 //              applied to the element carrying [data-parity-scroll]
@@ -260,6 +262,15 @@ export const matrix = [
   { id: 'chief-settings-charter-light', route: '/app', scenario: '102', theme: 'light' },
   { id: 'chief-settings-memory-light', route: '/app', scenario: '103', theme: 'light' },
   { id: 'chief-settings-watches-light', route: '/app', scenario: '104', theme: 'light' },
+  // 04 §2 增量规则: 深色面随票覆盖 — the chief dark values are [推断] on the
+  // shared tokens (no dark chief capture exists in any batch; r2 16 is the
+  // pre-drift layout), registered in docs/research/r8-chief-panel-adhoc.md
+  { id: 'chief-ready-dark', route: '/app', scenario: '111', theme: 'dark' },
+  { id: 'chief-thread-dark', route: '/app', scenario: '114', theme: 'dark' },
+  { id: 'chief-threads-open-dark', route: '/app', scenario: '116', theme: 'dark' },
+  { id: 'chief-settings-charter-dark', route: '/app', scenario: '102', theme: 'dark' },
+  { id: 'chief-settings-memory-dark', route: '/app', scenario: '103', theme: 'dark' },
+  { id: 'chief-settings-watches-dark', route: '/app', scenario: '104', theme: 'dark' },
 ];
 
 export const DEFAULT_BASELINE_THRESHOLD = 0.85;

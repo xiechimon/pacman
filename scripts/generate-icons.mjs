@@ -100,6 +100,13 @@ const EXTRA_ICONS = [
     trace: 'a 1:1 trace of the r5 100 bitmap example glyph (lucide folder shape)',
   },
   {
+    name: 'ChiefUserSolid',
+    size: [24, 24],
+    svg: '<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="8" r="4"></circle><path d="M4 19c0-3.5 3.6-5.5 8-5.5s8 2 8 5.5v1.5H4Z"></path></svg>',
+    contexts: ['chief stream user avatar (traced from r5 114)'],
+    trace: 'a 1:1 trace of the r5 114 bitmap solid user avatar',
+  },
+  {
     name: 'ChiefPi',
     size: [12, 12],
     svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 7h11"></path><path d="M5 12h5"></path><path d="M14 7v10"></path></svg>',

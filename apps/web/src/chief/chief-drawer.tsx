@@ -20,6 +20,7 @@ import {
   ChiefHash,
   ChiefPi,
   ChiefUserPlus,
+  ChiefUserSolid,
   Copy,
   EllipsisVertical,
   FileText,
@@ -28,7 +29,6 @@ import {
   Paperclip,
   Plus,
   Restore,
-  UserCircle,
   X,
 } from '../icons/index.js';
 import './chief.css';
@@ -47,7 +47,6 @@ function Segments({ segments }: { segments: ChiefSegment[] }) {
       {segments.map((s, i) => {
         if (s.todo != null)
           return (
-            // eslint-disable-next-line react/no-array-index-key
             <span key={i} className="chief-chip-todo">
               <FileText width={11} height={11} />
               {s.todo}
@@ -55,7 +54,6 @@ function Segments({ segments }: { segments: ChiefSegment[] }) {
           );
         if (s.agent != null)
           return (
-            // eslint-disable-next-line react/no-array-index-key
             <span key={i} className="chief-chip-agent">
               <ChiefFaceDashed width={11} height={11} />
               {s.agent}
@@ -63,18 +61,11 @@ function Segments({ segments }: { segments: ChiefSegment[] }) {
           );
         if (s.code)
           return (
-            // eslint-disable-next-line react/no-array-index-key
             <code key={i} className="chief-code">
               {s.text}
             </code>
           );
-        return s.strong ? (
-          // eslint-disable-next-line react/no-array-index-key
-          <strong key={i}>{s.text}</strong>
-        ) : (
-          // eslint-disable-next-line react/no-array-index-key
-          <span key={i}>{s.text}</span>
-        );
+        return s.strong ? <strong key={i}>{s.text}</strong> : <span key={i}>{s.text}</span>;
       })}
     </>
   );
@@ -182,19 +173,20 @@ export function ChiefDrawer({ chief, onSettings, onClose }: DrawerProps) {
             {chief.stream.map((item, i) => {
               if (item.kind === 'note')
                 return (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <div
-                    key={i}
-                    className={item.machine ? 'chief-note chief-note-machine' : 'chief-note'}
-                  >
+                  <div key={i} className="chief-note">
                     {item.text}
+                    {item.machineName && (
+                      <>
+                        <span className="chief-machine">{item.machineName}</span>上
+                      </>
+                    )}
                   </div>
                 );
               if (item.kind === 'user')
                 return (
-                  // eslint-disable-next-line react/no-array-index-key
                   <div key={i} className="chief-msg">
-                    <UserCircle width={24} height={24} className="chief-avatar" />
+                    {/* r5 114/116: the user avatar is a solid filled glyph */}
+                    <ChiefUserSolid width={24} height={24} className="chief-avatar" />
                     <div className="chief-msg-col">
                       <div className="chief-bubble">{item.text}</div>
                       <div className="chief-msg-tools">
@@ -205,18 +197,15 @@ export function ChiefDrawer({ chief, onSettings, onClose }: DrawerProps) {
                   </div>
                 );
               return (
-                // eslint-disable-next-line react/no-array-index-key
                 <div key={i} className="chief-msg">
                   <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
                   <div className="chief-msg-col">
                     {item.paragraphs.map((p, j) => (
-                      // eslint-disable-next-line react/no-array-index-key
                       <p key={j} className="chief-para">
                         <Segments segments={p} />
                       </p>
                     ))}
                     {item.bullets?.map((b, j) => (
-                      // eslint-disable-next-line react/no-array-index-key
                       <p key={`b${j}`} className="chief-bullet">
                         <span className="chief-bullet-dot">•</span>
                         <span>

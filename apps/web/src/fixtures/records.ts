@@ -201,8 +201,9 @@ export interface ChiefSegment {
 
 /** One row of the chief message flow (r5 114/116, r3 §3.6 roles). */
 export type ChiefStreamItem =
-  /** Centered dim stamp (`17:26`) or machine line (`运行在 … 上`). */
-  | { kind: 'note'; text: string; machine?: boolean }
+  /** Centered dim stamp (`17:26`) or machine line (`运行在 … 上`, the
+   *  machine name underlined per r5 114 — `machineName` carries it). */
+  | { kind: 'note'; text: string; machineName?: string }
   /** User bubble with avatar + the copy/restore icon pair below it. */
   | { kind: 'user'; text: string }
   /** Chief prose paragraphs + optional bullets + the `完成 Ns ›` footer
