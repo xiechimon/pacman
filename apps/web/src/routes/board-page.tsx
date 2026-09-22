@@ -4,16 +4,27 @@
 // is [推断] (r2 §1.1 only documents `tds.sidebarProjectsCollapsed` for the
 // project-group fold), and the parity harness injects it like the theme
 // key so the rail capture stays deterministic.
+// #72: the chief surfaces ride this route — the drawer overlays the board
+// (r5 100/111/114/116) and the 总管设置 gear swaps the content area to the
+// settings view (r5 101–104). Both open states are fixture-driven for
+// parity; the FAB/gear/back/close buttons make them reachable in dev.
 import { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { BoardSurface } from '../board/board.js';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar } from '../board/sidebar.js';
+import { ChiefDrawer } from '../chief/chief-drawer.js';
+import { ChiefSettings } from '../chief/chief-settings.js';
+import { chiefDefault } from '../fixtures/fixtures.js';
 import { withoutDeleted } from '../fixtures/deletions.js';
 import { localTodo } from '../fixtures/fixtures.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { ChiefFab } from '../icons/index.js';
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
+// shell styles live with the board surface; the settings view (101–104)
+// unmounts BoardSurface but keeps the shell, so the route imports them too
+import '../board/board.css';
 
 export const SIDEBAR_STORAGE_KEY = 'tds.sidebar-collapsed'; // mirrored in parity/run.mjs
 
@@ -48,12 +59,42 @@ export function BoardPage() {
     },
     [fixture],
   );
+  const chief = fixture.chief;
+  // one three-state view: drawer and settings are mutually exclusive by
+  // construction (r5: the gear swaps the drawer for the full-content view)
+  const [chiefView, setChiefView] = useState<'none' | 'drawer' | 'settings'>(chief?.view ?? 'none');
+  const chiefData = chief ?? chiefDefault;
   const fixtureWithTodos: FixtureSet = { ...fixture, todos };
   return (
     <div className="board-shell h-full" data-route="board">
-      <BoardSidebar collapsed={collapsed} onToggle={toggle} attention={attentionCount(todos)} />
-      <BoardSurface fixture={fixtureWithTodos} onNewTask={() => setNewTaskOpen(true)} />
+      <BoardSidebar
+        collapsed={collapsed}
+        onToggle={toggle}
+        attention={attentionCount(todos)}
+        selected={chiefView === 'settings' ? 'none' : 'board'}
+        machineOnline={chief != null}
+      />
+      {chiefView === 'settings' ? (
+        <ChiefSettings chief={chiefData} onBack={() => setChiefView('drawer')} />
+      ) : (
+        <BoardSurface fixture={fixtureWithTodos} onNewTask={() => setNewTaskOpen(true)} />
+      )}
+      {chiefView === 'drawer' && (
+        <ChiefDrawer
+          chief={chiefData}
+          onSettings={() => setChiefView('settings')}
+          onClose={() => setChiefView('none')}
+        />
+      )}
       {newTaskOpen && <NewTaskDialog onClose={() => setNewTaskOpen(false)} onSave={createTodo} />}
+      <button
+        type="button"
+        className="chief-fab"
+        aria-label="总管"
+        onClick={() => setChiefView('drawer')}
+      >
+        <ChiefFab />
+      </button>
     </div>
   );
 }
