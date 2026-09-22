@@ -1,21 +1,36 @@
 // 测试引导：内存库 + migration + seed + app（wire 对拍面，04 §3）。
 
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { Hono } from 'hono';
 import { createApp } from '../src/app.js';
 import { openMemoryDb } from '../src/db/client.js';
+import { apiKey } from '../src/db/schema.js';
 import { seed } from '../src/db/seed.js';
+import { sha256Hex } from '../src/lib/crypto.js';
+import { newRecordId } from '../src/lib/ids.js';
+import { createEphemeralSecretBox } from '../src/lib/secret-box.js';
 import { TeamStreamHub } from '../src/services/events.js';
 import { MachineWakeHub } from '../src/services/machines.js';
 
-export function bootServer(opts: { pingIntervalMs?: number; claimHoldMs?: number } = {}) {
+export function bootServer(
+  opts: { pingIntervalMs?: number; claimHoldMs?: number; reposDir?: string } = {},
+) {
   const db = openMemoryDb();
-  const { user, team, bootstrapApiKey } = seed(db);
+  const { user, team } = seed(db);
   const hub = new TeamStreamHub();
   const machineHub = new MachineWakeHub();
+  // 随机 key 驻内存（keyfile 落盘面 = test/secret-box.test.ts 专测）。
+  const secretBox = createEphemeralSecretBox();
+  // 自建临时 reposDir（git 托管面实走用）；显式传入时由调用方管理生命周期。
+  const ownReposDir = opts.reposDir === undefined;
+  const reposDir = opts.reposDir ?? mkdtempSync(join(tmpdir(), 'pacman-server-repos-'));
   const app = createApp({
     db,
     hub,
     machineHub,
+    secretBox,
     user,
     team,
     // 默认拉长 ping 间隔，避免噪音；SSE 测试显式缩短。
@@ -24,18 +39,42 @@ export function bootServer(opts: { pingIntervalMs?: number; claimHoldMs?: number
     claimHoldMs: opts.claimHoldMs ?? 250,
     uploads: new Map(),
     enrollments: new Map(),
+    reposDir,
   });
   return {
     app,
     db,
     hub,
     machineHub,
+    secretBox,
     user,
     team,
-    bootstrapApiKey,
-    svc: { db, hub, machineHub },
+    reposDir,
+    svc: { db, hub, machineHub, user },
+    dispose(): void {
+      if (ownReposDir) rmSync(reposDir, { recursive: true, force: true });
+    },
   };
 }
+
+/** 机器注册用 API key：走 M2c 发行端点（POST /api/teams/{id}/api-keys，
+ * 一次性明文语义，02 §8/r3 §6）。 */
+export async function issueApiKey(s: ReturnType<typeof bootServer>): Promise<string> {
+  const res = await req(s.app, 'POST', `/api/teams/${s.team.id}/api-keys`, {
+    name: 'machine-bootstrap',
+    gitAccess: false,
+    mcpAccess: false,
+    toolGrants: { read: [], write: [] },
+  });
+  if (res.status !== 200 && res.status !== 201) {
+    throw new Error(`issueApiKey: ${res.status}`);
+  }
+  const body = (await res.json()) as { plaintext?: string; apiKey?: string; key?: string };
+  const plain = body.plaintext ?? body.apiKey ?? body.key;
+  if (!plain) throw new Error(`issueApiKey: no plaintext in ${JSON.stringify(body)}`);
+  return plain;
+}
+
 export type TestServer = ReturnType<typeof bootServer>;
 
 const jsonHeaders = { 'content-type': 'application/json' };
@@ -55,6 +94,27 @@ export async function postProject(app: Hono, name = 'demo'): Promise<string> {
   if (res.status !== 201) throw new Error(`postProject: ${res.status}`);
   const body = (await res.json()) as { id: string };
   return body.id;
+}
+
+/** 直插 gitAccess api_key 行（存哈希不存可逆值，02 §8；key 发行端点归 M2c，
+ * git 面测试用本 helper 供凭证）。 */
+export function insertGitApiKey(s: TestServer, secret: string): string {
+  const id = newRecordId();
+  s.db
+    .insert(apiKey)
+    .values({
+      id,
+      teamId: s.team.id,
+      name: 'git-e2e',
+      gitAccess: true,
+      mcpAccess: false,
+      toolGrants: { read: [], write: [] },
+      keyHash: sha256Hex(secret),
+      masked: `${secret.slice(0, 12)}…`,
+      createdAt: Date.now(),
+    })
+    .run();
+  return id;
 }
 
 /** SSE 连接读取器：帧 = `data: <json>\n\n`（team stream 无 event 名，

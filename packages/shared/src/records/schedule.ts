@@ -23,6 +23,23 @@ export const scheduleTodoEmbedSchema = z.object({
   ownerId: recordId,
 });
 
+/** POST /api/schedules body [推断]（wire 未采；字段 = record 可写子集投影，
+ * 04 附录 A 补采后收紧）。语义（r3 §9 表单面）：
+ * - `once`：at = 触发时刻（日期 + 时间，时 00–23、分 00/15/30/45 四档）；
+ * - 周期档：at = 墙钟锚点（hourly 取分钟档、daily 取时:分、weekly 另取星期），
+ *   nextRunAt 由 cron 按 tz 滚动计算；
+ * - tz 缺省 = server 本地时区（「按你的本地时区运行（…）」注，01 §4.2）；
+ * - machineId null/缺省 = 自动（r3 §9 机器（自动））。 */
+export const createScheduleBodySchema = z.object({
+  todoId: recordId,
+  projectId: recordId.optional(),
+  kind: scheduleKindSchema,
+  at: epochMs,
+  tz: z.string().optional(),
+  machineId: recordId.nullable().optional(),
+});
+export type CreateScheduleBody = z.infer<typeof createScheduleBodySchema>;
+
 export const scheduleRecordSchema = z.object({
   id: recordId,
   teamId: recordId,

@@ -4,6 +4,7 @@
 // interactive menu lands with the overlay ticket.
 
 import { USER_MAIL, USER_NAME } from '../fixtures/fixtures.js';
+import { useI18n } from '../i18n/provider.js';
 
 interface UserMenuProps {
   theme: 'light' | 'dark';
@@ -12,6 +13,7 @@ interface UserMenuProps {
 const ROWS = ['帐号', 'API 密钥', 'MCP', '反馈', '新功能', '快捷键'];
 
 export function UserMenu({ theme }: UserMenuProps) {
+  const { t } = useI18n();
   return (
     <div className="user-menu">
       <div className="user-menu-head">
@@ -23,19 +25,19 @@ export function UserMenu({ theme }: UserMenuProps) {
       </div>
       <div className="user-menu-rows">
         <div className="user-menu-row">
-          外观
+          {t('外观')}
           <span className="user-menu-seg">
             <button type="button" data-active={theme === 'light'}>
-              浅色
+              {t('浅色')}
             </button>
             <button type="button" data-active={theme === 'dark'}>
-              深色
+              {t('深色')}
             </button>
           </span>
         </div>
         {ROWS.map((row) => (
           <div key={row} className="user-menu-row">
-            {row}
+            {t(row)}
           </div>
         ))}
       </div>

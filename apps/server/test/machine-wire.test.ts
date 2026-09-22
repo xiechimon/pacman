@@ -35,7 +35,7 @@ import {
   todo as todoTable,
   tokenUsage,
 } from '../src/db/schema.js';
-import { bootServer, postProject } from './helpers.js';
+import { bootServer, issueApiKey, postProject } from './helpers.js';
 
 type TestServer = ReturnType<typeof bootServer>;
 
@@ -61,6 +61,8 @@ const AGENT_ID = 'agent-stub-1';
 
 interface World {
   s: TestServer;
+  /** 注册用 API key 明文（重注册复用同一 machineId = 按 key/team 认机器，r3 §1.2）。 */
+  apiKey: string;
   token: string;
   machineId: string;
   projectId: string;
@@ -71,8 +73,8 @@ interface World {
 
 async function setupWorld(opts: { claimHoldMs?: number } = {}): Promise<World> {
   const s = bootServer({ claimHoldMs: opts.claimHoldMs ?? 250, pingIntervalMs: 3_600_000 });
-  const key = s.bootstrapApiKey;
-  if (!key) throw new Error('bootstrap key expected on fresh seed');
+  // 机器注册 key 走 M2c 发行端点（一次性明文，02 §8/r3 §6）。
+  const key = { plain: await issueApiKey(s) };
   // custom provider（r3 §2 记录形状；无 key 网关可留空 = apiKeyCipher null）。
   s.db
     .insert(providerTable)
@@ -116,6 +118,7 @@ async function setupWorld(opts: { claimHoldMs?: number } = {}): Promise<World> {
   const todoBody = (await todoRes.json()) as { id: string };
   return {
     s,
+    apiKey: key.plain,
     token: machineJson.token,
     machineId: machineJson.machineId,
     projectId,
@@ -193,9 +196,9 @@ describe('enroll / me / presence / recover（02 §5.2–§5.4）', () => {
 
   test('重注册复用同一 machineId（r3 §1.2 实测：logout 后重注册不变）', async () => {
     const w = await setupWorld();
-    const key = w.s.bootstrapApiKey!;
+    // 同 key 重注册（r3 §1.2：logout 后 `tds start --api-key` 复用 machineId）。
     const res = await call(w.s.app, 'POST', '/api/machine/enroll', {
-      cred: key.plain,
+      cred: w.apiKey,
       body: { teamId: w.s.team.id, name: 'test-mbp', cliVersion: '0.1.0' },
     });
     const again = machineEnrollResponseSchema.parse(await res.json());
@@ -394,7 +397,8 @@ describe('步骤 journal 全链（02 §5.4 词表 + §4.2 主时序机器侧）'
       api: 'openai-completions',
       authHeader: true,
     });
-    expect(token.git).toBeNull(); // 托管 repo git 凭证面归 M2b/M3b [设计过渡]
+    expect(token.env).toEqual({}); // 团队 Secret 授权集（agent.secrets 空 → 空映射，02 §8）
+    expect(token.git).toBeNull(); // 托管 repo git 凭证槽（credentials.ts：接线随 git 面）
 
     // —— upload-urls + transcript 终稿落库（02 §1.3 数据所有权）——
     const urlsRes = await call(w.s.app, 'POST', `/api/machine/upload-urls/${stepId}`, {

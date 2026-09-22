@@ -6,10 +6,12 @@
 import { useSearchParams } from 'react-router';
 import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { ChartNetwork, ChevronDown, Grid2x2, PlusSmall } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
 
 export function TeamPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   const team = fixture.team ?? TEAM_R7;
@@ -26,16 +28,16 @@ export function TeamPage() {
       }
       right={
         <button type="button" className="secondary-link">
-          设置
+          {t('设置')}
         </button>
       }
     >
       <div className="team-toprow">
         <div className="team-stats">
-          <span className="team-members">{team.members} 个成员</span>
+          <span className="team-members">{t('{n} 个成员', { n: team.members })}</span>
           <span className="team-plan">FREE</span>
           <button type="button" className="secondary-link team-upgrade">
-            升级 →
+            {t('升级 →')}
           </button>
         </div>
         <div className="team-layout-tabs" role="tablist">
@@ -69,9 +71,9 @@ export function TeamPage() {
               <span className="team-agent-name">{agent.displayName}</span>
               <span className="team-agent-model">
                 {agent.model}
-                {agent.isDefault ? ' · 默认' : ''}
+                {agent.isDefault ? t(' · 默认') : ''}
               </span>
-              <span className="team-agent-role">{agent.role ?? '未设置职责'}</span>
+              <span className="team-agent-role">{agent.role ?? t('未设置职责')}</span>
             </span>
           </div>
         ))}
@@ -79,7 +81,7 @@ export function TeamPage() {
           <span className="team-create-icon">
             <PlusSmall />
           </span>
-          创建 Agent
+          {t('创建 Agent')}
         </button>
       </div>
     </SecondaryShell>

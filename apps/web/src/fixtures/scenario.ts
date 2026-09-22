@@ -16,6 +16,7 @@ import {
   boardChiefProbes,
   boardDarkFresh,
   boardDefault,
+  boardR8Overlay,
   boardWithProbe,
   chiefGated,
   chiefReady,
@@ -28,12 +29,18 @@ import {
   detailFresh,
   detailFreshDark,
   detailLegacy,
+  detailLegacyNow,
   detailPlanning,
+  detailR8Confirm,
+  detailR8DeleteFresh,
+  detailR8Fresh,
   detailReview,
   projectFixture,
   projectTasks,
   projectTasksEmpty,
   r7,
+  resourcesDefault,
+  resourcesImport,
   schedulesEmpty,
   schedulesFormDaily,
   schedulesFormOnce,
@@ -45,7 +52,8 @@ import type { FixtureSet } from './records.js';
 export const SCENARIO_PARAM = 'scenario';
 
 /** r7 capture number → fixture set. Board rows bind board scenarios,
- *  detail rows bind single-todo detail scenarios. `now` inside each set
+ *  detail rows bind single-todo detail scenarios, resource rows (06–10)
+ *  bind the shared resources set. `now` inside each set
  *  is the capture instant (keeps relative labels deterministic).
  *  Detail ids follow the r7 manifest filenames: 16d is the dark confirm
  *  capture with the user-menu popover, 17/17d/17b the confirm surface
@@ -86,6 +94,30 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '36': detailDone(),
   '36d': detailDone(),
   '38': detailLegacy,
+  // overlay open states (issue #68): 30/31/32 sit on the review surface
+  // with diff + tool rows expanded, exactly as the captures froze them
+  '30': {
+    ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
+    overlay: { kind: 'token' },
+  },
+  '31': {
+    ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
+    overlay: { kind: 'branch' },
+  },
+  '32': {
+    ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
+    overlay: { kind: 'history' },
+  },
+  // 34: board scrollRight, probe #9 in 待验收 (`4 分钟前` → now 13:41)
+  '34': { ...boardWithProbe('review', r7(13, 37), r7(13, 41)), overlay: { kind: 'accept' } },
+  // dark overlay pairs (r8 78–81): probe #9 is gone from the live account,
+  // so the dark captures ride the r3 legacy #1 surface as it stands now
+  // (re-run 2026-09-22 18:30); the accept dialog opens from the header
+  // 完成 button on the same detail surface
+  '30d': detailLegacyNow('token'),
+  '31d': detailLegacyNow('branch'),
+  '32d': detailLegacyNow('history'),
+  '34d': detailLegacyNow('accept'),
   // overlays (issue #67): frozen open-states on top of the surface each
   // r7 capture sits on — 05 the empty ⌘K panel over the default board,
   // 05b the results state over the #46-session board, 19/29 the chip
@@ -119,9 +151,28 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   // fixture content at all, so they ride the default set
   '12': teamGrid,
   '13': boardDefault,
+  // account 语言 dropdown open state (issue #74; shape [设计], r2 §11 Q19)
+  '13-lang': { ...boardDefault, ui: { langDropdownOpen: true } },
   'api-keys': boardDefault,
   'api-keys-created': apiKeysCreated,
   feedback: boardDefault,
+  // resources (r7 06–10, issue #69): one shared row set — the captures
+  // differ per route, not per content state
+  '06': resourcesDefault,
+  '07': resourcesDefault,
+  '08': resourcesDefault,
+  '09': resourcesDefault,
+  '10': resourcesDefault,
+  // 新建技能 (r8 78/79, captured with this ticket): tab per scenario
+  '79': resourcesImport('folder'),
+  '80': resourcesImport('github'),
+  // r8 overlay batch (#66): the dark capture set; ids carry the r8 batch
+  // prefix like the r2/r3 rows (numbering continues after #64's 54–77)
+  'r8-78': boardR8Overlay,
+  'r8-79': detailR8Confirm(),
+  'r8-80': detailR8Confirm(),
+  'r8-81': detailR8Fresh,
+  'r8-82': detailR8DeleteFresh,
   // chief (issue #72): ids follow the r5 capture numbers — the chief
   // surfaces have no r7 shot (r7 §6 gap table), so r5 100–116 number these
   // rows. Dark rows reuse the same ids with theme: 'dark' in the matrix.

@@ -6,30 +6,32 @@
 // [推断] (no capture: r2 §9-12, r3 §6 图失); mask and copy are observed.
 import { useSearchParams } from 'react-router';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, ExternalLink, Key } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
 
 export function ApiKeysPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   const keys = fixture.apiKeys?.keys ?? [];
   return (
-    <SecondaryShell route="api-keys" fixture={fixture} title="API 密钥">
+    <SecondaryShell route="api-keys" fixture={fixture} title={t('API 密钥')}>
       {keys.length === 0 ? (
         <div className="keys-empty">
           <div className="keys-empty-tile">
             <Key />
           </div>
-          <h2 className="keys-empty-title">尚无 API 密钥。</h2>
+          <h2 className="keys-empty-title">{t('尚无 API 密钥。')}</h2>
           <p className="keys-empty-desc">
-            API 密钥用于从命令行接入机器，也让 MCP 客户端能访问你的看板。
+            {t('API 密钥用于从命令行接入机器，也让 MCP 客户端能访问你的看板。')}
           </p>
           <div className="keys-empty-actions">
             <button type="button" className="keys-create">
-              新建密钥
+              {t('新建密钥')}
             </button>
             <button type="button" className="keys-docs">
-              查看文档
+              {t('查看文档')}
               <ExternalLink />
             </button>
           </div>
@@ -42,9 +44,9 @@ export function ApiKeysPage() {
               <div key={`once-${key.id}`} className="keys-once">
                 <code className="keys-once-value">{key.plaintext}</code>
                 <button type="button" className="keys-once-copy">
-                  复制
+                  {t('复制')}
                 </button>
-                <p className="keys-once-note">请立即复制密钥，它仅显示一次。</p>
+                <p className="keys-once-note">{t('请立即复制密钥，它仅显示一次。')}</p>
               </div>
             ))}
           <div className="keys-list">

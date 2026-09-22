@@ -134,6 +134,7 @@ class FakeMachineApi implements MachineApi {
         authHeader: true,
         models: [{ id: 'stub-model', name: 'stub-model' }],
       },
+      env: {},
       git: null,
     };
   }

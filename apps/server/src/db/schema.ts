@@ -37,7 +37,7 @@ export const team = sqliteTable('team', {
   avatarStyle: text('avatarStyle'),
 });
 
-// —— project（repo 双形态：托管 bare / GitHub 接入，02 §3/A4；repo 细面归 M2b）——
+// —— project（repo 双形态：托管 bare / GitHub 接入，02 §3/A4）————————————————
 export const project = sqliteTable('project', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
@@ -45,6 +45,10 @@ export const project = sqliteTable('project', {
     .notNull()
     .references(() => team.id),
   repoKind: text('repoKind').$type<'hosted' | 'github'>(),
+  /** 托管形态：bare repo 名段（远端 URL `<teamId>/<repoName>`，r3 §1.4）。 */
+  repoName: text('repoName'),
+  /** GitHub 接入形态：`owner/repo`（02 §3；字段名 [推断]）。 */
+  githubRepo: text('githubRepo'),
 });
 
 // —— todo（02 §4.1 字段表全量；tagIds/buildHistory/agent 为派生面不存列）——————
@@ -170,7 +174,7 @@ export const documentDiff = sqliteTable('document_diff', {
   createdAt: epochMs('createdAt').notNull(),
 });
 
-// —— schedule（02 §6.2/§9.2；cron 闭环归 M2b）————————————————————————————
+// —— schedule（02 §6.2/§9.2；cron 闭环 = services/schedules + scheduler）——————
 export const schedule = sqliteTable('schedule', {
   id: text('id').primaryKey(),
   teamId: text('teamId')
@@ -186,7 +190,7 @@ export const schedule = sqliteTable('schedule', {
   createdBy: text('createdBy').notNull(),
 });
 
-// —— notification（02 §9.1 三事件矩阵 r5 §7.2；SSE 事件面归 M2c）——————————————
+// —— notification（02 §9.1 三事件矩阵 r5 §7.2；SSE 事件面 = services/notifications.ts）——
 export const notification = sqliteTable('notification', {
   /** 组合键 `"<userId>:<entityId>"`（r5 §7.2 原样）。 */
   id: text('id').primaryKey(),
@@ -251,7 +255,7 @@ export const skill = sqliteTable('skill', {
   files: json<Record<string, string>>('files').notNull().default(sql`'{}'`),
 });
 
-// —— mcp_server（02 §6.2/§7.1；管理面归 M2c/M4）———————————————————————————
+// —— mcp_server（02 §6.2/§7.1；管理面归 M4）—————————————————————————————————
 export const mcpServer = sqliteTable('mcp_server', {
   id: text('id').primaryKey(),
   teamId: text('teamId')
@@ -268,7 +272,7 @@ export const mcpServer = sqliteTable('mcp_server', {
   updatedAt: epochMs('updatedAt').notNull(),
 });
 
-// —— provider（38 presets + custom，02 §6.2；apiKey 密文经 SecretBox 归 M2c）——————
+// —— provider（38 presets + custom，02 §6.2；apiKey 密文经 SecretBox，02 §8）——————
 export const provider = sqliteTable('provider', {
   id: text('id').primaryKey(),
   teamId: text('teamId')
@@ -289,7 +293,7 @@ export const provider = sqliteTable('provider', {
   updatedAt: epochMs('updatedAt').notNull(),
 });
 
-// —— secret（值密文经 SecretBox，只写不读，02 §8；细案归 M2c）——————————————————
+// —— secret（值密文经 SecretBox，只写不读，02 §8；服务面 = services/secrets.ts）————
 export const secret = sqliteTable('secret', {
   id: text('id').primaryKey(),
   teamId: text('teamId')

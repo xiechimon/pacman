@@ -62,7 +62,13 @@ function originOf(c: Context): string {
 }
 
 export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
-  const deps = { db: ctx.db, hub: ctx.hub, machineHub: ctx.machineHub };
+  const deps = {
+    db: ctx.db,
+    hub: ctx.hub,
+    machineHub: ctx.machineHub,
+    box: ctx.secretBox,
+    user: ctx.user,
+  };
 
   // 机器 token 认证中间件（enroll 三件除外——其认证 = apiKey）。
   app.use('/api/machine/*', async (c, next) => {

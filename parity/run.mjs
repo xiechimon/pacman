@@ -18,6 +18,8 @@ import { DEFAULT_BASELINE_THRESHOLD, matrix, SMOKE_THRESHOLD, VIEWPORT } from '.
 
 const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const OUT_DIR = resolve(ROOT, 'parity/output');
+// Baselines live per capture batch under docs/research/assets/ (04 册 §2):
+// bare filenames resolve to r7/, `r8/<file>` rows to the companion batch.
 const ASSETS_DIR = resolve(ROOT, 'docs/research/assets');
 const BASELINE_DIR = resolve(ASSETS_DIR, 'r7');
 // parallel sessions (worktrees) run this harness concurrently — PARITY_PORT
@@ -26,6 +28,7 @@ const PORT = Number(process.env.PARITY_PORT ?? 8390);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 const THEME_KEY = 'tds-theme'; // same key as apps/web/src/theme.ts THEME_STORAGE_KEY
 const SIDEBAR_KEY = 'tds.sidebar-collapsed'; // apps/web/src/routes/board-page.tsx SIDEBAR_STORAGE_KEY
+const LOCALE_KEYS = ['tds.locale', 'tds-locale']; // apps/web/src/i18n/locale.ts dual-key contract (r2 §1.5)
 
 mkdirSync(OUT_DIR, { recursive: true });
 
@@ -65,15 +68,23 @@ async function waitForServer(url, tries = 100) {
 
 async function captureEntry(entry, browser) {
   const context = await browser.newContext({
-    viewport: VIEWPORT,
+    viewport: entry.viewport ?? VIEWPORT,
     deviceScaleFactor: 1,
   });
   await context.addInitScript(
-    ([key, theme, sidebarKey, sidebarCollapsed]) => {
+    ([key, theme, sidebarKey, sidebarCollapsed, localeKeys, locale]) => {
       localStorage.setItem(key, theme);
       if (sidebarCollapsed != null) localStorage.setItem(sidebarKey, sidebarCollapsed);
+      if (locale != null) for (const k of localeKeys) localStorage.setItem(k, locale);
     },
-    [THEME_KEY, entry.theme, SIDEBAR_KEY, entry.sidebarCollapsed ? '1' : null],
+    [
+      THEME_KEY,
+      entry.theme,
+      SIDEBAR_KEY,
+      entry.sidebarCollapsed ? '1' : null,
+      LOCALE_KEYS,
+      entry.locale ?? null,
+    ],
   );
   const page = await context.newPage();
   const url = `${BASE_URL}${entry.route}?scenario=${entry.scenario}`;
@@ -88,6 +99,39 @@ async function captureEntry(entry, browser) {
       el.scrollLeft = value === 'max' ? el.scrollWidth - el.clientWidth : value;
     }, entry.scrollLeft);
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
+  }
+
+  // overlay rows (#66): open the surface by clicking through it, one
+  // selector per step, settling a frame after each so the popover/dialog
+  // is painted before the shot
+  if (entry.clicks != null) {
+    for (const selector of entry.clicks) {
+      await page.click(selector);
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
+    }
+  }
+
+  // filled-input states (#66, r7 14): type after the clicks opened the surface
+  if (entry.fills != null) {
+    for (const fill of entry.fills) {
+      await page.fill(fill.selector, fill.text);
+      await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
+    }
+  }
+
+  // expectText gives the no-baseline (smoke) rows content teeth: the string
+  // must appear in the rendered text or the serialized DOM (aria labels)
+  if (entry.expectText != null) {
+    const hit = await page.evaluate(
+      (needle) =>
+        document.body.innerText.includes(needle) ||
+        document.documentElement.outerHTML.includes(needle),
+      entry.expectText,
+    );
+    if (!hit) {
+      await context.close();
+      throw new Error(`${entry.id}: expectText ${JSON.stringify(entry.expectText)} not found`);
+    }
   }
 
   const shot = resolve(OUT_DIR, `${entry.id}.png`);

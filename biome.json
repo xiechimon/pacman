@@ -82,6 +82,19 @@
           }
         }
       }
+    },
+    {
+      "includes": [
+        "apps/server/src/services/schedules.ts",
+        "apps/server/src/services/scheduler.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": "off"
+          }
+        }
+      }
     }
   ],
   "javascript": {

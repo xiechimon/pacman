@@ -12,9 +12,11 @@ import type {
   MachineStreamEvent,
   MachineTokenResponse,
   ProviderConfig,
+  SecretBox,
   StepRecord,
   ToolCallRecord,
   TranscriptUpload,
+  UserRecord,
 } from '@pacman/shared';
 import { MAX_CONCURRENT_DEFAULT } from '@pacman/shared';
 import { and, asc, eq, isNull, or, sql } from 'drizzle-orm';
@@ -26,14 +28,15 @@ import {
   machine,
   message,
   project,
-  provider,
   step,
   todo,
   tokenUsage,
 } from '../db/schema.js';
+import { hashCredential } from '../lib/hash.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
-import { newMachineToken, sha256hex } from '../lib/keys.js';
+import { newMachineToken } from '../lib/keys.js';
 import { completeStep, NotFoundError } from './builds.js';
+import { resolveStepCredentials } from './credentials.js';
 import type { TeamStreamHub } from './events.js';
 import { canTransitionPhase } from './phase.js';
 import { setTodoPhase } from './todos.js';
@@ -42,6 +45,10 @@ export interface MachineDeps {
   db: Db;
   hub: TeamStreamHub;
   machineHub: MachineWakeHub;
+  /** at-rest 加密缝（per-step 凭证解密下发，02 §8；M2c SecretBox）。 */
+  box: SecretBox;
+  /** 通知收件人（completeStep → setTodoPhase 通知漏斗，02 §9.1/M2c）。 */
+  user: UserRecord;
 }
 
 // —— wake 通道（claim 长轮询等待者 + SSE stream 订阅者，按 team 分组）—————————
@@ -117,7 +124,7 @@ export function findMachineByToken(db: Db, token: string) {
   return db
     .select()
     .from(machine)
-    .where(eq(machine.tokenHash, sha256hex(token)))
+    .where(eq(machine.tokenHash, hashCredential(token)))
     .get();
 }
 
@@ -125,7 +132,7 @@ export function findApiKeyByPlain(db: Db, plain: string) {
   return db
     .select()
     .from(apiKey)
-    .where(eq(apiKey.keyHash, sha256hex(plain)))
+    .where(eq(apiKey.keyHash, hashCredential(plain)))
     .get();
 }
 
@@ -411,44 +418,41 @@ function upsertMessage(
     .run();
 }
 
-/** per-step 凭证下发（02 §5.4/§8：模型 key + git 凭证，daemon 内存持有）。
- * M3a：SecretBox 解密面归 M2c（无 key 网关可留空，r3 §2）；托管 repo git
- * 凭证归 M2b/M3b → git 恒 null [设计过渡]。 */
+/** per-step 凭证下发（02 §5.4/§8：模型 key + git 凭证，daemon 内存持有不落盘
+ * 常驻）。解析链单源 = M2c services/credentials.ts（step → build → todo →
+ * assignment → agent → provider → SecretBox 解密 + secrets env 授权集）；
+ * 本层只做机器所有权校验 + wire 形状映射（machineTokenResponseSchema）。 */
 export function stepToken(
   deps: MachineDeps,
   machineId: string,
   stepId: string,
 ): MachineTokenResponse {
-  const { db } = deps;
-  const stepRow = ownedStep(deps, machineId, stepId);
-  const buildRow = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
-  if (!buildRow) throw new NotFoundError(`build ${stepRow.buildId}`);
-  const todoRow = db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
-  if (!todoRow) throw new NotFoundError(`todo ${buildRow.todoId}`);
-  const agentRow = agentForStep(deps, todoRow, stepRow.kind);
-  if (!agentRow?.provider || !agentRow.modelId) return { provider: null, git: null };
-
-  const providerRow = db
-    .select()
-    .from(provider)
-    .where(and(eq(provider.teamId, todoRow.teamId), eq(provider.providerId, agentRow.provider)))
-    .get();
-  const config: ProviderConfig = providerRow
+  ownedStep(deps, machineId, stepId);
+  const bundle = resolveStepCredentials({ db: deps.db, box: deps.box }, stepId);
+  // provider 行为空（preset 目录形态）时回退 agent.provider 直投 api_key kind。
+  const stepRow = deps.db.select().from(step).where(eq(step.id, stepId)).get();
+  const buildRow = stepRow
+    ? deps.db.select().from(build).where(eq(build.id, stepRow.buildId)).get()
+    : undefined;
+  const todoRow = buildRow
+    ? deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get()
+    : undefined;
+  const agentRow = stepRow && todoRow ? agentForStep(deps, todoRow, stepRow.kind) : null;
+  const provider: ProviderConfig | null = bundle.provider
     ? {
-        kind: 'http', // custom 端点（r3 §2 记录形状 kind:"custom" → 缝 kind 投影）
-        providerId: providerRow.providerId,
-        label: providerRow.label,
-        baseUrl: providerRow.baseUrl,
-        api: providerRow.api,
-        authHeader: providerRow.authHeader,
-        models: providerRow.models,
-        // apiKey：SecretBox 密文解密归 M2c；当前仅无 key 网关形态可用。
+        kind: 'http', // custom 端点（baseUrl 在位；r3 §2 记录形状投影）
+        providerId: bundle.provider.providerId,
+        label: bundle.provider.label,
+        baseUrl: bundle.provider.baseUrl,
+        api: bundle.provider.api,
+        authHeader: bundle.provider.authHeader,
+        models: bundle.provider.models,
+        ...(bundle.provider.apiKey !== null ? { apiKey: bundle.provider.apiKey } : {}),
       }
-    : {
-        kind: 'api_key', // preset provider（38 目录，records/provider.ts）
-        providerId: agentRow.provider,
-      };
-  return { provider: config, git: null };
+    : agentRow?.provider
+      ? { kind: 'api_key', providerId: agentRow.provider } // preset（38 目录）无 custom 行
+      : null;
+  return { provider, env: bundle.env, git: bundle.git };
 }
 
 // —— upload-urls（预签名产物上传，r3 §1.6；self-host = server 自出一次性

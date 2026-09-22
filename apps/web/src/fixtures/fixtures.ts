@@ -7,6 +7,8 @@
 
 import type {
   ApiKeyRecord,
+  BranchInfoContent,
+  BuildOverlayContent,
   ChangesContent,
   ChiefContent,
   ChiefExample,
@@ -14,10 +16,14 @@ import type {
   ChiefThreadRef,
   DocBlock,
   FixtureSet,
+  OverlayState,
   ProjectContent,
+  ResourcesContent,
+  RunHistoryRow,
   ScheduleRecord,
   TeamContent,
   TodoRecord,
+  TokenUsageContent,
   TranscriptItem,
 } from './records.js';
 
@@ -34,6 +40,35 @@ export const MACHINE_NAME = 'xmonsMac-3574.local';
 export const MACHINE_ID = 'TlZ2sSD4EJCxjNJqVhdo_';
 export const R7_BUILD_ID = '01a0c26e-23ea-734f-9847-cf9cdbce7802';
 export const R7_BUILD_BRANCH = `tds/conv-${R7_BUILD_ID}`;
+/** Target commit of the probe's build branch (r7 31 分支与PR overlay). */
+export const R7_TARGET_COMMIT = '2cceb9dbf7a8';
+
+/** Token 用量 overlay of probe #9 (r7 30): cumulative-run calibre per r7
+ *  §4.1.6 — the dialog totals the whole conversation, the 运行历史 row
+ *  counts single runs (38.3k there vs 82.9k here). */
+export const PROBE_TOKEN_USAGE: TokenUsageContent = {
+  total: '82.9k',
+  model: 'r3-gw/claude-sonnet-5',
+  modelTotal: '82.9k',
+  input: '12',
+  output: '854',
+  cacheRead: '54.2k',
+  cacheWrite: '27.8k',
+};
+
+/** 分支与 PR overlay of probe #9 (r7 31), sync tab as captured. */
+export const PROBE_BRANCH_INFO: BranchInfoContent = {
+  branch: R7_BUILD_BRANCH,
+  commit: R7_TARGET_COMMIT,
+  machine: MACHINE_NAME,
+  directory: '~/preview/project',
+};
+
+/** 运行历史 overlay of probe #9 (r7 32): single-row state, `重跑` is a
+ *  hover-only control and absent from the capture (r7 §4.1.5). */
+export const PROBE_RUN_HISTORY: RunHistoryRow[] = [
+  { label: '第 1 次运行', meta: '12 分钟前 · 38.3k tokens', status: 'current' },
+];
 
 /** Timestamp helper: absolute date at +08:00, whole minutes. */
 export const at = (date: string, h: number, m: number) =>
@@ -164,8 +199,32 @@ export const projectContent: ProjectContent = {
   hosted: true,
   defaultBranch: 'main',
   description: null,
-};
-
+}; /** Client-created todo of the fixture phase (#66 new-task dialog): lands
+ *  in 待开始 with the 刚刚 label against the fixture clock (r2 §4.2/§5.2).
+ *  Record shape lives here with every other TodoRecord factory. */
+export function localTodo(seqNum: number, title: string, now: number): TodoRecord {
+  return {
+    id: `local-${seqNum}`,
+    teamId: TEAM_ID,
+    projectId: PROJECT_ID,
+    title,
+    spec: title,
+    phase: 'todo',
+    phaseAt: now,
+    seqNum,
+    orderIndex: 0,
+    tagIds: [],
+    assignment: null,
+    agent: null,
+    latestBuildId: null,
+    lastRunAt: null,
+    hasChanges: false,
+    hasPlan: false,
+    buildHistory: [],
+    sourceTodo: null,
+    v: 2,
+  };
+}
 /** Board default: only the r3 legacy pair (r7 01/35). Captured before the
  *  probe existed, ~13:10–13:21. Carries the project repo surface and an
  *  empty schedule list so the #71 routes also render in scenario-blind
@@ -305,7 +364,7 @@ const PROBE_PLAN_DOC: DocBlock[] = [
     kind: 'bullet',
     segments: [
       { text: '执行 ' },
-      { text: 'tail -n 3 README.md', code: true },
+      { text: 'tail -n 3 README.md', style: 'code' },
       {
         text: ' 确认最后一行为 "r7 rebaseline probe",且原有的 "r6 rebaseline probe" 一行保留在其上一行。',
       },
@@ -315,7 +374,7 @@ const PROBE_PLAN_DOC: DocBlock[] = [
     kind: 'bullet',
     segments: [
       { text: '执行 ' },
-      { text: 'git diff README.md', code: true },
+      { text: 'git diff README.md', style: 'code' },
       { text: ' 确认改动仅为新增一行,未影响其他行。' },
     ],
   },
@@ -383,10 +442,14 @@ const PROBE_BUILD_RESULT: TranscriptItem = {
  *  `edit README.md` + the verification `bash …` pill). The bash label is
  *  also the 26d streaming row's 调用工具 text — the capture runs it to
  *  the chat edge with an ellipsis. */
-const PROBE_TOOL_PILLS = [
+export const PROBE_TOOL_PILLS = [
   'edit README.md',
   'bash cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && tail -n 3 README.md && echo …',
 ];
+
+/** Streaming-row tool label of the 26d capture — chrome carried inside the
+ *  fixture (frozen capture text); the en dict keys on this exact value. */
+export const PROBE_TOOL_CALL_LABEL = `调用工具：${PROBE_TOOL_PILLS[1]}`;
 
 /** Tool-call group row of the execution round (r7 27 collapsed `完成
  *  19s ▸`; r7 28 expanded with pills + 收起). */
@@ -403,7 +466,7 @@ const PROBE_MERGE_ROUND: TranscriptItem[] = [
     kind: 'robot',
     paragraphs: [
       [
-        { text: 'git merge origin/main', code: true },
+        { text: 'git merge origin/main', style: 'code' },
         { text: ' 结果为 "Already up to date"，无需处理冲突。' },
       ],
     ],
@@ -430,11 +493,11 @@ const LEGACY_REVIEW_TRANSCRIPT: TranscriptItem[] = [
     paragraphs: [
       [
         { text: 'README.md 中已存在这行内容（' },
-        { text: 'r3 lifecycle probe', code: true },
+        { text: 'r3 lifecycle probe', style: 'code' },
         { text: '），且历史提交记录显示已有一次' },
       ],
       [
-        { text: 'docs（readme）：append lifecycle probe line', code: true },
+        { text: 'docs（readme）：append lifecycle probe line', style: 'code' },
         { text: ' 的提交完成了这项任务。当前工作区无待提交更改，' },
       ],
       [{ text: '任务已满足，无需重复修改。' }],
@@ -508,7 +571,7 @@ export function detailBuilding(lateCapture: boolean): FixtureSet {
           seconds: 19,
           // full command rides the label; CSS ellipsis cuts it at the
           // chat edge exactly like the capture
-          label: `调用工具：${PROBE_TOOL_PILLS[1]}`,
+          label: PROBE_TOOL_CALL_LABEL,
         },
       ]
     : [{ kind: 'streaming', seconds: 3, label: '处理中...' }];
@@ -570,6 +633,128 @@ export const detailLegacy: FixtureSet = {
   detail: { transcript: LEGACY_REVIEW_TRANSCRIPT },
 };
 
+/** Overlay payloads of the r3 legacy #1 build as the r8 78–80 dark captures
+ *  froze them (issue #68): probe #9 no longer exists on the live account, so
+ *  the dark overlay pairs bind to this todo's own build data. #1 re-ran on
+ *  2026-09-22 18:30 (schedule trigger), which replaced the r7 38 surface:
+ *  new run stamp, four-run history, a real changeset, no awaiting-reply. */
+const LEGACY_TOKEN_USAGE: TokenUsageContent = {
+  total: '66.1k',
+  model: 'r3-gw/claude-sonnet-5',
+  modelTotal: '66.1k',
+  input: '10',
+  output: '424',
+  cacheRead: '52.3k',
+  cacheWrite: '13.4k',
+};
+
+const LEGACY_BRANCH_INFO: BranchInfoContent = {
+  // capture 79 truncates the branch after `2488`; the tail is unobservable
+  // and only needs to keep the mono row overflowing at the same glyph
+  branch: 'tds/conv-01a0c8aa-9e64-742b-acbd-2488a1b2c3d4',
+  commit: 'f3ce121ba492',
+  machine: MACHINE_NAME,
+  directory: '~/preview/project',
+};
+
+const LEGACY_RUN_HISTORY: RunHistoryRow[] = [
+  { label: '第 4 次运行', meta: '6 小时前 · 66.1k tokens', status: 'current' },
+  { label: '第 3 次运行', meta: '3 天前 · Cancelled', status: 'failed' },
+  { label: '第 2 次运行', meta: '3 天前', status: 'done' },
+  { label: '第 1 次运行', meta: '4 天前 · Machine offline', status: 'failed' },
+];
+
+/** r3 legacy #2 overlay payload — [推断]: no capture ever opened an overlay
+ *  on this build; the values exist so the done card's branch icon opens a
+ *  dialog instead of dead-clicking. No parity row rides them. */
+const LEGACY2_OVERLAY: BuildOverlayContent = {
+  token: {
+    total: '41.7k',
+    model: 'r3-gw/claude-sonnet-5',
+    modelTotal: '41.7k',
+    input: '9',
+    output: '388',
+    cacheRead: '31.6k',
+    cacheWrite: '9.4k',
+  },
+  branch: {
+    branch: 'tds/conv-r3-legacy-2',
+    commit: 'b7e1f0a9c4d2',
+    machine: MACHINE_NAME,
+    directory: '~/preview/project',
+  },
+  runs: [{ label: '第 1 次运行', meta: '2 天前 · 41.7k tokens', status: 'done' }],
+};
+
+/** r3 legacy #1 as of the r8 dark captures (2026-09-23): review phase,
+ *  schedule-triggered run of 2026-09-22 18:30, single-paragraph result. */
+const legacyNow: TodoRecord = {
+  ...legacyReview,
+  phaseAt: at('2026-09-22', 18, 30),
+  lastRunAt: at('2026-09-22', 18, 30),
+  hasChanges: true,
+  hasPlan: true,
+  awaitingReply: false,
+  buildHistory: [
+    { buildId: 'r3-conv-legacy-1', createdAt: at(R3_DAY, 13, 5) },
+    { buildId: 'r3-conv-legacy-1b', createdAt: at('2026-09-22', 18, 30) },
+  ],
+};
+
+/** Two synthetic confirm-phase todos: the dark captures show the sidebar
+ *  看板 badge at 2 (live board had two confirm cards); the detail route
+ *  renders nothing of them but the badge. */
+const darkBadgeFillers: TodoRecord[] = [1, 2].map((n) => ({
+  ...legacyNow,
+  id: `dark-badge-filler-${n}`,
+  phase: 'confirm',
+}));
+
+const LEGACY_NOW_TRANSCRIPT: TranscriptItem[] = [
+  { kind: 'run', at: '昨天 18:30', machine: MACHINE_NAME },
+  { kind: 'scheduled' },
+  {
+    kind: 'user',
+    text: '开始执行任务',
+    seq: 1,
+    title: '在 README.md 末尾追加一行「r3 lifecycle probe」',
+  },
+  {
+    kind: 'robot',
+    paragraphs: [[{ text: '已在 README.md 末尾追加了一行「r3 lifecycle probe」。' }]],
+  },
+  { kind: 'elapsed', seconds: 25 },
+];
+
+/** Dark capture set (r8 78–81): legacy #1's current surface with an overlay
+ *  open; `chiefUnread` reproduces the FAB badge the captures carry. */
+export function detailLegacyNow(overlay: OverlayState['kind']): FixtureSet {
+  return {
+    todos: [legacyNow, ...darkBadgeFillers],
+    now: at('2026-09-23', 0, 13),
+    chiefUnread: 1,
+    detail: { transcript: LEGACY_NOW_TRANSCRIPT, changes: probeChanges(false) },
+    overlay: { kind: overlay },
+  };
+}
+
+/** Build-scoped overlay display data per todo (issue #68): the dialog
+ *  payloads are not record fields (02 §6.2), so the fixture layer maps the
+ *  captured builds — probe #9 (r7 30/31/32) and r3 legacy #1 (r8 78–80) —
+ *  plus one [推断] set for legacy #2 so its card's branch icon is not a
+ *  dead control; no parity row rides the [推断] values. */
+export function overlayContent(todoId: string): BuildOverlayContent | null {
+  if (todoId === PROBE_ID) {
+    return { token: PROBE_TOKEN_USAGE, branch: PROBE_BRANCH_INFO, runs: PROBE_RUN_HISTORY };
+  }
+  if (todoId === legacyReview.id) {
+    return { token: LEGACY_TOKEN_USAGE, branch: LEGACY_BRANCH_INFO, runs: LEGACY_RUN_HISTORY };
+  }
+  if (todoId === legacyDone.id) {
+    return LEGACY2_OVERLAY;
+  }
+  return null;
+}
 // ---- issue #71: schedules + project route sets ----
 
 /** r3 93 list card: the once rule built in r3 §9 (fired 14:30, todo #1 went
@@ -650,6 +835,40 @@ export const projectTasksEmpty: FixtureSet = {
   now: r7(13, 14),
   project: projectContent,
   projectTab: 'tasks',
+}; /** Resource surfaces (r7 06–10, issue #69): the r3 session left one skill,
+ *  one MCP server, the online r3 machine and a custom gateway on the free
+ *  team, so the captures show populated rows rather than empty states
+ *  (secrets excepted — its empty state is the capture). Row content is
+ *  verbatim from the bitmaps; `2 天前` on the MCP row is the capture's own
+ *  relative label (created on the r3 day), carried verbatim like the
+ *  board's relative labels. */
+const RESOURCES: ResourcesContent = {
+  skills: [{ name: 'r3-probe-skill', description: 'R3 盘点测试技能' }],
+  mcpServers: [
+    {
+      name: 'r3-mcp',
+      kind: '远程（HTTP）',
+      url: 'https://example.invalid/mcp',
+      ago: '2 天前',
+    },
+  ],
+  machines: [
+    {
+      hosted: true,
+      name: 'Todos 托管机器',
+      description: '随时在线，构建速度快。空闲自动休眠，仅在运行时消耗积分。',
+      pill: '未启用',
+    },
+    {
+      name: MACHINE_NAME,
+      sub: `…${MACHINE_ID.slice(-8)} · max 3`,
+      online: true,
+    },
+  ],
+  providers: [
+    { name: 'Todos（内置）', models: '8 模型', pill: '未启用' },
+    { name: 'R3 网关', models: '12 模型', custom: true },
+  ],
 };
 
 // ── Chief surfaces (issue #72, r5 100–116) ───────────────────────────────
@@ -869,4 +1088,346 @@ export const apiKeysCreated: FixtureSet = {
   todos: boardDefault.todos,
   now: boardDefault.now,
   apiKeys: { keys: [API_KEY_CREATED] },
+}; /* ---- r8 overlay batch (#66): dark captures 78–81, shot 2026-09-22
+   23:41–23:45 on the live space. The board behind them carries the
+   session's own probe #16 plus the concurrent r8-dynamic ticket's #15
+   and its #11–#14 leftovers; all transcribed off the captures, never
+   touched on the live space. ---- */
+
+/** r8 capture day. */
+export const R8_DAY = '2026-09-22';
+/** r8 capture-day timestamp. */
+export const r8 = (h: number, m: number) => at(R8_DAY, h, m);
+
+/** r8-dynamic ticket probe #15 (concurrent session, left untouched):
+ *  planning while 54 shot, confirm by 57. */
+function dyn15(phase: TodoRecord['phase']): TodoRecord {
+  return {
+    id: 'r8-dynamic-15',
+    teamId: TEAM_ID,
+    projectId: PROJECT_ID,
+    title: '在 README.md 末尾追加一行「r8 dynamic probe」',
+    spec: '在 README.md 末尾追加一行「r8 dynamic probe」',
+    phase,
+    phaseAt: r8(23, 39),
+    seqNum: 15,
+    orderIndex: 0,
+    tagIds: [],
+    assignment: { agentId: R3_BUILDER.id },
+    agent: R3_BUILDER,
+    latestBuildId: 'r8-dynamic-conv-15',
+    lastRunAt: r8(23, 39),
+    hasChanges: false,
+    hasPlan: false,
+    buildHistory: [{ buildId: 'r8-dynamic-conv-15', createdAt: r8(23, 39) }],
+    sourceTodo: null,
+    v: 2,
+  };
+}
+
+/** r8-dynamic ticket's failed #12 (执行中 column, 重试 button, 5 小时前). */
+const dyn12Failed: TodoRecord = {
+  id: 'r8-dynamic-12',
+  teamId: TEAM_ID,
+  projectId: PROJECT_ID,
+  title: 'README 文档目录 + 新建 CHANGELOG.md + scripts/hello.js',
+  spec: 'README 文档目录 + 新建 CHANGELOG.md + scripts/hello.js',
+  phase: 'failed',
+  phaseAt: r8(18, 44),
+  seqNum: 12,
+  orderIndex: 0,
+  tagIds: [],
+  assignment: { agentId: R3_BUILDER.id },
+  agent: R3_BUILDER,
+  latestBuildId: 'r8-dynamic-conv-12',
+  lastRunAt: r8(18, 44),
+  hasChanges: false,
+  hasPlan: false,
+  buildHistory: [{ buildId: 'r8-dynamic-conv-12', createdAt: r8(18, 40) }],
+  sourceTodo: null,
+  v: 3,
 };
+
+/** r8-dynamic ticket's review/done leftovers (#13 待验收, #14/#11 已完成;
+ *  #1/#2 are the r3 legacy pair, still on the board). */
+function dynLeftover(
+  seq: number,
+  title: string,
+  phase: TodoRecord['phase'],
+  hoursAgo: number,
+): TodoRecord {
+  return {
+    id: `r8-dynamic-${seq}`,
+    teamId: TEAM_ID,
+    projectId: PROJECT_ID,
+    title,
+    spec: title,
+    phase,
+    phaseAt: r8(23 - hoursAgo, 44),
+    seqNum: seq,
+    orderIndex: 0,
+    tagIds: [],
+    assignment: { agentId: R3_BUILDER.id },
+    agent: R3_BUILDER,
+    latestBuildId: `r8-dynamic-conv-${seq}`,
+    lastRunAt: r8(23 - hoursAgo, 44),
+    hasChanges: phase === 'review' || phase === 'done',
+    hasPlan: phase === 'review',
+    buildHistory: [{ buildId: `r8-dynamic-conv-${seq}`, createdAt: r8(23 - hoursAgo, 40) }],
+    sourceTodo: null,
+    v: 3,
+  };
+}
+
+const R8_LEFTOVERS = [
+  dynLeftover(13, '给 README.md 增加「项目结构」一节并链接贡献指南', 'review', 6),
+  dynLeftover(14, '给 index.html 的页面标题加上项目名后缀', 'done', 6),
+  dynLeftover(11, '编写 CONTRIBUTING.md 贡献指南', 'done', 6),
+];
+
+/** This ticket's probe #16 (created 23:42, deleted 23:45 — zero residue). */
+function probe16(phase: TodoRecord['phase'], phaseAt: number): TodoRecord {
+  return {
+    id: 'u_B5ngeVOlKdKbG_4H9Cl',
+    teamId: TEAM_ID,
+    projectId: PROJECT_ID,
+    title: 'r8-overlay-dark 探针',
+    spec: 'r8-overlay-dark 探针',
+    phase,
+    phaseAt,
+    seqNum: 16,
+    orderIndex: 0,
+    tagIds: [],
+    assignment: phase === 'todo' ? null : { agentId: R3_BUILDER.id },
+    agent: phase === 'todo' ? null : R3_BUILDER,
+    latestBuildId: phase === 'todo' ? null : R8_BUILD_ID,
+    lastRunAt: phase === 'todo' ? null : r8(23, 43),
+    hasChanges: false,
+    hasPlan: phase === 'confirm',
+    buildHistory: phase === 'todo' ? [] : [{ buildId: R8_BUILD_ID, createdAt: r8(23, 43) }],
+    sourceTodo: null,
+    v: 2,
+  };
+}
+
+/** r8 build id of probe #16 (synthetic: the record never survived the
+ *  session, same precedent as r7 probe #10). */
+const R8_BUILD_ID = 'r8-conv-overlay-16';
+
+/** Probe #16 plan document, verbatim from the 56 doc pane: markdown
+ *  headings + file/commit reference spans (blue mono chips). */
+const R8_PLAN_DOC: DocBlock[] = [
+  { kind: 'head', segments: [{ text: 'Context' }] },
+  {
+    kind: 'para',
+    segments: [
+      { text: 'r3-lifecycle 是一个纯静态单页仓库（' },
+      { text: 'index.html', style: 'link' },
+      { text: ' + ' },
+      { text: 'README.md', style: 'link' },
+      { text: '，无构建/测试/CI）。历史上每一轮 rN 探针任务（r3、r5b、r6、r7，见 ' },
+      { text: 'README.md', style: 'link' },
+      { text: ' 现有内容及对应 commit ' },
+      { text: '2f47b62', style: 'link' },
+      { text: '、' },
+      { text: '386b8e4', style: 'link' },
+      { text: '、' },
+      { text: '1cecf83', style: 'link' },
+      { text: '、' },
+      { text: '2cceb9d', style: 'link' },
+      { text: '）都遵循同一套路：在 ' },
+      { text: 'README.md', style: 'link' },
+      { text: ' 末尾追加一行 "' },
+      { text: '<探针名> probe', style: 'link' },
+      { text: '" 文本，作为该轮次生命周期/rebaseline 探针的可验证产物，commit message 统一为 ' },
+      { text: 'docs(readme): append <探针名> probe line', style: 'link' },
+      { text: '。本次任务 ' },
+      { text: 'r8-overlay-dark 探针', style: 'link' },
+      {
+        text: ' 的 Spec 未给出具体文案，按同一约定执行：追加对应的第 r8 轮探针行，保持仓库内探针记录的连续性。',
+      },
+    ],
+  },
+  { kind: 'head', segments: [{ text: '假设' }] },
+  {
+    kind: 'bullet',
+    segments: [
+      { text: 'Spec 为空，按仓库既有 r3/r5b/r6/r7 探针的命名与格式惯例，在 ' },
+      { text: 'README.md', style: 'link' },
+      { text: ' 末尾新增一行：' },
+      { text: 'r8 overlay-dark probe', style: 'link' },
+      { text: '（对应标题中的 ' },
+      { text: 'r8-overlay-dark', style: 'link' },
+      { text: '，与既有行如 ' },
+      { text: 'r7 rebaseline probe', style: 'link' },
+      { text: ' 的措辞风格一致）。' },
+    ],
+  },
+  {
+    kind: 'bullet',
+    segments: [
+      { text: '不改动 ' },
+      { text: 'index.html', style: 'link' },
+      { text: '、' },
+      { text: 'CONTRIBUTING.md', style: 'link' },
+      { text: '，本轮探针只涉及 ' },
+      { text: 'README.md', style: 'link' },
+      { text: '。' },
+    ],
+  },
+  { kind: 'head', segments: [{ text: 'Changes' }] },
+  {
+    kind: 'bullet',
+    segments: [
+      { text: 'README.md', style: 'link' },
+      { text: '：在文件末尾追加一行 ' },
+      { text: 'r8 overlay-dark probe', style: 'link' },
+      { text: '，与现有 5 行探针记录（' },
+      { text: 'r3 lifecycle probe', style: 'link' },
+      { text: ' 等）保持相同的纯文本追加方式，不改动已有内容、不加空行。' },
+    ],
+  },
+  { kind: 'head', segments: [{ text: 'Verification' }] },
+  {
+    kind: 'bullet',
+    segments: [
+      { text: 'git diff README.md', style: 'code' },
+      { text: ' 确认只新增一行 ' },
+      { text: 'r8 overlay-dark probe', style: 'link' },
+      { text: '，无其他改动。' },
+    ],
+  },
+  {
+    kind: 'bullet',
+    segments: [
+      { text: 'git log --oneline -1', style: 'code' },
+      { text: ' 确认提交信息符合约定：' },
+      { text: 'docs(readme): append r8 overlay-dark probe line', style: 'link' },
+      { text: '。' },
+    ],
+  },
+  {
+    kind: 'bullet',
+    segments: [
+      {
+        text: '用变更审阅（change review）里 README.md 的预览按钮确认渲染正常、新行显示在列表末尾。',
+      },
+    ],
+  },
+];
+
+/** Probe #16 transcript at confirm (r8 80): stamp, start bubble with the
+ *  taskline, the agent's spec-empty note, plan card `完成 2m 41s`. */
+const R8_CONFIRM_TRANSCRIPT: TranscriptItem[] = [
+  { kind: 'run', at: '23:43', machine: MACHINE_NAME },
+  { kind: 'user', text: '开始执行任务', seq: 16, title: 'r8-overlay-dark 探针' },
+  {
+    kind: 'robot',
+    paragraphs: [
+      [
+        {
+          text: '该任务的 Spec 为空，只有标题「r8-overlay-dark 探针」。参照仓库里 r3~r7 同类型探针 commit（如 ',
+        },
+        { text: 'docs(readme): append r7 rebaseline probe line', style: 'code' },
+        {
+          text: '）的固定套路——在 README.md 末尾追加一行与探针名对应的文本——我按同一约定生成本次改动的具体文案，并在计划中的「假设」里写明。',
+        },
+      ],
+    ],
+  },
+  {
+    kind: 'plan',
+    title: '方案 · v1',
+    preview:
+      'Context r3-lifecycle 是一个纯静态单页仓库（index.html + README.md，无构建/测试/CI）。历史上每一轮 rN 探针任务（r3、r5b、r6、r7，见 README.md 现有内容及对应 commit 2f47b62、386b8e4、1cecf83、2cceb9d）都遵循…',
+    seconds: 161,
+  },
+];
+
+/** r8 78: board at 23:41 — #15 planning (streaming card behind the
+ *  dialog), #12 failed with 重试, the legacy pair in 待验收/已完成 plus
+ *  the dynamic ticket's done leftovers. */
+export const boardR8Overlay: FixtureSet = {
+  todos: [dyn15('planning'), dyn12Failed, legacyReview, ...R8_LEFTOVERS, legacyDone],
+  now: r8(23, 44),
+  usageNav: true,
+};
+
+/** r8 81: probe #16 fresh detail at 23:43 (#15 already confirm → badge 3). */
+export const detailR8Fresh: FixtureSet = {
+  todos: [
+    probe16('todo', r8(23, 42)),
+    dyn15('confirm'),
+    dyn12Failed,
+    legacyReview,
+    ...R8_LEFTOVERS,
+    legacyDone,
+  ],
+  now: r8(23, 43),
+  usageNav: true,
+};
+
+/** r8 82: probe #17 (created 2026-09-23 00:34, deleted 00:36 — zero
+ *  residue), fresh detail under the delete confirm. Badge 2 in the
+ *  capture → #15 already out of confirm by then; the fresh surface keeps
+ *  this pair clear of the doc-pane/taskline drift the 79/80 pairs hit. */
+const probe17Fresh: TodoRecord = {
+  id: 'r8-delete-17',
+  teamId: TEAM_ID,
+  projectId: PROJECT_ID,
+  title: 'r8-delete-dark 探针',
+  spec: 'r8-delete-dark 探针',
+  phase: 'todo',
+  phaseAt: at('2026-09-23', 0, 34),
+  seqNum: 17,
+  orderIndex: 0,
+  tagIds: [],
+  assignment: null,
+  agent: null,
+  latestBuildId: null,
+  lastRunAt: null,
+  hasChanges: false,
+  hasPlan: false,
+  buildHistory: [],
+  sourceTodo: null,
+  v: 2,
+};
+
+export const detailR8DeleteFresh: FixtureSet = {
+  todos: [probe17Fresh, dyn15('done'), dyn12Failed, legacyReview, ...R8_LEFTOVERS, legacyDone],
+  now: at('2026-09-23', 0, 35),
+  usageNav: true,
+};
+
+/** r8 80/79: probe #16 confirm detail at 23:44 (badge 4), the surface the
+ *  更多 menu and the delete confirm sit over. */
+export function detailR8Confirm(): FixtureSet {
+  return {
+    todos: [
+      probe16('confirm', r8(23, 43)),
+      dyn15('confirm'),
+      dyn12Failed,
+      legacyReview,
+      ...R8_LEFTOVERS,
+      legacyDone,
+    ],
+    now: r8(23, 44),
+    usageNav: true,
+    detail: { transcript: R8_CONFIRM_TRANSCRIPT, doc: R8_PLAN_DOC },
+  };
+}
+
+export const resourcesDefault: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  resources: RESOURCES,
+};
+
+/** 新建技能 route (r8 79/80, issue #69): same team state as the resource
+ *  rows, with the import tab the capture sits on. */
+export function resourcesImport(tab: 'folder' | 'github'): FixtureSet {
+  return {
+    ...resourcesDefault,
+    resources: { ...RESOURCES, importTab: tab },
+  };
+}

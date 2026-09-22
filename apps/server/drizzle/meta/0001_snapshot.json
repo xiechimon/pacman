@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "03bc7e59-2a99-46ee-bf90-785968cc4bab",
+  "id": "277f6156-653f-4adf-a5cb-5e33f60d29a0",
   "prevId": "7c2c6341-20a3-4643-acb1-bc45cd155173",
   "tables": {
     "agent": {
@@ -677,13 +677,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "apiKeyId": {
-          "name": "apiKeyId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "latestCliVersion": {
           "name": "latestCliVersion",
           "type": "text",
@@ -1042,6 +1035,20 @@
         },
         "repoKind": {
           "name": "repoKind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "repoName": {
+          "name": "repoName",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "githubRepo": {
+          "name": "githubRepo",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -1444,27 +1451,6 @@
           "notNull": true,
           "autoincrement": false,
           "default": "'pending'"
-        },
-        "sessionId": {
-          "name": "sessionId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "claimedAt": {
-          "name": "claimedAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "lastHeartbeatAt": {
-          "name": "lastHeartbeatAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         },
         "createdAt": {
           "name": "createdAt",

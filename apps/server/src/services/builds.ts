@@ -8,7 +8,13 @@
 // 机器侧执行（claim/心跳/phase 推进 planning→confirm→…）归 M3；本层只持有
 // 队列与人工触发的 phase 流转。
 
-import type { Assignment, BuildRecord, StepRecord, TriggerSource } from '@pacman/shared';
+import type {
+  Assignment,
+  BuildRecord,
+  StepRecord,
+  TriggerSource,
+  UserRecord,
+} from '@pacman/shared';
 import { asc, eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { build, message, step, todo } from '../db/schema.js';
@@ -24,6 +30,8 @@ export interface BuildDeps {
   /** 机器 wake 通道（入队即唤醒 claim 长轮询 + machine stream，02 §5.4）；
    * 缺省 = 无机器面（M2a 编排测试形态）。 */
   machineHub?: MachineWakeHub;
+  /** 通知收件人（completeStep 经 setTodoPhase 漏斗发三事件，02 §9.1）。 */
+  user: UserRecord;
 }
 
 type BuildRow = typeof build.$inferSelect;
@@ -101,7 +109,9 @@ export function startBuilds(
     todoIds: string[];
     assignment: Assignment;
     withPlan: boolean;
-    triggerSource?: TriggerSource; // 默认 user；chief/schedule 触发面归 M4/M2b
+    triggerSource?: TriggerSource; // 默认 user；schedule = 定时触发（services/scheduler.ts）；chief 面归 M4
+    /** 钉选机器（schedule.machineId 透传，null = 自动，r3 §9/02 §6.2）。 */
+    pinnedMachineId?: string | null;
   },
 ): BuildRecord[] {
   const triggerSource = input.triggerSource ?? 'user';
@@ -123,7 +133,7 @@ export function startBuilds(
         withPlan: input.withPlan,
         prevPhase: todoRecord.phase,
         triggerSource,
-        pinnedMachineId: null,
+        pinnedMachineId: input.pinnedMachineId ?? null,
         planDocId: null,
         errorMessage: null,
         prUrl: null,

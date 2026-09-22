@@ -152,10 +152,13 @@ export const machineToolBodySchema = toolCallRecordSchema;
  * key + 托管 repo git 凭证，daemon 内存持有不落盘常驻）。响应形状 [设计]
  * （端点名 + git fetch 无凭证失败旁证，r3 §1.6）。 */
 export const machineTokenResponseSchema = z.object({
-  /** 该步 Agent 的 provider 配置（apiKey 内存态；SecretBox 解密面归 M2c，
-   * 无 key 网关可留空 = r3 §2 表单语义）。 */
+  /** 该步 Agent 的 provider 配置（apiKey 内存态经 SecretBox 解密下发，02 §8
+   * 运行时层；无 key 网关可留空 = r3 §2 表单语义）。 */
   provider: providerConfigSchema.nullable(),
-  /** 托管 repo git 凭证（02 §3：per-step 注入；GitHub 形态归 M2b）。 */
+  /** 团队 Secret → 任务 shell 环境变量（仅 Agent 授权集，02 §8/r2 权限开关；
+   * 服务端解析契约 = M2c services/credentials.ts）。 */
+  env: z.record(z.string(), z.string()),
+  /** 托管 repo git 凭证（02 §3/§5.4：per-step 注入；接线随 git 面）。 */
   git: z
     .object({
       username: z.string(),

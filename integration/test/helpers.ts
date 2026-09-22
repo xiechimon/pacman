@@ -2,7 +2,10 @@
 // （provider 指向 stub LLM + agent + bootstrap apiKey）。三端互不依赖纪律
 // 不破：本 harness 以相对路径消费 server/daemon 源码，独立成包。
 
+import { mkdtempSync, rmSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { serve } from '@hono/node-server';
 import { eq } from 'drizzle-orm';
 import { createApp } from '../../apps/server/src/app.js';
@@ -13,6 +16,8 @@ import {
   todo as todoTable,
 } from '../../apps/server/src/db/schema.js';
 import { seed } from '../../apps/server/src/db/seed.js';
+import { createEphemeralSecretBox } from '../../apps/server/src/lib/secret-box.js';
+import { createApiKey } from '../../apps/server/src/services/api-keys.js';
 import { TeamStreamHub } from '../../apps/server/src/services/events.js';
 import { MachineWakeHub } from '../../apps/server/src/services/machines.js';
 
@@ -34,21 +39,35 @@ export async function bootRealServer(opts: {
   claimHoldMs?: number;
 }): Promise<RealServer> {
   const db = openMemoryDb();
-  const { user, team, bootstrapApiKey } = seed(db);
-  if (!bootstrapApiKey) throw new Error('bootstrap key expected');
+  const { user, team } = seed(db);
   const hub = new TeamStreamHub();
   const machineHub = new MachineWakeHub();
+  const secretBox = createEphemeralSecretBox();
+  const reposDir = mkdtempSync(join(tmpdir(), 'pacman-it-repos-'));
   const app = createApp({
     db,
     hub,
     machineHub,
+    secretBox,
     user,
     team,
     pingIntervalMs: 3_600_000,
     claimHoldMs: opts.claimHoldMs ?? 1_000,
     uploads: new Map(),
     enrollments: new Map(),
+    reposDir,
   });
+  // 机器注册 key 走 M2c 发行服务面（一次性明文，02 §8）。
+  const issuedKey = createApiKey(
+    { db },
+    {
+      teamId: team.id,
+      name: 'machine-bootstrap',
+      gitAccess: false,
+      mcpAccess: false,
+      toolGrants: { read: [], write: [] },
+    },
+  );
 
   let claims = 0;
   const fetchImpl: typeof app.fetch = (input, init) => {
@@ -99,7 +118,7 @@ export async function bootRealServer(opts: {
   return {
     url,
     teamId: team.id,
-    apiKey: bootstrapApiKey.plain,
+    apiKey: issuedKey.plaintext,
     db,
     claimCount: () => claims,
     todoPhase(todoId: string) {
@@ -110,6 +129,7 @@ export async function bootRealServer(opts: {
         // 长轮询/SSE 连接会挂住 close()——先掐全部活动连接（node:http 面）。
         (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.();
         server.close((err) => (err ? reject(err) : resolve()));
+        rmSync(reposDir, { recursive: true, force: true });
       }),
   };
 }
