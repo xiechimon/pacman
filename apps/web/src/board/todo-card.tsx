@@ -6,7 +6,12 @@
 // placeholder (UserCircle + gray idle badge + 开始 primary — r7 22/22d),
 // review cards gain the amber attention badge (r7 33) on top of the #54
 // states.
+// #58: card click opens `/app/todo/:id` — a stretched link on the title
+// (real <a>, ::after overlay covers the card) so the nested branch/action
+// buttons stay valid independent controls; the current search string rides
+// along so the dev/parity ?scenario= selection survives the navigation.
 
+import { Link, useLocation } from 'react-router';
 import { PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { TodoRecord } from '../fixtures/records.js';
 import {
@@ -43,6 +48,7 @@ export function TodoCard({ todo, now }: TodoCardProps) {
   const action = cardAction(todo);
   const badge = badgeFor(todo);
   const fresh = badge === 'idle';
+  const { search } = useLocation();
   return (
     <article className="todo-card">
       <div className="todo-card-row1">
@@ -54,7 +60,11 @@ export function TodoCard({ todo, now }: TodoCardProps) {
         </button>
       </div>
 
-      <h3 className="todo-card-title">{todo.title}</h3>
+      <h3 className="todo-card-title">
+        <Link className="todo-card-link" to={{ pathname: `/app/todo/${todo.id}`, search }}>
+          {todo.title}
+        </Link>
+      </h3>
 
       <div className="todo-card-bottom">
         <span className="todo-agent-avatar">

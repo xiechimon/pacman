@@ -6,6 +6,9 @@
 // Rows with a baseline are gated at 0.85; rows without one are smoke
 // rows compared against themselves (SSIM must be exactly 1.0), proving
 // the capture → ffmpeg → report pipeline end to end.
+// #58: the build runs with `--mode parity` — the only production-grade
+// build in which the ?scenario= fixture parameter stays live (see
+// apps/web/src/fixtures/scenario.ts); a plain `vite build` ignores it.
 
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -91,8 +94,10 @@ async function captureEntry(entry, browser) {
 }
 
 async function main() {
-  console.log('building apps/web …');
-  run('pnpm', ['--filter', '@pacman/web', 'build']);
+  console.log('building apps/web (mode=parity) …');
+  // --mode parity keeps ?scenario= live in the built bundle (#58 gate);
+  // `pnpm build` alone would produce the scenario-blind production bundle
+  run('pnpm', ['--filter', '@pacman/web', 'exec', 'vite', 'build', '--mode', 'parity']);
 
   console.log('starting preview server …');
   // detached + process-group kill: pnpm wraps vite in a child process, so a

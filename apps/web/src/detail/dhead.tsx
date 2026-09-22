@@ -1,8 +1,11 @@
 // Detail header (issue #56, r7 §3.3): back button, #seq, status chip,
 // centered 文档|聊天 tab group, right icon group (更多/分支与 PR/Token
 // 用量/运行历史 @ pitch 33) and the 50.5×28 primary button.
+// #58: the back button carries the current search string home so the
+// dev/parity ?scenario= selection survives the round trip; the board
+// scroll position is restored by BoardSurface from sessionStorage.
 
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import type { TodoRecord } from '../fixtures/records.js';
 import {
   BarChart3,
@@ -24,9 +27,10 @@ interface DetailHeadProps {
 
 export function DetailHead({ todo, tab, onTab }: DetailHeadProps) {
   const ui = PHASE_UI[todo.phase];
+  const { search } = useLocation();
   return (
     <header className="detail-head">
-      <Link className="detail-back" to="/app" aria-label="返回">
+      <Link className="detail-back" to={{ pathname: '/app', search }} aria-label="返回">
         <ChevronLeft />
       </Link>
       <span className="detail-seq">#{todo.seqNum}</span>
