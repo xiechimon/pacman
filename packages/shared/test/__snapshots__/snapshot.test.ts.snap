@@ -1,0 +1,3490 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`body/封套 schema 快照 > buildStepActionBody > buildStepActionBody.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "const": "revision",
+          "type": "string",
+        },
+        "clientMessageId": {
+          "type": "string",
+        },
+        "feedback": {
+          "type": "string",
+        },
+        "side": {
+          "const": "plan",
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+        "side",
+        "feedback",
+        "clientMessageId",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "const": "confirm",
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+      ],
+      "type": "object",
+    },
+  ],
+}
+`;
+
+exports[`body/封套 schema 快照 > conversationMessagesResponse > conversationMessagesResponse.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activeRun": {
+      "anyOf": [
+        {
+          "additionalProperties": {},
+          "properties": {
+            "phase": {
+              "type": "string",
+            },
+            "tool": {
+              "additionalProperties": false,
+              "properties": {
+                "toolName": {
+                  "type": "string",
+                },
+              },
+              "required": [
+                "toolName",
+              ],
+              "type": "object",
+            },
+          },
+          "required": [
+            "phase",
+          ],
+          "type": "object",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "chips": {},
+    "historyEpoch": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "messages": {
+      "items": {
+        "additionalProperties": {},
+        "properties": {
+          "content": {},
+          "role": {
+            "enum": [
+              "system",
+              "user",
+              "assistant",
+            ],
+            "type": "string",
+          },
+        },
+        "required": [
+          "role",
+          "content",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+    "nextCursor": {},
+    "steerPending": {
+      "items": {},
+      "type": "array",
+    },
+  },
+  "required": [
+    "messages",
+    "chips",
+    "historyEpoch",
+    "steerPending",
+    "activeRun",
+    "nextCursor",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`body/封套 schema 快照 > createTodoBody > createTodoBody.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "spec": {
+      "type": "string",
+    },
+    "title": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "title",
+    "spec",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`body/封套 schema 快照 > daemonJson > daemonJson.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "pid": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "runner": {
+      "const": "cli",
+      "type": "string",
+    },
+    "startedAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+  },
+  "required": [
+    "pid",
+    "startedAt",
+    "runner",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`body/封套 schema 快照 > deviceJson > deviceJson.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "deviceId": {
+      "pattern": "^[0-9a-f]{32}$",
+      "type": "string",
+    },
+  },
+  "required": [
+    "deviceId",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`body/封套 schema 快照 > machineJson > machineJson.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "machineId": {
+      "type": "string",
+    },
+    "serverUrl": {
+      "type": "string",
+    },
+    "teamId": {
+      "type": "string",
+    },
+    "token": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string",
+    },
+  },
+  "required": [
+    "machineId",
+    "token",
+    "teamId",
+    "serverUrl",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`body/封套 schema 快照 > mergeAcceptedResponse > mergeAcceptedResponse.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "delegated": {
+      "const": true,
+      "type": "boolean",
+    },
+  },
+  "required": [
+    "delegated",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`body/封套 schema 快照 > notificationsResponse > notificationsResponse.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "unreadThreadIds": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+  },
+  "required": [
+    "unreadThreadIds",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`body/封套 schema 快照 > patchChiefBody > patchChiefBody.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "agent": {
+      "additionalProperties": false,
+      "properties": {
+        "agentId": {
+          "type": "string",
+        },
+        "thinkingLevel": {
+          "type": [
+            "string",
+            "null",
+          ],
+        },
+      },
+      "required": [
+        "agentId",
+        "thinkingLevel",
+      ],
+      "type": "object",
+    },
+  },
+  "required": [
+    "agent",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`body/封套 schema 快照 > searchResponse > searchResponse.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "agents": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "displayName": {
+            "type": "string",
+          },
+          "id": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "id",
+          "displayName",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+    "projects": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+          },
+          "name": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "id",
+          "name",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+    "todos": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+          },
+          "phase": {
+            "enum": [
+              "todo",
+              "queued",
+              "planning",
+              "confirm",
+              "building",
+              "review",
+              "done",
+              "failed",
+              "closed",
+            ],
+            "type": "string",
+          },
+          "projectName": {
+            "type": "string",
+          },
+          "seqNum": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "title": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "id",
+          "seqNum",
+          "title",
+          "phase",
+          "projectName",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+  },
+  "required": [
+    "todos",
+    "projects",
+    "agents",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`body/封套 schema 快照 > setSecretBody > setSecretBody.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "description": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "name": {
+      "type": "string",
+    },
+    "value": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "name",
+    "value",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`body/封套 schema 快照 > startBuildsBody > startBuildsBody.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "assignment": {
+      "additionalProperties": false,
+      "properties": {
+        "build": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "agentId": {
+                  "type": "string",
+                },
+              },
+              "required": [
+                "agentId",
+              ],
+              "type": "object",
+            },
+            {
+              "type": "null",
+            },
+          ],
+        },
+        "plan": {
+          "anyOf": [
+            {
+              "additionalProperties": false,
+              "properties": {
+                "agentId": {
+                  "type": "string",
+                },
+              },
+              "required": [
+                "agentId",
+              ],
+              "type": "object",
+            },
+            {
+              "type": "null",
+            },
+          ],
+        },
+      },
+      "required": [
+        "plan",
+        "build",
+      ],
+      "type": "object",
+    },
+    "todoIds": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "withPlan": {
+      "type": "boolean",
+    },
+  },
+  "required": [
+    "todoIds",
+    "assignment",
+    "withPlan",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`body/封套 schema 快照 > teamStreamEvent > teamStreamEvent.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "oneOf": [
+    {
+      "additionalProperties": false,
+      "properties": {
+        "seq": {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "type": {
+          "const": "ping",
+          "type": "string",
+        },
+      },
+      "required": [
+        "type",
+        "seq",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "machineId": {
+          "type": "string",
+        },
+        "online": {
+          "type": "boolean",
+        },
+        "type": {
+          "const": "machine_presence",
+          "type": "string",
+        },
+      },
+      "required": [
+        "type",
+        "machineId",
+        "online",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "doc": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "displayName": {
+                      "type": "string",
+                    },
+                    "id": {
+                      "type": "string",
+                    },
+                  },
+                  "required": [
+                    "id",
+                    "displayName",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "assignment": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "build": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "agentId": {
+                              "type": "string",
+                            },
+                          },
+                          "required": [
+                            "agentId",
+                          ],
+                          "type": "object",
+                        },
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                    "plan": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "properties": {
+                            "agentId": {
+                              "type": "string",
+                            },
+                          },
+                          "required": [
+                            "agentId",
+                          ],
+                          "type": "object",
+                        },
+                        {
+                          "type": "null",
+                        },
+                      ],
+                    },
+                  },
+                  "required": [
+                    "plan",
+                    "build",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "buildHistory": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "buildId": {
+                    "type": "string",
+                  },
+                  "createdAt": {
+                    "maximum": 9007199254740991,
+                    "minimum": -9007199254740991,
+                    "type": "integer",
+                  },
+                },
+                "required": [
+                  "buildId",
+                  "createdAt",
+                ],
+                "type": "object",
+              },
+              "type": "array",
+            },
+            "createdBy": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "hasChanges": {
+              "type": "boolean",
+            },
+            "hasPlan": {
+              "type": "boolean",
+            },
+            "id": {
+              "type": "string",
+            },
+            "lastRunAt": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "latestBuildId": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "orderIndex": {
+              "type": "number",
+            },
+            "ownerId": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "phase": {
+              "enum": [
+                "todo",
+                "queued",
+                "planning",
+                "confirm",
+                "building",
+                "review",
+                "done",
+                "failed",
+                "closed",
+              ],
+              "type": "string",
+            },
+            "phaseAt": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer",
+            },
+            "projectId": {
+              "type": "string",
+            },
+            "seqNum": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer",
+            },
+            "sourceBuildId": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "sourceTodo": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "spec": {
+              "type": "string",
+            },
+            "tagIds": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "teamId": {
+              "type": "string",
+            },
+            "title": {
+              "type": "string",
+            },
+            "v": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer",
+            },
+          },
+          "required": [
+            "id",
+            "teamId",
+            "projectId",
+            "title",
+            "spec",
+            "phase",
+            "phaseAt",
+            "seqNum",
+            "orderIndex",
+            "tagIds",
+            "assignment",
+            "agent",
+            "latestBuildId",
+            "lastRunAt",
+            "hasChanges",
+            "hasPlan",
+            "buildHistory",
+            "sourceTodo",
+            "v",
+            "createdBy",
+            "ownerId",
+            "sourceBuildId",
+          ],
+          "type": "object",
+        },
+        "seq": {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "type": {
+          "const": "todo",
+          "type": "string",
+        },
+        "v": {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "type",
+        "seq",
+        "v",
+        "doc",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "doc": {
+          "additionalProperties": false,
+          "properties": {
+            "createdAt": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer",
+            },
+            "diffHash": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "errorMessage": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "id": {
+              "type": "string",
+            },
+            "pinnedMachineId": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "planDocId": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "prNumber": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "prUrl": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "prevPhase": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "todo",
+                    "queued",
+                    "planning",
+                    "confirm",
+                    "building",
+                    "review",
+                    "done",
+                    "failed",
+                    "closed",
+                  ],
+                  "type": "string",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "todoId": {
+              "type": "string",
+            },
+            "triggerSource": {
+              "enum": [
+                "user",
+                "chief",
+                "schedule",
+              ],
+              "type": "string",
+            },
+            "withPlan": {
+              "type": "boolean",
+            },
+          },
+          "required": [
+            "id",
+            "todoId",
+            "withPlan",
+            "prevPhase",
+            "triggerSource",
+            "pinnedMachineId",
+            "planDocId",
+            "errorMessage",
+            "prUrl",
+            "prNumber",
+            "diffHash",
+            "createdAt",
+          ],
+          "type": "object",
+        },
+        "seq": {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "type": {
+          "const": "build",
+          "type": "string",
+        },
+        "v": {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "type",
+        "seq",
+        "v",
+        "doc",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "notification": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "additionalProperties": false,
+              "properties": {
+                "avatarUrl": {
+                  "type": [
+                    "string",
+                    "null",
+                  ],
+                },
+                "name": {
+                  "type": "string",
+                },
+              },
+              "required": [
+                "name",
+                "avatarUrl",
+              ],
+              "type": "object",
+            },
+            "channels": {
+              "items": {
+                "enum": [
+                  "in_app",
+                ],
+                "type": "string",
+              },
+              "type": "array",
+            },
+            "createdAt": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer",
+            },
+            "entityId": {
+              "type": "string",
+            },
+            "entityRef": {
+              "additionalProperties": false,
+              "properties": {
+                "projectId": {
+                  "type": [
+                    "string",
+                    "null",
+                  ],
+                },
+                "seqNum": {
+                  "anyOf": [
+                    {
+                      "maximum": 9007199254740991,
+                      "minimum": -9007199254740991,
+                      "type": "integer",
+                    },
+                    {
+                      "type": "null",
+                    },
+                  ],
+                },
+                "title": {
+                  "type": "string",
+                },
+              },
+              "required": [
+                "title",
+                "projectId",
+                "seqNum",
+              ],
+              "type": "object",
+            },
+            "id": {
+              "type": "string",
+            },
+            "readAt": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "snippet": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "teamId": {
+              "type": "string",
+            },
+            "type": {
+              "enum": [
+                "plan_ready",
+                "build_review",
+                "chief_message",
+              ],
+              "type": "string",
+            },
+            "userId": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "teamId",
+            "userId",
+            "type",
+            "entityId",
+            "entityRef",
+            "agent",
+            "snippet",
+            "id",
+            "readAt",
+            "createdAt",
+            "channels",
+          ],
+          "type": "object",
+        },
+        "type": {
+          "const": "notification",
+          "type": "string",
+        },
+      },
+      "required": [
+        "type",
+        "notification",
+      ],
+      "type": "object",
+    },
+  ],
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > agent > agent.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "avatarUrl": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "description": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "displayName": {
+      "type": "string",
+    },
+    "id": {
+      "type": "string",
+    },
+    "mcpServers": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "modelId": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "provider": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "secrets": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "skills": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "status": {
+      "enum": [
+        "active",
+      ],
+      "type": "string",
+    },
+    "thinkingLevel": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "tools": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+  },
+  "required": [
+    "id",
+    "displayName",
+    "description",
+    "status",
+    "avatarUrl",
+    "provider",
+    "modelId",
+    "thinkingLevel",
+    "tools",
+    "secrets",
+    "skills",
+    "mcpServers",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > agent_memory > agent_memory.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "agentId": {
+      "type": "string",
+    },
+    "content": {
+      "type": "string",
+    },
+    "createdAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "id": {
+      "type": "string",
+    },
+    "projectId": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "sourceBuildId": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "sourceTodoId": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "teamId": {
+      "type": "string",
+    },
+    "title": {
+      "type": "string",
+    },
+    "updatedAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+  },
+  "required": [
+    "id",
+    "agentId",
+    "teamId",
+    "title",
+    "content",
+    "projectId",
+    "sourceTodoId",
+    "sourceBuildId",
+    "createdAt",
+    "updatedAt",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > api_key > api_key.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "gitAccess": {
+      "type": "boolean",
+    },
+    "mcpAccess": {
+      "type": "boolean",
+    },
+    "name": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "toolGrants": {
+      "additionalProperties": false,
+      "properties": {
+        "read": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "write": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "read",
+        "write",
+      ],
+      "type": "object",
+    },
+  },
+  "required": [
+    "name",
+    "gitAccess",
+    "mcpAccess",
+    "toolGrants",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > build > build.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "createdAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "diffHash": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "errorMessage": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "id": {
+      "type": "string",
+    },
+    "pinnedMachineId": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "planDocId": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "prNumber": {
+      "anyOf": [
+        {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "prUrl": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "prevPhase": {
+      "anyOf": [
+        {
+          "enum": [
+            "todo",
+            "queued",
+            "planning",
+            "confirm",
+            "building",
+            "review",
+            "done",
+            "failed",
+            "closed",
+          ],
+          "type": "string",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "todoId": {
+      "type": "string",
+    },
+    "triggerSource": {
+      "enum": [
+        "user",
+        "chief",
+        "schedule",
+      ],
+      "type": "string",
+    },
+    "withPlan": {
+      "type": "boolean",
+    },
+  },
+  "required": [
+    "id",
+    "todoId",
+    "withPlan",
+    "prevPhase",
+    "triggerSource",
+    "pinnedMachineId",
+    "planDocId",
+    "errorMessage",
+    "prUrl",
+    "prNumber",
+    "diffHash",
+    "createdAt",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > chief_message > chief_message.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": {},
+  "properties": {
+    "content": {},
+    "role": {
+      "enum": [
+        "system",
+        "user",
+        "assistant",
+      ],
+      "type": "string",
+    },
+  },
+  "required": [
+    "role",
+    "content",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > chief_thread > chief_thread.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "activeRun": {
+      "anyOf": [
+        {
+          "additionalProperties": {},
+          "properties": {
+            "phase": {
+              "type": "string",
+            },
+            "tool": {
+              "additionalProperties": false,
+              "properties": {
+                "toolName": {
+                  "type": "string",
+                },
+              },
+              "required": [
+                "toolName",
+              ],
+              "type": "object",
+            },
+          },
+          "required": [
+            "phase",
+          ],
+          "type": "object",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "chiefId": {
+      "type": "string",
+    },
+    "createdAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "id": {
+      "type": "string",
+    },
+    "lastTurnAt": {
+      "anyOf": [
+        {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "pendingSessionResumeAt": {
+      "anyOf": [
+        {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "session": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+        },
+        "openedAt": {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "runtime": {
+          "const": "pi",
+          "type": "string",
+        },
+      },
+      "required": [
+        "runtime",
+        "id",
+        "openedAt",
+      ],
+      "type": "object",
+    },
+    "teamId": {
+      "type": "string",
+    },
+    "title": {
+      "type": "string",
+    },
+    "toolDefHashes": {
+      "additionalProperties": {
+        "type": "string",
+      },
+      "propertyNames": {
+        "type": "string",
+      },
+      "type": "object",
+    },
+    "toolResultHashes": {
+      "additionalProperties": {
+        "type": "string",
+      },
+      "propertyNames": {
+        "type": "string",
+      },
+      "type": "object",
+    },
+    "updatedAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "userId": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "id",
+    "chiefId",
+    "userId",
+    "teamId",
+    "title",
+    "createdAt",
+    "updatedAt",
+    "lastTurnAt",
+    "session",
+    "pendingSessionResumeAt",
+    "toolDefHashes",
+    "toolResultHashes",
+    "activeRun",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > document_diff > document_diff.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "files": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "additions": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "deletions": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "hunks": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "header": {
+                  "type": "string",
+                },
+                "lines": {
+                  "items": {
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+              },
+              "required": [
+                "header",
+                "lines",
+              ],
+              "type": "object",
+            },
+            "type": "array",
+          },
+          "path": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "path",
+          "additions",
+          "deletions",
+          "hunks",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+    "fromVersion": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "toVersion": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+  },
+  "required": [
+    "fromVersion",
+    "toVersion",
+    "files",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > machine > machine.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+    },
+    "latestCliVersion": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "maxConcurrent": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "name": {
+      "type": "string",
+    },
+    "online": {
+      "type": "boolean",
+    },
+    "teamId": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "id",
+    "name",
+    "teamId",
+    "online",
+    "maxConcurrent",
+    "latestCliVersion",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > mcp_server > mcp_server.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "createdAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "createdBy": {
+      "type": "string",
+    },
+    "credentialKeys": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "hasCredential": {
+      "type": "boolean",
+    },
+    "id": {
+      "type": "string",
+    },
+    "label": {
+      "type": "string",
+    },
+    "slug": {
+      "type": "string",
+    },
+    "teamId": {
+      "type": "string",
+    },
+    "transport": {
+      "enum": [
+        "http",
+        "stdio",
+      ],
+      "type": "string",
+    },
+    "updatedAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "url": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "teamId",
+    "label",
+    "slug",
+    "transport",
+    "url",
+    "hasCredential",
+    "credentialKeys",
+    "createdBy",
+    "id",
+    "createdAt",
+    "updatedAt",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > message > message.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": {},
+  "properties": {
+    "content": {},
+    "role": {
+      "enum": [
+        "system",
+        "user",
+        "assistant",
+      ],
+      "type": "string",
+    },
+  },
+  "required": [
+    "role",
+    "content",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > notification > notification.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "agent": {
+      "additionalProperties": false,
+      "properties": {
+        "avatarUrl": {
+          "type": [
+            "string",
+            "null",
+          ],
+        },
+        "name": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "avatarUrl",
+      ],
+      "type": "object",
+    },
+    "channels": {
+      "items": {
+        "enum": [
+          "in_app",
+        ],
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "createdAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "entityId": {
+      "type": "string",
+    },
+    "entityRef": {
+      "additionalProperties": false,
+      "properties": {
+        "projectId": {
+          "type": [
+            "string",
+            "null",
+          ],
+        },
+        "seqNum": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer",
+            },
+            {
+              "type": "null",
+            },
+          ],
+        },
+        "title": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "title",
+        "projectId",
+        "seqNum",
+      ],
+      "type": "object",
+    },
+    "id": {
+      "type": "string",
+    },
+    "readAt": {
+      "anyOf": [
+        {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "snippet": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "teamId": {
+      "type": "string",
+    },
+    "type": {
+      "enum": [
+        "plan_ready",
+        "build_review",
+        "chief_message",
+      ],
+      "type": "string",
+    },
+    "userId": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "teamId",
+    "userId",
+    "type",
+    "entityId",
+    "entityRef",
+    "agent",
+    "snippet",
+    "id",
+    "readAt",
+    "createdAt",
+    "channels",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > plan > plan.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "buildId": {
+      "type": "string",
+    },
+    "createdAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "id": {
+      "type": "string",
+    },
+    "version": {
+      "maximum": 9007199254740991,
+      "minimum": 1,
+      "type": "integer",
+    },
+  },
+  "required": [
+    "id",
+    "buildId",
+    "version",
+    "createdAt",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > project > project.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+    },
+    "name": {
+      "type": "string",
+    },
+    "repoKind": {
+      "enum": [
+        "hosted",
+        "github",
+      ],
+      "type": "string",
+    },
+    "teamId": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "id",
+    "name",
+    "teamId",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > provider > provider.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "api": {
+      "enum": [
+        "anthropic-messages",
+        "openai-completions",
+        "openai-responses",
+      ],
+      "type": "string",
+    },
+    "authHeader": {
+      "type": "boolean",
+    },
+    "baseUrl": {
+      "type": "string",
+    },
+    "compat": {
+      "additionalProperties": false,
+      "properties": {
+        "supportsDeveloperRole": {
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "supportsDeveloperRole",
+      ],
+      "type": "object",
+    },
+    "createdAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "createdBy": {
+      "type": "string",
+    },
+    "id": {
+      "type": "string",
+    },
+    "kind": {
+      "const": "custom",
+      "type": "string",
+    },
+    "label": {
+      "type": "string",
+    },
+    "models": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+          },
+          "name": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "id",
+          "name",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+    "providerId": {
+      "type": "string",
+    },
+    "updatedAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+  },
+  "required": [
+    "kind",
+    "providerId",
+    "label",
+    "baseUrl",
+    "api",
+    "authHeader",
+    "compat",
+    "models",
+    "id",
+    "createdBy",
+    "createdAt",
+    "updatedAt",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > schedule > schedule.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "at": {
+      "anyOf": [
+        {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "createdBy": {
+      "type": "string",
+    },
+    "id": {
+      "type": "string",
+    },
+    "kind": {
+      "enum": [
+        "once",
+        "hourly",
+        "daily",
+        "weekly",
+      ],
+      "type": "string",
+    },
+    "machineId": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "nextRunAt": {
+      "anyOf": [
+        {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "projectId": {
+      "type": "string",
+    },
+    "teamId": {
+      "type": "string",
+    },
+    "todo": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string",
+        },
+        "phase": {
+          "enum": [
+            "todo",
+            "queued",
+            "planning",
+            "confirm",
+            "building",
+            "review",
+            "done",
+            "failed",
+            "closed",
+          ],
+          "type": "string",
+        },
+        "projectName": {
+          "type": "string",
+        },
+        "seqNum": {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        "title": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "seqNum",
+        "title",
+        "phase",
+        "projectName",
+        "ownerId",
+      ],
+      "type": "object",
+    },
+    "todoId": {
+      "type": "string",
+    },
+    "tz": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "id",
+    "teamId",
+    "projectId",
+    "todoId",
+    "kind",
+    "at",
+    "tz",
+    "machineId",
+    "nextRunAt",
+    "createdBy",
+    "todo",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > secret > secret.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "description": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "id": {
+      "type": "string",
+    },
+    "name": {
+      "type": "string",
+    },
+    "teamId": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "id",
+    "teamId",
+    "name",
+    "description",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > skill > skill.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "description": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "id": {
+      "type": "string",
+    },
+    "name": {
+      "type": "string",
+    },
+    "teamId": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "id",
+    "teamId",
+    "name",
+    "description",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > step > step.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "buildId": {
+      "type": "string",
+    },
+    "createdAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "id": {
+      "type": "string",
+    },
+    "kind": {
+      "enum": [
+        "plan",
+        "build",
+        "merge",
+      ],
+      "type": "string",
+    },
+    "machineId": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+  },
+  "required": [
+    "id",
+    "buildId",
+    "kind",
+    "machineId",
+    "createdAt",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > tag > tag.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+    },
+    "name": {
+      "type": "string",
+    },
+    "projectId": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "id",
+    "projectId",
+    "name",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > team > team.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "avatarStyle": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "createdAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "id": {
+      "type": "string",
+    },
+    "name": {
+      "type": "string",
+    },
+    "plan": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "id",
+    "name",
+    "createdAt",
+    "plan",
+    "avatarStyle",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > todo > todo.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "agent": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "displayName": {
+              "type": "string",
+            },
+            "id": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "id",
+            "displayName",
+          ],
+          "type": "object",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "assignment": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "build": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "agentId": {
+                      "type": "string",
+                    },
+                  },
+                  "required": [
+                    "agentId",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "plan": {
+              "anyOf": [
+                {
+                  "additionalProperties": false,
+                  "properties": {
+                    "agentId": {
+                      "type": "string",
+                    },
+                  },
+                  "required": [
+                    "agentId",
+                  ],
+                  "type": "object",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+          },
+          "required": [
+            "plan",
+            "build",
+          ],
+          "type": "object",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "buildHistory": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "buildId": {
+            "type": "string",
+          },
+          "createdAt": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+        },
+        "required": [
+          "buildId",
+          "createdAt",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+    "createdBy": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "hasChanges": {
+      "type": "boolean",
+    },
+    "hasPlan": {
+      "type": "boolean",
+    },
+    "id": {
+      "type": "string",
+    },
+    "lastRunAt": {
+      "anyOf": [
+        {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
+    "latestBuildId": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "orderIndex": {
+      "type": "number",
+    },
+    "ownerId": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "phase": {
+      "enum": [
+        "todo",
+        "queued",
+        "planning",
+        "confirm",
+        "building",
+        "review",
+        "done",
+        "failed",
+        "closed",
+      ],
+      "type": "string",
+    },
+    "phaseAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "projectId": {
+      "type": "string",
+    },
+    "seqNum": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "sourceBuildId": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "sourceTodo": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "spec": {
+      "type": "string",
+    },
+    "tagIds": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
+    "teamId": {
+      "type": "string",
+    },
+    "title": {
+      "type": "string",
+    },
+    "v": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+  },
+  "required": [
+    "id",
+    "teamId",
+    "projectId",
+    "title",
+    "spec",
+    "phase",
+    "phaseAt",
+    "seqNum",
+    "orderIndex",
+    "tagIds",
+    "assignment",
+    "agent",
+    "latestBuildId",
+    "lastRunAt",
+    "hasChanges",
+    "hasPlan",
+    "buildHistory",
+    "sourceTodo",
+    "v",
+    "createdBy",
+    "ownerId",
+    "sourceBuildId",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > token_usage > token_usage.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "buildId": {
+      "type": "string",
+    },
+    "cacheRead": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "cacheWrite": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "input": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+    "model": {
+      "type": "string",
+    },
+    "output": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
+  },
+  "required": [
+    "buildId",
+    "model",
+    "input",
+    "output",
+    "cacheRead",
+    "cacheWrite",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > user > user.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "avatarUrl": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "displayName": {
+      "type": "string",
+    },
+    "id": {
+      "type": "string",
+    },
+    "type": {
+      "const": "user",
+      "type": "string",
+    },
+  },
+  "required": [
+    "id",
+    "displayName",
+    "avatarUrl",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`record 形状 24 表投影——zod → JSON Schema 快照 > whats_new > whats_new.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": {},
+  "propertyNames": {
+    "type": "string",
+  },
+  "type": "object",
+}
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > DELETE 面规则（[推断]，02 §6.1）与 divergence 登记 1`] = `
+{
+  "DELETE_FACE": {
+    "resources": [
+      "teams/{id}/machines",
+      "teams/{id}/agents",
+      "teams/{id}/skills",
+      "teams/{id}/mcp-servers",
+      "teams/{id}/providers",
+      "teams/{id}/secrets",
+      "todos",
+      "schedules",
+    ],
+    "rule": "REST 同名 DELETE（02 §6.1）",
+    "status": "[推断]",
+  },
+  "NON_REPLICATED_ENDPOINTS": [
+    {
+      "method": "POST",
+      "path": "/api/push",
+      "reason": "Web Push 订阅上传——R1 已裁决有意 divergence（02 §9.1 终裁、04 §5）",
+    },
+  ],
+}
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > MCP server 面 24 工具白名单 + 能力六组（02 §7.2） 1`] = `
+{
+  "MCP_CAPABILITY_GROUPS": [
+    "Read the workspace",
+    "Read the repo",
+    "Read progress",
+    "Organize work",
+    "Run work",
+    "Manage lifecycle",
+  ],
+  "MCP_TOOLS_READ": [
+    "Todos",
+    "Projects",
+    "Conversation",
+    "Agents",
+    "Schedules",
+    "Attachment",
+    "Skills",
+    "Machines",
+    "Issues",
+    "Pull Requests",
+    "Workflow Runs",
+  ],
+  "MCP_TOOLS_WRITE": [
+    "Create Todo",
+    "Update Todo",
+    "Message Todo",
+    "Run Builds",
+    "Run Review",
+    "Confirm Builds",
+    "Merge Builds",
+    "Cancel Builds",
+    "Complete Todos",
+    "Close Todos",
+    "Reopen Todos",
+    "Schedule Todo",
+    "Unschedule Todo",
+  ],
+}
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > SSE 三通道（02 §1.2） 1`] = `
+[
+  {
+    "audience": "browser",
+    "endpoint": "/api/teams/{id}/stream",
+    "id": "team",
+    "note": "团队流：ping/machine_presence/todo/build/notification（02 §1.2，r5 §7.2 扩充）",
+  },
+  {
+    "audience": "browser",
+    "endpoint": "/api/conversations/{id}/stream",
+    "id": "conversation",
+    "note": "会话流：transcript 实时流（r3 §3.5 抓包）；逐事件载荷未枚举，承载 pi 流词表 [推断]（protocol/executor.ts）",
+  },
+  {
+    "audience": "daemon",
+    "endpoint": "/api/machine/stream",
+    "id": "machine",
+    "note": "机器 wake：低延迟派发唤醒（r3 §1.5）",
+  },
+]
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > executor CLI 面（02 §5.1） 1`] = `
+{
+  "CLI_COMMANDS": [
+    "start",
+    "stop",
+    "restart",
+    "logs",
+    "logout",
+    "status",
+    "version",
+    "provider",
+  ],
+  "CLI_START_OPTIONS": [
+    "--foreground|-f",
+    "--api-key <k>",
+    "--team <id>",
+    "--name",
+    "--server",
+    "--workspaces-dir",
+  ],
+  "ENV_VARS": {
+    "apiKey": "TDS_API_KEY",
+    "home": "TDS_HOME",
+    "server": "TDS_SERVER",
+    "team": "TDS_TEAM",
+    "workspacesDir": "TDS_WORKSPACES_DIR",
+  },
+  "PROVIDER_COMMAND_NOTICE": "Providers are managed on the website",
+}
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > localStorage 键名契约（02 §6.4/r2 §1.5） 1`] = `
+{
+  "LOCAL_STORAGE_KEYS": [
+    {
+      "key": "tds-theme",
+      "source": "r2 §1.5",
+      "valueShape": "light | dark",
+    },
+    {
+      "key": "tds.locale",
+      "source": "r2 §1.5（与 tds-locale 双形实测）",
+      "valueShape": "zh",
+    },
+    {
+      "key": "tds-locale",
+      "source": "r2 §1.5",
+      "valueShape": "zh",
+    },
+    {
+      "key": "tds.sidebarProjectsCollapsed",
+      "source": "r2 §1.5",
+      "valueShape": ""1"",
+    },
+    {
+      "key": "tds.panel-maximized",
+      "source": "r2 §1.5",
+      "valueShape": ""0"",
+    },
+    {
+      "key": "tds.teamMembersLayout",
+      "source": "r2 §1.5（团队页视图切换）",
+      "valueShape": "grid | chart",
+    },
+    {
+      "key": "tds.cache.session-v1",
+      "source": "r2 §1.5",
+      "valueShape": "{token:"",cookieName:"",expiresAt,user{…}}——会话走 cookie，token 字段留空",
+    },
+    {
+      "key": "tds.cache.me-v1:<userId>",
+      "source": "r2 §1.5",
+      "valueShape": "{type:"user",id,displayName,avatarUrl,…}",
+    },
+    {
+      "key": "tds.cache.teams-v1:<userId>",
+      "source": "r2 §1.5",
+      "valueShape": "[{id,name,createdAt,plan:"free",avatarStyle:"notionist…"}]",
+    },
+    {
+      "key": "tds.cache.members-v1:<userId>:<teamId>",
+      "source": "r2 §1.5",
+      "valueShape": "[{id,teamId,actorId,memberType:"user",…}]",
+    },
+    {
+      "key": "tds.cache.projects-v1:<userId>:<teamId>",
+      "source": "r2 §1.5",
+      "valueShape": "[]",
+    },
+    {
+      "key": "tds.cache.team-models-v1:<teamId>",
+      "source": "r2 §1.5",
+      "valueShape": "{"models":[]}",
+    },
+    {
+      "key": "tds.cache.team-machines-v1:<teamId>",
+      "source": "r2 §1.5",
+      "valueShape": "[]",
+    },
+    {
+      "key": "tds.cache.progress-v2:<userId>:<teamId>",
+      "source": "r2 §1.5",
+      "valueShape": "{"todos":[],"builds":[]}",
+    },
+    {
+      "key": "tds.cache.notifications-v2:<userId>:<teamId>",
+      "source": "r2 §1.5",
+      "valueShape": "{"unreadThreadIds":[]}",
+    },
+    {
+      "key": "tds.cache.chief-data-v3:<userId>:<teamId>",
+      "source": "r2 §1.5",
+      "valueShape": "{"chief":{id:"chief-<user>-<team>",userId,teamId,…}}",
+    },
+    {
+      "key": "tds.cache.chief-threads-v1:<userId>:<teamId>",
+      "source": "r2 §1.5",
+      "valueShape": "[]",
+    },
+    {
+      "key": "tds.cache.chief-draft-v1:<teamId>:new",
+      "source": "r5 §3.6 补录",
+      "valueShape": "草稿文本（跨会话恢复实测）",
+    },
+  ],
+  "THIRD_PARTY_CLIENT_KEYS": [
+    {
+      "key": "nextauth.message",
+      "note": "复刻无 auth 库（01 §4.2）；形状处置归 M2 [推断]",
+      "valueShape": "{"event":"session","data":{"trigger":"getSession"}}",
+    },
+    {
+      "key": "mp_* / __mpq_*",
+      "note": "埋点可空实现（02 §6.1）",
+      "valueShape": "mixpanel 埋点（distinct_id = userId）",
+    },
+  ],
+}
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > phase 九值 + 看板列 + 语义（02 §4.1） 1`] = `
+{
+  "BOARD_COLUMNS": [
+    "待开始",
+    "规划中",
+    "待确认",
+    "执行中",
+    "待验收",
+    "已完成",
+  ],
+  "PHASE_SEMANTICS": {
+    "building": "在改",
+    "closed": "未完成即搁置",
+    "confirm": "计划就绪等你",
+    "done": "已接受，若选了则已合并",
+    "failed": "run 停在错误上",
+    "planning": "读仓库写计划",
+    "queued": "已启动，等空闲机器",
+    "review": "改动就绪等你（\`待验收\`≡\`审核\` 同 phase，CONTEXT.md 裁决）",
+    "todo": "已建档未开始",
+  },
+  "PHASE_VALUES": [
+    "todo",
+    "queued",
+    "planning",
+    "confirm",
+    "building",
+    "review",
+    "done",
+    "failed",
+    "closed",
+  ],
+}
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > pi 流事件/配置 kind/流超时/机器工具/代理探测（02 §5.6） 1`] = `
+{
+  "CONFIG_KINDS": [
+    "api_key",
+    "oauth",
+    "http",
+    "stdio",
+  ],
+  "MACHINE_CUSTOM_TOOLS": [
+    "web_fetch",
+    "remote_shell",
+    "push_branch",
+  ],
+  "PI_STREAM_EVENTS": [
+    "text_delta",
+    "thinking",
+    "thinking_delta",
+    "toolcall_end",
+    "message_update",
+    "message_end",
+    "message_stop",
+    "compaction",
+    "compaction_start",
+    "compaction_end",
+    "auto_retry_start",
+    "auto_retry_end",
+    "steer",
+    "done",
+    "error",
+    "wake",
+    "shutdown",
+  ],
+  "PROXY_ENV_VARS": [
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+  ],
+  "PROXY_PROBE_LOG_CANON": "[tds] Proxy: <url>",
+  "RELAY_TOOLS": [
+    "push_credential",
+    "open_repo",
+  ],
+  "STREAM_TIMEOUTS_MS": {
+    "streamBodyTimeout": 540000,
+    "streamFirstEvent": 300000,
+    "streamIdle": 480000,
+  },
+  "WEB_FETCH_CHAR_LIMIT": 8000,
+}
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > provider presets 38 项目录（r3 §2/02 §6.2） 1`] = `
+[
+  "github-copilot",
+  "openai-codex",
+  "xai",
+  "amazon-bedrock",
+  "ant-ling",
+  "anthropic",
+  "baseten",
+  "cerebras",
+  "cloudflare-ai-gateway",
+  "cloudflare-workers-ai",
+  "deepseek",
+  "fireworks",
+  "google",
+  "google-vertex",
+  "groq",
+  "huggingface",
+  "kimi-coding",
+  "minimax",
+  "minimax-cn",
+  "mistral",
+  "moonshotai",
+  "moonshotai-cn",
+  "nvidia",
+  "openai",
+  "opencode",
+  "opencode-go",
+  "openrouter",
+  "qwen-token-plan",
+  "qwen-token-plan-cn",
+  "qwen-token-plan-individual",
+  "together",
+  "vercel-ai-gateway",
+  "xiaomi",
+  "xiaomi-token-plan-ams",
+  "xiaomi-token-plan-cn",
+  "xiaomi-token-plan-sgp",
+  "z-ai",
+  "z-ai-coding-cn",
+]
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > web REST 端点词表（02 §6.1） 1`] = `
+[
+  {
+    "method": "GET",
+    "note": "保形返回 seed 用户（02 §2.1）",
+    "path": "/api/auth/session",
+  },
+  {
+    "method": "GET",
+    "path": "/api/user/me",
+  },
+  {
+    "method": "GET",
+    "note": "恒 seed 一行（02 §2.2）",
+    "path": "/api/teams",
+  },
+  {
+    "method": "GET",
+    "note": "Agent 列表实际走此端点（r5 §1）",
+    "path": "/api/teams/{id}/members",
+  },
+  {
+    "method": "GET",
+    "path": "/api/teams/{id}/machines",
+  },
+  {
+    "method": "GET",
+    "note": "presets[] 38 项原样（r3 §2）",
+    "path": "/api/teams/{id}/providers",
+  },
+  {
+    "method": "GET",
+    "path": "/api/teams/{id}/mcp-servers",
+  },
+  {
+    "method": "GET",
+    "path": "/api/teams/{id}/models",
+  },
+  {
+    "method": "GET",
+    "note": "→ {unreadThreadIds}（02 §9.1）",
+    "path": "/api/teams/{id}/notifications",
+  },
+  {
+    "method": "GET",
+    "path": "/api/teams/{id}/progress",
+  },
+  {
+    "method": "GET",
+    "note": "SSE，见 protocol/sse.ts",
+    "path": "/api/teams/{id}/stream",
+  },
+  {
+    "method": "GET",
+    "path": "/api/teams/{id}/skills/{sid}",
+  },
+  {
+    "method": "GET",
+    "path": "/api/teams/{id}/skills/{sid}/file",
+    "query": [
+      "fileName",
+    ],
+  },
+  {
+    "method": "GET",
+    "path": "/api/teams/{id}/agents/{aid}",
+  },
+  {
+    "method": "GET",
+    "path": "/api/teams/{id}/agents/{aid}/tasks",
+  },
+  {
+    "method": "GET",
+    "note": "02 §4.4/r5 §6 实测",
+    "path": "/api/teams/{id}/agents/{aid}/memories",
+  },
+  {
+    "method": "GET",
+    "path": "/api/teams/{id}/chief",
+  },
+  {
+    "method": "GET",
+    "path": "/api/teams/{id}/chief/threads",
+  },
+  {
+    "method": "GET",
+    "path": "/api/projects",
+    "query": [
+      "teamId",
+    ],
+  },
+  {
+    "method": "GET",
+    "path": "/api/projects/{id}/todos",
+  },
+  {
+    "method": "GET",
+    "path": "/api/projects/{id}/branches",
+  },
+  {
+    "method": "GET",
+    "path": "/api/projects/{id}/tags",
+  },
+  {
+    "method": "GET",
+    "path": "/api/projects/{id}/builds",
+  },
+  {
+    "method": "GET",
+    "note": "读裸库 ref 树（02 §3）",
+    "path": "/api/projects/{id}/tree",
+    "query": [
+      "ref",
+    ],
+  },
+  {
+    "method": "GET",
+    "path": "/api/projects/{id}/file",
+    "query": [
+      "path",
+      "ref",
+    ],
+  },
+  {
+    "method": "GET",
+    "note": "02 §9.3 在册不设计；触发条件 = 04 册附录 B",
+    "path": "/api/projects/{id}/preview-token",
+    "query": [
+      "ref",
+    ],
+  },
+  {
+    "method": "GET",
+    "path": "/api/todos",
+    "query": [
+      "teamId",
+    ],
+  },
+  {
+    "method": "GET",
+    "path": "/api/todos/{id}",
+  },
+  {
+    "method": "GET",
+    "path": "/api/builds/{id}",
+  },
+  {
+    "method": "GET",
+    "path": "/api/builds/{id}/steps",
+  },
+  {
+    "method": "GET",
+    "note": "chief 会话同族（r5 §3.6）",
+    "path": "/api/conversations/{id}/messages",
+  },
+  {
+    "method": "GET",
+    "note": "SSE，见 protocol/sse.ts",
+    "path": "/api/conversations/{id}/stream",
+  },
+  {
+    "method": "GET",
+    "note": "plan.md unified diff（02 §4.2/r5 §4）",
+    "path": "/api/documents/{id}/diff",
+  },
+  {
+    "method": "GET",
+    "path": "/api/schedules",
+    "query": [
+      "team",
+    ],
+  },
+  {
+    "method": "GET",
+    "path": "/api/skills",
+    "query": [
+      "teamId",
+    ],
+  },
+  {
+    "method": "GET",
+    "note": "形状保留、内容自选（02 §6.1）",
+    "path": "/api/whats-new",
+  },
+  {
+    "method": "GET",
+    "note": "⌘K [设计] 自设（02 §6.3）",
+    "path": "/api/search",
+    "query": [
+      "q",
+    ],
+  },
+  {
+    "method": "POST",
+    "note": "body {title,spec}（r3 §3.1）",
+    "path": "/api/projects/{id}/todos",
+  },
+  {
+    "method": "POST",
+    "note": "开始/重跑；body {todoIds[],assignment,withPlan}（r5 §3.4）",
+    "path": "/api/projects/{id}/builds",
+  },
+  {
+    "method": "POST",
+    "note": "→ 202 {delegated:true}（r3 §3.6）",
+    "path": "/api/builds/{id}/merge",
+  },
+  {
+    "method": "POST",
+    "note": "确认/驳回回路（02 §4.2/r5 §4）",
+    "path": "/api/builds/{id}/steps",
+  },
+  {
+    "method": "POST",
+    "path": "/api/teams/{id}/providers",
+  },
+  {
+    "method": "POST",
+    "path": "/api/teams/{id}/mcp-servers",
+  },
+  {
+    "method": "POST",
+    "note": "→ 201 {id}（r5 §1/§8 补录）",
+    "path": "/api/teams/{id}/agents",
+  },
+  {
+    "method": "POST",
+    "path": "/api/schedules",
+  },
+  {
+    "method": "POST",
+    "note": "上传（02 §6.1）",
+    "path": "/api/skills",
+  },
+  {
+    "method": "POST",
+    "note": "形状保留、内容自选；可空实现",
+    "path": "/api/analytics/first-touch",
+  },
+  {
+    "method": "POST",
+    "note": "埋点端点（r3 §8.2 PostHog 风格 base64 batch）；复刻可空实现（02 §6.1）",
+    "path": "/_mp/api/track",
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/teams/{id}/providers/{pid}",
+  },
+  {
+    "method": "PATCH",
+    "path": "/api/teams/{id}/agents/{aid}",
+  },
+  {
+    "method": "PATCH",
+    "note": "绑定 Agent（r5 §2 抓包）",
+    "path": "/api/teams/{id}/chief",
+  },
+]
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > worktree 契约（02 §5.5） 1`] = `
+{
+  "baseRepoSubpath": "<projectId>/repo",
+  "branchPrefix": "tds/conv-",
+  "checkpointResetArgs": [
+    "reset --hard",
+    "clean -fd",
+  ],
+  "concurrencyGuard": "projectLock(projectId)",
+  "forceSyncCopy": "丢弃代码修改并删除非忽略的未跟踪文件；保留忽略内容。仅本次生效。",
+  "mergeArgs": "merge --no-edit",
+  "remoteBranchDiverged": "remote branch diverged",
+  "retryBudgetCanon": "~2 min typical, ~8 min worst on /done's path",
+  "staleCleanupArgs": [
+    "worktree remove --force",
+    "worktree prune",
+    "branch -D",
+  ],
+  "taskDirLayout": "<workspacesRoot>/<conversationId>",
+}
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > 品牌串命名常量表（02 §5.8 + 素材替换计划 §2） 1`] = `
+{
+  "BRAND": {
+    "apiKeyPrefix": "tds_",
+    "branchPrefix": "tds/conv-",
+    "cliCommandName": "tds",
+    "cliPackageName": "@pacman/cli",
+    "envPrefix": "TDS_",
+    "homeDirName": ".tds",
+    "manifestName": "Todos",
+    "remoteMcpPath": "/api/mcp",
+    "workspacesDirName": "workspaces",
+  },
+  "BRAND_SLOTS": {
+    "apiKeyPrefix": {
+      "replacement": "pacman_<48hex>",
+      "todosDev": "tds_<48hex>",
+    },
+    "branchPrefix": {
+      "replacement": "pacman/conv-",
+      "todosDev": "tds/conv-",
+    },
+    "cliCommandName": {
+      "replacement": "pacman",
+      "todosDev": "tds",
+    },
+    "cliPackageName": {
+      "replacement": "@pacman/cli（私包，不发 npm）",
+      "todosDev": "@todos-dev/cli",
+    },
+    "daemonLog": {
+      "replacement": "~/.pacman/daemon.log",
+      "todosDev": "~/.tds/daemon.log",
+    },
+    "deepLinkScheme": {
+      "replacement": "pacman://",
+      "todosDev": "tds://",
+    },
+    "envPrefix": {
+      "replacement": "PACMAN_",
+      "todosDev": "TDS_",
+    },
+    "firstTouchCookie": {
+      "replacement": "pacman_ft",
+      "todosDev": "tds_ft",
+    },
+    "gitHostDomain": {
+      "replacement": "本地主机名代位",
+      "todosDev": "git.todos.dev",
+    },
+    "homeDir": {
+      "replacement": "~/.pacman",
+      "todosDev": "~/.tds",
+    },
+    "localStoragePrefix": {
+      "replacement": "pacman- / pacman. 同形替换",
+      "todosDev": "tds- / tds.（约 15 键，见 protocol/client-state.ts）",
+    },
+    "machineToken": {
+      "replacement": "保持（非品牌槽）",
+      "todosDev": "64hex（无前缀）",
+    },
+    "manifestName": {
+      "replacement": "Pacman",
+      "todosDev": "Todos（manifest name/short_name/apple-mobile-web-app-title）",
+    },
+    "remoteMcpPath": {
+      "replacement": "保持（形状无品牌）",
+      "todosDev": "/api/mcp",
+    },
+    "workspacesDir": {
+      "replacement": "~/.pacman/workspaces/<conversationId>",
+      "todosDev": "~/.tds/workspaces/<conversationId>",
+    },
+  },
+}
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > 存储表清单（01 §6） 1`] = `
+[
+  "user",
+  "team",
+  "project",
+  "todo",
+  "tag",
+  "todo_tag",
+  "build",
+  "step",
+  "message",
+  "plan",
+  "document_diff",
+  "schedule",
+  "notification",
+  "agent",
+  "agent_memory",
+  "skill",
+  "mcp_server",
+  "provider",
+  "secret",
+  "api_key",
+  "machine",
+  "token_usage",
+  "chief_thread",
+  "chief_message",
+  "whats_new",
+]
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > 本地状态布局与日志前缀（02 §5.3） 1`] = `
+{
+  "DAEMON_LOG_PREFIXES": [
+    "supervisor",
+    "machine",
+    "step",
+    "workspace",
+    "recover",
+    "wake",
+  ],
+  "LOCAL_STATE_DIRS": [
+    "outbox",
+    "chat-sessions",
+    "agent-runtime",
+    "workspaces",
+  ],
+  "LOCAL_STATE_FILES": [
+    "machine.json",
+    "device.json",
+    "daemon.json",
+    "daemon.log",
+  ],
+}
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > 机器面 13 端点（02 §5/r3 §1.6） 1`] = `
+[
+  {
+    "note": "注册（02 §5.2）",
+    "path": "/api/machine/enroll",
+  },
+  {
+    "note": "浏览器授权流（02 §5.2 路径一）",
+    "path": "/api/machine/enroll/start",
+  },
+  {
+    "path": "/api/machine/enroll/poll",
+  },
+  {
+    "note": "机器自述",
+    "path": "/api/machine/me",
+  },
+  {
+    "note": "心跳（断网时并行失败，进程不退出，r3 §1.5）",
+    "path": "/api/machine/presence",
+  },
+  {
+    "note": "步 journal 恢复（细节 [推断]，02 §5.4/§11）",
+    "path": "/api/machine/recover",
+  },
+  {
+    "note": "长轮询领取（~75–76s 节奏，r3 §1.5）",
+    "path": "/api/machine/tasks/claim",
+  },
+  {
+    "note": "wake SSE 低延迟派发（02 §1.2/§5.4）",
+    "path": "/api/machine/stream",
+  },
+  {
+    "note": "步骤 journal 续活（02 §5.4）",
+    "path": "/api/machine/heartbeat/{stepId}",
+  },
+  {
+    "note": "工具调用回传；remoteTools relay 同径（r5 §3.1）",
+    "path": "/api/machine/tool/{stepId}",
+  },
+  {
+    "note": "per-step 凭证下发（模型 key + 托管 repo git 凭证），不落盘常驻 [推断]（02 §5.4/§8）",
+    "path": "/api/machine/token/{stepId}",
+  },
+  {
+    "note": "预签名产物上传：transcript/产物（r3 §1.6）",
+    "path": "/api/machine/upload-urls/{stepId}",
+  },
+  {
+    "note": "步骤收尾",
+    "path": "/api/machine/done/{stepId}",
+  },
+]
+`;
+
+exports[`协议词表快照（02 §5/§6 canonical） > 步骤生命周期行序（02 §5.7）与上线序列 canon（02 §5.4） 1`] = `
+{
+  "ONLINE_SEQUENCE_CANON": [
+    "Loading pi runtime…",
+    "Online (machineId=…); polling <url>",
+    "Idle-sleep prevention active (caffeinate)",
+    "[recover] no pending steps found",
+    "maxConcurrent changed -> 3",
+    "[wake] push channel connected",
+  ],
+  "STEP_LIFECYCLE_LOG_LINES": [
+    "claim step=<id>",
+    "step <id> for conv <uuid> (n/3 running)",
+    "using model <provider>/<modelId>",
+    "new session <convId> | continue session <convId>",
+    "workspace 准备（准备工作区...）",
+    "pushed <convBranch>",
+    "finished (m/3 running)",
+  ],
+}
+`;

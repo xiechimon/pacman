@@ -6,19 +6,11 @@
 // observed waiting-on-user board placement.
 // Timestamps are epoch milliseconds (02 §6.2 schedule record precedent).
 
-export const PHASE_VALUES = [
-  'todo',
-  'queued',
-  'planning',
-  'confirm',
-  'building',
-  'review',
-  'done',
-  'failed',
-  'closed',
-] as const;
+// phase 九值枚举单源 = @pacman/shared（02 §4.1；#65 M1 收口），本地不再定义。
+import { PHASE_VALUES, type Phase } from '@pacman/shared';
 
-export type Phase = (typeof PHASE_VALUES)[number];
+export type { Phase };
+export { PHASE_VALUES };
 
 /** Agent reference embedded in a todo record (02 §6.2 agent shape subset). */
 export interface AgentRef {

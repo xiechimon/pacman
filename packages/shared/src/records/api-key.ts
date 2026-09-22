@@ -1,0 +1,37 @@
+// apiKey record——02 §6.2（r3 §6 实测）。
+// 密钥纪律（02 §8）：创建响应含明文一次 +「请立即复制密钥，它仅显示一次。」，
+// 此后列表行掩码（`tds_afe07565…`）；服务端存哈希不存可逆值（[设计] 02 §8——
+// 登录校验只需匹配，与 todos.dev 内部实现无关）。
+// 双用途（r3 §6 实测）：同一把 key 走 tds start --api-key（机器注册）与
+// MCP Bearer 两路；调用以 key 属主身份执行（02 §7.2）。
+
+import { z } from 'zod';
+
+/** 02 §6.2 形状原样：{name(可选), gitAccess:bool, mcpAccess:bool,
+ * toolGrants:{read[],write[]}}。行标识/掩码展示列的 wire 字段未采到，
+ * 不发明 [推断]（r3 §6 展示规则 = UI 面）。 */
+export const apiKeyRecordSchema = z.object({
+  name: z.string().nullable(), // 密钥名称（可选）（r3 §6 弹窗）
+  gitAccess: z.boolean(),
+  mcpAccess: z.boolean(),
+  /** key 级工具白名单（02 §7.2 权限模型 1:1）：项 = 24 工具白名单
+   * （protocol/mcp.ts MCP_TOOLS_READ/WRITE）；wire id 形未采 [推断]，
+   * 不收窄。 */
+  toolGrants: z.object({
+    read: z.array(z.string()),
+    write: z.array(z.string()),
+  }),
+});
+export type ApiKeyRecord = z.infer<typeof apiKeyRecordSchema>;
+
+/** 一次性展示提示 canon（r3 §6 原文）。 */
+export const API_KEY_ONE_TIME_COPY = '请立即复制密钥，它仅显示一次。';
+
+/** 页首说明 canon（r3 §6 原文；品牌串无涉）。 */
+export const API_KEY_PAGE_COPY = 'API 密钥用于从命令行接入机器，也让 MCP 客户端能访问你的看板。';
+
+/** key 级授权语义 canon（02 §7.2/r3 §5.2 原文收录）。 */
+export const API_KEY_GRANT_SEMANTICS_COPY = [
+  "The key's tool selection limits every call: a client cannot invoke a tool it was not granted.",
+  'Removing every MCP tool disables MCP for that key, and does not affect machines that hold their own machine token.',
+] as const;

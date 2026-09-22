@@ -10,6 +10,7 @@
     "dev:web": "pnpm --filter @pacman/web dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
     "lint": "biome ci .",
     "format": "biome format --write .",
     "parity": "node parity/run.mjs"
@@ -17,6 +18,7 @@
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@playwright/test": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
