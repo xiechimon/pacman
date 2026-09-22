@@ -16,6 +16,7 @@ import {
   boardChiefProbes,
   boardDarkFresh,
   boardDefault,
+  boardFailed,
   boardR8Overlay,
   boardWithProbe,
   chiefGated,
@@ -23,9 +24,12 @@ import {
   chiefSettings,
   chiefThread,
   chiefThreadsOpen,
+  compareMenuV2,
   detailBuilding,
   detailConfirm,
   detailDone,
+  detailFailed12,
+  detailFailed15Set,
   detailFailedCurrent,
   detailFresh,
   detailFreshDark,
@@ -36,17 +40,30 @@ import {
   detailR8DeleteFresh,
   detailR8Fresh,
   detailReview,
+  detailV3Collapsed,
+  diffV1V2,
+  diffV2V3,
+  history12,
+  history15,
   projectFixture,
   projectTasks,
   projectTasksEmpty,
   r7,
+  rerunDialog12,
+  rerunDialog15,
   resourcesDefault,
   resourcesImport,
+  reusedBuilding,
+  reusePanel15,
+  revisionChain,
+  revisionStreaming,
   schedulesEmpty,
   schedulesFormDaily,
   schedulesFormOnce,
   schedulesList,
   teamGrid,
+  versionMenuV2,
+  versionMenuV3,
 } from './fixtures.js';
 import type { FixtureSet } from './records.js';
 
@@ -139,6 +156,33 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   'r3-93': schedulesList,
   'r3-92': schedulesFormDaily,
   'r3-92b': schedulesFormOnce,
+  // r8 dynamic states (issue #75): ids = the r8 capture numbers. 54/73
+  // are the two failed-detail subjects, 55 the failed board card, 56/74
+  // the rerun dialog without/with 复用方案, 57/77 the run-history open
+  // states, 63–72 the reject loop (dropdown / compare submenu / diff
+  // surfaces / replan streaming), 75 the reuse sub-panel, 76 the reused
+  // build. 68 and 69 are the same surface (r8 pixel-audit note).
+  '54': detailFailed12,
+  '55': boardFailed,
+  '56': rerunDialog12,
+  '57': history12,
+  '63': versionMenuV2,
+  '64': compareMenuV2,
+  '65': diffV1V2(false),
+  '66': diffV1V2(true),
+  '67': revisionStreaming,
+  '68': detailV3Collapsed,
+  '69': detailV3Collapsed,
+  '70': versionMenuV3,
+  '71': diffV2V3(false),
+  '72': diffV2V3(true),
+  '73': detailFailed15Set,
+  '74': rerunDialog15,
+  '75': reusePanel15,
+  '76': reusedBuilding,
+  '77': history15,
+  // interactive reject chain (AC3): confirm v1 + revision script
+  chain: revisionChain,
   // project routes (issue #71): one content set, the route + tab pick the
   // surface; the ids name the r2 capture each row binds to. prj-tasks =
   // the populated 任务 list, which r2 only ever shows beside the open todo

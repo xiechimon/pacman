@@ -14,9 +14,11 @@ interface ComposerProps {
   aiReview: boolean;
   /** Live run: red stop square replaces the send affordance (r7 16). */
   streaming: boolean;
+  /** Send click (issue #75 reject chain); absent = static capture face. */
+  onSend?: () => void;
 }
 
-export function Composer({ placeholder, aiReview, streaming }: ComposerProps) {
+export function Composer({ placeholder, aiReview, streaming, onSend }: ComposerProps) {
   const { t } = useI18n();
   return (
     <div className="composer">
@@ -38,7 +40,7 @@ export function Composer({ placeholder, aiReview, streaming }: ComposerProps) {
         </button>
       </div>
       {streaming && <button type="button" className="composer-stop" aria-label={t('停止')} />}
-      <button type="button" className="composer-send" aria-label={t('发送')}>
+      <button type="button" className="composer-send" aria-label={t('发送')} onClick={onSend}>
         <ArrowUp width={14} height={14} />
       </button>
     </div>

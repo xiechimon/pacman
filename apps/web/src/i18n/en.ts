@@ -349,4 +349,22 @@ export const EN: Record<string, string> = {
   帮我创建一个新项目: 'Help me create a new project',
   总结一下我所有项目现在的进展: 'Summarize the progress of all my projects',
   '查一下这个月的 token 用量': "Check this month's token usage",
+
+  // —— #75 deep dynamic states: reject loop / failed / reuse plan ——
+  由总管发起: 'Started by Chief',
+  '运行在 {m} 上': 'Running on {m}',
+  上一版本: 'Previous version',
+  '与其他版本对比…': 'Compare with other versions…',
+  '回到与 base 对比': 'Back to comparison with base',
+  复用方案: 'Reuse plan',
+  选择接下来如何使用这个方案: 'Choose how to use this plan next',
+  查看方案: 'View plan',
+  直接执行: 'Run directly',
+  重试: 'Retry',
+  失败: 'Failed',
+  默认: 'Default',
+  开始任务: 'Start task',
+  '规划与执行分用不同 Agent': 'Use different agents for planning and execution',
+  先做规划: 'Plan first',
+  立即执行: 'Run now',
 };

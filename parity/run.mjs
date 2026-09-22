@@ -137,6 +137,17 @@ async function captureEntry(entry, browser) {
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
   }
 
+  if (process.env.PARITY_DEBUG != null) {
+    console.log(
+      `debug ${entry.id}:`,
+      await page.evaluate(() => ({
+        todoId: document.querySelector('[data-todo-id]')?.getAttribute('data-todo-id'),
+        overlay: document.querySelector('.overlay') != null,
+        href: location.href,
+      })),
+    );
+  }
+
   // overlay rows (#66): open the surface by clicking through it, one
   // selector per step, settling a frame after each so the popover/dialog
   // is painted before the shot
@@ -200,8 +211,11 @@ async function captureEntry(entry, browser) {
     }
   }
 
-  // paint grace: under CI load a screenshot can race a committing frame
-  // and tear mid-transition; a settled page has nothing left to commit
+  // Chromium can hand back a stale composite right after the first paint
+  // storm (torn captures showed a correct DOM over fallback pixels); a
+  // discard shot plus the #73 paint grace forces a fresh frame for the
+  // kept one
+  await page.screenshot();
   await page.waitForTimeout(100);
 
   const shot = resolve(OUT_DIR, `${entry.id}.png`);
@@ -250,7 +264,10 @@ async function main() {
     // Chromium would otherwise route 127.0.0.1 through it
     browser = await chromium.launch({ args: ['--no-proxy-server'] });
 
-    for (const entry of matrix) {
+    // PARITY_ONLY=id1,id2 limits the run to those row ids (local
+    // iteration; CI runs the full matrix)
+    const only = process.env.PARITY_ONLY?.split(',').filter(Boolean);
+    for (const entry of matrix.filter((e) => only == null || only.includes(e.id))) {
       const capture = await captureEntry(entry, browser);
       // baseline = bare r7 filename, or `r8/…` once a row switches batch (04 §2 A6)
       const baseline = entry.baseline

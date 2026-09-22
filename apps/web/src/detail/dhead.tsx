@@ -30,13 +30,17 @@ export type HeadOverlay = 'branch' | 'token' | 'history';
 
 interface DetailHeadProps {
   todo: TodoRecord;
+  /** Rendered phase; the reject chain overrides the record's phase
+   *  (replan streaming / building rounds, issue #75). */
+  phase?: TodoRecord['phase'];
   tab: 'doc' | 'chat';
   onTab: (tab: 'doc' | 'chat') => void;
   /** #66: opens the 更多 menu popover. */
   onMore?: () => void;
   /** Right icon group (issue #68): 分支与PR / Token 用量 / 运行历史. */
   onOverlay: (kind: HeadOverlay) => void;
-  /** Primary button (开始/确认/完成/重开); the page decides what it does. */
+  /** Primary button (开始/确认/完成/重开/重跑); the page decides what it
+   *  does — the reject chain's 确认 step, the failed 重跑 dialog (#75). */
   onAction: () => void;
   /** Scenario-frozen initial open state of the chip popover (#67). */
   chipPopoverOpen?: boolean;
@@ -44,6 +48,7 @@ interface DetailHeadProps {
 
 export function DetailHead({
   todo,
+  phase,
   tab,
   onTab,
   onMore,
@@ -52,7 +57,7 @@ export function DetailHead({
   chipPopoverOpen,
 }: DetailHeadProps) {
   const { t } = useI18n();
-  const ui = PHASE_UI[todo.phase];
+  const ui = PHASE_UI[phase ?? todo.phase];
   const { search } = useLocation();
   const [popover, setPopover] = useState(chipPopoverOpen === true);
   useEscapeClose(popover, () => setPopover(false));

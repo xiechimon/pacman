@@ -94,7 +94,7 @@ export interface RunHistoryRow {
  *  set interactively. Token/branch/history payloads are build-scoped
  *  display data — outside the 02 §6.2 record contract — resolved per todo
  *  from the fixture layer; the accept dialog carries no payload. */
-export type OverlayKind = 'token' | 'branch' | 'history' | 'accept';
+export type OverlayKind = 'token' | 'branch' | 'history' | 'accept' | 'rerun' | 'reuse';
 
 export interface OverlayState {
   kind: OverlayKind;
@@ -321,26 +321,39 @@ export interface DocBlock {
  *  28/36/38). CONTEXT.md canon: the message flow is `transcript`, not
  *  stream. */
 export type TranscriptItem =
-  /** Run stamp: time line + `运行在 <machine> 上` line, centered. */
-  | { kind: 'run'; at: string; machine: string }
+  /** Run stamp: time line + `运行在 <machine> 上` line, centered. The
+   *  reused-plan build (r8 76) splits the two lines around the quoted
+   *  plan card, so each half is optional. */
+  | { kind: 'run'; at?: string; machine?: string }
   /** User bubble (`开始执行任务` / `确认`); the taskline chip + title ride
    *  along only on the task-start bubble (r7 26: the 确认 bubble renders
    *  bubble + icon pair alone). */
   | { kind: 'user'; text: string; seq?: number; title?: string }
-  /** Agent prose: one or more paragraphs of inline segments; `code`
-   *  segments render the mono chip (r7 36 merge row, r7 38 legacy rows). */
-  | { kind: 'robot'; paragraphs: DocSegment[][] }
+  /** Agent prose: one or more paragraphs of inline segments (r7 36 merge
+   *  row, r7 38 legacy rows). `footer` renders the message action row
+   *  (copy + optional restore + optional `| 完成 Ns` + optional `›`,
+   *  r8 60/65); paragraph kinds carry the r8 quote/ordinal/bullet forms. */
+  | {
+      kind: 'robot';
+      /** Object form carries the r8 quote/ordinal/bullet paragraph
+       *  kinds; the plain segment-array form is the r7 prose shape. */
+      paragraphs: (RobotPara | DocSegment[])[];
+      footer?: RobotFooter;
+    }
   /** Live planning/execution row: elapsed seconds + `›` + step label
    *  (r7 16 `准备工作区...`, r7 26 `处理中...`, r7 26d `调用工具：bash …`). */
   | { kind: 'streaming'; seconds: number; label: string }
-  /** Collapsed plan card: `方案 · v1` row, clamped preview, `完成 Ns` row. */
-  | { kind: 'plan'; title: string; preview: string; seconds: number }
+  /** Collapsed plan card: `方案 · v1` row, clamped preview, action row
+   *  `完成 Ns` (r7 17). `seconds` absent renders the bare `完成`
+   *  (reused-plan card, r8 76); `chevron` adds the trailing `›` of the
+   *  r8 plan cards (63/68/73). */
+  | { kind: 'plan'; title: string; preview: string; seconds?: number; chevron?: boolean }
   /** Tool-call group of a finished run: collapsed = `完成 Ns ▸` single row
    *  (r7 27/36); expanded = `完成 Ns ▾` + one pill per tool call + the
    *  `收起 ^` link (r7 28). */
   | { kind: 'tools'; seconds: number; expanded: boolean; pills: string[] }
-  /** Bare elapsed row: `完成 Ns` with the history glyph (r7 36 merge
-   *  round, r7 38 legacy card). */
+  /** Bare elapsed row: `完成 Ns` action row (r7 36 merge round, r7 38
+   *  legacy card). */
   | { kind: 'elapsed'; seconds: number }
   /** Centered dim line: a bare time stamp (`13:35`, r7 26), the merge
    *  announcement (`Xmon Dai 发起了合并`, r7 36) or the completion banner
@@ -348,7 +361,33 @@ export type TranscriptItem =
   | { kind: 'note'; text: string }
   /** Schedule-origin marker: clock glyph + `由定时发起`, left aligned
    *  (r7 38, 02 §9.2 闭环语义). */
-  | { kind: 'scheduled' };
+  | { kind: 'scheduled' }
+  /** Chief-origin marker: avatar + `由总管发起` (r8 54, chief-launched
+   *  build; the schedule twin is `scheduled`). */
+  | { kind: 'chief' }
+  /** Failed-run message: orange title line + body line + link row
+   *  (`查看原始错误` / `排查指南`, r8 54/73, r5 §7 canon). */
+  | { kind: 'fail'; title: string; body: string; links: string[] };
+
+/** One paragraph of a robot message (r7 prose; r8 adds the AI-review
+ *  quote block and numbered finding rows, r8 60/65). */
+export interface RobotPara {
+  segments: DocSegment[];
+  /** Indented tinted block with a left border (r8 65 review quote). */
+  quote?: boolean;
+  /** Numbered-list ordinal rendered as a hanging `N.` (r8 65 findings). */
+  ordinal?: number;
+  /** `• ` bullet marker (r8 54 result message). */
+  bullet?: boolean;
+}
+
+/** Message action row payload (r8 60/65): copy + optional restore +
+ *  optional `| 完成 Ns` + optional trailing chevron. */
+export interface RobotFooter {
+  restore?: boolean;
+  seconds?: number;
+  chevron?: boolean;
+}
 
 /** One changed file in the diff pane (r7 27/27b): collapsed = file row
  *  only; expanded = unified-diff hunks below it. */
@@ -356,6 +395,9 @@ export interface DiffFile {
   path: string;
   /** Added-line count shown right-aligned on the file row (`+1`). */
   added: number;
+  /** Removed-line count; absent = the row/stat shows `+N` alone (r7),
+   *  present = `+A −B` pair (plan-version diffs, r8 69/71). */
+  removed?: number;
   hunks: DiffHunk[];
 }
 
@@ -367,7 +409,9 @@ export interface DiffHunk {
 }
 
 export interface DiffLine {
-  kind: 'context' | 'add';
+  /** context/add = r7 27b; del = the `−` row of plan-version diffs
+   *  (r8 72); marker = the gutter-less `\ No newline at end of file`. */
+  kind: 'context' | 'add' | 'del' | 'marker';
   text: string;
   /** Line numbers per side; the add row leaves `oldNo` blank (r7 27b
    *  gutter). */
@@ -396,6 +440,56 @@ export interface DetailContent {
   /** User-menu popover rendered over the sidebar (r7 17 / 16d / 26d /
    *  27d captures). */
   userMenuOpen?: boolean;
+  /** Version dropdown rows under the doc-pane version chip, newest
+   *  first (r8 63/70); absent = the chip renders the plain v1 select. */
+  planVersions?: PlanVersion[];
+  /** Capture-state open menu on the version chip (r8 63/64). */
+  versionMenu?: 'versions' | 'compare';
+  /** Plan-version diff surface replacing the plan markdown (r8 65–72). */
+  planDiff?: PlanDiffContent;
+  /** Diff the compare submenu's 上一版本 opens (r8 64 → 65, 70 → 71). */
+  compareTarget?: PlanDiffContent;
+  /** Agent row of the rerun dialog (r8 56/74): the previous run's agent. */
+  rerunAgent?: { name: string; model: string };
+  /** Interactive reject-loop script (issue #75 AC3). */
+  revision?: RevisionStep;
+}
+
+/** One row of the version dropdown under the doc-pane version chip
+ *  (r8 63/70): version word + relative age from the fixture instant. */
+export interface PlanVersion {
+  v: string;
+  /** Version landing instant; the label is `relativeTime(at, now)`. */
+  at: number;
+}
+
+/** The plan-version diff surface of the doc pane (r8 65–72): range chip
+ *  `v1 → v2`, file-level unified diff of plan.md. */
+export interface PlanDiffContent {
+  from: string;
+  to: string;
+  files: DiffFile[];
+  expanded: boolean;
+}
+
+/** Client-side reject-loop script (issue #75 AC3): what the composer send
+ *  walks through on a confirm surface — revision streaming (r8 67), then
+ *  the next plan version landing (r8 68 family). */
+export interface RevisionStep {
+  /** User bubble text the send produces. */
+  feedback: string;
+  /** Streaming row while the replan runs (r8 67). */
+  streaming: { seconds: number; label: string };
+  /** Doc-pane diff left open during the replan (r8 67 keeps v1→v2 up). */
+  planDiff?: PlanDiffContent;
+  /** State once the new version lands: chip back to 确认. */
+  landed: {
+    planVersions: PlanVersion[];
+    doc: DocBlock[];
+    transcriptTail: TranscriptItem[];
+    /** Diff the 上一版本 submenu entry resolves to (r8 65). */
+    planDiff: PlanDiffContent;
+  };
 }
 
 // ── Chief surface (issue #72) ────────────────────────────────────────────
