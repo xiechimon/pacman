@@ -43,14 +43,17 @@ interface BoardSidebarProps {
 
 /** Leaf nav rows shared by both sidebar states — each renders full in the
  *  expanded sidebar (icon + label + route) and icon-only in the rail. */
-const RESOURCE_ROWS: { label: string; href: string; Icon: ComponentType<SVGProps<SVGSVGElement>> }[] =
-  [
-    { label: '技能', href: '/app/resources/skills', Icon: Puzzle },
-    { label: 'MCP', href: '/app/resources/mcp-servers', Icon: Network },
-    { label: '密钥', href: '/app/resources/secrets', Icon: Key },
-    { label: '机器', href: '/app/resources/machines', Icon: Server },
-    { label: '模型服务', href: '/app/resources/providers', Icon: Layers },
-  ];
+const RESOURCE_ROWS: {
+  label: string;
+  href: string;
+  Icon: ComponentType<SVGProps<SVGSVGElement>>;
+}[] = [
+  { label: '技能', href: '/app/resources/skills', Icon: Puzzle },
+  { label: 'MCP', href: '/app/resources/mcp-servers', Icon: Network },
+  { label: '密钥', href: '/app/resources/secrets', Icon: Key },
+  { label: '机器', href: '/app/resources/machines', Icon: Server },
+  { label: '模型服务', href: '/app/resources/providers', Icon: Layers },
+];
 
 const PROJECT_HREF = `/app/project/${PROJECT_ID}`;
 
