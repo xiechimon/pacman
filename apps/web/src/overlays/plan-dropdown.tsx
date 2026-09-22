@@ -2,14 +2,16 @@
 // right-aligned under the doc-pane 方案▾ button — a document-type selector
 // only (方案 ✓), not a confirm entry (r5b §3.7).
 
+import { useI18n } from '../i18n/provider.js';
 import { Check } from '../icons/index.js';
 import './overlays.css';
 
 export function PlanDropdown() {
+  const { t } = useI18n();
   return (
-    <div className="plan-dropdown" role="listbox" aria-label="文档类型">
+    <div className="plan-dropdown" role="listbox" aria-label={t('文档类型')}>
       <button type="button" className="plan-dropdown-row" role="option" aria-selected={true}>
-        方案
+        {t('方案')}
         <span className="plan-dropdown-check">
           <Check width={14} height={14} />
         </span>

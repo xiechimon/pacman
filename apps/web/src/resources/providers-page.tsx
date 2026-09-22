@@ -4,6 +4,7 @@
 // dots instead of the pill).
 import { useSearchParams } from 'react-router';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { EllipsisVertical, Layers, Sparkle } from '../icons/index.js';
 import { RowChevron, StatusPill, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
@@ -11,6 +12,7 @@ import { ResourceShell } from './shell.js';
 export const PROVIDERS_HREF = '/app/resources/providers';
 
 export function ProvidersPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   const providers = fixture.resources?.providers ?? [];
@@ -33,10 +35,10 @@ export function ProvidersPage() {
             />
             <span className="res-row-text">
               <span className="res-row-line">
-                <span className="res-row-title">{provider.name}</span>
-                {provider.custom === true && <span className="res-tag">自定义</span>}
+                <span className="res-row-title">{t(provider.name)}</span>
+                {provider.custom === true && <span className="res-tag">{t('自定义')}</span>}
               </span>
-              <span className="res-row-desc">{provider.models}</span>
+              <span className="res-row-desc">{t(provider.models)}</span>
             </span>
             {provider.pill != null && <StatusPill label={provider.pill} />}
             {provider.custom === true && (

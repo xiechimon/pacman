@@ -6,6 +6,7 @@
 // landing on the backdrop itself dismiss.
 
 import { type ReactNode, useEffect } from 'react';
+import { useI18n } from '../i18n/provider.js';
 import { X } from '../icons/index.js';
 import './overlays.css';
 
@@ -19,6 +20,7 @@ interface DialogShellProps {
 }
 
 export function DialogShell({ title, headerCenter, onClose, children }: DialogShellProps) {
+  const { t } = useI18n();
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
@@ -39,11 +41,16 @@ export function DialogShell({ title, headerCenter, onClose, children }: DialogSh
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="dlg" role="dialog" aria-modal="true" aria-label={title}>
+      <div
+        className="dlg"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title == null ? undefined : t(title)}
+      >
         <div className={`dlg-head${headerCenter != null ? ' dlg-head--plain' : ''}`}>
-          {title != null && <span className="dlg-title">{title}</span>}
+          {title != null && <span className="dlg-title">{t(title)}</span>}
           {headerCenter}
-          <button type="button" className="dlg-close" aria-label="关闭" onClick={onClose}>
+          <button type="button" className="dlg-close" aria-label={t('关闭')} onClick={onClose}>
             <X width={16} height={16} />
           </button>
         </div>

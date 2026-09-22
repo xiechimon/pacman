@@ -22,6 +22,13 @@
 //              the r8 overlay session capped its dark baselines at
 //              1440×710, so those rows capture at the same size
 //              (centering law still holds, r7 §3.5 formula)
+//   locale     optional: 'en' → injects tds.locale/tds-locale=en before
+//              load so the en fallback dict renders (issue #74; absent =
+//              the zh-CN authoritative default). Every official capture is
+//              zh, so en rows ride smoke pairs — no en baseline exists.
+//   expectText optional: string that must appear in the rendered page
+//              (innerText or serialized DOM) — gives the smoke rows teeth
+//              beyond SSIM=1 self-comparison
 //   baseline   optional r7 filename under docs/research/assets/r7/ —
 //              present = real parity pair (threshold 0.85);
 //              `r8/<file>` form points at post-r7 companion captures
@@ -766,6 +773,146 @@ export const matrix = [
   { id: 'chief-settings-charter-dark', route: '/app', scenario: '102', theme: 'dark' },
   { id: 'chief-settings-memory-dark', route: '/app', scenario: '103', theme: 'dark' },
   { id: 'chief-settings-watches-dark', route: '/app', scenario: '104', theme: 'dark' },
+  // i18n bilingual spot-check rows (issue #74): zh is the pixel-gated
+  // default on every row above; these prove the en fallback renders across
+  // the screen families (board / detail / schedules / account / team /
+  // resources / chief / search / project) and the 语言 dropdown open state.
+  // Smoke pairs + expectText — the official captures are all zh, so no en
+  // baseline exists to score against (04 §2: no-baseline rows ride smoke).
+  {
+    id: 'board-en',
+    route: '/app',
+    scenario: '02',
+    theme: 'light',
+    locale: 'en',
+    // scenario 02 fills 待确认 with probe #9 — the empty state that always
+    // renders there is 待开始's (r7 02 board composition)
+    expectText: 'No tasks waiting to start',
+  },
+  {
+    id: 'detail-confirm-en',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '17',
+    theme: 'light',
+    locale: 'en',
+    expectText: 'Confirm',
+  },
+  {
+    id: 'detail-fresh-en',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '23',
+    theme: 'light',
+    locale: 'en',
+    expectText: 'Created Sep 21, 2026 13:21',
+  },
+  {
+    id: 'schedules-empty-en',
+    route: '/app/schedules',
+    scenario: '11',
+    theme: 'light',
+    locale: 'en',
+    expectText: 'No schedules yet.',
+  },
+  {
+    id: 'account-en',
+    route: '/app/account',
+    scenario: '13',
+    theme: 'light',
+    locale: 'en',
+    expectText: 'Push notifications',
+  },
+  // 语言 dropdown open states ([设计] shape, r2 §11 Q19) — endonym rows
+  {
+    id: 'account-lang-open-zh',
+    route: '/app/account',
+    scenario: '13-lang',
+    theme: 'light',
+    expectText: '简体中文',
+  },
+  {
+    id: 'account-lang-open-en',
+    route: '/app/account',
+    scenario: '13-lang',
+    theme: 'light',
+    locale: 'en',
+    expectText: 'English',
+  },
+  {
+    id: 'team-en',
+    route: '/app/team',
+    scenario: '12',
+    theme: 'light',
+    locale: 'en',
+    expectText: 'Create Agent',
+  },
+  {
+    id: 'resources-skills-en',
+    route: '/app/resources/skills',
+    scenario: '06',
+    theme: 'light',
+    locale: 'en',
+    expectText: 'Search skills...',
+  },
+  {
+    id: 'chief-settings-en',
+    route: '/app',
+    scenario: '101',
+    theme: 'light',
+    locale: 'en',
+    expectText: 'Chief settings',
+  },
+  {
+    id: 'search-panel-en',
+    route: '/app',
+    scenario: '05',
+    theme: 'light',
+    locale: 'en',
+    expectText: 'Go to',
+  },
+  // dialog open states (#66 clicks, #68 scenario-frozen) in en
+  {
+    id: 'overlay-new-task-en',
+    route: '/app',
+    scenario: '01',
+    theme: 'light',
+    locale: 'en',
+    clicks: ['.board-new-task'],
+    expectText: 'New task',
+  },
+  {
+    id: 'overlay-delete-en',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '36',
+    theme: 'light',
+    locale: 'en',
+    clicks: ['.detail-head-icon--more', '.more-menu-item[data-action="delete"]'],
+    expectText: 'Delete this todo? This cannot be undone.',
+  },
+  {
+    id: 'overlay-token-en',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '30',
+    theme: 'light',
+    locale: 'en',
+    expectText: 'Cache read',
+  },
+  {
+    id: 'overlay-accept-en',
+    route: '/app',
+    scenario: '34',
+    theme: 'light',
+    scrollLeft: 'max',
+    locale: 'en',
+    expectText: 'Complete todo',
+  },
+  {
+    id: 'project-tasks-empty-en',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24b',
+    theme: 'light',
+    locale: 'en',
+    expectText: 'Nothing yet',
+  },
 ];
 
 export const DEFAULT_BASELINE_THRESHOLD = 0.85;

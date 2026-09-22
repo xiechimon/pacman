@@ -114,6 +114,9 @@ export interface OverlayUi {
   chipPopoverOpen?: boolean;
   /** 方案▾ document-type dropdown open in the doc pane (r7 20). */
   planDropdownOpen?: boolean;
+  /** Account 语言 dropdown open (issue #74; open state [设计] — the
+   *  official option list was never captured, r2 §11 Q19). */
+  langDropdownOpen?: boolean;
 }
 
 /** Scheduled rule (02 §9.2 / r3 §8.3 wire shape, copied verbatim:

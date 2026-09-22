@@ -3,6 +3,7 @@
 // chevron). Row content comes from the scenario fixture.
 import { useSearchParams } from 'react-router';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { ArrowUpDown, ChevronDown, Puzzle, Search } from '../icons/index.js';
 import { EmptyState, RowChevron, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
@@ -10,6 +11,7 @@ import { ResourceShell } from './shell.js';
 export const SKILLS_HREF = '/app/resources/skills';
 
 export function SkillsPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   const skills = fixture.resources?.skills ?? [];
@@ -37,11 +39,11 @@ export function SkillsPage() {
           <div className="res-searchrow">
             <div className="res-search">
               <Search width={13} height={13} />
-              <span className="res-search-ph">搜索技能...</span>
+              <span className="res-search-ph">{t('搜索技能...')}</span>
             </div>
             <button type="button" className="res-sort">
               <ArrowUpDown width={13} height={13} />
-              <span>排序</span>
+              <span>{t('排序')}</span>
               <ChevronDown width={12} height={12} />
             </button>
           </div>

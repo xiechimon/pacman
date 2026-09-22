@@ -442,10 +442,14 @@ const PROBE_BUILD_RESULT: TranscriptItem = {
  *  `edit README.md` + the verification `bash …` pill). The bash label is
  *  also the 26d streaming row's 调用工具 text — the capture runs it to
  *  the chat edge with an ellipsis. */
-const PROBE_TOOL_PILLS = [
+export const PROBE_TOOL_PILLS = [
   'edit README.md',
   'bash cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && tail -n 3 README.md && echo …',
 ];
+
+/** Streaming-row tool label of the 26d capture — chrome carried inside the
+ *  fixture (frozen capture text); the en dict keys on this exact value. */
+export const PROBE_TOOL_CALL_LABEL = `调用工具：${PROBE_TOOL_PILLS[1]}`;
 
 /** Tool-call group row of the execution round (r7 27 collapsed `完成
  *  19s ▸`; r7 28 expanded with pills + 收起). */
@@ -567,7 +571,7 @@ export function detailBuilding(lateCapture: boolean): FixtureSet {
           seconds: 19,
           // full command rides the label; CSS ellipsis cuts it at the
           // chat edge exactly like the capture
-          label: `调用工具：${PROBE_TOOL_PILLS[1]}`,
+          label: PROBE_TOOL_CALL_LABEL,
         },
       ]
     : [{ kind: 'streaming', seconds: 3, label: '处理中...' }];

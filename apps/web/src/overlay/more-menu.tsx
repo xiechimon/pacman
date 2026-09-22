@@ -6,6 +6,7 @@
 // 复制链接 copies the route URL (r2 §5.3); 完成/关闭 lifecycle mutations
 // land with the backend line (03 §M2+), so they only dismiss the menu.
 
+import { useI18n } from '../i18n/provider.js';
 import { Ban, Check, Copy, Trash2 } from '../icons/index.js';
 import { useEscClose } from './use-esc.js';
 import './overlay.css';
@@ -16,6 +17,7 @@ interface MoreMenuProps {
 }
 
 export function MoreMenu({ onClose, onDelete }: MoreMenuProps) {
+  const { t } = useI18n();
   useEscClose(onClose);
   const copyLink = () => {
     void navigator.clipboard?.writeText(window.location.href);
@@ -23,19 +25,24 @@ export function MoreMenu({ onClose, onDelete }: MoreMenuProps) {
   };
   return (
     <>
-      <button type="button" className="more-menu-catcher" aria-label="关闭菜单" onClick={onClose} />
-      <div className="more-menu" role="menu" aria-label="更多">
+      <button
+        type="button"
+        className="more-menu-catcher"
+        aria-label={t('关闭菜单')}
+        onClick={onClose}
+      />
+      <div className="more-menu" role="menu" aria-label={t('更多')}>
         <button type="button" role="menuitem" className="more-menu-item" onClick={onClose}>
           <Check />
-          完成
+          {t('完成')}
         </button>
         <button type="button" role="menuitem" className="more-menu-item" onClick={copyLink}>
           <Copy />
-          复制链接
+          {t('复制链接')}
         </button>
         <button type="button" role="menuitem" className="more-menu-item" onClick={onClose}>
           <Ban />
-          关闭
+          {t('关闭')}
         </button>
         <button
           type="button"
@@ -45,7 +52,7 @@ export function MoreMenu({ onClose, onDelete }: MoreMenuProps) {
           onClick={onDelete}
         >
           <Trash2 />
-          删除
+          {t('删除')}
         </button>
       </div>
     </>

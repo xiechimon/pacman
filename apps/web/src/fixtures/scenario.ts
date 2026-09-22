@@ -151,6 +151,8 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   // fixture content at all, so they ride the default set
   '12': teamGrid,
   '13': boardDefault,
+  // account 语言 dropdown open state (issue #74; shape [设计], r2 §11 Q19)
+  '13-lang': { ...boardDefault, ui: { langDropdownOpen: true } },
   'api-keys': boardDefault,
   'api-keys-created': apiKeysCreated,
   feedback: boardDefault,
