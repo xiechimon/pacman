@@ -20,6 +20,7 @@ export const diffFileSchema = z.object({
   deletions: z.number().int(),
   hunks: z.array(diffHunkSchema),
 });
+export type DocumentDiffFile = z.infer<typeof diffFileSchema>;
 
 export const documentDiffSchema = z.object({
   /** chip `v1 → v2`（r5 §4）。 */

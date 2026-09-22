@@ -1,0 +1,402 @@
+/* Overlay batch B (issue #67): ⌘K search panel (r7 05 + 05b), status-chip
+   popover (r7 19/29) and the 方案▾ document-type dropdown (r7 20).
+   Geometry measured off the r7 bitmaps at 1440×732; colors ride the token
+   layer so both themes render from one rule set. */
+
+/* ---- ⌘K search panel ------------------------------------------------ */
+
+.search-scrim {
+  position: fixed;
+  inset: 0;
+  border: none;
+  padding: 0;
+  background: rgb(0 0 0 / 0.6);
+  cursor: default;
+  z-index: 40;
+}
+
+/* 520×440 centered on the viewport, top 146 (r7 §3.5 family + 05 measure);
+   stacks above the scrim button (z 40) */
+.search-panel {
+  position: fixed;
+  top: 146px;
+  left: 50%;
+  width: 520px;
+  height: 440px;
+  margin-left: -260px;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  background: var(--popover-bg);
+  border-radius: 12px;
+  box-shadow: var(--fab-shadow);
+  overflow: hidden;
+}
+
+.search-input-row {
+  flex: none;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 16px 0 17px;
+  border-bottom: 1px solid var(--card-border);
+  color: var(--text-dim);
+}
+
+.search-input-row input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-primary);
+}
+
+.search-input-row input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.search-list {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.search-group-label {
+  padding: 12px 16px 4px;
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-tertiary);
+}
+
+/* the live site uppercases latin group names (AGENTS, r7 05b) */
+.search-group-label--upper {
+  text-transform: uppercase;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: calc(100% - 16px);
+  height: 40px;
+  margin: 0 8px;
+  padding: 0 8px 0 16px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.search-row > svg {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+.search-row--selected {
+  background: var(--row-selected);
+}
+
+/* result rows: 28px icon tile, clamped two-line main, fixed time column
+   at x882 and a right-pinned phase chip (05b measure) */
+.search-row--todo {
+  gap: 10px;
+  padding-left: 8px;
+}
+
+.search-row-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--row-icon-bg);
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-row-icon--project {
+  background: var(--project-avatar-bg);
+  color: var(--project-avatar-fg);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.search-row-icon--agent {
+  background: transparent;
+}
+
+.search-row-icon--agent img {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+}
+
+.search-row-main {
+  flex: none;
+  width: 358px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.search-row-title {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-row-sub {
+  font-size: 10px;
+  line-height: 12px;
+  color: var(--text-tertiary);
+}
+
+.search-row-time {
+  flex: none;
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--text-dim);
+}
+
+.search-row-chip {
+  flex: none;
+  margin-left: auto;
+  height: 14px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.search-row-chip--idle {
+  background: var(--chip-idle-bg);
+  color: var(--chip-idle-fg);
+}
+
+.search-row-chip--plan {
+  background: var(--chip-plan-bg);
+  color: var(--chip-plan-fg);
+}
+
+.search-row-chip--confirm {
+  background: var(--chip-confirm-bg);
+  color: var(--chip-confirm-fg);
+}
+
+.search-row-chip--done {
+  background: var(--chip-done-bg);
+  color: var(--chip-done-fg);
+}
+
+.search-empty {
+  padding: 24px 16px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+/* ---- status-chip popover (r7 19/29: 298×193 under the header chip) --- */
+
+/* transparent outside-click layer under the anchored popovers ([推断]
+   dismiss affordance; paints nothing) */
+.overlay-click-catcher {
+  position: fixed;
+  inset: 0;
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+  z-index: 29;
+}
+
+/* anchor for the popover: chip + chevron cluster (popover left = chip
+   left − 18, top = chip bottom + 3.5 → r7 §3.5 @ (287,34.5)) */
+.detail-chipwrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.chip-popover {
+  position: absolute;
+  left: -18px;
+  top: calc(100% + 3.5px);
+  width: 298px;
+  height: 193px;
+  display: flex;
+  flex-direction: column;
+  background: var(--popover-bg);
+  border-radius: 12px;
+  box-shadow: var(--fab-shadow);
+  overflow: hidden;
+  z-index: 30;
+  text-align: left;
+}
+
+.chip-popover-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 0;
+}
+
+.chip-popover-avatar {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--project-avatar-bg);
+  color: var(--project-avatar-fg);
+  font-size: 8px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chip-popover-project {
+  font-size: 11px;
+  line-height: 12px;
+  color: var(--text-tertiary);
+}
+
+.chip-popover-seq {
+  font-size: 11px;
+  line-height: 12px;
+  color: var(--text-dim);
+}
+
+.chip-popover-title {
+  padding: 5px 12px 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+}
+
+.chip-popover-divider {
+  flex: none;
+  height: 1px;
+  background: var(--overlay-divider);
+}
+
+.chip-popover-section {
+  flex: none;
+  padding-top: 8px;
+}
+
+/* the selected section highlights label and row together (05b/19) */
+.chip-popover-section--selected {
+  background: var(--overlay-select-indigo);
+}
+
+.chip-popover-label {
+  padding: 0 12px;
+  font-size: 11px;
+  line-height: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.chip-popover-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 26px;
+  padding: 0 8px 0 12px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.chip-popover-row img {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+}
+
+.chip-popover-check {
+  margin-left: auto;
+  display: flex;
+  color: var(--indigo-500);
+}
+
+.chip-popover-edit {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+  text-align: left;
+  cursor: pointer;
+}
+
+/* the header chevron sits outside the pill, tertiary (r7 17 measure) */
+.detail-chip-chevron {
+  flex: none;
+  margin-left: 5px;
+  display: flex;
+  color: var(--text-tertiary);
+}
+
+/* ---- 方案▾ document-type dropdown (r7 20: 218×44, right-aligned) ------ */
+
+.doc-select-wrap {
+  position: relative;
+  display: flex;
+}
+
+.plan-dropdown {
+  position: absolute;
+  top: calc(100% - 0.5px);
+  right: 0;
+  width: 218px;
+  height: 44px;
+  background: var(--popover-bg);
+  border-radius: 10px;
+  box-shadow: var(--fab-shadow);
+  z-index: 30;
+}
+
+.plan-dropdown-row {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 4px 0 24px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-dropdown-check {
+  margin-left: auto;
+  display: flex;
+  color: var(--indigo-500);
+}
