@@ -97,6 +97,44 @@ export interface ProjectContent {
   description: string | null;
 }
 
+/** Team-route agent card (r7 12): avatar + name + model line + role line. */
+export interface TeamAgentCard {
+  id: string;
+  displayName: string;
+  /** Model line lead (`claude-sonnet-5 · 默认`, r7 12). */
+  model: string;
+  /** Model line carries the `· 默认` suffix for the team's default agent. */
+  isDefault: boolean;
+  /** Role line text; null renders the `未设置职责` placeholder (r7 12). */
+  role: string | null;
+}
+
+/** Team-route content (r7 12): stats-bar count + the agent card grid. */
+export interface TeamContent {
+  /** Stats bar `N 个成员` — the member count includes agents (r3 §4). */
+  members: number;
+  agents: TeamAgentCard[];
+}
+
+/** API-key row (02 §6.2 apiKey shape subset + r3 §6 display rules). */
+export interface ApiKeyRecord {
+  id: string;
+  /** Optional key name (r3 §6 `密钥名称（可选）`); null shows the mask alone. */
+  name: string | null;
+  /** List-row mask `tds_afe07565…` (r3 §6); the value is never readable again. */
+  masked: string;
+  gitAccess: boolean;
+  mcpAccess: boolean;
+  /** One-time plaintext right after creation (02 §8): rendered once beside
+   *  the `请立即复制密钥，它仅显示一次。` canon, absent on every later view. */
+  plaintext?: string;
+}
+
+/** API-keys route content; absent = the empty state (r2 19). */
+export interface ApiKeysContent {
+  keys: ApiKeyRecord[];
+}
+
 /** One deterministic content set behind a scenario id. `now` is the frozen
  *  reference instant for relative labels (capture time of the r7 shot), so
  *  parity output never drifts with wall-clock time. */
@@ -120,6 +158,10 @@ export interface FixtureSet {
    *  任务|文件 tabs the capture sits on. Absent = 文件, the route default
    *  (r2 §2 route table). */
   projectTab?: 'tasks' | 'files';
+  /** Team-route content (issue #70, r7 12); absent = the r7 roster. */
+  team?: TeamContent;
+  /** API-keys route content (issue #70); absent = empty state (r2 19). */
+  apiKeys?: ApiKeysContent;
 }
 
 /** Inline text run inside a plan-document block; `code` renders the

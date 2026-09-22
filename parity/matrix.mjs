@@ -4,7 +4,9 @@
 // Entry contract:
 //   id         stable pair name (output artefacts are named after it)
 //   route      app route to capture
-//   scenario   r7 capture number → fixture set via ?scenario=
+//   scenario   r7 capture number → fixture set via ?scenario=; surfaces
+//              with no r7 capture (issue #70 secondary routes) use a
+//              named id instead and ride smoke pairs
 //   theme      'dark' | 'light' (injected via localStorage tds-theme)
 //   scrollLeft optional: number, or 'max' for rightmost board scroll,
 //              applied to the element carrying [data-parity-scroll]
@@ -316,6 +318,42 @@ export const matrix = [
     scenario: 'r2-24c',
     theme: 'dark',
   },
+  // gate rows (issue #70): secondary routes batch B — team and account
+  // carry r7 baselines; api-keys/feedback have no r7 capture (r2 19/32
+  // are the shape reference only), so those rows are smoke pairs, and
+  // the dark rows ride the same surfaces without baselines
+  {
+    id: 'team-light',
+    route: '/app/team',
+    scenario: '12',
+    theme: 'light',
+    baseline: '12-team.png',
+  },
+  { id: 'team-dark', route: '/app/team', scenario: '12', theme: 'dark' },
+  {
+    id: 'account-light',
+    route: '/app/account',
+    scenario: '13',
+    theme: 'light',
+    baseline: '13-account.png',
+  },
+  { id: 'account-dark', route: '/app/account', scenario: '13', theme: 'dark' },
+  { id: 'api-keys-light', route: '/app/api-keys', scenario: 'api-keys', theme: 'light' },
+  {
+    id: 'api-keys-created-light',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'light',
+  },
+  {
+    id: 'api-keys-created-dark',
+    route: '/app/api-keys',
+    scenario: 'api-keys-created',
+    theme: 'dark',
+  },
+  { id: 'api-keys-dark', route: '/app/api-keys', scenario: 'api-keys', theme: 'dark' },
+  { id: 'feedback-light', route: '/app/feedback', scenario: 'feedback', theme: 'light' },
+  { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' },
   // report rows (issue #57): expanded diff (27b) and expanded tool rows
   // (28) — artefacts + score recorded, not gated
   {

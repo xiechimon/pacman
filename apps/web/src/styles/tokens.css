@@ -56,6 +56,14 @@
   --badge-done: #5ec26a;
   /* fresh-card owner badge (r7 22/22d), same gray in both themes */
   --badge-idle: #9ea3ae;
+  /* secondary routes (issue #70): team agent avatar disc (r7 12 light
+     sample #eff1f5) and the selected feedback chip tint (r2 32); dark
+     values are [推断], derived from the chip-idle/plan dark family */
+  --agent-avatar-bg: #202733;
+  --chip-active-bg: #26243a;
+  --chip-active-border: #3b3866;
+  /* [推断] indigo-500 at 55% over surface-secondary, mirroring the light sample */
+  --send-disabled: #454690;
   --install-bg: #28293b;
   --install-fg: #6063df;
   --fab-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
@@ -120,6 +128,11 @@
   --badge-idle: #9ea3ae;
   --install-bg: #ebe8f2;
   --install-fg: #6c6ee9;
+  /* secondary routes (issue #70), sampled from r7 12 / r2 32 light */
+  --agent-avatar-bg: #eff1f5;
+  --chip-active-bg: #ebe8f2;
+  --chip-active-border: #cdc9f0;
+  --send-disabled: #9f9ae2;
   --fab-shadow: 0 5px 14px rgb(28 25 23 / 0.14);
   /* detail palette, sampled from the r7 23/16/17 captures (#56) */
   --chip-idle-bg: #f3f4f6;

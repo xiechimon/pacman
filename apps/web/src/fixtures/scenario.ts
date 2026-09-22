@@ -10,6 +10,7 @@
 // Unknown or absent ids fall back to the default board set.
 
 import {
+  apiKeysCreated,
   boardDarkFresh,
   boardDefault,
   boardWithProbe,
@@ -29,6 +30,7 @@ import {
   schedulesFormDaily,
   schedulesFormOnce,
   schedulesList,
+  teamGrid,
 } from './fixtures.js';
 import type { FixtureSet } from './records.js';
 
@@ -91,6 +93,15 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   'r2-24b': projectTasksEmpty,
   'prj-tasks': projectTasks,
   'r2-24c': projectFixture,
+  // secondary routes (issue #70): 12/13 are the r7 team/account captures;
+  // the api-keys/feedback ids have no r7 capture (smoke matrix rows) and
+  // pick their surface by name — the account/feedback pages render no
+  // fixture content at all, so they ride the default set
+  '12': teamGrid,
+  '13': boardDefault,
+  'api-keys': boardDefault,
+  'api-keys-created': apiKeysCreated,
+  feedback: boardDefault,
 };
 
 /** #58 gate: scenario selection exists only in dev (`vite dev`) and in the

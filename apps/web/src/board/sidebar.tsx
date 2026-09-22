@@ -36,11 +36,11 @@ import {
 } from '../icons/index.js';
 import './sidebar.css';
 
-/** Which nav row carries the selected pill. Board routes default to 看板;
- *  the #71 routes move it (r7 11: 定时 selected; r2 07e/24b/24c: the project
- *  row). 'none' = no pill (/app/project/new, r2 07: the session's project
- *  list does not contain the page being created). */
-export type SidebarSelected = 'board' | 'schedules' | 'project' | 'none';
+/** Which sidebar row carries the active pill: a nav row (看板 / 定时 /
+ *  the project row — r7 01/11, r2 07e/24b/24c), the team head row on
+ *  team/account (r7 12/13), or none (/app/project/new r2 07, and the
+ *  user-menu-only routes r2 19/32). */
+export type SidebarSelected = 'board' | 'schedules' | 'project' | 'team' | 'none';
 
 interface BoardSidebarProps {
   collapsed?: boolean;
@@ -150,11 +150,14 @@ export function BoardSidebar({
 
   return (
     <aside className="board-sidebar">
-      <div className="sidebar-team-row">
+      <div className={`sidebar-team-row${selected === 'team' ? ' sidebar-team-row--active' : ''}`}>
         <span className="sidebar-row-icon">
           <Users />
         </span>
-        <span className="sidebar-team-name">{TEAM_NAME}</span>
+        {/* r2 §1.1: clicking the team name navigates to /app/team */}
+        <a className="sidebar-team-name" href="/app/team">
+          {TEAM_NAME}
+        </a>
         <button
           type="button"
           className="sidebar-team-collapse"
