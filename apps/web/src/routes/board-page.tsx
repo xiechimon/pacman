@@ -15,13 +15,13 @@ import { attentionCount } from '../board/columns.js';
 import { BoardSidebar } from '../board/sidebar.js';
 import { ChiefDrawer } from '../chief/chief-drawer.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
-import { chiefDefault } from '../fixtures/fixtures.js';
 import { withoutDeleted } from '../fixtures/deletions.js';
-import { localTodo } from '../fixtures/fixtures.js';
+import { chiefDefault, localTodo } from '../fixtures/fixtures.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { ChiefFab } from '../icons/index.js';
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
+import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 // shell styles live with the board surface; the settings view (101–104)
 // unmounts BoardSurface but keeps the shell, so the route imports them too
 import '../board/board.css';
@@ -42,6 +42,7 @@ export function BoardPage() {
   // made on the detail route ride along via the deletions overlay.
   const [todos, setTodos] = useState<TodoRecord[]>(() => withoutDeleted(fixture.todos));
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
   const toggle = useCallback(() => {
     const next = !collapsed;
     localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0');
@@ -71,6 +72,8 @@ export function BoardPage() {
         collapsed={collapsed}
         onToggle={toggle}
         attention={attentionCount(todos)}
+        onSearch={() => search.setOpen(true)}
+        usageNav={fixture.usageNav === true}
         selected={chiefView === 'settings' ? 'none' : 'board'}
         machineOnline={chief != null}
       />
@@ -78,6 +81,14 @@ export function BoardPage() {
         <ChiefSettings chief={chiefData} onBack={() => setChiefView('drawer')} />
       ) : (
         <BoardSurface fixture={fixtureWithTodos} onNewTask={() => setNewTaskOpen(true)} />
+      )}
+      {search.open && (
+        <SearchPanel
+          fixture={fixture}
+          query={search.query}
+          onQuery={search.setQuery}
+          onClose={() => search.setOpen(false)}
+        />
       )}
       {chiefView === 'drawer' && (
         <ChiefDrawer

@@ -7,6 +7,7 @@
 // expanded (r7 27b) and the centered 暂无可显示的变更 placeholder when
 // there is nothing to show (r7 38).
 
+import { useState } from 'react';
 import type { ChangesContent, DiffFile, DocBlock } from '../fixtures/records.js';
 import {
   ChevronDown,
@@ -16,6 +17,8 @@ import {
   FileText,
   UnfoldVertical,
 } from '../icons/index.js';
+import { ClickCatcher, useEscapeClose } from '../overlays/dismiss.js';
+import { PlanDropdown } from '../overlays/plan-dropdown.js';
 import { Segments } from './segments.js';
 
 interface DocPaneProps {
@@ -23,6 +26,8 @@ interface DocPaneProps {
   mode: 'plan' | 'changes';
   doc: DocBlock[] | undefined;
   changes: ChangesContent | undefined;
+  /** Scenario-frozen initial open state of the 方案▾ dropdown (#67). */
+  planDropdownOpen?: boolean;
 }
 
 function DiffFileBlock({ file, expanded }: { file: DiffFile; expanded: boolean }) {
@@ -67,7 +72,9 @@ function DiffFileBlock({ file, expanded }: { file: DiffFile; expanded: boolean }
   );
 }
 
-export function DocPane({ mode, doc, changes }: DocPaneProps) {
+export function DocPane({ mode, doc, changes, planDropdownOpen }: DocPaneProps) {
+  const [typeOpen, setTypeOpen] = useState(planDropdownOpen === true);
+  useEscapeClose(typeOpen, () => setTypeOpen(false));
   if (mode === 'changes') {
     const fileCount = changes?.files.length ?? 0;
     const added = changes?.files.reduce((sum, f) => sum + f.added, 0) ?? 0;
@@ -108,10 +115,23 @@ export function DocPane({ mode, doc, changes }: DocPaneProps) {
       {doc != null && (
         <header className="doc-pane-head">
           <FileTab width={14} height={14} />
-          <button type="button" className="doc-pane-select">
-            方案
-            <ChevronDown width={12} height={12} />
-          </button>
+          <span className="doc-select-wrap">
+            <button
+              type="button"
+              className="doc-pane-select"
+              aria-expanded={typeOpen}
+              onClick={() => setTypeOpen((value) => !value)}
+            >
+              方案
+              <ChevronDown width={12} height={12} />
+            </button>
+            {typeOpen && (
+              <>
+                <ClickCatcher onClose={() => setTypeOpen(false)} />
+                <PlanDropdown />
+              </>
+            )}
+          </span>
           <button type="button" className="doc-pane-select">
             v1
             <ChevronDown width={12} height={12} />

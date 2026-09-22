@@ -45,6 +45,16 @@ const EXTRA_ICONS = [
     trace: 'a 1:1 trace of the r7 27 bitmap (r5b §3.8 records the control, not its markup)',
   },
   {
+    // 编辑分配 row gear in the status-chip popover (r7 §6 leaves the
+    // popover undumped; r7 19 shows the pixels: cog + hub, x299..313
+    // y205..213 — lucide settings shape)
+    name: 'Settings',
+    size: [14, 14],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
+    contexts: ['chip popover 编辑分配 row (traced from r7 19)'],
+    trace: 'a 1:1 trace of the r7 19 bitmap (r7 §6 leaves the popover undumped)',
+  },
+  {
     // tool-pill prefix in the transcript (r7 28: chevron + underscore,
     // x779..790 y556..565 — lucide terminal shape)
     name: 'Terminal',

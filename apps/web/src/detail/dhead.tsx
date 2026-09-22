@@ -4,7 +4,10 @@
 // #58: the back button carries the current search string home so the
 // dev/parity ?scenario= selection survives the round trip; the board
 // scroll position is restored by BoardSurface from sessionStorage.
+// #67: the chip is a real button — it toggles the status popover (r7
+// 19/29), and the chevron rides outside the pill (r7 17 measure).
 
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import type { TodoRecord } from '../fixtures/records.js';
 import {
@@ -17,6 +20,8 @@ import {
   History,
   MessageSquare,
 } from '../icons/index.js';
+import { ChipPopover } from '../overlays/chip-popover.js';
+import { ClickCatcher, useEscapeClose } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
 
 interface DetailHeadProps {
@@ -25,20 +30,39 @@ interface DetailHeadProps {
   onTab: (tab: 'doc' | 'chat') => void;
   /** #66: opens the 更多 menu popover. */
   onMore?: () => void;
+  /** Scenario-frozen initial open state of the chip popover (#67). */
+  chipPopoverOpen?: boolean;
 }
 
-export function DetailHead({ todo, tab, onTab, onMore }: DetailHeadProps) {
+export function DetailHead({ todo, tab, onTab, onMore, chipPopoverOpen }: DetailHeadProps) {
   const ui = PHASE_UI[todo.phase];
   const { search } = useLocation();
+  const [popover, setPopover] = useState(chipPopoverOpen === true);
+  useEscapeClose(popover, () => setPopover(false));
   return (
     <header className="detail-head">
       <Link className="detail-back" to={{ pathname: '/app', search }} aria-label="返回">
         <ChevronLeft />
       </Link>
       <span className="detail-seq">#{todo.seqNum}</span>
-      <span className={`detail-chip detail-chip--${ui.tone}`}>
-        {ui.chip}
-        <ChevronDown width={12} height={12} />
+      <span className="detail-chipwrap">
+        <button
+          type="button"
+          className={`detail-chip detail-chip--${ui.tone}`}
+          aria-expanded={popover}
+          onClick={() => setPopover((value) => !value)}
+        >
+          {ui.chip}
+        </button>
+        <span className="detail-chip-chevron">
+          <ChevronDown width={12} height={12} />
+        </span>
+        {popover && (
+          <>
+            <ClickCatcher onClose={() => setPopover(false)} />
+            <ChipPopover todo={todo} />
+          </>
+        )}
       </span>
 
       {ui.tabs && (

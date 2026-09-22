@@ -11,6 +11,7 @@ import { Transcript } from '../detail/transcript.js';
 import { UserMenu } from '../detail/user-menu.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { MoreMenu } from '../overlay/more-menu.js';
+import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
 import '../detail/detail.css';
 import { attentionCount } from '../board/columns.js';
@@ -33,6 +34,7 @@ export function TodoDetailPage() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const fixture = resolveScenario(searchParams);
+  const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
   const todos = withoutDeleted(fixture.todos);
   const todo = todos.find((t) => t.id === id) ?? todos[0];
   if (todo == null) return null;
@@ -45,16 +47,33 @@ export function TodoDetailPage() {
 
   return (
     <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
-      <BoardSidebar attention={attentionCount(todos)} />
+      <BoardSidebar
+        attention={attentionCount(todos)}
+        onSearch={() => search.setOpen(true)}
+        usageNav={fixture.usageNav === true}
+      />
       <div className="detail-main">
-        <DetailHead todo={todo} tab={tab} onTab={setTab} onMore={() => setMoreOpen(true)} />
+        <DetailHead
+          todo={todo}
+          tab={tab}
+          onTab={setTab}
+          onMore={() => setMoreOpen(true)}
+          chipPopoverOpen={fixture.ui?.chipPopoverOpen === true}
+        />
         {detail == null ? (
           <div className="detail-body detail-body--single">
             <FreshBlock todo={todo} />
           </div>
         ) : (
           <div className="detail-body">
-            {tab === 'doc' && <DocPane mode={docMode} doc={detail.doc} changes={detail.changes} />}
+            {tab === 'doc' && (
+              <DocPane
+                mode={docMode}
+                doc={detail.doc}
+                changes={detail.changes}
+                planDropdownOpen={fixture.ui?.planDropdownOpen === true}
+              />
+            )}
             <div className="chat-col">
               <Transcript transcript={detail.transcript} />
             </div>
@@ -95,6 +114,14 @@ export function TodoDetailPage() {
             markDeleted(todo.id);
             navigate('/app');
           }}
+        />
+      )}
+      {search.open && (
+        <SearchPanel
+          fixture={fixture}
+          query={search.query}
+          onQuery={search.setQuery}
+          onClose={() => search.setOpen(false)}
         />
       )}
     </div>

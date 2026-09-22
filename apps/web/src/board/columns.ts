@@ -72,9 +72,12 @@ export const COLUMNS: BoardColumnDef[] = [
 
 /** Phase → primary card action, copy from the shared PHASE_UI table.
  *  Waiting-on-user todos get the ghost 回复 button (r3 §3.0 引导 P2 词表 +
- *  r5b §3.15). */
+ *  r5b §3.15). Done cards carry no button: 重开 lives only in the detail
+ *  header (r7 §3.3) — the 01b/05b board captures show zero indigo pixels
+ *  in the 已完成 column, so PHASE_UI[done].action must not leak here. */
 export function cardAction(todo: TodoRecord): { kind: 'primary' | 'ghost'; label: string } | null {
   if (todo.awaitingReply === true) return { kind: 'ghost', label: '回复' };
+  if (todo.phase === 'done') return null;
   const label = PHASE_UI[todo.phase].action;
   return label == null ? null : { kind: 'primary', label };
 }
