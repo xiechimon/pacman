@@ -1,4 +1,4 @@
-// M3a demo（#79 票面）：server 派 step → daemon 真执行（pi 0.85.1 经
+// M3a demo（#79 票面）：server 派 step → daemon 真执行（pi 0.86.0 经
 // AgentBackend 缝，stub provider 供流）→ transcript 经 upload-urls 回传落库。
 // 同测覆盖：claim/wake 时序对照 r3 §1–§2（~75s 节奏的缩短时标同构实测 +
 // wake 低延迟派发端到端时延）与 T2 的 continue-session 面（合并轮/驳回轮

@@ -60,7 +60,7 @@ packages/shared # 协议词表、record 形状 zod schema、命名常量表（02
 
 依赖方向：`web / server / daemon → shared`，三端互不依赖，shared 零反向。全线 ESM（`"type": "module"`），tsconfig `module: nodenext` + `strict`，target Node 24。共享依赖版本走 catalog 统一。
 
-**pin 纪律（00/D6 展开为逐项 pin 表 = §4 各表「pin」列）**：一切依赖精确 patch-pin；pi 系（`@earendil-works/*`）钉 **0.85.1**（00/D6 canon；registry 实测 2026-09-20 已出 0.86.0——**不动 pin**，首个升级窗口按 D6 读 Breaking 段后评估，观察项见 §9）。升级票后置纪律承旧：复刻验收前禁止框架 major 抬版（Tailwind 4 / TS 7 / react-router 8 各自成票，§9）。
+**pin 纪律（00/D6 展开为逐项 pin 表 = §4 各表「pin」列）**：一切依赖精确 patch-pin；pi 系（`@earendil-works/*`）钉 **0.86.0**（00/D6 canon；首个升级窗口 #107 已读 0.86.0 Breaking 段并兑现——三条 Breaking 全落缝外，§9）。升级票后置纪律承旧：复刻验收前禁止框架 major 抬版（Tailwind 4 / TS 7 / react-router 8 各自成票，§9）。
 
 **接口替换缝**（沿用旧 §3 方法论，lint 规则强制——缝外直接 import 被包依赖 = 违规）：
 
@@ -123,7 +123,7 @@ packages/shared # 协议词表、record 形状 zod schema、命名常量表（02
 | 发行 | 纯 JS npm 包：esbuild bundle 单文件 + node shebang，`npm i -g` 装；**不复刻平台二进制** | esbuild **0.28.2**(build) | 锁定 | 官方 275MB/6 平台二进制（r3 §1.1）[推断] = `tds-tunnel`(tsnet) + 防睡栈——tunnel 已挂雾（02 §9.3），防睡用平台命令表 spawn（darwin `caffeinate -i`；linux `systemd-inhibit` **[推断]** 可缺省）；差异注记 §8 |
 | CLI | commander（命令面照抄 02 §5.1：`start/stop/restart/logs [-f]/logout/status/version/provider`）+ @clack/prompts（交互注册流 02 §5.2 路径一） | commander **15.0.0** / @clack/prompts **1.8.1** | 沿用 | 承旧；`provider` 命令仅提示文案（r3 实测语义） |
 | supervisor | 自建：detach spawn + `daemon.json{pid,startedAt,runner}`（02 §5.3 形状）+ 崩溃保活重启，~100 行 | — | 锁定 | 02 §5.1「detached + supervisor 跨崩溃保活」的实现形 |
-| 执行引擎 | pi 单引擎（00/D1）：`@earendil-works/pi-ai` / `pi-coding-agent` / `pi-agent-core`，AgentSession 稳定面（00/D3）；经 `AgentBackend` 缝消费（§5） | **0.85.1**（D6 canon；0.86.0 已发布，待首个升级窗口，§9） | 沿用 | 官方 executor = pi 0.84.3 构建（r3 §1.5 明文）——同族同型，pin 高两档 |
+| 执行引擎 | pi 单引擎（00/D1）：`@earendil-works/pi-ai` / `pi-coding-agent` / `pi-agent-core`，AgentSession 稳定面（00/D3）；经 `AgentBackend` 缝消费（§5） | **0.86.0**（D6 canon；首个升级窗口 #107 已兑现，§9） | 沿用 | 官方 executor = pi 0.84.3 构建（r3 §1.5 明文）——同族同型，pin 高两档 |
 | worktree/git | `GitOps` wrapper（与 server 共缝，shared 定义 daemon 实现）：词表 = 02 §5.5 全表（add -b/reused/reset --hard+clean -fd/remove --force+prune+branch -D/TTL 7×24h/projectLock/diverged 护栏/每步 push/merge --no-edit） | — | 沿用 | 系统 git 前置同 §4.2 |
 | MCP client 面 | @modelcontextprotocol/sdk（daemon 侧薄桥，00/D4）：per-turn 连接已授权 server、失败降级不阻断（02 §7.1 canon 行为）、工具名 `mcp__<slug>__<tool>` | 同 1.30.0 | 沿用 | 桥归 daemon：回合在 daemon 内跑 |
 | HTTP 客户端 | 内置 fetch + undici（`EnvHttpProxyAgent` honor `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`）；启动探测代理并打印、代理死持续重试不退出（形状保形 r3 §1.5） | undici **8.10.2** | 沿用 | 承旧 fetch+undici 路线；重试预算数值照 02 §5.5 表 |
@@ -211,7 +211,7 @@ migration 纪律：drizzle-kit 生成、进 repo、CI 校验 drift；**不发明
 ## 7. 验收要点（供 #45 ROADMAP 汇入）
 
 1. **engines 门禁**：CI Node 22.19+/24 双跑，24 为主（承旧）。
-2. **pi pin 纪律**：`@earendil-works/*` 全 patch-pin 0.85.1；升级 = 显式窗口读 Breaking 段（0.86.0 为首个窗口候选）。
+2. **pi pin 纪律**：`@earendil-works/*` 全 patch-pin 0.86.0；升级 = 显式窗口读 Breaking 段（首个窗口 #107 已兑现：0.85.1 → 0.86.0，Breaking 三条全缝外）。
 3. **缝纪律**：五个接口缝（AgentBackend/GitOps/Settings/SecretBox/Scheduler）之外直接 import 被包依赖 = lint 红。
 4. **协议对拍**：shared 词表 schema 快照测试 vs 02 §5/§6 表；E2E 主时序全链（02 §4.2）为功能平价脊柱。
 5. **像素对拍**：靶索引 = r1（landing 41 路由 + CSS/字体原件）、r2（19 路由 63 截图）；diff 工具归雾票，本册只锁「对拍义务存在」。
@@ -229,7 +229,7 @@ migration 纪律：drizzle-kit 生成、进 repo、CI 校验 drift；**不发明
 | 主题/色板/字体 | 深色默认 `.light` 反相、zinc/stone/indigo、Inter+JBM、CJK 无 webfont | 逐项照抄（§4.1） | 同栈 |
 | 实时面 | 全 SSE 无 WS | 同 | 同栈（02/A1） |
 | executor 发行 | npm -g 275MB、6 平台二进制 | 纯 JS npm 包 | **差异**：二进制栈 [推断] = tunnel/防睡，tunnel 挂雾不复刻 |
-| executor 引擎 | pi 0.84.3 | pi 0.85.1（D6 pin） | 同族，pin 高两档 |
+| executor 引擎 | pi 0.84.3 | pi 0.86.0（D6 pin） | 同族，pin 高两档 |
 | runtime | Node [推断] | Node 24 LTS | 近似同栈 |
 | DB / server 框架 / 状态库 / markdown 栈 | 不可观测 | SQLite+Drizzle / Hono / TQ+Zustand / streamdown | **[设计]**：无对照物，验收走行为/像素靶 |
 | 未匹配路径 | 307 → `/login?callbackUrl=` | 重定向 `/app`（无登录页，02/A2） | **差异** [设计] |
@@ -241,7 +241,7 @@ migration 纪律：drizzle-kit 生成、进 repo、CI 校验 drift；**不发明
 |---|---|
 | 图标字形提取（登录态抓 workspace bundle/SVG）、字体 woff2 与位图图标下载、emoji 常用网格子集、PWA 品牌槽替换 | **#44 素材清单增补** |
 | 像素 diff 验收工具与逐屏 UI 规格切分 | 已落地：#53 parity harness 建成，验收规则正典 = 04 册 §2（本册 §7.5 对拍义务已兑现） |
-| pi 0.86.0 升级窗口评估（读 Breaking 段） | 首个 D6 升级窗口；排期 = 03 册 §3（M3 期间） |
+| pi 0.86.0 升级窗口评估（读 Breaking 段） | 已落地：#107 首个 D6 窗口兑现——Breaking 三条全缝外（缝内吸收点 = 零），pin 0.86.0（§4.3） |
 | TS 7.0.2 / react-router 8.4.0 / Tailwind 4.x 升级票 | 复刻验收后各自成票（承旧「升级票」纪律）；节奏 = 03 册 §3（M6 后） |
 | turbo 引入 | CI 时长成痛点时触发（承旧） |
 | transcript 虚拟滚动（@tanstack/react-virtual 候选） | 实现期按实测定，不预锁 |
