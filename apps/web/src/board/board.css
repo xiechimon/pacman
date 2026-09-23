@@ -83,6 +83,69 @@
   cursor: pointer;
 }
 
+/* ---- notification permission banner (#114) ---- */
+/* Geometry/colors measured from the r2 01 (light) / 28 (dark) captures:
+   the strip hangs 12px below the topbar border as a 64px card, inset 17px
+   like the scroller columns; the columns then start at y133 (banner bottom
+   120 + 13 gap), so the scroller's absolute top shifts 44 → 121. */
+.board-notify-banner {
+  position: absolute;
+  top: 56px; /* topbar 44 + 12 */
+  left: 17px;
+  right: 17px;
+  height: 64px;
+  border: 1px solid var(--col-top-border);
+  border-radius: 10px;
+  background: var(--surface-secondary);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.board-notify-banner-icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--notify-icon-bg);
+  color: var(--indigo-500);
+}
+
+.board-notify-banner-text {
+  margin-left: 14px;
+  min-width: 0;
+}
+
+.board-notify-banner-title {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--text-primary);
+}
+
+.board-notify-banner-body {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.board-notify-banner-action {
+  flex: none;
+  margin-left: auto;
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: var(--card-button);
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 28px;
+  cursor: pointer;
+}
+
 /* ---- board scroller ---- */
 
 .board-scroller {
@@ -97,6 +160,13 @@
   gap: 14px;
   padding: 12px 17px 13px;
   background: var(--surface);
+}
+
+/* with the banner up, the columns shift below it: banner slot ends at
+   y120 (56 + 64 box), then the 13px gap — r2 01 measures the column tops
+   at y133, and the scroller's own 12px padding-top carries 12 of it */
+.board-main--banner .board-scroller {
+  top: 121px;
 }
 
 .board-column {

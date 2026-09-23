@@ -1046,6 +1046,33 @@ export const matrix = [
     scenario: '57f',
     theme: 'dark',
   },
+  // notification permission banner rows (issue #114): the 看板顶部引导条
+  // (r2 §1.3, captures 01/28/30 — pre-permission state) exists in no r7/r8
+  // baseline, so the new state rides smoke pairs + expectText on the shared
+  // NOTIFICATION_BANNER_COPY canon; dark covered per 04 §2 增量规则, en row
+  // proves the fallback dict wiring for the canon keys
+  {
+    id: 'board-notify-banner-light',
+    route: '/app',
+    scenario: 'notify-banner',
+    theme: 'light',
+    expectText: '浏览器通知未开启',
+  },
+  {
+    id: 'board-notify-banner-dark',
+    route: '/app',
+    scenario: 'notify-banner',
+    theme: 'dark',
+    expectText: '浏览器通知未开启',
+  },
+  {
+    id: 'board-notify-banner-en',
+    route: '/app',
+    scenario: 'notify-banner',
+    theme: 'light',
+    locale: 'en',
+    expectText: 'Browser notifications are off',
+  },
   // i18n bilingual spot-check rows (issue #74): zh is the pixel-gated
   // default on every row above; these prove the en fallback renders across
   // the screen families (board / detail / schedules / account / team /

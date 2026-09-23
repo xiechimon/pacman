@@ -66,6 +66,13 @@ export const EN: Record<string, string> = {
   '分支与 PR': 'Branch & PR',
   方案: 'Plan',
   变更: 'Changes',
+  // 看板顶部通知引导条 (issue #114): components consume the shared
+  // NOTIFICATION_BANNER_COPY canon — these keys match its zh values
+  // verbatim (i18n-coverage liveness via COMPUTED_KEYS)
+  浏览器通知未开启: 'Browser notifications are off',
+  '标签页切换到后台时，通过桌面通知提醒你。':
+    'Get a desktop reminder when this tab is in the background.',
+  开启: 'Turn on',
 
   // —— phase chips / actions / placeholders (phase.ts canon table) ——
   待处理: 'Pending',

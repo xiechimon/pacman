@@ -71,9 +71,20 @@ interface BoardProps {
   onBranch?: (todo: TodoRecord) => void;
   /** #73: committed drag drop — the page owns the todo list state. */
   onReorder?: (next: TodoRecord[]) => void;
+  /** #114: the notification-permission strip between topbar and columns
+   *  (r2 §1.3). The route owns the permission state and passes the
+   *  rendered banner only while it should show. */
+  banner?: ReactNode;
 }
 
-export function BoardSurface({ fixture, onNewTask, onAction, onBranch, onReorder }: BoardProps) {
+export function BoardSurface({
+  fixture,
+  onNewTask,
+  onAction,
+  onBranch,
+  onReorder,
+  banner,
+}: BoardProps) {
   const { t } = useI18n();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<ColumnView | null>(null);
@@ -188,7 +199,7 @@ export function BoardSurface({ fixture, onNewTask, onAction, onBranch, onReorder
   const dragged = dragId == null ? null : (fixture.todos.find((t) => t.id === dragId) ?? null);
 
   return (
-    <div className="board-main">
+    <div className={banner == null ? 'board-main' : 'board-main board-main--banner'}>
       <header className="board-topbar">
         <div className="board-topbar-title">{t('看板')}</div>
         <div className="board-topbar-actions">
@@ -201,6 +212,8 @@ export function BoardSurface({ fixture, onNewTask, onAction, onBranch, onReorder
           </button>
         </div>
       </header>
+
+      {banner}
 
       <DndContext
         sensors={desktop ? sensors : []}

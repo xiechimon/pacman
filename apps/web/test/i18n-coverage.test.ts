@@ -24,6 +24,7 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
+import { NOTIFICATION_BANNER_COPY } from '@pacman/shared';
 import { createScanner, LanguageVariant, SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 import { PROBE_TOOL_CALL_LABEL } from '../src/fixtures/fixtures.js';
@@ -38,8 +39,16 @@ const ALLOWLIST: Record<string, string> = {
   'i18n/locale.ts::简体中文': 'language endonym — identical in every locale by design',
 };
 
-/** Dict keys assembled at module scope (exact-value fixture chrome). */
-const COMPUTED_KEYS = new Set<string>([PROBE_TOOL_CALL_LABEL]);
+/** Dict keys assembled at module scope (exact-value fixture chrome; the
+ *  #114 banner copy keys live in the shared NOTIFICATION_BANNER_COPY canon
+ *  — packages/shared, outside the src/ scan tree — and reach t() through
+ *  the constant, never as literals). */
+const COMPUTED_KEYS = new Set<string>([
+  PROBE_TOOL_CALL_LABEL,
+  NOTIFICATION_BANNER_COPY.title,
+  NOTIFICATION_BANNER_COPY.body,
+  NOTIFICATION_BANNER_COPY.action,
+]);
 
 /** Data layer: capture-verbatim user/agent content, never translated.
  *  `api` = M5 live 数据层（wire→display mappers）——产出的是与 fixtures 同族
