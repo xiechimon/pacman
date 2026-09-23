@@ -10,7 +10,6 @@
       "apps/web/src/**",
       "apps/web/index.html",
       "apps/web/vite.config.ts",
-      "apps/web/tailwind.config.js",
       "apps/web/postcss.config.js",
       "apps/web/tsconfig.json",
       "apps/web/package.json",
@@ -43,6 +42,11 @@
     "indentStyle": "space",
     "indentWidth": 2,
     "lineWidth": 100
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
   },
   "linter": {
     "enabled": true,
