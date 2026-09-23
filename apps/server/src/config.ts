@@ -33,8 +33,8 @@ export const serverConfigSchema = z.object({
    * 默认 15s 远细于档位粒度 [设计]）。 */
   schedulerTickMs: z.number().int().positive(),
   /** SPA 静态同源托管根（02/A1，M5）：vite build 产物目录；null = 不托管
-   * （纯 API 形态）。env `WEB_DIR` 覆写 [设计]；默认 = monorepo 布局
-   * `apps/web/dist` 存在即托管。 */
+   * （纯 API 形态）。env 覆写位 = ENV_VARS.webDir（品牌槽单源，02 §5.8）；
+   * 默认 = monorepo 布局 `apps/web/dist` 存在即托管。 */
   webDir: z.string().nullable(),
 });
 export type ServerConfig = z.infer<typeof serverConfigSchema>;
@@ -59,7 +59,7 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
   const home = process.env[ENV_VARS.home] ?? join(homedir(), BRAND.homeDirName);
   // 数据根子目录名 `server` [设计]（品牌位归 #44 一次性替换面）。
   const dataDir = join(home, 'server');
-  const webDirEnv = process.env.WEB_DIR;
+  const webDirEnv = process.env[ENV_VARS.webDir];
   return serverConfigSchema.parse({
     port: envPort() ?? 8787,
     dataDir,

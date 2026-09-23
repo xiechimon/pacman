@@ -114,9 +114,13 @@ describe('CJK coverage against the en dict', () => {
 
 describe('EN dict liveness', () => {
   it('every key appears as a literal somewhere in src/ (no dead entries)', () => {
+    // corpus 含 api/ 数据层（M5）：规则 1–2 豁免该目录（记录内容串与
+    // fixtures 同族），但其经 translate() 纯函数位消费的 dict 键（桌面通知
+    // 标题，api/sse.ts）是活键——liveness 面计入。
     const corpus = files
       .map((f) => readFileSync(f, 'utf8'))
       .concat(readFileSync(join(SRC, 'fixtures/fixtures.ts'), 'utf8'))
+      .concat(sourceFiles(join(SRC, 'api')).map((f) => readFileSync(f, 'utf8')))
       .join('\n');
     const dead = Object.keys(EN).filter(
       (key) => !COMPUTED_KEYS.has(key) && !corpus.includes(key),

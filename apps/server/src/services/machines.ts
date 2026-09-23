@@ -103,6 +103,7 @@ function publishStepStatus(deps: MachineDeps, stepId: string): void {
     machineId: row.machineId,
     createdAt: row.createdAt,
     status: row.status,
+    checkpointCommit: row.checkpointCommit,
   });
 }
 
@@ -610,36 +611,17 @@ export function reportTool(
   call: ToolCallRecord,
 ): void {
   const row = ownedStep(deps, machineId, stepId);
-  const createdAt = call.endedAt ?? nowMs();
+  const messageRow = {
+    id: call.id,
+    role: 'assistant' as const,
+    content: { kind: 'toolcall', call },
+    createdAt: call.endedAt ?? nowMs(),
+  };
   if (isChiefConversation(row.buildId)) {
-    upsertChiefMessage(deps.db, {
-      id: call.id,
-      threadId: row.buildId,
-      role: 'assistant',
-      content: { kind: 'toolcall', call },
-      createdAt,
-    });
-    deps.convHub?.publishMessage(row.buildId, {
-      id: call.id,
-      role: 'assistant',
-      content: { kind: 'toolcall', call },
-      createdAt,
-    });
+    upsertChiefRow(deps, { ...messageRow, threadId: row.buildId });
     return;
   }
-  upsertMessage(deps.db, {
-    id: call.id,
-    conversationId: row.buildId,
-    role: 'assistant',
-    content: { kind: 'toolcall', call },
-    createdAt,
-  });
-  deps.convHub?.publishMessage(row.buildId, {
-    id: call.id,
-    role: 'assistant',
-    content: { kind: 'toolcall', call },
-    createdAt,
-  });
+  upsertMessage(deps, { ...messageRow, conversationId: row.buildId });
 }
 
 /** live transcript 文本增量（machineToolBodySchema 第三形 [设计]）：瞬态
@@ -732,23 +714,37 @@ async function executeWorkerMemoryToolCall(
   );
 }
 
+type MessageRowInput = {
+  id: string;
+  role: 'system' | 'user' | 'assistant';
+  content: unknown;
+  createdAt: number;
+};
+
+/** transcript 行幂等落库 + 会话流即时推送（live 工具行与终稿上传共用；
+ * 与终稿按 id 去重 = onConflict upsert [设计]）。 */
 function upsertMessage(
-  db: Db,
-  row: {
-    id: string;
-    conversationId: string;
-    role: 'system' | 'user' | 'assistant';
-    content: unknown;
-    createdAt: number;
-  },
+  deps: { db: Db; convHub?: ConversationStreamHub },
+  row: MessageRowInput & { conversationId: string },
 ): void {
-  db.insert(message)
+  deps.db
+    .insert(message)
     .values(row)
     .onConflictDoUpdate({
       target: message.id,
       set: { role: row.role, content: row.content, createdAt: row.createdAt },
     })
     .run();
+  deps.convHub?.publishMessage(row.conversationId, row);
+}
+
+/** chief 线程行同形（chief_message 表 + 会话流键 = chief-<threadId>）。 */
+function upsertChiefRow(
+  deps: { db: Db; convHub?: ConversationStreamHub },
+  row: MessageRowInput & { threadId: string },
+): void {
+  upsertChiefMessage(deps.db, row);
+  deps.convHub?.publishMessage(row.threadId, row);
 }
 
 /** per-step 凭证下发（02 §5.4/§8：模型 key + git 凭证，daemon 内存持有不落盘
@@ -901,30 +897,18 @@ export function receiveUpload(
   if (!conversationId) throw new NotFoundError(`step ${upload.stepId}`);
   for (const m of body.messages) {
     if (isChiefConversation(conversationId)) {
-      upsertChiefMessage(deps.db, {
+      upsertChiefRow(deps, {
         id: m.id,
         threadId: conversationId,
         role: m.role,
         content: m.content,
         createdAt: m.createdAt,
       });
-      deps.convHub?.publishMessage(conversationId, {
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        createdAt: m.createdAt,
-      });
       continue;
     }
-    upsertMessage(deps.db, {
+    upsertMessage(deps, {
       id: m.id,
       conversationId,
-      role: m.role,
-      content: m.content,
-      createdAt: m.createdAt,
-    });
-    deps.convHub?.publishMessage(conversationId, {
-      id: m.id,
       role: m.role,
       content: m.content,
       createdAt: m.createdAt,

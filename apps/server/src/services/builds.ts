@@ -11,10 +11,12 @@
 import type {
   Assignment,
   BuildRecord,
+  StepJournalRow,
   StepRecord,
   TriggerSource,
   UserRecord,
 } from '@pacman/shared';
+import { MERGE_ANNOUNCEMENT } from '@pacman/shared';
 import { asc, eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { build, message, step, todo } from '../db/schema.js';
@@ -54,6 +56,25 @@ export function toBuildRecord(row: BuildRow): BuildRecord {
     diffHash: row.diffHash,
     createdAt: row.createdAt,
   };
+}
+
+/** transcript 行落库 + 会话流即时推送（M5 live streaming：驳回 feedback 行/
+ * 合并宣告行/🎉 行三处同形；machine 面 live 行走 machines.ts upsert 族）。 */
+export function insertMessageRow(
+  deps: { db: Db; convHub?: ConversationStreamHub },
+  conversationId: string,
+  row: {
+    id: string;
+    role: 'system' | 'user' | 'assistant';
+    content: unknown;
+    createdAt: number;
+  },
+): void {
+  deps.db
+    .insert(message)
+    .values({ ...row, conversationId })
+    .run();
+  deps.convHub?.publishMessage(conversationId, row);
 }
 
 function publishBuild(deps: BuildDeps, row: BuildRow): BuildRecord {
@@ -96,6 +117,7 @@ function enqueueStep(
     machineId: null,
     createdAt,
     status: 'pending',
+    checkpointCommit: null,
   });
   return { id, buildId, kind, machineId: null, createdAt };
 }
@@ -105,13 +127,9 @@ export function getBuild(deps: BuildDeps, id: string): BuildRecord | null {
   return row ? toBuildRecord(row) : null;
 }
 
-/** steps 读面行 = step record + [内部] journal 位透出 [设计]（M5 详情面：
- * 进度行状态 + 分支 dialog 目标提交；stepRecordSchema 最小投影不含这些字段 =
- * zod strip 下 wire 对拍不漂移，02 §5.4「journal 状态字段归实现期展开」）。 */
-export interface StepJournalRow extends StepRecord {
-  status: 'pending' | 'claimed' | 'done' | 'failed';
-  checkpointCommit: string | null;
-}
+// steps 读面行 = shared stepJournalRowSchema 单源（record + journal 位透出
+// [设计]，02 §5.4「journal 状态字段归实现期展开」；zod strip 下 record 对拍
+// 不漂移）。
 
 export function listSteps(deps: BuildDeps, buildId: string): StepJournalRow[] {
   return deps.db
@@ -213,19 +231,11 @@ export function applyBuildStepAction(
     return;
   }
   // revision：用户驳回消息行进 transcript（role user，r5 §3.6/§4 时间线呈现）。
-  const feedbackRow = {
+  insertMessageRow(deps, buildId, {
     id: newRecordId(),
-    conversationId: buildId,
-    role: 'user' as const,
+    role: 'user',
     content: body.feedback,
     createdAt: nowMs(),
-  };
-  deps.db.insert(message).values(feedbackRow).run();
-  deps.convHub?.publishMessage(buildId, {
-    id: feedbackRow.id,
-    role: feedbackRow.role,
-    content: feedbackRow.content,
-    createdAt: feedbackRow.createdAt,
   });
   setTodoPhase(deps, todoRecord.id, 'planning');
   // 重规划步（同 conv continue session，r5 §4）：feedback 注入续轮指令，v2 忠实
@@ -244,20 +254,13 @@ export function requestMerge(deps: BuildDeps, buildId: string): { delegated: tru
   // 合并关口 = review（「将改动合并到默认分支」确认弹层，r3 §3.6）。
   assertPhaseTransition(todoRow.phase, 'done');
   // 时间线「发起了合并」行（r3 §3.6 实测：`15:06 Xmon Dai 发起了合并`；
-  // 行形 [设计]——role user 纯文本，呈现层拼装时间/actor）。
-  const mergeRow = {
+  // 行形 [设计]——role user 纯文本 = shared MERGE_ANNOUNCEMENT 单源，呈现层
+  // 拼装时间/actor）。
+  insertMessageRow(deps, buildId, {
     id: newRecordId(),
-    conversationId: buildId,
-    role: 'user' as const,
-    content: '发起了合并',
+    role: 'user',
+    content: MERGE_ANNOUNCEMENT,
     createdAt: nowMs(),
-  };
-  deps.db.insert(message).values(mergeRow).run();
-  deps.convHub?.publishMessage(buildId, {
-    id: mergeRow.id,
-    role: mergeRow.role,
-    content: mergeRow.content,
-    createdAt: mergeRow.createdAt,
   });
   enqueueStep(deps, buildId, 'merge', todoRow.teamId);
   return { delegated: true };
@@ -294,19 +297,11 @@ export function completeStep(
   // merge 步成 → done + 🎉（时间线「发起了合并」+ 结果行 + `🎉 任务已完成`，
   // r3 §3.6；celebration 行 [设计] = role system 纯文本）。
   setTodoPhase(deps, todoRow.id, 'done');
-  const celebration = {
+  insertMessageRow(deps, buildRow.id, {
     id: newRecordId(),
-    conversationId: buildRow.id,
-    role: 'system' as const,
+    role: 'system',
     content: '🎉 任务已完成',
     createdAt: nowMs(),
-  };
-  deps.db.insert(message).values(celebration).run();
-  deps.convHub?.publishMessage(buildRow.id, {
-    id: celebration.id,
-    role: celebration.role,
-    content: celebration.content,
-    createdAt: celebration.createdAt,
   });
 }
 

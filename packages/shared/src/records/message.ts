@@ -39,6 +39,11 @@ export type TranscriptRow = z.infer<typeof transcriptRowSchema>;
 /** system 消息 kind 观测值（r5 §3.6；词表未采齐不收窄 [推断]）。 */
 export const SYSTEM_MESSAGE_KINDS = ['machine_selected'] as const;
 
+/** 合并宣告行 content canon（r3 §3.6 实测 `15:06 Xmon Dai 发起了合并` 的
+ * 内容段；行形 [设计] = role user 纯文本，呈现层拼装时间/actor）。写入端
+ * （server requestMerge）与呈现端（web transcript mapper）双端单源。 */
+export const MERGE_ANNOUNCEMENT = '发起了合并';
+
 /** GET /api/conversations/{id}/messages 响应封套（r5 §3.6 原样）。 */
 export const conversationMessagesResponseSchema = z.object({
   messages: z.array(transcriptRowSchema),

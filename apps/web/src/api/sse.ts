@@ -8,6 +8,9 @@
 import type { NotificationRecord } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { EN } from '../i18n/en.js';
+import { readStoredLocale } from '../i18n/locale.js';
+import { translate } from '../i18n/translate.js';
 import { liveTextStore } from './live-text.js';
 
 function connect(path: string, onEvent: (ev: Record<string, unknown>) => void): () => void {
@@ -66,15 +69,17 @@ export function useTeamStream(teamId: string | undefined, enabled: boolean): voi
 }
 
 /** 桌面通知（04 §5 divergence 口径）：仅 document.hidden 时弹页内
- *  Notification；权限未授予静默跳过（权限请求面 = 真人一次项，M6 清单）。 */
+ *  Notification；权限未授予静默跳过（权限请求面 = 真人一次项，M6 清单）。
+ *  标题文案走 i18n 纯函数面（非组件位——zh 权威 + en 兜底，01/S6）。 */
 function fireDesktopNotification(record: NotificationRecord): void {
   if (!document.hidden) return;
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const t = (source: string) => translate(readStoredLocale(localStorage), EN, source);
   const title =
     record.type === 'plan_ready'
-      ? '方案已就绪'
+      ? t('方案已就绪')
       : record.type === 'build_review'
-        ? '构建待审核'
+        ? t('构建待审核')
         : record.entityRef.title;
   const body =
     record.snippet ??

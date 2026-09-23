@@ -4,23 +4,27 @@
 
 import type {
   AgentRecord,
-  ApiKeyRecord,
+  ApiKeyRow,
   Assignment,
   BuildRecord,
   ChiefGetResponse,
   ChiefThread,
   ConversationMessagesResponse,
+  CreateScheduleBody,
   DocumentDiff,
   DocumentDiffFile,
   MachineRecord,
   McpServerRecord,
+  PatchChiefBody,
+  PlanRow,
   ProjectRecord,
   ProviderPreset,
   ProviderRecord,
   ScheduleRecord,
   SecretRecord,
+  SetSecretBody,
   SkillRecord,
-  StepRecord,
+  StepJournalRow,
   TeamMember,
   TeamRecord,
   TodoRecord,
@@ -30,29 +34,11 @@ import type {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client.js';
 
-/** plan 行（GET /api/builds/{id}/plans [推断] 封套：record + content 透出）。 */
-export interface PlanRow {
-  id: string;
-  buildId: string;
-  version: number;
-  createdAt: number;
-  content: string;
-}
-
-/** steps 行 = StepRecord + journal 位透出（server listSteps [设计]，M5 详情
- * 面进度/分支 dialog 数据源）。 */
-export interface StepRow extends StepRecord {
-  status: 'pending' | 'claimed' | 'done' | 'failed';
-  checkpointCommit: string | null;
-}
-
-/** api-key 列表行 = wire record + 安全子集投影位（server listApiKeys：
- * {id, masked, createdAt}，02 §8 API 面写只读掩码）。 */
-export interface ApiKeyRow extends ApiKeyRecord {
-  id: string;
-  masked: string;
-  createdAt: number;
-}
+// 行形单源 = shared（01 §4.4 双端消费）：plan 行 = planRowSchema（record +
+// content 透出 [推断] 封套）；steps 行 = stepJournalRowSchema（journal 位
+// 透出 [设计]）；api-key 行 = apiKeyRowSchema（掩码投影，02 §8）。
+export type { ApiKeyRow, PlanRow };
+export type StepRow = StepJournalRow;
 
 export interface ProvidersEnvelope {
   presets: ProviderPreset[];
@@ -315,8 +301,7 @@ export function useApiMutations(teamId: string | undefined) {
       onSuccess: invalidateAll,
     }),
     createSchedule: useMutation({
-      mutationFn: (body: Record<string, unknown>) =>
-        api.post<ScheduleRecord>('/api/schedules', body),
+      mutationFn: (body: CreateScheduleBody) => api.post<ScheduleRecord>('/api/schedules', body),
       onSuccess: invalidateAll,
     }),
     deleteSchedule: useMutation({
@@ -340,7 +325,7 @@ export function useApiMutations(teamId: string | undefined) {
       onSuccess: invalidateAll,
     }),
     patchChief: useMutation({
-      mutationFn: (body: Record<string, unknown>) =>
+      mutationFn: (body: PatchChiefBody) =>
         api.patch<ChiefGetResponse>(`/api/teams/${teamId}/chief`, body),
       onSuccess: invalidateAll,
     }),
@@ -354,7 +339,7 @@ export function useApiMutations(teamId: string | undefined) {
       onSuccess: invalidateAll,
     }),
     createSecret: useMutation({
-      mutationFn: (body: Record<string, unknown>) =>
+      mutationFn: (body: SetSecretBody) =>
         api.post<SecretRecord>(`/api/teams/${teamId}/secrets`, body),
       onSuccess: invalidateAll,
     }),
@@ -364,7 +349,7 @@ export function useApiMutations(teamId: string | undefined) {
     }),
     createApiKey: useMutation({
       mutationFn: (body: Record<string, unknown>) =>
-        api.post<ApiKeyRecord & { plaintext?: string }>(`/api/teams/${teamId}/api-keys`, body),
+        api.post<ApiKeyRow & { plaintext?: string }>(`/api/teams/${teamId}/api-keys`, body),
       onSuccess: invalidateAll,
     }),
     createMcpServer: useMutation({

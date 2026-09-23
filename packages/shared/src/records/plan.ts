@@ -24,3 +24,11 @@ export const planRecordSchema = z.object({
   createdAt: epochMs,
 });
 export type PlanRecord = z.infer<typeof planRecordSchema>;
+
+/** GET /api/builds/{id}/plans 行（M5 [推断] 封套，wire.test INFERRED_ROUTES
+ * 登记）：record + plan.md 内容透出（版本下拉/文档 pane 数据源，r5 §4 触点；
+ * [内部] content 列在 record 投影外，封套位承载）。server/web 双端单源。 */
+export const planRowSchema = planRecordSchema.extend({
+  content: z.string(),
+});
+export type PlanRow = z.infer<typeof planRowSchema>;

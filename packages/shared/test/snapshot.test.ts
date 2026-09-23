@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
+  apiKeyRowSchema,
   // phase/品牌/表清单
   BOARD_COLUMNS,
   BRAND,
@@ -63,6 +64,7 @@ import {
   PROXY_ENV_VARS,
   PROXY_PROBE_LOG_CANON,
   patchChiefBodySchema,
+  planRowSchema,
   projectBranchesResponseSchema,
   projectFileResponseSchema,
   projectTreeResponseSchema,
@@ -76,6 +78,7 @@ import {
   setSecretBodySchema,
   startBuildsBodySchema,
   stepEventSchema,
+  stepJournalRowSchema,
   THIRD_PARTY_CLIENT_KEYS,
   teamStreamEventSchema,
   transcriptUploadSchema,
@@ -109,6 +112,10 @@ describe('body/封套 schema 快照', () => {
     setSecretBody: setSecretBodySchema,
     teamStreamEvent: teamStreamEventSchema,
     conversationStreamEvent: conversationStreamEventSchema,
+    // M5 [推断] 读面行形（双端单源，wire.test INFERRED_ROUTES 登记族）
+    planRow: planRowSchema,
+    stepJournalRow: stepJournalRowSchema,
+    apiKeyRow: apiKeyRowSchema,
     machineJson: machineJsonSchema,
     deviceJson: deviceJsonSchema,
     daemonJson: daemonJsonSchema,

@@ -8,7 +8,7 @@ import { buildRecordSchema } from '../records/build.js';
 import { recordId } from '../records/common.js';
 import { transcriptRowSchema } from '../records/message.js';
 import { notificationRecordSchema } from '../records/notification.js';
-import { stepRecordSchema } from '../records/step.js';
+import { stepJournalRowSchema } from '../records/step.js';
 import { todoRecordSchema } from '../records/todo.js';
 
 export const SSE_CHANNELS = [
@@ -109,14 +109,11 @@ export const conversationTextDeltaEventSchema = z.object({
   text: z.string(),
 });
 
-/** step 事件载荷 = step record + journal 状态位（[内部] 列透出 [设计]：
- * 会话流是进度行的数据面，状态即语义；record 本体不带 status，02 §5.4
- * journal 词 pending/claimed/done/failed）。 */
+/** step 事件载荷 = stepJournalRowSchema 单源（record + journal 位透出
+ * [设计]：会话流是进度行的数据面，状态即语义，02 §5.4）。 */
 export const conversationStepEventSchema = z.object({
   type: z.literal('step'),
-  step: stepRecordSchema.extend({
-    status: z.enum(['pending', 'claimed', 'done', 'failed']),
-  }),
+  step: stepJournalRowSchema,
 });
 export type ConversationStepEvent = z.infer<typeof conversationStepEventSchema>;
 

@@ -21,6 +21,7 @@ import {
   PHASE_VALUES,
   patchChiefBodySchema,
   phaseSchema,
+  planRowSchema,
   projectRepoKindSchema,
   providerApiSchema,
   providerModelSchema,
@@ -1061,14 +1062,17 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       .where(eq(planTable.buildId, id))
       .orderBy(asc(planTable.version))
       .all();
+    // 行形单源 = shared planRowSchema（record + content 透出 [推断] 封套）。
     return c.json(
-      rows.map((r) => ({
-        id: r.id,
-        buildId: r.buildId,
-        version: r.version,
-        createdAt: r.createdAt,
-        content: r.content, // [内部] 内容透出（文档 pane 数据源，封套 [推断]）
-      })),
+      rows.map((r) =>
+        planRowSchema.parse({
+          id: r.id,
+          buildId: r.buildId,
+          version: r.version,
+          createdAt: r.createdAt,
+          content: r.content,
+        }),
+      ),
     );
   });
 

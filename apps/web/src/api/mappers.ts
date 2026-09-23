@@ -24,7 +24,7 @@ import type {
   ScheduleRecord as WireSchedule,
   TodoRecord as WireTodo,
 } from '@pacman/shared';
-import { BRAND, conversationBranch } from '@pacman/shared';
+import { BRAND, conversationBranch, MERGE_ANNOUNCEMENT } from '@pacman/shared';
 import { relativeTime } from '../board/rel-time.js';
 import type {
   BranchInfoContent,
@@ -312,8 +312,13 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     }
     const text = textOfContent(m.content).trim();
     if (m.role === 'user') {
-      if (text === '发起了合并') {
-        entries.push({ at: m.createdAt, item: { kind: 'note', text: `${userName} 发起了合并` } });
+      // 合并宣告行 content = shared MERGE_ANNOUNCEMENT 单源（server
+      // requestMerge 写入端同款常量；呈现层拼装 actor，r3 §3.6）。
+      if (text === MERGE_ANNOUNCEMENT) {
+        entries.push({
+          at: m.createdAt,
+          item: { kind: 'note', text: `${userName} ${MERGE_ANNOUNCEMENT}` },
+        });
         continue;
       }
       const userItem: TranscriptItem = firstUser
@@ -509,23 +514,6 @@ export function mapRunHistory(
     });
   });
   return rows;
-}
-
-export function mapOverlayContent(
-  todo: WireTodo,
-  buildId: string | null,
-  steps: StepRow[],
-  machines: MachineRecord[],
-  usage: TokenUsage[],
-  builds: BuildRecord[],
-  now: number,
-): BuildOverlayContent | null {
-  if (buildId === null) return null;
-  return {
-    token: mapTokenUsage(usage),
-    branch: mapBranchInfo(buildId, steps, machines),
-    runs: mapRunHistory(todo, builds, now),
-  };
 }
 
 // —— schedules / team / resources ————————————————————————————————

@@ -183,6 +183,12 @@ describe('路由面 = 02 §6.1 词表', () => {
     for (const route of M5_ROUTES) {
       expect(have.has(route), `missing ${route}`).toBe(true);
     }
+    // /_mp/api/track = 词表内埋点位（r3 §8.2；「可空实现」口径）——路径不在
+    // /api 前缀下，上方 have 集扫不到，此处显式断言在位（词表覆盖零漏位）。
+    const all = new Set(
+      app.routes.filter((r) => r.method !== 'ALL').map((r) => `${r.method} ${r.path}`),
+    );
+    expect(all.has('POST /_mp/api/track'), 'missing POST /_mp/api/track').toBe(true);
   });
 
   test('无词表外发明路径（[推断] 面显式登记）', () => {
