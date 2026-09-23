@@ -119,6 +119,8 @@ export function buildProgram(): Command {
   program
     .command('supervise', { hidden: true })
     .allowUnknownOption(true)
+    .allowExcessArguments(true) // runner argv 整体透传（start --foreground …）；
+    // commander v14+ 默认对多余位置参数报错，本命令 action 自行切片 process.argv。
     .helpOption(false)
     .action(async () => {
       const argv = process.argv.slice(2);

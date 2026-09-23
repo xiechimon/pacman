@@ -9,6 +9,14 @@ import { createDaemonLogger } from './log.js';
 import { nextBackoffMs } from './machine-loop.js';
 import { clearDaemonJson, loadDaemonJson, statePaths, writeDaemonJson } from './state.js';
 
+/** spawn argv 前缀 [设计]：dev 模式 cliPath 为 .ts 源（pnpm dev:daemon），纯
+ * node 原生 TS 不解 workspace 包内 .js 后缀 specifier（@pacman/shared/src
+ * /index.ts → ./agent-backend.js，ERR_MODULE_NOT_FOUND）——须挂 tsx loader；
+ * 产物模式 cliPath 为构建后 .js，原样直跑。判定按扩展名，不加运行时探测。 */
+function nodeCliArgv(cliPath: string, rest: string[]): string[] {
+  return cliPath.endsWith('.ts') ? ['--import', 'tsx', cliPath, ...rest] : [cliPath, ...rest];
+}
+
 export interface SupervisorOpts {
   home: string;
   /** 透传给前台 runner 的 argv（start --foreground …）。 */
@@ -25,7 +33,7 @@ export function spawnSupervisor(opts: SupervisorOpts): { pid: number } {
   }
   const logFd = openSync(paths.daemonLog, 'a');
   const cliPath = opts.cliPath ?? process.argv[1] ?? '';
-  const child = spawn(process.execPath, [cliPath, 'supervise', ...opts.runnerArgv], {
+  const child = spawn(process.execPath, nodeCliArgv(cliPath, ['supervise', ...opts.runnerArgv]), {
     detached: true,
     stdio: ['ignore', logFd, logFd],
     env: process.env,
@@ -67,7 +75,7 @@ export async function runSupervisor(opts: SupervisorOpts): Promise<void> {
   let backoff = 1_000;
   while (!stopping) {
     const exitCode = await new Promise<number | null>((resolve) => {
-      runner = spawn(process.execPath, [cliPath, ...opts.runnerArgv], {
+      runner = spawn(process.execPath, nodeCliArgv(cliPath, opts.runnerArgv), {
         stdio: 'inherit',
         env: process.env,
       });
