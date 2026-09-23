@@ -94,9 +94,12 @@
   left: 17px;
   right: 17px;
   height: 64px;
-  border: 1px solid var(--col-top-border);
+  /* #123: the banner is a card on the canvas — same edge ring + soft shadow
+     family as the todo card (tokens.css --card-edge/--card-shadow) */
+  border: 1px solid var(--card-edge);
   border-radius: 10px;
   background: var(--surface-secondary);
+  box-shadow: var(--card-shadow);
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -156,10 +159,18 @@
   bottom: 0;
   overflow-x: auto;
   overflow-y: hidden;
+  /* #123 hidden horizontal scrollbar (claude.ai board scroller 参照): the
+     track never paints while the scroll capability stays — dual write per
+     the issue (standard property + webkit pseudo) */
+  scrollbar-width: none;
   display: flex;
   gap: 14px;
   padding: 12px 17px 13px;
   background: var(--surface);
+}
+
+.board-scroller::-webkit-scrollbar {
+  display: none;
 }
 
 /* with the banner up, the columns shift below it: banner slot ends at
@@ -264,9 +275,13 @@
 .todo-card {
   flex: none;
   width: 262px;
-  border: 1px solid var(--card-border);
+  /* #123 card texture (claude.ai cds 参照): the solid --card-border outline
+     read thin and harsh on the column fill; the card family now rides the
+     low-alpha edge ring + wide soft shadow token pair (tokens.css) */
+  border: 1px solid var(--card-edge);
   border-radius: 8px;
   background: var(--card-bg);
+  box-shadow: var(--card-shadow);
   padding: 9.5px 13.5px 11.5px;
   /* #58: positioned ancestor for the stretched title link below */
   position: relative;

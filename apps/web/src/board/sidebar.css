@@ -1,9 +1,16 @@
-/* ---- sidebar (240px, r7 01/02 + r6 §3.1 structure) ---- */
+/* ---- sidebar (240px, r7 01/02 + r6 §3.1 structure) ----
+   #123 衔接（claude.ai dframe sidebar 参照）：侧栏自带一层背景色阶 + 投到
+   画布上的柔边阴影，接缝不画线——原站那条 1px --border-default 硬缝与同色
+   背景叠在一起读着不顺。position/z-index 让柔边画在 .board-main（positioned）
+   之上，否则阴影被 main 的背景盖掉。 */
 
 .board-sidebar {
   flex: none;
   width: 240px;
-  background: var(--surface);
+  background: var(--sidebar-bg);
+  box-shadow: var(--sidebar-shadow);
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -249,14 +256,16 @@
 }
 
 /* ---- collapsed rail (40px, r7 03 pixel probes) ----
-   bg = page surface with a 1px right border, divider under the toggle row,
-   16px icons centered at x12–28, nav rows 32px pitch from y48, selected
-   row = 24px pill inset 4px vertically / 8px horizontally, 24px user chip
-   (white pill) pinned at the bottom. */
+   divider under the toggle row, 16px icons centered at x12–28, nav rows
+   32px pitch from y48, selected row = 24px pill inset 4px vertically / 8px
+   horizontally, 24px user chip (white pill) pinned at the bottom.
+   #123: the r7 03 1px right border is gone with the expanded sidebar's hard
+   seam — the rail inherits the same tone step + soft edge from the base
+   rule (box-sizing is border-box, so dropping the border keeps the 40px
+   box and only re-centers the icon band by half a pixel). */
 
 .board-sidebar--collapsed {
   width: 40px;
-  border-right: 1px solid var(--border-default);
 }
 
 .rail-toggle {
