@@ -20,7 +20,7 @@
 | S8 | 状态与数据层 | **TanStack Query v5**（SSE 事件 → `invalidateQueries`，兑现 02 §1.2）+ **Zustand**；localStorage 键名照 r2 §1.5 契约 |
 | S9 | daemon 发行 | **纯 JS npm 包**（esbuild 单文件 + node shebang）；不复刻 6 平台二进制 |
 | S10 | git 操作层 | **spawn 系统 git + 自建薄 wrapper**（词表 = 02 §5.5 契约）；server 端 `git http-backend` CGI；isomorphic-git/simple-git 不引入 |
-| S11 | 批量沿用面 | Hono、zod 4、pnpm+catalog、Biome、vitest+playwright、commander+clack、pino、cron-parser、TS 5.9.3、ESM nodenext、PWA 原样搬、keyfile AES-256-GCM、EventSource、undici 代理（§4.5） |
+| S11 | 批量沿用面 | Hono、zod 4、pnpm+catalog、Biome、vitest+playwright、commander+clack、pino、cron-parser、TS 7.0.2、ESM nodenext、PWA 原样搬、keyfile AES-256-GCM、EventSource、undici 代理（§4.5） |
 | S12 | AgentBackend 缝 | 落 `packages/shared`，事件面 = 02 §5.6 pi 词表 1:1（签名草案 §5） |
 
 ---
@@ -145,7 +145,7 @@ packages/shared # 协议词表、record 形状 zod schema、命名常量表（02
 
 | 项 | 决策 | pin | 类型 | 理由 |
 |---|---|---|---|---|
-| TypeScript | 5.9.3 全线；**TS 7（7.0.2 已发布）后置升级票**（复刻验收后） | typescript **5.9.3** | 沿用 | 承旧论证：vitest/drizzle 等工具链对 TS 7 原生编译器兼容面未核实，复刻期不背工具链风险 |
+| TypeScript | 7.0.2 全线；ESM nodenext + strict 全配置保持 | typescript **7.0.2** | 沿用 | #104 兑现：vitest 5 / drizzle-kit 0.31 / @vitejs/plugin-react / biome 与 TS 7 原生编译器共存核实全绿；i18n 门改用 `typescript/unstable/ast` scanner（旧 JS parser API 已随原生编译器下线） |
 | lint/format | Biome 单工具（lint+format）；prettier 不引入；类型检查 = tsc | @biomejs/biome **2.5.14** | 沿用 | 承旧；复刻项目无历史规则包袱 |
 | 单测 | vitest projects 模式：每包 test/ colocated，根 projects 汇总 | vitest **5.0.1** | 沿用 | 承旧 |
 | E2E | playwright：关键流 = 02 §4.2 主时序全链（建 todo→开始→confirm→building→review→merge→done）+ 定时触发 + ⌘K | @playwright/test **1.63.0** | 锁定 | 主时序是功能平价的脊柱；**像素 diff 工具不入本册**——地图雾「像素平价验收工具」待 UI 规格切分票 graduate（§9） |
