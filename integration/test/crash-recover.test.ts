@@ -122,6 +122,9 @@ describe('崩溃恢复（T2：AgentSession 缝 × 宿主 durable 编排）', () 
       60_000,
     );
     await waitFor(() => server.todoPhase(world.todoId) === 'confirm', 120_000);
+    // `finished` 落盘在 done ack 之后，phase 可见 ≠ 日志已写（调度间隙，CI 并行
+    // 负载下放大）——先等末行再断言（m3a-demo 同款竞态，02 §5.7 行序 canon）。
+    await waitFor(() => logLines().some((l) => l.includes('finished (0/3 running)')), 30_000);
 
     const lines = logLines();
     // journal 兜底：会话文件不可续 → 显式回退行 + new session 重发任务文本。

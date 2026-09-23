@@ -84,6 +84,10 @@ describe('M3a demo：server 派 step → daemon 真执行 → transcript 回传�
     timing.wakeToConfirmMs = Date.now() - t0;
 
     // —— daemon.log canon 行序（02 §5.4/§5.7）——
+    // `finished` = 步生命周期末行，落盘在 done ack 之后（响应回程 + journal 收尾）；
+    // phase 可见瞬间与日志写入之间存在调度间隙（CI 并行负载下放大），先等末行
+    // 落盘再断言全序——等待即覆盖前序各行（02 §5.7 行序 canon）。
+    await waitFor(() => logLines().some((l) => l.includes('finished (0/3 running)')), 30_000);
     const lines = logLines();
     for (const canon of [
       'Loading pi runtime…',
