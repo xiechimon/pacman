@@ -209,26 +209,6 @@
   flex: 1;
 }
 
-/* 安装 App accent pill: tinted rounded rect, icon + label (r7 01/02) */
-.sidebar-install {
-  flex: none;
-  align-self: flex-start;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  height: 22px;
-  margin: 0 8px 6px;
-  padding: 0 6px 0 6px;
-  border: none;
-  border-radius: 6px;
-  background: var(--install-bg);
-  color: var(--install-fg);
-  font-size: 13px;
-  line-height: 16px;
-  cursor: pointer;
-  text-decoration: none;
-}
-
 .sidebar-user {
   flex: none;
   height: 44px;
@@ -271,8 +251,8 @@
 /* ---- collapsed rail (40px, r7 03 pixel probes) ----
    bg = page surface with a 1px right border, divider under the toggle row,
    16px icons centered at x12–28, nav rows 32px pitch from y48, selected
-   row = 24px pill inset 4px vertically / 8px horizontally, 安装 App icon
-   and 24px user chip (white pill) pinned at the bottom. */
+   row = 24px pill inset 4px vertically / 8px horizontally, 24px user chip
+   (white pill) pinned at the bottom. */
 
 .board-sidebar--collapsed {
   width: 40px;
@@ -317,16 +297,19 @@
   cursor: pointer;
 }
 
-.rail-row--selected::before {
+/* pill box shared by the selected and hover tints — r7 03: 看板 row pill
+   x8–30 / y84–107 = 24px, radius matches the expanded selected row */
+.rail-row::before {
   content: "";
   position: absolute;
   left: 8px;
   right: 8px;
   top: 4px;
   bottom: 4px;
-  /* r7 03: 看板 row pill x8–30 / y84–107 = 24px, radius matches the
-     expanded selected row */
   border-radius: 6px;
+}
+
+.rail-row--selected::before {
   background: var(--surface-secondary);
 }
 
@@ -338,22 +321,6 @@
 .rail-row .project-avatar {
   width: 16px;
   height: 16px;
-}
-
-.rail-install {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 32px;
-  margin: 0;
-  border: none;
-  background: transparent;
-  /* r7 03: indigo, matching --indigo-500 rather than the expanded pill fg */
-  color: var(--indigo-500);
-  text-decoration: none;
-  cursor: pointer;
 }
 
 .rail-user {
@@ -388,4 +355,65 @@
   height: 5px;
   border-radius: 50%;
   background: var(--indigo-500);
+}
+
+/* ---- row hover pill (issue #121, claude.ai-style affordance) ----
+   Nav rows tint a pill on hover at their selected-state geometry
+   (expanded: full row height inset 8px; rail: the 24px box above), painted
+   on the ::before layer so hovering never shifts row layout — the official
+   --surface-hover token over the standard 150ms color step (motion
+   registry), gated to fine pointers like motion.css's hover block. The
+   selected row keeps its own pill (in dark both tokens resolve to #1f1f23,
+   so the exclusion stops the hover from washing the active row out). Icon
+   buttons (toggles, user chips) take the same tint over their own box. */
+
+.sidebar-row::before,
+.sidebar-subrow::before,
+.sidebar-group::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 0;
+  bottom: 0;
+  border-radius: 6px;
+}
+
+/* row content paints over the pill layer — the same lift the rail rows use
+   for their svg/avatar children */
+.sidebar-row > span,
+.sidebar-subrow > span {
+  position: relative;
+}
+
+/* rounded hit box for the small header button (no-op at rest) */
+.sidebar-team-collapse {
+  border-radius: 6px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-row::before,
+  .sidebar-subrow::before,
+  .sidebar-group::before,
+  .rail-row::before,
+  .rail-toggle,
+  .sidebar-team-collapse,
+  .sidebar-user,
+  .rail-user {
+    transition: background-color var(--dur-fast) var(--ease-standard);
+  }
+
+  .sidebar-row:not(.sidebar-row--selected):hover::before,
+  .sidebar-subrow:not(.sidebar-subrow--selected):hover::before,
+  .sidebar-group:hover::before,
+  .rail-row:not(.rail-row--selected):hover::before {
+    background-color: var(--surface-hover);
+  }
+
+  .rail-toggle:hover,
+  .sidebar-team-collapse:hover,
+  .sidebar-user:hover,
+  .rail-user:hover {
+    background-color: var(--surface-hover);
+  }
 }

@@ -368,11 +368,17 @@ export const matrix = [
     baseline: '19-状态芯片弹层-待确认-light.png',
   },
   {
+    // 重定基线（#121，2026-09-24）：原站基线 29 含侧栏底部「安装 App」
+    // accent pill，#121 dogfood 裁决整体去除——本行弹层 CJK 行本为跨平台
+    // 栅格化噪声的卡阈值行（mac 0.8521 / ubuntu 卡线跌穿），pill 去除的
+    // 预期结构差吃掉余量；基线切自渲染产物（parity/baselines/）；原站截图
+    // 按 D4(a) 留 docs/research/assets/r7/ 作研究证据不删。触发依据 =
+    // #121 What-to-do 去除裁决 + 01 §8 差异注记行。
     id: 'chip-popover-review-light',
     route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
     scenario: '29',
     theme: 'light',
-    baseline: '29-状态芯片弹层-审核-light.png',
+    baseline: 'rebaseline/29-状态芯片弹层-审核-light.png',
   },
   {
     id: 'plan-dropdown-light',
@@ -1072,6 +1078,41 @@ export const matrix = [
     theme: 'light',
     locale: 'en',
     expectText: 'Browser notifications are off',
+  },
+  // sidebar row hover pill rows (issue #121): the claude.ai-style hover
+  // affordance is a replica-side addition — no official capture of a
+  // hovered sidebar row exists in any batch — so the state rides smoke
+  // pairs with the #73 hover step: expanded 定时 row + collapsed rail 定时
+  // row, light/dark per 04 §2 增量规则 (深色面随票覆盖)
+  {
+    id: 'sidebar-hover-light',
+    route: '/app',
+    scenario: '01',
+    theme: 'light',
+    hover: '.sidebar-row:has-text("定时")',
+  },
+  {
+    id: 'sidebar-hover-dark',
+    route: '/app',
+    scenario: '02',
+    theme: 'dark',
+    hover: '.sidebar-row:has-text("定时")',
+  },
+  {
+    id: 'rail-hover-light',
+    route: '/app',
+    scenario: '03',
+    theme: 'light',
+    sidebarCollapsed: true,
+    hover: '.rail-row[aria-label="定时"]',
+  },
+  {
+    id: 'rail-hover-dark',
+    route: '/app',
+    scenario: '03',
+    theme: 'dark',
+    sidebarCollapsed: true,
+    hover: '.rail-row[aria-label="定时"]',
   },
   // i18n bilingual spot-check rows (issue #74): zh is the pixel-gated
   // default on every row above; these prove the en fallback renders across

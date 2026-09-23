@@ -233,6 +233,7 @@ migration 纪律：drizzle-kit 生成、进 repo、CI 校验 drift；**不发明
 | runtime | Node [推断] | Node 24 LTS | 近似同栈 |
 | DB / server 框架 / 状态库 / markdown 栈 | 不可观测 | SQLite+Drizzle / Hono / TQ+Zustand / streamdown | **[设计]**：无对照物，验收走行为/像素靶 |
 | 未匹配路径 | 307 → `/login?callbackUrl=` | 重定向 `/app`（无登录页，02/A2） | **差异** [设计] |
+| 侧栏「安装 App」入口 | 存在（r7 01/02 底部 accent pill、r7 03 rail icon；`/zh/install` 路由） | 整体去除（#121 dogfood 裁决）；`/zh/install` 走未匹配路径重定向 `/app`（上一行口径） | **差异**：dogfood 驱动，非官方漂移；含该 pill 区域的 r7 基线行按 §04 阈值内判 |
 | 语音输入按钮 | 存在（r2 工具条），实现未观测 | Web Speech API [推断] | 形状平价、行为尽力 |
 
 ## 9. 移交与观察项
