@@ -90,6 +90,8 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       onSession: (sid, file) => {
         if (file) recordSession(paths, sid, file);
       },
+      // [mcp] 降级行（r3 §1.5 canon；02 §5.3 前缀词表 mcp 位）。
+      onMcpLog: (msg) => logger.mcp(msg),
     });
 
   let inMemoryToken = '';

@@ -603,31 +603,15 @@ export async function executeChiefTool(
       // r5 §6：agentId = Chief 绑定 Agent（共用存储）；三级溯源；配额 100。
       if (ctx.chiefAgentId === null)
         throw new HttpError(409, 'chief agent not bound — memory has no store');
-      const count = db
-        .select({ n: sql<number>`count(*)` })
-        .from(agentMemory)
-        .where(eq(agentMemory.agentId, ctx.chiefAgentId))
-        .get();
-      if ((count?.n ?? 0) >= MEMORY_QUOTA_PER_AGENT) {
-        throw new HttpError(409, `memory quota exceeded (${MEMORY_QUOTA_PER_AGENT}/agent)`);
-      }
-      const id = newRecordId();
-      const now = nowMs();
-      db.insert(agentMemory)
-        .values({
-          id,
-          agentId: ctx.chiefAgentId,
-          teamId: ctx.teamId,
-          title: str(params, 'title'),
-          content: str(params, 'content'),
-          projectId: optStr(params, 'projectId') ?? null,
-          sourceTodoId: optStr(params, 'sourceTodoId') ?? null,
-          sourceBuildId: ctx.conversationId, // chief 来源 = chief 回合 id（r5 §6）
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
-      const row = db.select().from(agentMemory).where(eq(agentMemory.id, id)).get();
+      const row = saveMemoryEntry(db, {
+        agentId: ctx.chiefAgentId,
+        teamId: ctx.teamId,
+        title: str(params, 'title'),
+        content: str(params, 'content'),
+        projectId: optStr(params, 'projectId') ?? null,
+        sourceTodoId: optStr(params, 'sourceTodoId') ?? null,
+        sourceBuildId: ctx.conversationId, // chief 来源 = chief 回合 id（r5 §6）
+      });
       return json(row);
     }
     case 'delete_memory': {
@@ -692,7 +676,9 @@ export async function executeChiefTool(
   }
 }
 
-function transitionTodos(
+/** 批量 phase 流转（MCP server 面 complete/close/reopen 同吃，02 §7.2 六能力组
+ * Manage lifecycle）。非法流转边跳过不中断 [设计]。 */
+export function transitionTodos(
   deps: ChiefToolDeps,
   teamId: string,
   todoIds: string[],
@@ -727,15 +713,114 @@ function transitionTodos(
 function buildDeps(deps: ChiefToolDeps) {
   return { db: deps.db, hub: deps.hub, machineHub: deps.machineHub, user: deps.user };
 }
-function confirmBuild(deps: ChiefToolDeps, buildId: string): void {
+export function confirmBuild(deps: ChiefToolDeps, buildId: string): void {
   if (!deps.db.select().from(build).where(eq(build.id, buildId)).get()) {
     throw new HttpError(404, `build ${buildId}`);
   }
   applyBuildStepAction(buildDeps(deps), buildId, { action: 'confirm' });
 }
-function mergeBuild(deps: ChiefToolDeps, buildId: string): void {
+export function mergeBuild(deps: ChiefToolDeps, buildId: string): void {
   if (!deps.db.select().from(build).where(eq(build.id, buildId)).get()) {
     throw new HttpError(404, `build ${buildId}`);
   }
   requestMerge(buildDeps(deps), buildId);
+}
+
+// —— memory 写路径共用面（02 §4.4/r5 §6，M4b）———————————————————————————————
+// save_memory 单源：配额 100 + 三级溯源（agentId/teamId/projectId/sourceTodoId/
+// sourceBuildId）。chief 回合与 worker 执行步中共用（「Chief 与绑定 Agent 共用
+// 同一存储」r5 §2/§6 的写侧半；worker 侧 = 指令触发 + Agent 裁量，宿主不做
+// 任务结束蒸馏——零自动写入语义由「无钩子调用点」结构性守住）。
+
+/** 配额门 + 落库（r5 §6 形状原样）。超限 = 409（UI `记忆 · n/100` 同源常量）。 */
+export function saveMemoryEntry(
+  db: Db,
+  input: {
+    agentId: string;
+    teamId: string;
+    title: string;
+    content: string;
+    projectId: string | null;
+    sourceTodoId: string | null;
+    sourceBuildId: string | null;
+  },
+): typeof agentMemory.$inferSelect {
+  const count = db
+    .select({ n: sql<number>`count(*)` })
+    .from(agentMemory)
+    .where(eq(agentMemory.agentId, input.agentId))
+    .get();
+  if ((count?.n ?? 0) >= MEMORY_QUOTA_PER_AGENT) {
+    throw new HttpError(409, `memory quota exceeded (${MEMORY_QUOTA_PER_AGENT}/agent)`);
+  }
+  const id = newRecordId();
+  const now = nowMs();
+  db.insert(agentMemory)
+    .values({ id, ...input, createdAt: now, updatedAt: now })
+    .run();
+  const row = db.select().from(agentMemory).where(eq(agentMemory.id, id)).get();
+  if (!row) throw new HttpError(500, 'memory insert lost');
+  return row;
+}
+
+/** worker 步记忆工具上下文（machines.ts 从 step → build → todo → assignment
+ * 解析；执行 Agent = 该步类的 assignment 槽，02 §4.2）。 */
+export interface WorkerMemoryCtx {
+  teamId: string;
+  agentId: string;
+  todoId: string;
+  projectId: string;
+  /** buildId ≡ conversationId（CONTEXT.md）= sourceBuildId 溯源位（r5 §6）。 */
+  buildId: string;
+}
+
+/** worker 步 relay 白名单 = 记忆三件套（MEMORY_TOOLS 单源）；词表外 = 400
+ * （chief 49 词表不外溢到 worker 步——组织/执行面是 Chief 专属，r5 §3.1）。 */
+export async function executeWorkerMemoryTool(
+  db: Db,
+  ctx: WorkerMemoryCtx,
+  name: string,
+  params: Params,
+): Promise<string> {
+  switch (name) {
+    case 'save_memory': {
+      // 溯源缺省 = 运行中任务上下文（r5 §6 实测样本 sourceTodoId/sourceBuildId
+      // = 当次 todo/build）；params 显式值优先（跨任务记录经验 [设计]）。
+      const row = saveMemoryEntry(db, {
+        agentId: ctx.agentId,
+        teamId: ctx.teamId,
+        title: str(params, 'title'),
+        content: str(params, 'content'),
+        projectId: optStr(params, 'projectId') ?? ctx.projectId,
+        sourceTodoId: optStr(params, 'sourceTodoId') ?? ctx.todoId,
+        sourceBuildId: ctx.buildId,
+      });
+      return json(row);
+    }
+    case 'delete_memory': {
+      const memoryId = str(params, 'memoryId');
+      // 越权防御：只删本 Agent 本团队条目。
+      db.delete(agentMemory)
+        .where(
+          and(
+            eq(agentMemory.id, memoryId),
+            eq(agentMemory.agentId, ctx.agentId),
+            eq(agentMemory.teamId, ctx.teamId),
+          ),
+        )
+        .run();
+      return json({ deleted: memoryId });
+    }
+    case 'memories': {
+      const rows = db
+        .select()
+        .from(agentMemory)
+        .where(and(eq(agentMemory.agentId, ctx.agentId), eq(agentMemory.teamId, ctx.teamId)))
+        .orderBy(asc(agentMemory.createdAt))
+        .all();
+      return json(rows);
+    }
+    default:
+      throw new HttpError(400, `tool ${name} is not relayed for worker steps`);
+  }
 }

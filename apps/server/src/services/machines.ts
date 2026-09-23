@@ -11,6 +11,7 @@ import type {
   MachineDoneBody,
   MachineStreamEvent,
   MachineTokenResponse,
+  McpEndpoint,
   ProviderConfig,
   SecretBox,
   StepRecord,
@@ -18,7 +19,13 @@ import type {
   TranscriptUpload,
   UserRecord,
 } from '@pacman/shared';
-import { CHIEF_REMOTE_TOOLS, isChiefConversationId, MAX_CONCURRENT_DEFAULT } from '@pacman/shared';
+import {
+  CHIEF_REMOTE_TOOLS,
+  isChiefConversationId,
+  MAX_CONCURRENT_DEFAULT,
+  MCP_MIN_CLI_VERSION,
+  WORKER_MEMORY_REMOTE_TOOLS,
+} from '@pacman/shared';
 import { and, asc, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
@@ -49,7 +56,7 @@ import {
   parseChiefTrigger,
   upsertChiefMessage,
 } from './chief.js';
-import { executeChiefTool } from './chief-tools.js';
+import { executeChiefTool, executeWorkerMemoryTool } from './chief-tools.js';
 import type { StepCredentialBundle } from './credentials.js';
 import {
   issueStepGitCredential,
@@ -59,6 +66,7 @@ import {
 } from './credentials.js';
 import type { TeamStreamHub } from './events.js';
 import { githubCloneUrl, hostedCloneUrl, repoDirFor } from './git.js';
+import { resolveAgentMcpEndpoints } from './mcp-servers.js';
 import { canTransitionPhase } from './phase.js';
 import { setTodoPhase } from './todos.js';
 
@@ -327,11 +335,40 @@ function agentForStep(
  * 无 todo/project 语境：chief「探测仓库」经 docs relay（server 端裸库读，A4
  * 黑盒逼近 r5 §3.1 的 worktree `git show`），故不下发 repo/git 载荷——避免死
  * 载荷（runner chief 分支本就不开 worktree）。 */
+/** executor 最低版本门（02 §7.1 版本墙形状；数值 = 复刻版本线 MCP_MIN_CLI_VERSION
+ * [设计]）：机器自报 cliVersion 低于门 = claim 不携带 mcpServers（老 executor
+ * 无薄桥，携带即死载荷）。未知版本（老注册行）= 不携带（保守 [设计]）。 */
+export function meetsMcpVersionGate(latestCliVersion: string | null): boolean {
+  if (!latestCliVersion) return false;
+  const parse = (v: string): number[] => v.split('.').map((n) => Number.parseInt(n, 10) || 0);
+  const [a, b] = [parse(latestCliVersion), parse(MCP_MIN_CLI_VERSION)];
+  for (let i = 0; i < 3; i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d !== 0) return d > 0;
+  }
+  return true;
+}
+
+/** claim 载荷 mcpServers 解析（02 §7.1 per-turn 连接的 server 侧半）：版本门
+ * 未达或无授权 = 缺省（不携带）。headers 密文 per-step 解析内存下发（02 §8）。 */
+function claimMcpEndpoints(
+  deps: MachineDeps,
+  teamId: string,
+  latestCliVersion: string | null,
+  agentSlugs: readonly string[],
+): McpEndpoint[] | undefined {
+  if (agentSlugs.length === 0) return undefined;
+  if (!meetsMcpVersionGate(latestCliVersion)) return undefined;
+  const endpoints = resolveAgentMcpEndpoints({ db: deps.db, box: deps.box }, teamId, agentSlugs);
+  return endpoints.length > 0 ? endpoints : undefined;
+}
+
 function buildChiefClaim(
   deps: MachineDeps,
   machineId: string,
   stepRow: typeof step.$inferSelect,
   threadRow: typeof chiefThread.$inferSelect,
+  machineRow?: typeof machine.$inferSelect,
 ): ClaimedStep | null {
   // 绑定 Agent（模型 = 绑定 Agent 模型，r5 §3.1）：未绑定/无模型 = 不可派发
   // （server 侧不派发 [设计]，与门控条 canon 一致）。单次读 chief 行。
@@ -356,6 +393,13 @@ function buildChiefClaim(
     .from(agentMemory)
     .where(eq(agentMemory.agentId, agentRow.id))
     .all();
+  // Chief = 特例 Agent（02 §4.3）：绑定 Agent 的 MCP 授权同样进回合载荷。
+  const chiefMcp = claimMcpEndpoints(
+    deps,
+    threadRow.teamId,
+    machineRow?.latestCliVersion ?? null,
+    agentRow.mcpServers,
+  );
   return {
     step: {
       id: stepRow.id,
@@ -385,6 +429,7 @@ function buildChiefClaim(
       trigger: ctx ? parseChiefTrigger(stepRow.prompt) : 'user',
     },
     remoteTools: [...CHIEF_REMOTE_TOOLS],
+    ...(chiefMcp ? { mcpServers: chiefMcp } : {}),
   };
 }
 
@@ -412,7 +457,7 @@ function tryClaim(
   const earliestWorker = workerCands[0]?.stepRow.createdAt ?? Number.POSITIVE_INFINITY;
   for (const cand of chiefCands) {
     if (cand.stepRow.createdAt > earliestWorker) break; // worker 更早 → 先走 worker
-    const claimed = buildChiefClaim(deps, machineId, cand.stepRow, cand.threadRow);
+    const claimed = buildChiefClaim(deps, machineId, cand.stepRow, cand.threadRow, machineRow);
     if (claimed) return claimed;
   }
 
@@ -456,6 +501,15 @@ function tryClaim(
         : projectRow?.repoKind === 'github' && projectRow.githubRepo !== null
           ? { kind: 'github' as const, cloneUrl: githubCloneUrl(projectRow.githubRepo) }
           : null;
+    // worker 步 remoteTools = 记忆三件套（02 §4.4 写路径 / r5 §6：worker 侧
+    // 同族工具经 remoteTools 下发，relay 服务端执行；触发 = spec 指令 + Agent
+    // 裁量，宿主不做任务结束蒸馏）。MCP 授权端点随载荷（02 §7.1 per-turn 连接）。
+    const workerMcp = claimMcpEndpoints(
+      deps,
+      teamId,
+      machineRow.latestCliVersion,
+      agentRow.mcpServers,
+    );
     return {
       step: {
         id: cand.stepRow.id,
@@ -488,6 +542,8 @@ function tryClaim(
           .where(eq(agentMemory.agentId, agentRow.id))
           .all(),
       },
+      remoteTools: [...WORKER_MEMORY_REMOTE_TOOLS],
+      ...(workerMcp ? { mcpServers: workerMcp } : {}),
     };
   }
   return null;
@@ -552,10 +608,11 @@ export function reportTool(
 }
 
 /** remoteTools relay 执行（02 §4.3「服务端定义并执行」；r5 §3.1 bundle：POST
- * /api/machine/tool/<stepId> {name, params} → {text}）。机器所有权 + chief 步
- * 校验 → 溯源上下文解析（step → chief_thread → chief）→ executeChiefTool。
- * 返回 JSON 串（daemon 侧包 {text} 回 pi）。 */
-export async function executeChiefToolCall(
+ * /api/machine/tool/<stepId> {name, params} → {text}）。机器所有权校验后按步类
+ * 分流：chief 步 = 49 词表（溯源上下文 step → chief_thread → chief）；worker
+ * 步 = 记忆三件套白名单（02 §4.4/r5 §6 worker 写路径，溯源 step → build →
+ * todo → assignment 槽）。返回 JSON 串（daemon 侧包 {text} 回 pi）。 */
+export async function executeRelayToolCall(
   deps: MachineDeps,
   machineId: string,
   stepId: string,
@@ -563,7 +620,10 @@ export async function executeChiefToolCall(
   params: Record<string, unknown>,
 ): Promise<string> {
   const row = ownedStep(deps, machineId, stepId);
-  if (row.kind !== 'chief' || !isChiefConversation(row.buildId)) {
+  if (row.kind !== 'chief') {
+    return executeWorkerMemoryToolCall(deps, row, name, params);
+  }
+  if (!isChiefConversation(row.buildId)) {
     throw new HttpError(400, `step ${stepId} is not a chief step`);
   }
   const threadId = row.buildId;
@@ -587,6 +647,36 @@ export async function executeChiefToolCall(
       threadId,
       chiefAgentId: chiefRow.agentId,
       conversationId: threadId,
+    },
+    name,
+    params,
+  );
+}
+
+/** worker 步 relay = 记忆三件套（MEMORY_TOOLS 白名单在 executeWorkerMemoryTool；
+ * 词表外 400）。溯源上下文（r5 §6 实测样本 = 运行中 todo/build）：
+ * step → build → todo → assignment 槽 Agent（02 §4.2 按步类取槽）。 */
+async function executeWorkerMemoryToolCall(
+  deps: MachineDeps,
+  row: typeof step.$inferSelect,
+  name: string,
+  params: Record<string, unknown>,
+): Promise<string> {
+  const buildRow = deps.db.select().from(build).where(eq(build.id, row.buildId)).get();
+  if (!buildRow) throw new NotFoundError(`build ${row.buildId}`);
+  const todoRow = deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
+  if (!todoRow) throw new NotFoundError(`todo ${buildRow.todoId}`);
+  const slot = row.kind === 'plan' ? todoRow.assignment?.plan : todoRow.assignment?.build;
+  const agentId = slot?.agentId;
+  if (!agentId) throw new HttpError(409, 'step has no assigned agent — memory has no store');
+  return executeWorkerMemoryTool(
+    deps.db,
+    {
+      teamId: todoRow.teamId,
+      agentId,
+      todoId: todoRow.id,
+      projectId: todoRow.projectId,
+      buildId: row.buildId,
     },
     name,
     params,

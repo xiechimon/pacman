@@ -36,6 +36,13 @@
       "when": 1790116068782,
       "tag": "0004_opposite_chimera",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1790126858242,
+      "tag": "0005_mcp_server_internal",
+      "breakpoints": true
     }
   ]
 }

@@ -6,7 +6,12 @@
 // enroll = `Authorization: Bearer <apiKey tds_48hex>`；token 服务端存哈希。
 
 import { z } from 'zod';
-import { modelUsageSchema, providerConfigSchema, toolCallRecordSchema } from '../agent-backend.js';
+import {
+  mcpEndpointSchema,
+  modelUsageSchema,
+  providerConfigSchema,
+  toolCallRecordSchema,
+} from '../agent-backend.js';
 import { epochMs, recordId } from '../records/common.js';
 import { machineRecordSchema } from '../records/machine.js';
 import { messageRoleSchema } from '../records/message.js';
@@ -168,8 +173,15 @@ export const claimedStepSchema = z.object({
     })
     .optional(),
   /** remoteTools[]（服务端定义、服务端执行；chief 步 = 49 词表全量，
-   * protocol/chief-tools.ts；worker 步缺省。位形一手 = bundle 提取，r5 §3.1）。 */
+   * protocol/chief-tools.ts；worker 步 = 记忆三件套 WORKER_MEMORY_REMOTE_TOOLS，
+   * 02 §4.4/r5 §6「worker 侧同族工具经 remoteTools 下发」。位形一手 = bundle
+   * 提取，r5 §3.1）。 */
   remoteTools: z.array(remoteToolDefSchema).optional(),
+  /** 已授权 MCP 端点（02 §7.1：per-Agent mcpServers[] 勾选 → 每回合连接、
+   * 失败降级不阻断；工具名 `mcp__<slug>__<tool>`）。headers 含凭证 = per-step
+   * 内存态下发不落盘（02 §8 运行时纪律同族）；版本墙（MCP_MIN_CLI_VERSION）
+   * 未达 = 缺省不携带。 */
+  mcpServers: z.array(mcpEndpointSchema).optional(),
 });
 export type ClaimedStep = z.infer<typeof claimedStepSchema>;
 

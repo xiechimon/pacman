@@ -44,6 +44,14 @@ const INFERRED_ROUTES = [
   // 同名 POST [推断]，02 §6.1 规则族（不发明新命名空间）——
   'POST /api/teams/{id}/chief/threads', // 新主题：建线程 + 首条消息 + 入队回合步
   'POST /api/conversations/{id}/messages', // 既有 chief 线程续消息（id=chief-<threadId>）
+  // —— MCP client 面管理侧（M4b）：GET/POST 在词表内；编辑/删除 = 卡片更多
+  // 菜单面（r3 §5.1），DELETE_FACE 'teams/{id}/mcp-servers' + REST 同名 PATCH
+  // [推断]（02 §6.1 规则族）——
+  'PATCH /api/teams/{id}/mcp-servers/{sid}',
+  'DELETE /api/teams/{id}/mcp-servers/{sid}',
+  // 记忆条目卡删除图标（r5 §6 UI 实测；02 §4.4「列表/删除 API 保形」，
+  // DELETE_FACE 'teams/{id}/agents/{aid}/memories'）
+  'DELETE /api/teams/{id}/agents/{aid}/memories/{mid}',
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；

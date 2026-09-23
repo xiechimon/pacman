@@ -47,6 +47,10 @@ export const DAEMON_LOG_PREFIXES = [
   'workspace',
   'recover',
   'wake',
+  // MCP per-turn 连接面（r3 §1.5 daemon.log 实测行 `[mcp] r3mcp: connect
+  // failed — its tools are unavailable this turn: fetch failed…`；M4b 补录，
+  // 02 §5.3 前缀词表回写）。
+  'mcp',
 ] as const;
 
 /** 本地状态布局（02 §5.3，r3 §1.3 实测；目录名品牌位走 brand.ts 槽）。 */

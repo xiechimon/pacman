@@ -508,3 +508,37 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
 
 /** 词表自检：49 件、键集 = CHIEF_TOOL_NAMES、读侧全 replaySafe。 */
 export const CHIEF_TOOL_COUNT = 49;
+
+/** worker 步记忆三件套（02 §4.4 写路径 / r5 §6：worker 侧同族工具经
+ * remoteTools 下发——「bundle 无本地记忆实现」，写路径 = agent 工具 → 服务端
+ * relay 执行）。触发语义 = spec 指令可触发 + Agent 裁量（无指令零写入；宿主
+ * 不做任务结束蒸馏）。sourceTodoId 可选：缺省时 server 从步上下文补齐
+ * （溯源形状 r5 §6 实测样本 = 运行中 todo/build）。描述措辞面向 worker
+ * （chief 词表同族工具描述面向 chief 绑定 Agent，语义同）。 */
+export const WORKER_MEMORY_REMOTE_TOOLS: readonly RemoteToolDef[] = [
+  {
+    name: 'save_memory',
+    description:
+      'Save a one-fact memory entry for yourself (the agent running this step). Use it only when the task instructions ask for it or a lesson is clearly worth keeping. Quota 100 per agent.',
+    parameters: obj(
+      {
+        title: str('Short memory title.'),
+        content: str('Memory body.'),
+        projectId: str('Optional project id for provenance.'),
+        sourceTodoId: str('Optional source todo id; defaults to the running task.'),
+      },
+      ['title', 'content'],
+    ),
+  },
+  {
+    name: 'delete_memory',
+    description: 'Delete one of your memory entries by id.',
+    parameters: obj({ memoryId: str('Memory id.') }, ['memoryId']),
+  },
+  {
+    name: 'memories',
+    description: 'List your own memory entries.',
+    parameters: obj({}),
+    replaySafe: true,
+  },
+];

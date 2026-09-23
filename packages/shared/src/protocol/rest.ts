@@ -103,6 +103,7 @@ export const DELETE_FACE = {
     'teams/{id}/agents', // 删除 Agent（r3 §4 概览按钮）
     'teams/{id}/skills', // 技能删除流（r2 §6.1）
     'teams/{id}/mcp-servers', // 卡片更多菜单 编辑/删除（r3 §5.1）
+    'teams/{id}/agents/{aid}/memories', // 记忆条目卡删除图标（r5 §6 UI 实测；02 §4.4「列表/删除 API 保形」）
     'teams/{id}/providers', // 「可以替换或删除」（r2 §6.5）
     'teams/{id}/secrets', // 「保存后只能覆盖或删除」（r2 §6.3）
     'todos', // delete_todos（r5 §3.1）

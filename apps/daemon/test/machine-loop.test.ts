@@ -38,6 +38,7 @@ function captureLogger(): { logger: DaemonLogger; lines: string[] } {
     workspace: (msg) => push('workspace', msg),
     recover: (msg) => push('recover', msg),
     wake: (msg) => push('wake', msg),
+    mcp: (msg) => push('mcp', msg),
   };
   return { logger, lines };
 }

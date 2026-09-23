@@ -38,6 +38,7 @@ import {
   agentMemory,
   apiKey,
   build,
+  mcpServer,
   message,
   notification,
   project,
@@ -78,6 +79,13 @@ import {
   uniqueRepoName,
 } from './services/git.js';
 import { isChiefConversation } from './services/machines.js';
+import { handleMcpRequest } from './services/mcp-face.js';
+import {
+  createMcpServer,
+  deleteMcpServer,
+  listMcpServers,
+  updateMcpServer,
+} from './services/mcp-servers.js';
 import { PhaseTransitionError } from './services/phase.js';
 import {
   createProvider,
@@ -153,6 +161,77 @@ const patchSecretBodySchema = z.object({
 /** POST /api/teams/{id}/api-keys body = shared apiKeyRecordSchema（02 §6.2
  * 形状原样）+ name 放宽可选（表单「密钥名称（可选）」r3 §6）。 */
 const createApiKeyBodySchema = apiKeyRecordSchema.extend({ name: z.string().nullish() });
+
+/** POST /api/teams/{id}/agents body [推断]（r5 §1/§8 补录端点；字段 =
+ * records/agent.ts 配置面投影，创建弹窗 r3 §4：名称/职责/模型）。 */
+const createAgentBodySchema = z.object({
+  displayName: z.string().min(1),
+  description: z.string().nullish(),
+  provider: z.string().nullish(),
+  modelId: z.string().nullish(),
+  thinkingLevel: z.string().nullish(),
+  tools: z.array(z.string()).optional(),
+  secrets: z.array(z.string()).optional(),
+  skills: z.array(z.string()).optional(),
+  mcpServers: z.array(z.string()).optional(),
+});
+
+/** PATCH /api/teams/{id}/agents/{aid} body [推断]（REST 同名，02 §6.1 词表内；
+ * 覆盖面 = 概览/权限 tab 编辑 + per-Agent mcpServers[] 授权勾选，02 §7.1）。 */
+const patchAgentBodySchema = createAgentBodySchema.partial().extend({
+  displayName: z.string().min(1).optional(),
+});
+
+/** POST/PATCH /api/teams/{id}/mcp-servers body [推断]（r3 §5.1 添加表单字段：
+ * 类型/名称/标识符/URL/请求头键值对；stdio 命令+参数 r2 §6.2）。record 输出
+ * 形状 = records/mcp-server.ts 单源。 */
+const mcpServerBodyFields = {
+  label: z.string().min(1),
+  slug: z.string(),
+  transport: z.enum(['http', 'stdio']),
+  url: z.string().optional(),
+  command: z.string().optional(),
+  args: z.array(z.string()).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+};
+const createMcpServerBodySchema = z.object(mcpServerBodyFields);
+const patchMcpServerBodySchema = z
+  .object({
+    label: z.string().min(1).optional(),
+    slug: z.string().optional(), // 恒 400（不可改，r3 §5.1 canon）；收形状为给准错误
+    url: z.string().optional(),
+    command: z.string().optional(),
+    args: z.array(z.string()).optional(),
+    headers: z.record(z.string(), z.string()).optional(),
+  })
+  .strict();
+
+function requireAgentRow(ctx: AppContext, teamId: string, agentId: string) {
+  const row = ctx.db
+    .select()
+    .from(agent)
+    .where(and(eq(agent.id, agentId), eq(agent.teamId, teamId)))
+    .get();
+  if (!row) throw notFound(`agent ${agentId}`);
+  return row;
+}
+
+/** mcpServers[] 勾选项 = 团队 mcp_server slug（未知 slug 400——授权面只对
+ * 已接入 server 开放，02 §7.1）。 */
+function validateAgentMcpSlugs(ctx: AppContext, teamId: string, slugs: string[]): void {
+  if (slugs.length === 0) return;
+  const known = new Set(
+    ctx.db
+      .select({ slug: mcpServer.slug })
+      .from(mcpServer)
+      .where(eq(mcpServer.teamId, teamId))
+      .all()
+      .map((r) => r.slug),
+  );
+  for (const slug of slugs) {
+    if (!known.has(slug)) throw new HttpError(400, `unknown mcp server slug: ${slug}`);
+  }
+}
 
 function agentRecordOf(row: typeof agent.$inferSelect): AgentRecord {
   return {
@@ -491,6 +570,125 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json(rows.map(toMemoryRecord));
   });
 
+  // 记忆删除面（02 §4.4「列表/删除 API 保形」；条目卡删除图标 r5 §6 UI 实测，
+  // DELETE 同名 [推断]，02 §6.1 规则族 + DELETE_FACE 登记）。
+  app.delete('/api/teams/:id/agents/:aid/memories/:mid', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const res = ctx.db
+      .delete(agentMemory)
+      .where(
+        and(
+          eq(agentMemory.id, c.req.param('mid')),
+          eq(agentMemory.agentId, c.req.param('aid')),
+          eq(agentMemory.teamId, teamId),
+        ),
+      )
+      .run();
+    if (res.changes === 0) throw notFound(`memory ${c.req.param('mid')}`);
+    return c.body(null, 204);
+  });
+
+  // —— Agent 面（r3 §4/r5 §1：POST → 201 {id}、GET 单条词表内；PATCH 同名
+  // [推断]——per-Agent mcpServers[] 授权勾选（02 §7.1「授权在每个 Agent 的
+  // 页面上单独进行」）+ 配置面编辑走此路径）———————————————————————————————
+  app.post('/api/teams/:id/agents', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(createAgentBodySchema, await jsonBody(c), 'body');
+    validateAgentMcpSlugs(ctx, teamId, body.mcpServers ?? []);
+    const id = newRecordId();
+    ctx.db
+      .insert(agent)
+      .values({
+        id,
+        teamId,
+        displayName: body.displayName,
+        description: body.description ?? null,
+        status: 'active',
+        avatarUrl: null,
+        provider: body.provider ?? null,
+        modelId: body.modelId ?? null,
+        thinkingLevel: body.thinkingLevel ?? null,
+        tools: body.tools ?? [],
+        secrets: body.secrets ?? [],
+        skills: body.skills ?? [],
+        mcpServers: body.mcpServers ?? [],
+      })
+      .run();
+    return c.json({ id }, 201); // r5 §1/§8 补录：创建 → 201 {id}
+  });
+
+  app.get('/api/teams/:id/agents/:aid', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const row = requireAgentRow(ctx, teamId, c.req.param('aid'));
+    return c.json(agentRecordOf(row));
+  });
+
+  app.patch('/api/teams/:id/agents/:aid', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const row = requireAgentRow(ctx, teamId, c.req.param('aid'));
+    const body = parseWith(patchAgentBodySchema, await jsonBody(c), 'body');
+    if (body.mcpServers !== undefined) validateAgentMcpSlugs(ctx, teamId, body.mcpServers);
+    const sets: Partial<typeof row> = {};
+    for (const key of [
+      'displayName',
+      'description',
+      'provider',
+      'modelId',
+      'thinkingLevel',
+      'tools',
+      'secrets',
+      'skills',
+      'mcpServers',
+    ] as const) {
+      if (body[key] !== undefined) {
+        // null 语义：可空列显式清空（description/provider/modelId/thinkingLevel）。
+        sets[key] = (body[key] === null ? null : body[key]) as never;
+      }
+    }
+    if (Object.keys(sets).length > 0) {
+      ctx.db.update(agent).set(sets).where(eq(agent.id, row.id)).run();
+    }
+    const updated = requireAgentRow(ctx, teamId, row.id);
+    return c.json(agentRecordOf(updated));
+  });
+
+  // —— 团队 MCP server 管理面（02 §7.1/r3 §5.1：GET/POST 词表内；PATCH/DELETE
+  // = 卡片更多菜单「编辑/删除」面，DELETE_FACE 登记 + REST 同名 [推断]）——————
+  const mcpSvc = { db: ctx.db, box: ctx.secretBox };
+  app.get('/api/teams/:id/mcp-servers', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    return c.json(listMcpServers(mcpSvc, teamId));
+  });
+
+  app.post('/api/teams/:id/mcp-servers', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(createMcpServerBodySchema, await jsonBody(c), 'body');
+    const record = createMcpServer(mcpSvc, { teamId, createdBy: ctx.user.id, ...body });
+    return c.json(record, 201);
+  });
+
+  app.patch('/api/teams/:id/mcp-servers/:sid', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(patchMcpServerBodySchema, await jsonBody(c), 'body');
+    return c.json(updateMcpServer(mcpSvc, teamId, c.req.param('sid'), body));
+  });
+
+  app.delete('/api/teams/:id/mcp-servers/:sid', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    if (!deleteMcpServer(mcpSvc, teamId, c.req.param('sid'))) {
+      throw notFound(`mcp server ${c.req.param('sid')}`);
+    }
+    return c.body(null, 204);
+  });
+
   // —— plan.md 版本文档 diff（02 §4.2/r5 §4：documents/{id}/diff 词表内）——————
   app.get('/api/documents/:id/diff', (c) => {
     const against = c.req.query('againstVersion');
@@ -735,6 +933,24 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     // shared API_KEY_ONE_TIME_COPY，web 面渲染）。
     return c.json(created, 201);
   });
+
+  // —— MCP server 面（02 §7.2，M4b）：/api/mcp 路径保形；Bearer <apiKey> +
+  // key 级 24 工具白名单；stateless streamable HTTP（services/mcp-face.ts =
+  // server 侧唯一 sdk 薄桥位，00/D4）。app.all = 协议面动词族（POST JSON-RPC；
+  // GET/DELETE stateless 405），wire 词表对拍按 ALL 豁免（git 面同族）。
+  app.all('/api/mcp', (c) =>
+    handleMcpRequest(
+      {
+        db: ctx.db,
+        hub: ctx.hub,
+        machineHub: ctx.machineHub,
+        box: ctx.secretBox,
+        user: ctx.user,
+        reposDir: ctx.reposDir,
+      },
+      c.req.raw,
+    ),
+  );
 
   // —— 托管 repo git 面（02 §3/A4：`git http-backend` CGI，不引第三方 git host；
   // 远端 URL 形状 = `<origin>/git/<teamId>/<repoName>`，对应 r3 §1.4
