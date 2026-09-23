@@ -1,6 +1,47 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* r1 §4.3 官方反相 dark 变体的 v4 等价实现（#106）：深色 = :root 默认态，
+   浅色 = 根元素挂 .light。`dark:*` 编译为 `.dark\:x:where(:not(.light):not(.light *))`，
+   与官方 v3 编译产物（assets/r1/f965382e067739e9.css）的选择器逐字符一致；
+   勿按常规「默认浅色 + dark: 前缀」做。 */
+@custom-variant dark (&:where(:not(.light):not(.light *)));
+
+/* Token 消费面（v3 theme.extend.colors/fontFamily 的 @theme 语义迁移，#106）。
+   inline 模式让 utility 声明直引 tokens.css 变量（v4 官方「引用其他变量必须用
+   inline」），产出与 v3 逐字符等价，如 .text-content { color: var(--text-primary) }；
+   .light 双主题覆写继续走 tokens.css 级联，不经 --color-* 间接层。
+   r1 §4.2 语义族：变量名 --text-*，类名 content-*。 */
+@theme inline {
+  --color-content: var(--text-primary);
+  --color-content-secondary: var(--text-secondary);
+  --color-content-tertiary: var(--text-tertiary);
+  --color-content-dim: var(--text-dim);
+  --color-line: var(--border-default);
+  --color-line-strong: var(--border-strong);
+  --color-surface: var(--surface);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-tertiary: var(--surface-tertiary);
+  --color-surface-inset: var(--surface-inset);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
+  /* board palette sampled in prototype #42 (replica.css) */
+  --color-col-bg: var(--col-bg);
+  --color-card-bg: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-col-head-text: var(--col-head-text);
+  --color-accent-indigo: var(--indigo-500);
+  --color-accent-indigo-strong: var(--indigo-600);
+  --color-accent-blue: var(--blue-500);
+  --color-accent-amber: var(--amber-500);
+  --color-accent-green: var(--green-500);
+  --color-accent-rose: var(--rose-500);
+  --color-accent-gray: var(--gray-400);
+  /* 自指是有意的：theme key 名即 utility 名（font-sans/font-mono），值直引
+     tokens.css 的同名消费栈变量（--font-sans/--font-mono），inline 不下发
+     theme 变量定义，无循环 */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
 
 @layer base {
   html,
