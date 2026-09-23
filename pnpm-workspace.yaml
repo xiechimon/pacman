@@ -12,6 +12,7 @@ allowBuilds:
 
 catalog:
   '@biomejs/biome': 2.5.14
+  '@tanstack/react-query': 5.103.1
   diff: 9.0.0
   '@playwright/test': 1.63.0
   '@types/react': 19.3.0

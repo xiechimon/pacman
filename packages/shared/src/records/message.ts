@@ -8,6 +8,7 @@
 
 import { z } from 'zod';
 import { activeRunSchema } from './chief.js';
+import { epochMs, recordId } from './common.js';
 
 /** role 词表（r5 §3.6 实测：system/user/assistant）。 */
 export const messageRoleSchema = z.enum(['system', 'user', 'assistant']);
@@ -27,12 +28,20 @@ export const messageRecordSchema = z
   .loose();
 export type MessageRecord = z.infer<typeof messageRecordSchema>;
 
+/** transcript 消息行（r5 §3.6 封套行实测含 id/createdAt 位；conversation
+ * stream message 事件同形，protocol/sse.ts）。 */
+export const transcriptRowSchema = messageRecordSchema.extend({
+  id: recordId,
+  createdAt: epochMs,
+});
+export type TranscriptRow = z.infer<typeof transcriptRowSchema>;
+
 /** system 消息 kind 观测值（r5 §3.6；词表未采齐不收窄 [推断]）。 */
 export const SYSTEM_MESSAGE_KINDS = ['machine_selected'] as const;
 
 /** GET /api/conversations/{id}/messages 响应封套（r5 §3.6 原样）。 */
 export const conversationMessagesResponseSchema = z.object({
-  messages: z.array(messageRecordSchema),
+  messages: z.array(transcriptRowSchema),
   /** chips/steerPending/nextCursor 细形未逐一采集 [推断]（steerPending[] 为
    * 数组形观测；steer 语义 = 回合中补充说明即送，r5 §3.6）。 */
   chips: z.unknown(),

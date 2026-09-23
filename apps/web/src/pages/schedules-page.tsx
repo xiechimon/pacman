@@ -2,7 +2,14 @@
 // geometry: 768px centered column at x456, 48px tile @ y84, 75×30 primary
 // @ y228), list card from r3 93, 新建定时 dialog from r3 92/92b with the
 // 02 §9.2 copy canon (频率 tabs, 00/15/30/45 minute steps, tz note).
+// #83 (M5): live 分支——列表 = GET /api/schedules 真值（SSE todo 事件联动
+// 失效），新建 dialog 可交互（受控 tab/时/分 → POST /api/schedules，02 §9.2
+// 触发闭环由 server Scheduler 兑现）；fixture 分支（r7 11/r3 92/93 行）不变。
+import { useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { useApiMutations, useProjects, useSchedules, useTodos } from '../api/hooks.js';
+import { mapSchedules, toDisplayTodo } from '../api/mappers.js';
+import { useLiveData } from '../api/provider.js';
 import type { FixtureSet, ScheduleRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
@@ -113,23 +120,41 @@ function ScheduleCard({ schedule, now }: { schedule: ScheduleRecord; now: number
 }
 
 /** r3 92/92b dialog. Field values ride the fixture (project + first todo);
- *  the open tab is the scenario's capture state. */
+ *  the open tab is the scenario's capture state. M5 live 面：`live` 绑定使
+ *  tab/时/分受控、关闭/保存接真 mutation（DOM 类名与几何不变）。 */
 function ScheduleForm({
   kind,
   fixture,
+  live,
 }: {
   kind: 'hourly' | 'daily' | 'weekly' | 'once';
   fixture: FixtureSet;
+  live?: {
+    hour: string;
+    minute: string;
+    todo: { seqNum: number; title: string } | undefined;
+    repo: string;
+    onKind(kind: 'hourly' | 'daily' | 'weekly' | 'once'): void;
+    onHour(hour: string): void;
+    onMinute(minute: string): void;
+    onClose(): void;
+    onSave(): void;
+  };
 }) {
   const { locale, t } = useI18n();
-  const todo = fixture.todos[0];
-  const repo = fixture.project?.repoName ?? '';
+  const todo = live ? live.todo : fixture.todos[0];
+  const repo = live ? live.repo : (fixture.project?.repoName ?? '');
   return (
     <div className="sched-form-overlay">
       <div className="sched-form" role="dialog" aria-label={t('新建定时')}>
         <header className="sched-form-head">
           <span className="sched-form-title">{t('新建定时')}</span>
-          <button type="button" className="sched-form-close" aria-label={t('关闭')}>
+          <button
+            type="button"
+            className="sched-form-close"
+            aria-label={t('关闭')}
+            onClick={live?.onClose}
+          >
             <X />
           </button>
         </header>
@@ -154,6 +179,7 @@ function ScheduleForm({
                 key={k}
                 type="button"
                 className={`sched-form-freq-tab${k === kind ? ' sched-form-freq-tab--active' : ''}`}
+                onClick={live ? () => live.onKind(k) : undefined}
               >
                 {t(FREQ_LABEL[k])}
               </button>
@@ -184,7 +210,12 @@ function ScheduleForm({
           <div className="sched-form-field">{t('时间')}</div>
           <div className="sched-form-selects sched-form-selects--time">
             <span className="sched-form-select">
-              <select aria-label={t('时')} defaultValue="09">
+              <select
+                aria-label={t('时')}
+                {...(live
+                  ? { value: live.hour, onChange: (e) => live.onHour(e.target.value) }
+                  : { defaultValue: '09' })}
+              >
                 {HOURS.map((h) => (
                   <option key={h}>{h}</option>
                 ))}
@@ -192,7 +223,12 @@ function ScheduleForm({
               <ChevronDown width={12} height={12} />
             </span>
             <span className="sched-form-select">
-              <select aria-label={t('分')} defaultValue="00">
+              <select
+                aria-label={t('分')}
+                {...(live
+                  ? { value: live.minute, onChange: (e) => live.onMinute(e.target.value) }
+                  : { defaultValue: '00' })}
+              >
                 {MINUTE_STEPS.map((m) => (
                   <option key={m}>{m}</option>
                 ))}
@@ -210,10 +246,10 @@ function ScheduleForm({
           </div>
         </div>
         <footer className="sched-form-foot">
-          <button type="button" className="sched-form-cancel">
+          <button type="button" className="sched-form-cancel" onClick={live?.onClose}>
             {t('取消')}
           </button>
-          <button type="button" className="sched-form-save">
+          <button type="button" className="sched-form-save" onClick={live?.onSave}>
             {t('保存')}
           </button>
         </footer>
@@ -226,14 +262,53 @@ export function SchedulesPage() {
   const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
-  const schedules = fixture.schedules ?? [];
+  const { live, teamId } = useLiveData();
+  const schedulesQ = useSchedules(live);
+  const todosQ = useTodos(teamId, live);
+  const projectsQ = useProjects(teamId, live);
+  const mutations = useApiMutations(teamId);
+  // live 表单态（fixture 面由 scenario 冻结 scheduleForm，互不干扰）。
+  const [formOpen, setFormOpen] = useState(false);
+  const [formKind, setFormKind] = useState<'hourly' | 'daily' | 'weekly' | 'once'>('daily');
+  const [formHour, setFormHour] = useState('09');
+  const [formMinute, setFormMinute] = useState('00');
+  const schedules = live ? mapSchedules(schedulesQ.data ?? []) : (fixture.schedules ?? []);
+  const now = live ? Date.now() : fixture.now;
+  const liveTodos = (todosQ.data ?? []).map(toDisplayTodo);
+  const liveTodo = todosQ.data?.[0];
+  const saveSchedule = () => {
+    if (!liveTodo) {
+      setFormOpen(false);
+      return;
+    }
+    // at = 本地时区今日 hh:mm（02 §9.2：tz = Intl 解析值，server 侧同口径；
+    // 周期档 nextRunAt 由 server computeNextRunAt 滚动，once 触发后出队）。
+    const base = new Date();
+    base.setHours(Number(formHour), Number(formMinute), 0, 0);
+    if (formKind === 'once' && base.getTime() < Date.now()) {
+      base.setDate(base.getDate() + 1); // 单次已过点 = 明日同刻 [设计]
+    }
+    mutations.createSchedule.mutate({
+      todoId: liveTodo.id,
+      projectId: liveTodo.projectId,
+      kind: formKind,
+      at: base.getTime(),
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      machineId: null,
+    });
+    setFormOpen(false);
+  };
   return (
     <PageShell
-      fixture={fixture}
+      fixture={live ? { ...fixture, todos: liveTodos } : fixture}
       selected="schedules"
       title="定时"
       action={
-        <button type="button" className="page-new-action">
+        <button
+          type="button"
+          className="page-new-action"
+          onClick={live ? () => setFormOpen(true) : undefined}
+        >
           <PlusSmall width={13} height={13} />
           {t('新建')}
         </button>
@@ -252,7 +327,11 @@ export function SchedulesPage() {
               )}
             </p>
             <div className="sched-empty-actions">
-              <button type="button" className="sched-empty-new">
+              <button
+                type="button"
+                className="sched-empty-new"
+                onClick={live ? () => setFormOpen(true) : undefined}
+              >
                 {t('新建定时')}
               </button>
               <button type="button" className="sched-empty-docs">
@@ -267,12 +346,30 @@ export function SchedulesPage() {
             </div>
           </div>
         ) : (
-          schedules.map((s) => <ScheduleCard key={s.id} schedule={s} now={fixture.now} />)
+          schedules.map((s) => <ScheduleCard key={s.id} schedule={s} now={now} />)
         )}
       </div>
-      {fixture.scheduleForm != null && (
-        <ScheduleForm kind={fixture.scheduleForm} fixture={fixture} />
-      )}
+      {live
+        ? formOpen && (
+            <ScheduleForm
+              kind={formKind}
+              fixture={fixture}
+              live={{
+                hour: formHour,
+                minute: formMinute,
+                todo: liveTodo ? { seqNum: liveTodo.seqNum, title: liveTodo.title } : undefined,
+                repo: projectsQ.data?.[0]?.name ?? '',
+                onKind: setFormKind,
+                onHour: setFormHour,
+                onMinute: setFormMinute,
+                onClose: () => setFormOpen(false),
+                onSave: saveSchedule,
+              }}
+            />
+          )
+        : fixture.scheduleForm != null && (
+            <ScheduleForm kind={fixture.scheduleForm} fixture={fixture} />
+          )}
     </PageShell>
   );
 }

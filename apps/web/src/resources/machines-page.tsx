@@ -3,6 +3,9 @@
 // and one row per claimed machine (orange monitor tile, online dot,
 // id-tail subline) — then the dashed full-width 添加机器 button.
 import { useSearchParams } from 'react-router';
+import { useMachines } from '../api/hooks.js';
+import { mapMachines } from '../api/mappers.js';
+import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { Monitor, Server, ServerThin } from '../icons/index.js';
@@ -15,7 +18,10 @@ export function MachinesPage() {
   const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
-  const machines = fixture.resources?.machines ?? [];
+  // M5 live：GET teams/{id}/machines（machine_presence SSE 联动失效）。
+  const { live, teamId } = useLiveData();
+  const machinesQ = useMachines(teamId, live);
+  const machines = live ? mapMachines(machinesQ.data ?? []) : (fixture.resources?.machines ?? []);
 
   return (
     // r7 06: the machines topbar carries no `+ 新建` — the dashed 添加机器

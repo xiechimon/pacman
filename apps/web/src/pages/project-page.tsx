@@ -5,7 +5,11 @@
 // toggle + todo rows (r2 26) or the 暂无内容 empty state (r2 24b).
 import { useState } from 'react';
 import { useParams, useSearchParams } from 'react-router';
+import { useProjects, useProjectTree, useTodos } from '../api/hooks.js';
+import { toDisplayTodo } from '../api/mappers.js';
+import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
+import type { ProjectContent } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import {
@@ -133,11 +137,32 @@ export function ProjectPage() {
   const [tab, setTab] = useState<'tasks' | 'files'>(
     searchParams.get('tab') === 'tasks' ? 'tasks' : (fixture.projectTab ?? 'files'),
   );
-  const project = fixture.project;
-  const todos = fixture.todos.filter((t) => t.projectId === id);
+  // M5 live：项目行 = GET /api/projects 检索；文件树 = GET tree（02 §3
+  // 读裸库面）；任务列表 = 真 todos 按 projectId 过滤。
+  const { live, teamId } = useLiveData();
+  const projectsQ = useProjects(teamId, live);
+  const todosQ = useTodos(teamId, live);
+  const treeQ = useProjectTree(live ? id : undefined, live ? 'main' : undefined);
+  const wireProject = live ? (projectsQ.data ?? []).find((p) => p.id === id) : undefined;
+  const project: ProjectContent | undefined = live
+    ? wireProject
+      ? {
+          name: wireProject.name,
+          branch: 'main',
+          files: (treeQ.data?.entries ?? []).map((e) => e.name),
+          repoName: wireProject.repoName ?? wireProject.githubRepo ?? '',
+          hosted: wireProject.repoKind === 'hosted',
+          defaultBranch: 'main',
+          description: null,
+        }
+      : undefined
+    : fixture.project;
+  const todos = live
+    ? (todosQ.data ?? []).map(toDisplayTodo).filter((x) => x.projectId === id)
+    : fixture.todos.filter((x) => x.projectId === id);
   return (
     <PageShell
-      fixture={fixture}
+      fixture={live ? { ...fixture, todos } : fixture}
       selected="project"
       leftTitle={project?.name ?? ''}
       tabs={[
@@ -153,7 +178,7 @@ export function ProjectPage() {
           <div className="prj-files-viewer">{t('请选择一个文件查看')}</div>
         </div>
       ) : (
-        <TasksPane todos={todos} now={fixture.now} />
+        <TasksPane todos={todos} now={live ? Date.now() : fixture.now} />
       )}
     </PageShell>
   );

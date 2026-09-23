@@ -4,6 +4,7 @@
 // overlaps the send button in every capture (r7 §3.4), so the page renders
 // the FAB after the composer and it covers the send pixels.
 
+import { useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { ArrowUp, Grid2x2, Mic, Paperclip, SearchPlus } from '../icons/index.js';
 
@@ -14,15 +15,40 @@ interface ComposerProps {
   aiReview: boolean;
   /** Live run: red stop square replaces the send affordance (r7 16). */
   streaming: boolean;
-  /** Send click (issue #75 reject chain); absent = static capture face. */
-  onSend?: () => void;
+  /** Send click (issue #75 reject chain); absent = static capture face.
+   *  M5: the text argument carries the typed draft on editable (live)
+   *  faces; fixture callers ignore it. */
+  onSend?: (text: string) => void;
+  /** M5 live 面：占位行换成真 textarea（同几何类名 + input 复位类；
+   * fixture/parity 面保持静态 div，DOM 不变）。 */
+  editable?: boolean;
 }
 
-export function Composer({ placeholder, aiReview, streaming, onSend }: ComposerProps) {
+export function Composer({ placeholder, aiReview, streaming, onSend, editable }: ComposerProps) {
   const { t } = useI18n();
+  const [draft, setDraft] = useState('');
+  const send = () => {
+    onSend?.(draft.trim());
+    setDraft('');
+  };
   return (
     <div className="composer">
-      <div className="composer-placeholder">{t(placeholder)}</div>
+      {editable ? (
+        <textarea
+          className="composer-placeholder composer-input"
+          placeholder={t(placeholder)}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+        />
+      ) : (
+        <div className="composer-placeholder">{t(placeholder)}</div>
+      )}
       <div className="composer-toolbar">
         <button type="button" className="composer-tool" aria-label={t('语音输入')}>
           <Mic />
@@ -40,7 +66,7 @@ export function Composer({ placeholder, aiReview, streaming, onSend }: ComposerP
         </button>
       </div>
       {streaming && <button type="button" className="composer-stop" aria-label={t('停止')} />}
-      <button type="button" className="composer-send" aria-label={t('发送')} onClick={onSend}>
+      <button type="button" className="composer-send" aria-label={t('发送')} onClick={send}>
         <ArrowUp width={14} height={14} />
       </button>
     </div>

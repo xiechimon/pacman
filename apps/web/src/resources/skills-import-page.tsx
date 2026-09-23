@@ -3,8 +3,15 @@
 // 名称 + 描述 + full-width 创建技能) or the GitHub form (链接 input + 扫描
 // + help line). The tab is real state; parity scenarios pin it via the
 // fixture so both captures are reproducible.
-import { useState } from 'react';
-import { useSearchParams } from 'react-router';
+// #83 (M5) live：文件夹表单接真 POST /api/skills（dropzone → 目录选择 →
+// 文件集读取，SKILL.md 必含校验 = server 400 同款；创建成功回技能列表）。
+// GitHub 扫描面 = server 无对应端点（02 §6.1 POST skills 上传语义为文件
+// 面），扫描钮保持惰性并登记验收报告。fixture 面 DOM/行为不变（隐藏 file
+// input 零像素）。
+import { useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
+import { useApiMutations } from '../api/hooks.js';
+import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ResourceShell } from './shell.js';
@@ -25,6 +32,27 @@ export function SkillsImportPage() {
   const [tab, setTab] = useState<'folder' | 'github'>(
     () => fixture.resources?.importTab ?? 'folder',
   );
+  const { live, teamId } = useLiveData();
+  const navigate = useNavigate();
+  const mutations = useApiMutations(teamId);
+  const dirInput = useRef<HTMLInputElement>(null);
+  const [files, setFiles] = useState<Record<string, string> | null>(null);
+  const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
+  const canCreate = files != null && 'SKILL.md' in files && name.trim() !== '';
+  const pickFolder = async (list: FileList | null) => {
+    if (list == null) return;
+    const out: Record<string, string> = {};
+    let inferredName = '';
+    for (const file of Array.from(list)) {
+      const rel = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
+      const segments = rel.split('/');
+      if (segments.length > 1 && inferredName === '') inferredName = segments[0] ?? '';
+      out[segments.slice(1).join('/') || rel] = await file.text();
+    }
+    setFiles(out);
+    if (name === '' && inferredName !== '') setName(inferredName);
+  };
 
   return (
     <ResourceShell
@@ -57,19 +85,65 @@ export function SkillsImportPage() {
           <label className="res-label" htmlFor="skill-folder">
             {t('技能文件夹')}
           </label>
-          <button type="button" className="res-dropzone" id="skill-folder">
-            <span className="res-dropzone-title">{t('点击或拖入技能文件夹')}</span>
+          <button
+            type="button"
+            className="res-dropzone"
+            id="skill-folder"
+            onClick={live ? () => dirInput.current?.click() : undefined}
+          >
+            <span className="res-dropzone-title">
+              {files != null
+                ? `${t('已选择')} ${Object.keys(files).length} ${t('个文件')}`
+                : t('点击或拖入技能文件夹')}
+            </span>
             <span className="res-dropzone-sub">{t('必须包含 SKILL.md')}</span>
           </button>
+          {live && (
+            <input
+              ref={dirInput}
+              type="file"
+              style={{ display: 'none' }}
+              // 目录选择面（webkitdirectory 非标准属性位——React 透传）
+              {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
+              onChange={(e) => void pickFolder(e.target.files)}
+            />
+          )}
           <label className="res-label" htmlFor="skill-name">
             {t('名称')}
           </label>
-          <input className="res-input" id="skill-name" placeholder={t('例如：deploy')} />
+          <input
+            className="res-input"
+            id="skill-name"
+            placeholder={t('例如：deploy')}
+            {...(live ? { value: name, onChange: (e) => setName(e.target.value) } : {})}
+          />
           <label className="res-label" htmlFor="skill-desc">
             {t('描述')}
           </label>
-          <input className="res-input" id="skill-desc" placeholder={t('简要描述该技能的功能')} />
-          <button type="button" className="res-primary res-primary--block" disabled>
+          <input
+            className="res-input"
+            id="skill-desc"
+            placeholder={t('简要描述该技能的功能')}
+            {...(live ? { value: desc, onChange: (e) => setDesc(e.target.value) } : {})}
+          />
+          <button
+            type="button"
+            className="res-primary res-primary--block"
+            disabled={live ? !canCreate : true}
+            onClick={
+              live
+                ? () =>
+                    mutations.createSkill.mutate(
+                      {
+                        name: name.trim(),
+                        description: desc.trim() === '' ? null : desc.trim(),
+                        files: files ?? {},
+                      },
+                      { onSuccess: () => navigate(SKILLS_HREF) },
+                    )
+                : undefined
+            }
+          >
             {t('创建技能')}
           </button>
         </div>

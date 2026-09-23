@@ -1743,6 +1743,14 @@ exports[`body/封套 schema 快照 > conversationMessagesResponse > conversation
         "additionalProperties": {},
         "properties": {
           "content": {},
+          "createdAt": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "id": {
+            "type": "string",
+          },
           "role": {
             "enum": [
               "system",
@@ -1755,6 +1763,8 @@ exports[`body/封套 schema 快照 > conversationMessagesResponse > conversation
         "required": [
           "role",
           "content",
+          "id",
+          "createdAt",
         ],
         "type": "object",
       },

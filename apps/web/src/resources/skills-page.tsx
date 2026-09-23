@@ -2,6 +2,9 @@
 // card row per skill (20px orange puzzle tile, name + description, row
 // chevron). Row content comes from the scenario fixture.
 import { useSearchParams } from 'react-router';
+import { useSkills } from '../api/hooks.js';
+import { mapSkills } from '../api/mappers.js';
+import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ArrowUpDown, ChevronDown, Puzzle, Search } from '../icons/index.js';
@@ -14,7 +17,10 @@ export function SkillsPage() {
   const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
-  const skills = fixture.resources?.skills ?? [];
+  // M5 live：GET /api/skills?teamId=（02 §6.1 词表；r2 §6.1 页面）。
+  const { live, teamId } = useLiveData();
+  const skillsQ = useSkills(teamId, live);
+  const skills = live ? mapSkills(skillsQ.data ?? []) : (fixture.resources?.skills ?? []);
 
   return (
     <ResourceShell

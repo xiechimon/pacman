@@ -105,7 +105,15 @@ export function getBuild(deps: BuildDeps, id: string): BuildRecord | null {
   return row ? toBuildRecord(row) : null;
 }
 
-export function listSteps(deps: BuildDeps, buildId: string): StepRecord[] {
+/** steps 读面行 = step record + [内部] journal 位透出 [设计]（M5 详情面：
+ * 进度行状态 + 分支 dialog 目标提交；stepRecordSchema 最小投影不含这些字段 =
+ * zod strip 下 wire 对拍不漂移，02 §5.4「journal 状态字段归实现期展开」）。 */
+export interface StepJournalRow extends StepRecord {
+  status: 'pending' | 'claimed' | 'done' | 'failed';
+  checkpointCommit: string | null;
+}
+
+export function listSteps(deps: BuildDeps, buildId: string): StepJournalRow[] {
   return deps.db
     .select()
     .from(step)
@@ -118,6 +126,8 @@ export function listSteps(deps: BuildDeps, buildId: string): StepRecord[] {
       kind: r.kind,
       machineId: r.machineId,
       createdAt: r.createdAt,
+      status: r.status,
+      checkpointCommit: r.checkpointCommit,
     }));
 }
 

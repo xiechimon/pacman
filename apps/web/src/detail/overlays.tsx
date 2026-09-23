@@ -49,11 +49,17 @@ export function RerunDialog({
   reuse,
   agent,
   onReuse,
+  onPlan,
+  onDirect,
 }: {
   reuse: boolean;
   /** Previous run's agent (fixture data, r8 56/74 agent row). */
   agent: { name: string; model: string };
   onReuse?: () => void;
+  /** M5 live 面：先做规划 = POST builds withPlan:true；立即执行 =
+   *  withPlan:false（02 §4.2 开始 dialog 两分支）；缺省 = fixture 静态面。 */
+  onPlan?: () => void;
+  onDirect?: () => void;
 }) {
   const { t } = useI18n();
   return (
@@ -78,12 +84,13 @@ export function RerunDialog({
           </span>
         </div>
         <div className="overlay-actions">
-          <button type="button" className="overlay-btn">
+          <button type="button" className="overlay-btn" onClick={onPlan}>
             {t('先做规划')}
           </button>
           <button
             type="button"
             className={reuse ? 'overlay-btn' : 'overlay-btn overlay-btn--primary'}
+            onClick={onDirect}
           >
             {t('立即执行')}
           </button>

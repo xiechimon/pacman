@@ -33,8 +33,11 @@ const ALLOWLIST: Record<string, string> = {
 /** Dict keys assembled at module scope (exact-value fixture chrome). */
 const COMPUTED_KEYS = new Set<string>([PROBE_TOOL_CALL_LABEL]);
 
-/** Data layer: capture-verbatim user/agent content, never translated. */
-const EXCLUDED_DIRS = ['fixtures'];
+/** Data layer: capture-verbatim user/agent content, never translated.
+ *  `api` = M5 live 数据层（wire→display mappers）——产出的是与 fixtures 同族
+ *  的记录内容串（zh-CN 权威 canon，01 §4.1/S6：workspace zh 权威 + en 兜底
+ *  在组件 t() 位兑现），mapper 为纯数据变换、无 i18n 上下文。 */
+const EXCLUDED_DIRS = ['fixtures', 'api'];
 const EXCLUDED_FILES = ['i18n/en.ts'];
 
 function sourceFiles(dir: string): string[] {

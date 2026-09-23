@@ -80,12 +80,31 @@ interface DrawerProps {
   chief: ChiefContent;
   onSettings: () => void;
   onClose: () => void;
+  /** M5 live 面：composer 可写 + 发送回调（POST chief 线程消息，r5 §3.6）；
+   * 缺省 = fixture 静态面（readOnly draft，发送钮惰性）。 */
+  onSend?: (text: string) => void;
+  /** 主题切换（live 面 threads popover 行点击）。 */
+  onThread?: (title: string, index: number) => void;
 }
 
-export function ChiefDrawer({ chief, open = true, onSettings, onClose }: DrawerProps) {
+export function ChiefDrawer({
+  chief,
+  open = true,
+  onSettings,
+  onClose,
+  onSend,
+  onThread,
+}: DrawerProps) {
   const { t } = useI18n();
   const [threadsOpen, setThreadsOpen] = useState(chief.threadsOpen ?? false);
+  const [liveDraft, setLiveDraft] = useState('');
   const hasThread = chief.stream != null;
+  const draftValue = onSend != null ? liveDraft : (chief.draft ?? '');
+  const sendLive = () => {
+    if (onSend == null || liveDraft.trim() === '') return;
+    onSend(liveDraft.trim());
+    setLiveDraft('');
+  };
   return (
     <OverlayMount open={open} exitMs={DRAWER_EXIT_MS}>
       <aside className="chief-drawer anim-drawer" aria-label={t('总管')}>
@@ -133,12 +152,20 @@ export function ChiefDrawer({ chief, open = true, onSettings, onClose }: DrawerP
           </div>
           {threadsOpen && (
             <div className="chief-switcher" role="menu">
-              {(chief.threads ?? []).map((thread) => (
+              {(chief.threads ?? []).map((thread, index) => (
                 <button
                   type="button"
                   role="menuitem"
                   key={thread.title}
                   className={thread.active ? 'chief-switcher-row is-active' : 'chief-switcher-row'}
+                  onClick={
+                    onThread != null
+                      ? () => {
+                          onThread(thread.title, index);
+                          setThreadsOpen(false);
+                        }
+                      : undefined
+                  }
                 >
                   <ChiefHash width={11} height={11} />
                   <span>{t(thread.title)}</span>
@@ -237,9 +264,20 @@ export function ChiefDrawer({ chief, open = true, onSettings, onClose }: DrawerP
         <div className="chief-composer">
           <textarea
             className="chief-composer-input"
-            rows={chief.draft ? 6 : 1}
-            readOnly
-            value={chief.draft ?? ''}
+            rows={onSend != null ? (liveDraft !== '' ? 6 : 1) : chief.draft ? 6 : 1}
+            readOnly={onSend == null}
+            value={draftValue}
+            onChange={onSend != null ? (e) => setLiveDraft(e.target.value) : undefined}
+            onKeyDown={
+              onSend != null
+                ? (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendLive();
+                    }
+                  }
+                : undefined
+            }
             placeholder={t('有什么可以帮你的？')}
           />
           <div className="chief-composer-bar">
@@ -255,7 +293,8 @@ export function ChiefDrawer({ chief, open = true, onSettings, onClose }: DrawerP
             <button
               type="button"
               aria-label={t('发送')}
-              className={chief.draft ? 'chief-send is-on' : 'chief-send'}
+              className={draftValue !== '' ? 'chief-send is-on' : 'chief-send'}
+              onClick={sendLive}
             >
               <ArrowUp width={16} height={16} />
             </button>

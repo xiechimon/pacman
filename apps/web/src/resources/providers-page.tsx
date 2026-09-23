@@ -3,6 +3,9 @@
 // custom gateway rows (orange layers tile, orange 自定义 tag, overflow
 // dots instead of the pill).
 import { useSearchParams } from 'react-router';
+import { useProviders } from '../api/hooks.js';
+import { mapProviders } from '../api/mappers.js';
+import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { EllipsisVertical, Layers, Sparkle } from '../icons/index.js';
@@ -15,7 +18,12 @@ export function ProvidersPage() {
   const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
-  const providers = fixture.resources?.providers ?? [];
+  // M5 live：GET providers 封套（presets+providers）→ 内置行 + 自定义行。
+  const { live, teamId } = useLiveData();
+  const providersQ = useProviders(teamId, live);
+  const providers = live
+    ? mapProviders(providersQ.data?.providers ?? [])
+    : (fixture.resources?.providers ?? []);
 
   return (
     <ResourceShell

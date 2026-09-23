@@ -7,6 +7,9 @@
 // The 总管 FAB rides the shell (r7 11 shows it on every secondary route).
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
+import { useTodos } from '../api/hooks.js';
+import { toDisplayTodo } from '../api/mappers.js';
+import { useLiveData } from '../api/provider.js';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar, type SidebarSelected } from '../board/sidebar.js';
 import type { FixtureSet } from '../fixtures/records.js';
@@ -75,9 +78,13 @@ export function PageShell({
 }: PageShellProps) {
   const { t } = useI18n();
   const { search } = useLocation();
+  // M5 live：侧栏待办徽标走真 todos（TQ 同键去重）。
+  const { live, teamId } = useLiveData();
+  const todosQ = useTodos(teamId, live);
+  const attention = attentionCount(live ? (todosQ.data ?? []).map(toDisplayTodo) : fixture.todos);
   return (
     <div className="page-shell">
-      <BoardSidebar attention={attentionCount(fixture.todos)} selected={selected} />
+      <BoardSidebar attention={attention} selected={selected} />
       <div className="page-main">
         <header className="page-topbar">
           <Link className="page-back" to={{ pathname: '/app', search }} aria-label={t('返回')}>

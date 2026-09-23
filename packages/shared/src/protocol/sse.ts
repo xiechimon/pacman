@@ -5,8 +5,8 @@
 
 import { z } from 'zod';
 import { buildRecordSchema } from '../records/build.js';
-import { epochMs, recordId } from '../records/common.js';
-import { messageRecordSchema } from '../records/message.js';
+import { recordId } from '../records/common.js';
+import { transcriptRowSchema } from '../records/message.js';
 import { notificationRecordSchema } from '../records/notification.js';
 import { stepRecordSchema } from '../records/step.js';
 import { todoRecordSchema } from '../records/todo.js';
@@ -96,13 +96,8 @@ export const MACHINE_STREAM_EVENT_TYPES = ['wake', 'shutdown'] as const;
 //   [推断]。
 // 补采到官方载荷真值后回写 02 §11 收紧（04 附录 A 纪律）。
 
-/** transcript 消息行（GET /api/conversations/{id}/messages 封套行形 +
- * conversation stream message 事件载荷）。 */
-export const transcriptRowSchema = messageRecordSchema.extend({
-  id: recordId,
-  createdAt: epochMs,
-});
-export type TranscriptRow = z.infer<typeof transcriptRowSchema>;
+// transcript 消息行（GET messages 封套行形 = conversation stream message
+// 事件载荷）：定义单源在 records/message.ts（transcriptRowSchema）。
 
 export const conversationMessageEventSchema = z.object({
   type: z.literal('message'),
