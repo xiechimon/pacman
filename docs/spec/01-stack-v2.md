@@ -234,6 +234,7 @@ migration 纪律：drizzle-kit 生成、进 repo、CI 校验 drift；**不发明
 | DB / server 框架 / 状态库 / markdown 栈 | 不可观测 | SQLite+Drizzle / Hono / TQ+Zustand / streamdown | **[设计]**：无对照物，验收走行为/像素靶 |
 | 未匹配路径 | 307 → `/login?callbackUrl=` | 重定向 `/app`（无登录页，02/A2） | **差异** [设计] |
 | 侧栏「安装 App」入口 | 存在（r7 01/02 底部 accent pill、r7 03 rail icon；`/zh/install` 路由） | 整体去除（#121 dogfood 裁决）；`/zh/install` 走未匹配路径重定向 `/app`（上一行口径） | **差异**：dogfood 驱动，非官方漂移；含该 pill 区域的 r7 基线行按 §04 阈值内判 |
+| 卡片边框/侧栏接缝/横向滚动条 | 实心卡片边框 + 1px `--border-default` 硬接缝（r7 01/02 像素探针 #e1dbd2/#27272a）+ 横向滚动条区 | #123 dogfood 裁决切 claude.ai 质感：1px 低 alpha 边环 + 宽柔阴影（cds alpha border / `--df-shadow-card` 族）、侧栏独立背景色阶 + 柔边阴影不画缝、横向滚动条双写隐藏（滚动能力保留） | **差异**：dogfood 驱动，非官方漂移；变更幅度在 §04 既有阈值内（矩阵 181 行全绿，未触发重定基线） |
 | 语音输入按钮 | 存在（r2 工具条），实现未观测 | Web Speech API [推断] | 形状平价、行为尽力 |
 
 ## 9. 移交与观察项

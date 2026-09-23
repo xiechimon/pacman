@@ -55,6 +55,23 @@
   --card-border: #27272a;
   --card-button: #4e47dd;
   --card-ghost-border: #2e2e33;
+  /* card texture (#123, claude.ai cds 参照): the board card family draws its
+     outline as a 1px low-alpha ink ring (cds alpha border family — app card
+     10% / landing card 6%, the small board card sits at 8%) so the edge
+     composites softly over the column bg instead of reading as a solid
+     line, and takes its elevation from a wide soft shadow (cds
+     --df-shadow-card's 0 4px layer + the shadow-md contact layer). Dark:
+     8% white ring (cds dark card ring #ffffff14 family) over the cds dark
+     shadow-color 24% black pair */
+  --card-edge: rgb(255 255 255 / 0.08);
+  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 4px 16px rgb(0 0 0 / 0.24);
+  /* sidebar layer (#123, claude.ai dframe sidebar 参照): the sidebar reads
+     as its own chrome layer — one tone step off the canvas (cds sidebar
+     rides its own surface mix) with a soft edge shadow onto the canvas in
+     place of a drawn seam line (the cds dframe sidebar carries
+     --df-shadow-card against the content, no hard border) */
+  --sidebar-bg: #1c1c1f;
+  --sidebar-shadow: 8px 0 24px -12px rgb(0 0 0 / 0.5);
   --col-head-text: #bebec1;
   --col-dot-idle: #9ea3ae;
   --col-dot-planning: #4e81ee;
@@ -187,6 +204,14 @@
   --card-border: #e1dbd2;
   --card-button: #4e47dd;
   --card-ghost-border: #f2f0ec;
+  /* card texture + sidebar layer (#123), light side of the cds reference —
+     warm-ink alpha ring at 8% and the same two-layer soft shadow dimmed to
+     the light surface; sidebar tone step sits between --surface and the
+     column fill so the seam reads without a drawn line */
+  --card-edge: rgb(28 25 23 / 0.08);
+  --card-shadow: 0 1px 2px rgb(28 25 23 / 0.04), 0 4px 16px rgb(28 25 23 / 0.06);
+  --sidebar-bg: #f6f2ec;
+  --sidebar-shadow: 8px 0 24px -12px rgb(28 25 23 / 0.08);
   --col-head-text: #57534e;
   --col-dot-idle: #9ea3ae;
   --col-dot-planning: #4e81ee;
