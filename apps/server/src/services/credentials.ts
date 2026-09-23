@@ -12,7 +12,7 @@
 import type { ProviderApi, SecretBox } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { agent, apiKey, build, step, todo } from '../db/schema.js';
+import { agent, apiKey, build, chief, chiefThread, step, todo } from '../db/schema.js';
 import { notFound } from '../lib/errors.js';
 import { createApiKey } from './api-keys.js';
 import { openProviderKey, type ProviderDeps } from './providers.js';
@@ -118,5 +118,42 @@ export function resolveStepCredentials(
   // 未指派 Agent = 无注入面（secrets 开关是 per-Agent 授权，r2 权限 tab）。
   const env = agentRow ? openSecretEnv(boxDeps, todoRow.teamId, agentRow.secrets) : {};
 
+  return { provider, env, git: null };
+}
+
+/** chief 步凭证解析（step.buildId = `chief-<threadId>`，无 build/todo 行）：
+ * step → chief_thread → chief → 绑定 Agent → provider（SecretBox 解密）+ secrets
+ * env（绑定 Agent 授权集，记忆与存储共用同一 Agent，r5 §2/§6）。
+ * git 槽恒 null（chief 探索基座凭证在 machines.chiefStepToken 组装，需 teamId/
+ * workspaceProject 上下文）。载荷形状 = StepCredentialBundle（02 §5.4）。 */
+export function resolveChiefStepCredentials(
+  deps: CredentialsDeps,
+  threadId: string,
+): StepCredentialBundle {
+  const threadRow = deps.db.select().from(chiefThread).where(eq(chiefThread.id, threadId)).get();
+  if (!threadRow) throw notFound(`chief thread ${threadId}`);
+  const chiefRow = deps.db.select().from(chief).where(eq(chief.id, threadRow.chiefId)).get();
+  if (!chiefRow?.agentId) throw notFound(`chief agent binding for ${threadId}`);
+  const agentRow = deps.db.select().from(agent).where(eq(agent.id, chiefRow.agentId)).get();
+  if (!agentRow) throw notFound(`agent ${chiefRow.agentId}`);
+
+  const boxDeps: ProviderDeps & SecretDeps = deps;
+  let provider: StepCredentialBundle['provider'] = null;
+  if (agentRow.provider) {
+    const opened = openProviderKey(boxDeps, threadRow.teamId, agentRow.provider);
+    if (opened) {
+      provider = {
+        providerId: opened.row.providerId,
+        label: opened.row.label,
+        baseUrl: opened.row.baseUrl,
+        api: opened.row.api,
+        authHeader: opened.row.authHeader,
+        apiKey: opened.apiKey,
+        models: opened.row.models,
+        modelId: agentRow.modelId,
+      };
+    }
+  }
+  const env = openSecretEnv(boxDeps, threadRow.teamId, agentRow.secrets);
   return { provider, env, git: null };
 }

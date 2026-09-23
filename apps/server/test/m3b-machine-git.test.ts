@@ -154,8 +154,8 @@ describe('claim 载荷 repo 绑定位（M3b worktree 契约接线，02 §3/§5.5
     const w = await setupGitWorld();
     await w.startBuild();
     const claimed = await w.claim();
-    expect(claimed.project.repo?.kind).toBe('hosted');
-    const url = new URL(claimed.project.repo!.cloneUrl);
+    expect(claimed.project!.repo?.kind).toBe('hosted');
+    const url = new URL(claimed.project!.repo!.cloneUrl);
     expect(url.pathname).toBe(`/git/${w.s.team.id}/m3b-lifecycle`);
     // 托管 provision 即种子提交：main 在位（worktree base 前提）。
     const main = await systemGitOps.resolveCommit(w.repoDir, 'refs/heads/main');
@@ -238,7 +238,7 @@ describe('per-step 一次性 git 凭证（02 §5.4/§8；relay 工具名对照 p
       body: {},
     });
     const { step } = (await claimRes.json()) as { step: ClaimedStep };
-    expect(claimedStepSchema.parse(step).project.repo).toBeNull();
+    expect(claimedStepSchema.parse(step).project!.repo).toBeNull();
     const tokenRes = await call(s.app, 'GET', `/api/machine/token/${step.step.id}`, {
       cred: token,
     });

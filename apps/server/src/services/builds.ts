@@ -65,12 +65,23 @@ function enqueueStep(
   buildId: string,
   kind: StepRecord['kind'],
   teamId: string,
+  /** [内部] 续轮指令（step.prompt）：驳回 feedback 注入重规划轮（r5 §4「v2
+   * 忠实执行反馈」的宿主等价物）；claim 载荷 instruction 位透出。 */
+  prompt?: string,
 ): StepRecord {
   const id = newRecordId(); // base64 样 21 字符（r5 §3.1 claim step=…）
   const createdAt = nowMs();
   deps.db
     .insert(step)
-    .values({ id, buildId, kind, machineId: null, status: 'pending', createdAt })
+    .values({
+      id,
+      buildId,
+      kind,
+      machineId: null,
+      status: 'pending',
+      prompt: prompt ?? null,
+      createdAt,
+    })
     .run();
   // 入队即 wake（低延迟派发，02 §1.2/§5.4；claim 长轮询等待者 + SSE 双通道）。
   deps.machineHub?.wake(teamId);
@@ -191,7 +202,10 @@ export function applyBuildStepAction(
     })
     .run();
   setTodoPhase(deps, todoRecord.id, 'planning');
-  enqueueStep(deps, buildId, 'plan', todoRecord.teamId);
+  // 重规划步（同 conv continue session，r5 §4）：feedback 注入续轮指令，v2 忠实
+  // 执行反馈（宿主等价物——措辞由 LLM 侧组织，本层给事实与要求）。
+  const replanPrompt = `用户对方案提出驳回。驳回反馈：「${body.feedback}」。请忠实按反馈调整方案，输出更新后的 plan.md（覆盖 Context/Changes/Edge cases/Verification 四段），并在结尾一句话摘要本次调整了什么。`;
+  enqueueStep(deps, buildId, 'plan', todoRecord.teamId, replanPrompt);
 }
 
 /** 合并（02 §4.2/A6：merge = 202 delegated 机器执行；机器领合并步 continue

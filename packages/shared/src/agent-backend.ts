@@ -143,6 +143,13 @@ export interface SessionOpts {
   systemPrompt?: string;
   /** web_fetch / remote_shell / push_branch / save_memory（宿主增量）。 */
   tools?: ToolSpec[];
+  /** remoteTools 定义（chief 步服务端工具，protocol/chief-tools.ts；位形一手
+   * = bundle makeRemoteTools 读 step.remoteTools，r5 §3.1）。backend 把每条映射
+   * 为 pi customTool，execute → executeRemoteTool relay 回传服务端执行。 */
+  remoteTools?: import('./protocol/chief-tools.js').RemoteToolDef[];
+  /** remoteTools relay 执行回调（runner 注入 = POST /api/machine/tool/<stepId>
+   * {name, params} → {text}）；返回结果文本（r5 §3.1 bundle text() 形）。 */
+  executeRemoteTool?: (name: string, params: Record<string, unknown>) => Promise<string>;
   /** per-turn 连接、失败降级不阻断（02 §7.1）。 */
   mcpServers?: McpEndpoint[];
   /** worktree 目录（02 §5.5）。 */

@@ -18,12 +18,19 @@ import {
   type ProjectTreeResponse,
 } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
-import type { AppContext } from '../context.js';
+import type { Db } from '../db/client.js';
 import { project } from '../db/schema.js';
 import { HttpError, notFound } from '../lib/errors.js';
 import { isSafeRepoPath, systemGitOps } from '../lib/git.js';
 
 export type ProjectRow = typeof project.$inferSelect;
+
+/** 文件浏览面所需的最小上下文（AppContext 的结构子集；chief `docs` relay 与
+ * REST tree/file/branches 共用——避免把整个 AppContext 拖进 relay 执行面）。 */
+export interface RepoCtx {
+  db: Db;
+  reposDir: string;
+}
 
 /** 项目名 → repo 名 slug（[设计]：小写、路径安全字符集；r3 样本
  * `r3-lifecycle` 即原名同形）。 */
@@ -37,11 +44,7 @@ export function slugifyRepoName(name: string): string {
 }
 
 /** 团队内 repoName 唯一化（冲突加 `-2`/`-3`…后缀 [设计]）。 */
-export async function uniqueRepoName(
-  ctx: AppContext,
-  teamId: string,
-  base: string,
-): Promise<string> {
+export async function uniqueRepoName(ctx: RepoCtx, teamId: string, base: string): Promise<string> {
   const existing = new Set(
     ctx.db
       .select({ repoName: project.repoName })
@@ -67,7 +70,7 @@ export function repoDirFor(reposDir: string, teamId: string, repoName: string): 
  * 提交立 main（M3b [设计]：空库无 ref 不能 worktree add——02 §5.5 base=
  * `origin/<defaultBranch>` 前提；merge 步 fast-forward 亦需 main 在位）。 */
 export async function provisionHostedRepo(
-  ctx: AppContext,
+  ctx: RepoCtx,
   teamId: string,
   repoName: string,
 ): Promise<string> {
@@ -113,7 +116,7 @@ export function isGithubRepoRef(value: string): boolean {
 
 /** 文件浏览面要求托管形态（GitHub-backed 读面依赖 GitHub API，不在 M2b
  * server 存储面 [设计]）。返回 bare repo 目录。 */
-export function requireHostedRepoDir(ctx: AppContext, projectId: string): string {
+export function requireHostedRepoDir(ctx: RepoCtx, projectId: string): string {
   const row = ctx.db.select().from(project).where(eq(project.id, projectId)).get();
   if (!row) throw notFound(`project ${projectId}`);
   if (row.repoKind !== 'hosted' || row.repoName === null) {
@@ -133,7 +136,7 @@ async function resolveCommitOr404(dir: string, ref: string): Promise<string> {
 }
 
 export async function readTree(
-  ctx: AppContext,
+  ctx: RepoCtx,
   projectId: string,
   refParam?: string,
   pathParam?: string,
@@ -153,7 +156,7 @@ function looksBinary(buf: Uint8Array): boolean {
 }
 
 export async function readFile(
-  ctx: AppContext,
+  ctx: RepoCtx,
   projectId: string,
   path: string,
   refParam?: string,
@@ -179,7 +182,7 @@ export async function readFile(
 }
 
 export async function readBranches(
-  ctx: AppContext,
+  ctx: RepoCtx,
   projectId: string,
 ): Promise<ProjectBranchesResponse> {
   const dir = requireHostedRepoDir(ctx, projectId);

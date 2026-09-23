@@ -21,6 +21,8 @@ import {
   machineStreamEventSchema,
   machineTokenResponseSchema,
   machineUploadUrlsResponseSchema,
+  REMOTE_TOOL_RETRY_DELAYS_MS,
+  REMOTE_TOOL_TIMEOUT_MS,
   type StepRecord,
   type ToolCallRecord,
   type TranscriptUpload,
@@ -57,6 +59,15 @@ export interface MachineApi {
   claim(signal?: AbortSignal, running?: number): Promise<ClaimedStep | null>;
   heartbeat(stepId: string): Promise<void>;
   tool(stepId: string, call: ToolCallRecord): Promise<void>;
+  /** remoteTools relay 执行（chief 步服务端工具）：POST tool/{stepId}
+   * {name, params} → {text}（r5 §3.1 bundle）。replaySafe → 重试预算
+   * REMOTE_TOOL_RETRY_DELAYS_MS；超时 REMOTE_TOOL_TIMEOUT_MS。返回结果文本。 */
+  relayTool(
+    stepId: string,
+    name: string,
+    params: Record<string, unknown>,
+    opts?: { replaySafe?: boolean; signal?: AbortSignal },
+  ): Promise<string>;
   token(stepId: string): Promise<MachineTokenResponse>;
   uploadUrls(
     stepId: string,
@@ -206,6 +217,57 @@ export class MachineClient implements MachineApi {
       body: call,
       parse: (raw) => machineOkResponseSchema.parse(raw),
     });
+  }
+
+  /** remoteTools relay（r5 §3.1 bundle `remoteTools.ts` 语义）：replaySafe 读工具
+   * 带重试预算 [500,2000]ms + 10s 超时；写工具（非 replaySafe）单次不重试。
+   * 服务端拒绝（4xx {error}）→ 抛错由上层转 pi 工具结果文本；成功 → text。 */
+  async relayTool(
+    stepId: string,
+    name: string,
+    params: Record<string, unknown>,
+    opts: { replaySafe?: boolean; signal?: AbortSignal } = {},
+  ): Promise<string> {
+    const replaySafe = opts.replaySafe ?? false;
+    const delays = replaySafe ? [...REMOTE_TOOL_RETRY_DELAYS_MS] : [];
+    let lastErr: unknown;
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      const timeout = AbortSignal.timeout(REMOTE_TOOL_TIMEOUT_MS);
+      const signal = opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout;
+      try {
+        const res = await this.fetchImpl(this.url(`/api/machine/tool/${stepId}`), {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            ...(this.opts.getToken?.()
+              ? { authorization: `Bearer ${this.opts.getToken?.()}` }
+              : {}),
+          },
+          body: JSON.stringify({ name, params }),
+          signal,
+        });
+        const body = (await res.json().catch(() => null)) as {
+          text?: string;
+          error?: string;
+        } | null;
+        if (res.ok) {
+          return typeof body?.text === 'string' ? body.text : '';
+        }
+        // 服务端拒绝（非瞬态）→ 不重试，抛 {error} 供上层落工具结果。
+        const msg =
+          typeof body?.error === 'string' ? body.error : `${name} failed (HTTP ${res.status})`;
+        if (!replaySafe || res.status < 500) throw new MachineApiError(res.status, msg);
+        lastErr = new MachineApiError(res.status, msg); // 5xx + replaySafe → 重试
+      } catch (err) {
+        if (err instanceof MachineApiError && (!replaySafe || err.status < 500)) throw err;
+        lastErr = err; // 超时/网络（replaySafe）→ 重试
+        if (!replaySafe) throw err;
+      }
+      const delay = delays[attempt];
+      if (delay === undefined) break;
+      await new Promise((r) => setTimeout(r, delay));
+    }
+    throw lastErr instanceof Error ? lastErr : new Error(`${name} relay failed`);
   }
 
   async token(stepId: string): Promise<MachineTokenResponse> {

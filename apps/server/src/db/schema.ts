@@ -6,6 +6,7 @@
 import type {
   ActiveRun,
   Assignment,
+  ChiefWatch,
   DocumentDiffFile,
   McpTransport,
   Phase,
@@ -118,12 +119,13 @@ export const build = sqliteTable('build', {
   createdAt: epochMs('createdAt').notNull(),
 });
 
-// —— step（三类步队列 server 持有、机器 claim，02 §4.2/A6）———————————————————
+// —— step（三类步队列 server 持有、机器 claim，02 §4.2/A6；M4a +chief 步）—————
 export const step = sqliteTable('step', {
   id: text('id').primaryKey(),
-  buildId: text('buildId')
-    .notNull()
-    .references(() => build.id, { onDelete: 'cascade' }),
+  /** ≡ conversationId。worker 步 = build.id（cascade 随行）；chief 步 =
+   * `chief-<uuid>`（线程 id，无 build 行——Chief 回合 = 机器 step 实测
+   * r5 §3.1，队列复用 [设计]，故本列不带 FK，级联面在 chief_thread）。 */
+  buildId: text('buildId').notNull(),
   kind: text('kind').$type<StepKind>().notNull(),
   machineId: text('machineId'),
   /** [内部] journal 状态（02 §5.4；M3a 展开：claimed = 机器领取未收尾）。 */
@@ -142,6 +144,10 @@ export const step = sqliteTable('step', {
   claimedAt: epochMs('claimedAt'),
   /** [内部] heartbeat/<stepId> 续活时刻（02 §5.4）。 */
   lastHeartbeatAt: epochMs('lastHeartbeatAt'),
+  /** [内部] 入队时合成的续轮指令（M4a [设计]）：驳回 feedback 注入重规划轮
+   * （r5 §4「v2 内容忠实执行反馈」宿主等价物）、chief 回合任务文本/wake 事实
+   * （r5 §3.1/§3.5）。claim 载荷 `instruction` 位透出。 */
+  prompt: text('prompt'),
   createdAt: epochMs('createdAt').notNull(),
 });
 
@@ -357,6 +363,34 @@ export const tokenUsage = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.buildId, t.model] })],
 );
+
+// —— chief（02 §4.3/r5 §3.6 GET /chief 的 chief 记录本体；M4a 回写 01 §6：
+// 原锁定清单仅列线程面两表，chief 记录——绑定 Agent/charter/watches/wakes——
+// 无表位。watches/wakes 为 per-chief 小数组，随记录存 JSON 列 [设计]，
+// 与 GET /chief 响应封套同形，不另立表）—————————————————————————————————
+export const chief = sqliteTable('chief', {
+  /** `chief-<userId>-<teamId>`（records/chief.ts chiefIdFormat，r5 §3.6）。 */
+  id: text('id').primaryKey(),
+  userId: text('userId').notNull(),
+  teamId: text('teamId')
+    .notNull()
+    .references(() => team.id),
+  /** 绑定 Agent id（PATCH /chief + 二次确认，记忆不迁移告示，r5 §2）；未绑定 null。 */
+  agentId: text('agentId'),
+  /** 绑定 Agent 的思考强度覆盖（PATCH body agent.thinkingLevel，r5 §2）。 */
+  thinkingLevel: text('thinkingLevel'),
+  /** 章程 = 常设指示（r5 §2 章程 tab；raw 默认空串）。 */
+  charter: text('charter').notNull().default(''),
+  /** watch 条目集（records/chief.ts chiefWatchSchema[]；派工即建、settle/failed
+   * 自动解除，r5 §3.5）；JSON 列 [设计]。 */
+  watches: json<ChiefWatch[]>('watches').notNull().default(sql`'[]'`),
+  /** wakes[] 非空形态未实测（r5 §10：set_wake 实走遗留）[推断]，开放条目。 */
+  wakes: json<Record<string, unknown>[]>('wakes').notNull().default(sql`'[]'`),
+  lastTurnAt: epochMs('lastTurnAt'),
+  createdAt: epochMs('createdAt').notNull(),
+  /** 用户时区（raw chief-record-testA.json 一手 tz）。 */
+  tz: text('tz'),
+});
 
 // —— chief_thread（02 §4.3/r5 §3.6 线程面；Chief 编排归 M4）————————————————————
 export const chiefThread = sqliteTable('chief_thread', {

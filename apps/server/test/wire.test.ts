@@ -39,6 +39,11 @@ const INFERRED_ROUTES = [
   'DELETE /api/teams/{id}/secrets/{sid}', // DELETE_FACE 'teams/{id}/secrets'
   'GET /api/teams/{id}/api-keys', // API 密钥页实测存在（r2 §6.7/r3 §6）
   'POST /api/teams/{id}/api-keys', // 创建 → 一次性明文（r3 §6 展示规则）
+  // —— Chief 发消息触发回合（M4a）：GET /chief/threads 与 GET /conversations/{id}/
+  // messages 在词表内，但「发消息」的 POST wire 未采（r5 §3.6 仅读端点）——REST
+  // 同名 POST [推断]，02 §6.1 规则族（不发明新命名空间）——
+  'POST /api/teams/{id}/chief/threads', // 新主题：建线程 + 首条消息 + 入队回合步
+  'POST /api/conversations/{id}/messages', // 既有 chief 线程续消息（id=chief-<threadId>）
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；

@@ -123,6 +123,11 @@ class FakeMachineApi implements MachineApi {
   async tool(stepId: string, call: ToolCallRecord) {
     this.toolCalls.push({ stepId, call });
   }
+  async relayTool(stepId: string, name: string, params: Record<string, unknown>) {
+    this.calls.push(`relayTool:${stepId}:${name}`);
+    void params;
+    return '{}';
+  }
   async token(stepId: string) {
     this.calls.push(`token:${stepId}`);
     return {

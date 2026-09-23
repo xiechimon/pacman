@@ -27,6 +27,7 @@ export const DB_TABLES = [
   'api_key', // 哈希 + gitAccess/mcpAccess/toolGrants 白名单（02 §6.2/§8）
   'machine', // 02 §6.2 + presence 状态（02 §1.2）
   'token_usage', // build×model 四维计数（02 §6.2/r3 §3.8）
+  'chief', // 02 §4.3 Chief 记录面（r5 §3.6 GET /chief 的 chief 字段：绑定 Agent/charter/watches/wakes；M4a 回写 01 §6——原清单仅列线程面两表，记录本体无表位）
   'chief_thread', // 02 §4.3 线程面（r5 §3.6）
   'chief_message', // 02 §4.3 线程面（r5 §3.6）
   'whats_new', // 形状保留内容自选（02 §6.1）

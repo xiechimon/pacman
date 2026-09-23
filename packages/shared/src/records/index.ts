@@ -1,12 +1,13 @@
-// record 形状 24 表投影（01 §6 表清单 = M2 Drizzle schema 面；03 M1
-// 「record 形状（02 §6.2，24 表投影源）」）。`todo_tag` 为纯 join 表，
-// 无 wire record 形状，不在投影面。
+// record 形状 25 表投影（01 §6 表清单 = M2 Drizzle schema 面；03 M1
+// 「record 形状（02 §6.2，24 表投影源）」；M4a 回写 +1：`chief` 记录本体
+// ——02 §4.3/r5 §3.6 GET /chief 的 chief 字段投影，原清单仅列线程面两表）。
+// `todo_tag` 为纯 join 表，无 wire record 形状，不在投影面。
 
 import type { z } from 'zod';
 import { agentRecordSchema } from './agent.js';
 import { apiKeyRecordSchema } from './api-key.js';
 import { buildRecordSchema } from './build.js';
-import { chiefThreadSchema } from './chief.js';
+import { chiefRecordSchema, chiefThreadSchema } from './chief.js';
 import { documentDiffSchema } from './document-diff.js';
 import { machineRecordSchema } from './machine.js';
 import { mcpServerRecordSchema } from './mcp-server.js';
@@ -52,7 +53,7 @@ export * from './token-usage.js';
 export * from './user.js';
 export * from './whats-new.js';
 
-/** 表名 → record schema（24 张，键序 = 01 §6 清单序；快照测试的遍历源）。 */
+/** 表名 → record schema（25 张，键序 = 01 §6 清单序；快照测试的遍历源）。 */
 export const RECORD_SCHEMAS = {
   user: userRecordSchema,
   team: teamRecordSchema,
@@ -75,6 +76,7 @@ export const RECORD_SCHEMAS = {
   api_key: apiKeyRecordSchema,
   machine: machineRecordSchema,
   token_usage: tokenUsageSchema,
+  chief: chiefRecordSchema,
   chief_thread: chiefThreadSchema,
   // chief_message = 线程消息行（records/message.ts 同族 role/content 形状，
   // r5 §3.6；独立列细节归 M2 按 record 形状展开）。

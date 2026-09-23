@@ -51,18 +51,37 @@ export interface RunStepOptions {
 }
 
 /** 任务文本（M3a 骨架 [设计]：title + spec 原文；plan.md 产出/git 面归 M3b，
- * 驳回 feedback / 合并指令等续轮 prompt 由调用方经 resume.prompt 传入）。 */
+ * 驳回 feedback / 合并指令等续轮 prompt 由调用方经 resume.prompt 传入）。
+ * chief 步无 todo → 用 server 合成的 instruction（用户消息/wake 事实）。 */
 export function buildTaskPrompt(claimed: ClaimedStep): string {
-  return `${claimed.todo.title}\n\n${claimed.todo.spec}`;
+  const todo = claimed.todo;
+  if (!todo) return claimed.instruction ?? '';
+  return `${todo.title}\n\n${todo.spec}`;
 }
 
 /** continue session 续轮指令 [设计]（02 §4.2：确认→执行步、merge 202
- * delegated→合并步均复用同 conv 会话；驳回 feedback 注入归 M4 回路）。 */
+ * delegated→合并步均复用同 conv 会话；驳回 feedback 经 server instruction 注入，
+ * M4a）。chief 续轮 = wake 事实走 instruction，本表 chief 值不用（占位保全键）。 */
 export const CONTINUE_PROMPTS: Record<ClaimedStep['step']['kind'], string> = {
   plan: '请重新规划该任务，输出更新后的方案。',
   build: '方案已确认。请按方案执行，完成改动。',
   merge: '请把本会话分支的改动合并到默认分支。',
+  chief: '',
 };
+
+/** worker 步 systemPrompt = 职责文本 + 记忆注入（02 §4.4 读路径最小形；每步
+ * 开跑注入该 Agent 记忆条目——注入形 [推断] 保留，触到即验证回写 04 附录 A）。 */
+export function composeWorkerSystemPrompt(
+  description: string | null | undefined,
+  memories: readonly { title: string; content: string }[] | undefined,
+): string | undefined {
+  const parts: string[] = [];
+  if (description) parts.push(description);
+  if (memories && memories.length > 0) {
+    parts.push(`## 记忆\n${memories.map((m) => `- ${m.title}：${m.content}`).join('\n')}`);
+  }
+  return parts.length > 0 ? parts.join('\n\n') : undefined;
+}
 
 /** hasChanges 判定 [推断骨架]（02 §4.1/r5 §8 列位双键；git diff 面归 M3b，
  * 当前 = transcript 含写类工具行）。 */
@@ -104,11 +123,17 @@ export async function runStep(
   const running = opts.running ?? 1;
   logger.raw(`step ${stepId} for conv ${convId} (${running}/${deps.maxConcurrent} running)`);
 
+  // chief 步（回合 = 机器 step，r5 §3.1）：任务文本 = server 合成的 instruction
+  // （用户消息 / wake 事实），无 todo 语境；remoteTools relay + systemPrompt 走
+  // chief 块。worker 步：title+spec 或续轮指令。
+  const isChief = claimed.step.kind === 'chief';
   const prompt =
     opts.resume?.prompt ??
-    (claimed.session.action === 'continue' && claimed.session.sessionId
-      ? CONTINUE_PROMPTS[claimed.step.kind]
-      : buildTaskPrompt(claimed));
+    (isChief
+      ? (claimed.instruction ?? '')
+      : claimed.session.action === 'continue' && claimed.session.sessionId
+        ? CONTINUE_PROMPTS[claimed.step.kind]
+        : buildTaskPrompt(claimed));
 
   // journal：claimed（recover 面即时落盘，02 §5.4）。
   journal.claim({
@@ -137,10 +162,12 @@ export async function runStep(
   logger.raw(`using model ${provider.providerId}/${agent.modelId}`);
 
   // workspace 准备（02 §5.5 worktree 契约：基座 clone + `worktree add -b`；
-  // 项目未绑 repo = 裸任务目录退化形 [设计]，M3a 兼容）。
+  // 项目未绑 repo = 裸任务目录退化形 [设计]，M3a 兼容）。chief 步 = 只读探索，
+  // 不开 worktree（不产可合并改动；仓库读经 remoteTools docs/projects relay，
+  // 黑盒逼近 04 §1 A4）→ 裸任务目录。
   logger.workspace('准备工作区...');
   let ws: PreparedWorkspace | null = null;
-  const repo = claimed.project.repo;
+  const repo = isChief ? null : (claimed.project?.repo ?? null);
   if (repo !== null && repo.kind === 'hosted') {
     if (!deps.workspace) {
       clearCredentials(creds);
@@ -149,7 +176,7 @@ export async function runStep(
     }
     try {
       ws = await deps.workspace.prepare({
-        projectId: claimed.project.id,
+        projectId: claimed.project?.id ?? '',
         conversationId: convId,
         cloneUrl: repo.cloneUrl,
         workspacesRoot: deps.workspacesDir,
@@ -164,13 +191,33 @@ export async function runStep(
   const cwd = ws?.cwd ?? join(deps.workspacesDir, convId);
   if (!ws) mkdirSync(cwd, { recursive: true });
 
+  // systemPrompt：chief = server 合成（charter + 资源清单 + 策略指引 + 记忆，
+  // 02 §4.3）；worker = 职责文本 + 记忆注入（02 §4.4 读路径最小形，注入形 [推断]）。
+  const systemPrompt =
+    isChief && claimed.chief
+      ? claimed.chief.systemPrompt
+      : composeWorkerSystemPrompt(agent.description, agent.memories);
+  const remoteTools = isChief ? claimed.remoteTools : undefined;
   const sessionOpts: SessionOpts = {
     provider,
     modelId: agent.modelId,
     ...(agent.thinkingLevel ? { thinkingLevel: agent.thinkingLevel } : {}),
-    ...(agent.description ? { systemPrompt: agent.description } : {}),
+    ...(systemPrompt ? { systemPrompt } : {}),
     cwd,
     ...(prompt !== null ? { prompt } : {}),
+    ...(remoteTools && remoteTools.length > 0
+      ? {
+          remoteTools,
+          // relay 执行（r5 §3.1 bundle：execute → POST tool/<stepId> {name,params}
+          // → {text}；replaySafe 读工具带重试预算 + 10s 超时）。
+          executeRemoteTool: (name, params) => {
+            const def = remoteTools.find((t) => t.name === name);
+            return client.relayTool(stepId, name, params, {
+              ...(def?.replaySafe ? { replaySafe: true } : {}),
+            });
+          },
+        }
+      : {}),
   };
 
   // continue 解析键：journal 快照（recover 面）优先，其次 claim 载荷携带的
@@ -326,7 +373,7 @@ export async function runStep(
       };
       const committed = await git.commitAll(
         ws.cwd,
-        `${claimed.step.kind}: ${claimed.todo.title}`,
+        `${claimed.step.kind}: ${claimed.todo?.title ?? claimed.conversationId}`,
         identity,
       );
       if (claimed.step.kind === 'merge') {

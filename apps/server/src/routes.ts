@@ -13,8 +13,11 @@ import {
   apiKeyRecordSchema,
   type BuildRecord,
   buildStepActionBodySchema,
+  chiefSendMessageBodySchema,
   createScheduleBodySchema,
   createTodoBodySchema,
+  type MemoryRecord,
+  patchChiefBodySchema,
   phaseSchema,
   projectRepoKindSchema,
   providerApiSchema,
@@ -30,7 +33,17 @@ import { getCookie, setCookie } from 'hono/cookie';
 import { streamSSE } from 'hono/streaming';
 import { z } from 'zod';
 import type { AppContext } from './context.js';
-import { agent, apiKey, build, message, notification, project, tag, todo } from './db/schema.js';
+import {
+  agent,
+  agentMemory,
+  apiKey,
+  build,
+  message,
+  notification,
+  project,
+  tag,
+  todo,
+} from './db/schema.js';
 import { sha256Hex } from './lib/crypto.js';
 import { conflict, HttpError, notFound, parseWith } from './lib/errors.js';
 import { systemGitOps } from './lib/git.js';
@@ -44,6 +57,15 @@ import {
   startBuilds,
   toBuildRecord,
 } from './services/builds.js';
+import {
+  chiefThreadMessages,
+  getChiefEnvelope,
+  getChiefThread,
+  listChiefThreads,
+  patchChief,
+  sendChiefMessage,
+} from './services/chief.js';
+import { planDocumentDiff } from './services/documents.js';
 import { createSerialConnection } from './services/events.js';
 import {
   isGithubRepoRef,
@@ -55,6 +77,7 @@ import {
   toProjectRecord,
   uniqueRepoName,
 } from './services/git.js';
+import { isChiefConversation } from './services/machines.js';
 import { PhaseTransitionError } from './services/phase.js';
 import {
   createProvider,
@@ -145,6 +168,21 @@ function agentRecordOf(row: typeof agent.$inferSelect): AgentRecord {
     secrets: row.secrets,
     skills: row.skills,
     mcpServers: row.mcpServers,
+  };
+}
+
+function toMemoryRecord(row: typeof agentMemory.$inferSelect): MemoryRecord {
+  return {
+    id: row.id,
+    agentId: row.agentId,
+    teamId: row.teamId,
+    title: row.title,
+    content: row.content,
+    projectId: row.projectId,
+    sourceTodoId: row.sourceTodoId,
+    sourceBuildId: row.sourceBuildId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
 
@@ -343,6 +381,26 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const conversationId = c.req.param('id');
     // 封套 = conversationMessagesResponseSchema（r5 §3.6 原样）；未采字段取
     // 空值 [推断]（chips/steerPending/nextCursor 细形未逐一采集）。
+    // chief 会话（conv id = `chief-<threadId>`，r5 §3.6）→ chief_message + 线程
+    // activeRun；worker 会话 → message 表。
+    if (isChiefConversation(conversationId)) {
+      const thread = getChiefThread(svc, conversationId);
+      if (!thread) throw notFound(`conversation ${conversationId}`);
+      const rows = chiefThreadMessages(ctx.db, conversationId);
+      return c.json({
+        messages: rows.map((r) => ({
+          id: r.id,
+          role: r.role,
+          content: r.content,
+          createdAt: r.createdAt,
+        })),
+        chips: [],
+        historyEpoch: 0,
+        steerPending: [],
+        activeRun: thread.activeRun,
+        nextCursor: null,
+      });
+    }
     const rows = ctx.db
       .select()
       .from(message)
@@ -361,6 +419,87 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       activeRun: null,
       nextCursor: null,
     });
+  });
+
+  // —— Chief 面（02 §4.3/r5 §2–§3；M4a）———————————————————————————————
+  // GET/PATCH /chief、GET /chief/threads = 02 §6.1 词表内；POST /chief/threads
+  // 与 POST /conversations/{id}/messages（发消息触发回合）= REST 同名 [推断]
+  // （r5 §3.6 发送 wire 未采；登记 test/wire.test.ts INFERRED_ROUTES）。
+  app.get('/api/teams/:id/chief', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    return c.json(getChiefEnvelope(svc, teamId));
+  });
+
+  app.patch('/api/teams/:id/chief', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(patchChiefBodySchema, await jsonBody(c), 'body');
+    // 绑定 Agent = PATCH agent 槽（记忆不迁移：无迁移动作，共用绑定 Agent 存储，
+    // r5 §2）；charter 槽 = 章程保存 [推断]。二次确认告示 canon = shared
+    // CHIEF_REBIND_CONFIRM_COPY（web 面渲染）。
+    return c.json(patchChief(svc, teamId, body));
+  });
+
+  app.get('/api/teams/:id/chief/threads', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    return c.json(listChiefThreads(svc, teamId));
+  });
+
+  // 新主题 = POST /chief/threads body {content}（REST 同名 [推断]）：建线程 +
+  // 首条用户消息 + 入队 chief 回合步（机器 claim → pi 会话 + remoteTools relay）。
+  app.post('/api/teams/:id/chief/threads', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(
+      chiefSendMessageBodySchema,
+      { threadId: null, content: ((await jsonBody(c)) as { content?: unknown })?.content },
+      'body',
+    );
+    return c.json(sendChiefMessage(svc, teamId, body), 201);
+  });
+
+  // 既有线程续消息 = POST /conversations/{id}/messages（REST 同名 [推断]，
+  // id = chief-<threadId>）。
+  app.post('/api/conversations/:id/messages', async (c) => {
+    const conversationId = c.req.param('id');
+    if (!isChiefConversation(conversationId)) {
+      throw new HttpError(400, 'POST messages supported for chief conversations only');
+    }
+    const raw = (await jsonBody(c)) as { content?: unknown };
+    const thread = getChiefThread(svc, conversationId);
+    if (!thread) throw notFound(`conversation ${conversationId}`);
+    const body = parseWith(
+      chiefSendMessageBodySchema,
+      { threadId: conversationId, content: raw?.content },
+      'body',
+    );
+    return c.json(sendChiefMessage(svc, thread.teamId, body), 201);
+  });
+
+  // —— 记忆读面（02 §4.4/r5 §6：GET agents/{aid}/memories 词表内）————————————
+  app.get('/api/teams/:id/agents/:aid/memories', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const agentId = c.req.param('aid');
+    const rows = ctx.db
+      .select()
+      .from(agentMemory)
+      .where(and(eq(agentMemory.agentId, agentId), eq(agentMemory.teamId, teamId)))
+      .all();
+    return c.json(rows.map(toMemoryRecord));
+  });
+
+  // —— plan.md 版本文档 diff（02 §4.2/r5 §4：documents/{id}/diff 词表内）——————
+  app.get('/api/documents/:id/diff', (c) => {
+    const against = c.req.query('againstVersion');
+    const diff = planDocumentDiff(
+      ctx.db,
+      c.req.param('id'),
+      against !== undefined && against !== '' ? Number(against) : undefined,
+    );
+    return c.json(diff);
   });
 
   // —— 定时面（02 §9.2/r3 §9；record = shared scheduleRecordSchema）————————————

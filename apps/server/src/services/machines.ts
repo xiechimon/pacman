@@ -18,13 +18,16 @@ import type {
   TranscriptUpload,
   UserRecord,
 } from '@pacman/shared';
-import { MAX_CONCURRENT_DEFAULT } from '@pacman/shared';
+import { CHIEF_REMOTE_TOOLS, isChiefConversationId, MAX_CONCURRENT_DEFAULT } from '@pacman/shared';
 import { and, asc, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
   agent,
+  agentMemory,
   apiKey,
   build,
+  chief,
+  chiefThread,
   machine,
   message,
   plan as planTable,
@@ -33,13 +36,24 @@ import {
   todo,
   tokenUsage,
 } from '../db/schema.js';
+import { HttpError } from '../lib/errors.js';
 import { systemGitOps } from '../lib/git.js';
 import { hashCredential } from '../lib/hash.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { newMachineToken } from '../lib/keys.js';
 import { completeStep, NotFoundError } from './builds.js';
 import {
+  chiefClaimContext,
+  finishChiefTurn,
+  notifyChiefTurn,
+  parseChiefTrigger,
+  upsertChiefMessage,
+} from './chief.js';
+import { executeChiefTool } from './chief-tools.js';
+import type { StepCredentialBundle } from './credentials.js';
+import {
   issueStepGitCredential,
+  resolveChiefStepCredentials,
   resolveStepCredentials,
   revokeStepGitCredential,
 } from './credentials.js';
@@ -47,6 +61,12 @@ import type { TeamStreamHub } from './events.js';
 import { githubCloneUrl, hostedCloneUrl, repoDirFor } from './git.js';
 import { canTransitionPhase } from './phase.js';
 import { setTodoPhase } from './todos.js';
+
+/** chief 步 conv id 判别（单源 = shared isChiefConversationId；thread id 形
+ * `chief-<uuid>`，无 build 行，r5 §3.1）。 */
+export function isChiefConversation(id: string): boolean {
+  return isChiefConversationId(id);
+}
 
 export interface MachineDeps {
   db: Db;
@@ -278,6 +298,18 @@ function claimCandidates(deps: MachineDeps, machineId: string, teamId: string): 
   return rows;
 }
 
+/** chief 步候选（step.buildId = `chief-<threadId>`，join chief_thread 取 teamId；
+ * 无 build/todo 行——Chief 回合 = 机器 step，r5 §3.1）。 */
+function claimChiefCandidates(deps: MachineDeps, teamId: string) {
+  return deps.db
+    .select({ stepRow: step, threadRow: chiefThread })
+    .from(step)
+    .innerJoin(chiefThread, eq(step.buildId, chiefThread.id))
+    .where(and(eq(step.status, 'pending'), eq(step.kind, 'chief'), eq(chiefThread.teamId, teamId)))
+    .orderBy(asc(step.createdAt))
+    .all();
+}
+
 function agentForStep(
   deps: MachineDeps,
   todoRow: typeof todo.$inferSelect,
@@ -289,6 +321,71 @@ function agentForStep(
   const agentId = slot?.agentId ?? null;
   if (!agentId) return null;
   return deps.db.select().from(agent).where(eq(agent.id, agentId)).get() ?? null;
+}
+
+/** chief 步 claim 载荷组装（remoteTools 49 词表全量 + chief 块 + 会话续轮判定）。
+ * 无 todo/project 语境：chief「探测仓库」经 docs relay（server 端裸库读，A4
+ * 黑盒逼近 r5 §3.1 的 worktree `git show`），故不下发 repo/git 载荷——避免死
+ * 载荷（runner chief 分支本就不开 worktree）。 */
+function buildChiefClaim(
+  deps: MachineDeps,
+  machineId: string,
+  stepRow: typeof step.$inferSelect,
+  threadRow: typeof chiefThread.$inferSelect,
+): ClaimedStep | null {
+  // 绑定 Agent（模型 = 绑定 Agent 模型，r5 §3.1）：未绑定/无模型 = 不可派发
+  // （server 侧不派发 [设计]，与门控条 canon 一致）。单次读 chief 行。
+  const chiefRow = deps.db.select().from(chief).where(eq(chief.id, threadRow.chiefId)).get();
+  const agentRow = chiefRow?.agentId
+    ? deps.db.select().from(agent).where(eq(agent.id, chiefRow.agentId)).get()
+    : undefined;
+  if (!chiefRow || !agentRow?.modelId) return null;
+  // 思考强度覆盖（PATCH body agent.thinkingLevel，r5 §2）优先，回退绑定 Agent 值。
+  const thinkingLevel = chiefRow.thinkingLevel ?? agentRow.thinkingLevel;
+  const claimedAt = nowMs();
+  const res = deps.db
+    .update(step)
+    .set({ status: 'claimed', machineId, claimedAt, lastHeartbeatAt: claimedAt })
+    .where(and(eq(step.id, stepRow.id), eq(step.status, 'pending')))
+    .run();
+  if (res.changes === 0) return null;
+  const ctx = chiefClaimContext(deps, threadRow.id);
+  // 记忆注入（02 §4.4 读路径最小形；注入形 [推断] 保留）：绑定 Agent 记忆条目。
+  const memories = deps.db
+    .select({ title: agentMemory.title, content: agentMemory.content })
+    .from(agentMemory)
+    .where(eq(agentMemory.agentId, agentRow.id))
+    .all();
+  return {
+    step: {
+      id: stepRow.id,
+      buildId: stepRow.buildId,
+      kind: 'chief',
+      machineId,
+      createdAt: stepRow.createdAt,
+    },
+    conversationId: stepRow.buildId, // ≡ chief-<threadId>（r5 §3.1）
+    session: {
+      action: threadRow.sessionId !== '' ? 'continue' : 'new',
+      sessionId: threadRow.sessionId !== '' ? threadRow.sessionId : null,
+    },
+    ...(stepRow.prompt !== null ? { instruction: stepRow.prompt } : {}),
+    agent: {
+      id: agentRow.id,
+      displayName: agentRow.displayName,
+      description: agentRow.description,
+      provider: agentRow.provider,
+      modelId: agentRow.modelId,
+      thinkingLevel,
+      memories,
+    },
+    chief: {
+      threadId: threadRow.id,
+      systemPrompt: ctx?.systemPrompt ?? '',
+      trigger: ctx ? parseChiefTrigger(stepRow.prompt) : 'user',
+    },
+    remoteTools: [...CHIEF_REMOTE_TOOLS],
+  };
 }
 
 function tryClaim(
@@ -308,7 +405,18 @@ function tryClaim(
     .get();
   if ((running?.n ?? 0) >= machineRow.maxConcurrent) return null;
 
-  for (const cand of claimCandidates(deps, machineId, teamId)) {
+  // chief 步与 worker 步共队列，按 createdAt FIFO 交错（chief 派工先于其产生的
+  // worker 步入队，天然领先；跨类型仍按 createdAt 保序 [设计]）。
+  const workerCands = claimCandidates(deps, machineId, teamId);
+  const chiefCands = claimChiefCandidates(deps, teamId);
+  const earliestWorker = workerCands[0]?.stepRow.createdAt ?? Number.POSITIVE_INFINITY;
+  for (const cand of chiefCands) {
+    if (cand.stepRow.createdAt > earliestWorker) break; // worker 更早 → 先走 worker
+    const claimed = buildChiefClaim(deps, machineId, cand.stepRow, cand.threadRow);
+    if (claimed) return claimed;
+  }
+
+  for (const cand of workerCands) {
     const agentRow = agentForStep(deps, cand.todoRow, cand.stepRow.kind);
     // 未指派 Agent = 不可执行（Agent 可空是 UI 语义，派发需模型位 [设计]）。
     if (!agentRow?.modelId) continue;
@@ -358,6 +466,7 @@ function tryClaim(
       },
       conversationId: cand.stepRow.buildId, // buildId ≡ conversationId（CONTEXT.md）
       session: { action: priorSessionId ? 'continue' : 'new', sessionId: priorSessionId },
+      ...(cand.stepRow.prompt !== null ? { instruction: cand.stepRow.prompt } : {}),
       todo: {
         id: cand.todoRow.id,
         seqNum: cand.todoRow.seqNum,
@@ -372,6 +481,12 @@ function tryClaim(
         provider: agentRow.provider,
         modelId: agentRow.modelId,
         thinkingLevel: agentRow.thinkingLevel,
+        // 记忆注入（02 §4.4 读路径最小形，注入形 [推断] 保留）：执行 Agent 记忆。
+        memories: db
+          .select({ title: agentMemory.title, content: agentMemory.content })
+          .from(agentMemory)
+          .where(eq(agentMemory.agentId, agentRow.id))
+          .all(),
       },
     };
   }
@@ -409,7 +524,7 @@ function ownedStep(deps: MachineDeps, machineId: string, stepId: string) {
 }
 
 /** 工具调用 live 回传（transcript 工具行数据面，r3 §3.5）；与终稿 transcript
- * 上传按 toolCall id 幂等去重 [设计]。 */
+ * 上传按 toolCall id 幂等去重 [设计]。chief 步行落 chief_message（线程面）。 */
 export function reportTool(
   deps: MachineDeps,
   machineId: string,
@@ -417,6 +532,16 @@ export function reportTool(
   call: ToolCallRecord,
 ): void {
   const row = ownedStep(deps, machineId, stepId);
+  if (isChiefConversation(row.buildId)) {
+    upsertChiefMessage(deps.db, {
+      id: call.id,
+      threadId: row.buildId,
+      role: 'assistant',
+      content: { kind: 'toolcall', call },
+      createdAt: call.endedAt ?? nowMs(),
+    });
+    return;
+  }
   upsertMessage(deps.db, {
     id: call.id,
     conversationId: row.buildId,
@@ -424,6 +549,48 @@ export function reportTool(
     content: { kind: 'toolcall', call },
     createdAt: call.endedAt ?? nowMs(),
   });
+}
+
+/** remoteTools relay 执行（02 §4.3「服务端定义并执行」；r5 §3.1 bundle：POST
+ * /api/machine/tool/<stepId> {name, params} → {text}）。机器所有权 + chief 步
+ * 校验 → 溯源上下文解析（step → chief_thread → chief）→ executeChiefTool。
+ * 返回 JSON 串（daemon 侧包 {text} 回 pi）。 */
+export async function executeChiefToolCall(
+  deps: MachineDeps,
+  machineId: string,
+  stepId: string,
+  name: string,
+  params: Record<string, unknown>,
+): Promise<string> {
+  const row = ownedStep(deps, machineId, stepId);
+  if (row.kind !== 'chief' || !isChiefConversation(row.buildId)) {
+    throw new HttpError(400, `step ${stepId} is not a chief step`);
+  }
+  const threadId = row.buildId;
+  const threadRow = deps.db.select().from(chiefThread).where(eq(chiefThread.id, threadId)).get();
+  if (!threadRow) throw new NotFoundError(`chief thread ${threadId}`);
+  const chiefRow = deps.db.select().from(chief).where(eq(chief.id, threadRow.chiefId)).get();
+  if (!chiefRow) throw new NotFoundError(`chief ${threadRow.chiefId}`);
+  return executeChiefTool(
+    {
+      db: deps.db,
+      hub: deps.hub,
+      machineHub: deps.machineHub,
+      box: deps.box,
+      user: deps.user,
+      reposDir: deps.reposDir,
+    },
+    {
+      teamId: threadRow.teamId,
+      userId: threadRow.userId,
+      chiefId: chiefRow.id,
+      threadId,
+      chiefAgentId: chiefRow.agentId,
+      conversationId: threadId,
+    },
+    name,
+    params,
+  );
 }
 
 function upsertMessage(
@@ -454,7 +621,8 @@ export function stepToken(
   machineId: string,
   stepId: string,
 ): MachineTokenResponse {
-  ownedStep(deps, machineId, stepId);
+  const owned = ownedStep(deps, machineId, stepId);
+  if (isChiefConversation(owned.buildId)) return chiefStepToken(deps, stepId, owned.buildId);
   const bundle = resolveStepCredentials({ db: deps.db, box: deps.box }, stepId);
   // provider 行为空（preset 目录形态）时回退 agent.provider 直投 api_key kind。
   const stepRow = deps.db.select().from(step).where(eq(step.id, stepId)).get();
@@ -475,21 +643,54 @@ export function stepToken(
     projectRow?.repoKind === 'hosted' && todoRow
       ? issueStepGitCredential(deps, { teamId: todoRow.teamId, stepId })
       : null;
-  const provider: ProviderConfig | null = bundle.provider
-    ? {
-        kind: 'http', // custom 端点（baseUrl 在位；r3 §2 记录形状投影）
-        providerId: bundle.provider.providerId,
-        label: bundle.provider.label,
-        baseUrl: bundle.provider.baseUrl,
-        api: bundle.provider.api,
-        authHeader: bundle.provider.authHeader,
-        models: bundle.provider.models,
-        ...(bundle.provider.apiKey !== null ? { apiKey: bundle.provider.apiKey } : {}),
-      }
-    : agentRow?.provider
-      ? { kind: 'api_key', providerId: agentRow.provider } // preset（38 目录）无 custom 行
-      : null;
-  return { provider, env: bundle.env, git };
+  return { provider: toProviderConfig(bundle.provider, agentRow?.provider), env: bundle.env, git };
+}
+
+/** provider 行 → wire ProviderConfig（custom http 端点）；无 custom 行回退
+ * agent.provider 直投 api_key kind（preset 38 目录，r3 §2）。stepToken 与
+ * chiefStepToken 共用（去重）。 */
+function toProviderConfig(
+  bundleProvider: StepCredentialBundle['provider'],
+  agentProviderId: string | null | undefined,
+): ProviderConfig | null {
+  if (bundleProvider) {
+    return {
+      kind: 'http', // custom 端点（baseUrl 在位；r3 §2 记录形状投影）
+      providerId: bundleProvider.providerId,
+      label: bundleProvider.label,
+      baseUrl: bundleProvider.baseUrl,
+      api: bundleProvider.api,
+      authHeader: bundleProvider.authHeader,
+      models: bundleProvider.models,
+      ...(bundleProvider.apiKey !== null ? { apiKey: bundleProvider.apiKey } : {}),
+    };
+  }
+  return agentProviderId ? { kind: 'api_key', providerId: agentProviderId } : null;
+}
+
+/** chief 步凭证（绑定 Agent 模型 key + secrets env）。git 槽恒 null——chief
+ * 「探测仓库」经 docs relay 走 server 端裸库读（A4 黑盒逼近 r5 §3.1 的
+ * worktree `git show`），daemon 侧不开 worktree、不需 per-step git 凭证；
+ * 不下发死载荷。 */
+function chiefStepToken(
+  deps: MachineDeps,
+  _stepId: string,
+  conversationId: string,
+): MachineTokenResponse {
+  const threadId = conversationId; // conv id ≡ chief-<threadId> 同值（r5 §3.6）
+  const bundle = resolveChiefStepCredentials({ db: deps.db, box: deps.box }, threadId);
+  const threadRow = deps.db.select().from(chiefThread).where(eq(chiefThread.id, threadId)).get();
+  const chiefRow = threadRow
+    ? deps.db.select().from(chief).where(eq(chief.id, threadRow.chiefId)).get()
+    : undefined;
+  const agentRow = chiefRow?.agentId
+    ? deps.db.select().from(agent).where(eq(agent.id, chiefRow.agentId)).get()
+    : undefined;
+  return {
+    provider: toProviderConfig(bundle.provider, agentRow?.provider),
+    env: bundle.env,
+    git: null,
+  };
 }
 
 // —— upload-urls（预签名产物上传，r3 §1.6；self-host = server 自出一次性
@@ -560,6 +761,16 @@ export function receiveUpload(
   const conversationId = stepRow?.buildId;
   if (!conversationId) throw new NotFoundError(`step ${upload.stepId}`);
   for (const m of body.messages) {
+    if (isChiefConversation(conversationId)) {
+      upsertChiefMessage(deps.db, {
+        id: m.id,
+        threadId: conversationId,
+        role: m.role,
+        content: m.content,
+        createdAt: m.createdAt,
+      });
+      continue;
+    }
     upsertMessage(deps.db, {
       id: m.id,
       conversationId,
@@ -621,6 +832,17 @@ export async function finishStep(
         },
       })
       .run();
+  }
+  // chief 步收尾（无 build/phase/merge；thread 面 + chief_message 通知，r5 §3.6/
+  // §7.2）。token 记账已按 buildId=chief conv id 落位（context.tokens 数据源）。
+  if (stepRow.kind === 'chief' && isChiefConversation(stepRow.buildId)) {
+    db.update(step)
+      .set({ status: outcome.status === 'success' ? 'done' : 'failed' })
+      .where(eq(step.id, stepId))
+      .run();
+    finishChiefTurn(deps, stepRow.buildId, outcome);
+    if (outcome.status === 'success') notifyChiefTurn(deps, stepRow.buildId);
+    return;
   }
   if (outcome.status === 'success') {
     completeStep(deps, stepId, { hasChanges: outcome.hasChanges });

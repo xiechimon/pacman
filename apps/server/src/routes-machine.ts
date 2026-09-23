@@ -5,6 +5,7 @@
 // 附加端点（[设计] 登记，非词表外扩协议面）：PUT /api/machine/upload/{uploadId}
 // = upload-urls 预签名的落地点（self-host 无对象存储，server 自出一次性 PUT）。
 
+import type { ToolCallRecord } from '@pacman/shared';
 import {
   machineClaimBodySchema,
   machineDoneBodySchema,
@@ -14,6 +15,7 @@ import {
   machinePresenceBodySchema,
   machineRecordSchema,
   machineToolBodySchema,
+  machineToolRelayBodySchema,
   machineUploadUrlsBodySchema,
   PLAN_FILE_NAME,
   transcriptUploadSchema,
@@ -28,6 +30,7 @@ import {
   claimStep,
   createUploadUrls,
   enrollMachine,
+  executeChiefToolCall,
   findApiKeyByPlain,
   findMachineByToken,
   finishStep,
@@ -40,6 +43,12 @@ import {
   reportTool,
   stepToken,
 } from './services/machines.js';
+
+/** relay 判别（machineToolBodySchema union 的分流位）：{name, params} 无 id =
+ * remoteTools 执行；toolCallRecord（有 id/arguments）= live transcript 回传。 */
+function isRelayBody(raw: unknown): boolean {
+  return raw !== null && typeof raw === 'object' && 'params' in raw && !('id' in raw);
+}
 
 type MachineRow = typeof machineTable.$inferSelect;
 
@@ -206,11 +215,26 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     return c.json({ ok: true as const });
   });
 
-  // —— POST /api/machine/tool/{stepId}（工具调用 live 回传）———————————————————
+  // —— POST /api/machine/tool/{stepId}（同径双形，r5 §3.1 bundle 提取）：
+  // ① remoteTools relay 执行 {name, params} → {text}（chief 步服务端工具）；
+  // ② live transcript 工具行回传 toolCallRecord → {ok:true}（worker 步内建工具）。
+  // 分流判别：有 params 无 id = relay（machineToolBodySchema union）。———————
   app.post('/api/machine/tool/:stepId', async (c) => {
     const row = me(c);
-    const body = parseWith(machineToolBodySchema, await jsonBody(c), 'body');
-    reportTool(deps, row.id, c.req.param('stepId'), body);
+    const raw = await jsonBody(c);
+    if (isRelayBody(raw)) {
+      const relay = parseWith(machineToolRelayBodySchema, raw, 'body');
+      const text = await executeChiefToolCall(
+        deps,
+        row.id,
+        c.req.param('stepId'),
+        relay.name,
+        relay.params,
+      );
+      return c.json({ text });
+    }
+    const body = parseWith(machineToolBodySchema, raw, 'body');
+    reportTool(deps, row.id, c.req.param('stepId'), body as ToolCallRecord);
     return c.json({ ok: true as const });
   });
 
