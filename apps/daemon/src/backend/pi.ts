@@ -40,6 +40,7 @@ import type {
   ToolCallRecord,
 } from '@pacman/shared';
 import { SessionNotResumableError } from './errors.js';
+import { connectFailedLine, connectMcpBridge } from './mcp-bridge.js';
 
 /** 02 §6.2/#34：oauth 四家订阅；思考强度 = pi 七档（docs/sdk.md）。 */
 export const PI_CAPABILITIES: AgentBackendCapabilities = {
@@ -274,7 +275,10 @@ class PiSessionHandle implements AgentSessionHandle {
   private readonly state = newMapState();
   private closed = false;
 
-  constructor(private readonly session: AgentSession) {
+  constructor(
+    private readonly session: AgentSession,
+    private readonly onDispose?: () => void,
+  ) {
     this.sessionId = session.sessionId;
     this.events = this.queue.iterable();
     session.subscribe((event) => {
@@ -293,6 +297,7 @@ class PiSessionHandle implements AgentSessionHandle {
     this.closed = true;
     this.queue.end();
     this.session.dispose();
+    this.onDispose?.(); // per-turn 资源释放（MCP 桥 close，02 §7.1）
   }
 
   async steer(text: string): Promise<void> {
@@ -319,6 +324,9 @@ export interface PiBackendOpts {
   resolveSessionFile?: (sessionId: string) => string | null;
   /** 会话建立回调（索引落盘由宿主做——durable 语义宿主自持，00/D3）。 */
   onSession?: (sessionId: string, sessionFile: string | undefined) => void;
+  /** MCP per-turn 连接降级行出口（runner 接 logger.mcp，r3 §1.5 canon 行形；
+   * 02 §7.1 失败降级不阻断）。 */
+  onMcpLog?: (msg: string) => void;
 }
 
 export class PiBackend implements AgentBackend {
@@ -399,6 +407,42 @@ export class PiBackend implements AgentBackend {
             }),
           )
         : [];
+    // MCP 薄桥（00/D4、02 §7.1）：per-turn 连接已授权 server → `mcp__<slug>__
+    // <tool>` 工具面；单点失败降级不阻断（canon 行经 onMcpLog）。
+    const mcpBridge =
+      opts.mcpServers && opts.mcpServers.length > 0
+        ? await connectMcpBridge(opts.mcpServers, {
+            ...(this.opts.onMcpLog
+              ? {
+                  onConnectFailed: (slug: string, reason: string) => {
+                    this.opts.onMcpLog?.(connectFailedLine(slug, reason));
+                  },
+                }
+              : {}),
+          })
+        : null;
+    const mcpTools = (mcpBridge?.tools ?? []).map((t) =>
+      defineTool({
+        name: t.name,
+        label: t.name,
+        description: t.description,
+        // 远端 inputSchema 原样透传（relay 同族机制，M4a/#81 已坐实 pi
+        // customTools 接受原始 JSON Schema）。
+        parameters: (t.inputSchema ?? { type: 'object', properties: {} }) as never,
+        execute: async (_id: string, params: Record<string, unknown>) => {
+          try {
+            const text = await t.call(params ?? {});
+            return { content: [{ type: 'text' as const, text }], details: {} };
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            return {
+              content: [{ type: 'text' as const, text: `${t.name} rejected: ${msg}` }],
+              details: {},
+            };
+          }
+        },
+      }),
+    );
     const { session } = await createAgentSession({
       cwd: opts.cwd,
       agentDir: this.opts.agentDir,
@@ -419,11 +463,19 @@ export class PiBackend implements AgentBackend {
       resourceLoader: loader,
       sessionManager,
       settingsManager,
-      tools: [...PI_BUILTIN_TOOLS, ...remoteTools.map((t) => t.name)],
-      ...(customTools.length > 0 ? { customTools } : {}),
+      tools: [
+        ...PI_BUILTIN_TOOLS,
+        ...remoteTools.map((t) => t.name),
+        ...mcpTools.map((t) => t.name),
+      ],
+      ...(customTools.length > 0 || mcpTools.length > 0
+        ? { customTools: [...customTools, ...mcpTools] }
+        : {}),
     });
     this.opts.onSession?.(session.sessionId, session.sessionFile);
-    const handle = new PiSessionHandle(session);
+    const handle = new PiSessionHandle(session, () => {
+      if (mcpBridge) void mcpBridge.close();
+    });
     if (opts.prompt !== undefined) {
       void session.prompt(opts.prompt).catch((err: unknown) => {
         // 失败经事件面报告（message_end stopReason=error / agent_end）；

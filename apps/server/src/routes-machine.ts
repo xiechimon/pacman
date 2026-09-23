@@ -30,7 +30,7 @@ import {
   claimStep,
   createUploadUrls,
   enrollMachine,
-  executeChiefToolCall,
+  executeRelayToolCall,
   findApiKeyByPlain,
   findMachineByToken,
   finishStep,
@@ -224,7 +224,7 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     const raw = await jsonBody(c);
     if (isRelayBody(raw)) {
       const relay = parseWith(machineToolRelayBodySchema, raw, 'body');
-      const text = await executeChiefToolCall(
+      const text = await executeRelayToolCall(
         deps,
         row.id,
         c.req.param('stepId'),

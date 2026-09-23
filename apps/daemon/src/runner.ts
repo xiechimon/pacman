@@ -197,7 +197,9 @@ export async function runStep(
     isChief && claimed.chief
       ? claimed.chief.systemPrompt
       : composeWorkerSystemPrompt(agent.description, agent.memories);
-  const remoteTools = isChief ? claimed.remoteTools : undefined;
+  // remoteTools：chief 步 = 49 词表全量；worker 步 = 记忆三件套（02 §4.4/r5 §6
+  // worker 写路径经 remoteTools relay；M4b 起服务端对 worker 步同样下发）。
+  const remoteTools = claimed.remoteTools;
   const sessionOpts: SessionOpts = {
     provider,
     modelId: agent.modelId,
@@ -217,6 +219,10 @@ export async function runStep(
             });
           },
         }
+      : {}),
+    // MCP per-turn 连接面（02 §7.1；server 侧 claim 携带已授权端点 + 版本墙）。
+    ...(claimed.mcpServers && claimed.mcpServers.length > 0
+      ? { mcpServers: claimed.mcpServers }
       : {}),
   };
 

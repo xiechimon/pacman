@@ -111,6 +111,50 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
         "null",
       ],
     },
+    "mcpServers": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "args": {
+            "items": {
+              "type": "string",
+            },
+            "type": "array",
+          },
+          "command": {
+            "type": "string",
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string",
+            },
+            "propertyNames": {
+              "type": "string",
+            },
+            "type": "object",
+          },
+          "slug": {
+            "type": "string",
+          },
+          "transport": {
+            "enum": [
+              "http",
+              "stdio",
+            ],
+            "type": "string",
+          },
+          "url": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "slug",
+          "transport",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
     "project": {
       "additionalProperties": false,
       "properties": {
@@ -410,6 +454,50 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
                 "string",
                 "null",
               ],
+            },
+            "mcpServers": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "args": {
+                    "items": {
+                      "type": "string",
+                    },
+                    "type": "array",
+                  },
+                  "command": {
+                    "type": "string",
+                  },
+                  "headers": {
+                    "additionalProperties": {
+                      "type": "string",
+                    },
+                    "propertyNames": {
+                      "type": "string",
+                    },
+                    "type": "object",
+                  },
+                  "slug": {
+                    "type": "string",
+                  },
+                  "transport": {
+                    "enum": [
+                      "http",
+                      "stdio",
+                    ],
+                    "type": "string",
+                  },
+                  "url": {
+                    "type": "string",
+                  },
+                },
+                "required": [
+                  "slug",
+                  "transport",
+                ],
+                "type": "object",
+              },
+              "type": "array",
             },
             "project": {
               "additionalProperties": false,
@@ -4394,6 +4482,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > DELETE 面规则（[推�
       "teams/{id}/agents",
       "teams/{id}/skills",
       "teams/{id}/mcp-servers",
+      "teams/{id}/agents/{aid}/memories",
       "teams/{id}/providers",
       "teams/{id}/secrets",
       "todos",
@@ -5145,6 +5234,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > 本地状态布局与日
     "workspace",
     "recover",
     "wake",
+    "mcp",
   ],
   "LOCAL_STATE_DIRS": [
     "outbox",

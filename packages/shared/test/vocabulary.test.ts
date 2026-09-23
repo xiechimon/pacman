@@ -23,20 +23,27 @@ import {
   MACHINE_WIRE,
   MAX_CONCURRENT_DEFAULT,
   MCP_CAPABILITY_GROUPS,
+  MCP_MIN_CLI_VERSION,
+  MCP_MIN_CLI_VERSION_GATE_OBSERVED,
+  MCP_REGISTRY_BY_NAME,
+  MCP_TOOL_REGISTRY,
   MCP_TOOLS_READ,
   MCP_TOOLS_WRITE,
   MEMORY_QUOTA_PER_AGENT,
+  MEMORY_TOOLS,
   maskApiKey,
   ORPHAN_WORKTREE_TTL_MS,
   PHASE_VALUES,
   PI_STREAM_EVENTS,
   RECORD_SCHEMAS,
+  remoteToolDefSchema,
   SECRET_BOX_ENVELOPE_VERSION,
   SSE_CHANNELS,
   STEP_EVENT_TYPES,
   STEP_LIFECYCLE_LOG_LINES,
   STREAM_TIMEOUTS_MS,
   WEB_REST_ENDPOINTS,
+  WORKER_MEMORY_REMOTE_TOOLS,
 } from '../src/index.js';
 
 describe('phase 九值权威单源 (02 §4.1, 锁定)', () => {
@@ -291,6 +298,45 @@ describe('MCP vocabulary (02 §7.2, r3 §6 matrix 1:1)', () => {
       'Run work',
       'Manage lifecycle',
     ]);
+  });
+
+  it('tool registry = 24 件 grant↔name 单源，白名单标签 1:1（02/A10 保形）', () => {
+    const read = MCP_TOOL_REGISTRY.filter((t) => t.kind === 'read');
+    const write = MCP_TOOL_REGISTRY.filter((t) => t.kind === 'write');
+    expect(read.map((t) => t.grant)).toEqual([...MCP_TOOLS_READ]);
+    expect(write.map((t) => t.grant)).toEqual([...MCP_TOOLS_WRITE]);
+    expect(MCP_TOOL_REGISTRY).toHaveLength(24);
+    // 工具名唯一、snake_case（wire 名 [推断] = chief 词表同族投影，r5 §3.1
+    // 「与 docs MCP server 面六能力组同构」）。
+    const names = MCP_TOOL_REGISTRY.map((t) => t.name);
+    expect(new Set(names).size).toBe(24);
+    for (const name of names) expect(name).toMatch(/^[a-z][a-z0-9_]*$/);
+    expect(MCP_REGISTRY_BY_NAME.size).toBe(24);
+  });
+
+  it('executor 最低版本门形状（02 §7.1：数值随复刻版本线自定 [设计]）', () => {
+    expect(MCP_MIN_CLI_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
+    // 观测值留档不改（r3 文案 0.1.45 = 官方版本线）。
+    expect(MCP_MIN_CLI_VERSION_GATE_OBSERVED).toBe('0.1.45');
+  });
+});
+
+describe('worker memory tools (02 §4.4/r5 §6：worker 步 remoteTools 记忆三件套)', () => {
+  it('三件 = MEMORY_TOOLS 同族，形状过 remoteToolDefSchema', () => {
+    expect(WORKER_MEMORY_REMOTE_TOOLS.map((t) => t.name)).toEqual([...MEMORY_TOOLS]);
+    for (const def of WORKER_MEMORY_REMOTE_TOOLS) {
+      expect(remoteToolDefSchema.safeParse(def).success).toBe(true);
+    }
+    // 读工具幂等可重放；写工具单发（r5 §3.1 retry 预算纪律同族）。
+    expect(WORKER_MEMORY_REMOTE_TOOLS.find((t) => t.name === 'memories')?.replaySafe).toBe(true);
+    expect(WORKER_MEMORY_REMOTE_TOOLS.find((t) => t.name === 'save_memory')?.replaySafe).toBe(
+      undefined,
+    );
+    // save_memory 带 sourceTodoId 可选溯源位（缺省 = server 从步上下文补齐）。
+    const save = WORKER_MEMORY_REMOTE_TOOLS.find((t) => t.name === 'save_memory');
+    expect(save).toBeDefined();
+    const props = (save!.parameters as { properties: Record<string, unknown> }).properties;
+    expect(Object.keys(props).sort()).toEqual(['content', 'projectId', 'sourceTodoId', 'title']);
   });
 });
 

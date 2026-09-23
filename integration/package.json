@@ -11,12 +11,14 @@
   },
   "devDependencies": {
     "@hono/node-server": "2.1.1",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@pacman/cli": "workspace:*",
     "@pacman/server": "workspace:*",
     "@pacman/shared": "workspace:*",
+    "drizzle-orm": "0.45.2",
     "hono": "4.13.8",
     "typescript": "catalog:",
     "vitest": "catalog:",
-    "drizzle-orm": "0.45.2"
+    "zod": "catalog:"
   }
 }

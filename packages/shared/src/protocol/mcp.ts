@@ -82,3 +82,49 @@ export const MCP_CONNECT_FAILED_CANON = 'connect failed — its tools are unavai
  * 「机器上的 tds CLI 需升级至 v0.1.45 及以上才能使用 MCP 工具…」）——复刻保留
  * 「executor 最低版本检查」形状，数值随复刻版本线自定（素材归 #44）。 */
 export const MCP_MIN_CLI_VERSION_GATE_OBSERVED = '0.1.45';
+
+/** 复刻版本线的最低 executor 版本（[设计]，02 §7.1「数值自定」）：claim 载荷
+ * 只在机器 `latestCliVersion` ≥ 本值时携带 mcpServers（版本墙形状的真实门）。
+ * daemon 版本单源 apps/daemon/src/version.ts 起步 0.1.0。 */
+export const MCP_MIN_CLI_VERSION = '0.1.0';
+
+/** server 面 24 工具注册表（grant 白名单键 ↔ MCP wire 工具名，单源）。
+ * grant = r3 §6 矩阵行标签（MCP_TOOLS_READ/WRITE 原词）；name = wire 工具名
+ * [推断]——官方 wire 名未采，取 chief 词表同族投影（r5 §3.1「与 docs MCP
+ * server 面六能力组同构」；snake_case 与 CHIEF_REMOTE_TOOLS 命名同律）。
+ * apiKey.toolGrants.{read,write} 存 grant 标签；/api/mcp 面按本表映射执行。 */
+export const MCP_TOOL_REGISTRY = [
+  // —— 读 11 组（02 §7.2）——
+  { grant: 'Todos', name: 'todos', kind: 'read' },
+  { grant: 'Projects', name: 'projects', kind: 'read' },
+  { grant: 'Conversation', name: 'conversation', kind: 'read' },
+  { grant: 'Agents', name: 'agents', kind: 'read' },
+  { grant: 'Schedules', name: 'schedules', kind: 'read' },
+  { grant: 'Attachment', name: 'attachment', kind: 'read' },
+  { grant: 'Skills', name: 'skills', kind: 'read' },
+  { grant: 'Machines', name: 'machines', kind: 'read' },
+  { grant: 'Issues', name: 'issues', kind: 'read' },
+  { grant: 'Pull Requests', name: 'pull_requests', kind: 'read' },
+  { grant: 'Workflow Runs', name: 'workflow_runs', kind: 'read' },
+  // —— 写 13 项（02 §7.2）——
+  { grant: 'Create Todo', name: 'create_todo', kind: 'write' },
+  { grant: 'Update Todo', name: 'update_todo', kind: 'write' },
+  { grant: 'Message Todo', name: 'message_todo', kind: 'write' },
+  { grant: 'Run Builds', name: 'run_builds', kind: 'write' },
+  { grant: 'Run Review', name: 'run_review', kind: 'write' },
+  { grant: 'Confirm Builds', name: 'confirm_builds', kind: 'write' },
+  { grant: 'Merge Builds', name: 'merge_builds', kind: 'write' },
+  { grant: 'Cancel Builds', name: 'cancel_builds', kind: 'write' },
+  { grant: 'Complete Todos', name: 'complete_todos', kind: 'write' },
+  { grant: 'Close Todos', name: 'close_todos', kind: 'write' },
+  { grant: 'Reopen Todos', name: 'reopen_todos', kind: 'write' },
+  { grant: 'Schedule Todo', name: 'schedule_todo', kind: 'write' },
+  { grant: 'Unschedule Todo', name: 'unschedule_todo', kind: 'write' },
+] as const satisfies readonly { grant: string; name: string; kind: 'read' | 'write' }[];
+
+export type McpToolKind = (typeof MCP_TOOL_REGISTRY)[number]['kind'];
+
+/** name → 注册行反查（/api/mcp tools/call 授权判定：wire 名 → grant 标签 →
+ * key.toolGrants 命中校验，「The key's tool selection limits every call」）。 */
+export const MCP_REGISTRY_BY_NAME: ReadonlyMap<string, (typeof MCP_TOOL_REGISTRY)[number]> =
+  new Map(MCP_TOOL_REGISTRY.map((t) => [t.name, t]));
