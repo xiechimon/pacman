@@ -29,6 +29,7 @@ import { useLiveData } from '../api/provider.js';
 import { useConversationStream } from '../api/sse.js';
 import { BoardSurface } from '../board/board.js';
 import { attentionCount } from '../board/columns.js';
+import { NotificationBanner, useNotificationBanner } from '../board/notify-banner.js';
 import { BoardSidebar } from '../board/sidebar.js';
 import { ChiefDrawer } from '../chief/chief-drawer.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
@@ -94,6 +95,10 @@ export function BoardPage() {
     setOverlay({ kind });
   };
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
+  // #114: 看板顶部通知引导条 — live reads the real Notification.permission;
+  // fixture scenarios opt in via ui.notificationBanner (parity determinism,
+  // the r7 baselines carry no banner)
+  const notifyBanner = useNotificationBanner(fixture.ui?.notificationBanner === true, live);
   const toggle = useCallback(() => {
     const next = !collapsed;
     localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0');
@@ -280,6 +285,9 @@ export function BoardPage() {
         <BoardSurface
           fixture={fixtureWithTodos}
           onNewTask={() => setNewTaskOpen(true)}
+          banner={
+            notifyBanner.visible ? <NotificationBanner onEnable={notifyBanner.enable} /> : undefined
+          }
           onAction={(todo) => {
             if (live) {
               // r7 34: review 完成 = accept dialog（merge 202 delegated，

@@ -92,6 +92,10 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   '33': boardWithProbe('review', r7(13, 37), r7(13, 45)),
   '35': boardWithProbe('done', r7(13, 52), r7(13, 55)),
   '35d': boardWithProbe('done', r7(13, 52), r7(13, 55)),
+  // notification permission banner (issue #114): the r2 01/28/30 board
+  // state — r7 baselines carry no banner, so the strip gets a named id
+  // and rides smoke rows (04 §2: no-baseline rows self-compare)
+  'notify-banner': { ...boardDefault, ui: { notificationBanner: true } },
   // detail (r7 16–17, 23, 26–28, 36, 38)
   '16': detailPlanning,
   '16d': detailConfirm(true),

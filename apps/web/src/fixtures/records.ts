@@ -120,6 +120,10 @@ export interface OverlayUi {
   /** Account 语言 dropdown open (issue #74; open state [设计] — the
    *  official option list was never captured, r2 §11 Q19). */
   langDropdownOpen?: boolean;
+  /** 看板顶部通知引导条 (issue #114, r2 §1.3: captures 01/28/30). Freezes
+   *  the Notification.permission === 'default' state for parity — the r7
+   *  board baselines carry no banner, so no existing scenario may grow one. */
+  notificationBanner?: boolean;
 }
 
 /** Scheduled rule (02 §9.2 / r3 §8.3 wire shape, copied verbatim:
