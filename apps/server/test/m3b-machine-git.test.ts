@@ -53,6 +53,8 @@ interface GitWorld {
   startBuild(): Promise<string>;
   claim(): Promise<ClaimedStep>;
   done(stepId: string, body: Record<string, unknown>): Promise<Response>;
+  /** plan.md 产物回传（plan 关交接物，#113：无产物规划步不算成、不进 confirm）。 */
+  uploadPlan(stepId: string, content: string): Promise<void>;
 }
 
 const disposables: (() => void)[] = [];
@@ -117,6 +119,19 @@ async function setupGitWorld(): Promise<GitWorld> {
         cred: machineJson.token,
         body,
       });
+    },
+    async uploadPlan(stepId, content) {
+      const urlsRes = await call(s.app, 'POST', `/api/machine/upload-urls/${stepId}`, {
+        cred: machineJson.token,
+        body: { files: [{ name: 'plan.md', size: content.length }] },
+      });
+      const urls = (await urlsRes.json()) as { uploads: { url: string }[] };
+      const put = await call(s.app, 'PUT', urls.uploads[0]!.url.replace(/^https?:\/\/[^/]+/, ''), {
+        cred: machineJson.token,
+        text: content,
+        contentType: 'text/markdown',
+      });
+      expect(put.status).toBe(200);
     },
   };
 }
@@ -306,8 +321,9 @@ describe('merge 202 delegated → 合并步落地（02 §4.2/A6；r3 §3.6 服�
     const w = await setupGitWorld();
     const buildId = await w.startBuild();
     // plan → confirm → build → review → merge 步（server 面驱动，daemon 面归
-    // integration m3b-demo）。
+    // integration m3b-demo）。plan 步带 plan.md 交接物（#113：无产物不进 confirm）。
     const planStep = await w.claim();
+    await w.uploadPlan(planStep.step.id, '# Context\n方案 v1\n');
     await w.done(planStep.step.id, { status: 'success', sessionId: 'pi-1' });
     await call(w.s.app, 'POST', `/api/builds/${buildId}/steps`, { body: { action: 'confirm' } });
     const buildStep = await w.claim();
@@ -357,6 +373,7 @@ describe('merge 202 delegated → 合并步落地（02 §4.2/A6；r3 §3.6 服�
     const w = await setupGitWorld();
     const buildId = await w.startBuild();
     const planStep = await w.claim();
+    await w.uploadPlan(planStep.step.id, '# Context\n方案 v1\n'); // 交接物（#113）
     await w.done(planStep.step.id, { status: 'success', sessionId: 'pi-1' });
     await call(w.s.app, 'POST', `/api/builds/${buildId}/steps`, { body: { action: 'confirm' } });
     const buildStep = await w.claim();

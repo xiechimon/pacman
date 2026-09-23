@@ -20,6 +20,7 @@ import {
   machineStreamEventSchema,
   machineTokenResponseSchema,
   machineUploadUrlsResponseSchema,
+  PLAN_FILE_NAME,
 } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import type { Hono } from 'hono';
@@ -43,16 +44,17 @@ async function call(
   app: Hono,
   method: string,
   path: string,
-  opts: { cred?: string; body?: unknown } = {},
+  opts: { cred?: string; body?: unknown; text?: string; contentType?: string } = {},
 ): Promise<Response> {
   const headers: Record<string, string> = {};
   if (opts.cred) headers.authorization = `Bearer ${opts.cred}`;
   if (opts.body !== undefined) headers['content-type'] = 'application/json';
+  if (opts.contentType !== undefined) headers['content-type'] = opts.contentType;
   return Promise.resolve(
     app.request(path, {
       method,
       headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : opts.text,
     }),
   );
 }
@@ -450,6 +452,20 @@ describe('步骤 journal 全链（02 §5.4 词表 + §4.2 主时序机器侧）'
         })
       ).status,
     ).toBe(404);
+
+    // —— plan.md 产物回传（02 §4.2「plan 即文件」交接物；#113：无产物规划步
+    // 不算成、不进 confirm）——
+    const planUrlsRes = await call(w.s.app, 'POST', `/api/machine/upload-urls/${stepId}`, {
+      ...cred,
+      body: { files: [{ name: PLAN_FILE_NAME }] },
+    });
+    const planUpload = machineUploadUrlsResponseSchema.parse(await planUrlsRes.json()).uploads[0]!;
+    const planPut = await call(w.s.app, 'PUT', planUpload.url.replace(/^https?:\/\/[^/]+/, ''), {
+      ...cred,
+      text: '# 方案\nContext: 探针\n',
+      contentType: 'text/markdown',
+    });
+    expect(machineOkResponseSchema.parse(await planPut.json())).toEqual({ ok: true });
 
     // —— done（收尾 + 记账 + phase 推进 planning→confirm）——
     const doneRes = await call(w.s.app, 'POST', `/api/machine/done/${stepId}`, {

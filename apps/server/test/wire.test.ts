@@ -20,6 +20,7 @@ import {
 } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
+import { plan as planTable } from '../src/db/schema.js';
 import { completeStep } from '../src/services/builds.js';
 import { setTodoPhase } from '../src/services/todos.js';
 import { bootServer, postProject, req } from './helpers.js';
@@ -433,7 +434,18 @@ describe('build 面 + phase 九值流转（02 §4.2 主时序 server 侧脊柱�
     // 机器领规划步（claim/journal 面归 M3；此处按 02 §4.1 语义驱动）
     setTodoPhase(s.svc, s.todoDoc.id, 'planning');
     expect(await phaseOf()).toBe('planning');
-    // 规划步成 → plan 卡就绪 → confirm（02 §4.2）
+    // 规划步成 → plan 卡就绪 → confirm（02 §4.2）；plan.md 交接物落库在先
+    //（#113：无产物规划步不算成——服务面直驱以直插 plan 行等价产物回传）。
+    s.db
+      .insert(planTable)
+      .values({
+        id: 'plan-wire-1',
+        buildId: b.id,
+        version: 1,
+        content: '# 方案',
+        createdAt: Date.now(),
+      })
+      .run();
     completeStep(s.svc, first(await stepsOf()).id);
     expect(await phaseOf()).toBe('confirm');
     // 合并关口前拒绝：非 review 态 merge → 409 {error}
