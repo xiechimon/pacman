@@ -15,6 +15,18 @@ export const chiefIdFormat = (userId: string, teamId: string) => `chief-${userId
 /** thread id 形 `chief-<uuid>`（UUIDv7，r5 §3.1/§3.6）；conversation 名同值。 */
 export const CHIEF_THREAD_ID_PREFIX = 'chief-';
 
+/** chief 会话/线程 id 判别（`chief-` 前缀；conv id ≡ thread id，r5 §3.1/§3.6）。
+ * 单源：server 侧 step 队列复用（buildId = chief conv id，无 build 行）、消息
+ * 表分流（chief_message vs message）、token_usage 归属均据此判别。 */
+export function isChiefConversationId(id: string): boolean {
+  return id.startsWith(CHIEF_THREAD_ID_PREFIX);
+}
+
+/** 新建 chief 线程 id（`chief-<uuidv7>`；conversationId 同值）。 */
+export function newChiefThreadId(uuidv7: string): string {
+  return `${CHIEF_THREAD_ID_PREFIX}${uuidv7}`;
+}
+
 export const chiefRecordSchema = z.object({
   id: z.string(),
   userId: recordId,
@@ -23,10 +35,13 @@ export const chiefRecordSchema = z.object({
    * r5 §2）；未绑定 null。 */
   agent: z.object({ agentId: recordId }).nullable(),
   /** 章程 = 常设指示（r5 §2 章程 tab；空态「尚无章程。点击编辑，为总管添加
-   * 常设指示。」）。 */
+   * 常设指示。」）；raw 观测默认空串（chief-record-testA.json 一手）。 */
   charter: z.string().nullable(),
   lastTurnAt: epochMs.nullable(),
   createdAt: epochMs,
+  /** 用户时区（raw chief-record-testA.json 一手 `tz:"Asia/Shanghai"`；
+   * r5 §3.6 正文枚举漏记，M4a 补录）。 */
+  tz: z.string().nullable().optional(),
 });
 export type ChiefRecord = z.infer<typeof chiefRecordSchema>;
 
@@ -109,14 +124,42 @@ export type ChiefThread = z.infer<typeof chiefThreadSchema>;
  * `[#n](todo:<id>)`，自定义 URI markdown；消息形状见 records/message.ts）。 */
 export const CHIEF_ENTITY_REF_SCHEMES = ['agent', 'todo'] as const;
 
-/** PATCH /api/teams/{id}/chief body（r5 §2 抓包原样）。 */
-export const patchChiefBodySchema = z.object({
-  agent: z.object({
-    agentId: recordId,
-    thinkingLevel: z.string().nullable(),
-  }),
-});
+/** PATCH /api/teams/{id}/chief body——`agent` 槽 = r5 §2 抓包原样；`charter`
+ * 槽 = 章程 tab 保存面（保存 wire 未采 [推断]，同径 PATCH 最小逼近，04 §3
+ * 不判负）。两槽至少一位。 */
+export const patchChiefBodySchema = z
+  .object({
+    agent: z
+      .object({
+        agentId: recordId,
+        thinkingLevel: z.string().nullable(),
+      })
+      .nullish(),
+    charter: z.string().nullish(),
+  })
+  .refine((b) => b.agent !== undefined || b.charter !== undefined, {
+    message: 'expected agent and/or charter',
+  });
 export type PatchChiefBody = z.infer<typeof patchChiefBodySchema>;
+
+/** 用户 → Chief 发消息（面板输入框 `有什么可以帮你的？`/steer 占位，r5 §3.6；
+ * 发送 wire 未采 [设计]：threadId null = 开新主题）。响应 = 线程 + 落库消息行。 */
+export const chiefSendMessageBodySchema = z.object({
+  threadId: z.string().nullable(),
+  content: z.string().min(1),
+});
+export type ChiefSendMessageBody = z.infer<typeof chiefSendMessageBodySchema>;
+
+/** wake 三触发（02 §4.3/r5 §3.5：gate 停驻 / settle 落地 / failed 失败）。 */
+export const CHIEF_WAKE_KINDS = ['gate', 'settle', 'failed'] as const;
+export type ChiefWakeKind = (typeof CHIEF_WAKE_KINDS)[number];
+
+/** 线程标题 = 首句截断 + …（r5 §3.6/raw threadTitle 样本「帮 r3-lifecycle
+ * 写一份…」）；截断位 [推断]（样本 12 字 + …）。 */
+export function chiefThreadTitle(firstMessage: string): string {
+  const line = firstMessage.trim().split('\n')[0] ?? '';
+  return line.length > 12 ? `${line.slice(0, 12)}…` : line;
+}
 
 /** 换绑二次确认告示 canon（r5 §2 原文，记忆不迁移）。 */
 export const CHIEF_REBIND_CONFIRM_COPY =

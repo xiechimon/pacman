@@ -6,11 +6,13 @@
 // 最小投影 [推断]）。
 
 import type { Phase, TodoRecord, UserRecord } from '@pacman/shared';
-import { and, asc, eq, max, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, max, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { agent, build, todo, todoTag } from '../db/schema.js';
+import { agent, build, step, todo, todoTag } from '../db/schema.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
+import { triggerChiefWakes } from './chief.js';
 import type { TeamStreamHub } from './events.js';
+import type { MachineWakeHub } from './machines.js';
 import { notifyTodoPhase } from './notifications.js';
 import { assertPhaseTransition } from './phase.js';
 
@@ -19,15 +21,19 @@ type TodoRow = typeof todo.$inferSelect;
 export interface TodoDeps {
   db: Db;
   hub: TeamStreamHub;
+  /** chief wake 派发通道（triggerChiefWakes 入队即 wake，02 §5.4）。 */
+  machineHub?: MachineWakeHub;
   /** 通知收件人（phase 漏斗挂 plan_ready/build_review，02 §9.1）。 */
   user: UserRecord;
 }
 
 /** phase 漏斗的通知挂接：进 confirm/review 发 in-app 事件（r5 §7.2 矩阵；
- * done/failed 无事件照抄）。setTodoPhase 与 updateTodo 两路共用。 */
+ * done/failed 无事件照抄）+ chief watch/wake 主动回路挂接（gate/settle/failed
+ * 三触发，r5 §3.5）。setTodoPhase 与 updateTodo 两路共用。 */
 function notifyPhaseEntry(deps: TodoDeps, record: TodoRecord, from: Phase, to: Phase): void {
   if (from === to) return;
   if (to === 'confirm' || to === 'review') notifyTodoPhase(deps, record, to);
+  triggerChiefWakes(deps, record, to);
 }
 
 export function toTodoRecord(deps: TodoDeps, row: TodoRow): TodoRecord {
@@ -236,11 +242,22 @@ export function setTodoPhase(
 }
 
 /** DELETE /api/todos/{id}（DELETE_FACE：REST 同名 DELETE [推断]；
- * delete_todos 词表证据 r5 §3.1）。build/step/message 经 FK cascade 随行。 */
+ * delete_todos 词表证据 r5 §3.1）。build 经 FK cascade 随行；step 的 buildId FK
+ * 已随 M4a chief 步队列复用移除（无 build 行的 chief conv），故 step 手动清
+ * （按本 todo 的 build 集）；message.conversationId 本无 FK（既有面）。 */
 export function deleteTodo(deps: TodoDeps, id: string): boolean {
   const { db } = deps;
   const row = getRow(deps, id);
   if (!row) return false;
+  const buildIds = db
+    .select({ id: build.id })
+    .from(build)
+    .where(eq(build.todoId, id))
+    .all()
+    .map((r) => r.id);
+  if (buildIds.length > 0) {
+    db.delete(step).where(inArray(step.buildId, buildIds)).run();
+  }
   db.delete(todo).where(eq(todo.id, id)).run();
   return true;
 }

@@ -35,7 +35,7 @@ describe('StepJournal', () => {
     });
     expect(j.pending().map((e) => e.stepId)).toEqual(['s1']);
     expect(j.get('s1')?.state).toBe('claimed');
-    expect(j.get('s1')?.claimed?.todo.title).toBe('探针');
+    expect(j.get('s1')?.claimed?.todo?.title).toBe('探针');
 
     j.update('s1', { state: 'running', sessionId: 'pi-sess' });
     expect(j.get('s1')?.sessionId).toBe('pi-sess');

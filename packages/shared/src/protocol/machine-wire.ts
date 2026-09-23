@@ -11,6 +11,11 @@ import { epochMs, recordId } from '../records/common.js';
 import { machineRecordSchema } from '../records/machine.js';
 import { messageRoleSchema } from '../records/message.js';
 import { stepRecordSchema } from '../records/step.js';
+import {
+  machineToolRelayBodySchema,
+  machineToolRelayResponseSchema,
+  remoteToolDefSchema,
+} from './chief-tools.js';
 import { machineJsonSchema } from './executor.js';
 
 /** 机器面认证头词表（02 §8：apiKey/machine token 存哈希不入 SecretBox）。 */
@@ -88,38 +93,54 @@ export const machineClaimBodySchema = z.object({
 
 /** claim 载荷（02 §4.2 三类步 + §5.7 生命周期行所需上下文）[设计]——
  * wire 未采（r3 无 claim 响应样本）；字段 = 主时序执行最小集，凭证不在此
- * （per-step 走 token/{stepId}，02 §5.4/§8）。 */
+ * （per-step 走 token/{stepId}，02 §5.4/§8）。
+ * M4a 扩展（chief 步，r5 §3.1 实测 Chief 回合 = 机器 step）：`remoteTools[]`
+ * 位形一手 = bundle `makeRemoteTools(serverUrl, token, step)` 读
+ * `step.remoteTools`（r5 §3.1 raw 提取）；`chief` 块与 `instruction` 为
+ * [设计] 等价物（wire 未采）。 */
 export const claimedStepSchema = z.object({
   step: stepRecordSchema,
-  /** ≡ step.buildId（CONTEXT.md 实体等式；显式字段 = 02 §5.7 `for conv <uuid>`）。 */
+  /** ≡ step.buildId（CONTEXT.md 实体等式；显式字段 = 02 §5.7 `for conv <uuid>`）。
+   * chief 步 = `chief-<uuid>`（conversationId ≡ threadId，r5 §3.1）。 */
   conversationId: recordId,
   /** 会话语义（02 §4.2/§5.7）：new session | continue session（合并轮/驳回
-   * 重规划复用同 conv pi 会话）。sessionId = 引擎侧会话标识（done 回传）。 */
+   * 重规划/chief 续轮复用同 conv pi 会话）。sessionId = 引擎侧会话标识（done 回传）。 */
   session: z.object({
     action: z.enum(['new', 'continue']),
     sessionId: z.string().nullable(),
   }),
-  todo: z.object({
-    id: recordId,
-    seqNum: z.number().int(),
-    title: z.string(),
-    spec: z.string(),
-  }),
-  project: z.object({
-    id: recordId,
-    name: z.string(),
-    /** repo 绑定位（M3b worktree 契约接线，02 §3/§5.5）：cloneUrl = 托管
-     * `<origin>/git/<teamId>/<repoName>`（02 §5.8 gitHostDomain 槽本地代位）
-     * 或 GitHub https 派生；null = 项目未绑 repo（工作区退化为裸目录）。 */
-    repo: z
-      .object({
-        kind: z.enum(['hosted', 'github']),
-        cloneUrl: z.string(),
-      })
-      .nullable(),
-  }),
-  /** 执行 Agent（assignment 按步类取槽，02 §4.2/r5 §5）；null = 未指派
-   * （不可执行，server 侧不派发 [设计]）。 */
+  /** 续轮指令（server 合成 [设计]）：驳回 feedback 注入重规划轮（r5 §4
+   * 「v2 内容忠实执行反馈」的宿主等价物）、chief 回合任务文本/wake 事实。
+   * 缺省 = daemon 按 kind 兜底（CONTINUE_PROMPTS）或 title+spec 任务文本。 */
+  instruction: z.string().nullable().optional(),
+  /** worker 步任务面；chief 步缺省（无 todo 语境，r5 §3.1）。 */
+  todo: z
+    .object({
+      id: recordId,
+      seqNum: z.number().int(),
+      title: z.string(),
+      spec: z.string(),
+    })
+    .optional(),
+  /** worker 步项目面；chief 步 = 探索基座（可缺省 = 裸目录回合）。 */
+  project: z
+    .object({
+      id: recordId,
+      name: z.string(),
+      /** repo 绑定位（M3b worktree 契约接线，02 §3/§5.5）：cloneUrl = 托管
+       * `<origin>/git/<teamId>/<repoName>`（02 §5.8 gitHostDomain 槽本地代位）
+       * 或 GitHub https 派生；null = 项目未绑 repo（工作区退化为裸目录）。 */
+      repo: z
+        .object({
+          kind: z.enum(['hosted', 'github']),
+          cloneUrl: z.string(),
+        })
+        .nullable(),
+    })
+    .optional(),
+  /** 执行 Agent（worker 步 = assignment 按步类取槽，02 §4.2/r5 §5；chief 步 =
+   * 绑定 Agent，模型 = 绑定 Agent 模型 r5 §3.1）；null = 未指派（不可执行，
+   * server 侧不派发 [设计]）。 */
   agent: z
     .object({
       id: recordId,
@@ -128,8 +149,27 @@ export const claimedStepSchema = z.object({
       provider: z.string().nullable(),
       modelId: z.string().nullable(),
       thinkingLevel: z.string().nullable(),
+      /** 该 Agent 记忆条目注入 systemPrompt（02 §4.4 读路径最小形；注入形
+       * [推断] 保留，04 附录 A）。 */
+      memories: z.array(z.object({ title: z.string(), content: z.string() })).optional(),
     })
     .nullable(),
+  /** chief 步块（r5 §3.1：Chief 回合 = pi 会话 + 服务端 relay 工具；细节
+   * [设计]——wire 未采）。 */
+  chief: z
+    .object({
+      /** ≡ conversationId 去 `chief-` 前缀后的线程 id（chief-<uuid> 同值）。 */
+      threadId: recordId,
+      /** server 合成 system prompt（charter + 团队资源清单 + 策略指引，
+       * 02 §4.3 接口契约「输入：用户自然语言消息 + 团队资源清单」）。 */
+      systemPrompt: z.string(),
+      /** 本回合触发（user 消息轮 / wake 轮，r5 §3.5）。 */
+      trigger: z.enum(['user', 'gate', 'settle', 'failed', 'wake']),
+    })
+    .optional(),
+  /** remoteTools[]（服务端定义、服务端执行；chief 步 = 49 词表全量，
+   * protocol/chief-tools.ts；worker 步缺省。位形一手 = bundle 提取，r5 §3.1）。 */
+  remoteTools: z.array(remoteToolDefSchema).optional(),
 });
 export type ClaimedStep = z.infer<typeof claimedStepSchema>;
 
@@ -155,10 +195,21 @@ export type MachineStreamEvent = z.infer<typeof machineStreamEventSchema>;
 /** POST /api/machine/heartbeat/{stepId}——续活；响应 {ok:true} [推断]。 */
 export const machineHeartbeatResponseSchema = machineOkResponseSchema;
 
-/** POST /api/machine/tool/{stepId}——工具调用回传（live transcript 工具行；
- * 与 upload-urls 终稿按 toolCall id 幂等去重 [设计]）。body = toolCallRecord
- * [推断]（r3 §1.6 端点名 + transcript 工具行证据）。 */
-export const machineToolBodySchema = toolCallRecordSchema;
+/** POST /api/machine/tool/{stepId}——同径双形（r5 §3.1 bundle 提取）：
+ * ① live transcript 工具行回传（worker 步内建工具）= toolCallRecord，与
+ *    upload-urls 终稿按 toolCall id 幂等去重 [设计]；body [推断]（r3 §1.6
+ *    端点名 + transcript 工具行证据）。
+ * ② remoteTools relay 执行（chief 步服务端工具）= {name, params} → {text}，
+ *    位形一手 = bundle `request(serverUrl, /api/machine/tool/<stepId>, …,
+ *    {name, params})` + `reply.body.text`（r5 §3.1 raw）。
+ * 服务端按 body 形状分流（有 params 无 id = relay）。 */
+export const machineToolBodySchema = z.union([toolCallRecordSchema, machineToolRelayBodySchema]);
+
+/** relay 执行响应（bundle 消费面 `reply.body?.text`）；失败 = {error}(+transient)。 */
+export const machineToolResponseSchema = z.union([
+  machineOkResponseSchema,
+  machineToolRelayResponseSchema,
+]);
 
 /** GET /api/machine/token/{stepId}——per-step 凭证下发（02 §5.4/§8：模型
  * key + 托管 repo git 凭证，daemon 内存持有不落盘常驻）。响应形状 [设计]
@@ -294,7 +345,7 @@ export const MACHINE_WIRE = [
     method: 'POST',
     path: '/api/machine/tool/{stepId}',
     request: machineToolBodySchema,
-    response: machineOkResponseSchema,
+    response: machineToolResponseSchema,
   },
   { method: 'GET', path: '/api/machine/token/{stepId}', response: machineTokenResponseSchema },
   {

@@ -17,6 +17,7 @@
     "@pacman/shared": "workspace:*",
     "better-sqlite3": "13.0.3",
     "cron-parser": "5.10.1",
+    "diff": "catalog:",
     "drizzle-orm": "0.45.2",
     "hono": "4.13.8",
     "pino": "10.3.1",

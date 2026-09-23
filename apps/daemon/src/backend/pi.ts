@@ -23,6 +23,7 @@ import {
   type AgentSession,
   createAgentSession,
   DefaultResourceLoader,
+  defineTool,
   ModelRuntime,
   SessionManager,
   SettingsManager,
@@ -369,6 +370,35 @@ export class PiBackend implements AgentBackend {
     const sessionManager = resumeFile
       ? SessionManager.open(resumeFile, this.opts.sessionDir, opts.cwd)
       : SessionManager.create(opts.cwd, this.opts.sessionDir);
+    // remoteTools → pi customTools（r5 §3.1 bundle makeRemoteTools 同构）：每条
+    // execute 经 opts.executeRemoteTool relay 回传服务端执行；拒绝/传输失败 →
+    // 结果文本（bundle text(msg) 形，pi 侧照常消费，不抛断回合）。
+    const remoteTools = opts.remoteTools ?? [];
+    const relay = opts.executeRemoteTool;
+    const customTools =
+      remoteTools.length > 0 && relay
+        ? remoteTools.map((def) =>
+            defineTool({
+              name: def.name,
+              label: def.label ?? def.name,
+              description: def.description,
+              // parameters = JSON Schema（typebox 产物 wire 形，protocol/chief-tools.ts）。
+              parameters: (def.parameters ?? { type: 'object', properties: {} }) as never,
+              execute: async (_id: string, params: Record<string, unknown>) => {
+                try {
+                  const text = await relay(def.name, params ?? {});
+                  return { content: [{ type: 'text' as const, text }], details: {} };
+                } catch (err) {
+                  const msg = err instanceof Error ? err.message : String(err);
+                  return {
+                    content: [{ type: 'text' as const, text: `${def.name} rejected: ${msg}` }],
+                    details: {},
+                  };
+                }
+              },
+            }),
+          )
+        : [];
     const { session } = await createAgentSession({
       cwd: opts.cwd,
       agentDir: this.opts.agentDir,
@@ -389,7 +419,8 @@ export class PiBackend implements AgentBackend {
       resourceLoader: loader,
       sessionManager,
       settingsManager,
-      tools: PI_BUILTIN_TOOLS,
+      tools: [...PI_BUILTIN_TOOLS, ...remoteTools.map((t) => t.name)],
+      ...(customTools.length > 0 ? { customTools } : {}),
     });
     this.opts.onSession?.(session.sessionId, session.sessionFile);
     const handle = new PiSessionHandle(session);

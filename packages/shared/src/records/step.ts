@@ -6,8 +6,10 @@
 import { z } from 'zod';
 import { epochMs, recordId } from './common.js';
 
-/** 三类步（02 §4.2 中文语义名的 wire 投影 [推断]）。 */
-export const stepKindSchema = z.enum(['plan', 'build', 'merge']);
+/** 三类步（02 §4.2 中文语义名的 wire 投影 [推断]）+ `chief`（M4a [设计]：
+ * Chief 回合 = 机器 step 为一手实测（r5 §3.1 daemon.log `claim step=…` →
+ * `conv chief-…`），kind 词未采——自定等价物，04 §3 不判负口径）。 */
+export const stepKindSchema = z.enum(['plan', 'build', 'merge', 'chief']);
 export type StepKind = z.infer<typeof stepKindSchema>;
 
 export const stepRecordSchema = z.object({

@@ -355,14 +355,15 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
   });
 });
 
-describe('24-table record projection (01 §6 / 03 M1)', () => {
-  it('DB table registry is the 01 §6 list (25 incl. the todo_tag join)', () => {
-    expect(DB_TABLES).toHaveLength(25);
+describe('record projection (01 §6 / 03 M1; M4a +chief)', () => {
+  it('DB table registry is the 01 §6 list + chief (26 incl. the todo_tag join)', () => {
+    expect(DB_TABLES).toHaveLength(26);
     expect(DB_TABLES).toContain('todo_tag');
+    expect(DB_TABLES).toContain('chief');
   });
 
-  it('record shapes cover exactly the 24 wire tables (todo_tag join has none)', () => {
-    expect(Object.keys(RECORD_SCHEMAS)).toHaveLength(24);
+  it('record shapes cover exactly the 25 wire tables (todo_tag join has none)', () => {
+    expect(Object.keys(RECORD_SCHEMAS)).toHaveLength(25);
     expect(Object.keys(RECORD_SCHEMAS)).toEqual(DB_TABLES.filter((t) => t !== 'todo_tag'));
   });
 });
