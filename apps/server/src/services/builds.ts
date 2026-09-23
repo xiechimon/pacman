@@ -16,10 +16,10 @@ import type {
   TriggerSource,
   UserRecord,
 } from '@pacman/shared';
-import { MERGE_ANNOUNCEMENT } from '@pacman/shared';
+import { MERGE_ANNOUNCEMENT, PLAN_FILE_NAME } from '@pacman/shared';
 import { asc, eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { build, message, step, todo } from '../db/schema.js';
+import { build, message, plan as planTable, step, todo } from '../db/schema.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import type { MachineWakeHub } from './machines.js';
@@ -266,6 +266,10 @@ export function requestMerge(deps: BuildDeps, buildId: string): { delegated: tru
   return { delegated: true };
 }
 
+/** plan 步未产 plan.md 的自动补写指令（#113 裁定候选1，02 §4.2「plan 即文件」
+ * 交接物契约执行；四段落要求同驳回重规划指令族——措辞由本层给事实与要求）。 */
+const PLAN_REWRITE_PROMPT = `规划步未产出 ${PLAN_FILE_NAME} 交接文件。请将方案写入工作区根目录的 ${PLAN_FILE_NAME}（覆盖 Context/Changes/Edge cases/Verification 四段）再结束本步；若改动已在规划轮完成，${PLAN_FILE_NAME} 如实记录改动内容与验证方式即可。`;
+
 /** 机器步完成后的 phase 推进（M3 claim/journal 面挂接点；M2a 供编排测试
  * 驱动状态机）：规划步成 → confirm（withPlan）/ building（直执行续跑）；
  * 执行步成 → review；合并步成 → done（02 §4.2 主时序）。 */
@@ -283,8 +287,25 @@ export function completeStep(
   if (!todoRow) return;
 
   if (stepRow.kind === 'plan') {
-    // plan 卡就绪 → confirm（02 §4.2：phase=confirm 等人工）。
-    deps.db.update(todo).set({ hasPlan: true }).where(eq(todo.id, todoRow.id)).run();
+    // 交接物校验（#113：05 §5 实跑发现规划轮可跳过写 plan.md 直接交付，build 轮
+    // 仅剩 confirm 关口措辞而拿不到任务内容）：首轮规划步成功但未产 plan.md →
+    // 不算成——留 planning + 自动补写一轮。有界：仅首轮触发（续轮指令步 prompt
+    // 非 null——补写轮/驳回重规划轮仍无产物 → 放行 confirm，关口决策交还人；
+    // 此时 build 步有 spec 兜底，见 machines.ts claim 合成）。
+    const planDoc = deps.db
+      .select({ id: planTable.id })
+      .from(planTable)
+      .where(eq(planTable.buildId, stepRow.buildId))
+      .get();
+    if (!planDoc && stepRow.prompt === null) {
+      enqueueStep(deps, stepRow.buildId, 'plan', todoRow.teamId, PLAN_REWRITE_PROMPT);
+      return;
+    }
+    // plan 卡就绪 → confirm（02 §4.2：phase=confirm 等人工）；hasPlan 据实置位
+    // （无交接物不谎称有方案——看板 plan chip 数据源）。
+    if (planDoc) {
+      deps.db.update(todo).set({ hasPlan: true }).where(eq(todo.id, todoRow.id)).run();
+    }
     setTodoPhase(deps, todoRow.id, 'confirm');
     return;
   }

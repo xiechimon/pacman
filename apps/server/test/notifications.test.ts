@@ -9,12 +9,12 @@
 import { notificationEventSchema, notificationRecordSchema } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import { describe, expect, test } from 'vitest';
-import { agent, chiefThread, notification } from '../src/db/schema.js';
+import { agent, chiefThread, notification, plan as planTable } from '../src/db/schema.js';
 import { newRecordId, newUuidv7, nowMs } from '../src/lib/ids.js';
 import { completeStep, startBuilds } from '../src/services/builds.js';
 import { notifyChiefMessage } from '../src/services/notifications.js';
 import { setTodoPhase } from '../src/services/todos.js';
-import { bootServer, openStream, postProject, req } from './helpers.js';
+import { bootServer, openStream, postProject, req, type TestServer } from './helpers.js';
 
 async function withRunningTodo(
   opts: {
@@ -73,6 +73,15 @@ function notificationFrames(stream: Awaited<ReturnType<typeof openStream>>) {
     }>;
 }
 
+/** plan.md 交接物落库（#113：无产物规划步不算成、不进 confirm——服务面直驱
+ * 以直插 plan 行等价机器面产物回传）。 */
+function insertPlanDoc(s: TestServer, buildId: string, id: string) {
+  s.db
+    .insert(planTable)
+    .values({ id, buildId, version: 1, content: '# 方案', createdAt: Date.now() })
+    .run();
+}
+
 describe('三事件矩阵（r5 §7.2 逐字段）', () => {
   test('进 confirm → plan_ready：事件形状逐字段 + channels 恒 in_app', async () => {
     const s = await withRunningTodo();
@@ -83,6 +92,7 @@ describe('三事件矩阵（r5 §7.2 逐字段）', () => {
         id: string;
         kind: string;
       }[];
+      insertPlanDoc(s, s.buildId, 'plan-ntf-1'); // 交接物在先（#113）
       completeStep(s.svc, steps[0]?.id ?? ''); // 规划步成 → confirm
 
       const frame = await notificationFrames(stream)(3000);
@@ -117,6 +127,7 @@ describe('三事件矩阵（r5 §7.2 逐字段）', () => {
           id: string;
           kind: string;
         }[];
+      insertPlanDoc(s, s.buildId, 'plan-ntf-2'); // 交接物在先（#113）
       completeStep(s.svc, (await stepsOf())[0]?.id ?? ''); // → confirm（plan_ready）
       await notificationFrames(stream)(3000);
       await req(s.app, 'POST', `/api/builds/${s.buildId}/steps`, { action: 'confirm' });
@@ -262,6 +273,7 @@ describe('三事件矩阵（r5 §7.2 逐字段）', () => {
       const steps = (await (await req(s.app, 'GET', `/api/builds/${s.buildId}/steps`)).json()) as {
         id: string;
       }[];
+      insertPlanDoc(s, s.buildId, 'plan-ntf-3'); // 交接物在先（#113）
       completeStep(s.svc, steps[0]?.id ?? '');
 
       const frame = await notificationFrames(stream)(3000);

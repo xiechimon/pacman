@@ -37,16 +37,17 @@ async function call(
   app: Hono,
   method: string,
   path: string,
-  opts: { cred?: string; body?: unknown } = {},
+  opts: { cred?: string; body?: unknown; text?: string; contentType?: string } = {},
 ): Promise<Response> {
   const headers: Record<string, string> = {};
   if (opts.cred) headers.authorization = `Bearer ${opts.cred}`;
   if (opts.body !== undefined) headers['content-type'] = 'application/json';
+  if (opts.contentType !== undefined) headers['content-type'] = opts.contentType;
   return Promise.resolve(
     app.request(path, {
       method,
       headers,
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : opts.text,
     }),
   );
 }
@@ -202,12 +203,23 @@ describe('conversation stream（02 §1.2 会话流，M5 live streaming 服务端
   test('驳回回路：revision 用户反馈行即时进会话流（r5 §4 时间线）', async () => {
     const { s, token, projectId, todoId } = await setupWorld();
     const buildId = await startBuild(s, projectId, todoId);
-    // 驱动到 confirm：claim 规划步 → done success（completeStep → confirm）。
+    // 驱动到 confirm：claim 规划步 → plan.md 交接物回传（#113：无产物规划步
+    // 不算成、不进 confirm）→ done success（completeStep → confirm）。
     const claimRes = await call(s.app, 'POST', '/api/machine/tasks/claim', {
       cred: token,
       body: { running: 0 },
     });
     const stepId = ((await claimRes.json()) as { step: { step: { id: string } } }).step!.step.id;
+    const planUrlsRes = await call(s.app, 'POST', `/api/machine/upload-urls/${stepId}`, {
+      cred: token,
+      body: { files: [{ name: 'plan.md' }] },
+    });
+    const planUpload = ((await planUrlsRes.json()) as { uploads: { url: string }[] }).uploads[0]!;
+    await call(s.app, 'PUT', planUpload.url.replace(/^https?:\/\/[^/]+/, ''), {
+      cred: token,
+      text: '# 方案\nContext: x',
+      contentType: 'text/markdown',
+    });
     await call(s.app, 'POST', `/api/machine/done/${stepId}`, {
       cred: token,
       body: { status: 'success' },

@@ -507,6 +507,18 @@ function tryClaim(
       .orderBy(asc(step.createdAt))
       .all();
     const priorSessionId = prior.length > 0 ? (prior[prior.length - 1]?.sessionId ?? null) : null;
+    // plan.md 交接缺失的 build 步强制 new session（#113 裁定候选2 兜底）：plan 关
+    // 未产交接物时续轮会话里无可指方案（confirm 措辞空转 → agent 反问「哪个方案」，
+    // 05 §5 实跑）；new session 令 daemon 以 todo 原始 title+spec 开工（runner
+    // buildTaskPrompt），agent 必拿任务内容。plan.md 在 → 续轮不变。
+    const planHandoffMissing =
+      cand.stepRow.kind === 'build' && cand.buildRow.withPlan && cand.buildRow.planDocId === null;
+    const session = planHandoffMissing
+      ? { action: 'new' as const, sessionId: null }
+      : {
+          action: priorSessionId ? ('continue' as const) : ('new' as const),
+          sessionId: priorSessionId,
+        };
     const projectRow = db
       .select()
       .from(project)
@@ -542,7 +554,7 @@ function tryClaim(
         createdAt: cand.stepRow.createdAt,
       },
       conversationId: cand.stepRow.buildId, // buildId ≡ conversationId（CONTEXT.md）
-      session: { action: priorSessionId ? 'continue' : 'new', sessionId: priorSessionId },
+      session,
       ...(cand.stepRow.prompt !== null ? { instruction: cand.stepRow.prompt } : {}),
       todo: {
         id: cand.todoRow.id,
