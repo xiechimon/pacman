@@ -243,6 +243,9 @@ export interface FixtureSet {
    *  resource surfaces, verbatim from the r7 06–10 captures. Board and
    *  detail scenarios leave it absent. */
   resources?: ResourcesContent;
+  /** projectId → 项目名（M5 live 面：卡面/搜索/新建 dialog 的项目 chip 走
+   *  真项目名；absent = capture canon `r3-lifecycle`，fixture 面不携带）。 */
+  projectNames?: Record<string, string>;
   /** Chief surface content (issue #72): the 总管 drawer overlay or the
    *  full-content 总管设置 view, verbatim from the r5 100–116 captures.
    *  Board scenarios without a chief surface leave it absent. */

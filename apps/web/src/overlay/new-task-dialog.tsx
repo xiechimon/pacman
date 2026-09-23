@@ -31,9 +31,20 @@ interface NewTaskDialogProps {
   open: boolean;
   onClose: () => void;
   onSave: (title: string) => void;
+  /** M5 live 面：保存并开始 = 创建 + POST builds（r2 §4.2 双钮语义）；
+   * 缺省 = fixture 行为（同 保存）。 */
+  onSaveAndStart?: (title: string) => void;
+  /** M5 live：项目 chip 真名；缺省 = capture canon 常量。 */
+  projectName?: string;
 }
 
-export function NewTaskDialog({ open, onClose, onSave }: NewTaskDialogProps) {
+export function NewTaskDialog({
+  open,
+  onClose,
+  onSave,
+  onSaveAndStart,
+  projectName,
+}: NewTaskDialogProps) {
   const { t } = useI18n();
   const [title, setTitle] = useState('');
   useEscClose(onClose, open);
@@ -59,8 +70,10 @@ export function NewTaskDialog({ open, onClose, onSave }: NewTaskDialogProps) {
       >
         <div className="new-task-head">
           <button type="button" className="new-task-project">
-            <span className="new-task-project-avatar">{PROJECT_INITIAL}</span>
-            <span className="new-task-project-name">{PROJECT_NAME}</span>
+            <span className="new-task-project-avatar">
+              {projectName ? projectName.charAt(0).toLowerCase() : PROJECT_INITIAL}
+            </span>
+            <span className="new-task-project-name">{projectName ?? PROJECT_NAME}</span>
             <ChevronDown width={12} height={12} />
           </button>
           <div className="new-task-title-label">{t('新建任务')}</div>
@@ -108,7 +121,10 @@ export function NewTaskDialog({ open, onClose, onSave }: NewTaskDialogProps) {
                 type="button"
                 className="new-task-start"
                 disabled={title.trim() === ''}
-                onClick={save}
+                onClick={() => {
+                  if (onSaveAndStart) onSaveAndStart(title.trim());
+                  else save();
+                }}
               >
                 {t('保存并开始')}
               </button>

@@ -53,7 +53,18 @@ interface SearchPanelProps {
   onClose: () => void;
 }
 
-function TodoRow({ todo, now, selected }: { todo: TodoRecord; now: number; selected: boolean }) {
+function TodoRow({
+  todo,
+  now,
+  selected,
+  projectName,
+}: {
+  todo: TodoRecord;
+  now: number;
+  selected: boolean;
+  /** M5 live：真项目名（fixture.projectNames 位）；缺省 = capture canon。 */
+  projectName?: string;
+}) {
   const { t } = useI18n();
   const ui = PHASE_UI[todo.phase];
   return (
@@ -68,7 +79,7 @@ function TodoRow({ todo, now, selected }: { todo: TodoRecord; now: number; selec
         <span className="search-row-title">
           #{todo.seqNum} {todo.title}
         </span>
-        <span className="search-row-sub">{PROJECT_NAME}</span>
+        <span className="search-row-sub">{projectName ?? PROJECT_NAME}</span>
       </span>
       <span className="search-row-time">{relativeTime(todo.phaseAt, now, t)}</span>
       <span className={`search-row-chip search-row-chip--${ui.tone}`}>{t(ui.chip)}</span>
@@ -90,7 +101,13 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPa
       : [...new Set(fixture.todos.map((t) => t.agent))]
           .filter((agent): agent is AgentRef => agent != null)
           .filter((agent) => agent.displayName.toLowerCase().includes(q));
-  const projectHit = q !== '' && PROJECT_NAME.toLowerCase().includes(q);
+  // M5 live：项目 chip/命中 = 真项目名（首位；多项目面归后票）；fixture 面
+  // 保持 capture canon 常量。
+  const projectName = fixture.projectNames
+    ? (Object.values(fixture.projectNames)[0] ?? PROJECT_NAME)
+    : PROJECT_NAME;
+  const projectInitial = projectName.charAt(0).toLowerCase() || PROJECT_INITIAL;
+  const projectHit = q !== '' && projectName.toLowerCase().includes(q);
   const hitCount = todos.length + agents.length + (projectHit ? 1 : 0);
 
   return (
@@ -138,7 +155,13 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPa
               <>
                 <div className="search-group-label">{t('任务')}</div>
                 {todos.map((todo, index) => (
-                  <TodoRow key={todo.id} todo={todo} now={fixture.now} selected={index === 0} />
+                  <TodoRow
+                    key={todo.id}
+                    todo={todo}
+                    now={fixture.now}
+                    selected={index === 0}
+                    projectName={fixture.projectNames?.[todo.projectId] ?? projectName}
+                  />
                 ))}
               </>
             )}
@@ -149,11 +172,9 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPa
                   type="button"
                   className={`search-row search-row--todo${todos.length === 0 ? ' search-row--selected' : ''}`}
                 >
-                  <span className="search-row-icon search-row-icon--project">
-                    {PROJECT_INITIAL}
-                  </span>
+                  <span className="search-row-icon search-row-icon--project">{projectInitial}</span>
                   <span className="search-row-main">
-                    <span className="search-row-title">{PROJECT_NAME}</span>
+                    <span className="search-row-title">{projectName}</span>
                   </span>
                 </button>
               </>

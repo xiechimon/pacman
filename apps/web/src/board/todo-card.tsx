@@ -34,6 +34,9 @@ interface TodoCardProps {
   onAction?: (todo: TodoRecord) => void;
   /** Card branch icon (issue #68): opens the 分支与 PR dialog. */
   onBranch?: (todo: TodoRecord) => void;
+  /** M5 live：项目 chip 真名（fixture.projectNames 位）；缺省 = capture
+   *  canon 常量（r7 22 `r3-lifecycle`）。 */
+  projectName?: string;
 }
 
 /** Badge on the agent avatar: amber magnifier while the run is waiting on
@@ -52,7 +55,9 @@ function badgeFor(todo: TodoRecord): 'idle' | 'attention' | 'done' | 'failed' | 
   return null;
 }
 
-export function TodoCard({ todo, now, onAction, onBranch }: TodoCardProps) {
+export function TodoCard({ todo, now, onAction, onBranch, projectName }: TodoCardProps) {
+  const chipName = projectName ?? PROJECT_NAME;
+  const chipInitial = projectName ? projectName.charAt(0).toLowerCase() : PROJECT_INITIAL;
   const { t } = useI18n();
   const action = cardAction(todo);
   const badge = badgeFor(todo);
@@ -67,8 +72,8 @@ export function TodoCard({ todo, now, onAction, onBranch }: TodoCardProps) {
       onDragStart={(event) => event.preventDefault()}
     >
       <div className="todo-card-row1">
-        <span className="project-avatar">{PROJECT_INITIAL}</span>
-        <span className="todo-project-name">{PROJECT_NAME}</span>
+        <span className="project-avatar">{chipInitial}</span>
+        <span className="todo-project-name">{chipName}</span>
         <span className="todo-card-seq">#{todo.seqNum}</span>
         <button
           type="button"

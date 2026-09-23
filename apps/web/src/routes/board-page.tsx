@@ -151,6 +151,51 @@ export function BoardPage() {
     [live, projectsQ.data, mutations.createTodo, mutations.createProject, fixture, t],
   );
 
+  // 保存并开始（r2 §4.2 双钮语义，M5 live）：创建 → POST builds（withPlan，
+  // 首 Agent 双槽指派 [设计]）。fixture 面 = 同 保存。
+  const createAndStart = useCallback(
+    (title: string) => {
+      setNewTaskOpen(false);
+      if (!live) {
+        createTodo(title);
+        return;
+      }
+      const start = (projectId: string) =>
+        mutations.createTodo.mutate(
+          { projectId, title, spec: title },
+          {
+            onSuccess: (created) =>
+              mutations.startBuilds.mutate({
+                projectId,
+                todoIds: [created.id],
+                assignment: {
+                  plan: firstAgentId ? { agentId: firstAgentId } : null,
+                  build: firstAgentId ? { agentId: firstAgentId } : null,
+                },
+                withPlan: true,
+              }),
+          },
+        );
+      const projectId = projectsQ.data?.[0]?.id;
+      if (projectId) start(projectId);
+      else
+        mutations.createProject.mutate(
+          { name: t('默认项目'), repoKind: 'hosted' },
+          { onSuccess: (p) => start(p.id) },
+        );
+    },
+    [
+      live,
+      createTodo,
+      mutations.createTodo,
+      mutations.startBuilds,
+      mutations.createProject,
+      projectsQ.data,
+      firstAgentId,
+      t,
+    ],
+  );
+
   // 拖拽落位（#73 / M5）：fixture = 本地集；live = 列内 orderIndex 增量
   // PATCH（01 §4.1 拖拽面，server patchTodoBodySchema.orderIndex 位）。
   const handleReorder = useCallback(
@@ -204,9 +249,14 @@ export function BoardPage() {
 
   const chiefData = live ? (liveChief ?? chiefDefault) : (chief ?? chiefDefault);
   // live 面 now = 墙钟（相对时间标签随 SSE 失效重渲染滚动）；fixture 面保持
-  // 冻结采集时刻（parity 确定性）。
+  // 冻结采集时刻（parity 确定性）。projectNames = 卡面/搜索/新建 dialog 的
+  // 项目 chip 真名位（fixture 面缺省走 capture canon 常量）。
+  const projectNames = useMemo(() => {
+    if (!live) return undefined;
+    return Object.fromEntries((projectsQ.data ?? []).map((p) => [p.id, p.name]));
+  }, [live, projectsQ.data]);
   const fixtureWithTodos: FixtureSet = live
-    ? { ...fixture, todos, now: Date.now() }
+    ? { ...fixture, todos, now: Date.now(), ...(projectNames ? { projectNames } : {}) }
     : { ...fixture, todos };
   const liveUnread = live
     ? (notificationsQ.data?.unreadThreadIds ?? []).filter((id) => id.startsWith('chief-')).length
@@ -279,7 +329,13 @@ export function BoardPage() {
         }
         onThread={live ? (_title, index) => setActiveThreadIdx(index) : undefined}
       />
-      <NewTaskDialog open={newTaskOpen} onClose={() => setNewTaskOpen(false)} onSave={createTodo} />
+      <NewTaskDialog
+        open={newTaskOpen}
+        onClose={() => setNewTaskOpen(false)}
+        onSave={createTodo}
+        onSaveAndStart={live ? createAndStart : undefined}
+        projectName={live ? projectsQ.data?.[0]?.name : undefined}
+      />
       <button
         type="button"
         className="chief-fab"

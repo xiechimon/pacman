@@ -25,6 +25,7 @@ import {
   useMessages,
   usePlans,
   useProjectBuilds,
+  useProjects,
   useSteps,
   useTodo,
   useTodos,
@@ -151,6 +152,7 @@ export function TodoDetailPage() {
   const usageQ = useBuildUsage(buildId, live);
   const machinesQ = useMachines(teamId, live);
   const membersQ = useMembers(teamId, live);
+  const projectsQ = useProjects(teamId, live);
   const projectBuildsQ = useProjectBuilds(wireTodo?.projectId, live);
   const mutations = useApiMutations(teamId);
 
@@ -535,7 +537,16 @@ export function TodoDetailPage() {
       )}
       <SearchPanel
         open={search.open}
-        fixture={live ? { ...fixture, todos, now: Date.now() } : fixture}
+        fixture={
+          live
+            ? {
+                ...fixture,
+                todos,
+                now: Date.now(),
+                projectNames: Object.fromEntries((projectsQ.data ?? []).map((p) => [p.id, p.name])),
+              }
+            : fixture
+        }
         query={search.query}
         onQuery={search.setQuery}
         onClose={() => search.setOpen(false)}

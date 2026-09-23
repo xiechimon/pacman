@@ -14,9 +14,18 @@ interface SortableCardProps {
   onBranch?: (todo: TodoRecord) => void;
   /** this card is the drag source; the DragOverlay carries the visual */
   dragSource: boolean;
+  /** M5 live：项目 chip 真名（TodoCard 透传位）。 */
+  projectName?: string;
 }
 
-export function SortableCard({ todo, now, onAction, onBranch, dragSource }: SortableCardProps) {
+export function SortableCard({
+  todo,
+  now,
+  onAction,
+  onBranch,
+  dragSource,
+  projectName,
+}: SortableCardProps) {
   const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: todo.id,
   });
@@ -32,7 +41,13 @@ export function SortableCard({ todo, now, onAction, onBranch, dragSource }: Sort
   };
   return (
     <div ref={setNodeRef} style={style} {...listeners}>
-      <TodoCard todo={todo} now={now} onAction={onAction} onBranch={onBranch} />
+      <TodoCard
+        todo={todo}
+        now={now}
+        onAction={onAction}
+        onBranch={onBranch}
+        projectName={projectName}
+      />
     </div>
   );
 }

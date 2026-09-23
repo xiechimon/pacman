@@ -257,6 +257,7 @@ export function BoardSurface({ fixture, onNewTask, onAction, onBranch, onReorder
                         onAction={onAction}
                         onBranch={onBranch}
                         dragSource={dragId === todo.id}
+                        projectName={fixture.projectNames?.[todo.projectId]}
                       />
                     ))}
                   </SortableContext>
@@ -268,7 +269,11 @@ export function BoardSurface({ fixture, onNewTask, onAction, onBranch, onReorder
         <DragOverlay dropAnimation={null}>
           {dragged != null && (
             <div className="board-drag-overlay">
-              <TodoCard todo={dragged} now={fixture.now} />
+              <TodoCard
+                todo={dragged}
+                now={fixture.now}
+                projectName={fixture.projectNames?.[dragged.projectId]}
+              />
             </div>
           )}
         </DragOverlay>
