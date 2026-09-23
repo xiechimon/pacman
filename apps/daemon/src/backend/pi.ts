@@ -1,4 +1,4 @@
-// AgentBackend 缝的 pi 实现（00/D1、01 §5/§4.3：pi 0.85.1 AgentSession 稳定面）。
+// AgentBackend 缝的 pi 实现（00/D1、01 §5/§4.3：pi 0.86.0 AgentSession 稳定面）。
 // 缝纪律（01 §5/§7.3）：本文件 = daemon 内唯一允许 import `@earendil-works/*`
 // 的模块（biome noRestrictedImports 强制）；第二引擎将来 = 新增一个
 // AgentBackend 实现，事件面/能力面不动。
