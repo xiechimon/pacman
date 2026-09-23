@@ -5,6 +5,7 @@
 // (parity/match-text.mjs) in #54; all other strings come from the research
 // records.
 
+import { BRAND, conversationBranch, maskApiKey } from '@pacman/shared';
 import { diffLines } from 'diff';
 import type {
   ApiKeyRecord,
@@ -43,7 +44,7 @@ export const USER_MAIL = 'xiechimon@qq.com';
 export const MACHINE_NAME = 'xmonsMac-3574.local';
 export const MACHINE_ID = 'TlZ2sSD4EJCxjNJqVhdo_';
 export const R7_BUILD_ID = '01a0c26e-23ea-734f-9847-cf9cdbce7802';
-export const R7_BUILD_BRANCH = `tds/conv-${R7_BUILD_ID}`;
+export const R7_BUILD_BRANCH = conversationBranch(R7_BUILD_ID);
 /** Target commit of the probe's build branch (r7 31 分支与PR overlay). */
 export const R7_TARGET_COMMIT = '2cceb9dbf7a8';
 
@@ -656,7 +657,7 @@ const LEGACY_TOKEN_USAGE: TokenUsageContent = {
 const LEGACY_BRANCH_INFO: BranchInfoContent = {
   // capture 79 truncates the branch after `2488`; the tail is unobservable
   // and only needs to keep the mono row overflowing at the same glyph
-  branch: 'tds/conv-01a0c8aa-9e64-742b-acbd-2488a1b2c3d4',
+  branch: conversationBranch('01a0c8aa-9e64-742b-acbd-2488a1b2c3d4'),
   commit: 'f3ce121ba492',
   machine: MACHINE_NAME,
   directory: '~/preview/project',
@@ -714,7 +715,7 @@ const LEGACY2_OVERLAY: BuildOverlayContent = {
     cacheWrite: '9.4k',
   },
   branch: {
-    branch: 'tds/conv-r3-legacy-2',
+    branch: conversationBranch('r3-legacy-2'),
     commit: 'b7e1f0a9c4d2',
     machine: MACHINE_NAME,
     directory: '~/preview/project',
@@ -894,7 +895,7 @@ const RESOURCES: ResourcesContent = {
   machines: [
     {
       hosted: true,
-      name: 'Todos 托管机器',
+      name: 'Pacman 托管机器',
       description: '随时在线，构建速度快。空闲自动休眠，仅在运行时消耗积分。',
       pill: '未启用',
     },
@@ -905,7 +906,7 @@ const RESOURCES: ResourcesContent = {
     },
   ],
   providers: [
-    { name: 'Todos（内置）', models: '8 模型', pill: '未启用' },
+    { name: 'Pacman（内置）', models: '8 模型', pill: '未启用' },
     { name: 'R3 网关', models: '12 模型', custom: true },
   ],
 };
@@ -925,7 +926,7 @@ const CHIEF_EXAMPLES: ChiefExample[] = [
   { icon: 'bars', text: '查一下这个月的 token 用量' },
 ];
 
-/** r5 100/111 composer draft (localStorage tds.cache.chief-draft-v1, the
+/** r5 100/111 composer draft (localStorage pacman.cache.chief-draft-v1, the
  *  capture shows it restored into the textarea). */
 const CHIEF_DRAFT =
   '我想做一个能在浏览器里直接玩的网页小游戏 （比如贪吃蛇或打砖块）： 单文件 HTML + Canvas， 不用任何构建工具，做完能在项目的文件页直接试玩。请在现有的入门项目里做， 组建 Agent 团队把游戏逻辑、 画面手感、 难度调优拆成并行任务， 然后向我汇报方案， 等我确认后再开始动工。';
@@ -1111,14 +1112,16 @@ export const teamGrid: FixtureSet = {
 
 /** One created API key exercising both r3 §6 display rules: the list row
  *  mask and the one-time plaintext (02 §8 canon copy rides along in the
- *  page). Mask prefix `tds_afe07565` is the r3 §6 observed sample. */
+ *  page). Mask rule = 品牌前缀 + 前 8 hex + 省略号（r3 §6 observed sample
+ *  `tds_afe07565…`；前缀随 BRAND.apiKeyPrefix 槽，#109）。 */
+const API_KEY_PLAINTEXT = `${BRAND.apiKeyPrefix}afe07565b3c9d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0`;
 const API_KEY_CREATED: ApiKeyRecord = {
   id: 'apikey-r7-1',
   name: null,
-  masked: 'tds_afe07565…',
+  masked: maskApiKey(API_KEY_PLAINTEXT),
   gitAccess: true,
   mcpAccess: true,
-  plaintext: 'tds_afe07565b3c9d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0',
+  plaintext: API_KEY_PLAINTEXT,
 };
 
 /** API-keys route fixture with the created key; the empty state (r2 19)
@@ -2216,10 +2219,10 @@ const R8_OVERLAY_TOKEN: TokenUsageContent = {
   cacheWrite: '25.4k',
 };
 const R8_OVERLAY_BRANCH: BranchInfoContent = {
-  branch: 'tds/conv-r8-12',
+  branch: conversationBranch('r8-12'),
   commit: '386b8e4af054',
   machine: MACHINE_NAME,
-  directory: '~/.tds/workspaces/r8-12',
+  directory: `~/${BRAND.homeDirName}/workspaces/r8-12`,
 };
 
 export function r8OverlayContent(todoId: string): BuildOverlayContent | null {
@@ -2228,7 +2231,7 @@ export function r8OverlayContent(todoId: string): BuildOverlayContent | null {
   if (todoId === 'r8-15')
     return {
       token: R8_OVERLAY_TOKEN,
-      branch: { ...R8_OVERLAY_BRANCH, branch: 'tds/conv-r8-15' },
+      branch: { ...R8_OVERLAY_BRANCH, branch: conversationBranch('r8-15') },
       runs: RUNS_15,
     };
   return null;

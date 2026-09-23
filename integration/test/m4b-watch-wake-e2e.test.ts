@@ -136,7 +136,7 @@ beforeAll(async () => {
     { toolCall: { name: 'machines', arguments: {} } },
     {
       content:
-        '失败原因：执行步的模型服务返回 400，属环境问题，这不是代码问题。工作保全在分支 tds/conv- 前缀的会话分支上，没有丢失。建议检查 stub provider 配置后重跑。',
+        '失败原因：执行步的模型服务返回 400，属环境问题，这不是代码问题。工作保全在分支 pacman/conv- 前缀的会话分支上，没有丢失。建议检查 stub provider 配置后重跑。',
     },
   ];
   stub = await startStubLlm(script);

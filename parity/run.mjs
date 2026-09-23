@@ -20,15 +20,29 @@ const ROOT = resolve(new URL('..', import.meta.url).pathname);
 const OUT_DIR = resolve(ROOT, 'parity/output');
 // Baselines live per capture batch under docs/research/assets/ (04 册 §2):
 // bare filenames resolve to r7/, `r8/<file>` rows to the companion batch.
+// D3 品牌槽切换（#109，素材替换计划 §2/§3.4）：原站基线含 tds_/Todos 字样的
+// 行重定基线——新基线切自渲染产物，存 parity/baselines/（`rebaseline/<file>`
+// 行指向）；原站截图按 D4(a) 留 docs/research/assets/ 作研究证据不删。
 const ASSETS_DIR = resolve(ROOT, 'docs/research/assets');
 const BASELINE_DIR = resolve(ASSETS_DIR, 'r7');
+const REBASELINE_DIR = resolve(ROOT, 'parity/baselines');
 // parallel sessions (worktrees) run this harness concurrently — PARITY_PORT
 // lets each pick its own preview port instead of fighting over 8390
 const PORT = Number(process.env.PARITY_PORT ?? 8390);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
-const THEME_KEY = 'tds-theme'; // same key as apps/web/src/theme.ts THEME_STORAGE_KEY
-const SIDEBAR_KEY = 'tds.sidebar-collapsed'; // apps/web/src/routes/board-page.tsx SIDEBAR_STORAGE_KEY
-const LOCALE_KEYS = ['tds.locale', 'tds-locale']; // apps/web/src/i18n/locale.ts dual-key contract (r2 §1.5)
+// 注入键 = 品牌槽（brand.ts localStoragePrefix / client-state.ts 登记处；
+// D3 替换相位 pacman- / pacman. 同形，#109）
+const THEME_KEY = 'pacman-theme'; // same key as apps/web/src/theme.ts THEME_STORAGE_KEY
+const SIDEBAR_KEY = 'pacman.sidebar-collapsed'; // apps/web/src/routes/board-page.tsx SIDEBAR_STORAGE_KEY
+const LOCALE_KEYS = ['pacman.locale', 'pacman-locale']; // apps/web/src/i18n/locale.ts dual-key contract (r2 §1.5 原键 tds.* 同形替换)
+
+/** baseline 路径解析：bare = r7 批，`r8/…` = 随拍批（04 §2 A6），
+ *  `rebaseline/…` = D3 重定基线批（渲染产物，parity/baselines/）。 */
+function resolveBaseline(path) {
+  if (path.startsWith('rebaseline/'))
+    return resolve(REBASELINE_DIR, path.slice('rebaseline/'.length));
+  return resolve(path.includes('/') ? ASSETS_DIR : BASELINE_DIR, path);
+}
 
 mkdirSync(OUT_DIR, { recursive: true });
 
@@ -269,10 +283,9 @@ async function main() {
     const only = process.env.PARITY_ONLY?.split(',').filter(Boolean);
     for (const entry of matrix.filter((e) => only == null || only.includes(e.id))) {
       const capture = await captureEntry(entry, browser);
-      // baseline = bare r7 filename, or `r8/…` once a row switches batch (04 §2 A6)
-      const baseline = entry.baseline
-        ? resolve(entry.baseline.includes('/') ? ASSETS_DIR : BASELINE_DIR, entry.baseline)
-        : capture; // smoke row: compare the capture against itself
+      // baseline = bare r7 filename, `r8/…` batch switch (04 §2 A6), or
+      // `rebaseline/…` D3 重定基线批（#109，渲染产物存 parity/baselines/）
+      const baseline = entry.baseline ? resolveBaseline(entry.baseline) : capture; // smoke row: compare the capture against itself
       const threshold =
         entry.threshold ?? (entry.baseline ? DEFAULT_BASELINE_THRESHOLD : SMOKE_THRESHOLD);
 

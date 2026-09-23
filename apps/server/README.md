@@ -7,12 +7,12 @@
 ```sh
 pnpm dev:server          # tsx watch（开发）
 pnpm --filter @pacman/server start
-PORT=8791 TDS_HOME=/tmp/tds-demo bash apps/server/scripts/demo.sh  # demo 面（另窗起 server）
+PORT=8791 PACMAN_HOME=/tmp/pacman-demo bash apps/server/scripts/demo.sh  # demo 面（另窗起 server）
 ```
 
 ## 数据根（单一数据根，备份 = 拷目录，01 §4.2）
 
-默认 `~/.tds/server/`（`TDS_HOME` 覆盖主目录；目录名 = 品牌槽，#44）：
+默认 `~/.pacman/server/`（`PACMAN_HOME` 覆盖主目录；目录名 = 品牌槽，D3 已触发切换，#109）：
 
 | 文件 | 内容 |
 |---|---|
@@ -23,7 +23,7 @@ PORT=8791 TDS_HOME=/tmp/tds-demo bash apps/server/scripts/demo.sh  # demo 面（
 
 - **at-rest**：provider key、team Secret 值统一 AES-256-GCM 加密落库（信封 = `v1` 版本头 + iv + ciphertext + authTag）；密钥源 = 本地 keyfile，不引外部 KMS/口令派生（Q5 锁定）。
 - **运行时**：模型 key per-step 下发（`services/credentials.ts` 解析链；HTTP 端点 `/api/machine/token/{stepId}` 归 M3 接线），executor 内存持有、不落盘常驻；团队 Secret 按 Agent 授权集以环境变量注入任务 shell。
-- **API 面**：key 类字段**写只读掩码**——GET 永不返回 `apiKey` / secret 值；apiKey 存哈希（SHA-256）不存可逆值，创建响应含明文一次 `tds_<48hex>`（「请立即复制密钥，它仅显示一次。」），此后列表行掩码 `tds_afe07565…`。
+- **API 面**：key 类字段**写只读掩码**——GET 永不返回 `apiKey` / secret 值；apiKey 存哈希（SHA-256）不存可逆值，创建响应含明文一次 `pacman_<48hex>`（「请立即复制密钥，它仅显示一次。」），此后列表行掩码 `pacman_afe07565…`。
 
 > **护栏（02 §8 恢复口径）：keyfile 丢失 = 全部存量 provider key 与团队 Secret 值报废，需重录。**
 > 加密是磁盘静态保护，不是可恢复备份——「加密 ≠ 可恢复」。备份数据根目录时连同

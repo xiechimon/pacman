@@ -407,8 +407,8 @@ export async function runStep(
     try {
       // 提交身份 [设计]（r3 未采 committer 词表）：Agent 名 + 机器位。
       const identity = {
-        name: claimed.agent?.displayName ?? 'tds-agent',
-        email: `${claimed.step.machineId ?? 'machine'}@tds.local`,
+        name: claimed.agent?.displayName ?? 'pacman-agent',
+        email: `${claimed.step.machineId ?? 'machine'}@pacman.local`,
       };
       const committed = await git.commitAll(
         ws.cwd,

@@ -68,7 +68,7 @@ export function ProjectSettingsPage() {
             <span className="prj-set-label">{t('仓库')}</span>
             <span className="prj-set-value">
               {project?.repoName ?? ''}
-              {project?.hosted === true && <span className="prj-set-chip">{t('Todos 托管')}</span>}
+              {project?.hosted === true && <span className="prj-set-chip">{t('Pacman 托管')}</span>}
             </span>
           </div>
           <div className="prj-set-row">

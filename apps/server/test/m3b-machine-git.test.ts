@@ -174,7 +174,7 @@ describe('per-step 一次性 git 凭证（02 §5.4/§8；relay 工具名对照 p
     const token = machineTokenResponseSchema.parse(await tokenRes.json());
     expect(token.git).not.toBeNull();
     expect(token.git?.username).toBe('git');
-    expect(token.git?.password).toMatch(/^tds_[0-9a-f]{48}$/);
+    expect(token.git?.password).toMatch(/^pacman_[0-9a-f]{48}$/);
     // 发行面 = apiKey 行（gitAccess=true，服务端只存哈希）。
     const rows = w.s.db
       .select()
@@ -311,7 +311,7 @@ describe('merge 202 delegated → 合并步落地（02 §4.2/A6；r3 §3.6 服�
     await w.done(planStep.step.id, { status: 'success', sessionId: 'pi-1' });
     await call(w.s.app, 'POST', `/api/builds/${buildId}/steps`, { body: { action: 'confirm' } });
     const buildStep = await w.claim();
-    const convSha = await fakePushConvBranch(w.repoDir, `tds/conv-${buildId}`);
+    const convSha = await fakePushConvBranch(w.repoDir, `pacman/conv-${buildId}`);
     await w.done(buildStep.step.id, {
       status: 'success',
       sessionId: 'pi-1',
@@ -360,7 +360,7 @@ describe('merge 202 delegated → 合并步落地（02 §4.2/A6；r3 §3.6 服�
     await w.done(planStep.step.id, { status: 'success', sessionId: 'pi-1' });
     await call(w.s.app, 'POST', `/api/builds/${buildId}/steps`, { body: { action: 'confirm' } });
     const buildStep = await w.claim();
-    const convSha = await fakePushConvBranch(w.repoDir, `tds/conv-${buildId}`);
+    const convSha = await fakePushConvBranch(w.repoDir, `pacman/conv-${buildId}`);
     await w.done(buildStep.step.id, { status: 'success', sessionId: 'pi-1', commit: convSha });
     await call(w.s.app, 'POST', `/api/builds/${buildId}/merge`, { body: {} });
     const mergeStep = await w.claim();

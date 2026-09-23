@@ -25,7 +25,7 @@ function tmp(): string {
 }
 
 describe('loadDaemonConfig（Settings 缝优先级）', () => {
-  test('defaults: TDS_SERVER/DEFAULT_SERVER_URL, hostname name, ~/.tds home', () => {
+  test('defaults: PACMAN_SERVER 缺省=DEFAULT_SERVER_URL, hostname name, ~/.pacman home', () => {
     const cfg = loadDaemonConfig({}, {});
     expect(cfg.serverUrl).toBe(DEFAULT_SERVER_URL);
     expect(cfg.home.endsWith(BRAND.homeDirName)).toBe(true);
@@ -34,19 +34,19 @@ describe('loadDaemonConfig（Settings 缝优先级）', () => {
     expect(cfg.maxConcurrent).toBe(3); // 02 §2.5 默认值
   });
 
-  test('env 层：TDS_* 五件词表（r3 §1.1）', () => {
+  test('env 层：PACMAN_* 五件词表（r3 §1.1 观测原名 TDS_*，替换相位同形）', () => {
     const home = tmp();
     const cfg = loadDaemonConfig(
       {},
       {
         [ENV_VARS.server]: 'http://10.0.0.2:9999/',
-        [ENV_VARS.apiKey]: 'tds_key',
+        [ENV_VARS.apiKey]: 'pacman_key',
         [ENV_VARS.team]: 'team-1',
         [ENV_VARS.home]: home,
       },
     );
     expect(cfg.serverUrl).toBe('http://10.0.0.2:9999'); // 尾斜杠归一
-    expect(cfg.apiKey).toBe('tds_key');
+    expect(cfg.apiKey).toBe('pacman_key');
     expect(cfg.teamId).toBe('team-1');
     expect(cfg.home).toBe(home);
   });
@@ -73,7 +73,7 @@ describe('loadDaemonConfig（Settings 缝优先级）', () => {
 
 describe('本地状态布局（02 §5.3）', () => {
   test('ensureStateDirs 建齐 home + outbox/chat-sessions/agent-runtime/workspaces', () => {
-    const home = join(tmp(), 'tds-home');
+    const home = join(tmp(), 'pacman-home');
     const paths = statePaths(home);
     ensureStateDirs(paths);
     for (const dir of [

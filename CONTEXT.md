@@ -10,9 +10,9 @@
 |---|---|---|---|
 | 团队 | Team | `team` | 顶层租户边界，项目、Agent、机器、资源与套餐（plan）都归属其下。 |
 | 项目 | Project | `project` | 团队下聚合任务、仓库与文件的单位。 |
-| 仓库 | Repo | `repo` | 项目绑定的代码仓库（Todos 托管或 GitHub 接入）。是 Project 的属性，不是独立租户层。 |
+| 仓库 | Repo | `repo` | 项目绑定的代码仓库（Pacman 托管或 GitHub 接入）。是 Project 的属性，不是独立租户层。 |
 
-_Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的任务检出目录（`~/.tds/workspaces/<conversationId>`）；禁止用它指代团队或任何界面层级。
+_Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的任务检出目录（`~/.pacman/workspaces/<conversationId>`）；禁止用它指代团队或任何界面层级。
 
 ## 任务生命周期
 
@@ -34,7 +34,7 @@ _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的�
 
 | 中文界面词 | 英文原词 | 内部名 | 定义 / 边界 |
 |---|---|---|---|
-| 机器 | Machine | `machine` | 登记的执行主机（`tds` daemon + 内嵌 pi runtime），领取并运行 build 步。一个机器可承载多个 Agent 的步；它不是 Agent 的属性。 |
+| 机器 | Machine | `machine` | 登记的执行主机（`pacman` daemon + 内嵌 pi runtime），领取并运行 build 步。一个机器可承载多个 Agent 的步；它不是 Agent 的属性。 |
 | Agent | Agent | `agent` | 配了模型、职责、技能、工具、密钥、MCP 与记忆的执行角色；运行在某台机器上。 |
 | 总管 | Chief | `chief` | 每「用户×团队」一个的调度与对话代理，负责分派任务；领域上区别于干活的 worker Agent。 |
 | 记忆 | Memory | `memory` | Agent 在工作中沉淀的经验条目。todos.dev 写入路径未实测 [黑盒]；复刻采最小机制（02-架构平价 §4.4，全标 [推断]，待 #46 校准）。 |
@@ -50,7 +50,7 @@ _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的�
 | 模型 | Model | `model` | Provider 下的一个具名可选项。[排除项：内置 built-in 模型走 Pro，不在复刻范围。] |
 | MCP 服务器 | MCP server | `mcpServer` | 团队接入、为 Agent 提供额外工具的外部 MCP 服务器（方向：外部 → Agent）；工具名 `mcp__<标识符>__<工具>`。 |
 | 团队密钥 | Secret | `secret` | 以环境变量注入任务 shell 的键值，只写不读。 |
-| API 密钥 | API key | `apiKey` | `tds_…` 形态的凭证，用于注册机器与作为 MCP Bearer，带读/写工具白名单。 |
+| API 密钥 | API key | `apiKey` | `pacman_…` 形态的凭证，用于注册机器与作为 MCP Bearer，带读/写工具白名单。 |
 
 边界裁决：
 - **「密钥」是重载词，强制拆两义** —— `secret`（团队环境变量）≠ `apiKey`（访问令牌）。代码里两词严格分开。

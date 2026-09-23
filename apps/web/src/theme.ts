@@ -1,11 +1,12 @@
 // Theme mechanism (r2 §1.5): dark is the :root default, light is opted in
-// by putting .light on <html>. Persisted under the observed key `tds-theme`
-// (values: "light" | "dark"), mirrored to data-theme like the official app.
+// by putting .light on <html>. Persisted under the brand-slot key
+// `pacman-theme` (observed original `tds-theme`, r2 §1.5; D3 同形替换
+// #109; values: "light" | "dark"), mirrored to data-theme like the official app.
 // The only visible control is the 外观 segmented row inside the user-menu
 // popover (static render, #56); the parity harness sets the theme via
 // storage injection.
 
-export const THEME_STORAGE_KEY = 'tds-theme'; // mirrored in parity/run.mjs THEME_KEY
+export const THEME_STORAGE_KEY = 'pacman-theme'; // mirrored in parity/run.mjs THEME_KEY
 
 export type Theme = 'light' | 'dark';
 

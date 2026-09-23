@@ -13,6 +13,7 @@ import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ENV_VARS } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import { afterAll, describe, expect, test } from 'vitest';
 import { step as stepTable } from '../../apps/server/src/db/schema.js';
@@ -56,7 +57,7 @@ function spawnDaemon(): ChildProcess {
       cwd: DAEMON_DIR,
       env: {
         ...process.env,
-        TDS_HOME: home,
+        [ENV_VARS.home]: home,
         // 代理变量清空：本机 dev 代理不得介入 localhost 集成链路。
         HTTP_PROXY: '',
         HTTPS_PROXY: '',

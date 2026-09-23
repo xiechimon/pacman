@@ -111,7 +111,7 @@ export interface PreparedWorkspace {
   cwd: string;
   /** 基座 clone 目录（worktree add/prune 的操作位）。 */
   baseRepoDir: string;
-  /** `tds/conv-<conversationId>`（brand.ts conversationBranch()）。 */
+  /** `pacman/conv-<conversationId>`（brand.ts conversationBranch()）。 */
   branch: string;
   defaultBranch: string;
   /** `Worktree reused` 行语义（r3 §1.4）。 */

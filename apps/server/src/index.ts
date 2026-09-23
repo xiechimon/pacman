@@ -3,6 +3,7 @@
 
 import { mkdirSync } from 'node:fs';
 import { serve } from '@hono/node-server';
+import { BRAND } from '@pacman/shared';
 import pino from 'pino';
 import { createApp } from './app.js';
 import { loadConfig, reposDirOf } from './config.js';
@@ -60,7 +61,7 @@ scheduler.start();
 const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
   logger.info(
     { port: info.port, dataDir: config.dataDir, teamId: seeded.team.id },
-    'pacman-server online — 机器注册：POST /api/teams/{id}/api-keys 取 key 后 tds start --api-key <key> --team <teamId>',
+    `pacman-server online — 机器注册：POST /api/teams/{id}/api-keys 取 key 后 ${BRAND.cliCommandName} start --api-key <key> --team <teamId>`,
   );
 });
 

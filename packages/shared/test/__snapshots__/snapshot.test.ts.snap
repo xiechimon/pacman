@@ -5011,12 +5011,12 @@ exports[`协议词表快照（02 §5/§6 canonical） > executor CLI 面（02 §
     "--workspaces-dir",
   ],
   "ENV_VARS": {
-    "apiKey": "TDS_API_KEY",
-    "home": "TDS_HOME",
-    "server": "TDS_SERVER",
-    "team": "TDS_TEAM",
-    "webDir": "TDS_WEB_DIR",
-    "workspacesDir": "TDS_WORKSPACES_DIR",
+    "apiKey": "PACMAN_API_KEY",
+    "home": "PACMAN_HOME",
+    "server": "PACMAN_SERVER",
+    "team": "PACMAN_TEAM",
+    "webDir": "PACMAN_WEB_DIR",
+    "workspacesDir": "PACMAN_WORKSPACES_DIR",
   },
   "PROVIDER_COMMAND_NOTICE": "Providers are managed on the website",
 }
@@ -5026,92 +5026,92 @@ exports[`协议词表快照（02 §5/§6 canonical） > localStorage 键名契�
 {
   "LOCAL_STORAGE_KEYS": [
     {
-      "key": "tds-theme",
+      "key": "pacman-theme",
       "source": "r2 §1.5",
       "valueShape": "light | dark",
     },
     {
-      "key": "tds.locale",
-      "source": "r2 §1.5（与 tds-locale 双形实测）",
+      "key": "pacman.locale",
+      "source": "r2 §1.5（与 pacman-locale 双形，原键同构）",
       "valueShape": "zh",
     },
     {
-      "key": "tds-locale",
+      "key": "pacman-locale",
       "source": "r2 §1.5",
       "valueShape": "zh",
     },
     {
-      "key": "tds.sidebarProjectsCollapsed",
+      "key": "pacman.sidebarProjectsCollapsed",
       "source": "r2 §1.5",
       "valueShape": ""1"",
     },
     {
-      "key": "tds.panel-maximized",
+      "key": "pacman.panel-maximized",
       "source": "r2 §1.5",
       "valueShape": ""0"",
     },
     {
-      "key": "tds.teamMembersLayout",
+      "key": "pacman.teamMembersLayout",
       "source": "r2 §1.5（团队页视图切换）",
       "valueShape": "grid | chart",
     },
     {
-      "key": "tds.cache.session-v1",
+      "key": "pacman.cache.session-v1",
       "source": "r2 §1.5",
       "valueShape": "{token:"",cookieName:"",expiresAt,user{…}}——会话走 cookie，token 字段留空",
     },
     {
-      "key": "tds.cache.me-v1:<userId>",
+      "key": "pacman.cache.me-v1:<userId>",
       "source": "r2 §1.5",
       "valueShape": "{type:"user",id,displayName,avatarUrl,…}",
     },
     {
-      "key": "tds.cache.teams-v1:<userId>",
+      "key": "pacman.cache.teams-v1:<userId>",
       "source": "r2 §1.5",
       "valueShape": "[{id,name,createdAt,plan:"free",avatarStyle:"notionist…"}]",
     },
     {
-      "key": "tds.cache.members-v1:<userId>:<teamId>",
+      "key": "pacman.cache.members-v1:<userId>:<teamId>",
       "source": "r2 §1.5",
       "valueShape": "[{id,teamId,actorId,memberType:"user",…}]",
     },
     {
-      "key": "tds.cache.projects-v1:<userId>:<teamId>",
+      "key": "pacman.cache.projects-v1:<userId>:<teamId>",
       "source": "r2 §1.5",
       "valueShape": "[]",
     },
     {
-      "key": "tds.cache.team-models-v1:<teamId>",
+      "key": "pacman.cache.team-models-v1:<teamId>",
       "source": "r2 §1.5",
       "valueShape": "{"models":[]}",
     },
     {
-      "key": "tds.cache.team-machines-v1:<teamId>",
+      "key": "pacman.cache.team-machines-v1:<teamId>",
       "source": "r2 §1.5",
       "valueShape": "[]",
     },
     {
-      "key": "tds.cache.progress-v2:<userId>:<teamId>",
+      "key": "pacman.cache.progress-v2:<userId>:<teamId>",
       "source": "r2 §1.5",
       "valueShape": "{"todos":[],"builds":[]}",
     },
     {
-      "key": "tds.cache.notifications-v2:<userId>:<teamId>",
+      "key": "pacman.cache.notifications-v2:<userId>:<teamId>",
       "source": "r2 §1.5",
       "valueShape": "{"unreadThreadIds":[]}",
     },
     {
-      "key": "tds.cache.chief-data-v3:<userId>:<teamId>",
+      "key": "pacman.cache.chief-data-v3:<userId>:<teamId>",
       "source": "r2 §1.5",
       "valueShape": "{"chief":{id:"chief-<user>-<team>",userId,teamId,…}}",
     },
     {
-      "key": "tds.cache.chief-threads-v1:<userId>:<teamId>",
+      "key": "pacman.cache.chief-threads-v1:<userId>:<teamId>",
       "source": "r2 §1.5",
       "valueShape": "[]",
     },
     {
-      "key": "tds.cache.chief-draft-v1:<teamId>:new",
+      "key": "pacman.cache.chief-draft-v1:<teamId>:new",
       "source": "r5 §3.6 补录",
       "valueShape": "草稿文本（跨会话恢复实测）",
     },
@@ -5203,7 +5203,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > pi 流事件/配置 kind
     "HTTPS_PROXY",
     "NO_PROXY",
   ],
-  "PROXY_PROBE_LOG_CANON": "[tds] Proxy: <url>",
+  "PROXY_PROBE_LOG_CANON": "[pacman] Proxy: <url>",
   "RELAY_TOOLS": [
     "push_credential",
     "open_repo",
@@ -5523,7 +5523,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > web REST 端点词表（
 exports[`协议词表快照（02 §5/§6 canonical） > worktree 契约（02 §5.5） 1`] = `
 {
   "baseRepoSubpath": "<projectId>/repo",
-  "branchPrefix": "tds/conv-",
+  "branchPrefix": "pacman/conv-",
   "checkpointResetArgs": [
     "reset --hard",
     "clean -fd",
@@ -5545,14 +5545,15 @@ exports[`协议词表快照（02 §5/§6 canonical） > worktree 契约（02 §5
 exports[`协议词表快照（02 §5/§6 canonical） > 品牌串命名常量表（02 §5.8 + 素材替换计划 §2） 1`] = `
 {
   "BRAND": {
-    "apiKeyPrefix": "tds_",
-    "branchPrefix": "tds/conv-",
-    "cliCommandName": "tds",
+    "apiKeyPrefix": "pacman_",
+    "branchPrefix": "pacman/conv-",
+    "cliCommandName": "pacman",
     "cliPackageName": "@pacman/cli",
-    "envPrefix": "TDS_",
-    "homeDirName": ".tds",
-    "manifestName": "Todos",
+    "envPrefix": "PACMAN_",
+    "homeDirName": ".pacman",
+    "manifestName": "Pacman",
     "remoteMcpPath": "/api/mcp",
+    "sessionCookieName": "pacman_session",
     "workspacesDirName": "workspaces",
   },
   "BRAND_SLOTS": {
@@ -5611,6 +5612,10 @@ exports[`协议词表快照（02 §5/§6 canonical） > 品牌串命名常量表
     "remoteMcpPath": {
       "replacement": "保持（形状无品牌）",
       "todosDev": "/api/mcp",
+    },
+    "sessionCookie": {
+      "replacement": "pacman_session",
+      "todosDev": "tds_session",
     },
     "workspacesDir": {
       "replacement": "~/.pacman/workspaces/<conversationId>",

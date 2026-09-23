@@ -1,6 +1,6 @@
 // 机器面路由——02 §5 canonical 13 端点（词表单源 = shared MACHINE_ENDPOINTS /
 // MACHINE_WIRE；对拍测试 = test/machine-wire.test.ts）。
-// 认证（02 §8）：enroll = Bearer apiKey（`tds_<48hex>`）；其余 = Bearer 机器
+// 认证（02 §8）：enroll = Bearer apiKey（`pacman_<48hex>`，前缀 = 品牌槽）；其余 = Bearer 机器
 // token（64hex，服务端存哈希比对）。错误形状 {error}（r5 §1 族）。
 // 附加端点（[设计] 登记，非词表外扩协议面）：PUT /api/machine/upload/{uploadId}
 // = upload-urls 预签名的落地点（self-host 无对象存储，server 自出一次性 PUT）。

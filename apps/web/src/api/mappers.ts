@@ -563,11 +563,12 @@ export function mapApiKeys(rows: ApiKeyRow[]): DisplayApiKey[] {
   }));
 }
 
-/** `Todos 托管机器` 首行 = 静态产品面（r7 06 canon，复刻未启用托管执行——
- * 恒 未启用 pill；品牌槽随 #44 替换面）。 */
+/** `Pacman 托管机器` 首行 = 静态产品面（r7 06 canon，复刻未启用托管执行——
+ * 恒 未启用 pill；品牌词槽随 D2 替换值 Pacman（静态字面 = i18n 键契约，
+ * 见 test/i18n-coverage.test.ts；D3 已切换 #109）。 */
 const HOSTED_MACHINE_ROW: MachineRow = {
   hosted: true,
-  name: 'Todos 托管机器',
+  name: 'Pacman 托管机器',
   description: '随时在线，构建速度快。空闲自动休眠，仅在运行时消耗积分。',
   pill: '未启用',
 };
@@ -583,10 +584,10 @@ export function mapMachines(rows: MachineRecord[]): MachineRow[] {
   ];
 }
 
-/** `Todos（内置）` 首行 = 静态产品面（r7 07 canon；内置 built-in 模型走
+/** `Pacman（内置）` 首行 = 静态产品面（r7 07 canon；内置 built-in 模型走
  * Pro = 复刻排除项，CONTEXT.md 资源与配置——恒 未启用 pill）。 */
 const BUILTIN_PROVIDER_ROW: ProviderRow = {
-  name: 'Todos（内置）',
+  name: 'Pacman（内置）',
   models: '8 模型',
   pill: '未启用',
 };

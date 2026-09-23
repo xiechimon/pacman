@@ -337,7 +337,7 @@ export const apiKey = sqliteTable('api_key', {
   toolGrants: json<{ read: string[]; write: string[] }>('toolGrants').notNull(),
   /** [内部] key 哈希（登录校验只需匹配，02 §8）。 */
   keyHash: text('keyHash').notNull(),
-  /** [内部] 列表行掩码（`tds_afe07565…` 展示规则 r3 §6）。 */
+  /** [内部] 列表行掩码（`pacman_afe07565…`；展示规则 r3 §6，前缀随品牌槽）。 */
   masked: text('masked').notNull(),
   createdAt: epochMs('createdAt').notNull(),
 });

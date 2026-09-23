@@ -55,7 +55,7 @@ function defaultWebDir(): string | null {
 }
 
 export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
-  // 用户主目录槽 = ENV_VARS.home（TDS_HOME，r3 §1.1 实测原名）；默认 ~/.tds。
+  // 用户主目录槽 = ENV_VARS.home（PACMAN_HOME；r3 §1.1 实测原名 TDS_HOME）；默认 ~/.pacman。
   const home = process.env[ENV_VARS.home] ?? join(homedir(), BRAND.homeDirName);
   // 数据根子目录名 `server` [设计]（品牌位归 #44 一次性替换面）。
   const dataDir = join(home, 'server');

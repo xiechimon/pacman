@@ -1,5 +1,5 @@
 // 模型服务 route (issue #69, r7 07): grouped card with the built-in
-// `Todos（内置）` row (indigo sparkle tile, model count, 未启用 pill) above
+// `Pacman（内置）` row (indigo sparkle tile, model count, 未启用 pill) above
 // custom gateway rows (orange layers tile, orange 自定义 tag, overflow
 // dots instead of the pill).
 import { useSearchParams } from 'react-router';

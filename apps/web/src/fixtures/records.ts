@@ -156,7 +156,7 @@ export interface ProjectContent {
   branch: string;
   files: string[];
   repoName: string;
-  /** True = the `Todos 托管` chip rides beside the repo name (r2 24c). */
+  /** True = the `Pacman 托管` chip rides beside the repo name (r2 24c). */
   hosted: boolean;
   defaultBranch: string;
   description: string | null;
@@ -186,7 +186,7 @@ export interface ApiKeyRecord {
   id: string;
   /** Optional key name (r3 §6 `密钥名称（可选）`); null shows the mask alone. */
   name: string | null;
-  /** List-row mask `tds_afe07565…` (r3 §6); the value is never readable again. */
+  /** List-row mask `pacman_afe07565…` (r3 §6 display rule; prefix 随品牌槽). */
   masked: string;
   gitAccess: boolean;
   mcpAccess: boolean;
@@ -270,7 +270,7 @@ export interface McpRow {
 /** Machine row (r7 06): the hosted-machine card row plus one row per
  *  claimed machine (name + online dot + id-tail subline). */
 export interface MachineRow {
-  /** The `Todos 托管机器` row (indigo tile); claimed machines omit it. */
+  /** The `Pacman 托管机器` row (indigo tile); claimed machines omit it. */
   hosted?: boolean;
   name: string;
   /** Subline under the name (`…NJqVhdo_ · max 3`); absent on the hosted row. */

@@ -1,6 +1,7 @@
 // API-keys route (issue #70): the empty state per r2 19 (icon tile +
 // canon copy + 新建密钥 / 查看文档), and with a created key in the
-// fixture the r3 §6 display rules — list row masked `tds_afe07565…`
+// fixture the r3 §6 display rules — list row masked `pacman_afe07565…`
+// (r3 样例原形前缀 tds_ 随品牌槽切换，#109)
 // plus the one-time plaintext block carrying the 02 §8 canon
 // 「请立即复制密钥，它仅显示一次。」. Row and one-time block shapes are
 // [推断] (no capture: r2 §9-12, r3 §6 图失); mask and copy are observed.

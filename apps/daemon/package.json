@@ -6,7 +6,7 @@
     "node": ">=22.19.0"
   },
   "bin": {
-    "tds": "./dist/cli.mjs"
+    "pacman": "./dist/cli.mjs"
   },
   "scripts": {
     "dev": "tsx src/cli.ts",

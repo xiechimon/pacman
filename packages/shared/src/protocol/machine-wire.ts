@@ -3,7 +3,8 @@
 // （02 §5.8 尾注）；HTTP 动词与载荷细形 r3 未逐一采集处 = [推断]/[设计]
 // （04 §3 不判负口径），实现期重放补采后回写 02 §11 收紧。
 // 认证（02 §8/§5.3）：机器面 = `Authorization: Bearer <machine token 64hex>`；
-// enroll = `Authorization: Bearer <apiKey tds_48hex>`；token 服务端存哈希。
+// enroll = `Authorization: Bearer <apiKey pacman_48hex>`（前缀 = brand.ts
+// apiKeyPrefix 槽）；token 服务端存哈希。
 
 import { z } from 'zod';
 import {
@@ -33,7 +34,7 @@ export const MACHINE_AUTH_SCHEME = 'Bearer';
  * `--api-key <key> --team <teamId>`；--name 默认 hostname，r3 §1.1）。 */
 export const machineEnrollBodySchema = z.object({
   teamId: recordId,
-  /** tds start --name（缺省 = hostname）。 */
+  /** pacman start --name（缺省 = hostname）。 */
   name: z.string().optional(),
   /** CLI 版本（机器页 latestCliVersion 数据源，r5 §8）。 */
   cliVersion: z.string().optional(),
