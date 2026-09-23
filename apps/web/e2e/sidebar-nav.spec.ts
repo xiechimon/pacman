@@ -1,0 +1,129 @@
+import { expect, test } from '@playwright/test';
+
+// Issue #121 acceptance: the sidebar nav family (rail + expanded rows,
+// team name, 新建项目) are react-router Links — clicks navigate
+// client-side with no document reload, the URL/pill/aria-current follow,
+// and the fixture ?scenario= survives the hop. The 安装 App entries are
+// gone from both sidebar states and /zh/install takes the registered
+// unmatched-path redirect to /app. Non-selected rows tint the
+// --surface-hover pill on hover in both themes; the selected row keeps
+// its own pill.
+
+declare global {
+  interface Window {
+    __spaCanary?: string;
+  }
+}
+
+/** Computed background of a row's ::before pill layer. */
+function pillBg(locator: import('@playwright/test').Locator) {
+  return locator.evaluate((el) => getComputedStyle(el, '::before').backgroundColor);
+}
+
+/** Plant the canary after load; any document navigation wipes it. */
+async function plantCanary(page: import('@playwright/test').Page) {
+  await page.evaluate(() => {
+    window.__spaCanary = 'alive';
+  });
+}
+
+test('nav rows hop client-side: no reload, pill + aria-current follow', async ({ page }) => {
+  await page.goto('/app?scenario=01');
+  await plantCanary(page);
+
+  const schedules = page.locator('.sidebar-row', { hasText: '定时' });
+  await schedules.click();
+
+  await expect(page).toHaveURL('/app/schedules?scenario=01');
+  expect(await page.evaluate(() => window.__spaCanary)).toBe('alive');
+  await expect(schedules).toHaveClass(/sidebar-row--selected/);
+  await expect(schedules).toHaveAttribute('aria-current', 'page');
+
+  const board = page.locator('.sidebar-row', { hasText: '看板' });
+  await expect(board).not.toHaveClass(/sidebar-row--selected/);
+  await expect(board).not.toHaveAttribute('aria-current', 'page');
+});
+
+test('subrow and team name hop client-side too', async ({ page }) => {
+  await page.goto('/app?scenario=01');
+  await plantCanary(page);
+
+  await page.locator('.sidebar-subrow', { hasText: '技能' }).click();
+  await expect(page).toHaveURL('/app/resources/skills?scenario=01');
+  expect(await page.evaluate(() => window.__spaCanary)).toBe('alive');
+
+  await page.locator('.sidebar-team-name').click();
+  await expect(page).toHaveURL('/app/team?scenario=01');
+  expect(await page.evaluate(() => window.__spaCanary)).toBe('alive');
+  await expect(page.locator('.sidebar-team-row')).toHaveClass(/sidebar-team-row--active/);
+});
+
+test('rail rows hop client-side', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('pacman.sidebar-collapsed', '1'));
+  await page.goto('/app?scenario=03');
+  await plantCanary(page);
+
+  await page.locator('.rail-row[aria-label="定时"]').click();
+  await expect(page).toHaveURL('/app/schedules?scenario=03');
+  expect(await page.evaluate(() => window.__spaCanary)).toBe('alive');
+});
+
+test('安装 App entries are gone from both sidebar states', async ({ page }) => {
+  await page.goto('/app?scenario=01');
+  await expect(page.locator('.sidebar-install')).toHaveCount(0);
+  await expect(page.locator('a[href^="/zh/install"]')).toHaveCount(0);
+  await expect(page.locator('.sidebar-user')).toBeVisible();
+});
+
+test('collapsed rail carries no install icon', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('pacman.sidebar-collapsed', '1'));
+  await page.goto('/app?scenario=03');
+  await expect(page.locator('.rail-install')).toHaveCount(0);
+  await expect(page.locator('.rail-row[aria-label="定时"]')).toBeVisible();
+});
+
+test('/zh/install redirects to /app (unmatched-path divergence, 01 §8)', async ({ page }) => {
+  await page.goto('/zh/install');
+  await expect(page).toHaveURL(/\/app$/);
+  await expect(page.locator('.board-sidebar')).toBeVisible();
+});
+
+test('hover tints the row pill — dark default + light theme', async ({ page }) => {
+  await page.goto('/app?scenario=01');
+  const row = page.locator('.sidebar-row', { hasText: '定时' });
+
+  expect(await pillBg(row)).toBe('rgba(0, 0, 0, 0)');
+  await row.hover();
+  // --surface-hover dark = #1f1f23, reached over the 150ms color step
+  await expect.poll(() => pillBg(row)).toBe('rgb(31, 31, 35)');
+
+  await page.addInitScript(() => localStorage.setItem('pacman-theme', 'light'));
+  await page.goto('/app?scenario=01');
+  const lightRow = page.locator('.sidebar-row', { hasText: '定时' });
+  await lightRow.hover();
+  // --surface-hover light = #f2ede6
+  await expect.poll(() => pillBg(lightRow)).toBe('rgb(242, 237, 230)');
+});
+
+test('rail hover tints the 24px pill', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('pacman.sidebar-collapsed', '1'));
+  await page.goto('/app?scenario=03');
+  const row = page.locator('.rail-row[aria-label="定时"]');
+
+  expect(await pillBg(row)).toBe('rgba(0, 0, 0, 0)');
+  await row.hover();
+  await expect.poll(() => pillBg(row)).toBe('rgb(31, 31, 35)');
+});
+
+test('selected row keeps its own pill under hover', async ({ page }) => {
+  await page.goto('/app?scenario=01');
+  const board = page.locator('.sidebar-row', { hasText: '看板' });
+  await expect(board).toHaveClass(/sidebar-row--selected/);
+
+  await board.hover();
+  // past the 150ms step: the ::before layer stays transparent — the
+  // selected tint lives on the element itself and must not be washed out
+  await page.waitForTimeout(250);
+  expect(await pillBg(board)).toBe('rgba(0, 0, 0, 0)');
+  await expect(board).toHaveClass(/sidebar-row--selected/);
+});

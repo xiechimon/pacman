@@ -33,7 +33,6 @@ export const EN: Record<string, string> = {
   机器: 'Machines',
   模型服务: 'Providers',
   用量: 'Usage',
-  '安装 App': 'Install app',
   收起侧边栏: 'Collapse sidebar',
   展开侧边栏: 'Expand sidebar',
   '收起{label}': 'Collapse {label}',

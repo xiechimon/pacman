@@ -1073,6 +1073,41 @@ export const matrix = [
     locale: 'en',
     expectText: 'Browser notifications are off',
   },
+  // sidebar row hover pill rows (issue #121): the claude.ai-style hover
+  // affordance is a replica-side addition — no official capture of a
+  // hovered sidebar row exists in any batch — so the state rides smoke
+  // pairs with the #73 hover step: expanded 定时 row + collapsed rail 定时
+  // row, light/dark per 04 §2 增量规则 (深色面随票覆盖)
+  {
+    id: 'sidebar-hover-light',
+    route: '/app',
+    scenario: '01',
+    theme: 'light',
+    hover: '.sidebar-row:has-text("定时")',
+  },
+  {
+    id: 'sidebar-hover-dark',
+    route: '/app',
+    scenario: '02',
+    theme: 'dark',
+    hover: '.sidebar-row:has-text("定时")',
+  },
+  {
+    id: 'rail-hover-light',
+    route: '/app',
+    scenario: '03',
+    theme: 'light',
+    sidebarCollapsed: true,
+    hover: '.rail-row[aria-label="定时"]',
+  },
+  {
+    id: 'rail-hover-dark',
+    route: '/app',
+    scenario: '03',
+    theme: 'dark',
+    sidebarCollapsed: true,
+    hover: '.rail-row[aria-label="定时"]',
+  },
   // i18n bilingual spot-check rows (issue #74): zh is the pixel-gated
   // default on every row above; these prove the en fallback renders across
   // the screen families (board / detail / schedules / account / team /

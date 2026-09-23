@@ -1,15 +1,21 @@
 // Board sidebar (issue #54): 240px expanded rail, structure and copy from
 // r6 §3.1 / r2 §1.1, geometry from r7 01 pixel probes (row pitch 36, level-1
-// icons at x16, group chevrons at x20, sub-rows at x36, bottom 安装 App
-// accent row + user chip). #55 adds the collapsed rail: 40px wide, icon-only
-// rows (r2 §1.1 收起态 order: 展开侧栏/搜索/看板/定时/项目▾/项目头像/资源▾/
-// 技能/MCP/密钥/机器/模型服务), 32px row pitch with a 24px selected pill,
-// 安装 App icon and the user avatar chip at the bottom — geometry from the
-// r7 03 pixel probes. All rows render; interactivity is the collapse toggle
-// only, persisted like the theme (storage key is [推断] — r2 §1.1 only
-// documents `tds.sidebarProjectsCollapsed` for the group fold).
+// icons at x16, group chevrons at x20, sub-rows at x36, user chip at the
+// bottom). #55 adds the collapsed rail: 40px wide, icon-only rows (r2 §1.1
+// 收起态 order: 展开侧栏/搜索/看板/定时/项目▾/项目头像/资源▾/技能/MCP/密钥/
+// 机器/模型服务), 32px row pitch with a 24px selected pill and the user
+// avatar chip at the bottom — geometry from the r7 03 pixel probes. All rows
+// render; interactivity is the collapse toggle only, persisted like the
+// theme (storage key is [推断] — r2 §1.1 only documents
+// `tds.sidebarProjectsCollapsed` for the group fold). #121: the nav rows
+// (rail + expanded, team name and 新建项目 included) are react-router
+// Links — SPA hops with no document reload — carrying the live ?search=
+// along (fixture-scenario convention, same as the todo-card and page-back
+// links); the selected pill and aria-current stay prop-driven off
+// `selected`, and the row hover pill lives in sidebar.css.
 
 import type { ComponentType, SVGProps } from 'react';
+import { Link, useLocation } from 'react-router';
 import {
   PROJECT_ID,
   PROJECT_INITIAL,
@@ -33,7 +39,6 @@ import {
   Puzzle,
   Search,
   Server,
-  Smartphone,
   Users,
 } from '../icons/index.js';
 import './sidebar.css';
@@ -130,6 +135,9 @@ export function BoardSidebar({
   machineOnline = false,
 }: BoardSidebarProps) {
   const { t } = useI18n();
+  // Links carry the live query string across hops so the fixture scenario
+  // survives client-side navigation (todo-card / page-back convention).
+  const { search } = useLocation();
   const resourceRows = usageNav
     ? [...RESOURCE_ROWS.slice(0, 4), USAGE_ROW, ...RESOURCE_ROWS.slice(4)]
     : RESOURCE_ROWS;
@@ -148,48 +156,45 @@ export function BoardSidebar({
           <button type="button" className="rail-row" aria-label={t('搜索')} onClick={onSearch}>
             <Search />
           </button>
-          <a
+          <Link
             className={rowClass('rail-row', selected === 'board')}
-            href="/app"
+            to={{ pathname: '/app', search }}
             aria-current={selected === 'board' ? 'page' : undefined}
             aria-label={t('看板')}
           >
             <Kanban />
-          </a>
-          <a
+          </Link>
+          <Link
             className={rowClass('rail-row', selected === 'schedules')}
-            href="/app/schedules"
+            to={{ pathname: '/app/schedules', search }}
             aria-current={selected === 'schedules' ? 'page' : undefined}
             aria-label={t('定时')}
           >
             <Clock />
-          </a>
+          </Link>
           <RailGroupChevron label="项目" />
-          <a
+          <Link
             className={rowClass('rail-row', selected === 'project')}
-            href={PROJECT_HREF}
+            to={{ pathname: PROJECT_HREF, search }}
             aria-current={selected === 'project' ? 'page' : undefined}
             aria-label={PROJECT_NAME}
           >
             <span className="project-avatar">{PROJECT_INITIAL}</span>
-          </a>
+          </Link>
           <RailGroupChevron label="资源" />
           {resourceRows.map(({ label, href, Icon }) => (
-            <a
+            <Link
               key={href}
               className={rowClass('rail-row', selected === href)}
-              href={href}
+              to={{ pathname: href, search }}
               aria-current={selected === href ? 'page' : undefined}
               aria-label={t(label)}
             >
               <Icon />
-            </a>
+            </Link>
           ))}
         </nav>
         <div className="sidebar-spacer" />
-        <a className="rail-install" href="/zh/install" aria-label={t('安装 App')}>
-          <Smartphone />
-        </a>
         <button type="button" className="rail-user" aria-label={USER_NAME}>
           <img src="/avatar-user.png" alt="" />
         </button>
@@ -204,9 +209,9 @@ export function BoardSidebar({
           <Users />
         </span>
         {/* r2 §1.1: clicking the team name navigates to /app/team */}
-        <a className="sidebar-team-name" href="/app/team">
+        <Link className="sidebar-team-name" to={{ pathname: '/app/team', search }}>
           {TEAM_NAME}
-        </a>
+        </Link>
         <button
           type="button"
           className="sidebar-team-collapse"
@@ -225,9 +230,9 @@ export function BoardSidebar({
           <span className="sidebar-row-label">{t('搜索')}</span>
           <span className="sidebar-kbd">⌘K</span>
         </button>
-        <a
+        <Link
           className={rowClass('sidebar-row', selected === 'board')}
-          href="/app"
+          to={{ pathname: '/app', search }}
           aria-current={selected === 'board' ? 'page' : undefined}
         >
           <span className="sidebar-row-icon">
@@ -235,40 +240,43 @@ export function BoardSidebar({
           </span>
           <span className="sidebar-row-label">{t('看板')}</span>
           {attention > 0 && <span className="sidebar-badge">{attention}</span>}
-        </a>
-        <a
+        </Link>
+        <Link
           className={selected === 'schedules' ? 'sidebar-row sidebar-row--selected' : 'sidebar-row'}
-          href="/app/schedules"
+          to={{ pathname: '/app/schedules', search }}
           aria-current={selected === 'schedules' ? 'page' : undefined}
         >
           <span className="sidebar-row-icon">
             <Clock />
           </span>
           <span className="sidebar-row-label">{t('定时')}</span>
-        </a>
+        </Link>
 
         <GroupHeader label="项目" />
-        <a className="sidebar-subrow sidebar-new-project" href="/app/project/new">
+        <Link
+          className="sidebar-subrow sidebar-new-project"
+          to={{ pathname: '/app/project/new', search }}
+        >
           <span className="sidebar-row-icon">
             <Plus />
           </span>
           <span className="sidebar-subrow-label">{t('新建项目')}</span>
-        </a>
-        <a
+        </Link>
+        <Link
           className={rowClass('sidebar-subrow', selected === 'project')}
-          href={PROJECT_HREF}
+          to={{ pathname: PROJECT_HREF, search }}
           aria-current={selected === 'project' ? 'page' : undefined}
         >
           <span className="project-avatar">{PROJECT_INITIAL}</span>
           <span className="sidebar-subrow-label">{PROJECT_NAME}</span>
-        </a>
+        </Link>
 
         <GroupHeader label="资源" />
         {resourceRows.map(({ label, href, Icon }) => (
-          <a
+          <Link
             key={href}
             className={rowClass('sidebar-subrow', selected === href)}
-            href={href}
+            to={{ pathname: href, search }}
             aria-current={selected === href ? 'page' : undefined}
           >
             <span className="sidebar-row-icon">
@@ -276,16 +284,12 @@ export function BoardSidebar({
             </span>
             <span className="sidebar-subrow-label">{t(label)}</span>
             {machineOnline && label === '机器' && <span className="sidebar-online-dot" />}
-          </a>
+          </Link>
         ))}
       </nav>
 
       <div className="sidebar-spacer" />
 
-      <a className="sidebar-install" href="/zh/install">
-        <Smartphone />
-        <span className="sidebar-install-label">{t('安装 App')}</span>
-      </a>
       <button type="button" className="sidebar-user" aria-label={USER_NAME}>
         <img src="/avatar-user.png" alt="" />
         <span className="sidebar-user-name">{USER_NAME}</span>
