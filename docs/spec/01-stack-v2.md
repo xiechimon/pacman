@@ -78,7 +78,7 @@ packages/shared # 协议词表、record 形状 zod schema、命名常量表（02
 |---|---|---|---|---|
 | 框架 | React 19 SPA（从零，00/D5） | react / react-dom **19.3.0** | 锁定 | 新建无升级债，直取 latest 19；官方 workspace RNW [推断] 不复刻（S1） |
 | 构建 | Vite + @vitejs/plugin-react；dev 期 proxy → server | vite **8.3.0** / plugin-react **6.1.1** | 锁定 | 单 SPA 无 SSR 诉求；PWA/桌面壳包 SPA 最顺（02 §1.1 前提）；官方 landing Next.js SSG → 差异注记 §8 |
-| 路由 | React Router v7（library mode），手写路由表 | react-router **7.18.4** | 锁定 | 路由表固定（41 landing + locale + /app 树）；v8.4.0 已发布 → 升级窗口观察（§9）；locale 形状照抄：`en` 无前缀 `/zh` `/zh-TW` `/ja` + hreflang alternate + `x-default`→en（r1 §1.1） |
+| 路由 | React Router v8（library mode），手写路由表 | react-router **8.4.0** | 锁定 | 路由表固定（41 landing + locale + /app 树）；#105 兑现 v8 窗口：Breaking 全缝外（ESM-only 发布形、`react-router-dom` 移除、middleware 常开——本面无 loader/action 不触），/app 树 + 未匹配→/app 重定向实跑保真；locale 形状照抄：`en` 无前缀 `/zh` `/zh-TW` `/ja` + hreflang alternate + `x-default`→en（r1 §1.1） |
 | 样式 | Tailwind CSS **4.3.3**（#106 升级窗口兑现；观测同版期 = 3.4.19，r1 编译产物对拍基线不变） | tailwindcss **4.3.3** / @tailwindcss/postcss **4.3.3** | 锁定 | v4 CSS-first 形态：`dark:` 变体 = `@custom-variant dark (&:where(:not(.light):not(.light *)))`，编译选择器与官方产物逐字符一致（r1 §4.3，勿按常规「默认浅色+dark:前缀」做）；token 消费面（v3 `theme.extend.colors`/`fontFamily`）迁 `@theme inline`——utility 声明直引 tokens.css 变量，`.light` 双主题覆写仍走 tokens.css 级联；类名语义、默认断点五档（640/768/1024/1280/1536）、shadow 值零翻译对拍义务不变，升级后 parity 全矩阵 174 行重验 0 失败 |
 | design token | CSS 变量层：r1 §5 色名→变量映射表照抄进 `theme.extend.colors` 消费；`--font-inter`/`--font-jetbrains-mono` 照抄；zinc/stone/indigo 原色阶语义保持 | — | 锁定 | 00/D5「自建 token」的落地形；对拍靶 = r1 `[f965382e067739e9.css]` 原件 |
 | 字体 | r1 已抓 859B `@font-face` CSS 原样搬 + 2 woff2 自托管；CJK 无 webfont 系统兜底（r1 关键复刻约束）；emoji 字体族进 font stack | — | 沿用 | woff2 文件与位图图标下载归 #44 素材清单（§9） |
@@ -242,7 +242,7 @@ migration 纪律：drizzle-kit 生成、进 repo、CI 校验 drift；**不发明
 | 图标字形提取（登录态抓 workspace bundle/SVG）、字体 woff2 与位图图标下载、emoji 常用网格子集、PWA 品牌槽替换 | **#44 素材清单增补** |
 | 像素 diff 验收工具与逐屏 UI 规格切分 | 已落地：#53 parity harness 建成，验收规则正典 = 04 册 §2（本册 §7.5 对拍义务已兑现） |
 | pi 0.86.0 升级窗口评估（读 Breaking 段） | 已落地：#107 首个 D6 窗口兑现——Breaking 三条全缝外（缝内吸收点 = 零），pin 0.86.0（§4.3） |
-| react-router 8.4.0 升级票 | Tailwind 4.x 已落地（#106：4.3.3 + `@theme inline` token 层 + `@custom-variant dark`，全矩阵 174 行 0 失败，§4.1）；TS 7.0.2 已落地（#104，§4.5）；余 react-router（#105）；节奏 = 03 册 §3（M6 后） |
+| 框架升级票（TS 7 / Tailwind 4 / react-router 8） | 全落地：TS 7.0.2（#104，§4.5）、Tailwind 4.3.3（#106：+ `@theme inline` token 层 + `@custom-variant dark`，全矩阵 174 行 0 失败，§4.1）、react-router 8.4.0（#105，§4.1）；节奏 = 03 册 §3（M6 后） |
 | turbo 引入 | CI 时长成痛点时触发（承旧） |
 | transcript 虚拟滚动（@tanstack/react-virtual 候选） | 实现期按实测定，不预锁 |
 | `preview-token`/`tds-tunnel` | 02 §9.3 在册不设计；触发条件 = 04 册附录 B |
