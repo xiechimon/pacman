@@ -1,5 +1,5 @@
 // en-coverage gate (issue #74 acceptance: 语言切换全已建屏生效). Walks the
-// app source with the TypeScript AST and enforces the zh-as-key contract:
+// app source with the TypeScript scanner and enforces the zh-as-key contract:
 //
 //   1. every CJK string literal under src/ (fixtures/ excluded — that is
 //      user/agent data, which never translates) is either an EN dict key
@@ -13,10 +13,18 @@
 // A miss in (1) means the en screen would show a zh string; the identity
 // fallback keeps it readable but the acceptance line demands the switch
 // works on every built surface.
+//
+// TS 7 note: the native compiler no longer ships the old JS parser API
+// (`ts.createSourceFile`); `typescript/unstable/ast` exposes the scanner,
+// so this gate walks tokens with a small state machine — brace depth tracks
+// template substitutions (`${` … `}` rescans as template), and JSX text is
+// entered via `scanJsxToken` after an opening tag. Verified token-for-token
+// equivalent to the TS 5 AST walk on this tree (literals / quasis / JSX
+// text inventories identical).
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import ts from 'typescript';
+import { createScanner, LanguageVariant, SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 import { PROBE_TOOL_CALL_LABEL } from '../src/fixtures/fixtures.js';
 import { EN } from '../src/i18n/en.js';
@@ -40,6 +48,26 @@ const COMPUTED_KEYS = new Set<string>([PROBE_TOOL_CALL_LABEL]);
 const EXCLUDED_DIRS = ['fixtures', 'api'];
 const EXCLUDED_FILES = ['i18n/en.ts'];
 
+/** Tokens after which `<` continues an expression (comparison, generic
+ *  argument list) instead of opening JSX. */
+const NO_JSX_AFTER = new Set<SyntaxKind>([
+  SyntaxKind.Identifier,
+  SyntaxKind.PrivateIdentifier,
+  SyntaxKind.NumericLiteral,
+  SyntaxKind.BigIntLiteral,
+  SyntaxKind.StringLiteral,
+  SyntaxKind.NoSubstitutionTemplateLiteral,
+  SyntaxKind.TemplateTail,
+  SyntaxKind.RegularExpressionLiteral,
+  SyntaxKind.CloseParenToken,
+  SyntaxKind.CloseBracketToken,
+  SyntaxKind.ThisKeyword,
+  SyntaxKind.SuperKeyword,
+  SyntaxKind.TrueKeyword,
+  SyntaxKind.FalseKeyword,
+  SyntaxKind.NullKeyword,
+]);
+
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
@@ -62,28 +90,139 @@ interface Found {
 function scan(file: string): Found[] {
   const rel = relative(SRC, file).replaceAll('\\', '/');
   const text = readFileSync(file, 'utf8');
-  const ast = ts.createSourceFile(
-    rel,
+  const isTsx = rel.endsWith('.tsx');
+  const scanner = createScanner(
+    /* skipTrivia */ true,
+    isTsx ? LanguageVariant.JSX : LanguageVariant.Standard,
     text,
-    ts.ScriptTarget.Latest,
-    /* setParentNodes */ true,
-    rel.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
   );
   const found: Found[] = [];
-  const visit = (node: ts.Node) => {
-    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
-      if (CJK.test(node.text)) found.push({ rel, text: node.text, kind: 'literal' });
-    } else if (ts.isTemplateExpression(node)) {
-      const quasis = [node.head, ...node.templateSpans.map((s) => s.literal)];
-      if (quasis.some((q) => CJK.test(q.text))) {
-        found.push({ rel, text: node.getText(), kind: 'template' });
+  let braceDepth = 0;
+  /** braceDepth at which `}` closes the innermost template substitution. */
+  const templateStack: number[] = [];
+  /** per-template aggregation so one finding carries the whole raw template. */
+  const openTemplates: { start: number; cjk: boolean }[] = [];
+  let rescanTemplate = false;
+  let lastTok = SyntaxKind.Unknown;
+  let prevTok = SyntaxKind.Unknown;
+
+  /** Next token in code context; records string/template findings. */
+  const advance = (): SyntaxKind => {
+    const tok = rescanTemplate ? scanner.reScanTemplateToken(false) : scanner.scan();
+    rescanTemplate = false;
+    prevTok = lastTok;
+    lastTok = tok;
+    if (tok === SyntaxKind.OpenBraceToken) {
+      braceDepth++;
+    } else if (tok === SyntaxKind.CloseBraceToken) {
+      const top = templateStack[templateStack.length - 1];
+      if (top !== undefined && braceDepth === top) {
+        rescanTemplate = true; // `}` closed a template substitution
+      } else {
+        braceDepth--;
       }
-    } else if (ts.isJsxText(node)) {
-      if (CJK.test(node.text)) found.push({ rel, text: node.text.trim(), kind: 'jsx-text' });
     }
-    ts.forEachChild(node, visit);
+    if (tok === SyntaxKind.StringLiteral || tok === SyntaxKind.NoSubstitutionTemplateLiteral) {
+      const v = scanner.getTokenValue();
+      if (CJK.test(v)) found.push({ rel, text: v, kind: 'literal' });
+    } else if (tok === SyntaxKind.TemplateHead) {
+      templateStack.push(braceDepth);
+      openTemplates.push({ start: scanner.getTokenStart(), cjk: CJK.test(scanner.getTokenValue()) });
+    } else if (tok === SyntaxKind.TemplateMiddle) {
+      const t = openTemplates[openTemplates.length - 1];
+      if (t) t.cjk ||= CJK.test(scanner.getTokenValue());
+    } else if (tok === SyntaxKind.TemplateTail) {
+      templateStack.pop();
+      const t = openTemplates.pop();
+      if (t && (t.cjk || CJK.test(scanner.getTokenValue()))) {
+        found.push({ rel, text: text.slice(t.start, scanner.getTokenEnd()), kind: 'template' });
+      }
+    }
+    return tok;
   };
-  visit(ast);
+
+  /** Consume tokens until the `}` matching the `{` the caller just ate. */
+  const scanCodeUntilClose = (): void => {
+    const stop = braceDepth - 1;
+    for (;;) {
+      const tok = advance();
+      if (tok === SyntaxKind.EndOfFile || braceDepth <= stop) return;
+      if (isTsx && tok === SyntaxKind.LessThanToken && !NO_JSX_AFTER.has(prevTok)) {
+        scanJsxElement();
+      }
+    }
+  };
+
+  /** LessThanToken just consumed in JSX position: eat tag + children. */
+  const scanJsxElement = (): void => {
+    let tok = advance();
+    if (tok === SyntaxKind.EndOfFile) return;
+    if (tok === SyntaxKind.GreaterThanToken) {
+      scanJsxChildren(); // <> fragment
+      return;
+    }
+    for (;;) {
+      if (tok === SyntaxKind.EndOfFile) return;
+      if (tok === SyntaxKind.GreaterThanToken) {
+        scanJsxChildren();
+        return;
+      }
+      if (tok === SyntaxKind.SlashToken) {
+        advance(); // self-closing: consume `>`
+        return;
+      }
+      if (tok === SyntaxKind.OpenBraceToken) {
+        scanCodeUntilClose(); // spread attribute
+        tok = advance();
+        continue;
+      }
+      if (tok === SyntaxKind.EqualsToken) {
+        const v = advance();
+        if (v === SyntaxKind.OpenBraceToken) scanCodeUntilClose();
+        // else attribute string literal — already recorded by advance()
+        tok = advance();
+        continue;
+      }
+      tok = advance(); // tag-name part or attribute name
+    }
+  };
+
+  const scanJsxChildren = (): void => {
+    for (;;) {
+      const tok = scanner.scanJsxToken();
+      prevTok = lastTok;
+      lastTok = tok;
+      if (tok === SyntaxKind.EndOfFile) return;
+      if (tok === SyntaxKind.JsxText || tok === SyntaxKind.JsxTextAllWhiteSpaces) {
+        const v = scanner.getTokenText();
+        if (CJK.test(v)) found.push({ rel, text: v.trim(), kind: 'jsx-text' });
+        continue;
+      }
+      if (tok === SyntaxKind.OpenBraceToken) {
+        braceDepth++;
+        scanCodeUntilClose(); // { expression } container
+        continue;
+      }
+      if (tok === SyntaxKind.LessThanToken) {
+        scanJsxElement(); // nested element
+        continue;
+      }
+      if (tok === SyntaxKind.LessThanSlashToken) {
+        let t = advance(); // closing tag: consume through `>`
+        while (t !== SyntaxKind.GreaterThanToken && t !== SyntaxKind.EndOfFile) t = advance();
+        return;
+      }
+      return; // unexpected token — bail rather than spin
+    }
+  };
+
+  for (;;) {
+    const tok = advance();
+    if (tok === SyntaxKind.EndOfFile) break;
+    if (isTsx && tok === SyntaxKind.LessThanToken && !NO_JSX_AFTER.has(prevTok)) {
+      scanJsxElement();
+    }
+  }
   return found;
 }
 
