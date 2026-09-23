@@ -368,11 +368,17 @@ export const matrix = [
     baseline: '19-状态芯片弹层-待确认-light.png',
   },
   {
+    // 重定基线（#121，2026-09-24）：原站基线 29 含侧栏底部「安装 App」
+    // accent pill，#121 dogfood 裁决整体去除——本行弹层 CJK 行本为跨平台
+    // 栅格化噪声的卡阈值行（mac 0.8521 / ubuntu 卡线跌穿），pill 去除的
+    // 预期结构差吃掉余量；基线切自渲染产物（parity/baselines/）；原站截图
+    // 按 D4(a) 留 docs/research/assets/r7/ 作研究证据不删。触发依据 =
+    // #121 What-to-do 去除裁决 + 01 §8 差异注记行。
     id: 'chip-popover-review-light',
     route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
     scenario: '29',
     theme: 'light',
-    baseline: '29-状态芯片弹层-审核-light.png',
+    baseline: 'rebaseline/29-状态芯片弹层-审核-light.png',
   },
   {
     id: 'plan-dropdown-light',
