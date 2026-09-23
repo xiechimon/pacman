@@ -19,7 +19,7 @@ export const daemonConfigSchema = z.object({
   teamId: z.string().optional(),
   /** --name 默认 hostname（r3 §1.1）。 */
   name: z.string(),
-  /** TDS_HOME 默认 ~/.tds（02 §5.3 布局根）。 */
+  /** PACMAN_HOME 默认 ~/.pacman（02 §5.3 布局根；r3 §1.1 实测原名 TDS_HOME）。 */
   home: z.string(),
   /** 持久工作区根（02 §5.5 baseRepo/任务目录的父层）。 */
   workspacesDir: z.string(),

@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import {
   type AgentRecord,
   apiKeyRecordSchema,
+  BRAND,
   type BuildRecord,
   buildStepActionBodySchema,
   chiefSendMessageBodySchema,
@@ -111,8 +112,9 @@ import { search } from './services/search.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './services/secrets.js';
 import { createTodo, deleteTodo, getTodo, listTodos, updateTodo } from './services/todos.js';
 
-/** 会话 cookie 名 [设计]（01 §4.2：httpOnly cookie 自设；品牌槽归 #44）。 */
-export const SESSION_COOKIE = 'tds_session';
+/** 会话 cookie 名 [设计]（01 §4.2：httpOnly cookie 自设；品牌槽已随 D3 切换，#109，
+ * 单源 = shared BRAND.sessionCookieName）。 */
+export const SESSION_COOKIE = BRAND.sessionCookieName;
 
 /** git http 认证域 [设计]（Basic realm；品牌槽归 #44）。 */
 const GIT_AUTH_REALM = 'pacman-git';

@@ -3,6 +3,7 @@
 // centered column with the 4 tabs (Agent / 章程 / 记忆 / 关注与提醒). The
 // tab row is real state; parity captures take the fixture's tab.
 
+import { BRAND } from '@pacman/shared';
 import { useState } from 'react';
 import type { ChiefContent, ChiefSettingsTab } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -55,7 +56,10 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
                 <h3>{t('压缩模型')}</h3>
                 <p>
                   {t(
-                    '压缩上下文时用来生成摘要的模型，选更快的模型可缩短等待。需要 tds CLI 0.1.49 及以上版本。',
+                    '压缩上下文时用来生成摘要的模型，选更快的模型可缩短等待。需要 {cli} CLI 0.1.49 及以上版本。',
+                    {
+                      cli: BRAND.cliCommandName,
+                    },
                   )}
                 </p>
               </div>

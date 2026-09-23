@@ -1,4 +1,4 @@
-// 代理探测（02 §5.6/r3 §1.5：启动读系统/环境代理并打印 `[tds] Proxy: <url>`；
+// 代理探测（02 §5.6/r3 §1.5：启动读系统/环境代理并打印 `[pacman] Proxy: <url>`；
 // 代理死持续重试不退出——重试纪律在 machine-loop）。env 词表 = undici
 // EnvHttpProxyAgent honor 三件（01 §4.3：HTTP_PROXY/HTTPS_PROXY/NO_PROXY）。
 

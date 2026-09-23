@@ -46,7 +46,7 @@ import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 // unmounts BoardSurface but keeps the shell, so the route imports them too
 import '../board/board.css';
 
-export const SIDEBAR_STORAGE_KEY = 'tds.sidebar-collapsed'; // mirrored in parity/run.mjs
+export const SIDEBAR_STORAGE_KEY = 'pacman.sidebar-collapsed'; // mirrored in parity/run.mjs
 
 function readCollapsed(storage: Storage): boolean {
   return storage.getItem(SIDEBAR_STORAGE_KEY) === '1';

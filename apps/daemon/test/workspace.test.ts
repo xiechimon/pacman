@@ -19,7 +19,7 @@ import { commitEnv, gitPrim, runGit } from '../src/git.js';
 import type { DaemonLogger } from '../src/log.js';
 import { WorkspaceManager } from '../src/workspace.js';
 
-const IDENTITY = { name: 'it-agent', email: 'it@tds.local' };
+const IDENTITY = { name: 'it-agent', email: 'it@pacman.local' };
 
 function fakeLogger(): DaemonLogger & { lines: string[] } {
   const lines: string[] = [];
@@ -81,7 +81,7 @@ beforeEach(async () => {
 });
 
 describe('worktree 契约（02 §5.5 / r3 §1.4）', () => {
-  test('prepare：基座 clone 落 <root>/<projectId>/repo + worktree add -b 落 <root>/<convId>，分支 tds/conv-*', async () => {
+  test('prepare：基座 clone 落 <root>/<projectId>/repo + worktree add -b 落 <root>/<convId>，分支 pacman/conv-*', async () => {
     const prepared = await ws.prepare(prepareInput(CONV_A));
     expect(prepared.cwd).toBe(join(root, CONV_A));
     expect(prepared.baseRepoDir).toBe(join(root, PROJECT_ID, 'repo'));

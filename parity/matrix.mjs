@@ -9,10 +9,11 @@
 //              (the chief surfaces have no r7 shot — r7 §6 gap table, #72);
 //              surfaces with no research capture number at all (issue #70
 //              secondary routes) use a named id instead and ride smoke pairs
-//   theme      'dark' | 'light' (injected via localStorage tds-theme)
+//   theme      'dark' | 'light' (injected via localStorage pacman-theme;
+//              原键 tds-theme，D3 品牌槽同形替换 #109)
 //   scrollLeft optional: number, or 'max' for rightmost board scroll,
 //              applied to the element carrying [data-parity-scroll]
-//   sidebarCollapsed  optional: true → injects tds.sidebar-collapsed=1
+//   sidebarCollapsed  optional: true → injects pacman.sidebar-collapsed=1
 //              before load so the 40px rail renders (r7 03)
 //   clicks   optional: CSS selectors clicked in order after load, an
 //              animation-settle between each — opens overlay surfaces (#66)
@@ -27,7 +28,7 @@
 //              the r8 overlay session capped its dark baselines at
 //              1440×710, so those rows capture at the same size
 //              (centering law still holds, r7 §3.5 formula)
-//   locale     optional: 'en' → injects tds.locale/tds-locale=en before
+//   locale     optional: 'en' → injects pacman.locale/pacman-locale=en before
 //              load so the en fallback dict renders (issue #74; absent =
 //              the zh-CN authoritative default). Every official capture is
 //              zh, so en rows ride smoke pairs — no en baseline exists.
@@ -43,6 +44,10 @@
 //              Rows switched to a later capture batch (04 §2 A6) use a
 //              batch-prefixed path, e.g. 'r8/57-运行历史-失败态单行-light.png';
 //              run.mjs resolves prefixed paths under docs/research/assets/.
+//              D3 重定基线批（#109）：原站基线含 tds_/Todos 品牌字样的行，
+//              baseline 切 'rebaseline/<id>.png'（渲染产物，存
+//              parity/baselines/；原站截图按 D4(a) 留 assets/ 作证据不删），
+//              行级注释登记处置与触发依据。
 //   threshold  optional per-pair SSIM override
 
 export const VIEWPORT = { width: 1440, height: 732 };
@@ -270,11 +275,15 @@ export const matrix = [
     baseline: '30-Token用量弹层-light.png',
   },
   {
+    // D3 重定基线（#109，2026-09-23）：原站基线 31 的构建分支行含品牌前缀
+    // `tds/conv-…`，替换相位渲染 `pacman/conv-…`（分支前缀 = 品牌槽）——
+    // 基线切自渲染产物；原站截图按 D4(a) 留 docs/research/assets/r7/ 作
+    // 研究证据不删。
     id: 'overlay-branch-light',
     route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
     scenario: '31',
     theme: 'light',
-    baseline: '31-分支与PR弹层-light.png',
+    baseline: 'rebaseline/31-分支与PR弹层-light.png',
   },
   {
     id: 'overlay-history-light',
@@ -308,11 +317,14 @@ export const matrix = [
     baseline: 'r8/78-Token用量弹层-dark.png',
   },
   {
+    // D3 重定基线（#109，2026-09-23）：原站基线 r8/79 的构建分支行含品牌前缀
+    // `tds/conv-…`，替换相位渲染 `pacman/conv-…`——基线切自渲染产物；原站
+    // 截图按 D4(a) 留 docs/research/assets/r8/ 作研究证据不删。
     id: 'overlay-branch-dark',
     route: '/app/todo/r3-legacy-1',
     scenario: '31d',
     theme: 'dark',
-    baseline: 'r8/79-分支与PR弹层-dark.png',
+    baseline: 'rebaseline/79-分支与PR弹层-dark.png',
   },
   {
     id: 'overlay-history-dark',
@@ -806,11 +818,15 @@ export const matrix = [
   // 用量 nav row, the 看板 attention badge and the avatar FAB — so gating
   // them waits on the A6 rebaseline decision
   {
+    // D3 重定基线（#109，2026-09-23）：原站基线 06 含品牌字样「Todos 托管
+    // 机器」，替换相位渲染为「Pacman 托管机器」——基线切自渲染产物
+    // （parity/baselines/）；原站截图按 D4(a) 留 docs/research/assets/r7/
+    // 作研究证据不删。触发依据 = 素材替换计划 §2/§3.4 品牌槽 + D3 触发。
     id: 'resources-machines-light',
     route: '/app/resources/machines',
     scenario: '06',
     theme: 'light',
-    baseline: '06-resources-machines.png',
+    baseline: 'rebaseline/06-resources-machines.png',
   },
   // gate rows (issue #70): secondary routes batch B — team and account
   // carry r7 baselines; api-keys/feedback have no r7 capture (r2 19/32
@@ -849,11 +865,14 @@ export const matrix = [
   { id: 'feedback-light', route: '/app/feedback', scenario: 'feedback', theme: 'light' },
   { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' },
   {
+    // D3 重定基线（#109，2026-09-23）：原站基线 07 含品牌字样「Todos（内
+    // 置）」，替换相位渲染为「Pacman（内置）」——基线切自渲染产物；原站截图
+    // 按 D4(a) 留 docs/research/assets/r7/ 作研究证据不删。
     id: 'resources-providers-light',
     route: '/app/resources/providers',
     scenario: '07',
     theme: 'light',
-    baseline: '07-resources-providers.png',
+    baseline: 'rebaseline/07-resources-providers.png',
   },
   {
     id: 'resources-skills-light',

@@ -2,15 +2,16 @@
 // authoritative with en as the only fallback language — zh-TW/ja are not
 // built (no observed truth for them, 01 §4.1 i18n row). Persistence uses
 // the r2 §1.5 observed dual-key contract: the official app writes both
-// `tds.locale` and `tds-locale` with the bare code (`zh` observed; `en`
-// is [推断] — the dropdown option set was never captured, r2 §11 Q19).
-// Keys are brand slots (brand.ts localStoragePrefix); replacement lands
-// with the #44 phase flip.
+// keys (原键 `tds.locale` + `tds-locale`) with the bare code (`zh`
+// observed; `en` is [推断] — the dropdown option set was never captured,
+// r2 §11 Q19). Keys are brand slots (brand.ts localStoragePrefix);
+// replacement 已执行（D3 触发，#109）：`pacman.locale` + `pacman-locale`
+// 同形替换（素材替换计划 §2）。
 
 export type Locale = 'zh' | 'en';
 
 /** Both observed spellings, read order = write order (r2 §1.5). */
-export const LOCALE_STORAGE_KEYS = ['tds.locale', 'tds-locale'] as const;
+export const LOCALE_STORAGE_KEYS = ['pacman.locale', 'pacman-locale'] as const;
 
 /** zh-CN is authoritative (01 S6) — everything unset/unknown lands here. */
 export const DEFAULT_LOCALE: Locale = 'zh';

@@ -4,7 +4,7 @@
 // → 审核 → merge 202 delegated → 合并步（continue session + git merge
 // --no-edit + server bare repo main fast-forward）→ done。
 // 同测覆盖：worktree 契约对照 r3 §1.4/02 §5.5（目录名=conversationId、分支
-// tds/conv-*、基座 <projectId>/repo、pushed 日志行）、per-step 凭证不落盘
+// pacman/conv-*、基座 <projectId>/repo、pushed 日志行）、per-step 凭证不落盘
 // （02 §8：git 凭证一次性发行/步收尾回收 + daemon home/worktree 无凭证残留
 // 扫盘）、失败仅人工重跑（02/A6：provider 400 → failed → 无自动重跑 →
 // POST builds 重跑 = 新 conv/新分支）。
@@ -146,10 +146,10 @@ describe('M3b demo：单机全生命周期实跑 todo→done（02 §4.2 主时�
     await waitFor(() => server.todoPhase(world.todoId) === 'confirm', 120_000);
 
     // —— buildId ≡ conversationId 收敛（CONTEXT.md 实体等式）：worktree 目录名
-    // = conversationId = buildId；分支 = tds/conv-<buildId>（02 §5.5）——
+    // = conversationId = buildId；分支 = pacman/conv-<buildId>（02 §5.5）——
     const convDir = join(paths.workspacesDir, buildId);
     expect(existsSync(join(convDir, 'plan.md'))).toBe(true);
-    const branch = `tds/conv-${buildId}`;
+    const branch = `pacman/conv-${buildId}`;
     const branchSha = await systemGitOps.resolveCommit(bareDir, `refs/heads/${branch}`);
     expect(branchSha).toMatch(/^[0-9a-f]{40}$/);
     // 基座布局 <workspacesRoot>/<projectId>/repo（02 §5.5 行 1）。
@@ -205,7 +205,7 @@ describe('M3b demo：单机全生命周期实跑 todo→done（02 §4.2 主时�
       'utf8',
     );
     expect(gitConfig).not.toContain('credential');
-    expect(gitConfig).not.toContain('tds_');
+    expect(gitConfig).not.toContain('pacman_');
   }, 150_000);
 
   test('确认 → 执行：continue session + bash 真改动 → commit/push → review + hasChanges（git 真值）', async () => {
@@ -227,7 +227,10 @@ describe('M3b demo：单机全生命周期实跑 todo→done（02 §4.2 主时�
     expect(logLines().some((l) => l.includes(`continue session ${buildId}`))).toBe(true);
 
     // 远端 conv 分支 README 已带探针行（执行步 commit+push，02 §5.5 每步 push）。
-    const branchSha = await systemGitOps.resolveCommit(bareDir, `refs/heads/tds/conv-${buildId}`);
+    const branchSha = await systemGitOps.resolveCommit(
+      bareDir,
+      `refs/heads/pacman/conv-${buildId}`,
+    );
     const readme = await systemGitOps.readFileAt(bareDir, branchSha!, 'README.md');
     expect(readme).not.toBeNull();
     expect(new TextDecoder().decode(readme!.content)).toContain('m3b probe line');
@@ -336,7 +339,7 @@ describe('M3b demo：单机全生命周期实跑 todo→done（02 §4.2 主时�
     const bareDir2 = join(server.reposDir, server.teamId, 'm3b-failure.git');
     const branch2 = await systemGitOps.resolveCommit(
       bareDir2,
-      `refs/heads/tds/conv-${rerunBuildId}`,
+      `refs/heads/pacman/conv-${rerunBuildId}`,
     );
     expect(branch2).toMatch(/^[0-9a-f]{40}$/);
     // 失败轮的旧 conv 目录仍在（工作保全分支语义，r3 §3.7 面板文案族）。

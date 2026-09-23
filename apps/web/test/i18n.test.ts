@@ -1,7 +1,9 @@
 // i18n core seam (issue #74): workspace zh-CN authoritative + en fallback
 // (01-stack-v2 §4.1 i18n row, S6). Locale persistence follows the r2 §1.5
-// observed dual-key contract (`tds.locale` + `tds-locale`, value `zh`; `en`
-// is [推断] — the official dropdown set was never observed, r2 §11 Q19).
+// observed dual-key contract (原键 `tds.locale` + `tds-locale`，value `zh`；
+// `en` is [推断] — the official dropdown set was never observed, r2 §11
+// Q19). D3 替换相位（#109）：键前缀 `pacman.locale` + `pacman-locale`
+// 同形替换（素材替换计划 §2 localStorage 键族）。
 // zh renders must be identity — the 107-row parity matrix is the regression
 // gate, so t() must never rewrite the canonical source string.
 
@@ -35,18 +37,20 @@ describe('readStoredLocale', () => {
     expect(readStoredLocale(fakeStorage())).toBe('zh');
   });
 
-  it('reads the observed dual keys (r2 §1.5)', () => {
-    expect(LOCALE_STORAGE_KEYS).toEqual(['tds.locale', 'tds-locale']);
-    expect(readStoredLocale(fakeStorage({ 'tds.locale': 'en', 'tds-locale': 'en' }))).toBe('en');
+  it('reads the observed dual keys (r2 §1.5, pacman 同形替换)', () => {
+    expect(LOCALE_STORAGE_KEYS).toEqual(['pacman.locale', 'pacman-locale']);
+    expect(readStoredLocale(fakeStorage({ 'pacman.locale': 'en', 'pacman-locale': 'en' }))).toBe(
+      'en',
+    );
     // either key alone is enough — the official app writes both, but a
     // partially-migrated profile must still resolve
-    expect(readStoredLocale(fakeStorage({ 'tds-locale': 'en' }))).toBe('en');
+    expect(readStoredLocale(fakeStorage({ 'pacman-locale': 'en' }))).toBe('en');
   });
 
   it('ignores unknown values (future locale codes fall back to zh)', () => {
-    expect(readStoredLocale(fakeStorage({ 'tds.locale': 'zh-TW', 'tds-locale': 'zh-TW' }))).toBe(
-      'zh',
-    );
+    expect(
+      readStoredLocale(fakeStorage({ 'pacman.locale': 'zh-TW', 'pacman-locale': 'zh-TW' })),
+    ).toBe('zh');
   });
 });
 
@@ -54,7 +58,7 @@ describe('persistLocale', () => {
   it('writes both observed keys with the bare code', () => {
     const storage = fakeStorage();
     persistLocale('en', storage);
-    expect(storage.dump()).toEqual({ 'tds.locale': 'en', 'tds-locale': 'en' });
+    expect(storage.dump()).toEqual({ 'pacman.locale': 'en', 'pacman-locale': 'en' });
   });
 });
 

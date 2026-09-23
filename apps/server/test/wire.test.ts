@@ -206,7 +206,7 @@ describe('seed 保形端点（02 §2）', () => {
       const res = await req(s.app, 'GET', path);
       expect(res.status).toBe(200);
       expect(userRecordSchema.safeParse(await res.json()).success).toBe(true);
-      expect(res.headers.get('set-cookie')).toContain('tds_session='); // httpOnly cookie 自设（01 §4.2）
+      expect(res.headers.get('set-cookie')).toContain('pacman_session='); // httpOnly cookie 自设（01 §4.2）
       expect(res.headers.get('set-cookie')).toContain('HttpOnly');
     }
   });

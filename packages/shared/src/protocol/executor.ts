@@ -33,9 +33,9 @@ export const CLI_START_OPTIONS = [
   '--workspaces-dir',
 ] as const;
 
-/** workspaces-dir 护栏 canon（r3 §1.1 help 原话）。 */
-export const WORKSPACES_DIR_GUARD_CANON =
-  'if that drive is unmounted tds refuses to start instead of cloning onto the boot disk';
+/** workspaces-dir 护栏 canon（r3 §1.1 help 原话行形；原句前缀 = 品牌槽，
+ * 替换相位随 BRAND.cliCommandName，#109）。 */
+export const WORKSPACES_DIR_GUARD_CANON = `if that drive is unmounted ${BRAND.cliCommandName} refuses to start instead of cloning onto the boot disk`;
 
 /** 发行形态（01 §4.3/S9，divergence 登记 04 §1）：纯 JS npm 包（esbuild
  * 单文件 + node shebang），不复刻 6 平台二进制；默认 detached + supervisor

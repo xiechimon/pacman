@@ -258,7 +258,7 @@ export const EN: Record<string, string> = {
   创建项目: 'Create project',
   基本信息: 'Basic info',
   标签: 'Tags',
-  'Todos 托管': 'Todos hosted',
+  'Pacman 托管': 'Pacman hosted',
   目标分支: 'Target branch',
   危险操作: 'Danger zone',
   删除项目: 'Delete project',
@@ -279,8 +279,8 @@ export const EN: Record<string, string> = {
   关注与提醒: 'Watches & reminders',
   未设置: 'Not set',
   压缩模型: 'Compaction model',
-  '压缩上下文时用来生成摘要的模型，选更快的模型可缩短等待。需要 tds CLI 0.1.49 及以上版本。':
-    'The model used to summarize context during compaction — a faster one shortens the wait. Requires tds CLI 0.1.49 or later.',
+  '压缩上下文时用来生成摘要的模型，选更快的模型可缩短等待。需要 {cli} CLI 0.1.49 及以上版本。':
+    'The model used to summarize context during compaction — a faster one shortens the wait. Requires {cli} CLI 0.1.49 or later.',
   '默认（与 Chief 相同）': 'Default (same as Chief)',
   '尚无章程。点击编辑，为总管添加常设指示。':
     'No charter yet. Click edit to give the Chief standing instructions.',
@@ -302,11 +302,11 @@ export const EN: Record<string, string> = {
   '运行在 ': 'Running on ',
   '远程（HTTP）': 'Remote (HTTP)',
   '2 天前': '2d ago',
-  'Todos 托管机器': 'Todos hosted machine',
+  'Pacman 托管机器': 'Pacman hosted machine',
   '随时在线，构建速度快。空闲自动休眠，仅在运行时消耗积分。':
     'Always online and quick to build. Sleeps automatically when idle; consumes credits only while running.',
   未启用: 'Disabled',
-  'Todos（内置）': 'Todos (built-in)',
+  'Pacman（内置）': 'Pacman (built-in)',
   '8 模型': '8 models',
   '12 模型': '12 models',
   // —— overlay dialogs (issues #66 / #68) ——

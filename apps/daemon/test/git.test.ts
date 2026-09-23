@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { gitCredentialEnv } from '../src/git.js';
 
-const CRED = { username: 'git', password: 'tds_fresh_token_123' };
+const CRED = { username: 'git', password: 'pacman_fresh_token_123' };
 
 describe('gitCredentialEnv — per-step 凭证 env 注入（02 §8 不落盘）', () => {
   test('前置空值 credential.helper 重置系统/全局 helper 列表', () => {

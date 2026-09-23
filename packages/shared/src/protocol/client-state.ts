@@ -1,8 +1,9 @@
 // 客户端状态——02 §6.4：localStorage 键名清单 r2 §1.5 实测，直接作复刻契约
 // （键名前缀 = 品牌位，brand.ts localStoragePrefix 槽）。
-// 命名规范（r2 §1.5 要点）：`tds.cache.<entity>-v<N>:<scope…>`，scope 为
+// 命名规范（r2 §1.5 要点，原形 `tds.cache.<entity>-v<N>:<scope…>`），scope 为
 // userId/teamId 组合 → cache-first + 版本化 + 多租户分片。
-// 替换相位 = `pacman-` / `pacman.` 同形替换（素材替换计划 §2）。
+// 替换相位（D3 已触发 2026-09-23，#109）：`pacman-` / `pacman.` 同形替换
+// （素材替换计划 §2）；source 列 = r2/r5 观测出处（原键形证据）。
 
 export interface ClientStateKey {
   readonly key: string;
@@ -11,53 +12,57 @@ export interface ClientStateKey {
 }
 
 export const LOCAL_STORAGE_KEYS: readonly ClientStateKey[] = [
-  { key: 'tds-theme', valueShape: 'light | dark', source: 'r2 §1.5' },
-  { key: 'tds.locale', valueShape: 'zh', source: 'r2 §1.5（与 tds-locale 双形实测）' },
-  { key: 'tds-locale', valueShape: 'zh', source: 'r2 §1.5' },
-  { key: 'tds.sidebarProjectsCollapsed', valueShape: '"1"', source: 'r2 §1.5' },
-  { key: 'tds.panel-maximized', valueShape: '"0"', source: 'r2 §1.5' },
-  { key: 'tds.teamMembersLayout', valueShape: 'grid | chart', source: 'r2 §1.5（团队页视图切换）' },
+  { key: 'pacman-theme', valueShape: 'light | dark', source: 'r2 §1.5' },
+  { key: 'pacman.locale', valueShape: 'zh', source: 'r2 §1.5（与 pacman-locale 双形，原键同构）' },
+  { key: 'pacman-locale', valueShape: 'zh', source: 'r2 §1.5' },
+  { key: 'pacman.sidebarProjectsCollapsed', valueShape: '"1"', source: 'r2 §1.5' },
+  { key: 'pacman.panel-maximized', valueShape: '"0"', source: 'r2 §1.5' },
   {
-    key: 'tds.cache.session-v1',
+    key: 'pacman.teamMembersLayout',
+    valueShape: 'grid | chart',
+    source: 'r2 §1.5（团队页视图切换）',
+  },
+  {
+    key: 'pacman.cache.session-v1',
     valueShape: '{token:"",cookieName:"",expiresAt,user{…}}——会话走 cookie，token 字段留空',
     source: 'r2 §1.5',
   },
   {
-    key: 'tds.cache.me-v1:<userId>',
+    key: 'pacman.cache.me-v1:<userId>',
     valueShape: '{type:"user",id,displayName,avatarUrl,…}',
     source: 'r2 §1.5',
   },
   {
-    key: 'tds.cache.teams-v1:<userId>',
+    key: 'pacman.cache.teams-v1:<userId>',
     valueShape: '[{id,name,createdAt,plan:"free",avatarStyle:"notionist…"}]',
     source: 'r2 §1.5',
   },
   {
-    key: 'tds.cache.members-v1:<userId>:<teamId>',
+    key: 'pacman.cache.members-v1:<userId>:<teamId>',
     valueShape: '[{id,teamId,actorId,memberType:"user",…}]',
     source: 'r2 §1.5',
   },
-  { key: 'tds.cache.projects-v1:<userId>:<teamId>', valueShape: '[]', source: 'r2 §1.5' },
-  { key: 'tds.cache.team-models-v1:<teamId>', valueShape: '{"models":[]}', source: 'r2 §1.5' },
-  { key: 'tds.cache.team-machines-v1:<teamId>', valueShape: '[]', source: 'r2 §1.5' },
+  { key: 'pacman.cache.projects-v1:<userId>:<teamId>', valueShape: '[]', source: 'r2 §1.5' },
+  { key: 'pacman.cache.team-models-v1:<teamId>', valueShape: '{"models":[]}', source: 'r2 §1.5' },
+  { key: 'pacman.cache.team-machines-v1:<teamId>', valueShape: '[]', source: 'r2 §1.5' },
   {
-    key: 'tds.cache.progress-v2:<userId>:<teamId>',
+    key: 'pacman.cache.progress-v2:<userId>:<teamId>',
     valueShape: '{"todos":[],"builds":[]}',
     source: 'r2 §1.5',
   },
   {
-    key: 'tds.cache.notifications-v2:<userId>:<teamId>',
+    key: 'pacman.cache.notifications-v2:<userId>:<teamId>',
     valueShape: '{"unreadThreadIds":[]}',
     source: 'r2 §1.5',
   },
   {
-    key: 'tds.cache.chief-data-v3:<userId>:<teamId>',
+    key: 'pacman.cache.chief-data-v3:<userId>:<teamId>',
     valueShape: '{"chief":{id:"chief-<user>-<team>",userId,teamId,…}}',
     source: 'r2 §1.5',
   },
-  { key: 'tds.cache.chief-threads-v1:<userId>:<teamId>', valueShape: '[]', source: 'r2 §1.5' },
+  { key: 'pacman.cache.chief-threads-v1:<userId>:<teamId>', valueShape: '[]', source: 'r2 §1.5' },
   {
-    key: 'tds.cache.chief-draft-v1:<teamId>:new',
+    key: 'pacman.cache.chief-draft-v1:<teamId>:new',
     valueShape: '草稿文本（跨会话恢复实测）',
     source: 'r5 §3.6 补录',
   },

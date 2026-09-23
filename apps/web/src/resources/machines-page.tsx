@@ -1,4 +1,4 @@
-// 机器 route (issue #69, r7 06): one grouped card — the `Todos 托管机器`
+// 机器 route (issue #69, r7 06): one grouped card — the `Pacman 托管机器`
 // row (indigo server tile, description line, 未启用 pill) above a divider
 // and one row per claimed machine (orange monitor tile, online dot,
 // id-tail subline) — then the dashed full-width 添加机器 button.

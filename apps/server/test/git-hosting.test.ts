@@ -40,7 +40,7 @@ afterAll(() => {
 let s: TestServer;
 let baseUrl: string;
 let closeServer: () => Promise<void>;
-const API_KEY = 'tds_e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0'; // 形态示意（发行面归 M2c）
+const API_KEY = 'pacman_e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0e2e0'; // 形态示意（发行面归 M2c）
 
 beforeAll(async () => {
   s = bootServer();
@@ -108,7 +108,7 @@ describe('托管形态：bare repo + git http-backend（02 §3 锁定）', () =>
     // 错误凭证同样 401
     const bad = new URL(hostedUrl(record));
     bad.username = 'git';
-    bad.password = 'tds_wrong';
+    bad.password = 'pacman_wrong';
     const r2 = await git(['clone', bad.toString(), join(dir, 'repo2')], dir);
     expect(r2.code).not.toBe(0);
   });
@@ -179,7 +179,7 @@ describe('托管形态：bare repo + git http-backend（02 §3 锁定）', () =>
     await git(['add', '.'], repoDir);
     await git(['commit', '-m', 'init'], repoDir);
     await git(['push', '-u', 'origin', 'main'], repoDir);
-    // 任务分支 = 品牌前缀 + conversationId（02 §5.5 词表；前缀 tds/ 品牌位 → #44）
+    // 任务分支 = 品牌前缀 + conversationId（02 §5.5 词表；前缀 pacman/ 品牌位，D3 已切换 #109）
     const convId = '01a0b85b-0000-7000-8000-000000000000';
     const branch = conversationBranch(convId);
     expect(branch).toBe(`${BRAND.branchPrefix}${convId}`);

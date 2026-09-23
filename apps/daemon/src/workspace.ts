@@ -1,7 +1,7 @@
 // worktree 契约落地（02 §5.5 全表，r3 §1.4 实测；shared WorktreeOps 缝的
 // daemon 实现，01 §4.3）：
 // - 基座 clone `<workspacesRoot>/<projectId>/repo`；任务 worktree
-//   `<workspacesRoot>/<conversationId>`；分支 `tds/conv-<conversationId>`
+//   `<workspacesRoot>/<conversationId>`；分支 `pacman/conv-<conversationId>`
 //   （brand.ts conversationBranch()）。
 // - `worktree add -b <branch> <dir> <base>`，base = origin/<convBranch>
 //   （已 fetch 时）否则 origin/<defaultBranch>。

@@ -209,7 +209,7 @@ async function boot(opts: {
   const config = loadDaemonConfig(
     {
       serverUrl: 'http://server',
-      apiKey: 'tds_k',
+      apiKey: 'pacman_k',
       teamId: 'team-1',
       home,
       name: 'test-mbp',

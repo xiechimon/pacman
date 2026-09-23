@@ -70,7 +70,7 @@ const ALL_WRITE = MCP_TOOL_REGISTRY.filter((t) => t.kind === 'write').map((t) =>
 describe('/api/mcp 认证面（02 §7.2：Bearer <apiKey>；mcpAccess 门）', () => {
   test('无凭证/坏凭证 = 401；mcpAccess=false = 403（错误形状 {error}）', async () => {
     const s = bootServer();
-    for (const key of [null, 'tds_deadbeef']) {
+    for (const key of [null, 'pacman_deadbeef']) {
       const res = await s.app.request('/api/mcp', {
         method: 'POST',
         headers: {

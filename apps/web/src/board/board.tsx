@@ -42,7 +42,7 @@ import './board.css';
 /** sessionStorage key for the board scroller's scrollLeft (#58 back-nav
  *  restore). [推断] key shape — the official key is unobservable; collision
  *  with a future real key is harmless (worst case: a stale offset). */
-const BOARD_SCROLL_KEY = 'tds.board-scroll-left';
+const BOARD_SCROLL_KEY = 'pacman.board-scroll-left';
 
 /** column id → todo ids in view order; the live-preview mirror while a
  *  drag is in flight (null = no gesture, render straight from the todos) */

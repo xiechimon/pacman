@@ -13,11 +13,13 @@ export const MCP_ENDPOINT_PATH = BRAND.remoteMcpPath;
  * records/api-key.ts）。 */
 export const MCP_AUTH_HEADER_FORMAT = 'Authorization: Bearer <apiKey>';
 
-/** 配置示例文案（02 §7.2：照 r3 §5.2 原文收录，品牌名素材化归 #44——
- * 替换值 = 本地主机名 + `pacman` server 名 + `pacman_<key>`，素材替换计划
- * §3.1）。 */
+/** 配置示例文案（02 §7.2：r3 §5.2 原文行形 `{"mcpServers":{"todos":{"url":
+ * "https://todos.dev/api/mcp",…Bearer tds_your_key}}}`；替换相位已执行
+ * （#109）= 本地主机名 + `pacman` server 名 + `pacman_<key>`，素材替换计划
+ * §3.1。url 域 = 本地主机名代位（self-host 缺省 127.0.0.1:8787，01 §4.2），
+ * /api/mcp 路径形状保留（02 §5.8 非品牌槽）。 */
 export const MCP_CONFIG_EXAMPLE_CANON = {
-  json: '{"mcpServers":{"todos":{"url":"https://todos.dev/api/mcp","headers":{"Authorization":"Bearer tds_your_key"}}}}',
+  json: `{"mcpServers":{"${BRAND.cliCommandName}":{"url":"http://127.0.0.1:8787${BRAND.remoteMcpPath}","headers":{"Authorization":"Bearer ${BRAND.apiKeyPrefix}your_key"}}}}`,
   vsCodeNote:
     'VS Code uses a servers key instead of mcpServers, with the same url and headers fields. Browser connectors that only support OAuth cannot use a key.',
 } as const;

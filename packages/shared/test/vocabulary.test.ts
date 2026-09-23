@@ -357,47 +357,66 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
       'firstTouchCookie',
       'localStoragePrefix',
       'daemonLog',
+      'sessionCookie',
       'manifestName',
     ]);
   });
 
-  it('live复刻-phase values are the as-is tds family (D3: 先原样、触发时替换)', () => {
-    expect(BRAND.cliCommandName).toBe('tds');
-    expect(BRAND.envPrefix).toBe('TDS_');
-    expect(BRAND.branchPrefix).toBe('tds/conv-');
-    expect(BRAND.apiKeyPrefix).toBe('tds_');
+  it('live values are the replacement pacman family (D3 已触发 2026-09-23, #109)', () => {
+    expect(BRAND.cliCommandName).toBe('pacman');
+    expect(BRAND.envPrefix).toBe('PACMAN_');
+    expect(BRAND.homeDirName).toBe('.pacman');
+    expect(BRAND.branchPrefix).toBe('pacman/conv-');
+    expect(BRAND.apiKeyPrefix).toBe('pacman_');
+    expect(BRAND.manifestName).toBe('Pacman');
     // 非品牌槽保持项:
     expect(BRAND.remoteMcpPath).toBe('/api/mcp');
     // 自有包名 (02 §5.8 复刻处置: 自发包名; 素材替换计划 §2: @pacman/cli 私包):
     expect(BRAND.cliPackageName).toBe('@pacman/cli');
   });
 
-  it('env vars are the five observed originals (r3 §1.1)', () => {
-    // 观测五件逐字冻结（r3 §1.1）；复刻增量位（webDir = M5 SPA 静态托管覆写
-    // [设计]，非观测 canon）单独断言，两组不混判。
-    const { webDir, ...observed } = ENV_VARS;
-    expect(observed).toEqual({
-      server: 'TDS_SERVER',
-      apiKey: 'TDS_API_KEY',
-      team: 'TDS_TEAM',
-      workspacesDir: 'TDS_WORKSPACES_DIR',
-      home: 'TDS_HOME',
-    });
-    expect(webDir).toBe('TDS_WEB_DIR');
+  it('BRAND live values = BRAND_SLOTS replacement column (单源纪律, 素材替换计划 §2)', () => {
+    expect(BRAND.cliCommandName).toBe(BRAND_SLOTS.cliCommandName.replacement);
+    expect(BRAND.envPrefix).toBe(BRAND_SLOTS.envPrefix.replacement);
+    expect(BRAND.branchPrefix).toBe(BRAND_SLOTS.branchPrefix.replacement);
+    expect(BRAND.manifestName).toBe(BRAND_SLOTS.manifestName.replacement);
+    expect(BRAND.sessionCookieName).toBe(BRAND_SLOTS.sessionCookie.replacement);
   });
 
-  it('credential formats match the observed shapes', () => {
-    expect(API_KEY_PATTERN.test('tds_0123456789abcdef0123456789abcdef0123456789abcdef')).toBe(true);
-    expect(API_KEY_PATTERN.test('tds_short')).toBe(false);
+  it('env vars are the PACMAN_ same-shape replacement (素材替换计划 §2; r3 §1.1 观测原名 TDS_*)', () => {
+    // 替换相位 = PACMAN_ 同形（观测五件原名 r3 §1.1 = TDS_*，登记在
+    // BRAND_SLOTS.envPrefix.todosDev）；复刻增量位（webDir = M5 SPA 静态托管
+    // 覆写 [设计]，非观测 canon）单独断言，两组不混判。
+    const { webDir, ...observed } = ENV_VARS;
+    expect(observed).toEqual({
+      server: 'PACMAN_SERVER',
+      apiKey: 'PACMAN_API_KEY',
+      team: 'PACMAN_TEAM',
+      workspacesDir: 'PACMAN_WORKSPACES_DIR',
+      home: 'PACMAN_HOME',
+    });
+    expect(webDir).toBe('PACMAN_WEB_DIR');
+  });
+
+  it('credential formats match the observed shapes (key prefix 随 BRAND 槽)', () => {
+    expect(API_KEY_PATTERN.test('pacman_0123456789abcdef0123456789abcdef0123456789abcdef')).toBe(
+      true,
+    );
+    expect(API_KEY_PATTERN.test('pacman_short')).toBe(false);
+    // 复刻相位前缀已切换——原站前缀 key 不再匹配（D3 已触发，#109）。
+    expect(API_KEY_PATTERN.test('tds_0123456789abcdef0123456789abcdef0123456789abcdef')).toBe(
+      false,
+    );
     expect(MACHINE_TOKEN_PATTERN.test('a'.repeat(64))).toBe(true);
     expect(DEVICE_ID_PATTERN.test('b'.repeat(32))).toBe(true);
   });
 
   it('API-key list-row mask follows the r3 §6 display rule', () => {
-    // 明文 tds_<48hex> → 行掩码 `tds_afe07565…`（r3 §6 样例原形）。
-    const plaintext = `tds_afe07565${'0'.repeat(40)}`;
+    // 展示规则原形（r3 §6 样例 `tds_afe07565…`）：品牌前缀 + 前 8 hex +
+    // 省略号；前缀随 BRAND.apiKeyPrefix 槽（替换相位 = pacman_）。
+    const plaintext = `pacman_afe07565${'0'.repeat(40)}`;
     expect(API_KEY_PATTERN.test(plaintext)).toBe(true);
-    expect(maskApiKey(plaintext)).toBe('tds_afe07565…');
+    expect(maskApiKey(plaintext)).toBe('pacman_afe07565…');
   });
 
   it('SecretBox envelope version word is v1 (01 §4.2)', () => {

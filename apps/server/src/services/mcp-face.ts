@@ -15,7 +15,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
-import { CHIEF_REMOTE_TOOLS, MCP_TOOL_REGISTRY, type UserRecord } from '@pacman/shared';
+import { BRAND, CHIEF_REMOTE_TOOLS, MCP_TOOL_REGISTRY, type UserRecord } from '@pacman/shared';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '../db/client.js';
@@ -392,7 +392,7 @@ export async function executeMcpTool(
 /** per-request McpServer 组装：只注册 key 授出的工具（limits every call）。 */
 export function buildMcpFaceServer(deps: ChiefToolDeps, ctx: McpCallerCtx): McpServer {
   const server = new McpServer(
-    { name: 'pacman', version: '0.1.0' },
+    { name: BRAND.cliCommandName, version: '0.1.0' },
     { capabilities: { tools: {} } },
   );
   for (const entry of MCP_TOOL_REGISTRY) {

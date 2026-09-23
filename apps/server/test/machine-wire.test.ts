@@ -184,7 +184,7 @@ describe('enroll / me / presence / recover（02 §5.2–§5.4）', () => {
       await call(w.s.app, 'GET', '/api/machine/me'),
       await call(w.s.app, 'GET', '/api/machine/me', { cred: 'deadbeef' }),
       await call(w.s.app, 'POST', '/api/machine/enroll', {
-        cred: 'tds_nope',
+        cred: 'pacman_nope',
         body: { teamId: w.s.team.id },
       }),
     ]) {
