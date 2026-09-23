@@ -1,19 +1,32 @@
 // User-menu popover as the r7 17 / 16d captures include it (224×272 @
 // 8,410, r7 §3.5): identity head, 外观 row with the theme segmented
-// control, then the plain-text item list (r7 §4.1.4). Static render — the
-// interactive menu lands with the overlay ticket.
+// control, then the plain-text item list (r7 §4.1.4). The 外观 row is
+// live (#122): each segment drives applyTheme, so the switch repaints
+// via the root .light class and persists under `pacman-theme`; the
+// popover open/close trigger itself still lands with the overlay
+// ticket, so the capture state rides the fixture flag.
 
+import { useState } from 'react';
 import { USER_MAIL, USER_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
+import { applyTheme, type Theme } from '../theme.js';
 
 interface UserMenuProps {
-  theme: 'light' | 'dark';
+  theme: Theme;
 }
 
 const ROWS = ['帐号', 'API 密钥', 'MCP', '反馈', '新功能', '快捷键'];
 
-export function UserMenu({ theme }: UserMenuProps) {
+export function UserMenu({ theme: initialTheme }: UserMenuProps) {
   const { t } = useI18n();
+  // the popover mounts per open state; the stored theme at mount is the
+  // segment's initial value and applyTheme keeps storage the source of
+  // truth across reloads
+  const [theme, setTheme] = useState<Theme>(initialTheme);
+  const select = (next: Theme) => {
+    applyTheme(next);
+    setTheme(next);
+  };
   return (
     <div className="user-menu">
       <div className="user-menu-head">
@@ -27,10 +40,10 @@ export function UserMenu({ theme }: UserMenuProps) {
         <div className="user-menu-row">
           {t('外观')}
           <span className="user-menu-seg">
-            <button type="button" data-active={theme === 'light'}>
+            <button type="button" data-active={theme === 'light'} onClick={() => select('light')}>
               {t('浅色')}
             </button>
-            <button type="button" data-active={theme === 'dark'}>
+            <button type="button" data-active={theme === 'dark'} onClick={() => select('dark')}>
               {t('深色')}
             </button>
           </span>

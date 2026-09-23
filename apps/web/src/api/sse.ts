@@ -127,6 +127,11 @@ export function useConversationStream(
           void qc.invalidateQueries({ queryKey: ['steps', conversationId] });
           void qc.invalidateQueries({ queryKey: ['build', conversationId] });
           void qc.invalidateQueries({ queryKey: ['changes', conversationId] });
+          // plan 行经 upload 缝静默落库（routes-machine PUT upload 不发事件），
+          // 仅 message 事件失效 plans 会与 daemon 的 plan.md/transcript 并发
+          // 上传赛跑：message 先到时该轮重取落空，其后无人再失效。step 事件
+          // （finishStep 发，恒在 plan 落库后）补一次失效兜住该 race。
+          void qc.invalidateQueries({ queryKey: ['plans'] });
           onStep?.();
           break;
         default:

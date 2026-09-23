@@ -3,8 +3,9 @@
 // `pacman-theme` (observed original `tds-theme`, r2 §1.5; D3 同形替换
 // #109; values: "light" | "dark"), mirrored to data-theme like the official app.
 // The only visible control is the 外观 segmented row inside the user-menu
-// popover (static render, #56); the parity harness sets the theme via
-// storage injection.
+// popover (#122 wired it to applyTheme; the popover open/close trigger
+// still waits on the overlay ticket); the parity harness sets the theme
+// via storage injection.
 
 export const THEME_STORAGE_KEY = 'pacman-theme'; // mirrored in parity/run.mjs THEME_KEY
 
