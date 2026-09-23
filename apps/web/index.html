@@ -6,8 +6,27 @@
     <meta name="theme-color" content="#18181b" />
     <meta name="color-scheme" content="dark light" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" type="image/png" href="/icon-192.png" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- scheme-aware tiles (#122): opaque bases keep the glyph legible on
+         either browser chrome; iOS ignores media on apple-touch-icon and
+         composites transparency over black, so both variants ship opaque -->
+    <link
+      rel="icon"
+      type="image/png"
+      href="/icon-192-dark.png"
+      media="(prefers-color-scheme: dark)"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/icon-192-light.png"
+      media="(prefers-color-scheme: light)"
+    />
+    <link rel="apple-touch-icon" href="/icon-192-dark.png" media="(prefers-color-scheme: dark)" />
+    <link
+      rel="apple-touch-icon"
+      href="/icon-192-light.png"
+      media="(prefers-color-scheme: light)"
+    />
     <link rel="preload" href="/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin />
     <link
       rel="preload"
