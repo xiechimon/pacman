@@ -52,6 +52,11 @@ const INFERRED_ROUTES = [
   // 记忆条目卡删除图标（r5 §6 UI 实测；02 §4.4「列表/删除 API 保形」，
   // DELETE_FACE 'teams/{id}/agents/{aid}/memories'）
   'DELETE /api/teams/{id}/agents/{aid}/memories/{mid}',
+  // —— build 详情读面（M5：详情页 overlay 数据源；wire 未采，路径 =
+  // builds/{id}/… REST 同族规则（steps 端点先例），02 §6.1 规则族）——
+  'GET /api/builds/{id}/plans', // 版本集 + plan.md 内容（版本下拉/文档 pane，r5 §4 触点）
+  'GET /api/builds/{id}/changes', // conv 分支 vs 默认分支 diff（变更 pane，r7 27 触点）
+  'GET /api/builds/{id}/usage', // build × model 四维记账（Token 用量 dialog，r3 §3.8/r7 30 触点）
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；
@@ -96,6 +101,26 @@ const M2C_ROUTES = [
   'DELETE /api/teams/{id}/secrets/{sid}',
   'GET /api/teams/{id}/api-keys',
   'POST /api/teams/{id}/api-keys',
+];
+
+/** M5 汇合面（03 §5 M5 wire 层 = 全端点）：词表内此前未实现的 GET/POST 族 +
+ * conversation stream SSE + [推断] build 详情读面（INFERRED_ROUTES 登记）。
+ * preview-token 不在列 = 04 册附录 B「在册不设计」（无 UI/wire 触点）。 */
+const M5_ROUTES = [
+  'GET /api/teams/{id}/machines',
+  'GET /api/teams/{id}/models',
+  'GET /api/teams/{id}/progress',
+  'GET /api/teams/{id}/skills/{sid}',
+  'GET /api/teams/{id}/skills/{sid}/file',
+  'GET /api/teams/{id}/agents/{aid}/tasks',
+  'GET /api/skills',
+  'POST /api/skills',
+  'GET /api/whats-new',
+  'POST /api/analytics/first-touch',
+  'GET /api/conversations/{id}/stream',
+  'GET /api/builds/{id}/plans',
+  'GET /api/builds/{id}/changes',
+  'GET /api/builds/{id}/usage',
 ];
 
 function normalizePath(path: string): string {
@@ -150,6 +175,12 @@ describe('路由面 = 02 §6.1 词表', () => {
 
   test('M2c 密钥/搜索面全部在位', () => {
     for (const route of M2C_ROUTES) {
+      expect(have.has(route), `missing ${route}`).toBe(true);
+    }
+  });
+
+  test('M5 汇合面全部在位（词表补齐 + conversation stream + 详情读面）', () => {
+    for (const route of M5_ROUTES) {
       expect(have.has(route), `missing ${route}`).toBe(true);
     }
   });

@@ -207,15 +207,31 @@ export type MachineStreamEvent = z.infer<typeof machineStreamEventSchema>;
 /** POST /api/machine/heartbeat/{stepId}——续活；响应 {ok:true} [推断]。 */
 export const machineHeartbeatResponseSchema = machineOkResponseSchema;
 
-/** POST /api/machine/tool/{stepId}——同径双形（r5 §3.1 bundle 提取）：
+/** POST /api/machine/tool/{stepId} 第三形 [设计]（M5 live streaming 复刻
+ * 增量）：pi `text_delta` 事件的节流批量转发（daemon 250ms 窗口聚合）。
+ * 服务端仅瞬态转发到 conversation stream（02 §1.2 会话流），不落库——
+ * 终稿文本经 upload-urls transcript.json 兜底（02 §1.3 数据所有权不变）。 */
+export const machineTranscriptDeltaBodySchema = z.object({
+  kind: z.literal('transcript_delta'),
+  text: z.string(),
+});
+export type MachineTranscriptDeltaBody = z.infer<typeof machineTranscriptDeltaBodySchema>;
+
+/** POST /api/machine/tool/{stepId}——同径双形（r5 §3.1 bundle 提取）+ 复刻
+ * 增量第三形（transcript delta [设计]，machineTranscriptDeltaBodySchema）：
  * ① live transcript 工具行回传（worker 步内建工具）= toolCallRecord，与
  *    upload-urls 终稿按 toolCall id 幂等去重 [设计]；body [推断]（r3 §1.6
  *    端点名 + transcript 工具行证据）。
  * ② remoteTools relay 执行（chief 步服务端工具）= {name, params} → {text}，
  *    位形一手 = bundle `request(serverUrl, /api/machine/tool/<stepId>, …,
  *    {name, params})` + `reply.body.text`（r5 §3.1 raw）。
- * 服务端按 body 形状分流（有 params 无 id = relay）。 */
-export const machineToolBodySchema = z.union([toolCallRecordSchema, machineToolRelayBodySchema]);
+ * ③ transcript delta = {kind:"transcript_delta", text} → {ok:true}。
+ * 服务端按 body 形状分流（kind 判别位 = delta；有 params 无 id = relay）。 */
+export const machineToolBodySchema = z.union([
+  toolCallRecordSchema,
+  machineToolRelayBodySchema,
+  machineTranscriptDeltaBodySchema,
+]);
 
 /** relay 执行响应（bundle 消费面 `reply.body?.text`）；失败 = {error}(+transient)。 */
 export const machineToolResponseSchema = z.union([

@@ -11,6 +11,8 @@
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  conversationBranch,
+  type DocumentDiffFile,
   gitHostedRepoPath,
   type ProjectBranchesResponse,
   type ProjectFileResponse,
@@ -19,9 +21,9 @@ import {
 } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { project } from '../db/schema.js';
+import { build as buildTable, project, todo as todoTable } from '../db/schema.js';
 import { HttpError, notFound } from '../lib/errors.js';
-import { isSafeRepoPath, systemGitOps } from '../lib/git.js';
+import { isSafeRepoPath, runGit, systemGitOps } from '../lib/git.js';
 
 export type ProjectRow = typeof project.$inferSelect;
 
@@ -187,4 +189,79 @@ export async function readBranches(
 ): Promise<ProjectBranchesResponse> {
   const dir = requireHostedRepoDir(ctx, projectId);
   return systemGitOps.listBranches(dir);
+}
+
+// —— build 变更面（M5 [推断] 读端点 GET /api/builds/{id}/changes 数据源）：
+// 变更 pane（r7 27/27b/36）= conv 分支相对默认分支的文件级 unified diff。
+// 端点/封套 wire 未采——形状复用 documentDiffSchema 的 files 段（diffFileSchema
+// 单源，r5 §4 触点同族），登记 wire.test INFERRED_ROUTES（04 §3 不判负口径）。
+// GitHub-backed 项目无本地存储 = 空集（PR 面归后票，02 §3）。
+
+/** unified diff 文本 → diffFileSchema[]（git diff 输出解析 [设计]；行保留
+ * `+`/`-`/` ` 前缀 = documents.ts structuredPatch 行形同款约定）。 */
+export function parseUnifiedDiff(text: string): DocumentDiffFile[] {
+  const files: DocumentDiffFile[] = [];
+  let current: DocumentDiffFile | null = null;
+  let hunk: { header: string; lines: string[] } | null = null;
+  const lines = text.replace(/\n$/, '').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? '';
+    if (line.startsWith('diff --git ')) {
+      current = { path: '', additions: 0, deletions: 0, hunks: [] };
+      files.push(current);
+      hunk = null;
+      continue;
+    }
+    if (current === null) continue;
+    if (line.startsWith('+++ ')) {
+      const p = line.slice(4).trim();
+      if (p !== '/dev/null') current.path = p.replace(/^b\//, '');
+      continue;
+    }
+    if (line.startsWith('--- ')) {
+      const p = line.slice(4).trim();
+      if (current.path === '' && p !== '/dev/null') current.path = p.replace(/^a\//, '');
+      continue;
+    }
+    if (line.startsWith('@@')) {
+      hunk = { header: line.split(' @@')[0]! + ' @@', lines: [] };
+      current.hunks.push(hunk);
+      continue;
+    }
+    if (hunk === null) continue; // index/mode 头等文件级元数据行
+    if (line.startsWith('\\')) continue; // `\ No newline at end of file`
+    if (line === '') continue; // 防御：hunk 内空串（git 输出上下文行恒带前缀空格）
+    hunk.lines.push(line);
+    if (line.startsWith('+')) current.additions += 1;
+    else if (line.startsWith('-')) current.deletions += 1;
+  }
+  return files.filter((f) => f.path !== '' && f.hunks.length > 0);
+}
+
+/** conv 分支相对默认分支的变更文件集（变更 pane 数据源）；无托管 repo /
+ * 分支缺位 / 空 diff = 空集（占位文案面归 web，r7 38）。 */
+export async function readBuildChanges(
+  ctx: RepoCtx,
+  buildId: string,
+): Promise<{ files: DocumentDiffFile[] }> {
+  const buildRow = ctx.db.select().from(buildTable).where(eq(buildTable.id, buildId)).get();
+  if (!buildRow) throw notFound(`build ${buildId}`);
+  const todoRow = ctx.db.select().from(todoTable).where(eq(todoTable.id, buildRow.todoId)).get();
+  if (!todoRow) throw notFound(`todo ${buildRow.todoId}`);
+  const projRow = ctx.db.select().from(project).where(eq(project.id, todoRow.projectId)).get();
+  if (!projRow || projRow.repoKind !== 'hosted' || projRow.repoName === null) {
+    return { files: [] };
+  }
+  const dir = repoDirFor(ctx.reposDir, projRow.teamId, projRow.repoName);
+  const { defaultBranch } = await systemGitOps.listBranches(dir);
+  const base = defaultBranch ?? 'main';
+  const baseSha = await systemGitOps.resolveCommit(dir, `refs/heads/${base}`);
+  const headSha = await systemGitOps.resolveCommit(
+    dir,
+    `refs/heads/${conversationBranch(buildId)}`,
+  );
+  if (baseSha === null || headSha === null) return { files: [] };
+  const r = await runGit(['diff', `${baseSha}...${headSha}`], { cwd: dir, timeoutMs: 30_000 });
+  if (r.code !== 0) return { files: [] };
+  return { files: parseUnifiedDiff(r.stdout.toString('utf8')) };
 }

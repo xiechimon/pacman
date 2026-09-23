@@ -7,6 +7,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { serve } from '@hono/node-server';
+import type { Scheduler } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import { createApp } from '../../apps/server/src/app.js';
 import { openMemoryDb } from '../../apps/server/src/db/client.js';
@@ -18,8 +19,9 @@ import {
 import { seed } from '../../apps/server/src/db/seed.js';
 import { createEphemeralSecretBox } from '../../apps/server/src/lib/secret-box.js';
 import { createApiKey } from '../../apps/server/src/services/api-keys.js';
-import { TeamStreamHub } from '../../apps/server/src/services/events.js';
+import { ConversationStreamHub, TeamStreamHub } from '../../apps/server/src/services/events.js';
 import { MachineWakeHub } from '../../apps/server/src/services/machines.js';
+import { createScheduler } from '../../apps/server/src/services/scheduler.js';
 
 export const AGENT_ID = 'agent-it-1';
 
@@ -33,6 +35,9 @@ export interface RealServer {
   /** POST /api/machine/tasks/claim 请求计数（cadence 时序实测面）。 */
   claimCount: () => number;
   todoPhase(todoId: string): string;
+  /** 定时调度器（opts.scheduler = true 时创建；tick() 手动驱动或 start()
+   * 真实循环——M5 定时轮 E2E 面）。 */
+  scheduler: Scheduler | null;
   close(): Promise<void>;
 }
 
@@ -41,17 +46,23 @@ export async function bootRealServer(opts: {
   claimHoldMs?: number;
   /** seed Agent 职责文本（systemPrompt 注入面；缺省 = M3a 无工具文案）。 */
   agentDescription?: string;
+  /** SPA 静态同源托管根（M5 web E2E：vite build 产物目录，02/A1）。 */
+  webDir?: string;
+  /** 创建定时调度器（缺省不建——既有测试无定时面）。 */
+  scheduler?: boolean;
 }): Promise<RealServer> {
   const db = openMemoryDb();
   const { user, team } = seed(db);
   const hub = new TeamStreamHub();
   const machineHub = new MachineWakeHub();
+  const convHub = new ConversationStreamHub();
   const secretBox = createEphemeralSecretBox();
   const reposDir = mkdtempSync(join(tmpdir(), 'pacman-it-repos-'));
   const app = createApp({
     db,
     hub,
     machineHub,
+    convHub,
     secretBox,
     user,
     team,
@@ -60,7 +71,11 @@ export async function bootRealServer(opts: {
     uploads: new Map(),
     enrollments: new Map(),
     reposDir,
+    webDir: opts.webDir ?? null,
   });
+  const scheduler = opts.scheduler
+    ? createScheduler({ db, hub, user, convHub }, { tickMs: 60_000 })
+    : null;
   // 机器注册 key 走 M2c 发行服务面（一次性明文，02 §8）。
   const issuedKey = createApiKey(
     { db },
@@ -130,8 +145,10 @@ export async function bootRealServer(opts: {
     todoPhase(todoId: string) {
       return db.select().from(todoTable).where(eq(todoTable.id, todoId)).get()?.phase ?? '';
     },
+    scheduler,
     close: () =>
       new Promise<void>((resolve, reject) => {
+        scheduler?.stop();
         // 长轮询/SSE 连接会挂住 close()——先掐全部活动连接（node:http 面）。
         (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.();
         server.close((err) => (err ? reject(err) : resolve()));

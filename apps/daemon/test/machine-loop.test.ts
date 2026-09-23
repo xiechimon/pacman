@@ -124,6 +124,9 @@ class FakeMachineApi implements MachineApi {
   async tool(stepId: string, call: ToolCallRecord) {
     this.toolCalls.push({ stepId, call });
   }
+  async transcriptDelta(stepId: string, text: string) {
+    this.calls.push(`transcriptDelta:${stepId}:${text.length}`);
+  }
   async relayTool(stepId: string, name: string, params: Record<string, unknown>) {
     this.calls.push(`relayTool:${stepId}:${name}`);
     void params;

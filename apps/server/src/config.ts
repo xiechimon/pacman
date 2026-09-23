@@ -2,8 +2,10 @@
 // .env / 配置文件层随部署面补齐；数据根路径 = 品牌位（01 §4.2 数据目录行，
 // 形状：单一数据根 = DB 文件 + keyfile + bare repo 存储，备份 = 拷目录）。
 
+import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   BRAND,
   CLAIM_POLL_INTERVAL_MS,
@@ -30,6 +32,10 @@ export const serverConfigSchema = z.object({
   /** cron 调度循环 tick 间隔（02 §9.2 宿主自持；触发精度 = 分档最细 15min，
    * 默认 15s 远细于档位粒度 [设计]）。 */
   schedulerTickMs: z.number().int().positive(),
+  /** SPA 静态同源托管根（02/A1，M5）：vite build 产物目录；null = 不托管
+   * （纯 API 形态）。env `WEB_DIR` 覆写 [设计]；默认 = monorepo 布局
+   * `apps/web/dist` 存在即托管。 */
+  webDir: z.string().nullable(),
 });
 export type ServerConfig = z.infer<typeof serverConfigSchema>;
 
@@ -40,11 +46,20 @@ function envPort(): number | undefined {
   return Number.isInteger(n) ? n : undefined;
 }
 
+/** SPA 产物默认位：monorepo 布局 `apps/web/dist`（本模块 = apps/server/src/
+ * config.ts，向上两级到 apps/ 再进 web/dist）；不存在 = null（纯 API 形态）。 */
+function defaultWebDir(): string | null {
+  const here = resolve(fileURLToPath(import.meta.url), '../..'); // apps/server
+  const candidate = join(here, '..', 'web', 'dist');
+  return existsSync(join(candidate, 'index.html')) ? resolve(candidate) : null;
+}
+
 export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
   // 用户主目录槽 = ENV_VARS.home（TDS_HOME，r3 §1.1 实测原名）；默认 ~/.tds。
   const home = process.env[ENV_VARS.home] ?? join(homedir(), BRAND.homeDirName);
   // 数据根子目录名 `server` [设计]（品牌位归 #44 一次性替换面）。
   const dataDir = join(home, 'server');
+  const webDirEnv = process.env.WEB_DIR;
   return serverConfigSchema.parse({
     port: envPort() ?? 8787,
     dataDir,
@@ -53,6 +68,7 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     pingIntervalMs: TEAM_STREAM_PING_INTERVAL_MS,
     claimHoldMs: CLAIM_POLL_INTERVAL_MS,
     schedulerTickMs: 15_000,
+    webDir: webDirEnv !== undefined && webDirEnv !== '' ? resolve(webDirEnv) : defaultWebDir(),
     ...overrides,
   });
 }

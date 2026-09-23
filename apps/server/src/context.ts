@@ -2,7 +2,7 @@
 
 import type { SecretBox, TeamRecord, UserRecord } from '@pacman/shared';
 import type { Db } from './db/client.js';
-import type { TeamStreamHub } from './services/events.js';
+import type { ConversationStreamHub, TeamStreamHub } from './services/events.js';
 import type { MachineWakeHub, PendingUpload } from './services/machines.js';
 
 export interface AppContext {
@@ -10,6 +10,10 @@ export interface AppContext {
   hub: TeamStreamHub;
   /** 机器 wake 通道（claim 长轮询等待者 + machine stream SSE，02 §5.4）。 */
   machineHub: MachineWakeHub;
+  /** conversation stream 通道（GET /api/conversations/{id}/stream，02 §1.2；
+   *  live transcript：message/text_delta/step 事件）。缺省 = 无会话流面
+   *  （M2a 单测形态）。 */
+  convHub?: ConversationStreamHub;
   /** at-rest 加密缝（02 §8：provider key / secret 值密文进出唯一通道）。 */
   secretBox: SecretBox;
   /** seed 单用户（自动登录，02 §2.1）。 */
@@ -26,4 +30,7 @@ export interface AppContext {
   enrollments: Map<string, { teamId: string; createdAt: number }>;
   /** 托管 bare repo 存储根（数据根子目录，01 §4.2；`<reposDir>/<teamId>/<repoName>.git`）。 */
   reposDir: string;
+  /** SPA 静态同源托管根（02/A1；= apps/web/dist 产物目录）。null/缺省 =
+   *  不托管（纯 API 形态，dev 期 vite proxy 用）。 */
+  webDir?: string | null;
 }

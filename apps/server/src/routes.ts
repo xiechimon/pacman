@@ -17,17 +17,22 @@ import {
   createScheduleBodySchema,
   createTodoBodySchema,
   type MemoryRecord,
+  machineRecordSchema,
+  PHASE_VALUES,
   patchChiefBodySchema,
   phaseSchema,
   projectRepoKindSchema,
   providerApiSchema,
   providerModelSchema,
+  SKILL_ENTRY_FILE,
   setSecretBodySchema,
+  skillRecordSchema,
   startBuildsBodySchema,
   type TeamMember,
   type TodoRecord,
+  tokenUsageSchema,
 } from '@pacman/shared';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { Hono } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { streamSSE } from 'hono/streaming';
@@ -38,12 +43,18 @@ import {
   agentMemory,
   apiKey,
   build,
+  machine,
   mcpServer,
   message,
   notification,
+  plan as planTable,
   project,
+  provider,
+  skill as skillTable,
   tag,
   todo,
+  tokenUsage,
+  whatsNew,
 } from './db/schema.js';
 import { sha256Hex } from './lib/crypto.js';
 import { conflict, HttpError, notFound, parseWith } from './lib/errors.js';
@@ -72,6 +83,7 @@ import {
   isGithubRepoRef,
   provisionHostedRepo,
   readBranches,
+  readBuildChanges,
   readFile,
   readTree,
   slugifyRepoName,
@@ -294,7 +306,13 @@ function verifyGitBasicAuth(ctx: AppContext, header: string): string | undefined
 }
 
 export function registerRoutes(app: Hono, ctx: AppContext): void {
-  const svc = { db: ctx.db, hub: ctx.hub, machineHub: ctx.machineHub, user: ctx.user };
+  const svc = {
+    db: ctx.db,
+    hub: ctx.hub,
+    machineHub: ctx.machineHub,
+    user: ctx.user,
+    convHub: ctx.convHub,
+  };
 
   // —— 认证保形（02 §2.1：自动登录，无登录页）———————————————————————————
   app.use('/api/*', async (c, next) => {
@@ -500,6 +518,34 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     });
   });
 
+  // —— SSE conversation stream（02 §1.2 会话流，词表内；r3 §3.5 抓包见请求，
+  // 逐事件载荷未枚举 = pi 流词表承载 [推断]，事件面单源 = shared
+  // conversationStreamEventSchema 定型四事件 ping/message/text_delta/step）。
+  // 订阅不存在的会话合法（空流 + ping；build 首启前详情页即挂流的时序面）。
+  app.get('/api/conversations/:id/stream', (c) => {
+    const conversationId = c.req.param('id');
+    return streamSSE(c, async (stream) => {
+      const conn = createSerialConnection((payload) =>
+        stream.writeSSE({ data: JSON.stringify(payload) }),
+      );
+      const unsubscribe = ctx.convHub?.subscribe(conversationId, conn) ?? (() => {});
+      const timer = setInterval(() => {
+        void conn.send({ type: 'ping', seq: conn.nextSeq() });
+      }, ctx.pingIntervalMs);
+      let release: () => void = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      stream.onAbort(() => {
+        clearInterval(timer);
+        unsubscribe();
+        release();
+      });
+      await conn.send({ type: 'ping', seq: conn.nextSeq() }); // 连接即首帧 ping
+      await held;
+    });
+  });
+
   // —— Chief 面（02 §4.3/r5 §2–§3；M4a）———————————————————————————————
   // GET/PATCH /chief、GET /chief/threads = 02 §6.1 词表内；POST /chief/threads
   // 与 POST /conversations/{id}/messages（发消息触发回合）= REST 同名 [推断]
@@ -536,7 +582,10 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       { threadId: null, content: ((await jsonBody(c)) as { content?: unknown })?.content },
       'body',
     );
-    return c.json(sendChiefMessage(svc, teamId, body), 201);
+    const result = sendChiefMessage(svc, teamId, body);
+    // 会话流即时推送（chief 会话 = chief-<threadId> 键，M5 live 面）。
+    ctx.convHub?.publishMessage(result.thread.id, { ...result.message });
+    return c.json(result, 201);
   });
 
   // 既有线程续消息 = POST /conversations/{id}/messages（REST 同名 [推断]，
@@ -554,7 +603,9 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       { threadId: conversationId, content: raw?.content },
       'body',
     );
-    return c.json(sendChiefMessage(svc, thread.teamId, body), 201);
+    const result = sendChiefMessage(svc, thread.teamId, body);
+    ctx.convHub?.publishMessage(conversationId, { ...result.message });
+    return c.json(result, 201);
   });
 
   // —— 记忆读面（02 §4.4/r5 §6：GET agents/{aid}/memories 词表内）————————————
@@ -838,6 +889,204 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.get('/api/search', (c) =>
     c.json(search(svc, { teamId: ctx.team.id, q: c.req.query('q') ?? null })),
   );
+
+  // —— M5 词表补齐面（02 §6.1 canonical 词表内、此前未实现的 GET 族；响应
+  // 封套 wire 未采处 = [推断] 投影，04 §3 不判负口径，wire.test 登记）——————
+
+  app.get('/api/teams/:id/machines', (c) => {
+    const id = c.req.param('id');
+    requireTeam(ctx, id);
+    const rows = ctx.db.select().from(machine).where(eq(machine.teamId, id)).all();
+    return c.json(
+      rows.map((r) =>
+        machineRecordSchema.parse({
+          id: r.id,
+          name: r.name,
+          teamId: r.teamId,
+          online: r.online,
+          maxConcurrent: r.maxConcurrent,
+          latestCliVersion: r.latestCliVersion,
+        }),
+      ),
+    );
+  });
+
+  // 模型选项面（02 §6.2「model = Provider 下的具名可选项」；provider.models
+  // JSON 列聚合投影 [推断]——wire 未采，配置面下拉/Agent 模型槽数据源）。
+  app.get('/api/teams/:id/models', (c) => {
+    const id = c.req.param('id');
+    requireTeam(ctx, id);
+    const rows = ctx.db.select().from(provider).where(eq(provider.teamId, id)).all();
+    const models = rows.flatMap((r) =>
+      r.models.map((m) => ({ ...m, providerId: r.providerId, providerLabel: r.label })),
+    );
+    return c.json(models);
+  });
+
+  // 进度面（词表内；载荷未采 [推断] = todo 计数按 phase 投影，用量/进度屏
+  // 数据源，02 §6.1）。
+  app.get('/api/teams/:id/progress', (c) => {
+    const id = c.req.param('id');
+    requireTeam(ctx, id);
+    const rows = ctx.db.select({ phase: todo.phase }).from(todo).where(eq(todo.teamId, id)).all();
+    const byPhase: Record<string, number> = Object.fromEntries(PHASE_VALUES.map((p) => [p, 0]));
+    for (const r of rows) byPhase[r.phase] = (byPhase[r.phase] ?? 0) + 1;
+    return c.json({ todos: { total: rows.length, byPhase } });
+  });
+
+  // —— 技能面（词表内：GET /api/skills?teamId=、GET teams/{id}/skills/{sid}
+  // (+/file?fileName=)、POST /api/skills 上传；record = shared skillRecordSchema
+  // [推断] 投影，r2 §6.1 表单证据）———————————————————————————————
+  app.get('/api/skills', (c) => {
+    const teamId = c.req.query('teamId') ?? ctx.team.id;
+    requireTeam(ctx, teamId);
+    const rows = ctx.db.select().from(skillTable).where(eq(skillTable.teamId, teamId)).all();
+    return c.json(
+      rows.map((r) =>
+        skillRecordSchema.parse({
+          id: r.id,
+          teamId: r.teamId,
+          name: r.name,
+          description: r.description,
+        }),
+      ),
+    );
+  });
+
+  /** POST /api/skills body [推断]（上传面 wire 未采；r2 §6.1 表单三字段 +
+   * 文件集 = 01 §6 skill 表「含文件内容」投影；SKILL.md 必含校验 = r2 §6.1
+   * 原文「技能文件夹必须包含 SKILL.md」）。 */
+  const createSkillBodySchema = z.object({
+    teamId: z.string().optional(),
+    name: z.string().min(1),
+    description: z.string().nullish(),
+    files: z.record(z.string(), z.string()),
+  });
+  app.post('/api/skills', async (c) => {
+    const body = parseWith(createSkillBodySchema, await jsonBody(c), 'body');
+    const teamId = body.teamId ?? ctx.team.id;
+    requireTeam(ctx, teamId);
+    if (!(SKILL_ENTRY_FILE in body.files)) {
+      throw new HttpError(400, `invalid body at files: ${SKILL_ENTRY_FILE} is required`);
+    }
+    const id = newRecordId();
+    ctx.db
+      .insert(skillTable)
+      .values({
+        id,
+        teamId,
+        name: body.name,
+        description: body.description ?? null,
+        files: body.files,
+      })
+      .run();
+    return c.json(
+      skillRecordSchema.parse({
+        id,
+        teamId,
+        name: body.name,
+        description: body.description ?? null,
+      }),
+      201,
+    );
+  });
+
+  app.get('/api/teams/:id/skills/:sid', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const row = ctx.db
+      .select()
+      .from(skillTable)
+      .where(and(eq(skillTable.id, c.req.param('sid')), eq(skillTable.teamId, teamId)))
+      .get();
+    if (!row) throw notFound(`skill ${c.req.param('sid')}`);
+    // 封套 [推断]：record + 文件名清单（内容经 /file 逐文件取，01 §6）。
+    return c.json({
+      ...skillRecordSchema.parse({
+        id: row.id,
+        teamId: row.teamId,
+        name: row.name,
+        description: row.description,
+      }),
+      fileNames: Object.keys(row.files),
+    });
+  });
+
+  app.get('/api/teams/:id/skills/:sid/file', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const row = ctx.db
+      .select()
+      .from(skillTable)
+      .where(and(eq(skillTable.id, c.req.param('sid')), eq(skillTable.teamId, teamId)))
+      .get();
+    if (!row) throw notFound(`skill ${c.req.param('sid')}`);
+    const fileName = c.req.query('fileName') ?? SKILL_ENTRY_FILE;
+    const content = row.files[fileName];
+    if (content === undefined) throw notFound(`file ${fileName}`);
+    return c.json({ fileName, content }); // 封套 [推断]
+  });
+
+  // Agent 任务面（词表内；载荷未采 [推断] = assignment 双槽任一指向该 Agent
+  // 的 todo 集，r3 §4 Agent 详情「任务」tab 数据源）。
+  app.get('/api/teams/:id/agents/:aid/tasks', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const agentId = c.req.param('aid');
+    const rows = ctx.db.select().from(todo).where(eq(todo.teamId, teamId)).all();
+    const assigned = rows.filter(
+      (r) => r.assignment?.plan?.agentId === agentId || r.assignment?.build?.agentId === agentId,
+    );
+    return c.json(assigned.map((r) => getTodo(svc, r.id)).filter((r) => r !== null));
+  });
+
+  // whats-new（词表内：形状保留、内容自选，02 §6.1 [设计]——记录 = whats_new
+  // 表 body JSON 行）。
+  app.get('/api/whats-new', (c) => {
+    const rows = ctx.db.select().from(whatsNew).all();
+    return c.json(rows.map((r) => ({ id: r.id, createdAt: r.createdAt, ...r.body })));
+  });
+
+  // —— [推断] build 详情读面（M5 详情页 overlay 数据源；wire 未采，路径 =
+  // builds/{id}/… REST 同族规则，wire.test INFERRED_ROUTES 登记）：
+  // plans = 版本集 + plan.md 内容（版本下拉/文档 pane，r5 §4 触点）；
+  // changes = conv 分支 vs 默认分支文件级 diff（变更 pane，r7 27 触点）；
+  // usage = build × model 四维记账（Token 用量 dialog，r3 §3.8/r7 30 触点）。
+  app.get('/api/builds/:id/plans', (c) => {
+    const id = c.req.param('id');
+    if (!getBuild(svc, id)) throw notFound(`build ${id}`);
+    const rows = ctx.db
+      .select()
+      .from(planTable)
+      .where(eq(planTable.buildId, id))
+      .orderBy(asc(planTable.version))
+      .all();
+    return c.json(
+      rows.map((r) => ({
+        id: r.id,
+        buildId: r.buildId,
+        version: r.version,
+        createdAt: r.createdAt,
+        content: r.content, // [内部] 内容透出（文档 pane 数据源，封套 [推断]）
+      })),
+    );
+  });
+
+  app.get('/api/builds/:id/changes', async (c) =>
+    c.json(await readBuildChanges({ db: ctx.db, reposDir: ctx.reposDir }, c.req.param('id'))),
+  );
+
+  app.get('/api/builds/:id/usage', (c) => {
+    const id = c.req.param('id');
+    if (!getBuild(svc, id)) throw notFound(`build ${id}`);
+    const rows = ctx.db.select().from(tokenUsage).where(eq(tokenUsage.buildId, id)).all();
+    return c.json(rows.map((r) => tokenUsageSchema.parse(r)));
+  });
+
+  // —— 埋点空实现（词表内「形状保留、可空实现」，02 §6.1：analytics/first-touch
+  // + PostHog 风格 batch track；复刻无埋点后端，204 收下即弃）——————————
+  app.post('/api/analytics/first-touch', () => new Response(null, { status: 204 }));
+  app.post('/_mp/api/track', () => new Response(null, { status: 204 }));
 
   // —— 密钥三面（02 §8：API 面写只读掩码 + apiKey 存哈希；at-rest 经 SecretBox）。
   // provider 三面 = 词表内（GET/POST/PATCH，r3 §2/§8.2）+ DELETE（DELETE_FACE

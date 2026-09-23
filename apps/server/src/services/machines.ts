@@ -64,7 +64,7 @@ import {
   resolveStepCredentials,
   revokeStepGitCredential,
 } from './credentials.js';
-import type { TeamStreamHub } from './events.js';
+import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { githubCloneUrl, hostedCloneUrl, repoDirFor } from './git.js';
 import { resolveAgentMcpEndpoints } from './mcp-servers.js';
 import { canTransitionPhase } from './phase.js';
@@ -86,6 +86,24 @@ export interface MachineDeps {
   user: UserRecord;
   /** 托管 bare repo 存储根（merge 步 fast-forward 落地，02 §4.2/A6）。 */
   reposDir: string;
+  /** conversation stream 通道（M5 live streaming：transcript 行/文本增量/
+   * 步状态即时推送，02 §1.2 会话流）；缺省 = 无会话流面（单测形态）。 */
+  convHub?: ConversationStreamHub;
+}
+
+/** 步状态位透出会话流（journal 状态 [内部] 列 → step 事件 [设计]）。 */
+function publishStepStatus(deps: MachineDeps, stepId: string): void {
+  if (!deps.convHub) return;
+  const row = deps.db.select().from(step).where(eq(step.id, stepId)).get();
+  if (!row) return;
+  deps.convHub.publishStep(row.buildId, {
+    id: row.id,
+    buildId: row.buildId,
+    kind: row.kind,
+    machineId: row.machineId,
+    createdAt: row.createdAt,
+    status: row.status,
+  });
 }
 
 // —— wake 通道（claim 长轮询等待者 + SSE stream 订阅者，按 team 分组）—————————
@@ -458,7 +476,10 @@ function tryClaim(
   for (const cand of chiefCands) {
     if (cand.stepRow.createdAt > earliestWorker) break; // worker 更早 → 先走 worker
     const claimed = buildChiefClaim(deps, machineId, cand.stepRow, cand.threadRow, machineRow);
-    if (claimed) return claimed;
+    if (claimed) {
+      publishStepStatus(deps, claimed.step.id);
+      return claimed;
+    }
   }
 
   for (const cand of workerCands) {
@@ -510,6 +531,7 @@ function tryClaim(
       machineRow.latestCliVersion,
       agentRow.mcpServers,
     );
+    publishStepStatus(deps, cand.stepRow.id);
     return {
       step: {
         id: cand.stepRow.id,
@@ -588,13 +610,20 @@ export function reportTool(
   call: ToolCallRecord,
 ): void {
   const row = ownedStep(deps, machineId, stepId);
+  const createdAt = call.endedAt ?? nowMs();
   if (isChiefConversation(row.buildId)) {
     upsertChiefMessage(deps.db, {
       id: call.id,
       threadId: row.buildId,
       role: 'assistant',
       content: { kind: 'toolcall', call },
-      createdAt: call.endedAt ?? nowMs(),
+      createdAt,
+    });
+    deps.convHub?.publishMessage(row.buildId, {
+      id: call.id,
+      role: 'assistant',
+      content: { kind: 'toolcall', call },
+      createdAt,
     });
     return;
   }
@@ -603,8 +632,28 @@ export function reportTool(
     conversationId: row.buildId,
     role: 'assistant',
     content: { kind: 'toolcall', call },
-    createdAt: call.endedAt ?? nowMs(),
+    createdAt,
   });
+  deps.convHub?.publishMessage(row.buildId, {
+    id: call.id,
+    role: 'assistant',
+    content: { kind: 'toolcall', call },
+    createdAt,
+  });
+}
+
+/** live transcript 文本增量（machineToolBodySchema 第三形 [设计]）：瞬态
+ * 转发到 conversation stream，不落库——终稿经 upload-urls transcript.json
+ * 兜底（02 §1.3 数据所有权不变）。 */
+export function reportTranscriptDelta(
+  deps: MachineDeps,
+  machineId: string,
+  stepId: string,
+  text: string,
+): void {
+  const row = ownedStep(deps, machineId, stepId);
+  if (text === '') return;
+  deps.convHub?.publishTextDelta(row.buildId, text);
 }
 
 /** remoteTools relay 执行（02 §4.3「服务端定义并执行」；r5 §3.1 bundle：POST
@@ -859,11 +908,23 @@ export function receiveUpload(
         content: m.content,
         createdAt: m.createdAt,
       });
+      deps.convHub?.publishMessage(conversationId, {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        createdAt: m.createdAt,
+      });
       continue;
     }
     upsertMessage(deps.db, {
       id: m.id,
       conversationId,
+      role: m.role,
+      content: m.content,
+      createdAt: m.createdAt,
+    });
+    deps.convHub?.publishMessage(conversationId, {
+      id: m.id,
       role: m.role,
       content: m.content,
       createdAt: m.createdAt,
@@ -930,17 +991,20 @@ export async function finishStep(
       .set({ status: outcome.status === 'success' ? 'done' : 'failed' })
       .where(eq(step.id, stepId))
       .run();
+    publishStepStatus(deps, stepId);
     finishChiefTurn(deps, stepRow.buildId, outcome);
     if (outcome.status === 'success') notifyChiefTurn(deps, stepRow.buildId);
     return;
   }
   if (outcome.status === 'success') {
     completeStep(deps, stepId, { hasChanges: outcome.hasChanges });
+    publishStepStatus(deps, stepId);
     return;
   }
   // failed / stopped（stopped = 人工停止 [设计]，同 failed 收尾）：步级失败无
   // 自动重跑（02 §4.2/r3 §3.7），todo → failed + build.errorMessage。
   db.update(step).set({ status: 'failed' }).where(eq(step.id, stepId)).run();
+  publishStepStatus(deps, stepId);
   const buildRow = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
   if (buildRow) {
     db.update(build)
