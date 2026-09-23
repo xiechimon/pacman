@@ -11,16 +11,22 @@ import { seed } from '../src/db/seed.js';
 import { sha256Hex } from '../src/lib/crypto.js';
 import { newRecordId } from '../src/lib/ids.js';
 import { createEphemeralSecretBox } from '../src/lib/secret-box.js';
-import { TeamStreamHub } from '../src/services/events.js';
+import { ConversationStreamHub, TeamStreamHub } from '../src/services/events.js';
 import { MachineWakeHub } from '../src/services/machines.js';
 
 export function bootServer(
-  opts: { pingIntervalMs?: number; claimHoldMs?: number; reposDir?: string } = {},
+  opts: {
+    pingIntervalMs?: number;
+    claimHoldMs?: number;
+    reposDir?: string;
+    webDir?: string | null;
+  } = {},
 ) {
   const db = openMemoryDb();
   const { user, team } = seed(db);
   const hub = new TeamStreamHub();
   const machineHub = new MachineWakeHub();
+  const convHub = new ConversationStreamHub();
   // 随机 key 驻内存（keyfile 落盘面 = test/secret-box.test.ts 专测）。
   const secretBox = createEphemeralSecretBox();
   // 自建临时 reposDir（git 托管面实走用）；显式传入时由调用方管理生命周期。
@@ -30,6 +36,7 @@ export function bootServer(
     db,
     hub,
     machineHub,
+    convHub,
     secretBox,
     user,
     team,
@@ -40,17 +47,19 @@ export function bootServer(
     uploads: new Map(),
     enrollments: new Map(),
     reposDir,
+    ...(opts.webDir !== undefined ? { webDir: opts.webDir } : {}),
   });
   return {
     app,
     db,
     hub,
     machineHub,
+    convHub,
     secretBox,
     user,
     team,
     reposDir,
-    svc: { db, hub, machineHub, user },
+    svc: { db, hub, machineHub, convHub, user },
     dispose(): void {
       if (ownReposDir) rmSync(reposDir, { recursive: true, force: true });
     },
@@ -120,8 +129,17 @@ export function insertGitApiKey(s: TestServer, secret: string): string {
 /** SSE 连接读取器：帧 = `data: <json>\n\n`（team stream 无 event 名，
  * 类型在载荷 type 字段，r3 §8.1/r5 §7.2 原样）。 */
 export async function openStream(app: Hono, teamId: string) {
+  return openSse(app, `/api/teams/${teamId}/stream`);
+}
+
+/** conversation stream 读取器（M5 live streaming 面；帧形同 team stream）。 */
+export async function openConvStream(app: Hono, conversationId: string) {
+  return openSse(app, `/api/conversations/${conversationId}/stream`);
+}
+
+async function openSse(app: Hono, path: string) {
   const ctrl = new AbortController();
-  const res = await app.request(`/api/teams/${teamId}/stream`, { signal: ctrl.signal });
+  const res = await app.request(path, { signal: ctrl.signal });
   if (!res.body) throw new Error('stream response has no body');
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

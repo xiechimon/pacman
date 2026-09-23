@@ -70,6 +70,9 @@ export const ENV_VARS = {
   team: 'TDS_TEAM',
   workspacesDir: 'TDS_WORKSPACES_DIR',
   home: 'TDS_HOME',
+  /** server SPA 静态同源托管根覆写（02/A1，M5；缺省 = monorepo 布局
+   * apps/web/dist 存在即托管，apps/server config.ts）。 */
+  webDir: 'TDS_WEB_DIR',
 } as const;
 
 /** API key 形态 `tds_<48hex>`（02 §5.8；r3 §6 掩码样例 `tds_afe07565…`）。

@@ -11,15 +11,17 @@
 import type {
   Assignment,
   BuildRecord,
+  StepJournalRow,
   StepRecord,
   TriggerSource,
   UserRecord,
 } from '@pacman/shared';
+import { MERGE_ANNOUNCEMENT } from '@pacman/shared';
 import { asc, eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { build, message, step, todo } from '../db/schema.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
-import type { TeamStreamHub } from './events.js';
+import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import type { MachineWakeHub } from './machines.js';
 import { assertPhaseTransition } from './phase.js';
 import { getTodo, setTodoPhase } from './todos.js';
@@ -32,6 +34,9 @@ export interface BuildDeps {
   machineHub?: MachineWakeHub;
   /** 通知收件人（completeStep 经 setTodoPhase 漏斗发三事件，02 §9.1）。 */
   user: UserRecord;
+  /** conversation stream 通道（M5 live streaming：入队步/驳回与合并用户行
+   * 即时推送，02 §1.2 会话流）；缺省 = 无会话流面。 */
+  convHub?: ConversationStreamHub;
 }
 
 type BuildRow = typeof build.$inferSelect;
@@ -51,6 +56,25 @@ export function toBuildRecord(row: BuildRow): BuildRecord {
     diffHash: row.diffHash,
     createdAt: row.createdAt,
   };
+}
+
+/** transcript 行落库 + 会话流即时推送（M5 live streaming：驳回 feedback 行/
+ * 合并宣告行/🎉 行三处同形；machine 面 live 行走 machines.ts upsert 族）。 */
+export function insertMessageRow(
+  deps: { db: Db; convHub?: ConversationStreamHub },
+  conversationId: string,
+  row: {
+    id: string;
+    role: 'system' | 'user' | 'assistant';
+    content: unknown;
+    createdAt: number;
+  },
+): void {
+  deps.db
+    .insert(message)
+    .values({ ...row, conversationId })
+    .run();
+  deps.convHub?.publishMessage(conversationId, row);
 }
 
 function publishBuild(deps: BuildDeps, row: BuildRow): BuildRecord {
@@ -85,6 +109,16 @@ function enqueueStep(
     .run();
   // 入队即 wake（低延迟派发，02 §1.2/§5.4；claim 长轮询等待者 + SSE 双通道）。
   deps.machineHub?.wake(teamId);
+  // 会话流 step 事件（pending）：详情页进度行即时更新（M5 live streaming）。
+  deps.convHub?.publishStep(buildId, {
+    id,
+    buildId,
+    kind,
+    machineId: null,
+    createdAt,
+    status: 'pending',
+    checkpointCommit: null,
+  });
   return { id, buildId, kind, machineId: null, createdAt };
 }
 
@@ -93,7 +127,11 @@ export function getBuild(deps: BuildDeps, id: string): BuildRecord | null {
   return row ? toBuildRecord(row) : null;
 }
 
-export function listSteps(deps: BuildDeps, buildId: string): StepRecord[] {
+// steps 读面行 = shared stepJournalRowSchema 单源（record + journal 位透出
+// [设计]，02 §5.4「journal 状态字段归实现期展开」；zod strip 下 record 对拍
+// 不漂移）。
+
+export function listSteps(deps: BuildDeps, buildId: string): StepJournalRow[] {
   return deps.db
     .select()
     .from(step)
@@ -106,6 +144,8 @@ export function listSteps(deps: BuildDeps, buildId: string): StepRecord[] {
       kind: r.kind,
       machineId: r.machineId,
       createdAt: r.createdAt,
+      status: r.status,
+      checkpointCommit: r.checkpointCommit,
     }));
 }
 
@@ -191,16 +231,12 @@ export function applyBuildStepAction(
     return;
   }
   // revision：用户驳回消息行进 transcript（role user，r5 §3.6/§4 时间线呈现）。
-  deps.db
-    .insert(message)
-    .values({
-      id: newRecordId(),
-      conversationId: buildId,
-      role: 'user',
-      content: body.feedback,
-      createdAt: nowMs(),
-    })
-    .run();
+  insertMessageRow(deps, buildId, {
+    id: newRecordId(),
+    role: 'user',
+    content: body.feedback,
+    createdAt: nowMs(),
+  });
   setTodoPhase(deps, todoRecord.id, 'planning');
   // 重规划步（同 conv continue session，r5 §4）：feedback 注入续轮指令，v2 忠实
   // 执行反馈（宿主等价物——措辞由 LLM 侧组织，本层给事实与要求）。
@@ -218,17 +254,14 @@ export function requestMerge(deps: BuildDeps, buildId: string): { delegated: tru
   // 合并关口 = review（「将改动合并到默认分支」确认弹层，r3 §3.6）。
   assertPhaseTransition(todoRow.phase, 'done');
   // 时间线「发起了合并」行（r3 §3.6 实测：`15:06 Xmon Dai 发起了合并`；
-  // 行形 [设计]——role user 纯文本，呈现层拼装时间/actor）。
-  deps.db
-    .insert(message)
-    .values({
-      id: newRecordId(),
-      conversationId: buildId,
-      role: 'user',
-      content: '发起了合并',
-      createdAt: nowMs(),
-    })
-    .run();
+  // 行形 [设计]——role user 纯文本 = shared MERGE_ANNOUNCEMENT 单源，呈现层
+  // 拼装时间/actor）。
+  insertMessageRow(deps, buildId, {
+    id: newRecordId(),
+    role: 'user',
+    content: MERGE_ANNOUNCEMENT,
+    createdAt: nowMs(),
+  });
   enqueueStep(deps, buildId, 'merge', todoRow.teamId);
   return { delegated: true };
 }
@@ -264,16 +297,12 @@ export function completeStep(
   // merge 步成 → done + 🎉（时间线「发起了合并」+ 结果行 + `🎉 任务已完成`，
   // r3 §3.6；celebration 行 [设计] = role system 纯文本）。
   setTodoPhase(deps, todoRow.id, 'done');
-  deps.db
-    .insert(message)
-    .values({
-      id: newRecordId(),
-      conversationId: buildRow.id,
-      role: 'system',
-      content: '🎉 任务已完成',
-      createdAt: nowMs(),
-    })
-    .run();
+  insertMessageRow(deps, buildRow.id, {
+    id: newRecordId(),
+    role: 'system',
+    content: '🎉 任务已完成',
+    createdAt: nowMs(),
+  });
 }
 
 export class NotFoundError extends Error {

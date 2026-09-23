@@ -373,13 +373,17 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
   });
 
   it('env vars are the five observed originals (r3 §1.1)', () => {
-    expect(ENV_VARS).toEqual({
+    // 观测五件逐字冻结（r3 §1.1）；复刻增量位（webDir = M5 SPA 静态托管覆写
+    // [设计]，非观测 canon）单独断言，两组不混判。
+    const { webDir, ...observed } = ENV_VARS;
+    expect(observed).toEqual({
       server: 'TDS_SERVER',
       apiKey: 'TDS_API_KEY',
       team: 'TDS_TEAM',
       workspacesDir: 'TDS_WORKSPACES_DIR',
       home: 'TDS_HOME',
     });
+    expect(webDir).toBe('TDS_WEB_DIR');
   });
 
   it('credential formats match the observed shapes', () => {

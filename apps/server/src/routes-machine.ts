@@ -16,6 +16,7 @@ import {
   machineRecordSchema,
   machineToolBodySchema,
   machineToolRelayBodySchema,
+  machineTranscriptDeltaBodySchema,
   machineUploadUrlsBodySchema,
   PLAN_FILE_NAME,
   transcriptUploadSchema,
@@ -41,6 +42,7 @@ import {
   receiveUpload,
   recoverSteps,
   reportTool,
+  reportTranscriptDelta,
   stepToken,
 } from './services/machines.js';
 
@@ -48,6 +50,16 @@ import {
  * remoteTools 执行；toolCallRecord（有 id/arguments）= live transcript 回传。 */
 function isRelayBody(raw: unknown): boolean {
   return raw !== null && typeof raw === 'object' && 'params' in raw && !('id' in raw);
+}
+
+/** transcript delta 判别（第三形 [设计]，M5 live streaming）：kind 判别位。 */
+function isDeltaBody(raw: unknown): boolean {
+  return (
+    raw !== null &&
+    typeof raw === 'object' &&
+    'kind' in raw &&
+    (raw as { kind: unknown }).kind === 'transcript_delta'
+  );
 }
 
 type MachineRow = typeof machineTable.$inferSelect;
@@ -80,6 +92,7 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     box: ctx.secretBox,
     user: ctx.user,
     reposDir: ctx.reposDir,
+    convHub: ctx.convHub,
   };
 
   // 机器 token 认证中间件（enroll 三件除外——其认证 = apiKey）。
@@ -222,6 +235,11 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
   app.post('/api/machine/tool/:stepId', async (c) => {
     const row = me(c);
     const raw = await jsonBody(c);
+    if (isDeltaBody(raw)) {
+      const delta = parseWith(machineTranscriptDeltaBodySchema, raw, 'body');
+      reportTranscriptDelta(deps, row.id, c.req.param('stepId'), delta.text);
+      return c.json({ ok: true as const });
+    }
     if (isRelayBody(raw)) {
       const relay = parseWith(machineToolRelayBodySchema, raw, 'body');
       const text = await executeRelayToolCall(

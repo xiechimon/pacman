@@ -1,5 +1,5 @@
-// server 入口（01 §3：Hono REST + SSE + DB + git http-backend 托管 + cron；
-// SPA 静态同源托管面随 web 线汇合归 M5）。
+// server 入口（01 §3：Hono REST + SSE + DB + git http-backend 托管 + cron +
+// SPA 静态同源托管，02/A1——webDir 见 config.ts）。
 
 import { mkdirSync } from 'node:fs';
 import { serve } from '@hono/node-server';
@@ -9,7 +9,7 @@ import { loadConfig, reposDirOf } from './config.js';
 import { openDbWithHandle } from './db/client.js';
 import { seed } from './db/seed.js';
 import { createKeyfileSecretBox } from './lib/secret-box.js';
-import { TeamStreamHub } from './services/events.js';
+import { ConversationStreamHub, TeamStreamHub } from './services/events.js';
 import { MachineWakeHub } from './services/machines.js';
 import { createScheduler } from './services/scheduler.js';
 
@@ -27,6 +27,7 @@ const { db, close } = openDbWithHandle(config.dbPath);
 const secretBox = createKeyfileSecretBox(config.keyfilePath);
 const seeded = seed(db);
 const hub = new TeamStreamHub();
+const convHub = new ConversationStreamHub();
 const reposDir = reposDirOf(config);
 mkdirSync(reposDir, { recursive: true });
 const app = createApp(
@@ -34,6 +35,7 @@ const app = createApp(
     db,
     hub,
     machineHub: new MachineWakeHub(),
+    convHub,
     secretBox,
     user: seeded.user,
     team: seeded.team,
@@ -42,6 +44,7 @@ const app = createApp(
     uploads: new Map(),
     enrollments: new Map(),
     reposDir,
+    webDir: config.webDir,
   },
   logger,
 );
@@ -49,7 +52,7 @@ const app = createApp(
 // cron 定时闭环（02 §9.2 宿主自持）：启动即补扫 + tick 循环。
 // deps 含 user（M2c 通知面）：定时轮停 review 经 build 漏斗发 build_review（r5 §7.2）。
 const scheduler = createScheduler(
-  { db, hub, user: seeded.user },
+  { db, hub, user: seeded.user, convHub },
   { tickMs: config.schedulerTickMs },
 );
 scheduler.start();

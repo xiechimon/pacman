@@ -4,6 +4,9 @@
 // 创建 Agent slot. Head title is the team-switch dropdown trigger
 // (r2 §8.1); the 设置 link sits in the head right slot (r7 12).
 import { useSearchParams } from 'react-router';
+import { useMembers, useTeams, useTodos } from '../api/hooks.js';
+import { mapTeam, toDisplayTodo } from '../api/mappers.js';
+import { useLiveData } from '../api/provider.js';
 import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
@@ -14,15 +17,22 @@ export function TeamPage() {
   const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
-  const team = fixture.team ?? TEAM_R7;
+  // M5 live：成员/Agent 网格 = GET members 真值（r5 §1：Agent 列表实际走
+  // members，memberType:"agent" 行内嵌 actor）；团队名 = GET /api/teams。
+  const { live, teamId } = useLiveData();
+  const membersQ = useMembers(teamId, live);
+  const teamsQ = useTeams(live);
+  const todosQ = useTodos(teamId, live);
+  const team = live && membersQ.data ? mapTeam(membersQ.data) : (fixture.team ?? TEAM_R7);
+  const teamName = live ? (teamsQ.data?.[0]?.name ?? TEAM_NAME) : TEAM_NAME;
   return (
     <SecondaryShell
       route="team"
-      fixture={fixture}
+      fixture={live ? { ...fixture, todos: (todosQ.data ?? []).map(toDisplayTodo) } : fixture}
       sidebarSelected="team"
       title={
         <>
-          {TEAM_NAME}
+          {teamName}
           <ChevronDown width={12} height={12} />
         </>
       }

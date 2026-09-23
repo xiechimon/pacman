@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
+  apiKeyRowSchema,
   // phase/品牌/表清单
   BOARD_COLUMNS,
   BRAND,
@@ -18,6 +19,7 @@ import {
   // AgentBackend 缝（01 §5）+ 机器面 wire（02 §5）
   claimedStepSchema,
   conversationMessagesResponseSchema,
+  conversationStreamEventSchema,
   createScheduleBodySchema,
   createTodoBodySchema,
   DAEMON_LOG_PREFIXES,
@@ -46,6 +48,8 @@ import {
   machineRecoverResponseSchema,
   machineStreamEventSchema,
   machineTokenResponseSchema,
+  machineToolBodySchema,
+  machineTranscriptDeltaBodySchema,
   machineUploadUrlsBodySchema,
   machineUploadUrlsResponseSchema,
   mergeAcceptedResponseSchema,
@@ -60,6 +64,7 @@ import {
   PROXY_ENV_VARS,
   PROXY_PROBE_LOG_CANON,
   patchChiefBodySchema,
+  planRowSchema,
   projectBranchesResponseSchema,
   projectFileResponseSchema,
   projectTreeResponseSchema,
@@ -73,6 +78,7 @@ import {
   setSecretBodySchema,
   startBuildsBodySchema,
   stepEventSchema,
+  stepJournalRowSchema,
   THIRD_PARTY_CLIENT_KEYS,
   teamStreamEventSchema,
   transcriptUploadSchema,
@@ -105,6 +111,11 @@ describe('body/封套 schema 快照', () => {
     searchResponse: searchResponseSchema,
     setSecretBody: setSecretBodySchema,
     teamStreamEvent: teamStreamEventSchema,
+    conversationStreamEvent: conversationStreamEventSchema,
+    // M5 [推断] 读面行形（双端单源，wire.test INFERRED_ROUTES 登记族）
+    planRow: planRowSchema,
+    stepJournalRow: stepJournalRowSchema,
+    apiKeyRow: apiKeyRowSchema,
     machineJson: machineJsonSchema,
     deviceJson: deviceJsonSchema,
     daemonJson: daemonJsonSchema,
@@ -136,6 +147,8 @@ describe('AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 cano
     machinePresenceBody: machinePresenceBodySchema,
     machineRecoverResponse: machineRecoverResponseSchema,
     machineStreamEvent: machineStreamEventSchema,
+    machineToolBody: machineToolBodySchema,
+    machineTranscriptDeltaBody: machineTranscriptDeltaBodySchema,
     machineTokenResponse: machineTokenResponseSchema,
     machineUploadUrlsBody: machineUploadUrlsBodySchema,
     machineUploadUrlsResponse: machineUploadUrlsResponseSchema,

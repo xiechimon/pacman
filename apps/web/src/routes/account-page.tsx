@@ -9,6 +9,8 @@
 
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
+import { useSession } from '../api/hooks.js';
+import { useLiveData } from '../api/provider.js';
 import { USER_MAIL, USER_NAME } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { LOCALE_NAMES, LOCALES } from '../i18n/locale.js';
@@ -23,6 +25,12 @@ export function AccountPage() {
   const fixture = resolveScenario(searchParams);
   const [langOpen, setLangOpen] = useState(fixture.ui?.langDropdownOpen === true);
   useEscapeClose(langOpen, () => setLangOpen(false));
+  // M5 live：名称 = GET /api/user/me（seed 单用户 displayName，02 §2.1）；
+  // 邮箱 = 复刻无邮箱账位面（自动登录，无注册）——占位破折号 [设计]。
+  const { live } = useLiveData();
+  const sessionQ = useSession(live);
+  const userName = live ? (sessionQ.data?.displayName ?? USER_NAME) : USER_NAME;
+  const userEmail = live ? '—' : USER_MAIL;
   return (
     <SecondaryShell route="account" fixture={fixture} sidebarSelected="team" title={t('帐号')}>
       <div className="account-card">
@@ -42,13 +50,13 @@ export function AccountPage() {
         <div className="account-row account-row--name">
           <span className="account-label">{t('名称')}</span>
           <span className="account-value">
-            {USER_NAME}
+            {userName}
             <SquarePen width={14} height={14} />
           </span>
         </div>
         <div className="account-row">
           <span className="account-label">{t('邮箱')}</span>
-          <span className="account-value account-value--muted">{USER_MAIL}</span>
+          <span className="account-value account-value--muted">{userEmail}</span>
         </div>
         <div className="account-row account-row--tall">
           <span className="account-label">{t('语言')}</span>

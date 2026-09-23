@@ -9,6 +9,7 @@
 //   r3 §6；HTTP 挂接面归 M3）。撤销面未观测，不发明（04 附录 A 补采口径）。
 
 import { randomBytes } from 'node:crypto';
+import type { ApiKeyRow as SharedApiKeyRow } from '@pacman/shared';
 import { BRAND, maskApiKey } from '@pacman/shared';
 import { asc, eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
@@ -22,16 +23,9 @@ export interface ApiKeyDeps {
 
 type ApiKeyRow = typeof apiKey.$inferSelect;
 
-/** 列表行投影 [推断]（keyHash [内部] 列永不出响应）。 */
-export interface ApiKeyRowView {
-  id: string;
-  name: string | null;
-  gitAccess: boolean;
-  mcpAccess: boolean;
-  toolGrants: { read: string[]; write: string[] };
-  masked: string;
-  createdAt: number;
-}
+/** 列表行投影 [推断]（keyHash [内部] 列永不出响应）；形状单源 = shared
+ * apiKeyRowSchema（M5 双端消费收口，web hooks 同型）。 */
+export type ApiKeyRowView = SharedApiKeyRow;
 
 export function toApiKeyRowView(row: ApiKeyRow): ApiKeyRowView {
   return {

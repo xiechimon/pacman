@@ -7,7 +7,13 @@
 // - machine_presence 事件面归 M3（hub 通道已具备）。
 // SSE 写入按连接串行化（promise 链），避免交错。
 
-import type { BuildRecord, NotificationRecord, TodoRecord } from '@pacman/shared';
+import type {
+  BuildRecord,
+  ConversationStepEvent,
+  NotificationRecord,
+  TodoRecord,
+  TranscriptRow,
+} from '@pacman/shared';
 
 /** 单条 SSE 连接的写入口；seq 由 hub 按连接分配。 */
 export interface TeamStreamConnection {
@@ -77,4 +83,54 @@ export function createSerialConnection(
       return tail;
     },
   };
+}
+
+// —— conversation stream hub（GET /api/conversations/{id}/stream，02 §1.2 会话
+// 流；事件词表单源 = shared conversationStreamEventSchema [推断] 定型四事件）。
+// 键 = conversationId（build 会话 = buildId；chief 会话 = chief-<threadId>，
+// buildId ≡ conversationId 等式两翼同用）。text_delta 为瞬态转发不落库
+// （终稿经 transcript 上传兜底，02 §1.3）。
+
+export class ConversationStreamHub {
+  private readonly byConv = new Map<string, Set<TeamStreamConnection>>();
+
+  subscribe(conversationId: string, conn: TeamStreamConnection): () => void {
+    let set = this.byConv.get(conversationId);
+    if (!set) {
+      set = new Set();
+      this.byConv.set(conversationId, set);
+    }
+    set.add(conn);
+    return () => {
+      set?.delete(conn);
+      if (set && set.size === 0) this.byConv.delete(conversationId);
+    };
+  }
+
+  subscriberCount(conversationId: string): number {
+    return this.byConv.get(conversationId)?.size ?? 0;
+  }
+
+  /** transcript 行落库推送（live 工具行 / 终稿行 / 用户行同事件）。 */
+  publishMessage(conversationId: string, message: TranscriptRow): void {
+    this.publish(conversationId, { type: 'message', message });
+  }
+
+  /** pi text_delta 节流批量转发（瞬态，不落库）。 */
+  publishTextDelta(conversationId: string, text: string): void {
+    this.publish(conversationId, { type: 'text_delta', text });
+  }
+
+  /** 步状态流转（pending/claimed/done/failed）。 */
+  publishStep(conversationId: string, step: ConversationStepEvent['step']): void {
+    this.publish(conversationId, { type: 'step', step });
+  }
+
+  publish(conversationId: string, payload: object): void {
+    const set = this.byConv.get(conversationId);
+    if (!set) return;
+    for (const conn of set) {
+      void conn.send(payload);
+    }
+  }
 }

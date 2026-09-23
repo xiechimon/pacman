@@ -25,6 +25,19 @@ export const stepRecordSchema = z.object({
 });
 export type StepRecord = z.infer<typeof stepRecordSchema>;
 
+/** journal 状态词（02 §5.4 [内部] 展开：claimed = 机器领取未收尾）。 */
+export const stepStatusSchema = z.enum(['pending', 'claimed', 'done', 'failed']);
+export type StepStatus = z.infer<typeof stepStatusSchema>;
+
+/** steps 读面/会话流 step 事件行 = record + journal 位透出 [设计]（M5 详情
+ * 面进度行/分支 dialog 目标提交数据源；stepRecordSchema 最小投影不含 =
+ * zod strip 下 record 对拍不漂移）。server/web 双端单源。 */
+export const stepJournalRowSchema = stepRecordSchema.extend({
+  status: stepStatusSchema,
+  checkpointCommit: recordId.nullable(),
+});
+export type StepJournalRow = z.infer<typeof stepJournalRowSchema>;
+
 /** POST /api/builds/{id}/steps body——确认回路（02 §4.2，r5 §4 实走改判）：
  * 驳回 = {action:"revision", side:"plan", feedback, clientMessageId} →
  * server 入队重规划步（同 conv continue session）→ plan v2；

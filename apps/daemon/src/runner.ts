@@ -87,6 +87,10 @@ export function composeWorkerSystemPrompt(
  * 当前 = transcript 含写类工具行）。 */
 const CHANGE_TOOLS = new Set(['edit', 'write', 'bash']);
 
+/** live transcript 文本增量转发节流窗口 [设计]（M5 live streaming；官方节奏
+ * 不可观测——窗口取「肉眼成流、请求不成洪」的折中）。 */
+const TRANSCRIPT_DELTA_FLUSH_MS = 250;
+
 async function withRetries<T>(
   fn: () => Promise<T>,
   delaysMs: readonly number[],
@@ -297,10 +301,37 @@ export async function runStep(
     void handle.stop();
   }, STREAM_TIMEOUTS_MS.streamBodyTimeout);
   bodyTimeout.unref?.();
+  // live transcript 文本增量转发（M5 live streaming）：pi text_delta 按
+  // TRANSCRIPT_DELTA_FLUSH_MS 窗口聚合批量 POST（tool/{stepId} 第三形
+  // [设计]）；fire-and-forget——失败仅日志，终稿经 transcript 上传兜底。
+  let deltaBuf = '';
+  let deltaTimer: NodeJS.Timeout | null = null;
+  const flushDeltas = () => {
+    if (deltaTimer !== null) {
+      clearTimeout(deltaTimer);
+      deltaTimer = null;
+    }
+    const text = deltaBuf;
+    deltaBuf = '';
+    if (text === '') return;
+    client.transcriptDelta(stepId, text).catch((err: unknown) => {
+      logger.step(
+        `transcript delta relay failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    });
+  };
   try {
     for await (const ev of handle.events) {
       armWatchdog(STREAM_TIMEOUTS_MS.streamIdle);
       switch (ev.type) {
+        case 'text_delta': {
+          deltaBuf += ev.text;
+          if (deltaTimer === null) {
+            deltaTimer = setTimeout(flushDeltas, TRANSCRIPT_DELTA_FLUSH_MS);
+            deltaTimer.unref?.();
+          }
+          break;
+        }
         case 'toolcall_end': {
           if (ev.call.name && CHANGE_TOOLS.has(ev.call.name)) sawChangeTool = true;
           transcript.upsert({
@@ -356,10 +387,12 @@ export async function runStep(
   } catch (err) {
     clearInterval(heartbeat);
     if (watchdog) clearTimeout(watchdog);
+    flushDeltas();
     clearCredentials(creds);
     await failStep(deps, stepId, err instanceof Error ? err.message : String(err));
     return;
   }
+  flushDeltas();
   clearInterval(heartbeat);
   if (watchdog) clearTimeout(watchdog);
   if (timedOut)

@@ -7,8 +7,43 @@
 // 复用方案 sub-panel (r8 56/74/75) and the interactive reject chain
 // (请求修改 → replan streaming → v(N+1) → diff → 确认, AC3) walked
 // client-side over the fixture script.
-import { useCallback, useState } from 'react';
+// #83 (M5): live 数据源分支——无 `?scenario=` 时详情页走真 API + 真 SSE
+// （transcript 实时流/步进度/plan 版本/变更 diff/overlay 三件），关口动作
+// 接真端点（开始/确认/驳回/合并/重跑/删除）；fixture 分支（含 chain 脚本）
+// 保持 #56–#75 行为字节不变。
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import {
+  useApiMutations,
+  useBuild,
+  useBuildChanges,
+  useBuildUsage,
+  useDocumentDiff,
+  useMachines,
+  useMembers,
+  useMessages,
+  usePlans,
+  useProjectBuilds,
+  useProjects,
+  useSteps,
+  useTodo,
+  useTodos,
+} from '../api/hooks.js';
+import { liveTextStore } from '../api/live-text.js';
+import {
+  mapBranchInfo,
+  mapDiffFiles,
+  mapPlanDiff,
+  mapPlanDoc,
+  mapPlanVersions,
+  mapRunHistory,
+  mapTokenUsage,
+  mapTranscript,
+  toDisplayTodo,
+} from '../api/mappers.js';
+import { useLiveData } from '../api/provider.js';
+import { useConversationStream } from '../api/sse.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
 import { Composer } from '../detail/composer.js';
@@ -88,18 +123,47 @@ export function TodoDetailPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { live, teamId, userName } = useLiveData();
   // 文档|聊天 tabs (issue #56): 文档 = doc pane + chat column, 聊天 = chat
   // column alone. Pure render state — the captures all sit on 文档.
   const [tab, setTab] = useState<'doc' | 'chat'>('doc');
   // 更多 menu + delete confirm (#66): confirming a delete marks the todo
   // in the deletions overlay and returns to /app (r2 §5.4) — the board
   // route then renders without it; the fixture phase has no backend.
+  // M5: live 模式走 DELETE /api/todos/{id}。
   const [moreOpen, setMoreOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const fixture = resolveScenario(searchParams);
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
-  const todos = withoutDeleted(fixture.todos);
-  const todo = todos.find((t) => t.id === id) ?? todos[0];
+  const fixtureTodos = withoutDeleted(fixture.todos);
+
+  // —— live 查询面（#83）：todo → latestBuild → steps/messages/plans/changes/
+  // usage + machines/members/projects 供 overlay 与指派。fixture 模式全部
+  // 惰性（enabled = live）。——
+  const todoQ = useTodo(live ? id : undefined, live);
+  const todosQ = useTodos(teamId, live);
+  const wireTodo = todoQ.data ?? null;
+  const buildId = wireTodo?.latestBuildId ?? null;
+  const buildQ = useBuild(buildId, live);
+  const stepsQ = useSteps(buildId, live);
+  const messagesQ = useMessages(buildId, live);
+  const plansQ = usePlans(buildId, live);
+  const usageQ = useBuildUsage(buildId, live);
+  const machinesQ = useMachines(teamId, live);
+  const membersQ = useMembers(teamId, live);
+  const projectsQ = useProjects(teamId, live);
+  const projectBuildsQ = useProjectBuilds(wireTodo?.projectId, live);
+  const mutations = useApiMutations(teamId);
+
+  const liveTodos = useMemo(() => (todosQ.data ?? []).map(toDisplayTodo), [todosQ.data]);
+  const todos = live ? liveTodos : fixtureTodos;
+  const todo = live
+    ? wireTodo
+      ? toDisplayTodo(wireTodo)
+      : todos.find((t) => t.id === id)
+    : (fixtureTodos.find((t) => t.id === id) ?? fixtureTodos[0]);
+
   // Modal overlays (issue #68, extended in #75 with rerun/reuse): the
   // scenario fixture opens one for capture determinism; the header
   // buttons and the review/failed action buttons open the same set
@@ -111,14 +175,127 @@ export function TodoDetailPage() {
   const [menu, setMenu] = useState<'versions' | 'compare' | undefined>(fixture.detail?.versionMenu);
   const [diff, setDiff] = useState(fixture.detail?.planDiff);
   const [chain, setChain] = useState<ChainState>('idle');
+  // live 面：变更 pane 展开态 + 版本对比开关（数据来自 documents/{id}/diff）。
+  const [changesExpanded, setChangesExpanded] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
 
-  const view = chainView(fixture.detail, chain, diff);
+  const phase: Phase = todo?.phase ?? 'todo';
+  const showsChanges = phase === 'review' || phase === 'done' || phase === 'failed';
+  const changesQ = useBuildChanges(buildId, live && (showsChanges || compareOpen));
+  const latestPlan = plansQ.data?.length ? plansQ.data[plansQ.data.length - 1] : null;
+  const compareDiffQ = useDocumentDiff(
+    compareOpen && latestPlan && latestPlan.version > 1 ? latestPlan.id : null,
+    null,
+    live,
+  );
+
+  // live transcript：conversation stream 订阅 + text_delta 打字缓冲。
+  const liveText = useSyncExternalStore(liveTextStore.subscribe, () =>
+    buildId != null ? liveTextStore.get(buildId) : '',
+  );
+  const streamHandlers = useMemo(
+    () => ({
+      // todo/phase 面由 team stream 驱动失效；此处兜底本页 todo 键。
+      onMessage: () => {
+        void qc.invalidateQueries({ queryKey: ['todo', id] });
+      },
+    }),
+    [qc, id],
+  );
+  useConversationStream(buildId ?? undefined, live, streamHandlers);
+
+  const steps = stepsQ.data ?? [];
+  const running = steps.some((s) => s.status === 'claimed' || s.status === 'pending');
+
+  const liveDetail: DetailContent | undefined = useMemo(() => {
+    if (!live || !wireTodo || buildId == null) return undefined;
+    const machineName =
+      machinesQ.data?.find((m) => steps.some((s) => s.machineId === m.id))?.name ?? null;
+    return {
+      transcript: mapTranscript({
+        messages: messagesQ.data?.messages ?? [],
+        steps,
+        plans: plansQ.data ?? [],
+        build: buildQ.data ?? null,
+        todo: toDisplayTodo(wireTodo),
+        machineName,
+        userName,
+        liveText,
+        now: Date.now(),
+      }),
+      ...(latestPlan ? { doc: mapPlanDoc(latestPlan.content) } : {}),
+      ...(changesQ.data
+        ? { changes: { files: mapDiffFiles(changesQ.data.files), expanded: changesExpanded } }
+        : {}),
+      planVersions: mapPlanVersions(plansQ.data ?? []),
+    };
+  }, [
+    live,
+    wireTodo,
+    buildId,
+    machinesQ.data,
+    steps,
+    messagesQ.data,
+    plansQ.data,
+    buildQ.data,
+    userName,
+    liveText,
+    latestPlan,
+    changesQ.data,
+    changesExpanded,
+  ]);
+
+  // live 版本对比面（r8 64→65：上一版本 unified diff）。
+  const livePlanDiff: PlanDiffContent | undefined =
+    compareOpen && compareDiffQ.data ? mapPlanDiff(compareDiffQ.data) : undefined;
+
+  const fixtureView = chainView(fixture.detail, chain, diff);
+  const view = live
+    ? {
+        phaseOverride: null as Phase | null,
+        transcript: liveDetail?.transcript ?? [],
+        doc: liveDetail?.doc,
+        planVersions: liveDetail?.planVersions,
+        planDiff: livePlanDiff,
+      }
+    : fixtureView;
+
+  // live 指派：开始/重跑取团队首个 Agent（已建屏无开始 dialog——assignment
+  // 缺省语义 [设计]，02 §6.2 双槽同值）。
+  const firstAgentId = useMemo(() => {
+    const member = (membersQ.data ?? []).find((m) => m.memberType === 'agent');
+    return member?.actorId ?? null;
+  }, [membersQ.data]);
+  const startBuild = useCallback(
+    (withPlan: boolean) => {
+      if (!live || !wireTodo) return;
+      mutations.startBuilds.mutate({
+        projectId: wireTodo.projectId,
+        todoIds: [wireTodo.id],
+        assignment: {
+          plan: firstAgentId ? { agentId: firstAgentId } : null,
+          build: firstAgentId ? { agentId: firstAgentId } : null,
+        },
+        withPlan,
+      });
+      setOverlay(null);
+    },
+    [live, wireTodo, mutations.startBuilds, firstAgentId],
+  );
+
   if (todo == null) return null;
-  const content = overlayContent(todo.id);
-  const phase: Phase = view.phaseOverride ?? todo.phase;
+  const content = live
+    ? wireTodo && buildId
+      ? {
+          token: mapTokenUsage(usageQ.data ?? []),
+          branch: mapBranchInfo(buildId, steps, machinesQ.data ?? []),
+          runs: mapRunHistory(wireTodo, projectBuildsQ.data ?? [], Date.now()),
+        }
+      : null
+    : overlayContent(todo.id);
   const ui = PHASE_UI[phase];
-  const detail = fixture.detail;
-  const streaming = view.transcript.some((item) => item.kind === 'streaming');
+  const detail = live ? liveDetail : fixture.detail;
+  const streaming = live ? running : view.transcript.some((item) => item.kind === 'streaming');
   // The doc pane flips to the 变更 surface once a run produced changes
   // (r7 27/36, r8 54/73); the plan-version diff surface wins while open
   // (r8 65–72); the plan surface serves todo→building (r7 16/17/26).
@@ -139,12 +316,23 @@ export function TodoDetailPage() {
       <div className="detail-main">
         <DetailHead
           todo={todo}
-          phase={phase}
+          phase={live ? phase : (view.phaseOverride ?? todo.phase)}
           tab={tab}
           onTab={setTab}
           onMore={() => setMoreOpen(true)}
           onOverlay={(kind) => setOverlay({ kind })}
           onAction={() => {
+            if (live) {
+              // 主时序关口（02 §4.2）：todo 开始 / confirm 确认 / review 验收
+              // 弹层 / failed 重跑弹层 / done 重开 = 新一轮 build。
+              if (phase === 'todo') startBuild(true);
+              else if (phase === 'confirm' && buildId)
+                mutations.stepAction.mutate({ buildId, body: { action: 'confirm' } });
+              else if (phase === 'review') setOverlay({ kind: 'accept' });
+              else if (phase === 'failed') setOverlay({ kind: 'rerun' });
+              else if (phase === 'done') startBuild(true);
+              return;
+            }
             if (chain === 'landed' && detail?.revision != null) {
               setChain('building');
               return;
@@ -166,13 +354,18 @@ export function TodoDetailPage() {
               <DocPane
                 mode={docMode}
                 doc={view.doc}
-                changes={detail.changes}
-                now={fixture.now}
+                changes={live ? liveDetail?.changes : detail.changes}
+                now={live ? Date.now() : fixture.now}
                 planDropdownOpen={fixture.ui?.planDropdownOpen === true}
                 planVersions={view.planVersions}
                 versionMenu={menu}
                 onVersionMenu={setMenu}
                 onCompare={() => {
+                  if (live) {
+                    setCompareOpen(true);
+                    setMenu(undefined);
+                    return;
+                  }
                   // 上一版本 (r8 64 → 65/71): opens the previous-version
                   // diff — the fixture's compare target, or the chain's
                   // landed diff once the reject loop produced one
@@ -180,13 +373,22 @@ export function TodoDetailPage() {
                   setMenu(undefined);
                 }}
                 onBase={() => {
+                  if (live) {
+                    setCompareOpen(false);
+                    setMenu(undefined);
+                    return;
+                  }
                   setDiff(undefined);
                   setMenu(undefined);
                 }}
                 planDiff={view.planDiff}
-                onToggleExpand={() =>
-                  setDiff((d) => (d != null ? { ...d, expanded: !d.expanded } : d))
-                }
+                onToggleExpand={() => {
+                  if (live) {
+                    setChangesExpanded((v) => !v);
+                    return;
+                  }
+                  setDiff((d) => (d != null ? { ...d, expanded: !d.expanded } : d));
+                }}
               />
             )}
             <div className="chat-col">
@@ -210,13 +412,32 @@ export function TodoDetailPage() {
               (phase === 'confirm' || phase === 'review') && !todo.awaitingReply
             }
             streaming={streaming}
+            editable={live}
             onSend={
-              detail?.revision != null && chain === 'idle'
-                ? () => {
-                    setChain('streaming');
-                    window.setTimeout(() => setChain('landed'), 900);
+              live
+                ? (text) => {
+                    // 驳回回路（r5 §4）：confirm 关口发送 = revision + feedback
+                    // → 重规划步入队 → plan v(N+1)（会话流即时呈现）。其余
+                    // 关口无 server 写面（steer 词表位 02 §5.6 未落 REST），
+                    // 发送惰性。
+                    if (phase === 'confirm' && buildId && text !== '') {
+                      mutations.stepAction.mutate({
+                        buildId,
+                        body: {
+                          action: 'revision',
+                          side: 'plan',
+                          feedback: text,
+                          clientMessageId: crypto.randomUUID(),
+                        },
+                      });
+                    }
                   }
-                : undefined
+                : detail?.revision != null && chain === 'idle'
+                  ? () => {
+                      setChain('streaming');
+                      window.setTimeout(() => setChain('landed'), 900);
+                    }
+                  : undefined
             }
           />
         )}
@@ -227,7 +448,7 @@ export function TodoDetailPage() {
           )}
         </button>
       </div>
-      {detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
+      {!live && detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
       <MoreMenu
         open={moreOpen}
         onClose={() => setMoreOpen(false)}
@@ -242,6 +463,10 @@ export function TodoDetailPage() {
         onClose={() => setDeleteOpen(false)}
         onConfirm={() => {
           setDeleteOpen(false);
+          if (live) {
+            mutations.deleteTodo.mutate(todo.id, { onSuccess: () => navigate('/app') });
+            return;
+          }
           markDeleted(todo.id);
           navigate('/app');
         }}
@@ -267,7 +492,20 @@ export function TodoDetailPage() {
           onClose={closeOverlay}
         />
       )}
-      <AcceptDialog open={overlay?.kind === 'accept'} onClose={closeOverlay} />
+      <AcceptDialog
+        open={overlay?.kind === 'accept'}
+        onClose={closeOverlay}
+        onConfirm={
+          live && buildId
+            ? () => {
+                // merge = 202 delegated（r3 §3.6）：合并步机器执行，phase 经
+                // SSE 推进到 done（🎉 时间线行由 server 落库）。
+                mutations.mergeBuild.mutate(buildId);
+                closeOverlay();
+              }
+            : undefined
+        }
+      />
       {overlay?.kind === 'rerun' && (
         <RerunDialog
           reuse={todo.hasPlan}
@@ -278,18 +516,37 @@ export function TodoDetailPage() {
             }
           }
           onReuse={() => setOverlay({ kind: 'reuse' })}
+          onPlan={live ? () => startBuild(true) : undefined}
+          onDirect={live ? () => startBuild(false) : undefined}
         />
       )}
       {overlay?.kind === 'reuse' && (
         <ReusePanel
           onBack={() => setOverlay({ kind: 'rerun' })}
           onView={closeOverlay}
-          onDirect={closeOverlay}
+          onDirect={
+            live
+              ? () => {
+                  // 复用方案 = 直执行（跳过规划轮，r8 75/76；02 §4.2
+                  // withPlan:false 分支）。
+                  startBuild(false);
+                }
+              : closeOverlay
+          }
         />
       )}
       <SearchPanel
         open={search.open}
-        fixture={fixture}
+        fixture={
+          live
+            ? {
+                ...fixture,
+                todos,
+                now: Date.now(),
+                projectNames: Object.fromEntries((projectsQ.data ?? []).map((p) => [p.id, p.name])),
+              }
+            : fixture
+        }
         query={search.query}
         onQuery={search.setQuery}
         onClose={() => search.setOpen(false)}

@@ -2,6 +2,9 @@
 // orange plug tile, name + type label on the title line, endpoint url
 // below, relative creation label + overflow dots at the right edge.
 import { useSearchParams } from 'react-router';
+import { useMcpServers } from '../api/hooks.js';
+import { mapMcpServers } from '../api/mappers.js';
+import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { EllipsisVertical, Network } from '../icons/index.js';
@@ -14,7 +17,12 @@ export function McpServersPage() {
   const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
-  const servers = fixture.resources?.mcpServers ?? [];
+  // M5 live：GET mcp-servers（r3 §5.1 record 面）。
+  const { live, teamId } = useLiveData();
+  const mcpQ = useMcpServers(teamId, live);
+  const servers = live
+    ? mapMcpServers(mcpQ.data ?? [], Date.now())
+    : (fixture.resources?.mcpServers ?? []);
 
   return (
     <ResourceShell

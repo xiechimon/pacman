@@ -12,6 +12,7 @@
   "devDependencies": {
     "@hono/node-server": "2.1.1",
     "@modelcontextprotocol/sdk": "1.30.0",
+    "@playwright/test": "catalog:",
     "@pacman/cli": "workspace:*",
     "@pacman/server": "workspace:*",
     "@pacman/shared": "workspace:*",

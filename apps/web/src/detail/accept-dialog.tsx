@@ -13,9 +13,12 @@ interface AcceptDialogProps {
   /** #73 retained-mount open flag. */
   open?: boolean;
   onClose: () => void;
+  /** M5 live 面：完成 = merge 202 delegated（r3 §3.6）；缺省 = fixture
+   *  行为（关闭即止）。 */
+  onConfirm?: () => void;
 }
 
-export function AcceptDialog({ open, onClose }: AcceptDialogProps) {
+export function AcceptDialog({ open, onClose, onConfirm }: AcceptDialogProps) {
   const { t } = useI18n();
   const [merge, setMerge] = useState(true);
   return (
@@ -35,7 +38,14 @@ export function AcceptDialog({ open, onClose }: AcceptDialogProps) {
         <button type="button" className="dlg-accept-cancel" onClick={onClose}>
           {t('取消')}
         </button>
-        <button type="button" className="dlg-accept-done" onClick={onClose}>
+        <button
+          type="button"
+          className="dlg-accept-done"
+          onClick={() => {
+            if (onConfirm) onConfirm();
+            else onClose();
+          }}
+        >
           {t('完成')}
         </button>
       </div>

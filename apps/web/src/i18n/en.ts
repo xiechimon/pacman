@@ -222,6 +222,8 @@ export const EN: Record<string, string> = {
   '从 GitHub': 'From GitHub',
   技能文件夹: 'Skill folder',
   点击或拖入技能文件夹: 'Click or drop a skill folder',
+  已选择: 'Selected',
+  个文件: 'file(s)',
   '必须包含 SKILL.md': 'Must contain SKILL.md',
   '例如：deploy': 'e.g. deploy',
   描述: 'Description',
@@ -243,6 +245,11 @@ export const EN: Record<string, string> = {
   网格视图: 'Grid view',
   暂无内容: 'Nothing yet',
   '创建第一个任务以开始使用。': 'Create your first todo to get started.',
+  默认项目: 'Default Project',
+  // 桌面通知标题（M5 SSE notification 事件面，02 §9.1 三事件；api/sse.ts
+  // 纯函数位消费——非组件 t()，i18n-coverage 以本键位兑现 en 兜底）
+  方案已就绪: 'Plan ready',
+  构建待审核: 'Build awaiting review',
   请选择一个文件查看: 'Select a file to view',
   '可选。未设置时以首字母代替。': 'Optional. The initial is used when unset.',
   项目名称: 'Project name',

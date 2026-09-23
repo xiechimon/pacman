@@ -59,6 +59,10 @@ export interface MachineApi {
   claim(signal?: AbortSignal, running?: number): Promise<ClaimedStep | null>;
   heartbeat(stepId: string): Promise<void>;
   tool(stepId: string, call: ToolCallRecord): Promise<void>;
+  /** live transcript 文本增量（machineToolBodySchema 第三形 [设计]，M5 live
+   * streaming）：pi text_delta 节流批量转发，server 侧瞬态进 conversation
+   * stream；失败不重试（终稿经 transcript 上传兜底）。 */
+  transcriptDelta(stepId: string, text: string): Promise<void>;
   /** remoteTools relay 执行（chief 步服务端工具）：POST tool/{stepId}
    * {name, params} → {text}（r5 §3.1 bundle）。replaySafe → 重试预算
    * REMOTE_TOOL_RETRY_DELAYS_MS；超时 REMOTE_TOOL_TIMEOUT_MS。返回结果文本。 */
@@ -215,6 +219,13 @@ export class MachineClient implements MachineApi {
   async tool(stepId: string, call: ToolCallRecord): Promise<void> {
     await this.request('POST', `/api/machine/tool/${stepId}`, {
       body: call,
+      parse: (raw) => machineOkResponseSchema.parse(raw),
+    });
+  }
+
+  async transcriptDelta(stepId: string, text: string): Promise<void> {
+    await this.request('POST', `/api/machine/tool/${stepId}`, {
+      body: { kind: 'transcript_delta' as const, text },
       parse: (raw) => machineOkResponseSchema.parse(raw),
     });
   }

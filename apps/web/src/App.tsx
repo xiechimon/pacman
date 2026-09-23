@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
+import { ApiProvider, LiveDataBridge } from './api/provider.js';
 import { I18nProvider } from './i18n/provider.js';
 import { ProjectNewPage } from './pages/project-new-page.js';
 import { ProjectPage } from './pages/project-page.js';
@@ -25,35 +26,45 @@ import { TodoDetailPage } from './routes/todo-detail-page.js';
 // Unmatched paths redirect to /app (01-stack §4.1 i18n row, [设计]).
 // #74: every route rides the pathless PwaBridge layout (sw registration +
 // notification-click deep links) and the app-level I18nProvider.
+// #83 (M5): the LiveDataBridge pathless layout sits above PwaBridge — it
+// resolves fixture-vs-live mode, the seed team/user and the global team
+// stream; fully inert in fixture (parity/dev-scenario) mode.
 export const router = createBrowserRouter([
   {
-    element: <PwaBridge />,
+    element: <LiveDataBridge />,
     children: [
-      { path: '/app', element: <BoardPage /> },
-      { path: '/app/todo/:id', element: <TodoDetailPage /> },
-      { path: '/app/schedules', element: <SchedulesPage /> },
-      { path: '/app/project/new', element: <ProjectNewPage /> },
-      { path: '/app/project/:id', element: <ProjectPage /> },
-      { path: '/app/project/:id/settings', element: <ProjectSettingsPage /> },
-      { path: '/app/team', element: <TeamPage /> },
-      { path: '/app/account', element: <AccountPage /> },
-      { path: '/app/api-keys', element: <ApiKeysPage /> },
-      { path: '/app/feedback', element: <FeedbackPage /> },
-      { path: SKILLS_HREF, element: <SkillsPage /> },
-      { path: SKILLS_IMPORT_HREF, element: <SkillsImportPage /> },
-      { path: MCP_HREF, element: <McpServersPage /> },
-      { path: SECRETS_HREF, element: <SecretsPage /> },
-      { path: MACHINES_HREF, element: <MachinesPage /> },
-      { path: PROVIDERS_HREF, element: <ProvidersPage /> },
-      { path: '*', element: <Navigate to="/app" replace /> },
+      {
+        element: <PwaBridge />,
+        children: [
+          { path: '/app', element: <BoardPage /> },
+          { path: '/app/todo/:id', element: <TodoDetailPage /> },
+          { path: '/app/schedules', element: <SchedulesPage /> },
+          { path: '/app/project/new', element: <ProjectNewPage /> },
+          { path: '/app/project/:id', element: <ProjectPage /> },
+          { path: '/app/project/:id/settings', element: <ProjectSettingsPage /> },
+          { path: '/app/team', element: <TeamPage /> },
+          { path: '/app/account', element: <AccountPage /> },
+          { path: '/app/api-keys', element: <ApiKeysPage /> },
+          { path: '/app/feedback', element: <FeedbackPage /> },
+          { path: SKILLS_HREF, element: <SkillsPage /> },
+          { path: SKILLS_IMPORT_HREF, element: <SkillsImportPage /> },
+          { path: MCP_HREF, element: <McpServersPage /> },
+          { path: SECRETS_HREF, element: <SecretsPage /> },
+          { path: MACHINES_HREF, element: <MachinesPage /> },
+          { path: PROVIDERS_HREF, element: <ProvidersPage /> },
+          { path: '*', element: <Navigate to="/app" replace /> },
+        ],
+      },
     ],
   },
 ]);
 
 export function App() {
   return (
-    <I18nProvider>
-      <RouterProvider router={router} />
-    </I18nProvider>
+    <ApiProvider>
+      <I18nProvider>
+        <RouterProvider router={router} />
+      </I18nProvider>
+    </ApiProvider>
   );
 }

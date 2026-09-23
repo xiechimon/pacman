@@ -7,6 +7,9 @@
 // api-keys/feedback surfaces (r7 08/12/13: column x457..1223 @1440).
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
+import { useTodos } from '../api/hooks.js';
+import { toDisplayTodo } from '../api/mappers.js';
+import { useLiveData } from '../api/provider.js';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar, type SidebarSelected } from '../board/sidebar.js';
 import type { FixtureSet } from '../fixtures/records.js';
@@ -38,9 +41,13 @@ export function SecondaryShell({
   const { t } = useI18n();
   // the back chevron carries the scenario string home like dhead (#58)
   const { search } = useLocation();
+  // M5 live：侧栏待办徽标走真 todos（TQ 同键去重）。
+  const { live, teamId } = useLiveData();
+  const todosQ = useTodos(teamId, live);
+  const attention = attentionCount(live ? (todosQ.data ?? []).map(toDisplayTodo) : fixture.todos);
   return (
     <div className="secondary-shell" data-route={route}>
-      <BoardSidebar attention={attentionCount(fixture.todos)} selected={sidebarSelected} />
+      <BoardSidebar attention={attention} selected={sidebarSelected} />
       <div className="secondary-main">
         <header className="secondary-head">
           <Link className="secondary-back" to={{ pathname: '/app', search }} aria-label={t('返回')}>

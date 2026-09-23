@@ -4,6 +4,9 @@
 // 06–10), with the sidebar's matching 资源 subrow selected and the 总管 FAB
 // pinned like on the detail route.
 import type { ReactNode } from 'react';
+import { useTodos } from '../api/hooks.js';
+import { toDisplayTodo } from '../api/mappers.js';
+import { useLiveData } from '../api/provider.js';
 import { attentionCount } from '../board/columns.js';
 import { BoardSidebar, type SidebarSelected } from '../board/sidebar.js';
 import type { FixtureSet } from '../fixtures/records.js';
@@ -41,6 +44,10 @@ export function ResourceShell({
   children,
 }: ResourceShellProps) {
   const { t } = useI18n();
+  // M5 live：侧栏待办徽标走真 todos（TQ 同键去重，页面级查询共缓存）。
+  const { live, teamId } = useLiveData();
+  const todosQ = useTodos(teamId, live);
+  const attention = attentionCount(live ? (todosQ.data ?? []).map(toDisplayTodo) : fixture.todos);
   const newAction = hideNew ? null : newHref == null ? (
     <button type="button" className="res-new">
       <Plus width={13} height={13} />
@@ -55,7 +62,7 @@ export function ResourceShell({
 
   return (
     <div className="res-shell" data-route={href}>
-      <BoardSidebar selected={selected} attention={attentionCount(fixture.todos)} />
+      <BoardSidebar selected={selected} attention={attention} />
       <div className="res-main">
         <header className="res-topbar">
           <a className="res-back" href={backHref} aria-label={t('返回')}>

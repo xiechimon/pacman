@@ -3,8 +3,11 @@
 // and the 危险操作 card with the 删除项目 primary-danger button (24d dialog
 // is an overlay ticket, not this route).
 import { useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
+import { useProjects } from '../api/hooks.js';
+import { useLiveData } from '../api/provider.js';
 import { PROJECT_INITIAL } from '../fixtures/fixtures.js';
+import type { ProjectContent } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, SquarePen } from '../icons/index.js';
@@ -19,10 +22,27 @@ const TABS = [
 
 export function ProjectSettingsPage() {
   const { t } = useI18n();
+  const { id } = useParams();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   const [tab, setTab] = useState('basic');
-  const project = fixture.project;
+  // M5 live：设置行 = GET /api/projects 检索真值（名称/仓库/托管 chip）。
+  const { live, teamId } = useLiveData();
+  const projectsQ = useProjects(teamId, live);
+  const wireProject = live ? (projectsQ.data ?? []).find((p) => p.id === id) : undefined;
+  const project: ProjectContent | undefined = live
+    ? wireProject
+      ? {
+          name: wireProject.name,
+          branch: 'main',
+          files: [],
+          repoName: wireProject.repoName ?? wireProject.githubRepo ?? '',
+          hosted: wireProject.repoKind === 'hosted',
+          defaultBranch: 'main',
+          description: null,
+        }
+      : undefined
+    : fixture.project;
   return (
     <PageShell fixture={fixture} selected="project" title="设置">
       <div className="page-col page-col--settings prj-set-body">

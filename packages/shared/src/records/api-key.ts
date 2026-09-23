@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import { BRAND } from '../brand.js';
+import { epochMs, recordId } from './common.js';
 
 /** 02 §6.2 形状原样：{name(可选), gitAccess:bool, mcpAccess:bool,
  * toolGrants:{read[],write[]}}。行标识/掩码展示列的 wire 字段未采到，
@@ -24,6 +25,17 @@ export const apiKeyRecordSchema = z.object({
   }),
 });
 export type ApiKeyRecord = z.infer<typeof apiKeyRecordSchema>;
+
+/** 列表行 = record + 安全子集投影位（M5 [推断] 封套：行标识/掩码/时刻为
+ * r3 §6 展示规则的数据面，record 本体不发明位——列表封套位承载；值永不
+ * 出现，02 §8 API 面纪律）。server listApiKeys / web 列表消费双端单源。 */
+export const apiKeyRowSchema = apiKeyRecordSchema.extend({
+  id: recordId,
+  /** 掩码 `tds_afe07565…`（r3 §6 展示规则）。 */
+  masked: z.string(),
+  createdAt: epochMs,
+});
+export type ApiKeyRow = z.infer<typeof apiKeyRowSchema>;
 
 /** 一次性展示提示 canon（r3 §6 原文）。 */
 export const API_KEY_ONE_TIME_COPY = '请立即复制密钥，它仅显示一次。';
