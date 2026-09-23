@@ -78,7 +78,7 @@ packages/shared # 协议词表、record 形状 zod schema、命名常量表（02
 |---|---|---|---|---|
 | 框架 | React 19 SPA（从零，00/D5） | react / react-dom **19.3.0** | 锁定 | 新建无升级债，直取 latest 19；官方 workspace RNW [推断] 不复刻（S1） |
 | 构建 | Vite + @vitejs/plugin-react；dev 期 proxy → server | vite **8.3.0** / plugin-react **6.1.1** | 锁定 | 单 SPA 无 SSR 诉求；PWA/桌面壳包 SPA 最顺（02 §1.1 前提）；官方 landing Next.js SSG → 差异注记 §8 |
-| 路由 | React Router v7（library mode），手写路由表 | react-router **7.18.4** | 锁定 | 路由表固定（41 landing + locale + /app 树）；v8.4.0 已发布 → 升级窗口观察（§9）；locale 形状照抄：`en` 无前缀 `/zh` `/zh-TW` `/ja` + hreflang alternate + `x-default`→en（r1 §1.1） |
+| 路由 | React Router v8（library mode），手写路由表 | react-router **8.4.0** | 锁定 | 路由表固定（41 landing + locale + /app 树）；#105 兑现 v8 窗口：Breaking 全缝外（ESM-only 发布形、`react-router-dom` 移除、middleware 常开——本面无 loader/action 不触），/app 树 + 未匹配→/app 重定向实跑保真；locale 形状照抄：`en` 无前缀 `/zh` `/zh-TW` `/ja` + hreflang alternate + `x-default`→en（r1 §1.1） |
 | 样式 | Tailwind CSS **3.4.19（= 观测同版）**，v3-lts tag 实测 | tailwindcss **3.4.19** | 锁定 | r1 抓的编译产物即 3.4.19：类名语义、默认断点五档、shadow 值零翻译直接对拍；`dark:` 变体用 plugin `addVariant('dark', '&:where(:not(.light):not(.light *))')` **精确复刻官方反相选择器**（r1 §4.3，勿按常规「默认浅色+dark:前缀」做）；Tailwind 4 = 升级票后置（§9） |
 | design token | CSS 变量层：r1 §5 色名→变量映射表照抄进 `theme.extend.colors` 消费；`--font-inter`/`--font-jetbrains-mono` 照抄；zinc/stone/indigo 原色阶语义保持 | — | 锁定 | 00/D5「自建 token」的落地形；对拍靶 = r1 `[f965382e067739e9.css]` 原件 |
 | 字体 | r1 已抓 859B `@font-face` CSS 原样搬 + 2 woff2 自托管；CJK 无 webfont 系统兜底（r1 关键复刻约束）；emoji 字体族进 font stack | — | 沿用 | woff2 文件与位图图标下载归 #44 素材清单（§9） |
