@@ -401,4 +401,10 @@ export const EN: Record<string, string> = {
   粘贴密钥的值: 'Paste the secret value',
   '值将加密存储，保存后无法再次查看。':
     'The value is stored encrypted and cannot be viewed again after saving.',
+  // wayfinder #178 project tasks toolbar (filter/sort menus, match-empty line)
+  全部: 'All',
+  进行中: 'In progress',
+  最近更新: 'Recently updated',
+  标题: 'Title',
+  没有匹配的任务: 'No matching tasks',
 };
