@@ -15,11 +15,13 @@
     "test": "vitest run",
     "lint": "biome ci .",
     "format": "biome format --write .",
-    "parity": "node parity/run.mjs"
+    "parity": "node parity/run.mjs",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@biomejs/biome": "catalog:",
     "@playwright/test": "catalog:",
+    "husky": "^9.1.7",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

@@ -1,0 +1,33 @@
+#!/usr/bin/env sh
+# Pacman pre-commit — single hook, runs the canonical check chain.
+# Mirrors earendil-works/pi's pattern: lockfile guard + format+lint+typecheck + restage.
+set -e
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$STAGED" ] && exit 0
+
+# 1. Lockfile guard — confirm before letting pnpm-lock.yaml into the commit.
+if printf '%s\n' "$STAGED" | grep -qE '^pnpm-lock\.yaml$'; then
+  echo "⚠  pnpm-lock.yaml is staged." >&2
+  echo "   This is allowed ONLY when the change is part of a deliberate dependency bump." >&2
+  echo "   To proceed, run \`git commit --no-verify\` (after confirming the diff is intentional)." >&2
+  echo "   To drop it, run \`git reset pnpm-lock.yaml\`." >&2
+  exit 1
+fi
+
+# 2. biome format (writes) + biome ci (read-only check)
+pnpm exec biome format --write . >/dev/null 2>&1 || true
+pnpm exec biome ci .
+
+# 3. typecheck — only when TS source in apps/*/src, packages/*/src, or integration actually changed
+HAS_DEEP_TS=$(printf '%s\n' "$STAGED" | grep -E '^(apps|packages|integration)/.*\.(ts|tsx|js|mjs|cjs)$' || true)
+if [ -n "$HAS_DEEP_TS" ]; then
+  pnpm -r typecheck
+fi
+
+# 4. Restage anything biome format --write modified
+for f in $STAGED; do
+  [ -f "$f" ] && git add "$f"
+done
+
+echo "✅ pre-commit checks passed"
