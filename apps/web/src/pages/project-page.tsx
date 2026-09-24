@@ -8,9 +8,16 @@
 // teamMembersLayout twin), 筛选/排序 open anchored popovers (family law
 // #67/#127) driving client-side filter/sort, and the search box filters
 // by title.
+import type { ProjectFileResponse } from '@pacman/shared';
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router';
-import { useProjectCommits, useProjects, useProjectTree, useTodos } from '../api/hooks.js';
+import {
+  useProjectCommits,
+  useProjectFile,
+  useProjects,
+  useProjectTree,
+  useTodos,
+} from '../api/hooks.js';
 import { mapCommits, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
@@ -40,6 +47,8 @@ function FilesPane({
   onSeg,
   commits,
   now,
+  selectedFile,
+  onSelectFile,
 }: {
   branch: string;
   files: string[];
@@ -47,6 +56,9 @@ function FilesPane({
   onSeg: (seg: 'files' | 'history') => void;
   commits: ProjectCommitRow[];
   now: number;
+  /** #202 查看器选中文件;null = 未选。 */
+  selectedFile: string | null;
+  onSelectFile: (name: string) => void;
 }) {
   const { t } = useI18n();
   return (
@@ -81,7 +93,12 @@ function FilesPane({
       {seg === 'files' ? (
         <div className="prj-files-list">
           {files.map((f) => (
-            <button key={f} type="button" className="prj-file-row">
+            <button
+              key={f}
+              type="button"
+              className={`prj-file-row${selectedFile === f ? ' prj-file-row--active' : ''}`}
+              onClick={() => onSelectFile(f)}
+            >
               <FileTab width={14} height={14} />
               <span className="prj-file-name">{f}</span>
             </button>
@@ -123,6 +140,35 @@ interface TaskRow {
   title: string;
   phase: Phase;
   phaseAt: number;
+}
+
+/** 文件查看器状态(#202):idle = 占位;loading/error 仅 live 可达;
+ *  binary = 不可预览态(live base64 封套 / fixture 缺内容映射);text 直渲。 */
+type FileViewState =
+  | { kind: 'idle' }
+  | { kind: 'loading' }
+  | { kind: 'error' }
+  | { kind: 'binary' }
+  | { kind: 'text'; content: string };
+
+/** 查看器状态推导(#202,code-review 抽取):fixture 直读 fileContents
+ *  映射(缺席键 = 不可预览态);live 折 query 三态后按 encoding 分渲。
+ *  结构子集传参,不绑 useQuery 全形。 */
+function deriveFileView(
+  selected: string | null,
+  live: boolean,
+  fixtureContent: string | null,
+  file: { isError: boolean; data: ProjectFileResponse | undefined },
+): FileViewState {
+  if (selected === null) return { kind: 'idle' };
+  if (!live) {
+    return fixtureContent !== null ? { kind: 'text', content: fixtureContent } : { kind: 'binary' };
+  }
+  if (file.isError) return { kind: 'error' };
+  if (file.data === undefined) return { kind: 'loading' };
+  return file.data.encoding === 'base64'
+    ? { kind: 'binary' }
+    : { kind: 'text', content: file.data.content };
 }
 
 function readStoredLayout(storage: Storage): TasksLayout {
@@ -410,6 +456,20 @@ export function ProjectPage() {
         }
       : undefined
     : fixture.project;
+  // 文件查看器选中态(#202):存 (projectId, path) 对——路由切换项目时
+  // 组件不重挂载,旧项目选中不串场。live 读面点击触发 = 天然惰性;非托管
+  // 形态 tree 同族 404 无行可点,误点落「文件加载失败」诚实态,不做
+  // 形态门(code-review:门会让 query 永久 disabled = 永挂 loading)。
+  const [fileSel, setFileSel] = useState<{ projectId: string; path: string } | null>(null);
+  const selectedFile = fileSel !== null && fileSel.projectId === id ? fileSel.path : null;
+  const fileQ = useProjectFile(
+    live ? id : undefined,
+    selectedFile ?? undefined,
+    live ? 'main' : undefined,
+  );
+  const fixtureFileContent =
+    !live && selectedFile !== null ? (fixture.project?.fileContents?.[selectedFile] ?? null) : null;
+  const fileView = deriveFileView(selectedFile, live, fixtureFileContent, fileQ);
   const todos = live
     ? (todosQ.data ?? []).map(toDisplayTodo).filter((x) => x.projectId === id)
     : fixture.todos.filter((x) => x.projectId === id);
@@ -434,8 +494,24 @@ export function ProjectPage() {
             onSeg={setSeg}
             commits={live ? mapCommits(commitsQ.data?.commits ?? []) : (project?.commits ?? [])}
             now={live ? Date.now() : fixture.now}
+            selectedFile={selectedFile}
+            onSelectFile={(name) => setFileSel({ projectId: id ?? '', path: name })}
           />
-          <div className="prj-files-viewer">{t('请选择一个文件查看')}</div>
+          {fileView.kind === 'text' ? (
+            <div className="prj-files-viewer prj-files-viewer--text">
+              <pre className="prj-file-content">{fileView.content}</pre>
+            </div>
+          ) : (
+            <div className="prj-files-viewer">
+              {fileView.kind === 'loading'
+                ? t('加载中…')
+                : fileView.kind === 'error'
+                  ? t('文件加载失败')
+                  : fileView.kind === 'binary'
+                    ? t('二进制文件暂不支持预览')
+                    : t('请选择一个文件查看')}
+            </div>
+          )}
         </div>
       ) : (
         <TasksPane todos={todos} now={live ? Date.now() : fixture.now} />

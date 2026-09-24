@@ -729,6 +729,12 @@
   color: var(--text-secondary);
 }
 
+/* 选中态（#202 查看器接线）= 行选择家族面：chief-switcher-row.is-active
+   同 token，只换底不换字。 */
+.prj-file-row--active {
+  background: var(--surface-hover);
+}
+
 /* 历史 seg 行（#149，形 [设计]——官方历史面无捕获）：git log 最小投影，
    双行文本列复用 res-row-text 族节奏（msg 12px + meta 11px dim） */
 .prj-history-list {
@@ -786,6 +792,24 @@
   justify-content: center;
   font-size: 13px;
   color: var(--text-dim);
+}
+
+/* 内容态（#202）：占位/提示保持居中;直渲改顶对齐、整块滚动（min-width:0
+   放开 flex 子项横向收缩,长行出横滚不换行——直渲保原貌）。 */
+.prj-files-viewer--text {
+  display: block;
+  min-width: 0;
+  overflow: auto;
+  padding: 12px 16px;
+}
+
+.prj-file-content {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--text-primary);
+  white-space: pre;
 }
 
 .prj-tasks-pane {
