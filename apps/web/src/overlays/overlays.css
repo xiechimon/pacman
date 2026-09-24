@@ -106,6 +106,24 @@
   background: var(--row-selected);
 }
 
+/* #159 hover 跟随 — at rest the mouse owns the highlight: the row under
+   the pointer lights with the canon pill (--row-selected, the look the
+   r7 05 fixed selected row used to carry) and no row is lit at rest.
+   While the ↑↓ keyboard cursor is live (data-kbd on the panel) the
+   non-cursor hover pill stands down — exactly one lit surface — and a
+   real pointer move clears the JS cursor so hover owns it again. The
+   .search-panel prefix outranks the generic #73 row-hover tint in
+   motion.css (--surface-hover); same media guard as sidebar.css. */
+@media (hover: hover) and (pointer: fine) {
+  .search-panel .search-row:hover {
+    background: var(--row-selected);
+  }
+
+  .search-panel[data-kbd] .search-row:hover:not(.search-row--selected) {
+    background: transparent;
+  }
+}
+
 /* #137 常亮互斥 — while the ⌘K panel is open it is the only lit focus
    surface: the page-layer selected pills (sidebar row / subrow / rail,
    sidebar.css) drop their background and ink promotion under the scrim,
@@ -418,13 +436,86 @@
   color: var(--indigo-500);
 }
 
+/* ---- board-guide popover (issue #149) ----
+   Anchored under the topbar trigger, right-aligned — the plan-dropdown
+   recipe (popover bg / radius 10 / fab shadow / z 30 over the catcher's
+   29). Content is [设计] free copy: the official guide panel was never
+   captured. */
+.board-guide-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 360px;
+  padding: 12px 14px 14px;
+  background: var(--popover-bg);
+  border-radius: 10px;
+  box-shadow: var(--fab-shadow);
+  z-index: 30;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.board-guide-title {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.board-guide-label {
+  margin: 12px 0 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.board-guide-row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 3px 0;
+}
+
+.board-guide-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  align-self: center;
+}
+
+.board-guide-name {
+  flex: none;
+  width: 40px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.board-guide-desc {
+  color: var(--text-secondary);
+}
+
+/* ⌘K chip rides the sidebar pill recipe (#128: 1px --border-default ring) */
+.board-guide-kbd {
+  flex: none;
+  padding: 1px 3px;
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
 /* #73 pop enter/exit origins: anchored popovers scale from their anchor,
    the ⌘K palette from the top center (motion.css overlay-pop) */
 .chip-popover {
   transform-origin: top left;
 }
 
-.plan-dropdown {
+.plan-dropdown,
+.board-guide-pop {
   transform-origin: top right;
 }
 

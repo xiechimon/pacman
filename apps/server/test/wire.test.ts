@@ -55,6 +55,7 @@ const INFERRED_ROUTES = [
   'DELETE /api/teams/{id}/agents/{aid}/memories/{mid}',
   // —— build 详情读面（M5：详情页 overlay 数据源；wire 未采，路径 =
   // builds/{id}/… REST 同族规则（steps 端点先例），02 §6.1 规则族）——
+  'GET /api/projects/{id}/commits', // 文件|历史 分段「历史」读面（#149；r2 07e/24 分段 UI 证据，wire 未采，projects/{id}/… REST 同族规则）
   'GET /api/builds/{id}/plans', // 版本集 + plan.md 内容（版本下拉/文档 pane，r5 §4 触点）
   'GET /api/builds/{id}/changes', // conv 分支 vs 默认分支 diff（变更 pane，r7 27 触点）
   'GET /api/builds/{id}/usage', // build × model 四维记账（Token 用量 dialog，r3 §3.8/r7 30 触点）

@@ -195,7 +195,10 @@ const darkFreshProbe: TodoRecord = {
 };
 
 /** Repo surface of the fixture project (r2 07e/24/24c read off the
- *  r3-lifecycle hosted repo): main branch, single README.md row. */
+ *  r3-lifecycle hosted repo): main branch, single README.md row. The
+ *  历史 rows (#149, [设计] content — no capture) mirror the hosted repo
+ *  lifecycle: the server seed commit (`init <repoName>`, services/git.ts)
+ *  plus one merged work commit, newest first against the r7 clock. */
 export const projectContent: ProjectContent = {
   name: PROJECT_NAME,
   branch: 'main',
@@ -204,6 +207,22 @@ export const projectContent: ProjectContent = {
   hosted: true,
   defaultBranch: 'main',
   description: null,
+  commits: [
+    {
+      id: 'f3d9c1b7a2e5480db6c1a9f0e2d7b4c8a1e5f903',
+      shortSha: 'f3d9c1b',
+      message: 'docs: README',
+      authorName: 'r3-builder',
+      at: r7(11, 2),
+    },
+    {
+      id: '0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d',
+      shortSha: '0a1b2c3',
+      message: `init ${PROJECT_NAME}`,
+      authorName: 'Pacman',
+      at: r7(9, 41),
+    },
+  ],
 }; /** Client-created todo of the fixture phase (#66 new-task dialog): lands
  *  in 待开始 with the 刚刚 label against the fixture clock (r2 §4.2/§5.2).
  *  Record shape lives here with every other TodoRecord factory. */

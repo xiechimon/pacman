@@ -17,6 +17,20 @@ function pillBg(locator: import('@playwright/test').Locator) {
   return locator.evaluate((el) => getComputedStyle(el, '::before').backgroundColor);
 }
 
+/** #159: the hovered row lights with the canon pill — its background
+ *  equals the resolved --row-selected token (the look the r7 05 fixed
+ *  selected row used to carry), not the generic #73 surface-hover tint. */
+function isLit(locator: import('@playwright/test').Locator) {
+  return locator.evaluate((el) => {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--row-selected)';
+    document.documentElement.append(probe);
+    const lit = getComputedStyle(probe).color;
+    probe.remove();
+    return getComputedStyle(el).backgroundColor === lit;
+  });
+}
+
 const TRANSPARENT = 'rgba(0, 0, 0, 0)';
 
 /** ⌘K until the panel answers. goto resolves at `load`, but the hotkey
@@ -82,8 +96,12 @@ test('常亮互斥: page-layer pill dims while the panel is open, restores on cl
   // poll, don't snapshot: the pill's background-color rides the 150ms
   // sidebar transition, so an immediate read lands mid-fade
   await expect.poll(() => pillBg(pill)).toBe(TRANSPARENT); // extinguished
-  // the panel's own selected row stays lit — exactly one lit surface
-  await expect(page.locator('.search-row--selected')).toBeVisible();
+  // #159: at rest the panel lights no row of its own (no fixed 常亮) — the
+  // hovered row becomes the single lit surface while the page pill stays dim
+  await expect(page.locator('.search-row--selected')).toHaveCount(0);
+  const row = page.locator('.search-row').first();
+  await row.hover();
+  await expect.poll(() => isLit(row)).toBe(true);
 
   await page.keyboard.press('Escape');
   await expect(page.locator('.search-panel')).toBeHidden();

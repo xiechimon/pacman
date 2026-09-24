@@ -151,6 +151,18 @@ export interface ScheduleRecord {
   };
 }
 
+/** Commit row of the project 文件|历史 segment's 历史 view (#149; display
+ *  shape shared by the fixture and the live wire mapper — [推断] endpoint
+ *  GET /api/projects/{id}/commits, row = git log minimal projection). */
+export interface ProjectCommitRow {
+  id: string;
+  shortSha: string;
+  message: string;
+  authorName: string;
+  /** Author instant, epoch ms (relativeTime renders against the clock). */
+  at: number;
+}
+
 /** Repo surface of a project route (r2 07e/24 file tree + 24c settings
  *  rows): branch chip, file rows and the settings card values. */
 export interface ProjectContent {
@@ -164,6 +176,8 @@ export interface ProjectContent {
   hosted: boolean;
   defaultBranch: string;
   description: string | null;
+  /** 历史 segment rows (#149); fixture-frozen, newest first. */
+  commits?: ProjectCommitRow[];
 }
 
 /** Team-route agent card (r7 12): avatar + name + model line + role line. */

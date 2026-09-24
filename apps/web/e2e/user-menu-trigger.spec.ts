@@ -3,8 +3,9 @@ import { expect, test } from '@playwright/test';
 // Issue #127 acceptance: the sidebar avatar chips (expanded .sidebar-user
 // and rail .rail-user) open the user-menu popover on a real click — toggle
 // on the chip, close on outside click and Esc, the anchored-overlay family
-// affordances — at the capture-frozen 224×272 @ (8,410) geometry (r7
-// 17/16d, §3.5). The 外观 segment (#122) is reachable from the
+// affordances — at the capture-frozen 224-wide @ (8,410) geometry (r7
+// 17/16d, §3.5; height 272 − 28 = 244 since #149 dropped the 反馈 row).
+// The 外观 segment (#122) is reachable from the
 // click-opened menu, so the theme switch is no longer behind a
 // fixture-only door. Rides menu-less scenarios ('01', '17b'): every open
 // state here comes from the trigger, never the fixture flag.
@@ -39,7 +40,7 @@ test('expanded chip: click opens at the capture geometry, re-click closes', asyn
     x: 8,
     y: 410,
     width: 224,
-    height: 272,
+    height: 244, // #149: one row fewer (反馈 gone) — 272 − 28
   });
   await expectMenuOnTop(page);
 
@@ -77,7 +78,7 @@ test('rail chip opens the same popover, unclipped by the 40px rail', async ({ pa
     x: 8,
     y: 410,
     width: 224,
-    height: 272,
+    height: 244, // #149: one row fewer (反馈 gone) — 272 − 28
   });
   await expectMenuOnTop(page);
 

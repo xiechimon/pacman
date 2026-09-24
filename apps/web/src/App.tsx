@@ -15,14 +15,15 @@ import { SKILLS_HREF, SkillsPage } from './resources/skills-page.js';
 import { AccountPage } from './routes/account-page.js';
 import { ApiKeysPage } from './routes/api-keys-page.js';
 import { BoardPage } from './routes/board-page.js';
-import { FeedbackPage } from './routes/feedback-page.js';
 import { TeamPage } from './routes/team-page.js';
 import { TodoDetailPage } from './routes/todo-detail-page.js';
 
 // Hand-written route table (issue #52): board + todo detail full page.
 // #71 adds the schedules + project surfaces (r2 §2 route table; /new
 // precedes :id so the literal wins); #70 the secondary batch B
-// (team / account / api-keys / feedback); #69 the resources batch A.
+// (team / account / api-keys); #69 the resources batch A. The feedback
+// route is removed outright (#149 local-first 裁决，#129 先例）— the old
+// path falls through to the catch-all redirect.
 // Unmatched paths redirect to /app (01-stack §4.1 i18n row, [设计]).
 // #74: every route rides the pathless PwaBridge layout (sw registration +
 // notification-click deep links) and the app-level I18nProvider.
@@ -45,7 +46,6 @@ export const router = createBrowserRouter([
           { path: '/app/team', element: <TeamPage /> },
           { path: '/app/account', element: <AccountPage /> },
           { path: '/app/api-keys', element: <ApiKeysPage /> },
-          { path: '/app/feedback', element: <FeedbackPage /> },
           { path: SKILLS_HREF, element: <SkillsPage /> },
           { path: SKILLS_IMPORT_HREF, element: <SkillsImportPage /> },
           { path: MCP_HREF, element: <McpServersPage /> },

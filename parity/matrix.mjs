@@ -703,8 +703,8 @@ export const matrix = [
   { id: 'plan-diff-v2v3-dark', route: '/app/todo/r8-15', scenario: '72', theme: 'dark' },
   { id: 'run-history-failed-dark', route: '/app/todo/r8-12', scenario: '57', theme: 'dark' },
   // gate rows (issue #70): secondary routes batch B — team and account
-  // carry r7 baselines; api-keys/feedback have no r7 capture (r2 19/32
-  // are the shape reference only), so those rows are smoke pairs, and
+  // carry r7 baselines; api-keys has no r7 capture (r2 19 is the shape
+  // reference only), so those rows are smoke pairs, and
   // the dark rows ride the same surfaces without baselines
   {
     id: 'team-light',
@@ -736,8 +736,7 @@ export const matrix = [
     theme: 'dark',
   },
   { id: 'api-keys-dark', route: '/app/api-keys', scenario: 'api-keys', theme: 'dark' },
-  { id: 'feedback-light', route: '/app/feedback', scenario: 'feedback', theme: 'light' },
-  { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' }, // gate rows (issue #66): overlay batch A open states — new-task dialog
+  // gate rows (issue #66): overlay batch A open states — new-task dialog
   // (04), delete confirm over the done detail (25), 更多 menu over the
   // confirm (18) and fresh (24) details. Dark twins ride the r8 78–81
   // baselines captured with this ticket (numbering continues #64's 54–77).
@@ -863,8 +862,8 @@ export const matrix = [
     baseline: 'rebaseline/06-resources-machines.png',
   },
   // gate rows (issue #70): secondary routes batch B — team and account
-  // carry r7 baselines; api-keys/feedback have no r7 capture (r2 19/32
-  // are the shape reference only), so those rows are smoke pairs, and
+  // carry r7 baselines; api-keys has no r7 capture (r2 19 is the shape
+  // reference only), so those rows are smoke pairs, and
   // the dark rows ride the same surfaces without baselines
   {
     id: 'team-light',
@@ -896,8 +895,6 @@ export const matrix = [
     theme: 'dark',
   },
   { id: 'api-keys-dark', route: '/app/api-keys', scenario: 'api-keys', theme: 'dark' },
-  { id: 'feedback-light', route: '/app/feedback', scenario: 'feedback', theme: 'light' },
-  { id: 'feedback-dark', route: '/app/feedback', scenario: 'feedback', theme: 'dark' },
   {
     // D3 重定基线（#109，2026-09-23）：原站基线 07 含品牌字样「Todos（内
     // 置）」，替换相位渲染为「Pacman（内置）」——基线切自渲染产物；原站截图
@@ -1513,6 +1510,32 @@ export const matrix = [
     theme: 'dark',
     clicks: ['.board-column-collapse'],
     expectText: 'board-column--collapsed',
+  },
+  // #149 死钮处置面：新接线态的冒烟行（自比对 + expectText 内容齿）——
+  // 看板指南弹层开态、项目页 历史 分段、变更▾ 文档类型选开态
+  {
+    id: 'board-guide-open-light',
+    route: '/app',
+    scenario: '01',
+    theme: 'light',
+    clicks: ['.board-guide'],
+    expectText: '关口操作',
+  },
+  {
+    id: 'project-history-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'r2-24',
+    theme: 'light',
+    clicks: ['.prj-files-seg-tab:nth-child(2)'],
+    expectText: 'docs: README',
+  },
+  {
+    id: 'docpane-type-dropdown-dark',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '27',
+    theme: 'dark',
+    clicks: ['.doc-select-wrap .doc-pane-select'],
+    expectText: '文档类型',
   },
 ];
 
