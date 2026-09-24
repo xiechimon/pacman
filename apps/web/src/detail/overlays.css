@@ -830,3 +830,87 @@
   background: var(--primary-disabled);
   cursor: default;
 }
+
+/* 添加机器 dialog (wayfinder #181, r2 11b CLI 两步表单): 引导语 + 带
+   复制 的命令块 + API key disclosure。Same token family as .dlg-mcp。
+   命名 dlg-enroll-* 而非 dlg-machine-*——后者已被 branch-dialog 的
+   机器 chip 占用(上方 .dlg-machine height:30px,撞名会塌弹窗高)。 */
+.dlg-enroll {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.dlg-enroll-lead {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.dlg-enroll-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-tertiary);
+}
+
+.dlg-enroll-label {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.dlg-enroll-cmd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  padding: 8px 12px;
+}
+
+.dlg-enroll-cmd code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.dlg-enroll-copy {
+  flex-shrink: 0;
+  height: 24px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 6px;
+  background: var(--card-button);
+  font-size: 12px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.dlg-enroll-toggle {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.dlg-enroll-apikey {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dlg-enroll-keylink {
+  align-self: flex-start;
+  font-size: 13px;
+  line-height: 16px;
+}

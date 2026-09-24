@@ -432,4 +432,15 @@ export const EN: Record<string, string> = {
   '模型（可选）': 'Models (optional)',
   '模型 ID': 'Model ID',
   添加模型: 'Add model',
+  // wayfinder #181 add-machine dialog family (r2 11b verbatim copy; the
+  // command strings themselves stay untranslated — brand slots via BRAND)
+  '有条件时优先使用云主机：笔记本会休眠或断网，云主机常在线，构建更稳定。':
+    'Prefer a cloud host when you can: laptops sleep or drop off the network, while cloud hosts stay online and build more reliably.',
+  '在待接入的机器上执行以下命令。浏览器将打开登录页，授权团队 {team} 后机器即可上线。此后它在后台常驻运行，无需保持终端开启。':
+    'Run the following commands on the machine you want to connect. Your browser will open a sign-in page; once you authorize the team {team}, the machine comes online. It then keeps running in the background — no need to keep the terminal open.',
+  '安装 CLI': 'Install the CLI',
+  在机器上执行: 'Run on the machine',
+  '在云服务器上运行？改用 API key 注册':
+    'Running on a cloud server? Register with an API key instead',
+  '获取 API key →': 'Get an API key →',
 };
