@@ -1,9 +1,13 @@
 /* Board screen styles (issue #54). All values measured from the r7
    captures at 1440×732 (docs/research/r7-rebaseline.md §3.1 + pixel
    probes): sidebar 240, topbar 43 + 1px border, board scroller padding
-   12/17/13 with column pitch 292 (278 body + 14 gap, radius 10), cards
-   262×114.5 radius 8. Colors sampled from 01/01b (light) and 02/02b
-   (dark); they override the landing-page samples where they differ. */
+   12/17/13 with column pitch 292 (278 body + 14 gap), cards 262×114.5.
+   #161 unified the border language: the column container, the notify
+   banner and the todo card all share the single-source edge ring +
+   12px radius + card-tier shadow (tokens.css --card-shadow). The ring
+   is a shadow spread so fractional page zoom keeps a uniform hairline.
+   Colors sampled from 01/01b (light) and 02/02b (dark); they override
+   the landing-page samples where they differ. */
 
 .board-shell {
   display: flex;
@@ -101,12 +105,15 @@
   left: 17px;
   right: 17px;
   height: 64px;
-  /* #139: the banner is a card on the canvas — same single-source edge
-     recipe as the todo card and the account popover (tokens.css edge family) */
+  /* #161 card-tier shadow: the banner sits one tier below the popover
+     (#139 unification adopted --edge-shadow for both; #161 split the tiers
+     — popover stays on --edge-shadow, the small-card family dials down to
+     --card-shadow so it doesn't read as floating). Shared shadow value
+     with .board-column makes the seam visually continuous */
   border: 0;
   border-radius: var(--edge-radius);
   background: var(--surface-secondary);
-  box-shadow: var(--edge-ring), var(--edge-shadow);
+  box-shadow: var(--edge-ring), var(--card-shadow);
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -192,9 +199,16 @@
   flex: none;
   width: 278px;
   height: 100%;
-  border-top: 1px solid var(--col-top-border);
-  border-radius: 10px;
+  /* #161 通知条↔看板列边框对齐: the column container adopts the
+     single-source edge recipe — same inset ring + 12px radius + card-tier
+     shadow as .board-notify-banner and .todo-card (tokens.css edge family).
+     The old 1px top border + 10px radius + bare-fill treatment read as a
+     half-card; the new tier matches the banner so the seam between them
+     is visually continuous */
+  border: 0;
+  border-radius: var(--edge-radius);
   background: var(--col-bg);
+  box-shadow: var(--edge-ring), var(--card-shadow);
   display: flex;
   flex-direction: column;
 }
@@ -313,11 +327,15 @@
   /* #139 unified border language: the card family rides the single-source
      edge recipe (tokens.css edge family — ring/radius/shadow shared with the
      account popover); the ring is a shadow spread so fractional page zoom
-     keeps a uniform hairline */
+     keeps a uniform hairline.
+     #161 dials the small-card shadow down to --card-shadow: popover-tier
+     read as floating on the canvas (claude.ai card-tier reference).
+     --edge-shadow stays for the popover, which needs visible separation
+     from the page below */
   border: 0;
   border-radius: var(--edge-radius);
   background: var(--card-bg);
-  box-shadow: var(--edge-ring), var(--edge-shadow);
+  box-shadow: var(--edge-ring), var(--card-shadow);
   padding: 9.5px 13.5px 11.5px;
   /* #58: positioned ancestor for the stretched title link below */
   position: relative;

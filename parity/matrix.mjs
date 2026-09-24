@@ -58,12 +58,22 @@ export const VIEWPORT = { width: 1440, height: 732 };
 
 export const matrix = [
   // gate rows (issue #54): r7 board captures, threshold 0.85
+  // #161 rebaseline: card family adopts the unified edge recipe + lighter
+  // card-tier shadow; column container also adopts the recipe (was a 1px
+  // top border + 10px radius + bare fill). Old r7 baselines still score
+  // 0.91–0.94 against the new renders (no structural drift, just shadow
+  // tier + radius + ring), but the change is intentional — re-shoot from
+  // the rendered output (parity/baselines/) so the matrix tracks the new
+  // look, not the official r7 baseline. Per 04 §2 A6, the rebaseline is
+  // rebadge-only here (复刻侧实现变更, not 官方站漂移), and the original
+  // r7 PNGs stay in docs/research/assets/r7/ as evidence of the previous
+  // state. Original 行注释 above the baseline field documents the cause
   {
     id: 'board-light-scrollL',
     route: '/app',
     scenario: '01',
     theme: 'light',
-    baseline: '01-board-light-scrollL.png',
+    baseline: 'rebaseline/01-board-light-scrollL.png',
   },
   {
     id: 'board-light-scrollR',
@@ -71,14 +81,14 @@ export const matrix = [
     scenario: '01b',
     theme: 'light',
     scrollLeft: 'max',
-    baseline: '01b-board-light-scrollR.png',
+    baseline: 'rebaseline/01b-board-light-scrollR.png',
   },
   {
     id: 'board-dark-scrollL',
     route: '/app',
     scenario: '02',
     theme: 'dark',
-    baseline: '02-board-dark-scrollL.png',
+    baseline: 'rebaseline/02-board-dark-scrollL.png',
   },
   {
     id: 'board-dark-scrollR',
@@ -86,29 +96,31 @@ export const matrix = [
     scenario: '02b',
     theme: 'dark',
     scrollLeft: 'max',
-    baseline: '02b-board-dark-scrollR.png',
+    baseline: 'rebaseline/02b-board-dark-scrollR.png',
   },
   // gate rows (issue #55): card variant matrix + rail collapse
+  // #161 rebaseline: same cause as the #54 rows above — column + card shadow
+  // tier + radius changed intentionally; rebaseline to the new look
   {
     id: 'board-fresh-light',
     route: '/app',
     scenario: '22',
     theme: 'light',
-    baseline: '22-board-fresh探针-light.png',
+    baseline: 'rebaseline/22-board-fresh探针-light.png',
   },
   {
     id: 'board-fresh-dark',
     route: '/app',
     scenario: '22d',
     theme: 'dark',
-    baseline: '22d-board-fresh探针-dark.png',
+    baseline: 'rebaseline/22d-board-fresh探针-dark.png',
   },
   {
     id: 'board-confirm-card-light',
     route: '/app',
     scenario: '21',
     theme: 'light',
-    baseline: '21-待确认-看板卡片-light.png',
+    baseline: 'rebaseline/21-待确认-看板卡片-light.png',
   },
   {
     id: 'board-review-card-light',
@@ -116,7 +128,7 @@ export const matrix = [
     scenario: '33',
     theme: 'light',
     scrollLeft: 'max',
-    baseline: '33-待验收-看板卡片-完成钮-light.png',
+    baseline: 'rebaseline/33-待验收-看板卡片-完成钮-light.png',
   },
   {
     id: 'board-done-light',
@@ -124,14 +136,14 @@ export const matrix = [
     scenario: '35',
     theme: 'light',
     scrollLeft: 'max',
-    baseline: '35-完成态-看板-light.png',
+    baseline: 'rebaseline/35-完成态-看板-light.png',
   },
   {
     id: 'board-done-dark',
     route: '/app',
     scenario: '35d',
     theme: 'dark',
-    baseline: '35d-完成态-看板-dark.png',
+    baseline: 'rebaseline/35d-完成态-看板-dark.png',
   },
   {
     id: 'board-rail-light',
@@ -139,7 +151,7 @@ export const matrix = [
     scenario: '03',
     theme: 'light',
     sidebarCollapsed: true,
-    baseline: '03-board-sidebar-collapsed-light.png',
+    baseline: 'rebaseline/03-board-sidebar-collapsed-light.png',
   },
   // smoke rows (issue #53 gate: self-compare SSIM = 1.0)
   { id: 'board-dark', route: '/app', scenario: '02', theme: 'dark' },
