@@ -7,6 +7,10 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react()],
   server: {
+    // watch 排除 .claude/**——并行 agent worktree 落在仓内任意深度的
+    // .claude/worktrees/ 时,其 pnpm install/构建动静会触发 vite 全量重载
+    // 风暴把 dev 拖死(实证 2026-09-24:嵌套 worktree 引发 reload 刷屏)。
+    watch: { ignored: ['**/.claude/**'] },
     proxy: {
       '/api': {
         target: `http://127.0.0.1:${process.env.PACMAN_DEV_SERVER_PORT ?? 8787}`,
