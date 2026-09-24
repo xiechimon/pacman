@@ -1,6 +1,7 @@
-// Team route (issue #70, r7 12): stats bar (`N 个成员` + FREE badge +
-// 升级 link — A3 keeps the badge shape but no upgrade dialog), the
-// grid|chart layout tablist and the agent card grid with the dashed
+// Team route (issue #70, r7 12): stats bar (`N 个成员` — the r7 capture's
+// plan badge / upgrade link are SaaS surface this local-first self-hosted
+// app does not carry, #129; the team-light parity baseline diverges here),
+// the grid|chart layout tablist and the agent card grid with the dashed
 // 创建 Agent slot. Head title is the team-switch dropdown trigger
 // (r2 §8.1); the 设置 link sits in the head right slot (r7 12).
 import { useSearchParams } from 'react-router';
@@ -45,10 +46,6 @@ export function TeamPage() {
       <div className="team-toprow">
         <div className="team-stats">
           <span className="team-members">{t('{n} 个成员', { n: team.members })}</span>
-          <span className="team-plan">FREE</span>
-          <button type="button" className="secondary-link team-upgrade">
-            {t('升级 →')}
-          </button>
         </div>
         <div className="team-layout-tabs" role="tablist">
           <button

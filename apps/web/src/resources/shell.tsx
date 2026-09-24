@@ -2,16 +2,15 @@
 // chevron at x252, centered page title (16px), right `+ 新建` indigo link —
 // over a 768px centered content column (x456..1223 @1440, probed from r7
 // 06–10), with the sidebar's matching 资源 subrow selected and the 总管 FAB
-// pinned like on the detail route.
+// pinned like on the detail route — waking the shared chief drawer (#129)
+// over the shared AppSidebar (identical geometry on every route).
 import type { ReactNode } from 'react';
-import { useTodos } from '../api/hooks.js';
-import { toDisplayTodo } from '../api/mappers.js';
-import { useLiveData } from '../api/provider.js';
-import { attentionCount } from '../board/columns.js';
-import { BoardSidebar, type SidebarSelected } from '../board/sidebar.js';
+import { AppSidebar } from '../board/app-sidebar.js';
+import type { SidebarSelected } from '../board/sidebar.js';
+import { ChiefWake } from '../chief/chief-wake.js';
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
-import { ChevronLeft, ChiefFab, Plus } from '../icons/index.js';
+import { ChevronLeft, Plus } from '../icons/index.js';
 import './resources.css';
 
 interface ResourceShellProps {
@@ -44,10 +43,6 @@ export function ResourceShell({
   children,
 }: ResourceShellProps) {
   const { t } = useI18n();
-  // M5 live：侧栏待办徽标走真 todos（TQ 同键去重，页面级查询共缓存）。
-  const { live, teamId } = useLiveData();
-  const todosQ = useTodos(teamId, live);
-  const attention = attentionCount(live ? (todosQ.data ?? []).map(toDisplayTodo) : fixture.todos);
   const newAction = hideNew ? null : newHref == null ? (
     <button type="button" className="res-new">
       <Plus width={13} height={13} />
@@ -62,7 +57,7 @@ export function ResourceShell({
 
   return (
     <div className="res-shell" data-route={href}>
-      <BoardSidebar selected={selected} attention={attention} />
+      <AppSidebar fixture={fixture} selected={selected} />
       <div className="res-main">
         <header className="res-topbar">
           <a className="res-back" href={backHref} aria-label={t('返回')}>
@@ -72,9 +67,7 @@ export function ResourceShell({
           {newAction}
         </header>
         <div className="res-col">{children}</div>
-        <button type="button" className="res-fab" aria-label={t('总管')}>
-          <ChiefFab />
-        </button>
+        <ChiefWake fixture={fixture} fabClassName="res-fab" />
       </div>
     </div>
   );

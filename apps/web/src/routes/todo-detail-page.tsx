@@ -67,12 +67,11 @@ import { MoreMenu } from '../overlay/more-menu.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
 import '../detail/detail.css';
-import { attentionCount } from '../board/columns.js';
-import { BoardSidebar } from '../board/sidebar.js';
+import { AppSidebar } from '../board/app-sidebar.js';
+import { ChiefWake } from '../chief/chief-wake.js';
 import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import { overlayContent } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
-import { ChiefFab } from '../icons/index.js';
 import { readStoredTheme } from '../theme.js';
 
 /** Reject-chain walk state (AC3): idle = the fixture's confirm surface;
@@ -308,10 +307,11 @@ export function TodoDetailPage() {
 
   return (
     <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
-      <BoardSidebar
-        attention={attentionCount(todos)}
+      <AppSidebar
+        fixture={fixture}
+        todos={todos}
+        searchPanel={false}
         onSearch={() => search.setOpen(true)}
-        usageNav={fixture.usageNav === true}
       />
       <div className="detail-main">
         <DetailHead
@@ -441,12 +441,7 @@ export function TodoDetailPage() {
             }
           />
         )}
-        <button type="button" className="detail-fab" aria-label="总管">
-          <ChiefFab />
-          {fixture.chiefUnread != null && fixture.chiefUnread > 0 && (
-            <span className="fab-badge">{fixture.chiefUnread}</span>
-          )}
-        </button>
+        <ChiefWake fixture={fixture} fabClassName="detail-fab" />
       </div>
       {!live && detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
       <MoreMenu
