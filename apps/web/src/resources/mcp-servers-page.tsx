@@ -1,13 +1,15 @@
 // MCP 服务器 route (issue #69, r7 09): one card row per server — 20px
 // orange plug tile, name + type label on the title line, endpoint url
 // below, relative creation label + overflow dots at the right edge.
+import { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { useMcpServers } from '../api/hooks.js';
+import { useApiMutations, useMcpServers } from '../api/hooks.js';
 import { mapMcpServers } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { EllipsisVertical, Network } from '../icons/index.js';
+import { CreateMcpDialog } from './create-mcp-dialog.js';
 import { EmptyState, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
 
@@ -23,6 +25,11 @@ export function McpServersPage() {
   const servers = live
     ? mapMcpServers(mcpQ.data ?? [], Date.now())
     : (fixture.resources?.mcpServers ?? []);
+  // wayfinder #174: 添加 (topbar + empty-state primary) opens the
+  // add-server dialog; live submit = POST mcp-servers then close
+  // (invalidateAll refetches the rows), fixture = accept 律
+  const mutations = useApiMutations(teamId);
+  const [createOpen, setCreateOpen] = useState(false);
 
   return (
     <ResourceShell
@@ -30,6 +37,7 @@ export function McpServersPage() {
       href={MCP_HREF}
       backHref="/app"
       selected={MCP_HREF}
+      onNew={() => setCreateOpen(true)}
       fixture={fixture}
     >
       {servers.length === 0 ? (
@@ -38,6 +46,7 @@ export function McpServersPage() {
           title="尚无 MCP 服务器。"
           description="MCP 服务器为 Agent 提供额外工具，例如工单系统、浏览器、内部 API。授权在每个 Agent 的页面上单独进行。"
           actionLabel="添加 MCP 服务器"
+          onAction={() => setCreateOpen(true)}
         />
       ) : (
         servers.map((server) => (
@@ -57,6 +66,18 @@ export function McpServersPage() {
           </div>
         ))
       )}
+      <CreateMcpDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreate={
+          live
+            ? (body) =>
+                mutations.createMcpServer.mutate(body, {
+                  onSuccess: () => setCreateOpen(false),
+                })
+            : undefined
+        }
+      />
     </ResourceShell>
   );
 }

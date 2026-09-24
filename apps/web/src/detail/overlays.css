@@ -614,3 +614,88 @@
   background: var(--primary-disabled);
   cursor: default;
 }
+
+/* 添加 MCP 服务器 dialog (wayfinder #174, r8 71/72): transport segment
+   (dlg-seg form) + shared label/slug + conditional url/headers or
+   command/args. Same token family as .dlg-agent/.dlg-secret. */
+.dlg-mcp {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.dlg-mcp-seg {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 3px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface-secondary);
+}
+
+.dlg-mcp-seg-tab {
+  flex: 1;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.dlg-mcp-seg-tab[data-active="true"] {
+  background: var(--tab-chip-bg);
+  color: var(--text-primary);
+}
+
+.dlg-mcp-input {
+  height: 36px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.dlg-mcp-slug-note {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.dlg-mcp-header-row {
+  display: flex;
+  gap: 8px;
+}
+
+.dlg-mcp-header-add {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.dlg-mcp-create {
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dlg-mcp-create:disabled {
+  background: var(--primary-disabled);
+  cursor: default;
+}

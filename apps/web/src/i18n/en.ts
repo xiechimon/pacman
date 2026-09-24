@@ -407,4 +407,18 @@ export const EN: Record<string, string> = {
   最近更新: 'Recently updated',
   标题: 'Title',
   没有匹配的任务: 'No matching tasks',
+  // wayfinder #174 add-mcp-server dialog family (02 §6.2 / r3 §5.1 text
+  // authority; geometry [推断] — capture PNGs unreadable on this API line)
+  类型: 'Type',
+  '远程 HTTP': 'Remote HTTP',
+  本地命令: 'Local command',
+  标识符: 'Slug',
+  '用作前缀，创建后不可修改。': 'Used as a prefix; cannot be changed after creation.',
+  '例如：内部工单系统': 'e.g. internal ticketing',
+  '请求头（可选）': 'Headers (optional)',
+  请求头名称: 'Header name',
+  请求头值: 'Header value',
+  添加请求头: 'Add header',
+  命令: 'Command',
+  '参数（可选，空格分隔）': 'Arguments (optional, space-separated)',
 };
