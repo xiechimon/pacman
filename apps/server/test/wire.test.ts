@@ -20,7 +20,8 @@ import {
 } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
 import { z } from 'zod';
-import { plan as planTable } from '../src/db/schema.js';
+import { agent as agentTable, plan as planTable } from '../src/db/schema.js';
+import { newRecordId } from '../src/lib/ids.js';
 import { completeStep } from '../src/services/builds.js';
 import { setTodoPhase } from '../src/services/todos.js';
 import { bootServer, postProject, req } from './helpers.js';
@@ -341,6 +342,73 @@ describe('todo CRUD（demo 面：curl 增删改查）', () => {
       await (await req(s.app, 'PATCH', `/api/todos/${created.id}`, { orderIndex: 5 })).json(),
     );
     expect(reordered.orderIndex).toBe(5);
+  });
+
+  test('改：PATCH todos/{id} assignment 双槽——槽级 merge + agent 派生投影随动（#208）', async () => {
+    const s = await setup();
+    const created = todoRecordSchema.parse(
+      await (
+        await req(s.app, 'POST', `/api/projects/${s.projectId}/todos`, { title: 'a', spec: '' })
+      ).json(),
+    );
+    expect(created.assignment).toBeNull();
+    expect(created.agent).toBeNull();
+    // 两 Agent 行（plan/build 槽各指一；agent 投影派生自 build 槽，services/todos.ts）。
+    const planAgentId = newRecordId();
+    const buildAgentId = newRecordId();
+    for (const [id, displayName] of [
+      [planAgentId, '规划小林'],
+      [buildAgentId, '执行小林'],
+    ] as const) {
+      s.db
+        .insert(agentTable)
+        .values({
+          id,
+          teamId: s.team.id,
+          displayName,
+          description: null,
+          status: 'active',
+          avatarUrl: null,
+          provider: null,
+          modelId: null,
+          thinkingLevel: null,
+          tools: [],
+          secrets: [],
+          skills: [],
+          mcpServers: [],
+        })
+        .run();
+    }
+    // plan 槽单写：回显 plan 槽、build 槽 null；agent 投影 = build 槽引用 → 仍 null。
+    const planOnly = todoRecordSchema.parse(
+      await (
+        await req(s.app, 'PATCH', `/api/todos/${created.id}`, {
+          assignment: { plan: { agentId: planAgentId } },
+        })
+      ).json(),
+    );
+    expect(planOnly.assignment).toEqual({ plan: { agentId: planAgentId }, build: null });
+    expect(planOnly.agent).toBeNull();
+    expect(planOnly.v).toBe(created.v + 1);
+    // build 槽单写：槽级 merge——plan 槽保留；agent 投影随动 = build 槽 Agent。
+    const both = todoRecordSchema.parse(
+      await (
+        await req(s.app, 'PATCH', `/api/todos/${created.id}`, {
+          assignment: { build: { agentId: buildAgentId } },
+        })
+      ).json(),
+    );
+    expect(both.assignment).toEqual({
+      plan: { agentId: planAgentId },
+      build: { agentId: buildAgentId },
+    });
+    expect(both.agent).toEqual({ id: buildAgentId, displayName: '执行小林' });
+    // GET 回显 = 持久化真值（非 PATCH 响应一次性投影）。
+    const got = todoRecordSchema.parse(
+      await (await req(s.app, 'GET', `/api/todos/${created.id}`)).json(),
+    );
+    expect(got.assignment).toEqual(both.assignment);
+    expect(got.agent).toEqual(both.agent);
   });
 
   test('删：DELETE todos/{id} → 204；再读 404；再删 404', async () => {
