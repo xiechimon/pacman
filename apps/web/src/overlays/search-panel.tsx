@@ -8,7 +8,7 @@
 // curly quotes verbatim). Geometry measured off the r7 bitmaps: input row
 // 40 + 1px divider, group label block 31, rows 40 inset 8 with radius 8.
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { relativeTime } from '../board/rel-time.js';
 import { PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { AgentRef, FixtureSet, TodoRecord } from '../fixtures/records.js';
@@ -87,12 +87,43 @@ function TodoRow({
   );
 }
 
+/** #137 常亮互斥: one lit focus surface globally. While any search panel
+ *  is open, `data-search-open` on the root dims the page-layer 常亮
+ *  selected pills (overlays.css); the panel's own selected row stays the
+ *  single lit surface. Module-level count so a route-owned panel and the
+ *  shell-owned panel (app-sidebar) never clobber each other's marker. */
+let openPanelCount = 0;
+function useSingleLitSurface(open: boolean) {
+  useEffect(() => {
+    if (!open) return;
+    openPanelCount += 1;
+    document.documentElement.dataset.searchOpen = '';
+    return () => {
+      openPanelCount -= 1;
+      if (openPanelCount === 0) delete document.documentElement.dataset.searchOpen;
+    };
+  }, [open]);
+}
+
 export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPanelProps) {
   const { t } = useI18n();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const openRef = useRef(open);
+  openRef.current = open;
+  // #137: OverlayMount renders children one commit *after* `open` flips
+  // (useOverlayMount sets `mounted` in an effect), so this effect alone
+  // ran while inputRef.current was still null — ⌘K opened an unfocused
+  // panel. The callback ref below focuses at the real DOM attach; this
+  // effect covers the retained-mount reopen (input never detached, mid-exit
+  // ⌘K, so the ref callback does not re-fire).
   useEffect(() => {
-    if (open) inputRef.current?.focus();
+    if (open) inputRef.current?.focus({ preventScroll: true });
   }, [open]);
+  const attachInput = useCallback((node: HTMLInputElement | null) => {
+    inputRef.current = node;
+    if (node && openRef.current) node.focus({ preventScroll: true });
+  }, []);
+  useSingleLitSurface(open);
   const q = query.trim().toLowerCase();
   const todos = q === '' ? [] : fixture.todos.filter((t) => t.title.toLowerCase().includes(q));
   const agents =
@@ -126,8 +157,9 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPa
           <Search width={13} height={13} />
           <input
             // the live panel opens focused (r7 05/05b show the caret);
-            // retained mount refocuses on every open instead of mount
-            ref={inputRef}
+            // the attach callback is the mount-time focus path (#137),
+            // the [open] effect the retained-mount refocus
+            ref={attachInput}
             value={query}
             placeholder={t('搜索任务、项目、成员…')}
             onChange={(event) => onQuery(event.target.value)}

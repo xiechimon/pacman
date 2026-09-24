@@ -4,12 +4,17 @@ import { defineConfig } from '@playwright/test';
 // the fixture script (`?scenario=chain`), so the e2e runs against the same
 // parity-mode build the pixel harness uses — the only production-grade
 // build in which the scenario parameter stays live (#58 gate).
+// #137: E2E_PORT lets parallel worktree lanes preview on their own port —
+// 8399 is machine-wide, and reuseExistingServer would otherwise silently
+// test whichever lane's build answered first. Default unchanged.
+const PORT = Number(process.env.E2E_PORT ?? 8399);
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   retries: 0,
   use: {
-    baseURL: 'http://127.0.0.1:8399',
+    baseURL: `http://127.0.0.1:${PORT}`,
     viewport: { width: 1440, height: 732 },
     // #129: a boot without stored theme follows the system scheme — pin the
     // e2e system scheme to dark so the storage-less specs keep their dark
@@ -18,8 +23,8 @@ export default defineConfig({
     colorScheme: 'dark',
   },
   webServer: {
-    command: 'pnpm exec vite build --mode parity && pnpm exec vite preview --host 127.0.0.1 --port 8399 --strictPort',
-    url: 'http://127.0.0.1:8399/app',
+    command: `pnpm exec vite build --mode parity && pnpm exec vite preview --host 127.0.0.1 --port ${PORT} --strictPort`,
+    url: `http://127.0.0.1:${PORT}/app`,
     reuseExistingServer: true,
     timeout: 120_000,
   },
