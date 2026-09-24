@@ -2,13 +2,16 @@
 // row (indigo server tile, description line, 未启用 pill) above a divider
 // and one row per claimed machine (orange monitor tile, online dot,
 // id-tail subline) — then the dashed full-width 添加机器 button.
+import { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { useMachines } from '../api/hooks.js';
+import { useMachines, useTeams } from '../api/hooks.js';
 import { mapMachines } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { TEAM_NAME } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { Monitor, Server, ServerThin } from '../icons/index.js';
+import { CreateMachineDialog } from './create-machine-dialog.js';
 import { RowChevron, StatusPill, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
 
@@ -22,6 +25,12 @@ export function MachinesPage() {
   const { live, teamId } = useLiveData();
   const machinesQ = useMachines(teamId, live);
   const machines = live ? mapMachines(machinesQ.data ?? []) : (fixture.resources?.machines ?? []);
+  // wayfinder #181: res-add 钮开 添加机器 dialog（r2 11b CLI 两步表单，
+  // #179 裁决）；团队名插值同 team-page 律（live = GET /api/teams，
+  // fixture = TEAM_NAME 常量），teamId 内嵌 API key 命令
+  const teamsQ = useTeams(live);
+  const teamName = live ? (teamsQ.data?.[0]?.name ?? TEAM_NAME) : TEAM_NAME;
+  const [addOpen, setAddOpen] = useState(false);
 
   return (
     // r7 06: the machines topbar carries no `+ 新建` — the dashed 添加机器
@@ -57,10 +66,16 @@ export function MachinesPage() {
           </div>
         ))}
       </div>
-      <button type="button" className="res-add">
+      <button type="button" className="res-add" onClick={() => setAddOpen(true)}>
         <ServerThin width={14} height={14} />
         {t('添加机器')}
       </button>
+      <CreateMachineDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        teamName={teamName}
+        teamId={teamId}
+      />
     </ResourceShell>
   );
 }
