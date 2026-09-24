@@ -3,7 +3,8 @@ import { expect, test } from '@playwright/test';
 // Issue #149: 零散死钮处置 + feedback 页整页移除。每条断言钉一个票面项的
 // 失败方式：
 // 1. feedback 整页移除 — 旧路由必须重定向 /app（catch-all 口径，01 §4.1）；
-//    user-menu「反馈」行随页全除，「新功能」行保留（不指同页）。
+//    user-menu「反馈」行随页全除；「新功能/快捷键」行同律隐去（#163 修订：
+//    无 local-first 对象面），余下 帐号/API 密钥/MCP 三行接真导航。
 // 2. 看板指南钮 — 点击必须开真内容弹层（列语义 + 关口操作 + ⌘K），且入
 //    anchored-overlay 家族律：Esc 关、外点关、面板持有自身命中（#133 法）。
 // 3. project 页 — 「导出」钮不再渲染（wontfix：无导出后端面）；分支 chip
@@ -34,13 +35,21 @@ test('feedback route is gone — old URL redirects to the board', async ({ page 
   await expect(page.locator('[data-route="feedback"]')).toHaveCount(0);
 });
 
-test('user menu drops the 反馈 row and keeps 新功能', async ({ page }) => {
+test('user menu drops its dead rows — 反馈 (#149), 新功能/快捷键 (#163)', async ({ page }) => {
   await page.goto('/app');
   await page.locator('.sidebar-user').click();
   const menu = page.locator('.user-menu');
   await expect(menu).toBeVisible();
-  await expect(menu).not.toContainText('反馈');
-  await expect(menu).toContainText('新功能');
+  // 无 local-first 对象即隐去：反馈页已整页移除（#149）；新功能无 whats-new
+  // 面、快捷键无快捷键面（#163 隐去裁定，理由随 PR）
+  for (const dead of ['反馈', '新功能', '快捷键']) {
+    await expect(menu).not.toContainText(dead);
+  }
+  // 活面齐全：外观分段 + 三条真导航行（#163 接真路由）
+  for (const live of ['外观', '帐号', 'API 密钥', 'MCP']) {
+    await expect(menu).toContainText(live);
+  }
+  await expect(menu.locator('a.user-menu-row')).toHaveCount(3);
 });
 
 // —— 2. 看板指南弹层 ——————————————————————————————————————————————————————
