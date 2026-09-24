@@ -561,3 +561,56 @@
   background: var(--primary-disabled);
   cursor: default;
 }
+
+/* 添加密钥 dialog (wayfinder #173, r2 §242): name/description inputs +
+   值 textarea + the encrypted-storage note. Same token family as
+   .dlg-agent (#170). */
+.dlg-secret {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.dlg-secret-input {
+  height: 36px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.dlg-secret-textarea {
+  min-height: 88px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-primary);
+  resize: vertical;
+}
+
+.dlg-secret-note {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.dlg-secret-create {
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dlg-secret-create:disabled {
+  background: var(--primary-disabled);
+  cursor: default;
+}

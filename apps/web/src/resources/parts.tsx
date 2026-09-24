@@ -49,6 +49,7 @@ export function EmptyState({
   description,
   actionLabel,
   actionHref,
+  onAction,
   hint,
 }: {
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
@@ -58,6 +59,9 @@ export function EmptyState({
   /** SPA target for the primary action (issue #153); absent keeps the
    *  inert button (dialog-opening actions land in a later ticket). */
   actionHref?: string;
+  /** Dialog-opening primary action (wayfinder #173): renders when
+   *  `actionHref` is absent, giving the bare button its handler. */
+  onAction?: () => void;
   hint?: string;
 }) {
   const { t } = useI18n();
@@ -69,7 +73,7 @@ export function EmptyState({
       <p className="res-empty-desc">{t(description)}</p>
       <div className="res-empty-actions">
         {actionHref == null ? (
-          <button type="button" className="res-primary">
+          <button type="button" className="res-primary" onClick={onAction}>
             {t(actionLabel)}
           </button>
         ) : (

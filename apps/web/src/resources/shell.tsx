@@ -26,6 +26,9 @@ interface ResourceShellProps {
   /** Href for the right `+ 新建` action; absent renders a bare button
    *  (dialog-opening actions land in a later ticket). */
   newHref?: string;
+  /** Dialog-opening 新建 action (wayfinder #173: the secrets page is first);
+   *  renders when `newHref` is absent, so the bare button gains a handler. */
+  onNew?: () => void;
   /** The import page carries no `+ 新建` action (r2 08b/08c). */
   hideNew?: boolean;
   fixture: FixtureSet;
@@ -38,13 +41,14 @@ export function ResourceShell({
   selected,
   backHref,
   newHref,
+  onNew,
   hideNew = false,
   fixture,
   children,
 }: ResourceShellProps) {
   const { t } = useI18n();
   const newAction = hideNew ? null : newHref == null ? (
-    <button type="button" className="res-new">
+    <button type="button" className="res-new" onClick={onNew}>
       <Plus width={13} height={13} />
       {t('新建')}
     </button>
