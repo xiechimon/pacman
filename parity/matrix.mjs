@@ -22,7 +22,11 @@
 //   drag     optional {from, to, at?}: a real pointer gesture (#73) —
 //              down on `from`, past the 5px threshold, across to `to`,
 //              up; `at` = 'top' | 'center' | 'bottom' drop point inside
-//              the `to` box (top = insertion index 0)
+//              the `to` box (top = insertion index 0). Rows whose drag
+//              target sits past the horizontal fold (columns 5–6 at the
+//              1440 viewport) must carry scrollLeft — pointer events
+//              outside the viewport never reach the sensor, so an
+//              unscrolled gesture silently no-ops (#160)
 //   hover    optional selector the pointer parks on before the shot (#73)
 //   viewport optional per-row capture viewport; the physical window of
 //              the r8 overlay session capped its dark baselines at
@@ -1009,20 +1013,31 @@ export const matrix = [
     route: '/app',
     scenario: '01',
     theme: 'light',
-    drag: { from: '[data-column="building"] .todo-card', to: '[data-column="done"]', at: 'top' },
+    scrollLeft: 'max',
+    drag: {
+      from: '[data-column="building"] .todo-card',
+      to: '[data-column="done"]',
+      at: 'top',
+    },
   },
   {
     id: 'dnd-drop-building-to-done-dark',
     route: '/app',
     scenario: '02',
     theme: 'dark',
-    drag: { from: '[data-column="building"] .todo-card', to: '[data-column="done"]', at: 'top' },
+    scrollLeft: 'max',
+    drag: {
+      from: '[data-column="building"] .todo-card',
+      to: '[data-column="done"]',
+      at: 'top',
+    },
   },
   {
     id: 'dnd-reorder-done-light',
     route: '/app',
     scenario: '35',
     theme: 'light',
+    scrollLeft: 'max',
     drag: {
       from: '[data-column="done"] .board-column-list > div:first-child .todo-card',
       to: '[data-column="done"] .board-column-list > div:nth-child(2) .todo-card',
@@ -1051,6 +1066,7 @@ export const matrix = [
     route: '/app',
     scenario: '35d',
     theme: 'dark',
+    scrollLeft: 'max',
     drag: {
       from: '[data-column="done"] .board-column-list > div:first-child .todo-card',
       to: '[data-column="done"] .board-column-list > div:nth-child(2) .todo-card',

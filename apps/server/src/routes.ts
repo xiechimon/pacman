@@ -875,7 +875,9 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const body = parseWith(patchTodoBodySchema, await jsonBody(c), 'body');
     let record: TodoRecord | null;
     try {
-      record = updateTodo(svc, id, body);
+      // #160：HTTP PATCH phase = 看板拖拽手动改相面（六列 dropPhase 目标
+      // 放行漏斗非法边）；系统流不经本路由，漏斗不变。
+      record = updateTodo(svc, id, body, { manualPhase: true });
     } catch (err) {
       if (err instanceof PhaseTransitionError) throw conflict(err.message);
       throw err;

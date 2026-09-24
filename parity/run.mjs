@@ -184,6 +184,10 @@ async function captureEntry(entry, browser) {
   // needs trusted pointermoves past its 5px threshold. `at` picks the
   // vertical drop point inside the target box (top = insertion index 0).
   if (entry.drag != null) {
+    // #160: a drag row whose target sits past the horizontal fold needs a
+    // row-level scrollLeft — pointer events outside the viewport never
+    // reach the sensor, so an unscrolled gesture silently no-ops (the
+    // pre-#160 drag rows never actually dragged)
     const fromBox = await page.locator(entry.drag.from).first().boundingBox();
     const toBox = await page.locator(entry.drag.to).first().boundingBox();
     if (fromBox == null || toBox == null) throw new Error(`drag boxes missing: ${entry.id}`);

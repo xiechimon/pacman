@@ -64,3 +64,17 @@ export function boardColumnFor(phase: Phase, hasChanges = false): BoardColumn | 
       return null; // 不占列 [推断]（6 列无 closed 列；右键 Close 菜单项实测 r1 §443）
   }
 }
+
+/** 手动改相面落点集（#160 看板拖拽）= 六列 dropPhase 正名（web columns.ts
+ *  COLUMNS[].dropPhase 的同表镜像，columns.test.ts 有自动对拍钉单源）。
+ *  拖拽只产生「源相占列 → 目标列」：`closed` 不占列故不可作拖拽源或落点。
+ *  官方 PATCH wire 未抓（r3 §3.10 合成拖拽未复现），手动面语义为复刻裁定
+ *  [设计]；系统流仍走 PHASE_TRANSITIONS 漏斗（server services/phase.ts）。 */
+export const BOARD_DROP_PHASES: readonly Phase[] = [
+  'todo',
+  'planning',
+  'confirm',
+  'building',
+  'review',
+  'done',
+];

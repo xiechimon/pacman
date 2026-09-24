@@ -544,10 +544,11 @@ body.board-dragging {
   -webkit-user-select: none;
 }
 
-.todo-card[data-dragging="true"] {
-  opacity: 0.6;
-  box-shadow: var(--dialog-shadow);
-  cursor: grabbing;
+/* the lifted DragOverlay card carries the official light-mode drop shadow
+   (#160 参照面 todos.dev CSS：drop-shadow-[0_8px_16px_rgba(0,0,0,0.10)] +
+   dark:drop-shadow-none）；dark 面与其余表面一致保持平投影 */
+.light .board-drag-overlay .todo-card {
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.1));
 }
 
 /* the column under the pointer tints with the hover token */

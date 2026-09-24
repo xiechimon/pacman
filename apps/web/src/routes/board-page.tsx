@@ -14,6 +14,9 @@
 // #83 (M5): live 数据源分支——无 `?scenario=` 时看板走真 API（todos/
 // machines/notifications/chief + 新建/开始/拖拽排序/验收合并 mutation），
 // fixture 分支保持 #52–#75 行为字节不变（parity 矩阵数据面）。
+
+import type { TodoRecord as WireTodo } from '@pacman/shared';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useApiMutations, useMembers, useProjects, useTodos } from '../api/hooks.js';
@@ -39,10 +42,19 @@ import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 // unmounts BoardSurface but keeps the shell, so the route imports them too
 import '../board/board.css';
 
+/** 拖拽提交逐卡发送的字段（#160）：手动改相 + 列内排序位（server
+ *  patchTodoBodySchema 两位；首次落位会把触及列的 orderIndex 一次性
+ *  归一成列视图序，其后幂等）。 */
+interface ReorderPatch {
+  phase?: TodoRecord['phase'];
+  orderIndex?: number;
+}
+
 export function BoardPage() {
   const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { live, teamId } = useLiveData();
   const fixture = resolveScenario(searchParams);
   // chief 面（#72/#129）：三态视图 + live 数据 wiring 由共享 hook 承载，
@@ -181,24 +193,50 @@ export function BoardPage() {
     ],
   );
 
-  // 拖拽落位（#73 / M5）：fixture = 本地集；live = 列内 orderIndex 增量
-  // PATCH（01 §4.1 拖拽面，server patchTodoBodySchema.orderIndex 位）。
+  // 拖拽落位（#73 / M5 / #160）：fixture = 本地集；live = 逐卡增量 PATCH
+  // （phase = 手动改相 + orderIndex = 列内排序位，server patchTodoBodySchema
+  // 两位）。diff 基线 = 落位前 todo 集：moveTodo 的输出已把 orderIndex 回写
+  // 成列视图序，拿它自身重算再比恒相等（#160 前的死路），故与落位前快照比。
   const handleReorder = useCallback(
     (next: TodoRecord[]) => {
       if (!live) {
         setFixtureTodos(next);
         return;
       }
-      const perColumn = new Map<string, number>();
+      const changes = new Map<string, ReorderPatch>();
       for (const todo of next) {
-        const idx = perColumn.get(todo.phase) ?? 0;
-        perColumn.set(todo.phase, idx + 1);
-        if (todo.orderIndex !== idx) {
-          mutations.patchTodo.mutate({ id: todo.id, body: { orderIndex: idx } });
-        }
+        const before = todos.find((p) => p.id === todo.id);
+        if (before == null) continue;
+        const body: ReorderPatch = {};
+        if (before.phase !== todo.phase) body.phase = todo.phase;
+        if (before.orderIndex !== todo.orderIndex) body.orderIndex = todo.orderIndex;
+        if (body.phase === undefined && body.orderIndex === undefined) continue;
+        changes.set(todo.id, body);
+      }
+      if (changes.size === 0) return;
+      // 乐观落位：卡片停在落点不弹回再跳；phaseAt 近似 server nowMs()。
+      // 01 §4.1「server state 全走查询失效重取」裁定 [设计]：乐观值只是落点
+      // 的同帧预览，真值源仍是 PATCH 回合的 invalidate 重取（成败两路收敛）。
+      queryClient.setQueryData<WireTodo[]>(['todos', teamId], (old) =>
+        old?.map((w) => {
+          const body = changes.get(w.id);
+          if (body == null) return w;
+          return {
+            ...w,
+            ...(body.phase !== undefined ? { phase: body.phase, phaseAt: Date.now() } : {}),
+            ...(body.orderIndex !== undefined ? { orderIndex: body.orderIndex } : {}),
+          };
+        }),
+      );
+      for (const [id, body] of changes) {
+        mutations.patchTodo.mutate(
+          { id, body },
+          // 409/网络败 = 乐观值作废，重取回 server 真值（卡片弹回 = 真值）
+          { onError: () => queryClient.invalidateQueries({ queryKey: ['todos', teamId] }) },
+        );
       }
     },
-    [live, mutations.patchTodo],
+    [live, todos, teamId, mutations.patchTodo, queryClient],
   );
 
   const content = overlayTodo != null ? overlayContent(overlayTodo.id) : null;
