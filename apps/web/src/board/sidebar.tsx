@@ -29,6 +29,7 @@ import {
   USER_NAME,
 } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
+import type { TFunc } from '../i18n/translate.js';
 import {
   BarChart3,
   ChevronDown,
@@ -107,13 +108,48 @@ const PROJECT_HREF = `/app/project/${PROJECT_ID}`;
 const rowClass = (base: string, selected: boolean) =>
   selected ? `${base} ${base}--selected` : base;
 
-function GroupHeader({ label }: { label: string }) {
+/** Group-collapse storage keys (#147): the 项目 key is the brand-slot twin
+ *  of the observed original `tds.sidebarProjectsCollapsed` (r2 §1.1/§1.5,
+ *  measured value "1", registered in the shared client-state table); the
+ *  资源 twin is [推断] in the same shape. Values follow the sidebar
+ *  collapse key: "1" collapsed, "0"/absent open. */
+export const GROUP_STORAGE_KEYS = {
+  project: 'pacman.sidebarProjectsCollapsed',
+  resource: 'pacman.sidebarResourcesCollapsed',
+} as const;
+
+type GroupId = keyof typeof GROUP_STORAGE_KEYS;
+
+function readGroupCollapsed(storage: Storage): Record<GroupId, boolean> {
+  return {
+    project: storage.getItem(GROUP_STORAGE_KEYS.project) === '1',
+    resource: storage.getItem(GROUP_STORAGE_KEYS.resource) === '1',
+  };
+}
+
+/** Group-header aria (r6): the label tracks the collapse in both
+ *  directions — 收起… open, 展开… collapsed — shared by the expanded and
+ *  rail headers. */
+const groupAria = (t: TFunc, label: string, collapsed: boolean) =>
+  t(collapsed ? '展开{label}' : '收起{label}', { label: t(label) });
+
+function GroupHeader({
+  label,
+  collapsed,
+  onToggle,
+}: {
+  label: string;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
   const { t } = useI18n();
   return (
     <button
       type="button"
-      className="sidebar-group"
-      aria-label={t('收起{label}', { label: t(label) })}
+      className={collapsed ? 'sidebar-group sidebar-group--collapsed' : 'sidebar-group'}
+      aria-label={groupAria(t, label, collapsed)}
+      aria-expanded={!collapsed}
+      onClick={onToggle}
     >
       <span className="sidebar-group-chevron">
         <ChevronDown />
@@ -123,10 +159,28 @@ function GroupHeader({ label }: { label: string }) {
   );
 }
 
-function RailGroupChevron({ label }: { label: string }) {
+/** Rail twin of GroupHeader (#147): same collapse state, same aria. Hiding
+ *  the rail member rows while collapsed is [推断] — the captured original
+ *  rail (r7 03) only ever shows the open-group state, and the rail chevron
+ *  is the same dead 收起{label} button family the ticket revives. */
+function RailGroupChevron({
+  label,
+  collapsed,
+  onToggle,
+}: {
+  label: string;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
   const { t } = useI18n();
   return (
-    <button type="button" className="rail-row" aria-label={t('收起{label}', { label: t(label) })}>
+    <button
+      type="button"
+      className={collapsed ? 'rail-row rail-group rail-group--collapsed' : 'rail-row rail-group'}
+      aria-label={groupAria(t, label, collapsed)}
+      aria-expanded={!collapsed}
+      onClick={onToggle}
+    >
       <ChevronDown />
     </button>
   );
@@ -152,6 +206,19 @@ export function BoardSidebar({
   // Esc close it like the rest of the anchored-overlay family; the stored
   // theme at open time seeds the 外观 segment (#122).
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  // #147: the 项目 / 资源 group collapses are real state persisted beside
+  // the sidebar collapse key; both sidebar shapes (rail + expanded) read
+  // the same pair so a collapse survives the rail toggle and the reload.
+  const [groupCollapsed, setGroupCollapsed] = useState(() => readGroupCollapsed(localStorage));
+  const toggleGroup = useCallback((id: GroupId) => {
+    setGroupCollapsed((prev) => {
+      const next = { ...prev, [id]: !prev[id] };
+      localStorage.setItem(GROUP_STORAGE_KEYS[id], next[id] ? '1' : '0');
+      return next;
+    });
+  }, []);
+  const toggleProjectGroup = useCallback(() => toggleGroup('project'), [toggleGroup]);
+  const toggleResourceGroup = useCallback(() => toggleGroup('resource'), [toggleGroup]);
   const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
   const toggleUserMenu = useCallback(() => setUserMenuOpen((open) => !open), []);
   useEscapeClose(userMenuOpen, closeUserMenu);
@@ -192,27 +259,38 @@ export function BoardSidebar({
           >
             <Clock />
           </Link>
-          <RailGroupChevron label="项目" />
-          <Link
-            className={rowClass('rail-row', selected === 'project')}
-            to={{ pathname: PROJECT_HREF, search }}
-            aria-current={selected === 'project' ? 'page' : undefined}
-            aria-label={PROJECT_NAME}
-          >
-            <span className="project-avatar">{PROJECT_INITIAL}</span>
-          </Link>
-          <RailGroupChevron label="资源" />
-          {resourceRows.map(({ label, href, Icon }) => (
+          <RailGroupChevron
+            label="项目"
+            collapsed={groupCollapsed.project}
+            onToggle={toggleProjectGroup}
+          />
+          {!groupCollapsed.project && (
             <Link
-              key={href}
-              className={rowClass('rail-row', selected === href)}
-              to={{ pathname: href, search }}
-              aria-current={selected === href ? 'page' : undefined}
-              aria-label={t(label)}
+              className={rowClass('rail-row', selected === 'project')}
+              to={{ pathname: PROJECT_HREF, search }}
+              aria-current={selected === 'project' ? 'page' : undefined}
+              aria-label={PROJECT_NAME}
             >
-              <Icon />
+              <span className="project-avatar">{PROJECT_INITIAL}</span>
             </Link>
-          ))}
+          )}
+          <RailGroupChevron
+            label="资源"
+            collapsed={groupCollapsed.resource}
+            onToggle={toggleResourceGroup}
+          />
+          {!groupCollapsed.resource &&
+            resourceRows.map(({ label, href, Icon }) => (
+              <Link
+                key={href}
+                className={rowClass('rail-row', selected === href)}
+                to={{ pathname: href, search }}
+                aria-current={selected === href ? 'page' : undefined}
+                aria-label={t(label)}
+              >
+                <Icon />
+              </Link>
+            ))}
         </nav>
         <div className="sidebar-spacer" />
         <button
@@ -279,40 +357,54 @@ export function BoardSidebar({
           <span className="sidebar-row-label">{t('定时')}</span>
         </Link>
 
-        <GroupHeader label="项目" />
-        <Link
-          className="sidebar-subrow sidebar-new-project"
-          to={{ pathname: '/app/project/new', search }}
-        >
-          <span className="sidebar-row-icon">
-            <Plus />
-          </span>
-          <span className="sidebar-subrow-label">{t('新建项目')}</span>
-        </Link>
-        <Link
-          className={rowClass('sidebar-subrow', selected === 'project')}
-          to={{ pathname: PROJECT_HREF, search }}
-          aria-current={selected === 'project' ? 'page' : undefined}
-        >
-          <span className="project-avatar">{PROJECT_INITIAL}</span>
-          <span className="sidebar-subrow-label">{PROJECT_NAME}</span>
-        </Link>
+        <GroupHeader
+          label="项目"
+          collapsed={groupCollapsed.project}
+          onToggle={toggleProjectGroup}
+        />
+        {/* r2 §1.1: the fold hides the group's sub-rows, header stays */}
+        {!groupCollapsed.project && (
+          <>
+            <Link
+              className="sidebar-subrow sidebar-new-project"
+              to={{ pathname: '/app/project/new', search }}
+            >
+              <span className="sidebar-row-icon">
+                <Plus />
+              </span>
+              <span className="sidebar-subrow-label">{t('新建项目')}</span>
+            </Link>
+            <Link
+              className={rowClass('sidebar-subrow', selected === 'project')}
+              to={{ pathname: PROJECT_HREF, search }}
+              aria-current={selected === 'project' ? 'page' : undefined}
+            >
+              <span className="project-avatar">{PROJECT_INITIAL}</span>
+              <span className="sidebar-subrow-label">{PROJECT_NAME}</span>
+            </Link>
+          </>
+        )}
 
-        <GroupHeader label="资源" />
-        {resourceRows.map(({ label, href, Icon }) => (
-          <Link
-            key={href}
-            className={rowClass('sidebar-subrow', selected === href)}
-            to={{ pathname: href, search }}
-            aria-current={selected === href ? 'page' : undefined}
-          >
-            <span className="sidebar-row-icon">
-              <Icon />
-            </span>
-            <span className="sidebar-subrow-label">{t(label)}</span>
-            {machineOnline && label === '机器' && <span className="sidebar-online-dot" />}
-          </Link>
-        ))}
+        <GroupHeader
+          label="资源"
+          collapsed={groupCollapsed.resource}
+          onToggle={toggleResourceGroup}
+        />
+        {!groupCollapsed.resource &&
+          resourceRows.map(({ label, href, Icon }) => (
+            <Link
+              key={href}
+              className={rowClass('sidebar-subrow', selected === href)}
+              to={{ pathname: href, search }}
+              aria-current={selected === href ? 'page' : undefined}
+            >
+              <span className="sidebar-row-icon">
+                <Icon />
+              </span>
+              <span className="sidebar-subrow-label">{t(label)}</span>
+              {machineOnline && label === '机器' && <span className="sidebar-online-dot" />}
+            </Link>
+          ))}
       </nav>
 
       <div className="sidebar-spacer" />

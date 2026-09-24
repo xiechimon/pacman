@@ -188,6 +188,19 @@
   color: var(--text-secondary);
 }
 
+/* group collapse (#147): the chevron tracks the state — down open, right
+   collapsed (r6: the collapsed header's aria flips to 展开项目) — over the
+   registry's standard 150ms step (motion.css), same in the rail */
+.sidebar-group-chevron,
+.rail-group > svg {
+  transition: transform var(--dur-fast) var(--ease-standard);
+}
+
+.sidebar-group--collapsed .sidebar-group-chevron,
+.rail-group--collapsed > svg {
+  transform: rotate(-90deg);
+}
+
 /* second-level rows: icon at x34, label at x62 */
 .sidebar-subrow {
   position: relative;

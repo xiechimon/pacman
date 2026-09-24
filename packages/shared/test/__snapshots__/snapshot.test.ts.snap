@@ -5046,6 +5046,16 @@ exports[`协议词表快照（02 §5/§6 canonical） > localStorage 键名契�
       "valueShape": ""1"",
     },
     {
+      "key": "pacman.sidebarResourcesCollapsed",
+      "source": "[推断] #147（资源组折叠，与 sidebarProjectsCollapsed 同形；原键未观测）",
+      "valueShape": ""1"",
+    },
+    {
+      "key": "pacman.boardCollapsedColumns",
+      "source": "[推断] #147（r2 §4 / 01d 观测到列折叠行为与窄条形态，键未捕获）",
+      "valueShape": "逗号连接的列 id（空 = 全展开）",
+    },
+    {
       "key": "pacman.panel-maximized",
       "source": "r2 §1.5",
       "valueShape": ""0"",
