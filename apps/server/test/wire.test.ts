@@ -30,6 +30,7 @@ const INFERRED_ROUTES = [
   'POST /api/projects', // 项目创建流（02 §3/r2 §9 UI 证据，wire 未采）
   'PATCH /api/todos/{id}', // update_todo 面（r5 §3.1 词表证据；02 §6.1 PATCH 未抓）
   'DELETE /api/todos/{id}', // DELETE_FACE 'todos' 同名 DELETE（02 §6.1 [推断] 规则）
+  'DELETE /api/projects/{id}', // 项目设置危险操作区删除流（r2 24c UI 证据；#189 复活前置，wire 未采）
   'DELETE /api/schedules/{id}', // DELETE_FACE 'schedules'（unschedule_todo r5 §3.1；once 出队 r3 §9）
   // —— 密钥三面（页/弹窗实测存在 r2 §6.3/§6.5/§6.7、r3 §2/§6，wire 未采；
   // 路径 = REST 同名 [推断]，02 §6.1 规则族）——
