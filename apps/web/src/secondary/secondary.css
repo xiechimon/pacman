@@ -132,20 +132,6 @@
   color: var(--text-secondary);
 }
 
-.team-plan {
-  margin-right: 12px; /* pill x507..543, 升级 ink from x555 */
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: var(--seg-active);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-dim);
-}
-
-.team-upgrade {
-  font-size: 12px;
-}
-
 .team-layout-tabs {
   display: flex;
   gap: 2px;

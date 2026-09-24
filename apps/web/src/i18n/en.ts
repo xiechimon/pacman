@@ -176,7 +176,6 @@ export const EN: Record<string, string> = {
   // —— team route (r7 12) ——
   设置: 'Settings',
   '{n} 个成员': '{n} members',
-  '升级 →': 'Upgrade →',
   ' · 默认': ' · Default',
   未设置职责: 'No role set',
   '创建 Agent': 'Create Agent',

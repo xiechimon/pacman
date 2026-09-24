@@ -4,17 +4,17 @@
 // indigo + 新建 on schedules, r7 11). Geometry from the r7 11 probes
 // (topbar 43 + 1px border, back 28×28 @ x252, title centered on the
 // content area) and r2 24b/24c for the name + tab-group variants.
-// The 总管 FAB rides the shell (r7 11 shows it on every secondary route).
+// The 总管 FAB rides the shell (r7 11 shows it on every secondary route)
+// and wakes the shared chief drawer (#129); the sidebar is the shared
+// AppSidebar, so its geometry/behavior matches the board's exactly.
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
-import { useTodos } from '../api/hooks.js';
-import { toDisplayTodo } from '../api/mappers.js';
-import { useLiveData } from '../api/provider.js';
-import { attentionCount } from '../board/columns.js';
-import { BoardSidebar, type SidebarSelected } from '../board/sidebar.js';
+import { AppSidebar } from '../board/app-sidebar.js';
+import type { SidebarSelected } from '../board/sidebar.js';
+import { ChiefWake } from '../chief/chief-wake.js';
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
-import { ChevronLeft, ChiefFab } from '../icons/index.js';
+import { ChevronLeft } from '../icons/index.js';
 
 export interface PageTab {
   id: string;
@@ -78,13 +78,9 @@ export function PageShell({
 }: PageShellProps) {
   const { t } = useI18n();
   const { search } = useLocation();
-  // M5 live：侧栏待办徽标走真 todos（TQ 同键去重）。
-  const { live, teamId } = useLiveData();
-  const todosQ = useTodos(teamId, live);
-  const attention = attentionCount(live ? (todosQ.data ?? []).map(toDisplayTodo) : fixture.todos);
   return (
     <div className="page-shell">
-      <BoardSidebar attention={attention} selected={selected} />
+      <AppSidebar fixture={fixture} selected={selected} />
       <div className="page-main">
         <header className="page-topbar">
           <Link className="page-back" to={{ pathname: '/app', search }} aria-label={t('返回')}>
@@ -100,9 +96,7 @@ export function PageShell({
           {action != null && <div className="page-topbar-actions">{action}</div>}
         </header>
         {children}
-        <button type="button" className="page-fab" aria-label={t('总管')}>
-          <ChiefFab />
-        </button>
+        <ChiefWake fixture={fixture} fabClassName="page-fab" />
       </div>
     </div>
   );

@@ -78,7 +78,9 @@ interface DrawerProps {
   /** #73 retained-mount open flag; the slide-out outlives the close. */
   open?: boolean;
   chief: ChiefContent;
-  onSettings: () => void;
+  /** Opens the 总管设置 content swap — a board-route affordance (r5
+   *  101–104); absent hides the gear (the shared wake surfaces, #129). */
+  onSettings?: () => void;
   onClose: () => void;
   /** M5 live 面：composer 可写 + 发送回调（POST chief 线程消息，r5 §3.6）；
    * 缺省 = fixture 静态面（readOnly draft，发送钮惰性）。 */
@@ -124,9 +126,11 @@ export function ChiefDrawer({
               <button type="button" aria-label={t('新主题')}>
                 <Plus width={18} height={18} />
               </button>
-              <button type="button" aria-label={t('总管设置')} onClick={onSettings}>
-                <ChiefGear />
-              </button>
+              {onSettings != null && (
+                <button type="button" aria-label={t('总管设置')} onClick={onSettings}>
+                  <ChiefGear />
+                </button>
+              )}
               {hasThread && (
                 <button type="button" aria-label={t('更多')}>
                   <EllipsisVertical width={16} height={16} />

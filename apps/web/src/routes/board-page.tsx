@@ -1,42 +1,34 @@
 // Board route (issue #54): app shell = sidebar + board surface, content
-// picked by the scenario fixture (issue #52 mechanism). #55: the sidebar
-// collapse toggle is real state, persisted beside the theme; the exact key
-// is [推断] (r2 §1.1 only documents `tds.sidebarProjectsCollapsed` for the
-// project-group fold), and the parity harness injects it like the theme
-// key so the rail capture stays deterministic.
+// picked by the scenario fixture (issue #52 mechanism). The sidebar is the
+// shared AppSidebar (#129): the collapse state (storage-backed, #55 — the
+// parity harness injects the key like the theme one), the 用量 row, the
+// online dot and the ⌘K row derive identically on every route; this route
+// keeps its own SearchPanel because the fixture ui.searchOpen open states
+// drive the parity rows.
 // #72: the chief surfaces ride this route — the drawer overlays the board
 // (r5 100/111/114/116) and the 总管设置 gear swaps the content area to the
 // settings view (r5 101–104). Both open states are fixture-driven for
-// parity; the FAB/gear/back/close buttons make them reachable in dev.
+// parity; the FAB/gear/back/close buttons make them reachable in dev. The
+// wake wiring lives in use-chief-surface (#129), shared with every other
+// shell family's FAB.
 // #83 (M5): live 数据源分支——无 `?scenario=` 时看板走真 API（todos/
 // machines/notifications/chief + 新建/开始/拖拽排序/验收合并 mutation），
 // fixture 分支保持 #52–#75 行为字节不变（parity 矩阵数据面）。
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import {
-  useApiMutations,
-  useChief,
-  useChiefThreads,
-  useMachines,
-  useMembers,
-  useMessages,
-  useNotifications,
-  useProjects,
-  useTodos,
-} from '../api/hooks.js';
-import { mapChief, toDisplayTodo } from '../api/mappers.js';
+import { useApiMutations, useMembers, useProjects, useTodos } from '../api/hooks.js';
+import { toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
-import { useConversationStream } from '../api/sse.js';
+import { AppSidebar } from '../board/app-sidebar.js';
 import { BoardSurface } from '../board/board.js';
-import { attentionCount } from '../board/columns.js';
 import { NotificationBanner, useNotificationBanner } from '../board/notify-banner.js';
-import { BoardSidebar } from '../board/sidebar.js';
 import { ChiefDrawer } from '../chief/chief-drawer.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
+import { useChiefSurface } from '../chief/use-chief-surface.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
 import { withoutDeleted } from '../fixtures/deletions.js';
-import { chiefDefault, localTodo, overlayContent } from '../fixtures/fixtures.js';
+import { localTodo, overlayContent } from '../fixtures/fixtures.js';
 import type { FixtureSet, OverlayState, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
@@ -47,29 +39,22 @@ import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 // unmounts BoardSurface but keeps the shell, so the route imports them too
 import '../board/board.css';
 
-export const SIDEBAR_STORAGE_KEY = 'pacman.sidebar-collapsed'; // mirrored in parity/run.mjs
-
-function readCollapsed(storage: Storage): boolean {
-  return storage.getItem(SIDEBAR_STORAGE_KEY) === '1';
-}
-
 export function BoardPage() {
   const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { live, teamId } = useLiveData();
-  const [collapsed, setCollapsed] = useState(() => readCollapsed(localStorage));
   const fixture = resolveScenario(searchParams);
+  // chief 面（#72/#129）：三态视图 + live 数据 wiring 由共享 hook 承载，
+  // 与其余 shell 族的 FAB 唤醒同一 surface。
+  const { chiefView, setChiefView, chiefData, chiefUnread, onSend, onThread } =
+    useChiefSurface(fixture);
 
   // —— live 数据面（#83）：查询 + mutations；fixture 模式全部惰性（enabled
   // = live），parity 采集零请求零流。——
   const todosQ = useTodos(teamId, live);
   const projectsQ = useProjects(teamId, live);
-  const machinesQ = useMachines(teamId, live);
-  const notificationsQ = useNotifications(teamId, live);
   const membersQ = useMembers(teamId, live);
-  const chiefQ = useChief(teamId, live);
-  const chiefThreadsQ = useChiefThreads(teamId, live);
   const mutations = useApiMutations(teamId);
 
   // New-task dialog (#66): fixture phase has no backend, so a saved task
@@ -99,11 +84,6 @@ export function BoardPage() {
   // fixture scenarios opt in via ui.notificationBanner (parity determinism,
   // the r7 baselines carry no banner)
   const notifyBanner = useNotificationBanner(fixture.ui?.notificationBanner === true, live);
-  const toggle = useCallback(() => {
-    const next = !collapsed;
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, next ? '1' : '0');
-    setCollapsed(next);
-  }, [collapsed]);
 
   // live 面的默认执行 Agent（开始/重跑无 dialog 位——已建屏无开始弹窗，
   // assignment 取团队首个 Agent [设计]，02 §6.2 双槽同值；E2E 脊柱口径）。
@@ -224,35 +204,6 @@ export function BoardPage() {
   const content = overlayTodo != null ? overlayContent(overlayTodo.id) : null;
   // live overlay 数据（验收合并只依赖 latestBuildId——branch dialog 数据面
   // 归详情页；看板 branch 弹层在 live 下取查询值兜底 null 关闭）。
-  const chief = fixture.chief;
-
-  // one three-state view: drawer and settings are mutually exclusive by
-  // construction (r5: the gear swaps the drawer for the full-content view)
-  const [chiefView, setChiefView] = useState<'none' | 'drawer' | 'settings'>(chief?.view ?? 'none');
-  const chiefViewOpen = chiefView === 'drawer';
-
-  // —— chief live 面（r5 §2/§3.6）：envelope + threads + 活动线程消息 +
-  // 会话流订阅；发送 = POST threads / conversations messages。——
-  const [activeThreadIdx, setActiveThreadIdx] = useState<number | null>(null);
-  const liveThreads = chiefThreadsQ.data ?? [];
-  const activeThread =
-    live && liveThreads.length > 0 ? (liveThreads[activeThreadIdx ?? 0] ?? null) : null;
-  const chiefMessagesQ = useMessages(live ? (activeThread?.id ?? null) : null, live);
-  useConversationStream(
-    live ? (activeThread?.id ?? undefined) : undefined,
-    live && chiefViewOpen,
-    {},
-  );
-  const liveChief = useMemo(() => {
-    if (!live || !chiefQ.data) return null;
-    return mapChief(chiefQ.data, {
-      threads: liveThreads,
-      activeThreadId: activeThread?.id ?? null,
-      messages: chiefMessagesQ.data?.messages ?? [],
-    });
-  }, [live, chiefQ.data, liveThreads, activeThread, chiefMessagesQ.data]);
-
-  const chiefData = live ? (liveChief ?? chiefDefault) : (chief ?? chiefDefault);
   // live 面 now = 墙钟（相对时间标签随 SSE 失效重渲染滚动）；fixture 面保持
   // 冻结采集时刻（parity 确定性）。projectNames = 卡面/搜索/新建 dialog 的
   // 项目 chip 真名位（fixture 面缺省走 capture canon 常量）。
@@ -263,21 +214,14 @@ export function BoardPage() {
   const fixtureWithTodos: FixtureSet = live
     ? { ...fixture, todos, now: Date.now(), ...(projectNames ? { projectNames } : {}) }
     : { ...fixture, todos };
-  const liveUnread = live
-    ? (notificationsQ.data?.unreadThreadIds ?? []).filter((id) => id.startsWith('chief-')).length
-    : 0;
-  const chiefUnread = live ? liveUnread : (fixture.chiefUnread ?? 0);
-  const machineOnline = live ? (machinesQ.data ?? []).some((m) => m.online) : chief != null;
   return (
     <div className="board-shell h-full" data-route="board">
-      <BoardSidebar
-        collapsed={collapsed}
-        onToggle={toggle}
-        attention={attentionCount(todos)}
-        onSearch={() => search.setOpen(true)}
-        usageNav={fixture.usageNav === true}
+      <AppSidebar
+        fixture={fixture}
+        todos={todos}
         selected={chiefView === 'settings' ? 'none' : 'board'}
-        machineOnline={machineOnline}
+        searchPanel={false}
+        onSearch={() => search.setOpen(true)}
       />
       {chiefView === 'settings' ? (
         <ChiefSettings chief={chiefData} onBack={() => setChiefView('drawer')} />
@@ -320,22 +264,8 @@ export function BoardPage() {
         chief={chiefData}
         onSettings={() => setChiefView('settings')}
         onClose={() => setChiefView('none')}
-        onSend={
-          live
-            ? (text) => {
-                mutations.chiefSend.mutate(
-                  { threadId: activeThread?.id ?? null, content: text },
-                  {
-                    onSuccess: () => {
-                      // 新主题落线程首位（listChiefThreads 新在前）——切回 0 位。
-                      if (activeThread === null) setActiveThreadIdx(0);
-                    },
-                  },
-                );
-              }
-            : undefined
-        }
-        onThread={live ? (_title, index) => setActiveThreadIdx(index) : undefined}
+        onSend={onSend}
+        onThread={onThread}
       />
       <NewTaskDialog
         open={newTaskOpen}

@@ -11,6 +11,11 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:8399',
     viewport: { width: 1440, height: 732 },
+    // #129: a boot without stored theme follows the system scheme — pin the
+    // e2e system scheme to dark so the storage-less specs keep their dark
+    // default; the follow-system behavior itself is asserted per-test via
+    // page.emulateMedia in shell-consistency.spec.ts.
+    colorScheme: 'dark',
   },
   webServer: {
     command: 'pnpm exec vite build --mode parity && pnpm exec vite preview --host 127.0.0.1 --port 8399 --strictPort',
