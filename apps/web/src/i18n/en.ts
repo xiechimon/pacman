@@ -171,11 +171,12 @@ export const EN: Record<string, string> = {
   邮箱: 'Email',
   语言: 'Language',
   推送通知: 'Push notifications',
-  退出登录: 'Log out',
 
   // —— team route (r7 12) ——
   设置: 'Settings',
   '{n} 个成员': '{n} members',
+  // #148 chart layout empty state (r2 §8.1 17c verbatim)
+  暂无成员: 'No members yet',
   ' · 默认': ' · Default',
   未设置职责: 'No role set',
   '创建 Agent': 'Create Agent',

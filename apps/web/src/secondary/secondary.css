@@ -189,6 +189,24 @@
   }
 }
 
+/* chart layout (#148): the stats bar drops (r2 §8.1 17c), so space-between
+   loses its left child — the auto margin keeps the tablist on its r7 12
+   right edge instead of sliding it to the column's left. */
+.team-toprow--chart .team-layout-tabs {
+  margin-left: auto;
+}
+
+/* chart layout empty state (#148, r2 §8.1 17c: the whole content block
+   becomes 暂无成员). Geometry [设计]: the 17c capture predates the r7
+   column probes, so the ink centers on the 766px column at the grid's
+   first-row band (cards y99). */
+.team-chart-empty {
+  margin-top: 40px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
 .team-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -323,8 +341,8 @@
 
 .account-avatar-actions {
   display: flex;
-  gap: 11px; /* 更换 x809..835, 删除 x846..872 (r7 13) */
-  margin-top: 10px; /* 更换/删除 band y151..161 */
+  margin-top: 10px; /* 更换 band y151..161 (r7 13); the 删除 twin is SaaS
+    surface removed by #148, so the lone 更换 centers on the column */
 }
 
 .account-avatar-actions button {
@@ -337,10 +355,6 @@
 
 .account-swap {
   color: var(--indigo-500);
-}
-
-.account-delete {
-  color: var(--text-tertiary);
 }
 
 .account-row {
@@ -401,6 +415,11 @@
   color: var(--text-tertiary);
 }
 
+/* #148: the switch mirrors Notification.permission — on = granted (the r7
+   13 ink), off = the OS permission is not granted and a click drives
+   requestPermission() (the #114 banner's path). Off geometry [设计]: no
+   capture shows the off state (the official account always had it on);
+   knob swaps ends, track drops to the tertiary surface step. */
 .account-switch {
   position: relative;
   width: 29px;
@@ -409,7 +428,16 @@
   padding: 0;
   border-radius: 999px;
   background: var(--indigo-500);
+  cursor: pointer;
+}
+
+/* granted: one-way affordance — the page cannot revoke an OS permission */
+.account-switch[aria-checked="true"] {
   cursor: default;
+}
+
+.account-switch[aria-checked="false"] {
+  background: var(--surface-tertiary);
 }
 
 .account-switch-knob {
@@ -422,16 +450,9 @@
   background: #ffffff;
 }
 
-.account-logout {
-  width: 100%;
-  height: 38px;
-  margin-top: 16px; /* box y386..424 */
-  border: 1px solid var(--border-default);
-  border-radius: 10px;
-  background: var(--surface);
-  font-size: 14px;
-  color: var(--stop);
-  cursor: pointer;
+.account-switch[aria-checked="false"] .account-switch-knob {
+  right: auto;
+  left: 2px;
 }
 
 /* ---- api keys (r2 19 empty, r3 §6 rows) ---- */

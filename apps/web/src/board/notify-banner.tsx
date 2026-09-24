@@ -34,30 +34,32 @@ function Bell() {
   );
 }
 
-type BannerPermission = NotificationPermission | 'unsupported';
+export type NotificationPermissionState = NotificationPermission | 'unsupported';
 
-function readPermission(): BannerPermission {
+function readPermission(): NotificationPermissionState {
   return typeof Notification === 'undefined' ? 'unsupported' : Notification.permission;
 }
 
-/** Permission state machine for the banner. Live mode: visibility is the
- *  real browser permission. Fixture (scenario) mode freezes the initial
- *  state from the ui.notificationBanner flag instead — the parity harness's
- *  headless chromium reports Notification.permission as 'denied', and the
- *  r7-baselined board rows were captured without the strip, so the real API
- *  may never leak into the fixture data面. The 开启 click always calls the
- *  real Notification.requestPermission() and settles the bar either way. */
-export function useNotificationBanner(
-  fixtureFlag: boolean,
-  live: boolean,
-): { visible: boolean; enable: () => void } {
-  const [permission, setPermission] = useState<BannerPermission>(() =>
-    live ? readPermission() : fixtureFlag ? 'default' : 'granted',
+/** Permission state machine, single source for the #114 banner and the
+ *  #148 account 推送通知 switch. `fixtureState` non-null freezes the initial
+ *  read (scenario mode): the parity harness's headless chromium reports
+ *  Notification.permission as 'denied', and the r7-baselined surfaces were
+ *  captured without either affordance, so the real API may never leak into
+ *  the fixture data面. Null = live: read the real permission. request()
+ *  always calls the real Notification.requestPermission() and settles the
+ *  state either way (granted unlocks sse.ts fireDesktopNotification, denied
+ *  leaves the in-app 未读面 the fallback, 04 §5 divergence). */
+export function useNotificationPermission(fixtureState: NotificationPermissionState | null): {
+  permission: NotificationPermissionState;
+  request: () => void;
+} {
+  const [permission, setPermission] = useState<NotificationPermissionState>(
+    () => fixtureState ?? readPermission(),
   );
-  const enable = useCallback(() => {
+  const request = useCallback(() => {
     if (typeof Notification === 'undefined') return;
     try {
-      // promise form (modern browsers); a rejection still settles the bar
+      // promise form (modern browsers); a rejection still settles the state
       void Promise.resolve(Notification.requestPermission()).then(
         (next) => setPermission(next),
         () => setPermission('denied'),
@@ -66,7 +68,17 @@ export function useNotificationBanner(
       setPermission('denied');
     }
   }, []);
-  return { visible: permission === 'default', enable };
+  return { permission, request };
+}
+
+export function useNotificationBanner(
+  fixtureFlag: boolean,
+  live: boolean,
+): { visible: boolean; enable: () => void } {
+  const { permission, request } = useNotificationPermission(
+    live ? null : fixtureFlag ? 'default' : 'granted',
+  );
+  return { visible: permission === 'default', enable: request };
 }
 
 export function NotificationBanner({ onEnable }: { onEnable: () => void }) {
