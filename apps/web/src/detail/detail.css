@@ -945,16 +945,23 @@ textarea.composer-input::placeholder {
   line-height: 16px;
 }
 
-/* ---- user-menu popover (r7 17 / 16d captures, 224×272 @ 8,410) ---- */
+/* ---- user-menu popover (r7 17 / 16d captures, 224 wide @ x8; #163
+   bottom-anchored above the avatar chip) ---- */
 
 .user-menu {
   position: absolute;
   left: 8px;
-  top: 410px;
+  /* #163 锚定律（dogfood 实证：冻结 top:410px 在矮视口盖住头像 chip）：
+     chip 钉在视口底（展开 .sidebar-user 44px / rail .rail-user 38px +
+     11px 底距），菜单底边恒距视口底 78px——r7 捕获视口（1440×732）上即
+     捕获帧的底边 654（top 410 + 当时高 244），任意视口高度随底平移，
+     永远开在 chip 上方（展开态净空 34px / rail 29px），两种 chip 形态
+     同律。absolute 变体的包含块是视口尺寸的 ICB（.detail-shell 无
+     position，应用不滚动），bottom 与 floating 的 fixed 同义。高度不再
+     冻结行数——content 定高（#149 少反馈行、#163 隐 新功能/快捷键 行后
+     自然收缩），底边不动、顶边随行集伸缩。 */
+  bottom: 78px;
   width: 224px;
-  /* r7 §3.5 捕获几何 272 少一行 28（16 行高 + 12 gap）：反馈 行随
-     feedback 页整页移除（#149） */
-  height: 244px;
   /* #139 single-source edge recipe: the ring is a shadow spread (no real
      border) so the hairline stays uniform at fractional page zoom */
   border: 0;
@@ -970,18 +977,14 @@ textarea.composer-input::placeholder {
    instead of absolute — the collapsed rail keeps overflow:hidden, which
    would clip an absolutely-positioned panel to its 40px width, and z 30
    stacks the menu above the family click-catcher (z 29, overlays.css).
-   Same (8,410) capture geometry: the shells sit at the viewport origin
-   and never scroll, so fixed ≡ the absolute capture coords. */
+   The shells sit at the viewport origin and never scroll, so fixed ≡ the
+   absolute capture coords. */
 .user-menu--floating {
   position: fixed;
   z-index: 30;
-  /* #139 zoom clamp: browser zoom shrinks the css viewport (the physical
-     window is fixed), so the hard capture top pushes the panel's bottom
-     border off-screen from 110% up. min() keeps the capture 410 whenever the
-     viewport fits the panel (100%: 732 - 252 = 480 > 410) and lifts it just
-     clear of the bottom edge when it doesn't — 252 = 244 panel (#149 少一行)
-     + 8 breath */
-  top: min(410px, calc(100vh - 252px));
+  /* #163: 底部锚定继承基规则（bottom:78px）。#139 的 min() 顶部钳制随
+     冻结坐标一并删除——底边恒距视口底的面板在 zoom 收缩的 css viewport
+     下不会把底边框推出屏外，zoom-probe 的 clipped 契约天然成立。 */
 }
 
 .user-menu-head {
