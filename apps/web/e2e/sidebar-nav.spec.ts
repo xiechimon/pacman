@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // Issue #121 acceptance: the sidebar nav family (rail + expanded rows,
 // team name, 新建项目) are react-router Links — clicks navigate
@@ -17,12 +17,12 @@ declare global {
 }
 
 /** Computed background of a row's ::before pill layer. */
-function pillBg(locator: import('@playwright/test').Locator) {
+function pillBg(locator: Locator) {
   return locator.evaluate((el) => getComputedStyle(el, '::before').backgroundColor);
 }
 
 /** Plant the canary after load; any document navigation wipes it. */
-async function plantCanary(page: import('@playwright/test').Page) {
+async function plantCanary(page: Page) {
   await page.evaluate(() => {
     window.__spaCanary = 'alive';
   });

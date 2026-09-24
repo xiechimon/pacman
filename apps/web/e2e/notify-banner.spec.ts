@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Issue #114 acceptance: the 看板顶部通知引导条 (r2 §1.3 / 02 §9.1) shows
 // while Notification.permission === 'default', the 开启 button drives
@@ -22,7 +22,7 @@ declare global {
  *  requestPermission() settles it to `resolution` (mirroring the real
  *  API, where the property reflects the decision), counting calls. */
 function stubNotification(
-  page: import('@playwright/test').Page,
+  page: Page,
   initial: string,
   resolution: string,
 ) {

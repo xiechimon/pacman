@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Issue #123 acceptance (dogfood 观感三项, claude.ai 参照面): the sidebar reads
 // as its own chrome layer against the canvas (background tone step; its seam
@@ -20,7 +20,7 @@ import { expect, test } from '@playwright/test';
 // Each surface is asserted in both themes — the polish is a dual-theme contract.
 
 /** resolved single-source ring + the --border-default color it must ride */
-async function edgeContract(page: import('@playwright/test').Page, selector: string) {
+async function edgeContract(page: Page, selector: string) {
   return page.locator(selector).first().evaluate((el) => {
     const ringProbe = document.createElement('div');
     ringProbe.style.boxShadow = 'var(--edge-ring)';

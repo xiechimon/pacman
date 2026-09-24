@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Issue #134 residual AC: the ⌘K search row must open the shared panel on
 // EVERY route, not just the board. The implementation landed with #129's
@@ -11,7 +11,7 @@ import { expect, test } from '@playwright/test';
 // is already asserted in shell-consistency.spec.ts ("the collapse toggle
 // works off-board and the state rides back").
 
-const panel = (page: import('@playwright/test').Page) => page.locator('.search-panel');
+const panel = (page: Page) => page.locator('.search-panel');
 
 for (const [name, url] of [
   ['secondary', '/app/team?scenario=12'],
