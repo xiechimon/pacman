@@ -22,6 +22,19 @@
   z-index: 30;
 }
 
+/* 全屏形态（#146 面板形态切换）：充满 drawer 的定位容器（board = 视口锚，
+   wake 族 = main 列）。最大化形态无任一批次抓拍（r2 §9-26
+   `tds.panel-maximized` 未点开；r8-chief-panel-adhoc §3）——几何 [推断]，
+   贴边即圆角归零。 */
+.chief-drawer.is-fullscreen {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: auto;
+  border-radius: 0;
+}
+
 .chief-head {
   position: relative;
   padding: 5px 17px 12px;
@@ -354,19 +367,6 @@
   align-items: center;
   gap: 16px;
   margin-top: 10px;
-}
-
-.chief-composer-bar button[aria-label]:not(.chief-send) {
-  border: none;
-  background: none;
-  padding: 0;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-tertiary);
-  cursor: pointer;
 }
 
 .chief-send {

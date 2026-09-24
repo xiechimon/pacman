@@ -38,7 +38,15 @@ export interface ChiefSurface {
   onSend?: (text: string) => void;
   /** Thread switch (live only). */
   onThread?: (title: string, index: number) => void;
+  /** 新主题 (#146, live only): drop back to the fresh-thread view — hero
+   *  examples + `新主题` chip; the next send opens a new chief thread
+   *  (threadId null, same wire as the hero-example click). */
+  onNewThread?: () => void;
 }
+
+/** activeThreadIdx sentinel (#146): the fresh-thread view while threads
+ *  exist — `null` keeps the list default (newest first), `-1` opts out. */
+const NEW_THREAD = -1;
 
 export function useChiefSurface(fixture: FixtureSet): ChiefSurface {
   const { live, teamId } = useLiveData();
@@ -56,7 +64,9 @@ export function useChiefSurface(fixture: FixtureSet): ChiefSurface {
   const [activeThreadIdx, setActiveThreadIdx] = useState<number | null>(null);
   const liveThreads = chiefThreadsQ.data ?? [];
   const activeThread =
-    live && liveThreads.length > 0 ? (liveThreads[activeThreadIdx ?? 0] ?? null) : null;
+    live && liveThreads.length > 0 && activeThreadIdx !== NEW_THREAD
+      ? (liveThreads[activeThreadIdx ?? 0] ?? null)
+      : null;
   const chiefMessagesQ = useMessages(live ? (activeThread?.id ?? null) : null, live);
   useConversationStream(
     live ? (activeThread?.id ?? undefined) : undefined,
@@ -92,6 +102,7 @@ export function useChiefSurface(fixture: FixtureSet): ChiefSurface {
       }
     : undefined;
   const onThread = live ? (_title: string, index: number) => setActiveThreadIdx(index) : undefined;
+  const onNewThread = live ? () => setActiveThreadIdx(NEW_THREAD) : undefined;
 
-  return { chiefView, setChiefView, chiefData, chiefUnread, onSend, onThread };
+  return { chiefView, setChiefView, chiefData, chiefUnread, onSend, onThread, onNewThread };
 }

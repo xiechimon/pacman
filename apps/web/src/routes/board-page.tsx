@@ -47,7 +47,7 @@ export function BoardPage() {
   const fixture = resolveScenario(searchParams);
   // chief 面（#72/#129）：三态视图 + live 数据 wiring 由共享 hook 承载，
   // 与其余 shell 族的 FAB 唤醒同一 surface。
-  const { chiefView, setChiefView, chiefData, chiefUnread, onSend, onThread } =
+  const { chiefView, setChiefView, chiefData, chiefUnread, onSend, onThread, onNewThread } =
     useChiefSurface(fixture);
 
   // —— live 数据面（#83）：查询 + mutations；fixture 模式全部惰性（enabled
@@ -266,6 +266,7 @@ export function BoardPage() {
         onClose={() => setChiefView('none')}
         onSend={onSend}
         onThread={onThread}
+        onNewThread={onNewThread}
       />
       <NewTaskDialog
         open={newTaskOpen}
