@@ -4,6 +4,7 @@
 // block (hero tile + heading + description + primary action + 查看文档
 // link + optional 总管 hint, layout probed from r7 10, copy from r2 §6).
 import type { ComponentType, SVGProps } from 'react';
+import { Link, useLocation } from 'react-router';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, ExternalLink, Lock } from '../icons/index.js';
 
@@ -47,24 +48,35 @@ export function EmptyState({
   title,
   description,
   actionLabel,
+  actionHref,
   hint,
 }: {
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
   title: string;
   description: string;
   actionLabel: string;
+  /** SPA target for the primary action (issue #153); absent keeps the
+   *  inert button (dialog-opening actions land in a later ticket). */
+  actionHref?: string;
   hint?: string;
 }) {
   const { t } = useI18n();
+  const { search } = useLocation();
   return (
     <div className="res-empty">
       <Tile Icon={Icon} size="hero" tone="orange" />
       <h2 className="res-empty-title">{t(title)}</h2>
       <p className="res-empty-desc">{t(description)}</p>
       <div className="res-empty-actions">
-        <button type="button" className="res-primary">
-          {t(actionLabel)}
-        </button>
+        {actionHref == null ? (
+          <button type="button" className="res-primary">
+            {t(actionLabel)}
+          </button>
+        ) : (
+          <Link className="res-primary" to={{ pathname: actionHref, search }}>
+            {t(actionLabel)}
+          </Link>
+        )}
         <button type="button" className="res-doclink">
           {t('查看文档')}
           <ExternalLink width={11} height={11} />

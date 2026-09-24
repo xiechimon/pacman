@@ -21,6 +21,9 @@ export function SkillsPage() {
   const { live, teamId } = useLiveData();
   const skillsQ = useSkills(teamId, live);
   const skills = live ? mapSkills(skillsQ.data ?? []) : (fixture.resources?.skills ?? []);
+  // 新建技能 route（#153）: topbar res-new 与卡内主钮同 target。字面量而非
+  // SKILLS_IMPORT_HREF —— skills-import-page 反向 import SKILLS_HREF，环。
+  const importHref = `${SKILLS_HREF}/import`;
 
   return (
     <ResourceShell
@@ -28,7 +31,7 @@ export function SkillsPage() {
       href={SKILLS_HREF}
       backHref="/app"
       selected={SKILLS_HREF}
-      newHref={`${SKILLS_HREF}/import`}
+      newHref={importHref}
       fixture={fixture}
     >
       {skills.length === 0 ? (
@@ -38,6 +41,7 @@ export function SkillsPage() {
           title="尚无技能。"
           description="技能是写给 Agent 的工作手册：一个包含 SKILL.md 的文件夹，用于将可复用的流程传授给 Agent。授予后，Agent 会在合适的任务中主动使用。"
           actionLabel="添加技能"
+          actionHref={importHref}
           hint="你也可以直接让总管从 GitHub 安装技能，或帮你制作新技能。"
         />
       ) : (
