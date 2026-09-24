@@ -2,13 +2,15 @@
 // `Pacman（内置）` row (indigo sparkle tile, model count, 未启用 pill) above
 // custom gateway rows (orange layers tile, orange 自定义 tag, overflow
 // dots instead of the pill).
+import { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { useProviders } from '../api/hooks.js';
+import { useApiMutations, useProviders } from '../api/hooks.js';
 import { mapProviders } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { EllipsisVertical, Layers, Sparkle } from '../icons/index.js';
+import { CreateProviderDialog } from './create-provider-dialog.js';
 import { RowChevron, StatusPill, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
 
@@ -24,6 +26,11 @@ export function ProvidersPage() {
   const providers = live
     ? mapProviders(providersQ.data?.providers ?? [])
     : (fixture.resources?.providers ?? []);
+  // wayfinder #175: 添加 (topbar 新建) opens the add-provider dialog; live
+  // submit = POST providers then close (invalidateAll refetches the rows),
+  // fixture = accept 律
+  const mutations = useApiMutations(teamId);
+  const [createOpen, setCreateOpen] = useState(false);
 
   return (
     <ResourceShell
@@ -31,6 +38,7 @@ export function ProvidersPage() {
       href={PROVIDERS_HREF}
       backHref="/app"
       selected={PROVIDERS_HREF}
+      onNew={() => setCreateOpen(true)}
       fixture={fixture}
     >
       <div className="res-card res-group">
@@ -58,6 +66,19 @@ export function ProvidersPage() {
           </div>
         ))}
       </div>
+      <CreateProviderDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        pending={mutations.createProvider.isPending}
+        onCreate={
+          live
+            ? (body) =>
+                mutations.createProvider.mutate(body, {
+                  onSuccess: () => setCreateOpen(false),
+                })
+            : undefined
+        }
+      />
     </ResourceShell>
   );
 }
