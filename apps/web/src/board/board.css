@@ -247,6 +247,34 @@
   cursor: pointer;
 }
 
+/* ---- column collapse (#147) ----
+   The live collapse (r2 §4, 01d capture) shrinks the column to a narrow
+   strip that keeps the column box (top border, radius, fill) and carries
+   the dot + live count; the neighbours close the gap. 01d caught only the
+   collapse instant at another viewport, so the settled strip geometry is
+   [设计] on the column family's own scale: 40px wide, dot centred 17px
+   below the column top, count centred 19px under the dot. The strip is
+   the expand trigger — no separate button inside 40px. */
+.board-column--collapsed {
+  width: 40px;
+}
+
+.board-column-strip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 13.5px 0 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.board-column-strip .board-column-count {
+  margin: 8px 0 0;
+}
+
 .board-column-list {
   position: relative;
   flex: 1;

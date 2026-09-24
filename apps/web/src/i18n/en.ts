@@ -36,6 +36,7 @@ export const EN: Record<string, string> = {
   收起侧边栏: 'Collapse sidebar',
   展开侧边栏: 'Expand sidebar',
   '收起{label}': 'Collapse {label}',
+  '展开{label}': 'Expand {label}',
   总管: 'Chief',
   返回: 'Back',
   更多: 'More',
