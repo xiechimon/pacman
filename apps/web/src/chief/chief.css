@@ -458,6 +458,18 @@
   font-weight: 600;
 }
 
+/* segmented-control hover (issue #138): unselected tab tints the --seg-hover
+   step on the chip's own box + radius, fine pointers only (#73) */
+@media (hover: hover) and (pointer: fine) {
+  .chief-tab {
+    transition: background-color var(--dur-fast) var(--ease-standard);
+  }
+
+  .chief-tab:not(.is-active):hover {
+    background-color: var(--seg-hover);
+  }
+}
+
 .chief-agent-row {
   display: flex;
   align-items: center;
