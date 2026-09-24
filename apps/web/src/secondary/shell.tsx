@@ -4,7 +4,7 @@
 // centered on the content area, right slot at right-20 per the r7 12
 // 设置 ink), wrapping the
 // centered 766px content column shared by the team/account/resources/
-// api-keys/feedback surfaces (r7 08/12/13: column x457..1223 @1440).
+// api-keys surfaces (r7 08/12/13: column x457..1223 @1440).
 import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { AppSidebar } from '../board/app-sidebar.js';

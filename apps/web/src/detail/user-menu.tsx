@@ -1,5 +1,6 @@
-// User-menu popover as the r7 17 / 16d captures include it (224×272 @
-// 8,410, r7 §3.5): identity head, 外观 row with the theme segmented
+// User-menu popover as the r7 17 / 16d captures include it (224-wide @
+// 8,410, r7 §3.5; 244 high since #149 dropped the 反馈 row — 272 − 28):
+// identity head, 外观 row with the theme segmented
 // control, then the plain-text item list (r7 §4.1.4). The 外观 row is
 // live (#122): each segment drives applyTheme, so the switch repaints
 // via the root .light class and persists under `pacman-theme`. The
@@ -20,7 +21,10 @@ interface UserMenuProps {
   floating?: boolean;
 }
 
-const ROWS = ['帐号', 'API 密钥', 'MCP', '反馈', '新功能', '快捷键'];
+// 反馈 行随 feedback 页整页移除（#149 local-first 裁决：SaaS 反馈通道无
+// 对象，#129 先例）；「新功能」不指同页，保留。行集短一行，菜单高度随
+// content 收缩（r7 §3.5 224×272 几何按 #149 修订）。
+const ROWS = ['帐号', 'API 密钥', 'MCP', '新功能', '快捷键'];
 
 export function UserMenu({ theme: initialTheme, floating = false }: UserMenuProps) {
   const { t } = useI18n();

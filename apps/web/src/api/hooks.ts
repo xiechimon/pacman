@@ -239,6 +239,25 @@ export const useProjectTree = (projectId: string | undefined, ref: string | unde
     enabled: projectId !== undefined,
   });
 
+/** 提交历史读面（#149 文件|历史 分段「历史」；[推断] 端点，wire.test
+ *  INFERRED_ROUTES 登记）。 */
+export const useProjectCommits = (projectId: string | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: ['commits', projectId],
+    queryFn: () =>
+      api.get<{
+        ref: string;
+        commits: {
+          sha: string;
+          shortSha: string;
+          message: string;
+          authorName: string;
+          at: number;
+        }[];
+      }>(`/api/projects/${projectId}/commits`),
+    enabled: enabled && projectId !== undefined,
+  });
+
 // —— 变更（mutation 后失效重取 = S8 canon）———————————————————————————————
 
 export function useApiMutations(teamId: string | undefined) {

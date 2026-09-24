@@ -19,7 +19,6 @@ import {
   ChevronRight,
   Clock,
   EllipsisVertical,
-  ExternalLink,
   Lock,
   PlusSmall,
   Server,
@@ -334,10 +333,9 @@ export function SchedulesPage() {
               >
                 {t('新建定时')}
               </button>
-              <button type="button" className="sched-empty-docs">
-                {t('查看文档')}
-                <ExternalLink />
-              </button>
+              {/* 「查看文档」钮全除（#149 wontfix）：local-first 自托管无
+                  文档站可链（官方链接对象不可观测），README 指向上游代码库
+                  与产品语义无关——隐去，台账 #136 勾兑登记。 */}
             </div>
             <div className="sched-empty-hint">
               {/* the r7 icon dump names the bulb markup Lock (#49a224ab53) */}

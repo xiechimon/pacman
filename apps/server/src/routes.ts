@@ -86,6 +86,7 @@ import {
   provisionHostedRepo,
   readBranches,
   readBuildChanges,
+  readCommitHistory,
   readFile,
   readTree,
   slugifyRepoName,
@@ -450,6 +451,13 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.get('/api/projects/:id/branches', async (c) => {
     const row = requireProject(ctx, c.req.param('id'));
     return c.json(await readBranches(ctx, row.id));
+  });
+
+  // commits 读面（#149 文件|历史 分段「历史」；[推断] 路由，wire.test
+  // INFERRED_ROUTES 登记——r2 07e/24 分段 UI 证据、wire 未采）。
+  app.get('/api/projects/:id/commits', async (c) => {
+    const row = requireProject(ctx, c.req.param('id'));
+    return c.json(await readCommitHistory(ctx, row.id, c.req.query('ref')));
   });
 
   app.get('/api/todos', (c) => {

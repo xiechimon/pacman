@@ -16,7 +16,8 @@
 // avatar chips (rail + expanded) toggle the user-menu popover — the
 // anchored-overlay family wiring (OverlayMount + ClickCatcher + Esc, same
 // as the detail chip popover in dhead.tsx) over the capture-frozen
-// 224×272 @ (8,410) geometry (r7 17/16d, §3.5).
+// 224-wide @ (8,410) geometry (r7 17/16d, §3.5; 244 high since #149
+// dropped the 反馈 row).
 
 import { type ComponentType, type SVGProps, useCallback, useState } from 'react';
 import { Link, useLocation } from 'react-router';

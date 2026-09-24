@@ -83,3 +83,23 @@ export const projectBranchesResponseSchema = z.object({
   ),
 });
 export type ProjectBranchesResponse = z.infer<typeof projectBranchesResponseSchema>;
+
+/** `GET /api/projects/{id}/commits` 响应（#149 项目页 文件|历史 分段的
+ * 「历史」数据源；wire 未采，[推断] 读面——路径 = projects/{id}/… REST
+ * 同族规则（tree/branches 先例），行形 = git log 最小投影，新→旧序）。 */
+export const projectCommitsResponseSchema = z.object({
+  /** 解析的 ref 回显（缺省 = 默认分支）。 */
+  ref: z.string(),
+  commits: z.array(
+    z.object({
+      sha: z.string(),
+      shortSha: z.string(),
+      /** 提交标题行（git log %s 同义）。 */
+      message: z.string(),
+      authorName: z.string(),
+      /** 作者时间 epoch ms（git log %aI 解析）。 */
+      at: z.number(),
+    }),
+  ),
+});
+export type ProjectCommitsResponse = z.infer<typeof projectCommitsResponseSchema>;

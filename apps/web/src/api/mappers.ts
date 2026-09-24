@@ -42,6 +42,7 @@ import type {
   McpRow,
   PlanDiffContent,
   PlanVersion,
+  ProjectCommitRow,
   ProviderRow,
   RobotPara,
   RunHistoryRow,
@@ -485,6 +486,26 @@ export function mapBranchInfo(
     machine: machine?.name ?? '—',
     directory: `~/${BRAND.homeDirName}/workspaces/${buildId}`,
   };
+}
+
+/** 提交历史行（#149 文件|历史 分段「历史」；server 已按新→旧序返回，
+ *  sha → 行 id）。 */
+export function mapCommits(
+  commits: {
+    sha: string;
+    shortSha: string;
+    message: string;
+    authorName: string;
+    at: number;
+  }[],
+): ProjectCommitRow[] {
+  return commits.map((c) => ({
+    id: c.sha,
+    shortSha: c.shortSha,
+    message: c.message,
+    authorName: c.authorName,
+    at: c.at,
+  }));
 }
 
 /** 运行历史行（r3 §3.8 顺序 = 新行在前；tokens 位 = 调用方按 build 供数，
