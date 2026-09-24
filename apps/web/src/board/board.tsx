@@ -62,6 +62,20 @@ function columnOf(view: ColumnView, id: string): string | null {
 
 const COLUMN_IDS = new Set(COLUMNS.map((c) => c.id));
 
+/** #147: column-collapse persistence key ([推断] — r2 §4 / the 01d capture
+ *  observed the collapse itself but never its storage key; brand slot in
+ *  the same shape as the sidebar collapse keys, registered in the shared
+ *  client-state table). Value = comma-joined column ids, empty = all open. */
+const BOARD_COLLAPSED_COLUMNS_KEY = 'pacman.boardCollapsedColumns';
+
+function readCollapsedColumns(storage: Storage): string[] {
+  const stored = storage.getItem(BOARD_COLLAPSED_COLUMNS_KEY);
+  if (stored == null) return [];
+  // unknown ids (a retired column) drop out so a stale value can never
+  // collapse a column that no longer exists
+  return stored.split(',').filter((id) => COLUMN_IDS.has(id));
+}
+
 interface BoardProps {
   fixture: FixtureSet;
   /** #66: opens the new-task dialog from the topbar `+ 任务` button. */
@@ -90,6 +104,19 @@ export function BoardSurface({
   const [view, setView] = useState<ColumnView | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropColumnId, setDropColumnId] = useState<string | null>(null);
+  // #147: the six column collapses persist like the scroll offset; a
+  // collapsed column renders as the narrow strip (r2 §4, 01d capture) and
+  // carries no drop target, so cards can't land in a hidden list.
+  const [collapsedColumns, setCollapsedColumns] = useState<string[]>(() =>
+    readCollapsedColumns(localStorage),
+  );
+  const toggleColumn = useCallback((id: string) => {
+    setCollapsedColumns((prev) => {
+      const next = prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id];
+      localStorage.setItem(BOARD_COLLAPSED_COLUMNS_KEY, next.join(','));
+      return next;
+    });
+  }, []);
   // changelog 2026-09-12: the drag affordance is desktop-web only
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -233,48 +260,74 @@ export function BoardSurface({
         >
           {COLUMNS.map((column) => {
             const todos = viewTodos(column.id);
+            const collapsed = collapsedColumns.includes(column.id);
             return (
               <section
                 key={column.id}
-                className="board-column"
+                className={collapsed ? 'board-column board-column--collapsed' : 'board-column'}
                 aria-label={t(column.name)}
                 data-column={column.id}
+                data-collapsed={collapsed ? 'true' : undefined}
                 data-drop={dropColumnId === column.id ? 'true' : undefined}
               >
-                <header className="board-column-header">
-                  <span className="board-column-dot" style={{ background: column.dot }} />
-                  <span className="board-column-name">{t(column.name)}</span>
-                  {/* count always renders, `0` included (r2 §4.1 计数 0/1;
-                      r7 02/01b: digit present on empty columns, x = name+9) */}
-                  <span className="board-column-count">{todos.length}</span>
-                  {column.label && <span className="board-column-label">{t(column.label)}</span>}
+                {collapsed ? (
+                  // 01d: the collapse keeps the column box (top border,
+                  // radius, fill) as a narrow strip — dot on top, live
+                  // count under it; the strip itself is the expand trigger
                   <button
                     type="button"
-                    className="board-column-collapse"
-                    // aria-label = column name, r7 icons.json `aria:待开始` ×6
+                    className="board-column-strip"
+                    // same aria convention as the header collapse button
+                    // (r7 icons.json `aria:待开始` ×6)
                     aria-label={t(column.name)}
+                    aria-expanded={false}
+                    onClick={() => toggleColumn(column.id)}
                   >
-                    <UnfoldVertical />
+                    <span className="board-column-dot" style={{ background: column.dot }} />
+                    <span className="board-column-count">{todos.length}</span>
                   </button>
-                </header>
-                <ColumnList columnId={column.id} empty={t(column.empty)} count={todos.length}>
-                  <SortableContext
-                    items={todos.map((t) => t.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {todos.map((todo) => (
-                      <SortableCard
-                        key={todo.id}
-                        todo={todo}
-                        now={fixture.now}
-                        onAction={onAction}
-                        onBranch={onBranch}
-                        dragSource={dragId === todo.id}
-                        projectName={fixture.projectNames?.[todo.projectId]}
-                      />
-                    ))}
-                  </SortableContext>
-                </ColumnList>
+                ) : (
+                  <>
+                    <header className="board-column-header">
+                      <span className="board-column-dot" style={{ background: column.dot }} />
+                      <span className="board-column-name">{t(column.name)}</span>
+                      {/* count always renders, `0` included (r2 §4.1 计数 0/1;
+                      r7 02/01b: digit present on empty columns, x = name+9) */}
+                      <span className="board-column-count">{todos.length}</span>
+                      {column.label && (
+                        <span className="board-column-label">{t(column.label)}</span>
+                      )}
+                      <button
+                        type="button"
+                        className="board-column-collapse"
+                        // aria-label = column name, r7 icons.json `aria:待开始` ×6
+                        aria-label={t(column.name)}
+                        aria-expanded={true}
+                        onClick={() => toggleColumn(column.id)}
+                      >
+                        <UnfoldVertical />
+                      </button>
+                    </header>
+                    <ColumnList columnId={column.id} empty={t(column.empty)} count={todos.length}>
+                      <SortableContext
+                        items={todos.map((t) => t.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {todos.map((todo) => (
+                          <SortableCard
+                            key={todo.id}
+                            todo={todo}
+                            now={fixture.now}
+                            onAction={onAction}
+                            onBranch={onBranch}
+                            dragSource={dragId === todo.id}
+                            projectName={fixture.projectNames?.[todo.projectId]}
+                          />
+                        ))}
+                      </SortableContext>
+                    </ColumnList>
+                  </>
+                )}
               </section>
             );
           })}

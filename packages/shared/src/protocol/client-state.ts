@@ -16,6 +16,16 @@ export const LOCAL_STORAGE_KEYS: readonly ClientStateKey[] = [
   { key: 'pacman.locale', valueShape: 'zh', source: 'r2 §1.5（与 pacman-locale 双形，原键同构）' },
   { key: 'pacman-locale', valueShape: 'zh', source: 'r2 §1.5' },
   { key: 'pacman.sidebarProjectsCollapsed', valueShape: '"1"', source: 'r2 §1.5' },
+  {
+    key: 'pacman.sidebarResourcesCollapsed',
+    valueShape: '"1"',
+    source: '[推断] #147（资源组折叠，与 sidebarProjectsCollapsed 同形；原键未观测）',
+  },
+  {
+    key: 'pacman.boardCollapsedColumns',
+    valueShape: '逗号连接的列 id（空 = 全展开）',
+    source: '[推断] #147（r2 §4 / 01d 观测到列折叠行为与窄条形态，键未捕获）',
+  },
   { key: 'pacman.panel-maximized', valueShape: '"0"', source: 'r2 §1.5' },
   {
     key: 'pacman.teamMembersLayout',

@@ -1461,6 +1461,43 @@ export const matrix = [
     locale: 'en',
     expectText: 'Nothing yet',
   },
+  // collapse family (#147): the settled collapse states of both families, both
+  // themes, reached through the real triggers. No official capture of a
+  // settled collapse exists (r2 01d caught only the collapse instant, and the r7
+  // batch has no collapsed board), so these ride smoke pairs; expectText pins
+  // the collapsed DOM (collapse aria / strip class) beyond SSIM=1 self-comparison
+  {
+    id: 'sidebar-group-collapsed-light',
+    route: '/app',
+    scenario: '01',
+    theme: 'light',
+    clicks: ['.sidebar-group'],
+    expectText: '展开项目',
+  },
+  {
+    id: 'sidebar-group-collapsed-dark',
+    route: '/app',
+    scenario: '02',
+    theme: 'dark',
+    clicks: ['.sidebar-group'],
+    expectText: '展开项目',
+  },
+  {
+    id: 'board-column-collapsed-light',
+    route: '/app',
+    scenario: '01',
+    theme: 'light',
+    clicks: ['.board-column-collapse'],
+    expectText: 'board-column--collapsed',
+  },
+  {
+    id: 'board-column-collapsed-dark',
+    route: '/app',
+    scenario: '02',
+    theme: 'dark',
+    clicks: ['.board-column-collapse'],
+    expectText: 'board-column--collapsed',
+  },
 ];
 
 export const DEFAULT_BASELINE_THRESHOLD = 0.85;
