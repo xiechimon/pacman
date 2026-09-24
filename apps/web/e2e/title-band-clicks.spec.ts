@@ -32,7 +32,6 @@ for (const [route, scenario] of [
   ['/app/team', '12'],
   ['/app/account', '13'],
   ['/app/api-keys', 'api-keys'],
-  ['/app/feedback', 'feedback'],
 ] as const) {
   test(`secondary back owns its hit area and navigates home — ${route}`, async ({ page }) => {
     await page.goto(`${route}?scenario=${scenario}`);

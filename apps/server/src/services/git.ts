@@ -15,6 +15,7 @@ import {
   type DocumentDiffFile,
   gitHostedRepoPath,
   type ProjectBranchesResponse,
+  type ProjectCommitsResponse,
   type ProjectFileResponse,
   type ProjectRecord,
   type ProjectTreeResponse,
@@ -189,6 +190,49 @@ export async function readBranches(
 ): Promise<ProjectBranchesResponse> {
   const dir = requireHostedRepoDir(ctx, projectId);
   return systemGitOps.listBranches(dir);
+}
+
+// —— commits 读面（#149 项目页 文件|历史 分段「历史」数据源）：[推断] 端点
+// GET /api/projects/{id}/commits，wire 未采——行形 = git log 最小投影（封套
+// 单源 shared projectCommitsResponseSchema），登记 wire.test INFERRED_ROUTES。
+// runGit 直调先例 = readBuildChanges（diff 面同款：缝词表外的只读 git 查询
+// 留在 server lib/git.ts spawn 家族内）。非托管形态无本地读面 = 404
+// （tree/file/branches 同族口径）。
+
+/** 提交行上限（历史 pane 首屏 [设计]；分页归后票）。 */
+const COMMITS_LIMIT = 50;
+
+export async function readCommitHistory(
+  ctx: RepoCtx,
+  projectId: string,
+  refParam?: string,
+): Promise<ProjectCommitsResponse> {
+  const dir = requireHostedRepoDir(ctx, projectId);
+  const { defaultBranch } = await systemGitOps.listBranches(dir);
+  const ref = refParam ?? defaultBranch ?? 'HEAD';
+  const commit = await systemGitOps.resolveCommit(dir, ref);
+  if (commit === null) return { ref, commits: [] }; // 空库（无 ref）= 空集
+  // %x00 分隔 + %s 标题行：单行原子字段，无换行歧义（解析 [设计]）
+  const r = await runGit(
+    ['log', `--max-count=${COMMITS_LIMIT}`, '--format=%H%x00%h%x00%aI%x00%an%x00%s', commit],
+    { cwd: dir, timeoutMs: 30_000 },
+  );
+  if (r.code !== 0) return { ref, commits: [] };
+  const commits = r.stdout
+    .toString('utf8')
+    .split('\n')
+    .filter((line) => line !== '')
+    .map((line) => {
+      const [sha, shortSha, at, authorName, message] = line.split('\0');
+      return {
+        sha: sha ?? '',
+        shortSha: shortSha ?? '',
+        message: message ?? '',
+        authorName: authorName ?? '',
+        at: Date.parse(at ?? '') || 0,
+      };
+    });
+  return { ref, commits };
 }
 
 // —— build 变更面（M5 [推断] 读端点 GET /api/builds/{id}/changes 数据源）：

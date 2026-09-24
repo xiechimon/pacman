@@ -33,6 +33,8 @@ import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // drawer/settings overlays sit beside it in one place.
 import { useI18n } from '../i18n/provider.js';
 import { HelpCircle, Plus, UnfoldVertical } from '../icons/index.js';
+import { BoardGuide } from '../overlays/board-guide.js';
+import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
 import { DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
 import { SortableCard } from './sortable-card.js';
@@ -90,6 +92,10 @@ export function BoardSurface({
   const [view, setView] = useState<ColumnView | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropColumnId, setDropColumnId] = useState<string | null>(null);
+  // #149: 看板指南 topbar 钮接真弹层（anchored-overlay 家族律 #67/#127）
+  const [guideOpen, setGuideOpen] = useState(false);
+  const closeGuide = useCallback(() => setGuideOpen(false), []);
+  useEscapeClose(guideOpen, closeGuide);
   // changelog 2026-09-12: the drag affordance is desktop-web only
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -207,9 +213,21 @@ export function BoardSurface({
             <Plus width={13} height={13} />
             {t('任务')}
           </button>
-          <button type="button" className="board-guide" aria-label={t('看板指南')}>
-            <HelpCircle />
-          </button>
+          <span className="board-guide-wrap">
+            <button
+              type="button"
+              className="board-guide"
+              aria-label={t('看板指南')}
+              aria-expanded={guideOpen}
+              onClick={() => setGuideOpen((open) => !open)}
+            >
+              <HelpCircle />
+            </button>
+            <OverlayMount open={guideOpen}>
+              <ClickCatcher onClose={closeGuide} />
+              <BoardGuide />
+            </OverlayMount>
+          </span>
         </div>
       </header>
 

@@ -48,6 +48,25 @@ export const EN: Record<string, string> = {
   // —— board surface (r2 §4.1, r7 01/02) ——
   任务: 'Todo', // topbar +任务 button / search nav row / popover section
   看板指南: 'Board guide',
+  // guide popover content (#149; [设计] copy — the official guide panel's
+  // content was never captured, free-content precedent = whats-new)
+  列语义: 'Columns',
+  关口操作: 'Gates',
+  快速跳转: 'Quick jump',
+  '已创建、尚未启动的任务在此排队': 'Created tasks queue here until they start',
+  'Agent 正在起草方案，进详情页可实时查看':
+    'The agent is drafting the plan — open the task to watch it live',
+  '方案就绪：确认后开工，或提出修改意见':
+    'Plan ready — confirm to start the work, or ask for changes',
+  'Agent 正在执行；失败与待回复的任务钉在列首':
+    'The agent is executing; failed and awaiting-reply tasks stay pinned to the top',
+  '执行完成：审查变更后验收合并': 'Work done — review the changes, then accept to merge',
+  '已合并收尾；重开可发起新一轮': 'Merged and closed; reopen to start a new round',
+  '待确认 → 确认方案，或在输入框提出修改':
+    'To confirm — approve the plan, or send changes from the composer',
+  '待验收 → 审查变更，验收即合并': 'To review — inspect the changes; accepting merges the branch',
+  '失败 → 重跑，可复用已有方案': 'Failed — rerun, optionally reusing the existing plan',
+  '打开全局搜索，直达任务与资源': 'Open global search to jump to tasks and resources',
   待开始: 'To start',
   规划中: 'Planning',
   待确认: 'To confirm',
@@ -119,7 +138,6 @@ export const EN: Record<string, string> = {
   // —— user-menu popover (r7 §3.5) ——
   帐号: 'Account',
   'API 密钥': 'API keys',
-  反馈: 'Feedback',
   新功能: "What's new",
   快捷键: 'Keyboard shortcuts',
   外观: 'Appearance',
@@ -188,17 +206,6 @@ export const EN: Record<string, string> = {
   复制: 'Copy',
   '请立即复制密钥，它仅显示一次。': 'Copy the key now — it is shown only once.',
 
-  // —— feedback route (r2 32) ——
-  '报告缺陷、提出功能建议，或指出使用中的不便之处。每一条我们都会查看。':
-    'Report bugs, suggest features, or point out friction. We read every entry.',
-  类型: 'Type',
-  功能建议: 'Feature request',
-  其他: 'Other',
-  '发生了什么？你期望的结果是什么？': 'What happened? What did you expect?',
-  添加应用: 'Add app',
-  你的反馈: 'Your feedback',
-  '尚未提交过反馈。': 'No feedback submitted yet.',
-
   // —— resources routes (r7 06–10, r2 §6, r8 79/80) ——
   新建: 'New',
   'MCP 服务器': 'MCP Servers',
@@ -240,9 +247,9 @@ export const EN: Record<string, string> = {
     'Enter a repo link to scan it for skills, or point directly at a skill directory.',
 
   // —— project routes (r2 07/24/24b/24c) ——
-  导出: 'Export',
   文件: 'Files',
   历史: 'History',
+  '尚无提交历史。': 'No commits yet.',
   '搜索任务…': 'Search todos…',
   搜索任务: 'Search todos',
   筛选: 'Filter',
