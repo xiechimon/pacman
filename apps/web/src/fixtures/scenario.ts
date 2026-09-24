@@ -197,16 +197,15 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   'prj-tasks': projectTasks,
   'r2-24c': projectFixture,
   // secondary routes (issue #70): 12/13 are the r7 team/account captures;
-  // the api-keys/feedback ids have no r7 capture (smoke matrix rows) and
-  // pick their surface by name — the account/feedback pages render no
-  // fixture content at all, so they ride the default set
+  // the api-keys id has no r7 capture (smoke matrix rows) and picks its
+  // surface by name — the account page renders no fixture content at all,
+  // so it rides the default set
   '12': teamGrid,
   '13': boardDefault,
   // account 语言 dropdown open state (issue #74; shape [设计], r2 §11 Q19)
   '13-lang': { ...boardDefault, ui: { langDropdownOpen: true } },
   'api-keys': boardDefault,
   'api-keys-created': apiKeysCreated,
-  feedback: boardDefault,
   // resources (r7 06–10, issue #69): one shared row set — the captures
   // differ per route, not per content state
   '06': resourcesDefault,

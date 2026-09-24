@@ -254,10 +254,24 @@ export function DocPane({
           <>
             <header className="doc-pane-head">
               <FileTab width={14} height={14} />
-              <button type="button" className="doc-pane-select">
-                {mode === 'diff' ? t('方案') : t('变更')}
-                <ChevronDown width={12} height={12} />
-              </button>
+              {/* 变更▾/方案▾ 型选钮（#149 接线）：#67 文档类型选同款族律
+                  ——单选项 listbox（当前类型 ✓），非确认入口；live 面变更
+                  pane 数据本就是真 diff（builds/{id}/changes，#83）。 */}
+              <span className="doc-select-wrap">
+                <button
+                  type="button"
+                  className="doc-pane-select"
+                  aria-expanded={typeOpen}
+                  onClick={() => setTypeOpen((value) => !value)}
+                >
+                  {mode === 'diff' ? t('方案') : t('变更')}
+                  <ChevronDown width={12} height={12} />
+                </button>
+                <OverlayMount open={typeOpen}>
+                  <ClickCatcher onClose={() => setTypeOpen(false)} />
+                  <PlanDropdown current={mode === 'diff' ? '方案' : '变更'} />
+                </OverlayMount>
+              </span>
               {mode === 'diff' && planDiff != null ? (
                 <VersionControl
                   range={{ from: planDiff.from, to: planDiff.to }}

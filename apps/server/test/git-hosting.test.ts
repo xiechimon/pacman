@@ -168,6 +168,50 @@ describe('托管形态：bare repo + git http-backend（02 §3 锁定）', () =>
     expect(headTree.entries).toHaveLength(1);
   });
 
+  // commits 读面（#149 文件|历史 分段「历史」数据源；[推断] 路由，
+  // wire.test INFERRED_ROUTES 登记）：种子提交 + README 提交 = 2 行，
+  // 新→旧序（git log 同序），行形 = sha/shortSha/message/authorName/at。
+  test('GET /api/projects/{id}/commits → 提交历史新到旧读回', async () => {
+    const record = await createProject({ name: 'commits-probe', repoKind: 'hosted' });
+    const dir = workdir('commits');
+    const repoDir = join(dir, 'repo');
+    expect((await git(['clone', authedUrl(record), repoDir], dir)).code).toBe(0);
+    writeFileSync(join(repoDir, 'README.md'), '# commits-probe\n');
+    expect((await git(['checkout', '-B', 'main'], repoDir)).code).toBe(0);
+    expect((await git(['add', 'README.md'], repoDir)).code).toBe(0);
+    expect((await git(['commit', '-m', 'docs: README'], repoDir)).code).toBe(0);
+    expect((await git(['push', '-u', 'origin', 'main'], repoDir)).code, 'push').toBe(0);
+
+    const res = await req(s.app, 'GET', `/api/projects/${record.id}/commits`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ref: string;
+      commits: { sha: string; shortSha: string; message: string; authorName: string; at: number }[];
+    };
+    expect(body.ref).toBe('main');
+    // 种子提交（空树）+ README 提交；新→旧
+    expect(body.commits).toHaveLength(2);
+    const head = body.commits[0]!;
+    expect(head.message).toBe('docs: README');
+    expect(head.sha).toMatch(/^[0-9a-f]{40}$/);
+    expect(head.shortSha).toMatch(/^[0-9a-f]{7,40}$/);
+    expect(head.sha.startsWith(head.shortSha)).toBe(true);
+    expect(head.authorName).toBe('r3-probe');
+    expect(head.at).toBeGreaterThan(0);
+    expect(Number.isFinite(head.at)).toBe(true);
+
+    // 非托管形态无本地读面 → 404（tree/file/branches 同族口径）
+    const github = await createProject({
+      name: 'gh-probe',
+      repoKind: 'github',
+      githubRepo: 'octocat/hello',
+    });
+    const ghRes = await req(s.app, 'GET', `/api/projects/${github.id}/commits`);
+    expect(ghRes.status).toBe(404);
+    // 未知项目 → 404
+    expect((await req(s.app, 'GET', `/api/projects/${newUuidv7()}/commits`)).status).toBe(404);
+  });
+
   test('conv 分支 push（02 §5.5：conv-<conversationId>）+ 二进制文件 base64', async () => {
     const record = await createProject({ name: 'conv-probe', repoKind: 'hosted' });
     const dir = workdir('conv');

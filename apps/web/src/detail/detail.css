@@ -952,7 +952,9 @@ textarea.composer-input::placeholder {
   left: 8px;
   top: 410px;
   width: 224px;
-  height: 272px;
+  /* r7 §3.5 捕获几何 272 少一行 28（16 行高 + 12 gap）：反馈 行随
+     feedback 页整页移除（#149） */
+  height: 244px;
   /* #139 single-source edge recipe: the ring is a shadow spread (no real
      border) so the hairline stays uniform at fractional page zoom */
   border: 0;
@@ -976,9 +978,10 @@ textarea.composer-input::placeholder {
   /* #139 zoom clamp: browser zoom shrinks the css viewport (the physical
      window is fixed), so the hard capture top pushes the panel's bottom
      border off-screen from 110% up. min() keeps the capture 410 whenever the
-     viewport fits the panel (100%: 732 - 280 = 452 > 410) and lifts it just
-     clear of the bottom edge when it doesn't — 280 = 272 panel + 8 breath */
-  top: min(410px, calc(100vh - 280px));
+     viewport fits the panel (100%: 732 - 252 = 480 > 410) and lifts it just
+     clear of the bottom edge when it doesn't — 252 = 244 panel (#149 少一行)
+     + 8 breath */
+  top: min(410px, calc(100vh - 252px));
 }
 
 .user-menu-head {
