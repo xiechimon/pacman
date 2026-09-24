@@ -484,3 +484,80 @@
   font-size: 13px;
   cursor: pointer;
 }
+
+/* 创建 Agent dialog (issue #170, r2 §8.1 capture 20): name-first form —
+   avatar row / 名称 input / provider warning row / primary. Rides the
+   existing tokens (res-input border/surface shape, card-button primary,
+   primary-disabled lavender r8 78). */
+.dlg-agent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.dlg-agent-avatar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dlg-agent-avatar img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.dlg-agent-swap {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+.dlg-agent-input {
+  height: 36px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.dlg-agent-warn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.dlg-agent-configure {
+  margin-left: auto;
+  font-size: 13px;
+  line-height: 16px;
+}
+
+.dlg-agent-create {
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dlg-agent-create:disabled {
+  background: var(--primary-disabled);
+  cursor: default;
+}

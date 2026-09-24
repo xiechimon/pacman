@@ -14,7 +14,7 @@
 // (divergence noted, 01 册 §8).
 import { useCallback, useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { useMembers, useTeams, useTodos } from '../api/hooks.js';
+import { useApiMutations, useMembers, useTeams, useTodos } from '../api/hooks.js';
 import { mapTeam, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
@@ -22,6 +22,7 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChartNetwork, ChevronDown, Grid2x2, PlusSmall } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
+import { CreateAgentDialog } from './create-agent-dialog.js';
 
 /** r2 §1.5 registered client-state key (packages/shared protocol/
  *  client-state.ts): the team view switch, grid | chart; absent = grid. */
@@ -52,6 +53,11 @@ export function TeamPage() {
     setLayout(next);
     localStorage.setItem(TEAM_LAYOUT_STORAGE_KEY, next);
   }, []);
+  // #170: the 创建 Agent slot opens the dialog-family form; live submit =
+  // POST agents then close (invalidateAll refetches members → the new
+  // agent card lands in the grid), fixture = accept-dialog 律 (close only)
+  const mutations = useApiMutations(teamId);
+  const [createOpen, setCreateOpen] = useState(false);
   return (
     <SecondaryShell
       route="team"
@@ -115,11 +121,9 @@ export function TeamPage() {
               </span>
             </div>
           ))}
-          {/* TODO(#148 → 弹层族后票, 台账 #136 team 行): the 创建 Agent dialog
-              (r2 §8.1 capture 20: 标题 创建 agent / 头像+更换 / 名称 / 服务商
-              告警+配置服务商 / 创建) belongs to the dialog family — this
-              ticket notes it only, no form. */}
-          <button type="button" className="team-create-agent">
+          {/* #170: the dialog family form (r2 §8.1 capture 20) lives in
+              create-agent-dialog.tsx — DialogShell law, POST agents on live. */}
+          <button type="button" className="team-create-agent" onClick={() => setCreateOpen(true)}>
             <span className="team-create-icon">
               <PlusSmall />
             </span>
@@ -129,6 +133,19 @@ export function TeamPage() {
       ) : (
         <div className="team-chart-empty">{t('暂无成员')}</div>
       )}
+      <CreateAgentDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreate={
+          live
+            ? (displayName) =>
+                mutations.createAgent.mutate(
+                  { displayName },
+                  { onSuccess: () => setCreateOpen(false) },
+                )
+            : undefined
+        }
+      />
     </SecondaryShell>
   );
 }
