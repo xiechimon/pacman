@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Issue #170: the team-page 创建 Agent slot joins the dialog family. The
 // dialog rides DialogShell (#68 family law: X / Esc / backdrop close), the
@@ -16,7 +16,7 @@ import { expect, test } from '@playwright/test';
 
 const TEAM = '/app/team?scenario=12';
 
-async function openDialog(page: import('@playwright/test').Page) {
+async function openDialog(page: Page) {
   await page.goto(TEAM);
   await page.locator('.team-create-agent').click();
   const dialog = page.locator('.dlg');

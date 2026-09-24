@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Issue #149: 零散死钮处置 + feedback 页整页移除。每条断言钉一个票面项的
 // 失败方式：
@@ -16,7 +16,7 @@ import { expect, test } from '@playwright/test';
 // 第 5 项（skills 添加技能主钮）由 #153 覆盖，本 spec 不断言。
 
 /** 面板中心点的命中必须由面板自身持有 — title-band-clicks 同款家族法。 */
-async function expectOwnsCenter(page: import('@playwright/test').Page, selector: string) {
+async function expectOwnsCenter(page: Page, selector: string) {
   const owned = await page.evaluate((sel) => {
     const el = document.querySelector(sel);
     if (!el) return null;

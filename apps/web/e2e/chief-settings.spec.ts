@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Issue #182 acceptance: chief 设置面三死钮接线(#180 裁决落账)。
 // 1. agent 行 → 选择总管 Agent dialog(DialogShell 家族律):搜索框 + Agent
@@ -12,7 +12,7 @@ import { expect, test } from '@playwright/test';
 const AGENT_TAB = '/app?scenario=101';
 const CHARTER_TAB = '/app?scenario=102';
 
-async function openAgentDialog(page: import('@playwright/test').Page) {
+async function openAgentDialog(page: Page) {
   await page.goto(AGENT_TAB);
   await page.locator('.chief-agent-row').click();
   const dialog = page.locator('.dlg');
@@ -63,7 +63,7 @@ test('fixture agent pick closes the dialog (accept 律)', async ({ page }) => {
   await expect(page.locator('.dlg')).toBeHidden();
 });
 
-async function openCharterDialog(page: import('@playwright/test').Page) {
+async function openCharterDialog(page: Page) {
   await page.goto(CHARTER_TAB);
   await page.locator('.chief-edit-btn').click();
   const dialog = page.locator('.dlg');

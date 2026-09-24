@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Issue #146: 总管面板收尾. Failure modes pinned here (fixture face — the
 // live send path rides the real-backend self-verification, the fixture
@@ -16,7 +16,7 @@ import { expect, test } from '@playwright/test';
 //      render verbatim; on the fixture face the click stays inert (send is
 //      live-only, #129 contract) and the view does not change.
 
-const drawer = (page: import('@playwright/test').Page) => page.locator('.chief-drawer');
+const drawer = (page: Page) => page.locator('.chief-drawer');
 
 test.describe('chief panel wrap-up (#146)', () => {
   test('Esc closes the drawer on the board route', async ({ page }) => {

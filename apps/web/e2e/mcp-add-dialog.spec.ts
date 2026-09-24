@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Wayfinder ticket #174: the mcp-servers page 添加 action opens the
 // add-server dialog (r8 71 remote-HTTP / 72 stdio captures for geometry,
@@ -13,7 +13,7 @@ import { expect, test } from '@playwright/test';
 
 const MCP = '/app/resources/mcp-servers?scenario=01';
 
-async function openDialog(page: import('@playwright/test').Page) {
+async function openDialog(page: Page) {
   await page.goto(MCP);
   await page.locator('.res-new').click();
   const dialog = page.locator('.dlg');

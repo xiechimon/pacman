@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Wayfinder ticket #181: the machines page res-add 钮 opens the 添加机器
 // dialog (#179 裁决 = r2 11b CLI 两步表单): 引导语 + 安装 CLI / 在机器上执行
@@ -13,7 +13,7 @@ import { expect, test } from '@playwright/test';
 
 const MACHINES = '/app/resources/machines?scenario=06';
 
-async function openDialog(page: import('@playwright/test').Page) {
+async function openDialog(page: Page) {
   await page.goto(MACHINES);
   await page.locator('.res-add').click();
   const dialog = page.locator('.dlg');

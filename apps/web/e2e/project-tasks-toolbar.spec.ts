@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Issue #178: the project 任务 toolbar joins the living controls — the
 // prj-tasks-view-btn list|grid toggle persists through the registered
@@ -24,7 +24,7 @@ const LAYOUT_KEY = 'pacman.projectTasksLayout';
 const REVIEW_TITLE = '在 README.md 末尾追加一行「r3 lifecycle probe」';
 const DONE_TITLE = '在 README.md 末尾追加一行「r3 lifecycle probe2」';
 
-async function pickOption(page: import('@playwright/test').Page, label: string) {
+async function pickOption(page: Page, label: string) {
   const menu = page.locator('.prj-tasks-menu');
   await expect(menu).toBeVisible();
   await menu.locator('.prj-tasks-menu-row', { hasText: label }).click();

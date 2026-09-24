@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // Issue #137 acceptance: ⌘K opens the panel with the input *already*
 // focused — typing lands without a second click and filters the fixture
@@ -13,14 +13,14 @@ const BOARD = '/app?scenario=01';
 const input = (page: Page) => page.locator('.search-input-row input');
 
 /** Background of the selected row's ::before pill layer. */
-function pillBg(locator: import('@playwright/test').Locator) {
+function pillBg(locator: Locator) {
   return locator.evaluate((el) => getComputedStyle(el, '::before').backgroundColor);
 }
 
 /** #159: the hovered row lights with the canon pill — its background
  *  equals the resolved --row-selected token (the look the r7 05 fixed
  *  selected row used to carry), not the generic #73 surface-hover tint. */
-function isLit(locator: import('@playwright/test').Locator) {
+function isLit(locator: Locator) {
   return locator.evaluate((el) => {
     const probe = document.createElement('span');
     probe.style.color = 'var(--row-selected)';

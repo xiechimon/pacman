@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Issue #122 acceptance: the 外观 segmented row in the user-menu popover
 // drives applyTheme — instant repaint via the root .light class, persisted
@@ -13,12 +13,12 @@ import { expect, test } from '@playwright/test';
 const ROUTE = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=16d';
 const THEME_KEY = 'pacman-theme'; // apps/web/src/theme.ts THEME_STORAGE_KEY
 
-const lightSeg = (page: import('@playwright/test').Page) =>
+const lightSeg = (page: Page) =>
   page.locator('.user-menu-seg button', { hasText: '浅色' });
-const darkSeg = (page: import('@playwright/test').Page) =>
+const darkSeg = (page: Page) =>
   page.locator('.user-menu-seg button', { hasText: '深色' });
 
-const rootTheme = (page: import('@playwright/test').Page) =>
+const rootTheme = (page: Page) =>
   page.evaluate(() => ({
     theme: document.documentElement.dataset.theme,
     light: document.documentElement.classList.contains('light'),

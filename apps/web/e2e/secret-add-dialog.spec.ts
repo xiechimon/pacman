@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Wayfinder ticket #173: the secrets-page 新建 action opens the 添加密钥
 // dialog (r2 §242 field authority: 名称（环境变量名）/ 描述（可选）/ 值
@@ -12,7 +12,7 @@ import { expect, test } from '@playwright/test';
 
 const SECRETS = '/app/resources/secrets?scenario=01';
 
-async function openDialog(page: import('@playwright/test').Page) {
+async function openDialog(page: Page) {
   await page.goto(SECRETS);
   await page.locator('.res-new').click();
   const dialog = page.locator('.dlg');

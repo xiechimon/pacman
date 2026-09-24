@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // Issue #138 acceptance: the segmented-control family (PageShell .page-tab,
 // sched-form freq, project files seg, tasks view toggle, detail doc/chat
@@ -22,9 +22,7 @@ const CHIP_LIGHT = 'rgb(250, 247, 243)'; // --tab-chip-bg light
 const GROUP_DARK = 'rgb(31, 31, 35)'; // --surface-secondary dark
 const GROUP_LIGHT = 'rgb(241, 237, 231)'; // --surface-secondary light
 
-type Page = import('@playwright/test').Page;
-
-const bg = (loc: import('@playwright/test').Locator) =>
+const bg = (loc: Locator) =>
   loc.evaluate((el) => getComputedStyle(el).backgroundColor);
 
 async function themed(page: Page, theme: 'dark' | 'light', url: string) {

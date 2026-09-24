@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // Issue #129 acceptance: shell consistency + local-first 净化 —
 //   1. every family's 总管 FAB (board / pages / resources / secondary /
@@ -14,7 +14,7 @@ import { expect, test } from '@playwright/test';
 const THEME_KEY = 'pacman-theme'; // apps/web/src/theme.ts THEME_STORAGE_KEY
 const SIDEBAR_KEY = 'pacman.sidebar-collapsed'; // apps/web/src/board/app-sidebar.tsx
 
-const rootTheme = (page: import('@playwright/test').Page) =>
+const rootTheme = (page: Page) =>
   page.evaluate(() => ({
     theme: document.documentElement.dataset.theme,
     light: document.documentElement.classList.contains('light'),
@@ -36,10 +36,10 @@ const ROUTE_ANCHOR: Record<string, string> = {
  *  shell to commit, then retry the (one-shot) measurement until it equals
  *  — covering both the detach gap and any mid-transition sample. */
 async function expectSidebarBox(
-  page: import('@playwright/test').Page,
-  locator: import('@playwright/test').Locator,
+  page: Page,
+  locator: Locator,
   route: string,
-  box: NonNullable<Awaited<ReturnType<import('@playwright/test').Locator['boundingBox']>>>,
+  box: NonNullable<Awaited<ReturnType<Locator['boundingBox']>>>,
 ) {
   await expect(page.locator(ROUTE_ANCHOR[route])).toBeVisible();
   await expect.poll(() => locator.boundingBox()).toEqual(box);
@@ -48,8 +48,8 @@ async function expectSidebarBox(
 /** Baseline capture after a fresh goto: anchor on the committed shell,
  *  retry until the box exists, then read the settled value. */
 async function captureSidebarBox(
-  page: import('@playwright/test').Page,
-  locator: import('@playwright/test').Locator,
+  page: Page,
+  locator: Locator,
   route: string,
 ) {
   await expect(page.locator(ROUTE_ANCHOR[route])).toBeVisible();

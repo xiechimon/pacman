@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Issue #133 acceptance: the absolutely-positioned title bands of the
 // secondary and resources shells are pure labels — the same law the
@@ -13,7 +13,7 @@ import { expect, test } from '@playwright/test';
  *  (or anything else) may not sit above it. Same law as the
  *  expectMenuOnTop precedent in user-menu-trigger.spec.ts. */
 async function expectOwnsCenter(
-  page: import('@playwright/test').Page,
+  page: Page,
   selector: string,
 ) {
   const owned = await page.evaluate((sel) => {

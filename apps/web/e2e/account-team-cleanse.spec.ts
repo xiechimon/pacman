@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Issue #148 acceptance (台账 #136 account/team 行, local-first 裁决):
 // - account: 退出登录 / 删除 (the SaaS account-deletion face) no longer
@@ -24,7 +24,7 @@ declare global {
  *  API, where the property reflects the decision), counting calls. Same
  *  stub as notify-banner.spec.ts. */
 function stubNotification(
-  page: import('@playwright/test').Page,
+  page: Page,
   initial: string,
   resolution: string,
 ) {
