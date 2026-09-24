@@ -6,6 +6,7 @@
 import type {
   ActiveRun,
   Assignment,
+  ChiefCompactionModel,
   ChiefWatch,
   DocumentDiffFile,
   McpTransport,
@@ -389,6 +390,9 @@ export const chief = sqliteTable('chief', {
   agentId: text('agentId'),
   /** 绑定 Agent 的思考强度覆盖（PATCH body agent.thinkingLevel，r5 §2）。 */
   thinkingLevel: text('thinkingLevel'),
+  /** 压缩模型长槽（#203 [设计]；records/chief.ts chiefCompactionModelSchema
+   * 值形，null = 默认「与 Chief 相同」）；JSON 列。 */
+  compactionModel: json<ChiefCompactionModel>('compactionModel'),
   /** 章程 = 常设指示（r5 §2 章程 tab；raw 默认空串）。 */
   charter: text('charter').notNull().default(''),
   /** watch 条目集（records/chief.ts chiefWatchSchema[]；派工即建、settle/failed

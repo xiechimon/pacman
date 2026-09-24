@@ -20,6 +20,7 @@ import type {
   ChiefWakeKind,
   ChiefWatch,
   MachineDoneBody,
+  PatchChiefBody,
   Phase,
   TodoRecord,
   UserRecord,
@@ -84,6 +85,7 @@ export function ensureChief(deps: ChiefDeps, teamId: string): ChiefRow {
       teamId,
       agentId: null,
       thinkingLevel: null,
+      compactionModel: null, // 默认「与 Chief 相同」（#203）
       charter: '', // raw 观测默认空串（chief-record-testA.json 一手）
       watches: [],
       wakes: [],
@@ -104,6 +106,7 @@ function toChiefRecord(row: ChiefRow): ChiefGetResponse['chief'] {
     teamId: row.teamId,
     agent: row.agentId !== null ? { agentId: row.agentId } : null,
     charter: row.charter,
+    compactionModel: row.compactionModel,
     lastTurnAt: row.lastTurnAt,
     createdAt: row.createdAt,
     tz: row.tz,
@@ -176,14 +179,13 @@ export function getChiefEnvelope(deps: ChiefDeps, teamId: string): ChiefGetRespo
 
 /** PATCH /api/teams/{id}/chief——`agent` 槽 = r5 §2 抓包原样（绑定/换绑；
  * 记忆不迁移 = 无迁移动作，共用绑定 Agent 存储）；`charter` 槽 = 章程 tab
- * 保存面 [推断]（保存 wire 未采）。agent:null = 解绑 [推断]。 */
+ * 保存面 [推断]（保存 wire 未采）。agent:null = 解绑 [推断]。
+ * `compactionModel` 槽 = 压缩模型长槽（#203 [设计]）：undefined = 不动，
+ * null = 清空回默认「与 Chief 相同」。body 型 = shared PatchChiefBody 单源。 */
 export function patchChief(
   deps: ChiefDeps,
   teamId: string,
-  body: {
-    agent?: { agentId: string; thinkingLevel: string | null } | null;
-    charter?: string | null;
-  },
+  body: PatchChiefBody,
 ): ChiefGetResponse {
   const row = ensureChief(deps, teamId);
   const sets: Partial<ChiefRow> = {};
@@ -203,6 +205,7 @@ export function patchChief(
     }
   }
   if (body.charter !== undefined) sets.charter = body.charter ?? '';
+  if (body.compactionModel !== undefined) sets.compactionModel = body.compactionModel;
   if (Object.keys(sets).length > 0) {
     deps.db.update(chief).set(sets).where(eq(chief.id, row.id)).run();
   }

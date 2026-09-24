@@ -2221,6 +2221,29 @@ exports[`body/封套 schema 快照 > patchChiefBody > patchChiefBody.json 1`] = 
         "null",
       ],
     },
+    "compactionModel": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "modelId": {
+              "type": "string",
+            },
+            "provider": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "provider",
+            "modelId",
+          ],
+          "type": "object",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
   },
   "type": "object",
 }
@@ -3576,6 +3599,29 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > chief > ch
       "type": [
         "string",
         "null",
+      ],
+    },
+    "compactionModel": {
+      "anyOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "modelId": {
+              "type": "string",
+            },
+            "provider": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "provider",
+            "modelId",
+          ],
+          "type": "object",
+        },
+        {
+          "type": "null",
+        },
       ],
     },
     "createdAt": {

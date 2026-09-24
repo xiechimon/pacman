@@ -43,6 +43,13 @@
       "when": 1790126858242,
       "tag": "0005_mcp_server_internal",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790271240183,
+      "tag": "0006_wise_sersi",
+      "breakpoints": true
     }
   ]
 }
