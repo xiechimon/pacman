@@ -17,6 +17,7 @@ import {
   boardDarkFresh,
   boardDefault,
   boardFailed,
+  boardProjectPicker,
   boardR8Overlay,
   boardWithProbe,
   chiefGated,
@@ -96,6 +97,9 @@ export const SCENARIOS: Record<string, FixtureSet> = {
   // state — r7 baselines carry no banner, so the strip gets a named id
   // and rides smoke rows (04 §2: no-baseline rows self-compare)
   'notify-banner': { ...boardDefault, ui: { notificationBanner: true } },
+  // #176 new-task dialog 项目选择器:命名场景(无 capture)——boardDefault
+  // 面加 projectNames 双项目,e2e 钉选择器行为;无 parity 行。
+  'newtask-projects': boardProjectPicker,
   // detail (r7 16–17, 23, 26–28, 36, 38)
   '16': detailPlanning,
   '16d': detailConfirm(true),

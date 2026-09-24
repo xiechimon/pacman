@@ -80,6 +80,76 @@
   color: var(--text-tertiary);
 }
 
+/* ---- #176 project selector popover (anchored under the head project
+   chip; family form [设计] — lang-dropdown/plan-dropdown 律,无像素门禁,
+   行为由 e2e 钉) ---- */
+
+/* anchor for the popover: the chip cluster inside the relative head */
+.new-task-project-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.new-task-project-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  width: 220px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  background: var(--popover-bg);
+  border-radius: 10px;
+  box-shadow: var(--fab-shadow);
+  /* drop below the head, inside the 672×439 box so the dialog's
+     overflow:hidden never clips it; 30 sits above the family catcher (29) */
+  z-index: 30;
+}
+
+.new-task-project-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px 0 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.new-task-project-row-avatar {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  background: var(--project-avatar-bg);
+  color: var(--project-avatar-fg);
+  font-size: 9px;
+  line-height: 16px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.new-task-project-row-name {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+}
+
+.new-task-project-check {
+  margin-left: auto;
+  display: flex;
+  color: var(--indigo-500);
+}
+
 .new-task-title-label {
   position: absolute;
   left: 0;
