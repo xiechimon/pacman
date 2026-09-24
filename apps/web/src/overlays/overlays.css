@@ -106,6 +106,24 @@
   background: var(--row-selected);
 }
 
+/* #159 hover 跟随 — at rest the mouse owns the highlight: the row under
+   the pointer lights with the canon pill (--row-selected, the look the
+   r7 05 fixed selected row used to carry) and no row is lit at rest.
+   While the ↑↓ keyboard cursor is live (data-kbd on the panel) the
+   non-cursor hover pill stands down — exactly one lit surface — and a
+   real pointer move clears the JS cursor so hover owns it again. The
+   .search-panel prefix outranks the generic #73 row-hover tint in
+   motion.css (--surface-hover); same media guard as sidebar.css. */
+@media (hover: hover) and (pointer: fine) {
+  .search-panel .search-row:hover {
+    background: var(--row-selected);
+  }
+
+  .search-panel[data-kbd] .search-row:hover:not(.search-row--selected) {
+    background: transparent;
+  }
+}
+
 /* #137 常亮互斥 — while the ⌘K panel is open it is the only lit focus
    surface: the page-layer selected pills (sidebar row / subrow / rail,
    sidebar.css) drop their background and ink promotion under the scrim,
