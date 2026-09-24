@@ -421,4 +421,19 @@ export const EN: Record<string, string> = {
   添加请求头: 'Add header',
   命令: 'Command',
   '参数（可选，空格分隔）': 'Arguments (optional, space-separated)',
+  // wayfinder #175 add-provider dialog family (field authority = server
+  // createProviderBodySchema / r3 §2; protocol tab labels stay English
+  // verbatim, never translated)
+  添加模型服务: 'Add provider',
+  '服务商 ID': 'Provider ID',
+  '例如 my-relay': 'e.g. my-relay',
+  'API 协议': 'API protocol',
+  无密钥网关可留空: 'Leave empty for keyless gateways',
+  '以 Authorization: Bearer 请求头发送 API 密钥':
+    'Send the API key as an Authorization: Bearer header',
+  '密钥将加密存储，保存后无法再次查看。':
+    'The key is stored encrypted and cannot be viewed again after saving.',
+  '模型（可选）': 'Models (optional)',
+  '模型 ID': 'Model ID',
+  添加模型: 'Add model',
 };
