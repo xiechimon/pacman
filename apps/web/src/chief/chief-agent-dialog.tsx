@@ -7,6 +7,9 @@
 // 未绑定 → 直发;已绑定且选中他员 → 换绑二次确认(shared
 // CHIEF_REBIND_CONFIRM_COPY canon,<agent> 占位显示层替换);选中当前绑定
 // = 空操作关窗。fixture 面 accept 律(#148:选择即关)。
+// #209: 组件泛化为 agent 选择家族形态——title/confirmCopy 可选入参(缺省 =
+// 总管 canon,本面行为字节不变),chip-popover「编辑分配」复用(r2 C.18:
+// 该弹层内容从未捕获,任务面文案 [设计])。
 
 import { CHIEF_REBIND_CONFIRM_COPY } from '@pacman/shared';
 import { useEffect, useMemo, useState } from 'react';
@@ -34,6 +37,11 @@ interface ChiefAgentDialogProps {
   /** M5 live 面:选定 = PATCH chief agent 槽(父 onSuccess 关窗);缺省 =
    *  fixture 律(选择即关)。 */
   onBind?: (agentId: string) => void;
+  /** #209: 标题(调用位预译,DialogShell 律);缺省 = 总管 canon。 */
+  title?: string;
+  /** #209: 换绑二次确认 copy(<agent> 占位显示层替换);缺省 = 总管记忆告示
+   *  canon。 */
+  confirmCopy?: string;
 }
 
 export function ChiefAgentDialog({
@@ -42,8 +50,11 @@ export function ChiefAgentDialog({
   agents,
   boundAgentId,
   onBind,
+  title,
+  confirmCopy,
 }: ChiefAgentDialogProps) {
   const { t } = useI18n();
+  const dlgTitle = title ?? t('选择总管 Agent');
   const [query, setQuery] = useState('');
   const [confirming, setConfirming] = useState<ChiefAgentOption | null>(null);
   // retained mount:重开回列表态、清搜索(不带回上次残留)。
@@ -80,7 +91,7 @@ export function ChiefAgentDialog({
 
   return (
     <DialogShell
-      title={t('选择总管 Agent')}
+      title={dlgTitle}
       open={open}
       onClose={onClose}
       footer={
@@ -105,7 +116,7 @@ export function ChiefAgentDialog({
       {confirming != null ? (
         <div className="chief-pick-confirm">
           <p className="chief-pick-confirm-copy">
-            {t(CHIEF_REBIND_CONFIRM_COPY).replaceAll('<agent>', confirming.name)}
+            {t(confirmCopy ?? CHIEF_REBIND_CONFIRM_COPY).replaceAll('<agent>', confirming.name)}
           </p>
         </div>
       ) : (
@@ -119,7 +130,7 @@ export function ChiefAgentDialog({
               placeholder={t('搜索 Agent…')}
             />
           </div>
-          <div className="chief-pick-list" role="listbox" aria-label={t('选择总管 Agent')}>
+          <div className="chief-pick-list" role="listbox" aria-label={dlgTitle}>
             {rows.length === 0 ? (
               <div className="chief-pick-empty">{t('没有匹配的 Agent')}</div>
             ) : (

@@ -300,6 +300,12 @@ export function useApiMutations(teamId: string | undefined) {
           phase?: string;
           orderIndex?: number;
           tagIds?: string[];
+          /** 指派槽级 patch(#209「编辑分配」接线;server #208 槽级 merge:
+           *  提供的槽覆盖,未提供的槽保持现状)。 */
+          assignment?: {
+            plan?: NonNullable<Assignment['plan']>;
+            build?: NonNullable<Assignment['build']>;
+          };
         };
       }) => api.patch<TodoRecord>(`/api/todos/${input.id}`, input.body),
       onSuccess: invalidateAll,
