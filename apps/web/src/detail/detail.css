@@ -947,10 +947,12 @@ textarea.composer-input::placeholder {
   top: 410px;
   width: 224px;
   height: 272px;
-  border: 1px solid var(--border-default);
-  border-radius: 12px;
+  /* #139 single-source edge recipe: the ring is a shadow spread (no real
+     border) so the hairline stays uniform at fractional page zoom */
+  border: 0;
+  border-radius: var(--edge-radius);
   background: var(--popover-bg);
-  box-shadow: var(--fab-shadow);
+  box-shadow: var(--edge-ring), var(--edge-shadow);
   display: flex;
   flex-direction: column;
   z-index: 10;
@@ -965,6 +967,12 @@ textarea.composer-input::placeholder {
 .user-menu--floating {
   position: fixed;
   z-index: 30;
+  /* #139 zoom clamp: browser zoom shrinks the css viewport (the physical
+     window is fixed), so the hard capture top pushes the panel's bottom
+     border off-screen from 110% up. min() keeps the capture 410 whenever the
+     viewport fits the panel (100%: 732 - 280 = 452 > 410) and lifts it just
+     clear of the bottom edge when it doesn't — 280 = 272 panel + 8 breath */
+  top: min(410px, calc(100vh - 280px));
 }
 
 .user-menu-head {
