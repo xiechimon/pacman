@@ -77,10 +77,15 @@
   pointer-events: none;
 }
 
+/* hairline ring idiom (#138, r2 24b/24c probe): 1px border + 2px padding so
+   the active chip floats inset inside the group instead of bleeding into
+   its rounded edge — group 30 = 1+2+24+2+1, chip radius 6 over ring 3 */
 .page-tabs-group {
   display: flex;
   align-items: center;
-  height: 28px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--surface-secondary);
   pointer-events: auto;
@@ -413,12 +418,16 @@
   color: var(--text-dim);
 }
 
+/* same hairline ring as the page-tab family (#138, r3 92 probe: border +
+   ~2px padding around the 24px chips) */
 .sched-form-freq {
   display: flex;
   align-items: center;
   width: fit-content;
-  height: 28px;
+  height: 30px;
   margin-top: 12px;
+  padding: 2px;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--surface-secondary);
 }
@@ -435,8 +444,11 @@
   cursor: pointer;
 }
 
+/* family chip token (#138): --surface-elevated was container-identical in
+   dark (#1f1f23) so the selected kind read as unselected there; r3 92
+   light probe = #faf7f3 = --tab-chip-bg light */
 .sched-form-freq-tab--active {
-  background: var(--surface-elevated);
+  background: var(--tab-chip-bg);
   color: var(--text-primary);
 }
 
@@ -681,12 +693,15 @@
   cursor: pointer;
 }
 
+/* same hairline ring as the page-tab family (#138, r2 24 probe) */
 .prj-files-seg {
   display: flex;
   align-items: center;
   margin-top: 8px;
   width: fit-content;
-  height: 28px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--surface-secondary);
 }
@@ -805,10 +820,14 @@
   color: var(--text-dim);
 }
 
+/* same hairline ring as the page-tab family (#138); the 24px icon buttons
+   inset 3px on every side, radius 6 over the ring */
 .prj-tasks-view {
   display: flex;
   align-items: center;
-  height: 28px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--surface-secondary);
 }
@@ -1095,4 +1114,27 @@
   font-size: 13px;
   color: #ffffff;
   cursor: pointer;
+}
+
+/* ---- segmented-control hover (issue #138) ----
+   Unselected tabs of all four page families tint with the first step of
+   the cds alpha ladder (--seg-hover, #128 sidebar-ladder idiom) over the
+   150ms standard step; the tint rides the tab's own box + radius = the
+   active chip's geometry (one geometry, two depths), and the active chip
+   keeps its own fill under hover. Gated to fine pointers like the
+   official sheet's hover block (#73 / motion.css). */
+@media (hover: hover) and (pointer: fine) {
+  .page-tab,
+  .sched-form-freq-tab,
+  .prj-files-seg-tab,
+  .prj-tasks-view-btn {
+    transition: background-color var(--dur-fast) var(--ease-standard);
+  }
+
+  .page-tab:not(.page-tab--active):hover,
+  .sched-form-freq-tab:not(.sched-form-freq-tab--active):hover,
+  .prj-files-seg-tab:not(.prj-files-seg-tab--active):hover,
+  .prj-tasks-view-btn:not(.prj-tasks-view-btn--active):hover {
+    background-color: var(--seg-hover);
+  }
 }

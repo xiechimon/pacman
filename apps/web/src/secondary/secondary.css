@@ -141,12 +141,15 @@
   color: var(--text-secondary);
 }
 
+/* hairline ring idiom (#138, r7 12 probe: 1px --border-default ring at
+   y60/91 + ~2px padding around the 32×24 cells, cells flush at a hairline
+   seam); active chip rides the family token */
 .team-layout-tabs {
   display: flex;
-  gap: 2px;
-  width: 68px;
-  height: 28px;
+  width: 70px;
+  height: 30px;
   padding: 2px;
+  border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--surface-secondary);
 }
@@ -170,8 +173,20 @@
 }
 
 .team-layout-tab--active {
-  background: var(--surface);
+  background: var(--tab-chip-bg);
   color: var(--text-secondary);
+}
+
+/* segmented-control hover (issue #138): unselected cell tints the --seg-hover
+   step on the chip's own box + radius, fine pointers only (#73) */
+@media (hover: hover) and (pointer: fine) {
+  .team-layout-tab {
+    transition: background-color var(--dur-fast) var(--ease-standard);
+  }
+
+  .team-layout-tab:not(.team-layout-tab--active):hover {
+    background-color: var(--seg-hover);
+  }
 }
 
 .team-grid {

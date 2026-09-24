@@ -451,10 +451,25 @@
   cursor: pointer;
 }
 
-/* r8 78: the active tab is a bare white pill on the group background */
+/* r8 78 light probe: a bare white pill on the group background; the family
+   chip token carries it in both themes (#138 — --surface dark would invert
+   the pill below the container fill) */
 .res-tab--active {
-  background: var(--surface);
+  background: var(--tab-chip-bg);
   color: var(--text-primary);
+}
+
+/* segmented-control hover (issue #138): unselected tab tints the --seg-hover
+   step inside its transparent-border box = the active pill's geometry,
+   fine pointers only (#73) */
+@media (hover: hover) and (pointer: fine) {
+  .res-tab {
+    transition: background-color var(--dur-fast) var(--ease-standard);
+  }
+
+  .res-tab:not(.res-tab--active):hover {
+    background-color: var(--seg-hover);
+  }
 }
 
 .res-form {

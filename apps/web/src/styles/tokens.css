@@ -116,6 +116,10 @@
   --chip-done-fg: #5ec26a;
   --code-bg: #27272a;
   --popover-bg: #1f1f23;
+  /* detail doc/chat tab plate (#138, r7 16/16d probe): the group rides a
+     --surface-secondary ring at 2px padding and BOTH tabs sit on this
+     plate (active = ink-only), so the token flipped from the old
+     transparent light value to the probed plate fill in both themes */
   --tab-group-bg: #27272a;
   --seg-active: #3f3f46;
   /* text-tab chip on the #71 secondary routes (r2 24b/24c probe: group bg
@@ -149,9 +153,15 @@
   --indigo-disabled-fg: #afabf0;
   --toggle-track: #27272a;
   --dialog-ring: #44444b;
-  /* dark seg control inverts the light fills (r8 79 scan) */
-  --seg-container-bg: #1f1f23;
-  --seg-tab-active-bg: #27272a;
+  /* segmented-control family hover (#138, dogfood addition — no official
+     capture carries a hovered seg in any batch, same shape as the #121/#128
+     hover rulings): unselected tabs tint with the first step of the cds
+     alpha ladder over whatever group fill they ride, painted on the same
+     box + radius as the active chip (one geometry, two depths). Group
+     containers are --surface-secondary and active chips --tab-chip-bg in
+     both themes, so the old --seg-container-bg / --seg-tab-active-bg pair
+     collapsed into those two; the detail-tabs plate keeps --tab-group-bg */
+  --seg-hover: rgb(255 255 255 / 0.05);
   /* resource surfaces (r7 06–10, #69): row-card tile tints + status pill +
      dashed add-machine border, sampled light; dark values are [推断] from
      the chip families (no dark resource capture exists) */
@@ -249,7 +259,7 @@
   --chip-done-fg: #15803d;
   --code-bg: #e7e2da;
   --popover-bg: #fdfaf7;
-  --tab-group-bg: transparent;
+  --tab-group-bg: #faf7f3;
   --seg-active: #e7e2da;
   --tab-chip-bg: #faf7f3;
   --danger: #ca3a32;
@@ -283,8 +293,7 @@
   --indigo-disabled: #a5a1ea;
   --indigo-disabled-fg: #ffffff;
   --toggle-track: #e7e2da;
-  --seg-container-bg: #f1ede7;
-  --seg-tab-active-bg: #fdfaf7;
+  --seg-hover: rgb(28 25 23 / 0.05);
   /* 运行历史 row ring (r7 32 scan) */
   --dialog-ring: #cbc8c4;
   /* resource surfaces (r7 06–10, #69), sampled from the light captures */

@@ -101,12 +101,17 @@
   pointer-events: none;
 }
 
+/* ring + plate idiom (#138, r7 16/16d probe): the group paints a
+   --surface-secondary ring at 2px padding (68×28 = the r7 §3.3 probe box)
+   and BOTH tabs ride the --tab-group-bg plate — active reads ink-only,
+   the divider hairline splits the plate */
 .detail-tabs-group {
   display: flex;
   align-items: center;
   height: 28px;
+  padding: 2px;
   border-radius: 8px;
-  background: var(--tab-group-bg);
+  background: var(--surface-secondary);
   pointer-events: auto;
 }
 
@@ -117,7 +122,8 @@
   width: 32px;
   height: 24px;
   border: none;
-  background: transparent;
+  background: var(--tab-group-bg);
+  border-radius: 6px;
   padding: 0;
   color: var(--text-tertiary);
   cursor: pointer;
@@ -1018,21 +1024,24 @@ textarea.composer-input::placeholder {
   color: var(--text-secondary);
 }
 
+/* r7 37 probe (#138): the 外观 pair rides ~20px bordered cells with 8px
+   side padding and a hairline seam — the old 18px/6px/4px-gap box read a
+   size step small against the capture */
 .user-menu-seg {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .user-menu-seg button {
-  height: 18px;
-  padding: 0 6px;
+  height: 20px;
+  padding: 0 8px;
   border-radius: 6px;
   border: 1px solid var(--border-default);
   background: transparent;
   font-size: 11px;
-  line-height: 16px;
+  line-height: 18px;
   color: var(--text-tertiary);
   cursor: pointer;
 }
@@ -1041,6 +1050,26 @@ textarea.composer-input::placeholder {
   border-color: transparent;
   background: var(--seg-active);
   color: var(--text-secondary);
+}
+
+/* ---- segmented-control hover (issue #138) ----
+   The doc/chat tabs ride an opaque plate, so their hover tint layers over
+   the plate fill as a gradient coat; the 外观 cells tint their transparent
+   interior. Same --seg-hover step on the same box + radius as the active
+   state, fine pointers only (#73 / motion.css). */
+@media (hover: hover) and (pointer: fine) {
+  .detail-tab,
+  .user-menu-seg button {
+    transition: background-color var(--dur-fast) var(--ease-standard);
+  }
+
+  .detail-tab:not(.detail-tab--active):hover {
+    background: linear-gradient(var(--seg-hover), var(--seg-hover)), var(--tab-group-bg);
+  }
+
+  .user-menu-seg button:not([data-active="true"]):hover {
+    background-color: var(--seg-hover);
+  }
 }
 
 /* ---- issue #75: r8 dynamic states ---- */
