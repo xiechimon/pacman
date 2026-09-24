@@ -47,7 +47,9 @@
   height: 16px;
 }
 
-/* centers on the content area like the board topbar title */
+/* centers on the content area like the board topbar title — and carries
+   the same pure-label law (#133, the #66 board precedent): the band spans
+   the whole head, so it must not own the hit-test over .secondary-back. */
 .secondary-title {
   position: absolute;
   inset: 0;
@@ -58,6 +60,13 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
+  pointer-events: none;
+}
+
+/* the title is a ReactNode slot (a future dropdown trigger rides it) —
+   interactive children opt back in, the detail.css none+auto pattern */
+.secondary-title :is(a, button) {
+  pointer-events: auto;
 }
 
 .secondary-title svg {
