@@ -91,7 +91,18 @@ export function NewTaskDialog({
         type="button"
         className="overlay-backdrop anim-fade"
         aria-label={t('关闭')}
-        onClick={onClose}
+        onClick={() => {
+          // #176 外点内层优先:the dialog's transform: translate(-50%,-50%)
+          // shrinks the fixed ClickCatcher's containing block to the panel
+          // itself, so clicks outside the panel land here directly — while
+          // the project popover is open they must peel the inner layer
+          // only (same inner-first law as the Esc split above)
+          if (projectOpen) {
+            setProjectOpen(false);
+            return;
+          }
+          onClose();
+        }}
       />
       <div
         className="new-task-dialog anim-fade"
