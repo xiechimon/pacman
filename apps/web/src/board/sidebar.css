@@ -32,7 +32,7 @@
   margin: 6px 8px 4px;
   padding-left: 14px;
   border-radius: 8px;
-  background: var(--surface-secondary);
+  background: var(--sidebar-selected);
 }
 
 /* anchor since #70 (team name navigates to /app/team, r2 §1.1) */
@@ -94,11 +94,11 @@
   cursor: pointer;
 }
 
+/* selected rows keep the plain row geometry — the pill lives on the shared
+   ::before layer (one step deeper than hover, #128), so the old margin /
+   padding compensation hack is gone and with it the right-edge clip its
+   width:100% + margin box produced */
 .sidebar-row--selected {
-  margin: 0 8px;
-  padding-left: 10px; /* 8 inset + 10 = icon at x18 like unselected rows */
-  border-radius: 6px;
-  background: var(--surface-secondary);
   color: var(--text-primary);
 }
 
@@ -118,12 +118,23 @@
   text-overflow: ellipsis;
 }
 
-.sidebar-kbd {
+/* ⌘K chip (r7 01/02 probe: 26×20 pill, 1px --border-default ring,
+   right-anchored 17px off the sidebar edge). The selector carries the row
+   class so it outranks the row-content lift rule below (.sidebar-row >
+   span, specificity 0-1-1) — at plain .sidebar-kbd (0-1-0) the lift rule
+   won, demoted the chip into the label flow and shifted it left over the
+   搜索 text (#128 overlap) */
+.sidebar-row .sidebar-kbd {
   position: absolute;
-  right: 21px;
+  right: 17px;
+  top: 50%;
+  translate: 0 -50%;
+  padding: 1px 3px;
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
   font-size: 11px;
   line-height: 16px;
-  color: var(--text-dim);
+  color: var(--text-tertiary);
 }
 
 /* attention badge on the selected 看板 row (r7 02/17: 16px indigo circle) */
@@ -181,16 +192,6 @@
   text-decoration: none;
 }
 
-/* selected project row (r2 07e/24b/24c): same pill as the level-1 selected
-   row, inset to the subrow indent */
-.sidebar-subrow--selected {
-  margin: 0 8px;
-  padding-left: 26px; /* 8 inset + 26 = avatar at x34 like unselected subrows */
-  border-radius: 6px;
-  background: var(--surface-secondary);
-  color: var(--text-primary);
-}
-
 .sidebar-subrow-label {
   margin-left: 12px;
   white-space: nowrap;
@@ -198,13 +199,9 @@
   text-overflow: ellipsis;
 }
 
-/* selected resource row (r7 06–10): same 8px-inset pill as the level-1
-   selected row, label promoted to primary ink */
+/* selected project / resource row (r2 07e/24b/24c, r7 06–10): same shared
+   pill as the level-1 selected row, label promoted to primary ink */
 .sidebar-subrow--selected {
-  margin: 0 8px;
-  padding-left: 26px; /* 8 inset + 26 = icon at x34 like unselected subrows */
-  border-radius: 6px;
-  background: var(--surface-secondary);
   color: var(--text-primary);
 }
 
@@ -319,7 +316,7 @@
 }
 
 .rail-row--selected::before {
-  background: var(--surface-secondary);
+  background: var(--sidebar-selected);
 }
 
 .rail-row > svg,
@@ -354,8 +351,10 @@
 }
 
 /* machine-online dot (r5 100/101/114/116): 5px indigo, right of the 机器
-   row at x≈219 (sidebar right padding 16) */
-.sidebar-online-dot {
+   row at x≈219 (sidebar right padding 16). Row class in the selector for
+   the same specificity reason as the ⌘K chip — the lift rule must not
+   demote it into the label flow */
+.sidebar-subrow .sidebar-online-dot {
   position: absolute;
   right: 16px;
   top: 50%;
@@ -366,15 +365,20 @@
   background: var(--indigo-500);
 }
 
-/* ---- row hover pill (issue #121, claude.ai-style affordance) ----
-   Nav rows tint a pill on hover at their selected-state geometry
-   (expanded: full row height inset 8px; rail: the 24px box above), painted
-   on the ::before layer so hovering never shifts row layout — the official
-   --surface-hover token over the standard 150ms color step (motion
+/* ---- row hover / selected pill (issue #121, geometry re-probed #128) ----
+   Nav rows share ONE pill geometry on the ::before layer — the official
+   32px inset pill (r7 01/02 probe: 2px vertical / 8px horizontal inset,
+   radius 6; rail keeps its 24px box above) — painted there so hovering
+   never shifts row layout. Hover tints it with the sidebar hover step and
+   the selected row deepens the same pill one cds alpha step
+   (--sidebar-selected over --sidebar-hover, #128 claude.ai cds ladder over
+   the #123 sidebar tone step — the official --surface-hover token is
+   sampled over the official canvas and over this layer read muddy and
+   selected-identical), over the standard 150ms color step (motion
    registry), gated to fine pointers like motion.css's hover block. The
-   selected row keeps its own pill (in dark both tokens resolve to #1f1f23,
-   so the exclusion stops the hover from washing the active row out). Icon
-   buttons (toggles, user chips) take the same tint over their own box. */
+   :not(--selected) gate keeps hover from washing the deeper pill back.
+   Icon buttons (toggles, user chips) take the hover step over their own
+   box. */
 
 .sidebar-row::before,
 .sidebar-subrow::before,
@@ -383,9 +387,15 @@
   position: absolute;
   left: 8px;
   right: 8px;
-  top: 0;
-  bottom: 0;
+  top: 2px;
+  bottom: 2px;
   border-radius: 6px;
+}
+
+/* selected = the hover pill deepened, same geometry (#128) */
+.sidebar-row--selected::before,
+.sidebar-subrow--selected::before {
+  background: var(--sidebar-selected);
 }
 
 /* row content paints over the pill layer — the same lift the rail rows use
@@ -416,13 +426,13 @@
   .sidebar-subrow:not(.sidebar-subrow--selected):hover::before,
   .sidebar-group:hover::before,
   .rail-row:not(.rail-row--selected):hover::before {
-    background-color: var(--surface-hover);
+    background-color: var(--sidebar-hover);
   }
 
   .rail-toggle:hover,
   .sidebar-team-collapse:hover,
   .sidebar-user:hover,
   .rail-user:hover {
-    background-color: var(--surface-hover);
+    background-color: var(--sidebar-hover);
   }
 }

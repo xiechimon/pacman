@@ -235,6 +235,7 @@ migration 纪律：drizzle-kit 生成、进 repo、CI 校验 drift；**不发明
 | 未匹配路径 | 307 → `/login?callbackUrl=` | 重定向 `/app`（无登录页，02/A2） | **差异** [设计] |
 | 侧栏「安装 App」入口 | 存在（r7 01/02 底部 accent pill、r7 03 rail icon；`/zh/install` 路由） | 整体去除（#121 dogfood 裁决）；`/zh/install` 走未匹配路径重定向 `/app`（上一行口径） | **差异**：dogfood 驱动，非官方漂移；含该 pill 区域的 r7 基线行按 §04 阈值内判 |
 | 卡片边框/侧栏接缝/横向滚动条 | 实心卡片边框 + 1px `--border-default` 硬接缝（r7 01/02 像素探针 #e1dbd2/#27272a）+ 横向滚动条区 | #123 dogfood 裁决切 claude.ai 质感：1px 低 alpha 边环 + 宽柔阴影（cds alpha border / `--df-shadow-card` 族）、侧栏独立背景色阶 + 柔边阴影不画缝、横向滚动条双写隐藏（滚动能力保留） | **差异**：dogfood 驱动，非官方漂移；变更幅度在 §04 既有阈值内（矩阵 181 行全绿，未触发重定基线） |
+| 侧栏 hover/选中色阶 + ⌘K chip | r7 01/02 探针：选中 pill = `--surface-secondary` 实填（x8..231、32px 高内缩、radius 6）、⌘K = 26×20 带框 pill（1px `--border-default`、右锚 17px）；hover 面无官方捕获 | #128 dogfood 裁决：几何回官方探针（hover/选中统一同一 32px 内缩 pill、⌘K 恢复带框 pill 右锚——复刻侧原实现被行内容 lift 规则降级致重合/裁切）；色阶切 claude.ai cds alpha 梯——hover = neutral-900 5% / 选中 = 10%（dark 反相白族），叠 #123 侧栏色阶合成；`--surface-hover` 保官方值作 overlay/画布 hover 正典（motion.css） | **差异**：dogfood 驱动，非官方漂移；选中填色离 r7 实填值（几何与 ⌘K 为回官方 fidelity 修正），parity 按 §04 判（阈值内或重定基线带注记） |
 | 语音输入按钮 | 存在（r2 工具条），实现未观测 | Web Speech API [推断] | 形状平价、行为尽力 |
 
 ## 9. 移交与观察项

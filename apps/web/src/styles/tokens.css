@@ -72,6 +72,14 @@
      --df-shadow-card against the content, no hard border) */
   --sidebar-bg: #1c1c1f;
   --sidebar-shadow: 8px 0 24px -12px rgb(0 0 0 / 0.5);
+  /* sidebar interaction ladder (#128, claude.ai cds 参照): the row hover /
+     selected pills ride the cds alpha ladder over the #123 sidebar tone
+     step (bg-neutral family = neutral-900 at 5% / 10%, dark inverting to
+     the white scale) — the official --surface-hover token is sampled over
+     the official canvas and reads muddy and selected-identical over this
+     layer; --surface-hover stays the overlay/canvas hover canon (motion.css) */
+  --sidebar-hover: rgb(255 255 255 / 0.05);
+  --sidebar-selected: rgb(255 255 255 / 0.1);
   --col-head-text: #bebec1;
   --col-dot-idle: #9ea3ae;
   --col-dot-planning: #4e81ee;
@@ -212,6 +220,10 @@
   --card-shadow: 0 1px 2px rgb(28 25 23 / 0.04), 0 4px 16px rgb(28 25 23 / 0.06);
   --sidebar-bg: #f6f2ec;
   --sidebar-shadow: 8px 0 24px -12px rgb(28 25 23 / 0.08);
+  /* sidebar interaction ladder (#128), light side of the cds alpha ladder —
+     warm-ink steps over the sidebar tone step, hover 5% / selected 10% */
+  --sidebar-hover: rgb(28 25 23 / 0.05);
+  --sidebar-selected: rgb(28 25 23 / 0.1);
   --col-head-text: #57534e;
   --col-dot-idle: #9ea3ae;
   --col-dot-planning: #4e81ee;

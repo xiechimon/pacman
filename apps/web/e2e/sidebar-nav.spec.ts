@@ -6,8 +6,9 @@ import { expect, test } from '@playwright/test';
 // and the fixture ?scenario= survives the hop. The 安装 App entries are
 // gone from both sidebar states and /zh/install takes the registered
 // unmatched-path redirect to /app. Non-selected rows tint the
-// --surface-hover pill on hover in both themes; the selected row keeps
-// its own pill.
+// --sidebar-hover pill on hover in both themes (#128 cds alpha ladder over
+// the sidebar layer); the selected row keeps its deeper --sidebar-selected
+// pill under hover.
 
 declare global {
   interface Window {
@@ -94,15 +95,16 @@ test('hover tints the row pill — dark default + light theme', async ({ page })
 
   expect(await pillBg(row)).toBe('rgba(0, 0, 0, 0)');
   await row.hover();
-  // --surface-hover dark = #1f1f23, reached over the 150ms color step
-  await expect.poll(() => pillBg(row)).toBe('rgb(31, 31, 35)');
+  // --sidebar-hover dark = 5% white over the sidebar layer (#128), reached
+  // over the 150ms color step
+  await expect.poll(() => pillBg(row)).toBe('rgba(255, 255, 255, 0.05)');
 
   await page.addInitScript(() => localStorage.setItem('pacman-theme', 'light'));
   await page.goto('/app?scenario=01');
   const lightRow = page.locator('.sidebar-row', { hasText: '定时' });
   await lightRow.hover();
-  // --surface-hover light = #f2ede6
-  await expect.poll(() => pillBg(lightRow)).toBe('rgb(242, 237, 230)');
+  // --sidebar-hover light = 5% warm ink
+  await expect.poll(() => pillBg(lightRow)).toBe('rgba(28, 25, 23, 0.05)');
 });
 
 test('rail hover tints the 24px pill', async ({ page }) => {
@@ -112,7 +114,7 @@ test('rail hover tints the 24px pill', async ({ page }) => {
 
   expect(await pillBg(row)).toBe('rgba(0, 0, 0, 0)');
   await row.hover();
-  await expect.poll(() => pillBg(row)).toBe('rgb(31, 31, 35)');
+  await expect.poll(() => pillBg(row)).toBe('rgba(255, 255, 255, 0.05)');
 });
 
 test('selected row keeps its own pill under hover', async ({ page }) => {
@@ -121,9 +123,10 @@ test('selected row keeps its own pill under hover', async ({ page }) => {
   await expect(board).toHaveClass(/sidebar-row--selected/);
 
   await board.hover();
-  // past the 150ms step: the ::before layer stays transparent — the
-  // selected tint lives on the element itself and must not be washed out
+  // past the 150ms step: the ::before layer keeps the deeper selected tint
+  // (--sidebar-selected, #128) — hover must not wash it back to the hover
+  // step
   await page.waitForTimeout(250);
-  expect(await pillBg(board)).toBe('rgba(0, 0, 0, 0)');
+  expect(await pillBg(board)).toBe('rgba(255, 255, 255, 0.1)');
   await expect(board).toHaveClass(/sidebar-row--selected/);
 });
