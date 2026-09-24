@@ -510,6 +510,7 @@ export function TodoDetailPage() {
               model: '默认',
             }
           }
+          onClose={closeOverlay}
           onReuse={() => setOverlay({ kind: 'reuse' })}
           onPlan={live ? () => startBuild(true) : undefined}
           onDirect={live ? () => startBuild(false) : undefined}
@@ -517,6 +518,7 @@ export function TodoDetailPage() {
       )}
       {overlay?.kind === 'reuse' && (
         <ReusePanel
+          onClose={closeOverlay}
           onBack={() => setOverlay({ kind: 'rerun' })}
           onView={closeOverlay}
           onDirect={

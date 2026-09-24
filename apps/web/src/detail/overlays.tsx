@@ -6,12 +6,34 @@
 // The 运行历史 dialog lives in history-dialog.tsx (#68); geometry from
 // r8 §2.3/§2.6 on top of the 448-wide centered law (r7 §3.5).
 
+import { useEffect } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChevronRight, X } from '../icons/index.js';
 
-function Overlay({ children }: { children: React.ReactNode }) {
+// #168: the rerun/reuse pair joins the dialog family close law (DialogShell
+// #68) — Esc, backdrop click, and the X head button all carry the same
+// `onClose` (dismiss the whole overlay); `back` stays the explicit
+// step-back affordance. Mount/unmount is conditional at the call site, so
+// the Esc listener needs no open flag (DialogShell keeps one only for the
+// #73 retained-mount exit fade).
+function Overlay({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
   return (
-    <div className="overlay">
+    // biome-ignore lint/a11y/noStaticElementInteractions: backdrop is a click-to-dismiss surface
+    // biome-ignore lint/a11y/useKeyWithClickEvents: Esc closes — see comment
+    <div
+      className="overlay"
+      onClick={(event) => {
+        // only the backdrop itself dismisses; panel clicks bubble harmlessly
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <div className="overlay-panel">{children}</div>
     </div>
   );
@@ -21,10 +43,12 @@ function PanelHead({
   title,
   back,
   onBack,
+  onClose,
 }: {
   title: string;
   back?: boolean;
   onBack?: () => void;
+  onClose: () => void;
 }) {
   const { t } = useI18n();
   return (
@@ -35,7 +59,7 @@ function PanelHead({
         </button>
       )}
       <span className="overlay-title">{title}</span>
-      <button type="button" className="overlay-close" aria-label={t('关闭')}>
+      <button type="button" className="overlay-close" onClick={onClose} aria-label={t('关闭')}>
         <X width={16} height={16} />
       </button>
     </div>
@@ -48,6 +72,7 @@ function PanelHead({
 export function RerunDialog({
   reuse,
   agent,
+  onClose,
   onReuse,
   onPlan,
   onDirect,
@@ -55,6 +80,8 @@ export function RerunDialog({
   reuse: boolean;
   /** Previous run's agent (fixture data, r8 56/74 agent row). */
   agent: { name: string; model: string };
+  /** #168: family close law — X / Esc / backdrop all dismiss. */
+  onClose: () => void;
   onReuse?: () => void;
   /** M5 live 面：先做规划 = POST builds withPlan:true；立即执行 =
    *  withPlan:false（02 §4.2 开始 dialog 两分支）；缺省 = fixture 静态面。 */
@@ -63,8 +90,8 @@ export function RerunDialog({
 }) {
   const { t } = useI18n();
   return (
-    <Overlay>
-      <PanelHead title={t('开始任务')} />
+    <Overlay onClose={onClose}>
+      <PanelHead title={t('开始任务')} onClose={onClose} />
       <div className="overlay-body">
         <div className="rerun-agent-label">Agent</div>
         <button type="button" className="rerun-agent-row">
@@ -108,18 +135,22 @@ export function RerunDialog({
 /** 复用方案 sub-panel (r8 75): independent dialog face, back arrow returns
  *  to the rerun dialog. */
 export function ReusePanel({
+  onClose,
   onBack,
   onView,
   onDirect,
 }: {
+  /** #168: family close law — X / Esc / backdrop all dismiss; `back` stays
+   *  the explicit step-back to the rerun face. */
+  onClose: () => void;
   onBack?: () => void;
   onView?: () => void;
   onDirect?: () => void;
 }) {
   const { t } = useI18n();
   return (
-    <Overlay>
-      <PanelHead title={t('复用方案')} back onBack={onBack} />
+    <Overlay onClose={onClose}>
+      <PanelHead title={t('复用方案')} back onBack={onBack} onClose={onClose} />
       <div className="overlay-body reuse-body">
         <div className="reuse-prompt">{t('选择接下来如何使用这个方案')}</div>
         <div className="overlay-actions">
