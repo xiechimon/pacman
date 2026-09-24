@@ -298,6 +298,18 @@ export const EN: Record<string, string> = {
     'No Agent selected yet. Pick an Agent on the "Agent" tab first; memories are saved on that Agent.',
   '暂无跟进事项。总管关注某个任务，或约定到点回头核实时，会按主题列在这里。':
     'Nothing being watched yet. When the Chief watches a todo, or promises to check back at a set time, it is listed here by thread.',
+  // #182 设置面接线：选择总管 Agent dialog + 章程编辑弹窗；换绑二次确认
+  // copy 走 shared CHIEF_REBIND_CONFIRM_COPY canon（<agent> 占位，显示层替换，
+  // i18n-coverage COMPUTED_KEYS 登记）。
+  '选择总管 Agent': "Choose the Chief's Agent",
+  '搜索 Agent…': 'Search Agents…',
+  '没有匹配的 Agent': 'No matching Agents',
+  '更换总管的 agent？总管的记忆保存在其运行所用的 Agent 上。切换至 <agent> 后，记忆将变为 <agent> 的记忆，当前记忆不会迁移。':
+    "Switch the Chief's Agent? The Chief's memory lives on the Agent it runs on. After switching to <agent>, the memory becomes <agent>'s — the current memory is not migrated.",
+  编辑章程: 'Edit charter',
+  保存章程: 'Save charter',
+  '长期指令：模型路由规则（何种任务使用何种模型）、优先级、偏好…':
+    'Long-term instructions: model routing rules (which model for which work), priorities, preferences…',
 
   // —— chrome carried inside fixture records (exact-value keys; user and
   // agent content is deliberately absent — it falls back to the zh
