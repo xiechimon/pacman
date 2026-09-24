@@ -20,15 +20,39 @@
   border-radius: 12px;
   box-shadow: 0 18px 45px rgb(0 0 0 / 0.25);
   overflow: hidden;
+  /* #193 viewport law: cap the panel and split it into head / scroll body /
+     pinned foot so a tall form never pushes submit out of the viewport
+     (generalizes the #175 provider-only fix to the whole family). */
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
 }
 
 .dlg-head {
   position: relative;
+  flex: none;
   display: flex;
   align-items: center;
   height: 48px;
   padding: 0 16px;
   border-bottom: 1px solid var(--card-border);
+}
+
+/* #193: children scroll here; min-height:0 lets the flex item actually
+   shrink under the cap. Short content renders identically (no scrollbar). */
+.dlg-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* #193: pinned footer slot — the fragment carries its own padding
+   (per-face canon spacing); the column stretch keeps full-width primaries
+   (e.g. .dlg-provider-create) at 100%. */
+.dlg-foot {
+  flex: none;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 分支与PR header: centered segmented tabs, no divider (r7 31) */
@@ -56,6 +80,21 @@
   background: transparent;
   color: var(--text-tertiary);
   cursor: pointer;
+}
+
+/* #193: pinned-foot padding — 16 side/bottom matching the face container's
+   own padding; the gap above the buttons moved into the body container's
+   padding-bottom so spacing is identical scrolled or not. The column flex
+   keeps the raw <button> children stretched full-width (a block wrapper
+   would shrink them to inline-block content width). */
+.dlg-provider-foot,
+.dlg-mcp-foot,
+.dlg-secret-foot,
+.dlg-agent-foot,
+.dlg-branch-foot {
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px 16px;
 }
 
 /* --- segmented control (同步到机器 | Git) --- */
@@ -165,6 +204,12 @@
 
 .dlg-branch-body {
   padding: 16px;
+}
+
+/* #193: sync tab pins the 同步 button into .dlg-foot — the body's bottom
+   padding takes over the button's old margin-top (git tab keeps 16). */
+.dlg-branch-body--foot {
+  padding-bottom: 10px;
 }
 
 .dlg-branch-box {
@@ -326,7 +371,6 @@
 .dlg-sync {
   width: 100%;
   height: 38px;
-  margin-top: 10px;
   border: 0;
   border-radius: 8px;
   background: var(--indigo-disabled);
@@ -339,6 +383,12 @@
 
 .dlg-history {
   padding: 24px 16px 26px;
+}
+
+/* #193: with the 重跑 footer pinned in .dlg-foot, the body's bottom padding
+   carries the old footer padding-top (10); the footer-less form keeps 26. */
+.dlg-history--foot {
+  padding-bottom: 10px;
 }
 
 .dlg-history-row {
@@ -467,11 +517,13 @@
 }
 
 /* 重跑 footer (r8 57): renders only when the current run is the failed one;
-   a failed past run under a live current run carries none (r8 77/80). */
+   a failed past run under a live current run carries none (r8 77/80).
+   #193: rides the shell's pinned .dlg-foot — the side/bottom padding moved
+   here from .dlg-history (which keeps it only in the footer-less form). */
 .dlg-history-footer {
   display: flex;
   justify-content: flex-end;
-  padding: 10px 0 0;
+  padding: 0 16px 26px;
 }
 
 .dlg-history-rerun {
@@ -493,7 +545,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
+  padding: 16px 16px 12px; /* #193: bottom 12 = old gap; submit rides .dlg-foot */
 }
 
 .dlg-agent-avatar {
@@ -569,7 +621,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
+  padding: 16px 16px 12px; /* #193: bottom 12 = old gap; submit rides .dlg-foot */
 }
 
 .dlg-secret-input {
@@ -622,7 +674,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
+  padding: 16px 16px 12px; /* #193: bottom 12 = old gap; submit rides .dlg-foot */
 }
 
 .dlg-mcp-seg {
@@ -709,17 +761,9 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
-}
-
-/* 家族最高表单：模型行累加时全高可超矮视口，.dlg 是 overflow:hidden 无
-   max-height——字段区自滚，submit 钉在滚动区外恒可达（live 验收实测）。 */
-.dlg-provider-body {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: calc(100vh - 240px);
-  overflow-y: auto;
+  /* #193: bottom 12 carries the old body↔submit gap; the submit itself now
+     rides the shell's pinned .dlg-foot (.dlg-provider-foot). */
+  padding: 16px 16px 12px;
 }
 
 .dlg-provider-input {

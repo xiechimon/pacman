@@ -79,24 +79,34 @@ export function ChiefAgentDialog({
   };
 
   return (
-    <DialogShell title={t('选择总管 Agent')} open={open} onClose={onClose}>
+    <DialogShell
+      title={t('选择总管 Agent')}
+      open={open}
+      onClose={onClose}
+      footer={
+        confirming != null ? (
+          <div className="chief-dlg-foot">
+            <div className="chief-dlg-actions">
+              <button type="button" className="chief-dlg-ghost" onClick={() => setConfirming(null)}>
+                {t('取消')}
+              </button>
+              <button
+                type="button"
+                className="chief-dlg-primary"
+                onClick={() => onBind?.(confirming.id)}
+              >
+                {t('更换')}
+              </button>
+            </div>
+          </div>
+        ) : undefined
+      }
+    >
       {confirming != null ? (
         <div className="chief-pick-confirm">
           <p className="chief-pick-confirm-copy">
             {t(CHIEF_REBIND_CONFIRM_COPY).replaceAll('<agent>', confirming.name)}
           </p>
-          <div className="chief-dlg-actions">
-            <button type="button" className="chief-dlg-ghost" onClick={() => setConfirming(null)}>
-              {t('取消')}
-            </button>
-            <button
-              type="button"
-              className="chief-dlg-primary"
-              onClick={() => onBind?.(confirming.id)}
-            >
-              {t('更换')}
-            </button>
-          </div>
         </div>
       ) : (
         <div className="chief-pick">
