@@ -1,6 +1,15 @@
-// Account route (issue #70, r7 13): avatar head with 更换/删除, the four
-// setting rows (名称 + edit glyph, 邮箱, 语言 select, 推送通知 switch)
-// and the 退出登录 box. Copy and row order verbatim from the 13 capture.
+// Account route (issue #70, r7 13): avatar head with 更换, the four
+// setting rows (名称 + edit glyph, 邮箱, 语言 select, 推送通知 switch).
+// Copy and row order verbatim from the 13 capture.
+// #148 (台账 #136 account 行, local-first 裁决同 #129 先例): 删除 / 退出登录
+// are SaaS surface a single-user self-host has no semantics for — removed;
+// 更换头像 stays a wontfix placeholder (the avatar is the static
+// /avatar-user.png asset, no upload face exists or will); the 推送通知
+// switch is live — it mirrors Notification.permission and clicking an off
+// switch drives the same requestPermission() path as the #114 banner
+// (shared useNotificationPermission). Fixture mode freezes the switch
+// granted: r7 13 shows it on and the parity headless chromium reports the
+// real API as 'denied'.
 // #74: the 语言 row is live — it reads/writes the workspace locale
 // (zh-CN authoritative + en, 01 S6) through the i18n provider and persists
 // to the r2 §1.5 dual keys. The dropdown open state is [设计]: the official
@@ -11,6 +20,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useSession } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { useNotificationPermission } from '../board/notify-banner.js';
 import { USER_MAIL, USER_NAME } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { LOCALE_NAMES, LOCALES } from '../i18n/locale.js';
@@ -31,6 +41,10 @@ export function AccountPage() {
   const sessionQ = useSession(live);
   const userName = live ? (sessionQ.data?.displayName ?? USER_NAME) : USER_NAME;
   const userEmail = live ? '—' : USER_MAIL;
+  // #148: the switch mirrors the real permission (live); fixture freezes
+  // granted so the r7 13 baseline row keeps its on-state knob.
+  const { permission, request } = useNotificationPermission(live ? null : 'granted');
+  const notifyOn = permission === 'granted';
   return (
     <SecondaryShell route="account" fixture={fixture} sidebarSelected="team" title={t('帐号')}>
       <div className="account-card">
@@ -39,11 +53,11 @@ export function AccountPage() {
             <img src="/avatar-user.png" alt="" />
           </span>
           <div className="account-avatar-actions">
+            {/* wontfix (台账 #136 account 行, #148 裁决): local single user —
+                the avatar is the static placeholder asset, no upload face
+                exists or will; the 更换 ink stays as capture-verbatim chrome. */}
             <button type="button" className="account-swap">
               {t('更换')}
-            </button>
-            <button type="button" className="account-delete">
-              {t('删除')}
             </button>
           </div>
         </div>
@@ -106,16 +120,19 @@ export function AccountPage() {
             type="button"
             className="account-switch"
             role="switch"
-            aria-checked
+            aria-checked={notifyOn}
             aria-label={t('推送通知')}
+            onClick={() => {
+              // one-way affordance: the OS permission cannot be revoked from
+              // the page, so a granted switch has no click behavior; an off
+              // switch drives the #114 banner's requestPermission() path.
+              if (!notifyOn) request();
+            }}
           >
             <span className="account-switch-knob" />
           </button>
         </div>
       </div>
-      <button type="button" className="account-logout">
-        {t('退出登录')}
-      </button>
     </SecondaryShell>
   );
 }
