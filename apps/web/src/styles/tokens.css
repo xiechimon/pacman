@@ -50,7 +50,6 @@
   --gray-400: #9ca3af;
   /* board palette, sampled from r7 captures (differs from landing tokens) */
   --col-bg: #09090b;
-  --col-top-border: #27272a;
   --card-bg: #1f1f23;
   --card-border: #27272a;
   --card-button: #4e47dd;
@@ -67,6 +66,14 @@
   --edge-ring: inset 0 0 0 1px var(--border-default);
   --edge-radius: 12px;
   --edge-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
+  /* card-tier resting shadow (#161): the small-card family (todo / notify
+     banner / column container) sits one elevation below the popover tier —
+     tight 4px blur / 2px y-offset, ~half the opacity. The popover keeps
+     --edge-shadow because the account menu opens over content and needs
+     visible separation; cards on the canvas only need to look grounded,
+     not floating (claude.ai card-tier reference). Both themes follow the
+     same shape; opacity differs because the canvas itself differs */
+  --card-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
   /* sidebar layer (#123 tone step; #135 裁决 v2): the sidebar keeps its
      one-tone-off-canvas chrome layer, but the seam returns to the r7
      original law — a drawn 1px --border-default line in place of the #123
@@ -219,7 +226,6 @@
   --nav-bg: rgba(250, 250, 249, 0.85);
   --indigo-400: #6366f1;
   --col-bg: #f1ede7;
-  --col-top-border: #e3ded5;
   --card-bg: #ffffff;
   --card-border: #e1dbd2;
   --card-button: #4e47dd;
@@ -228,6 +234,11 @@
      to the light surface; the ring rides --border-default's light value via
      the :root alias */
   --edge-shadow: 0 5px 14px rgb(28 25 23 / 0.14);
+  /* card-tier resting shadow (#161), light side: 2px y-offset / 4px blur /
+     7% opacity over the warm-ink palette. Same shape as the dark side —
+     only the opacity drops because the light surface itself already has
+     less visual depth, so the shadow needs less to do its job */
+  --card-shadow: 0 2px 4px rgb(28 25 23 / 0.07);
   --sidebar-bg: #f6f2ec;
   /* sidebar interaction ladder (#128), light side of the cds alpha ladder —
      warm-ink steps over the sidebar tone step, hover 5% / selected 10% */

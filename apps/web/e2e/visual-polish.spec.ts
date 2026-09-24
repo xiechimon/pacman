@@ -10,8 +10,14 @@ import { expect, test } from '@playwright/test';
 // recipe — a 1px inset box-shadow ring in the --border-default scale (no real
 // CSS border: at fractional page zoom a 1px border lands on fractional device
 // pixels and rasterizes unevenly), 12px radius, popover-tier soft shadow.
-// Each surface is asserted in both
-// themes — the polish is a dual-theme contract.
+// Issue #161 acceptance (卡片阴影/边框统一): the small-card family (todo /
+// notify banner / column container) shares a tighter card-tier shadow
+// (--card-shadow) so the cards read as grounded instead of floating;
+// the account popover stays on the popover-tier (--edge-shadow) because it
+// opens over content and needs visible separation. Both recipes share the
+// edge ring + 12px radius — the seam between the banner and the column
+// container is visually continuous.
+// Each surface is asserted in both themes — the polish is a dual-theme contract.
 
 /** resolved single-source ring + the --border-default color it must ride */
 async function edgeContract(page: import('@playwright/test').Page, selector: string) {
@@ -20,23 +26,33 @@ async function edgeContract(page: import('@playwright/test').Page, selector: str
     ringProbe.style.boxShadow = 'var(--edge-ring)';
     const colorProbe = document.createElement('div');
     colorProbe.style.backgroundColor = 'var(--border-default)';
-    document.body.append(ringProbe, colorProbe);
+    const cardShadowProbe = document.createElement('div');
+    cardShadowProbe.style.boxShadow = 'var(--card-shadow)';
+    const edgeShadowProbe = document.createElement('div');
+    edgeShadowProbe.style.boxShadow = 'var(--edge-shadow)';
+    document.body.append(ringProbe, colorProbe, cardShadowProbe, edgeShadowProbe);
     const cs = getComputedStyle(el);
     const out = {
       shadow: cs.boxShadow,
       ring: getComputedStyle(ringProbe).boxShadow,
       borderColor: getComputedStyle(colorProbe).backgroundColor,
+      cardShadow: getComputedStyle(cardShadowProbe).boxShadow,
+      edgeShadow: getComputedStyle(edgeShadowProbe).boxShadow,
       radius: cs.borderTopLeftRadius,
       border: cs.borderTopWidth,
     };
     ringProbe.remove();
     colorProbe.remove();
+    cardShadowProbe.remove();
+    edgeShadowProbe.remove();
     return out;
   });
 }
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`board card rides the single-source edge ring (${theme})`, async ({ page }) => {
+  test(`board card rides the single-source edge ring + card-tier shadow (${theme})`, async ({
+    page,
+  }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app?scenario=01');
 
@@ -49,9 +65,48 @@ for (const theme of ['light', 'dark'] as const) {
     // ring color is the --border-default scale of this theme
     expect(card.shadow.startsWith(card.ring)).toBe(true);
     expect(card.ring.startsWith(`${card.borderColor} `)).toBe(true);
+    // #161: the small-card tier rides --card-shadow (lighter than the
+    // popover-tier --edge-shadow) so the card reads as grounded, not floating
+    expect(card.shadow).toContain(card.cardShadow);
   });
 
-  test(`account popover rides the same edge ring as the card (${theme})`, async ({ page }) => {
+  test(`board column container rides the same edge ring + card-tier shadow (${theme})`, async ({
+    page,
+  }) => {
+    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
+    await page.goto('/app?scenario=01');
+
+    const column = await edgeContract(page, '.board-column');
+    // #161 通知条↔看板列边框对齐: the column container adopts the unified
+    // edge recipe — same inset ring, same 12px radius, same card-tier shadow
+    // as the banner and the todo card. The seam between them is continuous
+    expect(column.border).toBe('0px');
+    expect(column.radius).toBe('12px');
+    expect(column.shadow.startsWith(column.ring)).toBe(true);
+    expect(column.ring.startsWith(`${column.borderColor} `)).toBe(true);
+    expect(column.shadow).toContain(column.cardShadow);
+  });
+
+  test(`notify banner rides the same edge ring + card-tier shadow (${theme})`, async ({
+    page,
+  }) => {
+    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
+    await page.goto('/app?scenario=notify-banner');
+
+    const banner = await edgeContract(page, '.board-notify-banner');
+    // #161 通知条↔看板列边框对齐: the banner sits at the same elevation
+    // tier as the column container — same ring, same radius, same shadow —
+    // so the two surfaces read as one language
+    expect(banner.border).toBe('0px');
+    expect(banner.radius).toBe('12px');
+    expect(banner.shadow.startsWith(banner.ring)).toBe(true);
+    expect(banner.ring.startsWith(`${banner.borderColor} `)).toBe(true);
+    expect(banner.shadow).toContain(banner.cardShadow);
+  });
+
+  test(`account popover rides the same edge ring as the card but keeps popover-tier shadow (${theme})`, async ({
+    page,
+  }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=17');
 
@@ -60,6 +115,9 @@ for (const theme of ['light', 'dark'] as const) {
     expect(menu.radius).toBe('12px');
     expect(menu.shadow.startsWith(menu.ring)).toBe(true);
     expect(menu.ring.startsWith(`${menu.borderColor} `)).toBe(true);
+    // #161: the popover opens over content and needs visible separation,
+    // so it stays on the heavier --edge-shadow tier — NOT --card-shadow
+    expect(menu.shadow).toContain(menu.edgeShadow);
   });
 
   test(`sidebar reads as its own layer, seam drawn in the divider token (${theme})`, async ({ page }) => {
