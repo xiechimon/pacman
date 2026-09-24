@@ -1,9 +1,18 @@
 // Column view ordering (issue #73): failed / review-awaiting cards pin to
 // the TOP of 执行中 (changelog 2026-09-12: "stays pinned to the top of the
 // Building column"); everything else keeps manual/fixture order.
+import { BOARD_DROP_PHASES } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
 import { COLUMNS, sortColumnTodos, type BoardColumnDef } from '../src/board/columns.js';
 import { todo } from './helpers.js';
+
+// #160 手动改相面落点集单源对拍：server canManualMovePhase 消费 shared
+// BOARD_DROP_PHASES，web 列定义消费 COLUMNS[].dropPhase——两表必须同集。
+describe('手动改相面单源（#160）', () => {
+  test('六列 dropPhase 集 = shared BOARD_DROP_PHASES', () => {
+    expect(COLUMNS.map((c) => c.dropPhase).sort()).toEqual([...BOARD_DROP_PHASES].sort());
+  });
+});
 
 function col(id: string): BoardColumnDef {
   const found = COLUMNS.find((c) => c.id === id);
