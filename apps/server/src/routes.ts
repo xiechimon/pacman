@@ -102,6 +102,7 @@ import {
   updateMcpServer,
 } from './services/mcp-servers.js';
 import { PhaseTransitionError } from './services/phase.js';
+import { deleteProject } from './services/projects.js';
 import {
   createProvider,
   deleteProvider,
@@ -870,6 +871,16 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   });
 
   // —— PATCH / DELETE 面（[推断] REST 同名，02 §6.1/DELETE_FACE）—————————————————
+  // 删项目（#189 删除区复活前置）：级联语义单源 = services/projects.ts 头注；
+  // 危险操作区删除流 UI 证据 r2 24c，wire 未采（INFERRED_ROUTES 登记）。
+  app.delete('/api/projects/:id', (c) => {
+    const id = c.req.param('id');
+    if (!deleteProject({ db: ctx.db, reposDir: ctx.reposDir }, id)) {
+      throw notFound(`project ${id}`);
+    }
+    return c.body(null, 204);
+  });
+
   app.patch('/api/todos/:id', async (c) => {
     const id = c.req.param('id');
     const body = parseWith(patchTodoBodySchema, await jsonBody(c), 'body');

@@ -8,7 +8,7 @@
 // 文件浏览面（tree?ref=/file?path=&ref=，r3 §8.2）：读裸库，无检出要求；
 // 响应形状 [推断]（端点存在实测、载荷未采，04 附录 A 补采后收紧）。
 
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   conversationBranch,
@@ -82,6 +82,13 @@ export async function provisionHostedRepo(
   await systemGitOps.initBareRepo(dir);
   await systemGitOps.seedInitialCommit(dir, `init ${repoName}`);
   return dir;
+}
+
+/** 托管形态拆除（#189 删项目随行）：删本地 bare repo 目录。force 幂等——
+ * 目录缺位不阻断库面删除。repoName 复用安全是本动作的动机：uniqueRepoName
+ * 只查库行，目录残留会让同名新项目在旧库内容上 reinit/seed 冲突。 */
+export function removeHostedRepoDir(reposDir: string, teamId: string, repoName: string): void {
+  rmSync(repoDirFor(reposDir, teamId, repoName), { recursive: true, force: true });
 }
 
 /** 托管 clone URL（本地主机代位；origin = 请求源 [设计]——单机自 host，
