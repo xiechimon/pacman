@@ -44,6 +44,9 @@ interface DetailHeadProps {
   onAction: () => void;
   /** Scenario-frozen initial open state of the chip popover (#67). */
   chipPopoverOpen?: boolean;
+  /** #209: chip popover「编辑分配」入口——关 popover 后由页层开 agent 选择
+   *  弹层(弹层挂页层:popover 关即卸载,挂内层会被带走)。 */
+  onEditAssign?: () => void;
 }
 
 export function DetailHead({
@@ -55,6 +58,7 @@ export function DetailHead({
   onOverlay,
   onAction,
   chipPopoverOpen,
+  onEditAssign,
 }: DetailHeadProps) {
   const { t } = useI18n();
   const ui = PHASE_UI[phase ?? todo.phase];
@@ -81,7 +85,18 @@ export function DetailHead({
         </span>
         <OverlayMount open={popover}>
           <ClickCatcher onClose={() => setPopover(false)} />
-          <ChipPopover todo={todo} />
+          <ChipPopover
+            todo={todo}
+            onEditAssign={
+              onEditAssign == null
+                ? undefined
+                : () => {
+                    // 先关 popover 再开弹层:两 overlay 不叠(家族律单实例)。
+                    setPopover(false);
+                    onEditAssign();
+                  }
+            }
+          />
         </OverlayMount>
       </span>
 

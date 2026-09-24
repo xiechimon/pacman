@@ -18,9 +18,12 @@ import './overlays.css';
 
 interface ChipPopoverProps {
   todo: TodoRecord;
+  /** #209「编辑分配」接线:点击开 agent 选择弹层(#182 家族形态);弹层挂
+   *  在页层(popover 关即卸载,挂内层会被带走)。 */
+  onEditAssign?: () => void;
 }
 
-export function ChipPopover({ todo }: ChipPopoverProps) {
+export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
   const { t } = useI18n();
   return (
     <div className="chip-popover" role="dialog" aria-label={t('任务分配')}>
@@ -50,7 +53,7 @@ export function ChipPopover({ todo }: ChipPopoverProps) {
         </div>
       </div>
       <div className="chip-popover-divider" />
-      <button type="button" className="chip-popover-edit">
+      <button type="button" className="chip-popover-edit" onClick={onEditAssign}>
         <Settings width={14} height={14} />
         {t('编辑分配')}
       </button>

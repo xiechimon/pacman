@@ -44,6 +44,7 @@ import {
 } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { useConversationStream } from '../api/sse.js';
+import { ChiefAgentDialog, type ChiefAgentOption } from '../chief/chief-agent-dialog.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
 import { Composer } from '../detail/composer.js';
@@ -72,7 +73,14 @@ import { ChiefWake } from '../chief/chief-wake.js';
 import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import { overlayContent } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { readStoredTheme } from '../theme.js';
+
+/** #209 编辑分配弹层文案 [设计](r2 C.18:该弹层内容从未捕获;弹层形态复用
+ *  #182 选择 dialog 家族,title/confirmCopy 入参化)。<agent> 占位显示层
+ *  替换;i18n 键 = zh 原文。 */
+const ASSIGN_AGENT_DIALOG_TITLE = '选择执行 Agent';
+const ASSIGN_AGENT_REBIND_CONFIRM_COPY = '更换执行 Agent？后续运行将改由 <agent> 执行。';
 
 /** Reject-chain walk state (AC3): idle = the fixture's confirm surface;
  *  streaming = the replan round (r8 67); landed = v(N+1) 待确认 (r8 68);
@@ -124,6 +132,7 @@ export function TodoDetailPage() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { live, teamId, userName } = useLiveData();
+  const { t } = useI18n();
   // 文档|聊天 tabs (issue #56): 文档 = doc pane + chat column, 聊天 = chat
   // column alone. Pure render state — the captures all sit on 文档.
   const [tab, setTab] = useState<'doc' | 'chat'>('doc');
@@ -174,9 +183,12 @@ export function TodoDetailPage() {
   const [menu, setMenu] = useState<'versions' | 'compare' | undefined>(fixture.detail?.versionMenu);
   const [diff, setDiff] = useState(fixture.detail?.planDiff);
   const [chain, setChain] = useState<ChainState>('idle');
-  // live 面：变更 pane 展开态 + 版本对比开关（数据来自 documents/{id}/diff）。
+  // live 面:变更 pane 展开态 + 版本对比开关(数据来自 documents/{id}/diff)。
   const [changesExpanded, setChangesExpanded] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
+  // #209 编辑分配弹层开态——挂页层:chip popover 关即卸载(dhead
+  // OverlayMount),弹层挂其内会被带走。
+  const [assignOpen, setAssignOpen] = useState(false);
 
   const phase: Phase = todo?.phase ?? 'todo';
   const showsChanges = phase === 'review' || phase === 'done' || phase === 'failed';
@@ -283,6 +295,28 @@ export function TodoDetailPage() {
   );
 
   if (todo == null) return null;
+
+  // —— #209 编辑分配:chip popover「编辑分配」→ agent 选择弹层(#182 家族
+  // 形态)→ PATCH assignment.build 槽(执行对话选中行 = build 槽派生投影,
+  // services/todos.ts;server 槽级 merge #208 保 plan 槽)→ mutation 自带
+  // invalidateAll 重取回显。候选 = members 读面 memberType:"agent" 行
+  // (chief-settings 同投影);fixture 面 onBind 缺省 → accept 律(选择即关)。——
+  const assignOptions: ChiefAgentOption[] | undefined = live
+    ? (membersQ.data ?? [])
+        .filter((m) => m.memberType === 'agent')
+        .map((m) => ({
+          id: m.actorId,
+          name: (m.actor as { displayName?: string } | undefined)?.displayName ?? m.actorId,
+        }))
+    : undefined;
+  const bindAssign = live
+    ? (agentId: string) =>
+        mutations.patchTodo.mutate(
+          { id: todo.id, body: { assignment: { build: { agentId } } } },
+          { onSuccess: () => setAssignOpen(false) },
+        )
+    : undefined;
+
   const content = live
     ? wireTodo && buildId
       ? {
@@ -343,6 +377,7 @@ export function TodoDetailPage() {
             if (phase === 'failed') setOverlay({ kind: 'rerun' });
           }}
           chipPopoverOpen={fixture.ui?.chipPopoverOpen === true}
+          onEditAssign={() => setAssignOpen(true)}
         />
         {detail == null ? (
           <div className="detail-body detail-body--single">
@@ -532,6 +567,15 @@ export function TodoDetailPage() {
           }
         />
       )}
+      <ChiefAgentDialog
+        open={assignOpen}
+        onClose={() => setAssignOpen(false)}
+        agents={assignOptions}
+        boundAgentId={todo.agent?.id ?? null}
+        onBind={bindAssign}
+        title={t(ASSIGN_AGENT_DIALOG_TITLE)}
+        confirmCopy={ASSIGN_AGENT_REBIND_CONFIRM_COPY}
+      />
       <SearchPanel
         open={search.open}
         fixture={

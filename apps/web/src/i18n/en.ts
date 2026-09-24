@@ -321,6 +321,12 @@ export const EN: Record<string, string> = {
   保存章程: 'Save charter',
   '长期指令：模型路由规则（何种任务使用何种模型）、优先级、偏好…':
     'Long-term instructions: model routing rules (which model for which work), priorities, preferences…',
+  // #209 编辑分配接线：chip-popover「编辑分配」→ agent 选择弹层（#182 家族
+  // 形态复用）；弹层内容 r2 C.18 从未捕获，文案 [设计]，<agent> 占位显示层
+  // 替换。
+  '选择执行 Agent': 'Choose the executing Agent',
+  '更换执行 Agent？后续运行将改由 <agent> 执行。':
+    'Change the executing Agent? Future runs will be executed by <agent>.',
 
   // —— chrome carried inside fixture records (exact-value keys; user and
   // agent content is deliberately absent — it falls back to the zh
