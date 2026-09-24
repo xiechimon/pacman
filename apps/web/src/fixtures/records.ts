@@ -566,6 +566,9 @@ export interface ChiefContent {
   /** Agent bound to the chief: hides the gate bar, fills the model slot
    *  and swaps the header icon set (r5 100 vs 111/114). */
   bound: boolean;
+  /** #204 压缩模型槽值(settings Agent tab 选择器回显位,wire 形随 server
+   *  #203);缺省/null = 默认（与 Chief 相同）。 */
+  compactionModel?: { provider: string; modelId: string } | null;
   /** Model slot line when bound (`claude-sonnet-5 · 默认`); `n/a` else. */
   modelSlot?: string;
   /** Header thread-chip label (`新主题` on a fresh thread). */

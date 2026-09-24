@@ -5,19 +5,20 @@
 // #182 三钮接线:agent 行 = 选择总管 Agent dialog(清单 = members 读面
 // memberType:"agent" 行,r5 §1;选定 → PATCH chief agent 槽,换绑带二次
 // 确认 canon);章程编辑 = DialogShell 编辑弹窗(#180 裁决;保存 → PATCH
-// charter 槽)。压缩模型静态化(#177 目标分支同律):PATCH chief schema 核
-// 词表实测仅 agent/charter 两槽、无模型槽(DB chief 表同),票「以 server
-// schema 为权威」落账 → button→span,保捕获形状不再是死钮;#180 数据源裁
-// 决(providers 真值+presets 兜底)待 server 长出模型槽后启用。
+// charter 槽)。#204 压缩模型翻回交互(#182 曾静态化:当时 PATCH schema
+// 无模型槽;server #203 落 compactionModel 可空 JSON 槽 + PATCH 第三槽后
+// 启用)= ChiefModelSelect anchored popover,#180 数据源裁决(自定义
+// providers 真值 + presets 兜底)落账口径见 chief-model-select.tsx 文件头。
 
-import { BRAND } from '@pacman/shared';
+import { BRAND, type ChiefCompactionModel } from '@pacman/shared';
 import { useState } from 'react';
-import { useApiMutations, useChief, useMembers } from '../api/hooks.js';
+import { useApiMutations, useChief, useMembers, useProviders } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import type { ChiefContent, ChiefSettingsTab } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
-import { ChevronDown, ChevronLeft, ChevronRight, ChiefFaceDashed } from '../icons/index.js';
+import { ChevronLeft, ChevronRight, ChiefFaceDashed } from '../icons/index.js';
 import { ChiefAgentDialog, type ChiefAgentOption } from './chief-agent-dialog.js';
+import { type ChiefModelOption, ChiefModelSelect } from './chief-model-select.js';
 import './chief.css';
 import { EditCharterDialog } from './edit-charter-dialog.js';
 
@@ -37,6 +38,7 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
   const { live, teamId } = useLiveData();
   const chiefQ = useChief(teamId, live);
   const membersQ = useMembers(teamId, live);
+  const providersQ = useProviders(teamId, live);
   const mutations = useApiMutations(teamId);
   const charter = live ? (chiefQ.data?.chief.charter ?? '') : '';
   const boundAgent =
@@ -66,6 +68,27 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
   const saveCharter = live
     ? (value: string) =>
         mutations.patchChief.mutate({ charter: value }, { onSuccess: () => setCharterOpen(false) })
+    : undefined;
+  // #204 压缩模型(#180 裁决落账):live 值 = chief 封套真值(null = 默认);
+  // 选项 = 自定义 providers 读面投影(查询未决 = 空清单,不退 fixture
+  // canon);选定 = PATCH compactionModel 槽(null = 清空回默认),invalidateAll
+  // 重取回显——选择即关,不持本地乐观态(S8)。
+  const compaction = live
+    ? (chiefQ.data?.chief.compactionModel ?? null)
+    : (chief.compactionModel ?? null);
+  const modelOptions: ChiefModelOption[] | undefined = live
+    ? (providersQ.data?.providers ?? []).flatMap((p) =>
+        p.models.map((m) => ({
+          provider: p.providerId,
+          providerLabel: p.label,
+          modelId: m.id,
+          modelName: m.name,
+        })),
+      )
+    : undefined;
+  const pickModel = live
+    ? (value: ChiefCompactionModel | null) =>
+        mutations.patchChief.mutate({ compactionModel: value })
     : undefined;
   return (
     <div className="chief-settings">
@@ -114,12 +137,9 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
                   )}
                 </p>
               </div>
-              {/* #182 静态化(无模型槽可持久化,见文件头):span 非 button,
-                  chevron 保 r5 101 捕获形状——非交互元素,不再是死钮。 */}
-              <span className="chief-select">
-                <span>{t('默认（与 Chief 相同）')}</span>
-                <ChevronDown width={12} height={12} />
-              </span>
+              {/* #204 翻回交互(server #203 槽就位,见文件头):ChiefModelSelect
+                  保 r5 101 捕获 select 形状(button + chevron)。 */}
+              <ChiefModelSelect value={compaction} options={modelOptions} onPick={pickModel} />
             </div>
           </>
         )}

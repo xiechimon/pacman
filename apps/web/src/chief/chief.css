@@ -518,8 +518,15 @@
   color: var(--text-tertiary);
 }
 
-.chief-select {
+/* #204 压缩模型选择器:wrap = 锚点(new-task-project-wrap 同律),触发钮保
+   r5 101 捕获 select 形状;菜单 = anchored popover 家族几何语言。 */
+.chief-model-wrap {
   margin-left: auto;
+  position: relative;
+  flex: none;
+}
+
+.chief-select {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -530,14 +537,70 @@
   border: 1px solid var(--border-default);
   border-radius: 8px;
   background: var(--surface);
+  font: inherit;
   font-size: 13px;
   color: var(--text-primary);
-  /* #182 静态化(PATCH chief 无模型槽):span 非交互元素,cursor 不再撒谎。 */
-  cursor: default;
-  flex: none;
+  cursor: pointer;
 }
 
 .chief-select svg {
+  color: var(--text-tertiary);
+}
+
+.chief-model-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  min-width: 220px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  background: var(--popover-bg);
+  border-radius: 10px;
+  box-shadow: var(--fab-shadow);
+  /* 家族层律:30 压 catcher(29),见 overlays/dismiss.tsx。 */
+  z-index: 30;
+}
+
+.chief-model-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.chief-model-row:hover {
+  background: var(--surface-secondary);
+}
+
+/* name 弹性占位:provider 后缀与 check 钉右缘(默认行无后缀亦同)。 */
+.chief-model-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chief-model-row-provider {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+.chief-model-check {
+  display: inline-flex;
+  flex: none;
   color: var(--text-tertiary);
 }
 
