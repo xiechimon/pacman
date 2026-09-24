@@ -87,6 +87,7 @@ test('icon + apple-touch-icon carry prefers-color-scheme variants that resolve',
     })),
   );
   expect(links).toEqual([
+    { rel: 'icon', href: '/logo.svg', media: null },
     { rel: 'icon', href: '/icon-192-dark.png', media: '(prefers-color-scheme: dark)' },
     { rel: 'icon', href: '/icon-192-light.png', media: '(prefers-color-scheme: light)' },
     { rel: 'apple-touch-icon', href: '/icon-192-dark.png', media: '(prefers-color-scheme: dark)' },
@@ -100,6 +101,6 @@ test('icon + apple-touch-icon carry prefers-color-scheme variants that resolve',
   for (const { href } of links) {
     const res = await page.request.get(href);
     expect(res.ok()).toBe(true);
-    expect(res.headers()['content-type']).toContain('image/png');
+    expect(res.headers()['content-type']).toContain('image/');
   }
 });
