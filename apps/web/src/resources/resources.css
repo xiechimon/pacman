@@ -25,7 +25,10 @@
   height: 44px;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--card-border);
+  /* #135: normalized from --card-border to the divider token — the
+     full-width top line must read one color across the sidebar seam
+     (the two tokens only differ by 1 in the light theme) */
+  border-bottom: 1px solid var(--border-default);
 }
 
 .res-back {

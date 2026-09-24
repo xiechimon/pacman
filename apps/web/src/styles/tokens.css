@@ -65,13 +65,11 @@
      shadow-color 24% black pair */
   --card-edge: rgb(255 255 255 / 0.08);
   --card-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 4px 16px rgb(0 0 0 / 0.24);
-  /* sidebar layer (#123, claude.ai dframe sidebar 参照): the sidebar reads
-     as its own chrome layer — one tone step off the canvas (cds sidebar
-     rides its own surface mix) with a soft edge shadow onto the canvas in
-     place of a drawn seam line (the cds dframe sidebar carries
-     --df-shadow-card against the content, no hard border) */
+  /* sidebar layer (#123 tone step; #135 裁决 v2): the sidebar keeps its
+     one-tone-off-canvas chrome layer, but the seam returns to the r7
+     original law — a drawn 1px --border-default line in place of the #123
+     soft edge shadow; the shadow token is gone with its only consumer */
   --sidebar-bg: #1c1c1f;
-  --sidebar-shadow: 8px 0 24px -12px rgb(0 0 0 / 0.5);
   /* sidebar interaction ladder (#128, claude.ai cds 参照): the row hover /
      selected pills ride the cds alpha ladder over the #123 sidebar tone
      step (bg-neutral family = neutral-900 at 5% / 10%, dark inverting to
@@ -215,11 +213,10 @@
   /* card texture + sidebar layer (#123), light side of the cds reference —
      warm-ink alpha ring at 8% and the same two-layer soft shadow dimmed to
      the light surface; sidebar tone step sits between --surface and the
-     column fill so the seam reads without a drawn line */
+     column fill, the seam itself a drawn 1px line again (#135 裁决 v2) */
   --card-edge: rgb(28 25 23 / 0.08);
   --card-shadow: 0 1px 2px rgb(28 25 23 / 0.04), 0 4px 16px rgb(28 25 23 / 0.06);
   --sidebar-bg: #f6f2ec;
-  --sidebar-shadow: 8px 0 24px -12px rgb(28 25 23 / 0.08);
   /* sidebar interaction ladder (#128), light side of the cds alpha ladder —
      warm-ink steps over the sidebar tone step, hover 5% / selected 10% */
   --sidebar-hover: rgb(28 25 23 / 0.05);
