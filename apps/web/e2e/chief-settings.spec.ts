@@ -6,8 +6,10 @@ import { expect, type Page, test } from '@playwright/test';
 //    关窗。换绑二次确认(live-only 路径,fixture 恒未绑定)归 live 真机验。
 // 2. 章程编辑 → DialogShell 编辑弹窗:textarea 占位 r5 102/110 canon +
 //    取消/保存章程;fixture 保存 = accept 律关窗。
-// 3. 压缩模型静态化(#177 目标分支同律):PATCH chief schema 实测仅
-//    agent/charter 两槽(无模型槽),span 非 button,点击不开任何弹层。
+// 3. 压缩模型 #204 翻回交互(server #203 compactionModel 槽就位):button
+//    开 anchored popover(OverlayMount + ClickCatcher + Esc 家族律),
+//    fixture 面清单 = 默认行 + canon 单行(r3-gw/claude-sonnet-5),选定 =
+//    accept 律关面。live PATCH 写读回归归 live 真机验。
 
 const AGENT_TAB = '/app?scenario=101';
 const CHARTER_TAB = '/app?scenario=102';
@@ -109,12 +111,43 @@ test('fixture charter save closes the dialog (accept 律)', async ({ page }) => 
   await expect(page.locator('.dlg')).toBeHidden();
 });
 
-test('压缩模型 static-ified: span not button, click opens nothing', async ({ page }) => {
+async function openModelMenu(page: Page) {
   await page.goto(AGENT_TAB);
-  const select = page.locator('span.chief-select');
+  const select = page.locator('button.chief-select');
   await expect(select).toBeVisible();
   await expect(select).toContainText('默认（与 Chief 相同）');
-  await expect(page.locator('button.chief-select')).toHaveCount(0);
   await select.click();
-  await expect(page.locator('[role="dialog"], .new-task-project-menu')).toHaveCount(0);
+  const menu = page.locator('.chief-model-menu');
+  await expect(menu).toBeVisible();
+  return { select, menu };
+}
+
+test('压缩模型 interactive (#204): button opens the anchored model menu', async ({ page }) => {
+  const { menu } = await openModelMenu(page);
+  // span 静态化已翻回(button 才是选择器);清单 = 默认行 + fixture canon 单行。
+  await expect(page.locator('span.chief-select')).toHaveCount(0);
+  await expect(menu).toHaveAttribute('role', 'listbox');
+  await expect(menu.locator('.chief-model-row')).toHaveCount(2);
+  await expect(menu.locator('.chief-model-row').nth(0)).toContainText('默认（与 Chief 相同）');
+  await expect(menu.locator('.chief-model-row').nth(0)).toHaveAttribute('aria-selected', 'true');
+  await expect(menu.locator('.chief-model-row').nth(1)).toContainText('claude-sonnet-5');
+  await expect(menu.locator('.chief-model-row-provider')).toHaveText('r3-gw');
+});
+
+test('压缩模型 menu family law (#204): Escape and outside click dismiss', async ({ page }) => {
+  let menu = (await openModelMenu(page)).menu;
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+
+  menu = (await openModelMenu(page)).menu;
+  await page.mouse.click(20, 20);
+  await expect(menu).toBeHidden();
+});
+
+test('压缩模型 fixture pick = accept 律:选择即关 (#204)', async ({ page }) => {
+  const { select, menu } = await openModelMenu(page);
+  await menu.locator('.chief-model-row').nth(1).click();
+  await expect(page.locator('.chief-model-menu')).toBeHidden();
+  // fixture 面无 mutation:select 回显保持 canon 默认文案。
+  await expect(select).toContainText('默认（与 Chief 相同）');
 });
