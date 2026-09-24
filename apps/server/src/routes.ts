@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import {
   type AgentRecord,
   apiKeyRecordSchema,
+  assignmentSlotSchema,
   BRAND,
   type BuildRecord,
   buildStepActionBodySchema,
@@ -140,6 +141,14 @@ const patchTodoBodySchema = z.object({
   phase: phaseSchema.optional(),
   tagIds: z.array(z.string()).optional(),
   orderIndex: z.number().optional(),
+  // 指派双槽（#208「编辑分配」）：槽位词表复用 shared assignmentSlotSchema
+  // （02 §6.2）；槽级 optional = 槽级 merge，未提供的槽保持现状。
+  assignment: z
+    .object({
+      plan: assignmentSlotSchema.optional(),
+      build: assignmentSlotSchema.optional(),
+    })
+    .optional(),
 });
 
 /** POST /api/projects body [推断]（项目创建流两分支 UI 按 r2 §9 D 组截图为靶，

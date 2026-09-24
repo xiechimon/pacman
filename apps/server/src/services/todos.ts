@@ -5,7 +5,7 @@
 // agent 行）、buildHistory（build 表投影 {buildId, createdAt}，records/todo.ts
 // 最小投影 [推断]）。
 
-import type { Phase, TodoRecord, UserRecord } from '@pacman/shared';
+import type { Assignment, Phase, TodoRecord, UserRecord } from '@pacman/shared';
 import { and, asc, eq, inArray, max, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { agent, build, step, todo, todoTag } from '../db/schema.js';
@@ -178,6 +178,12 @@ export function updateTodo(
     phase?: Phase;
     tagIds?: string[];
     orderIndex?: number;
+    /** 指派槽级 patch（#208「编辑分配」）：提供的槽覆盖，未提供的槽保持现状；
+     * 槽形状 = shared assignmentSlotSchema（02 §6.2 双槽词表）。 */
+    assignment?: {
+      plan?: NonNullable<Assignment['plan']>;
+      build?: NonNullable<Assignment['build']>;
+    };
   },
   /** manualPhase = HTTP PATCH 面（#160 看板拖拽手动改相）：目标 ∈ 六列
    *  dropPhase 时绕过系统漏斗（phase.ts canManualMovePhase）；内部流不传。 */
@@ -191,6 +197,20 @@ export function updateTodo(
   if (patch.title !== undefined) sets.title = patch.title;
   if (patch.spec !== undefined) sets.spec = patch.spec;
   if (patch.orderIndex !== undefined) sets.orderIndex = patch.orderIndex;
+  if (patch.assignment !== undefined) {
+    // 槽级 merge：未提供的槽保持现状（字段级 patch 语义延伸）。真值 = todo 表
+    // JSON 列（db/schema.ts assignment 列），agent 投影随 build 槽自动派生。
+    sets.assignment = {
+      plan:
+        patch.assignment.plan !== undefined
+          ? patch.assignment.plan
+          : (row.assignment?.plan ?? null),
+      build:
+        patch.assignment.build !== undefined
+          ? patch.assignment.build
+          : (row.assignment?.build ?? null),
+    };
+  }
   let manualPhaseApplied = false;
   if (patch.phase !== undefined && patch.phase !== row.phase) {
     manualPhaseApplied = opts.manualPhase === true && canManualMovePhase(row.phase, patch.phase);
