@@ -14,7 +14,7 @@ import { triggerChiefWakes } from './chief.js';
 import type { TeamStreamHub } from './events.js';
 import type { MachineWakeHub } from './machines.js';
 import { notifyTodoPhase } from './notifications.js';
-import { assertPhaseTransition } from './phase.js';
+import { assertPhaseTransition, canManualMovePhase } from './phase.js';
 
 type TodoRow = typeof todo.$inferSelect;
 
@@ -179,6 +179,9 @@ export function updateTodo(
     tagIds?: string[];
     orderIndex?: number;
   },
+  /** manualPhase = HTTP PATCH 面（#160 看板拖拽手动改相）：目标 ∈ 六列
+   *  dropPhase 时绕过系统漏斗（phase.ts canManualMovePhase）；内部流不传。 */
+  opts: { manualPhase?: boolean } = {},
 ): TodoRecord | null {
   const { db, hub } = deps;
   const row = getRow(deps, id);
@@ -188,8 +191,10 @@ export function updateTodo(
   if (patch.title !== undefined) sets.title = patch.title;
   if (patch.spec !== undefined) sets.spec = patch.spec;
   if (patch.orderIndex !== undefined) sets.orderIndex = patch.orderIndex;
+  let manualPhaseApplied = false;
   if (patch.phase !== undefined && patch.phase !== row.phase) {
-    assertPhaseTransition(row.phase, patch.phase);
+    manualPhaseApplied = opts.manualPhase === true && canManualMovePhase(row.phase, patch.phase);
+    if (!manualPhaseApplied) assertPhaseTransition(row.phase, patch.phase);
     sets.phase = patch.phase;
     sets.phaseAt = nowMs();
   }
@@ -213,7 +218,11 @@ export function updateTodo(
   const record = getTodo(deps, id);
   if (!record) return null;
   hub.publishTodoDoc(record.teamId, record);
-  if (patch.phase !== undefined) notifyPhaseEntry(deps, record, row.phase, patch.phase);
+  // 手动改相（#160 拖拽）不挂 phase 进入通知/chief wake：拖到待验收 ≠
+  // 「改动就绪」，拖到已完成 ≠ 合并落地——系统漏斗流转才触发（02 §9.1）
+  if (patch.phase !== undefined && !manualPhaseApplied) {
+    notifyPhaseEntry(deps, record, row.phase, patch.phase);
+  }
   return record;
 }
 

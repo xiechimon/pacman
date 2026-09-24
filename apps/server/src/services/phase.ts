@@ -12,7 +12,7 @@
 // r1 §443）、closed→todo（reopen，MCP reopen_todos r5 §3.1）。未直接观测的边
 // 标 [推断]（04 §3 不判负）。
 
-import type { Phase } from '@pacman/shared';
+import { BOARD_DROP_PHASES, type Phase } from '@pacman/shared';
 
 export const PHASE_TRANSITIONS: Readonly<Record<Phase, readonly Phase[]>> = {
   todo: ['queued', 'closed'],
@@ -35,6 +35,16 @@ export const PHASE_TRANSITIONS: Readonly<Record<Phase, readonly Phase[]>> = {
 
 export function canTransitionPhase(from: Phase, to: Phase): boolean {
   return PHASE_TRANSITIONS[from].includes(to);
+}
+
+/** 手动改相面（#160 看板拖拽）：HTTP PATCH phase = 用户手动列迁移
+ *  （onboarding P2 r3 §3.10「在桌面端可将卡片直接拖拽至目标列」）。
+ *  落点集单源 = shared BOARD_DROP_PHASES（六列 dropPhase；closed 不占列
+ *  故不可作源或落点）；系统流（setTodoPhase / MCP update_todo）仍走上方
+ *  漏斗不变。[设计]——官方 PATCH wire 未抓（r3 §3.10 合成拖拽未复现），
+ *  手动面语义为复刻裁定。 */
+export function canManualMovePhase(from: Phase, to: Phase): boolean {
+  return from !== to && from !== 'closed' && BOARD_DROP_PHASES.includes(to);
 }
 
 /** 非法流转 = 409 语义（错误形状 {error}，r5 §1 实测族）。 */

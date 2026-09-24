@@ -306,20 +306,39 @@ describe('todo CRUD（demo 面：curl 增删改查）', () => {
     const doc = todoRecordSchema.parse(await patched.json());
     expect(doc.title).toBe('a2');
     expect(doc.v).toBe(created.v + 1);
-    // todo→done 为非法边（流转表 02 §4.1）→ 409 {error}
-    await expectErrorShape(
-      await req(s.app, 'PATCH', `/api/todos/${created.id}`, { phase: 'done' }),
-      409,
-    );
     // close / reopen（r1 §443 / reopen [推断]）
     const closed = todoRecordSchema.parse(
       await (await req(s.app, 'PATCH', `/api/todos/${created.id}`, { phase: 'closed' })).json(),
     );
     expect(closed.phase).toBe('closed');
+    // closed 不占列 = 不可作手动改相源（shared BOARD_DROP_PHASES 单源）；
+    // 漏斗 closed 出边仅 todo → 其余目标 409
+    await expectErrorShape(
+      await req(s.app, 'PATCH', `/api/todos/${created.id}`, { phase: 'planning' }),
+      409,
+    );
     const reopened = todoRecordSchema.parse(
       await (await req(s.app, 'PATCH', `/api/todos/${created.id}`, { phase: 'todo' })).json(),
     );
     expect(reopened.phase).toBe('todo');
+    // 手动改相面（#160 看板拖拽）：PATCH phase 目标 ∈ 看板六列 dropPhase =
+    // 用户手动列迁移（onboarding P2 r3 §3.10「拖拽至目标列」），漏斗非法边
+    // 也放行；系统流（builds/MCP）仍走 02 §4.1 漏斗不变。
+    const moved = todoRecordSchema.parse(
+      await (await req(s.app, 'PATCH', `/api/todos/${created.id}`, { phase: 'done' })).json(),
+    );
+    expect(moved.phase).toBe('done');
+    expect(moved.v).toBe(reopened.v + 1);
+    // 非列目标且漏斗非法边 → 409 {error}（done 出边仅 queued，failed 无列位）
+    await expectErrorShape(
+      await req(s.app, 'PATCH', `/api/todos/${created.id}`, { phase: 'failed' }),
+      409,
+    );
+    // 列内排序位（01 §4.1 拖拽面 orderIndex）独立落盘
+    const reordered = todoRecordSchema.parse(
+      await (await req(s.app, 'PATCH', `/api/todos/${created.id}`, { orderIndex: 5 })).json(),
+    );
+    expect(reordered.orderIndex).toBe(5);
   });
 
   test('删：DELETE todos/{id} → 204；再读 404；再删 404', async () => {
