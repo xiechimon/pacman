@@ -27,14 +27,42 @@ mkdirSync(OUT, { recursive: true });
 const SCALES = [1, 1.1, 1.25, 1.5];
 
 function decodePng(file) {
-  const raw = resolve(OUT, `${file.split('/').pop().replace(/\.png$/, '')}.raw`);
+  const raw = resolve(
+    OUT,
+    `${file
+      .split('/')
+      .pop()
+      .replace(/\.png$/, '')}.raw`,
+  );
   const probe = spawnSync(
     'ffprobe',
-    ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', file],
+    [
+      '-v',
+      'error',
+      '-select_streams',
+      'v:0',
+      '-show_entries',
+      'stream=width,height',
+      '-of',
+      'csv=p=0',
+      file,
+    ],
     { encoding: 'utf8' },
   );
   const [w, h] = probe.stdout.trim().split(',').map(Number);
-  spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', file, '-f', 'rawvideo', '-pix_fmt', 'rgb24', raw]);
+  spawnSync('ffmpeg', [
+    '-hide_banner',
+    '-loglevel',
+    'error',
+    '-y',
+    '-i',
+    file,
+    '-f',
+    'rawvideo',
+    '-pix_fmt',
+    'rgb24',
+    raw,
+  ]);
   return { w, h, data: readFileSync(raw) };
 }
 
@@ -127,7 +155,8 @@ for (const scale of SCALES) {
       const y = Math.round((box.y + box.height / 2) * scale);
       const left = edgeContrast(img, box.x * scale, y, fill);
       const right = edgeContrast(img, (box.x + box.width) * scale - 1, y, fill);
-      const ratio = left === 0 && right === 0 ? 1 : Math.min(left, right) / Math.max(left, right, 1);
+      const ratio =
+        left === 0 && right === 0 ? 1 : Math.min(left, right) / Math.max(left, right, 1);
       // border integrity also means the whole outline is on-screen: browser
       // zoom shrinks the css viewport, so a fixed-position panel can lose its
       // bottom border below the fold (the #139 dogfood symptom at 110%+)
