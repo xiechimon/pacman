@@ -272,10 +272,6 @@ export const EN: Record<string, string> = {
   标签: 'Tags',
   'Pacman 托管': 'Pacman hosted',
   目标分支: 'Target branch',
-  危险操作: 'Danger zone',
-  删除项目: 'Delete project',
-  '将永久删除所有任务与执行记录，此操作不可恢复。':
-    'Permanently deletes all todos and run records. This cannot be undone.',
 
   // —— chief drawer / settings (r5 100–116) ——
   主题: 'Thread',

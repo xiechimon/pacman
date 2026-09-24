@@ -1,7 +1,12 @@
-// Project settings route (issue #71, r2 24c): 基本信息|仓库|标签 tab group,
-// one card — avatar circle + 更换 link, then 名称/仓库/目标分支/描述 rows —
-// and the 危险操作 card with the 删除项目 primary-danger button (24d dialog
-// is an overlay ticket, not this route).
+// Project settings route (issue #71, r2 24c): 基本信息|仓库|标签 tab group
+// and one card — avatar circle + 更换 link, then 名称/仓库/目标分支/描述 rows.
+// #177 (local-first 裁决, endpoint 实测): no project mutation endpoint exists
+// anywhere in the stack — no PATCH, no DELETE /api/projects/:id, and the
+// schema has no defaultBranch column — so the route's three dead buttons
+// resolve wontfix: 更换 stays capture-verbatim chrome (#148 account-swap
+// precedent), 目标分支 becomes a static chip (#149 branch-chip precedent),
+// and the danger card is removed outright (#148 退出登录 box / #149 导出
+// precedent; the ticket premise that DELETE exists did not survive a grep).
 import { useState } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import { useProjects } from '../api/hooks.js';
@@ -53,6 +58,9 @@ export function ProjectSettingsPage() {
         <div className="prj-set-card">
           <div className="prj-set-head">
             <span className="prj-set-avatar">{PROJECT_INITIAL}</span>
+            {/* wontfix (#177, #148 account-swap 同律): the avatar is the
+                static PROJECT_INITIAL asset — no upload face exists or will;
+                the 更换 ink stays as capture-verbatim chrome. */}
             <button type="button" className="prj-set-change">
               {t('更换')}
             </button>
@@ -74,10 +82,13 @@ export function ProjectSettingsPage() {
           <div className="prj-set-row">
             <span className="prj-set-label">{t('目标分支')}</span>
             <span className="prj-set-value">
-              <button type="button" className="prj-set-branch">
+              {/* 分支 chip = 静态展示(#177 裁决,#149 分支 chip 同律): schema
+                  无 defaultBranch 列、无 PATCH 端点,读面固定 main;chevron 保
+                  r2 24c 捕获形状。非交互元素——不再是死钮。 */}
+              <span className="prj-set-branch">
                 {project?.defaultBranch ?? 'main'}
                 <ChevronDown width={12} height={12} />
-              </button>
+              </span>
             </span>
           </div>
           <div className="prj-set-row">
@@ -88,16 +99,9 @@ export function ProjectSettingsPage() {
             </span>
           </div>
         </div>
-        <div className="prj-set-danger-label">{t('危险操作')}</div>
-        <div className="prj-set-card prj-set-card--danger">
-          <div className="prj-set-danger-title">{t('删除项目')}</div>
-          <div className="prj-set-danger-desc">
-            {t('将永久删除所有任务与执行记录，此操作不可恢复。')}
-          </div>
-          <button type="button" className="prj-set-delete">
-            {t('删除')}
-          </button>
-        </div>
+        {/* 危险操作区整除(#177 wontfix): 全栈无 DELETE /api/projects/:id
+            ——票面前提「端点在」实测不在;#148 退出登录 box、#149 导出钮
+            同律全除,en.ts 三键随除。删项目端点落地后由新票复活此区。 */}
       </div>
     </PageShell>
   );
