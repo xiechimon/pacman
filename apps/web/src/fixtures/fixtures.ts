@@ -260,6 +260,18 @@ export const boardDefault: FixtureSet = {
   project: projectContent,
 };
 
+/** #176 项目选择器面(new-task dialog 项目 chip 下拉):boardDefault 面加
+ *  projectNames 双项目——r3-lifecycle + r2-inventory(24b 注记的 r2 会话第
+ *  二项目),给选择器多行数据位(records.ts projectNames = 卡面/搜索/新建
+ *  dialog 的项目名位)。命名场景无 capture,e2e 专用,不进 parity 矩阵。 */
+export const boardProjectPicker: FixtureSet = {
+  ...boardDefault,
+  projectNames: {
+    [PROJECT_ID]: PROJECT_NAME,
+    'r2-inventory': 'r2-inventory',
+  },
+};
+
 /** Board with the probe in the given phase (r7 02/22/21/33 …). The dark
  *  board pair (02/02b) shows `9 分钟前` on the confirm card → captured
  *  ~13:35 with phaseAt 13:26. Done-phase boards (35/35d) list #9 ahead of

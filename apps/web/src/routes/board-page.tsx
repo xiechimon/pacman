@@ -120,10 +120,11 @@ export function BoardPage() {
   );
 
   const createTodo = useCallback(
-    (title: string) => {
+    (title: string, selectedProjectId?: string) => {
       setNewTaskOpen(false);
       if (live) {
-        const projectId = projectsQ.data?.[0]?.id;
+        // #176: dialog 选中项目优先;未选(空集/查询未决)退首行真值
+        const projectId = selectedProjectId ?? projectsQ.data?.[0]?.id;
         if (projectId) {
           mutations.createTodo.mutate({ projectId, title, spec: title });
           return;
@@ -141,7 +142,9 @@ export function BoardPage() {
       setFixtureTodos((prev) => [
         ...prev,
         // fixture.now is the session's reference instant, so the fresh
-        // card reads 刚刚 against the same clock as the frozen labels
+        // card reads 刚刚 against the same clock as the frozen labels.
+        // fixture 面 localTodo 保持 canon projectId(approximation,选择
+        // 是纯表单 state 无 mutation,#176 票面 live 语义)。
         localTodo(prev.reduce((max, t) => Math.max(max, t.seqNum), 0) + 1, title, fixture.now),
       ]);
     },
@@ -151,7 +154,7 @@ export function BoardPage() {
   // 保存并开始（r2 §4.2 双钮语义，M5 live）：创建 → POST builds（withPlan，
   // 首 Agent 双槽指派 [设计]）。fixture 面 = 同 保存。
   const createAndStart = useCallback(
-    (title: string) => {
+    (title: string, selectedProjectId?: string) => {
       setNewTaskOpen(false);
       if (!live) {
         createTodo(title);
@@ -173,7 +176,7 @@ export function BoardPage() {
               }),
           },
         );
-      const projectId = projectsQ.data?.[0]?.id;
+      const projectId = selectedProjectId ?? projectsQ.data?.[0]?.id;
       if (projectId) start(projectId);
       else
         mutations.createProject.mutate(
@@ -249,6 +252,14 @@ export function BoardPage() {
     if (!live) return undefined;
     return Object.fromEntries((projectsQ.data ?? []).map((p) => [p.id, p.name]));
   }, [live, projectsQ.data]);
+  // #176 新建任务 dialog 项目选择器数据位:live = projectsQ 真值投影
+  // (undefined = 查询未决);fixture = scenario projectNames(缺省 =
+  // undefined → dialog 退 canon 单默认项目)。选择是纯表单 state。
+  const projectRows = useMemo(() => {
+    if (live) return projectsQ.data?.map((p) => ({ id: p.id, name: p.name }));
+    if (fixture.projectNames == null) return undefined;
+    return Object.entries(fixture.projectNames).map(([id, name]) => ({ id, name }));
+  }, [live, projectsQ.data, fixture.projectNames]);
   const fixtureWithTodos: FixtureSet = live
     ? { ...fixture, todos, now: Date.now(), ...(projectNames ? { projectNames } : {}) }
     : { ...fixture, todos };
@@ -311,7 +322,7 @@ export function BoardPage() {
         onClose={() => setNewTaskOpen(false)}
         onSave={createTodo}
         onSaveAndStart={live ? createAndStart : undefined}
-        projectName={live ? projectsQ.data?.[0]?.name : undefined}
+        projects={projectRows}
       />
       <button
         type="button"
