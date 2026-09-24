@@ -5066,6 +5066,11 @@ exports[`协议词表快照（02 §5/§6 canonical） > localStorage 键名契�
       "valueShape": "grid | chart",
     },
     {
+      "key": "pacman.projectTasksLayout",
+      "source": "[推断] #178（project 任务页视图切换，与 teamMembersLayout 同形；原键未观测）",
+      "valueShape": "list | grid",
+    },
+    {
       "key": "pacman.cache.session-v1",
       "source": "r2 §1.5",
       "valueShape": "{token:"",cookieName:"",expiresAt,user{…}}——会话走 cookie，token 字段留空",

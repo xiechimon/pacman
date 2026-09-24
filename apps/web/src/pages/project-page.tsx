@@ -3,17 +3,23 @@
 // pane (branch chip + 文件|历史 segment + file rows, r2 07e/24) beside the
 // 请选择一个文件查看 placeholder; 任务 = search/filter/sort toolbar + view
 // toggle + todo rows (r2 26) or the 暂无内容 empty state (r2 24b).
-import { useState } from 'react';
+// #178: the toolbar is live — the list|grid toggle persists through the
+// registered client-state key (pacman.projectTasksLayout, the
+// teamMembersLayout twin), 筛选/排序 open anchored popovers (family law
+// #67/#127) driving client-side filter/sort, and the search box filters
+// by title.
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import { useProjectCommits, useProjects, useProjectTree, useTodos } from '../api/hooks.js';
 import { mapCommits, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
-import type { ProjectCommitRow, ProjectContent } from '../fixtures/records.js';
+import type { Phase, ProjectCommitRow, ProjectContent } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import {
   ArrowUpDown,
+  Check,
   ChevronDown,
   FileTab,
   Funnel,
@@ -23,6 +29,7 @@ import {
   PlusSmall,
   Search,
 } from '../icons/index.js';
+import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { PageShell } from './shell.js';
 import './pages.css';
 
@@ -102,40 +109,213 @@ function FilesPane({
   );
 }
 
-function TasksPane({
-  todos,
-  now,
+/** #178 view-switch client-state key, [推断] same shape as the r2 §1.5
+ *  observed pacman.teamMembersLayout (registered in shared
+ *  protocol/client-state.ts); absent = list. */
+export const PROJECT_TASKS_LAYOUT_STORAGE_KEY = 'pacman.projectTasksLayout';
+
+type TasksLayout = 'list' | 'grid';
+type TaskFilter = 'all' | 'active' | 'done';
+type TaskSort = 'default' | 'recent' | 'title';
+
+interface TaskRow {
+  id: string;
+  title: string;
+  phase: Phase;
+  phaseAt: number;
+}
+
+function readStoredLayout(storage: Storage): TasksLayout {
+  return storage.getItem(PROJECT_TASKS_LAYOUT_STORAGE_KEY) === 'grid' ? 'grid' : 'list';
+}
+
+/** 筛选最小集 [推断]（票面：全部/进行中/已完成，核 phase 九值）：已完成
+ *  = done 单值（02 §4.1「已接受，若选了则已合并」）；进行中 = 其余八值
+ *  ——closed「未完成即搁置」归未完成侧，不造第三档。 */
+function filterOk(phase: Phase, filter: TaskFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'done') return phase === 'done';
+  return phase !== 'done';
+}
+
+/** 排序三值 [推断]：默认 = 数据源序（fixture 冻结序 / server 返回序），
+ *  最近更新 = phaseAt 降序（行面相对时间的数据同源），标题 = 升序。 */
+function sortTodos(rows: TaskRow[], sort: TaskSort): TaskRow[] {
+  if (sort === 'recent') return [...rows].sort((a, b) => b.phaseAt - a.phaseAt);
+  if (sort === 'title') return [...rows].sort((a, b) => a.title.localeCompare(b.title, 'zh'));
+  return rows;
+}
+
+const TASK_FILTERS: { id: TaskFilter; label: string }[] = [
+  { id: 'all', label: '全部' },
+  { id: 'active', label: '进行中' },
+  { id: 'done', label: '已完成' },
+];
+
+const TASK_SORTS: { id: TaskSort; label: string }[] = [
+  { id: 'default', label: '默认' },
+  { id: 'recent', label: '最近更新' },
+  { id: 'title', label: '标题' },
+];
+
+/** Anchored selection menu (#67/#127 family law): retained-mount exit via
+ *  OverlayMount, transparent ClickCatcher + Escape close, plan-dropdown
+ *  row shape (check rides the selected option only); picking an option
+ *  both selects and closes. Geometry [设计] — no capture exercises the
+ *  toolbar dropdowns. */
+function TasksMenu<T extends string>({
+  label,
+  options,
+  value,
+  onSelect,
+  onClose,
 }: {
-  todos: { id: string; title: string; phaseAt: number }[];
-  now: number;
+  label: string;
+  options: { id: T; label: string }[];
+  value: T;
+  onSelect: (id: T) => void;
+  onClose: () => void;
 }) {
   const { t } = useI18n();
+  return (
+    <div className="prj-tasks-menu anim-pop" role="listbox" aria-label={t(label)}>
+      {options.map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          className="prj-tasks-menu-row"
+          role="option"
+          aria-selected={option.id === value}
+          onClick={() => {
+            onSelect(option.id);
+            onClose();
+          }}
+        >
+          {t(option.label)}
+          {option.id === value && (
+            <span className="prj-tasks-menu-check">
+              <Check width={14} height={14} />
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** 筛选/排序 trigger + its anchored menu: one component per dropdown so
+ *  the open state, the Escape wiring and the relative anchor span travel
+ *  together (the chip-popover / board-guide recipe). */
+function TasksMenuButton<T extends string>({
+  icon,
+  label,
+  options,
+  value,
+  onSelect,
+}: {
+  icon: ReactNode;
+  label: string;
+  options: { id: T; label: string }[];
+  value: T;
+  onSelect: (id: T) => void;
+}) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  useEscapeClose(open, close);
+  return (
+    <span className="prj-tasks-menu-wrap">
+      <button
+        type="button"
+        className="prj-tasks-filter"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        {icon}
+        {t(label)}
+        <ChevronDown width={12} height={12} />
+      </button>
+      <OverlayMount open={open}>
+        <ClickCatcher onClose={close} />
+        <TasksMenu
+          label={label}
+          options={options}
+          value={value}
+          onSelect={onSelect}
+          onClose={close}
+        />
+      </OverlayMount>
+    </span>
+  );
+}
+
+function TasksPane({ todos, now }: { todos: TaskRow[]; now: number }) {
+  const { t } = useI18n();
+  const [layout, setLayout] = useState<TasksLayout>(() => readStoredLayout(localStorage));
+  const switchLayout = useCallback((next: TasksLayout) => {
+    setLayout(next);
+    localStorage.setItem(PROJECT_TASKS_LAYOUT_STORAGE_KEY, next);
+  }, []);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<TaskFilter>('all');
+  const [sort, setSort] = useState<TaskSort>('default');
+  // 客户端过滤/排序（票面裁决：数据面 todos 已在页内，无服务端往返）
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const rows = todos.filter(
+      (todo) =>
+        filterOk(todo.phase, filter) &&
+        (needle === '' || todo.title.toLowerCase().includes(needle)),
+    );
+    return sortTodos(rows, sort);
+  }, [todos, query, filter, sort]);
   return (
     <div className="prj-tasks-pane">
       <div className="prj-tasks-toolbar">
         <div className="prj-tasks-search">
           <Search width={14} height={14} />
-          <input type="text" placeholder={t('搜索任务…')} aria-label={t('搜索任务')} />
+          <input
+            type="text"
+            placeholder={t('搜索任务…')}
+            aria-label={t('搜索任务')}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
         </div>
-        <button type="button" className="prj-tasks-filter">
-          <Funnel />
-          {t('筛选')}
-          <ChevronDown width={12} height={12} />
-        </button>
-        <button type="button" className="prj-tasks-filter">
-          <ArrowUpDown />
-          {t('排序')}
-          <ChevronDown width={12} height={12} />
-        </button>
-        <div className="prj-tasks-view">
+        <TasksMenuButton
+          icon={<Funnel />}
+          label="筛选"
+          options={TASK_FILTERS}
+          value={filter}
+          onSelect={setFilter}
+        />
+        <TasksMenuButton
+          icon={<ArrowUpDown />}
+          label="排序"
+          options={TASK_SORTS}
+          value={sort}
+          onSelect={setSort}
+        />
+        <div className="prj-tasks-view" role="tablist">
           <button
             type="button"
-            className="prj-tasks-view-btn prj-tasks-view-btn--active"
+            role="tab"
+            aria-selected={layout === 'list'}
+            className={`prj-tasks-view-btn${layout === 'list' ? ' prj-tasks-view-btn--active' : ''}`}
             aria-label={t('列表视图')}
+            onClick={() => switchLayout('list')}
           >
             <ListLines />
           </button>
-          <button type="button" className="prj-tasks-view-btn" aria-label={t('网格视图')}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={layout === 'grid'}
+            className={`prj-tasks-view-btn${layout === 'grid' ? ' prj-tasks-view-btn--active' : ''}`}
+            aria-label={t('网格视图')}
+            onClick={() => switchLayout('grid')}
+          >
             <Grid2x2 width={14} height={14} />
           </button>
         </div>
@@ -152,9 +332,13 @@ function TasksPane({
             {t('任务')}
           </button>
         </div>
-      ) : (
+      ) : visible.length === 0 ? (
+        // 筛选/搜索清空 ≠ 项目无任务：给匹配空态一行，不误用 r2 24b 的
+        // 「创建第一个任务」空态（那是无 todo 项目的 canon）
+        <div className="prj-tasks-nomatch">{t('没有匹配的任务')}</div>
+      ) : layout === 'list' ? (
         <div className="prj-tasks-list">
-          {todos.map((todo) => (
+          {visible.map((todo) => (
             <div key={todo.id} className="prj-task-row">
               <span className="prj-task-check" aria-hidden="true" />
               <span className="prj-task-title">{todo.title}</span>
@@ -162,6 +346,23 @@ function TasksPane({
               <span className="prj-task-avatar">
                 <img src="/avatar-user.png" alt="" />
               </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        // 网格形 [设计]（票面注记：官方无捕获）——卡语言贴 team-agent-card
+        // （surface tile + 标题）＋本行原子（勾选圈/相对时间/头像）
+        <div className="prj-tasks-grid">
+          {visible.map((todo) => (
+            <div key={todo.id} className="prj-task-card">
+              <div className="prj-task-card-head">
+                <span className="prj-task-check" aria-hidden="true" />
+                <span className="prj-task-avatar">
+                  <img src="/avatar-user.png" alt="" />
+                </span>
+              </div>
+              <span className="prj-task-card-title">{todo.title}</span>
+              <span className="prj-task-card-time">{relativeTime(todo.phaseAt, now, t)}</span>
             </div>
           ))}
         </div>
