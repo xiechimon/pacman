@@ -2,9 +2,10 @@
 // 8,410, r7 §3.5): identity head, 外观 row with the theme segmented
 // control, then the plain-text item list (r7 §4.1.4). The 外观 row is
 // live (#122): each segment drives applyTheme, so the switch repaints
-// via the root .light class and persists under `pacman-theme`; the
-// popover open/close trigger itself still lands with the overlay
-// ticket, so the capture state rides the fixture flag.
+// via the root .light class and persists under `pacman-theme`. The
+// open/close trigger landed with #127 — the sidebar avatar chips (rail +
+// expanded) toggle the popover through the anchored-overlay family
+// wiring; the capture state still rides the fixture flag.
 
 import { useState } from 'react';
 import { USER_MAIL, USER_NAME } from '../fixtures/fixtures.js';
@@ -13,11 +14,15 @@ import { applyTheme, type Theme } from '../theme.js';
 
 interface UserMenuProps {
   theme: Theme;
+  /** #127 sidebar-trigger render: the fixed variant escapes the 40px
+   *  rail's overflow:hidden and stacks above the family click-catcher
+   *  (detail.css `.user-menu--floating`); same (8,410) capture geometry. */
+  floating?: boolean;
 }
 
 const ROWS = ['帐号', 'API 密钥', 'MCP', '反馈', '新功能', '快捷键'];
 
-export function UserMenu({ theme: initialTheme }: UserMenuProps) {
+export function UserMenu({ theme: initialTheme, floating = false }: UserMenuProps) {
   const { t } = useI18n();
   // the popover mounts per open state; the stored theme at mount is the
   // segment's initial value and applyTheme keeps storage the source of
@@ -28,7 +33,7 @@ export function UserMenu({ theme: initialTheme }: UserMenuProps) {
     setTheme(next);
   };
   return (
-    <div className="user-menu">
+    <div className={floating ? 'user-menu user-menu--floating' : 'user-menu'}>
       <div className="user-menu-head">
         <img src="/avatar-user.png" alt="" />
         <div>

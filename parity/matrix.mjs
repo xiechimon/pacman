@@ -208,6 +208,30 @@ export const matrix = [
     theme: 'light',
     baseline: '17b-待确认-方案文档分栏-light.png',
   },
+  // user-menu opened by a real avatar-chip click (issue #127): the fixture
+  // flag froze the popover for 16d/17/26d/27d; these rows hold the trigger
+  // path to the same pixels — 17b/27 are the menu-less twins of 17/27d
+  // (same detailConfirm/detailReview surface, userMenuOpen off), so a real
+  // .sidebar-user click must reproduce the menu-carrying baseline. Dark
+  // covered per 04 §2 增量规则 (弹层票 open 态行 + 深色面随票).
+  {
+    id: 'detail-usermenu-click-light',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '17b',
+    theme: 'light',
+    clicks: ['.sidebar-user'],
+    baseline: '17-待确认-chat视图-light.png',
+    // 与 detail-confirm-light 同屏同字面：跨平台字体栅格化噪声档随该行
+    threshold: 0.84,
+  },
+  {
+    id: 'detail-usermenu-click-dark',
+    route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc',
+    scenario: '27',
+    theme: 'dark',
+    clicks: ['.sidebar-user'],
+    baseline: '27d-审核-diff分栏-dark.png',
+  },
   // gate rows (issue #57): deep detail states — building / review / done /
   // r3 legacy card
   {
@@ -1078,6 +1102,20 @@ export const matrix = [
     theme: 'light',
     locale: 'en',
     expectText: 'Browser notifications are off',
+  },
+  // rail-state user-menu (issue #127): the 40px collapsed rail opens the
+  // same popover from .rail-user — the fixed floating variant escapes the
+  // rail's overflow:hidden. No official capture carries the menu over the
+  // rail, so the row rides a smoke pair + expectText (04 §2 no-baseline
+  // rule), dark per 深色面随票覆盖.
+  {
+    id: 'board-usermenu-rail-click',
+    route: '/app',
+    scenario: '01',
+    theme: 'dark',
+    sidebarCollapsed: true,
+    clicks: ['.rail-user'],
+    expectText: '外观',
   },
   // sidebar row hover pill rows (issue #121): the claude.ai-style hover
   // affordance is a replica-side addition — no official capture of a

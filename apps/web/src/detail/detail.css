@@ -956,6 +956,17 @@ textarea.composer-input::placeholder {
   z-index: 10;
 }
 
+/* #127 live-trigger render (opened from the sidebar avatar chips): fixed
+   instead of absolute — the collapsed rail keeps overflow:hidden, which
+   would clip an absolutely-positioned panel to its 40px width, and z 30
+   stacks the menu above the family click-catcher (z 29, overlays.css).
+   Same (8,410) capture geometry: the shells sit at the viewport origin
+   and never scroll, so fixed ≡ the absolute capture coords. */
+.user-menu--floating {
+  position: fixed;
+  z-index: 30;
+}
+
 .user-menu-head {
   flex: none;
   display: flex;
