@@ -24,7 +24,7 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import { NOTIFICATION_BANNER_COPY } from '@pacman/shared';
+import { CHIEF_REBIND_CONFIRM_COPY, NOTIFICATION_BANNER_COPY } from '@pacman/shared';
 import { createScanner, LanguageVariant, SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 import { PROBE_TOOL_CALL_LABEL } from '../src/fixtures/fixtures.js';
@@ -48,6 +48,9 @@ const COMPUTED_KEYS = new Set<string>([
   NOTIFICATION_BANNER_COPY.title,
   NOTIFICATION_BANNER_COPY.body,
   NOTIFICATION_BANNER_COPY.action,
+  // #182: chief 换绑二次确认 copy 同为 shared canon（<agent> 占位由显示层
+  // 替换），经 t() 消费、不作字面量出现。
+  CHIEF_REBIND_CONFIRM_COPY,
 ]);
 
 /** Data layer: capture-verbatim user/agent content, never translated.
