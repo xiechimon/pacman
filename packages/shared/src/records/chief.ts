@@ -27,6 +27,15 @@ export function newChiefThreadId(uuidv7: string): string {
   return `${CHIEF_THREAD_ID_PREFIX}${uuidv7}`;
 }
 
+/** 压缩模型槽值形（#203 server 长槽 [设计]：数据源 = 自定义 providers 真值 +
+ * presets 兜底，#180 裁决）。对象形而非裸字符串：model id 只在 provider 内有
+ * 意义（records/agent.ts provider+modelId 同构），裸串跨 provider 撞名。 */
+export const chiefCompactionModelSchema = z.object({
+  provider: z.string(),
+  modelId: z.string(),
+});
+export type ChiefCompactionModel = z.infer<typeof chiefCompactionModelSchema>;
+
 export const chiefRecordSchema = z.object({
   id: z.string(),
   userId: recordId,
@@ -37,6 +46,9 @@ export const chiefRecordSchema = z.object({
   /** 章程 = 常设指示（r5 §2 章程 tab；空态「尚无章程。点击编辑，为总管添加
    * 常设指示。」）；raw 观测默认空串（chief-record-testA.json 一手）。 */
   charter: z.string().nullable(),
+  /** 压缩模型长槽（#203 [设计]，raw wire 无此键故 optional）；null = 默认
+   * （与 Chief 相同）。 */
+  compactionModel: chiefCompactionModelSchema.nullable().optional(),
   lastTurnAt: epochMs.nullable(),
   createdAt: epochMs,
   /** 用户时区（raw chief-record-testA.json 一手 `tz:"Asia/Shanghai"`；
@@ -126,7 +138,8 @@ export const CHIEF_ENTITY_REF_SCHEMES = ['agent', 'todo'] as const;
 
 /** PATCH /api/teams/{id}/chief body——`agent` 槽 = r5 §2 抓包原样；`charter`
  * 槽 = 章程 tab 保存面（保存 wire 未采 [推断]，同径 PATCH 最小逼近，04 §3
- * 不判负）。两槽至少一位。 */
+ * 不判负）；`compactionModel` 槽 = 压缩模型长槽（#203 [设计]，undefined =
+ * 不动 / null = 清空回默认）。三槽至少一位。 */
 export const patchChiefBodySchema = z
   .object({
     agent: z
@@ -136,10 +149,14 @@ export const patchChiefBodySchema = z
       })
       .nullish(),
     charter: z.string().nullish(),
+    compactionModel: chiefCompactionModelSchema.nullish(),
   })
-  .refine((b) => b.agent !== undefined || b.charter !== undefined, {
-    message: 'expected agent and/or charter',
-  });
+  .refine(
+    (b) => b.agent !== undefined || b.charter !== undefined || b.compactionModel !== undefined,
+    {
+      message: 'expected agent and/or charter and/or compactionModel',
+    },
+  );
 export type PatchChiefBody = z.infer<typeof patchChiefBodySchema>;
 
 /** 用户 → Chief 发消息（面板输入框 `有什么可以帮你的？`/steer 占位，r5 §3.6；

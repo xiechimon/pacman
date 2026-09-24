@@ -244,6 +244,45 @@ describe('总管设置 4 tab + PATCH /chief（r5 §2）', () => {
     expect(patched.chief.charter).toBe('');
   });
 
+  test('PATCH /chief compactionModel 槽往返：写→GET 回显同值；缺省不动；null 清空（#203）', async () => {
+    type Env = { chief: { compactionModel: { provider: string; modelId: string } | null } };
+    // 默认 null（= 与 Chief 相同）。
+    const fresh = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
+    expect(fresh.chief.compactionModel).toBeNull();
+    // 写 → 响应回显同值。
+    const model = { provider: 'stub-gw', modelId: 'm-fast' };
+    const set = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, {
+      compactionModel: model,
+    });
+    expect(set.status).toBe(200);
+    expect(((await set.json()) as Env).chief.compactionModel).toEqual(model);
+    // GET 回显同值。
+    const got = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
+    expect(got.chief.compactionModel).toEqual(model);
+    // 缺省不动：PATCH 别的槽不清压缩模型。
+    const other = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, { charter: '不动它' });
+    expect(((await other.json()) as Env).chief.compactionModel).toEqual(model);
+    // null 清空 → GET 回显 null。
+    const cleared = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, {
+      compactionModel: null,
+    });
+    expect(cleared.status).toBe(200);
+    expect(((await cleared.json()) as Env).chief.compactionModel).toBeNull();
+    const after = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
+    expect(after.chief.compactionModel).toBeNull();
+  });
+
+  test('PATCH /chief compactionModel 裸字符串/缺字段 → 400（#203）', async () => {
+    const bare = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, {
+      compactionModel: 'm-fast',
+    });
+    expect(bare.status).toBe(400);
+    const partial = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, {
+      compactionModel: { provider: 'stub-gw' },
+    });
+    expect(partial.status).toBe(400);
+  });
+
   test('记忆 tab = 与绑定 Agent 共用存储（GET agents/{aid}/memories）', async () => {
     await relay('save_memory', { title: '共用记忆', content: 'chief 与 agent 同源' });
     const res = await req(s.app, 'GET', `/api/teams/${teamId}/agents/${AGENT_ID}/memories`);

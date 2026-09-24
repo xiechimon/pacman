@@ -11,6 +11,7 @@ import {
   buildRecordSchema,
   buildStepActionBodySchema,
   chiefGetResponseSchema,
+  chiefRecordSchema,
   chiefThreadSchema,
   createTodoBodySchema,
   daemonJsonSchema,
@@ -397,6 +398,44 @@ describe('chief (02 §4.3, r5 §2/§3 实测)', () => {
         agent: { agentId: 'TVv0DxUu3jTIhYpeWh6mn', thinkingLevel: null },
       }),
     ).toEqual({ agent: { agentId: 'TVv0DxUu3jTIhYpeWh6mn', thinkingLevel: null } });
+  });
+
+  it('PATCH chief body compactionModel 槽：对象/null 收，裸串/缺字段/空 body 拒（#203）', () => {
+    // 对象往返（model id 只在 provider 内有意义——records/agent.ts provider+modelId
+    // 同构——裸字符串跨 provider 撞名，故收对象形）。
+    expect(
+      patchChiefBodySchema.parse({ compactionModel: { provider: 'r3-gw', modelId: 'm-fast' } }),
+    ).toEqual({ compactionModel: { provider: 'r3-gw', modelId: 'm-fast' } });
+    // null = 清空（回默认「与 Chief 相同」）。
+    expect(patchChiefBodySchema.parse({ compactionModel: null })).toEqual({
+      compactionModel: null,
+    });
+    // 裸字符串拒。
+    expect(patchChiefBodySchema.safeParse({ compactionModel: 'm-fast' }).success).toBe(false);
+    // 缺 modelId 拒。
+    expect(patchChiefBodySchema.safeParse({ compactionModel: { provider: 'r3-gw' } }).success).toBe(
+      false,
+    );
+    // 三槽全缺仍被 refine 拒。
+    expect(patchChiefBodySchema.safeParse({}).success).toBe(false);
+  });
+
+  it('chief record 回显 compactionModel（server 长槽 [设计]，null = 默认与 Chief 相同）', () => {
+    const record = {
+      id: 'chief-usr_mon-BoZYfvqKSGanlxsXVbXSa',
+      userId: 'usr_mon',
+      teamId: 'BoZYfvqKSGanlxsXVbXSa',
+      agent: null,
+      charter: null,
+      lastTurnAt: null,
+      createdAt: 1758531000000,
+      compactionModel: { provider: 'r3-gw', modelId: 'm-fast' },
+    };
+    expect(chiefRecordSchema.parse(record)).toEqual(record);
+    expect(chiefRecordSchema.parse({ ...record, compactionModel: null })).toEqual({
+      ...record,
+      compactionModel: null,
+    });
   });
 });
 
