@@ -178,6 +178,10 @@ export interface ProjectContent {
   description: string | null;
   /** 历史 segment rows (#149); fixture-frozen, newest first. */
   commits?: ProjectCommitRow[];
+  /** 文件查看器 fixture 供肉(#202):文件名 → utf-8 文本。live 走
+   *  GET /api/projects/{id}/file,fixture 无 server 由本映射直出;缺席
+   *  的键 = 该文件不可预览(fixture 不演 base64 态)。 */
+  fileContents?: Record<string, string>;
 }
 
 /** Team-route agent card (r7 12): avatar + name + model line + role line. */

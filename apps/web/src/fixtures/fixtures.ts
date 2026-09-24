@@ -207,6 +207,15 @@ export const projectContent: ProjectContent = {
   hosted: true,
   defaultBranch: 'main',
   description: null,
+  // #202 文件查看器 fixture 供肉:e2e 断言锚 = 「托管演示仓」行。
+  fileContents: {
+    'README.md': [
+      `# ${PROJECT_NAME}`,
+      '',
+      '托管演示仓:任务全生命周期走查(待开始 → 规划中 → 待确认 → 执行中 → 待验收 → 已完成)。',
+      '',
+    ].join('\n'),
+  },
   commits: [
     {
       id: 'f3d9c1b7a2e5480db6c1a9f0e2d7b4c8a1e5f903',

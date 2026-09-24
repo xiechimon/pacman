@@ -17,6 +17,7 @@ import type {
   McpServerRecord,
   PatchChiefBody,
   PlanRow,
+  ProjectFileResponse,
   ProjectRecord,
   ProviderPreset,
   ProviderRecord,
@@ -237,6 +238,22 @@ export const useProjectTree = (projectId: string | undefined, ref: string | unde
         `/api/projects/${projectId}/tree${ref !== undefined ? `?ref=${encodeURIComponent(ref)}` : ''}`,
       ),
     enabled: projectId !== undefined,
+  });
+
+/** 单文件读面(#202 文件查看器;02 §3 读裸库单文件,server 已在,
+ *  wire.test INFERRED_ROUTES 登记)。path 含 `/` 与中文,必须 encode。 */
+export const useProjectFile = (
+  projectId: string | undefined,
+  path: string | undefined,
+  ref: string | undefined,
+) =>
+  useQuery({
+    queryKey: ['file', projectId, path, ref],
+    queryFn: () =>
+      api.get<ProjectFileResponse>(
+        `/api/projects/${projectId}/file?path=${encodeURIComponent(path ?? '')}${ref !== undefined ? `&ref=${encodeURIComponent(ref)}` : ''}`,
+      ),
+    enabled: projectId !== undefined && path !== undefined,
   });
 
 /** 提交历史读面（#149 文件|历史 分段「历史」；[推断] 端点，wire.test

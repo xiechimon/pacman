@@ -263,6 +263,10 @@ export const EN: Record<string, string> = {
   方案已就绪: 'Plan ready',
   构建待审核: 'Build awaiting review',
   请选择一个文件查看: 'Select a file to view',
+  // #202 文件查看器三态（loading / error / 不可预览）
+  '加载中…': 'Loading…',
+  文件加载失败: 'Failed to load file',
+  二进制文件暂不支持预览: 'Binary files cannot be previewed',
   '可选。未设置时以首字母代替。': 'Optional. The initial is used when unset.',
   项目名称: 'Project name',
   仓库: 'Repo',
