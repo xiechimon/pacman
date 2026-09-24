@@ -25,7 +25,10 @@
   height: 44px;
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--card-border);
+  /* #135: normalized from --card-border to the divider token — the
+     full-width top line must read one color across the sidebar seam
+     (the two tokens only differ by 1 in the light theme) */
+  border-bottom: 1px solid var(--border-default);
 }
 
 .res-back {
@@ -40,7 +43,9 @@
   color: var(--text-tertiary);
 }
 
-/* title centers on the content area, same law as the board topbar */
+/* title centers on the content area, same law as the board topbar —
+   including the pure-label hit-test law (#133, the #66 board precedent):
+   the band must not swallow .res-back / .res-new clicks */
 .res-title {
   position: absolute;
   left: 0;
@@ -50,6 +55,7 @@
   font-weight: 500;
   line-height: 22px;
   color: var(--text-primary);
+  pointer-events: none;
 }
 
 .res-new {

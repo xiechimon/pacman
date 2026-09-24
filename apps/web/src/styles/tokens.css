@@ -67,13 +67,11 @@
   --edge-ring: inset 0 0 0 1px var(--border-default);
   --edge-radius: 12px;
   --edge-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
-  /* sidebar layer (#123, claude.ai dframe sidebar 参照): the sidebar reads
-     as its own chrome layer — one tone step off the canvas (cds sidebar
-     rides its own surface mix) with a soft edge shadow onto the canvas in
-     place of a drawn seam line (the cds dframe sidebar carries
-     --df-shadow-card against the content, no hard border) */
+  /* sidebar layer (#123 tone step; #135 裁决 v2): the sidebar keeps its
+     one-tone-off-canvas chrome layer, but the seam returns to the r7
+     original law — a drawn 1px --border-default line in place of the #123
+     soft edge shadow; the shadow token is gone with its only consumer */
   --sidebar-bg: #1c1c1f;
-  --sidebar-shadow: 8px 0 24px -12px rgb(0 0 0 / 0.5);
   /* sidebar interaction ladder (#128, claude.ai cds 参照): the row hover /
      selected pills ride the cds alpha ladder over the #123 sidebar tone
      step (bg-neutral family = neutral-900 at 5% / 10%, dark inverting to
@@ -218,11 +216,9 @@
   --card-ghost-border: #f2f0ec;
   /* unified border language (#139), light side: the edge shadow tier dimmed
      to the light surface; the ring rides --border-default's light value via
-     the :root alias, and the sidebar tone step sits between --surface and
-     the column fill so the seam reads without a drawn line */
+     the :root alias */
   --edge-shadow: 0 5px 14px rgb(28 25 23 / 0.14);
   --sidebar-bg: #f6f2ec;
-  --sidebar-shadow: 8px 0 24px -12px rgb(28 25 23 / 0.08);
   /* sidebar interaction ladder (#128), light side of the cds alpha ladder —
      warm-ink steps over the sidebar tone step, hover 5% / selected 10% */
   --sidebar-hover: rgb(28 25 23 / 0.05);

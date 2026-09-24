@@ -1,15 +1,16 @@
 import { expect, test } from '@playwright/test';
 
 // Issue #123 acceptance (dogfood 观感三项, claude.ai 参照面): the sidebar reads
-// as its own chrome layer against the canvas (background tone step + soft edge
-// shadow, no drawn seam line); the horizontal board scroller keeps its scroll
-// capability with the track hidden (scrollbar-width: none + ::-webkit-scrollbar
-// display: none). Issue #139 acceptance (边框体系统一): the board card family and
-// the account popover share ONE single-source edge recipe — a 1px inset
-// box-shadow ring in the --border-default scale (no real CSS border: at
-// fractional page zoom a 1px border lands on fractional device pixels and
-// rasterizes unevenly, the popover lost its right edge entirely at 110%),
-// 12px radius, popover-tier soft shadow. Each surface is asserted in both
+// as its own chrome layer against the canvas (background tone step; its seam
+// is a drawn 1px divider-token line and the floating shadow is gone per
+// the #135 裁决 v2 revision); the horizontal board scroller keeps its
+// scroll capability with the track hidden (scrollbar-width: none +
+// ::-webkit-scrollbar display: none). Issue #139 acceptance (边框体系统一):
+// the board card family and the account popover share ONE single-source edge
+// recipe — a 1px inset box-shadow ring in the --border-default scale (no real
+// CSS border: at fractional page zoom a 1px border lands on fractional device
+// pixels and rasterizes unevenly), 12px radius, popover-tier soft shadow.
+// Each surface is asserted in both
 // themes — the polish is a dual-theme contract.
 
 /** resolved single-source ring + the --border-default color it must ride */
@@ -61,7 +62,7 @@ for (const theme of ['light', 'dark'] as const) {
     expect(menu.ring.startsWith(`${menu.borderColor} `)).toBe(true);
   });
 
-  test(`sidebar reads as its own layer, no drawn seam (${theme})`, async ({ page }) => {
+  test(`sidebar reads as its own layer, seam drawn in the divider token (${theme})`, async ({ page }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app?scenario=01');
 
@@ -74,16 +75,20 @@ for (const theme of ['light', 'dark'] as const) {
         sidebarBg: cs.backgroundColor,
         mainBg: getComputedStyle(main).backgroundColor,
         borderRight: cs.borderRightWidth,
+        seamColor: cs.borderRightColor,
+        topbarBorderColor: getComputedStyle(
+          document.querySelector('.board-topbar')!,
+        ).borderBottomColor,
         shadow: cs.boxShadow,
       };
     });
-    // background hierarchy: the sidebar sits on its own tone step off the
-    // canvas (cds sidebar surface mix), so the seam reads without a line
+    // background hierarchy: the sidebar keeps its own tone step off the
+    // canvas (#123), and the #135 裁决 v2 draws the seam again — 1px in the
+    // topbar-divider token, the floating soft shadow gone
     expect(probe.sidebarBg).not.toBe(probe.mainBg);
-    // no drawn seam line in either sidebar state' container
-    expect(probe.borderRight).toBe('0px');
-    // soft edge shadow onto the canvas (cds dframe sidebar card edge)
-    expect(probe.shadow).not.toBe('none');
+    expect(probe.borderRight).toBe('1px');
+    expect(probe.seamColor).toBe(probe.topbarBorderColor);
+    expect(probe.shadow).toBe('none');
   });
 
   test(`board scroller hides its track but keeps scrolling (${theme})`, async ({ page }) => {
@@ -109,7 +114,7 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-test('collapsed rail keeps the same soft edge treatment', async ({ page }) => {
+test('collapsed rail keeps the same drawn-seam treatment (#135 裁决 v2)', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('pacman-theme', 'dark');
     localStorage.setItem('pacman.sidebar-collapsed', '1');
@@ -120,6 +125,6 @@ test('collapsed rail keeps the same soft edge treatment', async ({ page }) => {
     const cs = getComputedStyle(el);
     return { borderRight: cs.borderRightWidth, shadow: cs.boxShadow };
   });
-  expect(rail.borderRight).toBe('0px');
-  expect(rail.shadow).not.toBe('none');
+  expect(rail.borderRight).toBe('1px');
+  expect(rail.shadow).toBe('none');
 });

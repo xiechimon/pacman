@@ -1,14 +1,15 @@
 /* ---- sidebar (240px, r7 01/02 + r6 §3.1 structure) ----
-   #123 衔接（claude.ai dframe sidebar 参照）：侧栏自带一层背景色阶 + 投到
-   画布上的柔边阴影，接缝不画线——原站那条 1px --border-default 硬缝与同色
-   背景叠在一起读着不顺。position/z-index 让柔边画在 .board-main（positioned）
-   之上，否则阴影被 main 的背景盖掉。 */
+   #135 裁决 v2（修订 #123「柔边不画缝」）：接缝回归 r7 原站法则——1px
+   --border-default 硬缝，柔影删除（「不是悬浮的」），#123 的背景色阶保留；
+   顶部分隔线经 .sidebar-nav 的 border-top 延伸至全屏宽，与各 shell topbar
+   的 border-bottom 同像素行（y43..44），在接缝处相交。position/z-index
+   维持（色阶层仍叠在画布上，层级不变）。 */
 
 .board-sidebar {
   flex: none;
   width: 240px;
   background: var(--sidebar-bg);
-  box-shadow: var(--sidebar-shadow);
+  border-right: 1px solid var(--border-default);
   position: relative;
   z-index: 1;
   display: flex;
@@ -16,9 +17,11 @@
   overflow: hidden;
 }
 
+/* #135: 43px + the nav's 1px border-top = the 44px row the topbar border
+   rides (y43..44) — the full-width divider law */
 .sidebar-team-row {
   flex: none;
-  height: 42px;
+  height: 43px;
   display: flex;
   align-items: center;
   padding-left: 19px;
@@ -26,10 +29,12 @@
 }
 
 /* team/account routes (r7 12/13): the head row carries the active pill
-   (x8..231 y6..38) and the content insets by the pill margin */
+   (x8..231 y6..38) and the content insets by the pill margin.
+   #135: bottom margin 4→5 keeps the 43px footprint (6+32+5) so the pill
+   geometry stays capture-exact while the divider row lands on y43..44 */
 .sidebar-team-row--active {
   height: 32px;
-  margin: 6px 8px 4px;
+  margin: 6px 8px 5px;
   padding-left: 14px;
   border-radius: 8px;
   background: var(--sidebar-selected);
@@ -68,11 +73,16 @@
   cursor: pointer;
 }
 
+/* #135: the sidebar segment of the full-width top divider — same token as
+   the topbar border-bottom, same y43..44 row. padding-top 11.5→9.5 absorbs
+   the team-row +1px and the border +1px, so the nav rows keep their exact
+   former y (r7 01/02 row pitch untouched) */
 .sidebar-nav {
   flex: none;
   display: flex;
   flex-direction: column;
-  padding-top: 11.5px;
+  border-top: 1px solid var(--border-default);
+  padding-top: 9.5px;
 }
 
 .sidebar-row {
@@ -256,10 +266,12 @@
    divider under the toggle row, 16px icons centered at x12–28, nav rows
    32px pitch from y48, selected row = 24px pill inset 4px vertically / 8px
    horizontally, 24px user chip (white pill) pinned at the bottom.
-   #123: the r7 03 1px right border is gone with the expanded sidebar's hard
-   seam — the rail inherits the same tone step + soft edge from the base
-   rule (box-sizing is border-box, so dropping the border keeps the 40px
-   box and only re-centers the icon band by half a pixel). */
+   #135 裁决 v2: the r7 03 1px right border returns with the expanded
+   sidebar's seam (inherited from the base rule; border-box keeps the 40px
+   box, the icon band re-centers by half a pixel back onto the r7 probes).
+   The toggle row grows 43→44 so its divider rides the same y43..44 row as
+   the board topbar border — the full-width line stays continuous in rail
+   mode too (rail-nav padding 5→4 keeps the rows on their y48 pitch). */
 
 .board-sidebar--collapsed {
   width: 40px;
@@ -270,8 +282,8 @@
   align-items: center;
   justify-content: center;
   width: 40px;
-  /* 42px team row + 1px divider, r7 03: icon band y15–27, divider at y43 */
-  height: 43px;
+  /* 43px content + 1px divider = the topbar's 44px row, r7 03 icon band */
+  height: 44px;
   margin: 0;
   border: none;
   border-bottom: 1px solid var(--border-default);
@@ -284,7 +296,7 @@
   flex: none;
   display: flex;
   flex-direction: column;
-  padding-top: 5px;
+  padding-top: 4px;
 }
 
 .rail-row {

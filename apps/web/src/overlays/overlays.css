@@ -106,6 +106,23 @@
   background: var(--row-selected);
 }
 
+/* #137 常亮互斥 — while the ⌘K panel is open it is the only lit focus
+   surface: the page-layer selected pills (sidebar row / subrow / rail,
+   sidebar.css) drop their background and ink promotion under the scrim,
+   and restore when the root marker clears on close. Specificity
+   (:root[attr] .cls) outranks the plain .cls--selected rules. */
+:root[data-search-open] .sidebar-row--selected::before,
+:root[data-search-open] .sidebar-subrow--selected::before,
+:root[data-search-open] .rail-row--selected::before {
+  background: transparent;
+}
+
+:root[data-search-open] .sidebar-row--selected,
+:root[data-search-open] .sidebar-subrow--selected,
+:root[data-search-open] .rail-row--selected {
+  color: var(--text-secondary);
+}
+
 /* result rows: 28px icon tile, clamped two-line main, fixed time column
    at x882 and a right-pinned phase chip (05b measure) */
 .search-row--todo {

@@ -89,12 +89,14 @@ for (const theme of ['light', 'dark'] as const) {
         (el) => !el.classList.contains('sidebar-row--selected'),
       );
       if (!selected || !plain) throw new Error('sidebar rows missing');
+      const sidebar = document.querySelector('.board-sidebar')!;
       return {
         selected: pill(selected),
         plain: pill(plain),
         rowMargin: getComputedStyle(selected).marginLeft,
         rowWidth: selected.getBoundingClientRect().width,
-        sidebarWidth: document.querySelector('.board-sidebar')?.getBoundingClientRect().width,
+        sidebarWidth: sidebar.getBoundingClientRect().width,
+        sidebarClientWidth: sidebar.clientWidth,
       };
     });
     // one pill geometry for both states — selected is a deepen, not a shape
@@ -103,9 +105,12 @@ for (const theme of ['light', 'dark'] as const) {
     expect(geo.selected.top).toBe('2px');
     expect(geo.selected.bottom).toBe('2px');
     expect(geo.selected.radius).toBe('6px');
-    // no margin hack on the selected row → no right-edge clip
+    // no margin hack on the selected row → no right-edge clip; the row
+    // fills the sidebar's content box (the #135 seam takes its 1px of the
+    // 240px border-box, so clientWidth — not the outer rect — is the law)
     expect(geo.rowMargin).toBe('0px');
-    expect(geo.rowWidth).toBe(geo.sidebarWidth);
+    expect(geo.rowWidth).toBe(geo.sidebarClientWidth);
+    expect(geo.sidebarWidth).toBe(240);
   });
 
   test(`selected pill deepens the hover step (${theme})`, async ({ page }) => {
