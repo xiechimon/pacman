@@ -349,6 +349,11 @@ export function useApiMutations(teamId: string | undefined) {
         api.post<ProjectRecord>('/api/projects', { ...body, ...(teamId ? { teamId } : {}) }),
       onSuccess: invalidateAll,
     }),
+    // #189 删除面(#207 接线):级联语义单源在 server services/projects.ts。
+    deleteProject: useMutation({
+      mutationFn: (id: string) => api.del<void>(`/api/projects/${id}`),
+      onSuccess: invalidateAll,
+    }),
     chiefSend: useMutation({
       mutationFn: (input: { threadId: string | null; content: string }) =>
         input.threadId === null
