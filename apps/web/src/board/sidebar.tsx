@@ -22,6 +22,7 @@
 import { type ComponentType, type SVGProps, useCallback, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { UserMenu } from '../detail/user-menu.js';
+import { isDeleted } from '../fixtures/deletions.js';
 import {
   PROJECT_ID,
   PROJECT_INITIAL,
@@ -265,7 +266,7 @@ export function BoardSidebar({
             collapsed={groupCollapsed.project}
             onToggle={toggleProjectGroup}
           />
-          {!groupCollapsed.project && (
+          {!groupCollapsed.project && !isDeleted(PROJECT_ID) && (
             <Link
               className={rowClass('rail-row', selected === 'project')}
               to={{ pathname: PROJECT_HREF, search }}
@@ -375,14 +376,18 @@ export function BoardSidebar({
               </span>
               <span className="sidebar-subrow-label">{t('新建项目')}</span>
             </Link>
-            <Link
-              className={rowClass('sidebar-subrow', selected === 'project')}
-              to={{ pathname: PROJECT_HREF, search }}
-              aria-current={selected === 'project' ? 'page' : undefined}
-            >
-              <span className="project-avatar">{PROJECT_INITIAL}</span>
-              <span className="sidebar-subrow-label">{PROJECT_NAME}</span>
-            </Link>
+            {/* #207: 项目行随 fixture 删除覆面隐去(#66 deletions 同律)——
+                设置页删除确认后跳 /app,项目组即本面项目列表。 */}
+            {!isDeleted(PROJECT_ID) && (
+              <Link
+                className={rowClass('sidebar-subrow', selected === 'project')}
+                to={{ pathname: PROJECT_HREF, search }}
+                aria-current={selected === 'project' ? 'page' : undefined}
+              >
+                <span className="project-avatar">{PROJECT_INITIAL}</span>
+                <span className="sidebar-subrow-label">{PROJECT_NAME}</span>
+              </Link>
+            )}
           </>
         )}
 

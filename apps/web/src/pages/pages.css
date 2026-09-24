@@ -1204,7 +1204,43 @@
   color: var(--text-dim);
 }
 
-/* 危险操作区样式随卡全除(#177 wontfix:无 DELETE /api/projects/:id 端点) */
+/* 危险操作区(#207 复活,#189 DELETE 端点落地): #177 整除的样式原样归位 */
+.prj-set-danger-label {
+  margin: 16px 0 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.prj-set-card--danger {
+  padding: 16px;
+}
+
+.prj-set-danger-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--text-primary);
+}
+
+.prj-set-danger-desc {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-tertiary);
+}
+
+.prj-set-delete {
+  margin-top: 12px;
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: var(--danger);
+  font-size: 13px;
+  color: #ffffff;
+  cursor: pointer;
+}
 
 /* ---- segmented-control hover (issue #138) ----
    Unselected tabs of all four page families tint with the first step of

@@ -10,6 +10,11 @@ export function markDeleted(id: string): void {
   deleted.add(id);
 }
 
+/** #207: 项目删除覆面同律 — 侧栏项目行按本位隐去(删除后跳 /app,列表消失)。 */
+export function isDeleted(id: string): boolean {
+  return deleted.has(id);
+}
+
 export function withoutDeleted<T extends { id: string }>(todos: T[]): T[] {
   return todos.filter((t) => !deleted.has(t.id));
 }

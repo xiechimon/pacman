@@ -410,6 +410,41 @@
   cursor: pointer;
 }
 
+/* ---- project delete confirm (#207, r2 24d): family shape + 键入名确认行 ---- */
+
+.delete-confirm--project {
+  height: auto;
+  padding-bottom: 16px;
+}
+
+.delete-confirm-prompt {
+  margin: 12px 16px 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.delete-confirm-input {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 8px 16px 0;
+  height: 30px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: transparent;
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.delete-confirm-delete:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ---- 更多 menu (r7 18/24: 220×165 @ 1052.5,39.5, right-anchored) ---- */
 
 /* transparent click catcher: closes on outside click without dimming */
