@@ -387,4 +387,10 @@ export const EN: Record<string, string> = {
   '规划与执行分用不同 Agent': 'Use different agents for planning and execution',
   先做规划: 'Plan first',
   立即执行: 'Run now',
+  // #170 create-agent dialog family
+  '创建 agent': 'Create agent',
+  '输入 Agent 名称': 'Enter an agent name',
+  尚未配置模型服务商: 'No model provider configured yet',
+  配置服务商: 'Configure providers',
+  创建: 'Create',
 };
