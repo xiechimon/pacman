@@ -55,16 +55,18 @@
   --card-border: #27272a;
   --card-button: #4e47dd;
   --card-ghost-border: #2e2e33;
-  /* card texture (#123, claude.ai cds 参照): the board card family draws its
-     outline as a 1px low-alpha ink ring (cds alpha border family — app card
-     10% / landing card 6%, the small board card sits at 8%) so the edge
-     composites softly over the column bg instead of reading as a solid
-     line, and takes its elevation from a wide soft shadow (cds
-     --df-shadow-card's 0 4px layer + the shadow-md contact layer). Dark:
-     8% white ring (cds dark card ring #ffffff14 family) over the cds dark
-     shadow-color 24% black pair */
-  --card-edge: rgb(255 255 255 / 0.08);
-  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 4px 16px rgb(0 0 0 / 0.24);
+  /* unified border language (#139): the single-source edge recipe for
+     elevated surfaces — 1px hairline ring in the --border-default scale,
+     12px radius, popover-tier soft shadow. The account menu's approved face
+     is the canon; the board card family adopts it in place of #123's
+     low-alpha ring. The ring is an inset box-shadow spread, not a CSS
+     border: at fractional page zoom (110%/125%/150%) a real 1px border lands
+     on fractional device pixels and rasterizes unevenly (the popover's right
+     edge vanished at 110%), while a shadow-spread ring stays a uniform
+     hairline at every zoom */
+  --edge-ring: inset 0 0 0 1px var(--border-default);
+  --edge-radius: 12px;
+  --edge-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
   /* sidebar layer (#123, claude.ai dframe sidebar 参照): the sidebar reads
      as its own chrome layer — one tone step off the canvas (cds sidebar
      rides its own surface mix) with a soft edge shadow onto the canvas in
@@ -102,7 +104,9 @@
   --chip-active-border: #3b3866;
   /* [推断] indigo-500 at 55% over surface-secondary, mirroring the light sample */
   --send-disabled: #454690;
-  --fab-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
+  /* alias of the #139 edge shadow tier — every elevated surface (fab,
+     popovers, panels) draws one shadow from the single source */
+  --fab-shadow: var(--edge-shadow);
   /* detail palette, sampled from the r7 23/16/17 captures (#56) */
   --chip-idle-bg: #202733;
   --chip-idle-fg: #9ea3ae;
@@ -212,12 +216,11 @@
   --card-border: #e1dbd2;
   --card-button: #4e47dd;
   --card-ghost-border: #f2f0ec;
-  /* card texture + sidebar layer (#123), light side of the cds reference —
-     warm-ink alpha ring at 8% and the same two-layer soft shadow dimmed to
-     the light surface; sidebar tone step sits between --surface and the
-     column fill so the seam reads without a drawn line */
-  --card-edge: rgb(28 25 23 / 0.08);
-  --card-shadow: 0 1px 2px rgb(28 25 23 / 0.04), 0 4px 16px rgb(28 25 23 / 0.06);
+  /* unified border language (#139), light side: the edge shadow tier dimmed
+     to the light surface; the ring rides --border-default's light value via
+     the :root alias, and the sidebar tone step sits between --surface and
+     the column fill so the seam reads without a drawn line */
+  --edge-shadow: 0 5px 14px rgb(28 25 23 / 0.14);
   --sidebar-bg: #f6f2ec;
   --sidebar-shadow: 8px 0 24px -12px rgb(28 25 23 / 0.08);
   /* sidebar interaction ladder (#128), light side of the cds alpha ladder —
@@ -239,7 +242,6 @@
   --chip-active-bg: #ebe8f2;
   --chip-active-border: #cdc9f0;
   --send-disabled: #9f9ae2;
-  --fab-shadow: 0 5px 14px rgb(28 25 23 / 0.14);
   /* detail palette, sampled from the r7 23/16/17 captures (#56) */
   --chip-idle-bg: #f3f4f6;
   --chip-idle-fg: #4d5562;

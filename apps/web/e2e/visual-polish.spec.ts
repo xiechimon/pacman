@@ -1,30 +1,64 @@
 import { expect, test } from '@playwright/test';
 
-// Issue #123 acceptance (dogfood 观感三项, claude.ai 参照面): the board card
-// family carries the soft cds-style elevation (1px low-alpha edge ring +
-// wide soft shadow) instead of a flat solid outline; the sidebar reads as
-// its own chrome layer against the canvas (background tone step + soft edge
-// shadow, no drawn seam line); the horizontal board scroller keeps its
-// scroll capability with the track hidden (scrollbar-width: none +
-// ::-webkit-scrollbar display: none). Each surface is asserted in both
+// Issue #123 acceptance (dogfood 观感三项, claude.ai 参照面): the sidebar reads
+// as its own chrome layer against the canvas (background tone step + soft edge
+// shadow, no drawn seam line); the horizontal board scroller keeps its scroll
+// capability with the track hidden (scrollbar-width: none + ::-webkit-scrollbar
+// display: none). Issue #139 acceptance (边框体系统一): the board card family and
+// the account popover share ONE single-source edge recipe — a 1px inset
+// box-shadow ring in the --border-default scale (no real CSS border: at
+// fractional page zoom a 1px border lands on fractional device pixels and
+// rasterizes unevenly, the popover lost its right edge entirely at 110%),
+// 12px radius, popover-tier soft shadow. Each surface is asserted in both
 // themes — the polish is a dual-theme contract.
 
+/** resolved single-source ring + the --border-default color it must ride */
+async function edgeContract(page: import('@playwright/test').Page, selector: string) {
+  return page.locator(selector).first().evaluate((el) => {
+    const ringProbe = document.createElement('div');
+    ringProbe.style.boxShadow = 'var(--edge-ring)';
+    const colorProbe = document.createElement('div');
+    colorProbe.style.backgroundColor = 'var(--border-default)';
+    document.body.append(ringProbe, colorProbe);
+    const cs = getComputedStyle(el);
+    const out = {
+      shadow: cs.boxShadow,
+      ring: getComputedStyle(ringProbe).boxShadow,
+      borderColor: getComputedStyle(colorProbe).backgroundColor,
+      radius: cs.borderTopLeftRadius,
+      border: cs.borderTopWidth,
+    };
+    ringProbe.remove();
+    colorProbe.remove();
+    return out;
+  });
+}
+
 for (const theme of ['light', 'dark'] as const) {
-  test(`board card carries soft elevation (${theme})`, async ({ page }) => {
+  test(`board card rides the single-source edge ring (${theme})`, async ({ page }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app?scenario=01');
 
-    const card = await page.locator('.todo-card').first().evaluate((el) => {
-      const cs = getComputedStyle(el);
-      return { shadow: cs.boxShadow, edge: cs.borderTopColor };
-    });
-    // elevation layer present (cds --df-shadow-card family: contact layer +
-    // wide soft layer), not the flat no-shadow card
-    expect(card.shadow).not.toBe('none');
-    expect(card.shadow).toContain('rgba(');
-    // the edge is a low-alpha ring (cds alpha family), so the computed
-    // border color carries transparency instead of a solid hex
-    expect(card.edge).toMatch(/^rgba\(\d+, \d+, \d+, 0\.\d+\)$/);
+    const card = await edgeContract(page, '.todo-card');
+    // no real border — the ring is a shadow spread so fractional zoom
+    // (110%/125%/150%) keeps a uniform hairline on every edge
+    expect(card.border).toBe('0px');
+    expect(card.radius).toBe('12px');
+    // the surface's shadow stack opens with the single-source ring, and the
+    // ring color is the --border-default scale of this theme
+    expect(card.shadow.startsWith(card.ring)).toBe(true);
+    expect(card.ring.startsWith(`${card.borderColor} `)).toBe(true);
+  });
+
+  test(`account popover rides the same edge ring as the card (${theme})`, async ({ page }) => {
+    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
+    await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=17');
+
+    const menu = await edgeContract(page, '.user-menu');
+    expect(menu.border).toBe('0px');
+    expect(menu.radius).toBe('12px');
+    expect(menu.shadow.startsWith(menu.ring)).toBe(true);
+    expect(menu.ring.startsWith(`${menu.borderColor} `)).toBe(true);
   });
 
   test(`sidebar reads as its own layer, no drawn seam (${theme})`, async ({ page }) => {
