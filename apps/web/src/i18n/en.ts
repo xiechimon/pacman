@@ -393,4 +393,12 @@ export const EN: Record<string, string> = {
   尚未配置模型服务商: 'No model provider configured yet',
   配置服务商: 'Configure providers',
   创建: 'Create',
+  // wayfinder #173 add-secret dialog family (r2 §242 verbatim fields)
+  '名称（环境变量名）': 'Name (environment variable name)',
+  '描述（可选）': 'Description (optional)',
+  值: 'Value',
+  该密钥的用途: 'What this secret is for',
+  粘贴密钥的值: 'Paste the secret value',
+  '值将加密存储，保存后无法再次查看。':
+    'The value is stored encrypted and cannot be viewed again after saving.',
 };
