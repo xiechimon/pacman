@@ -5,17 +5,22 @@
 // 收起态 order: 展开侧栏/搜索/看板/定时/项目▾/项目头像/资源▾/技能/MCP/密钥/
 // 机器/模型服务), 32px row pitch with a 24px selected pill and the user
 // avatar chip at the bottom — geometry from the r7 03 pixel probes. All rows
-// render; interactivity is the collapse toggle only, persisted like the
-// theme (storage key is [推断] — r2 §1.1 only documents
-// `tds.sidebarProjectsCollapsed` for the group fold). #121: the nav rows
+// render; the collapse toggle persists like the theme (storage key is
+// [推断] — r2 §1.1 only documents `tds.sidebarProjectsCollapsed` for the
+// group fold). #121: the nav rows
 // (rail + expanded, team name and 新建项目 included) are react-router
 // Links — SPA hops with no document reload — carrying the live ?search=
 // along (fixture-scenario convention, same as the todo-card and page-back
 // links); the selected pill and aria-current stay prop-driven off
-// `selected`, and the row hover pill lives in sidebar.css.
+// `selected`, and the row hover pill lives in sidebar.css. #127: the
+// avatar chips (rail + expanded) toggle the user-menu popover — the
+// anchored-overlay family wiring (OverlayMount + ClickCatcher + Esc, same
+// as the detail chip popover in dhead.tsx) over the capture-frozen
+// 224×272 @ (8,410) geometry (r7 17/16d, §3.5).
 
-import type { ComponentType, SVGProps } from 'react';
+import { type ComponentType, type SVGProps, useCallback, useState } from 'react';
 import { Link, useLocation } from 'react-router';
+import { UserMenu } from '../detail/user-menu.js';
 import {
   PROJECT_ID,
   PROJECT_INITIAL,
@@ -41,6 +46,8 @@ import {
   Server,
   Users,
 } from '../icons/index.js';
+import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { readStoredTheme } from '../theme.js';
 import './sidebar.css';
 
 /** Which sidebar row carries the active pill: a nav row (看板 / 定时 /
@@ -141,6 +148,19 @@ export function BoardSidebar({
   const resourceRows = usageNav
     ? [...RESOURCE_ROWS.slice(0, 4), USAGE_ROW, ...RESOURCE_ROWS.slice(4)]
     : RESOURCE_ROWS;
+  // #127: the avatar chips toggle the user-menu popover — click catcher +
+  // Esc close it like the rest of the anchored-overlay family; the stored
+  // theme at open time seeds the 外观 segment (#122).
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
+  const toggleUserMenu = useCallback(() => setUserMenuOpen((open) => !open), []);
+  useEscapeClose(userMenuOpen, closeUserMenu);
+  const userMenuPopover = (
+    <OverlayMount open={userMenuOpen}>
+      <ClickCatcher onClose={closeUserMenu} />
+      <UserMenu floating theme={readStoredTheme(localStorage)} />
+    </OverlayMount>
+  );
   if (collapsed) {
     return (
       <aside className="board-sidebar board-sidebar--collapsed">
@@ -195,9 +215,16 @@ export function BoardSidebar({
           ))}
         </nav>
         <div className="sidebar-spacer" />
-        <button type="button" className="rail-user" aria-label={USER_NAME}>
+        <button
+          type="button"
+          className="rail-user"
+          aria-label={USER_NAME}
+          aria-expanded={userMenuOpen}
+          onClick={toggleUserMenu}
+        >
           <img src="/avatar-user.png" alt="" />
         </button>
+        {userMenuPopover}
       </aside>
     );
   }
@@ -290,13 +317,20 @@ export function BoardSidebar({
 
       <div className="sidebar-spacer" />
 
-      <button type="button" className="sidebar-user" aria-label={USER_NAME}>
+      <button
+        type="button"
+        className="sidebar-user"
+        aria-label={USER_NAME}
+        aria-expanded={userMenuOpen}
+        onClick={toggleUserMenu}
+      >
         <img src="/avatar-user.png" alt="" />
         <span className="sidebar-user-name">{USER_NAME}</span>
         <span className="sidebar-user-more">
           <EllipsisVertical />
         </span>
       </button>
+      {userMenuPopover}
     </aside>
   );
 }
