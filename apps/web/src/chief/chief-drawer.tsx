@@ -5,6 +5,15 @@
 // bottom. The switcher popover (116) and the view swap to 总管设置 are real
 // state so the surface is clickable in dev; parity captures never click, so
 // the fixture alone decides the captured state.
+//
+// #146 收尾：Esc 关面板（useEscapeClose 弹层族同律——内层的线程切换器
+// popover 先关，再关 drawer）；hero 快捷提示 ×4 点击即发预置词进 chief
+// 线程（live 面 onSend，等同键入发送；fixture 面与发送钮同款惰性）；头部
+// 「新主题」落回新线程视图（live）、「全屏」切面板形态（纯 UI 态，双面
+// 可用；全窗形态无任一批次抓拍——r2 §9-26 `tds.panel-maximized` 未点开、
+// r8-chief-panel-adhoc §3——几何 [推断]：充满定位容器、圆角归零）。
+// composer 行只保留发送钮：语音输入/添加附件/提及为 local-first 无后端面，
+// 裁决隐藏不渲染（#136 台账 wontfix，理由登记在该票评论区）。
 
 import { useState } from 'react';
 import type { ChiefContent, ChiefSegment } from '../fixtures/records.js';
@@ -26,14 +35,12 @@ import {
   EllipsisVertical,
   FileText,
   Grid2x2,
-  Mic,
-  Paperclip,
   Plus,
   Restore,
   X,
 } from '../icons/index.js';
 import { DRAWER_EXIT_MS } from '../overlay/use-overlay-mount.js';
-import { OverlayMount } from '../overlays/dismiss.js';
+import { OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import './chief.css';
 
 const EXAMPLE_ICONS = {
@@ -87,6 +94,10 @@ interface DrawerProps {
   onSend?: (text: string) => void;
   /** 主题切换（live 面 threads popover 行点击）。 */
   onThread?: (title: string, index: number) => void;
+  /** 新主题（头部 +，#146）：落回新线程视图，下一次发送开新 chief 线程
+   * （threadId null = 新主题，wire 注记见 shared chief send schema）；
+   * 缺省 = fixture 静态面，钮惰性。 */
+  onNewThread?: () => void;
 }
 
 export function ChiefDrawer({
@@ -96,12 +107,20 @@ export function ChiefDrawer({
   onClose,
   onSend,
   onThread,
+  onNewThread,
 }: DrawerProps) {
   const { t } = useI18n();
   const [threadsOpen, setThreadsOpen] = useState(chief.threadsOpen ?? false);
   const [liveDraft, setLiveDraft] = useState('');
+  const [fullscreen, setFullscreen] = useState(false);
   const hasThread = chief.stream != null;
   const draftValue = onSend != null ? liveDraft : (chief.draft ?? '');
+  // #146: Esc 与弹层族同律（#127 useEscapeClose 先例）——最内层先关：
+  // 线程切换器 popover 开着时第一下 Esc 收 popover，第二下关 drawer。
+  useEscapeClose(open, () => {
+    if (threadsOpen) setThreadsOpen(false);
+    else onClose();
+  });
   const sendLive = () => {
     if (onSend == null || liveDraft.trim() === '') return;
     onSend(liveDraft.trim());
@@ -109,7 +128,12 @@ export function ChiefDrawer({
   };
   return (
     <OverlayMount open={open} exitMs={DRAWER_EXIT_MS}>
-      <aside className="chief-drawer anim-drawer" aria-label={t('总管')}>
+      <aside
+        className={
+          fullscreen ? 'chief-drawer anim-drawer is-fullscreen' : 'chief-drawer anim-drawer'
+        }
+        aria-label={t('总管')}
+      >
         <header className="chief-head">
           <div className="chief-head-row">
             <button
@@ -123,7 +147,18 @@ export function ChiefDrawer({
               <ChevronDown width={12} height={12} />
             </button>
             <div className="chief-head-actions">
-              <button type="button" aria-label={t('新主题')}>
+              <button
+                type="button"
+                aria-label={t('新主题')}
+                onClick={
+                  onNewThread != null
+                    ? () => {
+                        onNewThread();
+                        setThreadsOpen(false);
+                      }
+                    : undefined
+                }
+              >
                 <Plus width={18} height={18} />
               </button>
               {onSettings != null && (
@@ -136,7 +171,12 @@ export function ChiefDrawer({
                   <EllipsisVertical width={16} height={16} />
                 </button>
               )}
-              <button type="button" aria-label={t('全屏')}>
+              <button
+                type="button"
+                aria-label={fullscreen ? t('退出全屏') : t('全屏')}
+                aria-pressed={fullscreen}
+                onClick={() => setFullscreen((v) => !v)}
+              >
                 <ChiefExpand />
               </button>
               <button type="button" aria-label={t('关闭')} onClick={onClose}>
@@ -195,7 +235,14 @@ export function ChiefDrawer({
                 {chief.examples.map((ex) => {
                   const Icon = EXAMPLE_ICONS[ex.icon];
                   return (
-                    <button type="button" className="chief-example" key={ex.text}>
+                    // #146: 点击即发预置词进 chief 线程（live 面走 onSend，
+                    // 等同用户键入发送；zh 权威 canon 串上行，r5 111 逐字）。
+                    <button
+                      type="button"
+                      className="chief-example"
+                      key={ex.text}
+                      onClick={onSend != null ? () => onSend(ex.text) : undefined}
+                    >
                       <span className="chief-example-tile">
                         <Icon width={14} height={14} />
                       </span>
@@ -285,15 +332,8 @@ export function ChiefDrawer({
             placeholder={t('有什么可以帮你的？')}
           />
           <div className="chief-composer-bar">
-            <button type="button" aria-label={t('语音输入')}>
-              <Mic width={18} height={18} />
-            </button>
-            <button type="button" aria-label={t('添加附件')}>
-              <Paperclip width={18} height={18} />
-            </button>
-            <button type="button" aria-label={t('提及')}>
-              <Grid2x2 width={16} height={16} />
-            </button>
+            {/* #146 裁决：语音输入/添加附件/提及 local-first 无后端面——
+                隐藏不渲染（#136 台账 wontfix）。 */}
             <button
               type="button"
               aria-label={t('发送')}

@@ -277,6 +277,7 @@ export const EN: Record<string, string> = {
   新主题: 'New thread',
   总管设置: 'Chief settings',
   全屏: 'Fullscreen',
+  退出全屏: 'Exit fullscreen',
   '请先为总管选择一个 Agent。': 'Choose an Agent for the Chief first.',
   选择一个主题开始: 'Pick a thread to start',
   '有什么可以帮你的？': 'How can I help?',

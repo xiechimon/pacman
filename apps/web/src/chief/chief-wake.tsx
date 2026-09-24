@@ -26,7 +26,7 @@ export function ChiefWake({
   fabClassName: string;
 }) {
   const { t } = useI18n();
-  const { chiefView, setChiefView, chiefData, chiefUnread, onSend, onThread } =
+  const { chiefView, setChiefView, chiefData, chiefUnread, onSend, onThread, onNewThread } =
     useChiefSurface(fixture);
   return (
     <>
@@ -45,6 +45,7 @@ export function ChiefWake({
         onClose={() => setChiefView('none')}
         onSend={onSend}
         onThread={onThread}
+        onNewThread={onNewThread}
       />
     </>
   );
