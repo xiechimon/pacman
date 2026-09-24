@@ -14,6 +14,8 @@
 // the accept-dialog 律 (#148: close on submit). State resets on the
 // open→false edge, not on submit: live mode only closes on success, so a
 // failed POST (e.g. providerId 409) keeps the user's input.
+// #193: the #175 scroll pin (body scrolls, submit outside) folded into
+// DialogShell — the submit rides the `footer` slot, fields ride .dlg-body.
 
 import type { ProviderApi } from '@pacman/shared';
 import { useEffect, useState } from 'react';
@@ -98,109 +100,115 @@ export function CreateProviderDialog({
   };
 
   return (
-    <DialogShell title={t('添加模型服务')} open={open} onClose={onClose}>
-      <div className="dlg-provider">
-        <div className="dlg-provider-body">
-          <label className="dlg-field-label" htmlFor="dlg-provider-id">
-            {t('服务商 ID')}
-          </label>
-          <input
-            id="dlg-provider-id"
-            className="dlg-provider-input"
-            value={providerId}
-            onChange={(event) => setProviderId(event.target.value)}
-            placeholder={t('例如 my-relay')}
-          />
-          <label className="dlg-field-label" htmlFor="dlg-provider-label">
-            {t('名称')}
-          </label>
-          <input
-            id="dlg-provider-label"
-            className="dlg-provider-input"
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
-          />
-          <label className="dlg-field-label" htmlFor="dlg-provider-baseurl">
-            Base URL
-          </label>
-          <input
-            id="dlg-provider-baseurl"
-            className="dlg-provider-input"
-            value={baseUrl}
-            onChange={(event) => setBaseUrl(event.target.value)}
-            placeholder="https://api.example.com/v1"
-          />
-          <div className="dlg-field-label">{t('API 协议')}</div>
-          <div className="dlg-provider-seg" role="tablist" aria-label={t('API 协议')}>
-            {API_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                role="tab"
-                aria-selected={api === option.value}
-                className="dlg-provider-seg-tab"
-                data-active={api === option.value}
-                onClick={() => setApi(option.value)}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <label className="dlg-field-label" htmlFor="dlg-provider-apikey">
-            {t('API 密钥')}
-          </label>
-          <input
-            id="dlg-provider-apikey"
-            className="dlg-provider-input"
-            type="password"
-            value={apiKey}
-            onChange={(event) => setApiKey(event.target.value)}
-            placeholder={t('无密钥网关可留空')}
-          />
-          <div className="dlg-provider-authrow">
-            <label className="dlg-provider-check" data-on={authHeader}>
-              <input
-                id="dlg-provider-authheader"
-                type="checkbox"
-                checked={authHeader}
-                onChange={(event) => setAuthHeader(event.target.checked)}
-              />
-              <CheckWhite width={12} height={12} />
-            </label>
-            <span className="dlg-provider-authlabel">
-              {t('以 Authorization: Bearer 请求头发送 API 密钥')}
-            </span>
-          </div>
-          <div className="dlg-provider-note">{t('密钥将加密存储，保存后无法再次查看。')}</div>
-          <div className="dlg-field-label">{t('模型（可选）')}</div>
-          {modelIds.map((id, i) => (
-            <input
-              key={i}
-              className="dlg-provider-input"
-              aria-label={t('模型 ID')}
-              value={id}
-              placeholder="claude-sonnet-5"
-              onChange={(event) =>
-                setModelIds((rows) => rows.map((r, j) => (i === j ? event.target.value : r)))
-              }
-            />
-          ))}
+    <DialogShell
+      title={t('添加模型服务')}
+      open={open}
+      onClose={onClose}
+      footer={
+        <div className="dlg-provider-foot">
           <button
             type="button"
-            className="dlg-provider-model-add"
-            onClick={() => setModelIds((rows) => [...rows, ''])}
+            className="dlg-provider-create"
+            disabled={!ready || pending === true}
+            onClick={submit}
           >
-            <PlusSmall width={12} height={12} />
-            {t('添加模型')}
+            {t('添加模型服务')}
           </button>
         </div>
+      }
+    >
+      <div className="dlg-provider">
+        <label className="dlg-field-label" htmlFor="dlg-provider-id">
+          {t('服务商 ID')}
+        </label>
+        <input
+          id="dlg-provider-id"
+          className="dlg-provider-input"
+          value={providerId}
+          onChange={(event) => setProviderId(event.target.value)}
+          placeholder={t('例如 my-relay')}
+        />
+        <label className="dlg-field-label" htmlFor="dlg-provider-label">
+          {t('名称')}
+        </label>
+        <input
+          id="dlg-provider-label"
+          className="dlg-provider-input"
+          value={label}
+          onChange={(event) => setLabel(event.target.value)}
+        />
+        <label className="dlg-field-label" htmlFor="dlg-provider-baseurl">
+          Base URL
+        </label>
+        <input
+          id="dlg-provider-baseurl"
+          className="dlg-provider-input"
+          value={baseUrl}
+          onChange={(event) => setBaseUrl(event.target.value)}
+          placeholder="https://api.example.com/v1"
+        />
+        <div className="dlg-field-label">{t('API 协议')}</div>
+        <div className="dlg-provider-seg" role="tablist" aria-label={t('API 协议')}>
+          {API_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="tab"
+              aria-selected={api === option.value}
+              className="dlg-provider-seg-tab"
+              data-active={api === option.value}
+              onClick={() => setApi(option.value)}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <label className="dlg-field-label" htmlFor="dlg-provider-apikey">
+          {t('API 密钥')}
+        </label>
+        <input
+          id="dlg-provider-apikey"
+          className="dlg-provider-input"
+          type="password"
+          value={apiKey}
+          onChange={(event) => setApiKey(event.target.value)}
+          placeholder={t('无密钥网关可留空')}
+        />
+        <div className="dlg-provider-authrow">
+          <label className="dlg-provider-check" data-on={authHeader}>
+            <input
+              id="dlg-provider-authheader"
+              type="checkbox"
+              checked={authHeader}
+              onChange={(event) => setAuthHeader(event.target.checked)}
+            />
+            <CheckWhite width={12} height={12} />
+          </label>
+          <span className="dlg-provider-authlabel">
+            {t('以 Authorization: Bearer 请求头发送 API 密钥')}
+          </span>
+        </div>
+        <div className="dlg-provider-note">{t('密钥将加密存储，保存后无法再次查看。')}</div>
+        <div className="dlg-field-label">{t('模型（可选）')}</div>
+        {modelIds.map((id, i) => (
+          <input
+            key={i}
+            className="dlg-provider-input"
+            aria-label={t('模型 ID')}
+            value={id}
+            placeholder="claude-sonnet-5"
+            onChange={(event) =>
+              setModelIds((rows) => rows.map((r, j) => (i === j ? event.target.value : r)))
+            }
+          />
+        ))}
         <button
           type="button"
-          className="dlg-provider-create"
-          disabled={!ready || pending === true}
-          onClick={submit}
+          className="dlg-provider-model-add"
+          onClick={() => setModelIds((rows) => [...rows, ''])}
         >
-          {t('添加模型服务')}
+          <PlusSmall width={12} height={12} />
+          {t('添加模型')}
         </button>
       </div>
     </DialogShell>

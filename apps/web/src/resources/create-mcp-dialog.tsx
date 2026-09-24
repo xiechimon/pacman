@@ -82,7 +82,18 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
   };
 
   return (
-    <DialogShell title={t('添加 MCP 服务器')} open={open} onClose={onClose}>
+    <DialogShell
+      title={t('添加 MCP 服务器')}
+      open={open}
+      onClose={onClose}
+      footer={
+        <div className="dlg-mcp-foot">
+          <button type="button" className="dlg-mcp-create" disabled={!ready} onClick={submit}>
+            {t('添加 MCP 服务器')}
+          </button>
+        </div>
+      }
+    >
       <div className="dlg-mcp">
         <div className="dlg-mcp-seg" role="tablist" aria-label={t('类型')}>
           {(
@@ -197,9 +208,6 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
             />
           </>
         )}
-        <button type="button" className="dlg-mcp-create" disabled={!ready} onClick={submit}>
-          {t('添加 MCP 服务器')}
-        </button>
       </div>
     </DialogShell>
   );

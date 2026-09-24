@@ -30,8 +30,24 @@ export function HistoryDialog({ runs, open, onClose }: HistoryDialogProps) {
   const { t } = useI18n();
   const rerunnable = runs.some((run) => run.status === 'failed-current');
   return (
-    <DialogShell title={t('运行历史')} open={open} onClose={onClose}>
-      <div className="dlg-history">
+    <DialogShell
+      title={t('运行历史')}
+      open={open}
+      onClose={onClose}
+      footer={
+        rerunnable ? (
+          <div className="dlg-history-footer">
+            <button type="button" className="dlg-history-rerun" onClick={onClose}>
+              {t('重跑')}
+            </button>
+          </div>
+        ) : undefined
+      }
+    >
+      {/* #193: rows are unbounded — they scroll in .dlg-body while a pinned
+          重跑 footer stays put; --foot swaps the bottom padding so the
+          spacing above the button is the same scrolled or not. */}
+      <div className={`dlg-history${rerunnable ? ' dlg-history--foot' : ''}`}>
         {runs.map((run) => (
           <div key={run.label} className="dlg-history-row">
             <RunGlyph status={run.status} />
@@ -46,13 +62,6 @@ export function HistoryDialog({ runs, open, onClose }: HistoryDialogProps) {
             </div>
           </div>
         ))}
-        {rerunnable && (
-          <div className="dlg-history-footer">
-            <button type="button" className="dlg-history-rerun" onClick={onClose}>
-              {t('重跑')}
-            </button>
-          </div>
-        )}
       </div>
     </DialogShell>
   );

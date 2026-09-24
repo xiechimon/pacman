@@ -4,6 +4,10 @@
 // 分支与PR dialog passes `headerCenter` (centered segmented tab row) and
 // drops title + divider (r7 31). Esc and backdrop click close; only hits
 // landing on the backdrop itself dismiss.
+// #193 viewport law (generalizing the #175 provider one-off): the panel is
+// a flex column capped at 100vh - 48px; children ride .dlg-body (the scroll
+// region) and the `footer` slot pins submit/cancel outside it, so dynamic
+// rows + a short viewport can never push the buttons out of reach.
 
 import { type ReactNode, useEffect } from 'react';
 import { useI18n } from '../i18n/provider.js';
@@ -21,6 +25,10 @@ interface DialogShellProps {
   open?: boolean;
   onClose: () => void;
   children: ReactNode;
+  /** #193: pinned below the .dlg-body scroll region — submit/cancel rides
+   *  here so a tall form scrolls the fields, never the buttons. The fragment
+   *  keeps its own padding (family spacing stays per-face canon). */
+  footer?: ReactNode;
 }
 
 export function DialogShell({
@@ -29,6 +37,7 @@ export function DialogShell({
   open = true,
   onClose,
   children,
+  footer,
 }: DialogShellProps) {
   const { t } = useI18n();
   useEffect(() => {
@@ -62,7 +71,8 @@ export function DialogShell({
               <X width={16} height={16} />
             </button>
           </div>
-          {children}
+          <div className="dlg-body">{children}</div>
+          {footer != null && <div className="dlg-foot">{footer}</div>}
         </div>
       </div>
     </OverlayMount>

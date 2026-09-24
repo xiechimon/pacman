@@ -40,7 +40,23 @@ export function CreateAgentDialog({ open, onClose, onCreate }: CreateAgentDialog
     setName('');
   };
   return (
-    <DialogShell title={t('创建 agent')} open={open} onClose={onClose}>
+    <DialogShell
+      title={t('创建 agent')}
+      open={open}
+      onClose={onClose}
+      footer={
+        <div className="dlg-agent-foot">
+          <button
+            type="button"
+            className="dlg-agent-create"
+            disabled={name.trim() === ''}
+            onClick={submit}
+          >
+            {t('创建')}
+          </button>
+        </div>
+      }
+    >
       <div className="dlg-agent">
         <div className="dlg-agent-avatar">
           <img src="/avatar-robot-1.svg" alt="" />
@@ -65,14 +81,6 @@ export function CreateAgentDialog({ open, onClose, onCreate }: CreateAgentDialog
             {t('配置服务商')}
           </Link>
         </div>
-        <button
-          type="button"
-          className="dlg-agent-create"
-          disabled={name.trim() === ''}
-          onClick={submit}
-        >
-          {t('创建')}
-        </button>
       </div>
     </DialogShell>
   );

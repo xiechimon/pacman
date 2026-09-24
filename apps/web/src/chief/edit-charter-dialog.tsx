@@ -31,7 +31,23 @@ export function EditCharterDialog({ open, onClose, charter, onSave }: EditCharte
     else onClose();
   };
   return (
-    <DialogShell title={t('编辑章程')} open={open} onClose={onClose}>
+    <DialogShell
+      title={t('编辑章程')}
+      open={open}
+      onClose={onClose}
+      footer={
+        <div className="chief-dlg-foot">
+          <div className="chief-dlg-actions">
+            <button type="button" className="chief-dlg-ghost" onClick={onClose}>
+              {t('取消')}
+            </button>
+            <button type="button" className="chief-dlg-primary" onClick={save}>
+              {t('保存章程')}
+            </button>
+          </div>
+        </div>
+      }
+    >
       <div className="chief-dlg-charter">
         <textarea
           className="chief-dlg-charter-input"
@@ -39,14 +55,6 @@ export function EditCharterDialog({ open, onClose, charter, onSave }: EditCharte
           onChange={(event) => setText(event.target.value)}
           placeholder={t('长期指令：模型路由规则（何种任务使用何种模型）、优先级、偏好…')}
         />
-        <div className="chief-dlg-actions">
-          <button type="button" className="chief-dlg-ghost" onClick={onClose}>
-            {t('取消')}
-          </button>
-          <button type="button" className="chief-dlg-primary" onClick={save}>
-            {t('保存章程')}
-          </button>
-        </div>
       </div>
     </DialogShell>
   );

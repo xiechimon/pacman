@@ -35,7 +35,23 @@ export function CreateSecretDialog({ open, onClose, onCreate }: CreateSecretDial
     setValue('');
   };
   return (
-    <DialogShell title={t('添加密钥')} open={open} onClose={onClose}>
+    <DialogShell
+      title={t('添加密钥')}
+      open={open}
+      onClose={onClose}
+      footer={
+        <div className="dlg-secret-foot">
+          <button
+            type="button"
+            className="dlg-secret-create"
+            disabled={name.trim() === '' || value === ''}
+            onClick={submit}
+          >
+            {t('添加密钥')}
+          </button>
+        </div>
+      }
+    >
       <div className="dlg-secret">
         <label className="dlg-field-label" htmlFor="dlg-secret-name">
           {t('名称（环境变量名）')}
@@ -68,14 +84,6 @@ export function CreateSecretDialog({ open, onClose, onCreate }: CreateSecretDial
           placeholder={t('粘贴密钥的值')}
         />
         <div className="dlg-secret-note">{t('值将加密存储，保存后无法再次查看。')}</div>
-        <button
-          type="button"
-          className="dlg-secret-create"
-          disabled={name.trim() === '' || value === ''}
-          onClick={submit}
-        >
-          {t('添加密钥')}
-        </button>
       </div>
     </DialogShell>
   );

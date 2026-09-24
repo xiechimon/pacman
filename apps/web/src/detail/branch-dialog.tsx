@@ -81,9 +81,20 @@ export function BranchDialog({ info, open, onClose }: BranchDialogProps) {
       }
       open={open}
       onClose={onClose}
+      footer={
+        // #193: the sync tab's 同步 button rides the pinned shell footer;
+        // the git tab carries no action and no footer.
+        tab === 'sync' ? (
+          <div className="dlg-branch-foot">
+            <button type="button" className="dlg-sync" disabled>
+              {t('同步')}
+            </button>
+          </div>
+        ) : undefined
+      }
     >
       {tab === 'sync' ? (
-        <div className="dlg-branch-body">
+        <div className="dlg-branch-body dlg-branch-body--foot">
           {box}
           <div className="dlg-field-label">{t('目标机器')}</div>
           <button type="button" className="dlg-machine">
@@ -110,9 +121,6 @@ export function BranchDialog({ info, open, onClose }: BranchDialogProps) {
               <span className="dlg-toggle-knob" />
             </label>
           </div>
-          <button type="button" className="dlg-sync" disabled>
-            {t('同步')}
-          </button>
         </div>
       ) : (
         <div className="dlg-branch-body">

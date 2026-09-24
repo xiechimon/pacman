@@ -743,7 +743,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
+  /* #193: bottom 12 = old gap; the actions row rides the shell's .dlg-foot */
+  padding: 16px 16px 12px;
 }
 
 .chief-dlg-charter-input {
@@ -756,6 +757,13 @@
   line-height: 20px;
   color: var(--text-primary);
   resize: vertical;
+}
+
+/* #193: pinned-foot padding for the charter/rebind actions row — side and
+   bottom match the face container's own 16; the gap above moved into the
+   body container's padding-bottom (.chief-dlg-charter 12 / confirm 16). */
+.chief-dlg-foot {
+  padding: 0 16px 16px;
 }
 
 .chief-dlg-actions {

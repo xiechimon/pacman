@@ -22,7 +22,28 @@ export function AcceptDialog({ open, onClose, onConfirm }: AcceptDialogProps) {
   const { t } = useI18n();
   const [merge, setMerge] = useState(true);
   return (
-    <DialogShell title={t('完成任务')} open={open} onClose={onClose}>
+    <DialogShell
+      title={t('完成任务')}
+      open={open}
+      onClose={onClose}
+      footer={
+        <div className="dlg-accept-footer">
+          <button type="button" className="dlg-accept-cancel" onClick={onClose}>
+            {t('取消')}
+          </button>
+          <button
+            type="button"
+            className="dlg-accept-done"
+            onClick={() => {
+              if (onConfirm) onConfirm();
+              else onClose();
+            }}
+          >
+            {t('完成')}
+          </button>
+        </div>
+      }
+    >
       <div className="dlg-accept">
         <label className="dlg-accept-check" data-on={merge}>
           <input
@@ -33,21 +54,6 @@ export function AcceptDialog({ open, onClose, onConfirm }: AcceptDialogProps) {
           <CheckWhite width={12} height={12} />
         </label>
         <span className="dlg-accept-label">{t('将改动合并到默认分支')}</span>
-      </div>
-      <div className="dlg-accept-footer">
-        <button type="button" className="dlg-accept-cancel" onClick={onClose}>
-          {t('取消')}
-        </button>
-        <button
-          type="button"
-          className="dlg-accept-done"
-          onClick={() => {
-            if (onConfirm) onConfirm();
-            else onClose();
-          }}
-        >
-          {t('完成')}
-        </button>
       </div>
     </DialogShell>
   );
