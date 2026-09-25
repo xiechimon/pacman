@@ -14,8 +14,10 @@
 // 显示完整文件 button: changes mode swaps the hunks for the conv-branch
 // full text inline (live = GET /api/builds/{id}/changes/file, #224;
 // fixture = DiffFile.fullContent), the button flipping to 显示差异 as the
-// way back; plan-diff mode keeps the button inert — plan-version full
-// text lives in the plans table, not on the conv branch.
+// way back. #244 (#238 裁决 A) wires the same button on the plan-diff
+// face: plan-version full text lives in the plans table (already loaded
+// by the plans read face), not on the conv branch — it lands in the same
+// DiffFile.fullContent slot in both fixture and live mode, no fetch.
 
 import type { DiffFileContent } from '@pacman/shared';
 import { useState } from 'react';
@@ -66,13 +68,14 @@ interface DocPaneProps {
   planDiff?: PlanDiffContent;
   onToggleExpand?: () => void;
   /** #225: changes 面「显示完整文件」的 build 柄（live = buildId，fixture =
-   *  null）；不传 = 本面无全文读面（plan-diff 面钮保持惰性）。 */
+   *  null）；plan-diff 面不经此柄（#244：全文走 DiffFile.fullContent 槽，
+   *  DiffFileBlock 收 null）。 */
   buildId?: string | null;
 }
 
 /** 全文视图状态（#225，镜像 #202 deriveFileView 五态）：hidden = hunk 面；
- *  loading/error 仅 live 可达；binary = 不可预览态（live base64 封套 /
- *  fixture 缺 fullContent 槽）；text 直渲。 */
+ *  loading/error 仅 fetch 面可达（changes 面 live）；binary = 不可预览态
+ *  （live base64 封套 / 槽位缺 fullContent）；text 直渲。 */
 type FullFileView =
   | { kind: 'hidden' }
   | { kind: 'loading' }
@@ -80,15 +83,17 @@ type FullFileView =
   | { kind: 'binary' }
   | { kind: 'text'; content: string };
 
-/** 结构子集传参，不绑 useQuery 全形（#202 code-review 同律）。 */
+/** 结构子集传参，不绑 useQuery 全形（#202 code-review 同律）。
+ *  fetchLive = 经 changes/file 端点取全文（changes 面 live）；false =
+ *  槽位面（fixture 任意面 / plan-diff 面，#244）。 */
 function deriveFullFileView(
-  live: boolean,
+  fetchLive: boolean,
   showFull: boolean,
   fixtureContent: string | null,
   file: { isError: boolean; data: DiffFileContent | undefined },
 ): FullFileView {
   if (!showFull) return { kind: 'hidden' };
-  if (!live) {
+  if (!fetchLive) {
     return fixtureContent !== null ? { kind: 'text', content: fixtureContent } : { kind: 'binary' };
   }
   if (file.isError) return { kind: 'error' };
@@ -105,15 +110,18 @@ function DiffFileBlock({
 }: {
   file: DiffFile;
   expanded: boolean;
-  /** #225 全文读面柄：changes 面 = buildId（live）/ null（fixture）；
-   *  undefined = 本面无全文读面（plan-diff 面，钮保持惰性）。 */
-  buildId?: string | null;
+  /** #225/#244 全文读面柄：changes 面 live = buildId（经 changes/file 端点取）；
+   *  null = fullContent 槽（fixture 任意面 / plan-diff 面，机制见文件头）。 */
+  buildId: string | null;
 }) {
   const { t } = useI18n();
   const { live } = useLiveData();
   const [showFull, setShowFull] = useState(false);
-  const fullQ = useBuildChangeFile(buildId, showFull ? file.path : null, live);
-  const full = deriveFullFileView(live, showFull, file.fullContent ?? null, fullQ);
+  // fetch 面仅 changes 面 live 成立（buildId 非空）；buildId=null 时
+  // （fixture 任意面 / plan-diff 面 live）走 fullContent 槽，不起请求。
+  const fetchLive = live && buildId != null;
+  const fullQ = useBuildChangeFile(buildId, showFull ? file.path : null, fetchLive);
+  const full = deriveFullFileView(fetchLive, showFull, file.fullContent ?? null, fullQ);
   return (
     <div className="diff-file">
       <div className="doc-file-row">
@@ -178,11 +186,7 @@ function DiffFileBlock({
                   : t('二进制文件暂不支持预览')}
             </div>
           )}
-          <button
-            type="button"
-            className="diff-expand"
-            onClick={buildId === undefined ? undefined : () => setShowFull((v) => !v)}
-          >
+          <button type="button" className="diff-expand" onClick={() => setShowFull((v) => !v)}>
             <UnfoldVertical width={12} height={12} />
             {showFull ? t('显示差异') : t('显示完整文件')}
           </button>
@@ -391,7 +395,7 @@ export function DocPane({
                 key={file.path}
                 file={file}
                 expanded={expanded}
-                buildId={mode === 'changes' ? buildId : undefined}
+                buildId={mode === 'changes' ? (buildId ?? null) : null}
               />
             ))}
           </>

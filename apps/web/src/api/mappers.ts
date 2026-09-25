@@ -255,11 +255,21 @@ export function mapPlanDiff(diff: {
   fromVersion: number;
   toVersion: number;
   files: DocumentDiffFile[];
+  /** #244: to 版本 plan.md 全文（plans 读面已载）→ 单文件 fullContent 槽，
+   *  plan-diff 面「显示完整文件」数据源。files[0] 位置安全：document-diff
+   *  单文件 plan.md 由 server 构造保证（documents.ts computeUnifiedDiff
+   *  `files: [file]`）。 */
+  toContent?: string;
 }): PlanDiffContent {
+  const files = mapDiffFiles(diff.files);
+  const first = files[0];
+  if (diff.toContent !== undefined && first !== undefined) {
+    first.fullContent = diff.toContent;
+  }
   return {
     from: `v${diff.fromVersion}`,
     to: `v${diff.toVersion}`,
-    files: mapDiffFiles(diff.files),
+    files,
     expanded: false,
   };
 }

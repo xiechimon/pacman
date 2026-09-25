@@ -256,9 +256,16 @@ export function TodoDetailPage() {
     changesExpanded,
   ]);
 
-  // live 版本对比面（r8 64→65：上一版本 unified diff）。
+  // live 版本对比面（r8 64→65：上一版本 unified diff）。#244：to 版本
+  // plan.md 全文挂 fullContent 槽——plans 读面已载各版本 content（05 册
+  // M5 §1.2），plan-diff 面「显示完整文件」不走 changes/file 端点。
   const livePlanDiff: PlanDiffContent | undefined =
-    compareOpen && compareDiffQ.data ? mapPlanDiff(compareDiffQ.data) : undefined;
+    compareOpen && compareDiffQ.data
+      ? mapPlanDiff({
+          ...compareDiffQ.data,
+          toContent: plansQ.data?.find((p) => p.version === compareDiffQ.data.toVersion)?.content,
+        })
+      : undefined;
 
   const fixtureView = chainView(fixture.detail, chain, diff);
   const view = live
