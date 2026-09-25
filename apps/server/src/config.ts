@@ -34,7 +34,8 @@ export const serverConfigSchema = z.object({
   schedulerTickMs: z.number().int().positive(),
   /** SPA 静态同源托管根（02/A1，M5）：vite build 产物目录；null = 不托管
    * （纯 API 形态）。env 覆写位 = ENV_VARS.webDir（品牌槽单源，02 §5.8）；
-   * 默认 = monorepo 布局 `apps/web/dist` 存在即托管。 */
+   * 默认 = monorepo `apps/web/dist` 与包内 `web/` 双探测存在即托管（06 §11，
+   * 见 defaultWebDir）。 */
   webDir: z.string().nullable(),
   /** OAuth App client 凭证对（#231 握手面；env 双件齐 = 配置，双缺 = null
    *  未配置——authorize 走 400 提示；只配一件 = 启动期报错不静默）。 */
