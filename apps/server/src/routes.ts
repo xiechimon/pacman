@@ -16,17 +16,21 @@ import {
   type BuildRecord,
   buildStepActionBodySchema,
   chiefSendMessageBodySchema,
+  createAgentBodySchema,
+  createMcpServerBodySchema,
+  createProviderBodySchema,
   createScheduleBodySchema,
   createTodoBodySchema,
   type MemoryRecord,
   machineRecordSchema,
   PHASE_VALUES,
+  patchAgentBodySchema,
   patchChiefBodySchema,
+  patchMcpServerBodySchema,
+  patchProviderBodySchema,
   phaseSchema,
   planRowSchema,
   projectRepoKindSchema,
-  providerApiSchema,
-  providerModelSchema,
   SKILL_ENTRY_FILE,
   setSecretBodySchema,
   skillRecordSchema,
@@ -162,21 +166,6 @@ const createProjectBodySchema = z.object({
   githubRepo: z.string().optional(),
 });
 
-/** POST/PATCH /api/teams/{id}/providers body [推断]（r3 §2 表单实测字段投影，
- * wire 未采）：record 可写面 + apiKey 只写位（02 §8；null = 清除——「凭证
- * 只写不读：可以替换或删除」r2 §6.5）。 */
-const createProviderBodySchema = z.object({
-  providerId: z.string(),
-  label: z.string(),
-  baseUrl: z.string(),
-  api: providerApiSchema,
-  authHeader: z.boolean().optional(),
-  compat: z.object({ supportsDeveloperRole: z.boolean() }).optional(),
-  models: z.array(providerModelSchema).optional(),
-  apiKey: z.string().nullish(),
-});
-const patchProviderBodySchema = createProviderBodySchema.partial();
-
 /** PATCH /api/teams/{id}/secrets/{sid} body [推断]（覆盖面 =「保存后只能
  * 覆盖或删除」r2 §6.3；POST body = shared setSecretBodySchema 单源）。 */
 const patchSecretBodySchema = z.object({
@@ -188,50 +177,6 @@ const patchSecretBodySchema = z.object({
 /** POST /api/teams/{id}/api-keys body = shared apiKeyRecordSchema（02 §6.2
  * 形状原样）+ name 放宽可选（表单「密钥名称（可选）」r3 §6）。 */
 const createApiKeyBodySchema = apiKeyRecordSchema.extend({ name: z.string().nullish() });
-
-/** POST /api/teams/{id}/agents body [推断]（r5 §1/§8 补录端点；字段 =
- * records/agent.ts 配置面投影，创建弹窗 r3 §4：名称/职责/模型）。 */
-const createAgentBodySchema = z.object({
-  displayName: z.string().min(1),
-  description: z.string().nullish(),
-  provider: z.string().nullish(),
-  modelId: z.string().nullish(),
-  thinkingLevel: z.string().nullish(),
-  tools: z.array(z.string()).optional(),
-  secrets: z.array(z.string()).optional(),
-  skills: z.array(z.string()).optional(),
-  mcpServers: z.array(z.string()).optional(),
-});
-
-/** PATCH /api/teams/{id}/agents/{aid} body [推断]（REST 同名，02 §6.1 词表内；
- * 覆盖面 = 概览/权限 tab 编辑 + per-Agent mcpServers[] 授权勾选，02 §7.1）。 */
-const patchAgentBodySchema = createAgentBodySchema.partial().extend({
-  displayName: z.string().min(1).optional(),
-});
-
-/** POST/PATCH /api/teams/{id}/mcp-servers body [推断]（r3 §5.1 添加表单字段：
- * 类型/名称/标识符/URL/请求头键值对；stdio 命令+参数 r2 §6.2）。record 输出
- * 形状 = records/mcp-server.ts 单源。 */
-const mcpServerBodyFields = {
-  label: z.string().min(1),
-  slug: z.string(),
-  transport: z.enum(['http', 'stdio']),
-  url: z.string().optional(),
-  command: z.string().optional(),
-  args: z.array(z.string()).optional(),
-  headers: z.record(z.string(), z.string()).optional(),
-};
-const createMcpServerBodySchema = z.object(mcpServerBodyFields);
-const patchMcpServerBodySchema = z
-  .object({
-    label: z.string().min(1).optional(),
-    slug: z.string().optional(), // 恒 400（不可改，r3 §5.1 canon）；收形状为给准错误
-    url: z.string().optional(),
-    command: z.string().optional(),
-    args: z.array(z.string()).optional(),
-    headers: z.record(z.string(), z.string()).optional(),
-  })
-  .strict();
 
 function requireAgentRow(ctx: AppContext, teamId: string, agentId: string) {
   const row = ctx.db

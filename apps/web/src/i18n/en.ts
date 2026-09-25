@@ -446,7 +446,7 @@ export const EN: Record<string, string> = {
   添加请求头: 'Add header',
   命令: 'Command',
   '参数（可选，空格分隔）': 'Arguments (optional, space-separated)',
-  // wayfinder #175 add-provider dialog family (field authority = server
+  // wayfinder #175 add-provider dialog family (field authority = shared
   // createProviderBodySchema / r3 §2; protocol tab labels stay English
   // verbatim, never translated)
   添加模型服务: 'Add provider',

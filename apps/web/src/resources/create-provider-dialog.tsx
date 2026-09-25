@@ -1,6 +1,6 @@
 // 添加模型服务 dialog (wayfinder #175, r8 75 built-in detail as the family
 // reference; geometry [推断] per family form — capture PNGs unreadable on
-// this API line; field authority = server createProviderBodySchema / r3 §2):
+// this API line; field authority = shared createProviderBodySchema / r3 §2):
 // rides DialogShell (#68 family law — X / Esc / backdrop). Fields in the
 // r3 §2 observed order: 服务商 ID / 名称 / Base URL / API 协议 (three-
 // protocol segment, default OpenAI Completions [推断]) / API 密钥 (可选,
