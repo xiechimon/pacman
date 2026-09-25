@@ -259,9 +259,6 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.30.0
         version: 1.30.0(zod@4.6.5)
-      '@pacman/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       commander:
         specifier: 15.0.0
         version: 15.0.0
@@ -275,6 +272,9 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
+      '@pacman/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       esbuild:
         specifier: 0.28.2
         version: 0.28.2
