@@ -27,6 +27,8 @@ export function bootServer(
     /** #231 OAuth 面：client 凭证对（默认 null = 未配置）+ 出站 mock。 */
     oauthClient?: AppContext['oauthClient'];
     oauthFetch?: AppContext['oauthFetch'];
+    /** #251 可选 token 鉴权（缺省 = 关，全量既有测试零改动）。 */
+    authToken?: string | null;
   } = {},
 ) {
   const db = openMemoryDb();
@@ -60,6 +62,7 @@ export function bootServer(
     reposDir,
     ...(opts.webDir !== undefined ? { webDir: opts.webDir } : {}),
     ...(opts.githubFetch !== undefined ? { githubFetch: opts.githubFetch } : {}),
+    authToken: opts.authToken ?? null,
   });
   return {
     app,

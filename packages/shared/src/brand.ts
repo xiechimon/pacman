@@ -84,6 +84,10 @@ export const ENV_VARS = {
    * GitHub OAuth App 后以 env 注入；缺 = authorize 400 未配置）。 */
   githubOauthClientId: 'PACMAN_GITHUB_OAUTH_CLIENT_ID',
   githubOauthClientSecret: 'PACMAN_GITHUB_OAUTH_CLIENT_SECRET',
+  /** server 可选 token 鉴权（#251，06 册 D8）：设 = 开（Bearer 头主干道；
+   * 两条 SSE stream 端点另收 ?token=——EventSource 无法设 header）；
+   * 未设/空串 = 关（默认，行为与现状一致）。 */
+  token: 'PACMAN_TOKEN',
 } as const;
 
 /** API key 形态 `pacman_<48hex>`（02 §5.8 前缀 = 品牌槽；r3 §6 掩码样例原形

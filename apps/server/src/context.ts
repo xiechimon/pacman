@@ -47,4 +47,7 @@ export interface AppContext {
   /** OAuth App client 凭证对（config.ts env 读位；null = 未配置 →
    *  authorize 400）。 */
   oauthClient: OAuthClientConfig | null;
+  /** 可选 token 鉴权（#251，lib/token-auth.ts；config.ts env 读位）。
+   *  null = 关（默认，行为与现状一致）；设值 = Bearer 闸开启。 */
+  authToken: string | null;
 }

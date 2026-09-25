@@ -5063,6 +5063,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > executor CLI 面（02 §
     "home": "PACMAN_HOME",
     "server": "PACMAN_SERVER",
     "team": "PACMAN_TEAM",
+    "token": "PACMAN_TOKEN",
     "webDir": "PACMAN_WEB_DIR",
     "workspacesDir": "PACMAN_WORKSPACES_DIR",
   },

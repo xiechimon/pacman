@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import type { Logger } from 'pino';
 import type { AppContext } from './context.js';
 import { HttpError } from './lib/errors.js';
+import { registerTokenAuth } from './lib/token-auth.js';
 import { registerRoutes } from './routes.js';
 import { registerMachineRoutes } from './routes-machine.js';
 import { NotFoundError } from './services/builds.js';
@@ -78,6 +79,8 @@ function registerStaticSpa(app: Hono, webDir: string): void {
 
 export function createApp(ctx: AppContext, logger?: Logger): Hono {
   const app = new Hono();
+  // 可选 token 鉴权闸（#251）：全仓唯一新缝，先于一切路由注册；null = 不注册。
+  registerTokenAuth(app, ctx.authToken);
   registerRoutes(app, ctx);
   registerMachineRoutes(app, ctx);
   if (ctx.webDir) registerStaticSpa(app, ctx.webDir);
