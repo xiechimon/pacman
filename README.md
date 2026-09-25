@@ -1,57 +1,107 @@
 # pacman
 
-todos.dev 的 1:1 复刻研究项目（像素级 UI + 功能等价）。复刻产品名 **Pacman**，本地自用。
+A self-hosted, open-source **agent workspace**: a task board where you write the tasks and AI agents build them on your own machines.
 
-> **免责声明 / Disclaimer**
-> 本仓库是 todos.dev 的 1:1 复刻研究项目（像素级 UI + 功能等价），仅供个人学习研究，
-> 与 todos.dev 官方无任何关联，未获其认可或赞助。Todos、todos.dev 及其 logo、界面截图、
-> 文案等素材版权归原权利人所有；仓库内 `docs/research/` 下的抓取记录与截图仅作研究证据引用。
-> 复刻产品名为 Pacman，本地自用，不对外提供服务。
-> 素材替换政策与逐项清单见 [`docs/spec/素材替换计划.md`](docs/spec/素材替换计划.md)（#44）。
+English | [简体中文](./README.zh.md)
 
-## 仓库结构
+## What
 
-| 路径 | 内容 |
-|---|---|
-| `CONTEXT.md` | 领域模型与术语表（中文界面词 ↔ 英文原词 ↔ 内部名，canonical） |
-| `docs/research/` | r1–r8 原站盘点与证据（站点/UI/协议/地基/图标/生命周期/重基线/动态面补拍，含抓包与截图基线） |
-| `docs/spec/` | 实现正典：`00-地基决议`（#39）· `01-stack-v2`（#43）· `02-架构平价`（#41）· `素材替换计划`（#44） |
-| `apps/web` | 复刻 Web UI（React，从零自建，见 00 D5） |
-| `apps/server` | 复刻 server（Hono REST + SSE + SQLite，包名 `@pacman/server`） |
-| `apps/daemon` | 执行机 daemon（**包名 `@pacman/cli`**，目录名 ≠ 包名，`--filter` 时注意，见 02 §5.8 自发包名） |
-| `packages/shared` | 协议词表 / 记录形状 / 品牌槽单源（包名 `@pacman/shared`） |
-| `parity/` | 像素对拍门禁（对 `docs/research/assets/` 基线截图） |
-| `scripts/` | 构建期工具（含 `generate-icons.mjs`） |
+You file a task on a kanban board. An agent picks it up, checks out a worktree and a branch, and streams its work back to the UI as a conversation — plan cards, diffs, tool calls, all in real time. The run pauses at review so a human decides what merges.
 
-## 运行
+- **Tasks & phases** — kanban board with numbered tasks, tags, and schedules that re-run a task on a cycle.
+- **Agents** — execution roles configured with a model, responsibilities, skills, MCP servers, secrets, and memory. A per-user "chief" agent dispatches work.
+- **Machines** — register any host by running the daemon on it; builds execute there under supervision. Your laptop, your box, your rules.
+- **Providers** — model access via API key, OAuth (GitHub Copilot, OpenAI Codex), or a custom endpoint.
+- **Repos** — git repositories hosted by the server itself (push/pull with an API key) or connected from GitHub.
+- **Live everything** — SSE streams for board and conversation updates, notifications, token-usage accounting per build and model.
+
+## Why
+
+- **Self-hosted.** One data root (`~/.pacman`), SQLite, no external service in the loop. Your code and your model keys stay on your machines.
+- **Open source.** Apache-2.0 (see [License](#license)).
+- **Honest lineage.** pacman began as a clean-room study of todos.dev's public interface (see [Origins](#origins)) and is now an independent product; its roadmap diverges from real usage, not from anyone else's spec.
+
+## Quickstart
+
+Requirements: Node.js >= 22.19 and pnpm (e.g. via `corepack enable`).
 
 ```sh
 pnpm install
-pnpm dev:server   # 总部：首启自动建库+迁移+seed，日志打出 port/teamId（缺省 8787）
-pnpm dev:web      # 老板界面：vite dev，proxy 同源指向 server（缺省 http://localhost:5173）
+pnpm start
 ```
 
-daemon（让本机成为执行机，可选——不起也能用全部界面功能）：
+`pnpm start` builds the web UI and starts the server hosting it on the same origin. Open **http://127.0.0.1:8787/app**. The first boot creates the database, runs migrations, and seeds a default team.
+
+Use a different port with `PORT=9000 pnpm start`.
+
+### Optional: register this machine as an executor
+
+The UI is fully usable without a daemon; register a machine when you want agents to actually run builds on it.
 
 ```sh
-# 首次注册：网页 /app/api-keys 建 key（明文只显示一次），然后
-pnpm dev:daemon start --api-key <pacman_…> --team <teamId>
-# 日常（凭据已存 ~/.pacman/machine.json）：
-pnpm dev:daemon start        # 后台 + 监工；stop / restart / logs -f / status 同面
+# One-time enrollment: create an API key in the web UI (/app/api-keys, plaintext shown once), then
+pnpm dev:daemon start --api-key <pacman_...> --team <teamId>
+# Daily use (credentials persisted in ~/.pacman/machine.json):
+pnpm dev:daemon start        # also: stop / restart / logs -f / status
 ```
 
-数据根与共存：
+## Configuration
 
-- server 数据根 `~/.pacman/server/`（`server.db` + `secretbox.key`）；**备份 = 整目录拷走**，只拷 db 不拷 keyfile 则密文永久不可解（02 §8 护栏）
-- daemon 状态根 `~/.pacman/`（machine.json / daemon.log / workspaces/）；env 覆写 = `PACMAN_HOME`
-- 与正版 todos.dev（`~/.tds`、`tds` 命令、`TDS_*` env）**零路径/零命名冲突，可同机并行**（#109 品牌槽切换后）
+Server environment variables (all optional):
 
-## 第三方署名
+| Variable | Default | Description |
+|---|---|---|
+| `PACMAN_TOKEN` | unset | Bearer token guarding `/api/*`. Set to enable authentication — the web UI asks for the token on first visit; unset means auth off (default). The two SSE stream endpoints additionally accept `?token=` (EventSource cannot set headers). Always set this when binding the server to a non-localhost interface. |
+| `PORT` | `8787` | HTTP listen port. |
+| `PACMAN_HOME` | `~/.pacman` | Data root. Server state lives under `<PACMAN_HOME>/server/` (`server.db`, `secretbox.key`, hosted bare repos); the daemon keeps `machine.json`, `daemon.log`, and `workspaces/` at the root. **Backup = copy the whole directory** — the db alone is useless without the keyfile, since secrets are stored encrypted. |
+| `PACMAN_GITHUB_OAUTH_CLIENT_ID`<br>`PACMAN_GITHUB_OAUTH_CLIENT_SECRET` | unset | Credentials of a self-registered GitHub OAuth App, enabling OAuth provider sign-in. Set both or neither — the server refuses to start on a half-configured pair. |
+| `PACMAN_WEB_DIR` | `apps/web/dist` if present | Override for the SPA static-hosting root; unset with no build output = API-only mode. |
 
-- 头像字体 [Lorelei](https://www.figma.com/community/file/1198749693280469639) — © Lisa Wischofsky, CC0 1.0
-- 字体 Inter / JetBrains Mono — SIL Open Font License 1.1
-- 图标 [lucide](https://lucide.dev) — ISC License
-- emoji 策展数据 [gitmoji](https://gitmoji.dev) — MIT License
-- 执行引擎 [pi SDK](https://github.com/badlogic/pi-mono) — MIT License
+Daemon environment variables (alternatives to the CLI flags above): `PACMAN_SERVER` (default `http://127.0.0.1:8787`), `PACMAN_API_KEY`, `PACMAN_TEAM`, `PACMAN_WORKSPACES_DIR` (default `<PACMAN_HOME>/workspaces`).
 
-完整义务表见 `docs/spec/素材替换计划.md` §4。
+## Development
+
+```sh
+pnpm dev:server   # API server with hot reload on http://127.0.0.1:8787 (first boot: db + migrations + seed)
+pnpm dev:web      # vite dev server on http://localhost:5173, proxying /api and /git to 8787
+```
+
+Quality gates before committing:
+
+```sh
+pnpm lint         # biome ci
+pnpm typecheck    # tsc across all packages
+pnpm test         # vitest
+```
+
+### Repository layout
+
+| Path | Contents |
+|---|---|
+| `CONTEXT.md` | Domain model & glossary — canonical terminology (Chinese interface terms ↔ English ↔ internal names) |
+| `apps/web` | Web UI (React + vite) |
+| `apps/server` | Server: Hono REST + SSE + SQLite (package `@pacman/server`) |
+| `apps/daemon` | Executor daemon (package `@pacman/cli` — directory name differs from package name) |
+| `packages/shared` | Protocol vocabulary, record shapes, brand-slot single source (`@pacman/shared`) |
+| `docs/spec/` | Implementation canon, volumes 00–06 (Chinese) |
+| `docs/research/` | r1–r8 replication-era site inventories and evidence (historical archive) |
+| `parity/` | Pixel-parity harness against `docs/research/assets/` baselines (now a regression tool) |
+| `scripts/` | Build-time tools (incl. `generate-icons.mjs`) |
+
+## Third-party credits
+
+- Avatar font [Lorelei](https://www.figma.com/community/file/1198749693280469639) — © Lisa Wischofsky, CC0 1.0
+- Fonts Inter / JetBrains Mono — SIL Open Font License 1.1
+- Icons [lucide](https://lucide.dev) — ISC License
+- Emoji curation data [gitmoji](https://gitmoji.dev) — MIT License
+- Execution engine [pi SDK](https://github.com/badlogic/pi-mono) — MIT License
+
+Full obligations table: `docs/spec/素材替换计划.md` §4.
+
+## License
+
+Apache-2.0 — see [LICENSE](./LICENSE).
+
+## Origins
+
+pacman began as a clean-room study of todos.dev's public interface and protocols — an exploration of agent-workspace design. It is now an independent project with its own roadmap, and uses no code or assets from todos.dev.
