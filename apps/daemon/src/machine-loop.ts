@@ -151,6 +151,11 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     logger,
     ...(opts.orphanTtlMs !== undefined ? { orphanTtlMs: opts.orphanTtlMs } : {}),
   });
+  // 在跑 session 句柄注册表（W3 #279 steer 投递面）。声明位必须在 recover 块
+  // 之前——stepDeps() 是函数声明（提升）且 recover 路径会先于下方流段调用它，
+  // 注册表若在调用点之后才 const 初始化 = TDZ ReferenceError（crash-recover
+  // 集成实测：重启 daemon 于 recover 即崩）。
+  const sessionHandles = new Map<string, AgentSessionHandle>();
 
   // 孤儿 worktree 回收（r3 §1.4 cleanupOrphanWorktrees(ttlMs = 7*24h)）：
   // 上线一次 + 每日节奏 [设计]（观测仅函数名，节奏未采）。活步 = journal
@@ -219,8 +224,6 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   const streamCtrl = new AbortController();
   // 盒装引用：规避 TS 对捕获 let 的初始化收窄（wake 回调与 claim 循环异步互访）。
   const flight: { claim: AbortController | null } = { claim: null };
-  // 在跑 session 句柄注册表（stepId → handle；runStep 装卸，deliverSteer 消费）。
-  const sessionHandles = new Map<string, AgentSessionHandle>();
   const deliverSteer = async (stepId: string): Promise<void> => {
     try {
       const content = await client.steer(stepId);
