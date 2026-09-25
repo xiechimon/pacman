@@ -42,8 +42,8 @@ import type {
   TokenUsage,
   UserRecord,
 } from '@pacman/shared';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from './client.js';
 
 // 行形单源 = shared（01 §4.4 双端消费）：plan 行 = planRowSchema（record +
@@ -183,6 +183,33 @@ export const useBuildUsage = (buildId: string | null | undefined, enabled: boole
     queryFn: () => api.get<TokenUsage[]>(`/api/builds/${buildId}/usage`),
     enabled: enabled && buildId != null,
   });
+
+/** W4 #288：运行历史 tokens 供数——buildHistory 各 build 的 usage 并查
+ * （per-build 端点同键去重）→ Map<buildId, 四维合计>；未到的行缺省
+ * （mapRunHistory tokensByBuild 槽省略不炸）。合计口径 = mapTokenUsage
+ * 同式（input+output+cacheRead+cacheWrite）。 */
+export function useRunHistoryTokens(buildIds: string[], enabled: boolean) {
+  const queries = useQueries({
+    queries: buildIds.map((id) => ({
+      queryKey: ['usage', id],
+      queryFn: () => api.get<TokenUsage[]>(`/api/builds/${id}/usage`),
+      enabled,
+      staleTime: 60_000,
+    })),
+  });
+  return useMemo(() => {
+    const byBuild = new Map<string, number>();
+    buildIds.forEach((id, index) => {
+      const rows = queries[index]?.data;
+      if (!rows || rows.length === 0) return;
+      byBuild.set(
+        id,
+        rows.reduce((sum, row) => sum + row.input + row.output + row.cacheRead + row.cacheWrite, 0),
+      );
+    });
+    return byBuild;
+  }, [buildIds, queries]);
+}
 
 export const useDocumentDiff = (
   documentId: string | null,
