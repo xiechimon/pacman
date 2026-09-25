@@ -387,7 +387,12 @@ if [[ "${V1:-}" == "0.1.0" && "${V2:-}" == "0.1.0" ]]; then
   for p in 8791 8792 8793 8794 8795 8796 8797 8798 8799; do
     if ! lsof -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1; then ACCEPT_PORT="$p"; break; fi
   done
-  [[ -z "$ACCEPT_PORT" ]] && ACCEPT_PORT=8791
+  if [[ -z "$ACCEPT_PORT" ]]; then
+    warn "8791-8799 全被监听占用——验收端口没得选，向导退出（不静默挑已占端口）。"
+    warn "查占用：lsof -iTCP:8791 -sTCP:LISTEN——占用的可能是别的车道，不能杀；"
+    warn "等车道收摊后重跑即可（向导零落盘，重跑成本 = 重新粘贴 token）。"
+    exit 1
+  fi
   note "验收端口 $ACCEPT_PORT（5173/8787 是主仓 dev 栈不动；8390/8399 是别的车道段位）。"
   ACCEPT_HOME=$(mktemp -d "${TMPDIR:-/tmp}/pacman-accept.XXXXXX")
   say "隔离 HOME：$ACCEPT_HOME——npx 缓存、~/.pacman 数据全落在这里，验收后整目录删掉。"
