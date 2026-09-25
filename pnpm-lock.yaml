@@ -415,9 +415,6 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 1.30.0
         version: 1.30.0(zod@4.6.5)
-      '@pacman/cli':
-        specifier: workspace:*
-        version: link:../apps/daemon
       '@pacman/server':
         specifier: workspace:*
         version: link:../apps/server
@@ -427,6 +424,9 @@ importers:
       '@playwright/test':
         specifier: 'catalog:'
         version: 1.63.0
+      '@xiechimon/pacman-cli':
+        specifier: workspace:*
+        version: link:../apps/daemon
       drizzle-orm:
         specifier: 0.45.2
         version: 0.45.2(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3)

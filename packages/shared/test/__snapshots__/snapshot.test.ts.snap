@@ -5632,7 +5632,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > 品牌串命名常量表
     "apiKeyPrefix": "pacman_",
     "branchPrefix": "pacman/conv-",
     "cliCommandName": "pacman",
-    "cliPackageName": "@pacman/cli",
+    "cliPackageName": "@xiechimon/pacman-cli",
     "envPrefix": "PACMAN_",
     "homeDirName": ".pacman",
     "manifestName": "Pacman",
@@ -5654,7 +5654,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > 品牌串命名常量表
       "todosDev": "tds",
     },
     "cliPackageName": {
-      "replacement": "@pacman/cli（私包，不发 npm）",
+      "replacement": "@xiechimon/pacman-cli（npm 公发，06 册 W2-D1）",
       "todosDev": "@todos-dev/cli",
     },
     "daemonLog": {

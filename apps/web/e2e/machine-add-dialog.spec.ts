@@ -31,7 +31,7 @@ test('res-add opens the 添加机器 dialog with the two-step command blocks', a
   );
   const commands = dialog.locator('.dlg-enroll-cmd code');
   await expect(commands).toHaveCount(2);
-  await expect(commands.nth(0)).toHaveText('npm install -g @pacman/cli@latest');
+  await expect(commands.nth(0)).toHaveText('npm install -g @xiechimon/pacman-cli@latest');
   await expect(commands.nth(1)).toHaveText('pacman start');
   // API key disclosure collapsed by default
   await expect(dialog.locator('.dlg-enroll-toggle')).toBeVisible();
@@ -75,7 +75,7 @@ test('copy buttons write their command to the clipboard', async ({ page, context
   await dialog.locator('.dlg-enroll-copy').first().click();
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
-    .toBe('npm install -g @pacman/cli@latest');
+    .toBe('npm install -g @xiechimon/pacman-cli@latest');
   await dialog.locator('.dlg-enroll-copy').nth(1).click();
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))

@@ -1,6 +1,9 @@
 {
-  "name": "@pacman/cli",
-  "private": true,
+  "name": "@xiechimon/pacman-cli",
+  "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "Apache-2.0",
   "type": "module",
   "engines": {

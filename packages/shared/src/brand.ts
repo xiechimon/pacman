@@ -28,7 +28,10 @@ export const BRAND_SLOTS = {
   gitHostDomain: { todosDev: 'git.todos.dev', replacement: '本地主机名代位' },
   // 02 §5.8 复刻处置 =「形状保留（无品牌），路径保留」。
   remoteMcpPath: { todosDev: '/api/mcp', replacement: '保持（形状无品牌）' },
-  cliPackageName: { todosDev: '@todos-dev/cli', replacement: '@pacman/cli（私包，不发 npm）' },
+  cliPackageName: {
+    todosDev: '@todos-dev/cli',
+    replacement: '@xiechimon/pacman-cli（npm 公发，06 册 W2-D1）',
+  },
   // —— 以下为素材替换计划 §2「同槽延伸」（r1/r2 盘点补录，同批改名）——
   deepLinkScheme: { todosDev: 'tds://', replacement: 'pacman://' },
   firstTouchCookie: { todosDev: 'tds_ft', replacement: 'pacman_ft' },
@@ -59,8 +62,8 @@ export const BRAND = {
   apiKeyPrefix: 'pacman_',
   /** 非品牌槽保持项：远程 MCP 路径（02 §5.8）。 */
   remoteMcpPath: '/api/mcp',
-  /** 自有包名（02 §5.8 复刻处置「自发包名」→ #44 定 @pacman/cli，私包不发 npm）。 */
-  cliPackageName: '@pacman/cli',
+  /** 自有包名（02 §5.8 复刻处置「自发包名」；06 册 W2-D1 npm 公发 → @xiechimon/pacman-cli）。 */
+  cliPackageName: '@xiechimon/pacman-cli',
   /** manifest/界面品牌词（素材替换计划 D2：产品名 Pacman；D3 已触发，
    * 界面词槽 Todos→Pacman 同批切换，#109）。 */
   manifestName: 'Pacman',
