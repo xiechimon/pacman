@@ -1549,6 +1549,225 @@ export const matrix = [
     clicks: ['.doc-select-wrap .doc-pane-select'],
     expectText: '文档类型',
   },
+  // 弹层族 open 态行（issue #229，M6 Q3 裁决：04 §2 增量规则对弹层族生效，
+  // 地图 #172「弹窗不入 parity 门禁」废止）。8 弹窗 11 面，light+dark 随票
+  // （增量规则 深色面随票覆盖）。票内基线裁决（票文授权：复刻侧真值补拍
+  // vs [推断] 几何行注）：
+  //   · 密钥 = 唯一直拍位（r8/83 同形同字段同视口；背景漂移 = 暗幕下
+  //     用量行/安装 App pill/FAB 徽标，小面积）
+  //   · 创建 Agent / MCP×2 / 机器 = 官方 capture 在但不可对拍 → 补拍
+  //     rebaseline/（逐行行注登记触发依据；r2 20 = 1190×744 旧批次 +
+  //     0 个成员 FREE/升级 SaaS 面 #129 出账；r8 81/82 = dropdown 类型
+  //     选择器 + tds CLI 橙色告示条 + 预填 Linear/linear vs 复刻 dlg-seg
+  //     分段无告示空态；r8 84 = 配额墙变体 vs 复刻 #179 裁决 CLI 两步表单）
+  //   · 自定义 provider / chief×2 / new-task 项目选择器 / 筛选排序弹层 =
+  //     无官方 capture（r8 85 是内置模型详情另一弹窗；chief 缺口登记在
+  //     r8-chief-panel-adhoc §3；TasksMenu 几何 [设计] 自注）→ 04 §2
+  //     无基线行规则：smoke + expectText + [推断] 行注
+  {
+    // 直拍 r8/83（04 册附录 C 表 73 号，批次内重编号 81–85 落盘）：同形同
+    // 字段同视口，本地 0.9047 过线——blend 已核，差面 = 背景漂移（暗幕下
+    // 用量行/安装 App pill/FAB 徽标，小面积）+ 弹窗纵向间距差（#221
+    // .dlg-form-* 族配方归一），无结构差异
+    id: 'dlg-secret-light',
+    route: '/app/resources/secrets',
+    scenario: '10',
+    theme: 'light',
+    clicks: ['.res-new'],
+    baseline: 'r8/83-添加密钥弹窗-light.png',
+  },
+  {
+    id: 'dlg-secret-dark',
+    route: '/app/resources/secrets',
+    scenario: '10',
+    theme: 'dark',
+    clicks: ['.res-new'],
+    expectText: '值将加密存储',
+  },
+  {
+    // 补拍（#229，2026-09-25）：r2 20 为 1190×744 旧批次视口，且其背景 =
+    // 「0 个成员 + FREE 徽章 + 升级→」SaaS 面（#129 出账，复刻不渲染）+
+    // r2 时代侧栏——与 1440×732 门禁不同源不可对拍；形状权威 = r2 §8.1
+    // capture 20。基线切自渲染产物（parity/baselines/，沿用原捕获编号）；
+    // 原站截图留 docs/research/assets/r2/ 作证据不删（D4(a)）。
+    id: 'dlg-create-agent-light',
+    route: '/app/team',
+    scenario: '12',
+    theme: 'light',
+    clicks: ['.team-create-agent'],
+    baseline: 'rebaseline/20-创建Agent-light.png',
+  },
+  {
+    id: 'dlg-create-agent-dark',
+    route: '/app/team',
+    scenario: '12',
+    theme: 'dark',
+    clicks: ['.team-create-agent'],
+    expectText: '尚未配置模型服务商',
+  },
+  {
+    // 补拍（#229）：r8/81 原站弹窗 = dropdown 类型选择器 + 橙色 tds CLI
+    // 升级告示条 + 预填 Linear/linear；复刻 = dlg-seg 分段 + 无告示条 +
+    // 空态 placeholder（实现票 #174 [推断] 裁决，字段权威 = 02 §6.2/r3
+    // §5.1）——形状分歧不可对拍。基线切自渲染产物；原站截图留
+    // docs/research/assets/r8/ 作证据不删（D4(a)）。
+    id: 'dlg-mcp-http-light',
+    route: '/app/resources/mcp-servers',
+    scenario: '09',
+    theme: 'light',
+    clicks: ['.res-new'],
+    baseline: 'rebaseline/81-添加MCP弹窗-远程-light.png',
+  },
+  {
+    id: 'dlg-mcp-http-dark',
+    route: '/app/resources/mcp-servers',
+    scenario: '09',
+    theme: 'dark',
+    clicks: ['.res-new'],
+    expectText: '添加请求头',
+  },
+  {
+    // 补拍（#229）：同 dlg-mcp-http-light 触发依据，stdio 形态对 r8/82
+    id: 'dlg-mcp-stdio-light',
+    route: '/app/resources/mcp-servers',
+    scenario: '09',
+    theme: 'light',
+    clicks: ['.res-new', '.dlg-mcp-seg-tab:has-text("本地命令")'],
+    baseline: 'rebaseline/82-添加MCP弹窗-stdio-light.png',
+  },
+  {
+    id: 'dlg-mcp-stdio-dark',
+    route: '/app/resources/mcp-servers',
+    scenario: '09',
+    theme: 'dark',
+    clicks: ['.res-new', '.dlg-mcp-seg-tab:has-text("本地命令")'],
+    expectText: '参数（可选，空格分隔）',
+  },
+  {
+    // 补拍（#229）：r8/84 = 配额墙变体（「当前套餐最多 1 台机器」+ 升级到
+    // Pro，SaaS 配额面）；复刻 = #179 裁决的 CLI 两步表单（dlg-enroll
+    // 命令块）——两个不同弹窗不可对拍。基线切自渲染产物；原站截图留
+    // docs/research/assets/r8/ 作证据不删（D4(a)）。
+    id: 'dlg-machine-light',
+    route: '/app/resources/machines',
+    scenario: '06',
+    theme: 'light',
+    clicks: ['.res-add'],
+    baseline: 'rebaseline/84-添加机器弹窗-light.png',
+  },
+  {
+    id: 'dlg-machine-dark',
+    route: '/app/resources/machines',
+    scenario: '06',
+    theme: 'dark',
+    clicks: ['.res-add'],
+    expectText: '改用 API key 注册',
+  },
+  {
+    // 无官方 capture：r8 85 = 内置模型详情弹窗（另一面）；#175 自注几何
+    // [推断]（素材仅参考）→ smoke + expectText（04 §2 无基线行规则）
+    id: 'dlg-provider-light',
+    route: '/app/resources/providers',
+    scenario: '07',
+    theme: 'light',
+    clicks: ['.res-new'],
+    expectText: '服务商 ID',
+  },
+  {
+    id: 'dlg-provider-dark',
+    route: '/app/resources/providers',
+    scenario: '07',
+    theme: 'dark',
+    clicks: ['.res-new'],
+    expectText: '服务商 ID',
+  },
+  {
+    // 无官方 capture：r8 chief 随拍仅 78 消息流，绑定态设置面缺口登记在
+    // r8-chief-panel-adhoc §3；fixture 面候选 = canon 默认行 r3-builder
+    id: 'dlg-chief-agent-light',
+    route: '/app',
+    scenario: '101',
+    theme: 'light',
+    clicks: ['.chief-agent-row'],
+    expectText: '选择总管 Agent',
+  },
+  {
+    id: 'dlg-chief-agent-dark',
+    route: '/app',
+    scenario: '101',
+    theme: 'dark',
+    clicks: ['.chief-agent-row'],
+    expectText: '选择总管 Agent',
+  },
+  {
+    // 无官方 capture：r5 102 是章程 tab 面，非编辑弹窗开态
+    id: 'dlg-chief-charter-light',
+    route: '/app',
+    scenario: '102',
+    theme: 'light',
+    clicks: ['.chief-edit-btn'],
+    expectText: '保存章程',
+  },
+  {
+    id: 'dlg-chief-charter-dark',
+    route: '/app',
+    scenario: '102',
+    theme: 'dark',
+    clicks: ['.chief-edit-btn'],
+    expectText: '保存章程',
+  },
+  {
+    // #176 项目选择器开态：scenario newtask-projects（r3-lifecycle +
+    // r2-inventory 双行）；无 capture，[推断] 几何 → smoke + DOM 齿
+    id: 'dlg-newtask-project-light',
+    route: '/app',
+    scenario: 'newtask-projects',
+    theme: 'light',
+    clicks: ['.board-new-task', '.new-task-project'],
+    expectText: 'new-task-project-menu',
+  },
+  {
+    id: 'dlg-newtask-project-dark',
+    route: '/app',
+    scenario: 'newtask-projects',
+    theme: 'dark',
+    clicks: ['.board-new-task', '.new-task-project'],
+    expectText: 'new-task-project-menu',
+  },
+  {
+    // #178 工具条弹层：TasksMenu 几何 [设计]（源文件自注 no capture）→
+    // smoke + expectText；aria-label 区分筛选/排序两菜单（同类名）
+    id: 'prj-tasks-filter-open-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'prj-tasks',
+    theme: 'light',
+    clicks: ['.prj-tasks-filter:has-text("筛选")'],
+    expectText: 'aria-label="筛选"',
+  },
+  {
+    id: 'prj-tasks-filter-open-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'prj-tasks',
+    theme: 'dark',
+    clicks: ['.prj-tasks-filter:has-text("筛选")'],
+    expectText: 'aria-label="筛选"',
+  },
+  {
+    id: 'prj-tasks-sort-open-light',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'prj-tasks',
+    theme: 'light',
+    clicks: ['.prj-tasks-filter:has-text("排序")'],
+    expectText: 'aria-label="排序"',
+  },
+  {
+    id: 'prj-tasks-sort-open-dark',
+    route: '/app/project/ZAQczKCu0MOAzC1ZqcFlX',
+    scenario: 'prj-tasks',
+    theme: 'dark',
+    clicks: ['.prj-tasks-filter:has-text("排序")'],
+    expectText: 'aria-label="排序"',
+  },
 ];
 
 export const DEFAULT_BASELINE_THRESHOLD = 0.85;

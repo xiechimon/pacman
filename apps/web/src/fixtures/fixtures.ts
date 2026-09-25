@@ -272,7 +272,8 @@ export const boardDefault: FixtureSet = {
 /** #176 项目选择器面(new-task dialog 项目 chip 下拉):boardDefault 面加
  *  projectNames 双项目——r3-lifecycle + r2-inventory(24b 注记的 r2 会话第
  *  二项目),给选择器多行数据位(records.ts projectNames = 卡面/搜索/新建
- *  dialog 的项目名位)。命名场景无 capture,e2e 专用,不进 parity 矩阵。 */
+ *  dialog 的项目名位)。命名场景无 capture:e2e 钉选择器行为,parity 侧
+ *  开态行(#229 dlg-newtask-project-*)无官方基线,走 smoke + expectText。 */
 export const boardProjectPicker: FixtureSet = {
   ...boardDefault,
   projectNames: {
