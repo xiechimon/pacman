@@ -1851,7 +1851,9 @@ function planDiff(
     from: fromV,
     to: toV,
     expanded,
-    files: [{ path: 'plan.md', added, removed, hunks: [hunk] }],
+    // #244 全文槽:to 版本 plan.md 全文(与 hunk 同源,LINES 数组即版本内容);
+    // 初渲不展示,parity 零影响。
+    files: [{ path: 'plan.md', added, removed, hunks: [hunk], fullContent: to.join('\n') }],
   };
 }
 
