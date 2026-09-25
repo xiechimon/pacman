@@ -5557,6 +5557,11 @@ exports[`协议词表快照（02 §5/§6 canonical） > web REST 端点词表（
   },
   {
     "method": "POST",
+    "note": "GitHub 扫描发现半（#223，#201 路线 A；原产品扫描钮 wire 未采——词表外 [设计] 新端点）",
+    "path": "/api/skills/scan",
+  },
+  {
+    "method": "POST",
     "note": "形状保留、内容自选；可空实现",
     "path": "/api/analytics/first-touch",
   },
