@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
 import { ApiProvider, LiveDataBridge } from './api/provider.js';
 import { I18nProvider } from './i18n/provider.js';
+import { TokenGate } from './overlay/token-gate.js';
 import { ProjectNewPage } from './pages/project-new-page.js';
 import { ProjectPage } from './pages/project-page.js';
 import { ProjectSettingsPage } from './pages/project-settings-page.js';
@@ -64,6 +65,8 @@ export function App() {
     <ApiProvider>
       <I18nProvider>
         <RouterProvider router={router} />
+        {/* #253 token 门页：401 触发的全屏唯一面，鉴权关时恒不可见 */}
+        <TokenGate />
       </I18nProvider>
     </ApiProvider>
   );

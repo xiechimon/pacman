@@ -3,7 +3,8 @@
 // server state 全走查询失效重取」；conversation stream 的 text_delta 例外
 // 进 liveTextStore（流式打字面，终稿 message 行落库后收敛）。
 // 通知 divergence（04 §5/A5）：in-app 事件 1:1 + document.hidden 时页内
-// new Notification()（无 Web Push）。
+// new Notification()（无 Web Push）。鉴权开时（#253）两条流以 ?token= 建流
+// （streamUrl，协议例外见 api/auth.ts 头注）；门页开着不建流，放行即重连。
 
 import type { NotificationRecord } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
@@ -11,7 +12,16 @@ import { useEffect } from 'react';
 import { EN } from '../i18n/en.js';
 import { readStoredLocale } from '../i18n/locale.js';
 import { translate } from '../i18n/translate.js';
+import { readStoredToken, useAuth } from './auth.js';
 import { liveTextStore } from './live-text.js';
+
+/** 鉴权开时 stream URL 附 ?token=（#253）——EventSource 无法设 header 的协议
+ *  例外，server 仅对两条 stream 端点收 query token（token-auth.ts 契约）。
+ *  无存量 token（鉴权关 / 门页未过）= 原样 URL，零行为差。 */
+function streamUrl(path: string): string {
+  const token = readStoredToken();
+  return token === null ? path : `${path}?token=${encodeURIComponent(token)}`;
+}
 
 function connect(path: string, onEvent: (ev: Record<string, unknown>) => void): () => void {
   const es = new EventSource(path);
@@ -22,7 +32,9 @@ function connect(path: string, onEvent: (ev: Record<string, unknown>) => void): 
       // 坏帧静默（心跳/半帧防御）
     }
   };
-  // EventSource 自持重连（浏览器内建退避）；onerror 不关闭。
+  // 建流后的网络断线由 EventSource 自持重连（浏览器内建退避），onerror 不
+  // 关闭；HTTP 级失败（含 401）则是 fatal（CLOSED，不自动重连），恢复走
+  // REST 面 401 → 门页 → passGate 触发的 effect 重跑（#253）。
   return () => es.close();
 }
 
@@ -31,9 +43,13 @@ function connect(path: string, onEvent: (ev: Record<string, unknown>) => void): 
  *  通知（document.hidden 时弹，02 §9.1 canon）。 */
 export function useTeamStream(teamId: string | undefined, enabled: boolean): void {
   const qc = useQueryClient();
+  // 门页开着 = token 缺/坏，不建流——对 401 建流只会立即 fatal CLOSED
+  // （connect() 处注）；passGate 的 snapshot 换引用触发本 effect 重跑，
+  // 以新 token 建流（#253）。
+  const auth = useAuth();
   useEffect(() => {
-    if (teamId === undefined || !enabled) return;
-    return connect(`/api/teams/${teamId}/stream`, (ev) => {
+    if (teamId === undefined || !enabled || auth.gateOpen) return;
+    return connect(streamUrl(`/api/teams/${teamId}/stream`), (ev) => {
       switch (ev.type) {
         case 'todo': {
           const doc = ev.doc as { id: string };
@@ -65,7 +81,7 @@ export function useTeamStream(teamId: string | undefined, enabled: boolean): voi
           break; // ping
       }
     });
-  }, [teamId, enabled, qc]);
+  }, [teamId, enabled, qc, auth]);
 }
 
 /** 桌面通知（04 §5 divergence 口径）：仅 document.hidden 时弹页内
@@ -109,9 +125,11 @@ export function useConversationStream(
   const qc = useQueryClient();
   const onMessage = handlers.onMessage;
   const onStep = handlers.onStep;
+  // 门页/token 面同 useTeamStream（#253）：gateOpen 不建流，passGate 重建。
+  const auth = useAuth();
   useEffect(() => {
-    if (conversationId === undefined || !enabled) return;
-    return connect(`/api/conversations/${conversationId}/stream`, (ev) => {
+    if (conversationId === undefined || !enabled || auth.gateOpen) return;
+    return connect(streamUrl(`/api/conversations/${conversationId}/stream`), (ev) => {
       switch (ev.type) {
         case 'text_delta':
           liveTextStore.append(conversationId, ev.text as string);
@@ -138,5 +156,5 @@ export function useConversationStream(
           break; // ping
       }
     });
-  }, [conversationId, enabled, qc, onMessage, onStep]);
+  }, [conversationId, enabled, qc, onMessage, onStep, auth]);
 }
