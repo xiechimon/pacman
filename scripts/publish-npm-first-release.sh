@@ -41,8 +41,10 @@ banner() {
   printf '\n%s%s  %s%s\n' "$BOLD" "$BLUE" "$1" "$RESET"
   printf '%s  %s stages%s\n\n' "$DIM" "$TOTAL_STAGES" "$RESET"
   printf '%s  You drive the browser; this wizard tells you exactly what to do and\n' "$DIM"
+  # 本向导本地覆写（库内唯一有意分歧）：零持久化设计下「remembers values
+  # already saved」不实——如实改为重跑即重采（#263 审查反弹）。
   printf '  captures the values you copy back. Stop any time with Ctrl-C and re-run\n'
-  printf '  later, since it remembers values already saved.%s\n' "$RESET"
+  printf '  from the start: nothing is persisted, so the token is re-collected.%s\n' "$RESET"
   pause "Ready to start?"
 }
 
@@ -257,13 +259,18 @@ step "Bypass two-factor authentication：保持不勾——账号 2FA 已开，p
 step "交互输 OTP 即可；bypass 直发 2027-01 将被 npm 移除，不把首发押在它上。"
 step "Expiration：7 天（首发窗口，兜底泄露面）。"
 step "Generate Token → 在页面顶部复制 token（只显示这一次，关页即永别）。"
+NPM_PUBLISH_TOKEN=""
 TOKEN_TRIES=0
 while :; do
-  ask_secret NPM_PUBLISH_TOKEN "粘贴 token（npm_ 开头）："
+  # 直接 read 而非库函数 ask_secret：后者会把 .env 既存同名键静默收养成默认
+  # 值——本向导要求 token 每次重新采集、零收养（#263 审查反弹）。
+  printf '  %s粘贴 token（npm_ 开头）：%s ' "$BOLD" "$RESET"
+  read -rs NPM_PUBLISH_TOKEN || true
+  printf '\n'
   if [[ "$NPM_PUBLISH_TOKEN" == npm_* && ${#NPM_PUBLISH_TOKEN} -gt 20 ]]; then
     break
   fi
-  (( TOKEN_TRIES >= 5 )) && { warn "连续 5 次没粘对——放弃 token 采集，发布回退 npm login 会话。"; NPM_PUBLISH_TOKEN=""; break; }
+  (( TOKEN_TRIES >= 5 )) && { warn "连续 5 次没粘对——放弃 token 采集，发布段将不展示命令。"; NPM_PUBLISH_TOKEN=""; break; }
   TOKEN_TRIES=$((TOKEN_TRIES + 1))
   warn "不像 granular token（npm_ 前缀 + 长串）；重新粘贴一次。"
 done
@@ -338,39 +345,45 @@ done
 if (( PUBLISH_READY )); then
   say "发布顺序：@xiechimon/pacman（主包，内嵌 web，npx 主路径）先发，"
   say "@xiechimon/pacman-cli 后发——两包互不依赖，顺序只让验收链尽早可测。"
-  say "以下命令在你自己的终端逐行跑（不是这里）；token 以变量引用进命令，"
-  say "不落 shell history。先让 token 进当前 shell："
-  if [[ -z "${NPM_PUBLISH_TOKEN:-}" ]]; then
-    warn "token 未采集成功：以下命令去掉 --//registry… 参数，走 npm login 会话直发（OTP 照常）。"
-  fi
-  step "bash/zsh：cd $REPO_ROOT && read -rs NPM_PUBLISH_TOKEN && export NPM_PUBLISH_TOKEN"
-  step "fish：cd $REPO_ROOT; and read -s NPM_PUBLISH_TOKEN; and set -x NPM_PUBLISH_TOKEN \$NPM_PUBLISH_TOKEN"
-  note "read 粘贴后回车（不回显）；token 在页面生成后如果还没复制，现在回去复制。"
-  if [[ ${#TO_PUBLISH[@]} -gt 0 ]]; then
+  RECHECK=1
+  if [[ -z "${NPM_PUBLISH_TOKEN:-}" && ${#TO_PUBLISH[@]} -gt 0 ]]; then
+    warn "token 未采集成功——发布命令不展示。先重跑向导完成 Stage 3 token 采集，"
+    warn "再回来执行发布；本向导不提供无 token 的直发路径。"
+    SKIPPED+=("首发执行（token 未采集，发布命令未展示）")
+    RECHECK=0
+    V1="" V2=""
+  elif [[ ${#TO_PUBLISH[@]} -eq 0 ]]; then
+    note "两包均已在册——无待发命令，直接进 registry 复核。"
+  else
+    say "以下命令在你自己的终端逐行跑（不是这里）；token 以变量引用进命令，"
+    say "不落 shell history。先让 token 进当前 shell："
+    step "bash/zsh：cd $REPO_ROOT && read -rs NPM_PUBLISH_TOKEN && export NPM_PUBLISH_TOKEN"
+    step "fish：cd $REPO_ROOT; and read -s NPM_PUBLISH_TOKEN; and set -x NPM_PUBLISH_TOKEN \$NPM_PUBLISH_TOKEN"
+    note "read 粘贴后回车（不回显）；token 在页面生成后如果还没复制，现在回去复制。"
     for i in "${TO_PUBLISH[@]}"; do
       step "cd ${PKG_DIRS[$i]} && npm publish --access public --//registry.npmjs.org/:_authToken=\"\$NPM_PUBLISH_TOKEN\""
     done
-  else
-    note "两包均已在册——无待发命令，直接进 registry 复核。"
+    say "每包 publish 都可能问一次 OTP（账号 2FA + token 未勾 bypass）："
+    say "验证器 6 位码照输即可，这就是双保险，不是故障。"
+    note "token 只以参数形态短暂出现在本机进程列表（ps）；命令里引用的是变量名，"
+    note "不会进 history。npm 会把 + @xiechimon/…@0.1.0 打到输出，那就是成功。"
+    pause "两包都发完（或断点续跑已齐）后回车，我去 registry 复核"
   fi
-  say "每包 publish 都可能问一次 OTP（账号 2FA + token 未勾 bypass）："
-  say "验证器 6 位码照输即可，这就是双保险，不是故障。"
-  note "token 只以参数形态短暂出现在本机进程列表（ps）；命令里引用的是变量名，"
-  note "不会进 history。npm 会把 + @xiechimon/…@0.1.0 打到输出，那就是成功。"
-  pause "两包都发完（或断点续跑已齐）后回车，我去 registry 复核"
-  V1="" V2=""
-  for round in 1 2 3; do
-    V1=$(npm view "${PKG_NAMES[0]}" version </dev/null 2>/dev/null || true)
-    V2=$(npm view "${PKG_NAMES[1]}" version </dev/null 2>/dev/null || true)
-    [[ "$V1" == "0.1.0" && "$V2" == "0.1.0" ]] && break
-    warn "registry 还没看全（pacman=${V1:-无} cli=${V2:-无}），第 $round 巡。"
-    pause "等半分钟再回车，我重查"
-  done
-  if [[ "$V1" == "0.1.0" && "$V2" == "0.1.0" ]]; then
-    printf '  %s✓ registry 复核通过：@xiechimon/pacman@0.1.0 与 @xiechimon/pacman-cli@0.1.0%s\n' "$GREEN" "$RESET"
-  else
-    warn "registry 复核未过——发布没成功或没发全；回上一步排查（E401→token，E403→权限/2FA，404→命令没真跑）。"
-    SKIPPED+=("registry 复核（两包未齐）")
+  if (( RECHECK )); then
+    V1="" V2=""
+    for round in 1 2 3; do
+      V1=$(npm view "${PKG_NAMES[0]}" version </dev/null 2>/dev/null || true)
+      V2=$(npm view "${PKG_NAMES[1]}" version </dev/null 2>/dev/null || true)
+      [[ "$V1" == "0.1.0" && "$V2" == "0.1.0" ]] && break
+      warn "registry 还没看全（pacman=${V1:-无} cli=${V2:-无}），第 $round 巡。"
+      pause "等半分钟再回车，我重查"
+    done
+    if [[ "$V1" == "0.1.0" && "$V2" == "0.1.0" ]]; then
+      printf '  %s✓ registry 复核通过：@xiechimon/pacman@0.1.0 与 @xiechimon/pacman-cli@0.1.0%s\n' "$GREEN" "$RESET"
+    else
+      warn "registry 复核未过——发布没成功或没发全；回上一步排查（E401→token，E403→权限/2FA，404→命令没真跑）。"
+      SKIPPED+=("registry 复核（两包未齐）")
+    fi
   fi
 else
   warn "前置自检熔断：#261 / #262 的包整形未落地（看上方具体告警行）。"
