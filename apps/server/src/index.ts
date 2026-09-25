@@ -6,7 +6,7 @@ import { serve } from '@hono/node-server';
 import { BRAND } from '@pacman/shared';
 import pino from 'pino';
 import { createApp } from './app.js';
-import { insecureBindWarning, loadConfig, reposDirOf } from './config.js';
+import { loadConfig, reposDirOf, warnInsecureBind } from './config.js';
 import { openDbWithHandle } from './db/client.js';
 import { seed } from './db/seed.js';
 import { createKeyfileSecretBox } from './lib/secret-box.js';
@@ -54,9 +54,8 @@ const app = createApp(
 );
 
 // `0.0.0.0` 裸绑护栏（#251，06 册 D8）：显式全网卡绑定 + 鉴权关 → 醒目 WARN，
-// 不阻断启动（风险 = 用户知情选择）。
-const bindWarning = insecureBindWarning(config);
-if (bindWarning !== null) logger.warn(bindWarning);
+// 不阻断启动（风险 = 用户知情选择）。接线钉点 = test/token-auth.test.ts。
+warnInsecureBind(logger, config);
 
 // cron 定时闭环（02 §9.2 宿主自持）：启动即补扫 + tick 循环。
 // deps 含 user（M2c 通知面）：定时轮停 review 经 build 漏斗发 build_review（r5 §7.2）。

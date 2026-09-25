@@ -17,7 +17,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, test, vi } from 'vitest';
-import { insecureBindWarning, loadConfig } from '../src/config.js';
+import { insecureBindWarning, loadConfig, warnInsecureBind } from '../src/config.js';
 import { bootServer, insertGitApiKey, req, type TestServer } from './helpers.js';
 
 const TOKEN = 'pacman-test-token-0123456789abcdef';
@@ -191,13 +191,38 @@ describe('token 鉴权：SSE stream ?token= 例外（失败方式 7）', () => {
   });
 });
 
-describe('保护面守卫：路径变体不绕过（审查加固，Spec#4/5）', () => {
+describe('保护面守卫：路径变体不绕过（审查加固，Spec#4/5 + 编码前缀绕过类）', () => {
   test('开 + 大小写/双斜杠变体无 token → 不达保护面（404，非 200 数据）', async () => {
     const s = bootServer({ authToken: TOKEN });
     for (const path of ['/API/teams', '//api/teams', '/api/../api/teams/']) {
       const res = await req(s.app, 'GET', path);
       expect(res.status, path).not.toBe(200);
     }
+  });
+
+  test('开 + 编码前缀 /%61pi/teams 无 token → 401（Hono getPath decodeURI 后命中保护路由，豁免判定不得漏）', async () => {
+    const s = bootServer({ authToken: TOKEN });
+    const res = await req(s.app, 'GET', '/%61pi/teams');
+    expect(res.status).toBe(401);
+  });
+
+  test('开 + 编码绕过类变体无 token → 一律 401（双重编码/大小写混合/编码后缀/编码豁免面）', async () => {
+    const s = bootServer({ authToken: TOKEN });
+    for (const path of [
+      '/%2561pi/teams', // 双重编码
+      '/%61PI/teams', // 编码 + 大小写混合
+      '/api/%74eams', // 编码后缀（本就保护，钉住不回归）
+      '/api/%6Fauth/callback?code=x&state=bogus', // 编码豁免面 → fail-closed 不豁免
+    ]) {
+      const res = await req(s.app, 'GET', path);
+      expect(res.status, path).toBe(401);
+    }
+  });
+
+  test('开 + 编码前缀路径持正确 Bearer → 闸放行，Hono 解码路由照常可达（200）', async () => {
+    const s = bootServer({ authToken: TOKEN });
+    const res = await reqWith(s, 'GET', '/%61pi/teams', authHeaders);
+    expect(res.status).toBe(200);
   });
 });
 
@@ -211,6 +236,22 @@ describe('0.0.0.0 裸绑 WARN（失败方式 9/10）', () => {
     expect(insecureBindWarning(loadConfig({ host: null, authToken: null }))).toBeNull();
     expect(insecureBindWarning(loadConfig({ host: '127.0.0.1', authToken: null }))).toBeNull();
     expect(insecureBindWarning(loadConfig({ host: '0.0.0.0', authToken: TOKEN }))).toBeNull();
+  });
+
+  test('入口接线：warnInsecureBind → logger.warn 恰发一行（stub 钉点，防接线回归）', () => {
+    const calls: string[] = [];
+    const stubLogger = {
+      warn: (msg: string) => {
+        calls.push(msg);
+      },
+    };
+    warnInsecureBind(stubLogger, loadConfig({ host: '0.0.0.0', authToken: null }));
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatch(/0\.0\.0\.0/);
+    // 默认绑定 / 鉴权开 → 不发射
+    warnInsecureBind(stubLogger, loadConfig({ host: null, authToken: null }));
+    warnInsecureBind(stubLogger, loadConfig({ host: '0.0.0.0', authToken: TOKEN }));
+    expect(calls).toHaveLength(1);
   });
 
   test('env 映射：PACMAN_TOKEN → authToken（空串 = 关）；HOST → host', () => {

@@ -115,6 +115,14 @@ export function insecureBindWarning(config: ServerConfig): string | null {
   return `绑定 ${config.host}（全网卡可达）且 ${ENV_VARS.token} 未设——API 面裸奔于所有网络接口；设 ${ENV_VARS.token}=<token> 开启 Bearer 鉴权，或 HOST=127.0.0.1 收回本机`;
 }
 
+/** 入口接线（index.ts 启动段唯一调用点）：警示行经 logger.warn 落日志。
+ * 抽函数 = 接线可钉（stub logger 用例防「判定在、发射丢」回归，spec #247
+ * AC6）；pino Logger 结构兼容本最小口。 */
+export function warnInsecureBind(logger: { warn(msg: string): void }, config: ServerConfig): void {
+  const message = insecureBindWarning(config);
+  if (message !== null) logger.warn(message);
+}
+
 /** 托管 bare repo 存储根 = 数据根子目录 `repos` [设计]（01 §4.2 单一数据根：
  * DB 文件 + keyfile + bare repo 存储同根，备份 = 拷目录）。 */
 export function reposDirOf(config: ServerConfig): string {
