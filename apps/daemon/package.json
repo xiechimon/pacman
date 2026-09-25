@@ -4,6 +4,7 @@
   "publishConfig": {
     "access": "public"
   },
+  "description": "Machine-side agent executor for @xiechimon/pacman — claims and builds steps on your own machines.",
   "license": "Apache-2.0",
   "type": "module",
   "engines": {
@@ -12,6 +13,10 @@
   "bin": {
     "pacman": "./dist/cli.mjs"
   },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
   "scripts": {
     "dev": "tsx src/cli.ts",
     "build": "node build.mjs",
@@ -19,22 +24,22 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@clack/prompts": "1.8.1",
     "@earendil-works/pi-agent-core": "0.86.0",
     "@earendil-works/pi-ai": "0.86.0",
-    "@earendil-works/pi-coding-agent": "0.86.0",
+    "@earendil-works/pi-coding-agent": "0.86.0"
+  },
+  "devDependencies": {
+    "@clack/prompts": "1.8.1",
     "@modelcontextprotocol/sdk": "1.30.0",
     "@pacman/shared": "workspace:*",
     "commander": "15.0.0",
-    "pino": "10.3.1",
-    "undici": "8.10.2",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
     "esbuild": "0.28.2",
+    "pino": "10.3.1",
     "pino-pretty": "13.1.3",
     "tsx": "4.23.15",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "undici": "8.10.2",
+    "vitest": "catalog:",
+    "zod": "catalog:"
   }
 }
