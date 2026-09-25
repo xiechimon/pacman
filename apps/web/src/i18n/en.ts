@@ -427,6 +427,16 @@ export const EN: Record<string, string> = {
   尚未配置模型服务商: 'No model provider configured yet',
   配置服务商: 'Configure providers',
   创建: 'Create',
+  // W4 #287 API key 新建表单弹窗（r3 §6 权限位 [推断]）
+  '名称（可选）': 'Name (optional)',
+  '如：笔记本、CI 机器': 'e.g. laptop, CI runner',
+  'Git 读写（托管仓库 push/pull）': 'Git read/write (hosted repo push/pull)',
+  'MCP 访问（MCP 客户端接入）': 'MCP access (MCP client connections)',
+  工具权限位: 'Tool grants',
+  全选: 'Grant all',
+  清空: 'Clear all',
+  读: 'Read',
+  写: 'Write',
   // wayfinder #173 add-secret dialog family (r2 §242 verbatim fields)
   '名称（环境变量名）': 'Name (environment variable name)',
   '描述（可选）': 'Description (optional)',
