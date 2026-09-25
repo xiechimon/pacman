@@ -26,6 +26,7 @@ import {
   usePlans,
   useProjectBuilds,
   useProjects,
+  useRunHistoryTokens,
   useSearchResults,
   useSteps,
   useTodo,
@@ -161,6 +162,11 @@ export function TodoDetailPage() {
   const messagesQ = useMessages(buildId, live);
   const plansQ = usePlans(buildId, live);
   const usageQ = useBuildUsage(buildId, live);
+  // W4 #288：运行历史 tokens 供数（buildHistory 各 build usage 并查）。
+  const historyTokens = useRunHistoryTokens(
+    wireTodo?.buildHistory.map((e) => e.buildId) ?? [],
+    live,
+  );
   const machinesQ = useMachines(teamId, live);
   const membersQ = useMembers(teamId, live);
   const projectsQ = useProjects(teamId, live);
@@ -332,7 +338,7 @@ export function TodoDetailPage() {
       ? {
           token: mapTokenUsage(usageQ.data ?? []),
           branch: mapBranchInfo(buildId, steps, machinesQ.data ?? []),
-          runs: mapRunHistory(wireTodo, projectBuildsQ.data ?? [], Date.now()),
+          runs: mapRunHistory(wireTodo, projectBuildsQ.data ?? [], Date.now(), historyTokens),
         }
       : null
     : overlayContent(todo.id);
