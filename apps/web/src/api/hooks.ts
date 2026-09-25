@@ -14,6 +14,7 @@ import type {
   CreateMcpServerBody,
   CreateProviderBody,
   CreateScheduleBody,
+  DiffFileContent,
   DocumentDiff,
   DocumentDiffFile,
   MachineRecord,
@@ -129,6 +130,23 @@ export const useBuildChanges = (buildId: string | null | undefined, enabled: boo
     queryKey: ['changes', buildId],
     queryFn: () => api.get<{ files: DocumentDiffFile[] }>(`/api/builds/${buildId}/changes`),
     enabled: enabled && buildId != null,
+  });
+
+/** 单文件全文读面（#225 接 #224 端点，docpane changes 面「显示完整文件」）：
+ *  conv 分支头单文件按需取。path 含 `/` 与中文，必须 encode（useProjectFile
+ *  同律）。 */
+export const useBuildChangeFile = (
+  buildId: string | null | undefined,
+  path: string | null,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: ['changeFile', buildId, path],
+    queryFn: () =>
+      api.get<DiffFileContent>(
+        `/api/builds/${buildId}/changes/file?path=${encodeURIComponent(path ?? '')}`,
+      ),
+    enabled: enabled && buildId != null && path != null,
   });
 
 export const useBuildUsage = (buildId: string | null | undefined, enabled: boolean) =>

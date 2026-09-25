@@ -417,6 +417,7 @@ export function TodoDetailPage() {
                   setMenu(undefined);
                 }}
                 planDiff={view.planDiff}
+                buildId={live ? buildId : null}
                 onToggleExpand={() => {
                   if (live) {
                     setChangesExpanded((v) => !v);

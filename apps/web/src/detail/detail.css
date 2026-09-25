@@ -357,6 +357,16 @@
   cursor: pointer;
 }
 
+/* 全文态行（#225）：loading/error/binary 占位在 hunk 区同槽，左对齐
+   hunk 头文本位（53px），dim mono 同 .diff-hunk-head 族 */
+.diff-full--state {
+  padding: 8px 13px 8px 53px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--text-dim);
+}
+
 /* changes-empty placeholder (r7 38): centered across the whole pane, no
    header above it */
 .doc-empty--full {
