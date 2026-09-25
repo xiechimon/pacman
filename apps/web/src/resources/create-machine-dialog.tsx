@@ -94,8 +94,12 @@ export function CreateMachineDialog({ open, onClose, teamName, teamId }: CreateM
             </Link>
           </div>
         )}
-        {/* W4 #285：浏览器授权路径入口（02 §5.2 路径一；CLI 两步为主路径不动）。 */}
-        <Link className="dlg-enroll-keylink" to={{ pathname: '/app/machines/authorize', search }}>
+        {/* W4 #285：浏览器授权路径入口（02 §5.2 路径一；CLI 两步为主路径不动）。
+            独立 class（dlg-enroll-browserlink）——keylink 是 e2e strict 定位锚。 */}
+        <Link
+          className="dlg-enroll-browserlink"
+          to={{ pathname: '/app/machines/authorize', search }}
+        >
           {t('浏览器授权注册 →')}
         </Link>
       </div>

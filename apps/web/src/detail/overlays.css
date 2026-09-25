@@ -877,7 +877,8 @@
   gap: 8px;
 }
 
-.dlg-enroll-keylink {
+.dlg-enroll-keylink,
+.dlg-enroll-browserlink {
   align-self: flex-start;
   font-size: 13px;
   line-height: 16px;
