@@ -42,6 +42,11 @@ export function runGit(
     child.on('close', (code) =>
       resolve({ code: code ?? 0, stdout: Buffer.concat(stdout), stderr }),
     );
+    // stdin 写端兜底（#216）：子进程先关读端（早退/不消费输入，如 http-backend
+    // 或其 service 提前结束）时，在途写吃 EPIPE。该错误不携带结果信息——退出码
+    // 与 stdout 才是结果面；无监听则以 unhandled error 击穿进程（vitest 判整跑
+    // 挂；生产 = uncaughtException）。CI run 36038226922 实测。
+    child.stdin.on('error', () => {});
     if (opts.stdin !== undefined) {
       child.stdin.end(Buffer.from(opts.stdin));
     } else {
