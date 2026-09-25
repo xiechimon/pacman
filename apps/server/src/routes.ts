@@ -108,6 +108,13 @@ import {
   listMcpServers,
   updateMcpServer,
 } from './services/mcp-servers.js';
+import {
+  abortOAuthCallback,
+  completeOAuthCallback,
+  type OAuthDeps,
+  OAuthFlowError,
+  startOAuthAuthorize,
+} from './services/oauth.js';
 import { PhaseTransitionError } from './services/phase.js';
 import { deleteProject } from './services/projects.js';
 import {
@@ -1135,6 +1142,75 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       throw notFound(`provider ${c.req.param('pid')}`);
     }
     return c.body(null, 204);
+  });
+
+  // —— OAuth 握手面（#231，[设计] 面：todos.dev 此面 wire 未采；词表登记 =
+  // shared WEB_REST_ENDPOINTS，族表 = OAUTH_FAMILIES）。token 密封落
+  // provider.apiKeyCipher（02 §8 只写不读）；callback 302 回 providers 页，
+  // 结果经 ?oauth=connected|error 查询参传递——token 永不进 redirect。
+  const oauthDeps = (): OAuthDeps => ({
+    db: ctx.db,
+    box: ctx.secretBox,
+    states: ctx.oauthStates,
+    fetch: ctx.oauthFetch ?? globalThis.fetch,
+    client: ctx.oauthClient,
+  });
+
+  app.post('/api/teams/:id/providers/oauth/:preset/authorize', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    // returnOrigin = 浏览器 origin（vite proxy 下同源经 /api 转发，Origin 头
+    // 原样透传）；裸 API 形态缺 Origin 时回退请求自身 origin。
+    const origin = c.req.header('origin') ?? new URL(c.req.url).origin;
+    try {
+      const { authorizationUrl } = startOAuthAuthorize(oauthDeps(), {
+        teamId,
+        presetId: c.req.param('preset'),
+        origin,
+      });
+      return c.json({ authorizationUrl });
+    } catch (err) {
+      if (err instanceof OAuthFlowError) {
+        if (err.reason === 'unknown-family') throw new HttpError(404, err.message);
+        if (err.reason === 'not-configured') throw new HttpError(400, err.message);
+      }
+      throw err;
+    }
+  });
+
+  app.get('/api/oauth/callback', async (c) => {
+    const code = c.req.query('code');
+    const state = c.req.query('state') ?? '';
+    const landing = (origin: string, query: string) =>
+      c.redirect(`${origin}/app/resources/providers?${query}`, 302);
+    // 用户在 provider 站拒绝（GitHub：?error=access_denied&state=…，无 code）。
+    if (c.req.query('error') !== undefined || code === undefined || code === '') {
+      try {
+        const { origin } = abortOAuthCallback(oauthDeps(), state);
+        return landing(origin, 'oauth=error&reason=denied');
+      } catch (err) {
+        if (err instanceof OAuthFlowError && err.reason === 'bad-state') {
+          throw new HttpError(400, err.message);
+        }
+        throw err;
+      }
+    }
+    try {
+      const { origin, presetId } = await completeOAuthCallback(oauthDeps(), {
+        code,
+        state,
+        createdBy: ctx.user.id,
+      });
+      return landing(origin, `oauth=connected&provider=${presetId}`);
+    } catch (err) {
+      if (err instanceof OAuthFlowError) {
+        if (err.reason === 'exchange-failed' && err.origin !== undefined) {
+          return landing(err.origin, 'oauth=error&reason=exchange');
+        }
+        if (err.reason === 'bad-state') throw new HttpError(400, err.message);
+      }
+      throw err;
+    }
   });
 
   app.get('/api/teams/:id/secrets', (c) => {

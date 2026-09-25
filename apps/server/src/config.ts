@@ -36,6 +36,9 @@ export const serverConfigSchema = z.object({
    * （纯 API 形态）。env 覆写位 = ENV_VARS.webDir（品牌槽单源，02 §5.8）；
    * 默认 = monorepo 布局 `apps/web/dist` 存在即托管。 */
   webDir: z.string().nullable(),
+  /** OAuth App client 凭证对（#231 握手面；env 双件齐 = 配置，双缺 = null
+   *  未配置——authorize 走 400 提示；只配一件 = 启动期报错不静默）。 */
+  githubOauth: z.object({ clientId: z.string(), clientSecret: z.string() }).nullable(),
 });
 export type ServerConfig = z.infer<typeof serverConfigSchema>;
 
@@ -60,6 +63,13 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
   // 数据根子目录名 `server` [设计]（品牌位归 #44 一次性替换面）。
   const dataDir = join(home, 'server');
   const webDirEnv = process.env[ENV_VARS.webDir];
+  const oauthId = process.env[ENV_VARS.githubOauthClientId] || undefined;
+  const oauthSecret = process.env[ENV_VARS.githubOauthClientSecret] || undefined;
+  if ((oauthId === undefined) !== (oauthSecret === undefined)) {
+    throw new Error(
+      `oauth client half-configured: ${ENV_VARS.githubOauthClientId} 与 ${ENV_VARS.githubOauthClientSecret} 必须同设`,
+    );
+  }
   return serverConfigSchema.parse({
     port: envPort() ?? 8787,
     dataDir,
@@ -69,6 +79,10 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
     claimHoldMs: CLAIM_POLL_INTERVAL_MS,
     schedulerTickMs: 15_000,
     webDir: webDirEnv !== undefined && webDirEnv !== '' ? resolve(webDirEnv) : defaultWebDir(),
+    githubOauth:
+      oauthId !== undefined && oauthSecret !== undefined
+        ? { clientId: oauthId, clientSecret: oauthSecret }
+        : null,
     ...overrides,
   });
 }

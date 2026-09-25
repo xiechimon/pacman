@@ -95,6 +95,19 @@ export const WEB_REST_ENDPOINTS: readonly RestEndpoint[] = [
   { method: 'PATCH', path: '/api/teams/{id}/providers/{pid}' },
   { method: 'PATCH', path: '/api/teams/{id}/agents/{aid}' },
   { method: 'PATCH', path: '/api/teams/{id}/chief', note: '绑定 Agent（r5 §2 抓包）' },
+  // —— OAuth 握手面（#231 [设计]：todos.dev 此面 wire 未采；形状 = 授权 URL
+  // 签发 + callback 收码 302 回跳，族表 = records/provider.ts OAUTH_FAMILIES）——
+  {
+    method: 'POST',
+    path: '/api/teams/{id}/providers/oauth/{preset}/authorize',
+    note: '#231 [设计]：签发授权 URL（state 入册，TTL 10min 单次核销）',
+  },
+  {
+    method: 'GET',
+    path: '/api/oauth/callback',
+    query: ['code', 'state', 'error'],
+    note: '#231 [设计]：收码 → token 密封落 provider 行（02 §8）→ 302 回 providers 页',
+  },
 ];
 
 /** DELETE 面规则（02 §6.1 [推断]）：同名 REST DELETE；资源面 = r2 §6 UI 删除流

@@ -19,6 +19,7 @@ import type {
   DocumentDiffFile,
   MachineRecord,
   McpServerRecord,
+  OAuthAuthorizeResponse,
   PatchAgentBody,
   PatchChiefBody,
   PlanRow,
@@ -402,6 +403,15 @@ export function useApiMutations(teamId: string | undefined) {
       mutationFn: (body: CreateProviderBody) =>
         api.post<ProviderRecord>(`/api/teams/${teamId}/providers`, body),
       onSuccess: invalidateAll,
+    }),
+    // #231 OAuth 握手：签发授权 URL 后整页跳走（同页签流）——成功不
+    // invalidate（回跳 = 全量重载），失败留页 inline 呈现。
+    startProviderOAuth: useMutation({
+      mutationFn: (presetId: string) =>
+        api.post<OAuthAuthorizeResponse>(
+          `/api/teams/${teamId}/providers/oauth/${presetId}/authorize`,
+          {},
+        ),
     }),
     deleteProvider: useMutation({
       mutationFn: (id: string) => api.del<void>(`/api/teams/${teamId}/providers/${id}`),
