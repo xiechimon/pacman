@@ -39,6 +39,26 @@ export const providerRecordSchema = z.object({
 });
 export type ProviderRecord = z.infer<typeof providerRecordSchema>;
 
+/** POST /api/teams/{id}/providers body [推断]（r3 §2 表单实测字段投影，
+ * wire 未采）：record 可写面 + apiKey 只写位（02 §8；null = 清除——「凭证
+ * 只写不读：可以替换或删除」r2 §6.5）。 */
+export const createProviderBodySchema = z.object({
+  providerId: z.string(),
+  label: z.string(),
+  baseUrl: z.string(),
+  api: providerApiSchema,
+  authHeader: z.boolean().optional(),
+  compat: z.object({ supportsDeveloperRole: z.boolean() }).optional(),
+  models: z.array(providerModelSchema).optional(),
+  apiKey: z.string().nullish(),
+});
+export type CreateProviderBody = z.infer<typeof createProviderBodySchema>;
+
+/** PATCH /api/teams/{id}/providers/{pid} body = create 全字段可选（05 §6.6
+ * 随行项：与 POST 同族上收，#230）。 */
+export const patchProviderBodySchema = createProviderBodySchema.partial();
+export type PatchProviderBody = z.infer<typeof patchProviderBodySchema>;
+
 /** presets 目录 38 项（r3 §2 盘点序：oauth 2 + xai 双通道 1 + api_key 35）。 */
 export const PROVIDER_PRESET_IDS = [
   'github-copilot',

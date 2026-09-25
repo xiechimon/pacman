@@ -10,11 +10,15 @@ import type {
   ChiefGetResponse,
   ChiefThread,
   ConversationMessagesResponse,
+  CreateAgentBody,
+  CreateMcpServerBody,
+  CreateProviderBody,
   CreateScheduleBody,
   DocumentDiff,
   DocumentDiffFile,
   MachineRecord,
   McpServerRecord,
+  PatchAgentBody,
   PatchChiefBody,
   PlanRow,
   ProjectFileResponse,
@@ -377,7 +381,7 @@ export function useApiMutations(teamId: string | undefined) {
       onSuccess: invalidateAll,
     }),
     createProvider: useMutation({
-      mutationFn: (body: Record<string, unknown>) =>
+      mutationFn: (body: CreateProviderBody) =>
         api.post<ProviderRecord>(`/api/teams/${teamId}/providers`, body),
       onSuccess: invalidateAll,
     }),
@@ -400,7 +404,7 @@ export function useApiMutations(teamId: string | undefined) {
       onSuccess: invalidateAll,
     }),
     createMcpServer: useMutation({
-      mutationFn: (body: Record<string, unknown>) =>
+      mutationFn: (body: CreateMcpServerBody) =>
         api.post<McpServerRecord>(`/api/teams/${teamId}/mcp-servers`, body),
       onSuccess: invalidateAll,
     }),
@@ -417,12 +421,12 @@ export function useApiMutations(teamId: string | undefined) {
       onSuccess: invalidateAll,
     }),
     createAgent: useMutation({
-      mutationFn: (body: Record<string, unknown>) =>
+      mutationFn: (body: CreateAgentBody) =>
         api.post<{ id: string }>(`/api/teams/${teamId}/agents`, body),
       onSuccess: invalidateAll,
     }),
     patchAgent: useMutation({
-      mutationFn: (input: { id: string; body: Record<string, unknown> }) =>
+      mutationFn: (input: { id: string; body: PatchAgentBody }) =>
         api.patch<AgentRecord>(`/api/teams/${teamId}/agents/${input.id}`, input.body),
       onSuccess: invalidateAll,
     }),
