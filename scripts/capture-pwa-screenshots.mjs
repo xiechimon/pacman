@@ -5,17 +5,23 @@
 // a parity-mode build so the ?scenario= fixture parameter stays live:
 //
 //   pnpm --filter @pacman/web exec vite build --mode parity
-//   pnpm --filter @pacman/web exec vite preview --port 8392 --strictPort &
+//   pnpm --filter @pacman/web exec vite preview --host 127.0.0.1 --port 8392 --strictPort &
 //   node scripts/capture-pwa-screenshots.mjs http://127.0.0.1:8392
+//
+// (--host 127.0.0.1: vite preview binds IPv6-only by default and the
+// 127.0.0.1 base URL then never connects — same pin as parity/run.mjs)
 //
 // Writes apps/web/public/screenshots/{narrow,wide}.png (the manifest srcs).
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const BASE_URL = process.argv[2] ?? 'http://127.0.0.1:8392';
-const OUT_DIR = resolve(new URL('../apps/web/public/screenshots', import.meta.url).pathname);
+// fileURLToPath, not .pathname — percent-decodes spaces in the checkout path
+// (same idiom as scripts/generate-icons.mjs)
+const OUT_DIR = resolve(fileURLToPath(new URL('../apps/web/public/screenshots', import.meta.url)));
 const THEME_KEY = 'pacman-theme'; // apps/web/src/theme.ts THEME_STORAGE_KEY
 mkdirSync(OUT_DIR, { recursive: true });
 

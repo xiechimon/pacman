@@ -303,6 +303,9 @@ for (const x of EXTRA_ICONS) {
 // records in the r7 dump: pruned so regeneration stays idempotent with the
 // tree (#121 removed the 安装 App sidebar entry and its Smartphone component
 // by hand; without this list every regeneration resurrects it).
+// Caveat: the block is by component NAME — a future legitimate reintroduction
+// of a same-named icon is silently dropped from the emit; remove the name
+// from PRUNED first or the new icon never reaches the tree.
 const PRUNED = new Set(['Smartphone']);
 
 const sorted = [...uniq.entries()].sort((a, b) => b[1].count - a[1].count);
