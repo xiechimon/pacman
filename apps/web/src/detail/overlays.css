@@ -82,27 +82,147 @@
   cursor: pointer;
 }
 
-/* #193: pinned-foot padding — 16 side/bottom matching the face container's
-   own padding; the gap above the buttons moved into the body container's
-   padding-bottom so spacing is identical scrolled or not. The column flex
-   keeps the raw <button> children stretched full-width (a block wrapper
-   would shrink them to inline-block content width). */
-.dlg-provider-foot,
-.dlg-mcp-foot,
-.dlg-secret-foot,
-.dlg-agent-foot,
-.dlg-branch-foot {
+/* ==================== .dlg-form-* 弹窗表单样式族(#221)====================
+   DialogShell(#68)家族各表单弹窗的实测同形层:secret(#173)/mcp(#174)/
+   provider(#175)/agent(#170)/charter(#182)五表单 + branch 的 label/seg/foot。
+   族类 = 唯一事实源;并列在选择器里的 per-face 类是 e2e spec 钉死的别名
+   (secret/mcp/provider-add-dialog.spec、chief-settings.spec、
+   dialog-viewport.spec、team-create-agent.spec),元素侧保留不改。
+   新弹窗只挂族类。 */
+
+/* 表单容器:flex 列 gap 12;padding 底 12 = 旧 body↔submit gap,submit 钉进
+   .dlg-form-foot 后由容器底 padding 承接(#193)。 */
+.dlg-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 16px 12px;
+}
+
+/* 钉底动作条(#193):侧/底 16 与面板自身 padding 齐;列 flex 让裸 button
+   子级拉满全宽(block 壳会把它们收成 inline-block 内容宽)。 */
+.dlg-form-foot {
   display: flex;
   flex-direction: column;
   padding: 0 16px 16px;
 }
 
-/* --- segmented control (同步到机器 | Git) --- */
+/* 右对齐动作排(chief 换绑/章程的 取消+主钮)。 */
+.dlg-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
 
-/* family tokens (#138): the container fill is --surface-secondary and the
-   active chip --tab-chip-bg in both themes (r7 31 probe: #f1ede7 / #faf7f3
-   light), so the seg-specific pair collapsed into the family pair */
-.dlg-seg {
+/* field label rhythm scanned from r7 31: box→label 9, label→control 8,
+   18px line box (block gaps 36 / 34 between controls) */
+.dlg-form-label {
+  margin: 9px 0 8px;
+  line-height: 18px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+/* 单行输入:36 高、card-border 边、surface 底。 */
+.dlg-form-input {
+  height: 36px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+/* 多行输入:默认 88 最小高(secret 值);charter 编辑器覆写 120。 */
+.dlg-form-textarea,
+.chief-dlg-charter-input {
+  min-height: 88px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 8px 12px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-primary);
+  resize: vertical;
+}
+
+.chief-dlg-charter-input {
+  min-height: 120px;
+}
+
+/* 辅助说明行(加密存储告示、slug 前缀说明)。 */
+.dlg-form-note,
+.dlg-secret-note {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+/* 主钮:32 高、card-button 实底;独占钉底动作条时拉满全宽。 */
+.dlg-form-primary,
+.dlg-secret-create,
+.dlg-mcp-create,
+.dlg-provider-create,
+.dlg-agent-create,
+.chief-dlg-primary {
+  height: 32px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 内联形态:动作排里贴文案宽(chief 更换/保存章程)。 */
+.chief-dlg-primary {
+  padding: 0 12px;
+}
+
+.dlg-form-primary:disabled,
+.dlg-secret-create:disabled,
+.dlg-mcp-create:disabled,
+.dlg-provider-create:disabled,
+.dlg-agent-create:disabled {
+  /* lavender sampled from the r8 78 capture (light #a49fe8); dark [推断] */
+  background: var(--primary-disabled);
+  cursor: default;
+}
+
+/* 次钮(ghost):32 高、card-border 描边、surface 底。 */
+.dlg-form-ghost,
+.chief-dlg-ghost {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+/* 「+ 添加」行(mcp 请求头 / provider 模型):贴左、无框、secondary 墨。 */
+.dlg-form-add,
+.dlg-mcp-header-add,
+.dlg-provider-model-add {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* 分段选择器(#138 家族 token:容器 --surface-secondary、active chip
+   --tab-chip-bg,双主题同对,r7 31 probe):容器 30 高、3px 内边。 */
+.dlg-form-seg {
   display: flex;
   align-items: center;
   height: 30px;
@@ -112,9 +232,10 @@
   background: var(--surface-secondary);
 }
 
-.dlg-seg-tab {
+.dlg-seg-tab,
+.dlg-mcp-seg-tab,
+.dlg-provider-seg-tab {
   height: 24px;
-  padding: 0 12px;
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -123,13 +244,26 @@
   cursor: pointer;
 }
 
-.dlg-seg-tab[data-active="true"] {
+/* inline 变体:dlg-head--plain 中央的 chip 排(branch dialog)。 */
+.dlg-seg-tab {
+  padding: 0 12px;
+}
+
+/* block 变体:表单内均分整行(mcp 传输方式 / provider API 协议)。 */
+.dlg-mcp-seg-tab,
+.dlg-provider-seg-tab {
+  flex: 1;
+}
+
+.dlg-seg-tab[data-active="true"],
+.dlg-mcp-seg-tab[data-active="true"],
+.dlg-provider-seg-tab[data-active="true"] {
   background: var(--tab-chip-bg);
   color: var(--text-primary);
 }
 
-/* segmented-control hover (issue #138): unselected cell tints the --seg-hover
-   step on the chip's own box + radius, fine pointers only (#73) */
+/* segmented-control hover (issue #138): inline 变体独有的 hover tint——
+   未选中 chip 在自身盒 + 圆角上染 --seg-hover 阶,fine pointers only (#73)。 */
 @media (hover: hover) and (pointer: fine) {
   .dlg-seg-tab {
     transition: background-color var(--dur-fast) var(--ease-standard);
@@ -260,15 +394,6 @@
   cursor: pointer;
 }
 
-/* field label rhythm scanned from r7 31: box→label 9, label→control 8,
-   18px line box (block gaps 36 / 34 between controls) */
-.dlg-field-label {
-  margin: 9px 0 8px;
-  line-height: 18px;
-  font-size: 13px;
-  color: var(--text-primary);
-}
-
 .dlg-machine {
   display: inline-flex;
   align-items: center;
@@ -317,7 +442,7 @@
   flex: 1;
 }
 
-.dlg-force-text .dlg-field-label {
+.dlg-force-text .dlg-form-label {
   margin: 0;
 }
 
@@ -538,16 +663,8 @@
 }
 
 /* 创建 Agent dialog (issue #170, r2 §8.1 capture 20): name-first form —
-   avatar row / 名称 input / provider warning row / primary. Rides the
-   existing tokens (res-input border/surface shape, card-button primary,
-   primary-disabled lavender r8 78). */
-.dlg-agent {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px 16px 12px; /* #193: bottom 12 = old gap; submit rides .dlg-foot */
-}
-
+   avatar row / 名称 input / provider warning row / primary。容器/输入/主钮
+   走 .dlg-form-* 族层;此处只余 agent 独有件。 */
 .dlg-agent-avatar {
   display: flex;
   align-items: center;
@@ -570,16 +687,6 @@
   cursor: default;
 }
 
-.dlg-agent-input {
-  height: 36px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 0 12px;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
 .dlg-agent-warn {
   display: flex;
   align-items: center;
@@ -599,209 +706,15 @@
   line-height: 16px;
 }
 
-.dlg-agent-create {
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: var(--card-button);
-  color: #ffffff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.dlg-agent-create:disabled {
-  background: var(--primary-disabled);
-  cursor: default;
-}
-
-/* 添加密钥 dialog (wayfinder #173, r2 §242): name/description inputs +
-   值 textarea + the encrypted-storage note. Same token family as
-   .dlg-agent (#170). */
-.dlg-secret {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px 16px 12px; /* #193: bottom 12 = old gap; submit rides .dlg-foot */
-}
-
-.dlg-secret-input {
-  height: 36px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 0 12px;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-.dlg-secret-textarea {
-  min-height: 88px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 8px 12px;
-  font-size: 14px;
-  line-height: 20px;
-  color: var(--text-primary);
-  resize: vertical;
-}
-
-.dlg-secret-note {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-}
-
-.dlg-secret-create {
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: var(--card-button);
-  color: #ffffff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.dlg-secret-create:disabled {
-  background: var(--primary-disabled);
-  cursor: default;
-}
-
-/* 添加 MCP 服务器 dialog (wayfinder #174, r8 71/72): transport segment
-   (dlg-seg form) + shared label/slug + conditional url/headers or
-   command/args. Same token family as .dlg-agent/.dlg-secret. */
-.dlg-mcp {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px 16px 12px; /* #193: bottom 12 = old gap; submit rides .dlg-foot */
-}
-
-.dlg-mcp-seg {
-  display: flex;
-  align-items: center;
-  height: 30px;
-  padding: 3px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface-secondary);
-}
-
-.dlg-mcp-seg-tab {
-  flex: 1;
-  height: 24px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  font-size: 12px;
-  color: var(--text-tertiary);
-  cursor: pointer;
-}
-
-.dlg-mcp-seg-tab[data-active="true"] {
-  background: var(--tab-chip-bg);
-  color: var(--text-primary);
-}
-
-.dlg-mcp-input {
-  height: 36px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 0 12px;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-.dlg-mcp-slug-note {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-}
-
+/* 添加 MCP 服务器 dialog (wayfinder #174, r8 71/72): http 形态的请求头行。 */
 .dlg-mcp-header-row {
   display: flex;
   gap: 8px;
 }
 
-.dlg-mcp-header-add {
-  align-self: flex-start;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border: none;
-  background: none;
-  padding: 0;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.dlg-mcp-create {
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: var(--card-button);
-  color: #ffffff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.dlg-mcp-create:disabled {
-  background: var(--primary-disabled);
-  cursor: default;
-}
-
-/* 添加模型服务 dialog (wayfinder #175, r8 75 / r3 §2 field order): 服务商
-   ID/名称/Base URL inputs + API 协议段 + apiKey + Bearer 复选 + 模型 rows.
-   Same token family as .dlg-secret/.dlg-mcp; the checkbox rides the
-   .dlg-accept-check visual, with the raw input opacity-0 overlaid like
-   .dlg-toggle input so the whole tile stays the click target. */
-.dlg-provider {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  /* #193: bottom 12 carries the old body↔submit gap; the submit itself now
-     rides the shell's pinned .dlg-foot (.dlg-provider-foot). */
-  padding: 16px 16px 12px;
-}
-
-.dlg-provider-input {
-  height: 36px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 0 12px;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-.dlg-provider-seg {
-  display: flex;
-  align-items: center;
-  height: 30px;
-  padding: 3px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface-secondary);
-}
-
-.dlg-provider-seg-tab {
-  flex: 1;
-  height: 24px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  font-size: 12px;
-  color: var(--text-tertiary);
-  cursor: pointer;
-}
-
-.dlg-provider-seg-tab[data-active="true"] {
-  background: var(--tab-chip-bg);
-  color: var(--text-primary);
-}
-
+/* 添加模型服务 dialog (wayfinder #175, r8 75 / r3 §2 field order): Bearer
+   复选行。checkbox 骑 .dlg-accept-check 视觉,raw input 如 .dlg-toggle input
+   般 opacity-0 覆叠,整块 tile 都是点击目标。 */
 .dlg-provider-authrow {
   display: flex;
   align-items: center;
@@ -841,42 +754,8 @@
   color: var(--text-primary);
 }
 
-.dlg-provider-note {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-}
-
-.dlg-provider-model-add {
-  align-self: flex-start;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border: none;
-  background: none;
-  padding: 0;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.dlg-provider-create {
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: var(--card-button);
-  color: #ffffff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.dlg-provider-create:disabled {
-  background: var(--primary-disabled);
-  cursor: default;
-}
-
 /* 添加机器 dialog (wayfinder #181, r2 11b CLI 两步表单): 引导语 + 带
-   复制 的命令块 + API key disclosure。Same token family as .dlg-mcp。
+   复制 的命令块 + API key disclosure。
    命名 dlg-enroll-* 而非 dlg-machine-*——后者已被 branch-dialog 的
    机器 chip 占用(上方 .dlg-machine height:30px,撞名会塌弹窗高)。 */
 .dlg-enroll {

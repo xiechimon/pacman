@@ -40,7 +40,7 @@ export function CreateSecretDialog({ open, onClose, onCreate }: CreateSecretDial
       open={open}
       onClose={onClose}
       footer={
-        <div className="dlg-secret-foot">
+        <div className="dlg-form-foot">
           <button
             type="button"
             className="dlg-secret-create"
@@ -52,33 +52,33 @@ export function CreateSecretDialog({ open, onClose, onCreate }: CreateSecretDial
         </div>
       }
     >
-      <div className="dlg-secret">
-        <label className="dlg-field-label" htmlFor="dlg-secret-name">
+      <div className="dlg-form">
+        <label className="dlg-form-label" htmlFor="dlg-secret-name">
           {t('名称（环境变量名）')}
         </label>
         <input
           id="dlg-secret-name"
-          className="dlg-secret-input"
+          className="dlg-form-input"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="STRIPE_API_KEY"
         />
-        <label className="dlg-field-label" htmlFor="dlg-secret-desc">
+        <label className="dlg-form-label" htmlFor="dlg-secret-desc">
           {t('描述（可选）')}
         </label>
         <input
           id="dlg-secret-desc"
-          className="dlg-secret-input"
+          className="dlg-form-input"
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           placeholder={t('该密钥的用途')}
         />
-        <label className="dlg-field-label" htmlFor="dlg-secret-value">
+        <label className="dlg-form-label" htmlFor="dlg-secret-value">
           {t('值')}
         </label>
         <textarea
           id="dlg-secret-value"
-          className="dlg-secret-textarea"
+          className="dlg-form-textarea"
           value={value}
           onChange={(event) => setValue(event.target.value)}
           placeholder={t('粘贴密钥的值')}

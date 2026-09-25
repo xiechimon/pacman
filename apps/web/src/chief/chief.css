@@ -707,8 +707,8 @@
   white-space: pre-wrap;
 }
 
-/* 弹窗件 token 族贴 dlg-secret(detail/overlays.css):card-border 边、
-   surface 底、card-button 主钮。 */
+/* 弹窗件 token 族贴 .dlg-form-* 族层(detail/overlays.css):card-border
+   边、surface 底、card-button 主钮。 */
 
 .chief-pick {
   display: flex;
@@ -800,59 +800,4 @@
   font-size: 13px;
   line-height: 20px;
   color: var(--text-primary);
-}
-
-.chief-dlg-charter {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  /* #193: bottom 12 = old gap; the actions row rides the shell's .dlg-foot */
-  padding: 16px 16px 12px;
-}
-
-.chief-dlg-charter-input {
-  min-height: 120px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 8px 12px;
-  font-size: 14px;
-  line-height: 20px;
-  color: var(--text-primary);
-  resize: vertical;
-}
-
-/* #193: pinned-foot padding for the charter/rebind actions row — side and
-   bottom match the face container's own 16; the gap above moved into the
-   body container's padding-bottom (.chief-dlg-charter 12 / confirm 16). */
-.chief-dlg-foot {
-  padding: 0 16px 16px;
-}
-
-.chief-dlg-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.chief-dlg-ghost {
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface);
-  font-size: 13px;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-
-.chief-dlg-primary {
-  height: 32px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 8px;
-  background: var(--card-button);
-  color: #ffffff;
-  font-size: 13px;
-  cursor: pointer;
 }

@@ -56,7 +56,7 @@ export function BranchDialog({ info, open, onClose }: BranchDialogProps) {
   return (
     <DialogShell
       headerCenter={
-        <div className="dlg-seg" role="tablist" aria-label={t('分支与 PR')}>
+        <div className="dlg-form-seg" role="tablist" aria-label={t('分支与 PR')}>
           <button
             type="button"
             role="tab"
@@ -85,7 +85,7 @@ export function BranchDialog({ info, open, onClose }: BranchDialogProps) {
         // #193: the sync tab's 同步 button rides the pinned shell footer;
         // the git tab carries no action and no footer.
         tab === 'sync' ? (
-          <div className="dlg-branch-foot">
+          <div className="dlg-form-foot">
             <button type="button" className="dlg-sync" disabled>
               {t('同步')}
             </button>
@@ -96,17 +96,17 @@ export function BranchDialog({ info, open, onClose }: BranchDialogProps) {
       {tab === 'sync' ? (
         <div className="dlg-branch-body dlg-branch-body--foot">
           {box}
-          <div className="dlg-field-label">{t('目标机器')}</div>
+          <div className="dlg-form-label">{t('目标机器')}</div>
           <button type="button" className="dlg-machine">
             <span className="dlg-machine-dot" />
             <span className="dlg-machine-name">{info.machine}</span>
             <ChevronDown width={12} height={12} />
           </button>
-          <div className="dlg-field-label">{t('同步目录')}</div>
+          <div className="dlg-form-label">{t('同步目录')}</div>
           <div className="dlg-dir">{info.directory}</div>
           <div className="dlg-force">
             <div className="dlg-force-text">
-              <div className="dlg-field-label">{t('强制同步')}</div>
+              <div className="dlg-form-label">{t('强制同步')}</div>
               <div className="dlg-force-desc">
                 {t('丢弃代码修改并删除非忽略的未跟踪文件；保留忽略内容。仅本次生效。')}
               </div>
@@ -125,7 +125,7 @@ export function BranchDialog({ info, open, onClose }: BranchDialogProps) {
       ) : (
         <div className="dlg-branch-body">
           {box}
-          <div className="dlg-field-label">Pull Request</div>
+          <div className="dlg-form-label">Pull Request</div>
           <div className="dlg-dir">{t('未创建')}</div>
         </div>
       )}

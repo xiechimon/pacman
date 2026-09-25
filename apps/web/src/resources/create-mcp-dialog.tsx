@@ -87,15 +87,15 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
       open={open}
       onClose={onClose}
       footer={
-        <div className="dlg-mcp-foot">
+        <div className="dlg-form-foot">
           <button type="button" className="dlg-mcp-create" disabled={!ready} onClick={submit}>
             {t('添加 MCP 服务器')}
           </button>
         </div>
       }
     >
-      <div className="dlg-mcp">
-        <div className="dlg-mcp-seg" role="tablist" aria-label={t('类型')}>
+      <div className="dlg-form">
+        <div className="dlg-form-seg" role="tablist" aria-label={t('类型')}>
           {(
             [
               ['http', '远程 HTTP'],
@@ -115,44 +115,44 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
             </button>
           ))}
         </div>
-        <label className="dlg-field-label" htmlFor="dlg-mcp-label">
+        <label className="dlg-form-label" htmlFor="dlg-mcp-label">
           {t('名称')}
         </label>
         <input
           id="dlg-mcp-label"
-          className="dlg-mcp-input"
+          className="dlg-form-input"
           value={label}
           onChange={(event) => setLabel(event.target.value)}
           placeholder={t('例如：内部工单系统')}
         />
-        <label className="dlg-field-label" htmlFor="dlg-mcp-slug">
+        <label className="dlg-form-label" htmlFor="dlg-mcp-slug">
           {t('标识符')}
         </label>
         <input
           id="dlg-mcp-slug"
-          className="dlg-mcp-input"
+          className="dlg-form-input"
           value={slug}
           onChange={(event) => setSlug(event.target.value)}
           placeholder="internal-api"
         />
-        <div className="dlg-mcp-slug-note">{t('用作前缀，创建后不可修改。')}</div>
+        <div className="dlg-form-note">{t('用作前缀，创建后不可修改。')}</div>
         {transport === 'http' ? (
           <>
-            <label className="dlg-field-label" htmlFor="dlg-mcp-url">
+            <label className="dlg-form-label" htmlFor="dlg-mcp-url">
               URL
             </label>
             <input
               id="dlg-mcp-url"
-              className="dlg-mcp-input"
+              className="dlg-form-input"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               placeholder="https://mcp.example.com/sse"
             />
-            <div className="dlg-field-label">{t('请求头（可选）')}</div>
+            <div className="dlg-form-label">{t('请求头（可选）')}</div>
             {headers.map((row, i) => (
               <div className="dlg-mcp-header-row" key={i}>
                 <input
-                  className="dlg-mcp-input"
+                  className="dlg-form-input"
                   aria-label={t('请求头名称')}
                   value={row.key}
                   placeholder="Authorization"
@@ -163,7 +163,7 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
                   }
                 />
                 <input
-                  className="dlg-mcp-input"
+                  className="dlg-form-input"
                   aria-label={t('请求头值')}
                   value={row.value}
                   placeholder="Bearer …"
@@ -186,22 +186,22 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
           </>
         ) : (
           <>
-            <label className="dlg-field-label" htmlFor="dlg-mcp-command">
+            <label className="dlg-form-label" htmlFor="dlg-mcp-command">
               {t('命令')}
             </label>
             <input
               id="dlg-mcp-command"
-              className="dlg-mcp-input"
+              className="dlg-form-input"
               value={command}
               onChange={(event) => setCommand(event.target.value)}
               placeholder="npx -y mcp-server-fs"
             />
-            <label className="dlg-field-label" htmlFor="dlg-mcp-args">
+            <label className="dlg-form-label" htmlFor="dlg-mcp-args">
               {t('参数（可选，空格分隔）')}
             </label>
             <input
               id="dlg-mcp-args"
-              className="dlg-mcp-input"
+              className="dlg-form-input"
               value={args}
               onChange={(event) => setArgs(event.target.value)}
               placeholder="/data --verbose"

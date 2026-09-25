@@ -105,7 +105,7 @@ export function CreateProviderDialog({
       open={open}
       onClose={onClose}
       footer={
-        <div className="dlg-provider-foot">
+        <div className="dlg-form-foot">
           <button
             type="button"
             className="dlg-provider-create"
@@ -117,38 +117,38 @@ export function CreateProviderDialog({
         </div>
       }
     >
-      <div className="dlg-provider">
-        <label className="dlg-field-label" htmlFor="dlg-provider-id">
+      <div className="dlg-form">
+        <label className="dlg-form-label" htmlFor="dlg-provider-id">
           {t('服务商 ID')}
         </label>
         <input
           id="dlg-provider-id"
-          className="dlg-provider-input"
+          className="dlg-form-input"
           value={providerId}
           onChange={(event) => setProviderId(event.target.value)}
           placeholder={t('例如 my-relay')}
         />
-        <label className="dlg-field-label" htmlFor="dlg-provider-label">
+        <label className="dlg-form-label" htmlFor="dlg-provider-label">
           {t('名称')}
         </label>
         <input
           id="dlg-provider-label"
-          className="dlg-provider-input"
+          className="dlg-form-input"
           value={label}
           onChange={(event) => setLabel(event.target.value)}
         />
-        <label className="dlg-field-label" htmlFor="dlg-provider-baseurl">
+        <label className="dlg-form-label" htmlFor="dlg-provider-baseurl">
           Base URL
         </label>
         <input
           id="dlg-provider-baseurl"
-          className="dlg-provider-input"
+          className="dlg-form-input"
           value={baseUrl}
           onChange={(event) => setBaseUrl(event.target.value)}
           placeholder="https://api.example.com/v1"
         />
-        <div className="dlg-field-label">{t('API 协议')}</div>
-        <div className="dlg-provider-seg" role="tablist" aria-label={t('API 协议')}>
+        <div className="dlg-form-label">{t('API 协议')}</div>
+        <div className="dlg-form-seg" role="tablist" aria-label={t('API 协议')}>
           {API_OPTIONS.map((option) => (
             <button
               key={option.value}
@@ -163,12 +163,12 @@ export function CreateProviderDialog({
             </button>
           ))}
         </div>
-        <label className="dlg-field-label" htmlFor="dlg-provider-apikey">
+        <label className="dlg-form-label" htmlFor="dlg-provider-apikey">
           {t('API 密钥')}
         </label>
         <input
           id="dlg-provider-apikey"
-          className="dlg-provider-input"
+          className="dlg-form-input"
           type="password"
           value={apiKey}
           onChange={(event) => setApiKey(event.target.value)}
@@ -188,12 +188,12 @@ export function CreateProviderDialog({
             {t('以 Authorization: Bearer 请求头发送 API 密钥')}
           </span>
         </div>
-        <div className="dlg-provider-note">{t('密钥将加密存储，保存后无法再次查看。')}</div>
-        <div className="dlg-field-label">{t('模型（可选）')}</div>
+        <div className="dlg-form-note">{t('密钥将加密存储，保存后无法再次查看。')}</div>
+        <div className="dlg-form-label">{t('模型（可选）')}</div>
         {modelIds.map((id, i) => (
           <input
             key={i}
-            className="dlg-provider-input"
+            className="dlg-form-input"
             aria-label={t('模型 ID')}
             value={id}
             placeholder="claude-sonnet-5"
