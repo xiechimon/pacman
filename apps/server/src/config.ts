@@ -39,6 +39,13 @@ export const serverConfigSchema = z.object({
   /** OAuth App client 凭证对（#231 握手面；env 双件齐 = 配置，双缺 = null
    *  未配置——authorize 走 400 提示；只配一件 = 启动期报错不静默）。 */
   githubOauth: z.object({ clientId: z.string(), clientSecret: z.string() }).nullable(),
+  /** 可选 token 鉴权（#251，06 册 D8）：env ENV_VARS.token 设 = 开、未设/
+   *  空串 = null 关（默认，行为与现状一致）。 */
+  authToken: z.string().nullable(),
+  /** HTTP 绑定主机（env HOST，PORT 同款通用基建位不进品牌槽）；null = 默认
+   *  绑定（node 缺省 = 全接口）。显式 `0.0.0.0`/`::` 且鉴权关 → 启动 WARN
+   *  （insecureBindWarning，#251 验收面 6）。 */
+  host: z.string().nullable(),
 });
 export type ServerConfig = z.infer<typeof serverConfigSchema>;
 
@@ -48,6 +55,15 @@ function envPort(): number | undefined {
   const n = Number(raw);
   return Number.isInteger(n) ? n : undefined;
 }
+
+/** 非空 env 串读取（空串 = 未设同律，PORT/webDir 既有纪律）。 */
+function envStr(name: string): string | null {
+  const raw = process.env[name];
+  return raw !== undefined && raw !== '' ? raw : null;
+}
+
+/** 全网卡绑定主机名族（显式配置命中 + 鉴权关 = 启动 WARN 判定面）。 */
+const ANY_INTERFACE_HOSTS = new Set(['0.0.0.0', '::', '::0']);
 
 /** SPA 产物默认位：monorepo 布局 `apps/web/dist`（本模块 = apps/server/src/
  * config.ts，向上两级到 apps/ 再进 web/dist）；不存在 = null（纯 API 形态）。 */
@@ -83,8 +99,20 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
       oauthId !== undefined && oauthSecret !== undefined
         ? { clientId: oauthId, clientSecret: oauthSecret }
         : null,
+    authToken: envStr(ENV_VARS.token),
+    host: envStr('HOST'),
     ...overrides,
   });
+}
+
+/** `0.0.0.0` 裸绑护栏（#251，06 册 D8）：显式全网卡绑定且鉴权未启用 →
+ * 返回警示文案（入口 logger.warn 落日志——WARN 级别由 logger 担，文案不重复
+ * 前缀；不阻断启动）；默认绑定（host 未设）、回环绑定或鉴权已开 → null。
+ * 纯函数 = 验收面 10 测试缝。 */
+export function insecureBindWarning(config: ServerConfig): string | null {
+  if (config.authToken !== null) return null;
+  if (config.host === null || !ANY_INTERFACE_HOSTS.has(config.host)) return null;
+  return `绑定 ${config.host}（全网卡可达）且 ${ENV_VARS.token} 未设——API 面裸奔于所有网络接口；设 ${ENV_VARS.token}=<token> 开启 Bearer 鉴权，或 HOST=127.0.0.1 收回本机`;
 }
 
 /** 托管 bare repo 存储根 = 数据根子目录 `repos` [设计]（01 §4.2 单一数据根：

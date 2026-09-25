@@ -76,6 +76,8 @@ export async function bootRealServer(opts: {
     oauthClient: null,
     reposDir,
     webDir: opts.webDir ?? null,
+    // #251 可选 token 鉴权：集成面全部走关态（默认行为零改动）。
+    authToken: null,
   });
   const scheduler = opts.scheduler
     ? createScheduler({ db, hub, user, convHub }, { tickMs: 60_000 })
