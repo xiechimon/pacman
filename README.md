@@ -80,7 +80,7 @@ pnpm test         # vitest
 |---|---|
 | `CONTEXT.md` | Domain model & glossary — canonical terminology (Chinese interface terms ↔ English ↔ internal names) |
 | `apps/web` | Web UI (React + vite) |
-| `apps/server` | Server: Hono REST + SSE + SQLite (package `@pacman/server`) |
+| `apps/server` | Server: Hono REST + SSE + SQLite (package `@xiechimon/pacman` — directory name differs from package name) |
 | `apps/daemon` | Executor daemon (package `@xiechimon/pacman-cli` — directory name differs from package name) |
 | `packages/shared` | Protocol vocabulary, record shapes, brand-slot single source (`@pacman/shared`) |
 | `docs/spec/` | Implementation canon, volumes 00–06 (Chinese) |

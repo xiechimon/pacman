@@ -22,6 +22,8 @@
       "apps/server/package.json",
       "apps/server/tsconfig.json",
       "apps/server/drizzle.config.ts",
+      "apps/server/build.mjs",
+      "apps/server/scripts/stage-web.mjs",
       "apps/daemon/src/**",
       "apps/daemon/test/**/*.ts",
       "apps/daemon/build.mjs",
