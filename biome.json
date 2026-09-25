@@ -25,6 +25,8 @@
       "apps/daemon/src/**",
       "apps/daemon/test/**/*.ts",
       "apps/daemon/build.mjs",
+      "apps/daemon/externals.mjs",
+      "apps/daemon/scripts/**",
       "apps/daemon/package.json",
       "apps/daemon/tsconfig.json",
       "integration/test/**/*.ts",

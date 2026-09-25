@@ -5,7 +5,15 @@
 // （默认 hostname）、--server、--workspaces-dir（父目录必须已存在护栏）。
 // 品牌槽：命令名/env 前缀/主目录 = brand.ts（02 §5.8）。
 
-import { closeSync, existsSync, openSync, readFileSync, readSync, statSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  openSync,
+  readFileSync,
+  readSync,
+  realpathSync,
+  statSync,
+} from 'node:fs';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 import { BRAND, PROVIDER_COMMAND_NOTICE } from '@pacman/shared';
@@ -238,7 +246,18 @@ export async function main(argv: string[] = process.argv): Promise<void> {
   await buildProgram().parseAsync(argv);
 }
 
-// 直接执行入口（tsx dev 与 esbuild bundle 同形）。
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  void main();
+// 直接执行入口（tsx dev 与 esbuild bundle 同形）。argv[1] 从符号链接进来
+// （npm .bin 链接、npx、symlink 安装前缀）时保留链接原样，import.meta.url
+// 恒为 realpath——须先 realpath 再比对，否则 bin 执行静默无操作退出 0
+// （2026-09-25 裸跑实测）。realpath 失败（argv[1] 消失/奇异 runner）按非主
+// 模块处理，不炸加载方。
+function isMainModule(): boolean {
+  if (!process.argv[1]) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href;
+  } catch {
+    return false;
+  }
 }
+
+if (isMainModule()) void main();
