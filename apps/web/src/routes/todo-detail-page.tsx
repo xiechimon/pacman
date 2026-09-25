@@ -446,43 +446,58 @@ export function TodoDetailPage() {
           </div>
         )}
         {ui.placeholder != null && (
-          <Composer
-            placeholder={ui.placeholder}
-            aiReview={
-              // r7 §4.1 / r8 §3.1: the AI 审核 button only shows on writable
-              // confirm/review surfaces; failed and waiting-on-user
-              // composers render the three base tools alone
-              (phase === 'confirm' || phase === 'review') && !todo.awaitingReply
-            }
-            streaming={streaming}
-            editable={live}
-            onSend={
-              live
-                ? (text) => {
-                    // 驳回回路（r5 §4）：confirm 关口发送 = revision + feedback
-                    // → 重规划步入队 → plan v(N+1)（会话流即时呈现）。其余
-                    // 关口无 server 写面（steer 词表位 02 §5.6 未落 REST），
-                    // 发送惰性。
-                    if (phase === 'confirm' && buildId && text !== '') {
-                      mutations.stepAction.mutate({
-                        buildId,
-                        body: {
-                          action: 'revision',
-                          side: 'plan',
-                          feedback: text,
-                          clientMessageId: crypto.randomUUID(),
-                        },
-                      });
+          <>
+            {live && mutations.sendSteer.isError && (
+              // W3 #280：steer 被拒（409 无在跑步）提示行——输入未丢（composer
+              // 异步 onSend 失败保留 draft）。
+              <div className="composer-reject">{t('当前没有运行中的会话，消息未送出')}</div>
+            )}
+            <Composer
+              placeholder={ui.placeholder}
+              aiReview={
+                // r7 §4.1 / r8 §3.1: the AI 审核 button only shows on writable
+                // confirm/review surfaces; failed and waiting-on-user
+                // composers render the three base tools alone
+                (phase === 'confirm' || phase === 'review') && !todo.awaitingReply
+              }
+              streaming={streaming}
+              editable={live}
+              onSend={
+                live
+                  ? (text) => {
+                      // 驳回回路（r5 §4）：confirm 关口发送 = revision + feedback
+                      // → 重规划步入队 → plan v(N+1)（会话流即时呈现）。
+                      if (phase === 'confirm' && buildId && text !== '') {
+                        mutations.stepAction.mutate({
+                          buildId,
+                          body: {
+                            action: 'revision',
+                            side: 'plan',
+                            feedback: text,
+                            clientMessageId: crypto.randomUUID(),
+                          },
+                        });
+                        return;
+                      }
+                      // W3 steer（#280，06 册 D9 / spec #277）：building/review 态
+                      // 发送 = 运行中补话。server 门（claimed 步在跑）收则 201，
+                      // 无在跑步 409 明确拒绝（提示行 + draft 保留，不丢字）。
+                      // 返回 Promise = composer 异步清稿面。
+                      if ((phase === 'building' || phase === 'review') && buildId && text !== '') {
+                        return mutations.sendSteer
+                          .mutateAsync({ conversationId: buildId, content: text })
+                          .then(() => undefined);
+                      }
                     }
-                  }
-                : detail?.revision != null && chain === 'idle'
-                  ? () => {
-                      setChain('streaming');
-                      window.setTimeout(() => setChain('landed'), 900);
-                    }
-                  : undefined
-            }
-          />
+                  : detail?.revision != null && chain === 'idle'
+                    ? () => {
+                        setChain('streaming');
+                        window.setTimeout(() => setChain('landed'), 900);
+                      }
+                    : undefined
+              }
+            />
+          </>
         )}
         <ChiefWake fixture={fixture} fabClassName="detail-fab" />
       </div>

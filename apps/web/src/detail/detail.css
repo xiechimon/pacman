@@ -873,6 +873,19 @@ textarea.composer-input::placeholder {
   cursor: pointer;
 }
 
+/* W3 #280：steer 被拒（409 无在跑步）提示行——composer 上缘外挂一行，
+   不动 composer 盒几何（parity 行零影响：live-only 条件渲染）。 */
+.composer-reject {
+  position: absolute;
+  left: 497px; /* 737 − sidebar 240，与 composer 同轴 */
+  right: 16px;
+  bottom: 96px; /* composer 高 76 + 下缘 16 + 4 间隙 */
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--stop);
+  text-align: center;
+}
+
 .composer-send {
   position: absolute;
   right: 13px;
