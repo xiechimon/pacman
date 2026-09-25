@@ -5058,6 +5058,8 @@ exports[`协议词表快照（02 §5/§6 canonical） > executor CLI 面（02 §
   ],
   "ENV_VARS": {
     "apiKey": "PACMAN_API_KEY",
+    "githubOauthClientId": "PACMAN_GITHUB_OAUTH_CLIENT_ID",
+    "githubOauthClientSecret": "PACMAN_GITHUB_OAUTH_CLIENT_SECRET",
     "home": "PACMAN_HOME",
     "server": "PACMAN_SERVER",
     "team": "PACMAN_TEAM",
@@ -5557,6 +5559,11 @@ exports[`协议词表快照（02 §5/§6 canonical） > web REST 端点词表（
   },
   {
     "method": "POST",
+    "note": "GitHub 扫描发现半（#223，#201 路线 A；原产品扫描钮 wire 未采——词表外 [设计] 新端点）",
+    "path": "/api/skills/scan",
+  },
+  {
+    "method": "POST",
     "note": "形状保留、内容自选；可空实现",
     "path": "/api/analytics/first-touch",
   },
@@ -5577,6 +5584,21 @@ exports[`协议词表快照（02 §5/§6 canonical） > web REST 端点词表（
     "method": "PATCH",
     "note": "绑定 Agent（r5 §2 抓包）",
     "path": "/api/teams/{id}/chief",
+  },
+  {
+    "method": "POST",
+    "note": "#231 [设计]：签发授权 URL（state 入册，TTL 10min 单次核销）",
+    "path": "/api/teams/{id}/providers/oauth/{preset}/authorize",
+  },
+  {
+    "method": "GET",
+    "note": "#231 [设计]：收码 → token 密封落 provider 行（02 §8）→ 302 回 providers 页",
+    "path": "/api/oauth/callback",
+    "query": [
+      "code",
+      "state",
+      "error",
+    ],
   },
 ]
 `;

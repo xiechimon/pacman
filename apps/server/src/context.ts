@@ -2,8 +2,10 @@
 
 import type { SecretBox, TeamRecord, UserRecord } from '@pacman/shared';
 import type { Db } from './db/client.js';
+import type { FetchLike } from './lib/github.js';
 import type { ConversationStreamHub, TeamStreamHub } from './services/events.js';
 import type { MachineWakeHub, PendingUpload } from './services/machines.js';
+import type { OAuthClientConfig, OAuthStateEntry } from './services/oauth.js';
 
 export interface AppContext {
   db: Db;
@@ -33,4 +35,16 @@ export interface AppContext {
   /** SPA 静态同源托管根（02/A1；= apps/web/dist 产物目录）。null/缺省 =
    *  不托管（纯 API 形态，dev 期 vite proxy 用）。 */
   webDir?: string | null;
+  /** GitHub 出站 fetch 注入位（#223 缝：POST /api/skills/scan →
+   *  services/skills → lib/github 薄桥；缺省 = globalThis.fetch，测试注入 mock）。 */
+  githubFetch?: FetchLike;
+  /** OAuth 握手 state 册（#231：CSRF 防护 + returnOrigin 绑定；TTL 10min
+   *  单次核销，services/oauth.ts）。 */
+  oauthStates: Map<string, OAuthStateEntry>;
+  /** OAuth 出站 token 交换注入位（lib/github.ts OAuth 面；缺省 =
+   *  globalThis.fetch，测试注入 mock）。 */
+  oauthFetch?: FetchLike;
+  /** OAuth App client 凭证对（config.ts env 读位；null = 未配置 →
+   *  authorize 400）。 */
+  oauthClient: OAuthClientConfig | null;
 }

@@ -128,6 +128,7 @@ export const EN: Record<string, string> = {
   全部展开: 'Expand all',
   全部收起: 'Collapse all',
   显示完整文件: 'Show full file',
+  显示差异: 'Show diff',
   '完成 {elapsed}': 'Done in {elapsed}',
   运行在: 'Running on',
   上: '', // tail of 运行在 <machine> 上 — the en template needs no tail
@@ -446,7 +447,7 @@ export const EN: Record<string, string> = {
   添加请求头: 'Add header',
   命令: 'Command',
   '参数（可选，空格分隔）': 'Arguments (optional, space-separated)',
-  // wayfinder #175 add-provider dialog family (field authority = server
+  // wayfinder #175 add-provider dialog family (field authority = shared
   // createProviderBodySchema / r3 §2; protocol tab labels stay English
   // verbatim, never translated)
   添加模型服务: 'Add provider',
@@ -461,6 +462,11 @@ export const EN: Record<string, string> = {
   '模型（可选）': 'Models (optional)',
   '模型 ID': 'Model ID',
   添加模型: 'Add model',
+  // #231 OAuth 连接订阅段(族表单源 = shared OAUTH_FAMILIES;品牌名不译)
+  连接订阅: 'Connect a subscription',
+  或添加自定义网关: 'or add a custom gateway',
+  '授权已被取消。': 'Authorization was cancelled.',
+  '令牌交换失败，请稍后重试。': 'Token exchange failed — please try again.',
   // wayfinder #181 add-machine dialog family (r2 11b verbatim copy; the
   // command strings themselves stay untranslated — brand slots via BRAND)
   '有条件时优先使用云主机：笔记本会休眠或断网，云主机常在线，构建更稳定。':

@@ -5,10 +5,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Hono } from 'hono';
 import { createApp } from '../src/app.js';
+import type { AppContext } from '../src/context.js';
 import { openMemoryDb } from '../src/db/client.js';
 import { apiKey } from '../src/db/schema.js';
 import { seed } from '../src/db/seed.js';
 import { sha256Hex } from '../src/lib/crypto.js';
+import type { FetchLike } from '../src/lib/github.js';
 import { newRecordId } from '../src/lib/ids.js';
 import { createEphemeralSecretBox } from '../src/lib/secret-box.js';
 import { ConversationStreamHub, TeamStreamHub } from '../src/services/events.js';
@@ -20,6 +22,11 @@ export function bootServer(
     claimHoldMs?: number;
     reposDir?: string;
     webDir?: string | null;
+    /** GitHub 出站 mock（#223 扫描面）；缺省 = 真 fetch（测试勿缺省）。 */
+    githubFetch?: FetchLike;
+    /** #231 OAuth 面：client 凭证对（默认 null = 未配置）+ 出站 mock。 */
+    oauthClient?: AppContext['oauthClient'];
+    oauthFetch?: AppContext['oauthFetch'];
   } = {},
 ) {
   const db = openMemoryDb();
@@ -32,6 +39,7 @@ export function bootServer(
   // 自建临时 reposDir（git 托管面实走用）；显式传入时由调用方管理生命周期。
   const ownReposDir = opts.reposDir === undefined;
   const reposDir = opts.reposDir ?? mkdtempSync(join(tmpdir(), 'pacman-server-repos-'));
+  const oauthStates: AppContext['oauthStates'] = new Map();
   const app = createApp({
     db,
     hub,
@@ -46,8 +54,12 @@ export function bootServer(
     claimHoldMs: opts.claimHoldMs ?? 250,
     uploads: new Map(),
     enrollments: new Map(),
+    oauthStates,
+    oauthClient: opts.oauthClient ?? null,
+    ...(opts.oauthFetch !== undefined ? { oauthFetch: opts.oauthFetch } : {}),
     reposDir,
     ...(opts.webDir !== undefined ? { webDir: opts.webDir } : {}),
+    ...(opts.githubFetch !== undefined ? { githubFetch: opts.githubFetch } : {}),
   });
   return {
     app,
@@ -59,6 +71,7 @@ export function bootServer(
     user,
     team,
     reposDir,
+    oauthStates,
     svc: { db, hub, machineHub, convHub, user },
     dispose(): void {
       if (ownReposDir) rmSync(reposDir, { recursive: true, force: true });

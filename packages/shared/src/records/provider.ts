@@ -39,6 +39,26 @@ export const providerRecordSchema = z.object({
 });
 export type ProviderRecord = z.infer<typeof providerRecordSchema>;
 
+/** POST /api/teams/{id}/providers body [推断]（r3 §2 表单实测字段投影，
+ * wire 未采）：record 可写面 + apiKey 只写位（02 §8；null = 清除——「凭证
+ * 只写不读：可以替换或删除」r2 §6.5）。 */
+export const createProviderBodySchema = z.object({
+  providerId: z.string(),
+  label: z.string(),
+  baseUrl: z.string(),
+  api: providerApiSchema,
+  authHeader: z.boolean().optional(),
+  compat: z.object({ supportsDeveloperRole: z.boolean() }).optional(),
+  models: z.array(providerModelSchema).optional(),
+  apiKey: z.string().nullish(),
+});
+export type CreateProviderBody = z.infer<typeof createProviderBodySchema>;
+
+/** PATCH /api/teams/{id}/providers/{pid} body = create 全字段可选（05 §6.6
+ * 随行项：与 POST 同族上收，#230）。 */
+export const patchProviderBodySchema = createProviderBodySchema.partial();
+export type PatchProviderBody = z.infer<typeof patchProviderBodySchema>;
+
 /** presets 目录 38 项（r3 §2 盘点序：oauth 2 + xai 双通道 1 + api_key 35）。 */
 export const PROVIDER_PRESET_IDS = [
   'github-copilot',
@@ -110,3 +130,47 @@ export const PROVIDER_FORM_COPY = {
   validateBeforeSave: '保存前验证',
   encryptedNotice: '密钥将加密存储，保存后无法再次查看。',
 } as const;
+
+// —— OAuth 握手面（#231，M6 Q2/Q5「任一连通即过」）———————————————————————
+
+/** OAuth 族描述符。#34 锁定订阅四家只通 github-copilot 一族（选型理由：
+ * 唯一原生 server-callback 授权码流——anthropic = PKCE + 手工粘码无
+ * callback；openai-codex = PKCE + 锁死 localhost:1455 回环口，违背 BYOC
+ * 「机器可在他机」拓扑；xai 公开文档最薄）。族不在表 = authorize 404；
+ * web 连接段只渲染表内族（死钮不渲染，#222 律）。 */
+export interface OAuthFamily {
+  /** provider 行 providerId（= preset id，PROVIDER_OAUTH_PRESET_IDS 成员）。 */
+  presetId: string;
+  /** 建行模板 label（品牌名不译）。 */
+  providerLabel: string;
+  /** 授权页 URL（client_id/redirect_uri/scope/state 由服务端拼装）。 */
+  authorizeUrl: string;
+  /** token 交换端点（form POST → JSON）。 */
+  tokenUrl: string;
+  /** 授权 scope 串（GitHub：read:user = 身份面；Copilot 订阅 entitlement
+   * 由 GitHub 按账号判，非 scope 门）。 */
+  scope: string;
+  /** 建行模板 baseUrl [设计]：Copilot API OpenAI 兼容面。 */
+  providerBaseUrl: string;
+  /** 建行模板 api [设计]（同 baseUrl 注）。 */
+  providerApi: ProviderApi;
+}
+
+export const OAUTH_FAMILIES: readonly OAuthFamily[] = [
+  {
+    presetId: 'github-copilot',
+    providerLabel: 'GitHub Copilot',
+    authorizeUrl: 'https://github.com/login/oauth/authorize',
+    tokenUrl: 'https://github.com/login/oauth/access_token',
+    scope: 'read:user',
+    providerBaseUrl: 'https://api.githubcopilot.com',
+    providerApi: 'openai-completions',
+  },
+];
+
+/** POST /api/teams/{id}/providers/oauth/{preset}/authorize 响应（#231 [设计]：
+ * web 拿 URL 后同页签跳转；错误走 {error} 单形状）。 */
+export const oauthAuthorizeResponseSchema = z.object({
+  authorizationUrl: z.string(),
+});
+export type OAuthAuthorizeResponse = z.infer<typeof oauthAuthorizeResponseSchema>;

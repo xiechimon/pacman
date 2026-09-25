@@ -754,6 +754,51 @@
   color: var(--text-primary);
 }
 
+/* #231 连接订阅段：整宽行钮（token 族同 .dlg-form-input）+ 失败 inline 行
+   + 与自定义表单的分隔行。 */
+.dlg-provider-oauth {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.dlg-provider-oauth:hover {
+  background: var(--surface-secondary);
+}
+
+.dlg-provider-oauth:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.dlg-provider-oauth-error {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--danger);
+}
+
+.dlg-provider-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.dlg-provider-divider::before,
+.dlg-provider-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--card-border);
+}
+
 /* 添加机器 dialog (wayfinder #181, r2 11b CLI 两步表单): 引导语 + 带
    复制 的命令块 + API key disclosure。
    命名 dlg-enroll-* 而非 dlg-machine-*——后者已被 branch-dialog 的

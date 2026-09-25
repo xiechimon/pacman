@@ -10,11 +10,17 @@ import type {
   ChiefGetResponse,
   ChiefThread,
   ConversationMessagesResponse,
+  CreateAgentBody,
+  CreateMcpServerBody,
+  CreateProviderBody,
   CreateScheduleBody,
+  DiffFileContent,
   DocumentDiff,
   DocumentDiffFile,
   MachineRecord,
   McpServerRecord,
+  OAuthAuthorizeResponse,
+  PatchAgentBody,
   PatchChiefBody,
   PlanRow,
   ProjectFileResponse,
@@ -125,6 +131,23 @@ export const useBuildChanges = (buildId: string | null | undefined, enabled: boo
     queryKey: ['changes', buildId],
     queryFn: () => api.get<{ files: DocumentDiffFile[] }>(`/api/builds/${buildId}/changes`),
     enabled: enabled && buildId != null,
+  });
+
+/** 单文件全文读面（#225 接 #224 端点，docpane changes 面「显示完整文件」）：
+ *  conv 分支头单文件按需取。path 含 `/` 与中文，必须 encode（useProjectFile
+ *  同律）。 */
+export const useBuildChangeFile = (
+  buildId: string | null | undefined,
+  path: string | null,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: ['changeFile', buildId, path],
+    queryFn: () =>
+      api.get<DiffFileContent>(
+        `/api/builds/${buildId}/changes/file?path=${encodeURIComponent(path ?? '')}`,
+      ),
+    enabled: enabled && buildId != null && path != null,
   });
 
 export const useBuildUsage = (buildId: string | null | undefined, enabled: boolean) =>
@@ -377,9 +400,18 @@ export function useApiMutations(teamId: string | undefined) {
       onSuccess: invalidateAll,
     }),
     createProvider: useMutation({
-      mutationFn: (body: Record<string, unknown>) =>
+      mutationFn: (body: CreateProviderBody) =>
         api.post<ProviderRecord>(`/api/teams/${teamId}/providers`, body),
       onSuccess: invalidateAll,
+    }),
+    // #231 OAuth 握手：签发授权 URL 后整页跳走（同页签流）——成功不
+    // invalidate（回跳 = 全量重载），失败留页 inline 呈现。
+    startProviderOAuth: useMutation({
+      mutationFn: (presetId: string) =>
+        api.post<OAuthAuthorizeResponse>(
+          `/api/teams/${teamId}/providers/oauth/${presetId}/authorize`,
+          {},
+        ),
     }),
     deleteProvider: useMutation({
       mutationFn: (id: string) => api.del<void>(`/api/teams/${teamId}/providers/${id}`),
@@ -400,7 +432,7 @@ export function useApiMutations(teamId: string | undefined) {
       onSuccess: invalidateAll,
     }),
     createMcpServer: useMutation({
-      mutationFn: (body: Record<string, unknown>) =>
+      mutationFn: (body: CreateMcpServerBody) =>
         api.post<McpServerRecord>(`/api/teams/${teamId}/mcp-servers`, body),
       onSuccess: invalidateAll,
     }),
@@ -417,12 +449,12 @@ export function useApiMutations(teamId: string | undefined) {
       onSuccess: invalidateAll,
     }),
     createAgent: useMutation({
-      mutationFn: (body: Record<string, unknown>) =>
+      mutationFn: (body: CreateAgentBody) =>
         api.post<{ id: string }>(`/api/teams/${teamId}/agents`, body),
       onSuccess: invalidateAll,
     }),
     patchAgent: useMutation({
-      mutationFn: (input: { id: string; body: Record<string, unknown> }) =>
+      mutationFn: (input: { id: string; body: PatchAgentBody }) =>
         api.patch<AgentRecord>(`/api/teams/${teamId}/agents/${input.id}`, input.body),
       onSuccess: invalidateAll,
     }),

@@ -10,9 +10,17 @@
 // under the version chip (r8 63/70: version rows + 与其他版本对比… +
 // 回到与 base 对比), the compare submenu (r8 64: 上一版本 alone) and the
 // plan-version diff surface (r8 65–72: range chip `v1 → v2`, `+A −B`
-// stats, del/add/marker rows).
+// stats, del/add/marker rows). #225 wires the expanded file block's
+// 显示完整文件 button: changes mode swaps the hunks for the conv-branch
+// full text inline (live = GET /api/builds/{id}/changes/file, #224;
+// fixture = DiffFile.fullContent), the button flipping to 显示差异 as the
+// way back; plan-diff mode keeps the button inert — plan-version full
+// text lives in the plans table, not on the conv branch.
 
+import type { DiffFileContent } from '@pacman/shared';
 import { useState } from 'react';
+import { useBuildChangeFile } from '../api/hooks.js';
+import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
 import type {
   ChangesContent,
@@ -57,10 +65,55 @@ interface DocPaneProps {
   /** Plan-version diff content (mode 'diff'). */
   planDiff?: PlanDiffContent;
   onToggleExpand?: () => void;
+  /** #225: changes 面「显示完整文件」的 build 柄（live = buildId，fixture =
+   *  null）；不传 = 本面无全文读面（plan-diff 面钮保持惰性）。 */
+  buildId?: string | null;
 }
 
-function DiffFileBlock({ file, expanded }: { file: DiffFile; expanded: boolean }) {
+/** 全文视图状态（#225，镜像 #202 deriveFileView 五态）：hidden = hunk 面；
+ *  loading/error 仅 live 可达；binary = 不可预览态（live base64 封套 /
+ *  fixture 缺 fullContent 槽）；text 直渲。 */
+type FullFileView =
+  | { kind: 'hidden' }
+  | { kind: 'loading' }
+  | { kind: 'error' }
+  | { kind: 'binary' }
+  | { kind: 'text'; content: string };
+
+/** 结构子集传参，不绑 useQuery 全形（#202 code-review 同律）。 */
+function deriveFullFileView(
+  live: boolean,
+  showFull: boolean,
+  fixtureContent: string | null,
+  file: { isError: boolean; data: DiffFileContent | undefined },
+): FullFileView {
+  if (!showFull) return { kind: 'hidden' };
+  if (!live) {
+    return fixtureContent !== null ? { kind: 'text', content: fixtureContent } : { kind: 'binary' };
+  }
+  if (file.isError) return { kind: 'error' };
+  if (file.data === undefined) return { kind: 'loading' };
+  return file.data.encoding === 'base64'
+    ? { kind: 'binary' }
+    : { kind: 'text', content: file.data.content };
+}
+
+function DiffFileBlock({
+  file,
+  expanded,
+  buildId,
+}: {
+  file: DiffFile;
+  expanded: boolean;
+  /** #225 全文读面柄：changes 面 = buildId（live）/ null（fixture）；
+   *  undefined = 本面无全文读面（plan-diff 面，钮保持惰性）。 */
+  buildId?: string | null;
+}) {
   const { t } = useI18n();
+  const { live } = useLiveData();
+  const [showFull, setShowFull] = useState(false);
+  const fullQ = useBuildChangeFile(buildId, showFull ? file.path : null, live);
+  const full = deriveFullFileView(live, showFull, file.fullContent ?? null, fullQ);
   return (
     <div className="diff-file">
       <div className="doc-file-row">
@@ -83,25 +136,55 @@ function DiffFileBlock({ file, expanded }: { file: DiffFile; expanded: boolean }
       </div>
       {expanded && (
         <div className="diff-body">
-          {file.hunks.map((hunk) => (
-            <div key={hunk.header} className="diff-hunk">
-              <div className="diff-hunk-head">{hunk.header}</div>
-              {hunk.lines.map((line, i) => (
-                // fixture order is stable; lines carry no ids
-                <div key={i} className={`diff-line diff-line--${line.kind}`}>
-                  <span className="diff-no diff-no--old">{line.oldNo ?? ''}</span>
-                  <span className="diff-no diff-no--new">{line.newNo ?? ''}</span>
-                  <span className="diff-mark">
-                    {line.kind === 'add' ? '+' : line.kind === 'del' ? '-' : ''}
-                  </span>
-                  <span className="diff-text">{line.text}</span>
-                </div>
-              ))}
+          {full.kind === 'hidden' &&
+            file.hunks.map((hunk) => (
+              <div key={hunk.header} className="diff-hunk">
+                <div className="diff-hunk-head">{hunk.header}</div>
+                {hunk.lines.map((line, i) => (
+                  // fixture order is stable; lines carry no ids
+                  <div key={i} className={`diff-line diff-line--${line.kind}`}>
+                    <span className="diff-no diff-no--old">{line.oldNo ?? ''}</span>
+                    <span className="diff-no diff-no--new">{line.newNo ?? ''}</span>
+                    <span className="diff-mark">
+                      {line.kind === 'add' ? '+' : line.kind === 'del' ? '-' : ''}
+                    </span>
+                    <span className="diff-text">{line.text}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          {full.kind === 'text' && (
+            <div className="diff-full">
+              {full.content
+                .replace(/\n$/, '')
+                .split('\n')
+                .map((text, i) => (
+                  // file order is stable; lines carry no ids
+                  <div key={i} className="diff-line diff-line--context">
+                    <span className="diff-no diff-no--old" />
+                    <span className="diff-no diff-no--new">{i + 1}</span>
+                    <span className="diff-mark" />
+                    <span className="diff-text">{text}</span>
+                  </div>
+                ))}
             </div>
-          ))}
-          <button type="button" className="diff-expand">
+          )}
+          {(full.kind === 'loading' || full.kind === 'error' || full.kind === 'binary') && (
+            <div className="diff-full diff-full--state">
+              {full.kind === 'loading'
+                ? t('加载中…')
+                : full.kind === 'error'
+                  ? t('文件加载失败')
+                  : t('二进制文件暂不支持预览')}
+            </div>
+          )}
+          <button
+            type="button"
+            className="diff-expand"
+            onClick={buildId === undefined ? undefined : () => setShowFull((v) => !v)}
+          >
             <UnfoldVertical width={12} height={12} />
-            {t('显示完整文件')}
+            {showFull ? t('显示差异') : t('显示完整文件')}
           </button>
         </div>
       )}
@@ -236,6 +319,7 @@ export function DocPane({
   onBase,
   planDiff,
   onToggleExpand,
+  buildId,
 }: DocPaneProps) {
   const { t } = useI18n();
   const [typeOpen, setTypeOpen] = useState(planDropdownOpen === true);
@@ -303,7 +387,12 @@ export function DocPane({
               </button>
             </header>
             {files.map((file) => (
-              <DiffFileBlock key={file.path} file={file} expanded={expanded} />
+              <DiffFileBlock
+                key={file.path}
+                file={file}
+                expanded={expanded}
+                buildId={mode === 'changes' ? buildId : undefined}
+              />
             ))}
           </>
         )}

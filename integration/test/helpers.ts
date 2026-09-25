@@ -70,6 +70,10 @@ export async function bootRealServer(opts: {
     claimHoldMs: opts.claimHoldMs ?? 1_000,
     uploads: new Map(),
     enrollments: new Map(),
+    // #231 OAuth 面:集成面无 OAuth 用例——state 册空挂、client 未配置
+    // (authorize 走 400 提示路径,不碍其余面)。
+    oauthStates: new Map(),
+    oauthClient: null,
     reposDir,
     webDir: opts.webDir ?? null,
   });

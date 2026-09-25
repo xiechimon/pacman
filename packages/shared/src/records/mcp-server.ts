@@ -29,6 +29,34 @@ export const mcpServerRecordSchema = z.object({
 });
 export type McpServerRecord = z.infer<typeof mcpServerRecordSchema>;
 
+/** POST/PATCH /api/teams/{id}/mcp-servers body [推断]（r3 §5.1 添加表单字段：
+ * 类型/名称/标识符/URL/请求头键值对；stdio 命令+参数 r2 §6.2）。record 输出
+ * 形状 = 本文件 mcpServerRecordSchema 单源；transport 词表 = mcpTransportSchema。 */
+const mcpServerBodyFields = {
+  label: z.string().min(1),
+  slug: z.string(),
+  transport: mcpTransportSchema,
+  url: z.string().optional(),
+  command: z.string().optional(),
+  args: z.array(z.string()).optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+};
+export const createMcpServerBodySchema = z.object(mcpServerBodyFields);
+export type CreateMcpServerBody = z.infer<typeof createMcpServerBodySchema>;
+
+/** PATCH 变体：全字段可选 + strict（未知键 400）。 */
+export const patchMcpServerBodySchema = z
+  .object({
+    label: z.string().min(1).optional(),
+    slug: z.string().optional(), // 恒 400（不可改，r3 §5.1 canon）；收形状为给准错误
+    url: z.string().optional(),
+    command: z.string().optional(),
+    args: z.array(z.string()).optional(),
+    headers: z.record(z.string(), z.string()).optional(),
+  })
+  .strict();
+export type PatchMcpServerBody = z.infer<typeof patchMcpServerBodySchema>;
+
 /** 工具名形状 `mcp__<slug>__<tool>`（r3 §5.1 实测；02 §7.1）。 */
 export function mcpToolName(slug: string, tool: string): string {
   return `mcp__${slug}__${tool}`;

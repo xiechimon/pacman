@@ -424,6 +424,9 @@ export interface DiffFile {
    *  present = `+A −B` pair (plan-version diffs, r8 69/71). */
   removed?: number;
   hunks: DiffHunk[];
+  /** 全文槽（#225「显示完整文件」）：fixture 面数据源；live 面走
+   *  GET /api/builds/{id}/changes/file 按需取（#224），不经本槽。 */
+  fullContent?: string;
 }
 
 /** Unified-diff hunk: header row (`@@ -3,3 +3,4 @@` + trailing section

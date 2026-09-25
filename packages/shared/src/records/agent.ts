@@ -58,3 +58,25 @@ export const agentRecordSchema = z.object({
   mcpServers: z.array(z.string()),
 });
 export type AgentRecord = z.infer<typeof agentRecordSchema>;
+
+/** POST /api/teams/{id}/agents body [推断]（r5 §1/§8 补录端点；字段 =
+ * 上文 agentRecordSchema 配置面投影，创建弹窗 r3 §4：名称/职责/模型）。 */
+export const createAgentBodySchema = z.object({
+  displayName: z.string().min(1),
+  description: z.string().nullish(),
+  provider: z.string().nullish(),
+  modelId: z.string().nullish(),
+  thinkingLevel: z.string().nullish(),
+  tools: z.array(z.string()).optional(),
+  secrets: z.array(z.string()).optional(),
+  skills: z.array(z.string()).optional(),
+  mcpServers: z.array(z.string()).optional(),
+});
+export type CreateAgentBody = z.infer<typeof createAgentBodySchema>;
+
+/** PATCH /api/teams/{id}/agents/{aid} body [推断]（REST 同名，02 §6.1 词表内；
+ * 覆盖面 = 概览/权限 tab 编辑 + per-Agent mcpServers[] 授权勾选，02 §7.1）。 */
+export const patchAgentBodySchema = createAgentBodySchema.partial().extend({
+  displayName: z.string().min(1).optional(),
+});
+export type PatchAgentBody = z.infer<typeof patchAgentBodySchema>;
