@@ -12,6 +12,7 @@ import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   conversationBranch,
+  type DiffFileContent,
   type DocumentDiffFile,
   gitHostedRepoPath,
   type ProjectBranchesResponse,
@@ -315,4 +316,58 @@ export async function readBuildChanges(
   const r = await runGit(['diff', `${baseSha}...${headSha}`], { cwd: dir, timeoutMs: 30_000 });
   if (r.code !== 0) return { files: [] };
   return { files: parseUnifiedDiff(r.stdout.toString('utf8')) };
+}
+
+// —— diff 全文读面（#224）：conv 分支头单文件全文按需取（#219 裁决 A——独立于
+// changes 列表面，列表不被全文撑爆；docpane「显示完整文件」数据源，web 接线
+// #225）。封套单源 = shared diffFileContentSchema（形状镜像
+// projectFileResponseSchema）。大小闸门前置 `cat-file -s`（只取 size，超限
+// blob 不载内存）；`cat-file -s` 直调 = readBuildChanges 同款先例（缝词表外的
+// 只读 git 查询留在 server lib/git.ts spawn 家族内）。
+
+/** 全文闸门（docpane 内联展示上限 [设计]；超限 = 413，提示面归 web #225）。 */
+const DIFF_FILE_MAX_BYTES = 1024 * 1024;
+
+export async function readBuildChangeFile(
+  ctx: RepoCtx,
+  buildId: string,
+  path: string,
+): Promise<DiffFileContent> {
+  // 400 前置校验（lib 层同名校验 = 缝契约兜底，双保险 [设计]，readFile 同款）。
+  if (!isSafeRepoPath(path)) throw new HttpError(400, `invalid query path: ${path}`);
+  const buildRow = ctx.db.select().from(buildTable).where(eq(buildTable.id, buildId)).get();
+  if (!buildRow) throw notFound(`build ${buildId}`);
+  const todoRow = ctx.db.select().from(todoTable).where(eq(todoTable.id, buildRow.todoId)).get();
+  if (!todoRow) throw notFound(`todo ${buildRow.todoId}`);
+  const projRow = ctx.db.select().from(project).where(eq(project.id, todoRow.projectId)).get();
+  if (!projRow || projRow.repoKind !== 'hosted' || projRow.repoName === null) {
+    throw notFound(`hosted repo for build ${buildId}`);
+  }
+  const dir = repoDirFor(ctx.reposDir, projRow.teamId, projRow.repoName);
+  const ref = conversationBranch(buildId);
+  const commit = await systemGitOps.resolveCommit(dir, `refs/heads/${ref}`);
+  if (commit === null) throw notFound(`ref ${ref}`);
+  // 闸门前置：size 先行（path 不存在 / 命中目录树时 cat-file blob 判负 = 404）。
+  const sizeRes = await runGit(['cat-file', '-s', `${commit}:${path}`], {
+    cwd: dir,
+    timeoutMs: 15_000,
+  });
+  if (sizeRes.code !== 0) throw notFound(`file ${path} at ref ${ref}`);
+  const size = Number.parseInt(sizeRes.stdout.toString('utf8').trim(), 10);
+  if (size > DIFF_FILE_MAX_BYTES) {
+    throw new HttpError(413, `file ${path} too large: ${size} > ${DIFF_FILE_MAX_BYTES} bytes`);
+  }
+  const file = await systemGitOps.readFileAt(dir, commit, path);
+  if (file === null) throw notFound(`file ${path} at ref ${ref}`);
+  const binary = looksBinary(file.content);
+  return {
+    ref,
+    commit,
+    path,
+    size: file.size,
+    encoding: binary ? 'base64' : 'utf-8',
+    content: binary
+      ? Buffer.from(file.content).toString('base64')
+      : new TextDecoder().decode(file.content),
+  };
 }
