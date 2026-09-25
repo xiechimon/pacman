@@ -557,3 +557,56 @@
   line-height: 16px;
   color: var(--text-dim);
 }
+
+/* #235 GitHub 扫描结果区（live-only 渲染；fixture 面 DOM 零变化，parity
+   scenario 80 守门）。视觉词汇复用 res-card 族：--card-border 描边 +
+   --surface-secondary 底 + --text-dim 次级文字。 */
+.res-error {
+  color: var(--danger);
+}
+
+.res-candlist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.res-candlist .res-help {
+  margin-top: 0;
+}
+
+.res-cand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--surface-secondary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.res-cand:hover:not(:disabled) {
+  border-color: var(--text-dim);
+}
+
+.res-cand:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.res-cand-name {
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-primary);
+}
+
+.res-cand-desc,
+.res-cand-path {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}

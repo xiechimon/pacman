@@ -13,6 +13,7 @@ import type {
   CreateScheduleBody,
   DocumentDiff,
   DocumentDiffFile,
+  FetchSkillFilesResponse,
   MachineRecord,
   McpServerRecord,
   PatchChiefBody,
@@ -21,6 +22,8 @@ import type {
   ProjectRecord,
   ProviderPreset,
   ProviderRecord,
+  ScanSkillsBody,
+  ScanSkillsResponse,
   ScheduleRecord,
   SecretRecord,
   SetSecretBody,
@@ -415,6 +418,24 @@ export function useApiMutations(teamId: string | undefined) {
         files: Record<string, string>;
       }) => api.post<SkillRecord>('/api/skills', { ...body, ...(teamId ? { teamId } : {}) }),
       onSuccess: invalidateAll,
+    }),
+    // #235 GitHub 扫描双模式（#223 端点）：缺省 path = 候选发现，给 path =
+    // 文件集取回（与 POST /api/skills body.files 同形，选中即喂 createSkill）。
+    // 同端点同 body schema（shared ScanSkillsBody 单源）；纯发现/取回调用，
+    // 无 server state 变更 → 不 invalidateAll。
+    scanSkills: useMutation({
+      mutationFn: (body: ScanSkillsBody) =>
+        api.post<ScanSkillsResponse>('/api/skills/scan', {
+          ...body,
+          ...(teamId ? { teamId } : {}),
+        }),
+    }),
+    fetchSkillFiles: useMutation({
+      mutationFn: (body: ScanSkillsBody & { path: string }) =>
+        api.post<FetchSkillFilesResponse>('/api/skills/scan', {
+          ...body,
+          ...(teamId ? { teamId } : {}),
+        }),
     }),
     createAgent: useMutation({
       mutationFn: (body: Record<string, unknown>) =>
