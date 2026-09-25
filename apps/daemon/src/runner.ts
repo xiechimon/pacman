@@ -38,6 +38,10 @@ export interface RunStepDeps {
   /** worktree 契约面（02 §5.5；machine-loop 注入共享实例——projectLock 跨步
    * 串行化需要单例）。缺省且步带 repo 绑定 = 配置错误，按 failed 收尾。 */
   workspace?: WorktreeOps;
+  /** 在跑 session 句柄注册表（W3 #279 steer 投递面）：machine-loop 持有，
+   * runStep 装卸（handle 创建即注册、各收尾路径注销），machine-loop 的
+   * deliverSteer 按 stepId 消费。缺省 = 无 steer 面（单测形态）。 */
+  sessionHandles?: Map<string, AgentSessionHandle>;
   /** heartbeat 节奏 [设计]（r3 未采具体值；presence 同族 ~30s）。 */
   heartbeatIntervalMs?: number;
   now?: () => number;
@@ -261,6 +265,8 @@ export async function runStep(
   logger.raw(resumed ? `continue session ${convId}` : `new session ${convId}`);
   // 会话持久化索引即时落 journal（崩溃 recover 的 continue 解析键）。
   journal.update(stepId, { state: 'running', sessionId: handle.sessionId });
+  // steer 投递面注册（W3 #279）：在跑期间 deliverSteer 可达；各收尾路径注销。
+  deps.sessionHandles?.set(stepId, handle);
 
   const transcript = new TranscriptBuffer(deps.paths.outboxDir, stepId);
   if (prompt !== null) {
@@ -474,6 +480,7 @@ export async function runStep(
     // 回传失败 = journal 残留 awaiting-upload，recover 面重传 [设计]。
     logger.step(`transcript upload failed: ${err instanceof Error ? err.message : String(err)}`);
     clearCredentials(creds);
+    deps.sessionHandles?.delete(stepId); // journal 残留 recover 面重传，handle 不再 steer
     return;
   }
 
@@ -491,14 +498,17 @@ export async function runStep(
   } catch (err) {
     logger.step(`done report failed: ${err instanceof Error ? err.message : String(err)}`);
     clearCredentials(creds);
+    deps.sessionHandles?.delete(stepId); // journal 残留 recover 补报，handle 不再 steer
     return; // journal 残留，recover 面补报
   }
   clearCredentials(creds);
   journal.remove(stepId);
+  deps.sessionHandles?.delete(stepId);
   logger.raw(`finished (${running - 1}/${deps.maxConcurrent} running)`);
 }
 
 async function failStep(deps: RunStepDeps, stepId: string, message: string): Promise<void> {
+  deps.sessionHandles?.delete(stepId); // 覆盖 handle 后失败路径（前置失败 = 无键可删）
   deps.logger.step(`failed: ${message}`);
   try {
     await deps.client.done(stepId, { status: 'failed', errorMessage: message });

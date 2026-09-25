@@ -9,6 +9,7 @@ import {
   type MachineEnrollResponse,
   type MachineRecord,
   type MachineRecoverResponse,
+  type MachineSteerResponse,
   type MachineStreamEvent,
   type MachineTokenResponse,
   machineClaimResponseSchema,
@@ -18,6 +19,7 @@ import {
   machineOkResponseSchema,
   machineRecordSchema,
   machineRecoverResponseSchema,
+  machineSteerResponseSchema,
   machineStreamEventSchema,
   machineTokenResponseSchema,
   machineUploadUrlsResponseSchema,
@@ -86,6 +88,10 @@ export interface MachineApi {
     contentType?: string,
   ): Promise<void>;
   done(stepId: string, body: MachineDoneBody): Promise<void>;
+  /** steer 拉取-确认（W3 #279，06 册 D9）：{content} = 运行中步的补话文本
+   * （拉取即确认，server 侧 pending 随即清）；null = 无待取/非本机在跑步/
+   * pending 定向旧步（已丢弃）。 */
+  steer(stepId: string): Promise<string | null>;
   stream(
     signal: AbortSignal,
     onEvent: (ev: MachineStreamEvent) => void,
@@ -328,6 +334,17 @@ export class MachineClient implements MachineApi {
       body,
       parse: (raw) => machineOkResponseSchema.parse(raw),
     });
+  }
+
+  /** steer 拉取-确认（W3 #279）：GET /api/machine/steer?stepId=（[设计]
+   * MACHINE_WIRE_EXTENSIONS 登记位；本机在跑步单槽 pending）。 */
+  async steer(stepId: string): Promise<string | null> {
+    const res = await this.request<MachineSteerResponse>(
+      'GET',
+      `/api/machine/steer?stepId=${encodeURIComponent(stepId)}`,
+      { parse: (raw) => machineSteerResponseSchema.parse(raw) },
+    );
+    return res.content;
   }
 
   /** wake SSE（02 §1.2 机器通道）：帧解析回调；连接断开自然返回。 */

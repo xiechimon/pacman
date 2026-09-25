@@ -7,7 +7,7 @@
 // supervisor 侧，02 §5.3/r3 §1.5）。
 
 import { type ChildProcess, spawn } from 'node:child_process';
-import type { AgentBackend, ClaimedStep } from '@pacman/shared';
+import type { AgentBackend, AgentSessionHandle, ClaimedStep } from '@pacman/shared';
 import {
   CLAIM_BACKOFF_CAP_MS,
   CLAIM_POLL_INTERVAL_MS,
@@ -151,6 +151,11 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     logger,
     ...(opts.orphanTtlMs !== undefined ? { orphanTtlMs: opts.orphanTtlMs } : {}),
   });
+  // 在跑 session 句柄注册表（W3 #279 steer 投递面）。声明位必须在 recover 块
+  // 之前——stepDeps() 是函数声明（提升）且 recover 路径会先于下方流段调用它，
+  // 注册表若在调用点之后才 const 初始化 = TDZ ReferenceError（crash-recover
+  // 集成实测：重启 daemon 于 recover 即崩）。
+  const sessionHandles = new Map<string, AgentSessionHandle>();
 
   // 孤儿 worktree 回收（r3 §1.4 cleanupOrphanWorktrees(ttlMs = 7*24h)）：
   // 上线一次 + 每日节奏 [设计]（观测仅函数名，节奏未采）。活步 = journal
@@ -215,9 +220,25 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   // —— wake SSE（低延迟派发通道；断线持续重连不退出，r3 §1.5）——
   // 双通道语义（02 §5.4）：server 侧入队会直接解决挂起的 claim hold；客户端
   // wake 事件兜底 = 中断在飞 claim 立即重发（覆盖 hold 未被解决的边界）。
+  // steer 事件（W3 #279）三号分流：拉取-确认投递到在跑 session handle。
   const streamCtrl = new AbortController();
   // 盒装引用：规避 TS 对捕获 let 的初始化收窄（wake 回调与 claim 循环异步互访）。
   const flight: { claim: AbortController | null } = { claim: null };
+  const deliverSteer = async (stepId: string): Promise<void> => {
+    try {
+      const content = await client.steer(stepId);
+      if (content === null) return; // server 门拒/旧步已丢弃（拉取-确认语义）。
+      const live = sessionHandles.get(stepId);
+      if (live === undefined) {
+        logger.step(`steer dropped (no live session) step=${stepId}`); // 收尾竞态
+        return;
+      }
+      await live.steer(content);
+      logger.step(`steer delivered step=${stepId}`);
+    } catch (err) {
+      logger.step(`steer delivery failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
   void (async () => {
     let backoff = 1_000;
     let announced = false;
@@ -228,6 +249,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
           (ev) => {
             if (ev.type === 'wake') flight.claim?.abort(new Error('wake'));
             if (ev.type === 'shutdown') void stop();
+            if (ev.type === 'steer') void deliverSteer(ev.stepId);
           },
           () => {
             if (!announced) {
@@ -271,6 +293,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       workspace,
       workspacesDir: config.workspacesDir,
       maxConcurrent: config.maxConcurrent,
+      sessionHandles,
       ...(opts.heartbeatIntervalMs !== undefined
         ? { heartbeatIntervalMs: opts.heartbeatIntervalMs }
         : {}),
