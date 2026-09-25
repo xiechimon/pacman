@@ -10,6 +10,7 @@ import {
   machineClaimBodySchema,
   machineDoneBodySchema,
   machineEnrollBodySchema,
+  machineEnrollConfirmBodySchema,
   machineEnrollPollBodySchema,
   machineEnrollStartBodySchema,
   machinePresenceBodySchema,
@@ -28,6 +29,7 @@ import type { machine as machineTable } from './db/schema.js';
 import { HttpError, parseWith } from './lib/errors.js';
 import { newRecordId } from './lib/ids.js';
 import {
+  authorizeEnrollmentMachine,
   claimStep,
   createUploadUrls,
   enrollMachine,
@@ -131,7 +133,7 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     return c.json(result); // = machine.json 形状（r3 §1.3）
   });
 
-  // —— 浏览器授权流（02 §5.2 路径一）[设计] 骨架：web 授权页归 M5 ——————————————
+  // —— 浏览器授权流（02 §5.2 路径一；#285 web 接线：start/poll/confirm 三件）———————
   // enroll 位卫生 [设计]：TTL 10min + 容量上限 100（FIFO 淘汰），防无界增长。
   const ENROLL_TTL_MS = 600_000;
   const ENROLL_CAP = 100;
@@ -147,7 +149,11 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
       ctx.enrollments.delete(oldest);
     }
     const enrollId = newRecordId();
-    ctx.enrollments.set(enrollId, { teamId: body.teamId ?? ctx.team.id, createdAt: now });
+    ctx.enrollments.set(enrollId, {
+      teamId: body.teamId ?? ctx.team.id,
+      name: body.name,
+      createdAt: now,
+    });
     return c.json({
       enrollId,
       url: `${originOf(c)}/app/machines/authorize?enroll=${enrollId}`,
@@ -160,7 +166,26 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     if (!pending || Date.now() - pending.createdAt > ENROLL_TTL_MS) {
       return c.json({ status: 'expired' });
     }
-    return c.json({ status: 'pending' }); // 授权完成面归 M5（web 侧接线）
+    if (pending.machine) return c.json({ status: 'authorized', machine: pending.machine });
+    return c.json({ status: 'pending' });
+  });
+
+  // 完成面（#285 [设计] MACHINE_WIRE_EXTENSIONS）：授权页用户确认——capability
+  // = enrollId（无凭证面，enroll 族同 middleware 豁免）；单次（重复确认 409）。
+  app.post('/api/machine/enroll/confirm', async (c) => {
+    const body = parseWith(machineEnrollConfirmBodySchema, await jsonBody(c), 'body');
+    const entry = ctx.enrollments.get(body.enrollId);
+    if (!entry || Date.now() - entry.createdAt > ENROLL_TTL_MS) {
+      throw new HttpError(404, 'enrollment unknown or expired');
+    }
+    if (entry.machine) throw new HttpError(409, 'enrollment already authorized');
+    const machineJson = authorizeEnrollmentMachine(deps, {
+      teamId: entry.teamId,
+      name: entry.name ?? 'machine',
+      serverUrl: originOf(c),
+    });
+    entry.machine = machineJson;
+    return c.json({ machine: machineJson });
   });
 
   // —— GET /api/machine/me ————————————————————————————————————————————————————

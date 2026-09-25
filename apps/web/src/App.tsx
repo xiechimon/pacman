@@ -16,6 +16,7 @@ import { SKILLS_HREF, SkillsPage } from './resources/skills-page.js';
 import { AccountPage } from './routes/account-page.js';
 import { ApiKeysPage } from './routes/api-keys-page.js';
 import { BoardPage } from './routes/board-page.js';
+import { MachineAuthorizePage } from './routes/machine-authorize-page.js';
 import { TeamPage } from './routes/team-page.js';
 import { TodoDetailPage } from './routes/todo-detail-page.js';
 
@@ -52,6 +53,7 @@ export const router = createBrowserRouter([
           { path: MCP_HREF, element: <McpServersPage /> },
           { path: SECRETS_HREF, element: <SecretsPage /> },
           { path: MACHINES_HREF, element: <MachinesPage /> },
+          { path: '/app/machines/authorize', element: <MachineAuthorizePage /> },
           { path: PROVIDERS_HREF, element: <ProvidersPage /> },
           { path: '*', element: <Navigate to="/app" replace /> },
         ],

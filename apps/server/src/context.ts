@@ -28,8 +28,18 @@ export interface AppContext {
   claimHoldMs: number;
   /** upload-urls 一次性上传位（[设计]：self-host 无对象存储，内存态即可）。 */
   uploads: Map<string, PendingUpload>;
-  /** 浏览器授权流 enroll 位（02 §5.2 路径一；web 侧接线归 M5）。 */
-  enrollments: Map<string, { teamId: string; createdAt: number }>;
+  /** 浏览器授权流 enroll 位（02 §5.2 路径一；#285 web 侧接线）。name = start
+   * 面携带的机器名（授权页展示）；machine = confirm 后的授权产物（poll
+   * authorized 态载荷，machine.json 形状——执行机侧注册凭据）。 */
+  enrollments: Map<
+    string,
+    {
+      teamId: string;
+      name?: string;
+      createdAt: number;
+      machine?: { machineId: string; token: string; teamId: string; serverUrl: string };
+    }
+  >;
   /** 托管 bare repo 存储根（数据根子目录，01 §4.2；`<reposDir>/<teamId>/<repoName>.git`）。 */
   reposDir: string;
   /** SPA 静态同源托管根（02/A1；= apps/web/dist 产物目录）。null/缺省 =

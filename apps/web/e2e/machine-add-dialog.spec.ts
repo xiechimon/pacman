@@ -64,6 +64,10 @@ test('API key disclosure expands the key command and the api-keys link', async (
   const link = dialog.locator('.dlg-enroll-keylink');
   await expect(link).toHaveText('获取 API key →');
   await expect(link).toHaveAttribute('href', '/app/api-keys?scenario=06');
+  // W4 #285：浏览器授权路径入口（独立 class——keylink 是本测 strict 锚）。
+  const browserLink = dialog.locator('.dlg-enroll-browserlink');
+  await expect(browserLink).toHaveText('浏览器授权注册 →');
+  await expect(browserLink).toHaveAttribute('href', '/app/machines/authorize?scenario=06');
   // toggle collapses again
   await dialog.locator('.dlg-enroll-toggle').click();
   await expect(dialog.locator('.dlg-enroll-apikey')).toHaveCount(0);

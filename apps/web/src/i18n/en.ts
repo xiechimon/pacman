@@ -494,4 +494,17 @@ export const EN: Record<string, string> = {
   访问令牌: 'Access token',
   进入: 'Continue',
   '令牌无效，请重试。': 'Invalid token — please try again.',
+  // W4 #285 浏览器授权页（02 §5.2 路径一；/app/machines/authorize）
+  授权机器: 'Authorize machine',
+  '生成授权链接，在执行机上完成注册发起。':
+    'Generate an authorization link and start enrollment on the executor machine.',
+  生成授权链接: 'Generate authorization link',
+  '一台执行机请求加入你的团队。确认后它将以自己的凭据连接。':
+    'An executor machine is requesting to join your team. Once authorized it connects with its own credentials.',
+  确认授权: 'Authorize',
+  '正在授权…': 'Authorizing…',
+  '授权完成，机器已注册。': 'Authorized — the machine is registered.',
+  '授权链接已失效，请在执行机上重新发起。':
+    'This authorization link has expired — restart enrollment on the executor machine.',
+  '浏览器授权注册 →': 'Browser authorization →',
 };

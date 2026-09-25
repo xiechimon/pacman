@@ -1,0 +1,67 @@
+/* 浏览器授权页（W4 #285，02 §5.2 路径一）：独立路由页（不在 app 壳内），
+   视觉语言 = token-gate 族同款（surface 面板 + edge 圆角/阴影，tokens 变量）。 */
+
+.authorize-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-secondary);
+}
+
+.authorize-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 360px;
+  max-width: calc(100vw - 48px);
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--edge-radius);
+  box-shadow: var(--edge-shadow);
+}
+
+.authorize-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.authorize-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.authorize-meta {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  word-break: break-all;
+}
+
+.authorize-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--rose-500);
+}
+
+.authorize-submit {
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: var(--card-button);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.authorize-submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
