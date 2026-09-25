@@ -96,8 +96,8 @@ export function ChiefAgentDialog({
       onClose={onClose}
       footer={
         confirming != null ? (
-          <div className="chief-dlg-foot">
-            <div className="chief-dlg-actions">
+          <div className="dlg-form-foot">
+            <div className="dlg-form-actions">
               <button type="button" className="chief-dlg-ghost" onClick={() => setConfirming(null)}>
                 {t('取消')}
               </button>

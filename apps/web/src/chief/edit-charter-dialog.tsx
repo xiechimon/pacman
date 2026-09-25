@@ -36,8 +36,8 @@ export function EditCharterDialog({ open, onClose, charter, onSave }: EditCharte
       open={open}
       onClose={onClose}
       footer={
-        <div className="chief-dlg-foot">
-          <div className="chief-dlg-actions">
+        <div className="dlg-form-foot">
+          <div className="dlg-form-actions">
             <button type="button" className="chief-dlg-ghost" onClick={onClose}>
               {t('取消')}
             </button>
@@ -48,7 +48,7 @@ export function EditCharterDialog({ open, onClose, charter, onSave }: EditCharte
         </div>
       }
     >
-      <div className="chief-dlg-charter">
+      <div className="dlg-form">
         <textarea
           className="chief-dlg-charter-input"
           value={text}

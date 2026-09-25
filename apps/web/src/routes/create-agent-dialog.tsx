@@ -45,7 +45,7 @@ export function CreateAgentDialog({ open, onClose, onCreate }: CreateAgentDialog
       open={open}
       onClose={onClose}
       footer={
-        <div className="dlg-agent-foot">
+        <div className="dlg-form-foot">
           <button
             type="button"
             className="dlg-agent-create"
@@ -57,7 +57,7 @@ export function CreateAgentDialog({ open, onClose, onCreate }: CreateAgentDialog
         </div>
       }
     >
-      <div className="dlg-agent">
+      <div className="dlg-form">
         <div className="dlg-agent-avatar">
           <img src="/avatar-robot-1.svg" alt="" />
           {/* wontfix: capture-verbatim chrome — no upload face (see header) */}
@@ -65,12 +65,12 @@ export function CreateAgentDialog({ open, onClose, onCreate }: CreateAgentDialog
             {t('更换')}
           </button>
         </div>
-        <label className="dlg-field-label" htmlFor="dlg-agent-name">
+        <label className="dlg-form-label" htmlFor="dlg-agent-name">
           {t('名称')}
         </label>
         <input
           id="dlg-agent-name"
-          className="dlg-agent-input"
+          className="dlg-form-input"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder={t('输入 Agent 名称')}
