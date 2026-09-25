@@ -19,7 +19,13 @@ import type { TodoRecord as WireTodo } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { useApiMutations, useMembers, useProjects, useTodos } from '../api/hooks.js';
+import {
+  useApiMutations,
+  useMembers,
+  useProjects,
+  useSearchResults,
+  useTodos,
+} from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { AppSidebar } from '../board/app-sidebar.js';
@@ -92,6 +98,8 @@ export function BoardPage() {
     setOverlay({ kind });
   };
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
+  // W4 #286：live 面服务端搜索（fixture/parity 面不经此钩）。
+  const searchResults = useSearchResults(search.query, live && search.open);
   // #114: 看板顶部通知引导条 — live reads the real Notification.permission;
   // fixture scenarios opt in via ui.notificationBanner (parity determinism,
   // the r7 baselines carry no banner)
@@ -307,6 +315,7 @@ export function BoardPage() {
         query={search.query}
         onQuery={search.setQuery}
         onClose={() => search.setOpen(false)}
+        server={live ? searchResults.data : undefined}
       />
       <ChiefDrawer
         open={chiefView === 'drawer'}

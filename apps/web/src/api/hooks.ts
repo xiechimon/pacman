@@ -31,6 +31,7 @@ import type {
   ScanSkillsBody,
   ScanSkillsResponse,
   ScheduleRecord,
+  SearchResponse,
   SecretRecord,
   SetSecretBody,
   SkillRecord,
@@ -42,6 +43,7 @@ import type {
   UserRecord,
 } from '@pacman/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { api } from './client.js';
 
 // 行形单源 = shared（01 §4.4 双端消费）：plan 行 = planRowSchema（record +
@@ -78,6 +80,28 @@ export const useProjects = (teamId: string | undefined, enabled: boolean) =>
     queryFn: () => api.get<ProjectRecord[]>(`/api/projects?teamId=${teamId}`),
     enabled: enabled && teamId !== undefined,
   });
+
+/** W4 #286：⌘K 面板 live 面服务端搜索——GET /api/search?q= 防抖 250ms
+ * （击键间隔内不发出）；空串/未开面板不查。结果集直接喂 SearchPanel 的
+ * server 位（fixture/parity 面不经此钩）。 */
+export function useSearchResults(query: string, enabled: boolean) {
+  const debounced = useDebouncedValue(query, 250);
+  const trimmed = debounced.trim();
+  return useQuery({
+    queryKey: ['search', trimmed],
+    queryFn: () => api.get<SearchResponse>(`/api/search?q=${encodeURIComponent(trimmed)}`),
+    enabled: enabled && trimmed !== '',
+  });
+}
+
+function useDebouncedValue(value: string, delayMs: number): string {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+  return debounced;
+}
 
 export const useTodos = (teamId: string | undefined, enabled: boolean) =>
   useQuery({

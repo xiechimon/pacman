@@ -48,7 +48,13 @@ describe('GET /api/search（02 §6.3）', () => {
     const s = await withCorpus();
     const hit = await runSearch(s, '指南');
     expect(hit.todos.map((t) => t.title)).toEqual(['写贡献指南']);
-    expect(hit.todos[0]).toMatchObject({ seqNum: 1, phase: 'todo', projectName: '官网重构' });
+    // W4 #286：todo 行带 phaseAt（面板行右缘相对时间位）。
+    expect(hit.todos[0]).toMatchObject({
+      seqNum: 1,
+      phase: 'todo',
+      projectName: '官网重构',
+      phaseAt: expect.any(Number),
+    });
     expect(hit.agents.map((a) => a.displayName)).toEqual(['小指南']);
     expect(hit.projects).toEqual([]);
 

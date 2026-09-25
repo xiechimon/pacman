@@ -2512,6 +2512,11 @@ exports[`body/封套 schema 快照 > searchResponse > searchResponse.json 1`] = 
             ],
             "type": "string",
           },
+          "phaseAt": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
           "projectName": {
             "type": "string",
           },
@@ -2529,6 +2534,7 @@ exports[`body/封套 schema 快照 > searchResponse > searchResponse.json 1`] = 
           "seqNum",
           "title",
           "phase",
+          "phaseAt",
           "projectName",
         ],
         "type": "object",
