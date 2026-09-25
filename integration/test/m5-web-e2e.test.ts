@@ -237,9 +237,16 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     await openDetail('M5 脊柱探针');
     // 规划轮：live 面到 confirm 关口（plan.md v1 落库由 daemon 真执行）。
     await waitChip(/确认/);
-    // plan 卡进时间线（方案 · v1）+ 文档 pane 版本 chip v1。
-    await pexpect(page.locator('.chat-plan-title').last()).toHaveText('方案 · v1');
-    await pexpect(page.locator('.doc-pane-select').nth(1)).toHaveText(/v1/);
+    // plan 卡进时间线（方案 · v1）+ 文档 pane 版本 chip v1。两处与 chip 翻相
+    // 不同链（transcript/文档面走会话 SSE→invalidate→refetch，负载下可落后
+    // 相位 chip 数秒）——显式 30s 预算对齐本文件其他跨进程断言（PR #239 CI
+    // red 复盘：5s 默认档在 ubuntu runner 上偶发不够，元素迟到 ≠ 缺席）。
+    await pexpect(page.locator('.chat-plan-title').last()).toHaveText('方案 · v1', {
+      timeout: 30_000,
+    });
+    await pexpect(page.locator('.doc-pane-select').nth(1)).toHaveText(/v1/, {
+      timeout: 30_000,
+    });
 
     // 确认 → 执行轮（continue session + bash 真改动）→ 审核关口。
     await page.locator('.detail-head-action').click();
@@ -303,9 +310,14 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     await waitChip(/规划中/);
 
     // v2 落回 confirm 关口：plan 卡 v2 + 版本 chip v2 + 用户驳回气泡。
+    // （30s 预算同上一处注释——confirm 相位 chip 与会话面不同链。）
     await waitChip(/确认/);
-    await pexpect(page.locator('.chat-plan-title').last()).toHaveText('方案 · v2');
-    await pexpect(page.locator('.doc-pane-select').nth(1)).toHaveText(/v2/);
+    await pexpect(page.locator('.chat-plan-title').last()).toHaveText('方案 · v2', {
+      timeout: 30_000,
+    });
+    await pexpect(page.locator('.doc-pane-select').nth(1)).toHaveText(/v2/, {
+      timeout: 30_000,
+    });
     await pexpect(page.locator('.chat-bubble', { hasText: '标题去掉项目名后缀' })).toBeVisible();
 
     // server 真值：plan 两版，v2 内容忠实执行反馈（r5 §4 口径）。
