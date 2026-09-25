@@ -5,9 +5,12 @@
 // fixture so both captures are reproducible.
 // #83 (M5) live：文件夹表单接真 POST /api/skills（dropzone → 目录选择 →
 // 文件集读取，SKILL.md 必含校验 = server 400 同款；创建成功回技能列表）。
-// GitHub 扫描面 = server 无对应端点（02 §6.1 POST skills 上传语义为文件
-// 面），扫描钮保持惰性并登记验收报告。fixture 面 DOM/行为不变（隐藏 file
-// input 零像素）。
+// #235 live：GitHub 扫描钮接 #223 的 POST /api/skills/scan 双模式端点——
+// 扫描（候选发现）→ 候选列表 → 点候选行 = fetch 模式取文件集（与
+// POST /api/skills body.files 同形）→ createSkill 既有文件集语义（#195）
+// 导入成功回技能列表。fixture 面 DOM 保持零变化（parity scenario 80 守）。
+
+import type { SkillCandidate } from '@pacman/shared';
 import { useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useApiMutations } from '../api/hooks.js';
@@ -40,6 +43,36 @@ export function SkillsImportPage() {
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
   const canCreate = files != null && 'SKILL.md' in files && name.trim() !== '';
+  // GitHub tab（#235 live）：repo 输入 + 扫描结果 + 导入中候选 path。
+  const [repo, setRepo] = useState('');
+  const [importing, setImporting] = useState<string | null>(null);
+  const scan = mutations.scanSkills;
+  const fetchFiles = mutations.fetchSkillFiles;
+  const importError = fetchFiles.error ?? mutations.createSkill.error;
+  /** 选中即导入：fetch 模式取文件集 → 既有 createSkill 文件集语义。 */
+  const importCandidate = async (cand: SkillCandidate) => {
+    const scanned = scan.data;
+    if (scanned == null) return;
+    setImporting(cand.path);
+    try {
+      const fetched = await fetchFiles.mutateAsync({ repo: scanned.repo, path: cand.path });
+      mutations.createSkill.mutate(
+        { name: cand.name, description: cand.description, files: fetched.files },
+        {
+          onSuccess: () => navigate(SKILLS_HREF),
+          onSettled: () => setImporting(null),
+        },
+      );
+    } catch {
+      setImporting(null); // 错误行经 fetchFiles.error 渲染
+    }
+  };
+  const startScan = () => {
+    // 重扫清旧导入链错误（导入错误行挂在候选区，随新结果重渲染）。
+    fetchFiles.reset();
+    mutations.createSkill.reset();
+    scan.mutate({ repo: repo.trim() });
+  };
   const pickFolder = async (list: FileList | null) => {
     if (list == null) return;
     const out: Record<string, string> = {};
@@ -157,12 +190,61 @@ export function SkillsImportPage() {
               className="res-input"
               id="skill-repo"
               placeholder="https://github.com/owner/repo"
+              {...(live ? { value: repo, onChange: (e) => setRepo(e.target.value) } : {})}
             />
-            <button type="button" className="res-scan">
-              {t('扫描')}
+            <button
+              type="button"
+              className="res-scan"
+              {...(live
+                ? {
+                    // 导入中禁扫描：重扫 reset 导入链 mutation 会在 mid-flight
+                    // 清态（onSettled 仍放行 importing），直接禁掉消竞态。
+                    disabled: scan.isPending || importing !== null || repo.trim() === '',
+                    onClick: startScan,
+                  }
+                : {})}
+            >
+              {live && scan.isPending ? t('扫描中…') : t('扫描')}
             </button>
           </div>
           <p className="res-help">{t('输入仓库链接以扫描其中的技能，或直接指向某个技能目录。')}</p>
+          {live && scan.isError && (
+            <p className="res-help res-error">
+              {t('扫描失败')}：{scan.error.message}
+            </p>
+          )}
+          {live && scan.data != null && (
+            <div className="res-candlist">
+              {scan.data.candidates.length === 0 ? (
+                <p className="res-help">{t('未发现技能。')}</p>
+              ) : (
+                scan.data.candidates.map((cand) => (
+                  <button
+                    key={cand.path}
+                    type="button"
+                    className="res-cand"
+                    disabled={importing !== null}
+                    onClick={() => void importCandidate(cand)}
+                  >
+                    <span className="res-cand-name">{cand.name}</span>
+                    {cand.description != null && (
+                      <span className="res-cand-desc">{cand.description}</span>
+                    )}
+                    {cand.path !== '' && <span className="res-cand-path">{cand.path}</span>}
+                  </button>
+                ))
+              )}
+              {scan.data.truncated && (
+                <p className="res-help">{t('结果已截断，仅显示部分候选。')}</p>
+              )}
+              {importing !== null && <p className="res-help">{t('导入中…')}</p>}
+              {importError != null && (
+                <p className="res-help res-error">
+                  {t('导入失败')}：{importError.message}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </ResourceShell>

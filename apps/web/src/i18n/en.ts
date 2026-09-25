@@ -246,6 +246,13 @@ export const EN: Record<string, string> = {
   扫描: 'Scan',
   '输入仓库链接以扫描其中的技能，或直接指向某个技能目录。':
     'Enter a repo link to scan it for skills, or point directly at a skill directory.',
+  // #235 GitHub 扫描结果区（live）
+  '扫描中…': 'Scanning…',
+  '未发现技能。': 'No skills found.',
+  '结果已截断，仅显示部分候选。': 'Results truncated — showing a partial list.',
+  '导入中…': 'Importing…',
+  扫描失败: 'Scan failed',
+  导入失败: 'Import failed',
 
   // —— project routes (r2 07/24/24b/24c) ——
   文件: 'Files',
