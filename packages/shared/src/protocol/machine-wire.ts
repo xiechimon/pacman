@@ -67,6 +67,13 @@ export const machineEnrollPollResponseSchema = z.union([
   z.object({ status: z.literal('expired') }),
 ]);
 
+/** POST /api/machine/enroll/confirm（#285 [设计] 登记位 MACHINE_WIRE_EXTENSIONS）
+ * ——授权页用户确认：建 machine 行（无 apiKey，capability=enrollId 单次）+
+ * enroll 位转 authorized。响应 = machine.json 形状（授权页完成态展示；
+ * poll authorized 态同载荷）。 */
+export const machineEnrollConfirmBodySchema = z.object({ enrollId: z.string() });
+export const machineEnrollConfirmResponseSchema = z.object({ machine: machineJsonSchema });
+
 // —— me / presence / recover ————————————————————————————————————————————————
 
 /** GET /api/machine/me → machine record（02 §6.2；机器页数据同源）。 */
@@ -332,6 +339,11 @@ export const machineDoneResponseSchema = machineOkResponseSchema;
  * 一次性 PUT URL。非协议面外扩：13 端点词表（MACHINE_ENDPOINTS）不改形状，
  * 本表逐条带登记理由；server 路由面对拍测试单源消费。 */
 export const MACHINE_WIRE_EXTENSIONS = [
+  {
+    method: 'POST',
+    path: '/api/machine/enroll/confirm',
+    reason: '[设计] W4 #285 浏览器授权流完成面（授权页用户确认；capability=enrollId）',
+  },
   {
     method: 'GET',
     path: '/api/machine/steer',

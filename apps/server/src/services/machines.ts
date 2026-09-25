@@ -285,6 +285,32 @@ export function enrollMachine(
   return { machineId, token: token.plain, teamId: input.teamId, serverUrl: input.serverUrl };
 }
 
+/** 浏览器授权流建机（#285，02 §5.2 路径一完成面）：无 apiKey——授权页用户
+ * 确认（capability = enrollId 单次）即建新机；无重注册匹配面（key 路径的
+ * 复用键 = apiKeyId，此处恒新机）。machine.json 形状返回（poll authorized
+ * 态同载荷）。 */
+export function authorizeEnrollmentMachine(
+  deps: MachineDeps,
+  input: { teamId: string; name: string; serverUrl: string },
+): { machineId: string; token: string; teamId: string; serverUrl: string } {
+  const { db } = deps;
+  const token = newMachineToken();
+  const machineId = newRecordId();
+  db.insert(machine)
+    .values({
+      id: machineId,
+      teamId: input.teamId,
+      name: input.name,
+      online: false,
+      maxConcurrent: MAX_CONCURRENT_DEFAULT,
+      tokenHash: token.hash,
+      apiKeyId: null,
+      latestCliVersion: null,
+    })
+    .run();
+  return { machineId, token: token.plain, teamId: input.teamId, serverUrl: input.serverUrl };
+}
+
 // —— presence（02 §5.4：心跳并行失败、进程不退出——server 侧无状态可失败）——————
 
 export function markPresence(
