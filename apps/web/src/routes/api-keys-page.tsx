@@ -14,6 +14,7 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, ExternalLink, Key } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
+import { ApiKeyCreateDialog } from './api-key-create-dialog.js';
 
 export function ApiKeysPage() {
   const { t } = useI18n();
@@ -27,6 +28,8 @@ export function ApiKeysPage() {
   const todosQ = useTodos(teamId, live);
   const mutations = useApiMutations(teamId);
   const [plaintext, setPlaintext] = useState<string | null>(null);
+  // W4 #287：新建走权限位表单弹窗（不再默认直发）；fixture 面按钮保持无操作。
+  const [createOpen, setCreateOpen] = useState(false);
   const keys = live
     ? [
         ...mapApiKeys(keysQ.data ?? []),
@@ -54,24 +57,7 @@ export function ApiKeysPage() {
             <button
               type="button"
               className="keys-create"
-              onClick={
-                live
-                  ? () =>
-                      mutations.createApiKey.mutate(
-                        {
-                          name: null,
-                          gitAccess: false,
-                          mcpAccess: false,
-                          toolGrants: { read: [], write: [] },
-                        },
-                        {
-                          onSuccess: (res) => {
-                            if (typeof res.plaintext === 'string') setPlaintext(res.plaintext);
-                          },
-                        },
-                      )
-                  : undefined
-              }
+              onClick={live ? () => setCreateOpen(true) : undefined}
             >
               {t('新建密钥')}
             </button>
@@ -120,6 +106,17 @@ export function ApiKeysPage() {
           </div>
         </>
       )}
+      <ApiKeyCreateDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreate={(body) =>
+          mutations.createApiKey.mutate(body, {
+            onSuccess: (res) => {
+              if (typeof res.plaintext === 'string') setPlaintext(res.plaintext);
+            },
+          })
+        }
+      />
     </SecondaryShell>
   );
 }

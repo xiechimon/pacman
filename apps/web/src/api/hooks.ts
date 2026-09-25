@@ -430,8 +430,14 @@ export function useApiMutations(teamId: string | undefined) {
       onSuccess: invalidateAll,
     }),
     createApiKey: useMutation({
-      mutationFn: (body: Record<string, unknown>) =>
-        api.post<ApiKeyRow & { plaintext?: string }>(`/api/teams/${teamId}/api-keys`, body),
+      // W4 #287：全表单 body（r3 §6 权限位弹窗；形状 = server routes 的
+      // createApiKeyBodySchema 同构——apiKeyRecordSchema + name 可选）。
+      mutationFn: (body: {
+        name: string | null;
+        gitAccess: boolean;
+        mcpAccess: boolean;
+        toolGrants: { read: string[]; write: string[] };
+      }) => api.post<ApiKeyRow & { plaintext?: string }>(`/api/teams/${teamId}/api-keys`, body),
       onSuccess: invalidateAll,
     }),
     createMcpServer: useMutation({
