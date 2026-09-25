@@ -80,6 +80,11 @@ export const WEB_REST_ENDPOINTS: readonly RestEndpoint[] = [
   { method: 'POST', path: '/api/teams/{id}/agents', note: '→ 201 {id}（r5 §1/§8 补录）' },
   { method: 'POST', path: '/api/schedules' },
   { method: 'POST', path: '/api/skills', note: '上传（02 §6.1）' },
+  {
+    method: 'POST',
+    path: '/api/skills/scan',
+    note: 'GitHub 扫描发现半（#223，#201 路线 A；原产品扫描钮 wire 未采——词表外 [设计] 新端点）',
+  },
   { method: 'POST', path: '/api/analytics/first-touch', note: '形状保留、内容自选；可空实现' },
   {
     method: 'POST',

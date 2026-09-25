@@ -28,6 +28,7 @@ import {
   providerApiSchema,
   providerModelSchema,
   SKILL_ENTRY_FILE,
+  scanSkillsBodySchema,
   setSecretBodySchema,
   skillRecordSchema,
   startBuildsBodySchema,
@@ -113,6 +114,7 @@ import {
 import { createSchedule, deleteSchedule, listSchedules } from './services/schedules.js';
 import { search } from './services/search.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './services/secrets.js';
+import { fetchGithubSkillFiles, scanGithubSkills } from './services/skills.js';
 import { createTodo, deleteTodo, getTodo, listTodos, updateTodo } from './services/todos.js';
 
 /** 会话 cookie 名 [设计]（01 §4.2：httpOnly cookie 自设；品牌槽已随 D3 切换，#109，
@@ -1022,6 +1024,22 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       }),
       201,
     );
+  });
+
+  /** POST /api/skills/scan（#223：GitHub 扫描发现半——#201 路线 A，server 首个
+   * 出站 fetch 面；缝 = services/skills.ts → lib/github.ts 薄桥唯一出口，词表
+   * = shared scanSkillsBodySchema/scanSkillsResponseSchema）。body 缺省 path =
+   * scan（候选发现 [{path,name,description}]）；给 path = fetch（文件集与
+   * POST /api/skills body.files 同形，选中后直接喂导入半，#195 语义链）。 */
+  app.post('/api/skills/scan', async (c) => {
+    const body = parseWith(scanSkillsBodySchema, await jsonBody(c), 'body');
+    const teamId = body.teamId ?? ctx.team.id;
+    requireTeam(ctx, teamId);
+    const fetchImpl = ctx.githubFetch ?? fetch;
+    if (body.path !== undefined) {
+      return c.json(await fetchGithubSkillFiles(fetchImpl, body.repo, body.path));
+    }
+    return c.json(await scanGithubSkills(fetchImpl, body.repo));
   });
 
   app.get('/api/teams/:id/skills/:sid', (c) => {

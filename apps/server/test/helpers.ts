@@ -9,6 +9,7 @@ import { openMemoryDb } from '../src/db/client.js';
 import { apiKey } from '../src/db/schema.js';
 import { seed } from '../src/db/seed.js';
 import { sha256Hex } from '../src/lib/crypto.js';
+import type { FetchLike } from '../src/lib/github.js';
 import { newRecordId } from '../src/lib/ids.js';
 import { createEphemeralSecretBox } from '../src/lib/secret-box.js';
 import { ConversationStreamHub, TeamStreamHub } from '../src/services/events.js';
@@ -20,6 +21,8 @@ export function bootServer(
     claimHoldMs?: number;
     reposDir?: string;
     webDir?: string | null;
+    /** GitHub 出站 mock（#223 扫描面）；缺省 = 真 fetch（测试勿缺省）。 */
+    githubFetch?: FetchLike;
   } = {},
 ) {
   const db = openMemoryDb();
@@ -48,6 +51,7 @@ export function bootServer(
     enrollments: new Map(),
     reposDir,
     ...(opts.webDir !== undefined ? { webDir: opts.webDir } : {}),
+    ...(opts.githubFetch !== undefined ? { githubFetch: opts.githubFetch } : {}),
   });
   return {
     app,
