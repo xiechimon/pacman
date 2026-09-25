@@ -128,6 +128,7 @@ export const EN: Record<string, string> = {
   全部展开: 'Expand all',
   全部收起: 'Collapse all',
   显示完整文件: 'Show full file',
+  显示差异: 'Show diff',
   '完成 {elapsed}': 'Done in {elapsed}',
   运行在: 'Running on',
   上: '', // tail of 运行在 <machine> 上 — the en template needs no tail

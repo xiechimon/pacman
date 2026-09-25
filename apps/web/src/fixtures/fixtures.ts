@@ -571,6 +571,10 @@ function probeChanges(expanded: boolean): ChangesContent {
             ],
           },
         ],
+        // #225 全文槽:与 hunk 窗(@@ -3,3 +3,4 @@)自洽的六行——3–5 行 =
+        // 窗内 context 原文,第 6 行 = +行;初渲不展示,parity 零影响。
+        fullContent:
+          '# r3 probe\nprobe readme\nr3 lifecycle probe2\nr5b lifecycle probe\nr6 rebaseline probe\nr7 rebaseline probe\n',
       },
     ],
   };
