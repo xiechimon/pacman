@@ -23,27 +23,40 @@ You file a task on a kanban board. An agent picks it up, checks out a worktree a
 
 ## Quickstart
 
-Requirements: Node.js >= 22.19 and pnpm (e.g. via `corepack enable`).
+Requirements: Node.js 22 or 24 (LTS lines ship prebuilt `better-sqlite3` binaries; other versions may fall back to source compilation and need a build toolchain).
+
+```sh
+npx @xiechimon/pacman
+```
+
+One command: download, start, and serve on **http://127.0.0.1:8787/app**. The first boot creates the database under `~/.pacman`, runs migrations, and seeds a default team.
+
+Use a different port with `PORT=9000 npx @xiechimon/pacman`.
+
+### Run builds on your own machines
+
+The UI is fully usable without a daemon; register a machine when you want agents to actually run builds on it. On each machine that executes builds:
+
+```sh
+npm i -g @xiechimon/pacman-cli
+# One-time enrollment: create an API key in the web UI (/app/api-keys, plaintext shown once), then
+pacman start --api-key <pacman_...> --team <teamId>
+# Daily use (credentials persisted in ~/.pacman/machine.json):
+pacman start        # also: stop / restart / logs -f / status
+```
+
+Both packages install a `pacman` bin: installing both globally on the same machine means whichever came last wins the name. The clean split is running the server where you browse and `pacman-cli` where agents build.
+
+### Develop from source
+
+Requires Node.js >= 22.19 and pnpm (e.g. via `corepack enable`).
 
 ```sh
 pnpm install
-pnpm start
+pnpm start        # builds the web UI and starts the server hosting it on the same origin
 ```
 
-`pnpm start` builds the web UI and starts the server hosting it on the same origin. Open **http://127.0.0.1:8787/app**. The first boot creates the database, runs migrations, and seeds a default team.
-
-Use a different port with `PORT=9000 pnpm start`.
-
-### Optional: register this machine as an executor
-
-The UI is fully usable without a daemon; register a machine when you want agents to actually run builds on it.
-
-```sh
-# One-time enrollment: create an API key in the web UI (/app/api-keys, plaintext shown once), then
-pnpm dev:daemon start --api-key <pacman_...> --team <teamId>
-# Daily use (credentials persisted in ~/.pacman/machine.json):
-pnpm dev:daemon start        # also: stop / restart / logs -f / status
-```
+The watch-mode dev stack, one process each: `pnpm dev:web`, `pnpm dev:server`, `pnpm dev:daemon`.
 
 ## Configuration
 
