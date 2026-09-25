@@ -49,3 +49,23 @@ jobs:
 
       - name: E2E (reject-loop chain, #75 AC3)
         run: pnpm --filter @pacman/web e2e
+
+  # 发布产物冒烟（#264，spec #260 Testing Decisions 失败方式枚举的 CI 守）：
+  # 独立 job/runner——不与 check job 的 parity（同写 apps/web/dist）互踩。
+  pack-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4 # reads packageManager from root package.json
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Pack smoke (main package tarball, bare node)
+        run: scripts/pack-smoke.sh
