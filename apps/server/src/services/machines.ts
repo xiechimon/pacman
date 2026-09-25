@@ -39,6 +39,7 @@ import {
   message,
   plan as planTable,
   project,
+  steerPending,
   step,
   todo,
   tokenUsage,
@@ -172,6 +173,46 @@ export class MachineWakeHub {
   streamCount(teamId: string): number {
     return this.streams.get(teamId)?.size ?? 0;
   }
+
+  /** steer 信号（W3 #278）：推送 SSE steer 事件（载荷只带 stepId 信号）。
+   * 不触发 claim 长轮询唤醒——steer 不入队，运行中的步经
+   * GET /api/machine/steer 拉取-确认（spec #277「SSE 载荷不携文本防丢」）。 */
+  steerSignal(teamId: string, stepId: string): void {
+    for (const send of this.streams.get(teamId) ?? []) {
+      try {
+        send({ type: 'steer', stepId });
+      } catch {
+        // 连接已死：订阅方 onAbort 自清理。
+      }
+    }
+  }
+}
+
+/** steer 拉取-确认（W3 #278，GET /api/machine/steer?stepId=）：本机在跑的步
+ * 才可拉取（machineId + claimed 双校验）；pending 定向步不匹配（步已收尾/
+ * 换新步）→ 丢弃（spec #277「步结束仍有 pending = 丢弃」）；匹配 → 返回内容
+ * 并清（拉取即确认）。 */
+export function fetchSteer(
+  deps: { db: Db },
+  machine: { id: string },
+  stepId: string,
+): { content: string | null } {
+  const { db } = deps;
+  const stepRow = db.select().from(step).where(eq(step.id, stepId)).get();
+  if (!stepRow || stepRow.machineId !== machine.id || stepRow.status !== 'claimed') {
+    return { content: null };
+  }
+  const pending = db
+    .select()
+    .from(steerPending)
+    .where(eq(steerPending.conversationId, stepRow.buildId))
+    .get();
+  if (!pending) return { content: null };
+  db.delete(steerPending).where(eq(steerPending.conversationId, stepRow.buildId)).run();
+  if (pending.stepId !== stepId) {
+    return { content: null };
+  }
+  return { content: pending.content };
 }
 
 // —— 认证（02 §8：存哈希比对）———————————————————————————————————————————————

@@ -48,7 +48,8 @@ export const MERGE_ANNOUNCEMENT = '发起了合并';
 export const conversationMessagesResponseSchema = z.object({
   messages: z.array(transcriptRowSchema),
   /** chips/steerPending/nextCursor 细形未逐一采集 [推断]（steerPending[] 为
-   * 数组形观测；steer 语义 = 回合中补充说明即送，r5 §3.6）。 */
+   * 数组形观测；steer 语义 = 回合中补充说明即送，r5 §3.6）。W3 #278 起
+   * build 会话分支透出单槽 pending 内容（[pending.content]）。 */
   chips: z.unknown(),
   historyEpoch: z.number().int(),
   steerPending: z.array(z.unknown()),
@@ -56,3 +57,12 @@ export const conversationMessagesResponseSchema = z.object({
   nextCursor: z.unknown(),
 });
 export type ConversationMessagesResponse = z.infer<typeof conversationMessagesResponseSchema>;
+
+/** POST /api/conversations/{id}/messages 的 build 会话分支 body（W3 steer，
+ * 06 册 D9 / spec #277；[设计] 自设——承 chiefSendMessageBodySchema 的
+ * content 位，无 threadId（目标会话在路径位））：steer = 向运行中的步补话
+ * （claimed 步门 + 单槽 pending + machine 拉取-确认投递）。 */
+export const buildSteerBodySchema = z.object({
+  content: z.string().min(1),
+});
+export type BuildSteerBody = z.infer<typeof buildSteerBodySchema>;

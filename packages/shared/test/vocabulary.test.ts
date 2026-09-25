@@ -17,6 +17,8 @@ import {
   DB_TABLES,
   DEVICE_ID_PATTERN,
   ENV_VARS,
+  INTERNAL_ONLY_TABLES,
+  JOIN_ONLY_TABLES,
   MACHINE_CUSTOM_TOOLS,
   MACHINE_ENDPOINTS,
   MACHINE_TOKEN_PATTERN,
@@ -429,15 +431,21 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
 });
 
 describe('record projection (01 §6 / 03 M1; M4a +chief)', () => {
-  it('DB table registry is the 01 §6 list + chief (26 incl. the todo_tag join)', () => {
-    expect(DB_TABLES).toHaveLength(26);
+  it('DB table registry is the 01 §6 list + chief + steer_pending (27 incl. the todo_tag join)', () => {
+    expect(DB_TABLES).toHaveLength(27);
     expect(DB_TABLES).toContain('todo_tag');
     expect(DB_TABLES).toContain('chief');
   });
 
-  it('record shapes cover exactly the 25 wire tables (todo_tag join has none)', () => {
+  it('record shapes cover exactly the 25 wire tables (todo_tag join + steer_pending internal have none)', () => {
     expect(Object.keys(RECORD_SCHEMAS)).toHaveLength(25);
-    expect(Object.keys(RECORD_SCHEMAS)).toEqual(DB_TABLES.filter((t) => t !== 'todo_tag'));
+    expect(Object.keys(RECORD_SCHEMAS)).toEqual(
+      DB_TABLES.filter(
+        (t) =>
+          !(JOIN_ONLY_TABLES as readonly string[]).includes(t) &&
+          !(INTERNAL_ONLY_TABLES as readonly string[]).includes(t),
+      ),
+    );
   });
 });
 

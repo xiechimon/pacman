@@ -196,12 +196,23 @@ export type MachineClaimResponse = z.infer<typeof machineClaimResponseSchema>;
 // —— stream（wake SSE，02 §1.2/§5.4）————————————————————————————————————————
 
 /** GET /api/machine/stream 事件（MACHINE_STREAM_EVENT_TYPES 载荷化 [推断]：
- * wake = 有新步可领，低延迟派发；shutdown = 服务端要求下线）。 */
+ * wake = 有新步可领，低延迟派发；shutdown = 服务端要求下线；steer = 运行中
+ * 会话有补充说明待拉取（W3 #278 [设计]——只带 stepId 信号，文本经
+ * GET /api/machine/steer 拉取-确认，SSE 载荷不携文本防丢）。 */
 export const machineStreamEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('wake') }),
   z.object({ type: z.literal('shutdown') }),
+  z.object({ type: z.literal('steer'), stepId: recordId }),
 ]);
 export type MachineStreamEvent = z.infer<typeof machineStreamEventSchema>;
+
+/** GET /api/machine/steer?stepId= 响应（W3 #278 [设计]）：{content} = 拉取即
+ * 确认（服务端 pending 随即清）；{content:null} = 无待取/非本机在跑步/
+ * pending 定向旧步（已丢弃）。 */
+export const machineSteerResponseSchema = z.object({
+  content: z.string().nullable(),
+});
+export type MachineSteerResponse = z.infer<typeof machineSteerResponseSchema>;
 
 // —— 步骤 journal 端点（02 §5.4 词表）———————————————————————————————————————
 
@@ -321,6 +332,11 @@ export const machineDoneResponseSchema = machineOkResponseSchema;
  * 一次性 PUT URL。非协议面外扩：13 端点词表（MACHINE_ENDPOINTS）不改形状，
  * 本表逐条带登记理由；server 路由面对拍测试单源消费。 */
 export const MACHINE_WIRE_EXTENSIONS = [
+  {
+    method: 'GET',
+    path: '/api/machine/steer',
+    reason: '[设计] W3 steer 拉取-确认（06 册 D9；claimed 步单槽 pending，?stepId=）',
+  },
   {
     method: 'PUT',
     path: '/api/machine/upload/{uploadId}',

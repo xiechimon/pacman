@@ -162,6 +162,18 @@ export const message = sqliteTable('message', {
   createdAt: epochMs('createdAt').notNull(),
 });
 
+// —— steer_pending（W3 #278，06 册 D9：build 会话运行中的补充说明单槽）——————
+// conversation 维度一行（单槽覆盖，spec #277「双发竞态不排队」）；定向的
+// claimed 步 = 拉取校验 + 旧步丢弃判定（步收尾换新步后 pending 不可复活）。
+export const steerPending = sqliteTable('steer_pending', {
+  /** ≡ conversationId ≡ buildId（单槽键）。 */
+  conversationId: text('conversationId').primaryKey(),
+  /** 定向的 claimed 步（拉取-确认的校验位）。 */
+  stepId: text('stepId').notNull(),
+  content: text('content').notNull(),
+  createdAt: epochMs('createdAt').notNull(),
+});
+
 // —— plan（build facet：plan 即文件 plan.md，版本 = 文件版本，02 §4.2/r5 §4）————
 export const plan = sqliteTable('plan', {
   /** = build.planDocId（documents/{id}/diff 的 {id} 同值）。 */

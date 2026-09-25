@@ -17,9 +17,10 @@ import type {
   UserRecord,
 } from '@pacman/shared';
 import { MERGE_ANNOUNCEMENT, PLAN_FILE_NAME } from '@pacman/shared';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { build, message, plan as planTable, step, todo } from '../db/schema.js';
+import { build, message, plan as planTable, steerPending, step, todo } from '../db/schema.js';
+import { HttpError } from '../lib/errors.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import type { MachineWakeHub } from './machines.js';
@@ -82,6 +83,60 @@ function publishBuild(deps: BuildDeps, row: BuildRow): BuildRecord {
   const todoRow = deps.db.select().from(todo).where(eq(todo.id, row.todoId)).get();
   if (todoRow) deps.hub.publishBuildDoc(todoRow.teamId, record);
   return record;
+}
+
+/** steer 写面（W3 #278，06 册 D9）：build 会话运行中补话——claimed 步门
+ * （无在跑步 = 409 不静默，spec #277「agent 不在跑时发送要被明确拒绝」）+
+ * 单槽 pending upsert（双发覆盖）+ transcript user 行（insertMessageRow 同形）
+ * + machine steer 信号（拉取-确认投递的触发沿，services/machines）。 */
+export function sendBuildSteer(
+  deps: BuildDeps,
+  conversationId: string,
+  body: { content: string },
+): { message: { id: string; role: 'user'; content: string; createdAt: number } } {
+  const { db } = deps;
+  const buildRow = db.select().from(build).where(eq(build.id, conversationId)).get();
+  if (!buildRow) throw new HttpError(404, `conversation ${conversationId}`);
+  // activeRun 门 = 该会话存在已领取未收尾的步（agent 在跑）；plan/build/merge
+  // 步序贯，取最新 claimed。
+  const running = db
+    .select()
+    .from(step)
+    .where(and(eq(step.buildId, conversationId), eq(step.status, 'claimed')))
+    .all()
+    .at(-1);
+  if (!running) {
+    throw new HttpError(409, 'no active step on this conversation (steer 只对运行中的会话生效)');
+  }
+  const now = nowMs();
+  const messageRow = {
+    id: newRecordId(),
+    role: 'user' as const,
+    content: body.content,
+    createdAt: now,
+  };
+  insertMessageRow(deps, conversationId, messageRow);
+  db.insert(steerPending)
+    .values({ conversationId, stepId: running.id, content: body.content, createdAt: now })
+    .onConflictDoUpdate({
+      target: steerPending.conversationId,
+      set: { stepId: running.id, content: body.content, createdAt: now },
+    })
+    .run();
+  const todoRow = db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
+  if (todoRow) deps.machineHub?.steerSignal(todoRow.teamId, running.id);
+  return { message: messageRow };
+}
+
+/** GET /conversations/{id}/messages 的 build 分支 steerPending 读位（单槽
+ * 内容数组化——封套数组形观测，r5 §3.6）。 */
+export function readSteerPending(db: Db, conversationId: string): string[] {
+  const pending = db
+    .select()
+    .from(steerPending)
+    .where(eq(steerPending.conversationId, conversationId))
+    .get();
+  return pending ? [pending.content] : [];
 }
 
 function enqueueStep(
