@@ -49,3 +49,25 @@ jobs:
 
       - name: E2E (reject-loop chain, #75 AC3)
         run: pnpm --filter @pacman/web e2e
+
+  # 发布产物冒烟（#264，spec #260 W2 npm 首发）：pack 主包 → 仓外装 tarball →
+  # 裸 node 起 → /api/user/me + /app + PACMAN_HOME 隔离断言。失败方式枚举
+  # （bundle 缺依赖/web 未进包/migration 未进包/src-test 混入）见
+  # scripts/pack-smoke.mjs 头注；与 check 并行不串 e2e（1h+ 长跑不阻塞本面）。
+  pack-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4 # reads packageManager from package.json
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Pack smoke (npm publish form)
+        run: pnpm pack-smoke
