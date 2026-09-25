@@ -34,7 +34,8 @@ export const serverConfigSchema = z.object({
   schedulerTickMs: z.number().int().positive(),
   /** SPA 静态同源托管根（02/A1，M5）：vite build 产物目录；null = 不托管
    * （纯 API 形态）。env 覆写位 = ENV_VARS.webDir（品牌槽单源，02 §5.8）；
-   * 默认 = monorepo 布局 `apps/web/dist` 存在即托管。 */
+   * 默认 = monorepo `apps/web/dist` 与包内 `web/` 双探测存在即托管（06 §11，
+   * 见 defaultWebDir）。 */
   webDir: z.string().nullable(),
   /** OAuth App client 凭证对（#231 握手面；env 双件齐 = 配置，双缺 = null
    *  未配置——authorize 走 400 提示；只配一件 = 启动期报错不静默）。 */
@@ -65,12 +66,21 @@ function envStr(name: string): string | null {
 /** 全网卡绑定主机名族（显式配置命中 + 鉴权关 = 启动 WARN 判定面）。 */
 const ANY_INTERFACE_HOSTS = new Set(['0.0.0.0', '::', '::0']);
 
-/** SPA 产物默认位：monorepo 布局 `apps/web/dist`（本模块 = apps/server/src/
- * config.ts，向上两级到 apps/ 再进 web/dist）；不存在 = null（纯 API 形态）。 */
+/** SPA 产物默认位双探测（06 册 §11 W2 主包形态）：monorepo 布局 `apps/web/dist`
+ * 与发布包内 `web/`（files 整形位）。本模块 = apps/server/src/config.ts 或
+ * bundle 形态 dist/index.mjs（src/ 与 dist/ 同深，向上两级均落 apps/server），
+ * 向上两级到 apps/ 再进 web/dist；包内形态（`<pkg>/dist/index.mjs`）向上两级
+ * 落 `<pkg>`，进 `web/`。均不存在 = null（纯 API 形态）。
+ * 候选序 = monorepo 在先：pack 期 stage-web.mjs 会在 apps/server/web/ 落一份
+ * gitignored 中间拷贝，dev 形态恒取当场新构建的 `apps/web/dist`（探测序即
+ * 新者胜，不比 mtime）；staged 拷贝只在 apps/web/dist 缺席或包内形态生效。 */
 function defaultWebDir(): string | null {
-  const here = resolve(fileURLToPath(import.meta.url), '../..'); // apps/server
-  const candidate = join(here, '..', 'web', 'dist');
-  return existsSync(join(candidate, 'index.html')) ? resolve(candidate) : null;
+  const here = resolve(fileURLToPath(import.meta.url), '../..'); // apps/server 或 <pkg>
+  const candidates = [join(here, '..', 'web', 'dist'), join(here, 'web')];
+  for (const candidate of candidates) {
+    if (existsSync(join(candidate, 'index.html'))) return resolve(candidate);
+  }
+  return null;
 }
 
 export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {

@@ -5,6 +5,8 @@ node_modules
 out
 dist
 *.tgz
+# pack 期 web dist 整形产物（apps/server/scripts/stage-web.mjs，不入 repo）
+apps/server/web/
 .build
 apps/electron/release
 apps/electron/resources/session-mcp-server/
