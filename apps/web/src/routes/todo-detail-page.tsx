@@ -26,6 +26,7 @@ import {
   usePlans,
   useProjectBuilds,
   useProjects,
+  useSearchResults,
   useSteps,
   useTodo,
   useTodos,
@@ -144,6 +145,8 @@ export function TodoDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const fixture = resolveScenario(searchParams);
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
+  // W4 #286：live 面服务端搜索（fixture/parity 面不经此钩）。
+  const searchResults = useSearchResults(search.query, live && search.open);
   const fixtureTodos = withoutDeleted(fixture.todos);
 
   // —— live 查询面（#83）：todo → latestBuild → steps/messages/plans/changes/
@@ -611,6 +614,7 @@ export function TodoDetailPage() {
               }
             : fixture
         }
+        server={live ? searchResults.data : undefined}
         query={search.query}
         onQuery={search.setQuery}
         onClose={() => search.setOpen(false)}

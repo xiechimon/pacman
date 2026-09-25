@@ -15,6 +15,7 @@
 // row stays lit; Enter hops to it), and any real pointer movement hands
 // the highlight back to the mouse.
 
+import type { SearchResponse } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { relativeTime } from '../board/rel-time.js';
@@ -62,6 +63,32 @@ interface SearchPanelProps {
   /** #73 retained-mount open flag. */
   open: boolean;
   onClose: () => void;
+  /** W4 #286：live 面服务端搜索结果（调用方经 useSearchResults 注入）。
+   *  提供且 q 非空 = 服务端结果集（GET /api/search，02 §6.3 [设计]）；缺省 =
+   *  客户端过滤（fixture/parity 面 DOM 零改动）。 */
+  server?: SearchResponse;
+}
+
+/** W4 #286 行面结构化：fixture TodoRecord/AgentRef 与服务端 search 行共形
+ * （面板行渲染消费的最小字段集）。 */
+interface TodoRowItem {
+  id: string;
+  seqNum: number;
+  title: string;
+  phase: TodoRecord['phase'];
+  phaseAt: number;
+  /** fixture 行的 projectNames 查表键；服务端行缺省（projectName 自带）。 */
+  projectId?: string;
+  /** 服务端 search 行自带（W4 #286）；fixture 行经 projectNames 查表。 */
+  projectName?: string;
+}
+interface AgentRowItem {
+  id: string;
+  displayName: string;
+}
+interface ProjectRowItem {
+  id: string;
+  name: string;
 }
 
 function TodoRow({
@@ -72,7 +99,7 @@ function TodoRow({
   onActivate,
   projectName,
 }: {
-  todo: TodoRecord;
+  todo: TodoRowItem;
   now: number;
   /** #159: lit only while the ↑↓ keyboard cursor sits here — the mouse
    *  hover pill is CSS (:hover), and at rest no row is selected. */
@@ -80,7 +107,7 @@ function TodoRow({
   /** Flat row position in the list (keyboard cursor + scroll-into-view). */
   index: number;
   onActivate: () => void;
-  /** M5 live：真项目名（fixture.projectNames 位）；缺省 = capture canon。 */
+  /** M5 live：真项目名（fixture.projectNames 位 / 服务端行自带）；缺省 = capture canon。 */
   projectName?: string;
 }) {
   const { t } = useI18n();
@@ -125,7 +152,7 @@ function useSingleLitSurface(open: boolean) {
   }, [open]);
 }
 
-export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPanelProps) {
+export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: SearchPanelProps) {
   const { t } = useI18n();
   const navigate = useNavigate();
   // #121 convention: SPA hops carry the live query string so the fixture
@@ -155,9 +182,17 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPa
   }, []);
   useSingleLitSurface(open);
   const q = query.trim().toLowerCase();
-  const todos = q === '' ? [] : fixture.todos.filter((t) => t.title.toLowerCase().includes(q));
-  const agents =
-    q === ''
+  // W4 #286：live 面切服务端结果集（server 注入 + q 非空）；fixture/parity
+  // 面保持客户端过滤（渲染 DOM 零改动）。
+  const useServer = server !== undefined && q !== '';
+  const todos: TodoRowItem[] = useServer
+    ? server.todos
+    : q === ''
+      ? []
+      : fixture.todos.filter((t) => t.title.toLowerCase().includes(q));
+  const agents: AgentRowItem[] = useServer
+    ? server.agents
+    : q === ''
       ? []
       : [...new Set(fixture.todos.map((t) => t.agent))]
           .filter((agent): agent is AgentRef => agent != null)
@@ -167,23 +202,28 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPa
   const projectName = fixture.projectNames
     ? (Object.values(fixture.projectNames)[0] ?? PROJECT_NAME)
     : PROJECT_NAME;
-  const projectInitial = projectName.charAt(0).toLowerCase() || PROJECT_INITIAL;
-  const projectHit = q !== '' && projectName.toLowerCase().includes(q);
-  const hitCount = todos.length + agents.length + (projectHit ? 1 : 0);
+  const projects: ProjectRowItem[] = useServer
+    ? server.projects
+    : q !== '' && projectName.toLowerCase().includes(q)
+      ? [
+          {
+            id: fixture.projectNames
+              ? (Object.keys(fixture.projectNames)[0] ?? PROJECT_ID)
+              : PROJECT_ID,
+            name: projectName,
+          },
+        ]
+      : [];
+  const hitCount = todos.length + agents.length + projects.length;
 
-  // #159: the 项目 row target — live = the first real project id; the
-  // fixture face keeps the capture-canon constant.
-  const projectTargetId = fixture.projectNames
-    ? (Object.keys(fixture.projectNames)[0] ?? PROJECT_ID)
-    : PROJECT_ID;
   // Flat activation targets in render order — the ↑↓ cursor's index space
-  // (nav rows on the empty query; todos → 项目 → agents on a hit list).
+  // (nav rows on the empty query; todos → 项目 rows → agents on a hit list).
   const targets =
     q === ''
       ? NAV_ROWS.map((row) => row.href)
       : [
           ...todos.map((todo) => `/app/todo/${todo.id}`),
-          ...(projectHit ? [`/app/project/${projectTargetId}`] : []),
+          ...projects.map((project) => `/app/project/${project.id}`),
           ...agents.map(() => '/app/team'),
         ];
 
@@ -302,35 +342,46 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose }: SearchPa
                     selected={cursor === index}
                     index={index}
                     onActivate={() => go(`/app/todo/${todo.id}`)}
-                    projectName={fixture.projectNames?.[todo.projectId] ?? projectName}
+                    projectName={
+                      useServer
+                        ? todo.projectName
+                        : ((todo.projectId !== undefined
+                            ? fixture.projectNames?.[todo.projectId]
+                            : undefined) ?? projectName)
+                    }
                   />
                 ))}
               </>
             )}
-            {projectHit && (
+            {projects.length > 0 && (
               <>
                 <div className="search-group-label">{t('项目')}</div>
-                <button
-                  type="button"
-                  data-row-index={todos.length}
-                  className={`search-row search-row--todo${
-                    cursor === todos.length ? ' search-row--selected' : ''
-                  }`}
-                  onClick={() => go(`/app/project/${projectTargetId}`)}
-                >
-                  <span className="search-row-icon search-row-icon--project">{projectInitial}</span>
-                  <span className="search-row-main">
-                    <span className="search-row-title">{projectName}</span>
-                  </span>
-                </button>
+                {projects.map((project, index) => (
+                  <button
+                    type="button"
+                    key={project.id}
+                    data-row-index={todos.length + index}
+                    className={`search-row search-row--todo${
+                      cursor === todos.length + index ? ' search-row--selected' : ''
+                    }`}
+                    onClick={() => go(`/app/project/${project.id}`)}
+                  >
+                    <span className="search-row-icon search-row-icon--project">
+                      {project.name.charAt(0).toLowerCase() || PROJECT_INITIAL}
+                    </span>
+                    <span className="search-row-main">
+                      <span className="search-row-title">{project.name}</span>
+                    </span>
+                  </button>
+                ))}
               </>
             )}
             {agents.length > 0 && (
               <>
                 <div className="search-group-label search-group-label--upper">Agents</div>
                 {agents.map((agent, index) => {
-                  // flat cursor space: todos → 项目 row → agents (#159)
-                  const rowIndex = todos.length + (projectHit ? 1 : 0) + index;
+                  // flat cursor space: todos → 项目 rows → agents (#159)
+                  const rowIndex = todos.length + projects.length + index;
                   return (
                     <button
                       type="button"

@@ -582,7 +582,7 @@ describe('search response (02 §6.3 [设计] 自设 wire)', () => {
   it('parses the three-bucket shape verbatim', () => {
     expect(
       searchResponseSchema.parse({
-        todos: [{ id: 't1', seqNum: 1, title: 'x', phase: 'todo', projectName: 'p' }],
+        todos: [{ id: 't1', seqNum: 1, title: 'x', phase: 'todo', phaseAt: 1, projectName: 'p' }],
         projects: [{ id: 'p', name: 'p' }],
         agents: [{ id: 'a', displayName: 'r3-builder' }],
       }),

@@ -3,9 +3,10 @@
 // r2 04/04b 实测态（04 册附录 A：不触发补采）。
 
 import { z } from 'zod';
-import { phaseSchema, recordId } from '../records/common.js';
+import { epochMs, phaseSchema, recordId } from '../records/common.js';
 
-/** GET /api/search?q= 响应（02 §6.3 原样）；服务端 LIKE 查标题/名称。 */
+/** GET /api/search?q= 响应（02 §6.3 原样；W4 #286 todo 行 + phaseAt——面板
+ * 行右缘相对时间位）；服务端 LIKE 查标题/名称。 */
 export const searchResponseSchema = z.object({
   todos: z.array(
     z.object({
@@ -13,6 +14,7 @@ export const searchResponseSchema = z.object({
       seqNum: z.number().int(),
       title: z.string(),
       phase: phaseSchema,
+      phaseAt: epochMs,
       projectName: z.string(),
     }),
   ),

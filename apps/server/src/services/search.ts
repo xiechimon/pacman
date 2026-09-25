@@ -42,6 +42,7 @@ export function search(
       seqNum: todo.seqNum,
       title: todo.title,
       phase: todo.phase,
+      phaseAt: todo.phaseAt,
       projectName: project.name,
     })
     .from(todo)

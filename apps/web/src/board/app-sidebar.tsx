@@ -9,7 +9,7 @@
 // rides the internal panel, which renders nothing while closed.
 
 import { useCallback, useState } from 'react';
-import { useMachines, useTodos } from '../api/hooks.js';
+import { useMachines, useSearchResults, useTodos } from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
@@ -48,6 +48,8 @@ export function AppSidebar({
   const todosQ = useTodos(teamId, live);
   const machinesQ = useMachines(teamId, live);
   const search = useSearchState(false, '');
+  // W4 #286：live 面服务端搜索（fixture/parity 面不经此钩）。
+  const searchResults = useSearchResults(search.query, live && search.open);
   // #55: the collapse toggle is real state, persisted beside the theme; the
   // exact key is [推断] (r2 §1.1 only documents `tds.sidebarProjectsCollapsed`
   // for the project-group fold), and the parity harness injects it like the
@@ -80,6 +82,7 @@ export function AppSidebar({
           query={search.query}
           onQuery={search.setQuery}
           onClose={() => search.setOpen(false)}
+          server={live ? searchResults.data : undefined}
         />
       )}
     </>
