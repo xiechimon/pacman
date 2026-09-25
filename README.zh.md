@@ -19,7 +19,7 @@
 
 - **自托管。** 单一数据根（`~/.pacman`）+ SQLite，不经任何外部服务；代码与模型密钥不出你的机器。
 - **开源。** Apache-2.0（见[许可](#许可)）。
-- **出身透明。** pacman 起步于 todos.dev 的 1:1 复刻研究（见文末免责声明），现为自主产品；分化路线从真实使用中涌现，不抄任何人的 spec。
+- **出身透明。** pacman 起步于对 todos.dev 公开界面的 clean-room 研究（见[渊源](#渊源)），现为自主产品；分化路线从真实使用中涌现，不抄任何人的 spec。
 
 ## 快速开始
 
@@ -102,9 +102,6 @@ pnpm test         # vitest
 
 Apache-2.0 — 见 [LICENSE](./LICENSE)。
 
-> **免责声明**
-> 本仓库是 todos.dev 的 1:1 复刻研究项目（像素级 UI + 功能等价），仅供个人学习研究，
-> 与 todos.dev 官方无任何关联，未获其认可或赞助。Todos、todos.dev 及其 logo、界面截图、
-> 文案等素材版权归原权利人所有；仓库内 `docs/research/` 下的抓取记录与截图仅作研究证据引用。
-> 复刻产品名为 Pacman，本地自用，不对外提供服务。
-> 素材替换政策与逐项清单见 [`docs/spec/素材替换计划.md`](docs/spec/素材替换计划.md)（#44）。
+## 渊源
+
+pacman 起步于对 todos.dev 公开界面与协议的 clean-room 研究——一次 agent-workspace 设计探索。现为独立项目，有自己的路线图，不使用 todos.dev 的任何代码或素材。

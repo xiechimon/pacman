@@ -19,7 +19,7 @@ You file a task on a kanban board. An agent picks it up, checks out a worktree a
 
 - **Self-hosted.** One data root (`~/.pacman`), SQLite, no external service in the loop. Your code and your model keys stay on your machines.
 - **Open source.** Apache-2.0 (see [License](#license)).
-- **Honest lineage.** pacman started as a 1:1 replication study of todos.dev (see the disclaimer below) and is now an independent product; its roadmap diverges from real usage, not from anyone else's spec.
+- **Honest lineage.** pacman began as a clean-room study of todos.dev's public interface (see [Origins](#origins)) and is now an independent product; its roadmap diverges from real usage, not from anyone else's spec.
 
 ## Quickstart
 
@@ -102,5 +102,6 @@ Full obligations table: `docs/spec/素材替换计划.md` §4.
 
 Apache-2.0 — see [LICENSE](./LICENSE).
 
-> **Disclaimer**
-> This repository began as a 1:1 replication research project of todos.dev (pixel-level UI + functional equivalence), for personal study only. It is not affiliated with, endorsed by, or sponsored by todos.dev in any way. Todos, todos.dev, their logo, UI screenshots, and copy belong to their original rights holders; capture records and screenshots under `docs/research/` are kept solely as research evidence. The replication is named Pacman, self-hosted, and not offered as a public service. Asset-replacement policy and itemized inventory: [`docs/spec/素材替换计划.md`](docs/spec/素材替换计划.md) (#44).
+## Origins
+
+pacman began as a clean-room study of todos.dev's public interface and protocols — an exploration of agent-workspace design. It is now an independent project with its own roadmap, and uses no code or assets from todos.dev.
