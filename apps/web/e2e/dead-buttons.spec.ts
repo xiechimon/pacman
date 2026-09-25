@@ -13,6 +13,9 @@ import { expect, type Page, test } from '@playwright/test';
 // 4. schedules 空态「查看文档」钮不再渲染（wontfix：local-first 无文档站）。
 // 6. doc-pane 变更▾ — 接 #67 文档类型选族律：点击开 listbox（变更 ✓），
 //    Esc 关；diff 模式同钮显示 方案▾ 同律。
+// 7. machines 行内动作图标 — #222 出账（r8 §3.5 漂移注记）：原站在线机器行
+//    右侧三行内动作图标，端点核实测 local-first 无机器管理面（注记在
+//    machines-page.tsx 头部），不渲染死钮——行内零 button。
 // 第 5 项（skills 添加技能主钮）由 #153 覆盖，本 spec 不断言。
 
 /** 面板中心点的命中必须由面板自身持有 — title-band-clicks 同款家族法。 */
@@ -127,4 +130,16 @@ test('doc pane 变更▾ opens the document-type listbox and closes on Escape', 
   await expect(dropdown.locator('.plan-dropdown-row')).toContainText('变更');
   await page.keyboard.press('Escape');
   await expect(dropdown).toBeHidden();
+});
+
+// —— 7. machines 行内动作图标（#222 出账）——————————————————————————————
+
+test('machines rows render no inline action buttons (#222 wontfix 出账)', async ({ page }) => {
+  await page.goto('/app/resources/machines?scenario=06');
+  // 在线机器行在（scenario=06 fixture 含一台 online 机器，行首 res-dot）
+  await expect(page.locator('.res-dot').first()).toBeVisible();
+  // #222:r8 §3.5 原站在线机器行右侧三行内动作图标——端点核实测无
+  // local-first 机器管理面,不渲染死钮:行内零 button(行尾 chevron 为
+  // 非交互 span,行外 添加机器 钮 .res-add 不在钉内)。
+  await expect(page.locator('.res-grow button')).toHaveCount(0);
 });

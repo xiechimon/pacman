@@ -2,6 +2,14 @@
 // row (indigo server tile, description line, 未启用 pill) above a divider
 // and one row per claimed machine (orange monitor tile, online dot,
 // id-tail subline) — then the dashed full-width 添加机器 button.
+// #222 出账注记 (r8 §3.5 站点漂移): 原站在线机器行右侧新增过三个行内动作
+// 图标——字形/行为未入 r8 文本档(唯一记录 = r8-resources-static §3 item 5),
+// 素材图不可读,图标身份不可钉。端点核实测: local-first 无任何机器管理面
+// (routes-machine.ts 13 端点全 daemon 拉取式、web 面仅 GET
+// /api/teams/:id/machines 只读列表、MachineWakeHub 仅 step 派发 wake),故
+// 任何机器操作类动作(终端/升级/重启/删除等)皆无依托 → 三图标全出账,
+// 不渲染死钮(零渲染由 e2e/dead-buttons.spec.ts §7 钉)。复活前置 =
+// server 车道机器管理面新票(#177→#189 先例)。
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMachines, useTeams } from '../api/hooks.js';
