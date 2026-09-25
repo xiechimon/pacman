@@ -462,6 +462,11 @@ export const EN: Record<string, string> = {
   '模型（可选）': 'Models (optional)',
   '模型 ID': 'Model ID',
   添加模型: 'Add model',
+  // #231 OAuth 连接订阅段(族表单源 = shared OAUTH_FAMILIES;品牌名不译)
+  连接订阅: 'Connect a subscription',
+  或添加自定义网关: 'or add a custom gateway',
+  '授权已被取消。': 'Authorization was cancelled.',
+  '令牌交换失败，请稍后重试。': 'Token exchange failed — please try again.',
   // wayfinder #181 add-machine dialog family (r2 11b verbatim copy; the
   // command strings themselves stay untranslated — brand slots via BRAND)
   '有条件时优先使用云主机：笔记本会休眠或断网，云主机常在线，构建更稳定。':

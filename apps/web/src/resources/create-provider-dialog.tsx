@@ -16,8 +16,15 @@
 // failed POST (e.g. providerId 409) keeps the user's input.
 // #193: the #175 scroll pin (body scrolls, submit outside) folded into
 // DialogShell — the submit rides the `footer` slot, fields ride .dlg-body.
+// #231: 连接订阅 section on top — one row per armed OAuth family (shared
+// OAUTH_FAMILIES is the single source; families not in the table render
+// nothing, per the #222 no-dead-buttons law). Live click = POST authorize
+// then same-tab navigation to the provider's authorize page (the callback
+// 302 lands back on the providers page); fixture click = accept 律 (close).
+// Failures stay inline: authorize POST error / callback landing error both
+// ride the connectError line (server message verbatim / 落地 reason 文案).
 
-import type { ProviderApi } from '@pacman/shared';
+import { OAUTH_FAMILIES, type ProviderApi } from '@pacman/shared';
 import { useEffect, useState } from 'react';
 import { DialogShell } from '../detail/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
@@ -46,6 +53,14 @@ interface CreateProviderDialogProps {
     models?: { id: string; name: string }[];
     apiKey?: string;
   }) => void;
+  /** #231 live 面：连接订阅 = POST authorize → 同页签跳授权页；缺省 =
+   *  fixture 律（点连接即关窗，等价 accept）。 */
+  onConnect?: (presetId: string) => void;
+  /** authorize POST 进行中——禁用连接钮防重发。 */
+  connectPending?: boolean;
+  /** 连接失败 inline 行（authorize 400 原文 / callback 落地 reason 文案）；
+   *  null/缺省 = 无错误。 */
+  connectError?: string | null;
 }
 
 export function CreateProviderDialog({
@@ -53,6 +68,9 @@ export function CreateProviderDialog({
   onClose,
   pending,
   onCreate,
+  onConnect,
+  connectPending,
+  connectError,
 }: CreateProviderDialogProps) {
   const { t } = useI18n();
   const [providerId, setProviderId] = useState('');
@@ -118,6 +136,24 @@ export function CreateProviderDialog({
       }
     >
       <div className="dlg-form">
+        {/* #231 连接订阅段：表内族一行一钮（死钮不渲染 #222 律）。live =
+            POST authorize → 同页签跳走；fixture = accept 律点即关。 */}
+        <div className="dlg-form-label">{t('连接订阅')}</div>
+        {OAUTH_FAMILIES.map((family) => (
+          <button
+            key={family.presetId}
+            type="button"
+            className="dlg-provider-oauth"
+            disabled={connectPending === true}
+            onClick={() => (onConnect != null ? onConnect(family.presetId) : onClose())}
+          >
+            {family.providerLabel}
+          </button>
+        ))}
+        {connectError != null && connectError !== '' && (
+          <div className="dlg-provider-oauth-error">{connectError}</div>
+        )}
+        <div className="dlg-provider-divider">{t('或添加自定义网关')}</div>
         <label className="dlg-form-label" htmlFor="dlg-provider-id">
           {t('服务商 ID')}
         </label>

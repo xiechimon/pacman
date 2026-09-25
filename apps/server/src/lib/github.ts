@@ -1,12 +1,16 @@
-// GitHub 出站薄桥（#223：skills 扫描发现半，#201 裁决路线 A）——server 首个
-// 出站 fetch 面。缝纪律：本模块 = server 唯一 GitHub 出站消费位（对照既有缝：
-// lib/git.ts = 系统 git spawn 桥、services/mcp-face.ts = MCP sdk 桥）；业务
-// 语义（候选发现/文件集组装）归 services/skills.ts，本模块只做 HTTP + 错误映射。
+// GitHub 出站薄桥（#223：skills 扫描发现半，#201 裁决路线 A；#231 OAuth
+// token 交换面并入——github.com/login/oauth 同族出站）——server 唯一 GitHub
+// 出站消费位（对照既有缝：lib/git.ts = 系统 git spawn 桥、services/
+// mcp-face.ts = MCP sdk 桥）；业务语义（候选发现/文件集组装/OAuth state
+// 与建行）归 services/{skills,oauth}.ts，本模块只做 HTTP + 错误映射。
 //
 // API 面（无 auth 起步——公开仓）：
 // - GET api.github.com/repos/{owner}/{repo}          → default_branch（2 次 REST/scan 之一）
 // - GET api.github.com/repos/{o}/{r}/git/trees/{branch}?recursive=1 → 全树（含 blob size）
 // - GET raw.githubusercontent.com/{o}/{r}/{branch}/{path} → 文件原文（CDN，不占 REST 配额）
+// OAuth 面（#231 握手）：
+// - POST github.com/login/oauth/access_token（form-encoded：client_id/
+//   client_secret/code/redirect_uri，Accept: json）→ access_token
 // Rate limit 注记：未认证 REST = 60 req/h/IP（每次 scan/fetch 用 2 次：repo info
 // + tree）；raw 走 CDN 不计。限流两形 → 429：403 + x-ratelimit-remaining:0
 // （主限额）、403 + retry-after（二级/abuse 限额）。
@@ -26,10 +30,16 @@
 
 import { HttpError } from './errors.js';
 
-/** fetch 结构子集（测试注入 mock；globalThis.fetch 天然满足）。 */
+/** fetch 结构子集（测试注入 mock；globalThis.fetch 天然满足）。method/body
+ * 位 = #231 OAuth form POST 所需（REST 面全 GET 不填）。 */
 export type FetchLike = (
   input: string | URL,
-  init?: { headers?: Record<string, string>; signal?: AbortSignal },
+  init?: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    signal?: AbortSignal;
+  },
 ) => Promise<{
   ok: boolean;
   status: number;
@@ -180,4 +190,60 @@ export async function githubRawFile(
   if (res.status === 404) return null;
   if (!res.ok) throw mapUpstreamStatus(url, res);
   return res.text();
+}
+
+// —— OAuth token 交换面（#231 握手：callback 收码后唯一一次出站）———————————
+
+export interface OAuthExchangeInput {
+  tokenUrl: string;
+  clientId: string;
+  clientSecret: string;
+  code: string;
+  /** 与 authorize 期发出的 redirect_uri 同值（GitHub 校验一致）。 */
+  redirectUri: string;
+}
+
+/** 授权码 → access_token。错误映射（callback 路由把 502 族转译成 302 error
+ * 回跳，services/oauth.ts）：fetch reject/超时 → 502 unreachable；上游非 ok
+ * → 502 upstream <status>；200 缺 access_token → 502 no access_token。 */
+export async function exchangeOAuthCode(
+  fetchImpl: FetchLike,
+  input: OAuthExchangeInput,
+): Promise<string> {
+  const body = new URLSearchParams({
+    client_id: input.clientId,
+    client_secret: input.clientSecret,
+    code: input.code,
+    redirect_uri: input.redirectUri,
+  }).toString();
+  let res: Awaited<ReturnType<FetchLike>>;
+  try {
+    res = await fetchImpl(input.tokenUrl, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/x-www-form-urlencoded',
+        'user-agent': API_HEADERS['user-agent'],
+      },
+      body,
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+  } catch (err) {
+    const why = err instanceof Error ? err.message : String(err);
+    throw new HttpError(502, `oauth token exchange unreachable: ${why}`);
+  }
+  if (!res.ok) {
+    throw new HttpError(502, `oauth token exchange upstream ${res.status}`);
+  }
+  let payload: unknown;
+  try {
+    payload = await res.json();
+  } catch {
+    throw new HttpError(502, 'oauth token exchange returned non-json');
+  }
+  const token = (payload as { access_token?: unknown }).access_token;
+  if (typeof token !== 'string' || token === '') {
+    throw new HttpError(502, 'oauth token exchange returned no access_token');
+  }
+  return token;
 }

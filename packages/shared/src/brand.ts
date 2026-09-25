@@ -80,6 +80,10 @@ export const ENV_VARS = {
   /** server SPA 静态同源托管根覆写（02/A1，M5；缺省 = monorepo 布局
    * apps/web/dist 存在即托管，apps/server config.ts）。 */
   webDir: 'PACMAN_WEB_DIR',
+  /** OAuth 握手面 client 凭证对（#231：self-host 无中心 App，用户自注
+   * GitHub OAuth App 后以 env 注入；缺 = authorize 400 未配置）。 */
+  githubOauthClientId: 'PACMAN_GITHUB_OAUTH_CLIENT_ID',
+  githubOauthClientSecret: 'PACMAN_GITHUB_OAUTH_CLIENT_SECRET',
 } as const;
 
 /** API key 形态 `pacman_<48hex>`（02 §5.8 前缀 = 品牌槽；r3 §6 掩码样例原形

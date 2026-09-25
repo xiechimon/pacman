@@ -44,6 +44,8 @@ const app = createApp(
     claimHoldMs: config.claimHoldMs,
     uploads: new Map(),
     enrollments: new Map(),
+    oauthStates: new Map(),
+    oauthClient: config.githubOauth,
     reposDir,
     webDir: config.webDir,
   },
