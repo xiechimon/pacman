@@ -479,6 +479,19 @@ export function useApiMutations(teamId: string | undefined) {
         api.patch<AgentRecord>(`/api/teams/${teamId}/agents/${input.id}`, input.body),
       onSuccess: invalidateAll,
     }),
+    // W3 steer（#280，06 册 D9）：build 会话运行中补话——POST messages 的
+    // build 分支（#278 server 面）。成功 = 会话流 message 事件驱动重取（SSE
+    // 兜底之外这里再失效一次）；失败（409 无在跑步）由调用面呈现，输入保留。
+    sendSteer: useMutation({
+      mutationFn: (input: { conversationId: string; content: string }) =>
+        api.post<{ message: { id: string } }>(
+          `/api/conversations/${input.conversationId}/messages`,
+          { content: input.content },
+        ),
+      onSuccess: (_data, input) => {
+        void qc.invalidateQueries({ queryKey: ['messages', input.conversationId] });
+      },
+    }),
   };
 }
 

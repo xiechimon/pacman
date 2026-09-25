@@ -17,8 +17,9 @@ interface ComposerProps {
   streaming: boolean;
   /** Send click (issue #75 reject chain); absent = static capture face.
    *  M5: the text argument carries the typed draft on editable (live)
-   *  faces; fixture callers ignore it. */
-  onSend?: (text: string) => void;
+   *  faces; fixture callers ignore it. 返回 Promise = 异步发送（W3 #280
+   *  steer 面：rejected 时 draft 保留不丢字）；同步 void = 发后即清（原语义）。 */
+  onSend?: (text: string) => void | Promise<void>;
   /** M5 live 面：占位行换成真 textarea（同几何类名 + input 复位类；
    * fixture/parity 面保持静态 div，DOM 不变）。 */
   editable?: boolean;
@@ -28,8 +29,19 @@ export function Composer({ placeholder, aiReview, streaming, onSend, editable }:
   const { t } = useI18n();
   const [draft, setDraft] = useState('');
   const send = () => {
-    onSend?.(draft.trim());
-    setDraft('');
+    const text = draft.trim();
+    if (text === '' && !editable) {
+      onSend?.(text);
+      return;
+    }
+    if (text === '') return;
+    const result = onSend?.(text);
+    if (result instanceof Promise) {
+      // 异步面（steer）：成功清稿；失败（409 拒绝）保留 draft 不丢字。
+      void result.then(() => setDraft('')).catch(() => {});
+    } else {
+      setDraft('');
+    }
   };
   return (
     <div className="composer">
