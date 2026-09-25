@@ -8,9 +8,12 @@
 //  2. authorize：oauth 未配置（client id/secret 缺）→ 400
 //  3. authorize happy → 200 {authorizationUrl}：client_id/redirect_uri/scope/
 //     state 四参齐；state 入册
-//  4. callback：state 不在册 → 400（无可信 returnOrigin，不 redirect）
-//  5. callback：state 过期（>10min）→ 400
-//  6. callback：state 单次核销——同 state 二访 → 400
+//  4. callback：state 不在册 → 302 相对回 providers 页 ?oauth=error&reason=state
+//     （#243：覆盖伪造/二访/重启蒸发三形；相对路径不引入请求方 origin——
+//     「不信任外部 returnOrigin」纪律不变，只改着陆形状，裸 400 退役）
+//  5. callback：state 过期（>30min TTL，#243 人环余量）→ 302 回 entry.origin
+//     ?oauth=error&reason=state（entry 在册 = origin 可信）
+//  6. callback：state 单次核销——同 state 二访 → 302 reason=state（同 4）
 //  7. callback happy（mock 上游 {access_token}）→ 302 <origin>/app/resources/
 //     providers?oauth=connected&provider=github-copilot；provider 行建立；
 //     openProviderKey 解出 token === mock 值；GET providers 投影无 token
@@ -22,6 +25,10 @@
 //     302 ?oauth=error&reason=denied（state 一并核销）
 // 13. 落库行形状：kind=custom / authHeader=true / api/baseUrl = 族模板
 //     [设计] / models=[]；record 投影无 apiKey 字段（02 §8 写只读）
+// 14. callback：state 在窗（29min）→ 正常连通（TTL 人环窗行为钉，#243——
+//     防 TTL 回落短窗；10min 已在 M6 联调被 handoff 间隔撞穿一次）
+// 15. callback：denied 路 + state 过期 → 302 回 entry.origin reason=state
+//     （abort 分支与收码分支同律，#243）
 
 import { describe, expect, it } from 'vitest';
 import type { AppContext } from '../src/context.js';
@@ -76,6 +83,14 @@ function callback(s: TestServer, query: string) {
   return s.app.request(`/api/oauth/callback?${query}`, { redirect: 'manual' });
 }
 
+/** 拨快 state 在册年龄（授权黑盒签发后唯一的入册干预口；TTL 窗内外剧本共用）。 */
+function ageState(s: TestServer, state: string | null, minutesAgo: number) {
+  if (state === null) throw new Error('state missing');
+  const entry = s.oauthStates.get(state);
+  if (!entry) throw new Error('state missing');
+  entry.createdAt -= minutesAgo * 60 * 1000;
+}
+
 describe('POST /api/teams/:id/providers/oauth/:preset/authorize', () => {
   it('1. 未知族 → 404', async () => {
     const { s } = bootOAuth({ json: {} });
@@ -111,29 +126,35 @@ describe('POST /api/teams/:id/providers/oauth/:preset/authorize', () => {
 });
 
 describe('GET /api/oauth/callback', () => {
-  it('4. state 不在册 → 400', async () => {
+  it('4. state 不在册 → 302 相对回 providers 页 reason=state', async () => {
     const { s } = bootOAuth({ json: { access_token: 'gho_x' } });
     const res = await callback(s, 'code=c1&state=bogus');
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(302);
+    // 无可信 origin：相对 Location，浏览器同源解析（不读请求方任何 origin）
+    expect(res.headers.get('location')).toBe('/app/resources/providers?oauth=error&reason=state');
   });
 
-  it('5. state 过期 → 400', async () => {
+  it('5. state 过期 → 302 回 entry.origin reason=state', async () => {
     const { s } = bootOAuth({ json: { access_token: 'gho_x' } });
     const { state } = await authorize(s);
-    const entry = s.oauthStates.get(state as string);
-    if (!entry) throw new Error('state missing');
-    entry.createdAt -= 11 * 60 * 1000; // 拨快过 10min TTL
+    ageState(s, state, 31); // 拨快过 30min TTL（#243）
     const res = await callback(s, `code=c1&state=${state}`);
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe(
+      `${ORIGIN}/app/resources/providers?oauth=error&reason=state`,
+    );
   });
 
-  it('6. state 单次核销：二访 → 400', async () => {
+  it('6. state 单次核销：二访 → 302 reason=state', async () => {
     const { s } = bootOAuth({ json: { access_token: 'gho_once' } });
     const { state } = await authorize(s);
     const first = await callback(s, `code=c1&state=${state}`);
     expect(first.status).toBe(302);
     const second = await callback(s, `code=c1&state=${state}`);
-    expect(second.status).toBe(400);
+    expect(second.status).toBe(302);
+    expect(second.headers.get('location')).toBe(
+      '/app/resources/providers?oauth=error&reason=state',
+    );
   });
 
   it('7. happy 全链：302 回 providers 页 + token 密封落库 + GET 投影无 token', async () => {
@@ -234,5 +255,28 @@ describe('GET /api/oauth/callback', () => {
     expect(row?.baseUrl).toBe('https://api.githubcopilot.com');
     expect(row?.models).toEqual([]);
     expect(row).not.toHaveProperty('apiKey');
+  });
+
+  it('14. state 在窗（29min）→ 正常连通（TTL 人环窗行为钉）', async () => {
+    const { s } = bootOAuth({ json: { access_token: 'gho_window' } });
+    const { state } = await authorize(s);
+    ageState(s, state, 29); // 窗内边缘：慢人环（登录+2FA+停顿）仍应过
+    const res = await callback(s, `code=c1&state=${state}`);
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe(
+      `${ORIGIN}/app/resources/providers?oauth=connected&provider=github-copilot`,
+    );
+  });
+
+  it('15. denied 路 + state 过期 → 302 reason=state（abort 同律）', async () => {
+    const { s, mock } = bootOAuth({ json: { access_token: 'gho_x' } });
+    const { state } = await authorize(s);
+    ageState(s, state, 31); // 拨快过 TTL
+    const res = await callback(s, `error=access_denied&state=${state}`);
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe(
+      `${ORIGIN}/app/resources/providers?oauth=error&reason=state`,
+    );
+    expect(mock.calls).toHaveLength(0); // 过期在交换前拦截，不打 token 端点
   });
 });

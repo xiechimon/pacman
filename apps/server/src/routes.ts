@@ -1181,8 +1181,14 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.get('/api/oauth/callback', async (c) => {
     const code = c.req.query('code');
     const state = c.req.query('state') ?? '';
-    const landing = (origin: string, query: string) =>
-      c.redirect(`${origin}/app/resources/providers?${query}`, 302);
+    // origin 缺（bad-state 不在册形）→ 相对 Location：浏览器同源解析，
+    // 不引入请求方提供的任何 origin——「不信任外部 returnOrigin」纪律不变。
+    const landing = (origin: string | undefined, query: string) =>
+      c.redirect(`${origin ?? ''}/app/resources/providers?${query}`, 302);
+    // #243：state 缺/过期不再裸 400——统一 302 回 providers 页 reason=state，
+    // 与 denied/exchange 同律（web 着陆面重开弹窗给可重试路径）。
+    const badStateLanding = (err: OAuthFlowError) =>
+      landing(err.origin, 'oauth=error&reason=state');
     // 用户在 provider 站拒绝（GitHub：?error=access_denied&state=…，无 code）。
     if (c.req.query('error') !== undefined || code === undefined || code === '') {
       try {
@@ -1190,7 +1196,7 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         return landing(origin, 'oauth=error&reason=denied');
       } catch (err) {
         if (err instanceof OAuthFlowError && err.reason === 'bad-state') {
-          throw new HttpError(400, err.message);
+          return badStateLanding(err);
         }
         throw err;
       }
@@ -1207,7 +1213,7 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         if (err.reason === 'exchange-failed' && err.origin !== undefined) {
           return landing(err.origin, 'oauth=error&reason=exchange');
         }
-        if (err.reason === 'bad-state') throw new HttpError(400, err.message);
+        if (err.reason === 'bad-state') return badStateLanding(err);
       }
       throw err;
     }
