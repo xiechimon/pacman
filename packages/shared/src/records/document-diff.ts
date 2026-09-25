@@ -30,6 +30,24 @@ export const documentDiffSchema = z.object({
 });
 export type DocumentDiff = z.infer<typeof documentDiffSchema>;
 
+/** `GET /api/builds/{id}/changes/file?path=` 响应（#224：conv 分支头单文件
+ * 全文按需取，docpane「显示完整文件」数据源）。#219 裁决 A = 独立端点——
+ * diffFileSchema 不内联 fullContent，changes 列表面不被全文撑爆；web 接线
+ * 归 #225。封套形状镜像 projectFileResponseSchema（file-at-ref 读面同款）。 */
+export const diffFileContentSchema = z.object({
+  /** conv 分支名（brand.ts conversationBranch(buildId)）。 */
+  ref: z.string(),
+  /** 解析后的 conv 分支头 commit sha。 */
+  commit: z.string(),
+  path: z.string(),
+  size: z.number().int(),
+  /** 二进制（首 8KB 含 NUL，git 同款启发式）→ base64；超 1 MiB 闸门 = 413
+   * 不落本封套（server 侧 DIFF_FILE_MAX_BYTES）。 */
+  encoding: z.enum(['utf-8', 'base64']),
+  content: z.string(),
+});
+export type DiffFileContent = z.infer<typeof diffFileContentSchema>;
+
 /** diff 视图 UI 词（r5 §4 实测：`N 个文件改动` / `预览` 切换 / `全部展开` /
  * 对比二级菜单 `与其他版本对比…` + `上一版本`）。 */
 export const DIFF_UI_COPY = {

@@ -86,6 +86,7 @@ import {
   isGithubRepoRef,
   provisionHostedRepo,
   readBranches,
+  readBuildChangeFile,
   readBuildChanges,
   readCommitHistory,
   readFile,
@@ -1111,6 +1112,18 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.get('/api/builds/:id/changes', async (c) =>
     c.json(await readBuildChanges({ db: ctx.db, reposDir: ctx.reposDir }, c.req.param('id'))),
   );
+
+  // changes/file = conv 分支头单文件全文按需取（#224；docpane「显示完整文件」
+  // 数据源，web 接线 #225）——独立端点，changes 列表面不被全文撑爆。
+  app.get('/api/builds/:id/changes/file', async (c) => {
+    const path = c.req.query('path');
+    if (path === undefined || path === '') {
+      throw new HttpError(400, 'invalid query path: required');
+    }
+    return c.json(
+      await readBuildChangeFile({ db: ctx.db, reposDir: ctx.reposDir }, c.req.param('id'), path),
+    );
+  });
 
   app.get('/api/builds/:id/usage', (c) => {
     const id = c.req.param('id');
