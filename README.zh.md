@@ -23,27 +23,40 @@
 
 ## 快速开始
 
-环境要求：Node.js >= 22.19、pnpm（可 `corepack enable`）。
+环境要求：Node.js 22 或 24（LTS 线自带 better-sqlite3 预编译产物；其它版本可能回退源码编译，需要构建工具链）。
+
+```sh
+npx @xiechimon/pacman
+```
+
+一条命令：下载、启动、托管在 **http://127.0.0.1:8787/app**。首启在 `~/.pacman` 下自动建库 + 迁移 + seed 默认团队。
+
+换端口：`PORT=9000 npx @xiechimon/pacman`。
+
+### 让自己的机器跑 build
+
+不起 daemon 也能用全部界面功能；要让 agent 真在某台机器上跑 build 时再登记。在执行机上：
+
+```sh
+npm i -g @xiechimon/pacman-cli
+# 首次注册：网页 /app/api-keys 建 key（明文只显示一次），然后
+pacman start --api-key <pacman_...> --team <teamId>
+# 日常（凭据已存 ~/.pacman/machine.json）：
+pacman start        # stop / restart / logs -f / status 同面
+```
+
+两个包都装 `pacman` 这个 bin：同机全局双装时后装的占名。干净的分工是——浏览机跑 server，执行机装 pacman-cli。
+
+### 从源码开发
+
+要求 Node.js >= 22.19、pnpm（可 `corepack enable`）。
 
 ```sh
 pnpm install
-pnpm start
+pnpm start        # 构建 web UI 并由 server 同源托管
 ```
 
-`pnpm start` 构建 web UI 并由 server 同源托管。打开 **http://127.0.0.1:8787/app**。首启自动建库 + 迁移 + seed 默认团队。
-
-换端口：`PORT=9000 pnpm start`。
-
-### 可选：把本机登记为执行机
-
-不起 daemon 也能用全部界面功能；要让 agent 真在本机跑 build 时再登记。
-
-```sh
-# 首次注册：网页 /app/api-keys 建 key（明文只显示一次），然后
-pnpm dev:daemon start --api-key <pacman_...> --team <teamId>
-# 日常（凭据已存 ~/.pacman/machine.json）：
-pnpm dev:daemon start        # stop / restart / logs -f / status 同面
-```
+watch 模式开发栈，每进程一条：`pnpm dev:web`、`pnpm dev:server`、`pnpm dev:daemon`。
 
 ## 配置
 
