@@ -32,6 +32,7 @@ import {
   createUploadUrls,
   enrollMachine,
   executeRelayToolCall,
+  fetchSteer,
   findApiKeyByPlain,
   findMachineByToken,
   finishStep,
@@ -219,6 +220,15 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
       });
       await held;
     });
+  });
+
+  // —— GET /api/machine/steer?stepId=（W3 #278 [设计] 登记位：
+  // MACHINE_WIRE_EXTENSIONS；steer 拉取-确认——本机在跑步才可拉取，拉取即清）。
+  app.get('/api/machine/steer', (c) => {
+    const row = me(c);
+    const stepId = c.req.query('stepId');
+    if (!stepId) throw new HttpError(400, 'stepId required');
+    return c.json(fetchSteer({ db: ctx.db }, row, stepId));
   });
 
   // —— POST /api/machine/heartbeat/{stepId} ———————————————————————————————————

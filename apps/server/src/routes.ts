@@ -14,6 +14,7 @@ import {
   assignmentSlotSchema,
   BRAND,
   type BuildRecord,
+  buildSteerBodySchema,
   buildStepActionBodySchema,
   chiefSendMessageBodySchema,
   createAgentBodySchema,
@@ -73,7 +74,9 @@ import {
   applyBuildStepAction,
   getBuild,
   listSteps,
+  readSteerPending,
   requestMerge,
+  sendBuildSteer,
   startBuilds,
   toBuildRecord,
 } from './services/builds.js';
@@ -488,7 +491,8 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       })),
       chips: [],
       historyEpoch: 0,
-      steerPending: [],
+      // W3 #278：build 会话分支透出单槽 pending 内容（数组形封套观测位）。
+      steerPending: readSteerPending(ctx.db, conversationId),
       activeRun: null,
       nextCursor: null,
     });
@@ -564,12 +568,18 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json(result, 201);
   });
 
-  // 既有线程续消息 = POST /conversations/{id}/messages（REST 同名 [推断]，
-  // id = chief-<threadId>）。
+  // 既有线程续消息 = POST /conversations/{id}/messages（REST 同名 [推断]）。
+  // 分流（W3 #278，06 册 D9）：chief 会话（id = chief-<threadId>）= 现行为
+  // （入队 chief 回合步）；build 会话 = steer 语义（运行中补话：claimed 步门
+  // + 单槽 pending + machine 拉取-确认投递，spec #277）。
   app.post('/api/conversations/:id/messages', async (c) => {
     const conversationId = c.req.param('id');
     if (!isChiefConversation(conversationId)) {
-      throw new HttpError(400, 'POST messages supported for chief conversations only');
+      const body = parseWith(buildSteerBodySchema, await jsonBody(c), 'body');
+      const result = sendBuildSteer(svc, conversationId, body);
+      // 会话流即时推送（与 chief 分支同形：用户行立即上屏）。
+      ctx.convHub?.publishMessage(conversationId, { ...result.message });
+      return c.json(result, 201);
     }
     const raw = (await jsonBody(c)) as { content?: unknown };
     const thread = getChiefThread(svc, conversationId);
