@@ -486,4 +486,11 @@ export const EN: Record<string, string> = {
   '在云服务器上运行？改用 API key 注册':
     'Running on a cloud server? Register with an API key instead',
   '获取 API key →': 'Get an API key →',
+  // #253 token 门页（鉴权开时 401 落页；auth 单缝 = src/api/auth.ts）
+  需要访问令牌: 'Access token required',
+  '服务端已开启令牌鉴权，输入访问令牌后继续使用。':
+    'This server has token authentication enabled. Enter your access token to continue.',
+  访问令牌: 'Access token',
+  进入: 'Continue',
+  '令牌无效，请重试。': 'Invalid token — please try again.',
 };
