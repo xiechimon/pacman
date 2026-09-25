@@ -9,10 +9,10 @@
   },
   "scripts": {
     "dev:web": "pnpm --filter @pacman/web dev",
-    "dev:server": "pnpm --filter @pacman/server dev",
+    "dev:server": "pnpm --filter @xiechimon/pacman dev",
     "dev:daemon": "pnpm --filter @xiechimon/pacman-cli dev",
     "build": "pnpm -r build",
-    "start": "pnpm --filter @pacman/web build && pnpm --filter @pacman/server start",
+    "start": "pnpm --filter @pacman/web build && pnpm --filter @xiechimon/pacman start",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "lint": "biome ci .",

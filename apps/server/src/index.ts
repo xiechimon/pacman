@@ -6,6 +6,7 @@ import { serve } from '@hono/node-server';
 import { BRAND } from '@pacman/shared';
 import pino from 'pino';
 import { createApp } from './app.js';
+import { BUNDLED_FORM } from './bundle-form.js';
 import { loadConfig, reposDirOf, warnInsecureBind } from './config.js';
 import { openDbWithHandle } from './db/client.js';
 import { seed } from './db/seed.js';
@@ -17,7 +18,10 @@ import { createScheduler } from './services/scheduler.js';
 const config = loadConfig();
 const logger = pino({
   level: process.env.LOG_LEVEL ?? 'info',
-  ...(process.env.NODE_ENV === 'production'
+  // pino-pretty transport 只活在 monorepo dev 形态（devDep 在盘 + thread-stream
+  // worker 从 __dirname 起线程）；bundle 形态（BUNDLED_FORM，build.mjs 替换
+  // 为 true，见 src/bundle-form.ts）与生产一致 = 纯 JSON 日志。
+  ...(process.env.NODE_ENV === 'production' || BUNDLED_FORM
     ? {}
     : { transport: { target: 'pino-pretty', options: { translateTime: 'HH:MM:ss' } } }),
 });

@@ -65,12 +65,18 @@ function envStr(name: string): string | null {
 /** 全网卡绑定主机名族（显式配置命中 + 鉴权关 = 启动 WARN 判定面）。 */
 const ANY_INTERFACE_HOSTS = new Set(['0.0.0.0', '::', '::0']);
 
-/** SPA 产物默认位：monorepo 布局 `apps/web/dist`（本模块 = apps/server/src/
- * config.ts，向上两级到 apps/ 再进 web/dist）；不存在 = null（纯 API 形态）。 */
+/** SPA 产物默认位双探测（06 册 §11 W2 主包形态）：monorepo 布局 `apps/web/dist`
+ * 与发布包内 `web/`（files 整形位）。本模块 = apps/server/src/config.ts 或
+ * bundle 形态 dist/index.mjs（src/ 与 dist/ 同深，向上两级均落 apps/server），
+ * 向上两级到 apps/ 再进 web/dist；包内形态（`<pkg>/dist/index.mjs`）向上两级
+ * 落 `<pkg>`，进 `web/`。均不存在 = null（纯 API 形态）。 */
 function defaultWebDir(): string | null {
-  const here = resolve(fileURLToPath(import.meta.url), '../..'); // apps/server
-  const candidate = join(here, '..', 'web', 'dist');
-  return existsSync(join(candidate, 'index.html')) ? resolve(candidate) : null;
+  const here = resolve(fileURLToPath(import.meta.url), '../..'); // apps/server 或 <pkg>
+  const candidates = [join(here, '..', 'web', 'dist'), join(here, 'web')];
+  for (const candidate of candidates) {
+    if (existsSync(join(candidate, 'index.html'))) return resolve(candidate);
+  }
+  return null;
 }
 
 export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {

@@ -1,4 +1,4 @@
-# @pacman/server
+# @xiechimon/pacman
 
 复刻 server（03 ROADMAP M2）：Hono REST + SSE（全 SSE 无 WebSocket，02 §1.2）、SQLite（better-sqlite3 + Drizzle，migration 进 repo、CI 校验 drift，01 §6）、单用户 seed + team 保形（02 §2）。协议词表单源 = `@pacman/shared`（02 §5/§6 canonical；路由对拍 = `test/wire.test.ts`）。
 
@@ -6,7 +6,7 @@
 
 ```sh
 pnpm dev:server          # tsx watch（开发）
-pnpm --filter @pacman/server start
+pnpm --filter @xiechimon/pacman start
 PORT=8791 PACMAN_HOME=/tmp/pacman-demo bash apps/server/scripts/demo.sh  # demo 面（另窗起 server）
 ```
 
