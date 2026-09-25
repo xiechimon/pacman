@@ -5,6 +5,8 @@
 // #231 OAuth 着陆面：callback 302 回跳带 ?oauth=connected|error——error
 // 自动重开添加弹窗并把 reason 文案喂进 connectError 行；connected 静默
 // （新行已在首取真值里）。读后清参，刷新不重放。
+// #243：reason 三路 = denied（用户取消）/ exchange（交换失败）/ state
+// （state 缺或过期——原裸 400 JSON 面退役，同律 302 着陆）。
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useApiMutations, useProviders } from '../api/hooks.js';
@@ -45,7 +47,14 @@ export function ProvidersPage() {
     if (oauth === null) return;
     if (oauth === 'error') {
       const reason = searchParams.get('reason');
-      setConnectError(reason === 'denied' ? t('授权已被取消。') : t('令牌交换失败，请稍后重试。'));
+      // #243 reason 三路分译；未知值落 exchange 兜底（与 #231 原else 行为同）。
+      const copy =
+        reason === 'denied'
+          ? t('授权已被取消。')
+          : reason === 'state'
+            ? t('连接已过期，请重新发起。')
+            : t('令牌交换失败，请稍后重试。');
+      setConnectError(copy);
       setCreateOpen(true);
     }
     const next = new URLSearchParams(searchParams);

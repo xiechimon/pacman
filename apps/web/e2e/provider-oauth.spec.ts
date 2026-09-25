@@ -10,6 +10,8 @@ import { expect, type Page, test } from '@playwright/test';
 // 4. callback 着陆参 ?oauth=error&reason=denied → 自动重开弹窗 + inline
 //    文案 + 清参（刷新不重放）
 // 5. ?oauth=connected 静默着陆（不弹窗、无错误行）
+// 6. ?oauth=error&reason=state（#243：state 缺/过期改 302 着陆）→ 过期
+//    文案 + 重开弹窗
 
 const PROVIDERS = '/app/resources/providers?scenario=01';
 
@@ -55,6 +57,15 @@ test('着陆参 oauth=error&reason=denied 自动重开弹窗 + 文案 + 清参',
 test('着陆参 oauth=error&reason=exchange 走交换失败文案', async ({ page }) => {
   await page.goto(`${PROVIDERS}&oauth=error&reason=exchange`);
   await expect(page.locator('.dlg-provider-oauth-error')).toHaveText('令牌交换失败，请稍后重试。');
+});
+
+// #243：state 缺/过期 callback 改 302 着陆（不再裸 400）——reason=state 走
+// 过期文案 + 自动重开弹窗，用户可原地重试。
+test('着陆参 oauth=error&reason=state 走过期文案 + 重开弹窗', async ({ page }) => {
+  await page.goto(`${PROVIDERS}&oauth=error&reason=state`);
+  const dialog = page.locator('.dlg');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.dlg-provider-oauth-error')).toHaveText('连接已过期，请重新发起。');
 });
 
 test('着陆参 oauth=connected 静默：不弹窗、无错误行', async ({ page }) => {
