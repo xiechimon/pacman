@@ -80,7 +80,7 @@ export function buildProgram(): Command {
   const program = new Command();
   program
     .name(BRAND.cliCommandName)
-    .description('pacman executor daemon (todos.dev replica, 02 §5.1 command face)')
+    .description('pacman executor daemon (02 §5.1 command face)')
     .version(DAEMON_VERSION, '-v, --version');
 
   program

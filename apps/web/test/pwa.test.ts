@@ -6,12 +6,15 @@
 // D3 已触发（2026-09-23, #109）：品牌槽已切 replacement 值，本 gate 的新
 // 契约 = 冻结面只允许素材替换计划 §3.4 的品牌槽 divergence——manifest
 // name/short_name = Pacman + description 自写 + sw.js 通知兜底标题 =
-// Pacman；其余字段/字节仍须与 docs/research/assets/r1/ 原件逐字节一致
-// （icons URL 换 D8 产物、related_applications 等归后续替换票，未动）。
+// Pacman；其余字段/字节仍须与 docs/research/assets/r1/ 原件逐字节一致。
+// #249 素材核账追加两处 divergence（D8 批次收口）：related_applications
+// 原站指针整段移除（产品无关联应用可指）；screenshots 换复刻 UI 实拍
+// （scripts/capture-pwa-screenshots.mjs）+ 自写 label，且文件必须真在
+// public/screenshots/（r1 冻结面的 src 曾指向不存在的文件）。
 // sw.js keeps its push handler file shape although the server never sends
 // push (04-验收口径 §5 divergence A5: dead code tolerated, registered).
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -27,16 +30,55 @@ const MANIFEST_BRAND = {
     'Pacman — a local-first, self-hosted workspace where humans direct the work and agents execute it.',
 } as const;
 
+/** manifest screenshots 自写 label（#249；capture 脚本再生时同步此处）。 */
+const MANIFEST_SCREENSHOT_LABEL = 'Pacman task board — humans direct, agents execute';
+
 describe('PWA files vs r1 capture originals (D3 replacement-phase gate)', () => {
-  it('manifest.webmanifest diverges only in the §3.4 brand slots', () => {
+  it('manifest.webmanifest diverges only in the §3.4 brand slots + #249 D8 收口两处', () => {
     const original = JSON.parse(readFileSync(resolve(R1_DIR, 'manifest.webmanifest'), 'utf8'));
     const shipped = JSON.parse(readFileSync(resolve(PUBLIC_DIR, 'manifest.webmanifest'), 'utf8'));
     expect(shipped.name).toBe(MANIFEST_BRAND.name);
     expect(shipped.short_name).toBe(MANIFEST_BRAND.shortName);
     expect(shipped.description).toBe(MANIFEST_BRAND.description);
-    // 其余字段与 r1 原件冻结一致（start_url 形状保留、icons 归 D8 票）
-    const { name: _n, short_name: _s, description: _d, ...restShipped } = shipped;
-    const { name: _on, short_name: _os, description: _od, ...restOriginal } = original;
+    // #249：原站 related_applications 指针移除，产品面无关联应用可指
+    expect(shipped.related_applications).toBeUndefined();
+    // #249：screenshots = 复刻 UI 实拍 + 自写 label，文件真在 public/
+    expect(shipped.screenshots).toEqual([
+      {
+        src: '/screenshots/narrow.png',
+        sizes: '780x1688',
+        type: 'image/png',
+        form_factor: 'narrow',
+        label: MANIFEST_SCREENSHOT_LABEL,
+      },
+      {
+        src: '/screenshots/wide.png',
+        sizes: '2560x1600',
+        type: 'image/png',
+        form_factor: 'wide',
+        label: MANIFEST_SCREENSHOT_LABEL,
+      },
+    ]);
+    for (const { src } of shipped.screenshots) {
+      expect(existsSync(resolve(PUBLIC_DIR, `.${src}`))).toBe(true);
+    }
+    // 其余字段与 r1 原件冻结一致（start_url 形状保留）
+    const {
+      name: _n,
+      short_name: _s,
+      description: _d,
+      related_applications: _ra,
+      screenshots: _sc,
+      ...restShipped
+    } = shipped;
+    const {
+      name: _on,
+      short_name: _os,
+      description: _od,
+      related_applications: _ora,
+      screenshots: _osc,
+      ...restOriginal
+    } = original;
     expect(restShipped).toEqual(restOriginal);
   });
 

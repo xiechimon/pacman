@@ -15,6 +15,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const ICONS_JSON = 'docs/research/assets/r7/icons.json';
 // r6 detail-route scopes carry the detail-surface markups: r7 §2 measured
@@ -161,6 +162,31 @@ const EXTRA_ICONS = [
   },
 ];
 
+// D5 replacement batch (#249, 素材替换计划 D5): the five todos.dev custom
+// marks its source audit flagged as the non-lucide legal-risk set — clock
+// (定时) / key (密钥) / server (机器) / user (帐号) / task badge (dog-ear
+// square + check) — are emitted from the official lucide package instead of
+// the dump markup. lucide-static is the pinned generation source (ISC); the
+// Thin variants keep their 1.75 stroke against lucide's default 2.
+const LUCIDE_OVERRIDE = {
+  Clock: { icon: 'clock' },
+  ClockThin: { icon: 'clock', strokeWidth: '1.75' },
+  Key: { icon: 'key' },
+  KeyThin: { icon: 'key', strokeWidth: '1.75' },
+  Server: { icon: 'server' },
+  ServerThin: { icon: 'server', strokeWidth: '1.75' },
+  UserCircle: { icon: 'circle-user' },
+  FileCheck: { icon: 'square-check-big' },
+};
+
+const LUCIDE_DIR = fileURLToPath(new URL('../node_modules/lucide-static/icons/', import.meta.url));
+
+/** Official lucide svg, license-comment prefix stripped for normalize(). */
+function lucideSvg(name) {
+  const raw = readFileSync(join(LUCIDE_DIR, `${name}.svg`), 'utf8');
+  return raw.slice(raw.indexOf('<svg')).trim();
+}
+
 /** Attr names JSX renders in camelCase. */
 const CAMEL = {
   'stroke-width': 'strokeWidth',
@@ -181,11 +207,14 @@ function parseAttrs(str) {
   return attrs;
 }
 
-/** Root svg: keep everything except width/height/class. */
+/** Root svg: keep everything except width/height/class and the xmlns the
+ * lucide-static files carry (inline JSX svg needs no namespace). */
 function rootAttrs(svg) {
   const open = svg.match(/^<svg\s+([^>]*)>/);
   if (open == null) throw new Error('not an svg element');
-  return parseAttrs(open[1]).filter(([k]) => k !== 'width' && k !== 'height' && k !== 'class');
+  return parseAttrs(open[1]).filter(
+    ([k]) => k !== 'width' && k !== 'height' && k !== 'class' && k !== 'xmlns',
+  );
 }
 
 /** Inner children markup, verbatim. */
@@ -239,7 +268,27 @@ for (const [src, e] of [...entries.map((e) => ['r7', e]), ...extraEntries.map((e
 
 for (const x of EXTRA_ICONS) {
   const n = normalize(x.svg);
-  uniq.set(JSON.stringify([n.attrs, n.children]), {
+  const key = JSON.stringify([n.attrs, n.children]);
+  const existing = uniq.get(key);
+  if (existing != null && existing.name !== x.name) {
+    // Same glyph under a second semantic name (the chip-popover 编辑分配
+    // gear and the chief 总管设置 gear are both the lucide settings shape):
+    // emit an alias component instead of letting the later set() silently
+    // drop the earlier name (#249 regeneration surfaced the collision).
+    // hashKey keeps both headers at the shared markup hash.
+    uniq.set(`${key}::alias-${x.name}`, {
+      ...n,
+      size: x.size,
+      count: 1,
+      contexts: x.contexts,
+      source: 'trace',
+      trace: x.trace,
+      name: x.name,
+      hashKey: key,
+    });
+    continue;
+  }
+  uniq.set(key, {
     ...n,
     size: x.size,
     count: 1,
@@ -250,11 +299,20 @@ for (const x of EXTRA_ICONS) {
   });
 }
 
+// Dump glyphs whose only UI entry point was removed but whose markup still
+// records in the r7 dump: pruned so regeneration stays idempotent with the
+// tree (#121 removed the 安装 App sidebar entry and its Smartphone component
+// by hand; without this list every regeneration resurrects it).
+const PRUNED = new Set(['Smartphone']);
+
 const sorted = [...uniq.entries()].sort((a, b) => b[1].count - a[1].count);
 
 if (process.argv.includes('--list')) {
   for (const [key, u] of sorted) {
-    const hash = createHash('sha1').update(key).digest('hex').slice(0, 10);
+    const hash = createHash('sha1')
+      .update(u.hashKey ?? key)
+      .digest('hex')
+      .slice(0, 10);
     console.log(
       `#${hash} size=${u.size} count=${u.count} ctx=${u.contexts.slice(0, 2).join(' | ')}`,
     );
@@ -272,7 +330,10 @@ mkdirSync(OUT_DIR, { recursive: true });
 const usedNames = new Set();
 const exports = [];
 for (const [key, u] of sorted) {
-  const hash = createHash('sha1').update(key).digest('hex').slice(0, 10);
+  const hash = createHash('sha1')
+    .update(u.hashKey ?? key)
+    .digest('hex')
+    .slice(0, 10);
   const name = u.name ?? NAME_TABLE[hash];
   if (name == null) {
     console.error(`unmapped icon markup #${hash} — add to scripts/icon-names.json`);
@@ -280,12 +341,27 @@ for (const [key, u] of sorted) {
     console.error(`  children: ${u.children.join(' ')}`);
     process.exit(1);
   }
+  if (PRUNED.has(name)) continue;
   const pascal = name[0].toUpperCase() + name.slice(1);
   if (usedNames.has(pascal)) throw new Error(`duplicate component name ${pascal}`);
   usedNames.add(pascal);
 
+  const override = LUCIDE_OVERRIDE[name];
+  if (override != null) {
+    const lucide = normalize(lucideSvg(override.icon));
+    u.attrs = lucide.attrs.map(([k, v]) =>
+      k === 'stroke-width' && override.strokeWidth != null ? [k, override.strokeWidth] : [k, v],
+    );
+    u.children = lucide.children;
+  }
+
   const [w, h] = u.size;
-  const from = u.source === 'trace' ? u.trace : `docs/research/assets/${u.source}/icons.json`;
+  const from =
+    override != null
+      ? `lucide-static icon \`${override.icon}\` (ISC; D5 replacement of the todos.dev custom mark, #249)`
+      : u.source === 'trace'
+        ? u.trace
+        : `docs/research/assets/${u.source}/icons.json`;
   const file = `// Generated by scripts/generate-icons.mjs from ${from} (#${hash}, seen ${u.count}×: ${u.contexts.slice(0, 3).join(' | ')}). Do not edit.
 import type { SVGProps } from 'react';
 
