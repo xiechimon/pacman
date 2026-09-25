@@ -1,8 +1,8 @@
 // DB 打开与 migration 应用（01 §4.2：better-sqlite3 + Drizzle，migration 进
 // repo；启动即 migrate，drift 校验在 CI）。
 
-import { mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
 import { type BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3';
@@ -11,8 +11,24 @@ import * as schema from './schema.js';
 
 export type Db = BetterSQLite3Database<typeof schema>;
 
-/** migration 目录 = apps/server/drizzle（drizzle-kit generate 产物，进 repo）。 */
-export const MIGRATIONS_FOLDER = resolve(dirname(fileURLToPath(import.meta.url)), '../../drizzle');
+/** migration 目录双探测（06 §11 包内形态）：源码形态 = apps/server/drizzle
+ * （本模块 apps/server/src/db → 上两级）；bundle 形态 = 包根 `drizzle/`
+ * （本文件内联进 dist/index.mjs → 上一级 = 包根，pack 原位收录）。
+ * 探测锚 = journal 文件；两者都不存在时回落源码形态路径（migrate 报错
+ * 路径即真因）。 */
+function resolveMigrationsFolder(): string {
+  const moduleDir = dirname(fileURLToPath(import.meta.url));
+  const candidates: readonly [string, string] = [
+    resolve(moduleDir, '../../drizzle'), // 源码：apps/server/drizzle
+    resolve(moduleDir, '../drizzle'), // bundle：包根/drizzle
+  ];
+  for (const folder of candidates) {
+    if (existsSync(join(folder, 'meta', '_journal.json'))) return folder;
+  }
+  return candidates[0];
+}
+
+export const MIGRATIONS_FOLDER = resolveMigrationsFolder();
 
 export interface OpenedDb {
   db: Db;

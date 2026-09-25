@@ -4,6 +4,8 @@ node_modules
 # output
 out
 dist
+# npm 包内 web dist 拷贝（apps/server/build.mjs 产物，06 §11 包内形态）
+apps/server/web
 *.tgz
 .build
 apps/electron/release

@@ -80,7 +80,7 @@ pnpm test         # vitest
 |---|---|
 | `CONTEXT.md` | 领域模型与术语表（中文界面词 ↔ 英文原词 ↔ 内部名，canonical） |
 | `apps/web` | Web UI（React + vite） |
-| `apps/server` | server：Hono REST + SSE + SQLite（包名 `@pacman/server`） |
+| `apps/server` | server：Hono REST + SSE + SQLite（包名 `@xiechimon/pacman`，目录名 ≠ 包名） |
 | `apps/daemon` | 执行机 daemon（包名 `@xiechimon/pacman-cli`，目录名 ≠ 包名） |
 | `packages/shared` | 协议词表 / 记录形状 / 品牌槽单源（`@pacman/shared`） |
 | `docs/spec/` | 实现正典 00–06 册（中文） |

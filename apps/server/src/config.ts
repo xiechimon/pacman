@@ -65,12 +65,17 @@ function envStr(name: string): string | null {
 /** 全网卡绑定主机名族（显式配置命中 + 鉴权关 = 启动 WARN 判定面）。 */
 const ANY_INTERFACE_HOSTS = new Set(['0.0.0.0', '::', '::0']);
 
-/** SPA 产物默认位：monorepo 布局 `apps/web/dist`（本模块 = apps/server/src/
- * config.ts，向上两级到 apps/ 再进 web/dist）；不存在 = null（纯 API 形态）。 */
+/** SPA 产物默认位双探测（06 §11 包内形态）：monorepo `apps/web/dist`（源码/
+ * 仓内构建——本模块 = apps/server/src/config.ts，向上两级）与包内 `web/`
+ * （npm 包形态——bundle 下本文件内联进 dist/index.mjs，向上两级 = 包根，
+ * build.mjs 拷入的 vite 产物）；都不存在 = null（纯 API 形态）。探测序
+ * monorepo 先：dev 期单一事实源。 */
 function defaultWebDir(): string | null {
-  const here = resolve(fileURLToPath(import.meta.url), '../..'); // apps/server
-  const candidate = join(here, '..', 'web', 'dist');
-  return existsSync(join(candidate, 'index.html')) ? resolve(candidate) : null;
+  const here = resolve(fileURLToPath(import.meta.url), '../..'); // 源码 = apps/server；bundle = 包根
+  for (const candidate of [join(here, '..', 'web', 'dist'), join(here, 'web')]) {
+    if (existsSync(join(candidate, 'index.html'))) return resolve(candidate);
+  }
+  return null;
 }
 
 export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
