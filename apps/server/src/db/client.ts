@@ -15,8 +15,8 @@ export type Db = BetterSQLite3Database<typeof schema>;
  * drizzle（drizzle-kit generate 产物，进 repo；本模块 = src/db/client.ts 向上
  * 两级）；bundle 形态（dist/index.mjs，含发布包 `<pkg>/dist`）= 同目录 `../
  * drizzle`——src/ 与 dist/ 同深，两形态各自命中。判据 = `meta/_journal.json`
- * （migrate 真正消费的入口，与 schema.test.ts 同源标记）；未命中取 src 形态
- * 兜底，把「目录不存在」留给 migrate 直抛（不静默降级）。 */
+ * （migrate 真正消费的入口，与 schema.test.ts 同源标记）；未命中取 bundle
+ * 形态兜底，把「目录不存在」留给 migrate 直抛（不静默降级）。 */
 function resolveMigrationsFolder(): string {
   const here = dirname(fileURLToPath(import.meta.url)); // src/db | dist | <pkg>/dist
   const srcForm = resolve(here, '../../drizzle');

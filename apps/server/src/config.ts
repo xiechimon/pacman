@@ -69,7 +69,10 @@ const ANY_INTERFACE_HOSTS = new Set(['0.0.0.0', '::', '::0']);
  * 与发布包内 `web/`（files 整形位）。本模块 = apps/server/src/config.ts 或
  * bundle 形态 dist/index.mjs（src/ 与 dist/ 同深，向上两级均落 apps/server），
  * 向上两级到 apps/ 再进 web/dist；包内形态（`<pkg>/dist/index.mjs`）向上两级
- * 落 `<pkg>`，进 `web/`。均不存在 = null（纯 API 形态）。 */
+ * 落 `<pkg>`，进 `web/`。均不存在 = null（纯 API 形态）。
+ * 候选序 = monorepo 在先：pack 期 stage-web.mjs 会在 apps/server/web/ 落一份
+ * gitignored 中间拷贝，dev 形态恒取当场新构建的 `apps/web/dist`（探测序即
+ * 新者胜，不比 mtime）；staged 拷贝只在 apps/web/dist 缺席或包内形态生效。 */
 function defaultWebDir(): string | null {
   const here = resolve(fileURLToPath(import.meta.url), '../..'); // apps/server 或 <pkg>
   const candidates = [join(here, '..', 'web', 'dist'), join(here, 'web')];
