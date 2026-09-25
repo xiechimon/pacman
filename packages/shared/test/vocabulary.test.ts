@@ -371,8 +371,8 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     expect(BRAND.manifestName).toBe('Pacman');
     // 非品牌槽保持项:
     expect(BRAND.remoteMcpPath).toBe('/api/mcp');
-    // 自有包名 (02 §5.8 复刻处置: 自发包名; 素材替换计划 §2: @pacman/cli 私包):
-    expect(BRAND.cliPackageName).toBe('@pacman/cli');
+    // 自有包名 (02 §5.8 复刻处置: 自发包名; 06 册 W2-D1: npm 公发改名):
+    expect(BRAND.cliPackageName).toBe('@xiechimon/pacman-cli');
   });
 
   it('BRAND live values = BRAND_SLOTS replacement column (单源纪律, 素材替换计划 §2)', () => {
