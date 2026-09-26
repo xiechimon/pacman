@@ -67,7 +67,16 @@ export const WEB_REST_ENDPOINTS: readonly RestEndpoint[] = [
   { method: 'GET', path: '/api/whats-new', note: '形状保留、内容自选（02 §6.1）' },
   { method: 'GET', path: '/api/search', query: ['q'], note: '⌘K [设计] 自设（02 §6.3）' },
   // —— POST ——
-  { method: 'POST', path: '/api/projects/{id}/todos', note: 'body {title,spec}（r3 §3.1）' },
+  {
+    method: 'POST',
+    path: '/api/projects/{id}/todos',
+    note: 'body {title,spec}（r3 §3.1）+ 可选 tagIds[]（r9 §3.4 实测携带位）',
+  },
+  {
+    method: 'POST',
+    path: '/api/projects/{id}/tags',
+    note: 'body {name,color} → 201 tag record 全形（r9 §3.4 实测；#309）',
+  },
   {
     method: 'POST',
     path: '/api/projects/{id}/builds',

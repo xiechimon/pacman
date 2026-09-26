@@ -6,12 +6,14 @@ import {
   buildRecordSchema,
   buildStepActionBodySchema,
   conversationMessagesResponseSchema,
+  createTagBodySchema,
   createTodoBodySchema,
   mergeAcceptedResponseSchema,
   notificationsResponseSchema,
   projectRecordSchema,
   startBuildsBodySchema,
   stepRecordSchema,
+  tagRecordSchema,
   teamMemberSchema,
   teamRecordSchema,
   todoRecordSchema,
@@ -435,6 +437,116 @@ describe('todo CRUD（demo 面：curl 增删改查）', () => {
     );
     await expectErrorShape(
       await req(s.app, 'POST', `/api/projects/${s.projectId}/todos`, null),
+      400,
+    );
+  });
+});
+
+describe('tag 面（#309，r9 §3.4 wire 对拍）', () => {
+  async function setup() {
+    const s = bootServer();
+    const projectId = await postProject(s.app);
+    return { ...s, projectId };
+  }
+
+  test('POST /api/projects/{id}/tags {name,color} → 201 TagRecord（r9 §3.4 实测形）', async () => {
+    const s = await setup();
+    const body: unknown = { name: 'r9probe', color: '#6366f1' };
+    expect(createTagBodySchema.safeParse(body).success).toBe(true); // body 即契约
+    const res = await req(s.app, 'POST', `/api/projects/${s.projectId}/tags`, body);
+    expect(res.status).toBe(201);
+    const record = await res.json();
+    expect(tagRecordSchema.safeParse(record).success).toBe(true);
+    const created = tagRecordSchema.parse(record);
+    expect(created.projectId).toBe(s.projectId);
+    expect(created.name).toBe('r9probe');
+    expect(created.color).toBe('#6366f1');
+    expect(created.v).toBe(1);
+    expect(typeof created.createdAt).toBe('number');
+    // GET 列表同回全形（旧三位投影面废止，r9 §3.4 record 单源）
+    const list = (await (
+      await req(s.app, 'GET', `/api/projects/${s.projectId}/tags`)
+    ).json()) as unknown[];
+    expect(list).toHaveLength(1);
+    expect(tagRecordSchema.parse(list[0])).toEqual(created);
+  });
+
+  test('POST tags 坏 body → 400；未知项目 → 404（{error} 单形状）', async () => {
+    const s = await setup();
+    await expectErrorShape(
+      await req(s.app, 'POST', `/api/projects/${s.projectId}/tags`, { color: '#6366f1' }),
+      400,
+    );
+    await expectErrorShape(
+      await req(s.app, 'POST', `/api/projects/${s.projectId}/tags`, { name: '', color: '#6366f1' }),
+      400,
+    );
+    await expectErrorShape(
+      await req(s.app, 'POST', `/api/projects/${s.projectId}/tags`, null),
+      400,
+    );
+    await expectErrorShape(
+      await req(s.app, 'POST', '/api/projects/nope/tags', { name: 'x', color: '#6366f1' }),
+      404,
+    );
+  });
+
+  test('POST todos 携 tagIds → record.tagIds 往返（r9 §3.4 携带位；join 真值）', async () => {
+    const s = await setup();
+    const post = async (name: string) =>
+      tagRecordSchema.parse(
+        await (
+          await req(s.app, 'POST', `/api/projects/${s.projectId}/tags`, {
+            name,
+            color: '#6366f1',
+          })
+        ).json(),
+      );
+    const a = await post('a');
+    const b = await post('b');
+    const body: unknown = { title: '带标签任务', spec: '', tagIds: [a.id, b.id] };
+    expect(createTodoBodySchema.safeParse(body).success).toBe(true); // body 即契约
+    const res = await req(s.app, 'POST', `/api/projects/${s.projectId}/todos`, body);
+    expect(res.status).toBe(201);
+    const created = todoRecordSchema.parse(await res.json());
+    expect([...created.tagIds].sort()).toEqual([a.id, b.id].sort());
+    // 读面往返：GET todos/{id} 同携（todo_tag join 真值，非 body 回声）
+    const one = todoRecordSchema.parse(
+      await (await req(s.app, 'GET', `/api/todos/${created.id}`)).json(),
+    );
+    expect([...one.tagIds].sort()).toEqual([a.id, b.id].sort());
+    // 无 tagIds 的旧 body 回归不破：tagIds 空数组（r3 §3.1 原样路径）
+    const plain = todoRecordSchema.parse(
+      await (
+        await req(s.app, 'POST', `/api/projects/${s.projectId}/todos`, { title: 'p', spec: '' })
+      ).json(),
+    );
+    expect(plain.tagIds).toEqual([]);
+  });
+
+  test('POST todos 携非本项目/未知 tag → 400（项目边界防御）', async () => {
+    const s = bootServer();
+    const projectA = await postProject(s.app, 'a');
+    const projectB = await postProject(s.app, 'b');
+    const foreign = tagRecordSchema.parse(
+      await (
+        await req(s.app, 'POST', `/api/projects/${projectB}/tags`, { name: 'x', color: '#6366f1' })
+      ).json(),
+    );
+    await expectErrorShape(
+      await req(s.app, 'POST', `/api/projects/${projectA}/todos`, {
+        title: 't',
+        spec: '',
+        tagIds: [foreign.id],
+      }),
+      400,
+    );
+    await expectErrorShape(
+      await req(s.app, 'POST', `/api/projects/${projectA}/todos`, {
+        title: 't',
+        spec: '',
+        tagIds: ['no-such-tag'],
+      }),
       400,
     );
   });

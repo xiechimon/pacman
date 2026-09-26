@@ -2078,6 +2078,12 @@ exports[`body/封套 schema 快照 > createTodoBody > createTodoBody.json 1`] = 
     "spec": {
       "type": "string",
     },
+    "tagIds": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
     "title": {
       "type": "string",
     },
@@ -4592,6 +4598,14 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > tag > tag.
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "color": {
+      "type": "string",
+    },
+    "createdAt": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
     "id": {
       "type": "string",
     },
@@ -4601,11 +4615,19 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > tag > tag.
     "projectId": {
       "type": "string",
     },
+    "v": {
+      "maximum": 9007199254740991,
+      "minimum": -9007199254740991,
+      "type": "integer",
+    },
   },
   "required": [
     "id",
     "projectId",
     "name",
+    "color",
+    "createdAt",
+    "v",
   ],
   "type": "object",
 }
@@ -5541,8 +5563,13 @@ exports[`协议词表快照（02 §5/§6 canonical） > web REST 端点词表（
   },
   {
     "method": "POST",
-    "note": "body {title,spec}（r3 §3.1）",
+    "note": "body {title,spec}（r3 §3.1）+ 可选 tagIds[]（r9 §3.4 实测携带位）",
     "path": "/api/projects/{id}/todos",
+  },
+  {
+    "method": "POST",
+    "note": "body {name,color} → 201 tag record 全形（r9 §3.4 实测；#309）",
+    "path": "/api/projects/{id}/tags",
   },
   {
     "method": "POST",

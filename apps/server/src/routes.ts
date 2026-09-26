@@ -21,6 +21,7 @@ import {
   createMcpServerBodySchema,
   createProviderBodySchema,
   createScheduleBodySchema,
+  createTagBodySchema,
   createTodoBodySchema,
   type MemoryRecord,
   machineRecordSchema,
@@ -37,6 +38,7 @@ import {
   setSecretBodySchema,
   skillRecordSchema,
   startBuildsBodySchema,
+  type TagRecord,
   type TeamMember,
   type TodoRecord,
   tokenUsageSchema,
@@ -68,7 +70,7 @@ import {
 import { sha256Hex } from './lib/crypto.js';
 import { conflict, HttpError, notFound, parseWith } from './lib/errors.js';
 import { systemGitOps } from './lib/git.js';
-import { newRecordId } from './lib/ids.js';
+import { newRecordId, nowMs } from './lib/ids.js';
 import { createApiKey, listApiKeys } from './services/api-keys.js';
 import {
   applyBuildStepAction,
@@ -148,6 +150,18 @@ function requireProject(ctx: AppContext, id: string): typeof project.$inferSelec
   const row = ctx.db.select().from(project).where(eq(project.id, id)).get();
   if (!row) throw notFound(`project ${id}`);
   return row;
+}
+
+/** tag 行 → record 全形（r9 §3.4 实测 wire 六位；显式投影防列面扩张外溢）。 */
+function toTagRecord(row: typeof tag.$inferSelect): TagRecord {
+  return {
+    id: row.id,
+    projectId: row.projectId,
+    name: row.name,
+    color: row.color,
+    createdAt: row.createdAt,
+    v: row.v,
+  };
 }
 
 /** PATCH /api/todos/{id} body——update_todo 面 [推断]（02 §6.1 PATCH 面未
@@ -397,7 +411,31 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.get('/api/projects/:id/tags', (c) => {
     const row = requireProject(ctx, c.req.param('id'));
     const tags = ctx.db.select().from(tag).where(eq(tag.projectId, row.id)).all();
-    return c.json(tags.map((t) => ({ id: t.id, projectId: t.projectId, name: t.name })));
+    return c.json(tags.map(toTagRecord));
+  });
+
+  // POST /api/projects/{id}/tags（#309，r9 §3.4 实测 wire：body {name,color}
+  // → 201 全 record。color 客户端缺省 #6366f1（TAG_DEFAULT_COLOR），server
+  // 不产色。tag 无 PATCH/DELETE 观测面——删除/管理面归项目设置「标签」tab
+  // （r9 §3.4，REST 直删 404 实测，不在本票垂直切片）。
+  app.post('/api/projects/:id/tags', async (c) => {
+    const row = requireProject(ctx, c.req.param('id'));
+    const body = parseWith(createTagBodySchema, await jsonBody(c), 'body');
+    const id = newRecordId();
+    ctx.db
+      .insert(tag)
+      .values({
+        id,
+        projectId: row.id,
+        name: body.name,
+        color: body.color,
+        createdAt: nowMs(),
+        v: 1,
+      })
+      .run();
+    const created = ctx.db.select().from(tag).where(eq(tag.id, id)).get();
+    if (!created) throw new Error(`tag ${id} missing after insert`);
+    return c.json(toTagRecord(created), 201); // 响应封套 = record 全形（r9 实测）
   });
 
   // —— repo 文件浏览面（02 §3：读裸库 ref 树与单文件，server 端实现，无检出
@@ -787,6 +825,7 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       projectId: row.id,
       title: body.title,
       spec: body.spec,
+      ...(body.tagIds !== undefined ? { tagIds: body.tagIds } : {}),
       createdBy: ctx.user.id, // 人工建 = seed 用户（createdBy 取值 [推断]，records/todo.ts）
       ownerId: ctx.user.id,
     });
