@@ -16,6 +16,7 @@ import {
   type BuildRecord,
   buildSteerBodySchema,
   buildStepActionBodySchema,
+  buildStopBodySchema,
   chiefSendMessageBodySchema,
   createAgentBodySchema,
   createMcpServerBodySchema,
@@ -76,6 +77,7 @@ import {
   listSteps,
   readSteerPending,
   requestMerge,
+  requestStop,
   sendBuildSteer,
   startBuilds,
   toBuildRecord,
@@ -831,6 +833,14 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     }
     // 响应封套 [推断]：入队即委派语义（与 merge 同族 202；wire 未采）。
     return c.json({ delegated: true }, 202);
+  });
+
+  // 停止钮（M7 #308，r9 §3.3；[设计] builds 族路径——原站 stop wire 未采，
+  // r9 §5）：claimed 步 = 委派机器信号 202；pending 步 = server 即时取消 200。
+  app.post('/api/builds/:id/stop', async (c) => {
+    const body = parseWith(buildStopBodySchema, await jsonBody(c), 'body');
+    const result = requestStop(svc, c.req.param('id'), body);
+    return c.json(result, result.delegated ? 202 : 200);
   });
 
   app.post('/api/schedules', async (c) => {
