@@ -16,7 +16,7 @@
     "dist"
   ],
   "scripts": {
-    "dev": "tsx src/cli.ts",
+    "dev": "tsx src/cli.ts start -f",
     "build": "node build.mjs",
     "prepack": "node build.mjs",
     "smoke": "node scripts/smoke-pack.mjs",
