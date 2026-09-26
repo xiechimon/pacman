@@ -197,12 +197,16 @@ export function NewTaskDialog({
               </button>
             </div>
             <div className="new-task-buttons">
-              <Button variant="ghost" size="standard" onClick={save}>
+              {/* e2e 别名叠加：integration/test/m5-web-e2e.test.ts 钉
+                  .new-task-start（overlays lane 误删致 CI 红，此处恢复；
+                  类名与规则无关，纯选择器锚点） */}
+              <Button variant="ghost" size="standard" className="new-task-save" onClick={save}>
                 {t('保存')}
               </Button>
               <Button
                 variant="primary"
                 size="standard"
+                className="new-task-start"
                 disabled={title.trim() === ''}
                 onClick={() => {
                   if (onSaveAndStart) onSaveAndStart(title.trim(), selected?.id);
