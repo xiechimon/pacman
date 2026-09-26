@@ -365,6 +365,8 @@ export const EN: Record<string, string> = {
   '我会这样确认完成：': 'How I will confirm this is done:',
   '我希望收到：': 'What I expect to receive:',
   添加标签: 'Add tag',
+  新建标签: 'New tag',
+  标签名称: 'Tag name',
   保存并开始: 'Save and start',
   删除任务: 'Delete todo',
   '确定删除该任务？此操作不可撤销。': 'Delete this todo? This cannot be undone.',

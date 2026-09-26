@@ -943,6 +943,9 @@ textarea.composer-input::placeholder {
   color: var(--text-dim);
 }
 
+/* #309 详情 fresh meta 区标签 chip = ui/tag-chip 原语单源（r9 100 观测族；
+   .fresh-tag-chip 仅 e2e 定位别名，无 per-face 样式——ui/README 规则 2）。 */
+
 .fresh-nodesc {
   margin-top: 21px;
   font-size: 14px;

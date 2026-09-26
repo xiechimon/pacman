@@ -24,6 +24,9 @@ interface DialogShellProps {
    *  here so a tall form scrolls the fields, never the buttons. The fragment
    *  keeps its own padding (family spacing stays per-face canon). */
   footer?: ReactNode;
+  /** #309: face class on the .dlg panel — per-face geometry/CSS and the
+   *  class-locator discipline (e2e pins) without touching the family base. */
+  className?: string;
 }
 
 export function DialogShell({
@@ -33,6 +36,7 @@ export function DialogShell({
   onClose,
   children,
   footer,
+  className,
 }: DialogShellProps) {
   const { t } = useI18n();
   useEffect(() => {
@@ -58,7 +62,12 @@ export function DialogShell({
           if (event.target === event.currentTarget) onClose();
         }}
       >
-        <div className="dlg" role="dialog" aria-modal="true" aria-label={title}>
+        <div
+          className={className != null ? `dlg ${className}` : 'dlg'}
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+        >
           <div className={`dlg-head${headerCenter != null ? ' dlg-head--plain' : ''}`}>
             {title != null && <span className="dlg-title">{title}</span>}
             {headerCenter}

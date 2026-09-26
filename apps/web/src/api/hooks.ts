@@ -36,6 +36,7 @@ import type {
   SetSecretBody,
   SkillRecord,
   StepJournalRow,
+  TagRecord,
   TeamMember,
   TeamRecord,
   TodoRecord,
@@ -102,6 +103,15 @@ function useDebouncedValue(value: string, delayMs: number): string {
   }, [value, delayMs]);
   return debounced;
 }
+
+/** #309 标签集读面（r9 §3.4）：新建任务 dialog 面板与详情 fresh meta 区
+ *  chip 的数据源；键随选中项目（标签属项目）。 */
+export const useTags = (projectId: string | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: ['tags', projectId],
+    queryFn: () => api.get<TagRecord[]>(`/api/projects/${projectId}/tags`),
+    enabled: enabled && projectId !== undefined,
+  });
 
 export const useTodos = (teamId: string | undefined, enabled: boolean) =>
   useQuery({
@@ -361,10 +371,21 @@ export function useApiMutations(teamId: string | undefined) {
   };
   return {
     createTodo: useMutation({
-      mutationFn: (input: { projectId: string; title: string; spec: string }) =>
+      // #309：tagIds 恒携（r9 §3.4 wire 观测位——空选中即空数组）。
+      mutationFn: (input: { projectId: string; title: string; spec: string; tagIds?: string[] }) =>
         api.post<TodoRecord>(`/api/projects/${input.projectId}/todos`, {
           title: input.title,
           spec: input.spec,
+          tagIds: input.tagIds ?? [],
+        }),
+      onSuccess: invalidateAll,
+    }),
+    createTag: useMutation({
+      // #309（r9 §3.4 实测 wire）：body {name, color} → 201 TagRecord。
+      mutationFn: (input: { projectId: string; name: string; color: string }) =>
+        api.post<TagRecord>(`/api/projects/${input.projectId}/tags`, {
+          name: input.name,
+          color: input.color,
         }),
       onSuccess: invalidateAll,
     }),

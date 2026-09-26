@@ -255,6 +255,95 @@
   cursor: pointer;
 }
 
+/* —— #309 标签面（r9 §2.5 实测几何）：448 族面板的 pill/分隔线/内联新建
+   表单。footer 选中 chip 样式 = ui/tag-chip 原语单源（.new-task-tag-chip
+   仅 e2e 定位别名）。pill 未选底 = surface-tertiary / 选中底 = tag.color
+   （r9 观测选中样本 #6366f1 = indigo-500 即探针标签本色，选中态取标签
+   本色 [设计]）。 —— */
+
+.new-task-tag-body {
+  padding: 12px 16px 16px;
+}
+
+.new-task-tag-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px; /* r9: flex-wrap gap 1.5 = 6px */
+}
+
+.new-task-tag-pill {
+  border: none;
+  border-radius: 9999px;
+  padding: 4px 8px; /* r9: rounded-full px-2 py-1 */
+  background: var(--surface-tertiary);
+  color: var(--text-secondary);
+  font-size: 12px; /* r9: text-xs font-medium */
+  font-weight: 500;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.new-task-tag-pill[data-on="true"] {
+  color: var(--text-on-accent);
+}
+
+.new-task-tag-divider {
+  height: 1px;
+  background: var(--border-default);
+  margin: 12px 0;
+}
+
+.new-task-tag-new {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 16px; /* r9: 「+ 新建标签」行 60×16 */
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  cursor: pointer;
+}
+
+.new-task-tag-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.new-task-tag-input {
+  width: 357px; /* r9: 内联「标签名称」input 357×28 */
+  height: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: transparent;
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.new-task-tag-input::placeholder {
+  color: var(--text-dim);
+}
+
+.new-task-tag-save {
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: var(--card-button);
+  color: var(--text-on-accent);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.new-task-tag-save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .new-task-actions {
   display: flex;
   align-items: center;
