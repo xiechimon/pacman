@@ -13,9 +13,9 @@
 
 import { CHIEF_REBIND_CONFIRM_COPY } from '@pacman/shared';
 import { useEffect, useMemo, useState } from 'react';
-import { DialogShell } from '../detail/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, Search } from '../icons/index.js';
+import { DialogShell } from '../ui/dialog-shell.js';
 
 /** 选择器行最小投影(live = members 读面投影;fixture = canon 默认行)。 */
 export interface ChiefAgentOption {

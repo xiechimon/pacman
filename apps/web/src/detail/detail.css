@@ -171,7 +171,7 @@
   border: none;
   border-radius: 6px;
   background: var(--card-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 12px;
   line-height: 28px;
   padding: 0;
@@ -1296,7 +1296,7 @@ textarea.composer-input::placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(0 0 0 / 0.6);
+  background: var(--overlay-scrim);
 }
 
 .overlay-panel {
@@ -1436,7 +1436,7 @@ textarea.composer-input::placeholder {
   width: 16px;
   height: 16px;
   border-radius: 9999px;
-  background: #ffffff;
+  background: var(--toggle-knob);
 }
 
 .overlay-actions {
@@ -1466,7 +1466,7 @@ textarea.composer-input::placeholder {
 .overlay-btn--primary {
   border-color: var(--card-button);
   background: var(--card-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
 }
 
 /* 复用方案 sub-panel (r8 75): centered prompt over the button row */
@@ -1558,7 +1558,7 @@ textarea.composer-input::placeholder {
   padding: 0 3px;
   border-radius: 8px;
   background: var(--indigo-500);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 10px;
   line-height: 16px;
   text-align: center;

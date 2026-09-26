@@ -15,7 +15,7 @@
   inset: 0;
   border: none;
   padding: 0;
-  background: rgb(0 0 0 / 0.6);
+  background: var(--overlay-scrim);
   cursor: default;
   z-index: 20;
 }
@@ -308,7 +308,7 @@
   background: var(--card-button);
   font-size: 12px;
   line-height: 16px;
-  color: #ffffff;
+  color: var(--text-on-accent);
   cursor: pointer;
 }
 
@@ -406,7 +406,7 @@
   background: var(--danger);
   font-size: 12px;
   line-height: 16px;
-  color: #ffffff;
+  color: var(--text-on-accent);
   cursor: pointer;
 }
 

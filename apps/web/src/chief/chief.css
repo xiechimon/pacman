@@ -167,7 +167,7 @@
   border: none;
   border-radius: 6px;
   background: var(--card-button);
-  color: #fff;
+  color: var(--text-on-accent);
   font-size: 12px;
   cursor: pointer;
   flex: none;
@@ -385,7 +385,7 @@
 
 .chief-send.is-on {
   background: var(--indigo-500);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 /* ---- settings view (r5 101–104) ---- */

@@ -202,7 +202,7 @@
   border-radius: 8px;
   background: var(--card-button);
   font-size: 13px;
-  color: #ffffff;
+  color: var(--text-on-accent);
   cursor: pointer;
 }
 
@@ -327,7 +327,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(0 0 0 / 0.6);
+  background: var(--overlay-scrim);
 }
 
 .sched-form {
@@ -530,7 +530,7 @@
   border-radius: 8px;
   background: var(--card-button);
   font-size: 13px;
-  color: #ffffff;
+  color: var(--text-on-accent);
   cursor: pointer;
 }
 
@@ -616,7 +616,7 @@
   border-radius: 8px;
   background: var(--card-button);
   font-size: 14px;
-  color: #ffffff;
+  color: var(--text-on-accent);
   cursor: pointer;
 }
 
@@ -1015,7 +1015,7 @@
   border-radius: 8px;
   background: var(--card-button);
   font-size: 13px;
-  color: #ffffff;
+  color: var(--text-on-accent);
   cursor: pointer;
 }
 
@@ -1262,7 +1262,7 @@
   border-radius: 6px;
   background: var(--danger);
   font-size: 13px;
-  color: #ffffff;
+  color: var(--text-on-accent);
   cursor: pointer;
 }
 

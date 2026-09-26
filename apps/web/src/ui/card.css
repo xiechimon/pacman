@@ -1,0 +1,17 @@
+/* Card 原语样式（DESIGN.md 轨 A #A3）。edge 配方单源 = tokens.css
+   --edge-ring/--edge-radius/--card-shadow；消费入口 = ui/card.tsx。 */
+
+.card {
+  border: 0;
+  border-radius: var(--edge-radius);
+  box-shadow: var(--edge-ring), var(--card-shadow);
+  background: var(--card-bg);
+}
+
+.card--inset {
+  background: var(--col-bg);
+}
+
+.card--elevated {
+  background: var(--surface-secondary);
+}

@@ -157,7 +157,7 @@
   border: none;
   border-radius: 6px;
   background: var(--card-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 13px;
   line-height: 28px;
   cursor: pointer;
@@ -514,7 +514,7 @@
 
 .todo-card-action--primary {
   background: var(--card-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
 }
 
 .todo-card-action--ghost {
@@ -545,7 +545,7 @@
 /* failed-card red `!` badge (r8 55) */
 .todo-agent-badge--failed {
   background: var(--stop);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 8px;
   font-weight: 700;
   line-height: 1;

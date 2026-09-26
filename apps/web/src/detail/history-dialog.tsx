@@ -9,7 +9,8 @@
 import type { RunHistoryRow } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, X } from '../icons/index.js';
-import { DialogShell } from './dialog-shell.js';
+import { DialogShell } from '../ui/dialog-shell.js';
+import './overlays.css';
 
 /** Row glyph per run status (r7 32 ring; r8 80 × / check). */
 function RunGlyph({ status }: { status: RunHistoryRow['status'] }) {

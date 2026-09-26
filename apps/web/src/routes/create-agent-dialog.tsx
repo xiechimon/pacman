@@ -10,9 +10,9 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { DialogShell } from '../detail/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { PROVIDERS_HREF } from '../resources/providers-page.js';
+import { DialogShell } from '../ui/dialog-shell.js';
 
 interface CreateAgentDialogProps {
   /** #73 retained-mount open flag. */

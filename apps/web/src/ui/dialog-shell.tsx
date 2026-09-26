@@ -1,20 +1,15 @@
-// Centered modal dialog shell (issue #68, r7 §3.5): 448-wide panel centered
-// on both axes over a 60% black backdrop (sampled r7 30: #faf7f3 → #646361).
-// Default header: 48px, left title + 16px close glyph, 1px divider. The
-// 分支与PR dialog passes `headerCenter` (centered segmented tab row) and
-// drops title + divider (r7 31). Esc and backdrop click close; only hits
-// landing on the backdrop itself dismiss.
-// #193 viewport law (generalizing the #175 provider one-off): the panel is
-// a flex column capped at 100vh - 48px; children ride .dlg-body (the scroll
-// region) and the `footer` slot pins submit/cancel outside it, so dynamic
-// rows + a short viewport can never push the buttons out of reach.
+// DialogShell 原语（DESIGN.md 轨 A #A3）：自 detail/dialog-shell.tsx 提升，
+// 行为不变——#68 居中弹窗壳（448 宽、60% 黑幕、48px 头 + 1px 分隔、Esc/背板
+// 点击关闭）+ #193 viewport law（panel 为 head / 滚动 body / 钉底 foot 三段
+// flex 列，高表单挤不出提交钮）。样式随 ./dialog.css 携带。
+// 分支与PR dialog 传 headerCenter（居中分段 tab）并弃 title + 分隔线（r7 31）。
 
 import { type ReactNode, useEffect } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { X } from '../icons/index.js';
 import { FADE_EXIT_MS } from '../overlay/use-overlay-mount.js';
 import { OverlayMount } from '../overlays/dismiss.js';
-import './overlays.css';
+import './dialog.css';
 
 interface DialogShellProps {
   /** Left header title; absent when `headerCenter` renders instead. */

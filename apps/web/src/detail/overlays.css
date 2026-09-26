@@ -1,278 +1,6 @@
-/* Modal overlay surfaces (issue #68, r7 §3.5): 448-wide dialogs centered on
-   both axes over a 60% black backdrop (sampled r7 30: #faf7f3 → #646361).
-   Light geometry scanned from r7 30/31/32/34; dark values sampled from the
-   r8 78–81 captures. Header 48 + 1px divider (card-border), close glyph 16
-   centered 12 from the right edge. */
-
-.dlg-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgb(0 0 0 / 0.6);
-}
-
-.dlg {
-  width: 448px;
-  background: var(--dialog-bg);
-  border-radius: 12px;
-  box-shadow: 0 18px 45px rgb(0 0 0 / 0.25);
-  overflow: hidden;
-  /* #193 viewport law: cap the panel and split it into head / scroll body /
-     pinned foot so a tall form never pushes submit out of the viewport
-     (generalizes the #175 provider-only fix to the whole family). */
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - 48px);
-}
-
-.dlg-head {
-  position: relative;
-  flex: none;
-  display: flex;
-  align-items: center;
-  height: 48px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--card-border);
-}
-
-/* #193: children scroll here; min-height:0 lets the flex item actually
-   shrink under the cap. Short content renders identically (no scrollbar). */
-.dlg-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* #193: pinned footer slot — the fragment carries its own padding
-   (per-face canon spacing); the column stretch keeps full-width primaries
-   (e.g. .dlg-provider-create) at 100%. */
-.dlg-foot {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 分支与PR header: centered segmented tabs, no divider (r7 31) */
-.dlg-head--plain {
-  justify-content: center;
-  border-bottom: 0;
-}
-
-.dlg-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.dlg-close {
-  position: absolute;
-  right: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
-}
-
-/* ==================== .dlg-form-* 弹窗表单样式族(#221)====================
-   DialogShell(#68)家族各表单弹窗的实测同形层:secret(#173)/mcp(#174)/
-   provider(#175)/agent(#170)/charter(#182)五表单 + branch 的 label/seg/foot。
-   族类 = 唯一事实源;并列在选择器里的 per-face 类是 e2e spec 钉死的别名
-   (secret/mcp/provider-add-dialog.spec、chief-settings.spec、
-   dialog-viewport.spec、team-create-agent.spec),元素侧保留不改。
-   新弹窗只挂族类。 */
-
-/* 表单容器:flex 列 gap 12;padding 底 12 = 旧 body↔submit gap,submit 钉进
-   .dlg-form-foot 后由容器底 padding 承接(#193)。 */
-.dlg-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px 16px 12px;
-}
-
-/* 钉底动作条(#193):侧/底 16 与面板自身 padding 齐;列 flex 让裸 button
-   子级拉满全宽(block 壳会把它们收成 inline-block 内容宽)。 */
-.dlg-form-foot {
-  display: flex;
-  flex-direction: column;
-  padding: 0 16px 16px;
-}
-
-/* 右对齐动作排(chief 换绑/章程的 取消+主钮)。 */
-.dlg-form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-/* field label rhythm scanned from r7 31: box→label 9, label→control 8,
-   18px line box (block gaps 36 / 34 between controls) */
-.dlg-form-label {
-  margin: 9px 0 8px;
-  line-height: 18px;
-  font-size: 13px;
-  color: var(--text-primary);
-}
-
-/* 单行输入:36 高、card-border 边、surface 底。 */
-.dlg-form-input {
-  height: 36px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 0 12px;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-/* 多行输入:默认 88 最小高(secret 值);charter 编辑器覆写 120。 */
-.dlg-form-textarea,
-.chief-dlg-charter-input {
-  min-height: 88px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface);
-  padding: 8px 12px;
-  font-size: 14px;
-  line-height: 20px;
-  color: var(--text-primary);
-  resize: vertical;
-}
-
-.chief-dlg-charter-input {
-  min-height: 120px;
-}
-
-/* 辅助说明行(加密存储告示、slug 前缀说明)。 */
-.dlg-form-note,
-.dlg-secret-note {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-}
-
-/* 主钮:32 高、card-button 实底;独占钉底动作条时拉满全宽。 */
-.dlg-form-primary,
-.dlg-secret-create,
-.dlg-mcp-create,
-.dlg-provider-create,
-.dlg-agent-create,
-.chief-dlg-primary {
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: var(--card-button);
-  color: #ffffff;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-/* 内联形态:动作排里贴文案宽(chief 更换/保存章程)。 */
-.chief-dlg-primary {
-  padding: 0 12px;
-}
-
-.dlg-form-primary:disabled,
-.dlg-secret-create:disabled,
-.dlg-mcp-create:disabled,
-.dlg-provider-create:disabled,
-.dlg-agent-create:disabled {
-  /* lavender sampled from the r8 78 capture (light #a49fe8); dark [推断] */
-  background: var(--primary-disabled);
-  cursor: default;
-}
-
-/* 次钮(ghost):32 高、card-border 描边、surface 底。 */
-.dlg-form-ghost,
-.chief-dlg-ghost {
-  height: 32px;
-  padding: 0 12px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface);
-  font-size: 13px;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-
-/* 「+ 添加」行(mcp 请求头 / provider 模型):贴左、无框、secondary 墨。 */
-.dlg-form-add,
-.dlg-mcp-header-add,
-.dlg-provider-model-add {
-  align-self: flex-start;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border: none;
-  background: none;
-  padding: 0;
-  font-size: 13px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-/* 分段选择器(#138 家族 token:容器 --surface-secondary、active chip
-   --tab-chip-bg,双主题同对,r7 31 probe):容器 30 高、3px 内边。 */
-.dlg-form-seg {
-  display: flex;
-  align-items: center;
-  height: 30px;
-  padding: 3px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--surface-secondary);
-}
-
-.dlg-seg-tab,
-.dlg-mcp-seg-tab,
-.dlg-provider-seg-tab {
-  height: 24px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  font-size: 12px;
-  color: var(--text-tertiary);
-  cursor: pointer;
-}
-
-/* inline 变体:dlg-head--plain 中央的 chip 排(branch dialog)。 */
-.dlg-seg-tab {
-  padding: 0 12px;
-}
-
-/* block 变体:表单内均分整行(mcp 传输方式 / provider API 协议)。 */
-.dlg-mcp-seg-tab,
-.dlg-provider-seg-tab {
-  flex: 1;
-}
-
-.dlg-seg-tab[data-active="true"],
-.dlg-mcp-seg-tab[data-active="true"],
-.dlg-provider-seg-tab[data-active="true"] {
-  background: var(--tab-chip-bg);
-  color: var(--text-primary);
-}
-
-/* segmented-control hover (issue #138): inline 变体独有的 hover tint——
-   未选中 chip 在自身盒 + 圆角上染 --seg-hover 阶,fine pointers only (#73)。 */
-@media (hover: hover) and (pointer: fine) {
-  .dlg-seg-tab {
-    transition: background-color var(--dur-fast) var(--ease-standard);
-  }
-
-  .dlg-seg-tab:not([data-active="true"]):hover {
-    background-color: var(--seg-hover);
-  }
-}
+/* Detail-domain overlay content styles: token/branch/history/accept 各弹窗的
+   业务内容样式 + rerun/reuse 浮层。弹窗壳与表单族(#68/#221)已提升到
+   ui/dialog.css,由 ui/dialog-shell.tsx 携带。 */
 
 /* --- Token 用量 (r7 30): 60px total row, 38px model row, 27px stat rows --- */
 
@@ -481,7 +209,7 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #ffffff;
+  background: var(--toggle-knob);
   transition: left 120ms ease;
 }
 
@@ -600,7 +328,7 @@
   border: 0;
   border-radius: 4px;
   background: var(--card-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
   cursor: pointer;
 }
 
@@ -636,7 +364,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--card-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 13px;
   cursor: pointer;
 }
@@ -657,7 +385,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--card-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 13px;
   cursor: pointer;
 }
@@ -732,7 +460,7 @@
   border: 0;
   border-radius: 4px;
   background: var(--card-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
   cursor: pointer;
 }
 
@@ -856,7 +584,7 @@
   border-radius: 6px;
   background: var(--card-button);
   font-size: 12px;
-  color: #ffffff;
+  color: var(--text-on-accent);
   cursor: pointer;
 }
 

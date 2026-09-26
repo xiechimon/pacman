@@ -5,7 +5,8 @@
 
 import type { TokenUsageContent } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
-import { DialogShell } from './dialog-shell.js';
+import { DialogShell } from '../ui/dialog-shell.js';
+import './overlays.css';
 
 interface TokenDialogProps {
   /** #73 retained-mount open flag. */

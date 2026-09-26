@@ -10,9 +10,9 @@
 // follows the accept-dialog 律 (#148: close on submit).
 
 import { useState } from 'react';
-import { DialogShell } from '../detail/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { PlusSmall } from '../icons/index.js';
+import { DialogShell } from '../ui/dialog-shell.js';
 
 interface HeaderRow {
   key: string;

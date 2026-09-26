@@ -1,0 +1,53 @@
+/* Button 原语样式（DESIGN.md 轨 A #A3）。消费入口 = ui/button.tsx。 */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* size 三档（实测族）：card 26 / compact 28 / standard 32 */
+.btn--card {
+  height: 26px;
+  padding: 0 8px;
+}
+.btn--compact {
+  height: 28px;
+  padding: 0 12px;
+}
+.btn--standard {
+  height: 32px;
+  padding: 0 12px;
+}
+
+.btn--primary {
+  background: var(--card-button);
+  color: var(--text-on-accent);
+}
+.btn--primary:disabled {
+  /* 不透明度降档而非灰化（DESIGN.md）；r8 78 实测 lavender */
+  background: var(--primary-disabled);
+  cursor: default;
+}
+
+.btn--ghost {
+  background: transparent;
+  border: 1px solid var(--card-ghost-border);
+  color: var(--text-secondary);
+}
+
+.btn--danger {
+  background: var(--danger);
+  color: var(--text-on-accent);
+}
+
+/* text 变体不吃 size 的 padding（写在 size 声明之后赢同特异性） */
+.btn--text {
+  background: transparent;
+  color: var(--indigo-500);
+  padding: 0;
+}

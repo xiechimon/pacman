@@ -10,7 +10,8 @@ import { useState } from 'react';
 import type { BranchInfoContent } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, Copy } from '../icons/index.js';
-import { DialogShell } from './dialog-shell.js';
+import { DialogShell } from '../ui/dialog-shell.js';
+import './overlays.css';
 
 interface BranchDialogProps {
   /** #73 retained-mount open flag. */

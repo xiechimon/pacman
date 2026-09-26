@@ -206,6 +206,24 @@
   /* disabled primary label + 更多 menu row icons, probed off r8 78/56 */
   --disabled-fg: #a0a0a5;
   --menu-icon: #71717a;
+  /* spacing ladder（DESIGN.md 轨 A）: 4px 基数阶梯供新增代码消费；复刻面
+     现有实测值（17/13/3px 等）是 r7/r8 capture 的 ground truth，不向阶梯
+     收敛——批量等值化会动像素破 parity，只有值恰好落格的新写法才引用 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  /* on-accent 文字（DESIGN.md 轨 A #A2）: 白字压 --card-button / --danger /
+     --stop 实心底，两主题同值（r7/r8 实测白字不随主题翻转）；此前 31 处
+     散写 #ffffff/#fff 全部收此单源 */
+  --text-on-accent: #ffffff;
+  /* toggle 白圆点（轨 A #A2）: 开关 knob 的 12/16px 白盘（detail/secondary
+     两处散写同形），两主题同色 */
+  --toggle-knob: #ffffff;
+  /* 浮层遮罩（轨 A #A2）: modal / search / token-gate 全屏黑幕统一值，
+     此前 6 处各写 rgb(0 0 0 / 0.6) */
+  --overlay-scrim: rgb(0 0 0 / 0.6);
   color-scheme: dark light;
 }
 
@@ -329,4 +347,14 @@
   --chief-tab-active: #f7f4ef;
   /* notification banner bell disc (#114), r2 01 light sample */
   --notify-icon-bg: #e3dfe7;
+  /* 轨 A 家族（spacing / on-accent / knob / scrim）: 主题不变值，循
+     --danger/--stop 惯例显式同值镜像，让 .light 保持完整语义 token 面 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --text-on-accent: #ffffff;
+  --toggle-knob: #ffffff;
+  --overlay-scrim: rgb(0 0 0 / 0.6);
 }

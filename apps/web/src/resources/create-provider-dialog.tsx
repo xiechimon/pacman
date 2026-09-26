@@ -26,9 +26,9 @@
 
 import { OAUTH_FAMILIES, type ProviderApi } from '@pacman/shared';
 import { useEffect, useState } from 'react';
-import { DialogShell } from '../detail/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { CheckWhite, PlusSmall } from '../icons/index.js';
+import { DialogShell } from '../ui/dialog-shell.js';
 
 /** API 协议段（r3 §2 实测文案与顺序；wire 值 = providerApiSchema）。 */
 const API_OPTIONS: readonly { value: ProviderApi; label: string }[] = [

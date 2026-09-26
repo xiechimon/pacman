@@ -8,8 +8,8 @@
 
 import { CHIEF_REMOTE_TOOLS } from '@pacman/shared';
 import { useState } from 'react';
-import { DialogShell } from '../detail/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
+import { DialogShell } from '../ui/dialog-shell.js';
 
 /** 权限位可选集 = remote tools 49 词表（grants 白名单消费面 =
  * services/mcp-face.ts）。 */

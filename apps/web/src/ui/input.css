@@ -1,0 +1,17 @@
+/* Input 原语样式（DESIGN.md 轨 A #A3）。消费入口 = ui/input.tsx。 */
+
+.input {
+  height: 36px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.input:focus-visible {
+  outline: none;
+  border-color: var(--indigo-500);
+  box-shadow: 0 0 0 1px var(--indigo-500);
+}

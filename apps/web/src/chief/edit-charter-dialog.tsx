@@ -6,8 +6,8 @@
 // 上次未存草稿。
 
 import { useEffect, useState } from 'react';
-import { DialogShell } from '../detail/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
+import { DialogShell } from '../ui/dialog-shell.js';
 
 interface EditCharterDialogProps {
   /** #73 retained-mount open flag。 */

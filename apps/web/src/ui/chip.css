@@ -1,0 +1,38 @@
+/* Chip 原语样式（DESIGN.md 轨 A #A3）。消费入口 = ui/chip.tsx。 */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 7px;
+  border: none;
+  border-radius: 9999px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.chip--idle {
+  background: var(--chip-idle-bg);
+  color: var(--chip-idle-fg);
+}
+.chip--plan {
+  background: var(--chip-plan-bg);
+  color: var(--chip-plan-fg);
+}
+.chip--confirm {
+  background: var(--chip-confirm-bg);
+  color: var(--chip-confirm-fg);
+}
+.chip--done {
+  background: var(--chip-done-bg);
+  color: var(--chip-done-fg);
+}
+.chip--failed {
+  background: var(--chip-failed-bg);
+  color: var(--chip-failed-fg);
+}
+.chip--neutral {
+  background: var(--pill-idle-bg);
+  color: var(--text-secondary);
+}

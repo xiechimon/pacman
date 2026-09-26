@@ -378,7 +378,7 @@
   border: none;
   border-radius: 8px;
   background: var(--card-button);
-  color: #ffffff;
+  color: var(--text-on-accent);
   font-size: 13px;
   line-height: 16px;
   cursor: pointer;
