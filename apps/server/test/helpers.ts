@@ -21,6 +21,7 @@ export function bootServer(
     pingIntervalMs?: number;
     claimHoldMs?: number;
     reposDir?: string;
+    attachmentsDir?: string;
     webDir?: string | null;
     /** GitHub 出站 mock（#223 扫描面）；缺省 = 真 fetch（测试勿缺省）。 */
     githubFetch?: FetchLike;
@@ -41,6 +42,8 @@ export function bootServer(
   // 自建临时 reposDir（git 托管面实走用）；显式传入时由调用方管理生命周期。
   const ownReposDir = opts.reposDir === undefined;
   const reposDir = opts.reposDir ?? mkdtempSync(join(tmpdir(), 'pacman-server-repos-'));
+  const ownAttDir = opts.attachmentsDir === undefined;
+  const attachmentsDir = opts.attachmentsDir ?? mkdtempSync(join(tmpdir(), 'pacman-att-'));
   const oauthStates: AppContext['oauthStates'] = new Map();
   const app = createApp({
     db,
@@ -60,6 +63,7 @@ export function bootServer(
     oauthClient: opts.oauthClient ?? null,
     ...(opts.oauthFetch !== undefined ? { oauthFetch: opts.oauthFetch } : {}),
     reposDir,
+    attachmentsDir,
     ...(opts.webDir !== undefined ? { webDir: opts.webDir } : {}),
     ...(opts.githubFetch !== undefined ? { githubFetch: opts.githubFetch } : {}),
     authToken: opts.authToken ?? null,
@@ -74,10 +78,12 @@ export function bootServer(
     user,
     team,
     reposDir,
+    attachmentsDir,
     oauthStates,
     svc: { db, hub, machineHub, convHub, user },
     dispose(): void {
       if (ownReposDir) rmSync(reposDir, { recursive: true, force: true });
+      if (ownAttDir) rmSync(attachmentsDir, { recursive: true, force: true });
     },
   };
 }

@@ -7,7 +7,7 @@ import { BRAND } from '@pacman/shared';
 import pino from 'pino';
 import { createApp } from './app.js';
 import { BUNDLED_FORM } from './bundle-form.js';
-import { loadConfig, reposDirOf, warnInsecureBind } from './config.js';
+import { attachmentsDirOf, loadConfig, reposDirOf, warnInsecureBind } from './config.js';
 import { openDbWithHandle } from './db/client.js';
 import { seed } from './db/seed.js';
 import { createKeyfileSecretBox } from './lib/secret-box.js';
@@ -35,6 +35,8 @@ const hub = new TeamStreamHub();
 const convHub = new ConversationStreamHub();
 const reposDir = reposDirOf(config);
 mkdirSync(reposDir, { recursive: true });
+const attachmentsDir = attachmentsDirOf(config);
+mkdirSync(attachmentsDir, { recursive: true });
 const app = createApp(
   {
     db,
@@ -51,6 +53,7 @@ const app = createApp(
     oauthStates: new Map(),
     oauthClient: config.githubOauth,
     reposDir,
+    attachmentsDir,
     webDir: config.webDir,
     authToken: config.authToken,
   },

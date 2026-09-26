@@ -52,6 +52,7 @@ function toolDeps() {
     box: s.secretBox,
     user: s.user,
     reposDir: s.reposDir,
+    attachmentsDir: s.attachmentsDir,
   };
 }
 function ctx(over: Partial<ChiefToolCtx> = {}): ChiefToolCtx {

@@ -1,0 +1,310 @@
+// 附件服务（#310，r9 §3.1/§4）。三步 wire 服务层：
+//   grant   → 校验输入、落 attachment.pending 行、签 HMAC token
+//   upload  → 校验 grant、写盘、转 ready
+//   read    → 团队归属校验后吐原始字节
+//   getMeta → chief-tools / mcp-face 工具面读（文本 utf8 / 二进制 base64）
+//
+// 存储 layout = `<attachmentsDir>/<teamId>/<id>.<ext>`（与 reposDir 同律
+// 01 §4.2）；文件名 → 扩展名白名单守门（防双扩展名 / 可执行）。
+
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { and, eq } from 'drizzle-orm';
+import type { Db } from '../db/client.js';
+import { attachment } from '../db/schema.js';
+import type { AttachmentGrantPayload } from '../lib/attachments-token.js';
+import {
+  ATTACHMENT_GRANT_TTL_MS,
+  AttachmentGrantError,
+  signAttachmentGrant,
+  verifyAttachmentGrant,
+} from '../lib/attachments-token.js';
+import { HttpError } from '../lib/errors.js';
+import { newRecordId, nowMs } from '../lib/ids.js';
+
+const MAX_BYTES = 10 * 1024 * 1024;
+
+/** MIME 白名单（白名单制，避免可执行 / 压缩炸弹）。扩缩走 [设计] 登记；文本
+ * 族全收；图片族全收；其余拒。`text/*` 走 utf8，其他走 base64。 */
+const ALLOWED_MIME_PREFIXES = ['text/', 'image/'];
+const ALLOWED_MIME_EXACT = new Set(['application/json', 'application/pdf', 'application/xml']);
+
+export function isAllowedMime(mime: string): boolean {
+  if (ALLOWED_MIME_EXACT.has(mime)) return true;
+  return ALLOWED_MIME_PREFIXES.some((p) => mime.startsWith(p));
+}
+
+const ALLOWED_EXTS = new Set([
+  'md',
+  'txt',
+  'markdown',
+  'rst',
+  'adoc',
+  'json',
+  'yaml',
+  'yml',
+  'toml',
+  'xml',
+  'csv',
+  'tsv',
+  'html',
+  'htm',
+  'css',
+  'scss',
+  'less',
+  'js',
+  'jsx',
+  'ts',
+  'tsx',
+  'mjs',
+  'cjs',
+  'py',
+  'rb',
+  'go',
+  'rs',
+  'java',
+  'kt',
+  'swift',
+  'm',
+  'mm',
+  'c',
+  'h',
+  'cpp',
+  'hpp',
+  'cs',
+  'sh',
+  'bash',
+  'zsh',
+  'ps1',
+  'sql',
+  'graphql',
+  'proto',
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'webp',
+  'svg',
+  'bmp',
+  'ico',
+  'avif',
+  'pdf',
+  'log',
+  'diff',
+  'patch',
+]);
+
+/** 提取扩展名（取 fileName 末段 . 后的字符，限小写字母/数字）。 */
+export function extOf(fileName: string): string {
+  const lastDot = fileName.lastIndexOf('.');
+  if (lastDot < 0 || lastDot === fileName.length - 1) return '';
+  const ext = fileName.slice(lastDot + 1).toLowerCase();
+  return /^[a-z0-9]{1,8}$/.test(ext) ? ext : '';
+}
+
+/** fileName 合法性校验（拒空 / 路径穿越 / 控制字符）。 */
+export function isValidFileName(fileName: string): boolean {
+  if (fileName.length === 0 || fileName.length > 200) return false;
+  if (fileName.includes('/') || fileName.includes('\\') || fileName.includes('\0')) return false;
+  if (fileName === '.' || fileName === '..') return false;
+  // biome 禁裸控制字符在 regex 字面里——逐字符 codePoint 比较，行为等价 /[\x00-\x1f]/
+  for (let i = 0; i < fileName.length; i += 1) {
+    if (fileName.charCodeAt(i) < 0x20) return false;
+  }
+  return true;
+}
+
+export interface GrantInput {
+  fileName: string;
+  mimeType: string;
+  size: number;
+  scope: 'spec' | 'message';
+}
+
+export interface GrantOutput {
+  uploadUrl: string;
+  grant: string;
+  key: string;
+  attachmentId: string;
+}
+
+export interface AttachmentDeps {
+  db: Db;
+  secretBox: import('@pacman/shared').SecretBox;
+  attachmentsDir: string;
+  userId: string;
+  teamId: string;
+}
+
+export function grantUpload(deps: AttachmentDeps, input: GrantInput): GrantOutput {
+  if (!isValidFileName(input.fileName)) {
+    throw new HttpError(400, `invalid fileName: ${JSON.stringify(input.fileName)}`);
+  }
+  if (!Number.isInteger(input.size) || input.size <= 0 || input.size > MAX_BYTES) {
+    throw new HttpError(400, `invalid size: must be 1..${MAX_BYTES}`);
+  }
+  if (!isAllowedMime(input.mimeType)) {
+    throw new HttpError(400, `mime not allowed: ${input.mimeType}`);
+  }
+  const ext = extOf(input.fileName);
+  if (ext === '' || !ALLOWED_EXTS.has(ext)) {
+    throw new HttpError(400, `file extension not allowed: ${ext || '(none)'}`);
+  }
+  const id = newRecordId();
+  const storageKey = `${deps.teamId}/${id}.${ext}`;
+  const now = nowMs();
+  const grantId = newRecordId();
+  const payload: AttachmentGrantPayload = {
+    attachmentId: id,
+    teamId: deps.teamId,
+    key: storageKey,
+    sizeBytes: input.size,
+    mimeType: input.mimeType,
+    scope: input.scope,
+    exp: now + ATTACHMENT_GRANT_TTL_MS,
+  };
+  deps.db
+    .insert(attachment)
+    .values({
+      id,
+      teamId: deps.teamId,
+      createdBy: deps.userId,
+      fileName: input.fileName,
+      mimeType: input.mimeType,
+      sizeBytes: input.size,
+      storageKey,
+      grantId,
+      scope: input.scope,
+      status: 'pending',
+      createdAt: now,
+    })
+    .run();
+  const token = signAttachmentGrant(deps.secretBox, payload);
+  return {
+    uploadUrl: '/api/uploads',
+    grant: token,
+    key: storageKey,
+    attachmentId: id,
+  };
+}
+
+export interface UploadInput {
+  grant: string;
+  fileBytes: Uint8Array;
+  fileMimeType: string;
+  fileName: string;
+}
+
+export interface UploadOutput {
+  id: string;
+  key: string;
+  sizeBytes: number;
+}
+
+export function uploadFile(deps: AttachmentDeps, input: UploadInput): UploadOutput {
+  let payload: AttachmentGrantPayload;
+  try {
+    payload = verifyAttachmentGrant(deps.secretBox, input.grant);
+  } catch (err) {
+    if (err instanceof AttachmentGrantError) {
+      throw new HttpError(err.status, err.message);
+    }
+    throw err;
+  }
+  if (payload.teamId !== deps.teamId) {
+    throw new HttpError(401, 'grant team mismatch');
+  }
+  if (input.fileBytes.byteLength !== payload.sizeBytes) {
+    throw new HttpError(
+      409,
+      `uploaded size ${input.fileBytes.byteLength} ≠ grant ${payload.sizeBytes}`,
+    );
+  }
+  if (input.fileMimeType !== payload.mimeType) {
+    throw new HttpError(409, `uploaded mime ${input.fileMimeType} ≠ grant ${payload.mimeType}`);
+  }
+  // grant key 内含 id.<ext>，再次核对 ext（grant 已被验签，此处为冗余防御）
+  const grantExt = payload.key.split('.').pop() ?? '';
+  const fileExt = extOf(input.fileName);
+  if (fileExt !== '' && grantExt !== fileExt) {
+    throw new HttpError(409, `uploaded ext ${fileExt} ≠ grant ${grantExt}`);
+  }
+  const fullPath = join(deps.attachmentsDir, payload.key);
+  const dir = dirname(fullPath);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  writeFileSync(fullPath, input.fileBytes);
+  // 幂等：grant 重放视为同 id 覆盖写（DB 行 upsert 语义）
+  deps.db
+    .update(attachment)
+    .set({ status: 'ready' })
+    .where(eq(attachment.id, payload.attachmentId))
+    .run();
+  return {
+    id: payload.attachmentId,
+    key: payload.key,
+    sizeBytes: input.fileBytes.byteLength,
+  };
+}
+
+export interface AttachmentRow {
+  id: string;
+  teamId: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  storageKey: string;
+  scope: 'spec' | 'message';
+  status: 'pending' | 'ready' | 'failed';
+  createdAt: number;
+}
+
+export function requireAttachmentRow(db: Db, teamId: string, attachmentId: string): AttachmentRow {
+  const row = db
+    .select()
+    .from(attachment)
+    .where(and(eq(attachment.id, attachmentId), eq(attachment.teamId, teamId)))
+    .get();
+  if (!row) throw new HttpError(404, `attachment ${attachmentId}`);
+  if (row.status !== 'ready') {
+    throw new HttpError(409, `attachment ${attachmentId} not ready (${row.status})`);
+  }
+  return row;
+}
+
+export function readAttachment(
+  deps: AttachmentDeps,
+  attachmentId: string,
+): { row: AttachmentRow; absPath: string } {
+  const row = requireAttachmentRow(deps.db, deps.teamId, attachmentId);
+  return { row, absPath: join(deps.attachmentsDir, row.storageKey) };
+}
+
+/** 工具面读：utf8 当 text/*（含 json/xml/yaml 等文本型应用类型），base64 当其他
+ * （image/*、pdf 等）。chief-tools / mcp-face case 'attachment' 单源 [设计]——
+ * 服务层做归属 + 状态校验，避免工具面分散重复。 */
+export function readAttachmentMeta(
+  deps: { db: Db; attachmentsDir: string },
+  teamId: string,
+  attachmentId: string,
+): {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  encoding: 'utf8' | 'base64';
+  content: string;
+} {
+  const row = requireAttachmentRow(deps.db, teamId, attachmentId);
+  // 同步读盘——小文件（≤10MiB）握手内同步返回；chief/agent 视角 token 用量可
+  // 控（一次工具调用 = 一次 round-trip）。
+  const bytes = readFileSync(join(deps.attachmentsDir, row.storageKey));
+  const isText = row.mimeType.startsWith('text/') || ALLOWED_MIME_EXACT.has(row.mimeType);
+  return {
+    id: row.id,
+    fileName: row.fileName,
+    mimeType: row.mimeType,
+    sizeBytes: row.sizeBytes,
+    encoding: isText ? 'utf8' : 'base64',
+    content: isText ? bytes.toString('utf8') : bytes.toString('base64'),
+  };
+}
