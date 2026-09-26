@@ -32,6 +32,7 @@ export const DB_TABLES = [
   'chief_thread', // 02 §4.3 线程面（r5 §3.6）
   'chief_message', // 02 §4.3 线程面（r5 §3.6）
   'whats_new', // 形状保留内容自选（02 §6.1）
+  'branch_sync', // M7 #319 分支对话框「同步到机器」状态机（pending/running/synced/failed）；内部状态表无独立 record 投影面
 ] as const;
 
 export type DbTable = (typeof DB_TABLES)[number];
@@ -41,5 +42,8 @@ export const JOIN_ONLY_TABLES = ['todo_tag'] as const;
 
 /** 内部状态表（无 wire record 形状，读位内嵌于既有封套）——record 投影面
  * 同减此集。W3 #278：steer_pending 读位 = conversation messages 封套的
- * steerPending 数组（spec #277），无独立 record。 */
-export const INTERNAL_ONLY_TABLES = ['steer_pending'] as const;
+ * steerPending 数组（spec #277），无独立 record。M7 #319：branch_sync
+ * 读位 = `GET /api/builds/{id}/branch-sync` 端点封套与 team stream
+ * `branch_sync` 事件载荷（web 实时结果卡数据面），不另开 record projection
+ * ——投影在 server 端组装，wire 形状见 protocol/sse.ts branchSyncEvent。 */
+export const INTERNAL_ONLY_TABLES = ['steer_pending', 'branch_sync'] as const;
