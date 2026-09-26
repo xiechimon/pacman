@@ -29,7 +29,14 @@ export function Button({
   children,
   ...rest
 }: ButtonProps) {
-  const cls = ['btn', `btn--${variant}`, `btn--${size}`, className].filter(Boolean).join(' ');
+  // icon/quiet 不渲染 size 类（A4-deep 上游观察修正）：几何纯 per-face，
+  // size 档的 height/padding 不再泄漏进这两面（deep 收编期的 per-face
+  // height 挡板随之冗余但无害）。text 保留 size 类——A3 收编的 text 面
+  // （board-new-task 等）高度由档位承载，r7 topbar 实测。
+  const sizeless = variant === 'icon' || variant === 'quiet';
+  const cls = ['btn', `btn--${variant}`, !sizeless && `btn--${size}`, className]
+    .filter(Boolean)
+    .join(' ');
   return (
     <button type={type} className={cls} {...rest}>
       {children}
