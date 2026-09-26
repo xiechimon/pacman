@@ -165,18 +165,12 @@
   pointer-events: none;
 }
 
-.new-task-close {
+/* A4-deep 收编：皮肤归 ui/Button icon 变体；28×28 + margin-left:auto
+   per-face 几何（hover 底走 motion.css 家族律，类名保留原样命中）。 */
+.btn.new-task-close {
   margin-left: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 28px;
   height: 28px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
 }
 
 .new-task-body {
@@ -244,18 +238,14 @@
   color: var(--text-tertiary);
 }
 
-.new-task-tag-add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* A4-deep 收编：居中/cursor 归 icon 变体；描边圆环（1px + 9999）与 dim 墨
+   是 canon 偏差，per-face 保留（零像素闸；content-box 下 border 计入 22 实测盒）。 */
+.btn.new-task-tag-add {
   width: 20px;
   height: 20px;
   border: 1px solid var(--border-strong);
   border-radius: 9999px;
-  background: transparent;
-  padding: 0;
   color: var(--text-dim);
-  cursor: pointer;
 }
 
 .new-task-actions {
@@ -271,17 +261,11 @@
   gap: 6px;
 }
 
+/* A4-deep 收编：皮肤归 icon 变体；30×30 per-face 几何（元素选择器 0,1,1
+   特异性天然压过原语 size 档）。 */
 .new-task-tools button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 30px;
   height: 30px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
 }
 
 .new-task-buttons {
@@ -366,22 +350,14 @@
   height: 30px;
 }
 
-.delete-confirm-cancel {
-  border: none;
-  background: transparent;
-  padding: 0;
+/* A4-deep 收编：皮肤（透明底/无框/dim 墨/cursor）归 ui/Button quiet 变体；
+   12px/16px 字排与 auto 高是 per-face 实测（quiet 不吃 size，height:auto
+   挡 .btn--standard 的 32 泄漏）。删除钮禁用形态已由原语 danger:disabled
+   承载（opacity .5），本面规则移除。 */
+.btn.delete-confirm-cancel {
+  height: auto;
   font-size: 12px;
   line-height: 16px;
-  color: var(--text-dim);
-  cursor: pointer;
-}
-
-/* A3-overlays 收编：删除钮 = ui/Button danger standard（类别名见
-   delete-confirm.tsx 头注）；原语 danger 无 :disabled 形态，项目删除
-   闸门的降透明度留在本面（原语补形态归主线，ui/ 本票冻结）。 */
-.delete-confirm-delete:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 /* ---- project delete confirm (#207, r2 24d): family shape + 键入名确认行 ---- */

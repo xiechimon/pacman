@@ -70,14 +70,16 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName }: TodoCar
         <span className="project-avatar">{chipInitial}</span>
         <span className="todo-project-name">{chipName}</span>
         <span className="todo-card-seq">#{todo.seqNum}</span>
-        <button
-          type="button"
+        {/* A4-deep 收编：icon 变体皮肤；13×16 几何与 dim 墨 per-face 留
+            board.css（.btn.todo-card-branch） */}
+        <Button
+          variant="icon"
           className="todo-card-branch"
           aria-label={t('分支与 PR')}
           onClick={() => onBranch?.(todo)}
         >
           <Download />
-        </button>
+        </Button>
       </div>
 
       <h3 className="todo-card-title">

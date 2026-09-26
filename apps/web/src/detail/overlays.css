@@ -108,19 +108,12 @@
   color: var(--text-primary);
 }
 
-.dlg-copy {
+/* A4-deep 收编：皮肤（居中/透明底/tertiary 墨/cursor/圆角 8=原语默认，
+   A3 裁决 #1 已归一）归 ui/Button icon 变体；24×24 per-face 几何。 */
+.btn.dlg-copy {
   flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 24px;
   height: 24px;
-  border: 0;
-  /* A3 圆角归一：6 → 8px（裁决 #1） */
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
 }
 
 .dlg-machine {

@@ -77,17 +77,12 @@
   margin-left: 6px;
 }
 
-.board-guide {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* A4-deep 收编：皮肤（居中/透明底/tertiary 墨/cursor）归 ui/Button icon
+   变体；28×28 是 per-face 实测几何（原语不锁几何）。.btn 叠类提特异性，
+   压过 .btn--standard 的 height 泄漏且不依赖打包顺序（board-new-task 同律）。 */
+.btn.board-guide {
   width: 28px;
   height: 28px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
 }
 
 /* ---- notification permission banner (#114) ---- */
@@ -243,19 +238,12 @@
   color: var(--text-tertiary);
 }
 
-.board-column-collapse {
+/* A4-deep 收编：皮肤归 icon 变体；25×25 + 双 margin 是 per-face 几何。 */
+.btn.board-column-collapse {
   margin-left: auto;
   margin-right: -3.5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 25px;
   height: 25px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
 }
 
 /* ---- column collapse (#147) ----
@@ -390,19 +378,15 @@
   color: var(--text-tertiary);
 }
 
-.todo-card-branch {
+/* A4-deep 收编：皮肤归 icon 变体；13×16 + 负 margin 是 per-face 几何。
+   墨色是 canon 偏差：本面实测 --text-dim（非 icon 的 tertiary），per-face
+   保留压过 .btn--icon（零像素闸）。 */
+.btn.todo-card-branch {
   flex: none;
   margin-right: -1.5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 13px;
   height: 16px;
-  border: none;
-  background: transparent;
-  padding: 0;
   color: var(--text-dim);
-  cursor: pointer;
 }
 
 .todo-card-title {
