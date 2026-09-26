@@ -922,6 +922,60 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
       ],
       "type": "object",
     },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "sync": {
+          "additionalProperties": false,
+          "properties": {
+            "buildId": {
+              "type": "string",
+            },
+            "cloneUrl": {
+              "type": "string",
+            },
+            "commit": {
+              "type": "string",
+            },
+            "directory": {
+              "type": "string",
+            },
+            "force": {
+              "type": "boolean",
+            },
+            "projectId": {
+              "type": "string",
+            },
+            "ref": {
+              "type": "string",
+            },
+            "syncId": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "syncId",
+            "buildId",
+            "projectId",
+            "cloneUrl",
+            "directory",
+            "ref",
+            "commit",
+            "force",
+          ],
+          "type": "object",
+        },
+        "type": {
+          "const": "sync",
+          "type": "string",
+        },
+      },
+      "required": [
+        "type",
+        "sync",
+      ],
+      "type": "object",
+    },
   ],
 }
 `;
@@ -3276,6 +3330,109 @@ exports[`body/封套 schema 快照 > teamStreamEvent > teamStreamEvent.json 1`] 
       ],
       "type": "object",
     },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "sync": {
+          "additionalProperties": false,
+          "properties": {
+            "buildId": {
+              "type": "string",
+            },
+            "commit": {
+              "type": "string",
+            },
+            "createdAt": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer",
+            },
+            "directory": {
+              "type": "string",
+            },
+            "errorMessage": {
+              "type": [
+                "string",
+                "null",
+              ],
+            },
+            "finishedAt": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "force": {
+              "type": "boolean",
+            },
+            "id": {
+              "type": "string",
+            },
+            "machineId": {
+              "type": "string",
+            },
+            "ref": {
+              "type": "string",
+            },
+            "startedAt": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": -9007199254740991,
+                  "type": "integer",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
+            "status": {
+              "enum": [
+                "pending",
+                "running",
+                "synced",
+                "failed",
+              ],
+              "type": "string",
+            },
+            "teamId": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "id",
+            "buildId",
+            "machineId",
+            "teamId",
+            "directory",
+            "ref",
+            "commit",
+            "force",
+            "status",
+            "errorMessage",
+            "createdAt",
+            "startedAt",
+            "finishedAt",
+          ],
+          "type": "object",
+        },
+        "type": {
+          "const": "branch_sync",
+          "type": "string",
+        },
+      },
+      "required": [
+        "type",
+        "sync",
+      ],
+      "type": "object",
+    },
   ],
 }
 `;
@@ -5042,7 +5199,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > SSE 三通道（02 §1.2
     "audience": "browser",
     "endpoint": "/api/teams/{id}/stream",
     "id": "team",
-    "note": "团队流：ping/machine_presence/todo/build/notification（02 §1.2，r5 §7.2 扩充）",
+    "note": "团队流：ping/machine_presence/todo/build/notification/branch_sync（02 §1.2，r5 §7.2 扩充 + M7 #319）",
   },
   {
     "audience": "browser",
@@ -5054,7 +5211,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > SSE 三通道（02 §1.2
     "audience": "daemon",
     "endpoint": "/api/machine/stream",
     "id": "machine",
-    "note": "机器 wake：低延迟派发唤醒（r3 §1.5）",
+    "note": "机器 wake：低延迟派发唤醒 + sync 命令（M7 #319；r3 §1.5）",
   },
 ]
 `;
@@ -5761,6 +5918,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > 存储表清单（01 §6
   "chief_thread",
   "chief_message",
   "whats_new",
+  "branch_sync",
 ]
 `;
 

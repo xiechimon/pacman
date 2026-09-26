@@ -179,6 +179,9 @@ class FakeMachineApi implements MachineApi {
     this.calls.push(`steer:${stepId}`);
     return this.steerResponse;
   }
+  async syncResult(syncId: string, body: { status: string; errorMessage?: string }) {
+    this.calls.push(`syncResult:${syncId}:${body.status}`);
+  }
 }
 
 function fakeBackend(events: StepEvent[], sessionId = 'pi-sess-1') {

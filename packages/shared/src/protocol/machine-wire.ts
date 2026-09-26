@@ -202,14 +202,56 @@ export type MachineClaimResponse = z.infer<typeof machineClaimResponseSchema>;
 
 // —— stream（wake SSE，02 §1.2/§5.4）————————————————————————————————————————
 
+/** machine sync 命令载荷（M7 #319 [设计]，08 册附录 B「分支同步」缺口）：
+ * server→daemon 单机定向；daemon 凭此 fetch + checkout 到目标 commit，
+ * force 语义 = 丢弃修改 + 删未跟踪文件（保留 .gitignore 内容）。
+ * 路径 = 机器本机绝对或 ~ 开头（spec r1 changelog 09-13 文本可改）。
+ * cloneUrl + projectId = 新机器无基座仓时匿名 clone 用（08 册附录 B
+ * 「目标机器可选任意」语义；GitHub 公开 repo 可走，私有仓需后续 per-machine
+ * git 凭证设计 [推断]）。 */
+export const machineSyncCommandSchema = z.object({
+  syncId: recordId,
+  buildId: recordId,
+  projectId: recordId,
+  /** 目标仓 clone URL（机器基座未存在该 project 时 daemon 据此 clone）；同
+   * build 已有 worktree 的机器复用本地，不发此 clone。 */
+  cloneUrl: z.string(),
+  /** 同步目标目录（机器本机路径；web 默认 `~/<homeDirName>/workspaces/<buildId>`，
+   * 用户可改——r1 changelog 09-13 文本）。 */
+  directory: z.string(),
+  /** ref = 分支名（`pacman/conv-<uuid>`，brand conversationBranch）；
+   * commit = 完整 40hex sha（daemon 端 fetch 后 reset --hard 到此 sha，spec
+   * `目标提交 <12hex>` r3 §3.9 展示形但 wire 用 40hex 简化对拍）。 */
+  ref: z.string(),
+  commit: z.string(),
+  force: z.boolean(),
+});
+export type MachineSyncCommand = z.infer<typeof machineSyncCommandSchema>;
+
+/** POST /api/machine/sync-result/{syncId} body（M7 #319 [设计]，08 册附录 B）：
+ * daemon 回写结果；状态机 = pending → running → synced | failed。
+ * running = daemon 接管已开始（web 结果卡「正在同步…」过渡态）；
+ * synced = checkout 完成；failed = 错误 + errorMessage。 */
+export const machineSyncResultBodySchema = z.object({
+  status: z.enum(['running', 'synced', 'failed']),
+  errorMessage: z.string().optional(),
+});
+export type MachineSyncResultBody = z.infer<typeof machineSyncResultBodySchema>;
+
+export const machineSyncResultResponseSchema = machineOkResponseSchema;
+
 /** GET /api/machine/stream 事件（MACHINE_STREAM_EVENT_TYPES 载荷化 [推断]：
  * wake = 有新步可领，低延迟派发；shutdown = 服务端要求下线；steer = 运行中
  * 会话有补充说明待拉取（W3 #278 [设计]——只带 stepId 信号，文本经
- * GET /api/machine/steer 拉取-确认，SSE 载荷不携文本防丢）。 */
+ * GET /api/machine/steer 拉取-确认，SSE 载荷不携文本防丢）。
+ * sync = 分支对话框「同步到机器」命令（M7 #319，r1 changelog 09-13）：
+ * server→daemon 单机定向推送，daemon 经 `machineSyncCommandSchema` 载荷执行
+ * 后 POST `/api/machine/sync-result/{syncId}` 回写。 */
 export const machineStreamEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('wake') }),
   z.object({ type: z.literal('shutdown') }),
   z.object({ type: z.literal('steer'), stepId: recordId }),
+  z.object({ type: z.literal('sync'), sync: machineSyncCommandSchema }),
 ]);
 export type MachineStreamEvent = z.infer<typeof machineStreamEventSchema>;
 
@@ -353,6 +395,12 @@ export const MACHINE_WIRE_EXTENSIONS = [
     method: 'PUT',
     path: '/api/machine/upload/{uploadId}',
     reason: '[设计] upload-urls 预签名落地（self-host 无对象存储）；一次性 uploadId',
+  },
+  {
+    method: 'POST',
+    path: '/api/machine/sync-result/{syncId}',
+    reason:
+      '[设计] M7 #319 分支对话框「同步到机器」daemon 回写结果（08 册附录 B；状态机 pending→running→synced/failed）',
   },
 ] as const;
 

@@ -77,6 +77,15 @@ export function useTeamStream(teamId: string | undefined, enabled: boolean): voi
         case 'machine_presence':
           void qc.invalidateQueries({ queryKey: ['machines', teamId] });
           break;
+        case 'branch_sync': {
+          // M7 #319（08 册附录 B）：分支对话框「同步到机器」结果落账→ team
+          // stream 推回 web，按 buildId 键失效结果卡查询（pending → running
+          // → synced/failed 四态）。事件载荷 = BranchSyncRecord（shared 单源，
+          // `sync` 字段非 `doc`，区别于 todo/build 文档事件 [设计]）。
+          const rec = ev.sync as { buildId: string };
+          void qc.invalidateQueries({ queryKey: ['branchSync', rec.buildId] });
+          break;
+        }
         default:
           break; // ping
       }

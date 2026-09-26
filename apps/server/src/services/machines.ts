@@ -10,6 +10,7 @@ import type {
   ClaimedStep,
   MachineDoneBody,
   MachineStreamEvent,
+  MachineSyncCommand,
   MachineTokenResponse,
   McpEndpoint,
   ProviderConfig,
@@ -113,6 +114,14 @@ function publishStepStatus(deps: MachineDeps, stepId: string): void {
 export class MachineWakeHub {
   private readonly waiters = new Map<string, Set<() => void>>();
   private readonly streams = new Map<string, Set<(ev: MachineStreamEvent) => void>>();
+  /** 机器定向派发索引（M7 #319，08 册附录 B）：单条 SSE 流的 team key
+   * 粒度不够——sync 命令须按 machineId 派发给单台机器（团队可挂多机）。订阅
+   * 时同步登记到 streamsByMachine，pushSync 走此索引；streams（team key）
+   * 保留用于 wake/shutdown/steer 的全团队广播语义（02 §1.2 + W3 #278）。 */
+  private readonly streamsByMachine = new Map<
+    string,
+    { teamId: string; send: (ev: MachineStreamEvent) => void }
+  >();
 
   /** 等待 wake；true = 被唤醒，false = 超时（长轮询节奏 ≈ timeoutMs，r3 §1.5）。 */
   waitWake(teamId: string, timeoutMs: number): Promise<boolean> {
@@ -168,6 +177,57 @@ export class MachineWakeHub {
       set?.delete(send);
       if (set && set.size === 0) this.streams.delete(teamId);
     };
+  }
+
+  /** 机器定向订阅（M7 #319 [设计]，08 册附录 B「分支同步」）：team SSE
+   * 注册 + machine 索引登记，返回两个清理句柄绑定的复合 unsubscribe。daemon
+   * 一个 SSE 连接 = 一台机器，machineId 由 auth 中间件已校验，重复调用 =
+   * 后注册覆盖前注册（同一 daemon 重连即重注册，连接已死前一条自动失效）。 */
+  subscribeMachine(
+    teamId: string,
+    machineId: string,
+    send: (ev: MachineStreamEvent) => void,
+  ): () => void {
+    const unsubscribeTeam = this.subscribe(teamId, send);
+    const prev = this.streamsByMachine.get(machineId);
+    if (prev) {
+      try {
+        prev.send({ type: 'shutdown' });
+      } catch {
+        // 连接已死
+      }
+    }
+    this.streamsByMachine.set(machineId, { teamId, send });
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      unsubscribeTeam();
+      const cur = this.streamsByMachine.get(machineId);
+      if (cur && cur.send === send) this.streamsByMachine.delete(machineId);
+    };
+  }
+
+  /** 机器定向派发 sync 命令（M7 #319 [设计]）：单机命中 = SSE 流在
+   * → 派发 sync 事件；未命中（机器离线/SSE 断连）= false。返回 bool 取代抛
+   * 错，调用方（services/branch-sync.ts）按 machine.online 校验后仍以本返回值
+   * 为准——online 列 = presence 心跳面，本索引 = 实时 SSE 面，二者错位中间
+   * 态由调用方处理（写 failed 行 + 推团队流）。 */
+  pushSync(machineId: string, cmd: MachineSyncCommand): boolean {
+    const entry = this.streamsByMachine.get(machineId);
+    if (!entry) return false;
+    try {
+      entry.send({ type: 'sync', sync: cmd });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** 机器定向索引清理（认证 SSE 流 onAbort 时由路由显式调用，避免
+   * streamsByMachine 残留）。 */
+  releaseMachine(machineId: string): void {
+    this.streamsByMachine.delete(machineId);
   }
 
   streamCount(teamId: string): number {
