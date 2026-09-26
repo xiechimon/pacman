@@ -205,8 +205,10 @@ export async function runStep(
     isChief && claimed.chief
       ? claimed.chief.systemPrompt
       : composeWorkerSystemPrompt(agent.description, agent.memories);
-  // remoteTools：chief 步 = 49 词表全量；worker 步 = 记忆三件套（02 §4.4/r5 §6
-  // worker 写路径经 remoteTools relay；M4b 起服务端对 worker 步同样下发）。
+  // remoteTools：chief 步 = 49 词表全量；worker 步 = 记忆三件套 + 附件读
+  // （02 §4.4/r5 §6 worker 写路径经 remoteTools relay；M4b 起服务端对 worker
+  // 步同样下发；#310/r9 §3.1 worker attachment 工具 = spec `attachment:`
+  // token 解析路径）。
   const remoteTools = claimed.remoteTools;
   const sessionOpts: SessionOpts = {
     provider,

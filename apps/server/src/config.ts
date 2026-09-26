@@ -138,3 +138,9 @@ export function warnInsecureBind(logger: { warn(msg: string): void }, config: Se
 export function reposDirOf(config: ServerConfig): string {
   return join(config.dataDir, 'repos');
 }
+
+/** 附件存储根 = 数据根子目录 `attachments` [设计]（01 §4.2 单一数据根同律，
+ * #310）：`<attachmentsDir>/<teamId>/<id>.<ext>`，备份 = 拷目录。 */
+export function attachmentsDirOf(config: ServerConfig): string {
+  return join(config.dataDir, 'attachments');
+}

@@ -24,7 +24,7 @@ import {
   isChiefConversationId,
   MAX_CONCURRENT_DEFAULT,
   MCP_MIN_CLI_VERSION,
-  WORKER_MEMORY_REMOTE_TOOLS,
+  WORKER_REMOTE_TOOLS,
 } from '@pacman/shared';
 import { and, asc, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
@@ -87,6 +87,8 @@ export interface MachineDeps {
   user: UserRecord;
   /** 托管 bare repo 存储根（merge 步 fast-forward 落地，02 §4.2/A6）。 */
   reposDir: string;
+  /** 附件存储根（#310 chief attachment 工具读面）。 */
+  attachmentsDir: string;
   /** conversation stream 通道（M5 live streaming：transcript 行/文本增量/
    * 步状态即时推送，02 §1.2 会话流）；缺省 = 无会话流面（单测形态）。 */
   convHub?: ConversationStreamHub;
@@ -644,7 +646,7 @@ function tryClaim(
           .where(eq(agentMemory.agentId, agentRow.id))
           .all(),
       },
-      remoteTools: [...WORKER_MEMORY_REMOTE_TOOLS],
+      remoteTools: [...WORKER_REMOTE_TOOLS],
       ...(workerMcp ? { mcpServers: workerMcp } : {}),
     };
   }
@@ -749,6 +751,7 @@ export async function executeRelayToolCall(
       box: deps.box,
       user: deps.user,
       reposDir: deps.reposDir,
+      attachmentsDir: deps.attachmentsDir,
     },
     {
       teamId: threadRow.teamId,
@@ -787,6 +790,7 @@ async function executeWorkerMemoryToolCall(
       todoId: todoRow.id,
       projectId: todoRow.projectId,
       buildId: row.buildId,
+      attachmentsDir: deps.attachmentsDir,
     },
     name,
     params,

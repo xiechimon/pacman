@@ -14,6 +14,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { attachFile } from '../api/attachments.js';
 import {
   useApiMutations,
   useBuild,
@@ -55,6 +56,7 @@ import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
 import { HistoryDialog } from '../detail/history-dialog.js';
 import { RerunDialog, ReusePanel } from '../detail/overlays.js';
+import { SpecBlock } from '../detail/spec-block.js';
 import { TokenDialog } from '../detail/token-dialog.js';
 import { Transcript } from '../detail/transcript.js';
 import { UserMenu } from '../detail/user-menu.js';
@@ -144,6 +146,18 @@ export function TodoDetailPage() {
   // M5: live 模式走 DELETE /api/todos/{id}。
   const [moreOpen, setMoreOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  // M7 #310 附件 wire：live editable composer 把 draft 提到此处，附件 token
+  // 才能注入；send 时与 text 一起随 content 发出（#280 steer / #75 reject）。
+  const [liveDraft, setLiveDraft] = useState('');
+  // 附件 token 拼到 draft 的逻辑（多文件按选序拼接，每个 token 占独立行）。
+  const appendAttachmentTokens = useCallback(
+    (tokens: string[]) => {
+      if (tokens.length === 0) return;
+      const joiner = liveDraft === '' || liveDraft.endsWith('\n') ? '' : '\n';
+      setLiveDraft(`${liveDraft}${joiner}${tokens.join('\n')}\n`);
+    },
+    [liveDraft],
+  );
   const fixture = resolveScenario(searchParams);
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
   // W4 #286：live 面服务端搜索（fixture/parity 面不经此钩）。
@@ -398,50 +412,62 @@ export function TodoDetailPage() {
         {detail == null ? (
           <div className="detail-body detail-body--single">
             <FreshBlock todo={todo} />
+            {/* M7 #310：live 详情面把用户提交的 spec 渲染在 FreshBlock 之
+                下（fix 丢字 bug ——之前 spec 落 todo.spec 但 UI 从未呈现
+                给用户看）。fixture 面不走此分支保持 parity：fixture
+                fresh-probe 用同样的「尚无描述」placeholder。 */}
+            {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
           </div>
         ) : (
           <div className="detail-body">
             {tab === 'doc' && (
-              <DocPane
-                mode={docMode}
-                doc={view.doc}
-                changes={live ? liveDetail?.changes : detail.changes}
-                now={live ? Date.now() : fixture.now}
-                planDropdownOpen={fixture.ui?.planDropdownOpen === true}
-                planVersions={view.planVersions}
-                versionMenu={menu}
-                onVersionMenu={setMenu}
-                onCompare={() => {
-                  if (live) {
-                    setCompareOpen(true);
+              <>
+                {/* M7 #310：live 详情面 doc tab 顶展示用户提交 spec。
+                    DocPane 下方是 agent 产出的 plan，spec 区是用户原
+                    始输入——两层职责分明。fixture 不走（无 spec data
+                    wire parity 风险）。 */}
+                {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
+                <DocPane
+                  mode={docMode}
+                  doc={view.doc}
+                  changes={live ? liveDetail?.changes : detail.changes}
+                  now={live ? Date.now() : fixture.now}
+                  planDropdownOpen={fixture.ui?.planDropdownOpen === true}
+                  planVersions={view.planVersions}
+                  versionMenu={menu}
+                  onVersionMenu={setMenu}
+                  onCompare={() => {
+                    if (live) {
+                      setCompareOpen(true);
+                      setMenu(undefined);
+                      return;
+                    }
+                    // 上一版本 (r8 64 → 65/71): opens the previous-version
+                    // diff — the fixture's compare target, or the chain's
+                    // landed diff once the reject loop produced one
+                    setDiff(detail.compareTarget ?? detail.revision?.landed.planDiff);
                     setMenu(undefined);
-                    return;
-                  }
-                  // 上一版本 (r8 64 → 65/71): opens the previous-version
-                  // diff — the fixture's compare target, or the chain's
-                  // landed diff once the reject loop produced one
-                  setDiff(detail.compareTarget ?? detail.revision?.landed.planDiff);
-                  setMenu(undefined);
-                }}
-                onBase={() => {
-                  if (live) {
-                    setCompareOpen(false);
+                  }}
+                  onBase={() => {
+                    if (live) {
+                      setCompareOpen(false);
+                      setMenu(undefined);
+                      return;
+                    }
+                    setDiff(undefined);
                     setMenu(undefined);
-                    return;
-                  }
-                  setDiff(undefined);
-                  setMenu(undefined);
-                }}
-                planDiff={view.planDiff}
-                buildId={live ? buildId : null}
-                onToggleExpand={() => {
-                  if (live) {
-                    setChangesExpanded((v) => !v);
-                    return;
-                  }
-                  setDiff((d) => (d != null ? { ...d, expanded: !d.expanded } : d));
-                }}
-              />
+                  }}
+                  planDiff={view.planDiff}
+                  buildId={live ? buildId : null}
+                  onToggleExpand={() => {
+                    if (live) {
+                      setChangesExpanded((v) => !v);
+                      return;
+                    }
+                    setDiff((d) => (d != null ? { ...d, expanded: !d.expanded } : d));
+                  }}
+                />
+              </>
             )}
             <div className="chat-col">
               {/* margin-top:auto pins an overflowing transcript to the
@@ -471,6 +497,27 @@ export function TodoDetailPage() {
               }
               streaming={streaming}
               editable={live}
+              draft={live ? liveDraft : undefined}
+              onDraftChange={live ? setLiveDraft : undefined}
+              onAttachment={
+                live
+                  ? async (files) => {
+                      // #310 三步 wire（r9 §3.1）：每个文件走 grant + upload，
+                      // 失败仅记日志不发（用户继续编辑 draft，已发成功的 token
+                      // 仍落入）；token 拼到 draft。
+                      const tokens: string[] = [];
+                      for (const file of files) {
+                        try {
+                          const r = await attachFile({ file, scope: 'message' });
+                          tokens.push(r.token);
+                        } catch (err) {
+                          console.error('attachment failed', file.name, err);
+                        }
+                      }
+                      appendAttachmentTokens(tokens);
+                    }
+                  : undefined
+              }
               onSend={
                 live
                   ? (text) => {
@@ -495,7 +542,10 @@ export function TodoDetailPage() {
                       if ((phase === 'building' || phase === 'review') && buildId && text !== '') {
                         return mutations.sendSteer
                           .mutateAsync({ conversationId: buildId, content: text })
-                          .then(() => undefined);
+                          .then(() => {
+                            setLiveDraft('');
+                            return undefined;
+                          });
                       }
                     }
                   : detail?.revision != null && chain === 'idle'

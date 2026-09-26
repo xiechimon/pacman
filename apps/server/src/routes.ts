@@ -71,6 +71,10 @@ import { systemGitOps } from './lib/git.js';
 import { newRecordId } from './lib/ids.js';
 import { createApiKey, listApiKeys } from './services/api-keys.js';
 import {
+  grantUpload as grantAttachmentUpload,
+  uploadFile as uploadAttachmentFile,
+} from './services/attachments.js';
+import {
   applyBuildStepAction,
   getBuild,
   listSteps,
@@ -523,6 +527,92 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       });
       await conn.send({ type: 'ping', seq: conn.nextSeq() }); // 连接即首帧 ping
       await held;
+    });
+  });
+
+  // —— 附件面（#310，r9 §3.1/§4 三步 wire：grant → upload → content 内嵌
+  // `attachment:<key>`）。grant 端返回 uploadUrl + HMAC 签名 token；upload 端
+  // 验签 + 写盘 + DB 状态 ready；read 端供详情页/工具面拉原始字节。—————————————
+
+  const grantBodySchema = z.object({
+    kind: z.literal('attachment'),
+    fileName: z.string(),
+    mimeType: z.string(),
+    size: z.number().int().positive(),
+    scope: z.enum(['spec', 'message']).optional(),
+  });
+
+  app.post('/api/uploads/grant', async (c) => {
+    const body = parseWith(grantBodySchema, await jsonBody(c), 'body');
+    const out = grantAttachmentUpload(
+      {
+        db: ctx.db,
+        secretBox: ctx.secretBox,
+        attachmentsDir: ctx.attachmentsDir,
+        userId: ctx.user.id,
+        teamId: ctx.team.id,
+      },
+      {
+        fileName: body.fileName,
+        mimeType: body.mimeType,
+        size: body.size,
+        scope: body.scope ?? 'message',
+      },
+    );
+    return c.json(out, 200);
+  });
+
+  app.post('/api/uploads/upload', async (c) => {
+    const form = await c.req.formData();
+    const grant = form.get('grant');
+    const file = form.get('file');
+    if (typeof grant !== 'string' || grant === '') {
+      throw new HttpError(401, 'grant missing');
+    }
+    if (!(file instanceof File)) {
+      throw new HttpError(400, 'file missing');
+    }
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const out = uploadAttachmentFile(
+      {
+        db: ctx.db,
+        secretBox: ctx.secretBox,
+        attachmentsDir: ctx.attachmentsDir,
+        userId: ctx.user.id,
+        teamId: ctx.team.id,
+      },
+      {
+        grant,
+        fileBytes: bytes,
+        fileMimeType: file.type || 'application/octet-stream',
+        fileName: file.name || '',
+      },
+    );
+    return c.json(out, 201);
+  });
+
+  app.get('/api/attachments/:id', async (c) => {
+    const id = c.req.param('id');
+    const { readAttachment } = await import('./services/attachments.js');
+    const { row, absPath } = readAttachment(
+      {
+        db: ctx.db,
+        secretBox: ctx.secretBox,
+        attachmentsDir: ctx.attachmentsDir,
+        userId: ctx.user.id,
+        teamId: ctx.team.id,
+      },
+      id,
+    );
+    const { readFileSync } = await import('node:fs');
+    const bytes = readFileSync(absPath);
+    return new Response(bytes, {
+      status: 200,
+      headers: {
+        'content-type': row.mimeType,
+        'content-length': String(row.sizeBytes),
+        'cache-control': 'private, max-age=300',
+      },
     });
   });
 
@@ -1300,6 +1390,7 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         box: ctx.secretBox,
         user: ctx.user,
         reposDir: ctx.reposDir,
+        attachmentsDir: ctx.attachmentsDir,
       },
       c.req.raw,
     ),

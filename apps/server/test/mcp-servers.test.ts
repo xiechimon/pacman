@@ -9,7 +9,7 @@ import {
   MCP_MIN_CLI_VERSION,
   MCP_SLUG_COPY,
   mcpServerRecordSchema,
-  WORKER_MEMORY_REMOTE_TOOLS,
+  WORKER_REMOTE_TOOLS,
 } from '@pacman/shared';
 import type { Hono } from 'hono';
 import { describe, expect, test } from 'vitest';
@@ -261,12 +261,10 @@ describe('claim 载荷携带（per-turn 连接的 server 侧半 + 版本墙形�
     return { s, step: body.step ? claimedStepSchema.parse(body.step) : null };
   }
 
-  test('worker 步携带记忆三件套 remoteTools + 已授权 mcpServers（headers per-step 解析）', async () => {
+  test('worker 步携带记忆三件套 + 附件读 remoteTools + 已授权 mcpServers（headers per-step 解析）', async () => {
     const { s, step } = await world(MCP_MIN_CLI_VERSION);
     expect(step).not.toBeNull();
-    expect(step!.remoteTools?.map((t) => t.name)).toEqual(
-      WORKER_MEMORY_REMOTE_TOOLS.map((t) => t.name),
-    );
+    expect(step!.remoteTools?.map((t) => t.name)).toEqual(WORKER_REMOTE_TOOLS.map((t) => t.name));
     expect(step!.mcpServers).toEqual([
       {
         slug: 'demo',
@@ -282,10 +280,8 @@ describe('claim 载荷携带（per-turn 连接的 server 侧半 + 版本墙形�
     const { s, step } = await world('0.0.1');
     expect(step).not.toBeNull();
     expect(step!.mcpServers).toBeUndefined();
-    // 记忆工具不受版本墙门控（02 §4.4 无版本语义）。
-    expect(step!.remoteTools?.map((t) => t.name)).toEqual(
-      WORKER_MEMORY_REMOTE_TOOLS.map((t) => t.name),
-    );
+    // 记忆 + 附件工具不受版本墙门控（02 §4.4 无版本语义，#310/r9 §3.1 worker attachment 同律）。
+    expect(step!.remoteTools?.map((t) => t.name)).toEqual(WORKER_REMOTE_TOOLS.map((t) => t.name));
     s.dispose();
   });
 

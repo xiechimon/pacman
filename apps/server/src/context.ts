@@ -42,6 +42,8 @@ export interface AppContext {
   >;
   /** 托管 bare repo 存储根（数据根子目录，01 §4.2；`<reposDir>/<teamId>/<repoName>.git`）。 */
   reposDir: string;
+  /** 附件存储根（#310，r9 §4 wire；`<attachmentsDir>/<teamId>/<id>.<ext>`）。 */
+  attachmentsDir: string;
   /** SPA 静态同源托管根（02/A1；= apps/web/dist 产物目录）。null/缺省 =
    *  不托管（纯 API 形态，dev 期 vite proxy 用）。 */
   webDir?: string | null;

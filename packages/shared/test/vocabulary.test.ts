@@ -430,14 +430,15 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
   });
 });
 
-describe('record projection (01 §6 / 03 M1; M4a +chief)', () => {
-  it('DB table registry is the 01 §6 list + chief + steer_pending (27 incl. the todo_tag join)', () => {
-    expect(DB_TABLES).toHaveLength(27);
+describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #310 +attachment)', () => {
+  it('DB table registry is the 01 §6 list + chief + steer_pending + attachment (28 incl. the todo_tag join)', () => {
+    expect(DB_TABLES).toHaveLength(28);
     expect(DB_TABLES).toContain('todo_tag');
     expect(DB_TABLES).toContain('chief');
+    expect(DB_TABLES).toContain('attachment');
   });
 
-  it('record shapes cover exactly the 25 wire tables (todo_tag join + steer_pending internal have none)', () => {
+  it('record shapes cover exactly the 25 wire tables (todo_tag join + steer_pending + attachment binary have none)', () => {
     expect(Object.keys(RECORD_SCHEMAS)).toHaveLength(25);
     expect(Object.keys(RECORD_SCHEMAS)).toEqual(
       DB_TABLES.filter(
