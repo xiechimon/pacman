@@ -8,8 +8,10 @@ import { epochMs, recordId } from './common.js';
 
 /** 三类步（02 §4.2 中文语义名的 wire 投影 [推断]）+ `chief`（M4a [设计]：
  * Chief 回合 = 机器 step 为一手实测（r5 §3.1 daemon.log `claim step=…` →
- * `conv chief-…`），kind 词未采——自定等价物，04 §3 不判负口径）。 */
-export const stepKindSchema = z.enum(['plan', 'build', 'merge', 'chief']);
+ * `conv chief-…`），kind 词未采——自定等价物，04 §3 不判负口径）+ `review`
+ * （M7 #312 / r8 §3.1：AI 审核步——额外 agent 步，daemon 不开 worktree 不产
+ * 改动，emit findings；#326 占位 ack → 真 findings 演进而 kind 词不变）。 */
+export const stepKindSchema = z.enum(['plan', 'build', 'merge', 'chief', 'review']);
 export type StepKind = z.infer<typeof stepKindSchema>;
 
 export const stepRecordSchema = z.object({
@@ -43,7 +45,10 @@ export type StepJournalRow = z.infer<typeof stepJournalRowSchema>;
 /** POST /api/builds/{id}/steps body——确认回路（02 §4.2，r5 §4 实走改判）：
  * 驳回 = {action:"revision", side:"plan", feedback, clientMessageId} →
  * server 入队重规划步（同 conv continue session）→ plan v2；
- * 确认 = 同端点 {action:"confirm"}。 */
+ * 确认 = 同端点 {action:"confirm"}。
+ * 审核 = {action:"review", agentId, focus?}（M7 #312 / r8 §3.1）：server 入队
+ * 审核步（kind='review'）→ 审核中 chip + composer placeholder + 时间线发起
+ * 行（REVIEW_ANNOUNCEMENT）；focus 可空（textarea 透传「关注什么」）。 */
 export const buildStepActionBodySchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('revision'),
@@ -53,5 +58,13 @@ export const buildStepActionBodySchema = z.discriminatedUnion('action', [
     clientMessageId: z.string(), // <uuid>（r5 §4 抓包）
   }),
   z.object({ action: z.literal('confirm') }),
+  z.object({
+    action: z.literal('review'),
+    /** 执行审核的 Agent id（与 chief-agent-dialog 同源 memberType:"agent" 行
+     * 的 actorId）。 */
+    agentId: z.string(),
+    /** 可选关注点 textarea 内容；空串视为未填。 */
+    focus: z.string().optional(),
+  }),
 ]);
 export type BuildStepActionBody = z.infer<typeof buildStepActionBodySchema>;

@@ -410,7 +410,9 @@ export function useApiMutations(teamId: string | undefined) {
         buildId: string;
         body:
           | { action: 'confirm' }
-          | { action: 'revision'; side: 'plan'; feedback: string; clientMessageId: string };
+          | { action: 'revision'; side: 'plan'; feedback: string; clientMessageId: string }
+          // M7 #312 AI 审核（r8 §3.1）：入队审核步,可选 focus 入参透传 server。
+          | { action: 'review'; agentId: string; focus: string };
       }) => api.post<{ delegated: true }>(`/api/builds/${input.buildId}/steps`, input.body),
       onSuccess: invalidateAll,
     }),

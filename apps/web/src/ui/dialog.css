@@ -20,7 +20,8 @@
 }
 
 .dlg {
-  width: 448px;
+  /* width 由 ui/dialog-shell.tsx 透传 style 决定（448 家族律缺省；M7 #312
+     review 对话框 560）。css 不写死以允许多档宽度。 */
   background: var(--dialog-bg);
   border-radius: 12px;
   box-shadow: 0 18px 45px rgb(0 0 0 / 0.25);

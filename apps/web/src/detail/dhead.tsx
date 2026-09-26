@@ -49,6 +49,9 @@ interface DetailHeadProps {
   /** #209: chip popover「编辑分配」入口——关 popover 后由页层开 agent 选择
    *  弹层(弹层挂页层:popover 关即卸载,挂内层会被带走)。 */
   onEditAssign?: () => void;
+  /** M7 #312 / r8 §3.1：审核中态旗标——chip 改「审核中」、composer placeholder
+   * 改「AI 审核进行中…」、期间显示停止钮（复用 #308）。 */
+  reviewActive?: boolean;
 }
 
 export function DetailHead({
@@ -61,9 +64,15 @@ export function DetailHead({
   onAction,
   chipPopoverOpen,
   onEditAssign,
+  reviewActive,
 }: DetailHeadProps) {
   const { t } = useI18n();
-  const ui = PHASE_UI[phase ?? todo.phase];
+  // AI 审核中态（M7 #312，r8 §3.1）：chip 文案与 phase 解耦——「审核中」字面
+  // 反映活动步 kind 而非 phase（review 步是额外 agent 步，phase 留 confirm/
+  // review）。tone 用 confirm（同色与待确认期一致，不引入新色）。
+  const ui = reviewActive
+    ? { ...PHASE_UI[phase ?? todo.phase], chip: '审核中' }
+    : PHASE_UI[phase ?? todo.phase];
   const { search } = useLocation();
   const [popover, setPopover] = useState(chipPopoverOpen === true);
   useEscapeClose(popover, () => setPopover(false));

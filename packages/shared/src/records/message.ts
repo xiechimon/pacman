@@ -44,6 +44,16 @@ export const SYSTEM_MESSAGE_KINDS = ['machine_selected'] as const;
  * （server requestMerge）与呈现端（web transcript mapper）双端单源。 */
 export const MERGE_ANNOUNCEMENT = '发起了合并';
 
+/** AI 审核发起行 content canon（M7 #312 / r8 §3.1 实测 `23:42 Xmon Dai 发起了
+ * AI 审核` 的内容段；行形 = role user 纯文本，呈现层拼装时间/actor）。写入端
+ * （server applyBuildStepAction review 分支）与呈现端（web transcript mapper）
+ * 双端单源。 */
+export const REVIEW_ANNOUNCEMENT = '发起了 AI 审核';
+
+/** AI 审核步完成占位 ack（M7 #312 票 A 占位 emit；#326 真 findings 上线后此
+ * 常量保留作 step journal 行 / 测试 fixture 字面，不作真 wire emit 用）。 */
+export const REVIEW_COMPLETE_PLACEHOLDER = 'AI 审核已完成';
+
 /** GET /api/conversations/{id}/messages 响应封套（r5 §3.6 原样）。 */
 export const conversationMessagesResponseSchema = z.object({
   messages: z.array(transcriptRowSchema),
