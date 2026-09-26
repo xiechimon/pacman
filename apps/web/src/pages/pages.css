@@ -1156,17 +1156,6 @@
   color: var(--text-secondary);
 }
 
-.prj-set-change {
-  margin-top: 8px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--indigo-400);
-  cursor: pointer;
-}
-
 .prj-set-row {
   display: flex;
   align-items: center;

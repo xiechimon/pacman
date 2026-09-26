@@ -1,5 +1,6 @@
 // API-keys route (issue #70): the empty state per r2 19 (icon tile +
-// canon copy + 新建密钥 / 查看文档), and with a created key in the
+// canon copy + 新建密钥; the captured 查看文档 link is gone — #307
+// wontfix, local-first 无文档站, #149 schedules 同律), and with a created key in the
 // fixture the r3 §6 display rules — list row masked `pacman_afe07565…`
 // (r3 样例原形前缀 tds_ 随品牌槽切换，#109)
 // plus the one-time plaintext block carrying the 02 §8 canon
@@ -12,7 +13,7 @@ import { mapApiKeys, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
-import { ChevronRight, ExternalLink, Key } from '../icons/index.js';
+import { ChevronRight, Key } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
 import { ApiKeyCreateDialog } from './api-key-create-dialog.js';
 
@@ -61,10 +62,8 @@ export function ApiKeysPage() {
             >
               {t('新建密钥')}
             </button>
-            <button type="button" className="keys-docs">
-              {t('查看文档')}
-              <ExternalLink />
-            </button>
+            {/* 「查看文档」钮全除（#307 wontfix）：local-first 自托管无文档站
+                可链（#149 schedules 同律）——隐去，spec 08 档 4 出账。 */}
           </div>
         </div>
       ) : (

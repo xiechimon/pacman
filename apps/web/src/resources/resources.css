@@ -342,7 +342,7 @@
 }
 
 /* empty state (r7 10): hero tile, heading, two-line description,
-   primary + 查看文档, optional 总管 hint */
+   primary, optional 总管 hint（查看文档 link #307 全除） */
 .res-empty {
   padding-top: 24px;
 }
@@ -396,19 +396,6 @@
   height: 34px;
   justify-content: center;
   font-size: 14px;
-}
-
-.res-doclink {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-dim);
-  font-size: 13px;
-  line-height: 16px;
-  cursor: pointer;
 }
 
 .res-empty-hint {

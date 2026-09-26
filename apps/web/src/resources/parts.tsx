@@ -1,12 +1,13 @@
 // Shared row parts of the resource surfaces (issue #69): the icon tile
 // (20px small / 28px large / 48px empty-state hero, r7 06–10 probes), the
 // gray status pill (`未启用`), the row-end chevron and the empty-state
-// block (hero tile + heading + description + primary action + 查看文档
-// link + optional 总管 hint, layout probed from r7 10, copy from r2 §6).
+// block (hero tile + heading + description + primary action + optional
+// 总管 hint, layout probed from r7 10, copy from r2 §6; the captured
+// 查看文档 link is gone — #307 wontfix, local-first 无文档站).
 import type { ComponentType, SVGProps } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useI18n } from '../i18n/provider.js';
-import { ChevronRight, ExternalLink, Lock } from '../icons/index.js';
+import { ChevronRight, Lock } from '../icons/index.js';
 
 /** Icon tile: tinted rounded square carrying the row glyph. */
 export function Tile({
@@ -42,7 +43,8 @@ export function RowChevron() {
 }
 
 /** Empty-state block (r7 10 geometry): 48px hero tile, heading, two-line
- *  description, primary button + 查看文档 link, optional 总管 hint row. */
+ *  description, primary button, optional 总管 hint row (查看文档 link
+ *  removed #307 — local-first 无文档站, #149 schedules 同律). */
 export function EmptyState({
   Icon,
   title,
@@ -81,10 +83,9 @@ export function EmptyState({
             {t(actionLabel)}
           </Link>
         )}
-        <button type="button" className="res-doclink">
-          {t('查看文档')}
-          <ExternalLink width={11} height={11} />
-        </button>
+        {/* 「查看文档」钮全除（#307 wontfix）：local-first 自托管无文档站
+            可链（#149 schedules 同律）——skills/secrets/mcp 空态随共享件
+            一并出账，spec 08 档 4。 */}
       </div>
       {hint != null && (
         <p className="res-empty-hint">

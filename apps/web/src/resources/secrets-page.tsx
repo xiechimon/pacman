@@ -1,6 +1,7 @@
 // 密钥 route (issue #69, r7 10): the capture — and the only recorded state
 // of this surface — is the empty state: 48px hero key tile, heading,
-// write-only description, 添加密钥 primary + 查看文档, 总管 hint row.
+// write-only description, 添加密钥 primary, 总管 hint row (captured 查看文档
+// link removed #307 — local-first 无文档站, rides the shared EmptyState).
 // (r2 §6.3 records the add dialog; the row list was never captured.)
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';

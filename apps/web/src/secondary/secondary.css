@@ -505,23 +505,6 @@
   cursor: pointer;
 }
 
-.keys-docs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  font-size: 13px;
-  color: var(--text-dim);
-  cursor: pointer;
-}
-
-.keys-docs svg {
-  width: 12px;
-  height: 12px;
-}
-
 /* created-key surface: one-time plaintext block + masked list rows.
    Row/block shapes are [推断] — no capture exists (r2 §9-12, r3 §6 图失);
    the mask and the canon copy are the observed contract. */
