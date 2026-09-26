@@ -456,3 +456,28 @@ export const whatsNew = sqliteTable('whats_new', {
   body: json<Record<string, unknown>>('body').notNull(),
   createdAt: epochMs('createdAt').notNull(),
 });
+
+// —— attachment（#310，r9 §3.1/§4）：附件上传存储面，wire 形状从 grant 落 key
+// 起的全过程——DB 行 status 漂移 pending → ready；content/spec 内嵌 markdown
+// `attachment:<storageKey>` 解析走 read 端；scope = spec（新建任务描述）|
+// message（chat composer）。MIME 白名单在 services/attachments.ts 守门，
+// 单文件 ≤10MiB。团队归属校验贯穿 grant/upload/read/工具四关。—————
+export const attachment = sqliteTable('attachment', {
+  id: text('id').primaryKey(),
+  teamId: text('teamId')
+    .notNull()
+    .references(() => team.id),
+  /** 创建者用户 id；chief 派工 agent 路径未至，无 chiefAgentId 槽。 */
+  createdBy: text('createdBy').notNull(),
+  fileName: text('fileName').notNull(),
+  mimeType: text('mimeType').notNull(),
+  sizeBytes: integer('sizeBytes').notNull(),
+  /** 相对 `<attachmentsDir>/<storageKey>`；layout = `<teamId>/<id>.<ext>`。 */
+  storageKey: text('storageKey').notNull(),
+  /** grant 端与上传端的串联位（HMAC 签名内含,upload 时回查一致）。 */
+  grantId: text('grantId').notNull(),
+  scope: text('scope').$type<'spec' | 'message'>().notNull(),
+  /** pending = grant 落库未上传；ready = 文件落盘；failed = 上传过程报错。 */
+  status: text('status').$type<'pending' | 'ready' | 'failed'>().notNull().default('pending'),
+  createdAt: epochMs('createdAt').notNull(),
+});
