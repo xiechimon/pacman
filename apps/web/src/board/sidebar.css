@@ -338,7 +338,7 @@
   right: 8px;
   top: 4px;
   bottom: 4px;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 .rail-row--selected::before {
@@ -416,7 +416,7 @@
   right: 8px;
   top: 2px;
   bottom: 2px;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 /* selected = the hover pill deepened, same geometry (#128) */
@@ -435,7 +435,7 @@
 /* rounded hit box for the small header button (no-op at rest;
    6→8px A3 圆角归一，docs/a3/diff-audit.md #1) */
 .sidebar-team-collapse {
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
 @media (hover: hover) and (pointer: fine) {
