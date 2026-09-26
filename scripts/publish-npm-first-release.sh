@@ -196,6 +196,12 @@ finish() {
 # npm 事实依据（docs.npmjs.com，2026-09-25 查证）：2025-11 起仅存 granular
 # token；发布需账号 2FA 或 bypass token；bypass 直发 2027-01 移除——故推荐
 # 账号 2FA + token 不勾 bypass + publish 交互 OTP。
+# 首发实测增补（2026-09-26，#266/#298/#299）：pnpm publish 拒收 npm-config
+# 风格 argv（--//registry…:_authToken），发布命令定形 npm publish；manifest
+# 双雷（dependencies 残留 catalog:/workspace: → 装包静默崩；bin 带 ./ 前缀 →
+# npm 判 invalid 静默摘除）由本脚本前置自检 + pack-smoke（npm pack 真身断言）
+# 双闸守护。unpublish 过的版本 24h 内禁止重发——发布失败别撤同版本重试，
+# bump 版本号。
 
 TOTAL_STAGES=6
 
@@ -443,7 +449,9 @@ if [[ "${V1:-}" == "0.1.0" && "${V2:-}" == "0.1.0" ]]; then
   open_url "http://127.0.0.1:$ACCEPT_PORT/app/api-keys"
   step "新建一把 key（名字随意，如 accept），明文只显示一次——复制。"
   step "npm install -g @xiechimon/pacman-cli    # 真实用户路径，落本机全局 prefix"
-  step "env HOME=$ACCEPT_HOME pacman start --api-key <粘贴那把key> --server http://127.0.0.1:$ACCEPT_PORT"
+  step "env HOME=$ACCEPT_HOME pacman start --api-key <粘贴那把key> --team <teamId> --server http://127.0.0.1:$ACCEPT_PORT"
+  note "teamId 来源：server 启动日志的 teamId 字段，或看板「添加机器」弹窗"
+  note "「改用 API key 注册」展开的命令文案（两处均带 --team 真值/占位）。"
   note "pacman start 默认后台化（enroll 完即返回）；机器名默认取 hostname。"
   open_url "http://127.0.0.1:$ACCEPT_PORT/app/resources/machines"
   confirm "机器列表出现你的主机名行了？" || warn "没出现就回终端看 pacman 报错（enroll 401→key 抄错；404→--server 端口不对）"

@@ -77,7 +77,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   const { config, paths, logger } = opts;
   ensureStateDirs(paths);
   loadOrCreateDeviceJson(paths); // device.json 32hex（r3 §1.3）
-  setupProxy(logger, opts.proxyEnv ?? process.env);
+  setupProxy(logger, opts.proxyEnv ?? process.env, config.serverUrl);
 
   // —— 上线序列 canon（02 §5.4）——
   logger.raw('Loading pi runtime…');
