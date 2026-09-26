@@ -81,7 +81,9 @@
   width: 24px;
   height: 24px;
   border: 0;
-  border-radius: 6px;
+  /* 圆角归一 6→8px（diff-audit 裁决 #1/#4，2026-09-26 用户拍板；
+     主线收口——lane 禁动 ui/ 所以留到这里改） */
+  border-radius: 8px;
   background: transparent;
   color: var(--text-tertiary);
   cursor: pointer;
