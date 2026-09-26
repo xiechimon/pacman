@@ -11,12 +11,16 @@
 // popover precedent), rows = the project set (live = useProjects truth;
 // fixture = scenario projectNames / canon default), selection is pure
 // form state that backfills the chip and rides the submit's projectId.
+// A3-overlays 收编：footer 双钮 = ui/Button（ghost / primary，弹窗语义
+// standard 32 档，r7 实测 30 归一到原语三档）；两钮类名无 e2e/parity
+// 钉扎，散写规则随收编移除。
 
 import { useEffect, useRef, useState } from 'react';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, Grid2x2, Mic, Paperclip, PlusSmall, X } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { Button } from '../ui/button.js';
 import { useEscClose } from './use-esc.js';
 import { FADE_EXIT_MS } from './use-overlay-mount.js';
 import './overlay.css';
@@ -193,12 +197,12 @@ export function NewTaskDialog({
               </button>
             </div>
             <div className="new-task-buttons">
-              <button type="button" className="new-task-save" onClick={save}>
+              <Button variant="ghost" size="standard" onClick={save}>
                 {t('保存')}
-              </button>
-              <button
-                type="button"
-                className="new-task-start"
+              </Button>
+              <Button
+                variant="primary"
+                size="standard"
                 disabled={title.trim() === ''}
                 onClick={() => {
                   if (onSaveAndStart) onSaveAndStart(title.trim(), selected?.id);
@@ -206,7 +210,7 @@ export function NewTaskDialog({
                 }}
               >
                 {t('保存并开始')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

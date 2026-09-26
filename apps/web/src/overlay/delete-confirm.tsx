@@ -2,11 +2,16 @@
 // 确定删除该任务？此操作不可撤销。 + close over a divider; summary row
 // #seq + title; right-aligned 取消 / 删除 (danger). Copy verbatim r2
 // §5.4 / r6 §4.2 — unchanged across r5b→r7.
+// A3-overlays 收编：删除钮 = ui/Button danger（.delete-confirm-delete
+// 类名保留为 e2e 定位别名，project-settings-delete.spec.ts；:disabled
+// 形态留在本面 CSS——原语 danger 无禁用样式）。取消钮为 r7 25 canon 的
+// 无框弱文字形态，原语无对应 variant，本票缓收（见 report-overlays）。
 
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { X } from '../icons/index.js';
 import { OverlayMount } from '../overlays/dismiss.js';
+import { Button } from '../ui/button.js';
 import { useEscClose } from './use-esc.js';
 import { FADE_EXIT_MS } from './use-overlay-mount.js';
 import './overlay.css';
@@ -55,9 +60,14 @@ export function DeleteConfirm({ todo, open, onClose, onConfirm }: DeleteConfirmP
           <button type="button" className="delete-confirm-cancel" onClick={onClose}>
             {t('取消')}
           </button>
-          <button type="button" className="delete-confirm-delete" onClick={onConfirm}>
+          <Button
+            variant="danger"
+            size="standard"
+            className="delete-confirm-delete"
+            onClick={onConfirm}
+          >
             {t('删除')}
-          </button>
+          </Button>
         </div>
       </div>
     </OverlayMount>
