@@ -272,7 +272,7 @@ importers:
         specifier: 8.10.2
         version: 8.10.2
       zod:
-        specifier: 'catalog:'
+        specifier: 4.6.5
         version: 4.6.5
     devDependencies:
       '@pacman/shared':
