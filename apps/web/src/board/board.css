@@ -58,19 +58,15 @@
   padding-right: 12px;
 }
 
-.board-new-task {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 11px;
+/* A3 收编（docs/a3/diff-audit.md）：ui/button Button text 变体 + compact
+   档承载底/字色/padding/光标；本规则只留原语表达不了的 per-face 实测值
+   （r7 topbar 59.5 宽 / 11px 图标缝 / 14px 字号）。复合选择器 0-2-0 钉死
+   对 .btn 字号的覆写，不依赖打包顺序。board-new-task 类名本身是
+   e2e/parity 钉死的选择器别名（className 透传保留）。 */
+.btn.board-new-task {
   width: 59.5px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--indigo-500);
+  gap: 11px;
   font-size: 14px;
-  cursor: pointer;
 }
 
 /* #149: the wrap is the guide popover's positioning anchor — the 6px
@@ -149,18 +145,12 @@
   color: var(--text-dim);
 }
 
+/* A3 收编（docs/a3/diff-audit.md）：ui/button Button primary/compact 承载
+   高度/内距/字色/圆角（归一 6→8px，diff-audit #1 裁决）。本类是
+   e2e（notify-banner.spec）钉死的选择器别名 + flex 布局位差值。 */
 .board-notify-banner-action {
   flex: none;
   margin-left: auto;
-  height: 28px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 6px;
-  background: var(--card-button);
-  color: var(--text-on-accent);
-  font-size: 13px;
-  line-height: 28px;
-  cursor: pointer;
 }
 
 /* ---- board scroller ---- */
@@ -501,27 +491,14 @@
   flex: 1;
 }
 
-.todo-card-action {
+/* A3 收编（docs/a3/diff-audit.md）：ui/button Button primary/ghost 的
+   card 26 档承载高度/圆角（归一 6→8px，diff-audit #1 裁决）/描边/字色。
+   本规则只留 per-face 差值：7.25px 内距（r7 实测）与 flex 布局位；
+   复合选择器 0-2-0 钉死对 .btn--card 内距的覆写。todo-card-action 系列
+   类名是 e2e（board-dnd 钉 --ghost）选择器别名（className 透传保留）。 */
+.btn.todo-card-action {
   flex: none;
-  height: 26px;
-  border-radius: 6px;
-  font-size: 13px;
-  line-height: 26px;
   padding: 0 7.25px;
-  border: none;
-  cursor: pointer;
-}
-
-.todo-card-action--primary {
-  background: var(--card-button);
-  color: var(--text-on-accent);
-}
-
-.todo-card-action--ghost {
-  background: transparent;
-  border: 1px solid var(--card-ghost-border);
-  color: var(--text-secondary);
-  line-height: 24px;
 }
 
 /* ---- chief fab ---- */

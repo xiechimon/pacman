@@ -35,6 +35,7 @@ import { useI18n } from '../i18n/provider.js';
 import { HelpCircle, Plus, UnfoldVertical } from '../icons/index.js';
 import { BoardGuide } from '../overlays/board-guide.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { Button } from '../ui/button.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
 import { DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
 import { SortableCard } from './sortable-card.js';
@@ -236,10 +237,14 @@ export function BoardSurface({
       <header className="board-topbar">
         <div className="board-topbar-title">{t('看板')}</div>
         <div className="board-topbar-actions">
-          <button type="button" className="board-new-task" onClick={onNewTask}>
+          {/* A3 收编：Button text 变体（compact 档）。board-new-task 是
+              e2e/parity 钉死的选择器别名，经 className 透传保留；59.5 宽 /
+              11px 图标缝 / 14px 字号是原语表达不了的 per-face 实测值，
+              留在 board.css。 */}
+          <Button variant="text" size="compact" className="board-new-task" onClick={onNewTask}>
             <Plus width={13} height={13} />
             {t('任务')}
-          </button>
+          </Button>
           <span className="board-guide-wrap">
             <button
               type="button"

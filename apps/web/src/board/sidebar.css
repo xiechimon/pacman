@@ -329,7 +329,8 @@
 }
 
 /* pill box shared by the selected and hover tints — r7 03: 看板 row pill
-   x8–30 / y84–107 = 24px, radius matches the expanded selected row */
+   x8–30 / y84–107 = 24px, radius matches the expanded selected row
+   (6→8px：A3 圆角归一，docs/a3/diff-audit.md #1 裁决 2026-09-26) */
 .rail-row::before {
   content: "";
   position: absolute;
@@ -337,7 +338,7 @@
   right: 8px;
   top: 4px;
   bottom: 4px;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .rail-row--selected::before {
@@ -393,7 +394,8 @@
 /* ---- row hover / selected pill (issue #121, geometry re-probed #128) ----
    Nav rows share ONE pill geometry on the ::before layer — the official
    32px inset pill (r7 01/02 probe: 2px vertical / 8px horizontal inset,
-   radius 6; rail keeps its 24px box above) — painted there so hovering
+   radius 6→8px per the A3 归一 (docs/a3/diff-audit.md #1, 2026-09-26);
+   rail keeps its 24px box above) — painted there so hovering
    never shifts row layout. Hover tints it with the sidebar hover step and
    the selected row deepens the same pill one cds alpha step
    (--sidebar-selected over --sidebar-hover, #128 claude.ai cds ladder over
@@ -414,7 +416,7 @@
   right: 8px;
   top: 2px;
   bottom: 2px;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 /* selected = the hover pill deepened, same geometry (#128) */
@@ -430,9 +432,10 @@
   position: relative;
 }
 
-/* rounded hit box for the small header button (no-op at rest) */
+/* rounded hit box for the small header button (no-op at rest;
+   6→8px A3 圆角归一，docs/a3/diff-audit.md #1) */
 .sidebar-team-collapse {
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 @media (hover: hover) and (pointer: fine) {
