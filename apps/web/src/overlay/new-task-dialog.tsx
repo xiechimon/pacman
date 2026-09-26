@@ -15,7 +15,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
-import { Check, ChevronDown, Grid2x2, Mic, Paperclip, PlusSmall, X } from '../icons/index.js';
+import { Check, ChevronDown, Grid2x2, Paperclip, PlusSmall, X } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { useEscClose } from './use-esc.js';
 import { FADE_EXIT_MS } from './use-overlay-mount.js';
@@ -182,9 +182,8 @@ export function NewTaskDialog({
           </div>
           <div className="new-task-actions">
             <div className="new-task-tools">
-              <button type="button" aria-label={t('语音输入')}>
-                <Mic />
-              </button>
+              {/* #304 C5 裁决:语音输入功能不做(local-first 无语音面)——
+                  语音钮移除不渲染,不留死钮;添加附件/提及原样。 */}
               <button type="button" aria-label={t('添加附件')}>
                 <Paperclip />
               </button>

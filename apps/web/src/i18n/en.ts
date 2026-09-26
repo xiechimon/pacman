@@ -116,7 +116,6 @@ export const EN: Record<string, string> = {
   聊天: 'Chat',
   'Token 用量': 'Token usage',
   运行历史: 'Run history',
-  语音输入: 'Voice input',
   添加附件: 'Add attachment',
   'AI 审核': 'AI review',
   提及: 'Mention',
