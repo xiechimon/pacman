@@ -17,6 +17,7 @@ import { useLiveData } from '../api/provider.js';
 import type { ChiefContent, ChiefSettingsTab } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChevronRight, ChiefFaceDashed } from '../icons/index.js';
+import { Button } from '../ui/button.js';
 import { ChiefAgentDialog, type ChiefAgentOption } from './chief-agent-dialog.js';
 import { type ChiefModelOption, ChiefModelSelect } from './chief-model-select.js';
 import './chief.css';
@@ -156,9 +157,16 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
               </div>
             )}
             <div className="chief-charter-actions">
-              <button type="button" className="chief-edit-btn" onClick={() => setCharterOpen(true)}>
+              {/* a3-pages 收编：Button ghost/compact（e2e 钉 .chief-edit-btn
+                  别名保留）；描边/底/字色 per-face 差异见 chief.css。 */}
+              <Button
+                variant="ghost"
+                size="compact"
+                className="chief-edit-btn"
+                onClick={() => setCharterOpen(true)}
+              >
                 {t('编辑')}
-              </button>
+              </Button>
             </div>
           </>
         )}

@@ -7,6 +7,8 @@ import type { ComponentType, SVGProps } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, ExternalLink, Lock } from '../icons/index.js';
+import { Button } from '../ui/button.js';
+import { Chip } from '../ui/chip.js';
 
 /** Icon tile: tinted rounded square carrying the row glyph. */
 export function Tile({
@@ -26,10 +28,16 @@ export function Tile({
   );
 }
 
-/** Right-side status pill (`未启用`, r7 06/07). */
+/** Right-side status pill (`未启用`, r7 06/07). Chip neutral 档收编
+ * （pill-idle-bg 同源）；r7 实测形（20px 高/4px 圆角/text-dim 字）作为
+ *  per-face 差异规则留在 resources.css——06/07 baseline 零像素。 */
 export function StatusPill({ label }: { label: string }) {
   const { t } = useI18n();
-  return <span className="res-pill">{t(label)}</span>;
+  return (
+    <Chip variant="neutral" className="res-pill">
+      {t(label)}
+    </Chip>
+  );
 }
 
 /** Row-end `>` chevron (r7 06–10 row right edge). */
@@ -73,9 +81,9 @@ export function EmptyState({
       <p className="res-empty-desc">{t(description)}</p>
       <div className="res-empty-actions">
         {actionHref == null ? (
-          <button type="button" className="res-primary" onClick={onAction}>
+          <Button variant="primary" size="compact" className="res-primary" onClick={onAction}>
             {t(actionLabel)}
-          </button>
+          </Button>
         ) : (
           <Link className="res-primary" to={{ pathname: actionHref, search }}>
             {t(actionLabel)}

@@ -109,6 +109,8 @@
   z-index: 5;
 }
 
+/* chief-switcher-row 圆角 6→8 = a3-pages 圆角归一（popover 菜单行，
+   lang-dropdown-row / chief-model-row 同族行已是 8）。 */
 .chief-switcher-row {
   display: flex;
   align-items: center;
@@ -118,7 +120,7 @@
   padding: 0 8px;
   border: none;
   background: none;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 13px;
   color: var(--text-secondary);
   cursor: pointer;
@@ -160,12 +162,14 @@
   color: var(--text-secondary);
 }
 
+/* chief-gate-btn 圆角 6→8 = a3-pages 圆角归一（真按钮；50×26 固定宽 +
+   12px 字形态保留散写——card 档 26 高同但 8px 内边距/13px 字不同）。 */
 .chief-gate-btn {
   margin-left: auto;
   width: 50px;
   height: 26px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--card-button);
   color: var(--text-on-accent);
   font-size: 12px;
@@ -622,15 +626,14 @@
   margin-top: 20px;
 }
 
-.chief-edit-btn {
-  height: 28px;
-  padding: 0 12px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
+/* chief-edit-btn a3-pages 收编进 Button ghost/compact（28 高/12 内边距/8
+   圆角公共形）；r5 102 实测形的三点差异（描边 token、surface 底、primary
+   字）保留为高特异性 per-face 规则——ghost 档是 card-ghost-border 描边 +
+   透明底。 */
+.btn.chief-edit-btn {
+  border-color: var(--border-default);
   background: var(--surface);
-  font-size: 13px;
   color: var(--text-primary);
-  cursor: pointer;
 }
 
 .chief-memo,
