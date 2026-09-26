@@ -368,6 +368,9 @@ export const EN: Record<string, string> = {
   保存并开始: 'Save and start',
   删除任务: 'Delete todo',
   '确定删除该任务？此操作不可撤销。': 'Delete this todo? This cannot be undone.',
+  // #306 sched-card 菜单删除确认（DeleteConfirm 家族泛化随加）。
+  删除定时: 'Delete schedule',
+  '确定删除该定时？此操作不可撤销。': 'Delete this schedule? This cannot be undone.',
   关闭菜单: 'Close menu',
   复制链接: 'Copy link',
   完成任务: 'Complete todo',

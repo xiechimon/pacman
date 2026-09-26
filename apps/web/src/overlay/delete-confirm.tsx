@@ -1,9 +1,12 @@
 // Delete confirm (issue #66, r7 25): 448×142 centered modal. Head row
-// 确定删除该任务？此操作不可撤销。 + close over a divider; summary row
-// #seq + title; right-aligned 取消 / 删除 (danger). Copy verbatim r2
-// §5.4 / r6 §4.2 — unchanged across r5b→r7.
+// 确定删除…？此操作不可撤销。 + close over a divider; summary row (the
+// doomed entity's label); right-aligned 取消 / 删除 (danger). Copy verbatim
+// r2 §5.4 / r6 §4.2 — unchanged across r5b→r7.
+// #306 generalization: title/summary/ariaLabel are caller-supplied — the
+// schedule card menu rides the same family shape (确定删除该定时…) while
+// the todo caller keeps the r7 25 canon word for word.
 
-import type { TodoRecord } from '../fixtures/records.js';
+import type { ReactNode } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { X } from '../icons/index.js';
 import { OverlayMount } from '../overlays/dismiss.js';
@@ -12,14 +15,26 @@ import { FADE_EXIT_MS } from './use-overlay-mount.js';
 import './overlay.css';
 
 interface DeleteConfirmProps {
-  todo: TodoRecord;
+  /** Head title — the caller's canon copy (task: 确定删除该任务…). */
+  title: string;
+  /** Summary row: the doomed entity's label (task: #seq + title). */
+  summary: ReactNode;
+  /** Dialog aria-label (task: 删除任务). */
+  ariaLabel: string;
   /** #73: retained-mount open flag — the exit fade outlives the close. */
   open: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }
 
-export function DeleteConfirm({ todo, open, onClose, onConfirm }: DeleteConfirmProps) {
+export function DeleteConfirm({
+  title,
+  summary,
+  ariaLabel,
+  open,
+  onClose,
+  onConfirm,
+}: DeleteConfirmProps) {
   const { t } = useI18n();
   useEscClose(onClose, open);
   return (
@@ -34,10 +49,10 @@ export function DeleteConfirm({ todo, open, onClose, onConfirm }: DeleteConfirmP
         className="delete-confirm anim-fade"
         role="alertdialog"
         aria-modal="true"
-        aria-label={t('删除任务')}
+        aria-label={ariaLabel}
       >
         <div className="delete-confirm-head">
-          <div className="delete-confirm-title">{t('确定删除该任务？此操作不可撤销。')}</div>
+          <div className="delete-confirm-title">{title}</div>
           <button
             type="button"
             className="delete-confirm-close"
@@ -47,10 +62,7 @@ export function DeleteConfirm({ todo, open, onClose, onConfirm }: DeleteConfirmP
             <X />
           </button>
         </div>
-        <div className="delete-confirm-summary">
-          <span className="delete-confirm-seq">#{todo.seqNum}</span>
-          {todo.title}
-        </div>
+        <div className="delete-confirm-summary">{summary}</div>
         <div className="delete-confirm-actions">
           <button type="button" className="delete-confirm-cancel" onClick={onClose}>
             {t('取消')}

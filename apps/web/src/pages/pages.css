@@ -319,6 +319,54 @@
   cursor: pointer;
 }
 
+/* #306: per-card 更多 menu — anchored under the kebab, right-aligned,
+   lang-dropdown family form [设计] (popover bg, radius 10, 12px rows);
+   danger row inks the icon like more-menu's delete row. */
+.sched-more-wrap {
+  position: relative;
+  display: flex;
+}
+
+.sched-card-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 160px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  background: var(--popover-bg);
+  border-radius: 10px;
+  box-shadow: var(--fab-shadow);
+  z-index: 30;
+}
+
+.sched-card-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sched-card-menu-row[data-action="delete"] {
+  color: var(--stop);
+}
+
+.sched-card-menu-row[data-action="delete"] svg {
+  color: var(--stop);
+}
+
 /* ---- 新建定时 dialog (r3 92/92b) ---- */
 
 .sched-form-overlay {

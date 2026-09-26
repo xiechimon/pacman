@@ -572,6 +572,16 @@
   color: var(--text-dim);
 }
 
+/* #306: the tool group's footer row doubles as its expander button —
+   keep the div geometry, reset the button chrome */
+.chat-row-icons--toggle {
+  border: none;
+  background: transparent;
+  padding: 0 0 0 31px;
+  font: inherit;
+  cursor: pointer;
+}
+
 .chat-text {
   margin-left: 11px;
   /* r8 63–77: robot ink measures ~13px on a 24px pitch and the bubble

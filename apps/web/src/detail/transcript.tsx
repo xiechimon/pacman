@@ -9,6 +9,7 @@
 // from the r7 16/17/26/27/28/36/38 and r8 54–77 captures; CONTEXT.md canon
 // names the message flow `transcript`.
 
+import { useState } from 'react';
 import type { RobotPara, TranscriptItem } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
@@ -38,13 +39,15 @@ function formatElapsed(seconds: number, t: TFunc): string {
 /** Message action row (r7 17/28, r8 63/65/73): copy icon, optional
  *  restore icon, then the optional `| 完成 Ns` elapsed tail with an
  *  optional trailing chevron. Every footer variant observed is a subset
- *  of this one row. */
+ *  of this one row. With `toggle` the row renders as the tool group's
+ *  expand/collapse button (#306) instead of a static div. */
 function ActionRow({
   restore,
   seconds,
   bare,
   chevron,
   t,
+  toggle,
 }: {
   restore?: boolean;
   seconds?: number;
@@ -53,9 +56,12 @@ function ActionRow({
   /** `›` on plan cards / collapsed tool groups, `⌄` on expanded ones. */
   chevron?: 'right' | 'down';
   t: TFunc;
+  /** #306: the tools group's footer doubles as the expander (collapsed
+   *  r7 27 ↔ expanded 28 family, same law as 全部展开/全部收起). */
+  toggle?: { expanded: boolean; onToggle: () => void };
 }) {
-  return (
-    <div className="chat-row-icons">
+  const body = (
+    <>
       <Copy width={13} height={13} />
       {restore === true && <Restore width={13} height={13} />}
       {(seconds != null || bare === true) && (
@@ -65,7 +71,18 @@ function ActionRow({
       )}
       {chevron === 'right' && <ChevronRight width={10} height={10} className="chat-foot-chevron" />}
       {chevron === 'down' && <ChevronDown width={10} height={10} className="chat-foot-chevron" />}
-    </div>
+    </>
+  );
+  if (toggle == null) return <div className="chat-row-icons">{body}</div>;
+  return (
+    <button
+      type="button"
+      className="chat-row-icons chat-row-icons--toggle"
+      aria-expanded={toggle.expanded}
+      onClick={toggle.onToggle}
+    >
+      {body}
+    </button>
   );
 }
 
@@ -233,30 +250,45 @@ function Row({ item, t }: { item: TranscriptItem; t: TFunc }) {
         </>
       );
     case 'tools':
-      return (
-        <>
-          <ActionRow seconds={item.seconds} chevron={item.expanded ? 'down' : 'right'} t={t} />
-          {item.expanded && (
-            <>
-              <div className="chat-tools">
-                {item.pills.map((pill) => (
-                  <div key={pill} className="chat-tool-pill">
-                    <Terminal width={12} height={12} />
-                    <span className="chat-tool-label">{pill}</span>
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="chat-collapse">
-                {t('收起')}
-                <ChevronDown width={10} height={10} className="chat-collapse-icon" />
-              </button>
-            </>
-          )}
-        </>
-      );
+      return <ToolsRow item={item} t={t} />;
     case 'elapsed':
       return <ActionRow seconds={item.seconds} t={t} />;
   }
+}
+
+/** Tool-call group (r7 27 collapsed `完成 Ns ▸` / 28 pills + 收起): the
+ *  expansion is pure client state (#306 接真) — the fixture/live mapper
+ *  freezes the arrival state, the collapsed footer row expands, the 收起
+ *  link collapses. Row state rides the row instance (index-keyed like the
+ *  rest of the transcript; live appends land after the group). */
+function ToolsRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'tools' }>; t: TFunc }) {
+  const [expanded, setExpanded] = useState(item.expanded);
+  return (
+    <>
+      <ActionRow
+        seconds={item.seconds}
+        chevron={expanded ? 'down' : 'right'}
+        t={t}
+        toggle={{ expanded, onToggle: () => setExpanded((v) => !v) }}
+      />
+      {expanded && (
+        <>
+          <div className="chat-tools">
+            {item.pills.map((pill) => (
+              <div key={pill} className="chat-tool-pill">
+                <Terminal width={12} height={12} />
+                <span className="chat-tool-label">{pill}</span>
+              </div>
+            ))}
+          </div>
+          <button type="button" className="chat-collapse" onClick={() => setExpanded(false)}>
+            {t('收起')}
+            <ChevronDown width={10} height={10} className="chat-collapse-icon" />
+          </button>
+        </>
+      )}
+    </>
+  );
 }
 
 export function Transcript({ transcript }: TranscriptProps) {

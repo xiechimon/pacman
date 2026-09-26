@@ -145,6 +145,51 @@
   margin-left: 4px;
 }
 
+/* #306: sort selector popover under the 排序 button — lang-dropdown
+   family form [设计] (popover bg, radius 10, 32px rows, indigo check on
+   the active option), behavior pinned by e2e. */
+.res-sort-wrap {
+  position: relative;
+  display: flex;
+}
+
+.res-sort-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 140px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  background: var(--popover-bg);
+  border-radius: 10px;
+  box-shadow: var(--fab-shadow);
+  z-index: 30;
+}
+
+.res-sort-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.res-sort-check {
+  margin-left: auto;
+  display: flex;
+  color: var(--indigo-500);
+}
+
 /* row cards: skills/mcp single row (64/62px), machines/providers grouped */
 .res-card {
   border: 1px solid var(--card-border);

@@ -14,6 +14,10 @@
 // r8-chief-panel-adhoc §3——几何 [推断]：充满定位容器、圆角归零）。
 // composer 行只保留发送钮：语音输入/添加附件/提及为 local-first 无后端面，
 // 裁决隐藏不渲染（#136 台账 wontfix，理由登记在该票评论区）。
+// #306 wontfix 出账：r8 随拍在线程视图头部多出的「更多」（⋮）钮——原站
+// 菜单内容从未点开无正典（r8-chief-panel-adhoc §3），pacman server chief
+// 面亦无线程管理 mutation（GET/POST threads 外无删除/重命名端点），无
+// local-first 对象面，按 M7 处置二分律移除不渲染；头部四钮双视图同律。
 
 import { useState } from 'react';
 import type { ChiefContent, ChiefSegment } from '../fixtures/records.js';
@@ -32,7 +36,6 @@ import {
   ChiefUserPlus,
   ChiefUserSolid,
   Copy,
-  EllipsisVertical,
   FileText,
   Grid2x2,
   Plus,
@@ -113,7 +116,6 @@ export function ChiefDrawer({
   const [threadsOpen, setThreadsOpen] = useState(chief.threadsOpen ?? false);
   const [liveDraft, setLiveDraft] = useState('');
   const [fullscreen, setFullscreen] = useState(false);
-  const hasThread = chief.stream != null;
   const draftValue = onSend != null ? liveDraft : (chief.draft ?? '');
   // #146: Esc 与弹层族同律（#127 useEscapeClose 先例）——最内层先关：
   // 线程切换器 popover 开着时第一下 Esc 收 popover，第二下关 drawer。
@@ -164,11 +166,6 @@ export function ChiefDrawer({
               {onSettings != null && (
                 <button type="button" aria-label={t('总管设置')} onClick={onSettings}>
                   <ChiefGear />
-                </button>
-              )}
-              {hasThread && (
-                <button type="button" aria-label={t('更多')}>
-                  <EllipsisVertical width={16} height={16} />
                 </button>
               )}
               <button

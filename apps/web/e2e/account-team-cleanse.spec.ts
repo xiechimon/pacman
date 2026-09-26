@@ -2,7 +2,8 @@ import { expect, type Page, test } from '@playwright/test';
 
 // Issue #148 acceptance (台账 #136 account/team 行, local-first 裁决):
 // - account: 退出登录 / 删除 (the SaaS account-deletion face) no longer
-//   render; 更换 stays as the wontfix placeholder (static avatar asset).
+//   render; 更换 removed by #306 (M7 二分律出账: no avatar upload face,
+//   the asset is static — supersedes #148's keep-as-chrome ruling).
 // - account 推送通知 switch mirrors the real Notification.permission and an
 //   off click drives the same requestPermission() path as the #114 banner
 //   (shared useNotificationPermission). Live mode only — no ?scenario= —
@@ -50,12 +51,13 @@ function stubNotification(
   );
 }
 
-test('account: 退出登录 / 删除 removed, 更换 placeholder stays', async ({ page }) => {
+test('account: 退出登录 / 删除 / 更换 removed (avatar stays)', async ({ page }) => {
   await page.goto('/app/account?scenario=13');
   await expect(page.locator('.account-card')).toBeVisible();
   await expect(page.locator('.account-logout')).toHaveCount(0);
   await expect(page.locator('.account-delete')).toHaveCount(0);
-  await expect(page.locator('.account-swap')).toHaveText('更换');
+  await expect(page.locator('.account-swap')).toHaveCount(0);
+  await expect(page.locator('.account-avatar img')).toBeVisible();
 });
 
 test('account switch: default permission renders off; click requests and grants', async ({
