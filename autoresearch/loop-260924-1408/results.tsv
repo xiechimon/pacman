@@ -10,3 +10,4 @@ iteration	timestamp	commit	metric	delta	guard	guard-metric	status	description
 3	2026-09-24T15:47:13	-	2	0.0	-	-	no-op	impl-160 idle→done(PR166 已开,CI 监视在岗);无动作
 4	2026-09-24T15:52:06	-	2	-1	-	-	keep	PR166(#160 拖拽解封)合并收票;#161 补位发车(impl-161,worktree 绝对路径已正)
 5	2026-09-24T16:10:45	-	1	0.0	-	-	no-op	心跳:metric=1,只剩 impl-161 working(卡片阴影+通知条接缝);无 open PR;无动作
+6	2026-09-24T16:40:50	-	0	-1	-	-	keep	FINAL:PR167(#161)合并,metric 4→0 全收(#163 由另一条线 PR165 交付);退役+清场(含嵌套误位两个)
