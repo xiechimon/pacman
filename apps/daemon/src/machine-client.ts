@@ -11,6 +11,7 @@ import {
   type MachineRecoverResponse,
   type MachineSteerResponse,
   type MachineStreamEvent,
+  type MachineSyncResultBody,
   type MachineTokenResponse,
   machineClaimResponseSchema,
   machineEnrollPollResponseSchema,
@@ -21,6 +22,7 @@ import {
   machineRecoverResponseSchema,
   machineSteerResponseSchema,
   machineStreamEventSchema,
+  machineSyncResultResponseSchema,
   machineTokenResponseSchema,
   machineUploadUrlsResponseSchema,
   REMOTE_TOOL_RETRY_DELAYS_MS,
@@ -92,6 +94,11 @@ export interface MachineApi {
    * （拉取即确认，server 侧 pending 随即清）；null = 无待取/非本机在跑步/
    * pending 定向旧步（已丢弃）。 */
   steer(stepId: string): Promise<string | null>;
+  /** sync 状态回写（M7 #319，08 册附录 B「分支同步」daemon 端）：状态机过渡
+   * running/synced/failed 三值（M7 syncResultBodySchema）；终态只可写一次
+   * （server transition 函数守面）。失败抛错由上层 catch——不回滚已落 sync
+   * 状态，仅日志报警 [设计]。 */
+  syncResult(syncId: string, body: MachineSyncResultBody): Promise<void>;
   stream(
     signal: AbortSignal,
     onEvent: (ev: MachineStreamEvent) => void,
@@ -345,6 +352,17 @@ export class MachineClient implements MachineApi {
       { parse: (raw) => machineSteerResponseSchema.parse(raw) },
     );
     return res.content;
+  }
+
+  /** sync 状态回写（M7 #319）：POST /api/machine/sync-result/{syncId} =
+   * machine-wire MACHINE_WIRE_EXTENSIONS 登记位；daemon 在 running 起步 +
+   * synced/failed 收尾两时刻回写，server 侧 transition 函数负责状态机守面 + 推
+   * team stream branch_sync 事件给 web 实时结果卡。 */
+  async syncResult(syncId: string, body: MachineSyncResultBody): Promise<void> {
+    await this.request('POST', `/api/machine/sync-result/${syncId}`, {
+      body,
+      parse: (raw) => machineSyncResultResponseSchema.parse(raw),
+    });
   }
 
   /** wake SSE（02 §1.2 机器通道）：帧解析回调；连接断开自然返回。 */

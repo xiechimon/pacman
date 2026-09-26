@@ -29,6 +29,7 @@ import {
   type StatePaths,
   saveMachineJson,
 } from './state.js';
+import { performSync } from './sync.js';
 import { DAEMON_VERSION } from './version.js';
 import { WorkspaceManager } from './workspace.js';
 
@@ -239,6 +240,12 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       logger.step(`steer delivery failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
+  const deliverSync = async (cmd: import('@pacman/shared').MachineSyncCommand): Promise<void> => {
+    // 第四事件分流（M7 #319 [设计]，08 册附录 B「分支同步」）：分支对话框
+    // 「同步到机器」server 派发；performSync 内部 ack running + 收尾 synced
+    // /failed + 异常吞掉（本函数不抛——sync 是独立轨道，失败落账即闭环）。
+    await performSync({ client, logger }, cmd);
+  };
   void (async () => {
     let backoff = 1_000;
     let announced = false;
@@ -250,6 +257,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
             if (ev.type === 'wake') flight.claim?.abort(new Error('wake'));
             if (ev.type === 'shutdown') void stop();
             if (ev.type === 'steer') void deliverSteer(ev.stepId);
+            if (ev.type === 'sync') void deliverSync(ev.sync);
           },
           () => {
             if (!announced) {
