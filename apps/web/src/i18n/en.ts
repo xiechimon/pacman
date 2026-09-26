@@ -517,4 +517,14 @@ export const EN: Record<string, string> = {
   '授权链接已失效，请在执行机上重新发起。':
     'This authorization link has expired — restart enrollment on the executor machine.',
   '浏览器授权注册 →': 'Browser authorization →',
+
+  // —— mention picker (issue #311, r9 §2.2/§3.2) ——
+  // Top layer 5 category rows + drill-in search + footer Insert (N) count.
+  // 与侧边栏/搜索面板的「任务/技能/Agents/项目/机器」键一致,只追加弹层
+  // 本地需要的 6 个键(搜索/空集/返回/插入 (n)/两个 empty 分支)。
+  '搜索…': 'Search…',
+  没有可引用的对象: 'Nothing to mention',
+  '没有与"{query}"匹配的结果': 'No results matching “{query}”',
+  '插入 ({count})': 'Insert ({count})',
+  '没有可用的 Agent': 'No Agents available',
 };

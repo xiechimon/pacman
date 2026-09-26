@@ -28,7 +28,6 @@ import { BRAND, conversationBranch, MERGE_ANNOUNCEMENT } from '@pacman/shared';
 import { relativeTime } from '../board/rel-time.js';
 import type {
   BranchInfoContent,
-  BuildOverlayContent,
   ChiefContent,
   ChiefStreamItem,
   DiffFile,
@@ -169,16 +168,49 @@ export function pillOf(call: ToolCallRecord): string {
 
 // —— plan.md → DocBlock（文档 pane；四段卡软结构，r3 §3.3）———————————————
 
-/** 行内 `code` 芯片切分（r7 17 段内 mono chip；**bold** 归并纯文本——
- * 显示契约无 bold 位）。 */
+/** 行内 `code` 芯片 + 提及方案切分（r7 17 段内 mono chip；**bold** 归并纯文本——
+ * 显示契约无 bold 位）。 #311：mention 方案的 `[name](agent:<id>)` /
+ * `[name](skill:<id>)` / `[name](project:<id>)` / `[name](machine:<id>)`
+ * 也切出独立 mention 段,带 mentionKind 给 segments 渲染对应 accent。
+ * mention 段内不展开嵌套 scheme（r9 wire 形只一层）。 */
 export function inlineSegments(text: string): DocSegment[] {
   const out: DocSegment[] = [];
+  // First pass — extract `code` segments (split is lossless, even
+  // alternation indices are non-code, odd are code). The mention scheme
+  // is rare enough that we can run a second pass per non-code fragment
+  // rather than build a single combined regex that captures both.
   const parts = text.split(/`([^`]+)`/g);
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i] ?? '';
     if (part === '') continue;
-    if (i % 2 === 1) out.push({ text: part, style: 'code' });
-    else out.push({ text: part.replaceAll('**', '') });
+    if (i % 2 === 1) {
+      out.push({ text: part, style: 'code' });
+      continue;
+    }
+    // Mention scheme scan over the non-code fragment. Single global
+    // regex; matches `[label](kind:id)` for the four schemes that
+    // serialize as a link — `todo:` keeps its plain `#seq` form (r9
+    // §3.2: 任务提及按 #seq 留存), so it does not show up here.
+    const cleaned = part.replaceAll('**', '');
+    const SCHEME = /\[([^\]\n]+?)\]\((agent|skill|project|machine):([A-Za-z0-9_-]+)\)/g;
+    let cursor = 0;
+    SCHEME.lastIndex = 0;
+    for (;;) {
+      const m = SCHEME.exec(cleaned) as RegExpExecArray | null;
+      if (m === null) break;
+      if (m.index > cursor) {
+        out.push({ text: cleaned.slice(cursor, m.index) });
+      }
+      out.push({
+        text: m[1] ?? '',
+        style: 'mention',
+        mentionKind: m[2] as 'agent' | 'skill' | 'project' | 'machine',
+      });
+      cursor = m.index + m[0].length;
+    }
+    if (cursor < cleaned.length) {
+      out.push({ text: cleaned.slice(cursor) });
+    }
   }
   return out.length > 0 ? out : [{ text }];
 }

@@ -28,6 +28,7 @@ import {
   useProjects,
   useRunHistoryTokens,
   useSearchResults,
+  useSkills,
   useSteps,
   useTodo,
   useTodos,
@@ -66,6 +67,7 @@ import type {
   TranscriptItem,
 } from '../fixtures/records.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
+import type { MentionGroups } from '../overlay/mention-picker.js';
 import { MoreMenu } from '../overlay/more-menu.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
@@ -170,6 +172,7 @@ export function TodoDetailPage() {
   const machinesQ = useMachines(teamId, live);
   const membersQ = useMembers(teamId, live);
   const projectsQ = useProjects(teamId, live);
+  const skillsQ = useSkills(teamId, live);
   const projectBuildsQ = useProjectBuilds(wireTodo?.projectId, live);
   const mutations = useApiMutations(teamId);
 
@@ -342,6 +345,60 @@ export function TodoDetailPage() {
         }
       : null
     : overlayContent(todo.id);
+
+  // #311: mention picker groups — live pulls the canonical REST hooks,
+  // fixture derives from the local capture set (boardDefault.resources
+  // covers machines/skills; projectNames drives the project chip; the
+  // team roster gives the agent card row).
+  const mentionGroups: MentionGroups = live
+    ? {
+        todo: (todosQ.data ?? []).map((t) => ({
+          id: t.id,
+          label: `#${t.seqNum} ${t.title}`,
+          seq: t.seqNum,
+          subtitle: t.phase,
+        })),
+        agent: (membersQ.data ?? [])
+          .filter((m) => m.memberType === 'agent')
+          .map((m) => ({
+            id: m.actorId,
+            label: (m.actor as { displayName?: string } | undefined)?.displayName ?? m.actorId,
+            subtitle:
+              (m.actor as { description?: string | null } | undefined)?.description ?? undefined,
+          })),
+        project: (projectsQ.data ?? []).map((p) => ({ id: p.id, label: p.name })),
+        skill: (skillsQ.data ?? []).map((s) => ({
+          id: s.id,
+          label: s.name,
+          subtitle: s.description ?? undefined,
+        })),
+        machine: (machinesQ.data ?? []).map((m) => ({ id: m.id, label: m.name })),
+      }
+    : {
+        todo: fixtureTodos.map((t) => ({
+          id: t.id,
+          label: `#${t.seqNum} ${t.title}`,
+          seq: t.seqNum,
+          subtitle: t.phase,
+        })),
+        agent: (fixture.team?.agents ?? []).map((a) => ({
+          id: a.id,
+          label: a.displayName,
+          subtitle: a.role ?? a.model,
+        })),
+        project: Object.entries(fixture.projectNames ?? {}).map(([id, name]) => ({
+          id,
+          label: name,
+        })),
+        skill: (fixture.resources?.skills ?? []).map((s) => ({
+          id: s.name,
+          label: s.name,
+          subtitle: s.description,
+        })),
+        machine: (fixture.resources?.machines ?? [])
+          .filter((m) => m.hosted !== true)
+          .map((m) => ({ id: m.name, label: m.name, subtitle: m.sub })),
+      };
   const ui = PHASE_UI[phase];
   const detail = live ? liveDetail : fixture.detail;
   const streaming = live ? running : view.transcript.some((item) => item.kind === 'streaming');
@@ -471,6 +528,7 @@ export function TodoDetailPage() {
               }
               streaming={streaming}
               editable={live}
+              mentionGroups={mentionGroups}
               onSend={
                 live
                   ? (text) => {
