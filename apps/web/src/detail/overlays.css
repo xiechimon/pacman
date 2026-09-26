@@ -116,7 +116,8 @@
   width: 24px;
   height: 24px;
   border: 0;
-  border-radius: 6px;
+  /* A3 圆角归一：6 → 8px（裁决 #1） */
+  border-radius: 8px;
   background: transparent;
   color: var(--text-tertiary);
   cursor: pointer;
@@ -358,15 +359,11 @@
   cursor: pointer;
 }
 
-.dlg-accept-done {
+/* A3 收编：primary/compact 皮肤归 ui/button.css；50×28 冻结几何 scoped
+   钉住（(0,2,0) 压过 .btn 单类，不赌 import 顺序）。 */
+.dlg-accept-footer .dlg-accept-done {
   width: 50px;
-  height: 28px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--card-button);
-  color: var(--text-on-accent);
-  font-size: 13px;
-  cursor: pointer;
+  padding: 0;
 }
 
 /* 重跑 footer (r8 57): renders only when the current run is the failed one;
@@ -379,15 +376,11 @@
   padding: 0 16px 26px;
 }
 
-.dlg-history-rerun {
-  height: 28px;
+.dlg-history-footer .dlg-history-rerun {
+  /* A3 收编：皮肤/28px 高归 ui/button.css（primary/compact）；13px 侧垫
+     是 r8 57 冻结值（原语 12px 会窄 2px），scoped (0,2,0) 压过 .btn
+     单类，不赌 import 顺序。 */
   padding: 0 13px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--card-button);
-  color: var(--text-on-accent);
-  font-size: 13px;
-  cursor: pointer;
 }
 
 /* 创建 Agent dialog (issue #170, r2 §8.1 capture 20): name-first form —
@@ -581,7 +574,9 @@
   height: 24px;
   padding: 0 10px;
   border: none;
-  border-radius: 6px;
+  /* A3 圆角归一：6 → 8px（裁决 #1）；tsx 在 resources/routes 域，
+     仅 css 侧归一。 */
+  border-radius: 8px;
   background: var(--card-button);
   font-size: 12px;
   color: var(--text-on-accent);
