@@ -18,6 +18,7 @@ import {
   buildStepActionBodySchema,
   chiefSendMessageBodySchema,
   createAgentBodySchema,
+  createBranchSyncBodySchema,
   createMcpServerBodySchema,
   createProviderBodySchema,
   createScheduleBodySchema,
@@ -70,6 +71,11 @@ import { conflict, HttpError, notFound, parseWith } from './lib/errors.js';
 import { systemGitOps } from './lib/git.js';
 import { newRecordId } from './lib/ids.js';
 import { createApiKey, listApiKeys } from './services/api-keys.js';
+import {
+  createBranchSync,
+  latestBranchSyncForBuild,
+  type MachineSyncHub,
+} from './services/branch-sync.js';
 import {
   applyBuildStepAction,
   getBuild,
@@ -819,6 +825,69 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       if (err instanceof PhaseTransitionError) throw conflict(err.message);
       throw err;
     }
+  });
+
+  // —— build 分支对话框「同步到机器」（M7 #319，08 册附录 B）———————————————
+  // 创建同步：web → server 写 pending 行 + 推 machine wire sync 事件 +
+  // 推 team stream branch_sync 事件；machine wire 派发失败（机器 stream 断连
+  // 中间态）= 路由层 409 + 结果卡显示 failed（services/branch-sync.ts 落账）。
+  // 响应 = 全 branch_sync 行，载荷形 wire = shared branchSyncRecordSchema 单源。
+  // build → teamId 经 todo 行投影（build record 无 teamId 列，02 §6.2
+  // 字段表不含——投影必经 todo）；cloneUrl 经 todo → project → repoKind 双形态
+  // 分流（hosted = server 端 bare clone URL；github = github.com/<owner>/<repo>.git）。
+  app.post('/api/builds/:id/branch-sync', async (c) => {
+    const buildId = c.req.param('id');
+    const buildRow = getBuild(svc, buildId);
+    if (!buildRow) throw notFound(`build ${buildId}`);
+    const todoRow = ctx.db
+      .select({ teamId: todo.teamId, projectId: todo.projectId })
+      .from(todo)
+      .where(eq(todo.id, buildRow.todoId))
+      .get();
+    if (!todoRow) throw notFound(`todo ${buildRow.todoId}`);
+    let cloneUrl: string | null = null;
+    let projectId: string | null = null;
+    if (todoRow.projectId !== null) {
+      const projRow = ctx.db.select().from(project).where(eq(project.id, todoRow.projectId)).get();
+      if (projRow) {
+        projectId = projRow.id;
+        const origin = requestOrigin(c);
+        if (projRow.repoKind === 'hosted' && projRow.repoName !== null) {
+          cloneUrl = `${origin}/git/${todoRow.teamId}/${projRow.repoName}`;
+        } else if (projRow.repoKind === 'github' && projRow.githubRepo !== null) {
+          cloneUrl = `https://github.com/${projRow.githubRepo}.git`;
+        }
+      }
+    }
+    const body = parseWith(createBranchSyncBodySchema, await jsonBody(c), 'body');
+    const record = createBranchSync(
+      {
+        db: ctx.db,
+        hub: ctx.hub,
+        // MachineWakeHub 实现了 MachineSyncHub 接口（同进程内 cast 安全）。
+        machineHub: ctx.machineHub as unknown as MachineSyncHub,
+      },
+      {
+        buildId,
+        machineId: body.machineId,
+        teamId: todoRow.teamId,
+        projectId,
+        cloneUrl,
+        directory: body.directory,
+        ref: body.ref,
+        commit: body.commit,
+        force: body.force,
+      },
+    );
+    return c.json(record, 201);
+  });
+
+  // 查 build 最新一次 sync：web 端结果卡初屏数据源（订阅失败/SSE 错位时兜底
+  // 重取，02 §1.2/§1.3 双保险）。无 sync 行 = null（前端不显示结果卡）。
+  app.get('/api/builds/:id/branch-sync', (c) => {
+    const buildId = c.req.param('id');
+    if (!getBuild(svc, buildId)) throw notFound(`build ${buildId}`);
+    return c.json(latestBranchSyncForBuild({ db: ctx.db }, buildId));
   });
 
   app.post('/api/builds/:id/steps', async (c) => {

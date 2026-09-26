@@ -162,6 +162,45 @@ export const message = sqliteTable('message', {
   createdAt: epochMs('createdAt').notNull(),
 });
 
+// —— branch_sync（M7 #319，08 册 §3 story 10 + 附录 B）——————————————————————
+// 分支对话框「同步到机器」状态机（pending → running → synced | failed）。
+// 状态机走内部表（INTERNAL_ONLY_TABLES；读位 = `GET /api/builds/{id}/branch-sync`
+// 端点封套 + team stream `branch_sync` 事件载荷），不另开 record projection。
+// createdAt/startedAt/finishedAt = 阶段切时点（finishedAt = synced|failed 终态
+// 时刻），错误信息落 errorMessage；服务端无权写 startedAt/finishedAt 之外的
+// 字段（daemon 端通过 POST /api/machine/sync-result/{syncId} 改 status +
+// startedAt/finishedAt/errorMessage）。
+export const branchSync = sqliteTable('branch_sync', {
+  id: text('id').primaryKey(),
+  /** ≡ buildId = conversationId（02 §4.2/CONTEXT.md 实体等式）。 */
+  buildId: text('buildId')
+    .notNull()
+    .references(() => build.id, { onDelete: 'cascade' }),
+  machineId: text('machineId')
+    .notNull()
+    .references(() => machine.id),
+  teamId: text('teamId')
+    .notNull()
+    .references(() => team.id),
+  /** 目标同步目录（机器本机路径；web 默认 `~/<homeDirName>/workspaces/<buildId>`，
+   * 用户可改——r1 changelog 09-13 文本）。 */
+  directory: text('directory').notNull(),
+  /** 分支名（`pacman/conv-<uuid>`，brand conversationBranch）。 */
+  ref: text('ref').notNull(),
+  /** 完整 40hex sha（spec 展示形 = 12hex，但 wire 用全 sha 简化对拍）。 */
+  commit: text('commit').notNull(),
+  /** force 语义 = 丢弃修改 + 删未跟踪文件（保留 .gitignore 内容），仅本次生效。 */
+  force: integer('force', { mode: 'boolean' }).notNull().default(false),
+  status: text('status')
+    .$type<'pending' | 'running' | 'synced' | 'failed'>()
+    .notNull()
+    .default('pending'),
+  errorMessage: text('errorMessage'),
+  createdAt: epochMs('createdAt').notNull(),
+  startedAt: epochMs('startedAt'),
+  finishedAt: epochMs('finishedAt'),
+});
+
 // —— steer_pending（W3 #278，06 册 D9：build 会话运行中的补充说明单槽）——————
 // conversation 维度一行（单槽覆盖，spec #277「双发竞态不排队」）；定向的
 // claimed 步 = 拉取校验 + 旧步丢弃判定（步收尾换新步后 pending 不可复活）。

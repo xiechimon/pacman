@@ -17,8 +17,9 @@ describe('24 表 migration（01 §6 清单）', () => {
     const tables = Object.values(schema).filter((v) => is(v, SQLiteTable));
     const names = tables.map((t) => getTableConfig(t as SQLiteTable).name).sort();
     expect(names).toEqual([...DB_TABLES].sort());
-    expect(names).toHaveLength(27); // 26 record 投影（含 M4a +chief + W3 steer_pending）+ todo_tag join
+    expect(names).toHaveLength(28); // 26 record 投影（含 M4a +chief + W3 steer_pending）+ todo_tag join + M7 #319 branch_sync
     expect(names).toContain('chief');
+    expect(names).toContain('branch_sync');
   });
 
   test('migration SQL 进 repo 且全表覆盖（跨 migration 累计）', () => {

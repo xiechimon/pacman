@@ -15,6 +15,7 @@ import {
   machineEnrollStartBodySchema,
   machinePresenceBodySchema,
   machineRecordSchema,
+  machineSyncResultBodySchema,
   machineToolBodySchema,
   machineToolRelayBodySchema,
   machineTranscriptDeltaBodySchema,
@@ -28,6 +29,7 @@ import type { AppContext } from './context.js';
 import type { machine as machineTable } from './db/schema.js';
 import { HttpError, parseWith } from './lib/errors.js';
 import { newRecordId } from './lib/ids.js';
+import { transitionBranchSync } from './services/branch-sync.js';
 import {
   authorizeEnrollmentMachine,
   claimStep,
@@ -229,7 +231,10 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
   app.get('/api/machine/stream', (c) => {
     const row = me(c);
     return streamSSE(c, async (stream) => {
-      const unsubscribe = ctx.machineHub.subscribe(row.teamId, (ev) => {
+      // 机器定向订阅（M7 #319 [设计]，08 册附录 B）：team 广播 + 机器索引，
+      // 供 pushSync 派发 sync 命令到本机。重复连接 = 后注册覆盖前注册（重连
+      // 中间态自动清理）。
+      const unsubscribe = ctx.machineHub.subscribeMachine(row.teamId, row.id, (ev) => {
         void stream.writeSSE({ data: JSON.stringify(ev) });
       });
       let release: () => void = () => {};
@@ -328,6 +333,27 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     const row = me(c);
     const body = parseWith(machineDoneBodySchema, await jsonBody(c), 'body');
     await finishStep(deps, row.id, c.req.param('stepId'), body);
+    return c.json({ ok: true as const });
+  });
+
+  // —— POST /api/machine/sync-result/{syncId}（M7 #319 [设计]，
+  // MACHINE_WIRE_EXTENSIONS 登记位，08 册附录 B「分支同步」）：daemon 回写
+  // sync 状态过渡（running/synced/failed）。状态机 = pending → running →
+  // synced/failed——终态不可改、跨机写入校验 machineId 归属（403）。transition
+  // 内部 publish team stream `branch_sync` 事件，web 实时结果卡数据面单源
+  // （services/branch-sync.ts transitionBranchSync）。 ————————————————
+  app.post('/api/machine/sync-result/:syncId', async (c) => {
+    const row = me(c);
+    const body = parseWith(machineSyncResultBodySchema, await jsonBody(c), 'body');
+    transitionBranchSync(
+      { db: ctx.db, hub: ctx.hub },
+      {
+        syncId: c.req.param('syncId'),
+        machineId: row.id,
+        status: body.status,
+        ...(body.errorMessage !== undefined ? { errorMessage: body.errorMessage } : {}),
+      },
+    );
     return c.json({ ok: true as const });
   });
 }

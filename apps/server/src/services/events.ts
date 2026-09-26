@@ -8,6 +8,7 @@
 // SSE 写入按连接串行化（promise 链），避免交错。
 
 import type {
+  BranchSyncRecord,
   BuildRecord,
   ConversationStepEvent,
   NotificationRecord,
@@ -58,6 +59,15 @@ export class TeamStreamHub {
    * services/notifications.ts。 */
   publishNotification(teamId: string, record: NotificationRecord): void {
     this.publish(teamId, () => ({ type: 'notification', notification: record }));
+  }
+
+  /** branch_sync 事件（M7 #319，08 册附录 B「分支同步」）：
+   * {type:"branch_sync", sync:{…}} 全行载荷（status 字段 4 态：
+   * pending/running/synced/failed；web 端结果卡按此状态显示「正在同步…/
+   * 已同步/失败」三面过渡）。无 seq/v 位——状态机过渡态，载荷真值即契约；
+   * web 端订阅即直更 + 重取兜底（02 §1.2/§1.3 双保险）。 */
+  publishBranchSync(teamId: string, record: BranchSyncRecord): void {
+    this.publish(teamId, () => ({ type: 'branch_sync', sync: record }));
   }
 
   /** 通用发布：每连接独立组帧（seq 连接内递增）。 */
