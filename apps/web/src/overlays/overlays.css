@@ -1,7 +1,10 @@
 /* Overlay batch B (issue #67): ⌘K search panel (r7 05 + 05b), status-chip
    popover (r7 19/29) and the 方案▾ document-type dropdown (r7 20).
    Geometry measured off the r7 bitmaps at 1440×732; colors ride the token
-   layer so both themes render from one rule set. */
+   layer so both themes render from one rule set.
+   A3-overlays 收编（2026-09-26）：可交互控件圆角归一 8px、面板 12px
+   字面量 → --edge-radius（等值）；行/钮散写形态原语表达不了的缓收，
+   清单见 docs/a3/report-overlays.md。 */
 
 /* ---- ⌘K search panel ------------------------------------------------ */
 
@@ -28,7 +31,8 @@
   display: flex;
   flex-direction: column;
   background: var(--popover-bg);
-  border-radius: 12px;
+  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
+  border-radius: var(--edge-radius);
   box-shadow: var(--fab-shadow);
   overflow: hidden;
 }
@@ -275,7 +279,8 @@
   display: flex;
   flex-direction: column;
   background: var(--popover-bg);
-  border-radius: 12px;
+  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
+  border-radius: var(--edge-radius);
   box-shadow: var(--fab-shadow);
   overflow: hidden;
   z-index: 30;
@@ -420,7 +425,8 @@
   align-items: center;
   padding: 0 4px 0 24px;
   border: none;
-  border-radius: 10px;
+  /* A3 圆角归一：可交互控件一律 8px（原 10px，透明底无像素差） */
+  border-radius: 8px;
   background: transparent;
   font: inherit;
   font-size: 12px;

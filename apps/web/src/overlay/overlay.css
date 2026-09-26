@@ -5,7 +5,9 @@
    backdrop rgb(0 0 0 / .6) over both themes, dialog head/body/footer =
    popover/surface/surface-secondary, menu row bands 40/37/41/45 measured
    off the 18/24 separators. Dark values ride the token layer; the r8
-   dark captures (54–57) are the check surface. */
+   dark captures (54–57) are the check surface.
+   A3-overlays 收编（2026-09-26）：footer 动作钮 → ui/Button（头注见各 tsx）、
+   可交互控件圆角归一 8px、面板 12px 字面量 → --edge-radius（等值）。 */
 
 /* ---- shared modal backdrop ---- */
 /* a button so keyboard users get the same dismiss path as the click */
@@ -31,7 +33,8 @@
   height: 439px;
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
+  border-radius: var(--edge-radius);
   overflow: hidden;
   box-shadow: var(--dialog-shadow);
   z-index: 21;
@@ -288,35 +291,10 @@
   gap: 13px;
 }
 
-.new-task-save {
-  width: 50px;
-  height: 30px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: transparent;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.new-task-start {
-  width: 87px;
-  height: 30px;
-  border: none;
-  border-radius: 8px;
-  background: var(--card-button);
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-on-accent);
-  cursor: pointer;
-}
-
-.new-task-start:disabled {
-  background: var(--new-task-primary-disabled);
-  color: var(--disabled-fg);
-  cursor: default;
-}
+/* A3-overlays 收编：保存/保存并开始 = ui/Button ghost/primary standard
+   （new-task-dialog.tsx 头注；r7 实测 30px/12px 高字归原语 32/13 档）。
+   .new-task-start:disabled 原走 --new-task-primary-disabled，收编后随原语
+   --primary-disabled（token 冗余待主线清理，tokens.css 本票冻结）。 */
 
 /* ---- delete confirm (r7 25: 448×142, centered both axes) ---- */
 
@@ -327,7 +305,8 @@
   transform: translate(-50%, -50%);
   width: 448px;
   height: 142px;
-  border-radius: 12px;
+  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
+  border-radius: var(--edge-radius);
   background: var(--dialog-bg);
   box-shadow: var(--dialog-shadow);
   z-index: 21;
@@ -398,16 +377,12 @@
   cursor: pointer;
 }
 
-.delete-confirm-delete {
-  width: 50px;
-  height: 30px;
-  border: none;
-  border-radius: 8px;
-  background: var(--danger);
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-on-accent);
-  cursor: pointer;
+/* A3-overlays 收编：删除钮 = ui/Button danger standard（类别名见
+   delete-confirm.tsx 头注）；原语 danger 无 :disabled 形态，项目删除
+   闸门的降透明度留在本面（原语补形态归主线，ui/ 本票冻结）。 */
+.delete-confirm-delete:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 /* ---- project delete confirm (#207, r2 24d): family shape + 键入名确认行 ---- */
@@ -424,13 +399,14 @@
   color: var(--text-secondary);
 }
 
+/* A3 圆角归一：可交互控件一律 8px（原 6px，diff-audit #1）。 */
 .delete-confirm-input {
   display: block;
   width: calc(100% - 32px);
   margin: 8px 16px 0;
   height: 30px;
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   padding: 0 10px;
   font-family: inherit;
@@ -438,11 +414,6 @@
   line-height: 18px;
   color: var(--text-primary);
   outline: none;
-}
-
-.delete-confirm-delete:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 /* ---- 更多 menu (r7 18/24: 220×165 @ 1052.5,39.5, right-anchored) ---- */
@@ -464,7 +435,8 @@
   right: 167.5px; /* 1440 − 1272.5, r7 §3.5 right-edge anchor */
   width: 220px;
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
+  border-radius: var(--edge-radius);
   background: var(--popover-bg);
   box-shadow: var(--fab-shadow);
   z-index: 21;

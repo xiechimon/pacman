@@ -1,6 +1,9 @@
 /* Token 门页（#253）：鉴权开且无有效 token 时的全屏唯一面——盖住全部 UI，
    置于既有 overlay 层（最大 z-index 41，overlays.css）之上。视觉语言 =
-   dialog 族同款（surface 面板 + edge 圆角/阴影，tokens.css 变量随主题）。 */
+   dialog 族同款（surface 面板 + edge 圆角/阴影，tokens.css 变量随主题）。
+   A3-overlays 收编：输入 = ui/Input（36px 实测族）、提交 = ui/Button
+   primary standard；token-gate-input/-submit 类名保留为 e2e 定位别名
+   （token-gate.spec.ts），样式本体在 ui/input.css / ui/button.css。 */
 
 .token-gate-backdrop {
   position: fixed;
@@ -44,38 +47,8 @@
   color: var(--text-tertiary);
 }
 
-.token-gate-input {
-  padding: 8px 10px;
-  font-size: 13px;
-  color: var(--text-primary);
-  background: var(--surface-inset);
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  outline: none;
-}
-
-.token-gate-input:focus {
-  border-color: var(--indigo-500);
-}
-
 .token-gate-error {
   margin: 0;
   font-size: 12px;
   color: var(--rose-500);
-}
-
-.token-gate-submit {
-  padding: 8px 0;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-on-accent);
-  background: var(--card-button);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.token-gate-submit:disabled {
-  opacity: 0.5;
-  cursor: default;
 }

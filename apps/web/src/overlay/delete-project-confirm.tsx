@@ -3,11 +3,14 @@
 // 加键入项目名确认行:输入与项目名精确匹配才解禁删除钮(误删闸门,票面
 // 「确认输入不匹配禁用」)。级联语义不在本层——server services/projects.ts
 // 单源(#189);本层只管确认形状与闸门。
+// A3-overlays 收编：删除钮 = ui/Button danger（类别名/禁用形态处置同
+// delete-confirm.tsx 头注）。
 
 import { useEffect, useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { X } from '../icons/index.js';
 import { OverlayMount } from '../overlays/dismiss.js';
+import { Button } from '../ui/button.js';
 import { useEscClose } from './use-esc.js';
 import { FADE_EXIT_MS } from './use-overlay-mount.js';
 import './overlay.css';
@@ -75,14 +78,15 @@ export function DeleteProjectConfirm({
           <button type="button" className="delete-confirm-cancel" onClick={onClose}>
             {t('取消')}
           </button>
-          <button
-            type="button"
+          <Button
+            variant="danger"
+            size="standard"
             className="delete-confirm-delete"
             disabled={typed !== projectName}
             onClick={onConfirm}
           >
             {t('删除')}
-          </button>
+          </Button>
         </div>
       </div>
     </OverlayMount>
