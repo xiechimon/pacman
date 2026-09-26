@@ -10,7 +10,7 @@
     "node": ">=22.19.0"
   },
   "bin": {
-    "pacman": "./dist/cli.mjs"
+    "pacman": "dist/cli.mjs"
   },
   "files": [
     "dist"

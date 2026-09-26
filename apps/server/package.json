@@ -7,7 +7,7 @@
     "node": ">=22.19.0"
   },
   "bin": {
-    "pacman": "./dist/index.mjs"
+    "pacman": "dist/index.mjs"
   },
   "publishConfig": {
     "access": "public"
