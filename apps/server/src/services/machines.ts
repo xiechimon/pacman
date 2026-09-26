@@ -1087,6 +1087,9 @@ export async function finishStep(
       })
       .run();
   }
+  // stop_pending 卫生清理（全终态共通，M7 #308）：stop 与自然完成/失败的
+  // 竞态残留随收尾即清（拉取-确认面另有定向步校验双保险，不复活）。
+  db.delete(stopPending).where(eq(stopPending.conversationId, stepRow.buildId)).run();
   // chief 步收尾（无 build/phase/merge；thread 面 + chief_message 通知，r5 §3.6/
   // §7.2）。token 记账已按 buildId=chief conv id 落位（context.tokens 数据源）。
   if (stepRow.kind === 'chief' && isChiefConversation(stepRow.buildId)) {
@@ -1114,8 +1117,7 @@ export async function finishStep(
     return;
   }
   // failed：步级失败无自动重跑（02 §4.2/r3 §3.7），todo → failed +
-  // build.errorMessage。stopPending 卫生清理（stop 与完成竞态残留）。
-  db.delete(stopPending).where(eq(stopPending.conversationId, stepRow.buildId)).run();
+  // build.errorMessage。
   db.update(step).set({ status: 'failed' }).where(eq(step.id, stepId)).run();
   publishStepStatus(deps, stepId);
   const buildRow = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();

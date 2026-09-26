@@ -163,11 +163,13 @@ export function requestStop(
   const { db } = deps;
   const buildRow = db.select().from(build).where(eq(build.id, buildId)).get();
   if (!buildRow) throw new NotFoundError(`build ${buildId}`);
-  // 活动步 = pending/claimed（步序贯，取最新一条）。
+  // 活动步 = pending/claimed（步序贯，取最新一条；orderBy 显式钉死语义，
+  // 不依赖隐式 rowid 序）。
   const active = db
     .select()
     .from(step)
     .where(and(eq(step.buildId, buildId), inArray(step.status, ['pending', 'claimed'])))
+    .orderBy(asc(step.createdAt))
     .all()
     .at(-1);
   if (!active) {
@@ -191,14 +193,16 @@ export function requestStop(
 }
 
 /** gate 回落目标（r9 §3.3「todo 落上一完成 turn 的 gate」的 build 内投影
- * [设计]——pacman 重跑 = 新 build 新会话，回落以本 build 为界）：最近 done
- * 步的关口（plan→confirm / build|merge→review）；无 done 步 → build.prevPhase
+ * [设计]——pacman 重跑 = 新 build 新会话新分支，跨 build 回落会指向旧会话的
+ * 变更面（latestBuildId 已换），故回落以本 build 为界）：最近 done 步的
+ * 关口（plan→confirm / build|merge→review）；无 done 步 → build.prevPhase
  * （回到本轮开始前的面：fresh→todo、失败重跑→failed、定时复跑→done…）。 */
-export function stopFallbackPhase(db: Db, buildRow: BuildRow): Phase {
+function stopFallbackPhase(db: Db, buildRow: BuildRow): Phase {
   const lastDone = db
     .select()
     .from(step)
     .where(and(eq(step.buildId, buildRow.id), eq(step.status, 'done')))
+    .orderBy(asc(step.createdAt))
     .all()
     .at(-1);
   if (lastDone) return lastDone.kind === 'plan' ? 'confirm' : 'review';
