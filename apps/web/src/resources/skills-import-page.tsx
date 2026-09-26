@@ -17,6 +17,8 @@ import { useApiMutations } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
+import { Button } from '../ui/button.js';
+import { Input } from '../ui/input.js';
 import { ResourceShell } from './shell.js';
 import { SKILLS_HREF } from './skills-page.js';
 
@@ -144,7 +146,7 @@ export function SkillsImportPage() {
           <label className="res-label" htmlFor="skill-name">
             {t('名称')}
           </label>
-          <input
+          <Input
             className="res-input"
             id="skill-name"
             placeholder={t('例如：deploy')}
@@ -153,14 +155,15 @@ export function SkillsImportPage() {
           <label className="res-label" htmlFor="skill-desc">
             {t('描述')}
           </label>
-          <input
+          <Input
             className="res-input"
             id="skill-desc"
             placeholder={t('简要描述该技能的功能')}
             {...(live ? { value: desc, onChange: (e) => setDesc(e.target.value) } : {})}
           />
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="standard"
             className="res-primary res-primary--block"
             disabled={live ? !canCreate : true}
             onClick={
@@ -178,7 +181,7 @@ export function SkillsImportPage() {
             }
           >
             {t('创建技能')}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="res-form">
@@ -186,7 +189,7 @@ export function SkillsImportPage() {
             {t('GitHub 链接')}
           </label>
           <div className="res-scanrow">
-            <input
+            <Input
               className="res-input"
               id="skill-repo"
               placeholder="https://github.com/owner/repo"

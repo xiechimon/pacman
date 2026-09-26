@@ -269,6 +269,8 @@
   color: var(--text-dim);
 }
 
+/* team-create-agent 圆角 10→8 = a3-pages 圆角归一（可交互 dashed 大钮，
+   e2e 钉 .team-create-agent；形态保留散写——dashed 全宽槽形原语不载）。 */
 .team-create-agent {
   display: flex;
   align-items: center;
@@ -276,7 +278,7 @@
   gap: 8px;
   height: 76px;
   border: 1px dashed var(--border-strong);
-  border-radius: 10px;
+  border-radius: 8px;
   background: transparent;
   font-size: 13px;
   color: var(--text-tertiary);
@@ -345,17 +347,8 @@
     surface removed by #148, so the lone 更换 centers on the column */
 }
 
-.account-avatar-actions button {
-  border: none;
-  background: transparent;
-  padding: 0;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.account-swap {
-  color: var(--indigo-500);
-}
+/* account-swap a3-pages 收编进 Button text 档（indigo 13px 无框逐值同形，
+   e2e 钉 .account-swap 文本断言的类名保留）。 */
 
 .account-row {
   display: flex;
@@ -543,15 +536,10 @@
   color: var(--text-primary);
 }
 
-.keys-once-copy {
-  height: 28px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 8px;
-  background: var(--card-button);
+/* keys-once-copy a3-pages 收编进 Button primary/compact；12px 字是一次性
+   块行内形的 per-face 差异（[推断] 面无捕获）。 */
+.btn.keys-once-copy {
   font-size: 12px;
-  color: var(--text-on-accent);
-  cursor: pointer;
 }
 
 .keys-once-note {
@@ -670,15 +658,9 @@
   color: var(--text-tertiary);
 }
 
-.apikey-form-input {
-  padding: 8px 10px;
-  font-size: 13px;
-  color: var(--text-primary);
-  background: var(--surface-inset);
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  outline: none;
-}
+/* apikey-form-input a3-pages 收编进 Input 原语（36px 标准族，surface 底/
+   card-border 描边——原 surface-inset/border-strong 散写面归一；W4 #287
+   面无 parity 基准，归一零红项）。类名留作定位别名。 */
 
 .apikey-form-toggles {
   display: flex;
@@ -705,13 +687,11 @@
   gap: 8px;
 }
 
-.apikey-form-quickbtn {
+/* apikey-form-quickbtn a3-pages 收编进 Button text 档；12px/tertiary 字色
+   是工具表头轻量动作字的 per-face 差异。 */
+.btn.apikey-form-quickbtn {
   font-size: 12px;
   color: var(--text-tertiary);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
 }
 
 .apikey-form-tools {

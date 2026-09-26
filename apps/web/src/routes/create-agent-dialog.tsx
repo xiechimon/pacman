@@ -13,6 +13,7 @@ import { Link, useLocation } from 'react-router';
 import { useI18n } from '../i18n/provider.js';
 import { PROVIDERS_HREF } from '../resources/providers-page.js';
 import { DialogShell } from '../ui/dialog-shell.js';
+import { Input } from '../ui/input.js';
 
 interface CreateAgentDialogProps {
   /** #73 retained-mount open flag. */
@@ -68,7 +69,7 @@ export function CreateAgentDialog({ open, onClose, onCreate }: CreateAgentDialog
         <label className="dlg-form-label" htmlFor="dlg-agent-name">
           {t('名称')}
         </label>
-        <input
+        <Input
           id="dlg-agent-name"
           className="dlg-form-input"
           value={name}

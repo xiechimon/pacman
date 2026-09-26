@@ -9,7 +9,9 @@
 import { CHIEF_REMOTE_TOOLS } from '@pacman/shared';
 import { useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
+import { Button } from '../ui/button.js';
 import { DialogShell } from '../ui/dialog-shell.js';
+import { Input } from '../ui/input.js';
 
 /** 权限位可选集 = remote tools 49 词表（grants 白名单消费面 =
  * services/mcp-face.ts）。 */
@@ -85,7 +87,10 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
         <label className="apikey-form-label" htmlFor="apikey-name-input">
           {t('名称（可选）')}
         </label>
-        <input
+        {/* a3-pages 收编：Input 原语 36px 标准族（surface 底/card-border 描边）；
+            W4 #287 面无 parity 基准，padding 8 10 → 36 固定高归一无红项。
+            类名留作 e2e/语义定位别名。 */}
+        <Input
           id="apikey-name-input"
           className="apikey-form-input"
           value={name}
@@ -113,12 +118,14 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
         <div className="apikey-form-tools-head">
           <span className="apikey-form-label">{t('工具权限位')}</span>
           <span className="apikey-form-quick">
-            <button type="button" className="apikey-form-quickbtn" onClick={grantAll}>
+            {/* a3-pages 收编：Button text 档；12px/tertiary 字色是 per-face
+                差异（工具表头的轻量动作字，见 secondary.css）。 */}
+            <Button variant="text" className="apikey-form-quickbtn" onClick={grantAll}>
               {t('全选')}
-            </button>
-            <button type="button" className="apikey-form-quickbtn" onClick={clearAll}>
+            </Button>
+            <Button variant="text" className="apikey-form-quickbtn" onClick={clearAll}>
               {t('清空')}
-            </button>
+            </Button>
           </span>
         </div>
         <div className="apikey-form-tools">
