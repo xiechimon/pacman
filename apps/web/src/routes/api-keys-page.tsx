@@ -14,6 +14,7 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, ExternalLink, Key } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
+import { Button } from '../ui/button.js';
 import { ApiKeyCreateDialog } from './api-key-create-dialog.js';
 
 export function ApiKeysPage() {
@@ -74,8 +75,11 @@ export function ApiKeysPage() {
             .map((key) => (
               <div key={`once-${key.id}`} className="keys-once">
                 <code className="keys-once-value">{key.plaintext}</code>
-                <button
-                  type="button"
+                {/* a3-pages 收编：Button primary/compact；12px 字是 per-face
+                    差异（一次性块行内形，见 secondary.css）。 */}
+                <Button
+                  variant="primary"
+                  size="compact"
                   className="keys-once-copy"
                   onClick={
                     live
@@ -84,7 +88,7 @@ export function ApiKeysPage() {
                   }
                 >
                   {t('复制')}
-                </button>
+                </Button>
                 <p className="keys-once-note">{t('请立即复制密钥，它仅显示一次。')}</p>
               </div>
             ))}

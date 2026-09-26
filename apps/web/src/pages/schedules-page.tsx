@@ -25,6 +25,7 @@ import {
   X,
 } from '../icons/index.js';
 import { PHASE_UI } from '../phase.js';
+import { Button } from '../ui/button.js';
 import { PageShell } from './shell.js';
 import './pages.css';
 
@@ -111,9 +112,10 @@ function ScheduleCard({ schedule, now }: { schedule: ScheduleRecord; now: number
         </div>
       </div>
       <span className={`sched-card-chip sched-card-chip--${ui.tone}`}>{t(ui.chip)}</span>
-      <button type="button" className="sched-card-more" aria-label={t('更多')}>
+      {/* A4-deep 收编：icon 变体皮肤；24×24 几何 per-face 留 pages.css */}
+      <Button variant="icon" className="sched-card-more" aria-label={t('更多')}>
         <EllipsisVertical />
-      </button>
+      </Button>
     </div>
   );
 }
@@ -148,14 +150,15 @@ function ScheduleForm({
       <div className="sched-form" role="dialog" aria-label={t('新建定时')}>
         <header className="sched-form-head">
           <span className="sched-form-title">{t('新建定时')}</span>
-          <button
-            type="button"
+          {/* A4-deep 收编：icon 变体皮肤；24×24 几何 per-face 留 pages.css */}
+          <Button
+            variant="icon"
             className="sched-form-close"
             aria-label={t('关闭')}
             onClick={live?.onClose}
           >
             <X />
-          </button>
+          </Button>
         </header>
         <div className="sched-form-body">
           <div className="sched-form-row">

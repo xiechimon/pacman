@@ -9,6 +9,7 @@
 import type { RunHistoryRow } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, X } from '../icons/index.js';
+import { Button } from '../ui/button.js';
 import { DialogShell } from '../ui/dialog-shell.js';
 import './overlays.css';
 
@@ -38,9 +39,14 @@ export function HistoryDialog({ runs, open, onClose }: HistoryDialogProps) {
       footer={
         rerunnable ? (
           <div className="dlg-history-footer">
-            <button type="button" className="dlg-history-rerun" onClick={onClose}>
+            <Button
+              variant="primary"
+              size="compact"
+              className="dlg-history-rerun"
+              onClick={onClose}
+            >
               {t('重跑')}
-            </button>
+            </Button>
           </div>
         ) : undefined
       }
