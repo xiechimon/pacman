@@ -1,15 +1,17 @@
-// Account route (issue #70, r7 13): avatar head with 更换, the four
-// setting rows (名称 + edit glyph, 邮箱, 语言 select, 推送通知 switch).
-// Copy and row order verbatim from the 13 capture.
+// Account route (issue #70, r7 13): avatar head, the four setting rows
+// (名称 + edit glyph, 邮箱, 语言 select, 推送通知 switch). Copy and row
+// order verbatim from the 13 capture.
 // #148 (台账 #136 account 行, local-first 裁决同 #129 先例): 删除 / 退出登录
-// are SaaS surface a single-user self-host has no semantics for — removed;
-// 更换头像 stays a wontfix placeholder (the avatar is the static
-// /avatar-user.png asset, no upload face exists or will); the 推送通知
-// switch is live — it mirrors Notification.permission and clicking an off
-// switch drives the same requestPermission() path as the #114 banner
-// (shared useNotificationPermission). Fixture mode freezes the switch
-// granted: r7 13 shows it on and the parity headless chromium reports the
-// real API as 'denied'.
+// are SaaS surface a single-user self-host has no semantics for — removed.
+// #306 wontfix 出账（收编 #148 的占位裁定）: 头像更换钮 — the avatar is the
+// static /avatar-user.png asset, no upload face exists or will（无
+// PATCH /user/me 头像写路径），M7「已渲染的交互必须生效」底线不收死钮，
+// 移除不渲染；r7 13 的更换 ink 是 SaaS 头像素残面，avatar 头保留。
+// The 推送通知 switch is live — it mirrors Notification.permission and
+// clicking an off switch drives the same requestPermission() path as the
+// #114 banner (shared useNotificationPermission). Fixture mode freezes the
+// switch granted: r7 13 shows it on and the parity headless chromium
+// reports the real API as 'denied'.
 // #74: the 语言 row is live — it reads/writes the workspace locale
 // (zh-CN authoritative + en, 01 S6) through the i18n provider and persists
 // to the r2 §1.5 dual keys. The dropdown open state is [设计]: the official
@@ -52,14 +54,6 @@ export function AccountPage() {
           <span className="account-avatar">
             <img src="/avatar-user.png" alt="" />
           </span>
-          <div className="account-avatar-actions">
-            {/* wontfix (台账 #136 account 行, #148 裁决): local single user —
-                the avatar is the static placeholder asset, no upload face
-                exists or will; the 更换 ink stays as capture-verbatim chrome. */}
-            <button type="button" className="account-swap">
-              {t('更换')}
-            </button>
-          </div>
         </div>
         <div className="account-row account-row--name">
           <span className="account-label">{t('名称')}</span>

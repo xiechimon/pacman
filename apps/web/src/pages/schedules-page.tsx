@@ -5,11 +5,17 @@
 // #83 (M5): live 分支——列表 = GET /api/schedules 真值（SSE todo 事件联动
 // 失效），新建 dialog 可交互（受控 tab/时/分 → POST /api/schedules，02 §9.2
 // 触发闭环由 server Scheduler 兑现）；fixture 分支（r7 11/r3 92/93 行）不变。
+// #306 接真：卡片「更多」钮开 per-card 菜单（anchored-overlay 家族律：Esc +
+// 外点关）。菜单内容 [设计]——原站 sched 卡菜单内容未观测（r3 §9 仅录卡面），
+// 唯一行「删除」沿 DELETE /api/schedules/:id 全链（route/service/web mutation
+// 均已建、此前无 UI 入口）；删除走 DeleteConfirm 家族确认弹层。fixture 面
+// 删除走 deletions.ts 覆面（session 局部），live 面走 mutation。
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useApiMutations, useProjects, useSchedules, useTodos } from '../api/hooks.js';
 import { mapSchedules, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import type { FixtureSet, ScheduleRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
@@ -22,8 +28,11 @@ import {
   Lock,
   PlusSmall,
   Server,
+  Trash2,
   X,
 } from '../icons/index.js';
+import { DeleteConfirm } from '../overlay/delete-confirm.js';
+import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
 import { PageShell } from './shell.js';
 import './pages.css';
@@ -85,8 +94,20 @@ const RUN_WORD: Record<ScheduleRecord['kind'], string> = {
   once: '运行一次',
 };
 
-function ScheduleCard({ schedule, now }: { schedule: ScheduleRecord; now: number }) {
+function ScheduleCard({
+  schedule,
+  now,
+  onDelete,
+}: {
+  schedule: ScheduleRecord;
+  now: number;
+  /** #306: opens the delete confirm (owned by the page so one dialog
+   *  serves every card). */
+  onDelete: () => void;
+}) {
   const { t } = useI18n();
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEscapeClose(menuOpen, () => setMenuOpen(false));
   const ui = PHASE_UI[schedule.todo.phase];
   return (
     <div className="sched-card">
@@ -111,9 +132,36 @@ function ScheduleCard({ schedule, now }: { schedule: ScheduleRecord; now: number
         </div>
       </div>
       <span className={`sched-card-chip sched-card-chip--${ui.tone}`}>{t(ui.chip)}</span>
-      <button type="button" className="sched-card-more" aria-label={t('更多')}>
-        <EllipsisVertical />
-      </button>
+      <span className="sched-more-wrap">
+        <button
+          type="button"
+          className="sched-card-more"
+          aria-label={t('更多')}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          <EllipsisVertical />
+        </button>
+        <OverlayMount open={menuOpen}>
+          <ClickCatcher onClose={() => setMenuOpen(false)} />
+          <div className="sched-card-menu" role="menu" aria-label={t('更多')}>
+            <button
+              type="button"
+              role="menuitem"
+              className="sched-card-menu-row"
+              data-action="delete"
+              onClick={() => {
+                setMenuOpen(false);
+                onDelete();
+              }}
+            >
+              <Trash2 width={13} height={13} />
+              {t('删除')}
+            </button>
+          </div>
+        </OverlayMount>
+      </span>
     </div>
   );
 }
@@ -271,8 +319,14 @@ export function SchedulesPage() {
   const [formKind, setFormKind] = useState<'hourly' | 'daily' | 'weekly' | 'once'>('daily');
   const [formHour, setFormHour] = useState('09');
   const [formMinute, setFormMinute] = useState('00');
-  const schedules = live ? mapSchedules(schedulesQ.data ?? []) : (fixture.schedules ?? []);
+  const schedules = withoutDeleted(
+    live ? mapSchedules(schedulesQ.data ?? []) : (fixture.schedules ?? []),
+  );
   const now = live ? Date.now() : fixture.now;
+  // #306 删除确认：target 与 open 分离——退出动画期摘要行保内容（todo 删除
+  // 同律），重开换 target 即换摘要。
+  const [deleteTarget, setDeleteTarget] = useState<ScheduleRecord | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const liveTodos = (todosQ.data ?? []).map(toDisplayTodo);
   const liveTodo = todosQ.data?.[0];
   const saveSchedule = () => {
@@ -344,7 +398,17 @@ export function SchedulesPage() {
             </div>
           </div>
         ) : (
-          schedules.map((s) => <ScheduleCard key={s.id} schedule={s} now={now} />)
+          schedules.map((s) => (
+            <ScheduleCard
+              key={s.id}
+              schedule={s}
+              now={now}
+              onDelete={() => {
+                setDeleteTarget(s);
+                setConfirmOpen(true);
+              }}
+            />
+          ))
         )}
       </div>
       {live
@@ -368,6 +432,28 @@ export function SchedulesPage() {
         : fixture.scheduleForm != null && (
             <ScheduleForm kind={fixture.scheduleForm} fixture={fixture} />
           )}
+      <DeleteConfirm
+        open={confirmOpen}
+        title={t('确定删除该定时？此操作不可撤销。')}
+        summary={
+          deleteTarget != null ? (
+            <>
+              <span className="delete-confirm-seq">#{deleteTarget.todo.seqNum}</span>
+              {deleteTarget.todo.title}
+            </>
+          ) : null
+        }
+        ariaLabel={t('删除定时')}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          if (deleteTarget == null) return;
+          // live = DELETE /api/schedules/:id（invalidateAll 重取）；fixture =
+          // deletions 覆面（session 局部，重载还原）——todo 删除同律。
+          if (live) mutations.deleteSchedule.mutate(deleteTarget.id);
+          else markDeleted(deleteTarget.id);
+          setConfirmOpen(false);
+        }}
+      />
     </PageShell>
   );
 }

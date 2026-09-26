@@ -521,7 +521,14 @@ export function TodoDetailPage() {
       />
       <DeleteConfirm
         open={deleteOpen}
-        todo={todo}
+        title={t('确定删除该任务？此操作不可撤销。')}
+        summary={
+          <>
+            <span className="delete-confirm-seq">#{todo.seqNum}</span>
+            {todo.title}
+          </>
+        }
+        ariaLabel={t('删除任务')}
         onClose={() => setDeleteOpen(false)}
         onConfirm={() => {
           setDeleteOpen(false);

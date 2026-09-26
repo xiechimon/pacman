@@ -339,24 +339,6 @@
   display: block;
 }
 
-.account-avatar-actions {
-  display: flex;
-  margin-top: 10px; /* 更换 band y151..161 (r7 13); the 删除 twin is SaaS
-    surface removed by #148, so the lone 更换 centers on the column */
-}
-
-.account-avatar-actions button {
-  border: none;
-  background: transparent;
-  padding: 0;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.account-swap {
-  color: var(--indigo-500);
-}
-
 .account-row {
   display: flex;
   align-items: center;
