@@ -195,11 +195,9 @@
   --chief-tab-bg: #27272a;
   --chief-tab-active: #3f3f46;
   /* overlay batch A (#66): dialog shadow probed off r7 04 (stronger than
-     --fab-shadow over the backdrop); the new-task disabled primary =
-     primary at 50% over the footer surface (04 vs 14). --danger stays
-     the #71/#2 24c probe value in both themes */
+     --fab-shadow over the backdrop). --danger stays the #71/#2 24c probe
+     value in both themes */
   --dialog-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
-  --new-task-primary-disabled: #373380;
   /* notification banner bell disc (#114), r2 28 dark sample; the glyph on
      it is --indigo-500 in both themes (r2 01/28) */
   --notify-icon-bg: #2e2f42;
@@ -311,7 +309,6 @@
   /* overlay batch A (#66), light values probed off r7 04/25; the dialog
      shadow is theme-invariant (probed light, r8 79 dark shows the same)
      — mirrored explicitly so .light stays the full semantic-token mirror */
-  --new-task-primary-disabled: #9f9ae2;
   --disabled-fg: #ffffff;
   --menu-icon: #1c1917;
   --dialog-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
