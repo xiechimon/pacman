@@ -23,9 +23,23 @@ interface ComposerProps {
   /** M5 live 面：占位行换成真 textarea（同几何类名 + input 复位类；
    * fixture/parity 面保持静态 div，DOM 不变）。 */
   editable?: boolean;
+  /** 停止钮点击（M7 #308，r9 §3.3：确认弹层入口）；缺省 = 静态捕获面
+   * （fixture/parity 按钮不接线，DOM 字节不变）。 */
+  onStop?: () => void;
+  /** AI 审核钮点击（M7 #312，r8 §3.1：发起 AI 审核模态入口）；缺省 =
+   * 静态捕获面（fixture/parity 按钮不接线，DOM 字节不变）。 */
+  onReview?: () => void;
 }
 
-export function Composer({ placeholder, aiReview, streaming, onSend, editable }: ComposerProps) {
+export function Composer({
+  placeholder,
+  aiReview,
+  streaming,
+  onSend,
+  editable,
+  onStop,
+  onReview,
+}: ComposerProps) {
   const { t } = useI18n();
   const [draft, setDraft] = useState('');
   const send = () => {
@@ -69,7 +83,12 @@ export function Composer({ placeholder, aiReview, streaming, onSend, editable }:
           <Paperclip />
         </button>
         {aiReview && (
-          <button type="button" className="composer-tool" aria-label={t('AI 审核')}>
+          <button
+            type="button"
+            className="composer-tool"
+            aria-label={t('AI 审核')}
+            onClick={onReview}
+          >
             <SearchPlus />
           </button>
         )}
@@ -77,7 +96,9 @@ export function Composer({ placeholder, aiReview, streaming, onSend, editable }:
           <Grid2x2 />
         </button>
       </div>
-      {streaming && <button type="button" className="composer-stop" aria-label={t('停止')} />}
+      {streaming && (
+        <button type="button" className="composer-stop" aria-label={t('停止')} onClick={onStop} />
+      )}
       <button type="button" className="composer-send" aria-label={t('发送')} onClick={send}>
         <ArrowUp width={14} height={14} />
       </button>

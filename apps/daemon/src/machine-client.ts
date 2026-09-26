@@ -10,6 +10,7 @@ import {
   type MachineRecord,
   type MachineRecoverResponse,
   type MachineSteerResponse,
+  type MachineStopResponse,
   type MachineStreamEvent,
   type MachineTokenResponse,
   machineClaimResponseSchema,
@@ -20,6 +21,7 @@ import {
   machineRecordSchema,
   machineRecoverResponseSchema,
   machineSteerResponseSchema,
+  machineStopResponseSchema,
   machineStreamEventSchema,
   machineTokenResponseSchema,
   machineUploadUrlsResponseSchema,
@@ -92,6 +94,10 @@ export interface MachineApi {
    * （拉取即确认，server 侧 pending 随即清）；null = 无待取/非本机在跑步/
    * pending 定向旧步（已丢弃）。 */
   steer(stepId: string): Promise<string | null>;
+  /** stop 拉取-确认（M7 #308）：{discard} = 运行中步的停止请求（拉取即
+   * 确认；discard = 「丢弃本轮修改」勾选位，true → rewind 到步起点
+   * checkpoint）；null = 无待取/非本机在跑步/pending 定向旧步（已丢弃）。 */
+  stop(stepId: string): Promise<boolean | null>;
   stream(
     signal: AbortSignal,
     onEvent: (ev: MachineStreamEvent) => void,
@@ -345,6 +351,17 @@ export class MachineClient implements MachineApi {
       { parse: (raw) => machineSteerResponseSchema.parse(raw) },
     );
     return res.content;
+  }
+
+  /** stop 拉取-确认（M7 #308）：GET /api/machine/stop?stepId=（[设计]
+   * MACHINE_WIRE_EXTENSIONS 登记位；本机在跑步单槽 pending，steer 同形）。 */
+  async stop(stepId: string): Promise<boolean | null> {
+    const res = await this.request<MachineStopResponse>(
+      'GET',
+      `/api/machine/stop?stepId=${encodeURIComponent(stepId)}`,
+      { parse: (raw) => machineStopResponseSchema.parse(raw) },
+    );
+    return res.discard;
   }
 
   /** wake SSE（02 §1.2 机器通道）：帧解析回调；连接断开自然返回。 */

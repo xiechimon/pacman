@@ -11,15 +11,30 @@
 import type {
   Assignment,
   BuildRecord,
+  Phase,
   StepJournalRow,
   StepRecord,
   TriggerSource,
   UserRecord,
 } from '@pacman/shared';
-import { MERGE_ANNOUNCEMENT, PLAN_FILE_NAME } from '@pacman/shared';
-import { and, asc, eq } from 'drizzle-orm';
+import {
+  MERGE_ANNOUNCEMENT,
+  PLAN_FILE_NAME,
+  REVIEW_ANNOUNCEMENT,
+  REVIEW_COMPLETE_PLACEHOLDER,
+  STOP_MESSAGE,
+} from '@pacman/shared';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { build, message, plan as planTable, steerPending, step, todo } from '../db/schema.js';
+import {
+  build,
+  message,
+  plan as planTable,
+  steerPending,
+  step,
+  stopPending,
+  todo,
+} from '../db/schema.js';
 import { HttpError } from '../lib/errors.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
@@ -137,6 +152,108 @@ export function readSteerPending(db: Db, conversationId: string): string[] {
     .where(eq(steerPending.conversationId, conversationId))
     .get();
   return pending ? [pending.content] : [];
+}
+
+/** 停止写面（M7 #308，r9 §3.3 停止钮 / 08 册附录 A composer 停止钮行）：
+ * POST /api/builds/{id}/stop body {discard}——中断当前活动步。
+ * - claimed 步 = 机器信号面（stop_pending 单槽 upsert + machine stream stop
+ *   事件 → GET /api/machine/stop 拉取-确认 → daemon live.stop()，#278 steer
+ *   同律）→ {delegated:true} 202；中断在途，done(stopped) 回报才落账。
+ * - pending 步 = 无机器可通知，server 侧即时取消 → {delegated:false} 200。
+ * 无活动步 = 409 不静默（steer 门同律）。 */
+export function requestStop(
+  deps: BuildDeps,
+  buildId: string,
+  body: { discard: boolean },
+): { delegated: boolean } {
+  const { db } = deps;
+  const buildRow = db.select().from(build).where(eq(build.id, buildId)).get();
+  if (!buildRow) throw new NotFoundError(`build ${buildId}`);
+  // 活动步 = pending/claimed（步序贯，取最新一条；orderBy 显式钉死语义，
+  // 不依赖隐式 rowid 序）。
+  const active = db
+    .select()
+    .from(step)
+    .where(and(eq(step.buildId, buildId), inArray(step.status, ['pending', 'claimed'])))
+    .orderBy(asc(step.createdAt))
+    .all()
+    .at(-1);
+  if (!active) {
+    throw new HttpError(409, 'no active step on this build (stop 只对运行中的任务生效)');
+  }
+  if (active.status === 'pending') {
+    applyStoppedStep(deps, active.id);
+    return { delegated: false };
+  }
+  const now = nowMs();
+  db.insert(stopPending)
+    .values({ conversationId: buildId, stepId: active.id, discard: body.discard, createdAt: now })
+    .onConflictDoUpdate({
+      target: stopPending.conversationId,
+      set: { stepId: active.id, discard: body.discard, createdAt: now },
+    })
+    .run();
+  const todoRow = db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
+  if (todoRow) deps.machineHub?.stopSignal(todoRow.teamId, active.id);
+  return { delegated: true };
+}
+
+/** gate 回落目标（r9 §3.3「todo 落上一完成 turn 的 gate」的 build 内投影
+ * [设计]——pacman 重跑 = 新 build 新会话新分支，跨 build 回落会指向旧会话的
+ * 变更面（latestBuildId 已换），故回落以本 build 为界）：最近 done 步的
+ * 关口（plan→confirm / build|merge→review）；无 done 步 → build.prevPhase
+ * （回到本轮开始前的面：fresh→todo、失败重跑→failed、定时复跑→done…）。 */
+function stopFallbackPhase(db: Db, buildRow: BuildRow): Phase {
+  const lastDone = db
+    .select()
+    .from(step)
+    .where(and(eq(step.buildId, buildRow.id), eq(step.status, 'done')))
+    .orderBy(asc(step.createdAt))
+    .all()
+    .at(-1);
+  if (lastDone) return lastDone.kind === 'plan' ? 'confirm' : 'review';
+  return buildRow.prevPhase ?? 'todo';
+}
+
+/** 停止落账（pending 步即时取消 × done(stopped) 机器回报两面单源）：
+ * step stopped + build.errorMessage 取消标记（STOP_MESSAGE，运行历史面数据源）
+ * + gate 回落 + stop_pending 清理 + 会话流/文档事件推送。
+ * 回落绕过 setTodoPhase 漏斗 [设计]：取消回退边不在前进流转表（如
+ * building→confirm、planning→todo），且取消是用户在场动作——不触发
+ * confirm/review 进入通知与 chief wake（重复通知 = 误导）。 */
+export function applyStoppedStep(deps: BuildDeps, stepId: string): void {
+  const { db } = deps;
+  const stepRow = db.select().from(step).where(eq(step.id, stepId)).get();
+  if (!stepRow) throw new NotFoundError(`step ${stepId}`);
+  db.update(step).set({ status: 'stopped' }).where(eq(step.id, stepId)).run();
+  db.delete(stopPending).where(eq(stopPending.conversationId, stepRow.buildId)).run();
+  const stoppedRow = db.select().from(step).where(eq(step.id, stepId)).get();
+  if (stoppedRow) {
+    deps.convHub?.publishStep(stepRow.buildId, {
+      id: stoppedRow.id,
+      buildId: stoppedRow.buildId,
+      kind: stoppedRow.kind,
+      machineId: stoppedRow.machineId,
+      createdAt: stoppedRow.createdAt,
+      status: stoppedRow.status,
+      checkpointCommit: stoppedRow.checkpointCommit,
+    });
+  }
+  const buildRow = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
+  if (!buildRow) return;
+  db.update(build).set({ errorMessage: STOP_MESSAGE }).where(eq(build.id, buildRow.id)).run();
+  const cancelledRow = db.select().from(build).where(eq(build.id, buildRow.id)).get();
+  if (cancelledRow) publishBuild(deps, cancelledRow);
+  const todoRow = db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
+  if (!todoRow) return;
+  const target = stopFallbackPhase(db, buildRow);
+  if (todoRow.phase === target) return;
+  db.update(todo)
+    .set({ phase: target, phaseAt: nowMs(), v: todoRow.v + 1 })
+    .where(eq(todo.id, todoRow.id))
+    .run();
+  const record = getTodo(deps, todoRow.id);
+  if (record) deps.hub.publishTodoDoc(record.teamId, record);
 }
 
 function enqueueStep(
@@ -267,13 +384,18 @@ export function startBuilds(
  *   的再确认不适用，409 由流转表兜底）。
  * - {action:"revision", side:"plan", feedback, clientMessageId} → confirm→
  *   planning + 入队重规划步（同 conv continue session 语义归 M3）+ 时间线插
- *   用户驳回消息行（r5 §4）。 */
+ *   用户驳回消息行（r5 §4）。
+ * - {action:"review", agentId, focus?}（M7 #312 / r8 §3.1）→ phase 留 confirm/
+ *   review + 入队审核步（kind='review'，不开 worktree 不产 changes）+ 时间线
+ *   插 REVIEW_ANNOUNCEMENT；phase 非法（todo/queued/planning/building/done/
+ *   failed/closed）→ 409。 */
 export function applyBuildStepAction(
   deps: BuildDeps,
   buildId: string,
   body:
     | { action: 'confirm' }
-    | { action: 'revision'; side: 'plan'; feedback: string; clientMessageId: string },
+    | { action: 'revision'; side: 'plan'; feedback: string; clientMessageId: string }
+    | { action: 'review'; agentId: string; focus?: string },
 ): void {
   const row = deps.db.select().from(build).where(eq(build.id, buildId)).get();
   if (!row) throw new NotFoundError(`build ${buildId}`);
@@ -283,6 +405,36 @@ export function applyBuildStepAction(
   if (body.action === 'confirm') {
     setTodoPhase(deps, todoRecord.id, 'building');
     enqueueStep(deps, buildId, 'build', todoRecord.teamId);
+    return;
+  }
+  if (body.action === 'review') {
+    // AI 审核发起仅在 confirm/review 关口允许（r8 §3.1 显隐律）；其余相位一律
+    // 409 拒绝（建设期/planning/building/failed/done/closed/queued/todo 都不
+    // 该出现该钮，但接口层兜底——钮外误用也要稳定拒绝）。
+    if (todoRecord.phase !== 'confirm' && todoRecord.phase !== 'review') {
+      throw new HttpError(409, `AI 审核仅在待确认/审核关口允许，当前相位 ${todoRecord.phase}`);
+    }
+    // 时间线「发起了 AI 审核」行（r8 §3.1 实测：行形 = role user 纯文本，
+    // 呈现层拼装时间/actor；REVIEW_ANNOUNCEMENT 双端单源）。
+    insertMessageRow(deps, buildId, {
+      id: newRecordId(),
+      role: 'user',
+      content: REVIEW_ANNOUNCEMENT,
+      createdAt: nowMs(),
+    });
+    // 审核步 prompt：plan.md 全文 + 用户 focus（空字符串视为无）。phase 留
+    // confirm/review（review 步是额外 agent 步，不推进主时序）。
+    const plan = deps.db
+      .select({ content: planTable.content })
+      .from(planTable)
+      .where(eq(planTable.buildId, buildId))
+      .orderBy(asc(planTable.version))
+      .all();
+    const planText = plan.map((p) => p.content).join('\n\n---\n\n');
+    const focusNote =
+      body.focus && body.focus.trim() !== '' ? `\n\n用户关注点：${body.focus.trim()}` : '';
+    const reviewPrompt = `请审核以下方案（仅审核，不修改 worktree；如有 blocking 风险请明确标注）：\n\n${planText}${focusNote}`;
+    enqueueStep(deps, buildId, 'review', todoRecord.teamId, reviewPrompt);
     return;
   }
   // revision：用户驳回消息行进 transcript（role user，r5 §3.6/§4 时间线呈现）。
@@ -367,6 +519,28 @@ export function completeStep(
   if (stepRow.kind === 'build') {
     setTodoPhase(deps, todoRow.id, 'review', {
       hasChanges: outcome.hasChanges ?? true,
+    });
+    return;
+  }
+  if (stepRow.kind === 'review') {
+    // AI 审核步完成（M7 #312 票 A 占位 emit）：phase 不动（review 步是额外
+    // agent 步，不推进主时序；PHASE_TRANSITIONS confirm/review 无 review→… 的
+    // 边；走 setTodoPhase 同→同会被 assertPhaseTransition 拒），worktree 不动
+    // （hasChanges=false）+ 时间线插占位 ack。#326 上线真 findings emit 时此
+    // 处替换 ack 为 verdict + 编号 findings 消息行 + blocking 自动修订回路；
+    // kind 词表不变。
+    deps.db
+      .update(todo)
+      .set({ hasChanges: false, v: todoRow.v + 1 })
+      .where(eq(todo.id, todoRow.id))
+      .run();
+    const updatedTodo = getTodo(deps, todoRow.id);
+    if (updatedTodo) deps.hub.publishTodoDoc(updatedTodo.teamId, updatedTodo);
+    insertMessageRow(deps, buildRow.id, {
+      id: newRecordId(),
+      role: 'system',
+      content: REVIEW_COMPLETE_PLACEHOLDER,
+      createdAt: nowMs(),
     });
     return;
   }

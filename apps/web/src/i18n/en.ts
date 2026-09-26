@@ -119,8 +119,13 @@ export const EN: Record<string, string> = {
   语音输入: 'Voice input',
   添加附件: 'Add attachment',
   'AI 审核': 'AI review',
+  审核中: 'Reviewing',
+  'AI 审核进行中…': 'AI review in progress…',
   提及: 'Mention',
   停止: 'Stop',
+  '停止当前这一轮？': 'Stop this round?',
+  '丢弃本轮修改——方案和代码回到上一个版本':
+    'Discard this round’s changes — plan and code revert to the previous version',
   发送: 'Send',
   '当前没有运行中的会话，消息未送出': 'No active run — the message was not delivered',
   暂无方案: 'No plan yet',
@@ -324,6 +329,12 @@ export const EN: Record<string, string> = {
   '选择总管 Agent': "Choose the Chief's Agent",
   '搜索 Agent…': 'Search Agents…',
   '没有匹配的 Agent': 'No matching Agents',
+  // M7 #312 AI 审核模态文案（r8 §3.1 实测）：Agent 选择 + 关注点 textarea +
+  // 提交按钮。dialog 选 Agent 走 dlg-form-* family 共用层,文案独立。
+  '选择审核 Agent': 'Choose review Agent',
+  '希望 Agent 审核时重点关注什么？（可选）':
+    'What do you want the Agent to focus on during review? (optional)',
+  开始审核: 'Start review',
   '更换总管的 agent？总管的记忆保存在其运行所用的 Agent 上。切换至 <agent> 后，记忆将变为 <agent> 的记忆，当前记忆不会迁移。':
     "Switch the Chief's Agent? The Chief's memory lives on the Agent it runs on. After switching to <agent>, the memory becomes <agent>'s — the current memory is not migrated.",
   编辑章程: 'Edit charter',
@@ -342,6 +353,8 @@ export const EN: Record<string, string> = {
   // original like any real user data would) ——
   '准备工作区...': 'Preparing workspace...',
   '处理中...': 'Working on it...',
+  '正在停止…': 'Stopping…',
+  已取消: 'Cancelled',
   [PROBE_TOOL_CALL_LABEL]: `Calling tool: ${PROBE_TOOL_PILLS[1]}`,
   '方案 · v1': 'Plan · v1',
   'Xmon Dai 发起了合并': 'Xmon Dai started a merge',

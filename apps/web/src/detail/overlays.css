@@ -376,9 +376,136 @@
   padding: 0 13px;
 }
 
-/* 创建 Agent dialog (issue #170, r2 §8.1 capture 20): name-first form —
-   avatar row / 名称 input / provider warning row / primary。容器/输入/主钮
-   走 .dlg-form-* 族层;此处只余 agent 独有件。 */
+/* AI 审核模态 (M7 #312, r8 §2.5/§3.1): 560 宽居中（448 弹层律之外新档） + 搜
+   索行 + Agent 行（头像 + 名 + 模型 · 默认；选中行 bg-indigo-500/10）+ 可选
+   关注点 textarea + 32×32 primary「开始审核」按钮。容器走 .dlg-form-* 族层，
+   此处只余 review 独有件。 */
+.review-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.review-search {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.review-search-input {
+  flex: 1;
+  border: none;
+  background: none;
+  font-size: 14px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.review-agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.review-agent-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 64px;
+  padding: 0 16px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.review-agent-row[data-on="true"] {
+  /* r8 §2.5 实测选中态：bg-indigo-500/10 */
+  background: rgb(99 102 241 / 0.1);
+}
+
+.review-agent-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-default);
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.review-agent-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.review-agent-name {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.review-agent-model {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.review-empty {
+  padding: 16px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.review-focus-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.review-focus-input {
+  /* dlg-form-input 几何（textarea 形态，rows=3）：80px + 内填 12 */
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--text-primary);
+  outline: none;
+  resize: vertical;
+}
+
+.review-focus-input:focus {
+  border-color: var(--indigo-500);
+}
+
+/* 「开始审核」primary 钮（r8 §2.5 实测 32×32 右锚；footer 律下改用 dlg-form-
+   actions 居中布局，primary 32×32 = 32 高的 primary 钮；32×32 字面 = 实际
+   primary 钮 28 高的偏离 [推断] —— 实测 r8 截图含 padding，本票以 family 律
+   居中代替右锚；未来视觉对拍校准）。 */
+.review-start {
+  /* A3 收编：primary/compact 皮肤归 ui/button.css；几何归 family。 */
+}
+
+/* Agent 选择 dialog (wayfinder #182, r8 73/74): 头像 row / 名称 input /
+   provider warning row / primary。容器/输入/主钮走 .dlg-form-* 族层;此处只余
+   agent 独有件。 */
 .dlg-agent-avatar {
   display: flex;
   align-items: center;
