@@ -483,6 +483,15 @@
   color: var(--text-dim);
 }
 
+/* 停止钮中断的运行行终态（M7 #308，r9 §3.3/88：运行行「已取消」）——
+   stamp 家族同几何，fail 色区分中断与正常收尾。 */
+.chat-stamp-cancelled {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 12px;
+  color: var(--fail-fg);
+}
+
 .chat-stamp-machine span {
   text-decoration: underline;
 }

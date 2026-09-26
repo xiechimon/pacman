@@ -348,8 +348,10 @@ export interface DocBlock {
 export type TranscriptItem =
   /** Run stamp: time line + `运行在 <machine> 上` line, centered. The
    *  reused-plan build (r8 76) splits the two lines around the quoted
-   *  plan card, so each half is optional. */
-  | { kind: 'run'; at?: string; machine?: string }
+   *  plan card, so each half is optional. `cancelled` = 停止钮中断的运行行
+   *  终态「已取消」（M7 #308，r9 §3.3；live 面 step.status 'stopped' 派生，
+   *  fixture 捕获面无此态）。 */
+  | { kind: 'run'; at?: string; machine?: string; cancelled?: boolean }
   /** User bubble (`开始执行任务` / `确认`); the taskline chip + title ride
    *  along only on the task-start bubble (r7 26: the 确认 bubble renders
    *  bubble + icon pair alone). */
