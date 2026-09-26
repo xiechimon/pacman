@@ -11,17 +11,27 @@
 // 总管 canon,本面行为字节不变),chip-popover「编辑分配」复用(r2 C.18:
 // 该弹层内容从未捕获,任务面文案 [设计])。
 
+// #318: 开始任务 dialog 的「选择 Agent」弹层复用(r9 §2.6:未指派 + agent 行
+// 带 model 副题)——unassign 前置未指派行、option.model 副题、
+// confirmRebind=false 跳过换绑二次确认(开始面重选无记忆告示语义)。
+
 import { CHIEF_REBIND_CONFIRM_COPY } from '@pacman/shared';
 import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { Check, Search } from '../icons/index.js';
 import { DialogShell } from '../ui/dialog-shell.js';
 
-/** 选择器行最小投影(live = members 读面投影;fixture = canon 默认行)。 */
+/** 选择器行最小投影(live = members 读面投影;fixture = canon 默认行)。
+ *  #318: model 副题(r9 §2.6 行形「r3-builder · claude-sonnet-5 · 默认」的
+ *  model 位;members 读面 actor.modelId 投影,无则不渲染副题)。 */
 export interface ChiefAgentOption {
   id: string;
   name: string;
+  model?: string;
 }
+
+/** #318 未指派行 id(开始 dialog 选择器;onBind('') = 双槽置 null)。 */
+export const UNASSIGNED_AGENT_ID = '';
 
 /** fixture 面候选兜底(r5 捕获 Agent 名 canon;new-task DEFAULT_PROJECT 同律)。 */
 const DEFAULT_AGENT: ChiefAgentOption = { id: 'r3-builder', name: 'r3-builder' };
@@ -42,6 +52,12 @@ interface ChiefAgentDialogProps {
   /** #209: 换绑二次确认 copy(<agent> 占位显示层替换);缺省 = 总管记忆告示
    *  canon。 */
   confirmCopy?: string;
+  /** #318: 前置「未指派」行(开始 dialog 选择器形态,r9 §2.6);选中走
+   *  onBind(UNASSIGNED_AGENT_ID)。 */
+  unassign?: boolean;
+  /** #318: 已绑定后重选是否过换绑二次确认;false = 选择即发(开始面重选
+   *  无记忆告示语义)。缺省 true(总管/编辑分配面字节不变)。 */
+  confirmRebind?: boolean;
 }
 
 export function ChiefAgentDialog({
@@ -52,6 +68,8 @@ export function ChiefAgentDialog({
   onBind,
   title,
   confirmCopy,
+  unassign,
+  confirmRebind = true,
 }: ChiefAgentDialogProps) {
   const { t } = useI18n();
   const dlgTitle = title ?? t('选择总管 Agent');
@@ -66,9 +84,17 @@ export function ChiefAgentDialog({
   }, [open]);
   const rows = useMemo(() => {
     const source = agents ?? [DEFAULT_AGENT];
+    // #318 未指派行:恒在列首,搜索不滤除(它不是名字匹配对象,是清空动作)
+    const withUnassign = unassign
+      ? [{ id: UNASSIGNED_AGENT_ID, name: t('未指派') }, ...source]
+      : source;
     const q = query.trim().toLowerCase();
-    return q === '' ? source : source.filter((row) => row.name.toLowerCase().includes(q));
-  }, [agents, query]);
+    return q === ''
+      ? withUnassign
+      : withUnassign.filter(
+          (row) => row.id === UNASSIGNED_AGENT_ID || row.name.toLowerCase().includes(q),
+        );
+  }, [agents, query, unassign, t]);
 
   const pick = (row: ChiefAgentOption) => {
     // 选中当前绑定 = 空操作(两态同律)。
@@ -80,9 +106,9 @@ export function ChiefAgentDialog({
       onClose(); // fixture accept 律:选择即关
       return;
     }
-    // 已绑定 → 换绑二次确认(记忆不迁移告示 canon);未绑定 → 直发,父
-    // onSuccess 关窗(create-secret 同律)。
-    if (boundAgentId != null) {
+    // 已绑定 → 换绑二次确认(记忆不迁移告示 canon;#318 confirmRebind=false
+    // 的开始面跳过);未绑定 → 直发,父 onSuccess 关窗(create-secret 同律)。
+    if (confirmRebind && boundAgentId != null) {
       setConfirming(row);
       return;
     }
@@ -145,6 +171,9 @@ export function ChiefAgentDialog({
                 >
                   <span className="chief-pick-avatar">{row.name.charAt(0)}</span>
                   <span className="chief-pick-name">{row.name}</span>
+                  {row.model != null && row.model !== '' && (
+                    <span className="chief-pick-model">{row.model}</span>
+                  )}
                   {row.id === boundAgentId && (
                     <span className="chief-pick-check">
                       <Check width={14} height={14} />

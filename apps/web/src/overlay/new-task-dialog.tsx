@@ -14,6 +14,11 @@
 // A3-overlays 收编：footer 双钮 = ui/Button（ghost / primary，弹窗语义
 // standard 32 档，r7 实测 30 归一到原语三档）；两钮类名无 e2e/parity
 // 钉扎，散写规则随收编移除。
+// #318 未保存闸 (r9 §3.4): 标题/描述任一非空时,三条关闭路径(X / backdrop /
+// Esc)先过「放弃新建任务？未保存的内容将丢失。」确认弹层(继续编辑 / 放弃
+// 并关闭);净表单直关不闸。Esc 分层沿 #176 内层优先律(确认层 → 项目
+// popover → dialog)。附件/标签的 dirty 位归 #309/#310 接线时扩展。
+// 关闭即重置表单(retained-mount 重开 = 净面,闸判定不带脏残留)。
 
 import { useEffect, useRef, useState } from 'react';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
@@ -69,6 +74,10 @@ export function NewTaskDialog({
 }: NewTaskDialogProps) {
   const { t } = useI18n();
   const [title, setTitle] = useState('');
+  // #318: 描述入受控(闸的 dirty 判定源;placeholder 模板行不变)
+  const [spec, setSpec] = useState('');
+  // #318 未保存闸确认层开态
+  const [discardOpen, setDiscardOpen] = useState(false);
   // #176 选择器 state:popover 开态 + 选中行。null = 未动,展示/提交取
   // 首行;live 空项目集时 selected 退 undefined(chip 走 canon 名)。
   const [projectOpen, setProjectOpen] = useState(false);
@@ -76,12 +85,25 @@ export function NewTaskDialog({
   const rows = projects ?? [DEFAULT_PROJECT];
   const selected = rows.find((row) => row.id === projectId) ?? rows[0];
   const projectName = selected?.name ?? PROJECT_NAME;
-  // Esc 分层:popover 层开时 Esc 只关 popover(dialog 的 Esc 关闸退后一层)
-  useEscClose(onClose, open && !projectOpen);
+  // #318: 附件/标签尚无表单 state(#309/#310 接线时并入 dirty 位)
+  const dirty = title.trim() !== '' || spec.trim() !== '';
+  const requestClose = () => {
+    if (dirty) setDiscardOpen(true);
+    else onClose();
+  };
+  // Esc 分层(#318 三层,内层优先):确认层 → 项目 popover → dialog 关闸
+  useEscClose(requestClose, open && !projectOpen && !discardOpen);
   useEscapeClose(projectOpen, () => setProjectOpen(false));
-  // retained mount:dialog 关闭一并收 popover(重开不得带回开态)
+  useEscapeClose(discardOpen, () => setDiscardOpen(false));
+  // retained mount:dialog 关闭一并收 popover + 确认层,并重置表单
+  // (重开不得带回开态/脏字——闸判定以净面起步)
   useEffect(() => {
-    if (!open) setProjectOpen(false);
+    if (!open) {
+      setProjectOpen(false);
+      setDiscardOpen(false);
+      setTitle('');
+      setSpec('');
+    }
   }, [open]);
   // retained mount means reopen is not a remount — refocus like a fresh one
   const inputRef = useRef<HTMLInputElement>(null);
@@ -89,6 +111,13 @@ export function NewTaskDialog({
     if (open) inputRef.current?.focus();
   }, [open]);
   const save = () => onSave(title.trim(), selected?.id);
+  // #318 放弃并关闭:清表单 + 关 dialog(父收 open,重置 effect 兜底同律)
+  const discardAndClose = () => {
+    setDiscardOpen(false);
+    setTitle('');
+    setSpec('');
+    onClose();
+  };
   return (
     <OverlayMount open={open} exitMs={FADE_EXIT_MS}>
       <button
@@ -105,7 +134,7 @@ export function NewTaskDialog({
             setProjectOpen(false);
             return;
           }
-          onClose();
+          requestClose();
         }}
       />
       <div
@@ -160,7 +189,12 @@ export function NewTaskDialog({
             </OverlayMount>
           </span>
           <div className="new-task-title-label">{t('新建任务')}</div>
-          <button type="button" className="new-task-close" aria-label={t('关闭')} onClick={onClose}>
+          <button
+            type="button"
+            className="new-task-close"
+            aria-label={t('关闭')}
+            onClick={requestClose}
+          >
             <X />
           </button>
         </div>
@@ -175,6 +209,8 @@ export function NewTaskDialog({
           <textarea
             className="new-task-spec"
             placeholder={SPEC_TEMPLATE_LINES.map((line) => t(line)).join('\n')}
+            value={spec}
+            onChange={(e) => setSpec(e.target.value)}
           />
         </div>
         <div className="new-task-footer">
@@ -219,6 +255,37 @@ export function NewTaskDialog({
           </div>
         </div>
       </div>
+      {/* #318 未保存闸确认层(r9 §3.4 copy 逐字):独立层不入 dialog 面板
+          ——面板 transform 会吞 fixed 定位(#176 注记同坑);ClickCatcher
+          z29 压 dialog z21,外点 = 只收确认层(继续编辑语义),面板 z31 居顶。 */}
+      <OverlayMount open={discardOpen}>
+        <ClickCatcher onClose={() => setDiscardOpen(false)} />
+        <div
+          className="new-task-discard anim-fade"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label={t('放弃新建任务？未保存的内容将丢失。')}
+        >
+          <div className="new-task-discard-title">{t('放弃新建任务？未保存的内容将丢失。')}</div>
+          <div className="new-task-discard-actions">
+            <button
+              type="button"
+              className="new-task-discard-keep"
+              onClick={() => setDiscardOpen(false)}
+            >
+              {t('继续编辑')}
+            </button>
+            <Button
+              variant="danger"
+              size="standard"
+              className="new-task-discard-drop"
+              onClick={discardAndClose}
+            >
+              {t('放弃并关闭')}
+            </Button>
+          </div>
+        </div>
+      </OverlayMount>
     </OverlayMount>
   );
 }

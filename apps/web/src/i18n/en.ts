@@ -517,4 +517,14 @@ export const EN: Record<string, string> = {
   '授权链接已失效，请在执行机上重新发起。':
     'This authorization link has expired — restart enrollment on the executor machine.',
   '浏览器授权注册 →': 'Browser authorization →',
+  // W2 #318 桩群校准：开始任务 dialog 统一面（r9 §3.6）+ 新建任务未保存闸
+  // （r9 §3.4）。规划/执行 = assignment.plan/build 双槽的行标签。
+  规划: 'Plan',
+  执行: 'Build',
+  在线: 'online',
+  离线: 'offline',
+  '选择 Agent': 'Select agent',
+  '放弃新建任务？未保存的内容将丢失。': 'Discard this new task? Unsaved content will be lost.',
+  继续编辑: 'Keep editing',
+  放弃并关闭: 'Discard and close',
 };

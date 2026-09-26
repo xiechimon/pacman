@@ -1404,6 +1404,17 @@ textarea.composer-input::placeholder {
   background: var(--text-dim);
 }
 
+/* #318: the switch is a real role=switch now — ON flips the track to the
+   accent and parks the knob right; keyboard focus stays visible. */
+.rerun-switch--on {
+  background: var(--card-button);
+}
+
+.rerun-switch:focus-visible {
+  outline: 2px solid var(--card-button);
+  outline-offset: 2px;
+}
+
 .rerun-switch-knob {
   position: absolute;
   top: 2px;
@@ -1412,6 +1423,50 @@ textarea.composer-input::placeholder {
   height: 16px;
   border-radius: 9999px;
   background: var(--toggle-knob);
+}
+
+.rerun-switch--on .rerun-switch-knob {
+  left: 18px;
+}
+
+/* #318 机器行(r9 §2.6「自动 / <机器> (在线)」;读面投影,非交互——
+   [设计] 指定机器无 server 槽,样式贴 agent 行语言但无 hover/pointer) */
+.rerun-machine-label {
+  margin: 12px 0 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.rerun-machine-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--dialog-row-bg);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-primary);
+}
+
+.rerun-machine-sep,
+.rerun-machine-state {
+  color: var(--text-dim);
+}
+
+.rerun-machine-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--text-dim);
+}
+
+.rerun-machine-dot--online {
+  background: var(--col-dot-done);
 }
 
 .overlay-actions {

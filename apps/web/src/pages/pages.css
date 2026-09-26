@@ -908,6 +908,8 @@
 }
 
 .prj-task-row {
+  /* #318: positioned ancestor for the stretched title link (todo-card #58) */
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -915,6 +917,20 @@
   padding: 0 12px;
   border-radius: 8px;
   background: var(--surface-secondary);
+}
+
+/* #318 行/卡点击 = 任务详情导航(r2 §2):标题是真 <a>,::after 拉伸盖满
+   整行/整卡;像素与 span 时代一致(inherit + 无下划线),UA pointer/键盘
+   激活白拿(todo-card-link #58 同律)。 */
+.prj-task-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.prj-task-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
 }
 
 .prj-task-row + .prj-task-row {
@@ -1072,6 +1088,8 @@
 }
 
 .prj-task-card {
+  /* #318: positioned ancestor for the stretched title link */
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;

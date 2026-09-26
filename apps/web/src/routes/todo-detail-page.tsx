@@ -11,8 +11,9 @@
 // （transcript 实时流/步进度/plan 版本/变更 diff/overlay 三件），关口动作
 // 接真端点（开始/确认/驳回/合并/重跑/删除）；fixture 分支（含 chain 脚本）
 // 保持 #56–#75 行为字节不变。
+import type { Assignment } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   useApiMutations,
@@ -72,7 +73,7 @@ import { PHASE_UI } from '../phase.js';
 import '../detail/detail.css';
 import { AppSidebar } from '../board/app-sidebar.js';
 import { ChiefWake } from '../chief/chief-wake.js';
-import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
+import { markClosed, markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import { overlayContent } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
@@ -195,6 +196,14 @@ export function TodoDetailPage() {
   // live 面:变更 pane 展开态 + 版本对比开关(数据来自 documents/{id}/diff)。
   const [changesExpanded, setChangesExpanded] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
+  // #318 复用面板「查看方案」:关弹层并把 docpane 切到被复用方案的 plan
+  // 显示面(plans 读面已在;原站行为未捕获——r8 §5/r9 §5 登记,本实现为
+  // [设计] 裁定)。复位键 = 路由任务 id + 新一轮 build(切换任务/新轮起跑
+  // 都回相位默认面;fixture 面 buildId 恒 null,id 是唯一有效键)。
+  const [planView, setPlanView] = useState(false);
+  useEffect(() => {
+    setPlanView(false);
+  }, [id, buildId]);
   // #209 编辑分配弹层开态——挂页层:chip popover 关即卸载(dhead
   // OverlayMount),弹层挂其内会被带走。
   const [assignOpen, setAssignOpen] = useState(false);
@@ -287,19 +296,20 @@ export function TodoDetailPage() {
       }
     : fixtureView;
 
-  // live 指派：开始/重跑取团队首个 Agent（已建屏无开始 dialog——assignment
-  // 缺省语义 [设计]，02 §6.2 双槽同值）。
+  // live 指派：dialog 未给显式 assignment 时取团队首个 Agent（02 §6.2 双槽
+  // 同值）；#318 开始 dialog 统一面携带选定双槽（分用开关 OFF = 同值，
+  // ON = plan/build 独立，r9 §3.6）。
   const firstAgentId = useMemo(() => {
     const member = (membersQ.data ?? []).find((m) => m.memberType === 'agent');
     return member?.actorId ?? null;
   }, [membersQ.data]);
   const startBuild = useCallback(
-    (withPlan: boolean) => {
+    (withPlan: boolean, assignment?: Assignment) => {
       if (!live || !wireTodo) return;
       mutations.startBuilds.mutate({
         projectId: wireTodo.projectId,
         todoIds: [wireTodo.id],
-        assignment: {
+        assignment: assignment ?? {
           plan: firstAgentId ? { agentId: firstAgentId } : null,
           build: firstAgentId ? { agentId: firstAgentId } : null,
         },
@@ -317,13 +327,19 @@ export function TodoDetailPage() {
   // services/todos.ts;server 槽级 merge #208 保 plan 槽)→ mutation 自带
   // invalidateAll 重取回显。候选 = members 读面 memberType:"agent" 行
   // (chief-settings 同投影);fixture 面 onBind 缺省 → accept 律(选择即关)。——
+  // #318: model 副题并入投影(r9 §2.6 选择器行形「name · model」;开始
+  // dialog 与编辑分配共用同一候选集)。
   const assignOptions: ChiefAgentOption[] | undefined = live
     ? (membersQ.data ?? [])
         .filter((m) => m.memberType === 'agent')
-        .map((m) => ({
-          id: m.actorId,
-          name: (m.actor as { displayName?: string } | undefined)?.displayName ?? m.actorId,
-        }))
+        .map((m) => {
+          const modelId = (m.actor as { modelId?: string | null } | undefined)?.modelId;
+          return {
+            id: m.actorId,
+            name: (m.actor as { displayName?: string } | undefined)?.displayName ?? m.actorId,
+            ...(modelId ? { model: modelId } : {}),
+          };
+        })
     : undefined;
   const bindAssign = live
     ? (agentId: string) =>
@@ -332,6 +348,38 @@ export function TodoDetailPage() {
           { onSuccess: () => setAssignOpen(false) },
         )
     : undefined;
+
+  // —— #318 更多菜单生命周期行(r1 changelog 09-16:Complete 走看板自带
+  // confirm-and-merge、相位适配;Close 关闭语义)。完成 = review 开验收弹层
+  // (既有 accept→merge 链)/ confirm 关口确认(live wire);关闭 = PATCH phase
+  // closed 后回看板(卡片立即隐藏;延迟 Undo 窗口 [设计] wontfix,r1 语义
+  // 归 closed→todo reopen 面)。server 漏斗现有边 todo/failed→closed;
+  // review/confirm/done→closed 边缺,归 W3 server 票(票面授权前端+注记),
+  // 故 canClose 只放行有边的相位,其余 disabled(运行中禁用 = r1 Delete-in-
+  // turn 先例)。fixture 面无 wire:关闭走 deletions.ts 会话覆面同律。——
+  const canComplete = phase === 'review' || (live && phase === 'confirm');
+  const canClose = phase === 'todo' || phase === 'failed';
+  const completeTask = () => {
+    setMoreOpen(false);
+    if (phase === 'review') {
+      setOverlay({ kind: 'accept' });
+      return;
+    }
+    if (live && phase === 'confirm' && buildId != null)
+      mutations.stepAction.mutate({ buildId, body: { action: 'confirm' } });
+  };
+  const closeTask = () => {
+    setMoreOpen(false);
+    if (live) {
+      mutations.patchTodo.mutate(
+        { id: todo.id, body: { phase: 'closed' } },
+        { onSuccess: () => navigate('/app') },
+      );
+      return;
+    }
+    markClosed(todo.id);
+    navigate('/app');
+  };
 
   const content = live
     ? wireTodo && buildId
@@ -348,12 +396,15 @@ export function TodoDetailPage() {
   // The doc pane flips to the 变更 surface once a run produced changes
   // (r7 27/36, r8 54/73); the plan-version diff surface wins while open
   // (r8 65–72); the plan surface serves todo→building (r7 16/17/26).
+  // #318 查看方案:planView 强制 plan 面(r8 §5 [设计] 裁定),新 build 复位。
   const docMode =
     view.planDiff != null
       ? 'diff'
-      : phase === 'review' || phase === 'done' || phase === 'failed'
-        ? 'changes'
-        : 'plan';
+      : planView
+        ? 'plan'
+        : phase === 'review' || phase === 'done' || phase === 'failed'
+          ? 'changes'
+          : 'plan';
 
   return (
     <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
@@ -373,9 +424,10 @@ export function TodoDetailPage() {
           onOverlay={(kind) => setOverlay({ kind })}
           onAction={() => {
             if (live) {
-              // 主时序关口（02 §4.2）：todo 开始 / confirm 确认 / review 验收
+              // 主时序关口（02 §4.2）：todo 开始 = 统一 dialog 面（#318,
+              // r9 §3.6 待开始先开 dialog 再跑）/ confirm 确认 / review 验收
               // 弹层 / failed 重跑弹层 / done 重开 = 新一轮 build。
-              if (phase === 'todo') startBuild(true);
+              if (phase === 'todo') setOverlay({ kind: 'rerun' });
               else if (phase === 'confirm' && buildId)
                 mutations.stepAction.mutate({ buildId, body: { action: 'confirm' } });
               else if (phase === 'review') setOverlay({ kind: 'accept' });
@@ -388,7 +440,9 @@ export function TodoDetailPage() {
               return;
             }
             // r7 34: the review-phase 完成 button opens the accept dialog;
-            // r8 54: the failed 重跑 button opens the rerun dialog
+            // r8 54: the failed 重跑 button opens the rerun dialog;
+            // #318: todo 开始 同走统一 dialog 面（fixture 静态形）。
+            if (phase === 'todo') setOverlay({ kind: 'rerun' });
             if (phase === 'review') setOverlay({ kind: 'accept' });
             if (phase === 'failed') setOverlay({ kind: 'rerun' });
           }}
@@ -518,6 +572,10 @@ export function TodoDetailPage() {
           setMoreOpen(false);
           setDeleteOpen(true);
         }}
+        onComplete={completeTask}
+        canComplete={canComplete}
+        onCloseTask={closeTask}
+        canClose={canClose}
       />
       <DeleteConfirm
         open={deleteOpen}
@@ -577,17 +635,34 @@ export function TodoDetailPage() {
               model: '默认',
             }
           }
+          // #318 统一面(r9 §3.6):候选 = members 读面投影;初始选择 =
+          // 执行槽派生 ?? 团队首个 Agent ?? 未指派('');机器行 = GET
+          // machines 读面(展示投影,指定机器无 server 槽——[设计] 注记
+          // 在 overlays.tsx)。fixture 面三者缺省 = #75 静态形字节不变。
+          agentOptions={assignOptions}
+          initialAgentId={live ? (todo.assignment?.agentId ?? firstAgentId ?? '') : undefined}
+          machines={
+            live
+              ? (machinesQ.data ?? []).map((m) => ({ name: m.name, online: m.online }))
+              : undefined
+          }
           onClose={closeOverlay}
           onReuse={() => setOverlay({ kind: 'reuse' })}
-          onPlan={live ? () => startBuild(true) : undefined}
-          onDirect={live ? () => startBuild(false) : undefined}
+          onStart={
+            live ? ({ withPlan, assignment }) => startBuild(withPlan, assignment) : undefined
+          }
         />
       )}
       {overlay?.kind === 'reuse' && (
         <ReusePanel
           onClose={closeOverlay}
           onBack={() => setOverlay({ kind: 'rerun' })}
-          onView={closeOverlay}
+          onView={() => {
+            // #318: 查看方案 = 关弹层 + docpane 切被复用方案的 plan 显示面
+            // (plans 读面已在;原站行为未捕获——r8 §5/r9 §5,[设计] 裁定)。
+            setPlanView(true);
+            closeOverlay();
+          }}
           onDirect={
             live
               ? () => {

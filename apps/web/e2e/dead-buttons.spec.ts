@@ -17,6 +17,28 @@ import { expect, type Page, test } from '@playwright/test';
 //    右侧三行内动作图标，端点核实测 local-first 无机器管理面（注记在
 //    machines-page.tsx 头部），不渲染死钮——行内零 button。
 // 第 5 项（skills 添加技能主钮）由 #153 覆盖，本 spec 不断言。
+//
+// Issue #318（M7-W2 桩群校准新增，r9 补采）：每条钉一个桩位的回归失败方式：
+// 8a. 更多菜单「完成」= 相位适配动作（review 面开既有验收弹层 accept→merge
+//     链；fixture confirm 面无 confirm wire → disabled，live confirm 接
+//     stepAction，verify-pacman 证据）。
+// 8b. 更多菜单「关闭」= phase closed 落账：仅 server 漏斗现有边 todo/failed
+//     放行（点毕回看板）；review/confirm/done→closed 边归 W3 server 票
+//     （#318 前端+注记裁定）→ disabled。r1 延迟 Undo 窗口不落地（[设计]
+//     票内裁量 wontfix）。
+// 8c. 开始任务 dialog 统一面（r9 §3.6）：待开始「开始」先开 dialog 再跑；
+//     Agent 行 = 真选择器（未指派 + canon 行，#182 家族弹层，Esc 归内层）；
+//     分用开关 = 真 role=switch（ON → 规划/执行双行，正对 assignment 双槽）。
+//     机器行 live-only（fixture 捕获无该行）；「指定机器」无 server 槽 →
+//     静态展示面 [设计]，live 断言归 verify-pacman。
+// 8d. 复用面板「查看方案」= 关弹层 + docpane 切 plan 面（r8 §5 [设计] 裁定；
+//     fixture 75 无 plan doc → 「暂无方案」占位即模式切换证据，live plan
+//     内容归 verify-pacman）。
+// 8e. 项目页任务行/卡 = 真 <a> stretched-link 导航 /app/todo/:id（r2 §2，
+//     todo-card #58 同律；search 随行携带）。
+// 8f. 新建任务对话框未保存闸（r9 §3.4）：标题/描述任一非空时 X/backdrop/Esc
+//     先过「放弃新建任务？」确认（继续编辑 / 放弃并关闭）；净表单直关；
+//     关闭即重置表单。
 
 /** 面板中心点的命中必须由面板自身持有 — title-band-clicks 同款家族法。 */
 async function expectOwnsCenter(page: Page, selector: string) {
@@ -142,4 +164,154 @@ test('machines rows render no inline action buttons (#222 wontfix 出账)', asyn
   // local-first 机器管理面,不渲染死钮:行内零 button(行尾 chevron 为
   // 非交互 span,行外 添加机器 钮 .res-add 不在钉内)。
   await expect(page.locator('.res-grow button')).toHaveCount(0);
+});
+
+// —— 8. #318 M7-W2 桩群校准新增 —————————————————————————————————————————
+
+const REVIEW_DETAIL = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27';
+
+test('more menu 完成 opens the accept dialog on the review surface (#318)', async ({ page }) => {
+  await page.goto(REVIEW_DETAIL);
+  await page.locator('.detail-head-icon--more').click();
+  const menu = page.locator('.more-menu');
+  await expect(menu).toBeVisible();
+  const complete = menu.locator('.more-menu-item', { hasText: '完成' });
+  await expect(complete).toBeEnabled();
+  await complete.click();
+  // 完成 = 相位适配动作:review 走既有 accept→merge 链(弹层开、菜单收)
+  await expect(menu).toBeHidden();
+  await expect(page.locator('.dlg-title')).toHaveText('完成任务');
+});
+
+test('more menu 关闭 is phase-gated by the server funnel edges (#318)', async ({ page }) => {
+  // review 面:review→closed 漏斗无边(归 W3 server 票)→ disabled
+  await page.goto(REVIEW_DETAIL);
+  await page.locator('.detail-head-icon--more').click();
+  await expect(page.locator('.more-menu-item', { hasText: '关闭' })).toBeDisabled();
+  // failed 面:failed→closed 现有边 → 放行,点毕回看板(卡片立即隐藏语义)
+  await page.goto('/app/todo/r8-12?scenario=54');
+  await page.locator('.detail-head-icon--more').click();
+  const closeRow = page.locator('.more-menu-item', { hasText: '关闭' });
+  await expect(closeRow).toBeEnabled();
+  // failed 无完成语义(confirm-and-merge 仅 confirm/review)→ disabled
+  await expect(page.locator('.more-menu-item', { hasText: '完成' })).toBeDisabled();
+  await closeRow.click();
+  await expect(page).toHaveURL('/app');
+});
+
+test('todo-phase 开始 opens the unified start dialog (#318)', async ({ page }) => {
+  // r9 §3.6:待开始点「开始」先开 dialog 再跑(不再直发 startBuild)
+  await page.goto('/app/todo/fresh-probe?scenario=23');
+  await page.locator('.detail-head-action').click();
+  await expect(page.locator('.overlay-title')).toHaveText('开始任务');
+});
+
+test('rerun dialog: agent row is a real selector, the split switch a real role=switch (#318)', async ({
+  page,
+}) => {
+  await page.goto('/app/todo/r8-12?scenario=56');
+  // Agent 行 = 选择器入口(#75 原死钮位);弹层 = #182 家族件
+  await page.locator('.rerun-agent-row').click();
+  const picker = page.locator('.dlg');
+  await expect(picker).toBeVisible();
+  await expect(page.locator('.dlg-title')).toHaveText('选择 Agent');
+  const pickerRows = page.locator('.chief-pick-row');
+  // fixture 面 = 未指派 + canon r3-builder(r5 捕获名)
+  await expect(pickerRows).toHaveCount(2);
+  await expect(pickerRows.first()).toContainText('未指派');
+  // Esc 归内层:只收选择器,开始 dialog 不陪关(Overlay escMuted)
+  await page.keyboard.press('Escape');
+  await expect(picker).toBeHidden();
+  await expect(page.locator('.overlay')).toBeVisible();
+  // 选「未指派」→ Agent 行换未指派面
+  await page.locator('.rerun-agent-row').click();
+  await page.locator('.chief-pick-row', { hasText: '未指派' }).click();
+  await expect(picker).toBeHidden();
+  await expect(page.locator('.rerun-agent-name')).toHaveText('未指派');
+  // 分用开关 = 真 role=switch(原静态 span):ON → 规划/执行双 Agent 行
+  const sw = page.locator('.rerun-switch');
+  await expect(sw).toHaveAttribute('role', 'switch');
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.rerun-agent-row')).toHaveCount(2);
+  await expect(page.locator('.rerun-agent-label', { hasText: '规划' })).toBeVisible();
+  await expect(page.locator('.rerun-agent-label', { hasText: '执行' })).toBeVisible();
+  // OFF 收拢回单行
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+  await expect(page.locator('.rerun-agent-row')).toHaveCount(1);
+});
+
+test('reuse panel 查看方案 flips the doc pane to the plan face (#318)', async ({ page }) => {
+  await page.goto('/app/todo/r8-15?scenario=75');
+  await expect(page.locator('.overlay-title')).toHaveText('复用方案');
+  // 点击前:failed 面 = changes 表面(型选钮取 wrap 内限定,版本 chip 同类名)
+  await expect(page.locator('.doc-select-wrap .doc-pane-select')).toContainText('变更');
+  await page.locator('.overlay-btn', { hasText: '查看方案' }).click();
+  // 查看方案 = 关弹层 + docpane 切 plan 面;fixture 75 无 plan doc →
+  // 「暂无方案」占位即模式切换证据(live plan 内容归 verify-pacman)
+  await expect(page.locator('.overlay')).toBeHidden();
+  await expect(page.locator('.doc-empty')).toContainText('暂无方案');
+});
+
+test('project task rows and cards are real links to the todo detail (#318)', async ({ page }) => {
+  await page.goto('/app/project/ZAQczKCu0MOAzC1ZqcFlX?scenario=prj-tasks&tab=tasks');
+  const row = page.locator('.prj-task-row').first();
+  await expect(row).toBeVisible();
+  // 行标题 = 真 <a>(::after 拉伸盖满整行,todo-card #58 同律)
+  await expect(row.locator('a.prj-task-link')).toHaveCount(1);
+  await row.click();
+  await expect(page).toHaveURL(/\/app\/todo\/[^?]+\?scenario=prj-tasks&tab=tasks/);
+  // 网格卡同律
+  await page.goto('/app/project/ZAQczKCu0MOAzC1ZqcFlX?scenario=prj-tasks&tab=tasks');
+  await page.locator('.prj-tasks-view-btn').nth(1).click();
+  const card = page.locator('.prj-task-card').first();
+  await expect(card).toBeVisible();
+  await expect(card.locator('a.prj-task-link')).toHaveCount(1);
+  await card.click();
+  await expect(page).toHaveURL(/\/app\/todo\//);
+});
+
+test('new-task dialog gates unsaved closes and resets on discard (#318)', async ({ page }) => {
+  await page.goto('/app?scenario=01');
+  const dialog = page.locator('.new-task-dialog');
+  const discard = page.locator('.new-task-discard');
+  // 净表单:X 直关不闸
+  await page.locator('.board-new-task').click();
+  await expect(dialog).toBeVisible();
+  await dialog.locator('.new-task-close').click();
+  await expect(dialog).toBeHidden();
+  await expect(discard).toHaveCount(0);
+  // 标题非空 → X 先过「放弃新建任务？」确认(r9 §3.4 copy 逐字)
+  await page.locator('.board-new-task').click();
+  await dialog.locator('.new-task-input').fill('未保存探针');
+  await dialog.locator('.new-task-close').click();
+  await expect(discard).toBeVisible();
+  await expect(discard).toContainText('放弃新建任务？未保存的内容将丢失。');
+  // 继续编辑 = 只收确认层,草稿保留
+  await discard.locator('.new-task-discard-keep').click();
+  await expect(discard).toBeHidden();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.new-task-input')).toHaveValue('未保存探针');
+  // Esc 关闸同律;确认层上 Esc = 内层优先(只收确认层)
+  await page.keyboard.press('Escape');
+  await expect(discard).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(discard).toBeHidden();
+  await expect(dialog).toBeVisible();
+  // 放弃并关闭 = 关 dialog + 表单重置(重开净面)
+  await dialog.locator('.new-task-close').click();
+  await discard.locator('.new-task-discard-drop').click();
+  await expect(dialog).toBeHidden();
+  await page.locator('.board-new-task').click();
+  await expect(dialog.locator('.new-task-input')).toHaveValue('');
+});
+
+test('new-task gate also trips on a non-empty spec body (#318)', async ({ page }) => {
+  await page.goto('/app?scenario=01');
+  await page.locator('.board-new-task').click();
+  await page.locator('.new-task-spec').fill('描述探针');
+  await page.locator('.new-task-close').click();
+  await expect(page.locator('.new-task-discard')).toBeVisible();
 });

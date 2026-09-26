@@ -779,6 +779,13 @@
   flex: none;
 }
 
+/* #318 model 副题(r9 §2.6 选择器行形「name · model」):name 右侧 dim 位,
+   勾选仍靠 check 的 margin-left:auto 钉行尾。 */
+.chief-pick-model {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
 .chief-pick-check {
   margin-left: auto;
   color: var(--text-tertiary);

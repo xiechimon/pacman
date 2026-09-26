@@ -456,6 +456,17 @@
   text-align: left;
 }
 
+/* #318: phase-inert rows stay rendered but disabled (原站按相位出项;
+   pacman 四行恒定,禁用心智沿 r1「Delete 在 turn 进行中可见但禁用」) */
+.more-menu-item:disabled {
+  color: var(--text-dim);
+  cursor: default;
+}
+
+.more-menu-item:disabled svg {
+  color: var(--text-dim);
+}
+
 /* row bands measured off the 18/24 separator positions: 40/37/41/45 */
 .more-menu-item:nth-child(1) {
   height: 40px;
@@ -489,3 +500,49 @@
 .more-menu {
   transform-origin: top right;
 }
+
+/* ---- 新建任务未保存闸确认层 (#318, r9 §3.4): delete-confirm 家族形
+   [设计]——448 居中、标题行 + 右对齐双钮(继续编辑 / 放弃并关闭);
+   ClickCatcher(z29) 压 new-task-dialog(z21),面板 z31 居顶。 ---- */
+
+.new-task-discard {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 448px;
+  padding: 20px 16px 16px;
+  border-radius: 12px;
+  background: var(--dialog-bg);
+  box-shadow: var(--dialog-shadow);
+  z-index: 31;
+}
+
+.new-task-discard-title {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.new-task-discard-actions {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  height: 30px;
+}
+
+.new-task-discard-keep {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+/* 放弃并关闭 = ui/Button danger(delete-confirm-delete a3 收编同律),
+   类名仅作 e2e 钉,无散写外观规则。 */
