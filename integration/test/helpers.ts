@@ -58,6 +58,7 @@ export async function bootRealServer(opts: {
   const convHub = new ConversationStreamHub();
   const secretBox = createEphemeralSecretBox();
   const reposDir = mkdtempSync(join(tmpdir(), 'pacman-it-repos-'));
+  const attachmentsDir = mkdtempSync(join(tmpdir(), 'pacman-it-att-'));
   const app = createApp({
     db,
     hub,
@@ -75,6 +76,7 @@ export async function bootRealServer(opts: {
     oauthStates: new Map(),
     oauthClient: null,
     reposDir,
+    attachmentsDir,
     webDir: opts.webDir ?? null,
     // #251 可选 token 鉴权：集成面全部走关态（默认行为零改动）。
     authToken: null,

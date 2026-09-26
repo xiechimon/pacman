@@ -517,4 +517,9 @@ export const EN: Record<string, string> = {
   '授权链接已失效，请在执行机上重新发起。':
     'This authorization link has expired — restart enrollment on the executor machine.',
   '浏览器授权注册 →': 'Browser authorization →',
+  // #310 / #318 #5 新建任务关闭未保存闸（r9 §3.4）：标题/描述/附件/标签任一
+  // 非空时关闭先过确认——附件 token 注入描述后由 spec 非空承载，标签 add
+  // 仍为桩（本票不动），dirty 仍涵盖 spec/title。
+  '放弃新建任务？未保存的内容将丢失。': 'Discard new task? Unsaved content will be lost.',
+  放弃: 'Discard',
 };

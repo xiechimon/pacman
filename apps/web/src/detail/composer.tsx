@@ -3,8 +3,17 @@
 // send button, and the streaming stop square (r7 16). The 总管 FAB
 // overlaps the send button in every capture (r7 §3.4), so the page renders
 // the FAB after the composer and it covers the send pixels.
+//
+// M7 #310 附件 wire 改：
+//   - draft 受控（live editable 面父持 state，附件 token 由父 setDraft 注入；
+//     非 editable/fixture 静态 div 面，父不传 draft/onDraftChange → 内部
+//     useState fallback，零行为差）
+//   - 附件钮 = 原生文件多选触发器，选中文件 → onAttachment(files) 委托；
+//     父组件负责 grant + upload + 拿到 token 后 setDraft 拼到 draft
+//   - 覆盖层 chip 留 Task 6（detail 渲染面），此处只接管"选文件→返回 token"
+//     的 wire，不动 textarea 几何
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { ArrowUp, Grid2x2, Mic, Paperclip, SearchPlus } from '../icons/index.js';
 
@@ -23,11 +32,34 @@ interface ComposerProps {
   /** M5 live 面：占位行换成真 textarea（同几何类名 + input 复位类；
    * fixture/parity 面保持静态 div，DOM 不变）。 */
   editable?: boolean;
+  /** M7 #310：附件钮选中后调 onAttachment(files)，父组件负责
+   * grant + upload + 拼 token 进 draft。父组件在 live 编辑面下应同时传
+   * draft/onDraftChange 才能把 token 注入。 */
+  onAttachment?: (files: File[]) => void | Promise<void>;
+  /** M7 #310：受控 draft（live 面由父持 state，附件 token 才能注入）。 */
+  draft?: string;
+  onDraftChange?: (next: string) => void;
 }
 
-export function Composer({ placeholder, aiReview, streaming, onSend, editable }: ComposerProps) {
+export function Composer({
+  placeholder,
+  aiReview,
+  streaming,
+  onSend,
+  editable,
+  onAttachment,
+  draft: draftProp,
+  onDraftChange,
+}: ComposerProps) {
   const { t } = useI18n();
-  const [draft, setDraft] = useState('');
+  const [internalDraft, setInternalDraft] = useState('');
+  const controlled = draftProp !== undefined && onDraftChange !== undefined;
+  const draft = controlled ? (draftProp as string) : internalDraft;
+  const setDraft = controlled
+    ? (next: string) => (onDraftChange as (s: string) => void)(next)
+    : setInternalDraft;
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [attaching, setAttaching] = useState(false);
   const send = () => {
     const text = draft.trim();
     if (text === '' && !editable) {
@@ -42,6 +74,15 @@ export function Composer({ placeholder, aiReview, streaming, onSend, editable }:
     } else {
       setDraft('');
     }
+  };
+  const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    // 重置 value 允许同文件再选（change 事件不重发同源）
+    e.target.value = '';
+    if (files.length === 0 || !onAttachment) return;
+    setAttaching(true);
+    const result = onAttachment(files);
+    void Promise.resolve(result).finally(() => setAttaching(false));
   };
   return (
     <div className="composer">
@@ -61,11 +102,27 @@ export function Composer({ placeholder, aiReview, streaming, onSend, editable }:
       ) : (
         <div className="composer-placeholder">{t(placeholder)}</div>
       )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        style={{ display: 'none' }}
+        onChange={onPickFiles}
+        // 客户端 mime 守门（与服务层 ALLOWED_MIME_* 镜像）；note accept 只是
+        // hint，用户 OS 文件选择器仍可给其他类型，最终由 server 强拒兜底。
+        accept="text/*,image/*,application/json,application/pdf,application/xml"
+      />
       <div className="composer-toolbar">
         <button type="button" className="composer-tool" aria-label={t('语音输入')}>
           <Mic />
         </button>
-        <button type="button" className="composer-tool" aria-label={t('添加附件')}>
+        <button
+          type="button"
+          className="composer-tool"
+          aria-label={t('添加附件')}
+          disabled={attaching || !onAttachment}
+          onClick={() => fileInputRef.current?.click()}
+        >
           <Paperclip />
         </button>
         {aiReview && (
