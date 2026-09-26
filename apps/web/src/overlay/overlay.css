@@ -293,8 +293,7 @@
 
 /* A3-overlays 收编：保存/保存并开始 = ui/Button ghost/primary standard
    （new-task-dialog.tsx 头注；r7 实测 30px/12px 高字归原语 32/13 档）。
-   .new-task-start:disabled 原走 --new-task-primary-disabled，收编后随原语
-   --primary-disabled（token 冗余待主线清理，tokens.css 本票冻结）。 */
+   .new-task-start:disabled 走原语 --primary-disabled。 */
 
 /* ---- delete confirm (r7 25: 448×142, centered both axes) ---- */
 
