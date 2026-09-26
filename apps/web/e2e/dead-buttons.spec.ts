@@ -16,6 +16,13 @@ import { expect, type Page, test } from '@playwright/test';
 // 7. machines 行内动作图标 — #222 出账（r8 §3.5 漂移注记）：原站在线机器行
 //    右侧三行内动作图标，端点核实测 local-first 无机器管理面（注记在
 //    machines-page.tsx 头部），不渲染死钮——行内零 button。
+// 8. #307 档 4 外链型四件 wontfix 出账（spec 08 二分律）：api-keys 空态
+//    「查看文档」钮（#149 schedules 同律——local-first 无文档站）、
+//    resources 共享空态「查看文档」链接（skills/secrets/mcp 随 EmptyState
+//    一并出账）、create-agent-dialog 与 project-settings 的头像「更换」
+//    ink（静态资产无上传面——档 4 二分律下本项 #148/#177 占位 chrome
+//    裁决改判移除；account-swap 同款归档 3，不在本票）。
+//    四处不再渲染，存活面（新建密钥/空态主钮/头像资产/分支 chip）钉住。
 // 第 5 项（skills 添加技能主钮）由 #153 覆盖，本 spec 不断言。
 
 /** 面板中心点的命中必须由面板自身持有 — title-band-clicks 同款家族法。 */
@@ -142,4 +149,48 @@ test('machines rows render no inline action buttons (#222 wontfix 出账)', asyn
   // local-first 机器管理面,不渲染死钮:行内零 button(行尾 chevron 为
   // 非交互 span,行外 添加机器 钮 .res-add 不在钉内)。
   await expect(page.locator('.res-grow button')).toHaveCount(0);
+});
+
+// —— 8. #307 档 4 外链型 wontfix 出账 ————————————————————————————
+
+test('api-keys empty state drops the 查看文档 button, keeps 新建密钥 (#307)', async ({ page }) => {
+  await page.goto('/app/api-keys');
+  await expect(page.locator('.keys-empty')).toBeVisible();
+  await expect(page.locator('.keys-docs')).toHaveCount(0);
+  await expect(page.locator('.keys-create')).toBeVisible();
+});
+
+test('resources empty state drops the 查看文档 link, keeps the primary action (#307)', async ({
+  page,
+}) => {
+  await page.goto('/app/resources/skills?scenario=01');
+  await expect(page.locator('.res-empty')).toBeVisible();
+  // 共享 EmptyState 件:skills/secrets/mcp 三面空态的文档链接一并出账
+  // (skills + secrets 双面钉,防单面局部复活漏网;mcp 同件随行)
+  await expect(page.locator('.res-doclink')).toHaveCount(0);
+  await expect(page.locator('.res-empty .res-primary')).toBeVisible();
+  await page.goto('/app/resources/secrets?scenario=01');
+  await expect(page.locator('.res-empty')).toBeVisible();
+  await expect(page.locator('.res-doclink')).toHaveCount(0);
+});
+
+test('create-agent dialog drops the avatar 更换 ink (#307)', async ({ page }) => {
+  await page.goto('/app/team?scenario=12');
+  await page.locator('.team-create-agent').click();
+  const dialog = page.locator('.dlg');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.dlg-agent-swap')).toHaveCount(0);
+  // 头像行仍在（静态机器人资产），名称输入与创建主钮不受影响
+  await expect(dialog.locator('.dlg-agent-avatar img')).toBeVisible();
+  await expect(dialog.locator('#dlg-agent-name')).toBeVisible();
+});
+
+test('project settings drops the avatar 更换 ink (#307, supersedes the #177 chrome verdict)', async ({
+  page,
+}) => {
+  await page.goto('/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings?scenario=r2-24c');
+  await expect(page.locator('.prj-set-change')).toHaveCount(0);
+  // 头像圆标仍在；#177 存续裁决（分支 chip 静态化）不受影响
+  await expect(page.locator('.prj-set-avatar')).toBeVisible();
+  await expect(page.locator('span.prj-set-branch')).toBeVisible();
 });

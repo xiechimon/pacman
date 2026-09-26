@@ -5,8 +5,10 @@
 // family discipline) / 创建 primary. Live submit = mutations.createAgent
 // (POST /api/teams/:id/agents → 201 {id}, r5 §1); fixture follows the
 // accept-dialog precedent (#148: close on submit, no backend). The 更换
-// ink beside the avatar is capture-verbatim chrome — local single user,
-// no upload face (wontfix, 台账 #136 account 行 #148 同族).
+// ink beside the avatar is removed (#307 wontfix, spec 08 档 4): the
+// avatar is the static robot asset and no upload face exists — this item's
+// #148 capture-verbatim-chrome verdict is re-adjudicated 移除 (the account-
+// swap twin stays with 档 3, out of this ticket).
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
@@ -60,10 +62,9 @@ export function CreateAgentDialog({ open, onClose, onCreate }: CreateAgentDialog
       <div className="dlg-form">
         <div className="dlg-agent-avatar">
           <img src="/avatar-robot-1.svg" alt="" />
-          {/* wontfix: capture-verbatim chrome — no upload face (see header) */}
-          <button type="button" className="dlg-agent-swap">
-            {t('更换')}
-          </button>
+          {/* 「更换」钮全除（#307 wontfix）：头像 = 静态机器人资产，栈内无
+              上传面——档 4 二分律下本项 #148 占位 chrome 裁决改判移除
+              （account-swap 同款归档 3，本票不动）。 */}
         </div>
         <label className="dlg-form-label" htmlFor="dlg-agent-name">
           {t('名称')}

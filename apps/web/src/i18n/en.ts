@@ -180,7 +180,6 @@ export const EN: Record<string, string> = {
   '尚无定时。': 'No schedules yet.',
   '按周期或在指定时间自动重新运行任务。每一轮都会依据任务描述从头开始一次全新运行，到达确认或审核关口时暂停，交由负责人接手。':
     'Automatically rerun a task on a cycle or at a chosen time. Every round starts a fresh run from the task description, pausing at the confirm or review gate for the owner to pick up.',
-  查看文档: 'View docs',
   '也可以直接告诉总管某个任务要多久重跑一次，它会替你写好规则。':
     'You can also just tell the Chief how often a task should rerun, and it will write the rule for you.',
 

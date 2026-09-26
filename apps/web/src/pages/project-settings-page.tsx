@@ -3,8 +3,11 @@
 // #177 (local-first 裁决, endpoint 实测): no project mutation endpoint exists
 // anywhere in the stack — no PATCH, no DELETE /api/projects/:id, and the
 // schema has no defaultBranch column — so the route's three dead buttons
-// resolve wontfix: 更换 stays capture-verbatim chrome (#148 account-swap
-// precedent), 目标分支 becomes a static chip (#149 branch-chip precedent),
+// resolve wontfix: 更换 removed outright (#307, spec 08 档 4 — the avatar
+// is the static PROJECT_INITIAL asset, no upload face; this item's
+// #148/#177 capture-verbatim-chrome verdict re-adjudicated 移除, the
+// account-swap twin stays with 档 3), 目标分支
+// becomes a static chip (#149 branch-chip precedent),
 // and the danger card is removed outright (#148 退出登录 box / #149 导出
 // precedent; the ticket premise that DELETE exists did not survive a grep).
 // #207 复活危险区: #189 DELETE /api/projects/:id 落地(级联单源 server
@@ -67,12 +70,9 @@ export function ProjectSettingsPage() {
         <div className="prj-set-card">
           <div className="prj-set-head">
             <span className="prj-set-avatar">{PROJECT_INITIAL}</span>
-            {/* wontfix (#177, #148 account-swap 同律): the avatar is the
-                static PROJECT_INITIAL asset — no upload face exists or will;
-                the 更换 ink stays as capture-verbatim chrome. */}
-            <button type="button" className="prj-set-change">
-              {t('更换')}
-            </button>
+            {/* 「更换」钮全除（#307 wontfix）：头像是静态 PROJECT_INITIAL 资产,
+                栈内无上传面——档 4 二分律下本项 #177 占位 chrome 裁决改判
+                移除（account-swap 同款归档 3，本票不动）。 */}
           </div>
           <div className="prj-set-row">
             <span className="prj-set-label">{t('名称')}</span>
