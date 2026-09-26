@@ -32,6 +32,7 @@ export const DB_TABLES = [
   'chief_thread', // 02 §4.3 线程面（r5 §3.6）
   'chief_message', // 02 §4.3 线程面（r5 §3.6）
   'whats_new', // 形状保留内容自选（02 §6.1）
+  'attachment', // M7 #310：composer/新建任务附件 grant/upload/read 三步 wire（r9 §3.1/§4）
 ] as const;
 
 export type DbTable = (typeof DB_TABLES)[number];
@@ -39,7 +40,8 @@ export type DbTable = (typeof DB_TABLES)[number];
 /** join 表（无 wire record 形状）——record 投影面 = DB_TABLES 减去此集。 */
 export const JOIN_ONLY_TABLES = ['todo_tag'] as const;
 
-/** 内部状态表（无 wire record 形状，读位内嵌于既有封套）——record 投影面
- * 同减此集。W3 #278：steer_pending 读位 = conversation messages 封套的
- * steerPending 数组（spec #277），无独立 record。 */
-export const INTERNAL_ONLY_TABLES = ['steer_pending'] as const;
+/** 内部状态表（无 wire record 形状，读位内嵌于既有封套或为 wire 二进制）——
+ * record 投影面同减此集。W3 #278：steer_pending 读位 = conversation messages
+ * 封套的 steerPending 数组（spec #277）。M7 #310：attachment 读位 = GET
+ * /api/attachments/{id} 二进制流（r9 §3.1），无 JSON record 形状。 */
+export const INTERNAL_ONLY_TABLES = ['steer_pending', 'attachment'] as const;

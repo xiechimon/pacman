@@ -5761,6 +5761,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > 存储表清单（01 §6
   "chief_thread",
   "chief_message",
   "whats_new",
+  "attachment",
 ]
 `;
 
