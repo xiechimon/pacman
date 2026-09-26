@@ -35,6 +35,7 @@ import {
   enrollMachine,
   executeRelayToolCall,
   fetchSteer,
+  fetchStop,
   findApiKeyByPlain,
   findMachineByToken,
   finishStep,
@@ -254,6 +255,15 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     const stepId = c.req.query('stepId');
     if (!stepId) throw new HttpError(400, 'stepId required');
     return c.json(fetchSteer({ db: ctx.db }, row, stepId));
+  });
+
+  // —— GET /api/machine/stop?stepId=（M7 #308 [设计] 登记位：
+  // MACHINE_WIRE_EXTENSIONS；stop 拉取-确认——本机在跑步才可拉取，拉取即清）。
+  app.get('/api/machine/stop', (c) => {
+    const row = me(c);
+    const stepId = c.req.query('stepId');
+    if (!stepId) throw new HttpError(400, 'stepId required');
+    return c.json(fetchStop({ db: ctx.db }, row, stepId));
   });
 
   // —— POST /api/machine/heartbeat/{stepId} ———————————————————————————————————

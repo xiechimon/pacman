@@ -121,6 +121,9 @@ export const EN: Record<string, string> = {
   'AI 审核': 'AI review',
   提及: 'Mention',
   停止: 'Stop',
+  '停止当前这一轮？': 'Stop this round?',
+  '丢弃本轮修改——方案和代码回到上一个版本':
+    'Discard this round’s changes — plan and code revert to the previous version',
   发送: 'Send',
   '当前没有运行中的会话，消息未送出': 'No active run — the message was not delivered',
   暂无方案: 'No plan yet',
@@ -342,6 +345,8 @@ export const EN: Record<string, string> = {
   // original like any real user data would) ——
   '准备工作区...': 'Preparing workspace...',
   '处理中...': 'Working on it...',
+  '正在停止…': 'Stopping…',
+  已取消: 'Cancelled',
   [PROBE_TOOL_CALL_LABEL]: `Calling tool: ${PROBE_TOOL_PILLS[1]}`,
   '方案 · v1': 'Plan · v1',
   'Xmon Dai 发起了合并': 'Xmon Dai started a merge',

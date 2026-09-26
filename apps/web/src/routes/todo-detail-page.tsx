@@ -12,7 +12,7 @@
 // 接真端点（开始/确认/驳回/合并/重跑/删除）；fixture 分支（含 chain 脚本）
 // 保持 #56–#75 行为字节不变。
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   useApiMutations,
@@ -55,6 +55,7 @@ import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
 import { HistoryDialog } from '../detail/history-dialog.js';
 import { RerunDialog, ReusePanel } from '../detail/overlays.js';
+import { StopConfirmDialog } from '../detail/stop-confirm-dialog.js';
 import { TokenDialog } from '../detail/token-dialog.js';
 import { Transcript } from '../detail/transcript.js';
 import { UserMenu } from '../detail/user-menu.js';
@@ -198,6 +199,10 @@ export function TodoDetailPage() {
   // #209 编辑分配弹层开态——挂页层:chip popover 关即卸载(dhead
   // OverlayMount),弹层挂其内会被带走。
   const [assignOpen, setAssignOpen] = useState(false);
+  // 停止钮（M7 #308，r9 §3.3）：确认弹层开态 + 「正在停止…」过渡旗标——
+  // 确认即乐观置位，步终态经 SSE step 事件重取回显（running 转 false）后清。
+  const [stopOpen, setStopOpen] = useState(false);
+  const [stopping, setStopping] = useState(false);
 
   const phase: Phase = todo?.phase ?? 'todo';
   const showsChanges = phase === 'review' || phase === 'done' || phase === 'failed';
@@ -226,6 +231,14 @@ export function TodoDetailPage() {
 
   const steps = stepsQ.data ?? [];
   const running = steps.some((s) => s.status === 'claimed' || s.status === 'pending');
+  // 「正在停止…」过渡态出口：活动步消失（stopped 落账/自然收尾）即清；
+  // 换 build（重开/重跑）同样复位——新轮不继承上一轮的停止态。
+  useEffect(() => {
+    if (!running) setStopping(false);
+  }, [running]);
+  useEffect(() => {
+    setStopping(false);
+  }, [buildId]);
 
   const liveDetail: DetailContent | undefined = useMemo(() => {
     if (!live || !wireTodo || buildId == null) return undefined;
@@ -242,6 +255,7 @@ export function TodoDetailPage() {
         userName,
         liveText,
         now: Date.now(),
+        stopping,
       }),
       ...(latestPlan ? { doc: mapPlanDoc(latestPlan.content) } : {}),
       ...(changesQ.data
@@ -263,6 +277,7 @@ export function TodoDetailPage() {
     latestPlan,
     changesQ.data,
     changesExpanded,
+    stopping,
   ]);
 
   // live 版本对比面（r8 64→65：上一版本 unified diff）。#244：to 版本
@@ -471,6 +486,7 @@ export function TodoDetailPage() {
               }
               streaming={streaming}
               editable={live}
+              onStop={live && buildId ? () => setStopOpen(true) : undefined}
               onSend={
                 live
                   ? (text) => {
@@ -554,6 +570,19 @@ export function TodoDetailPage() {
           onClose={closeOverlay}
         />
       )}
+      <StopConfirmDialog
+        open={stopOpen}
+        onClose={() => setStopOpen(false)}
+        onConfirm={(discard) => {
+          setStopOpen(false);
+          if (!buildId) return;
+          // 乐观过渡态（r9 §3.3「正在停止…」）：确认即置位；终态由 SSE step
+          // 事件重取回显（running 转 false 清旗标）。409 竞态（步已收尾）=
+          // 数据面已前进，清旗标 + invalidateAll 重取即收敛。
+          setStopping(true);
+          mutations.stopBuild.mutate({ buildId, discard }, { onError: () => setStopping(false) });
+        }}
+      />
       <AcceptDialog
         open={overlay?.kind === 'accept'}
         onClose={closeOverlay}

@@ -11,15 +11,24 @@
 import type {
   Assignment,
   BuildRecord,
+  Phase,
   StepJournalRow,
   StepRecord,
   TriggerSource,
   UserRecord,
 } from '@pacman/shared';
-import { MERGE_ANNOUNCEMENT, PLAN_FILE_NAME } from '@pacman/shared';
-import { and, asc, eq } from 'drizzle-orm';
+import { MERGE_ANNOUNCEMENT, PLAN_FILE_NAME, STOP_MESSAGE } from '@pacman/shared';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { build, message, plan as planTable, steerPending, step, todo } from '../db/schema.js';
+import {
+  build,
+  message,
+  plan as planTable,
+  steerPending,
+  step,
+  stopPending,
+  todo,
+} from '../db/schema.js';
 import { HttpError } from '../lib/errors.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
@@ -137,6 +146,108 @@ export function readSteerPending(db: Db, conversationId: string): string[] {
     .where(eq(steerPending.conversationId, conversationId))
     .get();
   return pending ? [pending.content] : [];
+}
+
+/** 停止写面（M7 #308，r9 §3.3 停止钮 / 08 册附录 A composer 停止钮行）：
+ * POST /api/builds/{id}/stop body {discard}——中断当前活动步。
+ * - claimed 步 = 机器信号面（stop_pending 单槽 upsert + machine stream stop
+ *   事件 → GET /api/machine/stop 拉取-确认 → daemon live.stop()，#278 steer
+ *   同律）→ {delegated:true} 202；中断在途，done(stopped) 回报才落账。
+ * - pending 步 = 无机器可通知，server 侧即时取消 → {delegated:false} 200。
+ * 无活动步 = 409 不静默（steer 门同律）。 */
+export function requestStop(
+  deps: BuildDeps,
+  buildId: string,
+  body: { discard: boolean },
+): { delegated: boolean } {
+  const { db } = deps;
+  const buildRow = db.select().from(build).where(eq(build.id, buildId)).get();
+  if (!buildRow) throw new NotFoundError(`build ${buildId}`);
+  // 活动步 = pending/claimed（步序贯，取最新一条；orderBy 显式钉死语义，
+  // 不依赖隐式 rowid 序）。
+  const active = db
+    .select()
+    .from(step)
+    .where(and(eq(step.buildId, buildId), inArray(step.status, ['pending', 'claimed'])))
+    .orderBy(asc(step.createdAt))
+    .all()
+    .at(-1);
+  if (!active) {
+    throw new HttpError(409, 'no active step on this build (stop 只对运行中的任务生效)');
+  }
+  if (active.status === 'pending') {
+    applyStoppedStep(deps, active.id);
+    return { delegated: false };
+  }
+  const now = nowMs();
+  db.insert(stopPending)
+    .values({ conversationId: buildId, stepId: active.id, discard: body.discard, createdAt: now })
+    .onConflictDoUpdate({
+      target: stopPending.conversationId,
+      set: { stepId: active.id, discard: body.discard, createdAt: now },
+    })
+    .run();
+  const todoRow = db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
+  if (todoRow) deps.machineHub?.stopSignal(todoRow.teamId, active.id);
+  return { delegated: true };
+}
+
+/** gate 回落目标（r9 §3.3「todo 落上一完成 turn 的 gate」的 build 内投影
+ * [设计]——pacman 重跑 = 新 build 新会话新分支，跨 build 回落会指向旧会话的
+ * 变更面（latestBuildId 已换），故回落以本 build 为界）：最近 done 步的
+ * 关口（plan→confirm / build|merge→review）；无 done 步 → build.prevPhase
+ * （回到本轮开始前的面：fresh→todo、失败重跑→failed、定时复跑→done…）。 */
+function stopFallbackPhase(db: Db, buildRow: BuildRow): Phase {
+  const lastDone = db
+    .select()
+    .from(step)
+    .where(and(eq(step.buildId, buildRow.id), eq(step.status, 'done')))
+    .orderBy(asc(step.createdAt))
+    .all()
+    .at(-1);
+  if (lastDone) return lastDone.kind === 'plan' ? 'confirm' : 'review';
+  return buildRow.prevPhase ?? 'todo';
+}
+
+/** 停止落账（pending 步即时取消 × done(stopped) 机器回报两面单源）：
+ * step stopped + build.errorMessage 取消标记（STOP_MESSAGE，运行历史面数据源）
+ * + gate 回落 + stop_pending 清理 + 会话流/文档事件推送。
+ * 回落绕过 setTodoPhase 漏斗 [设计]：取消回退边不在前进流转表（如
+ * building→confirm、planning→todo），且取消是用户在场动作——不触发
+ * confirm/review 进入通知与 chief wake（重复通知 = 误导）。 */
+export function applyStoppedStep(deps: BuildDeps, stepId: string): void {
+  const { db } = deps;
+  const stepRow = db.select().from(step).where(eq(step.id, stepId)).get();
+  if (!stepRow) throw new NotFoundError(`step ${stepId}`);
+  db.update(step).set({ status: 'stopped' }).where(eq(step.id, stepId)).run();
+  db.delete(stopPending).where(eq(stopPending.conversationId, stepRow.buildId)).run();
+  const stoppedRow = db.select().from(step).where(eq(step.id, stepId)).get();
+  if (stoppedRow) {
+    deps.convHub?.publishStep(stepRow.buildId, {
+      id: stoppedRow.id,
+      buildId: stoppedRow.buildId,
+      kind: stoppedRow.kind,
+      machineId: stoppedRow.machineId,
+      createdAt: stoppedRow.createdAt,
+      status: stoppedRow.status,
+      checkpointCommit: stoppedRow.checkpointCommit,
+    });
+  }
+  const buildRow = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
+  if (!buildRow) return;
+  db.update(build).set({ errorMessage: STOP_MESSAGE }).where(eq(build.id, buildRow.id)).run();
+  const cancelledRow = db.select().from(build).where(eq(build.id, buildRow.id)).get();
+  if (cancelledRow) publishBuild(deps, cancelledRow);
+  const todoRow = db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
+  if (!todoRow) return;
+  const target = stopFallbackPhase(db, buildRow);
+  if (todoRow.phase === target) return;
+  db.update(todo)
+    .set({ phase: target, phaseAt: nowMs(), v: todoRow.v + 1 })
+    .where(eq(todo.id, todoRow.id))
+    .run();
+  const record = getTodo(deps, todoRow.id);
+  if (record) deps.hub.publishTodoDoc(record.teamId, record);
 }
 
 function enqueueStep(

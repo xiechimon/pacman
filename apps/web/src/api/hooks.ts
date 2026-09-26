@@ -419,6 +419,18 @@ export function useApiMutations(teamId: string | undefined) {
         api.post<{ delegated: true }>(`/api/builds/${buildId}/merge`, {}),
       onSuccess: invalidateAll,
     }),
+    // 停止钮（M7 #308，r9 §3.3）：discard = 「丢弃本轮修改」勾选位。
+    // delegated:true = claimed 步机器信号在途（「正在停止…」过渡态由页面
+    // 本地保持到 steps 重取见终态）；false = pending 步 server 即时取消。
+    // 409（步已收尾竞态）同样 invalidate——数据面已前进，重取即收敛。
+    stopBuild: useMutation({
+      mutationFn: (input: { buildId: string; discard: boolean }) =>
+        api.post<{ delegated: boolean }>(`/api/builds/${input.buildId}/stop`, {
+          discard: input.discard,
+        }),
+      onSuccess: invalidateAll,
+      onError: invalidateAll,
+    }),
     createSchedule: useMutation({
       mutationFn: (body: CreateScheduleBody) => api.post<ScheduleRecord>('/api/schedules', body),
       onSuccess: invalidateAll,
