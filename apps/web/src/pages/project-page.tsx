@@ -12,6 +12,8 @@ import type { ProjectFileResponse } from '@pacman/shared';
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router';
 import {
+  useApiMutations,
+  useMembers,
   useProjectCommits,
   useProjectFile,
   useProjects,
@@ -21,7 +23,8 @@ import {
 import { mapCommits, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
-import type { Phase, ProjectCommitRow, ProjectContent } from '../fixtures/records.js';
+import { localTodo } from '../fixtures/fixtures.js';
+import type { Phase, ProjectCommitRow, ProjectContent, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import {
@@ -36,6 +39,7 @@ import {
   PlusSmall,
   Search,
 } from '../icons/index.js';
+import { NewTaskDialog } from '../overlay/new-task-dialog.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { PageShell } from './shell.js';
 import './pages.css';
@@ -296,7 +300,16 @@ function TasksMenuButton<T extends string>({
   );
 }
 
-function TasksPane({ todos, now }: { todos: TaskRow[]; now: number }) {
+function TasksPane({
+  todos,
+  now,
+  onNewTask,
+}: {
+  todos: TaskRow[];
+  now: number;
+  /** #305: 空态「+ 任务」入口开 NewTaskDialog（与看板新建入口同构）。 */
+  onNewTask: () => void;
+}) {
   const { t } = useI18n();
   const [layout, setLayout] = useState<TasksLayout>(() => readStoredLayout(localStorage));
   const switchLayout = useCallback((next: TasksLayout) => {
@@ -373,7 +386,7 @@ function TasksPane({ todos, now }: { todos: TaskRow[]; now: number }) {
           </div>
           <div className="prj-tasks-empty-title">{t('暂无内容')}</div>
           <div className="prj-tasks-empty-desc">{t('创建第一个任务以开始使用。')}</div>
-          <button type="button" className="prj-tasks-empty-new">
+          <button type="button" className="prj-tasks-empty-new" onClick={onNewTask}>
             <PlusSmall width={12} height={12} />
             {t('任务')}
           </button>
@@ -435,6 +448,18 @@ export function ProjectPage() {
   const { live, teamId } = useLiveData();
   const projectsQ = useProjects(teamId, live);
   const todosQ = useTodos(teamId, live);
+  // #305 空态新建入口（与看板新建入口同构）：mutations + 首个 Agent（保存并
+  // 开始的双槽指派，board 同语义——已建屏无开始弹窗，02 §6.2）。
+  const mutations = useApiMutations(teamId);
+  const membersQ = useMembers(teamId, live);
+  const firstAgentId = useMemo(() => {
+    const member = (membersQ.data ?? []).find((m) => m.memberType === 'agent');
+    return member?.actorId ?? null;
+  }, [membersQ.data]);
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
+  // fixture 面本地新行（board #66 同律）：保存落在客户端集合，页面/侧栏
+  // 徽标都吃它；live 面走 mutation + invalidate，不用本地集。
+  const [fixtureAdded, setFixtureAdded] = useState<TodoRecord[]>([]);
   const treeQ = useProjectTree(live ? id : undefined, live ? 'main' : undefined);
   const wireProject = live ? (projectsQ.data ?? []).find((p) => p.id === id) : undefined;
   // 历史读面惰性：仅 live + 文件 tab + 历史 seg + 托管形态才发（GitHub
@@ -472,10 +497,80 @@ export function ProjectPage() {
   const fileView = deriveFileView(selectedFile, live, fixtureFileContent, fileQ);
   const todos = live
     ? (todosQ.data ?? []).map(toDisplayTodo).filter((x) => x.projectId === id)
-    : fixture.todos.filter((x) => x.projectId === id);
+    : [...fixture.todos, ...fixtureAdded].filter((x) => x.projectId === id);
+  // 保存（#305）：dialog 选中项目优先；未选/查询未决退本页路由项目（空态
+  // 入口长在本项目面上，语义锚 = 路由 id 而非看板的「首项目」）。fixture
+  // 面落 localTodo 本地行（board 同律，approximation：恒 canon projectId）。
+  const createTodo = useCallback(
+    (title: string, selectedProjectId?: string) => {
+      setNewTaskOpen(false);
+      if (live) {
+        const projectId = selectedProjectId ?? id;
+        if (projectId !== undefined) {
+          mutations.createTodo.mutate({ projectId, title, spec: title });
+        }
+        return;
+      }
+      setFixtureAdded((prev) => [
+        ...prev,
+        localTodo(
+          [...fixture.todos, ...prev].reduce((max, t) => Math.max(max, t.seqNum), 0) + 1,
+          title,
+          fixture.now,
+        ),
+      ]);
+    },
+    [live, id, mutations.createTodo, fixture],
+  );
+  // 保存并开始（r2 §4.2 双钮语义，board 同构）：创建 → POST builds（withPlan，
+  // 首 Agent 双槽指派 [设计]）。fixture 面 = 同保存。
+  const createAndStart = useCallback(
+    (title: string, selectedProjectId?: string) => {
+      setNewTaskOpen(false);
+      if (!live) {
+        createTodo(title);
+        return;
+      }
+      const projectId = selectedProjectId ?? id;
+      if (projectId === undefined) return;
+      mutations.createTodo.mutate(
+        { projectId, title, spec: title },
+        {
+          onSuccess: (created) =>
+            mutations.startBuilds.mutate({
+              projectId,
+              todoIds: [created.id],
+              assignment: {
+                plan: firstAgentId ? { agentId: firstAgentId } : null,
+                build: firstAgentId ? { agentId: firstAgentId } : null,
+              },
+              withPlan: true,
+            }),
+        },
+      );
+    },
+    [live, createTodo, id, mutations.createTodo, mutations.startBuilds, firstAgentId],
+  );
+  // #305 dialog 项目行：live = projectsQ 投影、当前项目置首（dialog 未动
+  // 选择的默认行 = rows[0]，即本项目——空态入口的语义锚）；fixture =
+  // scenario projectNames（缺省 undefined → dialog 退 canon 单默认项目，
+  // #176 同律）。
+  const dialogProjects = useMemo(() => {
+    const currentFirst = (rows: { id: string; name: string }[]) => [
+      ...rows.filter((row) => row.id === id),
+      ...rows.filter((row) => row.id !== id),
+    ];
+    if (live) return currentFirst((projectsQ.data ?? []).map((p) => ({ id: p.id, name: p.name })));
+    if (fixture.projectNames == null) return undefined;
+    return currentFirst(
+      Object.entries(fixture.projectNames).map(([pid, name]) => ({ id: pid, name })),
+    );
+  }, [live, projectsQ.data, fixture.projectNames, id]);
   return (
     <PageShell
-      fixture={live ? { ...fixture, todos } : fixture}
+      fixture={
+        live ? { ...fixture, todos } : { ...fixture, todos: [...fixture.todos, ...fixtureAdded] }
+      }
       selected="project"
       leftTitle={project?.name ?? ''}
       tabs={[
@@ -514,8 +609,19 @@ export function ProjectPage() {
           )}
         </div>
       ) : (
-        <TasksPane todos={todos} now={live ? Date.now() : fixture.now} />
+        <TasksPane
+          todos={todos}
+          now={live ? Date.now() : fixture.now}
+          onNewTask={() => setNewTaskOpen(true)}
+        />
       )}
+      <NewTaskDialog
+        open={newTaskOpen}
+        onClose={() => setNewTaskOpen(false)}
+        onSave={createTodo}
+        onSaveAndStart={live ? createAndStart : undefined}
+        projects={dialogProjects}
+      />
     </PageShell>
   );
 }

@@ -280,6 +280,10 @@ export const EN: Record<string, string> = {
   项目名称: 'Project name',
   仓库: 'Repo',
   选择仓库: 'Select repo',
+  // #305 repo 选择面（r2 07b/07c canon 文案）：两行 = create 端点的两种
+  // repo 形态（02 §3）。
+  '新的 Todos 托管仓库': 'New Todos hosted repo',
+  'GitHub 仓库': 'GitHub repo',
   创建项目: 'Create project',
   基本信息: 'Basic info',
   标签: 'Tags',
