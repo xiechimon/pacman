@@ -35,6 +35,7 @@ import {
   Users,
 } from '../icons/index.js';
 import { PHASE_UI } from '../phase.js';
+import { Input } from '../ui/input.js';
 import { OverlayMount } from './dismiss.js';
 import './overlays.css';
 
@@ -280,11 +281,15 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
       >
         <div className="search-input-row">
           <Search width={13} height={13} />
-          <input
+          {/* A5 收编：palette 裸输入形态（r7 05 canon）；e2e search-focus
+              钉 .search-input-row input 元素结构选择器——Input 渲染的
+              input 元素天然满足，ref 经 React 19 ref-as-prop 透传 */}
+          <Input
             // the live panel opens focused (r7 05/05b show the caret);
             // the attach callback is the mount-time focus path (#137),
             // the [open] effect the retained-mount refocus
             ref={attachInput}
+            variant="palette"
             value={query}
             placeholder={t('搜索任务、项目、成员…')}
             onChange={(event) => onQuery(event.target.value)}

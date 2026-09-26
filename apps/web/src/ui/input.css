@@ -15,3 +15,28 @@
   border-color: var(--indigo-500);
   box-shadow: 0 0 0 1px var(--indigo-500);
 }
+
+/* palette 形态（A5）：行内裸输入（⌘K 搜索行 r7 05 实测 canon）——
+   覆盖 .input 基类的盒状皮肤；写在基类之后赢同特异性 */
+.input--palette {
+  height: auto;
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-primary);
+}
+
+.input--palette:focus-visible {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.input--palette::placeholder {
+  color: var(--text-tertiary);
+}

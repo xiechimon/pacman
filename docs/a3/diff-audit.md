@@ -36,3 +36,15 @@
 | detail | `detail/*.tsx` + detail.css + overlays.css 余部 | chip 五态消费点；detail-chip--* → Chip |
 | overlays+overlay | `overlays/*.tsx`、`overlay/*.tsx` + 同名 css | token-gate、搜索面板、chip-popover |
 | 次级页面群 | `resources/ pages/ routes/ secondary/ chief/` | 各页 submit 按钮、表单 input 收编 Input |
+
+## 终态记账（2026-09-27，A5 收尾批裁决）
+
+A 轨三轮收编后剩余散写点位的主线处置——均为「维持现状」终态，理由各 lane 报告已实证：
+
+| 项 | 终态 | 依据 |
+|---|---|---|
+| `.overlay-btn` 族（rerun/reuse） | **维持散写** | A3 时三处 per-face 叠加后原语贡献趋零（token/尺寸/盒模型三重非中性），收编为纯类名叠贴无意义（report-overlays 实证） |
+| res-pill（20px/4px 圆角独立形） | **独立形态维持** | 与 Chip 18px/9999 形态差大，machines/providers 真 baseline 钉扎；归一需动像素，无收益 |
+| ⌘K 搜索行 | **A5 已收编**（Input palette variant） | 裸输入皮肤进原语，行容器几何 per-face |
+| 复合搜索框（prj-tasks-search / chief-pick-search） | 观望 | palette variant 已成型（A5），需要时按同法收编 |
+| 跨域 CSS（detail/overlays.css 服务 resources/routes） | 记账 | 全局单 CSS 包下成立；按路由拆 CSS 包时需迁移 |
