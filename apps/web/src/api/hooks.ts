@@ -410,7 +410,9 @@ export function useApiMutations(teamId: string | undefined) {
         buildId: string;
         body:
           | { action: 'confirm' }
-          | { action: 'revision'; side: 'plan'; feedback: string; clientMessageId: string };
+          | { action: 'revision'; side: 'plan'; feedback: string; clientMessageId: string }
+          // #320 失败面发送 = 带反馈重启（r9 §3.3；shared buildStepActionBodySchema 同形）。
+          | { action: 'restart'; feedback: string; clientMessageId: string };
       }) => api.post<{ delegated: true }>(`/api/builds/${input.buildId}/steps`, input.body),
       onSuccess: invalidateAll,
     }),

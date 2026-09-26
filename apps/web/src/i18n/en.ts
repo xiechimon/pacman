@@ -123,6 +123,7 @@ export const EN: Record<string, string> = {
   停止: 'Stop',
   发送: 'Send',
   '当前没有运行中的会话，消息未送出': 'No active run — the message was not delivered',
+  '任务状态已变化，消息未送出': 'The task state changed — the message was not delivered',
   暂无方案: 'No plan yet',
   暂无可显示的变更: 'No changes to show',
   '· {n} 个文件改动': '· {n} files changed',

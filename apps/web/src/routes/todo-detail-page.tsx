@@ -355,6 +355,17 @@ export function TodoDetailPage() {
         ? 'changes'
         : 'plan';
 
+  // composer 被拒提示行（W3 #280 steer / #320 restart）：异步 onSend 失败时
+  // draft 保留不丢字，文案按被拒写面分流；restart 错误 scope 到
+  // variables.action（confirm 主钮同走 stepAction，其错误不上此行）。
+  const composerReject = !live
+    ? null
+    : mutations.sendSteer.isError
+      ? t('当前没有运行中的会话，消息未送出')
+      : mutations.stepAction.isError && mutations.stepAction.variables?.body.action === 'restart'
+        ? t('任务状态已变化，消息未送出')
+        : null;
+
   return (
     <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
       <AppSidebar
@@ -456,11 +467,7 @@ export function TodoDetailPage() {
         )}
         {ui.placeholder != null && (
           <>
-            {live && mutations.sendSteer.isError && (
-              // W3 #280：steer 被拒（409 无在跑步）提示行——输入未丢（composer
-              // 异步 onSend 失败保留 draft）。
-              <div className="composer-reject">{t('当前没有运行中的会话，消息未送出')}</div>
-            )}
+            {composerReject != null && <div className="composer-reject">{composerReject}</div>}
             <Composer
               placeholder={ui.placeholder}
               aiReview={
@@ -495,6 +502,22 @@ export function TodoDetailPage() {
                       if ((phase === 'building' || phase === 'review') && buildId && text !== '') {
                         return mutations.sendSteer
                           .mutateAsync({ conversationId: buildId, content: text })
+                          .then(() => undefined);
+                      }
+                      // #320 失败面发送 = 带反馈重启（r9 §3.3：原站 failed 态发消息
+                      // 触发新一轮，消息随新轮入会话——非 steer 语义）。走 steps
+                      // restart 动作位：新 build + 反馈行落新 conv + failed→queued。
+                      // Promise 面 = 成功清稿、被拒（相位漂移 409）保留 draft。
+                      if (phase === 'failed' && buildId && text !== '') {
+                        return mutations.stepAction
+                          .mutateAsync({
+                            buildId,
+                            body: {
+                              action: 'restart',
+                              feedback: text,
+                              clientMessageId: crypto.randomUUID(),
+                            },
+                          })
                           .then(() => undefined);
                       }
                     }
