@@ -42,6 +42,10 @@ export interface RunStepDeps {
    * runStep 装卸（handle 创建即注册、各收尾路径注销），machine-loop 的
    * deliverSteer 按 stepId 消费。缺省 = 无 steer 面（单测形态）。 */
   sessionHandles?: Map<string, AgentSessionHandle>;
+  /** 停止请求旗标（M7 #308 stop 投递面）：machine-loop deliverStop 拉取-
+   * 确认后置位（discard = 「丢弃本轮修改」勾选位），runStep 事件流结束后
+   * 消费判 stopped 收尾。缺省 = 无 stop 面（单测形态）。 */
+  stopRequests?: Map<string, { discard: boolean }>;
   /** heartbeat 节奏 [设计]（r3 未采具体值；presence 同族 ~30s）。 */
   heartbeatIntervalMs?: number;
   now?: () => number;
@@ -199,6 +203,17 @@ export async function runStep(
   const cwd = ws?.cwd ?? join(deps.workspacesDir, convId);
   if (!ws) mkdirSync(cwd, { recursive: true });
 
+  // 步起点 head（M7 #308：停止 + 丢弃本轮修改的 rewind 目标 checkpoint——
+  // prepare 后即时捕获，pi 会话期间的提交/脏树都在其上层）。
+  let headAtStart: string | null = null;
+  if (ws !== null && deps.workspace) {
+    try {
+      headAtStart = await deps.workspace.headCommit(ws.cwd);
+    } catch {
+      headAtStart = null; // 空基座等退化形：无可回退点，discard 降级为不清理
+    }
+  }
+
   // systemPrompt：chief = server 合成（charter + 资源清单 + 策略指引 + 记忆，
   // 02 §4.3）；worker = 职责文本 + 记忆注入（02 §4.4 读路径最小形，注入形 [推断]）。
   const systemPrompt =
@@ -288,6 +303,9 @@ export async function runStep(
   let lastError: string | null = null;
   let messageSeq = 0;
   let sawChangeTool = false;
+  // 自然完成判定（M7 #308）：done 事件在位 = 会话自然收尾，stop 旗标迟到
+  // 不改判（停止与自然完成的竞态以完成为准）。
+  let sawDone = false;
   // 流超时护栏（02 §5.6 r3 bundle 原文三值全用）：首事件 streamFirstEvent、
   // 事件间空闲 streamIdle、流 body 总时长 streamBodyTimeout；超时 = 中断会话
   // 并按 failed 收尾。
@@ -384,6 +402,7 @@ export async function runStep(
           logger.step('compaction_start');
           break;
         case 'done':
+          sawDone = true;
           usage = ev.usage;
           break;
         default:
@@ -404,11 +423,36 @@ export async function runStep(
   if (timedOut)
     lastError = `stream timeout (first=${STREAM_TIMEOUTS_MS.streamFirstEvent}ms idle=${STREAM_TIMEOUTS_MS.streamIdle}ms)`;
 
+  // —— 停止钮中断判定（M7 #308）：旗标 = machine-loop deliverStop 拉取-确认
+  // 后置位；sawDone 优先 = stop 与自然完成竞态归完成（success 不改判）。——
+  const stopReq = deps.stopRequests?.get(stepId);
+  if (stopReq !== undefined) deps.stopRequests?.delete(stepId);
+  const stopped = stopReq !== undefined && !sawDone;
+  if (stopReq !== undefined && sawDone) logger.step('stop arrived after completion — ignored');
+  if (stopped) {
+    logger.step(`step stopped by user (discard=${stopReq?.discard === true})`);
+    // abort 吞掉终局 done 事件（backend/pi.ts stopping 位）→ usage 从 handle
+    // 累计面兜底（token 记账不因停止丢失）。
+    usage = handle.usage();
+    // 丢弃本轮修改 = worktree rewind 到步起点 checkpoint（r9 §3.3「方案和
+    // 代码回到上一个版本」；方案文档面天然回上版——plan.md 上传在步收尾，
+    // 停止即不上传）。不 commit/push：中断步不产交接物，远端分支停在上一步
+    // 收尾态（本地 rewind 后即与远端一致，无需 force push）。
+    if (stopReq?.discard && ws !== null && deps.workspace && headAtStart !== null) {
+      try {
+        await deps.workspace.restoreCheckpoint(ws.cwd, headAtStart);
+      } catch (err) {
+        logger.step(`discard rewind failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+
   // —— git 收尾（02 §5.5：每步结束自动 commit + push 本 conversation 工作
-  // 分支；合并步先走 `git merge --no-edit origin/<default>`，r3 §3.6）——
+  // 分支；合并步先走 `git merge --no-edit origin/<default>`，r3 §3.6；
+  // 停止步跳过——中断步不产交接物）——
   let headCommit: string | null = null;
   let hasChanges = sawChangeTool; // 未绑 repo 退化形 = transcript 写类工具行 [推断骨架]
-  if (ws !== null && deps.workspace && lastError === null) {
+  if (ws !== null && deps.workspace && lastError === null && !stopped) {
     const git = deps.workspace;
     try {
       // 提交身份 [设计]（r3 未采 committer 词表）：Agent 名 + 机器位。
@@ -449,8 +493,8 @@ export async function runStep(
     }
   }
 
-  const status = lastError === null ? 'success' : 'failed';
-  if (lastError !== null) logger.step(`step failed: ${lastError}`);
+  const status = stopped ? 'stopped' : lastError === null ? 'success' : 'failed';
+  if (!stopped && lastError !== null) logger.step(`step failed: ${lastError}`);
   journal.update(stepId, { state: 'awaiting-upload' });
 
   // upload-urls → transcript 终稿 + plan.md 产物回传落库（02 §1.3 数据所有权；
@@ -461,7 +505,7 @@ export async function runStep(
       { name: 'transcript.json', size: JSON.stringify(messages).length },
     ];
     let planContent: string | null = null;
-    if (ws !== null && claimed.step.kind === 'plan') {
+    if (ws !== null && claimed.step.kind === 'plan' && !stopped) {
       const planPath = join(ws.cwd, PLAN_FILE_NAME);
       if (existsSync(planPath)) {
         planContent = readFileSync(planPath, 'utf8');
@@ -481,6 +525,7 @@ export async function runStep(
     logger.step(`transcript upload failed: ${err instanceof Error ? err.message : String(err)}`);
     clearCredentials(creds);
     deps.sessionHandles?.delete(stepId); // journal 残留 recover 面重传，handle 不再 steer
+    deps.stopRequests?.delete(stepId);
     return;
   }
 
@@ -499,16 +544,19 @@ export async function runStep(
     logger.step(`done report failed: ${err instanceof Error ? err.message : String(err)}`);
     clearCredentials(creds);
     deps.sessionHandles?.delete(stepId); // journal 残留 recover 补报，handle 不再 steer
+    deps.stopRequests?.delete(stepId);
     return; // journal 残留，recover 面补报
   }
   clearCredentials(creds);
   journal.remove(stepId);
   deps.sessionHandles?.delete(stepId);
+  deps.stopRequests?.delete(stepId);
   logger.raw(`finished (${running - 1}/${deps.maxConcurrent} running)`);
 }
 
 async function failStep(deps: RunStepDeps, stepId: string, message: string): Promise<void> {
   deps.sessionHandles?.delete(stepId); // 覆盖 handle 后失败路径（前置失败 = 无键可删）
+  deps.stopRequests?.delete(stepId);
   deps.logger.step(`failed: ${message}`);
   try {
     await deps.client.done(stepId, { status: 'failed', errorMessage: message });

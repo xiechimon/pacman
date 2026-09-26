@@ -156,6 +156,9 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   // 注册表若在调用点之后才 const 初始化 = TDZ ReferenceError（crash-recover
   // 集成实测：重启 daemon 于 recover 即崩）。
   const sessionHandles = new Map<string, AgentSessionHandle>();
+  // 停止请求旗标（M7 #308）：deliverStop 拉取-确认后置位（discard = 丢弃
+  // 本轮修改勾选位），runStep 收尾判 stopped 消费；声明位纪律同 sessionHandles。
+  const stopRequests = new Map<string, { discard: boolean }>();
 
   // 孤儿 worktree 回收（r3 §1.4 cleanupOrphanWorktrees(ttlMs = 7*24h)）：
   // 上线一次 + 每日节奏 [设计]（观测仅函数名，节奏未采）。活步 = journal
@@ -239,6 +242,25 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       logger.step(`steer delivery failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
+  // 停止投递（M7 #308，steer 三号分流同律）：拉取-确认置旗标 → live.stop()
+  // 中断 pi 会话；旗标先于 stop() 置位（runStep 的事件流结束即读）。收尾
+  // 判 stopped / done(stopped) 回报 / discard rewind 归 runner。
+  const deliverStop = async (stepId: string): Promise<void> => {
+    try {
+      const discard = await client.stop(stepId);
+      if (discard === null) return; // server 门拒/旧步已丢弃（拉取-确认语义）。
+      const live = sessionHandles.get(stepId);
+      if (live === undefined) {
+        logger.step(`stop dropped (no live session) step=${stepId}`); // 收尾竞态
+        return;
+      }
+      stopRequests.set(stepId, { discard });
+      await live.stop();
+      logger.step(`stop delivered step=${stepId}`);
+    } catch (err) {
+      logger.step(`stop delivery failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
   void (async () => {
     let backoff = 1_000;
     let announced = false;
@@ -250,6 +272,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
             if (ev.type === 'wake') flight.claim?.abort(new Error('wake'));
             if (ev.type === 'shutdown') void stop();
             if (ev.type === 'steer') void deliverSteer(ev.stepId);
+            if (ev.type === 'stop') void deliverStop(ev.stepId);
           },
           () => {
             if (!announced) {
@@ -294,6 +317,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       workspacesDir: config.workspacesDir,
       maxConcurrent: config.maxConcurrent,
       sessionHandles,
+      stopRequests,
       ...(opts.heartbeatIntervalMs !== undefined
         ? { heartbeatIntervalMs: opts.heartbeatIntervalMs }
         : {}),
