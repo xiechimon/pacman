@@ -41,7 +41,10 @@ export type StepJournalRow = z.infer<typeof stepJournalRowSchema>;
 /** POST /api/builds/{id}/steps body——确认回路（02 §4.2，r5 §4 实走改判）：
  * 驳回 = {action:"revision", side:"plan", feedback, clientMessageId} →
  * server 入队重规划步（同 conv continue session）→ plan v2；
- * 确认 = 同端点 {action:"confirm"}。 */
+ * 确认 = 同端点 {action:"confirm"}；
+ * 失败面发送 = 同端点 {action:"restart", feedback, clientMessageId}（#320，
+ * r9 §3.3 实测：原站 failed 态发消息触发新一轮，消息随新轮入会话；实走
+ * steps 端点 body 未录——action 词与形 [设计]，语义 = 带反馈重启）。 */
 export const buildStepActionBodySchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('revision'),
@@ -51,5 +54,11 @@ export const buildStepActionBodySchema = z.discriminatedUnion('action', [
     clientMessageId: z.string(), // <uuid>（r5 §4 抓包）
   }),
   z.object({ action: z.literal('confirm') }),
+  z.object({
+    action: z.literal('restart'),
+    /** 空消息不成发送（原站语义「发消息触发」）：直连 API 也收不住空稿。 */
+    feedback: z.string().min(1),
+    clientMessageId: z.string(), // <uuid>（revision 同形，r5 §4；server 侧现未消费）
+  }),
 ]);
 export type BuildStepActionBody = z.infer<typeof buildStepActionBodySchema>;

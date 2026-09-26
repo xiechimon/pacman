@@ -267,18 +267,74 @@ export function startBuilds(
  *   的再确认不适用，409 由流转表兜底）。
  * - {action:"revision", side:"plan", feedback, clientMessageId} → confirm→
  *   planning + 入队重规划步（同 conv continue session 语义归 M3）+ 时间线插
- *   用户驳回消息行（r5 §4）。 */
+ *   用户驳回消息行（r5 §4）。
+ * - {action:"restart", feedback, clientMessageId} → 失败面带反馈重启（#320，
+ *   r9 §3.3 实测：原站 failed 态发消息触发新一轮，消息随新轮入会话，非
+ *   steer 409 语义）：新 build（withPlan 承接失败轮）+ 反馈行落新 conv +
+ *   首步入队（instruction 携反馈，revision 同缝）+ failed→queued 漏斗。
+ *   与 #308 停止钮的落态分界：停止 = 运行轮落上一完成 turn 的 gate（落态非
+ *   failed）；restart 门只收 failed——两写面相位隔离，不共享入口。 */
 export function applyBuildStepAction(
   deps: BuildDeps,
   buildId: string,
   body:
     | { action: 'confirm' }
-    | { action: 'revision'; side: 'plan'; feedback: string; clientMessageId: string },
+    | { action: 'revision'; side: 'plan'; feedback: string; clientMessageId: string }
+    | { action: 'restart'; feedback: string; clientMessageId: string },
 ): void {
   const row = deps.db.select().from(build).where(eq(build.id, buildId)).get();
   if (!row) throw new NotFoundError(`build ${buildId}`);
   const todoRecord = getTodo(deps, row.todoId);
   if (!todoRecord) throw new NotFoundError(`todo ${row.todoId}`);
+
+  if (body.action === 'restart') {
+    // 相位门：仅 failed 可重启（confirm 走 revision、building/review 走
+    // steer——漏斗边 confirm/review→queued 虽在，restart 不收，防写面互撞）。
+    if (todoRecord.phase !== 'failed') {
+      throw new HttpError(409, `restart 仅适用于 failed 相位（当前 ${todoRecord.phase}）`);
+    }
+    // 承接位 [设计]（原站 body 未录，r9 §5）：withPlan 随失败轮，assignment
+    // 随 todo 现值（失败轮跑过 = 指派在位），机器自动（不继承 pin）。
+    const assignment = todoRecord.assignment ?? { plan: null, build: null };
+    const newId = newUuidv7();
+    const createdAt = nowMs();
+    deps.db
+      .insert(build)
+      .values({
+        id: newId,
+        todoId: todoRecord.id,
+        withPlan: row.withPlan,
+        prevPhase: todoRecord.phase,
+        triggerSource: 'user',
+        pinnedMachineId: null,
+        planDocId: null,
+        errorMessage: null,
+        prUrl: null,
+        prNumber: null,
+        diffHash: null,
+        createdAt,
+      })
+      .run();
+    // 消息先于首步入队：transcript 按 createdAt 排序（反馈行在运行行之上），
+    // 且 machine wake（enqueueStep 内）发生在消息落库之后。
+    insertMessageRow(deps, newId, {
+      id: newRecordId(),
+      role: 'user',
+      content: body.feedback,
+      createdAt,
+    });
+    const restartPrompt = `上一轮执行失败。用户反馈：「${body.feedback}」。请把反馈纳入本轮：涉及方案先输出更新后的 plan.md（覆盖 Context/Changes/Edge cases/Verification 四段），再忠实执行完成任务。`;
+    enqueueStep(deps, newId, row.withPlan ? 'plan' : 'build', todoRecord.teamId, restartPrompt);
+    setTodoPhase(deps, todoRecord.id, 'queued', {
+      assignment,
+      latestBuildId: newId,
+      lastRunAt: createdAt,
+    });
+    const newRow = deps.db.select().from(build).where(eq(build.id, newId)).get();
+    if (!newRow) throw new Error('build missing after insert');
+    publishBuild(deps, newRow);
+    return;
+  }
 
   if (body.action === 'confirm') {
     setTodoPhase(deps, todoRecord.id, 'building');
