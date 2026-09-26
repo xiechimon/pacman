@@ -160,9 +160,16 @@ export function NewTaskDialog({
             </OverlayMount>
           </span>
           <div className="new-task-title-label">{t('新建任务')}</div>
-          <button type="button" className="new-task-close" aria-label={t('关闭')} onClick={onClose}>
+          {/* A4-deep 收编：icon 变体皮肤；28×28 + margin-left:auto 几何
+              per-face 留 overlay.css */}
+          <Button
+            variant="icon"
+            className="new-task-close"
+            aria-label={t('关闭')}
+            onClick={onClose}
+          >
             <X />
-          </button>
+          </Button>
         </div>
         <div className="new-task-body">
           <input
@@ -180,21 +187,25 @@ export function NewTaskDialog({
         <div className="new-task-footer">
           <div className="new-task-tags">
             {t('标签')}
-            <button type="button" className="new-task-tag-add" aria-label={t('添加标签')}>
+            {/* A4-deep 收编：icon 变体皮肤；描边圆环 + dim 墨是 canon 偏差，
+                per-face 留 overlay.css（.btn.new-task-tag-add） */}
+            <Button variant="icon" className="new-task-tag-add" aria-label={t('添加标签')}>
               <PlusSmall />
-            </button>
+            </Button>
           </div>
           <div className="new-task-actions">
+            {/* A4-deep 收编：icon 变体皮肤；30×30 几何走 .new-task-tools
+                button 元素选择器（原样命中） */}
             <div className="new-task-tools">
-              <button type="button" aria-label={t('语音输入')}>
+              <Button variant="icon" aria-label={t('语音输入')}>
                 <Mic />
-              </button>
-              <button type="button" aria-label={t('添加附件')}>
+              </Button>
+              <Button variant="icon" aria-label={t('添加附件')}>
                 <Paperclip />
-              </button>
-              <button type="button" aria-label={t('提及')}>
+              </Button>
+              <Button variant="icon" aria-label={t('提及')}>
                 <Grid2x2 />
-              </button>
+              </Button>
             </div>
             <div className="new-task-buttons">
               {/* e2e 别名叠加：integration/test/m5-web-e2e.test.ts 钉

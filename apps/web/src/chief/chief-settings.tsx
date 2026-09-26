@@ -94,9 +94,10 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
   return (
     <div className="chief-settings">
       <header className="chief-set-head">
-        <button type="button" className="chief-set-back" aria-label={t('返回')} onClick={onBack}>
+        {/* A4-deep 收编：icon 变体皮肤；28×28 + 圆角 6 per-face 留 chief.css */}
+        <Button variant="icon" className="chief-set-back" aria-label={t('返回')} onClick={onBack}>
           <ChevronLeft width={16} height={16} />
-        </button>
+        </Button>
         <h1 className="chief-set-title">{t('总管设置')}</h1>
       </header>
       <div className="chief-set-col">
