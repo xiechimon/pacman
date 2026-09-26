@@ -302,11 +302,13 @@ for (const x of EXTRA_ICONS) {
 // Dump glyphs whose only UI entry point was removed but whose markup still
 // records in the r7 dump: pruned so regeneration stays idempotent with the
 // tree (#121 removed the 安装 App sidebar entry and its Smartphone component
-// by hand; without this list every regeneration resurrects it).
+// by hand; #304 removed the two 语音输入 toolbar buttons — composer + new
+// task dialog, 08 册 C5 — and the Mic component by hand; without this list
+// every regeneration resurrects them).
 // Caveat: the block is by component NAME — a future legitimate reintroduction
 // of a same-named icon is silently dropped from the emit; remove the name
 // from PRUNED first or the new icon never reaches the tree.
-const PRUNED = new Set(['Smartphone']);
+const PRUNED = new Set(['Smartphone', 'Mic']);
 
 const sorted = [...uniq.entries()].sort((a, b) => b[1].count - a[1].count);
 
