@@ -625,6 +625,78 @@
   cursor: default;
 }
 
+/* ---- repo 选择面 (#305, r2 07b/07c) ----
+   触发行 = 弹层锚点 wrap：hosted/未动 = 原选择仓库钮（占位/回填文案），
+   github 选态 = owner/repo 输入 + 重开菜单的 swap 钮。弹层板 =
+   prj-tasks-menu 同款 family plate（plan-dropdown recipe）。geometry
+   [设计] — r2 07b 无像素采集，行语言贴既有两处锚弹层。 */
+.prj-new-repo-field {
+  position: relative;
+  display: flex;
+}
+
+.prj-new-repo-field .prj-new-repo {
+  flex: 1;
+}
+
+.prj-new-repo-selected {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.prj-new-repo-input {
+  flex: 1;
+}
+
+.prj-new-repo-swap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-left: 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.prj-new-repo-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  padding: 4px;
+  background: var(--popover-bg);
+  border-radius: 10px;
+  box-shadow: var(--fab-shadow);
+  z-index: 30;
+}
+
+.prj-new-repo-menu-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.prj-new-repo-menu-check {
+  margin-left: auto;
+  display: flex;
+  color: var(--indigo-500);
+}
+
 /* ---- project files / tasks (r2 07e/24/24b/26) ---- */
 
 .prj-files {

@@ -33,6 +33,14 @@ export const projectRecordSchema = z.object({
 });
 export type ProjectRecord = z.infer<typeof projectRecordSchema>;
 
+/** GitHub 接入 `owner/repo` 形状校验（[推断] 最小护栏）。server 路由
+ * （POST /api/projects 的 400 门）与 web 表单（github 选态的提交闸）同吃
+ * 本单源——#305 前该函数住在 apps/server/src/services/git.ts，web 侧需要
+ * 同一校验时迁到 shared。 */
+export function isGithubRepoRef(value: string): boolean {
+  return /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(value);
+}
+
 /** 项目页分段开关 `Tasks | Files`（r1 §461 changelog/02 §3 文件浏览面：
  * tree?ref= / file?path=&ref= 读裸库，无检出要求）。 */
 export const PROJECT_TABS = ['Tasks', 'Files'] as const;
