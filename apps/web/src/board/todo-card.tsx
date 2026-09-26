@@ -23,6 +23,7 @@ import {
   SearchWhite,
   UserCircle,
 } from '../icons/index.js';
+import { Button } from '../ui/button.js';
 import { cardAction } from './columns.js';
 import { relativeTime } from './rel-time.js';
 
@@ -126,23 +127,18 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName }: TodoCar
           </span>
         )}
         <span className="todo-card-spacer" />
-        {action?.kind === 'primary' && (
-          <button
-            type="button"
-            className="todo-card-action todo-card-action--primary"
+        {/* A3 收编：Button primary/ghost 的 card 26 档；kind 直接映射
+            variant（columns.ts cardAction 单源）。todo-card-action 系列是
+            e2e(board-dnd 钉 --ghost) 选择器别名，经 className 透传保留。 */}
+        {action != null && (
+          <Button
+            variant={action.kind}
+            size="card"
+            className={`todo-card-action todo-card-action--${action.kind}`}
             onClick={() => onAction?.(todo)}
           >
             {t(action.label)}
-          </button>
-        )}
-        {action?.kind === 'ghost' && (
-          <button
-            type="button"
-            className="todo-card-action todo-card-action--ghost"
-            onClick={() => onAction?.(todo)}
-          >
-            {t(action.label)}
-          </button>
+          </Button>
         )}
       </div>
     </article>
