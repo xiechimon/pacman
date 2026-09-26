@@ -27,6 +27,12 @@ import type { DaemonLogger } from './log.js';
 import type { MachineApi } from './machine-client.js';
 import type { StatePaths } from './state.js';
 
+/** 停止请求（M7 #308）：discard = 确认弹层「丢弃本轮修改」勾选位——
+ * true 时收尾 rewind worktree 到步起点 checkpoint（r9 §3.3）。 */
+export interface StopRequest {
+  discard: boolean;
+}
+
 export interface RunStepDeps {
   client: MachineApi;
   journal: StepJournal;
@@ -43,9 +49,9 @@ export interface RunStepDeps {
    * deliverSteer 按 stepId 消费。缺省 = 无 steer 面（单测形态）。 */
   sessionHandles?: Map<string, AgentSessionHandle>;
   /** 停止请求旗标（M7 #308 stop 投递面）：machine-loop deliverStop 拉取-
-   * 确认后置位（discard = 「丢弃本轮修改」勾选位），runStep 事件流结束后
-   * 消费判 stopped 收尾。缺省 = 无 stop 面（单测形态）。 */
-  stopRequests?: Map<string, { discard: boolean }>;
+   * 确认后置位，runStep 事件流结束后消费判 stopped 收尾。缺省 = 无 stop
+   * 面（单测形态）。 */
+  stopRequests?: Map<string, StopRequest>;
   /** heartbeat 节奏 [设计]（r3 未采具体值；presence 同族 ~30s）。 */
   heartbeatIntervalMs?: number;
   now?: () => number;
@@ -429,11 +435,12 @@ export async function runStep(
   if (stopReq !== undefined) deps.stopRequests?.delete(stepId);
   const stopped = stopReq !== undefined && !sawDone;
   if (stopReq !== undefined && sawDone) logger.step('stop arrived after completion — ignored');
+  // abort 吞掉终局 done 事件（backend/pi.ts stopping 位——停止钮与流超时
+  // watchdog 共用 handle.stop()）→ usage 从 handle 累计面兜底（逐消息累积，
+  // token 记账不因中断丢失）。
+  if (!sawDone) usage = handle.usage();
   if (stopped) {
     logger.step(`step stopped by user (discard=${stopReq?.discard === true})`);
-    // abort 吞掉终局 done 事件（backend/pi.ts stopping 位）→ usage 从 handle
-    // 累计面兜底（token 记账不因停止丢失）。
-    usage = handle.usage();
     // 丢弃本轮修改 = worktree rewind 到步起点 checkpoint（r9 §3.3「方案和
     // 代码回到上一个版本」；方案文档面天然回上版——plan.md 上传在步收尾，
     // 停止即不上传）。不 commit/push：中断步不产交接物，远端分支停在上一步

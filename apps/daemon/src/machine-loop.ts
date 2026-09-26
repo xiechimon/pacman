@@ -19,7 +19,7 @@ import { StepJournal } from './journal.js';
 import type { DaemonLogger } from './log.js';
 import { type MachineApi, MachineClient } from './machine-client.js';
 import { setupProxy } from './proxy.js';
-import { runStep } from './runner.js';
+import { runStep, type StopRequest } from './runner.js';
 import {
   ensureStateDirs,
   loadMachineJson,
@@ -156,9 +156,9 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   // 注册表若在调用点之后才 const 初始化 = TDZ ReferenceError（crash-recover
   // 集成实测：重启 daemon 于 recover 即崩）。
   const sessionHandles = new Map<string, AgentSessionHandle>();
-  // 停止请求旗标（M7 #308）：deliverStop 拉取-确认后置位（discard = 丢弃
-  // 本轮修改勾选位），runStep 收尾判 stopped 消费；声明位纪律同 sessionHandles。
-  const stopRequests = new Map<string, { discard: boolean }>();
+  // 停止请求旗标（M7 #308）：deliverStop 拉取-确认后置位，runStep 收尾判
+  // stopped 消费；声明位纪律同 sessionHandles。
+  const stopRequests = new Map<string, StopRequest>();
 
   // 孤儿 worktree 回收（r3 §1.4 cleanupOrphanWorktrees(ttlMs = 7*24h)）：
   // 上线一次 + 每日节奏 [设计]（观测仅函数名，节奏未采）。活步 = journal
@@ -258,6 +258,8 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       await live.stop();
       logger.step(`stop delivered step=${stepId}`);
     } catch (err) {
+      // 拉取/abort 失败旗标不残留（会话未真中断，自然收尾不被误判 stopped）。
+      stopRequests.delete(stepId);
       logger.step(`stop delivery failed: ${err instanceof Error ? err.message : String(err)}`);
     }
   };

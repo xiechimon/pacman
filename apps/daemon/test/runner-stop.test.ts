@@ -204,7 +204,9 @@ function stoppableBackend(handles: AgentSessionHandle[]) {
           stopped = true;
           releaseStop?.();
         },
-        usage: () => [],
+        // 逐消息累计面（backend/pi.ts state.usage 的对偶）：abort 吞 done
+        // 后 runner 的 usage 兜底数据源。
+        usage: () => [{ model: 'stub-model', input: 12, output: 8, cacheRead: 0, cacheWrite: 0 }],
       };
       handles.push(handle);
       return handle;
@@ -269,6 +271,10 @@ describe('runner 停止收尾（M7 #308）', () => {
     expect(client.doneBodies).toHaveLength(1);
     expect(client.doneBodies[0]!.body.status).toBe('stopped');
     expect(client.doneBodies[0]!.body.commit).toBeUndefined(); // 停止步无 checkpoint 回传
+    // usage 兜底（abort 吞 done 事件 → handle 累计面回传，token 记账不丢）。
+    expect(client.doneBodies[0]!.body.usage).toEqual([
+      { model: 'stub-model', input: 12, output: 8, cacheRead: 0, cacheWrite: 0 },
+    ]);
     void cwd;
   });
 
