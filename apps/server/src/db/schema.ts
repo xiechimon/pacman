@@ -129,9 +129,10 @@ export const step = sqliteTable('step', {
   buildId: text('buildId').notNull(),
   kind: text('kind').$type<StepKind>().notNull(),
   machineId: text('machineId'),
-  /** [内部] journal 状态（02 §5.4；M3a 展开：claimed = 机器领取未收尾）。 */
+  /** [内部] journal 状态（02 §5.4；M3a 展开：claimed = 机器领取未收尾；
+   * stopped = 停止钮中断，M7 #308）。 */
   status: text('status')
-    .$type<'pending' | 'claimed' | 'done' | 'failed'>()
+    .$type<'pending' | 'claimed' | 'done' | 'failed' | 'stopped'>()
     .notNull()
     .default('pending'),
   /** [内部] 引擎会话标识（done 回传；continue session 复用面——合并轮/重规划轮
@@ -171,6 +172,19 @@ export const steerPending = sqliteTable('steer_pending', {
   /** 定向的 claimed 步（拉取-确认的校验位）。 */
   stepId: text('stepId').notNull(),
   content: text('content').notNull(),
+  createdAt: epochMs('createdAt').notNull(),
+});
+
+// —— stop_pending（M7 #308：停止钮中断请求单槽，steer_pending 同形）——————
+// conversation 维度一行（双 stop 覆盖）；定向的 claimed 步 = 拉取校验 +
+// 旧步丢弃判定。discard = 确认弹层「丢弃本轮修改」勾选位（r9 §3.3，
+// daemon 侧 rewind worktree 到步起点 checkpoint）。
+export const stopPending = sqliteTable('stop_pending', {
+  /** ≡ conversationId ≡ buildId（单槽键）。 */
+  conversationId: text('conversationId').primaryKey(),
+  /** 定向的 claimed 步（拉取-确认的校验位）。 */
+  stepId: text('stepId').notNull(),
+  discard: bool('discard').notNull(),
   createdAt: epochMs('createdAt').notNull(),
 });
 

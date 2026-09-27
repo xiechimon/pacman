@@ -34,6 +34,7 @@ import {
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
+import { Button } from '../ui/button.js';
 import { PageShell } from './shell.js';
 import './pages.css';
 
@@ -133,8 +134,9 @@ function ScheduleCard({
       </div>
       <span className={`sched-card-chip sched-card-chip--${ui.tone}`}>{t(ui.chip)}</span>
       <span className="sched-more-wrap">
-        <button
-          type="button"
+        {/* A4-deep 收编：icon 变体皮肤；24×24 几何 per-face 留 pages.css */}
+        <Button
+          variant="icon"
           className="sched-card-more"
           aria-label={t('更多')}
           aria-haspopup="menu"
@@ -142,7 +144,7 @@ function ScheduleCard({
           onClick={() => setMenuOpen((v) => !v)}
         >
           <EllipsisVertical />
-        </button>
+        </Button>
         <OverlayMount open={menuOpen}>
           <ClickCatcher onClose={() => setMenuOpen(false)} />
           <div className="sched-card-menu" role="menu" aria-label={t('更多')}>
@@ -196,14 +198,15 @@ function ScheduleForm({
       <div className="sched-form" role="dialog" aria-label={t('新建定时')}>
         <header className="sched-form-head">
           <span className="sched-form-title">{t('新建定时')}</span>
-          <button
-            type="button"
+          {/* A4-deep 收编：icon 变体皮肤；24×24 几何 per-face 留 pages.css */}
+          <Button
+            variant="icon"
             className="sched-form-close"
             aria-label={t('关闭')}
             onClick={live?.onClose}
           >
             <X />
-          </button>
+          </Button>
         </header>
         <div className="sched-form-body">
           <div className="sched-form-row">

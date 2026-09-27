@@ -30,6 +30,7 @@ import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, SquarePen } from '../icons/index.js';
 import { ClickCatcher, useEscapeClose } from '../overlays/dismiss.js';
 import { SecondaryShell } from '../secondary/shell.js';
+import { Button } from '../ui/button.js';
 
 export function AccountPage() {
   const { locale, setLocale, t } = useI18n();

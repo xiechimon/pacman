@@ -131,6 +131,7 @@ function Row({ item, t }: { item: TranscriptItem; t: TFunc }) {
                 )}
             </div>
           )}
+          {item.cancelled === true && <div className="chat-stamp-cancelled">{t('已取消')}</div>}
         </div>
       );
     case 'note':
