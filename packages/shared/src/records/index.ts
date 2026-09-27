@@ -30,6 +30,7 @@ import { whatsNewRecordSchema } from './whats-new.js';
 
 export * from './agent.js';
 export * from './api-key.js';
+export * from './branch-sync.js';
 export * from './build.js';
 export * from './chief.js';
 export * from './common.js';

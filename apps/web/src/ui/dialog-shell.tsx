@@ -27,6 +27,9 @@ interface DialogShellProps {
   /** #309: face class on the .dlg panel — per-face geometry/CSS and the
    *  class-locator discipline (e2e pins) without touching the family base. */
   className?: string;
+  /** Panel width in px (defaults to 448 = family law #68); M7 #312 review
+   *  dialog uses 560 (r8 §2.5 独立规格，448 弹层律之外新档). */
+  width?: number;
 }
 
 export function DialogShell({
@@ -37,6 +40,7 @@ export function DialogShell({
   children,
   footer,
   className,
+  width = 448,
 }: DialogShellProps) {
   const { t } = useI18n();
   useEffect(() => {
@@ -67,6 +71,7 @@ export function DialogShell({
           role="dialog"
           aria-modal="true"
           aria-label={title}
+          style={{ width }}
         >
           <div className={`dlg-head${headerCenter != null ? ' dlg-head--plain' : ''}`}>
             {title != null && <span className="dlg-title">{title}</span>}

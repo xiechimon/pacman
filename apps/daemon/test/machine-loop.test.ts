@@ -185,6 +185,9 @@ class FakeMachineApi implements MachineApi {
     this.calls.push(`stop:${stepId}`);
     return this.stopResponse;
   }
+  async syncResult(syncId: string, body: { status: string; errorMessage?: string }) {
+    this.calls.push(`syncResult:${syncId}:${body.status}`);
+  }
 }
 
 function fakeBackend(events: StepEvent[], sessionId = 'pi-sess-1') {
@@ -546,7 +549,7 @@ describe('stop 投递（M7 #308：事件 → 拉取-确认 → AgentSessionHandl
     await waitFor(() => api.doneBodies.length === 1);
     expect(probe.stopCalls).toBe(1);
     expect(api.calls).toContain('stop:s1');
-    expect(api.doneBodies[0]!.body.status).toBe('stopped');
+    expect(api.doneBodies[0]?.body.status).toBe('stopped');
     expect(lines.some((l) => l.includes('stop delivered step=s1'))).toBe(true);
     // 部分 transcript 保留（终稿上传照走——运行行「已取消」但过程行不丢）。
     expect(api.uploads.length).toBe(1);
@@ -568,7 +571,7 @@ describe('stop 投递（M7 #308：事件 → 拉取-确认 → AgentSessionHandl
     expect(probe.stopCalls).toBe(0);
     release();
     await waitFor(() => api.doneBodies.length === 1);
-    expect(api.doneBodies[0]!.body.status).toBe('success');
+    expect(api.doneBodies[0]?.body.status).toBe('success');
     expect(lines.some((l) => l.includes('stop delivered'))).toBe(false);
     await handle.stop();
     await handle.done;
@@ -609,7 +612,7 @@ describe('stop 投递（M7 #308：事件 → 拉取-确认 → AgentSessionHandl
     await waitFor(() => api.calls.includes('stop:s1'));
     release();
     await waitFor(() => api.doneBodies.length === 1);
-    expect(api.doneBodies[0]!.body.status).toBe('success');
+    expect(api.doneBodies[0]?.body.status).toBe('success');
     expect(lines.some((l) => l.includes('stop arrived after completion'))).toBe(true);
     await handle.stop();
     await handle.done;

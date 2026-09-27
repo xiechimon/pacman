@@ -28,6 +28,7 @@ import {
   useProjects,
   useRunHistoryTokens,
   useSearchResults,
+  useSkills,
   useSteps,
   useTags,
   useTodo,
@@ -56,6 +57,7 @@ import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
 import { HistoryDialog } from '../detail/history-dialog.js';
 import { RerunDialog, ReusePanel } from '../detail/overlays.js';
+import { type ReviewAgentOption, ReviewDialog } from '../detail/review-dialog.js';
 import { StopConfirmDialog } from '../detail/stop-confirm-dialog.js';
 import { TokenDialog } from '../detail/token-dialog.js';
 import { Transcript } from '../detail/transcript.js';
@@ -68,6 +70,7 @@ import type {
   TranscriptItem,
 } from '../fixtures/records.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
+import type { MentionGroups } from '../overlay/mention-picker.js';
 import { MoreMenu } from '../overlay/more-menu.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
@@ -172,6 +175,7 @@ export function TodoDetailPage() {
   const machinesQ = useMachines(teamId, live);
   const membersQ = useMembers(teamId, live);
   const projectsQ = useProjects(teamId, live);
+  const skillsQ = useSkills(teamId, live);
   const projectBuildsQ = useProjectBuilds(wireTodo?.projectId, live);
   // #309 fresh meta 区标签 chip 供数：todo.tagIds × 项目标签集真值投影
   //（r9 100；fixture 面无标签数据源 → 缺省不渲染，r7 23 基线原样）。
@@ -242,6 +246,12 @@ export function TodoDetailPage() {
 
   const steps = stepsQ.data ?? [];
   const running = steps.some((s) => s.status === 'claimed' || s.status === 'pending');
+  // AI 审核中态（M7 #312，r8 §3.1）：chip 改「审核中」、composer placeholder 改
+  // 「AI 审核进行中…」、期间显示停止钮（复用 #308）。判定 = 存在 kind=review
+  // 的活动步（claimed/pending）。phase 不动（review 步是额外 agent 步）。
+  const reviewActive = steps.some(
+    (s) => s.kind === 'review' && (s.status === 'claimed' || s.status === 'pending'),
+  );
   // 「正在停止…」过渡态出口：活动步消失（stopped 落账/自然收尾）即清；
   // 换 build（重开/重跑）同样复位——新轮不继承上一轮的停止态。
   useEffect(() => {
@@ -359,6 +369,25 @@ export function TodoDetailPage() {
         )
     : undefined;
 
+  // AI 审核候选 Agent（M7 #312，r8 §3.1）：live = members 读面 memberType:"agent"
+  // 行投影；fixture 面 undefined = ReviewDialog 兜底 DEFAULT_AGENT（行 A：r8 §3.1
+  // 仅一处 Agent 选取，canon 单默认行）。
+  const reviewAgents: ReviewAgentOption[] | undefined = live
+    ? (membersQ.data ?? [])
+        .filter((m) => m.memberType === 'agent')
+        .map((m) => {
+          const actor = m.actor as { displayName?: string; modelId?: string | null } | undefined;
+          return {
+            id: m.actorId,
+            name: actor?.displayName ?? m.actorId,
+            model: actor?.modelId ?? '默认',
+          };
+        })
+    : undefined;
+  // 默认选中 = 当前任务的 build 槽派生投影（services/todos.ts 双槽同值）；缺
+  // 任务指派 = 行 A canon 单默认。
+  const reviewDefaultId = live ? (todo.agent?.id ?? reviewAgents?.[0]?.id ?? null) : undefined;
+
   const content = live
     ? wireTodo && buildId
       ? {
@@ -368,6 +397,60 @@ export function TodoDetailPage() {
         }
       : null
     : overlayContent(todo.id);
+
+  // #311: mention picker groups — live pulls the canonical REST hooks,
+  // fixture derives from the local capture set (boardDefault.resources
+  // covers machines/skills; projectNames drives the project chip; the
+  // team roster gives the agent card row).
+  const mentionGroups: MentionGroups = live
+    ? {
+        todo: (todosQ.data ?? []).map((t) => ({
+          id: t.id,
+          label: `#${t.seqNum} ${t.title}`,
+          seq: t.seqNum,
+          subtitle: t.phase,
+        })),
+        agent: (membersQ.data ?? [])
+          .filter((m) => m.memberType === 'agent')
+          .map((m) => ({
+            id: m.actorId,
+            label: (m.actor as { displayName?: string } | undefined)?.displayName ?? m.actorId,
+            subtitle:
+              (m.actor as { description?: string | null } | undefined)?.description ?? undefined,
+          })),
+        project: (projectsQ.data ?? []).map((p) => ({ id: p.id, label: p.name })),
+        skill: (skillsQ.data ?? []).map((s) => ({
+          id: s.id,
+          label: s.name,
+          subtitle: s.description ?? undefined,
+        })),
+        machine: (machinesQ.data ?? []).map((m) => ({ id: m.id, label: m.name })),
+      }
+    : {
+        todo: fixtureTodos.map((t) => ({
+          id: t.id,
+          label: `#${t.seqNum} ${t.title}`,
+          seq: t.seqNum,
+          subtitle: t.phase,
+        })),
+        agent: (fixture.team?.agents ?? []).map((a) => ({
+          id: a.id,
+          label: a.displayName,
+          subtitle: a.role ?? a.model,
+        })),
+        project: Object.entries(fixture.projectNames ?? {}).map(([id, name]) => ({
+          id,
+          label: name,
+        })),
+        skill: (fixture.resources?.skills ?? []).map((s) => ({
+          id: s.name,
+          label: s.name,
+          subtitle: s.description,
+        })),
+        machine: (fixture.resources?.machines ?? [])
+          .filter((m) => m.hosted !== true)
+          .map((m) => ({ id: m.name, label: m.name, subtitle: m.sub })),
+      };
   const ui = PHASE_UI[phase];
   const detail = live ? liveDetail : fixture.detail;
   const streaming = live ? running : view.transcript.some((item) => item.kind === 'streaming');
@@ -380,6 +463,17 @@ export function TodoDetailPage() {
       : phase === 'review' || phase === 'done' || phase === 'failed'
         ? 'changes'
         : 'plan';
+
+  // composer 被拒提示行（W3 #280 steer / #320 restart）：异步 onSend 失败时
+  // draft 保留不丢字，文案按被拒写面分流；restart 错误 scope 到
+  // variables.action（confirm 主钮同走 stepAction，其错误不上此行）。
+  const composerReject = !live
+    ? null
+    : mutations.sendSteer.isError
+      ? t('当前没有运行中的会话，消息未送出')
+      : mutations.stepAction.isError && mutations.stepAction.variables?.body.action === 'restart'
+        ? t('任务状态已变化，消息未送出')
+        : null;
 
   return (
     <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
@@ -397,6 +491,7 @@ export function TodoDetailPage() {
           onTab={setTab}
           onMore={() => setMoreOpen(true)}
           onOverlay={(kind) => setOverlay({ kind })}
+          reviewActive={reviewActive}
           onAction={() => {
             if (live) {
               // 主时序关口（02 §4.2）：todo 开始 / confirm 确认 / review 验收
@@ -482,13 +577,13 @@ export function TodoDetailPage() {
         )}
         {ui.placeholder != null && (
           <>
-            {live && mutations.sendSteer.isError && (
-              // W3 #280：steer 被拒（409 无在跑步）提示行——输入未丢（composer
-              // 异步 onSend 失败保留 draft）。
-              <div className="composer-reject">{t('当前没有运行中的会话，消息未送出')}</div>
-            )}
+            {composerReject != null && <div className="composer-reject">{composerReject}</div>}
             <Composer
-              placeholder={ui.placeholder}
+              placeholder={
+                // AI 审核中态（M7 #312，r8 §3.1）:placeholder 改「AI 审核进行中…」
+                // 与 chip 改「审核中」同步;phase 不动,UI 层覆盖。
+                reviewActive ? t('AI 审核进行中…') : ui.placeholder
+              }
               aiReview={
                 // r7 §4.1 / r8 §3.1: the AI 审核 button only shows on writable
                 // confirm/review surfaces; failed and waiting-on-user
@@ -497,7 +592,15 @@ export function TodoDetailPage() {
               }
               streaming={streaming}
               editable={live}
+              mentionGroups={mentionGroups}
               onStop={live && buildId ? () => setStopOpen(true) : undefined}
+              onReview={
+                // AI 审核钮入口（M7 #312，r8 §3.1）:live 确认/审核面可点,fixture
+                // 面不动(DOM 字节不变)。
+                live && (phase === 'confirm' || phase === 'review') && !reviewActive
+                  ? () => setOverlay({ kind: 'review' })
+                  : undefined
+              }
               onSend={
                 live
                   ? (text) => {
@@ -524,6 +627,22 @@ export function TodoDetailPage() {
                           .mutateAsync({ conversationId: buildId, content: text })
                           .then(() => undefined);
                       }
+                      // #320 失败面发送 = 带反馈重启（r9 §3.3：原站 failed 态发消息
+                      // 触发新一轮，消息随新轮入会话——非 steer 语义）。走 steps
+                      // restart 动作位：新 build + 反馈行落新 conv + failed→queued。
+                      // Promise 面 = 成功清稿、被拒（相位漂移 409）保留 draft。
+                      if (phase === 'failed' && buildId && text !== '') {
+                        return mutations.stepAction
+                          .mutateAsync({
+                            buildId,
+                            body: {
+                              action: 'restart',
+                              feedback: text,
+                              clientMessageId: crypto.randomUUID(),
+                            },
+                          })
+                          .then(() => undefined);
+                      }
                     }
                   : detail?.revision != null && chain === 'idle'
                     ? () => {
@@ -548,7 +667,14 @@ export function TodoDetailPage() {
       />
       <DeleteConfirm
         open={deleteOpen}
-        todo={todo}
+        title={t('确定删除该任务？此操作不可撤销。')}
+        summary={
+          <>
+            <span className="delete-confirm-seq">#{todo.seqNum}</span>
+            {todo.title}
+          </>
+        }
+        ariaLabel={t('删除任务')}
         onClose={() => setDeleteOpen(false)}
         onConfirm={() => {
           setDeleteOpen(false);
@@ -647,6 +773,28 @@ export function TodoDetailPage() {
         onBind={bindAssign}
         title={t(ASSIGN_AGENT_DIALOG_TITLE)}
         confirmCopy={ASSIGN_AGENT_REBIND_CONFIRM_COPY}
+      />
+      <ReviewDialog
+        open={overlay?.kind === 'review'}
+        onClose={closeOverlay}
+        agents={reviewAgents}
+        defaultAgentId={reviewDefaultId ?? undefined}
+        onStart={
+          // 入队审核步（r8 §3.1 实测）：POST steps {action:"review", agentId, focus?}
+          // → server 入队审核步 + 时间线插 REVIEW_ANNOUNCEMENT + phase 留 confirm
+          // /review。乐观 closeOverlay；终态由 SSE step 事件推进 reviewActive。
+          live && buildId
+            ? (input) => {
+                mutations.stepAction.mutate(
+                  {
+                    buildId,
+                    body: { action: 'review', agentId: input.agentId, focus: input.focus },
+                  },
+                  { onSuccess: () => closeOverlay() },
+                );
+              }
+            : undefined
+        }
       />
       <SearchPanel
         open={search.open}

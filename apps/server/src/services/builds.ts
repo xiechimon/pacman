@@ -17,7 +17,13 @@ import type {
   TriggerSource,
   UserRecord,
 } from '@pacman/shared';
-import { MERGE_ANNOUNCEMENT, PLAN_FILE_NAME, STOP_MESSAGE } from '@pacman/shared';
+import {
+  MERGE_ANNOUNCEMENT,
+  PLAN_FILE_NAME,
+  REVIEW_ANNOUNCEMENT,
+  REVIEW_COMPLETE_PLACEHOLDER,
+  STOP_MESSAGE,
+} from '@pacman/shared';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
@@ -378,22 +384,114 @@ export function startBuilds(
  *   的再确认不适用，409 由流转表兜底）。
  * - {action:"revision", side:"plan", feedback, clientMessageId} → confirm→
  *   planning + 入队重规划步（同 conv continue session 语义归 M3）+ 时间线插
- *   用户驳回消息行（r5 §4）。 */
+ *   用户驳回消息行（r5 §4）。
+ * - {action:"review", agentId, focus?}（M7 #312 / r8 §3.1）→ phase 留 confirm/
+ *   review + 入队审核步（kind='review'，不开 worktree 不产 changes）+ 时间线
+ *   插 REVIEW_ANNOUNCEMENT；phase 非法（todo/queued/planning/building/done/
+ *   failed/closed）→ 409。
+ * - {action:"restart", feedback, clientMessageId} → 失败面带反馈重启（#320，
+ *   r9 §3.3 实测：原站 failed 态发消息触发新一轮，消息随新轮入会话，非
+ *   steer 409 语义）：新 build（withPlan 承接失败轮）+ 反馈行落新 conv +
+ *   首步入队（instruction 携反馈，revision 同缝）+ failed→queued 漏斗。
+ *   与 #308 停止钮的落态分界：停止 = 运行轮落上一完成 turn 的 gate（落态非
+ *   failed）；restart 门只收 failed——两写面相位隔离，不共享入口。 */
+
 export function applyBuildStepAction(
   deps: BuildDeps,
   buildId: string,
   body:
     | { action: 'confirm' }
-    | { action: 'revision'; side: 'plan'; feedback: string; clientMessageId: string },
+    | { action: 'revision'; side: 'plan'; feedback: string; clientMessageId: string }
+    | { action: 'review'; agentId: string; focus?: string }
+    | { action: 'restart'; feedback: string; clientMessageId: string },
 ): void {
   const row = deps.db.select().from(build).where(eq(build.id, buildId)).get();
   if (!row) throw new NotFoundError(`build ${buildId}`);
   const todoRecord = getTodo(deps, row.todoId);
   if (!todoRecord) throw new NotFoundError(`todo ${row.todoId}`);
 
+  if (body.action === 'restart') {
+    // 相位门：仅 failed 可重启（confirm 走 revision、building/review 走
+    // steer——漏斗边 confirm/review→queued 虽在，restart 不收，防写面互撞）。
+    if (todoRecord.phase !== 'failed') {
+      throw new HttpError(409, `restart 仅适用于 failed 相位（当前 ${todoRecord.phase}）`);
+    }
+    // 承接位 [设计]（原站 body 未录，r9 §5）：withPlan 随失败轮，assignment
+    // 随 todo 现值（失败轮跑过 = 指派在位），机器自动（不继承 pin）。
+    const assignment = todoRecord.assignment ?? { plan: null, build: null };
+    const newId = newUuidv7();
+    const createdAt = nowMs();
+    deps.db
+      .insert(build)
+      .values({
+        id: newId,
+        todoId: todoRecord.id,
+        withPlan: row.withPlan,
+        prevPhase: todoRecord.phase,
+        triggerSource: 'user',
+        pinnedMachineId: null,
+        planDocId: null,
+        errorMessage: null,
+        prUrl: null,
+        prNumber: null,
+        diffHash: null,
+        createdAt,
+      })
+      .run();
+    // 消息先于首步入队：transcript 按 createdAt 排序（反馈行在运行行之上），
+    // 且 machine wake（enqueueStep 内）发生在消息落库之后。
+    insertMessageRow(deps, newId, {
+      id: newRecordId(),
+      role: 'user',
+      content: body.feedback,
+      createdAt,
+    });
+    const restartPrompt = `上一轮执行失败。用户反馈：「${body.feedback}」。请把反馈纳入本轮：涉及方案先输出更新后的 plan.md（覆盖 Context/Changes/Edge cases/Verification 四段），再忠实执行完成任务。`;
+    enqueueStep(deps, newId, row.withPlan ? 'plan' : 'build', todoRecord.teamId, restartPrompt);
+    setTodoPhase(deps, todoRecord.id, 'queued', {
+      assignment,
+      latestBuildId: newId,
+      lastRunAt: createdAt,
+    });
+    const newRow = deps.db.select().from(build).where(eq(build.id, newId)).get();
+    if (!newRow) throw new Error('build missing after insert');
+    publishBuild(deps, newRow);
+    return;
+  }
+
   if (body.action === 'confirm') {
     setTodoPhase(deps, todoRecord.id, 'building');
     enqueueStep(deps, buildId, 'build', todoRecord.teamId);
+    return;
+  }
+  if (body.action === 'review') {
+    // AI 审核发起仅在 confirm/review 关口允许（r8 §3.1 显隐律）；其余相位一律
+    // 409 拒绝（建设期/planning/building/failed/done/closed/queued/todo 都不
+    // 该出现该钮，但接口层兜底——钮外误用也要稳定拒绝）。
+    if (todoRecord.phase !== 'confirm' && todoRecord.phase !== 'review') {
+      throw new HttpError(409, `AI 审核仅在待确认/审核关口允许，当前相位 ${todoRecord.phase}`);
+    }
+    // 时间线「发起了 AI 审核」行（r8 §3.1 实测：行形 = role user 纯文本，
+    // 呈现层拼装时间/actor；REVIEW_ANNOUNCEMENT 双端单源）。
+    insertMessageRow(deps, buildId, {
+      id: newRecordId(),
+      role: 'user',
+      content: REVIEW_ANNOUNCEMENT,
+      createdAt: nowMs(),
+    });
+    // 审核步 prompt：plan.md 全文 + 用户 focus（空字符串视为无）。phase 留
+    // confirm/review（review 步是额外 agent 步，不推进主时序）。
+    const plan = deps.db
+      .select({ content: planTable.content })
+      .from(planTable)
+      .where(eq(planTable.buildId, buildId))
+      .orderBy(asc(planTable.version))
+      .all();
+    const planText = plan.map((p) => p.content).join('\n\n---\n\n');
+    const focusNote =
+      body.focus && body.focus.trim() !== '' ? `\n\n用户关注点：${body.focus.trim()}` : '';
+    const reviewPrompt = `请审核以下方案（仅审核，不修改 worktree；如有 blocking 风险请明确标注）：\n\n${planText}${focusNote}`;
+    enqueueStep(deps, buildId, 'review', todoRecord.teamId, reviewPrompt);
     return;
   }
   // revision：用户驳回消息行进 transcript（role user，r5 §3.6/§4 时间线呈现）。
@@ -478,6 +576,28 @@ export function completeStep(
   if (stepRow.kind === 'build') {
     setTodoPhase(deps, todoRow.id, 'review', {
       hasChanges: outcome.hasChanges ?? true,
+    });
+    return;
+  }
+  if (stepRow.kind === 'review') {
+    // AI 审核步完成（M7 #312 票 A 占位 emit）：phase 不动（review 步是额外
+    // agent 步，不推进主时序；PHASE_TRANSITIONS confirm/review 无 review→… 的
+    // 边；走 setTodoPhase 同→同会被 assertPhaseTransition 拒），worktree 不动
+    // （hasChanges=false）+ 时间线插占位 ack。#326 上线真 findings emit 时此
+    // 处替换 ack 为 verdict + 编号 findings 消息行 + blocking 自动修订回路；
+    // kind 词表不变。
+    deps.db
+      .update(todo)
+      .set({ hasChanges: false, v: todoRow.v + 1 })
+      .where(eq(todo.id, todoRow.id))
+      .run();
+    const updatedTodo = getTodo(deps, todoRow.id);
+    if (updatedTodo) deps.hub.publishTodoDoc(updatedTodo.teamId, updatedTodo);
+    insertMessageRow(deps, buildRow.id, {
+      id: newRecordId(),
+      role: 'system',
+      content: REVIEW_COMPLETE_PLACEHOLDER,
+      createdAt: nowMs(),
     });
     return;
   }
