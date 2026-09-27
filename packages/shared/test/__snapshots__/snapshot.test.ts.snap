@@ -1790,6 +1790,28 @@ exports[`body/封套 schema 快照 > buildStepActionBody > buildStepActionBody.j
       ],
       "type": "object",
     },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "const": "restart",
+          "type": "string",
+        },
+        "clientMessageId": {
+          "type": "string",
+        },
+        "feedback": {
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+        "feedback",
+        "clientMessageId",
+      ],
+      "type": "object",
+    },
   ],
 }
 `;
