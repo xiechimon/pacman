@@ -12,16 +12,19 @@ import type {
   Assignment,
   BuildRecord,
   Phase,
+  ReviewVerdict,
   StepJournalRow,
   StepRecord,
   TriggerSource,
   UserRecord,
 } from '@pacman/shared';
 import {
+  buildReviewStepPrompt,
+  hasBlockingFinding,
   MERGE_ANNOUNCEMENT,
   PLAN_FILE_NAME,
   REVIEW_ANNOUNCEMENT,
-  REVIEW_COMPLETE_PLACEHOLDER,
+  REVIEW_VERDICT_KIND,
   STOP_MESSAGE,
 } from '@pacman/shared';
 import { and, asc, eq, inArray } from 'drizzle-orm';
@@ -422,8 +425,13 @@ export function applyBuildStepAction(
       content: REVIEW_ANNOUNCEMENT,
       createdAt: nowMs(),
     });
-    // 审核步 prompt：plan.md 全文 + 用户 focus（空字符串视为无）。phase 留
-    // confirm/review（review 步是额外 agent 步，不推进主时序）。
+    // 审核步 prompt：meta header（kind+agentId，claim 载荷据此取 Agent
+    // ——step 表无 agentId 列）+ JSON 输出契约 + plan.md 全文 + 用户 focus。
+    // meta 解析与组装单源 = shared/review.buildReviewStepPrompt；
+    // completeStep 在 verdict 收尾时 emit REVIEW_VERDICT_KIND 消息 + 若
+    // blocking 触发自动修订回路（apps/server/services/machines.ts agentForStep
+    // 同步解析该头取 Agent）。phase 留 confirm/review（review 步是额外 agent
+    // 步，不推进主时序）。
     const plan = deps.db
       .select({ content: planTable.content })
       .from(planTable)
@@ -431,9 +439,11 @@ export function applyBuildStepAction(
       .orderBy(asc(planTable.version))
       .all();
     const planText = plan.map((p) => p.content).join('\n\n---\n\n');
-    const focusNote =
-      body.focus && body.focus.trim() !== '' ? `\n\n用户关注点：${body.focus.trim()}` : '';
-    const reviewPrompt = `请审核以下方案（仅审核，不修改 worktree；如有 blocking 风险请明确标注）：\n\n${planText}${focusNote}`;
+    const reviewPrompt = buildReviewStepPrompt({
+      agentId: body.agentId,
+      planText,
+      ...(body.focus !== undefined ? { focus: body.focus } : {}),
+    });
     enqueueStep(deps, buildId, 'review', todoRecord.teamId, reviewPrompt);
     return;
   }
@@ -477,13 +487,21 @@ export function requestMerge(deps: BuildDeps, buildId: string): { delegated: tru
  * 交接物契约执行；四段落要求同驳回重规划指令族——措辞由本层给事实与要求）。 */
 const PLAN_REWRITE_PROMPT = `规划步未产出 ${PLAN_FILE_NAME} 交接文件。请将方案写入工作区根目录的 ${PLAN_FILE_NAME}（覆盖 Context/Changes/Edge cases/Verification 四段）再结束本步；若改动已在规划轮完成，${PLAN_FILE_NAME} 如实记录改动内容与验证方式即可。`;
 
+/** AI 审核 blocking 自动修订 prompt（M7 #330，r8 §3.1 实测 62：「调用工具:
+ * edit_plan」+ 调整摘要行）。与驳回重规划轮同形（plan 步 + continue session
+ * 复用 + 服务端 prompt 注入反馈事实），措辞由 LLM 侧组织——本层给事实与要
+ * 求。 */
+const REVIEW_REVISE_PROMPT = `用户对方案提出审核反馈，结论含 blocking findings。审核结论：<{conclusion}>。\n\nBlocking findings（必须逐条修复）：\n{blockings}\n\n请忠实按反馈调整方案，输出更新后的 plan.md（覆盖 Context/Changes/Edge cases/Verification 四段），并在结尾一句话摘要本次调整了什么。`;
+
 /** 机器步完成后的 phase 推进（M3 claim/journal 面挂接点；M2a 供编排测试
  * 驱动状态机）：规划步成 → confirm（withPlan）/ building（直执行续跑）；
- * 执行步成 → review；合并步成 → done（02 §4.2 主时序）。 */
+ * 执行步成 → review；合并步成 → done（02 §4.2 主时序）。M7 #330：审核步成
+ * → emit REVIEW_VERDICT_KIND 消息 + 若 blocking → planning + enqueue 重规划
+ * 步（自动修订回路，r8 §3.1）。 */
 export function completeStep(
   deps: BuildDeps,
   stepId: string,
-  outcome: { hasChanges?: boolean } = {},
+  outcome: { hasChanges?: boolean; findings?: ReviewVerdict } = {},
 ): void {
   const stepRow = deps.db.select().from(step).where(eq(step.id, stepId)).get();
   if (!stepRow) throw new NotFoundError(`step ${stepId}`);
@@ -523,12 +541,18 @@ export function completeStep(
     return;
   }
   if (stepRow.kind === 'review') {
-    // AI 审核步完成（M7 #312 票 A 占位 emit）：phase 不动（review 步是额外
-    // agent 步，不推进主时序；PHASE_TRANSITIONS confirm/review 无 review→… 的
-    // 边；走 setTodoPhase 同→同会被 assertPhaseTransition 拒），worktree 不动
-    // （hasChanges=false）+ 时间线插占位 ack。#326 上线真 findings emit 时此
-    // 处替换 ack 为 verdict + 编号 findings 消息行 + blocking 自动修订回路；
-    // kind 词表不变。
+    // AI 审核步完成（M7 #330，r8 §3.1 真 findings 上线）：emit REVIEW_VERDICT_KIND
+    // 消息行（conclusion + 编号 findings，server zod 校验已固）+ 若 blocking →
+    // 落 planning + 入队重规划步（REVIEW_REVISE_PROMPT 注入审核事实）回到
+    // 待确认。worktree 不动（hasChanges=false：审核步不开 worktree，r8 §3.1）。
+    // daemon 未传 findings（解析失败/agent 未按契约）= 默认空 verdict =
+    // 落 verdict 消息含空 findings，但不触发修订——避免静默吞错 + 给人看
+    // 「审核没结论」兜底。fail 兜底仍可独立走：findings 缺位 + status=failed
+    // = finishStep 走 failed 分支不进本函数。
+    const verdict: ReviewVerdict = outcome.findings ?? {
+      conclusion: '审核未返回结论',
+      findings: [],
+    };
     deps.db
       .update(todo)
       .set({ hasChanges: false, v: todoRow.v + 1 })
@@ -539,9 +563,35 @@ export function completeStep(
     insertMessageRow(deps, buildRow.id, {
       id: newRecordId(),
       role: 'system',
-      content: REVIEW_COMPLETE_PLACEHOLDER,
+      content: JSON.stringify({ kind: REVIEW_VERDICT_KIND, verdict }),
       createdAt: nowMs(),
     });
+    if (hasBlockingFinding(verdict)) {
+      const blockings = verdict.findings
+        .filter((f) => f.severity === 'blocking')
+        .map(
+          (f) =>
+            `- #${f.id} ${f.summary}${
+              f.file !== undefined ? ` (${f.file}${f.line !== undefined ? `:${f.line}` : ''})` : ''
+            }`,
+        )
+        .join('\n');
+      const revisePrompt = REVIEW_REVISE_PROMPT.replace(
+        '<{conclusion}>',
+        verdict.conclusion,
+      ).replace('{blockings}', blockings);
+      setTodoPhase(deps, todoRow.id, 'planning');
+      // AI 审核自动修订回路的「调整摘要行」（M7 #330，r8 §3.1 62）：
+      // chip → 规划中自动走 phase 字段；该行 = 时间线 dim note
+      // 「AI 审核触发自动修订…」告诉用户「为什么又来一个 plan 步」。
+      insertMessageRow(deps, buildRow.id, {
+        id: newRecordId(),
+        role: 'system',
+        content: `AI 审核检测到 ${blockings.split('\n').length} 处 blocking 风险，已自动入队重规划步`,
+        createdAt: nowMs(),
+      });
+      enqueueStep(deps, stepRow.buildId, 'plan', todoRow.teamId, revisePrompt);
+    }
     return;
   }
   // merge 步成 → done + 🎉（时间线「发起了合并」+ 结果行 + `🎉 任务已完成`，

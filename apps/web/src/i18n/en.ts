@@ -335,6 +335,15 @@ export const EN: Record<string, string> = {
   '希望 Agent 审核时重点关注什么？（可选）':
     'What do you want the Agent to focus on during review? (optional)',
   开始审核: 'Start review',
+  // M7 #330 AI 审核消息渲染（r8 §3.1 真 findings 上线）：结论先行 + 编号 findings
+  // + 严重度后缀（(blocking)/(suggestion)/(info)）+ 方案引用块 + 修复建议。
+  // 服务端消息 kind = REVIEW_VERDICT_KIND（shared/message.ts 双端单源），
+  // findings 形态 = reviewVerdictSchema（shared/review.ts）。
+  审核结论: 'Review conclusion',
+  '(blocking)': '(blocking)',
+  '(suggestion)': '(suggestion)',
+  '(info)': '(info)',
+  '建议：': 'Suggestion: ',
   '更换总管的 agent？总管的记忆保存在其运行所用的 Agent 上。切换至 <agent> 后，记忆将变为 <agent> 的记忆，当前记忆不会迁移。':
     "Switch the Chief's Agent? The Chief's memory lives on the Agent it runs on. After switching to <agent>, the memory becomes <agent>'s — the current memory is not migrated.",
   编辑章程: 'Edit charter',

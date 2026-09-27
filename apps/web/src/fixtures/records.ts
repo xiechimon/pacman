@@ -394,7 +394,25 @@ export type TranscriptItem =
   | { kind: 'chief' }
   /** Failed-run message: orange title line + body line + link row
    *  (`查看原始错误` / `排查指南`, r8 54/73, r5 §7 canon). */
-  | { kind: 'fail'; title: string; body: string; links: string[] };
+  | { kind: 'fail'; title: string; body: string; links: string[] }
+  /** AI 审核消息（M7 #330，r8 §3.1 60）：结论段 + 编号 findings 列表
+   * （每条 = 严重度标签 + 标题 + 描述 + 文件:行 + 可选建议）。服务侧 emit
+   * 由 server applyBuildStepAction completeStep 落库（REVIEW_VERDICT_KIND
+   * system message），web mapper 拆出 verdict 形状渲染。 */
+  | { kind: 'review'; conclusion: string; findings: ReviewFinding[] };
+
+/** AI 审核 finding 显示形态（M7 #330，r8 §3.1）：严重度 + 标题 + 描述 +
+ * 引用位（文件:行）+ 可选建议。dataSource = server verdict message 解出
+ * 的 reviewVerdictSchema.findings。 */
+export interface ReviewFinding {
+  id: string;
+  severity: 'blocking' | 'suggestion' | 'info';
+  summary: string;
+  description?: string;
+  file?: string;
+  line?: number;
+  suggestion?: string;
+}
 
 /** One paragraph of a robot message (r7 prose; r8 adds the AI-review
  *  quote block and numbered finding rows, r8 60/65). */

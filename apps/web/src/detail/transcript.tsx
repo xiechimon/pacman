@@ -9,6 +9,7 @@
 // from the r7 16/17/26/27/28/36/38 and r8 54–77 captures; CONTEXT.md canon
 // names the message flow `transcript`.
 
+import { inlineSegments } from '../api/mappers.js';
 import type { RobotPara, TranscriptItem } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
@@ -257,6 +258,63 @@ function Row({ item, t }: { item: TranscriptItem; t: TFunc }) {
       );
     case 'elapsed':
       return <ActionRow seconds={item.seconds} t={t} />;
+    case 'review':
+      return (
+        <div className="chat-row chat-row--agent">
+          <span className="chat-avatar">
+            <img src="/avatar-robot-1.svg" alt="" />
+          </span>
+          <span className="chat-text">
+            {/* 结论先行（r8 §3.1 60）：单段总结 — paragraph chip "审核结论"
+                + 文本。 */}
+            <p className="chat-para chat-para--review-head">
+              <span className="chat-review-tag">{t('审核结论')}</span>
+              <Segments segments={inlineSegments(item.conclusion)} codeClassName="chat-code" />
+            </p>
+            {/* 编号 findings（r8 §3.1 60/61）：每条 = 严重度后缀 + 标题 +
+                描述 + 引用位（文件:行）+ 可选建议。沿用 chat-para--num
+                序号样式（与既有 finding fixture 同族）。 */}
+            {item.findings.map((f) => (
+              <div key={f.id} className={`chat-review-finding chat-review-finding--${f.severity}`}>
+                <p
+                  className="chat-para chat-para--num"
+                  data-ordinal={Number.parseInt(f.id, 10) || 0}
+                >
+                  <span className="chat-num-mark">{f.id}.</span>
+                  <span className="chat-review-severity">
+                    {t(`(${f.severity})` as '(blocking)' | '(suggestion)' | '(info)')}
+                  </span>
+                  <Segments segments={inlineSegments(f.summary)} codeClassName="chat-code" />
+                </p>
+                {f.description !== undefined && f.description !== '' && (
+                  <p className="chat-para">
+                    <Segments segments={inlineSegments(f.description)} codeClassName="chat-code" />
+                  </p>
+                )}
+                {(f.file !== undefined || f.line !== undefined) && (
+                  <p className="chat-para chat-para--quote chat-review-quote">
+                    <Segments
+                      segments={inlineSegments(
+                        `${f.file ?? ''}${f.line !== undefined ? `:${f.line}` : ''}`,
+                      )}
+                      codeClassName="chat-code"
+                    />
+                  </p>
+                )}
+                {f.suggestion !== undefined && f.suggestion !== '' && (
+                  <p className="chat-para chat-para--quote chat-review-suggestion">
+                    <Segments
+                      segments={inlineSegments(t('建议：{body}', { body: f.suggestion }))}
+                      codeClassName="chat-code"
+                    />
+                  </p>
+                )}
+              </div>
+            ))}
+          </span>
+          <ActionRow t={t} />
+        </div>
+      );
   }
 }
 

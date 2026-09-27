@@ -24,7 +24,13 @@ import type {
   ScheduleRecord as WireSchedule,
   TodoRecord as WireTodo,
 } from '@pacman/shared';
-import { BRAND, conversationBranch, MERGE_ANNOUNCEMENT } from '@pacman/shared';
+import {
+  BRAND,
+  conversationBranch,
+  MERGE_ANNOUNCEMENT,
+  REVIEW_VERDICT_KIND,
+  reviewVerdictSchema,
+} from '@pacman/shared';
 import { relativeTime } from '../board/rel-time.js';
 import type {
   BranchInfoContent,
@@ -44,6 +50,7 @@ import type {
   PlanVersion,
   ProjectCommitRow,
   ProviderRow,
+  ReviewFinding,
   RobotPara,
   RunHistoryRow,
   SkillRow,
@@ -150,6 +157,43 @@ function systemKindOf(content: unknown): string | null {
   } catch {
     return null;
   }
+}
+
+/** 解析 REVIEW_VERDICT_KIND 系统消息的 verdict（M7 #330，r8 §3.1）：
+ * server `applyBuildStepAction` 完成时 emit `{kind:'review_verdict',
+ * verdict: ReviewVerdict}` system 消息；校验失败 = null（兜底退化为空
+ * findings 渲染——service 侧 zod 兜底已固，不会真触发）。 */
+function reviewVerdictOfContent(
+  content: unknown,
+): { conclusion: string; findings: ReviewFinding[] } | null {
+  if (typeof content !== 'string') return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return null;
+  }
+  if (
+    parsed === null ||
+    typeof parsed !== 'object' ||
+    (parsed as { kind?: string }).kind !== REVIEW_VERDICT_KIND
+  ) {
+    return null;
+  }
+  const verdict = reviewVerdictSchema.safeParse((parsed as { verdict?: unknown }).verdict);
+  if (!verdict.success) return null;
+  return {
+    conclusion: verdict.data.conclusion,
+    findings: verdict.data.findings.map((f) => ({
+      id: f.id,
+      severity: f.severity,
+      summary: f.summary,
+      ...(f.description !== undefined ? { description: f.description } : {}),
+      ...(f.file !== undefined ? { file: f.file } : {}),
+      ...(f.line !== undefined ? { line: f.line } : {}),
+      ...(f.suggestion !== undefined ? { suggestion: f.suggestion } : {}),
+    })),
+  };
 }
 
 /** 工具 pill 文案（r7 27b `edit README.md` / `bash <命令>` 族；命令全长随
@@ -359,7 +403,15 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     }
     if (m.role === 'system') {
       // machine_selected JSON 行 = run 戳数据面（顶部已渲染）——不重复成行。
-      if (systemKindOf(m.content) !== null) continue;
+      if (systemKindOf(m.content) !== null) {
+        // AI 审核 verdict 消息（M7 #330，r8 §3.1）= 结论段 + 编号 findings +
+        // 严重度标签；不是抽象 system kind（具形状）。
+        const verdict = reviewVerdictOfContent(m.content);
+        if (verdict !== null) {
+          entries.push({ at: m.createdAt, item: { kind: 'review', ...verdict } });
+        }
+        continue;
+      }
       if (text !== '') entries.push({ at: m.createdAt, item: { kind: 'note', text } });
       continue;
     }
