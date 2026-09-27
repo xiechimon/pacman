@@ -503,9 +503,9 @@
   /* A3 收编：primary/compact 皮肤归 ui/button.css；几何归 family。 */
 }
 
-/* Agent 选择 dialog (wayfinder #182, r8 73/74): 头像 row / 名称 input /
-   provider warning row / primary。容器/输入/主钮走 .dlg-form-* 族层;此处只余
-   agent 独有件。 */
+/* 创建 Agent dialog (issue #170, r2 §8.1 capture 20): name-first form —
+   avatar row / 名称 input / provider warning row / primary。容器/输入/主钮
+   走 .dlg-form-* 族层;此处只余 agent 独有件（「更换」ink #307 全除）。 */
 .dlg-agent-avatar {
   display: flex;
   align-items: center;
@@ -516,16 +516,6 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-}
-
-.dlg-agent-swap {
-  border: none;
-  background: none;
-  padding: 0;
-  font-size: 13px;
-  line-height: 16px;
-  color: var(--text-secondary);
-  cursor: default;
 }
 
 .dlg-agent-warn {
