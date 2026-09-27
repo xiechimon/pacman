@@ -116,7 +116,6 @@ export const EN: Record<string, string> = {
   聊天: 'Chat',
   'Token 用量': 'Token usage',
   运行历史: 'Run history',
-  语音输入: 'Voice input',
   添加附件: 'Add attachment',
   'AI 审核': 'AI review',
   审核中: 'Reviewing',
@@ -128,6 +127,7 @@ export const EN: Record<string, string> = {
     'Discard this round’s changes — plan and code revert to the previous version',
   发送: 'Send',
   '当前没有运行中的会话，消息未送出': 'No active run — the message was not delivered',
+  '任务状态已变化，消息未送出': 'The task state changed — the message was not delivered',
   暂无方案: 'No plan yet',
   暂无可显示的变更: 'No changes to show',
   '· {n} 个文件改动': '· {n} files changed',
@@ -185,7 +185,6 @@ export const EN: Record<string, string> = {
   '尚无定时。': 'No schedules yet.',
   '按周期或在指定时间自动重新运行任务。每一轮都会依据任务描述从头开始一次全新运行，到达确认或审核关口时暂停，交由负责人接手。':
     'Automatically rerun a task on a cycle or at a chosen time. Every round starts a fresh run from the task description, pausing at the confirm or review gate for the owner to pick up.',
-  查看文档: 'View docs',
   '也可以直接告诉总管某个任务要多久重跑一次，它会替你写好规则。':
     'You can also just tell the Chief how often a task should rerun, and it will write the rule for you.',
 
@@ -285,6 +284,10 @@ export const EN: Record<string, string> = {
   项目名称: 'Project name',
   仓库: 'Repo',
   选择仓库: 'Select repo',
+  // #305 repo 选择面（r2 07b/07c canon 文案）：两行 = create 端点的两种
+  // repo 形态（02 §3）。
+  '新的 Todos 托管仓库': 'New Todos hosted repo',
+  'GitHub 仓库': 'GitHub repo',
   创建项目: 'Create project',
   基本信息: 'Basic info',
   标签: 'Tags',
@@ -381,6 +384,9 @@ export const EN: Record<string, string> = {
   保存并开始: 'Save and start',
   删除任务: 'Delete todo',
   '确定删除该任务？此操作不可撤销。': 'Delete this todo? This cannot be undone.',
+  // #306 sched-card 菜单删除确认（DeleteConfirm 家族泛化随加）。
+  删除定时: 'Delete schedule',
+  '确定删除该定时？此操作不可撤销。': 'Delete this schedule? This cannot be undone.',
   关闭菜单: 'Close menu',
   复制链接: 'Copy link',
   完成任务: 'Complete todo',
@@ -401,6 +407,13 @@ export const EN: Record<string, string> = {
     'Discards code changes and removes non-ignored untracked files; ignored content is kept. This sync only.',
   同步: 'Sync',
   未创建: 'Not created',
+  // #319 分支对话框「同步到机器」结果卡四态 + 机器选择占位
+  选择机器: 'Choose a machine',
+  暂无在线机器: 'No online machines',
+  等待中: 'Pending',
+  '正在同步…': 'Syncing…',
+  已同步: 'Synced',
+  同步失败: 'Sync failed',
   // run-history rows: fixture-carried chrome (exact-value keys)
   '第 1 次运行': 'Run 1',
   '第 2 次运行': 'Run 2',
@@ -540,4 +553,14 @@ export const EN: Record<string, string> = {
   '放弃新建任务？未保存的内容将丢失。': 'Discard this new task? Unsaved content will be lost.',
   继续编辑: 'Keep editing',
   放弃并关闭: 'Discard and close',
+
+  // —— mention picker (issue #311, r9 §2.2/§3.2) ——
+  // Top layer 5 category rows + drill-in search + footer Insert (N) count.
+  // 与侧边栏/搜索面板的「任务/技能/Agents/项目/机器」键一致,只追加弹层
+  // 本地需要的 6 个键(搜索/空集/返回/插入 (n)/两个 empty 分支)。
+  '搜索…': 'Search…',
+  没有可引用的对象: 'Nothing to mention',
+  '没有与"{query}"匹配的结果': 'No results matching “{query}”',
+  '插入 ({count})': 'Insert ({count})',
+  '没有可用的 Agent': 'No Agents available',
 };

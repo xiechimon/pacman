@@ -1,0 +1,383 @@
+/* Mention picker (issue #311, r9 §2.2 + §3.2): 400-wide centered
+   panel over a scrim. Two layers share this file: the 5-category
+   first layer and the drilled-in search + row list. Geometry mirrors
+   the r9 capture measurements (400×272 first layer + growth on drill;
+   search input 351×28; row pitch 50). The accent colors match the
+   attachment token family (indigo-500 with 3px radius) so chips
+   feel like one vocabulary with the rest of the composer. */
+
+.mention-picker {
+  position: fixed;
+  top: 228px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 400px;
+  max-height: 70vh;
+  background: var(--surface-base);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 22%);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 80;
+}
+
+.mention-picker-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mention-picker-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.mention-picker-back:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.mention-picker-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.mention-picker-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.mention-picker-close:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.mention-picker-search {
+  padding: 10px 14px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.mention-picker-search-input {
+  width: 100%;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-base);
+  color: var(--text);
+  font-size: 12px;
+  outline: none;
+}
+
+.mention-picker-search-input:focus {
+  border-color: var(--ring);
+}
+
+.mention-picker-list {
+  flex: 1;
+  overflow: auto;
+  padding: 6px 0;
+}
+
+.mention-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+}
+
+.mention-row:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.mention-row--top {
+  height: 44px;
+}
+
+.mention-row--entry {
+  height: 50px;
+  border-radius: 0;
+}
+
+.mention-row--selected {
+  background: var(--surface-hover);
+}
+
+.mention-row-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--surface-tertiary);
+  color: var(--text);
+}
+
+.mention-icon--todo {
+  background: rgb(99 102 241 / 18%);
+  color: rgb(99 102 241);
+}
+
+.mention-icon--skill {
+  background: rgb(168 85 247 / 18%);
+  color: rgb(168 85 247);
+}
+
+.mention-icon--agent {
+  background: rgb(34 197 94 / 18%);
+  color: rgb(34 197 94);
+}
+
+.mention-icon--project {
+  background: rgb(245 158 11 / 18%);
+  color: rgb(245 158 11);
+}
+
+.mention-icon--machine {
+  background: rgb(14 165 233 / 18%);
+  color: rgb(14 165 233);
+}
+
+.mention-row-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.mention-row-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.mention-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.mention-row-title {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mention-row-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mention-picker-empty {
+  padding: 22px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.mention-picker-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-base);
+}
+
+.mention-picker-cancel {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.mention-picker-cancel:hover {
+  color: var(--text);
+}
+
+.mention-picker-insert {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgb(79 70 229);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.mention-picker-insert:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.mention-picker-insert:not(:disabled):hover {
+  color: rgb(67 56 202);
+}
+
+/* Composer @ inline listbox (r9 §2.2 / §3.2): 702-wide, anchored
+   above the composer. Avatar + name + role description per row. */
+.mention-inline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  background: var(--surface-base);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
+  padding: 4px;
+  max-height: 220px;
+  overflow: auto;
+  z-index: 40;
+}
+
+.mention-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+  font: inherit;
+}
+
+.mention-inline-row:hover,
+.mention-inline-row:focus {
+  background: var(--surface-hover);
+  outline: none;
+}
+
+.mention-inline-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--surface-tertiary);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.mention-inline-main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.mention-inline-title {
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mention-inline-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mention-inline-empty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Mention chip rendered in the chat transcript / doc pane (issue
+   #311): the same indigo accent + 3px radius the r9 spec calls for
+   on attachment tokens. The Segments renderer consumes
+   parseMentionSegments and tags each mention segment with
+   `mention-chip mention-chip--<kind>` so the chip class is the only
+   thing different from the existing chat-code chip. */
+.mention-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 2px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  color: rgb(99 102 241);
+  background: rgb(99 102 241 / 15%);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  vertical-align: baseline;
+  line-height: 1.4;
+}
+
+.mention-chip--todo {
+  color: rgb(99 102 241);
+  background: rgb(99 102 241 / 15%);
+}
+
+.mention-chip--agent {
+  color: rgb(34 197 94);
+  background: rgb(34 197 94 / 15%);
+}
+
+.mention-chip--project {
+  color: rgb(245 158 11);
+  background: rgb(245 158 11 / 15%);
+}
+
+.mention-chip--skill {
+  color: rgb(168 85 247);
+  background: rgb(168 85 247 / 15%);
+}
+
+.mention-chip--machine {
+  color: rgb(14 165 233);
+  background: rgb(14 165 233 / 15%);
+}

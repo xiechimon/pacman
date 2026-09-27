@@ -328,11 +328,17 @@ export interface ResourcesContent {
 /** Inline text run inside a plan-document block; `code` renders the
  *  monospace chip (r7 17: `tail -n 3 README.md` style). */
 /** Inline text run inside a plan-document block: plain text, the
- *  monospace chip (r7 17: `tail -n 3 README.md` style) or the blue
- *  file/commit reference span (r8 56: `README.md`, `2f47b62`). */
+ *  monospace chip (r7 17: `tail -n 3 README.md` style), the blue
+ *  file/commit reference span (r8 56: `README.md`, `2f47b62`) or a
+ *  mention chip carrying the entity kind (issue #311, spec 08 附录 A
+ *  档 2: agent / todo / skill / project / machine — the picker emits
+ *  `[name](<kind>:<id>)` and the renderer parses it back into a chip
+ *  with the kind-driven accent color). */
 export interface DocSegment {
   text: string;
-  style?: 'code' | 'link';
+  style?: 'code' | 'link' | 'mention';
+  /** Mention chip kind — required when style is 'mention'. */
+  mentionKind?: 'todo' | 'skill' | 'agent' | 'project' | 'machine';
 }
 
 /** One plan-document block: free paragraph, bullet (r7 17 doc pane) or

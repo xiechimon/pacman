@@ -21,9 +21,11 @@ import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
   useApiMutations,
+  useMachines,
   useMembers,
   useProjects,
   useSearchResults,
+  useSkills,
   useTodos,
 } from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
@@ -42,6 +44,7 @@ import type { FixtureSet, OverlayState, TodoRecord } from '../fixtures/records.j
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChiefFab } from '../icons/index.js';
+import type { MentionGroups } from '../overlay/mention-picker.js';
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 // shell styles live with the board surface; the settings view (101–104)
@@ -73,6 +76,8 @@ export function BoardPage() {
   const todosQ = useTodos(teamId, live);
   const projectsQ = useProjects(teamId, live);
   const membersQ = useMembers(teamId, live);
+  const machinesQ = useMachines(teamId, live);
+  const skillsQ = useSkills(teamId, live);
   const mutations = useApiMutations(teamId);
 
   // New-task dialog (#66): fixture phase has no backend, so a saved task
@@ -128,13 +133,13 @@ export function BoardPage() {
   );
 
   const createTodo = useCallback(
-    (title: string, selectedProjectId?: string) => {
+    (title: string, selectedProjectId?: string, spec: string = title) => {
       setNewTaskOpen(false);
       if (live) {
         // #176: dialog 选中项目优先;未选(空集/查询未决)退首行真值
         const projectId = selectedProjectId ?? projectsQ.data?.[0]?.id;
         if (projectId) {
-          mutations.createTodo.mutate({ projectId, title, spec: title });
+          mutations.createTodo.mutate({ projectId, title, spec });
           return;
         }
         // 无项目：先建默认托管项目再落任务（self-host 单用户语义 [设计]，
@@ -142,7 +147,7 @@ export function BoardPage() {
         mutations.createProject.mutate(
           { name: t('默认项目'), repoKind: 'hosted' },
           {
-            onSuccess: (p) => mutations.createTodo.mutate({ projectId: p.id, title, spec: title }),
+            onSuccess: (p) => mutations.createTodo.mutate({ projectId: p.id, title, spec }),
           },
         );
         return;
@@ -162,15 +167,15 @@ export function BoardPage() {
   // 保存并开始（r2 §4.2 双钮语义，M5 live）：创建 → POST builds（withPlan，
   // 首 Agent 双槽指派 [设计]）。fixture 面 = 同 保存。
   const createAndStart = useCallback(
-    (title: string, selectedProjectId?: string) => {
+    (title: string, selectedProjectId?: string, spec: string = title) => {
       setNewTaskOpen(false);
       if (!live) {
-        createTodo(title);
+        createTodo(title, selectedProjectId, spec);
         return;
       }
       const start = (projectId: string) =>
         mutations.createTodo.mutate(
-          { projectId, title, spec: title },
+          { projectId, title, spec },
           {
             onSuccess: (created) =>
               mutations.startBuilds.mutate({
@@ -268,6 +273,63 @@ export function BoardPage() {
     if (fixture.projectNames == null) return undefined;
     return Object.entries(fixture.projectNames).map(([id, name]) => ({ id, name }));
   }, [live, projectsQ.data, fixture.projectNames]);
+
+  // #311 mention picker groups: board's new-task dialog needs the same
+  // entity set the composer surfaces. Live pulls the canonical REST
+  // hooks; fixture derives from the local scenario (resources carries
+  // skills + machines; team roster carries agents; projectNames drives
+  // projects). When the live hooks are still loading, fall back to the
+  // empty rows so the picker still opens with a 0 count.
+  const liveTodoSet: WireTodo[] = todosQ.data ?? [];
+  const mentionGroups: MentionGroups = live
+    ? {
+        todo: liveTodoSet.map((t) => ({
+          id: t.id,
+          label: `#${t.seqNum} ${t.title}`,
+          seq: t.seqNum,
+          subtitle: t.phase,
+        })),
+        agent: (membersQ.data ?? [])
+          .filter((m) => m.memberType === 'agent')
+          .map((m) => ({
+            id: m.actorId,
+            label: (m.actor as { displayName?: string } | undefined)?.displayName ?? m.actorId,
+            subtitle:
+              (m.actor as { description?: string | null } | undefined)?.description ?? undefined,
+          })),
+        project: (projectsQ.data ?? []).map((p) => ({ id: p.id, label: p.name })),
+        skill: (skillsQ.data ?? []).map((s) => ({
+          id: s.id,
+          label: s.name,
+          subtitle: s.description ?? undefined,
+        })),
+        machine: (machinesQ.data ?? []).map((m) => ({ id: m.id, label: m.name })),
+      }
+    : {
+        todo: fixtureTodos.map((t) => ({
+          id: t.id,
+          label: `#${t.seqNum} ${t.title}`,
+          seq: t.seqNum,
+          subtitle: t.phase,
+        })),
+        agent: (fixture.team?.agents ?? []).map((a) => ({
+          id: a.id,
+          label: a.displayName,
+          subtitle: a.role ?? a.model,
+        })),
+        project: Object.entries(fixture.projectNames ?? {}).map(([id, name]) => ({
+          id,
+          label: name,
+        })),
+        skill: (fixture.resources?.skills ?? []).map((s) => ({
+          id: s.name,
+          label: s.name,
+          subtitle: s.description,
+        })),
+        machine: (fixture.resources?.machines ?? [])
+          .filter((m) => m.hosted !== true)
+          .map((m) => ({ id: m.name, label: m.name, subtitle: m.sub })),
+      };
   const fixtureWithTodos: FixtureSet = live
     ? { ...fixture, todos, now: Date.now(), ...(projectNames ? { projectNames } : {}) }
     : { ...fixture, todos };
@@ -332,6 +394,7 @@ export function BoardPage() {
         onSave={createTodo}
         onSaveAndStart={live ? createAndStart : undefined}
         projects={projectRows}
+        mentionGroups={mentionGroups}
       />
       <button
         type="button"

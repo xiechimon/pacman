@@ -120,10 +120,10 @@ export function toProjectRecord(row: ProjectRow, origin?: string): ProjectRecord
   };
 }
 
-/** GitHub 接入 `owner/repo` 形状校验（[推断] 最小护栏）。 */
-export function isGithubRepoRef(value: string): boolean {
-  return /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(value);
-}
+/** GitHub 接入 `owner/repo` 形状校验——单源已迁 @pacman/shared（web 表单
+ * 同吃，#305）；此处 re-export 维持 routes/skills/chief-tools 三个既有
+ * import 面不动。 */
+export { isGithubRepoRef } from '@pacman/shared';
 
 /** 文件浏览面要求托管形态（GitHub-backed 读面依赖 GitHub API，不在 M2b
  * server 存储面 [设计]）。返回 bare repo 目录。 */

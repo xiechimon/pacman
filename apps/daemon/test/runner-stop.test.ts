@@ -137,6 +137,9 @@ class FakeClient implements MachineApi {
   async stop() {
     return null;
   }
+  async syncResult(_syncId: string, _body: { status: string; errorMessage?: string }) {
+    /* no-op stub for branch sync (M7 #319) */
+  }
   async stream(_signal: AbortSignal, _onEvent: (ev: MachineStreamEvent) => void) {}
 }
 
