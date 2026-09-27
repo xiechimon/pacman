@@ -16,7 +16,11 @@ import { expect, type Page, test } from '@playwright/test';
 // 7. machines 行内动作图标 — #222 出账（r8 §3.5 漂移注记）：原站在线机器行
 //    右侧三行内动作图标，端点核实测 local-first 无机器管理面（注记在
 //    machines-page.tsx 头部），不渲染死钮——行内零 button。
-// 8. #307 档 4 外链型四件 wontfix 出账（spec 08 二分律）：api-keys 空态
+// 8. 语音输入钮 — #304（08 册 C5 裁决）：语音功能不做，composer 工具条与
+//    新建任务对话框工具条两处语音钮移除不留死钮（#146 chief 面同律）；
+//    与 #146 的差异 = 本票只除语音，添加附件/提及两工具原样保留。
+
+// 9. #307 档 4 外链型四件 wontfix 出账（spec 08 二分律）：api-keys 空态
 //    「查看文档」钮（#149 schedules 同律——local-first 无文档站）、
 //    resources 共享空态「查看文档」链接（skills/secrets/mcp 随 EmptyState
 //    一并出账）、create-agent-dialog 与 project-settings 的头像「更换」
@@ -151,7 +155,34 @@ test('machines rows render no inline action buttons (#222 wontfix 出账)', asyn
   await expect(page.locator('.res-grow button')).toHaveCount(0);
 });
 
-// —— 8. #307 档 4 外链型 wontfix 出账 ————————————————————————————
+// —— 8. 语音输入钮（#304 C5）——————————————————————————————————————————
+
+test('composer toolbar drops the 语音输入 button, keeps attachment + mention', async ({ page }) => {
+  // chain 面 confirm v1：composer 确定在场（reject-chain 同路由）
+  await page.goto('/app/todo/r8-15?scenario=chain');
+  const toolbar = page.locator('.composer-toolbar');
+  await expect(toolbar).toBeVisible();
+  // #304（08 册 C5）：语音输入功能不做——钮移除不渲染（wontfix 注记在
+  // composer.tsx 实现位；#146 chief 面同律）。本票唯一移除对象是语音，
+  // 添加附件/提及两工具必须原样在场。
+  await expect(toolbar.locator('button[aria-label="语音输入"]')).toHaveCount(0);
+  await expect(toolbar.locator('button[aria-label="添加附件"]')).toBeVisible();
+  await expect(toolbar.locator('button[aria-label="提及"]')).toBeVisible();
+});
+
+test('new-task dialog tools drop the 语音输入 button, keep two live tools', async ({ page }) => {
+  await page.goto('/app?scenario=01');
+  await page.locator('.board-new-task').click();
+  const tools = page.locator('.new-task-tools');
+  await expect(tools).toBeVisible();
+  // #304（08 册 C5）：同律——语音钮不渲染，工具条收窄为附件+提及两钮
+  // （wontfix 注记在 new-task-dialog.tsx 实现位）。
+  await expect(tools.locator('button[aria-label="语音输入"]')).toHaveCount(0);
+  await expect(tools.locator('button')).toHaveCount(2);
+  await expect(tools.locator('button[aria-label="添加附件"]')).toBeVisible();
+  await expect(tools.locator('button[aria-label="提及"]')).toBeVisible();
+
+// —— 9. #307 档 4 外链型 wontfix 出账 ————————————————————————————
 
 test('api-keys empty state drops the 查看文档 button, keeps 新建密钥 (#307)', async ({ page }) => {
   await page.goto('/app/api-keys');
