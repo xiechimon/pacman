@@ -41,6 +41,9 @@ interface ComposerProps {
    *  投影；fixture = 父级从 fixture.todos / fixture.resources 提取。
    *  缺省 = 所有分组空（弹层仍可开但只显 0 计数）。 */
   mentionGroups?: MentionGroups;
+  /** 停止钮点击（M7 #308，r9 §3.3：确认弹层入口）；缺省 = 静态捕获面
+   * （fixture/parity 按钮不接线，DOM 字节不变）。 */
+  onStop?: () => void;
 }
 
 export function Composer({
@@ -50,6 +53,7 @@ export function Composer({
   onSend,
   editable,
   mentionGroups,
+  onStop,
 }: ComposerProps) {
   const { t } = useI18n();
   const [draft, setDraft] = useState('');
@@ -207,7 +211,9 @@ export function Composer({
           <Grid2x2 />
         </button>
       </div>
-      {streaming && <button type="button" className="composer-stop" aria-label={t('停止')} />}
+      {streaming && (
+        <button type="button" className="composer-stop" aria-label={t('停止')} onClick={onStop} />
+      )}
       <button type="button" className="composer-send" aria-label={t('发送')} onClick={send}>
         <ArrowUp width={14} height={14} />
       </button>

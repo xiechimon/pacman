@@ -210,6 +210,9 @@ export const machineStreamEventSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('wake') }),
   z.object({ type: z.literal('shutdown') }),
   z.object({ type: z.literal('steer'), stepId: recordId }),
+  // stop = 用户停止钮中断在跑步（M7 #308 [设计]，steer 同律：只带 stepId
+  // 信号，discard 勾选位经 GET /api/machine/stop 拉取-确认）。
+  z.object({ type: z.literal('stop'), stepId: recordId }),
 ]);
 export type MachineStreamEvent = z.infer<typeof machineStreamEventSchema>;
 
@@ -220,6 +223,15 @@ export const machineSteerResponseSchema = z.object({
   content: z.string().nullable(),
 });
 export type MachineSteerResponse = z.infer<typeof machineSteerResponseSchema>;
+
+/** GET /api/machine/stop?stepId= 响应（M7 #308 [设计]，steer 拉取-确认同形）：
+ * {discard} = 拉取即确认（服务端 pending 随即清；discard = 丢弃本轮修改勾选位，
+ * true → daemon rewind worktree 到步起点）；{discard:null} = 无待取/非本机
+ * 在跑步/pending 定向旧步（已丢弃）。 */
+export const machineStopResponseSchema = z.object({
+  discard: z.boolean().nullable(),
+});
+export type MachineStopResponse = z.infer<typeof machineStopResponseSchema>;
 
 // —— 步骤 journal 端点（02 §5.4 词表）———————————————————————————————————————
 
@@ -348,6 +360,11 @@ export const MACHINE_WIRE_EXTENSIONS = [
     method: 'GET',
     path: '/api/machine/steer',
     reason: '[设计] W3 steer 拉取-确认（06 册 D9；claimed 步单槽 pending，?stepId=）',
+  },
+  {
+    method: 'GET',
+    path: '/api/machine/stop',
+    reason: '[设计] M7 #308 stop 拉取-确认（停止钮单槽 pending，?stepId=；steer 同律）',
   },
   {
     method: 'PUT',

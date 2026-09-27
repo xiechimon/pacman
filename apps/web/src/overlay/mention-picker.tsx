@@ -339,6 +339,7 @@ export interface MentionInlineProps {
 }
 
 export function MentionInline({ open, agents, caret, onPick, onClose }: MentionInlineProps) {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLButtonElement | null>(null);
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -362,7 +363,7 @@ export function MentionInline({ open, agents, caret, onPick, onClose }: MentionI
       data-caret={caret ?? ''}
     >
       {agents.length === 0 ? (
-        <div className="mention-inline-empty">没有可用的 Agent</div>
+        <div className="mention-inline-empty">{t('没有可用的 Agent')}</div>
       ) : (
         agents.map((agent) => (
           <button
