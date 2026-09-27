@@ -11,6 +11,7 @@
 import { NOTIFICATION_BANNER_COPY } from '@pacman/shared';
 import { useCallback, useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
+import { Button } from '../ui/button.js';
 
 /** The 铃铛 glyph (r2 01/28: indigo bell on the tinted disc). Inline because
  *  apps/web/src/icons is generated (scripts/generate-icons.mjs) from the r7
@@ -92,9 +93,16 @@ export function NotificationBanner({ onEnable }: { onEnable: () => void }) {
         <div className="board-notify-banner-title">{t(NOTIFICATION_BANNER_COPY.title)}</div>
         <div className="board-notify-banner-body">{t(NOTIFICATION_BANNER_COPY.body)}</div>
       </div>
-      <button type="button" className="board-notify-banner-action" onClick={onEnable}>
+      {/* A3 收编：Button primary/compact；board-notify-banner-action 是
+          e2e(notify-banner.spec) 钉死的选择器别名，布局差值留在 board.css。 */}
+      <Button
+        variant="primary"
+        size="compact"
+        className="board-notify-banner-action"
+        onClick={onEnable}
+      >
         {t(NOTIFICATION_BANNER_COPY.action)}
-      </button>
+      </Button>
     </section>
   );
 }

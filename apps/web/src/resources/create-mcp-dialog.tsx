@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { PlusSmall } from '../icons/index.js';
 import { DialogShell } from '../ui/dialog-shell.js';
+import { Input } from '../ui/input.js';
 
 interface HeaderRow {
   key: string;
@@ -118,7 +119,7 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
         <label className="dlg-form-label" htmlFor="dlg-mcp-label">
           {t('名称')}
         </label>
-        <input
+        <Input
           id="dlg-mcp-label"
           className="dlg-form-input"
           value={label}
@@ -128,7 +129,7 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
         <label className="dlg-form-label" htmlFor="dlg-mcp-slug">
           {t('标识符')}
         </label>
-        <input
+        <Input
           id="dlg-mcp-slug"
           className="dlg-form-input"
           value={slug}
@@ -141,7 +142,7 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
             <label className="dlg-form-label" htmlFor="dlg-mcp-url">
               URL
             </label>
-            <input
+            <Input
               id="dlg-mcp-url"
               className="dlg-form-input"
               value={url}
@@ -151,7 +152,7 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
             <div className="dlg-form-label">{t('请求头（可选）')}</div>
             {headers.map((row, i) => (
               <div className="dlg-mcp-header-row" key={i}>
-                <input
+                <Input
                   className="dlg-form-input"
                   aria-label={t('请求头名称')}
                   value={row.key}
@@ -162,7 +163,7 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
                     )
                   }
                 />
-                <input
+                <Input
                   className="dlg-form-input"
                   aria-label={t('请求头值')}
                   value={row.value}
@@ -189,7 +190,7 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
             <label className="dlg-form-label" htmlFor="dlg-mcp-command">
               {t('命令')}
             </label>
-            <input
+            <Input
               id="dlg-mcp-command"
               className="dlg-form-input"
               value={command}
@@ -199,7 +200,7 @@ export function CreateMcpDialog({ open, onClose, onCreate }: CreateMcpDialogProp
             <label className="dlg-form-label" htmlFor="dlg-mcp-args">
               {t('参数（可选，空格分隔）')}
             </label>
-            <input
+            <Input
               id="dlg-mcp-args"
               className="dlg-form-input"
               value={args}

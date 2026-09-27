@@ -25,8 +25,10 @@ export const stepRecordSchema = z.object({
 });
 export type StepRecord = z.infer<typeof stepRecordSchema>;
 
-/** journal 状态词（02 §5.4 [内部] 展开：claimed = 机器领取未收尾）。 */
-export const stepStatusSchema = z.enum(['pending', 'claimed', 'done', 'failed']);
+/** journal 状态词（02 §5.4 [内部] 展开：claimed = 机器领取未收尾；
+ * stopped = 用户停止钮中断（M7 #308，r9 §3.3 运行行「已取消」数据源——
+ * machineDoneBody status 词表原含 stopped，此为 db/读面对位补齐）。 */
+export const stepStatusSchema = z.enum(['pending', 'claimed', 'done', 'failed', 'stopped']);
 export type StepStatus = z.infer<typeof stepStatusSchema>;
 
 /** steps 读面/会话流 step 事件行 = record + journal 位透出 [设计]（M5 详情
