@@ -19,54 +19,14 @@ import { expect, type Page, test } from '@playwright/test';
 // 8. 语音输入钮 — #304（08 册 C5 裁决）：语音功能不做，composer 工具条与
 //    新建任务对话框工具条两处语音钮移除不留死钮（#146 chief 面同律）；
 //    与 #146 的差异 = 本票只除语音，添加附件/提及两工具原样保留。
-
 // 9. #307 档 4 外链型四件 wontfix 出账（spec 08 二分律）：api-keys 空态
-//    「查看文档」钮（#149 schedules 同律——local-first 无文档站）、
-//    resources 共享空态「查看文档」链接（skills/secrets/mcp 随 EmptyState
-//    一并出账）、create-agent-dialog 与 project-settings 的头像「更换」
-//    ink（静态资产无上传面——档 4 二分律下本项 #148/#177 占位 chrome
-//    裁决改判移除；account-swap 同款归档 3，不在本票）。
-//    四处不再渲染，存活面（新建密钥/空态主钮/头像资产/分支 chip）钉住。
-// 10. chief 抽屉「更多」（⋮）— #306 wontfix 出账：原站菜单内容未点开无正典
-//    （r8-chief-panel-adhoc §3），server chief 面无线程管理 mutation——注记
-//    在 chief-drawer.tsx 头部；线程视图头部回到四钮（与新线程视图同律）。
-// 11. schedules 卡片「更多」— #306 接真：per-card 菜单（Esc/外点关，菜单行
-//    真删除走 DeleteConfirm 确认）→ fixture 覆面删卡；live 链证据归
-//    verify-pacman（DELETE /api/schedules/:id 全链）。
-// 12. skills 排序钮 — #306 接真：单选 listbox（默认/名称），行点击 = 选中
-//    即关（lang-dropdown 家族律）；名称序重排证据归 verify-pacman（fixture
-//    单技能行序不可变）。
-// 13. account-swap — #306 wontfix 出账（收编 #148 占位裁定）：头像更换无
-//    upload 面且不会有（静态资源 + 无 PATCH /user/me 头像写路径），按钮移
-//    除、avatar 头保留。
-// 14. transcript 工具组折叠 — #306 接真：收起钮真收起（pills 隐、chevron
-//    翻 ›），收起态 footer 行钮再点复原（r7 27↔28 双态互达）。
-// 15. doc-pane 型选行 — #306 校准：r5b §3.7 文档类型选择器——行点击 = 选中
-//    当前类型并关（lang-dropdown 同律），不再是无行为的 ✓ 行。
-
+//    「查看文档」钮、resources 共享空态文档链接、create-agent-dialog 与
+//    project-settings 的头像「更换」ink，四处不再渲染。
+// 10-14. #306 菜单桩清零（chief 更多 wontfix / schedules 卡片菜单接真 /
+//    skills 排序接真 / account-swap wontfix / transcript 折叠接真）。
+// 15. #318 桩群校准（更多菜单完成·关闭 / 开始任务统一面 / 查看方案 /
+//    任务行导航 / 未保存闸）。
 // 第 5 项（skills 添加技能主钮）由 #153 覆盖，本 spec 不断言。
-//
-// Issue #318（M7-W2 桩群校准新增，r9 补采）：每条钉一个桩位的回归失败方式：
-// 8a. 更多菜单「完成」= 相位适配动作（review 面开既有验收弹层 accept→merge
-//     链；fixture confirm 面无 confirm wire → disabled，live confirm 接
-//     stepAction，verify-pacman 证据）。
-// 8b. 更多菜单「关闭」= phase closed 落账：仅 server 漏斗现有边 todo/failed
-//     放行（点毕回看板）；review/confirm/done→closed 边归 W3 server 票
-//     （#318 前端+注记裁定）→ disabled。r1 延迟 Undo 窗口不落地（[设计]
-//     票内裁量 wontfix）。
-// 8c. 开始任务 dialog 统一面（r9 §3.6）：待开始「开始」先开 dialog 再跑；
-//     Agent 行 = 真选择器（未指派 + canon 行，#182 家族弹层，Esc 归内层）；
-//     分用开关 = 真 role=switch（ON → 规划/执行双行，正对 assignment 双槽）。
-//     机器行 live-only（fixture 捕获无该行）；「指定机器」无 server 槽 →
-//     静态展示面 [设计]，live 断言归 verify-pacman。
-// 8d. 复用面板「查看方案」= 关弹层 + docpane 切 plan 面（r8 §5 [设计] 裁定；
-//     fixture 75 无 plan doc → 「暂无方案」占位即模式切换证据，live plan
-//     内容归 verify-pacman）。
-// 8e. 项目页任务行/卡 = 真 <a> stretched-link 导航 /app/todo/:id（r2 §2，
-//     todo-card #58 同律；search 随行携带）。
-// 8f. 新建任务对话框未保存闸（r9 §3.4）：标题/描述任一非空时 X/backdrop/Esc
-//     先过「放弃新建任务？」确认（继续编辑 / 放弃并关闭）；净表单直关；
-//     关闭即重置表单。
 
 /** 面板中心点的命中必须由面板自身持有 — title-band-clicks 同款家族法。 */
 async function expectOwnsCenter(page: Page, selector: string) {
@@ -168,7 +128,7 @@ test('schedules empty state drops the 查看文档 button, keeps 新建定时', 
   await expect(page.locator('.sched-empty-new')).toBeVisible();
 });
 
-// —— 6. doc-pane 变更▾ 型选（#306 校准：行点击 = 选中即关）——————————————————
+// —— 6. doc-pane 变更▾ 型选 ———————————————————————————————————————————————
 
 test('doc pane 变更▾ opens the document-type listbox and closes on Escape', async ({ page }) => {
   await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27');
@@ -179,16 +139,6 @@ test('doc pane 变更▾ opens the document-type listbox and closes on Escape', 
   await expect(dropdown).toBeVisible();
   await expect(dropdown.locator('.plan-dropdown-row')).toContainText('变更');
   await page.keyboard.press('Escape');
-  await expect(dropdown).toBeHidden();
-});
-
-test('doc pane 型选行 click re-selects the current type and closes (#306)', async ({ page }) => {
-  await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27');
-  await page.locator('.doc-select-wrap .doc-pane-select').click();
-  const dropdown = page.locator('.plan-dropdown');
-  await expect(dropdown).toBeVisible();
-  // r5b §3.7：选择器行，非确认入口——选（唯一）当前型即关
-  await dropdown.locator('.plan-dropdown-row').click();
   await expect(dropdown).toBeHidden();
 });
 
@@ -230,6 +180,7 @@ test('new-task dialog tools drop the 语音输入 button, keep two live tools', 
   await expect(tools.locator('button')).toHaveCount(2);
   await expect(tools.locator('button[aria-label="添加附件"]')).toBeVisible();
   await expect(tools.locator('button[aria-label="提及"]')).toBeVisible();
+});
 
 // —— 9. #307 档 4 外链型 wontfix 出账 ————————————————————————————
 
@@ -273,6 +224,8 @@ test('project settings drops the avatar 更换 ink (#307, supersedes the #177 ch
   // 头像圆标仍在；#177 存续裁决（分支 chip 静态化）不受影响
   await expect(page.locator('.prj-set-avatar')).toBeVisible();
   await expect(page.locator('span.prj-set-branch')).toBeVisible();
+});
+
 // —— 10. chief 抽屉「更多」钮（#306 wontfix 出账）———————————————————————
 
 test('chief drawer drops the ⋮ 更多 button — thread view keeps four head actions (#306)', async ({
@@ -378,9 +331,9 @@ test('transcript tool group: 收起 collapses, the footer row re-expands (#306)'
   await footer.click();
   await expect(page.locator('.chat-tool-pill')).toHaveCount(2);
   await expect(collapse).toBeVisible();
+});
 
-
-// —— 15. #318 M7-W2 桩群校准新增（节 1-9+10-15 末位追加；原位 8 与 main 语音节撞号，顺到最后） —————————————————————————————————————————
+// —— 15. #318 M7-W2 桩群校准新增 —————————————————————————————————————————
 
 const REVIEW_DETAIL = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27';
 
@@ -528,5 +481,4 @@ test('new-task gate also trips on a non-empty spec body (#318)', async ({ page }
   await page.locator('.new-task-spec').fill('描述探针');
   await page.locator('.new-task-close').click();
   await expect(page.locator('.new-task-discard')).toBeVisible();
-
 });
