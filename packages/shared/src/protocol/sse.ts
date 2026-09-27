@@ -1,9 +1,11 @@
 // 实时通道词表——02 §1.2（锁定：全 SSE 无 WebSocket，r3 §8.1 实测整场会话
 // 0 条 webSocket 事件）+ r5 §7.2 team stream 实测扩充（todo/build 全文档事件
-// + notification 事件）。复刻双保险（02 §1.2）：SSE 文档事件直更 + 重取兜底
+// + notification 事件）+ M7 #319 branch_sync 事件（08 册附录 B「分支同步」）。
+// 复刻双保险（02 §1.2）：SSE 文档事件直更 + 重取兜底
 // （TanStack Query invalidateQueries，01 §4.1/S8）。
 
 import { z } from 'zod';
+import { branchSyncRecordSchema } from '../records/branch-sync.js';
 import { buildRecordSchema } from '../records/build.js';
 import { recordId } from '../records/common.js';
 import { transcriptRowSchema } from '../records/message.js';
@@ -16,7 +18,7 @@ export const SSE_CHANNELS = [
     id: 'team',
     endpoint: '/api/teams/{id}/stream',
     audience: 'browser',
-    note: '团队流：ping/machine_presence/todo/build/notification（02 §1.2，r5 §7.2 扩充）',
+    note: '团队流：ping/machine_presence/todo/build/notification/branch_sync（02 §1.2，r5 §7.2 扩充 + M7 #319）',
   },
   {
     id: 'conversation',
@@ -28,7 +30,7 @@ export const SSE_CHANNELS = [
     id: 'machine',
     endpoint: '/api/machine/stream',
     audience: 'daemon',
-    note: '机器 wake：低延迟派发唤醒（r3 §1.5）',
+    note: '机器 wake：低延迟派发唤醒 + sync 命令（M7 #319；r3 §1.5）',
   },
 ] as const;
 
@@ -69,12 +71,23 @@ export const notificationEventSchema = z.object({
   notification: notificationRecordSchema,
 });
 
+/** branch_sync 事件（M7 #319，08 册附录 B）：分支对话框「同步到机器」状态
+ * 流转（pending→running→synced/failed），server 状态落账后即时推送给 web，
+ * 结果卡实时更新（r1 changelog 09-13）。载荷 = branch_sync 全行（teamId
+ * 冗余携带便于 web 端按团队过滤——web 同一团队订阅一份团队流）。 */
+export const branchSyncEventSchema = z.object({
+  type: z.literal('branch_sync'),
+  sync: branchSyncRecordSchema,
+});
+export type BranchSyncEvent = z.infer<typeof branchSyncEventSchema>;
+
 export const teamStreamEventSchema = z.discriminatedUnion('type', [
   pingEventSchema,
   machinePresenceEventSchema,
   todoDocEventSchema,
   buildDocEventSchema,
   notificationEventSchema,
+  branchSyncEventSchema,
 ]);
 export type TeamStreamEvent = z.infer<typeof teamStreamEventSchema>;
 

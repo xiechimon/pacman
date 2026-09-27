@@ -357,7 +357,10 @@ export function DocPane({
                 </button>
                 <OverlayMount open={typeOpen}>
                   <ClickCatcher onClose={() => setTypeOpen(false)} />
-                  <PlanDropdown current={mode === 'diff' ? '方案' : '变更'} />
+                  <PlanDropdown
+                    current={mode === 'diff' ? '方案' : '变更'}
+                    onSelect={() => setTypeOpen(false)}
+                  />
                 </OverlayMount>
               </span>
               {mode === 'diff' && planDiff != null ? (
@@ -421,7 +424,7 @@ export function DocPane({
             </button>
             <OverlayMount open={typeOpen}>
               <ClickCatcher onClose={() => setTypeOpen(false)} />
-              <PlanDropdown />
+              <PlanDropdown onSelect={() => setTypeOpen(false)} />
             </OverlayMount>
           </span>
           <VersionControl

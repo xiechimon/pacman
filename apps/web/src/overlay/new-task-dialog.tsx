@@ -24,13 +24,21 @@
 // M7 #318 #5 关闭未保存闸（r9 §3.4）：标题/描述/附件/标签任一非空时关闭
 // 先过确认——附件 token 注入 spec 后由 spec 非空承载（不另计），标签 add
 // 仍为桩（本票不动），dirty = titleTrim !== '' || specTrim !== ''。
+//
+// #311: spec textarea now owns state + the 提及 button opens the same
+// MentionPicker the composer uses. Mention tokens land at the spec
+// caret position via insertMentionText — the spec rides along to the
+// createTodo body unchanged, and the rendering side (Segments) parses
+// them back into chips when the description is shown later.
 
 import { useEffect, useRef, useState } from 'react';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
-import { Check, ChevronDown, Grid2x2, Mic, Paperclip, PlusSmall, X } from '../icons/index.js';
+import { Check, ChevronDown, Grid2x2, Paperclip, PlusSmall, X } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { Button } from '../ui/button.js';
+import { type MentionGroups, MentionPicker } from './mention-picker.js';
+import { insertMentionText, type MentionToken } from './mention-token.js';
 import { useEscClose } from './use-esc.js';
 import { FADE_EXIT_MS } from './use-overlay-mount.js';
 import './overlay.css';
@@ -62,7 +70,10 @@ interface NewTaskDialogProps {
   onClose: () => void;
   /** #176:提交携带选中项目 id(选择是纯表单 state,无 mutation)。
    *  M7 #310:spec 加入提交 body(r9 §3.1「附件 token 落描述 textarea,随
-   *  创建进 spec」——之前 dialog 未挂 spec state,提交用 title 兜底)。 */
+   *  创建进 spec」——之前 dialog 未挂 spec state,提交用 title 兜底)。
+   *  参数序 = (title, spec, projectId?)：spec 紧随 title,因 spec 是核心
+   *  内容字段(原站纯 title),projectId 是选择器副产品,放尾默认。
+   *  #311：spec 参数同步携带 mention token 内容。 */
   onSave: (title: string, spec: string, projectId?: string) => void;
   /** M5 live 面：保存并开始 = 创建 + POST builds（r2 §4.2 双钮语义）；
    * 缺省 = fixture 行为（同 保存）。M7 #310:同样带 spec。 */
@@ -77,6 +88,9 @@ interface NewTaskDialogProps {
   /** M7 #310 附件：父组件负责 grant + upload + 拿到 token 后 setSpec 拼
    *  进 spec。父组件在 live 创建面下应同时传 spec/onSpecChange 才能接住。 */
   onAttachment?: (files: File[]) => void | Promise<void>;
+  /** #311: mention picker groups（5 类别）。父级从 live hooks 或
+   *  fixture 派生；缺省 = 空集合（picker 首层 0 计数）。 */
+  mentionGroups?: MentionGroups;
 }
 
 export function NewTaskDialog({
@@ -88,6 +102,7 @@ export function NewTaskDialog({
   spec: specProp,
   onSpecChange,
   onAttachment,
+  mentionGroups,
 }: NewTaskDialogProps) {
   const { t } = useI18n();
   const [title, setTitle] = useState('');
@@ -109,6 +124,8 @@ export function NewTaskDialog({
   // M7 #310 附件：file picker ref + 上传中 disable 纸夹扣
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attaching, setAttaching] = useState(false);
+  // #311 mention picker
+  const [pickerOpen, setPickerOpen] = useState(false);
   // M7 #318 #5 未保存闸：dirty = 标题/描述任一非空。附件 token 注入 spec
   // 后由 spec 非空承载,不另计。标签 add 仍为桩(本票不动)。
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -120,18 +137,24 @@ export function NewTaskDialog({
     else onClose();
   };
   // Esc 分层:popover 层开时 Esc 只关 popover(dialog 的 Esc 关闸退后一层)
-  useEscClose(attemptClose, open && !projectOpen && !confirmOpen);
+  useEscClose(
+    attemptClose,
+    open && !projectOpen && !confirmOpen && !pickerOpen,
+  );
   useEscapeClose(projectOpen, () => setProjectOpen(false));
   useEscapeClose(confirmOpen, () => setConfirmOpen(false));
+  useEscapeClose(pickerOpen, () => setPickerOpen(false));
   // retained mount:dialog 关闭一并收 popover(重开不得带回开态) + 确认层
   useEffect(() => {
     if (!open) {
       setProjectOpen(false);
       setConfirmOpen(false);
+      setPickerOpen(false);
     }
   }, [open]);
   // retained mount means reopen is not a remount — refocus like a fresh one
   const inputRef = useRef<HTMLInputElement>(null);
+  const specRef = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
@@ -144,6 +167,32 @@ export function NewTaskDialog({
     const result = onAttachment(files);
     void Promise.resolve(result).finally(() => setAttaching(false));
   };
+
+  // Mention insert: route through insertMentionText so the picker
+  // and the inline @ listbox share the spacing + caret rules.
+  const insertToken = (token: MentionToken) => {
+    const ta = specRef.current;
+    if (ta == null) {
+      setSpec((current) => insertMentionText(current, token, null).value);
+      return;
+    }
+    const caret = ta.selectionStart ?? spec.length;
+    const { value, caret: nextCaret } = insertMentionText(spec, token, caret);
+    setSpec(value);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(nextCaret, nextCaret);
+    });
+  };
+
+  const groups = mentionGroups ?? {
+    todo: [],
+    skill: [],
+    agent: [],
+    project: [],
+    machine: [],
+  };
+
   const save = () => onSave(title.trim(), spec, selected?.id);
   return (
     <OverlayMount open={open} exitMs={FADE_EXIT_MS}>
@@ -159,6 +208,10 @@ export function NewTaskDialog({
           // only (same inner-first law as the Esc split above)
           if (projectOpen) {
             setProjectOpen(false);
+            return;
+          }
+          if (pickerOpen) {
+            setPickerOpen(false);
             return;
           }
           attemptClose();
@@ -236,6 +289,7 @@ export function NewTaskDialog({
             onChange={(e) => setTitle(e.target.value)}
           />
           <textarea
+            ref={specRef}
             className="new-task-spec"
             placeholder={SPEC_TEMPLATE_LINES.map((line) => t(line)).join('\n')}
             value={spec}
@@ -266,9 +320,8 @@ export function NewTaskDialog({
             {/* A4-deep 收编：icon 变体皮肤；30×30 几何走 .new-task-tools
                 button 元素选择器（原样命中） */}
             <div className="new-task-tools">
-              <Button variant="icon" aria-label={t('语音输入')}>
-                <Mic />
-              </Button>
+              {/* #304 C5 裁决:语音输入功能不做(local-first 无语音面)——
+                  语音钮移除不渲染,不留死钮;添加附件/提及走 A4 Button 原语。 */}
               <Button
                 variant="icon"
                 aria-label={t('添加附件')}
@@ -277,7 +330,11 @@ export function NewTaskDialog({
               >
                 <Paperclip />
               </Button>
-              <Button variant="icon" aria-label={t('提及')}>
+              <Button
+                variant="icon"
+                aria-label={t('提及')}
+                onClick={() => setPickerOpen((value) => !value)}
+              >
                 <Grid2x2 />
               </Button>
             </div>
@@ -353,6 +410,15 @@ export function NewTaskDialog({
           </div>
         </div>
       </OverlayMount>
+      <MentionPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        groups={groups}
+        onInsert={(tokens) => {
+          for (const token of tokens) insertToken(token);
+          setPickerOpen(false);
+        }}
+      />
     </OverlayMount>
   );
 }

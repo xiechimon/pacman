@@ -69,6 +69,12 @@ const INFERRED_ROUTES = [
   'POST /api/uploads/upload', // multipart 上传：grant 验签 + size/mime 对拍 + ready
   'GET /api/attachments/{id}', // 详情面板附件 chip 点开取 binary（content-type）
   'POST /api/builds/{id}/stop', // 停止钮（M7 #308，r9 §3.3 UI 实测/wire 未采——builds/{id}/… REST 同族规则，02 §6.1 规则族）
+  // M7 #319 分支对话框「同步到机器」（08 册附录 B）：build 分支同步状态机
+  // 落账面（builds/{id}/branch-sync REST 同族规则，02 §6.1 [推断]）——
+  // 服务内部状态表（INTERNAL_ONLY_TABLES = steer_pending / branch_sync / stop_pending）
+  // 读位封套，不入 canonical wire record 投影。
+  'POST /api/builds/{id}/branch-sync',
+  'GET /api/builds/{id}/branch-sync',
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；

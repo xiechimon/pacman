@@ -430,12 +430,13 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
   });
 });
 
-describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; #310 +attachment)', () => {
-  it('DB table registry is the 01 §6 list + chief + steer/stop_pending + attachment (29 incl. the todo_tag join)', () => {
-    expect(DB_TABLES).toHaveLength(29);
+describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; #310 +attachment; #319 +branch_sync)', () => {
+  it('DB table registry is the 01 §6 list + chief + steer/stop_pending + attachment + branch_sync (30 incl. the todo_tag join)', () => {
+    expect(DB_TABLES).toHaveLength(30);
     expect(DB_TABLES).toContain('todo_tag');
     expect(DB_TABLES).toContain('chief');
     expect(DB_TABLES).toContain('attachment');
+    expect(DB_TABLES).toContain('branch_sync');
     expect(DB_TABLES).toContain('stop_pending');
   });
 
