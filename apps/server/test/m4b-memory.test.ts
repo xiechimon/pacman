@@ -8,7 +8,7 @@ import {
   type ClaimedStep,
   MEMORY_QUOTA_PER_AGENT,
   memoryRecordSchema,
-  WORKER_MEMORY_REMOTE_TOOLS,
+  WORKER_REMOTE_TOOLS,
 } from '@pacman/shared';
 import type { Hono } from 'hono';
 import { describe, expect, test } from 'vitest';
@@ -83,11 +83,9 @@ async function relay(
 }
 
 describe('worker 步记忆 relay（r5 §6 写路径 = agent 工具 → 服务端执行）', () => {
-  test('claim 载荷 = 记忆三件套 remoteTools（02 §4.4：worker 侧同族工具经 remoteTools 下发）', async () => {
+  test('claim 载荷 = 记忆三件套 + 附件读 remoteTools（02 §4.4 + #310/r9 §3.1 worker 侧 attachment 工具 = spec `attachment:` token 解析路径）', async () => {
     const { s, step } = await world();
-    expect(step.remoteTools?.map((t) => t.name)).toEqual(
-      WORKER_MEMORY_REMOTE_TOOLS.map((t) => t.name),
-    );
+    expect(step.remoteTools?.map((t) => t.name)).toEqual(WORKER_REMOTE_TOOLS.map((t) => t.name));
     s.dispose();
   });
 

@@ -64,6 +64,12 @@ const INFERRED_ROUTES = [
   'GET /api/builds/{id}/changes', // conv 分支 vs 默认分支 diff（变更 pane，r7 27 触点）
   'GET /api/builds/{id}/changes/file', // conv 分支头单文件全文按需取（#224，docpane「显示完整文件」数据源）
   'GET /api/builds/{id}/usage', // build × model 四维记账（Token 用量 dialog，r3 §3.8/r7 30 触点）
+  // —— 附件三步 wire（M7 #310，r9 §3.1/§4；composer + 新建任务 dialog 接
+  // grant/upload/attachments 二进端点，detail 渲染 attachment:key chip；wire
+  // 未在 02 §6.1 词表登记 = INFERRED 入位等 #302/#318 合并回写主词表）——
+  'POST /api/uploads/grant', // 申请 grant：body 校验 + 落 attachment.pending + 签 HMAC
+  'POST /api/uploads/upload', // multipart 上传：grant 验签 + size/mime 对拍 + ready
+  'GET /api/attachments/{id}', // 详情面板附件 chip 点开取 binary（content-type）
   'POST /api/builds/{id}/stop', // 停止钮（M7 #308，r9 §3.3 UI 实测/wire 未采——builds/{id}/… REST 同族规则，02 §6.1 规则族）
   // M7 #319 分支对话框「同步到机器」（08 册附录 B）：build 分支同步状态机
   // 落账面（builds/{id}/branch-sync REST 同族规则，02 §6.1 [推断]）——

@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "9bdb74e2-37e5-401d-8110-c5bf7f0b1ac0",
-  "prevId": "e1dcf8d8-b5ab-4e08-9f49-f145ca123c0b",
+  "id": "ee2b367b-9e59-4234-926e-d2b12d325a44",
+  "prevId": "3b282d5e-f2ce-4a82-89e2-3892076e7f26",
   "tables": {
     "agent": {
       "name": "agent",
@@ -293,27 +293,13 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "branch_sync": {
-      "name": "branch_sync",
+    "attachment": {
+      "name": "attachment",
       "columns": {
         "id": {
           "name": "id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "buildId": {
-          "name": "buildId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "machineId": {
-          "name": "machineId",
-          "type": "text",
-          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -324,34 +310,54 @@
           "notNull": true,
           "autoincrement": false
         },
-        "directory": {
-          "name": "directory",
+        "createdBy": {
+          "name": "createdBy",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "ref": {
-          "name": "ref",
+        "fileName": {
+          "name": "fileName",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "commit": {
-          "name": "commit",
+        "mimeType": {
+          "name": "mimeType",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "force": {
-          "name": "force",
+        "sizeBytes": {
+          "name": "sizeBytes",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": false
+          "autoincrement": false
+        },
+        "storageKey": {
+          "name": "storageKey",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "grantId": {
+          "name": "grantId",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "status": {
           "name": "status",
@@ -361,66 +367,19 @@
           "autoincrement": false,
           "default": "'pending'"
         },
-        "errorMessage": {
-          "name": "errorMessage",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "createdAt": {
           "name": "createdAt",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
-        },
-        "startedAt": {
-          "name": "startedAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "finishedAt": {
-          "name": "finishedAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         }
       },
       "indexes": {},
       "foreignKeys": {
-        "branch_sync_buildId_build_id_fk": {
-          "name": "branch_sync_buildId_build_id_fk",
-          "tableFrom": "branch_sync",
-          "tableTo": "build",
-          "columnsFrom": [
-            "buildId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "branch_sync_machineId_machine_id_fk": {
-          "name": "branch_sync_machineId_machine_id_fk",
-          "tableFrom": "branch_sync",
-          "tableTo": "machine",
-          "columnsFrom": [
-            "machineId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "branch_sync_teamId_team_id_fk": {
-          "name": "branch_sync_teamId_team_id_fk",
-          "tableFrom": "branch_sync",
+        "attachment_teamId_team_id_fk": {
+          "name": "attachment_teamId_team_id_fk",
+          "tableFrom": "attachment",
           "tableTo": "team",
           "columnsFrom": [
             "teamId"
@@ -1845,30 +1804,6 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
-        },
-        "color": {
-          "name": "color",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'#6366f1'"
-        },
-        "createdAt": {
-          "name": "createdAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "v": {
-          "name": "v",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 1
         }
       },
       "indexes": {},
