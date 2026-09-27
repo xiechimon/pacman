@@ -57,6 +57,13 @@
       "when": 1790354230587,
       "tag": "0007_useful_pet_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1790437429589,
+      "tag": "0008_wild_puppet_master",
+      "breakpoints": true
     }
   ]
 }

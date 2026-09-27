@@ -10,6 +10,7 @@ import { useState } from 'react';
 import type { BranchInfoContent } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, Copy } from '../icons/index.js';
+import { Button } from '../ui/button.js';
 import { DialogShell } from '../ui/dialog-shell.js';
 import './overlays.css';
 
@@ -28,9 +29,10 @@ function CopyButton({ value }: { value: string }) {
     });
   };
   return (
-    <button type="button" className="dlg-copy" aria-label={t('复制')} onClick={copy}>
+    // A4-deep 收编：icon 变体皮肤；24×24 几何 per-face 留 overlays.css
+    <Button variant="icon" className="dlg-copy" aria-label={t('复制')} onClick={copy}>
       <Copy width={14} height={14} />
-    </button>
+    </Button>
   );
 }
 

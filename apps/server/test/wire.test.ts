@@ -62,6 +62,7 @@ const INFERRED_ROUTES = [
   'GET /api/builds/{id}/changes', // conv 分支 vs 默认分支 diff（变更 pane，r7 27 触点）
   'GET /api/builds/{id}/changes/file', // conv 分支头单文件全文按需取（#224，docpane「显示完整文件」数据源）
   'GET /api/builds/{id}/usage', // build × model 四维记账（Token 用量 dialog，r3 §3.8/r7 30 触点）
+  'POST /api/builds/{id}/stop', // 停止钮（M7 #308，r9 §3.3 UI 实测/wire 未采——builds/{id}/… REST 同族规则，02 §6.1 规则族）
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；

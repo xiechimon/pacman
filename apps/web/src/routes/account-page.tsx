@@ -28,6 +28,7 @@ import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, SquarePen } from '../icons/index.js';
 import { ClickCatcher, useEscapeClose } from '../overlays/dismiss.js';
 import { SecondaryShell } from '../secondary/shell.js';
+import { Button } from '../ui/button.js';
 
 export function AccountPage() {
   const { locale, setLocale, t } = useI18n();
@@ -55,10 +56,11 @@ export function AccountPage() {
           <div className="account-avatar-actions">
             {/* wontfix (台账 #136 account 行, #148 裁决): local single user —
                 the avatar is the static placeholder asset, no upload face
-                exists or will; the 更换 ink stays as capture-verbatim chrome. */}
-            <button type="button" className="account-swap">
+                exists or will; the 更换 ink stays as capture-verbatim chrome.
+                a3-pages 收编：Button text 档逐值同形（indigo 13px 无框）。 */}
+            <Button variant="text" className="account-swap">
               {t('更换')}
-            </button>
+            </Button>
           </div>
         </div>
         <div className="account-row account-row--name">

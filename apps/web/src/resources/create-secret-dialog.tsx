@@ -8,6 +8,7 @@
 import { useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { DialogShell } from '../ui/dialog-shell.js';
+import { Input } from '../ui/input.js';
 
 interface CreateSecretDialogProps {
   /** #73 retained-mount open flag. */
@@ -56,7 +57,7 @@ export function CreateSecretDialog({ open, onClose, onCreate }: CreateSecretDial
         <label className="dlg-form-label" htmlFor="dlg-secret-name">
           {t('名称（环境变量名）')}
         </label>
-        <input
+        <Input
           id="dlg-secret-name"
           className="dlg-form-input"
           value={name}
@@ -66,7 +67,7 @@ export function CreateSecretDialog({ open, onClose, onCreate }: CreateSecretDial
         <label className="dlg-form-label" htmlFor="dlg-secret-desc">
           {t('描述（可选）')}
         </label>
-        <input
+        <Input
           id="dlg-secret-desc"
           className="dlg-form-input"
           value={description}
