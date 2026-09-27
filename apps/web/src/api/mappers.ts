@@ -298,18 +298,36 @@ export interface TranscriptInput {
   /** conversation stream text_delta 累积（live 打字面；'' = 无进行中文本）。 */
   liveText: string;
   now: number;
+  /** 停止钮确认后的过渡态（M7 #308，r9 §3.3「正在停止…」）：stop 已被
+   * 受理、步终态未回（live 面本地旗标；缺省 false = 捕获面不受扰）。 */
+  stopping?: boolean;
 }
 
 export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
-  const { messages, steps, plans, build, todo, machineName, userName, liveText, now } = input;
+  const {
+    messages,
+    steps,
+    plans,
+    build,
+    todo,
+    machineName,
+    userName,
+    liveText,
+    now,
+    stopping = false,
+  } = input;
   const head: TranscriptItem[] = [];
   if (build?.triggerSource === 'schedule') head.push({ kind: 'scheduled' });
   if (build?.triggerSource === 'chief') head.push({ kind: 'chief' });
   if (build) {
+    // 运行行终态「已取消」（M7 #308，r9 §3.3）：本 build 有 stopped 步 =
+    // 被停止的运行（数据面 = step.status 词表，shared stepStatusSchema）。
+    const cancelled = steps.some((s) => s.status === 'stopped');
     head.push({
       kind: 'run',
       at: clockTime(build.createdAt),
       ...(machineName !== null ? { machine: machineName } : {}),
+      ...(cancelled ? { cancelled: true } : {}),
     });
   }
 
@@ -426,8 +444,9 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     items.push({
       kind: 'streaming',
       seconds: Math.max(1, Math.round((now - running.createdAt) / 1000)),
-      label:
-        running.kind === 'plan' && steps.length === 1 && running.status === 'pending'
+      label: stopping
+        ? '正在停止…' // 停止过渡态（M7 #308，r9 §3.3：中断在途）
+        : running.kind === 'plan' && steps.length === 1 && running.status === 'pending'
           ? '准备工作区...'
           : '处理中...',
     });

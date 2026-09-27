@@ -39,6 +39,12 @@ interface ComposerProps {
   /** M7 #310：受控 draft（live 面由父持 state，附件 token 才能注入）。 */
   draft?: string;
   onDraftChange?: (next: string) => void;
+  /** 停止钮点击（M7 #308，r9 §3.3：确认弹层入口）；缺省 = 静态捕获面
+   * （fixture/parity 按钮不接线，DOM 字节不变）。 */
+  onStop?: () => void;
+  /** AI 审核钮点击（M7 #312，r8 §3.1：发起 AI 审核模态入口）；缺省 =
+   * 静态捕获面（fixture/parity 按钮不接线，DOM 字节不变）。 */
+  onReview?: () => void;
 }
 
 export function Composer({
@@ -50,6 +56,8 @@ export function Composer({
   onAttachment,
   draft: draftProp,
   onDraftChange,
+  onStop,
+  onReview,
 }: ComposerProps) {
   const { t } = useI18n();
   const [internalDraft, setInternalDraft] = useState('');
@@ -126,7 +134,12 @@ export function Composer({
           <Paperclip />
         </button>
         {aiReview && (
-          <button type="button" className="composer-tool" aria-label={t('AI 审核')}>
+          <button
+            type="button"
+            className="composer-tool"
+            aria-label={t('AI 审核')}
+            onClick={onReview}
+          >
             <SearchPlus />
           </button>
         )}
@@ -134,7 +147,9 @@ export function Composer({
           <Grid2x2 />
         </button>
       </div>
-      {streaming && <button type="button" className="composer-stop" aria-label={t('停止')} />}
+      {streaming && (
+        <button type="button" className="composer-stop" aria-label={t('停止')} onClick={onStop} />
+      )}
       <button type="button" className="composer-send" aria-label={t('发送')} onClick={send}>
         <ArrowUp width={14} height={14} />
       </button>

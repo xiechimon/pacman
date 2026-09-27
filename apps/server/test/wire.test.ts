@@ -68,6 +68,7 @@ const INFERRED_ROUTES = [
   'POST /api/uploads/grant', // 申请 grant：body 校验 + 落 attachment.pending + 签 HMAC
   'POST /api/uploads/upload', // multipart 上传：grant 验签 + size/mime 对拍 + ready
   'GET /api/attachments/{id}', // 详情面板附件 chip 点开取 binary（content-type）
+  'POST /api/builds/{id}/stop', // 停止钮（M7 #308，r9 §3.3 UI 实测/wire 未采——builds/{id}/… REST 同族规则，02 §6.1 规则族）
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；

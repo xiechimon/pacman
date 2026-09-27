@@ -44,6 +44,16 @@ export const SYSTEM_MESSAGE_KINDS = ['machine_selected'] as const;
  * （server requestMerge）与呈现端（web transcript mapper）双端单源。 */
 export const MERGE_ANNOUNCEMENT = '发起了合并';
 
+/** AI 审核发起行 content canon（M7 #312 / r8 §3.1 实测 `23:42 Xmon Dai 发起了
+ * AI 审核` 的内容段；行形 = role user 纯文本，呈现层拼装时间/actor）。写入端
+ * （server applyBuildStepAction review 分支）与呈现端（web transcript mapper）
+ * 双端单源。 */
+export const REVIEW_ANNOUNCEMENT = '发起了 AI 审核';
+
+/** AI 审核步完成占位 ack（M7 #312 票 A 占位 emit；#326 真 findings 上线后此
+ * 常量保留作 step journal 行 / 测试 fixture 字面，不作真 wire emit 用）。 */
+export const REVIEW_COMPLETE_PLACEHOLDER = 'AI 审核已完成';
+
 /** GET /api/conversations/{id}/messages 响应封套（r5 §3.6 原样）。 */
 export const conversationMessagesResponseSchema = z.object({
   messages: z.array(transcriptRowSchema),
@@ -58,6 +68,12 @@ export const conversationMessagesResponseSchema = z.object({
 });
 export type ConversationMessagesResponse = z.infer<typeof conversationMessagesResponseSchema>;
 
+/** 取消落账标记 canon（M7 #308，r9 §3.3 运行行「已取消」）：stop 落账写
+ * build.errorMessage 槽——运行历史面（meta 拼接 + failed 样式，fixtures
+ * `Cancelled` 行同形）与详情 fail 行（phase-failed 门控，取消回落不触发）
+ * 双端消费同源。写入端 = server applyStoppedStep；呈现端 = web mappers。 */
+export const STOP_MESSAGE = '已取消';
+
 /** POST /api/conversations/{id}/messages 的 build 会话分支 body（W3 steer，
  * 06 册 D9 / spec #277；[设计] 自设——承 chiefSendMessageBodySchema 的
  * content 位，无 threadId（目标会话在路径位））：steer = 向运行中的步补话
@@ -66,3 +82,12 @@ export const buildSteerBodySchema = z.object({
   content: z.string().min(1),
 });
 export type BuildSteerBody = z.infer<typeof buildSteerBodySchema>;
+
+/** POST /api/builds/{id}/stop body（M7 #308 停止钮，r9 §3.3）：discard =
+ * 确认弹层「丢弃本轮修改——方案和代码回到上一个版本」勾选位（默认 true）——
+ * true 时 daemon 侧 rewind worktree 到步起点 checkpoint。[设计] 端点形自设
+ * （原站 stop wire 未采，r9 §5）；路径从 builds 族（merge/steps 同族）。 */
+export const buildStopBodySchema = z.object({
+  discard: z.boolean(),
+});
+export type BuildStopBody = z.infer<typeof buildStopBodySchema>;
