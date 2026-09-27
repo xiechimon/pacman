@@ -116,9 +116,10 @@ export const EN: Record<string, string> = {
   聊天: 'Chat',
   'Token 用量': 'Token usage',
   运行历史: 'Run history',
-  语音输入: 'Voice input',
   添加附件: 'Add attachment',
   'AI 审核': 'AI review',
+  审核中: 'Reviewing',
+  'AI 审核进行中…': 'AI review in progress…',
   提及: 'Mention',
   停止: 'Stop',
   '停止当前这一轮？': 'Stop this round?',
@@ -184,7 +185,6 @@ export const EN: Record<string, string> = {
   '尚无定时。': 'No schedules yet.',
   '按周期或在指定时间自动重新运行任务。每一轮都会依据任务描述从头开始一次全新运行，到达确认或审核关口时暂停，交由负责人接手。':
     'Automatically rerun a task on a cycle or at a chosen time. Every round starts a fresh run from the task description, pausing at the confirm or review gate for the owner to pick up.',
-  查看文档: 'View docs',
   '也可以直接告诉总管某个任务要多久重跑一次，它会替你写好规则。':
     'You can also just tell the Chief how often a task should rerun, and it will write the rule for you.',
 
@@ -284,6 +284,10 @@ export const EN: Record<string, string> = {
   项目名称: 'Project name',
   仓库: 'Repo',
   选择仓库: 'Select repo',
+  // #305 repo 选择面（r2 07b/07c canon 文案）：两行 = create 端点的两种
+  // repo 形态（02 §3）。
+  '新的 Todos 托管仓库': 'New Todos hosted repo',
+  'GitHub 仓库': 'GitHub repo',
   创建项目: 'Create project',
   基本信息: 'Basic info',
   标签: 'Tags',
@@ -328,6 +332,12 @@ export const EN: Record<string, string> = {
   '选择总管 Agent': "Choose the Chief's Agent",
   '搜索 Agent…': 'Search Agents…',
   '没有匹配的 Agent': 'No matching Agents',
+  // M7 #312 AI 审核模态文案（r8 §3.1 实测）：Agent 选择 + 关注点 textarea +
+  // 提交按钮。dialog 选 Agent 走 dlg-form-* family 共用层,文案独立。
+  '选择审核 Agent': 'Choose review Agent',
+  '希望 Agent 审核时重点关注什么？（可选）':
+    'What do you want the Agent to focus on during review? (optional)',
+  开始审核: 'Start review',
   '更换总管的 agent？总管的记忆保存在其运行所用的 Agent 上。切换至 <agent> 后，记忆将变为 <agent> 的记忆，当前记忆不会迁移。':
     "Switch the Chief's Agent? The Chief's memory lives on the Agent it runs on. After switching to <agent>, the memory becomes <agent>'s — the current memory is not migrated.",
   编辑章程: 'Edit charter',
@@ -523,4 +533,14 @@ export const EN: Record<string, string> = {
   '授权链接已失效，请在执行机上重新发起。':
     'This authorization link has expired — restart enrollment on the executor machine.',
   '浏览器授权注册 →': 'Browser authorization →',
+
+  // —— mention picker (issue #311, r9 §2.2/§3.2) ——
+  // Top layer 5 category rows + drill-in search + footer Insert (N) count.
+  // 与侧边栏/搜索面板的「任务/技能/Agents/项目/机器」键一致,只追加弹层
+  // 本地需要的 6 个键(搜索/空集/返回/插入 (n)/两个 empty 分支)。
+  '搜索…': 'Search…',
+  没有可引用的对象: 'Nothing to mention',
+  '没有与"{query}"匹配的结果': 'No results matching “{query}”',
+  '插入 ({count})': 'Insert ({count})',
+  '没有可用的 Agent': 'No Agents available',
 };
