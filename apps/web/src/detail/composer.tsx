@@ -26,6 +26,9 @@ interface ComposerProps {
   /** 停止钮点击（M7 #308，r9 §3.3：确认弹层入口）；缺省 = 静态捕获面
    * （fixture/parity 按钮不接线，DOM 字节不变）。 */
   onStop?: () => void;
+  /** AI 审核钮点击（M7 #312，r8 §3.1：发起 AI 审核模态入口）；缺省 =
+   * 静态捕获面（fixture/parity 按钮不接线，DOM 字节不变）。 */
+  onReview?: () => void;
 }
 
 export function Composer({
@@ -35,6 +38,7 @@ export function Composer({
   onSend,
   editable,
   onStop,
+  onReview,
 }: ComposerProps) {
   const { t } = useI18n();
   const [draft, setDraft] = useState('');
@@ -79,7 +83,12 @@ export function Composer({
           <Paperclip />
         </button>
         {aiReview && (
-          <button type="button" className="composer-tool" aria-label={t('AI 审核')}>
+          <button
+            type="button"
+            className="composer-tool"
+            aria-label={t('AI 审核')}
+            onClick={onReview}
+          >
             <SearchPlus />
           </button>
         )}

@@ -268,6 +268,7 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
             "build",
             "merge",
             "chief",
+            "review",
           ],
           "type": "string",
         },
@@ -612,6 +613,7 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
                     "build",
                     "merge",
                     "chief",
+                    "review",
                   ],
                   "type": "string",
                 },
@@ -846,6 +848,7 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
               "build",
               "merge",
               "chief",
+              "review",
             ],
             "type": "string",
           },
@@ -1790,6 +1793,26 @@ exports[`body/封套 schema 快照 > buildStepActionBody > buildStepActionBody.j
       ],
       "type": "object",
     },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "const": "review",
+          "type": "string",
+        },
+        "agentId": {
+          "type": "string",
+        },
+        "focus": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "action",
+        "agentId",
+      ],
+      "type": "object",
+    },
   ],
 }
 `;
@@ -1998,6 +2021,7 @@ exports[`body/封套 schema 快照 > conversationStreamEvent > conversationStrea
                 "build",
                 "merge",
                 "chief",
+                "review",
               ],
               "type": "string",
             },
@@ -2695,6 +2719,7 @@ exports[`body/封套 schema 快照 > stepJournalRow > stepJournalRow.json 1`] = 
         "build",
         "merge",
         "chief",
+        "review",
       ],
       "type": "string",
     },
@@ -4585,6 +4610,7 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > step > ste
         "build",
         "merge",
         "chief",
+        "review",
       ],
       "type": "string",
     },

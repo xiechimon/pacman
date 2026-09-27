@@ -75,12 +75,16 @@ export function buildTaskPrompt(claimed: ClaimedStep): string {
 
 /** continue session 续轮指令 [设计]（02 §4.2：确认→执行步、merge 202
  * delegated→合并步均复用同 conv 会话；驳回 feedback 经 server instruction 注入，
- * M4a）。chief 续轮 = wake 事实走 instruction，本表 chief 值不用（占位保全键）。 */
+ * M4a）。chief 续轮 = wake 事实走 instruction，本表 chief 值不用（占位保全键）。
+ * review（M7 #312，r8 §3.1）= 首轮由 server instruction 注入（含 plan.md 全
+ * 文 + 用户 focus），本表保占位空串防 TS 缺键；continue 路径不被使用——审核
+ * 步是额外 agent 步，不接续到主 conv 会话。 */
 export const CONTINUE_PROMPTS: Record<ClaimedStep['step']['kind'], string> = {
   plan: '请重新规划该任务，输出更新后的方案。',
   build: '方案已确认。请按方案执行，完成改动。',
   merge: '请把本会话分支的改动合并到默认分支。',
   chief: '',
+  review: '',
 };
 
 /** worker 步 systemPrompt = 职责文本 + 记忆注入（02 §4.4 读路径最小形；每步
@@ -182,10 +186,12 @@ export async function runStep(
   // workspace 准备（02 §5.5 worktree 契约：基座 clone + `worktree add -b`；
   // 项目未绑 repo = 裸任务目录退化形 [设计]，M3a 兼容）。chief 步 = 只读探索，
   // 不开 worktree（不产可合并改动；仓库读经 remoteTools docs/projects relay，
-  // 黑盒逼近 04 §1 A4）→ 裸任务目录。
+  // 黑盒逼近 04 §1 A4）→ 裸任务目录。review 步（M7 #312 / r8 §3.1）= 只读
+  // 审核方案，不动 worktree（与 chief 同律）→ 裸任务目录。
   logger.workspace('准备工作区...');
   let ws: PreparedWorkspace | null = null;
-  const repo = isChief ? null : (claimed.project?.repo ?? null);
+  const isReview = claimed.step.kind === 'review';
+  const repo = isChief || isReview ? null : (claimed.project?.repo ?? null);
   if (repo !== null && repo.kind === 'hosted') {
     if (!deps.workspace) {
       clearCredentials(creds);
