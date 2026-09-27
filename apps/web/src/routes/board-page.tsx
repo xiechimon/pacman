@@ -15,7 +15,7 @@
 // machines/notifications/chief + 新建/开始/拖拽排序/验收合并 mutation），
 // fixture 分支保持 #52–#75 行为字节不变（parity 矩阵数据面）。
 
-import type { TodoRecord as WireTodo } from '@pacman/shared';
+import { TAG_DEFAULT_COLOR, type TodoRecord as WireTodo } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
@@ -27,6 +27,7 @@ import {
   useProjects,
   useSearchResults,
   useSkills,
+  useTags,
   useTodos,
 } from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
@@ -93,6 +94,33 @@ export function BoardPage() {
   const liveTodos = useMemo(() => (todosQ.data ?? []).map(toDisplayTodo), [todosQ.data]);
   const todos = live ? liveTodos : fixtureTodos;
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+
+  // #309 标签面（r9 §3.4）：dialog 上报的选中项目 → tags 查询键；面板数据
+  // 只在 dialog 开时取。新建标签 = POST tags（color 客户端缺省
+  // TAG_DEFAULT_COLOR，r9 §3.4），解析出的 id 由 dialog 自动选中。
+  const [dialogProjectId, setDialogProjectId] = useState<string | undefined>(undefined);
+  const tagsQ = useTags(dialogProjectId ?? projectsQ.data?.[0]?.id, live && newTaskOpen);
+  const createTag = useCallback(
+    async (name: string) => {
+      let projectId = dialogProjectId ?? projectsQ.data?.[0]?.id;
+      if (!projectId) {
+        // 无项目：先建默认托管项目再落标签——保存路径同语义（[设计]，
+        // 原站无项目建标签行为未捕获；标签属项目，无项目即无处可挂）。
+        const created = await mutations.createProject.mutateAsync({
+          name: t('默认项目'),
+          repoKind: 'hosted',
+        });
+        projectId = created.id;
+      }
+      const created = await mutations.createTag.mutateAsync({
+        projectId,
+        name,
+        color: TAG_DEFAULT_COLOR,
+      });
+      return created.id;
+    },
+    [dialogProjectId, projectsQ.data, mutations.createTag, mutations.createProject, t],
+  );
   // M7 #310 附件：live 创建面把 spec 提到此处,附件 token 才能注入。
   // 新建对话框关闭 = 直接清空（持久化场景下再次打开应从空开始）。
   const [liveSpec, setLiveSpec] = useState('');
@@ -137,7 +165,7 @@ export function BoardPage() {
   );
 
   const createTodo = useCallback(
-    (title: string, spec: string, selectedProjectId?: string) => {
+    (title: string, spec: string, selectedProjectId?: string, tagIds?: string[]) => {
       setNewTaskOpen(false);
       // 提交后清空 spec,下次打开新建对话框从空开始
       setLiveSpec('');
@@ -145,17 +173,18 @@ export function BoardPage() {
         // #176: dialog 选中项目优先;未选(空集/查询未决)退首行真值
         const projectId = selectedProjectId ?? projectsQ.data?.[0]?.id;
         if (projectId) {
-          // M7 #310：spec 来自 dialog 的真实 textarea 内容（之前 dialog 未挂
-          // spec state,提交用 title 兜底——属于丢字 bug,本票修）
-          mutations.createTodo.mutate({ projectId, title, spec });
+          mutations.createTodo.mutate({ projectId, title, spec, tagIds });
           return;
         }
         // 无项目：先建默认托管项目再落任务（self-host 单用户语义 [设计]，
-        // 02 §3 项目创建流两分支的 hosted 侧）。
+        // 02 §3 项目创建流两分支的 hosted 侧）。tagIds 常态为空（无项目即
+        // 无标签可选）；例外 = 建标签已先落默认项目（createTag 路径）而
+        // projectsQ 重取尚未回灌的窄竞态窗——此时这里会多建一个项目且
+        // tagIds 属前项目，由 server 项目边界校验 400 兜底 [设计]，不静默。
         mutations.createProject.mutate(
           { name: t('默认项目'), repoKind: 'hosted' },
           {
-            onSuccess: (p) => mutations.createTodo.mutate({ projectId: p.id, title, spec }),
+            onSuccess: (p) => mutations.createTodo.mutate({ projectId: p.id, title, spec, tagIds }),
           },
         );
         return;
@@ -175,16 +204,17 @@ export function BoardPage() {
   // 保存并开始（r2 §4.2 双钮语义，M5 live）：创建 → POST builds（withPlan，
   // 首 Agent 双槽指派 [设计]）。fixture 面 = 同 保存。M7 #310:带 spec 走真。
   const createAndStart = useCallback(
-    (title: string, spec: string, selectedProjectId?: string) => {
+    (title: string, spec: string, selectedProjectId?: string, tagIds?: string[]) => {
       setNewTaskOpen(false);
       setLiveSpec('');
       if (!live) {
-        createTodo(title, spec);
+        createTodo(title, spec, selectedProjectId, tagIds);
         return;
       }
       const start = (projectId: string) =>
         mutations.createTodo.mutate(
-          { projectId, title, spec },
+          { projectId, title, spec, tagIds },
+
           {
             onSuccess: (created) =>
               mutations.startBuilds.mutate({
@@ -403,6 +433,9 @@ export function BoardPage() {
         onSave={createTodo}
         onSaveAndStart={live ? createAndStart : undefined}
         projects={projectRows}
+        tags={tagsQ.data}
+        onCreateTag={live ? createTag : undefined}
+        onProjectChange={setDialogProjectId}
         // M7 #310 附件 wire：live 创建面 spec 由父持 state,token 才能注入。
         // fixture 面不传 → dialog 内部 useState fallback,行为字节不变。
         {...(live

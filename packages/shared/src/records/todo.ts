@@ -64,9 +64,12 @@ export const todoRecordSchema = z.object({
 });
 export type TodoRecord = z.infer<typeof todoRecordSchema>;
 
-/** POST /api/projects/{id}/todos body（r3 §3.1 抓包原样 {title, spec}）。 */
+/** POST /api/projects/{id}/todos body（r3 §3.1 抓包原样 {title, spec}；
+ *  tagIds 携带位 = r9 §3.4 实测（观测样本空数组），#309 补录。optional =
+ *  旧客户端/chief 派工路径不带位仍合法。 */
 export const createTodoBodySchema = z.object({
   title: z.string(),
   spec: z.string(),
+  tagIds: z.array(recordId).optional(),
 });
 export type CreateTodoBody = z.infer<typeof createTodoBodySchema>;

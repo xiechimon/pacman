@@ -1,0 +1,22 @@
+/* TagChip 原语样式（#309）。消费入口 = ui/tag-chip.tsx。
+   几何 = r9 §2.5/§3.4 实测：footer 选中 chip 47×20、详情 chip 66×20 观测族
+   → 20px 高 pill；底色 = tag.color inline 恒覆盖，--indigo-500 仅作缺色
+   fallback（与 TAG_DEFAULT_COLOR #6366f1 是近似不同值，token 面自有裁决，
+   见 DESIGN.md frontmatter 注记）。 */
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 9999px;
+  background: var(--indigo-500);
+  color: var(--text-on-accent);
+  font-size: 11px;
+  line-height: 20px;
+  font-weight: 500;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

@@ -50,6 +50,9 @@ export const MERGE_ANNOUNCEMENT = '发起了合并';
  * 双端单源。 */
 export const REVIEW_ANNOUNCEMENT = '发起了 AI 审核';
 
+/** AI 审核步完成占位 ack（M7 #312 票 A 占位 emit；#326 真 findings 上线后此
+ * 常量保留作 step journal 行 / 测试 fixture 字面，不作真 wire emit 用）。 */
+export const REVIEW_COMPLETE_PLACEHOLDER = 'AI 审核已完成';
 /** AI 审核步收尾 verdict 消息 content kind（M7 #330，r8 §3.1 真 findings 上
  * 线）：system 角色 + content = `{"kind":"review_verdict","verdict":…}` JSON
  * 串（与 machine_selected 同族，server `applyBuildStepAction` 完成时 emit）。

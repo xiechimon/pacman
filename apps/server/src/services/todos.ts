@@ -8,7 +8,8 @@
 import type { Assignment, Phase, TodoRecord, UserRecord } from '@pacman/shared';
 import { and, asc, eq, inArray, max, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { agent, build, step, todo, todoTag } from '../db/schema.js';
+import { agent, build, step, tag, todo, todoTag } from '../db/schema.js';
+import { HttpError } from '../lib/errors.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { triggerChiefWakes } from './chief.js';
 import type { TeamStreamHub } from './events.js';
@@ -107,7 +108,9 @@ export function getTodo(deps: TodoDeps, id: string): TodoRecord | null {
   return row ? toTodoRecord(deps, row) : null;
 }
 
-/** POST /api/projects/{id}/todos body {title, spec}（r3 §3.1 抓包原样）。 */
+/** POST /api/projects/{id}/todos body {title, spec}（r3 §3.1 抓包原样）+
+ *  tagIds 携带位（r9 §3.4 实测，#309）。tagIds 限本项目 tag 集——界外/未知
+ *  id 400（项目边界防御 [设计]，错误语义 wire 未观测）。 */
 export function createTodo(
   deps: TodoDeps,
   input: {
@@ -115,6 +118,7 @@ export function createTodo(
     projectId: string;
     title: string;
     spec: string;
+    tagIds?: string[];
     /** 人工建 = seed 用户 id；Chief 派工 = 绑定 Agent id（records/todo.ts
      * 人工建取值未分离观测 [推断]，按属主用户填）。 */
     createdBy: string | null;
@@ -122,6 +126,22 @@ export function createTodo(
   },
 ): TodoRecord {
   const { db, hub } = deps;
+  // 去重防御：重复 id 会撞 todo_tag 复合主键（wire 语义未定义重复，UI 面
+  // 恒发唯一集——非 UI 客户端的健壮位 [设计]）。
+  const tagIds = [...new Set(input.tagIds ?? [])];
+  if (tagIds.length > 0) {
+    const owned = new Set(
+      db
+        .select({ id: tag.id })
+        .from(tag)
+        .where(and(eq(tag.projectId, input.projectId), inArray(tag.id, tagIds)))
+        .all()
+        .map((r) => r.id),
+    );
+    for (const tagId of tagIds) {
+      if (!owned.has(tagId)) throw new HttpError(400, `tag ${tagId} not in project`);
+    }
+  }
   // seqNum = 团队内持久序号（CONTEXT.md `#seqNum`；观测 #11–#14 跨项目递增，
   // 团队级计数 [推断]）。
   const seqRow = db
@@ -161,6 +181,9 @@ export function createTodo(
       sourceBuildId: null,
     })
     .run();
+  for (const tagId of tagIds) {
+    db.insert(todoTag).values({ todoId: id, tagId }).run();
+  }
   const record = getTodo(deps, id);
   if (!record) throw new Error('todo missing after insert');
   hub.publishTodoDoc(input.teamId, record);

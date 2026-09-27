@@ -80,12 +80,18 @@ export const todo = sqliteTable('todo', {
   sourceBuildId: text('sourceBuildId'),
 });
 
+// tag record 三位补全（#309，r9 §3.4 实测 wire {id, projectId, name, color,
+// createdAt, v}）。列 default 仅为 migration 对既有行的回填位（此前无写路径，
+// 存量行几乎不存在）；服务面写入时恒给真值。
 export const tag = sqliteTable('tag', {
   id: text('id').primaryKey(),
   projectId: text('projectId')
     .notNull()
     .references(() => project.id),
   name: text('name').notNull(),
+  color: text('color').notNull().default('#6366f1'),
+  createdAt: epochMs('createdAt').notNull().default(0),
+  v: integer('v').notNull().default(1),
 });
 
 // —— todo_tag（纯 join 表，01 §6；无 wire record 形状）————————————————————

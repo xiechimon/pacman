@@ -32,6 +32,7 @@ import {
   useSearchResults,
   useSkills,
   useSteps,
+  useTags,
   useTodo,
   useTodos,
 } from '../api/hooks.js';
@@ -191,6 +192,16 @@ export function TodoDetailPage() {
   const projectsQ = useProjects(teamId, live);
   const skillsQ = useSkills(teamId, live);
   const projectBuildsQ = useProjectBuilds(wireTodo?.projectId, live);
+  // #309 fresh meta 区标签 chip 供数：todo.tagIds × 项目标签集真值投影
+  //（r9 100；fixture 面无标签数据源 → 缺省不渲染，r7 23 基线原样）。
+  const tagsQ = useTags(wireTodo?.projectId, live);
+  const freshTags = useMemo(() => {
+    const all = tagsQ.data ?? [];
+    return (wireTodo?.tagIds ?? [])
+      .map((id) => all.find((tag) => tag.id === id))
+      .filter((tag) => tag !== undefined)
+      .map(({ id, name, color }) => ({ id, name, color }));
+  }, [tagsQ.data, wireTodo?.tagIds]);
   const mutations = useApiMutations(teamId);
 
   const liveTodos = useMemo(() => (todosQ.data ?? []).map(toDisplayTodo), [todosQ.data]);
@@ -575,7 +586,7 @@ export function TodoDetailPage() {
         />
         {detail == null ? (
           <div className="detail-body detail-body--single">
-            <FreshBlock todo={todo} />
+            <FreshBlock todo={todo} tags={freshTags} />
             {/* M7 #310：live 详情面把用户提交的 spec 渲染在 FreshBlock 之
                 下（fix 丢字 bug ——之前 spec 落 todo.spec 但 UI 从未呈现
                 给用户看）。fixture 面不走此分支保持 parity：fixture
