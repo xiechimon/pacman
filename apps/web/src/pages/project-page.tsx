@@ -479,6 +479,8 @@ export function ProjectPage() {
     return member?.actorId ?? null;
   }, [membersQ.data]);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  // M7 #310 附件 wire：live 创建面 spec 由父持 state,token 才能注入。
+  const [liveSpec, setLiveSpec] = useState('');
   // fixture 面本地新行（board #66 同律）：保存落在客户端集合，页面/侧栏
   // 徽标都吃它；live 面走 mutation + invalidate，不用本地集。
   const [fixtureAdded, setFixtureAdded] = useState<TodoRecord[]>([]);
@@ -524,12 +526,16 @@ export function ProjectPage() {
   // 入口长在本项目面上，语义锚 = 路由 id 而非看板的「首项目」）。fixture
   // 面落 localTodo 本地行（board 同律，approximation：恒 canon projectId）。
   const createTodo = useCallback(
-    (title: string, selectedProjectId?: string) => {
+    (title: string, spec: string, selectedProjectId?: string) => {
       setNewTaskOpen(false);
+      // 提交后清空 spec,下次打开新建对话框从空开始
+      setLiveSpec('');
       if (live) {
         const projectId = selectedProjectId ?? id;
         if (projectId !== undefined) {
-          mutations.createTodo.mutate({ projectId, title, spec: title });
+          // M7 #310：spec 来自 dialog 的真实 textarea 内容（之前 dialog 未挂
+          // spec state,提交用 title 兜底——属于丢字 bug,本票修）
+          mutations.createTodo.mutate({ projectId, title, spec });
         }
         return;
       }
@@ -547,16 +553,18 @@ export function ProjectPage() {
   // 保存并开始（r2 §4.2 双钮语义，board 同构）：创建 → POST builds（withPlan，
   // 首 Agent 双槽指派 [设计]）。fixture 面 = 同保存。
   const createAndStart = useCallback(
-    (title: string, selectedProjectId?: string) => {
+    (title: string, spec: string, selectedProjectId?: string) => {
       setNewTaskOpen(false);
+      // 提交后清空 spec,下次打开新建对话框从空开始
+      setLiveSpec('');
       if (!live) {
-        createTodo(title);
+        createTodo(title, spec);
         return;
       }
       const projectId = selectedProjectId ?? id;
       if (projectId === undefined) return;
       mutations.createTodo.mutate(
-        { projectId, title, spec: title },
+        { projectId, title, spec },
         {
           onSuccess: (created) =>
             mutations.startBuilds.mutate({
@@ -643,6 +651,32 @@ export function ProjectPage() {
         onSave={createTodo}
         onSaveAndStart={live ? createAndStart : undefined}
         projects={dialogProjects}
+        {...(live
+          ? {
+              spec: liveSpec,
+              onSpecChange: setLiveSpec,
+              onAttachment: async (files: File[]) => {
+                // #310 三步 wire（r9 §3.1）：每个文件走 grant + upload，
+                // 失败仅记日志不发（用户继续编辑 spec,已发成功的 token 仍
+                // 落入）；token 拼到 spec。多文件按选序拼接，每个 token 占
+                // 独立行（与 detail-page composer / board-page 行为一致）。
+                const tokens: string[] = [];
+                for (const file of files) {
+                  try {
+                    const { attachFile } = await import('../api/attachments.js');
+                    const r = await attachFile({ file, scope: 'spec' });
+                    tokens.push(r.token);
+                  } catch (err) {
+                    console.error('attachment failed', file.name, err);
+                  }
+                }
+                if (tokens.length > 0) {
+                  const joiner = liveSpec === '' || liveSpec.endsWith('\n') ? '' : '\n';
+                  setLiveSpec(`${liveSpec}${joiner}${tokens.join('\n')}\n`);
+                }
+              },
+            }
+          : {})}
       />
     </PageShell>
   );

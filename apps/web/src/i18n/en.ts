@@ -555,6 +555,8 @@ export const EN: Record<string, string> = {
   '浏览器授权注册 →': 'Browser authorization →',
   // W2 #318 桩群校准：开始任务 dialog 统一面（r9 §3.6）+ 新建任务未保存闸
   // （r9 §3.4）。规划/执行 = assignment.plan/build 双槽的行标签。
+  // #310 附件：dirty 位由 spec 非空承载（附件 token 注入后归 spec）,标签
+  // add 仍为桩（本票不动）。
   规划: 'Plan',
   执行: 'Build',
   在线: 'online',

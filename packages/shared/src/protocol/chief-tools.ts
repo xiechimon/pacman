@@ -542,3 +542,20 @@ export const WORKER_MEMORY_REMOTE_TOOLS: readonly RemoteToolDef[] = [
     replaySafe: true,
   },
 ];
+
+/** worker 步全量工具（r5 §3.1 + #310/r9 §3.1）：记忆三件套 + 附件读。chief 49
+ * 词表（组织/执行面）不外溢到 worker——worker 读路径只挂「任务内可读」面。
+ * attachment 同 chief-tools 形态：replaySafe + attachmentId 必填。 */
+export const WORKER_REMOTE_TOOLS: readonly RemoteToolDef[] = [
+  ...WORKER_MEMORY_REMOTE_TOOLS,
+  {
+    name: 'attachment',
+    description:
+      'Fetch an attachment referenced by a task spec or message. ' +
+      'Spec tokens of the form ![name](attachment:<teamId>/<id>.<ext>) embed an attachment; ' +
+      'call with the bare <id> (the part before the extension). ' +
+      'Returns the file content (utf8 for text/* / json / xml, base64 for images / pdf).',
+    parameters: obj({ attachmentId: str('Attachment id.') }, ['attachmentId']),
+    replaySafe: true,
+  },
+];

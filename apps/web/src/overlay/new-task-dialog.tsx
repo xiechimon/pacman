@@ -14,6 +14,17 @@
 // A3-overlays 收编：footer 双钮 = ui/Button（ghost / primary，弹窗语义
 // standard 32 档，r7 实测 30 归一到原语三档）；两钮类名无 e2e/parity
 // 钉扎，散写规则随收编移除。
+//
+// M7 #310 附件 wire 改（r9 §3.1）：
+//   - spec 受控：live 创建面父持 state，附件 token 才能注入；fixture/静态
+//     div 面父不传 spec/onSpecChange → 内部 useState fallback，零行为差
+//   - 附件钮 = 原生文件多选触发器，选中文件 → onAttachment(files) 委托
+//   - onSave/onSaveAndStart 签名加 spec（之前丢字 bug：spec:textarea 未挂
+//     state，提交只把 title 当 spec 用，现修）
+// M7 #318 #5 关闭未保存闸（r9 §3.4）：标题/描述/附件/标签任一非空时关闭
+// 先过确认——附件 token 注入 spec 后由 spec 非空承载（不另计），标签 add
+// 仍为桩（本票不动），dirty = titleTrim !== '' || specTrim !== ''。
+//
 // #311: spec textarea now owns state + the 提及 button opens the same
 // MentionPicker the composer uses. Mention tokens land at the spec
 // caret position via insertMentionText — the spec rides along to the
@@ -63,15 +74,25 @@ interface NewTaskDialogProps {
   open: boolean;
   onClose: () => void;
   /** #176:提交携带选中项目 id(选择是纯表单 state,无 mutation)。
-   * #311：第三个 spec 参数携带 mention token 内容——父级负责透传到
-   *  createTodo body。fixture 行为忽略第三个参数。 */
-  onSave: (title: string, projectId?: string, spec?: string) => void;
+   *  M7 #310:spec 加入提交 body(r9 §3.1「附件 token 落描述 textarea,随
+   *  创建进 spec」——之前 dialog 未挂 spec state,提交用 title 兜底)。
+   *  参数序 = (title, spec, projectId?)：spec 紧随 title,因 spec 是核心
+   *  内容字段(原站纯 title),projectId 是选择器副产品,放尾默认。
+   *  #311：spec 参数同步携带 mention token 内容。 */
+  onSave: (title: string, spec: string, projectId?: string) => void;
   /** M5 live 面：保存并开始 = 创建 + POST builds（r2 §4.2 双钮语义）；
-   * 缺省 = fixture 行为（同 保存）。 #311：spec 参数同步携带。 */
-  onSaveAndStart?: (title: string, projectId?: string, spec?: string) => void;
+   * 缺省 = fixture 行为（同 保存）。M7 #310:同样带 spec。 */
+  onSaveAndStart?: (title: string, spec: string, projectId?: string) => void;
   /** M5 live：项目集真值(选择器行数据源);缺省 = fixture canon 单默认
    *  项目(live = projectsQ 投影,fixture = scenario projectNames)。 */
   projects?: ProjectOption[];
+  /** M7 #310 受控 spec：live 创建面父持 state,附件 token 才能注入;fixture
+   *  面不传 → 内部 useState fallback。 */
+  spec?: string;
+  onSpecChange?: (next: string) => void;
+  /** M7 #310 附件：父组件负责 grant + upload + 拿到 token 后 setSpec 拼
+   *  进 spec。父组件在 live 创建面下应同时传 spec/onSpecChange 才能接住。 */
+  onAttachment?: (files: File[]) => void | Promise<void>;
   /** #311: mention picker groups（5 类别）。父级从 live hooks 或
    *  fixture 派生；缺省 = 空集合（picker 首层 0 计数）。 */
   mentionGroups?: MentionGroups;
@@ -83,14 +104,23 @@ export function NewTaskDialog({
   onSave,
   onSaveAndStart,
   projects,
+  spec: specProp,
+  onSpecChange,
+  onAttachment,
   mentionGroups,
 }: NewTaskDialogProps) {
   const { t } = useI18n();
   const [title, setTitle] = useState('');
-  // #311：spec textarea 现属表单 state,mention token 落此处;retained-mount
-  // 重开不得带回上次未提交的提及（与 projectOpen reset 同律）。#318：spec
-  // 入受控 = 闸的 dirty 判定源;placeholder 模板行不变。
-  const [spec, setSpec] = useState('');
+  // M7 #310 受控 spec：fallback 模式（fixture 静态 div）内部 useState，
+  // 父组件未传 spec/onSpecChange 时走 fallback,行为字节不变。
+  const [internalSpec, setInternalSpec] = useState('');
+  const specControlled = specProp !== undefined && onSpecChange !== undefined;
+  const spec = specControlled ? (specProp as string) : internalSpec;
+  const setSpec: React.Dispatch<React.SetStateAction<string>> = specControlled
+    ? (next) =>
+        (onSpecChange as (s: string) => void)(typeof next === 'function' ? next(spec) : next)
+    : setInternalSpec;
+  // #311 mention picker
   const [pickerOpen, setPickerOpen] = useState(false);
   // #318 未保存闸确认层开态
   const [discardOpen, setDiscardOpen] = useState(false);
@@ -98,10 +128,14 @@ export function NewTaskDialog({
   // 首行;live 空项目集时 selected 退 undefined(chip 走 canon 名)。
   const [projectOpen, setProjectOpen] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
+  // M7 #310 附件：file picker ref + 上传中 disable 纸夹扣
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [attaching, setAttaching] = useState(false);
   const rows = projects ?? [DEFAULT_PROJECT];
   const selected = rows.find((row) => row.id === projectId) ?? rows[0];
   const projectName = selected?.name ?? PROJECT_NAME;
-  // #318: 附件/标签尚无表单 state(#309/#310 接线时并入 dirty 位)
+  // M7 #318 #5 未保存闸：dirty = 标题/描述任一非空。附件 token 注入 spec
+  // 后由 spec 非空承载,不另计。标签 add 仍为桩(本票不动)。
   const dirty = title.trim() !== '' || spec.trim() !== '';
   const requestClose = () => {
     if (dirty) setDiscardOpen(true);
@@ -113,8 +147,9 @@ export function NewTaskDialog({
   useEscClose(requestClose, open && !projectOpen && !pickerOpen && !discardOpen);
   useEscapeClose(projectOpen, () => setProjectOpen(false));
   useEscapeClose(discardOpen, () => setDiscardOpen(false));
-  // retained mount:dialog 关闭一并收 popover + 确认层 + picker,并重置表单
-  // (重开不得带回开态/脏字——闸判定以净面起步)
+  useEscapeClose(pickerOpen, () => setPickerOpen(false));
+  // retained mount:dialog 关闭一并收 popover(重开不得带回开态) + 确认层
+  // + picker,并重置表单(重开不得带回开态/脏字——闸判定以净面起步)
   useEffect(() => {
     if (!open) {
       setProjectOpen(false);
@@ -130,8 +165,20 @@ export function NewTaskDialog({
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
+
+  // M7 #310 附件选择回调：files → onAttachment 委托父处理 grant+upload+
+  // setSpec 拼 token；reset value 允许同文件再选（change 事件不重发同源）
+  const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (files.length === 0 || !onAttachment) return;
+    setAttaching(true);
+    const result = onAttachment(files);
+    void Promise.resolve(result).finally(() => setAttaching(false));
+  };
+
   // #311: 提交携带 spec(mention token 内容由父级透传到 createTodo body)。
-  const save = () => onSave(title.trim(), selected?.id, spec);
+  const save = () => onSave(title.trim(), spec, selected?.id);
   // #318 放弃并关闭:清表单 + 关 dialog(父收 open,重置 effect 兜底同律)
   const discardAndClose = () => {
     setDiscardOpen(false);
@@ -164,6 +211,7 @@ export function NewTaskDialog({
     project: [],
     machine: [],
   };
+
   return (
     <OverlayMount open={open} exitMs={FADE_EXIT_MS}>
       <button
@@ -265,6 +313,17 @@ export function NewTaskDialog({
             value={spec}
             onChange={(e) => setSpec(e.target.value)}
           />
+          {/* M7 #310 附件：原生文件多选触发器；选中文件 → onAttachment(files)
+              委托父处理 grant+upload+setSpec 拼 token；accept 与 server
+              ALLOWED_MIME_* 镜像（OS 文件选择器仍可越界,最终 server 强拒兜底） */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            style={{ display: 'none' }}
+            onChange={onPickFiles}
+            accept="text/*,image/*,application/json,application/pdf,application/xml"
+          />
         </div>
         <div className="new-task-footer">
           <div className="new-task-tags">
@@ -281,7 +340,12 @@ export function NewTaskDialog({
             <div className="new-task-tools">
               {/* #304 C5 裁决:语音输入功能不做(local-first 无语音面)——
                   语音钮移除不渲染,不留死钮;添加附件/提及走 A4 Button 原语。 */}
-              <Button variant="icon" aria-label={t('添加附件')}>
+              <Button
+                variant="icon"
+                aria-label={t('添加附件')}
+                disabled={attaching || !onAttachment}
+                onClick={() => fileInputRef.current?.click()}
+              >
                 <Paperclip />
               </Button>
               <Button
@@ -305,7 +369,7 @@ export function NewTaskDialog({
                 className="new-task-start"
                 disabled={title.trim() === ''}
                 onClick={() => {
-                  if (onSaveAndStart) onSaveAndStart(title.trim(), selected?.id, spec);
+                  if (onSaveAndStart) onSaveAndStart(title.trim(), spec, selected?.id);
                   else save();
                 }}
               >
