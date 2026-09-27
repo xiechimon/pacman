@@ -94,7 +94,7 @@ export interface RunHistoryRow {
  *  set interactively. Token/branch/history payloads are build-scoped
  *  display data — outside the 02 §6.2 record contract — resolved per todo
  *  from the fixture layer; the accept dialog carries no payload. */
-export type OverlayKind = 'token' | 'branch' | 'history' | 'accept' | 'rerun' | 'reuse';
+export type OverlayKind = 'token' | 'branch' | 'history' | 'accept' | 'rerun' | 'reuse' | 'review';
 
 export interface OverlayState {
   kind: OverlayKind;

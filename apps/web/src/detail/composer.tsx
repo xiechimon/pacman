@@ -1,8 +1,12 @@
 // Composer (issue #56, r7 §3.4): box anchored x737 w687 h76, placeholder
-// per phase, toolbar 语音输入/添加附件/AI 审核/提及 @ pitch 36, the 32×32
+// per phase, toolbar 添加附件/AI 审核/提及 @ pitch 36, the 32×32
 // send button, and the streaming stop square (r7 16). The 总管 FAB
 // overlaps the send button in every capture (r7 §3.4), so the page renders
 // the FAB after the composer and it covers the send pixels.
+//
+// #304（08 册 C5 裁决）:语音输入功能不做——原站工具条首钮(语音)移除
+// 不渲染,wontfix 理由 = local-first 无语音输入面;#146 chief 面
+// 同律先例;Mic 图标随之出账(generate-icons PRUNED)。
 //
 // #311: the 提及 button now opens a MentionPicker popover and the
 // textarea tracks `@`-prefixed token positions to expose an inline
@@ -14,7 +18,7 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
-import { ArrowUp, Grid2x2, Mic, Paperclip, SearchPlus } from '../icons/index.js';
+import { ArrowUp, Grid2x2, Paperclip, SearchPlus } from '../icons/index.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
 import {
   detectInlineAgentQuery,
@@ -44,6 +48,9 @@ interface ComposerProps {
   /** 停止钮点击（M7 #308，r9 §3.3：确认弹层入口）；缺省 = 静态捕获面
    * （fixture/parity 按钮不接线，DOM 字节不变）。 */
   onStop?: () => void;
+  /** AI 审核钮点击（M7 #312，r8 §3.1：发起 AI 审核模态入口）；缺省 =
+   * 静态捕获面（fixture/parity 按钮不接线，DOM 字节不变）。 */
+  onReview?: () => void;
 }
 
 export function Composer({
@@ -54,6 +61,7 @@ export function Composer({
   editable,
   mentionGroups,
   onStop,
+  onReview,
 }: ComposerProps) {
   const { t } = useI18n();
   const [draft, setDraft] = useState('');
@@ -191,14 +199,18 @@ export function Composer({
         <div className="composer-placeholder">{t(placeholder)}</div>
       )}
       <div className="composer-toolbar">
-        <button type="button" className="composer-tool" aria-label={t('语音输入')}>
-          <Mic />
-        </button>
+        {/* #304 C5 裁决:语音输入功能不做(local-first 无语音面)——原站
+            首钮移除不渲染,不留死钮;添加附件/AI 审核/提及原样。 */}
         <button type="button" className="composer-tool" aria-label={t('添加附件')}>
           <Paperclip />
         </button>
         {aiReview && (
-          <button type="button" className="composer-tool" aria-label={t('AI 审核')}>
+          <button
+            type="button"
+            className="composer-tool"
+            aria-label={t('AI 审核')}
+            onClick={onReview}
+          >
             <SearchPlus />
           </button>
         )}

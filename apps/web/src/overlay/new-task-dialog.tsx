@@ -23,7 +23,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
-import { Check, ChevronDown, Grid2x2, Mic, Paperclip, PlusSmall, X } from '../icons/index.js';
+import { Check, ChevronDown, Grid2x2, Paperclip, PlusSmall, X } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { Button } from '../ui/button.js';
 import { type MentionGroups, MentionPicker } from './mention-picker.js';
@@ -251,9 +251,8 @@ export function NewTaskDialog({
             {/* A4-deep 收编：icon 变体皮肤；30×30 几何走 .new-task-tools
                 button 元素选择器（原样命中） */}
             <div className="new-task-tools">
-              <Button variant="icon" aria-label={t('语音输入')}>
-                <Mic />
-              </Button>
+              {/* #304 C5 裁决:语音输入功能不做(local-first 无语音面)——
+                  语音钮移除不渲染,不留死钮;添加附件/提及走 A4 Button 原语。 */}
               <Button variant="icon" aria-label={t('添加附件')}>
                 <Paperclip />
               </Button>
