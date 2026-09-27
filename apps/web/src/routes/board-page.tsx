@@ -19,6 +19,7 @@ import { TAG_DEFAULT_COLOR, type TodoRecord as WireTodo } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
+import { attachFile } from '../api/attachments.js';
 import {
   useApiMutations,
   useMachines,
@@ -27,7 +28,6 @@ import {
   useSearchResults,
   useSkills,
   useTags,
-
   useTodos,
 } from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
@@ -94,6 +94,7 @@ export function BoardPage() {
   const liveTodos = useMemo(() => (todosQ.data ?? []).map(toDisplayTodo), [todosQ.data]);
   const todos = live ? liveTodos : fixtureTodos;
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+
   // #309 标签面（r9 §3.4）：dialog 上报的选中项目 → tags 查询键；面板数据
   // 只在 dialog 开时取。新建标签 = POST tags（color 客户端缺省
   // TAG_DEFAULT_COLOR，r9 §3.4），解析出的 id 由 dialog 自动选中。
@@ -120,6 +121,9 @@ export function BoardPage() {
     },
     [dialogProjectId, projectsQ.data, mutations.createTag, mutations.createProject, t],
   );
+  // M7 #310 附件：live 创建面把 spec 提到此处,附件 token 才能注入。
+  // 新建对话框关闭 = 直接清空（持久化场景下再次打开应从空开始）。
+  const [liveSpec, setLiveSpec] = useState('');
   // Modal overlays over the board (issue #68): the accept dialog opens from
   // the review card's 完成 button (r7 34) or the scenario fixture; the
   // branch dialog from the card's branch icon.
@@ -161,15 +165,15 @@ export function BoardPage() {
   );
 
   const createTodo = useCallback(
-    (title: string, selectedProjectId?: string, tagIds?: string[], spec: string = title) => {
-
+    (title: string, spec: string, selectedProjectId?: string, tagIds?: string[]) => {
       setNewTaskOpen(false);
+      // 提交后清空 spec,下次打开新建对话框从空开始
+      setLiveSpec('');
       if (live) {
         // #176: dialog 选中项目优先;未选(空集/查询未决)退首行真值
         const projectId = selectedProjectId ?? projectsQ.data?.[0]?.id;
         if (projectId) {
           mutations.createTodo.mutate({ projectId, title, spec, tagIds });
-
           return;
         }
         // 无项目：先建默认托管项目再落任务（self-host 单用户语义 [设计]，
@@ -181,7 +185,6 @@ export function BoardPage() {
           { name: t('默认项目'), repoKind: 'hosted' },
           {
             onSuccess: (p) => mutations.createTodo.mutate({ projectId: p.id, title, spec, tagIds }),
-
           },
         );
         return;
@@ -199,13 +202,13 @@ export function BoardPage() {
   );
 
   // 保存并开始（r2 §4.2 双钮语义，M5 live）：创建 → POST builds（withPlan，
-  // 首 Agent 双槽指派 [设计]）。fixture 面 = 同 保存。
+  // 首 Agent 双槽指派 [设计]）。fixture 面 = 同 保存。M7 #310:带 spec 走真。
   const createAndStart = useCallback(
-    (title: string, selectedProjectId?: string, tagIds?: string[], spec: string = title) => {
+    (title: string, spec: string, selectedProjectId?: string, tagIds?: string[]) => {
       setNewTaskOpen(false);
+      setLiveSpec('');
       if (!live) {
-        createTodo(title, selectedProjectId, tagIds, spec);
-
+        createTodo(title, spec, selectedProjectId, tagIds);
         return;
       }
       const start = (projectId: string) =>
@@ -433,7 +436,33 @@ export function BoardPage() {
         tags={tagsQ.data}
         onCreateTag={live ? createTag : undefined}
         onProjectChange={setDialogProjectId}
-
+        // M7 #310 附件 wire：live 创建面 spec 由父持 state,token 才能注入。
+        // fixture 面不传 → dialog 内部 useState fallback,行为字节不变。
+        {...(live
+          ? {
+              spec: liveSpec,
+              onSpecChange: setLiveSpec,
+              onAttachment: async (files: File[]) => {
+                // #310 三步 wire（r9 §3.1）：每个文件走 grant + upload，
+                // 失败仅记日志不发（用户继续编辑 spec,已发成功的 token 仍
+                // 落入）；token 拼到 spec。多文件按选序拼接，每个 token 占
+                // 独立行（与 detail-page composer 行为一致）。
+                const tokens: string[] = [];
+                for (const file of files) {
+                  try {
+                    const r = await attachFile({ file, scope: 'spec' });
+                    tokens.push(r.token);
+                  } catch (err) {
+                    console.error('attachment failed', file.name, err);
+                  }
+                }
+                if (tokens.length > 0) {
+                  const joiner = liveSpec === '' || liveSpec.endsWith('\n') ? '' : '\n';
+                  setLiveSpec(`${liveSpec}${joiner}${tokens.join('\n')}\n`);
+                }
+              },
+            }
+          : {})}
         mentionGroups={mentionGroups}
       />
       <button
