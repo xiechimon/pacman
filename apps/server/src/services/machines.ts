@@ -25,6 +25,7 @@ import {
   isChiefConversationId,
   MAX_CONCURRENT_DEFAULT,
   MCP_MIN_CLI_VERSION,
+  parseReviewPromptMeta,
   WORKER_REMOTE_TOOLS,
 } from '@pacman/shared';
 import { and, asc, desc, eq, isNull, or, sql } from 'drizzle-orm';
@@ -510,7 +511,19 @@ function agentForStep(
   deps: MachineDeps,
   todoRow: typeof todo.$inferSelect,
   kind: StepRecord['kind'],
+  /** review 步的 agentId 在 prompt meta header 里（M7 #330，step 表无
+   * agentId 列；测试已钉此口径，apps/server/test/review.test.ts）。其它步
+   * 类 = undefined 走 assignment 槽。 */
+  prompt: string | null = null,
 ) {
+  // review 步：agentId 经 prompt meta header 透出（r8 §3.1：模态选 Agent
+  // 入队，不走 assignment 槽——执行/规划 Agent 不一定适合审核）。
+  if (kind === 'review') {
+    const meta = parseReviewPromptMeta(prompt);
+    const agentId = meta?.agentId ?? null;
+    if (!agentId) return null;
+    return deps.db.select().from(agent).where(eq(agent.id, agentId)).get() ?? null;
+  }
   // assignment 双槽按步类取（02 §4.2/r5 §5）：规划步 → plan 槽；执行/合并步 →
   // build 槽（合并轮复用执行轮会话，同 Agent）。
   const slot = kind === 'plan' ? todoRow.assignment?.plan : todoRow.assignment?.build;
@@ -653,7 +666,7 @@ function tryClaim(
   }
 
   for (const cand of workerCands) {
-    const agentRow = agentForStep(deps, cand.todoRow, cand.stepRow.kind);
+    const agentRow = agentForStep(deps, cand.todoRow, cand.stepRow.kind, cand.stepRow.prompt);
     // 未指派 Agent = 不可执行（Agent 可空是 UI 语义，派发需模型位 [设计]）。
     if (!agentRow?.modelId) continue;
     // 原子领取：仅当仍 pending 时置 claimed（单进程 better-sqlite3 同步写）。
@@ -950,7 +963,8 @@ export function stepToken(
   const todoRow = buildRow
     ? deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get()
     : undefined;
-  const agentRow = stepRow && todoRow ? agentForStep(deps, todoRow, stepRow.kind) : null;
+  const agentRow =
+    stepRow && todoRow ? agentForStep(deps, todoRow, stepRow.kind, stepRow.prompt) : null;
   // 托管 repo git 凭证 per-step 发行（02 §3 凭证纪律：仅 per-step 注入，手动
   // fetch 无凭证失败；relay 工具名对照 push_credential，r5 §3.1）。GitHub
   // 形态凭证面归后票（02 §3 接入形态）。
@@ -1167,7 +1181,10 @@ export async function finishStep(
     return;
   }
   if (outcome.status === 'success') {
-    completeStep(deps, stepId, { hasChanges: outcome.hasChanges });
+    completeStep(deps, stepId, {
+      hasChanges: outcome.hasChanges,
+      ...(outcome.findings !== undefined ? { findings: outcome.findings } : {}),
+    });
     publishStepStatus(deps, stepId);
     return;
   }

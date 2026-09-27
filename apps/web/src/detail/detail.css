@@ -1167,6 +1167,70 @@ textarea.composer-input::placeholder {
   left: 0;
 }
 
+/* AI 审核 verdict 行（r8 §3.1 60/61，M7 #330）：
+   结论先行 = 一段「审核结论」chip + 总结文本；下面每条 finding = 序号 +
+   严重度后缀 + 标题 + 描述 + 引用位 + 可选建议。严重度由 finding 容器
+   的修饰类染左侧条颜色，引用块用 quote 变体呈现文件:行。 */
+.chat-para--review-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.chat-review-tag {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--chip-plan-bg);
+  color: var(--chip-plan-fg);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.chat-review-finding {
+  border-left: 3px solid var(--border-default);
+  padding-left: 10px;
+  margin: 4px 0 8px;
+}
+
+.chat-review-finding--blocking {
+  border-left-color: var(--color-danger, #dc2626);
+}
+
+.chat-review-finding--suggestion {
+  border-left-color: var(--color-warning, #f59e0b);
+}
+
+.chat-review-finding--info {
+  border-left-color: var(--border-default);
+}
+
+.chat-review-severity {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.chat-review-finding--blocking .chat-review-severity {
+  color: var(--color-danger, #dc2626);
+}
+
+.chat-review-finding--suggestion .chat-review-severity {
+  color: var(--color-warning, #f59e0b);
+}
+
+.chat-review-quote {
+  font-size: 12px;
+}
+
+.chat-review-suggestion {
+  font-size: 12px;
+}
+
 /* plan.md section head (r8 63/76): bold 14px line */
 .doc-block--head {
   font-weight: 600;
@@ -1423,6 +1487,17 @@ textarea.composer-input::placeholder {
   background: var(--text-dim);
 }
 
+/* #318: the switch is a real role=switch now — ON flips the track to the
+   accent and parks the knob right; keyboard focus stays visible. */
+.rerun-switch--on {
+  background: var(--card-button);
+}
+
+.rerun-switch:focus-visible {
+  outline: 2px solid var(--card-button);
+  outline-offset: 2px;
+}
+
 .rerun-switch-knob {
   position: absolute;
   top: 2px;
@@ -1431,6 +1506,50 @@ textarea.composer-input::placeholder {
   height: 16px;
   border-radius: 9999px;
   background: var(--toggle-knob);
+}
+
+.rerun-switch--on .rerun-switch-knob {
+  left: 18px;
+}
+
+/* #318 机器行(r9 §2.6「自动 / <机器> (在线)」;读面投影,非交互——
+   [设计] 指定机器无 server 槽,样式贴 agent 行语言但无 hover/pointer) */
+.rerun-machine-label {
+  margin: 12px 0 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.rerun-machine-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--dialog-row-bg);
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-primary);
+}
+
+.rerun-machine-sep,
+.rerun-machine-state {
+  color: var(--text-dim);
+}
+
+.rerun-machine-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--text-dim);
+}
+
+.rerun-machine-dot--online {
+  background: var(--col-dot-done);
 }
 
 .overlay-actions {

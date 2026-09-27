@@ -30,6 +30,11 @@
 // caret position via insertMentionText — the spec rides along to the
 // createTodo body unchanged, and the rendering side (Segments) parses
 // them back into chips when the description is shown later.
+// #318 未保存闸 (r9 §3.4): 标题/描述任一非空时,三条关闭路径(X / backdrop /
+// Esc)先过「放弃新建任务？未保存的内容将丢失。」确认弹层(继续编辑 / 放弃
+// 并关闭);净表单直关不闸。Esc 分层 4 层沿 #176 内层优先律(确认层 → 提及
+// picker → 项目 popover → dialog)。附件/标签的 dirty 位归 #309/#310 接线
+// 时扩展。关闭即重置表单(retained-mount 重开 = 净面,闸判定不带脏残留)。
 
 import { useEffect, useRef, useState } from 'react';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
@@ -115,39 +120,43 @@ export function NewTaskDialog({
     ? (next) =>
         (onSpecChange as (s: string) => void)(typeof next === 'function' ? next(spec) : next)
     : setInternalSpec;
+  // #311 mention picker
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // #318 未保存闸确认层开态
+  const [discardOpen, setDiscardOpen] = useState(false);
   // #176 选择器 state:popover 开态 + 选中行。null = 未动,展示/提交取
   // 首行;live 空项目集时 selected 退 undefined(chip 走 canon 名)。
   const [projectOpen, setProjectOpen] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
-  const rows = projects ?? [DEFAULT_PROJECT];
-  const selected = rows.find((row) => row.id === projectId) ?? rows[0];
-  const projectName = selected?.name ?? PROJECT_NAME;
   // M7 #310 附件：file picker ref + 上传中 disable 纸夹扣
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attaching, setAttaching] = useState(false);
-  // #311 mention picker
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const rows = projects ?? [DEFAULT_PROJECT];
+  const selected = rows.find((row) => row.id === projectId) ?? rows[0];
+  const projectName = selected?.name ?? PROJECT_NAME;
   // M7 #318 #5 未保存闸：dirty = 标题/描述任一非空。附件 token 注入 spec
   // 后由 spec 非空承载,不另计。标签 add 仍为桩(本票不动)。
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const titleDirty = title.trim() !== '';
-  const specDirty = spec.trim() !== '';
-  const dirty = titleDirty || specDirty;
-  const attemptClose = () => {
-    if (dirty) setConfirmOpen(true);
+  const dirty = title.trim() !== '' || spec.trim() !== '';
+  const requestClose = () => {
+    if (dirty) setDiscardOpen(true);
     else onClose();
   };
-  // Esc 分层:popover 层开时 Esc 只关 popover(dialog 的 Esc 关闸退后一层)
-  useEscClose(attemptClose, open && !projectOpen && !confirmOpen && !pickerOpen);
+  // Esc 分层 4 层(内层优先):确认层 → 提及 picker → 项目 popover → dialog 关闸
+  // (合并 #311 picker + #318 闸;discardOpen/pickerOpen 由各自 ClickCatcher
+  // / useEscapeClose 单独处理,这里只控 dialog 自身的 Esc 关闸。)
+  useEscClose(requestClose, open && !projectOpen && !pickerOpen && !discardOpen);
   useEscapeClose(projectOpen, () => setProjectOpen(false));
-  useEscapeClose(confirmOpen, () => setConfirmOpen(false));
+  useEscapeClose(discardOpen, () => setDiscardOpen(false));
   useEscapeClose(pickerOpen, () => setPickerOpen(false));
   // retained mount:dialog 关闭一并收 popover(重开不得带回开态) + 确认层
+  // + picker,并重置表单(重开不得带回开态/脏字——闸判定以净面起步)
   useEffect(() => {
     if (!open) {
       setProjectOpen(false);
-      setConfirmOpen(false);
+      setDiscardOpen(false);
       setPickerOpen(false);
+      setTitle('');
+      setSpec('');
     }
   }, [open]);
   // retained mount means reopen is not a remount — refocus like a fresh one
@@ -156,14 +165,26 @@ export function NewTaskDialog({
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
+
+  // M7 #310 附件选择回调：files → onAttachment 委托父处理 grant+upload+
+  // setSpec 拼 token；reset value 允许同文件再选（change 事件不重发同源）
   const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    // 重置 value 允许同文件再选（change 事件不重发同源）
     e.target.value = '';
     if (files.length === 0 || !onAttachment) return;
     setAttaching(true);
     const result = onAttachment(files);
     void Promise.resolve(result).finally(() => setAttaching(false));
+  };
+
+  // #311: 提交携带 spec(mention token 内容由父级透传到 createTodo body)。
+  const save = () => onSave(title.trim(), spec, selected?.id);
+  // #318 放弃并关闭:清表单 + 关 dialog(父收 open,重置 effect 兜底同律)
+  const discardAndClose = () => {
+    setDiscardOpen(false);
+    setTitle('');
+    setSpec('');
+    onClose();
   };
 
   // Mention insert: route through insertMentionText so the picker
@@ -191,7 +212,6 @@ export function NewTaskDialog({
     machine: [],
   };
 
-  const save = () => onSave(title.trim(), spec, selected?.id);
   return (
     <OverlayMount open={open} exitMs={FADE_EXIT_MS}>
       <button
@@ -199,11 +219,10 @@ export function NewTaskDialog({
         className="overlay-backdrop anim-fade"
         aria-label={t('关闭')}
         onClick={() => {
-          // #176 外点内层优先:the dialog's transform: translate(-50%,-50%)
-          // shrinks the fixed ClickCatcher's containing block to the panel
-          // itself, so clicks outside the panel land here directly — while
-          // the project popover is open they must peel the inner layer
-          // only (same inner-first law as the Esc split above)
+          // 外点内层优先:panel 的 transform 收 fixed ClickCatcher 容器,
+          // 外点直达此 backdrop。discardOpen 由确认层自己的 ClickCatcher
+          // 接管(z29 压 dialog z21,外点只收确认层),这里处理 picker /
+          // project popover 的内层先关;剩余走 dirty 闸 / 直接关。
           if (projectOpen) {
             setProjectOpen(false);
             return;
@@ -212,7 +231,7 @@ export function NewTaskDialog({
             setPickerOpen(false);
             return;
           }
-          attemptClose();
+          requestClose();
         }}
       />
       <div
@@ -268,12 +287,13 @@ export function NewTaskDialog({
           </span>
           <div className="new-task-title-label">{t('新建任务')}</div>
           {/* A4-deep 收编：icon 变体皮肤；28×28 + margin-left:auto 几何
-              per-face 留 overlay.css */}
+              per-face 留 overlay.css。#318 未保存闸:dialog 关闭走
+              requestClose(dirty 时先弹确认层)。 */}
           <Button
             variant="icon"
             className="new-task-close"
             aria-label={t('关闭')}
-            onClick={attemptClose}
+            onClick={requestClose}
           >
             <X />
           </Button>
@@ -359,51 +379,33 @@ export function NewTaskDialog({
           </div>
         </div>
       </div>
-      {/* M7 #318 #5 关闭未保存闸（r9 §3.4）：dirty 时先过本确认层；保持
-          dialog 整体仍 mounted 让 backdrop 闭态过渡可见。沿用 delete-confirm
-          视觉（title + cancel/danger 双钮），类名同前缀做 e2e 别名定位。 */}
-      <OverlayMount open={confirmOpen} exitMs={FADE_EXIT_MS}>
-        <button
-          type="button"
-          className="overlay-backdrop anim-fade"
-          aria-label={t('关闭')}
-          onClick={() => setConfirmOpen(false)}
-        />
+      {/* #318 未保存闸确认层(r9 §3.4 copy 逐字):独立层不入 dialog 面板
+          ——面板 transform 会吞 fixed 定位(#176 注记同坑);ClickCatcher
+          z29 压 dialog z21,外点 = 只收确认层(继续编辑语义),面板 z31 居顶。 */}
+      <OverlayMount open={discardOpen}>
+        <ClickCatcher onClose={() => setDiscardOpen(false)} />
         <div
-          className="delete-confirm anim-fade"
+          className="new-task-discard anim-fade"
           role="alertdialog"
           aria-modal="true"
           aria-label={t('放弃新建任务？未保存的内容将丢失。')}
         >
-          <div className="delete-confirm-head">
-            <div className="delete-confirm-title">{t('放弃新建任务？未保存的内容将丢失。')}</div>
+          <div className="new-task-discard-title">{t('放弃新建任务？未保存的内容将丢失。')}</div>
+          <div className="new-task-discard-actions">
             <button
               type="button"
-              className="delete-confirm-close"
-              aria-label={t('关闭')}
-              onClick={() => setConfirmOpen(false)}
+              className="new-task-discard-keep"
+              onClick={() => setDiscardOpen(false)}
             >
-              <X />
+              {t('继续编辑')}
             </button>
-          </div>
-          <div className="delete-confirm-actions">
-            <Button
-              variant="quiet"
-              className="delete-confirm-cancel"
-              onClick={() => setConfirmOpen(false)}
-            >
-              {t('取消')}
-            </Button>
             <Button
               variant="danger"
               size="standard"
-              className="delete-confirm-delete"
-              onClick={() => {
-                setConfirmOpen(false);
-                onClose();
-              }}
+              className="new-task-discard-drop"
+              onClick={discardAndClose}
             >
-              {t('放弃')}
+              {t('放弃并关闭')}
             </Button>
           </div>
         </div>

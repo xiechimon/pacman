@@ -25,6 +25,7 @@ import { clearCredentials, pushCredential } from './credentials.js';
 import { type StepJournal, TranscriptBuffer } from './journal.js';
 import type { DaemonLogger } from './log.js';
 import type { MachineApi } from './machine-client.js';
+import { extractReviewVerdict } from './review-findings.js';
 import type { StatePaths } from './state.js';
 
 /** 停止请求（M7 #308）：discard = 确认弹层「丢弃本轮修改」勾选位——
@@ -545,6 +546,11 @@ export async function runStep(
   }
 
   try {
+    // AI 审核步 findings（M7 #330，r8 §3.1）：仅 review 步携带——其它步类
+    // 无该输出契约，强制 null 避免假阳。解析失败 = 不携带（server 侧 verdict
+    // 兜底「审核未返回结论」+ 不触发修订）。
+    const findings =
+      claimed.step.kind === 'review' ? extractReviewVerdict(transcript.messages()) : null;
     await client.done(stepId, {
       status,
       ...(lastError !== null ? { errorMessage: lastError } : {}),
@@ -554,6 +560,7 @@ export async function runStep(
       // per-step checkpoint（done 回传 commit：「恢复到此处」数据源 + 合并步
       // fast-forward 落地键，r3 §3.5/§3.9 [设计]）。
       ...(headCommit !== null ? { commit: headCommit } : {}),
+      ...(findings !== null ? { findings } : {}),
     });
   } catch (err) {
     logger.step(`done report failed: ${err instanceof Error ? err.message : String(err)}`);
