@@ -41,6 +41,7 @@ import {
 } from '../icons/index.js';
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { Button } from '../ui/button.js';
 import { PageShell } from './shell.js';
 import './pages.css';
 
@@ -386,10 +387,15 @@ function TasksPane({
           </div>
           <div className="prj-tasks-empty-title">{t('暂无内容')}</div>
           <div className="prj-tasks-empty-desc">{t('创建第一个任务以开始使用。')}</div>
-          <button type="button" className="prj-tasks-empty-new" onClick={onNewTask}>
+          <Button
+            variant="primary"
+            size="compact"
+            className="prj-tasks-empty-new"
+            onClick={onNewTask}
+          >
             <PlusSmall width={12} height={12} />
             {t('任务')}
-          </button>
+          </Button>
         </div>
       ) : visible.length === 0 ? (
         // 筛选/搜索清空 ≠ 项目无任务：给匹配空态一行，不误用 r2 24b 的

@@ -5,7 +5,9 @@
    backdrop rgb(0 0 0 / .6) over both themes, dialog head/body/footer =
    popover/surface/surface-secondary, menu row bands 40/37/41/45 measured
    off the 18/24 separators. Dark values ride the token layer; the r8
-   dark captures (54–57) are the check surface. */
+   dark captures (54–57) are the check surface.
+   A3-overlays 收编（2026-09-26）：footer 动作钮 → ui/Button（头注见各 tsx）、
+   可交互控件圆角归一 8px、面板 12px 字面量 → --edge-radius（等值）。 */
 
 /* ---- shared modal backdrop ---- */
 /* a button so keyboard users get the same dismiss path as the click */
@@ -31,7 +33,8 @@
   height: 439px;
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
+  border-radius: var(--edge-radius);
   overflow: hidden;
   box-shadow: var(--dialog-shadow);
   z-index: 21;
@@ -162,18 +165,12 @@
   pointer-events: none;
 }
 
-.new-task-close {
+/* A4-deep 收编：皮肤归 ui/Button icon 变体；28×28 + margin-left:auto
+   per-face 几何（hover 底走 motion.css 家族律，类名保留原样命中）。 */
+.btn.new-task-close {
   margin-left: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 28px;
   height: 28px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
 }
 
 .new-task-body {
@@ -241,18 +238,14 @@
   color: var(--text-tertiary);
 }
 
-.new-task-tag-add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* A4-deep 收编：居中/cursor 归 icon 变体；描边圆环（1px + 9999）与 dim 墨
+   是 canon 偏差，per-face 保留（零像素闸；content-box 下 border 计入 22 实测盒）。 */
+.btn.new-task-tag-add {
   width: 20px;
   height: 20px;
   border: 1px solid var(--border-strong);
   border-radius: 9999px;
-  background: transparent;
-  padding: 0;
   color: var(--text-dim);
-  cursor: pointer;
 }
 
 .new-task-actions {
@@ -268,17 +261,11 @@
   gap: 6px;
 }
 
+/* A4-deep 收编：皮肤归 icon 变体；30×30 per-face 几何（元素选择器 0,1,1
+   特异性天然压过原语 size 档）。 */
 .new-task-tools button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 30px;
   height: 30px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
 }
 
 .new-task-buttons {
@@ -288,35 +275,9 @@
   gap: 13px;
 }
 
-.new-task-save {
-  width: 50px;
-  height: 30px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: transparent;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.new-task-start {
-  width: 87px;
-  height: 30px;
-  border: none;
-  border-radius: 8px;
-  background: var(--card-button);
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-on-accent);
-  cursor: pointer;
-}
-
-.new-task-start:disabled {
-  background: var(--new-task-primary-disabled);
-  color: var(--disabled-fg);
-  cursor: default;
-}
+/* A3-overlays 收编：保存/保存并开始 = ui/Button ghost/primary standard
+   （new-task-dialog.tsx 头注；r7 实测 30px/12px 高字归原语 32/13 档）。
+   .new-task-start:disabled 走原语 --primary-disabled。 */
 
 /* ---- delete confirm (r7 25: 448×142, centered both axes) ---- */
 
@@ -327,7 +288,8 @@
   transform: translate(-50%, -50%);
   width: 448px;
   height: 142px;
-  border-radius: 12px;
+  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
+  border-radius: var(--edge-radius);
   background: var(--dialog-bg);
   box-shadow: var(--dialog-shadow);
   z-index: 21;
@@ -388,26 +350,14 @@
   height: 30px;
 }
 
-.delete-confirm-cancel {
-  border: none;
-  background: transparent;
-  padding: 0;
+/* A4-deep 收编：皮肤（透明底/无框/dim 墨/cursor）归 ui/Button quiet 变体；
+   12px/16px 字排与 auto 高是 per-face 实测（quiet 不吃 size，height:auto
+   挡 .btn--standard 的 32 泄漏）。删除钮禁用形态已由原语 danger:disabled
+   承载（opacity .5），本面规则移除。 */
+.btn.delete-confirm-cancel {
+  height: auto;
   font-size: 12px;
   line-height: 16px;
-  color: var(--text-dim);
-  cursor: pointer;
-}
-
-.delete-confirm-delete {
-  width: 50px;
-  height: 30px;
-  border: none;
-  border-radius: 8px;
-  background: var(--danger);
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-on-accent);
-  cursor: pointer;
 }
 
 /* ---- project delete confirm (#207, r2 24d): family shape + 键入名确认行 ---- */
@@ -424,13 +374,14 @@
   color: var(--text-secondary);
 }
 
+/* A3 圆角归一：可交互控件一律 8px（原 6px，diff-audit #1）。 */
 .delete-confirm-input {
   display: block;
   width: calc(100% - 32px);
   margin: 8px 16px 0;
   height: 30px;
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   padding: 0 10px;
   font-family: inherit;
@@ -438,11 +389,6 @@
   line-height: 18px;
   color: var(--text-primary);
   outline: none;
-}
-
-.delete-confirm-delete:disabled {
-  opacity: 0.5;
-  cursor: default;
 }
 
 /* ---- 更多 menu (r7 18/24: 220×165 @ 1052.5,39.5, right-anchored) ---- */
@@ -464,7 +410,8 @@
   right: 167.5px; /* 1440 − 1272.5, r7 §3.5 right-edge anchor */
   width: 220px;
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
+  border-radius: var(--edge-radius);
   background: var(--popover-bg);
   box-shadow: var(--fab-shadow);
   z-index: 21;
