@@ -48,21 +48,10 @@
   color: var(--text-dim);
 }
 
-.search-input-row input {
-  flex: 1;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  font: inherit;
-  font-size: 13px;
-  line-height: 16px;
-  color: var(--text-primary);
-}
-
-.search-input-row input::placeholder {
-  color: var(--text-tertiary);
-}
+/* A5 收编：input 本体皮肤（flex 伸展 + 裸透明 + 13px 字）移入
+   ui/input.css .input--palette；行容器几何（40px/padding/分隔线）
+   per-face 保留。e2e search-focus 钉 .search-input-row input 元素
+   结构选择器，Input 组件渲染的 input 仍命中 */
 
 .search-list {
   flex: 1;

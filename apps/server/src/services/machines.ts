@@ -41,6 +41,7 @@ import {
   project,
   steerPending,
   step,
+  stopPending,
   todo,
   tokenUsage,
 } from '../db/schema.js';
@@ -49,7 +50,7 @@ import { systemGitOps } from '../lib/git.js';
 import { hashCredential } from '../lib/hash.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { newMachineToken } from '../lib/keys.js';
-import { completeStep, NotFoundError } from './builds.js';
+import { applyStoppedStep, completeStep, NotFoundError } from './builds.js';
 import {
   chiefClaimContext,
   finishChiefTurn,
@@ -186,6 +187,19 @@ export class MachineWakeHub {
       }
     }
   }
+
+  /** stop 信号（M7 #308）：推送 SSE stop 事件（载荷只带 stepId 信号，
+   * discard 位经 GET /api/machine/stop 拉取-确认——steer 同律，SSE 载荷
+   * 不携语义位防丢）。不触发 claim 长轮询唤醒。 */
+  stopSignal(teamId: string, stepId: string): void {
+    for (const send of this.streams.get(teamId) ?? []) {
+      try {
+        send({ type: 'stop', stepId });
+      } catch {
+        // 连接已死：订阅方 onAbort 自清理。
+      }
+    }
+  }
 }
 
 /** steer 拉取-确认（W3 #278，GET /api/machine/steer?stepId=）：本机在跑的步
@@ -213,6 +227,32 @@ export function fetchSteer(
     return { content: null };
   }
   return { content: pending.content };
+}
+
+/** stop 拉取-确认（M7 #308，GET /api/machine/stop?stepId=）：fetchSteer 同形
+ * ——本机在跑步才可拉取（machineId + claimed 双校验）；pending 定向步不匹配
+ * （步已收尾/换新步）→ 丢弃；匹配 → 返回 discard 位并清（拉取即确认）。 */
+export function fetchStop(
+  deps: { db: Db },
+  machine: { id: string },
+  stepId: string,
+): { discard: boolean | null } {
+  const { db } = deps;
+  const stepRow = db.select().from(step).where(eq(step.id, stepId)).get();
+  if (!stepRow || stepRow.machineId !== machine.id || stepRow.status !== 'claimed') {
+    return { discard: null };
+  }
+  const pending = db
+    .select()
+    .from(stopPending)
+    .where(eq(stopPending.conversationId, stepRow.buildId))
+    .get();
+  if (!pending) return { discard: null };
+  db.delete(stopPending).where(eq(stopPending.conversationId, stepRow.buildId)).run();
+  if (pending.stepId !== stepId) {
+    return { discard: null };
+  }
+  return { discard: pending.discard };
 }
 
 // —— 认证（02 §8：存哈希比对）———————————————————————————————————————————————
@@ -1047,6 +1087,9 @@ export async function finishStep(
       })
       .run();
   }
+  // stop_pending 卫生清理（全终态共通，M7 #308）：stop 与自然完成/失败的
+  // 竞态残留随收尾即清（拉取-确认面另有定向步校验双保险，不复活）。
+  db.delete(stopPending).where(eq(stopPending.conversationId, stepRow.buildId)).run();
   // chief 步收尾（无 build/phase/merge；thread 面 + chief_message 通知，r5 §3.6/
   // §7.2）。token 记账已按 buildId=chief conv id 落位（context.tokens 数据源）。
   if (stepRow.kind === 'chief' && isChiefConversation(stepRow.buildId)) {
@@ -1064,8 +1107,17 @@ export async function finishStep(
     publishStepStatus(deps, stepId);
     return;
   }
-  // failed / stopped（stopped = 人工停止 [设计]，同 failed 收尾）：步级失败无
-  // 自动重跑（02 §4.2/r3 §3.7），todo → failed + build.errorMessage。
+  if (outcome.status === 'stopped') {
+    // 停止钮落账（M7 #308，r9 §3.3）：step stopped + build.errorMessage
+    // 取消标记 + gate 回落（上一完成 turn 关口 / prevPhase）+ stopPending 清。
+    // 落账单源 = builds.applyStoppedStep（pending 步即时取消路径同函数）；
+    // 不走 failed 漏斗（todo 不落 failed，r9 #12 → 审核实证）。
+    applyStoppedStep(deps, stepId);
+    publishStepStatus(deps, stepId);
+    return;
+  }
+  // failed：步级失败无自动重跑（02 §4.2/r3 §3.7），todo → failed +
+  // build.errorMessage。
   db.update(step).set({ status: 'failed' }).where(eq(step.id, stepId)).run();
   publishStepStatus(deps, stepId);
   const buildRow = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();

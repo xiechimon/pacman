@@ -305,18 +305,11 @@
   color: var(--chip-idle-fg);
 }
 
-.sched-card-more {
+/* A4-deep 收编：皮肤归 ui/Button icon 变体；24×24 per-face 几何。 */
+.btn.sched-card-more {
   flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 24px;
   height: 24px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
 }
 
 /* ---- 新建定时 dialog (r3 92/92b) ---- */
@@ -353,17 +346,10 @@
   color: var(--text-primary);
 }
 
-.sched-form-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* A4-deep 收编：皮肤归 icon 变体；24×24 per-face 几何。 */
+.btn.sched-form-close {
   width: 24px;
   height: 24px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
 }
 
 .sched-form-body {

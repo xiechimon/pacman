@@ -246,15 +246,18 @@ export function BoardSurface({
             {t('任务')}
           </Button>
           <span className="board-guide-wrap">
-            <button
-              type="button"
+            {/* A4-deep 收编：icon 变体皮肤；.board-guide 是 e2e
+                (dead-buttons) 与 parity 点击矩阵钉死的别名，28×28 几何
+                per-face 留在 board.css。 */}
+            <Button
+              variant="icon"
               className="board-guide"
               aria-label={t('看板指南')}
               aria-expanded={guideOpen}
               onClick={() => setGuideOpen((open) => !open)}
             >
               <HelpCircle />
-            </button>
+            </Button>
             <OverlayMount open={guideOpen}>
               <ClickCatcher onClose={closeGuide} />
               <BoardGuide />
@@ -320,8 +323,10 @@ export function BoardSurface({
                       {column.label && (
                         <span className="board-column-label">{t(column.label)}</span>
                       )}
-                      <button
-                        type="button"
+                      {/* A4-deep 收编：icon 变体皮肤；.board-column-collapse
+                          是 e2e (collapse-family) 与 parity 点击矩阵钉死的别名 */}
+                      <Button
+                        variant="icon"
                         className="board-column-collapse"
                         // aria-label = column name, r7 icons.json `aria:待开始` ×6
                         aria-label={t(column.name)}
@@ -329,7 +334,7 @@ export function BoardSurface({
                         onClick={() => toggleColumn(column.id)}
                       >
                         <UnfoldVertical />
-                      </button>
+                      </Button>
                     </header>
                     <ColumnList columnId={column.id} empty={t(column.empty)} count={todos.length}>
                       <SortableContext

@@ -274,6 +274,7 @@ class PiSessionHandle implements AgentSessionHandle {
   private readonly queue = new EventQueue();
   private readonly state = newMapState();
   private closed = false;
+  private stopping = false;
 
   constructor(
     private readonly session: AgentSession,
@@ -286,6 +287,10 @@ class PiSessionHandle implements AgentSessionHandle {
         event as unknown as AgentSessionEventLike,
         this.state,
       )) {
+        // 停止钮 abort（M7 #308）：pi 在 abort 时同步发出的终局 done 是中断
+        // 产物、非自然完成——吞掉不 push（runner 的 sawDone 判定依赖
+        // done = 自然收尾语义；usage 累计在 state，handle.usage() 兜底）。
+        if (this.stopping && mapped.type === 'done') continue;
         this.queue.push(mapped);
         if (mapped.type === 'done') this.finish();
       }
@@ -306,6 +311,7 @@ class PiSessionHandle implements AgentSessionHandle {
   }
 
   async stop(): Promise<void> {
+    this.stopping = true;
     await this.session.abort();
     this.finish();
   }

@@ -3,8 +3,9 @@
 // 加键入项目名确认行:输入与项目名精确匹配才解禁删除钮(误删闸门,票面
 // 「确认输入不匹配禁用」)。级联语义不在本层——server services/projects.ts
 // 单源(#189);本层只管确认形状与闸门。
-// A3-overlays 收编：删除钮 = ui/Button danger（类别名/禁用形态处置同
-// delete-confirm.tsx 头注）。
+// A4-deep 收编：删除钮 = ui/Button danger、取消钮 = ui/Button quiet
+// （类别名/禁用形态处置同 delete-confirm.tsx 头注；两面共享
+// .delete-confirm-* css 面，收编必须同构）。
 
 import { useEffect, useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
@@ -75,9 +76,9 @@ export function DeleteProjectConfirm({
           spellCheck={false}
         />
         <div className="delete-confirm-actions">
-          <button type="button" className="delete-confirm-cancel" onClick={onClose}>
+          <Button variant="quiet" className="delete-confirm-cancel" onClick={onClose}>
             {t('取消')}
-          </button>
+          </Button>
           <Button
             variant="danger"
             size="standard"
