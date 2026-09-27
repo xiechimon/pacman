@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { CheckWhite } from '../icons/index.js';
+import { Button } from '../ui/button.js';
 import { DialogShell } from '../ui/dialog-shell.js';
 import './overlays.css';
 
@@ -32,8 +33,9 @@ export function AcceptDialog({ open, onClose, onConfirm }: AcceptDialogProps) {
           <button type="button" className="dlg-accept-cancel" onClick={onClose}>
             {t('取消')}
           </button>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="compact"
             className="dlg-accept-done"
             onClick={() => {
               if (onConfirm) onConfirm();
@@ -41,7 +43,7 @@ export function AcceptDialog({ open, onClose, onConfirm }: AcceptDialogProps) {
             }}
           >
             {t('完成')}
-          </button>
+          </Button>
         </div>
       }
     >

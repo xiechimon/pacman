@@ -41,6 +41,7 @@ import {
 } from '../icons/index.js';
 import { DRAWER_EXIT_MS } from '../overlay/use-overlay-mount.js';
 import { OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { Button } from '../ui/button.js';
 import './chief.css';
 
 const EXAMPLE_ICONS = {
@@ -334,14 +335,16 @@ export function ChiefDrawer({
           <div className="chief-composer-bar">
             {/* #146 裁决：语音输入/添加附件/提及 local-first 无后端面——
                 隐藏不渲染（#136 台账 wontfix）。 */}
-            <button
-              type="button"
+            {/* A4-deep 收编：icon 变体皮肤；实底双态（seg-active/indigo）
+                是 canon 偏差，per-face 留 chief.css（.btn.chief-send） */}
+            <Button
+              variant="icon"
               aria-label={t('发送')}
               className={draftValue !== '' ? 'chief-send is-on' : 'chief-send'}
               onClick={sendLive}
             >
               <ArrowUp width={16} height={16} />
-            </button>
+            </Button>
           </div>
         </div>
       </aside>

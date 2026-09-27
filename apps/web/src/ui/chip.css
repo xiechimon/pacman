@@ -36,3 +36,11 @@
   background: var(--pill-idle-bg);
   color: var(--text-secondary);
 }
+
+/* mini 尺寸（r7 05b search-row-chip 实测）：14px 高 / 0 6px 垫 / 10px 字 */
+.chip--mini {
+  height: 14px;
+  padding: 0 6px;
+  font-size: 10px;
+  line-height: 14px;
+}

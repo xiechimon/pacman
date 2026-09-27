@@ -29,6 +29,7 @@ import { useEffect, useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
 import { CheckWhite, PlusSmall } from '../icons/index.js';
 import { DialogShell } from '../ui/dialog-shell.js';
+import { Input } from '../ui/input.js';
 
 /** API 协议段（r3 §2 实测文案与顺序；wire 值 = providerApiSchema）。 */
 const API_OPTIONS: readonly { value: ProviderApi; label: string }[] = [
@@ -157,7 +158,7 @@ export function CreateProviderDialog({
         <label className="dlg-form-label" htmlFor="dlg-provider-id">
           {t('服务商 ID')}
         </label>
-        <input
+        <Input
           id="dlg-provider-id"
           className="dlg-form-input"
           value={providerId}
@@ -167,7 +168,7 @@ export function CreateProviderDialog({
         <label className="dlg-form-label" htmlFor="dlg-provider-label">
           {t('名称')}
         </label>
-        <input
+        <Input
           id="dlg-provider-label"
           className="dlg-form-input"
           value={label}
@@ -176,7 +177,7 @@ export function CreateProviderDialog({
         <label className="dlg-form-label" htmlFor="dlg-provider-baseurl">
           Base URL
         </label>
-        <input
+        <Input
           id="dlg-provider-baseurl"
           className="dlg-form-input"
           value={baseUrl}
@@ -202,7 +203,7 @@ export function CreateProviderDialog({
         <label className="dlg-form-label" htmlFor="dlg-provider-apikey">
           {t('API 密钥')}
         </label>
-        <input
+        <Input
           id="dlg-provider-apikey"
           className="dlg-form-input"
           type="password"
@@ -227,7 +228,7 @@ export function CreateProviderDialog({
         <div className="dlg-form-note">{t('密钥将加密存储，保存后无法再次查看。')}</div>
         <div className="dlg-form-label">{t('模型（可选）')}</div>
         {modelIds.map((id, i) => (
-          <input
+          <Input
             key={i}
             className="dlg-form-input"
             aria-label={t('模型 ID')}
