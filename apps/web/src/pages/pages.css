@@ -305,18 +305,11 @@
   color: var(--chip-idle-fg);
 }
 
-.sched-card-more {
+/* A4-deep 收编：皮肤归 ui/Button icon 变体；24×24 per-face 几何。 */
+.btn.sched-card-more {
   flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 24px;
   height: 24px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
 }
 
 /* ---- 新建定时 dialog (r3 92/92b) ---- */
@@ -353,17 +346,10 @@
   color: var(--text-primary);
 }
 
-.sched-form-close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* A4-deep 收编：皮肤归 icon 变体；24×24 per-face 几何。 */
+.btn.sched-form-close {
   width: 24px;
   height: 24px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
 }
 
 .sched-form-body {
@@ -705,6 +691,7 @@
   margin-top: 12px;
 }
 
+/* 文件树行钮：圆角 6→8 = a3-pages 圆角归一（可交互行）。 */
 .prj-file-row {
   display: flex;
   align-items: center;
@@ -713,7 +700,7 @@
   height: 30px;
   padding: 0 4px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   cursor: pointer;
 }
@@ -1004,19 +991,11 @@
   color: var(--text-dim);
 }
 
-.prj-tasks-empty-new {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+/* a3-pages 收编：Button primary/compact 承载公共形；per-face 差异 =
+   16px 顶距与 icon+text 的 4px 间隙。 */
+.btn.prj-tasks-empty-new {
   margin-top: 16px;
-  height: 28px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 8px;
-  background: var(--card-button);
-  font-size: 13px;
-  color: var(--text-on-accent);
-  cursor: pointer;
+  gap: 4px;
 }
 
 /* ---- #178 tasks toolbar: anchored menus + grid view + match-empty line ---- */
@@ -1043,6 +1022,8 @@
   z-index: 30;
 }
 
+/* 菜单行：圆角 6→8 = a3-pages 圆角归一（lang-dropdown-row / chief-model-row
+   同族行已是 8）。 */
 .prj-tasks-menu-row {
   display: flex;
   align-items: center;
@@ -1050,7 +1031,7 @@
   height: 28px;
   padding: 0 8px 0 12px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   background: transparent;
   font: inherit;
   font-size: 12px;
@@ -1228,7 +1209,9 @@
   color: var(--text-dim);
 }
 
-/* 危险操作区(#207 复活,#189 DELETE 端点落地): #177 整除的样式原样归位 */
+/* 危险操作区(#207 复活,#189 DELETE 端点落地): #177 整除的样式原样归位。
+   prj-set-delete a3-pages 收编进 Button danger/compact（28 高/实底/8 圆角
+   与原 6px 圆角差异 = 圆角归一），类名留作 e2e 别名。 */
 .prj-set-danger-label {
   margin: 16px 0 8px;
   font-size: 12px;
@@ -1254,16 +1237,9 @@
   color: var(--text-tertiary);
 }
 
-.prj-set-delete {
+/* 删除钮走 Button danger/compact；顶距是唯一 per-face 差异。 */
+.btn.prj-set-delete {
   margin-top: 12px;
-  height: 28px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 6px;
-  background: var(--danger);
-  font-size: 13px;
-  color: var(--text-on-accent);
-  cursor: pointer;
 }
 
 /* ---- segmented-control hover (issue #138) ----

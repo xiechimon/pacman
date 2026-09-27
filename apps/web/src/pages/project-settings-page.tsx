@@ -22,6 +22,7 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, SquarePen } from '../icons/index.js';
 import { DeleteProjectConfirm } from '../overlay/delete-project-confirm.js';
+import { Button } from '../ui/button.js';
 import { PageShell, TabGroup } from './shell.js';
 import './pages.css';
 
@@ -116,9 +117,16 @@ export function ProjectSettingsPage() {
           <div className="prj-set-danger-desc">
             {t('将永久删除所有任务与执行记录，此操作不可恢复。')}
           </div>
-          <button type="button" className="prj-set-delete" onClick={() => setDeleteOpen(true)}>
+          {/* a3-pages 收编：Button danger/compact（e2e 钉 .prj-set-delete 别名
+              保留）；圆角 6→8 = 圆角归一。 */}
+          <Button
+            variant="danger"
+            size="compact"
+            className="prj-set-delete"
+            onClick={() => setDeleteOpen(true)}
+          >
             {t('删除')}
-          </button>
+          </Button>
         </div>
       </div>
       {/* 确认弹层(r2 24d, DeleteConfirm 家族): 键入项目名精确匹配才解禁;

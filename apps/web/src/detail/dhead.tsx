@@ -24,6 +24,8 @@ import {
 import { ChipPopover } from '../overlays/chip-popover.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
+import { Button } from '../ui/button.js';
+import { Chip } from '../ui/chip.js';
 
 /** Header icon overlays the right icon group opens (issue #68). */
 export type HeadOverlay = 'branch' | 'token' | 'history';
@@ -72,13 +74,17 @@ export function DetailHead({
       </Link>
       <span className="detail-seq">#{todo.seqNum}</span>
       <span className="detail-chipwrap">
+        {/* A3: 五态 pill 视觉收编 Chip 原语（variant 同名映射）；detail-chip
+            基类与 detail-chip--<tone> 别名保留——e2e 按 .detail-chip 定位点击。 */}
         <button
           type="button"
-          className={`detail-chip detail-chip--${ui.tone}`}
+          className="detail-chip"
           aria-expanded={popover}
           onClick={() => setPopover((value) => !value)}
         >
-          {t(ui.chip)}
+          <Chip variant={ui.tone} className={`detail-chip--${ui.tone}`}>
+            {t(ui.chip)}
+          </Chip>
         </button>
         <span className="detail-chip-chevron">
           <ChevronDown width={12} height={12} />
@@ -157,9 +163,14 @@ export function DetailHead({
           <History />
         </button>
         {ui.action != null && (
-          <button type="button" className="detail-head-action" onClick={onAction}>
+          <Button
+            variant="primary"
+            size="compact"
+            className="detail-head-action"
+            onClick={onAction}
+          >
             {t(ui.action)}
-          </button>
+          </Button>
         )}
       </div>
     </header>

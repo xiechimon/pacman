@@ -44,10 +44,36 @@
   background: var(--danger);
   color: var(--text-on-accent);
 }
+/* r7 25 实测：禁用降透明度不换底色（delete-confirm-delete canon） */
+.btn--danger:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 
 /* text 变体不吃 size 的 padding（写在 size 声明之后赢同特异性） */
 .btn--text {
   background: transparent;
   color: var(--indigo-500);
   padding: 0;
+}
+
+/* quiet：弱文字钮，r7 25 delete-confirm-cancel canon（text-dim 无框） */
+.btn--quiet {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  padding: 0;
+}
+
+/* icon：皮肤层——居中 + tertiary 墨 + hover 增亮；盒尺寸 per-face 叠加 */
+.btn--icon {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  padding: 0;
+  font-size: inherit;
+  line-height: 1;
+}
+.btn--icon:hover:not(:disabled) {
+  color: var(--text-secondary);
 }

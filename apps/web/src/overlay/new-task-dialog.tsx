@@ -19,6 +19,9 @@
 // (POST /api/projects/{id}/tags, color = TAG_DEFAULT_COLOR client-side
 // default per r9 §3.4); fixture face creates into dialog-local state.
 // Selection rides the submit's tagIds (r9 §3.4 createTodo body 携带位).
+// A3-overlays 收编：footer 双钮 = ui/Button（ghost / primary，弹窗语义
+// standard 32 档，r7 实测 30 归一到原语三档）；两钮类名无 e2e/parity
+// 钉扎，散写规则随收编移除。
 
 import { TAG_DEFAULT_COLOR } from '@pacman/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -27,6 +30,7 @@ import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, Grid2x2, Mic, Paperclip, PlusSmall, X } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { Button } from '../ui/button.js';
 import { DialogShell } from '../ui/dialog-shell.js';
 import { TagChip, type TagChipData } from '../ui/tag-chip.js';
 import { useEscClose } from './use-esc.js';
@@ -258,9 +262,16 @@ export function NewTaskDialog({
             </OverlayMount>
           </span>
           <div className="new-task-title-label">{t('新建任务')}</div>
-          <button type="button" className="new-task-close" aria-label={t('关闭')} onClick={onClose}>
+          {/* A4-deep 收编：icon 变体皮肤；28×28 + margin-left:auto 几何
+              per-face 留 overlay.css */}
+          <Button
+            variant="icon"
+            className="new-task-close"
+            aria-label={t('关闭')}
+            onClick={onClose}
+          >
             <X />
-          </button>
+          </Button>
         </div>
         <div className="new-task-body">
           <input
@@ -284,8 +295,10 @@ export function NewTaskDialog({
               : selectedTags.map((tag) => (
                   <TagChip key={tag.id} tag={tag} className="new-task-tag-chip" />
                 ))}
-            <button
-              type="button"
+            {/* A4-deep 收编：icon 变体皮肤；描边圆环 + dim 墨是 canon 偏差，
+                per-face 留 overlay.css（.btn.new-task-tag-add） */}
+            <Button
+              variant="icon"
               className="new-task-tag-add"
               aria-label={t('添加标签')}
               onClick={() => {
@@ -294,26 +307,32 @@ export function NewTaskDialog({
               }}
             >
               <PlusSmall />
-            </button>
+            </Button>
           </div>
           <div className="new-task-actions">
+            {/* A4-deep 收编：icon 变体皮肤；30×30 几何走 .new-task-tools
+                button 元素选择器（原样命中） */}
             <div className="new-task-tools">
-              <button type="button" aria-label={t('语音输入')}>
+              <Button variant="icon" aria-label={t('语音输入')}>
                 <Mic />
-              </button>
-              <button type="button" aria-label={t('添加附件')}>
+              </Button>
+              <Button variant="icon" aria-label={t('添加附件')}>
                 <Paperclip />
-              </button>
-              <button type="button" aria-label={t('提及')}>
+              </Button>
+              <Button variant="icon" aria-label={t('提及')}>
                 <Grid2x2 />
-              </button>
+              </Button>
             </div>
             <div className="new-task-buttons">
-              <button type="button" className="new-task-save" onClick={save}>
+              {/* e2e 别名叠加：integration/test/m5-web-e2e.test.ts 钉
+                  .new-task-start（overlays lane 误删致 CI 红，此处恢复；
+                  类名与规则无关，纯选择器锚点） */}
+              <Button variant="ghost" size="standard" className="new-task-save" onClick={save}>
                 {t('保存')}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="primary"
+                size="standard"
                 className="new-task-start"
                 disabled={title.trim() === ''}
                 onClick={() => {
@@ -322,7 +341,7 @@ export function NewTaskDialog({
                 }}
               >
                 {t('保存并开始')}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
