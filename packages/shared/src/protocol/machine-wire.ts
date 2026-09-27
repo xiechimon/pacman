@@ -16,6 +16,7 @@ import {
 import { epochMs, recordId } from '../records/common.js';
 import { machineRecordSchema } from '../records/machine.js';
 import { messageRoleSchema } from '../records/message.js';
+import { reviewVerdictSchema } from '../records/review.js';
 import { stepRecordSchema } from '../records/step.js';
 import {
   machineToolRelayBodySchema,
@@ -370,7 +371,11 @@ export const transcriptUploadSchema = z.object({
 export type TranscriptUpload = z.infer<typeof transcriptUploadSchema>;
 
 /** POST /api/machine/done/{stepId}——步骤收尾 body [推断]（02 §5.4 端点名；
- * status 词 = 步级失败无自动重跑语义的最小三值，02 §4.2）。 */
+ * status 词 = 步级失败无自动重跑语义的最小三值，02 §4.2）。
+ * M7 #330：审核步终态可携带 findings（reviewVerdict 形态，shared 单源）——
+ * daemon 在 agent 终轮文本里解析 JSON 结构，server 侧 zod 校验后 emit
+ * REVIEW_VERDICT_KIND 消息行 + 触发 blocking 自动修订回路；非 review 步
+ * = 该字段不携带（DAEMON 不解析非 review 类 agent 输出，规避假阳）。 */
 export const machineDoneBodySchema = z.object({
   status: z.enum(['success', 'failed', 'stopped']),
   errorMessage: z.string().optional(),
@@ -384,6 +389,10 @@ export const machineDoneBodySchema = z.object({
    * （「恢复到此处」r3 §3.5/02 §4.2）+ 合并步 fast-forward 落地键
    * （「目标提交 <12hex>」r3 §3.9 面板同族）。 */
   commit: z.string().optional(),
+  /** AI 审核步 findings（M7 #330，r8 §3.1）：仅 review 步携带，daemon 解析
+   * agent 终轮 JSON 输出后置入；server 落库 + 判 blocking 触发自动修订。
+   * 形状 = records/review.ts reviewVerdictSchema（conclusion + findings[]）。 */
+  findings: reviewVerdictSchema.optional(),
 });
 export type MachineDoneBody = z.infer<typeof machineDoneBodySchema>;
 export const machineDoneResponseSchema = machineOkResponseSchema;
