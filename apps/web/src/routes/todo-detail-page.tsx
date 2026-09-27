@@ -28,6 +28,7 @@ import {
   useProjects,
   useRunHistoryTokens,
   useSearchResults,
+  useSkills,
   useSteps,
   useTodo,
   useTodos,
@@ -68,6 +69,7 @@ import type {
   TranscriptItem,
 } from '../fixtures/records.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
+import type { MentionGroups } from '../overlay/mention-picker.js';
 import { MoreMenu } from '../overlay/more-menu.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
@@ -172,6 +174,7 @@ export function TodoDetailPage() {
   const machinesQ = useMachines(teamId, live);
   const membersQ = useMembers(teamId, live);
   const projectsQ = useProjects(teamId, live);
+  const skillsQ = useSkills(teamId, live);
   const projectBuildsQ = useProjectBuilds(wireTodo?.projectId, live);
   const mutations = useApiMutations(teamId);
 
@@ -383,6 +386,60 @@ export function TodoDetailPage() {
         }
       : null
     : overlayContent(todo.id);
+
+  // #311: mention picker groups — live pulls the canonical REST hooks,
+  // fixture derives from the local capture set (boardDefault.resources
+  // covers machines/skills; projectNames drives the project chip; the
+  // team roster gives the agent card row).
+  const mentionGroups: MentionGroups = live
+    ? {
+        todo: (todosQ.data ?? []).map((t) => ({
+          id: t.id,
+          label: `#${t.seqNum} ${t.title}`,
+          seq: t.seqNum,
+          subtitle: t.phase,
+        })),
+        agent: (membersQ.data ?? [])
+          .filter((m) => m.memberType === 'agent')
+          .map((m) => ({
+            id: m.actorId,
+            label: (m.actor as { displayName?: string } | undefined)?.displayName ?? m.actorId,
+            subtitle:
+              (m.actor as { description?: string | null } | undefined)?.description ?? undefined,
+          })),
+        project: (projectsQ.data ?? []).map((p) => ({ id: p.id, label: p.name })),
+        skill: (skillsQ.data ?? []).map((s) => ({
+          id: s.id,
+          label: s.name,
+          subtitle: s.description ?? undefined,
+        })),
+        machine: (machinesQ.data ?? []).map((m) => ({ id: m.id, label: m.name })),
+      }
+    : {
+        todo: fixtureTodos.map((t) => ({
+          id: t.id,
+          label: `#${t.seqNum} ${t.title}`,
+          seq: t.seqNum,
+          subtitle: t.phase,
+        })),
+        agent: (fixture.team?.agents ?? []).map((a) => ({
+          id: a.id,
+          label: a.displayName,
+          subtitle: a.role ?? a.model,
+        })),
+        project: Object.entries(fixture.projectNames ?? {}).map(([id, name]) => ({
+          id,
+          label: name,
+        })),
+        skill: (fixture.resources?.skills ?? []).map((s) => ({
+          id: s.name,
+          label: s.name,
+          subtitle: s.description,
+        })),
+        machine: (fixture.resources?.machines ?? [])
+          .filter((m) => m.hosted !== true)
+          .map((m) => ({ id: m.name, label: m.name, subtitle: m.sub })),
+      };
   const ui = PHASE_UI[phase];
   const detail = live ? liveDetail : fixture.detail;
   const streaming = live ? running : view.transcript.some((item) => item.kind === 'streaming');
@@ -395,6 +452,17 @@ export function TodoDetailPage() {
       : phase === 'review' || phase === 'done' || phase === 'failed'
         ? 'changes'
         : 'plan';
+
+  // composer 被拒提示行（W3 #280 steer / #320 restart）：异步 onSend 失败时
+  // draft 保留不丢字，文案按被拒写面分流；restart 错误 scope 到
+  // variables.action（confirm 主钮同走 stepAction，其错误不上此行）。
+  const composerReject = !live
+    ? null
+    : mutations.sendSteer.isError
+      ? t('当前没有运行中的会话，消息未送出')
+      : mutations.stepAction.isError && mutations.stepAction.variables?.body.action === 'restart'
+        ? t('任务状态已变化，消息未送出')
+        : null;
 
   return (
     <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
@@ -498,11 +566,7 @@ export function TodoDetailPage() {
         )}
         {ui.placeholder != null && (
           <>
-            {live && mutations.sendSteer.isError && (
-              // W3 #280：steer 被拒（409 无在跑步）提示行——输入未丢（composer
-              // 异步 onSend 失败保留 draft）。
-              <div className="composer-reject">{t('当前没有运行中的会话，消息未送出')}</div>
-            )}
+            {composerReject != null && <div className="composer-reject">{composerReject}</div>}
             <Composer
               placeholder={
                 // AI 审核中态（M7 #312，r8 §3.1）:placeholder 改「AI 审核进行中…」
@@ -517,6 +581,7 @@ export function TodoDetailPage() {
               }
               streaming={streaming}
               editable={live}
+              mentionGroups={mentionGroups}
               onStop={live && buildId ? () => setStopOpen(true) : undefined}
               onReview={
                 // AI 审核钮入口（M7 #312，r8 §3.1）:live 确认/审核面可点,fixture
@@ -551,6 +616,22 @@ export function TodoDetailPage() {
                           .mutateAsync({ conversationId: buildId, content: text })
                           .then(() => undefined);
                       }
+                      // #320 失败面发送 = 带反馈重启（r9 §3.3：原站 failed 态发消息
+                      // 触发新一轮，消息随新轮入会话——非 steer 语义）。走 steps
+                      // restart 动作位：新 build + 反馈行落新 conv + failed→queued。
+                      // Promise 面 = 成功清稿、被拒（相位漂移 409）保留 draft。
+                      if (phase === 'failed' && buildId && text !== '') {
+                        return mutations.stepAction
+                          .mutateAsync({
+                            buildId,
+                            body: {
+                              action: 'restart',
+                              feedback: text,
+                              clientMessageId: crypto.randomUUID(),
+                            },
+                          })
+                          .then(() => undefined);
+                      }
                     }
                   : detail?.revision != null && chain === 'idle'
                     ? () => {
@@ -575,7 +656,14 @@ export function TodoDetailPage() {
       />
       <DeleteConfirm
         open={deleteOpen}
-        todo={todo}
+        title={t('确定删除该任务？此操作不可撤销。')}
+        summary={
+          <>
+            <span className="delete-confirm-seq">#{todo.seqNum}</span>
+            {todo.title}
+          </>
+        }
+        ariaLabel={t('删除任务')}
         onClose={() => setDeleteOpen(false)}
         onConfirm={() => {
           setDeleteOpen(false);
