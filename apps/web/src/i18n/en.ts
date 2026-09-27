@@ -407,6 +407,13 @@ export const EN: Record<string, string> = {
     'Discards code changes and removes non-ignored untracked files; ignored content is kept. This sync only.',
   同步: 'Sync',
   未创建: 'Not created',
+  // #319 分支对话框「同步到机器」结果卡四态 + 机器选择占位
+  选择机器: 'Choose a machine',
+  暂无在线机器: 'No online machines',
+  等待中: 'Pending',
+  '正在同步…': 'Syncing…',
+  已同步: 'Synced',
+  同步失败: 'Sync failed',
   // run-history rows: fixture-carried chrome (exact-value keys)
   '第 1 次运行': 'Run 1',
   '第 2 次运行': 'Run 2',
