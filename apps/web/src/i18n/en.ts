@@ -344,6 +344,7 @@ export const EN: Record<string, string> = {
   '(suggestion)': '(suggestion)',
   '(info)': '(info)',
   '建议：': 'Suggestion: ',
+  '建议：{body}': 'Suggestion: {body}',
   '更换总管的 agent？总管的记忆保存在其运行所用的 Agent 上。切换至 <agent> 后，记忆将变为 <agent> 的记忆，当前记忆不会迁移。':
     "Switch the Chief's Agent? The Chief's memory lives on the Agent it runs on. After switching to <agent>, the memory becomes <agent>'s — the current memory is not migrated.",
   编辑章程: 'Edit charter',
