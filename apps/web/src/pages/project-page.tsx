@@ -10,7 +10,7 @@
 // by title.
 import type { ProjectFileResponse } from '@pacman/shared';
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router';
 import {
   useApiMutations,
   useMembers,
@@ -312,6 +312,9 @@ function TasksPane({
   onNewTask: () => void;
 }) {
   const { t } = useI18n();
+  // #318: 行/卡点击 = 导航任务详情(r2 §2 原站点行开详情);search 随行
+  // 携带(fixture 面 scenario 参数不丢,todo-card #58 同律)。
+  const { search } = useLocation();
   const [layout, setLayout] = useState<TasksLayout>(() => readStoredLayout(localStorage));
   const switchLayout = useCallback((next: TasksLayout) => {
     setLayout(next);
@@ -406,7 +409,14 @@ function TasksPane({
           {visible.map((todo) => (
             <div key={todo.id} className="prj-task-row">
               <span className="prj-task-check" aria-hidden="true" />
-              <span className="prj-task-title">{todo.title}</span>
+              {/* #318: 标题是真 <a>,::after 拉伸盖满整行 = 点行开详情
+                  (todo-card-link #58 同款,行内无其它交互件无需抬 z) */}
+              <Link
+                className="prj-task-title prj-task-link"
+                to={{ pathname: `/app/todo/${todo.id}`, search }}
+              >
+                {todo.title}
+              </Link>
               <span className="prj-task-time">{relativeTime(todo.phaseAt, now, t)}</span>
               <span className="prj-task-avatar">
                 <img src="/avatar-user.png" alt="" />
@@ -426,7 +436,13 @@ function TasksPane({
                   <img src="/avatar-user.png" alt="" />
                 </span>
               </div>
-              <span className="prj-task-card-title">{todo.title}</span>
+              {/* #318: 同列表行——标题 <a> 的 ::after 拉伸盖满整卡 */}
+              <Link
+                className="prj-task-card-title prj-task-link"
+                to={{ pathname: `/app/todo/${todo.id}`, search }}
+              >
+                {todo.title}
+              </Link>
               <span className="prj-task-card-time">{relativeTime(todo.phaseAt, now, t)}</span>
             </div>
           ))}

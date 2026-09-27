@@ -338,6 +338,16 @@ export const EN: Record<string, string> = {
   '希望 Agent 审核时重点关注什么？（可选）':
     'What do you want the Agent to focus on during review? (optional)',
   开始审核: 'Start review',
+  // M7 #330 AI 审核消息渲染（r8 §3.1 真 findings 上线）：结论先行 + 编号 findings
+  // + 严重度后缀（(blocking)/(suggestion)/(info)）+ 方案引用块 + 修复建议。
+  // 服务端消息 kind = REVIEW_VERDICT_KIND（shared/message.ts 双端单源），
+  // findings 形态 = reviewVerdictSchema（shared/review.ts）。
+  审核结论: 'Review conclusion',
+  '(blocking)': '(blocking)',
+  '(suggestion)': '(suggestion)',
+  '(info)': '(info)',
+  '建议：': 'Suggestion: ',
+  '建议：{body}': 'Suggestion: {body}',
   '更换总管的 agent？总管的记忆保存在其运行所用的 Agent 上。切换至 <agent> 后，记忆将变为 <agent> 的记忆，当前记忆不会迁移。':
     "Switch the Chief's Agent? The Chief's memory lives on the Agent it runs on. After switching to <agent>, the memory becomes <agent>'s — the current memory is not migrated.",
   编辑章程: 'Edit charter',
@@ -545,6 +555,16 @@ export const EN: Record<string, string> = {
   '授权链接已失效，请在执行机上重新发起。':
     'This authorization link has expired — restart enrollment on the executor machine.',
   '浏览器授权注册 →': 'Browser authorization →',
+  // W2 #318 桩群校准：开始任务 dialog 统一面（r9 §3.6）+ 新建任务未保存闸
+  // （r9 §3.4）。规划/执行 = assignment.plan/build 双槽的行标签。
+  规划: 'Plan',
+  执行: 'Build',
+  在线: 'online',
+  离线: 'offline',
+  '选择 Agent': 'Select agent',
+  '放弃新建任务？未保存的内容将丢失。': 'Discard this new task? Unsaved content will be lost.',
+  继续编辑: 'Keep editing',
+  放弃并关闭: 'Discard and close',
 
   // —— mention picker (issue #311, r9 §2.2/§3.2) ——
   // Top layer 5 category rows + drill-in search + footer Insert (N) count.

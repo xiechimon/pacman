@@ -19,31 +19,13 @@ import { expect, type Page, test } from '@playwright/test';
 // 8. 语音输入钮 — #304（08 册 C5 裁决）：语音功能不做，composer 工具条与
 //    新建任务对话框工具条两处语音钮移除不留死钮（#146 chief 面同律）；
 //    与 #146 的差异 = 本票只除语音，添加附件/提及两工具原样保留。
-
 // 9. #307 档 4 外链型四件 wontfix 出账（spec 08 二分律）：api-keys 空态
-//    「查看文档」钮（#149 schedules 同律——local-first 无文档站）、
-//    resources 共享空态「查看文档」链接（skills/secrets/mcp 随 EmptyState
-//    一并出账）、create-agent-dialog 与 project-settings 的头像「更换」
-//    ink（静态资产无上传面——档 4 二分律下本项 #148/#177 占位 chrome
-//    裁决改判移除；account-swap 同款归档 3，不在本票）。
-//    四处不再渲染，存活面（新建密钥/空态主钮/头像资产/分支 chip）钉住。
-// 10. chief 抽屉「更多」（⋮）— #306 wontfix 出账：原站菜单内容未点开无正典
-//    （r8-chief-panel-adhoc §3），server chief 面无线程管理 mutation——注记
-//    在 chief-drawer.tsx 头部；线程视图头部回到四钮（与新线程视图同律）。
-// 11. schedules 卡片「更多」— #306 接真：per-card 菜单（Esc/外点关，菜单行
-//    真删除走 DeleteConfirm 确认）→ fixture 覆面删卡；live 链证据归
-//    verify-pacman（DELETE /api/schedules/:id 全链）。
-// 12. skills 排序钮 — #306 接真：单选 listbox（默认/名称），行点击 = 选中
-//    即关（lang-dropdown 家族律）；名称序重排证据归 verify-pacman（fixture
-//    单技能行序不可变）。
-// 13. account-swap — #306 wontfix 出账（收编 #148 占位裁定）：头像更换无
-//    upload 面且不会有（静态资源 + 无 PATCH /user/me 头像写路径），按钮移
-//    除、avatar 头保留。
-// 14. transcript 工具组折叠 — #306 接真：收起钮真收起（pills 隐、chevron
-//    翻 ›），收起态 footer 行钮再点复原（r7 27↔28 双态互达）。
-// 15. doc-pane 型选行 — #306 校准：r5b §3.7 文档类型选择器——行点击 = 选中
-//    当前类型并关（lang-dropdown 同律），不再是无行为的 ✓ 行。
-
+//    「查看文档」钮、resources 共享空态文档链接、create-agent-dialog 与
+//    project-settings 的头像「更换」ink，四处不再渲染。
+// 10-14. #306 菜单桩清零（chief 更多 wontfix / schedules 卡片菜单接真 /
+//    skills 排序接真 / account-swap wontfix / transcript 折叠接真）。
+// 15. #318 桩群校准（更多菜单完成·关闭 / 开始任务统一面 / 查看方案 /
+//    任务行导航 / 未保存闸）。
 // 第 5 项（skills 添加技能主钮）由 #153 覆盖，本 spec 不断言。
 
 /** 面板中心点的命中必须由面板自身持有 — title-band-clicks 同款家族法。 */
@@ -208,6 +190,7 @@ test('new-task dialog tools drop the 语音输入 button, keep two live tools', 
   await expect(tools.locator('button')).toHaveCount(2);
   await expect(tools.locator('button[aria-label="添加附件"]')).toBeVisible();
   await expect(tools.locator('button[aria-label="提及"]')).toBeVisible();
+});
 
 // —— 9. #307 档 4 外链型 wontfix 出账 ————————————————————————————
 
@@ -251,6 +234,8 @@ test('project settings drops the avatar 更换 ink (#307, supersedes the #177 ch
   // 头像圆标仍在；#177 存续裁决（分支 chip 静态化）不受影响
   await expect(page.locator('.prj-set-avatar')).toBeVisible();
   await expect(page.locator('span.prj-set-branch')).toBeVisible();
+});
+
 // —— 10. chief 抽屉「更多」钮（#306 wontfix 出账）———————————————————————
 
 test('chief drawer drops the ⋮ 更多 button — thread view keeps four head actions (#306)', async ({
@@ -356,5 +341,154 @@ test('transcript tool group: 收起 collapses, the footer row re-expands (#306)'
   await footer.click();
   await expect(page.locator('.chat-tool-pill')).toHaveCount(2);
   await expect(collapse).toBeVisible();
+});
 
+// —— 15. #318 M7-W2 桩群校准新增 —————————————————————————————————————————
+
+const REVIEW_DETAIL = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27';
+
+test('more menu 完成 opens the accept dialog on the review surface (#318)', async ({ page }) => {
+  await page.goto(REVIEW_DETAIL);
+  await page.locator('.detail-head-icon--more').click();
+  const menu = page.locator('.more-menu');
+  await expect(menu).toBeVisible();
+  const complete = menu.locator('.more-menu-item', { hasText: '完成' });
+  await expect(complete).toBeEnabled();
+  await complete.click();
+  // 完成 = 相位适配动作:review 走既有 accept→merge 链(弹层开、菜单收)
+  await expect(menu).toBeHidden();
+  await expect(page.locator('.dlg-title')).toHaveText('完成任务');
+});
+
+test('more menu 关闭 is phase-gated by the server funnel edges (#318)', async ({ page }) => {
+  // review 面:review→closed 漏斗无边(归 W3 server 票)→ disabled
+  await page.goto(REVIEW_DETAIL);
+  await page.locator('.detail-head-icon--more').click();
+  await expect(page.locator('.more-menu-item', { hasText: '关闭' })).toBeDisabled();
+  // failed 面:failed→closed 现有边 → 放行,点毕回看板(卡片立即隐藏语义)
+  await page.goto('/app/todo/r8-12?scenario=54');
+  await page.locator('.detail-head-icon--more').click();
+  const closeRow = page.locator('.more-menu-item', { hasText: '关闭' });
+  await expect(closeRow).toBeEnabled();
+  // failed 无完成语义(confirm-and-merge 仅 confirm/review)→ disabled
+  await expect(page.locator('.more-menu-item', { hasText: '完成' })).toBeDisabled();
+  await closeRow.click();
+  await expect(page).toHaveURL('/app');
+});
+
+test('todo-phase 开始 opens the unified start dialog (#318)', async ({ page }) => {
+  // r9 §3.6:待开始点「开始」先开 dialog 再跑(不再直发 startBuild)
+  await page.goto('/app/todo/fresh-probe?scenario=23');
+  await page.locator('.detail-head-action').click();
+  await expect(page.locator('.overlay-title')).toHaveText('开始任务');
+});
+
+test('rerun dialog: agent row is a real selector, the split switch a real role=switch (#318)', async ({
+  page,
+}) => {
+  await page.goto('/app/todo/r8-12?scenario=56');
+  // Agent 行 = 选择器入口(#75 原死钮位);弹层 = #182 家族件
+  await page.locator('.rerun-agent-row').click();
+  const picker = page.locator('.dlg');
+  await expect(picker).toBeVisible();
+  await expect(page.locator('.dlg-title')).toHaveText('选择 Agent');
+  const pickerRows = page.locator('.chief-pick-row');
+  // fixture 面 = 未指派 + canon r3-builder(r5 捕获名)
+  await expect(pickerRows).toHaveCount(2);
+  await expect(pickerRows.first()).toContainText('未指派');
+  // Esc 归内层:只收选择器,开始 dialog 不陪关(Overlay escMuted)
+  await page.keyboard.press('Escape');
+  await expect(picker).toBeHidden();
+  await expect(page.locator('.overlay')).toBeVisible();
+  // 选「未指派」→ Agent 行换未指派面
+  await page.locator('.rerun-agent-row').click();
+  await page.locator('.chief-pick-row', { hasText: '未指派' }).click();
+  await expect(picker).toBeHidden();
+  await expect(page.locator('.rerun-agent-name')).toHaveText('未指派');
+  // 分用开关 = 真 role=switch(原静态 span):ON → 规划/执行双 Agent 行
+  const sw = page.locator('.rerun-switch');
+  await expect(sw).toHaveAttribute('role', 'switch');
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.rerun-agent-row')).toHaveCount(2);
+  await expect(page.locator('.rerun-agent-label', { hasText: '规划' })).toBeVisible();
+  await expect(page.locator('.rerun-agent-label', { hasText: '执行' })).toBeVisible();
+  // OFF 收拢回单行
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+  await expect(page.locator('.rerun-agent-row')).toHaveCount(1);
+});
+
+test('reuse panel 查看方案 flips the doc pane to the plan face (#318)', async ({ page }) => {
+  await page.goto('/app/todo/r8-15?scenario=75');
+  await expect(page.locator('.overlay-title')).toHaveText('复用方案');
+  // 点击前:failed 面 = changes 表面(型选钮取 wrap 内限定,版本 chip 同类名)
+  await expect(page.locator('.doc-select-wrap .doc-pane-select')).toContainText('变更');
+  await page.locator('.overlay-btn', { hasText: '查看方案' }).click();
+  // 查看方案 = 关弹层 + docpane 切 plan 面;fixture 75 无 plan doc →
+  // 「暂无方案」占位即模式切换证据(live plan 内容归 verify-pacman)
+  await expect(page.locator('.overlay')).toBeHidden();
+  await expect(page.locator('.doc-empty')).toContainText('暂无方案');
+});
+
+test('project task rows and cards are real links to the todo detail (#318)', async ({ page }) => {
+  await page.goto('/app/project/ZAQczKCu0MOAzC1ZqcFlX?scenario=prj-tasks&tab=tasks');
+  const row = page.locator('.prj-task-row').first();
+  await expect(row).toBeVisible();
+  // 行标题 = 真 <a>(::after 拉伸盖满整行,todo-card #58 同律)
+  await expect(row.locator('a.prj-task-link')).toHaveCount(1);
+  await row.click();
+  await expect(page).toHaveURL(/\/app\/todo\/[^?]+\?scenario=prj-tasks&tab=tasks/);
+  // 网格卡同律
+  await page.goto('/app/project/ZAQczKCu0MOAzC1ZqcFlX?scenario=prj-tasks&tab=tasks');
+  await page.locator('.prj-tasks-view-btn').nth(1).click();
+  const card = page.locator('.prj-task-card').first();
+  await expect(card).toBeVisible();
+  await expect(card.locator('a.prj-task-link')).toHaveCount(1);
+  await card.click();
+  await expect(page).toHaveURL(/\/app\/todo\//);
+});
+
+test('new-task dialog gates unsaved closes and resets on discard (#318)', async ({ page }) => {
+  await page.goto('/app?scenario=01');
+  const dialog = page.locator('.new-task-dialog');
+  const discard = page.locator('.new-task-discard');
+  // 净表单:X 直关不闸
+  await page.locator('.board-new-task').click();
+  await expect(dialog).toBeVisible();
+  await dialog.locator('.new-task-close').click();
+  await expect(dialog).toBeHidden();
+  await expect(discard).toHaveCount(0);
+  // 标题非空 → X 先过「放弃新建任务？」确认(r9 §3.4 copy 逐字)
+  await page.locator('.board-new-task').click();
+  await dialog.locator('.new-task-input').fill('未保存探针');
+  await dialog.locator('.new-task-close').click();
+  await expect(discard).toBeVisible();
+  await expect(discard).toContainText('放弃新建任务？未保存的内容将丢失。');
+  // 继续编辑 = 只收确认层,草稿保留
+  await discard.locator('.new-task-discard-keep').click();
+  await expect(discard).toBeHidden();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.new-task-input')).toHaveValue('未保存探针');
+  // Esc 关闸同律;确认层上 Esc = 内层优先(只收确认层)
+  await page.keyboard.press('Escape');
+  await expect(discard).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(discard).toBeHidden();
+  await expect(dialog).toBeVisible();
+  // 放弃并关闭 = 关 dialog + 表单重置(重开净面)
+  await dialog.locator('.new-task-close').click();
+  await discard.locator('.new-task-discard-drop').click();
+  await expect(dialog).toBeHidden();
+  await page.locator('.board-new-task').click();
+  await expect(dialog.locator('.new-task-input')).toHaveValue('');
+});
+
+test('new-task gate also trips on a non-empty spec body (#318)', async ({ page }) => {
+  await page.goto('/app?scenario=01');
+  await page.locator('.board-new-task').click();
+  await page.locator('.new-task-spec').fill('描述探针');
+  await page.locator('.new-task-close').click();
+  await expect(page.locator('.new-task-discard')).toBeVisible();
 });

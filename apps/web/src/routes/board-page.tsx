@@ -27,6 +27,7 @@ import {
   useSearchResults,
   useSkills,
   useTags,
+
   useTodos,
 } from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
@@ -161,12 +162,14 @@ export function BoardPage() {
 
   const createTodo = useCallback(
     (title: string, selectedProjectId?: string, tagIds?: string[], spec: string = title) => {
+
       setNewTaskOpen(false);
       if (live) {
         // #176: dialog 选中项目优先;未选(空集/查询未决)退首行真值
         const projectId = selectedProjectId ?? projectsQ.data?.[0]?.id;
         if (projectId) {
           mutations.createTodo.mutate({ projectId, title, spec, tagIds });
+
           return;
         }
         // 无项目：先建默认托管项目再落任务（self-host 单用户语义 [设计]，
@@ -178,6 +181,7 @@ export function BoardPage() {
           { name: t('默认项目'), repoKind: 'hosted' },
           {
             onSuccess: (p) => mutations.createTodo.mutate({ projectId: p.id, title, spec, tagIds }),
+
           },
         );
         return;
@@ -201,11 +205,13 @@ export function BoardPage() {
       setNewTaskOpen(false);
       if (!live) {
         createTodo(title, selectedProjectId, tagIds, spec);
+
         return;
       }
       const start = (projectId: string) =>
         mutations.createTodo.mutate(
           { projectId, title, spec, tagIds },
+
           {
             onSuccess: (created) =>
               mutations.startBuilds.mutate({
@@ -427,6 +433,7 @@ export function BoardPage() {
         tags={tagsQ.data}
         onCreateTag={live ? createTag : undefined}
         onProjectChange={setDialogProjectId}
+
         mentionGroups={mentionGroups}
       />
       <button

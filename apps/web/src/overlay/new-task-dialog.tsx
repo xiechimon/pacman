@@ -27,6 +27,11 @@
 // caret position via insertMentionText — the spec rides along to the
 // createTodo body unchanged, and the rendering side (Segments) parses
 // them back into chips when the description is shown later.
+// #318 未保存闸 (r9 §3.4): 标题/描述任一非空时,三条关闭路径(X / backdrop /
+// Esc)先过「放弃新建任务？未保存的内容将丢失。」确认弹层(继续编辑 / 放弃
+// 并关闭);净表单直关不闸。Esc 分层 4 层沿 #176 内层优先律(确认层 → 提及
+// picker → 项目 popover → dialog)。附件/标签的 dirty 位归 #309/#310 接线
+// 时扩展。关闭即重置表单(retained-mount 重开 = 净面,闸判定不带脏残留)。
 
 import { TAG_DEFAULT_COLOR } from '@pacman/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -94,6 +99,7 @@ interface NewTaskDialogProps {
   /** #309 live:选中项目上报(tags 查询键随动;board-page 传 setter,
    *  稳定引用)。选择仍是 dialog 内纯表单 state(#176 律不变)。 */
   onProjectChange?: (projectId: string | undefined) => void;
+
   /** #311: mention picker groups（5 类别）。父级从 live hooks 或
    *  fixture 派生；缺省 = 空集合（picker 首层 0 计数）。 */
   mentionGroups?: MentionGroups;
@@ -108,14 +114,18 @@ export function NewTaskDialog({
   tags,
   onCreateTag,
   onProjectChange,
+
   mentionGroups,
 }: NewTaskDialogProps) {
   const { t } = useI18n();
   const [title, setTitle] = useState('');
   // #311：spec textarea 现属表单 state,mention token 落此处;retained-mount
-  // 重开不得带回上次未提交的提及（与 projectOpen reset 同律）。
+  // 重开不得带回上次未提交的提及（与 projectOpen reset 同律）。#318：spec
+  // 入受控 = 闸的 dirty 判定源;placeholder 模板行不变。
   const [spec, setSpec] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
+  // #318 未保存闸确认层开态
+  const [discardOpen, setDiscardOpen] = useState(false);
   // #176 选择器 state:popover 开态 + 选中行。null = 未动,展示/提交取
   // 首行;live 空项目集时 selected 退 undefined(chip 走 canon 名)。
   const [projectOpen, setProjectOpen] = useState(false);
@@ -134,12 +144,20 @@ export function NewTaskDialog({
   const selectedProjectId = selected?.id;
   const tagList = useMemo(() => [...(tags ?? []), ...localTags], [tags, localTags]);
   const selectedTags = tagList.filter((tag) => selectedTagIds.includes(tag.id));
-  // Esc 分层:popover/picker/panel 层开时 Esc 只关内层(dialog 的 Esc 关闸退后一层)
-  useEscClose(onClose, open && !projectOpen && !pickerOpen && !tagPanelOpen);
+  // #318: 附件/标签尚无表单 state(#309/#310 接线时并入 dirty 位)
+  const dirty = title.trim() !== '' || spec.trim() !== '';
+  const requestClose = () => {
+    if (dirty) setDiscardOpen(true);
+    else onClose();
+  };
+  // Esc 分层 4 层(内层优先):确认层 → 提及 picker → 项目 popover → dialog 关闸
+  // (合并 #311 picker + #318 闸;discardOpen/pickerOpen 由各自 ClickCatcher
+  // / useEscapeClose 单独处理,这里只控 dialog 自身的 Esc 关闸。)
+  useEscClose(requestClose, open && !projectOpen && !pickerOpen && !discardOpen);
   useEscapeClose(projectOpen, () => setProjectOpen(false));
-  // retained mount:dialog 关闭一并收内层与标签表单态(重开不得带回开态,
-  // #176 律;选中集/local 新建集同律清空——live 真值在 server,fixture
-  // 面重开 = 全新表单 [设计])。
+  useEscapeClose(discardOpen, () => setDiscardOpen(false));
+  // retained mount:dialog 关闭一并收 popover + 确认层 + picker,并重置表单
+  // (重开不得带回开态/脏字——闸判定以净面起步)
   useEffect(() => {
     if (!open) {
       setProjectOpen(false);
@@ -148,7 +166,10 @@ export function NewTaskDialog({
       setTagName('');
       setSelectedTagIds([]);
       setLocalTags([]);
+      setDiscardOpen(false);
       setPickerOpen(false);
+      setTitle('');
+      setSpec('');
     }
   }, [open]);
   // #309:选中项目上报(live tags 查询键)+ 换项目清选中(标签属项目,
@@ -208,6 +229,14 @@ export function NewTaskDialog({
 
   const save = () => onSave(title.trim(), selected?.id, selectedTagIds, spec);
 
+  // #318 放弃并关闭:清表单 + 关 dialog(父收 open,重置 effect 兜底同律)
+  const discardAndClose = () => {
+    setDiscardOpen(false);
+    setTitle('');
+    setSpec('');
+    onClose();
+  };
+
   // Mention insert: route through insertMentionText so the picker
   // and the inline @ listbox share the spacing + caret rules.
   const insertToken = (token: MentionToken) => {
@@ -239,14 +268,10 @@ export function NewTaskDialog({
         className="overlay-backdrop anim-fade"
         aria-label={t('关闭')}
         onClick={() => {
-          // #176 外点内层优先:the dialog's transform: translate(-50%,-50%)
-          // shrinks the fixed ClickCatcher's containing block to the panel
-          // itself, so clicks outside the panel land here directly — while
-          // the project popover is open they must peel the inner layer
-          // only (same inner-first law as the Esc split above). The tag
-          // panel needs no branch: it portals to body with its own
-          // viewport-wide backdrop (#309), so outside clicks never reach
-          // this surface while it is open.
+          // 外点内层优先:panel 的 transform 收 fixed ClickCatcher 容器,
+          // 外点直达此 backdrop。discardOpen 由确认层自己的 ClickCatcher
+          // 接管(z29 压 dialog z21,外点只收确认层),这里处理 picker /
+          // project popover 的内层先关;剩余走 dirty 闸 / 直接关。
           if (projectOpen) {
             setProjectOpen(false);
             return;
@@ -255,7 +280,7 @@ export function NewTaskDialog({
             setPickerOpen(false);
             return;
           }
-          onClose();
+          requestClose();
         }}
       />
       <div
@@ -311,12 +336,13 @@ export function NewTaskDialog({
           </span>
           <div className="new-task-title-label">{t('新建任务')}</div>
           {/* A4-deep 收编：icon 变体皮肤；28×28 + margin-left:auto 几何
-              per-face 留 overlay.css */}
+              per-face 留 overlay.css。#318 未保存闸:dialog 关闭走
+              requestClose(dirty 时先弹确认层)。 */}
           <Button
             variant="icon"
             className="new-task-close"
             aria-label={t('关闭')}
-            onClick={onClose}
+            onClick={requestClose}
           >
             <X />
           </Button>
@@ -392,6 +418,7 @@ export function NewTaskDialog({
                 onClick={() => {
                   if (onSaveAndStart)
                     onSaveAndStart(title.trim(), selected?.id, selectedTagIds, spec);
+
                   else save();
                 }}
               >
@@ -470,6 +497,37 @@ export function NewTaskDialog({
       )}
       {/* #311 mention picker(non-portal,sibling to tag panel).
           Both layers are siblings — Esc/backdrop ordering handled above. */}
+      {/* #318 未保存闸确认层(r9 §3.4 copy 逐字):独立层不入 dialog 面板
+          ——面板 transform 会吞 fixed 定位(#176 注记同坑);ClickCatcher
+          z29 压 dialog z21,外点 = 只收确认层(继续编辑语义),面板 z31 居顶。 */}
+      <OverlayMount open={discardOpen}>
+        <ClickCatcher onClose={() => setDiscardOpen(false)} />
+        <div
+          className="new-task-discard anim-fade"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label={t('放弃新建任务？未保存的内容将丢失。')}
+        >
+          <div className="new-task-discard-title">{t('放弃新建任务？未保存的内容将丢失。')}</div>
+          <div className="new-task-discard-actions">
+            <button
+              type="button"
+              className="new-task-discard-keep"
+              onClick={() => setDiscardOpen(false)}
+            >
+              {t('继续编辑')}
+            </button>
+            <Button
+              variant="danger"
+              size="standard"
+              className="new-task-discard-drop"
+              onClick={discardAndClose}
+            >
+              {t('放弃并关闭')}
+            </Button>
+          </div>
+        </div>
+      </OverlayMount>
       <MentionPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}

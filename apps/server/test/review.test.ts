@@ -1,19 +1,28 @@
-// AI 审核发起写面（M7 #312，r8 §3.1）：POST /api/builds/{id}/steps
-// {action:"review", agentId, focus?} = 入队审核步（kind:review）+ 时间线插
-// REVIEW_ANNOUNCEMENT + 接受机 agent 上下文 + phase 留 confirm/review。
+// AI 审核发起 + 收尾写面（M7 #312 + #330，r8 §3.1）：
+// POST /api/builds/{id}/steps {action:"review", agentId, focus?} = 入队审核步
+// （kind:review）+ 时间线插 REVIEW_ANNOUNCEMENT + phase 留 confirm/review。
+// 收尾（#330，r8 §3.1 真 findings 上线）：done(success, findings) → emit
+// REVIEW_VERDICT_KIND 消息（conclusion + 编号 findings）+ 若 blocking → phase
+// 转 planning + enqueue plan 重规划步（自动修订回路，r8 §3.1 实测 62）。
 // 失败方式枚举先于实现固化（AGENTS.md 测试规则 3）：
 //   1. confirm/review 之外相位 → 409 不静默（沿用 chief 门规则）
 //   2. 缺 agentId → 400 (zod body schema)；空 focus 允许（可选）
 //   3. happy path：审核步 kind:review + REVIEW_ANNOUNCEMENT message +
-//      phase 不变
-//   4. 终态闭环：claim + done(success) review 步 → REVIEW_COMPLETE_PLACEHOLDER
-//      message 落地（步完成占位，#326 真 findings 上线前占位）
+//      phase 不变 + prompt 含 JSON meta header（agentId 透出 claim 载荷）
+//   4. claim review 步载荷 agent = 模态选定的 reviewer（不是 assignment.build 槽）
+//   5. 终态闭环（无 blocking）：done(success, 空 verdict) → REVIEW_VERDICT_KIND
+//      message 落地 + phase 不动
+//   6. 终态闭环（blocking）：done(success, 含 blocking verdict) → REVIEW_VERDICT_KIND
+//      消息 + phase 转 planning + 重规划步入队 + 新 plan prompt 注入 blocking 事实
+//   7. 终态闭环（daemon 未传 findings）→ verdict 兜底 message 落地 + 不触发修订
 
 import {
   claimedStepSchema,
   MERGE_ANNOUNCEMENT,
+  parseReviewPromptMeta,
   REVIEW_ANNOUNCEMENT,
-  REVIEW_COMPLETE_PLACEHOLDER,
+  REVIEW_VERDICT_KIND,
+  reviewVerdictSchema,
 } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import type { Hono } from 'hono';
@@ -262,8 +271,13 @@ describe('AI 审核发起写面（M7 #312）', () => {
     expect(reviewStep).toBeDefined();
     expect(reviewStep?.status).toBe('pending');
     // step 表无 agentId 列（review 步的 agentId 经 prompt 透出 + claim 载荷传
-    // 机器；DB 不冗余）。本测试只钉审核步 kind/status + prompt 携带用户关注点。
-    expect(reviewStep?.prompt ?? '').toContain('用户关注点：关注边界情况');
+    // 机器；DB 不冗余）。本测试钉 prompt meta header（kind=review + agentId
+    // 经 shared parseReviewPromptMeta 解析可得）+ 用户关注点注入。
+    const meta = parseReviewPromptMeta(reviewStep?.prompt ?? null);
+    expect(meta).not.toBeNull();
+    expect(meta?.kind).toBe('review');
+    expect(meta?.agentId).toBe(REVIEW_AGENT_ID);
+    expect(reviewStep?.prompt ?? '').toContain('关注边界情况');
 
     // 时间线插 REVIEW_ANNOUNCEMENT（r8 §3.1 双端单源）
     const messages = w.messagesOf(buildId);
@@ -277,6 +291,31 @@ describe('AI 审核发起写面（M7 #312）', () => {
     // build 表无 hasChanges 列（hasChanges 是 todo 表字段，02 §4.2）；用 todo
     // 表 hasChanges 钉「审核不计入用户变更」语义。
     expect(w.todoRow().hasChanges).toBe(false);
+  });
+
+  test('happy path：claim review 步 → claim 载荷 agent = 模态选定的 reviewer（不经 assignment 槽）', async () => {
+    const buildId = await w.startBuild(true);
+    const planClaimed = await w.claim();
+    await w.uploadPlan(planClaimed.stepId, '# plan v1');
+    await w.done(planClaimed.stepId, { status: 'success' });
+    expect(w.todoRow().phase).toBe('confirm');
+
+    // 启动审核：模态选 reviewer（≠ assignment.build 的 AGENT_ID）
+    const startRes = await w.startReview(buildId, { agentId: REVIEW_AGENT_ID });
+    expect(startRes.status).toBe(202);
+
+    // 机器 claim 该审核步 → claim 响应载荷 agent.id = 模态选定的 reviewer
+    // （不是 assignment.build 的 builder；这是 #330 review 步的特殊路径：
+    // agentId 经 prompt meta header 透出，不走 assignment 槽）。
+    const claimRes = await call(w.s.app, 'POST', '/api/machine/tasks/claim', {
+      cred: w.machineToken,
+      body: {},
+    });
+    const claimBody = (await claimRes.json()) as { step: unknown };
+    const parsed = claimedStepSchema.parse(claimBody.step);
+    expect(parsed.step.kind).toBe('review');
+    expect(parsed.agent?.id).toBe(REVIEW_AGENT_ID);
+    expect(parsed.agent?.id).not.toBe(AGENT_ID);
   });
 
   test('happy path：空 focus 允许（可选 textarea 可空）', async () => {
@@ -309,7 +348,7 @@ describe('AI 审核发起写面（M7 #312）', () => {
     expect(w.stepsOf(buildId).filter((s) => s.kind === 'review')).toHaveLength(1);
   });
 
-  test('终态闭环：review 步 done(success) → REVIEW_COMPLETE_PLACEHOLDER 消息落地 + phase 不动', async () => {
+  test('终态闭环（无 blocking）：review 步 done(success, 空 verdict) → REVIEW_VERDICT_KIND 消息落地 + phase 不动', async () => {
     const buildId = await w.startBuild(true);
     const planClaimed = await w.claim();
     await w.uploadPlan(planClaimed.stepId, '# plan v1');
@@ -318,23 +357,165 @@ describe('AI 审核发起写面（M7 #312）', () => {
     await w.startReview(buildId, { agentId: REVIEW_AGENT_ID });
     expect(w.todoRow().phase).toBe('confirm');
 
-    // claim review 步 → done(success)
+    // claim review 步 → done(success, 通过 verdict)
     const reviewClaimed = await w.claim();
     expect(reviewClaimed.kind).toBe('review');
     expect(reviewClaimed.stepId).not.toBe('');
-    await w.done(reviewClaimed.stepId, { status: 'success' });
+    await w.done(reviewClaimed.stepId, {
+      status: 'success',
+      findings: { conclusion: '方案通过，无 blocking 风险', findings: [] },
+    });
 
+    // emit REVIEW_VERDICT_KIND 消息行（system role + JSON content）
     const messages = w.messagesOf(buildId);
-    const placeholder = messages.find(
-      (m) => m.role === 'system' && m.content === REVIEW_COMPLETE_PLACEHOLDER,
+    const verdictRow = messages.find(
+      (m) =>
+        m.role === 'system' &&
+        typeof m.content === 'string' &&
+        (() => {
+          try {
+            const parsed = JSON.parse(m.content) as { kind?: string };
+            return parsed.kind === REVIEW_VERDICT_KIND;
+          } catch {
+            return false;
+          }
+        })(),
     );
-    expect(placeholder).toBeDefined();
-    // phase 仍 confirm（review 步完成 → 占位 ack；主时序在用户手动 confirm 后才推进）
+    expect(verdictRow).toBeDefined();
+    const parsedVerdict = reviewVerdictSchema.parse(
+      JSON.parse((verdictRow as { content: string }).content).verdict,
+    );
+    expect(parsedVerdict.conclusion).toBe('方案通过，无 blocking 风险');
+    expect(parsedVerdict.findings).toHaveLength(0);
+
+    // phase 仍 confirm（无 blocking = 不触发自动修订；主时序在用户手动 confirm 后才推进）
     expect(w.todoRow().phase).toBe('confirm');
     // 审核步状态落 done（step status enum = pending|claimed|done|failed|stopped）
     const reviewStep = w.stepsOf(buildId).find((s) => s.kind === 'review');
     expect(reviewStep?.status).toBe('done');
     // 跟 merge_announcement 路径无交叉（不是合并）
     expect(messages.some((m) => m.content === MERGE_ANNOUNCEMENT)).toBe(false);
+    // 无新增 plan 步（无修订）
+    expect(w.stepsOf(buildId).filter((s) => s.kind === 'plan')).toHaveLength(1);
+  });
+
+  test('终态闭环（blocking）：review 步 done(success, 含 blocking verdict) → REVIEW_VERDICT_KIND 消息 + phase 转 planning + 重规划步入队', async () => {
+    const buildId = await w.startBuild(true);
+    const planClaimed = await w.claim();
+    await w.uploadPlan(planClaimed.stepId, '# plan v1');
+    await w.done(planClaimed.stepId, { status: 'success' });
+    expect(w.todoRow().phase).toBe('confirm');
+    await w.startReview(buildId, { agentId: REVIEW_AGENT_ID });
+    expect(w.todoRow().phase).toBe('confirm');
+
+    // claim review 步 → done(success, blocking verdict)
+    const reviewClaimed = await w.claim();
+    expect(reviewClaimed.kind).toBe('review');
+    await w.done(reviewClaimed.stepId, {
+      status: 'success',
+      findings: {
+        conclusion: '方案在边界情况上存在硬风险',
+        findings: [
+          {
+            id: '1',
+            severity: 'blocking',
+            summary: '未处理空输入',
+            description: 'parseInput 对空字符串未做防御',
+            file: 'src/parse.ts',
+            line: 42,
+            suggestion: '加入空字符串 early return',
+          },
+          {
+            id: '2',
+            severity: 'suggestion',
+            summary: '可选：日志格式',
+          },
+        ],
+      },
+    });
+
+    // emit REVIEW_VERDICT_KIND 消息行（含 blocking findings）
+    const messages = w.messagesOf(buildId);
+    const verdictRow = messages.find(
+      (m) =>
+        m.role === 'system' &&
+        typeof m.content === 'string' &&
+        (() => {
+          try {
+            const parsed = JSON.parse(m.content) as { kind?: string };
+            return parsed.kind === REVIEW_VERDICT_KIND;
+          } catch {
+            return false;
+          }
+        })(),
+    );
+    expect(verdictRow).toBeDefined();
+    const parsedVerdict = reviewVerdictSchema.parse(
+      JSON.parse((verdictRow as { content: string }).content).verdict,
+    );
+    expect(parsedVerdict.findings.some((f) => f.severity === 'blocking')).toBe(true);
+
+    // phase 转 planning（review → planning = 自动修订回路扩展，r8 §3.1 实测 62）
+    expect(w.todoRow().phase).toBe('planning');
+    // 新 plan 步入队（原 plan v1 + 新 auto-revise plan v2）
+    const planSteps = w.stepsOf(buildId).filter((s) => s.kind === 'plan');
+    expect(planSteps).toHaveLength(2);
+    const revisePrompt = planSteps[1]?.prompt ?? '';
+    expect(revisePrompt).toContain('审核结论');
+    expect(revisePrompt).toContain('Blocking findings');
+    expect(revisePrompt).toContain('未处理空输入');
+    expect(revisePrompt).toContain('src/parse.ts:42');
+    // 审核步状态落 done
+    const reviewStep = w.stepsOf(buildId).find((s) => s.kind === 'review');
+    expect(reviewStep?.status).toBe('done');
+
+    // 调整摘要行落地：时间线 dim note「AI 审核检测到 N 处 blocking 风险…」
+    // 给用户解释「为什么又来一个 plan 步」。1 条 blocking = 「1 处」。
+    const reviseNote = messages.find(
+      (m) =>
+        m.role === 'system' &&
+        typeof m.content === 'string' &&
+        !m.content.startsWith('{') &&
+        m.content.includes('AI 审核检测到'),
+    );
+    expect(reviseNote?.content).toContain('1 处 blocking 风险');
+    expect(reviseNote?.content).toContain('已自动入队重规划步');
+  });
+
+  test('终态闭环（daemon 未传 findings）：verdict 兜底消息落地 + 不触发修订', async () => {
+    const buildId = await w.startBuild(true);
+    const planClaimed = await w.claim();
+    await w.uploadPlan(planClaimed.stepId, '# plan v1');
+    await w.done(planClaimed.stepId, { status: 'success' });
+    await w.startReview(buildId, { agentId: REVIEW_AGENT_ID });
+
+    // daemon 未解析/未传 findings（agent 未按契约输出 JSON）
+    const reviewClaimed = await w.claim();
+    await w.done(reviewClaimed.stepId, { status: 'success' });
+
+    const messages = w.messagesOf(buildId);
+    const verdictRow = messages.find(
+      (m) =>
+        m.role === 'system' &&
+        typeof m.content === 'string' &&
+        (() => {
+          try {
+            const parsed = JSON.parse(m.content) as { kind?: string };
+            return parsed.kind === REVIEW_VERDICT_KIND;
+          } catch {
+            return false;
+          }
+        })(),
+    );
+    expect(verdictRow).toBeDefined();
+    const parsedVerdict = reviewVerdictSchema.parse(
+      JSON.parse((verdictRow as { content: string }).content).verdict,
+    );
+    expect(parsedVerdict.conclusion).toBe('审核未返回结论');
+    expect(parsedVerdict.findings).toHaveLength(0);
+    // phase 留 confirm（兜底空 verdict 不触发修订）
+    expect(w.todoRow().phase).toBe('confirm');
+    // 不入队新 plan 步
+    expect(w.stepsOf(buildId).filter((s) => s.kind === 'plan')).toHaveLength(1);
   });
 });

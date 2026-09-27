@@ -24,7 +24,10 @@ export const PHASE_TRANSITIONS: Readonly<Record<Phase, readonly Phase[]>> = {
   building: ['review', 'failed'],
   // 完成+合并落地→done（02 §4.2：merge 202 delegated → 机器合并步 → done）；
   // 定时轮顶替→queued（r5 §8）。
-  review: ['done', 'failed', 'queued'],
+  // M7 #330：review → planning = blocking finding 自动修订回路（agent 落
+  // verdict → emit review_verdict 消息 → enqueue plan 重规划步 → 回待确认；
+  // 同 conv continue session；r8 §3.1 实测 62）。
+  review: ['done', 'failed', 'queued', 'planning'],
   // 定时重跑→queued（r3 §9 实测：done todo 到点全新重跑回到执行中→待验收）；
   // 其余出边（reopen 类）未观测 [推断]。
   done: ['queued'],
