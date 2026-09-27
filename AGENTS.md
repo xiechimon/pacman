@@ -36,6 +36,7 @@ pnpm typecheck  # pnpm -r typecheck
 - **禁止写完实现再补 unit test**——要测就先于实现。
 - **E2E 为主**：复杂功能用真 e2e 验证能跑通；开发期只跑与本次改动相关的几条；**禁止一次跑全套 e2e**（`apps/web` e2e 完整跑要 1h+）——收尾/PR 时再执行。
 - **先列失败方式，再写实现**：动某块系统前，先枚举它可能失败的所有场景，写代码是让场景通过的手段。
+- **e2e spec 文件合并/解冲突后必跑 `npx playwright test <spec> --list` 验解析**（M7 实战：typecheck 不覆盖 spec 语法，手工解冲突吞 `});` 到 EOF 才炸——typecheck 绿≠playwright 能解析）。
 
 跑验证服务（port 与 dist/ 互斥）：
 - `dev:web` / `dev:server` / `dev:daemon` ——dev server。
@@ -58,12 +59,14 @@ pnpm typecheck  # pnpm -r typecheck
 Commit 约定：
 - 格式：`<scope>(<ticket>): <subject>` 或 `web(<PR>): <subject>`——scope 跟现有节奏（`web` / `daemon` / `server` / `shared` / `integration` / `docs` / `chore` 等）；subject 短、要点。
 - PR 编号或 issue 编号挂末尾：`(#123)` PR 号；问题描述里出现 `closes #N` 关 issue。多 issue 用 `closes #N1, closes #N2`（不能合并写）。
-- **只 commit 自己改过的文件**。`git add <path1> <path2>` 显式路径，**禁 `git add -A` / `git add .`**——同 cwd 可能多个 lane 并行（agent / 人类）。
+- **只 commit 自己改过的文件**。`git add <path1> <path2>` 显式路径，**禁 `git add -A` / `git add .`**——同 cwd 可能多个 lane 并行（agent / 人类）。例外：merge 落盘（解决冲突后的 merge commit）语义上是全量 stage，允许 `git commit --no-edit` 完成 merge 而不再 add（merge 状态自带 index）；手工模拟 merge 落普通 commit 不在此例。
 - 永远别 `git commit --no-verify`。
 
 Worktree（pacman 是多 lane 设计，所以特别强调）：
 - **建 worktree 必须绝对路径**。`git worktree add /Users/xmon/Code/AgentProjects/pacman/.claude/worktrees/<name>`。相对路径 + cwd 漂移（heredoc / cd 改变 cwd 后）会把 worktree 嵌进 `apps/web/src/.claude/worktrees/`，vite watcher 撞上去触发 reload 风暴拖死 dev server。
 - 切 lane 时从 `origin/main` 切（本地 main 常落后）；PR 合并顺序撞上，GitHub 报 CLEAN 才合，冲突 rebase 重验。
+- **半场交接必 commit**（M7 实战踩坑）：同一 worktree 换施工者（主线↔lane 或 lane↔lane）前，把手头改动 commit 落盘——未 commit 的解法会被下一手的 merge --abort / merge 尝试现场覆盖，对象不可恢复（05 册 M7 合并期 #309 位实测丢失一轮 drizzle 解法）。
+- **drizzle migration 撞号纪律**：并发票都加表时序号必撞。序号永远以**合并时点** main 的尾部为准，lane 施工期不占固定号（票面不写死序号），合并期冲突时重编到 main 尾部+1。
 
 Git 拦截（autoresearch / pre-commit 共识）：
 - `git reset --hard` / `git checkout .` / `git clean -fd` / `git stash` ——**别跑**，会砸 lane 同事的活。
