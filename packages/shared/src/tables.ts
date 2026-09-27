@@ -14,6 +14,7 @@ export const DB_TABLES = [
   'build', // buildId ≡ conversationId（CONTEXT.md/r3 §3.0）
   'step', // 三类步队列 + journal 状态（02 §4.2/A6）
   'steer_pending', // W3 #278：build 会话运行中补话单槽（06 册 D9，自有功能）
+  'stop_pending', // M7 #308：停止钮中断请求单槽（steer_pending 同形，自有功能）
   'message', // transcript 消息/工具行，经 upload-urls 回传落库（02 §1.3）
   'plan', // build facet：版本 v1/v2 + 四段卡（02 §4.2）
   'document_diff', // `documents/{id}/diff` 端点源（02 §4.2）
@@ -45,5 +46,7 @@ export const JOIN_ONLY_TABLES = ['todo_tag'] as const;
  * steerPending 数组（spec #277），无独立 record。M7 #319：branch_sync
  * 读位 = `GET /api/builds/{id}/branch-sync` 端点封套与 team stream
  * `branch_sync` 事件载荷（web 实时结果卡数据面），不另开 record projection
- * ——投影在 server 端组装，wire 形状见 protocol/sse.ts branchSyncEvent。 */
-export const INTERNAL_ONLY_TABLES = ['steer_pending', 'branch_sync'] as const;
+ * ——投影在 server 端组装，wire 形状见 protocol/sse.ts branchSyncEvent。
+ * M7 #308：stop_pending 读位 = GET /api/machine/stop 拉取响应（{discard}），
+ * 无独立 record。 */
+export const INTERNAL_ONLY_TABLES = ['steer_pending', 'branch_sync', 'stop_pending'] as const;

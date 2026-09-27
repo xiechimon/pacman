@@ -312,17 +312,15 @@ function SyncButton({
   );
 }
 
-/** 结果卡：初始 GET 拉一次 + team stream `branch_sync` 事件失效重取。四个状态
- * （pending 等待中 / running 正在同步… / synced 已同步 / failed 同步失败 + 错误
- * 文本）由 record.status 驱动；无 record = 不渲染卡（M7 #319 设计：未发起过
- * 同步 = 静默，避免空态噪声）。 */
+/** 结果卡：初始 GET + team stream `branch_sync` 事件失效重取。
+ * record.status 四态（pending / running / synced / failed）；无 record = 不渲染卡。 */
 function ResultCard({ buildId, t }: { buildId: string; t: (k: string) => string }) {
   const syncQ = useQuery({
     queryKey: ['branchSync', buildId],
     queryFn: () => api.get<BranchSyncRecord | null>(`/api/builds/${buildId}/branch-sync`),
   });
-  // team stream 事件由 useTeamStream 在 LiveDataBridge 根层订阅 → invalidate
-  // `['branchSync', buildId]`（api/sse.ts 处补 case）。本卡只读缓存。
+  // team stream branch_sync events are subscribed at LiveDataBridge root level
+  // (api/sse.ts); this card only reads the cache.
   const live: BranchSyncRecord | null = syncQ.data ?? null;
   if (!live) return null;
   return <ResultCardBody record={live} t={t} />;
