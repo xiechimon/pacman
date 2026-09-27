@@ -48,7 +48,11 @@ export type StepJournalRow = z.infer<typeof stepJournalRowSchema>;
  * 确认 = 同端点 {action:"confirm"}。
  * 审核 = {action:"review", agentId, focus?}（M7 #312 / r8 §3.1）：server 入队
  * 审核步（kind='review'）→ 审核中 chip + composer placeholder + 时间线发起
- * 行（REVIEW_ANNOUNCEMENT）；focus 可空（textarea 透传「关注什么」）。 */
+ * 行（REVIEW_ANNOUNCEMENT）；focus 可空（textarea 透传「关注什么」）。
+ * 失败面发送 = {action:"restart", feedback, clientMessageId}（#320，
+ * r9 §3.3 实测：原站 failed 态发消息触发新一轮，消息随新轮入会话；实走
+ * steps 端点 body 未录——action 词与形 [设计]，语义 = 带反馈重启）。 */
+
 export const buildStepActionBodySchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('revision'),
@@ -65,6 +69,12 @@ export const buildStepActionBodySchema = z.discriminatedUnion('action', [
     agentId: z.string(),
     /** 可选关注点 textarea 内容；空串视为未填。 */
     focus: z.string().optional(),
+  }),
+  z.object({
+    action: z.literal('restart'),
+    /** 空消息不成发送（原站语义「发消息触发」）：直连 API 也收不住空稿。 */
+    feedback: z.string().min(1),
+    clientMessageId: z.string(), // <uuid>（revision 同形，r5 §4；server 侧现未消费）
   }),
 ]);
 export type BuildStepActionBody = z.infer<typeof buildStepActionBodySchema>;
