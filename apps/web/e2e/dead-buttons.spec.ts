@@ -20,6 +20,13 @@ import { expect, type Page, test } from '@playwright/test';
 //    新建任务对话框工具条两处语音钮移除不留死钮（#146 chief 面同律）；
 //    与 #146 的差异 = 本票只除语音，添加附件/提及两工具原样保留。
 
+// 9. #307 档 4 外链型四件 wontfix 出账（spec 08 二分律）：api-keys 空态
+//    「查看文档」钮（#149 schedules 同律——local-first 无文档站）、
+//    resources 共享空态「查看文档」链接（skills/secrets/mcp 随 EmptyState
+//    一并出账）、create-agent-dialog 与 project-settings 的头像「更换」
+//    ink（静态资产无上传面——档 4 二分律下本项 #148/#177 占位 chrome
+//    裁决改判移除；account-swap 同款归档 3，不在本票）。
+//    四处不再渲染，存活面（新建密钥/空态主钮/头像资产/分支 chip）钉住。
 // 10. chief 抽屉「更多」（⋮）— #306 wontfix 出账：原站菜单内容未点开无正典
 //    （r8-chief-panel-adhoc §3），server chief 面无线程管理 mutation——注记
 //    在 chief-drawer.tsx 头部；线程视图头部回到四钮（与新线程视图同律）。
@@ -36,6 +43,7 @@ import { expect, type Page, test } from '@playwright/test';
 //    翻 ›），收起态 footer 行钮再点复原（r7 27↔28 双态互达）。
 // 15. doc-pane 型选行 — #306 校准：r5b §3.7 文档类型选择器——行点击 = 选中
 //    当前类型并关（lang-dropdown 同律），不再是无行为的 ✓ 行。
+
 // 第 5 项（skills 添加技能主钮）由 #153 覆盖，本 spec 不断言。
 
 /** 面板中心点的命中必须由面板自身持有 — title-band-clicks 同款家族法。 */
@@ -201,6 +209,48 @@ test('new-task dialog tools drop the 语音输入 button, keep two live tools', 
   await expect(tools.locator('button[aria-label="添加附件"]')).toBeVisible();
   await expect(tools.locator('button[aria-label="提及"]')).toBeVisible();
 
+// —— 9. #307 档 4 外链型 wontfix 出账 ————————————————————————————
+
+test('api-keys empty state drops the 查看文档 button, keeps 新建密钥 (#307)', async ({ page }) => {
+  await page.goto('/app/api-keys');
+  await expect(page.locator('.keys-empty')).toBeVisible();
+  await expect(page.locator('.keys-docs')).toHaveCount(0);
+  await expect(page.locator('.keys-create')).toBeVisible();
+});
+
+test('resources empty state drops the 查看文档 link, keeps the primary action (#307)', async ({
+  page,
+}) => {
+  await page.goto('/app/resources/skills?scenario=01');
+  await expect(page.locator('.res-empty')).toBeVisible();
+  // 共享 EmptyState 件:skills/secrets/mcp 三面空态的文档链接一并出账
+  // (skills + secrets 双面钉,防单面局部复活漏网;mcp 同件随行)
+  await expect(page.locator('.res-doclink')).toHaveCount(0);
+  await expect(page.locator('.res-empty .res-primary')).toBeVisible();
+  await page.goto('/app/resources/secrets?scenario=01');
+  await expect(page.locator('.res-empty')).toBeVisible();
+  await expect(page.locator('.res-doclink')).toHaveCount(0);
+});
+
+test('create-agent dialog drops the avatar 更换 ink (#307)', async ({ page }) => {
+  await page.goto('/app/team?scenario=12');
+  await page.locator('.team-create-agent').click();
+  const dialog = page.locator('.dlg');
+  await expect(dialog).toBeVisible();
+  await expect(dialog.locator('.dlg-agent-swap')).toHaveCount(0);
+  // 头像行仍在（静态机器人资产），名称输入与创建主钮不受影响
+  await expect(dialog.locator('.dlg-agent-avatar img')).toBeVisible();
+  await expect(dialog.locator('#dlg-agent-name')).toBeVisible();
+});
+
+test('project settings drops the avatar 更换 ink (#307, supersedes the #177 chrome verdict)', async ({
+  page,
+}) => {
+  await page.goto('/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings?scenario=r2-24c');
+  await expect(page.locator('.prj-set-change')).toHaveCount(0);
+  // 头像圆标仍在；#177 存续裁决（分支 chip 静态化）不受影响
+  await expect(page.locator('.prj-set-avatar')).toBeVisible();
+  await expect(page.locator('span.prj-set-branch')).toBeVisible();
 // —— 10. chief 抽屉「更多」钮（#306 wontfix 出账）———————————————————————
 
 test('chief drawer drops the ⋮ 更多 button — thread view keeps four head actions (#306)', async ({
@@ -306,4 +356,5 @@ test('transcript tool group: 收起 collapses, the footer row re-expands (#306)'
   await footer.click();
   await expect(page.locator('.chat-tool-pill')).toHaveCount(2);
   await expect(collapse).toBeVisible();
+
 });

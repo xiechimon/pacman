@@ -184,7 +184,6 @@ export const EN: Record<string, string> = {
   '尚无定时。': 'No schedules yet.',
   '按周期或在指定时间自动重新运行任务。每一轮都会依据任务描述从头开始一次全新运行，到达确认或审核关口时暂停，交由负责人接手。':
     'Automatically rerun a task on a cycle or at a chosen time. Every round starts a fresh run from the task description, pausing at the confirm or review gate for the owner to pick up.',
-  查看文档: 'View docs',
   '也可以直接告诉总管某个任务要多久重跑一次，它会替你写好规则。':
     'You can also just tell the Chief how often a task should rerun, and it will write the rule for you.',
 
@@ -536,4 +535,14 @@ export const EN: Record<string, string> = {
   '授权链接已失效，请在执行机上重新发起。':
     'This authorization link has expired — restart enrollment on the executor machine.',
   '浏览器授权注册 →': 'Browser authorization →',
+
+  // —— mention picker (issue #311, r9 §2.2/§3.2) ——
+  // Top layer 5 category rows + drill-in search + footer Insert (N) count.
+  // 与侧边栏/搜索面板的「任务/技能/Agents/项目/机器」键一致,只追加弹层
+  // 本地需要的 6 个键(搜索/空集/返回/插入 (n)/两个 empty 分支)。
+  '搜索…': 'Search…',
+  没有可引用的对象: 'Nothing to mention',
+  '没有与"{query}"匹配的结果': 'No results matching “{query}”',
+  '插入 ({count})': 'Insert ({count})',
+  '没有可用的 Agent': 'No Agents available',
 };
