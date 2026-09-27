@@ -341,15 +341,6 @@
   display: block;
 }
 
-.account-avatar-actions {
-  display: flex;
-  margin-top: 10px; /* 更换 band y151..161 (r7 13); the 删除 twin is SaaS
-    surface removed by #148, so the lone 更换 centers on the column */
-}
-
-/* account-swap a3-pages 收编进 Button text 档（indigo 13px 无框逐值同形，
-   e2e 钉 .account-swap 文本断言的类名保留）。 */
-
 .account-row {
   display: flex;
   align-items: center;
