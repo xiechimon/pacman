@@ -559,4 +559,3 @@ export const EN: Record<string, string> = {
   '插入 ({count})': 'Insert ({count})',
   '没有可用的 Agent': 'No Agents available',
 };
-};

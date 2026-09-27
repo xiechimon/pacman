@@ -86,8 +86,9 @@ export function Composer({
   const [internalDraft, setInternalDraft] = useState('');
   const controlled = draftProp !== undefined && onDraftChange !== undefined;
   const draft = controlled ? (draftProp as string) : internalDraft;
-  const setDraft = controlled
-    ? (next: string) => (onDraftChange as (s: string) => void)(next)
+  const setDraft: React.Dispatch<React.SetStateAction<string>> = controlled
+    ? (next) =>
+        (onDraftChange as (s: string) => void)(typeof next === 'function' ? next(draft) : next)
     : setInternalDraft;
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attaching, setAttaching] = useState(false);

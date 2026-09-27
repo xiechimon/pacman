@@ -111,8 +111,9 @@ export function NewTaskDialog({
   const [internalSpec, setInternalSpec] = useState('');
   const specControlled = specProp !== undefined && onSpecChange !== undefined;
   const spec = specControlled ? (specProp as string) : internalSpec;
-  const setSpec = specControlled
-    ? (next: string) => (onSpecChange as (s: string) => void)(next)
+  const setSpec: React.Dispatch<React.SetStateAction<string>> = specControlled
+    ? (next) =>
+        (onSpecChange as (s: string) => void)(typeof next === 'function' ? next(spec) : next)
     : setInternalSpec;
   // #176 选择器 state:popover 开态 + 选中行。null = 未动,展示/提交取
   // 首行;live 空项目集时 selected 退 undefined(chip 走 canon 名)。
@@ -137,10 +138,7 @@ export function NewTaskDialog({
     else onClose();
   };
   // Esc 分层:popover 层开时 Esc 只关 popover(dialog 的 Esc 关闸退后一层)
-  useEscClose(
-    attemptClose,
-    open && !projectOpen && !confirmOpen && !pickerOpen,
-  );
+  useEscClose(attemptClose, open && !projectOpen && !confirmOpen && !pickerOpen);
   useEscapeClose(projectOpen, () => setProjectOpen(false));
   useEscapeClose(confirmOpen, () => setConfirmOpen(false));
   useEscapeClose(pickerOpen, () => setPickerOpen(false));
