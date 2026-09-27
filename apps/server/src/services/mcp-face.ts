@@ -221,11 +221,19 @@ export async function executeMcpTool(
     }
     case 'schedules':
       return json(listSchedules({ db, hub: deps.hub }, ctx.teamId));
-    case 'attachment':
-      return json({
-        attachmentId: str(args, 'attachmentId'),
-        note: 'attachment store not wired [推断]',
-      });
+    case 'attachment': {
+      // #310 / r9 §3.1：同 chief-tools 路径（MCP 工具面 = 词表 + 执行同源，
+      // 服务层复用避免双修）。
+      const attachmentId = str(args, 'attachmentId');
+      const { readAttachmentMeta } = await import('./attachments.js');
+      return json(
+        readAttachmentMeta(
+          { db: deps.db, attachmentsDir: deps.attachmentsDir },
+          ctx.teamId,
+          attachmentId,
+        ),
+      );
+    }
     case 'skills': {
       const rows = db.select().from(skill).where(eq(skill.teamId, ctx.teamId)).all();
       return json(rows.map((k) => ({ id: k.id, name: k.name, description: k.description })));

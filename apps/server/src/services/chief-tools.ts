@@ -53,6 +53,8 @@ export interface ChiefToolDeps {
    * 回合自带只读探索的宿主等价物；A4 黑盒逼近——官方走 worktree `git show`，
    * 复刻走 server 端裸库读，能力对齐、机制不同，标 [设计]）。 */
   reposDir: string;
+  /** 附件存储根（#310，r9 §4）；chief attachment 工具读面。 */
+  attachmentsDir: string;
 }
 
 /** 单次 relay 调用的溯源上下文（step → chief thread 解析，services/machines.ts
@@ -250,10 +252,12 @@ export async function executeChiefTool(
       return json({ items: [], note: 'GitHub-backed only' });
     }
     case 'attachment': {
-      return json({
-        attachmentId: str(params, 'attachmentId'),
-        note: 'attachment store not wired [推断]',
-      });
+      // #310 / r9 §3.1：工具返回 {fileName, mimeType, sizeBytes, encoding,
+      // content}；text/* → utf8；其他 → base64。attach 实体查 attachments 服
+      // 务，团队归属同关。
+      const attachmentId = str(params, 'attachmentId');
+      const { readAttachmentMeta } = await import('./attachments.js');
+      return json(readAttachmentMeta(deps, ctx.teamId, attachmentId));
     }
     case 'conversation': {
       const conversationId = str(params, 'conversationId');
@@ -772,10 +776,15 @@ export interface WorkerMemoryCtx {
   projectId: string;
   /** buildId ≡ conversationId（CONTEXT.md）= sourceBuildId 溯源位（r5 §6）。 */
   buildId: string;
+  /** 附件读取路径（#310/r9 §3.1 worker 面 attachment 工具执行需要）。 */
+  attachmentsDir: string;
 }
 
-/** worker 步 relay 白名单 = 记忆三件套（MEMORY_TOOLS 单源）；词表外 = 400
- * （chief 49 词表不外溢到 worker 步——组织/执行面是 Chief 专属，r5 §3.1）。 */
+/** worker 步 relay 白名单 = 记忆三件套 + 附件读（WORKER_REMOTE_TOOLS 单源；
+ * 词表外 = 400）。chief 49 词表不外溢到 worker 步——组织/执行面是 Chief 专属
+ * （r5 §3.1）。attachment：服务层单源 = attachments.readAttachmentMeta，团队
+ * 归属同关，utf8/base64 编码同 chief 路径（chief-tools/mcp-face case 'attachment'
+ * 三源同形）。 */
 export async function executeWorkerMemoryTool(
   db: Db,
   ctx: WorkerMemoryCtx,
@@ -819,6 +828,14 @@ export async function executeWorkerMemoryTool(
         .orderBy(asc(agentMemory.createdAt))
         .all();
       return json(rows);
+    }
+    case 'attachment': {
+      // #310 / r9 §3.1：worker 步读附件，与 chief-tools / mcp-face 同源。
+      const { readAttachmentMeta } = await import('./attachments.js');
+      const attachmentId = str(params, 'attachmentId');
+      return json(
+        readAttachmentMeta({ db, attachmentsDir: ctx.attachmentsDir }, ctx.teamId, attachmentId),
+      );
     }
     default:
       throw new HttpError(400, `tool ${name} is not relayed for worker steps`);

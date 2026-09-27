@@ -6,12 +6,14 @@ import {
   buildRecordSchema,
   buildStepActionBodySchema,
   conversationMessagesResponseSchema,
+  createTagBodySchema,
   createTodoBodySchema,
   mergeAcceptedResponseSchema,
   notificationsResponseSchema,
   projectRecordSchema,
   startBuildsBodySchema,
   stepRecordSchema,
+  tagRecordSchema,
   teamMemberSchema,
   teamRecordSchema,
   todoRecordSchema,
@@ -62,6 +64,12 @@ const INFERRED_ROUTES = [
   'GET /api/builds/{id}/changes', // conv 分支 vs 默认分支 diff（变更 pane，r7 27 触点）
   'GET /api/builds/{id}/changes/file', // conv 分支头单文件全文按需取（#224，docpane「显示完整文件」数据源）
   'GET /api/builds/{id}/usage', // build × model 四维记账（Token 用量 dialog，r3 §3.8/r7 30 触点）
+  // —— 附件三步 wire（M7 #310，r9 §3.1/§4；composer + 新建任务 dialog 接
+  // grant/upload/attachments 二进端点，detail 渲染 attachment:key chip；wire
+  // 未在 02 §6.1 词表登记 = INFERRED 入位等 #302/#318 合并回写主词表）——
+  'POST /api/uploads/grant', // 申请 grant：body 校验 + 落 attachment.pending + 签 HMAC
+  'POST /api/uploads/upload', // multipart 上传：grant 验签 + size/mime 对拍 + ready
+  'GET /api/attachments/{id}', // 详情面板附件 chip 点开取 binary（content-type）
   'POST /api/builds/{id}/stop', // 停止钮（M7 #308，r9 §3.3 UI 实测/wire 未采——builds/{id}/… REST 同族规则，02 §6.1 规则族）
   // M7 #319 分支对话框「同步到机器」（08 册附录 B）：build 分支同步状态机
   // 落账面（builds/{id}/branch-sync REST 同族规则，02 §6.1 [推断]）——
@@ -442,6 +450,116 @@ describe('todo CRUD（demo 面：curl 增删改查）', () => {
     );
     await expectErrorShape(
       await req(s.app, 'POST', `/api/projects/${s.projectId}/todos`, null),
+      400,
+    );
+  });
+});
+
+describe('tag 面（#309，r9 §3.4 wire 对拍）', () => {
+  async function setup() {
+    const s = bootServer();
+    const projectId = await postProject(s.app);
+    return { ...s, projectId };
+  }
+
+  test('POST /api/projects/{id}/tags {name,color} → 201 TagRecord（r9 §3.4 实测形）', async () => {
+    const s = await setup();
+    const body: unknown = { name: 'r9probe', color: '#6366f1' };
+    expect(createTagBodySchema.safeParse(body).success).toBe(true); // body 即契约
+    const res = await req(s.app, 'POST', `/api/projects/${s.projectId}/tags`, body);
+    expect(res.status).toBe(201);
+    const record = await res.json();
+    expect(tagRecordSchema.safeParse(record).success).toBe(true);
+    const created = tagRecordSchema.parse(record);
+    expect(created.projectId).toBe(s.projectId);
+    expect(created.name).toBe('r9probe');
+    expect(created.color).toBe('#6366f1');
+    expect(created.v).toBe(1);
+    expect(typeof created.createdAt).toBe('number');
+    // GET 列表同回全形（旧三位投影面废止，r9 §3.4 record 单源）
+    const list = (await (
+      await req(s.app, 'GET', `/api/projects/${s.projectId}/tags`)
+    ).json()) as unknown[];
+    expect(list).toHaveLength(1);
+    expect(tagRecordSchema.parse(list[0])).toEqual(created);
+  });
+
+  test('POST tags 坏 body → 400；未知项目 → 404（{error} 单形状）', async () => {
+    const s = await setup();
+    await expectErrorShape(
+      await req(s.app, 'POST', `/api/projects/${s.projectId}/tags`, { color: '#6366f1' }),
+      400,
+    );
+    await expectErrorShape(
+      await req(s.app, 'POST', `/api/projects/${s.projectId}/tags`, { name: '', color: '#6366f1' }),
+      400,
+    );
+    await expectErrorShape(
+      await req(s.app, 'POST', `/api/projects/${s.projectId}/tags`, null),
+      400,
+    );
+    await expectErrorShape(
+      await req(s.app, 'POST', '/api/projects/nope/tags', { name: 'x', color: '#6366f1' }),
+      404,
+    );
+  });
+
+  test('POST todos 携 tagIds → record.tagIds 往返（r9 §3.4 携带位；join 真值）', async () => {
+    const s = await setup();
+    const post = async (name: string) =>
+      tagRecordSchema.parse(
+        await (
+          await req(s.app, 'POST', `/api/projects/${s.projectId}/tags`, {
+            name,
+            color: '#6366f1',
+          })
+        ).json(),
+      );
+    const a = await post('a');
+    const b = await post('b');
+    const body: unknown = { title: '带标签任务', spec: '', tagIds: [a.id, b.id] };
+    expect(createTodoBodySchema.safeParse(body).success).toBe(true); // body 即契约
+    const res = await req(s.app, 'POST', `/api/projects/${s.projectId}/todos`, body);
+    expect(res.status).toBe(201);
+    const created = todoRecordSchema.parse(await res.json());
+    expect([...created.tagIds].sort()).toEqual([a.id, b.id].sort());
+    // 读面往返：GET todos/{id} 同携（todo_tag join 真值，非 body 回声）
+    const one = todoRecordSchema.parse(
+      await (await req(s.app, 'GET', `/api/todos/${created.id}`)).json(),
+    );
+    expect([...one.tagIds].sort()).toEqual([a.id, b.id].sort());
+    // 无 tagIds 的旧 body 回归不破：tagIds 空数组（r3 §3.1 原样路径）
+    const plain = todoRecordSchema.parse(
+      await (
+        await req(s.app, 'POST', `/api/projects/${s.projectId}/todos`, { title: 'p', spec: '' })
+      ).json(),
+    );
+    expect(plain.tagIds).toEqual([]);
+  });
+
+  test('POST todos 携非本项目/未知 tag → 400（项目边界防御）', async () => {
+    const s = bootServer();
+    const projectA = await postProject(s.app, 'a');
+    const projectB = await postProject(s.app, 'b');
+    const foreign = tagRecordSchema.parse(
+      await (
+        await req(s.app, 'POST', `/api/projects/${projectB}/tags`, { name: 'x', color: '#6366f1' })
+      ).json(),
+    );
+    await expectErrorShape(
+      await req(s.app, 'POST', `/api/projects/${projectA}/todos`, {
+        title: 't',
+        spec: '',
+        tagIds: [foreign.id],
+      }),
+      400,
+    );
+    await expectErrorShape(
+      await req(s.app, 'POST', `/api/projects/${projectA}/todos`, {
+        title: 't',
+        spec: '',
+        tagIds: ['no-such-tag'],
+      }),
       400,
     );
   });

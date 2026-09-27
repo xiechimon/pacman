@@ -391,6 +391,8 @@ export const EN: Record<string, string> = {
   '我会这样确认完成：': 'How I will confirm this is done:',
   '我希望收到：': 'What I expect to receive:',
   添加标签: 'Add tag',
+  新建标签: 'New tag',
+  标签名称: 'Tag name',
   保存并开始: 'Save and start',
   删除任务: 'Delete todo',
   '确定删除该任务？此操作不可撤销。': 'Delete this todo? This cannot be undone.',
@@ -555,6 +557,8 @@ export const EN: Record<string, string> = {
   '浏览器授权注册 →': 'Browser authorization →',
   // W2 #318 桩群校准：开始任务 dialog 统一面（r9 §3.6）+ 新建任务未保存闸
   // （r9 §3.4）。规划/执行 = assignment.plan/build 双槽的行标签。
+  // #310 附件：dirty 位由 spec 非空承载（附件 token 注入后归 spec）,标签
+  // add 仍为桩（本票不动）。
   规划: 'Plan',
   执行: 'Build',
   在线: 'online',

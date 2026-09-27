@@ -276,7 +276,7 @@ export function parseUnifiedDiff(text: string): DocumentDiffFile[] {
       continue;
     }
     if (line.startsWith('@@')) {
-      hunk = { header: line.split(' @@')[0]! + ' @@', lines: [] };
+      hunk = { header: `${line.split(' @@')[0] ?? ''} @@`, lines: [] };
       current.hunks.push(hunk);
       continue;
     }
@@ -301,7 +301,7 @@ export async function readBuildChanges(
   const todoRow = ctx.db.select().from(todoTable).where(eq(todoTable.id, buildRow.todoId)).get();
   if (!todoRow) throw notFound(`todo ${buildRow.todoId}`);
   const projRow = ctx.db.select().from(project).where(eq(project.id, todoRow.projectId)).get();
-  if (!projRow || projRow.repoKind !== 'hosted' || projRow.repoName === null) {
+  if (projRow?.repoKind !== 'hosted' || projRow.repoName === null) {
     return { files: [] };
   }
   const dir = repoDirFor(ctx.reposDir, projRow.teamId, projRow.repoName);
@@ -340,7 +340,7 @@ export async function readBuildChangeFile(
   const todoRow = ctx.db.select().from(todoTable).where(eq(todoTable.id, buildRow.todoId)).get();
   if (!todoRow) throw notFound(`todo ${buildRow.todoId}`);
   const projRow = ctx.db.select().from(project).where(eq(project.id, todoRow.projectId)).get();
-  if (!projRow || projRow.repoKind !== 'hosted' || projRow.repoName === null) {
+  if (projRow?.repoKind !== 'hosted' || projRow.repoName === null) {
     throw notFound(`hosted repo for build ${buildId}`);
   }
   const dir = repoDirFor(ctx.reposDir, projRow.teamId, projRow.repoName);

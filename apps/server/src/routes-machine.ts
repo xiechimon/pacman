@@ -98,6 +98,7 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     box: ctx.secretBox,
     user: ctx.user,
     reposDir: ctx.reposDir,
+    attachmentsDir: ctx.attachmentsDir,
     convHub: ctx.convHub,
   };
 
