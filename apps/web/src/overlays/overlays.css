@@ -388,19 +388,24 @@
   color: var(--text-tertiary);
 }
 
-/* ---- 方案▾ document-type dropdown (r7 20: 218×44, right-aligned) ------ */
+/* ---- 方案▾ pane-view dropdown (r7 20: 218-wide right-aligned; #366 grew
+   the row set from the single current-type row to the four pane views) -- */
 
 .doc-select-wrap {
   position: relative;
   display: flex;
 }
 
+/* #366: the row set grew from the single current-type row to the pane-view
+   list — 4px padding + 36px rows keep the r7 20 single-row total at 44. */
 .plan-dropdown {
   position: absolute;
   top: calc(100% - 0.5px);
   right: 0;
+  display: flex;
+  flex-direction: column;
   width: 218px;
-  height: 44px;
+  padding: 4px;
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
@@ -408,8 +413,9 @@
 }
 
 .plan-dropdown-row {
+  flex: none;
   width: 100%;
-  height: 100%;
+  height: 36px;
   display: flex;
   align-items: center;
   padding: 0 4px 0 24px;

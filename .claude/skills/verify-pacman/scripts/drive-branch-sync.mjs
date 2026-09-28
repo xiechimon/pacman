@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// verify-pacman drive-branch-sync — 分支同步全链真用户路径（#319/#328）。
+// verify-pacman drive-branch-sync — 分支同步全链真用户路径（#319/#328；
+// #366 起详情页入口 = 右 pane 型选钮 →「分支与 PR」静止 section，头部图标
+// 弹层退役——弹层形态只余看板卡片入口）。
 //
-// 走真用户路径：详情页「分支与 PR」钮 → 同步到机器 tab → 目标机器 pill（在线
-// 机器真值）→ 同步目录输入 → 强制同步开关 → 「同步」→ 结果卡四态迁移。
+// 走真用户路径：详情页右 pane 型选 →「分支与 PR」section → 目标机器 pill
+// （在线机器真值）→ 同步目录输入 → 强制同步开关 → 「同步」→ 结果卡四态迁移。
 //
 // 真值：POST 201 / SQLite branch_sync 行终态 / team stream `branch_sync` 事件
 // 到达 / **目标目录真被 git 复位**（HEAD == commit 且工作区干净——seed 故意
@@ -96,15 +98,16 @@ const page = await browser.newPage({
 
 try {
   await page.goto(`${WEB}/app/todo/${todoId}`, { waitUntil: 'networkidle' });
-  await page.click('button[aria-label="分支与 PR"]');
-  await page.waitForSelector('.dlg-seg-tab', { timeout: 10_000 });
-  check('dialog-open', true, '「分支与 PR」弹层打开');
-  await shot(page, '01-branch-dialog.png');
-
-  // 切到「同步到机器」tab（分段控件首枚）
-  await page.locator('.dlg-seg-tab', { hasText: '同步到机器' }).click();
+  // #366：右 pane 型选钮开 pane 视图 listbox →「分支与 PR」行切静止 section
+  await page.click('.doc-select-wrap .doc-pane-select');
+  await page.waitForSelector('.plan-dropdown', { timeout: 10_000 });
+  await page.locator('.plan-dropdown-row', { hasText: '分支与 PR' }).click();
   await page.waitForSelector('.dlg-machine-picker', { timeout: 10_000 });
-  check('sync-tab-live', true, '同步 tab 接真（机器 pill 走真值，非 fixture 占位）');
+  check('pane-section-open', true, '右 pane「分支与 PR」section 打开');
+  await shot(page, '01-branch-section.png');
+
+  // section 即同步面（原 dialog 的 同步到机器 tab 内容），接真判别式不变
+  check('sync-section-live', true, '同步面接真（机器 pill 走真值，非 fixture 占位）');
 
   // 机器 pill：展开菜单，取首批在线机器
   await page.locator('.dlg-machine').first().click();

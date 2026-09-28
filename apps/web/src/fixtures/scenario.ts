@@ -46,6 +46,7 @@ import {
   diffV2V3,
   history12,
   history15,
+  planOpenReview,
   projectFixture,
   projectTasks,
   projectTasksEmpty,
@@ -129,32 +130,37 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '36': detailDone(),
       '36d': detailDone(),
       '38': detailLegacy,
-      // overlay open states (issue #68): 30/31/32 sit on the review surface
-      // with diff + tool rows expanded, exactly as the captures froze them
+      // #366: plan-card activation pin (smoke surface, no capture): the
+      // review changes face with a collapsed plan card in the thread
+      'plan-open': planOpenReview,
+      // frozen right-pane views (issue #68 captures, re-homed by #366):
+      // 30/31/32 sit on the review surface with diff + tool rows expanded,
+      // exactly as the captures froze them — the former token/branch/
+      // history dialogs are static pane sections now
       '30': {
         ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
-        overlay: { kind: 'token' },
+        ui: { paneView: 'token' },
       },
       '31': {
         ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
-        overlay: { kind: 'branch' },
+        ui: { paneView: 'branch' },
       },
-      // r8 57: history dialog over the failed-current run (footer 重跑 surface)
-      '57f': { ...detailFailedCurrent(), overlay: { kind: 'history' } },
+      // r8 57: the failed-current run's history section
+      '57f': { ...detailFailedCurrent(), ui: { paneView: 'history' } },
       '32': {
         ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
-        overlay: { kind: 'history' },
+        ui: { paneView: 'history' },
       },
       // 34: board scrollRight, probe #9 in 待验收 (`4 分钟前` → now 13:41)
       '34': { ...boardWithProbe('review', r7(13, 37), r7(13, 41)), overlay: { kind: 'accept' } },
-      // dark overlay pairs (r8 78–81): probe #9 is gone from the live account,
+      // dark pairs (r8 78–81): probe #9 is gone from the live account,
       // so the dark captures ride the r3 legacy #1 surface as it stands now
       // (re-run 2026-09-22 18:30); the accept dialog opens from the header
       // 完成 button on the same detail surface
-      '30d': detailLegacyNow('token'),
-      '31d': detailLegacyNow('branch'),
-      '32d': detailLegacyNow('history'),
-      '34d': detailLegacyNow('accept'),
+      '30d': detailLegacyNow({ ui: { paneView: 'token' } }),
+      '31d': detailLegacyNow({ ui: { paneView: 'branch' } }),
+      '32d': detailLegacyNow({ ui: { paneView: 'history' } }),
+      '34d': detailLegacyNow({ overlay: { kind: 'accept' } }),
       // overlays (issue #67): frozen open-states on top of the surface each
       // r7 capture sits on — 05 the empty ⌘K panel over the default board,
       // 05b the results state over the #46-session board, 19/29 the chip

@@ -2,22 +2,20 @@ import { expect, type Locator, test } from '@playwright/test';
 
 // #193: 矮视口(800×500)+ 各弹窗最高内容态下,submit/取消恒在视口内可点,
 // 内容区(.dlg-body)滚动而不推挤按钮区(.dlg-foot)。#175 只修了 provider
-// 本弹窗,本 spec 把该验收钉到整族(DialogShell 全部 11 个消费点;自建
+// 本弹窗,本 spec 把该验收钉到整族(DialogShell 全部 9 个消费点;自建
 // `.dlg` 容器经 grep 证实不存在)。每条钉一个面的一种失败方式:
 // 1. provider(#175 源头面):3 模型行 → body 溢出,submit 钉底且滚动不位移
 // 2. mcp:请求头行动态增长 → create 钉底
 // 3. secret / 5. agent / 6. charter:静态表单面 → submit/取消 在视口
 // 4. machine:disclosure 展开(最高内容态)→ 底部链接在视口
-// 7. chief-agent 列表 / 8. token:无按钮读面 → 面板整体不越视口
-// 9. branch sync tab:全高 410 在 500 视口内天然装得下,压 360 视口验证
-//    封顶后同步钮钉底;body 溢出
-// 10. history 重跑 footer(57f)→ 重跑钮在视口
-// 11. accept(34)→ 取消/完成在视口
+// 7. chief-agent 列表:无按钮读面 → 面板整体不越视口
+// 8. branch sync tab(#366 起从看板卡片分支图标开——详情路由同面改为
+//    右 pane 静止 section,不再弹窗):视口压过内容高,同步钮钉底,body 溢出
+// 9. accept(34)→ 取消/完成在视口
 
 test.use({ viewport: { width: 800, height: 500 } });
 
 const CAP = 500 - 48; // .dlg max-height = 100vh - 48px
-const TODO = '/app/todo/7ve0iOkQ-JBpSL98zSiGc';
 
 /** 壳层封顶律:面板不越视口、高度不超 100vh-48。 */
 async function expectShellCapped(dialog: Locator) {
@@ -123,17 +121,12 @@ test('chief-agent 列表态(无按钮读面)面板整体不越视口', async ({ 
   await expect(dialog.locator('.chief-pick-list')).toBeInViewport();
 });
 
-test('token(纯读面)面板整体不越视口', async ({ page }) => {
-  await page.goto(`${TODO}?scenario=30`);
-  const dialog = page.locator('.dlg');
-  await expect(dialog).toBeVisible();
-  await expectShellCapped(dialog);
-});
-
 test('branch sync tab: 视口压过内容高,同步钮钉底,body 溢出;git tab 正常', async ({ page }) => {
-  // sync tab 全高约 410——500 视口天然装得下,压到 360 才触发封顶钉底
+  // #366:详情路由的分支面改右 pane 静止 section——弹窗形态只剩看板卡片
+  // 分支图标这一个入口。sync tab 全高约 410,压到 360 才触发封顶钉底
   await page.setViewportSize({ width: 800, height: 360 });
-  await page.goto(`${TODO}?scenario=31`);
+  await page.goto('/app?scenario=01');
+  await page.locator('.todo-card-branch').first().click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   await expectBodyOverflows(dialog);
@@ -146,14 +139,6 @@ test('branch sync tab: 视口压过内容高,同步钮钉底,body 溢出;git tab
   await dialog.locator('.dlg-seg-tab', { hasText: 'Git' }).click();
   await expect(dialog.locator('.dlg-sync')).toHaveCount(0);
   await expect(dialog.locator('.dlg-branch-body')).toBeInViewport();
-});
-
-test('history 重跑 footer(57f): 重跑钮在视口', async ({ page }) => {
-  await page.goto('/app/todo/r8-failed-12?scenario=57f');
-  const dialog = page.locator('.dlg');
-  await expect(dialog).toBeVisible();
-  await expectShellCapped(dialog);
-  await expect(dialog.locator('.dlg-history-rerun')).toBeInViewport();
 });
 
 test('accept(34): 取消/完成在视口', async ({ page }) => {

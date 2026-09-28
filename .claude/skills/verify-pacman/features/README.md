@@ -2,7 +2,7 @@
 
 本目录是 pacman 用户可见行为的验证正源。驱动前先读本索引,再按 feature 文件当配方执行。map 漏掉的入口 = 验证不完整:顺手的入口验过 ≠ 整个 feature 验过。
 
-Last updated: 2026-09-28(M7 功能闭环维护:补 6 个 M7 新功能条目——AI 审核发起 review-modal、@提及 mentions、标签 tags、附件 attachments、分支同步 branch-sync、失败面发送 failed-send;stop-button.md 补 #318 统一 start dialog 步骤;drive-stop.mjs 修 #318 过时(点开始后先经 overlay-panel 选先做规划);stub-llm-verify.mjs 修 Node ≥v20 close 事件 bug(req.on close→res.on close+responded 守卫)。mentions/tags 本会话 live 验通过,attachments/branch-sync/failed-send user path 从合并代码核实、live re-probe 待补。前序:2026-09-27 停止钮全栈链 #308;2026-09-25 初始 map)
+Last updated: 2026-09-29(#366 详情页 3-pane 重排:branch-sync 入口从头部弹层迁到右 pane 型选→静止 section,drive-branch-sync.mjs 与 integration 判别式同步改道;token/运行历史两弹层退役为右 pane section,仍未铺 live 配方。前序:2026-09-28 M7 功能闭环维护——补 6 个 M7 新功能条目;stop-button.md 补 #318 统一 start dialog 步骤;drive-stop.mjs 修 #318 过时;stub-llm-verify.mjs 修 Node ≥v20 close 事件 bug;2026-09-27 停止钮全栈链 #308;2026-09-25 初始 map)
 
 ## Baseline preconditions
 
@@ -44,12 +44,13 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [@提及(composer+新建任务)](./mentions.md) 提及钮开五分组 picker / textarea 键入 `@` 内联补全→选实体→序列化 token(`[名](agent:{id})`/`#seq`)落文本(#311/#327)。**2026-09-28 live 验通过**。
 - [标签(新建任务+详情meta)](./tags.md) 新建任务 footer 标签钮→面板 pill toggle+内联新建→tagIds 随 createTodo;详情 fresh meta 渲染 TagChip,**看板卡不渲染**(r9 §3.4 校准)(#309/#323)。**2026-09-28 live 验通过**。
 - [附件(composer+新建任务)](./attachments.md) 添加附件钮(原生文件触发)→三步上传(grant→host→token)→`![名](attachment:…)` 注入 spec→执行面 agent 可读(#310/#331)。live re-probe 待补。
-- [分支同步(详情页 branch-dialog)](./branch-sync.md) 分支与 PR 弹层「同步到机器」tab→选机器→同步钮→`POST branch-sync`→daemon git/worktree 执行→结果卡 pending→synced(#319/#328)。live re-probe 待补。
+- [分支同步(详情页右 pane section)](./branch-sync.md) 右 pane 型选→「分支与 PR」静止 section(#366 前为头部弹层)→选机器→同步钮→`POST branch-sync`→daemon git/worktree 执行→结果卡 pending→synced(#319/#328)。#366 后全链 live re-probe 待补。
+- [详情页 3-pane 结构与右 pane 视图](./detail-right-pane.md) 240|fluid|488 三栏贴合、头部单图标、tab 组退役、型选四视图(文档/分支/Token/历史)静止 section、fresh 空占位、composer 唯一卡片;定制 probe `scripts/drive-detail-pane.mjs`(#366)。
 - [失败面发送(详情页 composer)](./failed-send.md) failed 相位 composer 发送反馈→`{action:"restart"}`→新 build(withPlan 承接)+反馈入会话+failed→queued;相位门只收 failed(#320/#322)。live re-probe 待补。
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
 
-- 任务详情页(`/app/todo/:id`)——live 面已铺:停止链(stop-button)、AI 审核发起(review-modal)、@提及(mentions)、附件(attachments)、分支同步(branch-sync)、失败面发送(failed-send)。未铺:plan/changes/diff 文档面、transcript 流渲染、运行历史弹层、编辑分配弹层。
+- 任务详情页(`/app/todo/:id`)——live 面已铺:3-pane 结构与右 pane 四视图(detail-right-pane)、停止链(stop-button)、AI 审核发起(review-modal)、@提及(mentions)、附件(attachments)、分支同步(branch-sync,#366 起右 pane section 入口)、失败面发送(failed-send)。未铺:plan/changes/diff 文档面内容渲染、transcript 流渲染、编辑分配弹层。
 - 总管抽屉/设置(`.chief-fab` 有 live wiring,数据面未铺)。
 - 机器/模型服务/团队密钥/MCP/技能 各管理页(routes 均在,fixture e2e 有覆盖,live 配方未铺)。
 - 看板拖拽改相(`PATCH /api/todos/:id`,#160)——fixture e2e 有 board-dnd 覆盖。
