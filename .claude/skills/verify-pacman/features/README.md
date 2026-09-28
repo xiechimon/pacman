@@ -2,7 +2,7 @@
 
 本目录是 pacman 用户可见行为的验证正源。驱动前先读本索引,再按 feature 文件当配方执行。map 漏掉的入口 = 验证不完整:顺手的入口验过 ≠ 整个 feature 验过。
 
-Last updated: 2026-09-28(M7 功能闭环维护:补 6 个 M7 新功能条目——AI 审核发起 review-modal、@提及 mentions、标签 tags、附件 attachments、分支同步 branch-sync、失败面发送 failed-send;stop-button.md 补 #318 统一 start dialog 步骤;drive-stop.mjs 修 #318 过时(点开始后先经 overlay-panel 选先做规划);stub-llm-verify.mjs 修 Node ≥v20 close 事件 bug(req.on close→res.on close+responded 守卫)。mentions/tags 本会话 live 验通过,attachments/branch-sync/failed-send user path 从合并代码核实、live re-probe 待补。前序:2026-09-27 停止钮全栈链 #308;2026-09-25 初始 map)
+Last updated: 2026-09-29(spec 12 / #361 G2-T4:补 GitHub 连接认证 + repo picker 条目 github-oauth-picker.md + 定制 probe `scripts/probe-github-oauth.mjs`(API 段 + chromium UI 段,authorize 双形自适应);local-repo-api.md 回补 T4 落地指引)。前序:2026-09-28(spec 12 / #359 G2-T1:补本地仓库项目与 GitHub 连接 server API 面条目 local-repo-api.md + 定制 probe `scripts/probe-local-repos.mjs`,live 验 11/11 PASS;同日 M7 功能闭环维护:补 6 个 M7 新功能条目——AI 审核发起 review-modal、@提及 mentions、标签 tags、附件 attachments、分支同步 branch-sync、失败面发送 failed-send;stop-button.md 补 #318 统一 start dialog 步骤;drive-stop.mjs 修 #318 过时(点开始后先经 overlay-panel 选先做规划);stub-llm-verify.mjs 修 Node ≥v20 close 事件 bug(req.on close→res.on close+responded 守卫)。mentions/tags 本会话 live 验通过,attachments/branch-sync/failed-send user path 从合并代码核实、live re-probe 待补。前序:2026-09-27 停止钮全栈链 #308;2026-09-25 初始 map)
 
 ## Baseline preconditions
 
@@ -46,6 +46,8 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [附件(composer+新建任务)](./attachments.md) 添加附件钮(原生文件触发)→三步上传(grant→host→token)→`![名](attachment:…)` 注入 spec→执行面 agent 可读(#310/#331)。live re-probe 待补。
 - [分支同步(详情页 branch-dialog)](./branch-sync.md) 分支与 PR 弹层「同步到机器」tab→选机器→同步钮→`POST branch-sync`→daemon git/worktree 执行→结果卡 pending→synced(#319/#328)。live re-probe 待补。
 - [失败面发送(详情页 composer)](./failed-send.md) failed 相位 composer 发送反馈→`{action:"restart"}`→新 build(withPlan 承接)+反馈入会话+failed→queued;相位门只收 failed(#320/#322)。live re-probe 待补。
+- [本地仓库项目与 GitHub 连接(server API 面)](./local-repo-api.md) `POST /api/projects kind=local` 三态校验(live fs+真 git)+旧 hosted 面不回归+`GET /api/github/repos` 未连接 404+github_connection 表形(SQLite 只读);定制 probe `scripts/probe-local-repos.mjs`(spec 12 / #359,本地文件夹 UI 入口归 G2-T3 后回补)。**2026-09-28 live 验 11/11 PASS**。
+- [GitHub 连接认证 + repo picker(新建项目)](./github-oauth-picker.md) 未认证 = 认证钮 + 手动兜底;已认证 = picker 弹层(搜索/单选回填/断开);authorize 双形自适应(env 未配 400 内联 / 已配 200 URL 形状);手动兜底建 github 项目全链;定制 probe `scripts/probe-github-oauth.mjs`(spec 12 / #361)。
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
 

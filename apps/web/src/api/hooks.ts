@@ -18,6 +18,8 @@ import type {
   DocumentDiff,
   DocumentDiffFile,
   FetchSkillFilesResponse,
+  GithubConnectionStatus,
+  GithubReposResponse,
   MachineRecord,
   McpServerRecord,
   OAuthAuthorizeResponse,
@@ -263,6 +265,24 @@ export const useProviders = (teamId: string | undefined, enabled: boolean) =>
     enabled: enabled && teamId !== undefined,
   });
 
+/** GitHub 连接认证状态读面（#361 G2-T4）：login/scope，无 token 位（02 §8）。
+ *  enabled 由调用面收窄到 github 选态——页面挂载不空转。 */
+export const useGithubConnection = (teamId: string | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: ['github-connection', teamId],
+    queryFn: () => api.get<GithubConnectionStatus>(`/api/teams/${teamId}/github/connection`),
+    enabled: enabled && teamId !== undefined,
+  });
+
+/** repo picker 数据面（#359 端点，#361 消费）：单页 100 条一次取回，搜索
+ *  过滤在调用面本地做（上游 /user/repos 无查询参数面，server q 为同值兜底）。 */
+export const useGithubRepos = (enabled: boolean) =>
+  useQuery({
+    queryKey: ['github-repos'],
+    queryFn: () => api.get<GithubReposResponse>('/api/github/repos'),
+    enabled,
+  });
+
 export const useSecrets = (teamId: string | undefined, enabled: boolean) =>
   useQuery({
     queryKey: ['secrets', teamId],
@@ -503,6 +523,17 @@ export function useApiMutations(teamId: string | undefined) {
           `/api/teams/${teamId}/providers/oauth/${presetId}/authorize`,
           {},
         ),
+    }),
+    // #361 GitHub 连接认证：startProviderOAuth 同律（同页签整页跳走，成功
+    // 不 invalidate——回跳 = 全量重载；失败留页 inline 呈现）。
+    startGithubOAuth: useMutation({
+      mutationFn: () =>
+        api.post<OAuthAuthorizeResponse>(`/api/teams/${teamId}/github/oauth/authorize`, {}),
+    }),
+    // 断开 = 删行幂等（server DAO 单点）；invalidate 收敛 connection/repos 读面。
+    disconnectGithub: useMutation({
+      mutationFn: () => api.del<void>(`/api/teams/${teamId}/github/connection`),
+      onSuccess: invalidateAll,
     }),
     deleteProvider: useMutation({
       mutationFn: (id: string) => api.del<void>(`/api/teams/${teamId}/providers/${id}`),

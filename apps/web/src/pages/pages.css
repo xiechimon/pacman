@@ -731,6 +731,144 @@
   color: var(--indigo-500);
 }
 
+/* ---- GitHub 认证 + repo picker (#361, spec 12 G2-T4) ----
+   github 选态三面：认证钮（未认证，filled CTA = prj-new-submit 语言）/
+   picker 触发钮（已认证，选中回填走 hosted 同款 trigger-label 律）/
+   手动兜底 input（既有面不动）。picker plate = prj-new-repo-menu 同
+   family plate（plan-dropdown recipe），行语言 menu-row 同款；行高放大到
+   32px 承 full_name。geometry [设计] — 上游无像素采集，贴仓内锚定弹层词汇。 */
+.prj-new-gh-auth {
+  flex: 1;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: var(--card-button);
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text-on-accent);
+  cursor: pointer;
+}
+
+.prj-new-gh-link {
+  align-self: flex-start;
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.prj-new-gh-error {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--danger);
+}
+
+.prj-new-gh-picker {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: var(--popover-bg);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--fab-shadow);
+  z-index: 30;
+}
+
+.prj-new-gh-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
+.prj-new-gh-disconnect {
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.prj-new-gh-search {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.prj-new-gh-search::placeholder {
+  color: var(--text-dim);
+}
+
+.prj-new-gh-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 224px;
+  overflow-y: auto;
+}
+
+.prj-new-gh-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.prj-new-gh-row-check {
+  margin-left: auto;
+  display: flex;
+  color: var(--indigo-500);
+}
+
+.prj-new-gh-empty {
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+/* picker 内的兜底链接/错误行贴 plate 内边距，不吃 body 层 margin。 */
+.prj-new-gh-picker .prj-new-gh-link {
+  margin-top: 0;
+  padding: 0 4px;
+}
+
+.prj-new-gh-picker .prj-new-gh-error {
+  margin-top: 0;
+  padding: 0 4px;
+}
+
 /* ---- project files / tasks (r2 07e/24/24b/26) ---- */
 
 .prj-files {

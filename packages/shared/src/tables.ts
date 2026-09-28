@@ -35,6 +35,7 @@ export const DB_TABLES = [
   'whats_new', // 形状保留内容自选（02 §6.1）
   'attachment', // M7 #310：composer/新建任务附件 grant/upload/read 三步 wire（r9 §3.1/§4）
   'branch_sync', // M7 #319 分支对话框「同步到机器」状态机（pending/running/synced/failed）；内部状态表无独立 record 投影面
+  'github_connection', // spec 12 / #359：GitHub OAuth 连接行（teamId 单行；accessToken 经 SecretBox 密封，token 只写不读出 wire）
 ] as const;
 
 export type DbTable = (typeof DB_TABLES)[number];
@@ -50,10 +51,13 @@ export const JOIN_ONLY_TABLES = ['todo_tag'] as const;
  * 端组装，wire 形状见 protocol/sse.ts branchSyncEvent。M7 #308：stop_pending
  * 读位 = GET /api/machine/stop 拉取响应（{discard}），无独立 record。M7 #310：
  * attachment 读位 = GET /api/attachments/{id} 二进制流（r9 §3.1），无 JSON
- * record 形状。 */
+ * record 形状。spec 12 / #359：github_connection 为凭证表——accessToken 只写
+ * 不读出（server 出站边界 Authorization 头唯一消费点，02 §8 同族纪律），
+ * 连接状态读位（login/scope）内嵌于认证面端点封套，不立 record 投影。 */
 export const INTERNAL_ONLY_TABLES = [
   'steer_pending',
   'branch_sync',
   'stop_pending',
   'attachment',
+  'github_connection',
 ] as const;
