@@ -3,8 +3,18 @@
 // （shared providerRecordSchema 同判），值经 SecretBox 密封落 [内部]
 // apiKeyCipher 列；keyfile 丢失 = 存量 provider key 报废需重录（README 护栏）。
 // presets[] 38 项目录单源 = shared PROVIDER_PRESET_IDS/OAUTH/XAI 常量（r3 §2）。
+// model-sources 面（spec 11 §A3/A4，#356）：providers 页 runtime tabs 的
+// 数据契约——pi 段 = custom providers models[] 投影；claude-code 段 =
+// server 端 fs 直读 ~/.claude/settings.json（不经 daemon），每次调用重读
+// 文件承载「实时反映」语义。
 
+import { readFileSync } from 'node:fs';
+import { homedir, hostname } from 'node:os';
+import { join } from 'node:path';
 import {
+  type ModelSource,
+  type ModelSourceModel,
+  type ModelSourcesEnvelope,
   PROVIDER_OAUTH_PRESET_IDS,
   PROVIDER_PRESET_IDS,
   PROVIDER_XAI_PRESET,
@@ -108,6 +118,68 @@ export function getProvidersEnvelope(
   teamId: string,
 ): { presets: ProviderPreset[]; providers: ProviderRecord[] } {
   return { presets: providerPresets(), providers: listProviders(deps, teamId) };
+}
+
+/** claude-code 槽位键模式：env.ANTHROPIC_<SLOT>_MODEL。ANTHROPIC_MODEL
+ *  本体无中段（`ANTHROPIC_` 与 `_MODEL` 之间需至少一段）天然不命中，
+ *  不会与顶层 model 的 default 槽撞名。 */
+const CLAUDE_MODEL_SLOT_PATTERN = /^ANTHROPIC_([A-Z0-9_]+)_MODEL$/;
+
+/** claude-code 段（spec 11 §A4）：server 端 fs 直读 settings.json——
+ *  文件缺失 / 非法 JSON / 非对象 JSON 一律 installed:false，不空报不崩。
+ *  槽值非字符串或空串的项跳过（installed 仍为 true）。 */
+function claudeCodeModelSource(homeDir: string): ModelSource {
+  const host = hostname();
+  const notInstalled: ModelSource = {
+    runtime: 'claude-code',
+    installed: false,
+    hostname: host,
+    models: [],
+  };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(join(homeDir, '.claude', 'settings.json'), 'utf8'));
+  } catch {
+    return notInstalled;
+  }
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return notInstalled;
+  const settings = raw as { model?: unknown; env?: unknown };
+  const models: ModelSourceModel[] = [];
+  if (typeof settings.model === 'string' && settings.model !== '') {
+    models.push({ id: settings.model, name: settings.model, slot: 'default' });
+  }
+  const env = settings.env;
+  if (typeof env === 'object' && env !== null && !Array.isArray(env)) {
+    for (const [key, value] of Object.entries(env)) {
+      const match = CLAUDE_MODEL_SLOT_PATTERN.exec(key);
+      const slot = match?.[1];
+      if (slot === undefined || typeof value !== 'string' || value === '') continue;
+      models.push({ id: value, name: value, slot: slot.toLowerCase().replace(/_/g, '-') });
+    }
+  }
+  return { runtime: 'claude-code', installed: true, hostname: host, models };
+}
+
+/** GET /api/teams/{id}/model-sources 封套（spec 11 数据契约：恰 pi +
+ *  claude-code 两段，序固定）。homeDir 是测试注入位，生产态缺省
+ *  os.homedir()。pi 投影丢弃空 id 行、空 name 回退 id——封套须过
+ *  shared modelSourcesEnvelopeSchema（两处 min(1)）。 */
+export function getModelSources(
+  deps: ProviderDeps,
+  teamId: string,
+  homeDir: string = homedir(),
+): ModelSourcesEnvelope {
+  const piModels = listProviders(deps, teamId).flatMap((p) =>
+    p.models
+      .filter((m) => m.id !== '')
+      .map((m) => ({ id: m.id, name: m.name !== '' ? m.name : m.id })),
+  );
+  return {
+    sources: [
+      { runtime: 'pi', installed: true, hostname: hostname(), models: piModels },
+      claudeCodeModelSource(homeDir),
+    ],
+  };
 }
 
 export function createProvider(

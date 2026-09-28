@@ -40,6 +40,7 @@ export * from './machine.js';
 export * from './mcp-server.js';
 export * from './memory.js';
 export * from './message.js';
+export * from './model-source.js';
 export * from './notification.js';
 export * from './plan.js';
 export * from './project.js';

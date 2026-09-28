@@ -1,0 +1,138 @@
+import { expect, test } from '@playwright/test';
+
+// #356 (spec 11 §A1-A4/A7): providers 页 = runtime tablist（pi / Claude
+// Code），tab 状态走 ?runtime= search param（刷新/分享/深链回定位），每
+// tab = header 卡（runtime 名 + 说明 + 已安装在 <hostname>）+ 模型行
+// （显示名 → 模型 id，data-runtime/data-model-id 契约句柄）。「Pacman
+// （内置）」facade 行与 38 项 preset 列表行已除（数据层全留，preset 仅
+// 在 picker dialog 内）；A7 行可点感收编：纯展示行无 chevron/三点。
+// 数据源 = fixture canon（scenario=10 的 providerSources，见 fixtures.ts
+// ——pi 3 行 / claude-code 4 槽）。
+// Each test pins one failure mode:
+// 1. tablist 恰两 tab + 文案 pi/Claude Code + 默认 pi
+// 2. pi 模型行命中 fixture（id/显示名）+ facade/preset 负向 + A7 装饰清零
+// 3. 切 tab：aria-selected 翻转 + ?runtime= 写入且 scenario 参保留
+// 4. 深链 ?runtime=claude-code 直落 + 刷新回定位
+// 5. header 卡：runtime 名/说明/「已安装在 <hostname>」（两 runtime 同构）
+// 5b. settings.json 缺失分支：header 转「未安装」指引态 + 模型行零渲染
+// 6. 几何：tablist/header/模型行卡同贴 res-col 内容列（x456 @1440，r7 探针
+//    canon），tab 序 pi 左 claude-code 右
+
+const PAGE = '/app/resources/providers?scenario=10';
+const SHELL = '[data-route="/app/resources/providers"]';
+const CANON_HOST = 'xmonsMac-3574.local'; // fixtures.ts MACHINE_NAME
+
+test('tablist = 恰 pi / Claude Code 两 tab，默认选中 pi', async ({ page }) => {
+  await page.goto(PAGE);
+  const tabs = page.locator(`${SHELL} [role="tablist"] [role="tab"]`);
+  await expect(tabs).toHaveCount(2);
+  await expect(tabs.nth(0)).toHaveAttribute('data-runtime', 'pi');
+  await expect(tabs.nth(0)).toHaveText('pi');
+  await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
+  await expect(tabs.nth(1)).toHaveAttribute('data-runtime', 'claude-code');
+  await expect(tabs.nth(1)).toHaveText('Claude Code');
+  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'false');
+});
+
+test('pi tab：fixture 模型行 + facade/38 项负向 + 无可点感装饰', async ({ page }) => {
+  await page.goto(PAGE);
+  const rows = page.locator(`${SHELL} .res-model-row[data-runtime="pi"]`);
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toHaveAttribute('data-model-id', 'claude-sonnet-5');
+  await expect(rows.nth(0)).toContainText('Claude Sonnet 5（R3 网关）');
+  await expect(rows.nth(0)).toContainText('claude-sonnet-5');
+  // A1/A5 负向：facade 行与 38 项 preset 名单不出现在页面正文
+  const main = page.locator(`${SHELL} .res-main`);
+  await expect(main).not.toContainText('Pacman（内置）');
+  await expect(main).not.toContainText('DeepSeek');
+  await expect(main).not.toContainText('OpenRouter');
+  // A7：纯展示行无 chevron/三点
+  await expect(page.locator(`${SHELL} .res-row-chev`)).toHaveCount(0);
+  await expect(page.locator(`${SHELL} .res-row-more`)).toHaveCount(0);
+});
+
+test('切 Claude Code tab：aria-selected 翻转 + ?runtime= 写入（scenario 保留）', async ({
+  page,
+}) => {
+  await page.goto(PAGE);
+  await page.locator(`${SHELL} [role="tab"][data-runtime="claude-code"]`).click();
+  await expect(page).toHaveURL(/[?&]runtime=claude-code/);
+  await expect(page).toHaveURL(/[?&]scenario=10/);
+  await expect(
+    page.locator(`${SHELL} [role="tab"][data-runtime="claude-code"]`),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator(`${SHELL} [role="tab"][data-runtime="pi"]`)).toHaveAttribute(
+    'aria-selected',
+    'false',
+  );
+  const rows = page.locator(`${SHELL} .res-model-row[data-runtime="claude-code"]`);
+  await expect(rows).toHaveCount(4);
+  await expect(rows.nth(0)).toHaveAttribute('data-model-id', 'claude-opus-4-5');
+  await expect(rows.nth(0)).toContainText('default');
+});
+
+test('深链 ?runtime=claude-code 直落，刷新后 tab 定位保持', async ({ page }) => {
+  await page.goto(`${PAGE}&runtime=claude-code`);
+  await expect(
+    page.locator(`${SHELL} [role="tab"][data-runtime="claude-code"]`),
+  ).toHaveAttribute('aria-selected', 'true');
+  await page.reload();
+  await expect(
+    page.locator(`${SHELL} [role="tab"][data-runtime="claude-code"]`),
+  ).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator(`${SHELL} .res-model-row[data-runtime="claude-code"]`)).toHaveCount(4);
+});
+
+test('header 卡：runtime 名 + 说明 + 「已安装在 <hostname>」（两 tab 同构）', async ({ page }) => {
+  await page.goto(PAGE);
+  const piHead = page.locator(`${SHELL} .res-runtime-head[data-runtime="pi"]`);
+  await expect(piHead).toContainText('pi');
+  await expect(piHead).toContainText(`已安装在 ${CANON_HOST}`);
+  await expect(piHead).toContainText('pacman 自有运行时');
+  await page.locator(`${SHELL} [role="tab"][data-runtime="claude-code"]`).click();
+  const ccHead = page.locator(`${SHELL} .res-runtime-head[data-runtime="claude-code"]`);
+  await expect(ccHead).toContainText('Claude Code');
+  await expect(ccHead).toContainText(`已安装在 ${CANON_HOST}`);
+  await expect(ccHead).toContainText('~/.claude/settings.json');
+});
+
+test('settings.json 缺失分支：header 转「未安装」指引态，模型行零渲染不崩', async ({
+  page,
+}) => {
+  await page.goto('/app/resources/providers?scenario=10-cc-missing&runtime=claude-code');
+  const head = page.locator(`${SHELL} .res-runtime-head[data-runtime="claude-code"]`);
+  await expect(head).toContainText('未安装');
+  await expect(head).toContainText('安装 Claude Code 并完成一次登录后');
+  await expect(head).not.toContainText('已安装');
+  await expect(page.locator(`${SHELL} .res-model-row[data-runtime="claude-code"]`)).toHaveCount(0);
+  // pi tab 不受 cc 缺失影响（切回仍见 canon 三行）
+  await page.locator(`${SHELL} [role="tab"][data-runtime="pi"]`).click();
+  await expect(page.locator(`${SHELL} .res-model-row[data-runtime="pi"]`)).toHaveCount(3);
+});
+
+test('几何：tablist/header/模型行卡同贴内容列左缘，tab 序 pi 左 claude-code 右', async ({
+  page,
+}) => {
+  await page.goto(PAGE);
+  const col = page.locator(`${SHELL} .res-col`);
+  const tabs = page.locator(`${SHELL} .res-tabs`);
+  const head = page.locator(`${SHELL} .res-runtime-head`);
+  const card = page.locator(`${SHELL} .res-card`);
+  const colBox = await col.boundingBox();
+  const tabsBox = await tabs.boundingBox();
+  const headBox = await head.boundingBox();
+  const cardBox = await card.boundingBox();
+  expect(colBox).not.toBeNull();
+  // 内容列左缘 canon x=456 @1440（r7 06–10 探针，shell.tsx 头注）。
+  expect(colBox?.x).toBe(456);
+  for (const box of [tabsBox, headBox, cardBox]) {
+    expect(box?.x).toBe(colBox?.x);
+  }
+  expect(headBox?.width).toBe(colBox?.width);
+  expect(cardBox?.width).toBe(colBox?.width);
+  const piTab = await page.locator(`${SHELL} [role="tab"][data-runtime="pi"]`).boundingBox();
+  const ccTab = await page
+    .locator(`${SHELL} [role="tab"][data-runtime="claude-code"]`)
+    .boundingBox();
+  expect(piTab!.x + piTab!.width).toBeLessThanOrEqual(ccTab!.x);
+});

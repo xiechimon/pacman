@@ -52,6 +52,7 @@ import {
   r7,
   rerunDialog12,
   rerunDialog15,
+  resourcesCcMissing,
   resourcesDefault,
   resourcesImport,
   reusedBuilding,
@@ -226,6 +227,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '08': resourcesDefault,
       '09': resourcesDefault,
       '10': resourcesDefault,
+      // #356 未安装分支（spec 11 §A4）：claude-code settings.json 缺失 →
+      // header 未安装指引态的 fixture 钉
+      '10-cc-missing': resourcesCcMissing,
       // 新建技能 (r8 78/79, captured with this ticket): tab per scenario
       '79': resourcesImport('folder'),
       '80': resourcesImport('github'),

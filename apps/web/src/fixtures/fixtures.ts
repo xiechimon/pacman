@@ -5,7 +5,7 @@
 // (glyph template matching) in #54; all other strings come from the research
 // records.
 
-import { BRAND, conversationBranch, maskApiKey } from '@pacman/shared';
+import { BRAND, conversationBranch, type ModelSource, maskApiKey } from '@pacman/shared';
 import { diffLines } from 'diff';
 import type {
   ApiKeyRecord,
@@ -927,6 +927,34 @@ export const projectTasksEmpty: FixtureSet = {
  *  verbatim from the bitmaps; `2 天前` on the MCP row is the capture's own
  *  relative label (created on the r3 day), carried verbatim like the
  *  board's relative labels. */
+// providers 页 runtime tabs canon（spec 11 §A1-A4，#356）：pi 段 = custom
+// provider models[] 投影的展示样（承接 r7 07「R3 网关」canon 的量感）；
+// claude-code 段 = 本机 settings.json 槽位映射样。hostname 与 machines
+// canon（MACHINE_NAME）同源。两段提成命名常量 = 未安装分支变体（resources
+// CcMissing）的复用源。
+const PROVIDER_SOURCE_PI: ModelSource = {
+  runtime: 'pi',
+  installed: true,
+  hostname: MACHINE_NAME,
+  models: [
+    { id: 'claude-sonnet-5', name: 'Claude Sonnet 5（R3 网关）' },
+    { id: 'claude-opus-4-5', name: 'Claude Opus 4.5（R3 网关）' },
+    { id: 'gpt-5.2', name: 'GPT-5.2（R3 网关）' },
+  ],
+};
+
+const PROVIDER_SOURCE_CC: ModelSource = {
+  runtime: 'claude-code',
+  installed: true,
+  hostname: MACHINE_NAME,
+  models: [
+    { id: 'claude-opus-4-5', name: 'claude-opus-4-5', slot: 'default' },
+    { id: 'claude-opus-4-1', name: 'claude-opus-4-1', slot: 'opus' },
+    { id: 'claude-sonnet-5', name: 'claude-sonnet-5', slot: 'sonnet' },
+    { id: 'claude-haiku-4-5', name: 'claude-haiku-4-5', slot: 'haiku' },
+  ],
+};
+
 const RESOURCES: ResourcesContent = {
   skills: [{ name: 'r3-probe-skill', description: 'R3 盘点测试技能' }],
   mcpServers: [
@@ -950,10 +978,7 @@ const RESOURCES: ResourcesContent = {
       online: true,
     },
   ],
-  providers: [
-    { name: 'Pacman（内置）', models: '8 模型', pill: '未启用' },
-    { name: 'R3 网关', models: '12 模型', custom: true },
-  ],
+  providerSources: [PROVIDER_SOURCE_PI, PROVIDER_SOURCE_CC],
 };
 
 // ── Chief surfaces (issue #72, r5 100–116) ───────────────────────────────
@@ -1508,6 +1533,17 @@ export const resourcesDefault: FixtureSet = {
   todos: [legacyReview, legacyDone],
   now: r7(13, 14),
   resources: RESOURCES,
+};
+
+/** #356 未安装分支 canon（spec 11 §A4）：claude-code settings.json 缺失/
+ *  解析失败 → header 转「未安装」指引态、模型行零渲染。scenario =
+ *  10-cc-missing。 */
+export const resourcesCcMissing: FixtureSet = {
+  ...resourcesDefault,
+  resources: {
+    ...RESOURCES,
+    providerSources: [PROVIDER_SOURCE_PI, { ...PROVIDER_SOURCE_CC, installed: false, models: [] }],
+  },
 };
 
 /** 新建技能 route (r8 79/80, issue #69): same team state as the resource
