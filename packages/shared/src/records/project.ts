@@ -8,10 +8,13 @@
 import { z } from 'zod';
 import { recordId } from './common.js';
 
-/** repo 双形态（02 §3/A4 锁定）：托管 = server 自带本地 bare repo
- * （git http-backend）；接入 = GitHub（PR/CI 面）。wire 值 [推断] 可改判。 */
-export const PROJECT_REPO_KINDS = ['hosted', 'github'] as const;
+/** repo 形态（02 §3/A4 双形态 + spec 12 local 三形态）：托管 = server 自带
+ * 本地 bare repo（git http-backend）；接入 = GitHub（PR/CI 面）；local =
+ * 用户本机既有 git 工作树仓（#352/spec 12，daemon 镜像 clone 执行）。
+ * hosted/github wire 值 [推断] 可改判。 */
+export const PROJECT_REPO_KINDS = ['hosted', 'github', 'local'] as const;
 export const projectRepoKindSchema = z.enum(PROJECT_REPO_KINDS);
+export type ProjectRepoKind = z.infer<typeof projectRepoKindSchema>;
 
 export const projectRecordSchema = z.object({
   id: recordId,
@@ -27,8 +30,12 @@ export const projectRecordSchema = z.object({
   repoName: z.string().optional(),
   /** GitHub 接入 `owner/repo`（02 §3 接入形态；字段名 [推断]）。 */
   githubRepo: z.string().optional(),
+  /** local 形态：用户本机 git 工作树仓绝对路径（spec 12 / #359；server 端
+   * `~` 展开后的规范化值，daemon 镜像 clone 同源消费）。 */
+  localPath: z.string().optional(),
   /** clone URL（「Git 复制检出命令」卡数据源，02 §9.3）。托管 = 本地主机代位
-   * （02 §5.8 gitHostDomain 槽）；github = github.com 派生 [设计]。 */
+   * （02 §5.8 gitHostDomain 槽）；github = github.com 派生 [设计]；local 形态
+   * 无远端 URL 面（daemon 直接 clone localPath，spec 12）。 */
   cloneUrl: z.string().optional(),
 });
 export type ProjectRecord = z.infer<typeof projectRecordSchema>;
@@ -40,6 +47,30 @@ export type ProjectRecord = z.infer<typeof projectRecordSchema>;
 export function isGithubRepoRef(value: string): boolean {
   return /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/.test(value);
 }
+
+/** GitHub 仓库引用对象面（spec 12 数据契约：picker 单选回填 {owner,repo}；
+ * 手动兜底入口仍出 `owner/repo` 字符串面——server 归一为同一列值）。 */
+export const githubRepoRefSchema = z.object({
+  owner: z.string(),
+  repo: z.string(),
+});
+export type GithubRepoRef = z.infer<typeof githubRepoRefSchema>;
+
+/** `POST /api/projects` body 单源（spec 12 数据契约面 + 既有 wire 兼容面；
+ * server 路由与 web 表单 mutation 同吃）。repo 形态双名同义：`kind` = spec 12
+ * 契约名，`repoKind` = 既有 wire 名（r2 §9 项目创建流），并存时 kind 优先；
+ * 两者皆缺 = 无 repo 普通项目。githubRepo 双面（字符串 / {owner,repo} 对象）
+ * 归一后同过 isGithubRepoRef 闸；localPath 仅 kind=local 消费（必填，`~`
+ * 展开与 git 工作树校验在 server 端，失败 400）。 */
+export const createProjectBodySchema = z.object({
+  name: z.string(),
+  teamId: z.string().optional(),
+  kind: projectRepoKindSchema.optional(),
+  repoKind: projectRepoKindSchema.optional(),
+  localPath: z.string().nullish(),
+  githubRepo: z.union([z.string(), githubRepoRefSchema]).optional(),
+});
+export type CreateProjectBody = z.infer<typeof createProjectBodySchema>;
 
 /** 项目页分段开关 `Tasks | Files`（r1 §461 changelog/02 §3 文件浏览面：
  * tree?ref= / file?path=&ref= 读裸库，无检出要求）。 */
