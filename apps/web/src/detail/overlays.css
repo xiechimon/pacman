@@ -537,12 +537,6 @@
   line-height: 16px;
 }
 
-/* 添加 MCP 服务器 dialog (wayfinder #174, r8 71/72): http 形态的请求头行。 */
-.dlg-mcp-header-row {
-  display: flex;
-  gap: 8px;
-}
-
 /* 添加模型服务 dialog (wayfinder #175, r8 75 / r3 §2 field order): Bearer
    复选行。checkbox 骑 .dlg-accept-check 视觉,raw input 如 .dlg-toggle input
    般 opacity-0 覆叠,整块 tile 都是点击目标。 */

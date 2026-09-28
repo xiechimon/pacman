@@ -11,7 +11,6 @@ import type {
   ChiefThread,
   ConversationMessagesResponse,
   CreateAgentBody,
-  CreateMcpServerBody,
   CreateProviderBody,
   CreateScheduleBody,
   DiffFileContent,
@@ -526,15 +525,6 @@ export function useApiMutations(teamId: string | undefined) {
         mcpAccess: boolean;
         toolGrants: { read: string[]; write: string[] };
       }) => api.post<ApiKeyRow & { plaintext?: string }>(`/api/teams/${teamId}/api-keys`, body),
-      onSuccess: invalidateAll,
-    }),
-    createMcpServer: useMutation({
-      mutationFn: (body: CreateMcpServerBody) =>
-        api.post<McpServerRecord>(`/api/teams/${teamId}/mcp-servers`, body),
-      onSuccess: invalidateAll,
-    }),
-    deleteMcpServer: useMutation({
-      mutationFn: (id: string) => api.del<void>(`/api/teams/${teamId}/mcp-servers/${id}`),
       onSuccess: invalidateAll,
     }),
     createSkill: useMutation({

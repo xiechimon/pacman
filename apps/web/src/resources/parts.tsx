@@ -52,7 +52,9 @@ export function RowChevron() {
 
 /** Empty-state block (r7 10 geometry): 48px hero tile, heading, two-line
  *  description, primary button, optional 总管 hint row (查看文档 link
- *  removed #307 — local-first 无文档站, #149 schedules 同律). */
+ *  removed #307 — local-first 无文档站, #149 schedules 同律).
+ *  actionLabel 可选（spec 13/#368：只读资源面的空态无 primary 动作——
+ *  MCP 页配置指引即文案本体，无「添加」钮）。 */
 export function EmptyState({
   Icon,
   title,
@@ -65,7 +67,7 @@ export function EmptyState({
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
   title: string;
   description: string;
-  actionLabel: string;
+  actionLabel?: string;
   /** SPA target for the primary action (issue #153); absent keeps the
    *  inert button (dialog-opening actions land in a later ticket). */
   actionHref?: string;
@@ -81,20 +83,22 @@ export function EmptyState({
       <Tile Icon={Icon} size="hero" tone="orange" />
       <h2 className="res-empty-title">{t(title)}</h2>
       <p className="res-empty-desc">{t(description)}</p>
-      <div className="res-empty-actions">
-        {actionHref == null ? (
-          <Button variant="primary" size="compact" className="res-primary" onClick={onAction}>
-            {t(actionLabel)}
-          </Button>
-        ) : (
-          <Link className="res-primary" to={{ pathname: actionHref, search }}>
-            {t(actionLabel)}
-          </Link>
-        )}
-        {/* 「查看文档」钮全除（#307 wontfix）：local-first 自托管无文档站
-            可链（#149 schedules 同律）——skills/secrets/mcp 空态随共享件
-            一并出账，spec 08 档 4。 */}
-      </div>
+      {actionLabel != null && (
+        <div className="res-empty-actions">
+          {actionHref == null ? (
+            <Button variant="primary" size="compact" className="res-primary" onClick={onAction}>
+              {t(actionLabel)}
+            </Button>
+          ) : (
+            <Link className="res-primary" to={{ pathname: actionHref, search }}>
+              {t(actionLabel)}
+            </Link>
+          )}
+          {/* 「查看文档」钮全除（#307 wontfix）：local-first 自托管无文档站
+              可链（#149 schedules 同律）——skills/secrets 空态随共享件
+              一并出账，spec 08 档 4。 */}
+        </div>
+      )}
       {hint != null && (
         <p className="res-empty-hint">
           <Lock width={11} height={11} />

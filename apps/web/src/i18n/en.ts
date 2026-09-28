@@ -227,9 +227,9 @@ export const EN: Record<string, string> = {
   '你也可以直接让总管从 GitHub 安装技能，或帮你制作新技能。':
     'You can also just let the Chief install skills from GitHub, or craft new ones for you.',
   '尚无 MCP 服务器。': 'No MCP servers yet.',
-  'MCP 服务器为 Agent 提供额外工具，例如工单系统、浏览器、内部 API。授权在每个 Agent 的页面上单独进行。':
-    'MCP servers give Agents extra tools — ticketing systems, browsers, internal APIs. Authorization happens per Agent, on its own page.',
-  '添加 MCP 服务器': 'Add MCP server',
+  // spec 13/#368 本地 config 只读制：空态文案 = 配置指引（无添加钮）。
+  '读取 server 本机 ~/.claude.json 的 mcpServers 段：在该文件添加配置并刷新，即出现在这里。MCP 服务器为 Agent 提供额外工具；授权在每个 Agent 的页面上单独进行。':
+    'Reads the mcpServers section of ~/.claude.json on the pacman server machine — add entries there and refresh to see them here. MCP servers give Agents extra tools; authorization happens per Agent, on its own page.',
   '尚无密钥。': 'No secrets yet.',
   '团队密钥将以环境变量注入每个任务的 shell。值只写不读：保存后只能覆盖或删除，无法再次查看。':
     'Team secrets are injected into every task shell as environment variables. Values are write-only: once saved they can be overwritten or deleted, never viewed again.',
@@ -489,20 +489,6 @@ export const EN: Record<string, string> = {
   最近更新: 'Recently updated',
   标题: 'Title',
   没有匹配的任务: 'No matching tasks',
-  // wayfinder #174 add-mcp-server dialog family (02 §6.2 / r3 §5.1 text
-  // authority; geometry [推断] — capture PNGs unreadable on this API line)
-  类型: 'Type',
-  '远程 HTTP': 'Remote HTTP',
-  本地命令: 'Local command',
-  标识符: 'Slug',
-  '用作前缀，创建后不可修改。': 'Used as a prefix; cannot be changed after creation.',
-  '例如：内部工单系统': 'e.g. internal ticketing',
-  '请求头（可选）': 'Headers (optional)',
-  请求头名称: 'Header name',
-  请求头值: 'Header value',
-  添加请求头: 'Add header',
-  命令: 'Command',
-  '参数（可选，空格分隔）': 'Arguments (optional, space-separated)',
   // wayfinder #175 add-provider dialog family (field authority = shared
   // createProviderBodySchema / r3 §2; protocol tab labels stay English
   // verbatim, never translated)

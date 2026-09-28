@@ -206,13 +206,32 @@ test('resources empty state drops the 查看文档 link, keeps the primary actio
 }) => {
   await page.goto('/app/resources/skills?scenario=01');
   await expect(page.locator('.res-empty')).toBeVisible();
-  // 共享 EmptyState 件:skills/secrets/mcp 三面空态的文档链接一并出账
-  // (skills + secrets 双面钉,防单面局部复活漏网;mcp 同件随行)
+  // 共享 EmptyState 件:skills/secrets 两面空态的文档链接一并出账
+  // (双面钉,防单面局部复活漏网;mcp 空态归 #368 只读面专钉,见下条)
   await expect(page.locator('.res-doclink')).toHaveCount(0);
   await expect(page.locator('.res-empty .res-primary')).toBeVisible();
   await page.goto('/app/resources/secrets?scenario=01');
   await expect(page.locator('.res-empty')).toBeVisible();
   await expect(page.locator('.res-doclink')).toHaveCount(0);
+});
+
+// spec 13/#368:MCP 页翻转为本地 config 只读面——新建/编辑入口全撤,
+// 空态文案即 ~/.claude.json 配置指引(添加钮的替代面)。
+test('mcp page is read-only: 无新建入口、行无更多菜单 ink、空态指向 ~/.claude.json (#368)', async ({
+  page,
+}) => {
+  // 空态(scenario 01):无新建钮、无 primary 动作、文案含配置路径。
+  await page.goto('/app/resources/mcp-servers?scenario=01');
+  await expect(page.locator('.res-new')).toHaveCount(0);
+  await expect(page.locator('.res-empty')).toBeVisible();
+  await expect(page.locator('.res-empty .res-primary')).toHaveCount(0);
+  await expect(page.locator('.res-empty-desc')).toContainText('~/.claude.json');
+  // 行态(scenario 07):只读行,无更多菜单 ink、无弹窗挂载位。
+  await page.goto('/app/resources/mcp-servers?scenario=07');
+  await expect(page.locator('.res-rowcard--mcp')).toHaveCount(1);
+  await expect(page.locator('.res-row-more')).toHaveCount(0);
+  await expect(page.locator('.dlg')).toHaveCount(0);
+  await expect(page.locator('.res-new')).toHaveCount(0);
 });
 
 test('create-agent dialog drops the avatar 更换 ink (#307)', async ({ page }) => {

@@ -2,17 +2,17 @@ import { expect, type Locator, test } from '@playwright/test';
 
 // #193: 矮视口(800×500)+ 各弹窗最高内容态下,submit/取消恒在视口内可点,
 // 内容区(.dlg-body)滚动而不推挤按钮区(.dlg-foot)。#175 只修了 provider
-// 本弹窗,本 spec 把该验收钉到整族(DialogShell 全部 11 个消费点;自建
-// `.dlg` 容器经 grep 证实不存在)。每条钉一个面的一种失败方式:
+// 本弹窗,本 spec 把该验收钉到整族(DialogShell 全部 10 个消费点;自建
+// `.dlg` 容器经 grep 证实不存在;mcp 添加弹窗已随 spec 13/#368 本地
+// config 只读制撤除)。每条钉一个面的一种失败方式:
 // 1. provider(#175 源头面):3 模型行 → body 溢出,submit 钉底且滚动不位移
-// 2. mcp:请求头行动态增长 → create 钉底
-// 3. secret / 5. agent / 6. charter:静态表单面 → submit/取消 在视口
-// 4. machine:disclosure 展开(最高内容态)→ 底部链接在视口
-// 7. chief-agent 列表 / 8. token:无按钮读面 → 面板整体不越视口
-// 9. branch sync tab:全高 410 在 500 视口内天然装得下,压 360 视口验证
+// 2. secret / 4. agent / 5. charter:静态表单面 → submit/取消 在视口
+// 3. machine:disclosure 展开(最高内容态)→ 底部链接在视口
+// 6. chief-agent 列表 / 7. token:无按钮读面 → 面板整体不越视口
+// 8. branch sync tab:全高 410 在 500 视口内天然装得下,压 360 视口验证
 //    封顶后同步钮钉底;body 溢出
-// 10. history 重跑 footer(57f)→ 重跑钮在视口
-// 11. accept(34)→ 取消/完成在视口
+// 9. history 重跑 footer(57f)→ 重跑钮在视口
+// 10. accept(34)→ 取消/完成在视口
 
 test.use({ viewport: { width: 800, height: 500 } });
 
@@ -59,20 +59,6 @@ test('provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移', asy
   const after = await submit.boundingBox();
   expect(after).toEqual(before);
   await expect(submit).toBeInViewport();
-});
-
-test('mcp: 请求头行动态增长,create 钉底', async ({ page }) => {
-  await page.goto('/app/resources/mcp-servers?scenario=01');
-  await page.locator('.res-new').click();
-  const dialog = page.locator('.dlg');
-  await expect(dialog).toBeVisible();
-  const addHeader = dialog.locator('.dlg-mcp-header-add');
-  await addHeader.click();
-  await addHeader.click();
-  await expect(dialog.locator('.dlg-mcp-header-row')).toHaveCount(3);
-  await expectBodyOverflows(dialog);
-  await expectShellCapped(dialog);
-  await expect(dialog.locator('.dlg-mcp-create')).toBeInViewport();
 });
 
 test('secret: 静态表单面 submit 在视口', async ({ page }) => {
