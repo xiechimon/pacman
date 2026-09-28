@@ -326,6 +326,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       workspace,
       workspacesDir: config.workspacesDir,
       maxConcurrent: config.maxConcurrent,
+      mcpConfigPath: config.mcpConfigPath,
       sessionHandles,
       stopRequests,
       ...(opts.heartbeatIntervalMs !== undefined

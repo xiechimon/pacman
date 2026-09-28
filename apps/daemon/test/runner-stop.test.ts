@@ -251,6 +251,7 @@ async function setup(opts: { kind?: 'plan' | 'build'; discard: boolean }) {
     workspace: ws,
     workspacesDir: join(home, 'workspaces'),
     maxConcurrent: 3,
+    mcpConfigPath: join(home, 'claude.json'),
     sessionHandles,
     stopRequests,
     heartbeatIntervalMs: 60_000,
