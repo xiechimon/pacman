@@ -124,6 +124,7 @@ pacman 是多 lane coding agent 编排台：看板管理并行 agent 任务，�
 ## Shapes
 
 - **12px（rounded-lg）**：卡片、弹层、对话框——elevated surface 的统一半径。
+- **10px（rounded-popover）**：浮层下拉、设置弹层、popover 等——与 `--radius-popover` token 绑定。
 - **全圆角（9999px）**：状态徽章、chip、快捷键键帽。
 - **8px（DEFAULT）**：按钮、输入框等基础控件。
 

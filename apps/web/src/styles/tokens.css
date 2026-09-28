@@ -65,6 +65,7 @@
      hairline at every zoom */
   --edge-ring: inset 0 0 0 1px var(--border-default);
   --edge-radius: 12px;
+  --radius-popover: 10px;
   --edge-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
   /* card-tier resting shadow (#161): the small-card family (todo / notify
      banner / column container) sits one elevation below the popover tier —
@@ -249,6 +250,7 @@
   /* unified border language (#139), light side: the edge shadow tier dimmed
      to the light surface; the ring rides --border-default's light value via
      the :root alias */
+  --radius-popover: 10px;
   --edge-shadow: 0 5px 14px rgb(28 25 23 / 0.14);
   /* card-tier resting shadow (#161), light side: 2px y-offset / 4px blur /
      7% opacity over the warm-ink palette. Same shape as the dark side —
