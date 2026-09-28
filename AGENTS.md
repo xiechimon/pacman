@@ -17,7 +17,7 @@
 - 改自己没完整读过的文件前先 Read；不要靠搜索片段做广义修改。
 - 默认无 `any`；需要时写明 `any intentionally - <理由>`。
 - 单行 helper 且唯一调用点 → inline。
-- 外部包 API: bundled types → 读 `node_modules/<pkg>/dist/*.d.ts`(钉 `npm ls <pkg>` 版本); 仅 `@types/` → 读 `node_modules/@types/<pkg>/index.d.ts` + 同包 JS 源; 无类型 → 跑 `node -e` 或查 docs, 不靠记忆推。
+- 外部包 API: bundled types → 读 `node_modules/<pkg>/dist/*.d.ts`; 仅 `@types/` → 读 `node_modules/@types/<pkg>/index.d.ts` + 同包 JS 源; 无类型 → 跑 `node -e` 或查 docs, 不靠记忆推。pnpm 仓顶层 node_modules 只挂直接依赖——路径不存在就去 `node_modules/.pnpm/<pkg>@<ver>/node_modules/<pkg>/`（本仓实测）。钉 `npm ls <pkg>` 版本。详 `~/.agents/wiki/wiki/外部包 API 事实源调研.md`。
 - **禁 inline import**（`await import()`、`import("pkg").Type`、动态类型导入）；top-level only。
 - `apps/daemon/src/backend/` 是 GitOps / MCP / LLM provider 缝；其它模块要把他们当成接口边界 import，不要从外部模块绕过去。
 - 移除"看起来是有意写的"功能或代码前**先问**。
