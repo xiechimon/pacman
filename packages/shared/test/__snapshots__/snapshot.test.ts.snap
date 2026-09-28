@@ -2380,6 +2380,28 @@ exports[`body/封套 schema 快照 > deviceJson > deviceJson.json 1`] = `
 }
 `;
 
+exports[`body/封套 schema 快照 > githubConnectionStatus > githubConnectionStatus.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "connected": {
+      "type": "boolean",
+    },
+    "login": {
+      "type": "string",
+    },
+    "scope": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "connected",
+  ],
+  "type": "object",
+}
+`;
+
 exports[`body/封套 schema 快照 > githubReposResponse > githubReposResponse.json 1`] = `
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",

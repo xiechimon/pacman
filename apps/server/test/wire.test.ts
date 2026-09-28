@@ -81,6 +81,13 @@ const INFERRED_ROUTES = [
   // `GET /user/repos` 代理，token 取自 github_connection；自有设计面，
   // 02 §6.1 词表外 = INFERRED 入位）。
   'GET /api/github/repos',
+  // spec 12 / #361 GitHub 连接认证面（G2-T4）：authorize = #231 同形签发
+  // （github-connection 族 state）；connection GET/DELETE = 认证状态读面
+  // （login/scope，02 §8 无 token 位）+ 断开（删行幂等）。自有设计面，
+  // 02 §6.1 词表外 = INFERRED 入位。
+  'POST /api/teams/{id}/github/oauth/authorize',
+  'GET /api/teams/{id}/github/connection',
+  'DELETE /api/teams/{id}/github/connection',
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；

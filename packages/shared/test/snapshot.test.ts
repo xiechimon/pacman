@@ -30,6 +30,7 @@ import {
   daemonJsonSchema,
   deviceJsonSchema,
   ENV_VARS,
+  githubConnectionStatusSchema,
   githubReposResponseSchema,
   LOCAL_STATE_DIRS,
   LOCAL_STATE_FILES,
@@ -105,6 +106,8 @@ describe('body/封套 schema 快照', () => {
     // localPath + githubRepo 双面）+ repo picker 封套。
     createProjectBody: createProjectBodySchema,
     githubReposResponse: githubReposResponseSchema,
+    // #361 G2-T4：GitHub 连接认证状态读面封套（login/scope，无 token 位）。
+    githubConnectionStatus: githubConnectionStatusSchema,
     projectTreeResponse: projectTreeResponseSchema,
     projectFileResponse: projectFileResponseSchema,
     projectBranchesResponse: projectBranchesResponseSchema,
