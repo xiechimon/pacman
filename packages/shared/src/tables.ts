@@ -23,7 +23,8 @@ export const DB_TABLES = [
   'agent', // 含 6 工具开关/secrets/skills/mcpServers 关联（02 §6.2）
   'agent_memory', // 02 §4.4 条目集（r5 §6 改判）
   'skill', // 含文件内容，`skills/{sid}/file` 端点源（02 §6.1）
-  'mcp_server', // 02 §6.2 形状
+  // 'mcp_server' 已随 spec 13（#368）本地 config 只读制撤除（migration 导出
+  // 旧行后 drop）；MCP 面数据源 = ~/.claude.json，无表位。
   'provider', // 38 presets + custom；apiKey 密文经 SecretBox（02 §6.2/§8）
   'secret', // 值密文经 SecretBox，只写不读（02 §8）
   'api_key', // 哈希 + gitAccess/mcpAccess/toolGrants 白名单（02 §6.2/§8）

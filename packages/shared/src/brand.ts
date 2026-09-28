@@ -91,6 +91,9 @@ export const ENV_VARS = {
    * 两条 SSE stream 端点另收 ?token=——EventSource 无法设 header）；
    * 未设/空串 = 关（默认，行为与现状一致）。 */
   token: 'PACMAN_TOKEN',
+  /** 本地 MCP config 文件（spec 13/#368）：server 投影 UI 面、daemon 解析
+   * 执行端点，各读各机；默认 ~/.claude.json 的 mcpServers 段。 */
+  mcpConfig: 'PACMAN_MCP_CONFIG',
 } as const;
 
 /** API key 形态 `pacman_<48hex>`（02 §5.8 前缀 = 品牌槽；r3 §6 掩码样例原形
