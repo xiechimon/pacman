@@ -306,7 +306,8 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
 
     // composer 发送驳回反馈 = POST steps {action:"revision"}（真端点）。
     await page.locator('.composer-input').fill('标题去掉项目名后缀');
-    await page.locator('.composer-send').dispatchEvent('click');
+    // 真实 click：#347 修复后发送钮不再被总管 FAB 遮挡（遮挡回归时这里超时）。
+    await page.locator('.composer-send').click();
     await waitChip(/规划中/);
 
     // v2 落回 confirm 关口：plan 卡 v2 + 版本 chip v2 + 用户驳回气泡。

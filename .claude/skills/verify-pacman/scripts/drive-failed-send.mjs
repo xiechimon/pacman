@@ -141,18 +141,21 @@ try {
   // （fixture 与 live 面皆如此，仓内 e2e/integration 都因此改用 dispatchEvent）。
   // 这里同样走 dispatchEvent 驱动 wire，并把遮挡事实量下来记进证据——不掩盖。
   const sendBox = await page.locator('.composer-send').boundingBox();
+  // elementFromPoint 给的是最内层元素（按钮里的 svg/path），要判「点到了谁」
+  // 必须 closest 上溯到目标选择器——直接比 className 会永远匹配不上按钮自身
   const hitAtCenter = sendBox
     ? await page.evaluate(
         ({ x, y }) => {
           const el = document.elementFromPoint(x, y);
           if (!el) return 'null';
+          if (el.closest('.composer-send')) return 'closest(.composer-send)';
           const cls = typeof el.className === 'string' ? el.className : '';
           return `${el.tagName}.${cls}[aria=${el.getAttribute('aria-label') ?? '-'}]`;
         },
         { x: sendBox.x + sendBox.width / 2, y: sendBox.y + sendBox.height / 2 },
       )
     : 'null';
-  const mouseReaches = hitAtCenter.includes('composer-send');
+  const mouseReaches = hitAtCenter === 'closest(.composer-send)';
   extra.sendReachableByMouse = mouseReaches;
   extra.sendCenterHit = hitAtCenter;
   process.stdout.write(

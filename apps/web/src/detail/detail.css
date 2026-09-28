@@ -916,6 +916,17 @@ textarea.composer-input::placeholder {
   color: var(--text-tertiary);
 }
 
+/* #347：composer 在场时总管 FAB 让位上移。两者同锚 .detail-main 右下——
+composer 固定 76 高占底 16–92px，FAB 48 高原占 16–64px，几何上完全包住
+`.composer-send`（32×32 @ 1378,671）。原站同形：r5-chief-behavior.md §82 实测
+发送钮被总管悬浮球遮挡、观察者须 force/DOM click 才点得动。这里主动分化
+（06 册 D1 起对拍义务已解除）：FAB 抬到 composer 之上（92 + 12 间距），
+两个控件都保持可点。放在 .detail-fab 之后是为了满足 biome 的
+noDescendingSpecificity（高特异性规则不得排在前）。 */
+.detail-main:has(.composer) .detail-fab {
+  bottom: 104px;
+}
+
 /* ---- fresh block (r7 23) ---- */
 
 .fresh-block {

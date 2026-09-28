@@ -12,10 +12,10 @@ test('reject loop: 请求修改 → v2 → diff → 确认', async ({ page }) =>
   await expect(page.locator('.detail-chip')).toHaveText(/确认/);
   await expect(page.locator('.doc-pane-select').nth(1)).toHaveText(/v1/);
 
-  // 请求修改 → replan streaming (r8 67). The 总管 FAB overlaps the send
-  // button in every capture (r7 §3.4), so the click is forced — same as
-  // the real app's own DOM-click workaround.
-  await page.locator('.composer-send').dispatchEvent('click');
+  // 请求修改 → replan streaming (r8 67). Real click: #347 让总管 FAB 在
+  // composer 在场时上移，发送钮不再被遮挡——这条 click 即该修复的回归钉
+  // （遮挡回归时这里会超时）。
+  await page.locator('.composer-send').click();
   await expect(page.locator('.detail-chip')).toHaveText(/规划中/);
   await expect(page.locator('.chat-streaming-label')).toHaveText('处理中...');
 
