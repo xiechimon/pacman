@@ -42,6 +42,11 @@ test('provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移', asy
   await page.locator('.res-new').click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
+  // #355 picker 面(无 footer):38 行必然溢出,面板仍封顶
+  await expectBodyOverflows(dialog);
+  await expectShellCapped(dialog);
+  // 表单字段在「自定义端点」入口后的 form 视图
+  await dialog.locator('.dlg-provider-custom').click();
   const addModel = dialog.locator('.dlg-provider-model-add');
   await addModel.click();
   await addModel.click();

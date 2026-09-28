@@ -518,9 +518,11 @@ export const EN: Record<string, string> = {
   '模型（可选）': 'Models (optional)',
   '模型 ID': 'Model ID',
   添加模型: 'Add model',
-  // #231 OAuth 连接订阅段(族表单源 = shared OAUTH_FAMILIES;品牌名不译)
-  连接订阅: 'Connect a subscription',
-  或添加自定义网关: 'or add a custom gateway',
+  // #355 picker 形态(spec 11 §A6;preset 显示名 = 品牌串不译,OAuth 徽标
+  // 同为英文字面)
+  '搜索服务商...': 'Search providers...',
+  自定义端点: 'Custom endpoint',
+  // #231/#243 OAuth 落地 reason 三译(providers-page 喂 connectError 行)
   '授权已被取消。': 'Authorization was cancelled.',
   '令牌交换失败，请稍后重试。': 'Token exchange failed — please try again.',
   '连接已过期，请重新发起。': 'Connection expired — please start it again.',
