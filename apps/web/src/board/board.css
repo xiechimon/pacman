@@ -42,7 +42,7 @@
   left: 0;
   right: 0;
   /* pure label: the centered band spans the topbar and would otherwise
-     swallow clicks on the +任务 / 看板指南 actions (#66 parity clicks) */
+     swallow clicks on the +任务 / 看板指南 actions (#66 e2e clicks) */
   pointer-events: none;
   text-align: center;
   font-size: 14px;
@@ -62,7 +62,7 @@
    档承载底/字色/padding/光标；本规则只留原语表达不了的 per-face 实测值
    （r7 topbar 59.5 宽 / 11px 图标缝 / 14px 字号）。复合选择器 0-2-0 钉死
    对 .btn 字号的覆写，不依赖打包顺序。board-new-task 类名本身是
-   e2e/parity 钉死的选择器别名（className 透传保留）。 */
+   e2e 钉死的选择器别名（className 透传保留）。 */
 .btn.board-new-task {
   width: 59.5px;
   gap: 11px;

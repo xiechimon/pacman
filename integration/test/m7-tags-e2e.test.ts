@@ -30,8 +30,8 @@ let projectId = '';
 
 beforeAll(async () => {
   // web 生产构建（scenario-blind = 恒 live 数据源，#58 gate）。与 m5-web-e2e
-  // 同款；dist 为两文件共用，CI 顺序跑不互踩（同 worktree 内 playwright 与
-  // parity 的 dist 互斥纪律归 AGENTS.md，此处均为 vite 默认 mode）。
+  // 同款；dist 为两文件共用，CI 顺序跑不互踩（同 worktree 内 dist 互斥纪律
+  // 归 AGENTS.md，此处均为 vite 默认 mode）。
   const build = spawnSync('pnpm', ['--filter', '@pacman/web', 'exec', 'vite', 'build'], {
     cwd: ROOT,
     encoding: 'utf8',

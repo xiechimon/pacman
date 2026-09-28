@@ -4,7 +4,7 @@
 // (storage-backed, formerly board-only), the 用量 nav row, the machine-
 // online dot, the attention badge and the ⌘K search row all derive the
 // same way everywhere. Routes that mount their own SearchPanel (board and
-// detail: their fixture ui.searchOpen open states drive the parity rows)
+// detail: their fixture ui.searchOpen open states drive the fixture rows)
 // pass searchPanel={false} + their own onSearch opener; every other shell
 // rides the internal panel, which renders nothing while closed.
 
@@ -17,7 +17,7 @@ import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { attentionCount } from './columns.js';
 import { BoardSidebar, type SidebarSelected } from './sidebar.js';
 
-export const SIDEBAR_STORAGE_KEY = 'pacman.sidebar-collapsed'; // mirrored in parity/run.mjs
+export const SIDEBAR_STORAGE_KEY = 'pacman.sidebar-collapsed'; // mirrored in e2e (sidebar-nav / collapse-family specs)
 
 function readCollapsed(storage: Storage): boolean {
   return storage.getItem(SIDEBAR_STORAGE_KEY) === '1';
@@ -48,11 +48,11 @@ export function AppSidebar({
   const todosQ = useTodos(teamId, live);
   const machinesQ = useMachines(teamId, live);
   const search = useSearchState(false, '');
-  // W4 #286：live 面服务端搜索（fixture/parity 面不经此钩）。
+  // W4 #286：live 面服务端搜索（fixture 面不经此钩）。
   const searchResults = useSearchResults(search.query, live && search.open);
   // #55: the collapse toggle is real state, persisted beside the theme; the
   // exact key is [推断] (r2 §1.1 only documents `tds.sidebarProjectsCollapsed`
-  // for the project-group fold), and the parity harness injects it like the
+  // for the project-group fold), and the fixture build injects it like the
   // theme key so the rail capture stays deterministic.
   const [collapsed, setCollapsed] = useState(() => readCollapsed(localStorage));
   const toggle = useCallback(() => {

@@ -88,7 +88,7 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
           {t('名称（可选）')}
         </label>
         {/* a3-pages 收编：Input 原语 36px 标准族（surface 底/card-border 描边）；
-            W4 #287 面无 parity 基准，padding 8 10 → 36 固定高归一无红项。
+            W4 #287 面无视觉基准，padding 8 10 → 36 固定高归一无红项。
             类名留作 e2e/语义定位别名。 */}
         <Input
           id="apikey-name-input"

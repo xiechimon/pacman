@@ -123,7 +123,7 @@ export type ProviderPreset = z.infer<typeof providerPresetSchema>;
 
 /** 表单行为词表（r3 §2 实测）：「无密钥网关可留空」+ Bearer 复选 +
  * `探测模型`（Anthropic 协议亦走 /v1/models）+ `保存前验证` 开关；
- * 表单注 canon「密钥将加密存储，保存后无法再次查看。」（02 §8 文案 parity）。 */
+ * 表单注 canon「密钥将加密存储，保存后无法再次查看。」（02 §8 文案对齐）。 */
 export const PROVIDER_FORM_COPY = {
   apiKeyOptional: '无密钥网关可留空',
   probeModels: '探测模型',

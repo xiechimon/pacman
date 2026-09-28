@@ -31,7 +31,7 @@ import { TodoDetailPage } from './routes/todo-detail-page.js';
 // notification-click deep links) and the app-level I18nProvider.
 // #83 (M5): the LiveDataBridge pathless layout sits above PwaBridge — it
 // resolves fixture-vs-live mode, the seed team/user and the global team
-// stream; fully inert in fixture (parity/dev-scenario) mode.
+// stream; fully inert in fixture (fixture/dev-scenario) mode.
 export const router = createBrowserRouter([
   {
     element: <LiveDataBridge />,

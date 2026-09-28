@@ -1,7 +1,7 @@
 // live 数据源桥（M5 汇合，#83）：路由树顶的 pathless layout——判定
 // fixture/live 模式（api/mode.ts）、解析 seed team/用户（02 §2 恒一行）、
 // 挂 team stream 全局订阅（SSE → invalidateQueries + 桌面通知，02 §1.2/§9.1）。
-// fixture 模式下本桥完全惰性（不发请求、不开流），parity/dev 场景数据面
+// fixture 模式下本桥完全惰性（不发请求、不开流），fixture/dev 场景数据面
 // 与既有行为字节一致。
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

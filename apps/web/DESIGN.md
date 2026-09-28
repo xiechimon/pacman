@@ -111,7 +111,7 @@ pacman 是多 lane coding agent 编排台：看板管理并行 agent 任务，�
 
 ## Layout & Spacing
 
-4px 基数阶梯（space-1 到 space-6）。卡片内边距 space-3（12px），栏间距 space-4（16px），页面边距 space-6（24px）。顶栏 44px（43 内容 + 1px 发丝缝），侧栏 240px。**复刻面现有像素级实测值不动——A3 拍板保护 parity（批量等值化会动像素）；新写代码一律走 token**（详 `tokens.css` spacing ladder 注释）。
+4px 基数阶梯（space-1 到 space-6）。卡片内边距 space-3（12px），栏间距 space-4（16px），页面边距 space-6（24px）。顶栏 44px（43 内容 + 1px 发丝缝），侧栏 240px。**复刻面现有像素级实测值不动——A3 拍板保护视觉回归（批量等值化会动像素）；新写代码一律走 token**（详 `tokens.css` spacing ladder 注释）。
 
 ## Elevation & Depth
 

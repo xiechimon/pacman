@@ -5,7 +5,7 @@
 // settings` — the settings swap stays a board-route render decision), the
 // live envelope/threads/messages queries, the conversation SSE while the
 // drawer is open, the unread badge count and the send/thread callbacks.
-// Fixture mode stays fully inert (queries enabled = live), so parity
+// Fixture mode stays fully inert (queries enabled = live), so fixture
 // captures keep their zero-request guarantee.
 
 import { useMemo, useState } from 'react';

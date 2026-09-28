@@ -1,8 +1,7 @@
 // Board surface (issue #54): topbar + horizontal 6-column scroller + chief
 // FAB. Geometry from the r7 captures: scroller padding 12/17/13, column
 // pitch 292 (278 body + 14 gap), radius 10, header 37 with dot/name/count,
-// empty-state copy centered. The scroller carries [data-parity-scroll] for
-// the parity harness scrollLeft driving.
+// empty-state copy centered.
 // #58: the scroller's scrollLeft is mirrored to sessionStorage on scroll
 // and restored on mount, so 详情 → 返回 lands on the same board scroll
 // position (module key below; per-tab storage, cleared with the tab).
@@ -135,8 +134,8 @@ export function BoardSurface({
     window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
   // Restore after mount, before paint — a returning user never sees the
-  // board jump. The parity harness drives scrollLeft itself after load, so
-  // this is a no-op under fresh browser contexts (empty sessionStorage).
+  // board jump. Fresh browser contexts carry an empty sessionStorage, so
+  // this is a no-op there.
   useLayoutEffect(() => {
     const el = scrollerRef.current;
     if (el == null) return;
@@ -238,7 +237,7 @@ export function BoardSurface({
         <div className="board-topbar-title">{t('看板')}</div>
         <div className="board-topbar-actions">
           {/* A3 收编：Button text 变体（compact 档）。board-new-task 是
-              e2e/parity 钉死的选择器别名，经 className 透传保留；59.5 宽 /
+              e2e 钉死的选择器别名，经 className 透传保留；59.5 宽 /
               11px 图标缝 / 14px 字号是原语表达不了的 per-face 实测值，
               留在 board.css。 */}
           <Button variant="text" size="compact" className="board-new-task" onClick={onNewTask}>
@@ -247,8 +246,7 @@ export function BoardSurface({
           </Button>
           <span className="board-guide-wrap">
             {/* A4-deep 收编：icon 变体皮肤；.board-guide 是 e2e
-                (dead-buttons) 与 parity 点击矩阵钉死的别名，28×28 几何
-                per-face 留在 board.css。 */}
+                (dead-buttons) 钉死的别名，28×28 几何 per-face 留在 board.css。 */}
             <Button
               variant="icon"
               className="board-guide"
@@ -278,7 +276,6 @@ export function BoardSurface({
       >
         <div
           className="board-scroller"
-          data-parity-scroll=""
           ref={scrollerRef}
           onScroll={(e) =>
             sessionStorage.setItem(BOARD_SCROLL_KEY, String(e.currentTarget.scrollLeft))
@@ -324,7 +321,7 @@ export function BoardSurface({
                         <span className="board-column-label">{t(column.label)}</span>
                       )}
                       {/* A4-deep 收编：icon 变体皮肤；.board-column-collapse
-                          是 e2e (collapse-family) 与 parity 点击矩阵钉死的别名 */}
+                          是 e2e (collapse-family) 钉死的别名 */}
                       <Button
                         variant="icon"
                         className="board-column-collapse"

@@ -39,7 +39,7 @@ import { PageShell } from './shell.js';
 import './pages.css';
 
 /** Capture-timezone offset (+08:00) — same convention as board/rel-time.ts:
- *  wall-clock labels are formatted in the capture tz so parity output never
+ *  wall-clock labels are formatted in the capture tz so fixture output never
  *  drifts with the runner locale (CI runs UTC). */
 const TZ_OFFSET = 8 * 3_600_000;
 const pad = (n: number) => String(n).padStart(2, '0');

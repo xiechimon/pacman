@@ -4,10 +4,10 @@ import { expect, type Page, test } from '@playwright/test';
 // #223 的 POST /api/skills/scan 双模式端点:扫描(候选发现)→ 结果列表 →
 // 选中候选(fetch 模式取文件集)→ 既有 POST /api/skills 文件集导入(#195
 // 语义链)→ 回技能列表。
-// 本 spec 是仓内首个 page.route 网络桩 e2e:parity build 不带 ?scenario=
+// 本 spec 是仓内首个 page.route 网络桩 e2e:fixture build 不带 ?scenario=
 // 即 live 模式(api/mode.ts isFixtureMode 律),全 API 面打桩后确定性钉
 // web → 端点消费链;真 GitHub 出站链归 live 真机验(票坐标)。fixture 面
-// DOM 零变化由 parity 矩阵(scenario 80)守,本 spec 不重复钉。
+// DOM 零变化由 e2e 矩阵(scenario 80)守,本 spec 不重复钉。
 // 钉住的失败方式:空 repo 不发请求 / 扫描 4xx·5xx 显示错误 / 空候选空态 /
 // 截断提示 / 导入链失败不导航 / 导入中防重。
 

@@ -16,7 +16,7 @@ import { ChevronLeft } from '../icons/index.js';
 import './secondary.css';
 
 interface SecondaryShellProps {
-  /** data-route value, keeps parity/debug selectors per page. */
+  /** data-route value, keeps debug selectors per page. */
   route: string;
   fixture: FixtureSet;
   /** Centered head content — plain text or a dropdown trigger (team). */

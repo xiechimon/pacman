@@ -24,7 +24,7 @@ export const AGENT_TOOL_SWITCHES = [
   '更新技能',
 ] as const;
 
-/** 6 开关说明文案（r3 §4 原文，权限 tab parity 用；品牌串经 brand.ts 槽，
+/** 6 开关说明文案（r3 §4 原文，权限 tab 对齐用；品牌串经 brand.ts 槽，
  * 版本门常量见 records/secret.ts）。 */
 export const AGENT_PERMISSION_COPY = {
   remoteShell: '允许该 Agent 在团队中已开启 shell 访问的机器上执行命令。',

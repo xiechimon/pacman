@@ -8,7 +8,7 @@ import { expect, type Page, test } from '@playwright/test';
 //   off click drives the same requestPermission() path as the #114 banner
 //   (shared useNotificationPermission). Live mode only — no ?scenario= —
 //   because the fixture rows freeze the switch granted for the r7 13
-//   baseline (parity's headless chromium reports the real API 'denied').
+//   baseline (the headless chromium reports the real API 'denied').
 // - team: 设置 routes to the account surface (the app's only settings
 //   face); the grid|chart tablist is a real toggle persisted to
 //   pacman.teamMembersLayout — chart swaps the content block for the

@@ -7,7 +7,7 @@ import { expect, type Page, test } from '@playwright/test';
 // NOTIFICATION_BANNER_COPY canon verbatim.
 //
 // The fixture scenario (ui.notificationBanner) freezes the pre-permission
-// state — the parity harness's headless chromium reports the real API as
+// state — the headless chromium reports the real API as
 // 'denied', so the live permission can never pin a fixture row. The stub
 // below replaces window.Notification to make the requestPermission()
 // resolution deterministic and observable (call count).

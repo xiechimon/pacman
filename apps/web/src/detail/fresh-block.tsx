@@ -12,7 +12,7 @@ import { Copy, PlusSmall, SquarePen, Tag } from '../icons/index.js';
 import { TagChip, type TagChipData } from '../ui/tag-chip.js';
 
 /** 「2026年9月21日 13:21 创建」 — capture-verbatim format, pinned to the
- *  +08:00 zone the r7 session ran in so parity never drifts with host TZ.
+ *  +08:00 zone the r7 session ran in so fixture output never drifts with host TZ.
  *  #74: the line is one dict template — the zh vars reproduce the capture
  *  byte-for-byte; the en value consumes {monthShort} ([设计], no observed
  *  en workspace). */
@@ -47,7 +47,7 @@ export function formatCreatedAt(ms: number, t: TFunc): string {
 interface FreshBlockProps {
   todo: TodoRecord;
   /** #309 live:todo.tagIds 解析出的标签记录序(useTags 真值投影);
-   *  fixture 面缺省 = 无 chip(r7 23 基线原样,parity 零漂移)。 */
+   *  fixture 面缺省 = 无 chip(r7 23 基线原样,视觉零漂移)。 */
   tags?: TagChipData[];
 }
 

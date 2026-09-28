@@ -2,7 +2,7 @@
 // centered 文档|聊天 tab group, right icon group (更多/分支与 PR/Token
 // 用量/运行历史 @ pitch 33) and the 50.5×28 primary button.
 // #58: the back button carries the current search string home so the
-// dev/parity ?scenario= selection survives the round trip; the board
+// dev/fixture ?scenario= selection survives the round trip; the board
 // scroll position is restored by BoardSurface from sessionStorage.
 // #67: the chip is a real button — it toggles the status popover (r7
 // 19/29), and the chevron rides outside the pill (r7 17 measure).

@@ -20,7 +20,7 @@
 // default per r9 §3.4); fixture face creates into dialog-local state.
 // Selection rides the submit's tagIds (r9 §3.4 createTodo body 携带位).
 // A3-overlays 收编：footer 双钮 = ui/Button（ghost / primary，弹窗语义
-// standard 32 档，r7 实测 30 归一到原语三档）；两钮类名无 e2e/parity
+// standard 32 档，r7 实测 30 归一到原语三档）；两钮类名无 e2e
 // 钉扎，散写规则随收编移除。
 //
 // M7 #310 附件 wire 改（r9 §3.1）：

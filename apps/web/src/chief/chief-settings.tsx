@@ -1,7 +1,7 @@
 // 总管设置 view (issue #72, r5 101–104): the gear swaps the whole content
 // area to this surface — back button + centered title over a 766-wide
 // centered column with the 4 tabs (Agent / 章程 / 记忆 / 关注与提醒). The
-// tab row is real state; parity captures take the fixture's tab.
+// tab row is real state; fixture captures take the fixture's tab.
 // #182 三钮接线:agent 行 = 选择总管 Agent dialog(清单 = members 读面
 // memberType:"agent" 行,r5 §1;选定 → PATCH chief agent 槽,换绑带二次
 // 确认 canon);章程编辑 = DialogShell 编辑弹窗(#180 裁决;保存 → PATCH
@@ -33,7 +33,7 @@ const TABS: { id: ChiefSettingsTab; label: string }[] = [
 export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: () => void }) {
   const { t } = useI18n();
   const [tab, setTab] = useState<ChiefSettingsTab>(chief.tab ?? 'agent');
-  // #182 live 数据面(查询 enabled=live,fixture 面全惰性,parity 零请求
+  // #182 live 数据面(查询 enabled=live,fixture 面全惰性,零请求
   // 保证不动):charter/绑定 Agent = chief 封套真值;候选 Agent 集 =
   // members 读面投影。
   const { live, teamId } = useLiveData();

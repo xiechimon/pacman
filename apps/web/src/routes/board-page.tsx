@@ -1,19 +1,19 @@
 // Board route (issue #54): app shell = sidebar + board surface, content
 // picked by the scenario fixture (issue #52 mechanism). The sidebar is the
 // shared AppSidebar (#129): the collapse state (storage-backed, #55 — the
-// parity harness injects the key like the theme one), the 用量 row, the
+// fixture build injects the key like the theme one), the 用量 row, the
 // online dot and the ⌘K row derive identically on every route; this route
 // keeps its own SearchPanel because the fixture ui.searchOpen open states
-// drive the parity rows.
+// drive the fixture rows.
 // #72: the chief surfaces ride this route — the drawer overlays the board
 // (r5 100/111/114/116) and the 总管设置 gear swaps the content area to the
-// settings view (r5 101–104). Both open states are fixture-driven for
-// parity; the FAB/gear/back/close buttons make them reachable in dev. The
+// settings view (r5 101–104). Both open states are fixture-driven; the
+// FAB/gear/back/close buttons make them reachable in dev. The
 // wake wiring lives in use-chief-surface (#129), shared with every other
 // shell family's FAB.
 // #83 (M5): live 数据源分支——无 `?scenario=` 时看板走真 API（todos/
 // machines/notifications/chief + 新建/开始/拖拽排序/验收合并 mutation），
-// fixture 分支保持 #52–#75 行为字节不变（parity 矩阵数据面）。
+// fixture 分支保持 #52–#75 行为字节不变（fixture 数据面）。
 
 import { TAG_DEFAULT_COLOR, type TodoRecord as WireTodo } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
@@ -74,7 +74,7 @@ export function BoardPage() {
     useChiefSurface(fixture);
 
   // —— live 数据面（#83）：查询 + mutations；fixture 模式全部惰性（enabled
-  // = live），parity 采集零请求零流。——
+  // = live），采集零请求零流。——
   const todosQ = useTodos(teamId, live);
   const projectsQ = useProjects(teamId, live);
   const membersQ = useMembers(teamId, live);
@@ -135,10 +135,10 @@ export function BoardPage() {
     setOverlay({ kind });
   };
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
-  // W4 #286：live 面服务端搜索（fixture/parity 面不经此钩）。
+  // W4 #286：live 面服务端搜索（fixture 面不经此钩）。
   const searchResults = useSearchResults(search.query, live && search.open);
   // #114: 看板顶部通知引导条 — live reads the real Notification.permission;
-  // fixture scenarios opt in via ui.notificationBanner (parity determinism,
+  // fixture scenarios opt in via ui.notificationBanner (fixture determinism,
   // the r7 baselines carry no banner)
   const notifyBanner = useNotificationBanner(fixture.ui?.notificationBanner === true, live);
 
@@ -298,7 +298,7 @@ export function BoardPage() {
   // live overlay 数据（验收合并只依赖 latestBuildId——branch dialog 数据面
   // 归详情页；看板 branch 弹层在 live 下取查询值兜底 null 关闭）。
   // live 面 now = 墙钟（相对时间标签随 SSE 失效重渲染滚动）；fixture 面保持
-  // 冻结采集时刻（parity 确定性）。projectNames = 卡面/搜索/新建 dialog 的
+  // 冻结采集时刻（采集确定性）。projectNames = 卡面/搜索/新建 dialog 的
   // 项目 chip 真名位（fixture 面缺省走 capture canon 常量）。
   const projectNames = useMemo(() => {
     if (!live) return undefined;

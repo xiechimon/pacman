@@ -1,5 +1,5 @@
 // Translation core (issue #74): the zh-CN source string IS the lookup key
-// — zh renders are identity by construction (the parity matrix gates that),
+// — zh renders are identity by construction (the e2e suite gates that),
 // and en is a flat dict layered on top (01 S6: zh-CN 权威 + en 兜底). A
 // source with no en entry falls back to the zh original, so a missed
 // string degrades to mixed-language instead of blank. `{name}`

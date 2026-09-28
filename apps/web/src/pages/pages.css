@@ -1213,7 +1213,7 @@
 }
 
 /* two-line cut = max-height idiom (detail.css chat-preview note: the
-   -webkit-box line-clamp computes to zero height on the parity chromium) */
+   -webkit-box line-clamp computes to zero height on the headless chromium) */
 .prj-task-card-title {
   max-height: 40px;
   overflow: hidden;
