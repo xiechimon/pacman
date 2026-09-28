@@ -1283,7 +1283,7 @@ textarea.composer-input::placeholder {
   z-index: 30;
   width: 212px;
   padding: 4px 0;
-  border-radius: 10px;
+  border-radius: var(--radius-popover);
   background: var(--popover-bg);
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.14);
 }

@@ -402,7 +402,7 @@
   width: 218px;
   height: 44px;
   background: var(--popover-bg);
-  border-radius: 10px;
+  border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
   z-index: 30;
 }
@@ -443,7 +443,7 @@
   width: 360px;
   padding: 12px 14px 14px;
   background: var(--popover-bg);
-  border-radius: 10px;
+  border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
   z-index: 30;
   font-size: 12px;
