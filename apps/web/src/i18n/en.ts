@@ -284,11 +284,17 @@ export const EN: Record<string, string> = {
   项目名称: 'Project name',
   仓库: 'Repo',
   选择仓库: 'Select repo',
-  // #305 repo 选择面（r2 07b/07c canon 文案）：两行 = create 端点的两种
-  // repo 形态（02 §3）。
-  '新的 Todos 托管仓库': 'New Todos hosted repo',
+  // #360（spec 12）repo 选择面两行：GitHub 仓库 / 本地文件夹（hosted 行
+  // 创建入口移除；下方「Pacman 托管」= 存量 hosted 项目的设置面显示键，
+  // 与本表无关，保留）。
   'GitHub 仓库': 'GitHub repo',
+  本地文件夹: 'Local folder',
   创建项目: 'Create project',
+  // #360 本地路径校验错误行：server validateLocalRepoPath 400 reason 的
+  // 三态分类文案；未分类 reason 原文直透（不进词典）。
+  路径不存在: 'Path not found',
+  '不是 git 仓库': 'Not a git repository',
+  需要绝对路径: 'Absolute path required',
   基本信息: 'Basic info',
   标签: 'Tags',
   'Pacman 托管': 'Pacman hosted',
