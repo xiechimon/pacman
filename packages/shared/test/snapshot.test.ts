@@ -20,6 +20,7 @@ import {
   claimedStepSchema,
   conversationMessagesResponseSchema,
   conversationStreamEventSchema,
+  createProjectBodySchema,
   createScheduleBodySchema,
   createTodoBodySchema,
   DAEMON_LOG_PREFIXES,
@@ -29,6 +30,7 @@ import {
   daemonJsonSchema,
   deviceJsonSchema,
   ENV_VARS,
+  githubReposResponseSchema,
   LOCAL_STATE_DIRS,
   LOCAL_STATE_FILES,
   LOCAL_STORAGE_KEYS,
@@ -99,6 +101,10 @@ describe('body/封套 schema 快照', () => {
   const bodies = {
     createTodoBody: createTodoBodySchema,
     createScheduleBody: createScheduleBodySchema,
+    // spec 12 / #359：POST /api/projects body 单源（kind/repoKind 双名 +
+    // localPath + githubRepo 双面）+ repo picker 封套。
+    createProjectBody: createProjectBodySchema,
+    githubReposResponse: githubReposResponseSchema,
     projectTreeResponse: projectTreeResponseSchema,
     projectFileResponse: projectFileResponseSchema,
     projectBranchesResponse: projectBranchesResponseSchema,
