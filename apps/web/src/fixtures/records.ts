@@ -581,6 +581,19 @@ export interface ChiefThreadRef {
 
 export type ChiefSettingsTab = 'agent' | 'charter' | 'memory' | 'watches';
 
+/** 压缩模型选择器行最小投影（#358，spec 11 §A10；live = model-sources ∪
+ *  custom providers 并集，api/mappers.ts `toChiefModelOptions` 单源；
+ *  fixture = canon 单行）。`provider` 位 = PATCH 值槽的 provider 归属
+ *  （custom providerId 或 runtime 词表值 `claude-code`）。 */
+export interface ChiefModelOption {
+  provider: string;
+  /** 显示用来源名（r5 §2 捕获行 `r3-gw · 128k` 徽标位；runtime 段 =
+   *  品牌名 `Claude Code`，不译）。 */
+  providerLabel: string;
+  modelId: string;
+  modelName: string;
+}
+
 /** The chief surface a scenario renders. `view: 'drawer'` overlays the
  *  board; `view: 'settings'` replaces the content area (r5 101–104). */
 export interface ChiefContent {

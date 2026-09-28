@@ -1,11 +1,11 @@
 // 压缩模型选择器(issue #204:#182 静态化翻回交互——server #203 已落
 // compactionModel 可空 JSON 槽 + PATCH 第三槽,写→GET 回显同值、null 清空)。
-// 数据源(#180 裁决)「自定义 providers 真值 + presets 兜底」的落账口径:
-// 选项清单 = 自定义 providers 的 models[](wire 上唯一带模型目录的面,r5 §2
-// 捕获原型 = 网关 r3-gw 全 12 模型);presets 38 项目录 wire 实测仅
-// id/auth/oauthLabel 无模型清单(provider.ts「目录外字段未采不发明」),
-// 兜底落在值回显层——当前值命中不了选项时裸串 `provider/modelId` 即名
-// (preset id 自描述),不空白不崩。
+// 数据源(#358,spec 11 §A10——38 项 preset 方案退役,#180 裁决收敛到值回显
+// 层):选项清单 = GET model-sources 封套投影 ∪ custom providers models[]
+// 并集,投影单源在 api/mappers.ts `toChiefModelOptions`(pi 段归属走
+// providers 面,claude-code 段 provider 位 = runtime 词表值);当前值命中
+// 不了选项时(含仍引用已废 preset 的旧值)裸串 `provider/modelId` 即名,
+// 不空白不崩。
 // 交互 = anchored popover 家族律(#67/#127/dhead chip 先例:OverlayMount +
 // ClickCatcher + Esc,role=listbox/option);选中当前值 = 空操作关面
 // (chief-agent-dialog 同律)。live:选定即 PATCH chief compactionModel 槽
@@ -14,19 +14,10 @@
 
 import type { ChiefCompactionModel } from '@pacman/shared';
 import { useState } from 'react';
+import type { ChiefModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
-
-/** 选择器行最小投影(live = providers 读面投影;fixture = canon 单行)。 */
-export interface ChiefModelOption {
-  /** providerId(PATCH 值槽的 provider 位)。 */
-  provider: string;
-  /** 显示用服务商名(r5 §2 捕获行 `r3-gw · 128k` 徽标位)。 */
-  providerLabel: string;
-  modelId: string;
-  modelName: string;
-}
 
 /** fixture 面候选兜底(r5 §2 捕获网关 r3-gw——捕获徽标位原文即 id 本身
  *  `r3-gw · 128k`——+ fixture canon 模型 claude-sonnet-5;chief-agent-dialog

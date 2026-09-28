@@ -17,6 +17,7 @@ import { MODEL_SOURCE_RUNTIMES, type ModelSource, type ModelSourceRuntime } from
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useApiMutations, useModelSources } from '../api/hooks.js';
+import { RUNTIME_LABELS } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
@@ -26,11 +27,8 @@ import { ResourceShell } from './shell.js';
 
 export const PROVIDERS_HREF = '/app/resources/providers';
 
-/** tab 文案（spec 11 §A1：无「内置」字样；品牌/runtime 名不译，不走 t()）。 */
-const RUNTIME_LABELS: Record<ModelSourceRuntime, string> = {
-  pi: 'pi',
-  'claude-code': 'Claude Code',
-};
+// tab 文案 = RUNTIME_LABELS（api/mappers.ts 单源，spec 11 §A1：无「内置」
+// 字样；品牌/runtime 名不译，chief 压缩模型选择器同源消费）。
 
 /** runtime 一行说明（A2 header 卡）；词表闭包 = MODEL_SOURCE_RUNTIMES。 */
 const RUNTIME_DESCRIPTIONS: Record<ModelSourceRuntime, string> = {

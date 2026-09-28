@@ -23,6 +23,7 @@ import {
   chiefGated,
   chiefReady,
   chiefSettings,
+  chiefSettingsStaleModel,
   chiefThread,
   chiefThreadsOpen,
   compareMenuV2,
@@ -248,6 +249,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '102': chiefSettings('charter'),
       '103': chiefSettings('memory'),
       '104': chiefSettings('watches'),
+      // #358 AC2（spec 11 §A10）：compactionModel 仍引用已废 preset →
+      // 裸串兜底回显的 fixture 钉（合成 scenario，10-cc-missing 先例）
+      '101-stale-model': chiefSettingsStaleModel,
       '111': chiefReady,
       '114': chiefThread,
       '116': chiefThreadsOpen,

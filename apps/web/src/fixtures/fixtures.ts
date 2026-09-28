@@ -1148,6 +1148,21 @@ export function chiefSettings(tab: ChiefSettingsTab): FixtureSet {
   };
 }
 
+/** #358 AC2 canon（spec 11 §A10）：compactionModel 仍引用已废 preset
+ *  （`anthropic` ∈ PROVIDER_PRESET_IDS，preset 方案退役后不再是选项来源），
+ *  命中不了 fixture canon 单行（r3-gw）→ 选择器落裸串 `provider/modelId`
+ *  兜底回显，不空白不崩。scenario = 101-stale-model。 */
+export const chiefSettingsStaleModel: FixtureSet = {
+  ...chiefSettings('agent'),
+  chief: {
+    view: 'settings',
+    tab: 'agent',
+    bound: false,
+    threadTitle: '新主题',
+    compactionModel: { provider: 'anthropic', modelId: 'claude-3-5-haiku-20241022' },
+  },
+};
+
 /** Default drawer content for a FAB-opened drawer on a scenario without a
  *  chief surface (dev interactivity; fixture rows always carry a set). */
 export const chiefDefault: ChiefContent = {

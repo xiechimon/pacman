@@ -151,3 +151,21 @@ test('压缩模型 fixture pick = accept 律:选择即关 (#204)', async ({ page
   // fixture 面无 mutation:select 回显保持 canon 默认文案。
   await expect(select).toContainText('默认（与 Chief 相同）');
 });
+
+// #358 AC2:preset 方案退役后,仍引用已废 preset 的旧 compactionModel 值
+// 命中不了任何选项 → 裸串 `provider/modelId` 兜底回显(#180 裁决收敛到值
+// 回显层),不空白不崩;菜单无选中行,canon 行选定仍走 accept 律。
+test('压缩模型 stale preset value (#358): 裸串兜底回显 + 菜单无选中行', async ({ page }) => {
+  await page.goto('/app?scenario=101-stale-model');
+  const select = page.locator('button.chief-select');
+  await expect(select).toContainText('anthropic/claude-3-5-haiku-20241022');
+  await select.click();
+  const menu = page.locator('.chief-model-menu');
+  await expect(menu).toBeVisible();
+  await expect(menu.locator('.chief-model-row')).toHaveCount(2);
+  await expect(menu.locator('.chief-model-row[aria-selected="true"]')).toHaveCount(0);
+  await menu.locator('.chief-model-row').nth(1).click();
+  await expect(page.locator('.chief-model-menu')).toBeHidden();
+  // fixture 面无 mutation:兜底裸串回显保持。
+  await expect(select).toContainText('anthropic/claude-3-5-haiku-20241022');
+});
