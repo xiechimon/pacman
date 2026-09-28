@@ -76,8 +76,11 @@ credentials.enc
 # OS
 .DS_Store
 
-# Claude
-.claude/
+# Claude — 本地 agent 状态全忽略，但 verify-pacman 是项目级验证 harness（committed）
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/verify-pacman/
 .codegraph/
 
 # playwright MCP session dir
