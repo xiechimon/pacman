@@ -1,0 +1,432 @@
+#!/usr/bin/env node
+// verify-pacman drive-machines-local — machines 页本机行 + per-runtime
+// switches 全链（spec 11 A8/A9/A7，#353；先行地图 #354）。
+//
+// 真用户路径：/app/resources/machines → 本机行钉列表首（hostname）→ 行内
+// pi / Claude Code 两个 role=switch 逐个点按 → 状态写回 → reload 持久 →
+// 「添加机器」dialog 流程不变。
+//
+// 真值：GET /api/teams/:id/machines 记录（kind='local' + enabledRuntimes）
+// 与 switch aria-checked 双真值一致；SQLite machine 行 kind / enabledRuntimes
+// 列（A9 migration）。负向：「Pacman 托管机器」facade 行已除；行无 chevron；
+// 本机行无删除控件（不可删）。
+//
+// 幂等设计：不假设 switch 初始全关——先读 API 断言 UI=API 一致，再断言点按
+// 翻转。同栈重跑不假红（重验仍推荐重 launch）。
+//
+// 先行地图语义（A12）：spec 11 实现票（machine 两列 migration + server 本机
+// seed + PATCH + machines 页重写）落地前本 probe 为红——每条 FAIL detail 指向
+// spec 条款，红态输出即实现票的验收清单，不是 harness 故障。
+//
+// 前置 = server 启动 seed 路径（verify 栈无 daemon）；daemon loopback enroll
+// 落 kind='local' 是另一条路径，不在本 probe 覆盖（需真 daemon，属 stop-button
+// 家族配方）。
+// 用法：node drive-machines-local.mjs
+
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { hostname } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from '@playwright/test';
+
+const SCRIPT_REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const REPO = process.env.VERIFY_REPO_ROOT ?? SCRIPT_REPO;
+const RUN_DIR = process.env.VERIFY_RUN_DIR ?? join(REPO, '.claude/verify-run');
+const portsFile = join(RUN_DIR, 'ports.json');
+if (!existsSync(portsFile)) {
+  process.stderr.write(`无栈：${portsFile} 不存在或损坏。先跑 launch.mjs\n`);
+  process.exit(1);
+}
+const stack = JSON.parse(readFileSync(portsFile, 'utf8'));
+const SERVER = `http://127.0.0.1:${stack.serverPort ?? process.env.VERIFY_PORT ?? 8791}`;
+const WEB = `http://127.0.0.1:${stack.webPort ?? process.env.VERIFY_WEB_PORT ?? 5273}`;
+const DB_PATH = join(stack.homeDir ?? join(RUN_DIR, 'home'), 'server', 'server.db');
+const ts = new Date().toISOString().replace(/[:.]/g, '-');
+const EVIDENCE =
+  process.env.VERIFY_EVIDENCE_DIR ??
+  join(SCRIPT_REPO, `.claude/verify-evidence/${ts}-machines-local`);
+mkdirSync(EVIDENCE, { recursive: true });
+
+const require2 = createRequire(join(REPO, 'apps/server/package.json'));
+
+const checks = [];
+function check(name, ok, detail) {
+  // 断言位必须真是 boolean（drive-tags 同律）——写反会恒真。
+  if (typeof ok !== 'boolean') {
+    throw new TypeError(`check(${JSON.stringify(name)}) 的 ok 位须为 boolean，收到 ${typeof ok}`);
+  }
+  checks.push({ name, ok, detail: detail ?? null });
+  process.stdout.write(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  — ${detail}` : ''}\n`);
+}
+const artifacts = [];
+const shot = async (page, name) => {
+  await page.screenshot({ path: join(EVIDENCE, name) });
+  artifacts.push(name);
+  process.stdout.write(`shot  ${name}\n`);
+};
+
+const getJson = async (url) => {
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  if (!res.ok) throw new Error(`GET ${url} → ${res.status}`);
+  return res.json();
+};
+const tryGetJson = async (url) => {
+  try {
+    return { ok: true, data: await getJson(url) };
+  } catch (err) {
+    return { ok: false, error: String(err?.message ?? err) };
+  }
+};
+
+/** SQLite 真值（只读）。列缺失（A9 migration 未落）→ skipped，不炸脚本。 */
+const dbQuery = (fn) => {
+  try {
+    const Database = require2('better-sqlite3');
+    const db = new Database(DB_PATH, { readonly: true });
+    try {
+      return { ok: true, ...fn(db) };
+    } finally {
+      db.close();
+    }
+  } catch (err) {
+    return { ok: false, skipped: true, reason: String(err?.message ?? err) };
+  }
+};
+
+// 软断言原语：先行 probe 的红态要逐条产出 FAIL detail，所有探测一律不抛。
+const softVisible = async (page, selector, timeout = 5000) =>
+  page
+    .waitForSelector(selector, { state: 'visible', timeout })
+    .then(() => true)
+    .catch(() => false);
+const softCount = async (page, selector) => page.locator(selector).count().catch(() => 0);
+const softText = async (page, selector) =>
+  page
+    .locator(selector)
+    .first()
+    .innerText()
+    .catch(() => '');
+const oneLine = (s) => (s ?? '').replace(/\s*\n\s*/g, ' / ').slice(0, 200);
+
+const PAGE_PATH = '/app/resources/machines';
+const SHELL = `[data-route="${PAGE_PATH}"]`;
+const ROW = `${SHELL} .res-grow[data-machine-id]`;
+const LOCAL_ROW = `${ROW}[data-kind="local"]`;
+const HOST = hostname();
+const extra = { hostname: HOST };
+
+const switchSel = (runtime) => `${LOCAL_ROW} [role="switch"][data-runtime="${runtime}"]`;
+const ariaChecked = async (page, runtime) =>
+  page
+    .evaluate(
+      (sel) => {
+        const el = document.querySelector(sel);
+        return el == null ? null : el.getAttribute('aria-checked') === 'true';
+      },
+      switchSel(runtime),
+    )
+    .catch(() => null);
+/** GET machines → 本机记录（kind='local'）。 */
+const fetchLocalMachine = async (teamId) => {
+  const res = await tryGetJson(`${SERVER}/api/teams/${teamId}/machines`);
+  if (!res.ok) return { error: res.error, record: null };
+  const rows = Array.isArray(res.data) ? res.data : [];
+  return { error: null, record: rows.find((m) => m.kind === 'local') ?? null, rows };
+};
+/** 轮询等待条件成立（写路径无导航信号可等；盲 sleep 会造慢 PATCH 假红）。 */
+const pollUntil = async (fn, timeoutMs = 6000) => {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const done = await fn().catch(() => false);
+    if (done === true) return true;
+    if (Date.now() > deadline) return false;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+};
+
+const browser = await chromium.launch();
+const page = await browser.newPage({
+  viewport: { width: 1440, height: 732 },
+  colorScheme: 'dark',
+});
+
+try {
+  // 0) 页面就绪 + teamId
+  await page.goto(`${WEB}${PAGE_PATH}`);
+  const shellReady = await softVisible(page, SHELL, 15_000);
+  check('page-ready', shellReady, shellReady ? `${PAGE_PATH} shell 就绪` : '页面 shell 未渲染');
+  await shot(page, '01-machines-arrival.png');
+
+  const teamsRes = await tryGetJson(`${SERVER}/api/teams`);
+  const teamId = teamsRes.ok ? (teamsRes.data?.[0]?.id ?? null) : null;
+  check(
+    'api-team-ready',
+    teamId != null,
+    teamId != null ? `GET /api/teams 取到 teamId=${teamId}` : `取 teamId 失败：${teamsRes.error}`,
+  );
+
+  // 1) A8 负向：「Pacman 托管机器」facade 行已除（非空守卫：读不到正文时负向不可判真）
+  const bodyText = await softText(page, `${SHELL} .res-main`);
+  const facadeGone = bodyText !== '' && !bodyText.includes('Pacman 托管机器');
+  check(
+    'no-hosted-facade',
+    facadeGone,
+    bodyText === ''
+      ? '页面正文不可读（.res-main 缺失？）——负向断言不可空判'
+      : facadeGone
+        ? '页面无「Pacman 托管机器」facade 行'
+        : 'spec 11 A8：「Pacman 托管机器」facade 行仍在（前端静态装饰行未除）',
+  );
+
+  // 2) A8：server 启动 seed → API 有本机记录（kind='local'，name=hostname）
+  const before = teamId != null ? await fetchLocalMachine(teamId) : { error: '无 teamId', record: null };
+  check(
+    'api-local-row',
+    before.record != null && before.record.name === HOST,
+    before.record != null
+      ? `GET machines 含本机记录（name="${before.record.name}", kind=${before.record.kind}）`
+      : `spec 11 A8/T2：server 启动应 seed 本机行 kind='local' name=os.hostname()——实测 ${
+          before.error ?? `machines=[${(before.rows ?? []).map((m) => m.name).join(', ')}] 无 kind='local' 记录`
+        }`,
+  );
+  const localId = before.record?.id ?? null;
+  extra.localMachineId = localId;
+  const priorRuntimes = Array.isArray(before.record?.enabledRuntimes)
+    ? before.record.enabledRuntimes
+    : [];
+  extra.priorEnabledRuntimes = priorRuntimes;
+
+  // 3) A8：本机行钉列表首 + 行文本含 hostname
+  const firstRowKind = await page
+    .evaluate(
+      (rowSel) => document.querySelector(rowSel)?.getAttribute('data-kind') ?? null,
+      ROW,
+    )
+    .catch(() => null);
+  const localRowOk = await softVisible(page, LOCAL_ROW);
+  const localRowText = localRowOk ? await softText(page, LOCAL_ROW) : '';
+  check(
+    'ui-local-row-first',
+    firstRowKind === 'local' && localRowOk && localRowText.includes(HOST),
+    localRowOk
+      ? `本机行在列表首（data-kind=${firstRowKind}），行文本含 hostname "${HOST}"`
+      : `spec 11 A8：本机行（.res-grow[data-machine-id][data-kind="local"]）应钉列表首且显示 hostname——未实现（首行 data-kind=${firstRowKind ?? '无行'}）`,
+  );
+  await shot(page, '02-local-row.png');
+
+  // 4) A8 负向：本机行不可删（行内无删除控件/三点菜单）
+  const deleteCtl = localRowOk
+    ? await softCount(
+        page,
+        `${LOCAL_ROW} button[aria-label*="删除"], ${LOCAL_ROW} .res-row-more`,
+      )
+    : -1;
+  check(
+    'local-row-nodelete',
+    deleteCtl === 0,
+    deleteCtl === 0
+      ? '本机行无删除控件（不可删）'
+      : `spec 11 A8：本机行不可删——行内命中 ${deleteCtl} 个删除类控件${deleteCtl < 0 ? '（前置本机行缺失）' : ''}`,
+  );
+
+  // 5) A8：per-runtime switches = 行内两个 role=switch（pi / claude-code）
+  const piSwitchOk = await softVisible(page, switchSel('pi'));
+  const ccSwitchOk = await softVisible(page, switchSel('claude-code'));
+  check(
+    'switches-present',
+    piSwitchOk && ccSwitchOk,
+    piSwitchOk && ccSwitchOk
+      ? '本机行内 pi + claude-code 两个 role=switch 在位'
+      : `spec 11 A8：本机行应带 per-runtime 开关（[role="switch"][data-runtime]）——实测 pi=${piSwitchOk} claude-code=${ccSwitchOk}`,
+  );
+
+  // 6) UI=API 一致：aria-checked === enabledRuntimes.includes（幂等基线）
+  const piChecked0 = await ariaChecked(page, 'pi');
+  const ccChecked0 = await ariaChecked(page, 'claude-code');
+  const consistent0 =
+    piChecked0 === priorRuntimes.includes('pi') && ccChecked0 === priorRuntimes.includes('claude-code');
+  check(
+    'switches-ui-api-consistent',
+    consistent0,
+    consistent0
+      ? `初始态 UI=API 一致（enabledRuntimes=[${priorRuntimes.join(', ')}]）`
+      : `spec 11 A8/A9：switch aria-checked 应等于 API enabledRuntimes 成员——UI pi=${piChecked0} cc=${ccChecked0} vs API [${priorRuntimes.join(', ')}]`,
+  );
+
+  // 7) 点按 pi switch → 翻转写回 API（轮询等待写回，非盲 sleep）
+  const piExpected = !priorRuntimes.includes('pi');
+  let piToggled = false;
+  if (piSwitchOk) {
+    await page.click(switchSel('pi')).catch(() => {});
+    const apiFlipped = await pollUntil(async () => {
+      const mid = await fetchLocalMachine(teamId);
+      return (
+        Array.isArray(mid.record?.enabledRuntimes) &&
+        mid.record.enabledRuntimes.includes('pi') === piExpected
+      );
+    });
+    const after = await fetchLocalMachine(teamId);
+    const piNow = Array.isArray(after.record?.enabledRuntimes)
+      ? after.record.enabledRuntimes.includes('pi')
+      : null;
+    const uiNow = await ariaChecked(page, 'pi');
+    piToggled = apiFlipped && piNow === piExpected && uiNow === piExpected;
+    check(
+      'toggle-pi',
+      piToggled,
+      piToggled
+        ? `点按 pi switch → enabledRuntimes.pi=${piExpected}（API+UI 双真值翻转）`
+        : `spec 11 A9：点按 switch 应翻转写回 enabledRuntimes——期望 pi=${piExpected}，轮询 6s 后实测 API=${piNow} UI=${uiNow}`,
+    );
+  } else {
+    check('toggle-pi', false, 'spec 11 A9：pi switch 缺失，点按写回无从验证（前置 switches-present 未达）');
+  }
+
+  // 8) 点按 claude-code switch → 翻转写回 API（同律轮询）
+  const ccExpected = !priorRuntimes.includes('claude-code');
+  if (ccSwitchOk) {
+    await page.click(switchSel('claude-code')).catch(() => {});
+    const apiFlipped = await pollUntil(async () => {
+      const mid = await fetchLocalMachine(teamId);
+      return (
+        Array.isArray(mid.record?.enabledRuntimes) &&
+        mid.record.enabledRuntimes.includes('claude-code') === ccExpected
+      );
+    });
+    const after = await fetchLocalMachine(teamId);
+    const ccNow = Array.isArray(after.record?.enabledRuntimes)
+      ? after.record.enabledRuntimes.includes('claude-code')
+      : null;
+    const uiNow = await ariaChecked(page, 'claude-code');
+    const ccToggled = apiFlipped && ccNow === ccExpected && uiNow === ccExpected;
+    check(
+      'toggle-cc',
+      ccToggled,
+      ccToggled
+        ? `点按 claude-code switch → enabledRuntimes.claude-code=${ccExpected}（API+UI 双真值翻转）`
+        : `spec 11 A9：点按 switch 应翻转写回 enabledRuntimes——期望 claude-code=${ccExpected}，轮询 6s 后实测 API=${ccNow} UI=${uiNow}`,
+    );
+    extra.enabledRuntimesAfter = after.record?.enabledRuntimes ?? null;
+  } else {
+    check('toggle-cc', false, 'spec 11 A9：claude-code switch 缺失，点按写回无从验证（前置 switches-present 未达）');
+  }
+  await shot(page, '03-switches-toggled.png');
+
+  // 9) A9：SQLite machine 行真值（kind + enabledRuntimes JSON）
+  const dbTruth =
+    localId != null
+      ? dbQuery((db) => ({
+          row: db
+            .prepare('SELECT id, name, kind, enabledRuntimes FROM machine WHERE id = ?')
+            .get(localId),
+        }))
+      : { ok: false, skipped: true, reason: 'API 无本机记录，无 id 可查' };
+  const dbRow = dbTruth.row ?? null;
+  let dbParsed = null;
+  try {
+    dbParsed = dbRow?.enabledRuntimes != null ? JSON.parse(dbRow.enabledRuntimes) : null;
+  } catch {
+    dbParsed = null;
+  }
+  check(
+    'db-kind-local',
+    dbRow?.kind === 'local',
+    dbRow != null
+      ? `SQLite machine 行 kind=${dbRow.kind}（期望 local）`
+      : `spec 11 A9：SQLite machine 表应有 kind='local' 本机行——${dbTruth.reason ?? '行缺失'}`,
+  );
+  check(
+    'db-enabled-runtimes',
+    Array.isArray(dbParsed) &&
+      dbParsed.includes('pi') === piExpected &&
+      dbParsed.includes('claude-code') === ccExpected,
+    Array.isArray(dbParsed)
+      ? `SQLite enabledRuntimes=[${dbParsed.join(', ')}]（期望 pi=${piExpected}, claude-code=${ccExpected}）`
+      : `spec 11 A9：SQLite machine.enabledRuntimes（JSON 列）应随 switch 写回——${
+          dbTruth.reason ?? (dbRow != null ? `列值 ${JSON.stringify(dbRow?.enabledRuntimes ?? null)} 非 JSON 数组` : '行缺失')
+        }`,
+  );
+
+  // 10) reload 持久：aria-checked 与 API 仍一致
+  await page.reload();
+  await page.waitForSelector(SHELL, { timeout: 15_000 }).catch(() => {});
+  const afterReload = teamId != null ? await fetchLocalMachine(teamId) : { record: null };
+  const apiRuntimes = Array.isArray(afterReload.record?.enabledRuntimes)
+    ? afterReload.record.enabledRuntimes
+    : [];
+  const piChecked1 = await ariaChecked(page, 'pi');
+  const ccChecked1 = await ariaChecked(page, 'claude-code');
+  // 期望成员 = 两次翻转后的目标态（不假设非空——同栈二跑 prior 全开时翻转为全关也合法）
+  const persisted =
+    apiRuntimes.includes('pi') === piExpected &&
+    apiRuntimes.includes('claude-code') === ccExpected &&
+    piChecked1 === piExpected &&
+    ccChecked1 === ccExpected;
+  check(
+    'persist-reload',
+    persisted,
+    persisted
+      ? `reload 后 switch 态持久（API enabledRuntimes=[${apiRuntimes.join(', ')}]，UI 一致）`
+      : `spec 11 A9：switch 态应随 enabledRuntimes 持久——期望 pi=${piExpected} cc=${ccExpected}，reload 后 UI pi=${piChecked1} cc=${ccChecked1} vs API [${apiRuntimes.join(', ')}]`,
+  );
+  await shot(page, '04-after-reload.png');
+
+  // 11) A8：「添加机器」流程不变（.res-add → CLI 命令 dialog）
+  const addOk = await softVisible(page, `${SHELL} .res-add`);
+  let addDialogOk = false;
+  if (addOk) {
+    await page.click(`${SHELL} .res-add`).catch(() => {});
+    addDialogOk = await softVisible(page, '[role="dialog"]');
+    if (addDialogOk) {
+      const dlgText = (await softText(page, '[role="dialog"]')).toLowerCase();
+      addDialogOk = dlgText.includes('pacman');
+      await shot(page, '05-add-machine-dialog.png');
+      await page.click('[role="dialog"] .dlg-close').catch(() => {});
+      await page
+        .waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 })
+        .catch(() => {});
+    }
+  }
+  check(
+    'add-machine-intact',
+    addOk && addDialogOk,
+    addOk && addDialogOk
+      ? '「添加机器」钮开 CLI 命令 dialog（流程不变）'
+      : `spec 11 A8：添加机器流程应不变（.res-add → CLI 命令 dialog）——钮=${addOk} dialog=${addDialogOk}`,
+  );
+
+  // 12) A7 负向：行无 chevron 装饰
+  const chevCount = await softCount(page, `${SHELL} .res-row-chev`);
+  check(
+    'rows-no-affordance',
+    chevCount === 0,
+    `spec 11 A7：无 handler 行不渲染 chevron——实测 ${chevCount} 个`,
+  );
+  await shot(page, '06-final.png');
+} catch (err) {
+  check('probe-exception', false, String(err?.message ?? err));
+  try {
+    await shot(page, '99-error.png');
+  } catch {
+    /* 截不上就算了 */
+  }
+} finally {
+  await browser.close();
+}
+
+const ok = checks.every((c) => c.ok);
+const result = {
+  probe: 'machines-local',
+  ok,
+  at: new Date().toISOString(),
+  stack: { api: SERVER, web: WEB, homeDir: stack.homeDir },
+  checks,
+  artifacts,
+  ...extra,
+};
+writeFileSync(join(EVIDENCE, 'result.json'), `${JSON.stringify(result, null, 2)}\n`);
+process.stdout.write(
+  `\nevidence: ${EVIDENCE}\nallOk=${ok}\n${ok ? 'drive machines-local:PASS' : `drive machines-local:FAIL(${checks.filter((c) => !c.ok).length} 项)`}\n`,
+);
+process.exit(ok ? 0 : 1);
