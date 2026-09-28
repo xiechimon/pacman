@@ -23,9 +23,11 @@ Preconditions:
 1. `launch.mjs` 起隔离栈,`doctor.mjs` 全 PASS。标签是 UI + server 写路径,无需 daemon。
 2. live 面:看板新建任务对话框(无项目时自动建「默认项目」,同 board-new-task)。
 
-- **打标签建任务。** 看板「新建任务」→ 填标题 → 点 `.new-task-tag-add` 开面板 → 内联新建一个标签(名称)→ 选中 → 保存。Run `node <skill>/scripts/drive.mjs new-task`(基线)后手动补标签路径,或写定制 probe。
+- **打标签建任务。** 看板「新建任务」→ 填标题 → 点 `.new-task-tag-add` 开面板 → 内联新建一个标签(名称)→ 选中 → 保存。**跑法:** `node <skill>/scripts/drive-tags.mjs`(自足,无需 daemon/seed)——全链 11 checks:面板开 → `.new-task-tag-new` 内联表单 → `.new-task-tag-save` 建行 → 同名 pill `data-on=true`(建后自动选中)→ 关面板(`.new-task-tag-panel .dlg-close`)→ 保存 → API/SQLite/详情 chip + 负向卡面无 chip。
 - **真值。** `POST /api/projects/{id}/tags` 返回新 tag;`GET /api/todos/{id}` 的 `tagIds` 含新 tag id;SQLite `tag` 表 + `todo_tag` 联结表有行;详情页 meta 区渲染 TagChip(`.fresh-tag-chip`)。
 - **看板卡不渲染标签**(校准断言):建带标签任务后,看板卡(`.todo-card`)内**不应**出现 tag chip——这是 r9 §3.4 实测的负向断言。
+
+- **验证状态(2026-09-28)**:主仓脚本化 probe 已补——`drive-tags.mjs` 11 checks 全绿,证据归档 `docs/verify/309/2026-09-28T13-28-22-804Z-tags/`。
 
 ## Gotchas
 

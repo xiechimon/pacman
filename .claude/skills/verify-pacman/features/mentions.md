@@ -23,9 +23,12 @@ Preconditions:
 1. `launch.mjs` 起隔离栈,`doctor.mjs` 全 PASS。提及是纯 UI + 文本序列化,无需 daemon。
 2. live 面需有可引用实体:seed 至少一个 agent(`POST /api/teams/{t}/agents`)+ 一个 todo(看板新建或 seed),否则 picker 分组计数为 0(仍可开,只显空)。
 
-- **picker 路径。** 详情页 composer 或新建任务对话框 → 点 `button[aria-label="提及"]` → `.mention-picker`/`.mention-inline` 可见 → 选 Agents 分组一行 → 底条「插入 (1)」→ textarea/spec 出现 `[名](agent:{id})` token。
+- **跑法。** `node <skill>/scripts/drive-mentions.mjs`(只跑新建任务对话框路径,自足)或 `node <skill>/scripts/drive-mentions.mjs <todoId>`(追加 composer 的 picker + 内联 `@` 两条路径;todo 需可编辑相位,seed 走 `setup-review-seed.mjs`)。**前置:至少一个 agent**,否则 Agents 组 0 计数(seed 会建)。
+- **picker 路径。** 详情页 composer 或新建任务对话框 → 点 `button[aria-label="提及"]` → `.mention-picker`/`.mention-inline` 可见 → 选 Agents 分组一行(分组行 `.mention-row--top[aria-label^="Agents"]` → 条目 `.mention-row--entry`)→ 底条「插入 (1)」→ textarea/spec 出现 `[名](agent:{id})` token。
 - **内联 @ 路径。** composer textarea(live editable 面)键入 `@` → `.mention-inline` 内联 listbox 出现 → 继续键入过滤 → 选行 → token 落 caret 位。
 - **真值。** 提交后 `GET /api/todos/{id}` 的 spec 或 conversation message content 含序列化 token(`[名](agent:` / `#seq`);详情 spec 渲染面出现 chip。
+
+- **验证状态(2026-09-28)**:主仓脚本化 probe 已补——`drive-mentions.mjs` 10 checks 全绿(对话框 picker + composer picker + 内联 @ 三条路径),证据归档 `docs/verify/311/2026-09-28T13-29-24-524Z-mentions/`。
 
 ## Gotchas
 

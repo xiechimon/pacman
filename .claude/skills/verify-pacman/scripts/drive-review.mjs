@@ -185,9 +185,14 @@ try {
   );
   check('sqlite-announcement', Boolean(sqliteAnnounce), JSON.stringify(sqliteAnnounce));
 
-  // —— 8. 终态闭环：claim review 步 → done(success) → 占位 message 落地 ——
+  // —— 8. 终态闭环：claim review 步 → done(success) → verdict message 落地 ——
   // env REVIEW_MACHINE_TOKEN 由 seed helper 注入；machine claim/done 走真端点
   // claim 响应形状 = {step:{step:{id,kind,...}, conversationId, ...}}
+  //
+  // 收尾契约（#330/PR #332 起）：审核步 done 落的是 **JSON-encoded system
+  // message** `{kind:'review_verdict', verdict:{conclusion,findings}}`——#312 时期
+  // 的纯文案占位（'AI 审核已完成'）已被真 findings 数据流取代。daemon 未回传
+  // findings 时走空 verdict 兜底（conclusion='审核未返回结论'）。
   const claimRes = await jpost(
     '/api/machine/tasks/claim',
     {},
@@ -204,13 +209,19 @@ try {
     check('api-done-review-step', doneRes.status === 200, `status=${doneRes.status}`);
   }
   const messagesAfter = await jget(`/api/conversations/${buildId}/messages`);
-  const placeholderRow = (messagesAfter.body?.messages ?? []).find(
-    (m) => m.role === 'system' && m.content === 'AI 审核已完成',
-  );
+  const verdictRow = (messagesAfter.body?.messages ?? []).find((m) => {
+    if (m.role !== 'system') return false;
+    try {
+      return JSON.parse(m.content)?.kind === 'review_verdict';
+    } catch {
+      return false;
+    }
+  });
+  const verdictKind = verdictRow ? JSON.parse(verdictRow.content).verdict?.conclusion : undefined;
   check(
-    'api-review-complete-placeholder',
-    Boolean(placeholderRow),
-    `placeholderRow=${JSON.stringify(placeholderRow)}`,
+    'api-review-verdict-message',
+    Boolean(verdictRow),
+    `verdict message 落地(conclusion=${verdictKind ?? '缺失'})`,
   );
   const todoFaceAfter = await jget(`/api/todos/${todoId}`);
   check(

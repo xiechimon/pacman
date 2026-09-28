@@ -32,7 +32,7 @@ Preconditions(比 stop-button 简单,无需 daemon + 门控 stub):
    - `POST /api/machine/upload-urls/{stepId}` 拿上传 URL + PUT 上 plan.md 内容;
    - `POST /api/machine/done/{stepId}` 标 plan 成功 → phase 推进 confirm。
 
-- **全链。** Run `VERIFY_REPO_ROOT=<worktree> node <skill>/scripts/drive-review.mjs <todoId>`(从 repo 根跑,@playwright/test 才解析得到)。它完整走:详情页 load → `.composer-ai-review` 出现(截图 01)→ 点击开模态、断言 560 宽 + 标题 + Agent 行可见(截图 02)→ 选默认 Agent(截图 03)→ 点「开始审核」→ 模态关闭、composer placeholder 替为「AI 审核进行中…」、transcript 顶部出现 REVIEW_ANNOUNCEMENT 行(截图 04)→ 三面真值:API(`GET /api/builds/{id}/steps` 含 kind:'review' pending 步 + phase 仍 confirm)+ SQLite(`step` 表含 kind='review' 行 + 至少一条 REVIEW_ANNOUNCEMENT 行)→ API 终态:模拟机器 claim + done(success) → REVIEW_COMPLETE_PLACEHOLDER message 落地 + phase 仍 confirm。证据 `result.json` 12 checks。
+- **全链。** Run `REVIEW_MACHINE_TOKEN=<seed 给的 machineToken> node <skill>/scripts/drive-review.mjs <todoId>`(从 repo 根跑,@playwright/test 才解析得到)。**令牌必带**——末尾两条机器侧 check(claim review 步 + done)走真端点,缺令牌时 `Authorization: Bearer undefined` → 认领不到步、两条会红(实测踩过,别误判成产品缺陷)。它完整走:详情页 load → `.composer-ai-review` 出现(截图 01)→ 点击开模态、断言 560 宽 + 标题 + Agent 行可见(截图 02)→ 选默认 Agent(截图 03)→ 点「开始审核」→ 模态关闭、composer placeholder 替为「AI 审核进行中…」、transcript 顶部出现 REVIEW_ANNOUNCEMENT 行(截图 04)→ 三面真值:API(`GET /api/builds/{id}/steps` 含 kind:'review' pending 步 + phase 仍 confirm)+ SQLite(`step` 表含 kind='review' 行 + 至少一条 REVIEW_ANNOUNCEMENT 行)→ API 终态:模拟机器 claim + done(success) → REVIEW_COMPLETE_PLACEHOLDER message 落地 + phase 仍 confirm。证据 `result.json` 12 checks。
 - **收尾。** `cleanup.mjs` 收栈(无第四进程)。scratch home 不需手清。
 
 ## Gotchas
@@ -42,7 +42,8 @@ Preconditions(比 stop-button 简单,无需 daemon + 门控 stub):
 - 「开始审核」primary 钮:文案必须严格匹配「开始审核」(i18n zh 默认);en.ts 同步键「Start review」。phase 错误点击 = 端点 409(无需本地拦)。
 - composer placeholder 切换不是钮被 disable——按钮还可见;占位文本切换是审核中态的唯一视觉信号(无进度条面)。
 - transcript REVIEW_ANNOUNCEMENT 行 = `role:'user'` + `content === REVIEW_ANNOUNCEMENT`(shared/records 单源常量);不要在端点 log 找文案。
-- 终态闭环需 enroll + claim + done 全走一遍机器 API(probe 自带 helper);不要跳过——否则 #326 真 findings 上线前的占位闭环不被证。
+- 终态闭环需 enroll + claim + done 全走一遍机器 API(probe 自带 helper);不要跳过——否则真 findings 上线前的占位闭环不被证。
+- **收尾契约是 verdict JSON 而非文案**(实测校准):审核步 done 落的是 `{"kind":"review_verdict","verdict":{conclusion,findings}}` 的 JSON-encoded system message(#330/PR #332 把 #312 时期的纯文案占位「AI 审核已完成」换掉了);daemon 未回传 findings 时走空 verdict 兜底(conclusion=「审核未返回结论」)。probe 曾断言旧文案,2026-09-28 实测库内只有 verdict JSON 后已改写断言——别再把「找不到 AI 审核已完成」当缺陷。
 - 重验 = 重 launch + 重新 seed + 新探针任务(provider/agent/api-key 幂等性不保证,别复用旧栈)。
 
 ## Cross-reference
