@@ -6,14 +6,17 @@ import { expect, type Page, test } from '@playwright/test';
 // #67/#127: OverlayMount + ClickCatcher + Escape, #176 chip-popover /
 // TasksMenuButton precedents). Rows = the two repo forms the create
 // endpoint accepts (02 §3): 新的 Todos 托管仓库 (hosted, the effective
-// default an untouched form submits) and GitHub 仓库 (owner/repo input
-// where the trigger row becomes an editable field). Selection is pure
-// form state (live submit carries it: hosted → repoKind hosted,
-// github → repoKind github + githubRepo — pinned on the live stack by
-// verify-pacman, not here). Each test pins one failure mode:
+// default an untouched form submits) and GitHub 仓库 (#361: the github
+// face is the auth/picker surface — the owner/repo input sits behind the
+// 手动输入 fallback link; the picker itself is pinned by
+// project-new-github.spec.ts). Selection is pure form state (live submit
+// carries it: hosted → repoKind hosted, github → repoKind github +
+// githubRepo — pinned on the live stack by verify-pacman, not here).
+// Each test pins one failure mode:
 // 1. the trigger opens the repo listbox (current state: dead button)
 // 2. the hosted row selects and backfills the trigger label
-// 3. the GitHub row swaps the trigger for the owner/repo input
+// 3. the GitHub row swaps the trigger for the auth face; the manual
+//    fallback link reveals the owner/repo input
 // 4. the swap button reopens the listbox; returning to hosted drops the
 //    input (no stale github state rides the submit)
 // 5. Escape closes the popover
@@ -48,10 +51,15 @@ test('the hosted row selects and backfills the trigger label', async ({ page }) 
   await expect(page.locator('#prj-new-repo')).toContainText('新的 Todos 托管仓库');
 });
 
-test('the GitHub row swaps the trigger for the owner/repo input', async ({ page }) => {
+test('the GitHub row swaps the trigger for the auth face; manual link reveals the input', async ({
+  page,
+}) => {
   const menu = await openMenu(page);
   await menu.locator('.prj-new-repo-menu-row', { hasText: 'GitHub 仓库' }).click();
   await expect(page.locator('.prj-new-repo-menu')).not.toBeVisible();
+  // #361：github 未认证选态 = 认证钮面；owner/repo input 收进手动兜底链接后
+  await expect(page.locator('.prj-new-gh-auth')).toBeVisible();
+  await page.locator('.prj-new-gh-link').click();
   const input = page.locator('#prj-new-repo');
   await expect(input).toHaveAttribute('placeholder', 'owner/repo');
   await input.fill('xiechimon/pacman');
@@ -61,6 +69,8 @@ test('the GitHub row swaps the trigger for the owner/repo input', async ({ page 
 test('the swap button reopens the listbox; hosted return drops the input', async ({ page }) => {
   const menu = await openMenu(page);
   await menu.locator('.prj-new-repo-menu-row', { hasText: 'GitHub 仓库' }).click();
+  // #361：swap 钮与 input 同面——先经手动兜底链接切到 input 面
+  await page.locator('.prj-new-gh-link').click();
   await page.locator('.prj-new-repo-swap').click();
   const reopened = page.locator('.prj-new-repo-menu');
   await expect(reopened).toBeVisible();
