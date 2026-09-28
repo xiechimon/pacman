@@ -15,7 +15,6 @@ import type {
   DocumentDiffFile,
   MachineRecord,
   McpServerRecord,
-  ProviderRecord,
   SecretRecord,
   SkillRecord,
   TeamMember,
@@ -48,7 +47,6 @@ import type {
   PlanDiffContent,
   PlanVersion,
   ProjectCommitRow,
-  ProviderRow,
   ReviewFinding,
   RobotPara,
   RunHistoryRow,
@@ -714,25 +712,6 @@ export function mapMachines(rows: MachineRecord[]): MachineRow[] {
       name: m.name,
       sub: `…${m.id.slice(-8)} · max ${m.maxConcurrent}`,
       online: m.online,
-    })),
-  ];
-}
-
-/** `Pacman（内置）` 首行 = 静态产品面（r7 07 canon；内置 built-in 模型走
- * Pro = 复刻排除项，CONTEXT.md 资源与配置——恒 未启用 pill）。 */
-const BUILTIN_PROVIDER_ROW: ProviderRow = {
-  name: 'Pacman（内置）',
-  models: '8 模型',
-  pill: '未启用',
-};
-
-export function mapProviders(rows: ProviderRecord[]): ProviderRow[] {
-  return [
-    BUILTIN_PROVIDER_ROW,
-    ...rows.map((p) => ({
-      name: p.label,
-      models: `${p.models.length} 模型`,
-      ...(p.kind === 'custom' ? { custom: true } : {}),
     })),
   ];
 }

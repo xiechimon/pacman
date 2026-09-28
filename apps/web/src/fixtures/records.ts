@@ -7,7 +7,7 @@
 // Timestamps are epoch milliseconds (02 §6.2 schedule record precedent).
 
 // phase 九值枚举单源 = @pacman/shared（02 §4.1；#65 M1 收口），本地不再定义。
-import { PHASE_VALUES, type Phase } from '@pacman/shared';
+import { type ModelSource, PHASE_VALUES, type Phase } from '@pacman/shared';
 
 export type { Phase };
 export { PHASE_VALUES };
@@ -304,23 +304,14 @@ export interface MachineRow {
   description?: string;
 }
 
-/** Model-provider row (r7 07): built-in card plus custom gateways. */
-export interface ProviderRow {
-  name: string;
-  /** `N 模型` subline. */
-  models: string;
-  /** Orange `自定义` tag beside the name; absent on the built-in row. */
-  custom?: boolean;
-  /** Right-side status pill (`未启用`); absent on custom rows. */
-  pill?: string;
-}
-
 /** The six resource surfaces' row sets (issue #69). */
 export interface ResourcesContent {
   skills: SkillRow[];
   mcpServers: McpRow[];
   machines: MachineRow[];
-  providers: ProviderRow[];
+  /** providers 页 runtime tabs 数据源（spec 11 §A1-A4，#356）：pi +
+   *  claude-code 两段，形状 = shared ModelSource（数据契约单源）。 */
+  providerSources: ModelSource[];
   /** 新建技能 tab selected on capture (r8 79/80); absent = 从文件夹. */
   importTab?: 'folder' | 'github';
 }

@@ -384,6 +384,114 @@
   cursor: pointer;
 }
 
+/* providers 页 runtime tablist（spec 11 §A1，#356）：pi / Claude Code 双
+   tab，选中态 = 主色字 + 底部 2px 指示条压 tablist 底线。 */
+.res-tabs {
+  display: flex;
+  gap: 16px;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.res-tab {
+  margin-bottom: -1px;
+  padding: 0 2px 9px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.res-tab[aria-selected="true"] {
+  color: var(--text-primary);
+  border-bottom-color: var(--text-primary);
+}
+
+/* A2 header 卡：runtime 名 + 一行说明 + 安装态（已安装在 <hostname> /
+   未安装指引）。 */
+.res-runtime-head {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-popover);
+  background: var(--surface-secondary);
+}
+
+.res-runtime-head-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.res-runtime-head-name {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.res-runtime-head-status {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.res-runtime-head-status--missing {
+  color: var(--tile-orange-fg);
+}
+
+.res-runtime-head-desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.res-runtime-head-hint {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+/* 模型行（A2 显示名 → 模型 id；A7 纯展示无 handler → 无 chevron/三点）。
+   行内 .res-row-text 的 12px 左margin原跟 tile，本行无 tile → 归零。 */
+.res-model-row {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 8px 16px;
+}
+
+.res-model-row--divided {
+  border-top: 1px solid var(--card-border);
+}
+
+.res-model-row .res-row-text {
+  margin-left: 0;
+}
+
+/* A3 空态：pi 无 custom provider 的引导块（虚线卡 + 主钮开 picker）。 */
+.res-runtime-empty {
+  margin-top: 16px;
+  padding: 24px 16px;
+  border: 1px dashed var(--dash-border);
+  border-radius: 8px;
+}
+
+.res-runtime-empty-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-tertiary);
+}
+
+.res-runtime-empty-action {
+  margin-top: 12px;
+}
+
 /* empty state (r7 10): hero tile, heading, two-line description,
    primary, optional 总管 hint（查看文档 link #307 全除） */
 .res-empty {
