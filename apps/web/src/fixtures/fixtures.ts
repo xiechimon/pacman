@@ -2,7 +2,7 @@
 // (docs/research/r7-rebaseline.md §5): probe #9, r3 legacy #1/#2, project
 // and team identifiers, branch strings, 13:21/13:35 timestamps. The #1/#2
 // titles were extracted from captures 01/01b by glyph template matching
-// (parity/match-text.mjs) in #54; all other strings come from the research
+// (glyph template matching) in #54; all other strings come from the research
 // records.
 
 import { BRAND, conversationBranch, maskApiKey } from '@pacman/shared';
@@ -272,7 +272,7 @@ export const boardDefault: FixtureSet = {
 /** #176 项目选择器面(new-task dialog 项目 chip 下拉):boardDefault 面加
  *  projectNames 双项目——r3-lifecycle + r2-inventory(24b 注记的 r2 会话第
  *  二项目),给选择器多行数据位(records.ts projectNames = 卡面/搜索/新建
- *  dialog 的项目名位)。命名场景无 capture:e2e 钉选择器行为,parity 侧
+ *  dialog 的项目名位)。命名场景无 capture:e2e 钉选择器行为,fixture 侧
  *  开态行(#229 dlg-newtask-project-*)无官方基线,走 smoke + expectText。 */
 export const boardProjectPicker: FixtureSet = {
   ...boardDefault,
@@ -573,7 +573,7 @@ function probeChanges(expanded: boolean): ChangesContent {
           },
         ],
         // #225 全文槽:与 hunk 窗(@@ -3,3 +3,4 @@)自洽的六行——3–5 行 =
-        // 窗内 context 原文,第 6 行 = +行;初渲不展示,parity 零影响。
+        // 窗内 context 原文,第 6 行 = +行;初渲不展示,视觉零影响。
         fullContent:
           '# r3 probe\nprobe readme\nr3 lifecycle probe2\nr5b lifecycle probe\nr6 rebaseline probe\nr7 rebaseline probe\n',
       },
@@ -711,7 +711,7 @@ const LEGACY_BRANCH_INFO: BranchInfoContent = {
 /** r8 57 surface: #12's failed build whose single history row IS the
  *  failed current run — 当前 chip + footer 重跑 (r8 57); title/seq verbatim
  *  from the r8 54/57 captures. The failed-detail background behind the
- *  dialog is a later ticket, so the parity pair rides smoke for now. */
+ *  dialog is a later ticket, so the fixture pair rides smoke for now. */
 const FAILED_CURRENT_ID = 'r8-failed-12';
 const failedCurrentTodo: TodoRecord = {
   ...probeTodo('failed', at('2026-09-22', 12, 30)),
@@ -748,7 +748,7 @@ const LEGACY_RUN_HISTORY: RunHistoryRow[] = [
 
 /** r3 legacy #2 overlay payload — [推断]: no capture ever opened an overlay
  *  on this build; the values exist so the done card's branch icon opens a
- *  dialog instead of dead-clicking. No parity row rides them. */
+ *  dialog instead of dead-clicking. No e2e row rides them. */
 const LEGACY2_OVERLAY: BuildOverlayContent = {
   token: {
     total: '41.7k',
@@ -824,7 +824,7 @@ export function detailLegacyNow(overlay: OverlayState['kind']): FixtureSet {
  *  payloads are not record fields (02 §6.2), so the fixture layer maps the
  *  captured builds — probe #9 (r7 30/31/32) and r3 legacy #1 (r8 78–80) —
  *  plus one [推断] set for legacy #2 so its card's branch icon is not a
- *  dead control; no parity row rides the [推断] values. */
+ *  dead control; no e2e row rides the [推断] values. */
 export function overlayContent(todoId: string): BuildOverlayContent | null {
   if (todoId === PROBE_ID) {
     return { token: PROBE_TOKEN_USAGE, branch: PROBE_BRANCH_INFO, runs: PROBE_RUN_HISTORY };
@@ -960,8 +960,8 @@ const RESOURCES: ResourcesContent = {
 // Copy verbatim from the r5 captures: 100 gate bar + hero + draft, 101–104
 // settings tabs, 111 bound hero, 114 dispatch-report stream, 116 switcher.
 // The r5 batch is 1438×730 (off the r7 baseline batch), so these sets back
-// smoke rows only — see parity/matrix.mjs and docs/research/r8-chief-
-// panel-adhoc.md for the baseline gap registration.
+// smoke rows only — see docs/research/r8-chief-panel-adhoc.md for the
+// baseline gap registration.
 
 /** r5 100/111 hero grid, card order = capture order. */
 const CHIEF_EXAMPLES: ChiefExample[] = [
@@ -1124,7 +1124,7 @@ export function chiefSettings(tab: ChiefSettingsTab): FixtureSet {
 }
 
 /** Default drawer content for a FAB-opened drawer on a scenario without a
- *  chief surface (dev interactivity; parity rows always carry a set). */
+ *  chief surface (dev interactivity; fixture rows always carry a set). */
 export const chiefDefault: ChiefContent = {
   view: 'drawer',
   bound: false,
@@ -1852,7 +1852,7 @@ function planDiff(
     to: toV,
     expanded,
     // #244 全文槽:to 版本 plan.md 全文(与 hunk 同源,LINES 数组即版本内容);
-    // 初渲不展示,parity 零影响。
+    // 初渲不展示,视觉零影响。
     files: [{ path: 'plan.md', added, removed, hunks: [hunk], fullContent: to.join('\n') }],
   };
 }
@@ -2255,7 +2255,7 @@ const RUNS_15: RunHistoryRow[] = [
 ];
 
 /** [推断] token/branch payloads for the r8 todos — the r8 captures only
- *  exercised the history face; no parity row rides these values. */
+ *  exercised the history face; no e2e row rides these values. */
 const R8_OVERLAY_TOKEN: TokenUsageContent = {
   total: '72.1k',
   model: 'r3-gw/claude-sonnet-5',

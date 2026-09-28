@@ -56,8 +56,8 @@ test('selection survives reload', async ({ page }) => {
   await expect(darkSeg(page)).toHaveAttribute('data-active', 'true');
 });
 
-test('injected storage pins the initial segment (parity injection path)', async ({ page }) => {
-  // same injection the parity harness uses (parity/run.mjs addInitScript)
+test('injected storage pins the initial segment (storage injection path)', async ({ page }) => {
+  // the boot reads the stored value before first paint
   await page.addInitScript((k) => localStorage.setItem(k, 'light'), THEME_KEY);
   await page.goto(ROUTE);
 

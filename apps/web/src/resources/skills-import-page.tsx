@@ -1,14 +1,14 @@
 // 新建技能 route (issue #69, r2 08b/08c structure, r8 79/80 geometry): 总管 hint line, the
 // 从文件夹 / 从 GitHub tablist, then either the folder form (dropzone +
 // 名称 + 描述 + full-width 创建技能) or the GitHub form (链接 input + 扫描
-// + help line). The tab is real state; parity scenarios pin it via the
+// + help line). The tab is real state; fixture scenarios pin it via the
 // fixture so both captures are reproducible.
 // #83 (M5) live：文件夹表单接真 POST /api/skills（dropzone → 目录选择 →
 // 文件集读取，SKILL.md 必含校验 = server 400 同款；创建成功回技能列表）。
 // #235 live：GitHub 扫描钮接 #223 的 POST /api/skills/scan 双模式端点——
 // 扫描（候选发现）→ 候选列表 → 点候选行 = fetch 模式取文件集（与
 // POST /api/skills body.files 同形）→ createSkill 既有文件集语义（#195）
-// 导入成功回技能列表。fixture 面 DOM 保持零变化（parity scenario 80 守）。
+// 导入成功回技能列表。fixture 面 DOM 保持零变化（fixture scenario 80 守）。
 
 import type { SkillCandidate } from '@pacman/shared';
 import { useRef, useState } from 'react';

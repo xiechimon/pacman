@@ -458,7 +458,7 @@ export function ProjectPage() {
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   // r2 §2 route table: ?tab=tasks selects the 任务 surface; the capture
-  // state flag drives parity rows (same precedent as the detail tabs).
+  // state flag drives fixture rows (same precedent as the detail tabs).
   const [tab, setTab] = useState<'tasks' | 'files'>(
     searchParams.get('tab') === 'tasks' ? 'tasks' : (fixture.projectTab ?? 'files'),
   );

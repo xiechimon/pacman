@@ -209,7 +209,7 @@
   --menu-icon: #71717a;
   /* spacing ladder（DESIGN.md §Layout & Spacing）: 4px 基数阶梯供新写代码消费；
      复刻面现有像素实测值（17/13/3px 等）是 r7/r8 capture 的 ground truth，保留不动
-     ——A3 拍板保护 parity（批量等值化会动像素）；只有值恰好落格的新写法才引用。 */
+     ——A3 拍板保护视觉回归（批量等值化会动像素）；只有值恰好落格的新写法才引用。 */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;

@@ -6,7 +6,7 @@
 // 相位语义（素材替换计划 D3）：**替换相位已触发**（2026-09-23，#109——
 // 用户本机同时运行正版 todos.dev daemon，~/.tds 被正版占用、machine.json/
 // token 不可覆写，复刻版默认状态目录同名冲突，提前执行）。BRAND 各槽 =
-// BRAND_SLOTS[*].replacement（= 素材替换计划 §2 表），parity 同批重定基线。
+// BRAND_SLOTS[*].replacement（= 素材替换计划 §2 表），同批重定基线。
 // 非品牌槽（机器 token 64hex、/api/mcp 路径）保持，不进替换面。
 
 /** 02 §5.8 十槽 + 素材替换计划 §2 同槽延伸五槽。todosDev = 原站现值（观测），

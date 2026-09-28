@@ -4,13 +4,13 @@
 // #109; values: "light" | "dark"), mirrored to data-theme like the official app.
 // The only visible control is the 外观 segmented row inside the user-menu
 // popover (#122 wired it to applyTheme; the popover open/close trigger
-// still waits on the overlay ticket); the parity harness sets the theme
+// still waits on the overlay ticket); the fixture build sets the theme
 // via storage injection.
 // #129: a visit with no stored choice follows the system preference
 // (matchMedia prefers-color-scheme); a stored value always wins, and the
 // boot-time applyTheme persists the resolved choice.
 
-export const THEME_STORAGE_KEY = 'pacman-theme'; // mirrored in parity/run.mjs THEME_KEY
+export const THEME_STORAGE_KEY = 'pacman-theme'; // mirrored in e2e (theme-toggle / sidebar-visual specs)
 
 export type Theme = 'light' | 'dark';
 

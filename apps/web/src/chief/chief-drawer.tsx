@@ -3,7 +3,7 @@
 // 12). Header = thread chip + model slot + icon buttons; body = gate bar
 // (unbound) or hero examples / thread message flow; composer pinned at the
 // bottom. The switcher popover (116) and the view swap to 总管设置 are real
-// state so the surface is clickable in dev; parity captures never click, so
+// state so the surface is clickable in dev; fixture captures never click, so
 // the fixture alone decides the captured state.
 //
 // #146 收尾：Esc 关面板（useEscapeClose 弹层族同律——内层的线程切换器

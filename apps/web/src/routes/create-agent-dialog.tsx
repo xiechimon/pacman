@@ -28,7 +28,7 @@ interface CreateAgentDialogProps {
 
 export function CreateAgentDialog({ open, onClose, onCreate }: CreateAgentDialogProps) {
   const { t } = useI18n();
-  // the link carries the scenario string along so dev/parity fixture
+  // the link carries the scenario string along so dev/fixture
   // selection survives the hop (#121)
   const { search } = useLocation();
   const [name, setName] = useState('');

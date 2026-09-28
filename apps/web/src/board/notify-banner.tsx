@@ -43,7 +43,7 @@ function readPermission(): NotificationPermissionState {
 
 /** Permission state machine, single source for the #114 banner and the
  *  #148 account 推送通知 switch. `fixtureState` non-null freezes the initial
- *  read (scenario mode): the parity harness's headless chromium reports
+ *  read (scenario mode): the fixture build's headless chromium reports
  *  Notification.permission as 'denied', and the r7-baselined surfaces were
  *  captured without either affordance, so the real API may never leak into
  *  the fixture data面. Null = live: read the real permission. request()

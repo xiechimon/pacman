@@ -66,7 +66,7 @@ interface SearchPanelProps {
   onClose: () => void;
   /** W4 #286：live 面服务端搜索结果（调用方经 useSearchResults 注入）。
    *  提供且 q 非空 = 服务端结果集（GET /api/search，02 §6.3 [设计]）；缺省 =
-   *  客户端过滤（fixture/parity 面 DOM 零改动）。 */
+   *  客户端过滤（fixture 面 DOM 零改动）。 */
   server?: SearchResponse;
 }
 
@@ -183,7 +183,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
   }, []);
   useSingleLitSurface(open);
   const q = query.trim().toLowerCase();
-  // W4 #286：live 面切服务端结果集（server 注入 + q 非空）；fixture/parity
+  // W4 #286：live 面切服务端结果集（server 注入 + q 非空）；fixture
   // 面保持客户端过滤（渲染 DOM 零改动）。
   const useServer = server !== undefined && q !== '';
   const todos: TodoRowItem[] = useServer

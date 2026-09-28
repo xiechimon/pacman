@@ -1,6 +1,6 @@
 // Team route (issue #70, r7 12): stats bar (`N 个成员` — the r7 capture's
 // plan badge / upgrade link are SaaS surface this local-first self-hosted
-// app does not carry, #129; the team-light parity baseline diverges here),
+// app does not carry, #129; the team-light visual baseline diverges here),
 // the grid|chart layout tablist and the agent card grid with the dashed
 // 创建 Agent slot. Head title is the team-switch dropdown trigger
 // (r2 §8.1); the 设置 link sits in the head right slot (r7 12) and routes
@@ -37,7 +37,7 @@ function readStoredLayout(storage: Storage): TeamLayout {
 export function TeamPage() {
   const { t } = useI18n();
   // the 设置 link carries the scenario string along like the shell's back
-  // chevron, so dev/parity fixture selection survives the hop
+  // chevron, so dev/fixture selection survives the hop
   const { search } = useLocation();
   const fixture = resolveScenario(new URLSearchParams(search));
   // M5 live：成员/Agent 网格 = GET members 真值（r5 §1：Agent 列表实际走

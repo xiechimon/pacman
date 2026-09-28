@@ -9,7 +9,7 @@
 // #58: card click opens `/app/todo/:id` — a stretched link on the title
 // (real <a>, ::after overlay covers the card) so the nested branch/action
 // buttons stay valid independent controls; the current search string rides
-// along so the dev/parity ?scenario= selection survives the navigation.
+// along so the dev/fixture ?scenario= selection survives the navigation.
 
 import { Link, useLocation } from 'react-router';
 import { PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';

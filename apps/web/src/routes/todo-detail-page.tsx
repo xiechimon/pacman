@@ -166,7 +166,7 @@ export function TodoDetailPage() {
   );
   const fixture = resolveScenario(searchParams);
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
-  // W4 #286：live 面服务端搜索（fixture/parity 面不经此钩）。
+  // W4 #286：live 面服务端搜索（fixture 面不经此钩）。
   const searchResults = useSearchResults(search.query, live && search.open);
   const fixtureTodos = withoutDeleted(fixture.todos);
 
@@ -589,7 +589,7 @@ export function TodoDetailPage() {
             <FreshBlock todo={todo} tags={freshTags} />
             {/* M7 #310：live 详情面把用户提交的 spec 渲染在 FreshBlock 之
                 下（fix 丢字 bug ——之前 spec 落 todo.spec 但 UI 从未呈现
-                给用户看）。fixture 面不走此分支保持 parity：fixture
+                给用户看）。fixture 面不走此分支：fixture
                 fresh-probe 用同样的「尚无描述」placeholder。 */}
             {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
           </div>
@@ -600,7 +600,7 @@ export function TodoDetailPage() {
                 {/* M7 #310：live 详情面 doc tab 顶展示用户提交 spec。
                     DocPane 下方是 agent 产出的 plan，spec 区是用户原
                     始输入——两层职责分明。fixture 不走（无 spec data
-                    wire parity 风险）。 */}
+                    wire 视觉回归风险）。 */}
                 {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
                 <DocPane
                   mode={docMode}
@@ -648,7 +648,7 @@ export function TodoDetailPage() {
               {/* margin-top:auto pins an overflowing transcript to the
                   newest row at first paint (r8 63–77) and keeps short r7
                   transcripts top-aligned — no scroll scripting, so the
-                  parity capture is deterministic */}
+                  fixture capture is deterministic */}
               <div className="chat-pin">
                 <Transcript transcript={view.transcript} />
               </div>

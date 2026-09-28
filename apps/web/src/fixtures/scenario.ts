@@ -1,13 +1,13 @@
 // Scenario mechanism (issue #52): `?scenario=<研究截图编号>` query parameter
-// selects a deterministic fixture set, one id per research capture so parity
-// matrix rows never drift in content — r7 numbers for the board/detail
+// selects a deterministic fixture set, one id per research capture so fixture
+// rows never drift in content — r7 numbers for the board/detail
 // rows, r5 numbers for the chief rows (#72; the chief surfaces have no r7
 // shot). Route behaviour never branches on the parameter — it only picks
 // data inside the fixture layer, which is the app's whole data source in
 // this fixture-driven phase.
 // #58 gate: the parameter is dev/test-only — honoured by `vite dev`
-// (import.meta.env.DEV) and by the parity harness's `vite build --mode
-// parity`; a plain production build ignores it and always serves the
+// (import.meta.env.DEV) and by the fixture build's `vite build --mode
+// fixture`; a plain production build ignores it and always serves the
 // default board set, so the param can never leak into shipped behaviour.
 // Unknown or absent ids fall back to the default board set.
 
@@ -71,9 +71,9 @@ import type { FixtureSet } from './records.js';
 export const SCENARIO_PARAM = 'scenario';
 
 /** #58 gate: scenario selection exists only in dev (`vite dev`) and in the
- *  parity harness build (`vite build --mode parity`, parity/run.mjs). A
- *  plain production build folds this to false at compile time. */
-const SCENARIOS_ENABLED = import.meta.env.DEV || import.meta.env.MODE === 'parity';
+ *  fixture-mode build (`vite build --mode fixture`). A plain production
+ *  build folds this to false at compile time. */
+const SCENARIOS_ENABLED = import.meta.env.DEV || import.meta.env.MODE === 'fixture';
 
 /** r7 capture number → fixture set. Board rows bind board scenarios,
  *  detail rows bind single-todo detail scenarios, resource rows (06–10)
@@ -84,7 +84,7 @@ const SCENARIOS_ENABLED = import.meta.env.DEV || import.meta.env.MODE === 'parit
  *  with/without it. */
 /** W4 #289：scenario 集合构造收进启用门——生产构建折叠为 `{}`（#58 gate
  * 的补全：原顶层字面量在各 scenario 工厂即调即构，DCE 视作可达副作用，
- * 79KB 语料随主包出街）。dev/parity 两形照常构造。 */
+ * 79KB 语料随主包出街）。dev/fixture 两形照常构造。 */
 export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
   ? ({
       // board (r7 01–03, 21–22, 33, 35)
@@ -107,7 +107,7 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // and rides smoke rows (04 §2: no-baseline rows self-compare)
       'notify-banner': { ...boardDefault, ui: { notificationBanner: true } },
       // #176 new-task dialog 项目选择器:命名场景(无 capture)——boardDefault
-      // 面加 projectNames 双项目,e2e 钉选择器行为;无 parity 行。
+      // 面加 projectNames 双项目,e2e 钉选择器行为;无 fixture 行。
       'newtask-projects': boardProjectPicker,
       // detail (r7 16–17, 23, 26–28, 36, 38)
       '16': detailPlanning,

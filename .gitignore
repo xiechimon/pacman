@@ -80,9 +80,6 @@ credentials.enc
 .claude/
 .codegraph/
 
-# parity harness artefacts
-parity/output/
-
 # playwright MCP session dir
 .playwright-mcp/
 

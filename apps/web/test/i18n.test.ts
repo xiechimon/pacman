@@ -4,8 +4,8 @@
 // `en` is [推断] — the official dropdown set was never observed, r2 §11
 // Q19). D3 替换相位（#109）：键前缀 `pacman.locale` + `pacman-locale`
 // 同形替换（素材替换计划 §2 localStorage 键族）。
-// zh renders must be identity — the 107-row parity matrix is the regression
-// gate, so t() must never rewrite the canonical source string.
+// zh renders must be identity — the capture-verbatim strings are the
+// regression anchor, so t() must never rewrite the canonical source string.
 
 import { describe, expect, it } from 'vitest';
 import {

@@ -569,7 +569,7 @@
   color: var(--text-dim);
 }
 
-/* #235 GitHub 扫描结果区（live-only 渲染；fixture 面 DOM 零变化，parity
+/* #235 GitHub 扫描结果区（live-only 渲染；fixture 面 DOM 零变化，fixture
    scenario 80 守门）。视觉词汇复用 res-card 族：--card-border 描边 +
    --surface-secondary 底 + --text-dim 次级文字。 */
 .res-error {

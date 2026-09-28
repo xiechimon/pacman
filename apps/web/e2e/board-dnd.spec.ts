@@ -5,9 +5,9 @@ import { expect, type Page, test } from '@playwright/test';
 // the target column, counts couple), a same-column drop reorders the column
 // view, a drop on the empty 待验收 column clears awaitingReply (r5b §3.15
 // fold), and the three feedback states ride the gesture (lifted DragOverlay
-// card, hovered column tint, grabbing body). The pointer sequence mirrors
-// the parity drag driver (parity/run.mjs): trusted moves past the
-// PointerSensor 5px threshold, drop point inside the target's list area.
+// card, hovered column tint, grabbing body). The pointer sequence uses
+// trusted moves past the PointerSensor 5px threshold, drop point inside
+// the target's list area.
 
 /** Press the first match of `fromSel` and carry it to a viewport point.
  *  Leaves the button down — the caller asserts mid-gesture state, then ups. */

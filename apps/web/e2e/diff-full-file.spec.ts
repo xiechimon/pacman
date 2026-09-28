@@ -8,11 +8,11 @@ import { expect, test } from '@playwright/test';
 // 1. 点击无反应(死钮残留)— 全文必须内联替换 hunk 区,钮文案翻转「显示差异」;
 // 2. 两态不互斥 — 全文态下 hunk 头/±行必须隐去,全文带连续行号(1..N);
 // 3. 无回路 — 再点必须回到 hunk 面,文案翻回「显示完整文件」;
-// 4. 初始态污染 parity — 27b 初渲仍是 hunk 面 + 「显示完整文件」钮。
+// 4. 初渲不污染 — 27b 初渲仍是 hunk 面 + 「显示完整文件」钮。
 
 const ROUTE = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27b';
 
-test('初始态渲染 hunk 面与「显示完整文件」钮,无全文(parity 面不污染)', async ({ page }) => {
+test('初始态渲染 hunk 面与「显示完整文件」钮,无全文(初渲不污染)', async ({ page }) => {
   await page.goto(ROUTE);
   await expect(page.locator('.diff-hunk-head')).toContainText('@@ -3,3 +3,4 @@');
   await expect(page.locator('.diff-expand')).toContainText('显示完整文件');

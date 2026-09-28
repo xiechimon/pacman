@@ -9,7 +9,7 @@ import { expect, test } from '@playwright/test';
 // pill (y6..38, 32px) survives via the --active margin, untouched; the
 // rail toggle grows to 44px so its divider aligns with the topbar border
 // too (r7 03's y42..43 divider realigned by the 裁决, registered in
-// 01 §8). Viewport is the parity canon 1440×732.
+// 01 §8). Viewport is the e2e canon 1440×732.
 
 const SEAM_VARIANTS = ['light', 'dark'] as const;
 

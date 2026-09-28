@@ -121,8 +121,8 @@ export interface OverlayUi {
    *  official option list was never captured, r2 §11 Q19). */
   langDropdownOpen?: boolean;
   /** 看板顶部通知引导条 (issue #114, r2 §1.3: captures 01/28/30). Freezes
-   *  the Notification.permission === 'default' state for parity — the r7
-   *  board baselines carry no banner, so no existing scenario may grow one. */
+   *  the Notification.permission === 'default' state for the fixture — the
+   *  r7 board baselines carry no banner, so no existing scenario may grow one. */
   notificationBanner?: boolean;
 }
 
@@ -224,7 +224,7 @@ export interface ApiKeysContent {
 
 /** One deterministic content set behind a scenario id. `now` is the frozen
  *  reference instant for relative labels (capture time of the r7 shot), so
- *  parity output never drifts with wall-clock time. */
+ *  fixture output never drifts with wall-clock time. */
 export interface FixtureSet {
   todos: TodoRecord[];
   now: number;

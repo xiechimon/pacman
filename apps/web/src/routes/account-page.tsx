@@ -10,7 +10,7 @@
 // The 推送通知 switch is live — it mirrors Notification.permission and
 // clicking an off switch drives the same requestPermission() path as the
 // #114 banner (shared useNotificationPermission). Fixture mode freezes the
-// switch granted: r7 13 shows it on and the parity headless chromium
+// switch granted: r7 13 shows it on and the headless chromium
 // reports the real API as 'denied'.
 // #74: the 语言 row is live — it reads/writes the workspace locale
 // (zh-CN authoritative + en, 01 S6) through the i18n provider and persists

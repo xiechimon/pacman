@@ -427,7 +427,7 @@
 /* column-reverse + auto bottom margin: at scroll 0 an overflowing
    transcript shows its newest rows (the live app scrolls to the bottom,
    r8 63–77) while a short one keeps its top alignment (r7) — pure
-   layout, no scroll scripting, so parity captures are deterministic */
+   layout, no scroll scripting, so fixture captures are deterministic */
 .chat-pin {
   margin-bottom: auto;
 }
@@ -758,7 +758,7 @@
   /* r7 26/27: preview lines pitch 20 (12px text, lh 20), first line
      8px under the plan title row. Two-line cut = max-height; the fixture
      strings carry the capture's own truncation `…` (the -webkit-box
-     line-clamp idiom computes to flow-root + zero height on the parity
+     line-clamp idiom computes to flow-root + zero height on the headless
      chromium, so the clamp cannot be used). */
   margin-top: 8px;
   padding-left: 31px;
@@ -870,7 +870,7 @@ textarea.composer-input::placeholder {
 }
 
 /* W3 #280：steer 被拒（409 无在跑步）提示行——composer 上缘外挂一行，
-   不动 composer 盒几何（parity 行零影响：live-only 条件渲染）。 */
+   不动 composer 盒几何（视觉零影响：live-only 条件渲染）。 */
 .composer-reject {
   position: absolute;
   left: 497px; /* 737 − sidebar 240，与 composer 同轴 */

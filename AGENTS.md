@@ -40,8 +40,8 @@ pnpm typecheck  # pnpm -r typecheck
 
 跑验证服务（port 与 dist/ 互斥）：
 - `dev:web` / `dev:server` / `dev:daemon` ——dev server。
-- **PARITY_PORT** 默认 8390（`PARITY_PORT=<port> node parity/run.mjs`）；**E2E_PORT** 默认 8399——跑前先 `lsof -iTCP:8390` 查占用，占用的是别的车道**不能杀**，换端口。
-- **同 worktree 内 playwright 与 parity 不并跑**——两者都 `vite build --mode parity` 写同一个 `dist/`，会互踩。跨 worktree 各用各的 dist 无碍。
+- **E2E_PORT** 默认 8399——跑前先 `lsof -iTCP:8399` 查占用，占用的是别的车道**不能杀**，换端口。
+- **同 worktree 内不要并跑两个 playwright**——`vite build --mode fixture` 写同一个 `dist/`，会互踩。跨 worktree 各用各的 dist 无碍。
 
 ## Dependencies & Install Security
 

@@ -1,9 +1,9 @@
 import { defineConfig } from '@playwright/test';
 
 // Issue #75 AC3: the reject-loop interaction chain walks client-side over
-// the fixture script (`?scenario=chain`), so the e2e runs against the same
-// parity-mode build the pixel harness uses — the only production-grade
-// build in which the scenario parameter stays live (#58 gate).
+// the fixture script (`?scenario=chain`), so the e2e runs against the
+// fixture-mode build — the only production-grade build in which the
+// scenario parameter stays live (#58 gate).
 // #137: E2E_PORT lets parallel worktree lanes preview on their own port —
 // 8399 is machine-wide, and reuseExistingServer would otherwise silently
 // test whichever lane's build answered first. Default unchanged.
@@ -23,7 +23,7 @@ export default defineConfig({
     colorScheme: 'dark',
   },
   webServer: {
-    command: `pnpm exec vite build --mode parity && pnpm exec vite preview --host 127.0.0.1 --port ${PORT} --strictPort`,
+    command: `pnpm exec vite build --mode fixture && pnpm exec vite preview --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: `http://127.0.0.1:${PORT}/app`,
     reuseExistingServer: true,
     timeout: 120_000,

@@ -48,7 +48,7 @@ interface ComposerProps {
    *  steer 面：rejected 时 draft 保留不丢字）；同步 void = 发后即清（原语义）。 */
   onSend?: (text: string) => void | Promise<void>;
   /** M5 live 面：占位行换成真 textarea（同几何类名 + input 复位类；
-   * fixture/parity 面保持静态 div，DOM 不变）。 */
+   * fixture 面保持静态 div，DOM 不变）。 */
   editable?: boolean;
   /** M7 #310：附件钮选中后调 onAttachment(files)，父组件负责
    * grant + upload + 拼 token 进 draft。父组件在 live 编辑面下应同时传
@@ -62,10 +62,10 @@ interface ComposerProps {
    *  缺省 = 所有分组空（弹层仍可开但只显 0 计数）。 */
   mentionGroups?: MentionGroups;
   /** 停止钮点击（M7 #308，r9 §3.3：确认弹层入口）；缺省 = 静态捕获面
-   * （fixture/parity 按钮不接线，DOM 字节不变）。 */
+   * （fixture 按钮不接线，DOM 字节不变）。 */
   onStop?: () => void;
   /** AI 审核钮点击（M7 #312，r8 §3.1：发起 AI 审核模态入口）；缺省 =
-   * 静态捕获面（fixture/parity 按钮不接线，DOM 字节不变）。 */
+   * 静态捕获面（fixture 按钮不接线，DOM 字节不变）。 */
   onReview?: () => void;
 }
 

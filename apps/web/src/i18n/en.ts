@@ -8,7 +8,7 @@
 // One zh key = one en value; where a word serves several surfaces (任务 as
 // nav row and as popover section) the single best fit is noted inline.
 // Discipline: zh renders never touch this file (translate() identity), so
-// the parity matrix stays the zh regression gate; coverage of the en side
+// the e2e suite stays the zh regression gate; coverage of the en side
 // is gated by test/i18n-coverage.test.ts.
 //
 // Fixture-carried chrome: a handful of system-generated labels (streaming

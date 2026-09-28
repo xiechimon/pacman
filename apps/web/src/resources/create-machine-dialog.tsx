@@ -28,7 +28,7 @@ interface CreateMachineDialogProps {
 
 export function CreateMachineDialog({ open, onClose, teamName, teamId }: CreateMachineDialogProps) {
   const { t } = useI18n();
-  // the 获取 API key link carries the scenario string along so dev/parity
+  // the 获取 API key link carries the scenario string along so dev/fixture
   // fixture selection survives the hop (#121 Link family discipline)
   const { search } = useLocation();
   const [apiKeyOpen, setApiKeyOpen] = useState(false);

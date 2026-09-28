@@ -1,5 +1,5 @@
 // Token 门页 e2e（#253，spec #247 D9）：与其余 spec 的 fixture 面不同，
-// 本 spec 起真 apps/server 进程（PACMAN_HOME 临时目录 + 托管 parity 构建的
+// 本 spec 起真 apps/server 进程（PACMAN_HOME scratch 目录 + 托管 fixture 构建的
 // dist）打真 401 闸。失败方式枚举（web 面，server 面归 test/token-auth.test.ts）：
 //   1. 鉴权开 + 无 token 首访 → 门页盖住 UI
 //   2. 错 token → 停留门页 + 通用错误文案，localStorage 不写坏值

@@ -1,7 +1,7 @@
 // Relative-time seam (issue #74): the zh strings are canon anchors from the
 // captures (9 min → `9 分钟前` r7 02; 46 h across two calendar days →
 // `2 天前` r7 01; 33 h within adjacent days → `昨天` r5b 10) and must stay
-// byte-identical — parity rows 01/02/22 gate them. The en side is the dict
+// byte-identical — fixture rows 01/02/22 gate them. The en side is the dict
 // fallback ([设计] compact forms).
 
 import { describe, expect, it } from 'vitest';

@@ -84,7 +84,7 @@ export const useProjects = (teamId: string | undefined, enabled: boolean) =>
 
 /** W4 #286：⌘K 面板 live 面服务端搜索——GET /api/search?q= 防抖 250ms
  * （击键间隔内不发出）；空串/未开面板不查。结果集直接喂 SearchPanel 的
- * server 位（fixture/parity 面不经此钩）。 */
+ * server 位（fixture 面不经此钩）。 */
 export function useSearchResults(query: string, enabled: boolean) {
   const debounced = useDebouncedValue(query, 250);
   const trimmed = debounced.trim();
