@@ -77,6 +77,11 @@ const INFERRED_ROUTES = [
   // 读位封套，不入 canonical wire record 投影。
   'POST /api/builds/{id}/branch-sync',
   'GET /api/builds/{id}/branch-sync',
+  // 模型服务读面（spec 11 §A3/A4，#356）：providers 页 runtime tabs 与总管
+  // 压缩模型选择器（#358）的并集数据源——pi 段 = custom providers models[]
+  // 投影、claude-code 段 = server fs 直读 ~/.claude/settings.json。spec 11
+  // 设计面，wire 未在 02 §6.1 词表登记 = INFERRED 入位。
+  'GET /api/teams/{id}/model-sources',
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；
