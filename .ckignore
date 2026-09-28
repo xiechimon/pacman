@@ -1,0 +1,5 @@
+# 自定义放行——补 scout-block baseline 的过度拦
+# 详见 ~/.agents/wiki/wiki/外部包 API 事实源调研.md
+!*.log
+!.git/hooks/
+!node_modules/.bin/

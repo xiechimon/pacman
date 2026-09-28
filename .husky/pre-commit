@@ -18,19 +18,25 @@ fi
 # 1.5 黑名单注释（实现 ~/Code/AgentProjects/pacman/CLAUDE.md「注释纪律」）
 # 黑名单外置到 .husky/banned.txt，本文件不含关键字词自身（避免自匹配）
 # 同时排除 .husky/ 目录（工具脚本，加新词维护就改 banned.txt）
-HUSKY_DIR="$(dirname "$0")"
+HUSKY_DIR="$(git rev-parse --show-toplevel)/.husky"
 BANNED_FILE="$HUSKY_DIR/banned.txt"
 [ -f "$BANNED_FILE" ] || { echo "missing banned-vocabulary file: $BANNED_FILE" >&2; exit 1; }
+[ -r "$BANNED_FILE" ] || { echo "unreadable banned-vocabulary file (check permissions): $BANNED_FILE" >&2; exit 1; }
 STAGED_FOR_GREP=$(printf '%s\n' "$STAGED" | grep -vE '^\.husky/' || true)
 if [ -n "$STAGED_FOR_GREP" ]; then
-  BANNED_OUT=$(git diff --cached -U0 -- $STAGED_FOR_GREP 2>/dev/null \
-    | grep -E '^\+' \
-    | grep -v '^+++' \
-    | grep -E -f "$BANNED_FILE" || true)
-  if [ -n "$BANNED_OUT" ]; then
+  DIFF_OUT=$(git diff --cached -U0 -- $STAGED_FOR_GREP 2>/dev/null | grep -E '^\+' | grep -v '^+++' || true)
+  # grep -f 失败默认吞掉会破坏 hook 立论（注释纪律）；按 rc 区分：1=无匹配正常；其他=I/O 故障 → exit 1
+  BANNED_MATCH=$(printf '%s' "$DIFF_OUT" | grep -E -f "$BANNED_FILE") || {
+    rc=$?
+    if [ "$rc" -ne 1 ]; then
+      echo "comment-discipline hook: grep -f $BANNED_FILE failed (rc=$rc); check permissions" >&2
+      exit 1
+    fi
+  }
+  if [ -n "$BANNED_MATCH" ]; then
     echo "Blocked (comment discipline): banned vocabulary in staged additions." >&2
     echo "  (per pacman CLAUDE.md; fix comments, or git commit --no-verify with explicit justification)" >&2
-    echo "$BANNED_OUT" | sed 's/^/  /' >&2
+    echo "$BANNED_MATCH" | sed 's/^/  /' >&2
     exit 1
   fi
 fi
