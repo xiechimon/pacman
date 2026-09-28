@@ -53,7 +53,9 @@
   --card-bg: #1f1f23;
   --card-border: #27272a;
   --card-button: #4e47dd;
-  --card-ghost-border: #2e2e33;
+  /* A6 收编 ghost 单源：别名直引 --card-border，与 overlay-btn 实测对齐
+     （A3 时代 #2e2e33 vs 实测 #27272a 差异已合，无视觉损失） */
+  --card-ghost-border: var(--card-border);
   /* unified border language (#139): the single-source edge recipe for
      elevated surfaces — 1px hairline ring in the --border-default scale,
      12px radius, popover-tier soft shadow. The account menu's approved face
@@ -246,7 +248,9 @@
   --card-bg: #ffffff;
   --card-border: #e1dbd2;
   --card-button: #4e47dd;
-  --card-ghost-border: #f2f0ec;
+  /* A6 收编 ghost 单源 light 镜像：见 :root 注释，--card-ghost-border
+     别名指向 --card-border，保持双主题同值 */
+  --card-ghost-border: var(--card-border);
   /* unified border language (#139), light side: the edge shadow tier dimmed
      to the light surface; the ring rides --border-default's light value via
      the :root alias */

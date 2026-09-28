@@ -221,9 +221,14 @@ export function ChiefDrawer({
           {!chief.bound && (
             <div className="chief-gate">
               <span>{t('请先为总管选择一个 Agent。')}</span>
-              <button type="button" className="chief-gate-btn" onClick={onSettings}>
+              <Button
+                variant="primary"
+                size="card"
+                style={{ width: 50, fontSize: 12 }}
+                onClick={onSettings}
+              >
                 {t('设置')}
-              </button>
+              </Button>
             </div>
           )}
           {chief.examples && (
