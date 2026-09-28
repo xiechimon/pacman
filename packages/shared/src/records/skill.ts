@@ -32,8 +32,9 @@ export const skillRecordSchema = z.object({
 export type SkillRecord = z.infer<typeof skillRecordSchema>;
 
 /** 页文案 canon（spec 13：只读面——空态指路技能目录，无导入/新建动作；
- * {dir} = SKILLS_DIR_DEFAULT 显示位。web 渲染位 = resources/skills-page.tsx
- * 字面量镜像，en 翻译在 apps/web i18n 词典）。 */
+ * {dir} = SKILLS_DIR_DEFAULT 显示位。单源消费：web resources/skills-page.tsx
+ * 经 t() 渲染本常量（i18n-coverage COMPUTED_KEYS 登记），en 翻译在 apps/web
+ * i18n 词典以同串为键）。 */
 export const SKILL_PAGE_COPY = {
   empty: '尚无技能。',
   directoryHint: '把包含 SKILL.md 的技能目录放进 {dir}，即会出现在这里。',

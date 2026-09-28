@@ -155,18 +155,30 @@ export function listSkillFiles(skillDir: string): string[] {
 }
 
 /** 技能目录内单文件读（文本投影）。fileName 逃逸/绝对路径/不在盘/非常规
- * 文件 = null（路由面 404，不泄露存在性）；超容量闸 = 400（点名上限）。 */
+ * 文件/符号链接出目录 = null（路由面 404，不泄露存在性）；超容量闸 = 400
+ * （点名上限）。逃逸判定双道：文本 resolve 前缀闸 + realpath 解析后仍在
+ * 技能目录内（文件级符号链接指向目录外时拒读——与 listSkillFiles「符号
+ * 链接不入清单」同律；技能根级链接目录的信任语义在 scanLocalSkills S11，
+ * 边界 = 用户亲手放进技能根的目录，不外溢到目录内文件链接）。 */
 export function readSkillFile(skillDir: string, fileName: string): string | null {
-  const root = resolve(skillDir);
-  const target = resolve(root, fileName);
-  if (target !== root && !target.startsWith(root + sep)) return null; // 逃逸
-  if (target === root) return null; // fileName='' 解析回目录本身
-  let st: Stats;
+  let root: string;
   try {
-    st = statSync(target);
+    root = realpathSync(resolve(skillDir)); // 根先 realpath（macOS /var → /private/var 族）
   } catch {
     return null;
   }
+  const target = resolve(root, fileName);
+  if (target !== root && !target.startsWith(root + sep)) return null; // 文本逃逸
+  if (target === root) return null; // fileName='' 解析回目录本身
+  let real: string;
+  let st: Stats;
+  try {
+    real = realpathSync(target); // 解析全部符号链接后仍在目录内才受理
+    st = statSync(real);
+  } catch {
+    return null;
+  }
+  if (real !== root && !real.startsWith(root + sep)) return null; // 链接逃逸
   if (!st.isFile()) return null;
   if (st.size > MAX_SKILL_FILE_BYTES) {
     throw new HttpError(
@@ -174,7 +186,7 @@ export function readSkillFile(skillDir: string, fileName: string): string | null
       `skill file too large: ${fileName} is ${st.size} bytes (limit ${MAX_SKILL_FILE_BYTES})`,
     );
   }
-  return readFileSync(target, 'utf8');
+  return readFileSync(real, 'utf8');
 }
 
 /** agent.skills[] 授权勾选过滤（spec 13：校验源 = 现扫存在性；未知 id 静默

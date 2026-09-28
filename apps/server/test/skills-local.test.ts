@@ -315,6 +315,31 @@ describe('skills REST 面（现扫换源）', () => {
       s.dispose();
     }
   });
+
+  test('R13：文件级符号链接指向技能目录外 = 404（链接逃逸，与清单面同律）', async () => {
+    const { s, skillsDir } = setup();
+    const outside = makeRoot();
+    try {
+      const dir = addSkill(skillsDir, 'linked', { name: 'linked' });
+      const secret = join(outside, 'secret.txt');
+      writeFileSync(secret, '目录外内容');
+      symlinkSync(secret, join(dir, 'leak.txt')); // 链接逃逸
+      symlinkSync(join(dir, 'SKILL.md'), join(dir, 'inner-link.md')); // 目录内链接 = 受理
+      const base = `/api/teams/${s.team.id}/skills/linked/file`;
+      const leak = await req(s.app, 'GET', `${base}?fileName=leak.txt`);
+      expect(leak.status).toBe(404);
+      // 清单面同律：逃逸链接不入 fileNames
+      const detail = (await (
+        await req(s.app, 'GET', `/api/teams/${s.team.id}/skills/linked`)
+      ).json()) as { fileNames: string[] };
+      expect(detail.fileNames).not.toContain('leak.txt');
+      // 目录内符号链接仍可读（解析后未出边界）
+      const inner = await req(s.app, 'GET', `${base}?fileName=inner-link.md`);
+      expect(inner.status).toBe(200);
+    } finally {
+      s.dispose();
+    }
+  });
 });
 
 // —— A agent 面（skills[] 校验 = 现扫存在性，未知 id 静默跳过）———————————————————

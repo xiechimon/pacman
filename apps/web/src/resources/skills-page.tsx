@@ -6,8 +6,9 @@
 // 数据面只有 name/description（无时间戳），可诚实承载的排序键 = 名称。
 // spec 13（#367）只读面：技能 = server 本地目录现扫投影（id = frontmatter
 // name 回落目录名），页面无新建/导入动作——写技能 = 往技能目录放文件，
-// 空态文案指路目录（SKILLS_DIR_DEFAULT 单源，env 覆写在 server 侧）。
-import { SKILLS_DIR_DEFAULT } from '@pacman/shared';
+// 空态文案指路目录（文案 canon = shared SKILL_PAGE_COPY 单源消费，{dir} =
+// SKILLS_DIR_DEFAULT；env 覆写在 server 侧，i18n 键经 COMPUTED_KEYS 登记）。
+import { SKILL_PAGE_COPY, SKILLS_DIR_DEFAULT } from '@pacman/shared';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useSkills } from '../api/hooks.js';
@@ -51,11 +52,12 @@ export function SkillsPage() {
     >
       {skills.length === 0 ? (
         // r2 08: the empty state replaces the search row entirely；spec 13：
-        // 只读面——无主钮无提示行，文案指路技能目录（{dir} 插值）。
+        // 只读面——无主钮无提示行，文案指路技能目录（canon = SKILL_PAGE_COPY，
+        // {dir} 插值；en 翻译键 = 同串，i18n-coverage COMPUTED_KEYS 登记）。
         <EmptyState
           Icon={Puzzle}
-          title="尚无技能。"
-          description="把包含 SKILL.md 的技能目录放进 {dir}，即会出现在这里。"
+          title={SKILL_PAGE_COPY.empty}
+          description={SKILL_PAGE_COPY.directoryHint}
           descriptionVars={{ dir: SKILLS_DIR_DEFAULT }}
         />
       ) : (
