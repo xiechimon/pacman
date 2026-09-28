@@ -1,0 +1,445 @@
+{
+  "probe": "overlay-repro",
+  "ok": false,
+  "at": "2026-09-28T12:34:29.340Z",
+  "stack": {
+    "web": "http://127.0.0.1:5273",
+    "root": "/Users/xmon/Code/AgentProjects/pacman/.claude/worktrees/repro-overlay-clicks"
+  },
+  "checks": [
+    {
+      "ok": true,
+      "label": "providers 页加载",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "hit-test:res-new 新建 center @(1396,22)",
+      "detail": "top=BUTTON.res-new"
+    },
+    {
+      "ok": true,
+      "label": "click-effect:res-new 新建",
+      "detail": "before≠after=true | before:{\"url\":\"http://127.0.0.1:5273/app/resources/providers\",\"hash\":\"\",\"dlg\":false,\"popoverOpen\":false,\"bodyDataAttrs\":{}} | after:{\"url\":\"http://127.0.0.1:5273/app/resources/providers\",\"hash\":\"\",\"dlg\":true,\"popoverOpen\":false,\"bodyDataAttrs\":{}}"
+    },
+    {
+      "ok": true,
+      "label": "hit-test:res-grow[0] 内置行(Pacman) center @(840,91)",
+      "detail": "top=DIV.res-grow"
+    },
+    {
+      "ok": true,
+      "label": "click-no-handler:res-grow[0] 内置行(Pacman)",
+      "detail": "无 click handler,点击不改变 state(预期)"
+    },
+    {
+      "ok": true,
+      "label": "machines 页加载",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "hit-test:res-add 添加机器 center @(840,161)",
+      "detail": "top=BUTTON.res-add"
+    },
+    {
+      "ok": true,
+      "label": "click-effect:res-add 添加机器",
+      "detail": "before≠after=true | before:{\"url\":\"http://127.0.0.1:5273/app/resources/machines\",\"hash\":\"\",\"dlg\":false,\"popoverOpen\":false,\"bodyDataAttrs\":{}} | after:{\"url\":\"http://127.0.0.1:5273/app/resources/machines\",\"hash\":\"\",\"dlg\":true,\"popoverOpen\":false,\"bodyDataAttrs\":{}}"
+    },
+    {
+      "ok": false,
+      "label": "hit-test:res-grow[0] 托管行 center @(840,91)",
+      "detail": "top=SPAN.res-row-line"
+    },
+    {
+      "ok": true,
+      "label": "click-no-handler:res-grow[0] 托管行",
+      "detail": "无 click handler,点击不改变 state(预期)"
+    }
+  ],
+  "artifacts": [
+    "01-providers-initial.png",
+    "02-providers-after-new-click.png",
+    "03-machines-initial.png",
+    "04-machines-after-add-click.png",
+    "05-machines-1024.png",
+    "06-machines-sidebar-collapsed.png",
+    "07-providers-sidebar-collapsed.png"
+  ],
+  "findings": [
+    {
+      "label": "res-new 新建",
+      "centerPoint": {
+        "x": 1395.5,
+        "y": 21.5
+      },
+      "bbox": {
+        "x": 1372,
+        "y": 13.5,
+        "width": 47,
+        "height": 16
+      },
+      "topSelector": "BUTTON.res-new",
+      "sameNode": true
+    },
+    {
+      "label": "res-new 新建",
+      "expectEffect": "dlg opens",
+      "before": {
+        "url": "http://127.0.0.1:5273/app/resources/providers",
+        "hash": "",
+        "dlg": false,
+        "popoverOpen": false,
+        "ariaExpanded": [
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-user=false"
+        ],
+        "bodyDataAttrs": {}
+      },
+      "after": {
+        "url": "http://127.0.0.1:5273/app/resources/providers",
+        "hash": "",
+        "dlg": true,
+        "popoverOpen": false,
+        "ariaExpanded": [
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-user=false"
+        ],
+        "bodyDataAttrs": {}
+      },
+      "changed": true,
+      "hasClickHandler": true
+    },
+    {
+      "label": "res-grow[0] 内置行(Pacman)",
+      "centerPoint": {
+        "x": 840,
+        "y": 91
+      },
+      "bbox": {
+        "x": 457,
+        "y": 61,
+        "width": 766,
+        "height": 60
+      },
+      "topSelector": "DIV.res-grow",
+      "sameNode": true
+    },
+    {
+      "label": "res-grow[0] 内置行(Pacman)",
+      "expectEffect": "none",
+      "before": {
+        "url": "http://127.0.0.1:5273/app/resources/providers",
+        "hash": "",
+        "dlg": false,
+        "popoverOpen": false,
+        "ariaExpanded": [
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-user=false"
+        ],
+        "bodyDataAttrs": {}
+      },
+      "after": {
+        "url": "http://127.0.0.1:5273/app/resources/providers",
+        "hash": "",
+        "dlg": false,
+        "popoverOpen": false,
+        "ariaExpanded": [
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-user=false"
+        ],
+        "bodyDataAttrs": {}
+      },
+      "changed": false,
+      "hasClickHandler": false
+    },
+    {
+      "section": "providers-overlays",
+      "count": 4,
+      "items": [
+        {
+          "tag": "SPAN",
+          "cls": "sidebar-kbd",
+          "pos": "absolute",
+          "z": "auto",
+          "pe": "auto",
+          "rect": {
+            "x": 196.421875,
+            "y": 61.5,
+            "w": 25.578125,
+            "h": 20
+          }
+        },
+        {
+          "tag": "A",
+          "cls": "res-back",
+          "pos": "absolute",
+          "z": "auto",
+          "pe": "auto",
+          "rect": {
+            "x": 252,
+            "y": 8,
+            "w": 28,
+            "h": 28
+          }
+        },
+        {
+          "tag": "H1",
+          "cls": "res-title",
+          "pos": "absolute",
+          "z": "auto",
+          "pe": "none",
+          "rect": {
+            "x": 240,
+            "y": 10.5,
+            "w": 1200,
+            "h": 22
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "res-fab",
+          "pos": "absolute",
+          "z": "auto",
+          "pe": "auto",
+          "rect": {
+            "x": 1376,
+            "y": 668,
+            "w": 48,
+            "h": 48
+          }
+        }
+      ]
+    },
+    {
+      "label": "res-add 添加机器",
+      "centerPoint": {
+        "x": 840,
+        "y": 161
+      },
+      "bbox": {
+        "x": 456,
+        "y": 138,
+        "width": 768,
+        "height": 46
+      },
+      "topSelector": "BUTTON.res-add",
+      "sameNode": true
+    },
+    {
+      "label": "res-add 添加机器",
+      "expectEffect": "dlg opens",
+      "before": {
+        "url": "http://127.0.0.1:5273/app/resources/machines",
+        "hash": "",
+        "dlg": false,
+        "popoverOpen": false,
+        "ariaExpanded": [
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-user=false"
+        ],
+        "bodyDataAttrs": {}
+      },
+      "after": {
+        "url": "http://127.0.0.1:5273/app/resources/machines",
+        "hash": "",
+        "dlg": true,
+        "popoverOpen": false,
+        "ariaExpanded": [
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-user=false",
+          "BUTTON.dlg-enroll-toggle=false"
+        ],
+        "bodyDataAttrs": {}
+      },
+      "changed": true,
+      "hasClickHandler": true
+    },
+    {
+      "label": "res-grow[0] 托管行",
+      "centerPoint": {
+        "x": 840,
+        "y": 91
+      },
+      "bbox": {
+        "x": 457,
+        "y": 61,
+        "width": 766,
+        "height": 60
+      },
+      "topSelector": "SPAN.res-row-line",
+      "sameNode": false
+    },
+    {
+      "label": "res-grow[0] 托管行",
+      "expectEffect": "none",
+      "before": {
+        "url": "http://127.0.0.1:5273/app/resources/machines",
+        "hash": "",
+        "dlg": false,
+        "popoverOpen": false,
+        "ariaExpanded": [
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-user=false"
+        ],
+        "bodyDataAttrs": {}
+      },
+      "after": {
+        "url": "http://127.0.0.1:5273/app/resources/machines",
+        "hash": "",
+        "dlg": false,
+        "popoverOpen": false,
+        "ariaExpanded": [
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-group=true",
+          "BUTTON.sidebar-user=false"
+        ],
+        "bodyDataAttrs": {}
+      },
+      "changed": false,
+      "hasClickHandler": false
+    },
+    {
+      "section": "machines-overlays",
+      "count": 4,
+      "items": [
+        {
+          "tag": "SPAN",
+          "cls": "sidebar-kbd",
+          "pos": "absolute",
+          "z": "auto",
+          "pe": "auto",
+          "rect": {
+            "x": 196.421875,
+            "y": 61.5,
+            "w": 25.578125,
+            "h": 20
+          }
+        },
+        {
+          "tag": "A",
+          "cls": "res-back",
+          "pos": "absolute",
+          "z": "auto",
+          "pe": "auto",
+          "rect": {
+            "x": 252,
+            "y": 8,
+            "w": 28,
+            "h": 28
+          }
+        },
+        {
+          "tag": "H1",
+          "cls": "res-title",
+          "pos": "absolute",
+          "z": "auto",
+          "pe": "none",
+          "rect": {
+            "x": 240,
+            "y": 10.5,
+            "w": 1200,
+            "h": 22
+          }
+        },
+        {
+          "tag": "BUTTON",
+          "cls": "res-fab",
+          "pos": "absolute",
+          "z": "auto",
+          "pe": "auto",
+          "rect": {
+            "x": 1376,
+            "y": 668,
+            "w": 48,
+            "h": 48
+          }
+        }
+      ]
+    },
+    {
+      "section": "machines-add-btn-elementstack-1024",
+      "stacks": [
+        {
+          "point": {
+            "x": 632,
+            "y": 161
+          },
+          "stack": [
+            "BUTTON.res-add",
+            "DIV.res-col",
+            "DIV.res-main",
+            "DIV.res-shell",
+            "DIV."
+          ]
+        },
+        {
+          "point": {
+            "x": 862.4000000000001,
+            "y": 161
+          },
+          "stack": [
+            "BUTTON.res-add",
+            "DIV.res-col",
+            "DIV.res-main",
+            "DIV.res-shell",
+            "DIV."
+          ]
+        },
+        {
+          "point": {
+            "x": 977.5999999999999,
+            "y": 161
+          },
+          "stack": [
+            "BUTTON.res-add",
+            "DIV.res-col",
+            "DIV.res-main",
+            "DIV.res-shell",
+            "DIV."
+          ]
+        }
+      ]
+    },
+    {
+      "section": "machines-sidebar-collapsed",
+      "addBtn": {
+        "x": 356,
+        "y": 138,
+        "width": 768,
+        "height": 46
+      },
+      "fab": {
+        "x": 1376,
+        "y": 668,
+        "width": 48,
+        "height": 48
+      },
+      "verdict": "不重叠"
+    },
+    {
+      "section": "providers-sidebar-collapsed",
+      "newBtn": {
+        "x": 1372,
+        "y": 13.5,
+        "width": 47,
+        "height": 16
+      },
+      "fab": {
+        "x": 1376,
+        "y": 668,
+        "width": 48,
+        "height": 48
+      },
+      "verdict": "不重叠"
+    }
+  ]
+}
