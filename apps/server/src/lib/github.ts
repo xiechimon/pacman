@@ -8,6 +8,9 @@
 // - GET api.github.com/repos/{owner}/{repo}          → default_branch（2 次 REST/scan 之一）
 // - GET api.github.com/repos/{o}/{r}/git/trees/{branch}?recursive=1 → 全树（含 blob size）
 // - GET raw.githubusercontent.com/{o}/{r}/{branch}/{path} → 文件原文（CDN，不占 REST 配额）
+// 认证 API 面（spec 12 / #359 repo picker 代理）：
+// - GET api.github.com/user/repos → 连接用户仓库列表（Authorization: Bearer
+//   <github_connection token>——token 只进头不进 URL，错误 message 只带 URL）
 // OAuth 面（#231 握手）：
 // - POST github.com/login/oauth/access_token（form-encoded：client_id/
 //   client_secret/code/redirect_uri，Accept: json）→ access_token
@@ -73,12 +76,17 @@ export interface GithubTree {
   truncated: boolean;
 }
 
-/** 出站错误 → HttpError 单点映射（映射表见文件头注释）。 */
-async function readJson(fetchImpl: FetchLike, url: string): Promise<unknown> {
+/** 出站错误 → HttpError 单点映射（映射表见文件头注释）。headers 参数 =
+ * 认证面扩展位（Authorization 头；错误路径只消费 url，token 永不进 message）。 */
+async function readJson(
+  fetchImpl: FetchLike,
+  url: string,
+  headers: Record<string, string> = API_HEADERS,
+): Promise<unknown> {
   let res: Awaited<ReturnType<FetchLike>>;
   try {
     res = await fetchImpl(url, {
-      headers: API_HEADERS,
+      headers,
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
   } catch (err) {
@@ -167,6 +175,61 @@ export async function githubRepoTree(
     });
   }
   return { entries, truncated: data.truncated === true };
+}
+
+/** 认证面仓库条目（GitHub `GET /user/repos` 元素最小投影；camelCase =
+ * lib 内部形，wire 封套（full_name/private snake_case）归 shared
+ * githubReposResponseSchema，routes 层映射）。 */
+export interface GithubUserRepo {
+  id: number;
+  /** owner login（上游 `owner.login` 平铺）。 */
+  owner: string;
+  name: string;
+  fullName: string;
+  isPrivate: boolean;
+}
+
+/** 认证面仓库列表单页条数 [设计]（GitHub per_page 上限即 100；picker 靠 q
+ * 过滤收敛，分页归后续需要时再开）。 */
+const USER_REPOS_PER_PAGE = 100;
+
+/** 连接用户的仓库列表（spec 12 / #359 repo picker 数据源）。token 仅进
+ * Authorization 头（never URL / 错误 message）；`sort=pushed` 近期活跃在前、
+ * 单页 USER_REPOS_PER_PAGE——picker 的 q 过滤在 routes 层本地做
+ * （上游 /user/repos 无查询参数面）。畸形条目（缺 id/name/full_name/
+ * owner.login）跳过不入列。 */
+export async function githubUserRepos(
+  fetchImpl: FetchLike,
+  token: string,
+): Promise<GithubUserRepo[]> {
+  const url = `https://api.github.com/user/repos?per_page=${USER_REPOS_PER_PAGE}&sort=pushed`;
+  const data = await readJson(fetchImpl, url, {
+    ...API_HEADERS,
+    authorization: `Bearer ${token}`,
+  });
+  if (!Array.isArray(data)) {
+    throw new HttpError(502, 'github user repos response not an array');
+  }
+  const repos: GithubUserRepo[] = [];
+  for (const raw of data as Array<Record<string, unknown>>) {
+    const owner = raw.owner as { login?: unknown } | null | undefined;
+    if (
+      typeof raw.id !== 'number' ||
+      typeof raw.name !== 'string' ||
+      typeof raw.full_name !== 'string' ||
+      typeof owner?.login !== 'string'
+    ) {
+      continue;
+    }
+    repos.push({
+      id: raw.id,
+      owner: owner.login,
+      name: raw.name,
+      fullName: raw.full_name,
+      isPrivate: raw.private === true,
+    });
+  }
+  return repos;
 }
 
 /** raw 文件原文（CDN 面，不占 REST 配额）；404 → null（race 语义归调用方）。 */

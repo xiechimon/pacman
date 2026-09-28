@@ -2,7 +2,13 @@
 
 本目录是 pacman 用户可见行为的验证正源。驱动前先读本索引,再按 feature 文件当配方执行。map 漏掉的入口 = 验证不完整:顺手的入口验过 ≠ 整个 feature 验过。
 
-Last updated: 2026-09-28(#354 spec 11 先行地图:补三面条目——providers runtime tabs(providers-tabs.md)、machines 本机行+switches(machines-local-row.md)、添加服务商 picker(provider-picker.md)+ 三个先行 probe(drive-providers-tabs/drive-machines-local/drive-provider-picker.mjs)。先行语义(spec 11 A12):probe 先于实现票落地,红态 = 验收清单(FAIL detail 逐条指 spec 条款),实现票验收 = 转绿;跑序纪律见 Baseline。前序:2026-09-28 M7 功能闭环维护(补 6 个 M7 条目——review-modal/mentions/tags/attachments/branch-sync/failed-send;stop-button.md 补 #318;drive-stop.mjs 修 #318 过时;stub-llm-verify.mjs 修 Node ≥v20 close bug。mentions/tags live 验通过,attachments/branch-sync/failed-send live re-probe 待补);2026-09-27 停止钮全栈链 #308;2026-09-25 初始 map)
+Last updated: 2026-09-28（spec 11 / #354 先行地图 + spec 12 / #359 G2-T1 同日合流）：
+
+- spec 11（#354 先行地图）：补三面条目——providers runtime tabs (providers-tabs.md)、machines 本机行 + switches (machines-local-row.md)、添加服务商 picker (provider-picker.md) + 三个先行 probe (drive-providers-tabs/drive-machines-local/drive-provider-picker.mjs)。先行语义 (spec 11 A12)：probe 先于实现票落地，红态 = 验收清单（FAIL detail 逐条指 spec 条款），实现票验收 = 转绿；跑序纪律见 Baseline。
+- spec 12（#359 G2-T1）：补本地仓库项目与 GitHub 连接 server API 面条目 local-repo-api.md + 定制 probe `scripts/probe-local-repos.mjs`，live 验 11/11 PASS。
+- 同日 M7 功能闭环维护：补 6 个 M7 新功能条目——AI 审核发起 review-modal、@提及 mentions、标签 tags、附件 attachments、分支同步 branch-sync、失败面发送 failed-send；stop-button.md 补 #318 统一 start dialog 步骤；drive-stop.mjs 修 #318 过时（点开始后先经 overlay-panel 选先做规划）；stub-llm-verify.mjs 修 Node ≥v20 close 事件 bug（req.on close→res.on close + responded 守卫）。mentions/tags 本会话 live 验通过，attachments/branch-sync/failed-send user path 从合并代码核实、live re-probe 待补。
+
+前序：2026-09-27 停止钮全栈链 #308；2026-09-25 初始 map。
 
 ## Baseline preconditions
 
@@ -47,9 +53,10 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [附件(composer+新建任务)](./attachments.md) 添加附件钮(原生文件触发)→三步上传(grant→host→token)→`![名](attachment:…)` 注入 spec→执行面 agent 可读(#310/#331)。live re-probe 待补。
 - [分支同步(详情页 branch-dialog)](./branch-sync.md) 分支与 PR 弹层「同步到机器」tab→选机器→同步钮→`POST branch-sync`→daemon git/worktree 执行→结果卡 pending→synced(#319/#328)。live re-probe 待补。
 - [失败面发送(详情页 composer)](./failed-send.md) failed 相位 composer 发送反馈→`{action:"restart"}`→新 build(withPlan 承接)+反馈入会话+failed→queued;相位门只收 failed(#320/#322)。live re-probe 待补。
-- [模型服务 runtime tabs(providers 页)](./providers-tabs.md) spec 11 A1-A4/A7 先行地图:tablist pi/Claude Code+?runtime= 同步+header 卡安装态+pi=custom providers models[] 投影+model-sources API 双真值+facade/chevron 负向(#353/#354);定制 probe `scripts/drive-providers-tabs.mjs`。**实现票落地前红态**。
-- [机器页本机行+switches](./machines-local-row.md) spec 11 A8/A9/A7 先行地图:本机行 server seed(kind='local',name=hostname)钉首不可删+per-runtime role=switch 翻转写回 enabledRuntimes(API+SQLite 双真值,幂等)+添加机器流程不变+facade/chevron 负向(#353/#354);定制 probe `scripts/drive-machines-local.mjs`。**实现票落地前红态**。
-- [添加服务商 picker dialog](./provider-picker.md) spec 11 A5/A6 先行地图:「新建」开 picker——页面无 preset 投喂负向+搜索客户端过滤 38 项+显示名 canon 名称节点等值(spec 名单)+OAuth 徽标两项/xai 行负向+xai oauthLabel 密钥表单正向+api_key 族密钥表单+自定义端点 disclosure 展开现有表单+创建链回归护栏(#353/#354);定制 probe `scripts/drive-provider-picker.mjs`。**picker 结构实现票落地前红态;创建链段应绿**。
+- [模型服务 runtime tabs(providers 页)](./providers-tabs.md) spec 11 A1-A4/A7 先行地图：tablist pi/Claude Code + `?runtime=` 同步 + header 卡安装态 + pi = custom providers models[] 投影 + model-sources API 双真值 + facade / chevron 负向 (#353/#354)；定制 probe `scripts/drive-providers-tabs.mjs`。**实现票落地前红态**。
+- [机器页本机行 + switches](./machines-local-row.md) spec 11 A8/A9/A7 先行地图：本机行 server seed (kind='local', name=hostname) 钉首不可删 + per-runtime role=switch 翻转写回 enabledRuntimes (API + SQLite 双真值，幂等) + 添加机器流程不变 + facade / chevron 负向 (#353/#354)；定制 probe `scripts/drive-machines-local.mjs`。**实现票落地前红态**。
+- [添加服务商 picker dialog](./provider-picker.md) spec 11 A5/A6 先行地图：「新建」开 picker — 页面无 preset 投喂负向 + 搜索客户端过滤 38 项 + 显示名 canon 名称节点等值 (spec 名单) + OAuth 徽标两项 / xai 行负向 + xai oauthLabel 密钥表单正向 + api_key 族密钥表单 + 自定义端点 disclosure 展开现有表单 + 创建链回归护栏 (#353/#354)；定制 probe `scripts/drive-provider-picker.mjs`。**picker 结构实现票落地前红态；创建链段应绿**。
+- [本地仓库项目与 GitHub 连接 (server API 面)](./local-repo-api.md) `POST /api/projects kind=local` 三态校验 (live fs + 真 git) + 旧 hosted 面不回归 + `GET /api/github/repos` 未连接 404 + github_connection 表形 (SQLite 只读)；定制 probe `scripts/probe-local-repos.mjs` (spec 12 / #359，UI 入口归 G2-T3/T4 后回补)。**2026-09-28 live 验 11/11 PASS**。
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
 
