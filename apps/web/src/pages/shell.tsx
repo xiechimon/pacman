@@ -19,6 +19,9 @@ import { ChevronLeft } from '../icons/index.js';
 export interface PageTab {
   id: string;
   label: string;
+  /** 禁用位（spec 12 G2-T2 v1：local 项目的 文件 tab）——钮不可点，
+   *  内容面由页面给占位文案。 */
+  disabled?: boolean;
 }
 
 /** Text-tab pill group (任务|文件 in the topbar, 基本信息|仓库|标签 in the
@@ -39,7 +42,10 @@ export function TabGroup({
         <button
           key={item.id}
           type="button"
-          className={`page-tab${tab === item.id ? ' page-tab--active' : ''}`}
+          className={`page-tab${tab === item.id ? ' page-tab--active' : ''}${
+            item.disabled === true ? ' page-tab--disabled' : ''
+          }`}
+          disabled={item.disabled === true}
           onClick={() => onTab?.(item.id)}
         >
           {t(item.label)}

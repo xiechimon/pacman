@@ -48,6 +48,7 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [失败面发送(详情页 composer)](./failed-send.md) failed 相位 composer 发送反馈→`{action:"restart"}`→新 build(withPlan 承接)+反馈入会话+failed→queued;相位门只收 failed(#320/#322)。live re-probe 待补。
 - [本地仓库项目与 GitHub 连接(server API 面)](./local-repo-api.md) `POST /api/projects kind=local` 三态校验(live fs+真 git)+旧 hosted 面不回归+`GET /api/github/repos` 未连接 404+github_connection 表形(SQLite 只读);定制 probe `scripts/probe-local-repos.mjs`(spec 12 / #359,本地文件夹 UI 入口归 G2-T3 后回补)。**2026-09-28 live 验 11/11 PASS**。
 - [GitHub 连接认证 + repo picker(新建项目)](./github-oauth-picker.md) 未认证 = 认证钮 + 手动兜底;已认证 = picker 弹层(搜索/单选回填/断开);authorize 双形自适应(env 未配 400 内联 / 已配 200 URL 形状);手动兜底建 github 项目全链;定制 probe `scripts/probe-github-oauth.mjs`(spec 12 / #361)。
+- [local 项目 daemon 执行面](./local-daemon-executor.md) 硬链接镜像 clone→worktree→conv 分支 push 回用户仓库→merge 步 ff-only 落地(脏区/非 ff = git 自拒 failed 含原文)+github per-step token 不进 argv(PATH shim 捕获)+Files tab 禁用占位;配方 = `integration/test/g2t2-local-lifecycle.test.ts` 等四面(spec 12 / #362)。live re-probe 待补。
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
 

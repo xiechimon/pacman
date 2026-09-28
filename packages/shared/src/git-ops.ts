@@ -93,6 +93,11 @@ export interface GitCredentials {
   password: string;
 }
 
+/** GitHub 执行凭证用户名（spec 12 G2-T2）：OAuth token 经 basic auth 消费时
+ * 用户名固定 `x-access-token`（GitHub 约定）；server stepToken 组装
+ * GitCredentials 与 daemon 消费两侧同吃本单源。 */
+export const GITHUB_ACCESS_TOKEN_USERNAME = 'x-access-token';
+
 /** 提交身份 [设计]（r3 未采 committer 词表；daemon 侧步提交用）。 */
 export interface CommitIdentity {
   name: string;
@@ -149,6 +154,12 @@ export interface WorktreeOps {
    * 「git merge origin/main 结果为 "Already up to date"」样本）；冲突 =
    * merge 自动中止并抛错（失败仅人工重跑，02/A6）。 */
   mergeDefaultBranch(cwd: string, defaultBranch: string): Promise<{ output: string }>;
+  /** local 形态合并落地（spec 12 G2-T2；server applyMergeLanding 保持
+   * hosted-only，本地落地面在 daemon 侧）：merge 步 conv 分支 push 回用户仓库
+   * 后，在用户仓库目录 `git merge --ff-only <branch>` 推进其当前分支。
+   * 脏工作区 / 非 ff → git 自拒 → 抛错（消息含 git 拒绝原文）；永不 force、
+   * 永不绕开 git 自身护栏动用户工作树。 */
+  landLocalFastForward(userRepoDir: string, branch: string): Promise<void>;
   /** HEAD sha（done 回传 commit 字段 = checkpoint 数据源，02 §4.2「恢复到
    * 此处」的后端）。 */
   headCommit(cwd: string): Promise<string | null>;

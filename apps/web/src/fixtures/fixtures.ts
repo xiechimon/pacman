@@ -955,6 +955,15 @@ export const projectTasksEmpty: FixtureSet = {
   now: r7(13, 14),
   project: projectContent,
   projectTab: 'tasks',
+};
+
+/** spec 12 / #362 G2-T2 v1: local 仓库项目的 文件 tab 禁用面（占位 +
+ *  一行 disable 文案）；任务行 = legacy 双行（切换对照用）。 */
+export const projectLocalFiles: FixtureSet = {
+  todos: projectFixture.todos,
+  now: projectFixture.now,
+  project: { ...projectContent, repoKind: 'local', hosted: false },
+  projectTab: 'files',
 }; /** Resource surfaces (r7 06–10, issue #69): the r3 session left one skill,
  *  one MCP server, the online r3 machine and a custom gateway on the free
  *  team, so the captures show populated rows rather than empty states

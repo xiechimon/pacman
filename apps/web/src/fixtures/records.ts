@@ -175,6 +175,9 @@ export interface ProjectContent {
   repoName: string;
   /** True = the `Pacman 托管` chip rides beside the repo name (r2 24c). */
   hosted: boolean;
+  /** repo 形态（spec 12 三形态；live 面 = wireProject.repoKind 透传）。
+   *  local = Files tab 禁用（占位 + 一行 disable 文案，G2-T2 v1）。 */
+  repoKind?: 'hosted' | 'github' | 'local';
   defaultBranch: string;
   description: string | null;
   /** 历史 segment rows (#149); fixture-frozen, newest first. */

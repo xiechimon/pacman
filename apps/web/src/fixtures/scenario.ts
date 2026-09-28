@@ -48,6 +48,7 @@ import {
   history12,
   history15,
   projectFixture,
+  projectLocalFiles,
   projectTasks,
   projectTasksEmpty,
   r7,
@@ -213,6 +214,8 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       'r2-24': projectFixture,
       'r2-24b': projectTasksEmpty,
       'prj-tasks': projectTasks,
+      // spec 12 / #362 G2-T2 v1：local 项目 文件 tab 禁用面（占位 + 文案）。
+      'prj-local-files': projectLocalFiles,
       'r2-24c': projectFixture,
       // secondary routes (issue #70): 12/13 are the r7 team/account captures;
       // the api-keys id has no r7 capture (smoke matrix rows) and picks its

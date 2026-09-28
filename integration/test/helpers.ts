@@ -190,13 +190,19 @@ export async function seedWorld(
   url: string,
   teamId: string,
   todo: { title: string; spec: string },
-  opts: { repoKind?: 'hosted' | 'github'; projectName?: string } = {},
+  opts: {
+    repoKind?: 'hosted' | 'github' | 'local';
+    projectName?: string;
+    /** local 形态：用户本机 git 工作树仓绝对路径（spec 12 G2-T2）。 */
+    localPath?: string;
+  } = {},
 ): Promise<WorldIds> {
   const name = opts.projectName ?? 'it-project';
   const project = await api(url, 'POST', '/api/projects', {
     name,
     teamId,
     ...(opts.repoKind !== undefined ? { repoKind: opts.repoKind } : {}),
+    ...(opts.localPath !== undefined ? { localPath: opts.localPath } : {}),
   });
   const projectId = (project.body as { id: string }).id;
   const res = await api(url, 'POST', `/api/projects/${projectId}/todos`, todo);
