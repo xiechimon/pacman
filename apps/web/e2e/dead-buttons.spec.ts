@@ -158,9 +158,11 @@ test('machines rows render no inline action buttons (#222 wontfix 出账)', asyn
   await page.goto('/app/resources/machines?scenario=06');
   // 在线机器行在（scenario=06 fixture 含一台 online 机器，行首 res-dot）
   await expect(page.locator('.res-dot').first()).toBeVisible();
-  // #222:r8 §3.5 原站在线机器行右侧三行内动作图标——端点核实测无
-  // local-first 机器管理面,不渲染死钮:行内零 button(行尾 chevron 为
-  // 非交互 span,行外 添加机器 钮 .res-add 不在钉内)。
+  // #222:r8 §3.5 原站在线机器行右侧三行内动作图标——机器操作面至今唯二
+  // 真控件 = per-runtime switch(#357,span role=switch 接 PATCH
+  // enabledRuntimes,非 button 面)与行外 添加机器 钮 .res-add(不在钉内);
+  // 其余动作无依托,不渲染死钮:行内零 button(行尾 chevron 已随 spec 11 A7
+  // 无 handler 行收编移除)。
   await expect(page.locator('.res-grow button')).toHaveCount(0);
 });
 

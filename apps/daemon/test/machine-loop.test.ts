@@ -100,6 +100,8 @@ class FakeMachineApi implements MachineApi {
       online: true,
       maxConcurrent: 3,
       latestCliVersion: null,
+      kind: 'remote' as const,
+      enabledRuntimes: [],
     };
   }
   async presence() {

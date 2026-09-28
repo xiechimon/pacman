@@ -365,9 +365,11 @@ export function BoardPage() {
           label: s.name,
           subtitle: s.description,
         })),
-        machine: (fixture.resources?.machines ?? [])
-          .filter((m) => m.hosted !== true)
-          .map((m) => ({ id: m.name, label: m.name, subtitle: m.sub })),
+        machine: (fixture.resources?.machines ?? []).map((m) => ({
+          id: m.name,
+          label: m.name,
+          subtitle: m.sub,
+        })),
       };
   const fixtureWithTodos: FixtureSet = live
     ? { ...fixture, todos, now: Date.now(), ...(projectNames ? { projectNames } : {}) }

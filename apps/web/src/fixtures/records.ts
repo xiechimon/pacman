@@ -289,19 +289,22 @@ export interface McpRow {
   ago: string;
 }
 
-/** Machine row (r7 06): the hosted-machine card row plus one row per
- *  claimed machine (name + online dot + id-tail subline). */
+/** Machine row (spec 11 A8): the local machine pinned first (kind='local',
+ *  per-runtime switches, undeletable) plus one row per attached LAN/VPS
+ *  machine (name + online dot + id-tail subline). */
 export interface MachineRow {
-  /** The `Pacman 托管机器` row (indigo tile); claimed machines omit it. */
-  hosted?: boolean;
+  /** Machine record id — the `data-machine-id` contract handle. */
+  id?: string;
+  /** `local` = the server host (pinned first); absent/`remote` = attached. */
+  kind?: 'local' | 'remote';
   name: string;
-  /** Subline under the name (`…NJqVhdo_ · max 3`); absent on the hosted row. */
+  /** Subline under the name (`…NJqVhdo_ · max 3`). */
   sub?: string;
   online?: boolean;
-  /** Right-side status pill (`未启用`); absent on online machines. */
+  /** Right-side status pill; absent on online machines. */
   pill?: string;
-  /** Row description line (hosted row only). */
-  description?: string;
+  /** Per-runtime switch state (MACHINE_RUNTIMES subset; [] = all off). */
+  enabledRuntimes?: string[];
 }
 
 /** Model-provider row (r7 07): built-in card plus custom gateways. */

@@ -12,7 +12,7 @@ import { openDbWithHandle } from './db/client.js';
 import { seed } from './db/seed.js';
 import { createKeyfileSecretBox } from './lib/secret-box.js';
 import { ConversationStreamHub, TeamStreamHub } from './services/events.js';
-import { MachineWakeHub } from './services/machines.js';
+import { MachineWakeHub, seedLocalMachine } from './services/machines.js';
 import { createScheduler } from './services/scheduler.js';
 
 const config = loadConfig();
@@ -31,6 +31,10 @@ const { db, close } = openDbWithHandle(config.dbPath);
 // README 落文档）。坏 keyfile 启动即抛，不静默降级。
 const secretBox = createKeyfileSecretBox(config.keyfilePath);
 const seeded = seed(db);
+// 本机行启动 seed（spec 11 A8，#357）：os.hostname() 匹配已建则补 kind='local'，
+// 未建则建无凭证行；idempotent——二次启动不建 duplicate。测试世界
+// （test/helpers bootServer）不经本位，机器列表断言口径不变。
+seedLocalMachine(db, seeded.team.id);
 const hub = new TeamStreamHub();
 const convHub = new ConversationStreamHub();
 const reposDir = reposDirOf(config);

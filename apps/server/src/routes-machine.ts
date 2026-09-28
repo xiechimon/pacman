@@ -14,7 +14,6 @@ import {
   machineEnrollPollBodySchema,
   machineEnrollStartBodySchema,
   machinePresenceBodySchema,
-  machineRecordSchema,
   machineSyncResultBodySchema,
   machineToolBodySchema,
   machineToolRelayBodySchema,
@@ -50,6 +49,7 @@ import {
   reportTool,
   reportTranscriptDelta,
   stepToken,
+  toMachineRecord,
 } from './services/machines.js';
 
 /** relay 判别（machineToolBodySchema union 的分流位）：{name, params} 无 id =
@@ -194,17 +194,7 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
 
   // —— GET /api/machine/me ————————————————————————————————————————————————————
   app.get('/api/machine/me', (c) => {
-    const row = me(c);
-    return c.json(
-      machineRecordSchema.parse({
-        id: row.id,
-        name: row.name,
-        teamId: row.teamId,
-        online: row.online,
-        maxConcurrent: row.maxConcurrent,
-        latestCliVersion: row.latestCliVersion,
-      }),
-    );
+    return c.json(toMachineRecord(me(c)));
   });
 
   // —— POST /api/machine/presence（02 §5.4 心跳）——————————————————————————————

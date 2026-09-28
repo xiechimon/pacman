@@ -937,17 +937,16 @@ const RESOURCES: ResourcesContent = {
       ago: '2 天前',
     },
   ],
+  // spec 11 A8（#357）：本机行钉首（hostname canon + per-runtime switches，
+  // pi 开 / Claude Code 关 = 两态展示）；托管 facade 行已除。
   machines: [
     {
-      hosted: true,
-      name: 'Pacman 托管机器',
-      description: '随时在线，构建速度快。空闲自动休眠，仅在运行时消耗积分。',
-      pill: '未启用',
-    },
-    {
+      id: MACHINE_ID,
+      kind: 'local',
       name: MACHINE_NAME,
       sub: `…${MACHINE_ID.slice(-8)} · max 3`,
       online: true,
+      enabledRuntimes: ['pi'],
     },
   ],
   providers: [

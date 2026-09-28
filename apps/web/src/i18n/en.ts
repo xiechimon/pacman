@@ -375,9 +375,6 @@ export const EN: Record<string, string> = {
   '运行在 ': 'Running on ',
   '远程（HTTP）': 'Remote (HTTP)',
   '2 天前': '2d ago',
-  'Pacman 托管机器': 'Pacman hosted machine',
-  '随时在线，构建速度快。空闲自动休眠，仅在运行时消耗积分。':
-    'Always online and quick to build. Sleeps automatically when idle; consumes credits only while running.',
   未启用: 'Disabled',
   'Pacman（内置）': 'Pacman (built-in)',
   '8 模型': '8 models',
