@@ -24,8 +24,9 @@ Preconditions:
 2. 附件上传需 server 的 upload host 可达(grant → upload → token);live 面。
 3. 执行面读取需 daemon + worker 步(attachment 工具在 remoteTools 词表)。
 
+- **跑法。** `node <skill>/scripts/drive-attachments.mjs` 只跑新建任务对话框路径(自足,无需 daemon/seed);`node <skill>/scripts/drive-attachments.mjs <todoId>` 追加 composer 路径(todo 需处于 composer 可编辑相位,seed 走 `setup-review-seed.mjs`)。样本文件写在证据目录里随归档进 PR,便于对照原始字节。
 - **上传路径。** composer/新建任务 → 点 `button[aria-label="添加附件"]` → 文件选择(playwright `setInputFiles`)→ 等上传 → draft/spec 出现 `![名](attachment:...)` token。
-- **真值。** `POST /api/uploads/grant` 返回上传 URL;upload host PUT 200;提交后 message content / todo.spec 含 attachment token;SQLite attachment 表有行(#310 migration 0008);daemon 执行面 worker 步 remoteTools 含 attachment 工具。
+- **真值。** `POST /api/uploads/grant` 返回上传 URL;upload host PUT 200;提交后 message content / todo.spec 含 attachment token;SQLite attachment 表有行(#310 migration 0008);磁盘 `<attachmentsDir>/<storageKey>` 字节等于上传样本;`GET /api/attachments/:id` 读回一致。**未覆盖**:daemon 执行面读附件(worker 步 attachment 工具)——需真 daemon + worker 步,脚本不驱动这一面。
 
 ## Gotchas
 
