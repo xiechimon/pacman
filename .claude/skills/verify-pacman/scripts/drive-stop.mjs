@@ -8,16 +8,16 @@
 // 起门控轮 + seed（provider/agent/api-key/project/todo）+ 真 daemon --foreground。
 // 用法：VERIFY_REPO_ROOT=<worktree> node drive-stop.mjs <todoId>
 //   env：STOP_DAEMON_HOME（daemon scratch home，默认 /tmp/pacman-stop-daemon-home）
-//       VERIFY_EVIDENCE_DIR（缺省 <repo>/.claude/verify-evidence/<ts>-stop-button）
+//       VERIFY_EVIDENCE_DIR（缺省主仓 .claude/verify-evidence/<ts>-stop-button；
+//       证据要随 PR 进 git 须再跑 archive.mjs）
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
-const REPO =
-  process.env.VERIFY_REPO_ROOT ??
-  resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const SCRIPT_REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const REPO = process.env.VERIFY_REPO_ROOT ?? SCRIPT_REPO;
 const RUN_DIR = process.env.VERIFY_RUN_DIR ?? join(REPO, '.claude/verify-run');
 const ports = existsSync(join(RUN_DIR, 'ports.json'))
   ? JSON.parse(readFileSync(join(RUN_DIR, 'ports.json'), 'utf8'))
@@ -33,7 +33,8 @@ const DAEMON_HOME = process.env.STOP_DAEMON_HOME ?? '/tmp/pacman-stop-daemon-hom
 const DB_PATH = join(RUN_DIR, 'home/server/server.db');
 const ts = new Date().toISOString().replace(/[:.]/g, '-');
 const EVIDENCE =
-  process.env.VERIFY_EVIDENCE_DIR ?? join(REPO, `.claude/verify-evidence/${ts}-stop-button`);
+  process.env.VERIFY_EVIDENCE_DIR ??
+  join(SCRIPT_REPO, `.claude/verify-evidence/${ts}-stop-button`);
 mkdirSync(EVIDENCE, { recursive: true });
 
 const require2 = createRequire(join(REPO, 'apps/server/package.json'));

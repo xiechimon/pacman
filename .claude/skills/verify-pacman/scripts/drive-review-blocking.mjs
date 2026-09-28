@@ -12,7 +12,8 @@
 // 前置：launch.mjs 起栈 + setup-review-seed.mjs 推到 confirm phase。
 // 用法：VERIFY_REPO_ROOT=<worktree> REVIEW_MACHINE_TOKEN=<token> \
 //      node drive-review-blocking.mjs <todoId> <agentId>
-//   env：VERIFY_EVIDENCE_DIR（缺省 <repo>/.claude/verify-evidence/<ts>-review-blocking）
+//   env：VERIFY_EVIDENCE_DIR（缺省主仓 .claude/verify-evidence/<ts>-review-blocking；
+//        证据要随 PR 进 git 须再跑 archive.mjs）
 
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -20,9 +21,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
-const REPO =
-  process.env.VERIFY_REPO_ROOT ??
-  resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const SCRIPT_REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const REPO = process.env.VERIFY_REPO_ROOT ?? SCRIPT_REPO;
 const RUN_DIR = process.env.VERIFY_RUN_DIR ?? join(REPO, '.claude/verify-run');
 const ports = existsSync(join(RUN_DIR, 'ports.json'))
   ? JSON.parse(readFileSync(join(RUN_DIR, 'ports.json'), 'utf8'))
@@ -43,7 +43,8 @@ if (!MACHINE_TOKEN) {
 const DB_PATH = join(RUN_DIR, 'home/server/server.db');
 const ts = new Date().toISOString().replace(/[:.]/g, '-');
 const EVIDENCE =
-  process.env.VERIFY_EVIDENCE_DIR ?? join(REPO, `.claude/verify-evidence/${ts}-review-blocking`);
+  process.env.VERIFY_EVIDENCE_DIR ??
+  join(SCRIPT_REPO, `.claude/verify-evidence/${ts}-review-blocking`);
 mkdirSync(EVIDENCE, { recursive: true });
 
 const require2 = createRequire(join(REPO, 'apps/server/package.json'));

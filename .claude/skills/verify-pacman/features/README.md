@@ -18,7 +18,8 @@ Last updated: 2026-09-28(M7 功能闭环维护:补 6 个 M7 新功能条目—�
 - 选择器优先稳定句柄:`data-route`、`data-column-list`、`data-todo-id`、aria-label、类名;不用坐标/tab 序。
 - UI 证据 = 截图(1440×732,与 e2e 同口径)+ `result.json` 的逐条 checks。
 - 变更类证明必须有第二只眼:`GET /api/...` JSON 真值 + SQLite 只读行(见各 feature 文件)。
-- 收尾 `cleanup.mjs` 回收栈;证据目录(默认 `<repo>/.claude/verify-evidence/`)保留。
+- 收尾 `cleanup.mjs` 回收栈;证据默认落**主仓** `.claude/verify-evidence/`(不落 worktree),该目录 gitignored。
+- **证据要随 PR 进 git 必须 `archive.mjs <证据目录> <ticket>`** 归档进 `docs/verify/<ticket>/` 并 commit;PR body 引用归档路径,无归档路径的 verify 声明视为未验证(SKILL.md「证据归档纪律」)。
 - 报告跳过的入口时要带尝试过的命令与未满足的前置;不得把「从别的入口验过」当成「该入口已验」。
 
 ## Feature entry contract

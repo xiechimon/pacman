@@ -1,13 +1,13 @@
 ---
 name: verify-pacman
-description: pacman 行为验证——起隔离 live 栈(server VERIFY_PORT 8791 + vite dev VERIFY_WEB_PORT 5273,独立 PACMAN_HOME scratch),Playwright 走真用户路径(新建任务/建 API 密钥/搜索/主题),证据(截图 + API JSON + SQLite 行)落 .claude/verify-evidence/。改动后要证明功能真的能跑、要可复核证据时用;fixture 面回归走 apps/web e2e(含视觉 spec 的几何断言),不用本 skill。
+description: pacman 行为验证——起隔离 live 栈(server VERIFY_PORT 8791 + vite dev VERIFY_WEB_PORT 5273,独立 PACMAN_HOME scratch),Playwright 走真用户路径(新建任务/建 API 密钥/搜索/主题),证据(截图 + API JSON + SQLite 行)落 .claude/verify-evidence/ 并归档进 docs/verify/<ticket>/ 随 PR 提交。改动后要证明功能真的能跑、要可复核证据时用;fixture 面回归走 apps/web e2e(含视觉 spec 的几何断言),不用本 skill。
 ---
 
 # verify-pacman
 
 pacman = todos.dev 复刻(React/vite web + Hono REST/SSE/SQLite server)。本 skill 起一套**隔离实例**(独立端口 + 独立数据根,绝不碰用户真数据 `~/.pacman` 和 8787/5173 上的活跃 dev 栈),用仓库自带的 Playwright chromium 走真用户路径,产出证据后干净回收。脚本全在 `scripts/`,证据与运行态全在 `.claude/` 下(已被 .gitignore 忽略,不进 git)。
 
-Last updated: 2026-09-28(M7 功能闭环维护:feature map 补 6 个 M7 功能条目 + drive-stop.mjs 修 #318 start dialog 过时 + stub-llm-verify.mjs 修 Node ≥v20 close bug;详见 features/README.md Last updated。建成日 2026-09-25,5 probe 全 PASS;维护走 `/maintain-verification-skill`)
+Last updated: 2026-09-28(证据归档纪律:证据默认落主仓不再落 worktree + 新增 archive.mjs 归档进 docs/verify/<ticket>/ + 硬规则「无归档路径的 verify 声明视为未验证」——M7 #310/#319 证据随 worktree 丢失实测所致;M7 功能闭环维护:feature map 补 6 个 M7 功能条目 + drive-stop.mjs 修 #318 start dialog 过时 + stub-llm-verify.mjs 修 Node ≥v20 close bug;详见 features/README.md Last updated。建成日 2026-09-25,5 probe 全 PASS;维护走 `/maintain-verification-skill`)
 
 ## 事实底座(2026-09-25 盘问;feature 面演化后跑 `/maintain-verification-skill` 校正)
 
@@ -24,6 +24,8 @@ Last updated: 2026-09-28(M7 功能闭环维护:feature map 补 6 个 M7 功能�
 仓内端口舰队:**8787** server / **5173** vite / **8399** e2e。占用者是别的 lane(常含用户自己的 dev 栈)的活进程,**不能杀**。本 skill 默认 8791 + 5273;launch 发现被占就换端口(env 覆写 `VERIFY_PORT` / `VERIFY_WEB_PORT`),永远不要动别人的端口。查占用:`lsof -iTCP:8791 -sTCP:LISTEN`。
 
 **worktree 车道**:worktree 检出里没有 `.claude/`(gitignored),脚本在主仓。跑法:launch 与 drive 都传 `VERIFY_REPO_ROOT=<worktree 绝对路径>`,栈就在 worktree 的代码上起(worktree 须已 `pnpm install`);脚本自身位置只用于兜底推导主仓。**改码后必须重 launch**:worktree 在 `.claude/worktrees/` 下,vite 配置的 `**/.claude/**` watch 忽略会把整个 worktree 罩住,栈运行中改码不会生效(实证见项目记忆),驱动到的就是旧代码。
+
+**lane 收尾必做**(证据随 worktree 消失是本 skill 最大的坑,见「证据归档纪律」):`VERIFY_REPO_ROOT` 只影响栈与运行态,证据默认落主仓;跑完仍须 archive 进 `docs/verify/<ticket>/` 并 commit,否则 PR 的验证声明不可查证。
 
 ## Launch
 
@@ -78,7 +80,21 @@ REVIEW_MACHINE_TOKEN=<t> node .../scripts/drive-review-blocking.mjs <todoId> <ag
 
 ## Evidence
 
-证据目录 = `VERIFY_EVIDENCE_DIR`(默认 `<repo>/.claude/verify-evidence/<时间戳>-<probe>/`),含 `result.json`(probe、checks 逐条 ok/label、stack 坐标)+ 截图 PNG。**cleanup 不删证据**;proof 标准 = 截图可见动作前后态 + result.json 的 checks 全 ok + API/DB 真值字段(不是只看终屏)。引用证据时给目录绝对路径。
+证据目录 = `VERIFY_EVIDENCE_DIR`(默认**主仓** `<主仓>/.claude/verify-evidence/<时间戳>-<probe>/`),含 `result.json`(probe、checks 逐条 ok/label、stack 坐标)+ 截图 PNG。**cleanup 不删证据**;proof 标准 = 截图可见动作前后态 + result.json 的 checks 全 ok + API/DB 真值字段(不是只看终屏)。
+
+证据默认落**主仓**而非 `VERIFY_REPO_ROOT`——lane 的栈跑在 worktree,证据若落 worktree 会随 worktree 删除而永久丢失。这个坑 M7 实测踩过:#310/#319 的 PR body 声称跑过 verify-pacman,合并后主仓里证据目录根本不存在,验证声明不可查证(见 #345)。
+
+## 证据归档纪律(硬规则)
+
+`.claude/verify-evidence/` 是 gitignored 本地目录,**永远进不了 PR**。带 verify 声明的 PR 必须把证据归档进 `docs/verify/<ticket>/`(ticket = issue 号)并随 PR 提交:
+
+```sh
+node .../scripts/archive.mjs <证据目录> <ticket>   # → docs/verify/<ticket>/<时间戳>-<probe>/
+```
+
+- archive 落主仓(与 `VERIFY_REPO_ROOT` 无关),落盘后自检 `git check-ignore`——归档进被忽略的路径直接报错退出(等于没归档)。
+- PR body 引用 archive 打印的仓库相对路径。**无归档路径的 verify 声明视为未验证**,reviewer 无从复核。
+- 证据是 200-300KB/次(截图为主),量级可接受;真值三件套(截图 + API JSON + SQLite 行)照旧,归档只改落盘位置不改口径。
 
 ## Cleanup
 
@@ -96,8 +112,9 @@ node .../scripts/cleanup.mjs
 | `scripts/doctor.mjs` | 只读体检 |
 | `scripts/drive.mjs` | Playwright probe(本文 Drive 节用法) |
 | `scripts/cleanup.mjs` | 回收栈,保证据 |
+| `scripts/archive.mjs` | 证据归档进 `docs/verify/<ticket>/`(本文「证据归档纪律」) |
 
-env 契约(四个脚本一致):`VERIFY_REPO_ROOT` / `VERIFY_RUN_DIR` / `VERIFY_PORT` / `VERIFY_WEB_PORT` / `VERIFY_EVIDENCE_DIR`。
+env 契约(脚本一致):`VERIFY_REPO_ROOT` / `VERIFY_RUN_DIR` / `VERIFY_PORT` / `VERIFY_WEB_PORT` / `VERIFY_EVIDENCE_DIR`。archive.mjs 不读这些——它固定落主仓,不受 `VERIFY_REPO_ROOT` 影响。
 
 ## 何时不用本 skill
 

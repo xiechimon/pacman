@@ -10,7 +10,8 @@
 // 前置（配方见 features/review-modal.md）：launch.mjs 起栈 + seed
 // （provider/agent/project/todo/machine 推到 plan done → confirm phase）。
 // 用法：VERIFY_REPO_ROOT=<worktree> node drive-review.mjs <todoId>
-//   env：VERIFY_EVIDENCE_DIR（缺省 <repo>/.claude/verify-evidence/<ts>-review-modal）
+//   env：VERIFY_EVIDENCE_DIR（缺省主仓 .claude/verify-evidence/<ts>-review-modal；
+//        证据要随 PR 进 git 须再跑 archive.mjs）
 
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -18,9 +19,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
-const REPO =
-  process.env.VERIFY_REPO_ROOT ??
-  resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const SCRIPT_REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const REPO = process.env.VERIFY_REPO_ROOT ?? SCRIPT_REPO;
 const RUN_DIR = process.env.VERIFY_RUN_DIR ?? join(REPO, '.claude/verify-run');
 const ports = existsSync(join(RUN_DIR, 'ports.json'))
   ? JSON.parse(readFileSync(join(RUN_DIR, 'ports.json'), 'utf8'))
@@ -35,7 +35,8 @@ if (!todoId) {
 const DB_PATH = join(RUN_DIR, 'home/server/server.db');
 const ts = new Date().toISOString().replace(/[:.]/g, '-');
 const EVIDENCE =
-  process.env.VERIFY_EVIDENCE_DIR ?? join(REPO, `.claude/verify-evidence/${ts}-review-modal`);
+  process.env.VERIFY_EVIDENCE_DIR ??
+  join(SCRIPT_REPO, `.claude/verify-evidence/${ts}-review-modal`);
 mkdirSync(EVIDENCE, { recursive: true });
 
 const require2 = createRequire(join(REPO, 'apps/server/package.json'));

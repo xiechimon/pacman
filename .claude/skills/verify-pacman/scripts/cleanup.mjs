@@ -99,7 +99,7 @@ async function main() {
   // 证据回显:cleanup 不删证据,确认其仍在命名位置
   const evidenceRoot = process.env.VERIFY_EVIDENCE_DIR
     ? resolve(process.env.VERIFY_EVIDENCE_DIR)
-    : join(ROOT, '.claude', 'verify-evidence');
+    : join(SCRIPT_ROOT, '.claude', 'verify-evidence');
   if (existsSync(evidenceRoot)) {
     const entries = readdirSync(evidenceRoot)
       .filter((f) => statSync(join(evidenceRoot, f)).isDirectory())

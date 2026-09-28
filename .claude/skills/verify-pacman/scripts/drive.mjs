@@ -3,9 +3,11 @@
 // (live 面,URL 不带 ?scenario=)。栈必须已在跑(launch.mjs;坐标取
 // VERIFY_RUN_DIR 下 ports.json,worktree 车道传 VERIFY_REPO_ROOT)。
 // 用法:node drive.mjs <probe>   probe ∈ board | new-task | api-key | search | theme
-// 证据(截图 + result.json)落 VERIFY_EVIDENCE_DIR(默认 <repo>/.claude/
-// verify-evidence/<时间戳>-<probe>/),cleanup.mjs 不删证据。任一断言失败
-// 退出码 1,result.json 里逐条记 checks。
+// 证据(截图 + result.json)落 VERIFY_EVIDENCE_DIR(默认落**主仓**的
+// .claude/verify-evidence/<时间戳>-<probe>/,与 VERIFY_REPO_ROOT 无关——
+// lane 的栈在 worktree,证据落 worktree 会随它删除而丢失)。cleanup.mjs 不
+// 删证据;证据要随 PR 进 git 须再跑 archive.mjs。任一断言失败退出码 1,
+// result.json 里逐条记 checks。
 // 口径与 apps/web/playwright.config.ts 一致:1440×732、colorScheme dark。
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -42,7 +44,9 @@ const DB_PATH = join(stack.homeDir, 'server', 'server.db');
 const now = new Date();
 const pad = (n) => String(n).padStart(2, '0');
 const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-const EVIDENCE = process.env.VERIFY_EVIDENCE_DIR ?? join(ROOT, '.claude', 'verify-evidence', `${stamp}-${probe}`);
+const EVIDENCE =
+  process.env.VERIFY_EVIDENCE_DIR ??
+  join(SCRIPT_ROOT, '.claude', 'verify-evidence', `${stamp}-${probe}`);
 mkdirSync(EVIDENCE, { recursive: true });
 
 const checks = [];
