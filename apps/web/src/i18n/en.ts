@@ -48,26 +48,6 @@ export const EN: Record<string, string> = {
 
   // —— board surface (r2 §4.1, r7 01/02) ——
   任务: 'Todo', // topbar +任务 button / search nav row / popover section
-  看板指南: 'Board guide',
-  // guide popover content (#149; [设计] copy — the official guide panel's
-  // content was never captured, free-content precedent = whats-new)
-  列语义: 'Columns',
-  关口操作: 'Gates',
-  快速跳转: 'Quick jump',
-  '已创建、尚未启动的任务在此排队': 'Created tasks queue here until they start',
-  'Agent 正在起草方案，进详情页可实时查看':
-    'The agent is drafting the plan — open the task to watch it live',
-  '方案就绪：确认后开工，或提出修改意见':
-    'Plan ready — confirm to start the work, or ask for changes',
-  'Agent 正在执行；失败与待回复的任务钉在列首':
-    'The agent is executing; failed and awaiting-reply tasks stay pinned to the top',
-  '执行完成：审查变更后验收合并': 'Work done — review the changes, then accept to merge',
-  '已合并收尾；重开可发起新一轮': 'Merged and closed; reopen to start a new round',
-  '待确认 → 确认方案，或在输入框提出修改':
-    'To confirm — approve the plan, or send changes from the composer',
-  '待验收 → 审查变更，验收即合并': 'To review — inspect the changes; accepting merges the branch',
-  '失败 → 重跑，可复用已有方案': 'Failed — rerun, optionally reusing the existing plan',
-  '打开全局搜索，直达任务与资源': 'Open global search to jump to tasks and resources',
   待开始: 'To start',
   规划中: 'Planning',
   待确认: 'To confirm',
