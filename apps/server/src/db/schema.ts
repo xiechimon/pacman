@@ -9,7 +9,6 @@ import type {
   ChiefCompactionModel,
   ChiefWatch,
   DocumentDiffFile,
-  McpTransport,
   Phase,
   ProviderApi,
   StepKind,
@@ -337,32 +336,10 @@ export const skill = sqliteTable('skill', {
   files: json<Record<string, string>>('files').notNull().default(sql`'{}'`),
 });
 
-// —— mcp_server（02 §6.2/§7.1；管理面 = M4b）———————————————————————————————
-// wire record = r3 §5.1 实测原样（records/mcp-server.ts）；stdio 的命令/参数与
-// http 请求头值 wire 未采 [推断]——[内部] 列承载：headers 密文经 SecretBox
-// （02 §8 凭证类 at-rest 纪律；credentialKeys = 头名清单，值只写不读）。
-export const mcpServer = sqliteTable('mcp_server', {
-  id: text('id').primaryKey(),
-  teamId: text('teamId')
-    .notNull()
-    .references(() => team.id),
-  label: text('label').notNull(),
-  slug: text('slug').notNull(),
-  transport: text('transport').$type<McpTransport>().notNull(),
-  /** http = 连接 URL；stdio = 空串（命令/参数走内部列，wire 形未采 [推断]）。 */
-  url: text('url').notNull(),
-  hasCredential: bool('hasCredential').notNull().default(false),
-  credentialKeys: json<string[]>('credentialKeys').notNull().default(sql`'[]'`),
-  /** [内部] stdio 命令（r2 §6.2 表单字段「命令+参数」）。 */
-  command: text('command'),
-  /** [内部] stdio 参数。 */
-  args: json<string[]>('args').notNull().default(sql`'[]'`),
-  /** [内部] 请求头键值密文（SecretBox 信封，JSON Record<string,string>）。 */
-  headersCipher: text('headersCipher'),
-  createdBy: text('createdBy').notNull(),
-  createdAt: epochMs('createdAt').notNull(),
-  updatedAt: epochMs('updatedAt').notNull(),
-});
+// —— mcp_server：已随 spec 13（#368）撤除——MCP 面改本地 `~/.claude.json`
+// 只读制（server 投影 services/mcp-servers.ts，daemon 执行面解析
+// backend/mcp-config.ts），无表位；旧行经 db/legacy-export.ts 导出后由
+// migration drop。
 
 // —— provider（38 presets + custom，02 §6.2；apiKey 密文经 SecretBox，02 §8）——————
 export const provider = sqliteTable('provider', {

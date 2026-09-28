@@ -56,6 +56,7 @@ const app = createApp(
     attachmentsDir,
     webDir: config.webDir,
     authToken: config.authToken,
+    mcpConfigPath: config.mcpConfigPath,
   },
   logger,
 );

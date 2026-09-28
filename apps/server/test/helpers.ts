@@ -1,5 +1,6 @@
 // 测试引导：内存库 + migration + seed + app（wire 对拍面，04 §3）。
 
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -30,6 +31,9 @@ export function bootServer(
     oauthFetch?: AppContext['oauthFetch'];
     /** #251 可选 token 鉴权（缺省 = 关，全量既有测试零改动）。 */
     authToken?: string | null;
+    /** spec 13（#368）：MCP 本地 config 读路径。缺省 = 唯一不存在路径
+     *  （空列表语义，与旧「空 mcp_server 表」行为一致，既有测试零改动）。 */
+    mcpConfigPath?: string;
   } = {},
 ) {
   const db = openMemoryDb();
@@ -67,6 +71,7 @@ export function bootServer(
     ...(opts.webDir !== undefined ? { webDir: opts.webDir } : {}),
     ...(opts.githubFetch !== undefined ? { githubFetch: opts.githubFetch } : {}),
     authToken: opts.authToken ?? null,
+    mcpConfigPath: opts.mcpConfigPath ?? join(tmpdir(), `pacman-mcp-absent-${randomUUID()}.json`),
   });
   return {
     app,

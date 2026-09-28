@@ -62,4 +62,7 @@ export interface AppContext {
   /** 可选 token 鉴权（#251，lib/token-auth.ts；config.ts env 读位）。
    *  null = 关（默认，行为与现状一致）；设值 = Bearer 闸开启。 */
   authToken: string | null;
+  /** 本机 MCP config 读路径（spec 13/#368：GET mcp-servers 投影源 +
+   *  chief mcp_servers 工具源；config.ts 单源，默认 ~/.claude.json）。 */
+  mcpConfigPath: string;
 }
