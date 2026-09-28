@@ -166,6 +166,14 @@ try {
     await shot(page, '01-keys-empty.png');
 
     await page.click('.keys-create');
+    // #287 起「新建密钥」走权限位表单弹窗(api-key-create-dialog.tsx):点
+    // .keys-create 只开弹窗,须再点弹窗内 .apikey-form-create 提交,POST 成功
+    // 响应回明文才渲染 .keys-once-value。表单默认值可直接提交(空名称 + 全不
+    // 选,server createApiKeyBodySchema 接受)。
+    await page.waitForSelector('.apikey-form-create', { timeout: 15_000 });
+    check(true, '新建密钥弹窗打开(#287 两步流)');
+    await shot(page, '02-keys-create-dialog.png');
+    await page.click('.apikey-form-create');
     await page.waitForSelector('.keys-once-value', { timeout: 15_000 });
     const plaintext = (await page.locator('.keys-once-value').textContent())?.trim();
     check(
@@ -174,7 +182,7 @@ try {
     );
     const rows = await page.locator('.keys-row').count();
     check(rows >= 1, `密钥列表出现掩码行(${rows} 行)`);
-    await shot(page, '02-keys-once.png');
+    await shot(page, '03-keys-once.png');
 
     const teams = await getJson(`${API}/api/teams`);
     const teamId = teams[0]?.id;
