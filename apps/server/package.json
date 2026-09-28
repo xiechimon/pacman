@@ -24,7 +24,8 @@
     "prepack": "pnpm --filter @pacman/web build && node build.mjs && node scripts/stage-web.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "db:check": "node scripts/db-check.mjs"
   },
   "dependencies": {
     "better-sqlite3": "13.0.3"

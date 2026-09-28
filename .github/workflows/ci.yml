@@ -29,6 +29,12 @@ jobs:
 
       # migration 纪律（01 §6）：drizzle-kit 生成、进 repo、CI 校验 drift——
       # schema 改动未带 migration 再生成 = 红。
+      # 前置护栏：drizzle-kit 撞到 snapshot 链断裂时**只打印、退出码仍 0**，
+      # 且不再生成任何迁移——下面这步的 git diff 就恒为空，闸静默失效。
+      # db:check 直接校验链不变量把这种情况变成硬失败。
+      - name: Drizzle snapshot chain guard
+        run: pnpm --filter @xiechimon/pacman db:check
+
       - name: Drizzle migration drift check
         run: |
           pnpm --filter @xiechimon/pacman db:generate
