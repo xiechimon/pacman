@@ -490,6 +490,7 @@ export function BoardPage() {
         <BranchDialog
           open={overlay?.kind === 'branch'}
           info={content.branch}
+          buildId={overlayTodo?.latestBuildId ?? null}
           onClose={closeOverlay}
         />
       )}

@@ -805,6 +805,7 @@ export function TodoDetailPage() {
         <BranchDialog
           open={overlay?.kind === 'branch'}
           info={content.branch}
+          buildId={buildId}
           onClose={closeOverlay}
         />
       )}

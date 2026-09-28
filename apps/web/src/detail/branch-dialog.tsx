@@ -28,9 +28,12 @@ interface BranchDialogProps {
   info: BranchInfoContent;
   /**
    * M7 #319：分支对话框接真的 bridge。`buildId` 走 POST/GET 路径段；`teamId`
-   * 走 useMachines 查询键。两个 prop 都可省——缺省时从 useLiveData() 派生
-   * （详情页 mount 时 LiveDataBridge 已就绪）。fixture 模式下两端 = null
-   * → 仍按 r7 占位 UI（不可点同步钮）。
+   * 走 useMachines 查询键（可省，缺省从 useLiveData() 派生）。
+   *
+   * `buildId` **必须由调用方传**：live 数据层只暴露 { live, teamId }，派生不出
+   * 当前 todo 的 build。两个调用点（todo-detail-page / board-page）各自持
+   * `buildId` / `overlayTodo.latestBuildId` 传入；漏传 = buildId 恒 null =
+   * canSync 恒 false = 同步 tab 永远停在 r7 占位 UI（同步钮不可点）。
    */
   buildId?: string | null;
   teamId?: string;
