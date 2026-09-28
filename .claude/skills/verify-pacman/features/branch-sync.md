@@ -35,4 +35,4 @@ Preconditions:
 - fixture 面同步钮不可点(占位 UI,r7);live 面才接真。
 - 机器选择走 useMachines 真值,只有在线机器可选。
 - **调用方必须传 `buildId`**(实测坑):`BranchDialog` 的 `buildId` 是 prop-only,数据层只暴露 { live, teamId },派生不出当前 todo 的 build。两个调用点(todo-detail-page / board-page)漏传时 `canSync` 恒 false → 同步 tab 永远停在 r7 占位 UI(机器 pill 不可点、目录只读、同步钮 disabled),而**界面上没有任何报错**,极易被当成「设计如此」。M7 收尾 re-probe 时实测踩到(PR #328 只留 server wire 测试,无 web e2e / integration 覆盖这条 wiring)。
-- **验证状态(2026-09-28)**:主仓 live re-probe 已补——`drive-branch-sync.mjs` 15 checks 全绿,证据归档 `docs/verify/319/2026-09-28T11-32-32-777Z-branch-sync/`。
+- **验证状态(2026-09-28)**:主仓 live re-probe 已补——`drive-branch-sync.mjs` 15 checks 全绿,证据归档 `docs/verify/319/2026-09-28T11-32-32-777Z-branch-sync/`。**CI 回归钉亦已补**:`integration/test/m7-branch-dialog-e2e.test.ts` 真栈跑详情页开弹层,断言 live 面(`.dlg-machine-picker` + `.dlg-dir--input`)而非 fixture 占位(`.dlg-machine[disabled]` + `.dlg-dir` div)——两者判别式等价于「调用点传了 buildId」,漏传必红(已做回归证伪)。该用例不覆盖真同步执行(需在线机器),那一面仍归本 map 的 `drive-branch-sync.mjs`。
