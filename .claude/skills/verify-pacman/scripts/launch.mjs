@@ -2,7 +2,10 @@
 // verify-pacman launch — 起一套隔离验证栈:apps/server(tsx 直跑,无 watch)
 // + apps/web(vite dev)。隔离三轴:VERIFY_PORT(server,默认 8791)、
 // VERIFY_WEB_PORT(vite,默认 5273)、PACMAN_HOME(<RUN_DIR>/home,scratch,
-// 绝不碰用户真数据根 ~/.pacman)。每次 launch 先清运行目录 = 每次全新库。
+// 绝不碰用户真数据根 ~/.pacman)。技能目录第四轴(spec 13 #367):
+// PACMAN_SKILLS_DIR=<HOME_DIR>/skills——不隔离就会现扫用户真
+// ~/.agents/skills(上百真技能进验证面,证据不可复现)。每次 launch 先清
+// 运行目录 = 每次全新库。
 // 运行态(server.pid/web.pid/server.log/web.log/ports.json)落 VERIFY_RUN_DIR
 // (默认 <repo>/.claude/verify-run),cleanup.mjs 按它回收;launch 失败自杀
 // 已起进程,不留孤儿。worktree 车道:VERIFY_REPO_ROOT=<worktree> 传入。
@@ -20,6 +23,7 @@ const RUN_DIR = process.env.VERIFY_RUN_DIR ?? join(ROOT, '.claude', 'verify-run'
 const SERVER_PORT = Number(process.env.VERIFY_PORT ?? 8791);
 const WEB_PORT = Number(process.env.VERIFY_WEB_PORT ?? 5273);
 const HOME_DIR = join(RUN_DIR, 'home');
+const SKILLS_DIR = join(HOME_DIR, 'skills');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -80,11 +84,17 @@ async function main() {
 
   rmSync(RUN_DIR, { recursive: true, force: true });
   mkdirSync(HOME_DIR, { recursive: true });
+  mkdirSync(SKILLS_DIR, { recursive: true });
 
   const serverLog = openSync(join(RUN_DIR, 'server.log'), 'a');
   const server = spawn('pnpm', ['exec', 'tsx', 'src/index.ts'], {
     cwd: join(ROOT, 'apps', 'server'),
-    env: { ...process.env, PORT: String(SERVER_PORT), PACMAN_HOME: HOME_DIR },
+    env: {
+      ...process.env,
+      PORT: String(SERVER_PORT),
+      PACMAN_HOME: HOME_DIR,
+      PACMAN_SKILLS_DIR: SKILLS_DIR,
+    },
     detached: true,
     stdio: ['ignore', serverLog, serverLog],
   });
@@ -155,6 +165,7 @@ async function main() {
         serverPort: SERVER_PORT,
         webPort: WEB_PORT,
         homeDir: HOME_DIR,
+        skillsDir: SKILLS_DIR,
         serverPid: server.pid,
         webPid: web.pid,
         startedAt: new Date().toISOString(),
@@ -168,6 +179,7 @@ async function main() {
   console.log(`  web(驱动入口)  http://127.0.0.1:${WEB_PORT}/app`);
   console.log(`  api(server)     http://127.0.0.1:${SERVER_PORT}`);
   console.log(`  PACMAN_HOME     ${HOME_DIR}(全新库,seed 用户 Owner)`);
+  console.log(`  技能目录        ${SKILLS_DIR}(scratch,空集起步;放技能见 features/skills-page.md)`);
   console.log(`  运行态          ${RUN_DIR}`);
   console.log('next:node scripts/doctor.mjs 体检 → node scripts/drive.mjs <probe>');
 }

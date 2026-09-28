@@ -321,8 +321,6 @@ export interface ResourcesContent {
   mcpServers: McpRow[];
   machines: MachineRow[];
   providers: ProviderRow[];
-  /** 新建技能 tab selected on capture (r8 79/80); absent = 从文件夹. */
-  importTab?: 'folder' | 'github';
 }
 
 /** Inline text run inside a plan-document block; `code` renders the

@@ -53,7 +53,6 @@ import {
   rerunDialog12,
   rerunDialog15,
   resourcesDefault,
-  resourcesImport,
   reusedBuilding,
   reusePanel15,
   revisionChain,
@@ -226,9 +225,6 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '08': resourcesDefault,
       '09': resourcesDefault,
       '10': resourcesDefault,
-      // 新建技能 (r8 78/79, captured with this ticket): tab per scenario
-      '79': resourcesImport('folder'),
-      '80': resourcesImport('github'),
       // r8 overlay batch (#66): the dark capture set; ids carry the r8 batch
       // prefix like the r2/r3 rows (numbering continues after #64's 54–77)
       'r8-78': boardR8Overlay,

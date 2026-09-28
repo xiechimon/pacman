@@ -2,8 +2,8 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // Issue #138 acceptance: the segmented-control family (PageShell .page-tab,
 // sched-form freq, project files seg, tasks view toggle, detail doc/chat
-// tabs, user-menu 外观, branch-dialog seg, skills-import tabs, team layout
-// toggle, chief settings tabs) gives unselected items a visible hover tint
+// tabs, user-menu 外观, branch-dialog seg, team layout toggle, chief
+// settings tabs) gives unselected items a visible hover tint
 // in both themes, the selected chip keeps its own fill under hover, and the
 // hover highlight rides the SAME box + radius as the selected chip (one
 // geometry, two depths). Group geometry follows the official probes: the
@@ -236,15 +236,10 @@ test('team layout toggle: official ring border + hover tint + chip token', async
   await expect.poll(() => bg(chart)).toBe(HOVER_LIGHT);
 });
 
-test('skills-import tabs + chief tabs: hover tints, click swaps the view', async ({ page }) => {
-  await themed(page, 'light', '/app/resources/skills/import?scenario=79');
-  const github = page.locator('.res-tab').nth(1);
-  await github.hover();
-  await expect.poll(() => bg(github)).toBe(HOVER_LIGHT);
-  await github.click();
-  await expect(github).toHaveClass(/res-tab--active/);
-
-  await page.goto('/app?scenario=101');
+// skills-import tab 半已随 spec 13（#367）退役——导入页删除，res-tab 族
+// 出账；chief tabs 半保留。
+test('chief tabs: hover tints, click swaps the view', async ({ page }) => {
+  await themed(page, 'light', '/app?scenario=101');
   const charter = page.locator('.chief-tab', { hasText: '章程' });
   await charter.hover();
   await expect.poll(() => bg(charter)).toBe(HOVER_LIGHT);

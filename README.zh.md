@@ -69,6 +69,7 @@ server 环境变量（全部可选）：
 | `PACMAN_HOME` | `~/.pacman` | 数据根。server 状态在 `<PACMAN_HOME>/server/`（`server.db`、`secretbox.key`、托管裸仓）；daemon 的 `machine.json`、`daemon.log`、`workspaces/` 在根下。**备份 = 整目录拷走**——密文离了 keyfile 永久不可解，只拷 db 没用。 |
 | `PACMAN_GITHUB_OAUTH_CLIENT_ID`<br>`PACMAN_GITHUB_OAUTH_CLIENT_SECRET` | 未设 | 自注册 GitHub OAuth App 的凭证对，开启 provider OAuth 登录。两件同设或同缺——只配一件 server 启动即报错，不静默。 |
 | `PACMAN_WEB_DIR` | `apps/web/dist`（存在即托管） | SPA 静态托管根覆写；未设且无构建产物 = 纯 API 形态。 |
+| `PACMAN_SKILLS_DIR` | `~/.agents/skills` | 技能根目录。每个含 `SKILL.md` 的一级子目录 = 一个技能（id = frontmatter `name`，缺省回落目录名）。每次请求现扫，不入库——加技能 = 往目录放文件夹，删技能 = 删文件夹。 |
 
 daemon 环境变量（上述 CLI flag 的等价覆写）：`PACMAN_SERVER`（默认 `http://127.0.0.1:8787`）、`PACMAN_API_KEY`、`PACMAN_TEAM`、`PACMAN_WORKSPACES_DIR`（默认 `<PACMAN_HOME>/workspaces`）。
 

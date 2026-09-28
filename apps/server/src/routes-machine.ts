@@ -99,6 +99,7 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     user: ctx.user,
     reposDir: ctx.reposDir,
     attachmentsDir: ctx.attachmentsDir,
+    skillsDir: ctx.skillsDir,
     convHub: ctx.convHub,
   };
 

@@ -2,7 +2,7 @@
 
 本目录是 pacman 用户可见行为的验证正源。驱动前先读本索引,再按 feature 文件当配方执行。map 漏掉的入口 = 验证不完整:顺手的入口验过 ≠ 整个 feature 验过。
 
-Last updated: 2026-09-28(M7 功能闭环维护:补 6 个 M7 新功能条目——AI 审核发起 review-modal、@提及 mentions、标签 tags、附件 attachments、分支同步 branch-sync、失败面发送 failed-send;stop-button.md 补 #318 统一 start dialog 步骤;drive-stop.mjs 修 #318 过时(点开始后先经 overlay-panel 选先做规划);stub-llm-verify.mjs 修 Node ≥v20 close 事件 bug(req.on close→res.on close+responded 守卫)。mentions/tags 本会话 live 验通过,attachments/branch-sync/failed-send user path 从合并代码核实、live re-probe 待补。前序:2026-09-27 停止钮全栈链 #308;2026-09-25 初始 map)
+Last updated: 2026-09-29(spec 13 #367 技能页只读本地目录面:新增 skills-page.md 条目;launch.mjs 增第四隔离轴 PACMAN_SKILLS_DIR=<HOME_DIR>/skills——不隔离会现扫用户真 ~/.agents/skills;「已知未入图面」的管理页清单移除技能。前序:2026-09-28 M7 功能闭环维护——补 6 个 M7 新功能条目(AI 审核发起 review-modal、@提及 mentions、标签 tags、附件 attachments、分支同步 branch-sync、失败面发送 failed-send),mentions/tags live 验通过,attachments/branch-sync/failed-send live re-probe 待补;2026-09-27 停止钮全栈链 #308;2026-09-25 初始 map)
 
 ## Baseline preconditions
 
@@ -46,12 +46,13 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [附件(composer+新建任务)](./attachments.md) 添加附件钮(原生文件触发)→三步上传(grant→host→token)→`![名](attachment:…)` 注入 spec→执行面 agent 可读(#310/#331)。live re-probe 待补。
 - [分支同步(详情页 branch-dialog)](./branch-sync.md) 分支与 PR 弹层「同步到机器」tab→选机器→同步钮→`POST branch-sync`→daemon git/worktree 执行→结果卡 pending→synced(#319/#328)。live re-probe 待补。
 - [失败面发送(详情页 composer)](./failed-send.md) failed 相位 composer 发送反馈→`{action:"restart"}`→新 build(withPlan 承接)+反馈入会话+failed→queued;相位门只收 failed(#320/#322)。live re-probe 待补。
+- [技能页(只读本地目录面)](./skills-page.md) 技能 = server 本地目录现扫投影:放含 SKILL.md 的子目录→刷新即现,无新建/导入入口,空态指路目录,id = frontmatter name 回落目录名(spec 13 #367)。栈隔离第四轴 `PACMAN_SKILLS_DIR`(launch.mjs 已带)。
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
 
 - 任务详情页(`/app/todo/:id`)——live 面已铺:停止链(stop-button)、AI 审核发起(review-modal)、@提及(mentions)、附件(attachments)、分支同步(branch-sync)、失败面发送(failed-send)。未铺:plan/changes/diff 文档面、transcript 流渲染、运行历史弹层、编辑分配弹层。
 - 总管抽屉/设置(`.chief-fab` 有 live wiring,数据面未铺)。
-- 机器/模型服务/团队密钥/MCP/技能 各管理页(routes 均在,fixture e2e 有覆盖,live 配方未铺)。
+- 机器/模型服务/团队密钥/MCP 各管理页(routes 均在,fixture e2e 有覆盖,live 配方未铺;技能页已入图 = skills-page.md)。
 - 看板拖拽改相(`PATCH /api/todos/:id`,#160)——fixture e2e 有 board-dnd 覆盖。
 - 定时(schedules)增删改、项目设置页——fixture e2e/dead-buttons 覆盖,live 配方未铺。
 - daemon 侧(`pnpm dev:daemon`)——需要真机器注册流程,超出 UI 验证范围。

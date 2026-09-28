@@ -1,12 +1,14 @@
-// Chief remoteTools 词表——49 件（r5 §3.1，一手来源 = thread 记录
-// toolDefHashes 全键 `docs/research/assets/r5/raw/chief-threads-testA.json`）。
+// Chief remoteTools 词表——raw 观测 49 件（r5 §3.1，一手来源 = thread 记录
+// toolDefHashes 全键 `docs/research/assets/r5/raw/chief-threads-testA.json`），
+// 现行 48 件 = raw − CHIEF_TOOLS_REMOVED（spec 13 #367 有意 divergence，
+// 登记处见该常量）。
 // 复刻口径（02 §4.3 尾注）：Chief = 挂团队工具的 pi 会话，行为分毫不求同；
-// 工具「名单」为实测一手（49 键原样），各工具的 description/parameters 细形
+// 工具「名单」为实测一手，各工具的 description/parameters 细形
 // 未采到 wire 原件 = 全部 [推断] 黑盒逼近（04 §1 A4：不冒充实测），语义按
 // r1 docs 六能力组 + r3/r5 行为证据投影。
 // 分组计数按 raw 键集实数：读 15 + 组织 19 + 执行 5 + 私有 10 = 49
 // （r5 §3.1 正文枚举漏 `delete_skills`，02 §4.3 分组计数随之偏差——raw 键集
-// 为权威，vocabulary.test 对拍）。
+// 为权威，vocabulary.test 对拍）；现行分组 = 组织 18（delete_skills 已除名）。
 // replaySafe = 读工具（bundle 提取：读侧带重试预算 RETRY_DELAYS_MS=[500,2000]、
 // 超时 remoteTool:10s，r5 §3.1）。
 
@@ -43,7 +45,13 @@ export const machineToolRelayResponseSchema = z.object({
 });
 export type MachineToolRelayResponse = z.infer<typeof machineToolRelayResponseSchema>;
 
-/** 49 词表分组（r5 §3.1 正文分组语义；成员按 raw 键集归位 [推断]）。 */
+/** 从 raw 49 键观测词表中有意移除的工具（divergence 登记，对拍测试 =
+ * raw 键集 − 本集）。spec 13 #367：delete_skills——技能改本地目录现扫只读
+ * 投影（不入库），删除技能 = 从磁盘删目录，server 无删除面可 relay。 */
+export const CHIEF_TOOLS_REMOVED = ['delete_skills'] as const;
+
+/** 词表分组（r5 §3.1 正文分组语义；成员按 raw 键集归位 [推断]；
+ * delete_skills 已随 spec 13 除名）。 */
 export const CHIEF_TOOL_CATEGORIES = {
   read: [
     'projects',
@@ -76,7 +84,6 @@ export const CHIEF_TOOL_CATEGORIES = {
     'create_agent',
     'update_agent',
     'delete_agents',
-    'delete_skills',
     'set_secret',
     'delete_secrets',
     'set_remote_shell',
@@ -225,7 +232,7 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
     ]),
     replaySafe: true,
   },
-  // —— 组织侧 19 ——
+  // —— 组织侧 18（raw 19 − delete_skills，spec 13 除名）——
   {
     name: 'create_todo',
     description:
@@ -337,11 +344,6 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
     name: 'delete_agents',
     description: 'Delete agents from the team.',
     parameters: obj({ agentIds: idArr('Agent ids to delete.') }, ['agentIds']),
-  },
-  {
-    name: 'delete_skills',
-    description: 'Delete team skills.',
-    parameters: obj({ skillIds: idArr('Skill ids to delete.') }, ['skillIds']),
   },
   {
     name: 'set_secret',
@@ -506,8 +508,9 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   },
 ];
 
-/** 词表自检：49 件、键集 = CHIEF_TOOL_NAMES、读侧全 replaySafe。 */
-export const CHIEF_TOOL_COUNT = 49;
+/** 词表自检：现行 48 件（raw 49 − CHIEF_TOOLS_REMOVED）、键集 =
+ * CHIEF_TOOL_NAMES、读侧全 replaySafe。 */
+export const CHIEF_TOOL_COUNT = 48;
 
 /** worker 步记忆三件套（02 §4.4 写路径 / r5 §6：worker 侧同族工具经
  * remoteTools 下发——「bundle 无本地记忆实现」，写路径 = agent 工具 → 服务端

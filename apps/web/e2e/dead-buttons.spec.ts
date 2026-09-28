@@ -26,7 +26,9 @@ import { expect, type Page, test } from '@playwright/test';
 //    skills 排序接真 / account-swap wontfix / transcript 折叠接真）。
 // 15. #318 桩群校准（更多菜单完成·关闭 / 开始任务统一面 / 查看方案 /
 //    任务行导航 / 未保存闸）。
-// 第 5 项（skills 添加技能主钮）由 #153 覆盖，本 spec 不断言。
+// 第 5 项（skills 添加技能主钮）已随 spec 13（#367）整体退役——技能改本地
+// 目录只读投影，空态主钮不再存在（出账断言并入第 9 项，导航面钉在
+// skills-readonly.spec.ts）。
 
 /** 面板中心点的命中必须由面板自身持有 — title-band-clicks 同款家族法。 */
 async function expectOwnsCenter(page: Page, selector: string) {
@@ -201,7 +203,7 @@ test('api-keys empty state drops the 查看文档 button, keeps 新建密钥 (#3
   await expect(page.locator('.keys-create')).toBeVisible();
 });
 
-test('resources empty state drops the 查看文档 link, keeps the primary action (#307)', async ({
+test('resources empty state drops the 查看文档 link (#307); skills 只读面连主钮也无 (spec 13)', async ({
   page,
 }) => {
   await page.goto('/app/resources/skills?scenario=01');
@@ -209,10 +211,13 @@ test('resources empty state drops the 查看文档 link, keeps the primary actio
   // 共享 EmptyState 件:skills/secrets/mcp 三面空态的文档链接一并出账
   // (skills + secrets 双面钉,防单面局部复活漏网;mcp 同件随行)
   await expect(page.locator('.res-doclink')).toHaveCount(0);
-  await expect(page.locator('.res-empty .res-primary')).toBeVisible();
+  // spec 13 (#367):技能 = 本地目录现扫只读投影——空态无「添加技能」主钮
+  // (空态指引文案钉在 skills-readonly.spec.ts)
+  await expect(page.locator('.res-empty .res-primary')).toHaveCount(0);
   await page.goto('/app/resources/secrets?scenario=01');
   await expect(page.locator('.res-empty')).toBeVisible();
   await expect(page.locator('.res-doclink')).toHaveCount(0);
+  await expect(page.locator('.res-empty .res-primary')).toBeVisible();
 });
 
 test('create-agent dialog drops the avatar 更换 ink (#307)', async ({ page }) => {

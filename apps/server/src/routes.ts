@@ -36,7 +36,6 @@ import {
   planRowSchema,
   projectRepoKindSchema,
   SKILL_ENTRY_FILE,
-  scanSkillsBodySchema,
   setSecretBodySchema,
   skillRecordSchema,
   startBuildsBodySchema,
@@ -63,7 +62,6 @@ import {
   plan as planTable,
   project,
   provider,
-  skill as skillTable,
   tag,
   todo,
   tokenUsage,
@@ -143,7 +141,13 @@ import {
 import { createSchedule, deleteSchedule, listSchedules } from './services/schedules.js';
 import { search } from './services/search.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './services/secrets.js';
-import { fetchGithubSkillFiles, scanGithubSkills } from './services/skills.js';
+import {
+  filterKnownSkillIds,
+  listSkillFiles,
+  readSkillFile,
+  resolveLocalSkill,
+  scanLocalSkills,
+} from './services/skills.js';
 import { createTodo, deleteTodo, getTodo, listTodos, updateTodo } from './services/todos.js';
 
 /** 会话 cookie 名 [设计]（01 §4.2：httpOnly cookie 自设；品牌槽已随 D3 切换，#109，
@@ -785,7 +789,9 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         thinkingLevel: body.thinkingLevel ?? null,
         tools: body.tools ?? [],
         secrets: body.secrets ?? [],
-        skills: body.skills ?? [],
+        // spec 13 #367：skills[] 校验源 = 本地现扫存在性；未知 id 静默跳过
+        // （目录删除后死引用不留，不报错）。
+        skills: filterKnownSkillIds(ctx.skillsDir, body.skills ?? []),
         mcpServers: body.mcpServers ?? [],
       })
       .run();
@@ -806,6 +812,10 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const body = parseWith(patchAgentBodySchema, await jsonBody(c), 'body');
     if (body.mcpServers !== undefined) validateAgentMcpSlugs(ctx, teamId, body.mcpServers);
     const sets: Partial<typeof row> = {};
+    // spec 13 #367：skills[] 与 create 同律——现扫存在性过滤，未知 id 静默跳过。
+    if (body.skills !== undefined) {
+      sets.skills = filterKnownSkillIds(ctx.skillsDir, body.skills);
+    }
     for (const key of [
       'displayName',
       'description',
@@ -814,7 +824,6 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       'thinkingLevel',
       'tools',
       'secrets',
-      'skills',
       'mcpServers',
     ] as const) {
       if (body[key] !== undefined) {
@@ -1140,113 +1149,53 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json({ todos: { total: rows.length, byPhase } });
   });
 
-  // —— 技能面（词表内：GET /api/skills?teamId=、GET teams/{id}/skills/{sid}
-  // (+/file?fileName=)、POST /api/skills 上传；record = shared skillRecordSchema
-  // [推断] 投影，r2 §6.1 表单证据）———————————————————————————————
+  // —— 技能面（spec 13 #367：本地目录现扫只读投影，不入库无缓存；词表内
+  // GET /api/skills?teamId=、GET teams/{id}/skills/{sid}(+/file?fileName=)；
+  // record = shared skillRecordSchema 保形，id = frontmatter name 回落目录名，
+  // teamId = 请求 team 占位。写面（POST 上传 / GitHub scan）已删——
+  // NON_REPLICATED_ENDPOINTS 登记 divergence）————————————————————
   app.get('/api/skills', (c) => {
     const teamId = c.req.query('teamId') ?? ctx.team.id;
     requireTeam(ctx, teamId);
-    const rows = ctx.db.select().from(skillTable).where(eq(skillTable.teamId, teamId)).all();
     return c.json(
-      rows.map((r) =>
+      scanLocalSkills(ctx.skillsDir).map((s) =>
         skillRecordSchema.parse({
-          id: r.id,
-          teamId: r.teamId,
-          name: r.name,
-          description: r.description,
+          id: s.id,
+          teamId,
+          name: s.name,
+          description: s.description,
         }),
       ),
     );
   });
 
-  /** POST /api/skills body [推断]（上传面 wire 未采；r2 §6.1 表单三字段 +
-   * 文件集 = 01 §6 skill 表「含文件内容」投影；SKILL.md 必含校验 = r2 §6.1
-   * 原文「技能文件夹必须包含 SKILL.md」）。 */
-  const createSkillBodySchema = z.object({
-    teamId: z.string().optional(),
-    name: z.string().min(1),
-    description: z.string().nullish(),
-    files: z.record(z.string(), z.string()),
-  });
-  app.post('/api/skills', async (c) => {
-    const body = parseWith(createSkillBodySchema, await jsonBody(c), 'body');
-    const teamId = body.teamId ?? ctx.team.id;
-    requireTeam(ctx, teamId);
-    if (!(SKILL_ENTRY_FILE in body.files)) {
-      throw new HttpError(400, `invalid body at files: ${SKILL_ENTRY_FILE} is required`);
-    }
-    const id = newRecordId();
-    ctx.db
-      .insert(skillTable)
-      .values({
-        id,
-        teamId,
-        name: body.name,
-        description: body.description ?? null,
-        files: body.files,
-      })
-      .run();
-    return c.json(
-      skillRecordSchema.parse({
-        id,
-        teamId,
-        name: body.name,
-        description: body.description ?? null,
-      }),
-      201,
-    );
-  });
-
-  /** POST /api/skills/scan（#223：GitHub 扫描发现半——#201 路线 A，server 首个
-   * 出站 fetch 面；缝 = services/skills.ts → lib/github.ts 薄桥唯一出口，词表
-   * = shared scanSkillsBodySchema/scanSkillsResponseSchema）。body 缺省 path =
-   * scan（候选发现 [{path,name,description}]）；给 path = fetch（文件集与
-   * POST /api/skills body.files 同形，选中后直接喂导入半，#195 语义链）。 */
-  app.post('/api/skills/scan', async (c) => {
-    const body = parseWith(scanSkillsBodySchema, await jsonBody(c), 'body');
-    const teamId = body.teamId ?? ctx.team.id;
-    requireTeam(ctx, teamId);
-    const fetchImpl = ctx.githubFetch ?? fetch;
-    if (body.path !== undefined) {
-      return c.json(await fetchGithubSkillFiles(fetchImpl, body.repo, body.path));
-    }
-    return c.json(await scanGithubSkills(fetchImpl, body.repo));
-  });
-
   app.get('/api/teams/:id/skills/:sid', (c) => {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
-    const row = ctx.db
-      .select()
-      .from(skillTable)
-      .where(and(eq(skillTable.id, c.req.param('sid')), eq(skillTable.teamId, teamId)))
-      .get();
-    if (!row) throw notFound(`skill ${c.req.param('sid')}`);
-    // 封套 [推断]：record + 文件名清单（内容经 /file 逐文件取，01 §6）。
+    const resolved = resolveLocalSkill(ctx.skillsDir, c.req.param('sid'));
+    if (!resolved) throw notFound(`skill ${c.req.param('sid')}`);
+    // 封套 [推断]：record + 文件名清单（内容经 /file 逐文件取，01 §6；
+    // 清单 = 磁盘递归相对路径，spec 13 换源）。
     return c.json({
       ...skillRecordSchema.parse({
-        id: row.id,
-        teamId: row.teamId,
-        name: row.name,
-        description: row.description,
+        id: resolved.skill.id,
+        teamId,
+        name: resolved.skill.name,
+        description: resolved.skill.description,
       }),
-      fileNames: Object.keys(row.files),
+      fileNames: listSkillFiles(resolved.dir),
     });
   });
 
   app.get('/api/teams/:id/skills/:sid/file', (c) => {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
-    const row = ctx.db
-      .select()
-      .from(skillTable)
-      .where(and(eq(skillTable.id, c.req.param('sid')), eq(skillTable.teamId, teamId)))
-      .get();
-    if (!row) throw notFound(`skill ${c.req.param('sid')}`);
+    const resolved = resolveLocalSkill(ctx.skillsDir, c.req.param('sid'));
+    if (!resolved) throw notFound(`skill ${c.req.param('sid')}`);
     const fileName = c.req.query('fileName') ?? SKILL_ENTRY_FILE;
-    const content = row.files[fileName];
-    if (content === undefined) throw notFound(`file ${fileName}`);
-    return c.json({ fileName, content }); // 封套 [推断]
+    const content = readSkillFile(resolved.dir, fileName); // 逃逸/缺位 = null
+    if (content === null) throw notFound(`file ${fileName}`);
+    return c.json({ fileName, content }); // 封套 [推断]；文本投影
   });
 
   // Agent 任务面（词表内；载荷未采 [推断] = assignment 双槽任一指向该 Agent
@@ -1509,6 +1458,7 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         user: ctx.user,
         reposDir: ctx.reposDir,
         attachmentsDir: ctx.attachmentsDir,
+        skillsDir: ctx.skillsDir,
       },
       c.req.raw,
     ),
