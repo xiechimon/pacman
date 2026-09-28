@@ -16,6 +16,7 @@ import {
 import { epochMs, recordId } from '../records/common.js';
 import { machineRecordSchema } from '../records/machine.js';
 import { messageRoleSchema } from '../records/message.js';
+import { PROJECT_REPO_KINDS } from '../records/project.js';
 import { reviewVerdictSchema } from '../records/review.js';
 import { stepRecordSchema } from '../records/step.js';
 import {
@@ -149,7 +150,9 @@ export const claimedStepSchema = z.object({
        * null = 项目未绑 repo（工作区退化为裸目录）。 */
       repo: z
         .object({
-          kind: z.enum(['hosted', 'github', 'local']),
+          // 词表单源 = PROJECT_REPO_KINDS（records/project.ts；新 kind 落地
+          // 即随 wire，免三处散射编辑）。
+          kind: z.enum(PROJECT_REPO_KINDS),
           cloneUrl: z.string(),
         })
         .nullable(),

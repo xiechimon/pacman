@@ -56,7 +56,7 @@ function captureLogger(): { logger: DaemonLogger; lines: string[] } {
 
 function claimedStep(
   kind: 'build' | 'merge',
-  repo: ClaimedStep['project'] extends infer P ? (P extends { repo: infer R } ? R : never) : never,
+  repo: NonNullable<ClaimedStep['project']>['repo'],
 ): ClaimedStep {
   return {
     step: { id: 's1', buildId: 'conv-1', kind, machineId: 'm1', createdAt: 1 },

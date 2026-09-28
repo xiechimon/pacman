@@ -7,7 +7,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { serve } from '@hono/node-server';
-import type { Scheduler } from '@pacman/shared';
+import type { ProjectRepoKind, Scheduler } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import { createApp } from '../../apps/server/src/app.js';
 import { openMemoryDb } from '../../apps/server/src/db/client.js';
@@ -191,7 +191,7 @@ export async function seedWorld(
   teamId: string,
   todo: { title: string; spec: string },
   opts: {
-    repoKind?: 'hosted' | 'github' | 'local';
+    repoKind?: ProjectRepoKind;
     projectName?: string;
     /** local 形态：用户本机 git 工作树仓绝对路径（spec 12 G2-T2）。 */
     localPath?: string;
