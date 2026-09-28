@@ -22,6 +22,7 @@ import {
 } from '../chief/chief-agent-dialog.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChevronRight, X } from '../icons/index.js';
+import { Button } from '../ui/button.js';
 
 // #168: the rerun/reuse pair joins the dialog family close law (DialogShell
 // #68) — Esc, backdrop click, and the X head button all carry the same
@@ -269,24 +270,24 @@ export function RerunDialog({
             </span>
           </div>
           <div className="overlay-actions">
-            <button
-              type="button"
-              className="overlay-btn"
+            <Button
+              variant="ghost"
+              size="overlay"
               onClick={onStart ? () => start(true) : undefined}
             >
               {t('先做规划')}
-            </button>
-            <button
-              type="button"
-              className={reuse ? 'overlay-btn' : 'overlay-btn overlay-btn--primary'}
+            </Button>
+            <Button
+              variant={reuse ? 'ghost' : 'primary'}
+              size="overlay"
               onClick={onStart ? () => start(false) : undefined}
             >
               {t('立即执行')}
-            </button>
+            </Button>
             {reuse && (
-              <button type="button" className="overlay-btn overlay-btn--primary" onClick={onReuse}>
+              <Button variant="primary" size="overlay" onClick={onReuse}>
                 {t('复用方案')}
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -335,12 +336,12 @@ export function ReusePanel({
       <div className="overlay-body reuse-body">
         <div className="reuse-prompt">{t('选择接下来如何使用这个方案')}</div>
         <div className="overlay-actions">
-          <button type="button" className="overlay-btn" onClick={onView}>
+          <Button variant="ghost" size="overlay" onClick={onView}>
             {t('查看方案')}
-          </button>
-          <button type="button" className="overlay-btn overlay-btn--primary" onClick={onDirect}>
+          </Button>
+          <Button variant="primary" size="overlay" onClick={onDirect}>
             {t('直接执行')}
-          </button>
+          </Button>
         </div>
       </div>
     </Overlay>

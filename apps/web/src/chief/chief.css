@@ -162,20 +162,11 @@
   color: var(--text-secondary);
 }
 
-/* chief-gate-btn 圆角 6→8 = a3-pages 圆角归一（真按钮；50×26 固定宽 +
-   12px 字形态保留散写——card 档 26 高同但 8px 内边距/13px 字不同）。 */
-.chief-gate-btn {
-  margin-left: auto;
-  width: 50px;
-  height: 26px;
-  border: none;
-  border-radius: 8px;
-  background: var(--card-button);
-  color: var(--text-on-accent);
-  font-size: 12px;
-  cursor: pointer;
-  flex: none;
-}
+/* A6：覆盖 a3-pages「chief-gate-btn 保留散写」裁决。原 .chief-gate-btn
+   50×26 固定宽 + 12px 字形态已由 ui/button 原语消费 variant='primary'
+   size='card' + per-face style={{ width: 50, fontSize: 12 }} 承接，
+   几何差异在 8px 内边距 / 13px 字（btn--card 默认），收口前以 parity
+   零像素变化为绿为准。 */
 
 .chief-hero {
   margin: 54px 0 0;

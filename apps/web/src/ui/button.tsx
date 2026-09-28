@@ -6,8 +6,10 @@
 // icon=纯图标钮（皮肤层：居中 + tertiary 墨 + hover 增亮；盒尺寸由消费点
 // per-face 叠加——board-guide 28 / dlg-copy 24 / branch 13×16 实测差异大，
 // 原语不锁几何）。icon/quiet/text 不吃 size。
-// size = 实测三档：card 26（看板卡内）/ compact 28（顶栏·通知条）/
-// standard 32（表单·弹窗，#221 族实测）。
+// size = 实测四档：card 26（看板卡内）/ compact 28（顶栏·通知条）/
+// standard 32（表单·弹窗，#221 族实测）/ overlay 30（detail 浮层；
+// A6 覆盖 A3「overlay-btn 不接 Button」裁决——见 docs/spec/09 + 此前
+// detail.css:1570 注释，ghost border 单源 + box-sizing border-box 化解）。
 // 圆角统一 8px（DEFAULT）；board 域 6px 差异在 docs/a3/diff-audit.md 待
 // 裁决——收编该域时若裁决保留差异再加 radius prop，不提前抽象。
 // type 默认 button：防表单内隐式 submit；要提交语义显式传 type="submit"。
@@ -17,7 +19,7 @@ import './button.css';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'ghost' | 'danger' | 'text' | 'icon' | 'quiet';
-  size?: 'card' | 'compact' | 'standard';
+  size?: 'card' | 'compact' | 'standard' | 'overlay';
   children: ReactNode;
 }
 

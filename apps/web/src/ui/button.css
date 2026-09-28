@@ -10,7 +10,9 @@
   cursor: pointer;
 }
 
-/* size 三档（实测族）：card 26 / compact 28 / standard 32 */
+/* size 四档（实测族）：card 26 / compact 28 / standard 32 / overlay 30
+   —— overlay 为 A6 收编补档，承接原 .overlay-btn / .overlay-btn--primary
+   浮层系族（30 高 + 12 内边距 + 18 行高，与 overlay-btn 实测逐字节对齐） */
 .btn--card {
   height: 26px;
   padding: 0 8px;
@@ -22,6 +24,11 @@
 .btn--standard {
   height: 32px;
   padding: 0 12px;
+}
+.btn--overlay {
+  height: 30px;
+  padding: 0 12px;
+  line-height: 18px;
 }
 
 .btn--primary {
@@ -36,7 +43,9 @@
 
 .btn--ghost {
   background: transparent;
-  border: 1px solid var(--card-ghost-border);
+  /* A6 ghost 单源：直引 --card-border（与原 .overlay-btn 同源），不绕
+     --card-ghost-border 别名；tokens.css 别名仍保留给历史消费点 */
+  border: 1px solid var(--card-border);
   color: var(--text-secondary);
 }
 

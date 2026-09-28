@@ -1567,27 +1567,12 @@ textarea.composer-input::placeholder {
   padding: 4px 16px 16px;
 }
 
-/* A3：保留族类不接 Button 原语——ghost 描边 token 不同
-   （--card-ghost-border #2e2e33 vs 实测 --card-border #27272a）、30px
-   高度无原语档位、content-box 下 1px 描边参与盒算术；仅圆角归一
-   6 → 8px（裁决 #1）。 */
-.overlay-btn {
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  background: var(--popover-bg);
-  color: var(--text-secondary);
-  font-size: 13px;
-  line-height: 18px;
-  cursor: pointer;
-}
-
-.overlay-btn--primary {
-  border-color: var(--card-button);
-  background: var(--card-button);
-  color: var(--text-on-accent);
-}
+/* A6：覆盖 A3「保留族类不接 Button 原语」裁决（docs/spec/09）。原三条
+   拒收理由已被化解：(1) ghost 描边 token 单源化（--card-ghost-border
+   别名指向 --card-border，token 双值合并）；(2) Button size 新增
+   overlay 30px 档；(3) Tailwind v4 base 默置 box-sizing: border-box，
+   1px 描边不再吃盒高度。5 处 overlay-btn 全部由 ui/button 原语消费
+   variant='ghost'|'primary' size='overlay' 替换完成。 */
 
 /* 复用方案 sub-panel (r8 75): centered prompt over the button row */
 .reuse-body {
