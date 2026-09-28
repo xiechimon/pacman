@@ -389,8 +389,10 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     // 替换相位 = PACMAN_ 同形（观测五件原名 r3 §1.1 = TDS_*，登记在
     // BRAND_SLOTS.envPrefix.todosDev）；复刻增量位（webDir = M5 SPA 静态托管
     // 覆写 [设计]；githubOauth 两件 = #231 握手面 client 凭证 [设计]；
-    // token = #251 可选鉴权自有面 [设计]，非观测 canon）单独断言，两组不混判。
-    const { webDir, githubOauthClientId, githubOauthClientSecret, token, ...observed } = ENV_VARS;
+    // token = #251 可选鉴权自有面 [设计]；skillsDir = #371 skills 扫描根覆写
+    // [设计]，spec 14 数据契约，非观测 canon）单独断言，两组不混判。
+    const { webDir, githubOauthClientId, githubOauthClientSecret, token, skillsDir, ...observed } =
+      ENV_VARS;
     expect(observed).toEqual({
       server: 'PACMAN_SERVER',
       apiKey: 'PACMAN_API_KEY',
@@ -402,6 +404,7 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     expect(githubOauthClientId).toBe('PACMAN_GITHUB_OAUTH_CLIENT_ID');
     expect(githubOauthClientSecret).toBe('PACMAN_GITHUB_OAUTH_CLIENT_SECRET');
     expect(token).toBe('PACMAN_TOKEN');
+    expect(skillsDir).toBe('PACMAN_SKILLS_DIR');
   });
 
   it('credential formats match the observed shapes (key prefix 随 BRAND 槽)', () => {

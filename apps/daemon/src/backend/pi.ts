@@ -18,15 +18,20 @@
 // （内存态，不持久化）；models.json 落盘的 apiKey 恒为占位符。
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import {
   type AgentSession,
   createAgentSession,
   DefaultResourceLoader,
   defineTool,
+  formatSkillsForPrompt,
+  loadSkills,
   ModelRuntime,
+  type ResourceDiagnostic,
   SessionManager,
   SettingsManager,
+  type Skill,
 } from '@earendil-works/pi-coding-agent';
 import type {
   AgentBackend,
@@ -53,6 +58,91 @@ export const PI_CAPABILITIES: AgentBackendCapabilities = {
 
 /** pi 内建工具默认面（02 §5.6：其余工具面 = pi-coding-agent 内建）。 */
 const PI_BUILTIN_TOOLS = ['read', 'bash', 'edit', 'write'];
+
+// —— skills 执行面注入（spec 14/#371）————————————————————————
+// catalog 是索引不全文：token 预算只与 catalog 长度线性相关，skill 全文由
+// agent 按 description 匹配时经 read 工具（location 绝对路径）按需加载。
+
+/** catalog 总数闸（spec 14：catalog 不能无限增长；阈值 lane 内定 50）。 */
+export const SKILLS_CATALOG_CAP = 50;
+/** 单 description 截断闸（spec 14：200 字符 + 末尾 `…`）。 */
+export const SKILL_DESCRIPTION_CAP = 200;
+
+/** 保证不存在的 pi 默认 agentDir（spec 14：强制 loadSkills 跳过 user 级默认
+ * 扫描——includeDefaults:false 下 agentDir 仅参与 source 标注，传不存在路径
+ * 杜绝任何静默默认加载）。 */
+const NO_PI_DEFAULT_AGENT_DIR = join(homedir(), '.pacman-no-such', 'agent');
+
+/** pi 诊断 → `[skills] <type>:` 词表归类（spec 14 日志族：collision /
+ * invalid-frontmatter / missing-skill-md；其余 warning/error → invalid 透传）。
+ * pi 诊断 message 为自由文本，归类按语义关键词 [推断]。 */
+function classifySkillDiagnostic(d: ResourceDiagnostic): string {
+  if (d.type === 'collision') return 'collision';
+  if (/does not exist|ENOENT|no such file/i.test(d.message)) return 'missing-skill-md';
+  if (/^(name|description)\b|frontmatter|parse/i.test(d.message)) return 'invalid-frontmatter';
+  return 'invalid';
+}
+
+export interface SkillsCatalogOpts {
+  /** 扫描根（PACMAN_SKILLS_DIR；目录缺失 = 空集非致命，pi 出诊断行）。 */
+  skillsDir: string;
+  /** loadSkills 的 cwd = daemon home（非任务 worktree——project 级解析不随
+   * worktree 切换跳变，spec 14 Implementation Decisions）。 */
+  cwd: string;
+  /** `[skills] <type>: <msg>` 诊断行出口（machine-loop 接 logger.skills）。 */
+  log?: (msg: string) => void;
+}
+
+/** 扫描 skills 目录 → `<available_skills>` catalog XML 串（空串 = 无可注入
+ * skills）。loadSkills 抛错（权限等）降级空集 + invalid 行，不阻断会话创建
+ * （spec 14 Premortem 护栏）。 */
+export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
+  const log = opts.log;
+  let skills: Skill[];
+  let diagnostics: ResourceDiagnostic[];
+  try {
+    const result = loadSkills({
+      cwd: opts.cwd,
+      agentDir: NO_PI_DEFAULT_AGENT_DIR,
+      skillPaths: [opts.skillsDir],
+      includeDefaults: false,
+    });
+    skills = result.skills;
+    diagnostics = result.diagnostics;
+  } catch (err) {
+    log?.(`invalid: ${err instanceof Error ? err.message : String(err)}`);
+    return '';
+  }
+  for (const d of diagnostics) {
+    const where =
+      d.collision !== undefined
+        ? ` (winner=${d.collision.winnerPath} loser=${d.collision.loserPath})`
+        : d.path !== undefined
+          ? ` (${d.path})`
+          : '';
+    log?.(`${classifySkillDiagnostic(d)}: ${d.message}${where}`);
+  }
+  if (skills.length > SKILLS_CATALOG_CAP) {
+    log?.(`cap: total=${skills.length} truncated=${SKILLS_CATALOG_CAP}`);
+    skills = skills.slice(0, SKILLS_CATALOG_CAP);
+  }
+  skills = skills.map((s) => {
+    if (s.description.length <= SKILL_DESCRIPTION_CAP) return s;
+    log?.(`cap: description truncated for ${s.name}`);
+    return { ...s, description: `${s.description.slice(0, SKILL_DESCRIPTION_CAP)}…` };
+  });
+  if (skills.length > 0) log?.(`loaded: ${skills.length} skills from ${opts.skillsDir}`);
+  return formatSkillsForPrompt(skills, 'read');
+}
+
+/** catalog 追加语义（spec 14 数据契约：追加到 systemPrompt 末尾而非覆盖；
+ * formatSkillsForPrompt 产物自带 `\n\n` 前导分隔，base 在位时直接拼接；
+ * base 缺省时剥前导空行独立成 prompt）。 */
+export function appendSkillsCatalog(base: string | undefined, catalog: string): string | undefined {
+  if (catalog === '') return base;
+  if (base === undefined || base === '') return catalog.replace(/^\n+/, '');
+  return base + catalog;
+}
 
 /** models.json custom provider 占位 key（真 key 走 setRuntimeApiKey 内存态）。 */
 const MODELS_JSON_KEY_PLACEHOLDER = 'per-step';
@@ -333,6 +423,12 @@ export interface PiBackendOpts {
   /** MCP per-turn 连接降级行出口（runner 接 logger.mcp，r3 §1.5 canon 行形；
    * 02 §7.1 失败降级不阻断）。 */
   onMcpLog?: (msg: string) => void;
+  /** skills 执行面注入（spec 14/#371）：skillsDir = PACMAN_SKILLS_DIR 扫描根；
+   * cwd = daemon home（project 级解析不随任务 worktree 跳变）。
+   * 缺省 = 不注入（既有调用面零回归）。 */
+  skills?: { skillsDir: string; cwd: string };
+  /** `[skills]` 诊断行出口（machine-loop 接 logger.skills，与 onMcpLog 同型）。 */
+  onSkillsLog?: (msg: string) => void;
 }
 
 export class PiBackend implements AgentBackend {
@@ -371,14 +467,22 @@ export class PiBackend implements AgentBackend {
     if (!model) {
       throw new Error(`model ${opts.provider.providerId}/${opts.modelId} not found`);
     }
+    // skills catalog 注入（spec 14/#371）：每次会话创建扫描一次；catalog 追加
+    // 到 systemPrompt 末尾（不覆盖既有段）；空 skills 集 = systemPrompt 原样。
+    const skillsCatalog = this.opts.skills
+      ? buildSkillsCatalog({
+          skillsDir: this.opts.skills.skillsDir,
+          cwd: this.opts.skills.cwd,
+          ...(this.opts.onSkillsLog ? { log: this.opts.onSkillsLog } : {}),
+        })
+      : '';
+    const systemPrompt = appendSkillsCatalog(opts.systemPrompt, skillsCatalog);
     const settingsManager = SettingsManager.inMemory({ compaction: { enabled: true } });
     const loader = new DefaultResourceLoader({
       cwd: opts.cwd,
       agentDir: this.opts.agentDir,
       settingsManager,
-      ...(opts.systemPrompt !== undefined
-        ? { systemPromptOverride: () => opts.systemPrompt as string }
-        : {}),
+      ...(systemPrompt !== undefined ? { systemPromptOverride: () => systemPrompt } : {}),
     });
     await loader.reload();
     const sessionManager = resumeFile

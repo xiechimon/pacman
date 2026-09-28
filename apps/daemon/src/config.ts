@@ -26,6 +26,9 @@ export const daemonConfigSchema = z.object({
   foreground: z.boolean(),
   /** 并发上限默认 3（02 §2.5 机器配置默认值，非付费件）。 */
   maxConcurrent: z.number().int().positive(),
+  /** skills 扫描根（spec 14/#371）：PACMAN_SKILLS_DIR 缺省 ~/.agents/skills；
+   * 目录不存在 = 空 skills 集，非致命（扫描层降级，config 不校验存在性）。 */
+  skillsDir: z.string(),
 });
 export type DaemonConfig = z.infer<typeof daemonConfigSchema>;
 
@@ -38,6 +41,7 @@ export interface DaemonConfigInput {
   workspacesDir?: string;
   foreground?: boolean;
   maxConcurrent?: number;
+  skillsDir?: string;
 }
 
 /** 默认 server URL [设计]（官方默认不可观测——todos.dev 云常量；复刻
@@ -70,6 +74,11 @@ export function loadDaemonConfig(
   const apiKey = input.apiKey ?? env[ENV_VARS.apiKey];
   const teamId = input.teamId ?? env[ENV_VARS.team];
   const serverUrl = input.serverUrl ?? env[ENV_VARS.server] ?? DEFAULT_SERVER_URL;
+  // skills 扫描根（spec 14/#371）：默认 ~/.agents/skills 是跨工具 agents 目录
+  // [设计]（非 BRAND 槽——pacman 与用户其它 agent 工具共享同一 skills 正本）。
+  const skillsDir = resolve(
+    input.skillsDir ?? env[ENV_VARS.skillsDir] ?? join(homedir(), '.agents', 'skills'),
+  );
   return daemonConfigSchema.parse({
     serverUrl: serverUrl.replace(/\/$/, ''),
     ...(apiKey !== undefined ? { apiKey } : {}),
@@ -79,5 +88,6 @@ export function loadDaemonConfig(
     workspacesDir,
     foreground: input.foreground ?? false,
     maxConcurrent: input.maxConcurrent ?? MAX_CONCURRENT_DEFAULT,
+    skillsDir,
   });
 }

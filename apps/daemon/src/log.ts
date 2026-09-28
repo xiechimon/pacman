@@ -1,6 +1,7 @@
 // daemon.log 行形（01 §4.3：pino 自定义输出行形；日志形状 = 平价面，r3 实测
-// 词表）。行前缀词表 = DAEMON_LOG_PREFIXES 七件（supervisor/machine/step/
-// workspace/recover/wake/mcp，02 §5.3 + r3 §1.5 [mcp] 实测行 M4b 补录）；
+// 词表）。行前缀词表 = DAEMON_LOG_PREFIXES 八件（supervisor/machine/step/
+// workspace/recover/wake/mcp/skills，02 §5.3 + r3 §1.5 [mcp] 实测行 M4b 补录
+// + [skills] spec 14/#371 补录）；
 // 上线序列/步骤生命周期 canon 行为无前缀
 // 原文（r3 §1.5 实测样本族）。行格式 `<msg>` 原样落盘 [设计]（时间戳位未采）。
 
@@ -14,7 +15,7 @@ export type DaemonLogPrefix = (typeof DAEMON_LOG_PREFIXES)[number];
 export interface DaemonLogger {
   /** canon 原文行（无前缀）：`claim step=<id>`、`Online (…)` 族。 */
   raw(msg: string): void;
-  /** 前缀行 `[prefix] msg`（02 §5.3 词表七件）。 */
+  /** 前缀行 `[prefix] msg`（02 §5.3 词表八件）。 */
   prefixed(prefix: DaemonLogPrefix, msg: string): void;
   supervisor(msg: string): void;
   machine(msg: string): void;
@@ -24,6 +25,9 @@ export interface DaemonLogger {
   wake(msg: string): void;
   /** MCP per-turn 连接面（r3 §1.5：`[mcp] <slug>: connect failed — …`）。 */
   mcp(msg: string): void;
+  /** skills 执行面注入诊断（spec 14/#371：`[skills] <type>: <msg>` 族，
+   * type ∈ loaded/collision/invalid-frontmatter/missing-skill-md/cap/invalid）。 */
+  skills(msg: string): void;
 }
 
 export function isLogPrefix(value: string): value is DaemonLogPrefix {
@@ -75,5 +79,6 @@ export function createDaemonLogger(opts: {
     recover: (msg) => prefixed('recover', msg),
     wake: (msg) => prefixed('wake', msg),
     mcp: (msg) => prefixed('mcp', msg),
+    skills: (msg) => prefixed('skills', msg),
   };
 }
