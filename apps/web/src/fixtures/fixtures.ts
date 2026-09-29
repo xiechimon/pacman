@@ -20,7 +20,6 @@ import type {
   DiffLine,
   DocBlock,
   FixtureSet,
-  OverlayState,
   PlanDiffContent,
   ProjectContent,
   ResourcesContent,
@@ -808,15 +807,17 @@ const LEGACY_NOW_TRANSCRIPT: TranscriptItem[] = [
   { kind: 'elapsed', seconds: 25 },
 ];
 
-/** Dark capture set (r8 78–81): legacy #1's current surface with an overlay
- *  open; `chiefUnread` reproduces the FAB badge the captures carry. */
-export function detailLegacyNow(overlay: OverlayState['kind']): FixtureSet {
+/** Dark capture set (r8 78–81): legacy #1's current surface with a frozen
+ *  open state — `chiefUnread` reproduces the FAB badge the captures carry.
+ *  #366: the token/branch/history freezes moved from the (deleted) overlay
+ *  dialogs to the right-pane view (ui.paneView); accept stays an overlay. */
+export function detailLegacyNow(freeze: Pick<FixtureSet, 'overlay' | 'ui'>): FixtureSet {
   return {
     todos: [legacyNow, ...darkBadgeFillers],
     now: at('2026-09-23', 0, 13),
     chiefUnread: 1,
     detail: { transcript: LEGACY_NOW_TRANSCRIPT, changes: probeChanges(false) },
-    overlay: { kind: overlay },
+    ...freeze,
   };
 }
 
@@ -2099,10 +2100,28 @@ export const rerunDialog12: FixtureSet = {
 };
 
 /** r8 57: run history of #12 past midnight (昨天 stamp, 6 小时前 row).
- *  Rows ride the upstream overlayContent mechanism (#68). */
+ *  Rows ride the upstream overlayContent mechanism (#68); #366 freezes the
+ *  right pane on the history section instead of opening a dialog. */
 export const history12: FixtureSet = {
   ...detailFailed12,
-  overlay: { kind: 'history' },
+  ui: { paneView: 'history' },
+};
+
+/** #366 AC 钉面（无 capture，smoke scenario）：review 变更面 + 线程内折叠
+ *  plan 卡行——plan 卡激活入口（右 pane 切文档面 plan 显示面）需要「变更面
+ *  + 线程含 plan 卡」的组合面，r7/r8 捕获均无此组合。 */
+export const planOpenReview: FixtureSet = {
+  todos: [probeTodo('review', r7(13, 37))],
+  now: r7(13, 40),
+  detail: {
+    transcript: [
+      { kind: 'plan', title: '方案 · v1', preview: R8_PLAN_PREVIEW },
+      ...PROBE_BUILD_OPEN,
+      PROBE_BUILD_RESULT,
+    ],
+    doc: DOC_V2,
+    changes: probeChanges(false),
+  },
 };
 
 /** r8 63: version dropdown open on the v2 surface. */
@@ -2189,7 +2208,7 @@ export const history15: FixtureSet = {
   todos: [failed12, review13, probe15('review', r8n(0, 2))],
   now: r8n(0, 3),
   detail: { transcript: REUSED_REVIEW_TRANSCRIPT, changes: CHANGES_15 },
-  overlay: { kind: 'history' },
+  ui: { paneView: 'history' },
 };
 
 /** Interactive reject chain (issue #75 AC3): confirm v1 with a revision

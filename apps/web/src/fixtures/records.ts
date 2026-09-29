@@ -57,8 +57,9 @@ export interface TodoRecord {
   awaitingReply?: boolean;
 }
 
-/** Token 用量 overlay content (issue #68, r7 30): the cumulative-run
- *  figures of the dialog, verbatim strings from the capture. */
+/** Token 用量 content (issue #68, r7 30): the cumulative-run figures,
+ *  verbatim strings from the capture. Rendered as a static right-pane
+ *  section on the detail route (issue #366). */
 export interface TokenUsageContent {
   total: string;
   model: string;
@@ -69,7 +70,8 @@ export interface TokenUsageContent {
   cacheWrite: string;
 }
 
-/** 分支与 PR overlay content (issue #68, r7 31): sync-tab fields. */
+/** 分支与 PR content (issue #68, r7 31): sync-tab fields. Board cards open
+ *  the dialog; the detail route renders it as a right-pane section (#366). */
 export interface BranchInfoContent {
   branch: string;
   commit: string;
@@ -77,30 +79,38 @@ export interface BranchInfoContent {
   directory: string;
 }
 
-/** One 运行历史 overlay row. r7 32 froze the single-row state (ring glyph);
+/** One 运行历史 row. r7 32 froze the single-row state (ring glyph);
  *  the r8 80 dark capture adds the multi-row forms: failed runs carry a
  *  stop-colored ×, succeeded ones a done-colored check (r8 80). */
 export interface RunHistoryRow {
   label: string;
   meta: string;
   /** r8 57: `failed-current` = the failed run that is still the current
-   *  one — carries the 当前 chip and the dialog's footer 重跑 action; a
-   *  failed PAST run under a live current one carries neither (r8 77/80). */
+   *  one — carries the 当前 chip; a failed PAST run under a live current
+   *  one carries none (r8 77/80). */
   status: 'current' | 'failed' | 'done' | 'failed-current';
 }
 
+/** Detail-route right-pane view (issue #366): the doc surface (DocPane
+ *  plan/changes/diff) plus the three static sections that replaced the
+ *  former head-icon overlays. */
+export type PaneView = 'doc' | 'branch' | 'token' | 'history';
+
 /** Modal surface rendered over a route (issue #68). The scenario fixture
  *  opens one for capture determinism; the header/card buttons open the same
- *  set interactively. Token/branch/history payloads are build-scoped
- *  display data — outside the 02 §6.2 record contract — resolved per todo
- *  from the fixture layer; the accept dialog carries no payload. */
-export type OverlayKind = 'token' | 'branch' | 'history' | 'accept' | 'rerun' | 'reuse' | 'review';
+ *  set interactively. The branch payload is build-scoped display data —
+ *  outside the 02 §6.2 record contract — resolved per todo from the fixture
+ *  layer; the accept dialog carries no payload. Token/history left the
+ *  overlay family in #366 (static right-pane sections, PaneView). */
+export type OverlayKind = 'branch' | 'accept' | 'rerun' | 'reuse' | 'review';
 
 export interface OverlayState {
   kind: OverlayKind;
 }
 
-/** The three build-scoped overlay payloads travelling together (issue #68). */
+/** The three build-scoped payloads travelling together (issue #68): the
+ *  board branch dialog and the detail right-pane sections (#366) read the
+ *  same set. */
 export interface BuildOverlayContent {
   token: TokenUsageContent;
   branch: BranchInfoContent;
@@ -117,6 +127,10 @@ export interface OverlayUi {
   chipPopoverOpen?: boolean;
   /** 方案▾ document-type dropdown open in the doc pane (r7 20). */
   planDropdownOpen?: boolean;
+  /** Right-pane view frozen for the capture scenarios (issue #366 — the
+   *  former `overlay: token/branch/history` freeze of r7 30/31/32, r8
+   *  57/77/78–80; absent = the doc view). */
+  paneView?: PaneView;
   /** Account 语言 dropdown open (issue #74; open state [设计] — the
    *  official option list was never captured, r2 §11 Q19). */
   langDropdownOpen?: boolean;
