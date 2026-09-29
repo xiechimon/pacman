@@ -128,7 +128,7 @@ export function ChiefDrawer({
   // mounted 滞后 open 一帧（effect 里才 setMounted）——鲜开时 effect 跑在
   // 节点存在之前，故首焦由 ref callback 承载（SearchPanel attachInput
   // 先例）；retained-mount 窗口内重开节点未脱离、ref 不重火，由 [open]
-  // effect 兜住。空格热键呼出与 FAB 点击同路。
+  // effect 兜住。⌘J 热键呼出与 FAB 点击同路。
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const openRef = useRef(open);
   openRef.current = open;
