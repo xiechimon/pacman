@@ -6021,6 +6021,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > 本地状态布局与日
     "recover",
     "wake",
     "mcp",
+    "skills",
   ],
   "LOCAL_STATE_DIRS": [
     "outbox",
