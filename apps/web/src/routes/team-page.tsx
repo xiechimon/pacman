@@ -22,6 +22,7 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChartNetwork, ChevronDown, Grid2x2, PlusSmall } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
+import { Avatar } from '../ui/avatar.js';
 import { CreateAgentDialog } from './create-agent-dialog.js';
 
 /** r2 §1.5 registered client-state key (packages/shared protocol/
@@ -109,7 +110,11 @@ export function TeamPage() {
           {team.agents.map((agent) => (
             <div key={agent.id} className="team-agent-card">
               <span className="team-agent-avatar">
-                <img src="/avatar-robot-1.svg" alt="" />
+                <Avatar
+                  name={agent.displayName}
+                  src={agent.avatarUrl}
+                  fallback="/avatar-robot-1.svg"
+                />
               </span>
               <span className="team-agent-text">
                 <span className="team-agent-name">{agent.displayName}</span>

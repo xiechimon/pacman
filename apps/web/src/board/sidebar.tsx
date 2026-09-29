@@ -51,6 +51,7 @@ import {
 } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { readStoredTheme } from '../theme.js';
+import { Avatar } from '../ui/avatar.js';
 import './sidebar.css';
 
 /** Which sidebar row carries the active pill: a nav row (看板 / 定时 /
@@ -302,7 +303,7 @@ export function BoardSidebar({
           aria-expanded={userMenuOpen}
           onClick={toggleUserMenu}
         >
-          <img src="/avatar-user.png" alt="" />
+          <Avatar name={USER_NAME} fallback="/avatar-user.png" />
         </button>
         {userMenuPopover}
       </aside>
@@ -422,7 +423,7 @@ export function BoardSidebar({
         aria-expanded={userMenuOpen}
         onClick={toggleUserMenu}
       >
-        <img src="/avatar-user.png" alt="" />
+        <Avatar name={USER_NAME} fallback="/avatar-user.png" />
         <span className="sidebar-user-name">{USER_NAME}</span>
         <span className="sidebar-user-more">
           <EllipsisVertical />
