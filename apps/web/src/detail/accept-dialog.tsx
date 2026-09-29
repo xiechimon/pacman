@@ -5,10 +5,10 @@
 // fixture cord).
 
 import { useState } from 'react';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { CheckWhite } from '../icons/index.js';
 import { Button } from '../ui/button.js';
-import { DialogShell } from '../ui/dialog-shell.js';
 import './overlays.css';
 
 interface AcceptDialogProps {

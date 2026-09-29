@@ -8,9 +8,9 @@
 // emit + blocking 自动修订回路归 #326。
 
 import { useEffect, useMemo, useState } from 'react';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { Button } from '../ui/button.js';
-import { DialogShell } from '../ui/dialog-shell.js';
 
 /** AI 审核选择器行最小投影（live = members 读面投影 + 模型槽；fixture =
  * canon 单默认行）。 */

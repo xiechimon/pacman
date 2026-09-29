@@ -27,9 +27,9 @@ import {
   type ProviderApi,
 } from '@pacman/shared';
 import { useEffect, useState } from 'react';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { CheckWhite, ChevronLeft, PlusSmall } from '../icons/index.js';
-import { DialogShell } from '../ui/dialog-shell.js';
 import { Input } from '../ui/input.js';
 
 /** API 协议段（r3 §2 实测文案与顺序；wire 值 = providerApiSchema）。 */

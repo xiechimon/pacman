@@ -18,11 +18,11 @@ import { useState } from 'react';
 import { api } from '../api/client.js';
 import { useMachines } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import type { BranchInfoContent } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, Copy } from '../icons/index.js';
 import { Button } from '../ui/button.js';
-import { DialogShell } from '../ui/dialog-shell.js';
 import './overlays.css';
 
 interface BranchDialogProps {
