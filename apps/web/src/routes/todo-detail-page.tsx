@@ -781,7 +781,7 @@ export function TodoDetailPage() {
             />
           </>
         )}
-        <ChiefWake fixture={fixture} fabClassName="detail-fab" />
+        <ChiefWake fixture={fixture} fabClassName="detail-fab" unreadOnly />
       </div>
       {!live && detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
       <MoreMenu
