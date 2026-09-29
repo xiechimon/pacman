@@ -24,6 +24,7 @@ import {
   type SeededWorld,
   type Stack,
   seedWorld,
+  type TurnEvidence,
 } from './stack.mts';
 
 // --- fill these in ----------------------------------------------------------
@@ -406,7 +407,11 @@ async function main() {
       const { c, rep } = task;
       const safeId = pathSafeId(c.id);
       const t0 = Date.now();
-      let lastRun: Awaited<ReturnType<typeof runCase>> | null = null;
+      // 赋值在下面那个 async IIFE 里，而 tsc 的控制流分析看不穿闭包边界：它会把
+      // `let x: T | null = null` 一路当成 null，读取处 `x?.model` 就落到 never 上
+      // 报 TS2339。装在对象字段里避开的是「变量按赋值收窄」这条规则——属性收窄
+      // 只由显式守卫触发，不追赋值。
+      const lastRun: { run: Awaited<ReturnType<typeof runCase>> | null } = { run: null };
       let rowWritten = false;
       const deadline = ARGS.timeoutS > 0 ? t0 + ARGS.timeoutS * 1000 : Infinity;
       const appRetry = { count: 0 };
@@ -423,7 +428,7 @@ async function main() {
               appRetry,
               deadline,
             );
-            lastRun = run;
+            lastRun.run = run;
             const latency_s = (Date.now() - tAttempt) / 1000;
             // served-model 断言：跑分必须由请求的那个模型产出。容忍 alias→snapshot
             // 的日期后缀解析；别的差异（另一档快照、兄弟模型、静默换模）一律判失败。
@@ -501,8 +506,8 @@ async function main() {
             error: String(err?.message || e),
             retries: appRetry.count,
             judge_retries: judgeRetry.count,
-            model: lastRun?.model,
-            usage: lastRun?.usage,
+            model: lastRun.run?.model,
+            usage: lastRun.run?.usage,
             latency_s: (Date.now() - t0) / 1000,
           })}\n`,
         );
