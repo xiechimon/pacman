@@ -1,11 +1,13 @@
-// 分支对话框 live 接线回归钉（#346，钉住 #319 的 buildId 传参）。
+// 分支同步面 live 接线回归钉（#346，钉住 #319 的 buildId 传参；#366 起详情
+// 页入口 = 右 pane 型选 →「分支与 PR」静止 section，判别式不变）。
 //
-// 为什么单独钉这一条：BranchDialog 的 `buildId` 是 prop-only（`buildIdProp ??
-// null`），只有 teamId 从 useLiveData 派生。两个调用点（todo-detail-page /
-// board-page）一旦漏传，`canSync = buildId !== null && live` 恒 false —— 同步
-// tab 会永远停在 r7 fixture 占位（机器 pill 不可点、目录只读、同步钮
-// disabled），而**界面上没有任何报错**，极难发现。#346 实测踩过：当时全仓引用
-// branch-sync 的测试只有 server 的 wire.test.ts，CI 全绿而功能不可达。
+// 为什么单独钉这一条：分支同步面的 `buildId` 是 prop-only（`buildIdProp ??
+// null`），只有 teamId 从 useLiveData 派生。两个调用点（todo-detail-page 的
+// RightPane BranchSection / board-page 的 BranchDialog）一旦漏传，
+// `canSync = buildId !== null && live` 恒 false —— 同步面会永远停在 r7
+// fixture 占位（机器 pill 不可点、目录只读、同步钮 disabled），而**界面上没有
+// 任何报错**，极难发现。#346 实测踩过：当时全仓引用 branch-sync 的测试只有
+// server 的 wire.test.ts，CI 全绿而功能不可达。
 //
 // 判别式（live vs fixture 占位，两处互斥分支）：
 //   live    → `.dlg-machine-picker` 在场 + 目录是 `<input class="dlg-dir
@@ -14,7 +16,8 @@
 // 所以「`.dlg-dir--input` 在场」即等价于「调用点传了 buildId」。
 //
 // 本用例不覆盖真同步执行（需 daemon 在线机器）——那一面由 verify-pacman 的
-// `drive-branch-sync.mjs` 探针真栈跑（证据 docs/verify/319/）。
+// `drive-branch-sync.mjs` 探针真栈跑（配方与验证状态见
+// .claude/skills/verify-pacman/features/branch-sync.md）。
 
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -75,8 +78,8 @@ afterAll(async () => {
   await server?.close();
 });
 
-describe('分支对话框 buildId 接线（#346 回归钉）', () => {
-  test('详情页开弹层 → 渲染 live 面（机器 picker + 可编辑目录），非 fixture 占位', async () => {
+describe('分支同步面 buildId 接线（#346 回归钉）', () => {
+  test('详情页右 pane 切「分支与 PR」section → 渲染 live 面（机器 picker + 可编辑目录），非 fixture 占位', async () => {
     // 前置真值：todo 带上了 latestBuildId——没有它 buildId 恒 null，本用例的
     // 判别式就失去意义（先钉住前置，避免 setup 漂移被误读成产品回归）。
     const todoFace = (await api(server.url, 'GET', `/api/todos/${todoId}`)).body as {
@@ -85,18 +88,23 @@ describe('分支对话框 buildId 接线（#346 回归钉）', () => {
     expect(todoFace.latestBuildId).toBeTruthy();
 
     await page.goto(`${server.url}/app/todo/${todoId}`);
-    const entry = page.locator('button[aria-label="分支与 PR"]');
-    await pexpect(entry).toBeVisible({ timeout: 30_000 });
-    await entry.click();
+    // #366：头部「分支与 PR」图标弹层退役——入口 = 右 pane 型选钮开 pane
+    // 视图 listbox，行点击切静止 section。
+    const select = page.locator('.detail-right .doc-select-wrap .doc-pane-select');
+    await pexpect(select).toBeVisible({ timeout: 30_000 });
+    await select.click();
+    await page.locator('.plan-dropdown-row', { hasText: '分支与 PR' }).click();
 
-    // 判别式：live 面 = 机器 picker + 可编辑目录输入。
-    await pexpect(page.locator('.dlg-machine-picker')).toBeVisible({ timeout: 15_000 });
+    // 判别式：live 面 = 机器 picker + 可编辑目录输入（section 内）。
+    await pexpect(page.locator('.detail-right .dlg-machine-picker')).toBeVisible({
+      timeout: 15_000,
+    });
     await pexpect(page.locator('.dlg-dir--input')).toBeVisible();
     // fixture 占位面（buildId 漏传时的落点）两个特征都不得出现。
     await pexpect(page.locator('.dlg-machine[disabled]')).toHaveCount(0);
     await pexpect(page.locator('.dlg-machine-menu')).toHaveCount(0); // 未展开时菜单不开
 
-    // 背景信息：弹层头部渲染的分支名由 buildId 推出（brand.conversationBranch）
+    // 背景信息：section 头部渲染的分支名由 buildId 推出（brand.conversationBranch）
     // ——与 live 面同源，可交叉印证 buildId 确实非空。
     await pexpect(page.locator('.dlg-branch-value').first()).toHaveText(
       new RegExp(`conv-${todoFace.latestBuildId}$`),

@@ -2124,6 +2124,70 @@ exports[`body/封套 schema 快照 > conversationStreamEvent > conversationStrea
 }
 `;
 
+exports[`body/封套 schema 快照 > createProjectBody > createProjectBody.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "githubRepo": {
+      "anyOf": [
+        {
+          "type": "string",
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "owner": {
+              "type": "string",
+            },
+            "repo": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "owner",
+            "repo",
+          ],
+          "type": "object",
+        },
+      ],
+    },
+    "kind": {
+      "enum": [
+        "hosted",
+        "github",
+        "local",
+      ],
+      "type": "string",
+    },
+    "localPath": {
+      "type": [
+        "string",
+        "null",
+      ],
+    },
+    "name": {
+      "type": "string",
+    },
+    "repoKind": {
+      "enum": [
+        "hosted",
+        "github",
+        "local",
+      ],
+      "type": "string",
+    },
+    "teamId": {
+      "type": "string",
+    },
+  },
+  "required": [
+    "name",
+  ],
+  "type": "object",
+}
+`;
+
 exports[`body/封套 schema 快照 > createScheduleBody > createScheduleBody.json 1`] = `
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -2235,6 +2299,50 @@ exports[`body/封套 schema 快照 > deviceJson > deviceJson.json 1`] = `
   },
   "required": [
     "deviceId",
+  ],
+  "type": "object",
+}
+`;
+
+exports[`body/封套 schema 快照 > githubReposResponse > githubReposResponse.json 1`] = `
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "repos": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "full_name": {
+            "type": "string",
+          },
+          "id": {
+            "type": "number",
+          },
+          "name": {
+            "type": "string",
+          },
+          "owner": {
+            "type": "string",
+          },
+          "private": {
+            "type": "boolean",
+          },
+        },
+        "required": [
+          "id",
+          "owner",
+          "name",
+          "full_name",
+          "private",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
+  },
+  "required": [
+    "repos",
   ],
   "type": "object",
 }
@@ -4382,6 +4490,9 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > project > 
     "id": {
       "type": "string",
     },
+    "localPath": {
+      "type": "string",
+    },
     "name": {
       "type": "string",
     },
@@ -4389,6 +4500,7 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > project > 
       "enum": [
         "hosted",
         "github",
+        "local",
       ],
       "type": "string",
     },
@@ -4625,37 +4737,6 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > schedule >
 `;
 
 exports[`record 形状 24 表投影——zod → JSON Schema 快照 > secret > secret.json 1`] = `
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": false,
-  "properties": {
-    "description": {
-      "type": [
-        "string",
-        "null",
-      ],
-    },
-    "id": {
-      "type": "string",
-    },
-    "name": {
-      "type": "string",
-    },
-    "teamId": {
-      "type": "string",
-    },
-  },
-  "required": [
-    "id",
-    "teamId",
-    "name",
-    "description",
-  ],
-  "type": "object",
-}
-`;
-
-exports[`record 形状 24 表投影——zod → JSON Schema 快照 > skill > skill.json 1`] = `
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
@@ -5133,7 +5214,6 @@ exports[`协议词表快照（02 §5/§6 canonical） > DELETE 面规则（[推�
     "resources": [
       "teams/{id}/machines",
       "teams/{id}/agents",
-      "teams/{id}/skills",
       "teams/{id}/mcp-servers",
       "teams/{id}/agents/{aid}/memories",
       "teams/{id}/providers",
@@ -5149,6 +5229,11 @@ exports[`协议词表快照（02 §5/§6 canonical） > DELETE 面规则（[推�
       "method": "POST",
       "path": "/api/push",
       "reason": "Web Push 订阅上传——R1 已裁决有意 divergence（02 §9.1 终裁、04 §5）",
+    },
+    {
+      "method": "POST",
+      "path": "/api/skills",
+      "reason": "技能上传面——spec 13 #367 裁决：技能 = 本地目录现扫只读投影，无写面",
     },
   ],
 }
@@ -5245,6 +5330,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > executor CLI 面（02 §
     "home": "PACMAN_HOME",
     "mcpConfig": "PACMAN_MCP_CONFIG",
     "server": "PACMAN_SERVER",
+    "skillsDir": "PACMAN_SKILLS_DIR",
     "team": "PACMAN_TEAM",
     "token": "PACMAN_TOKEN",
     "webDir": "PACMAN_WEB_DIR",
@@ -5561,10 +5647,12 @@ exports[`协议词表快照（02 §5/§6 canonical） > web REST 端点词表（
   },
   {
     "method": "GET",
+    "note": "spec 13 #367：本地目录现扫投影（sid = frontmatter name 回落目录名）",
     "path": "/api/teams/{id}/skills/{sid}",
   },
   {
     "method": "GET",
+    "note": "spec 13 #367：技能目录文件读面（磁盘现读，文本投影）",
     "path": "/api/teams/{id}/skills/{sid}/file",
     "query": [
       "fileName",
@@ -5681,6 +5769,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > web REST 端点词表（
   },
   {
     "method": "GET",
+    "note": "spec 13 #367：每次请求现扫本地技能目录，无缓存不入库",
     "path": "/api/skills",
     "query": [
       "teamId",
@@ -5740,16 +5829,6 @@ exports[`协议词表快照（02 §5/§6 canonical） > web REST 端点词表（
   {
     "method": "POST",
     "path": "/api/schedules",
-  },
-  {
-    "method": "POST",
-    "note": "上传（02 §6.1）",
-    "path": "/api/skills",
-  },
-  {
-    "method": "POST",
-    "note": "GitHub 扫描发现半（#223，#201 路线 A；原产品扫描钮 wire 未采——词表外 [设计] 新端点）",
-    "path": "/api/skills/scan",
   },
   {
     "method": "POST",
@@ -5916,7 +5995,6 @@ exports[`协议词表快照（02 §5/§6 canonical） > 存储表清单（01 §6
   "notification",
   "agent",
   "agent_memory",
-  "skill",
   "provider",
   "secret",
   "api_key",
@@ -5928,6 +6006,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > 存储表清单（01 §6
   "whats_new",
   "attachment",
   "branch_sync",
+  "github_connection",
 ]
 `;
 

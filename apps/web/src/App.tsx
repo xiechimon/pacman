@@ -11,7 +11,6 @@ import { MACHINES_HREF, MachinesPage } from './resources/machines-page.js';
 import { MCP_HREF, McpServersPage } from './resources/mcp-servers-page.js';
 import { PROVIDERS_HREF, ProvidersPage } from './resources/providers-page.js';
 import { SECRETS_HREF, SecretsPage } from './resources/secrets-page.js';
-import { SKILLS_IMPORT_HREF, SkillsImportPage } from './resources/skills-import-page.js';
 import { SKILLS_HREF, SkillsPage } from './resources/skills-page.js';
 import { AccountPage } from './routes/account-page.js';
 import { ApiKeysPage } from './routes/api-keys-page.js';
@@ -49,7 +48,6 @@ export const router = createBrowserRouter([
           { path: '/app/account', element: <AccountPage /> },
           { path: '/app/api-keys', element: <ApiKeysPage /> },
           { path: SKILLS_HREF, element: <SkillsPage /> },
-          { path: SKILLS_IMPORT_HREF, element: <SkillsImportPage /> },
           { path: MCP_HREF, element: <McpServersPage /> },
           { path: SECRETS_HREF, element: <SecretsPage /> },
           { path: MACHINES_HREF, element: <MachinesPage /> },

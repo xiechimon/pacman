@@ -1,11 +1,15 @@
-/* Detail screen styles (issue #56). Geometry from the r7 DOM table §3.3/
-   §3.4/§3.6 and pixel probes on 23/16/17/17b @1440×732: dhead 44 with the
-   icon group at pitch 33 and the 50.5×28 primary at right-12; chat column
-   left edge x721 (1px divider at 720); composer box x737 w687 h76; doc
-   pane header line at y79. Colors sampled from the same bitmaps, both
-   themes. */
+/* Detail screen styles (issue #56, re-laid out by #366). Grid target from
+   docs/design/todos.dev.md: `240 | ~730 fluid | 488` — sidebar, thread
+   column, right pane abutting on 1px hairlines (Hairlines Not Shadows).
+   Frozen capture geometry that survives: dhead 44 with the 50.5×28
+   primary at right-12; composer h76 at 16px insets inside the center
+   column (the column's only card, 12px radius). Colors sampled from the
+   r7 bitmaps, both themes — token discipline untouched by #366. */
 
 .detail-shell {
+  /* single source for the right-pane width — the composer/FAB anchors
+     skip the pane with calc() instead of repeating the number */
+  --detail-pane-right: 488px;
   display: flex;
   height: 100%;
   overflow: hidden;
@@ -68,54 +72,6 @@
   cursor: pointer;
 }
 
-/* tab group centers on the content area (r7 §3.3: group 68×28 @ x806,
-   center 840 = (240 + 1440)/2) */
-.detail-tabs {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 8px;
-  display: flex;
-  justify-content: center;
-  pointer-events: none;
-}
-
-/* ring + plate idiom (#138, r7 16/16d probe): the group paints a
-   --surface-secondary ring at 2px padding (68×28 = the r7 §3.3 probe box)
-   and BOTH tabs ride the --tab-group-bg plate — active reads ink-only,
-   the divider hairline splits the plate */
-.detail-tabs-group {
-  display: flex;
-  align-items: center;
-  height: 28px;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--surface-secondary);
-  pointer-events: auto;
-}
-
-.detail-tab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 24px;
-  border: none;
-  background: var(--tab-group-bg);
-  border-radius: 6px;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
-}
-
-.detail-tab--active {
-  color: var(--text-primary);
-}
-
-.detail-tab + .detail-tab {
-  border-left: 1px solid var(--border-default);
-}
-
 .detail-head-actions {
   margin-left: auto;
   display: flex;
@@ -124,23 +80,21 @@
   padding-right: 12px;
 }
 
+/* #366: 更多 is the head's only icon (the 分支与 PR/Token 用量/运行历史
+   trio became right-pane sections); the --more alias stays in the DOM as
+   the e2e locator. */
 .detail-head-icon {
   flex: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 27px;
-  height: 27px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: transparent;
   padding: 0;
   color: var(--text-tertiary);
   cursor: pointer;
-}
-
-.detail-head-icon--more {
-  width: 28px;
-  height: 28px;
 }
 
 /* A3 收编：primary/compact 皮肤与 8px 圆角归 ui/button.css；50.5×28 @12px
@@ -155,7 +109,7 @@
   line-height: 28px;
 }
 
-/* ---- body: doc pane + chat column ---- */
+/* ---- body: center thread column + 488px right pane (#366) ---- */
 
 .detail-body {
   flex: 1;
@@ -163,19 +117,84 @@
   display: flex;
 }
 
-/* fresh state: single column, no divider */
-.detail-body--single {
-  display: block;
+/* center column: the thread (or the fresh block) — composer and 总管 FAB
+   overlay its bottom from the .detail-main anchor */
+.detail-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* fresh state (todo/queued/closed): the column scrolls as one block */
+.detail-fresh {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
-.doc-pane {
+/* right pane: always 488px — no collapse, no hide (#366 rulings 2/3); the
+   seam is a 1px hairline (Hairlines Not Shadows) */
+.detail-right {
   flex: none;
-  width: 480px;
-  border-right: 1px solid var(--border-default);
+  width: var(--detail-pane-right);
+  border-left: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+/* static pane section (分支与 PR / Token 用量 / 运行历史 — the former #68
+   dialogs): head + scrolling body; content classes ride the dlg-* family
+   (detail/overlays.css) so the captured geometry carries over */
+.pane-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pane-section-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* branch section: the merged PR rows keep the field-stack rhythm, the
+   inline 同步钮 gets the pinned-footer's old breathing room */
+.dlg-branch-body .pane-branch-pr {
+  margin-top: 16px;
+}
+
+.pane-branch-foot {
+  margin-top: 16px;
+}
+
+/* fresh-phase placeholder — the pane keeps its 488px and stays quiet
+   (doc-empty family voice) */
+.right-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.doc-pane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* changes/diff file stack scrolls under the pinned pane head (#366 — the
+   old doc-left pane clipped instead) */
+.doc-files {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .doc-pane-head {
@@ -434,8 +453,7 @@
 
 .chat-col {
   flex: 1;
-  min-width: 0;
-  position: relative;
+  min-height: 0;
   display: flex;
   flex-direction: column-reverse;
   overflow-y: auto;
@@ -747,11 +765,18 @@
   margin-left: 6px;
 }
 
+/* #366: the open glyph is a real button when the page wires plan-card
+   activation (right pane doc view); the button reset keeps the capture
+   geometry of the inert span form. */
 .chat-plan-open {
   margin-left: auto;
   margin-right: 6px;
   display: flex;
+  border: none;
+  background: transparent;
+  padding: 0;
   color: var(--text-dim);
+  cursor: pointer;
 }
 
 .chat-preview {
@@ -789,12 +814,14 @@
   color: var(--text-dim);
 }
 
-/* ---- composer (box x737 w687 h76, r7 §3.4) ---- */
+/* ---- composer (#366: the center column's only card — One Card Per
+   Screen). 16px insets, the right anchor skips the 488px pane; h76 +
+   12px radius + recessed fill keep the r7 §3.4 card recipe. ---- */
 
 .composer {
   position: absolute;
-  left: 497px; /* 737 − sidebar 240 */
-  right: 16px;
+  left: 16px;
+  right: calc(var(--detail-pane-right) + 16px);
   bottom: 16px;
   height: 76px;
   border: 1px solid var(--border-default);
@@ -873,8 +900,8 @@ textarea.composer-input::placeholder {
    不动 composer 盒几何（视觉零影响：live-only 条件渲染）。 */
 .composer-reject {
   position: absolute;
-  left: 497px; /* 737 − sidebar 240，与 composer 同轴 */
-  right: 16px;
+  left: 16px; /* 与 composer 同轴（#366 中心列 16px 内衬） */
+  right: calc(var(--detail-pane-right) + 16px);
   bottom: 96px; /* composer 高 76 + 下缘 16 + 4 间隙 */
   font-size: 12px;
   line-height: 16px;
@@ -899,9 +926,13 @@ textarea.composer-input::placeholder {
   cursor: pointer;
 }
 
+/* #366: the FAB hugs the CENTER column's bottom-right (the right anchor
+   skips the 488px pane) so it keeps its composer relationship — and the
+   #347 让位 rule below stays meaningful — instead of floating over the
+   static reading pane. */
 .detail-fab {
   position: absolute;
-  right: 16px;
+  right: calc(var(--detail-pane-right) + 16px);
   bottom: 16px;
   width: 48px;
   height: 48px;
@@ -1092,18 +1123,12 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 }
 
 /* ---- segmented-control hover (issue #138) ----
-   The doc/chat tabs ride an opaque plate, so their hover tint layers over
-   the plate fill as a gradient coat; the 外观 cells tint their transparent
-   interior. Same --seg-hover step on the same box + radius as the active
-   state, fine pointers only (#73 / motion.css). */
+   The 外观 cells tint their transparent interior with the --seg-hover step
+   on the same box + radius as the active state, fine pointers only (#73 /
+   motion.css). The detail doc/chat tabs left the family in #366. */
 @media (hover: hover) and (pointer: fine) {
-  .detail-tab,
   .user-menu-seg button {
     transition: background-color var(--dur-fast) var(--ease-standard);
-  }
-
-  .detail-tab:not(.detail-tab--active):hover {
-    background: linear-gradient(var(--seg-hover), var(--seg-hover)), var(--tab-group-bg);
   }
 
   .user-menu-seg button:not([data-active="true"]):hover {

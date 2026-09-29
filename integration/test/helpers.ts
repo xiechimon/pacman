@@ -63,6 +63,9 @@ export async function bootRealServer(opts: {
   const secretBox = createEphemeralSecretBox();
   const reposDir = mkdtempSync(join(tmpdir(), 'pacman-it-repos-'));
   const attachmentsDir = mkdtempSync(join(tmpdir(), 'pacman-it-att-'));
+  // 技能根（spec 13 #367 现扫面）：隔离的空目录 = 空集语义，集成用例
+  // 需要技能行时显式往里建目录。
+  const skillsDir = mkdtempSync(join(tmpdir(), 'pacman-it-skills-'));
   const app = createApp({
     db,
     hub,
@@ -81,6 +84,7 @@ export async function bootRealServer(opts: {
     oauthClient: null,
     reposDir,
     attachmentsDir,
+    skillsDir,
     webDir: opts.webDir ?? null,
     // #251 可选 token 鉴权：集成面全部走关态（默认行为零改动）。
     authToken: null,
@@ -166,6 +170,7 @@ export async function bootRealServer(opts: {
         (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.();
         server.close((err) => (err ? reject(err) : resolve()));
         rmSync(reposDir, { recursive: true, force: true });
+        rmSync(skillsDir, { recursive: true, force: true });
       }),
   };
 }

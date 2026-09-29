@@ -1,9 +1,11 @@
 // Chief remoteTools 服务端执行面（02 §4.3「服务端定义并执行」；r5 §3.1 relay
 // 位形 = POST /api/machine/tool/<stepId> {name, params} → {text}）。
-// 49 词表（protocol/chief-tools.ts）逐件映射到既有服务/DB。复刻口径（02 §4.3
-// 尾注 / 04 §1 A4）：Chief = 挂团队工具的 pi 会话，工具「语义」按 r1 docs 六
-// 能力组 + r3/r5 行为证据黑盒逼近；params/results 细形未采到 wire 原件处一律
-// [推断]，不冒充实测。返回值 = JSON 串（bundle text() 形，daemon 侧回 pi）。
+// 48 词表（protocol/chief-tools.ts；raw 观测 49 − delete_skills，spec 13 #367
+// 除名——技能改本地目录只读投影，无删除面可 relay）逐件映射到既有服务/DB。
+// 复刻口径（02 §4.3 尾注 / 04 §1 A4）：Chief = 挂团队工具的 pi 会话，工具
+// 「语义」按 r1 docs 六能力组 + r3/r5 行为证据黑盒逼近；params/results 细形
+// 未采到 wire 原件处一律 [推断]，不冒充实测。返回值 = JSON 串（bundle text()
+// 形，daemon 侧回 pi）。
 //
 // 溯源纪律（r5 §3.2）：create_todo 的 createdBy = Chief 绑定 Agent id、
 // sourceBuildId = chief 实例 id（`chief-<userId>-<teamId>`，r5 §3.2 实测样本
@@ -25,7 +27,6 @@ import {
   message,
   project,
   schedule,
-  skill,
   step,
   todo,
   tokenUsage,
@@ -41,6 +42,7 @@ import { defaultMcpConfigPath, listMcpServers } from './mcp-servers.js';
 import { notifyChiefMessage } from './notifications.js';
 import { createSchedule, deleteSchedule, listSchedules } from './schedules.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './secrets.js';
+import { scanLocalSkills } from './skills.js';
 import { createTodo, deleteTodo, getTodo, listTodos, setTodoPhase, updateTodo } from './todos.js';
 
 export interface ChiefToolDeps {
@@ -55,6 +57,8 @@ export interface ChiefToolDeps {
   reposDir: string;
   /** 附件存储根（#310，r9 §4）；chief attachment 工具读面。 */
   attachmentsDir: string;
+  /** 技能根目录（spec 13 #367）；skills 读工具 = 本地现扫投影。 */
+  skillsDir: string;
   /** 本机 MCP config 读路径（spec 13/#368 mcp_servers 工具换源）；缺省 =
    *  ~/.claude.json（config.ts 同默认；测试面显式注入 fixture 路径）。 */
   mcpConfigPath?: string;
@@ -131,7 +135,7 @@ function requireTeamTodo(db: Db, todoId: string, teamId: string) {
   if (!row) throw new HttpError(404, `todo ${todoId}`);
   return row;
 }
-/** 49 词表服务端执行。未识别工具名 = 400（词表外不执行，02 §7.2 白名单纪律
+/** 48 词表服务端执行。未识别工具名 = 400（词表外不执行，02 §7.2 白名单纪律
  * 同族）。返回 JSON 串。 */
 export async function executeChiefTool(
   deps: ChiefToolDeps,
@@ -189,8 +193,9 @@ export async function executeChiefTool(
       );
     }
     case 'skills': {
-      const rows = db.select().from(skill).where(eq(skill.teamId, ctx.teamId)).all();
-      return json(rows.map((s) => ({ id: s.id, name: s.name, description: s.description })));
+      // spec 13 #367：本地目录现扫（id = frontmatter name 回落目录名）。
+      const scanned = scanLocalSkills(deps.skillsDir);
+      return json(scanned.map((s) => ({ id: s.id, name: s.name, description: s.description })));
     }
     case 'secrets': {
       const keysvc = { db, box: deps.box };
@@ -291,7 +296,7 @@ export async function executeChiefTool(
       );
     }
 
-    // —— 组织侧 19 ——
+    // —— 组织侧 18（raw 19 − delete_skills，spec 13 #367 除名）——
     case 'create_todo': {
       // 措辞→spec 三段式（r5 §3.2）由 LLM 侧组织 spec 文本；本层落库 + 溯源。
       const projectId = str(params, 'projectId');
@@ -442,14 +447,8 @@ export async function executeChiefTool(
           .run();
       return json({ deleted: ids });
     }
-    case 'delete_skills': {
-      const ids = strArr(params, 'skillIds');
-      for (const id of ids)
-        db.delete(skill)
-          .where(and(eq(skill.id, id), eq(skill.teamId, ctx.teamId)))
-          .run();
-      return json({ deleted: ids });
-    }
+    // delete_skills 已除名（spec 13 #367：技能 = 本地目录只读投影，删除 =
+    // 从磁盘删目录；relay 此名走 default = 400 unknown chief tool）。
     case 'set_secret': {
       const keysvc = { db, box: deps.box };
       const name = str(params, 'name');
@@ -789,7 +788,7 @@ export interface WorkerMemoryCtx {
 }
 
 /** worker 步 relay 白名单 = 记忆三件套 + 附件读（WORKER_REMOTE_TOOLS 单源；
- * 词表外 = 400）。chief 49 词表不外溢到 worker 步——组织/执行面是 Chief 专属
+ * 词表外 = 400）。chief 48 词表不外溢到 worker 步——组织/执行面是 Chief 专属
  * （r5 §3.1）。attachment：服务层单源 = attachments.readAttachmentMeta，团队
  * 归属同关，utf8/base64 编码同 chief 路径（chief-tools/mcp-face case 'attachment'
  * 三源同形）。 */

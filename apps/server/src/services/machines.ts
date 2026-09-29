@@ -90,6 +90,9 @@ export interface MachineDeps {
   reposDir: string;
   /** 附件存储根（#310 chief attachment 工具读面）。 */
   attachmentsDir: string;
+  /** 技能根目录（spec 13 #367：chief systemPrompt 资源清单 + skills relay
+   * 读工具 = 本地现扫）。 */
+  skillsDir: string;
   /** 本机 MCP config 读路径（spec 13/#368；executeChiefTool deps 透传——
    * 缺省 = 工具侧回落 ~/.claude.json，生产接线恒随 ctx 携带）。 */
   mcpConfigPath?: string;
@@ -856,6 +859,7 @@ export async function executeRelayToolCall(
       user: deps.user,
       reposDir: deps.reposDir,
       attachmentsDir: deps.attachmentsDir,
+      skillsDir: deps.skillsDir,
       ...(deps.mcpConfigPath !== undefined ? { mcpConfigPath: deps.mcpConfigPath } : {}),
     },
     {

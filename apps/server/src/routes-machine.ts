@@ -100,6 +100,7 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     reposDir: ctx.reposDir,
     attachmentsDir: ctx.attachmentsDir,
     mcpConfigPath: ctx.mcpConfigPath,
+    skillsDir: ctx.skillsDir,
     convHub: ctx.convHub,
   };
 

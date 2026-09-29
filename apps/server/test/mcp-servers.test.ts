@@ -313,6 +313,7 @@ describe('chief mcp_servers 读工具：数据源 = 本机 config（spec 13 换�
         user: s.user,
         reposDir: s.reposDir,
         attachmentsDir: s.attachmentsDir,
+        skillsDir: s.skillsDir,
         mcpConfigPath: p,
       },
       ctx,

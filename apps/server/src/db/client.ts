@@ -32,19 +32,20 @@ export interface OpenedDb {
   close(): void;
 }
 
-export function openDbWithHandle(dbPath: string): OpenedDb {
+export function openDbWithHandle(
+  dbPath: string,
+  opts: { legacyExportDir?: string } = {},
+): OpenedDb {
   if (dbPath !== ':memory:') {
     mkdirSync(dirname(dbPath), { recursive: true });
   }
   const sqlite = new Database(dbPath);
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('foreign_keys = ON');
-  // spec 13（#368）升级护栏：先导出 legacy 表行再 migrate（migration 内含
-  // DROP TABLE）。home 由数据根布局 `<home>/server/server.db` 推导（config.ts
-  // 单源，两级上溯）；:memory: 无遗留面 = 跳过。
-  if (dbPath !== ':memory:') {
-    exportLegacyTables(sqlite, resolve(dirname(dbPath), '..'));
-  }
+  // 升级护栏（spec 13 #367/#368）：退役表（skill / mcp_server）导出必须赶在
+  // migrate 应用 DROP 之前（migrate 一跑表就没了）；触发窗与文件语义见
+  // db/legacy-export.ts。
+  exportLegacyTables(sqlite, opts.legacyExportDir);
   const db = drizzle(sqlite, { schema });
   migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
   return { db, close: () => sqlite.close() };

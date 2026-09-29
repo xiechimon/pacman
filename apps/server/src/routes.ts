@@ -20,10 +20,12 @@ import {
   chiefSendMessageBodySchema,
   createAgentBodySchema,
   createBranchSyncBodySchema,
+  createProjectBodySchema,
   createProviderBodySchema,
   createScheduleBodySchema,
   createTagBodySchema,
   createTodoBodySchema,
+  githubReposResponseSchema,
   type MemoryRecord,
   machineRecordSchema,
   PHASE_VALUES,
@@ -32,9 +34,7 @@ import {
   patchProviderBodySchema,
   phaseSchema,
   planRowSchema,
-  projectRepoKindSchema,
   SKILL_ENTRY_FILE,
-  scanSkillsBodySchema,
   setSecretBodySchema,
   skillRecordSchema,
   startBuildsBodySchema,
@@ -60,7 +60,6 @@ import {
   plan as planTable,
   project,
   provider,
-  skill as skillTable,
   tag,
   todo,
   tokenUsage,
@@ -69,6 +68,7 @@ import {
 import { sha256Hex } from './lib/crypto.js';
 import { conflict, HttpError, notFound, parseWith } from './lib/errors.js';
 import { systemGitOps } from './lib/git.js';
+import { githubUserRepos } from './lib/github.js';
 import { newRecordId, nowMs } from './lib/ids.js';
 import { createApiKey, listApiKeys } from './services/api-keys.js';
 import {
@@ -113,7 +113,9 @@ import {
   slugifyRepoName,
   toProjectRecord,
   uniqueRepoName,
+  validateLocalRepoPath,
 } from './services/git.js';
+import { openGithubToken } from './services/github-connection.js';
 import { isChiefConversation } from './services/machines.js';
 import { handleMcpRequest } from './services/mcp-face.js';
 import { listMcpServers } from './services/mcp-servers.js';
@@ -135,7 +137,13 @@ import {
 import { createSchedule, deleteSchedule, listSchedules } from './services/schedules.js';
 import { search } from './services/search.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './services/secrets.js';
-import { fetchGithubSkillFiles, scanGithubSkills } from './services/skills.js';
+import {
+  filterKnownSkillIds,
+  listSkillFiles,
+  readSkillFile,
+  resolveLocalSkill,
+  scanLocalSkills,
+} from './services/skills.js';
 import { createTodo, deleteTodo, getTodo, listTodos, updateTodo } from './services/todos.js';
 
 /** 会话 cookie 名 [设计]（01 §4.2：httpOnly cookie 自设；品牌槽已随 D3 切换，#109，
@@ -184,16 +192,6 @@ const patchTodoBodySchema = z.object({
       build: assignmentSlotSchema.optional(),
     })
     .optional(),
-});
-
-/** POST /api/projects body [推断]（项目创建流两分支 UI 按 r2 §9 D 组截图为靶，
- * 02 §3；wire 未采）。repoKind 缺省 = 未绑定 repo（M2a 兼容形状）。 */
-const createProjectBodySchema = z.object({
-  name: z.string(),
-  teamId: z.string().optional(),
-  repoKind: projectRepoKindSchema.optional(),
-  /** GitHub 接入 `owner/repo`（repoKind=github 必填）。 */
-  githubRepo: z.string().optional(),
 });
 
 /** PATCH /api/teams/{id}/secrets/{sid} body [推断]（覆盖面 =「保存后只能
@@ -763,7 +761,9 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         thinkingLevel: body.thinkingLevel ?? null,
         tools: body.tools ?? [],
         secrets: body.secrets ?? [],
-        skills: body.skills ?? [],
+        // spec 13 #367：skills[] 校验源 = 本地现扫存在性；未知 id 静默跳过
+        // （目录删除后死引用不留，不报错）。
+        skills: filterKnownSkillIds(ctx.skillsDir, body.skills ?? []),
         mcpServers: body.mcpServers ?? [],
       })
       .run();
@@ -783,6 +783,10 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const row = requireAgentRow(ctx, teamId, c.req.param('aid'));
     const body = parseWith(patchAgentBodySchema, await jsonBody(c), 'body');
     const sets: Partial<typeof row> = {};
+    // spec 13 #367：skills[] 与 create 同律——现扫存在性过滤，未知 id 静默跳过。
+    if (body.skills !== undefined) {
+      sets.skills = filterKnownSkillIds(ctx.skillsDir, body.skills);
+    }
     for (const key of [
       'displayName',
       'description',
@@ -791,7 +795,6 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       'thinkingLevel',
       'tools',
       'secrets',
-      'skills',
       'mcpServers',
     ] as const) {
       if (body[key] !== undefined) {
@@ -837,18 +840,32 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   // —— POST 面 ————————————————————————————————————————————————————————————————
   app.post('/api/projects', async (c) => {
     // [推断] REST 同名（02 §6.1 POST 面未观测；项目创建流两分支 UI 证据 02 §3/r2 §9）。
+    // body 单源 = shared createProjectBodySchema（spec 12 数据契约面 kind /
+    // localPath / githubRepo{owner,repo} + 既有 wire 面 repoKind / githubRepo
+    // 字符串；双名并存 kind 优先，皆缺 = 无 repo 普通项目）。
     const body = parseWith(createProjectBodySchema, await jsonBody(c), 'body');
     const teamId = body.teamId ?? ctx.team.id;
     requireTeam(ctx, teamId);
-    if (
-      body.repoKind === 'github' &&
-      (body.githubRepo === undefined || !isGithubRepoRef(body.githubRepo))
-    ) {
-      throw new HttpError(400, 'invalid body at githubRepo: expected "owner/repo"');
+    const kind = body.kind ?? body.repoKind;
+    let githubRepo: string | null = null;
+    if (kind === 'github') {
+      // 双面归一（对象面 = picker 回填，字符串面 = 手动兜底）→ 同一 400 闸。
+      const ref =
+        typeof body.githubRepo === 'string'
+          ? body.githubRepo
+          : body.githubRepo
+            ? `${body.githubRepo.owner}/${body.githubRepo.repo}`
+            : undefined;
+      if (ref === undefined || !isGithubRepoRef(ref)) {
+        throw new HttpError(400, 'invalid body at githubRepo: expected "owner/repo"');
+      }
+      githubRepo = ref;
     }
+    // local 形态：localPath 三态校验 400 闸（services/git.ts，spec 12 / #359）。
+    const localPath = kind === 'local' ? await validateLocalRepoPath(body.localPath) : null;
     const id = newRecordId();
     let repoName: string | null = null;
-    if (body.repoKind === 'hosted') {
+    if (kind === 'hosted') {
       // 托管形态落地：init 本地 bare repo（02 §3 锁定）。
       repoName = await uniqueRepoName(ctx, teamId, slugifyRepoName(body.name));
       await provisionHostedRepo(ctx, teamId, repoName);
@@ -859,9 +876,10 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         id,
         name: body.name,
         teamId,
-        repoKind: body.repoKind ?? null,
+        repoKind: kind ?? null,
         repoName,
-        githubRepo: body.repoKind === 'github' ? (body.githubRepo ?? null) : null,
+        githubRepo,
+        localPath,
       })
       .run();
     const row = requireProject(ctx, id);
@@ -1093,113 +1111,53 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json({ todos: { total: rows.length, byPhase } });
   });
 
-  // —— 技能面（词表内：GET /api/skills?teamId=、GET teams/{id}/skills/{sid}
-  // (+/file?fileName=)、POST /api/skills 上传；record = shared skillRecordSchema
-  // [推断] 投影，r2 §6.1 表单证据）———————————————————————————————
+  // —— 技能面（spec 13 #367：本地目录现扫只读投影，不入库无缓存；词表内
+  // GET /api/skills?teamId=、GET teams/{id}/skills/{sid}(+/file?fileName=)；
+  // record = shared skillRecordSchema 保形，id = frontmatter name 回落目录名，
+  // teamId = 请求 team 占位。写面（POST 上传 / GitHub scan）已删——
+  // NON_REPLICATED_ENDPOINTS 登记 divergence）————————————————————
   app.get('/api/skills', (c) => {
     const teamId = c.req.query('teamId') ?? ctx.team.id;
     requireTeam(ctx, teamId);
-    const rows = ctx.db.select().from(skillTable).where(eq(skillTable.teamId, teamId)).all();
     return c.json(
-      rows.map((r) =>
+      scanLocalSkills(ctx.skillsDir).map((s) =>
         skillRecordSchema.parse({
-          id: r.id,
-          teamId: r.teamId,
-          name: r.name,
-          description: r.description,
+          id: s.id,
+          teamId,
+          name: s.name,
+          description: s.description,
         }),
       ),
     );
   });
 
-  /** POST /api/skills body [推断]（上传面 wire 未采；r2 §6.1 表单三字段 +
-   * 文件集 = 01 §6 skill 表「含文件内容」投影；SKILL.md 必含校验 = r2 §6.1
-   * 原文「技能文件夹必须包含 SKILL.md」）。 */
-  const createSkillBodySchema = z.object({
-    teamId: z.string().optional(),
-    name: z.string().min(1),
-    description: z.string().nullish(),
-    files: z.record(z.string(), z.string()),
-  });
-  app.post('/api/skills', async (c) => {
-    const body = parseWith(createSkillBodySchema, await jsonBody(c), 'body');
-    const teamId = body.teamId ?? ctx.team.id;
-    requireTeam(ctx, teamId);
-    if (!(SKILL_ENTRY_FILE in body.files)) {
-      throw new HttpError(400, `invalid body at files: ${SKILL_ENTRY_FILE} is required`);
-    }
-    const id = newRecordId();
-    ctx.db
-      .insert(skillTable)
-      .values({
-        id,
-        teamId,
-        name: body.name,
-        description: body.description ?? null,
-        files: body.files,
-      })
-      .run();
-    return c.json(
-      skillRecordSchema.parse({
-        id,
-        teamId,
-        name: body.name,
-        description: body.description ?? null,
-      }),
-      201,
-    );
-  });
-
-  /** POST /api/skills/scan（#223：GitHub 扫描发现半——#201 路线 A，server 首个
-   * 出站 fetch 面；缝 = services/skills.ts → lib/github.ts 薄桥唯一出口，词表
-   * = shared scanSkillsBodySchema/scanSkillsResponseSchema）。body 缺省 path =
-   * scan（候选发现 [{path,name,description}]）；给 path = fetch（文件集与
-   * POST /api/skills body.files 同形，选中后直接喂导入半，#195 语义链）。 */
-  app.post('/api/skills/scan', async (c) => {
-    const body = parseWith(scanSkillsBodySchema, await jsonBody(c), 'body');
-    const teamId = body.teamId ?? ctx.team.id;
-    requireTeam(ctx, teamId);
-    const fetchImpl = ctx.githubFetch ?? fetch;
-    if (body.path !== undefined) {
-      return c.json(await fetchGithubSkillFiles(fetchImpl, body.repo, body.path));
-    }
-    return c.json(await scanGithubSkills(fetchImpl, body.repo));
-  });
-
   app.get('/api/teams/:id/skills/:sid', (c) => {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
-    const row = ctx.db
-      .select()
-      .from(skillTable)
-      .where(and(eq(skillTable.id, c.req.param('sid')), eq(skillTable.teamId, teamId)))
-      .get();
-    if (!row) throw notFound(`skill ${c.req.param('sid')}`);
-    // 封套 [推断]：record + 文件名清单（内容经 /file 逐文件取，01 §6）。
+    const resolved = resolveLocalSkill(ctx.skillsDir, c.req.param('sid'));
+    if (!resolved) throw notFound(`skill ${c.req.param('sid')}`);
+    // 封套 [推断]：record + 文件名清单（内容经 /file 逐文件取，01 §6；
+    // 清单 = 磁盘递归相对路径，spec 13 换源）。
     return c.json({
       ...skillRecordSchema.parse({
-        id: row.id,
-        teamId: row.teamId,
-        name: row.name,
-        description: row.description,
+        id: resolved.skill.id,
+        teamId,
+        name: resolved.skill.name,
+        description: resolved.skill.description,
       }),
-      fileNames: Object.keys(row.files),
+      fileNames: listSkillFiles(resolved.dir),
     });
   });
 
   app.get('/api/teams/:id/skills/:sid/file', (c) => {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
-    const row = ctx.db
-      .select()
-      .from(skillTable)
-      .where(and(eq(skillTable.id, c.req.param('sid')), eq(skillTable.teamId, teamId)))
-      .get();
-    if (!row) throw notFound(`skill ${c.req.param('sid')}`);
+    const resolved = resolveLocalSkill(ctx.skillsDir, c.req.param('sid'));
+    if (!resolved) throw notFound(`skill ${c.req.param('sid')}`);
     const fileName = c.req.query('fileName') ?? SKILL_ENTRY_FILE;
-    const content = row.files[fileName];
-    if (content === undefined) throw notFound(`file ${fileName}`);
-    return c.json({ fileName, content }); // 封套 [推断]
+    const content = readSkillFile(resolved.dir, fileName); // 逃逸/缺位 = null
+    if (content === null) throw notFound(`file ${fileName}`);
+    return c.json({ fileName, content }); // 封套 [推断]；文本投影
   });
 
   // Agent 任务面（词表内；载荷未采 [推断] = assignment 双槽任一指向该 Agent
@@ -1390,6 +1348,35 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     }
   });
 
+  /** GET /api/github/repos?q=（spec 12 / #359：新建项目 repo picker 数据面）。
+   * GitHub `GET /user/repos` 代理——token 取自 github_connection（SecretBox
+   * 密文解封仅在此出站边界，Authorization 头唯一消费位，never 进 URL/日志/
+   * 响应）；未连接 = 404（web 面据此显示「认证 GitHub」入口，spec 12 story 2）。
+   * q = full_name 大小写不敏感子串过滤 [设计]（上游无查询参数面，本地过滤）；
+   * 限流两形经 lib/github.ts 错误映射直透（429/502）。封套单源 = shared
+   * githubReposResponseSchema（spec 12 数据契约）。 */
+  app.get('/api/github/repos', async (c) => {
+    const teamId = c.req.query('teamId') ?? ctx.team.id;
+    requireTeam(ctx, teamId);
+    const token = openGithubToken({ db: ctx.db, box: ctx.secretBox }, teamId);
+    if (token === null) throw notFound('github connection');
+    const fetchImpl = ctx.githubFetch ?? fetch;
+    const repos = await githubUserRepos(fetchImpl, token);
+    const q = c.req.query('q')?.trim().toLowerCase() ?? '';
+    const hits = q === '' ? repos : repos.filter((r) => r.fullName.toLowerCase().includes(q));
+    return c.json(
+      githubReposResponseSchema.parse({
+        repos: hits.map((r) => ({
+          id: r.id,
+          owner: r.owner,
+          name: r.name,
+          full_name: r.fullName,
+          private: r.isPrivate,
+        })),
+      }),
+    );
+  });
+
   app.get('/api/teams/:id/secrets', (c) => {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
@@ -1463,6 +1450,7 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         reposDir: ctx.reposDir,
         attachmentsDir: ctx.attachmentsDir,
         mcpConfigPath: ctx.mcpConfigPath,
+        skillsDir: ctx.skillsDir,
       },
       c.req.raw,
     ),

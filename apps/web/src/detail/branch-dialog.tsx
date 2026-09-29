@@ -8,6 +8,9 @@
 // 同步钮 POST /api/builds/{id}/branch-sync + 订阅 team stream `branch_sync`
 // 事件渲染结果卡（pending/running/synced/failed 四态）。Git tab 仍是 [推断]
 // minimal PR surface，复用同 box。
+// #366：详情路由不再弹此 dialog（右 pane 静止 section 承接，字段件
+// BranchBox/BranchSyncFields/SyncButton 由 right-pane.tsx 共用）；本 dialog
+// 的存活入口 = 看板卡片分支图标。
 
 import type { BranchSyncRecord, BranchSyncStatus, MachineRecord } from '@pacman/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -27,16 +30,14 @@ interface BranchDialogProps {
   open?: boolean;
   info: BranchInfoContent;
   /**
-   * M7 #319：分支对话框接真的 bridge。`buildId` 走 POST/GET 路径段；`teamId`
-   * 走 useMachines 查询键（可省，缺省从 useLiveData() 派生）。
+   * M7 #319：分支对话框接真的 bridge。`buildId` 走 POST/GET 路径段。
    *
    * `buildId` **必须由调用方传**：live 数据层只暴露 { live, teamId }，派生不出
-   * 当前 todo 的 build。两个调用点（todo-detail-page / board-page）各自持
-   * `buildId` / `overlayTodo.latestBuildId` 传入；漏传 = buildId 恒 null =
-   * canSync 恒 false = 同步 tab 永远停在 r7 占位 UI（同步钮不可点）。
+   * 当前 todo 的 build。调用点（board-page）持 `overlayTodo.latestBuildId`
+   * 传入；漏传 = buildId 恒 null = canSync 恒 false = 同步面永远停在 r7
+   * 占位 UI（同步钮不可点）。
    */
   buildId?: string | null;
-  teamId?: string;
   onClose: () => void;
 }
 
@@ -55,29 +56,147 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-export function BranchDialog({
-  info,
-  buildId: buildIdProp,
-  teamId: teamIdProp,
-  open,
-  onClose,
-}: BranchDialogProps) {
+/** 构建分支/目标提交 box（r7 31）——dialog 与详情右 pane 的 分支与 PR
+ *  section（#366）共用。 */
+export function BranchBox({ info }: { info: BranchInfoContent }) {
   const { t } = useI18n();
-  const { live, teamId: liveTeamId } = useLiveData();
-  const teamId = teamIdProp ?? liveTeamId;
-  const buildId = buildIdProp ?? null;
-  const machinesQ = useMachines(teamId, live && open === true);
-  const [tab, setTab] = useState<'sync' | 'git'>('sync');
+  return (
+    <div className="dlg-branch-box">
+      <div className="dlg-branch-row">
+        <span className="dlg-branch-label">{t('构建分支')}</span>
+        <span className="dlg-branch-value">{info.branch}</span>
+        <CopyButton value={info.branch} />
+      </div>
+      <div className="dlg-branch-row">
+        <span className="dlg-branch-label">{t('目标提交')}</span>
+        <span className="dlg-branch-value">{info.commit}</span>
+        <CopyButton value={info.commit} />
+      </div>
+    </div>
+  );
+}
+
+/** Sync-tab field stack（受控件）：box + 目标机器 + 同步目录 + 强制同步 +
+ *  结果卡。dialog（footer 钉同步钮）与右 pane section（inline 同步钮）
+ *  各自持 state 后走同一份字段渲染（#366 抽取，M7 #319 接真行为不变）。 */
+export function BranchSyncFields({
+  info,
+  canSync,
+  machines,
+  selectedMachineId,
+  onMachineId,
+  directory,
+  onDirectory,
+  force,
+  onForce,
+  buildId,
+}: {
+  info: BranchInfoContent;
+  canSync: boolean;
+  machines: MachineRecord[];
+  selectedMachineId: string | null;
+  onMachineId: (id: string) => void;
+  directory: string;
+  onDirectory: (directory: string) => void;
+  force: boolean;
+  onForce: (force: boolean) => void;
+  buildId: string | null;
+}) {
+  const { t } = useI18n();
+  return (
+    <>
+      <BranchBox info={info} />
+      <div className="dlg-form-label">{t('目标机器')}</div>
+      {canSync ? (
+        <MachinePicker
+          machines={machines}
+          selected={selectedMachineId}
+          onSelect={onMachineId}
+          t={t}
+        />
+      ) : (
+        // fixture / fixture 路径占位（r7 31 原始捕获面）
+        <button type="button" className="dlg-machine" disabled>
+          <span className="dlg-machine-dot" />
+          <span className="dlg-machine-name">{info.machine}</span>
+          <ChevronDown width={12} height={12} />
+        </button>
+      )}
+      <div className="dlg-form-label">{t('同步目录')}</div>
+      {canSync ? (
+        <input
+          type="text"
+          className="dlg-dir dlg-dir--input"
+          value={directory}
+          onChange={(event) => onDirectory(event.target.value)}
+          spellCheck={false}
+        />
+      ) : (
+        <div className="dlg-dir">{info.directory}</div>
+      )}
+      <div className="dlg-force">
+        <div className="dlg-force-text">
+          <div className="dlg-form-label">{t('强制同步')}</div>
+          <div className="dlg-force-desc">
+            {t('丢弃代码修改并删除非忽略的未跟踪文件；保留忽略内容。仅本次生效。')}
+          </div>
+        </div>
+        <label className="dlg-toggle" data-on={force}>
+          <input
+            type="checkbox"
+            aria-label={t('强制同步')}
+            checked={force}
+            onChange={(event) => onForce(event.target.checked)}
+          />
+          <span className="dlg-toggle-knob" />
+        </label>
+      </div>
+      {canSync && buildId !== null ? <ResultCard buildId={buildId} t={t} /> : null}
+    </>
+  );
+}
+
+/** 机器默认选派生：info.machine 同名命中优先，否则首台机器，否则 null。 */
+export function defaultMachineId(
+  machines: MachineRecord[],
+  override: string | null,
+  infoMachine: string,
+): string | null {
+  return override ?? machines.find((m) => m.name === infoMachine)?.id ?? machines[0]?.id ?? null;
+}
+
+/** 分支同步面共享状态（#366 抽取）：机器/目录/强制三件 + 默认选派生 +
+ *  canSync。dialog（machines 查询随 open 门控）与右 pane section（挂载即
+ * 查）走同一状态形，避免两处漂移。 */
+export function useBranchSyncState(
+  info: BranchInfoContent,
+  buildId: string | null,
+  machinesEnabled = true,
+) {
+  const { live, teamId } = useLiveData();
+  const machinesQ = useMachines(teamId, live && machinesEnabled);
   const [force, setForce] = useState(false);
   const [machineId, setMachineId] = useState<string | null>(null);
   const [directory, setDirectory] = useState(info.directory);
-
-  // 初始机器默认选：info.machine 同名命中优先，否则首个在线机器，否则 null。
   const machines: MachineRecord[] = machinesQ.data ?? [];
-  const initialMachineId =
-    machineId ?? machines.find((m) => m.name === info.machine)?.id ?? machines[0]?.id ?? null;
+  return {
+    live,
+    machines,
+    selectedMachineId: defaultMachineId(machines, machineId, info.machine),
+    onMachineId: setMachineId,
+    directory,
+    onDirectory: setDirectory,
+    force,
+    onForce: setForce,
+    canSync: buildId !== null && live,
+  };
+}
 
-  const canSync = buildId !== null && live;
+export function BranchDialog({ info, buildId: buildIdProp, open, onClose }: BranchDialogProps) {
+  const { t } = useI18n();
+  const buildId = buildIdProp ?? null;
+  const [tab, setTab] = useState<'sync' | 'git'>('sync');
+  const sync = useBranchSyncState(info, buildId, open === true);
 
   return (
     <DialogShell
@@ -114,13 +233,13 @@ export function BranchDialog({
           <div className="dlg-form-foot">
             <SyncButton
               buildId={buildId}
-              canSync={canSync}
-              machineId={initialMachineId}
-              directory={directory}
+              canSync={sync.canSync}
+              machineId={sync.selectedMachineId}
+              directory={sync.directory}
               refName={info.branch}
               commit={info.commit}
-              force={force}
-              disabled={initialMachineId === null || directory.trim() === ''}
+              force={sync.force}
+              disabled={sync.selectedMachineId === null || sync.directory.trim() === ''}
             />
           </div>
         ) : undefined
@@ -128,79 +247,27 @@ export function BranchDialog({
     >
       {tab === 'sync' ? (
         <div className="dlg-branch-body dlg-branch-body--foot">
-          {box(info, t)}
-          <div className="dlg-form-label">{t('目标机器')}</div>
-          {canSync ? (
-            <MachinePicker
-              machines={machines}
-              selected={initialMachineId}
-              onSelect={setMachineId}
-              t={t}
-            />
-          ) : (
-            // fixture / fixture 路径占位（r7 31 原始捕获面）
-            <button type="button" className="dlg-machine" disabled>
-              <span className="dlg-machine-dot" />
-              <span className="dlg-machine-name">{info.machine}</span>
-              <ChevronDown width={12} height={12} />
-            </button>
-          )}
-          <div className="dlg-form-label">{t('同步目录')}</div>
-          {canSync ? (
-            <input
-              type="text"
-              className="dlg-dir dlg-dir--input"
-              value={directory}
-              onChange={(event) => setDirectory(event.target.value)}
-              spellCheck={false}
-            />
-          ) : (
-            <div className="dlg-dir">{info.directory}</div>
-          )}
-          <div className="dlg-force">
-            <div className="dlg-force-text">
-              <div className="dlg-form-label">{t('强制同步')}</div>
-              <div className="dlg-force-desc">
-                {t('丢弃代码修改并删除非忽略的未跟踪文件；保留忽略内容。仅本次生效。')}
-              </div>
-            </div>
-            <label className="dlg-toggle" data-on={force}>
-              <input
-                type="checkbox"
-                aria-label={t('强制同步')}
-                checked={force}
-                onChange={(event) => setForce(event.target.checked)}
-              />
-              <span className="dlg-toggle-knob" />
-            </label>
-          </div>
-          {canSync && buildId !== null ? <ResultCard buildId={buildId} t={t} /> : null}
+          <BranchSyncFields
+            info={info}
+            canSync={sync.canSync}
+            machines={sync.machines}
+            selectedMachineId={sync.selectedMachineId}
+            onMachineId={sync.onMachineId}
+            directory={sync.directory}
+            onDirectory={sync.onDirectory}
+            force={sync.force}
+            onForce={sync.onForce}
+            buildId={buildId}
+          />
         </div>
       ) : (
         <div className="dlg-branch-body">
-          {box(info, t)}
+          <BranchBox info={info} />
           <div className="dlg-form-label">Pull Request</div>
           <div className="dlg-dir">{t('未创建')}</div>
         </div>
       )}
     </DialogShell>
-  );
-}
-
-function box(info: BranchInfoContent, t: (k: string) => string) {
-  return (
-    <div className="dlg-branch-box">
-      <div className="dlg-branch-row">
-        <span className="dlg-branch-label">{t('构建分支')}</span>
-        <span className="dlg-branch-value">{info.branch}</span>
-        <CopyButton value={info.branch} />
-      </div>
-      <div className="dlg-branch-row">
-        <span className="dlg-branch-label">{t('目标提交')}</span>
-        <span className="dlg-branch-value">{info.commit}</span>
-        <CopyButton value={info.commit} />
-      </div>
-    </div>
   );
 }
 
@@ -259,7 +326,9 @@ function MachinePicker({
   );
 }
 
-function SyncButton({
+/** 同步钮（POST branch-sync）——dialog footer 与右 pane section（#366）
+ *  共用；disabled 律由调用方派生（机器/目录齐备才可点）。 */
+export function SyncButton({
   buildId,
   canSync,
   machineId,

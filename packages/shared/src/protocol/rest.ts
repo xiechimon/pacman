@@ -26,8 +26,17 @@ export const WEB_REST_ENDPOINTS: readonly RestEndpoint[] = [
   { method: 'GET', path: '/api/teams/{id}/notifications', note: '→ {unreadThreadIds}（02 §9.1）' },
   { method: 'GET', path: '/api/teams/{id}/progress' },
   { method: 'GET', path: '/api/teams/{id}/stream', note: 'SSE，见 protocol/sse.ts' },
-  { method: 'GET', path: '/api/teams/{id}/skills/{sid}' },
-  { method: 'GET', path: '/api/teams/{id}/skills/{sid}/file', query: ['fileName'] },
+  {
+    method: 'GET',
+    path: '/api/teams/{id}/skills/{sid}',
+    note: 'spec 13 #367：本地目录现扫投影（sid = frontmatter name 回落目录名）',
+  },
+  {
+    method: 'GET',
+    path: '/api/teams/{id}/skills/{sid}/file',
+    query: ['fileName'],
+    note: 'spec 13 #367：技能目录文件读面（磁盘现读，文本投影）',
+  },
   { method: 'GET', path: '/api/teams/{id}/agents/{aid}' },
   { method: 'GET', path: '/api/teams/{id}/agents/{aid}/tasks' },
   { method: 'GET', path: '/api/teams/{id}/agents/{aid}/memories', note: '02 §4.4/r5 §6 实测' },
@@ -63,7 +72,12 @@ export const WEB_REST_ENDPOINTS: readonly RestEndpoint[] = [
     note: 'plan.md unified diff（02 §4.2/r5 §4）',
   },
   { method: 'GET', path: '/api/schedules', query: ['team'] },
-  { method: 'GET', path: '/api/skills', query: ['teamId'] },
+  {
+    method: 'GET',
+    path: '/api/skills',
+    query: ['teamId'],
+    note: 'spec 13 #367：每次请求现扫本地技能目录，无缓存不入库',
+  },
   { method: 'GET', path: '/api/whats-new', note: '形状保留、内容自选（02 §6.1）' },
   { method: 'GET', path: '/api/search', query: ['q'], note: '⌘K [设计] 自设（02 §6.3）' },
   // —— POST ——
@@ -90,12 +104,6 @@ export const WEB_REST_ENDPOINTS: readonly RestEndpoint[] = [
   { method: 'POST', path: '/api/teams/{id}/mcp-servers' },
   { method: 'POST', path: '/api/teams/{id}/agents', note: '→ 201 {id}（r5 §1/§8 补录）' },
   { method: 'POST', path: '/api/schedules' },
-  { method: 'POST', path: '/api/skills', note: '上传（02 §6.1）' },
-  {
-    method: 'POST',
-    path: '/api/skills/scan',
-    note: 'GitHub 扫描发现半（#223，#201 路线 A；原产品扫描钮 wire 未采——词表外 [设计] 新端点）',
-  },
   { method: 'POST', path: '/api/analytics/first-touch', note: '形状保留、内容自选；可空实现' },
   {
     method: 'POST',
@@ -123,15 +131,17 @@ export const WEB_REST_ENDPOINTS: readonly RestEndpoint[] = [
 
 /** DELETE 面规则（02 §6.1 [推断]）：同名 REST DELETE；资源面 = r2 §6 UI 删除流
  * + chief 组织工具词（r5 §3.1 delete_todos/delete_secrets/delete_agents/
- * unschedule_todo）。不发明新路径；M2 重放补采后收紧。 */
+ * unschedule_todo）。不发明新路径；M2 重放补采后收紧。
+ * skills 已出列（spec 13 #367：技能 = 本地目录只读投影，删除 = 删目录，
+ * 无 REST 删除面）。 */
 export const DELETE_FACE = {
   status: '[推断]',
   rule: 'REST 同名 DELETE（02 §6.1）',
   resources: [
     'teams/{id}/machines', // 移除机器（r3 §1.2 限额弹窗「请移除一台」）
     'teams/{id}/agents', // 删除 Agent（r3 §4 概览按钮）
-    'teams/{id}/skills', // 技能删除流（r2 §6.1）
-    'teams/{id}/mcp-servers', // 卡片更多菜单 编辑/删除（r3 §5.1；spec 13 复刻面已撤管理写面——观测记录保留）
+    'teams/{id}/skills', // 技能删除流（r2 §6.1）；spec 13 #367 复刻面已撤管理写面——观测记录保留
+    'teams/{id}/mcp-servers', // 卡片更多菜单 编辑/删除（r3 §5.1）；spec 13 #368 复刻面已撤管理写面——观测记录保留
     'teams/{id}/agents/{aid}/memories', // 记忆条目卡删除图标（r5 §6 UI 实测；02 §4.4「列表/删除 API 保形」）
     'teams/{id}/providers', // 「可以替换或删除」（r2 §6.5）
     'teams/{id}/secrets', // 「保存后只能覆盖或删除」（r2 §6.3）
@@ -143,11 +153,20 @@ export const DELETE_FACE = {
 /** 复刻不实现的观测端点（divergence 登记，wire diff 白名单化用，04 §1/§3）。
  * /api/push = todos.dev Web Push 订阅上传（r5 §1 实测 400）；R1 终裁：
  * Web Push/VAPID 不进 spec，sw.js push handler 保留文件形状、服务端不投
- * push（02 §9.1、04 §5）。 */
+ * push（02 §9.1、04 §5）。
+ * POST /api/skills = 原产品技能上传面（02 §6.1 观测）；spec 13 #367 裁决
+ * 有意 divergence：技能改本地目录只读投影，写技能 = 往目录放文件，无上传面。
+ * （POST /api/skills/scan 曾为 #223 [设计] 自设端点，非观测词表成员，随
+ * spec 13 直接删除、不入本登记。） */
 export const NON_REPLICATED_ENDPOINTS = [
   {
     method: 'POST',
     path: '/api/push',
     reason: 'Web Push 订阅上传——R1 已裁决有意 divergence（02 §9.1 终裁、04 §5）',
+  },
+  {
+    method: 'POST',
+    path: '/api/skills',
+    reason: '技能上传面——spec 13 #367 裁决：技能 = 本地目录现扫只读投影，无写面',
   },
 ] as const;

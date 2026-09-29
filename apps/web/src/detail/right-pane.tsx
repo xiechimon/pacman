@@ -1,0 +1,227 @@
+// Detail right pane (issue #366): the 488px static column of the 3-pane
+// detail layout (docs/design/todos.dev.md grid `240 | ~730 | 488`). Hosts
+// the doc surface (DocPane plan/changes/diff — the page passes it in) plus
+// the three former head-icon overlay dialogs as static sections:
+// 分支与 PR / Token 用量 / 运行历史 — one section per view, switched by the
+// 方案▾ family type select (overlays/plan-dropdown) every head carries.
+// Taste DNA law honored: still pane content on a hairline-divided plane,
+// never modals; the pane itself abuts the thread column on a 1px seam. Content classes ride the #68 dialog family (dlg-token-* /
+// dlg-history-* / dlg-branch-*) so the captured geometry carries over.
+// Fresh phases (todo/queued/closed — no thread yet) keep the pane at the
+// same 488px with a restrained empty state (#366 修订裁决 3：空占位，不折叠
+// 不隐藏).
+
+import type { ReactNode } from 'react';
+import type { BuildOverlayContent, PaneView, RunHistoryRow } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
+import { BarChart3, Check, Download, History, X } from '../icons/index.js';
+import { type DocTypeLabel, PaneTypeSelect } from '../overlays/plan-dropdown.js';
+import { BranchSyncFields, SyncButton, useBranchSyncState } from './branch-dialog.js';
+import './overlays.css';
+
+/** Type-select props every section head shares (the ✓ row + row set are
+ *  derived from the active view and payload availability). */
+interface PaneSelectProps {
+  view: PaneView;
+  /** Doc-row label — the phase-derived document type (方案|变更). */
+  docLabel: DocTypeLabel;
+  /** Payload present → the three section rows join the dropdown. */
+  sections: boolean;
+  onView: (view: PaneView) => void;
+}
+
+function SectionHead({ icon, select }: { icon: ReactNode; select: PaneSelectProps }) {
+  return (
+    <header className="doc-pane-head">
+      {icon}
+      <PaneTypeSelect
+        view={select.view}
+        docLabel={select.docLabel}
+        sections={select.sections}
+        onView={select.onView}
+      />
+    </header>
+  );
+}
+
+/** Row glyph per run status (r7 32 ring; r8 80 × / check). */
+function RunGlyph({ status }: { status: RunHistoryRow['status'] }) {
+  if (status === 'current') return <span className="dlg-history-ring" />;
+  if (status === 'failed' || status === 'failed-current')
+    return <X width={14} height={14} className="dlg-history-glyph dlg-history-glyph--failed" />;
+  return <Check width={14} height={14} className="dlg-history-glyph dlg-history-glyph--done" />;
+}
+
+function TokenSection({
+  content,
+  select,
+}: {
+  content: BuildOverlayContent;
+  select: PaneSelectProps;
+}) {
+  const { t } = useI18n();
+  const stats = content.token;
+  const rows: Array<[string, string]> = [
+    ['输入', stats.input],
+    ['输出', stats.output],
+    ['缓存读取', stats.cacheRead],
+    ['缓存写入', stats.cacheWrite],
+  ];
+  return (
+    <section className="pane-section">
+      <SectionHead icon={<BarChart3 width={14} height={14} />} select={select} />
+      <div className="pane-section-body">
+        <div className="dlg-token-total">
+          <span className="dlg-token-num">{stats.total}</span>
+          <span className="dlg-token-unit">tokens</span>
+        </div>
+        <div className="dlg-token-model">
+          <span className="dlg-token-model-name">{stats.model}</span>
+          <span className="dlg-token-model-total">{stats.modelTotal}</span>
+        </div>
+        <div className="dlg-token-rows">
+          {rows.map(([label, value]) => (
+            <div key={label} className="dlg-token-row">
+              <span className="dlg-token-label">{t(label)}</span>
+              <span className="dlg-token-value">{value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function HistorySection({
+  content,
+  select,
+}: {
+  content: BuildOverlayContent;
+  select: PaneSelectProps;
+}) {
+  const { t } = useI18n();
+  // The dialog's footer 重跑 was a close-stub (onClick=onClose) — a static
+  // section has nothing to close, and the failed phase's header 重跑
+  // primary already carries the real action, so the section lists rows only.
+  return (
+    <section className="pane-section">
+      <SectionHead icon={<History width={14} height={14} />} select={select} />
+      <div className="pane-section-body">
+        <div className="dlg-history">
+          {content.runs.map((run) => (
+            <div key={run.label} className="dlg-history-row">
+              <RunGlyph status={run.status} />
+              <div className="dlg-history-text">
+                <div className="dlg-history-line">
+                  <span className="dlg-history-label">{t(run.label)}</span>
+                  {(run.status === 'current' || run.status === 'failed-current') && (
+                    <span className="dlg-history-chip">{t('当前')}</span>
+                  )}
+                </div>
+                <div className="dlg-history-meta">{t(run.meta)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BranchSection({
+  content,
+  buildId,
+  select,
+}: {
+  content: BuildOverlayContent;
+  /** Live branch-sync handle (fixture = null → the static r7 31 face). */
+  buildId: string | null;
+  select: PaneSelectProps;
+}) {
+  const { t } = useI18n();
+  const info = content.branch;
+  // The section mounts while its view is active, so the machines query
+  // gates on live alone (the dialog gates on its open flag, #319).
+  const sync = useBranchSyncState(info, buildId);
+  return (
+    <section className="pane-section">
+      <SectionHead icon={<Download width={14} height={14} />} select={select} />
+      <div className="pane-section-body">
+        <div className="dlg-branch-body">
+          <BranchSyncFields
+            info={info}
+            canSync={sync.canSync}
+            machines={sync.machines}
+            selectedMachineId={sync.selectedMachineId}
+            onMachineId={sync.onMachineId}
+            directory={sync.directory}
+            onDirectory={sync.onDirectory}
+            force={sync.force}
+            onForce={sync.onForce}
+            buildId={buildId}
+          />
+          {/* The dialog's Git tab ([推断] minimal PR surface) folds into the
+              section tail — one static column, no sub-tabs. */}
+          <div className="dlg-form-label pane-branch-pr">Pull Request</div>
+          <div className="dlg-dir">{t('未创建')}</div>
+          <div className="pane-branch-foot">
+            <SyncButton
+              buildId={buildId}
+              canSync={sync.canSync}
+              machineId={sync.selectedMachineId}
+              directory={sync.directory}
+              refName={info.branch}
+              commit={info.commit}
+              force={sync.force}
+              disabled={sync.selectedMachineId === null || sync.directory.trim() === ''}
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+interface RightPaneProps extends Omit<PaneSelectProps, 'sections'> {
+  /** Build-scoped section payloads; null = doc surface alone. */
+  content: BuildOverlayContent | null;
+  /** Live branch-sync handle (fixture = null). */
+  buildId: string | null;
+  /** Fresh phase (no thread): the restrained empty state replaces everything. */
+  empty?: boolean;
+  /** The doc-view surface (DocPane), rendered while view === 'doc'. */
+  children?: ReactNode;
+}
+
+export function RightPane({
+  view,
+  docLabel,
+  onView,
+  content,
+  buildId,
+  empty,
+  children,
+}: RightPaneProps) {
+  const { t } = useI18n();
+  const select = (active: PaneView): PaneSelectProps => ({
+    view: active,
+    docLabel,
+    sections: content != null,
+    onView,
+  });
+  return (
+    <aside className="detail-right">
+      {empty ? (
+        <div className="right-empty">{t('尚无运行内容')}</div>
+      ) : content == null || view === 'doc' ? (
+        children
+      ) : view === 'branch' ? (
+        <BranchSection content={content} buildId={buildId} select={select('branch')} />
+      ) : view === 'token' ? (
+        <TokenSection content={content} select={select('token')} />
+      ) : (
+        <HistorySection content={content} select={select('history')} />
+      )}
+    </aside>
+  );
+}

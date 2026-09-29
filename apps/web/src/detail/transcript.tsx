@@ -28,6 +28,10 @@ import { Segments } from './segments.js';
 
 interface TranscriptProps {
   transcript: TranscriptItem[];
+  /** #366: the collapsed plan card's open glyph activates the plan
+   *  document in the right pane (doc view, plan surface). Absent = the
+   *  glyph stays the inert capture form. */
+  onOpenPlan?: () => void;
 }
 
 /** Elapsed label: `Ns` under a minute (r7 21s/19s), `Nm Ns` above
@@ -110,7 +114,7 @@ function Para({ para }: { para: RobotPara }) {
   );
 }
 
-function Row({ item, t }: { item: TranscriptItem; t: TFunc }) {
+function Row({ item, t, onOpenPlan }: { item: TranscriptItem; t: TFunc; onOpenPlan?: () => void }) {
   switch (item.kind) {
     case 'run':
       return (
@@ -238,9 +242,20 @@ function Row({ item, t }: { item: TranscriptItem; t: TFunc }) {
           <div className="chat-plan">
             <FileTab width={14} height={14} />
             <span className="chat-plan-title">{item.title}</span>
-            <span className="chat-plan-open">
-              <ExternalLink width={12} height={12} />
-            </span>
+            {onOpenPlan != null ? (
+              <button
+                type="button"
+                className="chat-plan-open"
+                aria-label={t('打开方案')}
+                onClick={onOpenPlan}
+              >
+                <ExternalLink width={12} height={12} />
+              </button>
+            ) : (
+              <span className="chat-plan-open">
+                <ExternalLink width={12} height={12} />
+              </span>
+            )}
           </div>
           <div className="chat-preview">{item.preview}</div>
           <ActionRow
@@ -350,13 +365,13 @@ function ToolsRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'tools' }
   );
 }
 
-export function Transcript({ transcript }: TranscriptProps) {
+export function Transcript({ transcript, onOpenPlan }: TranscriptProps) {
   const { t } = useI18n();
   return (
     <>
       {transcript.map((item, i) => (
         // fixture order is stable; items carry no ids
-        <Row key={i} item={item} t={t} />
+        <Row key={i} item={item} t={t} onOpenPlan={onOpenPlan} />
       ))}
     </>
   );

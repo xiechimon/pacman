@@ -31,9 +31,7 @@ import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
 // drawer/settings overlays sit beside it in one place.
 import { useI18n } from '../i18n/provider.js';
-import { HelpCircle, Plus, UnfoldVertical } from '../icons/index.js';
-import { BoardGuide } from '../overlays/board-guide.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { Plus, UnfoldVertical } from '../icons/index.js';
 import { Button } from '../ui/button.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
 import { DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
@@ -119,10 +117,6 @@ export function BoardSurface({
       return next;
     });
   }, []);
-  // #149: 看板指南 topbar 钮接真弹层（anchored-overlay 家族律 #67/#127）
-  const [guideOpen, setGuideOpen] = useState(false);
-  const closeGuide = useCallback(() => setGuideOpen(false), []);
-  useEscapeClose(guideOpen, closeGuide);
   // changelog 2026-09-12: the drag affordance is desktop-web only
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -244,23 +238,6 @@ export function BoardSurface({
             <Plus width={13} height={13} />
             {t('任务')}
           </Button>
-          <span className="board-guide-wrap">
-            {/* A4-deep 收编：icon 变体皮肤；.board-guide 是 e2e
-                (dead-buttons) 钉死的别名，28×28 几何 per-face 留在 board.css。 */}
-            <Button
-              variant="icon"
-              className="board-guide"
-              aria-label={t('看板指南')}
-              aria-expanded={guideOpen}
-              onClick={() => setGuideOpen((open) => !open)}
-            >
-              <HelpCircle />
-            </Button>
-            <OverlayMount open={guideOpen}>
-              <ClickCatcher onClose={closeGuide} />
-              <BoardGuide />
-            </OverlayMount>
-          </span>
         </div>
       </header>
 

@@ -69,6 +69,7 @@ Server environment variables (all optional):
 | `PACMAN_HOME` | `~/.pacman` | Data root. Server state lives under `<PACMAN_HOME>/server/` (`server.db`, `secretbox.key`, hosted bare repos); the daemon keeps `machine.json`, `daemon.log`, and `workspaces/` at the root. **Backup = copy the whole directory** — the db alone is useless without the keyfile, since secrets are stored encrypted. |
 | `PACMAN_GITHUB_OAUTH_CLIENT_ID`<br>`PACMAN_GITHUB_OAUTH_CLIENT_SECRET` | unset | Credentials of a self-registered GitHub OAuth App, enabling OAuth provider sign-in. Set both or neither — the server refuses to start on a half-configured pair. |
 | `PACMAN_WEB_DIR` | `apps/web/dist` if present | Override for the SPA static-hosting root; unset with no build output = API-only mode. |
+| `PACMAN_SKILLS_DIR` | `~/.agents/skills` | Skills root. Each immediate subdirectory containing a `SKILL.md` is one skill (id = its frontmatter `name`, falling back to the directory name). Scanned live on every request — skills are never stored in the database; add a skill by dropping a folder in, remove one by deleting the folder. |
 
 Daemon environment variables (alternatives to the CLI flags above): `PACMAN_SERVER` (default `http://127.0.0.1:8787`), `PACMAN_API_KEY`, `PACMAN_TEAM`, `PACMAN_WORKSPACES_DIR` (default `<PACMAN_HOME>/workspaces`).
 

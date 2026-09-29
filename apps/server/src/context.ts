@@ -44,11 +44,17 @@ export interface AppContext {
   reposDir: string;
   /** 附件存储根（#310，r9 §4 wire；`<attachmentsDir>/<teamId>/<id>.<ext>`）。 */
   attachmentsDir: string;
+  /** 技能根目录（spec 13 #367：本地目录现扫只读投影，不入库；缺省 =
+   *  SKILLS_DIR_DEFAULT `~/.agents/skills`，env PACMAN_SKILLS_DIR 覆写，
+   *  config.ts 单源展开）。 */
+  skillsDir: string;
   /** SPA 静态同源托管根（02/A1；= apps/web/dist 产物目录）。null/缺省 =
    *  不托管（纯 API 形态，dev 期 vite proxy 用）。 */
   webDir?: string | null;
-  /** GitHub 出站 fetch 注入位（#223 缝：POST /api/skills/scan →
-   *  services/skills → lib/github 薄桥；缺省 = globalThis.fetch，测试注入 mock）。 */
+  /** GitHub 出站 fetch 注入位（spec 12/#359 缝：GET /api/github/repos →
+   *  routes → lib/github 薄桥；缺省 = globalThis.fetch，测试注入 mock。
+   *  #223 skills scan 曾用同一位，随 spec 13 #367 退役——位保留给 repo
+   *  picker 认证面）。 */
   githubFetch?: FetchLike;
   /** OAuth 握手 state 册（#231：CSRF 防护 + returnOrigin 绑定；TTL 10min
    *  单次核销，services/oauth.ts）。 */

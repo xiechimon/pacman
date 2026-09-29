@@ -7,7 +7,7 @@ description: pacman 行为验证——起隔离 live 栈(server VERIFY_PORT 8791
 
 pacman = todos.dev 复刻(React/vite web + Hono REST/SSE/SQLite server)。本 skill 起一套**隔离实例**(独立端口 + 独立数据根,绝不碰用户真数据 `~/.pacman` 和 8787/5173 上的活跃 dev 栈),用仓库自带的 Playwright chromium 走真用户路径,产出证据后干净回收。脚本全在 `scripts/`,证据与运行态全在 `.claude/` 下(已被 .gitignore 忽略,不进 git)。
 
-Last updated: 2026-09-28(证据归档纪律:证据默认落主仓不再落 worktree + 新增 archive.mjs 归档进 docs/verify/<ticket>/ + 硬规则「无归档路径的 verify 声明视为未验证」——M7 #310/#319 证据随 worktree 丢失实测所致;M7 功能闭环维护:feature map 补 6 个 M7 功能条目 + drive-stop.mjs 修 #318 start dialog 过时 + stub-llm-verify.mjs 修 Node ≥v20 close bug;详见 features/README.md Last updated。建成日 2026-09-25,5 probe 全 PASS;维护走 `/maintain-verification-skill`)
+Last updated: 2026-09-28(#354 spec 11 先行地图:feature map 补三面条目(providers runtime tabs / machines 本机行+switches / 添加服务商 picker)+ 三个先行 probe(drive-providers-tabs / drive-machines-local / drive-provider-picker.mjs)——先行语义(spec 11 A12):实现票落地前红态,FAIL detail 逐条指 spec 条款,实现票验收 = 转绿,详见 features/README.md Last updated;前序同日:证据归档纪律(证据默认落主仓 + archive.mjs 归档进 docs/verify/<ticket>/ + 硬规则「无归档路径的 verify 声明视为未验证」)+ M7 功能闭环维护(feature map 补 6 条 + drive-stop.mjs 修 #318 + stub-llm-verify.mjs 修 Node ≥v20 close bug)。建成日 2026-09-25,5 probe 全 PASS;维护走 `/maintain-verification-skill`)
 
 ## 事实底座(2026-09-25 盘问;feature 面演化后跑 `/maintain-verification-skill` 校正)
 
@@ -77,6 +77,14 @@ REVIEW_MACHINE_TOKEN=<t> node .../scripts/drive-review-blocking.mjs <todoId> <ag
 ```
 
 前置:stub LLM(`scripts/stub-llm-verify.mjs`,门控延迟轮)+ seed(`scripts/setup-review-seed.mjs` 或其变体)+ 真 daemon(`apps/daemon` `pnpm exec tsx src/cli.ts start --foreground`,守门见 stop-button.md Gotchas:6 proxy 全 unset / PACMAN_HOME export 透传 / vite PACMAN_DEV_SERVER_PORT)。
+
+**spec 11 先行 probe**(feature map 先行于实现,A12/#354——实现票落地前**红态**,每条 FAIL detail 指 `docs/spec/11-模型服务与机器本地化.md` 条款,红态输出即实现票验收清单;跑序:tabs(依赖全新库,pi 空态断言)→ picker(e2e 建 provider)→ machines(幂等)):
+
+```sh
+node .../scripts/drive-providers-tabs.mjs    # providers runtime tabs(providers-tabs.md,spec 11 A1-A4/A7)
+node .../scripts/drive-provider-picker.mjs   # 添加服务商 picker(provider-picker.md,spec 11 A5/A6)
+node .../scripts/drive-machines-local.mjs    # machines 本机行+switches(machines-local-row.md,spec 11 A8/A9)
+```
 
 ## Evidence
 

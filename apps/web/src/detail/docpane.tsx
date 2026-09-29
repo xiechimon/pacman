@@ -18,6 +18,11 @@
 // face: plan-version full text lives in the plans table (already loaded
 // by the plans read face), not on the conv branch — it lands in the same
 // DiffFile.fullContent slot in both fixture and live mode, no fetch.
+// #366: the pane moved into the detail route's 488px right column and its
+// 方案▾/变更▾ select became the pane-view picker (doc surface + the three
+// static sections, overlays/plan-dropdown). The head now always renders —
+// it carries that picker, so the empty surfaces keep their way out — and
+// the changes/diff file stack scrolls in .doc-files under the pinned head.
 
 import type { DiffFileContent } from '@pacman/shared';
 import { useState } from 'react';
@@ -28,6 +33,7 @@ import type {
   ChangesContent,
   DiffFile,
   DocBlock,
+  PaneView,
   PlanDiffContent,
   PlanVersion,
 } from '../fixtures/records.js';
@@ -41,8 +47,7 @@ import {
   Restore,
   UnfoldVertical,
 } from '../icons/index.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
-import { PlanDropdown } from '../overlays/plan-dropdown.js';
+import { type DocTypeLabel, PaneTypeSelect } from '../overlays/plan-dropdown.js';
 import { Segments } from './segments.js';
 
 interface DocPaneProps {
@@ -55,6 +60,11 @@ interface DocPaneProps {
   now: number;
   /** Scenario-frozen initial open state of the 方案▾ dropdown (#67). */
   planDropdownOpen?: boolean;
+  /** #366: the type select is the right-pane view picker — picking a
+   *  section row swaps the pane away from this doc surface. */
+  onPaneView: (view: PaneView) => void;
+  /** Build payload present → the dropdown lists the three section rows. */
+  hasSections?: boolean;
   /** Version dropdown rows, newest first (r8 63/70). */
   planVersions?: PlanVersion[];
   /** Open menu on the version chip / range chip (r8 63/64). */
@@ -316,6 +326,8 @@ export function DocPane({
   changes,
   now,
   planDropdownOpen,
+  onPaneView,
+  hasSections,
   planVersions,
   versionMenu,
   onVersionMenu,
@@ -326,9 +338,19 @@ export function DocPane({
   buildId,
 }: DocPaneProps) {
   const { t } = useI18n();
-  const [typeOpen, setTypeOpen] = useState(planDropdownOpen === true);
-  useEscapeClose(typeOpen, () => setTypeOpen(false));
+  // 方案▾/变更▾ 型选钮（#149 接线，#366 升级为右 pane 视图选择器）：
+  // 首行 = 相位派生的文档型（✓，重选即留档面），其后三行 = 静止 section。
+  const typeSelect = (docLabel: DocTypeLabel) => (
+    <PaneTypeSelect
+      view="doc"
+      docLabel={docLabel}
+      sections={hasSections}
+      onView={onPaneView}
+      initiallyOpen={planDropdownOpen}
+    />
+  );
   if (mode === 'changes' || mode === 'diff') {
+    const hasData = mode === 'diff' ? planDiff != null : changes != null;
     const files = mode === 'diff' ? (planDiff?.files ?? []) : (changes?.files ?? []);
     const expanded = mode === 'diff' ? (planDiff?.expanded ?? false) : (changes?.expanded ?? false);
     const fileCount = files.length;
@@ -336,54 +358,36 @@ export function DocPane({
     const removed = files.reduce((sum, f) => sum + (f.removed ?? 0), 0);
     return (
       <section className="doc-pane">
-        {mode === 'changes' && changes == null ? (
-          <div className="doc-empty doc-empty--full">{t('暂无可显示的变更')}</div>
-        ) : (
-          <>
-            <header className="doc-pane-head">
-              <FileTab width={14} height={14} />
-              {/* 变更▾/方案▾ 型选钮（#149 接线）：#67 文档类型选同款族律
-                  ——单选项 listbox（当前类型 ✓），非确认入口；live 面变更
-                  pane 数据本就是真 diff（builds/{id}/changes，#83）。 */}
-              <span className="doc-select-wrap">
-                <button
-                  type="button"
-                  className="doc-pane-select"
-                  aria-expanded={typeOpen}
-                  onClick={() => setTypeOpen((value) => !value)}
-                >
-                  {mode === 'diff' ? t('方案') : t('变更')}
-                  <ChevronDown width={12} height={12} />
-                </button>
-                <OverlayMount open={typeOpen}>
-                  <ClickCatcher onClose={() => setTypeOpen(false)} />
-                  <PlanDropdown
-                    current={mode === 'diff' ? '方案' : '变更'}
-                    onSelect={() => setTypeOpen(false)}
-                  />
-                </OverlayMount>
-              </span>
-              {mode === 'diff' && planDiff != null ? (
-                <VersionControl
-                  range={{ from: planDiff.from, to: planDiff.to }}
-                  planVersions={planVersions}
-                  versionMenu={versionMenu}
-                  now={now}
-                  onVersionMenu={onVersionMenu}
-                  onCompare={onCompare}
-                  onBase={onBase}
-                />
-              ) : (
-                <VersionControl
-                  label={planVersions?.[0]?.v ?? 'v1'}
-                  planVersions={planVersions}
-                  versionMenu={versionMenu}
-                  now={now}
-                  onVersionMenu={onVersionMenu}
-                  onCompare={onCompare}
-                  onBase={onBase}
-                />
-              )}
+        {/* #366: the pane head always renders — it carries the view picker,
+            so the empty surfaces keep their way out; the version chip /
+            stat / toggle only make sense over data. */}
+        <header className="doc-pane-head">
+          <FileTab width={14} height={14} />
+          {typeSelect(mode === 'diff' ? '方案' : '变更')}
+          {hasData &&
+            (mode === 'diff' && planDiff != null ? (
+              <VersionControl
+                range={{ from: planDiff.from, to: planDiff.to }}
+                planVersions={planVersions}
+                versionMenu={versionMenu}
+                now={now}
+                onVersionMenu={onVersionMenu}
+                onCompare={onCompare}
+                onBase={onBase}
+              />
+            ) : (
+              <VersionControl
+                label={planVersions?.[0]?.v ?? 'v1'}
+                planVersions={planVersions}
+                versionMenu={versionMenu}
+                now={now}
+                onVersionMenu={onVersionMenu}
+                onCompare={onCompare}
+                onBase={onBase}
+              />
+            ))}
+          {hasData && (
+            <>
               <span className="doc-changes-stat">
                 {t('· {n} 个文件改动', { n: fileCount })}{' '}
                 <span className="doc-changes-add">+{added}</span>
@@ -392,7 +396,11 @@ export function DocPane({
               <button type="button" className="doc-expand-all" onClick={onToggleExpand}>
                 {expanded ? t('全部收起') : t('全部展开')}
               </button>
-            </header>
+            </>
+          )}
+        </header>
+        {hasData ? (
+          <div className="doc-files">
             {files.map((file) => (
               <DiffFileBlock
                 key={file.path}
@@ -401,7 +409,9 @@ export function DocPane({
                 buildId={mode === 'changes' ? (buildId ?? null) : null}
               />
             ))}
-          </>
+          </div>
+        ) : (
+          <div className="doc-empty doc-empty--full">{t('暂无可显示的变更')}</div>
         )}
       </section>
     );
@@ -409,24 +419,10 @@ export function DocPane({
 
   return (
     <section className="doc-pane">
-      {doc != null && (
-        <header className="doc-pane-head">
-          <FileTab width={14} height={14} />
-          <span className="doc-select-wrap">
-            <button
-              type="button"
-              className="doc-pane-select"
-              aria-expanded={typeOpen}
-              onClick={() => setTypeOpen((value) => !value)}
-            >
-              {t('方案')}
-              <ChevronDown width={12} height={12} />
-            </button>
-            <OverlayMount open={typeOpen}>
-              <ClickCatcher onClose={() => setTypeOpen(false)} />
-              <PlanDropdown onSelect={() => setTypeOpen(false)} />
-            </OverlayMount>
-          </span>
+      <header className="doc-pane-head">
+        <FileTab width={14} height={14} />
+        {typeSelect('方案')}
+        {doc != null && (
           <VersionControl
             label={planVersions?.[0]?.v ?? 'v1'}
             planVersions={planVersions}
@@ -436,8 +432,8 @@ export function DocPane({
             onCompare={onCompare}
             onBase={onBase}
           />
-        </header>
-      )}
+        )}
+      </header>
       <div className="doc-pane-body">
         {doc == null ? (
           <div className="doc-empty">{t('暂无方案')}</div>
