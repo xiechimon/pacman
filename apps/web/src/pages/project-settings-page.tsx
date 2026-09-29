@@ -62,7 +62,7 @@ export function ProjectSettingsPage() {
       : undefined
     : fixture.project;
   return (
-    <PageShell fixture={fixture} selected="project" title="设置">
+    <PageShell fixture={fixture} selected="none" title="设置">
       <div className="page-col page-col--settings prj-set-body">
         {/* r2 24c: the tab group sits in the content column, not the topbar */}
         <div className="prj-set-tabs">

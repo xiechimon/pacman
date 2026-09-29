@@ -8,14 +8,14 @@
 // pass searchPanel={false} + their own onSearch opener; every other shell
 // rides the internal panel, which renders nothing while closed.
 
-import { useCallback, useState } from 'react';
-import { useMachines, useSearchResults, useTodos } from '../api/hooks.js';
+import { useCallback, useMemo, useState } from 'react';
+import { useMachines, useProjects, useSearchResults, useTodos } from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { attentionCount } from './columns.js';
-import { BoardSidebar, type SidebarSelected } from './sidebar.js';
+import { BoardSidebar, type SidebarProject, type SidebarSelected } from './sidebar.js';
 
 export const SIDEBAR_STORAGE_KEY = 'pacman.sidebar-collapsed'; // mirrored in e2e (sidebar-nav / collapse-family specs)
 
@@ -47,6 +47,15 @@ export function AppSidebar({
   const { live, teamId } = useLiveData();
   const todosQ = useTodos(teamId, live);
   const machinesQ = useMachines(teamId, live);
+  // 侧栏项目组 live 收编：行 = live projectsQ 投影（在途/失败 = []，不闪
+  // canon 幻影——空组只留「新建项目」入口）；fixture = scenario projectNames
+  // 投影（缺省 undefined → sidebar 内部回退 canon 单行，capture 面字节不变）。
+  const projectsQ = useProjects(teamId, live);
+  const projects: SidebarProject[] | undefined = useMemo(() => {
+    if (live) return (projectsQ.data ?? []).map((p) => ({ id: p.id, name: p.name }));
+    if (fixture.projectNames == null) return undefined;
+    return Object.entries(fixture.projectNames).map(([id, name]) => ({ id, name }));
+  }, [live, projectsQ.data, fixture.projectNames]);
   const search = useSearchState(false, '');
   // W4 #286：live 面服务端搜索（fixture 面不经此钩）。
   const searchResults = useSearchResults(search.query, live && search.open);
@@ -74,6 +83,7 @@ export function AppSidebar({
         usageNav={fixture.usageNav === true}
         selected={selected}
         machineOnline={machineOnline}
+        projects={projects}
       />
       {searchPanel && (
         <SearchPanel

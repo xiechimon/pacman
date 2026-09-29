@@ -606,7 +606,7 @@ export function ProjectPage() {
       fixture={
         live ? { ...fixture, todos } : { ...fixture, todos: [...fixture.todos, ...fixtureAdded] }
       }
-      selected="project"
+      selected="none"
       leftTitle={project?.name ?? ''}
       tabs={[
         { id: 'tasks', label: '任务' },
