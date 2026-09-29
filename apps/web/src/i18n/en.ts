@@ -533,4 +533,8 @@ export const EN: Record<string, string> = {
   '没有与"{query}"匹配的结果': 'No results matching “{query}”',
   '插入 ({count})': 'Insert ({count})',
   '没有可用的 Agent': 'No Agents available',
+
+  // —— local 项目 Files tab 禁用面 (spec 12 / #362 G2-T2 v1) ——
+  本地仓库项目暂不支持在线浏览文件:
+    'Online file browsing is not available for local repository projects',
 };

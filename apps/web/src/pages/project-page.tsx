@@ -500,11 +500,16 @@ export function ProjectPage() {
           files: (treeQ.data?.entries ?? []).map((e) => e.name),
           repoName: wireProject.repoName ?? wireProject.githubRepo ?? '',
           hosted: wireProject.repoKind === 'hosted',
+          ...(wireProject.repoKind !== undefined ? { repoKind: wireProject.repoKind } : {}),
           defaultBranch: 'main',
           description: null,
         }
       : undefined
     : fixture.project;
+  // local 项目 Files tab 禁用（spec 12 / #362 G2-T2 v1）：文件浏览面读 server
+  // 端裸库（tree/file/commits 端点族 hosted-only），local 形态无该存储面——
+  // 占位 + 一行 disable 文案，详细响应式归后票（spec 12 Out of Scope）。
+  const isLocalRepo = project?.repoKind === 'local';
   // 文件查看器选中态(#202):存 (projectId, path) 对——路由切换项目时
   // 组件不重挂载,旧项目选中不串场。live 读面点击触发 = 天然惰性;非托管
   // 形态 tree 同族 404 无行可点,误点落「文件加载失败」诚实态,不做
@@ -605,12 +610,14 @@ export function ProjectPage() {
       leftTitle={project?.name ?? ''}
       tabs={[
         { id: 'tasks', label: '任务' },
-        { id: 'files', label: '文件' },
+        { id: 'files', label: '文件', disabled: isLocalRepo },
       ]}
       tab={tab}
       onTab={(next) => setTab(next === 'tasks' ? 'tasks' : 'files')}
     >
-      {tab === 'files' ? (
+      {tab === 'files' && isLocalRepo ? (
+        <div className="prj-files-disabled">{t('本地仓库项目暂不支持在线浏览文件')}</div>
+      ) : tab === 'files' ? (
         <div className="prj-files">
           <FilesPane
             branch={project?.branch ?? 'main'}

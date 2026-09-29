@@ -8,7 +8,12 @@
 
 // phase 九值枚举单源 = @pacman/shared（02 §4.1；#65 M1 收口），本地不再定义。
 // GithubRepoSummary = repo picker 行封套单源（spec 12 数据契约，#359）。
-import { type GithubRepoSummary, PHASE_VALUES, type Phase } from '@pacman/shared';
+import {
+  type GithubRepoSummary,
+  PHASE_VALUES,
+  type Phase,
+  type ProjectRepoKind,
+} from '@pacman/shared';
 
 export type { Phase };
 export { PHASE_VALUES };
@@ -189,6 +194,10 @@ export interface ProjectContent {
   repoName: string;
   /** True = the `Pacman 托管` chip rides beside the repo name (r2 24c). */
   hosted: boolean;
+  /** repo 形态（spec 12 三形态，词表单源 = shared ProjectRepoKind；live 面
+   *  = wireProject.repoKind 透传）。local = Files tab 禁用（占位 + 一行
+   *  disable 文案，G2-T2 v1）。 */
+  repoKind?: ProjectRepoKind;
   defaultBranch: string;
   description: string | null;
   /** 历史 segment rows (#149); fixture-frozen, newest first. */

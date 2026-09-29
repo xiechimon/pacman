@@ -11,6 +11,7 @@ import { modelUsageSchema, providerConfigSchema, toolCallRecordSchema } from '..
 import { epochMs, recordId } from '../records/common.js';
 import { machineRecordSchema } from '../records/machine.js';
 import { messageRoleSchema } from '../records/message.js';
+import { PROJECT_REPO_KINDS } from '../records/project.js';
 import { reviewVerdictSchema } from '../records/review.js';
 import { stepRecordSchema } from '../records/step.js';
 import {
@@ -136,12 +137,17 @@ export const claimedStepSchema = z.object({
     .object({
       id: recordId,
       name: z.string(),
-      /** repo 绑定位（M3b worktree 契约接线，02 §3/§5.5）：cloneUrl = 托管
-       * `<origin>/git/<teamId>/<repoName>`（02 §5.8 gitHostDomain 槽本地代位）
-       * 或 GitHub https 派生；null = 项目未绑 repo（工作区退化为裸目录）。 */
+      /** repo 绑定位（M3b worktree 契约接线，02 §3/§5.5 + spec 12 local 形态）：
+       * cloneUrl = 托管 `<origin>/git/<teamId>/<repoName>`（02 §5.8
+       * gitHostDomain 槽本地代位）、GitHub https 派生、或 local 形态的用户仓库
+       * 绝对路径（server 端 validateLocalRepoPath 规范化值——daemon 镜像 clone
+       * 源与 ff-only 落地面同吃该路径，git clone 对本地路径默认走硬链接）；
+       * null = 项目未绑 repo（工作区退化为裸目录）。 */
       repo: z
         .object({
-          kind: z.enum(['hosted', 'github']),
+          // 词表单源 = PROJECT_REPO_KINDS（records/project.ts；新 kind 落地
+          // 即随 wire，免三处散射编辑）。
+          kind: z.enum(PROJECT_REPO_KINDS),
           cloneUrl: z.string(),
         })
         .nullable(),

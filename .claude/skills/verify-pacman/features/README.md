@@ -2,8 +2,9 @@
 
 本目录是 pacman 用户可见行为的验证正源。驱动前先读本索引,再按 feature 文件当配方执行。map 漏掉的入口 = 验证不完整:顺手的入口验过 ≠ 整个 feature 验过。
 
-Last updated: 2026-09-29（#366 详情页 3-pane 重排 + spec 13 #367 技能页只读本地目录面 + spec 13/#368 MCP 本地 config 只读面 + #371 skills 执行面注入 + spec 12/#361 G2-T4 + spec 12/#360 G2-T3 + spec 11/#354 + spec 12/#359 落地连续增）：
+Last updated: 2026-09-29（spec 12/#362 G2-T2 + #366 详情页 3-pane 重排 + spec 13 #367 技能页只读本地目录面 + spec 13/#368 MCP 本地 config 只读面 + #371 skills 执行面注入 + spec 12/#361 G2-T4 + spec 12/#360 G2-T3 + spec 11/#354 + spec 12/#359 落地连续增）：
 
+- spec 12 / #362 G2-T2：补 local 项目 daemon 执行面条目 local-daemon-executor.md（硬链接镜像 clone + conv 分支推回用户仓库 + merge 步 ff-only 落地 + github per-step token argv 纪律 + Files tab 禁用占位）；配方 = integration g2t2-local-lifecycle 等四面，live re-probe 待补。
 - spec 12 / #361 G2-T4：补 GitHub 连接认证 + repo picker 条目 github-oauth-picker.md + 定制 probe `scripts/probe-github-oauth.mjs`（API 段 + chromium UI 段，authorize 双形自适应）；local-repo-api.md 回补 T4 落地指引。
 - #366 详情页 3-pane 重排：branch-sync 入口从头部弹层迁到右 pane 型选→静止 section，drive-branch-sync.mjs 与 integration 判别式同步改道；token/运行历史两弹层退役为右 pane section，仍未铺 live 配方。
 - spec 13 / #367：技能页只读本地目录面——新增 skills-page.md 条目；launch.mjs 增第四隔离轴 PACMAN_SKILLS_DIR=<HOME_DIR>/skills——不隔离会现扫用户真 ~/.agents/skills；「已知未入图面」的管理页清单移除技能。
@@ -63,6 +64,7 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [本地仓库项目与 GitHub 连接(server API 面)](./local-repo-api.md) `POST /api/projects kind=local` 三态校验(live fs+真 git)+旧 hosted 面不回归+`GET /api/github/repos` 未连接 404+github_connection 表形(SQLite 只读);定制 probe `scripts/probe-local-repos.mjs`(spec 12 / #359)。**2026-09-28 live 验 11/11 PASS**。
 - [新建项目表单(web 面)](./project-new-form.md) 菜单两行(GitHub/本地文件夹,hosted 创建入口移除)+名称回填(basename/repo 段,手改不覆盖)+本地路径 400 红色错误行+focus indigo 收编+三条创建链 API/SQLite 双真值;定制 probe `scripts/drive-project-new-form.mjs`(spec 12 / #360;OAuth picker 已落地,见 github-oauth-picker 条目)。
 - [GitHub 连接认证 + repo picker(新建项目)](./github-oauth-picker.md) 未认证 = 认证钮 + 手动兜底;已认证 = picker 弹层(搜索/单选回填/断开);authorize 双形自适应(env 未配 400 内联 / 已配 200 URL 形状);手动兜底建 github 项目全链;定制 probe `scripts/probe-github-oauth.mjs`(spec 12 / #361)。
+- [local 项目 daemon 执行面](./local-daemon-executor.md) 硬链接镜像 clone→worktree→conv 分支 push 回用户仓库→merge 步 ff-only 落地(脏区/非 ff = git 自拒 failed 含原文)+github per-step token 不进 argv(PATH shim 捕获)+Files tab 禁用占位;配方 = `integration/test/g2t2-local-lifecycle.test.ts` 等四面(spec 12 / #362)。live re-probe 待补。
 - [模型服务 runtime tabs(providers 页)](./providers-tabs.md) spec 11 A1-A4/A7 先行地图：tablist pi/Claude Code + `?runtime=` 同步 + header 卡安装态 + pi = custom providers models[] 投影 + model-sources API 双真值 + facade / chevron 负向 (#353/#354)；定制 probe `scripts/drive-providers-tabs.mjs`。**实现票落地前红态**。
 - [机器页本机行 + switches](./machines-local-row.md) spec 11 A8/A9/A7：本机行 server seed (kind='local', name=hostname) 钉首不可删 + per-runtime role=switch 翻转写回 enabledRuntimes (API + SQLite 双真值，幂等) + 添加机器流程不变 + facade / chevron 负向 (#353/#354)；定制 probe `scripts/drive-machines-local.mjs`。**#357 实现落地：15/15 PASS，证据 docs/verify/357/**。
 - [添加服务商 picker dialog](./provider-picker.md) spec 11 A5/A6 先行地图：「新建」开 picker — 页面无 preset 投喂负向 + 搜索客户端过滤 38 项 + 显示名 canon 名称节点等值 (spec 名单) + OAuth 徽标两项 / xai 行负向 + xai oauthLabel 密钥表单正向 + api_key 族密钥表单 + 自定义端点 disclosure 展开现有表单 + 创建链回归护栏 (#353/#354)；定制 probe `scripts/drive-provider-picker.mjs`。**picker 结构实现票落地前红态；创建链段应绿**。

@@ -9,6 +9,7 @@
 import { hostname } from 'node:os';
 import type {
   ClaimedStep,
+  GitCredentials,
   MachineDoneBody,
   MachineStreamEvent,
   MachineSyncCommand,
@@ -22,6 +23,7 @@ import type {
 } from '@pacman/shared';
 import {
   CHIEF_REMOTE_TOOLS,
+  GITHUB_ACCESS_TOKEN_USERNAME,
   isChiefConversationId,
   MAX_CONCURRENT_DEFAULT,
   MCP_MIN_CLI_VERSION,
@@ -71,6 +73,7 @@ import {
 } from './credentials.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { githubCloneUrl, hostedCloneUrl, repoDirFor } from './git.js';
+import { openGithubToken } from './github-connection.js';
 import { canTransitionPhase } from './phase.js';
 import { setTodoPhase } from './todos.js';
 
@@ -796,8 +799,11 @@ function tryClaim(
       .from(project)
       .where(eq(project.id, cand.todoRow.projectId))
       .get();
-    // repo 绑定位（M3b worktree 契约接线，02 §3/§5.5）：托管 = `<origin>/git/
-    // <teamId>/<repoName>`（本地主机代位）；github = https 派生（凭证面归后票）。
+    // repo 绑定位（M3b worktree 契约接线，02 §3/§5.5 + spec 12 G2-T2 三形态）：
+    // 托管 = `<origin>/git/<teamId>/<repoName>`（本地主机代位）；github = https
+    // 派生（执行凭证 = stepToken 从 github_connection 下发）；local = cloneUrl
+    // 即用户仓库绝对路径（validateLocalRepoPath 规范化值——daemon 镜像 clone 源
+    // 与 ff-only 落地面同吃该路径）。
     const repo =
       projectRow?.repoKind === 'hosted' && projectRow.repoName !== null
         ? {
@@ -806,7 +812,9 @@ function tryClaim(
           }
         : projectRow?.repoKind === 'github' && projectRow.githubRepo !== null
           ? { kind: 'github' as const, cloneUrl: githubCloneUrl(projectRow.githubRepo) }
-          : null;
+          : projectRow?.repoKind === 'local' && projectRow.localPath !== null
+            ? { kind: 'local' as const, cloneUrl: projectRow.localPath }
+            : null;
     // worker 步 remoteTools = 记忆三件套（02 §4.4 写路径 / r5 §6：worker 侧
     // 同族工具经 remoteTools 下发，relay 服务端执行；触发 = spec 指令 + Agent
     // 裁量，宿主不做任务结束蒸馏）。MCP 授权端点随载荷（02 §7.1 per-turn 连接）。
@@ -1052,17 +1060,31 @@ export function stepToken(
     : undefined;
   const agentRow =
     stepRow && todoRow ? agentForStep(deps, todoRow, stepRow.kind, stepRow.prompt) : null;
-  // 托管 repo git 凭证 per-step 发行（02 §3 凭证纪律：仅 per-step 注入，手动
-  // fetch 无凭证失败；relay 工具名对照 push_credential，r5 §3.1）。GitHub
-  // 形态凭证面归后票（02 §3 接入形态）。
+  // repo 形态分流 git 凭证（02 §3 凭证纪律：仅 per-step 注入；relay 工具名对照
+  // push_credential，r5 §3.1）：hosted = 一次性 gitAccess key 发行；github =
+  // github_connection token（spec 12 G2-T2 执行凭证面）；local = null（本地
+  // 路径 clone/push 无需凭证）。
   const projectRow = todoRow
     ? deps.db.select().from(project).where(eq(project.id, todoRow.projectId)).get()
     : undefined;
   const git =
     projectRow?.repoKind === 'hosted' && todoRow
       ? issueStepGitCredential(deps, { teamId: todoRow.teamId, stepId })
-      : null;
+      : projectRow?.repoKind === 'github' && todoRow
+        ? githubExecCredential(deps, todoRow.teamId)
+        : null;
   return { provider: toProviderConfig(bundle.provider, agentRow?.provider), env: bundle.env, git };
+}
+
+/** GitHub 执行凭证（spec 12 G2-T2）：connection 行 token → per-step
+ * GitCredentials（basic auth 用户名固定 x-access-token，GitHub 约定；daemon
+ * 消费形 = git.ts gitCredentialEnv，不进 argv / 不落盘）。未连接 = null——
+ * 私有仓匿名 clone/push 的失败原文归 daemon 步 reason，不在 token 端点造错。
+ * 凭证生命周期 = connection 行（非 hosted 族一次性 key；步收尾
+ * revokeStepGitCredential 对该 stepId 无行可删 = no-op）。 */
+function githubExecCredential(deps: MachineDeps, teamId: string): GitCredentials | null {
+  const token = openGithubToken({ db: deps.db, box: deps.box }, teamId);
+  return token !== null ? { username: GITHUB_ACCESS_TOKEN_USERNAME, password: token } : null;
 }
 
 /** provider 行 → wire ProviderConfig（custom http 端点）；无 custom 行回退
