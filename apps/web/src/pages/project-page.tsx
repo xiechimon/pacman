@@ -12,8 +12,6 @@ import type { ProjectFileResponse } from '@pacman/shared';
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router';
 import {
-  useApiMutations,
-  useMembers,
   useProjectCommits,
   useProjectFile,
   useProjects,
@@ -40,6 +38,7 @@ import {
   Search,
 } from '../icons/index.js';
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
+import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { Avatar } from '../ui/avatar.js';
 import { Button } from '../ui/button.js';
@@ -471,17 +470,6 @@ export function ProjectPage() {
   const { live, teamId } = useLiveData();
   const projectsQ = useProjects(teamId, live);
   const todosQ = useTodos(teamId, live);
-  // #305 空态新建入口（与看板新建入口同构）：mutations + 首个 Agent（保存并
-  // 开始的双槽指派，board 同语义——已建屏无开始弹窗，02 §6.2）。
-  const mutations = useApiMutations(teamId);
-  const membersQ = useMembers(teamId, live);
-  const firstAgentId = useMemo(() => {
-    const member = (membersQ.data ?? []).find((m) => m.memberType === 'agent');
-    return member?.actorId ?? null;
-  }, [membersQ.data]);
-  const [newTaskOpen, setNewTaskOpen] = useState(false);
-  // M7 #310 附件 wire：live 创建面 spec 由父持 state,token 才能注入。
-  const [liveSpec, setLiveSpec] = useState('');
   // fixture 面本地新行（board #66 同律）：保存落在客户端集合，页面/侧栏
   // 徽标都吃它；live 面走 mutation + invalidate，不用本地集。
   const [fixtureAdded, setFixtureAdded] = useState<TodoRecord[]>([]);
@@ -528,23 +516,15 @@ export function ProjectPage() {
   const todos = live
     ? (todosQ.data ?? []).map(toDisplayTodo).filter((x) => x.projectId === id)
     : [...fixture.todos, ...fixtureAdded].filter((x) => x.projectId === id);
-  // 保存（#305）：dialog 选中项目优先；未选/查询未决退本页路由项目（空态
-  // 入口长在本项目面上，语义锚 = 路由 id 而非看板的「首项目」）。fixture
-  // 面落 localTodo 本地行（board 同律，approximation：恒 canon projectId）。
-  // spec 15 #394：提交 = 正文单字段；标题 live 面传空串由 server 派生占位，
-  // fixture 面 = localTodo 内同一 shared 规则派生（board 同律）。
-  const createTodo = useCallback(
-    (spec: string, selectedProjectId?: string) => {
-      setNewTaskOpen(false);
-      // 提交后清空 spec,下次打开新建对话框从空开始
-      setLiveSpec('');
-      if (live) {
-        const projectId = selectedProjectId ?? id;
-        if (projectId !== undefined) {
-          mutations.createTodo.mutate({ projectId, spec });
-        }
-        return;
-      }
+  // 新建任务面：dialog 接线 = useNewTaskSurface（board/侧栏全局面同一 save
+  // 路径）。本页差异走 hook 参数位——fixture 落点 = fixtureAdded 本地行
+  // append（seqNum 基线 = scenario 集 + 已加行；canon projectId
+  // approximation 同 #176 律）；锚 = 路由项目 id（#305 律：选择器行置首、
+  // 保存缺省锚本页、不建默认项目）；提及面 = 空 picker；members eager
+  // （保存并开始点击时吃 firstAgentId）。spec 15 #394 同律：提交 = 正文
+  // 单字段，标题 live 面 wire 空串 server 派生、fixture 面 localTodo 内派生。
+  const onFixtureSave = useCallback(
+    (spec: string) => {
       setFixtureAdded((prev) => [
         ...prev,
         localTodo(
@@ -554,54 +534,14 @@ export function ProjectPage() {
         ),
       ]);
     },
-    [live, id, mutations.createTodo, fixture],
+    [fixture],
   );
-  // 保存并开始（r2 §4.2 双钮语义，board 同构）：创建 → POST builds（withPlan，
-  // 首 Agent 双槽指派 [设计]）。fixture 面 = 同保存。
-  const createAndStart = useCallback(
-    (spec: string, selectedProjectId?: string) => {
-      setNewTaskOpen(false);
-      // 提交后清空 spec,下次打开新建对话框从空开始
-      setLiveSpec('');
-      if (!live) {
-        createTodo(spec);
-        return;
-      }
-      const projectId = selectedProjectId ?? id;
-      if (projectId === undefined) return;
-      mutations.createTodo.mutate(
-        { projectId, spec },
-        {
-          onSuccess: (created) =>
-            mutations.startBuilds.mutate({
-              projectId,
-              todoIds: [created.id],
-              assignment: {
-                plan: firstAgentId ? { agentId: firstAgentId } : null,
-                build: firstAgentId ? { agentId: firstAgentId } : null,
-              },
-              withPlan: true,
-            }),
-        },
-      );
-    },
-    [live, createTodo, id, mutations.createTodo, mutations.startBuilds, firstAgentId],
-  );
-  // #305 dialog 项目行：live = projectsQ 投影、当前项目置首（dialog 未动
-  // 选择的默认行 = rows[0]，即本项目——空态入口的语义锚）；fixture =
-  // scenario projectNames（缺省 undefined → dialog 退 canon 单默认项目，
-  // #176 同律）。
-  const dialogProjects = useMemo(() => {
-    const currentFirst = (rows: { id: string; name: string }[]) => [
-      ...rows.filter((row) => row.id === id),
-      ...rows.filter((row) => row.id !== id),
-    ];
-    if (live) return currentFirst((projectsQ.data ?? []).map((p) => ({ id: p.id, name: p.name })));
-    if (fixture.projectNames == null) return undefined;
-    return currentFirst(
-      Object.entries(fixture.projectNames).map(([pid, name]) => ({ id: pid, name })),
-    );
-  }, [live, projectsQ.data, fixture.projectNames, id]);
+  const { openDialog: openNewTask, dialogProps: newTaskDialogProps } = useNewTaskSurface(fixture, {
+    onFixtureSave,
+    anchorProjectId: id,
+    mentions: false,
+    eager: true,
+  });
   return (
     <PageShell
       fixture={
@@ -610,7 +550,7 @@ export function ProjectPage() {
       selected="none"
       leftTitle={project?.name ?? ''}
       // #389: N 热键/侧栏行走本页 dialog（保存锚路由项目，#305 律）
-      onNewTask={() => setNewTaskOpen(true)}
+      onNewTask={openNewTask}
       tabs={[
         { id: 'tasks', label: '任务' },
         { id: 'files', label: '文件', disabled: isLocalRepo },
@@ -649,45 +589,10 @@ export function ProjectPage() {
           )}
         </div>
       ) : (
-        <TasksPane
-          todos={todos}
-          now={live ? Date.now() : fixture.now}
-          onNewTask={() => setNewTaskOpen(true)}
-        />
+        <TasksPane todos={todos} now={live ? Date.now() : fixture.now} onNewTask={openNewTask} />
       )}
-      <NewTaskDialog
-        open={newTaskOpen}
-        onClose={() => setNewTaskOpen(false)}
-        onSave={createTodo}
-        onSaveAndStart={live ? createAndStart : undefined}
-        projects={dialogProjects}
-        {...(live
-          ? {
-              spec: liveSpec,
-              onSpecChange: setLiveSpec,
-              onAttachment: async (files: File[]) => {
-                // #310 三步 wire（r9 §3.1）：每个文件走 grant + upload，
-                // 失败仅记日志不发（用户继续编辑 spec,已发成功的 token 仍
-                // 落入）；token 拼到 spec。多文件按选序拼接，每个 token 占
-                // 独立行（与 detail-page composer / board-page 行为一致）。
-                const tokens: string[] = [];
-                for (const file of files) {
-                  try {
-                    const { attachFile } = await import('../api/attachments.js');
-                    const r = await attachFile({ file, scope: 'spec' });
-                    tokens.push(r.token);
-                  } catch (err) {
-                    console.error('attachment failed', file.name, err);
-                  }
-                }
-                if (tokens.length > 0) {
-                  const joiner = liveSpec === '' || liveSpec.endsWith('\n') ? '' : '\n';
-                  setLiveSpec(`${liveSpec}${joiner}${tokens.join('\n')}\n`);
-                }
-              },
-            }
-          : {})}
-      />
+      {/* dialog 接线 = useNewTaskSurface，本页差异参数位见上方 hook 调用。 */}
+      <NewTaskDialog {...newTaskDialogProps} />
     </PageShell>
   );
 }

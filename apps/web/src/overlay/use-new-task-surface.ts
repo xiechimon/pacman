@@ -7,10 +7,14 @@
 // searchPanel/#129 override precedent).
 // #394 (spec 15) 重塑：提交 = 正文单字段 + 项目 id（无标题/标签——标题
 // server 派生占位、agent 回填；标签固定词表），本 hook 同形。
+// #404：project 页同吃本面——差异显式参数化：anchorProjectId = 路由项目
+// 锚（选择器行置首 + 保存缺省解析），mentions 闸 = 提及数据面有无
+// （project 页无此面；machines/skills 查询随闸）。
 // Query discipline: todos/projects were already eager on every shell
 // (deduped TQ keys — zero new traffic); members/skills/machines stay eager
 // only for the board (its card-level 开始 eats firstAgentId before any
-// dialog opens) and gate on the dialog's open state everywhere else.
+// dialog opens) and gate on the dialog's open state everywhere else——
+// project 页 members 同 eager（保存并开始点击时吃 firstAgentId）。
 
 import type { TodoRecord as WireTodo } from '@pacman/shared';
 import { useCallback, useMemo, useState } from 'react';
@@ -39,6 +43,16 @@ interface NewTaskSurfaceOpts {
   /** fixture 面保存落点（board = 本地卡 append，#66 律；参数 = 正文，标题
    *  由 localTodo 按 shared 规则派生——#394 同律）。缺省 = 仅关 dialog。 */
   onFixtureSave?: (spec: string) => void;
+  /** 页面锚定项目（#404 project 页 = 路由项目 id，#305 律）：dialog 项目
+   *  选择器行把它置首（未动选择的默认行 = rows[0]，提交锚定本页项目而非
+   *  首项目）；live 保存缺省解析 = 选中 ?? 锚 ?? 首项目——锚恒在位时下方
+   *  「无项目建默认项目」分支不可达。缺省 = board/全局面语义（首项目，
+   *  空集建默认项目，#176/#83 律）。 */
+  anchorProjectId?: string;
+  /** 提及 picker 数据面（#311）：缺省 true = live hooks / fixture 派生
+   *  全集；false = 不传 mentionGroups（picker 空集）且 machines/skills
+   *  查询随闸（project 页面）。 */
+  mentions?: boolean;
 }
 
 export interface NewTaskSurface {
@@ -51,7 +65,13 @@ export interface NewTaskSurface {
 }
 
 export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts = {}) {
-  const { fixtureTodos: fixtureTodosOpt, eager = false, onFixtureSave } = opts;
+  const {
+    fixtureTodos: fixtureTodosOpt,
+    eager = false,
+    onFixtureSave,
+    anchorProjectId,
+    mentions = true,
+  } = opts;
   const { live, teamId } = useLiveData();
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -63,8 +83,10 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
   // board 传 eager 保持原 eager 行为字节不变。
   const dataOn = live && (eager || open);
   const membersQ = useMembers(teamId, dataOn);
-  const machinesQ = useMachines(teamId, dataOn);
-  const skillsQ = useSkills(teamId, dataOn);
+  // machines/skills 仅提及面消费（#311）——mentions=false 的面（project）
+  // 不发请求。
+  const machinesQ = useMachines(teamId, dataOn && mentions);
+  const skillsQ = useSkills(teamId, dataOn && mentions);
   const mutations = useApiMutations(teamId);
 
   // M7 #310 附件：live 创建面把 spec 提到此处,附件 token 才能注入。
@@ -87,8 +109,10 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
       // 提交后清空 spec,下次打开新建对话框从空开始
       setLiveSpec('');
       if (live) {
-        // #176: dialog 选中项目优先;未选(空集/查询未决)退首行真值
-        const projectId = selectedProjectId ?? projectsQ.data?.[0]?.id;
+        // #176: dialog 选中项目优先;未选(空集/查询未决)退首行真值。
+        // #404: 锚定页（project）退路由项目 id——锚恒在位 ⇒ 下方「无项目
+        // 建默认项目」分支不可达（board/全局面无锚，原样可达）。
+        const projectId = selectedProjectId ?? anchorProjectId ?? projectsQ.data?.[0]?.id;
         if (projectId) {
           mutations.createTodo.mutate({ projectId, spec });
           return;
@@ -105,7 +129,15 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
       }
       onFixtureSave?.(spec);
     },
-    [live, projectsQ.data, mutations.createTodo, mutations.createProject, onFixtureSave, t],
+    [
+      live,
+      projectsQ.data,
+      mutations.createTodo,
+      mutations.createProject,
+      onFixtureSave,
+      anchorProjectId,
+      t,
+    ],
   );
 
   // 保存并开始（r2 §4.2 双钮语义，M5 live）：创建 → POST builds（withPlan，
@@ -135,7 +167,7 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
               }),
           },
         );
-      const projectId = selectedProjectId ?? projectsQ.data?.[0]?.id;
+      const projectId = selectedProjectId ?? anchorProjectId ?? projectsQ.data?.[0]?.id;
       if (projectId) start(projectId);
       else
         mutations.createProject.mutate(
@@ -150,6 +182,7 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
       mutations.startBuilds,
       mutations.createProject,
       projectsQ.data,
+      anchorProjectId,
       firstAgentId,
       t,
     ],
@@ -181,11 +214,27 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
   // #176 新建任务 dialog 项目选择器数据位:live = projectsQ 真值投影
   // (undefined = 查询未决);fixture = scenario projectNames(缺省 =
   // undefined → dialog 退 canon 单默认项目)。选择是纯表单 state。
+  // #404 锚定页（project）：live 未决退空集（不退 canon 幻影行），锚行
+  // 置首——dialog 未动选择的默认行 = rows[0] = 本页路由项目（#305 律，
+  // fixture 面同律）。
   const projectRows = useMemo(() => {
-    if (live) return projectsQ.data?.map((p) => ({ id: p.id, name: p.name }));
-    if (fixture.projectNames == null) return undefined;
-    return Object.entries(fixture.projectNames).map(([id, name]) => ({ id, name }));
-  }, [live, projectsQ.data, fixture.projectNames]);
+    let rows: { id: string; name: string }[] | undefined;
+    if (live) {
+      rows =
+        anchorProjectId === undefined
+          ? projectsQ.data?.map((p) => ({ id: p.id, name: p.name }))
+          : (projectsQ.data ?? []).map((p) => ({ id: p.id, name: p.name }));
+    } else if (fixture.projectNames != null) {
+      rows = Object.entries(fixture.projectNames).map(([id, name]) => ({ id, name }));
+    }
+    if (rows !== undefined && anchorProjectId !== undefined) {
+      rows = [
+        ...rows.filter((row) => row.id === anchorProjectId),
+        ...rows.filter((row) => row.id !== anchorProjectId),
+      ];
+    }
+    return rows;
+  }, [live, projectsQ.data, fixture.projectNames, anchorProjectId]);
 
   // #311 mention picker groups: the new-task dialog needs the same entity
   // set the composer surfaces. Live pulls the canonical REST hooks; fixture
@@ -254,7 +303,7 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
     onSaveAndStart: live ? createAndStart : undefined,
     projects: projectRows,
     ...(live ? { spec: liveSpec, onSpecChange: setLiveSpec, onAttachment } : {}),
-    mentionGroups,
+    ...(mentions ? { mentionGroups } : {}),
   };
   return { openDialog, firstAgentId, dialogProps };
 }
