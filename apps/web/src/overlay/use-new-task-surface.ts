@@ -103,16 +103,20 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
   // spec 15 #394：提交 = 正文单字段。标题不再采集——live 面 wire 上 title
   // 恒空串由 server 派生占位（首行截断），agent 接单后回填；fixture 面 =
   // onFixtureSave → localTodo 内同一 shared 规则派生。
+  // 保存缺省解析（#176 + #404 参数位）：dialog 选中项目优先；未选（空集/
+  // 查询未决）退锚定页路由项目（project），再退首行真值。锚恒在位 ⇒ 两
+  // 保存路径的「无项目建默认项目」分支不可达（board/全局面无锚，原样可达）。
+  const resolveProjectId = useCallback(
+    (selectedProjectId?: string) => selectedProjectId ?? anchorProjectId ?? projectsQ.data?.[0]?.id,
+    [anchorProjectId, projectsQ.data],
+  );
   const createTodo = useCallback(
     (spec: string, selectedProjectId?: string) => {
       setOpen(false);
       // 提交后清空 spec,下次打开新建对话框从空开始
       setLiveSpec('');
       if (live) {
-        // #176: dialog 选中项目优先;未选(空集/查询未决)退首行真值。
-        // #404: 锚定页（project）退路由项目 id——锚恒在位 ⇒ 下方「无项目
-        // 建默认项目」分支不可达（board/全局面无锚，原样可达）。
-        const projectId = selectedProjectId ?? anchorProjectId ?? projectsQ.data?.[0]?.id;
+        const projectId = resolveProjectId(selectedProjectId);
         if (projectId) {
           mutations.createTodo.mutate({ projectId, spec });
           return;
@@ -129,15 +133,7 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
       }
       onFixtureSave?.(spec);
     },
-    [
-      live,
-      projectsQ.data,
-      mutations.createTodo,
-      mutations.createProject,
-      onFixtureSave,
-      anchorProjectId,
-      t,
-    ],
+    [live, resolveProjectId, mutations.createTodo, mutations.createProject, onFixtureSave, t],
   );
 
   // 保存并开始（r2 §4.2 双钮语义，M5 live）：创建 → POST builds（withPlan，
@@ -167,7 +163,7 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
               }),
           },
         );
-      const projectId = selectedProjectId ?? anchorProjectId ?? projectsQ.data?.[0]?.id;
+      const projectId = resolveProjectId(selectedProjectId);
       if (projectId) start(projectId);
       else
         mutations.createProject.mutate(
@@ -181,8 +177,7 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
       mutations.createTodo,
       mutations.startBuilds,
       mutations.createProject,
-      projectsQ.data,
-      anchorProjectId,
+      resolveProjectId,
       firstAgentId,
       t,
     ],
