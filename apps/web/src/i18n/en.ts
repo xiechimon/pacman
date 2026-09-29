@@ -48,26 +48,6 @@ export const EN: Record<string, string> = {
 
   // —— board surface (r2 §4.1, r7 01/02) ——
   任务: 'Todo', // topbar +任务 button / search nav row / popover section
-  看板指南: 'Board guide',
-  // guide popover content (#149; [设计] copy — the official guide panel's
-  // content was never captured, free-content precedent = whats-new)
-  列语义: 'Columns',
-  关口操作: 'Gates',
-  快速跳转: 'Quick jump',
-  '已创建、尚未启动的任务在此排队': 'Created tasks queue here until they start',
-  'Agent 正在起草方案，进详情页可实时查看':
-    'The agent is drafting the plan — open the task to watch it live',
-  '方案就绪：确认后开工，或提出修改意见':
-    'Plan ready — confirm to start the work, or ask for changes',
-  'Agent 正在执行；失败与待回复的任务钉在列首':
-    'The agent is executing; failed and awaiting-reply tasks stay pinned to the top',
-  '执行完成：审查变更后验收合并': 'Work done — review the changes, then accept to merge',
-  '已合并收尾；重开可发起新一轮': 'Merged and closed; reopen to start a new round',
-  '待确认 → 确认方案，或在输入框提出修改':
-    'To confirm — approve the plan, or send changes from the composer',
-  '待验收 → 审查变更，验收即合并': 'To review — inspect the changes; accepting merges the branch',
-  '失败 → 重跑，可复用已有方案': 'Failed — rerun, optionally reusing the existing plan',
-  '打开全局搜索，直达任务与资源': 'Open global search to jump to tasks and resources',
   待开始: 'To start',
   规划中: 'Planning',
   待确认: 'To confirm',
@@ -284,11 +264,17 @@ export const EN: Record<string, string> = {
   项目名称: 'Project name',
   仓库: 'Repo',
   选择仓库: 'Select repo',
-  // #305 repo 选择面（r2 07b/07c canon 文案）：两行 = create 端点的两种
-  // repo 形态（02 §3）。
-  '新的 Todos 托管仓库': 'New Todos hosted repo',
+  // #360（spec 12）repo 选择面两行：GitHub 仓库 / 本地文件夹（hosted 行
+  // 创建入口移除；下方「Pacman 托管」= 存量 hosted 项目的设置面显示键，
+  // 与本表无关，保留）。
   'GitHub 仓库': 'GitHub repo',
+  本地文件夹: 'Local folder',
   创建项目: 'Create project',
+  // #360 本地路径校验错误行：server validateLocalRepoPath 400 reason 的
+  // 三态分类文案；未分类 reason 原文直透（不进词典）。
+  路径不存在: 'Path not found',
+  '不是 git 仓库': 'Not a git repository',
+  需要绝对路径: 'Absolute path required',
   基本信息: 'Basic info',
   标签: 'Tags',
   'Pacman 托管': 'Pacman hosted',
@@ -518,9 +504,11 @@ export const EN: Record<string, string> = {
   '模型（可选）': 'Models (optional)',
   '模型 ID': 'Model ID',
   添加模型: 'Add model',
-  // #231 OAuth 连接订阅段(族表单源 = shared OAUTH_FAMILIES;品牌名不译)
-  连接订阅: 'Connect a subscription',
-  或添加自定义网关: 'or add a custom gateway',
+  // #355 picker 形态(spec 11 §A6;preset 显示名 = 品牌串不译,OAuth 徽标
+  // 同为英文字面)
+  '搜索服务商...': 'Search providers...',
+  自定义端点: 'Custom endpoint',
+  // #231/#243 OAuth 落地 reason 三译(providers-page 喂 connectError 行)
   '授权已被取消。': 'Authorization was cancelled.',
   '令牌交换失败，请稍后重试。': 'Token exchange failed — please try again.',
   '连接已过期，请重新发起。': 'Connection expired — please start it again.',
