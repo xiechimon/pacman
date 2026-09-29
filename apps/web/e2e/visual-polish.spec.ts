@@ -7,11 +7,11 @@ import { expect, type Page, test } from '@playwright/test';
 // layer separation; the board scroller's track stays hidden
 // (scrollbar-width: none + ::-webkit-scrollbar display: none) — #351 turned
 // it into an even 4-column grid with no desktop horizontal scroll.
-// Issue #139 acceptance (边框体系统一):
-// the board card family and the account popover share ONE single-source edge
-// recipe — a 1px inset box-shadow ring in the --border-default scale (no real
-// CSS border: at fractional page zoom a 1px border lands on fractional device
-// pixels and rasterizes unevenly), 12px radius, popover-tier soft shadow.
+// Issue #139 acceptance (边框体系统一) — 看板面已随 #414 切到 B 面配方：
+// the board card family now rides shadcn's border recipe (1px real border in
+// the --border scale + 12px radius + shadow-sm); the #139 inset ring +
+// --card-shadow stack still holds on the not-yet-migrated surfaces (the
+// notify banner), which is what the banner test pins.
 // Issue #161 acceptance (卡片阴影/边框统一): the small-card family (todo /
 // notify banner / column container) shares a tighter card-tier shadow
 // (--card-shadow) so the cards read as grounded instead of floating;
@@ -32,12 +32,16 @@ async function edgeContract(page: Page, selector: string) {
     cardShadowProbe.style.boxShadow = 'var(--card-shadow)';
     const edgeShadowProbe = document.createElement('div');
     edgeShadowProbe.style.boxShadow = 'var(--edge-shadow)';
-    document.body.append(ringProbe, colorProbe, cardShadowProbe, edgeShadowProbe);
+    const borderTokenProbe = document.createElement('div');
+    borderTokenProbe.style.backgroundColor = 'var(--border)';
+    document.body.append(ringProbe, colorProbe, cardShadowProbe, edgeShadowProbe, borderTokenProbe);
     const cs = getComputedStyle(el);
     const out = {
       shadow: cs.boxShadow,
       ring: getComputedStyle(ringProbe).boxShadow,
       borderColor: getComputedStyle(colorProbe).backgroundColor,
+      borderToken: getComputedStyle(borderTokenProbe).backgroundColor,
+      borderColorOwn: cs.borderTopColor,
       cardShadow: getComputedStyle(cardShadowProbe).boxShadow,
       edgeShadow: getComputedStyle(edgeShadowProbe).boxShadow,
       radius: cs.borderTopLeftRadius,
@@ -47,6 +51,7 @@ async function edgeContract(page: Page, selector: string) {
     colorProbe.remove();
     cardShadowProbe.remove();
     edgeShadowProbe.remove();
+    borderTokenProbe.remove();
     return out;
   });
 }
@@ -59,17 +64,12 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/app?scenario=01');
 
     const card = await edgeContract(page, '.todo-card');
-    // no real border — the ring is a shadow spread so fractional zoom
-    // (110%/125%/150%) keeps a uniform hairline on every edge
-    expect(card.border).toBe('0px');
+    // #414（B 面）：边缘语言由 #139 的 1px inset 环换成 1px 实描边 +
+    // shadow-sm（shadcn 卡片配方）——inset 环的分数缩放顾虑随环一起退场
+    expect(card.border).toBe('1px');
     expect(card.radius).toBe('12px');
-    // the surface's shadow stack opens with the single-source ring, and the
-    // ring color is the --border-default scale of this theme
-    expect(card.shadow.startsWith(card.ring)).toBe(true);
-    expect(card.ring.startsWith(`${card.borderColor} `)).toBe(true);
-    // #161: the small-card tier rides --card-shadow (lighter than the
-    // popover-tier --edge-shadow) so the card reads as grounded, not floating
-    expect(card.shadow).toContain(card.cardShadow);
+    expect(card.borderColorOwn).toBe(card.borderToken);
+    expect(card.shadow).not.toContain('inset');
   });
 
   test(`board column container rides the same edge ring + card-tier shadow (${theme})`, async ({
@@ -79,14 +79,12 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/app?scenario=01');
 
     const column = await edgeContract(page, '.board-column');
-    // #161 通知条↔看板列边框对齐: the column container adopts the unified
-    // edge recipe — same inset ring, same 12px radius, same card-tier shadow
-    // as the banner and the todo card. The seam between them is continuous
-    expect(column.border).toBe('0px');
+    // #414（B 面）：列容器与卡片同行——1px 实描边 + 12px 圆角 + shadow-sm；
+    // 通知条仍是旧的 inset 环配方（未迁面，见 board.css 残留层）
+    expect(column.border).toBe('1px');
     expect(column.radius).toBe('12px');
-    expect(column.shadow.startsWith(column.ring)).toBe(true);
-    expect(column.ring.startsWith(`${column.borderColor} `)).toBe(true);
-    expect(column.shadow).toContain(column.cardShadow);
+    expect(column.borderColorOwn).toBe(column.borderToken);
+    expect(column.shadow).not.toContain('inset');
   });
 
   test(`notify banner rides the same edge ring + card-tier shadow (${theme})`, async ({

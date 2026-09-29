@@ -220,7 +220,7 @@ export function BoardSurface({
     <div
       className={`board-main relative flex min-w-0 flex-1 flex-col bg-background ${banner == null ? '' : 'board-main--banner'}`}
     >
-      <header className="board-topbar relative flex h-11 flex-none items-center border-b border-border">
+      <header className="board-topbar relative flex h-11 flex-none items-center border-b border-[var(--border-default)]">
         <div className="board-topbar-title pointer-events-none absolute inset-x-0 text-center text-sm leading-[22px] font-medium text-foreground">
           {t('工作台')}
         </div>
@@ -260,7 +260,7 @@ export function BoardSurface({
             return (
               <section
                 key={column.id}
-                className="board-column relative flex h-full flex-col rounded-xl border border-border bg-column"
+                className="board-column relative flex h-full flex-col rounded-[12px] border border-border bg-column"
                 aria-label={t(column.name)}
                 data-column={column.id}
                 data-drop={dropColumnId === column.id ? 'true' : undefined}

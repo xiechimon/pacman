@@ -145,7 +145,10 @@ const groupAria = (t: TFunc, label: string, collapsed: boolean) =>
  *  B 面 hover/selected = --sidebar-hover/--sidebar-active（neutral alpha 梯）。
  *  focus 环走 B 的 ring（全局 indigo outline 在 app.css，本族显式覆盖）。 */
 const ROW_BASE =
-  'relative flex w-full flex-none items-center text-left text-[13px] leading-4 text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-[2px] before:rounded-md before:content-[""] hover:before:bg-sidebar-hover focus-visible:ring-2 focus-visible:ring-ring/50 [&>span:not(.sidebar-kbd):not(.sidebar-online-dot)]:relative';
+  'relative flex w-full flex-none items-center text-left text-[13px] leading-4 text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-[2px] before:rounded-[6px] before:content-[""] focus-visible:ring-2 focus-visible:ring-ring/50 [&>span:not(.sidebar-kbd):not(.sidebar-online-dot)]:relative';
+/** hover 与 selected 互斥挂在行上（旧 css 的 :not(--selected):hover 闸）：
+   选中行悬停保持深 pill，不被 hover 梯洗浅。 */
+const ROW_HOVER = 'hover:before:bg-sidebar-hover';
 const ROW_SELECTED = 'text-foreground before:bg-sidebar-active';
 
 function GroupHeader({
@@ -161,7 +164,7 @@ function GroupHeader({
   return (
     <button
       type="button"
-      className={`sidebar-group group ${ROW_BASE} h-9 cursor-pointer border-none bg-transparent pl-[19px] ${
+      className={`sidebar-group group ${ROW_BASE} ${ROW_HOVER} h-9 cursor-pointer border-none bg-transparent pl-[19px] ${
         collapsed ? 'sidebar-group--collapsed' : ''
       }`}
       aria-label={groupAria(t, label, collapsed)}
@@ -210,7 +213,7 @@ function RailGroupChevron({
 
 /** Rail 行公共件：32px 轨道行 + 24px pill（inset 8/4）。 */
 const RAIL_ROW =
-  'rail-row relative flex h-8 w-10 flex-none items-center justify-center text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-1 before:rounded-md before:content-[""] hover:before:bg-sidebar-hover focus-visible:ring-2 focus-visible:ring-ring/50 [&>svg]:relative [&>.project-avatar]:relative';
+  'rail-row relative flex h-8 w-10 flex-none items-center justify-center text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-1 before:rounded-[6px] before:content-[""] hover:before:bg-sidebar-hover focus-visible:ring-2 focus-visible:ring-ring/50 [&>svg]:relative [&>.project-avatar]:relative';
 const RAIL_SELECTED = 'rail-row--selected text-foreground before:bg-sidebar-active';
 
 export function BoardSidebar({
@@ -263,10 +266,10 @@ export function BoardSidebar({
   );
   if (collapsed) {
     return (
-      <aside className="board-sidebar board-sidebar--collapsed relative z-10 flex w-10 flex-none flex-col border-r border-border bg-background">
+      <aside className="board-sidebar board-sidebar--collapsed relative z-10 flex w-10 flex-none flex-col border-r border-[var(--border-default)] bg-background">
         <button
           type="button"
-          className="rail-toggle flex h-11 w-10 flex-none cursor-pointer items-center justify-center border-0 border-b border-border bg-transparent text-muted-foreground outline-none hover:bg-sidebar-hover focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="rail-toggle flex h-11 w-10 flex-none cursor-pointer items-center justify-center border-0 border-b border-[var(--border-default)] bg-transparent text-muted-foreground outline-none hover:bg-sidebar-hover focus-visible:ring-2 focus-visible:ring-ring/50"
           aria-label={t('展开侧边栏')}
           onClick={onToggle}
         >
@@ -347,7 +350,7 @@ export function BoardSidebar({
   }
 
   return (
-    <aside className="board-sidebar relative z-10 flex w-60 flex-none flex-col overflow-hidden border-r border-border bg-background">
+    <aside className="board-sidebar relative z-10 flex w-60 flex-none flex-col overflow-hidden border-r border-[var(--border-default)] bg-background">
       <div
         className={`sidebar-team-row flex flex-none items-center text-foreground ${
           selected === 'team'
@@ -387,10 +390,10 @@ export function BoardSidebar({
         </button>
       </div>
 
-      <nav className="sidebar-nav flex min-h-0 flex-[0_1_auto] flex-col overflow-y-auto border-t border-border pt-[9.5px]">
+      <nav className="sidebar-nav flex min-h-0 flex-[0_1_auto] flex-col overflow-y-auto border-t border-[var(--border-default)] pt-[9.5px]">
         <button
           type="button"
-          className={`sidebar-row ${ROW_BASE} h-9 pl-[18px]`}
+          className={`sidebar-row ${ROW_BASE} ${ROW_HOVER} h-9 pl-[18px]`}
           onClick={onSearch}
         >
           <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
@@ -405,7 +408,7 @@ export function BoardSidebar({
             搜索 之后（sidebar-visual 的 .sidebar-kbd 单数探针吃首枚 ⌘K）。 */}
         <button
           type="button"
-          className={`sidebar-row ${ROW_BASE} h-9 pl-[18px]`}
+          className={`sidebar-row ${ROW_BASE} ${ROW_HOVER} h-9 pl-[18px]`}
           onClick={onNewTask}
         >
           <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
@@ -417,7 +420,7 @@ export function BoardSidebar({
           </span>
         </button>
         <Link
-          className={`sidebar-row ${ROW_BASE} h-9 pl-[18px] ${selected === 'board' ? `sidebar-row--selected ${ROW_SELECTED}` : ''}`}
+          className={`sidebar-row ${ROW_BASE} h-9 pl-[18px] ${selected === 'board' ? `sidebar-row--selected ${ROW_SELECTED}` : ROW_HOVER}`}
           to={{ pathname: '/app', search }}
           aria-current={selected === 'board' ? 'page' : undefined}
         >
@@ -432,7 +435,7 @@ export function BoardSidebar({
           )}
         </Link>
         <Link
-          className={`sidebar-row ${ROW_BASE} h-9 pl-[18px] ${selected === 'schedules' ? `sidebar-row--selected ${ROW_SELECTED}` : ''}`}
+          className={`sidebar-row ${ROW_BASE} h-9 pl-[18px] ${selected === 'schedules' ? `sidebar-row--selected ${ROW_SELECTED}` : ROW_HOVER}`}
           to={{ pathname: '/app/schedules', search }}
           aria-current={selected === 'schedules' ? 'page' : undefined}
         >
@@ -451,7 +454,7 @@ export function BoardSidebar({
         {!groupCollapsed.project && (
           <>
             <Link
-              className={`sidebar-subrow sidebar-new-project ${ROW_BASE} h-9 pl-[34px]`}
+              className={`sidebar-subrow sidebar-new-project ${ROW_BASE} ${ROW_HOVER} h-9 pl-[34px]`}
               to={{ pathname: '/app/project/new', search }}
             >
               <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
@@ -467,7 +470,7 @@ export function BoardSidebar({
               return (
                 <Link
                   key={row.id}
-                  className={`sidebar-subrow ${ROW_BASE} h-9 pl-[34px] ${pathname === href ? `sidebar-subrow--selected ${ROW_SELECTED}` : ''}`}
+                  className={`sidebar-subrow ${ROW_BASE} h-9 pl-[34px] ${pathname === href ? `sidebar-subrow--selected ${ROW_SELECTED}` : ROW_HOVER}`}
                   to={{ pathname: href, search }}
                   aria-current={pathname === href ? 'page' : undefined}
                 >
@@ -488,7 +491,7 @@ export function BoardSidebar({
           resourceRows.map(({ label, href, Icon }) => (
             <Link
               key={href}
-              className={`sidebar-subrow ${ROW_BASE} h-9 pl-[34px] ${selected === href ? `sidebar-subrow--selected ${ROW_SELECTED}` : ''}`}
+              className={`sidebar-subrow ${ROW_BASE} h-9 pl-[34px] ${selected === href ? `sidebar-subrow--selected ${ROW_SELECTED}` : ROW_HOVER}`}
               to={{ pathname: href, search }}
               aria-current={selected === href ? 'page' : undefined}
             >
@@ -507,7 +510,7 @@ export function BoardSidebar({
 
       <button
         type="button"
-        className="sidebar-user flex h-11 flex-none cursor-pointer items-center border-0 border-t border-border bg-transparent px-2 outline-none hover:bg-sidebar-hover focus-visible:ring-2 focus-visible:ring-ring/50 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+        className="sidebar-user flex h-11 flex-none cursor-pointer items-center border-0 border-t border-[var(--border-default)] bg-transparent px-2 outline-none hover:bg-sidebar-hover focus-visible:ring-2 focus-visible:ring-ring/50 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
         aria-label={USER_NAME}
         aria-expanded={userMenuOpen}
         onClick={toggleUserMenu}

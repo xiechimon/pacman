@@ -65,7 +65,7 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName }: TodoCar
   return (
     <Card
       data-todo-id={todo.id}
-      className="todo-card relative w-full gap-0 rounded-xl px-[13.5px] pt-[9.5px] pb-[11.5px]"
+      className="todo-card relative w-full gap-0 rounded-[12px] px-[13.5px] pt-[9.5px] pb-[11.5px]"
     >
       <div className="todo-card-row1 flex h-4 items-center">
         <span className="project-avatar">{chipInitial}</span>
