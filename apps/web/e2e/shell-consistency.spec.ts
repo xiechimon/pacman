@@ -72,7 +72,11 @@ test.describe('chief FAB wakes on every shell family', () => {
     { name: 'secondary', route: '/app/team?scenario=12', fab: '.secondary-fab', gear: false },
     {
       name: 'detail',
-      route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=16',
+      // #443: the detail FAB renders only with unread — the row rides the
+      // named detail-unread scenario (16's surface + chiefUnread 3), i.e.
+      // 先造未读，再断言 FAB 与抽屉; the no-unread face is pinned in
+      // chief-fab.spec.ts.
+      route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=detail-unread',
       fab: '.detail-fab',
       gear: false,
     },

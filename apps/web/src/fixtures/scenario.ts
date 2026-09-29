@@ -24,6 +24,8 @@ import {
   boardTagFilter,
   boardTagFilterEmpty,
   boardWithProbe,
+  chiefFabAvatar,
+  chiefFabAvatarOverride,
   chiefGated,
   chiefReady,
   chiefSettings,
@@ -152,6 +154,11 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #366: plan-card activation pin (smoke surface, no capture): the
       // review changes face with a collapsed plan card in the thread
       'plan-open': planOpenReview,
+      // #443 named scenario (no capture, notify-banner precedent): scenario
+      // 16's planning surface + chiefUnread 3 — the unread-gated detail FAB
+      // face (badge pass-through pin; the shell-consistency detail row and
+      // chief-fab.spec ride it).
+      'detail-unread': { ...detailPlanning, chiefUnread: 3 },
       // frozen right-pane views (issue #68 captures, re-homed by #366):
       // 30/31/32 sit on the review surface with diff + tool rows expanded,
       // exactly as the captures froze them — the former token/branch/
@@ -277,6 +284,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '111': chiefReady,
       '114': chiefThread,
       '116': chiefThreadsOpen,
+      // #444 FAB 头像命名场景（无 capture，notify-banner 先例）：绑定
+      // Agent 的头像骑上各族 FAB；override 变体钉 avatarUrl 覆盖优先。
+      'fab-avatar': chiefFabAvatar,
+      'fab-avatar-override': chiefFabAvatarOverride,
     } as Record<string, FixtureSet>)
   : {};
 

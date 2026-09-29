@@ -34,6 +34,7 @@ import { NotificationBanner, useNotificationBanner } from '../board/notify-banne
 import { matchesProjectFilter, parseProjectsParam, type RepoOption } from '../board/repo-filter.js';
 import { matchesTagFilter, parseTagParam } from '../board/tag-filter.js';
 import { ChiefDrawer } from '../chief/chief-drawer.js';
+import { ChiefFabIcon } from '../chief/chief-fab-icon.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
 import { useChiefSurface } from '../chief/use-chief-surface.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
@@ -43,7 +44,6 @@ import { localTodo, overlayContent } from '../fixtures/fixtures.js';
 import type { FixtureSet, OverlayState, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
-import { ChiefFab } from '../icons/index.js';
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
 import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
@@ -383,7 +383,7 @@ export function BoardPage() {
         aria-label={t('总管')}
         onClick={() => setChiefView('drawer')}
       >
-        <ChiefFab />
+        <ChiefFabIcon chief={chiefData} />
         {chiefUnread > 0 && <span className="fab-badge">{chiefUnread}</span>}
       </button>
       <AcceptDialog
