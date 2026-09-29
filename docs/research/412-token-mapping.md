@@ -3,6 +3,8 @@
 方向已裁（issue #412）：**值正本搬到 shadcn 官方语义词表 + 仓内补位族；legacy generic 名降为别名**。
 本文件只做机械取数与初稿：把 117 个 distinct 名摆齐、把风险点标出，**不下最终裁决**，逐条裁定权在人。
 
+**裁定已落（2026-09-29，四项全项 agree）——见文末「裁定」节。表中各行的最终归属由该节的四条规则推导，本文件中"建议归类"列只作审计输入。**
+
 ## 口径说明
 
 - **取数源**：`apps/web/src/styles/tokens.css`（365 行）。`:root` = dark 默认（11–230 行），`.light` = 浅色镜像（232–365 行）。
@@ -219,5 +221,21 @@
 - **alias 图（值正本流向）**：`--sidebar-bg → --surface`；`--card-ghost-border → --card-border`；`--fab-shadow → --edge-shadow`；`--edge-ring → --border-default`（嵌在合成值里）。这 4 条是"legacy 名降为别名"方向的**现成样板**，可作为改法参考。
 - **`--font-sans` 依赖外部定义**：值里引 `var(--font-inter)`，该名不在 tokens.css 的 117 内（注释指其来自 `fonts.css`，r1 §4.1）。`apps/web/src` 内有 2 处 `var(--font-inter)` 消费——即该名在别处定义，读表时勿误判为死 token。
 - **消费次数 Top 10**（指定口径）：`--text-primary` 121 · `--text-tertiary` 115 · `--text-dim` 95 · `--border-default` 73 · `--text-secondary` 63 · `--surface-secondary` 48 · `--surface` 41 · `--card-border` 32 · `--indigo-500` 26 · `--card-button` 25。**这 10 名占了并流改动面积的绝大部分**，其中 8 名落在"需人工裁决"节。
-- **e2e 值钉扎面**（并流改值会直接红，本地无感、CI 才炸）：`brand-typo.spec.ts:113-114`（`--card-button` = `rgb(78, 71, 221)`）· `overlay-focus.spec.ts:17`（同值常量）· `segmented-controls.spec.ts:25`（`--tab-chip-bg` dark = `rgb(39, 39, 42)`）。
+- **e2e 值钉扎面**（并流改值会直接红，本地无感、CI 才炸）：`brand-typo.spec.ts:113-114`（`--card-button` = `rgb(78, 71, 221)`）· `overlay-focus.spec.ts:17`（同值常量）· `segmented-controls.spec.ts:25-27`（`--tab-chip-bg` 两主题值 + `--surface-secondary` dark = `rgb(31, 31, 35)`）· `--sidebar-hover` 在 `tokens.css:96` 与 `shadcn.css:78` 同名同值双源（本地已验实）。
+
+---
+
+## 裁定（2026-09-29，用户四项全项 agree）
+
+四条规则；表中各行最终归属由此推导。
+
+- **D1 并流口径 = 只在官方 1:1 对口处并流，其余进补位族保档数。** 审计表 A 类的 6 名并流（`--surface-inset` → `--background`、`--card-bg` → `--card`、`--popover-bg` → `--popover`、`--text-primary` → `--foreground` 等）；surface 族余 5 档、text 族余 3 档全部进补位族，**不塌档**。判据：那 6 名恰是 `components/ui` 真正消费的通用面，上游同构的收益集中于此；档数零损失。
+- **D2 缝线实色 = 三名全进补位族，不并流官方 alpha `--border`。** `--border-default`（73 处 / 13 文件）承担跨 shell 缝线契约，实色→alpha 会破"接缝在任意底上恒定"这条性质。同时以 `--border-default` 为正本，`--card-border` 降为别名（light 侧 `#e1dbd2` 与 `#e2dbd1` 的 1–2 阶差按此消解）；`--border-strong` 自持。
+- **D3 品牌紫 = `--primary` 保官方 neutral，`--indigo-*` 整族进补位族。** 并拆开 `--card-button` 的一色两语义（焦点环色与卡片按钮底色「值同、名分」）——它被 `brand-typo.spec.ts:113-114` 与 `overlay-focus.spec.ts:17` 双钉。
+- **D4 sidebar 族 = 不引官方 8 枚全族，保留现有 3 名进补位族 + 消重。** 依据本仓 #390 同底律：侧栏与主面板刻意同底，层分隔只由 1px 接缝承担，而官方 `--sidebar` 是独立色档。消重两条：`--sidebar-selected`（tokens）与 `--sidebar-active`（shadcn）同义两名收敛为一；`--sidebar-hover` 双源（`tokens.css:96` / `shadcn.css:78`）收敛到正本一处。
+- **D5 死 token = 按实测 17 个清理**（`--badge-attention` 除外，它有 TW 简写活消费）。清理前按 `bg-(--x)` 简写口径补扫一遍，避免误删。
+
+**净结果**：117 名中并流 6、补位族约 60（原 B 53 加 D2/D3/D4 归入者）、非颜色 22、清理 17。值正本文件以「官方通用名 + 仓内补位名并存」为形态；`tokens.css` 退为别名表（不删——1004 处引用仍指向这些名字）。
+
+**下一步（执行面，不在本审计内）**：按上述归属改写值正本、`tokens.css` 落别名、清 17 个死 token，随后一次性视觉重钉（口径归 #411）。
 - **覆盖核对**：A 6 + B 53 + C 22 + D 8 + 需人工裁决 28（特别单列 22 + palette 原语 6）= **117** ✓（= 题面 117，无遗漏、无重复计入）。
