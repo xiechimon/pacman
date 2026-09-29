@@ -75,6 +75,9 @@ async function connectOne(
       ? new StdioClientTransport({
           command: endpoint.command ?? '',
           args: endpoint.args ?? [],
+          // config env 段透传（spec 13/#368：stdio 凭证面只活在本机）；SDK
+          // 与默认继承环境合并后 spawn（缺省不传 = 仅默认继承，行为不变）。
+          ...(endpoint.env ? { env: endpoint.env } : {}),
           stderr: 'pipe',
         })
       : new StreamableHTTPClientTransport(new URL(endpoint.url ?? ''), {

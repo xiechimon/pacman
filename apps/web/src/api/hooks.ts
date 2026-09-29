@@ -11,7 +11,6 @@ import type {
   ChiefThread,
   ConversationMessagesResponse,
   CreateAgentBody,
-  CreateMcpServerBody,
   CreateProjectBody,
   CreateProviderBody,
   CreateScheduleBody,
@@ -528,17 +527,9 @@ export function useApiMutations(teamId: string | undefined) {
       }) => api.post<ApiKeyRow & { plaintext?: string }>(`/api/teams/${teamId}/api-keys`, body),
       onSuccess: invalidateAll,
     }),
-    createMcpServer: useMutation({
-      mutationFn: (body: CreateMcpServerBody) =>
-        api.post<McpServerRecord>(`/api/teams/${teamId}/mcp-servers`, body),
-      onSuccess: invalidateAll,
-    }),
-    deleteMcpServer: useMutation({
-      mutationFn: (id: string) => api.del<void>(`/api/teams/${teamId}/mcp-servers/${id}`),
-      onSuccess: invalidateAll,
-    }),
     // skills 无 mutation 面（spec 13 #367：技能 = server 本地目录现扫只读
-    // 投影；写技能 = 往目录放文件，无上传/扫描端点）。
+    // 投影；写技能 = 往目录放文件，无上传/扫描端点）。mcp-servers 同律
+    // （spec 13 #368：MCP = 本机 ~/.claude.json 只读投影，无建/改/删端点）。
     createAgent: useMutation({
       mutationFn: (body: CreateAgentBody) =>
         api.post<{ id: string }>(`/api/teams/${teamId}/agents`, body),

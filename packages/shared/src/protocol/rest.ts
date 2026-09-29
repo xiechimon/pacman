@@ -99,6 +99,8 @@ export const WEB_REST_ENDPOINTS: readonly RestEndpoint[] = [
   { method: 'POST', path: '/api/builds/{id}/merge', note: '→ 202 {delegated:true}（r3 §3.6）' },
   { method: 'POST', path: '/api/builds/{id}/steps', note: '确认/驳回回路（02 §4.2/r5 §4）' },
   { method: 'POST', path: '/api/teams/{id}/providers' },
+  // spec 13（#368）复刻面分歧：MCP 改本地 config 只读制，管理写端点
+  // （POST/PATCH/DELETE）已从 app 撤除；本行 = 原产品观测记录保留。
   { method: 'POST', path: '/api/teams/{id}/mcp-servers' },
   { method: 'POST', path: '/api/teams/{id}/agents', note: '→ 201 {id}（r5 §1/§8 补录）' },
   { method: 'POST', path: '/api/schedules' },
@@ -138,7 +140,8 @@ export const DELETE_FACE = {
   resources: [
     'teams/{id}/machines', // 移除机器（r3 §1.2 限额弹窗「请移除一台」）
     'teams/{id}/agents', // 删除 Agent（r3 §4 概览按钮）
-    'teams/{id}/mcp-servers', // 卡片更多菜单 编辑/删除（r3 §5.1）
+    'teams/{id}/skills', // 技能删除流（r2 §6.1）；spec 13 #367 复刻面已撤管理写面——观测记录保留
+    'teams/{id}/mcp-servers', // 卡片更多菜单 编辑/删除（r3 §5.1）；spec 13 #368 复刻面已撤管理写面——观测记录保留
     'teams/{id}/agents/{aid}/memories', // 记忆条目卡删除图标（r5 §6 UI 实测；02 §4.4「列表/删除 API 保形」）
     'teams/{id}/providers', // 「可以替换或删除」（r2 §6.5）
     'teams/{id}/secrets', // 「保存后只能覆盖或删除」（r2 §6.3）

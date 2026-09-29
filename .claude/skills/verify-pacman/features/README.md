@@ -6,7 +6,7 @@ Last updated: 2026-09-29（#366 详情页 3-pane 重排 + spec 13 #367 技能页
 
 - #366 详情页 3-pane 重排：branch-sync 入口从头部弹层迁到右 pane 型选→静止 section，drive-branch-sync.mjs 与 integration 判别式同步改道；token/运行历史两弹层退役为右 pane section，仍未铺 live 配方。
 - spec 13 / #367：技能页只读本地目录面——新增 skills-page.md 条目；launch.mjs 增第四隔离轴 PACMAN_SKILLS_DIR=<HOME_DIR>/skills——不隔离会现扫用户真 ~/.agents/skills；「已知未入图面」的管理页清单移除技能。
-- spec 13 / #368：MCP 本地 config 只读面——新增 mcp-servers.md 条目与 probe `drive-mcp.mjs`，daemon 执行面配方指向 integration m4b-mcp-e2e。
+- spec 13 / #368：MCP 本地 config 只读面——新增 mcp-servers.md 条目与 probe `drive-mcp.mjs`（API 投影 + 写面 404 + 密钥值不出接口 + SQLite 无表 + UI 只读钉扎），daemon 执行面配方指向 integration m4b-mcp-e2e（slug 解析 + 真连外部 MCP + 降级行族）。
 - spec 14 / #371：skills 执行面注入——新增 skills-injection.md 条目；daemon 侧行为无 UI 面，canonical 证据走 integration 真栈探针（skills-inject-e2e）而非 launch.mjs。
 - spec 12 / #360 G2-T3：补新建项目表单 web 面条目 project-new-form.md + 定制 probe `scripts/drive-project-new-form.mjs`；local-repo-api.md 的「UI 入口待回补」交叉引用改为已落地。
 - spec 11 / #354 先行地图（合流自 main）：补三面条目——providers runtime tabs (providers-tabs.md)、machines 本机行 + switches (machines-local-row.md)、添加服务商 picker (provider-picker.md) + 三个先行 probe (drive-providers-tabs/drive-machines-local/drive-provider-picker.mjs)。先行语义 (spec 11 A12)：probe 先于实现票落地，红态 = 验收清单（FAIL detail 逐条指 spec 条款），实现票验收 = 转绿；跑序纪律见 Baseline。
@@ -66,13 +66,14 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [添加服务商 picker dialog](./provider-picker.md) spec 11 A5/A6 先行地图：「新建」开 picker — 页面无 preset 投喂负向 + 搜索客户端过滤 38 项 + 显示名 canon 名称节点等值 (spec 名单) + OAuth 徽标两项 / xai 行负向 + xai oauthLabel 密钥表单正向 + api_key 族密钥表单 + 自定义端点 disclosure 展开现有表单 + 创建链回归护栏 (#353/#354)；定制 probe `scripts/drive-provider-picker.mjs`。**picker 结构实现票落地前红态；创建链段应绿**。
 - [本地仓库项目与 GitHub 连接 (server API 面)](./local-repo-api.md) `POST /api/projects kind=local` 三态校验 (live fs + 真 git) + 旧 hosted 面不回归 + `GET /api/github/repos` 未连接 404 + github_connection 表形 (SQLite 只读)；定制 probe `scripts/probe-local-repos.mjs` (spec 12 / #359，UI 入口归 G2-T3/T4 后回补)。**2026-09-28 live 验 11/11 PASS**。
 - [技能页(只读本地目录面)](./skills-page.md) 技能 = server 本地目录现扫投影:放含 SKILL.md 的子目录→刷新即现,无新建/导入入口,空态指路目录,id = frontmatter name 回落目录名(spec 13 #367)。栈隔离第四轴 `PACMAN_SKILLS_DIR`(launch.mjs 已带)。
+- [MCP 页(只读本地 config 面)](./mcp-servers.md) `~/.claude.json` mcpServers 段投影列表+只读钉扎(无新建/更多入口、写面 404、密钥值不出接口、SQLite 无 mcp_server 表);定制 probe `scripts/drive-mcp.mjs`(#368);daemon 执行面配方 = integration m4b-mcp-e2e。
 - [skills 执行面注入(daemon)](./skills-injection.md) PACMAN_SKILLS_DIR 扫描→`<available_skills>` catalog 追加进 systemPrompt→agent read SKILL.md 按需加载(#371,spec 14)。daemon 侧无 UI 面,canonical 证据 = integration 真栈探针(skills-inject-e2e)。
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
 
 - 任务详情页(`/app/todo/:id`)——live 面已铺:3-pane 结构与右 pane 四视图(detail-right-pane)、停止链(stop-button)、AI 审核发起(review-modal)、@提及(mentions)、附件(attachments)、分支同步(branch-sync,#366 起右 pane section 入口)、失败面发送(failed-send)。未铺:plan/changes/diff 文档面内容渲染、transcript 流渲染、编辑分配弹层。
 - 总管抽屉/设置(`.chief-fab` 有 live wiring,数据面未铺)。
-- 团队密钥/MCP 各管理页(routes 均在,fixture e2e 有覆盖,live 配方未铺)。技能页已入图 = skills-page.md；机器/模型服务两页已铺三面(#354 先行地图:providers-tabs/machines-local-row/provider-picker——spec 11 实现票落地前红态,配方见各 feature 文件)。
+- 团队密钥管理页(routes 均在,fixture e2e 有覆盖,live 配方未铺)。技能页已入图 = skills-page.md；MCP 页已入图 = mcp-servers.md(#368)；机器/模型服务两页已铺三面(#354 先行地图:providers-tabs/machines-local-row/provider-picker——spec 11 实现票落地前红态,配方见各 feature 文件)。
 - 看板拖拽改相(`PATCH /api/todos/:id`,#160)——fixture e2e 有 board-dnd 覆盖。
 - 定时(schedules)增删改、项目设置页——fixture e2e/dead-buttons 覆盖,live 配方未铺。
 - daemon 侧(`pnpm dev:daemon`)——需要真机器注册流程,超出 UI 验证范围;唯一已铺条目 = skills-injection(经 integration 真栈 harness,不经 launch.mjs)。

@@ -14,11 +14,11 @@ import { expect, test } from '@playwright/test';
 //   6. frozen pane-view scenarios (30/31/32) still pop dialogs           7.
 //   7. fresh phase collapses the right pane or loses the fresh block
 
-const TODO = '/app/todo/7ve0iOkQ-JBpSL98zSiGc';
+const DETAIL_ROUTE = '/app/todo/7ve0iOkQ-JBpSL98zSiGc';
 const FRESH = '/app/todo/fresh-probe?scenario=23';
 
 test('three abutting panes: 240 sidebar | fluid center | 488 right', async ({ page }) => {
-  await page.goto(`${TODO}?scenario=17b`);
+  await page.goto(`${DETAIL_ROUTE}?scenario=17b`);
   const geo = await page.evaluate(() => {
     const rect = (sel: string) => {
       const r = document.querySelector(sel)!.getBoundingClientRect();
@@ -48,7 +48,7 @@ test('three abutting panes: 240 sidebar | fluid center | 488 right', async ({ pa
 
 test('no 文档|聊天 tab group survives on any phase surface', async ({ page }) => {
   for (const scenario of ['16', '17b', '23', '26', '27', '36']) {
-    await page.goto(`${TODO}?scenario=${scenario}`);
+    await page.goto(`${DETAIL_ROUTE}?scenario=${scenario}`);
     await expect(page.locator('.detail-tabs-group')).toHaveCount(0);
     await expect(page.locator('.detail-tab')).toHaveCount(0);
     await expect(page.locator('.detail-tabs')).toHaveCount(0);
@@ -58,7 +58,7 @@ test('no 文档|聊天 tab group survives on any phase surface', async ({ page }
 test('detail head keeps the 更多 icon only — branch/token/history icons are gone', async ({
   page,
 }) => {
-  await page.goto(`${TODO}?scenario=27`);
+  await page.goto(`${DETAIL_ROUTE}?scenario=27`);
   await expect(page.locator('.detail-head-icon--more')).toBeVisible();
   for (const label of ['分支与 PR', 'Token 用量', '运行历史']) {
     await expect(page.locator(`.detail-head button[aria-label="${label}"]`)).toHaveCount(0);
@@ -66,7 +66,7 @@ test('detail head keeps the 更多 icon only — branch/token/history icons are 
 });
 
 test('composer stays inside the center column as its only 12px-radius card', async ({ page }) => {
-  await page.goto(`${TODO}?scenario=17b`);
+  await page.goto(`${DETAIL_ROUTE}?scenario=17b`);
   const geo = await page.evaluate(() => {
     const c = document.querySelector('.detail-center')!.getBoundingClientRect();
     const comp = document.querySelector('.composer')!;
@@ -90,7 +90,7 @@ test('composer stays inside the center column as its only 12px-radius card', asy
 test('right pane type select switches between the doc surface and the three sections', async ({
   page,
 }) => {
-  await page.goto(`${TODO}?scenario=27`);
+  await page.goto(`${DETAIL_ROUTE}?scenario=27`);
   // review phase opens on the doc view (变更 surface)
   await expect(page.locator('.detail-right .doc-pane')).toBeVisible();
   await expect(page.locator('.dlg')).toHaveCount(0);
@@ -117,15 +117,15 @@ test('right pane type select switches between the doc surface and the three sect
 });
 
 test('scenarios 30/31/32 freeze the pane view instead of popping dialogs', async ({ page }) => {
-  await page.goto(`${TODO}?scenario=30`);
+  await page.goto(`${DETAIL_ROUTE}?scenario=30`);
   await expect(page.locator('.dlg')).toHaveCount(0);
   await expect(page.locator('.detail-right .dlg-token-total')).toBeVisible();
 
-  await page.goto(`${TODO}?scenario=31`);
+  await page.goto(`${DETAIL_ROUTE}?scenario=31`);
   await expect(page.locator('.dlg')).toHaveCount(0);
   await expect(page.locator('.detail-right .dlg-branch-box')).toBeVisible();
 
-  await page.goto(`${TODO}?scenario=32`);
+  await page.goto(`${DETAIL_ROUTE}?scenario=32`);
   await expect(page.locator('.dlg')).toHaveCount(0);
   await expect(page.locator('.detail-right .dlg-history-row')).toHaveCount(1);
 });
@@ -133,7 +133,7 @@ test('scenarios 30/31/32 freeze the pane view instead of popping dialogs', async
 test('plan card activation in the thread opens the plan doc in the right pane', async ({
   page,
 }) => {
-  await page.goto(`${TODO}?scenario=plan-open`);
+  await page.goto(`${DETAIL_ROUTE}?scenario=plan-open`);
   // review phase opens on the changes surface
   await expect(page.locator('.doc-select-wrap .doc-pane-select')).toContainText('变更');
   // the build-open round carries its own plan card; the frozen row is first

@@ -88,6 +88,26 @@ describe('loadDaemonConfig（Settings 缝优先级）', () => {
       WorkspacesDirError,
     );
   });
+
+  // spec 13（#368）：daemon 读本机 MCP config 的路径槽——优先级同律
+  // （显式入参 > env > 默认值），默认 = ~/.claude.json。
+  test('mcpConfigPath 默认 = ~/.claude.json', () => {
+    const cfg = loadDaemonConfig({}, {});
+    expect(cfg.mcpConfigPath).toBe(join(homedir(), '.claude.json'));
+  });
+
+  test('mcpConfigPath env 覆盖（PACMAN_MCP_CONFIG）', () => {
+    const cfg = loadDaemonConfig({}, { [ENV_VARS.mcpConfig]: '/tmp/custom-claude.json' });
+    expect(cfg.mcpConfigPath).toBe('/tmp/custom-claude.json');
+  });
+
+  test('mcpConfigPath 显式入参 > env', () => {
+    const cfg = loadDaemonConfig(
+      { mcpConfigPath: '/explicit-claude.json' },
+      { [ENV_VARS.mcpConfig]: '/env-claude.json' },
+    );
+    expect(cfg.mcpConfigPath).toBe('/explicit-claude.json');
+  });
 });
 
 describe('本地状态布局（02 §5.3）', () => {

@@ -2,6 +2,7 @@
 // （provider 指向 stub LLM + agent + bootstrap apiKey）。三端互不依赖纪律
 // 不破：本 harness 以相对路径消费 server/daemon 源码，独立成包。
 
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -50,6 +51,9 @@ export async function bootRealServer(opts: {
   webDir?: string;
   /** 创建定时调度器（缺省不建——既有测试无定时面）。 */
   scheduler?: boolean;
+  /** spec 13（#368）：MCP 本地 config 读路径；缺省 = 唯一不存在路径
+   *  （空列表语义，既有测试零改动）。 */
+  mcpConfigPath?: string;
 }): Promise<RealServer> {
   const db = openMemoryDb();
   const { user, team } = seed(db);
@@ -59,7 +63,7 @@ export async function bootRealServer(opts: {
   const secretBox = createEphemeralSecretBox();
   const reposDir = mkdtempSync(join(tmpdir(), 'pacman-it-repos-'));
   const attachmentsDir = mkdtempSync(join(tmpdir(), 'pacman-it-att-'));
-  // 技能根（spec 13 #367 现扫面）：隔离临时空目录 = 空集语义，集成用例
+  // 技能根（spec 13 #367 现扫面）：隔离的空目录 = 空集语义，集成用例
   // 需要技能行时显式往里建目录。
   const skillsDir = mkdtempSync(join(tmpdir(), 'pacman-it-skills-'));
   const app = createApp({
@@ -84,6 +88,7 @@ export async function bootRealServer(opts: {
     webDir: opts.webDir ?? null,
     // #251 可选 token 鉴权：集成面全部走关态（默认行为零改动）。
     authToken: null,
+    mcpConfigPath: opts.mcpConfigPath ?? join(tmpdir(), `pacman-it-mcp-${randomUUID()}.json`),
   });
   const scheduler = opts.scheduler
     ? createScheduler({ db, hub, user, convHub }, { tickMs: 60_000 })

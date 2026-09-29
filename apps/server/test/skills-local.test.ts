@@ -38,7 +38,7 @@ import { executeMcpTool } from '../src/services/mcp-face.js';
 import { parseSkillFrontmatter, scanLocalSkills } from '../src/services/skills.js';
 import { bootServer, req, type TestServer } from './helpers.js';
 
-// —— 临时技能根脚手架（每个 describe 自建自清）——————————————————————————————
+// —— 隔离技能根脚手架（每个 describe 自建自清）——————————————————————————————
 
 const roots: string[] = [];
 function makeRoot(): string {
