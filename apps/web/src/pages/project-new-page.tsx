@@ -29,6 +29,8 @@
 
 import {
   type CreateProjectBody,
+  FS_PICK_ERROR_COPY,
+  type FsPickErrorReason,
   type GithubRepoSummary,
   isGithubRepoRef,
   LOCAL_ERROR_REASON_COPY,
@@ -80,6 +82,10 @@ export function ProjectNewPage() {
   const [repoSel, setRepoSel] = useState<RepoSel>('none');
   const [githubRepo, setGithubRepo] = useState('');
   const [localPath, setLocalPath] = useState('');
+  // #440：浏览钮在飞位（disabled + server 单飞双保险）与降级提示行文案
+  // （ADR 0003 D4——能力边界说明，非错误级；null = 无提示）。
+  const [pickBusy, setPickBusy] = useState(false);
+  const [pickHint, setPickHint] = useState<string | null>(null);
   const [repoOpen, setRepoOpen] = useState(false);
   // #361 github 面状态位：manualRepo = 手动兜底 input 面；pickerOpen =
   // picker 弹层；oauthError = 着陆 reason 三译 / authorize 失败原文（内联行）。
@@ -156,7 +162,36 @@ export function ProjectNewPage() {
   };
   const onLocalPathChange = (value: string) => {
     setLocalPath(value);
+    // 编辑即撤提示（陈旧提示不残留，localErrorText 同律）。
+    setPickHint(null);
     backfillName(pathBasename(value));
+  };
+
+  // #440 浏览钮（ADR 0003 D1/D4）：server 代弹 macOS 原生选文件夹对话框。
+  // 取消 = 静默 no-op（{path:null} 是正常结局）；能力缺失/单飞 = reason 分译
+  // 落中性提示行；未分类失败原文直透（LOCAL_ERROR_REASON_COPY 降级同律）。
+  // 结果直接覆盖 localPath（S11 最后动作赢，#440 失败方式清单）并走既有
+  // basename 回填律。
+  const browseFolder = () => {
+    if (pickBusy) return;
+    setPickBusy(true);
+    setPickHint(null);
+    mutations.pickLocalFolder.mutate(undefined, {
+      onSuccess: (data) => {
+        if (data.path !== null) onLocalPathChange(data.path);
+      },
+      onError: (err) => {
+        const reason = err instanceof ApiError ? err.reason : undefined;
+        setPickHint(
+          reason !== undefined && reason in FS_PICK_ERROR_COPY
+            ? t(FS_PICK_ERROR_COPY[reason as FsPickErrorReason])
+            : err instanceof ApiError
+              ? err.message
+              : t('无法打开系统文件夹对话框'),
+        );
+      },
+      onSettled: () => setPickBusy(false),
+    });
   };
 
   // picker 单选：回填 owner/repo（trigger 面显示）+ 项目名（回填律）+ 收面板。
@@ -333,6 +368,15 @@ export function ProjectNewPage() {
               />
               <button
                 type="button"
+                className="prj-new-browse"
+                aria-label={t('浏览')}
+                disabled={pickBusy}
+                onClick={browseFolder}
+              >
+                {t('浏览')}
+              </button>
+              <button
+                type="button"
                 className="prj-new-repo-swap"
                 aria-label={t('选择仓库')}
                 onClick={() => setRepoOpen(true)}
@@ -479,6 +523,9 @@ export function ProjectNewPage() {
             {localErrorText}
           </div>
         )}
+        {/* #440 降级提示行（ADR 0003 D4）：能力边界说明非错误级——中性色、
+            无 role=alert；仅 local 选态呈现，编辑路径即撤。 */}
+        {repoSel === 'local' && pickHint !== null && <div className="prj-new-hint">{pickHint}</div>}
         <button
           type="button"
           className="prj-new-submit"

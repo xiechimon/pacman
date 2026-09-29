@@ -25,6 +25,7 @@ import {
   createScheduleBodySchema,
   createTagBodySchema,
   createTodoBodySchema,
+  type FsPickResult,
   githubReposResponseSchema,
   type MemoryRecord,
   PHASE_VALUES,
@@ -101,6 +102,7 @@ import {
 } from './services/chief.js';
 import { planDocumentDiff } from './services/documents.js';
 import { createSerialConnection } from './services/events.js';
+import { pickFolder } from './services/fs-pick.js';
 import {
   isGithubRepoRef,
   provisionHostedRepo,
@@ -895,6 +897,15 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     seedFixedTags(ctx.db, id);
     const row = requireProject(ctx, id);
     return c.json(toProjectRecord(row, requestOrigin(c)), 201);
+  });
+
+  // POST /api/fs/pick（ADR 0003 / #440）：server 代弹 macOS 原生选文件夹
+  // 对话框（浏览器拿不到绝对路径，只能目标机进程代弹）。200 {path} = 选中；
+  // 200 {path:null} = 用户取消（正常结局非错误面）；422 unavailable / 409
+  // busy 带 reason（词汇单源 = shared FS_PICK_ERROR_REASONS，#386 模式）。
+  app.post('/api/fs/pick', async (c) => {
+    const path = await pickFolder();
+    return c.json({ path } satisfies FsPickResult);
   });
 
   app.post('/api/projects/:id/todos', async (c) => {
