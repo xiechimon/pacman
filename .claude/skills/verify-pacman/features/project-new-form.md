@@ -8,7 +8,7 @@
 - `name-backfill` — local = `basename(localPath)`(容忍尾斜杠),github = 有效 `owner/repo` 的 repo 段;仅当名称为空或仍等于上次回填值时覆盖,手改后路径变化不再覆盖,清空后恢复。
 - `face-swap` — 选态换输入面(github = owner/repo 输入,local = 绝对路径输入)+ swap 钮重开菜单;切形态时旧输入面退场。
 - `submit-gates` — 名称空 / local 路径空 / github ref 非法(isGithubRepoRef 同源闸)= 创建钮 disabled。
-- `local-error-row` — server 400 reason 三态分类落红色错误行(路径不存在 / 不是 git 仓库 / 需要绝对路径;未分类原文直透),阻止导航;编辑路径即撤陈旧错误。
+- `local-error-row` — server 400 按 reason code 三态分类落红色错误行(not_found = 路径不存在 / not_git = 不是 git 仓库 / not_absolute = 需要绝对路径;无 code / 未分类原文直透,#386),阻止导航;编辑路径即撤陈旧错误。
 - `focus-ring` — 项目名/GitHub/路径输入框 focus-visible = outline none + indigo 边框 + 1px ring(共享 input 原语配方)+ `-webkit-autofill` 覆盖,非 UA 默认蓝。
 - `create-chains` — 三条提交链落库:local(repoKind/localPath)、github(repoKind/githubRepo)、未选(repoKind NULL 无 repo 项目),成功导航 `/app/project/<id>`。
 
@@ -30,7 +30,8 @@ Preconditions: `launch.mjs` 已起隔离栈(全新库;worktree 车道传 `VERIFY
 ## Gotchas
 
 - **`-webkit-autofill` 覆盖不可 live 驱动**(浏览器不暴露触发面)——凭 CSS 配方审查 + e2e 计算样式钉 focus 面;别声称 probe 验过 autofill。
-- 错误行分类吃 server `validateLocalRepoPath` 消息子串(`path not found` / `not a git repository` / `expected absolute path`,apps/server/src/services/git.ts 同仓单源);server 改文案 = web 降级为原文直透,probe 会红提醒对齐。
+- github 面是认证门控(#361):未认证时 `owner/repo` input 不存在,得先点「手动输入 owner/repo」兜底链接才露出——probe 每处填 github input 前都要先点该链接(选行 → 点链接 → 填),漏了就是 30s fill 超时;要点有多处,别只修第一处。
+- 错误行分类吃 server 400 应答的结构化 `reason` code(词汇单源 = shared `PROJECT_LOCAL_ERROR_REASONS`,#386 起);消息文案不再是契约,server 随便改 error 文案不受影响——若 server 校验另抛新 code,web 按未分类降级原文直透,probe 会红提醒对齐。
 - 未选形态提交 body 不带 `kind`/`repoKind`——record 里 repoKind 为 null/缺省都算过(`== null` 判定),别收紧成严格 undefined。
 - vite dev 首载冷转换较慢,`gotoNew` 等待给到 20s;页面没起来先 doctor,别急着改断言。
 - 8791/5273 常被别的 lane 占用——换 `VERIFY_PORT`/`VERIFY_WEB_PORT`,不杀。

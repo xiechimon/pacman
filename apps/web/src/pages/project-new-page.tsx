@@ -4,7 +4,7 @@
 // #83 (M5) live：名称受控 + 创建 = POST /api/projects → 跳项目页。
 // #360 (spec 12 G2-T3)：仓库 selector 两行——「GitHub 仓库」（认证门控
 // picker 面见下方 #361 段）与「本地文件夹」（触发行换绝对路径输入，server
-// validateLocalRepoPath 三态校验，400 reason 分类落红色错误行）。hosted 行
+// validateLocalRepoPath 三态校验，400 reason code 分类落红色错误行）。hosted 行
 // 创建入口移除：未动表单提交 = 无 repo 普通项目（kind 缺省，server REST /
 // MCP 仍接受 hosted，存量项目不动）。名称回填：local = basename(localPath)，
 // github = repo 段；仅当名称为空或仍等于上次回填值时覆盖（用户手改过则
@@ -27,7 +27,13 @@
 // picker 自动开（同页签跳走期间表单态已丢，选态从着陆参重建）；error →
 // reason 三译（#243 词汇不变）落内联错误行。读后清参，刷新不重放。
 
-import { type CreateProjectBody, type GithubRepoSummary, isGithubRepoRef } from '@pacman/shared';
+import {
+  type CreateProjectBody,
+  type GithubRepoSummary,
+  isGithubRepoRef,
+  LOCAL_ERROR_REASON_COPY,
+  type LocalErrorReason,
+} from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { ApiError } from '../api/client.js';
@@ -196,25 +202,22 @@ export function ProjectNewPage() {
   const showGithubField = githubSelected && !manualRepo;
 
   // local 400 错误行：仅当「本次提交的路径仍是输入框现值」时呈现——编辑
-  // 路径即撤（陈旧错误不残留）。reason 分类 = server validateLocalRepoPath
-  // 三态消息（services/git.ts）的子串字符串契约，非共享常量：server 改文案
-  // 即退化为原文直透（create-provider-dialog connectError 同款约定），漂移
-  // 由 drive-project-new-form probe 红牌当场逮住。未分类 reason 同样直透。
+  // 路径即撤（陈旧错误不残留）。reason 分类按 server 应答的结构化 code
+  // （#386，词汇单源 = shared PROJECT_LOCAL_ERROR_REASONS），消息子串不再
+  // 是契约；无 code 或未分类 reason = 原文直透。
   const [submittedPath, setSubmittedPath] = useState<string | null>(null);
   const createError = mutations.createProject.error;
-  const localErrorCopy = (message: string): string => {
-    if (message.includes('path not found')) return t('路径不存在');
-    if (message.includes('not a git repository')) return t('不是 git 仓库');
-    if (message.includes('expected absolute path')) return t('需要绝对路径');
-    return message;
-  };
+  const localErrorCopy = (reason: string | undefined, message: string): string =>
+    reason !== undefined && reason in LOCAL_ERROR_REASON_COPY
+      ? t(LOCAL_ERROR_REASON_COPY[reason as LocalErrorReason])
+      : message;
   const localErrorText =
     repoSel === 'local' &&
     submittedPath !== null &&
     submittedPath === localPath.trim() &&
     createError instanceof ApiError &&
     createError.status === 400
-      ? localErrorCopy(createError.message)
+      ? localErrorCopy(createError.reason, createError.message)
       : null;
 
   const submit = () => {

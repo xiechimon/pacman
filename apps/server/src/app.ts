@@ -88,7 +88,14 @@ export function createApp(ctx: AppContext, logger?: Logger): Hono {
   app.notFound((c) => c.json({ error: 'Not found' }, 404));
   app.onError((err, c) => {
     if (err instanceof HttpError) {
-      return c.json({ error: err.message }, err.status as 400);
+      // reason 可选位（#386）：可分类错误随 {error} 携带 code；未分类错误面
+      // wire 形状不变（{error} 单形状，wire.test 对拍面）。
+      return c.json(
+        err.reason !== undefined
+          ? { error: err.message, reason: err.reason }
+          : { error: err.message },
+        err.status as 400,
+      );
     }
     if (err instanceof NotFoundError) {
       return c.json({ error: err.message }, 404);
