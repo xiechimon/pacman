@@ -115,10 +115,11 @@ try {
   // 3. N 热键开 dialog（焦点落标题框，dialog 家族 autofocus 律）→ 保存
   await pressUntil(page, 'n', '.new-task-dialog');
   const titleFocused = await page.evaluate(
-    () => document.activeElement?.classList.contains('new-task-input') ?? false,
+    () => document.activeElement?.classList.contains('new-task-spec') ?? false,
   );
-  check('n-opens-focused', titleFocused, 'N 开 dialog 且标题框持焦');
-  await page.fill('.new-task-input', titleBoard);
+  check('n-opens-focused', titleFocused, 'N 开 dialog 且正文框持焦（#394 单字段面）');
+  // #394 单字段面：正文单行 = 占位标题派生源（首行截断律）
+  await page.fill('.new-task-spec', titleBoard);
   await page.click('.new-task-save');
   await page.waitForSelector('.new-task-dialog', { state: 'hidden', timeout: 5000 });
   check('board-save', true, 'board 面 N 开 → 保存');
@@ -154,7 +155,7 @@ try {
   await page.waitForSelector('.page-shell', { timeout: 15_000 });
   await pressUntil(page, 'n', '.new-task-dialog');
   check('schedules-n-opens', page.url().includes('/app/schedules'), 'schedules 页原地开 dialog');
-  await page.fill('.new-task-input', titleSched);
+  await page.fill('.new-task-spec', titleSched);
   await page.click('.new-task-save');
   await page.waitForSelector('.new-task-dialog', { state: 'hidden', timeout: 5000 });
   await shot(page, '04-schedules-saved.png');

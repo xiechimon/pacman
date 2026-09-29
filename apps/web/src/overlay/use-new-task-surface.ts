@@ -1,16 +1,18 @@
 // New-task creation surface (issue #389): the N hotkey and the sidebar
 // 新任务 row open the same NewTaskDialog on every route. Extracted from
-// board-page's wiring (#66 create / #176 project select / #309 tags /
-// #310 spec+attachments / #311 mentions) so two faces share one save path:
-// the board keeps its dialog (fixture saves land a local card via
-// onFixtureSave), and AppSidebar's global dialog serves every route that
-// has no dialog of its own (the searchPanel/#129 override precedent).
+// board-page's wiring (#66 create / #176 project select / #310 spec+attachments
+// / #311 mentions) so two faces share one save path: the board keeps its
+// dialog (fixture saves land a local card via onFixtureSave), and AppSidebar's
+// global dialog serves every route that has no dialog of its own (the
+// searchPanel/#129 override precedent).
+// #394 (spec 15) 重塑：提交 = 正文单字段 + 项目 id（无标题/标签——标题
+// server 派生占位、agent 回填；标签固定词表），本 hook 同形。
 // Query discipline: todos/projects were already eager on every shell
 // (deduped TQ keys — zero new traffic); members/skills/machines stay eager
 // only for the board (its card-level 开始 eats firstAgentId before any
 // dialog opens) and gate on the dialog's open state everywhere else.
 
-import { TAG_DEFAULT_COLOR, type TodoRecord as WireTodo } from '@pacman/shared';
+import type { TodoRecord as WireTodo } from '@pacman/shared';
 import { useCallback, useMemo, useState } from 'react';
 import { attachFile } from '../api/attachments.js';
 import {
@@ -19,7 +21,6 @@ import {
   useMembers,
   useProjects,
   useSkills,
-  useTags,
   useTodos,
 } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
@@ -35,9 +36,9 @@ interface NewTaskSurfaceOpts {
   /** true = members/skills/machines 保持 eager（board 现状：卡片级 开始 在
    *  dialog 开之前就吃 firstAgentId）；缺省 = 随 open 态 gated，不开不发。 */
   eager?: boolean;
-  /** fixture 面保存落点（board = 本地卡 append，#66 律；忽略 spec/tagIds,
-   *  与原 fixture 分支同）。缺省 = 仅关 dialog。 */
-  onFixtureSave?: (title: string) => void;
+  /** fixture 面保存落点（board = 本地卡 append，#66 律；参数 = 正文，标题
+   *  由 localTodo 按 shared 规则派生——#394 同律）。缺省 = 仅关 dialog。 */
+  onFixtureSave?: (spec: string) => void;
 }
 
 export interface NewTaskSurface {
@@ -66,32 +67,6 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
   const skillsQ = useSkills(teamId, dataOn);
   const mutations = useApiMutations(teamId);
 
-  // #309 标签面（r9 §3.4）：dialog 上报的选中项目 → tags 查询键；面板数据
-  // 只在 dialog 开时取。新建标签 = POST tags（color 客户端缺省
-  // TAG_DEFAULT_COLOR，r9 §3.4），解析出的 id 由 dialog 自动选中。
-  const [dialogProjectId, setDialogProjectId] = useState<string | undefined>(undefined);
-  const tagsQ = useTags(dialogProjectId ?? projectsQ.data?.[0]?.id, live && open);
-  const createTag = useCallback(
-    async (name: string) => {
-      let projectId = dialogProjectId ?? projectsQ.data?.[0]?.id;
-      if (!projectId) {
-        // 无项目：先建默认托管项目再落标签——保存路径同语义（[设计]，
-        // 原站无项目建标签行为未捕获；标签属项目，无项目即无处可挂）。
-        const created = await mutations.createProject.mutateAsync({
-          name: t('默认项目'),
-          repoKind: 'hosted',
-        });
-        projectId = created.id;
-      }
-      const created = await mutations.createTag.mutateAsync({
-        projectId,
-        name,
-        color: TAG_DEFAULT_COLOR,
-      });
-      return created.id;
-    },
-    [dialogProjectId, projectsQ.data, mutations.createTag, mutations.createProject, t],
-  );
   // M7 #310 附件：live 创建面把 spec 提到此处,附件 token 才能注入。
   // 新建对话框关闭 = 直接清空（持久化场景下再次打开应从空开始）。
   const [liveSpec, setLiveSpec] = useState('');
@@ -103,8 +78,11 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
     return member?.actorId ?? null;
   }, [membersQ.data]);
 
+  // spec 15 #394：提交 = 正文单字段。标题不再采集——live 面 wire 上 title
+  // 恒空串由 server 派生占位（首行截断），agent 接单后回填；fixture 面 =
+  // onFixtureSave → localTodo 内同一 shared 规则派生。
   const createTodo = useCallback(
-    (title: string, spec: string, selectedProjectId?: string, tagIds?: string[]) => {
+    (spec: string, selectedProjectId?: string) => {
       setOpen(false);
       // 提交后清空 spec,下次打开新建对话框从空开始
       setLiveSpec('');
@@ -112,23 +90,20 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
         // #176: dialog 选中项目优先;未选(空集/查询未决)退首行真值
         const projectId = selectedProjectId ?? projectsQ.data?.[0]?.id;
         if (projectId) {
-          mutations.createTodo.mutate({ projectId, title, spec, tagIds });
+          mutations.createTodo.mutate({ projectId, spec });
           return;
         }
         // 无项目：先建默认托管项目再落任务（self-host 单用户语义 [设计]，
-        // 02 §3 项目创建流两分支的 hosted 侧）。tagIds 常态为空（无项目即
-        // 无标签可选）；例外 = 建标签已先落默认项目（createTag 路径）而
-        // projectsQ 重取尚未回灌的窄竞态窗——此时这里会多建一个项目且
-        // tagIds 属前项目，由 server 项目边界校验 400 兜底 [设计]，不静默。
+        // 02 §3 项目创建流两分支的 hosted 侧）。
         mutations.createProject.mutate(
           { name: t('默认项目'), repoKind: 'hosted' },
           {
-            onSuccess: (p) => mutations.createTodo.mutate({ projectId: p.id, title, spec, tagIds }),
+            onSuccess: (p) => mutations.createTodo.mutate({ projectId: p.id, spec }),
           },
         );
         return;
       }
-      onFixtureSave?.(title);
+      onFixtureSave?.(spec);
     },
     [live, projectsQ.data, mutations.createTodo, mutations.createProject, onFixtureSave, t],
   );
@@ -136,16 +111,16 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
   // 保存并开始（r2 §4.2 双钮语义，M5 live）：创建 → POST builds（withPlan，
   // 首 Agent 双槽指派 [设计]）。fixture 面 = 同 保存。M7 #310:带 spec 走真。
   const createAndStart = useCallback(
-    (title: string, spec: string, selectedProjectId?: string, tagIds?: string[]) => {
+    (spec: string, selectedProjectId?: string) => {
       setOpen(false);
       setLiveSpec('');
       if (!live) {
-        createTodo(title, spec, selectedProjectId, tagIds);
+        createTodo(spec, selectedProjectId);
         return;
       }
       const start = (projectId: string) =>
         mutations.createTodo.mutate(
-          { projectId, title, spec, tagIds },
+          { projectId, spec },
 
           {
             onSuccess: (created) =>
@@ -278,9 +253,6 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
     onSave: createTodo,
     onSaveAndStart: live ? createAndStart : undefined,
     projects: projectRows,
-    tags: tagsQ.data,
-    onCreateTag: live ? createTag : undefined,
-    onProjectChange: setDialogProjectId,
     ...(live ? { spec: liveSpec, onSpecChange: setLiveSpec, onAttachment } : {}),
     mentionGroups,
   };

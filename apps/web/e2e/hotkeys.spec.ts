@@ -75,8 +75,8 @@ test('N on the board opens the new-task dialog; ⌘N does not', async ({ page })
   await expect(dialog(page)).toHaveCount(0);
 
   await pressUntil(page, 'n', dialog(page));
-  // family law: the dialog's title input owns focus on open
-  await expect(page.locator('.new-task-input')).toBeFocused();
+  // family law: the dialog's spec textarea owns focus on open (#394 单字段面)
+  await expect(page.locator('.new-task-spec')).toBeFocused();
   await escapeUntilHidden(page, dialog(page));
   await expect(dialog(page)).toHaveCount(0);
 });

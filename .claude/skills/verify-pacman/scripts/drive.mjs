@@ -127,7 +127,8 @@ try {
     await page.click('.board-new-task');
     await page.waitForSelector('.new-task-dialog', { timeout: 5000 });
     check(true, '新建任务 dialog 打开');
-    await page.fill('.new-task-input', title);
+    // spec 15 #394：单字段正文——标题输入位移除,占位标题 = 正文首行。
+    await page.fill('.new-task-spec', title);
     await page.click('.new-task-save');
     await page.waitForSelector('.new-task-dialog', { state: 'hidden', timeout: 5000 });
 

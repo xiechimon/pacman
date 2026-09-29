@@ -7,7 +7,7 @@ description: pacman 行为验证——起隔离 live 栈(server VERIFY_PORT 8791
 
 pacman = todos.dev 复刻(React/vite web + Hono REST/SSE/SQLite server)。本 skill 起一套**隔离实例**(独立端口 + 独立数据根,绝不碰用户真数据 `~/.pacman` 和 8787/5173 上的活跃 dev 栈),用仓库自带的 Playwright chromium 走真用户路径,产出证据后干净回收。脚本全在 `scripts/`,证据与运行态全在 `.claude/` 下(已被 .gitignore 忽略,不进 git)。
 
-Last updated: 2026-09-28(#354 spec 11 先行地图:feature map 补三面条目(providers runtime tabs / machines 本机行+switches / 添加服务商 picker)+ 三个先行 probe(drive-providers-tabs / drive-machines-local / drive-provider-picker.mjs)——先行语义(spec 11 A12):实现票落地前红态,FAIL detail 逐条指 spec 条款,实现票验收 = 转绿,详见 features/README.md Last updated;前序同日:证据归档纪律(证据默认落主仓 + archive.mjs 归档进 docs/verify/<ticket>/ + 硬规则「无归档路径的 verify 声明视为未验证」)+ M7 功能闭环维护(feature map 补 6 条 + drive-stop.mjs 修 #318 + stub-llm-verify.mjs 修 Node ≥v20 close bug)。建成日 2026-09-25,5 probe 全 PASS;维护走 `/maintain-verification-skill`)
+Last updated: 2026-09-29(#391 验收复盘:「验收签字」硬规则——归档后必须勾 issue Acceptance criteria 框 + 追加验收记录段(关票 ≠ 验收完成,#391 实测票关了三框仍空);归档纪律补 PR 贴图形态(github.com/<owner>/<repo>/raw/<SHA>/ 永久链,私有仓 raw.githubusercontent 恒 404);前序 2026-09-28:#354 spec 11 先行地图:feature map 补三面条目(providers runtime tabs / machines 本机行+switches / 添加服务商 picker)+ 三个先行 probe(drive-providers-tabs / drive-machines-local / drive-provider-picker.mjs)——先行语义(spec 11 A12):实现票落地前红态,FAIL detail 逐条指 spec 条款,实现票验收 = 转绿,详见 features/README.md Last updated;前序同日:证据归档纪律(证据默认落主仓 + archive.mjs 归档进 docs/verify/<ticket>/ + 硬规则「无归档路径的 verify 声明视为未验证」)+ M7 功能闭环维护(feature map 补 6 条 + drive-stop.mjs 修 #318 + stub-llm-verify.mjs 修 Node ≥v20 close bug)。建成日 2026-09-25,5 probe 全 PASS;维护走 `/maintain-verification-skill`)
 
 ## 事实底座(2026-09-25 盘问;feature 面演化后跑 `/maintain-verification-skill` 校正)
 
@@ -25,7 +25,7 @@ Last updated: 2026-09-28(#354 spec 11 先行地图:feature map 补三面条目(p
 
 **worktree 车道**:worktree 检出里没有 `.claude/`(gitignored),脚本在主仓。跑法:launch 与 drive 都传 `VERIFY_REPO_ROOT=<worktree 绝对路径>`,栈就在 worktree 的代码上起(worktree 须已 `pnpm install`);脚本自身位置只用于兜底推导主仓。**改码后必须重 launch**:worktree 在 `.claude/worktrees/` 下,vite 配置的 `**/.claude/**` watch 忽略会把整个 worktree 罩住,栈运行中改码不会生效(实证见项目记忆),驱动到的就是旧代码。
 
-**lane 收尾必做**(证据随 worktree 消失是本 skill 最大的坑,见「证据归档纪律」):`VERIFY_REPO_ROOT` 只影响栈与运行态,证据默认落主仓;跑完仍须 archive 进 `docs/verify/<ticket>/` 并 commit,否则 PR 的验证声明不可查证。
+**lane 收尾必做**(证据随 worktree 消失是本 skill 最大的坑,见「证据归档纪律」):`VERIFY_REPO_ROOT` 只影响栈与运行态,证据默认落主仓;跑完仍须 archive 进 `docs/verify/<ticket>/` 并 commit + 勾 issue 验收框(见「证据归档纪律」),否则 PR 的验证声明不可查证。
 
 ## Launch
 
@@ -102,7 +102,18 @@ node .../scripts/archive.mjs <证据目录> <ticket>   # → docs/verify/<ticket
 
 - archive 落主仓(与 `VERIFY_REPO_ROOT` 无关),落盘后自检 `git check-ignore`——归档进被忽略的路径直接报错退出(等于没归档)。
 - PR body 引用 archive 打印的仓库相对路径。**无归档路径的 verify 声明视为未验证**,reviewer 无从复核。
+- **PR body 直接内嵌截图**用 `![说明](https://github.com/<owner>/<repo>/raw/<head SHA>/docs/verify/<ticket>/<run>/<file>.png)`——必须 `github.com/.../raw/...` 形态 + commit SHA 永久链:`raw.githubusercontent.com` 对私有仓恒 404(CDN 不透传鉴权),branch 名会随后续提交漂移。GitHub 无附件上传公开 API(web 拖拽生成的 `user-attachments` 链接需浏览器会话),agent 流程一律「证据进仓 + raw 永久链内嵌」,登录且有仓权限的查看者可见图。
 - 证据是 200-300KB/次(截图为主),量级可接受;真值三件套(截图 + API JSON + SQLite 行)照旧,归档只改落盘位置不改口径。
+
+### 验收签字(硬规则,归档同日收尾)
+
+证据归档只完成「履约」,还差「签字」:issue 的 Acceptance criteria 勾选框不会因 `Closes #N` 自动勾上(#391 实测:票已关、证据在仓,三框仍空,用户视角 = 验收未发生)。PR 合并前后,lane 必须:
+
+1. `gh issue view <ticket> --json body` 取正文,把已交付的 `- [ ]` 改 `- [x]`(只勾真有证据支撑的框);
+2. 正文末尾追加「验收记录」段:PR 号 + 合并日 + 证据目录相对路径 + probe/e2e 通过数(数字须与归档的 result.json / e2e 日志一致,不写约数);
+3. `gh issue edit <ticket> --body-file <tmpfile>` 写回(长正文禁内联 `--body`)。
+
+未交付的框**不勾**,在验收记录里写明缺口。「关票 ≠ 验收完成」——勾框 + 证据指针才是可复核的终态。
 
 ## Cleanup
 

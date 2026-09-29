@@ -84,15 +84,17 @@ export function BoardPage() {
   // 新建任务面（#389）：dialog 接线 = useNewTaskSurface（侧栏全局面共享同一
   // save 路径）；board 特有的只有 fixture 保存落点（本地卡 append，#66 律）
   // 与 eager 数据位（卡片级 开始 在 dialog 开之前就吃 firstAgentId）。
+  // spec 15 #394 同律：参数 = 正文，标题由 localTodo 内 shared 规则派生
+  // （live 面 = wire 空串 server 派生，agent 回填）。
   const onFixtureSave = useCallback(
-    (title: string) => {
+    (spec: string) => {
       setFixtureTodos((prev) => [
         ...prev,
         // fixture.now is the session's reference instant, so the fresh
         // card reads 刚刚 against the same clock as the frozen labels.
         // fixture 面 localTodo 保持 canon projectId(approximation,选择
         // 是纯表单 state 无 mutation,#176 票面 live 语义)。
-        localTodo(prev.reduce((max, t) => Math.max(max, t.seqNum), 0) + 1, title, fixture.now),
+        localTodo(prev.reduce((max, t) => Math.max(max, t.seqNum), 0) + 1, spec, fixture.now),
       ]);
     },
     [fixture],
