@@ -551,7 +551,8 @@ export const EN: Record<string, string> = {
   本地仓库项目暂不支持在线浏览文件:
     'Online file browsing is not available for local repository projects',
 
-  // —— #403 看板标签筛选条（顶栏 chip 组 + 空结果态）——
-  没有匹配所选标签的任务: 'No tasks match the selected tags',
+  // —— #403/#445 看板筛选面（仓库 chip 组 + 类型 popover + 空结果态）——
+  类型: 'Type',
+  没有匹配筛选条件的任务: 'No tasks match the selected filters',
   清除筛选: 'Clear filters',
 };

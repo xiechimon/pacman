@@ -372,6 +372,48 @@ export const boardTagFilterEmpty: FixtureSet = {
   tags: tagFilterRows,
 };
 
+/** #445 仓库筛选探针卡工厂：tagFilterProbe 同式，多带 projectId 位。 */
+function repoFilterProbe(
+  id: string,
+  seqNum: number,
+  title: string,
+  phase: TodoRecord['phase'],
+  projectId: string,
+  tagIds: string[],
+): TodoRecord {
+  return { ...probeTodo(phase, r7(13, 40)), id, seqNum, title, spec: title, projectId, tagIds };
+}
+
+/** #445 看板仓库筛选命名场景（无 capture，board-tags 先例）：三项目——
+ *  canon r3-lifecycle 两卡（bug tagged 待开始 / 无标签 待处理）+
+ *  r2-inventory 一卡（docs tagged 执行中）+ r4-quiet 零卡（选中即触发
+ *  板级空结果态）。projectNames 在场 = fixture 面仓库筛选渲染门；tags
+ *  同场 = 类型轴/卡片标签 chip 与仓库轴的组合收窄可钉。 */
+export const boardRepoFilter: FixtureSet = {
+  ...boardDefault,
+  projectNames: {
+    [PROJECT_ID]: PROJECT_NAME,
+    'r2-inventory': 'r2-inventory',
+    'r4-quiet': 'r4-quiet',
+  },
+  todos: [
+    repoFilterProbe('repofilter-a', 46, 'repofilter 探针 A（r3·bug）', 'todo', PROJECT_ID, [
+      'tag-bug',
+    ]),
+    repoFilterProbe(
+      'repofilter-b',
+      47,
+      'repofilter 探针 B（r2·docs）',
+      'building',
+      'r2-inventory',
+      ['tag-docs'],
+    ),
+    repoFilterProbe('repofilter-c', 48, 'repofilter 探针 C（r3·无标签）', 'review', PROJECT_ID, []),
+  ],
+  now: r7(13, 55),
+  tags: tagFilterRows,
+};
+
 /** Board with the probe in the given phase (r7 02/22/21/33 …). The dark
  *  board pair (02/02b) shows `9 分钟前` on the confirm card → captured
  *  ~13:35 with phaseAt 13:26. Done-phase boards (35/35d) list #9 ahead of

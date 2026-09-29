@@ -34,7 +34,8 @@ export function Button({
   // icon/quiet 不渲染 size 类（A4-deep 上游观察修正）：几何纯 per-face，
   // size 档的 height/padding 不再泄漏进这两面（deep 收编期的 per-face
   // height 挡板随之冗余但无害）。text 保留 size 类——A3 收编的 text 面
-  // （board-new-task 等）高度由档位承载，r7 topbar 实测。
+  // 高度由档位承载，r7 topbar 实测（原顶栏「+ 任务」消费面已随 #445
+  // 撤除，档位规则为其余 text 面保留）。
   const sizeless = variant === 'icon' || variant === 'quiet';
   const cls = ['btn', `btn--${variant}`, !sizeless && `btn--${size}`, className]
     .filter(Boolean)
