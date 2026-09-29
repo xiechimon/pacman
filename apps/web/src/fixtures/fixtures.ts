@@ -9,6 +9,7 @@ import {
   BRAND,
   conversationBranch,
   derivePlaceholderTitle,
+  FIXED_TAGS,
   type ModelSource,
   maskApiKey,
   PLACEHOLDER_TITLE_FALLBACK,
@@ -323,6 +324,52 @@ export const boardGithubPicker: FixtureSet = {
       },
     ],
   },
+};
+
+/** #403 看板标签筛选命名场景（无 capture，newtask-projects 先例）。tag 行
+ *  = 固定词表六行的 fixture 投影（id 合成 `tag-<name>`，name/color 从
+ *  FIXED_TAGS 单源派生——词表改动两侧同步，不手抄色值）。 */
+const tagFilterRows = FIXED_TAGS.map((t) => ({
+  id: `tag-${t.name}`,
+  name: t.name,
+  color: t.color,
+}));
+
+/** 筛选探针卡工厂：probeTodo 全形底 + 合成 id/seq/标题/tagIds（命名场景
+ *  合成内容，无 capture 基线）。phaseAt 走 r7 时刻序，now 钉 13:55。 */
+function tagFilterProbe(
+  id: string,
+  seqNum: number,
+  title: string,
+  phase: TodoRecord['phase'],
+  tagIds: string[],
+): TodoRecord {
+  return { ...probeTodo(phase, r7(13, 40)), id, seqNum, title, spec: title, tagIds };
+}
+
+/** board-tags：跨列三卡——bug 待开始 / docs 执行中 / 无标签 待处理。
+ *  e2e 钉筛选开/关/切换/URL 携带与「无标签恒可见」裁决面。 */
+export const boardTagFilter: FixtureSet = {
+  ...boardDefault,
+  todos: [
+    tagFilterProbe('tagfilter-bug', 41, 'tagfilter 探针（bug）', 'todo', ['tag-bug']),
+    tagFilterProbe('tagfilter-docs', 42, 'tagfilter 探针（docs）', 'building', ['tag-docs']),
+    tagFilterProbe('tagfilter-plain', 43, 'tagfilter 探针（无标签）', 'review', []),
+  ],
+  now: r7(13, 55),
+  tags: tagFilterRows,
+};
+
+/** board-tags-empty：两卡全 tagged（bug/docs）——选中两词之外任一（如
+ *  chore）即触发板级空结果态（无标签卡不在场，收窄才能见底）。 */
+export const boardTagFilterEmpty: FixtureSet = {
+  ...boardDefault,
+  todos: [
+    tagFilterProbe('tagfilter-e-bug', 44, 'tagfilter 空态探针（bug）', 'todo', ['tag-bug']),
+    tagFilterProbe('tagfilter-e-docs', 45, 'tagfilter 空态探针（docs）', 'building', ['tag-docs']),
+  ],
+  now: r7(13, 55),
+  tags: tagFilterRows,
 };
 
 /** Board with the probe in the given phase (r7 02/22/21/33 …). The dark

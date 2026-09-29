@@ -4,7 +4,8 @@
 // testable without a DOM. #351: 待处理 is not a drop target (gate/failed
 // are system states) — a cross-column drop there is a no-op.
 import { describe, expect, test } from 'vitest';
-import { moveTodo } from '../src/board/dnd.js';
+import { COLUMNS } from '../src/board/columns.js';
+import { columnDropIndex, moveTodo } from '../src/board/dnd.js';
 import { NOW, todo } from './helpers.js';
 
 describe('moveTodo（落位 = 排序 + 手动改相，r2 §4.2 计数联动）', () => {
@@ -79,5 +80,67 @@ describe('moveTodo（落位 = 排序 + 手动改相，r2 §4.2 计数联动）',
     const before = JSON.stringify([a, b, c]);
     moveTodo([a, b, c], a.id, { columnId: 'todo', index: 2 }, NOW);
     expect(JSON.stringify([a, b, c])).toBe(before);
+  });
+});
+
+// #403 筛选面拖拽落点翻译：筛选激活时拖拽视图是列的子集，视图内落点
+// index 直传给 moveTodo 会被全集列视图错读（隐藏卡占着序位）。翻译规则 =
+// 锚卡映射：落点之后那张可见卡在全集列视图（排除被拖卡）中的位次；落在
+// 可见末尾 = 跟在最后一张可见卡之后（而非全集末尾）。无隐藏卡时与旧直传
+// `list.indexOf(active)` 恒等（回归 parity）。
+describe('columnDropIndex（筛选视图落点 → 全集列视图位次，#403）', () => {
+  const column = COLUMNS.find((c) => c.id === 'todo');
+  if (column == null) throw new Error('todo column missing');
+  const a = todo(1, 'todo');
+  const b = todo(2, 'todo');
+  const c = todo(3, 'todo');
+  /** 列视图序 = orderIndex 升序；todo(seq) 全零 orderIndex 时 sort 稳定保入参序。 */
+  const ids = (list: { id: string }[]) => list.map((t) => t.id);
+
+  test('parity：无隐藏卡时与旧直传 index 恒等（中间落点）', () => {
+    // 全集 [a,b,c]，a 拖到 c 后 → 可见 post-move [b,c,a]，旧 index = 2
+    const index = columnDropIndex(column, [a, b, c], ids([b, c, a]), a.id);
+    expect(index).toBe(2);
+    const next = moveTodo([a, b, c], a.id, { columnId: 'todo', index }, NOW);
+    expect(ids(next)).toEqual(ids([b, c, a]));
+  });
+
+  test('parity：无隐藏卡时与旧直传恒等（落回首位）', () => {
+    const index = columnDropIndex(column, [a, b, c], ids([a, b, c]), a.id);
+    expect(index).toBe(0);
+  });
+
+  test('隐藏卡占序：拖到可见卡之前 = 锚到该卡的全集位次', () => {
+    // 全集 [a,b(hidden),c]，筛选可见 [a,c]；c 拖到 a 前 → 可见 post-move [c,a]
+    const index = columnDropIndex(column, [a, b, c], ids([c, a]), c.id);
+    const next = moveTodo([a, b, c], c.id, { columnId: 'todo', index }, NOW);
+    expect(ids(next)).toEqual(ids([c, a, b])); // c 在 a 前，隐藏的 b 原位不动
+  });
+
+  test('落可见末尾 = 跟在最后可见卡之后，而非插进隐藏卡之前（所见即所得）', () => {
+    // 全集 [a,b(hidden),c]，a 拖到可见末尾（c 后）→ 可见 post-move [c,a]。
+    // 旧直传 index = list.indexOf(a) = 1 → moveTodo 会把 a 插到 c 之前
+    // （anchor = 全集视图[1] = c），筛选一关落点与所见颠倒。
+    const index = columnDropIndex(column, [a, b, c], ids([c, a]), a.id);
+    const next = moveTodo([a, b, c], a.id, { columnId: 'todo', index }, NOW);
+    expect(ids(next)).toEqual(ids([b, c, a])); // a 跟在 c 后 = 全集尾
+  });
+
+  test('落可见末尾而尾部有隐藏卡：跟在最后可见卡之后（不进全集尾）', () => {
+    // 全集 [a,b,c(hidden)]，a 拖到可见末尾（b 后）→ 可见 post-move [b,a]
+    const index = columnDropIndex(column, [a, b, c], ids([b, a]), a.id);
+    const next = moveTodo([a, b, c], a.id, { columnId: 'todo', index }, NOW);
+    expect(ids(next)).toEqual(ids([b, a, c])); // a 在 b 后、隐藏的 c 前
+  });
+
+  test('可见集只余被拖卡（同列其余全滤隐）：落全集末尾（定义行为）', () => {
+    const index = columnDropIndex(column, [a, b], ids([a]), a.id);
+    const next = moveTodo([a, b], a.id, { columnId: 'todo', index }, NOW);
+    expect(ids(next)).toEqual(ids([b, a]));
+  });
+
+  test('activeId 不在可见视图（防御）：落全集末尾不炸', () => {
+    const index = columnDropIndex(column, [a, b, c], ids([b, c]), a.id);
+    expect(index).toBe(2);
   });
 });

@@ -14,6 +14,7 @@ import {
   PHASE_VALUES,
   type Phase,
   type ProjectRepoKind,
+  type TagRecord,
 } from '@pacman/shared';
 
 export type { Phase };
@@ -304,6 +305,10 @@ export interface FixtureSet {
    *  仓库行（live 面 = GET connection / GET /api/github/repos）。absent =
    *  未连接（认证钮面）。 */
   github?: GithubFixture;
+  /** #403 看板标签筛选的 fixture 数据源：标签记录最小投影（id/name/color，
+   *  TagChip 消费面同形）。absent = 筛选条不渲染（无标签数据的场景保持
+   *  r7 基线零漂移）；live 面真值 = GET /api/projects/{id}/tags。 */
+  tags?: Array<Pick<TagRecord, 'id' | 'name' | 'color'>>;
 }
 
 /** GitHub 连接 fixture（#361）：connected 驱动认证钮/picker 面切换；
