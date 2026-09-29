@@ -97,7 +97,9 @@ test('取消 = 静默 no-op：输入不动、无错误/提示行', async ({ page
   await expect(page.locator('.prj-new-hint')).toHaveCount(0);
 });
 
-test('unavailable 422：中性提示行，输入仍可用，编辑即撤', async ({ page }) => {
+test('unavailable 422：提示行 + 自动开应用内浏览器兜底；关闭后提示仍在，编辑即撤', async ({
+  page,
+}) => {
   await stubBoot(page);
   await stubPick(page, () => ({
     status: 422,
@@ -110,6 +112,12 @@ test('unavailable 422：中性提示行，输入仍可用，编辑即撤', async
   await expect(hint).toContainText('请直接输入路径');
   // 提示非错误级：danger 错误行不出现。
   await expect(page.locator('.prj-new-error')).toHaveCount(0);
+  // #441：unavailable = remote/headless 形态 → 自动打开应用内目录浏览器兜底。
+  await expect(page.locator('.dir-browser')).toBeVisible();
+  // 关闭 overlay（Escape）：提示行仍在（W12，不随 overlay 退场）。
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.dir-browser')).not.toBeVisible();
+  await expect(hint).toBeVisible();
   // 输入面仍可用 + 编辑即撤（陈旧提示不残留律）。
   await input.fill('/still/usable');
   await expect(input).toHaveValue('/still/usable');

@@ -46,6 +46,7 @@ import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronRight, ImageFrame } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { DirBrowser } from './dir-browser.js';
 import { PageShell } from './shell.js';
 import './pages.css';
 
@@ -86,6 +87,9 @@ export function ProjectNewPage() {
   // （ADR 0003 D4——能力边界说明，非错误级；null = 无提示）。
   const [pickBusy, setPickBusy] = useState(false);
   const [pickHint, setPickHint] = useState<string | null>(null);
+  // #441：native 对话框不可用（422 unavailable，remote/headless 形态）时自动
+  // 打开应用内目录浏览器兜底（ADR 0003 D6）；其余错误只落提示行不开 overlay。
+  const [browseOpen, setBrowseOpen] = useState(false);
   const [repoOpen, setRepoOpen] = useState(false);
   // #361 github 面状态位：manualRepo = 手动兜底 input 面；pickerOpen =
   // picker 弹层；oauthError = 着陆 reason 三译 / authorize 失败原文（内联行）。
@@ -102,6 +106,7 @@ export function ProjectNewPage() {
   const autoName = useRef('');
   const closeRepo = useCallback(() => setRepoOpen(false), []);
   const closePicker = useCallback(() => setPickerOpen(false), []);
+  const closeBrowse = useCallback(() => setBrowseOpen(false), []);
   useEscapeClose(repoOpen, closeRepo);
   useEscapeClose(pickerOpen, closePicker);
 
@@ -189,6 +194,9 @@ export function ProjectNewPage() {
               ? err.message
               : t('无法打开系统文件夹对话框'),
         );
+        // #441 兜底：unavailable = remote/headless 形态（无 GUI 会话），自动开
+        // 应用内目录浏览器（ADR 0003 D6）；busy（409）与未分类错只落提示行。
+        if (reason === 'unavailable') setBrowseOpen(true);
       },
       onSettled: () => setPickBusy(false),
     });
@@ -505,6 +513,19 @@ export function ProjectNewPage() {
               </button>
             </div>
           </OverlayMount>
+          {/* #441 应用内目录浏览器（ADR 0003 D6 remote/headless 兜底）：仅在
+              local 选态挂载；onPick 走既有 onLocalPathChange（回填 + 名称联动
+              + 编辑即撤提示律，W5）。 */}
+          {repoSel === 'local' && (
+            <DirBrowser
+              open={browseOpen}
+              onClose={closeBrowse}
+              onPick={(path) => {
+                setBrowseOpen(false);
+                onLocalPathChange(path);
+              }}
+            />
+          )}
         </div>
         {/* github 非手动面的内联错误行（着陆 reason 三译 / authorize 400
             原文）与未认证面手动兜底链接（连接态未决时不出，随占位面收敛）。 */}
