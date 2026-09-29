@@ -140,6 +140,11 @@ function requireTeamTodo(db: Db, todoId: string, teamId: string) {
  * 一个不存在的 agentId 照样落库，直到构建跑起来才炸（而那时用户已经看到
  * 「已派工」的回执）。抛错经 relay 回到模型眼前（daemon 把它折成工具结果文本
  * `run_builds rejected: …`），模型可以据此重挑。 */
+/** 单次 docs 读的路径上限。批量读的收益来自「少几趟往返」，不是「一趟读完整
+ * 个仓」——结果过大反而把上下文撑爆，后几趟更贵。超出的条数在应答里显式报出
+ * （omitted），模型可再发一趟接着读。 */
+const DOCS_MAX_PATHS = 24;
+
 function requireTeamAgent(db: Db, agentId: string, teamId: string) {
   const row = db
     .select()
@@ -244,23 +249,28 @@ export async function executeChiefTool(
       // [设计]。无 path → 回项目 repo 元信息（GitHub 形态无本地存储）。
       const projectId = str(params, 'projectId');
       const row = requireProjectRow(db, projectId);
-      const path = optStr(params, 'path');
-      if (path === undefined) {
-        return json({ projectId, name: row.name, repoKind: row.repoKind, path: null });
+      const paths = strArr(params, 'paths');
+      if (paths.length === 0) {
+        return json({ projectId, name: row.name, repoKind: row.repoKind, files: [] });
       }
-      const file = await readFile(
-        { db, reposDir: deps.reposDir },
-        projectId,
-        path,
-        optStr(params, 'ref'),
-      );
+      // 逐条读、逐条记错，不因单条失败整体回退：一次读多个文件时，模型不该
+      // 因为其中一个路径猜错就丢掉另外几个——那会逼它再花一整趟往返重读。
+      const capped = paths.slice(0, DOCS_MAX_PATHS);
+      const ref = optStr(params, 'ref');
+      const files: Record<string, unknown>[] = [];
+      for (const p of capped) {
+        try {
+          const f = await readFile({ db, reposDir: deps.reposDir }, projectId, p, ref);
+          files.push({ path: f.path, ref: f.ref, encoding: f.encoding, content: f.content });
+        } catch (err) {
+          files.push({ path: p, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
       return json({
         projectId,
         name: row.name,
-        path: file.path,
-        ref: file.ref,
-        encoding: file.encoding,
-        content: file.content,
+        files,
+        ...(paths.length > capped.length ? { omitted: paths.length - capped.length } : {}),
       });
     }
     case 'usage': {

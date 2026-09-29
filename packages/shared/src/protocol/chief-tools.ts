@@ -181,14 +181,18 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   },
   {
     name: 'docs',
-    description: 'Read repository documents (files at a ref) for a project.',
+    // 批量读是刻意的：这个工具实测占全部工具调用的 64%，而每次调用都是一整趟
+    // 模型往返（上下文重发一遍，是成本的大头）。paths 一次给多个文件路径，
+    // 把「读五个文件」从五趟压到一趟。
+    description:
+      'Read repository documents (files at a ref) for a project. Pass several paths at once to read them in one call.',
     parameters: obj(
       {
         projectId: str('Project id.'),
-        path: str('File path to read.'),
+        paths: idArr('File paths to read — batch them; one call may read many files.'),
         ref: str('Optional git ref; defaults to the default branch.'),
       },
-      ['projectId', 'path'],
+      ['projectId', 'paths'],
     ),
     replaySafe: true,
   },

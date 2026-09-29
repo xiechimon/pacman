@@ -44,6 +44,8 @@
   ],
   "harness_paths": [
     "integration/eval/chief-dispatch/stack.mts",
+    "apps/server/src/services/chief-tools.ts",
+    "packages/shared/src/protocol/chief-tools.ts",
     "integration/eval/chief-dispatch/grade.mts",
     ".claude/hillclimb/chief-dispatch/cases.json",
     "apps/server/src/services/chief.ts",
@@ -75,5 +77,5 @@
     "integration/eval/chief-dispatch/repo-seed/packages/shared/package.json",
     "integration/eval/chief-dispatch/repo-seed/packages/shared/src/protocol.ts"
   ],
-  "harness_sha": "2e99b6505a1eff3f0f3937f99003f8cc3baf8d31416562ca33e856346eacbc18"
+  "harness_sha": "8ed617e853118d43283b845004119691a4957cab80fa5f662b59603b2b6565a4"
 }
