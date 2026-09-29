@@ -17,6 +17,7 @@ import type {
   DiffFileContent,
   DocumentDiff,
   DocumentDiffFile,
+  FsListResult,
   FsPickResult,
   GithubConnectionStatus,
   GithubReposResponse,
@@ -44,7 +45,13 @@ import type {
   TokenUsage,
   UserRecord,
 } from '@pacman/shared';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from './client.js';
 
@@ -312,6 +319,22 @@ export const useGithubRepos = (enabled: boolean) =>
     queryKey: ['github-repos'],
     queryFn: () => api.get<GithubReposResponse>('/api/github/repos'),
     enabled,
+  });
+
+/** 应用内目录浏览数据源（#441，ADR 0003 D6 remote/headless 兜底）：
+ *  dir null = 缺省请求（server $HOME 起点，web 无从知道 server HOME）；
+ *  queryKey 含 dir = 快速连点导航按键隔离（W4），keepPreviousData 防塌缩
+ *  闪烁——下钻期间旧列表留显不闪空面。 */
+export const useFsList = (dir: string | null, enabled: boolean) =>
+  useQuery({
+    queryKey: ['fs-list', dir],
+    queryFn: () =>
+      api.get<FsListResult>(
+        dir === null ? '/api/fs/list' : `/api/fs/list?dir=${encodeURIComponent(dir)}`,
+      ),
+    enabled,
+    placeholderData: keepPreviousData,
+    staleTime: 0,
   });
 
 export const useSecrets = (teamId: string | undefined, enabled: boolean) =>
