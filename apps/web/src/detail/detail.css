@@ -1548,7 +1548,7 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 }
 
 .rerun-switch:focus-visible {
-  outline: 2px solid var(--card-button);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -1619,8 +1619,8 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 }
 
 /* A6：覆盖 A3「保留族类不接 Button 原语」裁决（docs/spec/09）。原三条
-   拒收理由已被化解：(1) ghost 描边 token 单源化（--card-ghost-border
-   别名指向 --card-border，token 双值合并）；(2) Button size 新增
+   拒收理由已被化解：(1) ghost 描边 token 单源化（--card-border 单源，
+   #412 D2 起为 --border-default 别名）；(2) Button size 新增
    overlay 30px 档；(3) Tailwind v4 base 默置 box-sizing: border-box，
    1px 描边不再吃盒高度。5 处 overlay-btn 全部由 ui/button 原语消费
    variant='ghost'|'primary' size='overlay' 替换完成。 */

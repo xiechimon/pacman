@@ -8,7 +8,8 @@
 // recolored, so the geometry is the source bitmap's verbatim:
 //   -dark  = dark --surface base (#18181b) + dark --text-primary ink (#fafaf9)
 //   -light = light --surface base (#faf7f3) + light --text-primary ink (#1c1917)
-// (apps/web/src/styles/tokens.css :root / .light). Opaque bases also keep
+// (值正本 apps/web/src/styles/shadcn.css :root / .light：--surface 直持，
+//  --text-primary 经 tokens.css 别名解析到 --foreground). Opaque bases also keep
 // iOS home-screen tiles legible — apple-touch-icon ignores media and
 // composites transparency over black. Run: node scripts/generate-icon-variants.mjs
 

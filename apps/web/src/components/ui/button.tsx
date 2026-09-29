@@ -7,13 +7,13 @@ import type * as React from 'react';
 import { cn } from '../../lib/utils.js';
 
 // 两处有意偏离 upstream（仓决策，B 只换皮肤不换契约）：
-// 1) focus 环走 app.css #388 家族律（:focus-visible = 2px 实线 --card-button +
+// 1) focus 环走 app.css #388 家族律（:focus-visible = 2px 实线 --focus-ring +
 //    offset 2），去 upstream 的 outline-none + 灰 ring；
 // 2) 过渡收窄到显式三属性：TW 的 transition-all/-colors 属性表都含
 //    outline-color，键盘聚焦第一帧读到的是过渡初值（#15 探针实测），
 //    outline 不计入过渡。
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color] duration-150 focus-visible:[outline:2px_solid_var(--card-button)] focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color] duration-150 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

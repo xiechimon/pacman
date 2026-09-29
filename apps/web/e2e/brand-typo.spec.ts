@@ -13,7 +13,7 @@ import { expect, test } from '@playwright/test';
 //   sidebar-seam / sidebar-nav 既有断言守。
 // - .res-back: hover 无背景变化 (现状即无 hover 面, 此处把律钉死防回潮);
 //   键盘 focus 环由 app.css 全局 :focus-visible 规则承载 (#388, 2px
-//   --card-button + offset 2)——本 spec 断言该环在 res-back 上生效。
+//   --focus-ring + offset 2)——本 spec 断言该环在 res-back 上生效。
 // - 侧栏底 = 主区 --surface: 断言行放在 visual-polish.spec.ts (原 #123
 //   层级断言的翻转, 同票更新)。
 
@@ -110,6 +110,6 @@ test('res-back keeps a keyboard focus ring', async ({ page }) => {
   });
   expect(ring.style).toBe('solid');
   expect(ring.w).toBe('2px');
-  // the codebase ring recipe rides --card-button (#4e47dd, both themes)
+  // the codebase ring recipe rides --focus-ring (#4e47dd, both themes)
   expect(ring.color).toBe('rgb(78, 71, 221)');
 });

@@ -51,13 +51,13 @@ interface TagFilterBarProps {
 }
 
 /** 顶栏 chip 组。选中态内嵌 TagChip 组件（视觉单源）；未选中性描边。
- *  focus 环与 shadcn Button 同 idiom（button.tsx 的 --card-button 实线）。 */
+ *  focus 环与 shadcn Button 同 idiom（button.tsx 的 --focus-ring 实线）。 */
 export function TagFilterBar({ selected, onToggle, onClear }: TagFilterBarProps) {
   const { t } = useI18n();
   const selectedSet = new Set(selected);
   const allActive = selected.length === 0;
   const focus =
-    'focus-visible:[outline:2px_solid_var(--card-button)] focus-visible:outline-offset-2';
+    'focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2';
   // 未选 pill 的几何（20px/11px/px-2）与 tag-chip.css 对齐；选中态不承载
   // 几何——pill 由 TagChip 组件本体出，button 退为透明包裹。
   const pill =
