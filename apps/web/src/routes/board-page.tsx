@@ -15,21 +15,11 @@
 // machines/notifications/chief + 新建/开始/拖拽排序/验收合并 mutation），
 // fixture 分支保持 #52–#75 行为字节不变（fixture 数据面）。
 
-import { TAG_DEFAULT_COLOR, type TodoRecord as WireTodo } from '@pacman/shared';
+import type { TodoRecord as WireTodo } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { attachFile } from '../api/attachments.js';
-import {
-  useApiMutations,
-  useMachines,
-  useMembers,
-  useProjects,
-  useSearchResults,
-  useSkills,
-  useTags,
-  useTodos,
-} from '../api/hooks.js';
+import { useApiMutations, useProjects, useSearchResults, useTodos } from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { AppSidebar } from '../board/app-sidebar.js';
@@ -46,8 +36,8 @@ import type { FixtureSet, OverlayState, TodoRecord } from '../fixtures/records.j
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChiefFab } from '../icons/index.js';
-import type { MentionGroups } from '../overlay/mention-picker.js';
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
+import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 // shell styles live with the board surface; the settings view (101–104)
 // unmounts BoardSurface but keeps the shell, so the route imports them too
@@ -74,12 +64,10 @@ export function BoardPage() {
     useChiefSurface(fixture);
 
   // —— live 数据面（#83）：查询 + mutations；fixture 模式全部惰性（enabled
-  // = live），采集零请求零流。——
+  // = live），采集零请求零流。members/skills/machines 归 #389 抽出的
+  // useNewTaskSurface（eager 位保持原状）。——
   const todosQ = useTodos(teamId, live);
   const projectsQ = useProjects(teamId, live);
-  const membersQ = useMembers(teamId, live);
-  const machinesQ = useMachines(teamId, live);
-  const skillsQ = useSkills(teamId, live);
   const mutations = useApiMutations(teamId);
 
   // New-task dialog (#66): fixture phase has no backend, so a saved task
@@ -93,37 +81,27 @@ export function BoardPage() {
   );
   const liveTodos = useMemo(() => (todosQ.data ?? []).map(toDisplayTodo), [todosQ.data]);
   const todos = live ? liveTodos : fixtureTodos;
-  const [newTaskOpen, setNewTaskOpen] = useState(false);
-
-  // #309 标签面（r9 §3.4）：dialog 上报的选中项目 → tags 查询键；面板数据
-  // 只在 dialog 开时取。新建标签 = POST tags（color 客户端缺省
-  // TAG_DEFAULT_COLOR，r9 §3.4），解析出的 id 由 dialog 自动选中。
-  const [dialogProjectId, setDialogProjectId] = useState<string | undefined>(undefined);
-  const tagsQ = useTags(dialogProjectId ?? projectsQ.data?.[0]?.id, live && newTaskOpen);
-  const createTag = useCallback(
-    async (name: string) => {
-      let projectId = dialogProjectId ?? projectsQ.data?.[0]?.id;
-      if (!projectId) {
-        // 无项目：先建默认托管项目再落标签——保存路径同语义（[设计]，
-        // 原站无项目建标签行为未捕获；标签属项目，无项目即无处可挂）。
-        const created = await mutations.createProject.mutateAsync({
-          name: t('默认项目'),
-          repoKind: 'hosted',
-        });
-        projectId = created.id;
-      }
-      const created = await mutations.createTag.mutateAsync({
-        projectId,
-        name,
-        color: TAG_DEFAULT_COLOR,
-      });
-      return created.id;
+  // 新建任务面（#389）：dialog 接线 = useNewTaskSurface（侧栏全局面共享同一
+  // save 路径）；board 特有的只有 fixture 保存落点（本地卡 append，#66 律）
+  // 与 eager 数据位（卡片级 开始 在 dialog 开之前就吃 firstAgentId）。
+  const onFixtureSave = useCallback(
+    (title: string) => {
+      setFixtureTodos((prev) => [
+        ...prev,
+        // fixture.now is the session's reference instant, so the fresh
+        // card reads 刚刚 against the same clock as the frozen labels.
+        // fixture 面 localTodo 保持 canon projectId(approximation,选择
+        // 是纯表单 state 无 mutation,#176 票面 live 语义)。
+        localTodo(prev.reduce((max, t) => Math.max(max, t.seqNum), 0) + 1, title, fixture.now),
+      ]);
     },
-    [dialogProjectId, projectsQ.data, mutations.createTag, mutations.createProject, t],
+    [fixture],
   );
-  // M7 #310 附件：live 创建面把 spec 提到此处,附件 token 才能注入。
-  // 新建对话框关闭 = 直接清空（持久化场景下再次打开应从空开始）。
-  const [liveSpec, setLiveSpec] = useState('');
+  const {
+    openDialog: openNewTask,
+    firstAgentId,
+    dialogProps: newTaskDialogProps,
+  } = useNewTaskSurface(fixture, { fixtureTodos, eager: true, onFixtureSave });
   // Modal overlays over the board (issue #68): the accept dialog opens from
   // the review card's 完成 button (r7 34) or the scenario fixture; the
   // branch dialog from the card's branch icon.
@@ -142,12 +120,6 @@ export function BoardPage() {
   // the r7 baselines carry no banner)
   const notifyBanner = useNotificationBanner(fixture.ui?.notificationBanner === true, live);
 
-  // live 面的默认执行 Agent（开始/重跑无 dialog 位——已建屏无开始弹窗，
-  // assignment 取团队首个 Agent [设计]，02 §6.2 双槽同值；E2E 脊柱口径）。
-  const firstAgentId = useMemo(() => {
-    const member = (membersQ.data ?? []).find((m) => m.memberType === 'agent');
-    return member?.actorId ?? null;
-  }, [membersQ.data]);
   const startBuild = useCallback(
     (todo: TodoRecord, withPlan: boolean) => {
       if (!live) return;
@@ -162,90 +134,6 @@ export function BoardPage() {
       });
     },
     [live, mutations.startBuilds, firstAgentId],
-  );
-
-  const createTodo = useCallback(
-    (title: string, spec: string, selectedProjectId?: string, tagIds?: string[]) => {
-      setNewTaskOpen(false);
-      // 提交后清空 spec,下次打开新建对话框从空开始
-      setLiveSpec('');
-      if (live) {
-        // #176: dialog 选中项目优先;未选(空集/查询未决)退首行真值
-        const projectId = selectedProjectId ?? projectsQ.data?.[0]?.id;
-        if (projectId) {
-          mutations.createTodo.mutate({ projectId, title, spec, tagIds });
-          return;
-        }
-        // 无项目：先建默认托管项目再落任务（self-host 单用户语义 [设计]，
-        // 02 §3 项目创建流两分支的 hosted 侧）。tagIds 常态为空（无项目即
-        // 无标签可选）；例外 = 建标签已先落默认项目（createTag 路径）而
-        // projectsQ 重取尚未回灌的窄竞态窗——此时这里会多建一个项目且
-        // tagIds 属前项目，由 server 项目边界校验 400 兜底 [设计]，不静默。
-        mutations.createProject.mutate(
-          { name: t('默认项目'), repoKind: 'hosted' },
-          {
-            onSuccess: (p) => mutations.createTodo.mutate({ projectId: p.id, title, spec, tagIds }),
-          },
-        );
-        return;
-      }
-      setFixtureTodos((prev) => [
-        ...prev,
-        // fixture.now is the session's reference instant, so the fresh
-        // card reads 刚刚 against the same clock as the frozen labels.
-        // fixture 面 localTodo 保持 canon projectId(approximation,选择
-        // 是纯表单 state 无 mutation,#176 票面 live 语义)。
-        localTodo(prev.reduce((max, t) => Math.max(max, t.seqNum), 0) + 1, title, fixture.now),
-      ]);
-    },
-    [live, projectsQ.data, mutations.createTodo, mutations.createProject, fixture, t],
-  );
-
-  // 保存并开始（r2 §4.2 双钮语义，M5 live）：创建 → POST builds（withPlan，
-  // 首 Agent 双槽指派 [设计]）。fixture 面 = 同 保存。M7 #310:带 spec 走真。
-  const createAndStart = useCallback(
-    (title: string, spec: string, selectedProjectId?: string, tagIds?: string[]) => {
-      setNewTaskOpen(false);
-      setLiveSpec('');
-      if (!live) {
-        createTodo(title, spec, selectedProjectId, tagIds);
-        return;
-      }
-      const start = (projectId: string) =>
-        mutations.createTodo.mutate(
-          { projectId, title, spec, tagIds },
-
-          {
-            onSuccess: (created) =>
-              mutations.startBuilds.mutate({
-                projectId,
-                todoIds: [created.id],
-                assignment: {
-                  plan: firstAgentId ? { agentId: firstAgentId } : null,
-                  build: firstAgentId ? { agentId: firstAgentId } : null,
-                },
-                withPlan: true,
-              }),
-          },
-        );
-      const projectId = selectedProjectId ?? projectsQ.data?.[0]?.id;
-      if (projectId) start(projectId);
-      else
-        mutations.createProject.mutate(
-          { name: t('默认项目'), repoKind: 'hosted' },
-          { onSuccess: (p) => start(p.id) },
-        );
-    },
-    [
-      live,
-      createTodo,
-      mutations.createTodo,
-      mutations.startBuilds,
-      mutations.createProject,
-      projectsQ.data,
-      firstAgentId,
-      t,
-    ],
   );
 
   // 拖拽落位（#73 / M5 / #160）：fixture = 本地集；live = 逐卡增量 PATCH
@@ -304,73 +192,6 @@ export function BoardPage() {
     if (!live) return undefined;
     return Object.fromEntries((projectsQ.data ?? []).map((p) => [p.id, p.name]));
   }, [live, projectsQ.data]);
-  // #176 新建任务 dialog 项目选择器数据位:live = projectsQ 真值投影
-  // (undefined = 查询未决);fixture = scenario projectNames(缺省 =
-  // undefined → dialog 退 canon 单默认项目)。选择是纯表单 state。
-  const projectRows = useMemo(() => {
-    if (live) return projectsQ.data?.map((p) => ({ id: p.id, name: p.name }));
-    if (fixture.projectNames == null) return undefined;
-    return Object.entries(fixture.projectNames).map(([id, name]) => ({ id, name }));
-  }, [live, projectsQ.data, fixture.projectNames]);
-
-  // #311 mention picker groups: board's new-task dialog needs the same
-  // entity set the composer surfaces. Live pulls the canonical REST
-  // hooks; fixture derives from the local scenario (resources carries
-  // skills + machines; team roster carries agents; projectNames drives
-  // projects). When the live hooks are still loading, fall back to the
-  // empty rows so the picker still opens with a 0 count.
-  const liveTodoSet: WireTodo[] = todosQ.data ?? [];
-  const mentionGroups: MentionGroups = live
-    ? {
-        todo: liveTodoSet.map((t) => ({
-          id: t.id,
-          label: `#${t.seqNum} ${t.title}`,
-          seq: t.seqNum,
-          subtitle: t.phase,
-        })),
-        agent: (membersQ.data ?? [])
-          .filter((m) => m.memberType === 'agent')
-          .map((m) => ({
-            id: m.actorId,
-            label: (m.actor as { displayName?: string } | undefined)?.displayName ?? m.actorId,
-            subtitle:
-              (m.actor as { description?: string | null } | undefined)?.description ?? undefined,
-          })),
-        project: (projectsQ.data ?? []).map((p) => ({ id: p.id, label: p.name })),
-        skill: (skillsQ.data ?? []).map((s) => ({
-          id: s.id,
-          label: s.name,
-          subtitle: s.description ?? undefined,
-        })),
-        machine: (machinesQ.data ?? []).map((m) => ({ id: m.id, label: m.name })),
-      }
-    : {
-        todo: fixtureTodos.map((t) => ({
-          id: t.id,
-          label: `#${t.seqNum} ${t.title}`,
-          seq: t.seqNum,
-          subtitle: t.phase,
-        })),
-        agent: (fixture.team?.agents ?? []).map((a) => ({
-          id: a.id,
-          label: a.displayName,
-          subtitle: a.role ?? a.model,
-        })),
-        project: Object.entries(fixture.projectNames ?? {}).map(([id, name]) => ({
-          id,
-          label: name,
-        })),
-        skill: (fixture.resources?.skills ?? []).map((s) => ({
-          id: s.name,
-          label: s.name,
-          subtitle: s.description,
-        })),
-        machine: (fixture.resources?.machines ?? []).map((m) => ({
-          id: m.name,
-          label: m.name,
-          subtitle: m.sub,
-        })),
-      };
   const fixtureWithTodos: FixtureSet = live
     ? { ...fixture, todos, now: Date.now(), ...(projectNames ? { projectNames } : {}) }
     : { ...fixture, todos };
@@ -382,13 +203,14 @@ export function BoardPage() {
         selected={chiefView === 'settings' ? 'none' : 'board'}
         searchPanel={false}
         onSearch={() => search.setOpen(true)}
+        onNewTask={openNewTask}
       />
       {chiefView === 'settings' ? (
         <ChiefSettings chief={chiefData} onBack={() => setChiefView('drawer')} />
       ) : (
         <BoardSurface
           fixture={fixtureWithTodos}
-          onNewTask={() => setNewTaskOpen(true)}
+          onNewTask={openNewTask}
           banner={
             notifyBanner.visible ? <NotificationBanner onEnable={notifyBanner.enable} /> : undefined
           }
@@ -429,44 +251,10 @@ export function BoardPage() {
         onThread={onThread}
         onNewThread={onNewThread}
       />
-      <NewTaskDialog
-        open={newTaskOpen}
-        onClose={() => setNewTaskOpen(false)}
-        onSave={createTodo}
-        onSaveAndStart={live ? createAndStart : undefined}
-        projects={projectRows}
-        tags={tagsQ.data}
-        onCreateTag={live ? createTag : undefined}
-        onProjectChange={setDialogProjectId}
-        // M7 #310 附件 wire：live 创建面 spec 由父持 state,token 才能注入。
-        // fixture 面不传 → dialog 内部 useState fallback,行为字节不变。
-        {...(live
-          ? {
-              spec: liveSpec,
-              onSpecChange: setLiveSpec,
-              onAttachment: async (files: File[]) => {
-                // #310 三步 wire（r9 §3.1）：每个文件走 grant + upload，
-                // 失败仅记日志不发（用户继续编辑 spec,已发成功的 token 仍
-                // 落入）；token 拼到 spec。多文件按选序拼接，每个 token 占
-                // 独立行（与 detail-page composer 行为一致）。
-                const tokens: string[] = [];
-                for (const file of files) {
-                  try {
-                    const r = await attachFile({ file, scope: 'spec' });
-                    tokens.push(r.token);
-                  } catch (err) {
-                    console.error('attachment failed', file.name, err);
-                  }
-                }
-                if (tokens.length > 0) {
-                  const joiner = liveSpec === '' || liveSpec.endsWith('\n') ? '' : '\n';
-                  setLiveSpec(`${liveSpec}${joiner}${tokens.join('\n')}\n`);
-                }
-              },
-            }
-          : {})}
-        mentionGroups={mentionGroups}
-      />
+      {/* #389: dialog 接线全走 useNewTaskSurface（侧栏 N 热键/新任务行
+          的 opener 也指这里——openNewTask）；fixture 保存落点 = 本页
+          onFixtureSave 本地卡 append（#66 律）。 */}
+      <NewTaskDialog {...newTaskDialogProps} />
       <button
         type="button"
         className="chief-fab"

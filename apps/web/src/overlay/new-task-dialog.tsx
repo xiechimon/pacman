@@ -45,7 +45,7 @@
 // 时扩展。关闭即重置表单(retained-mount 重开 = 净面,闸判定不带脏残留)。
 
 import { TAG_DEFAULT_COLOR } from '@pacman/shared';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
@@ -85,7 +85,7 @@ type TagOption = TagChipData;
  *  项目(r3-lifecycle,#176 票面「至少默认项目」)。 */
 const DEFAULT_PROJECT: ProjectOption = { id: PROJECT_ID, name: PROJECT_NAME };
 
-interface NewTaskDialogProps {
+export interface NewTaskDialogProps {
   /** #73: retained-mount open flag — the exit fade outlives the close. */
   open: boolean;
   onClose: () => void;
@@ -222,8 +222,17 @@ export function NewTaskDialog({
     }
     prevProjectRef.current = selectedProjectId;
   }, [selectedProjectId]);
-  // retained mount means reopen is not a remount — refocus like a fresh one
+  // retained mount means reopen is not a remount — refocus like a fresh one.
+  // #389: OverlayMount 的 mounted 滞后 open 一帧（effect 里才 setMounted），
+  // 鲜开时 [open] effect 跑在节点存在之前——首焦由 ref callback 承载
+  // （SearchPanel attachInput 先例），retained-mount 窗口内重开由 effect 兜住。
   const inputRef = useRef<HTMLInputElement>(null);
+  const openRef = useRef(open);
+  openRef.current = open;
+  const attachTitleInput = useCallback((node: HTMLInputElement | null) => {
+    inputRef.current = node;
+    if (node && openRef.current) node.focus();
+  }, []);
   const specRef = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -400,7 +409,7 @@ export function NewTaskDialog({
         </div>
         <div className="new-task-body">
           <input
-            ref={inputRef}
+            ref={attachTitleInput}
             className="new-task-input"
             placeholder={t('需要做什么？')}
             value={title}

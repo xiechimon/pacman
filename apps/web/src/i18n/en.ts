@@ -28,6 +28,7 @@ export const EN: Record<string, string> = {
   项目: 'Project', // sidebar group / search group / schedule-form field — one fit
   资源: 'Resources',
   新建项目: 'New project',
+  新任务: 'New task', // sidebar action row (#389) — the dialog title stays 新建任务
   技能: 'Skills',
   密钥: 'Secrets',
   机器: 'Machines',

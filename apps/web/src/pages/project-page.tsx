@@ -608,6 +608,8 @@ export function ProjectPage() {
       }
       selected="none"
       leftTitle={project?.name ?? ''}
+      // #389: N 热键/侧栏行走本页 dialog（保存锚路由项目，#305 律）
+      onNewTask={() => setNewTaskOpen(true)}
       tabs={[
         { id: 'tasks', label: '任务' },
         { id: 'files', label: '文件', disabled: isLocalRepo },

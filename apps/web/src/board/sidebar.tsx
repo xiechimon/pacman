@@ -17,7 +17,10 @@
 // anchored-overlay family wiring (OverlayMount + ClickCatcher + Esc, same
 // as the detail chip popover in dhead.tsx) over the capture-frozen
 // 224-wide @ (8,410) geometry (r7 17/16d, §3.5; 244 high since #149
-// dropped the 反馈 row).
+// dropped the 反馈 row). #389: the 新任务 action row joins the 搜索 row
+// (Plus icon + N kbd badge, upstream todos.dev form) — it shares the
+// onNewTask opener with the global N hotkey; the rail keeps its icon-only
+// nav unchanged (the badge needs the expanded label row).
 
 import { type ComponentType, type SVGProps, useCallback, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router';
@@ -82,6 +85,9 @@ interface BoardSidebarProps {
   attention?: number;
   /** Opens the ⌘K search panel (issue #67); the 搜索 rows are triggers. */
   onSearch?: () => void;
+  /** Opens the new-task dialog (issue #389); the 新任务 row + N hotkey share
+   *  this opener (AppSidebar resolves own-dialog routes vs the global one). */
+  onNewTask: () => void;
   /** Render the 用量 nav row (present from the 05b capture day on). */
   usageNav?: boolean;
   /** Route carrying the selected pill: #71 named slots, #69 resource
@@ -198,6 +204,7 @@ export function BoardSidebar({
   onToggle,
   attention = 0,
   onSearch,
+  onNewTask,
   usageNav = false,
   selected = 'board',
   machineOnline = false,
@@ -352,6 +359,16 @@ export function BoardSidebar({
           </span>
           <span className="sidebar-row-label">{t('搜索')}</span>
           <span className="sidebar-kbd">⌘K</span>
+        </button>
+        {/* #389: 新任务行动作行（上游 todos.dev 侧栏实测形态）——点击与全局
+            N 热键同一 opener；角标复用 sidebar-kbd 款。行序钉在 搜索 之后：
+            sidebar-visual 的 .sidebar-kbd 单数探针吃首枚（⌘K）。 */}
+        <button type="button" className="sidebar-row" onClick={onNewTask}>
+          <span className="sidebar-row-icon">
+            <Plus />
+          </span>
+          <span className="sidebar-row-label">{t('新任务')}</span>
+          <span className="sidebar-kbd">N</span>
         </button>
         <Link
           className={rowClass('sidebar-row', selected === 'board')}

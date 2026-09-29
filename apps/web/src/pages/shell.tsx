@@ -68,6 +68,9 @@ interface PageShellProps {
   onTab?: (id: string) => void;
   /** Right-edge action slot (indigo text button on schedules). */
   action?: ReactNode;
+  /** #389: 页面自有新建 dialog 的 opener（project 页——保存锚路由项目）；
+   *  缺省 = 侧栏内部全局 dialog。 */
+  onNewTask?: () => void;
   children: ReactNode;
 }
 
@@ -80,13 +83,14 @@ export function PageShell({
   tab,
   onTab,
   action,
+  onNewTask,
   children,
 }: PageShellProps) {
   const { t } = useI18n();
   const { search } = useLocation();
   return (
     <div className="page-shell">
-      <AppSidebar fixture={fixture} selected={selected} />
+      <AppSidebar fixture={fixture} selected={selected} onNewTask={onNewTask} />
       <div className="page-main">
         <header className="page-topbar">
           <Link className="page-back" to={{ pathname: '/app', search }} aria-label={t('返回')}>

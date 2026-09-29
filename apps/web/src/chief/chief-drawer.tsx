@@ -19,7 +19,7 @@
 // 面亦无线程管理 mutation（GET/POST threads 外无删除/重命名端点），无
 // local-first 对象面，按 M7 处置二分律移除不渲染；头部四钮双视图同律。
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChiefContent, ChiefSegment } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import {
@@ -124,6 +124,21 @@ export function ChiefDrawer({
     if (threadsOpen) setThreadsOpen(false);
     else onClose();
   });
+  // #389: 开后焦点落草稿框（dialog 家族 autofocus 律）。OverlayMount 的
+  // mounted 滞后 open 一帧（effect 里才 setMounted）——鲜开时 effect 跑在
+  // 节点存在之前，故首焦由 ref callback 承载（SearchPanel attachInput
+  // 先例）；retained-mount 窗口内重开节点未脱离、ref 不重火，由 [open]
+  // effect 兜住。空格热键呼出与 FAB 点击同路。
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const openRef = useRef(open);
+  openRef.current = open;
+  const attachComposer = useCallback((node: HTMLTextAreaElement | null) => {
+    composerRef.current = node;
+    if (node && openRef.current) node.focus({ preventScroll: true });
+  }, []);
+  useEffect(() => {
+    if (open) composerRef.current?.focus({ preventScroll: true });
+  }, [open]);
   const sendLive = () => {
     if (onSend == null || liveDraft.trim() === '') return;
     onSend(liveDraft.trim());
@@ -317,6 +332,7 @@ export function ChiefDrawer({
 
         <div className="chief-composer">
           <textarea
+            ref={attachComposer}
             className="chief-composer-input"
             rows={onSend != null ? (liveDraft !== '' ? 6 : 1) : chief.draft ? 6 : 1}
             readOnly={onSend == null}
