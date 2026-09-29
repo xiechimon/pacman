@@ -76,14 +76,14 @@ Daemon environment variables (alternatives to the CLI flags above): `PACMAN_SERV
 ## Development
 
 ```sh
-pnpm dev:server   # API server with hot reload on http://127.0.0.1:8899 (first boot: db + migrations + seed)
-pnpm dev:web      # vite dev server on http://localhost:5300, proxying /api and /git to 8899
+pnpm dev:server   # API server with hot reload on http://127.0.0.1:8787 (first boot: db + migrations + seed)
+pnpm dev:web      # vite dev server on http://localhost:5173, proxying /api and /git to 8787
 ```
 
-The dev scripts pin these ports (`strictPort` — a taken port fails startup instead of
-silently shifting), kept separate from the product defaults (`8787`/`5173`) so parallel
-checkouts never quietly share one stack. Override via `PACMAN_DEV_WEB_PORT` /
-`PACMAN_DEV_SERVER_PORT` / `PORT` / `PACMAN_SERVER`.
+The vite dev server runs with `strictPort`: a taken port fails startup instead of silently
+shifting to the next free one. The shift is the dangerous case, not the clash — the proxy
+target stays fixed, so a shifted UI would drive whichever stack owns the port, not yours.
+Override with `PACMAN_DEV_WEB_PORT` / `PACMAN_DEV_SERVER_PORT`.
 
 Quality gates before committing:
 

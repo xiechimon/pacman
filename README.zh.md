@@ -76,13 +76,13 @@ daemon 环境变量（上述 CLI flag 的等价覆写）：`PACMAN_SERVER`（默
 ## 开发
 
 ```sh
-pnpm dev:server   # API server 热重载，http://127.0.0.1:8899（首启建库 + 迁移 + seed）
-pnpm dev:web      # vite dev server，http://localhost:5300，/api 与 /git proxy 到 8899
+pnpm dev:server   # API server 热重载，http://127.0.0.1:8787（首启建库 + 迁移 + seed）
+pnpm dev:web      # vite dev server，http://localhost:5173，/api 与 /git proxy 到 8787
 ```
 
-dev 脚本钉死这两个端口（`strictPort`，撞端口即启动失败而非静默顺延），
-与产品默认（`8787`/`5173`）分开——多份检出并行时不会悄悄共用一套栈。
-覆写走 `PACMAN_DEV_WEB_PORT` / `PACMAN_DEV_SERVER_PORT` / `PORT` / `PACMAN_SERVER`。
+vite dev server 带 `strictPort`：撞端口即启动失败，不静默顺延到下一个空闲口。危险的是
+顺延而不是撞端口本身——proxy 目标不变，顺延后的界面会去驱动持有该端口的别的栈。
+覆写走 `PACMAN_DEV_WEB_PORT` / `PACMAN_DEV_SERVER_PORT`。
 
 提交前三闸：
 

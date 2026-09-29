@@ -39,7 +39,7 @@ pnpm typecheck  # pnpm -r typecheck
 - **e2e spec 文件合并/解冲突后必跑 `npx playwright test <spec> --list` 验解析**（M7 实战：typecheck 不覆盖 spec 语法，手工解冲突吞 `});` 到 EOF 才炸——typecheck 绿≠playwright 能解析）。
 
 跑验证服务（port 与 dist/ 互斥）：
-- `dev:web` / `dev:server` / `dev:daemon` ——dev server。端口由脚本钉死：web `5300`、server `8899`（daemon 随 server 走 `PACMAN_SERVER`），vite 带 `strictPort`——撞端口即启动失败，不再静默顺延到别人的栈上。覆写：`PACMAN_DEV_WEB_PORT` / `PACMAN_DEV_SERVER_PORT` / `PORT` / `PACMAN_SERVER`。产品默认（`pnpm start` / npm 包）仍是 `8787`/`5173`。
+- `dev:web` / `dev:server` / `dev:daemon` ——dev server，端口 `5173` / `8787`。vite 带 `strictPort`——撞端口即启动失败，不静默顺延到下一个空闲口（顺延才是危险的：proxy 目标不变，界面会去驱动持有该端口的别的栈）。覆写：`PACMAN_DEV_WEB_PORT` / `PACMAN_DEV_SERVER_PORT`。
 - **E2E_PORT** 默认 8399——跑前先 `lsof -iTCP:8399` 查占用，占用的是别的车道**不能杀**，换端口。
 - **同 worktree 内不要并跑两个 playwright**——`vite build --mode fixture` 写同一个 `dist/`，会互踩。跨 worktree 各用各的 dist 无碍。
 

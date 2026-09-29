@@ -1,14 +1,14 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-// dev 端口从 PACMAN_DEV_WEB_PORT 读（根 `pnpm dev` 注入 5300）。空串/非法值
-// 回落 5173——与 server 侧 envPort 的「空串当未设」同律。
+// dev 端口从 PACMAN_DEV_WEB_PORT 读，缺省 5173（= vite 默认，与 proxy 侧的
+// PACMAN_DEV_SERVER_PORT 对称）。空串/非法值同样回落缺省。
 const devWebPort = Number(process.env.PACMAN_DEV_WEB_PORT) || 5173;
 
 // dev 期 proxy → server（01 §4.1 构建行；M5 live 数据源同源化——cookie 会话
 // 与 SSE 免 CORS）。目标端口 = PACMAN_DEV_SERVER_PORT，缺省 8787
-// （apps/server/src/config.ts 的 PORT 缺省）。两侧同源注入，根 `pnpm dev`
-// 一并对齐。preview 形态不经 proxy（静态托管/fixture）。
+// （apps/server/src/config.ts 的 PORT 缺省）。preview 形态不经 proxy
+// （静态托管/fixture）。
 export default defineConfig({
   plugins: [react()],
   server: {
