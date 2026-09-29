@@ -1,7 +1,9 @@
-// skills 执行面注入 E2E（spec 14 / #371）：daemon 扫描 PACMAN_SKILLS_DIR →
-// `<available_skills>` catalog 追加进 session systemPrompt（不覆盖既有段）→
-// agent 按 catalog 指引用 read 工具真读 SKILL.md（连通性硬验收：catalog 不能
-// 是装饰品——read 结果带正文 marker 落库即证路径可达）。
+// skills 执行面注入 E2E（spec 14 / #371 + #372 per-agent 白名单）：daemon 扫描
+// PACMAN_SKILLS_DIR → 按 agent.skills 勾选过滤 → `<available_skills>` catalog
+// 追加进 session systemPrompt（不覆盖既有段）→ agent 按 catalog 指引用 read
+// 工具真读 SKILL.md（连通性硬验收：catalog 不能是装饰品——read 结果带正文
+// marker 落库即证路径可达）。白名单面：授权 skill 在位、同目录未授权 skill
+// 不出现（#372 验收一）。
 
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,7 +14,7 @@ import { loadDaemonConfig } from '../../apps/daemon/src/config.js';
 import { createDaemonLogger } from '../../apps/daemon/src/log.js';
 import { type MachineHandle, runMachine } from '../../apps/daemon/src/machine-loop.js';
 import { type StatePaths, statePaths } from '../../apps/daemon/src/state.js';
-import { message as messageTable } from '../../apps/server/src/db/schema.js';
+import { agent as agentTable, message as messageTable } from '../../apps/server/src/db/schema.js';
 import { AGENT_ID, api, bootRealServer, type RealServer, seedWorld, waitFor } from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
@@ -58,6 +60,22 @@ beforeAll(async () => {
     ].join('\n'),
     'utf8',
   );
+  // 未授权对照 skill（#372）：同目录在位但 agent.skills 白名单外——注入面
+  // 必须不出现。
+  mkdirSync(join(skillsDir, 'extra-skill'), { recursive: true });
+  writeFileSync(
+    join(skillsDir, 'extra-skill', 'SKILL.md'),
+    [
+      '---',
+      'name: extra-skill',
+      'description: 白名单外对照技能。',
+      '---',
+      '',
+      'extra body.',
+      '',
+    ].join('\n'),
+    'utf8',
+  );
 
   stub = await startStubLlm([
     // 轮 1：agent 按 catalog 指引 read SKILL.md（绝对路径 = catalog location）。
@@ -70,6 +88,13 @@ beforeAll(async () => {
     claimHoldMs: 1_000,
     agentDescription: '你是集成测试 Agent：按指令使用工具，然后简短汇报。',
   });
+  // agent.skills 白名单勾选（#372）：worker 步只有授权 slug 进 catalog——
+  // demo-skill 勾选、extra-skill 不勾（空勾选 = 不注入任何 skill）。
+  server.db
+    .update(agentTable)
+    .set({ skills: ['demo-skill'] })
+    .where(eq(agentTable.id, AGENT_ID))
+    .run();
   home = mkdtempSync(join(tmpdir(), 'pacman-it-skills-home-'));
   const config = loadDaemonConfig(
     {
@@ -135,6 +160,9 @@ describe('spec 14 skills 执行面注入 E2E', () => {
     expect(flat).toContain('<name>demo-skill</name>');
     expect(flat).toContain(skillFile); // location = 绝对路径，read 工具可直达
     expect(flat).toContain('你是集成测试 Agent');
+    // 白名单外 skill 不入注入面（#372 验收一：worker 步 systemPrompt 只含
+    // agent.skills 勾选条目）。
+    expect(flat).not.toContain('extra-skill');
 
     // ② 连通性硬验收：read 工具真读到 SKILL.md——工具结果（正文 marker）
     //    经 tool relay 落库 message 面。
@@ -145,7 +173,8 @@ describe('spec 14 skills 执行面注入 E2E', () => {
       .all();
     expect(JSON.stringify(msgs)).toContain(SKILL_MARKER);
 
-    // ③ [skills] 日志行族落 daemon.log（loaded 态）。
+    // ③ [skills] 日志行族落 daemon.log（loaded 态 + filtered 行，#372）。
     expect(logLines().some((l) => l.startsWith('[skills] loaded: 1 skills from'))).toBe(true);
+    expect(logLines()).toContain('[skills] filtered: extra-skill not in agent allowlist');
   }, 150_000);
 });

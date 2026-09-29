@@ -156,6 +156,12 @@ export interface SessionOpts {
   executeRemoteTool?: (name: string, params: Record<string, unknown>) => Promise<string>;
   /** per-turn 连接、失败降级不阻断（02 §7.1）。 */
   mcpServers?: McpEndpoint[];
+  /** skills catalog 白名单（#372；spec 14「SessionOpts 不加字段」的修订——
+   * 当时不过滤所以不加，本字段把过滤白名单补进契约）。slug 集 = agent.skills
+   * （frontmatter name 回落目录名，#367 wire 模型）。undefined = 不过滤
+   * （chief 面全量直通）；[] = 不注入任何 skill（least-privilege，与 MCP
+   * 空勾选同律）；名单内未知 slug 静默跳过（#367 容忍语义）。 */
+  skillsAllowlist?: string[];
   /** worktree 目录（02 §5.5）。 */
   cwd: string;
   /** 本轮任务文本（实现期精化，01 §5 头部口径）：createSession = 首条用户

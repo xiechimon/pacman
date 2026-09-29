@@ -590,3 +590,38 @@ describe('步骤 journal 全链（02 §5.4 词表 + §4.2 主时序机器侧）'
     expect(unknown.status).toBe(404);
   });
 });
+
+describe('claim 载荷：agent.skills 白名单透传（#372）', () => {
+  async function claimWithSkills(skills: string[]): Promise<ClaimedStep | null> {
+    const w = await setupWorld({ claimHoldMs: 200 });
+    w.s.db.update(agentTable).set({ skills }).where(eq(agentTable.id, AGENT_ID)).run();
+    await w.startBuild(false);
+    const { body } = await w.claim();
+    const step = body.step ? claimedStepSchema.parse(body.step) : null;
+    w.s.dispose();
+    return step;
+  }
+
+  test('勾选 slug 原样携带（worker 步，不过滤——过滤权在 daemon catalog 构建）', async () => {
+    const step = await claimWithSkills(['alpha', 'ghost']);
+    expect(step).not.toBeNull();
+    expect(step!.agent?.skills).toEqual(['alpha', 'ghost']);
+  });
+
+  test('空勾选 = 携带 []（与 mcpServers 缺省不携带不同律——skills 缺省是 chief 面全量语义）', async () => {
+    const step = await claimWithSkills([]);
+    expect(step).not.toBeNull();
+    expect(step!.agent?.skills).toEqual([]);
+  });
+
+  test('从未勾选的 agent 行（列默认 []）= 携带 []（least-privilege：无授权即无 skills）', async () => {
+    const w = await setupWorld({ claimHoldMs: 200 });
+    await w.startBuild(false);
+    const { body } = await w.claim();
+    const step = body.step ? claimedStepSchema.parse(body.step) : null;
+    expect(step).not.toBeNull();
+    // schema 列默认 '[]'：从未勾选 = 空数组 = 不注入任何 skill。
+    expect(step!.agent?.skills).toEqual([]);
+    w.s.dispose();
+  });
+});

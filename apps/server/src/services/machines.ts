@@ -716,6 +716,8 @@ function buildChiefClaim(
       modelId: agentRow.modelId,
       thinkingLevel,
       memories,
+      // skills 白名单不携带（#372）：chief 是信任面，catalog 全量直通不受
+      // 绑定 Agent 勾选约束（daemon 侧 isChief 判定双保险）。
     },
     chief: {
       threadId: threadRow.id,
@@ -851,6 +853,10 @@ function tryClaim(
           .from(agentMemory)
           .where(eq(agentMemory.agentId, agentRow.id))
           .all(),
+        // skills catalog 白名单（#372）：勾选 slug 原样透传（过滤权在 daemon
+        // catalog 构建）。worker 步恒携带——含空数组（[] = 不注入任何 skill，
+        // least-privilege；缺省 = 全量直通是 chief 面语义，两态不得混淆）。
+        skills: [...agentRow.skills],
       },
       remoteTools: [...WORKER_REMOTE_TOOLS],
       ...(workerMcp ? { mcpServers: workerMcp } : {}),

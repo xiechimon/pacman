@@ -382,6 +382,60 @@ describe('步执行全链（02 §5.7 生命周期行 + journal 端点词表）',
     await handle.done;
   });
 
+  test('skillsAllowlist 透传（#372）：worker 步 = agent.skills（含 []）；chief 步不传', async () => {
+    // worker 步：勾选 slug 原样进 SessionOpts.skillsAllowlist；空勾选传 []
+    // （[] = 不注入任何 skill，缺省才是全量——两态不得混淆）。
+    for (const skills of [['alpha', 'beta'], []] as string[][]) {
+      const api = new FakeMachineApi();
+      const { backend, created } = fakeBackend([{ type: 'done', usage: [] }]);
+      const { handle } = await boot({ api, backend });
+      await waitFor(() => api.parked !== null);
+      api.parked?.({
+        ...CLAIMED,
+        agent: { ...CLAIMED.agent!, skills },
+      });
+      await waitFor(() => api.doneBodies.length === 1);
+      const opts = created[0]?.opts as { skillsAllowlist?: string[] };
+      expect(opts.skillsAllowlist).toEqual(skills);
+      await handle.stop();
+      await handle.done;
+    }
+
+    // worker 步 claim 未携带 skills（旧 server）= 缺省不传（全量直通，零回归）。
+    {
+      const api = new FakeMachineApi();
+      const { backend, created } = fakeBackend([{ type: 'done', usage: [] }]);
+      const { handle } = await boot({ api, backend });
+      await waitFor(() => api.parked !== null);
+      api.parked?.(CLAIMED);
+      await waitFor(() => api.doneBodies.length === 1);
+      const opts = created[0]?.opts as { skillsAllowlist?: string[] };
+      expect(opts.skillsAllowlist).toBeUndefined();
+      await handle.stop();
+      await handle.done;
+    }
+
+    // chief 步：绑定 Agent 即使带 skills 也不传——chief 是信任面，全量 catalog。
+    {
+      const api = new FakeMachineApi();
+      const { backend, created } = fakeBackend([{ type: 'done', usage: [] }]);
+      const { handle } = await boot({ api, backend });
+      await waitFor(() => api.parked !== null);
+      api.parked?.({
+        ...CLAIMED,
+        step: { ...CLAIMED.step, kind: 'chief' as const },
+        conversationId: 'chief-t1',
+        agent: { ...CLAIMED.agent!, skills: ['alpha'] },
+        chief: { threadId: 't1', systemPrompt: '总管 charter', trigger: 'user' as const },
+      });
+      await waitFor(() => api.doneBodies.length === 1);
+      const opts = created[0]?.opts as { skillsAllowlist?: string[] };
+      expect(opts.skillsAllowlist).toBeUndefined();
+      await handle.stop();
+      await handle.done;
+    }
+  });
+
   test('backend error 事件 → done failed（步级失败无自动重跑，02 §4.2）', async () => {
     const api = new FakeMachineApi();
     const { backend } = fakeBackend([
