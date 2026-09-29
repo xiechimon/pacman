@@ -32,6 +32,7 @@
       "apps/daemon/package.json",
       "apps/daemon/tsconfig.json",
       "integration/test/**/*.ts",
+      "integration/eval/**/*.mts",
       "integration/*.ts",
       "integration/package.json",
       "vitest.config.ts",
