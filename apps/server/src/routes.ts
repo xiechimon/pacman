@@ -26,6 +26,7 @@ import {
   createTagBodySchema,
   createTodoBodySchema,
   type FsPickResult,
+  githubIssueEchoSchema,
   githubIssueStateSchema,
   githubIssuesResponseSchema,
   githubReposResponseSchema,
@@ -129,6 +130,7 @@ import {
   type GithubIssueFaceDeps,
   importGithubIssue,
   listProjectGithubIssues,
+  readSourceIssueEcho,
 } from './services/github-issues.js';
 import { isChiefConversation, toMachineRecord } from './services/machines.js';
 import { handleMcpRequest } from './services/mcp-face.js';
@@ -162,7 +164,14 @@ import {
   scanLocalSkills,
 } from './services/skills.js';
 import { seedFixedTags } from './services/tags.js';
-import { createTodo, deleteTodo, getTodo, listTodos, updateTodo } from './services/todos.js';
+import {
+  createTodo,
+  deleteTodo,
+  getTodo,
+  listTodos,
+  retrySelfIssueCreate,
+  updateTodo,
+} from './services/todos.js';
 
 /** 会话 cookie 名 [设计]（01 §4.2：httpOnly cookie 自设；品牌槽已随 D3 切换，#109，
  * 单源 = shared BRAND.sessionCookieName）。 */
@@ -307,12 +316,16 @@ function verifyGitBasicAuth(ctx: AppContext, header: string): string | undefined
 }
 
 export function registerRoutes(app: Hono, ctx: AppContext): void {
+  // box/githubFetch（#452 写向）：createTodo 收口的自建 issue 出站 deps——
+  // 三条创建路径（web 路由 / chief 工具 / MCP face）同律透传。
   const svc = {
     db: ctx.db,
     hub: ctx.hub,
     machineHub: ctx.machineHub,
     user: ctx.user,
     convHub: ctx.convHub,
+    box: ctx.secretBox,
+    ...(ctx.githubFetch !== undefined ? { githubFetch: ctx.githubFetch } : {}),
   };
 
   // —— 认证保形（02 §2.1：自动登录，无登录页）———————————————————————————
@@ -491,6 +504,20 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const body = parseWith(importGithubIssueBodySchema, await jsonBody(c), 'body');
     const record = await importGithubIssue({ ...svc, ...githubIssueDeps() }, row, body.number);
     return c.json(record, 201);
+  });
+
+  // —— GitHub 写向（#452 / ADR 0006）：来源 issue 只读回显 + 未建成重试 ——
+  // 回显（D5/D6）：详情页进入时拉一次；任何拉不到 = 非 200（web 整行隐藏，
+  // 不显示陈旧值不弹错）。重试（D2）：未建成 → 同步建站补来源；已建成/在飞
+  // → 409（不双建）。封套单源 = shared githubIssueEchoSchema。
+  app.get('/api/todos/:id/github-issue', async (c) => {
+    const echo = await readSourceIssueEcho(githubIssueDeps(), c.req.param('id'));
+    return c.json(githubIssueEchoSchema.parse(echo));
+  });
+
+  app.post('/api/todos/:id/github-issue/retry', async (c) => {
+    const record = await retrySelfIssueCreate(svc, c.req.param('id'));
+    return c.json(record);
   });
 
   // —— repo 文件浏览面（02 §3：读裸库 ref 树与单文件，server 端实现，无检出
@@ -1601,6 +1628,7 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         attachmentsDir: ctx.attachmentsDir,
         mcpConfigPath: ctx.mcpConfigPath,
         skillsDir: ctx.skillsDir,
+        ...(ctx.githubFetch !== undefined ? { githubFetch: ctx.githubFetch } : {}),
       },
       c.req.raw,
     ),

@@ -103,6 +103,11 @@ const INFERRED_ROUTES = [
   // label 集）。自有设计面，02 §6.1 词表外 = INFERRED 入位。
   'GET /api/projects/{id}/github/issues',
   'POST /api/projects/{id}/github/issues/import',
+  // #452（ADR 0006 写向）来源 issue 只读回显（详情页进入拉一次，拉不到整行
+  // 隐藏）+ 未建成重试入口（建 issue 失败的任务显式重试）。自有设计面，
+  // 02 §6.1 词表外 = INFERRED 入位。
+  'GET /api/todos/{id}/github-issue',
+  'POST /api/todos/{id}/github-issue/retry',
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；

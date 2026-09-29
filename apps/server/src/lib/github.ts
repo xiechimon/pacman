@@ -8,6 +8,10 @@
 //   <github_connection token>——token 只进头不进 URL，错误 message 只带 URL）
 // - GET repos/{o}/{r}/issues(/n) + labels → issue 列表/单条/label 集（#446
 //   读向，token 纪律同上位）
+// 写面（#452 / ADR 0006——server 唯二的 api.github.com 写入点，穷举律：
+// grep `api.github.com` 的 POST/PATCH 只此两处；不改 scope、不新增凭证面）：
+// - POST repos/{o}/{r}/issues → 自派任务建时建 issue（关键路径之外触发）
+// - PATCH repos/{o}/{r}/issues/{n} → agent 回填标题写进 issue
 // OAuth 面（#231 握手）：
 // - POST github.com/login/oauth/access_token（form-encoded：client_id/
 //   client_secret/code/redirect_uri，Accept: json）→ access_token
@@ -334,6 +338,68 @@ export async function githubRepoLabels(
     throw new HttpError(502, 'github labels response not an array');
   }
   return parseLabels(data);
+}
+
+// —— issue 写面（#452 / ADR 0006 写向：server 唯二写入点，文件头穷举律）———
+
+/** JSON 写请求单点（POST/PATCH 共用）：超时/网络/上游状态经既有映射
+ * （mapFetchThrow / mapUpstreamStatus），token 只进 Authorization 头。 */
+async function writeJson(
+  fetchImpl: FetchLike,
+  method: 'POST' | 'PATCH',
+  url: string,
+  token: string,
+  payload: Record<string, unknown>,
+): Promise<unknown> {
+  let res: Awaited<ReturnType<FetchLike>>;
+  try {
+    res = await fetchImpl(url, {
+      method,
+      headers: { ...authHeaders(token), 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+  } catch (err) {
+    throw mapFetchThrow(url, err);
+  }
+  if (!res.ok) throw mapUpstreamStatus(url, res);
+  try {
+    return await res.json();
+  } catch {
+    throw new HttpError(502, `github response not json: ${url}`);
+  }
+}
+
+/** 建 issue（`POST /repos/{o}/{r}/issues`，ADR 0006 D1/D3：标题 = 占位标题
+ * 单源派生、正文 = 任务正文，调用面组装）。应答缺 number → 502（畸形面同
+ * githubRepoIssue 律）。 */
+export async function githubCreateIssue(
+  fetchImpl: FetchLike,
+  token: string,
+  owner: string,
+  repo: string,
+  input: { title: string; body: string },
+): Promise<{ number: number }> {
+  const url = `https://api.github.com/${repoPath(owner, repo)}/issues`;
+  const data = (await writeJson(fetchImpl, 'POST', url, token, input)) as Record<string, unknown>;
+  if (typeof data.number !== 'number') {
+    throw new HttpError(502, `github create issue response missing number: ${url}`);
+  }
+  return { number: data.number };
+}
+
+/** 写 issue 标题（`PATCH /repos/{o}/{r}/issues/{n}`，ADR 0006 D3：agent
+ * 回填标题时写进那枚 issue）。应答体不消费（本地标题已落库，回显面现拉）。 */
+export async function githubUpdateIssueTitle(
+  fetchImpl: FetchLike,
+  token: string,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  title: string,
+): Promise<void> {
+  const url = `https://api.github.com/${repoPath(owner, repo)}/issues/${issueNumber}`;
+  await writeJson(fetchImpl, 'PATCH', url, token, { title });
 }
 
 // —— OAuth token 交换面（#231 握手：callback 收码后唯一一次出站）———————————

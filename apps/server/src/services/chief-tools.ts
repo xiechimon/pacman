@@ -32,6 +32,7 @@ import {
   tokenUsage,
 } from '../db/schema.js';
 import { HttpError } from '../lib/errors.js';
+import type { FetchLike } from '../lib/github.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { applyBuildStepAction, requestMerge, startBuilds } from './builds.js';
 import { addChiefWatch, clearChiefWake, removeChiefWatches, setChiefWake } from './chief.js';
@@ -63,6 +64,9 @@ export interface ChiefToolDeps {
   /** 本机 MCP config 读路径（spec 13/#368 mcp_servers 工具换源）；缺省 =
    *  ~/.claude.json（config.ts 同默认；测试面显式注入 fixture 路径）。 */
   mcpConfigPath?: string;
+  /** GitHub 出站注入位（#452 写向：create_todo 自建 issue 透传；
+   * AppContext.githubFetch 同族，缺省 globalThis.fetch，测试注入 mock）。 */
+  githubFetch?: FetchLike;
 }
 
 /** 单次 relay 调用的溯源上下文（step → chief thread 解析，services/machines.ts
@@ -163,7 +167,16 @@ export async function executeChiefTool(
   params: Params,
 ): Promise<string> {
   const { db } = deps;
-  const svc = { db, hub: deps.hub, machineHub: deps.machineHub, user: deps.user };
+  // #452 写向：box/githubFetch 透传——chief create_todo 与三条创建路径同律
+  // （已连接 github 项目的任务落库即自建 issue，关键路径之外）。
+  const svc = {
+    db,
+    hub: deps.hub,
+    machineHub: deps.machineHub,
+    user: deps.user,
+    box: deps.box,
+    ...(deps.githubFetch !== undefined ? { githubFetch: deps.githubFetch } : {}),
+  };
   switch (name) {
     // —— 读侧 15 ——
     case 'projects': {
