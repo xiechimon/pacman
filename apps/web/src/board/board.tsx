@@ -334,7 +334,9 @@ export function BoardSurface({
             );
           })}
         </div>
-        <DragOverlay dropAnimation={null}>
+        {/* #391: default drop animation — the overlay glides to the landing
+            slot (250ms ease) instead of snapping out on pointer up */}
+        <DragOverlay>
           {dragged != null && (
             <div className="board-drag-overlay">
               <TodoCard
