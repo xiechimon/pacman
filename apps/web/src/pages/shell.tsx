@@ -91,21 +91,28 @@ export function PageShell({
   return (
     <div className="page-shell">
       <AppSidebar fixture={fixture} selected={selected} onNewTask={onNewTask} />
+      {/* #447 (ADR 0004 D2/D6): the main column is the docking row —
+          [page-main-col (flex:1 min-width:0), chief panel (flex:none 418)].
+          The wake pair stays the row's last child: its FAB rides the
+          page-main absolute anchor while the docked panel takes the flex
+          slot, so the content column yields by exactly the panel width. */}
       <div className="page-main">
-        <header className="page-topbar">
-          <Link className="page-back" to={{ pathname: '/app', search }} aria-label={t('返回')}>
-            <ChevronLeft />
-          </Link>
-          {leftTitle != null && <span className="page-left-title">{leftTitle}</span>}
-          {title != null && <div className="page-topbar-title">{t(title)}</div>}
-          {tabs != null && tab != null && (
-            <div className="page-tabs">
-              <TabGroup tabs={tabs} tab={tab} onTab={onTab} />
-            </div>
-          )}
-          {action != null && <div className="page-topbar-actions">{action}</div>}
-        </header>
-        {children}
+        <div className="page-main-col">
+          <header className="page-topbar">
+            <Link className="page-back" to={{ pathname: '/app', search }} aria-label={t('返回')}>
+              <ChevronLeft />
+            </Link>
+            {leftTitle != null && <span className="page-left-title">{leftTitle}</span>}
+            {title != null && <div className="page-topbar-title">{t(title)}</div>}
+            {tabs != null && tab != null && (
+              <div className="page-tabs">
+                <TabGroup tabs={tabs} tab={tab} onTab={onTab} />
+              </div>
+            )}
+            {action != null && <div className="page-topbar-actions">{action}</div>}
+          </header>
+          {children}
+        </div>
         <ChiefWake fixture={fixture} fabClassName="page-fab" />
       </div>
     </div>

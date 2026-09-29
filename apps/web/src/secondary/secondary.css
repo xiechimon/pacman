@@ -13,13 +13,26 @@
   overflow: hidden;
 }
 
+/* #447 (ADR 0004 D2/D6): secondary-main is the docking row — head + body
+   live in .secondary-main-col (flex:1, yields) and the chief panel rides as
+   the last flex item (chief.css). secondary-main keeps the position:relative
+   anchor for the FAB and absolute descendants. */
 .secondary-main {
   position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
   background: var(--surface);
+}
+
+/* the former .secondary-main vertical stack — same column context the
+   secondary pages were authored against (the 766-wide col centers inside
+   the scrolling body). */
+.secondary-main-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .secondary-head {

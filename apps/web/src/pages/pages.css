@@ -12,13 +12,28 @@
   overflow: hidden;
 }
 
+/* #447 (ADR 0004 D2/D6): page-main is the docking row — its content lives
+   in .page-main-col (flex:1, yields) and the chief panel rides as the last
+   flex item (flex:none 418, chief.css). page-main keeps the position:relative
+   anchor so the FAB and any absolute descendants stay pinned to the full
+   main box exactly as before. */
 .page-main {
   position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
   background: var(--surface);
+}
+
+/* the former .page-main vertical stack (topbar + page body), now the flex:1
+   sibling of the docked panel. Same column context the page bodies were
+   authored against — no position here, so absolute descendants keep anchoring
+   to .page-main. */
+.page-main-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ---- topbar (43 + 1px border, r7 §3.1) ---- */
