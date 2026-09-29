@@ -32,7 +32,6 @@ export { FileText } from './FileText.js';
 export { Funnel } from './Funnel.js';
 export { GitCommit } from './GitCommit.js';
 export { Grid2x2 } from './Grid2x2.js';
-export { HelpCircle } from './HelpCircle.js';
 export { History } from './History.js';
 export { ImageFrame } from './ImageFrame.js';
 export { Kanban } from './Kanban.js';

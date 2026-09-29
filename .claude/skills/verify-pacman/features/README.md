@@ -2,7 +2,15 @@
 
 本目录是 pacman 用户可见行为的验证正源。驱动前先读本索引,再按 feature 文件当配方执行。map 漏掉的入口 = 验证不完整:顺手的入口验过 ≠ 整个 feature 验过。
 
-Last updated: 2026-09-29(#366 详情页 3-pane 重排:branch-sync 入口从头部弹层迁到右 pane 型选→静止 section,drive-branch-sync.mjs 与 integration 判别式同步改道;token/运行历史两弹层退役为右 pane section,仍未铺 live 配方。前序:2026-09-28 M7 功能闭环维护——补 6 个 M7 新功能条目;stop-button.md 补 #318 统一 start dialog 步骤;drive-stop.mjs 修 #318 过时;stub-llm-verify.mjs 修 Node ≥v20 close 事件 bug;2026-09-27 停止钮全栈链 #308;2026-09-25 初始 map)
+Last updated: 2026-09-29（#366 详情页 3-pane 重排 + spec 11/#354 + spec 12/#359 + G2-T3/#360 落地连续增）：
+
+- #366 详情页 3-pane 重排：branch-sync 入口从头部弹层迁到右 pane 型选→静止 section，drive-branch-sync.mjs 与 integration 判别式同步改道；token/运行历史两弹层退役为右 pane section，仍未铺 live 配方。
+- spec 12 / #360 G2-T3：补新建项目表单 web 面条目 project-new-form.md + 定制 probe `scripts/drive-project-new-form.mjs`；local-repo-api.md 的「UI 入口待回补」交叉引用改为已落地。
+- spec 11 / #354 先行地图（合流自 main）：补三面条目——providers runtime tabs (providers-tabs.md)、machines 本机行 + switches (machines-local-row.md)、添加服务商 picker (provider-picker.md) + 三个先行 probe (drive-providers-tabs/drive-machines-local/drive-provider-picker.mjs)。先行语义 (spec 11 A12)：probe 先于实现票落地，红态 = 验收清单（FAIL detail 逐条指 spec 条款），实现票验收 = 转绿；跑序纪律见 Baseline。
+- spec 12 / #359 G2-T1：补本地仓库项目与 GitHub 连接 server API 面条目 local-repo-api.md + 定制 probe `scripts/probe-local-repos.mjs`，live 验 11/11 PASS。
+- 同日 M7 功能闭环维护：补 6 个 M7 新功能条目——AI 审核发起 review-modal、@提及 mentions、标签 tags、附件 attachments、分支同步 branch-sync、失败面发送 failed-send；stop-button.md 补 #318 统一 start dialog 步骤；drive-stop.mjs 修 #318 过时（点开始后先经 overlay-panel 选先做规划）；stub-llm-verify.mjs 修 Node ≥v20 close 事件 bug（req.on close→res.on close + responded 守卫）。mentions/tags 本会话 live 验通过，attachments/branch-sync/failed-send user path 从合并代码核实、live re-probe 待补。
+
+前序：2026-09-27 停止钮全栈链 #308；2026-09-25 初始 map。
 
 ## Baseline preconditions
 
@@ -11,6 +19,7 @@ Last updated: 2026-09-29(#366 详情页 3-pane 重排:branch-sync 入口从头�
 - 端口被占(8791/5273)→ 别的 lane,换 `VERIFY_PORT`/`VERIFY_WEB_PORT`,不杀。
 - `doctor.mjs` 全 PASS 才开 drive。
 - 永不驱动非本验证起的实例(用户 dev 栈 8787/5173 在跑也不碰)。
+- spec 11 三先行 probe 跑序:`drive-providers-tabs`(pi 空态断言要求库内无 custom provider)→ `drive-provider-picker`(e2e 会建 provider)→ `drive-machines-local`(幂等,次序任意)。跑反 = tabs 空态假红。
 
 ## Driving conventions
 
@@ -47,12 +56,18 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [分支同步(详情页右 pane section)](./branch-sync.md) 右 pane 型选→「分支与 PR」静止 section(#366 前为头部弹层)→选机器→同步钮→`POST branch-sync`→daemon git/worktree 执行→结果卡 pending→synced(#319/#328)。#366 后全链 live re-probe 待补。
 - [详情页 3-pane 结构与右 pane 视图](./detail-right-pane.md) 240|fluid|488 三栏贴合、头部单图标、tab 组退役、型选四视图(文档/分支/Token/历史)静止 section、fresh 空占位、composer 唯一卡片;定制 probe `scripts/drive-detail-pane.mjs`(#366)。
 - [失败面发送(详情页 composer)](./failed-send.md) failed 相位 composer 发送反馈→`{action:"restart"}`→新 build(withPlan 承接)+反馈入会话+failed→queued;相位门只收 failed(#320/#322)。live re-probe 待补。
+- [本地仓库项目与 GitHub 连接(server API 面)](./local-repo-api.md) `POST /api/projects kind=local` 三态校验(live fs+真 git)+旧 hosted 面不回归+`GET /api/github/repos` 未连接 404+github_connection 表形(SQLite 只读);定制 probe `scripts/probe-local-repos.mjs`(spec 12 / #359)。**2026-09-28 live 验 11/11 PASS**。
+- [新建项目表单(web 面)](./project-new-form.md) 菜单两行(GitHub/本地文件夹,hosted 创建入口移除)+名称回填(basename/repo 段,手改不覆盖)+本地路径 400 红色错误行+focus indigo 收编+三条创建链 API/SQLite 双真值;定制 probe `scripts/drive-project-new-form.mjs`(spec 12 / #360,OAuth picker 归 G2-T4 后回补)。
+- [模型服务 runtime tabs(providers 页)](./providers-tabs.md) spec 11 A1-A4/A7 先行地图：tablist pi/Claude Code + `?runtime=` 同步 + header 卡安装态 + pi = custom providers models[] 投影 + model-sources API 双真值 + facade / chevron 负向 (#353/#354)；定制 probe `scripts/drive-providers-tabs.mjs`。**实现票落地前红态**。
+- [机器页本机行 + switches](./machines-local-row.md) spec 11 A8/A9/A7 先行地图：本机行 server seed (kind='local', name=hostname) 钉首不可删 + per-runtime role=switch 翻转写回 enabledRuntimes (API + SQLite 双真值，幂等) + 添加机器流程不变 + facade / chevron 负向 (#353/#354)；定制 probe `scripts/drive-machines-local.mjs`。**实现票落地前红态**。
+- [添加服务商 picker dialog](./provider-picker.md) spec 11 A5/A6 先行地图：「新建」开 picker — 页面无 preset 投喂负向 + 搜索客户端过滤 38 项 + 显示名 canon 名称节点等值 (spec 名单) + OAuth 徽标两项 / xai 行负向 + xai oauthLabel 密钥表单正向 + api_key 族密钥表单 + 自定义端点 disclosure 展开现有表单 + 创建链回归护栏 (#353/#354)；定制 probe `scripts/drive-provider-picker.mjs`。**picker 结构实现票落地前红态；创建链段应绿**。
+- [本地仓库项目与 GitHub 连接 (server API 面)](./local-repo-api.md) `POST /api/projects kind=local` 三态校验 (live fs + 真 git) + 旧 hosted 面不回归 + `GET /api/github/repos` 未连接 404 + github_connection 表形 (SQLite 只读)；定制 probe `scripts/probe-local-repos.mjs` (spec 12 / #359，UI 入口归 G2-T3/T4 后回补)。**2026-09-28 live 验 11/11 PASS**。
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
 
 - 任务详情页(`/app/todo/:id`)——live 面已铺:3-pane 结构与右 pane 四视图(detail-right-pane)、停止链(stop-button)、AI 审核发起(review-modal)、@提及(mentions)、附件(attachments)、分支同步(branch-sync,#366 起右 pane section 入口)、失败面发送(failed-send)。未铺:plan/changes/diff 文档面内容渲染、transcript 流渲染、编辑分配弹层。
 - 总管抽屉/设置(`.chief-fab` 有 live wiring,数据面未铺)。
-- 机器/模型服务/团队密钥/MCP/技能 各管理页(routes 均在,fixture e2e 有覆盖,live 配方未铺)。
+- 团队密钥/MCP/技能 各管理页(routes 均在,fixture e2e 有覆盖,live 配方未铺)。机器/模型服务两页已铺三面(#354 先行地图:providers-tabs/machines-local-row/provider-picker——spec 11 实现票落地前红态,配方见各 feature 文件)。
 - 看板拖拽改相(`PATCH /api/todos/:id`,#160)——fixture e2e 有 board-dnd 覆盖。
 - 定时(schedules)增删改、项目设置页——fixture e2e/dead-buttons 覆盖,live 配方未铺。
 - daemon 侧(`pnpm dev:daemon`)——需要真机器注册流程,超出 UI 验证范围。

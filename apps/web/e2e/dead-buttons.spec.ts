@@ -1,12 +1,13 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 // Issue #149: 零散死钮处置 + feedback 页整页移除。每条断言钉一个票面项的
 // 失败方式：
 // 1. feedback 整页移除 — 旧路由必须重定向 /app（catch-all 口径，01 §4.1）；
 //    user-menu「反馈」行随页全除；「新功能/快捷键」行同律隐去（#163 修订：
 //    无 local-first 对象面），余下 帐号/API 密钥/MCP 三行接真导航。
-// 2. 看板指南钮 — 点击必须开真内容弹层（列语义 + 关口操作 + ⌘K），且入
-//    anchored-overlay 家族律：Esc 关、外点关、面板持有自身命中（#133 法）。
+// 2. 看板指南钮 — #363 全族撤除（? 钮 + BoardGuide 弹层 + HelpCircle 图标
+//    不再渲染），topbar 右动作区恰好剩 +任务 一钮（非存在断言，
+//    sched-empty-docs 同律）。
 // 3. project 页 — 「导出」钮不再渲染（wontfix：无导出后端面）；分支 chip
 //    静态化（非 button，[设计] 注记在实现位）；文件|历史 分段真接线
 //    （历史 = 提交历史行，fixture 数据源 = ProjectContent.commits）。
@@ -27,18 +28,6 @@ import { expect, type Page, test } from '@playwright/test';
 // 15. #318 桩群校准（更多菜单完成·关闭 / 开始任务统一面 / 查看方案 /
 //    任务行导航 / 未保存闸）。
 // 第 5 项（skills 添加技能主钮）由 #153 覆盖，本 spec 不断言。
-
-/** 面板中心点的命中必须由面板自身持有 — title-band-clicks 同款家族法。 */
-async function expectOwnsCenter(page: Page, selector: string) {
-  const owned = await page.evaluate((sel) => {
-    const el = document.querySelector(sel);
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    return top != null && top.closest(sel) != null;
-  }, selector);
-  expect(owned).toBe(true);
-}
 
 // —— 1. feedback 整页移除 ————————————————————————————————————————————————
 
@@ -65,32 +54,22 @@ test('user menu drops its dead rows — 反馈 (#149), 新功能/快捷键 (#163
   await expect(menu.locator('a.user-menu-row')).toHaveCount(3);
 });
 
-// —— 2. 看板指南弹层 ——————————————————————————————————————————————————————
+// —— 2. 看板指南钮全族撤除（#363）—————————————————————————————————————————
 
-test('board guide button opens a real popover and closes per family law', async ({ page }) => {
+test('board topbar drops the 看板指南 button — right actions keep only 任务 (#363)', async ({
+  page,
+}) => {
   await page.goto('/app');
-  const trigger = page.locator('.board-guide');
-  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-  await trigger.click();
-  const pop = page.locator('.board-guide-pop');
-  await expect(pop).toBeVisible();
-  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-  // 真内容三面：列语义（六列全名单源 COLUMNS）+ 关口操作 + ⌘K
-  for (const column of ['待开始', '规划中', '待确认', '执行中', '待验收', '已完成']) {
-    await expect(pop).toContainText(column);
-  }
-  await expect(pop).toContainText('关口操作');
-  await expect(pop).toContainText('⌘K');
-  await expectOwnsCenter(page, '.board-guide-pop');
-  // Esc 关（#127 useEscapeClose 先例）
-  await page.keyboard.press('Escape');
-  await expect(pop).toBeHidden();
-  // 外点关（ClickCatcher 家族律；raw mouse click = user-menu-trigger 同款，
-  // catcher 全覆盖时 locator.click 的命中检查会误报拦截）
-  await trigger.click();
-  await expect(pop).toBeVisible();
-  await page.mouse.click(700, 300);
-  await expect(pop).toBeHidden();
+  // 全族非存在四面钉死（防单面复活漏网）：? 钮、wrap、弹层、aria-label
+  await expect(page.locator('.board-guide')).toHaveCount(0);
+  await expect(page.locator('.board-guide-wrap')).toHaveCount(0);
+  await expect(page.locator('.board-guide-pop')).toHaveCount(0);
+  await expect(page.locator('[aria-label="看板指南"]')).toHaveCount(0);
+  // 右动作区恰好剩 +任务 一钮，且仍在场（布局无塌陷）
+  const actions = page.locator('.board-topbar-actions');
+  await expect(actions).toBeVisible();
+  await expect(actions.locator('button')).toHaveCount(1);
+  await expect(actions.locator('.board-new-task')).toBeVisible();
 });
 
 // —— 3. project 页三件 ———————————————————————————————————————————————————

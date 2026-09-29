@@ -4,7 +4,7 @@
 // 禁用降透明度不换底色），text=无框链接式（--indigo-500 字，如 +任务），
 // quiet=弱文字钮（text-dim，r7 25 delete-confirm-cancel canon），
 // icon=纯图标钮（皮肤层：居中 + tertiary 墨 + hover 增亮；盒尺寸由消费点
-// per-face 叠加——board-guide 28 / dlg-copy 24 / branch 13×16 实测差异大，
+// per-face 叠加——dlg-copy 24 / branch 13×16 实测差异大，
 // 原语不锁几何）。icon/quiet/text 不吃 size。
 // size = 实测四档：card 26（看板卡内）/ compact 28（顶栏·通知条）/
 // standard 32（表单·弹窗，#221 族实测）/ overlay 30（detail 浮层；

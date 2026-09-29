@@ -1,24 +1,45 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// Issue #305 (M7-W2 档 1): the 新建项目 page's 「选择仓库」 row was a
-// rendered-dead placeholder (M7 ledger; the M5 note deferred it to this
-// ticket). It now opens an anchored repo-selection popover (family law
-// #67/#127: OverlayMount + ClickCatcher + Escape, #176 chip-popover /
-// TasksMenuButton precedents). Rows = the two repo forms the create
-// endpoint accepts (02 §3): 新的 Todos 托管仓库 (hosted, the effective
-// default an untouched form submits) and GitHub 仓库 (owner/repo input
-// where the trigger row becomes an editable field). Selection is pure
-// form state (live submit carries it: hosted → repoKind hosted,
-// github → repoKind github + githubRepo — pinned on the live stack by
-// verify-pacman, not here). Each test pins one failure mode:
-// 1. the trigger opens the repo listbox (current state: dead button)
-// 2. the hosted row selects and backfills the trigger label
-// 3. the GitHub row swaps the trigger for the owner/repo input
-// 4. the swap button reopens the listbox; returning to hosted drops the
-//    input (no stale github state rides the submit)
+// Issue #360 (spec 12 新建项目支持本地仓库与 GitHub 认证选仓, parent #352):
+// the 仓库 selector lists exactly the two repo forms the web create surface
+// offers — GitHub 仓库 (owner/repo input; the OAuth picker lands with G2-T4)
+// and 本地文件夹 (absolute local path input). The hosted row is gone from the
+// form (server REST/MCP still accept hosted; untouched submit now creates a
+// repo-less project). Each test pins one failure mode:
+//
+// menu face (fixture):
+// 1. the trigger lists exactly GitHub 仓库 + 本地文件夹 — no hosted row
+// 2. the GitHub row swaps the trigger for the owner/repo input
+// 3. the 本地文件夹 row swaps the trigger for the path input; swap reopens
+// 4. switching forms drops the other face's input (no stale state on submit)
 // 5. Escape closes the popover
+//
+// name backfill (fixture):
+// 6. local path backfills basename (trailing slash tolerated), and keeps
+//    following the path while the name is still the last backfill
+// 7. a manual name edit stops the backfill; clearing resumes it
+// 8. github owner/repo backfills the repo segment once the ref is valid
+//
+// focus ring (fixture):
+// 9. the name input's focus-visible ring is the shared input primitive's
+//    indigo (outline none + indigo border + 1px ring), not the UA blue
+//
+// submit + error face (live build, stubbed network — skills-github-scan
+// precedent; the real-server three-state validation is verify-pacman's
+// local-repo-api feature):
+// 10. untouched submit posts a repo-less body (no kind) and navigates on 201
+// 11. local/github submits carry kind + localPath / kind + githubRepo
+// 12. empty local path / invalid github ref keep 创建项目 disabled
+// 13. a 400 localPath reason renders the localized red error row, blocks
+//     navigation, and clears once the path is edited; unclassified reasons
+//     show the server message verbatim
 
 const NEW_PROJECT = '/app/project/new?scenario=01';
+const NEW_PROJECT_LIVE = '/app/project/new';
+
+/** tokens.css canon: --indigo-500 #6466e9 (both themes) / --danger #ca3a32. */
+const INDIGO_500 = 'rgb(100, 102, 233)';
+const DANGER = 'rgb(202, 58, 50)';
 
 async function openMenu(page: Page) {
   await page.goto(NEW_PROJECT);
@@ -28,49 +49,113 @@ async function openMenu(page: Page) {
   return menu;
 }
 
-test('the 选择仓库 trigger opens the repo listbox with both forms', async ({ page }) => {
+async function selectRow(page: Page, label: string) {
+  const menu = await openMenu(page);
+  await menu.locator('.prj-new-repo-menu-row', { hasText: label }).click();
+  await expect(page.locator('.prj-new-repo-menu')).not.toBeVisible();
+}
+
+/** Live-face boot stub (skills-github-scan.stubBoot precedent): seed team +
+ *  session succeed, every other GET 500s (the shell tolerates it). Route
+ *  match order = registration reverse: catch-all first, specifics after. */
+async function stubBoot(page: Page) {
+  await page.route('**/api/**', (route, request) => {
+    if (request.method() !== 'GET') return route.fallback();
+    return route.fulfill({ status: 500, json: { error: 'e2e stub: not the surface under test' } });
+  });
+  await page.route('**/api/teams', (route) =>
+    route.fulfill({
+      json: [{ id: 'team-1', name: 'Team', createdAt: 0, plan: 'free', avatarStyle: null }],
+    }),
+  );
+  await page.route('**/api/user/me', (route) =>
+    route.fulfill({ json: { id: 'user-1', displayName: '我', avatarUrl: null } }),
+  );
+}
+
+/** POST /api/projects programmable stub; returns the request-body recorder. */
+async function stubCreateProject(
+  page: Page,
+  handler: () => { status?: number; json: unknown },
+): Promise<Record<string, unknown>[]> {
+  const bodies: Record<string, unknown>[] = [];
+  await page.route('**/api/projects', (route, request) => {
+    if (request.method() !== 'POST') return route.fallback();
+    bodies.push(JSON.parse(request.postData() ?? '{}'));
+    const result = handler();
+    return route.fulfill({
+      status: result.status ?? 201,
+      contentType: 'application/json',
+      body: JSON.stringify(result.json),
+    });
+  });
+  return bodies;
+}
+
+const okProject = { id: 'proj-1', name: 'created', teamId: 'team-1' };
+
+async function fillLiveForm(page: Page, opts: { kind: 'local' | 'github'; value: string }) {
+  await selectLiveRow(page, opts.kind === 'local' ? '本地文件夹' : 'GitHub 仓库');
+  const input = page.locator('#prj-new-repo');
+  await input.fill(opts.value);
+  return input;
+}
+
+/** Open the menu from either face: none-state = click the trigger button,
+ *  input face (github/local) = click the swap button. */
+async function selectLiveRow(page: Page, label: string) {
+  const swap = page.locator('.prj-new-repo-swap');
+  if (await swap.isVisible()) await swap.click();
+  else await page.locator('#prj-new-repo').click();
+  const menu = page.locator('.prj-new-repo-menu');
+  await expect(menu).toBeVisible();
+  await menu.locator('.prj-new-repo-menu-row', { hasText: label }).click();
+  await expect(menu).not.toBeVisible();
+}
+
+// ——— menu face (fixture) ———
+
+test('the 选择仓库 trigger lists exactly GitHub 仓库 and 本地文件夹', async ({ page }) => {
   const menu = await openMenu(page);
   const rows = menu.locator('.prj-new-repo-menu-row');
   await expect(rows).toHaveCount(2);
-  await expect(rows.first()).toContainText('新的 Todos 托管仓库');
-  await expect(rows.nth(1)).toContainText('GitHub 仓库');
+  await expect(rows.first()).toContainText('GitHub 仓库');
+  await expect(rows.nth(1)).toContainText('本地文件夹');
+  await expect(menu.locator('.prj-new-repo-menu-row', { hasText: '托管' })).toHaveCount(0);
   // untouched = no row selected (aria-selected ≡ check rendering mirrors the
-  // user's act; the untouched form's hosted submit default is body-layer
-  // behavior, not selection state)
+  // user's act)
   await expect(rows.first()).toHaveAttribute('aria-selected', 'false');
   await expect(rows.nth(1)).toHaveAttribute('aria-selected', 'false');
 });
 
-test('the hosted row selects and backfills the trigger label', async ({ page }) => {
-  const menu = await openMenu(page);
-  await menu.locator('.prj-new-repo-menu-row', { hasText: '新的 Todos 托管仓库' }).click();
-  await expect(page.locator('.prj-new-repo-menu')).not.toBeVisible();
-  await expect(page.locator('#prj-new-repo')).toContainText('新的 Todos 托管仓库');
-});
-
 test('the GitHub row swaps the trigger for the owner/repo input', async ({ page }) => {
-  const menu = await openMenu(page);
-  await menu.locator('.prj-new-repo-menu-row', { hasText: 'GitHub 仓库' }).click();
-  await expect(page.locator('.prj-new-repo-menu')).not.toBeVisible();
+  await selectRow(page, 'GitHub 仓库');
   const input = page.locator('#prj-new-repo');
   await expect(input).toHaveAttribute('placeholder', 'owner/repo');
   await input.fill('xiechimon/pacman');
   await expect(input).toHaveValue('xiechimon/pacman');
 });
 
-test('the swap button reopens the listbox; hosted return drops the input', async ({ page }) => {
-  const menu = await openMenu(page);
-  await menu.locator('.prj-new-repo-menu-row', { hasText: 'GitHub 仓库' }).click();
+test('the 本地文件夹 row swaps the trigger for the path input; swap reopens', async ({ page }) => {
+  await selectRow(page, '本地文件夹');
+  const input = page.locator('#prj-new-repo');
+  await expect(input).toHaveAttribute('aria-label', '本地文件夹');
+  await input.fill('/Users/me/code/my-app');
+  await expect(input).toHaveValue('/Users/me/code/my-app');
   await page.locator('.prj-new-repo-swap').click();
   const reopened = page.locator('.prj-new-repo-menu');
   await expect(reopened).toBeVisible();
-  await expect(reopened.locator('.prj-new-repo-menu-row', { hasText: 'GitHub 仓库' })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  await reopened.locator('.prj-new-repo-menu-row', { hasText: '新的 Todos 托管仓库' }).click();
-  await expect(page.locator('#prj-new-repo')).toContainText('新的 Todos 托管仓库');
-  await expect(page.locator('.prj-new-repo-input')).toHaveCount(0);
+  await expect(
+    reopened.locator('.prj-new-repo-menu-row', { hasText: '本地文件夹' }),
+  ).toHaveAttribute('aria-selected', 'true');
+});
+
+test('switching forms drops the other face input', async ({ page }) => {
+  await selectRow(page, 'GitHub 仓库');
+  await page.locator('.prj-new-repo-swap').click();
+  await page.locator('.prj-new-repo-menu-row', { hasText: '本地文件夹' }).click();
+  await expect(page.locator('input[aria-label="GitHub 仓库"]')).toHaveCount(0);
+  await expect(page.locator('input[aria-label="本地文件夹"]')).toHaveCount(1);
 });
 
 test('Escape closes the repo popover', async ({ page }) => {
@@ -78,3 +163,131 @@ test('Escape closes the repo popover', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(page.locator('.prj-new-repo-menu')).not.toBeVisible();
 });
+
+// ——— name backfill (fixture) ———
+
+test('local path backfills the project name with the basename', async ({ page }) => {
+  await selectRow(page, '本地文件夹');
+  const path = page.locator('#prj-new-repo');
+  const name = page.locator('#prj-new-name');
+  await path.fill('/Users/me/code/my-app');
+  await expect(name).toHaveValue('my-app');
+  // still the last backfill → follows the path; trailing slash tolerated
+  await path.fill('/Users/me/code/other/');
+  await expect(name).toHaveValue('other');
+});
+
+test('a manual name edit stops the backfill; clearing resumes it', async ({ page }) => {
+  await selectRow(page, '本地文件夹');
+  const path = page.locator('#prj-new-repo');
+  const name = page.locator('#prj-new-name');
+  await name.fill('Custom');
+  await path.fill('/Users/me/code/my-app');
+  await expect(name).toHaveValue('Custom');
+  await path.fill('/Users/me/code/second');
+  await expect(name).toHaveValue('Custom');
+  await name.fill('');
+  await path.fill('/Users/me/code/third');
+  await expect(name).toHaveValue('third');
+});
+
+test('github owner/repo backfills the repo segment once valid', async ({ page }) => {
+  await selectRow(page, 'GitHub 仓库');
+  const repo = page.locator('#prj-new-repo');
+  const name = page.locator('#prj-new-name');
+  await repo.fill('xiechimon');
+  await expect(name).toHaveValue('');
+  await repo.fill('xiechimon/pacman');
+  await expect(name).toHaveValue('pacman');
+  await name.fill('Renamed');
+  await repo.fill('xiechimon/pacman-web');
+  await expect(name).toHaveValue('Renamed');
+});
+
+// ——— focus ring (fixture) ———
+
+test('the name input focus ring is indigo, not the UA default', async ({ page }) => {
+  await page.goto(NEW_PROJECT);
+  const name = page.locator('#prj-new-name');
+  await name.click();
+  const cs = await name.evaluate((el) => {
+    const s = getComputedStyle(el);
+    return { outline: s.outlineStyle, border: s.borderTopColor, shadow: s.boxShadow };
+  });
+  expect(cs.outline).toBe('none');
+  expect(cs.border).toBe(INDIGO_500);
+  expect(cs.shadow).toContain(INDIGO_500);
+  expect(cs.shadow).toContain('1px');
+});
+
+// ——— submit + error face (live build, stubbed network) ———
+
+test('untouched submit posts a repo-less body and navigates on 201', async ({ page }) => {
+  await stubBoot(page);
+  const bodies = await stubCreateProject(page, () => ({ json: okProject }));
+  await page.goto(NEW_PROJECT_LIVE);
+  await page.locator('#prj-new-name').fill('Plain');
+  const submit = page.locator('.prj-new-submit');
+  await expect(submit).toBeEnabled();
+  await submit.click();
+  await expect(page).toHaveURL(/\/app\/project\/proj-1$/);
+  expect(bodies).toEqual([{ name: 'Plain', teamId: 'team-1' }]);
+});
+
+test('local and github submits carry kind + their wire field', async ({ page }) => {
+  await stubBoot(page);
+  const bodies = await stubCreateProject(page, () => ({ json: okProject }));
+  await page.goto(NEW_PROJECT_LIVE);
+  await fillLiveForm(page, { kind: 'local', value: '/tmp/my-repo' });
+  await page.locator('.prj-new-submit').click();
+  await expect(page).toHaveURL(/\/app\/project\/proj-1$/);
+
+  await page.goto(NEW_PROJECT_LIVE);
+  await fillLiveForm(page, { kind: 'github', value: 'xiechimon/pacman' });
+  await page.locator('.prj-new-submit').click();
+  await expect(page).toHaveURL(/\/app\/project\/proj-1$/);
+
+  expect(bodies).toEqual([
+    { name: 'my-repo', teamId: 'team-1', kind: 'local', localPath: '/tmp/my-repo' },
+    { name: 'pacman', teamId: 'team-1', kind: 'github', githubRepo: 'xiechimon/pacman' },
+  ]);
+});
+
+test('empty local path / invalid github ref keep 创建项目 disabled', async ({ page }) => {
+  await stubBoot(page);
+  await stubCreateProject(page, () => ({ json: okProject }));
+  await page.goto(NEW_PROJECT_LIVE);
+  const submit = page.locator('.prj-new-submit');
+  await page.locator('#prj-new-name').fill('Gated');
+  await selectLiveRow(page, '本地文件夹');
+  await expect(submit).toBeDisabled();
+  await page.locator('#prj-new-repo').fill('/tmp/ok');
+  await expect(submit).toBeEnabled();
+  await selectLiveRow(page, 'GitHub 仓库');
+  await expect(submit).toBeDisabled();
+  await page.locator('#prj-new-repo').fill('xiechimon/pacman');
+  await expect(submit).toBeEnabled();
+});
+
+for (const [reason, copy] of [
+  ['invalid body at localPath: path not found: /nope', '路径不存在'],
+  ['invalid body at localPath: not a git repository (worktree): /tmp', '不是 git 仓库'],
+  ['invalid body at localPath: expected absolute path, got "rel"', '需要绝对路径'],
+  ['invalid body at localPath: something new', 'invalid body at localPath: something new'],
+] as const) {
+  test(`a 400 localPath reason renders the error row: ${copy}`, async ({ page }) => {
+    await stubBoot(page);
+    await stubCreateProject(page, () => ({ status: 400, json: { error: reason } }));
+    await page.goto(NEW_PROJECT_LIVE);
+    await fillLiveForm(page, { kind: 'local', value: '/nope' });
+    await page.locator('.prj-new-submit').click();
+    const error = page.locator('.prj-new-error');
+    await expect(error).toBeVisible();
+    await expect(error).toHaveText(copy);
+    expect(await error.evaluate((el) => getComputedStyle(el).color)).toBe(DANGER);
+    await expect(page).toHaveURL(/\/app\/project\/new/);
+    // editing the path clears the stale error
+    await page.locator('#prj-new-repo').fill('/nope2');
+    await expect(error).toHaveCount(0);
+  });
+}
