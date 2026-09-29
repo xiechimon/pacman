@@ -50,6 +50,23 @@ async function pressUntil(page: Page, key: string, visible: ReturnType<Page['loc
   throw new Error(`${key} never opened ${visible}`);
 }
 
+/** Escape-until-closed, same retry law as pressUntil: the close listener
+ *  registers in a passive effect too, so an Escape fired right after open
+ *  can be lost (renderer input processing lags the assertion read under
+ *  load — CI evidence: the dialog stayed mounted 5s+). Escape on an
+ *  already-closed surface is a no-op, so retries never double-fire. */
+async function escapeUntilHidden(page: Page, surface: ReturnType<Page['locator']>) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.press('Escape');
+    const closed = await surface
+      .waitFor({ state: 'hidden', timeout: 1000 })
+      .then(() => true)
+      .catch(() => false);
+    if (closed) return;
+  }
+  throw new Error(`Escape never closed ${surface}`);
+}
+
 test('N on the board opens the new-task dialog; ⌘N does not', async ({ page }) => {
   await page.goto(BOARD);
   await expect(page.locator('.sidebar-row').first()).toBeVisible();
@@ -60,7 +77,7 @@ test('N on the board opens the new-task dialog; ⌘N does not', async ({ page })
   await pressUntil(page, 'n', dialog(page));
   // family law: the dialog's title input owns focus on open
   await expect(page.locator('.new-task-input')).toBeFocused();
-  await page.keyboard.press('Escape');
+  await escapeUntilHidden(page, dialog(page));
   await expect(dialog(page)).toHaveCount(0);
 });
 
@@ -71,7 +88,7 @@ test('sidebar 新任务 row carries the N badge and click-opens the dialog', asy
   await expect(row.locator('.sidebar-kbd')).toHaveText('N');
   await row.click();
   await expect(dialog(page)).toBeVisible();
-  await page.keyboard.press('Escape');
+  await escapeUntilHidden(page, dialog(page));
   await expect(dialog(page)).toHaveCount(0);
 });
 
@@ -81,7 +98,7 @@ test('N on a non-board route opens the dialog in place', async ({ page }) => {
   await pressUntil(page, 'n', dialog(page));
   // in place — the route never hops to the board
   await expect(page).toHaveURL(/\/app\/schedules/);
-  await page.keyboard.press('Escape');
+  await escapeUntilHidden(page, dialog(page));
   await expect(dialog(page)).toHaveCount(0);
 });
 
@@ -96,7 +113,7 @@ test('N on the project page opens the page’s own dialog (route project chip)',
   // know); a second global instance would read 2 here
   await expect(dialog(page)).toHaveCount(1);
   await expect(dialog(page).locator('.new-task-project-name')).toHaveText('r3-lifecycle');
-  await page.keyboard.press('Escape');
+  await escapeUntilHidden(page, dialog(page));
   await expect(dialog(page)).toHaveCount(0);
 });
 
@@ -105,7 +122,7 @@ test('Space opens the chief drawer with the composer focused', async ({ page }) 
   await expect(page.locator('.sidebar-row').first()).toBeVisible();
   await pressUntil(page, 'Space', drawer(page));
   await expect(page.locator('.chief-composer-input')).toBeFocused();
-  await page.keyboard.press('Escape');
+  await escapeUntilHidden(page, drawer(page));
   await expect(drawer(page)).toHaveCount(0);
 });
 
@@ -115,7 +132,7 @@ test('Space wakes the chief drawer on a non-board route', async ({ page }) => {
   await pressUntil(page, 'Space', drawer(page));
   await expect(page.locator('.chief-composer-input')).toBeFocused();
   await expect(page).toHaveURL(/\/app\/schedules/);
-  await page.keyboard.press('Escape');
+  await escapeUntilHidden(page, drawer(page));
   await expect(drawer(page)).toHaveCount(0);
 });
 
@@ -144,7 +161,7 @@ test('textarea focus (chief composer) swallows N', async ({ page }) => {
   await page.keyboard.press('n');
   await expect(dialog(page)).toHaveCount(0);
   await expect(drawer(page)).toBeVisible();
-  await page.keyboard.press('Escape');
+  await escapeUntilHidden(page, drawer(page));
   await expect(drawer(page)).toHaveCount(0);
 });
 
@@ -157,7 +174,7 @@ test('Space on a focused button activates the button natively; N stays live', as
   await searchRow.focus();
   await page.keyboard.press('n');
   await expect(dialog(page)).toBeVisible();
-  await page.keyboard.press('Escape');
+  await escapeUntilHidden(page, dialog(page));
   await expect(dialog(page)).toHaveCount(0);
 
   // Space keeps its native button-activation semantics: the 搜索 row's own

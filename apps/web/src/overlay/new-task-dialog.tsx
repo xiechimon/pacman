@@ -183,13 +183,21 @@ export function NewTaskDialog({
 
   const dirty = title.trim() !== '' || spec.trim() !== '';
   const requestClose = () => {
-    if (dirty) setDiscardOpen(true);
-    else onClose();
+    // 脏表单只开确认层（dialog 不关，焦点不还）；净表单真关 = 同步焦点回还
+    if (dirty) {
+      setDiscardOpen(true);
+      return;
+    }
+    returnFocusToInvoker();
+    onClose();
   };
   // Esc 分层 4 层(内层优先):确认层 → 提及 picker → 项目 popover → dialog 关闸
   // (合并 #311 picker + #318 闸;discardOpen/pickerOpen 由各自 ClickCatcher
-  // / useEscapeClose 单独处理,这里只控 dialog 自身的 Esc 关闸。)
-  useEscClose(requestClose, open && !projectOpen && !pickerOpen && !discardOpen);
+  // / useEscapeClose 单独处理,这里只控 dialog 自身的 Esc 关闸)。
+  // #389: tagPanelOpen 补进禁位——#309 的 portal 标签面板是第 5 层,
+  // 原靠监听挂接次序运气兜底;Esc 监听改随 commit 挂接（use-esc.ts）后
+  // 次序确定性翻转,必须结构性禁用。
+  useEscClose(requestClose, open && !projectOpen && !pickerOpen && !discardOpen && !tagPanelOpen);
   useEscapeClose(projectOpen, () => setProjectOpen(false));
   useEscapeClose(discardOpen, () => setDiscardOpen(false));
   useEscapeClose(pickerOpen, () => setPickerOpen(false));
@@ -226,7 +234,13 @@ export function NewTaskDialog({
   // #389: OverlayMount 的 mounted 滞后 open 一帧（effect 里才 setMounted），
   // 鲜开时 [open] effect 跑在节点存在之前——首焦由 ref callback 承载
   // （SearchPanel attachInput 先例），retained-mount 窗口内重开由 effect 兜住。
+  // 焦点律闭环：开时记住触发位（invoker），关时焦点回还（W3C dialog 惯例）。
+  // 用户发起的三条关闭路径（Esc/X/backdrop → requestClose）同步回还——
+  // overlay-focus 的键盘环 spec 在 keypress 同帧读 activeElement，effect
+  // 异步回还在并行批跑下会 race；保存/放弃确认等程序化关闭由 effect 兜底。
+  // 触发位已卸载/本是 body 则不动（自然落 body）。
   const inputRef = useRef<HTMLInputElement>(null);
+  const invokerRef = useRef<HTMLElement | null>(null);
   const openRef = useRef(open);
   openRef.current = open;
   const attachTitleInput = useCallback((node: HTMLInputElement | null) => {
@@ -234,8 +248,21 @@ export function NewTaskDialog({
     if (node && openRef.current) node.focus();
   }, []);
   const specRef = useRef<HTMLTextAreaElement | null>(null);
+  const returnFocusToInvoker = () => {
+    const invoker = invokerRef.current;
+    invokerRef.current = null;
+    if (invoker && document.contains(invoker)) invoker.focus();
+  };
   useEffect(() => {
-    if (open) inputRef.current?.focus();
+    if (open) {
+      // 首捕触发位（此时焦点还在它身上——attach 的首焦尚未发生或同源）
+      const active = document.activeElement;
+      invokerRef.current =
+        active instanceof HTMLElement && active !== document.body ? active : null;
+      inputRef.current?.focus();
+      return;
+    }
+    returnFocusToInvoker();
   }, [open]);
   // #309 内联新建表单同律:开表单即聚焦名称 input(a11y 面禁 autoFocus 属性,
   // 走 ref 聚焦——dialog 标题 input 先例)。

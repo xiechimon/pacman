@@ -38,7 +38,18 @@ test.describe('#15 focus ring收编', () => {
     await newTask.click();
     // keyboard interaction after a click flips the focused button into
     // :focus-visible (Chromium heuristic) — the exact dogfood symptom path
-    await page.keyboard.press('Escape');
+    // #389: 家族律 = 开时焦点入层、关时回还触发位——Esc 现在的职责是关
+    // dialog（焦点回还按钮），读环前必须等关闭落定；重发律同 search-focus
+    // （负载下渲染端输入处理可滞后于断言读，关层监听挂被动 effect）。
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await page.keyboard.press('Escape');
+      const closed = await page
+        .locator('.new-task-dialog')
+        .waitFor({ state: 'hidden', timeout: 1000 })
+        .then(() => true)
+        .catch(() => false);
+      if (closed) break;
+    }
     const info = await focusedOutline(page);
     expect(info).not.toBeNull();
     expect(info!.style).not.toBe('auto');
