@@ -1,10 +1,13 @@
 #!/usr/bin/env -S pnpm exec tsx
-// 只验证场景仓的种子内容有没有真的进仓——不起模型、不花钱。
-// 种内容的失败是静默的（git 返回 0 但没 add 上），只有把裸仓的 tree 摊开才看得见。
+// 只验证场景搭建——不起模型、不花钱。两件事都是「静默失败」型，只能摊开看：
+//   ① 场景仓的种子内容有没有真的进仓（种失败时 git 仍返回 0）。
+//   ② chief 系统提示词渲染成什么样（分派靠模型抄 roster 里的 agentId，
+//      渲染形态直接决定它抄不抄得对）。
 
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { user as userTable } from '../../../apps/server/src/db/schema.js';
 import type { RosterAgent } from './grade.mts';
 import { bootStack, resolveFromRoot, seedWorld } from './stack.mts';
 
@@ -35,7 +38,18 @@ try {
   console.log(ls.out.trim() || '(空树)');
   console.log(`\n提交历史:`);
   console.log(git('--git-dir', bare, 'log', '--oneline', '--all').out.trim() || '(无提交)');
-  console.log(`\n期望 16 个文件，实际 ${ls.out.trim() ? ls.out.trim().split('\n').length : 0} 个`);
+  console.log(`\n文件数 ${ls.out.trim() ? ls.out.trim().split('\n').length : 0}`);
+
+  const { composeChiefSystemPrompt } = await import('../../../apps/server/src/services/chief.ts');
+  const userRow = stack.server.db.select().from(userTable).all()[0];
+  if (userRow === undefined) throw new Error('seed 的用户行缺失');
+  console.log('\n=== chief 系统提示词 ===');
+  console.log(
+    composeChiefSystemPrompt(
+      { db: stack.server.db, hub: {} as never, user: userRow, skillsDir: stack.skillsDir },
+      stack.server.teamId,
+    ),
+  );
   void world;
 } finally {
   await stack.close();
