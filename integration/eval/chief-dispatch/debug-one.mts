@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { RosterAgent } from './grade.mts';
-import { bootStack, driveTurn, relayKey, seedWorld } from './stack.mts';
+import { bootStack, driveTurn, relayKey, resolveFromRoot, seedWorld } from './stack.mts';
 
 const FLOW = process.argv[2];
 const CASE_ID = process.argv[3];
@@ -14,12 +14,13 @@ if (FLOW === undefined || CASE_ID === undefined) {
   console.error('用法: debug-one.mts <flow 目录> <case id>');
   process.exit(2);
 }
-const d = JSON.parse(readFileSync(join(FLOW, 'cases.json'), 'utf8')) as {
+const flowDir = resolveFromRoot(FLOW);
+const d = JSON.parse(readFileSync(join(flowDir, 'cases.json'), 'utf8')) as {
   roster: RosterAgent[];
   cases: { id: string; prompt: string; expect: { kind: string; agent?: string } }[];
 };
 const c = d.cases.find((x) => x.id === CASE_ID);
-if (c === undefined) throw new Error(`${CASE_ID} 不在 ${FLOW}/cases.json 里`);
+if (c === undefined) throw new Error(`${CASE_ID} 不在 ${flowDir}/cases.json 里`);
 
 const stack = await bootStack();
 try {

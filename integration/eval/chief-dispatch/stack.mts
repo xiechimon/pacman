@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { eq } from 'drizzle-orm';
 import { loadDaemonConfig } from '../../../apps/daemon/src/config.js';
@@ -34,8 +34,18 @@ import {
   waitFor,
 } from '../../../integration/test/helpers.js';
 
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+/** 仓根（本模块在 integration/eval/chief-dispatch/ 下）。flow 路径与
+ * `_state.json.harness_paths` 都锚在这里而不是 cwd：runner 常从
+ * `pnpm --filter @pacman/integration exec tsx …` 里被调用，那个 cwd 是
+ * integration/，锚 cwd 会把 flow 解析到错地方，还会让 harness 哈希随调用位置
+ * 漂移——同一份 harness 在不同 cwd 下算出不同的 sha，闸就废了。 */
+export const REPO_ROOT = resolve(HERE, '../../..');
+export const resolveFromRoot = (p: string): string => (isAbsolute(p) ? p : resolve(REPO_ROOT, p));
+
 /** 场景仓库的内容源（真实文件，进 harness 哈希，可逐条审）。 */
-const REPO_SEED_DIR = join(dirname(fileURLToPath(import.meta.url)), 'repo-seed');
+const REPO_SEED_DIR = join(HERE, 'repo-seed');
 
 /** daemon 没在限时内停干净时留下的目录（收尾统一清，见 disposeLeftovers）。 */
 const LEFTOVERS: string[] = [];

@@ -11,14 +11,16 @@
 
 import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { type Case, gradeCase, type RosterAgent } from './grade.mts';
 import {
   bootStack,
   disposeLeftovers,
   driveTurn,
+  REPO_ROOT,
   relayKey,
+  resolveFromRoot,
   type SeededWorld,
   type Stack,
   seedWorld,
@@ -219,7 +221,7 @@ function usage() {
 function checkHarness(statePath: string, st: Record<string, unknown>, approve: boolean) {
   const self = fileURLToPath(import.meta.url);
   const listed = Array.isArray(st.harness_paths) ? (st.harness_paths as unknown[]).map(String) : [];
-  const paths = [...new Set([self, ...listed.map((p) => resolve(p))])].sort();
+  const paths = [...new Set([self, ...listed.map((p) => resolveFromRoot(p))])].sort();
   const h = createHash('sha256');
   const hashed: string[] = [];
   for (const p of paths) {
@@ -229,12 +231,12 @@ function checkHarness(statePath: string, st: Record<string, unknown>, approve: b
     } catch (e) {
       if (p === self) throw e;
       console.error(
-        `warning: harness path '${relative(process.cwd(), p)}' not readable (${(e as { code?: string })?.code || 'error'}) - skipped`,
+        `warning: harness path '${relative(REPO_ROOT, p)}' not readable (${(e as { code?: string })?.code || 'error'}) - skipped`,
       );
       continue;
     }
-    h.update(relative(process.cwd(), p)).update('\0').update(buf).update('\0');
-    hashed.push(relative(process.cwd(), p));
+    h.update(relative(REPO_ROOT, p)).update('\0').update(buf).update('\0');
+    hashed.push(relative(REPO_ROOT, p));
   }
   const sha = h.digest('hex');
   if (st.harness_sha === sha) return;
@@ -333,6 +335,7 @@ process.on('uncaughtException', (err: NodeJS.ErrnoException) => {
 
 async function main() {
   ARGS = parseArgs(process.argv.slice(2));
+  ARGS.flow = resolveFromRoot(ARGS.flow);
   const vdir = join(ARGS.flow, ARGS.variant);
   mkdirSync(join(vdir, 'traces'), { recursive: true });
   const statePath = join(ARGS.flow, '_state.json');

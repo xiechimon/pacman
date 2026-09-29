@@ -6,10 +6,13 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { RosterAgent } from './grade.mts';
-import { bootStack, seedWorld } from './stack.mts';
+import { bootStack, resolveFromRoot, seedWorld } from './stack.mts';
 
 const FLOW = process.argv[2] ?? '.claude/hillclimb/chief-dispatch';
-const d = JSON.parse(readFileSync(join(FLOW, 'cases.json'), 'utf8')) as { roster: RosterAgent[] };
+const FLOW_DIR = resolveFromRoot(FLOW);
+const d = JSON.parse(readFileSync(join(FLOW_DIR, 'cases.json'), 'utf8')) as {
+  roster: RosterAgent[];
+};
 
 const stack = await bootStack();
 try {
