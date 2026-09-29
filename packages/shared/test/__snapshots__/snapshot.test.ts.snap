@@ -5214,6 +5214,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > DELETE 面规则（[推�
     "resources": [
       "teams/{id}/machines",
       "teams/{id}/agents",
+      "teams/{id}/skills",
       "teams/{id}/mcp-servers",
       "teams/{id}/agents/{aid}/memories",
       "teams/{id}/providers",
