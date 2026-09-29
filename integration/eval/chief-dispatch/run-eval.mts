@@ -93,12 +93,17 @@ async function runCase(
   try {
     const timeoutMs = ctx.timeoutS > 0 ? ctx.timeoutS * 1000 : 300_000;
     const ev = await driveTurn(stack, input.prompt, { timeoutMs });
-    // 零 token = 那一回合根本没跑到模型（实测 5/108，延迟整齐卡在 ~30s 的超时
-    // 特征）。它必须落 errors.jsonl 而不是计分——把链路失败算成模型失败会让
-    // 头条分数凭空掉几个点（实测把 88.3% 压成 84.3%）。
-    if (ev.usage.input === 0 && ev.usage.output === 0) {
+    // 链路失败一律落 errors.jsonl，绝不计分——把基础设施问题算成模型失败会
+    // 让头条分数凭空掉几个点，而且失败会集中到某几条用例上，看起来像「模型
+    // 系统性不会做这件事」。两种实测形态：
+    //   ① 零 token：回合根本没跑到模型（延迟整齐卡在 ~30s 的超时特征）。
+    //   ② step=failed：模型跑了、也出了话，但步以失败收场。只看 token 抓不到
+    //      这一种——实测有过某条用例 3/3 全是 failed step，被误读成「它系统性
+    //      不派工」。
+    const dead = (ev.usage.input === 0 && ev.usage.output === 0) || ev.stepStatus !== 'done';
+    if (dead) {
       const e = new Error(
-        `回合未跑到模型：step=${ev.stepStatus} usage=0/0 latency=${(ev.wallMs / 1000).toFixed(1)}s`,
+        `回合未正常完成：step=${ev.stepStatus} usage=${ev.usage.input}/${ev.usage.output} latency=${(ev.wallMs / 1000).toFixed(1)}s`,
       ) as Error & { failure_class?: string };
       e.failure_class = 'harness_error';
       throw e;
