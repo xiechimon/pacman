@@ -256,7 +256,7 @@ function TasksMenu<T extends string>({
 
 /** 筛选/排序 trigger + its anchored menu: one component per dropdown so
  *  the open state, the Escape wiring and the relative anchor span travel
- *  together (the chip-popover / board-guide recipe). */
+ *  together (the chip-popover recipe). */
 function TasksMenuButton<T extends string>({
   icon,
   label,
