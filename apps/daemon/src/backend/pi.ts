@@ -89,6 +89,12 @@ export interface SkillsCatalogOpts {
   /** loadSkills 的 cwd = daemon home（非任务 worktree——project 级解析不随
    * worktree 切换跳变，spec 14 Implementation Decisions）。 */
   cwd: string;
+  /** per-agent 白名单（#372，SessionOpts.skillsAllowlist 透传）：slug 集
+   * （frontmatter name 回落目录名，#367 wire 模型同源）。undefined = 全量
+   * 直通（chief 面）；[] = 不注入任何 skill（与 MCP 空勾选同律）；名单内
+   * 未知 slug（目录已删）静默跳过。过滤先于 cap 闸——白名单内条目不受
+   * 目录总量截顶影响。 */
+  allowlist?: string[];
   /** `[skills] <type>: <msg>` 诊断行出口（machine-loop 接 logger.skills）。 */
   log?: (msg: string) => void;
 }
@@ -121,6 +127,18 @@ export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
           ? ` (${d.path})`
           : '';
     log?.(`${classifySkillDiagnostic(d)}: ${d.message}${where}`);
+  }
+  // per-agent 白名单过滤（#372）：先于 cap 闸——白名单是授权语义（谁能进
+  // catalog），cap 是预算语义（进者截顶）；顺序颠倒会让目录总量把授权条目
+  // 挤掉。名单内未知 slug 无对应 skill，天然静默跳过（#367 容忍语义）。
+  if (opts.allowlist !== undefined) {
+    const allowed = new Set(opts.allowlist);
+    const kept: Skill[] = [];
+    for (const s of skills) {
+      if (allowed.has(s.name)) kept.push(s);
+      else log?.(`filtered: ${s.name} not in agent allowlist`);
+    }
+    skills = kept;
   }
   if (skills.length > SKILLS_CATALOG_CAP) {
     log?.(`cap: total=${skills.length} truncated=${SKILLS_CATALOG_CAP}`);
@@ -469,10 +487,12 @@ export class PiBackend implements AgentBackend {
     }
     // skills catalog 注入（spec 14/#371）：每次会话创建扫描一次；catalog 追加
     // 到 systemPrompt 末尾（不覆盖既有段）；空 skills 集 = systemPrompt 原样。
+    // skillsAllowlist（#372）：per-agent 白名单过滤，undefined = 全量直通。
     const skillsCatalog = this.opts.skills
       ? buildSkillsCatalog({
           skillsDir: this.opts.skills.skillsDir,
           cwd: this.opts.skills.cwd,
+          ...(opts.skillsAllowlist !== undefined ? { allowlist: opts.skillsAllowlist } : {}),
           ...(this.opts.onSkillsLog ? { log: this.opts.onSkillsLog } : {}),
         })
       : '';

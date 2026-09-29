@@ -130,6 +130,15 @@ export class WorkspaceManager implements WorktreeOps {
     return { output };
   }
 
+  /** local 形态合并落地（spec 12 G2-T2）：merge 步 conv 分支 push 回用户仓库
+   * 后，在用户仓库目录 ff-only 推进其当前分支。脏工作区 / 非 ff → gitPrim
+   * 抛错携带 git 拒绝原文（调用方按 failed 收尾）；永不 force、永不动用户
+   * 工作树。 */
+  async landLocalFastForward(userRepoDir: string, branch: string): Promise<void> {
+    await gitPrim.mergeFfOnly(userRepoDir, branch);
+    this.logger.workspace(`Local merge landed (${branch} fast-forwarded in user repo)`);
+  }
+
   async headCommit(cwd: string): Promise<string | null> {
     return gitPrim.head(cwd);
   }

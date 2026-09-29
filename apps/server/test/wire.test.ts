@@ -79,6 +79,9 @@ const INFERRED_ROUTES = [
   // 投影、claude-code 段 = server fs 直读 ~/.claude/settings.json。spec 11
   // 设计面，wire 未在 02 §6.1 词表登记 = INFERRED 入位。
   'GET /api/teams/{id}/model-sources',
+  // machines 本地化（spec 11 A8/A9，#357）：机器页 per-runtime 开关写回面
+  // （enabledRuntimes 全量替换；wire 未采，REST 同名 PATCH [推断]，02 §6.1 规则族）
+  'PATCH /api/machines/{id}',
   // spec 12 / #359 新建项目 GitHub 认证选仓：repo picker 数据面（GitHub
   // `GET /user/repos` 代理，token 取自 github_connection；自有设计面，
   // 02 §6.1 词表外 = INFERRED 入位）。
@@ -188,12 +191,13 @@ async function expectErrorShape(res: Response, status: number): Promise<void> {
 describe('路由面 = 02 §6.1 词表', () => {
   const { app } = bootServer();
   // 机器面 /api/machine/* 归 02 §5 词表（machine-wire.test.ts 逐字段对拍），
-  // 不入本 web 面（02 §6.1）路由集合。
+  // 不入本 web 面（02 §6.1）路由集合。排除钉单数命名空间斜杠边界——
+  // /api/machines 复数是 web 资源面（#357），归本词表管。
   const have = new Set(
     app.routes
       .filter(
         (r) =>
-          r.method !== 'ALL' && r.path.startsWith('/api') && !r.path.startsWith('/api/machine'),
+          r.method !== 'ALL' && r.path.startsWith('/api') && !r.path.startsWith('/api/machine/'),
       )
       .map((r) => `${r.method} ${normalizePath(r.path)}`),
   );

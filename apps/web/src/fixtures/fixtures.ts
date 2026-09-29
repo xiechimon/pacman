@@ -956,6 +956,15 @@ export const projectTasksEmpty: FixtureSet = {
   now: r7(13, 14),
   project: projectContent,
   projectTab: 'tasks',
+};
+
+/** spec 12 / #362 G2-T2 v1: local 仓库项目的 文件 tab 禁用面（占位 +
+ *  一行 disable 文案）；任务行 = legacy 双行（切换对照用）。 */
+export const projectLocalFiles: FixtureSet = {
+  todos: projectFixture.todos,
+  now: projectFixture.now,
+  project: { ...projectContent, repoKind: 'local', hosted: false },
+  projectTab: 'files',
 }; /** Resource surfaces (r7 06–10, issue #69): the r3 session left one skill,
  *  one MCP server, the online r3 machine and a custom gateway on the free
  *  team, so the captures show populated rows rather than empty states
@@ -1001,17 +1010,16 @@ const RESOURCES: ResourcesContent = {
       ago: '2 天前',
     },
   ],
+  // spec 11 A8（#357）：本机行钉首（hostname canon + per-runtime switches，
+  // pi 开 / Claude Code 关 = 两态展示）；托管 facade 行已除。
   machines: [
     {
-      hosted: true,
-      name: 'Pacman 托管机器',
-      description: '随时在线，构建速度快。空闲自动休眠，仅在运行时消耗积分。',
-      pill: '未启用',
-    },
-    {
+      id: MACHINE_ID,
+      kind: 'local',
       name: MACHINE_NAME,
       sub: `…${MACHINE_ID.slice(-8)} · max 3`,
       online: true,
+      enabledRuntimes: ['pi'],
     },
   ],
   providerSources: [PROVIDER_SOURCE_PI, PROVIDER_SOURCE_CC],

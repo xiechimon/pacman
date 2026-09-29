@@ -699,25 +699,19 @@ export function mapApiKeys(rows: ApiKeyRow[]): DisplayApiKey[] {
   }));
 }
 
-/** `Pacman 托管机器` 首行 = 静态产品面（r7 06 canon，复刻未启用托管执行——
- * 恒 未启用 pill；品牌词槽随 D2 替换值 Pacman（静态字面 = i18n 键契约，
- * 见 test/i18n-coverage.test.ts；D3 已切换 #109）。 */
-const HOSTED_MACHINE_ROW: MachineRow = {
-  hosted: true,
-  name: 'Pacman 托管机器',
-  description: '随时在线，构建速度快。空闲自动休眠，仅在运行时消耗积分。',
-  pill: '未启用',
-};
-
+/** machines 页投影（spec 11 A8，#357）：本机行（kind='local'）钉列表首，
+ * 接入机保持 API 序；enabledRuntimes 原样透传 = switch aria-checked 数据源。 */
 export function mapMachines(rows: MachineRecord[]): MachineRow[] {
-  return [
-    HOSTED_MACHINE_ROW,
-    ...rows.map((m) => ({
-      name: m.name,
-      sub: `…${m.id.slice(-8)} · max ${m.maxConcurrent}`,
-      online: m.online,
-    })),
-  ];
+  const local = rows.filter((m) => m.kind === 'local');
+  const attached = rows.filter((m) => m.kind !== 'local');
+  return [...local, ...attached].map((m) => ({
+    id: m.id,
+    kind: m.kind,
+    name: m.name,
+    sub: `…${m.id.slice(-8)} · max ${m.maxConcurrent}`,
+    online: m.online,
+    enabledRuntimes: m.enabledRuntimes,
+  }));
 }
 
 export function mapSkills(rows: SkillRecord[]): SkillRow[] {

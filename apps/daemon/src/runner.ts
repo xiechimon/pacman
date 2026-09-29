@@ -193,11 +193,15 @@ export async function runStep(
   // 不开 worktree（不产可合并改动；仓库读经 remoteTools docs/projects relay，
   // 黑盒逼近 04 §1 A4）→ 裸任务目录。review 步（M7 #312 / r8 §3.1）= 只读
   // 审核方案，不动 worktree（与 chief 同律）→ 裸任务目录。
+  // repo 三形态同吃 worktree 契约（spec 12 G2-T2，契约零改动）：hosted =
+  // http 远端 + per-step key；github = https 远端 + per-step x-access-token
+  // （server 从 github_connection 下发）；local = cloneUrl 即用户仓库绝对路径
+  // （git clone 本地路径默认硬链接，近零成本；凭证 null）。
   logger.workspace('准备工作区...');
   let ws: PreparedWorkspace | null = null;
   const isReview = claimed.step.kind === 'review';
   const repo = isChief || isReview ? null : (claimed.project?.repo ?? null);
-  if (repo !== null && repo.kind === 'hosted') {
+  if (repo !== null) {
     if (!deps.workspace) {
       clearCredentials(creds);
       await failStep(deps, stepId, 'workspace ops unavailable for repo-bound step');
@@ -282,6 +286,11 @@ export async function runStep(
         }
       : {}),
     ...(mcpEndpoints.length > 0 ? { mcpServers: mcpEndpoints } : {}),
+    // skills 白名单（#372）：worker/review 步 = claim 携带的 agent.skills 勾选
+    // slug（[] 也传——[] = 不注入任何 skill，与 MCP 空勾选同律）；chief 步不传
+    // （undefined = 全量 catalog，chief 是信任面）；旧 server 未携带 = 缺省
+    // 直通（零回归）。过滤落点 = backend catalog 构建（backend/pi.ts）。
+    ...(isChief || agent.skills === undefined ? {} : { skillsAllowlist: agent.skills }),
   };
 
   // continue 解析键：journal 快照（recover 面）优先，其次 claim 载荷携带的
@@ -519,6 +528,14 @@ export async function runStep(
       ) {
         await git.push(ws.cwd, ws.branch, creds.git);
         logger.raw(`pushed ${ws.branch}`);
+        // local 形态落地（spec 12 G2-T2）：merge 步 push 回用户仓库后
+        // `git merge --ff-only <convBranch>` 推进用户当前分支；脏工作区/非 ff
+        // → git 自拒 → lastError（failed 收尾，reason 含 git 拒绝原文）——
+        // 永不 force、永不动用户工作树。hosted 落地在 server applyMergeLanding
+        // （hosted-only 不变）；github v1 done 语义 = conv 分支已推上，不落地。
+        if (repo?.kind === 'local' && claimed.step.kind === 'merge') {
+          await git.landLocalFastForward(repo.cloneUrl, ws.branch);
+        }
       }
       headCommit = committed.head ?? (await git.headCommit(ws.cwd));
       // hasChanges = conv 分支领先默认分支的提交在位（02 §4.1/r5 §8 列位双键；

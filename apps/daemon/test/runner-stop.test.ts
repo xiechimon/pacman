@@ -169,6 +169,9 @@ function fakeWorkspace(cwd: string) {
       calls.push('mergeDefaultBranch');
       return { output: 'Already up to date' };
     },
+    async landLocalFastForward(userRepoDir, branch) {
+      calls.push(`landLocalFastForward:${userRepoDir}:${branch}`);
+    },
     async headCommit() {
       calls.push('headCommit');
       return 'abc123'; // 步起点 head（discard rewind 的目标 checkpoint）

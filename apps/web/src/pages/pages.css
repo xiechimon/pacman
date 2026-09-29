@@ -108,6 +108,14 @@
   color: var(--text-primary);
 }
 
+/* spec 12 / #362 G2-T2 v1：local 项目的 文件 tab 禁用位——弱化但保留可见
+   （占位语义：tab 在位、面不可用），不隐藏（隐藏会让用户以为功能不存在）。 */
+.page-tab--disabled {
+  color: var(--text-tertiary);
+  cursor: default;
+  opacity: 0.55;
+}
+
 .page-topbar-actions {
   margin-left: auto;
   display: flex;
@@ -901,6 +909,18 @@
   flex: 1;
   min-height: 0;
   display: flex;
+}
+
+/* local 项目 文件 tab 占位面（spec 12 / #362 G2-T2 v1）：一行 disable 文案
+   居中，详细列表/编辑器响应式归后票。 */
+.prj-files-disabled {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-tertiary);
 }
 
 .prj-files-pane {

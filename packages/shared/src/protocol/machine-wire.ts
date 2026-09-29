@@ -11,6 +11,7 @@ import { modelUsageSchema, providerConfigSchema, toolCallRecordSchema } from '..
 import { epochMs, recordId } from '../records/common.js';
 import { machineRecordSchema } from '../records/machine.js';
 import { messageRoleSchema } from '../records/message.js';
+import { PROJECT_REPO_KINDS } from '../records/project.js';
 import { reviewVerdictSchema } from '../records/review.js';
 import { stepRecordSchema } from '../records/step.js';
 import {
@@ -136,12 +137,17 @@ export const claimedStepSchema = z.object({
     .object({
       id: recordId,
       name: z.string(),
-      /** repo 绑定位（M3b worktree 契约接线，02 §3/§5.5）：cloneUrl = 托管
-       * `<origin>/git/<teamId>/<repoName>`（02 §5.8 gitHostDomain 槽本地代位）
-       * 或 GitHub https 派生；null = 项目未绑 repo（工作区退化为裸目录）。 */
+      /** repo 绑定位（M3b worktree 契约接线，02 §3/§5.5 + spec 12 local 形态）：
+       * cloneUrl = 托管 `<origin>/git/<teamId>/<repoName>`（02 §5.8
+       * gitHostDomain 槽本地代位）、GitHub https 派生、或 local 形态的用户仓库
+       * 绝对路径（server 端 validateLocalRepoPath 规范化值——daemon 镜像 clone
+       * 源与 ff-only 落地面同吃该路径，git clone 对本地路径默认走硬链接）；
+       * null = 项目未绑 repo（工作区退化为裸目录）。 */
       repo: z
         .object({
-          kind: z.enum(['hosted', 'github']),
+          // 词表单源 = PROJECT_REPO_KINDS（records/project.ts；新 kind 落地
+          // 即随 wire，免三处散射编辑）。
+          kind: z.enum(PROJECT_REPO_KINDS),
           cloneUrl: z.string(),
         })
         .nullable(),
@@ -161,6 +167,13 @@ export const claimedStepSchema = z.object({
       /** 该 Agent 记忆条目注入 systemPrompt（02 §4.4 读路径最小形；注入形
        * [推断] 保留，04 附录 A）。 */
       memories: z.array(z.object({ title: z.string(), content: z.string() })).optional(),
+      /** skills catalog 白名单（#372）：勾选 slug 原样透传（frontmatter name
+       * 回落目录名，spec 13 #367 候选源同源）。worker 步恒携带——含空数组
+       * （[] = 不注入任何 skill；缺省 = 全量直通是 chief 面语义，worker 空
+       * 勾选若缺省不携带会错落到全量 catalog）。chief 步不携带（不受过滤
+       * 约束）。无版本墙：纯增可选字段，旧 daemon 忽略 = 现行为全量直通，
+       * 不存在 MCP slug 断约那种混发形状失败模式。 */
+      skills: z.array(z.string()).optional(),
     })
     .nullable(),
   /** chief 步块（r5 §3.1：Chief 回合 = pi 会话 + 服务端 relay 工具；细节

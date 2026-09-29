@@ -6,8 +6,10 @@
 // - journal：heartbeat/tool/done/upload-urls/token（02 §5.4 词表）。
 // 载荷细形 r3 未采处 = [推断]/[设计]（04 §3 不判负口径），补采后回写 02 §11。
 
+import { hostname } from 'node:os';
 import type {
   ClaimedStep,
+  GitCredentials,
   MachineDoneBody,
   MachineStreamEvent,
   MachineSyncCommand,
@@ -21,9 +23,11 @@ import type {
 } from '@pacman/shared';
 import {
   CHIEF_REMOTE_TOOLS,
+  GITHUB_ACCESS_TOKEN_USERNAME,
   isChiefConversationId,
   MAX_CONCURRENT_DEFAULT,
   MCP_MIN_CLI_VERSION,
+  machineRecordSchema,
   parseReviewPromptMeta,
   WORKER_REMOTE_TOOLS,
 } from '@pacman/shared';
@@ -69,6 +73,7 @@ import {
 } from './credentials.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { githubCloneUrl, hostedCloneUrl, repoDirFor } from './git.js';
+import { openGithubToken } from './github-connection.js';
 import { canTransitionPhase } from './phase.js';
 import { setTodoPhase } from './todos.js';
 
@@ -342,6 +347,71 @@ export function findApiKeyByPlain(db: Db, plain: string) {
 
 // —— enroll（02 §5.2）———————————————————————————————————————————————————————
 
+/** machine 行 → wire record 投影单源（routes.ts GET/PATCH 与 routes-machine.ts
+ * me 双消费；字段增删只改这里 + shared schema）。 */
+export function toMachineRecord(row: typeof machine.$inferSelect) {
+  return machineRecordSchema.parse({
+    id: row.id,
+    name: row.name,
+    teamId: row.teamId,
+    online: row.online,
+    maxConcurrent: row.maxConcurrent,
+    latestCliVersion: row.latestCliVersion,
+    kind: row.kind,
+    enabledRuntimes: row.enabledRuntimes,
+  });
+}
+
+/** 本机匹配键（spec 11 A8/A9，#357）：daemon `--name` 默认 hostname（r3
+ * §1.1），server 侧以自身 os.hostname() 判本机——票面「loopback enroll 同律」
+ * 的判定键即 hostname 匹配（同机经 LAN IP 连回也命中；不按连接来源 IP 判，
+ * 免绑定形态误伤）。代价 = 异机同名误判 local，票面规则接受。命中返回
+ * (teamId, name) 既有行，否则 undefined。 */
+function localMachineRow(db: Db, teamId: string, name: string) {
+  if (name !== hostname()) return undefined;
+  return db
+    .select()
+    .from(machine)
+    .where(and(eq(machine.teamId, teamId), eq(machine.name, name)))
+    .get();
+}
+
+/** server 启动 seed 本机行（spec 11 A8，index.ts 调），三级定位保证
+ * 「本机行至多一行」（验收 #357 + feature map 改名 gotcha）：
+ * 1. kind='local' 既有行（含显式 --name 改名后 name 漂移离 hostname 的行）
+ *    → 直接复用，不动 name（用户改名意图优先）；
+ * 2. hostname 同名行（enroll 先于 seed 落库的窗口）→ 补 kind='local'；
+ * 3. 未建 → insert 无凭证 placeholder（tokenHash null；daemon enroll 按
+ *    同律复用并补凭证）。
+ * idempotent：二次启动不建 duplicate。 */
+export function seedLocalMachine(db: Db, teamId: string): void {
+  const local = db
+    .select()
+    .from(machine)
+    .where(and(eq(machine.teamId, teamId), eq(machine.kind, 'local')))
+    .get();
+  if (local) return;
+  const byName = localMachineRow(db, teamId, hostname());
+  if (byName) {
+    db.update(machine).set({ kind: 'local' }).where(eq(machine.id, byName.id)).run();
+    return;
+  }
+  db.insert(machine)
+    .values({
+      id: newRecordId(),
+      teamId,
+      name: hostname(),
+      online: false,
+      maxConcurrent: MAX_CONCURRENT_DEFAULT,
+      tokenHash: null,
+      apiKeyId: null,
+      latestCliVersion: null,
+      kind: 'local',
+      enabledRuntimes: [],
+    })
+    .run();
+}
+
 export function enrollMachine(
   deps: MachineDeps,
   input: {
@@ -354,18 +424,24 @@ export function enrollMachine(
 ): { machineId: string; token: string; teamId: string; serverUrl: string } {
   const { db } = deps;
   const token = newMachineToken();
-  // 重注册复用同一 machineId（r3 §1.2：logout 后重注册 machineId 不变）。
-  const existing = db
-    .select()
-    .from(machine)
-    .where(and(eq(machine.apiKeyId, input.keyId), eq(machine.teamId, input.teamId)))
-    .get();
+  const isLocal = input.name === hostname();
+  // 重注册复用同一 machineId（r3 §1.2：logout 后重注册 machineId 不变）；
+  // 本机律（spec 11 A9）优先认领 seed placeholder 行——loopback enroll 不与
+  // 启动 seed 建 duplicate。
+  const existing =
+    db
+      .select()
+      .from(machine)
+      .where(and(eq(machine.apiKeyId, input.keyId), eq(machine.teamId, input.teamId)))
+      .get() ?? (isLocal ? localMachineRow(db, input.teamId, input.name) : undefined);
   if (existing) {
     db.update(machine)
       .set({
         tokenHash: token.hash,
         name: input.name,
+        apiKeyId: input.keyId,
         ...(input.cliVersion !== undefined ? { latestCliVersion: input.cliVersion } : {}),
+        ...(isLocal ? { kind: 'local' as const } : {}),
       })
       .where(eq(machine.id, existing.id))
       .run();
@@ -387,21 +463,37 @@ export function enrollMachine(
       tokenHash: token.hash,
       apiKeyId: input.keyId,
       latestCliVersion: input.cliVersion ?? null,
+      kind: isLocal ? 'local' : 'remote',
+      enabledRuntimes: [],
     })
     .run();
   return { machineId, token: token.plain, teamId: input.teamId, serverUrl: input.serverUrl };
 }
 
 /** 浏览器授权流建机（#285，02 §5.2 路径一完成面）：无 apiKey——授权页用户
- * 确认（capability = enrollId 单次）即建新机；无重注册匹配面（key 路径的
- * 复用键 = apiKeyId，此处恒新机）。machine.json 形状返回（poll authorized
- * 态同载荷）。 */
+ * 确认（capability = enrollId 单次）即建新机；key 路径的复用键 = apiKeyId 在
+ * 此缺席，本机律（spec 11 A9）仍认 seed placeholder 行。machine.json 形状
+ * 返回（poll authorized 态同载荷）。 */
 export function authorizeEnrollmentMachine(
   deps: MachineDeps,
   input: { teamId: string; name: string; serverUrl: string },
 ): { machineId: string; token: string; teamId: string; serverUrl: string } {
   const { db } = deps;
   const token = newMachineToken();
+  const isLocal = input.name === hostname();
+  const existing = isLocal ? localMachineRow(db, input.teamId, input.name) : undefined;
+  if (existing) {
+    db.update(machine)
+      .set({ tokenHash: token.hash, kind: 'local' })
+      .where(eq(machine.id, existing.id))
+      .run();
+    return {
+      machineId: existing.id,
+      token: token.plain,
+      teamId: input.teamId,
+      serverUrl: input.serverUrl,
+    };
+  }
   const machineId = newRecordId();
   db.insert(machine)
     .values({
@@ -413,6 +505,8 @@ export function authorizeEnrollmentMachine(
       tokenHash: token.hash,
       apiKeyId: null,
       latestCliVersion: null,
+      kind: isLocal ? 'local' : 'remote',
+      enabledRuntimes: [],
     })
     .run();
   return { machineId, token: token.plain, teamId: input.teamId, serverUrl: input.serverUrl };
@@ -622,6 +716,8 @@ function buildChiefClaim(
       modelId: agentRow.modelId,
       thinkingLevel,
       memories,
+      // skills 白名单不携带（#372）：chief 是信任面，catalog 全量直通不受
+      // 绑定 Agent 勾选约束（daemon 侧 isChief 判定双保险）。
     },
     chief: {
       threadId: threadRow.id,
@@ -705,8 +801,11 @@ function tryClaim(
       .from(project)
       .where(eq(project.id, cand.todoRow.projectId))
       .get();
-    // repo 绑定位（M3b worktree 契约接线，02 §3/§5.5）：托管 = `<origin>/git/
-    // <teamId>/<repoName>`（本地主机代位）；github = https 派生（凭证面归后票）。
+    // repo 绑定位（M3b worktree 契约接线，02 §3/§5.5 + spec 12 G2-T2 三形态）：
+    // 托管 = `<origin>/git/<teamId>/<repoName>`（本地主机代位）；github = https
+    // 派生（执行凭证 = stepToken 从 github_connection 下发）；local = cloneUrl
+    // 即用户仓库绝对路径（validateLocalRepoPath 规范化值——daemon 镜像 clone 源
+    // 与 ff-only 落地面同吃该路径）。
     const repo =
       projectRow?.repoKind === 'hosted' && projectRow.repoName !== null
         ? {
@@ -715,7 +814,9 @@ function tryClaim(
           }
         : projectRow?.repoKind === 'github' && projectRow.githubRepo !== null
           ? { kind: 'github' as const, cloneUrl: githubCloneUrl(projectRow.githubRepo) }
-          : null;
+          : projectRow?.repoKind === 'local' && projectRow.localPath !== null
+            ? { kind: 'local' as const, cloneUrl: projectRow.localPath }
+            : null;
     // worker 步 remoteTools = 记忆三件套（02 §4.4 写路径 / r5 §6：worker 侧
     // 同族工具经 remoteTools 下发，relay 服务端执行；触发 = spec 指令 + Agent
     // 裁量，宿主不做任务结束蒸馏）。MCP 授权端点随载荷（02 §7.1 per-turn 连接）。
@@ -752,6 +853,10 @@ function tryClaim(
           .from(agentMemory)
           .where(eq(agentMemory.agentId, agentRow.id))
           .all(),
+        // skills catalog 白名单（#372）：勾选 slug 原样透传（过滤权在 daemon
+        // catalog 构建）。worker 步恒携带——含空数组（[] = 不注入任何 skill，
+        // least-privilege；缺省 = 全量直通是 chief 面语义，两态不得混淆）。
+        skills: [...agentRow.skills],
       },
       remoteTools: [...WORKER_REMOTE_TOOLS],
       ...(workerMcp ? { mcpServers: workerMcp } : {}),
@@ -961,17 +1066,31 @@ export function stepToken(
     : undefined;
   const agentRow =
     stepRow && todoRow ? agentForStep(deps, todoRow, stepRow.kind, stepRow.prompt) : null;
-  // 托管 repo git 凭证 per-step 发行（02 §3 凭证纪律：仅 per-step 注入，手动
-  // fetch 无凭证失败；relay 工具名对照 push_credential，r5 §3.1）。GitHub
-  // 形态凭证面归后票（02 §3 接入形态）。
+  // repo 形态分流 git 凭证（02 §3 凭证纪律：仅 per-step 注入；relay 工具名对照
+  // push_credential，r5 §3.1）：hosted = 一次性 gitAccess key 发行；github =
+  // github_connection token（spec 12 G2-T2 执行凭证面）；local = null（本地
+  // 路径 clone/push 无需凭证）。
   const projectRow = todoRow
     ? deps.db.select().from(project).where(eq(project.id, todoRow.projectId)).get()
     : undefined;
   const git =
     projectRow?.repoKind === 'hosted' && todoRow
       ? issueStepGitCredential(deps, { teamId: todoRow.teamId, stepId })
-      : null;
+      : projectRow?.repoKind === 'github' && todoRow
+        ? githubExecCredential(deps, todoRow.teamId)
+        : null;
   return { provider: toProviderConfig(bundle.provider, agentRow?.provider), env: bundle.env, git };
+}
+
+/** GitHub 执行凭证（spec 12 G2-T2）：connection 行 token → per-step
+ * GitCredentials（basic auth 用户名固定 x-access-token，GitHub 约定；daemon
+ * 消费形 = git.ts gitCredentialEnv，不进 argv / 不落盘）。未连接 = null——
+ * 私有仓匿名 clone/push 的失败原文归 daemon 步 reason，不在 token 端点造错。
+ * 凭证生命周期 = connection 行（非 hosted 族一次性 key；步收尾
+ * revokeStepGitCredential 对该 stepId 无行可删 = no-op）。 */
+function githubExecCredential(deps: MachineDeps, teamId: string): GitCredentials | null {
+  const token = openGithubToken({ db: deps.db, box: deps.box }, teamId);
+  return token !== null ? { username: GITHUB_ACCESS_TOKEN_USERNAME, password: token } : null;
 }
 
 /** provider 行 → wire ProviderConfig（custom http 端点）；无 custom 行回退

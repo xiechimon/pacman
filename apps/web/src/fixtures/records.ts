@@ -8,7 +8,13 @@
 
 // phase 九值枚举单源 = @pacman/shared（02 §4.1；#65 M1 收口），本地不再定义。
 // GithubRepoSummary = repo picker 行封套单源（spec 12 数据契约，#359）。
-import { type GithubRepoSummary, type ModelSource, PHASE_VALUES, type Phase } from '@pacman/shared';
+import {
+  type GithubRepoSummary,
+  type ModelSource,
+  PHASE_VALUES,
+  type Phase,
+  type ProjectRepoKind,
+} from '@pacman/shared';
 
 export type { Phase };
 export { PHASE_VALUES };
@@ -189,6 +195,10 @@ export interface ProjectContent {
   repoName: string;
   /** True = the `Pacman 托管` chip rides beside the repo name (r2 24c). */
   hosted: boolean;
+  /** repo 形态（spec 12 三形态，词表单源 = shared ProjectRepoKind；live 面
+   *  = wireProject.repoKind 透传）。local = Files tab 禁用（占位 + 一行
+   *  disable 文案，G2-T2 v1）。 */
+  repoKind?: ProjectRepoKind;
   defaultBranch: string;
   description: string | null;
   /** 历史 segment rows (#149); fixture-frozen, newest first. */
@@ -317,19 +327,22 @@ export interface McpRow {
   ago: string;
 }
 
-/** Machine row (r7 06): the hosted-machine card row plus one row per
- *  claimed machine (name + online dot + id-tail subline). */
+/** Machine row (spec 11 A8): the local machine pinned first (kind='local',
+ *  per-runtime switches, undeletable) plus one row per attached LAN/VPS
+ *  machine (name + online dot + id-tail subline). */
 export interface MachineRow {
-  /** The `Pacman 托管机器` row (indigo tile); claimed machines omit it. */
-  hosted?: boolean;
+  /** Machine record id — the `data-machine-id` contract handle. */
+  id?: string;
+  /** `local` = the server host (pinned first); absent/`remote` = attached. */
+  kind?: 'local' | 'remote';
   name: string;
-  /** Subline under the name (`…NJqVhdo_ · max 3`); absent on the hosted row. */
+  /** Subline under the name (`…NJqVhdo_ · max 3`). */
   sub?: string;
   online?: boolean;
-  /** Right-side status pill (`未启用`); absent on online machines. */
+  /** Right-side status pill; absent on online machines. */
   pill?: string;
-  /** Row description line (hosted row only). */
-  description?: string;
+  /** Per-runtime switch state (MACHINE_RUNTIMES subset; [] = all off). */
+  enabledRuntimes?: string[];
 }
 
 /** The six resource surfaces' row sets (issue #69). */
