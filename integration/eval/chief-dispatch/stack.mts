@@ -266,6 +266,14 @@ export function seedRepoContent(stack: Stack, projectId: string, projectName: st
   }
 }
 
+/** chief 的思考档位。默认 null = 用绑定 Agent 自己的设置；`PACMAN_EVAL_CHIEF_THINKING`
+ * 可覆盖（off/minimal/low/medium/high/xhigh/max），用来量「降档位省多少、质量掉不掉」
+ * ——一个参数、可一键回退，不动任何产品代码。 */
+function chiefThinkingLevel(): string | null {
+  const v = process.env.PACMAN_EVAL_CHIEF_THINKING;
+  return v !== undefined && v !== '' ? v : null;
+}
+
 export interface SeededWorld {
   providerId: string;
   agentIds: Record<string, string>;
@@ -319,7 +327,7 @@ export async function seedWorld(
   const chiefAgentId = agentIds[chiefKey];
   if (chiefAgentId === undefined) throw new Error(`总管绑定的 agent 未建出: ${chiefKey}`);
   const bound = await api(server.url, 'PATCH', `/api/teams/${server.teamId}/chief`, {
-    agent: { agentId: chiefAgentId, thinkingLevel: null },
+    agent: { agentId: chiefAgentId, thinkingLevel: chiefThinkingLevel() },
     charter: '',
   });
   if (bound.status !== 200) throw new Error(`绑定总管失败: ${bound.status}`);

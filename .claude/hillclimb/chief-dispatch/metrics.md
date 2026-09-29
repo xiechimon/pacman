@@ -194,3 +194,22 @@ cache 读是最大项，而它随**往返次数**线性增长（每次工具调�
 `create_project`/`connect_repo`/`set_secret`/`merge_builds` 等之所以没出现，是因为
 **评测故意不覆盖那些场景**（wake 轮、配置轮不在范围），不等于生产不需要。
 裁之前需要真实流量。
+
+### 杠杆②：降思考档位 —— 结构性不通（2026-09-29）
+
+`PACMAN_EVAL_CHIEF_THINKING` 旋钮已加（评测 seed 里一个参数，不动产品代码）。
+但 A/B 显示它对 relay 上的模型**无效**：默认档位输出 4,452 token / $0.0636，
+`low` 档位输出 5,513 / $0.0657（4 条用例里 3 条输出反而变多，纯跑间噪声）。
+
+机制查实（读 pi 的 `dist/core/model-config.d.ts`）：pi 要把档位下发出去，得靠
+模型条目里的 `thinkingFormat`（`zai`/`qwen`/`deepseek`/`openrouter`/…）+ 
+`thinkingLevelMap`（档位 → 该 provider 的请求字段）。而 `materializeProvider` 给
+自定义端点写的条目只有 `reasoning/input/cost/contextWindow/maxTokens`——
+**两个字段都没有**，pi 手里没有可翻译的目标。
+
+**产品含义**：pacman 的自定义端点路径完全没有推理深度控制。对 relay 上的模型，
+推理 token 照生成照计费，用户没有任何开关。输出占成本 26.6%，这一块目前不可管理。
+要打开它得为每个模型声明 `thinkingFormat`/`thinkingLevelMap`（需逐 provider 的
+wire 知识，属 spec 11 的地界）。
+
+`PACMAN_EVAL_CHIEF_THINKING` 保留：对声明了思考能力的模型有效，是评测该有的旋钮。
