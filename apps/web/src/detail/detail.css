@@ -15,6 +15,14 @@
   overflow: hidden;
 }
 
+/* #447 (ADR 0004 D7): the chief panel occupies the right-pane slot while
+   docked (RightPane unmounts), so the pane-width var narrows to the panel
+   and the composer / composer-reject / detail-fab anchors below keep
+   skipping the right slot by exactly its width + 16px. */
+.detail-shell[data-chief-open] {
+  --detail-pane-right: 418px;
+}
+
 .detail-main {
   position: relative;
   flex: 1;
@@ -111,7 +119,12 @@
 
 /* ---- body: center thread column + 488px right pane (#366) ---- */
 
+/* position:relative = the chief panel's exit anchor (#447): the retained
+   slide-out element goes absolute over the right-pane slot it just
+   vacated (chief.css closed-state rule) instead of stretching over the
+   head. */
 .detail-body {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;

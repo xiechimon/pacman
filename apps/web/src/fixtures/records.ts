@@ -641,8 +641,9 @@ export interface ChiefModelOption {
   modelName: string;
 }
 
-/** The chief surface a scenario renders. `view: 'drawer'` overlays the
- *  board; `view: 'settings'` replaces the content area (r5 101–104). */
+/** The chief surface a scenario renders. `view: 'drawer'` docks the panel
+ *  as the right-hand column (#447 / ADR 0004); `view: 'settings'` replaces
+ *  the content area (r5 101–104). */
 export interface ChiefContent {
   view: 'drawer' | 'settings';
   /** Settings tab rendered when `view: 'settings'`. */

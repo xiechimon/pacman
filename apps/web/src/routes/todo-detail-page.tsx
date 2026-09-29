@@ -82,7 +82,8 @@ import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
 import '../detail/detail.css';
 import { AppSidebar } from '../board/app-sidebar.js';
-import { ChiefWake } from '../chief/chief-wake.js';
+import { ChiefWakeFab, ChiefWakePanel } from '../chief/chief-wake.js';
+import { useChiefSurface } from '../chief/use-chief-surface.js';
 import { markClosed, markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import { overlayContent } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -147,6 +148,11 @@ export function TodoDetailPage() {
   const { live, teamId, userName } = useLiveData();
   const { t } = useI18n();
   const fixture = resolveScenario(searchParams);
+  // #447 (ADR 0004 D7)：总管面板占用 .detail-body 的右栏格位（与 RightPane
+  // 互斥）——chiefView 因此提到页面层：FAB（detail-main 绝对锚）与面板
+  // （detail-body flex 末项）分挂两处、共享同一个 surface 实例（⌘J 监听
+  // 与未读角标同源）。
+  const chief = useChiefSurface(fixture);
   // 右 pane 视图 (#366)：doc = DocPane（方案/变更/diff，相位派生），其余三
   // 值 = 原 head 图标 overlay 三件的静止 section。纯渲染态，capture 场景经
   // ui.paneView 冻结（r7 30/31/32、r8 57/77 的新家）。
@@ -547,7 +553,15 @@ export function TodoDetailPage() {
         : null;
 
   return (
-    <div className="detail-shell" data-route="todo-detail" data-todo-id={id}>
+    // #447 (ADR 0004 D7): data-chief-open narrows --detail-pane-right to the
+    // docked panel width so the composer / FAB / reject-row anchors skip the
+    // panel exactly like they skip the 488px right pane when it is closed.
+    <div
+      className="detail-shell"
+      data-route="todo-detail"
+      data-todo-id={id}
+      data-chief-open={chief.chiefView === 'drawer' ? '' : undefined}
+    >
       <AppSidebar
         fixture={fixture}
         todos={todos}
@@ -635,59 +649,66 @@ export function TodoDetailPage() {
               </>
             )}
           </div>
-          <RightPane
-            view={paneView}
-            onView={setPaneView}
-            docLabel={docMode === 'changes' ? '变更' : '方案'}
-            content={content}
-            buildId={live ? buildId : null}
-            empty={detail == null}
-          >
-            {detail != null && (
-              <DocPane
-                mode={docMode}
-                doc={view.doc}
-                changes={live ? liveDetail?.changes : detail.changes}
-                now={live ? Date.now() : fixture.now}
-                planDropdownOpen={fixture.ui?.planDropdownOpen === true}
-                onPaneView={setPaneView}
-                hasSections={content != null}
-                planVersions={view.planVersions}
-                versionMenu={menu}
-                onVersionMenu={setMenu}
-                onCompare={() => {
-                  if (live) {
-                    setCompareOpen(true);
+          {/* #447 (ADR 0004 D7)：总管竖板与右栏格位互斥——竖板停靠时
+              RightPane 不渲染，面板作为 detail-body 末项接管其格位；收板
+              即回位（内容瞬时贴合，D4）。pane 状态（paneView/docMode/
+              diff/menu）全住页面层，重挂载无状态损失。 */}
+          {chief.chiefView !== 'drawer' && (
+            <RightPane
+              view={paneView}
+              onView={setPaneView}
+              docLabel={docMode === 'changes' ? '变更' : '方案'}
+              content={content}
+              buildId={live ? buildId : null}
+              empty={detail == null}
+            >
+              {detail != null && (
+                <DocPane
+                  mode={docMode}
+                  doc={view.doc}
+                  changes={live ? liveDetail?.changes : detail.changes}
+                  now={live ? Date.now() : fixture.now}
+                  planDropdownOpen={fixture.ui?.planDropdownOpen === true}
+                  onPaneView={setPaneView}
+                  hasSections={content != null}
+                  planVersions={view.planVersions}
+                  versionMenu={menu}
+                  onVersionMenu={setMenu}
+                  onCompare={() => {
+                    if (live) {
+                      setCompareOpen(true);
+                      setMenu(undefined);
+                      return;
+                    }
+                    // 上一版本 (r8 64 → 65/71): opens the previous-version
+                    // diff — the fixture's compare target, or the chain's
+                    // landed diff once the reject loop produced one
+                    setDiff(detail.compareTarget ?? detail.revision?.landed.planDiff);
                     setMenu(undefined);
-                    return;
-                  }
-                  // 上一版本 (r8 64 → 65/71): opens the previous-version
-                  // diff — the fixture's compare target, or the chain's
-                  // landed diff once the reject loop produced one
-                  setDiff(detail.compareTarget ?? detail.revision?.landed.planDiff);
-                  setMenu(undefined);
-                }}
-                onBase={() => {
-                  if (live) {
-                    setCompareOpen(false);
+                  }}
+                  onBase={() => {
+                    if (live) {
+                      setCompareOpen(false);
+                      setMenu(undefined);
+                      return;
+                    }
+                    setDiff(undefined);
                     setMenu(undefined);
-                    return;
-                  }
-                  setDiff(undefined);
-                  setMenu(undefined);
-                }}
-                planDiff={view.planDiff}
-                buildId={live ? buildId : null}
-                onToggleExpand={() => {
-                  if (live) {
-                    setChangesExpanded((v) => !v);
-                    return;
-                  }
-                  setDiff((d) => (d != null ? { ...d, expanded: !d.expanded } : d));
-                }}
-              />
-            )}
-          </RightPane>
+                  }}
+                  planDiff={view.planDiff}
+                  buildId={live ? buildId : null}
+                  onToggleExpand={() => {
+                    if (live) {
+                      setChangesExpanded((v) => !v);
+                      return;
+                    }
+                    setDiff((d) => (d != null ? { ...d, expanded: !d.expanded } : d));
+                  }}
+                />
+              )}
+            </RightPane>
+          )}
+          <ChiefWakePanel surface={chief} />
         </div>
         {ui.placeholder != null && (
           <>
@@ -792,7 +813,9 @@ export function TodoDetailPage() {
             />
           </>
         )}
-        <ChiefWake fixture={fixture} fabClassName="detail-fab" unreadOnly />
+        {/* #447：FAB 与面板拆挂（面板在 detail-body 右栏格位），共享页面
+            层的 chief surface——#443 的 unreadOnly 门控原样保留。 */}
+        <ChiefWakeFab surface={chief} fabClassName="detail-fab" unreadOnly />
       </div>
       {!live && detail?.userMenuOpen === true && <UserMenu theme={readStoredTheme(localStorage)} />}
       <MoreMenu

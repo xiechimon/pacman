@@ -317,7 +317,13 @@ export function BoardPage() {
     ? { ...fixture, todos, now: Date.now(), ...(projectNames ? { projectNames } : {}) }
     : { ...fixture, todos };
   return (
-    <div className="board-shell h-full" data-route="board">
+    // #447 (ADR 0004 D8): data-chief-open scopes the board-column min-width
+    // guard to the docked state — closed, the grid resolves exactly as before.
+    <div
+      className="board-shell h-full"
+      data-route="board"
+      data-chief-open={chiefView === 'drawer' ? '' : undefined}
+    >
       <AppSidebar
         fixture={fixture}
         todos={todos}

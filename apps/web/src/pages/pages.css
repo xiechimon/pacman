@@ -12,13 +12,28 @@
   overflow: hidden;
 }
 
+/* #447 (ADR 0004 D2/D6): page-main is the docking row — its content lives
+   in .page-main-col (flex:1, yields) and the chief panel rides as the last
+   flex item (flex:none 418, chief.css). page-main keeps the position:relative
+   anchor so the FAB and any absolute descendants stay pinned to the full
+   main box exactly as before. */
 .page-main {
   position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
   background: var(--surface);
+}
+
+/* the former .page-main vertical stack (topbar + page body), now the flex:1
+   sibling of the docked panel. Same column context the page bodies were
+   authored against — no position here, so absolute descendants keep anchoring
+   to .page-main. */
+.page-main-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ---- topbar (43 + 1px border, r7 §3.1) ---- */
@@ -943,6 +958,181 @@
 .prj-new-gh-picker .prj-new-gh-error {
   margin-top: 0;
   padding: 0 4px;
+}
+
+/* ---- 应用内目录浏览器 (#441, ADR 0003 D6 remote/headless 兜底) ----
+   plate = prj-new-gh-picker 同 family recipe（anchored popover，plan-dropdown
+   律）；顶栏面包屑 + dotfiles toggle，下列可滚目录行（名钮下钻 + git 标记 +
+   选择钮回填）。geometry [设计] — 上游无像素采集，贴仓内锚定弹层词汇。 */
+.dir-browser {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: var(--popover-bg);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--fab-shadow);
+  z-index: 30;
+}
+
+.dir-browser-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.dir-browser-crumbs {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.dir-browser-crumb-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dir-browser-crumb-sep {
+  display: inline-flex;
+  color: var(--text-dim);
+}
+
+.dir-browser-crumb {
+  max-width: 160px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.dir-browser-crumb:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.dir-browser-crumb[aria-current="location"] {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.dir-browser-dots {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dir-browser-dots[aria-pressed="true"] {
+  border-color: var(--indigo-500);
+  color: var(--indigo-500);
+}
+
+.dir-browser-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 288px;
+  overflow-y: auto;
+}
+
+.dir-browser-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 4px;
+  border-radius: 6px;
+}
+
+.dir-browser-row:hover {
+  background: var(--surface);
+}
+
+.dir-browser-name {
+  flex: 1;
+  min-width: 0;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-primary);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.dir-browser-git {
+  flex: none;
+  display: inline-flex;
+  color: var(--indigo-500);
+}
+
+.dir-browser-pick {
+  flex: none;
+  padding: 2px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  opacity: 0;
+  cursor: pointer;
+}
+
+.dir-browser-row:hover .dir-browser-pick,
+.dir-browser-pick:focus-visible {
+  opacity: 1;
+}
+
+.dir-browser-empty {
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.dir-browser-trunc {
+  padding: 4px;
+  border-top: 1px solid var(--border-default);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
+.dir-browser-error {
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--danger);
 }
 
 /* ---- project files / tasks (r2 07e/24/24b/26) ---- */
