@@ -1,0 +1,76 @@
+{
+  "schema": "hillclimb/v2",
+  "metrics": [
+    {
+      "id": "decision_ok",
+      "label": "决策正确",
+      "kind": "binary",
+      "better": "higher"
+    },
+    {
+      "id": "receipt_ok",
+      "label": "回执点名",
+      "kind": "binary",
+      "better": "higher"
+    }
+  ],
+  "perf_fields": [
+    {
+      "id": "in_tokens",
+      "label": "in tok"
+    },
+    {
+      "id": "out_tokens",
+      "label": "out tok"
+    },
+    {
+      "id": "cache_read_tokens",
+      "label": "cache rd"
+    },
+    {
+      "id": "tool_calls",
+      "label": "tools"
+    },
+    {
+      "id": "cost_usd",
+      "label": "cost $",
+      "unit": "usd"
+    },
+    {
+      "id": "latency_s",
+      "label": "latency",
+      "unit": "s"
+    }
+  ],
+  "harness_paths": [
+    "integration/eval/chief-dispatch/stack.mts",
+    "integration/eval/chief-dispatch/grade.mts",
+    ".claude/hillclimb/chief-dispatch/cases.json",
+    "apps/server/src/services/chief.ts",
+    "integration/eval/chief-dispatch/repo-seed/.github/workflows/ci.yml",
+    "integration/eval/chief-dispatch/repo-seed/CHANGELOG.md",
+    "integration/eval/chief-dispatch/repo-seed/Dockerfile",
+    "integration/eval/chief-dispatch/repo-seed/README.md",
+    "integration/eval/chief-dispatch/repo-seed/apps/daemon/package.json",
+    "integration/eval/chief-dispatch/repo-seed/apps/server/README.md",
+    "integration/eval/chief-dispatch/repo-seed/apps/server/package.json",
+    "integration/eval/chief-dispatch/repo-seed/apps/server/src/auth.ts",
+    "integration/eval/chief-dispatch/repo-seed/apps/server/src/export.ts",
+    "integration/eval/chief-dispatch/repo-seed/apps/server/src/routes.ts",
+    "integration/eval/chief-dispatch/repo-seed/apps/server/src/tasks.ts",
+    "integration/eval/chief-dispatch/repo-seed/apps/server/src/todos.ts",
+    "integration/eval/chief-dispatch/repo-seed/apps/web/README.md",
+    "integration/eval/chief-dispatch/repo-seed/apps/web/package.json",
+    "integration/eval/chief-dispatch/repo-seed/apps/web/src/board.tsx",
+    "integration/eval/chief-dispatch/repo-seed/apps/web/src/theme.ts",
+    "integration/eval/chief-dispatch/repo-seed/docs/api.md",
+    "integration/eval/chief-dispatch/repo-seed/docs/deploy.md",
+    "integration/eval/chief-dispatch/repo-seed/docs/index.md",
+    "integration/eval/chief-dispatch/repo-seed/docs/usage.md",
+    "integration/eval/chief-dispatch/repo-seed/package.json",
+    "integration/eval/chief-dispatch/repo-seed/packages/shared/README.md",
+    "integration/eval/chief-dispatch/repo-seed/packages/shared/package.json",
+    "integration/eval/chief-dispatch/repo-seed/packages/shared/src/protocol.ts"
+  ],
+  "harness_sha": "9d2c39b04b86ef685b28fbb1782c25433ef01abb4722b7d4a33bf67ceb9152aa"
+}

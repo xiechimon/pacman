@@ -1,0 +1,2 @@
+{"prompt_id":"c06","rep":2,"failure_class":"harness_error","error":"回合未跑到模型：step=failed usage=0/0 latency=14.7s","retries":0,"judge_retries":0,"latency_s":15.145}
+{"prompt_id":"f01","rep":1,"failure_class":"harness_error","error":"回合未跑到模型：step=failed usage=0/0 latency=14.9s","retries":0,"judge_retries":0,"latency_s":15.347}

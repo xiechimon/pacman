@@ -1,0 +1,97 @@
+<!doctype html><html lang="zh"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+<title>chief-dispatch 输入集审阅</title><style>
+body{font:14px/1.7 -apple-system,"Helvetica Neue",sans-serif;max-width:980px;margin:0 auto;padding:32px 24px;color:#1a1a1a;background:#fafafa}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:36px 0 12px;padding-bottom:6px;border-bottom:2px solid #e5e5e5}
+.meta{color:#666;font-size:13px;margin-bottom:24px}
+table{border-collapse:collapse;width:100%;background:#fff;border:1px solid #e5e5e5;border-radius:6px;overflow:hidden}
+th{text-align:left;background:#f4f4f5;padding:8px 12px;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #e5e5e5}
+td{padding:10px 12px;border-bottom:1px solid #f0f0f0;vertical-align:top}
+tr:last-child td{border-bottom:0}
+code{background:#f4f4f5;padding:1px 5px;border-radius:3px;font-size:12px;font-family:ui-monospace,Menlo,monospace}
+.pt{font-size:15px;color:#111}
+.tag{display:inline-block;background:#eef2ff;color:#3730a3;border-radius:3px;padding:1px 6px;font-size:11px;margin-left:6px}
+.exp{color:#047857;font-weight:600;white-space:nowrap}
+.why{color:#666;font-size:12px;display:block;margin-top:2px}
+.roster{background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:4px 16px}
+.roster dt{font-weight:600;margin-top:10px}.roster dd{margin:2px 0 0;color:#444}
+pre{background:#fff;border:1px solid #e5e5e5;border-radius:6px;padding:12px 16px;font-size:12px;line-height:1.5;overflow-x:auto}
+</style></head><body>
+<h1>chief-dispatch 输入集</h1>
+<div class="meta">共 <b>36</b> 条用例（24 派工 + 12 不派工）· 被测 <code>glm-5.3</code> @ relay-186 · 36 × 3 reps</div>
+<h2>场景团队编制（每轮 seed 进隔离库）</h2><dl class="roster">
+<dt>阿岚 <code>doc</code> · 模型 <code>qwen3.8-max</code></dt><dd>负责 README、用户手册、教程、变更日志、发布说明等面向读者的文档产出。交付物是文档内容本身，不修改业务代码。</dd>
+<dt>老周 <code>code</code> · 模型 <code>glm-5.3</code></dt><dd>负责后端功能实现、缺陷修复、重构与性能优化。改动范围是 apps/server、apps/daemon 与 packages；不处理界面样式。</dd>
+<dt>小柯 <code>frontend</code> · 模型 <code>kimi-k3</code></dt><dd>负责 Web 界面的布局、样式、交互与前端组件，改动范围是 apps/web。不处理后端接口与数据结构。</dd>
+<dt>铁手 <code>ops</code> · 模型 <code>glm-5.3</code></dt><dd>负责 CI 流水线、构建与打包脚本、依赖升级、部署配置与本地开发环境。不实现业务功能。</dd>
+</dl>
+<p class="meta">花名是刻意的：分类信息只存在于职责文本里，模型必须真读文本才能选对，评测才有质量余量。四个 Agent 用三个模型，modelId 与分类不一一对应，堵住「按模型名猜分类」这条捷径。</p>
+<h2>场景仓库内容（共 16 个文件，随每例进隔离库）</h2>
+<p class="meta">每条用例的请求都假定仓库里有对应的东西；这份内容让那些前提在环境里真的成立。</p><pre>.github/workflows/ci.yml
+CHANGELOG.md
+Dockerfile
+README.md
+apps/server/README.md
+apps/server/src/auth.ts
+apps/server/src/export.ts
+apps/server/src/todos.ts
+apps/web/README.md
+apps/web/src/board.tsx
+apps/web/src/theme.ts
+docs/deploy.md
+docs/index.md
+docs/usage.md
+package.json
+packages/shared/README.md</pre>
+<h2>阿岚（doc） — 6 条</h2>
+<table><tr><th style="width:52px">id</th><th>用户请求（原样进 chief）</th><th style="width:190px">期望决策</th></tr>
+<tr><td><code>d01</code></td><td class="pt">README 的安装步骤不全，帮我补成一份新手能照着走的教程。<span class="tag">doc</span><span class="tag">plain</span></td><td class="exp">派给 阿岚</td></tr>
+<tr><td><code>d02</code></td><td class="pt">给这次发版写一份更新日志。<span class="tag">doc</span><span class="tag">plain</span></td><td class="exp">派给 阿岚</td></tr>
+<tr><td><code>d03</code></td><td class="pt">这个项目的使用说明写得跟天书一样，重写一版。<span class="tag">doc</span><span class="tag">oblique</span></td><td class="exp">派给 阿岚</td></tr>
+<tr><td><code>d04</code></td><td class="pt">docs 里那堆零散的说明太乱了，整理成一份完整的用户手册。<span class="tag">doc</span><span class="tag">plain</span></td><td class="exp">派给 阿岚</td></tr>
+<tr><td><code>d05</code></td><td class="pt">新来的同事说不知道从哪上手，弄一份上手指南出来。<span class="tag">doc</span><span class="tag">oblique</span></td><td class="exp">派给 阿岚</td></tr>
+<tr><td><code>d06</code></td><td class="pt">把这次改动的 API 变化整理成一份迁移说明，发给用我们接口的人。<span class="tag">doc</span><span class="tag">plain</span></td><td class="exp">派给 阿岚</td></tr>
+</table>
+<h2>老周（code） — 6 条</h2>
+<table><tr><th style="width:52px">id</th><th>用户请求（原样进 chief）</th><th style="width:190px">期望决策</th></tr>
+<tr><td><code>c01</code></td><td class="pt">登录接口在密码错误的时候返回 500，应该返回 401，修一下。<span class="tag">code</span><span class="tag">plain</span></td><td class="exp">派给 老周</td></tr>
+<tr><td><code>c02</code></td><td class="pt">任务列表查询越来越慢，看看能不能优化。<span class="tag">code</span><span class="tag">oblique</span></td><td class="exp">派给 老周</td></tr>
+<tr><td><code>c03</code></td><td class="pt">server 里鉴权逻辑重复了三遍，抽成一个中间件。<span class="tag">code</span><span class="tag">plain</span></td><td class="exp">派给 老周</td></tr>
+<tr><td><code>c04</code></td><td class="pt">导出功能偶尔会漏掉最后几行，查一下什么原因。<span class="tag">code</span><span class="tag">plain</span></td><td class="exp">派给 老周</td></tr>
+<tr><td><code>c05</code></td><td class="pt">批量删除任务的时候只删掉了第一条，剩下的没删。<span class="tag">code</span><span class="tag">plain</span></td><td class="exp">派给 老周</td></tr>
+<tr><td><code>c06</code></td><td class="pt">搜索结果排序不对，更新时间的排在创建时间前面了。<span class="tag">code</span><span class="tag">oblique</span></td><td class="exp">派给 老周</td></tr>
+</table>
+<h2>小柯（frontend） — 6 条</h2>
+<table><tr><th style="width:52px">id</th><th>用户请求（原样进 chief）</th><th style="width:190px">期望决策</th></tr>
+<tr><td><code>f01</code></td><td class="pt">看板列宽太窄，卡片标题被截断了，调一下。<span class="tag">frontend</span><span class="tag">plain</span></td><td class="exp">派给 小柯</td></tr>
+<tr><td><code>f02</code></td><td class="pt">切换主题的时候侧栏会闪一下白屏。<span class="tag">frontend</span><span class="tag">oblique</span></td><td class="exp">派给 小柯</td></tr>
+<tr><td><code>f03</code></td><td class="pt">新建任务的弹窗在手机上看不全，按钮点不到。<span class="tag">frontend</span><span class="tag">plain</span></td><td class="exp">派给 小柯</td></tr>
+<tr><td><code>f04</code></td><td class="pt">拖拽卡的阴影太浅，看不出来它浮起来了。<span class="tag">frontend</span><span class="tag">oblique</span></td><td class="exp">派给 小柯</td></tr>
+<tr><td><code>f05</code></td><td class="pt">侧栏的项目组列表滚动到一半会卡住。<span class="tag">frontend</span><span class="tag">plain</span></td><td class="exp">派给 小柯</td></tr>
+<tr><td><code>f06</code></td><td class="pt">日期选择器的下拉层被下面的卡片盖住了。<span class="tag">frontend</span><span class="tag">plain</span></td><td class="exp">派给 小柯</td></tr>
+</table>
+<h2>铁手（ops） — 6 条</h2>
+<table><tr><th style="width:52px">id</th><th>用户请求（原样进 chief）</th><th style="width:190px">期望决策</th></tr>
+<tr><td><code>o01</code></td><td class="pt">CI 跑测试老是因为超时挂掉，把超时调大点。<span class="tag">ops</span><span class="tag">plain</span></td><td class="exp">派给 铁手</td></tr>
+<tr><td><code>o02</code></td><td class="pt">给仓库加个 pre-commit 钩子，提交前自动跑 lint。<span class="tag">ops</span><span class="tag">plain</span></td><td class="exp">派给 铁手</td></tr>
+<tr><td><code>o03</code></td><td class="pt">把项目的 Node 版本升到 22，构建脚本一起改。<span class="tag">ops</span><span class="tag">plain</span></td><td class="exp">派给 铁手</td></tr>
+<tr><td><code>o04</code></td><td class="pt">本地起 dev 环境总是端口冲突，能不能让它自动选端口。<span class="tag">ops</span><span class="tag">oblique</span></td><td class="exp">派给 铁手</td></tr>
+<tr><td><code>o05</code></td><td class="pt">发布流程每次都要手动改版本号，做成自动的。<span class="tag">ops</span><span class="tag">oblique</span></td><td class="exp">派给 铁手</td></tr>
+<tr><td><code>o06</code></td><td class="pt">Docker 镜像构建太慢了，加个层缓存。<span class="tag">ops</span><span class="tag">plain</span></td><td class="exp">派给 铁手</td></tr>
+</table>
+<h2>不应派工（HOLD） — 12 条</h2>
+<table><tr><th style="width:52px">id</th><th>用户请求（原样进 chief）</th><th style="width:190px">期望决策</th></tr>
+<tr><td><code>n01</code></td><td class="pt">现在有几个任务在跑？<span class="tag">query</span></td><td class="exp">不派工<span class="why">读状态回答，不该派活</span></td></tr>
+<tr><td><code>n02</code></td><td class="pt">帮我优化一下。<span class="tag">ambiguous</span></td><td class="exp">不派工<span class="why">信息不足，该先澄清</span></td></tr>
+<tr><td><code>n03</code></td><td class="pt">那个 bug 修了吗？<span class="tag">query</span></td><td class="exp">不派工<span class="why">查状态回答</span></td></tr>
+<tr><td><code>n04</code></td><td class="pt">你好<span class="tag">chitchat</span></td><td class="exp">不派工<span class="why">寒暄，无任务</span></td></tr>
+<tr><td><code>n05</code></td><td class="pt">先记一下：下周要把导出改成异步的，这周先别动。<span class="tag">defer</span></td><td class="exp">不派工<span class="why">用户明确说先别做——至多建 todo，不得派工</span></td></tr>
+<tr><td><code>n06</code></td><td class="pt">刚才那个任务停了，什么情况？<span class="tag">query</span></td><td class="exp">不派工<span class="why">查状态回答</span></td></tr>
+<tr><td><code>n07</code></td><td class="pt">这个项目用的什么数据库？<span class="tag">query</span></td><td class="exp">不派工<span class="why">读仓库回答，不是派活</span></td></tr>
+<tr><td><code>n08</code></td><td class="pt">你觉得这几个任务应该先做哪个？<span class="tag">advice</span></td><td class="exp">不派工<span class="why">要建议，不是派工</span></td></tr>
+<tr><td><code>n09</code></td><td class="pt">我刚才说的那个任务，spec 你再念一遍。<span class="tag">query</span></td><td class="exp">不派工<span class="why">复述，不派工</span></td></tr>
+<tr><td><code>n10</code></td><td class="pt">团队里有几个 Agent？<span class="tag">query</span></td><td class="exp">不派工<span class="why">读资源清单回答</span></td></tr>
+<tr><td><code>n11</code></td><td class="pt">把任务 #3 关掉。<span class="tag">state-change</span></td><td class="exp">不派工<span class="why">该走 close_todos，不是 run_builds</span></td></tr>
+<tr><td><code>n12</code></td><td class="pt">这个任务为什么要拆成两步？<span class="tag">query</span></td><td class="exp">不派工<span class="why">解释，不派工</span></td></tr>
+</table>
+</body></html>

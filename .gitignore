@@ -76,11 +76,18 @@ credentials.enc
 # OS
 .DS_Store
 
-# Claude — 本地 agent 状态全忽略，但 verify-pacman 是项目级验证 harness（committed）
+# Claude — 本地 agent 状态全忽略。两处例外是项目级产物，随仓走：
+# verify-pacman（验证 harness）与 hillclimb（评测数据：输入集、判分口径、跑分）。
+# hillclimb 的 trace、report.html、trajectory、progress 是派生/体量面，仍忽略。
 .claude/*
 !.claude/skills/
 .claude/skills/*
 !.claude/skills/verify-pacman/
+!.claude/hillclimb/
+.claude/hillclimb/*/baseline/traces/
+.claude/hillclimb/*/report.html
+.claude/hillclimb/*/trajectory/
+.claude/hillclimb/**/progress.txt
 .codegraph/
 
 # playwright MCP session dir
