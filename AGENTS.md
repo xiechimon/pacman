@@ -52,9 +52,7 @@ pnpm typecheck  # pnpm -r typecheck
 
 ## Git
 
-仓库双 remote（这事反复踩坑，写进规则）：
-- `origin = xiechimon/pacman`（正主，开 PR 去这里）
-- `upstream = craft-ai-agents/craft-agents-oss`（无关产品；裸 `gh` 命令默认解析到 upstream）
+仓库单 remote：`origin = xiechimon/pacman`（正主，开 PR 去这里）。曾挂的 upstream（craft-ai-agents/craft-agents-oss，项目起步时的借鉴来源）已于 2026-09-29 移除，勿再加回。
 
 Commit 约定：
 - 格式：`<scope>(<ticket>): <subject>` 或 `web(<PR>): <subject>`——scope 跟现有节奏（`web` / `daemon` / `server` / `shared` / `integration` / `docs` / `chore` 等）；subject 短、要点。
@@ -75,7 +73,7 @@ Git 拦截（autoresearch / pre-commit 共识）：
 
 ## Issues and PRs
 
-所有 `gh` 命令必须显式 owner（双 remote 解析歧义）：
+仓库只有 origin（xiechimon/pacman），裸 `gh` 命令解析正确；显式 `-R xiechimon/pacman` 写法仍可用：
 - `gh issue list -R xiechimon/pacman`
 - `gh pr view 149 -R xiechimon/pacman`
 - `gh repo view` 不支持 `-R`——用位置参数：`gh repo view xiechimon/pacman`
@@ -84,7 +82,7 @@ Worktree 车道开 PR：
 ```sh
 gh pr create --repo xiechimon/pacman --head xiechimon:<branch>
 ```
-裸 `--head <branch>` 会报 `Head sha can't be blank`（worktree 多 remote 下 head ref 解析走偏）。已误开裸 body 的 PR 用 `gh pr edit <n> --title --body-file /tmp/pr.md` 补全。
+裸 `--head <branch>` 曾在双 remote 时期报 `Head sha can't be blank`（worktree + 多 remote 下 head ref 解析走偏）；现单 remote 未复验，继续用全限定写法最稳。已误开裸 body 的 PR 用 `gh pr edit <n> --title --body-file /tmp/pr.md` 补全。
 
 PR body / 长 issue 评论：**写临时文件再 `--body-file`**，不内联 `--body` 多行 markdown。
 
