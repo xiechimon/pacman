@@ -12,7 +12,9 @@
 // + SQLite provider 表行（models JSON 含所填模型）。创建链是既有行为，重构
 // （A6）不得击穿——本段在 disclosure 未落地时（表单现状外露）同样可达，
 // 红态运行也产出创建链回归证据。
-// 负向（A6）：xai 行不带 '(OAuth)' 后缀（其 oauthLabel 在密钥表单内展示）。
+// 负向（A6 + #385）：xai 行不带 '(OAuth)' 后缀（其 oauthLabel 在密钥表单内
+// 展示）；openai-codex 族表未接线——行不带后缀、行禁用、带「暂未开通」注记，
+// 徽标仅 github-copilot 一项。
 //
 // OAuth 点击链（authorize → 外网重定向 → 302 着陆）不在本 probe 验证：需真
 // 外网 + 真订阅，属 #231/#243 e2e 面；probe 内不发外部请求。
@@ -54,7 +56,8 @@ const require2 = createRequire(join(REPO, 'apps/server/package.json'));
 // 实测，picker 文案源）」名单逐字转录。文案变更先改 spec 11 再改这里。
 const PRESET_NAMES = {
   'github-copilot': 'GitHub Copilot (OAuth)',
-  'openai-codex': 'OpenAI Codex (OAuth)',
+  // #385：codex 族未接线——行文本 = 名 + 「暂未开通」注记（无 (OAuth) 后缀）
+  'openai-codex': 'OpenAI Codex 暂未开通',
   xai: 'xAI',
   'amazon-bedrock': 'Amazon Bedrock',
   'ant-ling': 'Ant Ling',
@@ -287,14 +290,22 @@ try {
           .join(', ')}${missingNames.length > 4 ? ` 等 ${missingNames.length} 项` : ''}`,
   );
 
-  // 5) A6：OAuth 族两行带 '(OAuth)'；xai 行不带（其 oauthLabel 在密钥表单内）
+  // 5) A6 + #385：'(OAuth)' 后缀仅族表已接线的 github-copilot；openai-codex
+  //    未接线——无后缀、带「暂未开通」注记、行禁用；xai 行不带（其
+  //    oauthLabel 在密钥表单内）
   const ghOk = (rowTexts['github-copilot'] ?? '').includes('(OAuth)');
-  const codexOk = (rowTexts['openai-codex'] ?? '').includes('(OAuth)');
+  const codexText = rowTexts['openai-codex'] ?? '';
+  const codexClean = codexText !== '' && !codexText.includes('(OAuth)');
+  const codexNote = codexText.includes('暂未开通');
+  const codexDisabled = await page
+    .locator(`${ROW}[data-preset-id="openai-codex"]`)
+    .isDisabled()
+    .catch(() => false);
   const xaiClean = rowTexts['xai'] != null && !rowTexts['xai'].includes('(OAuth)');
   check(
-    'oauth-suffix-two',
-    ghOk && codexOk && xaiClean,
-    `spec 11 A6：OAuth 族徽标 = 名单内 '(OAuth)' 后缀两项——github-copilot=${ghOk} openai-codex=${codexOk}；xai 行不带后缀=${xaiClean}`,
+    'oauth-badge-wired-only',
+    ghOk && codexClean && codexNote && codexDisabled && xaiClean,
+    `spec 11 A6 + #385：'(OAuth)' 徽标仅 github-copilot=${ghOk}；openai-codex 未接线——无后缀=${codexClean} 「暂未开通」注记=${codexNote} 行禁用=${codexDisabled}；xai 行不带后缀=${xaiClean}`,
   );
   await shot(page, '02-preset-rows.png');
 
@@ -330,20 +341,26 @@ try {
   }
   check('search-filters', filtersOk, filterDetail);
 
-  // 7) A6：api_key 族 preset 行点击 → 该 preset 的密钥表单
+  // 7) A6：api_key 族 preset 行点击 → 该 preset 的密钥表单（#380 落地契约 =
+  //    现有自定义网关表单原样复用 + providerId/label 预填，与 e2e spec 钉扎同形）
   const deepseekSel = `${ROW}[data-preset-id="deepseek"]`;
   let keyFormOk = false;
   let keyFormDetail = 'spec 11 A6：点 api_key 族 preset 行应进该 preset 的密钥表单——preset 行缺失（前置未达）';
   if ((await softVisible(page, deepseekSel)) === true) {
     await page.click(deepseekSel).catch(() => {});
-    const pwdOk = await softVisible(page, `${DLG} input[type="password"]`);
-    const dlgText = await softText(page, DLG);
-    const nameOk = dlgText.includes('DeepSeek');
-    const customHidden = !(await softVisible(page, '#dlg-provider-id', 1500));
-    keyFormOk = pwdOk && nameOk && customHidden;
+    const idValue = await page
+      .locator('#dlg-provider-id')
+      .inputValue()
+      .catch(() => null);
+    const labelValue = await page
+      .locator('#dlg-provider-label')
+      .inputValue()
+      .catch(() => null);
+    const pwdOk = await softVisible(page, '#dlg-provider-apikey');
+    keyFormOk = idValue === 'deepseek' && labelValue === 'DeepSeek' && pwdOk;
     keyFormDetail = keyFormOk
-      ? '点 DeepSeek 行进密钥表单（密钥输入在位 + preset 名展示，自定义网关表单不在场）'
-      : `spec 11 A6：密钥表单应含 preset 名 + 密钥输入且非自定义网关表单——pwd=${pwdOk} 名="${nameOk}" 自定义表单隐藏=${customHidden}`;
+      ? '点 DeepSeek 行进密钥表单（#dlg-provider-id/label 预填 deepseek/DeepSeek + 密钥输入在位）'
+      : `spec 11 A6：密钥表单 = 自定义表单预填（#380 契约）——id="${idValue}" label="${labelValue}" 密钥输入=${pwdOk}`;
     await shot(page, '04-preset-keyform.png');
   }
   check('preset-key-form', keyFormOk, keyFormDetail);
@@ -358,7 +375,7 @@ try {
   check('keyform-closes', closedOk === true, closedOk ? '.dlg-close 关窗（#68 family law）' : '关窗失败/dialog 未开');
 
   // 8b) A6 正向：xai 的 oauthLabel 在其密钥表单内展示（spec 11 名单注；行不带
-  //     '(OAuth)' 后缀的负向已在 oauth-suffix-two 钉）。无外网请求。
+  //     '(OAuth)' 后缀的负向已在 oauth-badge-wired-only 钉）。无外网请求。
   await page.click(`${SHELL} .res-new`).catch(() => {});
   const xaiReopen = await softVisible(page, DLG);
   const xaiRowSel = `${ROW}[data-preset-id="xai"]`;

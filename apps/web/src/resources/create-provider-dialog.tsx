@@ -5,11 +5,14 @@
 // 不译），api_key 行的「密钥表单」= 现有自定义表单（字段权威 = shared
 // createProviderBodySchema / r3 §2）+ providerId/label 预填。
 // OAuth 链（#231/#243）原样保留：徽标行 = shared PROVIDER_OAUTH_PRESET_IDS
-// 两项，点击 = onConnect(preset id)——live 面 POST authorize → 同页签跳
-// 授权页（族表外 preset 由 server 404，原文落错误行）；fixture 面 accept 律
-// 关窗。失败 inline：connectError 行由 providers-page 喂入（authorize 400
-// 原文 / callback 落地 reason 三译），本组件只渲染。xai 双通道：picker 行
-// 无徽标，oauthLabel 展示在其密钥表单内（族表外无后端面，不做钮 #222）。
+// ∩ OAUTH_FAMILIES（族表已接线成员，现仅 github-copilot），点击 =
+// onConnect(preset id)——live 面 POST authorize → 同页签跳授权页；fixture
+// 面 accept 律关窗。#385：族表外的 OAuth preset（openai-codex）不再渲染徽标
+// 与可点授权——行禁用 + 右端「暂未开通」注记（消「广告了但点不通」的 404
+// 误导；authorize 真路径归 #301 触发线后）。失败 inline：connectError 行由
+// providers-page 喂入（authorize 400 原文 / callback 落地 reason 三译），
+// 本组件只渲染。xai 双通道：picker 行无徽标，oauthLabel 展示在其密钥表单内
+//（族表外无后端面，不做钮 #222）。
 // Rides DialogShell（#68 family law — X / Esc / backdrop）。#193：字段骑
 // .dlg-body，submit 骑 footer 槽；picker 面无必填字段 → 不渲染 footer
 // （禁用态死 submit 不出现，#222）。State 重置在 open→false 边（live 失败
@@ -17,6 +20,7 @@
 // 表单往返不带残值）。
 
 import {
+  OAUTH_FAMILIES,
   PROVIDER_OAUTH_PRESET_IDS,
   PROVIDER_PRESET_IDS,
   PROVIDER_XAI_PRESET,
@@ -78,13 +82,22 @@ const PRESET_LABELS: Record<(typeof PROVIDER_PRESET_IDS)[number], string> = {
   'z-ai-coding-cn': 'Z.AI Coding CN',
 };
 
+/** 族表已接线的 OAuth preset（#385：徽标 + authorize 点击只给这些行；
+ *  族表外的 OAuth preset = 上游类型真值留档但本 server 无后端面）。 */
+const WIRED_OAUTH_IDS: ReadonlySet<string> = new Set(OAUTH_FAMILIES.map((f) => f.presetId));
+
 /** picker 行（静态投影，目录序 = wire 序）。oauth 位 = 徽标 + 点击分支；
  * 展宽 readonly string[] = .includes 收下 38-id 联合的入参位。 */
-const PRESET_ROWS = PROVIDER_PRESET_IDS.map((id) => ({
-  id,
-  label: PRESET_LABELS[id],
-  oauth: (PROVIDER_OAUTH_PRESET_IDS as readonly string[]).includes(id),
-}));
+const PRESET_ROWS = PROVIDER_PRESET_IDS.map((id) => {
+  const oauth = (PROVIDER_OAUTH_PRESET_IDS as readonly string[]).includes(id);
+  return {
+    id,
+    label: PRESET_LABELS[id],
+    oauth,
+    /** #385：oauth && !wired = 未接线行——禁用 + 「暂未开通」注记，点击零动作。 */
+    wired: oauth && WIRED_OAUTH_IDS.has(id),
+  };
+});
 
 interface CreateProviderDialogProps {
   /** #73 retained-mount open flag. */
@@ -244,7 +257,10 @@ export function CreateProviderDialog({
                 // map 为准）；dlg-provider-* = #355 样式/e2e 钩，双挂收编。
                 className="dlg-provider-preset dlg-picker-row"
                 data-preset-id={row.id}
-                disabled={row.oauth && connectPending === true}
+                // #385：族表外 OAuth 行恒禁用（无后端面，点击零动作——disabled
+                // 钮不发 click，onClick 无需防御分支）；已接线行在 authorize
+                // 进行中禁用防重发。
+                disabled={row.oauth && (!row.wired || connectPending === true)}
                 onClick={() =>
                   row.oauth
                     ? onConnect != null
@@ -255,9 +271,16 @@ export function CreateProviderDialog({
               >
                 {row.label}
                 {/* T0 map：'(OAuth)' 后缀进名称文本（行 textContent 等值
-                    断言，JSX 折叠换行空白故显式 {' '}）；xai 行不带后缀
-                    （负向钉）。视觉间距由 badge 的 margin-left:auto 承担。 */}
-                {row.oauth && <span className="dlg-provider-badge">{' (OAuth)'}</span>}
+                    断言，JSX 折叠换行空白故显式 {' '}），只骑族表已接线行
+                    （#385）；xai 行不带后缀（负向钉）。视觉间距由 badge 的
+                    margin-left:auto 承担。 */}
+                {row.wired && <span className="dlg-provider-badge">{' (OAuth)'}</span>}
+                {/* #385 未接线注记：占 badge 同槽位（行右 chip），文案 i18n；
+                    与徽标同律——显式 {' '} 保行 textContent 空格分隔（probe
+                    名称节点等值断言的行文本形）。 */}
+                {row.oauth && !row.wired && (
+                  <span className="dlg-provider-note"> {t('暂未开通')}</span>
+                )}
               </button>
             ))}
           </div>
