@@ -17,6 +17,7 @@ import type {
   DiffFileContent,
   DocumentDiff,
   DocumentDiffFile,
+  FsPickResult,
   GithubConnectionStatus,
   GithubReposResponse,
   MachineRecord,
@@ -529,6 +530,11 @@ export function useApiMutations(teamId: string | undefined) {
       mutationFn: (body: CreateProjectBody) =>
         api.post<ProjectRecord>('/api/projects', { ...body, ...(teamId ? { teamId } : {}) }),
       onSuccess: invalidateAll,
+    }),
+    // #440 原生文件夹选取（ADR 0003）：取消 = {path:null} 正常结局非错误面；
+    // 纯读取动作，无缓存失效。
+    pickLocalFolder: useMutation({
+      mutationFn: () => api.post<FsPickResult>('/api/fs/pick'),
     }),
     // #189 删除面(#207 接线):级联语义单源在 server services/projects.ts。
     deleteProject: useMutation({

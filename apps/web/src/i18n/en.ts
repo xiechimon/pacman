@@ -252,6 +252,11 @@ export const EN: Record<string, string> = {
   路径不存在: 'Path not found',
   '不是 git 仓库': 'Not a git repository',
   需要绝对路径: 'Absolute path required',
+  浏览: 'Browse',
+  '此部署形态不支持系统对话框，请直接输入路径':
+    'System folder dialog is unavailable in this deployment — type the path directly',
+  已有一个选取对话框在进行中: 'A folder dialog is already open',
+  无法打开系统文件夹对话框: 'Cannot open the system folder dialog',
   基本信息: 'Basic info',
   标签: 'Tags',
   'Pacman 托管': 'Pacman hosted',

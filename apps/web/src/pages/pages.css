@@ -669,6 +669,15 @@
   color: var(--danger);
 }
 
+/* #440 降级提示行（ADR 0003 D4）：错误行同槽位/同字号，中性色——能力边界
+   说明不是错误，不吃 --danger。 */
+.prj-new-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
 .prj-new-repo {
   display: flex;
   align-items: center;
@@ -738,6 +747,29 @@
   background: transparent;
   color: var(--text-dim);
   cursor: pointer;
+}
+
+/* #440 浏览钮（ADR 0003 D1）：swap 钮同族配方（40 高/边框/圆角 8/左距 8），
+   文案钮宽度自适应；在飞 disabled 沿 prj-new-submit 的 0.55 淡化律。 */
+.prj-new-browse {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  margin-left: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.prj-new-browse:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .prj-new-repo-menu {

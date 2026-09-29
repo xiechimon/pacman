@@ -94,6 +94,10 @@ const INFERRED_ROUTES = [
   'POST /api/teams/{id}/github/oauth/authorize',
   'GET /api/teams/{id}/github/connection',
   'DELETE /api/teams/{id}/github/connection',
+  // #440（ADR 0003）原生文件夹选取：server 代弹 macOS choose folder（浏览器
+  // 拿不到绝对路径，只能目标机进程代弹）。自有设计面（原站无此端点，第二个
+  // 自觉背离面），02 §6.1 词表外 = INFERRED 入位。
+  'POST /api/fs/pick',
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；
