@@ -496,7 +496,11 @@
 .more-menu {
   position: fixed;
   top: 39.5px;
-  right: 167.5px; /* 1440 − 1272.5, r7 §3.5 right-edge anchor */
+  /* #366: the head icon trio is gone — 更多 is the actions group's first
+     icon now, its right edge at 1343.5 (12 pad + 50.5 primary + 6 gap +
+     28 icon @1440), so the frozen anchor moves 167.5 → 96.5 (the old
+     r7 §3.5 anchor rode the four-icon pitch). */
+  right: 96.5px;
   width: 220px;
   border: 1px solid var(--border-default);
   /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */

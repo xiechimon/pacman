@@ -55,6 +55,7 @@ function fakeLogger(): DaemonLogger & { lines: string[] } {
     workspace: (m) => prefixed('workspace', m),
     recover: (m) => prefixed('recover', m),
     wake: (m) => prefixed('wake', m),
+    skills: (m) => prefixed('skills', m),
     mcp: (m) => prefixed('mcp', m),
   };
 }

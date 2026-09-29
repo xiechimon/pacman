@@ -1,6 +1,9 @@
-// mcp-server record——02 §6.2（r3 §5.1 实测原样）。
+// mcp-server record——02 §6.2（r3 §5.1 实测原样；形状保形单源）。
 // 方向：外部 → Agent（CONTEXT.md：mcpServer 唯一方向是团队接入外部工具）。
 // 授权 = per-Agent mcpServers[] 勾选（02 §7.1，B14 闭合）。
+// spec 13（#368）：产出者从 DB 行改为本地 `~/.claude.json` 投影（server 读
+// 缝 services/mcp-servers.ts）——record 形状保留以收窄 web 改动面；管理写面
+// （POST/PATCH/DELETE body schema）随登记制一并删除。
 
 import { z } from 'zod';
 import { epochMs, recordId } from './common.js';
@@ -28,34 +31,6 @@ export const mcpServerRecordSchema = z.object({
   updatedAt: epochMs,
 });
 export type McpServerRecord = z.infer<typeof mcpServerRecordSchema>;
-
-/** POST/PATCH /api/teams/{id}/mcp-servers body [推断]（r3 §5.1 添加表单字段：
- * 类型/名称/标识符/URL/请求头键值对；stdio 命令+参数 r2 §6.2）。record 输出
- * 形状 = 本文件 mcpServerRecordSchema 单源；transport 词表 = mcpTransportSchema。 */
-const mcpServerBodyFields = {
-  label: z.string().min(1),
-  slug: z.string(),
-  transport: mcpTransportSchema,
-  url: z.string().optional(),
-  command: z.string().optional(),
-  args: z.array(z.string()).optional(),
-  headers: z.record(z.string(), z.string()).optional(),
-};
-export const createMcpServerBodySchema = z.object(mcpServerBodyFields);
-export type CreateMcpServerBody = z.infer<typeof createMcpServerBodySchema>;
-
-/** PATCH 变体：全字段可选 + strict（未知键 400）。 */
-export const patchMcpServerBodySchema = z
-  .object({
-    label: z.string().min(1).optional(),
-    slug: z.string().optional(), // 恒 400（不可改，r3 §5.1 canon）；收形状为给准错误
-    url: z.string().optional(),
-    command: z.string().optional(),
-    args: z.array(z.string()).optional(),
-    headers: z.record(z.string(), z.string()).optional(),
-  })
-  .strict();
-export type PatchMcpServerBody = z.infer<typeof patchMcpServerBodySchema>;
 
 /** 工具名形状 `mcp__<slug>__<tool>`（r3 §5.1 实测；02 §7.1）。 */
 export function mcpToolName(slug: string, tool: string): string {

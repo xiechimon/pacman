@@ -14,4 +14,9 @@ server.registerTool(
 server.registerTool('ping', { description: 'Ping.' }, async () => ({
   content: [{ type: 'text', text: 'pong' }],
 }));
+// spec 13（#368）：stdio env 透传对拍位——config 的 env 值必须到达子进程
+// （MCP 本机凭证面：值只活在执行机，从不跨 wire）。
+server.registerTool('envprobe', { description: 'Echo MCP_PROBE env var.' }, async () => ({
+  content: [{ type: 'text', text: `env:${process.env.MCP_PROBE ?? ''}` }],
+}));
 await server.connect(new StdioServerTransport());

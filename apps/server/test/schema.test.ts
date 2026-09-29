@@ -17,7 +17,7 @@ describe('24 表 migration（01 §6 清单）', () => {
     const tables = Object.values(schema).filter((v) => is(v, SQLiteTable));
     const names = tables.map((t) => getTableConfig(t as SQLiteTable).name).sort();
     expect(names).toEqual([...DB_TABLES].sort());
-    expect(names).toHaveLength(31); // 26 record 投影（含 M4a +chief + W3 steer_pending + M7 #308 stop_pending + #319 branch_sync + #310 attachment）+ todo_tag join + chief_thread/chief_message + spec 12 github_connection（内部凭证表）
+    expect(names).toHaveLength(29); // 01 §6 原清单 30 + spec 12 github_connection（内部凭证表）− skill（spec 13 #367 退役）− mcp_server（spec 13 #368 本地 config 只读制）
     expect(names).toContain('chief');
     expect(names).toContain('attachment');
     expect(names).toContain('branch_sync');

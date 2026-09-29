@@ -2,7 +2,7 @@
 // （02 §5.3/r3 §1.3 形状；zod 单源 = shared machine/device/daemonJsonSchema）。
 
 import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BRAND, DEVICE_ID_PATTERN, ENV_VARS, MACHINE_TOKEN_PATTERN } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
@@ -60,6 +60,25 @@ describe('loadDaemonConfig（Settings 缝优先级）', () => {
     expect(cfg.name).toBe('explicit-name');
   });
 
+  test('skillsDir（spec 14/#371）：缺省 = ~/.agents/skills；env 覆盖；显式入参 > env', () => {
+    const cfg = loadDaemonConfig({}, {});
+    expect(cfg.skillsDir).toBe(join(homedir(), '.agents', 'skills'));
+
+    const envDir = tmp();
+    const viaEnv = loadDaemonConfig({}, { [ENV_VARS.skillsDir]: envDir });
+    expect(viaEnv.skillsDir).toBe(envDir);
+
+    const explicitDir = tmp();
+    const viaInput = loadDaemonConfig({ skillsDir: explicitDir }, { [ENV_VARS.skillsDir]: envDir });
+    expect(viaInput.skillsDir).toBe(explicitDir);
+  });
+
+  test('skillsDir 指向不存在目录 = 非致命（空 skills 集由扫描层降级，config 不抛）', () => {
+    const missing = join(tmp(), 'no-such-skills-dir');
+    expect(() => loadDaemonConfig({ skillsDir: missing }, {})).not.toThrow();
+    expect(loadDaemonConfig({ skillsDir: missing }, {}).skillsDir).toBe(missing);
+  });
+
   test('workspaces-dir 护栏：父目录必须已存在（r3 §1.1 canon）', () => {
     const home = tmp();
     // 父目录存在 → OK。
@@ -68,6 +87,26 @@ describe('loadDaemonConfig（Settings 缝优先级）', () => {
     expect(() => loadDaemonConfig({ workspacesDir: join(home, 'missing', 'ws') }, {})).toThrow(
       WorkspacesDirError,
     );
+  });
+
+  // spec 13（#368）：daemon 读本机 MCP config 的路径槽——优先级同律
+  // （显式入参 > env > 默认值），默认 = ~/.claude.json。
+  test('mcpConfigPath 默认 = ~/.claude.json', () => {
+    const cfg = loadDaemonConfig({}, {});
+    expect(cfg.mcpConfigPath).toBe(join(homedir(), '.claude.json'));
+  });
+
+  test('mcpConfigPath env 覆盖（PACMAN_MCP_CONFIG）', () => {
+    const cfg = loadDaemonConfig({}, { [ENV_VARS.mcpConfig]: '/tmp/custom-claude.json' });
+    expect(cfg.mcpConfigPath).toBe('/tmp/custom-claude.json');
+  });
+
+  test('mcpConfigPath 显式入参 > env', () => {
+    const cfg = loadDaemonConfig(
+      { mcpConfigPath: '/explicit-claude.json' },
+      { [ENV_VARS.mcpConfig]: '/env-claude.json' },
+    );
+    expect(cfg.mcpConfigPath).toBe('/explicit-claude.json');
   });
 });
 

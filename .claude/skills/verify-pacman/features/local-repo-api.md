@@ -1,6 +1,6 @@
 # 本地仓库项目与 GitHub 连接(server API 面)
 
-用户把本机既有 git 仓库接进 pacman 建项目(spec 12 三形态之一),以及 GitHub 认证选仓的连接数据面。G2-T1(#359)落地 server 半:local 路径三态校验、github_connection 密封表、repo picker 代理端点。本地文件夹 web 表单入口归 G2-T3(落地后须回补);OAuth 认证 + picker UI 面已随 G2-T4(#361)落地,见 [github-oauth-picker.md](./github-oauth-picker.md)——本条目只留 API 数据面。
+用户把本机既有 git 仓库接进 pacman 建项目(spec 12 三形态之一),以及 GitHub 认证选仓的连接数据面。G2-T1(#359)落地 server 半:local 路径三态校验、github_connection 密封表、repo picker 代理端点。web 表单入口已随 G2-T3(#360)落地,UI 面验证走 [project-new-form.md](./project-new-form.md);OAuth 认证 + picker UI 面已随 G2-T4(#361)落地,见 [github-oauth-picker.md](./github-oauth-picker.md)——本条目只留 API 数据面。
 
 ## Sub-features
 
@@ -11,8 +11,8 @@
 
 ## How to get to it (user POV)
 
-- API 直入(G2-T1 时点唯一入口):`curl -X POST http://127.0.0.1:<VERIFY_PORT>/api/projects -H 'content-type: application/json' -d '{"name":"x","kind":"local","localPath":"/abs/path/to/repo"}'`。
-- web 新建项目表单「本地文件夹」条目:归 G2-T3,落地后回补本文件。
+- API 直入:`curl -X POST http://127.0.0.1:<VERIFY_PORT>/api/projects -H 'content-type: application/json' -d '{"name":"x","kind":"local","localPath":"/abs/path/to/repo"}'`。
+- web 新建项目表单「本地文件夹」条目:已落地(G2-T3/#360),驱动配方见 [project-new-form.md](./project-new-form.md)。
 
 ## Driving it with probe-local-repos.mjs
 
@@ -24,7 +24,7 @@ Preconditions: `launch.mjs` 已起隔离栈(全新库);proxy env 全 unset(回�
 
 ## Gotchas
 
-- **本条目 ≠ spec 12 全 feature 覆盖**:local clone 执行面(daemon)归 G2-T2、OAuth+picker live 面在 github-oauth-picker.md、本地文件夹 UI 归 G2-T3——声称覆盖时点名 API 数据面。
+- **本条目 = server API 数据面**:web 表单面在 [project-new-form.md](./project-new-form.md)(G2-T3 已落地);OAuth+picker live 面在 [github-oauth-picker.md](./github-oauth-picker.md)(G2-T4 已落地);local clone 执行面(daemon)归 G2-T2——声称覆盖时点名所属面。
 - `~` 展开走 server 进程 HOME——live probe 不改 HOME(集成测 `apps/server/test/project-local.test.ts` 以注入 homeDir/改 env 覆盖)。
 - repos 代理「已连接」路径 live 验需要 github_connection 行;REST 写入面已随 G2-T4 落地(authorize → callback),但走通需真 GitHub App 凭证 + 人环授权,勿手工 INSERT 冒充(密封纪律的进程内证明在 `apps/server/test/github-connection.test.ts` 与 `github-oauth.test.ts`:密文列扫描 + Authorization 头唯一消费位 + token 永不进 wire 断言)。
 - 8791/5273 常被别的 lane 占用——换 `VERIFY_PORT`/`VERIFY_WEB_PORT`,不杀。

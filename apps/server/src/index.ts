@@ -26,7 +26,7 @@ const logger = pino({
     : { transport: { target: 'pino-pretty', options: { translateTime: 'HH:MM:ss' } } }),
 });
 
-const { db, close } = openDbWithHandle(config.dbPath);
+const { db, close } = openDbWithHandle(config.dbPath, { legacyExportDir: config.homeDir });
 // keyfile 首启生成（0600）；丢失再生成 = 存量密文报废需重录（02 §8 护栏，
 // README 落文档）。坏 keyfile 启动即抛，不静默降级。
 const secretBox = createKeyfileSecretBox(config.keyfilePath);
@@ -54,8 +54,10 @@ const app = createApp(
     oauthClient: config.githubOauth,
     reposDir,
     attachmentsDir,
+    skillsDir: config.skillsDir,
     webDir: config.webDir,
     authToken: config.authToken,
+    mcpConfigPath: config.mcpConfigPath,
   },
   logger,
 );

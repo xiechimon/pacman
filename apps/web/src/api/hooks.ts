@@ -11,13 +11,12 @@ import type {
   ChiefThread,
   ConversationMessagesResponse,
   CreateAgentBody,
-  CreateMcpServerBody,
+  CreateProjectBody,
   CreateProviderBody,
   CreateScheduleBody,
   DiffFileContent,
   DocumentDiff,
   DocumentDiffFile,
-  FetchSkillFilesResponse,
   GithubConnectionStatus,
   GithubReposResponse,
   MachineRecord,
@@ -30,8 +29,6 @@ import type {
   ProjectRecord,
   ProviderPreset,
   ProviderRecord,
-  ScanSkillsBody,
-  ScanSkillsResponse,
   ScheduleRecord,
   SearchResponse,
   SecretRecord,
@@ -484,8 +481,10 @@ export function useApiMutations(teamId: string | undefined) {
       mutationFn: (id: string) => api.del<void>(`/api/schedules/${id}`),
       onSuccess: invalidateAll,
     }),
+    // body 单源 = shared createProjectBodySchema（spec 12 / #360：kind +
+    // localPath / githubRepo 契约面；既有 repoKind 调用点同义兼容）。
     createProject: useMutation({
-      mutationFn: (body: { name: string; repoKind?: 'hosted' | 'github'; githubRepo?: string }) =>
+      mutationFn: (body: CreateProjectBody) =>
         api.post<ProjectRecord>('/api/projects', { ...body, ...(teamId ? { teamId } : {}) }),
       onSuccess: invalidateAll,
     }),
@@ -559,41 +558,9 @@ export function useApiMutations(teamId: string | undefined) {
       }) => api.post<ApiKeyRow & { plaintext?: string }>(`/api/teams/${teamId}/api-keys`, body),
       onSuccess: invalidateAll,
     }),
-    createMcpServer: useMutation({
-      mutationFn: (body: CreateMcpServerBody) =>
-        api.post<McpServerRecord>(`/api/teams/${teamId}/mcp-servers`, body),
-      onSuccess: invalidateAll,
-    }),
-    deleteMcpServer: useMutation({
-      mutationFn: (id: string) => api.del<void>(`/api/teams/${teamId}/mcp-servers/${id}`),
-      onSuccess: invalidateAll,
-    }),
-    createSkill: useMutation({
-      mutationFn: (body: {
-        name: string;
-        description?: string | null;
-        files: Record<string, string>;
-      }) => api.post<SkillRecord>('/api/skills', { ...body, ...(teamId ? { teamId } : {}) }),
-      onSuccess: invalidateAll,
-    }),
-    // #235 GitHub 扫描双模式（#223 端点）：缺省 path = 候选发现，给 path =
-    // 文件集取回（与 POST /api/skills body.files 同形，选中即喂 createSkill）。
-    // 同端点同 body schema（shared ScanSkillsBody 单源）；纯发现/取回调用，
-    // 无 server state 变更 → 不 invalidateAll。
-    scanSkills: useMutation({
-      mutationFn: (body: ScanSkillsBody) =>
-        api.post<ScanSkillsResponse>('/api/skills/scan', {
-          ...body,
-          ...(teamId ? { teamId } : {}),
-        }),
-    }),
-    fetchSkillFiles: useMutation({
-      mutationFn: (body: ScanSkillsBody & { path: string }) =>
-        api.post<FetchSkillFilesResponse>('/api/skills/scan', {
-          ...body,
-          ...(teamId ? { teamId } : {}),
-        }),
-    }),
+    // skills 无 mutation 面（spec 13 #367：技能 = server 本地目录现扫只读
+    // 投影；写技能 = 往目录放文件，无上传/扫描端点）。mcp-servers 同律
+    // （spec 13 #368：MCP = 本机 ~/.claude.json 只读投影，无建/改/删端点）。
     createAgent: useMutation({
       mutationFn: (body: CreateAgentBody) =>
         api.post<{ id: string }>(`/api/teams/${teamId}/agents`, body),

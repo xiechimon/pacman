@@ -630,6 +630,37 @@
   color: var(--text-dim);
 }
 
+/* focus-visible 收编（#360, spec 12 输入框去默认蓝）——共享 input 原语
+   同款配方（ui/input.css #A3）：outline none + indigo 边框 + 1px ring。 */
+.prj-new-input:focus-visible {
+  outline: none;
+  border-color: var(--indigo-500);
+  box-shadow: 0 0 0 1px var(--indigo-500);
+}
+
+/* -webkit-autofill 覆盖（#360）：UA 自动填充底色不吃 background 覆盖——
+   inset 阴影垫页面底色（.page-main --surface）+ 文本走 primary 墨；focus
+   叠加时 ring 与基配方同值。 */
+.prj-new-input:-webkit-autofill {
+  -webkit-text-fill-color: var(--text-primary);
+  box-shadow: 0 0 0 1000px var(--surface) inset;
+}
+
+.prj-new-input:-webkit-autofill:focus-visible {
+  box-shadow:
+    0 0 0 1000px var(--surface) inset,
+    0 0 0 1px var(--indigo-500);
+}
+
+/* local 路径校验错误行（#360）：server 400 reason 分类内联呈现，配方 =
+   dlg-provider-oauth-error 同族（12px/--danger）。 */
+.prj-new-error {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--danger);
+}
+
 .prj-new-repo {
   display: flex;
   align-items: center;
@@ -667,9 +698,9 @@
   cursor: default;
 }
 
-/* ---- repo 选择面 (#305, r2 07b/07c) ----
-   触发行 = 弹层锚点 wrap：hosted/未动 = 原选择仓库钮（占位/回填文案），
-   github 选态 = owner/repo 输入 + 重开菜单的 swap 钮。弹层板 =
+/* ---- repo 选择面 (#305, r2 07b/07c; #360 两行 GitHub/本地) ----
+   触发行 = 弹层锚点 wrap：未动 = 选择仓库钮（占位文案），github/local
+   选态 = owner/repo · 绝对路径输入 + 重开菜单的 swap 钮。弹层板 =
    prj-tasks-menu 同款 family plate（plan-dropdown recipe）。geometry
    [设计] — r2 07b 无像素采集，行语言贴既有两处锚弹层。 */
 .prj-new-repo-field {
@@ -679,11 +710,6 @@
 
 .prj-new-repo-field .prj-new-repo {
   flex: 1;
-}
-
-.prj-new-repo-selected {
-  font-size: 14px;
-  color: var(--text-primary);
 }
 
 .prj-new-repo-input {

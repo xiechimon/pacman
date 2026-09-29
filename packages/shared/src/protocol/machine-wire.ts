@@ -7,12 +7,7 @@
 // apiKeyPrefix 槽）；token 服务端存哈希。
 
 import { z } from 'zod';
-import {
-  mcpEndpointSchema,
-  modelUsageSchema,
-  providerConfigSchema,
-  toolCallRecordSchema,
-} from '../agent-backend.js';
+import { modelUsageSchema, providerConfigSchema, toolCallRecordSchema } from '../agent-backend.js';
 import { epochMs, recordId } from '../records/common.js';
 import { machineRecordSchema } from '../records/machine.js';
 import { messageRoleSchema } from '../records/message.js';
@@ -192,11 +187,13 @@ export const claimedStepSchema = z.object({
    * 02 §4.4/r5 §6「worker 侧同族工具经 remoteTools 下发」。位形一手 = bundle
    * 提取，r5 §3.1）。 */
   remoteTools: z.array(remoteToolDefSchema).optional(),
-  /** 已授权 MCP 端点（02 §7.1：per-Agent mcpServers[] 勾选 → 每回合连接、
-   * 失败降级不阻断；工具名 `mcp__<slug>__<tool>`）。headers 含凭证 = per-step
-   * 内存态下发不落盘（02 §8 运行时纪律同族）；版本墙（MCP_MIN_CLI_VERSION）
-   * 未达 = 缺省不携带。 */
-  mcpServers: z.array(mcpEndpointSchema).optional(),
+  /** 已授权 MCP slug 列表（spec 13 断约：原 McpEndpoint[] 改 string[]——
+   * server 不再解析端点、不再持有任何 MCP 凭证；执行 daemon 读本机
+   * `~/.claude.json` 按 slug 自行解析，per-turn 连接、失败降级不阻断，
+   * 工具名 `mcp__<slug>__<tool>`，未知 slug daemon 侧跳过。版本墙
+   * （MCP_MIN_CLI_VERSION，断约时提升）未达 = 缺省不携带——旧 daemon
+   * 视为无 MCP 运行，不存在混发两种形状的失败模式。 */
+  mcpServers: z.array(z.string()).optional(),
 });
 export type ClaimedStep = z.infer<typeof claimedStepSchema>;
 

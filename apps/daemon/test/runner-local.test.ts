@@ -49,6 +49,7 @@ function captureLogger(): { logger: DaemonLogger; lines: string[] } {
     workspace: (msg) => push('workspace', msg),
     recover: (msg) => push('recover', msg),
     wake: (msg) => push('wake', msg),
+    skills: (msg) => push('skills', msg),
     mcp: (msg) => push('mcp', msg),
   };
   return { logger, lines };
@@ -232,6 +233,7 @@ async function setup(
     workspace: ws,
     workspacesDir: join(home, 'workspaces'),
     maxConcurrent: 3,
+    mcpConfigPath: join(home, 'claude.json'), // runner-stop 同款占位（步无 mcpServers slug = 不读）
     heartbeatIntervalMs: 60_000,
   };
   await runStep(deps, claimed);
