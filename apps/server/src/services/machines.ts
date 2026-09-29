@@ -12,7 +12,6 @@ import type {
   MachineStreamEvent,
   MachineSyncCommand,
   MachineTokenResponse,
-  McpEndpoint,
   ProviderConfig,
   SecretBox,
   StepRecord,
@@ -70,7 +69,6 @@ import {
 } from './credentials.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { githubCloneUrl, hostedCloneUrl, repoDirFor } from './git.js';
-import { resolveAgentMcpEndpoints } from './mcp-servers.js';
 import { canTransitionPhase } from './phase.js';
 import { setTodoPhase } from './todos.js';
 
@@ -95,6 +93,9 @@ export interface MachineDeps {
   /** 技能根目录（spec 13 #367：chief systemPrompt 资源清单 + skills relay
    * 读工具 = 本地现扫）。 */
   skillsDir: string;
+  /** 本机 MCP config 读路径（spec 13/#368；executeChiefTool deps 透传——
+   * 缺省 = 工具侧回落 ~/.claude.json，生产接线恒随 ctx 携带）。 */
+  mcpConfigPath?: string;
   /** conversation stream 通道（M5 live streaming：transcript 行/文本增量/
    * 步状态即时推送，02 §1.2 会话流）；缺省 = 无会话流面（单测形态）。 */
   convHub?: ConversationStreamHub;
@@ -553,18 +554,18 @@ export function meetsMcpVersionGate(latestCliVersion: string | null): boolean {
   return true;
 }
 
-/** claim 载荷 mcpServers 解析（02 §7.1 per-turn 连接的 server 侧半）：版本门
- * 未达或无授权 = 缺省（不携带）。headers 密文 per-step 解析内存下发（02 §8）。 */
-function claimMcpEndpoints(
-  deps: MachineDeps,
-  teamId: string,
+/** claim 载荷 mcpServers（spec 13/#368 slug 化断约）：勾选 slug 原样透传——
+ * server 不再解析端点、不再接触任何 MCP 凭证；解析权在执行 daemon（各读各机
+ * `~/.claude.json`，stdio 命令在真正的执行机上起，未知 slug daemon 侧跳过 +
+ * 降级行）。版本门未达或无授权 = 缺省（不携带）——版本墙提升后旧 daemon
+ * 收不到该字段，视为无 MCP 运行，不混发两种形状。 */
+function claimMcpSlugs(
   latestCliVersion: string | null,
   agentSlugs: readonly string[],
-): McpEndpoint[] | undefined {
+): string[] | undefined {
   if (agentSlugs.length === 0) return undefined;
   if (!meetsMcpVersionGate(latestCliVersion)) return undefined;
-  const endpoints = resolveAgentMcpEndpoints({ db: deps.db, box: deps.box }, teamId, agentSlugs);
-  return endpoints.length > 0 ? endpoints : undefined;
+  return [...agentSlugs];
 }
 
 function buildChiefClaim(
@@ -598,12 +599,7 @@ function buildChiefClaim(
     .where(eq(agentMemory.agentId, agentRow.id))
     .all();
   // Chief = 特例 Agent（02 §4.3）：绑定 Agent 的 MCP 授权同样进回合载荷。
-  const chiefMcp = claimMcpEndpoints(
-    deps,
-    threadRow.teamId,
-    machineRow?.latestCliVersion ?? null,
-    agentRow.mcpServers,
-  );
+  const chiefMcp = claimMcpSlugs(machineRow?.latestCliVersion ?? null, agentRow.mcpServers);
   return {
     step: {
       id: stepRow.id,
@@ -723,12 +719,7 @@ function tryClaim(
     // worker 步 remoteTools = 记忆三件套（02 §4.4 写路径 / r5 §6：worker 侧
     // 同族工具经 remoteTools 下发，relay 服务端执行；触发 = spec 指令 + Agent
     // 裁量，宿主不做任务结束蒸馏）。MCP 授权端点随载荷（02 §7.1 per-turn 连接）。
-    const workerMcp = claimMcpEndpoints(
-      deps,
-      teamId,
-      machineRow.latestCliVersion,
-      agentRow.mcpServers,
-    );
+    const workerMcp = claimMcpSlugs(machineRow.latestCliVersion, agentRow.mcpServers);
     publishStepStatus(deps, cand.stepRow.id);
     return {
       step: {
@@ -869,6 +860,7 @@ export async function executeRelayToolCall(
       reposDir: deps.reposDir,
       attachmentsDir: deps.attachmentsDir,
       skillsDir: deps.skillsDir,
+      ...(deps.mcpConfigPath !== undefined ? { mcpConfigPath: deps.mcpConfigPath } : {}),
     },
     {
       teamId: threadRow.teamId,

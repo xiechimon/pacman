@@ -57,6 +57,7 @@ const app = createApp(
     skillsDir: config.skillsDir,
     webDir: config.webDir,
     authToken: config.authToken,
+    mcpConfigPath: config.mcpConfigPath,
   },
   logger,
 );

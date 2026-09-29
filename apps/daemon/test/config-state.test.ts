@@ -2,7 +2,7 @@
 // （02 §5.3/r3 §1.3 形状；zod 单源 = shared machine/device/daemonJsonSchema）。
 
 import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BRAND, DEVICE_ID_PATTERN, ENV_VARS, MACHINE_TOKEN_PATTERN } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
@@ -68,6 +68,26 @@ describe('loadDaemonConfig（Settings 缝优先级）', () => {
     expect(() => loadDaemonConfig({ workspacesDir: join(home, 'missing', 'ws') }, {})).toThrow(
       WorkspacesDirError,
     );
+  });
+
+  // spec 13（#368）：daemon 读本机 MCP config 的路径槽——优先级同律
+  // （显式入参 > env > 默认值），默认 = ~/.claude.json。
+  test('mcpConfigPath 默认 = ~/.claude.json', () => {
+    const cfg = loadDaemonConfig({}, {});
+    expect(cfg.mcpConfigPath).toBe(join(homedir(), '.claude.json'));
+  });
+
+  test('mcpConfigPath env 覆盖（PACMAN_MCP_CONFIG）', () => {
+    const cfg = loadDaemonConfig({}, { [ENV_VARS.mcpConfig]: '/tmp/custom-claude.json' });
+    expect(cfg.mcpConfigPath).toBe('/tmp/custom-claude.json');
+  });
+
+  test('mcpConfigPath 显式入参 > env', () => {
+    const cfg = loadDaemonConfig(
+      { mcpConfigPath: '/explicit-claude.json' },
+      { [ENV_VARS.mcpConfig]: '/env-claude.json' },
+    );
+    expect(cfg.mcpConfigPath).toBe('/explicit-claude.json');
   });
 });
 

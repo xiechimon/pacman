@@ -24,7 +24,6 @@ import {
   chief,
   chiefMessage,
   machine,
-  mcpServer,
   message,
   project,
   schedule,
@@ -39,6 +38,7 @@ import { addChiefWatch, clearChiefWake, removeChiefWatches, setChiefWake } from 
 import type { TeamStreamHub } from './events.js';
 import { isGithubRepoRef, readFile } from './git.js';
 import type { MachineWakeHub } from './machines.js';
+import { defaultMcpConfigPath, listMcpServers } from './mcp-servers.js';
 import { notifyChiefMessage } from './notifications.js';
 import { createSchedule, deleteSchedule, listSchedules } from './schedules.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './secrets.js';
@@ -59,6 +59,9 @@ export interface ChiefToolDeps {
   attachmentsDir: string;
   /** 技能根目录（spec 13 #367）；skills 读工具 = 本地现扫投影。 */
   skillsDir: string;
+  /** 本机 MCP config 读路径（spec 13/#368 mcp_servers 工具换源）；缺省 =
+   *  ~/.claude.json（config.ts 同默认；测试面显式注入 fixture 路径）。 */
+  mcpConfigPath?: string;
 }
 
 /** 单次 relay 调用的溯源上下文（step → chief thread 解析，services/machines.ts
@@ -200,7 +203,12 @@ export async function executeChiefTool(
       return json(listSecrets(keysvc, ctx.teamId));
     }
     case 'mcp_servers': {
-      const rows = db.select().from(mcpServer).where(eq(mcpServer.teamId, ctx.teamId)).all();
+      // 换源（spec 13/#368）：与 REST 读面同源同投影（listMcpServers 单源）——
+      // 本机 ~/.claude.json；密钥值不上工具面（record 投影已剥值）。
+      const rows = listMcpServers(
+        { mcpConfigPath: deps.mcpConfigPath ?? defaultMcpConfigPath() },
+        ctx.teamId,
+      );
       return json(
         rows.map((m) => ({
           id: m.id,

@@ -21,6 +21,7 @@ import type {
 } from '@pacman/shared';
 import { PLAN_FILE_NAME, REMOTE_TOOL_RETRY_DELAYS_MS, STREAM_TIMEOUTS_MS } from '@pacman/shared';
 import { SessionNotResumableError } from './backend/errors.js';
+import { notInConfigLine, resolveMcpEndpoints } from './backend/mcp-config.js';
 import { clearCredentials, pushCredential } from './credentials.js';
 import { type StepJournal, TranscriptBuffer } from './journal.js';
 import type { DaemonLogger } from './log.js';
@@ -42,6 +43,9 @@ export interface RunStepDeps {
   paths: StatePaths;
   workspacesDir: string;
   maxConcurrent: number;
+  /** 本机 MCP config 路径（spec 13/#368：claim slug 列表在此解析成执行
+   * 端点；machine-loop 从 config.mcpConfigPath 注入）。 */
+  mcpConfigPath: string;
   /** worktree 契约面（02 §5.5；machine-loop 注入共享实例——projectLock 跨步
    * 串行化需要单例）。缺省且步带 repo 绑定 = 配置错误，按 failed 收尾。 */
   workspace?: WorktreeOps;
@@ -238,6 +242,25 @@ export async function runStep(
   // 步同样下发；#310/r9 §3.1 worker attachment 工具 = spec `attachment:`
   // token 解析路径）。
   const remoteTools = claimed.remoteTools;
+  // MCP per-turn 连接面（spec 13 slug 化）：claim 携带勾选 slug 列表，本机
+  // config 解析实际端点（凭证值只活在执行机，从不跨 wire）；未知 slug /
+  // 坏条目跳过 + 降级行（[mcp] <slug>: not in local config … 族）。每回合
+  // 打出实际加载集与来源文件——多机各读各 config 的跑偏一眼可见（spec 13
+  // premortem 护栏二）。
+  const mcpSlugs = claimed.mcpServers ?? [];
+  const mcpEndpoints =
+    mcpSlugs.length > 0
+      ? resolveMcpEndpoints(deps.mcpConfigPath, mcpSlugs, {
+          onMissing: (slug) => logger.mcp(notInConfigLine(slug)),
+        })
+      : [];
+  if (mcpSlugs.length > 0) {
+    logger.mcp(
+      `loaded from ${deps.mcpConfigPath}: ${
+        mcpEndpoints.length > 0 ? mcpEndpoints.map((e) => e.slug).join(', ') : '(none)'
+      }`,
+    );
+  }
   const sessionOpts: SessionOpts = {
     provider,
     modelId: agent.modelId,
@@ -258,10 +281,7 @@ export async function runStep(
           },
         }
       : {}),
-    // MCP per-turn 连接面（02 §7.1；server 侧 claim 携带已授权端点 + 版本墙）。
-    ...(claimed.mcpServers && claimed.mcpServers.length > 0
-      ? { mcpServers: claimed.mcpServers }
-      : {}),
+    ...(mcpEndpoints.length > 0 ? { mcpServers: mcpEndpoints } : {}),
   };
 
   // continue 解析键：journal 快照（recover 面）优先，其次 claim 载荷携带的
