@@ -38,11 +38,12 @@ function writeSkill(
   return file;
 }
 
-function collect(skillsDir: string): { catalog: string; logs: string[] } {
+function collect(skillsDir: string, allowlist?: string[]): { catalog: string; logs: string[] } {
   const logs: string[] = [];
   const catalog = buildSkillsCatalog({
     skillsDir,
     cwd: tmpdir(),
+    ...(allowlist !== undefined ? { allowlist } : {}),
     log: (msg) => logs.push(msg),
   });
   return { catalog, logs };
@@ -143,6 +144,64 @@ describe('catalog cap 双闸（#371：catalog 不能无限增长）', () => {
     const { catalog, logs } = collect(root);
     expect(catalog).toContain('y'.repeat(50));
     expect(logs.some((l) => l.startsWith('cap:'))).toBe(false);
+  });
+});
+
+describe('allowlist 过滤四态（#372：agent.skills 白名单 = catalog 执行面闸）', () => {
+  /** 两个 skill 的公共 fixture；返回扫描根。 */
+  function twoSkillRoot(tag: string): string {
+    const root = fixtureRoot(tag);
+    writeSkill(root, 'alpha', { name: 'alpha', description: 'A 技能。' });
+    writeSkill(root, 'beta', { name: 'beta', description: 'B 技能。' });
+    return root;
+  }
+
+  test('allowlist 缺省（undefined）= 全量直通（chief 面语义，零回归）', () => {
+    const { catalog, logs } = collect(twoSkillRoot('al-full'));
+    expect(catalog).toContain('<name>alpha</name>');
+    expect(catalog).toContain('<name>beta</name>');
+    expect(logs.some((l) => l.startsWith('filtered:'))).toBe(false);
+  });
+
+  test('部分过滤 = 白名单内保留、名单外剔除 + filtered 行', () => {
+    const { catalog, logs } = collect(twoSkillRoot('al-part'), ['alpha']);
+    expect(catalog).toContain('<name>alpha</name>');
+    expect(catalog).not.toContain('<name>beta</name>');
+    expect(logs).toContain('filtered: beta not in agent allowlist');
+  });
+
+  test('空白名单（[]）= 空 catalog，无 <available_skills> 块（least-privilege）', () => {
+    const { catalog, logs } = collect(twoSkillRoot('al-empty'), []);
+    expect(catalog).toBe('');
+    expect(logs).toContain('filtered: alpha not in agent allowlist');
+    expect(logs).toContain('filtered: beta not in agent allowlist');
+    expect(logs.some((l) => l.startsWith('loaded:'))).toBe(false);
+  });
+
+  test('白名单含未知 slug = 静默跳过不炸（#367 容忍语义同律）', () => {
+    const { catalog, logs } = collect(twoSkillRoot('al-ghost'), ['alpha', 'ghost-slug']);
+    expect(catalog).toContain('<name>alpha</name>');
+    expect(catalog).not.toContain('ghost-slug');
+    // filtered 行只为「目录里有但被裁掉」的 skill 而记；ghost 不在目录，无行。
+    expect(logs).toContain('filtered: beta not in agent allowlist');
+    expect(logs.some((l) => l.includes('ghost-slug'))).toBe(false);
+  });
+
+  test('过滤先于 cap 闸 = 白名单内条目不受目录总量截顶影响', () => {
+    const root = fixtureRoot('al-cap');
+    // 目录总量 > cap，但白名单只留 1 个排在扫描序后段的 skill：先过滤后 cap
+    // 时它必然存活（若先 cap 后过滤，它可能被截顶裁掉 → 白名单失效）。
+    const total = SKILLS_CATALOG_CAP + 5;
+    for (let i = 0; i < total; i++) {
+      writeSkill(root, `skill-${String(i).padStart(2, '0')}`, {
+        name: `skill-${String(i).padStart(2, '0')}`,
+        description: `批量技能 ${i}。`,
+      });
+    }
+    const last = `skill-${String(total - 1).padStart(2, '0')}`;
+    const { catalog, logs } = collect(root, [last]);
+    expect(catalog).toContain(`<name>${last}</name>`);
+    expect(logs.some((l) => l.startsWith('cap: total='))).toBe(false);
   });
 });
 

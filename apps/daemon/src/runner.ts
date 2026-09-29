@@ -282,6 +282,11 @@ export async function runStep(
         }
       : {}),
     ...(mcpEndpoints.length > 0 ? { mcpServers: mcpEndpoints } : {}),
+    // skills 白名单（#372）：worker/review 步 = claim 携带的 agent.skills 勾选
+    // slug（[] 也传——[] = 不注入任何 skill，与 MCP 空勾选同律）；chief 步不传
+    // （undefined = 全量 catalog，chief 是信任面）；旧 server 未携带 = 缺省
+    // 直通（零回归）。过滤落点 = backend catalog 构建（backend/pi.ts）。
+    ...(isChief || agent.skills === undefined ? {} : { skillsAllowlist: agent.skills }),
   };
 
   // continue 解析键：journal 快照（recover 面）优先，其次 claim 载荷携带的

@@ -161,6 +161,13 @@ export const claimedStepSchema = z.object({
       /** 该 Agent 记忆条目注入 systemPrompt（02 §4.4 读路径最小形；注入形
        * [推断] 保留，04 附录 A）。 */
       memories: z.array(z.object({ title: z.string(), content: z.string() })).optional(),
+      /** skills catalog 白名单（#372）：勾选 slug 原样透传（frontmatter name
+       * 回落目录名，spec 13 #367 候选源同源）。worker 步恒携带——含空数组
+       * （[] = 不注入任何 skill；缺省 = 全量直通是 chief 面语义，worker 空
+       * 勾选若缺省不携带会错落到全量 catalog）。chief 步不携带（不受过滤
+       * 约束）。无版本墙：纯增可选字段，旧 daemon 忽略 = 现行为全量直通，
+       * 不存在 MCP slug 断约那种混发形状失败模式。 */
+      skills: z.array(z.string()).optional(),
     })
     .nullable(),
   /** chief 步块（r5 §3.1：Chief 回合 = pi 会话 + 服务端 relay 工具；细节
