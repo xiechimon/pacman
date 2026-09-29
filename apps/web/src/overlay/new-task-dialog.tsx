@@ -243,12 +243,13 @@ export function NewTaskDialog({
           requestClose();
         }}
         // #318 分层 Esc（旧壳四处 useEscClose 的合并）：内层开着时壳不关自己，
-        // 由本回调按层序收最上面那层；全关时壳自己走 requestClose（未保存闸）
+        // 由本回调按层序收最上面那层；全关时壳自己走 requestClose（未保存闸）。
+        // mention picker 已换 FloatingShell（Base UI 嵌套顶层，escapeKey:
+        // isTopmost 自己收），故本闸只覆盖仍走仓内 OverlayMount 的两层。
         onEscapeWhileNested={
-          projectOpen || pickerOpen || discardOpen
+          projectOpen || discardOpen
             ? () => {
                 if (projectOpen) setProjectOpen(false);
-                else if (pickerOpen) setPickerOpen(false);
                 else setDiscardOpen(false);
               }
             : undefined
