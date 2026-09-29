@@ -4,6 +4,11 @@
 // #306 接真：排序钮开单选 listbox（默认/名称，当前项 ✓，行点击 = 选中即关
 // — lang-dropdown 家族律）。原站排序下拉内容未观测，选项集 [设计]：SkillRow
 // 数据面只有 name/description（无时间戳），可诚实承载的排序键 = 名称。
+// spec 13（#367）只读面：技能 = server 本地目录现扫投影（id = frontmatter
+// name 回落目录名），页面无新建/导入动作——写技能 = 往技能目录放文件，
+// 空态文案指路目录（文案 canon = shared SKILL_PAGE_COPY 单源消费，{dir} =
+// SKILLS_DIR_DEFAULT；env 覆写在 server 侧，i18n 键经 COMPUTED_KEYS 登记）。
+import { SKILL_PAGE_COPY, SKILLS_DIR_DEFAULT } from '@pacman/shared';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useSkills } from '../api/hooks.js';
@@ -26,13 +31,11 @@ export function SkillsPage() {
   const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
-  // M5 live：GET /api/skills?teamId=（02 §6.1 词表；r2 §6.1 页面）。
+  // M5 live：GET /api/skills?teamId=（02 §6.1 词表；spec 13 起 server 现扫
+  // 本地目录，wire 形状不变）。
   const { live, teamId } = useLiveData();
   const skillsQ = useSkills(teamId, live);
   const rows = live ? mapSkills(skillsQ.data ?? []) : (fixture.resources?.skills ?? []);
-  // 新建技能 route（#153）: topbar res-new 与卡内主钮同 target。字面量而非
-  // SKILLS_IMPORT_HREF —— skills-import-page 反向 import SKILLS_HREF，环。
-  const importHref = `${SKILLS_HREF}/import`;
   const [sortOpen, setSortOpen] = useState(false);
   const [sort, setSort] = useState<SortKind>('默认');
   useEscapeClose(sortOpen, () => setSortOpen(false));
@@ -44,18 +47,18 @@ export function SkillsPage() {
       href={SKILLS_HREF}
       backHref="/app"
       selected={SKILLS_HREF}
-      newHref={importHref}
+      hideNew
       fixture={fixture}
     >
       {skills.length === 0 ? (
-        // r2 08: the empty state replaces the search row entirely
+        // r2 08: the empty state replaces the search row entirely；spec 13：
+        // 只读面——无主钮无提示行，文案指路技能目录（canon = SKILL_PAGE_COPY，
+        // {dir} 插值；en 翻译键 = 同串，i18n-coverage COMPUTED_KEYS 登记）。
         <EmptyState
           Icon={Puzzle}
-          title="尚无技能。"
-          description="技能是写给 Agent 的工作手册：一个包含 SKILL.md 的文件夹，用于将可复用的流程传授给 Agent。授予后，Agent 会在合适的任务中主动使用。"
-          actionLabel="添加技能"
-          actionHref={importHref}
-          hint="你也可以直接让总管从 GitHub 安装技能，或帮你制作新技能。"
+          title={SKILL_PAGE_COPY.empty}
+          description={SKILL_PAGE_COPY.directoryHint}
+          descriptionVars={{ dir: SKILLS_DIR_DEFAULT }}
         />
       ) : (
         <>

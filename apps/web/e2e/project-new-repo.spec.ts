@@ -28,7 +28,7 @@ import { expect, type Page, test } from '@playwright/test';
 // 9. the name input's focus-visible ring is the shared input primitive's
 //    indigo (outline none + indigo border + 1px ring), not the UA blue
 //
-// submit + error face (live build, stubbed network — skills-github-scan
+// submit + error face (live build, stubbed network — skills-readonly
 // precedent; the real-server three-state validation is verify-pacman's
 // local-repo-api feature):
 // 10. untouched submit posts a repo-less body (no kind) and navigates on 201
@@ -70,7 +70,7 @@ async function revealManualRepoInput(page: Page) {
   return page.locator('#prj-new-repo');
 }
 
-/** Live-face boot stub (skills-github-scan.stubBoot precedent): seed team +
+/** Live-face boot stub (skills-readonly.stubBoot precedent): seed team +
  *  session succeed, every other GET 500s (the shell tolerates it). Route
  *  match order = registration reverse: catch-all first, specifics after. */
 async function stubBoot(page: Page) {

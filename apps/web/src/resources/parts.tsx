@@ -7,6 +7,7 @@
 import type { ComponentType, SVGProps } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useI18n } from '../i18n/provider.js';
+import type { TVars } from '../i18n/translate.js';
 import { ChevronRight, Lock } from '../icons/index.js';
 import { Button } from '../ui/button.js';
 import { Chip } from '../ui/chip.js';
@@ -52,11 +53,14 @@ export function RowChevron() {
 
 /** Empty-state block (r7 10 geometry): 48px hero tile, heading, two-line
  *  description, primary button, optional 总管 hint row (查看文档 link
- *  removed #307 — local-first 无文档站, #149 schedules 同律). */
+ *  removed #307 — local-first 无文档站, #149 schedules 同律).
+ *  spec 13（#367）：actionLabel 可选——只读资源面（技能）无主钮；description
+ *  经 descriptionVars 走 {vars} 插值（技能空态指路配置目录，单点 t()）。 */
 export function EmptyState({
   Icon,
   title,
   description,
+  descriptionVars,
   actionLabel,
   actionHref,
   onAction,
@@ -65,7 +69,10 @@ export function EmptyState({
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
   title: string;
   description: string;
-  actionLabel: string;
+  /** description 模板 {vars} 插值位（i18n translate 机制，issue #74）。 */
+  descriptionVars?: TVars;
+  /** Primary action 文案；缺省 = 无主钮（只读面，spec 13 #367）。 */
+  actionLabel?: string;
   /** SPA target for the primary action (issue #153); absent keeps the
    *  inert button (dialog-opening actions land in a later ticket). */
   actionHref?: string;
@@ -80,21 +87,23 @@ export function EmptyState({
     <div className="res-empty">
       <Tile Icon={Icon} size="hero" tone="orange" />
       <h2 className="res-empty-title">{t(title)}</h2>
-      <p className="res-empty-desc">{t(description)}</p>
-      <div className="res-empty-actions">
-        {actionHref == null ? (
-          <Button variant="primary" size="compact" className="res-primary" onClick={onAction}>
-            {t(actionLabel)}
-          </Button>
-        ) : (
-          <Link className="res-primary" to={{ pathname: actionHref, search }}>
-            {t(actionLabel)}
-          </Link>
-        )}
-        {/* 「查看文档」钮全除（#307 wontfix）：local-first 自托管无文档站
-            可链（#149 schedules 同律）——skills/secrets/mcp 空态随共享件
-            一并出账，spec 08 档 4。 */}
-      </div>
+      <p className="res-empty-desc">{t(description, descriptionVars)}</p>
+      {actionLabel != null && (
+        <div className="res-empty-actions">
+          {actionHref == null ? (
+            <Button variant="primary" size="compact" className="res-primary" onClick={onAction}>
+              {t(actionLabel)}
+            </Button>
+          ) : (
+            <Link className="res-primary" to={{ pathname: actionHref, search }}>
+              {t(actionLabel)}
+            </Link>
+          )}
+          {/* 「查看文档」钮全除（#307 wontfix）：local-first 自托管无文档站
+              可链（#149 schedules 同律）——skills/secrets/mcp 空态随共享件
+              一并出账，spec 08 档 4。 */}
+        </div>
+      )}
       {hint != null && (
         <p className="res-empty-hint">
           <Lock width={11} height={11} />

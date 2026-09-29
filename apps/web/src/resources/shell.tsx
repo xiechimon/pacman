@@ -18,10 +18,9 @@ interface ResourceShellProps {
   title: string;
   /** This route's href (data-route). */
   href: string;
-  /** Sidebar selected pill: resource hrefs, or 技能 on the import page
-   *  (r8 79/80). Absent = 看板. */
+  /** Sidebar selected pill: resource hrefs. Absent = 看板. */
   selected?: SidebarSelected;
-  /** Back-chevron target: the board, or the skills list on the import page. */
+  /** Back-chevron target: the board. */
   backHref: string;
   /** Href for the right `+ 新建` action; absent renders a bare button
    *  (dialog-opening actions land in a later ticket). */
@@ -29,7 +28,8 @@ interface ResourceShellProps {
   /** Dialog-opening 新建 action (wayfinder #173: the secrets page is first);
    *  renders when `newHref` is absent, so the bare button gains a handler. */
   onNew?: () => void;
-  /** The import page carries no `+ 新建` action (r2 08b/08c). */
+  /** Read-only surfaces carry no `+ 新建` action (skills, spec 13 #367：
+   *  技能 = 本地目录现扫只读投影，无新建/导入面). */
   hideNew?: boolean;
   fixture: FixtureSet;
   children: ReactNode;

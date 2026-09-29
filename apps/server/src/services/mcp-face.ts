@@ -27,7 +27,6 @@ import {
   message,
   project,
   schedule,
-  skill,
   step,
   todo,
 } from '../db/schema.js';
@@ -39,6 +38,7 @@ import type { ChiefToolDeps } from './chief-tools.js';
 import { confirmBuild, mergeBuild, transitionTodos } from './chief-tools.js';
 import { isChiefConversation } from './machines.js';
 import { createSchedule, deleteSchedule, listSchedules } from './schedules.js';
+import { scanLocalSkills } from './skills.js';
 import { createTodo, listTodos, updateTodo } from './todos.js';
 
 /** key 属主调用上下文（r3 §5.2「MCP 调用以 key 属主身份执行」；单用户 seed
@@ -235,8 +235,10 @@ export async function executeMcpTool(
       );
     }
     case 'skills': {
-      const rows = db.select().from(skill).where(eq(skill.teamId, ctx.teamId)).all();
-      return json(rows.map((k) => ({ id: k.id, name: k.name, description: k.description })));
+      // spec 13 #367：本地目录现扫（chief-tools 同源，id = frontmatter name
+      // 回落目录名）。
+      const scanned = scanLocalSkills(deps.skillsDir);
+      return json(scanned.map((k) => ({ id: k.id, name: k.name, description: k.description })));
     }
     case 'machines': {
       const rows = db.select().from(machine).where(eq(machine.teamId, ctx.teamId)).all();

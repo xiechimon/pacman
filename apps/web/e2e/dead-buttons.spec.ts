@@ -27,7 +27,9 @@ import { expect, test } from '@playwright/test';
 //    skills 排序接真 / account-swap wontfix / transcript 折叠接真）。
 // 15. #318 桩群校准（更多菜单完成·关闭 / 开始任务统一面 / 查看方案 /
 //    任务行导航 / 未保存闸）。
-// 第 5 项（skills 添加技能主钮）由 #153 覆盖，本 spec 不断言。
+// 第 5 项（skills 添加技能主钮）已随 spec 13（#367）整体退役——技能改本地
+// 目录只读投影，空态主钮不再存在（出账断言并入第 9 项，导航面钉在
+// skills-readonly.spec.ts）。
 
 // —— 1. feedback 整页移除 ————————————————————————————————————————————————
 
@@ -116,7 +118,8 @@ test('doc pane 变更▾ opens the document-type listbox and closes on Escape', 
   await select.click();
   const dropdown = page.locator('.plan-dropdown');
   await expect(dropdown).toBeVisible();
-  await expect(dropdown.locator('.plan-dropdown-row')).toContainText('变更');
+  // #366：listbox 首行 = 当前文档型（✓ 行），其后三行 = 右 pane 静止 section
+  await expect(dropdown.locator('.plan-dropdown-row').first()).toContainText('变更');
   await page.keyboard.press('Escape');
   await expect(dropdown).toBeHidden();
 });
@@ -126,9 +129,11 @@ test('doc pane 型选行 click re-selects the current type and closes (#306)', a
   await page.locator('.doc-select-wrap .doc-pane-select').click();
   const dropdown = page.locator('.plan-dropdown');
   await expect(dropdown).toBeVisible();
-  // r5b §3.7：选择器行，非确认入口——选（唯一）当前型即关
-  await dropdown.locator('.plan-dropdown-row').click();
+  // r5b §3.7：选择器行，非确认入口——选当前型行即关（#366 后首行 = 文档行，
+  // 重选 = 留在文档面）
+  await dropdown.locator('.plan-dropdown-row').first().click();
   await expect(dropdown).toBeHidden();
+  await expect(page.locator('.detail-right .doc-pane')).toBeVisible();
 });
 
 // —— 7. machines 行内动作图标（#222 出账）——————————————————————————————
@@ -180,7 +185,7 @@ test('api-keys empty state drops the 查看文档 button, keeps 新建密钥 (#3
   await expect(page.locator('.keys-create')).toBeVisible();
 });
 
-test('resources empty state drops the 查看文档 link, keeps the primary action (#307)', async ({
+test('resources empty state drops the 查看文档 link (#307); skills 只读面连主钮也无 (spec 13)', async ({
   page,
 }) => {
   await page.goto('/app/resources/skills?scenario=01');
@@ -188,10 +193,13 @@ test('resources empty state drops the 查看文档 link, keeps the primary actio
   // 共享 EmptyState 件:skills/secrets/mcp 三面空态的文档链接一并出账
   // (skills + secrets 双面钉,防单面局部复活漏网;mcp 同件随行)
   await expect(page.locator('.res-doclink')).toHaveCount(0);
-  await expect(page.locator('.res-empty .res-primary')).toBeVisible();
+  // spec 13 (#367):技能 = 本地目录现扫只读投影——空态无「添加技能」主钮
+  // (空态指引文案钉在 skills-readonly.spec.ts)
+  await expect(page.locator('.res-empty .res-primary')).toHaveCount(0);
   await page.goto('/app/resources/secrets?scenario=01');
   await expect(page.locator('.res-empty')).toBeVisible();
   await expect(page.locator('.res-doclink')).toHaveCount(0);
+  await expect(page.locator('.res-empty .res-primary')).toBeVisible();
 });
 
 test('create-agent dialog drops the avatar 更换 ink (#307)', async ({ page }) => {

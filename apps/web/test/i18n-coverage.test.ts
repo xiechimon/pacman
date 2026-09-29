@@ -24,7 +24,7 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import { CHIEF_REBIND_CONFIRM_COPY, NOTIFICATION_BANNER_COPY } from '@pacman/shared';
+import { CHIEF_REBIND_CONFIRM_COPY, NOTIFICATION_BANNER_COPY, SKILL_PAGE_COPY } from '@pacman/shared';
 import { createScanner, LanguageVariant, SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 import { PROBE_TOOL_CALL_LABEL } from '../src/fixtures/fixtures.js';
@@ -51,6 +51,10 @@ const COMPUTED_KEYS = new Set<string>([
   // #182: chief 换绑二次确认 copy 同为 shared canon（<agent> 占位由显示层
   // 替换），经 t() 消费、不作字面量出现。
   CHIEF_REBIND_CONFIRM_COPY,
+  // spec 13 #367: 技能页空态文案 canon = shared SKILL_PAGE_COPY（经 t() 消费，
+  // directoryHint 的 {dir} 由 SKILLS_DIR_DEFAULT 插值），不作字面量出现。
+  SKILL_PAGE_COPY.empty,
+  SKILL_PAGE_COPY.directoryHint,
 ]);
 
 /** Data layer: capture-verbatim user/agent content, never translated.

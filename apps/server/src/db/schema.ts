@@ -330,17 +330,8 @@ export const agentMemory = sqliteTable('agent_memory', {
   updatedAt: epochMs('updatedAt').notNull(),
 });
 
-// —— skill（含文件内容，`skills/{sid}/file` 端点源，01 §6；上传面归 M2b+）———————
-export const skill = sqliteTable('skill', {
-  id: text('id').primaryKey(),
-  teamId: text('teamId')
-    .notNull()
-    .references(() => team.id),
-  name: text('name').notNull(),
-  description: text('description'),
-  /** [内部] fileName → 文件内容（SKILL.md 必含，records/skill.ts）。 */
-  files: json<Record<string, string>>('files').notNull().default(sql`'{}'`),
-});
+// skill 表已退役（spec 13 #367）：技能 = 本地目录现扫只读投影，不入库——
+// drop migration 前旧行导出到 <home>/legacy-export-<ts>.json（db/legacy-export.ts）。
 
 // —— mcp_server（02 §6.2/§7.1；管理面 = M4b）———————————————————————————————
 // wire record = r3 §5.1 实测原样（records/mcp-server.ts）；stdio 的命令/参数与

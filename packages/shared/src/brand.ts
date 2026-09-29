@@ -91,6 +91,9 @@ export const ENV_VARS = {
    * 两条 SSE stream 端点另收 ?token=——EventSource 无法设 header）；
    * 未设/空串 = 关（默认，行为与现状一致）。 */
   token: 'PACMAN_TOKEN',
+  /** 技能根目录覆写（spec 13 #367：skills = 本地目录现扫只读投影；
+   * 缺省 = SKILLS_DIR_DEFAULT `~/.agents/skills`，records/skill.ts 单源）。 */
+  skillsDir: 'PACMAN_SKILLS_DIR',
 } as const;
 
 /** API key 形态 `pacman_<48hex>`（02 §5.8 前缀 = 品牌槽；r3 §6 掩码样例原形

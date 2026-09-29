@@ -92,10 +92,10 @@ export const EN: Record<string, string> = {
   '{n} 天前': '{n}d ago',
 
   // —— todo detail (r7 §3.3–§3.6) ——
-  文档: 'Document',
-  聊天: 'Chat',
   'Token 用量': 'Token usage',
   运行历史: 'Run history',
+  尚无运行内容: 'No run content yet',
+  打开方案: 'Open plan',
   添加附件: 'Add attachment',
   'AI 审核': 'AI review',
   审核中: 'Reviewing',
@@ -135,7 +135,7 @@ export const EN: Record<string, string> = {
   执行对话: 'Active run',
   未指派: 'Unassigned',
   编辑分配: 'Edit assignment',
-  文档类型: 'Document type',
+  面板视图: 'Pane view',
 
   // —— ⌘K search panel (r7 05/05b, r2 §8.4) ——
   关闭搜索: 'Close search',
@@ -192,20 +192,17 @@ export const EN: Record<string, string> = {
   复制: 'Copy',
   '请立即复制密钥，它仅显示一次。': 'Copy the key now — it is shown only once.',
 
-  // —— resources routes (r7 06–10, r2 §6, r8 79/80) ——
+  // —— resources routes (r7 06–10, r2 §6) ——
   新建: 'New',
   'MCP 服务器': 'MCP Servers',
-  新建技能: 'New skill',
   添加机器: 'Add machine',
   自定义: 'Custom',
   '搜索技能...': 'Search skills...',
   排序: 'Sort',
   '尚无技能。': 'No skills yet.',
-  '技能是写给 Agent 的工作手册：一个包含 SKILL.md 的文件夹，用于将可复用的流程传授给 Agent。授予后，Agent 会在合适的任务中主动使用。':
-    'Skills are playbooks for Agents: a folder containing a SKILL.md that teaches a reusable workflow. Once granted, Agents reach for them on the todos that fit.',
-  添加技能: 'Add skill',
-  '你也可以直接让总管从 GitHub 安装技能，或帮你制作新技能。':
-    'You can also just let the Chief install skills from GitHub, or craft new ones for you.',
+  // spec 13（#367）技能只读面：空态指路本地技能目录（{dir} = SKILLS_DIR_DEFAULT）
+  '把包含 SKILL.md 的技能目录放进 {dir}，即会出现在这里。':
+    'Drop a skill folder containing SKILL.md into {dir} and it will show up here.',
   '尚无 MCP 服务器。': 'No MCP servers yet.',
   'MCP 服务器为 Agent 提供额外工具，例如工单系统、浏览器、内部 API。授权在每个 Agent 的页面上单独进行。':
     'MCP servers give Agents extra tools — ticketing systems, browsers, internal APIs. Authorization happens per Agent, on its own page.',
@@ -216,28 +213,8 @@ export const EN: Record<string, string> = {
   添加密钥: 'Add secret',
   '也可以让总管添加：它会开一张安全输入卡填写值，值不会进入对话。':
     'The Chief can add them too: it opens a secure input card for the value, which never enters the conversation.',
-  从文件夹: 'From folder',
-  '从 GitHub': 'From GitHub',
-  技能文件夹: 'Skill folder',
-  点击或拖入技能文件夹: 'Click or drop a skill folder',
-  已选择: 'Selected',
   个文件: 'file(s)',
-  '必须包含 SKILL.md': 'Must contain SKILL.md',
-  '例如：deploy': 'e.g. deploy',
   描述: 'Description',
-  简要描述该技能的功能: 'Briefly describe what the skill does',
-  创建技能: 'Create skill',
-  'GitHub 链接': 'GitHub link',
-  扫描: 'Scan',
-  '输入仓库链接以扫描其中的技能，或直接指向某个技能目录。':
-    'Enter a repo link to scan it for skills, or point directly at a skill directory.',
-  // #235 GitHub 扫描结果区（live）
-  '扫描中…': 'Scanning…',
-  '未发现技能。': 'No skills found.',
-  '结果已截断，仅显示部分候选。': 'Results truncated — showing a partial list.',
-  '导入中…': 'Importing…',
-  扫描失败: 'Scan failed',
-  导入失败: 'Import failed',
 
   // —— project routes (r2 07/24/24b/24c) ——
   文件: 'Files',

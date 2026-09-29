@@ -145,7 +145,8 @@ const M5_ROUTES = [
   'GET /api/teams/{id}/skills/{sid}/file',
   'GET /api/teams/{id}/agents/{aid}/tasks',
   'GET /api/skills',
-  'POST /api/skills',
+  // POST /api/skills 已删（spec 13 #367：技能改本地目录现扫只读投影，
+  // divergence 登记 = shared NON_REPLICATED_ENDPOINTS）。
   'GET /api/whats-new',
   'POST /api/analytics/first-touch',
   'GET /api/conversations/{id}/stream',
