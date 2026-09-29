@@ -32,6 +32,7 @@ import {
   machineRecordSchema,
   parseReviewPromptMeta,
   WORKER_REMOTE_TOOLS,
+  WORKER_REMOTE_TOOLS_GITHUB,
 } from '@pacman/shared';
 import { and, asc, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
@@ -77,7 +78,7 @@ import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { githubCloneUrl, hostedCloneUrl, repoDirFor } from './git.js';
 import { openGithubToken } from './github-connection.js';
 import { canTransitionPhase } from './phase.js';
-import { resolveFixedTagId } from './tags.js';
+import { listProjectTagVocab, resolveFixedTagId, resolveProjectTagIds } from './tags.js';
 import { setTodoPhase, updateTodo } from './todos.js';
 
 /** chief 步 conv id 判别（单源 = shared isChiefConversationId；thread id 形
@@ -824,6 +825,19 @@ function tryClaim(
     // 同族工具经 remoteTools 下发，relay 服务端执行；触发 = spec 指令 + Agent
     // 裁量，宿主不做任务结束蒸馏）。MCP 授权端点随载荷（02 §7.1 per-turn 连接）。
     const workerMcp = claimMcpSlugs(machineRow.latestCliVersion, agentRow.mcpServers);
+    // github 形态项目的任务元信息注入面（#446 / ADR 0005 分叉律）：词表 =
+    // 项目标签集镜像（claim 时现取 DB 真值，不缓存第二份）；titleFinal =
+    // issue 来源标题已真值（daemon 不指示回填）。local/hosted 缺省 meta ——
+    // daemon 回落 FIXED_TAGS 现行为，文本逐字节不变。校验真值在 setTaskMeta
+    // （按项目形态分支），meta 只驱动提示词面。
+    const isGithubProject = projectRow?.repoKind === 'github';
+    const taskMeta =
+      isGithubProject && projectRow
+        ? {
+            titleFinal: cand.todoRow.sourceKind !== null,
+            vocab: listProjectTagVocab(db, projectRow.id),
+          }
+        : undefined;
     publishStepStatus(deps, cand.stepRow.id);
     return {
       step: {
@@ -841,6 +855,7 @@ function tryClaim(
         seqNum: cand.todoRow.seqNum,
         title: cand.todoRow.title,
         spec: cand.todoRow.spec,
+        ...(taskMeta !== undefined ? { meta: taskMeta } : {}),
       },
       project: { id: cand.todoRow.projectId, name: projectRow?.name ?? '', repo },
       agent: {
@@ -861,7 +876,7 @@ function tryClaim(
         // least-privilege；缺省 = 全量直通是 chief 面语义，两态不得混淆）。
         skills: [...agentRow.skills],
       },
-      remoteTools: [...WORKER_REMOTE_TOOLS],
+      remoteTools: [...(isGithubProject ? WORKER_REMOTE_TOOLS_GITHUB : WORKER_REMOTE_TOOLS)],
       ...(workerMcp ? { mcpServers: workerMcp } : {}),
     };
   }
@@ -1018,18 +1033,25 @@ async function executeWorkerMemoryToolCall(
   );
 }
 
-/** set_task_meta（spec 15 #394）：标题取首行 ≤50 字符（derivePlaceholderTitle
- * 复用——agent 传来多行/超长时的归一规则与占位派生同形）；tag = 词表 name，
- * 词表外/未播种 = 400；tag 省略 = 只回填标题不动标签集。更新走 updateTodo
- * 既有面（v++ + SSE 广播，看板实时刷新）。 */
+/** set_task_meta（spec 15 #394 + #446/ADR 0005 分叉律）：校验按项目形态
+ * 分支——local/hosted = FIXED_TAGS 白名单 + 单 tag + title 必填（现行为
+ * 逐字节不变，ADR 0002 D3/D4 收窄后的 local 适用域）；github = 项目标签集
+ * （仓库 label 镜像）+ tags 多枚 + title 可选（issue 来源标题已真值）。
+ * 两形态共用一条不变式：贴的标签必须在本项目标签集内。标题归一（首行
+ * ≤50 字符，derivePlaceholderTitle 复用）同形。更新走 updateTodo 既有面
+ * （v++ + SSE 广播，看板实时刷新）。 */
 function setTaskMeta(
   deps: MachineDeps,
   todoRow: typeof todo.$inferSelect,
   params: Record<string, unknown>,
 ): string {
-  const rawTitle = params.title;
-  const title = typeof rawTitle === 'string' ? derivePlaceholderTitle(rawTitle) : '';
-  if (title === '') throw new HttpError(400, 'invalid params.title: expected non-empty string');
+  const projectRow = deps.db
+    .select({ repoKind: project.repoKind })
+    .from(project)
+    .where(eq(project.id, todoRow.projectId))
+    .get();
+  if (projectRow?.repoKind === 'github') return setTaskMetaGithubForm(deps, todoRow, params);
+  const title = normalizedMetaTitle(params.title);
   let tagIds: string[] | undefined;
   if (params.tag !== undefined) {
     const tagName = params.tag;
@@ -1047,6 +1069,62 @@ function setTaskMeta(
     { db: deps.db, hub: deps.hub, machineHub: deps.machineHub, user: deps.user },
     todoRow.id,
     { title, ...(tagIds !== undefined ? { tagIds } : {}) },
+  );
+  if (!record) throw new NotFoundError(`todo ${todoRow.id}`);
+  return JSON.stringify({ todoId: record.id, title: record.title, tagIds: record.tagIds });
+}
+
+/** set_task_meta 标题归一（两形态共用单点）：derivePlaceholderTitle 首行
+ * ≤50 字符；非串 / 归一后空白 → 400。 */
+function normalizedMetaTitle(raw: unknown): string {
+  const title = typeof raw === 'string' ? derivePlaceholderTitle(raw) : '';
+  if (title === '') throw new HttpError(400, 'invalid params.title: expected non-empty string');
+  return title;
+}
+
+/** github 形态 set_task_meta（#446）：title 可选（归一规则同 local——多行/
+ * 超长传值归一到首行 ≤50）；issue 来源任务（sourceKind ≠ null）的标题已
+ * 是真值——带 title 的调用一律 400（AC「不被回填覆盖」的机械闸，提示词面
+ * 不注入回填指令是第一道，本闸是第二道）；tags = name 数组，逐个按项目
+ * 标签集现查解析，集合外 name = 400；title 与 tags 全缺 = 400（无意义调
+ * 用）。混部容忍：旧形单 `tag` 字符串并入 tags（server 校验按项目形态分
+ * 支，不按工具面形状——旧 daemon 发旧参数不断约）。 */
+function setTaskMetaGithubForm(
+  deps: MachineDeps,
+  todoRow: typeof todo.$inferSelect,
+  params: Record<string, unknown>,
+): string {
+  let title: string | undefined;
+  if (params.title !== undefined) {
+    if (todoRow.sourceKind !== null) {
+      throw new HttpError(400, 'invalid params.title: title is final (issue-sourced)');
+    }
+    title = normalizedMetaTitle(params.title);
+  }
+  let tagIds: string[] | undefined;
+  const rawTags = params.tags !== undefined ? params.tags : params.tag;
+  if (rawTags !== undefined) {
+    const names = typeof rawTags === 'string' ? [rawTags] : rawTags;
+    if (!Array.isArray(names) || names.some((n) => typeof n !== 'string' || n === '')) {
+      throw new HttpError(400, 'invalid params.tags: expected an array of tag names');
+    }
+    const resolved = resolveProjectTagIds(deps.db, todoRow.projectId, names);
+    for (const name of names) {
+      if (!resolved.has(name)) {
+        throw new HttpError(400, `tag ${name} not in project tag set`);
+      }
+    }
+    tagIds = [...new Set(names.map((n) => resolved.get(n)))].filter(
+      (id): id is string => id !== undefined,
+    );
+  }
+  if (title === undefined && tagIds === undefined) {
+    throw new HttpError(400, 'invalid params: expected at least one of title / tags');
+  }
+  const record = updateTodo(
+    { db: deps.db, hub: deps.hub, machineHub: deps.machineHub, user: deps.user },
+    todoRow.id,
+    { ...(title !== undefined ? { title } : {}), ...(tagIds !== undefined ? { tagIds } : {}) },
   );
   if (!record) throw new NotFoundError(`todo ${todoRow.id}`);
   return JSON.stringify({ todoId: record.id, title: record.title, tagIds: record.tagIds });
