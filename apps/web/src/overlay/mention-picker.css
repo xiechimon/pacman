@@ -4,7 +4,11 @@
    the r9 capture measurements (400×272 first layer + growth on drill;
    search input 351×28; row pitch 50). The accent colors match the
    attachment token family (indigo-500 with 3px radius) so chips
-   feel like one vocabulary with the rest of the composer. */
+   feel like one vocabulary with the rest of the composer.
+   #419: 面板底/描边/墨色/焦点环重接仓内单源（popover-bg / border-default /
+   text-primary / text-tertiary / indigo-500，内嵌输入用 surface-inset）——
+   原文件带的是 #311 移植期对岸 token 名（surface-base/border/ring/text/
+   text-muted），全仓无定义且无 fallback，IACVT 下面板底透明、描边消失。 */
 
 .mention-picker {
   position: fixed;
@@ -13,8 +17,8 @@
   transform: translateX(-50%);
   width: 400px;
   max-height: 70vh;
-  background: var(--surface-base);
-  border: 1px solid var(--border);
+  background: var(--popover-bg);
+  border: 1px solid var(--border-default);
   border-radius: 12px;
   box-shadow: 0 18px 48px rgb(0 0 0 / 22%);
   display: flex;
@@ -28,7 +32,7 @@
   align-items: center;
   gap: 8px;
   padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .mention-picker-back {
@@ -41,19 +45,19 @@
   background: transparent;
   border-radius: 6px;
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
 }
 
 .mention-picker-back:hover {
   background: var(--surface-hover);
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .mention-picker-title {
   flex: 1;
   font-size: 13px;
   font-weight: 500;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .mention-picker-close {
@@ -66,33 +70,33 @@
   background: transparent;
   border-radius: 6px;
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
 }
 
 .mention-picker-close:hover {
   background: var(--surface-hover);
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .mention-picker-search {
   padding: 10px 14px 6px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .mention-picker-search-input {
   width: 100%;
   height: 28px;
   padding: 0 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-default);
   border-radius: 6px;
-  background: var(--surface-base);
-  color: var(--text);
+  background: var(--surface-inset);
+  color: var(--text-primary);
   font-size: 12px;
   outline: none;
 }
 
 .mention-picker-search-input:focus {
-  border-color: var(--ring);
+  border-color: var(--indigo-500);
 }
 
 .mention-picker-list {
@@ -110,7 +114,7 @@
   background: transparent;
   border: 0;
   cursor: pointer;
-  color: var(--text);
+  color: var(--text-primary);
   text-align: left;
   font: inherit;
 }
@@ -141,7 +145,7 @@
   height: 28px;
   border-radius: 6px;
   background: var(--surface-tertiary);
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .mention-icon--todo {
@@ -177,7 +181,7 @@
 
 .mention-row-count {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
 }
 
@@ -199,7 +203,7 @@
 
 .mention-row-sub {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -208,7 +212,7 @@
 .mention-picker-empty {
   padding: 22px 14px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   text-align: center;
 }
 
@@ -218,13 +222,13 @@
   justify-content: flex-end;
   gap: 14px;
   padding: 12px 16px;
-  border-top: 1px solid var(--border);
-  background: var(--surface-base);
+  border-top: 1px solid var(--border-default);
+  background: var(--popover-bg);
 }
 
 .mention-picker-cancel {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -232,7 +236,7 @@
 }
 
 .mention-picker-cancel:hover {
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .mention-picker-insert {
@@ -246,7 +250,7 @@
 }
 
 .mention-picker-insert:disabled {
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   cursor: default;
 }
 
@@ -261,8 +265,8 @@
   left: 0;
   right: 0;
   bottom: calc(100% + 6px);
-  background: var(--surface-base);
-  border: 1px solid var(--border);
+  background: var(--popover-bg);
+  border: 1px solid var(--border-default);
   border-radius: var(--radius-popover);
   box-shadow: 0 12px 32px rgb(0 0 0 / 18%);
   padding: 4px;
@@ -283,7 +287,7 @@
   background: transparent;
   cursor: pointer;
   text-align: left;
-  color: var(--text);
+  color: var(--text-primary);
   font: inherit;
 }
 
@@ -298,7 +302,7 @@
   height: 24px;
   border-radius: 999px;
   background: var(--surface-tertiary);
-  color: var(--text);
+  color: var(--text-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -323,7 +327,7 @@
 
 .mention-inline-sub {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -332,7 +336,7 @@
 .mention-inline-empty {
   padding: 10px 12px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-tertiary);
 }
 
 /* Mention chip rendered in the chat transcript / doc pane (issue
