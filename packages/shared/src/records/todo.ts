@@ -30,6 +30,20 @@ export const buildHistoryEntrySchema = z.object({
   createdAt: epochMs,
 });
 
+/** 任务（todo record）来源种类值域（#446 / ADR 0005 D6）：任务可绑定至多
+ * 一个外部出处，当前只有 github-issue 一种；出现第二种来源（PR / CI 失败 /
+ * 外部工单）时重审形状（ADR 0005 重开触发条款）。常量取 TASK_ 前缀而非表
+ * 名前缀：pre-commit 注释纪律黑名单按大写词面匹配，表名全大写形会误伤。 */
+export const TASK_SOURCE_KINDS = ['github-issue'] as const;
+export const todoSourceKindSchema = z.enum(TASK_SOURCE_KINDS);
+export type TodoSourceKind = z.infer<typeof todoSourceKindSchema>;
+
+/** 外部引用格式单源（#446：`github:owner/repo#123`）。写入面（server
+ * import 服务）与断言面（测试）同吃，防格式串两处漂移。 */
+export function githubIssueSourceRef(owner: string, repo: string, issueNumber: number): string {
+  return `github:${owner}/${repo}#${issueNumber}`;
+}
+
 export const todoRecordSchema = z.object({
   id: recordId,
   teamId: recordId,
@@ -61,6 +75,12 @@ export const todoRecordSchema = z.object({
   ownerId: recordId.nullable(),
   /** 来源 build（chief 回合 id，形如 `chief-…`）；人工建时 null [推断]。 */
   sourceBuildId: z.string().nullable(),
+  // —— #446 来源两列（ADR 0005 D6，溯源家族位）——
+  /** 来源种类；人工建 / chief 派工 = null（至多一个来源，两列够用）。 */
+  sourceKind: todoSourceKindSchema.nullable(),
+  /** 外部引用（形如 `github:owner/repo#123`，githubIssueSourceRef 单源）；
+   * 无来源 = null。 */
+  sourceRef: z.string().nullable(),
 });
 export type TodoRecord = z.infer<typeof todoRecordSchema>;
 

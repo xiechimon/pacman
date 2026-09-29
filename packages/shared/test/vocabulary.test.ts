@@ -411,6 +411,7 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
       token,
       mcpConfig,
       skillsDir,
+      customModelReasoning,
       ...observed
     } = ENV_VARS;
     expect(observed).toEqual({
@@ -428,6 +429,9 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     // spec 13 #367 / spec 14 #371 自有面 [设计]：技能根目录覆写（缺省
     // SKILLS_DIR_DEFAULT）
     expect(skillsDir).toBe('PACMAN_SKILLS_DIR');
+    // 自定义端点推理档位 opt-in 开关（=1 时 materializeProvider 写
+    // reasoning:true + 档位映射）自有面 [设计]
+    expect(customModelReasoning).toBe('PACMAN_CUSTOM_MODEL_REASONING');
   });
 
   it('credential formats match the observed shapes (key prefix 随 BRAND 槽)', () => {
