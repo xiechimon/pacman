@@ -7,6 +7,22 @@
 | `425-dialog-secret.png` | 模态弹层族（DialogShell 适配层）：资源页「添加密钥」，面板底/环描边/头部/禁用态底栏 |
 | `425-new-task.png` | new-task（`bare` 面板模式）：项目选择器在头、五行模板占位、工具行、双提交钮几何原位 |
 
+## live 栈真人路径（verify-pacman 隔离栈）
+
+栈：server 8792 + vite dev 5274（8791/5273 被占，未动他人进程）+ scratch `PACMAN_HOME`（全新库，seed 用户 Owner，不碰 `~/.pacman`）。
+
+| 证据目录 | probe | 覆盖的迁移面 |
+|---|---|---|
+| `20260930-003740-new-task` | 新建任务全链 | `bare` 面板模式（对话框族） |
+| `20260930-004131-mentions` | 提及 picker 全链（含 token 落库） | 锚定族（L1 车道迁移面） |
+| `20260930-003827-chief-model-select` | 总管压缩模型选择器（行集合投影一致性） | 锚定族（L2 车道迁移面） |
+| `20260930-003741-api-key` | 建密钥 + 掩码 + keyHash | routes 创建弹层 |
+| `20260930-003742-theme` | 主题持久化双向 | 用户菜单浮层（**本片未迁，确认无连带回归**） |
+
+`doctor.mjs` 六项全 PASS；每 probe 均带截图 + API/SQLite 双真值。跑法见 SKILL.md（worktree 车道须 `VERIFY_REPO_ROOT=<worktree>` 且从 worktree 路径跑脚本）。
+
+**已知前置**：`drive-mentions` 需先 seed 至少一个 agent（该 feature 文件明写），否则 Agents 组 0 计数、插入钮恒禁用而超时——非回归。
+
 ## 验证口径
 
 - **三闸**：lint / format / typecheck 全绿。
@@ -19,5 +35,4 @@
 
 ## 未覆盖
 
-- 未跑 verify-pacman 的完整隔离 live 栈（本片是浮层机件的机械替换，判据由 336 例 e2e + 几何对拍 + 逐帧采样承担）；若后续需要 live 面证据，可在 B2 热身片一并补。
 - `search-panel` 与 `chief-drawer` 不在本片（见 PR「未做」）。
