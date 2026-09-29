@@ -57,11 +57,14 @@
     "integration/eval/chief-dispatch/repo-seed/apps/server/src/auth.ts",
     "integration/eval/chief-dispatch/repo-seed/apps/server/src/export.ts",
     "integration/eval/chief-dispatch/repo-seed/apps/server/src/routes.ts",
+    "integration/eval/chief-dispatch/repo-seed/apps/server/src/search.ts",
     "integration/eval/chief-dispatch/repo-seed/apps/server/src/tasks.ts",
     "integration/eval/chief-dispatch/repo-seed/apps/server/src/todos.ts",
     "integration/eval/chief-dispatch/repo-seed/apps/web/README.md",
     "integration/eval/chief-dispatch/repo-seed/apps/web/package.json",
     "integration/eval/chief-dispatch/repo-seed/apps/web/src/board.tsx",
+    "integration/eval/chief-dispatch/repo-seed/apps/web/src/export-button.tsx",
+    "integration/eval/chief-dispatch/repo-seed/apps/web/src/login.tsx",
     "integration/eval/chief-dispatch/repo-seed/apps/web/src/theme.ts",
     "integration/eval/chief-dispatch/repo-seed/docs/api.md",
     "integration/eval/chief-dispatch/repo-seed/docs/deploy.md",
@@ -72,5 +75,5 @@
     "integration/eval/chief-dispatch/repo-seed/packages/shared/package.json",
     "integration/eval/chief-dispatch/repo-seed/packages/shared/src/protocol.ts"
   ],
-  "harness_sha": "7b3c90ff5ba44876576a54c8b4063098962c8d43567b6be703eaec39abd68700"
+  "harness_sha": "b1e5917ecc21c21957a53871eab5e4ab645a58970ce360329f4329ff899e18bc"
 }
