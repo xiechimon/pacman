@@ -5,7 +5,7 @@
 // agent 行）、buildHistory（build 表投影 {buildId, createdAt}，records/todo.ts
 // 最小投影 [推断]）。
 
-import type { Assignment, Phase, TodoRecord, UserRecord } from '@pacman/shared';
+import type { Assignment, Phase, TodoRecord, TodoSourceKind, UserRecord } from '@pacman/shared';
 import { derivePlaceholderTitle, PLACEHOLDER_TITLE_FALLBACK } from '@pacman/shared';
 import { and, asc, eq, inArray, max, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
@@ -80,6 +80,8 @@ export function toTodoRecord(deps: TodoDeps, row: TodoRow): TodoRecord {
     createdBy: row.createdBy,
     ownerId: row.ownerId,
     sourceBuildId: row.sourceBuildId,
+    sourceKind: row.sourceKind,
+    sourceRef: row.sourceRef,
   };
 }
 
@@ -124,6 +126,10 @@ export function createTodo(
      * 人工建取值未分离观测 [推断]，按属主用户填）。 */
     createdBy: string | null;
     ownerId: string | null;
+    /** 来源两列（#446 / ADR 0005 D6）：github issue 导入面携带；其余建任
+     * 路面缺省 = null（wire 形状恒在，records/todo.ts）。 */
+    sourceKind?: TodoSourceKind;
+    sourceRef?: string;
   },
 ): TodoRecord {
   const { db, hub } = deps;
@@ -186,6 +192,8 @@ export function createTodo(
       createdBy: input.createdBy,
       ownerId: input.ownerId,
       sourceBuildId: null,
+      sourceKind: input.sourceKind ?? null,
+      sourceRef: input.sourceRef ?? null,
     })
     .run();
   for (const tagId of tagIds) {

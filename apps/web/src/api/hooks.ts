@@ -19,6 +19,8 @@ import type {
   DocumentDiffFile,
   FsPickResult,
   GithubConnectionStatus,
+  GithubIssueState,
+  GithubIssuesResponse,
   GithubReposResponse,
   MachineRecord,
   McpServerRecord,
@@ -320,6 +322,25 @@ export const useGithubRepos = (enabled: boolean) =>
     enabled,
   });
 
+/** 项目页「从 GitHub issue 建任务」选择器数据面（#446）：state/page 直透
+ * server 代理面；enabled 收窄到弹层开态（关着不发请求，useGithubConnection
+ * 同律）。 */
+export function useGithubIssues(
+  projectId: string | undefined,
+  state: GithubIssueState,
+  page: number,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ['github-issues', projectId, state, page],
+    queryFn: () =>
+      api.get<GithubIssuesResponse>(
+        `/api/projects/${projectId}/github/issues?state=${state}&page=${page}`,
+      ),
+    enabled: enabled && projectId !== undefined,
+  });
+}
+
 export const useSecrets = (teamId: string | undefined, enabled: boolean) =>
   useQuery({
     queryKey: ['secrets', teamId],
@@ -435,6 +456,15 @@ export function useApiMutations(teamId: string | undefined) {
         api.post<TodoRecord>(`/api/projects/${input.projectId}/todos`, {
           title: '',
           spec: input.spec,
+        }),
+      onSuccess: invalidateAll,
+    }),
+    // 从 GitHub issue 建任务（#446 / ADR 0005 读向）：server 现拉 issue +
+    // 镜像同步 label 集 → 201 全 TodoRecord（标题/正文/多标签/来源两列已落）。
+    importGithubIssue: useMutation({
+      mutationFn: (input: { projectId: string; number: number }) =>
+        api.post<TodoRecord>(`/api/projects/${input.projectId}/github/issues/import`, {
+          number: input.number,
         }),
       onSuccess: invalidateAll,
     }),

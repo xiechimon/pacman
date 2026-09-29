@@ -97,29 +97,72 @@ export const CONTINUE_PROMPTS: Record<ClaimedStep['step']['kind'], string> = {
   review: '',
 };
 
-/** 任务元信息回填指令（spec 15 #394 / ADR 0002 D3）：worker 步带 todo 语境
- * 时注入 systemPrompt；词表与含义 = shared FIXED_TAGS 单源（改一处全链路
- * 生效）。回填失败不阻断 build（relay 拒绝/传输失败只是少一次元信息更新，
- * 占位标题继续服役）。currentTitle = 当前占位标题（agent 对照参照物）。 */
-export function composeTaskMetaInstruction(currentTitle: string): string {
-  const vocab = FIXED_TAGS.map((t) => `- ${t.name}：${t.description}`).join('\n');
-  return `## 任务元信息\n本任务当前标题是占位截断：「${currentTitle}」。正式开工前，先调用一次 \`set_task_meta\` 工具回填元信息：\`title\` = 用不超过 50 个字总结任务正文（平文本，无 markdown，覆盖占位标题）；\`tag\` = 从下面的固定词表选至多 1 个最贴切的类别，判不出就不传 \`tag\`：\n${vocab}`;
+/** 任务元信息注入的项目形态面（#446 / ADR 0005 分叉律；claim 载荷
+ * todo.meta 同形投影）：github 形态携带——词表 = 项目标签集镜像（仓库
+ * label 同步行，server claim 时现取），多枚可贴；缺省 = local/hosted 现
+ * 行为（FIXED_TAGS 单标签 + 占位回填，文本逐字节不变）。 */
+export interface TaskMetaForm {
+  /** 项目标签集镜像的 name 列（claim 载荷 todo.meta.vocab 同形子集；
+   * titleFinal 的短路面在 taskMetaOpts，不进文本合成）。 */
+  vocab: readonly { name: string }[];
+}
+
+/** 任务元信息回填指令（spec 15 #394 / ADR 0002 D3 + #446 / ADR 0005）：
+ * worker 步带 todo 语境时注入 systemPrompt。meta 缺省 = local/hosted 形态：
+ * 词表与含义 = shared FIXED_TAGS 单源（改一处全链路生效）、至多 1 个。
+ * meta 携带 = github 形态：词表 = 镜像行 name 列表（含义就在名字里，仓库
+ * 真值不加注释）、tags 多枚可贴；空词表 = 项目尚无镜像行，明说无标签可贴
+ * （不渲染空列表误导 agent）。回填失败不阻断 build（relay 拒绝/传输失败
+ * 只是少一次元信息更新，占位标题继续服役）。currentTitle = 当前占位标题
+ * （agent 对照参照物）。 */
+export function composeTaskMetaInstruction(currentTitle: string, meta?: TaskMetaForm): string {
+  if (meta === undefined) {
+    const vocab = FIXED_TAGS.map((t) => `- ${t.name}：${t.description}`).join('\n');
+    return `## 任务元信息\n本任务当前标题是占位截断：「${currentTitle}」。正式开工前，先调用一次 \`set_task_meta\` 工具回填元信息：\`title\` = 用不超过 50 个字总结任务正文（平文本，无 markdown，覆盖占位标题）；\`tag\` = 从下面的固定词表选至多 1 个最贴切的类别，判不出就不传 \`tag\`：\n${vocab}`;
+  }
+  const tagInstruction =
+    meta.vocab.length > 0
+      ? `\`tags\` = 从下面的项目标签词表选贴切的类别（可多选，判不出就不传 \`tags\`）：\n${meta.vocab
+          .map((t) => `- ${t.name}`)
+          .join('\n')}`
+      : '本项目当前没有可用标签，不传 `tags`。';
+  return `## 任务元信息\n本任务当前标题是占位截断：「${currentTitle}」。正式开工前，先调用一次 \`set_task_meta\` 工具回填元信息：\`title\` = 用不超过 50 个字总结任务正文（平文本，无 markdown，覆盖占位标题）；${tagInstruction}`;
+}
+
+/** todo 语境 → taskMeta 注入位（#446 / ADR 0005 D5）：meta.titleFinal =
+ * issue 来源标题已真值、标签已导入 → 整段元信息指令不注入（回填反而覆盖
+ * 真值）；否则 currentTitle + 形态 meta 原样透传（meta 缺省 = local 词表
+ * 现行为）。chief 步无 todo → undefined。 */
+function taskMetaOpts(
+  todo: ClaimedStep['todo'],
+): { taskMeta: { currentTitle: string; meta?: TaskMetaForm } } | undefined {
+  if (!todo) return undefined;
+  if (todo.meta?.titleFinal === true) return undefined;
+  return {
+    taskMeta: {
+      currentTitle: todo.title,
+      ...(todo.meta !== undefined ? { meta: todo.meta } : {}),
+    },
+  };
 }
 
 /** worker 步 systemPrompt = 职责文本 + 记忆注入（02 §4.4 读路径最小形；每步
  * 开跑注入该 Agent 记忆条目——注入形 [推断] 保留，触到即验证回写 04 附录 A）
- * + 任务元信息回填指令（spec 15 #394，todo 语境步开启）。 */
+ * + 任务元信息回填指令（spec 15 #394，todo 语境步开启；taskMeta.meta =
+ * github 形态词表位，#446）。 */
 export function composeWorkerSystemPrompt(
   description: string | null | undefined,
   memories: readonly { title: string; content: string }[] | undefined,
-  opts?: { taskMeta?: { currentTitle: string } },
+  opts?: { taskMeta?: { currentTitle: string; meta?: TaskMetaForm } },
 ): string | undefined {
   const parts: string[] = [];
   if (description) parts.push(description);
   if (memories && memories.length > 0) {
     parts.push(`## 记忆\n${memories.map((m) => `- ${m.title}：${m.content}`).join('\n')}`);
   }
-  if (opts?.taskMeta) parts.push(composeTaskMetaInstruction(opts.taskMeta.currentTitle));
+  if (opts?.taskMeta) {
+    parts.push(composeTaskMetaInstruction(opts.taskMeta.currentTitle, opts.taskMeta.meta));
+  }
   return parts.length > 0 ? parts.join('\n\n') : undefined;
 }
 
@@ -253,15 +296,13 @@ export async function runStep(
   }
 
   // systemPrompt：chief = server 合成（charter + 资源清单 + 策略指引 + 记忆，
-  // 02 §4.3）；worker = 职责文本 + 记忆注入（02 §4.4 读路径最小形，注入形 [推断]）。
+  // 02 §4.3）；worker = 职责文本 + 记忆注入（02 §4.4 读路径最小形，注入形 [推断]）
+  // + 任务元信息注入。todo.meta.titleFinal（#446 / ADR 0005 D5）= issue 来源
+  // 标题已真值、标签已导入——整段元信息指令短路不注入（回填反而会覆盖真值）。
   const systemPrompt =
     isChief && claimed.chief
       ? claimed.chief.systemPrompt
-      : composeWorkerSystemPrompt(
-          agent.description,
-          agent.memories,
-          claimed.todo ? { taskMeta: { currentTitle: claimed.todo.title } } : undefined,
-        );
+      : composeWorkerSystemPrompt(agent.description, agent.memories, taskMetaOpts(claimed.todo));
   // remoteTools：chief 步 = 49 词表全量；worker 步 = 记忆三件套 + 附件读
   // （02 §4.4/r5 §6 worker 写路径经 remoteTools relay；M4b 起服务端对 worker
   // 步同样下发；#310/r9 §3.1 worker attachment 工具 = spec `attachment:`

@@ -1,0 +1,121 @@
+// GitHub issue 读面服务（#446 / ADR 0005 读向）：项目页「从 GitHub issue
+// 建任务」的两个消费位——issue 列表代理 + 导入建任务。纪律：
+// - 只读，不在 GitHub 留任何痕迹（写向 = ADR 0006 另票）；
+// - token 唯一读出点 = openGithubToken（github-connection.ts），仅经
+//   lib/github.ts 出站边界进 Authorization 头（never URL/日志/wire）；
+// - 导入面每次现拉 issue 详情与仓库 label 集，不缓存第二真值（ADR 0005
+//   premortem 护栏：两个真值源漂移——「仓库改了，pacman 至少不变得更错」）；
+// - 先 fetch 后建：上游 404（issue 不存在）直透，不留半成品任务。
+
+import {
+  type GithubIssueState,
+  type GithubIssuesResponse,
+  githubIssueSourceRef,
+  type SecretBox,
+  type TodoRecord,
+} from '@pacman/shared';
+import type { Db } from '../db/client.js';
+import type { project as projectTable } from '../db/schema.js';
+import { notFound } from '../lib/errors.js';
+import type { FetchLike } from '../lib/github.js';
+import { githubRepoIssue, githubRepoIssues, githubRepoLabels } from '../lib/github.js';
+import { openGithubToken } from './github-connection.js';
+import { normalizeGithubLabelColor, resolveProjectTagIds, syncGithubLabels } from './tags.js';
+import { createTodo, type TodoDeps } from './todos.js';
+
+type ProjectRow = typeof projectTable.$inferSelect;
+
+export interface GithubIssueFaceDeps {
+  db: Db;
+  box: SecretBox;
+  /** GitHub 出站注入位（AppContext.githubFetch 同族；缺省 globalThis.fetch，
+   * 测试注入 mock——零真实出站）。 */
+  githubFetch?: FetchLike;
+}
+
+/** 形态闸：仅 github 形态项目有 issue 读面；其余形态一律 404（不 500、
+ * 不出站）。owner/repo 拆自 githubRepo 列（建项目时已过 isGithubRepoRef
+ * 400 闸，lib 层出站再 encodeURIComponent 双保险）。 */
+function requireGithubRepo(row: ProjectRow): { owner: string; repo: string } {
+  if (row.repoKind !== 'github' || row.githubRepo === null) {
+    throw notFound('github issues');
+  }
+  const slash = row.githubRepo.indexOf('/');
+  return { owner: row.githubRepo.slice(0, slash), repo: row.githubRepo.slice(slash + 1) };
+}
+
+/** 连接闸：未连接 = 404 `github connection not found`（GET /api/github/repos
+ * 代理同语义——web 面据 404 不亮入口，不报错不空白）。 */
+function requireToken(deps: GithubIssueFaceDeps, teamId: string): string {
+  const token = openGithubToken({ db: deps.db, box: deps.box }, teamId);
+  if (token === null) throw notFound('github connection');
+  return token;
+}
+
+/** issue 列表（项目页选择器数据面）：state/page 直透上游同名参数，
+ * hasMore = Link 头 rel="next"（lib 层判定）。封套 = shared
+ * githubIssuesResponseSchema 单源（routes 层 parse 后出线）。 */
+export async function listProjectGithubIssues(
+  deps: GithubIssueFaceDeps,
+  row: ProjectRow,
+  opts: { state: GithubIssueState; page: number },
+): Promise<GithubIssuesResponse> {
+  const { owner, repo } = requireGithubRepo(row);
+  const token = requireToken(deps, row.teamId);
+  const fetchImpl = deps.githubFetch ?? fetch;
+  const { issues, hasMore } = await githubRepoIssues(fetchImpl, token, owner, repo, opts);
+  // 颜色归一在出线前单点做（与 tag 表镜像同源规则）：wire 面恒 #rrggbb，
+  // 消费端不再各自补 #。
+  return {
+    issues: issues.map((issue) => ({
+      ...issue,
+      labels: issue.labels.map((label) => ({
+        name: label.name,
+        color: normalizeGithubLabelColor(label.color),
+      })),
+    })),
+    page: opts.page,
+    hasMore,
+  };
+}
+
+export interface ImportGithubIssueDeps extends GithubIssueFaceDeps, TodoDeps {}
+
+/** 从 issue 建任务（ADR 0005 D3/D5/D6 落地）：
+ * - 标题 = issue 标题原样（不走占位→回填两段式；createTodo 的派生仅对
+ *   空白标题兜底，issue 标题非空即原样落库，>50 字符不截断）；
+ * - 正文 = issue body（null → 空串）；
+ * - 标签 = issue label 全集（「至多 1 个」github 侧作废）：先镜像同步仓库
+ *   label 集（缺行建行、色随 GitHub 真值、永不删行），再按 name 解析进
+ *   todo_tag——不变式「贴的标签必在本项目标签集内」由同步先行保证；
+ * - 来源两列 = 'github-issue' + `github:owner/repo#N`（溯源家族位）。 */
+export async function importGithubIssue(
+  deps: ImportGithubIssueDeps,
+  row: ProjectRow,
+  issueNumber: number,
+): Promise<TodoRecord> {
+  const { owner, repo } = requireGithubRepo(row);
+  const token = requireToken(deps, row.teamId);
+  const fetchImpl = deps.githubFetch ?? fetch;
+  const detail = await githubRepoIssue(fetchImpl, token, owner, repo, issueNumber);
+  // label 面失败 = 整个导入失败（不落半成品词表）；同名条目 issue 集后置
+  // 覆盖色（更新鲜）。
+  const repoLabels = await githubRepoLabels(fetchImpl, token, owner, repo);
+  syncGithubLabels(deps.db, row.id, [...repoLabels, ...detail.labels]);
+  const names = [...new Set(detail.labels.map((l) => l.name))];
+  const resolved = resolveProjectTagIds(deps.db, row.id, names);
+  const tagIds = names
+    .map((name) => resolved.get(name))
+    .filter((id): id is string => id !== undefined);
+  return createTodo(deps, {
+    teamId: row.teamId,
+    projectId: row.id,
+    title: detail.title,
+    spec: detail.body ?? '',
+    tagIds,
+    createdBy: deps.user.id, // 人工触发导入 = seed 用户（REST 建任务面同律）
+    ownerId: deps.user.id,
+    sourceKind: 'github-issue',
+    sourceRef: githubIssueSourceRef(owner, repo, issueNumber),
+  });
+}
