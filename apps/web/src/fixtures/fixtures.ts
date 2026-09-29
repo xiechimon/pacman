@@ -1295,6 +1295,37 @@ export const teamGrid: FixtureSet = {
   team: TEAM_R7,
 };
 
+/** #444 named scenario（无 capture，notify-banner 先例）：绑定 Agent 的
+ *  头像骑上总管 FAB。一套内容同时供 board（.chief-fab）与 team
+ *  （.secondary-fab）两个消费点（projectFixture 多路由单集先例）；
+ *  chiefUnread 2 钉角标与头像共存面。avatarUrl null = dicebear 按
+ *  displayName 种子生成，e2e 钉图标来源切换（chief-fab.spec），非像素。 */
+const FAB_AVATAR_CHIEF: ChiefContent = {
+  view: 'drawer',
+  bound: true,
+  modelSlot: 'claude-sonnet-5 · 默认',
+  threadTitle: '新主题',
+  examples: CHIEF_EXAMPLES,
+  agent: { displayName: R3_BUILDER.displayName, avatarUrl: null },
+};
+
+export const chiefFabAvatar: FixtureSet = {
+  ...teamGrid,
+  chiefUnread: 2,
+  chief: FAB_AVATAR_CHIEF,
+};
+
+/** 同面的 avatarUrl 覆盖变体：覆盖值赢过 dicebear 生成（Avatar 原语语义
+ *  在 FAB 层的透传钉）；资产用本地 /avatar-robot-2.svg，零网络。 */
+export const chiefFabAvatarOverride: FixtureSet = {
+  ...teamGrid,
+  chiefUnread: 2,
+  chief: {
+    ...FAB_AVATAR_CHIEF,
+    agent: { displayName: R3_BUILDER.displayName, avatarUrl: '/avatar-robot-2.svg' },
+  },
+};
+
 /** One created API key exercising both r3 §6 display rules: the list row
  *  mask and the one-time plaintext (02 §8 canon copy rides along in the
  *  page). Mask rule = 品牌前缀 + 前 8 hex + 省略号（r3 §6 observed sample

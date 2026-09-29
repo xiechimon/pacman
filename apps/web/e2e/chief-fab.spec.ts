@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 // Issue #443 acceptance: 详情页总管 FAB 仅未读才显示. The detail family is
 // the intentional divergence from the #129 every-family-constant FAB ruling
@@ -45,5 +45,79 @@ test.describe('detail FAB renders only with unread (#443)', () => {
     // r7 §3.4: 48×48; #366: right = --detail-pane-right 488 + 16; #347:
     // the planning surface carries a composer → the FAB yields to 104
     expect(geometry).toEqual({ width: '48px', height: '48px', right: '504px', bottom: '104px' });
+  });
+});
+
+// Issue #444 acceptance: FAB 图标 = 绑定 Agent 头像. The icon source switches
+// at the consumption points (ChiefFabIcon, shared by ChiefWake and the board
+// inline button) — the script-generated ChiefFab asset stays untouched. The
+// avatar semantics belong to the Avatar primitive (dicebear seed / avatarUrl
+// override / onError 退静态资产 — pinned by avatar-dicebear.spec.ts); pinned
+// here is the FAB-level 绑定态二选一 + pass-through. Failure modes:
+//   1. a bound face still renders the static glyph (either consumer missed:
+//      board inline / the ChiefWake families)
+//   2. an unbound face loses the glyph (avatar or a new placeholder face
+//      renders where the ruling keeps the static asset)
+//   3. the avatarUrl override loses to the generated face (src not passed
+//      through at the FAB level)
+//   4. the avatar does not fill the 48×48 circle, or the badge/geometry
+//      drift on the avatar face
+
+const R3_SRC = 'https://api.dicebear.com/9.x/lorelei/svg?seed=r3-builder';
+const SVG_BODY =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"><circle cx="12" cy="12" r="12"/></svg>';
+
+/** Hermetic dicebear: the generated avatar "loads" without network
+ *  (avatar-dicebear.spec.ts idiom). */
+async function stubDicebear(page: Page) {
+  await page.route('**/api.dicebear.com/**', (route) =>
+    route.fulfill({ contentType: 'image/svg+xml', body: SVG_BODY }),
+  );
+}
+
+test.describe('FAB icon follows the bound agent (#444)', () => {
+  test('bound: the board FAB swaps the glyph for the seeded avatar, badge and geometry stay', async ({
+    page,
+  }) => {
+    await stubDicebear(page);
+    await page.goto('/app?scenario=fab-avatar');
+    const fab = page.locator('.chief-fab');
+    const img = fab.locator('.fab-avatar img');
+    await expect(img).toHaveAttribute('src', R3_SRC);
+    await expect(fab.locator('svg')).toHaveCount(0);
+    await expect(fab.locator('.fab-badge')).toHaveText('2');
+    // 头像铺满 48×48 圆（board 面无边框），FAB 几何不动
+    const fabBox = await fab.boundingBox();
+    const imgBox = await img.boundingBox();
+    expect(fabBox?.width).toBeCloseTo(48, 0);
+    expect(fabBox?.height).toBeCloseTo(48, 0);
+    expect(imgBox?.x).toBeCloseTo(fabBox?.x ?? Number.NaN, 0);
+    expect(imgBox?.y).toBeCloseTo(fabBox?.y ?? Number.NaN, 0);
+    expect(imgBox?.width).toBeCloseTo(48, 0);
+    expect(imgBox?.height).toBeCloseTo(48, 0);
+  });
+
+  test('bound: a ChiefWake family swaps at the shared consumption point', async ({ page }) => {
+    await stubDicebear(page);
+    await page.goto('/app/team?scenario=fab-avatar');
+    const fab = page.locator('.secondary-fab');
+    await expect(fab.locator('.fab-avatar img')).toHaveAttribute('src', R3_SRC);
+    await expect(fab.locator('svg')).toHaveCount(0);
+    await expect(fab.locator('.fab-badge')).toHaveText('2');
+  });
+
+  test('avatarUrl override wins over the generated face', async ({ page }) => {
+    await page.goto('/app?scenario=fab-avatar-override');
+    await expect(page.locator('.chief-fab .fab-avatar img')).toHaveAttribute(
+      'src',
+      '/avatar-robot-2.svg',
+    );
+  });
+
+  test('unbound: the static glyph stays, no avatar face', async ({ page }) => {
+    await page.goto('/app/team?scenario=12');
+    const fab = page.locator('.secondary-fab');
+    await expect(fab.locator('svg')).toHaveCount(1);
+    await expect(fab.locator('.fab-avatar')).toHaveCount(0);
   });
 });

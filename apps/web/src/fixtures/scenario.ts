@@ -23,6 +23,8 @@ import {
   boardTagFilter,
   boardTagFilterEmpty,
   boardWithProbe,
+  chiefFabAvatar,
+  chiefFabAvatarOverride,
   chiefGated,
   chiefReady,
   chiefSettings,
@@ -277,6 +279,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '111': chiefReady,
       '114': chiefThread,
       '116': chiefThreadsOpen,
+      // #444 FAB 头像命名场景（无 capture，notify-banner 先例）：绑定
+      // Agent 的头像骑上各族 FAB；override 变体钉 avatarUrl 覆盖优先。
+      'fab-avatar': chiefFabAvatar,
+      'fab-avatar-override': chiefFabAvatarOverride,
     } as Record<string, FixtureSet>)
   : {};
 

@@ -14,8 +14,8 @@
 
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
-import { ChiefFab } from '../icons/index.js';
 import { ChiefDrawer } from './chief-drawer.js';
+import { ChiefFabIcon } from './chief-fab-icon.js';
 import { useChiefSurface } from './use-chief-surface.js';
 
 export function ChiefWake({
@@ -44,7 +44,7 @@ export function ChiefWake({
           aria-label={t('总管')}
           onClick={() => setChiefView('drawer')}
         >
-          <ChiefFab />
+          <ChiefFabIcon chief={chiefData} />
           {chiefUnread > 0 && <span className="fab-badge">{chiefUnread}</span>}
         </button>
       )}
