@@ -5,6 +5,7 @@
 // suppresses the click that follows a completed drag.
 import { useSortable } from '@dnd-kit/sortable';
 import type { TodoRecord } from '../fixtures/records.js';
+import type { TagChipData } from '../ui/tag-chip.js';
 import { TodoCard } from './todo-card.js';
 
 interface SortableCardProps {
@@ -16,6 +17,8 @@ interface SortableCardProps {
   dragSource: boolean;
   /** M5 live：项目 chip 真名（TodoCard 透传位）。 */
   projectName?: string;
+  /** #445：卡片标签行（cardTag 解析结果；null = 不渲染占位）。 */
+  tag?: TagChipData | null;
 }
 
 export function SortableCard({
@@ -25,6 +28,7 @@ export function SortableCard({
   onBranch,
   dragSource,
   projectName,
+  tag,
 }: SortableCardProps) {
   const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: todo.id,
@@ -47,6 +51,7 @@ export function SortableCard({
         onAction={onAction}
         onBranch={onBranch}
         projectName={projectName}
+        tag={tag}
       />
     </div>
   );

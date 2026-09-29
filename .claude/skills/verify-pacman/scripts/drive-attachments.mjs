@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // verify-pacman drive-attachments — 附件全链真用户路径（#310/#331，r9 §3.1/§4）。
 //
-// 路径 A（默认跑）：新建任务对话框——`.board-new-task` → 原生文件触发器
+// 路径 A（默认跑）：新建任务对话框——`.sidebar-new-task` → 原生文件触发器
 //   `input[type=file]` 选文件 → 三步 wire（grant → upload → token）→ token 落
 //   `.new-task-spec` → 保存 → todo.spec 携 token。
 // 路径 B（argv 给 todoId 时追加）：详情页 composer——`.composer input[type=file]`
@@ -100,7 +100,7 @@ try {
   await page.goto(`${WEB}/app`);
   await page.waitForSelector('[data-route="board"]', { timeout: 15_000 });
   check('board-ready', true, '看板 shell 就绪');
-  await page.click('.board-new-task');
+  await page.click('.sidebar-new-task');
   await page.waitForSelector('.new-task-dialog', { timeout: 5000 });
   check('dialog-open', true, '新建任务 dialog 打开');
   await shot(page, '01-dialog-open.png');

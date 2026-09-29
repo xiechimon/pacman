@@ -5,9 +5,14 @@
 //   matchesTagFilter：无标签任务恒可见（F1，筛选是附加收窄的裁决面）、
 //     多选 = OR 并集（F2）、无法解析的 tagId 不得误配也不命中（F3）、
 //     空选中集 = 全量（F4）。
+//   cardTag（#445 卡片标签解析）：无标签 = null 不占位（C1）、脏/未就绪
+//     tagId = null 优雅退化（C2）、多标签只渲染首个可解析项——渲染上限
+//     而非数据假设（C3，ADR 0005 Premortem 护栏：github 形态多标签时
+//     版面问题交给卡片渲染的上限，不交给词表）。
 import { FIXED_TAGS } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
-import { matchesTagFilter, parseTagParam } from '../src/board/tag-filter.js';
+import { cardTag, matchesTagFilter, parseTagParam } from '../src/board/tag-filter.js';
+import type { TagChipData } from '../src/ui/tag-chip.js';
 import { todo } from './helpers.js';
 
 /** 固定词表名的全序（测试与实现共用同一单源，防词表漂移时假绿）。 */
@@ -76,5 +81,33 @@ describe('matchesTagFilter（命中判定，OR + 无标签恒可见）', () => {
   test('nameById 缺省时 tagged 卡不命中（首载未就绪的防御面）', () => {
     expect(matchesTagFilter(bugged, new Set(['bug']), new Map())).toBe(false);
     expect(matchesTagFilter(plain, new Set(['bug']), new Map())).toBe(true);
+  });
+});
+
+describe('cardTag（#445 卡片标签解析，tagId → 渲染行）', () => {
+  const tagById = new Map<string, TagChipData>(
+    NAMES.map((n) => [`tag-${n}`, { id: `tag-${n}`, name: n, color: `#${n}` }]),
+  );
+
+  test('可解析 tagId → 该标签行（name+color 供 TagChip 渲染）', () => {
+    const bugged = { ...todo(1, 'todo'), tagIds: ['tag-bug'] };
+    expect(cardTag(bugged, tagById)).toEqual({ id: 'tag-bug', name: 'bug', color: '#bug' });
+  });
+
+  test('无标签 = null（卡不渲染占位，C1）', () => {
+    expect(cardTag(todo(2, 'todo'), tagById)).toBeNull();
+  });
+
+  test('脏/未就绪 tagId = null 优雅退化，不误配（C2）', () => {
+    const stale = { ...todo(3, 'todo'), tagIds: ['tag-deleted'] };
+    expect(cardTag(stale, tagById)).toBeNull();
+    expect(cardTag(stale, new Map())).toBeNull();
+  });
+
+  test('多标签只取首个可解析项 = 渲染上限（C3）；脏 id 混入跳过后继解析', () => {
+    const multi = { ...todo(4, 'todo'), tagIds: ['tag-bug', 'tag-docs'] };
+    expect(cardTag(multi, tagById)?.name).toBe('bug');
+    const dirtyFirst = { ...todo(5, 'todo'), tagIds: ['tag-deleted', 'tag-docs'] };
+    expect(cardTag(dirtyFirst, tagById)?.name).toBe('docs');
   });
 });
