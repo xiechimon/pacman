@@ -64,11 +64,13 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/app?scenario=01');
 
     const card = await edgeContract(page, '.todo-card');
-    // #414（B 面）：边缘语言由 #139 的 1px inset 环换成 1px 实描边 +
-    // shadow-sm（shadcn 卡片配方）——inset 环的分数缩放顾虑随环一起退场
-    expect(card.border).toBe('1px');
+    // #425 基切换后的配方（政策见 #411「配方类」）：base 形态的 Card 用
+    // 1px ring 外环（`ring-1 ring-foreground/10`）替代 #414 的 1px 实描边 +
+    // shadow-sm；半径仍由消费点钉死 12px。**保留的原意图**：不得回到 #139 的
+    // inset 环（分数缩放下发丝不匀）——那条断言是本测试的真回归守卫。
+    expect(card.border).toBe('0px');
     expect(card.radius).toBe('12px');
-    expect(card.borderColorOwn).toBe(card.borderToken);
+    expect(card.shadow).toContain('0px 0px 0px 1px');
     expect(card.shadow).not.toContain('inset');
   });
 
