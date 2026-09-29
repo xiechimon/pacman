@@ -92,7 +92,9 @@ export const ENV_VARS = {
    * 未设/空串 = 关（默认，行为与现状一致）。 */
   token: 'PACMAN_TOKEN',
   /** 技能根目录覆写（spec 13 #367：skills = 本地目录现扫只读投影；
-   * 缺省 = SKILLS_DIR_DEFAULT `~/.agents/skills`，records/skill.ts 单源）。 */
+   * 缺省 = SKILLS_DIR_DEFAULT `~/.agents/skills`，records/skill.ts 单源）。
+   * spec 14/#371：daemon 侧同键读扫描根（缺省同上；指向不存在目录 =
+   * 空 skills 集，非致命）。 */
   skillsDir: 'PACMAN_SKILLS_DIR',
   /** 本地 MCP config 文件（spec 13/#368）：server 投影 UI 面、daemon 解析
    * 执行端点，各读各机；默认 ~/.claude.json 的 mcpServers 段。 */

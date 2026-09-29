@@ -396,8 +396,8 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     // BRAND_SLOTS.envPrefix.todosDev）；复刻增量位（webDir = M5 SPA 静态托管
     // 覆写 [设计]；githubOauth 两件 = #231 握手面 client 凭证 [设计]；
     // token = #251 可选鉴权自有面 [设计]；mcpConfig = spec 13/#368 本地 MCP
-    // config 覆写 [设计]；skillsDir = spec 13 #367 技能根目录覆写 [设计]，
-    // 均非观测 canon）单独断言，两组不混判。
+    // config 覆写 [设计]；skillsDir = 技能根覆写（spec 13 #367 来源面 +
+    // spec 14 #371 daemon 扫描根）[设计]，均非观测 canon）单独断言，两组不混判。
     const {
       webDir,
       githubOauthClientId,
@@ -419,7 +419,8 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     expect(githubOauthClientSecret).toBe('PACMAN_GITHUB_OAUTH_CLIENT_SECRET');
     expect(token).toBe('PACMAN_TOKEN');
     expect(mcpConfig).toBe('PACMAN_MCP_CONFIG');
-    // spec 13 #367 自有面 [设计]：技能根目录覆写（缺省 SKILLS_DIR_DEFAULT）
+    // spec 13 #367 / spec 14 #371 自有面 [设计]：技能根目录覆写（缺省
+    // SKILLS_DIR_DEFAULT）
     expect(skillsDir).toBe('PACMAN_SKILLS_DIR');
   });
 

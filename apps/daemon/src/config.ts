@@ -27,6 +27,9 @@ export const daemonConfigSchema = z.object({
   foreground: z.boolean(),
   /** 并发上限默认 3（02 §2.5 机器配置默认值，非付费件）。 */
   maxConcurrent: z.number().int().positive(),
+  /** skills 扫描根（spec 14/#371）：PACMAN_SKILLS_DIR 缺省 ~/.agents/skills；
+   * 目录不存在 = 空 skills 集，非致命（扫描层降级，config 不校验存在性）。 */
+  skillsDir: z.string(),
   /** 本机 MCP config（spec 13/#368）：claim slug 列表在此解析成执行端点。
    * 默认 ~/.claude.json；PACMAN_MCP_CONFIG 覆盖。执行机各读各机——stdio
    * 命令在真正的执行机上起，密钥值从不跨 wire。 */
@@ -44,6 +47,7 @@ export interface DaemonConfigInput {
   foreground?: boolean;
   maxConcurrent?: number;
   mcpConfigPath?: string;
+  skillsDir?: string;
 }
 
 /** 默认 server URL [设计]（官方默认不可观测——todos.dev 云常量；复刻
@@ -76,6 +80,11 @@ export function loadDaemonConfig(
   const apiKey = input.apiKey ?? env[ENV_VARS.apiKey];
   const teamId = input.teamId ?? env[ENV_VARS.team];
   const serverUrl = input.serverUrl ?? env[ENV_VARS.server] ?? DEFAULT_SERVER_URL;
+  // skills 扫描根（spec 14/#371）：默认 ~/.agents/skills 是跨工具 agents 目录
+  // [设计]（非 BRAND 槽——pacman 与用户其它 agent 工具共享同一 skills 正本）。
+  const skillsDir = resolve(
+    input.skillsDir ?? env[ENV_VARS.skillsDir] ?? join(homedir(), '.agents', 'skills'),
+  );
   return daemonConfigSchema.parse({
     serverUrl: serverUrl.replace(/\/$/, ''),
     ...(apiKey !== undefined ? { apiKey } : {}),
@@ -85,6 +94,7 @@ export function loadDaemonConfig(
     workspacesDir,
     foreground: input.foreground ?? false,
     maxConcurrent: input.maxConcurrent ?? MAX_CONCURRENT_DEFAULT,
+    skillsDir,
     // Settings 缝优先级同律：显式入参 > env > 默认（~/.claude.json）。
     mcpConfigPath: resolve(
       input.mcpConfigPath ?? env[ENV_VARS.mcpConfig] ?? join(homedir(), CLAUDE_CONFIG_FILE_NAME),

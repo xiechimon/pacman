@@ -87,12 +87,17 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     createPiBackend({
       agentDir: paths.agentRuntimeDir,
       sessionDir: paths.chatSessionsDir,
+      // skills 执行面注入（spec 14/#371）：skillsDir = PACMAN_SKILLS_DIR 扫描根；
+      // cwd = daemon home（project 级解析不随任务 worktree 切换跳变）。
+      skills: { skillsDir: config.skillsDir, cwd: config.home },
       resolveSessionFile: (sid) => resolveSessionFile(paths, sid),
       onSession: (sid, file) => {
         if (file) recordSession(paths, sid, file);
       },
       // [mcp] 降级行（r3 §1.5 canon；02 §5.3 前缀词表 mcp 位）。
       onMcpLog: (msg) => logger.mcp(msg),
+      // [skills] 诊断行（spec 14/#371；前缀词表 skills 位）。
+      onSkillsLog: (msg) => logger.skills(msg),
     });
 
   let inMemoryToken = '';
