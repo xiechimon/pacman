@@ -51,6 +51,10 @@ export const DAEMON_LOG_PREFIXES = [
   // failed — its tools are unavailable this turn: fetch failed…`；M4b 补录，
   // 02 §5.3 前缀词表回写）。
   'mcp',
+  // skills 执行面注入诊断行（#371，spec 14：`[skills] <type>: <msg>` 族，
+  // type ∈ loaded/collision/invalid-frontmatter/missing-skill-md/cap/invalid，
+  // 词表正源 = daemon backend/pi.ts classifySkillDiagnostic + buildSkillsCatalog）。
+  'skills',
 ] as const;
 
 /** 本地状态布局（02 §5.3，r3 §1.3 实测；目录名品牌位走 brand.ts 槽）。 */

@@ -1,0 +1,167 @@
+import { expect, type Page, test } from '@playwright/test';
+
+// spec 12 / #361 G2-T4：新建项目 GitHub 认证 + repo picker（fixture 面
+// 接线钉；live OAuth 真链路 = server test/github-oauth.test.ts + verify-
+// pacman probe）。github 选态三面：未认证 = 认证钮 + 手动兜底链接；已认证 =
+// picker 触发钮（单选回填 owner/repo 走 hosted 同款 trigger-label 律）+
+// 锚定 picker 弹层（搜索 / 列表 / 断开 / 手动兜底，#67/#127 家族律）；
+// manual = 现状 owner/repo input（isGithubRepoRef 闸不变，提交面归 live）。
+// 回填律（G2-T3 一致）：项目名仅当空或仍等于上次回填值时覆盖，手改不动。
+// Each test pins one failure mode:
+// 1. 未认证点「GitHub 仓库」→ 认证钮 + 手动链接在，无 picker、无 input
+// 2. fixture accept 律：点认证钮 → 已认证面就位（trigger 开 picker；
+//    scenario 01 无 repos fixture = 空面文案，footer 兜底链接仍在）
+// 3. 着陆参 oauth=connected&github=connection → repoSel 复位 github +
+//    picker 自动开 + 列表渲染 + 清参（刷新不重放）
+// 4. picker 搜索：q 命中过滤 / 无命中空面文案
+// 5. picker 单选 → trigger 回填 full_name + 项目名回填 repo 名 + 收面板
+// 6. 回填律：手改过的名称不覆盖；名称等于上次回填值时跟随再选
+// 7. 手动兜底链接 → 切回现状 owner/repo input（未认证面与 picker footer
+//    两入口都通）
+// 8. 着陆参 oauth=error&reason=denied|state|exchange → 内联三译文案
+//    （#243 词汇不变，落 picker 面内联错误行）
+// 9. 断开钮 → 回未认证面（fixture accept 律）
+
+const NEW_PROJECT = '/app/project/new?scenario=01';
+const PICKER = '/app/project/new?scenario=github-picker';
+
+async function selectGithub(page: Page) {
+  await page.locator('#prj-new-repo').click();
+  const menu = page.locator('.prj-new-repo-menu');
+  await expect(menu).toBeVisible();
+  await menu.locator('.prj-new-repo-menu-row', { hasText: 'GitHub 仓库' }).click();
+  await expect(menu).not.toBeVisible();
+}
+
+async function openPicker(page: Page) {
+  await page.locator('#prj-new-repo').click();
+  const picker = page.locator('.prj-new-gh-picker');
+  await expect(picker).toBeVisible();
+  return picker;
+}
+
+test('1. 未认证点「GitHub 仓库」→ 认证钮 + 手动兜底链接，无 picker', async ({ page }) => {
+  await page.goto(NEW_PROJECT);
+  await selectGithub(page);
+  await expect(page.locator('.prj-new-gh-auth')).toHaveText('认证 GitHub');
+  await expect(page.locator('.prj-new-gh-link')).toHaveText('手动输入 owner/repo');
+  await expect(page.locator('.prj-new-gh-picker')).toHaveCount(0);
+  await expect(page.locator('.prj-new-repo-input')).toHaveCount(0);
+});
+
+test('2. fixture accept 律：点认证钮 → 已认证面，trigger 开 picker（空列表面）', async ({
+  page,
+}) => {
+  await page.goto(NEW_PROJECT);
+  await selectGithub(page);
+  await page.locator('.prj-new-gh-auth').click();
+  await expect(page.locator('.prj-new-gh-auth')).toHaveCount(0);
+  await expect(page.locator('#prj-new-repo')).toContainText('选择 GitHub 仓库');
+  const picker = await openPicker(page);
+  // scenario 01 无 repos fixture：空面文案 + footer 手动兜底仍可达
+  await expect(picker.locator('.prj-new-gh-empty')).toHaveText('没有匹配的仓库');
+  await expect(picker.locator('.prj-new-gh-link')).toBeVisible();
+});
+
+test('3. 着陆参 connected → picker 自动开 + 列表 3 行 + 清参，刷新不重放', async ({
+  page,
+}) => {
+  await page.goto(`${PICKER}&oauth=connected&github=connection`);
+  const picker = page.locator('.prj-new-gh-picker');
+  await expect(picker).toBeVisible();
+  await expect(picker.locator('.prj-new-gh-row')).toHaveCount(3);
+  await expect(picker.locator('.prj-new-gh-login')).toContainText('octocat');
+  await expect(page).toHaveURL((url) => !url.searchParams.has('oauth'));
+  await page.reload();
+  await expect(page.locator('.prj-new-gh-picker')).toHaveCount(0);
+});
+
+test('4. picker 搜索：q 命中过滤，无命中走空面文案', async ({ page }) => {
+  await page.goto(PICKER);
+  await selectGithub(page);
+  const picker = await openPicker(page);
+  const search = picker.locator('.prj-new-gh-search');
+  await search.fill('PACMAN');
+  await expect(picker.locator('.prj-new-gh-row')).toHaveCount(1);
+  await expect(picker.locator('.prj-new-gh-row')).toHaveText('xiechimon/pacman');
+  await search.fill('zzz-nope');
+  await expect(picker.locator('.prj-new-gh-row')).toHaveCount(0);
+  await expect(picker.locator('.prj-new-gh-empty')).toHaveText('没有匹配的仓库');
+});
+
+test('5. picker 单选 → trigger 回填 owner/repo + 项目名回填 repo 名 + 收面板', async ({
+  page,
+}) => {
+  await page.goto(PICKER);
+  await selectGithub(page);
+  const picker = await openPicker(page);
+  await picker.locator('.prj-new-gh-row', { hasText: 'octocat/hello-world' }).click();
+  await expect(picker).not.toBeVisible();
+  await expect(page.locator('#prj-new-repo')).toContainText('octocat/hello-world');
+  await expect(page.locator('#prj-new-name')).toHaveValue('hello-world');
+});
+
+test('6. 回填律：手改名称不覆盖；等于上次回填值时跟随再选', async ({ page }) => {
+  await page.goto(PICKER);
+  // 手改过的名称：选仓不动它
+  await page.locator('#prj-new-name').fill('My Thing');
+  await selectGithub(page);
+  let picker = await openPicker(page);
+  await picker.locator('.prj-new-gh-row', { hasText: 'octocat/hello-world' }).click();
+  await expect(page.locator('#prj-new-name')).toHaveValue('My Thing');
+  await expect(page.locator('#prj-new-repo')).toContainText('octocat/hello-world');
+  // 名称清空后：选中回填，且「仍等于上次回填值」时再选跟随
+  await page.locator('#prj-new-name').fill('');
+  picker = await openPicker(page);
+  await picker.locator('.prj-new-gh-row', { hasText: 'octocat/spoon-knife' }).click();
+  await expect(page.locator('#prj-new-name')).toHaveValue('spoon-knife');
+  picker = await openPicker(page);
+  await picker.locator('.prj-new-gh-row', { hasText: 'xiechimon/pacman' }).click();
+  await expect(page.locator('#prj-new-name')).toHaveValue('pacman');
+});
+
+test('7. 手动兜底：picker footer 与未认证面链接都切回 owner/repo input', async ({ page }) => {
+  // 已认证面：footer 链接
+  await page.goto(PICKER);
+  await selectGithub(page);
+  const picker = await openPicker(page);
+  await picker.locator('.prj-new-gh-link').click();
+  await expect(picker).toHaveCount(0);
+  const input = page.locator('#prj-new-repo');
+  await expect(input).toHaveAttribute('placeholder', 'owner/repo');
+  await input.fill('octocat/hello-world');
+  await expect(input).toHaveValue('octocat/hello-world');
+});
+
+test('7b. 未认证面手动链接 → input；swap 钮可回仓库菜单', async ({ page }) => {
+  await page.goto(NEW_PROJECT);
+  await selectGithub(page);
+  await page.locator('.prj-new-gh-link').click();
+  const input = page.locator('#prj-new-repo');
+  await expect(input).toHaveAttribute('placeholder', 'owner/repo');
+  await page.locator('.prj-new-repo-swap').click();
+  await expect(page.locator('.prj-new-repo-menu')).toBeVisible();
+});
+
+test('8. 着陆参 error 三译 → 内联错误行（denied/state/exchange）', async ({ page }) => {
+  const cases: [string, string][] = [
+    ['denied', '授权已被取消。'],
+    ['state', '连接已过期，请重新发起。'],
+    ['exchange', '令牌交换失败，请稍后重试。'],
+  ];
+  for (const [reason, copy] of cases) {
+    await page.goto(`${PICKER}&oauth=error&reason=${reason}&github=connection`);
+    // 着陆即 github 选态：错误行不需任何交互就可见，清参不重放
+    await expect(page.locator('.prj-new-gh-error')).toHaveText(copy);
+    await expect(page).toHaveURL((url) => !url.searchParams.has('oauth'));
+  }
+});
+
+test('9. 断开钮 → 回未认证面（fixture accept 律）', async ({ page }) => {
+  await page.goto(PICKER);
+  await selectGithub(page);
+  const picker = await openPicker(page);
+  await picker.locator('.prj-new-gh-disconnect').click();
+  await expect(picker).toHaveCount(0);
+  await expect(page.locator('.prj-new-gh-auth')).toHaveText('认证 GitHub');
+});

@@ -1,12 +1,13 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 
 // Issue #149: 零散死钮处置 + feedback 页整页移除。每条断言钉一个票面项的
 // 失败方式：
 // 1. feedback 整页移除 — 旧路由必须重定向 /app（catch-all 口径，01 §4.1）；
 //    user-menu「反馈」行随页全除；「新功能/快捷键」行同律隐去（#163 修订：
 //    无 local-first 对象面），余下 帐号/API 密钥/MCP 三行接真导航。
-// 2. 看板指南钮 — 点击必须开真内容弹层（列语义 + 关口操作 + ⌘K），且入
-//    anchored-overlay 家族律：Esc 关、外点关、面板持有自身命中（#133 法）。
+// 2. 看板指南钮 — #363 全族撤除（? 钮 + BoardGuide 弹层 + HelpCircle 图标
+//    不再渲染），topbar 右动作区恰好剩 +任务 一钮（非存在断言，
+//    sched-empty-docs 同律）。
 // 3. project 页 — 「导出」钮不再渲染（wontfix：无导出后端面）；分支 chip
 //    静态化（非 button，[设计] 注记在实现位）；文件|历史 分段真接线
 //    （历史 = 提交历史行，fixture 数据源 = ProjectContent.commits）。
@@ -26,19 +27,9 @@ import { expect, type Page, test } from '@playwright/test';
 //    skills 排序接真 / account-swap wontfix / transcript 折叠接真）。
 // 15. #318 桩群校准（更多菜单完成·关闭 / 开始任务统一面 / 查看方案 /
 //    任务行导航 / 未保存闸）。
-// 第 5 项（skills 添加技能主钮）由 #153 覆盖，本 spec 不断言。
-
-/** 面板中心点的命中必须由面板自身持有 — title-band-clicks 同款家族法。 */
-async function expectOwnsCenter(page: Page, selector: string) {
-  const owned = await page.evaluate((sel) => {
-    const el = document.querySelector(sel);
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    return top != null && top.closest(sel) != null;
-  }, selector);
-  expect(owned).toBe(true);
-}
+// 第 5 项（skills 添加技能主钮）已随 spec 13（#367）整体退役——技能改本地
+// 目录只读投影，空态主钮不再存在（出账断言并入第 9 项，导航面钉在
+// skills-readonly.spec.ts）。
 
 // —— 1. feedback 整页移除 ————————————————————————————————————————————————
 
@@ -65,32 +56,22 @@ test('user menu drops its dead rows — 反馈 (#149), 新功能/快捷键 (#163
   await expect(menu.locator('a.user-menu-row')).toHaveCount(3);
 });
 
-// —— 2. 看板指南弹层 ——————————————————————————————————————————————————————
+// —— 2. 看板指南钮全族撤除（#363）—————————————————————————————————————————
 
-test('board guide button opens a real popover and closes per family law', async ({ page }) => {
+test('board topbar drops the 看板指南 button — right actions keep only 任务 (#363)', async ({
+  page,
+}) => {
   await page.goto('/app');
-  const trigger = page.locator('.board-guide');
-  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-  await trigger.click();
-  const pop = page.locator('.board-guide-pop');
-  await expect(pop).toBeVisible();
-  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
-  // 真内容三面：列语义（六列全名单源 COLUMNS）+ 关口操作 + ⌘K
-  for (const column of ['待开始', '规划中', '待确认', '执行中', '待验收', '已完成']) {
-    await expect(pop).toContainText(column);
-  }
-  await expect(pop).toContainText('关口操作');
-  await expect(pop).toContainText('⌘K');
-  await expectOwnsCenter(page, '.board-guide-pop');
-  // Esc 关（#127 useEscapeClose 先例）
-  await page.keyboard.press('Escape');
-  await expect(pop).toBeHidden();
-  // 外点关（ClickCatcher 家族律；raw mouse click = user-menu-trigger 同款，
-  // catcher 全覆盖时 locator.click 的命中检查会误报拦截）
-  await trigger.click();
-  await expect(pop).toBeVisible();
-  await page.mouse.click(700, 300);
-  await expect(pop).toBeHidden();
+  // 全族非存在四面钉死（防单面复活漏网）：? 钮、wrap、弹层、aria-label
+  await expect(page.locator('.board-guide')).toHaveCount(0);
+  await expect(page.locator('.board-guide-wrap')).toHaveCount(0);
+  await expect(page.locator('.board-guide-pop')).toHaveCount(0);
+  await expect(page.locator('[aria-label="看板指南"]')).toHaveCount(0);
+  // 右动作区恰好剩 +任务 一钮，且仍在场（布局无塌陷）
+  const actions = page.locator('.board-topbar-actions');
+  await expect(actions).toBeVisible();
+  await expect(actions.locator('button')).toHaveCount(1);
+  await expect(actions.locator('.board-new-task')).toBeVisible();
 });
 
 // —— 3. project 页三件 ———————————————————————————————————————————————————
@@ -137,7 +118,8 @@ test('doc pane 变更▾ opens the document-type listbox and closes on Escape', 
   await select.click();
   const dropdown = page.locator('.plan-dropdown');
   await expect(dropdown).toBeVisible();
-  await expect(dropdown.locator('.plan-dropdown-row')).toContainText('变更');
+  // #366：listbox 首行 = 当前文档型（✓ 行），其后三行 = 右 pane 静止 section
+  await expect(dropdown.locator('.plan-dropdown-row').first()).toContainText('变更');
   await page.keyboard.press('Escape');
   await expect(dropdown).toBeHidden();
 });
@@ -147,9 +129,11 @@ test('doc pane 型选行 click re-selects the current type and closes (#306)', a
   await page.locator('.doc-select-wrap .doc-pane-select').click();
   const dropdown = page.locator('.plan-dropdown');
   await expect(dropdown).toBeVisible();
-  // r5b §3.7：选择器行，非确认入口——选（唯一）当前型即关
-  await dropdown.locator('.plan-dropdown-row').click();
+  // r5b §3.7：选择器行，非确认入口——选当前型行即关（#366 后首行 = 文档行，
+  // 重选 = 留在文档面）
+  await dropdown.locator('.plan-dropdown-row').first().click();
   await expect(dropdown).toBeHidden();
+  await expect(page.locator('.detail-right .doc-pane')).toBeVisible();
 });
 
 // —— 7. machines 行内动作图标（#222 出账）——————————————————————————————
@@ -203,18 +187,40 @@ test('api-keys empty state drops the 查看文档 button, keeps 新建密钥 (#3
   await expect(page.locator('.keys-create')).toBeVisible();
 });
 
-test('resources empty state drops the 查看文档 link, keeps the primary action (#307)', async ({
+test('resources empty state drops the 查看文档 link (#307); skills 只读面连主钮也无 (spec 13)', async ({
   page,
 }) => {
   await page.goto('/app/resources/skills?scenario=01');
   await expect(page.locator('.res-empty')).toBeVisible();
-  // 共享 EmptyState 件:skills/secrets/mcp 三面空态的文档链接一并出账
-  // (skills + secrets 双面钉,防单面局部复活漏网;mcp 同件随行)
+  // 共享 EmptyState 件:skills/secrets 两面空态的文档链接一并出账
+  // (双面钉,防单面局部复活漏网;mcp 空态归 #368 只读面专钉,见下条)
   await expect(page.locator('.res-doclink')).toHaveCount(0);
-  await expect(page.locator('.res-empty .res-primary')).toBeVisible();
+  // spec 13 (#367):技能 = 本地目录现扫只读投影——空态无「添加技能」主钮
+  // (空态指引文案钉在 skills-readonly.spec.ts)
+  await expect(page.locator('.res-empty .res-primary')).toHaveCount(0);
   await page.goto('/app/resources/secrets?scenario=01');
   await expect(page.locator('.res-empty')).toBeVisible();
   await expect(page.locator('.res-doclink')).toHaveCount(0);
+  await expect(page.locator('.res-empty .res-primary')).toBeVisible();
+});
+
+// spec 13/#368:MCP 页翻转为本地 config 只读面——新建/编辑入口全撤,
+// 空态文案即 ~/.claude.json 配置指引(添加钮的替代面)。
+test('mcp page is read-only: 无新建入口、行无更多菜单 ink、空态指向 ~/.claude.json (#368)', async ({
+  page,
+}) => {
+  // 空态(scenario 01):无新建钮、无 primary 动作、文案含配置路径。
+  await page.goto('/app/resources/mcp-servers?scenario=01');
+  await expect(page.locator('.res-new')).toHaveCount(0);
+  await expect(page.locator('.res-empty')).toBeVisible();
+  await expect(page.locator('.res-empty .res-primary')).toHaveCount(0);
+  await expect(page.locator('.res-empty-desc')).toContainText('~/.claude.json');
+  // 行态(scenario 07):只读行,无更多菜单 ink、无弹窗挂载位。
+  await page.goto('/app/resources/mcp-servers?scenario=07');
+  await expect(page.locator('.res-rowcard--mcp')).toHaveCount(1);
+  await expect(page.locator('.res-row-more')).toHaveCount(0);
+  await expect(page.locator('.dlg')).toHaveCount(0);
+  await expect(page.locator('.res-new')).toHaveCount(0);
 });
 
 test('create-agent dialog drops the avatar 更换 ink (#307)', async ({ page }) => {

@@ -89,8 +89,29 @@
     {
       "idx": 12,
       "version": "6",
-      "when": 1790610096376,
-      "tag": "0012_milky_kid_colt",
+      "when": 1790606594218,
+      "tag": "0012_local_repo_github_connection",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1790650436447,
+      "tag": "0013_brave_spot",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1790651946719,
+      "tag": "0014_cold_beast",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1790654091290,
+      "tag": "0015_far_master_chief",
       "breakpoints": true
     }
   ]

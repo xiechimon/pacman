@@ -388,19 +388,24 @@
   color: var(--text-tertiary);
 }
 
-/* ---- 方案▾ document-type dropdown (r7 20: 218×44, right-aligned) ------ */
+/* ---- 方案▾ pane-view dropdown (r7 20: 218-wide right-aligned; #366 grew
+   the row set from the single current-type row to the four pane views) -- */
 
 .doc-select-wrap {
   position: relative;
   display: flex;
 }
 
+/* #366: the row set grew from the single current-type row to the pane-view
+   list — 4px padding + 36px rows keep the r7 20 single-row total at 44. */
 .plan-dropdown {
   position: absolute;
   top: calc(100% - 0.5px);
   right: 0;
+  display: flex;
+  flex-direction: column;
   width: 218px;
-  height: 44px;
+  padding: 4px;
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
@@ -408,8 +413,9 @@
 }
 
 .plan-dropdown-row {
+  flex: none;
   width: 100%;
-  height: 100%;
+  height: 36px;
   display: flex;
   align-items: center;
   padding: 0 4px 0 24px;
@@ -431,86 +437,13 @@
   color: var(--indigo-500);
 }
 
-/* ---- board-guide popover (issue #149) ----
-   Anchored under the topbar trigger, right-aligned — the plan-dropdown
-   recipe (popover bg / radius 10 / fab shadow / z 30 over the catcher's
-   29). Content is [设计] free copy: the official guide panel was never
-   captured. */
-.board-guide-pop {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 360px;
-  padding: 12px 14px 14px;
-  background: var(--popover-bg);
-  border-radius: var(--radius-popover);
-  box-shadow: var(--fab-shadow);
-  z-index: 30;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-secondary);
-}
-
-.board-guide-title {
-  font-size: 13px;
-  line-height: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.board-guide-label {
-  margin: 12px 0 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-}
-
-.board-guide-row {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  padding: 3px 0;
-}
-
-.board-guide-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  align-self: center;
-}
-
-.board-guide-name {
-  flex: none;
-  width: 40px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.board-guide-desc {
-  color: var(--text-secondary);
-}
-
-/* ⌘K chip rides the sidebar pill recipe (#128: 1px --border-default ring) */
-.board-guide-kbd {
-  flex: none;
-  padding: 1px 3px;
-  border: 1px solid var(--border-default);
-  border-radius: 3px;
-  font-family: inherit;
-  font-size: 11px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-}
-
 /* #73 pop enter/exit origins: anchored popovers scale from their anchor,
    the ⌘K palette from the top center (motion.css overlay-pop) */
 .chip-popover {
   transform-origin: top left;
 }
 
-.plan-dropdown,
-.board-guide-pop {
+.plan-dropdown {
   transform-origin: top right;
 }
 

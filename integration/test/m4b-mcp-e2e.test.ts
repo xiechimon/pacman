@@ -1,14 +1,18 @@
-// M4b MCP 双面 E2E（02 §7，00/D4 薄桥两侧实跑）：
-// ① client 面（外部 MCP → Agent）：团队 MCP server 接入（REST CRUD）+ per-Agent
-//    授权（PATCH agents mcpServers[]）→ claim 载荷携带端点 → daemon per-turn
-//    连接 → pi 工具 `mcp__<slug>__<tool>` 真调用外部 server → transcript 工具行
-//    落库；坏端点降级不阻断（canon 行 `[mcp] dead: connect failed — …`，r3 §1.5）。
+// M4b MCP 双面 E2E（02 §7，00/D4 薄桥两侧实跑；spec 13/#368 本地 config 制）：
+// ① client 面（外部 MCP → Agent）：本机 config 文件登记（~/.claude.json 同形
+//    fixture，server 展示面与 daemon 执行面各读各机——本测单机退化形读同一
+//    份）+ per-Agent 授权（PATCH agents mcpServers[] slug 勾选，未知键容忍）
+//    → claim 载荷携带 slug 列表（string[]，版本墙内）→ daemon 读本机 config
+//    解析端点 → per-turn 连接 → pi 工具 `mcp__<slug>__<tool>` 真调用外部
+//    server → transcript 工具行落库；坏端点降级不阻断（canon 行 `[mcp] dead:
+//    connect failed — …`，r3 §1.5）；config 未命中 slug 走扩展降级行（`[mcp]
+//    ghost: not in local config — …`，spec 13）。
 // ② server 面（外部 MCP 客户端 ← pacman）：真 sdk Client（StreamableHTTP）连
 //    /api/mcp，Bearer apiKey + key 级白名单（initialize/tools/list/tools/call
 //    全往返）；未授工具 call 被拒（limits every call）；create_todo 以 key 属主
 //    身份落库。
 
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -83,6 +87,7 @@ let external: Awaited<ReturnType<typeof startExternalMcp>>;
 let handle: MachineHandle;
 let paths: StatePaths;
 let home: string;
+let mcpConfig: string;
 let world: { projectId: string; todoId: string };
 let buildId = '';
 
@@ -96,6 +101,21 @@ function logLines(): string[] {
 
 beforeAll(async () => {
   external = await startExternalMcp();
+  home = mkdtempSync(join(tmpdir(), 'pacman-m4b-mcp-home-'));
+  // spec 13（#368）：MCP 登记面 = 本机 config 文件——一个活端点（headers
+  // 凭证只落此文件）+ 一个死端点；server 展示面与 daemon 执行面同指本
+  // fixture（单机退化形；多机 = 各读各机，见 spec 13 Q6）。
+  mcpConfig = join(home, 'claude.json');
+  writeFileSync(
+    mcpConfig,
+    JSON.stringify({
+      mcpServers: {
+        demo: { url: external.url, headers: { Authorization: 'Bearer demo-secret' } },
+        dead: { url: 'http://127.0.0.1:1/mcp' },
+      },
+    }),
+    'utf8',
+  );
   stub = await startStubLlm([
     // worker 执行步轮 1：调桥接工具 mcp__demo__echo（外部 MCP server 真调用）。
     { toolCall: { name: 'mcp__demo__echo', arguments: { text: 'm4b-bridge' } } },
@@ -106,8 +126,8 @@ beforeAll(async () => {
     providerBaseUrl: stub.url,
     claimHoldMs: 1_000,
     agentDescription: '你是集成测试 Agent：按指令使用工具，然后简短汇报。',
+    mcpConfigPath: mcpConfig,
   });
-  home = mkdtempSync(join(tmpdir(), 'pacman-m4b-mcp-home-'));
   const config = loadDaemonConfig(
     {
       serverUrl: server.url,
@@ -116,6 +136,7 @@ beforeAll(async () => {
       home,
       name: 'm4b-mcp-mbp',
       maxConcurrent: 1,
+      mcpConfigPath: mcpConfig,
     },
     {},
   );
@@ -145,32 +166,34 @@ afterAll(async () => {
   );
 });
 
-describe('M4b MCP client 面 E2E：团队 server 接入 + per-Agent 授权 + per-turn 桥接（02 §7.1）', () => {
-  test('授权 Agent 后执行步真调外部工具；坏端点降级不阻断（canon 行 r3 §1.5）', async () => {
-    // 团队 MCP server 接入（REST 管理面，r3 §5.1）：一个活端点 + 一个死端点。
-    const created = await api(server.url, 'POST', `/api/teams/${server.teamId}/mcp-servers`, {
-      label: '外部演示',
-      slug: 'demo',
+describe('MCP client 面 E2E：本机 config 登记 + per-Agent slug 授权 + daemon 本机解析桥接（spec 13）', () => {
+  test('server 展示面 = config 投影（密钥值不上接口）；授权后执行步真调外部工具；死端点/未知 slug 降级不阻断', async () => {
+    // server 展示面：GET mcp-servers = 本机 config 投影（record 保形；
+    // headers 值永不出接口——只 hasCredential/credentialKeys 键名）。
+    const list = await api(server.url, 'GET', `/api/teams/${server.teamId}/mcp-servers`);
+    expect(list.status).toBe(200);
+    const rows = list.body as {
+      slug: string;
+      transport: string;
+      hasCredential: boolean;
+      credentialKeys: string[];
+    }[];
+    expect(rows.map((r) => r.slug).sort()).toEqual(['dead', 'demo']);
+    expect(rows.find((r) => r.slug === 'demo')).toMatchObject({
       transport: 'http',
-      url: external.url,
-      headers: { Authorization: 'Bearer demo-secret' },
+      hasCredential: true,
+      credentialKeys: ['Authorization'],
     });
-    expect(created.status).toBe(201);
-    const dead = await api(server.url, 'POST', `/api/teams/${server.teamId}/mcp-servers`, {
-      label: '死端点',
-      slug: 'dead',
-      transport: 'http',
-      url: 'http://127.0.0.1:1/mcp',
-    });
-    expect(dead.status).toBe(201);
+    expect(JSON.stringify(rows)).not.toContain('demo-secret');
 
-    // per-Agent 授权（「授权在每个 Agent 的页面上单独进行」的 REST 面）。
+    // per-Agent 授权（「授权在每个 Agent 的页面上单独进行」的 REST 面）：
+    // 值 = config 键名；ghost 未在 config——静默容忍（解析在 daemon 侧跳过）。
     const authed = await api(
       server.url,
       'PATCH',
       `/api/teams/${server.teamId}/agents/${AGENT_ID}`,
       {
-        mcpServers: ['demo', 'dead'],
+        mcpServers: ['demo', 'dead', 'ghost'],
       },
     );
     expect(authed.status).toBe(200);
@@ -192,8 +215,8 @@ describe('M4b MCP client 面 E2E：团队 server 接入 + per-Agent 授权 + per
 
     await waitFor(() => server.todoPhase(world.todoId) === 'review', 150_000);
 
-    // 外部 MCP server 真收到调用（薄桥端到端实证：pi customTool → sdk client
-    // → 外部 server），工具名映射 mcp__demo__echo ↔ 远端 echo。
+    // 外部 MCP server 真收到调用（薄桥端到端实证：daemon 本机 config 解析 →
+    // pi customTool → sdk client → 外部 server），工具名映射 mcp__demo__echo。
     expect(external.calls).toEqual([{ name: 'echo', args: { text: 'm4b-bridge' } }]);
 
     // transcript 工具行落库（bridge 工具名 = mcp__<slug>__<tool>，r3 §5.1）。
@@ -204,15 +227,21 @@ describe('M4b MCP client 面 E2E：团队 server 接入 + per-Agent 授权 + per
       .all();
     expect(JSON.stringify(msgs)).toContain('mcp__demo__echo');
 
-    // 死端点降级不阻断：canon 行落 daemon.log，回合照常完成（r3 §1.5 实测行形）。
+    // 降级面三行（回合照常完成，r3 §1.5 canon 行形 + spec 13 扩展行）：
+    // 死端点 = connect failed；config 未命中 = not in local config；
+    // loaded 行打出实际加载集与来源文件（多机跑偏一眼可见，premortem 护栏二）。
     const lines = logLines();
     expect(
-      lines.some(
-        (l) =>
-          l.startsWith('[mcp] dead: connect failed — its tools are unavailable this turn') ||
-          l.includes('[mcp] dead: connect failed — its tools are unavailable this turn'),
+      lines.some((l) =>
+        l.includes('[mcp] dead: connect failed — its tools are unavailable this turn'),
       ),
     ).toBe(true);
+    expect(
+      lines.some((l) =>
+        l.includes('[mcp] ghost: not in local config — its tools are unavailable this turn'),
+      ),
+    ).toBe(true);
+    expect(lines.some((l) => l.includes(`[mcp] loaded from ${mcpConfig}: demo, dead`))).toBe(true);
   }, 150_000);
 });
 

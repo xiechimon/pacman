@@ -1,6 +1,8 @@
-/* Detail-domain overlay content styles: token/branch/history/accept 各弹窗的
-   业务内容样式 + rerun/reuse 浮层。弹窗壳与表单族(#68/#221)已提升到
-   ui/dialog.css,由 ui/dialog-shell.tsx 携带。 */
+/* Detail-domain overlay + right-pane section content styles:
+   branch/accept 弹窗与 token/branch/history 三个右 pane 静止 section
+   (#366——内容类 dlg-* 家族原样复用,弹窗壳只余 board 的 branch dialog)
+   + rerun/reuse 浮层。弹窗壳与表单族(#68/#221)已提升到 ui/dialog.css,
+   由 ui/dialog-shell.tsx 携带。 */
 
 /* --- Token 用量 (r7 30): 60px total row, 38px model row, 27px stat rows --- */
 
@@ -232,12 +234,6 @@
   padding: 24px 16px 26px;
 }
 
-/* #193: with the 重跑 footer pinned in .dlg-foot, the body's bottom padding
-   carries the old footer padding-top (10); the footer-less form keeps 26. */
-.dlg-history--foot {
-  padding-bottom: 10px;
-}
-
 .dlg-history-row {
   display: flex;
   align-items: center;
@@ -357,23 +353,6 @@
 .dlg-accept-footer .dlg-accept-done {
   width: 50px;
   padding: 0;
-}
-
-/* 重跑 footer (r8 57): renders only when the current run is the failed one;
-   a failed past run under a live current run carries none (r8 77/80).
-   #193: rides the shell's pinned .dlg-foot — the side/bottom padding moved
-   here from .dlg-history (which keeps it only in the footer-less form). */
-.dlg-history-footer {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 16px 26px;
-}
-
-.dlg-history-footer .dlg-history-rerun {
-  /* A3 收编：皮肤/28px 高归 ui/button.css（primary/compact）；13px 侧垫
-     是 r8 57 冻结值（原语 12px 会窄 2px），scoped (0,2,0) 压过 .btn
-     单类，不赌 import 顺序。 */
-  padding: 0 13px;
 }
 
 /* AI 审核模态 (M7 #312, r8 §2.5/§3.1): 560 宽居中（448 弹层律之外新档） + 搜
@@ -537,12 +516,6 @@
   line-height: 16px;
 }
 
-/* 添加 MCP 服务器 dialog (wayfinder #174, r8 71/72): http 形态的请求头行。 */
-.dlg-mcp-header-row {
-  display: flex;
-  gap: 8px;
-}
-
 /* 添加模型服务 dialog (wayfinder #175, r8 75 / r3 §2 field order): Bearer
    复选行。checkbox 骑 .dlg-accept-check 视觉,raw input 如 .dlg-toggle input
    般 opacity-0 覆叠,整块 tile 都是点击目标。 */
@@ -585,11 +558,21 @@
   color: var(--text-primary);
 }
 
-/* #231 连接订阅段：整宽行钮（token 族同 .dlg-form-input）+ 失败 inline 行
-   + 与自定义表单的分隔行。 */
-.dlg-provider-oauth {
+/* #355 picker 形态（spec 11 §A6）：38 preset 行钮 + OAuth 徽标 + 底部
+   「自定义端点」入口 + form 视图返回钮。行钮几何承 #231 连接订阅段旧制
+   （36 高 / card-border 描边 / surface 底，hover secondary）；列表 gap 4
+   收紧 38 行纵深。 */
+.dlg-provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dlg-provider-preset,
+.dlg-provider-custom {
   display: flex;
   align-items: center;
+  gap: 8px;
   height: 36px;
   border: 1px solid var(--card-border);
   border-radius: 8px;
@@ -598,36 +581,55 @@
   font-size: 14px;
   color: var(--text-primary);
   cursor: pointer;
+  text-align: left;
 }
 
-.dlg-provider-oauth:hover {
+.dlg-provider-preset:hover,
+.dlg-provider-custom:hover {
   background: var(--surface-secondary);
 }
 
-.dlg-provider-oauth:disabled {
+.dlg-provider-preset:disabled {
   cursor: default;
   opacity: 0.6;
 }
 
+/* OAuth 族徽标（PROVIDER_OAUTH_PRESET_IDS 两项）：行右小 chip。 */
+.dlg-provider-badge {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--surface-secondary);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* #231 连接失败 inline 行（authorize 400 原文 / callback 落地 reason
+   文案，providers-page 喂入）。 */
 .dlg-provider-oauth-error {
   font-size: 12px;
   line-height: 16px;
   color: var(--danger);
 }
 
-.dlg-provider-divider {
+/* form 视图返回列表（picker ↔ form 往返）：.dlg-provider-model-add 同族
+   左对齐无框文字钮。 */
+.dlg-provider-back {
+  align-self: flex-start;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-
-.dlg-provider-divider::before,
-.dlg-provider-divider::after {
-  content: "";
-  flex: 1;
-  border-top: 1px solid var(--card-border);
+  gap: 4px;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
 /* 添加机器 dialog (wayfinder #181, r2 11b CLI 两步表单): 引导语 + 带

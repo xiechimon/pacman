@@ -30,7 +30,7 @@ Preconditions:
 - **本机行 + switches 全链。** **跑法：** `node <skill>/scripts/drive-machines-local.mjs`（自足）——15 checks：页面就绪 → facade 负向 → API 本机记录（kind='local'，name=os.hostname() 精确匹配）→ UI 本机行钉首 + hostname 文本 → 不可删负向 → 两 switch 在位 → **UI=API 一致基线**（aria-checked vs enabledRuntimes，幂等：不假设初始全关）→ 点按 pi 翻转（API+UI 双真值）→ 点按 claude-code 翻转 → SQLite kind 列 → SQLite enabledRuntimes JSON → reload 持久 → 添加机器 dialog 流程不变 → chevron 负向。
 - **真值。** `GET /api/teams/:id/machines` 记录（kind/enabledRuntimes 字段）+ SQLite `machine` 行（`SELECT kind, enabledRuntimes FROM machine WHERE id=?`）与 UI aria-checked 三向对照。
 - **幂等**：同栈重跑不假红——期望值从 prior API 态推导（翻转语义），不写死「初始全关」。
-- **验证状态（2026-09-29，#357）**：实现票落地（machine 两列 migration 0012 + server 启动 seed / enroll hostname 同律 / PATCH /api/machines/{id} + machines 页本机行与 switches），本 probe 15/15 PASS——证据 `docs/verify/357/`（首跑全绿 + 同栈二跑幂等翻转 on→off；二次启动 server 同库仅一行 kind='local' 实测）。
+- **验证状态（2026-09-29，#357）**：实现票落地（machine 两列 migration 0015 + server 启动 seed / enroll hostname 同律 / PATCH /api/machines/{id} + machines 页本机行与 switches），本 probe 15/15 PASS——证据 `docs/verify/357/`（首跑全绿 + 同栈二跑幂等翻转 on→off；二次启动 server 同库仅一行 kind='local' 实测）。
 
 ## Gotchas
 

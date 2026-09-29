@@ -48,26 +48,6 @@ export const EN: Record<string, string> = {
 
   // —— board surface (r2 §4.1, r7 01/02) ——
   任务: 'Todo', // topbar +任务 button / search nav row / popover section
-  看板指南: 'Board guide',
-  // guide popover content (#149; [设计] copy — the official guide panel's
-  // content was never captured, free-content precedent = whats-new)
-  列语义: 'Columns',
-  关口操作: 'Gates',
-  快速跳转: 'Quick jump',
-  '已创建、尚未启动的任务在此排队': 'Created tasks queue here until they start',
-  'Agent 正在起草方案，进详情页可实时查看':
-    'The agent is drafting the plan — open the task to watch it live',
-  '方案就绪：确认后开工，或提出修改意见':
-    'Plan ready — confirm to start the work, or ask for changes',
-  'Agent 正在执行；失败与待回复的任务钉在列首':
-    'The agent is executing; failed and awaiting-reply tasks stay pinned to the top',
-  '执行完成：审查变更后验收合并': 'Work done — review the changes, then accept to merge',
-  '已合并收尾；重开可发起新一轮': 'Merged and closed; reopen to start a new round',
-  '待确认 → 确认方案，或在输入框提出修改':
-    'To confirm — approve the plan, or send changes from the composer',
-  '待验收 → 审查变更，验收即合并': 'To review — inspect the changes; accepting merges the branch',
-  '失败 → 重跑，可复用已有方案': 'Failed — rerun, optionally reusing the existing plan',
-  '打开全局搜索，直达任务与资源': 'Open global search to jump to tasks and resources',
   待开始: 'To start',
   规划中: 'Planning',
   待确认: 'To confirm',
@@ -112,10 +92,10 @@ export const EN: Record<string, string> = {
   '{n} 天前': '{n}d ago',
 
   // —— todo detail (r7 §3.3–§3.6) ——
-  文档: 'Document',
-  聊天: 'Chat',
   'Token 用量': 'Token usage',
   运行历史: 'Run history',
+  尚无运行内容: 'No run content yet',
+  打开方案: 'Open plan',
   添加附件: 'Add attachment',
   'AI 审核': 'AI review',
   审核中: 'Reviewing',
@@ -155,7 +135,7 @@ export const EN: Record<string, string> = {
   执行对话: 'Active run',
   未指派: 'Unassigned',
   编辑分配: 'Edit assignment',
-  文档类型: 'Document type',
+  面板视图: 'Pane view',
 
   // —— ⌘K search panel (r7 05/05b, r2 §8.4) ——
   关闭搜索: 'Close search',
@@ -212,52 +192,29 @@ export const EN: Record<string, string> = {
   复制: 'Copy',
   '请立即复制密钥，它仅显示一次。': 'Copy the key now — it is shown only once.',
 
-  // —— resources routes (r7 06–10, r2 §6, r8 79/80) ——
+  // —— resources routes (r7 06–10, r2 §6) ——
   新建: 'New',
   'MCP 服务器': 'MCP Servers',
-  新建技能: 'New skill',
   添加机器: 'Add machine',
   自定义: 'Custom',
   '搜索技能...': 'Search skills...',
   排序: 'Sort',
   '尚无技能。': 'No skills yet.',
-  '技能是写给 Agent 的工作手册：一个包含 SKILL.md 的文件夹，用于将可复用的流程传授给 Agent。授予后，Agent 会在合适的任务中主动使用。':
-    'Skills are playbooks for Agents: a folder containing a SKILL.md that teaches a reusable workflow. Once granted, Agents reach for them on the todos that fit.',
-  添加技能: 'Add skill',
-  '你也可以直接让总管从 GitHub 安装技能，或帮你制作新技能。':
-    'You can also just let the Chief install skills from GitHub, or craft new ones for you.',
+  // spec 13（#367）技能只读面：空态指路本地技能目录（{dir} = SKILLS_DIR_DEFAULT）
+  '把包含 SKILL.md 的技能目录放进 {dir}，即会出现在这里。':
+    'Drop a skill folder containing SKILL.md into {dir} and it will show up here.',
   '尚无 MCP 服务器。': 'No MCP servers yet.',
-  'MCP 服务器为 Agent 提供额外工具，例如工单系统、浏览器、内部 API。授权在每个 Agent 的页面上单独进行。':
-    'MCP servers give Agents extra tools — ticketing systems, browsers, internal APIs. Authorization happens per Agent, on its own page.',
-  '添加 MCP 服务器': 'Add MCP server',
+  // spec 13/#368 本地 config 只读制：空态文案 = 配置指引（无添加钮）。
+  '读取 server 本机 ~/.claude.json 的 mcpServers 段：在该文件添加配置并刷新，即出现在这里。MCP 服务器为 Agent 提供额外工具；授权在每个 Agent 的页面上单独进行。':
+    'Reads the mcpServers section of ~/.claude.json on the pacman server machine — add entries there and refresh to see them here. MCP servers give Agents extra tools; authorization happens per Agent, on its own page.',
   '尚无密钥。': 'No secrets yet.',
   '团队密钥将以环境变量注入每个任务的 shell。值只写不读：保存后只能覆盖或删除，无法再次查看。':
     'Team secrets are injected into every task shell as environment variables. Values are write-only: once saved they can be overwritten or deleted, never viewed again.',
   添加密钥: 'Add secret',
   '也可以让总管添加：它会开一张安全输入卡填写值，值不会进入对话。':
     'The Chief can add them too: it opens a secure input card for the value, which never enters the conversation.',
-  从文件夹: 'From folder',
-  '从 GitHub': 'From GitHub',
-  技能文件夹: 'Skill folder',
-  点击或拖入技能文件夹: 'Click or drop a skill folder',
-  已选择: 'Selected',
   个文件: 'file(s)',
-  '必须包含 SKILL.md': 'Must contain SKILL.md',
-  '例如：deploy': 'e.g. deploy',
   描述: 'Description',
-  简要描述该技能的功能: 'Briefly describe what the skill does',
-  创建技能: 'Create skill',
-  'GitHub 链接': 'GitHub link',
-  扫描: 'Scan',
-  '输入仓库链接以扫描其中的技能，或直接指向某个技能目录。':
-    'Enter a repo link to scan it for skills, or point directly at a skill directory.',
-  // #235 GitHub 扫描结果区（live）
-  '扫描中…': 'Scanning…',
-  '未发现技能。': 'No skills found.',
-  '结果已截断，仅显示部分候选。': 'Results truncated — showing a partial list.',
-  '导入中…': 'Importing…',
-  扫描失败: 'Scan failed',
-  导入失败: 'Import failed',
 
   // —— project routes (r2 07/24/24b/24c) ——
   文件: 'Files',
@@ -284,11 +241,17 @@ export const EN: Record<string, string> = {
   项目名称: 'Project name',
   仓库: 'Repo',
   选择仓库: 'Select repo',
-  // #305 repo 选择面（r2 07b/07c canon 文案）：两行 = create 端点的两种
-  // repo 形态（02 §3）。
-  '新的 Todos 托管仓库': 'New Todos hosted repo',
+  // #360（spec 12）repo 选择面两行：GitHub 仓库 / 本地文件夹（hosted 行
+  // 创建入口移除；下方「Pacman 托管」= 存量 hosted 项目的设置面显示键，
+  // 与本表无关，保留）。
   'GitHub 仓库': 'GitHub repo',
+  本地文件夹: 'Local folder',
   创建项目: 'Create project',
+  // #360 本地路径校验错误行：server validateLocalRepoPath 400 reason 的
+  // 三态分类文案；未分类 reason 原文直透（不进词典）。
+  路径不存在: 'Path not found',
+  '不是 git 仓库': 'Not a git repository',
+  需要绝对路径: 'Absolute path required',
   基本信息: 'Basic info',
   标签: 'Tags',
   'Pacman 托管': 'Pacman hosted',
@@ -486,20 +449,6 @@ export const EN: Record<string, string> = {
   最近更新: 'Recently updated',
   标题: 'Title',
   没有匹配的任务: 'No matching tasks',
-  // wayfinder #174 add-mcp-server dialog family (02 §6.2 / r3 §5.1 text
-  // authority; geometry [推断] — capture PNGs unreadable on this API line)
-  类型: 'Type',
-  '远程 HTTP': 'Remote HTTP',
-  本地命令: 'Local command',
-  标识符: 'Slug',
-  '用作前缀，创建后不可修改。': 'Used as a prefix; cannot be changed after creation.',
-  '例如：内部工单系统': 'e.g. internal ticketing',
-  '请求头（可选）': 'Headers (optional)',
-  请求头名称: 'Header name',
-  请求头值: 'Header value',
-  添加请求头: 'Add header',
-  命令: 'Command',
-  '参数（可选，空格分隔）': 'Arguments (optional, space-separated)',
   // wayfinder #175 add-provider dialog family (field authority = shared
   // createProviderBodySchema / r3 §2; protocol tab labels stay English
   // verbatim, never translated)
@@ -515,12 +464,22 @@ export const EN: Record<string, string> = {
   '模型（可选）': 'Models (optional)',
   '模型 ID': 'Model ID',
   添加模型: 'Add model',
-  // #231 OAuth 连接订阅段(族表单源 = shared OAUTH_FAMILIES;品牌名不译)
-  连接订阅: 'Connect a subscription',
-  或添加自定义网关: 'or add a custom gateway',
+  // #355 picker 形态(spec 11 §A6;preset 显示名 = 品牌串不译,OAuth 徽标
+  // 同为英文字面)
+  '搜索服务商...': 'Search providers...',
+  自定义端点: 'Custom endpoint',
+  // #231/#243 OAuth 落地 reason 三译(providers-page 喂 connectError 行)
   '授权已被取消。': 'Authorization was cancelled.',
   '令牌交换失败，请稍后重试。': 'Token exchange failed — please try again.',
   '连接已过期，请重新发起。': 'Connection expired — please start it again.',
+  // #361 GitHub 连接认证 + repo picker（spec 12 G2-T4；错误三译复用 #243 键）
+  '认证 GitHub': 'Connect GitHub',
+  '选择 GitHub 仓库': 'Choose a GitHub repository',
+  搜索仓库: 'Search repositories',
+  没有匹配的仓库: 'No matching repositories',
+  断开连接: 'Disconnect',
+  已连接: 'Connected',
+  '手动输入 owner/repo': 'Enter owner/repo manually',
   // wayfinder #181 add-machine dialog family (r2 11b verbatim copy; the
   // command strings themselves stay untranslated — brand slots via BRAND)
   '有条件时优先使用云主机：笔记本会休眠或断网，云主机常在线，构建更稳定。':

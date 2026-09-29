@@ -1,10 +1,13 @@
 // Todo detail route (issue #56): app shell sidebar + dhead + phase-driven
-// body — fresh block (23/23d) or doc pane + chat column (16/17 family) —
-// plus composer, 总管 FAB and the capture-frozen user-menu popover.
-// #66/#68 add the 更多/删除 and token/branch/history/accept overlays;
-// #75 adds the deep dynamic states: the version dropdown / compare
-// submenu / plan-version diff surface of the doc pane, the rerun dialog +
-// 复用方案 sub-panel (r8 56/74/75) and the interactive reject chain
+// body. #366 re-lays the route out as the todos.dev 3-pane grid — 240
+// sidebar | fluid thread column | 488 right pane (docs/design/todos.dev.md):
+// the 文档|聊天 tab group is gone, the thread (or the fresh block, 23/23d)
+// owns the center column with the composer as its only card, and the right
+// pane hosts the doc surface (16/17 family) plus the former token/branch/
+// history head-icon overlays as static sections (RightPane). #66 adds the
+// 更多/删除 overlays; #75 adds the deep dynamic states: the version dropdown /
+// compare submenu / plan-version diff surface of the doc pane, the rerun
+// dialog + 复用方案 sub-panel (r8 56/74/75) and the interactive reject chain
 // (请求修改 → replan streaming → v(N+1) → diff → 确认, AC3) walked
 // client-side over the fixture script.
 // #83 (M5): live 数据源分支——无 `?scenario=` 时详情页走真 API + 真 SSE
@@ -52,22 +55,21 @@ import { useLiveData } from '../api/provider.js';
 import { useConversationStream } from '../api/sse.js';
 import { ChiefAgentDialog, type ChiefAgentOption } from '../chief/chief-agent-dialog.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
-import { BranchDialog } from '../detail/branch-dialog.js';
 import { Composer } from '../detail/composer.js';
 import { DetailHead } from '../detail/dhead.js';
 import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
-import { HistoryDialog } from '../detail/history-dialog.js';
 import { RerunDialog, ReusePanel } from '../detail/overlays.js';
 import { type ReviewAgentOption, ReviewDialog } from '../detail/review-dialog.js';
+import { RightPane } from '../detail/right-pane.js';
 import { SpecBlock } from '../detail/spec-block.js';
 import { StopConfirmDialog } from '../detail/stop-confirm-dialog.js';
-import { TokenDialog } from '../detail/token-dialog.js';
 import { Transcript } from '../detail/transcript.js';
 import { UserMenu } from '../detail/user-menu.js';
 import type {
   DetailContent,
   OverlayState,
+  PaneView,
   Phase,
   PlanDiffContent,
   TranscriptItem,
@@ -143,9 +145,11 @@ export function TodoDetailPage() {
   const qc = useQueryClient();
   const { live, teamId, userName } = useLiveData();
   const { t } = useI18n();
-  // 文档|聊天 tabs (issue #56): 文档 = doc pane + chat column, 聊天 = chat
-  // column alone. Pure render state — the captures all sit on 文档.
-  const [tab, setTab] = useState<'doc' | 'chat'>('doc');
+  const fixture = resolveScenario(searchParams);
+  // 右 pane 视图 (#366)：doc = DocPane（方案/变更/diff，相位派生），其余三
+  // 值 = 原 head 图标 overlay 三件的静止 section。纯渲染态，capture 场景经
+  // ui.paneView 冻结（r7 30/31/32、r8 57/77 的新家）。
+  const [paneView, setPaneView] = useState<PaneView>(fixture.ui?.paneView ?? 'doc');
   // 更多 menu + delete confirm (#66): confirming a delete marks the todo
   // in the deletions overlay and returns to /app (r2 §5.4) — the board
   // route then renders without it; the fixture phase has no backend.
@@ -164,7 +168,6 @@ export function TodoDetailPage() {
     },
     [liveDraft],
   );
-  const fixture = resolveScenario(searchParams);
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
   // W4 #286：live 面服务端搜索（fixture 面不经此钩）。
   const searchResults = useSearchResults(search.query, live && search.open);
@@ -554,10 +557,7 @@ export function TodoDetailPage() {
         <DetailHead
           todo={todo}
           phase={live ? phase : (view.phaseOverride ?? todo.phase)}
-          tab={tab}
-          onTab={setTab}
           onMore={() => setMoreOpen(true)}
-          onOverlay={(kind) => setOverlay({ kind })}
           reviewActive={reviewActive}
           onAction={() => {
             if (live) {
@@ -586,77 +586,98 @@ export function TodoDetailPage() {
           chipPopoverOpen={fixture.ui?.chipPopoverOpen === true}
           onEditAssign={() => setAssignOpen(true)}
         />
-        {detail == null ? (
-          <div className="detail-body detail-body--single">
-            <FreshBlock todo={todo} tags={freshTags} />
-            {/* M7 #310：live 详情面把用户提交的 spec 渲染在 FreshBlock 之
-                下（fix 丢字 bug ——之前 spec 落 todo.spec 但 UI 从未呈现
-                给用户看）。fixture 面不走此分支：fixture
-                fresh-probe 用同样的「尚无描述」placeholder。 */}
-            {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
-          </div>
-        ) : (
-          <div className="detail-body">
-            {tab === 'doc' && (
-              <>
-                {/* M7 #310：live 详情面 doc tab 顶展示用户提交 spec。
-                    DocPane 下方是 agent 产出的 plan，spec 区是用户原
-                    始输入——两层职责分明。fixture 不走（无 spec data
-                    wire 视觉回归风险）。 */}
+        <div className="detail-body">
+          <div className="detail-center">
+            {detail == null ? (
+              <div className="detail-fresh">
+                <FreshBlock todo={todo} tags={freshTags} />
+                {/* M7 #310：live 详情面把用户提交的 spec 渲染在 FreshBlock 之
+                    下（fix 丢字 bug ——之前 spec 落 todo.spec 但 UI 从未呈现
+                    给用户看）。fixture 面不走此分支：fixture
+                    fresh-probe 用同样的「尚无描述」placeholder。 */}
                 {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
-                <DocPane
-                  mode={docMode}
-                  doc={view.doc}
-                  changes={live ? liveDetail?.changes : detail.changes}
-                  now={live ? Date.now() : fixture.now}
-                  planDropdownOpen={fixture.ui?.planDropdownOpen === true}
-                  planVersions={view.planVersions}
-                  versionMenu={menu}
-                  onVersionMenu={setMenu}
-                  onCompare={() => {
-                    if (live) {
-                      setCompareOpen(true);
-                      setMenu(undefined);
-                      return;
-                    }
-                    // 上一版本 (r8 64 → 65/71): opens the previous-version
-                    // diff — the fixture's compare target, or the chain's
-                    // landed diff once the reject loop produced one
-                    setDiff(detail.compareTarget ?? detail.revision?.landed.planDiff);
-                    setMenu(undefined);
-                  }}
-                  onBase={() => {
-                    if (live) {
-                      setCompareOpen(false);
-                      setMenu(undefined);
-                      return;
-                    }
-                    setDiff(undefined);
-                    setMenu(undefined);
-                  }}
-                  planDiff={view.planDiff}
-                  buildId={live ? buildId : null}
-                  onToggleExpand={() => {
-                    if (live) {
-                      setChangesExpanded((v) => !v);
-                      return;
-                    }
-                    setDiff((d) => (d != null ? { ...d, expanded: !d.expanded } : d));
-                  }}
-                />
+              </div>
+            ) : (
+              <>
+                {/* M7 #310：live 详情面在线程列首展示用户提交 spec（#366：
+                    随 3-pane 重排从 doc 列迁到中心列——用户原始输入属于线
+                    程流，右 pane 只放 agent 产物面）。fixture 不走（无
+                    spec data wire 视觉回归风险）。 */}
+                {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
+                <div className="chat-col">
+                  {/* margin-top:auto pins an overflowing transcript to the
+                      newest row at first paint (r8 63–77) and keeps short r7
+                      transcripts top-aligned — no scroll scripting, so the
+                      fixture capture is deterministic */}
+                  <div className="chat-pin">
+                    <Transcript
+                      transcript={view.transcript}
+                      // #366 AC：线程内 plan 卡激活 = 右 pane 切文档面的
+                      // plan 显示面（与 复用方案「查看方案」同律）。
+                      onOpenPlan={() => {
+                        setPaneView('doc');
+                        setPlanView(true);
+                      }}
+                    />
+                  </div>
+                </div>
               </>
             )}
-            <div className="chat-col">
-              {/* margin-top:auto pins an overflowing transcript to the
-                  newest row at first paint (r8 63–77) and keeps short r7
-                  transcripts top-aligned — no scroll scripting, so the
-                  fixture capture is deterministic */}
-              <div className="chat-pin">
-                <Transcript transcript={view.transcript} />
-              </div>
-            </div>
           </div>
-        )}
+          <RightPane
+            view={paneView}
+            onView={setPaneView}
+            docLabel={docMode === 'changes' ? '变更' : '方案'}
+            content={content}
+            buildId={live ? buildId : null}
+            empty={detail == null}
+          >
+            {detail != null && (
+              <DocPane
+                mode={docMode}
+                doc={view.doc}
+                changes={live ? liveDetail?.changes : detail.changes}
+                now={live ? Date.now() : fixture.now}
+                planDropdownOpen={fixture.ui?.planDropdownOpen === true}
+                onPaneView={setPaneView}
+                hasSections={content != null}
+                planVersions={view.planVersions}
+                versionMenu={menu}
+                onVersionMenu={setMenu}
+                onCompare={() => {
+                  if (live) {
+                    setCompareOpen(true);
+                    setMenu(undefined);
+                    return;
+                  }
+                  // 上一版本 (r8 64 → 65/71): opens the previous-version
+                  // diff — the fixture's compare target, or the chain's
+                  // landed diff once the reject loop produced one
+                  setDiff(detail.compareTarget ?? detail.revision?.landed.planDiff);
+                  setMenu(undefined);
+                }}
+                onBase={() => {
+                  if (live) {
+                    setCompareOpen(false);
+                    setMenu(undefined);
+                    return;
+                  }
+                  setDiff(undefined);
+                  setMenu(undefined);
+                }}
+                planDiff={view.planDiff}
+                buildId={live ? buildId : null}
+                onToggleExpand={() => {
+                  if (live) {
+                    setChangesExpanded((v) => !v);
+                    return;
+                  }
+                  setDiff((d) => (d != null ? { ...d, expanded: !d.expanded } : d));
+                }}
+              />
+            )}
+          </RightPane>
+        </div>
         {ui.placeholder != null && (
           <>
             {composerReject != null && <div className="composer-reject">{composerReject}</div>}
@@ -796,28 +817,6 @@ export function TodoDetailPage() {
           navigate('/app');
         }}
       />
-      {content != null && (
-        <TokenDialog
-          open={overlay?.kind === 'token'}
-          stats={content.token}
-          onClose={closeOverlay}
-        />
-      )}
-      {content != null && (
-        <BranchDialog
-          open={overlay?.kind === 'branch'}
-          info={content.branch}
-          buildId={buildId}
-          onClose={closeOverlay}
-        />
-      )}
-      {content != null && (
-        <HistoryDialog
-          open={overlay?.kind === 'history'}
-          runs={content.runs}
-          onClose={closeOverlay}
-        />
-      )}
       <StopConfirmDialog
         open={stopOpen}
         onClose={() => setStopOpen(false)}

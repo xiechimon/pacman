@@ -9,8 +9,8 @@ import type {
   ChiefCompactionModel,
   ChiefWatch,
   DocumentDiffFile,
-  McpTransport,
   Phase,
+  ProjectRepoKind,
   ProviderApi,
   StepKind,
   TriggerSource,
@@ -39,18 +39,22 @@ export const team = sqliteTable('team', {
   avatarStyle: text('avatarStyle'),
 });
 
-// —— project（repo 双形态：托管 bare / GitHub 接入，02 §3/A4）————————————————
+// —— project（repo 形态：托管 bare / GitHub 接入 / local 本机仓，02 §3/A4 +
+// spec 12）———————————————————————————————————————————————————————————————
 export const project = sqliteTable('project', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   teamId: text('teamId')
     .notNull()
     .references(() => team.id),
-  repoKind: text('repoKind').$type<'hosted' | 'github'>(),
+  repoKind: text('repoKind').$type<ProjectRepoKind>(),
   /** 托管形态：bare repo 名段（远端 URL `<teamId>/<repoName>`，r3 §1.4）。 */
   repoName: text('repoName'),
   /** GitHub 接入形态：`owner/repo`（02 §3；字段名 [推断]）。 */
   githubRepo: text('githubRepo'),
+  /** local 形态：用户本机 git 工作树仓绝对路径（spec 12 / #359；server 端
+   * `~` 展开 + 三态校验后的规范化值，daemon 镜像 clone 同源消费）。 */
+  localPath: text('localPath'),
 });
 
 // —— todo（02 §4.1 字段表全量；tagIds/buildHistory/agent 为派生面不存列）——————
@@ -325,44 +329,13 @@ export const agentMemory = sqliteTable('agent_memory', {
   updatedAt: epochMs('updatedAt').notNull(),
 });
 
-// —— skill（含文件内容，`skills/{sid}/file` 端点源，01 §6；上传面归 M2b+）———————
-export const skill = sqliteTable('skill', {
-  id: text('id').primaryKey(),
-  teamId: text('teamId')
-    .notNull()
-    .references(() => team.id),
-  name: text('name').notNull(),
-  description: text('description'),
-  /** [内部] fileName → 文件内容（SKILL.md 必含，records/skill.ts）。 */
-  files: json<Record<string, string>>('files').notNull().default(sql`'{}'`),
-});
+// skill 表已退役（spec 13 #367）：技能 = 本地目录现扫只读投影，不入库——
+// drop migration 前旧行导出到 <home>/legacy-export-<ts>.json（db/legacy-export.ts）。
 
-// —— mcp_server（02 §6.2/§7.1；管理面 = M4b）———————————————————————————————
-// wire record = r3 §5.1 实测原样（records/mcp-server.ts）；stdio 的命令/参数与
-// http 请求头值 wire 未采 [推断]——[内部] 列承载：headers 密文经 SecretBox
-// （02 §8 凭证类 at-rest 纪律；credentialKeys = 头名清单，值只写不读）。
-export const mcpServer = sqliteTable('mcp_server', {
-  id: text('id').primaryKey(),
-  teamId: text('teamId')
-    .notNull()
-    .references(() => team.id),
-  label: text('label').notNull(),
-  slug: text('slug').notNull(),
-  transport: text('transport').$type<McpTransport>().notNull(),
-  /** http = 连接 URL；stdio = 空串（命令/参数走内部列，wire 形未采 [推断]）。 */
-  url: text('url').notNull(),
-  hasCredential: bool('hasCredential').notNull().default(false),
-  credentialKeys: json<string[]>('credentialKeys').notNull().default(sql`'[]'`),
-  /** [内部] stdio 命令（r2 §6.2 表单字段「命令+参数」）。 */
-  command: text('command'),
-  /** [内部] stdio 参数。 */
-  args: json<string[]>('args').notNull().default(sql`'[]'`),
-  /** [内部] 请求头键值密文（SecretBox 信封，JSON Record<string,string>）。 */
-  headersCipher: text('headersCipher'),
-  createdBy: text('createdBy').notNull(),
-  createdAt: epochMs('createdAt').notNull(),
-  updatedAt: epochMs('updatedAt').notNull(),
-});
+// —— mcp_server：已随 spec 13（#368）撤除——MCP 面改本地 `~/.claude.json`
+// 只读制（server 投影 services/mcp-servers.ts，daemon 执行面解析
+// backend/mcp-config.ts），无表位；旧行经 db/legacy-export.ts 导出后由
+// migration drop。
 
 // —— provider（38 presets + custom，02 §6.2；apiKey 密文经 SecretBox，02 §8）——————
 export const provider = sqliteTable('provider', {
@@ -544,5 +517,25 @@ export const attachment = sqliteTable('attachment', {
   scope: text('scope').$type<'spec' | 'message'>().notNull(),
   /** pending = grant 落库未上传；ready = 文件落盘；failed = 上传过程报错。 */
   status: text('status').$type<'pending' | 'ready' | 'failed'>().notNull().default('pending'),
+  createdAt: epochMs('createdAt').notNull(),
+});
+
+// —— github_connection（spec 12 / #359，#352 族）：GitHub OAuth 连接行 ——————
+// teamId 单行（重认证 = 覆盖、断开 = 删行；DAO = services/github-connection.ts）。
+// accessToken 经 SecretBox 密封落 accessTokenCipher（[内部] 列，provider.
+// apiKeyCipher 同族纪律 02 §8：只写不读出 wire——唯一消费点 = server 出站边界
+// Authorization 头（repos 代理）与 daemon 执行凭证下发（spec 12 G2-T2），
+// never 落 argv / log / plaintext 列）。连接状态读面（login/scope）内嵌认证面
+// 端点封套（spec 12 G2-T4），不立 record 投影（INTERNAL_ONLY_TABLES）。
+export const githubConnection = sqliteTable('github_connection', {
+  teamId: text('teamId')
+    .primaryKey()
+    .references(() => team.id, { onDelete: 'cascade' }),
+  /** GitHub 登录名（OAuth 令牌面 `GET /user` login；picker 展示位）。 */
+  login: text('login').notNull(),
+  /** [内部] SecretBox 信封（v1 头 + iv + ciphertext + authTag，01 §4.2）。 */
+  accessTokenCipher: text('accessTokenCipher').notNull(),
+  /** 授权 scope 串（空格分隔，`repo` 位 = spec 12 GitHub 执行面前提）。 */
+  scope: text('scope').notNull(),
   createdAt: epochMs('createdAt').notNull(),
 });
