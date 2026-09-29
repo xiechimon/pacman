@@ -38,7 +38,6 @@ import {
   stopPending as stopPendingTable,
   todo as todoTable,
 } from '../src/db/schema.js';
-import type { TestServer } from './helpers.js';
 import { bootServer, issueApiKey, postProject } from './helpers.js';
 
 const AGENT_ID = 'agent-stop-1';

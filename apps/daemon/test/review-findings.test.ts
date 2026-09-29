@@ -114,7 +114,7 @@ describe('AI 审核 findings 提取（M7 #330）', () => {
         { type: 'text', text: '先解释一下' },
         {
           type: 'text',
-          text: '\n```json\n' + JSON.stringify({ conclusion: '通过', findings: [] }) + '\n```',
+          text: `\n\`\`\`json\n${JSON.stringify({ conclusion: '通过', findings: [] })}\n\`\`\``,
         },
       ]),
     ];

@@ -447,6 +447,8 @@
   color: var(--text-primary);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
+   组件（.sched-card-menu-row），无实际级联；按 UI 区段分文件，不重排 */
 .sched-form-value svg {
   flex: none;
   color: var(--text-dim);
@@ -538,6 +540,8 @@
   outline: none;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
+   组件（.sched-card-menu-row），无实际级联；按 UI 区段分文件，不重排 */
 .sched-form-select svg {
   color: var(--text-dim);
 }
@@ -682,6 +686,8 @@
   color: var(--text-dim);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
+   组件（.sched-card-menu-row），无实际级联；按 UI 区段分文件，不重排 */
 .prj-new-repo svg {
   color: var(--text-dim);
 }
@@ -959,6 +965,8 @@
   color: var(--text-secondary);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
+   组件（.sched-card-menu-row），无实际级联；按 UI 区段分文件，不重排 */
 .prj-branch-chip svg {
   color: var(--text-dim);
 }
@@ -1013,6 +1021,8 @@
   cursor: pointer;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
+   组件（.sched-card-menu-row），无实际级联；按 UI 区段分文件，不重排 */
 .prj-file-row svg {
   flex: none;
   color: var(--text-dim);
@@ -1044,6 +1054,8 @@
   padding: 5px 4px;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
+   组件（.sched-card-menu-row），无实际级联；按 UI 区段分文件，不重排 */
 .prj-history-row svg {
   flex: none;
   color: var(--text-dim);
@@ -1487,6 +1499,8 @@
   color: var(--text-primary);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
+   组件（.sched-card-menu-row），无实际级联；按 UI 区段分文件，不重排 */
 .prj-set-value svg {
   color: var(--text-tertiary);
   cursor: pointer;
@@ -1520,6 +1534,8 @@
   /* #177: static chip (#149 branch-chip 同律) — no cursor affordance */
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
+   组件（.sched-card-menu-row），无实际级联；按 UI 区段分文件，不重排 */
 .prj-set-branch svg {
   color: var(--text-dim);
 }

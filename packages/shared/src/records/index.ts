@@ -18,7 +18,6 @@ import { notificationRecordSchema } from './notification.js';
 import { planRecordSchema } from './plan.js';
 import { projectRecordSchema } from './project.js';
 import { providerRecordSchema } from './provider.js';
-import { reviewVerdictSchema } from './review.js';
 import { scheduleRecordSchema } from './schedule.js';
 import { secretRecordSchema } from './secret.js';
 import { stepRecordSchema } from './step.js';
