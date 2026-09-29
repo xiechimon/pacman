@@ -55,6 +55,11 @@
     color: var(--text-primary);
     font-family: var(--font-sans);
     font-size: 14px;
+    /* 字重基线（#390，DESIGN.md §Typography 三档锚点）：正文显式 400。
+       inter-var 的 fvar wght 轴 100–900 / default 400 且 @font-face 已声明
+       全档范围（fonts.css），浏览器按请求档实例化，无需
+       font-variation-settings。 */
+    font-weight: 400;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
