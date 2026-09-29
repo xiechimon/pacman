@@ -8,6 +8,7 @@ import {
   conversationMessagesResponseSchema,
   createTagBodySchema,
   createTodoBodySchema,
+  FIXED_TAGS,
   mergeAcceptedResponseSchema,
   notificationsResponseSchema,
   projectRecordSchema,
@@ -494,12 +495,14 @@ describe('tag 面（#309，r9 §3.4 wire 对拍）', () => {
     expect(created.color).toBe('#6366f1');
     expect(created.v).toBe(1);
     expect(typeof created.createdAt).toBe('number');
-    // GET 列表同回全形（旧三位投影面废止，r9 §3.4 record 单源）
+    // GET 列表同回全形（旧三位投影面废止，r9 §3.4 record 单源）。
+    // spec 15 #394：项目创建即播种固定词表 6 行（ADR 0002 D4）——自建行按 id 捞。
     const list = (await (
       await req(s.app, 'GET', `/api/projects/${s.projectId}/tags`)
     ).json()) as unknown[];
-    expect(list).toHaveLength(1);
-    expect(tagRecordSchema.parse(list[0])).toEqual(created);
+    expect(list).toHaveLength(7);
+    const found = list.find((r) => tagRecordSchema.parse(r).id === created.id);
+    expect(tagRecordSchema.parse(found)).toEqual(created);
   });
 
   test('POST tags 坏 body → 400；未知项目 → 404（{error} 单形状）', async () => {
@@ -785,8 +788,10 @@ describe('响应 shape 全量 zod 复验（字段即契约，02/A9）', () => {
     expect(todoRecordSchema.safeParse(created).success).toBe(true);
     const list = await (await req(s.app, 'GET', `/api/todos?teamId=${s.team.id}`)).json();
     expect(z.array(todoRecordSchema).safeParse(list).success).toBe(true);
+    // spec 15 #394：项目创建即播种固定词表 6 行——每行过 record schema。
     const tags = await (await req(s.app, 'GET', `/api/projects/${projectId}/tags`)).json();
-    expect(tags).toEqual([]);
+    expect(z.array(tagRecordSchema).safeParse(tags).success).toBe(true);
+    expect((tags as unknown[]).length).toBe(FIXED_TAGS.length);
     const one = await (await req(s.app, 'GET', `/api/todos/${created.id}`)).json();
     expect(todoRecordSchema.safeParse(one).success).toBe(true);
   });

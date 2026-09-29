@@ -151,6 +151,7 @@ import {
   resolveLocalSkill,
   scanLocalSkills,
 } from './services/skills.js';
+import { seedFixedTags } from './services/tags.js';
 import { createTodo, deleteTodo, getTodo, listTodos, updateTodo } from './services/todos.js';
 
 /** 会话 cookie 名 [设计]（01 §4.2：httpOnly cookie 自设；品牌槽已随 D3 切换，#109，
@@ -889,6 +890,9 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         localPath,
       })
       .run();
+    // spec 15 #394：固定标签词表随项目播种（ADR 0002 D4；幂等，chief
+    // create_project 面同调）。
+    seedFixedTags(ctx.db, id);
     const row = requireProject(ctx, id);
     return c.json(toProjectRecord(row, requestOrigin(c)), 201);
   });

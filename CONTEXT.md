@@ -23,12 +23,14 @@ _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的�
 | 运行 | Build | `build` | todo 的一次执行：一次运行 = 一个 build = 一个 conversation = 一个 worktree+分支。其 id 与 `conversationId` 同值。 |
 | 对话 | Conversation | `conversation` | build 产生的消息流的别名视图，与其同 UUID；不作为独立实体。 |
 | 方案 | Plan | `plan` | build 内类型化的规划产物卡（Context / Changes / Edge cases / Verification）；不是独立实体。 |
-| 标签 | Tag | `tag` | todo 的多对多标签。 |
+| 标签 | Tag | `tag` | todo 的 category 标签：固定词表（bug / feature / improvement / refactor / docs / chore），随项目播种；派发时由执行 agent 回填，每任务至多 1 个，无人工创建/挑选 UI（ADR 0002）。 |
+| 占位标题 | Placeholder title | `title`（占位态） | 保存任务时落库的首行截断标题（正文首行 ≤50 字符）；执行 agent 接单后用 LLM 总结回填正式标题覆盖之。 |
 
 边界裁决：
 - **无 Goal 概念** —— 工作单元只有一个，即 `todo`；「Goal」不引入。
 - **`待验收` 与 `审核` 是同一 phase 的两个界面词**，正名取列名 `待验收`；`完成`（`done`）是动作/按钮，不是阶段名。
 - Build 与 Conversation 是一个实体的两面（执行 vs 消息流），不拆成两套 id。
+- **新建任务无「标题」填写面** —— 用户只写任务正文，标题 = 占位标题 → agent 回填两段式（ADR 0002）；标签的 state 轴不引入，已由 `phase` 承载。
 
 ## 执行体
 

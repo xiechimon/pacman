@@ -97,7 +97,8 @@ try {
   await page.waitForSelector('[data-route="board"]', { timeout: 15_000 });
   await page.click('.board-new-task');
   await page.waitForSelector('.new-task-dialog', { timeout: 5000 });
-  await page.fill('.new-task-input', title);
+  // spec 15 #394：单字段正文——标题输入位移除。
+  await page.fill('.new-task-spec', title);
   check('dialog-open', true, '新建任务 dialog 打开');
 
   const pickerInfo = await drivePicker('.new-task-dialog');
@@ -124,7 +125,11 @@ try {
   await page.click('.new-task-save');
   await page.waitForSelector('.new-task-dialog', { state: 'hidden', timeout: 5000 });
   const todos = await getJson(`${SERVER}/api/todos`);
-  const apiTodo = Array.isArray(todos) ? todos.find((t) => t.title === title) : undefined;
+  // spec 15 #394：标题 = 正文首行派生——mention token 与首行同行时进标题,
+  // 用前缀匹配探针首行（时间戳段唯一）。
+  const apiTodo = Array.isArray(todos)
+    ? todos.find((t) => typeof t.title === 'string' && t.title.startsWith(title))
+    : undefined;
   check(
     'api-spec-token',
     typeof apiTodo?.spec === 'string' && AGENT_TOKEN.test(apiTodo.spec),

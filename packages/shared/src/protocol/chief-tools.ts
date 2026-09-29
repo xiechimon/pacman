@@ -546,9 +546,11 @@ export const WORKER_MEMORY_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   },
 ];
 
-/** worker 步全量工具（r5 §3.1 + #310/r9 §3.1）：记忆三件套 + 附件读。chief 49
- * 词表（组织/执行面）不外溢到 worker——worker 读路径只挂「任务内可读」面。
- * attachment 同 chief-tools 形态：replaySafe + attachmentId 必填。 */
+/** worker 步全量工具（r5 §3.1 + #310/r9 §3.1 + spec 15 #394）：记忆三件套 +
+ * 附件读 + 任务元信息回填。chief 49 词表（组织/执行面）不外溢到 worker——
+ * worker 读路径只挂「任务内可读」面。attachment 同 chief-tools 形态：
+ * replaySafe + attachmentId 必填。set_task_meta 窄设计：todoId 由 server 从
+ * stepId 钉死（词表外 tag name = 400），agent 无越权改他任务的参数面。 */
 export const WORKER_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   ...WORKER_MEMORY_REMOTE_TOOLS,
   {
@@ -560,5 +562,20 @@ export const WORKER_REMOTE_TOOLS: readonly RemoteToolDef[] = [
       'Returns the file content (utf8 for text/* / json / xml, base64 for images / pdf).',
     parameters: obj({ attachmentId: str('Attachment id.') }, ['attachmentId']),
     replaySafe: true,
+  },
+  {
+    name: 'set_task_meta',
+    description:
+      'Set the title and category tag of the task you are currently working on. ' +
+      'Call exactly once before starting work: title = a concise summary of the task spec ' +
+      '(50 chars max, plain text, no markdown); tag = one name from the fixed tag vocabulary ' +
+      'listed in your instructions (omit it when none fits).',
+    parameters: obj(
+      {
+        title: str('Task title, 50 chars max.'),
+        tag: str('Optional tag name from the fixed vocabulary.'),
+      },
+      ['title'],
+    ),
   },
 ];

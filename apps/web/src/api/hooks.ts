@@ -400,21 +400,13 @@ export function useApiMutations(teamId: string | undefined) {
   };
   return {
     createTodo: useMutation({
-      // #309：tagIds 恒携（r9 §3.4 wire 观测位——空选中即空数组）。
-      mutationFn: (input: { projectId: string; title: string; spec: string; tagIds?: string[] }) =>
+      // spec 15 #394：web 面不产标题——wire 上 title 恒空串 = server 派生占位
+      // 标题（首行截断），执行 agent 接单后回填正式标题；标签 = 固定词表
+      // agent 归类。chief/mcp 的显式标题路径不经此 hook（REST 契约不变）。
+      mutationFn: (input: { projectId: string; spec: string }) =>
         api.post<TodoRecord>(`/api/projects/${input.projectId}/todos`, {
-          title: input.title,
+          title: '',
           spec: input.spec,
-          tagIds: input.tagIds ?? [],
-        }),
-      onSuccess: invalidateAll,
-    }),
-    createTag: useMutation({
-      // #309（r9 §3.4 实测 wire）：body {name, color} → 201 TagRecord。
-      mutationFn: (input: { projectId: string; name: string; color: string }) =>
-        api.post<TagRecord>(`/api/projects/${input.projectId}/tags`, {
-          name: input.name,
-          color: input.color,
         }),
       onSuccess: invalidateAll,
     }),

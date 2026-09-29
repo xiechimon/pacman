@@ -6,6 +6,7 @@
 // 最小投影 [推断]）。
 
 import type { Assignment, Phase, TodoRecord, UserRecord } from '@pacman/shared';
+import { derivePlaceholderTitle, PLACEHOLDER_TITLE_FALLBACK } from '@pacman/shared';
 import { and, asc, eq, inArray, max, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { agent, build, step, tag, todo, todoTag } from '../db/schema.js';
@@ -158,12 +159,18 @@ export function createTodo(
     .get();
   const now = nowMs();
   const id = newRecordId();
+  // spec 15 #394：标题空白 = 占位标题派生（正文首个非空行 ≤50 字符，shared
+  // 单源）；正式标题由执行 agent 经 set_task_meta 回填（ADR 0002 D2/D3）。
+  // 全空白 spec 的兜底文案实践中不可达（web 保存闸拦空正文；chief/mcp 面
+  // 恒传显式标题）。
+  const title =
+    input.title.trim() || derivePlaceholderTitle(input.spec) || PLACEHOLDER_TITLE_FALLBACK;
   db.insert(todo)
     .values({
       id,
       teamId: input.teamId,
       projectId: input.projectId,
-      title: input.title,
+      title,
       spec: input.spec,
       phase: 'todo',
       phaseAt: now,

@@ -38,7 +38,8 @@ test('the dialog preselects the route project on its chip', async ({ page }) => 
 
 test('fixture 保存 lands the first task row with the 刚刚 label', async ({ page }) => {
   const dialog = await openDialog(page);
-  await dialog.locator('.new-task-input').fill(TITLE);
+  // spec 15 #394：单字段正文；占位标题 = 首行（此处单行原文 = 标题）
+  await dialog.locator('.new-task-spec').fill(TITLE);
   await dialog.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.locator('.new-task-dialog')).not.toBeVisible();
   // the empty state is gone; the row carries the title + 刚刚 (r2 §4.2
