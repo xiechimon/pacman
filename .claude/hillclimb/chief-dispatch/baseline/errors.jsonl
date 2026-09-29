@@ -1,0 +1,16 @@
+{"prompt_id":"c04","rep":0,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=6125/1178 latency=51.4s","retries":0,"judge_retries":0,"latency_s":51.892}
+{"prompt_id":"o02","rep":0,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=7285/856 latency=42.5s","retries":0,"judge_retries":0,"latency_s":42.949}
+{"prompt_id":"o05","rep":0,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=10528/2021 latency=96.6s","retries":0,"judge_retries":0,"latency_s":112.074}
+{"prompt_id":"s01","rep":0,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=0/0 latency=34.2s","retries":0,"judge_retries":0,"latency_s":34.724}
+{"prompt_id":"s01","rep":1,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=0/0 latency=34.2s","retries":0,"judge_retries":0,"latency_s":34.673}
+{"prompt_id":"m06","rep":2,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=0/0 latency=337.8s","retries":0,"judge_retries":0,"latency_s":338.448}
+{"prompt_id":"m06","rep":0,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=10495/2663 latency=375.9s","retries":0,"judge_retries":0,"latency_s":376.477}
+{"prompt_id":"s01","rep":2,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=12525/3881 latency=152.3s","retries":0,"judge_retries":0,"latency_s":168.231}
+{"prompt_id":"s02","rep":1,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=0/0 latency=35.3s","retries":0,"judge_retries":0,"latency_s":36.56}
+{"prompt_id":"s03","rep":0,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=0/0 latency=34.2s","retries":0,"judge_retries":0,"latency_s":35.931}
+{"prompt_id":"s04","rep":1,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=0/0 latency=34.2s","retries":0,"judge_retries":0,"latency_s":34.687}
+{"prompt_id":"s02","rep":0,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=11694/2076 latency=159.4s","retries":0,"judge_retries":0,"latency_s":161.252}
+{"prompt_id":"s05","rep":0,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=0/0 latency=34.2s","retries":0,"judge_retries":0,"latency_s":34.729}
+{"prompt_id":"s05","rep":1,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=0/0 latency=34.2s","retries":0,"judge_retries":0,"latency_s":34.728}
+{"prompt_id":"s06","rep":0,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=0/0 latency=34.4s","retries":0,"judge_retries":0,"latency_s":35.209}
+{"prompt_id":"s06","rep":2,"failure_class":"harness_error","error":"回合未正常完成：step=failed usage=0/0 latency=51.6s","retries":0,"judge_retries":0,"latency_s":52.208}
