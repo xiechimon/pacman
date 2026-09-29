@@ -1511,15 +1511,6 @@ export const resourcesDefault: FixtureSet = {
   resources: RESOURCES,
 };
 
-/** 新建技能 route (r8 79/80, issue #69): same team state as the resource
- *  rows, with the import tab the capture sits on. */
-export function resourcesImport(tab: 'folder' | 'github'): FixtureSet {
-  return {
-    ...resourcesDefault,
-    resources: { ...RESOURCES, importTab: tab },
-  };
-}
-
 // ---- issue #75: r8 dynamic-state sets (reject loop / failed / reuse) ----
 // Content verbatim from the r8 captures 54–77 (docs/research/r8-dynamic-
 // states.md §1–§3) plus the raw geometry dumps. Two session days: the

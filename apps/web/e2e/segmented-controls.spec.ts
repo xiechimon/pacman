@@ -2,18 +2,21 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // Issue #138 acceptance: the segmented-control family (PageShell .page-tab,
 // sched-form freq, project files seg, tasks view toggle, user-menu 外观,
-// branch-dialog seg, skills-import tabs, team layout toggle, chief settings
-// tabs) gives unselected items a visible hover tint in both themes, the
-// selected chip keeps its own fill under hover, and the hover highlight
-// rides the SAME box + radius as the selected chip (one geometry, two
-// depths). Group geometry follows the official probes: the page-tab family
-// carries the r2 24b/24c hairline ring (1px border + 2px padding, chip
-// inset). The freq dark active chip must read against its container (the
+// branch-dialog seg, team layout toggle, chief settings tabs) gives
+// unselected items a visible hover tint in both themes, the selected chip
+// keeps its own fill under hover, and the hover highlight rides the SAME
+// box + radius as the selected chip (one geometry, two depths). Group
+// geometry follows the official probes: the page-tab family carries the
+// r2 24b/24c hairline ring (1px border + 2px padding, chip inset). The
+// freq dark active chip must read against its container (the
 // --surface-elevated fill was container-identical in dark = invisible).
 // #366: the detail doc/chat tab group is gone from the family (the detail
 // route re-laid out to three panes); the branch-dialog seg now opens from
 // the board card icon — the detail route hosts the branch surface as a
 // static right-pane section instead.
+// #367: the skills-import tabs are gone from the family too (the import
+// page retired with the GitHub-scan/folder-upload faces — skills are a
+// read-only local-directory projection now).
 
 const PROJ = '/app/project/ZAQczKCu0MOAzC1ZqcFlX';
 
@@ -202,15 +205,10 @@ test('team layout toggle: official ring border + hover tint + chip token', async
   await expect.poll(() => bg(chart)).toBe(HOVER_LIGHT);
 });
 
-test('skills-import tabs + chief tabs: hover tints, click swaps the view', async ({ page }) => {
-  await themed(page, 'light', '/app/resources/skills/import?scenario=79');
-  const github = page.locator('.res-tab').nth(1);
-  await github.hover();
-  await expect.poll(() => bg(github)).toBe(HOVER_LIGHT);
-  await github.click();
-  await expect(github).toHaveClass(/res-tab--active/);
-
-  await page.goto('/app?scenario=101');
+// skills-import tab 半已随 spec 13（#367）退役——导入页删除，res-tab 族
+// 出账；chief tabs 半保留。
+test('chief tabs: hover tints, click swaps the view', async ({ page }) => {
+  await themed(page, 'light', '/app?scenario=101');
   const charter = page.locator('.chief-tab', { hasText: '章程' });
   await charter.hover();
   await expect.poll(() => bg(charter)).toBe(HOVER_LIGHT);

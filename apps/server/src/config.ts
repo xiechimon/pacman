@@ -10,6 +10,7 @@ import {
   BRAND,
   CLAIM_POLL_INTERVAL_MS,
   ENV_VARS,
+  SKILLS_DIR_DEFAULT,
   TEAM_STREAM_PING_INTERVAL_MS,
 } from '@pacman/shared';
 import { z } from 'zod';
@@ -17,8 +18,15 @@ import { z } from 'zod';
 export const serverConfigSchema = z.object({
   /** HTTP 监听端口（默认值 [设计]——官方端口不可观测）。 */
   port: z.number().int().min(0).max(65535),
+  /** 用户数据根（`~/.pacman` 位；DB 等在 `server/` 子目录，legacy-export
+   * 升级护栏文件落根，spec 13 #367）。 */
+  homeDir: z.string(),
   /** 单一数据根（DB 文件 + keyfile + bare repo 存储，01 §4.2）。 */
   dataDir: z.string(),
+  /** 技能根目录（spec 13 #367：本地现扫只读；env ENV_VARS.skillsDir 覆写，
+   * 缺省 = SKILLS_DIR_DEFAULT，`~` 前缀在此展开为绝对路径——单源纪律：
+   * 运行期只消费本字段，不再各自拼默认值）。 */
+  skillsDir: z.string(),
   /** SQLite DB 文件路径；`:memory:` = 内存库（测试面）。 */
   dbPath: z.string(),
   /** SecretBox keyfile 路径（01 §4.2：数据根内、首启生成 0600；文件名
@@ -83,11 +91,19 @@ function defaultWebDir(): string | null {
   return null;
 }
 
+/** `~` 前缀展开（SKILLS_DIR_DEFAULT 显示形 → 绝对路径；其余前缀原样）。 */
+function expandHome(path: string): string {
+  return path === '~' ? homedir() : path.startsWith('~/') ? join(homedir(), path.slice(2)) : path;
+}
+
 export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig {
   // 用户主目录槽 = ENV_VARS.home（PACMAN_HOME；r3 §1.1 实测原名 TDS_HOME）；默认 ~/.pacman。
   const home = process.env[ENV_VARS.home] ?? join(homedir(), BRAND.homeDirName);
   // 数据根子目录名 `server` [设计]（品牌位归 #44 一次性替换面）。
   const dataDir = join(home, 'server');
+  // 技能根（spec 13 #367）：env 覆写 > SKILLS_DIR_DEFAULT；展开为绝对路径。
+  const skillsDirEnv = envStr(ENV_VARS.skillsDir);
+  const skillsDir = resolve(expandHome(skillsDirEnv ?? SKILLS_DIR_DEFAULT));
   const webDirEnv = process.env[ENV_VARS.webDir];
   const oauthId = process.env[ENV_VARS.githubOauthClientId] || undefined;
   const oauthSecret = process.env[ENV_VARS.githubOauthClientSecret] || undefined;
@@ -98,7 +114,9 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
   }
   return serverConfigSchema.parse({
     port: envPort() ?? 8787,
+    homeDir: home,
     dataDir,
+    skillsDir,
     dbPath: join(dataDir, 'server.db'),
     keyfilePath: join(dataDir, 'secretbox.key'),
     pingIntervalMs: TEAM_STREAM_PING_INTERVAL_MS,

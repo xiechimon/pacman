@@ -219,7 +219,8 @@ describe('web REST vocabulary (02 §6.1 canonical)', () => {
       ['POST', '/api/teams/{id}/mcp-servers'],
       ['POST', '/api/teams/{id}/agents'],
       ['POST', '/api/schedules'],
-      ['POST', '/api/skills'],
+      // POST /api/skills 已除名（spec 13 #367：技能改本地目录现扫只读投影；
+      // divergence 登记 = NON_REPLICATED_ENDPOINTS，下方 exclusion 断言钉）。
       ['POST', '/api/analytics/first-touch'],
       ['PATCH', '/api/teams/{id}/providers/{pid}'],
       ['PATCH', '/api/teams/{id}/agents/{aid}'],
@@ -244,6 +245,11 @@ describe('web REST vocabulary (02 §6.1 canonical)', () => {
 
   it('excludes /api/push — Web Push 不进 spec (R1 终裁, 02 §9.1/04 §5)', () => {
     expect(has('POST', '/api/push')).toBe(false);
+  });
+
+  it('excludes the skills write faces — spec 13 #367 本地目录只读投影 (divergence 登记在 NON_REPLICATED_ENDPOINTS)', () => {
+    expect(has('POST', '/api/skills')).toBe(false);
+    expect(has('POST', '/api/skills/scan')).toBe(false);
   });
 });
 
@@ -390,7 +396,8 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     // BRAND_SLOTS.envPrefix.todosDev）；复刻增量位（webDir = M5 SPA 静态托管
     // 覆写 [设计]；githubOauth 两件 = #231 握手面 client 凭证 [设计]；
     // token = #251 可选鉴权自有面 [设计]，非观测 canon）单独断言，两组不混判。
-    const { webDir, githubOauthClientId, githubOauthClientSecret, token, ...observed } = ENV_VARS;
+    const { webDir, githubOauthClientId, githubOauthClientSecret, token, skillsDir, ...observed } =
+      ENV_VARS;
     expect(observed).toEqual({
       server: 'PACMAN_SERVER',
       apiKey: 'PACMAN_API_KEY',
@@ -402,6 +409,8 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     expect(githubOauthClientId).toBe('PACMAN_GITHUB_OAUTH_CLIENT_ID');
     expect(githubOauthClientSecret).toBe('PACMAN_GITHUB_OAUTH_CLIENT_SECRET');
     expect(token).toBe('PACMAN_TOKEN');
+    // spec 13 #367 自有面 [设计]：技能根目录覆写（缺省 SKILLS_DIR_DEFAULT）
+    expect(skillsDir).toBe('PACMAN_SKILLS_DIR');
   });
 
   it('credential formats match the observed shapes (key prefix 随 BRAND 槽)', () => {
@@ -430,19 +439,21 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
   });
 });
 
-describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; #310 +attachment; #319 +branch_sync; spec 12 +github_connection)', () => {
-  it('DB table registry is the 01 §6 list + chief + steer/stop_pending + attachment + branch_sync + github_connection (31 incl. the todo_tag join)', () => {
-    expect(DB_TABLES).toHaveLength(31);
+describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; #310 +attachment; #319 +branch_sync; spec 12 +github_connection; spec 13 −skill)', () => {
+  it('DB table registry is the 01 §6 list + chief + steer/stop_pending + attachment + branch_sync + github_connection − skill (30 incl. the todo_tag join; skill 退役 spec 13 #367)', () => {
+    expect(DB_TABLES).toHaveLength(30);
     expect(DB_TABLES).toContain('todo_tag');
     expect(DB_TABLES).toContain('chief');
     expect(DB_TABLES).toContain('attachment');
     expect(DB_TABLES).toContain('branch_sync');
     expect(DB_TABLES).toContain('stop_pending');
     expect(DB_TABLES).toContain('github_connection');
+    // spec 13 #367：skill 表退役（技能 = 本地目录现扫只读投影，不入库）
+    expect(DB_TABLES).not.toContain('skill');
   });
 
-  it('record shapes cover exactly the 25 wire tables (todo_tag join + steer/stop_pending internal + attachment binary + github_connection credential have none)', () => {
-    expect(Object.keys(RECORD_SCHEMAS)).toHaveLength(25);
+  it('record shapes cover exactly the 24 wire tables (todo_tag join + steer/stop_pending internal + attachment binary + github_connection credential have none; skill = 磁盘投影无表位, spec 13 #367)', () => {
+    expect(Object.keys(RECORD_SCHEMAS)).toHaveLength(24);
     expect(Object.keys(RECORD_SCHEMAS)).toEqual(
       DB_TABLES.filter(
         (t) =>

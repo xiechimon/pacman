@@ -382,6 +382,7 @@ describe('attachments — chief-tools / mcp-face tool', () => {
           user: s.user,
           reposDir: s.reposDir,
           attachmentsDir: s.attachmentsDir,
+          skillsDir: s.skillsDir,
         },
         {
           teamId: s.team.id,
@@ -419,6 +420,7 @@ describe('attachments — chief-tools / mcp-face tool', () => {
           user: s.user,
           reposDir: s.reposDir,
           attachmentsDir: s.attachmentsDir,
+          skillsDir: s.skillsDir,
         },
         {
           teamId: s.team.id,
@@ -452,6 +454,7 @@ describe('attachments — chief-tools / mcp-face tool', () => {
             user: s.user,
             reposDir: s.reposDir,
             attachmentsDir: s.attachmentsDir,
+            skillsDir: s.skillsDir,
           },
           {
             teamId: s.team.id,

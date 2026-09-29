@@ -18,7 +18,6 @@ import type {
   DiffFileContent,
   DocumentDiff,
   DocumentDiffFile,
-  FetchSkillFilesResponse,
   MachineRecord,
   McpServerRecord,
   OAuthAuthorizeResponse,
@@ -29,8 +28,6 @@ import type {
   ProjectRecord,
   ProviderPreset,
   ProviderRecord,
-  ScanSkillsBody,
-  ScanSkillsResponse,
   ScheduleRecord,
   SearchResponse,
   SecretRecord,
@@ -540,32 +537,8 @@ export function useApiMutations(teamId: string | undefined) {
       mutationFn: (id: string) => api.del<void>(`/api/teams/${teamId}/mcp-servers/${id}`),
       onSuccess: invalidateAll,
     }),
-    createSkill: useMutation({
-      mutationFn: (body: {
-        name: string;
-        description?: string | null;
-        files: Record<string, string>;
-      }) => api.post<SkillRecord>('/api/skills', { ...body, ...(teamId ? { teamId } : {}) }),
-      onSuccess: invalidateAll,
-    }),
-    // #235 GitHub 扫描双模式（#223 端点）：缺省 path = 候选发现，给 path =
-    // 文件集取回（与 POST /api/skills body.files 同形，选中即喂 createSkill）。
-    // 同端点同 body schema（shared ScanSkillsBody 单源）；纯发现/取回调用，
-    // 无 server state 变更 → 不 invalidateAll。
-    scanSkills: useMutation({
-      mutationFn: (body: ScanSkillsBody) =>
-        api.post<ScanSkillsResponse>('/api/skills/scan', {
-          ...body,
-          ...(teamId ? { teamId } : {}),
-        }),
-    }),
-    fetchSkillFiles: useMutation({
-      mutationFn: (body: ScanSkillsBody & { path: string }) =>
-        api.post<FetchSkillFilesResponse>('/api/skills/scan', {
-          ...body,
-          ...(teamId ? { teamId } : {}),
-        }),
-    }),
+    // skills 无 mutation 面（spec 13 #367：技能 = server 本地目录现扫只读
+    // 投影；写技能 = 往目录放文件，无上传/扫描端点）。
     createAgent: useMutation({
       mutationFn: (body: CreateAgentBody) =>
         api.post<{ id: string }>(`/api/teams/${teamId}/agents`, body),
