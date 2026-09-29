@@ -227,6 +227,16 @@ export const EN: Record<string, string> = {
   暂无内容: 'Nothing yet',
   '创建第一个任务以开始使用。': 'Create your first todo to get started.',
   默认项目: 'Default Project',
+  // #446（ADR 0005 读向）项目页「从 GitHub issue 建任务」入口 + 选择弹层
+  // （状态过滤 / 分页 / 三态行）。
+  '从 GitHub issue 建任务': 'New task from GitHub issue',
+  打开: 'Open',
+  已关闭: 'Closed',
+  'issue 列表加载失败': 'Failed to load issues',
+  '这个状态下没有 issue': 'No issues in this state',
+  上一页: 'Previous page',
+  下一页: 'Next page',
+  '第 {page} 页': 'Page {page}',
   // 桌面通知标题（M5 SSE notification 事件面，02 §9.1 三事件；api/sse.ts
   // 纯函数位消费——非组件 t()，i18n-coverage 以本键位兑现 en 兜底）
   方案已就绪: 'Plan ready',
