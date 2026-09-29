@@ -156,6 +156,19 @@ export function NewTaskDialog({
     specRef.current = el;
     el?.focus();
   }, []);
+  // 焦点归还（#388 族律）：开时记下触发元素,关时归还——正文 textarea 随
+  // 退场卸载,不归还会掉回 body（键盘用户丢失上下文;overlay-focus e2e 的
+  // Esc 后环断言依赖焦点回到触发钮）。
+  const returnFocusRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (open) {
+      returnFocusRef.current = document.activeElement as HTMLElement | null;
+      return;
+    }
+    const el = returnFocusRef.current;
+    returnFocusRef.current = null;
+    if (el && document.contains(el)) el.focus();
+  }, [open]);
 
   // M7 #310 附件选择回调：files → onAttachment 委托父处理 grant+upload+
   // setSpec 拼 token；reset value 允许同文件再选（change 事件不重发同源）

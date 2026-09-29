@@ -63,3 +63,10 @@ test('autofocus lands on the spec textarea', async ({ page }) => {
   const dialog = await openDialog(page);
   await expect(dialog.locator('.new-task-spec')).toBeFocused();
 });
+
+test('Esc close returns focus to the invoking button (#388 族律)', async ({ page }) => {
+  const dialog = await openDialog(page);
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await expect(page.locator('.board-new-task')).toBeFocused();
+});
