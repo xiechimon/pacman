@@ -7,7 +7,7 @@ description: pacman 行为验证——起隔离 live 栈(server VERIFY_PORT 8791
 
 pacman = todos.dev 复刻(React/vite web + Hono REST/SSE/SQLite server)。本 skill 起一套**隔离实例**(独立端口 + 独立数据根,绝不碰用户真数据 `~/.pacman` 和 8787/5173 上的活跃 dev 栈),用仓库自带的 Playwright chromium 走真用户路径,产出证据后干净回收。脚本全在 `scripts/`,证据与运行态全在 `.claude/` 下(已被 .gitignore 忽略,不进 git)。
 
-Last updated: 2026-09-29(#391 验收复盘:「验收签字」硬规则——归档后必须勾 issue Acceptance criteria 框 + 追加验收记录段(关票 ≠ 验收完成,#391 实测票关了三框仍空);归档纪律补 PR 贴图形态(github.com/<owner>/<repo>/raw/<SHA>/ 永久链,私有仓 raw.githubusercontent 恒 404);前序 2026-09-28:#354 spec 11 先行地图:feature map 补三面条目(providers runtime tabs / machines 本机行+switches / 添加服务商 picker)+ 三个先行 probe(drive-providers-tabs / drive-machines-local / drive-provider-picker.mjs)——先行语义(spec 11 A12):实现票落地前红态,FAIL detail 逐条指 spec 条款,实现票验收 = 转绿,详见 features/README.md Last updated;前序同日:证据归档纪律(证据默认落主仓 + archive.mjs 归档进 docs/verify/<ticket>/ + 硬规则「无归档路径的 verify 声明视为未验证」)+ M7 功能闭环维护(feature map 补 6 条 + drive-stop.mjs 修 #318 + stub-llm-verify.mjs 修 Node ≥v20 close bug)。建成日 2026-09-25,5 probe 全 PASS;维护走 `/maintain-verification-skill`)
+Last updated: 2026-09-29(/maintain-verification-skill 维护轮:#351 看板四列工作台落地后本轮 map 校正——三处 SKILL.md 修正:①worktree 车道表述(2026-09-28 起本 skill 已提交进仓,worktree 自带副本,必须从 worktree 路径跑脚本;主仓脚本验 lane 代码 = 旧脚本 fill 30s 超时假象,#386 实战);②定制 probe 清单补全(纯 live 栈组 9 脚本登记:avatars/hotkeys/chief-model-select/detail-pane/mcp/project-new-form/github-oauth/local-repos/M7 六功能族);③spec 11 三 probe 表述由「先行红态」转「落地后应全绿,红即回归」(实现票 #355-#358 全合)。board 条目本身各 lane 已随票维护到位(board-new-task.md 4 列 + 单字段面,证据 docs/verify/351/ 10/10 + 4/4)。前序:#391 验收复盘:「验收签字」硬规则——归档后必须勾 issue Acceptance criteria 框 + 追加验收记录段(关票 ≠ 验收完成,#391 实测票关了三框仍空);归档纪律补 PR 贴图形态(github.com/<owner>/<repo>/raw/<SHA>/ 永久链,私有仓 raw.githubusercontent 恒 404);前序 2026-09-28:#354 spec 11 先行地图:feature map 补三面条目(providers runtime tabs / machines 本机行+switches / 添加服务商 picker)+ 三个先行 probe(drive-providers-tabs / drive-machines-local / drive-provider-picker.mjs)——先行语义(spec 11 A12):实现票落地前红态,FAIL detail 逐条指 spec 条款,实现票验收 = 转绿,详见 features/README.md Last updated;前序同日:证据归档纪律(证据默认落主仓 + archive.mjs 归档进 docs/verify/<ticket>/ + 硬规则「无归档路径的 verify 声明视为未验证」)+ M7 功能闭环维护(feature map 补 6 条 + drive-stop.mjs 修 #318 + stub-llm-verify.mjs 修 Node ≥v20 close bug)。建成日 2026-09-25,5 probe 全 PASS;维护走 `/maintain-verification-skill`)
 
 ## 事实底座(2026-09-25 盘问;feature 面演化后跑 `/maintain-verification-skill` 校正)
 
@@ -23,7 +23,7 @@ Last updated: 2026-09-29(#391 验收复盘:「验收签字」硬规则——归�
 
 仓内端口舰队:**8787** server / **5173** vite / **8399** e2e。占用者是别的 lane(常含用户自己的 dev 栈)的活进程,**不能杀**。本 skill 默认 8791 + 5273;launch 发现被占就换端口(env 覆写 `VERIFY_PORT` / `VERIFY_WEB_PORT`),永远不要动别人的端口。查占用:`lsof -iTCP:8791 -sTCP:LISTEN`。
 
-**worktree 车道**:worktree 检出里没有 `.claude/`(gitignored),脚本在主仓。跑法:launch 与 drive 都传 `VERIFY_REPO_ROOT=<worktree 绝对路径>`,栈就在 worktree 的代码上起(worktree 须已 `pnpm install`);脚本自身位置只用于兜底推导主仓。**改码后必须重 launch**:worktree 在 `.claude/worktrees/` 下,vite 配置的 `**/.claude/**` watch 忽略会把整个 worktree 罩住,栈运行中改码不会生效(实证见项目记忆),驱动到的就是旧代码。
+**worktree 车道**:2026-09-28 起 `.claude/skills/verify-pacman/` 已提交进仓(.gitignore 嵌套例外),**worktree 检出自带本 skill 的完整副本**。跑法:`VERIFY_REPO_ROOT=<worktree 绝对路径>` 起栈(worktree 须已 `pnpm install`),且**必须从 worktree 路径跑脚本自身**(`node <worktree>/.claude/skills/verify-pacman/scripts/...`)——从主仓路径跑会用主仓的旧 probe 脚本验 lane 的新代码,症状极迷惑(旧脚本在 fill 处 30s 超时,而非解析报错;#386 实战烧 5 轮才定位)。**改码后必须重 launch**:worktree 在 `.claude/worktrees/` 下,vite 配置的 `**/.claude/**` watch 忽略会把整个 worktree 罩住,栈运行中改码不会生效(实证见项目记忆),驱动到的就是旧代码。
 
 **lane 收尾必做**(证据随 worktree 消失是本 skill 最大的坑,见「证据归档纪律」):`VERIFY_REPO_ROOT` 只影响栈与运行态,证据默认落主仓;跑完仍须 archive 进 `docs/verify/<ticket>/` 并 commit + 勾 issue 验收框(见「证据归档纪律」),否则 PR 的验证声明不可查证。
 
@@ -68,7 +68,7 @@ node .../scripts/drive.mjs <probe>    # probe ∈ board | new-task | api-key | s
 
 注意:`api-key` probe 假定全新库(新建按钮只在空态)——重验先重跑 launch。
 
-**定制 probe**(需真 daemon + stub LLM 门控轮的全栈链,各自独立脚本,配方见对应 feature 文件):
+**定制 probe**(各自独立脚本,配方与前置见对应 feature 文件。全量清单=scripts/ 目录;下表为**需真 daemon + stub LLM 门控轮**的全栈链):
 
 ```sh
 node .../scripts/drive-stop.mjs <todoId>                          # 停止钮全链(stop-button.md,#308;含 #318 start dialog)
@@ -76,9 +76,23 @@ node .../scripts/drive-review.mjs <todoId>                        # AI 审核发
 REVIEW_MACHINE_TOKEN=<t> node .../scripts/drive-review-blocking.mjs <todoId> <agentId>  # blocking 自动修订回路(#330/#332)
 ```
 
+**纯 live 栈 probe**(无 daemon 依赖,launch 后直跑;配方见对应 feature 文件):
+
+```sh
+node .../scripts/drive-avatars.mjs             # dicebear 头像(#387,avatars.md)
+node .../scripts/drive-hotkeys.mjs             # N/Space 快捷键(#389,hotkeys.md)
+node .../scripts/drive-chief-model-select.mjs  # 总管压缩模型选择器(#358;选择器族)
+node .../scripts/drive-detail-pane.mjs         # 详情页 3-pane(#366,detail-right-pane.md)
+node .../scripts/drive-mcp.mjs                 # MCP 只读本地 config 面(spec 13/#368,mcp-servers.md)
+node .../scripts/drive-project-new-form.mjs    # 新建项目表单(spec 12/#360,project-new-form.md)
+node .../scripts/probe-github-oauth.mjs        # GitHub 认证 + repo picker(spec 12/#361,github-oauth-picker.md)
+node .../scripts/probe-local-repos.mjs         # local 项目 API 三态(spec 12/#359,local-repo-api.md)
+node .../scripts/drive-attachments.mjs / drive-branch-sync.mjs / drive-failed-send.mjs / drive-mentions.mjs / drive-tags.mjs  # M7 六功能族(各自 feature 文件)
+```
+
 前置:stub LLM(`scripts/stub-llm-verify.mjs`,门控延迟轮)+ seed(`scripts/setup-review-seed.mjs` 或其变体)+ 真 daemon(`apps/daemon` `pnpm exec tsx src/cli.ts start --foreground`,守门见 stop-button.md Gotchas:6 proxy 全 unset / PACMAN_HOME export 透传 / vite PACMAN_DEV_SERVER_PORT)。
 
-**spec 11 先行 probe**(feature map 先行于实现,A12/#354——实现票落地前**红态**,每条 FAIL detail 指 `docs/spec/11-模型服务与机器本地化.md` 条款,红态输出即实现票验收清单;跑序:tabs(依赖全新库,pi 空态断言)→ picker(e2e 建 provider)→ machines(幂等)):
+**spec 11 probe**(feature map 先行于实现,A12/#354;实现票 #355/#356/#357/#358 已全数落地合入,**本组现应全绿**——红即回归;跑序:tabs(依赖全新库,pi 空态断言)→ picker(e2e 建 provider)→ machines(幂等);三脚本 fallback 页 `docs/spec/11-模型服务与机器本地化.md` 为条款正源):
 
 ```sh
 node .../scripts/drive-providers-tabs.mjs    # providers runtime tabs(providers-tabs.md,spec 11 A1-A4/A7)
