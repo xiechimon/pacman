@@ -17,6 +17,7 @@ import { type MachineHandle, runMachine } from '../../../apps/daemon/src/machine
 import { statePaths } from '../../../apps/daemon/src/state.js';
 import {
   agentMemory as agentMemoryTable,
+  agent as agentTable,
   build as buildTable,
   chiefMessage,
   chiefThread,
@@ -30,6 +31,7 @@ import { repoDirFor } from '../../../apps/server/src/services/git.js';
 import {
   api,
   bootRealServer,
+  AGENT_ID as HELPER_BOOTSTRAP_AGENT_ID,
   type RealServer,
   waitFor,
 } from '../../../integration/test/helpers.js';
@@ -114,6 +116,8 @@ export interface RosterAgent {
 export interface Stack {
   server: RealServer;
   home: string;
+  /** 隔离的技能根（空目录）——诊断脚本合成 chief 系统提示词时要用。 */
+  skillsDir: string;
   logLines: () => string[];
   close: () => Promise<void>;
 }
@@ -185,6 +189,7 @@ export async function bootStack(): Promise<Stack> {
   return {
     server,
     home,
+    skillsDir,
     logLines,
     close: async () => {
       // 判完立刻关栈 = 让 daemon 来不及执行 chief 刚派出去的 build。关栈失败
@@ -289,6 +294,11 @@ export async function seedWorld(
   });
   if (prov.status !== 201)
     throw new Error(`建 provider 失败: ${prov.status} ${JSON.stringify(prov.body)}`);
+
+  // helpers 会 seed 一个集成测试用的 Agent（agent-it-1，职责文案是写给 stub LLM
+  // 的）。它不属于场景编制，却会出现在 chief 的团队资源清单里——多一个不该有的
+  // 分派候选，也让「按顺序数条目」多一个错位机会。清掉。
+  server.db.delete(agentTable).where(eq(agentTable.id, HELPER_BOOTSTRAP_AGENT_ID)).run();
 
   const agentIds: Record<string, string> = {};
   for (const a of opts.roster) {

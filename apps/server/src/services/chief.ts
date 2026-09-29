@@ -560,7 +560,18 @@ export function composeChiefSystemPrompt(deps: ChiefResourceDeps, teamId: string
     '',
     '## 团队资源清单',
     `projects: ${JSON.stringify(projects.map((p) => ({ id: p.id, name: p.name, repoKind: p.repoKind })))}`,
-    `agents: ${JSON.stringify(agents.map((a) => ({ id: a.id, displayName: a.displayName, description: a.description, modelId: a.modelId })))}`,
+    // agents 刻意不用 JSON.stringify（其余清单用）：分派是「名字→id」的抄写动作，
+    // 而压成一行的密集 JSON 里条目边界要靠数——实测出现过系统性「往前错一位」
+    // （该派最后一个 Agent，实际派了它前面那个），回执里名字还对得上下文的错。
+    // 一行一个、名字与 id 相邻，抄写就不再依赖计数。
+    agents.length > 0
+      ? `agents:\n${agents
+          .map(
+            (a) =>
+              `- ${a.displayName}（id: ${a.id}，模型: ${a.modelId ?? 'n/a'}）：${a.description ?? '未设置职责'}`,
+          )
+          .join('\n')}`
+      : 'agents: （无）',
     `machines: ${JSON.stringify(machines.map((m) => ({ id: m.id, name: m.name, online: m.online, latestCliVersion: m.latestCliVersion })))}`,
     `skills: ${JSON.stringify(skills.map((s) => ({ id: s.id, name: s.name })))}`,
     '',
