@@ -3,8 +3,13 @@
 // mention-picker）的共用底座。
 //
 // 机制换 Base UI Dialog（**非模态**：不圈焦点、无背板），Esc 走 Base UI 的
-// layer 栈；定位仍由各面自己的 capture 固定坐标 CSS 承载（这族是 fixed 坐标
-// 而非动态锚定，见 #409 盘点），故不需要 Positioner/anchor。
+// layer 栈；定位仍由各面自己的 capture 坐标 CSS 承载，故不需要 Positioner/anchor。
+//
+// **定位的事实（两条车道独立实测后修正）**：这族**多数是 `position:absolute`
+// 相对各自锚 wrap**（plan-dropdown / chip-popover / chief-model-select /
+// skills 排序），不是 fixed 坐标——portal 到 body 会换掉 containing block 把面
+// 甩出视口。故底座提供 `container` prop：把 portal 挂回该面的锚 wrap，DOM 树位
+// 与几何不变（对 fixed 坐标的面（more-menu / mention-picker）保持缺省 body）。
 //
 // **有意保留**：`ClickCatcher`（透明全屏 button）语义原样——它是「外点只关
 // 浮层、不穿透触发下层元素」的仓内 UX 决策，与 Base UI 原生 outside-press
