@@ -1016,15 +1016,18 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   position: absolute;
   left: 8px;
   /* #163 锚定律（dogfood 实证：冻结 top:410px 在矮视口盖住头像 chip）：
-     chip 钉在视口底（展开 .sidebar-user 44px / rail .rail-user 38px +
-     11px 底距），菜单底边恒距视口底 78px——r7 捕获视口（1440×732）上即
-     捕获帧的底边 654（top 410 + 当时高 244），任意视口高度随底平移，
-     永远开在 chip 上方（展开态净空 34px / rail 29px），两种 chip 形态
-     同律。absolute 变体的包含块是视口尺寸的 ICB（.detail-shell 无
-     position，应用不滚动），bottom 与 floating 的 fixed 同义。高度不再
-     冻结行数——content 定高（#149 少反馈行、#163 隐 新功能/快捷键 行后
-     自然收缩），底边不动、顶边随行集伸缩。 */
-  bottom: 78px;
+     菜单底锚在视口底上方，任意视口高度随底平移，永远开在 chip 上方。
+     absolute 变体的包含块是视口尺寸的 ICB（.detail-shell 无 position，
+     应用不滚动），bottom 与 floating 的 fixed 同义。高度不冻结行数——
+     content 定高，底边不动、顶边随行集伸缩。
+     #388 收紧（dogfood：菜单与头像之间空了一截）：#163 的 78px 冻结底边
+     对可见头像（24px img）留出 36–44px 视觉净空；改为锚到 img 顶 + 4px
+     家族基线间距（chip-popover +3.5 / sched-card-menu +4 同款）。展开态
+     img 顶恒距视口底 34px（.sidebar-user 44px 高、img 居中）→ 38px；
+     rail 态 img 顶 42px（.rail-user 38px + 11px 底距、img 居中）→ 下方
+     collapsed 覆写 46px。净空对 img 而非透明按钮盒测量——盒顶两形态
+     不同高（44/49），单值 bottom 无法同时贴合两形态的可见头像。 */
+  bottom: 38px;
   width: 224px;
   /* #139 single-source edge recipe: the ring is a shadow spread (no real
      border) so the hairline stays uniform at fractional page zoom */
@@ -1046,9 +1049,17 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 .user-menu--floating {
   position: fixed;
   z-index: 30;
-  /* #163: 底部锚定继承基规则（bottom:78px）。#139 的 min() 顶部钳制随
-     冻结坐标一并删除——底边恒距视口底的面板在 zoom 收缩的 css viewport
-     下不会把底边框推出屏外，zoom-probe 的 clipped 契约天然成立。 */
+  /* #163: 底部锚定继承基规则。#139 的 min() 顶部钳制随冻结坐标一并删除
+     ——底边恒距视口底的面板在 zoom 收缩的 css viewport 下不会把底边框
+     推出屏外，zoom-probe 的 clipped 契约天然成立。 */
+}
+
+/* #388: rail 形态头像坐得更高（img 顶距视口底 42px）——同款 4px 视觉间距。
+   floating 菜单两分支都渲染在 aside 内（sidebar.tsx userMenuPopover），
+   形态类做后代选择器即可命中；冻结捕获变体（scenario 17，展开态 canon）
+   走基规则。 */
+.board-sidebar--collapsed .user-menu--floating {
+  bottom: 46px;
 }
 
 .user-menu-head {

@@ -34,18 +34,24 @@ async function expectMenuOnTop(page: Page) {
   expect(top).toBe(true);
 }
 
-/** #163 anchoring law: capture width/x stand, and the menu bottom stays at
- *  least 8px clear of the chip top — never covering the avatar. Returns the
- *  menu-bottom distance from the viewport bottom (the anchoring invariant:
- *  it must not depend on the viewport height). */
+/** #163 anchoring law, #388 收紧: capture width/x stand, and the menu bottom
+ *  hugs the VISIBLE avatar — the chip button box is transparent and its top
+ *  differs per shape (44 vs 49 from the viewport bottom), so the gap is
+ *  measured against the avatar img: never covering it (#163 law) and never
+ *  floating 一截 away (dogfood #3: the frozen 78px bottom read as a 36–44px
+ *  visual gap; the family baseline is ~4px — chip-popover +3.5 / sched-card
+ *  -menu +4). Returns the menu-bottom distance from the viewport bottom
+ *  (the anchoring invariant: it must not depend on the viewport height). */
 async function expectAnchoredAboveChip(page: Page, chipSel: string) {
   const box = await menu(page).boundingBox();
-  const chip = await page.locator(chipSel).boundingBox();
+  const img = await page.locator(`${chipSel} img`).boundingBox();
   expect(box).not.toBeNull();
-  expect(chip).not.toBeNull();
+  expect(img).not.toBeNull();
   expect(box!.x).toBe(8);
   expect(box!.width).toBe(224);
-  expect(box!.y + box!.height).toBeLessThanOrEqual(chip!.y - 8);
+  const gap = img!.y - (box!.y + box!.height);
+  expect(gap).toBeGreaterThanOrEqual(2); // never covers the avatar
+  expect(gap).toBeLessThanOrEqual(10); // visually 贴合, family baseline gap
   const viewportHeight = await page.evaluate(() => window.innerHeight);
   return viewportHeight - (box!.y + box!.height);
 }
