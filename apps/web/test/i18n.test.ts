@@ -27,7 +27,7 @@ function fakeStorage(initial: Record<string, string> = {}) {
 }
 
 const DICT: Record<string, string> = {
-  看板: 'Board',
+  工作台: 'Workbench',
   '{n} 分钟前': '{n} minutes ago',
 };
 
@@ -71,13 +71,13 @@ describe('htmlLangFor', () => {
 
 describe('translate', () => {
   it('zh is identity — the canonical source string renders untouched', () => {
-    expect(translate('zh', DICT, '看板')).toBe('看板');
+    expect(translate('zh', DICT, '工作台')).toBe('工作台');
     // an entry missing from the dict still renders (zh never needs the dict)
     expect(translate('zh', DICT, '尚无描述')).toBe('尚无描述');
   });
 
   it('en looks the source string up in the dict', () => {
-    expect(translate('en', DICT, '看板')).toBe('Board');
+    expect(translate('en', DICT, '工作台')).toBe('Workbench');
   });
 
   it('en falls back to the zh source when the dict has no entry', () => {
@@ -91,6 +91,6 @@ describe('translate', () => {
 
   it('leaves unmatched placeholders intact and tolerates missing vars', () => {
     expect(translate('zh', DICT, '{n} 分钟前')).toBe('{n} 分钟前');
-    expect(translate('en', DICT, '看板', { n: 1 })).toBe('Board');
+    expect(translate('en', DICT, '工作台', { n: 1 })).toBe('Workbench');
   });
 });

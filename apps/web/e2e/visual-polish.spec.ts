@@ -4,9 +4,10 @@ import { expect, type Page, test } from '@playwright/test';
 // seam is a drawn 1px divider-token line and the floating shadow is gone per
 // the #135 裁决 v2 revision — #390 同底律 supersedes #123's tone step: the
 // sidebar shares the main-area surface token, the seam alone carries the
-// layer separation; the horizontal board scroller keeps its
-// scroll capability with the track hidden (scrollbar-width: none +
-// ::-webkit-scrollbar display: none). Issue #139 acceptance (边框体系统一):
+// layer separation; the board scroller's track stays hidden
+// (scrollbar-width: none + ::-webkit-scrollbar display: none) — #351 turned
+// it into an even 4-column grid with no desktop horizontal scroll.
+// Issue #139 acceptance (边框体系统一):
 // the board card family and the account popover share ONE single-source edge
 // recipe — a 1px inset box-shadow ring in the --border-default scale (no real
 // CSS border: at fractional page zoom a 1px border lands on fractional device
@@ -150,7 +151,9 @@ for (const theme of ['light', 'dark'] as const) {
     expect(probe.shadow).toBe('none');
   });
 
-  test(`board scroller hides its track but keeps scrolling (${theme})`, async ({ page }) => {
+  test(`board grid lays out four even columns with no horizontal scroll (${theme})`, async ({
+    page,
+  }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app?scenario=01');
 
@@ -167,9 +170,19 @@ for (const theme of ['light', 'dark'] as const) {
     });
     expect(metrics.scrollbarWidth).toBe('none');
     expect(metrics.trackGap).toBe(0);
-    // scroll capability preserved — the track is hidden, not the overflow
-    expect(metrics.scrollable).toBe(true);
-    expect(metrics.scrollLeft).toBeGreaterThan(0);
+    // #351: the even 4-column grid fits the desktop width — the horizontal
+    // scroll is gone (overflow-x stays only as the narrow-window fallback)
+    expect(metrics.scrollable).toBe(false);
+    expect(metrics.scrollLeft).toBe(0);
+
+    // repeat(4, minmax(0, 1fr)): every column lands on the same track width
+    const widths = await page
+      .locator('.board-column')
+      .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+    expect(widths).toHaveLength(4);
+    const first = widths[0] ?? 0;
+    expect(first).toBeGreaterThan(0);
+    for (const w of widths) expect(Math.abs(w - first)).toBeLessThanOrEqual(1);
   });
 }
 

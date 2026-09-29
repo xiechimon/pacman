@@ -53,7 +53,7 @@ export function ApiKeysPage() {
           </div>
           <h2 className="keys-empty-title">{t('尚无 API 密钥。')}</h2>
           <p className="keys-empty-desc">
-            {t('API 密钥用于从命令行接入机器，也让 MCP 客户端能访问你的看板。')}
+            {t('API 密钥用于从命令行接入机器，也让 MCP 客户端能访问你的工作台。')}
           </p>
           <div className="keys-empty-actions">
             <button

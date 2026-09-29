@@ -50,7 +50,7 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 
 ## Features
 
-- [新建任务(看板)](./board-new-task.md) 看板渲染、新建任务 dialog、无项目自动建默认项目、持久化三重真值。
+- [新建任务(工作台)](./board-new-task.md) 工作台 shell 渲染(#351 起 4 列)、新建任务 dialog、无项目自动建默认项目、持久化三重真值。
 - [API 密钥](./api-keys.md) 空态建密钥、一次性明文、掩码行、DB 存哈希不存明文。
 - [搜索](./search.md) 侧栏入口 → 面板输入 → 命中任务行。
 - [主题](./theme.md) pacman-theme 持久化,light/dark 双向。

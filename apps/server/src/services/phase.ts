@@ -1,7 +1,7 @@
 // phase 九值流转（02 §4.1 权威 + §4.2 主时序/确认回路/失败重跑；验收 =
-// 「phase 九值流转按 02 §4.1（含 6 列折叠映射）」）。
-// 看板 6 列折叠映射单源在 shared boardColumnFor（phase × hasChanges 双键，
-// r5 §8）——server 不重复实现，仅消费与测试对拍。
+// 「phase 九值流转按 02 §4.1（含看板列折叠映射）」）。
+// 看板列折叠映射单源在 shared boardColumnFor（#351 起单键 4 列）——
+// server 不重复实现，仅消费与测试对拍。
 // 边集出处：start→queued（02 §4.2 POST builds 入队）、claim→planning/building
 // （机器领规划步/直执行步）、planning→confirm（plan 卡就绪）、confirm→building
 // （确认 {action:"confirm"}）、confirm→planning（驳回 {action:"revision"} 重规划，
@@ -42,10 +42,10 @@ export function canTransitionPhase(from: Phase, to: Phase): boolean {
 
 /** 手动改相面（#160 看板拖拽）：HTTP PATCH phase = 用户手动列迁移
  *  （onboarding P2 r3 §3.10「在桌面端可将卡片直接拖拽至目标列」）。
- *  落点集单源 = shared BOARD_DROP_PHASES（六列 dropPhase；closed 不占列
- *  故不可作源或落点）；系统流（setTodoPhase / MCP update_todo）仍走上方
- *  漏斗不变。[设计]——官方 PATCH wire 未抓（r3 §3.10 合成拖拽未复现），
- *  手动面语义为复刻裁定。 */
+ *  落点集单源 = shared BOARD_DROP_PHASES（#351：持落点列 dropPhase 三值；
+ *  closed 不占列故不可作源或落点，待处理不作落点）；系统流（setTodoPhase /
+ *  MCP update_todo）仍走上方漏斗不变。[设计]——官方 PATCH wire 未抓
+ *  （r3 §3.10 合成拖拽未复现），手动面语义为复刻裁定。 */
 export function canManualMovePhase(from: Phase, to: Phase): boolean {
   return from !== to && from !== 'closed' && BOARD_DROP_PHASES.includes(to);
 }

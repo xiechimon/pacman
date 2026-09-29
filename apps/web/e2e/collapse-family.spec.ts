@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test';
 
-// Issue #147 acceptance: both collapse families are live and persist. The
-// sidebar 项目 / 资源 GroupHeaders hide their sub-rows (r2 §1.1) and flip
-// their aria to 展开… (r6), in the expanded sidebar and in the rail alike;
-// the board's six column collapse buttons shrink their column to the narrow
-// dot+count strip (r2 §4, 01d capture) and the strip expands it again.
-// Every collapse survives a reload through its localStorage key — the project
+// Issue #147 acceptance: the sidebar collapse family is live and persists.
+// The 项目 / 资源 GroupHeaders hide their sub-rows (r2 §1.1) and flip their
+// aria to 展开… (r6), in the expanded sidebar and in the rail alike. Every
+// collapse survives a reload through its localStorage key — the project
 // group rides the observed original key shape (pacman.sidebarProjectsCollapsed,
-// r2 §1.5), the resource group and the column set the [推断] twins.
+// r2 §1.5), the resource group the [推断] twin.
+// (#351 裁定：看板列收起全家随 6→4 列收敛删除——列收起钮/窄条/持久键
+// 不复存在，本 spec 只保留侧栏族。)
 
 test('sidebar group collapse hides sub-rows, flips aria, survives reload', async ({ page }) => {
   await page.goto('/app?scenario=01');
@@ -63,50 +63,18 @@ test('rail group collapse hides member rows and survives reload', async ({ page 
   await expect(page.locator('.rail-row[aria-label="技能"]')).toHaveCount(0);
 });
 
-test('board column collapse shrinks to the strip, keeps the count, survives reload', async ({
-  page,
-}) => {
-  await page.goto('/app?scenario=01');
-
-  const open = page.locator('.board-column[data-column="planning"]');
-  await expect(open).toBeVisible();
-  const openWidth = (await open.boundingBox())?.width ?? 0;
-  expect(openWidth).toBeGreaterThan(200);
-
-  await open.locator('.board-column-collapse').click();
-
-  const collapsed = page.locator('.board-column--collapsed[data-column="planning"]');
-  await expect(collapsed).toBeVisible();
-  const box = await collapsed.boundingBox();
-  expect(box?.width).toBe(40);
-  // the strip carries the live count and is the expand trigger
-  await expect(collapsed.locator('.board-column-strip')).toHaveAttribute('aria-label', '规划中');
-  await expect(collapsed.locator('.board-column-count')).toHaveText(/\d+/);
-  // the collapsed column drops out of the drop-target set
-  await expect(collapsed.locator('[data-column-list="planning"]')).toHaveCount(0);
-
-  await page.reload();
-  await expect(page.locator('.board-column--collapsed[data-column="planning"]')).toBeVisible();
-
-  // the strip expands again, and that sticks too
-  await page.locator('.board-column--collapsed[data-column="planning"] .board-column-strip').click();
-  await expect(page.locator('.board-column[data-column="planning"]')).toBeVisible();
-  await page.reload();
-  await expect(page.locator('.board-column--collapsed[data-column="planning"]')).toHaveCount(0);
-});
-
-test('both families persist side by side', async ({ page }) => {
+test('both sidebar groups persist side by side', async ({ page }) => {
   await page.goto('/app?scenario=01');
   await page.locator('.sidebar-group', { hasText: '资源' }).click();
-  await page.locator('.board-column[data-column="done"] .board-column-collapse').click();
+  await page.locator('.sidebar-group', { hasText: '项目' }).click();
 
   await page.reload();
   await expect(page.locator('.sidebar-subrow', { hasText: '技能' })).toHaveCount(0);
-  await expect(page.locator('.board-column--collapsed[data-column="done"]')).toBeVisible();
+  await expect(page.locator('.sidebar-subrow', { hasText: '新建项目' })).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem('pacman.sidebarResourcesCollapsed'))).toBe(
     '1',
   );
-  expect(await page.evaluate(() => localStorage.getItem('pacman.boardCollapsedColumns'))).toBe(
-    'done',
+  expect(await page.evaluate(() => localStorage.getItem('pacman.sidebarProjectsCollapsed'))).toBe(
+    '1',
   );
 });
