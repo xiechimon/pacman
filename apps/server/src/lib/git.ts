@@ -198,6 +198,21 @@ export const systemGitOps: GitOps = {
     return /^[0-9a-f]{40,64}$/.test(sha) ? sha : null;
   },
 
+  async isGitRepo(dir) {
+    // 工作树仓判定（spec 12 local 形态 400 闸）：bare 仓 = false（无工作树，
+    // ff-only 落地面不成立）。cwd 缺位/非目录时 spawn 即拒（ENOENT/ENOTDIR）
+    // ——判定语义为 false，不向上抛。
+    try {
+      const r = await runGit(['rev-parse', '--is-inside-work-tree'], {
+        cwd: dir,
+        timeoutMs: META_TIMEOUT_MS,
+      });
+      return r.code === 0 && r.stdout.toString('utf8').trim() === 'true';
+    } catch {
+      return false;
+    }
+  },
+
   async lsTree(dir, commit, subPath) {
     const args = ['ls-tree', '-l', commit];
     if (subPath !== undefined && subPath !== '') {

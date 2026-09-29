@@ -20,6 +20,20 @@ import { bootServer, insertGitApiKey, req, type TestServer } from './helpers.js'
 
 const GIT_ENV = {
   GIT_TERMINAL_PROMPT: '0',
+  // 隔离用户/系统 git 配置——否则本机的 `credential.helper=osxkeychain` 会把
+  // 「匿名 clone 必失败」这条断言变成随机红：git 的 credential host **带端口**
+  // （非默认端口时形如 host:port），而本文件的测试服务器绑随机端口，一旦撞上
+  // 钥匙串里历史遗留的 127.0.0.1:<port> 条目（authenticated clone 会写进去），
+  // 匿名 clone 就被悄悄补上凭证 → 服务端放行 → 退出码 0，断言 `not.toBe(0)` 失败。
+  // 实测（2026-09-28）：默认配置下 `git credential fill` 对 127.0.0.1:64052 能取到
+  // password；加这两条后取不到。顺带隔离掉用户 http.proxy（本地回环不该走代理）。
+  // CI（ubuntu）无钥匙串，故该抖动只在开发机上偶发。
+  //
+  // 为何跨运行仍有效：本文件的 API_KEY 是**硬编码常量**（见下方 API_KEY），所以
+  // 任何一次运行写进钥匙串的凭证对后续运行照样通过校验。另：不隔离时本套测试会
+  // **往开发者的钥匙串写凭证**（每次 authenticated clone 一次），隔离后不再写。
+  GIT_CONFIG_GLOBAL: '/dev/null',
+  GIT_CONFIG_NOSYSTEM: '1',
   GIT_AUTHOR_NAME: 'r3-probe',
   GIT_AUTHOR_EMAIL: 'probe@localhost',
   GIT_COMMITTER_NAME: 'r3-probe',
