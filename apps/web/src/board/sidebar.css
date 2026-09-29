@@ -1,9 +1,10 @@
 /* ---- sidebar (240px, r7 01/02 + r6 §3.1 structure) ----
    #135 裁决 v2（修订 #123「柔边不画缝」）：接缝回归 r7 原站法则——1px
-   --border-default 硬缝，柔影删除（「不是悬浮的」），#123 的背景色阶保留；
+   --border-default 硬缝，柔影删除（「不是悬浮的」）；#390 同底律取消 #123
+   背景色阶——侧栏直引 --surface 与主区同底，层分隔由接缝独挑；
    顶部分隔线经 .sidebar-nav 的 border-top 延伸至全屏宽，与各 shell topbar
    的 border-bottom 同像素行（y43..44），在接缝处相交。position/z-index
-   维持（色阶层仍叠在画布上，层级不变）。 */
+   维持。 */
 
 .board-sidebar {
   flex: none;
@@ -71,6 +72,19 @@
   padding: 0;
   color: var(--text-tertiary);
   cursor: pointer;
+}
+
+/* 品牌 mark（#390）：仓内 icon-512.png 透明稿作 alpha mask，随 currentColor
+   取行墨（--text-primary）双主题自适应——active pill 的 10% 罩色透出不被
+   不透明图标底戳破。mask-size 125% 补原稿 glyph bbox（300×352 / 512 画布）
+   的周边留白，视觉尺寸对齐同排 16px 线稿图标。mark 图的单点替换位 =
+   本条 mask url。 */
+.sidebar-brand-mark {
+  width: 16px;
+  height: 16px;
+  background-color: currentColor;
+  -webkit-mask: url("/icon-512.png") center / 125% no-repeat;
+  mask: url("/icon-512.png") center / 125% no-repeat;
 }
 
 /* #135: the sidebar segment of the full-width top divider — same token as
@@ -399,9 +413,7 @@
    never shifts row layout. Hover tints it with the sidebar hover step and
    the selected row deepens the same pill one cds alpha step
    (--sidebar-selected over --sidebar-hover, #128 claude.ai cds ladder over
-   the #123 sidebar tone step — the official --surface-hover token is
-   sampled over the official canvas and over this layer read muddy and
-   selected-identical), over the standard 150ms color step (motion
+   the sidebar surface), over the standard 150ms color step (motion
    registry), gated to fine pointers like motion.css's hover block. The
    :not(--selected) gate keeps hover from washing the deeper pill back.
    Icon buttons (toggles, user chips) take the hover step over their own

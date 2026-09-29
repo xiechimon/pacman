@@ -11,7 +11,8 @@
 // (rail + expanded, team name and 新建项目 included) are react-router
 // Links — SPA hops with no document reload — carrying the live ?search=
 // along (fixture-scenario convention, same as the todo-card and page-back
-// links); the selected pill and aria-current stay prop-driven off
+// links); the head row carries the brand mark + BRAND 槽名 (#390) in place
+// of the team icon/name; the selected pill and aria-current stay prop-driven off
 // `selected`, and the row hover pill lives in sidebar.css. #127: the
 // avatar chips (rail + expanded) toggle the user-menu popover — the
 // anchored-overlay family wiring (OverlayMount + ClickCatcher + Esc, same
@@ -19,17 +20,12 @@
 // 224-wide @ (8,410) geometry (r7 17/16d, §3.5; 244 high since #149
 // dropped the 反馈 row).
 
+import { BRAND } from '@pacman/shared';
 import { type ComponentType, type SVGProps, useCallback, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { UserMenu } from '../detail/user-menu.js';
 import { isDeleted } from '../fixtures/deletions.js';
-import {
-  PROJECT_ID,
-  PROJECT_INITIAL,
-  PROJECT_NAME,
-  TEAM_NAME,
-  USER_NAME,
-} from '../fixtures/fixtures.js';
+import { PROJECT_ID, PROJECT_INITIAL, PROJECT_NAME, USER_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
 import {
@@ -47,7 +43,6 @@ import {
   Puzzle,
   Search,
   Server,
-  Users,
 } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { readStoredTheme } from '../theme.js';
@@ -313,11 +308,13 @@ export function BoardSidebar({
     <aside className="board-sidebar">
       <div className={`sidebar-team-row${selected === 'team' ? ' sidebar-team-row--active' : ''}`}>
         <span className="sidebar-row-icon">
-          <Users />
+          {/* 品牌槽（#390）：mark = icon-512 透明稿 alpha mask，名 = BRAND
+              槽；mark 图单点替换位 = sidebar.css 的 mask url */}
+          <span className="sidebar-brand-mark" aria-hidden="true" />
         </span>
-        {/* r2 §1.1: clicking the team name navigates to /app/team */}
+        {/* r2 §1.1: clicking the head name navigates to /app/team */}
         <Link className="sidebar-team-name" to={{ pathname: '/app/team', search }}>
-          {TEAM_NAME}
+          {BRAND.manifestName}
         </Link>
         <button
           type="button"

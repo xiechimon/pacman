@@ -43,6 +43,13 @@
   color: var(--text-tertiary);
 }
 
+/* #390: 返回钮无 hover 高亮面（律钉在 e2e/brand-typo.spec.ts），键盘 focus
+   环不回退——代码库标准配方（同 .mach-switch）：2px --card-button + 2px 外移 */
+.res-back:focus-visible {
+  outline: 2px solid var(--card-button);
+  outline-offset: 2px;
+}
+
 /* title centers on the content area, same law as the board topbar —
    including the pure-label hit-test law (#133, the #66 board precedent):
    the band must not swallow .res-back / .res-new clicks */

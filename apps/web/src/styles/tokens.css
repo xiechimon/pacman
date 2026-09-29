@@ -77,17 +77,15 @@
      not floating (claude.ai card-tier reference). Both themes follow the
      same shape; opacity differs because the canvas itself differs */
   --card-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
-  /* sidebar layer (#123 tone step; #135 裁决 v2): the sidebar keeps its
-     one-tone-off-canvas chrome layer, but the seam returns to the r7
-     original law — a drawn 1px --border-default line in place of the #123
-     soft edge shadow; the shadow token is gone with its only consumer */
-  --sidebar-bg: #1c1c1f;
+  /* sidebar layer (#390 同底律): the sidebar shares the main-area surface
+     token — the layer separation is carried by the drawn 1px
+     --border-default seam alone (#135 裁决 v2), not by a tone step */
+  --sidebar-bg: var(--surface);
   /* sidebar interaction ladder (#128, claude.ai cds 参照): the row hover /
-     selected pills ride the cds alpha ladder over the #123 sidebar tone
-     step (bg-neutral family = neutral-900 at 5% / 10%, dark inverting to
-     the white scale) — the official --surface-hover token is sampled over
-     the official canvas and reads muddy and selected-identical over this
-     layer; --surface-hover stays the overlay/canvas hover canon (motion.css) */
+     selected pills ride the cds alpha ladder over the sidebar surface
+     (bg-neutral family = neutral-900 at 5% / 10%, dark inverting to
+     the white scale); --surface-hover stays the overlay/canvas hover
+     canon (motion.css) */
   --sidebar-hover: rgb(255 255 255 / 0.05);
   --sidebar-selected: rgb(255 255 255 / 0.1);
   --col-head-text: #bebec1;
@@ -256,9 +254,9 @@
      only the opacity drops because the light surface itself already has
      less visual depth, so the shadow needs less to do its job */
   --card-shadow: 0 2px 4px rgb(28 25 23 / 0.07);
-  --sidebar-bg: #f6f2ec;
+  --sidebar-bg: var(--surface);
   /* sidebar interaction ladder (#128), light side of the cds alpha ladder —
-     warm-ink steps over the sidebar tone step, hover 5% / selected 10% */
+     warm-ink steps over the sidebar surface, hover 5% / selected 10% */
   --sidebar-hover: rgb(28 25 23 / 0.05);
   --sidebar-selected: rgb(28 25 23 / 0.1);
   --col-head-text: #57534e;
