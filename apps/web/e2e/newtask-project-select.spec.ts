@@ -20,7 +20,8 @@ const DEFAULT = '/app?scenario=01';
 
 async function openDialog(page: Page, route: string) {
   await page.goto(route);
-  await page.locator('.board-new-task').click();
+  // #445：顶栏「+ 任务」撤除——opener = 侧栏「新任务」行
+  await page.locator('.sidebar-new-task').click();
   const dialog = page.locator('.new-task-dialog');
   await expect(dialog).toBeVisible();
   return dialog;

@@ -659,6 +659,25 @@
   box-shadow: var(--fab-shadow);
 }
 
+/* #444: 绑定 Agent 的头像铺满 FAB 圆（字形的内边距不适用于头像面）。
+   尺寸由本规则钉死——Avatar 加载失败退静态资产时盒子不变，无布局跳动。
+   规则住 chief.css：本文件随 ChiefDrawer 加载，五族 FAB（board inline +
+   四个 wake 壳）都在场。 */
+.fab-avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.fab-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 /* machine name inside the `运行在 … 上` note: underlined per r5 114 */
 .chief-machine {
   text-decoration: underline;

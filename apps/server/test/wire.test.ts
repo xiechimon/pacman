@@ -102,6 +102,11 @@ const INFERRED_ROUTES = [
   // 422 unavailable 的兜底浏览器 readdir 面（只列目录 + git 提示标记 + 容量
   // 闸）。自有设计面，02 §6.1 词表外 = INFERRED 入位。
   'GET /api/fs/list',
+  // #446（ADR 0005 读向）GitHub issue 读面：项目页「从 GitHub issue 建任务」
+  // 的列表代理（state/page 过滤分页）+ 导入建任务（现拉 issue + 镜像同步
+  // label 集）。自有设计面，02 §6.1 词表外 = INFERRED 入位。
+  'GET /api/projects/{id}/github/issues',
+  'POST /api/projects/{id}/github/issues/import',
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；

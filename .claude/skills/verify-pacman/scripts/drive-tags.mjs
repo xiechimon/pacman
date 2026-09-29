@@ -91,7 +91,7 @@ try {
   await page.goto(`${WEB}/app`);
   await page.waitForSelector('[data-route="board"]', { timeout: 15_000 });
   check('board-ready', true, '看板 shell 就绪');
-  await page.click('.board-new-task');
+  await page.click('.sidebar-new-task');
   await page.waitForSelector('.new-task-dialog', { timeout: 5000 });
 
   // 负空间钉：标题输入位与手动标签面不存在
@@ -151,14 +151,16 @@ try {
   check('detail-title', h2 === firstLine, `详情 h2 = 占位标题(${h2 || '空'})`);
   await shot(page, '03-detail-readonly.png');
 
-  // 负向（spec 08 附录 A 校准不变）：看板卡不渲染标签 chip
+  // #445 校准反转：看板卡渲染标签 chip（tagged 卡显示，ADR 0002 F4 修订）；
+  // 本任务 agent 未回填、无标签——卡面必须零 chip（钉「无标签零占位」律，
+  // 防占位空盒或鬼影 chip）。
   await page.goto(`${WEB}/app`);
   await page.waitForSelector('[data-route="board"]', { timeout: 15_000 });
   const cardHasChip = await page
     .locator('[data-column-list="todo"] .todo-card', { hasText: firstLine })
     .locator('[class*="tag-chip"]')
     .count();
-  check('board-card-no-chip', cardHasChip === 0, `看板卡不渲染标签(命中 ${cardHasChip} 个)`);
+  check('board-card-no-chip', cardHasChip === 0, `无标签卡零占位(命中 ${cardHasChip} 个)`);
 } finally {
   await browser.close();
 }

@@ -405,10 +405,13 @@ export function BoardSidebar({
           </span>
         </button>
         {/* #389: 新任务行动作行——点击与全局 N 热键同一 opener；行序钉在
-            搜索 之后（sidebar-visual 的 .sidebar-kbd 单数探针吃首枚 ⌘K）。 */}
+            搜索 之后（sidebar-visual 的 .sidebar-kbd 单数探针吃首枚 ⌘K）。
+            #445: sidebar-new-task = 可钉别名（顶栏「+ 任务」撤除后，本行是
+            新建入口的唯一点击面——e2e/integration 的 opener 与焦点回落断言
+            全部指这里）。 */}
         <button
           type="button"
-          className={`sidebar-row ${ROW_BASE} ${ROW_HOVER} h-9 pl-[18px]`}
+          className={`sidebar-row sidebar-new-task ${ROW_BASE} ${ROW_HOVER} h-9 pl-[18px]`}
           onClick={onNewTask}
         >
           <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">

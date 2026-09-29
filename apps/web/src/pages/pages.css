@@ -1642,6 +1642,114 @@
   color: var(--text-dim);
 }
 
+/* ---- 从 GitHub issue 建任务（#446 / ADR 0005 读向）----
+   工具条入口复用 .prj-tasks-filter chip 形（.prj-issues-entry 仅作 e2e
+   定位别名，无几何面）；弹层行语言贴 prj-new-gh-row 家族（transparent
+   行 + 6px 圆角），行高放开为双行（标题 + label chips）。 */
+
+.prj-issues-filters {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px 0;
+}
+
+.prj-issues-filter {
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.prj-issues-filter--active {
+  border-color: var(--indigo-500);
+  background: var(--tab-chip-bg);
+  color: var(--text-primary);
+}
+
+.prj-issues-list {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.prj-issues-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.prj-issues-row:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.prj-issues-num {
+  flex: none;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.prj-issues-title {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.prj-issues-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+}
+
+.prj-issues-empty {
+  padding: 24px 16px;
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.prj-issues-error {
+  margin: 0 16px 12px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--danger);
+}
+
+.prj-issues-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.prj-issues-page {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- project settings (r2 24c) ---- */
 
 .prj-set-body {

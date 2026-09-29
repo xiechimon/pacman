@@ -22,17 +22,19 @@ import { useNavigate, useSearchParams } from 'react-router';
 import {
   useApiMutations,
   useProjects,
-  useProjectTagNames,
+  useProjectTags,
   useSearchResults,
   useTodos,
 } from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { AppSidebar } from '../board/app-sidebar.js';
-import { BoardSurface, type BoardTagFilter } from '../board/board.js';
+import { type BoardFilters, BoardSurface } from '../board/board.js';
 import { NotificationBanner, useNotificationBanner } from '../board/notify-banner.js';
+import { matchesProjectFilter, parseProjectsParam, type RepoOption } from '../board/repo-filter.js';
 import { matchesTagFilter, parseTagParam } from '../board/tag-filter.js';
 import { ChiefDrawer } from '../chief/chief-drawer.js';
+import { ChiefFabIcon } from '../chief/chief-fab-icon.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
 import { useChiefSurface } from '../chief/use-chief-surface.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
@@ -42,7 +44,6 @@ import { localTodo, overlayContent } from '../fixtures/fixtures.js';
 import type { FixtureSet, OverlayState, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
-import { ChiefFab } from '../icons/index.js';
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
 import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
@@ -77,73 +78,116 @@ export function BoardPage() {
   const projectsQ = useProjects(teamId, live);
   const mutations = useApiMutations(teamId);
 
-  // —— #403 看板标签筛选面：URL ?tags= 为唯一真值（刷新/分享不丢），选中
-  // 集 = 固定词表名规范序。标签数据源：live = 全项目标签集并查
-  // （useProjectTagNames；首载未就绪不激活筛选，防 tagged 卡闪隐），
-  // fixture = scenario.tags（absent = 筛选条不渲染，旧场景基线零漂移）。——
+  // —— #403/#445 看板筛选面：URL ?tags=（类型轴）与 ?projects=（仓库轴）
+  // 为唯一真值（刷新/分享不丢），选中集 = 词表名规范序 / 项目 id 字典序
+  // 规范序。标签数据源：live = 全项目标签集并查（useProjectTags；首载未
+  // 就绪不激活类型轴，防 tagged 卡闪隐），fixture = scenario.tags。仓库
+  // 数据源：live = useProjects，fixture = scenario.projectNames（absent =
+  // 仓库面不渲染，旧场景基线零漂移）；仓库轴零异步依赖——projectId 在卡
+  // 上，直达 URL 在项目列表落定前即可正确收窄。——
   const rawTags = searchParams.get('tags');
+  const rawProjects = searchParams.get('projects');
   const selectedTags = useMemo(() => parseTagParam(rawTags), [rawTags]);
   const selectedTagSet = useMemo(() => new Set(selectedTags), [selectedTags]);
+  const selectedProjects = useMemo(() => parseProjectsParam(rawProjects), [rawProjects]);
+  const selectedProjectSet = useMemo(() => new Set(selectedProjects), [selectedProjects]);
   const projectIds = useMemo(() => (projectsQ.data ?? []).map((p) => p.id), [projectsQ.data]);
-  const liveTagNames = useProjectTagNames(projectIds, live);
-  const fixtureTagNames = useMemo(
-    () => new Map((fixture.tags ?? []).map((tag) => [tag.id, tag.name] as const)),
-    [fixture],
+  const liveTags = useProjectTags(projectIds, live);
+  const fixtureTags = useMemo(() => {
+    const rows = fixture.tags ?? [];
+    return {
+      tagById: new Map(rows.map((tag) => [tag.id, tag] as const)),
+      nameById: new Map(rows.map((tag) => [tag.id, tag.name] as const)),
+      ready: true,
+    };
+  }, [fixture]);
+  const tagIndex = live ? liveTags : fixtureTags;
+  const typeReady = !live || tagIndex.ready;
+  // 组合谓词：仓库 AND 类型；类型轴的就绪闸内嵌（未就绪 = 类型放行，
+  // 防闪隐），谓词各自单源（repo-filter / tag-filter），此处不写第二份。
+  const matchesBoth = useCallback(
+    (todo: TodoRecord) =>
+      matchesProjectFilter(todo, selectedProjectSet) &&
+      (typeReady ? matchesTagFilter(todo, selectedTagSet, tagIndex.nameById) : true),
+    [selectedProjectSet, typeReady, selectedTagSet, tagIndex.nameById],
   );
-  const tagNameById = live ? liveTagNames.nameById : fixtureTagNames;
-  const tagFilterActive = selectedTags.length > 0 && (!live || liveTagNames.ready);
-  const matchesTag = useCallback(
-    (todo: TodoRecord) => matchesTagFilter(todo, selectedTagSet, tagNameById),
-    [selectedTagSet, tagNameById],
-  );
+  const filterActive = selectedProjects.length > 0 || (selectedTags.length > 0 && typeReady);
   // 写回 = 规范序 join，清空即删参；replace 不刷历史（筛选不是导航步）。
   // 其余参（scenario 等）原样保留——providers-page 着陆参同律。
-  // tags 段手工拼、其余参全权 URLSearchParams：票面要可读的字面逗号
+  // 逗号段手工拼、其余参全权 URLSearchParams：票面要可读的字面逗号
   //（?tags=bug,feature），而 setSearchParams 内部 createSearchParams 会把
   // 逗号重编码成 %2C（react-router 8.4 dom/lib.js useSearchParams 实测）；
   // navigate('?…') 的 parsePath 原样切片 + normalizeSearch 仅做前缀规范化，
   // search 串不重编码，空 pathname = 保当前路径（resolvePath）。词表名是
-  // [a-z]+ 无需编码。
-  const writeTagParam = useCallback(
-    (nextNames: string[]) => {
+  // [a-z]+、项目 id 字母数字，无需编码。
+  const writeFilterParams = useCallback(
+    (tags: string[], projects: string[]) => {
       const rest = new URLSearchParams(searchParams);
       rest.delete('tags');
-      const head = rest.toString();
-      const parts = [head, nextNames.length > 0 ? `tags=${nextNames.join(',')}` : ''].filter(
-        (s) => s !== '',
-      );
+      rest.delete('projects');
+      const parts = [
+        rest.toString(),
+        tags.length > 0 ? `tags=${tags.join(',')}` : '',
+        projects.length > 0 ? `projects=${projects.join(',')}` : '',
+      ].filter((s) => s !== '');
       navigate(`?${parts.join('&')}`, { replace: true });
     },
     [searchParams, navigate],
   );
   const toggleTag = useCallback(
     (name: string) => {
-      if (selectedTags.includes(name)) {
-        writeTagParam(selectedTags.filter((n) => n !== name));
-        return;
-      }
       // 规范序 = FIXED_TAGS 序：复用 parseTagParam 的规范化（单源，不另写
       // 一份词表序过滤）。
-      writeTagParam(parseTagParam([...selectedTags, name].join(',')));
+      const next = selectedTags.includes(name)
+        ? selectedTags.filter((n) => n !== name)
+        : parseTagParam([...selectedTags, name].join(','));
+      writeFilterParams(next, selectedProjects);
     },
-    [selectedTags, writeTagParam],
+    [selectedTags, selectedProjects, writeFilterParams],
   );
-  const clearTags = useCallback(() => {
-    if (searchParams.get('tags') == null) return;
-    writeTagParam([]);
-  }, [searchParams, writeTagParam]);
-  // bar 渲染门：live 恒渲染（固定词表 + 项目创建播种保证有面）；fixture
-  // 仅 scenario.tags 在场时渲染。
-  const tagFilter: BoardTagFilter | undefined =
-    live || fixture.tags != null
+  const toggleProject = useCallback(
+    (id: string) => {
+      // 规范序 = 字典序：复用 parseProjectsParam 的规范化（单源）。
+      const next = selectedProjects.includes(id)
+        ? selectedProjects.filter((p) => p !== id)
+        : parseProjectsParam([...selectedProjects, id].join(','));
+      writeFilterParams(selectedTags, next);
+    },
+    [selectedProjects, selectedTags, writeFilterParams],
+  );
+  const clearProjects = useCallback(() => {
+    if (selectedProjects.length === 0) return;
+    writeFilterParams(selectedTags, []);
+  }, [selectedProjects, selectedTags, writeFilterParams]);
+  const clearFilters = useCallback(() => {
+    if (selectedProjects.length === 0 && searchParams.get('tags') == null) return;
+    writeFilterParams([], []);
+  }, [selectedProjects, searchParams, writeFilterParams]);
+  // 仓库面渲染门：live 恒渲染（项目列表即数据源）；fixture 仅
+  // scenario.projectNames 在场时渲染（类型钮不受门控——右动作区恰好一钮）。
+  const repoOptions = useMemo<RepoOption[]>(
+    () =>
+      live
+        ? (projectsQ.data ?? []).map((p) => ({ id: p.id, name: p.name }))
+        : Object.entries(fixture.projectNames ?? {}).map(([id, name]) => ({ id, name })),
+    [live, projectsQ.data, fixture],
+  );
+  const filters: BoardFilters = {
+    ...(live || fixture.projectNames != null
       ? {
-          selected: selectedTags,
-          active: tagFilterActive,
-          matches: matchesTag,
-          onToggle: toggleTag,
-          onClear: clearTags,
+          repo: {
+            options: repoOptions,
+            selected: selectedProjects,
+            onToggle: toggleProject,
+            onClear: clearProjects,
+          },
         }
-      : undefined;
+      : {}),
+    type: { selected: selectedTags, onToggle: toggleTag },
+    active: filterActive,
+    matches: matchesBoth,
+    onClear: clearFilters,
+  };
 
   // New-task dialog (#66): fixture phase has no backend, so a saved task
   // lives in this client-side set — the card lands in 待开始 with the
@@ -287,7 +331,6 @@ export function BoardPage() {
       ) : (
         <BoardSurface
           fixture={fixtureWithTodos}
-          onNewTask={openNewTask}
           banner={
             notifyBanner.visible ? <NotificationBanner onEnable={notifyBanner.enable} /> : undefined
           }
@@ -309,7 +352,8 @@ export function BoardPage() {
           // #73: drag drops commit into the same client-side todo set as
           // create/delete — column counts and folds re-derive from it
           onReorder={handleReorder}
-          tagFilter={tagFilter}
+          filters={filters}
+          tagsById={tagIndex.tagById}
         />
       )}
       <SearchPanel
@@ -339,7 +383,7 @@ export function BoardPage() {
         aria-label={t('总管')}
         onClick={() => setChiefView('drawer')}
       >
-        <ChiefFab />
+        <ChiefFabIcon chief={chiefData} />
         {chiefUnread > 0 && <span className="fab-badge">{chiefUnread}</span>}
       </button>
       <AcceptDialog

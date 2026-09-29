@@ -1,28 +1,37 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// Issue #389 acceptance: the 快捷键组 — N opens the new-task dialog from any
-// page (the sidebar gains a 新任务 row carrying the N kbd badge, upstream
-// todos.dev form), and Space wakes the chief drawer with focus landing in
-// the composer (dialog-family autofocus law — SearchPanel/NewTaskDialog
-// ref-focus precedent; no focus trap anywhere in the family, none here).
-// Guards keep native semantics: editable targets (input/textarea/
-// contenteditable) swallow both keys, interactive targets keep Space for
-// native button activation, and modifier chords (⌘N, Ctrl+Space IME) pass
-// through. Each test pins one failure mode:
-// 1. N on the board opens the dialog (hotkey listener live)
+// Issue #389 + #442 acceptance: the 快捷键组 — N opens the new-task dialog
+// from any page (the sidebar gains a 新任务 row carrying the N kbd badge,
+// upstream todos.dev form), and ⌘J (Ctrl+J off macOS — the ⌘K search
+// registration's cmd/ctrl dual-receipt form) wakes the chief drawer with
+// focus landing in the composer (dialog-family autofocus law —
+// SearchPanel/NewTaskDialog ref-focus precedent; no focus trap anywhere in
+// the family, none here). Guards keep native semantics: editable targets
+// (input/textarea/select/contenteditable) swallow both keys — typing must
+// never wake a surface; ⌘J's guard is editable-only — buttons and links
+// carry no native ⌘J semantics, so a focused control must not block the
+// chord. Space's binding is removed (#442 replaces #389's): scrolling and
+// focused-control activation are fully returned, nothing preventDefaults
+// them. Modifier-less N still passes through modifier chords (⌘N). Each
+// test pins one failure mode:
+// 1. N on the board opens the dialog (hotkey listener live); ⌘N does not
 // 2. the sidebar 新任务 row renders the N badge and click-opens the dialog
 // 3. N on a non-board route opens the dialog in place (no navigation)
 // 4. N on the project page opens that page's own dialog (route-project
 //    chip), not a second global instance
-// 5. Space opens the chief drawer, composer focused (board)
-// 6. Space wakes the drawer on a ChiefWake route (schedules)
-// 7. editable focus swallows both keys — the space lands IN the input
-// 8. Space on a focused button fires the button natively (no hijack); N is
-//    NOT over-guarded (buttons are not editable)
-// 9. textarea focus (chief composer) swallows N — the guard family is
+// 5. Space no longer opens the drawer; ⌘J does with the composer focused,
+//    and ⌘J's default is consumed (a probe listener registered after the
+//    app's sees the delivered keydown already preventDefaulted)
+// 6. ⌘J wakes the drawer on a non-board route (schedules)
+// 7. editable focus swallows both keys — the n lands IN the input, ⌘J
+//    keeps the drawer shut
+// 8. textarea focus (chief composer) swallows N — the guard family is
 //    input + textarea + select + contenteditable; the app ships no
 //    contenteditable surface today, so that branch stays code-only
 //    (a synthetic node would test the guard, not the app)
+// 9. Space on a focused button fires the button natively (activation
+//    returned, no hijack); ⌘J fires the drawer even with a button focused
+//    (guard narrowed to editable-only); modifier-less N stays live
 
 const BOARD = '/app?scenario=01';
 const SCHEDULES = '/app/schedules?scenario=01';
@@ -33,7 +42,7 @@ const drawer = (page: Page) => page.locator('.chief-drawer');
 
 /** Hotkey press with the search-focus.spec retry law: the listener registers
  *  in a passive effect after first paint, so a too-early press can be lost —
- *  re-press only while the surface stays closed. N/Space are open-only and
+ *  re-press only while the surface stays closed. N/⌘J are open-only and
  *  ⌘K re-presses only on a *lost* key (a delivered one flips the panel
  *  visible, ending the loop), so retries never double-fire; once a surface
  *  opens, its own input holds focus (editable guard) and a late retry is
@@ -117,26 +126,56 @@ test('N on the project page opens the page’s own dialog (route project chip)',
   await expect(dialog(page)).toHaveCount(0);
 });
 
-test('Space opens the chief drawer with the composer focused', async ({ page }) => {
+test('Space no longer opens the drawer; ⌘J does, composer focused, default consumed', async ({
+  page,
+}) => {
   await page.goto(BOARD);
   await expect(page.locator('.sidebar-row').first()).toBeVisible();
-  await pressUntil(page, 'Space', drawer(page));
+  // #442: the Space binding is gone — it is the native scroll key again and
+  // must not wake the drawer (the ⌘N test's immediate-count negative form)
+  await page.keyboard.press('Space');
+  await expect(drawer(page)).toHaveCount(0);
+
+  await pressUntil(page, 'Meta+j', drawer(page));
   await expect(page.locator('.chief-composer-input')).toBeFocused();
+  await escapeUntilHidden(page, drawer(page));
+  await expect(drawer(page)).toHaveCount(0);
+
+  // Default-consumed, the page-testable half: a probe listener installed
+  // after the app's (hook proven live above; same target + phase fires in
+  // registration order) sees the delivered ⌘J already preventDefaulted.
+  // Blur first — with the composer focused the editable guard swallows the
+  // chord before preventDefault ever runs. Browser-level interception of
+  // ⌘J (Firefox's downloads library) is not observable from in-page.
+  await page.evaluate(() => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    const probe = window as unknown as { cmdJConsumed?: boolean };
+    window.addEventListener('keydown', (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'j') {
+        probe.cmdJConsumed = event.defaultPrevented;
+      }
+    });
+  });
+  await pressUntil(page, 'Meta+j', drawer(page));
+  const consumed = await page.evaluate(
+    () => (window as unknown as { cmdJConsumed?: boolean }).cmdJConsumed,
+  );
+  expect(consumed).toBe(true);
   await escapeUntilHidden(page, drawer(page));
   await expect(drawer(page)).toHaveCount(0);
 });
 
-test('Space wakes the chief drawer on a non-board route', async ({ page }) => {
+test('⌘J wakes the chief drawer on a non-board route', async ({ page }) => {
   await page.goto(SCHEDULES);
   await expect(page.locator('.sidebar-row').first()).toBeVisible();
-  await pressUntil(page, 'Space', drawer(page));
+  await pressUntil(page, 'Meta+j', drawer(page));
   await expect(page.locator('.chief-composer-input')).toBeFocused();
   await expect(page).toHaveURL(/\/app\/schedules/);
   await escapeUntilHidden(page, drawer(page));
   await expect(drawer(page)).toHaveCount(0);
 });
 
-test('editable focus swallows both keys — the space lands IN the input', async ({ page }) => {
+test('editable focus swallows N and ⌘J — the n lands IN the input', async ({ page }) => {
   await page.goto(BOARD);
   // open the ⌘K panel: its input is the editable focus target
   await pressUntil(page, 'Meta+k', page.locator('.search-panel'));
@@ -145,15 +184,17 @@ test('editable focus swallows both keys — the space lands IN the input', async
 
   await page.keyboard.press('n');
   await expect(dialog(page)).toHaveCount(0);
-  await page.keyboard.press('Space');
+  // #442: the same editable guard swallows ⌘J — typing must never wake a
+  // surface, and the chord inserts no text of its own
+  await page.keyboard.press('Meta+j');
   await expect(drawer(page)).toHaveCount(0);
-  // no preventDefault hijack — both keys typed through into the query
-  await expect(field).toHaveValue('n ');
+  // no preventDefault hijack — the n typed through into the query
+  await expect(field).toHaveValue('n');
 });
 
 test('textarea focus (chief composer) swallows N', async ({ page }) => {
   await page.goto(BOARD);
-  await pressUntil(page, 'Space', drawer(page));
+  await pressUntil(page, 'Meta+j', drawer(page));
   const composer = page.locator('.chief-composer-input');
   await expect(composer).toBeFocused();
   // fixture composer is readOnly — focus holds but typing lands nowhere;
@@ -165,7 +206,9 @@ test('textarea focus (chief composer) swallows N', async ({ page }) => {
   await expect(drawer(page)).toHaveCount(0);
 });
 
-test('Space on a focused button activates the button natively; N stays live', async ({ page }) => {
+test('Space on a focused button activates it natively; ⌘J fires past button focus', async ({
+  page,
+}) => {
   await page.goto(BOARD);
   const searchRow = page.locator('.sidebar-row', { hasText: '搜索' });
   await expect(searchRow).toBeVisible();
@@ -177,10 +220,23 @@ test('Space on a focused button activates the button natively; N stays live', as
   await escapeUntilHidden(page, dialog(page));
   await expect(dialog(page)).toHaveCount(0);
 
-  // Space keeps its native button-activation semantics: the 搜索 row's own
-  // click fires (the panel opens) and the drawer stays shut
+  // Space keeps its native button-activation semantics (#442 returned them
+  // in full): the 搜索 row's own click fires (the panel opens) and the
+  // drawer stays shut — no hijack
   await searchRow.focus();
   await page.keyboard.press('Space');
   await expect(page.locator('.search-panel')).toBeVisible();
+  await expect(drawer(page)).toHaveCount(0);
+
+  // Close the panel (its input holds focus — editable would swallow the
+  // chord) and refocus the button row: ⌘J's guard is editable-only, so it
+  // must fire even with a control focused — the chord carries no native
+  // activation semantics of its own
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.search-panel')).toBeHidden();
+  await searchRow.focus();
+  await pressUntil(page, 'Meta+j', drawer(page));
+  await expect(page.locator('.chief-composer-input')).toBeFocused();
+  await escapeUntilHidden(page, drawer(page));
   await expect(drawer(page)).toHaveCount(0);
 });

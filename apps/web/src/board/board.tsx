@@ -16,6 +16,10 @@
 // 部布局走 tailwind 工具类（几何与 #351 的 board.css 规则逐条对齐），按钮走
 // components/ui/button；data-* 钩子、类别名锚点、dnd 逻辑全部原位。阶段点
 // 语义色（column.dot）不随 B 换。
+// #445 顶栏重排：左侧 = 仓库（项目）筛选 chip 组（repo-filter.tsx），右侧
+// 动作区恰好一钮 = 无底色类型过滤 popover 钮（tag-filter.tsx）；「+ 任务」
+// 撤除（与侧栏「新任务」行 + N 热键同 opener，第三入口退役）。任务卡渲染
+// 自己的标签 chip（tagsById 解析图 → cardTag，渲染上限 1）。
 
 import {
   closestCorners,
@@ -36,11 +40,12 @@ import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
 // drawer/settings overlays sit beside it in one place.
 import { useI18n } from '../i18n/provider.js';
-import { Plus } from '../icons/index.js';
+import type { TagChipData } from '../ui/tag-chip.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
 import { columnDropIndex, DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
+import { RepoFilterBar, type RepoOption } from './repo-filter.js';
 import { SortableCard } from './sortable-card.js';
-import { TagFilterBar } from './tag-filter.js';
+import { cardTag, TypeFilterButton } from './tag-filter.js';
 import { TodoCard } from './todo-card.js';
 import './board.css';
 
@@ -110,24 +115,37 @@ function commitDrop(
   );
 }
 
-/** #403 看板标签筛选面：board-page 持有 URL 态与标签数据源，本面只消费
- *  现成谓词与回调（fixture/live 分支不渗进渲染层）。 */
-export interface BoardTagFilter {
-  /** 选中词表名（FIXED_TAGS 规范序）；空 = 全部态。 */
-  selected: string[];
-  /** true = 筛选生效（selected 非空且标签数据源就绪——live 首载未完时
-   *  不激活，防 tagged 卡闪隐）。 */
+/** #403 建轴 / #445 双轴化：看板筛选面——board-page 持有 URL 态与数据源，
+ *  本面只消费现成谓词与回调（fixture/live 分支不渗进渲染层）。命中判定与
+ *  URL 规范化单源在 repo-filter.tsx / tag-filter.tsx，此处不写第二份。 */
+export interface BoardFilters {
+  /** 仓库轴（#445）：absent = 无项目数据源，chip 组不渲染（旧 fixture
+   *  场景保持 r7 基线零漂移）。 */
+  repo?: {
+    options: RepoOption[];
+    /** 选中项目 id（字典序规范序）；空 = 全部态。 */
+    selected: string[];
+    onToggle: (id: string) => void;
+    /** 「全部」复位 = 只清仓库轴。 */
+    onClear: () => void;
+  };
+  /** 类型轴：固定词表 popover（恒渲染——右动作区「恰好一钮」钉扎）。 */
+  type: {
+    /** 选中词表名（FIXED_TAGS 规范序）；空 = 无收窄。 */
+    selected: string[];
+    onToggle: (name: string) => void;
+  };
+  /** true = 任一轴收窄生效（类型轴 live 首载未完时不激活，防 tagged 卡
+   *  闪隐；仓库轴无异步依赖恒即态）。驱动空结果态门。 */
   active: boolean;
-  /** 命中判定（OR 并集 + 无标签恒可见，tag-filter.ts 单源）。 */
+  /** 组合命中判定（仓库 AND 类型；谓词各自单源）。 */
   matches: (todo: TodoRecord) => boolean;
-  onToggle: (name: string) => void;
+  /** 板级空结果态的清除钮 = 双轴一起复位。 */
   onClear: () => void;
 }
 
 interface BoardProps {
   fixture: FixtureSet;
-  /** #66: opens the new-task dialog from the topbar `+ 任务` button. */
-  onNewTask?: () => void;
   /** Card callbacks (issue #68): the page owns the modal overlays. */
   onAction?: (todo: TodoRecord) => void;
   onBranch?: (todo: TodoRecord) => void;
@@ -137,19 +155,21 @@ interface BoardProps {
    *  (r2 §1.3). The route owns the permission state and passes the
    *  rendered banner only while it should show. */
   banner?: ReactNode;
-  /** #403: 标签筛选条。absent = 不渲染（无标签数据源的 fixture 场景保持
-   *  r7 基线零漂移）。 */
-  tagFilter?: BoardTagFilter;
+  /** #445: 双轴筛选面（仓库 chip 组 + 类型 popover 钮）。 */
+  filters: BoardFilters;
+  /** #445: 卡片标签解析图（tagId → TagChipData；live = 全项目并查，
+   *  fixture = scenario.tags）。absent/空图 = 卡不渲染标签。 */
+  tagsById?: ReadonlyMap<string, TagChipData>;
 }
 
 export function BoardSurface({
   fixture,
-  onNewTask,
   onAction,
   onBranch,
   onReorder,
   banner,
-  tagFilter,
+  filters,
+  tagsById,
 }: BoardProps) {
   const { t } = useI18n();
   const [view, setView] = useState<ColumnView | null>(null);
@@ -172,15 +192,13 @@ export function BoardSurface({
     typeof window === 'undefined' ||
     window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-  // #403 筛选面：渲染/拖拽视图消费收窄后的可见集；moveTodo 落位仍走全集
-  // （fixture.todos）+ columnDropIndex 锚卡翻译——隐藏卡的 orderIndex 序位
-  // 不被筛选视图的重排错读。
-  const visibleTodos =
-    tagFilter?.active === true ? fixture.todos.filter(tagFilter.matches) : fixture.todos;
-  // 空结果态 = 筛选激活且收窄后无卡占任何列（closed 不占列，不计入）。
+  // #403 筛选面（#445 双轴化）：渲染/拖拽视图消费收窄后的可见集；moveTodo
+  // 落位仍走全集（fixture.todos）+ columnDropIndex 锚卡翻译——隐藏卡的
+  // orderIndex 序位不被筛选视图的重排错读。
+  const visibleTodos = filters.active ? fixture.todos.filter(filters.matches) : fixture.todos;
+  // 空结果态 = 任一轴收窄生效且收窄后无卡占任何列（closed 不占列，不计入）。
   const showFilterEmpty =
-    tagFilter?.active === true &&
-    COLUMNS.every((c) => !visibleTodos.some((todo) => c.accepts(todo)));
+    filters.active && COLUMNS.every((c) => !visibleTodos.some((todo) => c.accepts(todo)));
 
   const sweep = useCallback(() => {
     document.body.classList.remove('board-dragging');
@@ -309,29 +327,22 @@ export function BoardSurface({
         <div className="board-topbar-title pointer-events-none absolute inset-x-0 text-center text-sm leading-[22px] font-medium text-foreground">
           {t('工作台')}
         </div>
-        {/* #403 标签筛选条：顶栏左侧独立容器——不进 board-topbar-actions
+        {/* #445 仓库筛选：顶栏左侧独立容器——不进 board-topbar-actions
             （dead-buttons 钉死右动作区恰好一钮）；标题带 absolute +
             pointer-events-none，hit-test 不拦截 chip。 */}
-        {tagFilter != null && (
-          <TagFilterBar
-            selected={tagFilter.selected}
-            onToggle={tagFilter.onToggle}
-            onClear={tagFilter.onClear}
+        {filters.repo != null && (
+          <RepoFilterBar
+            options={filters.repo.options}
+            selected={filters.repo.selected}
+            onToggle={filters.repo.onToggle}
+            onClear={filters.repo.onClear}
           />
         )}
         <div className="board-topbar-actions ml-auto flex items-center pr-3">
-          {/* board-new-task 是 e2e 钉死的选择器别名（className 透传保留）。
-              #414: text 变体 → B 面 default（neutral 实底）；h-7 = 旧 compact
-              28px 档。 */}
-          <Button
-            variant="default"
-            size="sm"
-            className="board-new-task h-7 gap-1.5 px-2.5 text-sm"
-            onClick={onNewTask}
-          >
-            <Plus width={13} height={13} className="size-[13px]" />
-            {t('任务')}
-          </Button>
+          {/* #445：恰好一钮 = 无底色类型过滤钮（board-type-filter 是 e2e
+              钉死的选择器别名）。「+ 任务」已撤——新建入口 = 侧栏
+              「新任务」行（sidebar-new-task）+ N 热键。 */}
+          <TypeFilterButton selected={filters.type.selected} onToggle={filters.type.onToggle} />
         </div>
       </header>
 
@@ -350,16 +361,17 @@ export function BoardSurface({
             banner == null ? 'top-11' : 'top-[121px]'
           }`}
         >
-          {/* #403 空结果态：筛选激活且收窄后零卡 = 板级明示文案 + 清除钮
-              （不是四列各背一条误导性列空文案，更不是空白看板）。 */}
+          {/* #403 空结果态（#445 双轴化）：任一轴收窄且零卡 = 板级明示
+              文案 + 清除钮（不是四列各背一条误导性列空文案，更不是空白
+              看板）；清除 = 双轴一起复位。 */}
           {showFilterEmpty && (
-            <div className="board-tag-filter-empty col-span-4 flex h-full flex-col items-center justify-center gap-3">
-              <span className="text-sm text-muted-foreground">{t('没有匹配所选标签的任务')}</span>
+            <div className="board-filter-empty col-span-4 flex h-full flex-col items-center justify-center gap-3">
+              <span className="text-sm text-muted-foreground">{t('没有匹配筛选条件的任务')}</span>
               <Button
                 variant="outline"
                 size="sm"
-                className="board-tag-filter-clear"
-                onClick={tagFilter?.onClear}
+                className="board-filter-clear"
+                onClick={filters.onClear}
               >
                 {t('清除筛选')}
               </Button>
@@ -409,6 +421,7 @@ export function BoardSurface({
                           onBranch={onBranch}
                           dragSource={dragId === todo.id}
                           projectName={fixture.projectNames?.[todo.projectId]}
+                          tag={tagsById == null ? null : cardTag(todo, tagsById)}
                         />
                       ))}
                     </SortableContext>
@@ -430,6 +443,7 @@ export function BoardSurface({
                 todo={dragged}
                 now={fixture.now}
                 projectName={fixture.projectNames?.[dragged.projectId]}
+                tag={tagsById == null ? null : cardTag(dragged, tagsById)}
               />
             </div>
           )}

@@ -15,7 +15,8 @@ const BOARD = '/app?scenario=01';
 
 async function openDialog(page: Page) {
   await page.goto(BOARD);
-  await page.locator('.board-new-task').click();
+  // #445：顶栏「+ 任务」撤除——opener = 侧栏「新任务」行（N 热键同解析）
+  await page.locator('.sidebar-new-task').click();
   const dialog = page.locator('.new-task-dialog');
   await expect(dialog).toBeVisible();
   return dialog;
@@ -64,9 +65,11 @@ test('autofocus lands on the spec textarea', async ({ page }) => {
   await expect(dialog.locator('.new-task-spec')).toBeFocused();
 });
 
-test('Esc close returns focus to the invoking button (#388 族律)', async ({ page }) => {
+test('Esc close returns focus to the invoking button (#388 族律；#445 触发位 = 侧栏行)', async ({
+  page,
+}) => {
   const dialog = await openDialog(page);
   await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();
-  await expect(page.locator('.board-new-task')).toBeFocused();
+  await expect(page.locator('.sidebar-new-task')).toBeFocused();
 });
