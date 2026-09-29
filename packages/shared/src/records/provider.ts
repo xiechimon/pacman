@@ -102,7 +102,9 @@ export const PROVIDER_PRESET_IDS = [
 ] as const;
 
 /** `auth:"oauth"` 仅此二项（= ChatGPT/Codex 与 Copilot 订阅连接，r3 §2；
- * 04 §4 M6 真人一次项：OAuth 连自有订阅）。 */
+ * 04 §4 M6 真人一次项：OAuth 连自有订阅）。这是上游类型真值；本 server
+ * 实际接线的族 = OAUTH_FAMILIES（现仅 github-copilot）——picker 徽标与
+ * authorize 点击只给族表成员，表外成员渲染未接线态（#385）。 */
 export const PROVIDER_OAUTH_PRESET_IDS = ['github-copilot', 'openai-codex'] as const;
 
 /** xai 双通道（r3 §2：auth:"api_key" + oauthLabel 原文）。 */
@@ -137,7 +139,8 @@ export const PROVIDER_FORM_COPY = {
  * 唯一原生 server-callback 授权码流——anthropic = PKCE + 手工粘码无
  * callback；openai-codex = PKCE + 锁死 localhost:1455 回环口，违背 BYOC
  * 「机器可在他机」拓扑；xai 公开文档最薄）。族不在表 = authorize 404；
- * web 连接段只渲染表内族（死钮不渲染，#222 律）。 */
+ * web 侧表内族才渲染可点授权面（死钮不渲染，#222 律）——picker 对表外
+ * OAuth preset 渲染禁用行 + 「暂未开通」注记（#385）。 */
 export interface OAuthFamily {
   /** provider 行 providerId（= preset id，PROVIDER_OAUTH_PRESET_IDS 成员）。 */
   presetId: string;
