@@ -10,6 +10,7 @@ Last updated: 2026-09-29（spec 12/#362 G2-T2 + #366 详情页 3-pane 重排 + s
 - spec 13 / #367：技能页只读本地目录面——新增 skills-page.md 条目；launch.mjs 增第四隔离轴 PACMAN_SKILLS_DIR=<HOME_DIR>/skills——不隔离会现扫用户真 ~/.agents/skills；「已知未入图面」的管理页清单移除技能。
 - spec 13 / #368：MCP 本地 config 只读面——新增 mcp-servers.md 条目与 probe `drive-mcp.mjs`（API 投影 + 写面 404 + 密钥值不出接口 + SQLite 无表 + UI 只读钉扎），daemon 执行面配方指向 integration m4b-mcp-e2e（slug 解析 + 真连外部 MCP + 降级行族）。
 - spec 14 / #371：skills 执行面注入——新增 skills-injection.md 条目；daemon 侧行为无 UI 面，canonical 证据走 integration 真栈探针（skills-inject-e2e）而非 launch.mjs。
+- #389 快捷键组：新增 hotkeys.md 条目 + 定制 probe `scripts/drive-hotkeys.mjs`（N 开新建 dialog 双面 + Space 呼出总管抽屉焦点断言 + 输入态负向 + 侧栏 N 角标）；Gotchas 登记 OverlayMount mounted 滞后一帧的开后聚焦坑（ref callback 载首焦 + [open] effect 兜重开，NewTaskDialog/ChiefDrawer 已收同律）。
 - spec 12 / #360 G2-T3：补新建项目表单 web 面条目 project-new-form.md + 定制 probe `scripts/drive-project-new-form.mjs`；local-repo-api.md 的「UI 入口待回补」交叉引用改为已落地。
 - spec 11 / #354 先行地图（合流自 main）：补三面条目——providers runtime tabs (providers-tabs.md)、machines 本机行 + switches (machines-local-row.md)、添加服务商 picker (provider-picker.md) + 三个先行 probe (drive-providers-tabs/drive-machines-local/drive-provider-picker.mjs)。先行语义 (spec 11 A12)：probe 先于实现票落地，红态 = 验收清单（FAIL detail 逐条指 spec 条款），实现票验收 = 转绿；跑序纪律见 Baseline。
 - spec 12 / #359 G2-T1：补本地仓库项目与 GitHub 连接 server API 面条目 local-repo-api.md + 定制 probe `scripts/probe-local-repos.mjs`，live 验 11/11 PASS。
@@ -71,6 +72,7 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [技能页(只读本地目录面)](./skills-page.md) 技能 = server 本地目录现扫投影:放含 SKILL.md 的子目录→刷新即现,无新建/导入入口,空态指路目录,id = frontmatter name 回落目录名(spec 13 #367)。栈隔离第四轴 `PACMAN_SKILLS_DIR`(launch.mjs 已带)。
 - [MCP 页(只读本地 config 面)](./mcp-servers.md) `~/.claude.json` mcpServers 段投影列表+只读钉扎(无新建/更多入口、写面 404、密钥值不出接口、SQLite 无 mcp_server 表);定制 probe `scripts/drive-mcp.mjs`(#368);daemon 执行面配方 = integration m4b-mcp-e2e。
 - [skills 执行面注入(daemon)](./skills-injection.md) PACMAN_SKILLS_DIR 扫描→`<available_skills>` catalog 追加进 systemPrompt→agent read SKILL.md 按需加载(#371,spec 14)。daemon 侧无 UI 面,canonical 证据 = integration 真栈探针(skills-inject-e2e)。
+- [快捷键组(新任务 N + 空格呼出总管)](./hotkeys.md) 侧栏「新任务」行 N 角标 + 全局 N 开 dialog(board/project 自有面,其余路由 AppSidebar 全局 dialog 同 live save 路径) + Space 呼出抽屉草稿框持焦 + 输入态/按钮态守卫负向;定制 probe `scripts/drive-hotkeys.mjs`(#389)。fixture 面回归 = e2e hotkeys.spec。
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
 

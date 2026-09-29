@@ -7,12 +7,19 @@
 // detail: their fixture ui.searchOpen open states drive the fixture rows)
 // pass searchPanel={false} + their own onSearch opener; every other shell
 // rides the internal panel, which renders nothing while closed.
+// #389: the 新任务 row + N hotkey follow the same override law — routes
+// with their own dialog (board / project) pass onNewTask and keep their
+// page-anchored save semantics; every other route rides the internal
+// global dialog (useNewTaskSurface, live save path shared with the board).
 
 import { useCallback, useMemo, useState } from 'react';
 import { useMachines, useProjects, useSearchResults, useTodos } from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
+import { NewTaskDialog } from '../overlay/new-task-dialog.js';
+import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
+import { useNewTaskHotkey } from '../overlays/hotkeys.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { attentionCount } from './columns.js';
 import { BoardSidebar, type SidebarProject, type SidebarSelected } from './sidebar.js';
@@ -34,6 +41,9 @@ export interface AppSidebarProps {
   searchPanel?: boolean;
   /** Search-row opener; defaults to the internal panel. */
   onSearch?: () => void;
+  /** #389: 新任务行 + N 热键的 opener（board/project 传本页 dialog）；缺省 =
+   *  内部全局 dialog（useNewTaskSurface）。 */
+  onNewTask?: () => void;
 }
 
 export function AppSidebar({
@@ -42,6 +52,7 @@ export function AppSidebar({
   todos,
   searchPanel = true,
   onSearch,
+  onNewTask,
 }: AppSidebarProps) {
   // 侧栏待办徽标 / 面板内容走真 todos（live，TQ 同键去重）或 fixture。
   const { live, teamId } = useLiveData();
@@ -73,6 +84,11 @@ export function AppSidebar({
   }, []);
   const resolvedTodos = todos ?? (live ? (todosQ.data ?? []).map(toDisplayTodo) : fixture.todos);
   const machineOnline = live ? (machinesQ.data ?? []).some((m) => m.online) : fixture.chief != null;
+  // #389: 内部全局新建 dialog —— 只在路由未传 onNewTask 时渲染（board/
+  // project 保自有面）；N 热键与侧栏行共用解析后的 opener，单点注册。
+  const internalNewTask = useNewTaskSurface(fixture);
+  const openNewTask = onNewTask ?? internalNewTask.openDialog;
+  useNewTaskHotkey(openNewTask);
   return (
     <>
       <BoardSidebar
@@ -80,6 +96,7 @@ export function AppSidebar({
         onToggle={toggle}
         attention={attentionCount(resolvedTodos)}
         onSearch={onSearch ?? (() => search.setOpen(true))}
+        onNewTask={openNewTask}
         usageNav={fixture.usageNav === true}
         selected={selected}
         machineOnline={machineOnline}
@@ -95,6 +112,7 @@ export function AppSidebar({
           server={live ? searchResults.data : undefined}
         />
       )}
+      {onNewTask == null && <NewTaskDialog {...internalNewTask.dialogProps} />}
     </>
   );
 }

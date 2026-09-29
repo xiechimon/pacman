@@ -59,7 +59,7 @@ interface ProjectOption {
  *  项目(r3-lifecycle,#176 票面「至少默认项目」)。 */
 const DEFAULT_PROJECT: ProjectOption = { id: PROJECT_ID, name: PROJECT_NAME };
 
-interface NewTaskDialogProps {
+export interface NewTaskDialogProps {
   /** #73: retained-mount open flag — the exit fade outlives the close. */
   open: boolean;
   onClose: () => void;
@@ -126,9 +126,21 @@ export function NewTaskDialog({
   // #318: 附件 token 注入 spec 后由 spec 非空承载 dirty,不另计。
 
   const dirty = spec.trim() !== '';
+  // #389 硬化（叠加在 #394 的 effect 归还之上）：用户发起的关闭路径同步
+  // 归还——effect 归还在负载下可滞后于紧随的断言读（overlay-focus 批跑
+  // 实测 race）。脏表单只开确认层（dialog 不关，焦点不还）。
+  const returnFocusToInvoker = () => {
+    const el = returnFocusRef.current;
+    returnFocusRef.current = null;
+    if (el && el !== document.body && document.contains(el)) el.focus();
+  };
   const requestClose = () => {
-    if (dirty) setDiscardOpen(true);
-    else onClose();
+    if (dirty) {
+      setDiscardOpen(true);
+      return;
+    }
+    returnFocusToInvoker();
+    onClose();
   };
   // Esc 分层 4 层(内层优先):确认层 → 提及 picker → 项目 popover → dialog 关闸
   // (合并 #311 picker + #318 闸;discardOpen/pickerOpen 由各自 ClickCatcher
@@ -165,9 +177,7 @@ export function NewTaskDialog({
       returnFocusRef.current = document.activeElement as HTMLElement | null;
       return;
     }
-    const el = returnFocusRef.current;
-    returnFocusRef.current = null;
-    if (el && document.contains(el)) el.focus();
+    returnFocusToInvoker();
   }, [open]);
 
   // M7 #310 附件选择回调：files → onAttachment 委托父处理 grant+upload+

@@ -92,7 +92,13 @@
    the team-row +1px and the border +1px, so the nav rows keep their exact
    former y (r7 01/02 row pitch untouched) */
 .sidebar-nav {
-  flex: none;
+  /* #389: 新任务行把展开态内容自然高推过 550px 视口阈值——flex:none 时
+     溢出会把底部 user chip 顶出视口（user-menu-trigger 的贴合钉扎炸在
+     550 高）。改为可缩 + 内部滚：装得下时与 flex:none 逐像素一致
+     （spacer 吃余量），装不下时 nav 自滚、chip 恒钉底。 */
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   border-top: 1px solid var(--border-default);
