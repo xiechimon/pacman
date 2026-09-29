@@ -195,3 +195,18 @@
     background-color: var(--seg-hover);
   }
 }
+
+/* #425 B1 退场配方（同 overlay.css 的 .more-menu-shell）：壳换 Base UI 后
+   旧 OverlayMount 的计时驱动退役，改用零视觉 visibility 延迟过渡撑卸载窗 +
+   [data-ending-style] 驱动子级 anim-fade 终态。 */
+.dlg-shell {
+  transition: visibility 0s linear var(--dur-overlay);
+}
+
+.dlg-shell[data-ending-style] {
+  visibility: hidden;
+}
+
+.dlg-shell[data-ending-style] .anim-fade {
+  opacity: 0;
+}

@@ -46,7 +46,7 @@ export function MoreMenu({
     onClose();
   };
   return (
-    <FloatingShell open={open} onClose={onClose}>
+    <FloatingShell open={open} onClose={onClose} className="more-menu-shell">
       {/* 透明 catcher 保留（外点只关层、不穿透——#425 车道书记为该族待定项） */}
       <button
         type="button"
