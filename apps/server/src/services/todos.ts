@@ -388,11 +388,6 @@ export async function flushSelfIssueWrites(): Promise<void> {
   await Promise.all([...selfIssueInFlight.values()]);
 }
 
-/** 重试面在飞判定（route 层 409 语义用）。 */
-export function selfIssueWriteInFlight(todoId: string): boolean {
-  return selfIssueInFlight.has(todoId);
-}
-
 /** githubRepo 列拆 owner/repo（github-issues.ts requireGithubRepo 同律；
  * 建项目时已过 isGithubRepoRef 400 闸，lib 层出站再 encodeURIComponent）。 */
 function splitGithubRepo(githubRepo: string): { owner: string; repo: string } {
