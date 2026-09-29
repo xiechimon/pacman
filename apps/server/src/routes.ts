@@ -25,6 +25,7 @@ import {
   createScheduleBodySchema,
   createTagBodySchema,
   createTodoBodySchema,
+  type FsListResult,
   type FsPickResult,
   githubReposResponseSchema,
   type MemoryRecord,
@@ -102,6 +103,7 @@ import {
 } from './services/chief.js';
 import { planDocumentDiff } from './services/documents.js';
 import { createSerialConnection } from './services/events.js';
+import { listDir } from './services/fs-list.js';
 import { pickFolder } from './services/fs-pick.js';
 import {
   isGithubRepoRef,
@@ -906,6 +908,15 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.post('/api/fs/pick', async (c) => {
     const path = await pickFolder();
     return c.json({ path } satisfies FsPickResult);
+  });
+
+  // GET /api/fs/list（ADR 0003 D5/D6 / #441）：应用内目录浏览数据源——
+  // remote/headless 形态下 fs/pick 422 unavailable 的兜底浏览器。只列目录 +
+  // git 提示标记 + 容量闸；dir 缺省/空串 = server $HOME 起点；400 带 reason
+  // （词汇单源 = shared FS_LIST_ERROR_REASONS，#386 模式）。
+  app.get('/api/fs/list', (c) => {
+    const result = listDir(c.req.query('dir'));
+    return c.json(result satisfies FsListResult);
   });
 
   app.post('/api/projects/:id/todos', async (c) => {

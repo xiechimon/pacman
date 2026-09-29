@@ -98,6 +98,10 @@ const INFERRED_ROUTES = [
   // 拿不到绝对路径，只能目标机进程代弹）。自有设计面（原站无此端点，第二个
   // 自觉背离面），02 §6.1 词表外 = INFERRED 入位。
   'POST /api/fs/pick',
+  // #441（ADR 0003 D6）应用内目录浏览数据源：remote/headless 形态 fs/pick
+  // 422 unavailable 的兜底浏览器 readdir 面（只列目录 + git 提示标记 + 容量
+  // 闸）。自有设计面，02 §6.1 词表外 = INFERRED 入位。
+  'GET /api/fs/list',
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；
