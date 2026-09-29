@@ -51,6 +51,11 @@ export interface AppContext {
   /** SPA 静态同源托管根（02/A1；= apps/web/dist 产物目录）。null/缺省 =
    *  不托管（纯 API 形态，dev 期 vite proxy 用）。 */
   webDir?: string | null;
+  /** GitHub 出站 fetch 注入位（spec 12/#359 缝：GET /api/github/repos →
+   *  routes → lib/github 薄桥；缺省 = globalThis.fetch，测试注入 mock。
+   *  #223 skills scan 曾用同一位，随 spec 13 #367 退役——位保留给 repo
+   *  picker 认证面）。 */
+  githubFetch?: FetchLike;
   /** OAuth 握手 state 册（#231：CSRF 防护 + returnOrigin 绑定；TTL 10min
    *  单次核销，services/oauth.ts）。 */
   oauthStates: Map<string, OAuthStateEntry>;

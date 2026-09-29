@@ -25,6 +25,9 @@ export function bootServer(
      * 要技能行的测试显式建目录传参）。 */
     skillsDir?: string;
     webDir?: string | null;
+    /** GitHub 出站 mock（spec 12/#359 repo picker 代理面；#223 skills scan
+     *  曾用同一位，随 spec 13 #367 退役）。 */
+    githubFetch?: AppContext['githubFetch'];
     /** #231 OAuth 面：client 凭证对（默认 null = 未配置）+ 出站 mock。 */
     oauthClient?: AppContext['oauthClient'];
     oauthFetch?: AppContext['oauthFetch'];
@@ -64,6 +67,7 @@ export function bootServer(
     oauthStates,
     oauthClient: opts.oauthClient ?? null,
     ...(opts.oauthFetch !== undefined ? { oauthFetch: opts.oauthFetch } : {}),
+    ...(opts.githubFetch !== undefined ? { githubFetch: opts.githubFetch } : {}),
     reposDir,
     attachmentsDir,
     skillsDir,
