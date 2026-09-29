@@ -304,7 +304,8 @@ export async function seedWorld(
 
   // 总管自己也是一个 Agent（复用 roster 里同模型的那个，省一次建行）。
   const chiefKey =
-    opts.roster.find((a) => a.modelId === opts.chiefModelId)?.key ?? opts.roster[0].key;
+    opts.roster.find((a) => a.modelId === opts.chiefModelId)?.key ?? opts.roster[0]?.key;
+  if (chiefKey === undefined) throw new Error('roster 为空，无法确定总管 agent');
   const chiefAgentId = agentIds[chiefKey];
   if (chiefAgentId === undefined) throw new Error(`总管绑定的 agent 未建出: ${chiefKey}`);
   const bound = await api(server.url, 'PATCH', `/api/teams/${server.teamId}/chief`, {

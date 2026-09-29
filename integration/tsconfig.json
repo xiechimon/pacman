@@ -10,7 +10,10 @@
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    // test/ 下的用例要 import eval/ 下的 .mts（`./stack.mts` 是那边的既有写法），
+    // 而带 .mts 后缀的 import 只有开了这个选项才合法（需 noEmit，已满足）。
+    "allowImportingTsExtensions": true
   },
   "include": ["test", "vitest.config.ts"]
 }
