@@ -25,7 +25,7 @@ _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的�
 | 方案 | Plan | `plan` | build 内类型化的规划产物卡（Context / Changes / Edge cases / Verification）；不是独立实体。 |
 | 标签 | Tag | `tag` | todo 的 category 标签。**词表来源与数量上限随仓库形态分叉**：`githubRepo` 项目 = 该仓库实际的 label 集（动态，issue 挂几个贴几个）；`local` 项目 = 固定 6 词表（bug / feature / improvement / refactor / docs / chore），随项目播种，每任务至多 1 个。两形态都是派发时由执行 agent 回填、无人工创建/挑选 UI（ADR 0002 D4/D5，ADR 0005 D2/D4）。 |
 | 占位标题 | Placeholder title | `title`（占位态） | 保存任务时落库的首行截断标题（正文首行 ≤50 字符）；执行 agent 接单后用 LLM 总结回填正式标题覆盖之。**仅 local 项目**——github 项目从 issue 建的任务直接用 issue 标题，没有占位态（ADR 0005 D5）。 |
-| 来源 | Source | `sourceKind` / `sourceRef` | todo 的外部出处，当前只有 GitHub issue 一种（`sourceRef` 形如 `github:owner/repo#123`）；一个任务至多一个，归 `todo` 既有的溯源家族。**只做读向**：从 issue 建任务时记下，不回写、不镜像状态（ADR 0005 D6/D7）。 |
+| 来源 | Source | `sourceKind` / `sourceRef` | todo 的外部出处，当前只有 GitHub issue 一种（`sourceRef` 形如 `github:owner/repo#123`）；一个任务至多一个，归 `todo` 既有的溯源家族。github 项目的任务**两侧都有落点**：领来的记下那枚 issue，自派的建一枚（ADR 0005 D6、ADR 0006 D1）。但**不改写 issue 的状态、不自动覆盖**——issue 侧仍是真值，pacman 只显示差异（ADR 0006 D5/D6）。 |
 
 边界裁决：
 - **无 Goal 概念** —— 工作单元只有一个，即 `todo`；「Goal」不引入。
@@ -33,7 +33,7 @@ _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的�
 - Build 与 Conversation 是一个实体的两面（执行 vs 消息流），不拆成两套 id。
 - **新建任务无「标题」填写面** —— 用户只写任务正文，标题 = 占位标题 → agent 回填两段式（ADR 0002，**仅 local 项目**；github 项目的任务从 issue 取标题，见 ADR 0005 D5）；标签的 state 轴不引入，已由 `phase` 承载。
 - **标签与标题的真值随仓库形态分叉** —— `githubRepo` 项目的元信息对 issue 取真值，`local` 项目留在 pacman 内（ADR 0005 D1）。分叉的依据是约束不是偏好：local 项目没有外部真值可依。读这条词表时不要默认两种形态行为一致。
-- **`issue` 不是 pacman 实体** —— GitHub issue 只在「来源」里作为外部引用出现；不引入 Issue 记录、不做状态镜像、不做自动同步（ADR 0005 D7）。
+- **`issue` 不是 pacman 实体** —— GitHub issue 只在「来源」里作为外部引用出现。pacman 会往 GitHub 建 issue、写它的标题（ADR 0006 D1/D3），但**不引入 Issue 记录、不镜像状态、不做自动同步**——真值方向始终是 issue → pacman（ADR 0005 D1、ADR 0006 D5）。
 
 ## 执行体
 
