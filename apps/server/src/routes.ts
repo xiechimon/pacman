@@ -27,10 +27,10 @@ import {
   createTodoBodySchema,
   githubReposResponseSchema,
   type MemoryRecord,
-  machineRecordSchema,
   PHASE_VALUES,
   patchAgentBodySchema,
   patchChiefBodySchema,
+  patchMachineBodySchema,
   patchProviderBodySchema,
   phaseSchema,
   planRowSchema,
@@ -120,7 +120,7 @@ import {
   openGithubToken,
   readGithubConnectionStatus,
 } from './services/github-connection.js';
-import { isChiefConversation } from './services/machines.js';
+import { isChiefConversation, toMachineRecord } from './services/machines.js';
 import { handleMcpRequest } from './services/mcp-face.js';
 import { listMcpServers } from './services/mcp-servers.js';
 import {
@@ -1080,18 +1080,25 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const id = c.req.param('id');
     requireTeam(ctx, id);
     const rows = ctx.db.select().from(machine).where(eq(machine.teamId, id)).all();
-    return c.json(
-      rows.map((r) =>
-        machineRecordSchema.parse({
-          id: r.id,
-          name: r.name,
-          teamId: r.teamId,
-          online: r.online,
-          maxConcurrent: r.maxConcurrent,
-          latestCliVersion: r.latestCliVersion,
-        }),
-      ),
-    );
+    return c.json(rows.map((r) => toMachineRecord(r)));
+  });
+
+  // per-runtime 开关写回（spec 11 A8/A9，#357）：enabledRuntimes 全量替换；
+  // 词表外 runtime = 400（shared patchMachineBodySchema 钉 MACHINE_RUNTIMES）。
+  app.patch('/api/machines/:id', async (c) => {
+    const id = c.req.param('id');
+    const row = ctx.db.select().from(machine).where(eq(machine.id, id)).get();
+    if (!row) throw notFound(`machine ${id}`);
+    requireTeam(ctx, row.teamId);
+    const body = parseWith(patchMachineBodySchema, await jsonBody(c), 'body');
+    ctx.db
+      .update(machine)
+      .set({ enabledRuntimes: body.enabledRuntimes })
+      .where(eq(machine.id, id))
+      .run();
+    const updated = ctx.db.select().from(machine).where(eq(machine.id, id)).get();
+    if (!updated) throw notFound(`machine ${id}`);
+    return c.json(toMachineRecord(updated));
   });
 
   // 模型选项面（02 §6.2「model = Provider 下的具名可选项」；provider.models

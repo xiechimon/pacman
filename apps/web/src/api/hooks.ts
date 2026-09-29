@@ -481,6 +481,23 @@ export function useApiMutations(teamId: string | undefined) {
       mutationFn: (id: string) => api.del<void>(`/api/schedules/${id}`),
       onSuccess: invalidateAll,
     }),
+    // 机器页 per-runtime 开关写回（spec 11 A8/A9，#357）：enabledRuntimes
+    // 全量替换；乐观更新 = 点按即翻 aria-checked，成/败都 invalidate 收敛真值。
+    patchMachineRuntimes: useMutation({
+      mutationFn: (input: { id: string; enabledRuntimes: string[] }) =>
+        api.patch<MachineRecord>(`/api/machines/${input.id}`, {
+          enabledRuntimes: input.enabledRuntimes,
+        }),
+      onMutate: (input) => {
+        qc.setQueryData<MachineRecord[]>(['machines', teamId], (rows) =>
+          (rows ?? []).map((m) =>
+            m.id === input.id ? { ...m, enabledRuntimes: input.enabledRuntimes } : m,
+          ),
+        );
+      },
+      onSuccess: invalidateAll,
+      onError: invalidateAll,
+    }),
     // body 单源 = shared createProjectBodySchema（spec 12 / #360：kind +
     // localPath / githubRepo 契约面；既有 repoKind 调用点同义兼容）。
     createProject: useMutation({

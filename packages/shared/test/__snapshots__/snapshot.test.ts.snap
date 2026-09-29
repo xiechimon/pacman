@@ -4281,7 +4281,20 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > machine > 
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "enabledRuntimes": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
     "id": {
+      "type": "string",
+    },
+    "kind": {
+      "enum": [
+        "local",
+        "remote",
+      ],
       "type": "string",
     },
     "latestCliVersion": {
@@ -4312,6 +4325,8 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > machine > 
     "online",
     "maxConcurrent",
     "latestCliVersion",
+    "kind",
+    "enabledRuntimes",
   ],
   "type": "object",
 }

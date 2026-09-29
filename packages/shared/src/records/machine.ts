@@ -12,6 +12,12 @@ import { recordId } from './common.js';
  * r3 §4）。 */
 export const MAX_CONCURRENT_DEFAULT = 3;
 
+/** per-runtime 开关词表（spec 11 A8/A9 单源：machine.enabledRuntimes 元素、
+ * PATCH body、machines 页 switch data-runtime、providers tab runtime 同词表；
+ * Codex 后续票再扩，spec 11 A1）。 */
+export const MACHINE_RUNTIMES = ['pi', 'claude-code'] as const;
+export type MachineRuntime = (typeof MACHINE_RUNTIMES)[number];
+
 export const machineRecordSchema = z.object({
   /** machineId（r3 §1.2 观测形 `TlZ2sSD4EJCxjNJqVhdo_`；server 记录键名
    * [推断]）。 */
@@ -27,8 +33,23 @@ export const machineRecordSchema = z.object({
   /** 机器页数据含 latestCliVersion（r5 §8 实测 "0.1.53"）；用于 MCP/记忆等
    * 版本墙提示（02 §7.1/§8）。 */
   latestCliVersion: z.string().nullable(),
+  /** 本机 vs 接入机（spec 11 A9）：server 启动 seed / hostname 匹配的 enroll
+   * 落 'local'，其余恒 'remote'；本机行钉 machines 页列表首且不可删（A8）。 */
+  kind: z.enum(['local', 'remote']),
+  /** per-runtime 开关态（spec 11 A9）：默认 [] = 全关；machines 页 switch
+   * PATCH 写回。读侧宽（string[]，spec 11 模块清单原文）、写侧严
+   * （patchMachineBodySchema 钉 MACHINE_RUNTIMES enum）——词表演进时旧库
+   * 行仍可读出，入口恒收严。 */
+  enabledRuntimes: z.array(z.string()),
 });
 export type MachineRecord = z.infer<typeof machineRecordSchema>;
+
+/** PATCH /api/machines/{id} body（spec 11 数据契约）：enabledRuntimes 全量
+ * 替换语义；元素词表钉死 MACHINE_RUNTIMES（词表外 runtime = 400）。 */
+export const patchMachineBodySchema = z.object({
+  enabledRuntimes: z.array(z.enum(MACHINE_RUNTIMES)),
+});
+export type PatchMachineBody = z.infer<typeof patchMachineBodySchema>;
 
 /** 机器页「构建」tab 文案 canon（r3 §4 原文）。 */
 export const MACHINE_BUILDS_TAB_COPY = '领取构建、规划与审核任务并运行 Agent。并发上限 3';

@@ -153,9 +153,11 @@ function normalizePath(path: string): string {
 
 describe('机器面路由 = 02 §5 词表（13 端点单源对拍）', () => {
   const s = bootServer();
+  // 命名空间 = /api/machine/ 单数（daemon 协议面）；/api/machines 复数是 web
+  // 资源面（#357 PATCH），前缀裸匹配会误吞——钉斜杠边界。
   const have = new Set(
     s.app.routes
-      .filter((r) => r.method !== 'ALL' && r.path.startsWith('/api/machine'))
+      .filter((r) => r.method !== 'ALL' && r.path.startsWith('/api/machine/'))
       .map((r) => `${r.method} ${normalizePath(r.path)}`),
   );
 

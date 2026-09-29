@@ -402,6 +402,12 @@ export const machine = sqliteTable('machine', {
    * r3 §1.2 实测 + [推断]）。 */
   apiKeyId: text('apiKeyId'),
   latestCliVersion: text('latestCliVersion'),
+  /** 本机 vs 接入机（spec 11 A9，#357）：seed / hostname 匹配 enroll 落
+   * 'local'；值域钉 shared machineRecordSchema.kind。 */
+  kind: text('kind').notNull().default('remote'),
+  /** per-runtime 开关态（spec 11 A9）：MACHINE_RUNTIMES 词表子集，默认 []
+   * 全关；JSON 列（chief.watches 同形）。 */
+  enabledRuntimes: json<string[]>('enabledRuntimes').notNull().default(sql`'[]'`),
 });
 
 // —— token_usage（build × model 四维计数，02 §6.2/r3 §3.8；记账归 M3）———————————

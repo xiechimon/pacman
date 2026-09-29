@@ -512,9 +512,11 @@ export function TodoDetailPage() {
           label: s.name,
           subtitle: s.description,
         })),
-        machine: (fixture.resources?.machines ?? [])
-          .filter((m) => m.hosted !== true)
-          .map((m) => ({ id: m.name, label: m.name, subtitle: m.sub })),
+        machine: (fixture.resources?.machines ?? []).map((m) => ({
+          id: m.name,
+          label: m.name,
+          subtitle: m.sub,
+        })),
       };
   const ui = PHASE_UI[phase];
   const detail = live ? liveDetail : fixture.detail;
