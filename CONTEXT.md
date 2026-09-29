@@ -10,7 +10,7 @@
 |---|---|---|---|
 | 团队 | Team | `team` | 顶层租户边界，项目、Agent、机器、资源与套餐（plan）都归属其下。 |
 | 项目 | Project | `project` | 团队下聚合任务、仓库与文件的单位。 |
-| 仓库 | Repo | `repo` | 项目绑定的代码仓库（Pacman 托管或 GitHub 接入）。是 Project 的属性，不是独立租户层。 |
+| 仓库 | Repo | `repo` | 项目绑定的代码来源，两种形态：GitHub 接入（`githubRepo`）或本地文件夹（`localPath`，必须是 git 仓库——server 三态校验 not_absolute / not_found / not_git）。是 Project 的属性，不是独立租户层。hosted（Pacman 托管）形态已移除。 |
 
 _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的任务检出目录（`~/.pacman/workspaces/<conversationId>`）；禁止用它指代团队或任何界面层级。
 
