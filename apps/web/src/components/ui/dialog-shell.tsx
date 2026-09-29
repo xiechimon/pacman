@@ -39,6 +39,24 @@ interface DialogShellProps {
   /** Panel width in px (defaults to 448 = family law #68); M7 #312 review
    *  dialog uses 560. */
   width?: number;
+  /** bare：面板内容由消费者全权渲染（自带头/体/底），适配层只出壳机制与
+   *  皮肤——new-task-dialog 的面板几何（672×439 + 自定义头）自成一体。 */
+  bare?: boolean;
+  /** 面板高度 in px（bare 面用；家族缺省按内容自适应）。 */
+  height?: number;
+  /** 面板 z-index（缺省 50；背板自动取 zIndex-1）。仓内浮层阶梯把面板钉在
+   *  低位的面（如 new-task 的 21，见 overlay.css 的 21/29/31 阶梯）靠本入参
+   *  与内层浮层共存——适配层里背板与面板是兄弟节点，面板必须高于背板。 */
+  zIndex?: number;
+  /** 背板点击的自定义处置（缺省 = onClose）。new-task 的「内层优先」逻辑：
+   *  项目浮层/提及 picker 开着时先关内层，否则走未保存闸 requestClose。 */
+  onBackdropClick?: () => void;
+  /** 内层浮层开着时的 Esc 处置（等价旧壳手写的分层 Esc：dialog 层用
+   *  `useEscClose(requestClose, open && !projectOpen && ...)` 闸住，内层各
+   *  自收自己的 Esc）。**必须由壳代收**：Base UI 处理 Esc 时会拦下事件，
+   *  仓内内层的 window 监听收不到。传了本回调即表示「现在有内层开着」——
+   *  壳不关自己，转交本回调（由消费者决定关哪层）。 */
+  onEscapeWhileNested?: () => void;
 }
 
 /** 触发位记忆（#389 回陷契约）：关闭态持续记住"最后一个对话框之外的活动元素"，
@@ -68,50 +86,72 @@ export function DialogShell({
   footer,
   className,
   width = 448,
+  height,
+  bare = false,
+  zIndex = 50,
+  onBackdropClick,
+  onEscapeWhileNested,
 }: DialogShellProps) {
   const { t } = useI18n();
   const { restore } = useReturnFocus(open);
-
   return (
     <DialogPrimitive.Root
       open={open}
-      onOpenChange={(next: boolean) => {
-        if (!next) onClose();
+      onOpenChange={(next: boolean, details?: { reason?: string }) => {
+        if (next) return;
+        // #318 闸：内层浮层开着时，壳不吃 Esc / 外点（让内层自己收），
+        // 也不吃背板（背板走 onBackdropClick 的内层优先分支）。
+        if (details?.reason === 'escape-key' && onEscapeWhileNested != null) {
+          onEscapeWhileNested();
+          return;
+        }
+        if (onEscapeWhileNested != null && details?.reason === 'outside-press') {
+          return;
+        }
+        onClose();
       }}
       modal
     >
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop
           data-slot="dialog-overlay"
-          className="dlg-backdrop fixed inset-0 z-40 flex items-center justify-center bg-black/60 duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
+          style={{ zIndex: zIndex - 1 }}
+          className="dlg-backdrop fixed inset-0 flex items-center justify-center bg-black/60 duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
+          onClick={onBackdropClick ?? onClose}
         />
         <DialogPrimitive.Popup
           data-slot="dialog-content"
           // #389：关闭后归还触发位（Base UI 的 finalFocus），不经 trigger 推定
           finalFocus={restore}
-          className={`dlg${className != null ? ` ${className}` : ''} fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100vh-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-popover text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`}
-          style={{ width }}
+          className={`dlg${className != null ? ` ${className}` : ''} fixed top-1/2 left-1/2 flex max-h-[calc(100vh-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-popover text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`}
+          style={{ width, zIndex, ...(height == null ? {} : { height }) }}
           aria-label={title}
         >
-          <div
-            className={`dlg-head relative flex h-12 flex-none items-center border-b border-border px-4${
-              headerCenter != null ? ' dlg-head--plain justify-center border-b-0' : ''
-            }`}
-          >
-            {title != null && (
-              <span className="dlg-title text-sm font-medium text-foreground">{title}</span>
-            )}
-            {headerCenter}
-            <DialogPrimitive.Close
-              className="dlg-close absolute right-3 flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
-              aria-label={t('关闭')}
-              onClick={onClose}
-            >
-              <X width={16} height={16} />
-            </DialogPrimitive.Close>
-          </div>
-          <div className="dlg-body min-h-0 flex-1 overflow-y-auto">{children}</div>
-          {footer != null && <div className="dlg-foot flex-none">{footer}</div>}
+          {bare ? (
+            children
+          ) : (
+            <>
+              <div
+                className={`dlg-head relative flex h-12 flex-none items-center border-b border-border px-4${
+                  headerCenter != null ? ' dlg-head--plain justify-center border-b-0' : ''
+                }`}
+              >
+                {title != null && (
+                  <span className="dlg-title text-sm font-medium text-foreground">{title}</span>
+                )}
+                {headerCenter}
+                <DialogPrimitive.Close
+                  className="dlg-close absolute right-3 flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
+                  aria-label={t('关闭')}
+                  onClick={onClose}
+                >
+                  <X width={16} height={16} />
+                </DialogPrimitive.Close>
+              </div>
+              <div className="dlg-body min-h-0 flex-1 overflow-y-auto">{children}</div>
+              {footer != null && <div className="dlg-foot flex-none">{footer}</div>}
+            </>
+          )}
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

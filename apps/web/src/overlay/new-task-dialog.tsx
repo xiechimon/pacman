@@ -27,6 +27,7 @@
 // 净面,闸判定不带脏残留)。#394 起 dirty = 正文单字段（标题/标签面移除）。
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, Grid2x2, Paperclip, X } from '../icons/index.js';
@@ -145,10 +146,6 @@ export function NewTaskDialog({
   // Esc 分层 4 层(内层优先):确认层 → 提及 picker → 项目 popover → dialog 关闸
   // (合并 #311 picker + #318 闸;discardOpen/pickerOpen 由各自 ClickCatcher
   // / useEscapeClose 单独处理,这里只控 dialog 自身的 Esc 关闸。)
-  useEscClose(requestClose, open && !projectOpen && !pickerOpen && !discardOpen);
-  useEscapeClose(projectOpen, () => setProjectOpen(false));
-  useEscapeClose(discardOpen, () => setDiscardOpen(false));
-  useEscapeClose(pickerOpen, () => setPickerOpen(false));
   // retained mount:dialog 关闭一并收 popover(重开不得带回开态) + 确认层
   // + picker,并重置表单(重开不得带回开态/脏字——闸判定以净面起步)
   useEffect(() => {
@@ -227,16 +224,14 @@ export function NewTaskDialog({
   };
 
   return (
-    <OverlayMount open={open} exitMs={FADE_EXIT_MS}>
-      <button
-        type="button"
-        className="overlay-backdrop anim-fade"
-        aria-label={t('关闭')}
-        onClick={() => {
-          // 外点内层优先:picker 的 transform 收 fixed ClickCatcher 容器,
-          // 外点直达此 backdrop。discardOpen 由确认层自己的 ClickCatcher
-          // 接管(z29 压 dialog z21,外点只收确认层),这里处理 picker /
-          // project popover 的内层先关;剩余走 dirty 闸 / 直接关。
+    <>
+      <DialogShell
+        bare
+        open={open}
+        onClose={requestClose}
+        // 外点内层优先（旧 backdrop 上的三分支逻辑）：项目浮层 / 提及 picker
+        // 开着先关内层；discard 层由它自己的底座接管；剩余走未保存闸。
+        onBackdropClick={() => {
           if (projectOpen) {
             setProjectOpen(false);
             return;
@@ -247,12 +242,23 @@ export function NewTaskDialog({
           }
           requestClose();
         }}
-      />
-      <div
-        className="new-task-dialog anim-fade"
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('新建任务')}
+        // #318 分层 Esc（旧壳四处 useEscClose 的合并）：内层开着时壳不关自己，
+        // 由本回调按层序收最上面那层；全关时壳自己走 requestClose（未保存闸）
+        onEscapeWhileNested={
+          projectOpen || pickerOpen || discardOpen
+            ? () => {
+                if (projectOpen) setProjectOpen(false);
+                else if (pickerOpen) setPickerOpen(false);
+                else setDiscardOpen(false);
+              }
+            : undefined
+        }
+        // zIndex 21：仓内浮层阶梯（面板 21 < ClickCatcher 29 < 确认层 31）——
+        // 缺省 50 会压住本文件的 discard 确认层，故按旧值下移
+        zIndex={21}
+        className="new-task-dialog"
+        width={672}
+        height={439}
       >
         <div className="new-task-head">
           <span className="new-task-project-wrap">
@@ -385,7 +391,7 @@ export function NewTaskDialog({
             </div>
           </div>
         </div>
-      </div>
+      </DialogShell>
       {/* #318 未保存闸确认层(r9 §3.4 copy 逐字):独立层不入 dialog 面板
           ——面板 transform 会吞 fixed 定位(#176 注记同坑);ClickCatcher
           z29 压 dialog z21,外点 = 只收确认层(继续编辑语义),面板 z31 居顶。 */}
@@ -427,6 +433,6 @@ export function NewTaskDialog({
           setPickerOpen(false);
         }}
       />
-    </OverlayMount>
+    </>
   );
 }

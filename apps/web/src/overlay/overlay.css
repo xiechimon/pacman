@@ -24,21 +24,9 @@
 
 /* ---- new-task dialog (r7 04/14: 672×439, centered both axes) ---- */
 
-.new-task-dialog {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 672px;
-  height: 439px;
-  display: flex;
-  flex-direction: column;
-  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
-  border-radius: var(--edge-radius);
-  overflow: hidden;
-  box-shadow: var(--dialog-shadow);
-  z-index: 21;
-}
+/* #425 B1：.new-task-dialog 面板级壳规则已随 components/ui/dialog-shell.tsx
+   适配层退役（壳机制与皮肤归适配层；672×439 几何经 width/height 入参透传）。
+   本文件保留其头/体/底/动作等面内规则。 */
 
 .new-task-head {
   flex: none;
