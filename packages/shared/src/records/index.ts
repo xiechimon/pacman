@@ -1,6 +1,8 @@
-// record 形状 25 表投影（01 §6 表清单 = M2 Drizzle schema 面；03 M1
+// record 形状 24 表投影（01 §6 表清单 = M2 Drizzle schema 面；03 M1
 // 「record 形状（02 §6.2，24 表投影源）」；M4a 回写 +1：`chief` 记录本体
-// ——02 §4.3/r5 §3.6 GET /chief 的 chief 字段投影，原清单仅列线程面两表）。
+// ——02 §4.3/r5 §3.6 GET /chief 的 chief 字段投影，原清单仅列线程面两表；
+// spec 13 #367 回写 −1：`skill` 表退役——SkillRecord 仍是 wire 形状
+// （records/skill.ts），但投影源改本地目录现扫，无表位、不入本 registry）。
 // `todo_tag` 为纯 join 表，无 wire record 形状，不在投影面。
 
 import type { z } from 'zod';
@@ -20,7 +22,6 @@ import { providerRecordSchema } from './provider.js';
 import { reviewVerdictSchema } from './review.js';
 import { scheduleRecordSchema } from './schedule.js';
 import { secretRecordSchema } from './secret.js';
-import { skillRecordSchema } from './skill.js';
 import { stepRecordSchema } from './step.js';
 import { tagRecordSchema } from './tag.js';
 import { teamRecordSchema } from './team.js';
@@ -36,6 +37,7 @@ export * from './build.js';
 export * from './chief.js';
 export * from './common.js';
 export * from './document-diff.js';
+export * from './github.js';
 export * from './machine.js';
 export * from './mcp-server.js';
 export * from './memory.js';
@@ -56,7 +58,9 @@ export * from './token-usage.js';
 export * from './user.js';
 export * from './whats-new.js';
 
-/** 表名 → record schema（25 张，键序 = 01 §6 清单序；快照测试的遍历源）。 */
+/** 表名 → record schema（24 张，键序 = 01 §6 清单序；快照测试的遍历源。
+ * skill 已出列——record 形状仍在 records/skill.ts，投影源 = 本地目录现扫，
+ * spec 13 #367）。 */
 export const RECORD_SCHEMAS = {
   user: userRecordSchema,
   team: teamRecordSchema,
@@ -72,7 +76,6 @@ export const RECORD_SCHEMAS = {
   notification: notificationRecordSchema,
   agent: agentRecordSchema,
   agent_memory: memoryRecordSchema,
-  skill: skillRecordSchema,
   mcp_server: mcpServerRecordSchema,
   provider: providerRecordSchema,
   secret: secretRecordSchema,

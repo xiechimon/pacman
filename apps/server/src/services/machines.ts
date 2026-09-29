@@ -92,6 +92,9 @@ export interface MachineDeps {
   reposDir: string;
   /** 附件存储根（#310 chief attachment 工具读面）。 */
   attachmentsDir: string;
+  /** 技能根目录（spec 13 #367：chief systemPrompt 资源清单 + skills relay
+   * 读工具 = 本地现扫）。 */
+  skillsDir: string;
   /** conversation stream 通道（M5 live streaming：transcript 行/文本增量/
    * 步状态即时推送，02 §1.2 会话流）；缺省 = 无会话流面（单测形态）。 */
   convHub?: ConversationStreamHub;
@@ -865,6 +868,7 @@ export async function executeRelayToolCall(
       user: deps.user,
       reposDir: deps.reposDir,
       attachmentsDir: deps.attachmentsDir,
+      skillsDir: deps.skillsDir,
     },
     {
       teamId: threadRow.teamId,

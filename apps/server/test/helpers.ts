@@ -10,7 +10,6 @@ import { openMemoryDb } from '../src/db/client.js';
 import { apiKey } from '../src/db/schema.js';
 import { seed } from '../src/db/seed.js';
 import { sha256Hex } from '../src/lib/crypto.js';
-import type { FetchLike } from '../src/lib/github.js';
 import { newRecordId } from '../src/lib/ids.js';
 import { createEphemeralSecretBox } from '../src/lib/secret-box.js';
 import { ConversationStreamHub, TeamStreamHub } from '../src/services/events.js';
@@ -22,9 +21,13 @@ export function bootServer(
     claimHoldMs?: number;
     reposDir?: string;
     attachmentsDir?: string;
+    /** 技能根目录（spec 13 #367 现扫面）；缺省 = 自建临时空目录（空集语义；
+     * 要技能行的测试显式建目录传参）。 */
+    skillsDir?: string;
     webDir?: string | null;
-    /** GitHub 出站 mock（#223 扫描面）；缺省 = 真 fetch（测试勿缺省）。 */
-    githubFetch?: FetchLike;
+    /** GitHub 出站 mock（spec 12/#359 repo picker 代理面；#223 skills scan
+     *  曾用同一位，随 spec 13 #367 退役）。 */
+    githubFetch?: AppContext['githubFetch'];
     /** #231 OAuth 面：client 凭证对（默认 null = 未配置）+ 出站 mock。 */
     oauthClient?: AppContext['oauthClient'];
     oauthFetch?: AppContext['oauthFetch'];
@@ -44,6 +47,8 @@ export function bootServer(
   const reposDir = opts.reposDir ?? mkdtempSync(join(tmpdir(), 'pacman-server-repos-'));
   const ownAttDir = opts.attachmentsDir === undefined;
   const attachmentsDir = opts.attachmentsDir ?? mkdtempSync(join(tmpdir(), 'pacman-att-'));
+  const ownSkillsDir = opts.skillsDir === undefined;
+  const skillsDir = opts.skillsDir ?? mkdtempSync(join(tmpdir(), 'pacman-skills-'));
   const oauthStates: AppContext['oauthStates'] = new Map();
   const app = createApp({
     db,
@@ -62,10 +67,11 @@ export function bootServer(
     oauthStates,
     oauthClient: opts.oauthClient ?? null,
     ...(opts.oauthFetch !== undefined ? { oauthFetch: opts.oauthFetch } : {}),
+    ...(opts.githubFetch !== undefined ? { githubFetch: opts.githubFetch } : {}),
     reposDir,
     attachmentsDir,
+    skillsDir,
     ...(opts.webDir !== undefined ? { webDir: opts.webDir } : {}),
-    ...(opts.githubFetch !== undefined ? { githubFetch: opts.githubFetch } : {}),
     authToken: opts.authToken ?? null,
   });
   return {
@@ -79,11 +85,13 @@ export function bootServer(
     team,
     reposDir,
     attachmentsDir,
+    skillsDir,
     oauthStates,
-    svc: { db, hub, machineHub, convHub, user },
+    svc: { db, hub, machineHub, convHub, user, skillsDir },
     dispose(): void {
       if (ownReposDir) rmSync(reposDir, { recursive: true, force: true });
       if (ownAttDir) rmSync(attachmentsDir, { recursive: true, force: true });
+      if (ownSkillsDir) rmSync(skillsDir, { recursive: true, force: true });
     },
   };
 }

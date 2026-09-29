@@ -126,11 +126,6 @@
   --chip-done-fg: #5ec26a;
   --code-bg: #27272a;
   --popover-bg: #1f1f23;
-  /* detail doc/chat tab plate (#138, r7 16/16d probe): the group rides a
-     --surface-secondary ring at 2px padding and BOTH tabs sit on this
-     plate (active = ink-only), so the token flipped from the old
-     transparent light value to the probed plate fill in both themes */
-  --tab-group-bg: #27272a;
   --seg-active: #3f3f46;
   /* text-tab chip on the #71 secondary routes (r2 24b/24c probe: group bg
      is --surface-secondary in both themes, the active chip is not) */
@@ -170,7 +165,7 @@
      box + radius as the active chip (one geometry, two depths). Group
      containers are --surface-secondary and active chips --tab-chip-bg in
      both themes, so the old --seg-container-bg / --seg-tab-active-bg pair
-     collapsed into those two; the detail-tabs plate keeps --tab-group-bg */
+     collapsed into those two */
   --seg-hover: rgb(255 255 255 / 0.05);
   /* resource surfaces (r7 06–10, #69): row-card tile tints + status pill +
      dashed add-machine border, sampled light; dark values are [推断] from
@@ -193,7 +188,7 @@
   --overlay-select-indigo: #2a2740;
   /* chief surfaces (r5 100–104, #72): drawer shadow sampled from the r5
      100 edge gradient; tab strip colors from the r5 101 group/active pill
-     (dark values [推断] on the detail-tab family, r2 16 dark panel) */
+     (dark values [推断], r2 16 dark panel) */
   --chief-shadow: 0 4px 24px rgb(0 0 0 / 0.35);
   --chief-tab-bg: #27272a;
   --chief-tab-active: #3f3f46;
@@ -292,7 +287,6 @@
   --chip-done-fg: #15803d;
   --code-bg: #e7e2da;
   --popover-bg: #fdfaf7;
-  --tab-group-bg: #faf7f3;
   --seg-active: #e7e2da;
   --tab-chip-bg: #faf7f3;
   --danger: #ca3a32;

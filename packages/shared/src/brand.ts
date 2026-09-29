@@ -91,8 +91,10 @@ export const ENV_VARS = {
    * 两条 SSE stream 端点另收 ?token=——EventSource 无法设 header）；
    * 未设/空串 = 关（默认，行为与现状一致）。 */
   token: 'PACMAN_TOKEN',
-  /** daemon skills 扫描根覆写（#371，spec 14 数据契约）：缺省
-   * `~/.agents/skills`；指向不存在目录 = 空 skills 集，非致命。 */
+  /** 技能根目录覆写（spec 13 #367：skills = 本地目录现扫只读投影；
+   * 缺省 = SKILLS_DIR_DEFAULT `~/.agents/skills`，records/skill.ts 单源）。
+   * spec 14/#371：daemon 侧同键读扫描根（缺省同上；指向不存在目录 =
+   * 空 skills 集，非致命）。 */
   skillsDir: 'PACMAN_SKILLS_DIR',
 } as const;
 

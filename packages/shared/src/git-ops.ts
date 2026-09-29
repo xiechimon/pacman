@@ -60,6 +60,10 @@ export interface GitOps {
   seedInitialCommit(dir: string, message: string): Promise<string>;
   /** ref → commit sha 解析（`rev-parse --verify`）；解析失败 null。 */
   resolveCommit(dir: string, ref: string): Promise<string | null>;
+  /** git 工作树仓判定（`rev-parse --is-inside-work-tree`）——spec 12 local
+   * 项目路径校验缝（server 端 `POST /api/projects` kind=local 的 400 闸）。
+   * 目录缺位 / 非仓 / bare 仓（无工作树）= false，不抛。 */
+  isGitRepo(dir: string): Promise<boolean>;
   /** 读树（`ls-tree -l`）；subPath 空 = 仓库根。 */
   lsTree(dir: string, commit: string, subPath?: string): Promise<GitTreeEntry[]>;
   /** 读单文件（`cat-file blob`）；缺失 null。 */

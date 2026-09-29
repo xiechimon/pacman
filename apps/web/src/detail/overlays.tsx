@@ -3,8 +3,9 @@
 // Agent switch + 先做规划/立即执行 and — only when the failed build holds
 // a plan document, r8 §3.4 — the indigo 复用方案 third button) and the
 // 复用方案 sub-panel (back arrow + centered prompt + 查看方案/直接执行).
-// The 运行历史 dialog lives in history-dialog.tsx (#68); geometry from
-// r8 §2.3/§2.6 on top of the 448-wide centered law (r7 §3.5).
+// Geometry from r8 §2.3/§2.6 on top of the 448-wide centered law (r7
+// §3.5). (The former 运行历史 dialog of #68 is a static right-pane
+// section since #366 — right-pane.tsx.)
 // #318 统一面(r9 §3.6): the dialog is the single 开始任务 face for both
 // 待开始 and failed-rerun — Agent row = selector (#182 ChiefAgentDialog
 // family, 未指派 included), the 分用 switch toggles one row into the

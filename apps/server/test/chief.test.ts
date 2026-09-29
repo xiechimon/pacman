@@ -5,7 +5,12 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { CHIEF_REMOTE_TOOLS, CHIEF_TOOL_NAMES, CHIEF_WATCH_REASON_DISPATCH } from '@pacman/shared';
+import {
+  CHIEF_REMOTE_TOOLS,
+  CHIEF_TOOL_NAMES,
+  CHIEF_TOOLS_REMOVED,
+  CHIEF_WATCH_REASON_DISPATCH,
+} from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, test } from 'vitest';
 import {
@@ -53,6 +58,7 @@ function toolDeps() {
     user: s.user,
     reposDir: s.reposDir,
     attachmentsDir: s.attachmentsDir,
+    skillsDir: s.skillsDir,
   };
 }
 function ctx(over: Partial<ChiefToolCtx> = {}): ChiefToolCtx {
@@ -299,7 +305,7 @@ describe('总管设置 4 tab + PATCH /chief（r5 §2）', () => {
       .where(eq(chiefTable.id, chiefId))
       .run();
     const prompt = composeChiefSystemPrompt(
-      { db: s.db, hub: s.hub, machineHub: s.machineHub, user: s.user },
+      { db: s.db, hub: s.hub, machineHub: s.machineHub, user: s.user, skillsDir: s.skillsDir },
       teamId,
     );
     expect(prompt).toContain('优先文档 Agent'); // charter
@@ -673,9 +679,9 @@ describe('驳回回路 plan v2 + unified diff（r5 §4/02 §4.2）', () => {
   });
 });
 
-// —— 结构契约: 49 词表 relay 白名单 ———————————————————————————————————————
+// —— 结构契约: 48 词表 relay 白名单（raw 49 − delete_skills，spec 13 #367）—————
 
-describe('49 词表 relay 执行面（02 §4.3）', () => {
+describe('48 词表 relay 执行面（02 §4.3）', () => {
   test('词表外工具名 → 400（白名单纪律，不执行）', async () => {
     let status = 0;
     try {
@@ -694,7 +700,7 @@ describe('49 词表 relay 执行面（02 §4.3）', () => {
     }
   });
 
-  test('词表键集 = r5 raw toolDefHashes 全键（一手来源防漂移，node fs 面）', () => {
+  test('词表键集 = r5 raw toolDefHashes 全键 − 除名登记（一手来源防漂移，node fs 面）', () => {
     const raw = resolve(
       import.meta.dirname,
       '../../../docs/research/assets/r5/raw/chief-threads-testA.json',
@@ -713,6 +719,10 @@ describe('49 词表 relay 执行面（02 §4.3）', () => {
     };
     walk(doc);
     expect(found.length).toBeGreaterThan(0);
-    expect(CHIEF_TOOL_NAMES).toEqual([...(found[0] as string[])].sort());
+    // spec 13 #367 divergence：raw 观测 49 键，现行词表 = raw − CHIEF_TOOLS_REMOVED
+    //（delete_skills——技能改本地目录只读投影，无删除面）。raw 键集本身冻结不改。
+    const removed: readonly string[] = CHIEF_TOOLS_REMOVED;
+    const expected = (found[0] as string[]).filter((name) => !removed.includes(name));
+    expect(CHIEF_TOOL_NAMES).toEqual([...expected].sort());
   });
 });

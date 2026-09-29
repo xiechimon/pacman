@@ -48,16 +48,16 @@ test('team right-slot action owns its hit area (设置 slot under the same band)
   await expectOwnsCenter(page, '.secondary-head-right');
 });
 
-// resources family (r7 06–10 + the import subroute, one shared fixture
-// set): the band law covers .res-back and, where present, .res-new
-// (machines/import hide it); every route's back really navigates.
+// resources family (r7 06–10, one shared fixture set): the band law covers
+// .res-back and, where present, .res-new (machines hide it; skills is
+// read-only since spec 13 #367 — no .res-new at all, pinned in
+// skills-readonly.spec.ts); every route's back really navigates.
 for (const [route, scenario, backTo] of [
   ['/app/resources/skills', '06', '/app'],
   ['/app/resources/mcp-servers', '07', '/app'],
   ['/app/resources/secrets', '08', '/app'],
   ['/app/resources/machines', '09', '/app'],
   ['/app/resources/providers', '10', '/app'],
-  ['/app/resources/skills/import', '79', '/app/resources/skills'],
 ] as const) {
   test(`resources topbar actions own their hit areas, back navigates — ${route}`, async ({ page }) => {
     await page.goto(`${route}?scenario=${scenario}`);
@@ -69,9 +69,3 @@ for (const [route, scenario, backTo] of [
     await expect(page).toHaveURL(backTo);
   });
 }
-
-test('resources: skills new really navigates to import (plain anchor, no search)', async ({ page }) => {
-  await page.goto('/app/resources/skills?scenario=06');
-  await page.locator('.res-new').click();
-  await expect(page).toHaveURL('/app/resources/skills/import');
-});
