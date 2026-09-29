@@ -5421,11 +5421,6 @@ exports[`协议词表快照（02 §5/§6 canonical） > localStorage 键名契�
       "valueShape": ""1"",
     },
     {
-      "key": "pacman.boardCollapsedColumns",
-      "source": "[推断] #147（r2 §4 / 01d 观测到列折叠行为与窄条形态，键未捕获）",
-      "valueShape": "逗号连接的列 id（空 = 全展开）",
-    },
-    {
       "key": "pacman.panel-maximized",
       "source": "r2 §1.5",
       "valueShape": ""0"",
@@ -5520,10 +5515,8 @@ exports[`协议词表快照（02 §5/§6 canonical） > phase 九值 + 看板列
 {
   "BOARD_COLUMNS": [
     "待开始",
-    "规划中",
-    "待确认",
     "执行中",
-    "待验收",
+    "待处理",
     "已完成",
   ],
   "PHASE_SEMANTICS": {

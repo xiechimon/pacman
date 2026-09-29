@@ -3,11 +3,12 @@
 // drop DOES to phase/order is pure here so it stays testable without a DOM.
 //
 // Drop semantics: onboarding P2 (r3 §3.10) — 「在桌面端可将卡片直接拖拽至目标列」
-// = manual phase change; the card lands wherever the six-column fold puts
-// its new phase (r5b §3.15). Within a column the drop is a pure reorder,
-// persisted as `orderIndex` (02 §6.2 field, 01 §4.1 列内 orderIndex 排序).
-// Batch drag and the preset-path start dialog (changelog 2026-09-12) are
-// follow-ups, registered in the #73 ticket comment.
+// = manual phase change; the card lands wherever the column fold puts its
+// new phase. Within a column the drop is a pure reorder, persisted as
+// `orderIndex` (02 §6.2 field, 01 §4.1 列内 orderIndex 排序). #351: 待处理
+// carries no dropPhase — a cross-column drop into it commits nothing
+// (gate/failed are system states, manual entry has no semantics), while
+// reordering inside the column still lands.
 import type { TodoRecord } from '../fixtures/records.js';
 import { COLUMNS } from './columns.js';
 
@@ -24,10 +25,10 @@ export interface DropTarget {
 /**
  * Commit a drop: reorder within the target column view, and when the column
  * changes, rewrite the phase to the column's canon (BoardColumnDef.dropPhase)
- * with a fresh phaseAt so the in-column relative time restarts. Dropping on
- * 待验收 clears awaitingReply — otherwise the fold (review+awaitingReply →
- * 执行中) would put the card right back where it came from. Every column's
- * view order is written back as sequential `orderIndex`.
+ * with a fresh phaseAt so the in-column relative time restarts. A column
+ * without a dropPhase (#351: 待处理) rejects cross-column drops outright —
+ * same-column reorders there still commit. Every column's view order is
+ * written back as sequential `orderIndex`.
  */
 export function moveTodo(
   todos: TodoRecord[],
@@ -41,14 +42,13 @@ export function moveTodo(
   if (column == null) return todos;
   const sourceColumn = COLUMNS.find((c) => c.accepts(moved));
   const crossed = sourceColumn?.id !== column.id;
-  const placed: TodoRecord = crossed
-    ? {
-        ...moved,
-        phase: column.dropPhase,
-        phaseAt: now,
-        awaitingReply: column.id === 'review' ? false : moved.awaitingReply,
-      }
-    : moved;
+  let placed = moved;
+  if (crossed) {
+    // 待处理无落点（#351）：跨列拖入无语义，原样返回；列内重排（未跨列）不受影响
+    const dropPhase = column.dropPhase;
+    if (dropPhase == null) return todos;
+    placed = { ...moved, phase: dropPhase, phaseAt: now };
+  }
   const rest = todos.filter((t) => t.id !== todoId);
   const view = rest.filter((t) => column.accepts(t));
   const index = Math.min(target.index, view.length);

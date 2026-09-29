@@ -40,7 +40,7 @@ test('nav rows hop client-side: no reload, pill + aria-current follow', async ({
   await expect(schedules).toHaveClass(/sidebar-row--selected/);
   await expect(schedules).toHaveAttribute('aria-current', 'page');
 
-  const board = page.locator('.sidebar-row', { hasText: '看板' });
+  const board = page.locator('.sidebar-row', { hasText: '工作台' });
   await expect(board).not.toHaveClass(/sidebar-row--selected/);
   await expect(board).not.toHaveAttribute('aria-current', 'page');
 });
@@ -119,7 +119,7 @@ test('rail hover tints the 24px pill', async ({ page }) => {
 
 test('selected row keeps its own pill under hover', async ({ page }) => {
   await page.goto('/app?scenario=01');
-  const board = page.locator('.sidebar-row', { hasText: '看板' });
+  const board = page.locator('.sidebar-row', { hasText: '工作台' });
   await expect(board).toHaveClass(/sidebar-row--selected/);
 
   await board.hover();

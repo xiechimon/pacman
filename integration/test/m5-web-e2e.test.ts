@@ -403,11 +403,12 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     // once 出队。
     expect((await api(server.url, 'GET', '/api/schedules')).body as unknown[]).toHaveLength(0);
 
-    // UI 面：看板卡回 待验收 列 + 详情时间线「由定时发起」标记（r7 38）。
+    // UI 面：看板卡回 待处理 列（#351：review 并入待处理）+ 详情时间线
+    // 「由定时发起」标记（r7 38）。
     await openBoard();
     const reviewCol = page
       .locator('.board-column')
-      .filter({ has: page.locator('.board-column-name', { hasText: '待验收' }) });
+      .filter({ has: page.locator('.board-column-name', { hasText: '待处理' }) });
     await pexpect(reviewCol.locator('.todo-card', { hasText: 'M5 脊柱探针' })).toBeVisible({
       timeout: 15_000,
     });

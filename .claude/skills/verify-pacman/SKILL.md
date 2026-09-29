@@ -64,7 +64,7 @@ node .../scripts/drive.mjs <probe>    # probe ∈ board | new-task | api-key | s
 | `api-key` | `/app/api-keys` 建密钥 | 一次性明文 `pacman_…` + 掩码行 + SQLite 存 keyHash 非明文 |
 | `search` | 侧栏搜索面板 | 结果行命中已建任务 |
 | `theme` | 主题持久化(`pacman-theme` localStorage) | light/dark 双向重载生效 |
-| `board` | 看板 shell(6 列) | 布局截图 |
+| `board` | 工作台 shell(#351 起 4 列) | 布局截图 |
 
 注意:`api-key` probe 假定全新库(新建按钮只在空态)——重验先重跑 launch。
 

@@ -113,7 +113,7 @@ test.describe('sidebar form is route-invariant', () => {
     await expect(page).toHaveURL('/app/resources/skills?scenario=01');
     await expectSidebarBox(page, sidebar, '/app/resources/skills', boardBox);
 
-    await page.locator('.sidebar-row', { hasText: '看板' }).click();
+    await page.locator('.sidebar-row', { hasText: '工作台' }).click();
     await expect(page).toHaveURL('/app?scenario=01');
     await expectSidebarBox(page, sidebar, '/app', boardBox);
   });
@@ -146,7 +146,7 @@ test.describe('sidebar form is route-invariant', () => {
       .poll(() => page.evaluate((k) => localStorage.getItem(k), SIDEBAR_KEY))
       .toBe('1');
 
-    await page.locator('.rail-row[aria-label="看板"]').click();
+    await page.locator('.rail-row[aria-label="工作台"]').click();
     await expect(page).toHaveURL('/app?scenario=12');
     await expect(page.locator('[data-route="board"]')).toBeVisible();
     await expect(page.locator('.board-sidebar--collapsed')).toBeVisible();

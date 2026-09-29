@@ -1,17 +1,18 @@
-// Board surface (issue #54): topbar + horizontal 6-column scroller + chief
-// FAB. Geometry from the r7 captures: scroller padding 12/17/13, column
-// pitch 292 (278 body + 14 gap), radius 10, header 37 with dot/name/count,
-// empty-state copy centered.
-// #58: the scroller's scrollLeft is mirrored to sessionStorage on scroll
-// and restored on mount, so 详情 → 返回 lands on the same board scroll
-// position (module key below; per-tab storage, cleared with the tab).
+// Board surface (issue #54): topbar + 4-column grid + chief FAB. #351:
+// the 6-column 278px fixed-pitch scroller became an even 4-column grid
+// (repeat(4, minmax(0, 1fr)), gap 14 — geometry in board.css); the #147
+// column-collapse family and the #58 scrollLeft persistence retired with
+// the horizontal scroll they served. Header 37 with dot/name/count,
+// empty-state copy centered (r7 captures).
 // #73: drag & drop rides the locked stack (01-stack-v2 §4.1: @dnd-kit/core
 // + sortable). Multi-container pattern: a per-column id list mirrors the
 // committed todo set while a gesture is in flight (live preview), and the
 // settled drop commits through dnd.ts moveTodo — phase rewrite on column
-// change, orderIndex write-back, fold/awaitingReply handling. Desktop-only
-// like the official (changelog 2026-09-12: drag rows appear on desktop web
-// only), so the sensor set is empty on coarse pointers.
+// change, orderIndex write-back. #351: 待处理 carries no dropPhase — the
+// preview never enters it and a drop there commits nothing (same-column
+// reorder still lands). Desktop-only like the official (changelog
+// 2026-09-12: drag rows appear on desktop web only), so the sensor set is
+// empty on coarse pointers.
 
 import {
   closestCorners,
@@ -26,23 +27,18 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useState } from 'react';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
 // drawer/settings overlays sit beside it in one place.
 import { useI18n } from '../i18n/provider.js';
-import { Plus, UnfoldVertical } from '../icons/index.js';
+import { Plus } from '../icons/index.js';
 import { Button } from '../ui/button.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
 import { DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
 import { SortableCard } from './sortable-card.js';
 import { TodoCard } from './todo-card.js';
 import './board.css';
-
-/** sessionStorage key for the board scroller's scrollLeft (#58 back-nav
- *  restore). [推断] key shape — the official key is unobservable; collision
- *  with a future real key is harmless (worst case: a stale offset). */
-const BOARD_SCROLL_KEY = 'pacman.board-scroll-left';
 
 /** column id → todo ids in view order; the live-preview mirror while a
  *  drag is in flight (null = no gesture, render straight from the todos) */
@@ -62,18 +58,12 @@ function columnOf(view: ColumnView, id: string): string | null {
 
 const COLUMN_IDS = new Set(COLUMNS.map((c) => c.id));
 
-/** #147: column-collapse persistence key ([推断] — r2 §4 / the 01d capture
- *  observed the collapse itself but never its storage key; brand slot in
- *  the same shape as the sidebar collapse keys, registered in the shared
- *  client-state table). Value = comma-joined column ids, empty = all open. */
-const BOARD_COLLAPSED_COLUMNS_KEY = 'pacman.boardCollapsedColumns';
-
-function readCollapsedColumns(storage: Storage): string[] {
-  const stored = storage.getItem(BOARD_COLLAPSED_COLUMNS_KEY);
-  if (stored == null) return [];
-  // unknown ids (a retired column) drop out so a stale value can never
-  // collapse a column that no longer exists
-  return stored.split(',').filter((id) => COLUMN_IDS.has(id));
+/** #351: 待处理 carries no dropPhase — cross-column gestures into it get no
+ *  highlight, no live preview and no commit (gate/failed are system states);
+ *  reordering inside the column is unaffected. */
+function acceptsDrop(columnId: string | null): boolean {
+  if (columnId == null) return false;
+  return COLUMNS.find((c) => c.id === columnId)?.dropPhase != null;
 }
 
 interface BoardProps {
@@ -100,23 +90,13 @@ export function BoardSurface({
   banner,
 }: BoardProps) {
   const { t } = useI18n();
-  const scrollerRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<ColumnView | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropColumnId, setDropColumnId] = useState<string | null>(null);
-  // #147: the six column collapses persist like the scroll offset; a
-  // collapsed column renders as the narrow strip (r2 §4, 01d capture) and
-  // carries no drop target, so cards can't land in a hidden list.
-  const [collapsedColumns, setCollapsedColumns] = useState<string[]>(() =>
-    readCollapsedColumns(localStorage),
-  );
-  const toggleColumn = useCallback((id: string) => {
-    setCollapsedColumns((prev) => {
-      const next = prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id];
-      localStorage.setItem(BOARD_COLLAPSED_COLUMNS_KEY, next.join(','));
-      return next;
-    });
-  }, []);
+  // #351: cards went fluid-width with the even grid, so the DragOverlay
+  // copies the source card's measured width (fixed-width columns used to
+  // size it implicitly through the 262px card rule)
+  const [dragWidth, setDragWidth] = useState<number | null>(null);
   // changelog 2026-09-12: the drag affordance is desktop-web only
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -127,16 +107,6 @@ export function BoardSurface({
     typeof window === 'undefined' ||
     window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-  // Restore after mount, before paint — a returning user never sees the
-  // board jump. Fresh browser contexts carry an empty sessionStorage, so
-  // this is a no-op there.
-  useLayoutEffect(() => {
-    const el = scrollerRef.current;
-    if (el == null) return;
-    const saved = sessionStorage.getItem(BOARD_SCROLL_KEY);
-    if (saved != null) el.scrollLeft = Number(saved);
-  }, []);
-
   const sweep = useCallback(() => {
     document.body.classList.remove('board-dragging');
     // changelog 2026-09-14: the highlight is swept again on teardown
@@ -145,20 +115,25 @@ export function BoardSurface({
 
   const onDragStart = (event: DragStartEvent) => {
     setView(deriveView(fixture.todos));
-    setDragId(String(event.active.id));
+    const id = String(event.active.id);
+    setDragId(id);
+    setDragWidth(
+      document.querySelector(`.todo-card[data-todo-id="${id}"]`)?.getBoundingClientRect().width ??
+        null,
+    );
     document.body.classList.add('board-dragging');
     window.getSelection()?.removeAllRanges();
   };
 
   const onDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
-    setDropColumnId(
+    const overColumnId =
       over == null
         ? null
         : COLUMN_IDS.has(String(over.id))
           ? String(over.id)
-          : columnOf(view ?? {}, String(over.id)),
-    );
+          : columnOf(view ?? {}, String(over.id));
+    setDropColumnId(acceptsDrop(overColumnId) ? overColumnId : null);
     if (over == null) return;
     const overId = String(over.id);
     setView((prev) => {
@@ -166,6 +141,8 @@ export function BoardSurface({
       const from = columnOf(prev, String(active.id));
       const to = COLUMN_IDS.has(overId) ? overId : columnOf(prev, overId);
       if (from == null || to == null || from === to) return prev;
+      // 待处理无落点（#351）：live 预览也不进该列，松手即回源列
+      if (!acceptsDrop(to)) return prev;
       const fromIds = prev[from];
       const toIds = prev[to];
       if (fromIds == null || toIds == null) return prev;
@@ -183,9 +160,19 @@ export function BoardSurface({
     setView(null);
     setDragId(null);
     setDropColumnId(null);
+    setDragWidth(null);
     sweep();
     if (live == null || over == null || onReorder == null) return;
     const overId = String(over.id);
+    // 待处理无落点（#351）：跨列松手在该列 = 不提交；列内重排照常落位
+    const overColumnId = COLUMN_IDS.has(overId) ? overId : columnOf(live, overId);
+    if (
+      overColumnId != null &&
+      !acceptsDrop(overColumnId) &&
+      columnOf(live, String(active.id)) !== overColumnId
+    ) {
+      return;
+    }
     const columnId = columnOf(live, String(active.id)) ?? (COLUMN_IDS.has(overId) ? overId : null);
     if (columnId == null) return;
     const liveList = live[columnId];
@@ -210,6 +197,7 @@ export function BoardSurface({
     setView(null);
     setDragId(null);
     setDropColumnId(null);
+    setDragWidth(null);
     sweep();
   };
 
@@ -228,7 +216,7 @@ export function BoardSurface({
   return (
     <div className={banner == null ? 'board-main' : 'board-main board-main--banner'}>
       <header className="board-topbar">
-        <div className="board-topbar-title">{t('看板')}</div>
+        <div className="board-topbar-title">{t('工作台')}</div>
         <div className="board-topbar-actions">
           {/* A3 收编：Button text 变体（compact 档）。board-new-task 是
               e2e 钉死的选择器别名，经 className 透传保留；59.5 宽 /
@@ -251,85 +239,43 @@ export function BoardSurface({
         onDragEnd={onDragEnd}
         onDragCancel={onDragCancel}
       >
-        <div
-          className="board-scroller"
-          ref={scrollerRef}
-          onScroll={(e) =>
-            sessionStorage.setItem(BOARD_SCROLL_KEY, String(e.currentTarget.scrollLeft))
-          }
-        >
+        <div className="board-scroller">
           {COLUMNS.map((column) => {
             const todos = viewTodos(column.id);
-            const collapsed = collapsedColumns.includes(column.id);
             return (
               <section
                 key={column.id}
-                className={collapsed ? 'board-column board-column--collapsed' : 'board-column'}
+                className="board-column"
                 aria-label={t(column.name)}
                 data-column={column.id}
-                data-collapsed={collapsed ? 'true' : undefined}
                 data-drop={dropColumnId === column.id ? 'true' : undefined}
               >
-                {collapsed ? (
-                  // 01d: the collapse keeps the column box (top border,
-                  // radius, fill) as a narrow strip — dot on top, live
-                  // count under it; the strip itself is the expand trigger
-                  <button
-                    type="button"
-                    className="board-column-strip"
-                    // same aria convention as the header collapse button
-                    // (r7 icons.json `aria:待开始` ×6)
-                    aria-label={t(column.name)}
-                    aria-expanded={false}
-                    onClick={() => toggleColumn(column.id)}
+                <header className="board-column-header">
+                  <span className="board-column-dot" style={{ background: column.dot }} />
+                  <span className="board-column-name">{t(column.name)}</span>
+                  {/* count always renders, `0` included (r2 §4.1 计数 0/1;
+                  r7 02/01b: digit present on empty columns, x = name+9) */}
+                  <span className="board-column-count">{todos.length}</span>
+                  {column.label && <span className="board-column-label">{t(column.label)}</span>}
+                </header>
+                <ColumnList columnId={column.id} empty={t(column.empty)} count={todos.length}>
+                  <SortableContext
+                    items={todos.map((t) => t.id)}
+                    strategy={verticalListSortingStrategy}
                   >
-                    <span className="board-column-dot" style={{ background: column.dot }} />
-                    <span className="board-column-count">{todos.length}</span>
-                  </button>
-                ) : (
-                  <>
-                    <header className="board-column-header">
-                      <span className="board-column-dot" style={{ background: column.dot }} />
-                      <span className="board-column-name">{t(column.name)}</span>
-                      {/* count always renders, `0` included (r2 §4.1 计数 0/1;
-                      r7 02/01b: digit present on empty columns, x = name+9) */}
-                      <span className="board-column-count">{todos.length}</span>
-                      {column.label && (
-                        <span className="board-column-label">{t(column.label)}</span>
-                      )}
-                      {/* A4-deep 收编：icon 变体皮肤；.board-column-collapse
-                          是 e2e (collapse-family) 钉死的别名 */}
-                      <Button
-                        variant="icon"
-                        className="board-column-collapse"
-                        // aria-label = column name, r7 icons.json `aria:待开始` ×6
-                        aria-label={t(column.name)}
-                        aria-expanded={true}
-                        onClick={() => toggleColumn(column.id)}
-                      >
-                        <UnfoldVertical />
-                      </Button>
-                    </header>
-                    <ColumnList columnId={column.id} empty={t(column.empty)} count={todos.length}>
-                      <SortableContext
-                        items={todos.map((t) => t.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {todos.map((todo) => (
-                          <SortableCard
-                            key={todo.id}
-                            todo={todo}
-                            now={fixture.now}
-                            onAction={onAction}
-                            onBranch={onBranch}
-                            dragSource={dragId === todo.id}
-                            projectName={fixture.projectNames?.[todo.projectId]}
-                          />
-                        ))}
-                      </SortableContext>
-                    </ColumnList>
-                  </>
-                )}
+                    {todos.map((todo) => (
+                      <SortableCard
+                        key={todo.id}
+                        todo={todo}
+                        now={fixture.now}
+                        onAction={onAction}
+                        onBranch={onBranch}
+                        dragSource={dragId === todo.id}
+                        projectName={fixture.projectNames?.[todo.projectId]}
+                      />
+                    ))}
+                  </SortableContext>
+                </ColumnList>
               </section>
             );
           })}
@@ -338,7 +284,10 @@ export function BoardSurface({
             slot (250ms ease) instead of snapping out on pointer up */}
         <DragOverlay>
           {dragged != null && (
-            <div className="board-drag-overlay">
+            <div
+              className="board-drag-overlay"
+              style={dragWidth == null ? undefined : { width: dragWidth }}
+            >
               <TodoCard
                 todo={dragged}
                 now={fixture.now}

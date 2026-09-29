@@ -44,11 +44,11 @@ import './overlays.css';
  *  §8.4: the live set dropped 帐号/API 密钥 (r6) and grew the selected
  *  任务 row — both visible in 05 and in the 05b recapture. #159: each row
  *  hops to its route — the sidebar RESOURCE_ROWS twins verbatim; 任务 and
- *  看板 both land on /app (the clone has no standalone tasks view,
+ *  工作台 both land on /app (the clone has no standalone tasks view,
  *  [推断] like the panel's own nav set). */
 const NAV_ROWS = [
   { label: '任务', Icon: FileCheck, href: '/app' },
-  { label: '看板', Icon: Kanban, href: '/app' },
+  { label: '工作台', Icon: Kanban, href: '/app' },
   { label: '定时', Icon: Clock, href: '/app/schedules' },
   { label: '团队', Icon: Users, href: '/app/team' },
   { label: '技能', Icon: Puzzle, href: '/app/resources/skills' },

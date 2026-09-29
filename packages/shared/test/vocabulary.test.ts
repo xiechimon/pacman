@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 import {
   API_KEY_PATTERN,
   BOARD_COLUMNS,
+  BOARD_DROP_PHASES,
   BRAND,
   BRAND_SLOTS,
   boardColumnFor,
@@ -63,22 +64,26 @@ describe('phase 九值权威单源 (02 §4.1, 锁定)', () => {
     ]);
   });
 
-  it('board columns are the six r2 §4.1 names', () => {
-    expect(BOARD_COLUMNS).toEqual(['待开始', '规划中', '待确认', '执行中', '待验收', '已完成']);
+  it('board columns are the four #351 workbench columns', () => {
+    expect(BOARD_COLUMNS).toEqual(['待开始', '执行中', '待处理', '已完成']);
   });
 
-  it('column mapping follows the phase × hasChanges dual key (02 §4.1 + r5 §8)', () => {
+  it('column mapping is the #351 single-key fold (no hasChanges param)', () => {
+    expect(boardColumnFor).toHaveLength(1); // 单键签名钉：无 hasChanges 第二参
     expect(boardColumnFor('todo')).toBe('待开始');
-    expect(boardColumnFor('queued')).toBe('待开始'); // 折叠 [推断]
-    expect(boardColumnFor('planning')).toBe('规划中');
-    expect(boardColumnFor('confirm', true)).toBe('待确认');
-    expect(boardColumnFor('confirm', false)).toBe('执行中'); // gate 无改动留执行中 (r5 §8)
+    expect(boardColumnFor('queued')).toBe('待开始');
+    expect(boardColumnFor('planning')).toBe('执行中');
     expect(boardColumnFor('building')).toBe('执行中');
-    expect(boardColumnFor('review', true)).toBe('待验收');
-    expect(boardColumnFor('review', false)).toBe('执行中');
+    expect(boardColumnFor('confirm')).toBe('待处理');
+    expect(boardColumnFor('review')).toBe('待处理'); // awaitingReply 同列（钉顶为渲染行为）
+    expect(boardColumnFor('failed')).toBe('待处理');
     expect(boardColumnFor('done')).toBe('已完成');
-    expect(boardColumnFor('failed')).toBe('执行中'); // 钉执行中列顶 (r1 §7.4)
-    expect(boardColumnFor('closed')).toBeNull(); // 不占列 [推断]
+    expect(boardColumnFor('closed')).toBeNull(); // 不占列不变
+  });
+
+  it('manual drop targets are the three writable columns (#351)', () => {
+    // 待处理不作落点：gate/failed 是系统态，手动拖入无语义
+    expect(BOARD_DROP_PHASES).toEqual(['todo', 'building', 'done']);
   });
 });
 

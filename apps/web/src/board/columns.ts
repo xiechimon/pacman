@@ -1,10 +1,12 @@
-// Board column model (issue #54): the 6 kanban columns are the folded view
-// of the nine-value phase enum (02-架构平价 §4.1). Column names, dot colors
-// and empty-state copy are canon (r2 §4.1, colors re-sampled from r7).
-// `review` + awaitingReply folds into 执行中 (r5b §3.15 / r7 01 observed),
-// `failed` pins to 执行中 (changelog wording, 02 §4.1). Card order inside a
-// column = manual order from drag drops (#73), pinned group first in 执行中
-// (changelog 2026-09-12: failed / review-awaiting stay pinned to the top).
+// Board column model (issues #54 / #351): the 4 kanban columns are the
+// folded view of the nine-value phase enum (02-架构平价 §4.1; 6→4 收敛 #351).
+// Column names, dot colors and empty-state copy are canon (r2 §4.1, colors
+// re-sampled from r7); 待处理 merges the old 待确认/待验收 gate columns plus
+// failed — 方案确认、变更验收、失败重试都是等用户处理的事. `review` +
+// awaitingReply folds into 待处理 too (r5b §3.15 / r7 01 observed), and the
+// pinned group (failed / review-awaiting) rides its top (changelog
+// 2026-09-12 pinning, rebound to 待处理 by #351). Card order inside a column
+// = manual order from drag drops (#73), pinned group first in 待处理.
 
 import type { Phase } from '@pacman/shared';
 import type { TodoRecord } from '../fixtures/records.js';
@@ -15,28 +17,30 @@ export interface BoardColumnDef {
   name: string;
   /** CSS var for the header dot fill. */
   dot: string;
-  /** Verbatim empty-state copy (r2 §4.1). */
+  /** Verbatim empty-state copy (r2 §4.1; 待处理 row = #351). */
   empty: string;
   /** Extra header label, 已完成 only. */
   label?: string;
-  /** Phase a cross-column drop writes (issue #73 manual 改相). */
-  dropPhase: Phase;
+  /** Phase a cross-column drop writes (issue #73 manual 改相). Absent = the
+   *  column is not a drop target (#351: 待处理 — gate/failed are system
+   *  states, a manual drop-in carries no semantics). */
+  dropPhase?: Phase;
   /** Which todos land in this column. */
   accepts: (todo: TodoRecord) => boolean;
 }
 
-/** The 执行中 fold's pinned group (changelog 2026-09-12: "stays pinned to
- *  the top of the Building column") — single source for both the column's
- *  accepts() and its render order. */
+/** The pinned group (changelog 2026-09-12: failed / review-awaiting "stays
+ *  pinned to the top") — single source for the 待处理 column's accepts()
+ *  and its render order (#351: rebound from 执行中 to 待处理). */
 export function isPinnedBuilding(todo: TodoRecord): boolean {
   return todo.phase === 'failed' || (todo.phase === 'review' && todo.awaitingReply === true);
 }
 
-/** Column view order: pinned group first in 执行中, then the committed
+/** Column view order: pinned group first in 待处理, then the committed
  *  manual order (`orderIndex`, 01 §4.1); Array.sort is stable, so the
  *  all-zero fixture indices keep capture order untouched. */
 export function sortColumnTodos(column: BoardColumnDef, todos: TodoRecord[]): TodoRecord[] {
-  const pinnedRank = (t: TodoRecord) => (column.id === 'building' && isPinnedBuilding(t) ? 0 : 1);
+  const pinnedRank = (t: TodoRecord) => (column.id === 'pending' && isPinnedBuilding(t) ? 0 : 1);
   return [...todos].sort((x, y) => pinnedRank(x) - pinnedRank(y) || x.orderIndex - y.orderIndex);
 }
 
@@ -50,36 +54,19 @@ export const COLUMNS: BoardColumnDef[] = [
     accepts: (t) => t.phase === 'todo' || t.phase === 'queued',
   },
   {
-    id: 'planning',
-    dropPhase: 'planning',
-    name: '规划中',
-    dot: 'var(--col-dot-planning)',
-    empty: '没有规划中的任务',
-    accepts: (t) => t.phase === 'planning',
-  },
-  {
-    id: 'confirm',
-    dropPhase: 'confirm',
-    name: '待确认',
-    dot: 'var(--col-dot-confirm)',
-    empty: '没有等你确认的方案',
-    accepts: (t) => t.phase === 'confirm',
-  },
-  {
     id: 'building',
     dropPhase: 'building',
     name: '执行中',
     dot: 'var(--col-dot-building)',
     empty: '没有执行中的任务',
-    accepts: (t) => t.phase === 'building' || isPinnedBuilding(t),
+    accepts: (t) => t.phase === 'planning' || t.phase === 'building',
   },
   {
-    id: 'review',
-    dropPhase: 'review',
-    name: '待验收',
-    dot: 'var(--col-dot-review)',
-    empty: '没有等你验收的任务',
-    accepts: (t) => t.phase === 'review' && !t.awaitingReply,
+    id: 'pending',
+    name: '待处理',
+    dot: 'var(--col-dot-confirm)',
+    empty: '没有等你处理的任务',
+    accepts: (t) => t.phase === 'confirm' || t.phase === 'review' || t.phase === 'failed',
   },
   {
     id: 'done',
@@ -110,12 +97,11 @@ export function cardAction(todo: TodoRecord): { kind: 'primary' | 'ghost'; label
   return label == null ? null : { kind: 'primary', label };
 }
 
-/** Todos waiting on the user — the 看板 nav badge (r7 02/17 show `1`
- *  while probe #9 sits in 待确认; r8 55/57 show failed todos and
- *  non-waiting review todos counted too, awaiting-reply cards not). */
+/** Todos waiting on the user — the 工作台 nav badge. #351: the badge IS the
+ *  待处理 column count, same accepts() predicate as the single source (so
+ *  review+awaitingReply cards count too — the old badge skipped them while
+ *  the fold parked them in 执行中, r8 55/57). */
 export function attentionCount(todos: TodoRecord[]): number {
-  return todos.filter(
-    (t) =>
-      t.phase === 'confirm' || t.phase === 'failed' || (t.phase === 'review' && !t.awaitingReply),
-  ).length;
+  const pending = COLUMNS.find((c) => c.id === 'pending');
+  return pending == null ? 0 : todos.filter(pending.accepts).length;
 }

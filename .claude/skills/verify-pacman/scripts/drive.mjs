@@ -111,8 +111,62 @@ const gotoBoard = async () => {
 try {
   if (probe === 'board') {
     await gotoBoard();
+    // #351:看板更名「工作台」+ 6 列收敛为 4 列(单键折叠),列收起族删除,
+    // 滚动器改 4 列均匀 grid(桌面无横向滚动,overflow-x 只作窄窗兜底)。
+    const title = (await page.locator('.board-topbar-title').textContent())?.trim();
+    check(title === '工作台', `顶栏标题 = 工作台(实测 ${title})`);
+
     const columns = await page.locator('.board-column').count();
-    check(columns === 6, `看板渲染 6 列(实测 ${columns})`);
+    check(columns === 4, `工作台渲染 4 列(实测 ${columns})`);
+    const seats = await page.locator('.board-column').evaluateAll((els) =>
+      els.map((el) => [
+        el.getAttribute('data-column'),
+        el.querySelector('.board-column-name')?.textContent?.trim(),
+      ]),
+    );
+    const canon = [
+      ['todo', '待开始'],
+      ['building', '执行中'],
+      ['pending', '待处理'],
+      ['done', '已完成'],
+    ];
+    check(
+      JSON.stringify(seats) === JSON.stringify(canon),
+      `列序 id↔名对拍(实测 ${seats.map(([id, name]) => `${id}:${name}`).join(' ')})`,
+    );
+    // 退役列名不再占列头(规划中 仍存活于详情 phase chip,本 probe 只看工作台面)
+    const retired = await page
+      .locator('.board-column-name')
+      .evaluateAll((els) =>
+        els.map((el) => el.textContent?.trim()).filter((n) => ['规划中', '待确认', '待验收'].includes(n)),
+      );
+    check(retired.length === 0, `退役列名不渲染(实测 ${retired.join('/') || '无'})`);
+
+    // #147 列收起全家删除:钮/窄条/折叠态均无渲染位
+    const collapse = await page
+      .locator('.board-column-collapse, .board-column-strip, .board-column--collapsed')
+      .count();
+    check(collapse === 0, `列收起族已删除(实测 ${collapse} 个残留节点)`);
+
+    // 均匀分布:4 列同轨宽 + 桌面无横向滚动,overflow-x 仍是窄窗兜底
+    const widths = await page
+      .locator('.board-column')
+      .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width));
+    const even = widths.length === 4 && widths.every((w) => Math.abs(w - widths[0]) <= 1);
+    check(even && (widths[0] ?? 0) > 0, `4 列等宽(实测 ${widths.map((w) => Math.round(w)).join('/')})`);
+    const scroller = await page.locator('.board-scroller').evaluate((el) => ({
+      scrollable: el.scrollWidth > el.clientWidth + 1,
+      overflowX: getComputedStyle(el).overflowX,
+    }));
+    check(!scroller.scrollable, '桌面无横向滚动');
+    check(scroller.overflowX === 'auto', `窄窗兜底 overflow-x = auto(实测 ${scroller.overflowX})`);
+
+    // 待处理列空态 = #351 新文案(全新库全列空)
+    const pendingEmpty = (
+      await page.locator('[data-column="pending"] .board-column-empty').textContent()
+    )?.trim();
+    check(pendingEmpty === '没有等你处理的任务', `待处理空态文案(实测 ${pendingEmpty})`);
+
     const newBtn = page.locator('.board-new-task');
     check(await newBtn.isVisible(), '新建任务按钮可见');
     await shot(page, '01-board.png');
