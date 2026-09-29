@@ -62,6 +62,25 @@ receipt_ok   104/108 = 96.3%
    `composeChiefSystemPrompt` 压成一行 JSON，加上两个 Agent 共用同一个
    `modelId`，模型在做 id↔名字对应时错位。
 
+## 怎么跑
+
+凭据：relay key 取 `PACMAN_EVAL_RELAY_KEY`，缺省回落 `~/.claude/settings.json`
+的 `env.ANTHROPIC_AUTH_TOKEN`。relay 地址可用 `PACMAN_EVAL_RELAY_URL` 覆盖。
+密钥只在进程内持有，不落盘、不进仓。
+
+```sh
+# 全量 baseline（36 用例 × 3 reps，约 $5 / 35 分钟）
+pnpm --filter @pacman/integration exec tsx eval/chief-dispatch/run-eval.mts \
+  --flow .claude/hillclimb/chief-dispatch --variant baseline --model glm-5.3 --reps 3
+
+# 出报告 → .claude/hillclimb/chief-dispatch/report.html
+node integration/eval/chief-dispatch/build-report-lite.mjs .claude/hillclimb/chief-dispatch/
+```
+
+改动 harness（runner / judgeCase / cases.json / 场景种子 / `chief.ts`）后，
+下一次运行会因 `harness_sha` 不符而拒绝——这是刻意的：重跑前先看 diff，
+再带 `--approve-harness` 放行。跑挂了直接重跑即可，已完成的 (case,rep) 会跳过。
+
 ## 诊断入口
 
 | 脚本 | 用途 |
