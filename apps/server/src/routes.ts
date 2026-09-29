@@ -25,8 +25,12 @@ import {
   createScheduleBodySchema,
   createTagBodySchema,
   createTodoBodySchema,
+  type FsListResult,
   type FsPickResult,
+  githubIssueStateSchema,
+  githubIssuesResponseSchema,
   githubReposResponseSchema,
+  importGithubIssueBodySchema,
   type MemoryRecord,
   PHASE_VALUES,
   patchAgentBodySchema,
@@ -102,6 +106,7 @@ import {
 } from './services/chief.js';
 import { planDocumentDiff } from './services/documents.js';
 import { createSerialConnection } from './services/events.js';
+import { listDir } from './services/fs-list.js';
 import { pickFolder } from './services/fs-pick.js';
 import {
   isGithubRepoRef,
@@ -122,6 +127,11 @@ import {
   openGithubToken,
   readGithubConnectionStatus,
 } from './services/github-connection.js';
+import {
+  type GithubIssueFaceDeps,
+  importGithubIssue,
+  listProjectGithubIssues,
+} from './services/github-issues.js';
 import { isChiefConversation, toMachineRecord } from './services/machines.js';
 import { handleMcpRequest } from './services/mcp-face.js';
 import { listMcpServers } from './services/mcp-servers.js';
@@ -173,6 +183,14 @@ function requireProject(ctx: AppContext, id: string): typeof project.$inferSelec
   if (!row) throw notFound(`project ${id}`);
   return row;
 }
+
+/** GET projects/{id}/github/issues query 闸（#446）：state 值域 = shared
+ * githubIssueStateSchema 单源（缺省 open）；page  coercion 正整数（非法 →
+ * 400，不出站）。 */
+const githubIssuesQuerySchema = z.object({
+  state: githubIssueStateSchema,
+  page: z.coerce.number().int().min(1),
+});
 
 /** tag 行 → record 全形（r9 §3.4 实测 wire 六位；显式投影防列面扩张外溢）。 */
 function toTagRecord(row: typeof tag.$inferSelect): TagRecord {
@@ -435,6 +453,46 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const created = ctx.db.select().from(tag).where(eq(tag.id, id)).get();
     if (!created) throw new Error(`tag ${id} missing after insert`);
     return c.json(toTagRecord(created), 201); // 响应封套 = record 全形（r9 实测）
+  });
+
+  // —— GitHub issue 读面（#446 / ADR 0005 读向；自有设计面，02 §6.1 词表外
+  // = wire.test INFERRED_ROUTES 入位）。只读，不在 GitHub 留痕迹（写向 =
+  // ADR 0006 另票）；token 纪律 = repos 代理同族（openGithubToken 唯一读出
+  // 点，Authorization 头唯一消费位）。形态/连接闸与错误语义归
+  // services/github-issues.ts。封套单源 = shared githubIssuesResponseSchema。
+  /** issue 读面 deps 装配（oauthDeps 同式）：githubFetch 注入位收窄到
+   * 服务面，两端点共用。 */
+  const githubIssueDeps = (): GithubIssueFaceDeps => ({
+    db: ctx.db,
+    box: ctx.secretBox,
+    ...(ctx.githubFetch !== undefined ? { githubFetch: ctx.githubFetch } : {}),
+  });
+
+  app.get('/api/projects/:id/github/issues', async (c) => {
+    const row = requireProject(ctx, c.req.param('id'));
+    const query = parseWith(
+      githubIssuesQuerySchema,
+      {
+        state: c.req.query('state') ?? 'open',
+        page: c.req.query('page') ?? '1',
+      },
+      'query',
+    );
+    const face = await listProjectGithubIssues(githubIssueDeps(), row, {
+      state: query.state,
+      page: query.page,
+    });
+    return c.json(githubIssuesResponseSchema.parse(face));
+  });
+
+  // 从 issue 建任务（#446）：现拉 issue 详情 + 镜像同步仓库 label 集 →
+  // createTodo（标题原样 / 正文 = body / 多标签 / 来源两列）。201 全
+  // TodoRecord（POST todos 面同律）。
+  app.post('/api/projects/:id/github/issues/import', async (c) => {
+    const row = requireProject(ctx, c.req.param('id'));
+    const body = parseWith(importGithubIssueBodySchema, await jsonBody(c), 'body');
+    const record = await importGithubIssue({ ...svc, ...githubIssueDeps() }, row, body.number);
+    return c.json(record, 201);
   });
 
   // —— repo 文件浏览面（02 §3：读裸库 ref 树与单文件，server 端实现，无检出
@@ -893,8 +951,9 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       })
       .run();
     // spec 15 #394：固定标签词表随项目播种（ADR 0002 D4；幂等，chief
-    // create_project 面同调）。
-    seedFixedTags(ctx.db, id);
+    // create_project 面同调）。github 形态跳过——词表 = 仓库 label 镜像
+    // （#446 / ADR 0005 D2，导入面现拉同步），6 词播种会污染真值。
+    if (kind !== 'github') seedFixedTags(ctx.db, id);
     const row = requireProject(ctx, id);
     return c.json(toProjectRecord(row, requestOrigin(c)), 201);
   });
@@ -906,6 +965,15 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.post('/api/fs/pick', async (c) => {
     const path = await pickFolder();
     return c.json({ path } satisfies FsPickResult);
+  });
+
+  // GET /api/fs/list（ADR 0003 D5/D6 / #441）：应用内目录浏览数据源——
+  // remote/headless 形态下 fs/pick 422 unavailable 的兜底浏览器。只列目录 +
+  // git 提示标记 + 容量闸；dir 缺省/空串 = server $HOME 起点；400 带 reason
+  // （词汇单源 = shared FS_LIST_ERROR_REASONS，#386 模式）。
+  app.get('/api/fs/list', (c) => {
+    const result = listDir(c.req.query('dir'));
+    return c.json(result satisfies FsListResult);
   });
 
   app.post('/api/projects/:id/todos', async (c) => {

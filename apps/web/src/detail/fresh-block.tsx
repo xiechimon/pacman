@@ -1,8 +1,9 @@
 // Fresh-state block (issue #56, r7 23): title h2, tag chips row, 「尚无描述」
 // and the creation-time meta row with its three action icons.
 // spec 15 #394 (ADR 0002 D5): 标签只读——chips 仅在有标签时成行；手动添加
-// affordance 移除（固定词表由执行 agent 回填，看板卡不渲染标签 = spec 08
-// 附录 A 校准行不变）。
+// affordance 移除（固定词表由执行 agent 回填）。#445 起看板卡也渲染标签
+// chip（ADR 0002 F4 修订——「看板卡不渲染标签」校准退役），本块仍是详情
+// 页的唯一标签消费面。
 
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';

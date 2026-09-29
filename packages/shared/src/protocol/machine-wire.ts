@@ -130,6 +130,19 @@ export const claimedStepSchema = z.object({
       seqNum: z.number().int(),
       title: z.string(),
       spec: z.string(),
+      /** 任务元信息注入面（#446 / ADR 0005 分叉律）：github 形态项目携带，
+       * 缺省 = local/hosted 现行为（daemon 回落 FIXED_TAGS 单标签 + 占位
+       * 回填指令，文本逐字节不变）。vocab = 项目标签集镜像的 name 列（claim
+       * 时现取，不缓存第二真值；标签数量上限的分叉落点在 server setTaskMeta
+       * 校验分支与工具面 tags 数组形，不进本载荷）；titleFinal = 标题已是
+       * 真值（issue 来源），daemon 不注入回填指令且 server 拒绝 title 覆写。
+       * 纯增可选字段无版本墙：旧 daemon 忽略 = 现行为。 */
+      meta: z
+        .object({
+          titleFinal: z.boolean(),
+          vocab: z.array(z.object({ name: z.string() })),
+        })
+        .optional(),
     })
     .optional(),
   /** worker 步项目面；chief 步 = 探索基座（可缺省 = 裸目录回合）。 */

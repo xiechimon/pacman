@@ -20,6 +20,7 @@ import {
   boardGithubPicker,
   boardProjectPicker,
   boardR8Overlay,
+  boardRepoFilter,
   boardTagFilter,
   boardTagFilterEmpty,
   boardWithProbe,
@@ -126,6 +127,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // tagged，钉板级空结果态。
       'board-tags': boardTagFilter,
       'board-tags-empty': boardTagFilterEmpty,
+      // #445 看板仓库筛选：命名场景（无 capture，同上先例）——board-repos
+      // 三项目三卡（r3 两卡 + r2 一卡 + r4-quiet 零卡）钉仓库轴单选/多选/
+      // 空态与「仓库 × 类型」双轴组合收窄。
+      'board-repos': boardRepoFilter,
       // detail (r7 16–17, 23, 26–28, 36, 38)
       '16': detailPlanning,
       '16d': detailConfirm(true),

@@ -10,8 +10,9 @@
 // by title.
 import type { ProjectFileResponse } from '@pacman/shared';
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
-import { Link, useLocation, useParams, useSearchParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import {
+  useGithubConnection,
   useProjectCommits,
   useProjectFile,
   useProjects,
@@ -42,6 +43,7 @@ import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { Avatar } from '../ui/avatar.js';
 import { Button } from '../ui/button.js';
+import { GithubIssuesDialog } from './github-issues-dialog.js';
 import { PageShell } from './shell.js';
 import './pages.css';
 
@@ -305,11 +307,15 @@ function TasksPane({
   todos,
   now,
   onNewTask,
+  onOpenGithubIssues,
 }: {
   todos: TaskRow[];
   now: number;
   /** #305: 空态「+ 任务」入口开 NewTaskDialog（与看板新建入口同构）。 */
   onNewTask: () => void;
+  /** #446：github 形态 + 已连接时的「从 GitHub issue 建任务」入口开关；
+   * 缺省 = 入口不渲染（local/hosted/fixture/未连接面零漂移）。 */
+  onOpenGithubIssues?: () => void;
 }) {
   const { t } = useI18n();
   // #318: 行/卡点击 = 导航任务详情(r2 §2 原站点行开详情);search 随行
@@ -360,6 +366,15 @@ function TasksPane({
           value={sort}
           onSelect={setSort}
         />
+        {onOpenGithubIssues !== undefined && (
+          <button
+            type="button"
+            className="prj-tasks-filter prj-issues-entry"
+            onClick={onOpenGithubIssues}
+          >
+            {t('从 GitHub issue 建任务')}
+          </button>
+        )}
         <div className="prj-tasks-view" role="tablist">
           <button
             type="button"
@@ -455,6 +470,8 @@ function TasksPane({
 export function ProjectPage() {
   const { t } = useI18n();
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { search } = useLocation();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   // r2 §2 route table: ?tab=tasks selects the 任务 surface; the capture
@@ -542,6 +559,23 @@ export function ProjectPage() {
     mentions: false,
     eager: true,
   });
+  // 从 GitHub issue 建任务入口（#446 / ADR 0005 读向）：三重门 = live +
+  // github 形态 + 已连接。未连接 = 入口不渲染且页面不报错不空白（connection
+  // 查询失败面容忍，票面验收）；local/hosted/fixture 面零漂移。查询 enabled
+  // 收窄到 github 形态项目（页面挂载不空转，useGithubConnection 同律）。
+  const isGithubRepo = live && wireProject?.repoKind === 'github';
+  const ghConnQ = useGithubConnection(isGithubRepo ? teamId : undefined, isGithubRepo);
+  const ghIssuesAvailable = isGithubRepo && ghConnQ.data?.connected === true;
+  const [issuesOpen, setIssuesOpen] = useState(false);
+  const closeIssues = useCallback(() => setIssuesOpen(false), []);
+  const onIssueImported = useCallback(
+    (record: { id: string }) => {
+      setIssuesOpen(false);
+      // 真用户路径落点：导入即导航任务详情（标题与全部标签当场可见）。
+      navigate({ pathname: `/app/todo/${record.id}`, search });
+    },
+    [navigate, search],
+  );
   return (
     <PageShell
       fixture={
@@ -589,10 +623,26 @@ export function ProjectPage() {
           )}
         </div>
       ) : (
-        <TasksPane todos={todos} now={live ? Date.now() : fixture.now} onNewTask={openNewTask} />
+        <TasksPane
+          todos={todos}
+          now={live ? Date.now() : fixture.now}
+          onNewTask={openNewTask}
+          {...(ghIssuesAvailable ? { onOpenGithubIssues: () => setIssuesOpen(true) } : {})}
+        />
       )}
       {/* dialog 接线 = useNewTaskSurface，本页差异参数位见上方 hook 调用。 */}
       <NewTaskDialog {...newTaskDialogProps} />
+      {/* #446 issue 选择弹层：门与入口同闸（ghIssuesAvailable），关着不发
+          请求（useGithubIssues enabled 位）。 */}
+      {ghIssuesAvailable && id !== undefined && (
+        <GithubIssuesDialog
+          open={issuesOpen}
+          onClose={closeIssues}
+          projectId={id}
+          teamId={teamId}
+          onImported={onIssueImported}
+        />
+      )}
     </PageShell>
   );
 }
