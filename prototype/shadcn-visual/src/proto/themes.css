@@ -1,0 +1,95 @@
+/* PROTOTYPE (#407): 两套 token 层。
+   [data-proto="a"] = pacman tokens.css 值灌 shadcn 变量规约（dark 默认那套）；
+   [data-proto="b"] = shadcn 官方 neutral dark 默认。
+   两版共用 Inter 字体与完全相同的组件树——只有这张皮不同。 */
+
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+/* ============ 主题 A：pacman 现有视觉（tokens.css dark 面映射） ============ */
+[data-proto="a"] {
+  --background: #18181b;
+  --foreground: #fafaf9;
+  --card: #1f1f23;
+  --card-foreground: #fafaf9;
+  --card-border: #27272a;
+  --popover: #1f1f23;
+  --popover-foreground: #fafaf9;
+  --primary: #6466e9;
+  --primary-foreground: #ffffff;
+  --secondary: #27272a;
+  --secondary-foreground: #d4d4d8;
+  --muted: #1f1f23;
+  --muted-foreground: #71717a;
+  --accent: #27272a;
+  --accent-foreground: #fafaf9;
+  --destructive: #ca3a32;
+  --destructive-foreground: #ffffff;
+  --border: #27272a;
+  --input: #3f3f46;
+  --ring: #6466e9;
+  --radius: 0.75rem;
+
+  --canvas: #09090b;
+  --sidebar: #18181b;
+  --sidebar-hover: rgb(255 255 255 / 0.05);
+  --sidebar-active: rgb(255 255 255 / 0.1);
+  --radius-card: 12px;
+  --radius-md: 8px;
+  --col-head-text: #bebec1;
+  --dot-idle: #9ea3ae;
+  --dot-building: #4e81ee;
+  --dot-review: #e9a23b;
+  --dot-done: #5ec26a;
+  --chip-idle-bg: #202733;  --chip-idle-fg: #9ea3ae;
+  --chip-plan-bg: #1c2740;  --chip-plan-fg: #8b93f8;
+  --chip-confirm-bg: #33221b; --chip-confirm-fg: #f2c24b;
+  --chip-done-bg: #14291c;  --chip-done-fg: #5ec26a;
+  --shadow-card: 0 2px 4px rgb(0 0 0 / 0.2);
+}
+
+/* ============ 主题 B：shadcn 官方 neutral dark ============ */
+[data-proto="b"] {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --card-border: oklch(1 0 0 / 10%);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.371 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --radius: 0.625rem;
+
+  --canvas: oklch(0.145 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-hover: oklch(0.269 0 0);
+  --sidebar-active: oklch(0.269 0 0);
+  --radius-card: 0.75rem;
+  --radius-md: calc(0.625rem - 2px);
+  --col-head-text: oklch(0.708 0 0);
+  --dot-idle: oklch(0.708 0 0);
+  --dot-building: oklch(0.488 0.243 264.376);
+  --dot-review: oklch(0.769 0.188 70.08);
+  --dot-done: oklch(0.696 0.17 162.48);
+  --chip-idle-bg: oklch(0.269 0 0);  --chip-idle-fg: oklch(0.708 0 0);
+  --chip-plan-bg: color-mix(in oklab, oklch(0.488 0.243 264.376) 18%, transparent);
+  --chip-plan-fg: oklch(0.707 0.165 254.624);
+  --chip-confirm-bg: color-mix(in oklab, oklch(0.769 0.188 70.08) 16%, transparent);
+  --chip-confirm-fg: oklch(0.828 0.189 84.429);
+  --chip-done-bg: color-mix(in oklab, oklch(0.696 0.17 162.48) 16%, transparent);
+  --chip-done-fg: oklch(0.765 0.177 163.223);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+}
