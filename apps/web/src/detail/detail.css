@@ -1371,6 +1371,8 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   font-weight: 600;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
+   组件（.fresh-meta svg + svg），无实际级联；按 UI 区段分文件，不重排 */
 .version-menu-row svg {
   color: var(--text-dim);
 }
@@ -1514,6 +1516,8 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   color: var(--text-dim);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
+   组件（.fresh-meta svg + svg），无实际级联；按 UI 区段分文件，不重排 */
 .rerun-agent-row > svg {
   color: var(--text-dim);
 }

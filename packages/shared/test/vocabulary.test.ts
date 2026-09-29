@@ -348,7 +348,8 @@ describe('worker memory tools (02 §4.4/r5 §6：worker 步 remoteTools 记忆�
     // save_memory 带 sourceTodoId 可选溯源位（缺省 = server 从步上下文补齐）。
     const save = WORKER_MEMORY_REMOTE_TOOLS.find((t) => t.name === 'save_memory');
     expect(save).toBeDefined();
-    const props = (save!.parameters as { properties: Record<string, unknown> }).properties;
+    const props = (save as { parameters: { properties: Record<string, unknown> } }).parameters
+      .properties;
     expect(Object.keys(props).sort()).toEqual(['content', 'projectId', 'sourceTodoId', 'title']);
   });
 });
