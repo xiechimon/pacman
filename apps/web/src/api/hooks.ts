@@ -20,6 +20,7 @@ import type {
   FsListResult,
   FsPickResult,
   GithubConnectionStatus,
+  GithubIssueEcho,
   GithubIssueState,
   GithubIssuesResponse,
   GithubReposResponse,
@@ -364,6 +365,19 @@ export function useGithubIssues(
   });
 }
 
+/** 来源 issue 只读回显（#452 / ADR 0006 D5/D6）：详情页进入时拉一次——
+ *  staleTime ∞ + retry 关：拉不到（未连接/token 失效/限流/issue 被删）整行
+ *  隐藏，不轮询、不显示陈旧值、不弹错。enabled 收窄到 sourceRef 已落。 */
+export function useGithubIssueEcho(todoId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ['github-issue-echo', todoId],
+    queryFn: () => api.get<GithubIssueEcho>(`/api/todos/${todoId}/github-issue`),
+    enabled: enabled && todoId !== undefined,
+    retry: false,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
 export const useSecrets = (teamId: string | undefined, enabled: boolean) =>
   useQuery({
     queryKey: ['secrets', teamId],
@@ -489,6 +503,13 @@ export function useApiMutations(teamId: string | undefined) {
         api.post<TodoRecord>(`/api/projects/${input.projectId}/github/issues/import`, {
           number: input.number,
         }),
+      onSuccess: invalidateAll,
+    }),
+    // 未建成重试（#452 / ADR 0006 D2）：来源 issue 建失败的任务显式重试；
+    // 成功 → 失效重取（sourceRef 补上，回显行随之升级）。
+    retryGithubIssue: useMutation({
+      mutationFn: (todoId: string) =>
+        api.post<TodoRecord>(`/api/todos/${todoId}/github-issue/retry`, {}),
       onSuccess: invalidateAll,
     }),
     patchTodo: useMutation({

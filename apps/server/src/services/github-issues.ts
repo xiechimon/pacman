@@ -1,6 +1,8 @@
-// GitHub issue 读面服务（#446 / ADR 0005 读向）：项目页「从 GitHub issue
-// 建任务」的两个消费位——issue 列表代理 + 导入建任务。纪律：
-// - 只读，不在 GitHub 留任何痕迹（写向 = ADR 0006 另票）；
+// GitHub issue 读面服务（#446 / ADR 0005 读向 + #452 / ADR 0006 回显/护栏）：
+// 项目页「从 GitHub issue 建任务」的两个消费位——issue 列表代理 + 导入建
+// 任务；#452 追加导入去重护栏（D4）与详情页来源 issue 只读回显（D5/D6）。
+// 纪律：
+// - 本模块只读，不在 GitHub 留任何痕迹（写向出站 = services/todos.ts 收口）；
 // - token 唯一读出点 = openGithubToken（github-connection.ts），仅经
 //   lib/github.ts 出站边界进 Authorization 头（never URL/日志/wire）；
 // - 导入面每次现拉 issue 详情与仓库 label 集，不缓存第二真值（ADR 0005
@@ -8,15 +10,18 @@
 // - 先 fetch 后建：上游 404（issue 不存在）直透，不留半成品任务。
 
 import {
+  type GithubIssueEcho,
   type GithubIssueState,
   type GithubIssuesResponse,
   githubIssueSourceRef,
+  parseGithubIssueSourceRef,
   type SecretBox,
   type TodoRecord,
 } from '@pacman/shared';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import type { project as projectTable } from '../db/schema.js';
-import { notFound } from '../lib/errors.js';
+import { type project as projectTable, todo as todoTable } from '../db/schema.js';
+import { HttpError, notFound } from '../lib/errors.js';
 import type { FetchLike } from '../lib/github.js';
 import { githubRepoIssue, githubRepoIssues, githubRepoLabels } from '../lib/github.js';
 import { openGithubToken } from './github-connection.js';
@@ -52,9 +57,24 @@ function requireToken(deps: GithubIssueFaceDeps, teamId: string): string {
   return token;
 }
 
+/** 已占用来源引用集（ADR 0006 D4 导入护栏，pacman 侧反查）：本团队已落库
+ * 的 sourceRef 全集——「一条 issue 至多一个任务」同时盖住自建的 issue 与
+ * 导入过的 issue，不在 GitHub 侧打标记 label。 */
+function claimedSourceRefs(db: Db, teamId: string, refs: string[]): Set<string> {
+  if (refs.length === 0) return new Set();
+  const rows = db
+    .select({ sourceRef: todoTable.sourceRef })
+    .from(todoTable)
+    .where(and(eq(todoTable.teamId, teamId), inArray(todoTable.sourceRef, refs)))
+    .all();
+  return new Set(rows.map((r) => r.sourceRef).filter((v): v is string => v !== null));
+}
+
 /** issue 列表（项目页选择器数据面）：state/page 直透上游同名参数，
  * hasMore = Link 头 rel="next"（lib 层判定）。封套 = shared
- * githubIssuesResponseSchema 单源（routes 层 parse 后出线）。 */
+ * githubIssuesResponseSchema 单源（routes 层 parse 后出线）。
+ * #452：出线前按已落库来源反查滤除——已有任务的 issue 不入导入列表
+ * （AC5；hasMore 仍取上游值，滤除只收窄本页条目，翻页语义不变）。 */
 export async function listProjectGithubIssues(
   deps: GithubIssueFaceDeps,
   row: ProjectRow,
@@ -64,22 +84,31 @@ export async function listProjectGithubIssues(
   const token = requireToken(deps, row.teamId);
   const fetchImpl = deps.githubFetch ?? fetch;
   const { issues, hasMore } = await githubRepoIssues(fetchImpl, token, owner, repo, opts);
+  const claimed = claimedSourceRefs(
+    deps.db,
+    row.teamId,
+    issues.map((issue) => githubIssueSourceRef(owner, repo, issue.number)),
+  );
   // 颜色归一在出线前单点做（与 tag 表镜像同源规则）：wire 面恒 #rrggbb，
   // 消费端不再各自补 #。
   return {
-    issues: issues.map((issue) => ({
-      ...issue,
-      labels: issue.labels.map((label) => ({
-        name: label.name,
-        color: normalizeGithubLabelColor(label.color),
+    issues: issues
+      .filter((issue) => !claimed.has(githubIssueSourceRef(owner, repo, issue.number)))
+      .map((issue) => ({
+        ...issue,
+        labels: issue.labels.map((label) => ({
+          name: label.name,
+          color: normalizeGithubLabelColor(label.color),
+        })),
       })),
-    })),
     page: opts.page,
     hasMore,
   };
 }
 
-export interface ImportGithubIssueDeps extends GithubIssueFaceDeps, TodoDeps {}
+/** 导入面 deps = 读面（box 必携）∪ todo 面（box 位由读面收编——可选位与
+ * 必携位同名冲突，Omit 后交集成立）。 */
+export type ImportGithubIssueDeps = GithubIssueFaceDeps & Omit<TodoDeps, 'box'>;
 
 /** 从 issue 建任务（ADR 0005 D3/D5/D6 落地）：
  * - 标题 = issue 标题原样（不走占位→回填两段式；createTodo 的派生仅对
@@ -97,6 +126,12 @@ export async function importGithubIssue(
   const { owner, repo } = requireGithubRepo(row);
   const token = requireToken(deps, row.teamId);
   const fetchImpl = deps.githubFetch ?? fetch;
+  // D4 第二道闸（列表滤除是第一道）：直 POST 已有任务的 issue → 409，
+  // 「一条 issue 至多一个任务」不因列表竞态窗口破防。
+  const ref = githubIssueSourceRef(owner, repo, issueNumber);
+  if (claimedSourceRefs(deps.db, row.teamId, [ref]).has(ref)) {
+    throw new HttpError(409, `issue ${ref} already has a task`);
+  }
   const detail = await githubRepoIssue(fetchImpl, token, owner, repo, issueNumber);
   // label 面失败 = 整个导入失败（不落半成品词表）；同名条目 issue 集后置
   // 覆盖色（更新鲜）。
@@ -116,6 +151,40 @@ export async function importGithubIssue(
     createdBy: deps.user.id, // 人工触发导入 = seed 用户（REST 建任务面同律）
     ownerId: deps.user.id,
     sourceKind: 'github-issue',
-    sourceRef: githubIssueSourceRef(owner, repo, issueNumber),
+    sourceRef: ref,
   });
+}
+
+/** 来源 issue 只读回显（#452 / ADR 0006 D5/D6）：任务详情页进入时拉一次，
+ * 显示 issue 当前标题与状态。**任何拉不到都是非 200**（无来源/未建成 = 404、
+ * 未连接 = 404、issue 被删 = 上游 404 直透、限流 = 429、网络 = 502）——web
+ * 侧据非 200 整行隐藏，不显示陈旧值、不弹错。不一致的判定与「只提示不覆
+ * 盖」在 web 消费面做，本函数只回上游现值。 */
+export async function readSourceIssueEcho(
+  deps: GithubIssueFaceDeps,
+  todoId: string,
+): Promise<GithubIssueEcho> {
+  const row = deps.db
+    .select({
+      teamId: todoTable.teamId,
+      sourceKind: todoTable.sourceKind,
+      sourceRef: todoTable.sourceRef,
+    })
+    .from(todoTable)
+    .where(eq(todoTable.id, todoId))
+    .get();
+  if (!row || row.sourceKind === null || row.sourceRef === null) {
+    throw notFound('source issue');
+  }
+  const parsed = parseGithubIssueSourceRef(row.sourceRef);
+  if (!parsed) throw notFound('source issue');
+  const token = requireToken(deps, row.teamId);
+  const detail = await githubRepoIssue(
+    deps.githubFetch ?? fetch,
+    token,
+    parsed.owner,
+    parsed.repo,
+    parsed.issueNumber,
+  );
+  return { number: detail.number, title: detail.title, state: detail.state };
 }

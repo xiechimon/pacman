@@ -55,6 +55,7 @@ import {
 } from '../db/schema.js';
 import { HttpError } from '../lib/errors.js';
 import { systemGitOps } from '../lib/git.js';
+import type { FetchLike } from '../lib/github.js';
 import { hashCredential } from '../lib/hash.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { newMachineToken } from '../lib/keys.js';
@@ -79,7 +80,7 @@ import { githubCloneUrl, hostedCloneUrl, repoDirFor } from './git.js';
 import { openGithubToken } from './github-connection.js';
 import { canTransitionPhase } from './phase.js';
 import { listProjectTagVocab, resolveFixedTagId, resolveProjectTagIds } from './tags.js';
-import { setTodoPhase, updateTodo } from './todos.js';
+import { setTodoPhase, updateTodo, writebackSelfIssueTitle } from './todos.js';
 
 /** chief 步 conv id 判别（单源 = shared isChiefConversationId；thread id 形
  * `chief-<uuid>`，无 build 行，r5 §3.1）。 */
@@ -108,6 +109,10 @@ export interface MachineDeps {
   /** conversation stream 通道（M5 live streaming：transcript 行/文本增量/
    * 步状态即时推送，02 §1.2 会话流）；缺省 = 无会话流面（单测形态）。 */
   convHub?: ConversationStreamHub;
+  /** GitHub 出站注入位（#452 写向：set_task_meta 标题回写 + chief create_todo
+   * 自建 issue 透传；AppContext.githubFetch 同族，缺省 globalThis.fetch，
+   * 测试注入 mock——零真实出站）。 */
+  githubFetch?: FetchLike;
 }
 
 /** 步状态位透出会话流（journal 状态 [内部] 列 → step 事件 [设计]）。 */
@@ -831,10 +836,13 @@ function tryClaim(
     // daemon 回落 FIXED_TAGS 现行为，文本逐字节不变。校验真值在 setTaskMeta
     // （按项目形态分支），meta 只驱动提示词面。
     const isGithubProject = projectRow?.repoKind === 'github';
+    // titleFinal = 仅**导入**任务（'github-issue'，标题真值在 issue 侧，ADR
+    // 0005 D5）；自建 issue 任务（'github-issue-self'，#452 / ADR 0006 D3）
+    // 标题真值在 pacman 侧——占位标题仍走 agent 回填并写进 issue，恒 false。
     const taskMeta =
       isGithubProject && projectRow
         ? {
-            titleFinal: cand.todoRow.sourceKind !== null,
+            titleFinal: cand.todoRow.sourceKind === 'github-issue',
             vocab: listProjectTagVocab(db, projectRow.id),
           }
         : undefined;
@@ -984,6 +992,7 @@ export async function executeRelayToolCall(
       attachmentsDir: deps.attachmentsDir,
       skillsDir: deps.skillsDir,
       ...(deps.mcpConfigPath !== undefined ? { mcpConfigPath: deps.mcpConfigPath } : {}),
+      ...(deps.githubFetch !== undefined ? { githubFetch: deps.githubFetch } : {}),
     },
     {
       teamId: threadRow.teamId,
@@ -1033,18 +1042,20 @@ async function executeWorkerMemoryToolCall(
   );
 }
 
-/** set_task_meta（spec 15 #394 + #446/ADR 0005 分叉律）：校验按项目形态
- * 分支——local/hosted = FIXED_TAGS 白名单 + 单 tag + title 必填（现行为
- * 逐字节不变，ADR 0002 D3/D4 收窄后的 local 适用域）；github = 项目标签集
- * （仓库 label 镜像）+ tags 多枚 + title 可选（issue 来源标题已真值）。
+/** set_task_meta（spec 15 #394 + #446/ADR 0005 分叉律 + #452 写向）：校验按
+ * 项目形态分支——local/hosted = FIXED_TAGS 白名单 + 单 tag + title 必填
+ * （现行为逐字节不变，ADR 0002 D3/D4 收窄后的 local 适用域）；github =
+ * 项目标签集（仓库 label 镜像）+ tags 多枚 + title 可选（导入任务标题已真
+ * 值；自建 issue 任务回填并写回 issue，ADR 0006 D3）。
  * 两形态共用一条不变式：贴的标签必须在本项目标签集内。标题归一（首行
  * ≤50 字符，derivePlaceholderTitle 复用）同形。更新走 updateTodo 既有面
- * （v++ + SSE 广播，看板实时刷新）。 */
-function setTaskMeta(
+ * （v++ + SSE 广播，看板实时刷新）。async = github 形态的 issue 标题回写
+ * 出站位（local 形态零出站，行为不变）。 */
+async function setTaskMeta(
   deps: MachineDeps,
   todoRow: typeof todo.$inferSelect,
   params: Record<string, unknown>,
-): string {
+): Promise<string> {
   const projectRow = deps.db
     .select({ repoKind: project.repoKind })
     .from(project)
@@ -1082,21 +1093,24 @@ function normalizedMetaTitle(raw: unknown): string {
   return title;
 }
 
-/** github 形态 set_task_meta（#446）：title 可选（归一规则同 local——多行/
- * 超长传值归一到首行 ≤50）；issue 来源任务（sourceKind ≠ null）的标题已
- * 是真值——带 title 的调用一律 400（AC「不被回填覆盖」的机械闸，提示词面
- * 不注入回填指令是第一道，本闸是第二道）；tags = name 数组，逐个按项目
- * 标签集现查解析，集合外 name = 400；title 与 tags 全缺 = 400（无意义调
- * 用）。混部容忍：旧形单 `tag` 字符串并入 tags（server 校验按项目形态分
- * 支，不按工具面形状——旧 daemon 发旧参数不断约）。 */
-function setTaskMetaGithubForm(
+/** github 形态 set_task_meta（#446 + #452 写向）：title 可选（归一规则同
+ * local——多行/超长传值归一到首行 ≤50）；**导入**任务（sourceKind =
+ * 'github-issue'）的标题已是真值——带 title 的调用一律 400（AC「不被回填
+ * 覆盖」的机械闸，提示词面不注入回填指令是第一道，本闸是第二道）；自建
+ * issue 任务（'github-issue-self'，ADR 0006 D3）title 放行且落库后写进那
+ * 枚 issue（回写失败吞——relay 恒 200，漂移交详情页只读回显提示面，B2）；
+ * tags = name 数组，逐个按项目标签集现查解析，集合外 name = 400；title 与
+ * tags 全缺 = 400（无意义调用）。混部容忍：旧形单 `tag` 字符串并入 tags
+ * （server 校验按项目形态分支，不按工具面形状——旧 daemon 发旧参数不断
+ * 约）。 */
+async function setTaskMetaGithubForm(
   deps: MachineDeps,
   todoRow: typeof todo.$inferSelect,
   params: Record<string, unknown>,
-): string {
+): Promise<string> {
   let title: string | undefined;
   if (params.title !== undefined) {
-    if (todoRow.sourceKind !== null) {
+    if (todoRow.sourceKind === 'github-issue') {
       throw new HttpError(400, 'invalid params.title: title is final (issue-sourced)');
     }
     title = normalizedMetaTitle(params.title);
@@ -1121,12 +1135,26 @@ function setTaskMetaGithubForm(
   if (title === undefined && tagIds === undefined) {
     throw new HttpError(400, 'invalid params: expected at least one of title / tags');
   }
-  const record = updateTodo(
-    { db: deps.db, hub: deps.hub, machineHub: deps.machineHub, user: deps.user },
-    todoRow.id,
-    { ...(title !== undefined ? { title } : {}), ...(tagIds !== undefined ? { tagIds } : {}) },
-  );
+  const todoDeps = {
+    db: deps.db,
+    hub: deps.hub,
+    machineHub: deps.machineHub,
+    user: deps.user,
+    box: deps.box,
+    ...(deps.githubFetch !== undefined ? { githubFetch: deps.githubFetch } : {}),
+  };
+  const record = updateTodo(todoDeps, todoRow.id, {
+    ...(title !== undefined ? { title } : {}),
+    ...(tagIds !== undefined ? { tagIds } : {}),
+  });
   if (!record) throw new NotFoundError(`todo ${todoRow.id}`);
+  // #452 / ADR 0006 D3：自建 issue 任务的回填标题写进那枚 issue（await 出站
+  // ——relay 面非建任务关键路径；lib 超时 15s 封顶）。失败吞（B2）：本地标题
+  // 已生效不回滚，不一致由详情页只读回显给中性提示。未建成 → 静默跳过
+  // （后建 issue 现读当前标题，自然一致）。
+  if (title !== undefined && record.sourceKind === 'github-issue-self') {
+    await writebackSelfIssueTitle(todoDeps, todoRow.id, record.title).catch(() => undefined);
+  }
   return JSON.stringify({ todoId: record.id, title: record.title, tagIds: record.tagIds });
 }
 

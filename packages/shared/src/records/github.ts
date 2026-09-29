@@ -91,3 +91,17 @@ export const importGithubIssueBodySchema = z.object({
   number: z.number().int().positive(),
 });
 export type ImportGithubIssueBody = z.infer<typeof importGithubIssueBodySchema>;
+
+// —— 来源 issue 只读回显（#452 / ADR 0006 D5/D6 写向）——————————————————
+
+/** `GET /api/todos/{id}/github-issue` 响应封套（#452 只读回显）：来源
+ * issue 的当前标题与状态，详情页进入时拉一次。任何「拉不到」（无来源 /
+ * 未建成 / 未连接 / token 失效 / 限流 / issue 被删）= 非 200——web 整行
+ * 隐藏，不显示陈旧值、不弹错（ADR 0006 D6 降级）。不一致时 web 只给一行
+ * 中性提示，不自动覆盖本地值（D5）。 */
+export const githubIssueEchoSchema = z.object({
+  number: z.number(),
+  title: z.string(),
+  state: z.enum(['open', 'closed']),
+});
+export type GithubIssueEcho = z.infer<typeof githubIssueEchoSchema>;

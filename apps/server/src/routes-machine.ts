@@ -102,6 +102,8 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     mcpConfigPath: ctx.mcpConfigPath,
     skillsDir: ctx.skillsDir,
     convHub: ctx.convHub,
+    // #452 写向：set_task_meta 标题回写 + chief create_todo 自建 issue 出站位。
+    ...(ctx.githubFetch !== undefined ? { githubFetch: ctx.githubFetch } : {}),
   };
 
   // 机器 token 认证中间件（enroll 三件除外——其认证 = apiKey）。

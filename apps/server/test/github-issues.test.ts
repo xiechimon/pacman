@@ -313,7 +313,7 @@ describe('github 项目标签词表 = 仓库 label 镜像（C12-C16）', () => {
     s.dispose();
   });
 
-  test('C12/C13/C15 导入同步：新 label 建行（color 补 #）、二次导入幂等', async () => {
+  test('C12/C13/C15 导入同步：新 label 建行（color 补 #）、二次导入被去重护栏拒绝', async () => {
     const mock = ghMock(defaultRoutes());
     const s = bootServer({ githubFetch: mock.impl });
     seedConnection(s);
@@ -327,11 +327,12 @@ describe('github 项目标签词表 = 仓库 label 镜像（C12-C16）', () => {
     expect(tags.map((t) => t.name).sort()).toEqual(['area:auth', 'bug', 'help wanted']);
     const bug = tags.find((t) => t.name === 'bug')!;
     expect(bug.color).toBe('#d73a4a'); // C12：上游无 # → 补 #
-    // 幂等：再导一次 issue 7，不重复建行
+    // #452 / ADR 0006 D4：一条 issue 至多一个任务——再导一次 issue 7 → 409，
+    // 标签行不动（护栏在出站之前，label 幂等面由 C13 的换 issue 导入覆盖）。
     const r2 = await call(s.app, 'POST', `/api/projects/${projectId}/github/issues/import`, {
       body: { number: 7 },
     });
-    expect(r2.status).toBe(201);
+    expect(r2.status).toBe(409);
     expect(projectTags(s, projectId)).toHaveLength(3);
     s.dispose();
   });

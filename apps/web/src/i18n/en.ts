@@ -237,6 +237,11 @@ export const EN: Record<string, string> = {
   上一页: 'Previous page',
   下一页: 'Next page',
   '第 {page} 页': 'Page {page}',
+  // #452（ADR 0006 写向）详情页来源 issue 行：未建成 + 重试入口 / 回显
+  // （号 + 状态 + 上游现值标题）/ 不一致中性提示（只提示不覆盖）。
+  'GitHub issue 未建成': 'GitHub issue not created',
+  '来源 issue': 'Source issue',
+  与本地标题不一致: 'Differs from the local title',
   // 桌面通知标题（M5 SSE notification 事件面，02 §9.1 三事件；api/sse.ts
   // 纯函数位消费——非组件 t()，i18n-coverage 以本键位兑现 en 兜底）
   方案已就绪: 'Plan ready',
