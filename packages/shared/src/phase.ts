@@ -30,51 +30,43 @@ export const PHASE_SEMANTICS: Readonly<Record<Phase, string>> = {
   closed: '未完成即搁置',
 };
 
-/** 看板 6 列（r2 §4.1）——列只是 phase 的折叠视图，非独立实体（CONTEXT.md）。 */
-export const BOARD_COLUMNS = ['待开始', '规划中', '待确认', '执行中', '待验收', '已完成'] as const;
+/** 工作台 4 列（#351；前身 = r2 §4.1 的 6 列折叠）——列只是 phase 的折叠
+ *  视图，非独立实体（CONTEXT.md）。 */
+export const BOARD_COLUMNS = ['待开始', '执行中', '待处理', '已完成'] as const;
 
 export type BoardColumn = (typeof BOARD_COLUMNS)[number];
 
 /**
- * 列映射细粒度双键 phase × hasChanges（02 §4.1 表 + r5 §8 观察加注）：
- * gate 态卡片无代码改动者留在 `执行中` 列（主按钮分别 `方案`/`回复`），
- * 有改动的 review 卡才进 `待验收`（主按钮 `完成`）。
+ * 列映射单键 phase（#351：原 phase × hasChanges 双键折叠随 6→4 列收敛退役）：
+ * gate 三态（confirm / review / failed）同入 `待处理`——方案确认、变更验收、
+ * 失败重试都是等用户处理的事；review+awaitingReply 与 failed 的钉顶是渲染
+ * 行为（web columns.ts sortColumnTodos），列归属同 `待处理`。
  * `queued→待开始` 折叠与 `closed` 不占列为 [推断]（02 §4.1，改判触发 = UI 实验）。
- * `failed` 钉执行中列顶（r1 §7.4 changelog 原文；钉顶为渲染行为，列归属同执行中）。
  * `done` 列语义 =「已完成（近 7 天）」（changelog "Done (last 7 days)"）。
  */
-export function boardColumnFor(phase: Phase, hasChanges = false): BoardColumn | null {
+export function boardColumnFor(phase: Phase): BoardColumn | null {
   switch (phase) {
     case 'todo':
     case 'queued':
       return '待开始';
     case 'planning':
-      return '规划中';
-    case 'confirm':
-      return hasChanges ? '待确认' : '执行中';
     case 'building':
       return '执行中';
+    case 'confirm':
     case 'review':
-      return hasChanges ? '待验收' : '执行中';
+    case 'failed':
+      return '待处理';
     case 'done':
       return '已完成';
-    case 'failed':
-      return '执行中';
     case 'closed':
-      return null; // 不占列 [推断]（6 列无 closed 列；右键 Close 菜单项实测 r1 §443）
+      return null; // 不占列 [推断]（右键 Close 菜单项实测 r1 §443）
   }
 }
 
-/** 手动改相面落点集（#160 看板拖拽）= 六列 dropPhase 正名（web columns.ts
+/** 手动改相面落点集（#160 看板拖拽）= 持落点列 dropPhase 正名（web columns.ts
  *  COLUMNS[].dropPhase 的同表镜像，columns.test.ts 有自动对拍钉单源）。
- *  拖拽只产生「源相占列 → 目标列」：`closed` 不占列故不可作拖拽源或落点。
+ *  拖拽只产生「源相占列 → 目标列」：`closed` 不占列故不可作拖拽源或落点；
+ *  #351：`待处理` 不作落点（gate/failed 是系统态，手动拖入无语义）。
  *  官方 PATCH wire 未抓（r3 §3.10 合成拖拽未复现），手动面语义为复刻裁定
  *  [设计]；系统流仍走 PHASE_TRANSITIONS 漏斗（server services/phase.ts）。 */
-export const BOARD_DROP_PHASES: readonly Phase[] = [
-  'todo',
-  'planning',
-  'confirm',
-  'building',
-  'review',
-  'done',
-];
+export const BOARD_DROP_PHASES: readonly Phase[] = ['todo', 'building', 'done'];

@@ -2,7 +2,8 @@
 // token——Card 承载盒型（bg-card/border/rounded-xl/shadow-sm），动作钮走
 // shadcn Button。行为与锚点原位：stretched title link、data-todo-id、
 // todo-card/todo-card-action--* 类别名、相对时间、phase 徽标全部保留；
-// 几何沿用 r7 实测（262 宽 / 9.5-13.5-11.5 padding / 26 底行）。
+// 几何沿用 r7 实测（9.5-13.5-11.5 padding / 26 底行）；宽度随 #351 的
+// 四列流体网格铺满列宽（原 262 定宽随横向滚动一起退役）。
 // 阶段点与徽标的语义色（蓝/琥珀/绿/灰）不随 B 换——它们承载 phase 语义，
 // 不是中性表面；全面 chart 化留待铺开期裁决。
 
@@ -64,7 +65,7 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName }: TodoCar
   return (
     <Card
       data-todo-id={todo.id}
-      className="todo-card relative w-[262px] flex-none gap-0 rounded-xl px-[13.5px] pt-[9.5px] pb-[11.5px]"
+      className="todo-card relative w-full gap-0 rounded-xl px-[13.5px] pt-[9.5px] pb-[11.5px]"
     >
       <div className="todo-card-row1 flex h-4 items-center">
         <span className="project-avatar">{chipInitial}</span>

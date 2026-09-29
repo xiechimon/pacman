@@ -96,11 +96,12 @@
   --sidebar-hover: rgb(255 255 255 / 0.05);
   --sidebar-selected: rgb(255 255 255 / 0.1);
   --col-head-text: #bebec1;
+  /* column dot family: one token per board column (#351 4-fold — 待开始 idle,
+     执行中 building, 待处理 confirm, 已完成 done); planning/review dots retired
+     with their columns */
   --col-dot-idle: #9ea3ae;
-  --col-dot-planning: #4e81ee;
   --col-dot-confirm: #e9a23b;
   --col-dot-building: #4e81ee;
-  --col-dot-review: #e9a23b;
   --col-dot-done: #5ec26a;
   --badge-attention: #e9a23b;
   --badge-done: #5ec26a;
@@ -272,10 +273,8 @@
   --sidebar-selected: rgb(28 25 23 / 0.1);
   --col-head-text: #57534e;
   --col-dot-idle: #9ea3ae;
-  --col-dot-planning: #4e81ee;
   --col-dot-confirm: #e9a23b;
   --col-dot-building: #4e81ee;
-  --col-dot-review: #e9a23b;
   --col-dot-done: #5ec26a;
   --badge-attention: #e9a23b;
   --badge-done: #5ec26a;

@@ -74,6 +74,36 @@ test('board topbar drops the 看板指南 button — right actions keep only 任
   await expect(actions.locator('.board-new-task')).toBeVisible();
 });
 
+// —— 2b. #351 列收敛钉：恰 4 列 + 退役列名/收起族不再渲染 ————————————————————
+
+test('board renders exactly the four #351 columns, retired names and collapse family gone', async ({
+  page,
+}) => {
+  await page.goto('/app?scenario=01');
+  // 顶栏标题随更名（看板 → 工作台）
+  await expect(page.locator('.board-topbar-title')).toHaveText('工作台');
+  // 恰 4 列，逐列钉 id ↔ 列名
+  await expect(page.locator('.board-column')).toHaveCount(4);
+  for (const [id, name] of [
+    ['todo', '待开始'],
+    ['building', '执行中'],
+    ['pending', '待处理'],
+    ['done', '已完成'],
+  ] as const) {
+    await expect(
+      page.locator(`.board-column[data-column="${id}"] .board-column-name`),
+    ).toHaveText(name);
+  }
+  // 退役列名不在任何列头（规划中 仍存活于详情 phase chip，此处只钉看板面）
+  for (const retired of ['规划中', '待确认', '待验收']) {
+    await expect(page.locator('.board-column-name', { hasText: retired })).toHaveCount(0);
+  }
+  // #147 列收起全家随收敛删除：收起钮/窄条/折叠态均无渲染位
+  await expect(page.locator('.board-column-collapse')).toHaveCount(0);
+  await expect(page.locator('.board-column-strip')).toHaveCount(0);
+  await expect(page.locator('.board-column--collapsed')).toHaveCount(0);
+});
+
 // —— 3. project 页三件 ———————————————————————————————————————————————————
 
 test('project files pane: no export button, static branch chip, wired 文件|历史 segment', async ({

@@ -32,7 +32,7 @@ function readCollapsed(storage: Storage): boolean {
 
 export interface AppSidebarProps {
   fixture: FixtureSet;
-  /** Sidebar pill owner (BoardSidebar's slot); defaults to 看板. */
+  /** Sidebar pill owner (BoardSidebar's slot); defaults to 工作台. */
   selected?: SidebarSelected;
   /** The route's merged todo list — board/detail keep local create/delete
    *  sets; absent = the live query or fixture.todos. */

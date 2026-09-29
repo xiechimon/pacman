@@ -1,5 +1,5 @@
-// phase 九值流转对拍（02 §4.1 权威 + 验收「含 6 列折叠映射」）。
-// 6 列折叠映射单源 = shared boardColumnFor（phase × hasChanges 双键，r5 §8）；
+// phase 九值流转对拍（02 §4.1 权威 + 验收「含看板列折叠映射」）。
+// 列折叠映射单源 = shared boardColumnFor（#351 起单键：仅 phase，4 列）；
 // 流转边集 = src/services/phase.ts PHASE_TRANSITIONS（出处逐边注记）。
 
 import { BOARD_COLUMNS, boardColumnFor, PHASE_VALUES, type Phase } from '@pacman/shared';
@@ -58,26 +58,23 @@ describe('九值权威（02 §4.1）', () => {
   });
 });
 
-describe('6 列折叠映射（02 §4.1 表 + r5 §8 双键加注）', () => {
-  test('列词表 = 看板 6 列', () => {
-    expect(BOARD_COLUMNS).toHaveLength(6);
+describe('4 列折叠映射（#351 单键）', () => {
+  test('列词表 = 工作台 4 列', () => {
+    expect(BOARD_COLUMNS).toHaveLength(4);
   });
 
-  test('逐 phase 列位对拍 spec 表', () => {
-    // 02 §4.1 表：todo/queued→待开始（queued 折叠 [推断]）；planning→规划中；
-    // confirm→待确认；building→执行中；review→待验收；done→已完成（近 7 天）；
-    // failed→钉执行中列顶（列归属=执行中）；closed→不占列 [推断]。
+  test('逐 phase 列位对拍（单键，无 hasChanges）', () => {
+    // #351：todo/queued→待开始；planning/building→执行中；
+    // confirm/review（含 awaitingReply）/failed→待处理；done→已完成（近 7 天）；
+    // closed→不占列不变。
     expect(boardColumnFor('todo')).toBe('待开始');
     expect(boardColumnFor('queued')).toBe('待开始');
-    expect(boardColumnFor('planning')).toBe('规划中');
+    expect(boardColumnFor('planning')).toBe('执行中');
     expect(boardColumnFor('building')).toBe('执行中');
+    expect(boardColumnFor('confirm')).toBe('待处理');
+    expect(boardColumnFor('review')).toBe('待处理');
+    expect(boardColumnFor('failed')).toBe('待处理');
     expect(boardColumnFor('done')).toBe('已完成');
-    expect(boardColumnFor('failed')).toBe('执行中');
     expect(boardColumnFor('closed')).toBeNull();
-    // gate 态双键（r5 §8）：无代码改动留执行中列，有改动进 gate 列。
-    expect(boardColumnFor('confirm', false)).toBe('执行中');
-    expect(boardColumnFor('confirm', true)).toBe('待确认');
-    expect(boardColumnFor('review', false)).toBe('执行中');
-    expect(boardColumnFor('review', true)).toBe('待验收');
   });
 });

@@ -23,7 +23,8 @@ import { PROBE_TOOL_CALL_LABEL, PROBE_TOOL_PILLS } from '../fixtures/fixtures.js
 export const EN: Record<string, string> = {
   // —— shared chrome / sidebar (r2 §1.1) ——
   搜索: 'Search',
-  看板: 'Board',
+  // #351 看板更名工作台：'Workbench'（不用 'Workspace'，避撞 daemon workspaces 概念）
+  工作台: 'Workbench',
   定时: 'Schedules',
   项目: 'Project', // sidebar group / search group / schedule-form field — one fit
   资源: 'Resources',
@@ -47,19 +48,16 @@ export const EN: Record<string, string> = {
   删除: 'Delete',
   今天: 'today',
 
-  // —— board surface (r2 §4.1, r7 01/02) ——
+  // —— board surface (r2 §4.1, r7 01/02; #351 6→4 列收敛) ——
   任务: 'Todo', // topbar +任务 button / search nav row / popover section
   待开始: 'To start',
+  // 规划中 survives as the planning phase chip (detail header), not a column
   规划中: 'Planning',
-  待确认: 'To confirm',
   执行中: 'Running',
-  待验收: 'To review',
   已完成: 'Done',
   没有等待开始的任务: 'No tasks waiting to start',
-  没有规划中的任务: 'No tasks in planning',
-  没有等你确认的方案: 'No plans waiting for your confirmation',
   没有执行中的任务: 'No tasks running',
-  没有等你验收的任务: 'No tasks waiting for your review',
+  没有等你处理的任务: 'No tasks waiting on you',
   '最近 7 天没有完成的任务': 'No tasks completed in the last 7 days',
   '最近 7 天': 'Last 7 days',
   回复: 'Reply',
@@ -187,8 +185,8 @@ export const EN: Record<string, string> = {
 
   // —— api-keys route (r2 19, 02 §8 canon note) ——
   '尚无 API 密钥。': 'No API keys yet.',
-  'API 密钥用于从命令行接入机器，也让 MCP 客户端能访问你的看板。':
-    'API keys connect machines from the command line and let MCP clients reach your board.',
+  'API 密钥用于从命令行接入机器，也让 MCP 客户端能访问你的工作台。':
+    'API keys connect machines from the command line and let MCP clients reach your workbench.',
   新建密钥: 'New key',
   复制: 'Copy',
   '请立即复制密钥，它仅显示一次。': 'Copy the key now — it is shown only once.',

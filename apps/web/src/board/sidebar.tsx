@@ -44,7 +44,7 @@ import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.
 import { readStoredTheme } from '../theme.js';
 import { Avatar } from '../ui/avatar.js';
 
-/** Which sidebar row carries the active pill: a nav row (看板 / 定时 /
+/** Which sidebar row carries the active pill: a nav row (工作台 / 定时 /
  *  the team head row on team/account — r7 01/11, r2 07e/24b/24c, r7 12/13),
  *  a 资源 subrow by href (issue #69, r7 06–10), or none (/app/project/new
  *  r2 07, and the user-menu-only routes r2 19/32). Project rows are not a
@@ -75,7 +75,7 @@ const CANON_PROJECT: SidebarProject = { id: PROJECT_ID, name: PROJECT_NAME };
 interface BoardSidebarProps {
   collapsed?: boolean;
   onToggle?: () => void;
-  /** Todos waiting on confirmation — the 看板 nav badge (r7 02/17). */
+  /** Todos waiting on the user — the 工作台 nav badge (#351: 待处理列计数). */
   attention?: number;
   /** Opens the ⌘K search panel (issue #67); the 搜索 rows are triggers. */
   onSearch?: () => void;
@@ -280,7 +280,7 @@ export function BoardSidebar({
             className={`${RAIL_ROW} ${selected === 'board' ? RAIL_SELECTED : ''}`}
             to={{ pathname: '/app', search }}
             aria-current={selected === 'board' ? 'page' : undefined}
-            aria-label={t('看板')}
+            aria-label={t('工作台')}
           >
             <Kanban />
           </Link>
@@ -424,7 +424,7 @@ export function BoardSidebar({
           <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
             <Kanban />
           </span>
-          <span className="sidebar-row-label ml-3 truncate">{t('看板')}</span>
+          <span className="sidebar-row-label ml-3 truncate">{t('工作台')}</span>
           {attention > 0 && (
             <span className="sidebar-badge mr-[18px] ml-auto h-4 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] leading-4 text-primary-foreground">
               {attention}

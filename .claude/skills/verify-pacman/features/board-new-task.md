@@ -4,7 +4,7 @@
 
 ## Sub-features
 
-- `board-render` 看板 shell 渲染 6 列(待开始/规划中/确认/搭建中/待验收/完成)。
+- `board-render` 工作台 shell(#351 更名 + 4 列收敛)渲染恰 4 列(待开始/执行中/待处理/已完成),列头 id↔名对拍,退役列名(规划中/待确认/待验收)不占列,收起族(钮/窄条/折叠态)无渲染位,4 列等宽且桌面无横向滚动。
 - `newtask-open` `.board-new-task` 钮开 dialog(`.new-task-dialog`,**单字段正文 textarea `.new-task-spec`**,placeholder = 五行模板族;无标题输入/无标签行)。
 - `newtask-gate` 「保存」(`.new-task-save`)与「保存并开始」(`.new-task-start`)的闸 = 正文非空(空正文双钮 disabled)。
 - `newtask-save` 「保存」落卡;「保存并开始」建卡后还会起 build(会派给 Agent,无 Agent 时行为未铺,勿默认验)。
@@ -22,7 +22,7 @@ Preconditions:
 
 - `launch.mjs` 起栈(全新库),`doctor.mjs` 全 PASS。
 
-- **渲染。** 开 `/app`,看板出现。Run `node <skill>/scripts/drive.mjs board`。6 个 `.board-column` + `.board-new-task` 可见,证据 `01-board.png`。
+- **渲染。** 开 `/app`,工作台出现。Run `node <skill>/scripts/drive.mjs board`。4 个 `.board-column`(待开始/执行中/待处理/已完成)+ `.board-new-task` 可见,证据 `01-board.png`。
 - **新建。** 点「新建任务」→ 填正文(首行即任务一句话)→ 点「保存」。Run `node <skill>/scripts/drive.mjs new-task`。它完整走该链:dialog 开 → 正文上屏 → 卡片落 `[data-column-list="todo"]` 带 `#seqNum` 且标题 = 首行 → `GET /api/todos` 找到该 title 且 `phase=todo` → SQLite `SELECT id,title,phase,seqNum FROM todo WHERE title=?` 命中。证据 `01-board-before.png` / `02-new-task-card.png` + `result.json`(含 apiTodo/dbTodo 字段)。
 - **持久化(重载)。** new-task probe 后手动补:reload `/app`,同一 `.todo-card[data-todo-id]` 仍在「待开始」列(卡片 = 查询真值渲染,重载即二次确认)。
 - **项目 chip。** dialog 里 `.new-task-project` 显示当前项目(全新库首建后 =「默认项目」);多项目时点开 `.new-task-project-menu` 选行(`aria-selected`)——选择是纯表单态,随提交走(fixture 面 e2e newtask-project-select.spec.ts 已锁该行为,live 复验非必须)。
