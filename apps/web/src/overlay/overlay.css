@@ -244,48 +244,11 @@
 
 /* ---- delete confirm (r7 25: 448×142, centered both axes) ---- */
 
-.delete-confirm {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 448px;
-  height: 142px;
-  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
-  border-radius: var(--edge-radius);
-  background: var(--dialog-bg);
-  box-shadow: var(--dialog-shadow);
-  z-index: 21;
-}
-
-.delete-confirm-head {
-  height: 47px; /* 295–342 incl. the divider below */
-  border-bottom: 1px solid var(--border-default);
-  display: flex;
-  align-items: center;
-  padding: 0 8px 0 16px;
-}
-
-.delete-confirm-title {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.delete-confirm-close {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
-}
+/* #425 B1：确认面板的壳级规则（.delete-confirm / -head / -title / -close）
+   已随 components/ui/alert-dialog-shell.tsx 适配层退役——壳机制换 Base UI
+   AlertDialog，壳几何与皮肤由适配层工具类承载（448 居中、12px 圆角、
+   popover 底、B 的 ring 外环）。本文件保留**面内**规则（summary / seq /
+   actions / --project / prompt / input）与 .overlay-backdrop（锚定族仍用）。 */
 
 .delete-confirm-summary {
   margin: 16px 16px 0;
