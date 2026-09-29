@@ -8,7 +8,7 @@
 // - DAO 语义：重认证 = 覆盖（teamId 单行，onConflictDoUpdate）、断开 = 删行
 //   （幂等，缺行不抛）。
 
-import type { SecretBox } from '@pacman/shared';
+import type { GithubConnectionStatus, SecretBox } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { githubConnection } from '../db/schema.js';
@@ -59,4 +59,15 @@ export function openGithubToken(deps: GithubConnectionDeps, teamId: string): str
   const row = getRow(deps, teamId);
   if (!row) return null;
   return deps.box.open(row.accessTokenCipher);
+}
+
+/** 认证状态读面（#361 G2-T4 封套，shared githubConnectionStatusSchema 单源）：
+ * 仅 login/scope——token/密文位永不出现（02 §8 只写不读出 wire）。 */
+export function readGithubConnectionStatus(
+  deps: GithubConnectionDeps,
+  teamId: string,
+): GithubConnectionStatus {
+  const row = getRow(deps, teamId);
+  if (!row) return { connected: false };
+  return { connected: true, login: row.login, scope: row.scope };
 }

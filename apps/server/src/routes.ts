@@ -115,7 +115,11 @@ import {
   uniqueRepoName,
   validateLocalRepoPath,
 } from './services/git.js';
-import { openGithubToken } from './services/github-connection.js';
+import {
+  deleteGithubConnection,
+  openGithubToken,
+  readGithubConnectionStatus,
+} from './services/github-connection.js';
 import { isChiefConversation } from './services/machines.js';
 import { handleMcpRequest } from './services/mcp-face.js';
 import { listMcpServers } from './services/mcp-servers.js';
@@ -124,6 +128,8 @@ import {
   completeOAuthCallback,
   type OAuthDeps,
   OAuthFlowError,
+  type OAuthStateKind,
+  startGithubConnectionAuthorize,
   startOAuthAuthorize,
 } from './services/oauth.js';
 import { PhaseTransitionError } from './services/phase.js';
@@ -1310,19 +1316,33 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.get('/api/oauth/callback', async (c) => {
     const code = c.req.query('code');
     const state = c.req.query('state') ?? '';
-    // origin 缺（bad-state 不在册形）→ 相对 Location：浏览器同源解析，
-    // 不引入请求方提供的任何 origin——「不信任外部 returnOrigin」纪律不变。
-    const landing = (origin: string | undefined, query: string) =>
-      c.redirect(`${origin ?? ''}/app/resources/providers?${query}`, 302);
-    // #243：state 缺/过期不再裸 400——统一 302 回 providers 页 reason=state，
-    // 与 denied/exchange 同律（web 着陆面重开弹窗给可重试路径）。
+    // 落点按 state 族分支（#361），单点描述符：provider 族回 providers 页
+    // （#231 原律）；github-connection 族回新建项目页（flag github=connection
+    // = 该页着陆消费的 picker 打开/错误信号，provider 族着陆不带、两页互不
+    // 串）。kind 不可判（bad-state 不在册形）→ 默认 providers 页；origin 缺
+    // （同形）→ 相对 Location：浏览器同源解析，不引入请求方提供的任何
+    // origin——「不信任外部 returnOrigin」纪律不变。
+    const landingFor = (kind: OAuthStateKind | undefined) =>
+      kind === 'github-connection'
+        ? { path: '/app/project/new', flag: '&github=connection' }
+        : { path: '/app/resources/providers', flag: '' };
+    const landing = (
+      origin: string | undefined,
+      kind: OAuthStateKind | undefined,
+      result: string,
+    ) => {
+      const target = landingFor(kind);
+      return c.redirect(`${origin ?? ''}${target.path}?${result}${target.flag}`, 302);
+    };
+    // #243：state 缺/过期不再裸 400——统一 302 reason=state，与
+    // denied/exchange 同律（web 着陆面给可重试路径）。
     const badStateLanding = (err: OAuthFlowError) =>
-      landing(err.origin, 'oauth=error&reason=state');
+      landing(err.origin, err.kind, 'oauth=error&reason=state');
     // 用户在 provider 站拒绝（GitHub：?error=access_denied&state=…，无 code）。
     if (c.req.query('error') !== undefined || code === undefined || code === '') {
       try {
-        const { origin } = abortOAuthCallback(oauthDeps(), state);
-        return landing(origin, 'oauth=error&reason=denied');
+        const { origin, kind } = abortOAuthCallback(oauthDeps(), state);
+        return landing(origin, kind, 'oauth=error&reason=denied');
       } catch (err) {
         if (err instanceof OAuthFlowError && err.reason === 'bad-state') {
           return badStateLanding(err);
@@ -1331,21 +1351,62 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       }
     }
     try {
-      const { origin, presetId } = await completeOAuthCallback(oauthDeps(), {
+      const outcome = await completeOAuthCallback(oauthDeps(), {
         code,
         state,
         createdBy: ctx.user.id,
       });
-      return landing(origin, `oauth=connected&provider=${presetId}`);
+      const result =
+        outcome.kind === 'provider'
+          ? `oauth=connected&provider=${outcome.presetId}`
+          : 'oauth=connected';
+      return landing(outcome.origin, outcome.kind, result);
     } catch (err) {
       if (err instanceof OAuthFlowError) {
         if (err.reason === 'exchange-failed' && err.origin !== undefined) {
-          return landing(err.origin, 'oauth=error&reason=exchange');
+          return landing(err.origin, err.kind, 'oauth=error&reason=exchange');
         }
         if (err.reason === 'bad-state') return badStateLanding(err);
       }
       throw err;
     }
+  });
+
+  // —— GitHub 连接认证面（spec 12 / #361 G2-T4，[设计] 面：todos.dev 此面
+  // wire 未采，INFERRED_ROUTES 登记）。authorize = state 签发（github-
+  // connection 族——callback 按 kind 分支落回新建项目页）；GET connection =
+  // 认证状态读面（login/scope，token 位永不出现，02 §8）；DELETE = 断开
+  // （删行幂等，DAO 单点 services/github-connection.ts）。
+  app.post('/api/teams/:id/github/oauth/authorize', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    // returnOrigin 纪律同 provider 族 authorize（Origin 头随 state 绑定）。
+    const origin = c.req.header('origin') ?? new URL(c.req.url).origin;
+    try {
+      const { authorizationUrl } = startGithubConnectionAuthorize(oauthDeps(), {
+        teamId,
+        origin,
+      });
+      return c.json({ authorizationUrl });
+    } catch (err) {
+      if (err instanceof OAuthFlowError && err.reason === 'not-configured') {
+        throw new HttpError(400, err.message);
+      }
+      throw err;
+    }
+  });
+
+  app.get('/api/teams/:id/github/connection', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    return c.json(readGithubConnectionStatus({ db: ctx.db, box: ctx.secretBox }, teamId));
+  });
+
+  app.delete('/api/teams/:id/github/connection', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    deleteGithubConnection({ db: ctx.db, box: ctx.secretBox }, teamId);
+    return c.body(null, 204);
   });
 
   /** GET /api/github/repos?q=（spec 12 / #359：新建项目 repo picker 数据面）。

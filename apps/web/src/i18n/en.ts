@@ -475,6 +475,14 @@ export const EN: Record<string, string> = {
   '授权已被取消。': 'Authorization was cancelled.',
   '令牌交换失败，请稍后重试。': 'Token exchange failed — please try again.',
   '连接已过期，请重新发起。': 'Connection expired — please start it again.',
+  // #361 GitHub 连接认证 + repo picker（spec 12 G2-T4；错误三译复用 #243 键）
+  '认证 GitHub': 'Connect GitHub',
+  '选择 GitHub 仓库': 'Choose a GitHub repository',
+  搜索仓库: 'Search repositories',
+  没有匹配的仓库: 'No matching repositories',
+  断开连接: 'Disconnect',
+  已连接: 'Connected',
+  '手动输入 owner/repo': 'Enter owner/repo manually',
   // wayfinder #181 add-machine dialog family (r2 11b verbatim copy; the
   // command strings themselves stay untranslated — brand slots via BRAND)
   '有条件时优先使用云主机：笔记本会休眠或断网，云主机常在线，构建更稳定。':

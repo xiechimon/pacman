@@ -1,12 +1,12 @@
 # 本地仓库项目与 GitHub 连接(server API 面)
 
-用户把本机既有 git 仓库接进 pacman 建项目(spec 12 三形态之一),以及 GitHub 认证选仓的连接数据面。G2-T1(#359)落地 server 半:local 路径三态校验、github_connection 密封表、repo picker 代理端点。web 表单入口已随 G2-T3 落地,UI 面验证走 [project-new-form.md](./project-new-form.md);OAuth 认证链归 G2-T4,落地后回补。
+用户把本机既有 git 仓库接进 pacman 建项目(spec 12 三形态之一),以及 GitHub 认证选仓的连接数据面。G2-T1(#359)落地 server 半:local 路径三态校验、github_connection 密封表、repo picker 代理端点。web 表单入口已随 G2-T3(#360)落地,UI 面验证走 [project-new-form.md](./project-new-form.md);OAuth 认证 + picker UI 面已随 G2-T4(#361)落地,见 [github-oauth-picker.md](./github-oauth-picker.md)——本条目只留 API 数据面。
 
 ## Sub-features
 
 - `local-create` — `POST /api/projects {kind:'local', localPath}`:server 端 `~` 展开 + 存在性 + git 工作树判定,任一不过 400;通过 201,record/DB 行带规范化 localPath。
 - `hosted-compat` — 既有 `repoKind:'hosted'` 创建面不回归(bare repo provisioning + cloneUrl)。
-- `repos-proxy` — `GET /api/github/repos?q=`:token 取自 github_connection(SecretBox 密文),未连接 404;连接后代理 GitHub `/user/repos`(连接写入面归 G2-T4)。
+- `repos-proxy` — `GET /api/github/repos?q=`:token 取自 github_connection(SecretBox 密文),未连接 404;连接后代理 GitHub `/user/repos`(连接写入面见 github-oauth-picker.md)。
 - `connection-table` — github_connection 表形:teamId 单行、accessToken 只有 cipher 列位、无 plaintext token 列。
 
 ## How to get to it (user POV)
@@ -24,7 +24,7 @@ Preconditions: `launch.mjs` 已起隔离栈(全新库);proxy env 全 unset(回�
 
 ## Gotchas
 
-- **本条目 = server API 面**:web 表单面在 [project-new-form.md](./project-new-form.md)(G2-T3 已落地);local clone 执行面(daemon)归 G2-T2、OAuth+picker 归 G2-T4——声称覆盖时点名所属面。
+- **本条目 = server API 数据面**:web 表单面在 [project-new-form.md](./project-new-form.md)(G2-T3 已落地);OAuth+picker live 面在 [github-oauth-picker.md](./github-oauth-picker.md)(G2-T4 已落地);local clone 执行面(daemon)归 G2-T2——声称覆盖时点名所属面。
 - `~` 展开走 server 进程 HOME——live probe 不改 HOME(集成测 `apps/server/test/project-local.test.ts` 以注入 homeDir/改 env 覆盖)。
-- repos 代理「已连接」路径 live 验需要 github_connection 行;G2-T4 前无 REST 写入面,勿手工 INSERT 冒充(密封纪律的进程内证明在 `apps/server/test/github-connection.test.ts`:密文列扫描 + Authorization 头唯一消费位断言)。
+- repos 代理「已连接」路径 live 验需要 github_connection 行;REST 写入面已随 G2-T4 落地(authorize → callback),但走通需真 GitHub App 凭证 + 人环授权,勿手工 INSERT 冒充(密封纪律的进程内证明在 `apps/server/test/github-connection.test.ts` 与 `github-oauth.test.ts`:密文列扫描 + Authorization 头唯一消费位 + token 永不进 wire 断言)。
 - 8791/5273 常被别的 lane 占用——换 `VERIFY_PORT`/`VERIFY_WEB_PORT`,不杀。

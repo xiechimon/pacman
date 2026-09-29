@@ -13,6 +13,7 @@ import { useApiMutations, useProviders } from '../api/hooks.js';
 import { mapProviders } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
 import { EllipsisVertical, Layers, Sparkle } from '../icons/index.js';
 import { CreateProviderDialog } from './create-provider-dialog.js';
@@ -46,15 +47,8 @@ export function ProvidersPage() {
     const oauth = searchParams.get('oauth');
     if (oauth === null) return;
     if (oauth === 'error') {
-      const reason = searchParams.get('reason');
-      // #243 reason 三路分译；未知值落 exchange 兜底（与 #231 原else 行为同）。
-      const copy =
-        reason === 'denied'
-          ? t('授权已被取消。')
-          : reason === 'state'
-            ? t('连接已过期，请重新发起。')
-            : t('令牌交换失败，请稍后重试。');
-      setConnectError(copy);
+      // #243 reason 三路分译单源 = i18n/oauth-reason.ts（#361 两着陆面共用）。
+      setConnectError(oauthReasonCopy(searchParams.get('reason'), t));
       setCreateOpen(true);
     }
     const next = new URLSearchParams(searchParams);

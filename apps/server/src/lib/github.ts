@@ -168,6 +168,20 @@ export async function githubUserRepos(
   return repos;
 }
 
+/** 认证用户 login（`GET /user`；spec 12 / #361 connection 族 callback 的
+ * github_connection.login 读面）。token 仅进 Authorization 头（never URL /
+ * 错误 message）；应答缺 login → 502。 */
+export async function githubUserLogin(fetchImpl: FetchLike, token: string): Promise<string> {
+  const data = (await readJson(fetchImpl, 'https://api.github.com/user', {
+    ...API_HEADERS,
+    authorization: `Bearer ${token}`,
+  })) as { login?: unknown };
+  if (typeof data.login !== 'string' || data.login === '') {
+    throw new HttpError(502, 'github user response missing login');
+  }
+  return data.login;
+}
+
 // —— OAuth token 交换面（#231 握手：callback 收码后唯一一次出站）———————————
 
 export interface OAuthExchangeInput {
@@ -179,13 +193,22 @@ export interface OAuthExchangeInput {
   redirectUri: string;
 }
 
+/** token 交换应答（#361：granted scope 随 access_token 一并回——GitHub
+ * OAuth App 的 token 应答带 scope 字段（逗号分隔 granted 面），订阅族不消费、
+ * connection 族落 github_connection.scope 列）。 */
+export interface OAuthTokenExchange {
+  accessToken: string;
+  /** 上游应答原样（缺字段 = ''）。 */
+  scope: string;
+}
+
 /** 授权码 → access_token。错误映射（callback 路由把 502 族转译成 302 error
  * 回跳，services/oauth.ts）：fetch reject/超时 → 502 unreachable；上游非 ok
  * → 502 upstream <status>；200 缺 access_token → 502 no access_token。 */
 export async function exchangeOAuthCode(
   fetchImpl: FetchLike,
   input: OAuthExchangeInput,
-): Promise<string> {
+): Promise<OAuthTokenExchange> {
   const body = new URLSearchParams({
     client_id: input.clientId,
     client_secret: input.clientSecret,
@@ -221,5 +244,6 @@ export async function exchangeOAuthCode(
   if (typeof token !== 'string' || token === '') {
     throw new HttpError(502, 'oauth token exchange returned no access_token');
   }
-  return token;
+  const scope = (payload as { scope?: unknown }).scope;
+  return { accessToken: token, scope: typeof scope === 'string' ? scope : '' };
 }

@@ -17,6 +17,7 @@ import {
   boardDarkFresh,
   boardDefault,
   boardFailed,
+  boardGithubPicker,
   boardProjectPicker,
   boardR8Overlay,
   boardWithProbe,
@@ -109,6 +110,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #176 new-task dialog 项目选择器:命名场景(无 capture)——boardDefault
       // 面加 projectNames 双项目,e2e 钉选择器行为;无 fixture 行。
       'newtask-projects': boardProjectPicker,
+      // #361 新建项目 GitHub repo picker：命名场景（无 capture，
+      // newtask-projects 先例）——boardDefault 面 + 已连接 github fixture，
+      // e2e 钉 picker 搜索/单选回填/断开/着陆参行为。
+      'github-picker': boardGithubPicker,
       // detail (r7 16–17, 23, 26–28, 36, 38)
       '16': detailPlanning,
       '16d': detailConfirm(true),

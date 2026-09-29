@@ -281,6 +281,41 @@ export const boardProjectPicker: FixtureSet = {
   },
 };
 
+/** #361 GitHub repo picker 命名场景（无 capture，newtask-projects 先例）：
+ *  boardDefault 面 + 已连接 github fixture——picker 行 = shared
+ *  GithubRepoSummary 封套同形（spec 12 数据契约），搜索/单选/断开的面数据源。 */
+export const boardGithubPicker: FixtureSet = {
+  ...boardDefault,
+  github: {
+    connected: true,
+    login: 'octocat',
+    scope: 'read:user,repo',
+    repos: [
+      {
+        id: 901,
+        owner: 'octocat',
+        name: 'hello-world',
+        full_name: 'octocat/hello-world',
+        private: false,
+      },
+      {
+        id: 902,
+        owner: 'octocat',
+        name: 'spoon-knife',
+        full_name: 'octocat/spoon-knife',
+        private: true,
+      },
+      {
+        id: 903,
+        owner: 'xiechimon',
+        name: 'pacman',
+        full_name: 'xiechimon/pacman',
+        private: true,
+      },
+    ],
+  },
+};
+
 /** Board with the probe in the given phase (r7 02/22/21/33 …). The dark
  *  board pair (02/02b) shows `9 分钟前` on the confirm card → captured
  *  ~13:35 with phaseAt 13:26. Done-phase boards (35/35d) list #9 ahead of

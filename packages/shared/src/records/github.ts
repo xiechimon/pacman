@@ -24,3 +24,25 @@ export const githubReposResponseSchema = z.object({
   repos: z.array(githubRepoSummarySchema),
 });
 export type GithubReposResponse = z.infer<typeof githubReposResponseSchema>;
+
+/** GitHub 连接认证族描述符（spec 12 / #361 G2-T4）：与 #231 订阅族
+ * （records/provider.ts OAUTH_FAMILIES github-copilot）同 GitHub OAuth App
+ * 端点，scope 加 repo（picker 需读私仓列表；read:user 供 GET /user 取
+ * login）。不并入 OAUTH_FAMILIES：该表驱动 providers 页连接段渲染
+ * （#222 死钮律），且落点语义不同——本族 callback 落 github_connection 行
+ * （DAO = services/github-connection.ts），不建 provider 行。 */
+export const GITHUB_CONNECTION_OAUTH = {
+  authorizeUrl: 'https://github.com/login/oauth/authorize',
+  tokenUrl: 'https://github.com/login/oauth/access_token',
+  scope: 'read:user repo',
+} as const;
+
+/** `GET /api/teams/{id}/github/connection` 响应封套（#361 认证状态读面）：
+ * 仅 login/scope——无 token/密文位（02 §8 凭证只写不读出 wire）。未连接 =
+ * `{connected:false}`（login/scope 缺席）。 */
+export const githubConnectionStatusSchema = z.object({
+  connected: z.boolean(),
+  login: z.string().optional(),
+  scope: z.string().optional(),
+});
+export type GithubConnectionStatus = z.infer<typeof githubConnectionStatusSchema>;

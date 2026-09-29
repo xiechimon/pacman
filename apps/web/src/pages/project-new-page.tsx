@@ -2,24 +2,39 @@
 // placeholder tile + caption, 项目名称 input, 仓库 selector row, full-width
 // 创建项目 primary (disabled until the form is filled, r2 07 muted indigo).
 // #83 (M5) live：名称受控 + 创建 = POST /api/projects → 跳项目页。
-// #360 (spec 12)：仓库 selector 两行——「GitHub 仓库」（触发行换 owner/repo
-// 输入，手动面；OAuth picker 归 G2-T4）与「本地文件夹」（触发行换绝对路径
-// 输入，server validateLocalRepoPath 三态校验，400 reason 分类落红色错误
-// 行）。hosted 行创建入口移除：未动表单提交 = 无 repo 普通项目（kind 缺省，
-// server REST / MCP 仍接受 hosted，存量项目不动）。名称回填：local =
-// basename(localPath)，github = repo 段；仅当名称为空或仍等于上次回填值时
-// 覆盖（用户手改过则不动）。弹层家族法 #67/#127：OverlayMount +
-// ClickCatcher + Escape（TasksMenuButton/#176 chip-popover 先例）。提交
-// body 单源 = shared createProjectBodySchema（kind 契约名；github 提交闸
-// 与 server 400 门同吃 isGithubRepoRef）。
+// #360 (spec 12 G2-T3)：仓库 selector 两行——「GitHub 仓库」（认证门控
+// picker 面见下方 #361 段）与「本地文件夹」（触发行换绝对路径输入，server
+// validateLocalRepoPath 三态校验，400 reason 分类落红色错误行）。hosted 行
+// 创建入口移除：未动表单提交 = 无 repo 普通项目（kind 缺省，server REST /
+// MCP 仍接受 hosted，存量项目不动）。名称回填：local = basename(localPath)，
+// github = repo 段；仅当名称为空或仍等于上次回填值时覆盖（用户手改过则
+// 不动）。弹层家族法 #67/#127：OverlayMount + ClickCatcher + Escape
+// （TasksMenuButton/#176 chip-popover 先例）。提交 body 单源 = shared
+// createProjectBodySchema（kind 契约名；github 提交闸与 server 400 门同吃
+// isGithubRepoRef）。
+// #361 (spec 12 G2-T4)：GitHub 仓库 选态成为认证门控的 picker 面，三面：
+// - 未认证 = 「认证 GitHub」钮（live = POST github/oauth/authorize → 同页签
+//   跳走，#231 同律；fixture = accept 律本地翻转）+「手动输入 owner/repo」
+//   兜底链接（公开仓免认证 / OAuth 未配置两降级入口）；
+// - 已认证 = picker 触发钮（选中 full_name 回填走 trigger-label 律）+ 锚定
+//   picker 弹层（搜索 / 仓库行 / 断开钮 / 手动兜底 = 组织仓不在列表降级
+//   入口，#67/#127 家族律）；live 首取在途 = 禁用占位触发行（不闪认证钮
+//   误导致点击）；
+// - 手动兜底 = owner/repo input（isGithubRepoRef 提交闸 + repo 段名称回填
+//   律不动）。
+// 着陆参 ?oauth=connected|error&reason=…&github=connection（callback 302
+// 回本页，server 按 state kind 分支落点）：connected → 复位 github 选态 +
+// picker 自动开（同页签跳走期间表单态已丢，选态从着陆参重建）；error →
+// reason 三译（#243 词汇不变）落内联错误行。读后清参，刷新不重放。
 
-import { type CreateProjectBody, isGithubRepoRef } from '@pacman/shared';
-import { useCallback, useRef, useState } from 'react';
+import { type CreateProjectBody, type GithubRepoSummary, isGithubRepoRef } from '@pacman/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { ApiError } from '../api/client.js';
-import { useApiMutations } from '../api/hooks.js';
+import { useApiMutations, useGithubConnection, useGithubRepos } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronRight, ImageFrame } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
@@ -39,9 +54,18 @@ function pathBasename(raw: string): string {
   return segment === '.' || segment === '..' ? '' : segment;
 }
 
+/** 重开仓库种类菜单的 swap 钮（github 三面共用，#305 原形不动）。 */
+function RepoSwapButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button type="button" className="prj-new-repo-swap" aria-label={label} onClick={onClick}>
+      <ChevronRight width={14} height={14} />
+    </button>
+  );
+}
+
 export function ProjectNewPage() {
   const { t } = useI18n();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   const { live, teamId } = useLiveData();
   const navigate = useNavigate();
@@ -51,13 +75,67 @@ export function ProjectNewPage() {
   const [githubRepo, setGithubRepo] = useState('');
   const [localPath, setLocalPath] = useState('');
   const [repoOpen, setRepoOpen] = useState(false);
+  // #361 github 面状态位：manualRepo = 手动兜底 input 面；pickerOpen =
+  // picker 弹层；oauthError = 着陆 reason 三译 / authorize 失败原文（内联行）。
+  const [manualRepo, setManualRepo] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+  const [repoQuery, setRepoQuery] = useState('');
+  // fixture accept 律本地覆盖（null = 无覆盖，跟 scenario fixture；live 面
+  // 不用——连接态 = status 读面真值）。
+  const [fixtureAuth, setFixtureAuth] = useState<boolean | null>(null);
   // 上次自动回填值——名称覆盖判定「为空或仍等于上次回填值」的后半（spec
   // 12）；用户手改（≠ 上次回填且非空）后路径/repo 变化不再覆盖。ref 即可：
   // 只参与事件时判定，不进渲染面。
   const autoName = useRef('');
   const closeRepo = useCallback(() => setRepoOpen(false), []);
+  const closePicker = useCallback(() => setPickerOpen(false), []);
   useEscapeClose(repoOpen, closeRepo);
+  useEscapeClose(pickerOpen, closePicker);
 
+  // OAuth callback 着陆参（?oauth=…&github=connection——connection 族专属
+  // 旗标，provider 族着陆不带、providers-page 消费面互不串）。只删
+  // oauth/reason/github 三键——scenario 等其余参保留（providers-page 同律）。
+  useEffect(() => {
+    const oauth = searchParams.get('oauth');
+    if (oauth === null || searchParams.get('github') !== 'connection') return;
+    setRepoSel('github');
+    setManualRepo(false);
+    if (oauth === 'connected') {
+      setOauthError(null);
+      setPickerOpen(true);
+    } else {
+      // #243 reason 三路分译单源 = i18n/oauth-reason.ts（providers-page 共用）。
+      setOauthError(oauthReasonCopy(searchParams.get('reason'), t));
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('oauth');
+    next.delete('reason');
+    next.delete('github');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, t]);
+
+  const githubSelected = repoSel === 'github';
+  // 连接态：live = GET connection 封套（github 选态才拉，页面挂载不空转）；
+  // fixture = scenario 数据 + accept 律本地覆盖。live 首取在途 = 未决态
+  // （禁用占位触发行，不闪认证钮误导点击；refetch 期 data 在场不回落）。
+  const connectionQ = useGithubConnection(teamId, live && githubSelected);
+  const connectionPending = live && githubSelected && connectionQ.isPending;
+  const connected = live
+    ? (connectionQ.data?.connected ?? false)
+    : (fixtureAuth ?? fixture.github?.connected === true);
+  const login = live ? connectionQ.data?.login : fixture.github?.login;
+  // picker 仓库行：live 于已认证 picker 面在途才拉；搜索过滤本地做
+  // （单页 100 条一次取回，server q 为同值兜底；>100 仓的列表外命中走
+  // 手动兜底——分页归后续需要时再开，T1 代理面同律）。
+  const reposQ = useGithubRepos(live && githubSelected && connected && !manualRepo);
+  const repos = live ? (reposQ.data?.repos ?? []) : (fixture.github?.repos ?? []);
+  const query = repoQuery.trim().toLowerCase();
+  const hits =
+    query === '' ? repos : repos.filter((r) => r.full_name.toLowerCase().includes(query));
+
+  // 上次自动回填值——名称覆盖判定「为空或仍等于上次回填值时覆盖」的后半
+  // （spec 12）；用户手改（≠ 上次回填且非空）后路径/repo 变化不再覆盖。
   const backfillName = (next: string) => {
     if (next === '') return;
     if (name !== '' && name !== autoName.current) return;
@@ -75,15 +153,47 @@ export function ProjectNewPage() {
     backfillName(pathBasename(value));
   };
 
+  // picker 单选：回填 owner/repo（trigger 面显示）+ 项目名（回填律）+ 收面板。
+  const pickRepo = (repo: GithubRepoSummary) => {
+    setGithubRepo(repo.full_name);
+    backfillName(repo.name);
+    setPickerOpen(false);
+    setOauthError(null);
+  };
+
+  const startAuth = () => {
+    setOauthError(null);
+    if (live) {
+      mutations.startGithubOAuth.mutate(undefined, {
+        // 成功 = 同页签跳授权页；页面随整页导航退场（startProviderOAuth 同律）。
+        onSuccess: (data) => window.location.assign(data.authorizationUrl),
+        onError: (err) => setOauthError(err.message),
+      });
+    } else {
+      setFixtureAuth(true); // fixture accept 律：点认证 = 认证通过
+    }
+  };
+
+  const disconnect = () => {
+    setPickerOpen(false);
+    if (live) {
+      mutations.disconnectGithub.mutate(); // invalidate → status 读面收敛回未认证面
+    } else {
+      setFixtureAuth(false);
+    }
+  };
+
   // 提交闸：github = owner/repo 过 server 同源校验（isGithubRepoRef，shared
-  // 单源）；local = 路径非空（三态真伪只有 server fs 能判，400 走错误行）；
-  // none = 无 repo 项目仅需名称。无效值不发请求，server 400 兜底不变。
+  // 单源——picker 选中回填的 full_name 天然过闸，#361 不动此律）；local =
+  // 路径非空（三态真伪只有 server fs 能判，400 走错误行）；none = 无 repo
+  // 项目仅需名称。无效值不发请求，server 400 兜底不变。
   const formOk =
     repoSel === 'github'
       ? isGithubRepoRef(githubRepo.trim())
       : repoSel === 'local'
         ? localPath.trim() !== ''
         : true;
+  const showGithubField = githubSelected && !manualRepo;
 
   // local 400 错误行：仅当「本次提交的路径仍是输入框现值」时呈现——编辑
   // 路径即撤（陈旧错误不残留）。reason 分类 = server validateLocalRepoPath
@@ -143,25 +253,70 @@ export function ProjectNewPage() {
         </label>
         <div className="prj-new-repo-field">
           {repoSel === 'github' ? (
-            <>
-              <input
-                id="prj-new-repo"
-                className="prj-new-input prj-new-repo-input"
-                type="text"
-                placeholder="owner/repo"
-                aria-label={t('GitHub 仓库')}
-                value={githubRepo}
-                onChange={(e) => onGithubRepoChange(e.target.value)}
-              />
-              <button
-                type="button"
-                className="prj-new-repo-swap"
-                aria-label={t('选择仓库')}
-                onClick={() => setRepoOpen(true)}
-              >
-                <ChevronRight width={14} height={14} />
-              </button>
-            </>
+            manualRepo ? (
+              <>
+                <input
+                  id="prj-new-repo"
+                  className="prj-new-input prj-new-repo-input"
+                  type="text"
+                  placeholder="owner/repo"
+                  aria-label={t('GitHub 仓库')}
+                  value={githubRepo}
+                  onChange={(e) => onGithubRepoChange(e.target.value)}
+                />
+                <RepoSwapButton label={t('选择仓库')} onClick={() => setRepoOpen(true)} />
+              </>
+            ) : connectionPending ? (
+              <>
+                {/* live 首取在途：禁用占位（连接态未决，不闪认证钮）。 */}
+                <button type="button" id="prj-new-repo" className="prj-new-repo" disabled>
+                  <span className="prj-new-repo-placeholder">{t('选择仓库')}</span>
+                </button>
+                <RepoSwapButton label={t('选择仓库')} onClick={() => setRepoOpen(true)} />
+              </>
+            ) : connected ? (
+              <>
+                <button
+                  type="button"
+                  id="prj-new-repo"
+                  className="prj-new-repo"
+                  aria-haspopup="listbox"
+                  aria-expanded={pickerOpen}
+                  onClick={() => {
+                    setRepoOpen(false);
+                    setPickerOpen((value) => !value);
+                  }}
+                >
+                  <span
+                    className={
+                      githubRepo === '' ? 'prj-new-repo-placeholder' : 'prj-new-repo-selected'
+                    }
+                  >
+                    {githubRepo === '' ? t('选择 GitHub 仓库') : githubRepo}
+                  </span>
+                  <ChevronRight width={14} height={14} />
+                </button>
+                <RepoSwapButton
+                  label={t('选择仓库')}
+                  onClick={() => {
+                    setPickerOpen(false);
+                    setRepoOpen(true);
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  id="prj-new-repo"
+                  className="prj-new-gh-auth"
+                  onClick={startAuth}
+                >
+                  {t('认证 GitHub')}
+                </button>
+                <RepoSwapButton label={t('选择仓库')} onClick={() => setRepoOpen(true)} />
+              </>
+            )
           ) : repoSel === 'local' ? (
             <>
               <input
@@ -208,6 +363,7 @@ export function ProjectNewPage() {
                 aria-selected={repoSel === 'github'}
                 onClick={() => {
                   setRepoSel('github');
+                  setPickerOpen(false);
                   closeRepo();
                 }}
               >
@@ -237,7 +393,84 @@ export function ProjectNewPage() {
               </button>
             </div>
           </OverlayMount>
+          {/* picker 弹层（#361）：已认证面专属——头部（已连接 login + 断开钮）/
+              搜索 / 仓库行（单选即回填收面板，aria-selected ≡ check 律）/
+              手动兜底链接。plate = prj-new-repo-menu 同 family recipe。 */}
+          <OverlayMount open={showGithubField && connected && pickerOpen}>
+            <ClickCatcher onClose={closePicker} />
+            <div className="prj-new-gh-picker anim-pop">
+              <div className="prj-new-gh-picker-head">
+                <span className="prj-new-gh-login">
+                  {login === undefined || login === '' ? t('已连接') : `${t('已连接')} · ${login}`}
+                </span>
+                <button type="button" className="prj-new-gh-disconnect" onClick={disconnect}>
+                  {t('断开连接')}
+                </button>
+              </div>
+              <input
+                className="prj-new-gh-search"
+                type="text"
+                placeholder={t('搜索仓库')}
+                aria-label={t('搜索仓库')}
+                value={repoQuery}
+                onChange={(e) => setRepoQuery(e.target.value)}
+              />
+              {hits.length === 0 ? (
+                // live 取回在途不闪空面文案（pending ≠ 无命中）。
+                live && reposQ.isPending ? null : (
+                  <div className="prj-new-gh-empty">{t('没有匹配的仓库')}</div>
+                )
+              ) : (
+                <div className="prj-new-gh-list" role="listbox" aria-label={t('GitHub 仓库')}>
+                  {hits.map((repo) => (
+                    <button
+                      type="button"
+                      key={repo.id}
+                      className="prj-new-gh-row"
+                      role="option"
+                      aria-selected={githubRepo === repo.full_name}
+                      onClick={() => pickRepo(repo)}
+                    >
+                      {repo.full_name}
+                      {githubRepo === repo.full_name && (
+                        <span className="prj-new-gh-row-check">
+                          <Check width={14} height={14} />
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {live && reposQ.isError ? (
+                <div className="prj-new-gh-error" role="alert">
+                  {(reposQ.error as Error).message}
+                </div>
+              ) : null}
+              <button
+                type="button"
+                className="prj-new-gh-link"
+                onClick={() => {
+                  setPickerOpen(false);
+                  setManualRepo(true);
+                }}
+              >
+                {t('手动输入 owner/repo')}
+              </button>
+            </div>
+          </OverlayMount>
         </div>
+        {/* github 非手动面的内联错误行（着陆 reason 三译 / authorize 400
+            原文）与未认证面手动兜底链接（连接态未决时不出，随占位面收敛）。 */}
+        {showGithubField && oauthError !== null && (
+          <div className="prj-new-gh-error" role="alert">
+            {oauthError}
+          </div>
+        )}
+        {showGithubField && !connected && !connectionPending && (
+          <button type="button" className="prj-new-gh-link" onClick={() => setManualRepo(true)}>
+            {t('手动输入 owner/repo')}
+          </button>
+        )}
         {localErrorText !== null && (
           <div className="prj-new-error" role="alert">
             {localErrorText}

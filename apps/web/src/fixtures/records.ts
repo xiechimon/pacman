@@ -7,7 +7,8 @@
 // Timestamps are epoch milliseconds (02 §6.2 schedule record precedent).
 
 // phase 九值枚举单源 = @pacman/shared（02 §4.1；#65 M1 收口），本地不再定义。
-import { PHASE_VALUES, type Phase } from '@pacman/shared';
+// GithubRepoSummary = repo picker 行封套单源（spec 12 数据契约，#359）。
+import { type GithubRepoSummary, PHASE_VALUES, type Phase } from '@pacman/shared';
 
 export type { Phase };
 export { PHASE_VALUES };
@@ -286,6 +287,19 @@ export interface FixtureSet {
    *  full-content 总管设置 view, verbatim from the r5 100–116 captures.
    *  Board scenarios without a chief surface leave it absent. */
   chief?: ChiefContent;
+  /** 新建项目 GitHub 连接面（#361 G2-T4）：fixture 面的连接状态 + picker
+   *  仓库行（live 面 = GET connection / GET /api/github/repos）。absent =
+   *  未连接（认证钮面）。 */
+  github?: GithubFixture;
+}
+
+/** GitHub 连接 fixture（#361）：connected 驱动认证钮/picker 面切换；
+ *  repos = picker 行（shared GithubRepoSummary 封套同形）。 */
+export interface GithubFixture {
+  connected: boolean;
+  login?: string;
+  scope?: string;
+  repos?: GithubRepoSummary[];
 }
 
 /** Skill row (r7 08): name + one-line description. */
