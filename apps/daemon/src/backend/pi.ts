@@ -165,13 +165,16 @@ export function appendSkillsCatalog(base: string | undefined, catalog: string): 
 /** models.json custom provider 占位 key（真 key 走 setRuntimeApiKey 内存态）。 */
 const MODELS_JSON_KEY_PLACEHOLDER = 'per-step';
 
-/** 自定义端点模型默认值 [设计]（contextWindow 128k = r3 §2 展示默认）。 */
+/** 自定义端点模型默认值 [设计]（contextWindow 128k = r3 §2 展示默认）。
+ * maxTokens 16k：思考型模型单回合推理可占 1-6k token，4096 会在推理阶段
+ * 就把输出额度耗尽——回合以「无工具调用、无正文」收场，与「模型主动不作
+ * 为」不可分辨。 */
 const CUSTOM_MODEL_DEFAULTS = {
   reasoning: false,
   input: ['text'] as ('text' | 'image')[],
   cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
   contextWindow: 128_000,
-  maxTokens: 4_096,
+  maxTokens: 16_384,
 };
 
 interface PiMessageLike {
