@@ -1,9 +1,10 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// Issue #123 acceptance (dogfood 观感三项, claude.ai 参照面): the sidebar reads
-// as its own chrome layer against the canvas (background tone step; its seam
-// is a drawn 1px divider-token line and the floating shadow is gone per
-// the #135 裁决 v2 revision); the horizontal board scroller keeps its
+// Issue #123 acceptance (dogfood 观感三项, claude.ai 参照面): the sidebar's
+// seam is a drawn 1px divider-token line and the floating shadow is gone per
+// the #135 裁决 v2 revision — #390 同底律 supersedes #123's tone step: the
+// sidebar shares the main-area surface token, the seam alone carries the
+// layer separation; the horizontal board scroller keeps its
 // scroll capability with the track hidden (scrollbar-width: none +
 // ::-webkit-scrollbar display: none). Issue #139 acceptance (边框体系统一):
 // the board card family and the account popover share ONE single-source edge
@@ -120,7 +121,7 @@ for (const theme of ['light', 'dark'] as const) {
     expect(menu.shadow).toContain(menu.edgeShadow);
   });
 
-  test(`sidebar reads as its own layer, seam drawn in the divider token (${theme})`, async ({ page }) => {
+  test(`sidebar shares the main-area surface, seam drawn in the divider token (${theme})`, async ({ page }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app?scenario=01');
 
@@ -140,10 +141,10 @@ for (const theme of ['light', 'dark'] as const) {
         shadow: cs.boxShadow,
       };
     });
-    // background hierarchy: the sidebar keeps its own tone step off the
-    // canvas (#123), and the #135 裁决 v2 draws the seam again — 1px in the
-    // topbar-divider token, the floating soft shadow gone
-    expect(probe.sidebarBg).not.toBe(probe.mainBg);
+    // #390 同底律: the sidebar rides the same surface token as the main
+    // area — the #135 裁决 v2 seam (1px in the topbar-divider token, the
+    // floating soft shadow gone) alone carries the layer separation
+    expect(probe.sidebarBg).toBe(probe.mainBg);
     expect(probe.borderRight).toBe('1px');
     expect(probe.seamColor).toBe(probe.topbarBorderColor);
     expect(probe.shadow).toBe('none');

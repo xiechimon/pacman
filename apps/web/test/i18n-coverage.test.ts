@@ -24,7 +24,12 @@
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
-import { CHIEF_REBIND_CONFIRM_COPY, NOTIFICATION_BANNER_COPY, SKILL_PAGE_COPY } from '@pacman/shared';
+import {
+  CHIEF_REBIND_CONFIRM_COPY,
+  LOCAL_ERROR_REASON_COPY,
+  NOTIFICATION_BANNER_COPY,
+  SKILL_PAGE_COPY,
+} from '@pacman/shared';
 import { createScanner, LanguageVariant, SyntaxKind } from 'typescript/unstable/ast';
 import { describe, expect, it } from 'vitest';
 import { PROBE_TOOL_CALL_LABEL } from '../src/fixtures/fixtures.js';
@@ -55,6 +60,9 @@ const COMPUTED_KEYS = new Set<string>([
   // directoryHint 的 {dir} 由 SKILLS_DIR_DEFAULT 插值），不作字面量出现。
   SKILL_PAGE_COPY.empty,
   SKILL_PAGE_COPY.directoryHint,
+  // #386: local 400 分译键 canon = shared LOCAL_ERROR_REASON_COPY（reason code
+  // → zh 键映射，页面经常量查 t()），不作字面量出现。
+  ...Object.values(LOCAL_ERROR_REASON_COPY),
 ]);
 
 /** Data layer: capture-verbatim user/agent content, never translated.

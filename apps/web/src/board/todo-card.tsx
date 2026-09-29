@@ -23,6 +23,7 @@ import {
   SearchWhite,
   UserCircle,
 } from '../icons/index.js';
+import { Avatar } from '../ui/avatar.js';
 import { Button } from '../ui/button.js';
 import { cardAction } from './columns.js';
 import { relativeTime } from './rel-time.js';
@@ -94,7 +95,8 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName }: TodoCar
             // owner placeholder while no agent run exists (r7 22/22d)
             <UserCircle width={20} height={20} />
           ) : (
-            <img src="/avatar-robot-1.svg" alt="" />
+            // #387: 执行者头像按 agent displayName 种子生成;未指派退静态资产
+            <Avatar name={todo.agent?.displayName} fallback="/avatar-robot-1.svg" />
           )}
           {badge === 'idle' && (
             <span className="todo-agent-badge todo-agent-badge--idle">

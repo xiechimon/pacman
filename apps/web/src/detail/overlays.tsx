@@ -23,6 +23,7 @@ import {
 } from '../chief/chief-agent-dialog.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChevronRight, X } from '../icons/index.js';
+import { Avatar } from '../ui/avatar.js';
 import { Button } from '../ui/button.js';
 
 // #168: the rerun/reuse pair joins the dialog family close law (DialogShell
@@ -118,13 +119,15 @@ function AgentRow({
   display,
   onPick,
 }: {
-  display: { name: string; model: string };
+  /** seed = #387 头像种子:真实 agent 名才生成 dicebear 头像;未指派(占位
+   *  文案非人名)无 seed,渲染静态机器人资产。 */
+  display: { name: string; model: string; seed?: string };
   onPick: () => void;
 }) {
   return (
     <button type="button" className="rerun-agent-row" onClick={onPick}>
       <span className="rerun-agent-avatar">
-        <img src="/avatar-robot-1.svg" alt="" />
+        <Avatar name={display.seed} fallback="/avatar-robot-1.svg" />
       </span>
       <span className="rerun-agent-text">
         <span className="rerun-agent-name">{display.name}</span>
@@ -191,9 +194,11 @@ export function RerunDialog({
   }, [initialAgentId, touched]);
   const displayFor = (id: string | undefined) => {
     if (id === UNASSIGNED_AGENT_ID) return { name: t('未指派'), model: t('默认') };
-    if (id == null) return agent;
+    if (id == null) return { ...agent, seed: agent.name };
     const row = rows.find((r) => r.id === id);
-    return row ? { name: row.name, model: row.model ?? t('默认') } : agent;
+    return row
+      ? { name: row.name, model: row.model ?? t('默认'), seed: row.name }
+      : { ...agent, seed: agent.name };
   };
   const slot = (id: string | undefined) =>
     id != null && id !== UNASSIGNED_AGENT_ID ? { agentId: id } : null;

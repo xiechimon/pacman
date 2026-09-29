@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // verify-pacman probe — spec 12 / #359 G2-T1 server API 面(无浏览器):
 // 1. POST /api/projects kind=local 三态校验(live fs + 真 git spawn):
-//    不存在 → 400 / 非 git 工作树 → 400 / 真仓 → 201 + localPath 规范化
+//    不存在 → 400 reason=not_found / 非 git 工作树 → 400 reason=not_git /
+//    真仓 → 201 + localPath 规范化(#386:400 应答带结构化 reason code)
 // 2. 既有 wire 面不回归:repoKind:'hosted' → 201 + bare repo 落地(AC「旧
 //    hosted 不破」的 live 证明)
 // 3. GET /api/github/repos 未连接 → 404 {error}(连接后代理面归 G2-T4 OAuth
@@ -98,6 +99,10 @@ try {
     rMissing.status === 400 && String(rMissing.json?.error ?? '').includes('localPath'),
     `三态一:不存在路径 → 400 且 error 指 localPath(实际 ${rMissing.status})`,
   );
+  check(
+    rMissing.json?.reason === 'not_found',
+    `三态一 reason code = not_found(实际 ${JSON.stringify(rMissing.json?.reason)})`,
+  );
 
   const rNotGit = await api('POST', '/api/projects', {
     name: 'verify-local-notgit',
@@ -108,6 +113,10 @@ try {
   check(
     rNotGit.status === 400 && String(rNotGit.json?.error ?? '').includes('git'),
     `三态二:非 git 目录 → 400(实际 ${rNotGit.status})`,
+  );
+  check(
+    rNotGit.json?.reason === 'not_git',
+    `三态二 reason code = not_git(实际 ${JSON.stringify(rNotGit.json?.reason)})`,
   );
 
   const rOk = await api('POST', '/api/projects', {

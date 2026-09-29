@@ -373,6 +373,10 @@
 .sched-form-overlay {
   position: fixed;
   inset: 0;
+  /* #388: dialog 族档位（.dlg-backdrop 同 z40）。此前 z auto——sidebar
+     (position:relative z1) 绘制在 scrim 之上，阴影视觉只盖右 pane
+     （dogfood 缺陷）。DeleteConfirm 同 z40 但 DOM 在后，压过本层。 */
+  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: center;

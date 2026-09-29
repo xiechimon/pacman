@@ -247,8 +247,9 @@ export const EN: Record<string, string> = {
   'GitHub 仓库': 'GitHub repo',
   本地文件夹: 'Local folder',
   创建项目: 'Create project',
-  // #360 本地路径校验错误行：server validateLocalRepoPath 400 reason 的
-  // 三态分类文案；未分类 reason 原文直透（不进词典）。
+  // #386 本地路径校验错误行：server 400 reason code 的三态分类文案（zh 键
+  // 单源 = shared LOCAL_ERROR_REASON_COPY）；无 code / 未分类 reason 原文直
+  // 透（不进词典）。
   路径不存在: 'Path not found',
   '不是 git 仓库': 'Not a git repository',
   需要绝对路径: 'Absolute path required',
@@ -461,6 +462,8 @@ export const EN: Record<string, string> = {
   // 同为英文字面)
   '搜索服务商...': 'Search providers...',
   自定义端点: 'Custom endpoint',
+  // #385 族表未接线的 OAuth preset 行注记(如 openai-codex)
+  暂未开通: 'Not yet available',
   // #356 runtime tabs(spec 11 §A1-A4;tab 名 pi/Claude Code 不译,槽位名
   // default/opus/… 为配置标识符不译;{hostname} = server 机器名插值)
   'pacman 自有运行时。模型来自你添加的服务商。':

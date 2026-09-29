@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useI18n } from '../i18n/provider.js';
 import { PROVIDERS_HREF } from '../resources/providers-page.js';
+import { Avatar } from '../ui/avatar.js';
 import { DialogShell } from '../ui/dialog-shell.js';
 import { Input } from '../ui/input.js';
 
@@ -62,10 +63,10 @@ export function CreateAgentDialog({ open, onClose, onCreate }: CreateAgentDialog
     >
       <div className="dlg-form">
         <div className="dlg-agent-avatar">
-          <img src="/avatar-robot-1.svg" alt="" />
-          {/* 「更换」钮全除（#307 wontfix）：头像 = 静态机器人资产，栈内无
-              上传面——档 4 二分律下本项 #148 占位 chrome 裁决改判移除
-              （account-swap 同款归档 3，本票不动）。 */}
+          {/* #387: 头像行 = 名称种子的 dicebear 预览——随输入即所得（创建后
+              同名恒同像）；空名退回静态机器人资产。「更换」钮全除（#307
+              wontfix）：栈内无上传面。 */}
+          <Avatar name={name.trim()} fallback="/avatar-robot-1.svg" />
         </div>
         <label className="dlg-form-label" htmlFor="dlg-agent-name">
           {t('名称')}

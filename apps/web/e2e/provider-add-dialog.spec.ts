@@ -10,7 +10,8 @@ import { expect, type Page, test } from '@playwright/test';
 // Each test pins one failure mode:
 // 1. 打开 = picker 面:38 行、搜索框、底部自定义端点入口、无 footer 死 submit
 // 2. 搜索按显示名与 id 过滤(大小写不敏感);空查询回全量;零命中空列表
-// 3. OAuth 徽标只在 PROVIDER_OAUTH_PRESET_IDS 两行
+// 3. OAuth 徽标只骑族表已接线行(现仅 github-copilot);codex 未接线行
+//    禁用 + 「暂未开通」注记(#385)
 // 4. 自定义端点 → 表单字段与默认值同现状;返回列表可达
 // 5. api_key 行 → 表单预填 providerId/label;xai 行 → 密钥表单内显 oauthLabel
 // 6. family-law close: X / Esc / backdrop; panel clicks survive
@@ -67,17 +68,19 @@ test('search filters by display name and id, case-insensitive; empty query resto
   await expect(dialog.locator('.dlg-provider-preset')).toHaveCount(38);
 });
 
-test('OAuth badge rides the two PROVIDER_OAUTH_PRESET_IDS rows only; xai carries none', async ({
+test('OAuth badge rides wired family rows only (github-copilot); codex unwired carries a note, xai none', async ({
   page,
 }) => {
   const dialog = await openPicker(page);
-  await expect(dialog.locator('.dlg-provider-badge')).toHaveCount(2);
+  await expect(dialog.locator('.dlg-provider-badge')).toHaveCount(1);
   await expect(
     dialog.locator('.dlg-provider-preset', { hasText: 'GitHub Copilot' }).locator('.dlg-provider-badge'),
   ).toHaveCount(1);
-  await expect(
-    dialog.locator('.dlg-provider-preset', { hasText: 'OpenAI Codex' }).locator('.dlg-provider-badge'),
-  ).toHaveCount(1);
+  // #385:openai-codex 族表未接线——徽标摘除,行禁用 + 「暂未开通」注记
+  const codex = dialog.locator('.dlg-provider-preset', { hasText: 'OpenAI Codex' });
+  await expect(codex.locator('.dlg-provider-badge')).toHaveCount(0);
+  await expect(codex).toBeDisabled();
+  await expect(codex.locator('.dlg-provider-note')).toHaveText('暂未开通');
   const xai = dialog.locator('.dlg-provider-preset', { hasText: 'xAI' });
   await expect(xai).toHaveCount(1);
   await expect(xai.locator('.dlg-provider-badge')).toHaveCount(0);
