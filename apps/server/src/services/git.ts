@@ -128,15 +128,21 @@ export async function validateLocalRepoPath(rawPath: string | null | undefined):
   }
   const expanded = expandHomePath(raw);
   if (!isAbsolute(expanded)) {
-    throw new HttpError(400, `invalid body at localPath: expected absolute path, got "${raw}"`);
+    // 三态 reason code（#386）：web 分译按 code 判别，消息子串不再是契约。
+    throw new HttpError(
+      400,
+      `invalid body at localPath: expected absolute path, got "${raw}"`,
+      'not_absolute',
+    );
   }
   if (!existsSync(expanded)) {
-    throw new HttpError(400, `invalid body at localPath: path not found: ${expanded}`);
+    throw new HttpError(400, `invalid body at localPath: path not found: ${expanded}`, 'not_found');
   }
   if (!(await systemGitOps.isGitRepo(expanded))) {
     throw new HttpError(
       400,
       `invalid body at localPath: not a git repository (worktree): ${expanded}`,
+      'not_git',
     );
   }
   return expanded;

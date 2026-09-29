@@ -34,9 +34,10 @@ import { expect, type Page, test } from '@playwright/test';
 // 10. untouched submit posts a repo-less body (no kind) and navigates on 201
 // 11. local/github submits carry kind + localPath / kind + githubRepo
 // 12. empty local path / invalid github ref keep 创建项目 disabled
-// 13. a 400 localPath reason renders the localized red error row, blocks
-//     navigation, and clears once the path is edited; unclassified reasons
-//     show the server message verbatim
+// 13. a 400 localPath error renders the localized red error row via the
+//     structured reason code (#386), blocks navigation, and clears once the
+//     path is edited; reasonless / unclassified 400s show the server message
+//     verbatim
 
 const NEW_PROJECT = '/app/project/new?scenario=01';
 const NEW_PROJECT_LIVE = '/app/project/new';
@@ -294,14 +295,20 @@ test('empty local path / invalid github ref keep 创建项目 disabled', async (
 });
 
 for (const [reason, copy] of [
-  ['invalid body at localPath: path not found: /nope', '路径不存在'],
-  ['invalid body at localPath: not a git repository (worktree): /tmp', '不是 git 仓库'],
-  ['invalid body at localPath: expected absolute path, got "rel"', '需要绝对路径'],
-  ['invalid body at localPath: something new', 'invalid body at localPath: something new'],
+  ['not_found', '路径不存在'],
+  ['not_git', '不是 git 仓库'],
+  ['not_absolute', '需要绝对路径'],
+  [undefined, 'invalid body at localPath: case none'],
 ] as const) {
   test(`a 400 localPath reason renders the error row: ${copy}`, async ({ page }) => {
     await stubBoot(page);
-    await stubCreateProject(page, () => ({ status: 400, json: { error: reason } }));
+    // #386: the error row classifies by the structured reason code (shared
+    // PROJECT_LOCAL_ERROR_REASONS vocabulary); reasonless / unclassified 400s
+    // show the server message verbatim.
+    await stubCreateProject(page, () => ({
+      status: 400,
+      json: { error: `invalid body at localPath: case ${reason ?? 'none'}`, ...(reason !== undefined ? { reason } : {}) },
+    }));
     await page.goto(NEW_PROJECT_LIVE);
     await fillLiveForm(page, { kind: 'local', value: '/nope' });
     await page.locator('.prj-new-submit').click();

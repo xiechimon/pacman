@@ -1,10 +1,10 @@
 {
   "probe": "theme",
   "ok": true,
-  "at": "2026-09-29T06:40:10.729Z",
+  "at": "2026-09-29T07:16:39.627Z",
   "stack": {
-    "api": "http://127.0.0.1:8791",
-    "web": "http://127.0.0.1:5273",
+    "api": "http://127.0.0.1:8792",
+    "web": "http://127.0.0.1:5274",
     "homeDir": "/Users/xmon/Code/AgentProjects/pacman/.claude/worktrees/feat-brand-typo/.claude/verify-run/home",
     "root": "/Users/xmon/Code/AgentProjects/pacman/.claude/worktrees/feat-brand-typo"
   },

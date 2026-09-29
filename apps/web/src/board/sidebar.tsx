@@ -21,11 +21,11 @@
 // dropped the 反馈 row).
 
 import { BRAND } from '@pacman/shared';
-import { type ComponentType, type SVGProps, useCallback, useState } from 'react';
+import { type ComponentType, type SVGProps, useCallback, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { UserMenu } from '../detail/user-menu.js';
 import { isDeleted } from '../fixtures/deletions.js';
-import { PROJECT_ID, PROJECT_INITIAL, PROJECT_NAME, USER_NAME } from '../fixtures/fixtures.js';
+import { PROJECT_ID, PROJECT_NAME, USER_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
 import {
@@ -46,17 +46,17 @@ import {
 } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { readStoredTheme } from '../theme.js';
+import { Avatar } from '../ui/avatar.js';
 import './sidebar.css';
 
 /** Which sidebar row carries the active pill: a nav row (看板 / 定时 /
- *  the project row — r7 01/11, r2 07e/24b/24c), the team head row on
- *  team/account (r7 12/13), a 资源 subrow by href (issue #69, r7 06–10),
- *  or none (/app/project/new r2 07, and the user-menu-only routes
- *  r2 19/32). */
+ *  the team head row on team/account — r7 01/11, r2 07e/24b/24c, r7 12/13),
+ *  a 资源 subrow by href (issue #69, r7 06–10), or none (/app/project/new
+ *  r2 07, and the user-menu-only routes r2 19/32). Project rows are not a
+ *  named slot — the pill matches the live row by pathname (侧栏 live 收编). */
 export type SidebarSelected =
   | 'board'
   | 'schedules'
-  | 'project'
   | 'team'
   | 'none'
   | '/app/resources/skills'
@@ -64,6 +64,18 @@ export type SidebarSelected =
   | '/app/resources/secrets'
   | '/app/resources/machines'
   | '/app/resources/providers';
+
+/** Sidebar project row (live 收编)：id + name 投影自 live projectsQ 或
+ *  fixture projectNames；undefined = 数据未决/场景缺省 → 回退 canon 单行。
+ *  行 href = /app/project/<id>，头像首字母 = 名称首字符小写（todo-card 同律）。 */
+export interface SidebarProject {
+  id: string;
+  name: string;
+}
+
+/** canon 回退行：fixture 场景缺省（capture 面只有这一个项目）与 live 查询
+ *  在途共用，行形与旧钉死面字节一致。 */
+const CANON_PROJECT: SidebarProject = { id: PROJECT_ID, name: PROJECT_NAME };
 
 interface BoardSidebarProps {
   collapsed?: boolean;
@@ -79,6 +91,9 @@ interface BoardSidebarProps {
   selected?: SidebarSelected;
   /** Indigo dot right of the 机器 row (r5 100/101/114/116: machine online). */
   machineOnline?: boolean;
+  /** 项目组行数据位：live = projectsQ 投影（在途/空 = []，不闪 canon 幻影）；
+   *  fixture = scenario projectNames 投影；缺省 = canon 单行回退。 */
+  projects?: SidebarProject[];
 }
 
 /** Leaf nav rows shared by both sidebar states — each renders full in the
@@ -99,12 +114,9 @@ const RESOURCE_ROWS: {
  *  #67 05b capture, so it renders only for scenarios that set usageNav. */
 const USAGE_ROW = { label: '用量', href: '/app/usage', Icon: BarChart3 };
 
-const PROJECT_HREF = `/app/project/${PROJECT_ID}`;
-
 /** Selected-pill class pair for a nav row (expanded + rail variants). */
 const rowClass = (base: string, selected: boolean) =>
   selected ? `${base} ${base}--selected` : base;
-
 /** Group-collapse storage keys (#147): the 项目 key is the brand-slot twin
  *  of the observed original `tds.sidebarProjectsCollapsed` (r2 §1.1/§1.5,
  *  measured value "1", registered in the shared client-state table); the
@@ -191,11 +203,16 @@ export function BoardSidebar({
   usageNav = false,
   selected = 'board',
   machineOnline = false,
+  projects,
 }: BoardSidebarProps) {
   const { t } = useI18n();
   // Links carry the live query string across hops so the fixture scenario
   // survives client-side navigation (todo-card / page-back convention).
-  const { search } = useLocation();
+  const { search, pathname } = useLocation();
+  // 项目行 = 调用面投影（app-sidebar：live projectsQ / fixture projectNames）；
+  // 缺省回退 canon 单行（capture 面）。pill 不再吃 'project' 具名槽——按当前
+  // 路径匹配行 href，多项目下选中的是真实所在行。
+  const projectRows = useMemo(() => projects ?? [CANON_PROJECT], [projects]);
   const resourceRows = usageNav
     ? [...RESOURCE_ROWS.slice(0, 4), USAGE_ROW, ...RESOURCE_ROWS.slice(4)]
     : RESOURCE_ROWS;
@@ -261,16 +278,22 @@ export function BoardSidebar({
             collapsed={groupCollapsed.project}
             onToggle={toggleProjectGroup}
           />
-          {!groupCollapsed.project && !isDeleted(PROJECT_ID) && (
-            <Link
-              className={rowClass('rail-row', selected === 'project')}
-              to={{ pathname: PROJECT_HREF, search }}
-              aria-current={selected === 'project' ? 'page' : undefined}
-              aria-label={PROJECT_NAME}
-            >
-              <span className="project-avatar">{PROJECT_INITIAL}</span>
-            </Link>
-          )}
+          {!groupCollapsed.project &&
+            projectRows.map((row) => {
+              const href = `/app/project/${row.id}`;
+              if (isDeleted(row.id)) return null;
+              return (
+                <Link
+                  key={row.id}
+                  className={rowClass('rail-row', pathname === href)}
+                  to={{ pathname: href, search }}
+                  aria-current={pathname === href ? 'page' : undefined}
+                  aria-label={row.name}
+                >
+                  <span className="project-avatar">{row.name.charAt(0).toLowerCase()}</span>
+                </Link>
+              );
+            })}
           <RailGroupChevron
             label="资源"
             collapsed={groupCollapsed.resource}
@@ -297,7 +320,7 @@ export function BoardSidebar({
           aria-expanded={userMenuOpen}
           onClick={toggleUserMenu}
         >
-          <img src="/avatar-user.png" alt="" />
+          <Avatar name={USER_NAME} fallback="/avatar-user.png" />
         </button>
         {userMenuPopover}
       </aside>
@@ -308,7 +331,7 @@ export function BoardSidebar({
     <aside className="board-sidebar">
       <div className={`sidebar-team-row${selected === 'team' ? ' sidebar-team-row--active' : ''}`}>
         <span className="sidebar-row-icon">
-          {/* 品牌槽（#390）：mark = icon-512 透明稿 alpha mask，名 = BRAND
+          {/* 品牌槽（#390）：mark = logo.svg 真资产 alpha mask，名 = BRAND
               槽；mark 图单点替换位 = sidebar.css 的 mask url */}
           <span className="sidebar-brand-mark" aria-hidden="true" />
         </span>
@@ -373,18 +396,23 @@ export function BoardSidebar({
               </span>
               <span className="sidebar-subrow-label">{t('新建项目')}</span>
             </Link>
-            {/* #207: 项目行随 fixture 删除覆面隐去(#66 deletions 同律)——
-                设置页删除确认后跳 /app,项目组即本面项目列表。 */}
-            {!isDeleted(PROJECT_ID) && (
-              <Link
-                className={rowClass('sidebar-subrow', selected === 'project')}
-                to={{ pathname: PROJECT_HREF, search }}
-                aria-current={selected === 'project' ? 'page' : undefined}
-              >
-                <span className="project-avatar">{PROJECT_INITIAL}</span>
-                <span className="sidebar-subrow-label">{PROJECT_NAME}</span>
-              </Link>
-            )}
+            {/* #207 + 侧栏 live 收编:项目行 = 调用面投影多行渲染,行随
+                fixture 删除覆面隐去(#66 deletions 同律);pill 按路径匹配。 */}
+            {projectRows.map((row) => {
+              const href = `/app/project/${row.id}`;
+              if (isDeleted(row.id)) return null;
+              return (
+                <Link
+                  key={row.id}
+                  className={rowClass('sidebar-subrow', pathname === href)}
+                  to={{ pathname: href, search }}
+                  aria-current={pathname === href ? 'page' : undefined}
+                >
+                  <span className="project-avatar">{row.name.charAt(0).toLowerCase()}</span>
+                  <span className="sidebar-subrow-label">{row.name}</span>
+                </Link>
+              );
+            })}
           </>
         )}
 
@@ -419,7 +447,7 @@ export function BoardSidebar({
         aria-expanded={userMenuOpen}
         onClick={toggleUserMenu}
       >
-        <img src="/avatar-user.png" alt="" />
+        <Avatar name={USER_NAME} fallback="/avatar-user.png" />
         <span className="sidebar-user-name">{USER_NAME}</span>
         <span className="sidebar-user-more">
           <EllipsisVertical />

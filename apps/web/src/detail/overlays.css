@@ -594,7 +594,7 @@
   opacity: 0.6;
 }
 
-/* OAuth 族徽标（PROVIDER_OAUTH_PRESET_IDS 两项）：行右小 chip。 */
+/* OAuth 族徽标（PROVIDER_OAUTH_PRESET_IDS ∩ 族表已接线成员）：行右小 chip。 */
 .dlg-provider-badge {
   margin-left: auto;
   flex: none;
@@ -604,6 +604,22 @@
   padding: 0 6px;
   border-radius: 4px;
   background: var(--surface-secondary);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* #385 未接线注记（族表外 OAuth preset，如 openai-codex）：占徽标同槽位
+   的行右 chip；行整体 :disabled 已降不透明度，chip 只描边不上底。 */
+.dlg-provider-note {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-default);
   color: var(--text-tertiary);
   font-size: 11px;
   line-height: 1;

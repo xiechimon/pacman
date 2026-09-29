@@ -675,12 +675,14 @@ export function mapTeam(members: TeamMember[]): TeamContent {
   const cards: TeamAgentCard[] = agents.map((m) => {
     const a = m.actor as {
       displayName?: string;
+      avatarUrl?: string | null;
       modelId?: string | null;
       description?: string | null;
     };
     return {
       id: m.actorId,
       displayName: a.displayName ?? '',
+      avatarUrl: a.avatarUrl ?? null,
       model: a.modelId ? `${a.modelId} · 默认` : '未配置模型',
       isDefault: false,
       role: a.description ?? null,

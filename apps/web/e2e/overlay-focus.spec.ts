@@ -1,0 +1,130 @@
+import { expect, type Page, test } from '@playwright/test';
+
+// Issue #388 acceptance (弹层与 focus 视觉缺陷组):
+//   #15 — 点击 topbar 钮 / 新建任务钮后键盘交互（Esc/Tab）不再出现 UA 蓝框
+//         (outline auto rgb(0,95,204))；:focus-visible 统一收编为 indigo ring
+//         （配方沿 .rerun-switch:focus-visible 先例：2px --card-button, offset 2）。
+//   #10 — /app/schedules 新建定时弹层升级 OverlayMount 全屏族：scrim 盖全视口
+//         （含 sidebar——旧 z auto 被 sidebar z1 压过，阴影只盖右 pane）、Esc 关、
+//         背板点击关、入场动画与 dialog 族同款（anim-fade token）。
+// Fixture 面（r3-92 冻结开屏）承载弹层断言：关闭 = 局部 UI 态，重载还原。
+
+const BOARD = '/app?scenario=01';
+const SCHED = '/app/schedules?scenario=r3-92';
+/** UA (Chromium) default focus ring: outline auto + this blue. */
+const UA_BLUE = 'rgb(0, 95, 204)';
+/** --card-button (tokens.css) — the family :focus-visible ring color. */
+const RING = 'rgb(78, 71, 221)';
+
+async function focusedOutline(page: Page) {
+  return page.evaluate(() => {
+    const el = document.activeElement;
+    if (el == null || el === document.body) return null;
+    const cs = getComputedStyle(el);
+    return {
+      cls: typeof el.className === 'string' && el.className !== '' ? el.className : el.tagName,
+      style: cs.outlineStyle,
+      width: cs.outlineWidth,
+      color: cs.outlineColor,
+      focusVisible: el.matches(':focus-visible'),
+    };
+  });
+}
+
+test.describe('#15 focus ring收编', () => {
+  test('click + key on 新建任务/topbar buttons: never the UA blue box', async ({ page }) => {
+    await page.goto(BOARD);
+    const newTask = page.locator('.board-new-task');
+    await newTask.click();
+    // keyboard interaction after a click flips the focused button into
+    // :focus-visible (Chromium heuristic) — the exact dogfood symptom path
+    await page.keyboard.press('Escape');
+    const info = await focusedOutline(page);
+    expect(info).not.toBeNull();
+    expect(info!.style).not.toBe('auto');
+    expect(info!.color).not.toBe(UA_BLUE);
+    // 正向堵洞：键盘交互后 Chromium 必命中 :focus-visible——命中即环必须在
+    // （防「整环删干净」的回归从负向断言溜过去；换皮，不是删皮）
+    if (info!.focusVisible) {
+      expect(info!.style).toBe('solid');
+      expect(info!.color).toBe(RING);
+    }
+
+    // schedules topbar + 新建 (fixture face: the click is inert, the button
+    // keeps focus — the key press must not surface the UA ring either)
+    await page.goto('/app/schedules?scenario=11');
+    const pageNew = page.locator('.page-new-action');
+    await pageNew.click();
+    await page.keyboard.press('Escape');
+    const info2 = await focusedOutline(page);
+    expect(info2).not.toBeNull();
+    expect(info2!.style).not.toBe('auto');
+    expect(info2!.color).not.toBe(UA_BLUE);
+    if (info2!.focusVisible) {
+      expect(info2!.style).toBe('solid');
+      expect(info2!.color).toBe(RING);
+    }
+  });
+
+  test('Tab focus keeps the indigo ring (keyboard reachability preserved)', async ({ page }) => {
+    await page.goto(BOARD);
+    // tab through the chrome until the 新建任务 button owns focus
+    let found = false;
+    for (let i = 0; i < 40 && !found; i++) {
+      await page.keyboard.press('Tab');
+      found = await page.evaluate(
+        () => document.activeElement?.classList.contains('board-new-task') ?? false,
+      );
+    }
+    expect(found).toBe(true);
+    const info = await focusedOutline(page);
+    expect(info).not.toBeNull();
+    expect(info!.focusVisible).toBe(true);
+    expect(info!.style).toBe('solid');
+    expect(info!.color).toBe(RING);
+  });
+});
+
+test.describe('#10 schedules 新建定时弹层 = OverlayMount 全屏族', () => {
+  test('scrim covers the full viewport — sidebar included', async ({ page }) => {
+    await page.goto(SCHED);
+    await expect(page.locator('.sched-form-overlay')).toBeVisible();
+    const covers = await page.evaluate(() => {
+      // a point deep inside the sidebar, far from the centered panel
+      const el = document.elementFromPoint(100, 400);
+      return el?.closest('.sched-form-overlay') != null;
+    });
+    expect(covers).toBe(true);
+  });
+
+  test('Esc closes the overlay', async ({ page }) => {
+    await page.goto(SCHED);
+    await expect(page.locator('.sched-form-overlay')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.sched-form-overlay')).toBeHidden();
+  });
+
+  test('backdrop click closes; entry rides the dialog-family anim token', async ({ page }) => {
+    await page.goto(SCHED);
+    const overlay = page.locator('.sched-form-overlay');
+    await expect(overlay).toBeVisible();
+    await expect(overlay).toHaveClass(/anim-fade/);
+    await expect(page.locator('.overlay-mount:has(.sched-form-overlay)')).toHaveAttribute(
+      'data-overlay-state',
+      'open',
+    );
+    // scrim far from the 488-wide centered panel
+    await page.mouse.click(80, 80);
+    await expect(overlay).toBeHidden();
+  });
+
+  test('X and 取消 close the fixture face too (no dead buttons)', async ({ page }) => {
+    await page.goto(SCHED);
+    await page.locator('.sched-form-cancel').click();
+    await expect(page.locator('.sched-form-overlay')).toBeHidden();
+
+    await page.goto(SCHED);
+    await page.locator('.sched-form-close').click();
+    await expect(page.locator('.sched-form-overlay')).toBeHidden();
+  });
+});

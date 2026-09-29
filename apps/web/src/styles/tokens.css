@@ -77,6 +77,13 @@
      not floating (claude.ai card-tier reference). Both themes follow the
      same shape; opacity differs because the canvas itself differs */
   --card-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
+  /* lift-tier shadow (#391): the DragOverlay copy is the highest-elevation
+     surface while in flight — above the popover tier. Small 3px offset +
+     12px blur keeps ALL four edges inked (the pre-#391 light-only
+     drop-shadow filter bottom-biased the glow and left the dark side
+     flat); the alpha runs hotter than --edge-shadow because a black shadow
+     over the near-black column bg has little luminance headroom */
+  --lift-shadow: 0 3px 12px rgb(0 0 0 / 0.5);
   /* sidebar layer (#390 同底律): the sidebar shares the main-area surface
      token — the layer separation is carried by the drawn 1px
      --border-default seam alone (#135 裁决 v2), not by a tone step */
@@ -254,6 +261,10 @@
      only the opacity drops because the light surface itself already has
      less visual depth, so the shadow needs less to do its job */
   --card-shadow: 0 2px 4px rgb(28 25 23 / 0.07);
+  /* lift-tier shadow (#391), light side: same shape as dark — the resting
+     card's small-offset family scaled up, so the four-edge profile stays
+     consistent with the resting card */
+  --lift-shadow: 0 3px 12px rgb(28 25 23 / 0.16);
   --sidebar-bg: var(--surface);
   /* sidebar interaction ladder (#128), light side of the cds alpha ladder —
      warm-ink steps over the sidebar surface, hover 5% / selected 10% */

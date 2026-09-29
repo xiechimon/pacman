@@ -74,17 +74,17 @@
   cursor: pointer;
 }
 
-/* 品牌 mark（#390）：仓内 icon-512.png 透明稿作 alpha mask，随 currentColor
+/* 品牌 mark（#390）：真资产 logo.svg 作 alpha mask（透明底，mask 只取字形
+   alpha，与 svg 内置的 prefers-color-scheme 填色无关），随 currentColor
    取行墨（--text-primary）双主题自适应——active pill 的 10% 罩色透出不被
-   不透明图标底戳破。mask-size 125% 补原稿 glyph bbox（300×352 / 512 画布）
-   的周边留白，视觉尺寸对齐同排 16px 线稿图标。mark 图的单点替换位 =
-   本条 mask url。 */
+   不透明图标底戳破。mask-size 125% 补字形在 512 画布的周边留白，视觉尺寸
+   对齐同排 16px 线稿图标。mark 图的单点替换位 = 本条 mask url。 */
 .sidebar-brand-mark {
   width: 16px;
   height: 16px;
   background-color: currentColor;
-  -webkit-mask: url("/icon-512.png") center / 125% no-repeat;
-  mask: url("/icon-512.png") center / 125% no-repeat;
+  -webkit-mask: url("/logo.svg") center / 125% no-repeat;
+  mask: url("/logo.svg") center / 125% no-repeat;
 }
 
 /* #135: the sidebar segment of the full-width top divider — same token as

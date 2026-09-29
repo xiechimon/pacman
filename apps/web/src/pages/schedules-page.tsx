@@ -32,6 +32,7 @@ import {
   X,
 } from '../icons/index.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
+import { FADE_EXIT_MS } from '../overlay/use-overlay-mount.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
 import { Button } from '../ui/button.js';
@@ -170,14 +171,24 @@ function ScheduleCard({
 
 /** r3 92/92b dialog. Field values ride the fixture (project + first todo);
  *  the open tab is the scenario's capture state. M5 live 面：`live` 绑定使
- *  tab/时/分受控、关闭/保存接真 mutation（DOM 类名与几何不变）。 */
+ *  tab/时/分受控、保存接真 mutation（DOM 类名与几何不变）。
+ *  #388：升级 OverlayMount 全屏族——scrim 盖全视口（z 归 dialog 族档，
+ *  pages.css）、Esc / 背板点击 / X / 取消 四路关闭（家族律 #67/#68）、
+ *  入场 anim-fade 与 dialog 族同款（motion.css token，居中弹层 fade-only
+ *  律）。open/onClose 由页面持有：live 面 = formOpen 真值，fixture 冻结
+ *  开屏面 = 局部 UI 态（关闭不销毁 scenario，重载还原——deletions.ts
+ *  覆面同律）。 */
 function ScheduleForm({
   kind,
   fixture,
+  open,
+  onClose,
   live,
 }: {
   kind: 'hourly' | 'daily' | 'weekly' | 'once';
   fixture: FixtureSet;
+  open: boolean;
+  onClose: () => void;
   live?: {
     hour: string;
     minute: string;
@@ -186,125 +197,135 @@ function ScheduleForm({
     onKind(kind: 'hourly' | 'daily' | 'weekly' | 'once'): void;
     onHour(hour: string): void;
     onMinute(minute: string): void;
-    onClose(): void;
     onSave(): void;
   };
 }) {
   const { locale, t } = useI18n();
+  useEscapeClose(open, onClose);
   const todo = live ? live.todo : fixture.todos[0];
   const repo = live ? live.repo : (fixture.project?.repoName ?? '');
   return (
-    <div className="sched-form-overlay">
-      <div className="sched-form" role="dialog" aria-label={t('新建定时')}>
-        <header className="sched-form-head">
-          <span className="sched-form-title">{t('新建定时')}</span>
-          {/* A4-deep 收编：icon 变体皮肤；24×24 几何 per-face 留 pages.css */}
-          <Button
-            variant="icon"
-            className="sched-form-close"
-            aria-label={t('关闭')}
-            onClick={live?.onClose}
-          >
-            <X />
-          </Button>
-        </header>
-        <div className="sched-form-body">
-          <div className="sched-form-row">
-            <span className="sched-form-label">{t('项目')}</span>
-            <span className="sched-form-value">
-              {repo}
-              <ChevronRight width={12} height={12} />
-            </span>
+    <OverlayMount open={open} exitMs={FADE_EXIT_MS}>
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: Esc closes — see comment */}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop is a click-to-dismiss surface */}
+      <div
+        className="sched-form-overlay anim-fade"
+        onClick={(event) => {
+          // only the backdrop itself dismisses; panel clicks bubble harmlessly
+          if (event.target === event.currentTarget) onClose();
+        }}
+      >
+        <div className="sched-form" role="dialog" aria-modal="true" aria-label={t('新建定时')}>
+          <header className="sched-form-head">
+            <span className="sched-form-title">{t('新建定时')}</span>
+            {/* A4-deep 收编：icon 变体皮肤；24×24 几何 per-face 留 pages.css */}
+            <Button
+              variant="icon"
+              className="sched-form-close"
+              aria-label={t('关闭')}
+              onClick={onClose}
+            >
+              <X />
+            </Button>
+          </header>
+          <div className="sched-form-body">
+            <div className="sched-form-row">
+              <span className="sched-form-label">{t('项目')}</span>
+              <span className="sched-form-value">
+                {repo}
+                <ChevronRight width={12} height={12} />
+              </span>
+            </div>
+            <div className="sched-form-row">
+              <span className="sched-form-label">{t('任务')}</span>
+              <span className="sched-form-value">
+                {todo == null ? '' : `#${todo.seqNum} ${todo.title}`}
+                <ChevronRight width={12} height={12} />
+              </span>
+            </div>
+            <div className="sched-form-freq">
+              {(['hourly', 'daily', 'weekly', 'once'] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={`sched-form-freq-tab${k === kind ? ' sched-form-freq-tab--active' : ''}`}
+                  onClick={live ? () => live.onKind(k) : undefined}
+                >
+                  {t(FREQ_LABEL[k])}
+                </button>
+              ))}
+            </div>
+            {kind === 'once' && (
+              <>
+                <div className="sched-form-field">{t('日期')}</div>
+                <div className="sched-form-selects">
+                  <span className="sched-form-select">
+                    <select
+                      // key: an uncontrolled select keeps its value across a
+                      // live locale switch — remount so the localized
+                      // defaultValue re-applies (issue #74)
+                      key={locale}
+                      className="sched-form-date"
+                      aria-label={t('日期')}
+                      defaultValue={t('今天')}
+                    >
+                      {/* r3 92b observes 今天; further entries unrecorded */}
+                      <option>{t('今天')}</option>
+                    </select>
+                    <ChevronDown width={12} height={12} />
+                  </span>
+                </div>
+              </>
+            )}
+            <div className="sched-form-field">{t('时间')}</div>
+            <div className="sched-form-selects sched-form-selects--time">
+              <span className="sched-form-select">
+                <select
+                  aria-label={t('时')}
+                  {...(live
+                    ? { value: live.hour, onChange: (e) => live.onHour(e.target.value) }
+                    : { defaultValue: '09' })}
+                >
+                  {HOURS.map((h) => (
+                    <option key={h}>{h}</option>
+                  ))}
+                </select>
+                <ChevronDown width={12} height={12} />
+              </span>
+              <span className="sched-form-select">
+                <select
+                  aria-label={t('分')}
+                  {...(live
+                    ? { value: live.minute, onChange: (e) => live.onMinute(e.target.value) }
+                    : { defaultValue: '00' })}
+                >
+                  {MINUTE_STEPS.map((m) => (
+                    <option key={m}>{m}</option>
+                  ))}
+                </select>
+                <ChevronDown width={12} height={12} />
+              </span>
+            </div>
+            <div className="sched-form-tz">{t('按你的本地时区运行（Asia/Shanghai）')}</div>
+            <div className="sched-form-row">
+              <span className="sched-form-label">{t('机器')}</span>
+              <span className="sched-form-value">
+                {t('自动')}
+                <ChevronRight width={12} height={12} />
+              </span>
+            </div>
           </div>
-          <div className="sched-form-row">
-            <span className="sched-form-label">{t('任务')}</span>
-            <span className="sched-form-value">
-              {todo == null ? '' : `#${todo.seqNum} ${todo.title}`}
-              <ChevronRight width={12} height={12} />
-            </span>
-          </div>
-          <div className="sched-form-freq">
-            {(['hourly', 'daily', 'weekly', 'once'] as const).map((k) => (
-              <button
-                key={k}
-                type="button"
-                className={`sched-form-freq-tab${k === kind ? ' sched-form-freq-tab--active' : ''}`}
-                onClick={live ? () => live.onKind(k) : undefined}
-              >
-                {t(FREQ_LABEL[k])}
-              </button>
-            ))}
-          </div>
-          {kind === 'once' && (
-            <>
-              <div className="sched-form-field">{t('日期')}</div>
-              <div className="sched-form-selects">
-                <span className="sched-form-select">
-                  <select
-                    // key: an uncontrolled select keeps its value across a
-                    // live locale switch — remount so the localized
-                    // defaultValue re-applies (issue #74)
-                    key={locale}
-                    className="sched-form-date"
-                    aria-label={t('日期')}
-                    defaultValue={t('今天')}
-                  >
-                    {/* r3 92b observes 今天; further entries unrecorded */}
-                    <option>{t('今天')}</option>
-                  </select>
-                  <ChevronDown width={12} height={12} />
-                </span>
-              </div>
-            </>
-          )}
-          <div className="sched-form-field">{t('时间')}</div>
-          <div className="sched-form-selects sched-form-selects--time">
-            <span className="sched-form-select">
-              <select
-                aria-label={t('时')}
-                {...(live
-                  ? { value: live.hour, onChange: (e) => live.onHour(e.target.value) }
-                  : { defaultValue: '09' })}
-              >
-                {HOURS.map((h) => (
-                  <option key={h}>{h}</option>
-                ))}
-              </select>
-              <ChevronDown width={12} height={12} />
-            </span>
-            <span className="sched-form-select">
-              <select
-                aria-label={t('分')}
-                {...(live
-                  ? { value: live.minute, onChange: (e) => live.onMinute(e.target.value) }
-                  : { defaultValue: '00' })}
-              >
-                {MINUTE_STEPS.map((m) => (
-                  <option key={m}>{m}</option>
-                ))}
-              </select>
-              <ChevronDown width={12} height={12} />
-            </span>
-          </div>
-          <div className="sched-form-tz">{t('按你的本地时区运行（Asia/Shanghai）')}</div>
-          <div className="sched-form-row">
-            <span className="sched-form-label">{t('机器')}</span>
-            <span className="sched-form-value">
-              {t('自动')}
-              <ChevronRight width={12} height={12} />
-            </span>
-          </div>
+          <footer className="sched-form-foot">
+            <button type="button" className="sched-form-cancel" onClick={onClose}>
+              {t('取消')}
+            </button>
+            <button type="button" className="sched-form-save" onClick={live?.onSave}>
+              {t('保存')}
+            </button>
+          </footer>
         </div>
-        <footer className="sched-form-foot">
-          <button type="button" className="sched-form-cancel" onClick={live?.onClose}>
-            {t('取消')}
-          </button>
-          <button type="button" className="sched-form-save" onClick={live?.onSave}>
-            {t('保存')}
-          </button>
-        </footer>
       </div>
-    </div>
+    </OverlayMount>
   );
 }
 
@@ -319,6 +340,9 @@ export function SchedulesPage() {
   const mutations = useApiMutations(teamId);
   // live 表单态（fixture 面由 scenario 冻结 scheduleForm，互不干扰）。
   const [formOpen, setFormOpen] = useState(false);
+  // #388 fixture 冻结开屏面的关闭态：局部 UI 状态，重载还原（deletions.ts
+  // 覆面同律）——Esc / 背板 / X / 取消 四路关闭在冻结面上同样成立。
+  const [fixtureFormOpen, setFixtureFormOpen] = useState(true);
   const [formKind, setFormKind] = useState<'hourly' | 'daily' | 'weekly' | 'once'>('daily');
   const [formHour, setFormHour] = useState('09');
   const [formMinute, setFormMinute] = useState('00');
@@ -414,27 +438,33 @@ export function SchedulesPage() {
           ))
         )}
       </div>
-      {live
-        ? formOpen && (
-            <ScheduleForm
-              kind={formKind}
-              fixture={fixture}
-              live={{
-                hour: formHour,
-                minute: formMinute,
-                todo: liveTodo ? { seqNum: liveTodo.seqNum, title: liveTodo.title } : undefined,
-                repo: projectsQ.data?.[0]?.name ?? '',
-                onKind: setFormKind,
-                onHour: setFormHour,
-                onMinute: setFormMinute,
-                onClose: () => setFormOpen(false),
-                onSave: saveSchedule,
-              }}
-            />
-          )
-        : fixture.scheduleForm != null && (
-            <ScheduleForm kind={fixture.scheduleForm} fixture={fixture} />
-          )}
+      {live ? (
+        <ScheduleForm
+          kind={formKind}
+          fixture={fixture}
+          open={formOpen}
+          onClose={() => setFormOpen(false)}
+          live={{
+            hour: formHour,
+            minute: formMinute,
+            todo: liveTodo ? { seqNum: liveTodo.seqNum, title: liveTodo.title } : undefined,
+            repo: projectsQ.data?.[0]?.name ?? '',
+            onKind: setFormKind,
+            onHour: setFormHour,
+            onMinute: setFormMinute,
+            onSave: saveSchedule,
+          }}
+        />
+      ) : (
+        fixture.scheduleForm != null && (
+          <ScheduleForm
+            kind={fixture.scheduleForm}
+            fixture={fixture}
+            open={fixtureFormOpen}
+            onClose={() => setFixtureFormOpen(false)}
+          />
+        )
+      )}
       <DeleteConfirm
         open={confirmOpen}
         title={t('确定删除该定时？此操作不可撤销。')}

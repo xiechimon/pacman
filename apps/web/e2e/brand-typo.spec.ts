@@ -7,12 +7,13 @@ import { expect, test } from '@playwright/test';
 //   font-variation-settings)。500/600 档抽钉 .todo-card-title /
 //   .sched-empty-title, 顺带钉 var 字体真载入 (font-display: optional 下
 //   fallback 静默接管是本面最隐蔽的回退)。
-// - 侧栏头 = 品牌槽: mark 用仓内 icon-512.png 透明稿作 alpha mask, 随
+// - 侧栏头 = 品牌槽: mark 用真资产 logo.svg 作 alpha mask, 随
 //   currentColor 双主题换色 (mark 图单点替换位 = 该 mask url);
 //   名 = BRAND.manifestName。头部 43px 行几何与 /app/team 导航由
 //   sidebar-seam / sidebar-nav 既有断言守。
-// - .res-back: hover 无背景变化 (现状即无 hover 面, 此处把律钉死防回潮),
-//   键盘 focus 保留 2px --card-button 环 (同 .mach-switch 配方, a11y 不回退)。
+// - .res-back: hover 无背景变化 (现状即无 hover 面, 此处把律钉死防回潮);
+//   键盘 focus 环由 app.css 全局 :focus-visible 规则承载 (#388, 2px
+//   --card-button + offset 2)——本 spec 断言该环在 res-back 上生效。
 // - 侧栏底 = 主区 --surface: 断言行放在 visual-polish.spec.ts (原 #123
 //   层级断言的翻转, 同票更新)。
 
@@ -66,7 +67,7 @@ for (const theme of ['light', 'dark'] as const) {
         nameHref: name.getAttribute('href'),
       };
     });
-    expect(m.maskImage).toContain('/icon-512.png');
+    expect(m.maskImage).toContain('/logo.svg');
     expect(m.markPaint).toBe(m.rowInk);
     expect(m.markPaint).not.toBe('rgba(0, 0, 0, 0)');
     expect(m.markBox).toEqual({ w: 16, h: 16 });

@@ -2,7 +2,7 @@
   "probe": "brand-typo",
   "ticket": 390,
   "stack": {
-    "web": "http://127.0.0.1:5273"
+    "web": "http://127.0.0.1:5274"
   },
   "checks": [
     {
@@ -26,9 +26,9 @@
       "detail": "Pacman"
     },
     {
-      "label": "[dark] mark mask = icon-512.png 且随行墨着色",
+      "label": "[dark] mark mask = logo.svg 且随行墨着色",
       "ok": true,
-      "detail": "url(\"http://127.0.0.1:5273/icon-512.png\") / rgb(250, 250, 249)"
+      "detail": "url(\"http://127.0.0.1:5274/logo.svg\") / rgb(250, 250, 249)"
     },
     {
       "label": "[light] 正文 computed font-weight = 400",
@@ -51,9 +51,9 @@
       "detail": "Pacman"
     },
     {
-      "label": "[light] mark mask = icon-512.png 且随行墨着色",
+      "label": "[light] mark mask = logo.svg 且随行墨着色",
       "ok": true,
-      "detail": "url(\"http://127.0.0.1:5273/icon-512.png\") / rgb(28, 25, 23)"
+      "detail": "url(\"http://127.0.0.1:5274/logo.svg\") / rgb(28, 25, 23)"
     },
     {
       "label": "res-back hover 无背景/墨色变化",

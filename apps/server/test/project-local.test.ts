@@ -7,6 +7,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
+import { type LocalErrorReason, PROJECT_LOCAL_ERROR_REASONS } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import { afterAll, describe, expect, test } from 'vitest';
 import { project } from '../src/db/schema.js';
@@ -45,6 +46,7 @@ interface CreateReply {
   localPath?: string;
   cloneUrl?: string;
   error?: string;
+  reason?: string;
 }
 
 async function postCreate(body: unknown): Promise<{ status: number; body: CreateReply }> {
@@ -59,24 +61,27 @@ describe('POST /api/projects kind=local——localPath 校验三态（#359 AC）
     expect(String(r.body.error)).toContain('localPath');
   });
 
-  test('localPath 空串 → 400', async () => {
+  test('localPath 空串 → 400（required 态不分类）', async () => {
     const r = await postCreate({ name: 'p-empty', kind: 'local', localPath: '   ' });
     expect(r.status).toBe(400);
     expect(String(r.body.error)).toContain('localPath');
+    expect(r.body.reason).toBeUndefined();
   });
 
-  test('三态一：路径不存在 → 400', async () => {
+  test('三态一：路径不存在 → 400 + reason=not_found', async () => {
     const missing = join(tempDir('pacman-local-base-'), 'no-such-dir');
     const r = await postCreate({ name: 'p-gone', kind: 'local', localPath: missing });
     expect(r.status).toBe(400);
     expect(String(r.body.error)).toContain('localPath');
+    expect(r.body.reason).toBe<LocalErrorReason>('not_found');
   });
 
-  test('三态二：存在但不是 git 仓 → 400', async () => {
+  test('三态二：存在但不是 git 仓 → 400 + reason=not_git', async () => {
     const plain = tempDir('pacman-local-plain-');
     const r = await postCreate({ name: 'p-plain', kind: 'local', localPath: plain });
     expect(r.status).toBe(400);
     expect(String(r.body.error)).toContain('git');
+    expect(r.body.reason).toBe<LocalErrorReason>('not_git');
   });
 
   test('三态二变体：指向普通文件 → 400（非目录即非工作树仓）', async () => {
@@ -87,10 +92,11 @@ describe('POST /api/projects kind=local——localPath 校验三态（#359 AC）
     expect(r.status).toBe(400);
   });
 
-  test('相对路径 → 400（要求绝对路径；`~` 展开后判定）', async () => {
+  test('相对路径 → 400 + reason=not_absolute（`~` 展开后判定）', async () => {
     const r = await postCreate({ name: 'p-rel', kind: 'local', localPath: 'relative/dir' });
     expect(r.status).toBe(400);
     expect(String(r.body.error)).toContain('absolute');
+    expect(r.body.reason).toBe<LocalErrorReason>('not_absolute');
   });
 
   test('三态三：是 git 工作树仓 → 201，record/DB 行 localPath = 规范绝对路径', async () => {
@@ -138,6 +144,17 @@ describe('expandHomePath（`~` 展开单源；homeDir 测试注入）', () => {
     expect(expandHomePath('/abs/x', '/home/u')).toBe('/abs/x');
     expect(expandHomePath('rel/x', '/home/u')).toBe('rel/x');
     expect(expandHomePath('~other/x', '/home/u')).toBe('~other/x');
+  });
+});
+
+describe('local 400 reason 词表（#386：web 分译的单源契约）', () => {
+  test('词表 = not_found / not_git / not_absolute（值域钉死，web 按此分译）', () => {
+    expect(PROJECT_LOCAL_ERROR_REASONS).toHaveLength(3);
+    expect([...PROJECT_LOCAL_ERROR_REASONS].sort()).toEqual([
+      'not_absolute',
+      'not_found',
+      'not_git',
+    ]);
   });
 });
 
