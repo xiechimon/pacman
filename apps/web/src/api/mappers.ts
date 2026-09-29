@@ -858,7 +858,17 @@ export function mapChief(
   return {
     view: 'drawer',
     bound,
-    ...(bound && env.agentActor ? { modelSlot: `${env.agentActor.modelId ?? 'n/a'} · 默认` } : {}),
+    ...(bound && env.agentActor
+      ? {
+          modelSlot: `${env.agentActor.modelId ?? 'n/a'} · 默认`,
+          // #444: FAB 头像位 = 绑定 Agent 全记录里的既有两字段（封套已带，
+          // 零新增请求）。
+          agent: {
+            displayName: env.agentActor.displayName,
+            avatarUrl: env.agentActor.avatarUrl,
+          },
+        }
+      : {}),
     threadTitle: active?.title ?? '新主题',
     ...(opts.threads.length > 0
       ? {

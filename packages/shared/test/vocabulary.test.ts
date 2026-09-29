@@ -403,7 +403,8 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     // 覆写 [设计]；githubOauth 两件 = #231 握手面 client 凭证 [设计]；
     // token = #251 可选鉴权自有面 [设计]；mcpConfig = spec 13/#368 本地 MCP
     // config 覆写 [设计]；skillsDir = 技能根覆写（spec 13 #367 来源面 +
-    // spec 14 #371 daemon 扫描根）[设计]，均非观测 canon）单独断言，两组不混判。
+    // spec 14 #371 daemon 扫描根）[设计]；customModelReasoning = 自定义端点
+    // 推理档位 opt-in 开关 [设计]，均非观测 canon）单独断言，两组不混判。
     const {
       webDir,
       githubOauthClientId,
@@ -429,8 +430,8 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     // spec 13 #367 / spec 14 #371 自有面 [设计]：技能根目录覆写（缺省
     // SKILLS_DIR_DEFAULT）
     expect(skillsDir).toBe('PACMAN_SKILLS_DIR');
-    // 自定义端点推理档位 opt-in 开关（=1 时 materializeProvider 写
-    // reasoning:true + 档位映射）自有面 [设计]
+    // 自有面 [设计]：=1 时 materializeProvider 给自定义端点写 reasoning:true，
+    // pi 才下发 reasoning_effort（opt-in，后端容忍度不一，默认关）
     expect(customModelReasoning).toBe('PACMAN_CUSTOM_MODEL_REASONING');
   });
 

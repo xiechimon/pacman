@@ -116,11 +116,13 @@ export const useTags = (projectId: string | undefined, enabled: boolean) =>
     enabled: enabled && projectId !== undefined,
   });
 
-/** #403 看板标签筛选：看板是 team 面而标签属项目——全项目标签集并查
- * （useRunHistoryTokens 同式；queryKey 与 useTags 同键，缓存共享去重），
- * 合成 tagId → 词表名 解析图。ready = 全部查询落定：首载未完时调用面不得
- * 激活筛选，否则 tagged 卡会闪隐（map 空 = 全部不命中）。 */
-export function useProjectTagNames(projectIds: string[], enabled: boolean) {
+/** #403 看板标签筛选 + #445 卡片标签：看板是 team 面而标签属项目——全
+ * 项目标签集并查（useRunHistoryTokens 同式；queryKey 与 useTags 同键，缓存
+ * 共享去重），合成 tagId → 标签行（TagChipData 同形投影——卡面 chip 吃
+ * name+color）与 tagId → 词表名（筛选谓词面）双解析图。ready = 全部查询
+ * 落定：首载未完时调用面不得激活筛选，否则 tagged 卡会闪隐（map 空 =
+ * 全部不命中）。 */
+export function useProjectTags(projectIds: string[], enabled: boolean) {
   const queries = useQueries({
     queries: projectIds.map((id) => ({
       queryKey: ['tags', id],
@@ -129,11 +131,15 @@ export function useProjectTagNames(projectIds: string[], enabled: boolean) {
     })),
   });
   return useMemo(() => {
+    const tagById = new Map<string, Pick<TagRecord, 'id' | 'name' | 'color'>>();
     const nameById = new Map<string, string>();
     for (const q of queries) {
-      for (const tag of q.data ?? []) nameById.set(tag.id, tag.name);
+      for (const tag of q.data ?? []) {
+        tagById.set(tag.id, { id: tag.id, name: tag.name, color: tag.color });
+        nameById.set(tag.id, tag.name);
+      }
     }
-    return { nameById, ready: queries.every((q) => !q.isPending) };
+    return { tagById, nameById, ready: queries.every((q) => !q.isPending) };
   }, [queries]);
 }
 
