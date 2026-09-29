@@ -2,8 +2,9 @@
 
 本目录是 pacman 用户可见行为的验证正源。驱动前先读本索引,再按 feature 文件当配方执行。map 漏掉的入口 = 验证不完整:顺手的入口验过 ≠ 整个 feature 验过。
 
-Last updated: 2026-09-29（spec 11/#354 + spec 12/#359 + G2-T3/#360 落地三日内连续增）：
+Last updated: 2026-09-29（#366 详情页 3-pane 重排 + spec 11/#354 + spec 12/#359 + G2-T3/#360 落地连续增）：
 
+- #366 详情页 3-pane 重排：branch-sync 入口从头部弹层迁到右 pane 型选→静止 section，drive-branch-sync.mjs 与 integration 判别式同步改道；token/运行历史两弹层退役为右 pane section，仍未铺 live 配方。
 - spec 12 / #360 G2-T3：补新建项目表单 web 面条目 project-new-form.md + 定制 probe `scripts/drive-project-new-form.mjs`；local-repo-api.md 的「UI 入口待回补」交叉引用改为已落地。
 - spec 11 / #354 先行地图（合流自 main）：补三面条目——providers runtime tabs (providers-tabs.md)、machines 本机行 + switches (machines-local-row.md)、添加服务商 picker (provider-picker.md) + 三个先行 probe (drive-providers-tabs/drive-machines-local/drive-provider-picker.mjs)。先行语义 (spec 11 A12)：probe 先于实现票落地，红态 = 验收清单（FAIL detail 逐条指 spec 条款），实现票验收 = 转绿；跑序纪律见 Baseline。
 - spec 12 / #359 G2-T1：补本地仓库项目与 GitHub 连接 server API 面条目 local-repo-api.md + 定制 probe `scripts/probe-local-repos.mjs`，live 验 11/11 PASS。
@@ -52,7 +53,8 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [@提及(composer+新建任务)](./mentions.md) 提及钮开五分组 picker / textarea 键入 `@` 内联补全→选实体→序列化 token(`[名](agent:{id})`/`#seq`)落文本(#311/#327)。**2026-09-28 live 验通过**。
 - [标签(新建任务+详情meta)](./tags.md) 新建任务 footer 标签钮→面板 pill toggle+内联新建→tagIds 随 createTodo;详情 fresh meta 渲染 TagChip,**看板卡不渲染**(r9 §3.4 校准)(#309/#323)。**2026-09-28 live 验通过**。
 - [附件(composer+新建任务)](./attachments.md) 添加附件钮(原生文件触发)→三步上传(grant→host→token)→`![名](attachment:…)` 注入 spec→执行面 agent 可读(#310/#331)。live re-probe 待补。
-- [分支同步(详情页 branch-dialog)](./branch-sync.md) 分支与 PR 弹层「同步到机器」tab→选机器→同步钮→`POST branch-sync`→daemon git/worktree 执行→结果卡 pending→synced(#319/#328)。live re-probe 待补。
+- [分支同步(详情页右 pane section)](./branch-sync.md) 右 pane 型选→「分支与 PR」静止 section(#366 前为头部弹层)→选机器→同步钮→`POST branch-sync`→daemon git/worktree 执行→结果卡 pending→synced(#319/#328)。#366 后全链 live re-probe 待补。
+- [详情页 3-pane 结构与右 pane 视图](./detail-right-pane.md) 240|fluid|488 三栏贴合、头部单图标、tab 组退役、型选四视图(文档/分支/Token/历史)静止 section、fresh 空占位、composer 唯一卡片;定制 probe `scripts/drive-detail-pane.mjs`(#366)。
 - [失败面发送(详情页 composer)](./failed-send.md) failed 相位 composer 发送反馈→`{action:"restart"}`→新 build(withPlan 承接)+反馈入会话+failed→queued;相位门只收 failed(#320/#322)。live re-probe 待补。
 - [本地仓库项目与 GitHub 连接(server API 面)](./local-repo-api.md) `POST /api/projects kind=local` 三态校验(live fs+真 git)+旧 hosted 面不回归+`GET /api/github/repos` 未连接 404+github_connection 表形(SQLite 只读);定制 probe `scripts/probe-local-repos.mjs`(spec 12 / #359)。**2026-09-28 live 验 11/11 PASS**。
 - [新建项目表单(web 面)](./project-new-form.md) 菜单两行(GitHub/本地文件夹,hosted 创建入口移除)+名称回填(basename/repo 段,手改不覆盖)+本地路径 400 红色错误行+focus indigo 收编+三条创建链 API/SQLite 双真值;定制 probe `scripts/drive-project-new-form.mjs`(spec 12 / #360,OAuth picker 归 G2-T4 后回补)。
@@ -63,7 +65,7 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
 
-- 任务详情页(`/app/todo/:id`)——live 面已铺:停止链(stop-button)、AI 审核发起(review-modal)、@提及(mentions)、附件(attachments)、分支同步(branch-sync)、失败面发送(failed-send)。未铺:plan/changes/diff 文档面、transcript 流渲染、运行历史弹层、编辑分配弹层。
+- 任务详情页(`/app/todo/:id`)——live 面已铺:3-pane 结构与右 pane 四视图(detail-right-pane)、停止链(stop-button)、AI 审核发起(review-modal)、@提及(mentions)、附件(attachments)、分支同步(branch-sync,#366 起右 pane section 入口)、失败面发送(failed-send)。未铺:plan/changes/diff 文档面内容渲染、transcript 流渲染、编辑分配弹层。
 - 总管抽屉/设置(`.chief-fab` 有 live wiring,数据面未铺)。
 - 团队密钥/MCP/技能 各管理页(routes 均在,fixture e2e 有覆盖,live 配方未铺)。机器/模型服务两页已铺三面(#354 先行地图:providers-tabs/machines-local-row/provider-picker——spec 11 实现票落地前红态,配方见各 feature 文件)。
 - 看板拖拽改相(`PATCH /api/todos/:id`,#160)——fixture e2e 有 board-dnd 覆盖。

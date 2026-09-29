@@ -92,10 +92,10 @@ export const EN: Record<string, string> = {
   '{n} 天前': '{n}d ago',
 
   // —— todo detail (r7 §3.3–§3.6) ——
-  文档: 'Document',
-  聊天: 'Chat',
   'Token 用量': 'Token usage',
   运行历史: 'Run history',
+  尚无运行内容: 'No run content yet',
+  打开方案: 'Open plan',
   添加附件: 'Add attachment',
   'AI 审核': 'AI review',
   审核中: 'Reviewing',
@@ -135,7 +135,7 @@ export const EN: Record<string, string> = {
   执行对话: 'Active run',
   未指派: 'Unassigned',
   编辑分配: 'Edit assignment',
-  文档类型: 'Document type',
+  面板视图: 'Pane view',
 
   // —— ⌘K search panel (r7 05/05b, r2 §8.4) ——
   关闭搜索: 'Close search',

@@ -116,7 +116,8 @@ test('doc pane 变更▾ opens the document-type listbox and closes on Escape', 
   await select.click();
   const dropdown = page.locator('.plan-dropdown');
   await expect(dropdown).toBeVisible();
-  await expect(dropdown.locator('.plan-dropdown-row')).toContainText('变更');
+  // #366：listbox 首行 = 当前文档型（✓ 行），其后三行 = 右 pane 静止 section
+  await expect(dropdown.locator('.plan-dropdown-row').first()).toContainText('变更');
   await page.keyboard.press('Escape');
   await expect(dropdown).toBeHidden();
 });
@@ -126,9 +127,11 @@ test('doc pane 型选行 click re-selects the current type and closes (#306)', a
   await page.locator('.doc-select-wrap .doc-pane-select').click();
   const dropdown = page.locator('.plan-dropdown');
   await expect(dropdown).toBeVisible();
-  // r5b §3.7：选择器行，非确认入口——选（唯一）当前型即关
-  await dropdown.locator('.plan-dropdown-row').click();
+  // r5b §3.7：选择器行，非确认入口——选当前型行即关（#366 后首行 = 文档行，
+  // 重选 = 留在文档面）
+  await dropdown.locator('.plan-dropdown-row').first().click();
   await expect(dropdown).toBeHidden();
+  await expect(page.locator('.detail-right .doc-pane')).toBeVisible();
 });
 
 // —— 7. machines 行内动作图标（#222 出账）——————————————————————————————
