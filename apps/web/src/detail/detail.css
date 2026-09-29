@@ -1653,3 +1653,44 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   line-height: 16px;
   text-align: center;
 }
+
+/* ---- 来源 issue 行（#452 / ADR 0006 D5/D6）：live 详情中心列首行。
+   中性安静行——未建成态带重试 text 钮（btn--text 皮肤单源 ui/button.css）；
+   回显态 = 号 + 状态 + 上游现值标题；不一致提示用 tertiary 墨（只提示不
+   覆盖，非错误腔）。拉不到整行隐藏归组件面（无 CSS 态）。 ---- */
+.source-issue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+  min-width: 0;
+}
+
+.source-issue-label {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+.source-issue-number {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+.source-issue-state {
+  flex: none;
+}
+
+.source-issue-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-issue-drift {
+  flex: none;
+  font-style: italic;
+  color: var(--text-tertiary);
+}

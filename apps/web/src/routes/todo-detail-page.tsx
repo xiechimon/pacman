@@ -62,6 +62,7 @@ import { FreshBlock } from '../detail/fresh-block.js';
 import { RerunDialog, ReusePanel } from '../detail/overlays.js';
 import { type ReviewAgentOption, ReviewDialog } from '../detail/review-dialog.js';
 import { RightPane } from '../detail/right-pane.js';
+import { SourceIssueLine } from '../detail/source-issue.js';
 import { SpecBlock } from '../detail/spec-block.js';
 import { StopConfirmDialog } from '../detail/stop-confirm-dialog.js';
 import { Transcript } from '../detail/transcript.js';
@@ -588,6 +589,16 @@ export function TodoDetailPage() {
         />
         <div className="detail-body">
           <div className="detail-center">
+            {/* 来源 issue 行（#452 / ADR 0006 D5/D6）：live 专属——未建成给
+                重试入口；已建成进入拉一次回显（不一致中性提示、拉不到整行
+                隐藏）。fixture 面无来源数据源，不渲染。 */}
+            {live && wireTodo?.sourceKind != null && (
+              <SourceIssueLine
+                todo={wireTodo}
+                onRetry={() => mutations.retryGithubIssue.mutate(wireTodo.id)}
+                retryPending={mutations.retryGithubIssue.isPending}
+              />
+            )}
             {detail == null ? (
               <div className="detail-fresh">
                 <FreshBlock todo={todo} tags={freshTags} />
