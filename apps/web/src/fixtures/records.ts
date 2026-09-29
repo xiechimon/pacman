@@ -10,6 +10,7 @@
 // GithubRepoSummary = repo picker 行封套单源（spec 12 数据契约，#359）。
 import {
   type GithubRepoSummary,
+  type ModelSource,
   PHASE_VALUES,
   type Phase,
   type ProjectRepoKind,
@@ -344,23 +345,14 @@ export interface MachineRow {
   enabledRuntimes?: string[];
 }
 
-/** Model-provider row (r7 07): built-in card plus custom gateways. */
-export interface ProviderRow {
-  name: string;
-  /** `N 模型` subline. */
-  models: string;
-  /** Orange `自定义` tag beside the name; absent on the built-in row. */
-  custom?: boolean;
-  /** Right-side status pill (`未启用`); absent on custom rows. */
-  pill?: string;
-}
-
 /** The six resource surfaces' row sets (issue #69). */
 export interface ResourcesContent {
   skills: SkillRow[];
   mcpServers: McpRow[];
   machines: MachineRow[];
-  providers: ProviderRow[];
+  /** providers 页 runtime tabs 数据源（spec 11 §A1-A4，#356）：pi +
+   *  claude-code 两段，形状 = shared ModelSource（数据契约单源）。 */
+  providerSources: ModelSource[];
 }
 
 /** Inline text run inside a plan-document block; `code` renders the
@@ -627,6 +619,19 @@ export interface ChiefThreadRef {
 }
 
 export type ChiefSettingsTab = 'agent' | 'charter' | 'memory' | 'watches';
+
+/** 压缩模型选择器行最小投影（#358，spec 11 §A10；live = model-sources ∪
+ *  custom providers 并集，api/mappers.ts `toChiefModelOptions` 单源；
+ *  fixture = canon 单行）。`provider` 位 = PATCH 值槽的 provider 归属
+ *  （custom providerId 或 runtime 词表值 `claude-code`）。 */
+export interface ChiefModelOption {
+  provider: string;
+  /** 显示用来源名（r5 §2 捕获行 `r3-gw · 128k` 徽标位；runtime 段 =
+   *  品牌名 `Claude Code`，不译）。 */
+  providerLabel: string;
+  modelId: string;
+  modelName: string;
+}
 
 /** The chief surface a scenario renders. `view: 'drawer'` overlays the
  *  board; `view: 'settings'` replaces the content area (r5 101–104). */

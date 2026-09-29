@@ -137,6 +137,7 @@ import { deleteProject } from './services/projects.js';
 import {
   createProvider,
   deleteProvider,
+  getModelSources,
   getProvidersEnvelope,
   updateProvider,
 } from './services/providers.js';
@@ -1260,6 +1261,15 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     requireTeam(ctx, teamId);
     // 封套 [推断]：presets[] 字段实测在位（r3 §2），并列 providers 包络形未采。
     return c.json(getProvidersEnvelope(keysvc, teamId));
+  });
+
+  // model-sources 面（spec 11 数据契约，#356）：providers 页 runtime tabs
+  // 真值——pi = custom providers models[] 投影；claude-code = server fs
+  // 直读本机 ~/.claude/settings.json（每次 GET 重读，实时语义）。
+  app.get('/api/teams/:id/model-sources', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    return c.json(getModelSources(keysvc, teamId));
   });
 
   app.post('/api/teams/:id/providers', async (c) => {

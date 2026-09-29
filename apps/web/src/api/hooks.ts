@@ -21,6 +21,7 @@ import type {
   GithubReposResponse,
   MachineRecord,
   McpServerRecord,
+  ModelSourcesEnvelope,
   OAuthAuthorizeResponse,
   PatchAgentBody,
   PatchChiefBody,
@@ -260,6 +261,17 @@ export const useProviders = (teamId: string | undefined, enabled: boolean) =>
     queryKey: ['providers', teamId],
     queryFn: () => api.get<ProvidersEnvelope>(`/api/teams/${teamId}/providers`),
     enabled: enabled && teamId !== undefined,
+  });
+
+// providers 页 runtime tabs 数据源（spec 11 §A3/A4，#356）：pi + claude-code
+// 两段。staleTime 0 = 每次 mount 重取——claude-code 段承载「实时反映
+// ~/.claude/settings.json」语义（server 侧每次 GET 重读文件）。
+export const useModelSources = (teamId: string | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: ['model-sources', teamId],
+    queryFn: () => api.get<ModelSourcesEnvelope>(`/api/teams/${teamId}/model-sources`),
+    enabled: enabled && teamId !== undefined,
+    staleTime: 0,
   });
 
 /** GitHub 连接认证状态读面（#361 G2-T4）：login/scope，无 token 位（02 §8）。

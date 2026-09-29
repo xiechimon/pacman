@@ -339,9 +339,6 @@ export const EN: Record<string, string> = {
   '远程（HTTP）': 'Remote (HTTP)',
   '2 天前': '2d ago',
   未启用: 'Disabled',
-  'Pacman（内置）': 'Pacman (built-in)',
-  '8 模型': '8 models',
-  '12 模型': '12 models',
   // —— overlay dialogs (issues #66 / #68) ——
   新建任务: 'New task',
   '需要做什么？': 'What needs to be done?',
@@ -468,6 +465,19 @@ export const EN: Record<string, string> = {
   // 同为英文字面)
   '搜索服务商...': 'Search providers...',
   自定义端点: 'Custom endpoint',
+  // #356 runtime tabs(spec 11 §A1-A4;tab 名 pi/Claude Code 不译,槽位名
+  // default/opus/… 为配置标识符不译;{hostname} = server 机器名插值)
+  'pacman 自有运行时。模型来自你添加的服务商。':
+    "pacman's own runtime. Models come from the providers you add.",
+  '本机 Claude Code 配置（~/.claude/settings.json）的模型槽。':
+    "Model slots from this machine's Claude Code configuration (~/.claude/settings.json).",
+  '已安装在 {hostname}': 'Installed on {hostname}',
+  未安装: 'Not installed',
+  '安装 Claude Code 并完成一次登录后，此处自动展示其模型槽。':
+    'Install Claude Code and sign in once; its model slots appear here automatically.',
+  '尚未添加服务商。添加后，服务商的模型会出现在这里。':
+    'No providers yet. Once you add one, its models appear here.',
+  'settings.json 未配置模型槽。': 'No model slots configured in settings.json.',
   // #231/#243 OAuth 落地 reason 三译(providers-page 喂 connectError 行)
   '授权已被取消。': 'Authorization was cancelled.',
   '令牌交换失败，请稍后重试。': 'Token exchange failed — please try again.',

@@ -220,7 +220,10 @@ export function CreateProviderDialog({
       {view === 'picker' ? (
         <div className="dlg-form">
           <Input
-            className="dlg-form-input dlg-provider-search"
+            // dlg-picker-search = T0 契约句柄（verify features/provider-
+            // picker.md 与 providers-tabs.md 的探针锚点）；dlg-provider-
+            // search = #355 样式/e2e 钩。双挂收编两侧引用。
+            className="dlg-form-input dlg-provider-search dlg-picker-search"
             aria-label={t('搜索服务商...')}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -236,7 +239,11 @@ export function CreateProviderDialog({
               <button
                 key={row.id}
                 type="button"
-                className="dlg-provider-preset"
+                // dlg-picker-row[data-preset-id] / dlg-picker-custom =
+                // T0 契约句柄（verify features/provider-picker.md，类名以
+                // map 为准）；dlg-provider-* = #355 样式/e2e 钩，双挂收编。
+                className="dlg-provider-preset dlg-picker-row"
+                data-preset-id={row.id}
                 disabled={row.oauth && connectPending === true}
                 onClick={() =>
                   row.oauth
@@ -247,11 +254,18 @@ export function CreateProviderDialog({
                 }
               >
                 {row.label}
-                {row.oauth && <span className="dlg-provider-badge">OAuth</span>}
+                {/* T0 map：'(OAuth)' 后缀进名称文本（行 textContent 等值
+                    断言，JSX 折叠换行空白故显式 {' '}）；xai 行不带后缀
+                    （负向钉）。视觉间距由 badge 的 margin-left:auto 承担。 */}
+                {row.oauth && <span className="dlg-provider-badge">{' (OAuth)'}</span>}
               </button>
             ))}
           </div>
-          <button type="button" className="dlg-provider-custom" onClick={() => enterForm(null)}>
+          <button
+            type="button"
+            className="dlg-provider-custom dlg-picker-custom"
+            onClick={() => enterForm(null)}
+          >
             {t('自定义端点')}
           </button>
         </div>

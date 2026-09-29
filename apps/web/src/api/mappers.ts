@@ -15,6 +15,8 @@ import type {
   DocumentDiffFile,
   MachineRecord,
   McpServerRecord,
+  ModelSource,
+  ModelSourceRuntime,
   ProviderRecord,
   SecretRecord,
   SkillRecord,
@@ -35,6 +37,7 @@ import { relativeTime } from '../board/rel-time.js';
 import type {
   BranchInfoContent,
   ChiefContent,
+  ChiefModelOption,
   ChiefStreamItem,
   DiffFile,
   DiffLine,
@@ -48,7 +51,6 @@ import type {
   PlanDiffContent,
   PlanVersion,
   ProjectCommitRow,
-  ProviderRow,
   ReviewFinding,
   RobotPara,
   RunHistoryRow,
@@ -712,25 +714,6 @@ export function mapMachines(rows: MachineRecord[]): MachineRow[] {
   }));
 }
 
-/** `Pacman（内置）` 首行 = 静态产品面（r7 07 canon；内置 built-in 模型走
- * Pro = 复刻排除项，CONTEXT.md 资源与配置——恒 未启用 pill）。 */
-const BUILTIN_PROVIDER_ROW: ProviderRow = {
-  name: 'Pacman（内置）',
-  models: '8 模型',
-  pill: '未启用',
-};
-
-export function mapProviders(rows: ProviderRecord[]): ProviderRow[] {
-  return [
-    BUILTIN_PROVIDER_ROW,
-    ...rows.map((p) => ({
-      name: p.label,
-      models: `${p.models.length} 模型`,
-      ...(p.kind === 'custom' ? { custom: true } : {}),
-    })),
-  ];
-}
-
 export function mapSkills(rows: SkillRecord[]): SkillRow[] {
   return rows.map((s) => ({ name: s.name, description: s.description ?? '' }));
 }
@@ -749,6 +732,66 @@ export function mapMcpServers(rows: McpServerRecord[], now: number): McpRow[] {
 }
 
 // —— chief（总管 drawer / 设置面）———————————————————————————————
+
+/** runtime 显示名（品牌/runtime 名不译，不走 t()）——单源：providers-page
+ * runtime tablist 与 chief 压缩模型选择器（toChiefModelOptions）共消费。
+ * 词表闭包 = ModelSourceRuntime；Codex 等后续 runtime 扩在此补（spec 11
+ * §A1），两消费面自动同更，不分头改。 */
+export const RUNTIME_LABELS: Record<ModelSourceRuntime, string> = {
+  pi: 'pi',
+  'claude-code': 'Claude Code',
+};
+
+/** 压缩模型选择器候选投影（#358，spec 11 §A10）：custom providers
+ * `models[]`（带 providerId/label 归属——model-sources 的 pi 段与其同构
+ * 但平铺丢归属，不重复产行）∪ 非 pi runtime 段模型（claude-code = server
+ * 直读 ~/.claude/settings.json 的槽位；provider 位 = runtime 词表值，
+ * 未安装段 models 恒空天然无贡献）。同 (provider, modelId) 去重
+ * first-wins（settings.json default 槽 + env 槽可映同一 id；组件 React
+ * key 防撞）；跨 provider 同 modelId 两行都留——model id 只在 provider
+ * 内有意义（chiefCompactionModelSchema 对象形槽值立法理由）。providers
+ * 段卫生与 server pi 投影对齐：空 id 跳过、空 name 回退 id（shared
+ * modelSourceModelSchema 两处 min(1)）。边角：providerId 与 runtime 词表
+ * 共用 provider 命名空间，custom provider 若取名 'claude-code' 且撞同
+ * modelId，会被 providers 段 first-wins 遮蔽——刻意取该名的撞名罕见，
+ * 规格未约束，不去 invent 隔离前缀。 */
+export function toChiefModelOptions(
+  providers: ProviderRecord[],
+  sources: ModelSource[],
+): ChiefModelOption[] {
+  const options: ChiefModelOption[] = [];
+  const seen = new Set<string>();
+  const push = (option: ChiefModelOption) => {
+    const key = `${option.provider}/${option.modelId}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    options.push(option);
+  };
+  for (const p of providers) {
+    for (const m of p.models) {
+      if (m.id === '') continue;
+      push({
+        provider: p.providerId,
+        providerLabel: p.label,
+        modelId: m.id,
+        modelName: m.name !== '' ? m.name : m.id,
+      });
+    }
+  }
+  for (const source of sources) {
+    if (source.runtime === 'pi') continue;
+    const providerLabel = RUNTIME_LABELS[source.runtime] ?? source.runtime;
+    for (const m of source.models) {
+      push({
+        provider: source.runtime,
+        providerLabel,
+        modelId: m.id,
+        modelName: m.name,
+      });
+    }
+  }
+  return options;
+}
 
 /** r5 100/111 hero 网格 canon（卡序 = 抓包序；与 fixtures CHIEF_EXAMPLES
  * 同源文案——live 面单源在此，fixture 面保持自有副本不动）。 */

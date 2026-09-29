@@ -24,6 +24,7 @@ import {
   chiefGated,
   chiefReady,
   chiefSettings,
+  chiefSettingsStaleModel,
   chiefThread,
   chiefThreadsOpen,
   compareMenuV2,
@@ -55,6 +56,7 @@ import {
   r7,
   rerunDialog12,
   rerunDialog15,
+  resourcesCcMissing,
   resourcesDefault,
   reusedBuilding,
   reusePanel15,
@@ -239,6 +241,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '08': resourcesDefault,
       '09': resourcesDefault,
       '10': resourcesDefault,
+      // #356 未安装分支（spec 11 §A4）：claude-code settings.json 缺失 →
+      // header 未安装指引态的 fixture 钉
+      '10-cc-missing': resourcesCcMissing,
       // r8 overlay batch (#66): the dark capture set; ids carry the r8 batch
       // prefix like the r2/r3 rows (numbering continues after #64's 54–77)
       'r8-78': boardR8Overlay,
@@ -254,6 +259,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '102': chiefSettings('charter'),
       '103': chiefSettings('memory'),
       '104': chiefSettings('watches'),
+      // #358 AC2（spec 11 §A10）：compactionModel 仍引用已废 preset →
+      // 裸串兜底回显的 fixture 钉（合成 scenario，10-cc-missing 先例）
+      '101-stale-model': chiefSettingsStaleModel,
       '111': chiefReady,
       '114': chiefThread,
       '116': chiefThreadsOpen,
