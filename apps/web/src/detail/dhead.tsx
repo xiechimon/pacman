@@ -10,11 +10,12 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
+import { FloatingShell } from '../components/ui/floating-shell.js';
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, ChevronLeft, EllipsisVertical } from '../icons/index.js';
 import { ChipPopover } from '../overlays/chip-popover.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
 import { Button } from '../ui/button.js';
 import { Chip } from '../ui/chip.js';
@@ -57,14 +58,17 @@ export function DetailHead({
     : PHASE_UI[phase ?? todo.phase];
   const { search } = useLocation();
   const [popover, setPopover] = useState(chipPopoverOpen === true);
-  useEscapeClose(popover, () => setPopover(false));
+  // #425 B1：chip popover 是 wrap 锚定面（.chip-popover 相对 .detail-chipwrap
+  // 绝对定位）——portal 挂进 wrap 子树保几何；Esc 由 FloatingShell（Base UI
+  // layer 栈）承载。
+  const [chipWrap, setChipWrap] = useState<HTMLSpanElement | null>(null);
   return (
     <header className="detail-head">
       <Link className="detail-back" to={{ pathname: '/app', search }} aria-label={t('返回')}>
         <ChevronLeft />
       </Link>
       <span className="detail-seq">#{todo.seqNum}</span>
-      <span className="detail-chipwrap">
+      <span className="detail-chipwrap" ref={setChipWrap}>
         {/* A3: 五态 pill 视觉收编 Chip 原语（variant 同名映射）；detail-chip
             基类与 detail-chip--<tone> 别名保留——e2e 按 .detail-chip 定位点击。 */}
         <button
@@ -80,7 +84,7 @@ export function DetailHead({
         <span className="detail-chip-chevron">
           <ChevronDown width={12} height={12} />
         </span>
-        <OverlayMount open={popover}>
+        <FloatingShell open={popover} onClose={() => setPopover(false)} container={chipWrap}>
           <ClickCatcher onClose={() => setPopover(false)} />
           <ChipPopover
             todo={todo}
@@ -94,7 +98,7 @@ export function DetailHead({
                   }
             }
           />
-        </OverlayMount>
+        </FloatingShell>
       </span>
 
       <div className="detail-head-actions">
