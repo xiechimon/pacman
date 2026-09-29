@@ -11,8 +11,20 @@
   height: 100%;
 }
 
+/* #447 (ADR 0004 D2/D6): res-main is the docking row — topbar + .res-col
+   live in .res-main-col (flex:1, yields) and the chief panel rides as the
+   last flex item (chief.css). res-main keeps the position:relative anchor
+   for the FAB and absolute descendants. */
 .res-main {
   position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+
+/* the former .res-main vertical stack — same column context the resource
+   pages were authored against (the 768-wide .res-col centers inside it). */
+.res-main-col {
   flex: 1;
   min-width: 0;
   display: flex;

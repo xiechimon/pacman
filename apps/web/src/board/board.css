@@ -13,6 +13,16 @@
   overflow: hidden;
 }
 
+/* D8 (#447 / ADR 0004) 看板护栏：总管竖板停靠时 board-main 让掉 418px，
+   四列若继续走 grid-cols-4 的 minmax(0,1fr) 会被压到 ~176px 失去信息密度
+   ——护栏把轨道下限钉在 240px（施工期实测：1440 视口静止列宽 ≈281px，
+   停靠态可用宽 ≈748px < 4×240+3×14，让位改走 .board-scroller 既有的
+   overflow-x-auto 横滚）。规则以 data-chief-open 限定开态：面板关着时
+   轨道解析与 grid-cols-4 逐值一致，静止几何一字不变。 */
+.board-shell[data-chief-open] .board-scroller {
+  grid-template-columns: repeat(4, minmax(240px, 1fr));
+}
+
 /* ---- notification permission banner (#114) ---- */
 /* Geometry/colors measured from the r2 01 (light) / 28 (dark) captures:
    the strip hangs 12px below the topbar border as a 64px card, inset 17px
