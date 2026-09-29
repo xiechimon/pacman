@@ -23,6 +23,57 @@ async function dragTo(page: Page, fromSel: string, to: { x: number; y: number })
   await page.mouse.move(to.x, to.y, { steps: 12 });
 }
 
+// ---- gesture settle (#398) ----
+// Batch-load starvation spikes (seconds-long unresponsiveness of the page's
+// main thread while the machine runs the full suite) can land inside the
+// assertion window AFTER the gesture state has already committed. Playwright
+// matchers race every check against the deadline (pollAgainstDeadline): a
+// poll whose CDP round-trip stalls past the 5s budget loses the race and
+// reports "Timeout exceeded" even though data-drop was set all along — the
+// observed flake (overlay-visible passing, then the data-drop assert timing
+// out at ~5-7s; isolated reruns always green). These waits absorb the
+// infrastructure jitter on action budgets (which tolerate a stalled
+// round-trip) so the strict 5s expects that follow measure the PROPERTY, not
+// machine latency. They are not assertion laundering: each phase fails on a
+// genuinely broken gesture (overlay never appears, overlay never reaches the
+// target, page never renders two frames), so real drag regressions still go
+// red — and the strict asserts below keep their exact semantics and budget.
+
+/** Stability waits between the gesture and mid-gesture assertions: the
+ *  overlay is up, it rides the target point (the grab was the card center,
+ *  so overlay center == pointer once the final DragMove render committed),
+ *  and the page turned two responsive frame boundaries — any React tasks
+ *  queued by the final move (collision → onDragOver → setDropColumnId →
+ *  re-render) are FIFO-flushed by then. */
+async function settleDrag(page: Page, to: { x: number; y: number }): Promise<void> {
+  const overlay = page.locator('.board-drag-overlay .todo-card');
+  await overlay.waitFor({ state: 'visible', timeout: 15_000 });
+  const deadline = Date.now() + 15_000;
+  for (;;) {
+    const box = await overlay.boundingBox();
+    if (box != null) {
+      const cx = box.x + box.width / 2;
+      const cy = box.y + box.height / 2;
+      // 60px tolerance: sub-pixel/scroll drift only — far below the ~300px
+      // column pitch, so a card that never left its source column still fails
+      if (Math.abs(cx - to.x) <= 60 && Math.abs(cy - to.y) <= 60) break;
+    }
+    if (Date.now() > deadline) {
+      throw new Error('drag gesture did not settle at the target point (#398)');
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  await settleDrop(page);
+}
+
+/** Two responsive frame boundaries: flushes tasks queued before it (the drop
+ *  commit chain after pointerup, or the overId effect chain mid-gesture). */
+async function settleDrop(page: Page): Promise<void> {
+  await page.evaluate(
+    () => new Promise<void>((res) => requestAnimationFrame(() => requestAnimationFrame(() => res()))),
+  );
+}
+
 test('cross-column drop migrates the card, couples counts, shows the three feedback states', async ({
   page,
 }) => {
@@ -32,10 +83,9 @@ test('cross-column drop migrates the card, couples counts, shows the three feedb
   const list = await page.locator('[data-column="todo"] .board-column-list').boundingBox();
   if (list == null) throw new Error('todo list missing');
 
-  await dragTo(page, '[data-column="pending"] .todo-card', {
-    x: list.x + list.width / 2,
-    y: list.y + 60,
-  });
+  const to = { x: list.x + list.width / 2, y: list.y + 60 };
+  await dragTo(page, '[data-column="pending"] .todo-card', to);
+  await settleDrag(page, to);
   // mid-gesture: the lifted overlay card, the hovered column tint and the
   // grabbing body class are all observable before the drop settles
   await expect(page.locator('.board-drag-overlay .todo-card')).toBeVisible();
@@ -43,6 +93,7 @@ test('cross-column drop migrates the card, couples counts, shows the three feedb
   await expect(page.locator('body')).toHaveClass(/board-dragging/);
 
   await page.mouse.up();
+  await settleDrop(page);
   await expect(
     page.locator(`[data-column="todo"] .todo-card[data-todo-id="${cardId}"]`),
   ).toBeVisible();
@@ -67,11 +118,13 @@ test('same-column drop reorders the column view', async ({ page }) => {
   if (secondBox == null) throw new Error('second done card missing');
 
   // drop under the second card = insertion index 1
-  await dragTo(page, firstSel, {
-    x: secondBox.x + secondBox.width / 2,
-    y: secondBox.y + secondBox.height * 0.85,
-  });
+  const to = { x: secondBox.x + secondBox.width / 2, y: secondBox.y + secondBox.height * 0.85 };
+  await dragTo(page, firstSel, to);
+  await settleDrag(page, to);
   await page.mouse.up();
+  // the order read below is a one-shot evaluateAll (no auto-retry) — the
+  // settle proves the drop commit render flushed before it (#398)
+  await settleDrop(page);
 
   const order = await page
     .locator('[data-column="done"] .todo-card')
@@ -93,15 +146,17 @@ test('drop onto 待处理 never lands — no tint mid-gesture, no commit on drop
   const list = await page.locator('[data-column="pending"] .board-column-list').boundingBox();
   if (list == null) throw new Error('pending list missing');
 
-  await dragTo(page, '[data-column="done"] .todo-card', {
-    x: list.x + list.width / 2,
-    y: list.y + 60,
-  });
+  const to = { x: list.x + list.width / 2, y: list.y + 60 };
+  await dragTo(page, '[data-column="done"] .todo-card', to);
+  // the settle also guards the NEGATIVE assert below: absence is only
+  // meaningful once the gesture provably arrived and the page flushed (#398)
+  await settleDrag(page, to);
   // no drop affordance on the gate column — the tint never lights
   await expect(page.locator('.board-drag-overlay .todo-card')).toBeVisible();
   await expect(page.locator('[data-column="pending"]')).not.toHaveAttribute('data-drop', 'true');
 
   await page.mouse.up();
+  await settleDrop(page);
   // nothing commits: the card stays in 已完成, both counts untouched
   await expect(
     page.locator(`[data-column="done"] .todo-card[data-todo-id="${cardId}"]`),
@@ -203,10 +258,9 @@ for (const theme of ['light', 'dark'] as const) {
 
     // park the lifted card with its left edge 2px onto the sidebar
     const parkX = sidebar.x + sidebar.width - 2 + sourceBox.width / 2;
-    await dragTo(page, '[data-column="pending"] .todo-card', {
-      x: parkX,
-      y: listBox.y + 320,
-    });
+    const parkTo = { x: parkX, y: listBox.y + 320 };
+    await dragTo(page, '[data-column="pending"] .todo-card', parkTo);
+    await settleDrag(page, parkTo);
     const overlay = page.locator('.board-drag-overlay .todo-card');
     await expect(overlay).toBeVisible();
 
@@ -260,12 +314,13 @@ test('drop glides the overlay to the landing slot instead of snapping', async ({
   const list = await page.locator('[data-column="todo"] .board-column-list').boundingBox();
   if (list == null) throw new Error('todo list missing');
 
-  await dragTo(page, '[data-column="pending"] .todo-card', {
-    x: list.x + list.width / 2,
-    y: list.y + 60,
-  });
+  const to = { x: list.x + list.width / 2, y: list.y + 60 };
+  await dragTo(page, '[data-column="pending"] .todo-card', to);
+  await settleDrag(page, to);
   await expect(page.locator('.board-drag-overlay .todo-card')).toBeVisible();
   await page.mouse.up();
+  // no settleDrop here on purpose: the >100ms timing floor below measures
+  // from mouse.up, and an injected frame wait would make it vacuously true
 
   // dropAnimation={null} removes the overlay in the same frame as mouse.up;
   // the settle glide keeps it in flight for the 250ms default animation
