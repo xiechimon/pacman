@@ -28,8 +28,6 @@ import {
 } from '../src/db/schema.js';
 import { bootServer, issueApiKey, postProject } from './helpers.js';
 
-type TestServer = ReturnType<typeof bootServer>;
-
 async function call(
   app: Hono,
   method: string,

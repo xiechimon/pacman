@@ -59,7 +59,7 @@ export function extractReviewVerdict(
   // 从尾向头找第一条 assistant 消息
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i];
-    if (!m || m.role !== 'assistant') continue;
+    if (m?.role !== 'assistant') continue;
     const text = contentToText(m.content).trim();
     if (text === '') return null;
     const candidates: string[] = [];
