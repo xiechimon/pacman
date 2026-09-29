@@ -44,6 +44,7 @@ import type {
   StepEvent,
   ToolCallRecord,
 } from '@pacman/shared';
+import { ENV_VARS } from '@pacman/shared';
 import { SessionNotResumableError } from './errors.js';
 import { connectFailedLine, connectMcpBridge } from './mcp-bridge.js';
 
@@ -176,6 +177,36 @@ const CUSTOM_MODEL_DEFAULTS = {
   contextWindow: 128_000,
   maxTokens: 16_384,
 };
+
+/** 开关：`PACMAN_CUSTOM_MODEL_REASONING=1` 时，自定义端点的模型条目改标
+ * `reasoning: true` 并附档位映射——pi 据此下发 `reasoning_effort`，思考深度才
+ * 受 `thinkingLevel` 控制。不开时模型条目维持原样（pi 当它不推理，档位旋钮
+ * 是死的，见 wiki/评测记录里的实测）。
+ *
+ * 为什么是 opt-in 而不是默认：不同后端对 `reasoning_effort` 的容忍度不同。
+ * 实测某 relay 只认 low/high/max，传 `medium` 直接 400——默认打开等于让一部分
+ * 自定义端点整条挂掉。
+ *
+ * 映射只写该 relay 确认接受的取值（none/low/high/max），并把 pi 的七档单调折到
+ * 这四档上；`supportsDeveloperRole:false` 是必需的：`reasoning:true` 会把系统
+ * 提示词的角色从 system 换成 developer（pi 的 instructionRole 判定），钉住它才
+ * 保证提示词形态与不开开关时一致。 */
+function customModelReasoning(): Record<string, unknown> {
+  if (process.env[ENV_VARS.customModelReasoning] !== '1') return {};
+  return {
+    reasoning: true,
+    compat: { supportsDeveloperRole: false },
+    thinkingLevelMap: {
+      off: 'none',
+      minimal: 'low',
+      low: 'low',
+      medium: 'low',
+      high: 'high',
+      xhigh: 'high',
+      max: 'max',
+    },
+  };
+}
 
 interface PiMessageLike {
   role: string;
@@ -639,6 +670,7 @@ export function materializeProvider(modelsPath: string, provider: ProviderConfig
       id: m.id,
       name: m.name,
       ...CUSTOM_MODEL_DEFAULTS,
+      ...customModelReasoning(),
     })),
   };
   writeFileSync(modelsPath, `${JSON.stringify({ providers }, null, 2)}\n`, 'utf8');

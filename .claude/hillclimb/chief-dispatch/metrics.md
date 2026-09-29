@@ -213,3 +213,38 @@ cache 读是最大项，而它随**往返次数**线性增长（每次工具调�
 wire 知识，属 spec 11 的地界）。
 
 `PACMAN_EVAL_CHIEF_THINKING` 保留：对声明了思考能力的模型有效，是评测该有的旋钮。
+
+### 杠杆②补：自定义端点接推理档位 —— 已实现（opt-in），效果未定论（2026-09-29/30）
+
+前一节记的「结构性不通」已解：pi 的 `dist/bundle/chunks/openai-completions-*.js` 里，
+只要模型条目 `reasoning: true` 且 compat 探测到 `supportsReasoningEffort`，就会走
+通用分支下发 `reasoning_effort`（值经 `thinkingLevelMap` 映射）。我们的 relay 三者
+都不匹配，落到 `thinkingFormat:'openai'` + `supportsReasoningEffort:true`。
+
+实现：`PACMAN_CUSTOM_MODEL_REASONING=1` 时，`materializeProvider` 给自定义端点的
+模型条目写 `reasoning:true` + 七档映射 + `compat:{supportsDeveloperRole:false}`。
+**opt-in 而非默认**：不同后端对 `reasoning_effort` 容忍度不同——实测本 relay 只认
+low/high/max，传 `medium` 直接 400，默认打开会让一部分自定义端点整条挂掉。映射只
+写该 relay 确认接受的取值（none/low/high/max），并把七档单调折到四档上。
+`supportsDeveloperRole:false` 必需：`reasoning:true` 会把系统提示词角色从 system
+换成 developer（pi 的 instructionRole 判定），钉住它才保证提示词形态不变。
+
+**wire 证据**（`wire-tap.mts`，把 relay 地址指到本地记录代理）：请求体确实是
+`{"reasoning_effort":"low"}`、`systemRole:"system"`、52 工具、maxTokens 16384。
+
+**效果：未定论。** 同 20 条用例配对 A/B（唯一变量 = 开关）：
+
+| 指标 | 开关关 | 开关开+low | 配对差 ±95%CI | 显著 |
+|---|---|---|---|---|
+| 输出 token | 4,220 | 3,878 | −342 ± 999 | 否 |
+| cache 读 | 123,200 | 90,790 | −32,410 ± 72,189 | 否 |
+| 往返 | 9.35 | 7.70 | −1.65 ± 3.78 | 否 |
+| 成本 | $0.0677 | $0.0577 | −$0.0100 ± $0.0210 | 否 |
+| 延迟 | 62.4s | 54.8s | −7.6 ± 11.3 | 否 |
+| decision_ok | 18/20 | 19/20 | — | — |
+
+六个指标的点估计**全部**朝好的方向，但 n=20 分辨不了；成本要定论需约 80 条配对。
+
+**一条方法论教训**：单次调用的探针会严重高估效应——探针里 `reasoning_effort=low`
+把输出砍到 1/4，真实 agentic 回路里点估计只有 −8%。单发没有工具往返与上下文累积，
+不代表真实负载；评估这类字段必须走真实回路。

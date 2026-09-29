@@ -44,6 +44,7 @@
   ],
   "harness_paths": [
     "integration/eval/chief-dispatch/stack.mts",
+    "apps/daemon/src/backend/pi.ts",
     "apps/server/src/services/chief-tools.ts",
     "packages/shared/src/protocol/chief-tools.ts",
     "integration/eval/chief-dispatch/grade.mts",
@@ -77,5 +78,5 @@
     "integration/eval/chief-dispatch/repo-seed/packages/shared/package.json",
     "integration/eval/chief-dispatch/repo-seed/packages/shared/src/protocol.ts"
   ],
-  "harness_sha": "ff702bddda7cfe0d7f6883670c506d34ade54ddd054d418ee51b9aadf8247bd6"
+  "harness_sha": "9df6bea0a9c66e37ff50cb69058426a61e07c955012c6502df5be800671f57cf"
 }
