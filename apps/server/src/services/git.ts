@@ -1,15 +1,18 @@
-// repo 托管双形态服务面（02 §3/A4）：
+// repo 形态服务面（02 §3/A4 双形态 + spec 12 local 三形态）：
 // - 托管 = server 本地 bare repo（`<reposDir>/<teamId>/<repoName>.git`），对
 //   executor 呈现 http-backend 远端 URL（形状对应 r3 §1.4
 //   `https://git.todos.dev/<teamId>/<repoName>`，域名段 = 本地主机名代位，
 //   02 §5.8 gitHostDomain 槽；同源 `/git` 前缀为 [设计] 代位段）。
 // - 接入 = GitHub（`owner/repo` 记录面；executor 直连远端 clone/push conv 分支，
 //   PR/issues/CI 读面依赖 GitHub API，server 侧无本地存储）。
+// - local = 用户本机既有 git 工作树仓（spec 12 / #359：server 端只做路径
+//   规范化 + 三态校验（validateLocalRepoPath），镜像 clone 执行面归 daemon）。
 // 文件浏览面（tree?ref=/file?path=&ref=，r3 §8.2）：读裸库，无检出要求；
 // 响应形状 [推断]（端点存在实测、载荷未采，04 附录 A 补采后收紧）。
 
-import { mkdirSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { isAbsolute, join } from 'node:path';
 import {
   conversationBranch,
   type DiffFileContent,
@@ -103,6 +106,42 @@ export function githubCloneUrl(githubRepo: string): string {
   return `https://github.com/${githubRepo}.git`;
 }
 
+/** `~` 展开（spec 12：local 路径表单支持 `~/…` 粘贴；浏览器无从知道 server
+ * 端 HOME，展开必须在 server 侧）。`~user` 形态不展开（getpwnam 面不引，
+ * 留给绝对路径闸拒绝）；homeDir 参数 = 测试注入位。 */
+export function expandHomePath(rawPath: string, homeDir: string = homedir()): string {
+  if (rawPath === '~') return homeDir;
+  if (rawPath.startsWith('~/')) return join(homeDir, rawPath.slice(2));
+  return rawPath;
+}
+
+/** local 形态路径校验（spec 12 / #359 AC 三态）：`~` 展开 → 绝对路径要求
+ * → 存在性 → git 工作树仓判定（isGitRepo 经 systemGitOps 缝；bare 仓不算，
+ * ff-only 落地面要求工作树）。任一不过 = 400；通过 = 返回规范化绝对路径
+ * （落库 localPath 列值，daemon 镜像 clone 同源消费）。
+ * [设计] 多机部署（server 看不见 daemon 侧 fs）降级为「不可见即跳过」、
+ * 执行面兜底报错——归后票（spec 12 Out of Scope），本实现按单机假设收紧。 */
+export async function validateLocalRepoPath(rawPath: string | null | undefined): Promise<string> {
+  const raw = rawPath?.trim() ?? '';
+  if (raw === '') {
+    throw new HttpError(400, 'invalid body at localPath: required for kind "local"');
+  }
+  const expanded = expandHomePath(raw);
+  if (!isAbsolute(expanded)) {
+    throw new HttpError(400, `invalid body at localPath: expected absolute path, got "${raw}"`);
+  }
+  if (!existsSync(expanded)) {
+    throw new HttpError(400, `invalid body at localPath: path not found: ${expanded}`);
+  }
+  if (!(await systemGitOps.isGitRepo(expanded))) {
+    throw new HttpError(
+      400,
+      `invalid body at localPath: not a git repository (worktree): ${expanded}`,
+    );
+  }
+  return expanded;
+}
+
 export function toProjectRecord(row: ProjectRow, origin?: string): ProjectRecord {
   return {
     id: row.id,
@@ -111,6 +150,7 @@ export function toProjectRecord(row: ProjectRow, origin?: string): ProjectRecord
     ...(row.repoKind !== null ? { repoKind: row.repoKind } : {}),
     ...(row.repoName !== null ? { repoName: row.repoName } : {}),
     ...(row.githubRepo !== null ? { githubRepo: row.githubRepo } : {}),
+    ...(row.localPath !== null ? { localPath: row.localPath } : {}),
     ...(row.repoKind === 'hosted' && row.repoName !== null && origin !== undefined
       ? { cloneUrl: hostedCloneUrl(origin, row.teamId, row.repoName) }
       : {}),

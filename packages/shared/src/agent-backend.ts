@@ -78,7 +78,9 @@ export const toolSpecSchema = z.object({
 export type ToolSpec = z.infer<typeof toolSpecSchema>;
 
 /** MCP 端点（01 §5 SessionOpts.mcpServers；02 §7.1：per-turn 连接、失败降级
- * 不阻断；工具名 `mcp__<slug>__<tool>`）。 */
+ * 不阻断；工具名 `mcp__<slug>__<tool>`）。spec 13 起本形状只活在 daemon 内部
+ * （backend 缝 → pi 会话）：claim wire 改携 slug 列表，端点由 daemon 读本机
+ * `~/.claude.json` 解析——凭证值从不跨 wire。 */
 export const mcpEndpointSchema = z.object({
   slug: z.string(),
   transport: z.enum(['http', 'stdio']),
@@ -86,6 +88,8 @@ export const mcpEndpointSchema = z.object({
   command: z.string().optional(),
   args: z.array(z.string()).optional(),
   headers: z.record(z.string(), z.string()).optional(),
+  /** stdio 子进程环境（config env 段；SDK 与默认继承环境合并后 spawn）。 */
+  env: z.record(z.string(), z.string()).optional(),
 });
 export type McpEndpoint = z.infer<typeof mcpEndpointSchema>;
 

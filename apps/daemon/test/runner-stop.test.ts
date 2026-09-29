@@ -46,6 +46,7 @@ function captureLogger(): { logger: DaemonLogger; lines: string[] } {
     recover: (msg) => push('recover', msg),
     wake: (msg) => push('wake', msg),
     mcp: (msg) => push('mcp', msg),
+    skills: (msg) => push('skills', msg),
   };
   return { logger, lines };
 }
@@ -251,6 +252,7 @@ async function setup(opts: { kind?: 'plan' | 'build'; discard: boolean }) {
     workspace: ws,
     workspacesDir: join(home, 'workspaces'),
     maxConcurrent: 3,
+    mcpConfigPath: join(home, 'claude.json'),
     sessionHandles,
     stopRequests,
     heartbeatIntervalMs: 60_000,

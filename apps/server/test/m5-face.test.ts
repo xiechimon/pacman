@@ -4,8 +4,8 @@
 // ① 会话流：连接即 ping；工具行/live 文本增量/驳回用户行/步状态各自成事件、
 //    逐帧过 shared conversationStreamEventSchema；非本机 step 的 delta = 404；
 //    空 delta 不发事件。
-// ② 词表面：machines/skills/models/progress/agents tasks/whats-new 形状与
-//    404/400 语义（skill 无 SKILL.md = 400；未知 team/skill/file = 404）；
+// ② 词表面：machines/models/progress/agents tasks/whats-new 形状与
+//    404/400 语义（skills 面已迁 test/skills-local.test.ts，spec 13 #367）；
 //    埋点两端点 = 204 空实现。
 // ③ [推断] 读面：builds/{id}/plans|changes|usage 未知 build = 404；无产物 =
 //    空集形状（[]/{files:[]}/[]）。
@@ -19,7 +19,6 @@ import { join } from 'node:path';
 import {
   conversationStreamEventSchema,
   machineRecordSchema,
-  skillRecordSchema,
   tokenUsageSchema,
 } from '@pacman/shared';
 import type { Hono } from 'hono';
@@ -270,58 +269,8 @@ describe('M5 词表补齐面（02 §6.1 canonical）', () => {
     }
   });
 
-  test('技能面：POST 校验 SKILL.md → 201；列表/单读/file 端点闭环', async () => {
-    const { s } = await setupWorld();
-    try {
-      // 无 SKILL.md = 400（r2 §6.1「技能文件夹必须包含 SKILL.md」）。
-      const bad = await req(s.app, 'POST', '/api/skills', {
-        name: 'deploy',
-        files: { 'README.md': '# x' },
-      });
-      expect(bad.status).toBe(400);
-      const created = await req(s.app, 'POST', '/api/skills', {
-        name: 'deploy',
-        description: '部署流程',
-        files: { 'SKILL.md': '# deploy\n步骤…', 'helper.sh': 'echo hi' },
-      });
-      expect(created.status).toBe(201);
-      const record = skillRecordSchema.parse(await created.json());
-      expect(record.name).toBe('deploy');
-
-      const list = (await (
-        await req(s.app, 'GET', `/api/skills?teamId=${s.team.id}`)
-      ).json()) as unknown[];
-      expect(list).toHaveLength(1);
-      expect(skillRecordSchema.safeParse(list[0]).success).toBe(true);
-
-      const one = await req(s.app, 'GET', `/api/teams/${s.team.id}/skills/${record.id}`);
-      expect(one.status).toBe(200);
-      const detail = (await one.json()) as { fileNames: string[] };
-      expect(detail.fileNames.sort()).toEqual(['SKILL.md', 'helper.sh']);
-
-      const file = await req(
-        s.app,
-        'GET',
-        `/api/teams/${s.team.id}/skills/${record.id}/file?fileName=helper.sh`,
-      );
-      expect(file.status).toBe(200);
-      expect((await file.json()) as { content: string }).toEqual({
-        fileName: 'helper.sh',
-        content: 'echo hi',
-      });
-      // 默认文件 = SKILL.md
-      const entry = await req(s.app, 'GET', `/api/teams/${s.team.id}/skills/${record.id}/file`);
-      expect(((await entry.json()) as { fileName: string }).fileName).toBe('SKILL.md');
-      // 未知 file / 未知 skill = 404
-      expect(
-        (await req(s.app, 'GET', `/api/teams/${s.team.id}/skills/${record.id}/file?fileName=nope`))
-          .status,
-      ).toBe(404);
-      expect((await req(s.app, 'GET', `/api/teams/${s.team.id}/skills/nope`)).status).toBe(404);
-    } finally {
-      s.dispose();
-    }
-  });
+  // 技能面已迁出（spec 13 #367：本地目录现扫只读投影，POST 上传面删除）——
+  // 读端点闭环钉在 test/skills-local.test.ts。
 
   test('models/progress/agents tasks/whats-new/埋点面', async () => {
     const { s, projectId, todoId } = await setupWorld();

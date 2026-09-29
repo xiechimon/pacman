@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import Database from 'better-sqlite3';
 import { type BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { exportLegacyTables } from './legacy-export.js';
 import * as schema from './schema.js';
 
 export type Db = BetterSQLite3Database<typeof schema>;
@@ -31,13 +32,20 @@ export interface OpenedDb {
   close(): void;
 }
 
-export function openDbWithHandle(dbPath: string): OpenedDb {
+export function openDbWithHandle(
+  dbPath: string,
+  opts: { legacyExportDir?: string } = {},
+): OpenedDb {
   if (dbPath !== ':memory:') {
     mkdirSync(dirname(dbPath), { recursive: true });
   }
   const sqlite = new Database(dbPath);
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('foreign_keys = ON');
+  // 升级护栏（spec 13 #367/#368）：退役表（skill / mcp_server）导出必须赶在
+  // migrate 应用 DROP 之前（migrate 一跑表就没了）；触发窗与文件语义见
+  // db/legacy-export.ts。
+  exportLegacyTables(sqlite, opts.legacyExportDir);
   const db = drizzle(sqlite, { schema });
   migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
   return { db, close: () => sqlite.close() };

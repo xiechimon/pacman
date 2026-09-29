@@ -4,6 +4,7 @@
 // server 面（外部 MCP 客户端 ← 复刻）：/api/mcp 端点 + key 级工具白名单
 // （r3 §6 实测矩阵 1:1 收录）。
 
+import { z } from 'zod';
 import { BRAND } from '../brand.js';
 
 /** server 面端点（02 §5.8：形状保留（无品牌），路径保留）。 */
@@ -80,6 +81,75 @@ export const MCP_LIST_EMPTY_COPY =
   'MCP 服务器为 Agent 提供额外工具，例如工单系统、浏览器、内部 API。授权在每个 Agent 的页面上单独进行。';
 export const MCP_CONNECT_FAILED_CANON = 'connect failed — its tools are unavailable this turn';
 
+/** 降级行族扩展（spec 13/#368 claim slug 化）：daemon 本机解析面比连接面多
+ * 一种失败因——config 里没有这个 slug（勾选与配置漂移 / 多机各读各 config）。
+ * 行形与 MCP_CONNECT_FAILED_CANON 同族：`[mcp] <slug>: <canon>`。 */
+export const MCP_NOT_IN_CONFIG_CANON = 'not in local config — its tools are unavailable this turn';
+
+// —— 本地 config 消费面（spec 13：~/.claude.json mcpServers 段，非 pacman
+// 所有、只读单源）———————————————————————————————————————————————
+// server 投影面（UI 展示，值剥离）与 daemon 执行面（端点解析，值本机消费）
+// 共用同一份条目 schema。判别 = command 在 → stdio；否则 url → http。
+// 文件级失败 = 空集、条目级失败 = 跳过该条，均不炸全局（premortem 护栏一：
+// claude.json 被写脏/格式漂移）。
+
+/** stdio 条目：命令 + 参数 + env。env 值 = 本机凭证面——只存在于执行机
+ * config → 子进程环境，永不经 server / wire。 */
+export const claudeMcpStdioEntrySchema = z.object({
+  command: z.string().min(1),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string(), z.string()).optional(),
+});
+
+/** http 条目：URL + 请求头。headers 值同律 = 只在本机解析、本机请求。 */
+export const claudeMcpHttpEntrySchema = z.object({
+  url: z.string().min(1),
+  headers: z.record(z.string(), z.string()).optional(),
+});
+
+export const claudeMcpEntrySchema = z.union([claudeMcpStdioEntrySchema, claudeMcpHttpEntrySchema]);
+export type ClaudeMcpEntry = z.infer<typeof claudeMcpEntrySchema>;
+
+/** 解析产出条目：原键 + 归一 slug + 校验过的 entry。 */
+export interface ClaudeMcpParsedEntry {
+  /** config 原键（server 投影的 label 槽）。 */
+  key: string;
+  /** 键小写化 = slug（agent 勾选值 / daemon 匹配键 / record.slug 同值）。 */
+  slug: string;
+  entry: ClaudeMcpEntry;
+}
+
+/** 文件 JSON → 归一条目表（spec 13 归一律单源）：文件级形状坏 = 空表；
+ * 条目级校验失败 = 跳过不殃及其它；键小写化 = slug、小写撞名 first-wins。
+ * server 投影面（services/mcp-servers）与 daemon 执行面（backend/mcp-config）
+ * 共用本函数——slug 匹配契约不因任一侧规则漂移静默断裂。fs 读取各侧自留
+ * （shared 无 node: 依赖）。 */
+export function parseClaudeMcpEntries(json: unknown): ClaudeMcpParsedEntry[] {
+  const file = claudeMcpConfigSchema.safeParse(json);
+  if (!file.success || file.data.mcpServers === undefined) return [];
+  const out: ClaudeMcpParsedEntry[] = [];
+  const seen = new Set<string>();
+  for (const [key, value] of Object.entries(file.data.mcpServers)) {
+    const entry = claudeMcpEntrySchema.safeParse(value);
+    if (!entry.success) continue;
+    const slug = key.toLowerCase();
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    out.push({ key, slug, entry: entry.data });
+  }
+  return out;
+}
+
+/** 文件级宽松形状：`~/.claude.json` 还承载 Claude Code 自身状态（projects
+ * 等大段），只取 mcpServers 段；键可缺（缺 = 空集）。 */
+export const claudeMcpConfigSchema = z.object({
+  mcpServers: z.record(z.string(), z.unknown()).optional(),
+});
+
+/** 默认 config 文件名（home 相对）：server / daemon 两侧缺省路径单源
+ * （`join(homedir(), CLAUDE_CONFIG_FILE_NAME)`；env 覆盖 = ENV_VARS.mcpConfig）。 */
+export const CLAUDE_CONFIG_FILE_NAME = '.claude.json';
+
 /** 版本墙形状（02 §7.1）：todos.dev 按机器 CLI 版本门控（r2 §6.2 文案
  * 「机器上的 tds CLI 需升级至 v0.1.45 及以上才能使用 MCP 工具…」）——复刻保留
  * 「executor 最低版本检查」形状，数值随复刻版本线自定（素材归 #44）。 */
@@ -87,8 +157,11 @@ export const MCP_MIN_CLI_VERSION_GATE_OBSERVED = '0.1.45';
 
 /** 复刻版本线的最低 executor 版本（[设计]，02 §7.1「数值自定」）：claim 载荷
  * 只在机器 `latestCliVersion` ≥ 本值时携带 mcpServers（版本墙形状的真实门）。
- * daemon 版本单源 apps/daemon/src/version.ts 起步 0.1.0。 */
-export const MCP_MIN_CLI_VERSION = '0.1.0';
+ * spec 13 断约提升 0.1.0 → 0.2.0：claim mcpServers 形状从 McpEndpoint[] 改
+ * slug string[]，旧 daemon（≤0.1.x）不过门 = 收不到该字段（视为无 MCP 运行，
+ * 不混发形状）。daemon 版本单源 apps/daemon/src/version.ts（= manifest
+ * version，与本墙同 PR 提升至 0.2.0）。 */
+export const MCP_MIN_CLI_VERSION = '0.2.0';
 
 /** server 面 24 工具注册表（grant 白名单键 ↔ MCP wire 工具名，单源）。
  * grant = r3 §6 矩阵行标签（MCP_TOOLS_READ/WRITE 原词）；name = wire 工具名

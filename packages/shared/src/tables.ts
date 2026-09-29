@@ -22,8 +22,10 @@ export const DB_TABLES = [
   'notification', // 02 §9.1 三事件矩阵（r5 §7.2 改判）
   'agent', // 含 6 工具开关/secrets/skills/mcpServers 关联（02 §6.2）
   'agent_memory', // 02 §4.4 条目集（r5 §6 改判）
-  'skill', // 含文件内容，`skills/{sid}/file` 端点源（02 §6.1）
-  'mcp_server', // 02 §6.2 形状
+  // skill 表已退役（spec 13 #367：技能 = 本地目录现扫只读投影，不入库；
+  // drop migration 前导出旧行到 <home>/legacy-export-<ts>.json）。
+  // 'mcp_server' 已随 spec 13（#368）本地 config 只读制撤除（migration 导出
+  // 旧行后 drop）；MCP 面数据源 = ~/.claude.json，无表位。
   'provider', // 38 presets + custom；apiKey 密文经 SecretBox（02 §6.2/§8）
   'secret', // 值密文经 SecretBox，只写不读（02 §8）
   'api_key', // 哈希 + gitAccess/mcpAccess/toolGrants 白名单（02 §6.2/§8）
@@ -35,6 +37,7 @@ export const DB_TABLES = [
   'whats_new', // 形状保留内容自选（02 §6.1）
   'attachment', // M7 #310：composer/新建任务附件 grant/upload/read 三步 wire（r9 §3.1/§4）
   'branch_sync', // M7 #319 分支对话框「同步到机器」状态机（pending/running/synced/failed）；内部状态表无独立 record 投影面
+  'github_connection', // spec 12 / #359：GitHub OAuth 连接行（teamId 单行；accessToken 经 SecretBox 密封，token 只写不读出 wire）
 ] as const;
 
 export type DbTable = (typeof DB_TABLES)[number];
@@ -50,10 +53,13 @@ export const JOIN_ONLY_TABLES = ['todo_tag'] as const;
  * 端组装，wire 形状见 protocol/sse.ts branchSyncEvent。M7 #308：stop_pending
  * 读位 = GET /api/machine/stop 拉取响应（{discard}），无独立 record。M7 #310：
  * attachment 读位 = GET /api/attachments/{id} 二进制流（r9 §3.1），无 JSON
- * record 形状。 */
+ * record 形状。spec 12 / #359：github_connection 为凭证表——accessToken 只写
+ * 不读出（server 出站边界 Authorization 头唯一消费点，02 §8 同族纪律），
+ * 连接状态读位（login/scope）内嵌于认证面端点封套，不立 record 投影。 */
 export const INTERNAL_ONLY_TABLES = [
   'steer_pending',
   'branch_sync',
   'stop_pending',
   'attachment',
+  'github_connection',
 ] as const;

@@ -49,11 +49,8 @@ const INFERRED_ROUTES = [
   // 同名 POST [推断]，02 §6.1 规则族（不发明新命名空间）——
   'POST /api/teams/{id}/chief/threads', // 新主题：建线程 + 首条消息 + 入队回合步
   'POST /api/conversations/{id}/messages', // 既有 chief 线程续消息（id=chief-<threadId>）
-  // —— MCP client 面管理侧（M4b）：GET/POST 在词表内；编辑/删除 = 卡片更多
-  // 菜单面（r3 §5.1），DELETE_FACE 'teams/{id}/mcp-servers' + REST 同名 PATCH
-  // [推断]（02 §6.1 规则族）——
-  'PATCH /api/teams/{id}/mcp-servers/{sid}',
-  'DELETE /api/teams/{id}/mcp-servers/{sid}',
+  // MCP 管理写面（PATCH/DELETE 'teams/{id}/mcp-servers'）已随 spec 13/#368
+  // 本地 config 只读制撤除——GET 读面仍在词表（WEB_REST_ENDPOINTS）。
   // 记忆条目卡删除图标（r5 §6 UI 实测；02 §4.4「列表/删除 API 保形」，
   // DELETE_FACE 'teams/{id}/agents/{aid}/memories'）
   'DELETE /api/teams/{id}/agents/{aid}/memories/{mid}',
@@ -82,6 +79,17 @@ const INFERRED_ROUTES = [
   // 投影、claude-code 段 = server fs 直读 ~/.claude/settings.json。spec 11
   // 设计面，wire 未在 02 §6.1 词表登记 = INFERRED 入位。
   'GET /api/teams/{id}/model-sources',
+  // spec 12 / #359 新建项目 GitHub 认证选仓：repo picker 数据面（GitHub
+  // `GET /user/repos` 代理，token 取自 github_connection；自有设计面，
+  // 02 §6.1 词表外 = INFERRED 入位）。
+  'GET /api/github/repos',
+  // spec 12 / #361 GitHub 连接认证面（G2-T4）：authorize = #231 同形签发
+  // （github-connection 族 state）；connection GET/DELETE = 认证状态读面
+  // （login/scope，02 §8 无 token 位）+ 断开（删行幂等）。自有设计面，
+  // 02 §6.1 词表外 = INFERRED 入位。
+  'POST /api/teams/{id}/github/oauth/authorize',
+  'GET /api/teams/{id}/github/connection',
+  'DELETE /api/teams/{id}/github/connection',
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；
@@ -139,7 +147,8 @@ const M5_ROUTES = [
   'GET /api/teams/{id}/skills/{sid}/file',
   'GET /api/teams/{id}/agents/{aid}/tasks',
   'GET /api/skills',
-  'POST /api/skills',
+  // POST /api/skills 已删（spec 13 #367：技能改本地目录现扫只读投影，
+  // divergence 登记 = shared NON_REPLICATED_ENDPOINTS）。
   'GET /api/whats-new',
   'POST /api/analytics/first-touch',
   'GET /api/conversations/{id}/stream',

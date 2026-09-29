@@ -1,7 +1,9 @@
-// Chief remoteTools 词表对拍（M4a）：49 键集 = r5 §3.1 一手来源
+// Chief remoteTools 词表对拍（M4a）：raw 观测 49 键集 = r5 §3.1 一手来源
 // `docs/research/assets/r5/raw/chief-threads-testA.json` 的 toolDefHashes 全键
 // （名单实测；description/parameters 细形 [推断] 黑盒逼近，04 §1 A4 边界——
 // 本测试只钉「名单与分组」的实测面，不为 [推断] 细形背书）。
+// 现行词表 = raw − CHIEF_TOOLS_REMOVED（spec 13 #367 divergence：
+// delete_skills 除名——技能改本地目录只读投影，无删除面；raw 键集冻结不改）。
 
 import { describe, expect, it } from 'vitest';
 import {
@@ -11,6 +13,7 @@ import {
   CHIEF_TOOL_CATEGORIES,
   CHIEF_TOOL_COUNT,
   CHIEF_TOOL_NAMES,
+  CHIEF_TOOLS_REMOVED,
   CHIEF_WATCHES_EMPTY_COPY,
   chiefIdFormat,
   isChiefConversationId,
@@ -75,24 +78,33 @@ const RAW_TOOL_DEF_HASH_KEYS = [
   'workflow_runs',
 ];
 
-describe('49 词表（r5 §3.1 toolDefHashes 全键）', () => {
+describe('48 词表（raw 49 − delete_skills，spec 13 #367）', () => {
   const rawKeys: string[] = RAW_TOOL_DEF_HASH_KEYS;
+  const removed: readonly string[] = CHIEF_TOOLS_REMOVED;
+  const expected = rawKeys.filter((name) => !removed.includes(name)).sort();
 
-  it('raw 键集恰 49 件', () => {
-    expect(rawKeys).toHaveLength(CHIEF_TOOL_COUNT);
+  it('raw 键集恰 49 件 = 现行词表 + 除名登记', () => {
+    expect(rawKeys).toHaveLength(49);
+    expect(rawKeys).toHaveLength(CHIEF_TOOL_COUNT + removed.length);
   });
 
-  it('词表键集 = raw 键集（1:1，无增删改名）', () => {
-    expect(CHIEF_TOOL_NAMES).toEqual([...rawKeys].sort());
-    expect(CHIEF_REMOTE_TOOLS.map((t) => t.name).sort()).toEqual([...rawKeys].sort());
+  it('词表键集 = raw 键集 − 除名登记（无其它增删改名）', () => {
+    expect(CHIEF_TOOL_NAMES).toEqual(expected);
+    expect(CHIEF_REMOTE_TOOLS.map((t) => t.name).sort()).toEqual(expected);
   });
 
-  it('分组 = 读 15 + 组织 19 + 执行 5 + 私有 10（raw 键集实数；r5 §3.1 正文枚举漏 delete_skills）', () => {
+  it('除名登记 = delete_skills（spec 13 #367 唯一 divergence），词表全域无残迹', () => {
+    expect(removed).toEqual(['delete_skills']);
+    expect(CHIEF_TOOL_NAMES).not.toContain('delete_skills');
+    expect(Object.values(CHIEF_TOOL_CATEGORIES).flat()).not.toContain('delete_skills');
+    expect(CHIEF_REMOTE_TOOLS.map((t) => t.name)).not.toContain('delete_skills');
+  });
+
+  it('分组 = 读 15 + 组织 18 + 执行 5 + 私有 10（raw 实数 19 − delete_skills）', () => {
     expect(CHIEF_TOOL_CATEGORIES.read).toHaveLength(15);
-    expect(CHIEF_TOOL_CATEGORIES.organize).toHaveLength(19);
+    expect(CHIEF_TOOL_CATEGORIES.organize).toHaveLength(18);
     expect(CHIEF_TOOL_CATEGORIES.execute).toHaveLength(5);
     expect(CHIEF_TOOL_CATEGORIES.private).toHaveLength(10);
-    expect(CHIEF_TOOL_CATEGORIES.organize).toContain('delete_skills');
   });
 
   it('读侧全 replaySafe（bundle 提取：读工具带重试预算，r5 §3.1）；写侧不标', () => {

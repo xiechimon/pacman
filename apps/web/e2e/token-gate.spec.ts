@@ -48,7 +48,7 @@ function freePort(): Promise<number> {
   });
 }
 
-/** 起真 server：临时数据根（fresh seed）、托管本 worktree 的 dist、
+/** 起真 server：隔离数据根（fresh seed）、托管本 worktree 的 dist、
  *  token 设 = 鉴权开。ready = /api/teams 打出期望状态码（开 401 / 关 200）。 */
 async function bootLiveServer(token: string | null): Promise<LiveServer> {
   const home = mkdtempSync(join(tmpdir(), 'pacman-e2e-home-'));

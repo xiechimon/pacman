@@ -17,6 +17,7 @@ import {
   boardDarkFresh,
   boardDefault,
   boardFailed,
+  boardGithubPicker,
   boardProjectPicker,
   boardR8Overlay,
   boardWithProbe,
@@ -47,6 +48,7 @@ import {
   diffV2V3,
   history12,
   history15,
+  planOpenReview,
   projectFixture,
   projectTasks,
   projectTasksEmpty,
@@ -55,7 +57,6 @@ import {
   rerunDialog15,
   resourcesCcMissing,
   resourcesDefault,
-  resourcesImport,
   reusedBuilding,
   reusePanel15,
   revisionChain,
@@ -111,6 +112,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #176 new-task dialog 项目选择器:命名场景(无 capture)——boardDefault
       // 面加 projectNames 双项目,e2e 钉选择器行为;无 fixture 行。
       'newtask-projects': boardProjectPicker,
+      // #361 新建项目 GitHub repo picker：命名场景（无 capture，
+      // newtask-projects 先例）——boardDefault 面 + 已连接 github fixture，
+      // e2e 钉 picker 搜索/单选回填/断开/着陆参行为。
+      'github-picker': boardGithubPicker,
       // detail (r7 16–17, 23, 26–28, 36, 38)
       '16': detailPlanning,
       '16d': detailConfirm(true),
@@ -131,32 +136,37 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '36': detailDone(),
       '36d': detailDone(),
       '38': detailLegacy,
-      // overlay open states (issue #68): 30/31/32 sit on the review surface
-      // with diff + tool rows expanded, exactly as the captures froze them
+      // #366: plan-card activation pin (smoke surface, no capture): the
+      // review changes face with a collapsed plan card in the thread
+      'plan-open': planOpenReview,
+      // frozen right-pane views (issue #68 captures, re-homed by #366):
+      // 30/31/32 sit on the review surface with diff + tool rows expanded,
+      // exactly as the captures froze them — the former token/branch/
+      // history dialogs are static pane sections now
       '30': {
         ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
-        overlay: { kind: 'token' },
+        ui: { paneView: 'token' },
       },
       '31': {
         ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
-        overlay: { kind: 'branch' },
+        ui: { paneView: 'branch' },
       },
-      // r8 57: history dialog over the failed-current run (footer 重跑 surface)
-      '57f': { ...detailFailedCurrent(), overlay: { kind: 'history' } },
+      // r8 57: the failed-current run's history section
+      '57f': { ...detailFailedCurrent(), ui: { paneView: 'history' } },
       '32': {
         ...detailReview({ userMenuOpen: false, changesExpanded: true, toolsExpanded: true }),
-        overlay: { kind: 'history' },
+        ui: { paneView: 'history' },
       },
       // 34: board scrollRight, probe #9 in 待验收 (`4 分钟前` → now 13:41)
       '34': { ...boardWithProbe('review', r7(13, 37), r7(13, 41)), overlay: { kind: 'accept' } },
-      // dark overlay pairs (r8 78–81): probe #9 is gone from the live account,
+      // dark pairs (r8 78–81): probe #9 is gone from the live account,
       // so the dark captures ride the r3 legacy #1 surface as it stands now
       // (re-run 2026-09-22 18:30); the accept dialog opens from the header
       // 完成 button on the same detail surface
-      '30d': detailLegacyNow('token'),
-      '31d': detailLegacyNow('branch'),
-      '32d': detailLegacyNow('history'),
-      '34d': detailLegacyNow('accept'),
+      '30d': detailLegacyNow({ ui: { paneView: 'token' } }),
+      '31d': detailLegacyNow({ ui: { paneView: 'branch' } }),
+      '32d': detailLegacyNow({ ui: { paneView: 'history' } }),
+      '34d': detailLegacyNow({ overlay: { kind: 'accept' } }),
       // overlays (issue #67): frozen open-states on top of the surface each
       // r7 capture sits on — 05 the empty ⌘K panel over the default board,
       // 05b the results state over the #46-session board, 19/29 the chip
@@ -231,9 +241,6 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #356 未安装分支（spec 11 §A4）：claude-code settings.json 缺失 →
       // header 未安装指引态的 fixture 钉
       '10-cc-missing': resourcesCcMissing,
-      // 新建技能 (r8 78/79, captured with this ticket): tab per scenario
-      '79': resourcesImport('folder'),
-      '80': resourcesImport('github'),
       // r8 overlay batch (#66): the dark capture set; ids carry the r8 batch
       // prefix like the r2/r3 rows (numbering continues after #64's 54–77)
       'r8-78': boardR8Overlay,

@@ -1,19 +1,24 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // Issue #138 acceptance: the segmented-control family (PageShell .page-tab,
-// sched-form freq, project files seg, tasks view toggle, detail doc/chat
-// tabs, user-menu 外观, branch-dialog seg, skills-import tabs, team layout
-// toggle, chief settings tabs) gives unselected items a visible hover tint
-// in both themes, the selected chip keeps its own fill under hover, and the
-// hover highlight rides the SAME box + radius as the selected chip (one
-// geometry, two depths). Group geometry follows the official probes: the
-// page-tab family carries the r2 24b/24c hairline ring (1px border + 2px
-// padding, chip inset), the detail tab group the r7 §3.3 68×28 ring+plate.
-// The freq dark active chip must read against its container (the
+// sched-form freq, project files seg, tasks view toggle, user-menu 外观,
+// branch-dialog seg, team layout toggle, chief settings tabs) gives
+// unselected items a visible hover tint in both themes, the selected chip
+// keeps its own fill under hover, and the hover highlight rides the SAME
+// box + radius as the selected chip (one geometry, two depths). Group
+// geometry follows the official probes: the page-tab family carries the
+// r2 24b/24c hairline ring (1px border + 2px padding, chip inset). The
+// freq dark active chip must read against its container (the
 // --surface-elevated fill was container-identical in dark = invisible).
+// #366: the detail doc/chat tab group is gone from the family (the detail
+// route re-laid out to three panes); the branch-dialog seg now opens from
+// the board card icon — the detail route hosts the branch surface as a
+// static right-pane section instead.
+// #367: the skills-import tabs are gone from the family too (the import
+// page retired with the GitHub-scan/folder-upload faces — skills are a
+// read-only local-directory projection now).
 
 const PROJ = '/app/project/ZAQczKCu0MOAzC1ZqcFlX';
-const TODO = '/app/todo/7ve0iOkQ-JBpSL98zSiGc';
 
 const HOVER_DARK = 'rgba(255, 255, 255, 0.05)'; // --seg-hover dark
 const HOVER_LIGHT = 'rgba(28, 25, 23, 0.05)'; // --seg-hover light
@@ -150,47 +155,6 @@ test('files seg + tasks view toggle: hover tints the unselected (dark)', async (
   await expect.poll(() => bg(grid)).toBe(HOVER_DARK);
 });
 
-test('detail tabs: 68×28 ring + plate (r7 §3.3), hover layers the tint over the plate', async ({
-  page,
-}) => {
-  await themed(page, 'light', `${TODO}?scenario=17b`);
-  const ring = await page.evaluate(() => {
-    const group = document.querySelector('.detail-tabs-group')!;
-    const tab = document.querySelector('.detail-tab')!;
-    const g = group.getBoundingClientRect();
-    return {
-      w: Math.round(g.width),
-      h: Math.round(g.height),
-      groupBg: getComputedStyle(group).backgroundColor,
-      plateBg: getComputedStyle(tab).backgroundColor,
-    };
-  });
-  expect(ring).toMatchObject({ w: 68, h: 28, groupBg: GROUP_LIGHT, plateBg: CHIP_LIGHT });
-
-  const chat = page.locator('.detail-tab').nth(1);
-  await chat.hover();
-  await expect
-    .poll(() => chat.evaluate((el) => getComputedStyle(el).backgroundImage))
-    .toContain(`linear-gradient(${HOVER_LIGHT}`);
-
-  await themed(page, 'dark', `${TODO}?scenario=27`);
-  const darkChat = page.locator('.detail-tab').nth(1);
-  expect(await bg(darkChat)).toBe(CHIP_DARK);
-  await darkChat.hover();
-  await expect
-    .poll(() => darkChat.evaluate((el) => getComputedStyle(el).backgroundImage))
-    .toContain(`linear-gradient(${HOVER_DARK}`);
-});
-
-test('detail tabs click swaps doc/chat panes', async ({ page }) => {
-  await page.goto(`${TODO}?scenario=17b`);
-  const chat = page.locator('.detail-tab').nth(1);
-  await chat.click();
-  await expect(chat).toHaveClass(/detail-tab--active/);
-  await page.locator('.detail-tab').nth(0).click();
-  await expect(chat).not.toHaveClass(/detail-tab--active/);
-});
-
 test('user-menu 外观 seg: hover tints, click switches the theme', async ({ page }) => {
   await themed(page, 'light', '/app?scenario=01');
   await page.click('.sidebar-user');
@@ -208,7 +172,12 @@ test('user-menu 外观 seg: hover tints, click switches the theme', async ({ pag
 });
 
 test('branch-dialog seg: hover tints Git, click swaps the tab body', async ({ page }) => {
-  await page.goto(`${TODO}?scenario=31`);
+  // #366: the detail route no longer opens the branch dialog (the surface
+  // is a static right-pane section there) — the board card icon remains
+  // the dialog's live trigger.
+  await page.goto('/app?scenario=01');
+  await page.locator('.todo-card-branch').first().click();
+  await expect(page.locator('.dlg')).toBeVisible();
   const git = page.locator('.dlg-seg-tab').nth(1);
   await git.hover();
   await expect.poll(() => bg(git)).toBe(HOVER_DARK);
@@ -236,15 +205,10 @@ test('team layout toggle: official ring border + hover tint + chip token', async
   await expect.poll(() => bg(chart)).toBe(HOVER_LIGHT);
 });
 
-test('skills-import tabs + chief tabs: hover tints, click swaps the view', async ({ page }) => {
-  await themed(page, 'light', '/app/resources/skills/import?scenario=79');
-  const github = page.locator('.res-tab').nth(1);
-  await github.hover();
-  await expect.poll(() => bg(github)).toBe(HOVER_LIGHT);
-  await github.click();
-  await expect(github).toHaveClass(/res-tab--active/);
-
-  await page.goto('/app?scenario=101');
+// skills-import tab 半已随 spec 13（#367）退役——导入页删除，res-tab 族
+// 出账；chief tabs 半保留。
+test('chief tabs: hover tints, click swaps the view', async ({ page }) => {
+  await themed(page, 'light', '/app?scenario=101');
   const charter = page.locator('.chief-tab', { hasText: '章程' });
   await charter.hover();
   await expect.poll(() => bg(charter)).toBe(HOVER_LIGHT);

@@ -20,23 +20,21 @@ import {
   chiefSendMessageBodySchema,
   createAgentBodySchema,
   createBranchSyncBodySchema,
-  createMcpServerBodySchema,
+  createProjectBodySchema,
   createProviderBodySchema,
   createScheduleBodySchema,
   createTagBodySchema,
   createTodoBodySchema,
+  githubReposResponseSchema,
   type MemoryRecord,
   machineRecordSchema,
   PHASE_VALUES,
   patchAgentBodySchema,
   patchChiefBodySchema,
-  patchMcpServerBodySchema,
   patchProviderBodySchema,
   phaseSchema,
   planRowSchema,
-  projectRepoKindSchema,
   SKILL_ENTRY_FILE,
-  scanSkillsBodySchema,
   setSecretBodySchema,
   skillRecordSchema,
   startBuildsBodySchema,
@@ -57,13 +55,11 @@ import {
   apiKey,
   build,
   machine,
-  mcpServer,
   message,
   notification,
   plan as planTable,
   project,
   provider,
-  skill as skillTable,
   tag,
   todo,
   tokenUsage,
@@ -72,6 +68,7 @@ import {
 import { sha256Hex } from './lib/crypto.js';
 import { conflict, HttpError, notFound, parseWith } from './lib/errors.js';
 import { systemGitOps } from './lib/git.js';
+import { githubUserRepos } from './lib/github.js';
 import { newRecordId, nowMs } from './lib/ids.js';
 import { createApiKey, listApiKeys } from './services/api-keys.js';
 import {
@@ -116,20 +113,23 @@ import {
   slugifyRepoName,
   toProjectRecord,
   uniqueRepoName,
+  validateLocalRepoPath,
 } from './services/git.js';
+import {
+  deleteGithubConnection,
+  openGithubToken,
+  readGithubConnectionStatus,
+} from './services/github-connection.js';
 import { isChiefConversation } from './services/machines.js';
 import { handleMcpRequest } from './services/mcp-face.js';
-import {
-  createMcpServer,
-  deleteMcpServer,
-  listMcpServers,
-  updateMcpServer,
-} from './services/mcp-servers.js';
+import { listMcpServers } from './services/mcp-servers.js';
 import {
   abortOAuthCallback,
   completeOAuthCallback,
   type OAuthDeps,
   OAuthFlowError,
+  type OAuthStateKind,
+  startGithubConnectionAuthorize,
   startOAuthAuthorize,
 } from './services/oauth.js';
 import { PhaseTransitionError } from './services/phase.js';
@@ -144,7 +144,13 @@ import {
 import { createSchedule, deleteSchedule, listSchedules } from './services/schedules.js';
 import { search } from './services/search.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './services/secrets.js';
-import { fetchGithubSkillFiles, scanGithubSkills } from './services/skills.js';
+import {
+  filterKnownSkillIds,
+  listSkillFiles,
+  readSkillFile,
+  resolveLocalSkill,
+  scanLocalSkills,
+} from './services/skills.js';
 import { createTodo, deleteTodo, getTodo, listTodos, updateTodo } from './services/todos.js';
 
 /** 会话 cookie 名 [设计]（01 §4.2：httpOnly cookie 自设；品牌槽已随 D3 切换，#109，
@@ -195,16 +201,6 @@ const patchTodoBodySchema = z.object({
     .optional(),
 });
 
-/** POST /api/projects body [推断]（项目创建流两分支 UI 按 r2 §9 D 组截图为靶，
- * 02 §3；wire 未采）。repoKind 缺省 = 未绑定 repo（M2a 兼容形状）。 */
-const createProjectBodySchema = z.object({
-  name: z.string(),
-  teamId: z.string().optional(),
-  repoKind: projectRepoKindSchema.optional(),
-  /** GitHub 接入 `owner/repo`（repoKind=github 必填）。 */
-  githubRepo: z.string().optional(),
-});
-
 /** PATCH /api/teams/{id}/secrets/{sid} body [推断]（覆盖面 =「保存后只能
  * 覆盖或删除」r2 §6.3；POST body = shared setSecretBodySchema 单源）。 */
 const patchSecretBodySchema = z.object({
@@ -227,22 +223,9 @@ function requireAgentRow(ctx: AppContext, teamId: string, agentId: string) {
   return row;
 }
 
-/** mcpServers[] 勾选项 = 团队 mcp_server slug（未知 slug 400——授权面只对
- * 已接入 server 开放，02 §7.1）。 */
-function validateAgentMcpSlugs(ctx: AppContext, teamId: string, slugs: string[]): void {
-  if (slugs.length === 0) return;
-  const known = new Set(
-    ctx.db
-      .select({ slug: mcpServer.slug })
-      .from(mcpServer)
-      .where(eq(mcpServer.teamId, teamId))
-      .all()
-      .map((r) => r.slug),
-  );
-  for (const slug of slugs) {
-    if (!known.has(slug)) throw new HttpError(400, `unknown mcp server slug: ${slug}`);
-  }
-}
+// agent.mcpServers[] = 本机 config 键名（spec 13/#368）：写入不做存在性校验
+// ——未知键静默容忍（勾选与 ~/.claude.json 漂移、多机各读各 config 的竞态），
+// 执行 daemon 解析时跳过并落降级行。
 
 function agentRecordOf(row: typeof agent.$inferSelect): AgentRecord {
   return {
@@ -770,7 +753,6 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
     const body = parseWith(createAgentBodySchema, await jsonBody(c), 'body');
-    validateAgentMcpSlugs(ctx, teamId, body.mcpServers ?? []);
     const id = newRecordId();
     ctx.db
       .insert(agent)
@@ -786,7 +768,9 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         thinkingLevel: body.thinkingLevel ?? null,
         tools: body.tools ?? [],
         secrets: body.secrets ?? [],
-        skills: body.skills ?? [],
+        // spec 13 #367：skills[] 校验源 = 本地现扫存在性；未知 id 静默跳过
+        // （目录删除后死引用不留，不报错）。
+        skills: filterKnownSkillIds(ctx.skillsDir, body.skills ?? []),
         mcpServers: body.mcpServers ?? [],
       })
       .run();
@@ -805,8 +789,11 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     requireTeam(ctx, teamId);
     const row = requireAgentRow(ctx, teamId, c.req.param('aid'));
     const body = parseWith(patchAgentBodySchema, await jsonBody(c), 'body');
-    if (body.mcpServers !== undefined) validateAgentMcpSlugs(ctx, teamId, body.mcpServers);
     const sets: Partial<typeof row> = {};
+    // spec 13 #367：skills[] 与 create 同律——现扫存在性过滤，未知 id 静默跳过。
+    if (body.skills !== undefined) {
+      sets.skills = filterKnownSkillIds(ctx.skillsDir, body.skills);
+    }
     for (const key of [
       'displayName',
       'description',
@@ -815,7 +802,6 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       'thinkingLevel',
       'tools',
       'secrets',
-      'skills',
       'mcpServers',
     ] as const) {
       if (body[key] !== undefined) {
@@ -830,37 +816,13 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json(agentRecordOf(updated));
   });
 
-  // —— 团队 MCP server 管理面（02 §7.1/r3 §5.1：GET/POST 词表内；PATCH/DELETE
-  // = 卡片更多菜单「编辑/删除」面，DELETE_FACE 登记 + REST 同名 [推断]）——————
-  const mcpSvc = { db: ctx.db, box: ctx.secretBox };
+  // —— 团队 MCP server 读面（spec 13/#368 本地 config 只读制：数据源 =
+  // server 本机 ~/.claude.json 投影；管理写面 POST/PATCH/DELETE 已随登记制
+  // 删除——配置变更 = 直接编辑 config 文件）—————————————————————————
   app.get('/api/teams/:id/mcp-servers', (c) => {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
-    return c.json(listMcpServers(mcpSvc, teamId));
-  });
-
-  app.post('/api/teams/:id/mcp-servers', async (c) => {
-    const teamId = c.req.param('id');
-    requireTeam(ctx, teamId);
-    const body = parseWith(createMcpServerBodySchema, await jsonBody(c), 'body');
-    const record = createMcpServer(mcpSvc, { teamId, createdBy: ctx.user.id, ...body });
-    return c.json(record, 201);
-  });
-
-  app.patch('/api/teams/:id/mcp-servers/:sid', async (c) => {
-    const teamId = c.req.param('id');
-    requireTeam(ctx, teamId);
-    const body = parseWith(patchMcpServerBodySchema, await jsonBody(c), 'body');
-    return c.json(updateMcpServer(mcpSvc, teamId, c.req.param('sid'), body));
-  });
-
-  app.delete('/api/teams/:id/mcp-servers/:sid', (c) => {
-    const teamId = c.req.param('id');
-    requireTeam(ctx, teamId);
-    if (!deleteMcpServer(mcpSvc, teamId, c.req.param('sid'))) {
-      throw notFound(`mcp server ${c.req.param('sid')}`);
-    }
-    return c.body(null, 204);
+    return c.json(listMcpServers({ mcpConfigPath: ctx.mcpConfigPath }, teamId));
   });
 
   // —— plan.md 版本文档 diff（02 §4.2/r5 §4：documents/{id}/diff 词表内）——————
@@ -885,18 +847,32 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   // —— POST 面 ————————————————————————————————————————————————————————————————
   app.post('/api/projects', async (c) => {
     // [推断] REST 同名（02 §6.1 POST 面未观测；项目创建流两分支 UI 证据 02 §3/r2 §9）。
+    // body 单源 = shared createProjectBodySchema（spec 12 数据契约面 kind /
+    // localPath / githubRepo{owner,repo} + 既有 wire 面 repoKind / githubRepo
+    // 字符串；双名并存 kind 优先，皆缺 = 无 repo 普通项目）。
     const body = parseWith(createProjectBodySchema, await jsonBody(c), 'body');
     const teamId = body.teamId ?? ctx.team.id;
     requireTeam(ctx, teamId);
-    if (
-      body.repoKind === 'github' &&
-      (body.githubRepo === undefined || !isGithubRepoRef(body.githubRepo))
-    ) {
-      throw new HttpError(400, 'invalid body at githubRepo: expected "owner/repo"');
+    const kind = body.kind ?? body.repoKind;
+    let githubRepo: string | null = null;
+    if (kind === 'github') {
+      // 双面归一（对象面 = picker 回填，字符串面 = 手动兜底）→ 同一 400 闸。
+      const ref =
+        typeof body.githubRepo === 'string'
+          ? body.githubRepo
+          : body.githubRepo
+            ? `${body.githubRepo.owner}/${body.githubRepo.repo}`
+            : undefined;
+      if (ref === undefined || !isGithubRepoRef(ref)) {
+        throw new HttpError(400, 'invalid body at githubRepo: expected "owner/repo"');
+      }
+      githubRepo = ref;
     }
+    // local 形态：localPath 三态校验 400 闸（services/git.ts，spec 12 / #359）。
+    const localPath = kind === 'local' ? await validateLocalRepoPath(body.localPath) : null;
     const id = newRecordId();
     let repoName: string | null = null;
-    if (body.repoKind === 'hosted') {
+    if (kind === 'hosted') {
       // 托管形态落地：init 本地 bare repo（02 §3 锁定）。
       repoName = await uniqueRepoName(ctx, teamId, slugifyRepoName(body.name));
       await provisionHostedRepo(ctx, teamId, repoName);
@@ -907,9 +883,10 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         id,
         name: body.name,
         teamId,
-        repoKind: body.repoKind ?? null,
+        repoKind: kind ?? null,
         repoName,
-        githubRepo: body.repoKind === 'github' ? (body.githubRepo ?? null) : null,
+        githubRepo,
+        localPath,
       })
       .run();
     const row = requireProject(ctx, id);
@@ -1141,113 +1118,53 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json({ todos: { total: rows.length, byPhase } });
   });
 
-  // —— 技能面（词表内：GET /api/skills?teamId=、GET teams/{id}/skills/{sid}
-  // (+/file?fileName=)、POST /api/skills 上传；record = shared skillRecordSchema
-  // [推断] 投影，r2 §6.1 表单证据）———————————————————————————————
+  // —— 技能面（spec 13 #367：本地目录现扫只读投影，不入库无缓存；词表内
+  // GET /api/skills?teamId=、GET teams/{id}/skills/{sid}(+/file?fileName=)；
+  // record = shared skillRecordSchema 保形，id = frontmatter name 回落目录名，
+  // teamId = 请求 team 占位。写面（POST 上传 / GitHub scan）已删——
+  // NON_REPLICATED_ENDPOINTS 登记 divergence）————————————————————
   app.get('/api/skills', (c) => {
     const teamId = c.req.query('teamId') ?? ctx.team.id;
     requireTeam(ctx, teamId);
-    const rows = ctx.db.select().from(skillTable).where(eq(skillTable.teamId, teamId)).all();
     return c.json(
-      rows.map((r) =>
+      scanLocalSkills(ctx.skillsDir).map((s) =>
         skillRecordSchema.parse({
-          id: r.id,
-          teamId: r.teamId,
-          name: r.name,
-          description: r.description,
+          id: s.id,
+          teamId,
+          name: s.name,
+          description: s.description,
         }),
       ),
     );
   });
 
-  /** POST /api/skills body [推断]（上传面 wire 未采；r2 §6.1 表单三字段 +
-   * 文件集 = 01 §6 skill 表「含文件内容」投影；SKILL.md 必含校验 = r2 §6.1
-   * 原文「技能文件夹必须包含 SKILL.md」）。 */
-  const createSkillBodySchema = z.object({
-    teamId: z.string().optional(),
-    name: z.string().min(1),
-    description: z.string().nullish(),
-    files: z.record(z.string(), z.string()),
-  });
-  app.post('/api/skills', async (c) => {
-    const body = parseWith(createSkillBodySchema, await jsonBody(c), 'body');
-    const teamId = body.teamId ?? ctx.team.id;
-    requireTeam(ctx, teamId);
-    if (!(SKILL_ENTRY_FILE in body.files)) {
-      throw new HttpError(400, `invalid body at files: ${SKILL_ENTRY_FILE} is required`);
-    }
-    const id = newRecordId();
-    ctx.db
-      .insert(skillTable)
-      .values({
-        id,
-        teamId,
-        name: body.name,
-        description: body.description ?? null,
-        files: body.files,
-      })
-      .run();
-    return c.json(
-      skillRecordSchema.parse({
-        id,
-        teamId,
-        name: body.name,
-        description: body.description ?? null,
-      }),
-      201,
-    );
-  });
-
-  /** POST /api/skills/scan（#223：GitHub 扫描发现半——#201 路线 A，server 首个
-   * 出站 fetch 面；缝 = services/skills.ts → lib/github.ts 薄桥唯一出口，词表
-   * = shared scanSkillsBodySchema/scanSkillsResponseSchema）。body 缺省 path =
-   * scan（候选发现 [{path,name,description}]）；给 path = fetch（文件集与
-   * POST /api/skills body.files 同形，选中后直接喂导入半，#195 语义链）。 */
-  app.post('/api/skills/scan', async (c) => {
-    const body = parseWith(scanSkillsBodySchema, await jsonBody(c), 'body');
-    const teamId = body.teamId ?? ctx.team.id;
-    requireTeam(ctx, teamId);
-    const fetchImpl = ctx.githubFetch ?? fetch;
-    if (body.path !== undefined) {
-      return c.json(await fetchGithubSkillFiles(fetchImpl, body.repo, body.path));
-    }
-    return c.json(await scanGithubSkills(fetchImpl, body.repo));
-  });
-
   app.get('/api/teams/:id/skills/:sid', (c) => {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
-    const row = ctx.db
-      .select()
-      .from(skillTable)
-      .where(and(eq(skillTable.id, c.req.param('sid')), eq(skillTable.teamId, teamId)))
-      .get();
-    if (!row) throw notFound(`skill ${c.req.param('sid')}`);
-    // 封套 [推断]：record + 文件名清单（内容经 /file 逐文件取，01 §6）。
+    const resolved = resolveLocalSkill(ctx.skillsDir, c.req.param('sid'));
+    if (!resolved) throw notFound(`skill ${c.req.param('sid')}`);
+    // 封套 [推断]：record + 文件名清单（内容经 /file 逐文件取，01 §6；
+    // 清单 = 磁盘递归相对路径，spec 13 换源）。
     return c.json({
       ...skillRecordSchema.parse({
-        id: row.id,
-        teamId: row.teamId,
-        name: row.name,
-        description: row.description,
+        id: resolved.skill.id,
+        teamId,
+        name: resolved.skill.name,
+        description: resolved.skill.description,
       }),
-      fileNames: Object.keys(row.files),
+      fileNames: listSkillFiles(resolved.dir),
     });
   });
 
   app.get('/api/teams/:id/skills/:sid/file', (c) => {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
-    const row = ctx.db
-      .select()
-      .from(skillTable)
-      .where(and(eq(skillTable.id, c.req.param('sid')), eq(skillTable.teamId, teamId)))
-      .get();
-    if (!row) throw notFound(`skill ${c.req.param('sid')}`);
+    const resolved = resolveLocalSkill(ctx.skillsDir, c.req.param('sid'));
+    if (!resolved) throw notFound(`skill ${c.req.param('sid')}`);
     const fileName = c.req.query('fileName') ?? SKILL_ENTRY_FILE;
-    const content = row.files[fileName];
-    if (content === undefined) throw notFound(`file ${fileName}`);
-    return c.json({ fileName, content }); // 封套 [推断]
+    const content = readSkillFile(resolved.dir, fileName); // 逃逸/缺位 = null
+    if (content === null) throw notFound(`file ${fileName}`);
+    return c.json({ fileName, content }); // 封套 [推断]；文本投影
   });
 
   // Agent 任务面（词表内；载荷未采 [推断] = assignment 双槽任一指向该 Agent
@@ -1409,19 +1326,33 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.get('/api/oauth/callback', async (c) => {
     const code = c.req.query('code');
     const state = c.req.query('state') ?? '';
-    // origin 缺（bad-state 不在册形）→ 相对 Location：浏览器同源解析，
-    // 不引入请求方提供的任何 origin——「不信任外部 returnOrigin」纪律不变。
-    const landing = (origin: string | undefined, query: string) =>
-      c.redirect(`${origin ?? ''}/app/resources/providers?${query}`, 302);
-    // #243：state 缺/过期不再裸 400——统一 302 回 providers 页 reason=state，
-    // 与 denied/exchange 同律（web 着陆面重开弹窗给可重试路径）。
+    // 落点按 state 族分支（#361），单点描述符：provider 族回 providers 页
+    // （#231 原律）；github-connection 族回新建项目页（flag github=connection
+    // = 该页着陆消费的 picker 打开/错误信号，provider 族着陆不带、两页互不
+    // 串）。kind 不可判（bad-state 不在册形）→ 默认 providers 页；origin 缺
+    // （同形）→ 相对 Location：浏览器同源解析，不引入请求方提供的任何
+    // origin——「不信任外部 returnOrigin」纪律不变。
+    const landingFor = (kind: OAuthStateKind | undefined) =>
+      kind === 'github-connection'
+        ? { path: '/app/project/new', flag: '&github=connection' }
+        : { path: '/app/resources/providers', flag: '' };
+    const landing = (
+      origin: string | undefined,
+      kind: OAuthStateKind | undefined,
+      result: string,
+    ) => {
+      const target = landingFor(kind);
+      return c.redirect(`${origin ?? ''}${target.path}?${result}${target.flag}`, 302);
+    };
+    // #243：state 缺/过期不再裸 400——统一 302 reason=state，与
+    // denied/exchange 同律（web 着陆面给可重试路径）。
     const badStateLanding = (err: OAuthFlowError) =>
-      landing(err.origin, 'oauth=error&reason=state');
+      landing(err.origin, err.kind, 'oauth=error&reason=state');
     // 用户在 provider 站拒绝（GitHub：?error=access_denied&state=…，无 code）。
     if (c.req.query('error') !== undefined || code === undefined || code === '') {
       try {
-        const { origin } = abortOAuthCallback(oauthDeps(), state);
-        return landing(origin, 'oauth=error&reason=denied');
+        const { origin, kind } = abortOAuthCallback(oauthDeps(), state);
+        return landing(origin, kind, 'oauth=error&reason=denied');
       } catch (err) {
         if (err instanceof OAuthFlowError && err.reason === 'bad-state') {
           return badStateLanding(err);
@@ -1430,21 +1361,91 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       }
     }
     try {
-      const { origin, presetId } = await completeOAuthCallback(oauthDeps(), {
+      const outcome = await completeOAuthCallback(oauthDeps(), {
         code,
         state,
         createdBy: ctx.user.id,
       });
-      return landing(origin, `oauth=connected&provider=${presetId}`);
+      const result =
+        outcome.kind === 'provider'
+          ? `oauth=connected&provider=${outcome.presetId}`
+          : 'oauth=connected';
+      return landing(outcome.origin, outcome.kind, result);
     } catch (err) {
       if (err instanceof OAuthFlowError) {
         if (err.reason === 'exchange-failed' && err.origin !== undefined) {
-          return landing(err.origin, 'oauth=error&reason=exchange');
+          return landing(err.origin, err.kind, 'oauth=error&reason=exchange');
         }
         if (err.reason === 'bad-state') return badStateLanding(err);
       }
       throw err;
     }
+  });
+
+  // —— GitHub 连接认证面（spec 12 / #361 G2-T4，[设计] 面：todos.dev 此面
+  // wire 未采，INFERRED_ROUTES 登记）。authorize = state 签发（github-
+  // connection 族——callback 按 kind 分支落回新建项目页）；GET connection =
+  // 认证状态读面（login/scope，token 位永不出现，02 §8）；DELETE = 断开
+  // （删行幂等，DAO 单点 services/github-connection.ts）。
+  app.post('/api/teams/:id/github/oauth/authorize', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    // returnOrigin 纪律同 provider 族 authorize（Origin 头随 state 绑定）。
+    const origin = c.req.header('origin') ?? new URL(c.req.url).origin;
+    try {
+      const { authorizationUrl } = startGithubConnectionAuthorize(oauthDeps(), {
+        teamId,
+        origin,
+      });
+      return c.json({ authorizationUrl });
+    } catch (err) {
+      if (err instanceof OAuthFlowError && err.reason === 'not-configured') {
+        throw new HttpError(400, err.message);
+      }
+      throw err;
+    }
+  });
+
+  app.get('/api/teams/:id/github/connection', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    return c.json(readGithubConnectionStatus({ db: ctx.db, box: ctx.secretBox }, teamId));
+  });
+
+  app.delete('/api/teams/:id/github/connection', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    deleteGithubConnection({ db: ctx.db, box: ctx.secretBox }, teamId);
+    return c.body(null, 204);
+  });
+
+  /** GET /api/github/repos?q=（spec 12 / #359：新建项目 repo picker 数据面）。
+   * GitHub `GET /user/repos` 代理——token 取自 github_connection（SecretBox
+   * 密文解封仅在此出站边界，Authorization 头唯一消费位，never 进 URL/日志/
+   * 响应）；未连接 = 404（web 面据此显示「认证 GitHub」入口，spec 12 story 2）。
+   * q = full_name 大小写不敏感子串过滤 [设计]（上游无查询参数面，本地过滤）；
+   * 限流两形经 lib/github.ts 错误映射直透（429/502）。封套单源 = shared
+   * githubReposResponseSchema（spec 12 数据契约）。 */
+  app.get('/api/github/repos', async (c) => {
+    const teamId = c.req.query('teamId') ?? ctx.team.id;
+    requireTeam(ctx, teamId);
+    const token = openGithubToken({ db: ctx.db, box: ctx.secretBox }, teamId);
+    if (token === null) throw notFound('github connection');
+    const fetchImpl = ctx.githubFetch ?? fetch;
+    const repos = await githubUserRepos(fetchImpl, token);
+    const q = c.req.query('q')?.trim().toLowerCase() ?? '';
+    const hits = q === '' ? repos : repos.filter((r) => r.fullName.toLowerCase().includes(q));
+    return c.json(
+      githubReposResponseSchema.parse({
+        repos: hits.map((r) => ({
+          id: r.id,
+          owner: r.owner,
+          name: r.name,
+          full_name: r.fullName,
+          private: r.isPrivate,
+        })),
+      }),
+    );
   });
 
   app.get('/api/teams/:id/secrets', (c) => {
@@ -1519,6 +1520,8 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         user: ctx.user,
         reposDir: ctx.reposDir,
         attachmentsDir: ctx.attachmentsDir,
+        mcpConfigPath: ctx.mcpConfigPath,
+        skillsDir: ctx.skillsDir,
       },
       c.req.raw,
     ),

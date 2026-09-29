@@ -44,7 +44,6 @@ import {
   chiefThread,
   machine,
   project,
-  skill,
   step,
   todo,
   tokenUsage,
@@ -55,6 +54,7 @@ import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
 import type { TeamStreamHub } from './events.js';
 import type { MachineWakeHub } from './machines.js';
 import { notifyChiefMessage } from './notifications.js';
+import { scanLocalSkills } from './skills.js';
 
 export interface ChiefDeps {
   db: Db;
@@ -62,6 +62,13 @@ export interface ChiefDeps {
   /** 入队即 wake（低延迟派发，02 §5.4）。 */
   machineHub?: MachineWakeHub;
   user: UserRecord;
+}
+
+/** 资源清单面 deps（spec 13 #367）：systemPrompt 合成的 skills 清单来自本地
+ * 技能目录现扫——存储根族字段与 reposDir/attachmentsDir 同律，只在消费位
+ * （chiefClaimContext ← machines.ts claim 路径）要求。 */
+export interface ChiefResourceDeps extends ChiefDeps {
+  skillsDir: string;
 }
 
 type ChiefRow = typeof chief.$inferSelect;
@@ -526,7 +533,7 @@ export function fireDueChiefWakes(deps: ChiefDeps, now: number): void {
 /** chief 步 system prompt（02 §4.3 接口契约「输入 = 用户自然语言消息 + 团队
  * 资源清单」的宿主合成 [设计]；策略指引 = r5 §3.2–§3.5 实测行为的黑盒逼近
  * ——指引文本本身非官方原件，04 §1 A4 边界）。 */
-export function composeChiefSystemPrompt(deps: ChiefDeps, teamId: string): string {
+export function composeChiefSystemPrompt(deps: ChiefResourceDeps, teamId: string): string {
   const chiefRow = ensureChief(deps, teamId);
   const agentRow = chiefRow.agentId
     ? deps.db.select().from(agent).where(eq(agent.id, chiefRow.agentId)).get()
@@ -534,7 +541,8 @@ export function composeChiefSystemPrompt(deps: ChiefDeps, teamId: string): strin
   const projects = deps.db.select().from(project).where(eq(project.teamId, teamId)).all();
   const agents = deps.db.select().from(agent).where(eq(agent.teamId, teamId)).all();
   const machines = deps.db.select().from(machine).where(eq(machine.teamId, teamId)).all();
-  const skills = deps.db.select().from(skill).where(eq(skill.teamId, teamId)).all();
+  // spec 13 #367：skills 清单 = 本地目录现扫（id = frontmatter name 回落目录名）。
+  const skills = scanLocalSkills(deps.skillsDir);
   const memories = agentRow
     ? deps.db.select().from(agentMemory).where(eq(agentMemory.agentId, agentRow.id)).all()
     : [];
@@ -574,9 +582,10 @@ export function composeChiefSystemPrompt(deps: ChiefDeps, teamId: string): strin
   return lines.join('\n');
 }
 
-/** claim 载荷的 chief 块 + 会话解析（services/machines.ts tryClaim 消费）。 */
+/** claim 载荷的 chief 块 + 会话解析（services/machines.ts tryClaim 消费；
+ * systemPrompt 合成吃本地技能目录 = ChiefResourceDeps，spec 13 #367）。 */
 export function chiefClaimContext(
-  deps: ChiefDeps,
+  deps: ChiefResourceDeps,
   threadId: string,
 ): {
   systemPrompt: string;

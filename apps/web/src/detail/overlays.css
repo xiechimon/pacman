@@ -1,6 +1,8 @@
-/* Detail-domain overlay content styles: token/branch/history/accept 各弹窗的
-   业务内容样式 + rerun/reuse 浮层。弹窗壳与表单族(#68/#221)已提升到
-   ui/dialog.css,由 ui/dialog-shell.tsx 携带。 */
+/* Detail-domain overlay + right-pane section content styles:
+   branch/accept 弹窗与 token/branch/history 三个右 pane 静止 section
+   (#366——内容类 dlg-* 家族原样复用,弹窗壳只余 board 的 branch dialog)
+   + rerun/reuse 浮层。弹窗壳与表单族(#68/#221)已提升到 ui/dialog.css,
+   由 ui/dialog-shell.tsx 携带。 */
 
 /* --- Token 用量 (r7 30): 60px total row, 38px model row, 27px stat rows --- */
 
@@ -232,12 +234,6 @@
   padding: 24px 16px 26px;
 }
 
-/* #193: with the 重跑 footer pinned in .dlg-foot, the body's bottom padding
-   carries the old footer padding-top (10); the footer-less form keeps 26. */
-.dlg-history--foot {
-  padding-bottom: 10px;
-}
-
 .dlg-history-row {
   display: flex;
   align-items: center;
@@ -357,23 +353,6 @@
 .dlg-accept-footer .dlg-accept-done {
   width: 50px;
   padding: 0;
-}
-
-/* 重跑 footer (r8 57): renders only when the current run is the failed one;
-   a failed past run under a live current run carries none (r8 77/80).
-   #193: rides the shell's pinned .dlg-foot — the side/bottom padding moved
-   here from .dlg-history (which keeps it only in the footer-less form). */
-.dlg-history-footer {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 16px 26px;
-}
-
-.dlg-history-footer .dlg-history-rerun {
-  /* A3 收编：皮肤/28px 高归 ui/button.css（primary/compact）；13px 侧垫
-     是 r8 57 冻结值（原语 12px 会窄 2px），scoped (0,2,0) 压过 .btn
-     单类，不赌 import 顺序。 */
-  padding: 0 13px;
 }
 
 /* AI 审核模态 (M7 #312, r8 §2.5/§3.1): 560 宽居中（448 弹层律之外新档） + 搜
@@ -535,12 +514,6 @@
   margin-left: auto;
   font-size: 13px;
   line-height: 16px;
-}
-
-/* 添加 MCP 服务器 dialog (wayfinder #174, r8 71/72): http 形态的请求头行。 */
-.dlg-mcp-header-row {
-  display: flex;
-  gap: 8px;
 }
 
 /* 添加模型服务 dialog (wayfinder #175, r8 75 / r3 §2 field order): Bearer
