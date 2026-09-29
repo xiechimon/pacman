@@ -38,8 +38,9 @@ import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { Plus } from '../icons/index.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
-import { DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
+import { columnDropIndex, DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
 import { SortableCard } from './sortable-card.js';
+import { TagFilterBar } from './tag-filter.js';
 import { TodoCard } from './todo-card.js';
 import './board.css';
 
@@ -69,6 +70,20 @@ function acceptsDrop(columnId: string | null): boolean {
   return COLUMNS.find((c) => c.id === columnId)?.dropPhase != null;
 }
 
+/** #403 看板标签筛选面：board-page 持有 URL 态与标签数据源，本面只消费
+ *  现成谓词与回调（fixture/live 分支不渗进渲染层）。 */
+export interface BoardTagFilter {
+  /** 选中词表名（FIXED_TAGS 规范序）；空 = 全部态。 */
+  selected: string[];
+  /** true = 筛选生效（selected 非空且标签数据源就绪——live 首载未完时
+   *  不激活，防 tagged 卡闪隐）。 */
+  active: boolean;
+  /** 命中判定（OR 并集 + 无标签恒可见，tag-filter.ts 单源）。 */
+  matches: (todo: TodoRecord) => boolean;
+  onToggle: (name: string) => void;
+  onClear: () => void;
+}
+
 interface BoardProps {
   fixture: FixtureSet;
   /** #66: opens the new-task dialog from the topbar `+ 任务` button. */
@@ -82,6 +97,9 @@ interface BoardProps {
    *  (r2 §1.3). The route owns the permission state and passes the
    *  rendered banner only while it should show. */
   banner?: ReactNode;
+  /** #403: 标签筛选条。absent = 不渲染（无标签数据源的 fixture 场景保持
+   *  r7 基线零漂移）。 */
+  tagFilter?: BoardTagFilter;
 }
 
 export function BoardSurface({
@@ -91,6 +109,7 @@ export function BoardSurface({
   onBranch,
   onReorder,
   banner,
+  tagFilter,
 }: BoardProps) {
   const { t } = useI18n();
   const [view, setView] = useState<ColumnView | null>(null);
@@ -110,6 +129,16 @@ export function BoardSurface({
     typeof window === 'undefined' ||
     window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
+  // #403 筛选面：渲染/拖拽视图消费收窄后的可见集；moveTodo 落位仍走全集
+  // （fixture.todos）+ columnDropIndex 锚卡翻译——隐藏卡的 orderIndex 序位
+  // 不被筛选视图的重排错读。
+  const visibleTodos =
+    tagFilter?.active === true ? fixture.todos.filter(tagFilter.matches) : fixture.todos;
+  // 空结果态 = 筛选激活且收窄后无卡占任何列（closed 不占列，不计入）。
+  const showFilterEmpty =
+    tagFilter?.active === true &&
+    COLUMNS.every((c) => !visibleTodos.some((todo) => c.accepts(todo)));
+
   const sweep = useCallback(() => {
     document.body.classList.remove('board-dragging');
     // changelog 2026-09-14: the highlight is swept again on teardown
@@ -117,7 +146,7 @@ export function BoardSurface({
   }, []);
 
   const onDragStart = (event: DragStartEvent) => {
-    setView(deriveView(fixture.todos));
+    setView(deriveView(visibleTodos));
     const id = String(event.active.id);
     setDragId(id);
     setDragWidth(
@@ -186,11 +215,15 @@ export function BoardSurface({
       overId !== String(active.id) && overIndex >= 0
         ? arrayMove(liveList, from, overIndex)
         : liveList;
+    // #403：liveList 是筛选后的可见视图——落点经 columnDropIndex 锚卡翻译
+    // 回全集列视图位次再落（隐藏卡占序，直传可见 index 会插错位）。
+    const column = COLUMNS.find((c) => c.id === columnId);
+    if (column == null) return;
     onReorder(
       moveTodo(
         fixture.todos,
         String(active.id),
-        { columnId, index: list.indexOf(String(active.id)) },
+        { columnId, index: columnDropIndex(column, fixture.todos, list, String(active.id)) },
         fixture.now,
       ),
     );
@@ -207,7 +240,7 @@ export function BoardSurface({
   const viewTodos = (columnId: string): TodoRecord[] => {
     const column = COLUMNS.find((c) => c.id === columnId);
     if (column == null) return [];
-    if (view == null) return sortColumnTodos(column, fixture.todos.filter(column.accepts));
+    if (view == null) return sortColumnTodos(column, visibleTodos.filter(column.accepts));
     const byId = new Map(fixture.todos.map((t) => [t.id, t]));
     return (view[columnId] ?? [])
       .map((id) => byId.get(id))
@@ -224,6 +257,16 @@ export function BoardSurface({
         <div className="board-topbar-title pointer-events-none absolute inset-x-0 text-center text-sm leading-[22px] font-medium text-foreground">
           {t('工作台')}
         </div>
+        {/* #403 标签筛选条：顶栏左侧独立容器——不进 board-topbar-actions
+            （dead-buttons 钉死右动作区恰好一钮）；标题带 absolute +
+            pointer-events-none，hit-test 不拦截 chip。 */}
+        {tagFilter != null && (
+          <TagFilterBar
+            selected={tagFilter.selected}
+            onToggle={tagFilter.onToggle}
+            onClear={tagFilter.onClear}
+          />
+        )}
         <div className="board-topbar-actions ml-auto flex items-center pr-3">
           {/* board-new-task 是 e2e 钉死的选择器别名（className 透传保留）。
               #414: text 变体 → B 面 default（neutral 实底）；h-7 = 旧 compact
@@ -255,56 +298,72 @@ export function BoardSurface({
             banner == null ? 'top-11' : 'top-[121px]'
           }`}
         >
-          {COLUMNS.map((column) => {
-            const todos = viewTodos(column.id);
-            return (
-              <section
-                key={column.id}
-                className="board-column relative flex h-full flex-col rounded-[12px] border border-border bg-column"
-                aria-label={t(column.name)}
-                data-column={column.id}
-                data-drop={dropColumnId === column.id ? 'true' : undefined}
+          {/* #403 空结果态：筛选激活且收窄后零卡 = 板级明示文案 + 清除钮
+              （不是四列各背一条误导性列空文案，更不是空白看板）。 */}
+          {showFilterEmpty && (
+            <div className="board-tag-filter-empty col-span-4 flex h-full flex-col items-center justify-center gap-3">
+              <span className="text-sm text-muted-foreground">{t('没有匹配所选标签的任务')}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="board-tag-filter-clear"
+                onClick={tagFilter?.onClear}
               >
-                <header className="board-column-header flex h-[37px] flex-none items-center px-[13px] pt-[3px]">
-                  <span
-                    className="board-column-dot size-[7px] flex-none rounded-full"
-                    style={{ background: column.dot }}
-                  />
-                  <span className="board-column-name ml-2 text-xs leading-4 text-muted-foreground">
-                    {t(column.name)}
-                  </span>
-                  {/* count always renders, `0` included (r2 §4.1 计数 0/1;
-                  r7 02/01b: digit present on empty columns, x = name+9) */}
-                  <span className="board-column-count ml-[9px] text-xs leading-4 text-muted-foreground/70">
-                    {todos.length}
-                  </span>
-                  {column.label && (
-                    <span className="board-column-label ml-2 text-xs leading-4 text-muted-foreground">
-                      {t(column.label)}
+                {t('清除筛选')}
+              </Button>
+            </div>
+          )}
+          {!showFilterEmpty &&
+            COLUMNS.map((column) => {
+              const todos = viewTodos(column.id);
+              return (
+                <section
+                  key={column.id}
+                  className="board-column relative flex h-full flex-col rounded-[12px] border border-border bg-column"
+                  aria-label={t(column.name)}
+                  data-column={column.id}
+                  data-drop={dropColumnId === column.id ? 'true' : undefined}
+                >
+                  <header className="board-column-header flex h-[37px] flex-none items-center px-[13px] pt-[3px]">
+                    <span
+                      className="board-column-dot size-[7px] flex-none rounded-full"
+                      style={{ background: column.dot }}
+                    />
+                    <span className="board-column-name ml-2 text-xs leading-4 text-muted-foreground">
+                      {t(column.name)}
                     </span>
-                  )}
-                </header>
-                <ColumnList columnId={column.id} empty={t(column.empty)} count={todos.length}>
-                  <SortableContext
-                    items={todos.map((t) => t.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {todos.map((todo) => (
-                      <SortableCard
-                        key={todo.id}
-                        todo={todo}
-                        now={fixture.now}
-                        onAction={onAction}
-                        onBranch={onBranch}
-                        dragSource={dragId === todo.id}
-                        projectName={fixture.projectNames?.[todo.projectId]}
-                      />
-                    ))}
-                  </SortableContext>
-                </ColumnList>
-              </section>
-            );
-          })}
+                    {/* count always renders, `0` included (r2 §4.1 计数 0/1;
+                  r7 02/01b: digit present on empty columns, x = name+9) */}
+                    <span className="board-column-count ml-[9px] text-xs leading-4 text-muted-foreground/70">
+                      {todos.length}
+                    </span>
+                    {column.label && (
+                      <span className="board-column-label ml-2 text-xs leading-4 text-muted-foreground">
+                        {t(column.label)}
+                      </span>
+                    )}
+                  </header>
+                  <ColumnList columnId={column.id} empty={t(column.empty)} count={todos.length}>
+                    <SortableContext
+                      items={todos.map((t) => t.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {todos.map((todo) => (
+                        <SortableCard
+                          key={todo.id}
+                          todo={todo}
+                          now={fixture.now}
+                          onAction={onAction}
+                          onBranch={onBranch}
+                          dragSource={dragId === todo.id}
+                          projectName={fixture.projectNames?.[todo.projectId]}
+                        />
+                      ))}
+                    </SortableContext>
+                  </ColumnList>
+                </section>
+              );
+            })}
         </div>
         {/* #391: default drop animation — the overlay glides to the landing
             slot (250ms ease) instead of snapping out on pointer up; lift

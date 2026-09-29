@@ -20,6 +20,8 @@ import {
   boardGithubPicker,
   boardProjectPicker,
   boardR8Overlay,
+  boardTagFilter,
+  boardTagFilterEmpty,
   boardWithProbe,
   chiefGated,
   chiefReady,
@@ -117,6 +119,11 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // newtask-projects 先例）——boardDefault 面 + 已连接 github fixture，
       // e2e 钉 picker 搜索/单选回填/断开/着陆参行为。
       'github-picker': boardGithubPicker,
+      // #403 看板标签筛选：命名场景（无 capture，同上先例）——board-tags
+      // 跨列三卡（bug/docs/无标签）钉筛选行为；board-tags-empty 两卡全
+      // tagged，钉板级空结果态。
+      'board-tags': boardTagFilter,
+      'board-tags-empty': boardTagFilterEmpty,
       // detail (r7 16–17, 23, 26–28, 36, 38)
       '16': detailPlanning,
       '16d': detailConfirm(true),

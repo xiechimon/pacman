@@ -19,12 +19,19 @@ import type { TodoRecord as WireTodo } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { useApiMutations, useProjects, useSearchResults, useTodos } from '../api/hooks.js';
+import {
+  useApiMutations,
+  useProjects,
+  useProjectTagNames,
+  useSearchResults,
+  useTodos,
+} from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { AppSidebar } from '../board/app-sidebar.js';
-import { BoardSurface } from '../board/board.js';
+import { BoardSurface, type BoardTagFilter } from '../board/board.js';
 import { NotificationBanner, useNotificationBanner } from '../board/notify-banner.js';
+import { matchesTagFilter, parseTagParam } from '../board/tag-filter.js';
 import { ChiefDrawer } from '../chief/chief-drawer.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
 import { useChiefSurface } from '../chief/use-chief-surface.js';
@@ -69,6 +76,74 @@ export function BoardPage() {
   const todosQ = useTodos(teamId, live);
   const projectsQ = useProjects(teamId, live);
   const mutations = useApiMutations(teamId);
+
+  // —— #403 看板标签筛选面：URL ?tags= 为唯一真值（刷新/分享不丢），选中
+  // 集 = 固定词表名规范序。标签数据源：live = 全项目标签集并查
+  // （useProjectTagNames；首载未就绪不激活筛选，防 tagged 卡闪隐），
+  // fixture = scenario.tags（absent = 筛选条不渲染，旧场景基线零漂移）。——
+  const rawTags = searchParams.get('tags');
+  const selectedTags = useMemo(() => parseTagParam(rawTags), [rawTags]);
+  const selectedTagSet = useMemo(() => new Set(selectedTags), [selectedTags]);
+  const projectIds = useMemo(() => (projectsQ.data ?? []).map((p) => p.id), [projectsQ.data]);
+  const liveTagNames = useProjectTagNames(projectIds, live);
+  const fixtureTagNames = useMemo(
+    () => new Map((fixture.tags ?? []).map((tag) => [tag.id, tag.name] as const)),
+    [fixture],
+  );
+  const tagNameById = live ? liveTagNames.nameById : fixtureTagNames;
+  const tagFilterActive = selectedTags.length > 0 && (!live || liveTagNames.ready);
+  const matchesTag = useCallback(
+    (todo: TodoRecord) => matchesTagFilter(todo, selectedTagSet, tagNameById),
+    [selectedTagSet, tagNameById],
+  );
+  // 写回 = 规范序 join，清空即删参；replace 不刷历史（筛选不是导航步）。
+  // 其余参（scenario 等）原样保留——providers-page 着陆参同律。
+  // tags 段手工拼、其余参全权 URLSearchParams：票面要可读的字面逗号
+  //（?tags=bug,feature），而 setSearchParams 内部 createSearchParams 会把
+  // 逗号重编码成 %2C（react-router 8.4 dom/lib.js useSearchParams 实测）；
+  // navigate('?…') 的 parsePath 原样切片 + normalizeSearch 仅做前缀规范化，
+  // search 串不重编码，空 pathname = 保当前路径（resolvePath）。词表名是
+  // [a-z]+ 无需编码。
+  const writeTagParam = useCallback(
+    (nextNames: string[]) => {
+      const rest = new URLSearchParams(searchParams);
+      rest.delete('tags');
+      const head = rest.toString();
+      const parts = [head, nextNames.length > 0 ? `tags=${nextNames.join(',')}` : ''].filter(
+        (s) => s !== '',
+      );
+      navigate(`?${parts.join('&')}`, { replace: true });
+    },
+    [searchParams, navigate],
+  );
+  const toggleTag = useCallback(
+    (name: string) => {
+      if (selectedTags.includes(name)) {
+        writeTagParam(selectedTags.filter((n) => n !== name));
+        return;
+      }
+      // 规范序 = FIXED_TAGS 序：复用 parseTagParam 的规范化（单源，不另写
+      // 一份词表序过滤）。
+      writeTagParam(parseTagParam([...selectedTags, name].join(',')));
+    },
+    [selectedTags, writeTagParam],
+  );
+  const clearTags = useCallback(() => {
+    if (searchParams.get('tags') == null) return;
+    writeTagParam([]);
+  }, [searchParams, writeTagParam]);
+  // bar 渲染门：live 恒渲染（固定词表 + 项目创建播种保证有面）；fixture
+  // 仅 scenario.tags 在场时渲染。
+  const tagFilter: BoardTagFilter | undefined =
+    live || fixture.tags != null
+      ? {
+          selected: selectedTags,
+          active: tagFilterActive,
+          matches: matchesTag,
+          onToggle: toggleTag,
+          onClear: clearTags,
+        }
+      : undefined;
 
   // New-task dialog (#66): fixture phase has no backend, so a saved task
   // lives in this client-side set — the card lands in 待开始 with the
@@ -234,6 +309,7 @@ export function BoardPage() {
           // #73: drag drops commit into the same client-side todo set as
           // create/delete — column counts and folds re-derive from it
           onReorder={handleReorder}
+          tagFilter={tagFilter}
         />
       )}
       <SearchPanel

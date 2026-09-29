@@ -545,4 +545,8 @@ export const EN: Record<string, string> = {
   // —— local 项目 Files tab 禁用面 (spec 12 / #362 G2-T2 v1) ——
   本地仓库项目暂不支持在线浏览文件:
     'Online file browsing is not available for local repository projects',
+
+  // —— #403 看板标签筛选条（顶栏 chip 组 + 空结果态）——
+  没有匹配所选标签的任务: 'No tasks match the selected tags',
+  清除筛选: 'Clear filters',
 };
