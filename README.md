@@ -56,7 +56,7 @@ pnpm install
 pnpm start        # builds the web UI and starts the server hosting it on the same origin
 ```
 
-The watch-mode dev stack, one process each: `pnpm dev:web`, `pnpm dev:server`, `pnpm dev:daemon`.
+The watch-mode dev stack, one process each: `pnpm dev:web`, `pnpm dev:server`, `pnpm dev:daemon` (`pnpm dev` runs all three together).
 
 ## Configuration
 
@@ -76,9 +76,14 @@ Daemon environment variables (alternatives to the CLI flags above): `PACMAN_SERV
 ## Development
 
 ```sh
-pnpm dev:server   # API server with hot reload on http://127.0.0.1:8787 (first boot: db + migrations + seed)
-pnpm dev:web      # vite dev server on http://localhost:5173, proxying /api and /git to 8787
+pnpm dev:server   # API server with hot reload on http://127.0.0.1:8899 (first boot: db + migrations + seed)
+pnpm dev:web      # vite dev server on http://localhost:5300, proxying /api and /git to 8899
 ```
+
+The dev scripts pin these ports (`strictPort` — a taken port fails startup instead of
+silently shifting), kept separate from the product defaults (`8787`/`5173`) so parallel
+checkouts never quietly share one stack. Override via `PACMAN_DEV_WEB_PORT` /
+`PACMAN_DEV_SERVER_PORT` / `PORT` / `PACMAN_SERVER`.
 
 Quality gates before committing:
 

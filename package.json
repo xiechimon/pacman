@@ -9,9 +9,9 @@
   },
   "scripts": {
     "dev": "concurrently -n web,server,daemon -c blue,magenta,green \"pnpm dev:web\" \"pnpm dev:server\" \"pnpm dev:daemon\"",
-    "dev:web": "pnpm --filter @pacman/web dev",
-    "dev:server": "pnpm --filter @xiechimon/pacman dev",
-    "dev:daemon": "pnpm --filter @xiechimon/pacman-cli dev",
+    "dev:web": "PACMAN_DEV_WEB_PORT=5300 PACMAN_DEV_SERVER_PORT=8899 pnpm --filter @pacman/web dev",
+    "dev:server": "PORT=8899 pnpm --filter @xiechimon/pacman dev",
+    "dev:daemon": "PACMAN_SERVER=http://127.0.0.1:8899 pnpm --filter @xiechimon/pacman-cli dev",
     "build": "pnpm -r build",
     "start": "pnpm --filter @pacman/web build && pnpm --filter @xiechimon/pacman start",
     "typecheck": "pnpm -r typecheck",

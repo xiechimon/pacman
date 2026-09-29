@@ -56,7 +56,7 @@ pnpm install
 pnpm start        # 构建 web UI 并由 server 同源托管
 ```
 
-watch 模式开发栈，每进程一条：`pnpm dev:web`、`pnpm dev:server`、`pnpm dev:daemon`。
+watch 模式开发栈，每进程一条：`pnpm dev:web`、`pnpm dev:server`、`pnpm dev:daemon`（`pnpm dev` 三进程一起跑）。
 
 ## 配置
 
@@ -76,9 +76,13 @@ daemon 环境变量（上述 CLI flag 的等价覆写）：`PACMAN_SERVER`（默
 ## 开发
 
 ```sh
-pnpm dev:server   # API server 热重载，http://127.0.0.1:8787（首启建库 + 迁移 + seed）
-pnpm dev:web      # vite dev server，http://localhost:5173，/api 与 /git proxy 到 8787
+pnpm dev:server   # API server 热重载，http://127.0.0.1:8899（首启建库 + 迁移 + seed）
+pnpm dev:web      # vite dev server，http://localhost:5300，/api 与 /git proxy 到 8899
 ```
+
+dev 脚本钉死这两个端口（`strictPort`，撞端口即启动失败而非静默顺延），
+与产品默认（`8787`/`5173`）分开——多份检出并行时不会悄悄共用一套栈。
+覆写走 `PACMAN_DEV_WEB_PORT` / `PACMAN_DEV_SERVER_PORT` / `PORT` / `PACMAN_SERVER`。
 
 提交前三闸：
 
