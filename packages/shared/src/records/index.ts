@@ -12,7 +12,6 @@ import { buildRecordSchema } from './build.js';
 import { chiefRecordSchema, chiefThreadSchema } from './chief.js';
 import { documentDiffSchema } from './document-diff.js';
 import { machineRecordSchema } from './machine.js';
-import { mcpServerRecordSchema } from './mcp-server.js';
 import { memoryRecordSchema } from './memory.js';
 import { messageRecordSchema } from './message.js';
 import { notificationRecordSchema } from './notification.js';
@@ -58,9 +57,11 @@ export * from './token-usage.js';
 export * from './user.js';
 export * from './whats-new.js';
 
-/** 表名 → record schema（24 张，键序 = 01 §6 清单序；快照测试的遍历源。
- * skill 已出列——record 形状仍在 records/skill.ts，投影源 = 本地目录现扫，
- * spec 13 #367）。 */
+/** 表名 → record schema（23 张，键序 = 01 §6 清单序；快照测试的遍历源）。
+ * skill 已出列（spec 13 #367）——record 形状仍在 records/skill.ts，投影源 =
+ * 本地目录现扫；mcp_server 已出表集（spec 13 #368 本地 config 只读制）——
+ * McpServerRecord wire 形状保留（mcp-server.js 单源）作 GET 读端点投影，
+ * 但两者都不再有表位。 */
 export const RECORD_SCHEMAS = {
   user: userRecordSchema,
   team: teamRecordSchema,
@@ -76,7 +77,6 @@ export const RECORD_SCHEMAS = {
   notification: notificationRecordSchema,
   agent: agentRecordSchema,
   agent_memory: memoryRecordSchema,
-  mcp_server: mcpServerRecordSchema,
   provider: providerRecordSchema,
   secret: secretRecordSchema,
   api_key: apiKeyRecordSchema,

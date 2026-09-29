@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import {
   BRAND,
   CLAIM_POLL_INTERVAL_MS,
+  CLAUDE_CONFIG_FILE_NAME,
   ENV_VARS,
   SKILLS_DIR_DEFAULT,
   TEAM_STREAM_PING_INTERVAL_MS,
@@ -55,6 +56,10 @@ export const serverConfigSchema = z.object({
    *  绑定（node 缺省 = 全接口）。显式 `0.0.0.0`/`::` 且鉴权关 → 启动 WARN
    *  （insecureBindWarning，#251 验收面 6）。 */
   host: z.string().nullable(),
+  /** 本机 MCP config 读路径（spec 13/#368：MCP 页只读投影源；默认
+   *  ~/.claude.json，PACMAN_MCP_CONFIG 覆盖。UI 展示读 server 本机、任务
+   *  执行读 daemon 本机——多机分歧文档化不桥接）。 */
+  mcpConfigPath: z.string(),
 });
 export type ServerConfig = z.infer<typeof serverConfigSchema>;
 
@@ -129,6 +134,9 @@ export function loadConfig(overrides: Partial<ServerConfig> = {}): ServerConfig 
         : null,
     authToken: envStr(ENV_VARS.token),
     host: envStr('HOST'),
+    mcpConfigPath: resolve(
+      process.env[ENV_VARS.mcpConfig] || join(homedir(), CLAUDE_CONFIG_FILE_NAME),
+    ),
     ...overrides,
   });
 }

@@ -42,8 +42,9 @@ export function openDbWithHandle(
   const sqlite = new Database(dbPath);
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('foreign_keys = ON');
-  // 升级护栏（spec 13 #367）：退役表导出必须赶在 migrate 应用 DROP 之前
-  // （migrate 一跑表就没了）；触发窗与文件语义见 db/legacy-export.ts。
+  // 升级护栏（spec 13 #367/#368）：退役表（skill / mcp_server）导出必须赶在
+  // migrate 应用 DROP 之前（migrate 一跑表就没了）；触发窗与文件语义见
+  // db/legacy-export.ts。
   exportLegacyTables(sqlite, opts.legacyExportDir);
   const db = drizzle(sqlite, { schema });
   migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });

@@ -113,45 +113,7 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
     },
     "mcpServers": {
       "items": {
-        "additionalProperties": false,
-        "properties": {
-          "args": {
-            "items": {
-              "type": "string",
-            },
-            "type": "array",
-          },
-          "command": {
-            "type": "string",
-          },
-          "headers": {
-            "additionalProperties": {
-              "type": "string",
-            },
-            "propertyNames": {
-              "type": "string",
-            },
-            "type": "object",
-          },
-          "slug": {
-            "type": "string",
-          },
-          "transport": {
-            "enum": [
-              "http",
-              "stdio",
-            ],
-            "type": "string",
-          },
-          "url": {
-            "type": "string",
-          },
-        },
-        "required": [
-          "slug",
-          "transport",
-        ],
-        "type": "object",
+        "type": "string",
       },
       "type": "array",
     },
@@ -458,45 +420,7 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
             },
             "mcpServers": {
               "items": {
-                "additionalProperties": false,
-                "properties": {
-                  "args": {
-                    "items": {
-                      "type": "string",
-                    },
-                    "type": "array",
-                  },
-                  "command": {
-                    "type": "string",
-                  },
-                  "headers": {
-                    "additionalProperties": {
-                      "type": "string",
-                    },
-                    "propertyNames": {
-                      "type": "string",
-                    },
-                    "type": "object",
-                  },
-                  "slug": {
-                    "type": "string",
-                  },
-                  "transport": {
-                    "enum": [
-                      "http",
-                      "stdio",
-                    ],
-                    "type": "string",
-                  },
-                  "url": {
-                    "type": "string",
-                  },
-                },
-                "required": [
-                  "slug",
-                  "transport",
-                ],
-                "type": "object",
+                "type": "string",
               },
               "type": "array",
             },
@@ -4393,73 +4317,6 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > machine > 
 }
 `;
 
-exports[`record 形状 24 表投影——zod → JSON Schema 快照 > mcp_server > mcp_server.json 1`] = `
-{
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": false,
-  "properties": {
-    "createdAt": {
-      "maximum": 9007199254740991,
-      "minimum": -9007199254740991,
-      "type": "integer",
-    },
-    "createdBy": {
-      "type": "string",
-    },
-    "credentialKeys": {
-      "items": {
-        "type": "string",
-      },
-      "type": "array",
-    },
-    "hasCredential": {
-      "type": "boolean",
-    },
-    "id": {
-      "type": "string",
-    },
-    "label": {
-      "type": "string",
-    },
-    "slug": {
-      "type": "string",
-    },
-    "teamId": {
-      "type": "string",
-    },
-    "transport": {
-      "enum": [
-        "http",
-        "stdio",
-      ],
-      "type": "string",
-    },
-    "updatedAt": {
-      "maximum": 9007199254740991,
-      "minimum": -9007199254740991,
-      "type": "integer",
-    },
-    "url": {
-      "type": "string",
-    },
-  },
-  "required": [
-    "teamId",
-    "label",
-    "slug",
-    "transport",
-    "url",
-    "hasCredential",
-    "credentialKeys",
-    "createdBy",
-    "id",
-    "createdAt",
-    "updatedAt",
-  ],
-  "type": "object",
-}
-`;
-
 exports[`record 形状 24 表投影——zod → JSON Schema 快照 > message > message.json 1`] = `
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5379,6 +5236,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > DELETE 面规则（[推�
     "resources": [
       "teams/{id}/machines",
       "teams/{id}/agents",
+      "teams/{id}/skills",
       "teams/{id}/mcp-servers",
       "teams/{id}/agents/{aid}/memories",
       "teams/{id}/providers",
@@ -5493,6 +5351,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > executor CLI 面（02 §
     "githubOauthClientId": "PACMAN_GITHUB_OAUTH_CLIENT_ID",
     "githubOauthClientSecret": "PACMAN_GITHUB_OAUTH_CLIENT_SECRET",
     "home": "PACMAN_HOME",
+    "mcpConfig": "PACMAN_MCP_CONFIG",
     "server": "PACMAN_SERVER",
     "skillsDir": "PACMAN_SKILLS_DIR",
     "team": "PACMAN_TEAM",
@@ -6159,7 +6018,6 @@ exports[`协议词表快照（02 §5/§6 canonical） > 存储表清单（01 §6
   "notification",
   "agent",
   "agent_memory",
-  "mcp_server",
   "provider",
   "secret",
   "api_key",

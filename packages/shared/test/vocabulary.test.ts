@@ -395,9 +395,18 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     // 替换相位 = PACMAN_ 同形（观测五件原名 r3 §1.1 = TDS_*，登记在
     // BRAND_SLOTS.envPrefix.todosDev）；复刻增量位（webDir = M5 SPA 静态托管
     // 覆写 [设计]；githubOauth 两件 = #231 握手面 client 凭证 [设计]；
-    // token = #251 可选鉴权自有面 [设计]，非观测 canon）单独断言，两组不混判。
-    const { webDir, githubOauthClientId, githubOauthClientSecret, token, skillsDir, ...observed } =
-      ENV_VARS;
+    // token = #251 可选鉴权自有面 [设计]；mcpConfig = spec 13/#368 本地 MCP
+    // config 覆写 [设计]；skillsDir = spec 13 #367 技能根目录覆写 [设计]，
+    // 均非观测 canon）单独断言，两组不混判。
+    const {
+      webDir,
+      githubOauthClientId,
+      githubOauthClientSecret,
+      token,
+      mcpConfig,
+      skillsDir,
+      ...observed
+    } = ENV_VARS;
     expect(observed).toEqual({
       server: 'PACMAN_SERVER',
       apiKey: 'PACMAN_API_KEY',
@@ -409,6 +418,7 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
     expect(githubOauthClientId).toBe('PACMAN_GITHUB_OAUTH_CLIENT_ID');
     expect(githubOauthClientSecret).toBe('PACMAN_GITHUB_OAUTH_CLIENT_SECRET');
     expect(token).toBe('PACMAN_TOKEN');
+    expect(mcpConfig).toBe('PACMAN_MCP_CONFIG');
     // spec 13 #367 自有面 [设计]：技能根目录覆写（缺省 SKILLS_DIR_DEFAULT）
     expect(skillsDir).toBe('PACMAN_SKILLS_DIR');
   });
@@ -439,9 +449,9 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
   });
 });
 
-describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; #310 +attachment; #319 +branch_sync; spec 12 +github_connection; spec 13 −skill)', () => {
-  it('DB table registry is the 01 §6 list + chief + steer/stop_pending + attachment + branch_sync + github_connection − skill (30 incl. the todo_tag join; skill 退役 spec 13 #367)', () => {
-    expect(DB_TABLES).toHaveLength(30);
+describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; #310 +attachment; #319 +branch_sync; spec 12 +github_connection; spec 13 −skill −mcp_server)', () => {
+  it('DB table registry is the 01 §6 list + chief + steer/stop_pending + attachment + branch_sync + github_connection − skill − mcp_server (29 incl. the todo_tag join)', () => {
+    expect(DB_TABLES).toHaveLength(29);
     expect(DB_TABLES).toContain('todo_tag');
     expect(DB_TABLES).toContain('chief');
     expect(DB_TABLES).toContain('attachment');
@@ -452,8 +462,8 @@ describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; 
     expect(DB_TABLES).not.toContain('skill');
   });
 
-  it('record shapes cover exactly the 24 wire tables (todo_tag join + steer/stop_pending internal + attachment binary + github_connection credential have none; skill = 磁盘投影无表位, spec 13 #367)', () => {
-    expect(Object.keys(RECORD_SCHEMAS)).toHaveLength(24);
+  it('record shapes cover exactly the 23 wire tables (todo_tag join + steer/stop_pending internal + attachment binary + github_connection credential have none; skill = 磁盘投影无表位 #367, mcp_server = config 投影无表位 #368)', () => {
+    expect(Object.keys(RECORD_SCHEMAS)).toHaveLength(23);
     expect(Object.keys(RECORD_SCHEMAS)).toEqual(
       DB_TABLES.filter(
         (t) =>

@@ -20,7 +20,6 @@ import {
   chiefSendMessageBodySchema,
   createAgentBodySchema,
   createBranchSyncBodySchema,
-  createMcpServerBodySchema,
   createProjectBodySchema,
   createProviderBodySchema,
   createScheduleBodySchema,
@@ -32,7 +31,6 @@ import {
   PHASE_VALUES,
   patchAgentBodySchema,
   patchChiefBodySchema,
-  patchMcpServerBodySchema,
   patchProviderBodySchema,
   phaseSchema,
   planRowSchema,
@@ -57,7 +55,6 @@ import {
   apiKey,
   build,
   machine,
-  mcpServer,
   message,
   notification,
   plan as planTable,
@@ -125,12 +122,7 @@ import {
 } from './services/github-connection.js';
 import { isChiefConversation } from './services/machines.js';
 import { handleMcpRequest } from './services/mcp-face.js';
-import {
-  createMcpServer,
-  deleteMcpServer,
-  listMcpServers,
-  updateMcpServer,
-} from './services/mcp-servers.js';
+import { listMcpServers } from './services/mcp-servers.js';
 import {
   abortOAuthCallback,
   completeOAuthCallback,
@@ -230,22 +222,9 @@ function requireAgentRow(ctx: AppContext, teamId: string, agentId: string) {
   return row;
 }
 
-/** mcpServers[] 勾选项 = 团队 mcp_server slug（未知 slug 400——授权面只对
- * 已接入 server 开放，02 §7.1）。 */
-function validateAgentMcpSlugs(ctx: AppContext, teamId: string, slugs: string[]): void {
-  if (slugs.length === 0) return;
-  const known = new Set(
-    ctx.db
-      .select({ slug: mcpServer.slug })
-      .from(mcpServer)
-      .where(eq(mcpServer.teamId, teamId))
-      .all()
-      .map((r) => r.slug),
-  );
-  for (const slug of slugs) {
-    if (!known.has(slug)) throw new HttpError(400, `unknown mcp server slug: ${slug}`);
-  }
-}
+// agent.mcpServers[] = 本机 config 键名（spec 13/#368）：写入不做存在性校验
+// ——未知键静默容忍（勾选与 ~/.claude.json 漂移、多机各读各 config 的竞态），
+// 执行 daemon 解析时跳过并落降级行。
 
 function agentRecordOf(row: typeof agent.$inferSelect): AgentRecord {
   return {
@@ -773,7 +752,6 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
     const body = parseWith(createAgentBodySchema, await jsonBody(c), 'body');
-    validateAgentMcpSlugs(ctx, teamId, body.mcpServers ?? []);
     const id = newRecordId();
     ctx.db
       .insert(agent)
@@ -810,7 +788,6 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     requireTeam(ctx, teamId);
     const row = requireAgentRow(ctx, teamId, c.req.param('aid'));
     const body = parseWith(patchAgentBodySchema, await jsonBody(c), 'body');
-    if (body.mcpServers !== undefined) validateAgentMcpSlugs(ctx, teamId, body.mcpServers);
     const sets: Partial<typeof row> = {};
     // spec 13 #367：skills[] 与 create 同律——现扫存在性过滤，未知 id 静默跳过。
     if (body.skills !== undefined) {
@@ -838,37 +815,13 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json(agentRecordOf(updated));
   });
 
-  // —— 团队 MCP server 管理面（02 §7.1/r3 §5.1：GET/POST 词表内；PATCH/DELETE
-  // = 卡片更多菜单「编辑/删除」面，DELETE_FACE 登记 + REST 同名 [推断]）——————
-  const mcpSvc = { db: ctx.db, box: ctx.secretBox };
+  // —— 团队 MCP server 读面（spec 13/#368 本地 config 只读制：数据源 =
+  // server 本机 ~/.claude.json 投影；管理写面 POST/PATCH/DELETE 已随登记制
+  // 删除——配置变更 = 直接编辑 config 文件）—————————————————————————
   app.get('/api/teams/:id/mcp-servers', (c) => {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
-    return c.json(listMcpServers(mcpSvc, teamId));
-  });
-
-  app.post('/api/teams/:id/mcp-servers', async (c) => {
-    const teamId = c.req.param('id');
-    requireTeam(ctx, teamId);
-    const body = parseWith(createMcpServerBodySchema, await jsonBody(c), 'body');
-    const record = createMcpServer(mcpSvc, { teamId, createdBy: ctx.user.id, ...body });
-    return c.json(record, 201);
-  });
-
-  app.patch('/api/teams/:id/mcp-servers/:sid', async (c) => {
-    const teamId = c.req.param('id');
-    requireTeam(ctx, teamId);
-    const body = parseWith(patchMcpServerBodySchema, await jsonBody(c), 'body');
-    return c.json(updateMcpServer(mcpSvc, teamId, c.req.param('sid'), body));
-  });
-
-  app.delete('/api/teams/:id/mcp-servers/:sid', (c) => {
-    const teamId = c.req.param('id');
-    requireTeam(ctx, teamId);
-    if (!deleteMcpServer(mcpSvc, teamId, c.req.param('sid'))) {
-      throw notFound(`mcp server ${c.req.param('sid')}`);
-    }
-    return c.body(null, 204);
+    return c.json(listMcpServers({ mcpConfigPath: ctx.mcpConfigPath }, teamId));
   });
 
   // —— plan.md 版本文档 diff（02 §4.2/r5 §4：documents/{id}/diff 词表内）——————
@@ -1557,6 +1510,7 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         user: ctx.user,
         reposDir: ctx.reposDir,
         attachmentsDir: ctx.attachmentsDir,
+        mcpConfigPath: ctx.mcpConfigPath,
         skillsDir: ctx.skillsDir,
       },
       c.req.raw,

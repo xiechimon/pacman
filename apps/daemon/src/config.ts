@@ -7,6 +7,7 @@ import { homedir, hostname } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import {
   BRAND,
+  CLAUDE_CONFIG_FILE_NAME,
   ENV_VARS,
   MAX_CONCURRENT_DEFAULT,
   WORKSPACES_DIR_GUARD_CANON,
@@ -26,6 +27,10 @@ export const daemonConfigSchema = z.object({
   foreground: z.boolean(),
   /** 并发上限默认 3（02 §2.5 机器配置默认值，非付费件）。 */
   maxConcurrent: z.number().int().positive(),
+  /** 本机 MCP config（spec 13/#368）：claim slug 列表在此解析成执行端点。
+   * 默认 ~/.claude.json；PACMAN_MCP_CONFIG 覆盖。执行机各读各机——stdio
+   * 命令在真正的执行机上起，密钥值从不跨 wire。 */
+  mcpConfigPath: z.string(),
 });
 export type DaemonConfig = z.infer<typeof daemonConfigSchema>;
 
@@ -38,6 +43,7 @@ export interface DaemonConfigInput {
   workspacesDir?: string;
   foreground?: boolean;
   maxConcurrent?: number;
+  mcpConfigPath?: string;
 }
 
 /** 默认 server URL [设计]（官方默认不可观测——todos.dev 云常量；复刻
@@ -79,5 +85,9 @@ export function loadDaemonConfig(
     workspacesDir,
     foreground: input.foreground ?? false,
     maxConcurrent: input.maxConcurrent ?? MAX_CONCURRENT_DEFAULT,
+    // Settings 缝优先级同律：显式入参 > env > 默认（~/.claude.json）。
+    mcpConfigPath: resolve(
+      input.mcpConfigPath ?? env[ENV_VARS.mcpConfig] ?? join(homedir(), CLAUDE_CONFIG_FILE_NAME),
+    ),
   });
 }

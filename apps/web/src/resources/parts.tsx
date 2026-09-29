@@ -54,8 +54,9 @@ export function RowChevron() {
 /** Empty-state block (r7 10 geometry): 48px hero tile, heading, two-line
  *  description, primary button, optional 总管 hint row (查看文档 link
  *  removed #307 — local-first 无文档站, #149 schedules 同律).
- *  spec 13（#367）：actionLabel 可选——只读资源面（技能）无主钮；description
- *  经 descriptionVars 走 {vars} 插值（技能空态指路配置目录，单点 t()）。 */
+ *  spec 13（#367/#368）：actionLabel 可选——只读资源面（技能 / MCP）无主钮；
+ *  description 经 descriptionVars 走 {vars} 插值（空态指路配置目录 /
+ *  ~/.claude.json，单点 t()）。 */
 export function EmptyState({
   Icon,
   title,
@@ -71,7 +72,7 @@ export function EmptyState({
   description: string;
   /** description 模板 {vars} 插值位（i18n translate 机制，issue #74）。 */
   descriptionVars?: TVars;
-  /** Primary action 文案；缺省 = 无主钮（只读面，spec 13 #367）。 */
+  /** Primary action 文案；缺省 = 无主钮（只读面，spec 13 #367/#368）。 */
   actionLabel?: string;
   /** SPA target for the primary action (issue #153); absent keeps the
    *  inert button (dialog-opening actions land in a later ticket). */

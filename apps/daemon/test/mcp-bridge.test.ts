@@ -167,6 +167,7 @@ describe('connectMcpBridge — stdio transport（02 §7.1 本地命令形态）'
     ]);
     expect(bridge.tools.map((t) => t.name).sort()).toEqual([
       'mcp__local__echo',
+      'mcp__local__envprobe',
       'mcp__local__ping',
     ]);
     const echo = bridge.tools.find((t) => t.name === 'mcp__local__echo');
@@ -182,6 +183,24 @@ describe('connectMcpBridge — stdio transport（02 §7.1 本地命令形态）'
     );
     expect(failures).toEqual(['nope']);
     expect(bridge.tools).toEqual([]);
+    await bridge.close();
+  });
+
+  // spec 13（#368）：claude.json stdio 条目的 env 段 = 本机凭证面，必须进
+  // 子进程环境（SDK 与默认继承环境合并——密钥值只活在执行机，从不跨 wire）。
+  test('endpoint.env 透传进子进程', async () => {
+    const bridge = await connectMcpBridge([
+      {
+        slug: 'local',
+        transport: 'stdio',
+        command: process.execPath,
+        args: [STDIO_FIXTURE],
+        env: { MCP_PROBE: 'passed' },
+      },
+    ]);
+    const probe = bridge.tools.find((t) => t.name === 'mcp__local__envprobe');
+    expect(probe).toBeDefined();
+    expect(await probe?.call({})).toBe('env:passed');
     await bridge.close();
   });
 });

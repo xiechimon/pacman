@@ -94,6 +94,9 @@ export const ENV_VARS = {
   /** 技能根目录覆写（spec 13 #367：skills = 本地目录现扫只读投影；
    * 缺省 = SKILLS_DIR_DEFAULT `~/.agents/skills`，records/skill.ts 单源）。 */
   skillsDir: 'PACMAN_SKILLS_DIR',
+  /** 本地 MCP config 文件（spec 13/#368）：server 投影 UI 面、daemon 解析
+   * 执行端点，各读各机；默认 ~/.claude.json 的 mcpServers 段。 */
+  mcpConfig: 'PACMAN_MCP_CONFIG',
 } as const;
 
 /** API key 形态 `pacman_<48hex>`（02 §5.8 前缀 = 品牌槽；r3 §6 掩码样例原形

@@ -1,5 +1,6 @@
 // 测试引导：内存库 + migration + seed + app（wire 对拍面，04 §3）。
 
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -21,7 +22,7 @@ export function bootServer(
     claimHoldMs?: number;
     reposDir?: string;
     attachmentsDir?: string;
-    /** 技能根目录（spec 13 #367 现扫面）；缺省 = 自建临时空目录（空集语义；
+    /** 技能根目录（spec 13 #367 现扫面）；缺省 = 自建隔离空目录（空集语义；
      * 要技能行的测试显式建目录传参）。 */
     skillsDir?: string;
     webDir?: string | null;
@@ -33,6 +34,9 @@ export function bootServer(
     oauthFetch?: AppContext['oauthFetch'];
     /** #251 可选 token 鉴权（缺省 = 关，全量既有测试零改动）。 */
     authToken?: string | null;
+    /** spec 13（#368）：MCP 本地 config 读路径。缺省 = 唯一不存在路径
+     *  （空列表语义，与旧「空 mcp_server 表」行为一致，既有测试零改动）。 */
+    mcpConfigPath?: string;
   } = {},
 ) {
   const db = openMemoryDb();
@@ -42,7 +46,7 @@ export function bootServer(
   const convHub = new ConversationStreamHub();
   // 随机 key 驻内存（keyfile 落盘面 = test/secret-box.test.ts 专测）。
   const secretBox = createEphemeralSecretBox();
-  // 自建临时 reposDir（git 托管面实走用）；显式传入时由调用方管理生命周期。
+  // 自建隔离 reposDir（git 托管面实走用）；显式传入时由调用方管理生命周期。
   const ownReposDir = opts.reposDir === undefined;
   const reposDir = opts.reposDir ?? mkdtempSync(join(tmpdir(), 'pacman-server-repos-'));
   const ownAttDir = opts.attachmentsDir === undefined;
@@ -73,6 +77,7 @@ export function bootServer(
     skillsDir,
     ...(opts.webDir !== undefined ? { webDir: opts.webDir } : {}),
     authToken: opts.authToken ?? null,
+    mcpConfigPath: opts.mcpConfigPath ?? join(tmpdir(), `pacman-mcp-absent-${randomUUID()}.json`),
   });
   return {
     app,

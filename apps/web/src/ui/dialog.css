@@ -171,7 +171,6 @@
 /* 主钮:32 高、card-button 实底;独占钉底动作条时拉满全宽。 */
 .dlg-form-primary,
 .dlg-secret-create,
-.dlg-mcp-create,
 .dlg-provider-create,
 .dlg-agent-create,
 .chief-dlg-primary {
@@ -191,7 +190,6 @@
 
 .dlg-form-primary:disabled,
 .dlg-secret-create:disabled,
-.dlg-mcp-create:disabled,
 .dlg-provider-create:disabled,
 .dlg-agent-create:disabled {
   /* lavender sampled from the r8 78 capture (light #a49fe8); dark [推断] */
@@ -212,9 +210,8 @@
   cursor: pointer;
 }
 
-/* 「+ 添加」行(mcp 请求头 / provider 模型):贴左、无框、secondary 墨。 */
+/* 「+ 添加」行(provider 模型):贴左、无框、secondary 墨。 */
 .dlg-form-add,
-.dlg-mcp-header-add,
 .dlg-provider-model-add {
   align-self: flex-start;
   display: flex;
@@ -241,7 +238,6 @@
 }
 
 .dlg-seg-tab,
-.dlg-mcp-seg-tab,
 .dlg-provider-seg-tab {
   height: 24px;
   border: 0;
@@ -257,14 +253,12 @@
   padding: 0 12px;
 }
 
-/* block 变体:表单内均分整行(mcp 传输方式 / provider API 协议)。 */
-.dlg-mcp-seg-tab,
+/* block 变体:表单内均分整行(provider API 协议)。 */
 .dlg-provider-seg-tab {
   flex: 1;
 }
 
 .dlg-seg-tab[data-active="true"],
-.dlg-mcp-seg-tab[data-active="true"],
 .dlg-provider-seg-tab[data-active="true"] {
   background: var(--tab-chip-bg);
   color: var(--text-primary);

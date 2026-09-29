@@ -99,6 +99,13 @@
       "when": 1790650436447,
       "tag": "0013_brave_spot",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1790651946719,
+      "tag": "0014_cold_beast",
+      "breakpoints": true
     }
   ]
 }
