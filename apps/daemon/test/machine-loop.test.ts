@@ -360,7 +360,11 @@ describe('步执行全链（02 §5.7 生命周期行 + journal 端点词表）',
       modelId: string;
     };
     expect(opts.prompt).toBe('探针任务\n\n写一行探针');
-    expect(opts.systemPrompt).toBe('职责说明'); // agent.description 注入（02 §4.4 同缝）
+    // agent.description 注入（02 §4.4 同缝）+ spec 15 #394 元信息回填指令块
+    // （todo 语境步注入,词表 = FIXED_TAGS 单源）。
+    expect(opts.systemPrompt).toContain('职责说明');
+    expect(opts.systemPrompt).toContain('set_task_meta');
+    expect(opts.systemPrompt).toContain('bug');
     expect(opts.provider.providerId).toBe('stub-gw');
     expect(opts.modelId).toBe('stub-model');
     expect(opts.cwd).toBe(join(paths.workspacesDir, 'conv-1'));

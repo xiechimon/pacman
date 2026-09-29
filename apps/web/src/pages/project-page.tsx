@@ -530,17 +530,17 @@ export function ProjectPage() {
   // 保存（#305）：dialog 选中项目优先；未选/查询未决退本页路由项目（空态
   // 入口长在本项目面上，语义锚 = 路由 id 而非看板的「首项目」）。fixture
   // 面落 localTodo 本地行（board 同律，approximation：恒 canon projectId）。
+  // spec 15 #394：提交 = 正文单字段；标题 live 面传空串由 server 派生占位，
+  // fixture 面 = localTodo 内同一 shared 规则派生（board 同律）。
   const createTodo = useCallback(
-    (title: string, spec: string, selectedProjectId?: string) => {
+    (spec: string, selectedProjectId?: string) => {
       setNewTaskOpen(false);
       // 提交后清空 spec,下次打开新建对话框从空开始
       setLiveSpec('');
       if (live) {
         const projectId = selectedProjectId ?? id;
         if (projectId !== undefined) {
-          // M7 #310：spec 来自 dialog 的真实 textarea 内容（之前 dialog 未挂
-          // spec state,提交用 title 兜底——属于丢字 bug,本票修）
-          mutations.createTodo.mutate({ projectId, title, spec });
+          mutations.createTodo.mutate({ projectId, spec });
         }
         return;
       }
@@ -548,7 +548,7 @@ export function ProjectPage() {
         ...prev,
         localTodo(
           [...fixture.todos, ...prev].reduce((max, t) => Math.max(max, t.seqNum), 0) + 1,
-          title,
+          spec,
           fixture.now,
         ),
       ]);
@@ -558,18 +558,18 @@ export function ProjectPage() {
   // 保存并开始（r2 §4.2 双钮语义，board 同构）：创建 → POST builds（withPlan，
   // 首 Agent 双槽指派 [设计]）。fixture 面 = 同保存。
   const createAndStart = useCallback(
-    (title: string, spec: string, selectedProjectId?: string) => {
+    (spec: string, selectedProjectId?: string) => {
       setNewTaskOpen(false);
       // 提交后清空 spec,下次打开新建对话框从空开始
       setLiveSpec('');
       if (!live) {
-        createTodo(title, spec);
+        createTodo(spec);
         return;
       }
       const projectId = selectedProjectId ?? id;
       if (projectId === undefined) return;
       mutations.createTodo.mutate(
-        { projectId, title, spec },
+        { projectId, spec },
         {
           onSuccess: (created) =>
             mutations.startBuilds.mutate({

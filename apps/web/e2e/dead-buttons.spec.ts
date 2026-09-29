@@ -468,9 +468,10 @@ test('new-task dialog gates unsaved closes and resets on discard (#318)', async 
   await dialog.locator('.new-task-close').click();
   await expect(dialog).toBeHidden();
   await expect(discard).toHaveCount(0);
-  // 标题非空 → X 先过「放弃新建任务？」确认(r9 §3.4 copy 逐字)
+  // 正文非空 → X 先过「放弃新建任务？」确认(r9 §3.4 copy 逐字)
+  // (#394：标题位移除,dirty = 正文单字段)
   await page.locator('.board-new-task').click();
-  await dialog.locator('.new-task-input').fill('未保存探针');
+  await dialog.locator('.new-task-spec').fill('未保存探针');
   await dialog.locator('.new-task-close').click();
   await expect(discard).toBeVisible();
   await expect(discard).toContainText('放弃新建任务？未保存的内容将丢失。');
@@ -478,7 +479,7 @@ test('new-task dialog gates unsaved closes and resets on discard (#318)', async 
   await discard.locator('.new-task-discard-keep').click();
   await expect(discard).toBeHidden();
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('.new-task-input')).toHaveValue('未保存探针');
+  await expect(dialog.locator('.new-task-spec')).toHaveValue('未保存探针');
   // Esc 关闸同律;确认层上 Esc = 内层优先(只收确认层)
   await page.keyboard.press('Escape');
   await expect(discard).toBeVisible();
@@ -490,13 +491,5 @@ test('new-task dialog gates unsaved closes and resets on discard (#318)', async 
   await discard.locator('.new-task-discard-drop').click();
   await expect(dialog).toBeHidden();
   await page.locator('.board-new-task').click();
-  await expect(dialog.locator('.new-task-input')).toHaveValue('');
-});
-
-test('new-task gate also trips on a non-empty spec body (#318)', async ({ page }) => {
-  await page.goto('/app?scenario=01');
-  await page.locator('.board-new-task').click();
-  await page.locator('.new-task-spec').fill('描述探针');
-  await page.locator('.new-task-close').click();
-  await expect(page.locator('.new-task-discard')).toBeVisible();
+  await expect(dialog.locator('.new-task-spec')).toHaveValue('');
 });

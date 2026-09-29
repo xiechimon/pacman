@@ -5,7 +5,14 @@
 // (glyph template matching) in #54; all other strings come from the research
 // records.
 
-import { BRAND, conversationBranch, type ModelSource, maskApiKey } from '@pacman/shared';
+import {
+  BRAND,
+  conversationBranch,
+  derivePlaceholderTitle,
+  type ModelSource,
+  maskApiKey,
+  PLACEHOLDER_TITLE_FALLBACK,
+} from '@pacman/shared';
 import { diffLines } from 'diff';
 import type {
   ApiKeyRecord,
@@ -233,14 +240,16 @@ export const projectContent: ProjectContent = {
   ],
 }; /** Client-created todo of the fixture phase (#66 new-task dialog): lands
  *  in 待开始 with the 刚刚 label against the fixture clock (r2 §4.2/§5.2).
- *  Record shape lives here with every other TodoRecord factory. */
-export function localTodo(seqNum: number, title: string, now: number): TodoRecord {
+ *  Record shape lives here with every other TodoRecord factory.
+ *  spec 15 #394：入参 = 正文（对话框单字段）；标题 = shared 占位派生规则，
+ *  与 server createTodo 同形（fixture/live 行为不漂移）。 */
+export function localTodo(seqNum: number, spec: string, now: number): TodoRecord {
   return {
     id: `local-${seqNum}`,
     teamId: TEAM_ID,
     projectId: PROJECT_ID,
-    title,
-    spec: title,
+    title: derivePlaceholderTitle(spec) || PLACEHOLDER_TITLE_FALLBACK,
+    spec,
     phase: 'todo',
     phaseAt: now,
     seqNum,

@@ -43,6 +43,7 @@ import { notifyChiefMessage } from './notifications.js';
 import { createSchedule, deleteSchedule, listSchedules } from './schedules.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './secrets.js';
 import { scanLocalSkills } from './skills.js';
+import { seedFixedTags } from './tags.js';
 import { createTodo, deleteTodo, getTodo, listTodos, setTodoPhase, updateTodo } from './todos.js';
 
 export interface ChiefToolDeps {
@@ -371,6 +372,8 @@ export async function executeChiefTool(
           githubRepo: null,
         })
         .run();
+      // spec 15 #394：固定标签词表随项目播种（REST 面同调，ADR 0002 D4）。
+      seedFixedTags(db, id);
       return json({
         id,
         name,

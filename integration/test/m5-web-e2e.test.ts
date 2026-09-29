@@ -194,8 +194,9 @@ async function openBoard(): Promise<void> {
 
 async function createAndStart(title: string): Promise<void> {
   await page.locator('.board-new-task').click();
-  await pexpect(page.locator('.new-task-input')).toBeVisible();
-  await page.locator('.new-task-input').fill(title);
+  // spec 15 #394：单字段正文——title 参数即正文首行，占位标题 = 首行原文。
+  await pexpect(page.locator('.new-task-spec')).toBeVisible();
+  await page.locator('.new-task-spec').fill(title);
   await page.locator('.new-task-start').click();
   // 卡落板（SSE/invalidate 驱动，无 reload）。
   await pexpect(page.locator('.todo-card-title', { hasText: title })).toBeVisible({

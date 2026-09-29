@@ -23,6 +23,8 @@ import type {
 } from '@pacman/shared';
 import {
   CHIEF_REMOTE_TOOLS,
+  derivePlaceholderTitle,
+  FIXED_TAGS,
   GITHUB_ACCESS_TOKEN_USERNAME,
   isChiefConversationId,
   MAX_CONCURRENT_DEFAULT,
@@ -75,7 +77,8 @@ import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { githubCloneUrl, hostedCloneUrl, repoDirFor } from './git.js';
 import { openGithubToken } from './github-connection.js';
 import { canTransitionPhase } from './phase.js';
-import { setTodoPhase } from './todos.js';
+import { resolveFixedTagId } from './tags.js';
+import { setTodoPhase, updateTodo } from './todos.js';
 
 /** chief 步 conv id 判别（单源 = shared isChiefConversationId；thread id 形
  * `chief-<uuid>`，无 build 行，r5 §3.1）。 */
@@ -980,9 +983,10 @@ export async function executeRelayToolCall(
   );
 }
 
-/** worker 步 relay = 记忆三件套（MEMORY_TOOLS 白名单在 executeWorkerMemoryTool；
- * 词表外 400）。溯源上下文（r5 §6 实测样本 = 运行中 todo/build）：
- * step → build → todo → assignment 槽 Agent（02 §4.2 按步类取槽）。 */
+/** worker 步 relay = 记忆三件套 + set_task_meta（白名单在
+ * executeWorkerMemoryTool / 下方拦截；词表外 400）。溯源上下文（r5 §6 实测
+ * 样本 = 运行中 todo/build）：step → build → todo → assignment 槽 Agent
+ * （02 §4.2 按步类取槽）。 */
 async function executeWorkerMemoryToolCall(
   deps: MachineDeps,
   row: typeof step.$inferSelect,
@@ -993,6 +997,9 @@ async function executeWorkerMemoryToolCall(
   if (!buildRow) throw new NotFoundError(`build ${row.buildId}`);
   const todoRow = deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
   if (!todoRow) throw new NotFoundError(`todo ${buildRow.todoId}`);
+  // spec 15 #394：任务元信息回填（ADR 0002 D3）。窄工具——todoId 从步钉死、
+  // 不走 agent 槽闸（写面是 todo 不是 agent 资产），词表外 tag name 400。
+  if (name === 'set_task_meta') return setTaskMeta(deps, todoRow, params);
   const slot = row.kind === 'plan' ? todoRow.assignment?.plan : todoRow.assignment?.build;
   const agentId = slot?.agentId;
   if (!agentId) throw new HttpError(409, 'step has no assigned agent — memory has no store');
@@ -1009,6 +1016,40 @@ async function executeWorkerMemoryToolCall(
     name,
     params,
   );
+}
+
+/** set_task_meta（spec 15 #394）：标题取首行 ≤50 字符（derivePlaceholderTitle
+ * 复用——agent 传来多行/超长时的归一规则与占位派生同形）；tag = 词表 name，
+ * 词表外/未播种 = 400；tag 省略 = 只回填标题不动标签集。更新走 updateTodo
+ * 既有面（v++ + SSE 广播，看板实时刷新）。 */
+function setTaskMeta(
+  deps: MachineDeps,
+  todoRow: typeof todo.$inferSelect,
+  params: Record<string, unknown>,
+): string {
+  const rawTitle = params.title;
+  const title = typeof rawTitle === 'string' ? derivePlaceholderTitle(rawTitle) : '';
+  if (title === '') throw new HttpError(400, 'invalid params.title: expected non-empty string');
+  let tagIds: string[] | undefined;
+  if (params.tag !== undefined) {
+    const tagName = params.tag;
+    if (typeof tagName !== 'string' || !FIXED_TAGS.some((t) => t.name === tagName)) {
+      throw new HttpError(
+        400,
+        `invalid params.tag: expected one of ${FIXED_TAGS.map((t) => t.name).join(', ')}`,
+      );
+    }
+    const tagId = resolveFixedTagId(deps.db, todoRow.projectId, tagName);
+    if (tagId === null) throw new HttpError(400, `tag ${tagName} not seeded in project`);
+    tagIds = [tagId];
+  }
+  const record = updateTodo(
+    { db: deps.db, hub: deps.hub, machineHub: deps.machineHub, user: deps.user },
+    todoRow.id,
+    { title, ...(tagIds !== undefined ? { tagIds } : {}) },
+  );
+  if (!record) throw new NotFoundError(`todo ${todoRow.id}`);
+  return JSON.stringify({ todoId: record.id, title: record.title, tagIds: record.tagIds });
 }
 
 type MessageRowInput = {

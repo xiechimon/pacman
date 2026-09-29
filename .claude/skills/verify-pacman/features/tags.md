@@ -1,37 +1,34 @@
-# 标签(新建任务对话框 + 详情 meta,#309/#323)
+# 标签(固定词表 + agent 回填,spec 15 #394 / ADR 0002)
 
-用户在新建任务对话框给任务打标签:footer「标签」行的虚线圆钮开标签面板(pill toggle 选已有 + 内联表单建新),选中的 tagIds 随 createTodo body 提交;任务详情 fresh meta 区按 tagIds 渲染 TagChip。**看板卡不渲染标签**(r9 §3.4 实测校准,#309 AC 修正)——渲染面仅详情 meta 区。规格源:r9 §3.4。
+标签 = 任务的 category 分类:**固定 6 词表**(bug / feature / improvement / refactor / docs / chore,固定配色,shared `FIXED_TAGS` 单源),随项目创建播种、server 启动补齐存量项目;**无人工创建/挑选 UI**——执行 agent 开工前经 worker 窄工具 `set_task_meta({title, tag?})` 回填(todoId 由 server 从 stepId 钉死,词表外 tag name = 400),每任务至多 1 个,判不出不贴。任务详情 fresh meta 区按 tagIds 渲染只读 TagChip(无标签时整行不渲染);**看板卡不渲染标签**(spec 08 附录 A 校准行不变)。
 
 ## Sub-features
 
-- `tag-add-opens-panel` 新建任务对话框 footer「标签」行虚线圆钮(`.new-task-tag-add`)点击开标签面板。
-- `tag-panel-toggle` 面板列项目已有标签(pill toggle,选中态)+ 内联新建表单(名称 + 颜色,缺省 TAG_DEFAULT_COLOR)。
-- `tag-create-post` 内联新建 → `POST /api/projects/{id}/tags {name,color}` → 解析出新 tag id 自动选中。
-- `tag-submit-with-todo` 保存任务时选中 tagIds 随 createTodo body 提交(`tagIds` 字段)。
-- `tag-render-detail-meta` 任务详情 fresh meta 区按 todo.tagIds 渲染 TagChip(每标签一 chip);**看板卡不渲染**。
-- `tag-live-source` live 面标签集 = useTags(projectId) 真值投影;fixture 面 = dialog-local 新建集兜底。
+- `tag-fixed-vocab` 词表固定 6 词(`FIXED_TAGS`,packages/shared/src/task-meta.ts),name/描述/配色单源。
+- `tag-seed-on-project-create` 项目创建即播种 6 行(REST POST /api/projects 与 chief create_project 双面)。
+- `tag-seed-backfill` server 启动对存量项目按 name 幂等补齐(缺谁补谁,二次启动零动作)。
+- `tag-agent-assign` 执行 agent 经 `set_task_meta` 回填(伴随标题回填;server vitest `apps/server/test/task-meta.test.ts` 钉 relay 链 + 校验面)。
+- `tag-render-detail-meta` 任务详情 fresh meta 区按 todo.tagIds 渲染 TagChip(每标签一 chip,只读);**看板卡不渲染**。
+- `tag-no-manual-ui` 新建对话框无标签行/面板;详情页无添加 affordance;`POST /api/projects/{id}/tags` HTTP API 保留(播种复用 + 将来筛选面落点)。
 
 ## How to get to it (user POV)
 
-- 看板「新建任务」→ 对话框 footer「标签」行虚线圆钮 → 标签面板。
-- 任务详情页(fresh/todo 相位)meta 区看已打标签的 chip(只读渲染面)。
+- 用户不操作标签。派发任务后,执行 agent 自动归类;详情页 meta 区看已回填的 chip(只读)。
 
 ## Driving it with verify-pacman
 
 Preconditions:
 
-1. `launch.mjs` 起隔离栈,`doctor.mjs` 全 PASS。标签是 UI + server 写路径,无需 daemon。
+1. `launch.mjs` 起隔离栈,`doctor.mjs` 全 PASS。播种/只读渲染是 UI + server 面,无需 daemon。
 2. live 面:看板新建任务对话框(无项目时自动建「默认项目」,同 board-new-task)。
 
-- **打标签建任务。** 看板「新建任务」→ 填标题 → 点 `.new-task-tag-add` 开面板 → 内联新建一个标签(名称)→ 选中 → 保存。**跑法:** `node <skill>/scripts/drive-tags.mjs`(自足,无需 daemon/seed)——全链 11 checks:面板开 → `.new-task-tag-new` 内联表单 → `.new-task-tag-save` 建行 → 同名 pill `data-on=true`(建后自动选中)→ 关面板(`.new-task-tag-panel .dlg-close`)→ 保存 → API/SQLite/详情 chip + 负向卡面无 chip。
-- **真值。** `POST /api/projects/{id}/tags` 返回新 tag;`GET /api/todos/{id}` 的 `tagIds` 含新 tag id;SQLite `tag` 表 + `todo_tag` 联结表有行;详情页 meta 区渲染 TagChip(`.fresh-tag-chip`)。
-- **看板卡不渲染标签**(校准断言):建带标签任务后,看板卡(`.todo-card`)内**不应**出现 tag chip——这是 r9 §3.4 实测的负向断言。
-
-- **验证状态(2026-09-28)**:主仓脚本化 probe 已补——`drive-tags.mjs` 11 checks 全绿,证据归档 `docs/verify/309/2026-09-28T13-28-22-804Z-tags/`。
+- **固定词表 + 无标题面。** 看板「新建任务」→ 对话框(无标题输入/无标签行)→ 正文多行 → 保存 → 卡标题 = 首行。**跑法:** `node <skill>/scripts/drive-tags.mjs`(自足,无需 daemon/seed)——checks:负空间钉(无 `.new-task-input`/`.new-task-tags`/`.new-task-tag-add`)→ 占位标题落卡 → API todo.title/tagIds 空 → 播种词表 6 行(API + SQLite)→ 详情页无标签行 + h2 = 占位标题 → 负向卡面无 chip。
+- **agent 回填面。** 需 daemon + 真模型,不脚本化——server vitest 覆盖 relay 链(`task-meta.test.ts` 的 set_task_meta 三测);live 复验 = 起完整栈派发任务,看板卡标题在执行开始后被覆盖、详情页出 chip。
+- **验证状态(2026-09-29)**:随 #394 改写,待本票 verify 跑出首份证据。
 
 ## Gotchas
 
-- **看板卡不渲染标签**是 #309 AC 的关键校准(r9 实测)——别按「打了标签看板该显」的直觉写断言,渲染面仅详情 meta 区。
-- 标签属项目:无项目时新建标签会先触发「默认项目」自动创建(同 board-new-task 的无项目路径)。
-- 颜色缺省 TAG_DEFAULT_COLOR(`#6366f1`),内联表单可改;tag record 三位(name/color/createdAt + v)。
-- live 面标签集随选中项目变(useTags(projectId) 查询键随 dialog 上报的 projectId 动);切项目 → 面板标签集刷新。
+- **看板卡不渲染标签**是校准律(spec 08 附录 A)——别按「打了标签看板该显」的直觉写断言,渲染面仅详情 meta 区。
+- 词表验证镜像在 `drive-tags.mjs` 里**有意硬编码**(EXPECTED_TAGS)——与 shared 脱钩,词表漂移必须让脚本 FAIL;改词表时同步改它。
+- 「保存不派发」的任务长期挂占位标题 + 无标签——预期行为(ADR 0002 Premortem),不是缺陷。
+- 旧票注记(#309 手动标签面)已随 ADR 0002 D5 移除;历史证据在 `docs/verify/309/`(归档不删)。

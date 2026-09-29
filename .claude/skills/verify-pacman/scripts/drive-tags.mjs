@@ -1,16 +1,17 @@
 #!/usr/bin/env node
-// verify-pacman drive-tags — 标签全链真用户路径（#309/#323，r9 §3.4）。
+// verify-pacman drive-tags — 固定标签词表 + 无标题面（spec 15 #394 /
+// ADR 0002；接替 #309 手动标签面——该面已移除）。
 //
-// 走真用户路径：看板「新建任务」→ 对话框 footer 虚线圆钮开标签面板 → 内联
-// 新建一个标签（建后自动选中）→ 关面板 → 保存任务 → 详情页 meta 区出 chip。
+// 走真用户路径：看板「新建任务」→ 对话框无标题输入/无标签行（负空间钉）→
+// 正文多行保存 → 看板卡标题 = 首行截断（占位标题，server 派生）→ 详情页
+// 无标签时 chips 行不渲染（只读律）。
 //
-// 真值：POST /api/projects/{id}/tags 建行 / GET /api/todos/{id} 的 tagIds 含新
-// tag / SQLite `tag` 行 + `todo_tag` 联结行 / 详情 `.fresh-tag-chip` 文本。
-// 负向（#309 AC 校准，r9 §3.4 实测）：**看板卡不渲染标签**——`.todo-card` 内
-// 不应出现 tag chip，别按直觉断言卡面有标签。
+// 真值：GET /api/projects/{id}/tags = 固定词表 6 行（播种）/ todo.title =
+// 首行截断 / SQLite `tag` 表播种行。EXPECTED_TAGS 是有意独立硬编码的验证
+// 镜像——词表漂移（shared FIXED_TAGS 改动）必须让本脚本 FAIL。
 //
-// 标签是 UI + server 写路径，无需 daemon。无项目时新建标签会先触发「默认项目」
-// 自动创建（同 board-new-task 的无项目路径）。
+// 标签播种是 UI + server 面，无需 daemon。set_task_meta 回填面归 server
+// vitest（apps/server/test/task-meta.test.ts）。
 // 用法：node drive-tags.mjs
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -34,6 +35,9 @@ const EVIDENCE =
 mkdirSync(EVIDENCE, { recursive: true });
 
 const require2 = createRequire(join(REPO, 'apps/server/package.json'));
+
+/** 固定词表验证镜像（ADR 0002 D4）：与 shared FIXED_TAGS 有意脱钩硬编码。 */
+const EXPECTED_TAGS = ['bug', 'feature', 'improvement', 'refactor', 'docs', 'chore'];
 
 const checks = [];
 function check(name, ok, detail) {
@@ -73,9 +77,9 @@ const dbQuery = (fn) => {
 
 const extra = {};
 const stamp = Date.now() % 100000;
-const tagName = `验证标签-${stamp}`;
-const title = `标签验证任务 ${stamp}`;
-extra.tagName = tagName;
+const firstLine = `元信息验证任务 ${stamp}`;
+const spec = `${firstLine}\n\n现在的情况：第二行不进标题`;
+extra.firstLine = firstLine;
 
 const browser = await chromium.launch();
 const page = await browser.newPage({
@@ -89,92 +93,72 @@ try {
   check('board-ready', true, '看板 shell 就绪');
   await page.click('.board-new-task');
   await page.waitForSelector('.new-task-dialog', { timeout: 5000 });
-  await page.fill('.new-task-input', title);
-  check('dialog-open', true, '新建任务 dialog 打开且标题已填');
 
-  // 开标签面板 → 内联新建
-  await page.click('.new-task-tag-add');
-  await page.waitForSelector('.new-task-tag-panel', { timeout: 5000 });
-  check('tag-panel-open', true, '虚线圆钮开标签面板');
-  await shot(page, '01-tag-panel.png');
+  // 负空间钉：标题输入位与手动标签面不存在
+  const noTitleInput = (await page.locator('.new-task-input').count()) === 0;
+  const noTagRow = (await page.locator('.new-task-tags').count()) === 0;
+  const noTagAdd = (await page.locator('.new-task-tag-add').count()) === 0;
+  check('no-title-input', noTitleInput, '标题输入位不存在');
+  check('no-tag-ui', noTagRow && noTagAdd, '标签行/添加钮不存在');
+  await page.fill('.new-task-spec', spec);
+  await shot(page, '01-single-field-dialog.png');
 
-  await page.click('.new-task-tag-new');
-  await page.waitForSelector('.new-task-tag-form', { timeout: 5000 });
-  await page.fill('.new-task-tag-input', tagName);
-  await page.click('.new-task-tag-save');
-  // 建后自动选中：面板里出现同名 pill 且 data-on=true
-  await page
-    .waitForFunction(
-      (name) =>
-        [...document.querySelectorAll('.new-task-tag-pill')].some(
-          (el) => el.textContent?.trim() === name && el.getAttribute('data-on') === 'true',
-        ),
-      tagName,
-      { timeout: 10_000 },
-    )
-    .catch(() => {});
-  const pillState = await page.evaluate(
-    (name) =>
-      [...document.querySelectorAll('.new-task-tag-pill')]
-        .filter((el) => el.textContent?.trim() === name)
-        .map((el) => el.getAttribute('data-on'))[0] ?? null,
-    tagName,
-  );
-  check('tag-created-selected', pillState === 'true', `内联新建后自动选中(data-on=${pillState ?? '无 pill'})`);
-  await shot(page, '02-tag-selected.png');
-
-  // 关面板 → 保存任务
-  await page.click('.new-task-tag-panel .dlg-close');
-  await page.waitForSelector('.new-task-tag-panel', { state: 'hidden', timeout: 5000 });
   await page.click('.new-task-save');
   await page.waitForSelector('.new-task-dialog', { state: 'hidden', timeout: 5000 });
-  check('task-saved', true, '关面板后保存任务，dialog 关闭');
-  await shot(page, '03-card-saved.png');
+  const card = page.locator('[data-column-list="todo"] .todo-card', { hasText: firstLine });
+  await card.waitFor({ state: 'visible', timeout: 15_000 });
+  check('card-placeholder-title', true, '看板卡标题 = 正文首行（占位）');
+  await shot(page, '02-card-placeholder.png');
 
-  // 真值 1：API 面 tag 建行 + todo.tagIds 含它
+  // 真值 1：todo.title = 首行（占位派生）；tagIds 空（回填是 agent 面）
   const todos = await getJson(`${SERVER}/api/todos`);
-  const apiTodo = Array.isArray(todos) ? todos.find((t) => t.title === title) : undefined;
+  const apiTodo = Array.isArray(todos) ? todos.find((t) => t.title === firstLine) : undefined;
+  check('api-placeholder-title', apiTodo != null, `API todo.title = 首行(${apiTodo?.title ?? '缺失'})`);
+  check(
+    'api-todo-no-tags',
+    Array.isArray(apiTodo?.tagIds) && apiTodo.tagIds.length === 0,
+    'tagIds 空（agent 回填前）',
+  );
+  extra.todoId = apiTodo?.id ?? null;
+
+  // 真值 2：固定词表播种 6 行（API + SQLite 双面）
   const projects = await getJson(`${SERVER}/api/projects`);
   const projectId = Array.isArray(projects) ? (projects[0]?.id ?? null) : null;
   const tags = projectId ? await getJson(`${SERVER}/api/projects/${projectId}/tags`) : [];
-  const apiTag = Array.isArray(tags) ? tags.find((t) => t.name === tagName) : undefined;
-  check('api-tag-row', apiTag != null, `POST tags 建行(name=${apiTag?.name ?? '缺失'}, color=${apiTag?.color ?? '?'})`);
+  const names = Array.isArray(tags) ? tags.map((t) => t.name) : [];
   check(
-    'api-todo-tagids',
-    Array.isArray(apiTodo?.tagIds) && apiTag != null && apiTodo.tagIds.includes(apiTag.id),
-    `todo.tagIds 含新 tag(${Array.isArray(apiTodo?.tagIds) ? apiTodo.tagIds.length : '?'} 个)`,
+    'api-fixed-tags',
+    EXPECTED_TAGS.every((n) => names.includes(n)) && names.length === EXPECTED_TAGS.length,
+    `播种词表(${names.join('/') || '无'})`,
   );
-  extra.tagId = apiTag?.id ?? null;
-  extra.todoId = apiTodo?.id ?? null;
-
-  // 真值 2：SQLite tag 行 + todo_tag 联结行
   const dbTruth = dbQuery((db) => ({
-    tag: db.prepare('SELECT id, name, color FROM tag WHERE name = ?').get(tagName),
-    join: apiTodo?.id
-      ? db.prepare('SELECT COUNT(*) AS n FROM todo_tag WHERE todoId = ?').get(apiTodo.id)
+    seeded: projectId
+      ? db.prepare('SELECT COUNT(*) AS n FROM tag WHERE projectId = ?').get(projectId)
       : null,
   }));
-  check('db-tag-row', dbTruth.tag != null, `SQLite tag 表有行(color=${dbTruth.tag?.color ?? '?'})`);
-  check('db-todo-tag-join', (dbTruth.join?.n ?? 0) >= 1, `todo_tag 联结行(${dbTruth.join?.n ?? '?'} 行)`);
+  check(
+    'db-seeded-tags',
+    (dbTruth.seeded?.n ?? 0) === EXPECTED_TAGS.length,
+    `SQLite tag 播种行(${dbTruth.seeded?.n ?? '?'} 行)`,
+  );
 
-  // 真值 3：详情页 meta 区 chip + 负向（看板卡不渲染标签）
+  // 真值 3：详情页——无标签则 chips 行不渲染（只读律，无添加 affordance）
   await page.goto(`${WEB}/app/todo/${apiTodo?.id ?? ''}`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.composer, .fresh-block', { timeout: 15_000 });
-  const chipTexts = await page.locator('.fresh-tag-chip').allTextContents();
-  check(
-    'detail-meta-chip',
-    chipTexts.some((t) => t.trim() === tagName),
-    `详情 fresh meta 区出 chip(${chipTexts.join('/') || '无'})`,
-  );
-  await shot(page, '04-detail-chip.png');
+  const tagsRowCount = await page.locator('.fresh-tags').count();
+  check('detail-no-tag-row', tagsRowCount === 0, `无标签时 chips 行不渲染(命中 ${tagsRowCount})`);
+  const h2 = (await page.locator('.fresh-title').textContent())?.trim() ?? '';
+  check('detail-title', h2 === firstLine, `详情 h2 = 占位标题(${h2 || '空'})`);
+  await shot(page, '03-detail-readonly.png');
 
+  // 负向（spec 08 附录 A 校准不变）：看板卡不渲染标签 chip
   await page.goto(`${WEB}/app`);
   await page.waitForSelector('[data-route="board"]', { timeout: 15_000 });
   const cardHasChip = await page
-    .locator('[data-column-list="todo"] .todo-card', { hasText: title })
+    .locator('[data-column-list="todo"] .todo-card', { hasText: firstLine })
     .locator('[class*="tag-chip"]')
     .count();
-  check('board-card-no-chip', cardHasChip === 0, `看板卡不渲染标签(#309 AC 校准，命中 ${cardHasChip} 个)`);
+  check('board-card-no-chip', cardHasChip === 0, `看板卡不渲染标签(命中 ${cardHasChip} 个)`);
 } finally {
   await browser.close();
 }

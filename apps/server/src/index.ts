@@ -14,6 +14,7 @@ import { createKeyfileSecretBox } from './lib/secret-box.js';
 import { ConversationStreamHub, TeamStreamHub } from './services/events.js';
 import { MachineWakeHub, seedLocalMachine } from './services/machines.js';
 import { createScheduler } from './services/scheduler.js';
+import { backfillFixedTags } from './services/tags.js';
 
 const config = loadConfig();
 const logger = pino({
@@ -35,6 +36,9 @@ const seeded = seed(db);
 // 未建则建无凭证行；idempotent——二次启动不建 duplicate。测试世界
 // （test/helpers bootServer）不经本位，机器列表断言口径不变。
 seedLocalMachine(db, seeded.team.id);
+// 固定标签词表存量补齐（spec 15 #394 / ADR 0002 D4）：按项目幂等，二次启动
+// 零动作。测试世界（bootServer）不经本位——播种单测直调 services/tags。
+backfillFixedTags(db);
 const hub = new TeamStreamHub();
 const convHub = new ConversationStreamHub();
 const reposDir = reposDirOf(config);

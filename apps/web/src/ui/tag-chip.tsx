@@ -1,7 +1,7 @@
 // TagChip 原语（#309，r9 96/100）：标签 chip——20px 高 pill、tag.color 底
-// inline、白字。新建任务 footer 选中 chip 与 fresh 详情 meta 区 chip 的
-// 共享形态（两处观测同视觉族）；per-face 类名（new-task-tag-chip /
-// fresh-tag-chip）由调用面 className 传入，作 e2e 定位别名（README 规则 2）。
+// inline、白字。渲染面 = fresh 详情 meta 区（spec 15 #394 起新建对话框
+// 无标签面,ADR 0002 D5）；per-face 类名（fresh-tag-chip）由调用面
+// className 传入，作 e2e 定位别名（README 规则 2）。
 // 与 Chip 原语的边界：Chip = 任务状态五态 + neutral（token 色族对）；
 // TagChip = 用户数据色（tag record color 位），不进状态色族。
 
