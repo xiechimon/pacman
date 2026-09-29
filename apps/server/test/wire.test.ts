@@ -77,6 +77,10 @@ const INFERRED_ROUTES = [
   // 读位封套，不入 canonical wire record 投影。
   'POST /api/builds/{id}/branch-sync',
   'GET /api/builds/{id}/branch-sync',
+  // spec 12 / #359 新建项目 GitHub 认证选仓：repo picker 数据面（GitHub
+  // `GET /user/repos` 代理，token 取自 github_connection；自有设计面，
+  // 02 §6.1 词表外 = INFERRED 入位）。
+  'GET /api/github/repos',
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；

@@ -12,6 +12,7 @@ import type {
   ConversationMessagesResponse,
   CreateAgentBody,
   CreateMcpServerBody,
+  CreateProjectBody,
   CreateProviderBody,
   CreateScheduleBody,
   DiffFileContent,
@@ -461,8 +462,10 @@ export function useApiMutations(teamId: string | undefined) {
       mutationFn: (id: string) => api.del<void>(`/api/schedules/${id}`),
       onSuccess: invalidateAll,
     }),
+    // body 单源 = shared createProjectBodySchema（spec 12 / #360：kind +
+    // localPath / githubRepo 契约面；既有 repoKind 调用点同义兼容）。
     createProject: useMutation({
-      mutationFn: (body: { name: string; repoKind?: 'hosted' | 'github'; githubRepo?: string }) =>
+      mutationFn: (body: CreateProjectBody) =>
         api.post<ProjectRecord>('/api/projects', { ...body, ...(teamId ? { teamId } : {}) }),
       onSuccess: invalidateAll,
     }),

@@ -17,10 +17,11 @@ describe('24 表 migration（01 §6 清单）', () => {
     const tables = Object.values(schema).filter((v) => is(v, SQLiteTable));
     const names = tables.map((t) => getTableConfig(t as SQLiteTable).name).sort();
     expect(names).toEqual([...DB_TABLES].sort());
-    expect(names).toHaveLength(29); // 01 §6 原清单 30 − skill（spec 13 #367 退役：技能改本地目录现扫，不入库）
+    expect(names).toHaveLength(30); // 01 §6 原清单 30 + spec 12 github_connection（内部凭证表）− skill（spec 13 #367 退役：技能改本地目录现扫，不入库）
     expect(names).toContain('chief');
     expect(names).toContain('attachment');
     expect(names).toContain('branch_sync');
+    expect(names).toContain('github_connection');
   });
 
   test('migration SQL 进 repo 且全表覆盖（跨 migration 累计）', () => {

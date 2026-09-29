@@ -21,10 +21,12 @@ import {
   createAgentBodySchema,
   createBranchSyncBodySchema,
   createMcpServerBodySchema,
+  createProjectBodySchema,
   createProviderBodySchema,
   createScheduleBodySchema,
   createTagBodySchema,
   createTodoBodySchema,
+  githubReposResponseSchema,
   type MemoryRecord,
   machineRecordSchema,
   PHASE_VALUES,
@@ -34,7 +36,6 @@ import {
   patchProviderBodySchema,
   phaseSchema,
   planRowSchema,
-  projectRepoKindSchema,
   SKILL_ENTRY_FILE,
   setSecretBodySchema,
   skillRecordSchema,
@@ -70,6 +71,7 @@ import {
 import { sha256Hex } from './lib/crypto.js';
 import { conflict, HttpError, notFound, parseWith } from './lib/errors.js';
 import { systemGitOps } from './lib/git.js';
+import { githubUserRepos } from './lib/github.js';
 import { newRecordId, nowMs } from './lib/ids.js';
 import { createApiKey, listApiKeys } from './services/api-keys.js';
 import {
@@ -114,7 +116,9 @@ import {
   slugifyRepoName,
   toProjectRecord,
   uniqueRepoName,
+  validateLocalRepoPath,
 } from './services/git.js';
+import { openGithubToken } from './services/github-connection.js';
 import { isChiefConversation } from './services/machines.js';
 import { handleMcpRequest } from './services/mcp-face.js';
 import {
@@ -196,16 +200,6 @@ const patchTodoBodySchema = z.object({
       build: assignmentSlotSchema.optional(),
     })
     .optional(),
-});
-
-/** POST /api/projects body [推断]（项目创建流两分支 UI 按 r2 §9 D 组截图为靶，
- * 02 §3；wire 未采）。repoKind 缺省 = 未绑定 repo（M2a 兼容形状）。 */
-const createProjectBodySchema = z.object({
-  name: z.string(),
-  teamId: z.string().optional(),
-  repoKind: projectRepoKindSchema.optional(),
-  /** GitHub 接入 `owner/repo`（repoKind=github 必填）。 */
-  githubRepo: z.string().optional(),
 });
 
 /** PATCH /api/teams/{id}/secrets/{sid} body [推断]（覆盖面 =「保存后只能
@@ -893,18 +887,32 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   // —— POST 面 ————————————————————————————————————————————————————————————————
   app.post('/api/projects', async (c) => {
     // [推断] REST 同名（02 §6.1 POST 面未观测；项目创建流两分支 UI 证据 02 §3/r2 §9）。
+    // body 单源 = shared createProjectBodySchema（spec 12 数据契约面 kind /
+    // localPath / githubRepo{owner,repo} + 既有 wire 面 repoKind / githubRepo
+    // 字符串；双名并存 kind 优先，皆缺 = 无 repo 普通项目）。
     const body = parseWith(createProjectBodySchema, await jsonBody(c), 'body');
     const teamId = body.teamId ?? ctx.team.id;
     requireTeam(ctx, teamId);
-    if (
-      body.repoKind === 'github' &&
-      (body.githubRepo === undefined || !isGithubRepoRef(body.githubRepo))
-    ) {
-      throw new HttpError(400, 'invalid body at githubRepo: expected "owner/repo"');
+    const kind = body.kind ?? body.repoKind;
+    let githubRepo: string | null = null;
+    if (kind === 'github') {
+      // 双面归一（对象面 = picker 回填，字符串面 = 手动兜底）→ 同一 400 闸。
+      const ref =
+        typeof body.githubRepo === 'string'
+          ? body.githubRepo
+          : body.githubRepo
+            ? `${body.githubRepo.owner}/${body.githubRepo.repo}`
+            : undefined;
+      if (ref === undefined || !isGithubRepoRef(ref)) {
+        throw new HttpError(400, 'invalid body at githubRepo: expected "owner/repo"');
+      }
+      githubRepo = ref;
     }
+    // local 形态：localPath 三态校验 400 闸（services/git.ts，spec 12 / #359）。
+    const localPath = kind === 'local' ? await validateLocalRepoPath(body.localPath) : null;
     const id = newRecordId();
     let repoName: string | null = null;
-    if (body.repoKind === 'hosted') {
+    if (kind === 'hosted') {
       // 托管形态落地：init 本地 bare repo（02 §3 锁定）。
       repoName = await uniqueRepoName(ctx, teamId, slugifyRepoName(body.name));
       await provisionHostedRepo(ctx, teamId, repoName);
@@ -915,9 +923,10 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         id,
         name: body.name,
         teamId,
-        repoKind: body.repoKind ?? null,
+        repoKind: kind ?? null,
         repoName,
-        githubRepo: body.repoKind === 'github' ? (body.githubRepo ?? null) : null,
+        githubRepo,
+        localPath,
       })
       .run();
     const row = requireProject(ctx, id);
@@ -1384,6 +1393,35 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       }
       throw err;
     }
+  });
+
+  /** GET /api/github/repos?q=（spec 12 / #359：新建项目 repo picker 数据面）。
+   * GitHub `GET /user/repos` 代理——token 取自 github_connection（SecretBox
+   * 密文解封仅在此出站边界，Authorization 头唯一消费位，never 进 URL/日志/
+   * 响应）；未连接 = 404（web 面据此显示「认证 GitHub」入口，spec 12 story 2）。
+   * q = full_name 大小写不敏感子串过滤 [设计]（上游无查询参数面，本地过滤）；
+   * 限流两形经 lib/github.ts 错误映射直透（429/502）。封套单源 = shared
+   * githubReposResponseSchema（spec 12 数据契约）。 */
+  app.get('/api/github/repos', async (c) => {
+    const teamId = c.req.query('teamId') ?? ctx.team.id;
+    requireTeam(ctx, teamId);
+    const token = openGithubToken({ db: ctx.db, box: ctx.secretBox }, teamId);
+    if (token === null) throw notFound('github connection');
+    const fetchImpl = ctx.githubFetch ?? fetch;
+    const repos = await githubUserRepos(fetchImpl, token);
+    const q = c.req.query('q')?.trim().toLowerCase() ?? '';
+    const hits = q === '' ? repos : repos.filter((r) => r.fullName.toLowerCase().includes(q));
+    return c.json(
+      githubReposResponseSchema.parse({
+        repos: hits.map((r) => ({
+          id: r.id,
+          owner: r.owner,
+          name: r.name,
+          full_name: r.fullName,
+          private: r.isPrivate,
+        })),
+      }),
+    );
   });
 
   app.get('/api/teams/:id/secrets', (c) => {

@@ -439,19 +439,20 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
   });
 });
 
-describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; #310 +attachment; #319 +branch_sync)', () => {
-  it('DB table registry is the 01 §6 list + chief + steer/stop_pending + attachment + branch_sync (29 incl. the todo_tag join; skill 退役 spec 13 #367)', () => {
-    expect(DB_TABLES).toHaveLength(29);
+describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; #310 +attachment; #319 +branch_sync; spec 12 +github_connection; spec 13 −skill)', () => {
+  it('DB table registry is the 01 §6 list + chief + steer/stop_pending + attachment + branch_sync + github_connection − skill (30 incl. the todo_tag join; skill 退役 spec 13 #367)', () => {
+    expect(DB_TABLES).toHaveLength(30);
     expect(DB_TABLES).toContain('todo_tag');
     expect(DB_TABLES).toContain('chief');
     expect(DB_TABLES).toContain('attachment');
     expect(DB_TABLES).toContain('branch_sync');
     expect(DB_TABLES).toContain('stop_pending');
+    expect(DB_TABLES).toContain('github_connection');
     // spec 13 #367：skill 表退役（技能 = 本地目录现扫只读投影，不入库）
     expect(DB_TABLES).not.toContain('skill');
   });
 
-  it('record shapes cover exactly the 24 wire tables (todo_tag join + steer/stop_pending internal + attachment binary have none; skill = 磁盘投影无表位, spec 13 #367)', () => {
+  it('record shapes cover exactly the 24 wire tables (todo_tag join + steer/stop_pending internal + attachment binary + github_connection credential have none; skill = 磁盘投影无表位, spec 13 #367)', () => {
     expect(Object.keys(RECORD_SCHEMAS)).toHaveLength(24);
     expect(Object.keys(RECORD_SCHEMAS)).toEqual(
       DB_TABLES.filter(

@@ -11,6 +11,7 @@ import type {
   DocumentDiffFile,
   McpTransport,
   Phase,
+  ProjectRepoKind,
   ProviderApi,
   StepKind,
   TriggerSource,
@@ -39,18 +40,22 @@ export const team = sqliteTable('team', {
   avatarStyle: text('avatarStyle'),
 });
 
-// —— project（repo 双形态：托管 bare / GitHub 接入，02 §3/A4）————————————————
+// —— project（repo 形态：托管 bare / GitHub 接入 / local 本机仓，02 §3/A4 +
+// spec 12）———————————————————————————————————————————————————————————————
 export const project = sqliteTable('project', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   teamId: text('teamId')
     .notNull()
     .references(() => team.id),
-  repoKind: text('repoKind').$type<'hosted' | 'github'>(),
+  repoKind: text('repoKind').$type<ProjectRepoKind>(),
   /** 托管形态：bare repo 名段（远端 URL `<teamId>/<repoName>`，r3 §1.4）。 */
   repoName: text('repoName'),
   /** GitHub 接入形态：`owner/repo`（02 §3；字段名 [推断]）。 */
   githubRepo: text('githubRepo'),
+  /** local 形态：用户本机 git 工作树仓绝对路径（spec 12 / #359；server 端
+   * `~` 展开 + 三态校验后的规范化值，daemon 镜像 clone 同源消费）。 */
+  localPath: text('localPath'),
 });
 
 // —— todo（02 §4.1 字段表全量；tagIds/buildHistory/agent 为派生面不存列）——————
@@ -529,5 +534,25 @@ export const attachment = sqliteTable('attachment', {
   scope: text('scope').$type<'spec' | 'message'>().notNull(),
   /** pending = grant 落库未上传；ready = 文件落盘；failed = 上传过程报错。 */
   status: text('status').$type<'pending' | 'ready' | 'failed'>().notNull().default('pending'),
+  createdAt: epochMs('createdAt').notNull(),
+});
+
+// —— github_connection（spec 12 / #359，#352 族）：GitHub OAuth 连接行 ——————
+// teamId 单行（重认证 = 覆盖、断开 = 删行；DAO = services/github-connection.ts）。
+// accessToken 经 SecretBox 密封落 accessTokenCipher（[内部] 列，provider.
+// apiKeyCipher 同族纪律 02 §8：只写不读出 wire——唯一消费点 = server 出站边界
+// Authorization 头（repos 代理）与 daemon 执行凭证下发（spec 12 G2-T2），
+// never 落 argv / log / plaintext 列）。连接状态读面（login/scope）内嵌认证面
+// 端点封套（spec 12 G2-T4），不立 record 投影（INTERNAL_ONLY_TABLES）。
+export const githubConnection = sqliteTable('github_connection', {
+  teamId: text('teamId')
+    .primaryKey()
+    .references(() => team.id, { onDelete: 'cascade' }),
+  /** GitHub 登录名（OAuth 令牌面 `GET /user` login；picker 展示位）。 */
+  login: text('login').notNull(),
+  /** [内部] SecretBox 信封（v1 头 + iv + ciphertext + authTag，01 §4.2）。 */
+  accessTokenCipher: text('accessTokenCipher').notNull(),
+  /** 授权 scope 串（空格分隔，`repo` 位 = spec 12 GitHub 执行面前提）。 */
+  scope: text('scope').notNull(),
   createdAt: epochMs('createdAt').notNull(),
 });

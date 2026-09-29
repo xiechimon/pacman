@@ -585,11 +585,21 @@
   color: var(--text-primary);
 }
 
-/* #231 连接订阅段：整宽行钮（token 族同 .dlg-form-input）+ 失败 inline 行
-   + 与自定义表单的分隔行。 */
-.dlg-provider-oauth {
+/* #355 picker 形态（spec 11 §A6）：38 preset 行钮 + OAuth 徽标 + 底部
+   「自定义端点」入口 + form 视图返回钮。行钮几何承 #231 连接订阅段旧制
+   （36 高 / card-border 描边 / surface 底，hover secondary）；列表 gap 4
+   收紧 38 行纵深。 */
+.dlg-provider-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dlg-provider-preset,
+.dlg-provider-custom {
   display: flex;
   align-items: center;
+  gap: 8px;
   height: 36px;
   border: 1px solid var(--card-border);
   border-radius: 8px;
@@ -598,36 +608,55 @@
   font-size: 14px;
   color: var(--text-primary);
   cursor: pointer;
+  text-align: left;
 }
 
-.dlg-provider-oauth:hover {
+.dlg-provider-preset:hover,
+.dlg-provider-custom:hover {
   background: var(--surface-secondary);
 }
 
-.dlg-provider-oauth:disabled {
+.dlg-provider-preset:disabled {
   cursor: default;
   opacity: 0.6;
 }
 
+/* OAuth 族徽标（PROVIDER_OAUTH_PRESET_IDS 两项）：行右小 chip。 */
+.dlg-provider-badge {
+  margin-left: auto;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--surface-secondary);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* #231 连接失败 inline 行（authorize 400 原文 / callback 落地 reason
+   文案，providers-page 喂入）。 */
 .dlg-provider-oauth-error {
   font-size: 12px;
   line-height: 16px;
   color: var(--danger);
 }
 
-.dlg-provider-divider {
+/* form 视图返回列表（picker ↔ form 往返）：.dlg-provider-model-add 同族
+   左对齐无框文字钮。 */
+.dlg-provider-back {
+  align-self: flex-start;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
-
-.dlg-provider-divider::before,
-.dlg-provider-divider::after {
-  content: "";
-  flex: 1;
-  border-top: 1px solid var(--card-border);
+  gap: 4px;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
 /* 添加机器 dialog (wayfinder #181, r2 11b CLI 两步表单): 引导语 + 带
