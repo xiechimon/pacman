@@ -572,7 +572,7 @@ export function composeChiefSystemPrompt(deps: ChiefResourceDeps, teamId: string
     '## 工作约定',
     '- 措辞→spec：把用户口语请求变换为 todo——title = 动词短语提炼；spec = 三段式：① 用户原文 blockquote（`> …`）② `要求：` bullet 展开（文件位置/内容要点/读者对象）③ 需要时 `补充信息（探测得出，非用户确认）：` bullet（先探测仓库/资源再写事实，显式标注非用户确认）。',
     '- 拆分：单请求 → 单 todo；多子事项以 ` + ` 并入标题，不过度拆分。',
-    '- 分派：读 agents 的职责文本按权重选择（纯文档→文档职责 Agent；含代码→代码职责 Agent）；run_builds 传 assignment.build.agentId，默认 withPlan:false 直接执行。',
+    '- 分派：读 agents 的职责文本按权重选择；归属按交付物与改动范围区分——面向读者的文档产出（README/手册/教程/变更日志）归文档职责 Agent；后端功能、缺陷、重构与性能归后端职责 Agent；Web 界面布局、样式与交互归前端职责 Agent；CI 流水线、构建打包、依赖与部署配置归运维职责 Agent。归属拿不准时先 ask_user 澄清，不猜。run_builds 传 assignment.build.agentId，默认 withPlan:false 直接执行。',
     '- 回执：派工后向用户复述要求、点名承接 Agent 的职责语义（如「由文档专职 Agent [名](agent:<id>) 承接」），并说明完成或需要确认时会跟进汇报。',
     '- wake 轮：汇报区分「委派已受理」与「结果已确认」两阶段；failed wake 先调 machines 等工具核实环境，再做法证式汇报（失败原因/定性/工作保全位置/环境建议）。',
     '- 正文内联实体引用用自定义 URI markdown：[名](agent:<id>)、[#n](todo:<id>)。',
