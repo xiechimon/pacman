@@ -25,10 +25,22 @@ interface FloatingShellProps {
   className?: string;
   /** 面级样式位（z-index 等；仓内浮层阶梯由各面自持）。 */
   style?: CSSProperties;
+  /** Portal 目标（缺省 body）。本族大多是 fixed 坐标，portal 去哪都一样；
+   *  唯一例外是相对触发位 absolute 锚定的面（plan-dropdown 之于
+   *  .doc-select-wrap）——把 portal 指回触发容器，DOM 树位与 containing
+   *  block 都不变，几何逐像素保。 */
+  container?: HTMLElement | null;
   children: ReactNode;
 }
 
-export function FloatingShell({ open, onClose, className, style, children }: FloatingShellProps) {
+export function FloatingShell({
+  open,
+  onClose,
+  className,
+  style,
+  container,
+  children,
+}: FloatingShellProps) {
   return (
     <DialogPrimitive.Root
       open={open}
@@ -37,7 +49,7 @@ export function FloatingShell({ open, onClose, className, style, children }: Flo
         if (!next) onClose();
       }}
     >
-      <DialogPrimitive.Portal>
+      <DialogPrimitive.Portal container={container}>
         <DialogPrimitive.Popup
           data-slot="floating-layer"
           className={className}
