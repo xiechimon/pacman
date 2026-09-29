@@ -4,7 +4,7 @@
 // 判分口径：读 end state（todo 行 + build 行的 assignment），不读 transcript——
 // 对 agent 类应用，transcript 是叙述，环境才是答案。
 
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
@@ -59,6 +59,49 @@ export function disposeLeftovers(): number {
     } catch {}
   }
   return n;
+}
+
+/** 反查并清掉「逃逸进程」，返回处理掉的 pid 数。
+ *
+ * 被测 agent 会在 workspaces/<uuid>/ 下用 `nohup vite &` 起 dev server：它不在
+ * harness 持有的任何 handle 里，close() 的 handle.stop()/server.close() 够不着，
+ * 而 disposeLeftovers() 只 rmSync 目录——rmSync 不杀进程。实测评测跑完后 vite 以
+ * ppid=1 的孤儿形态继续 LISTEN 5173，跑 N 轮就从 5173 排到 5173+N，把后续本机
+ * dev 一路往后挤。只能在删目录前按 home 路径反查。 */
+export async function reapEscapees(home: string): Promise<number> {
+  // pgrep -f 是子串匹配，tmpdir() 的 /var/folders/... 足以命中 cmdline 里的
+  // /private/var/folders/...（macOS symlink），不必先 realpath——实测 2026-09-29
+  // 两种 pattern 都命中同一 pid。反过来直接用 home 更稳：realpathSync 在目录已
+  // 删时会抛，而 home 字符串始终可用。
+  let out = '';
+  try {
+    out = execFileSync('pgrep', ['-f', home], { encoding: 'utf8' });
+  } catch {
+    return 0; // pgrep 无匹配时退出码 1，属正常
+  }
+  const pids = out
+    .split('\n')
+    .map((s) => Number(s.trim()))
+    .filter((n) => Number.isInteger(n) && n > 0 && n !== process.pid);
+  if (pids.length === 0) return 0;
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 'SIGTERM');
+    } catch {
+      /* 已退出 */
+    }
+  }
+  // 给 TERM 时间收尾，再对赖着不走的补 KILL（kill 0 先探活，避免打到复用的 pid）。
+  await new Promise((r) => setTimeout(r, 1_000));
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 0);
+      process.kill(pid, 'SIGKILL');
+    } catch {
+      /* TERM 已经够了 */
+    }
+  }
+  return pids.length;
 }
 
 export interface RosterAgent {
@@ -168,6 +211,10 @@ export async function bootStack(): Promise<Stack> {
       await raceWith(handle.stop(), 15_000);
       await raceWith(handle.done, 15_000);
       await raceWith(server.close(), 5_000);
+      // daemon 停了不等于环境干净：被测 agent 用 nohup 起的 dev server 逃出了
+      // harness 的 handle，得按 home 路径反查清掉（见 reapEscapees）。
+      const reaped = await reapEscapees(home);
+      if (reaped > 0) console.error(`[stack] 清掉 ${reaped} 个逃逸进程`);
       // 一律推迟到整轮结束再删。曾经在 close 里直接 rm：那时 daemon 还在写
       // home/daemon.log，被删后它下次写日志 ENOENT，未捕获异常打死整个 runner
       // （实测两次）。stop() 返回 ≠ 主循环已退出，靠限时等它退出是不可靠的，
