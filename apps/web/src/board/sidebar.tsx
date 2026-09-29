@@ -11,7 +11,8 @@
 // (rail + expanded, team name and 新建项目 included) are react-router
 // Links — SPA hops with no document reload — carrying the live ?search=
 // along (fixture-scenario convention, same as the todo-card and page-back
-// links); the selected pill and aria-current stay prop-driven off
+// links); the head row carries the brand mark + BRAND 槽名 (#390) in place
+// of the team icon/name; the selected pill and aria-current stay prop-driven off
 // `selected`, and the row hover pill lives in sidebar.css. #127: the
 // avatar chips (rail + expanded) toggle the user-menu popover — the
 // anchored-overlay family wiring (OverlayMount + ClickCatcher + Esc, same
@@ -22,11 +23,12 @@
 // onNewTask opener with the global N hotkey; the rail keeps its icon-only
 // nav unchanged (the badge needs the expanded label row).
 
+import { BRAND } from '@pacman/shared';
 import { type ComponentType, type SVGProps, useCallback, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { UserMenu } from '../detail/user-menu.js';
 import { isDeleted } from '../fixtures/deletions.js';
-import { PROJECT_ID, PROJECT_NAME, TEAM_NAME, USER_NAME } from '../fixtures/fixtures.js';
+import { PROJECT_ID, PROJECT_NAME, USER_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
 import {
@@ -44,10 +46,10 @@ import {
   Puzzle,
   Search,
   Server,
-  Users,
 } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { readStoredTheme } from '../theme.js';
+import { Avatar } from '../ui/avatar.js';
 import './sidebar.css';
 
 /** Which sidebar row carries the active pill: a nav row (看板 / 定时 /
@@ -325,7 +327,7 @@ export function BoardSidebar({
           aria-expanded={userMenuOpen}
           onClick={toggleUserMenu}
         >
-          <img src="/avatar-user.png" alt="" />
+          <Avatar name={USER_NAME} fallback="/avatar-user.png" />
         </button>
         {userMenuPopover}
       </aside>
@@ -336,11 +338,13 @@ export function BoardSidebar({
     <aside className="board-sidebar">
       <div className={`sidebar-team-row${selected === 'team' ? ' sidebar-team-row--active' : ''}`}>
         <span className="sidebar-row-icon">
-          <Users />
+          {/* 品牌槽（#390）：mark = logo.svg 真资产 alpha mask，名 = BRAND
+              槽；mark 图单点替换位 = sidebar.css 的 mask url */}
+          <span className="sidebar-brand-mark" aria-hidden="true" />
         </span>
-        {/* r2 §1.1: clicking the team name navigates to /app/team */}
+        {/* r2 §1.1: clicking the head name navigates to /app/team */}
         <Link className="sidebar-team-name" to={{ pathname: '/app/team', search }}>
-          {TEAM_NAME}
+          {BRAND.manifestName}
         </Link>
         <button
           type="button"
@@ -460,7 +464,7 @@ export function BoardSidebar({
         aria-expanded={userMenuOpen}
         onClick={toggleUserMenu}
       >
-        <img src="/avatar-user.png" alt="" />
+        <Avatar name={USER_NAME} fallback="/avatar-user.png" />
         <span className="sidebar-user-name">{USER_NAME}</span>
         <span className="sidebar-user-more">
           <EllipsisVertical />

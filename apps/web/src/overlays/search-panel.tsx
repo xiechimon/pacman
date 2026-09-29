@@ -35,6 +35,7 @@ import {
   Users,
 } from '../icons/index.js';
 import { PHASE_UI } from '../phase.js';
+import { Avatar } from '../ui/avatar.js';
 import { Input } from '../ui/input.js';
 import { OverlayMount } from './dismiss.js';
 import './overlays.css';
@@ -398,7 +399,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
                       onClick={() => go('/app/team')}
                     >
                       <span className="search-row-icon search-row-icon--agent">
-                        <img src="/avatar-robot-1.svg" alt="" />
+                        <Avatar name={agent.displayName} fallback="/avatar-robot-1.svg" />
                       </span>
                       <span className="search-row-main">
                         <span className="search-row-title">{agent.displayName}</span>

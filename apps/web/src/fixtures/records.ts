@@ -213,6 +213,9 @@ export interface ProjectContent {
 export interface TeamAgentCard {
   id: string;
   displayName: string;
+  /** #387 avatarUrl 语义：null/缺省 = dicebear 按 displayName 种子生成；
+   *  非 null = 显式覆盖。 */
+  avatarUrl?: string | null;
   /** Model line lead (`claude-sonnet-5 · 默认`, r7 12). */
   model: string;
   /** Model line carries the `· 默认` suffix for the team's default agent. */
