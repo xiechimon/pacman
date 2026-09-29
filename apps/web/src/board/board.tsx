@@ -12,6 +12,10 @@
 // change, orderIndex write-back, fold/awaitingReply handling. Desktop-only
 // like the official (changelog 2026-09-12: drag rows appear on desktop web
 // only), so the sensor set is empty on coarse pointers.
+// #414 (shadcn 试点): 视觉层切 shadcn 组件 + B（neutral）token——列容器
+// bg-column（shadcn.css 补位档）、卡片见 todo-card.tsx、按钮走
+// components/ui/button。列几何/别名/data-* 钩子/dnd 逻辑全部原位；
+// 阶段点语义色（column.dot）不随 B 换。
 
 import {
   closestCorners,
@@ -27,12 +31,12 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { type ReactNode, useCallback, useLayoutEffect, useRef, useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
 // drawer/settings overlays sit beside it in one place.
 import { useI18n } from '../i18n/provider.js';
 import { Plus, UnfoldVertical } from '../icons/index.js';
-import { Button } from '../ui/button.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
 import { DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
 import { SortableCard } from './sortable-card.js';
@@ -226,16 +230,24 @@ export function BoardSurface({
   const dragged = dragId == null ? null : (fixture.todos.find((t) => t.id === dragId) ?? null);
 
   return (
-    <div className={banner == null ? 'board-main' : 'board-main board-main--banner'}>
-      <header className="board-topbar">
-        <div className="board-topbar-title">{t('看板')}</div>
-        <div className="board-topbar-actions">
-          {/* A3 收编：Button text 变体（compact 档）。board-new-task 是
-              e2e 钉死的选择器别名，经 className 透传保留；59.5 宽 /
-              11px 图标缝 / 14px 字号是原语表达不了的 per-face 实测值，
-              留在 board.css。 */}
-          <Button variant="text" size="compact" className="board-new-task" onClick={onNewTask}>
-            <Plus width={13} height={13} />
+    <div
+      className={`board-main relative flex min-w-0 flex-1 flex-col bg-background ${banner == null ? '' : 'board-main--banner'}`}
+    >
+      <header className="board-topbar relative flex h-11 flex-none items-center border-b border-border">
+        <div className="board-topbar-title pointer-events-none absolute inset-x-0 text-center text-sm leading-[22px] font-medium text-foreground">
+          {t('看板')}
+        </div>
+        <div className="board-topbar-actions ml-auto flex items-center pr-3">
+          {/* board-new-task 是 e2e 钉死的选择器别名（className 透传保留）。
+              #414: text 变体 → B 面 default（neutral 实底）；h-7 = 旧 compact
+              28px 档。 */}
+          <Button
+            variant="default"
+            size="sm"
+            className="board-new-task h-7 gap-1.5 px-2.5 text-sm"
+            onClick={onNewTask}
+          >
+            <Plus width={13} height={13} className="size-[13px]" />
             {t('任务')}
           </Button>
         </div>
@@ -252,7 +264,9 @@ export function BoardSurface({
         onDragCancel={onDragCancel}
       >
         <div
-          className="board-scroller"
+          className={`board-scroller absolute inset-x-0 bottom-0 flex gap-3.5 overflow-x-auto overflow-y-hidden bg-background px-[17px] pt-3 pb-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+            banner == null ? 'top-11' : 'top-[121px]'
+          }`}
           ref={scrollerRef}
           onScroll={(e) =>
             sessionStorage.setItem(BOARD_SCROLL_KEY, String(e.currentTarget.scrollLeft))
@@ -264,7 +278,9 @@ export function BoardSurface({
             return (
               <section
                 key={column.id}
-                className={collapsed ? 'board-column board-column--collapsed' : 'board-column'}
+                className={`board-column relative flex h-full flex-none flex-col rounded-xl border border-border bg-column ${
+                  collapsed ? 'board-column--collapsed w-10' : 'w-[278px]'
+                }`}
                 aria-label={t(column.name)}
                 data-column={column.id}
                 data-collapsed={collapsed ? 'true' : undefined}
@@ -276,38 +292,51 @@ export function BoardSurface({
                   // count under it; the strip itself is the expand trigger
                   <button
                     type="button"
-                    className="board-column-strip"
+                    className="board-column-strip flex h-full w-full cursor-pointer flex-col items-center border-none bg-transparent pt-[13.5px]"
                     // same aria convention as the header collapse button
                     // (r7 icons.json `aria:待开始` ×6)
                     aria-label={t(column.name)}
                     aria-expanded={false}
                     onClick={() => toggleColumn(column.id)}
                   >
-                    <span className="board-column-dot" style={{ background: column.dot }} />
-                    <span className="board-column-count">{todos.length}</span>
+                    <span
+                      className="board-column-dot size-[7px] flex-none rounded-full"
+                      style={{ background: column.dot }}
+                    />
+                    <span className="board-column-count mt-2 text-xs leading-4 text-muted-foreground/70">
+                      {todos.length}
+                    </span>
                   </button>
                 ) : (
                   <>
-                    <header className="board-column-header">
-                      <span className="board-column-dot" style={{ background: column.dot }} />
-                      <span className="board-column-name">{t(column.name)}</span>
+                    <header className="board-column-header flex h-[37px] flex-none items-center px-[13px] pt-[3px]">
+                      <span
+                        className="board-column-dot size-[7px] flex-none rounded-full"
+                        style={{ background: column.dot }}
+                      />
+                      <span className="board-column-name ml-2 text-xs leading-4 text-muted-foreground">
+                        {t(column.name)}
+                      </span>
                       {/* count always renders, `0` included (r2 §4.1 计数 0/1;
                       r7 02/01b: digit present on empty columns, x = name+9) */}
-                      <span className="board-column-count">{todos.length}</span>
+                      <span className="board-column-count ml-[9px] text-xs leading-4 text-muted-foreground/70">
+                        {todos.length}
+                      </span>
                       {column.label && (
-                        <span className="board-column-label">{t(column.label)}</span>
+                        <span className="board-column-label ml-2 text-xs leading-4 text-muted-foreground">
+                          {t(column.label)}
+                        </span>
                       )}
-                      {/* A4-deep 收编：icon 变体皮肤；.board-column-collapse
-                          是 e2e (collapse-family) 钉死的别名 */}
                       <Button
-                        variant="icon"
-                        className="board-column-collapse"
+                        variant="ghost"
+                        size="icon-xs"
+                        className="board-column-collapse mr-[-3.5px] ml-auto size-[25px] text-muted-foreground"
                         // aria-label = column name, r7 icons.json `aria:待开始` ×6
                         aria-label={t(column.name)}
                         aria-expanded={true}
                         onClick={() => toggleColumn(column.id)}
                       >
-                        <UnfoldVertical />
+                        <UnfoldVertical className="size-[13px]" />
                       </Button>
                     </header>
                     <ColumnList columnId={column.id} empty={t(column.empty)} count={todos.length}>
@@ -335,7 +364,8 @@ export function BoardSurface({
           })}
         </div>
         {/* #391: default drop animation — the overlay glides to the landing
-            slot (250ms ease) instead of snapping out on pointer up */}
+            slot (250ms ease) instead of snapping out on pointer up; lift
+            shadow = board.css 的 .board-drag-overlay 规则 */}
         <DragOverlay>
           {dragged != null && (
             <div className="board-drag-overlay">
@@ -367,9 +397,17 @@ function ColumnList({
 }) {
   const { setNodeRef } = useDroppable({ id: columnId });
   return (
-    <div className="board-column-list" ref={setNodeRef} data-column-list={columnId}>
+    <div
+      className="board-column-list relative flex min-h-0 flex-1 flex-col gap-2 px-[7.25px]"
+      ref={setNodeRef}
+      data-column-list={columnId}
+    >
       {children}
-      {count === 0 && <div className="board-column-empty">{empty}</div>}
+      {count === 0 && (
+        <div className="board-column-empty absolute inset-0 flex -translate-y-3 items-center justify-center text-xs leading-4 text-muted-foreground">
+          {empty}
+        </div>
+      )}
     </div>
   );
 }

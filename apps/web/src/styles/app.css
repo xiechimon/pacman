@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* shadcn 语义变量层（#414）：必须从本文件 import——TW4 的 PostCSS 接线只在
+   含 @import "tailwindcss" 的样式表里吃 @theme，独立 CSS 模块里的 @theme
+   会被静默忽略（bg-background 一族工具类不生成）。 */
+@import "./shadcn.css";
 
 /* r1 §4.3 官方反相 dark 变体的 v4 等价实现（#106）：深色 = :root 默认态，
    浅色 = 根元素挂 .light。`dark:*` 编译为 `.dark\:x:where(:not(.light):not(.light *))`，

@@ -1,0 +1,101 @@
+/* shadcn 语义变量层（#414 试点）：视觉身份 = #407 裁决的 B（shadcn 官方
+   neutral 美学）。与 tokens.css 并存不碰——旧页继续消费 --surface 族，本层
+   只服务 components/ui 与新写面。
+   主题机制沿用 pacman 反相规约（#106）：:root = dark 默认，.light = 浅色
+   镜像——与 shadcn 文档的 :root=light/.dark=dark 相反，有意为之；app.css
+   的 @custom-variant dark 已是「dark = 非 .light」，shadcn 组件内的 dark:
+   工具类在本仓恰好命中暗色默认态。
+   取值：dark = shadcn neutral dark（oklch 官方值）；light = neutral light。
+   --column / --sidebar-hover / --sidebar-active 是看板域补位：shadcn 无列
+   容器概念（neutral 暗色缺第三级阶），列容器取 background 与 card 之间的
+   一档；侧栏行 pill 走 cds alpha 梯的 neutral 直译。 */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-column: var(--column);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* shadcn 的 base 兜底（官方是 `* { border-color: var(--border) }`）：TW4 的
+   `border` 工具类只给宽度，颜色默认 currentColor——没有这条，Card 的描边会
+   取到近白字色。本仓收窄到 [data-slot]（shadcn 组件源码自带的锚点），旧页
+   零波及：pacman 既有 CSS 全部显式写 border-color，不需要也不该吃全局兜底。 */
+@layer base {
+  [data-slot] {
+    border-color: var(--border);
+  }
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.371 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --column: oklch(0.18 0 0);
+  --sidebar-hover: oklch(1 0 0 / 5%);
+  --sidebar-active: oklch(1 0 0 / 10%);
+}
+
+.light {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --column: oklch(0.97 0 0);
+  --sidebar-hover: oklch(0 0 0 / 5%);
+  --sidebar-active: oklch(0 0 0 / 8%);
+}
