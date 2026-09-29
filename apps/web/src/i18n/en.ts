@@ -247,8 +247,9 @@ export const EN: Record<string, string> = {
   'GitHub 仓库': 'GitHub repo',
   本地文件夹: 'Local folder',
   创建项目: 'Create project',
-  // #360 本地路径校验错误行：server validateLocalRepoPath 400 reason 的
-  // 三态分类文案；未分类 reason 原文直透（不进词典）。
+  // #386 本地路径校验错误行：server 400 reason code 的三态分类文案（zh 键
+  // 单源 = shared LOCAL_ERROR_REASON_COPY）；无 code / 未分类 reason 原文直
+  // 透（不进词典）。
   路径不存在: 'Path not found',
   '不是 git 仓库': 'Not a git repository',
   需要绝对路径: 'Absolute path required',

@@ -179,12 +179,14 @@ try {
     `清空名称后回填恢复(实际「${await nameValue()}」)`,
   );
 
-  // 4. github 选态 → owner/repo 输入面 + repo 段回填
+  // 4. github 选态 → 认证门控面(#361):未认证 = 认证钮 + 手动兜底链接,
+  //    owner/repo input 在链接后——点链接露出输入面再回填
   await selectRow('GitHub 仓库');
   check(
     (await page.locator('input[aria-label="本地文件夹"]').count()) === 0,
     '切到 GitHub 形态:本地路径输入面退场(无陈旧态骑提交)',
   );
+  await page.locator('.prj-new-gh-link', { hasText: '手动输入' }).click();
   const ghInput = page.locator('input[aria-label="GitHub 仓库"]');
   await ghInput.fill('xiechimon/pacman');
   check(
@@ -271,9 +273,10 @@ try {
     `SQLite:local 项目行 repoKind/localPath 落库(${JSON.stringify(dbLocal.row ?? dbLocal)})`,
   );
 
-  // 10. github 成功链
+  // 10. github 成功链(同 4:未认证面 input 在手动兜底链接后,#361 门控)
   await gotoNew();
   await selectRow('GitHub 仓库');
+  await page.locator('.prj-new-gh-link', { hasText: '手动输入' }).click();
   await page.locator('input[aria-label="GitHub 仓库"]').fill('xiechimon/pacman');
   await page.locator('.prj-new-submit').click();
   await waitProjectUrl();
@@ -308,6 +311,18 @@ try {
   );
 } catch (err) {
   check(false, `probe 异常:${String(err?.message ?? err)}`);
+  // 崩溃现场 DOM 快照：repo-field 面 + 全 input aria-label，失败自释（别靠猜）。
+  try {
+    payloads.crashDom = await page.evaluate(() => ({
+      url: location.href,
+      repoField: document.querySelector('.prj-new-repo-field')?.innerHTML.slice(0, 600) ?? null,
+      inputs: [...document.querySelectorAll('input')].map((i) => i.getAttribute('aria-label') ?? i.id),
+      ghError: document.querySelector('.prj-new-gh-error')?.textContent ?? null,
+      prjError: document.querySelector('.prj-new-error')?.textContent ?? null,
+    }));
+  } catch (dumpErr) {
+    payloads.crashDomError = String(dumpErr?.message ?? dumpErr);
+  }
   try {
     await shot('99-crash.png');
   } catch {}
