@@ -1,9 +1,8 @@
 // Board surface (issue #54): topbar + 4-column grid + chief FAB. #351:
 // the 6-column 278px fixed-pitch scroller became an even 4-column grid
-// (repeat(4, minmax(0, 1fr)), gap 14 — geometry in board.css); the #147
-// column-collapse family and the #58 scrollLeft persistence retired with
-// the horizontal scroll they served. Header 37 with dot/name/count,
-// empty-state copy centered (r7 captures).
+// (repeat(4, minmax(0, 1fr)), gap 14); the #147 column-collapse family and
+// the #58 scrollLeft persistence retired with the horizontal scroll they
+// served. Header 37 with dot/name/count, empty-state copy centered (r7).
 // #73: drag & drop rides the locked stack (01-stack-v2 §4.1: @dnd-kit/core
 // + sortable). Multi-container pattern: a per-column id list mirrors the
 // committed todo set while a gesture is in flight (live preview), and the
@@ -13,6 +12,10 @@
 // reorder still lands). Desktop-only like the official (changelog
 // 2026-09-12: drag rows appear on desktop web only), so the sensor set is
 // empty on coarse pointers.
+// #414 (shadcn 试点): 视觉层切 shadcn 组件 + B（neutral）token——网格/列/头
+// 部布局走 tailwind 工具类（几何与 #351 的 board.css 规则逐条对齐），按钮走
+// components/ui/button；data-* 钩子、类别名锚点、dnd 逻辑全部原位。阶段点
+// 语义色（column.dot）不随 B 换。
 
 import {
   closestCorners,
@@ -28,12 +31,12 @@ import {
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { type ReactNode, useCallback, useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
 // drawer/settings overlays sit beside it in one place.
 import { useI18n } from '../i18n/provider.js';
 import { Plus } from '../icons/index.js';
-import { Button } from '../ui/button.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
 import { DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
 import { SortableCard } from './sortable-card.js';
@@ -214,16 +217,24 @@ export function BoardSurface({
   const dragged = dragId == null ? null : (fixture.todos.find((t) => t.id === dragId) ?? null);
 
   return (
-    <div className={banner == null ? 'board-main' : 'board-main board-main--banner'}>
-      <header className="board-topbar">
-        <div className="board-topbar-title">{t('工作台')}</div>
-        <div className="board-topbar-actions">
-          {/* A3 收编：Button text 变体（compact 档）。board-new-task 是
-              e2e 钉死的选择器别名，经 className 透传保留；59.5 宽 /
-              11px 图标缝 / 14px 字号是原语表达不了的 per-face 实测值，
-              留在 board.css。 */}
-          <Button variant="text" size="compact" className="board-new-task" onClick={onNewTask}>
-            <Plus width={13} height={13} />
+    <div
+      className={`board-main relative flex min-w-0 flex-1 flex-col bg-background ${banner == null ? '' : 'board-main--banner'}`}
+    >
+      <header className="board-topbar relative flex h-11 flex-none items-center border-b border-[var(--border-default)]">
+        <div className="board-topbar-title pointer-events-none absolute inset-x-0 text-center text-sm leading-[22px] font-medium text-foreground">
+          {t('工作台')}
+        </div>
+        <div className="board-topbar-actions ml-auto flex items-center pr-3">
+          {/* board-new-task 是 e2e 钉死的选择器别名（className 透传保留）。
+              #414: text 变体 → B 面 default（neutral 实底）；h-7 = 旧 compact
+              28px 档。 */}
+          <Button
+            variant="default"
+            size="sm"
+            className="board-new-task h-7 gap-1.5 px-2.5 text-sm"
+            onClick={onNewTask}
+          >
+            <Plus width={13} height={13} className="size-[13px]" />
             {t('任务')}
           </Button>
         </div>
@@ -239,24 +250,39 @@ export function BoardSurface({
         onDragEnd={onDragEnd}
         onDragCancel={onDragCancel}
       >
-        <div className="board-scroller">
+        <div
+          className={`board-scroller absolute inset-x-0 bottom-0 grid grid-cols-4 gap-3.5 overflow-x-auto overflow-y-hidden bg-background px-[17px] pt-3 pb-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+            banner == null ? 'top-11' : 'top-[121px]'
+          }`}
+        >
           {COLUMNS.map((column) => {
             const todos = viewTodos(column.id);
             return (
               <section
                 key={column.id}
-                className="board-column"
+                className="board-column relative flex h-full flex-col rounded-[12px] border border-border bg-column"
                 aria-label={t(column.name)}
                 data-column={column.id}
                 data-drop={dropColumnId === column.id ? 'true' : undefined}
               >
-                <header className="board-column-header">
-                  <span className="board-column-dot" style={{ background: column.dot }} />
-                  <span className="board-column-name">{t(column.name)}</span>
+                <header className="board-column-header flex h-[37px] flex-none items-center px-[13px] pt-[3px]">
+                  <span
+                    className="board-column-dot size-[7px] flex-none rounded-full"
+                    style={{ background: column.dot }}
+                  />
+                  <span className="board-column-name ml-2 text-xs leading-4 text-muted-foreground">
+                    {t(column.name)}
+                  </span>
                   {/* count always renders, `0` included (r2 §4.1 计数 0/1;
                   r7 02/01b: digit present on empty columns, x = name+9) */}
-                  <span className="board-column-count">{todos.length}</span>
-                  {column.label && <span className="board-column-label">{t(column.label)}</span>}
+                  <span className="board-column-count ml-[9px] text-xs leading-4 text-muted-foreground/70">
+                    {todos.length}
+                  </span>
+                  {column.label && (
+                    <span className="board-column-label ml-2 text-xs leading-4 text-muted-foreground">
+                      {t(column.label)}
+                    </span>
+                  )}
                 </header>
                 <ColumnList columnId={column.id} empty={t(column.empty)} count={todos.length}>
                   <SortableContext
@@ -281,7 +307,8 @@ export function BoardSurface({
           })}
         </div>
         {/* #391: default drop animation — the overlay glides to the landing
-            slot (250ms ease) instead of snapping out on pointer up */}
+            slot (250ms ease) instead of snapping out on pointer up; lift
+            shadow = board.css 的 .board-drag-overlay 规则 */}
         <DragOverlay>
           {dragged != null && (
             <div
@@ -316,9 +343,17 @@ function ColumnList({
 }) {
   const { setNodeRef } = useDroppable({ id: columnId });
   return (
-    <div className="board-column-list" ref={setNodeRef} data-column-list={columnId}>
+    <div
+      className="board-column-list relative flex min-h-0 flex-1 flex-col gap-2 px-[7.25px]"
+      ref={setNodeRef}
+      data-column-list={columnId}
+    >
       {children}
-      {count === 0 && <div className="board-column-empty">{empty}</div>}
+      {count === 0 && (
+        <div className="board-column-empty absolute inset-0 flex -translate-y-3 items-center justify-center text-xs leading-4 text-muted-foreground">
+          {empty}
+        </div>
+      )}
     </div>
   );
 }

@@ -243,7 +243,9 @@ for (const theme of ['light', 'dark'] as const) {
       stripLuma(img, s.ref[0], s.ref[1], s.ref[2], s.ref[3]) -
       stripLuma(img, s.near[0], s.near[1], s.near[2], s.near[3]);
     for (const edge of ['bottom', 'top', 'left', 'right'] as const) {
-      expect(ink(strips[edge]), `${edge} edge shadow ink`).toBeGreaterThan(2);
+      // 阈值 1.5（原 2）：B 面卡片改为 1px 描边（无 inset 环），抬升态的边
+      // 缘墨只来自 --lift-shadow，实测 ~2.0 贴旧阈值下沿
+      expect(ink(strips[edge]), `${edge} edge shadow ink`).toBeGreaterThan(1.5);
     }
     // the reported symptom edge: the lifted card's bottom ink must beat the
     // resting card's — never weaker (AC: 与静置态对比)

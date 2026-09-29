@@ -1,17 +1,15 @@
-// Board todo card (issue #54): 262×114.5 base-state card from the r7 01/02
-// captures — project chip row, two-line 14px title, bottom row with agent
-// avatar + status badge, relative time, 方案/变更 metric icons and the
-// phase-driven action button (确认/完成 indigo, 回复 ghost).
-// #55 adds the variant matrix: fresh cards swap the robot for the owner
-// placeholder (UserCircle + gray idle badge + 开始 primary — r7 22/22d),
-// review cards gain the amber attention badge (r7 33) on top of the #54
-// states.
-// #58: card click opens `/app/todo/:id` — a stretched link on the title
-// (real <a>, ::after overlay covers the card) so the nested branch/action
-// buttons stay valid independent controls; the current search string rides
-// along so the dev/fixture ?scenario= selection survives the navigation.
+// Board todo card（#414 shadcn 试点）：视觉层切到 shadcn 组件 + B（neutral）
+// token——Card 承载盒型（bg-card/border/rounded-xl/shadow-sm），动作钮走
+// shadcn Button。行为与锚点原位：stretched title link、data-todo-id、
+// todo-card/todo-card-action--* 类别名、相对时间、phase 徽标全部保留；
+// 几何沿用 r7 实测（9.5-13.5-11.5 padding / 26 底行）；宽度随 #351 的
+// 四列流体网格铺满列宽（原 262 定宽随横向滚动一起退役）。
+// 阶段点与徽标的语义色（蓝/琥珀/绿/灰）不随 B 换——它们承载 phase 语义，
+// 不是中性表面；全面 chart 化留待铺开期裁决。
 
 import { Link, useLocation } from 'react-router';
+import { Button } from '../components/ui/button.js';
+import { Card } from '../components/ui/card.js';
 import { PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -24,7 +22,6 @@ import {
   UserCircle,
 } from '../icons/index.js';
 import { Avatar } from '../ui/avatar.js';
-import { Button } from '../ui/button.js';
 import { cardAction } from './columns.js';
 import { relativeTime } from './rel-time.js';
 
@@ -66,85 +63,103 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName }: TodoCar
   const fresh = badge === 'idle';
   const { search } = useLocation();
   return (
-    <article className="todo-card" data-todo-id={todo.id}>
-      <div className="todo-card-row1">
+    <Card
+      data-todo-id={todo.id}
+      className="todo-card relative w-full gap-0 rounded-[12px] px-[13.5px] pt-[9.5px] pb-[11.5px]"
+    >
+      <div className="todo-card-row1 flex h-4 items-center">
         <span className="project-avatar">{chipInitial}</span>
-        <span className="todo-project-name">{chipName}</span>
-        <span className="todo-card-seq">#{todo.seqNum}</span>
-        {/* A4-deep 收编：icon 变体皮肤；13×16 几何与 dim 墨 per-face 留
-            board.css（.btn.todo-card-branch） */}
+        <span className="todo-project-name ml-1 truncate text-[11px] leading-4 text-muted-foreground">
+          {chipName}
+        </span>
+        <span className="todo-card-seq mr-[13px] ml-auto flex-none text-[11px] leading-4 text-muted-foreground/70">
+          #{todo.seqNum}
+        </span>
         <Button
-          variant="icon"
-          className="todo-card-branch"
+          variant="ghost"
+          size="icon-xs"
+          className="todo-card-branch relative z-10 -mr-[1.5px] h-4 w-[13px] text-muted-foreground"
           aria-label={t('分支与 PR')}
           onClick={() => onBranch?.(todo)}
         >
-          <Download />
+          <Download className="size-[13px]" />
         </Button>
       </div>
 
-      <h3 className="todo-card-title">
-        <Link className="todo-card-link" to={{ pathname: `/app/todo/${todo.id}`, search }}>
+      <h3 className="todo-card-title mt-1 wrap-break-word text-sm leading-5 font-medium text-card-foreground">
+        <Link
+          className="todo-card-link text-inherit no-underline after:absolute after:inset-0 after:content-['']"
+          to={{ pathname: `/app/todo/${todo.id}`, search }}
+        >
           {todo.title}
         </Link>
       </h3>
 
-      <div className="todo-card-bottom">
-        <span className="todo-agent-avatar">
+      <div className="todo-card-bottom mt-[7.5px] flex h-[26px] items-center">
+        <span className="todo-agent-avatar relative size-5 flex-none [&_img]:block [&_img]:size-5">
           {fresh ? (
             // owner placeholder while no agent run exists (r7 22/22d)
-            <UserCircle width={20} height={20} />
+            <UserCircle width={20} height={20} className="text-muted-foreground/70" />
           ) : (
             // #387: 执行者头像按 agent displayName 种子生成;未指派退静态资产
             <Avatar name={todo.agent?.displayName} fallback="/avatar-robot-1.svg" />
           )}
-          {badge === 'idle' && (
-            <span className="todo-agent-badge todo-agent-badge--idle">
-              <SearchWhite width={9} height={9} />
-            </span>
-          )}
-          {badge === 'attention' && (
-            <span className="todo-agent-badge todo-agent-badge--attention">
-              <SearchWhite width={9} height={9} />
-            </span>
-          )}
-          {badge === 'done' && (
-            <span className="todo-agent-badge todo-agent-badge--done">
-              <CheckWhite width={9} height={9} />
-            </span>
-          )}
-          {badge === 'failed' && (
-            <span className="todo-agent-badge todo-agent-badge--failed" aria-hidden="true">
-              !
+          {badge != null && (
+            <span
+              aria-hidden={badge === 'failed' ? true : undefined}
+              className={`todo-agent-badge todo-agent-badge--${badge} absolute -top-[2px] -right-1 flex size-[9px] items-center justify-center rounded-full text-[8px] leading-none font-bold ${
+                badge === 'idle'
+                  ? 'bg-(--badge-idle)'
+                  : badge === 'attention'
+                    ? 'bg-(--badge-attention)'
+                    : badge === 'done'
+                      ? 'bg-(--badge-done)'
+                      : 'bg-(--stop) text-white'
+              }`}
+            >
+              {badge === 'failed' ? (
+                '!'
+              ) : badge === 'done' ? (
+                <CheckWhite width={9} height={9} />
+              ) : (
+                <SearchWhite width={9} height={9} />
+              )}
             </span>
           )}
         </span>
-        <span className="todo-card-time">{relativeTime(todo.phaseAt, now, t)}</span>
+        <span className="todo-card-time relative top-[1.5px] ml-[7px] text-[11px] leading-4 text-muted-foreground">
+          {relativeTime(todo.phaseAt, now, t)}
+        </span>
         {todo.hasPlan && (
-          <span className="todo-card-metric" role="img" aria-label={t('方案')}>
+          <span
+            className="todo-card-metric ml-[10.5px] flex flex-none items-center text-muted-foreground"
+            role="img"
+            aria-label={t('方案')}
+          >
             <FileText />
           </span>
         )}
         {todo.hasChanges && (
-          <span className="todo-card-metric" role="img" aria-label={t('变更')}>
+          <span
+            className={`todo-card-metric flex flex-none items-center text-muted-foreground ${todo.hasPlan ? 'ml-[2px]' : 'ml-[10.5px]'}`}
+            role="img"
+            aria-label={t('变更')}
+          >
             <GitCommit />
           </span>
         )}
-        <span className="todo-card-spacer" />
-        {/* A3 收编：Button primary/ghost 的 card 26 档；kind 直接映射
-            variant（columns.ts cardAction 单源）。todo-card-action 系列是
-            e2e(board-dnd 钉 --ghost) 选择器别名，经 className 透传保留。 */}
+        <span className="todo-card-spacer flex-1" />
         {action != null && (
           <Button
-            variant={action.kind}
-            size="card"
-            className={`todo-card-action todo-card-action--${action.kind}`}
+            variant={action.kind === 'primary' ? 'default' : 'outline'}
+            size="xs"
+            className={`todo-card-action todo-card-action--${action.kind} relative z-10 h-[26px] flex-none rounded-md px-[7.25px] text-xs`}
             onClick={() => onAction?.(todo)}
           >
             {t(action.label)}
           </Button>
         )}
       </div>
-    </article>
+    </Card>
   );
 }

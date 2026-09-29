@@ -1,16 +1,11 @@
-/* Board screen styles (issue #54). All values measured from the r7
-   captures at 1440×732 (docs/research/r7-rebaseline.md §3.1 + pixel
-   probes): sidebar 240, topbar 43 + 1px border, board scroller padding
-   12/17/13 with 14px column gaps, radius 10, header 37. #351: the 6×278px
-   fixed-pitch horizontal scroller became an even 4-column grid
-   (repeat(4, minmax(0, 1fr))) — no horizontal scroll at desktop width;
-   overflow-x stays as the narrow-window fallback. #161 unified the border
-   language: the column container, the notify banner and the todo card all
-   share the single-source edge ring + 12px radius + card-tier shadow
-   (tokens.css --card-shadow). The ring is a shadow spread so fractional
-   page zoom keeps a uniform hairline. Colors sampled from 01/01b (light)
-   and 02/02b (dark); they override the landing-page samples where they
-   differ. */
+/* Board screen styles — #414 试点后的残留层。看板面（topbar/列/卡片）已
+   迁 shadcn 组件 + tailwind 工具类（board.tsx / todo-card.tsx / sidebar.tsx），
+   本文件只剩三类住户：
+   1) 跨域共用件：.project-avatar（overlay/new-task-dialog 也消费）、
+      .chief-fab（board route 与 chief-wake 共用）；
+   2) 未迁面：通知引导条（.board-notify-banner*，notify-banner.tsx）；
+   3) 行为态规则：拖拽中的 body 锁选、DragOverlay 升层阴影、落点列染色。
+   几何出处注释随被删块一起离场；迁出的面以 tsx 内的工具类为单一事实源。 */
 
 .board-shell {
   display: flex;
@@ -18,76 +13,16 @@
   overflow: hidden;
 }
 
-.board-main {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--surface);
-}
-
-/* ---- topbar ---- */
-
-.board-topbar {
-  position: relative;
-  height: 44px; /* 43 content + 1px border, r7 §3.1 顶栏 43+border */
-  flex: none;
-  border-bottom: 1px solid var(--border-default);
-  display: flex;
-  align-items: center;
-}
-
-/* title centers on the content area (r6 §4.2 formula: (240 + viewport)/2),
-   which is simply the center of .board-main */
-.board-topbar-title {
-  position: absolute;
-  left: 0;
-  right: 0;
-  /* pure label: the centered band spans the topbar and would otherwise
-     swallow clicks on the +任务 action (#66 e2e clicks) */
-  pointer-events: none;
-  text-align: center;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-  line-height: 22px;
-}
-
-.board-topbar-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  padding-right: 12px;
-}
-
-/* A3 收编（docs/a3/diff-audit.md）：ui/button Button text 变体 + compact
-   档承载底/字色/padding/光标；本规则只留原语表达不了的 per-face 实测值
-   （r7 topbar 59.5 宽 / 11px 图标缝 / 14px 字号）。复合选择器 0-2-0 钉死
-   对 .btn 字号的覆写，不依赖打包顺序。board-new-task 类名本身是
-   e2e 钉死的选择器别名（className 透传保留）。 */
-.btn.board-new-task {
-  width: 59.5px;
-  gap: 11px;
-  font-size: 14px;
-}
-
 /* ---- notification permission banner (#114) ---- */
 /* Geometry/colors measured from the r2 01 (light) / 28 (dark) captures:
    the strip hangs 12px below the topbar border as a 64px card, inset 17px
-   like the scroller columns; the columns then start at y133 (banner bottom
-   120 + 13 gap), so the scroller's absolute top shifts 44 → 121. */
+   like the scroller columns. */
 .board-notify-banner {
   position: absolute;
   top: 56px; /* topbar 44 + 12 */
   left: 17px;
   right: 17px;
   height: 64px;
-  /* #161 card-tier shadow: the banner sits one tier below the popover
-     (#139 unification adopted --edge-shadow for both; #161 split the tiers
-     — popover stays on --edge-shadow, the small-card family dials down to
-     --card-shadow so it doesn't read as floating). Shared shadow value
-     with .board-column makes the seam visually continuous */
   border: 0;
   border-radius: var(--edge-radius);
   background: var(--surface-secondary);
@@ -127,181 +62,15 @@
   color: var(--text-dim);
 }
 
-/* A3 收编（docs/a3/diff-audit.md）：ui/button Button primary/compact 承载
-   高度/内距/字色/圆角（归一 6→8px，diff-audit #1 裁决）。本类是
-   e2e（notify-banner.spec）钉死的选择器别名 + flex 布局位差值。 */
+/* e2e（notify-banner.spec）钉死的选择器别名 + flex 布局位差值。 */
 .board-notify-banner-action {
   flex: none;
   margin-left: auto;
 }
 
-/* ---- board scroller ---- */
-
-.board-scroller {
-  position: absolute;
-  top: 44px; /* topbar + border */
-  left: 0;
-  right: 0;
-  bottom: 0;
-  /* #351: even 4-column grid — no horizontal scroll at desktop width;
-     overflow-x stays only as the narrow-window fallback */
-  overflow-x: auto;
-  overflow-y: hidden;
-  /* #123 hidden horizontal scrollbar (claude.ai board scroller 参照): the
-     track never paints while the scroll capability stays — dual write per
-     the issue (standard property + webkit pseudo) */
-  scrollbar-width: none;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  padding: 12px 17px 13px;
-  background: var(--surface);
-}
-
-.board-scroller::-webkit-scrollbar {
-  display: none;
-}
-
-/* with the banner up, the columns shift below it: banner slot ends at
-   y120 (56 + 64 box), then the 13px gap — r2 01 measures the column tops
-   at y133, and the scroller's own 12px padding-top carries 12 of it */
-.board-main--banner .board-scroller {
-  top: 121px;
-}
-
-.board-column {
-  position: relative;
-  /* #351: grid item — the scroller's repeat(4, minmax(0, 1fr)) sizes the
-     column; no fixed width, no flex sizing */
-  height: 100%;
-  /* #161 通知条↔看板列边框对齐: the column container adopts the
-     single-source edge recipe — same inset ring + 12px radius + card-tier
-     shadow as .board-notify-banner and .todo-card (tokens.css edge family).
-     The old 1px top border + 10px radius + bare-fill treatment read as a
-     half-card; the new tier matches the banner so the seam between them
-     is visually continuous */
-  border: 0;
-  border-radius: var(--edge-radius);
-  background: var(--col-bg);
-  box-shadow: var(--edge-ring), var(--card-shadow);
-  display: flex;
-  flex-direction: column;
-}
-
-.board-column-header {
-  flex: none;
-  /* ticket #54 says 列头 44, but the r7 bitmaps measure 37: column body
-     starts y57, first card top y94 (01/02 pixel probes). Capture wins. */
-  height: 37px;
-  display: flex;
-  align-items: center;
-  /* content center sits at y77, 2px below the header's geometric center
-     (r7 capture: name ink 72–82 in header 57–94) */
-  padding: 3px 13px 0;
-}
-
-.board-column-dot {
-  flex: none;
-  width: 7px;
-  height: 7px;
-  border-radius: 9999px;
-}
-
-.board-column-name {
-  margin-left: 8px;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-secondary);
-}
-
-.board-column-count {
-  margin-left: 9px;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-dim);
-}
-
-.board-column-label {
-  margin-left: 8px;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-}
-
-.board-column-list {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  padding: 0 7.25px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.board-column-empty {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-  /* capture: text sits 12px above the list-area center */
-  transform: translateY(-12px);
-}
-
-/* ---- todo card ---- */
-
-.todo-card {
-  flex: none;
-  /* #351: no fixed width — the even grid makes columns fluid, so the card
-     stretches to the list width (align-items default); the drag overlay
-     copies the source card's measured width inline (board.tsx) */
-  /* #139 unified border language: the card family rides the single-source
-     edge recipe (tokens.css edge family — ring/radius/shadow shared with the
-     account popover); the ring is a shadow spread so fractional page zoom
-     keeps a uniform hairline.
-     #161 dials the small-card shadow down to --card-shadow: popover-tier
-     read as floating on the canvas (claude.ai card-tier reference).
-     --edge-shadow stays for the popover, which needs visible separation
-     from the page below */
-  border: 0;
-  border-radius: var(--edge-radius);
-  background: var(--card-bg);
-  box-shadow: var(--edge-ring), var(--card-shadow);
-  padding: 9.5px 13.5px 11.5px;
-  /* #58: positioned ancestor for the stretched title link below */
-  position: relative;
-}
-
-/* #58 导航闭环: the title is a real <a>; its ::after stretches over the
-   whole card so any card click opens the detail. Keeps UA pointer cursor
-   and keyboard activation without an interactive-role lint violation. */
-.todo-card-link {
-  color: inherit;
-  text-decoration: none;
-}
-
-.todo-card-link::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-
-/* the card's own buttons must sit above the stretched-link overlay */
-.todo-card-branch,
-.todo-card-action {
-  position: relative;
-  z-index: 1;
-}
-
-.todo-card-row1 {
-  display: flex;
-  align-items: center;
-  height: 16px;
-}
-
+/* ---- shared project initial avatar ---- */
+/* Consumed beyond the board: sidebar project rows and the new-task
+   dialog's project picker ride the same 16px initial tile. */
 .project-avatar {
   flex: none;
   width: 16px;
@@ -315,134 +84,9 @@
   text-align: center;
 }
 
-.todo-project-name {
-  margin-left: 4px;
-  font-size: 11px;
-  line-height: 16px;
-  color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.todo-card-seq {
-  flex: none;
-  margin-left: auto;
-  margin-right: 13px;
-  font-size: 11px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-}
-
-/* A4-deep 收编：皮肤归 icon 变体；13×16 + 负 margin 是 per-face 几何。
-   墨色是 canon 偏差：本面实测 --text-dim（非 icon 的 tertiary），per-face
-   保留压过 .btn--icon（零像素闸）。 */
-.btn.todo-card-branch {
-  flex: none;
-  margin-right: -1.5px;
-  width: 13px;
-  height: 16px;
-  color: var(--text-dim);
-}
-
-.todo-card-title {
-  margin-top: 4px;
-  font-weight: 500;
-  font-size: 14px;
-  line-height: 20px;
-  color: var(--text-primary);
-  overflow-wrap: break-word;
-}
-
-.todo-card-bottom {
-  margin-top: 7.5px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-}
-
-.todo-agent-avatar {
-  position: relative;
-  flex: none;
-  width: 20px;
-  height: 20px;
-}
-
-.todo-agent-avatar img {
-  width: 20px;
-  height: 20px;
-  display: block;
-}
-
-.todo-agent-badge {
-  position: absolute;
-  top: -2px;
-  right: -4px;
-  width: 9px;
-  height: 9px;
-  border-radius: 9999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* fresh-card owner placeholder (r7 22/22d): UserCircle icon in the 20px
-   avatar slot, gray in both themes */
-.todo-agent-avatar > svg {
-  width: 20px;
-  height: 20px;
-  color: var(--badge-idle);
-}
-
-.todo-agent-badge--idle {
-  background: var(--badge-idle);
-}
-
-.todo-agent-badge--attention {
-  background: var(--badge-attention);
-}
-
-.todo-agent-badge--done {
-  background: var(--badge-done);
-}
-
-.todo-card-time {
-  position: relative;
-  top: 1.5px;
-  margin-left: 7px;
-  font-size: 11px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-}
-
-.todo-card-metric {
-  flex: none;
-  margin-left: 10.5px;
-  display: flex;
-  align-items: center;
-  color: var(--text-tertiary);
-}
-
-.todo-card-metric + .todo-card-metric {
-  margin-left: 2px;
-}
-
-.todo-card-spacer {
-  flex: 1;
-}
-
-/* A3 收编（docs/a3/diff-audit.md）：ui/button Button primary/ghost 的
-   card 26 档承载高度/圆角（归一 6→8px，diff-audit #1 裁决）/描边/字色。
-   本规则只留 per-face 差值：7.25px 内距（r7 实测）与 flex 布局位；
-   复合选择器 0-2-0 钉死对 .btn--card 内距的覆写。todo-card-action 系列
-   类名是 e2e（board-dnd 钉 --ghost）选择器别名（className 透传保留）。 */
-.btn.todo-card-action {
-  flex: none;
-  padding: 0 7.25px;
-}
-
 /* ---- chief fab ---- */
-
+/* Rendered by the board route beside the drawer/settings (#72); chief-wake
+   rides the same face. */
 .chief-fab {
   position: absolute;
   right: 16px;
@@ -459,17 +103,6 @@
   box-shadow: var(--fab-shadow);
 }
 
-/* failed-card red `!` badge (r8 55) */
-.todo-agent-badge--failed {
-  background: var(--stop);
-  color: var(--text-on-accent);
-  font-size: 8px;
-  font-weight: 700;
-  line-height: 1;
-}
-/* ---- chief fab ---- (rule moved to chief/chief.css with the #72 surfaces;
-   the FAB is rendered by the board route beside the drawer/settings) */
-
 /* ---- drag & drop (#73) ---- */
 /* while a gesture is in flight the whole board stops selecting text
    (changelog 2026-09-14 hygiene) and the pointer reads as grabbing */
@@ -481,16 +114,15 @@ body.board-dragging {
 
 /* #391: the lifted DragOverlay card rides the lift-tier shadow in BOTH
    themes — the resting card's small-offset family scaled up, so all four
-   edges keep their ink (the pre-#391 light-only drop-shadow filter offset
-   the mass 8px below the card and left the dark side flat). box-shadow, not
-   filter: the card is a solid rounded rect, so the filter only added
-   raster-clip risk under the transformed overlay wrapper */
+   edges keep their ink. box-shadow, not filter: the card is a solid rounded
+   rect, so the filter only added raster-clip risk under the transformed
+   overlay wrapper */
 .board-drag-overlay .todo-card {
   box-shadow: var(--edge-ring), var(--lift-shadow);
 }
 
 /* the column under the pointer tints with the hover token */
 .board-column[data-drop="true"] .board-column-list {
-  background: var(--surface-hover);
+  background: var(--sidebar-hover);
   border-radius: 8px;
 }
