@@ -120,7 +120,7 @@ pnpm --filter @pacman/integration exec tsx eval/chief-dispatch/run-eval.mts \
   --flow .claude/hillclimb/chief-dispatch --variant baseline --model glm-5.3 --reps 3
 
 # 出报告 → .claude/hillclimb/chief-dispatch/report.html
-node integration/eval/chief-dispatch/build-report-lite.mjs .claude/hillclimb/chief-dispatch/
+node integration/eval/chief-dispatch/build-report-lite.mts .claude/hillclimb/chief-dispatch/
 ```
 
 改动 harness（runner / judgeCase / cases.json / 场景种子 / `chief.ts`）后，
