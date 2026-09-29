@@ -334,3 +334,105 @@ test('drop glides the overlay to the landing slot instead of snapping', async ({
     page.locator(`[data-column="todo"] .todo-card[data-todo-id="${cardId}"]`),
   ).toBeVisible();
 });
+
+// ---- drop settle must not flash home (bounce-effect regression) ----
+// onDragEnd cleared the gesture state before the commit wrote the optimistic
+// landing, so the first post-drag paint rendered the card back in its source
+// column and dnd-kit measured the drop-glide target off that stale rect: the
+// lifted card visibly flew home over 250ms while the data landed correctly —
+// the user-perceived 「弹回去」 with no data bounce. Frame-level trace: the
+// committed node's column per rAF, plus the overlay rect until it unmounts.
+test('drop settle never flashes the card home and the glide ends at the landing slot', async ({
+  page,
+}) => {
+  await page.goto('/app?scenario=01');
+  const card = page.locator('[data-column="pending"] .todo-card').first();
+  const cardId = await card.getAttribute('data-todo-id');
+  const list = await page.locator('[data-column="todo"] .board-column-list').boundingBox();
+  if (list == null) throw new Error('todo list missing');
+
+  const to = { x: list.x + list.width / 2, y: list.y + 60 };
+  await dragTo(page, '[data-column="pending"] .todo-card', to);
+  await settleDrag(page, to);
+  await expect(page.locator('.board-drag-overlay .todo-card')).toBeVisible();
+
+  await page.evaluate((id) => {
+    const trace: { t: number; col: string | null; ov: { x: number; y: number } | null }[] = [];
+    (window as unknown as { __glideTrace: typeof trace }).__glideTrace = trace;
+    const t0 = performance.now();
+    const tick = () => {
+      const grid = document.querySelector(`.board-scroller .todo-card[data-todo-id="${id}"]`);
+      const ov = document.querySelector(`.board-drag-overlay .todo-card[data-todo-id="${id}"]`);
+      const r = ov?.getBoundingClientRect();
+      trace.push({
+        t: Math.round(performance.now() - t0),
+        col: grid?.closest('section[data-column]')?.getAttribute('data-column') ?? null,
+        ov: r == null ? null : { x: r.x + r.width / 2, y: r.y + r.height / 2 },
+      });
+      if (performance.now() - t0 < 1000) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, cardId);
+
+  await page.mouse.up();
+  await page.waitForTimeout(1100);
+  const trace = await page.evaluate(
+    () => (window as unknown as { __glideTrace: { t: number; col: string | null; ov: { x: number; y: number } | null }[] }).__glideTrace,
+  );
+  // no post-up frame may render the committed card in the source column —
+  // a single stale paint is exactly the flash-home the user sees
+  const homeFrames = trace.filter((s) => s.col === 'pending');
+  expect(homeFrames, `frames with the card back in 待处理: ${JSON.stringify(homeFrames)}`).toEqual(
+    [],
+  );
+  // the glide's last position must be the landing slot, not the source
+  const landed = await page
+    .locator(`[data-column="todo"] .todo-card[data-todo-id="${cardId}"]`)
+    .boundingBox();
+  if (landed == null) throw new Error('committed card missing');
+  const lastOv = [...trace].reverse().find((s) => s.ov != null)?.ov;
+  expect(lastOv, 'overlay glide never observed').not.toBeUndefined();
+  if (lastOv == null) throw new Error('unreachable');
+  const dist = Math.hypot(lastOv.x - (landed.x + landed.width / 2), lastOv.y - (landed.y + landed.height / 2));
+  expect(dist, `glide ended ${Math.round(dist)}px from the landing slot`).toBeLessThan(24);
+});
+
+// ---- drop tint paints the whole column cell (#351 highlight geometry) ----
+// The list-only tint left the 37px header strip and the border ring on the
+// column's own background — the highlight read as a shadow that never fills
+// the grid cell. The paint surface is the column section itself.
+for (const theme of ['light', 'dark'] as const) {
+  test(`drop tint fills the whole column cell (${theme})`, async ({ page }) => {
+    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
+    await page.goto('/app?scenario=01');
+    const list = await page.locator('[data-column="todo"] .board-column-list').boundingBox();
+    if (list == null) throw new Error('todo list missing');
+    const to = { x: list.x + list.width / 2, y: list.y + 60 };
+    await dragTo(page, '[data-column="pending"] .todo-card', to);
+    await settleDrag(page, to);
+    await expect(page.locator('[data-column="todo"]')).toHaveAttribute('data-drop', 'true');
+
+    const expected = await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.backgroundColor = 'var(--sidebar-hover)';
+      document.body.append(probe);
+      const resolved = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return resolved;
+    });
+    const paints = await page.evaluate(() => {
+      const section = document.querySelector('[data-column="todo"]');
+      const listEl = section?.querySelector('.board-column-list');
+      return {
+        section: section == null ? null : getComputedStyle(section).backgroundColor,
+        list: listEl == null ? null : getComputedStyle(listEl).backgroundColor,
+      };
+    });
+    // the cell carries the hover tint…
+    expect(paints.section).toBe(expected);
+    // …and the list no longer carries its own inset patch of it
+    expect(paints.list).toBe('rgba(0, 0, 0, 0)');
+
+    await page.mouse.up();
+  });
+}

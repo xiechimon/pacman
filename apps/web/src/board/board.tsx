@@ -30,7 +30,7 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { type ReactNode, useCallback, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
@@ -68,6 +68,46 @@ const COLUMN_IDS = new Set(COLUMNS.map((c) => c.id));
 function acceptsDrop(columnId: string | null): boolean {
   if (columnId == null) return false;
   return COLUMNS.find((c) => c.id === columnId)?.dropPhase != null;
+}
+
+/** Settled-drop commit math, pure so onDragEnd keeps its ordering legible:
+ *  #351 待处理 rejection, landing column = wherever the live preview left the
+ *  card, same-column reorder via arrayMove, #403 visible-view → full-set rank
+ *  through columnDropIndex. null = commit nothing. */
+function commitDrop(
+  live: ColumnView,
+  todos: TodoRecord[],
+  activeId: string,
+  overId: string,
+  now: number,
+): TodoRecord[] | null {
+  // 待处理无落点（#351）：跨列松手在该列 = 不提交；列内重排照常落位
+  const overColumnId = COLUMN_IDS.has(overId) ? overId : columnOf(live, overId);
+  if (
+    overColumnId != null &&
+    !acceptsDrop(overColumnId) &&
+    columnOf(live, activeId) !== overColumnId
+  ) {
+    return null;
+  }
+  const columnId = columnOf(live, activeId) ?? (COLUMN_IDS.has(overId) ? overId : null);
+  if (columnId == null) return null;
+  const liveList = live[columnId];
+  if (liveList == null) return null;
+  const from = liveList.indexOf(activeId);
+  const overIndex = liveList.indexOf(overId);
+  const list =
+    overId !== activeId && overIndex >= 0 ? arrayMove(liveList, from, overIndex) : liveList;
+  // #403：liveList 是筛选后的可见视图——落点经 columnDropIndex 锚卡翻译
+  // 回全集列视图位次再落（隐藏卡占序，直传可见 index 会插错位）。
+  const column = COLUMNS.find((c) => c.id === columnId);
+  if (column == null) return null;
+  return moveTodo(
+    todos,
+    activeId,
+    { columnId, index: columnDropIndex(column, todos, list, activeId) },
+    now,
+  );
 }
 
 /** #403 看板标签筛选面：board-page 持有 URL 态与标签数据源，本面只消费
@@ -119,6 +159,9 @@ export function BoardSurface({
   // copies the source card's measured width (fixed-width columns used to
   // size it implicitly through the 262px card rule)
   const [dragWidth, setDragWidth] = useState<number | null>(null);
+  /** Drop settle: the retained live preview (view) of an in-flight commit,
+   *  cleared by the effect below once the rendered data carries the landing. */
+  const [settling, setSettling] = useState<{ id: string; columnId: string } | null>(null);
   // changelog 2026-09-12: the drag affordance is desktop-web only
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -146,6 +189,7 @@ export function BoardSurface({
   }, []);
 
   const onDragStart = (event: DragStartEvent) => {
+    setSettling(null);
     setView(deriveView(visibleTodos));
     const id = String(event.active.id);
     setDragId(id);
@@ -189,47 +233,55 @@ export function BoardSurface({
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     const live = view;
-    setView(null);
+    let retained = false;
+    if (live != null && over != null && onReorder != null) {
+      const next = commitDrop(live, fixture.todos, String(active.id), String(over.id), fixture.now);
+      if (next != null) {
+        onReorder(next);
+        // 保留 live 预览直到数据追上提交：预览序即提交序（probe dnd-live
+        // D 钉证），留住它 = 落位布局留在屏上——既无源列陈旧帧，dnd-kit 量
+        // drop-glide 终点时也量到落点槽。此处若清 view，live 面会拿尚未通知
+        // 的 query cache 渲染一帧（TanStack observer 通知晚本批一个 pass）：
+        // 卡画回源列、glide 跟着飞回——用户视角的「弹回去」。
+        const overId = String(over.id);
+        const columnId =
+          columnOf(live, String(active.id)) ?? (COLUMN_IDS.has(overId) ? overId : null);
+        if (columnId != null) {
+          setSettling({ id: String(active.id), columnId });
+          retained = true;
+        }
+      }
+    }
+    if (!retained) setView(null);
     setDragId(null);
     setDropColumnId(null);
     setDragWidth(null);
     sweep();
-    if (live == null || over == null || onReorder == null) return;
-    const overId = String(over.id);
-    // 待处理无落点（#351）：跨列松手在该列 = 不提交；列内重排照常落位
-    const overColumnId = COLUMN_IDS.has(overId) ? overId : columnOf(live, overId);
-    if (
-      overColumnId != null &&
-      !acceptsDrop(overColumnId) &&
-      columnOf(live, String(active.id)) !== overColumnId
-    ) {
-      return;
-    }
-    const columnId = columnOf(live, String(active.id)) ?? (COLUMN_IDS.has(overId) ? overId : null);
-    if (columnId == null) return;
-    const liveList = live[columnId];
-    if (liveList == null) return;
-    const from = liveList.indexOf(String(active.id));
-    const overIndex = liveList.indexOf(overId);
-    const list =
-      overId !== String(active.id) && overIndex >= 0
-        ? arrayMove(liveList, from, overIndex)
-        : liveList;
-    // #403：liveList 是筛选后的可见视图——落点经 columnDropIndex 锚卡翻译
-    // 回全集列视图位次再落（隐藏卡占序，直传可见 index 会插错位）。
-    const column = COLUMNS.find((c) => c.id === columnId);
-    if (column == null) return;
-    onReorder(
-      moveTodo(
-        fixture.todos,
-        String(active.id),
-        { columnId, index: columnDropIndex(column, fixture.todos, list, String(active.id)) },
-        fixture.now,
-      ),
-    );
   };
 
+  // Drop settle teardown: clear the retained preview once the rendered data
+  // carries the landing (fixture: same tick; live: optimistic write or the
+  // PATCH-round refetch). The deadline covers a failed commit — data never
+  // catches up, so the gesture tears down to server truth instead of freezing
+  // the preview (same end state as the pre-settle onError invalidate).
+  useEffect(() => {
+    if (settling == null) return;
+    const card = fixture.todos.find((todo) => todo.id === settling.id);
+    const dataColumn = card == null ? null : (COLUMNS.find((c) => c.accepts(card))?.id ?? null);
+    if (dataColumn === settling.columnId) {
+      setSettling(null);
+      setView(null);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setSettling(null);
+      setView(null);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [settling, fixture.todos]);
+
   const onDragCancel = () => {
+    setSettling(null);
     setView(null);
     setDragId(null);
     setDropColumnId(null);

@@ -121,8 +121,10 @@ body.board-dragging {
   box-shadow: var(--edge-ring), var(--lift-shadow);
 }
 
-/* the column under the pointer tints with the hover token */
-.board-column[data-drop="true"] .board-column-list {
+/* the column under the pointer tints with the hover token — on the whole
+   cell, header included: the old list-only patch left the 37px header strip
+   and the border ring on the column's own background, so the highlight read
+   as a shadow that never fills the grid cell */
+.board-column[data-drop="true"] {
   background: var(--sidebar-hover);
-  border-radius: 8px;
 }
