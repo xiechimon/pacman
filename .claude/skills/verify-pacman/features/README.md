@@ -2,8 +2,9 @@
 
 本目录是 pacman 用户可见行为的验证正源。驱动前先读本索引,再按 feature 文件当配方执行。map 漏掉的入口 = 验证不完整:顺手的入口验过 ≠ 整个 feature 验过。
 
-Last updated: 2026-09-30（#485 Agent 详情编辑面）＋ 2026-09-29（spec 12/#362 G2-T2 + #366 详情页 3-pane 重排 + spec 13 #367 技能页只读本地目录面 + spec 13/#368 MCP 本地 config 只读面 + #371 skills 执行面注入 + spec 12/#361 G2-T4 + spec 12/#360 G2-T3 + spec 11/#354 + spec 12/#359 落地连续增）：
+Last updated: 2026-10-01（XMON-41 新任务键位 N → C）＋ 2026-09-30（#485 Agent 详情编辑面）＋ 2026-09-29（spec 12/#362 G2-T2 + #366 详情页 3-pane 重排 + spec 13 #367 技能页只读本地目录面 + spec 13/#368 MCP 本地 config 只读面 + #371 skills 执行面注入 + spec 12/#361 G2-T4 + spec 12/#360 G2-T3 + spec 11/#354 + spec 12/#359 落地连续增）：
 
+- XMON-41：新任务快捷键 N → C（键位随票维护）。新增定制 probe `scripts/drive-newtask-key.mjs`（正负成对：新键开 / 旧键 ×5 不开，三条渲染路径各一对 + 输入态守卫 + 侧栏行入口 + 保存全链；旧提交栈加 `--expect=old` 取基线对照）；`drive-hotkeys.mjs` 与 hotkeys.md / board-new-task.md 的角标与开面键同步改 C。live 验 18/18 PASS（subject）+ 12/12 PASS（基线，正负对照），hotkeys 全链复跑 14/14 PASS，证据 `docs/verify/XMON-41/`。
 - #485：新增 agent-detail.md 条目 + 定制 probe `scripts/drive-agent-detail.mjs`（团队页卡链接 → 详情三 tab → 名称/职责/模型/权限四处编辑各对一次 server 真值 → 创建弹窗选模型落库）。**live 验 21/21 PASS，证据 docs/verify/485/**。fixture 面回归 = e2e agent-detail.spec + agent-create-model.spec。
 
 - spec 12 / #362 G2-T2：补 local 项目 daemon 执行面条目 local-daemon-executor.md（硬链接镜像 clone + conv 分支推回用户仓库 + merge 步 ff-only 落地 + github per-step token argv 纪律 + Files tab 禁用占位）；配方 = integration g2t2-local-lifecycle 等四面，live re-probe 待补。
@@ -12,7 +13,7 @@ Last updated: 2026-09-30（#485 Agent 详情编辑面）＋ 2026-09-29（spec 12
 - spec 13 / #367：技能页只读本地目录面——新增 skills-page.md 条目；launch.mjs 增第四隔离轴 PACMAN_SKILLS_DIR=<HOME_DIR>/skills——不隔离会现扫用户真 ~/.agents/skills；「已知未入图面」的管理页清单移除技能。
 - spec 13 / #368：MCP 本地 config 只读面——新增 mcp-servers.md 条目与 probe `drive-mcp.mjs`（API 投影 + 写面 404 + 密钥值不出接口 + SQLite 无表 + UI 只读钉扎），daemon 执行面配方指向 integration m4b-mcp-e2e（slug 解析 + 真连外部 MCP + 降级行族）。
 - spec 14 / #371：skills 执行面注入——新增 skills-injection.md 条目；daemon 侧行为无 UI 面，canonical 证据走 integration 真栈探针（skills-inject-e2e）而非 launch.mjs。
-- #389 快捷键组：新增 hotkeys.md 条目 + 定制 probe `scripts/drive-hotkeys.mjs`（N 开新建 dialog 双面 + Space 呼出总管抽屉焦点断言 + 输入态负向 + 侧栏 N 角标）；Gotchas 登记 OverlayMount mounted 滞后一帧的开后聚焦坑（ref callback 载首焦 + [open] effect 兜重开，NewTaskDialog/ChiefDrawer 已收同律）。
+- #389 快捷键组：新增 hotkeys.md 条目 + 定制 probe `scripts/drive-hotkeys.mjs`（新建 dialog 双面 + Space 呼出总管抽屉焦点断言 + 输入态负向 + 侧栏角标；键位 XMON-41 起 N → C）；Gotchas 登记 OverlayMount mounted 滞后一帧的开后聚焦坑（ref callback 载首焦 + [open] effect 兜重开，NewTaskDialog/ChiefDrawer 已收同律）。
 - spec 12 / #360 G2-T3：补新建项目表单 web 面条目 project-new-form.md + 定制 probe `scripts/drive-project-new-form.mjs`；local-repo-api.md 的「UI 入口待回补」交叉引用改为已落地。
 - spec 11 / #354 先行地图（合流自 main）：补三面条目——providers runtime tabs (providers-tabs.md)、machines 本机行 + switches (machines-local-row.md)、添加服务商 picker (provider-picker.md) + 三个先行 probe (drive-providers-tabs/drive-machines-local/drive-provider-picker.mjs)。先行语义 (spec 11 A12)：probe 先于实现票落地，红态 = 验收清单（FAIL detail 逐条指 spec 条款），实现票验收 = 转绿；跑序纪律见 Baseline。
 - spec 12 / #359 G2-T1：补本地仓库项目与 GitHub 连接 server API 面条目 local-repo-api.md + 定制 probe `scripts/probe-local-repos.mjs`，live 验 11/11 PASS。
@@ -75,7 +76,7 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [MCP 页(只读本地 config 面)](./mcp-servers.md) `~/.claude.json` mcpServers 段投影列表+只读钉扎(无新建/更多入口、写面 404、密钥值不出接口、SQLite 无 mcp_server 表);定制 probe `scripts/drive-mcp.mjs`(#368);daemon 执行面配方 = integration m4b-mcp-e2e。
 - [skills 执行面注入(daemon)](./skills-injection.md) PACMAN_SKILLS_DIR 扫描→`<available_skills>` catalog 追加进 systemPrompt→agent read SKILL.md 按需加载(#371,spec 14)。daemon 侧无 UI 面,canonical 证据 = integration 真栈探针(skills-inject-e2e)。
 - [Agent 详情编辑面](./agent-detail.md) 团队页 Agent 卡(链接)→ `/app/resources/agents/<id>` 三 tab(概览/记忆/权限)；概览名称行内编辑 + 职责 + 模型选择器落 `PATCH agents/{aid}`，权限 6 开关 + 密钥 + MCP 勾选同路径；创建弹窗两态(有服务商 = 内联模型槽，无 = 告警 + 外链)；定制 probe `scripts/drive-agent-detail.mjs`(#485)。**证实 live 21/21 PASS，证据 docs/verify/485/**。
-- [快捷键组(新任务 N + 空格呼出总管)](./hotkeys.md) 侧栏「新任务」行 N 角标 + 全局 N 开 dialog(board/project 自有面,其余路由 AppSidebar 全局 dialog 同 live save 路径) + Space 呼出抽屉草稿框持焦 + 输入态/按钮态守卫负向;定制 probe `scripts/drive-hotkeys.mjs`(#389)。fixture 面回归 = e2e hotkeys.spec。
+- [快捷键组(新任务 C + 空格呼出总管)](./hotkeys.md) 侧栏「新任务」行 C 角标 + 全局 C 开 dialog(board/project 自有面,其余路由 AppSidebar 全局 dialog 同 live save 路径;XMON-41 起 N → C) + Space 呼出抽屉草稿框持焦 + 输入态/按钮态守卫负向;定制 probe `scripts/drive-hotkeys.mjs`(#389) 与键位专测 `scripts/drive-newtask-key.mjs`(XMON-41)。fixture 面回归 = e2e hotkeys.spec。
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
 

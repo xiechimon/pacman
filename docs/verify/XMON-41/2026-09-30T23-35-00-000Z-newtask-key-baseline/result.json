@@ -1,0 +1,86 @@
+{
+  "probe": "newtask-key",
+  "mode": "baseline(old-commit)",
+  "ok": true,
+  "at": "2026-09-30T23:34:49.635Z",
+  "stack": {
+    "api": "http://127.0.0.1:8797",
+    "web": "http://127.0.0.1:5290",
+    "homeDir": "/home/measure/multica_workspaces/xmon-debb4a8be717/xmon-41-b5c56695a50e/workdir/.baseline-old/.claude/verify-run/home"
+  },
+  "keys": {
+    "new": "c",
+    "old": "n"
+  },
+  "checks": [
+    {
+      "name": "board-ready",
+      "ok": true,
+      "detail": "看板 shell 就绪"
+    },
+    {
+      "name": "board-old-key-opens",
+      "ok": true,
+      "detail": "\"n\" → .new-task-dialog=true"
+    },
+    {
+      "name": "board-old-key-focus",
+      "ok": true,
+      "detail": "\"n\" 开面后正文框持焦=true"
+    },
+    {
+      "name": "board-new-key-stays-closed",
+      "ok": true,
+      "detail": "\"c\" ×5 → 弹层出现=false"
+    },
+    {
+      "name": "board-input-state-guard",
+      "ok": true,
+      "detail": "输入态按 \"c\"：入框=\"c\" 弹层=false"
+    },
+    {
+      "name": "schedules-old-key-opens",
+      "ok": true,
+      "detail": "\"n\" → .new-task-dialog=true"
+    },
+    {
+      "name": "schedules-old-key-focus",
+      "ok": true,
+      "detail": "\"n\" 开面后正文框持焦=true"
+    },
+    {
+      "name": "schedules-new-key-stays-closed",
+      "ok": true,
+      "detail": "\"c\" ×5 → 弹层出现=false"
+    },
+    {
+      "name": "project-page-ready",
+      "ok": true,
+      "detail": "项目页=http://127.0.0.1:5290/app/project/nTO2quuN__BJfKHb9G_fV"
+    },
+    {
+      "name": "project-old-key-opens",
+      "ok": true,
+      "detail": "\"n\" → .new-task-dialog=true"
+    },
+    {
+      "name": "project-old-key-focus",
+      "ok": true,
+      "detail": "\"n\" 开面后正文框持焦=true"
+    },
+    {
+      "name": "project-new-key-stays-closed",
+      "ok": true,
+      "detail": "\"c\" ×5 → 弹层出现=false"
+    }
+  ],
+  "artifacts": [
+    "01-board.png",
+    "board-old-key-open.png",
+    "schedules-old-key-open.png",
+    "project-old-key-open.png"
+  ],
+  "titles": {
+    "board": "热键改键验证-board 81599"
+  }
+}

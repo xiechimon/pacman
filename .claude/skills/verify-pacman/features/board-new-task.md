@@ -14,7 +14,7 @@
 
 ## How to get to it (user POV)
 
-- 侧栏「新任务」行或 N 热键(#445 起顶栏「+ 任务」钮撤除,行点击与热键同一 opener;详情页/总管另立后票)。
+- 侧栏「新任务」行或 C 热键(XMON-41 起键位由 N 改 C;#445 起顶栏「+ 任务」钮撤除,行点击与热键同一 opener;详情页/总管另立后票)。
 
 ## Driving it with verify-pacman
 

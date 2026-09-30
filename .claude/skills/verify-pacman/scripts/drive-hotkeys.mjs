@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 // verify-pacman drive-hotkeys — 快捷键组全链真用户路径（#389 / #442 / #468）。
 //
-// 走真用户路径：侧栏「新任务」行（N 角标）点击开 dialog → Esc → N 热键开
+// 走真用户路径：侧栏「新任务」行（C 角标）点击开 dialog → Esc → C 热键开
 // dialog → 填标题保存（board 面 live createTodo）→ FAB 的 ⌘J 悬浮提示
 // （#468；XMON-14 起落在 components/ui 的 kbd 落点上）→ ⌘K 面板输入态负向
-// （N 与 ⌘J 均不误触）→ ⌘J 呼出总管抽屉且焦点在草稿框（#442 起 ⌘J 取代
-// Space）→ /app/schedules 非看板页 N 开全局 dialog 保存（AppSidebar 内面，
-// live save 同路）。
+// （C 与 ⌘J 均不误触）→ ⌘J 呼出总管抽屉且焦点在草稿框（#442 起 ⌘J 取代
+// Space）→ /app/schedules 非看板页 C 开全局 dialog 保存（AppSidebar 内面，
+// live save 同路）。键位 N → C 见 XMON-41（`drive-newtask-key.mjs` 专测）。
 //
 // 真值：GET /api/todos 两行（board 面 + schedules 面各一）+ SQLite `todo`
 // 表行。UI 面热键 + server 写路径，无需 daemon。
@@ -99,11 +99,11 @@ try {
   await page.waitForSelector('[data-route="board"]', { timeout: 15_000 });
   check('board-ready', true, '看板 shell 就绪');
 
-  // 1. 侧栏「新任务」行 + N 角标（上游 todos.dev 形态，sidebar-kbd 同款）
+  // 1. 侧栏「新任务」行 + C 角标（上游 todos.dev 形态，sidebar-kbd 同款）
   const row = page.locator('.sidebar-row', { hasText: '新任务' });
   await row.waitFor({ state: 'visible', timeout: 8000 });
   const kbdText = await row.locator('.sidebar-kbd').textContent();
-  check('sidebar-row-badge', kbdText?.trim() === 'N', `侧栏新任务行角标=${kbdText?.trim() ?? '无'}`);
+  check('sidebar-row-badge', kbdText?.trim() === 'C', `侧栏新任务行角标=${kbdText?.trim() ?? '无'}`);
   await shot(page, '01-sidebar-row.png');
 
   // 2. 行点击开 dialog → Esc 关
@@ -113,17 +113,17 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForSelector('.new-task-dialog', { state: 'hidden', timeout: 5000 });
 
-  // 3. N 热键开 dialog（焦点落标题框，dialog 家族 autofocus 律）→ 保存
-  await pressUntil(page, 'n', '.new-task-dialog');
+  // 3. C 热键开 dialog（焦点落标题框，dialog 家族 autofocus 律）→ 保存
+  await pressUntil(page, 'c', '.new-task-dialog');
   const titleFocused = await page.evaluate(
     () => document.activeElement?.classList.contains('new-task-spec') ?? false,
   );
-  check('n-opens-focused', titleFocused, 'N 开 dialog 且正文框持焦（#394 单字段面）');
+  check('c-opens-focused', titleFocused, 'C 开 dialog 且正文框持焦（#394 单字段面）');
   // #394 单字段面：正文单行 = 占位标题派生源（首行截断律）
   await page.fill('.new-task-spec', titleBoard);
   await page.click('.new-task-save');
   await page.waitForSelector('.new-task-dialog', { state: 'hidden', timeout: 5000 });
-  check('board-save', true, 'board 面 N 开 → 保存');
+  check('board-save', true, 'board 面 C 开 → 保存');
   await shot(page, '02-board-saved.png');
 
   // 3b. FAB 的 ⌘J 悬浮提示（#468）在 XMON-14 后由 components/ui 的 kbd 落点
@@ -147,10 +147,10 @@ try {
   await shot(page, '02b-kbd-hint.png');
   await page.mouse.move(0, 0);
 
-  // 4. 输入态负向：⌘K 面板输入框持焦时 N / ⌘J 均不误触，字符照常入框
+  // 4. 输入态负向：⌘K 面板输入框持焦时 C / ⌘J 均不误触，字符照常入框
   await pressUntil(page, 'Meta+k', '.search-panel');
   const searchField = '.search-input-row input';
-  await page.keyboard.press('n');
+  await page.keyboard.press('c');
   await page.keyboard.press(' ');
   // ⌘J 的守卫同律：输入态吞键（#442 editable-only guard）
   await page.keyboard.press('Meta+j');
@@ -159,7 +159,7 @@ try {
   const typed = await page.inputValue(searchField);
   check(
     'editable-guard',
-    dialogCount === 0 && drawerCount === 0 && typed === 'n ',
+    dialogCount === 0 && drawerCount === 0 && typed === 'c ',
     `输入态:dialog=${dialogCount} drawer=${drawerCount} 入框=${JSON.stringify(typed)}`,
   );
   await page.keyboard.press('Escape');
@@ -174,11 +174,11 @@ try {
   await page.keyboard.press('Escape');
   await page.waitForSelector('.chief-drawer', { state: 'hidden', timeout: 5000 });
 
-  // 6. 非看板页（/app/schedules）N 开全局 dialog（AppSidebar 内面）→ 保存
+  // 6. 非看板页（/app/schedules）C 开全局 dialog（AppSidebar 内面）→ 保存
   await page.goto(`${WEB}/app/schedules`);
   await page.waitForSelector('.page-shell', { timeout: 15_000 });
-  await pressUntil(page, 'n', '.new-task-dialog');
-  check('schedules-n-opens', page.url().includes('/app/schedules'), 'schedules 页原地开 dialog');
+  await pressUntil(page, 'c', '.new-task-dialog');
+  check('schedules-c-opens', page.url().includes('/app/schedules'), 'schedules 页原地开 dialog');
   await page.fill('.new-task-spec', titleSched);
   await page.click('.new-task-save');
   await page.waitForSelector('.new-task-dialog', { state: 'hidden', timeout: 5000 });
