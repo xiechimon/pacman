@@ -35,7 +35,6 @@ import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.
 import { Button } from '../ui/button.js';
 import { type MentionGroups, MentionPicker } from './mention-picker.js';
 import { insertMentionText, type MentionToken } from './mention-token.js';
-import { useEscClose } from './use-esc.js';
 import { FADE_EXIT_MS } from './use-overlay-mount.js';
 import './overlay.css';
 
