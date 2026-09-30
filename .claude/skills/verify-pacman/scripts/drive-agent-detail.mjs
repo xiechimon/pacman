@@ -2,7 +2,8 @@
 // verify-pacman drive-agent-detail — Agent 详情编辑面（#485，r3 §4 实测形态）。
 //
 // 走真用户路径：团队页点 Agent 卡 → 详情路由 → 概览改名称/职责/模型 → 权限
-// 开关 → 记忆空态 → 回团队页用创建弹窗选模型建 Agent。
+// 开关（工具六开关 + #510 密钥区聚合总开关）→ 记忆空态 → 回团队页用创建
+// 弹窗选模型建 Agent。
 //
 // 真值 = server 面（不是 UI 回显）：每次编辑后重取 GET
 // /api/teams/{id}/agents/{aid} 对字段，创建后重取 members 对 provider/modelId。
@@ -71,7 +72,8 @@ if (teamId === undefined) throw new Error('no team seeded');
 const agentUrl = (aid) => `${SERVER}/api/teams/${teamId}/agents/${aid}`;
 const extra = { teamId, agentId: null };
 
-// —— 播种：一个 custom provider（模型选择器的候选源）+ 一个 Agent ─────────
+// —— 播种：一个 custom provider（模型选择器的候选源）+ 两个团队密钥 +
+// 一个 Agent ──────────────────────────────────────────────────────────
 await sendJson(`${SERVER}/api/teams/${teamId}/providers`, 'POST', {
   providerId: 'verify-485-gw',
   label: 'verify-485-gw',
@@ -79,6 +81,14 @@ await sendJson(`${SERVER}/api/teams/${teamId}/providers`, 'POST', {
   api: 'anthropic-messages',
   models: [{ id: 'claude-sonnet-5', name: 'claude-sonnet-5' }],
 }).catch(() => {}); // 409 = 重跑时已存在
+// #510：两个团队密钥。密钥区授权粒度是全有全无——写回的是团队全部密钥 id，
+// 只播一个密钥时「全 id 集」与「首个 id」两种实现都过，两个才有牙。
+// POST 无幂等键（每次新 id），故断言一律对「点击时 server 的现行 id 集」，
+// 重跑留下的旧密钥不会让断言失真。
+const secretsUrl = `${SERVER}/api/teams/${teamId}/secrets`;
+for (const name of ['verify-510-key-a', 'verify-510-key-b']) {
+  await sendJson(secretsUrl, 'POST', { name, description: null, value: `value-${name}` });
+}
 const created = await sendJson(`${SERVER}/api/teams/${teamId}/agents`, 'POST', {
   displayName: AGENT_NAME,
   provider: 'verify-485-gw',
@@ -192,6 +202,48 @@ try {
   check('tool-persisted', afterTool.tools.length === 1, JSON.stringify(afterTool.tools));
   await shot(page, '04-permissions.png');
 
+  // —— 6b. 密钥区：一行聚合总开关 → server secrets[] = 团队全 id 集 ────────
+  // 有密钥时恰好一行、一个开关（回退成 per-secret 粒度会渲染 N 行 N 开关）。
+  const allSecretIds = (await getJson(secretsUrl)).map((row) => row.id);
+  const secretSwitch = page.locator('.agent-secret-switch');
+  check(
+    'secret-row-single',
+    (await page.locator('.agent-secret-row').count()) === 1,
+    `${await page.locator('.agent-secret-row').count()} 行`,
+  );
+  check('secret-switch-single', (await secretSwitch.count()) === 1, `${await secretSwitch.count()} 个`);
+  check(
+    'secret-unchecked-when-empty',
+    (await secretSwitch.getAttribute('aria-checked')) === 'false',
+    `secrets=${JSON.stringify((await getJson(agentUrl(agentId))).secrets)}`,
+  );
+
+  await secretSwitch.click();
+  await page.waitForTimeout(400); // invalidateAll 重取的落窗
+  const afterSecretOn = await getJson(agentUrl(agentId));
+  check(
+    'secret-on-writes-full-id-set',
+    afterSecretOn.secrets.length === allSecretIds.length &&
+      allSecretIds.every((id) => afterSecretOn.secrets.includes(id)),
+    `写回 ${JSON.stringify(afterSecretOn.secrets)}；团队全 id 集 ${JSON.stringify(allSecretIds)}`,
+  );
+  // 勾选态 = agent.secrets 非空：重取回来的真值仍非空 → 开关保持勾选。
+  check(
+    'secret-stays-checked-when-nonempty',
+    (await secretSwitch.getAttribute('aria-checked')) === 'true',
+    `${await secretSwitch.count()} 个开关，首个 aria-checked=${await secretSwitch.getAttribute('aria-checked')}`,
+  );
+  await shot(page, '05-permissions-secret-on.png');
+
+  await secretSwitch.click();
+  await page.waitForTimeout(400);
+  const afterSecretOff = await getJson(agentUrl(agentId));
+  check(
+    'secret-off-clears',
+    afterSecretOff.secrets.length === 0,
+    JSON.stringify(afterSecretOff.secrets),
+  );
+
   // —— 7. 记忆 tab：canon 空态 ──────────────────────────────────────────
   await page.locator('.agent-tab').nth(1).click();
   await page.waitForSelector('.agent-memories');
@@ -211,7 +263,7 @@ try {
   await page.locator('#dlg-agent-name').fill('verify-485-created');
   await page.locator('.dlg-agent-model-select').click();
   await page.waitForSelector('.dlg-agent-model-menu');
-  await shot(page, '05-create-model-menu.png');
+  await shot(page, '06-create-model-menu.png');
   await page.locator('.dlg-agent-model-row', { hasText: 'verify-485-gw' }).click();
   await page.locator('.dlg-agent-create').click();
   await page.waitForSelector('.dlg', { state: 'hidden', timeout: 15_000 });
@@ -225,7 +277,7 @@ try {
     fresh?.provider === 'verify-485-gw' && fresh?.modelId === 'claude-sonnet-5',
     `${fresh?.provider}/${fresh?.modelId}`,
   );
-  await shot(page, '06-team-after-create.png');
+  await shot(page, '07-team-after-create.png');
 } finally {
   await browser.close();
 }

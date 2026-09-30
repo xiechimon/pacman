@@ -8,7 +8,7 @@
 - `overview-fields` — 名称（行内编辑）、职责、默认 skill、模型选择器，各自提交后 server 记录随之变。
 - `overview-readonly` — 运行时 / 思考强度 / 状态是只读值行（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）；思考强度档位词表无 server/web 暴露面；`创建于` 无 createdAt 列。三处都不发明。
 - `memory-tab` — 条目列表 + 删除；空态文案 = shared `MEMORY_EMPTY_COPY` canon。
-- `permissions-tab` — 工具 6 开关（文案 = shared `AGENT_TOOL_SWITCHES`，**六档各带说明副文案** = shared `AGENT_TOOL_COPY`）、团队密钥勾选、MCP 逐个勾选，落 `PATCH tools/secrets/mcpServers`。
+- `permissions-tab` — 工具 6 开关（文案 = shared `AGENT_TOOL_SWITCHES`，**六档各带说明副文案** = shared `AGENT_TOOL_COPY`）、**团队密钥一行聚合总开关**（#510：粒度 = 原版的全有全无，副文案 = shared `AGENT_PERMISSION_COPY.secrets`；开 = `PATCH { secrets: 团队全部密钥 id }`、关 = `PATCH { secrets: [] }`，勾选态 = `agent.secrets` 非空；零密钥时只有空态 `暂无团队密钥。`、不出开关）、MCP 逐个勾选，落 `PATCH tools/secrets/mcpServers`。
 - `create-model-slot` — 创建弹窗模型槽两态；选中后 `POST /api/teams/{id}/agents` body 带 `provider` 与 `modelId`。
 
 ## How to get to it (user POV)
@@ -30,13 +30,15 @@ Preconditions:
 - 改名称、改职责 → 同命令 → `name-persisted` / `role-persisted`（重取 `GET /api/teams/{id}/agents/{aid}` 对字段，不看 UI 回显）。
 - 模型槽清空再选回 → 同命令 → `model-cleared`（provider/modelId 双 null）/ `model-persisted`（`verify-485-gw/claude-sonnet-5`）。
 - 权限开关 → 同命令 → `perm-six-switches`（6 个）+ `tool-persisted`（server `tools` 数组）。
+- 密钥区聚合总开关（#510）→ 同命令 → `secret-row-single`（`.agent-secret-row` 恰好 1 行）+ `secret-switch-single`（1 个开关）+ `secret-unchecked-when-empty`（未授权时 `aria-checked=false`）+ `secret-on-writes-full-id-set`（开 → server `secrets` = 点击时 `GET secrets` 的全 id 集）+ `secret-stays-checked-when-nonempty`（重取真值非空 → 勾选态保持）+ `secret-off-clears`（关 → `secrets` 空）。
 - 记忆空态 → 同命令 → `memory-empty-canon`。
 - 创建弹窗选模型建 Agent → 同命令 → `create-dialog-model-slot` / `create-dialog-no-warn` / `create-with-model-persisted`（重取 members 投影对 provider/modelId）。
 
 ## Gotchas
 
-- **fixture e2e 与 live probe 互不替代**：`apps/web/e2e/agent-detail.spec.ts` + `agent-create-model.spec.ts` 跑 fixture 面（无后端），证明的是交互与两态；落库只能由本 probe 证。本票之前 `patchAgent` 是零消费点的死代码，这条缝从没被 web 面走过。
+- **fixture e2e 与 live probe 互不替代**：`apps/web/e2e/agent-detail.spec.ts` + `agent-create-model.spec.ts` 跑 fixture 面（无后端），证明的是交互与两态；落库只能由本 probe 证。本票之前 `patchAgent` 是零消费点的死代码，这条缝从没被 web 面走过。fixture 两个场景：`agent-detail`（零密钥 → 空态）与 `agent-detail-secrets`（两个密钥 → 恰好一行总开关）。
 - **模型行首行恒是「未设置模型」清空行**：按 `hasText` 定位模型行，别用 `nth(0)`。
 - **同一模型 id 可能出两行**：`toChiefModelOptions` 是 custom providers ∪ model-sources 非 pi 段的并集，`claude-sonnet-5` 在 providers 与 claude-code 段各一行——断言要按 provider 位分。
 - **浮层截图要等入场动画**：`anim-pop` 从 opacity 0 起，Playwright 的 visible 判定不看 opacity，抢拍会得到与上一张逐字节相同的假图。
 - **PATCH 是 invalidateAll 重取（S8）**：点完给 ~400ms 落窗再读 server，或改读 server 而不依赖 UI 时序。
+- **密钥播种刻意播两个（#510）**：授权粒度是全有全无——写回的是团队全部密钥 id。只播一个时「全 id 集」与「首个 id」两种实现都过；两个才有牙。密钥 `POST` 无幂等键（每次新 id），故断言对「点击时 server 的现行 id 集」，重跑留下的旧密钥不会让断言失真。
