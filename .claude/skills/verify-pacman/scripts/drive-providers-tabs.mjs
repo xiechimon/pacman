@@ -270,25 +270,27 @@ try {
   );
 
   // 6) A1：切 Claude Code tab → aria-selected 翻转 + ?runtime= 同步
+  // #423 修正探针竞态（断言语义不变，两条件并收进同一次有界轮询）：data
+  // router（react-router v7 createBrowserRouter）把路由态更新包在
+  // startTransition 里，history.push 恒先于 React commit 一拍——「先等 URL、
+  // 再单读 aria-selected」读到的是 commit 前旧值（旧 DOM 树 commit 快，曾靠
+  // 时序侥幸过关；shadcn Tabs 迁移后 commit 变长即翻车，实测 0–50ms 窗口）。
+  // e2e providers-tabs.spec 用自动重试断言，无此面。
   let switched = false;
   if (ccTab != null) {
     await page
       .click(`${SHELL} [role="tab"][data-runtime="claude-code"]`)
       .catch(() => {});
-    await page
+    switched = await page
       .waitForFunction(
-        () => new URL(window.location.href).searchParams.get('runtime') === 'claude-code',
-        null,
+        (sel) =>
+          new URL(window.location.href).searchParams.get('runtime') === 'claude-code' &&
+          document.querySelector(sel)?.getAttribute('aria-selected') === 'true',
+        `${SHELL} [role="tab"][data-runtime="claude-code"]`,
         { timeout: 5000 },
       )
-      .catch(() => {});
-    const ccSelected = await page
-      .evaluate(
-        (sel) => document.querySelector(sel)?.getAttribute('aria-selected') === 'true',
-        `${SHELL} [role="tab"][data-runtime="claude-code"]`,
-      )
+      .then(() => true)
       .catch(() => false);
-    switched = new URL(page.url()).searchParams.get('runtime') === 'claude-code' && ccSelected;
   }
   check(
     'tab-switch-url',
