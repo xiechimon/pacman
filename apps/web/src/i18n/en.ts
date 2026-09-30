@@ -598,8 +598,7 @@ export const EN: Record<string, string> = {
   职责: 'Responsibility',
   工具: 'Tools',
   // 模型 已在 #476 段登记，本段不重复。
-  思考强度: 'Thinking level',
-  状态: 'Status',
+  // 「思考强度」「状态」两键随 XMON-18 撤行一并摘除（概览不再摆这两行）。
   未设置模型: 'No model',
   '默认 skill': 'Default skill',
   '找不到该 Agent。它可能已被删除。': 'Agent not found. It may have been deleted.',

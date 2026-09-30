@@ -134,10 +134,15 @@ try {
     'overview-model',
     ((await page.locator('.agent-model-select').textContent()) ?? '').includes('claude-sonnet-5'),
   );
+  // XMON-18（2026-10-01 裁决）：概览撤掉「思考强度」「状态」两行——思考强度交给
+  // agent 编排、不给人手设；状态只有一个取值。判据是**页面里不存在**（元素计数为
+  // 零），比断言文本更能钉住「没长回来 + 没留空壳」。
+  const thinkingCount = await page.locator('.agent-thinking').count();
+  const statusCount = await page.locator('.agent-status').count();
   check(
-    'overview-thinking-readonly',
-    (await page.locator('.agent-thinking').textContent())?.trim() === '默认' &&
-      (await page.locator('.agent-thinking button').count()) === 0,
+    'overview-no-thinking-status-rows',
+    thinkingCount === 0 && statusCount === 0,
+    `thinking=${thinkingCount} status=${statusCount}`,
   );
   // 运行时档 = provider 位派生（本场景 provider = verify-485-gw 这个 custom
   // provider，故直接出 id；内置 pi 时出「内置 (pi)」）。
@@ -147,9 +152,10 @@ try {
     await page.locator('.agent-runtime').textContent(),
   );
 
-  // —— 2b. 思考强度档位来自能力读面（XMON-16 / #499 B3）────────────────
-  // 读面本体：七档有序（期望值来源 = pi-agent-core 的 ThinkingLevel 联合，
-  // 字面量独立写出，不读实现里的常量）。
+  // —— 2b. 能力读面本体（XMON-16）──────────────────────────────────────
+  // 概览的「思考强度」行已撤（XMON-18 裁决），web 侧现在零消费点，所以这里只验
+  // 端点形状（七档有序；期望值来源 = pi-agent-core 的 ThinkingLevel 联合，字面量
+  // 独立写出，不读实现里的常量）。端点本身的去留是另一件事，未裁前不删。
   const caps = await getJson(`${SERVER}/api/capabilities`);
   check(
     'capabilities-seven-levels',
@@ -157,28 +163,6 @@ try {
       JSON.stringify(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']),
     JSON.stringify(caps.thinkingLevels),
   );
-  // 只读行按读面呈现：词表内的值呈现；词表外的值不呈现（落「默认」）——
-  // 这条是「读面真的接到了 UI 上」的判据，只验端点不算数。
-  await sendJson(agentUrl(agentId), 'PATCH', { thinkingLevel: 'high' });
-  await page.reload();
-  await page.waitForSelector('.agent-overview', { timeout: 15_000 });
-  check(
-    'thinking-inside-vocabulary-rendered',
-    (await page.locator('.agent-thinking').textContent())?.trim() === 'high',
-    await page.locator('.agent-thinking').textContent(),
-  );
-  await shot(page, '01b-thinking-level-high.png');
-  await sendJson(agentUrl(agentId), 'PATCH', { thinkingLevel: 'ultra' });
-  await page.reload();
-  await page.waitForSelector('.agent-overview', { timeout: 15_000 });
-  check(
-    'thinking-outside-vocabulary-falls-back',
-    (await page.locator('.agent-thinking').textContent())?.trim() === '默认' &&
-      (await page.locator('.agent-thinking button').count()) === 0,
-    await page.locator('.agent-thinking').textContent(),
-  );
-  await shot(page, '01c-thinking-outside-vocabulary.png');
-  await sendJson(agentUrl(agentId), 'PATCH', { thinkingLevel: null }); // 还原种子态
 
   // —— 3. 名称行内编辑 → server displayName 变 ──────────────────────────
   await page.locator('.agent-name').click();

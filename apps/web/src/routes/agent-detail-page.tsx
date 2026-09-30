@@ -10,12 +10,14 @@
 // （两组形状同源 = shared AgentRecord），fixture 面无后端，提交落本地覆盖
 // 记录承载「提交后回显」——live 面则是 S8 律（mutation → invalidateAll 重取）。
 //
-// 本面明确不做的三件（均因证据/结构缺口，不发明）：
-// · `创建于 …` 状态行——AgentRecord 与 DB agent 表都无 createdAt 列；
-// · 思考强度选择器——B1 已裁「保持只读」；档位词表本身有读面了（XMON-16：
-//   `GET /api/capabilities` 投影 shared THINKING_LEVELS），但读面 ≠ 写面，
-//   只读行按读面呈现档位，选择器与 provider 写面的耦合仍不做；
-// · 删除 Agent——无 DELETE 端点，且原版二次确认文案未观测，不凭空造破坏性面。
+// 概览面刻意不摆的三样（XMON-18 裁决，2026-10-01；原版有它们，本仓不复刻）：
+// · `创建于 …` 状态行——不需要创建时间，DB 也不加 createdAt 列；
+// · `思考强度` 只读行——档位由 agent 编排，不给人手设。它原本是本面唯一消费
+//   `GET /api/capabilities`（XMON-16）的地方，行删掉后该读面在 web 侧零消费点，
+//   端点与 shared schema 保留待裁；
+// · `状态` 行——`agentStatusSchema` 只有一个取值 active，摆出来没有信息量。
+// 另有一件因结构缺口不做：删除 Agent（无 DELETE 端点，且原版二次确认文案未
+// 观测，不凭空造破坏性面）。
 
 import {
   AGENT_PERMISSION_COPY,
@@ -26,14 +28,12 @@ import {
   MEMORY_QUOTA_PER_AGENT,
   MEMORY_UI_COPY,
   type PatchAgentBody,
-  THINKING_LEVELS,
 } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useParams } from 'react-router';
 import {
   useAgent,
   useApiMutations,
-  useCapabilities,
   useMcpServers,
   useMemories,
   useModelSources,
@@ -41,7 +41,7 @@ import {
   useSecrets,
   useSkills,
 } from '../api/hooks.js';
-import { RUNTIME_LABELS, toModelOptions, toThinkingLevelDisplay } from '../api/mappers.js';
+import { RUNTIME_LABELS, toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
@@ -91,7 +91,6 @@ export function AgentDetailPage() {
   const memoriesQ = useMemories(teamId, agentId, live);
   const providersQ = useProviders(teamId, live);
   const modelSourcesQ = useModelSources(teamId, live);
-  const capabilitiesQ = useCapabilities(live);
   const skillsQ = useSkills(teamId, live);
   const secretsQ = useSecrets(teamId, live);
   const mcpQ = useMcpServers(teamId, live);
@@ -191,12 +190,6 @@ export function AgentDetailPage() {
   };
 
   const defaultSkill = agent.skills[0] ?? null;
-  // 思考强度档位（XMON-16）：live 面词表来自能力读面 `GET /api/capabilities`
-  // （server 投影 shared 单源）；fixture 面与读面未解析时直接取 shared
-  // `THINKING_LEVELS` 本身——那不是第二份真值，就是读面背后的同一个常量。
-  // 存值须落在词表内才呈现，否则落 r3 §4 观测形「默认」。
-  const thinkingLevels = capabilitiesQ.data?.thinkingLevels ?? THINKING_LEVELS;
-  const thinkingLevel = toThinkingLevelDisplay(agent.thinkingLevel, thinkingLevels);
   const runtimeLabel =
     agent.provider == null || agent.provider === 'pi'
       ? t(BUILTIN_RUNTIME_LABEL)
@@ -285,16 +278,6 @@ export function AgentDetailPage() {
                 }
                 prefix="agent-model"
               />
-            </div>
-            <div className="agent-field">
-              {/* 只读值行（B1 裁「保持只读」）：值经能力读面词表解析，不直接
-                  透出存值——引擎没有的档位不呈现（#499 B3 / XMON-16）。 */}
-              <span className="agent-field-label">{t('思考强度')}</span>
-              <span className="agent-thinking">{thinkingLevel ?? t('默认')}</span>
-            </div>
-            <div className="agent-field">
-              <span className="agent-field-label">{t('状态')}</span>
-              <span className="agent-status">{agent.status}</span>
             </div>
           </div>
         )}
