@@ -8,7 +8,12 @@
    适配层退役——壳机制换 Base UI Dialog，壳几何改由适配层工具类承载（几何值
    与本文件原值逐条对齐：#193 封顶三段律、head 48 + 1px 分隔、close 24 居中
    右 12）。本文件保留**表单族**（.dlg-form-*）与各 per-face 弹窗类；这些类名
-   是 e2e 钉死的别名（#411 别名优先政策），原样不动。 */
+   是 e2e 钉死的别名（#411 别名优先政策），原样不动。
+
+   例外的两类仍留在本文件——它们是**选择器驱动**的壳机制，工具类表达不了：
+   退场配方（`.dlg-shell[data-ending-style]`、`.dlg-viewport[data-ending-style]`，
+   挂在 Base UI 的状态属性上）与视口根容器（`.dlg-viewport`，含 `> *` 子级
+   hook）。纯几何（width/height/居中等）照旧走适配层的工具类。 */
 
 /* ==================== .dlg-form-* 弹窗表单样式族(#221)====================
    DialogShell(#68)家族各表单弹窗的实测同形层:secret(#173)/mcp(#174)/
@@ -209,4 +214,35 @@
 
 .dlg-shell[data-ending-style] .anim-fade {
   opacity: 0;
+}
+
+/* #453 视口根变体（DialogShell 的 `viewportRoot`）：壳只出机制，面板几何由面
+   自己带。三条各有用处：
+
+   1. 容器铺满视口但不吃点击——否则它（在背板之上）会吞掉落到 scrim 上的外点，
+      「点暗处关闭」失效；面内容经 `> *` 收回点击。
+   2. z-index 由适配层的 zIndex 入参给（背板 = zIndex − 1）。fixed + z-index
+      自建 stacking context，容器不抬 z 会把面自身的 z 关在里面被背板反盖，
+      行点不中。
+   3. 退场只动 opacity/transform（D4：内容瞬时贴合，不做布局动画），终态逐值
+      对齐旧 OverlayMount 的 `.anim-pop` 配方；visibility 延迟过渡照家族手法
+      撑住 Base UI 的卸载窗（getAnimations 不看子树）。 */
+.dlg-viewport {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  transition: visibility 0s linear var(--dur-fast);
+}
+
+.dlg-viewport > * {
+  pointer-events: auto;
+}
+
+.dlg-viewport[data-ending-style] {
+  visibility: hidden;
+}
+
+.dlg-viewport[data-ending-style] .anim-pop {
+  opacity: 0;
+  transform: scale(0.95) translateY(-4px);
 }

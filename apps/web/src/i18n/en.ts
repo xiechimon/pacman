@@ -137,7 +137,6 @@ export const EN: Record<string, string> = {
   面板视图: 'Pane view',
 
   // —— ⌘K search panel (r7 05/05b, r2 §8.4) ——
-  关闭搜索: 'Close search',
   '搜索任务、项目、成员…': 'Search todos, projects, members…',
   前往: 'Go to',
   团队: 'Team',
