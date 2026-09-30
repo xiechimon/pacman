@@ -53,6 +53,7 @@ import {
   diffV2V3,
   history12,
   history15,
+  mdToolout,
   planOpenReview,
   projectFixture,
   projectLocalFiles,
@@ -154,6 +155,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #366: plan-card activation pin (smoke surface, no capture): the
       // review changes face with a collapsed plan card in the thread
       'plan-open': planOpenReview,
+      // #469 named scenario (no capture, plan-open precedent): the chat
+      // block-rendering pin — an agent reply with raw block markdown + a
+      // tool group whose bash stdout renders as left-aligned mono blocks
+      'md-toolout': mdToolout,
       // #443 named scenario (no capture, notify-banner precedent): scenario
       // 16's planning surface + chiefUnread 3 — the unread-gated detail FAB
       // face (badge pass-through pin; the shell-consistency detail row and

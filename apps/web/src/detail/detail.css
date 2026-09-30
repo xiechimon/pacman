@@ -640,6 +640,82 @@
   line-height: 13px;
 }
 
+/* ---- block markdown inside an agent reply (#469) ----
+   The chat text box is 13px/24px; block elements get their own pitch so a
+   heading / list / fence reads as structure, not run-on prose. Inline code
+   chips inside these blocks stay `.chat-code` (chat-markdown.tsx). */
+
+/* ATX heading — a real <h2>/<h3>/… element, sized to sit one step above
+   the 13px body without hijacking the doc pane's 16px plan headings. */
+.chat-md-head {
+  margin: 12px 0 4px;
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.35;
+}
+.chat-md-head:first-child {
+  margin-top: 0;
+}
+.chat-md-head--1 {
+  font-size: 18px;
+}
+.chat-md-head--2 {
+  font-size: 16px;
+}
+.chat-md-head--3 {
+  font-size: 14px;
+}
+.chat-md-head--4,
+.chat-md-head--5,
+.chat-md-head--6 {
+  font-size: 13px;
+}
+
+/* list item (ordered + unordered share the row shape): a hanging marker
+   column + the content. Nesting indents via inline margin-left so a child
+   box's left edge sits past its parent's (chat-markdown.tsx DEPTH_PX). */
+.chat-md-item {
+  display: flex;
+  gap: 7px;
+  margin-top: 2px;
+}
+.chat-md-item:first-child {
+  margin-top: 0;
+}
+.chat-md-ordinal,
+.chat-md-marker {
+  flex: none;
+  min-width: 14px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.chat-md-marker {
+  text-align: left;
+}
+.chat-md-content {
+  min-width: 0;
+}
+
+/* fenced code block — the block twin of `.chat-code`: mono, normal
+   contrast, own background + border, wraps instead of scrolling sideways
+   for short lines but caps height for long ones. */
+.chat-md-code {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+
 /* centered dim single line: bare time stamp (13:35), merge announcement,
    🎉 任务已完成 banner (r7 26/36). Rows after a note pack tight (r7 26:
    note→确认 gap is much smaller than the default row margin). */
@@ -738,6 +814,36 @@
 .chat-tool-label {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* one tool call inside the expanded group: the pill + its output block
+   stacked (#469). The group's flex gap spaces the calls apart. */
+.chat-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* tool stdout/stderr as its own block (#469): left aligned, mono, normal
+   contrast — the terminal-content twin of `.chat-code`, not the centered
+   dim `.chat-note`. pre-wrap keeps the line breaks without forcing a
+   horizontal scrollbar; max-height caps a flood behind a scroll. */
+.chat-tool-output {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  background: var(--code-bg);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow: auto;
 }
 
 /* 收起 link under the expanded tool pills (r7 28) */
