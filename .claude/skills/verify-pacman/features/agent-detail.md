@@ -38,7 +38,7 @@ Preconditions:
 
 - **fixture e2e 与 live probe 互不替代**：`apps/web/e2e/agent-detail.spec.ts` + `agent-create-model.spec.ts` 跑 fixture 面（无后端），证明的是交互与两态；落库只能由本 probe 证。本票之前 `patchAgent` 是零消费点的死代码，这条缝从没被 web 面走过。fixture 两个场景：`agent-detail`（零密钥 → 空态）与 `agent-detail-secrets`（两个密钥 → 恰好一行总开关）。
 - **模型行首行恒是「未设置模型」清空行**：按 `hasText` 定位模型行，别用 `nth(0)`。
-- **同一模型 id 可能出两行**：`toChiefModelOptions` 是 custom providers ∪ model-sources 非 pi 段的并集，`claude-sonnet-5` 在 providers 与 claude-code 段各一行——断言要按 provider 位分。
+- **同一模型 id 可能出两行**：`toModelOptions` 是 custom providers ∪ model-sources 非 pi 段的并集，`claude-sonnet-5` 在 providers 与 claude-code 段各一行——断言要按 provider 位分。
 - **浮层截图要等入场动画**：`anim-pop` 从 opacity 0 起，Playwright 的 visible 判定不看 opacity，抢拍会得到与上一张逐字节相同的假图。
 - **PATCH 是 invalidateAll 重取（S8）**：点完给 ~400ms 落窗再读 server，或改读 server 而不依赖 UI 时序。
 - **密钥播种刻意播两个（#510）**：授权粒度是全有全无——写回的是团队全部密钥 id。只播一个时「全 id 集」与「首个 id」两种实现都过；两个才有牙。密钥 `POST` 无幂等键（每次新 id），故断言对「点击时 server 的现行 id 集」，重跑留下的旧密钥不会让断言失真。

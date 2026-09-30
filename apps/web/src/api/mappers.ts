@@ -37,7 +37,6 @@ import { relativeTime } from '../board/rel-time.js';
 import type {
   BranchInfoContent,
   ChiefContent,
-  ChiefModelOption,
   ChiefStreamItem,
   DiffFile,
   DiffLine,
@@ -48,6 +47,7 @@ import type {
   DocSegment,
   MachineRow,
   McpRow,
+  ModelOption,
   PlanDiffContent,
   PlanVersion,
   ProjectCommitRow,
@@ -795,13 +795,10 @@ export const RUNTIME_LABELS: Record<ModelSourceRuntime, string> = {
  * 共用 provider 命名空间，custom provider 若取名 'claude-code' 且撞同
  * modelId，会被 providers 段 first-wins 遮蔽——刻意取该名的撞名罕见，
  * 规格未约束，不去 invent 隔离前缀。 */
-export function toModelOptions(
-  providers: ProviderRecord[],
-  sources: ModelSource[],
-): ChiefModelOption[] {
-  const options: ChiefModelOption[] = [];
+export function toModelOptions(providers: ProviderRecord[], sources: ModelSource[]): ModelOption[] {
+  const options: ModelOption[] = [];
   const seen = new Set<string>();
-  const push = (option: ChiefModelOption) => {
+  const push = (option: ModelOption) => {
     const key = `${option.provider}/${option.modelId}`;
     if (seen.has(key)) return;
     seen.add(key);

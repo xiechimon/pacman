@@ -15,7 +15,7 @@
 import type { ChiefCompactionModel } from '@pacman/shared';
 import { useState } from 'react';
 import { FloatingShell } from '../components/ui/floating-shell.js';
-import type { ChiefModelOption } from '../fixtures/records.js';
+import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown } from '../icons/index.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
@@ -23,7 +23,7 @@ import { ClickCatcher } from '../overlays/dismiss.js';
 /** fixture 面候选兜底(r5 §2 捕获网关 r3-gw——捕获徽标位原文即 id 本身
  *  `r3-gw · 128k`——+ fixture canon 模型 claude-sonnet-5;chief-agent-dialog
  *  DEFAULT_AGENT 单默认行同律)。 */
-const DEFAULT_OPTIONS: ChiefModelOption[] = [
+const DEFAULT_OPTIONS: ModelOption[] = [
   {
     provider: 'r3-gw',
     providerLabel: 'r3-gw',
@@ -37,7 +37,7 @@ interface ChiefModelSelectProps {
    *  默认(与 Chief 相同)。 */
   value: ChiefCompactionModel | null;
   /** 候选模型;缺省 = fixture canon 单行。 */
-  options?: ChiefModelOption[];
+  options?: ModelOption[];
   /** live 面:选定 = PATCH chief compactionModel 槽;缺省 = fixture 律
    *  (选择即关)。 */
   onPick?: (value: ChiefCompactionModel | null) => void;
