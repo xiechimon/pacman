@@ -1,6 +1,7 @@
 // 事件映射纯函数面（02 §5.6 pi 词表 → 01 §5 StepEvent 缝词表的宿主投影，
 // 映射登记 = backend/pi.ts 头注 [推断]）。pi 包不在测试面出现——缝纪律。
 
+import { THINKING_LEVELS } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
 import {
   type AgentSessionEventLike,
@@ -194,6 +195,10 @@ describe('PI_CAPABILITIES（01 §5 能力面）', () => {
       'xhigh',
       'max',
     ]);
+    // 单源约束（XMON-16）：能力面必须是 shared 的那一个数组本身，不是等价
+    // 副本——跨缝复制常量会让两份真值各自漂移，toEqual 挡不住。引用同一性
+    // 才挡得住。
+    expect(PI_CAPABILITIES.thinkingLevels).toBe(THINKING_LEVELS);
     expect(PI_CAPABILITIES.compaction).toBe(true);
     expect(PI_CAPABILITIES.sessionResume).toBe(true); // continue session（02 §4.2）
   });

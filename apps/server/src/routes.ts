@@ -17,6 +17,7 @@ import {
   buildSteerBodySchema,
   buildStepActionBodySchema,
   buildStopBodySchema,
+  capabilitiesResponseSchema,
   chiefSendMessageBodySchema,
   createAgentBodySchema,
   createBranchSyncBodySchema,
@@ -46,6 +47,7 @@ import {
   startBuildsBodySchema,
   type TagRecord,
   type TeamMember,
+  THINKING_LEVELS,
   type TodoRecord,
   tokenUsageSchema,
 } from '@pacman/shared';
@@ -1229,6 +1231,16 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const updated = ctx.db.select().from(machine).where(eq(machine.id, id)).get();
     if (!updated) throw notFound(`machine ${id}`);
     return c.json(toMachineRecord(updated));
+  });
+
+  // 能力读面（XMON-16 / #499 B3 裁决 A；[设计] 面，参考产品 wire 未采此端点）：
+  // 引擎能力词表送 web 的那一条。当前载荷 = 思考强度档位——web 的 Agent 详情
+  // 只读行按它呈现档位，不自己另存一份七档常量。真值单源 = shared
+  // `THINKING_LEVELS`（daemon 的 PI_CAPABILITIES 引同一个数组）；server 读不到
+  // daemon，故编排面 = shared 常量直出，不经机器上报。队无关：能力是引擎的
+  // 事实，不随团队分叉。
+  app.get('/api/capabilities', (c) => {
+    return c.json(capabilitiesResponseSchema.parse({ thinkingLevels: THINKING_LEVELS }));
   });
 
   // 模型选项面（02 §6.2「model = Provider 下的具名可选项」；provider.models

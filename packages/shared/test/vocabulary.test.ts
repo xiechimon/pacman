@@ -15,6 +15,7 @@ import {
   CLAIM_POLL_INTERVAL_MS,
   CLI_COMMANDS,
   CONFIG_KINDS,
+  capabilitiesResponseSchema,
   DB_TABLES,
   DEVICE_ID_PATTERN,
   ENV_VARS,
@@ -44,6 +45,7 @@ import {
   STEP_EVENT_TYPES,
   STEP_LIFECYCLE_LOG_LINES,
   STREAM_TIMEOUTS_MS,
+  THINKING_LEVELS,
   WEB_REST_ENDPOINTS,
   WORKER_MEMORY_REMOTE_TOOLS,
 } from '../src/index.js';
@@ -490,6 +492,23 @@ describe('AgentBackend seam (01 §5, 00/D1 缝)', () => {
     // stream 通道，protocol/sse.ts）；缝事件面锁定前 15 件（01 §5）。
     expect(STEP_EVENT_TYPES).toHaveLength(15);
     expect(STEP_EVENT_TYPES).toEqual(PI_STREAM_EVENTS.slice(0, 15));
+  });
+});
+
+describe('思考强度能力读面（XMON-16 / #499 B3 裁决 A）', () => {
+  it('THINKING_LEVELS = pi ThinkingLevel 七档原样', () => {
+    // 期望值来源 = 上游类型（独立真值，不重算）：
+    // node_modules/.pnpm/@earendil-works+pi-agent-core@0.86.0/…/dist/types.d.ts:267
+    // `export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";`
+    expect(THINKING_LEVELS).toEqual(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
+  });
+
+  it('能力读面封套只认词表内的档位（词表外一律拒）', () => {
+    expect(capabilitiesResponseSchema.parse({ thinkingLevels: ['off', 'max'] })).toEqual({
+      thinkingLevels: ['off', 'max'],
+    });
+    expect(capabilitiesResponseSchema.safeParse({ thinkingLevels: ['ultra'] }).success).toBe(false);
+    expect(capabilitiesResponseSchema.safeParse({ thinkingLevels: [] }).success).toBe(true); // 空集合法（后端可无档位）
   });
 });
 

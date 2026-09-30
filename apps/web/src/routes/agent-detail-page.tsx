@@ -12,8 +12,9 @@
 //
 // 本面明确不做的两件（均因证据/结构缺口，不发明）：
 // · `创建于 …` 状态行——AgentRecord 与 DB agent 表都无 createdAt 列；
-// · 思考强度选择器——全仓唯一档位枚举在 daemon（pi 七档），无 server/web
-//   暴露面，跨缝复制常量等于把 daemon 的私有词表冻进 web；故作只读值行。
+// · 思考强度选择器——B1 已裁「保持只读」；档位词表本身有读面了（XMON-16：
+//   `GET /api/capabilities` 投影 shared THINKING_LEVELS），但读面 ≠ 写面，
+//   只读行按读面呈现档位，选择器与 provider 写面的耦合仍不做。
 //
 // 删除 Agent（XMON-19/B2）：入口在概览页脚，二次确认接 DeleteConfirm 家族。
 // 整个流程 2026-10-01 登录原版实测过一遍（入口 → 确认层 → 取消 → 删除 → 落点），
@@ -31,12 +32,14 @@ import {
   MEMORY_QUOTA_PER_AGENT,
   MEMORY_UI_COPY,
   type PatchAgentBody,
+  THINKING_LEVELS,
 } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   useAgent,
   useApiMutations,
+  useCapabilities,
   useMcpServers,
   useMemories,
   useModelSources,
@@ -44,7 +47,7 @@ import {
   useSecrets,
   useSkills,
 } from '../api/hooks.js';
-import { RUNTIME_LABELS, toModelOptions } from '../api/mappers.js';
+import { RUNTIME_LABELS, toModelOptions, toThinkingLevelDisplay } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
@@ -96,6 +99,7 @@ export function AgentDetailPage() {
   const memoriesQ = useMemories(teamId, agentId, live);
   const providersQ = useProviders(teamId, live);
   const modelSourcesQ = useModelSources(teamId, live);
+  const capabilitiesQ = useCapabilities(live);
   const skillsQ = useSkills(teamId, live);
   const secretsQ = useSecrets(teamId, live);
   const mcpQ = useMcpServers(teamId, live);
@@ -201,6 +205,12 @@ export function AgentDetailPage() {
   };
 
   const defaultSkill = agent.skills[0] ?? null;
+  // 思考强度档位（XMON-16）：live 面词表来自能力读面 `GET /api/capabilities`
+  // （server 投影 shared 单源）；fixture 面与读面未解析时直接取 shared
+  // `THINKING_LEVELS` 本身——那不是第二份真值，就是读面背后的同一个常量。
+  // 存值须落在词表内才呈现，否则落 r3 §4 观测形「默认」。
+  const thinkingLevels = capabilitiesQ.data?.thinkingLevels ?? THINKING_LEVELS;
+  const thinkingLevel = toThinkingLevelDisplay(agent.thinkingLevel, thinkingLevels);
   const runtimeLabel =
     agent.provider == null || agent.provider === 'pi'
       ? t(BUILTIN_RUNTIME_LABEL)
@@ -291,8 +301,10 @@ export function AgentDetailPage() {
               />
             </div>
             <div className="agent-field">
+              {/* 只读值行（B1 裁「保持只读」）：值经能力读面词表解析，不直接
+                  透出存值——引擎没有的档位不呈现（#499 B3 / XMON-16）。 */}
               <span className="agent-field-label">{t('思考强度')}</span>
-              <span className="agent-thinking">{agent.thinkingLevel ?? t('默认')}</span>
+              <span className="agent-thinking">{thinkingLevel ?? t('默认')}</span>
             </div>
             <div className="agent-field">
               <span className="agent-field-label">{t('状态')}</span>
