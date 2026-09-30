@@ -11,7 +11,9 @@ import { expect, type Page, test } from '@playwright/test';
 // 4. 名称不可编辑 —— 行内编辑提交后回显旧值
 // 5. 职责位不渲染 canon 空态「未设置职责」
 // 6. 模型选择器不列选项 —— 打开后菜单为空
-// 7. 思考强度不是只读值行（原版 r3 §4 观测值恒「默认」）
+// 7. 思考强度不是只读值行（原版 r3 §4 观测值恒「默认」）——XMON-18 之后这条同时
+//    看住它的存在：档位交给 agent 编排不等于把这行藏起来
+// 7b. 概览长回了「状态」行（XMON-18 已撤；撤行留空壳同判失败）
 // 8. 记忆空态文案与 shared canon 不一致
 // 9. 权限面工具开关不足 6 个（r3 §4 全 list）
 // 10. MCP 服务器逐个勾选行不渲染
@@ -148,9 +150,14 @@ test('概览：思考强度是只读值行，无模型时显示「默认」', as
   await expect(thinking.locator('button')).toHaveCount(0);
 });
 
-test('概览：状态行显示 active', async ({ page }) => {
+// XMON-18（2026-10-01 裁决）：概览不再摆「状态」行——`agentStatusSchema` 只有
+// 一个取值 active，摆出来零信息量。这条钉的是「别再长回来」，同时钉住撤行没留下
+// 空壳（类名与标签都不得残留）。注意**思考强度那行要留着**（交给 agent 编排 ≠
+// 藏起来），上面那条只读行断言就是它的看门人。
+test('概览：不摆「状态」行', async ({ page }) => {
   const detail = await openDetail(page);
-  await expect(detail.locator('.agent-status')).toContainText('active');
+  expect(await detail.locator('.agent-field-label').allTextContents()).not.toContain('状态');
+  await expect(detail.locator('.agent-status')).toHaveCount(0);
 });
 
 // 文案逐字 = shared `MEMORY_EMPTY_COPY`（records/memory.ts:18；e2e 不跨包取
@@ -225,7 +232,7 @@ test('权限 tab：有密钥时密钥区恰好一行总开关', async ({ page })
   // 副文案 = shared AGENT_PERMISSION_COPY.secrets（原版权限 tab 同一句，品牌
   // 与最低 CLI 版本插值随常量走）；e2e 不跨包取常量，硬写 canon 文案。
   await expect(page.locator('.agent-secret-hint')).toHaveText(
-    '任务执行时将团队密钥以环境变量注入该 Agent 的 shell。所在机器需要 pacman CLI 0.1.28 及以上。',
+    '任务执行时，该 Agent 可在需要密钥的执行步中按需取用团队密钥，每次取用都会留下记录；密钥不预置进 shell 环境。所在机器需要 pacman CLI 0.1.28 及以上。',
   );
 });
 

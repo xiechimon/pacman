@@ -133,8 +133,7 @@
 }
 
 .agent-thinking,
-.agent-runtime,
-.agent-status {
+.agent-runtime {
   color: var(--text-primary);
   font-size: 13px;
 }
