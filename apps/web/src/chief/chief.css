@@ -619,7 +619,7 @@
 
 /* chief-edit-btn a3-pages 收编进 Button ghost/compact（28 高/12 内边距/8
    圆角公共形）；r5 102 实测形的三点差异（描边 token、surface 底、primary
-   字）保留为高特异性 per-face 规则——ghost 档是 card-ghost-border 描边 +
+   字）保留为高特异性 per-face 规则——ghost 档是 --border-default 描边 +
    透明底。 */
 .btn.chief-edit-btn {
   border-color: var(--border-default);
