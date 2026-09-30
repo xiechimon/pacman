@@ -79,8 +79,10 @@ test('chart 组织图：创建 Agent 是子列末位的虚线节点卡', async (
   expect(shape.border).toBe('dashed');
   expect(shape.radius).toBe('8px');
   expect(shape.height).toBe(NODE_H);
+  // 子列末位 = 子节点栈的最后一个（`.team-chart-children > *` 枚举的是括号列
+  // 与节点栈两列本身，恒取不到卡片）
   const lastChild = await page
-    .locator('.team-chart-children > *')
+    .locator('.team-chart-nodes > *')
     .last()
     .getAttribute('class');
   expect(lastChild).toContain('team-chart-create');

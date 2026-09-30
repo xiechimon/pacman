@@ -7,14 +7,17 @@
 // to the account surface — the app's only settings face (#148, 台账 #136
 // team 行: 或通或隐, wired rather than hidden so the r7 12 ink survives).
 // #148: the tablist is a real toggle persisted to the registered
-// client-state key (r2 §1.5 `pacman.teamMembersLayout`); the chart layout
-// swaps the content block for the 暂无成员 empty state and drops the stats
-// bar + 创建 Agent slot (r2 §8.1 17c). The tablist itself stays in both
-// layouts — 17c shows it absent, but a toggle with no way back is a trap
-// (divergence noted, 01 册 §8).
+// client-state key (r2 §1.5 `pacman.teamMembersLayout`); chart drops the
+// stats bar (r2 §8.1 17c) and renders the org chart (#490). The tablist
+// itself stays in both layouts — 17c shows it absent, but a toggle with no
+// way back is a trap (divergence noted, 01 册 §8).
+//
+// #490: chart 此前是把 17c 捕获到的空态当成了唯一状态 —— 那份捕获的团队是
+// 0 个成员，于是 chart 分支写死 暂无成员 字面量，同一份数据下与 grid 自相
+// 矛盾。现在按成员数分流：0 个成员才走空态，否则由 ./team-chart.tsx 出树。
 import { useCallback, useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { useApiMutations, useMembers, useTeams, useTodos } from '../api/hooks.js';
+import { useApiMutations, useChief, useMembers, useTeams, useTodos } from '../api/hooks.js';
 import { mapTeam, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
@@ -24,6 +27,7 @@ import { ChartNetwork, ChevronDown, Grid2x2, PlusSmall } from '../icons/index.js
 import { SecondaryShell } from '../secondary/shell.js';
 import { Avatar } from '../ui/avatar.js';
 import { CreateAgentDialog } from './create-agent-dialog.js';
+import { TeamChart } from './team-chart.js';
 
 /** r2 §1.5 registered client-state key (packages/shared protocol/
  *  client-state.ts): the team view switch, grid | chart; absent = grid. */
@@ -49,6 +53,13 @@ export function TeamPage() {
   const todosQ = useTodos(teamId, live);
   const team = live && membersQ.data ? mapTeam(membersQ.data) : (fixture.team ?? TEAM_R7);
   const teamName = live ? (teamsQ.data?.[0]?.name ?? TEAM_NAME) : TEAM_NAME;
+  // #490: 组织图的根 = 总管绑定的 agent。live 直读 GET chief 的
+  // chief.agent.agentId；fixture 走场景里的 chief.agent.id；未绑定 → null，
+  // 此时 TeamChart 退到首个成员当根。
+  const chiefQ = useChief(teamId, live);
+  const chiefAgentId = live
+    ? (chiefQ.data?.chief.agent?.agentId ?? null)
+    : (fixture.chief?.agent?.id ?? null);
   const [layout, setLayout] = useState<TeamLayout>(() => readStoredLayout(localStorage));
   const switchLayout = useCallback((next: TeamLayout) => {
     setLayout(next);
@@ -136,7 +147,11 @@ export function TeamPage() {
           </button>
         </div>
       ) : (
-        <div className="team-chart-empty">{t('暂无成员')}</div>
+        <TeamChart
+          agents={team.agents}
+          chiefAgentId={chiefAgentId}
+          onCreate={() => setCreateOpen(true)}
+        />
       )}
       <CreateAgentDialog
         open={createOpen}

@@ -11,8 +11,10 @@ import { expect, type Page, test } from '@playwright/test';
 //   baseline (the headless chromium reports the real API 'denied').
 // - team: 设置 routes to the account surface (the app's only settings
 //   face); the grid|chart tablist is a real toggle persisted to
-//   pacman.teamMembersLayout — chart swaps the content block for the
-//   暂无成员 empty state and drops the stats bar + 创建 Agent slot.
+//   pacman.teamMembersLayout — chart drops the stats bar + grid's 创建
+//   Agent slot and renders the org chart instead (#490；此前它恒渲染
+//   暂无成员，与同数据下的 grid 自相矛盾。chart 的完整验收面在
+//   team-org-chart.spec.ts，此处只留 tablist 往返本身).
 
 declare global {
   interface Window {
@@ -96,16 +98,16 @@ test('team: 设置 routes to the account surface', async ({ page }) => {
   await expect(page.locator('.account-card')).toBeVisible();
 });
 
-test('team: chart tab swaps to the 暂无成员 empty state, persists, and returns', async ({
-  page,
-}) => {
+test('team: chart tab swaps to the org chart, persists, and returns', async ({ page }) => {
   await page.goto('/app/team?scenario=12');
   const gridTab = page.locator('.team-layout-tab[aria-label="grid"]');
   const chartTab = page.locator('.team-layout-tab[aria-label="chart"]');
   await expect(page.locator('.team-agent-card').first()).toBeVisible();
 
+  // scenario 12 的团队有 1 个成员 —— chart 渲染组织图，不是 暂无成员
   await chartTab.click();
-  await expect(page.locator('.team-chart-empty')).toHaveText('暂无成员');
+  await expect(page.locator('.team-chart-node')).toHaveCount(1);
+  await expect(page.locator('.team-chart-empty')).toHaveCount(0);
   await expect(page.locator('.team-agent-card')).toHaveCount(0);
   await expect(page.locator('.team-create-agent')).toHaveCount(0);
   await expect(page.locator('.team-members')).toHaveCount(0);
@@ -114,7 +116,7 @@ test('team: chart tab swaps to the 暂无成员 empty state, persists, and retur
 
   // the choice survives a reload (pacman.teamMembersLayout)
   await page.reload();
-  await expect(page.locator('.team-chart-empty')).toBeVisible();
+  await expect(page.locator('.team-chart-node')).toBeVisible();
 
   // and the tablist is the way back — no trap in chart layout
   await page.locator('.team-layout-tab[aria-label="grid"]').click();
