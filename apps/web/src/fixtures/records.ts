@@ -223,6 +223,9 @@ export interface TeamAgentCard {
   isDefault: boolean;
   /** Role line text; null renders the `未设置职责` placeholder (r7 12). */
   role: string | null;
+  /** 服务商标识（r3 §4 样本 `provider:"r3-gw"`；records/agent.ts 同名栏）。
+   *  null/缺省 = 未配置 → chart 节点不渲染服务商徽标。 */
+  provider?: string | null;
 }
 
 /** Team-route content (r7 12): stats-bar count + the agent card grid. */
@@ -683,7 +686,7 @@ export interface ChiefContent {
    *  （avatarUrl 非空覆盖优先，null = dicebear 按 displayName 种子生成）。
    *  absent = 未绑定（或数据未到位），FAB 保持静态字形。live 面由 mapChief
    *  从 GET chief 封套的 agentActor 投影，不新增请求。 */
-  agent?: { displayName: string; avatarUrl: string | null };
+  agent?: { id?: string; displayName: string; avatarUrl: string | null };
   /** Header thread-chip label (`新主题` on a fresh thread). */
   threadTitle: string;
   /** Switcher popover open over the drawer (r5 116). */
