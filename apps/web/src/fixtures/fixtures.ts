@@ -414,6 +414,23 @@ export const boardRepoFilter: FixtureSet = {
   tags: tagFilterRows,
 };
 
+/** #504 溢出探针卡工厂：tagFilterProbe 同式（无标签、单项目，滚动面不
+ *  引入筛选变量）。同列 orderIndex 递增 = sortColumnTodos 序位即数组序。 */
+function overflowProbe(id: string, seqNum: number, title: string): TodoRecord {
+  return { ...probeTodo('todo', r7(13, 40)), id, seqNum, title, spec: title };
+}
+
+/** #504 看板列滚动命名场景（无 capture，board-tags 先例）：待开始 12 卡
+ *  ——732 高视口下列高约 660、卡高约 112 + gap 8，五张即触底，12 张保证
+ *  溢出约一屏。e2e 钉行高不破视口、列头固定、列表自持滚动。 */
+export const boardOverflow: FixtureSet = {
+  ...boardDefault,
+  todos: Array.from({ length: 12 }, (_, i) =>
+    overflowProbe(`overflow-${String(i + 1).padStart(2, '0')}`, 51 + i, `溢出探针 #${i + 1}`),
+  ),
+  now: r7(13, 55),
+};
+
 /** Board with the probe in the given phase (r7 02/22/21/33 …). The dark
  *  board pair (02/02b) shows `9 分钟前` on the confirm card → captured
  *  ~13:35 with phaseAt 13:26. Done-phase boards (35/35d) list #9 ahead of
