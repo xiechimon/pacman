@@ -13,6 +13,7 @@
 
 import {
   agentDetail,
+  agentDetailMemory,
   apiKeysCreated,
   boardChiefProbes,
   boardDarkFresh,
@@ -272,6 +273,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // Agent 详情编辑面（r3 §4）：团队 roster + 该 agent 的全记录 + providers
       // 行集，一套内容同时供 /app/team 与 /app/resources/agents/:id 两个路由。
       'agent-detail': agentDetail,
+      // #499 记忆 tab 的非空变体（命名场景，无 capture）：同 agent 的 3 条
+      // 记忆，钉配额头 / 搜索过滤 / 排序两档。
+      'agent-detail-memory': agentDetailMemory,
       '13': boardDefault,
       // account 语言 dropdown open state (issue #74; shape [设计], r2 §11 Q19)
       '13-lang': { ...boardDefault, ui: { langDropdownOpen: true } },

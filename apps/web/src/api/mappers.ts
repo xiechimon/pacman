@@ -774,7 +774,7 @@ export function mapMcpServers(rows: McpServerRecord[], now: number): McpRow[] {
 // —— chief（总管 drawer / 设置面）———————————————————————————————
 
 /** runtime 显示名（品牌/runtime 名不译，不走 t()）——单源：providers-page
- * runtime tablist 与 chief 压缩模型选择器（toChiefModelOptions）共消费。
+ * runtime tablist 与 chief 压缩模型选择器（toModelOptions）共消费。
  * 词表闭包 = ModelSourceRuntime；Codex 等后续 runtime 扩在此补（spec 11
  * §A1），两消费面自动同更，不分头改。 */
 export const RUNTIME_LABELS: Record<ModelSourceRuntime, string> = {
@@ -795,7 +795,7 @@ export const RUNTIME_LABELS: Record<ModelSourceRuntime, string> = {
  * 共用 provider 命名空间，custom provider 若取名 'claude-code' 且撞同
  * modelId，会被 providers 段 first-wins 遮蔽——刻意取该名的撞名罕见，
  * 规格未约束，不去 invent 隔离前缀。 */
-export function toChiefModelOptions(
+export function toModelOptions(
   providers: ProviderRecord[],
   sources: ModelSource[],
 ): ChiefModelOption[] {

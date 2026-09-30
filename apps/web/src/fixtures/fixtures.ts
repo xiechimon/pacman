@@ -11,6 +11,7 @@ import {
   conversationBranch,
   derivePlaceholderTitle,
   FIXED_TAGS,
+  type MemoryRecord,
   type ModelSource,
   maskApiKey,
   PLACEHOLDER_TITLE_FALLBACK,
@@ -1465,16 +1466,71 @@ const AGENT_R3_BUILDER: AgentRecord = {
 
 /** Agent 详情 + 创建弹窗模型位的数据集：团队页 roster 与详情页记录同场景，
  *  团队页卡点进详情后 `?scenario=agent-detail` 随行（#121 Link 律）不会丢。
- *  resources 在 RESOURCES 之上补 providers（模型选择器候选源）与空 memories
- *  （记忆 tab 走 shared canon 空态）。 */
+ *  resources 在 RESOURCES 之上补 providers（模型选择器候选源）；memories 的
+ *  两形（空 / 非空）由下面两个导出件分持。 */
+const AGENT_DETAIL_RESOURCES: ResourcesContent = {
+  ...RESOURCES,
+  providers: [AGENT_PROVIDER_R3GW],
+  memories: [],
+};
+
 export const agentDetail: FixtureSet = {
   ...teamGrid,
   agents: [AGENT_R3_BUILDER],
-  resources: {
-    ...RESOURCES,
-    providers: [AGENT_PROVIDER_R3GW],
-    memories: [],
+  resources: AGENT_DETAIL_RESOURCES,
+};
+
+/** #499 named scenario（无 capture，agentDetail 先例）：记忆 tab 的非空语料。
+ *  r5 §6 捕获（截图 134）只有 1 条记忆（`记忆 · 1 / 100`），多行排序在那份
+ *  语料里长不出来；这里给 r3-builder 合成 3 条。三处刻意安排：
+ *  · 列序（旧 → 新）与标题序不同——`默认`（到达序）与 `添加时间`（新 → 旧）
+ *    两档才分得开；
+ *  · 只有第 2 条的 content 含 `probe`、只有第 3 条的 title 含 `PROBE`——搜索
+ *    的「命中 content」与「ASCII 大小写不敏感」各钉一条；
+ *  · `添加时间` 档下两档的先后正好对调。
+ *  供 ./e2e/agent-detail.spec.ts 钉配额头、搜索过滤与排序。 */
+const AGENT_MEMORY_ROWS: MemoryRecord[] = [
+  {
+    id: 'mem-r5-1',
+    agentId: R3_BUILDER.id,
+    teamId: TEAM_ID,
+    title: '构建分支的命名规律',
+    content: '构建分支固定 agent/<运行 id>，不再挂日期后缀。',
+    projectId: PROJECT_ID,
+    sourceTodoId: null,
+    sourceBuildId: null,
+    createdAt: boardDefault.now - 180 * 60_000,
+    updatedAt: boardDefault.now - 180 * 60_000,
   },
+  {
+    id: 'mem-r5-2',
+    agentId: R3_BUILDER.id,
+    teamId: TEAM_ID,
+    title: '验收只看真机跑通',
+    content: '本地绿不算数，要在 probe 机器上真跑一遍再报完成。',
+    projectId: PROJECT_ID,
+    sourceTodoId: null,
+    sourceBuildId: null,
+    createdAt: boardDefault.now - 120 * 60_000,
+    updatedAt: boardDefault.now - 120 * 60_000,
+  },
+  {
+    id: 'mem-r5-3',
+    agentId: R3_BUILDER.id,
+    teamId: TEAM_ID,
+    title: 'PROBE 探针的历史轮次',
+    content: 'r3、r5b、r6、r7 每轮各留一个 commit 收尾。',
+    projectId: PROJECT_ID,
+    sourceTodoId: null,
+    sourceBuildId: null,
+    createdAt: boardDefault.now - 60 * 60_000,
+    updatedAt: boardDefault.now - 60 * 60_000,
+  },
+];
+
+export const agentDetailMemory: FixtureSet = {
+  ...agentDetail,
+  resources: { ...AGENT_DETAIL_RESOURCES, memories: AGENT_MEMORY_ROWS },
 };
 
 /** #444 named scenario（无 capture，notify-banner 先例）：绑定 Agent 的
