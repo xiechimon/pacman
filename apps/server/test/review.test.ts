@@ -659,7 +659,10 @@ describe('审核步材料随关口分叉（#511）', () => {
     expect(res.status).toBe(202);
     const prompt = reviewPromptOf(w, buildId);
     expect(prompt).toContain(PLAN_V1);
-    expect(prompt).toContain('无改动');
+    // 托管项目 = 有只读检出 → 空态不说「本轮无改动」（变更面算不出 ≠ 没改），
+    // 改指检出自行核对
+    expect(prompt).toContain('变更面为空');
+    expect(prompt).toContain('检出');
     expect(prompt).not.toContain(CONV_CHANGE_FILE);
     expect(parseReviewPromptMeta(prompt)?.gate).toBe('review');
   });

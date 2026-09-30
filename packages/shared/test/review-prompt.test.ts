@@ -70,7 +70,7 @@ describe('buildReviewStepPrompt 关口分叉（#511）', () => {
     expect(parseMeta(prompt).gate).toBe('review');
   });
 
-  test('失败方式 3：审核关口变更面为空 → 材料如实写无改动，不臆造文件', () => {
+  test('失败方式 3：审核关口变更面为空 → 材料如实交代空态，不臆造文件', () => {
     const prompt = buildReviewStepPrompt({
       agentId: 'a1',
       gate: 'review',
@@ -78,10 +78,24 @@ describe('buildReviewStepPrompt 关口分叉（#511）', () => {
       changes: [],
     });
     expect(prompt).toContain('## 本轮变更');
+    expect(prompt).toContain('变更面为空');
     expect(prompt).toContain('无改动');
     expect(prompt).not.toContain('src/parse.ts');
     // 空变更面仍是审核关口材料（有检出可读），不是退化成方案审阅
     expect(parseMeta(prompt).gate).toBe('review');
+  });
+
+  test('失败方式 3b：空变更面 + 有检出 → 材料指向检出自行核对（不把空面说成「没改东西」）', () => {
+    const prompt = buildReviewStepPrompt({
+      agentId: 'a1',
+      gate: 'review',
+      planText: PLAN,
+      changes: [],
+      checkout: true,
+    });
+    expect(prompt).toContain('变更面为空');
+    expect(prompt).toContain('检出');
+    expect(prompt).not.toContain('本轮无改动');
   });
 
   test('失败方式 4：审核关口 + 有检出 → 材料含只读与验证纪律（不得提交/推送 + 命令与输出入结论）', () => {

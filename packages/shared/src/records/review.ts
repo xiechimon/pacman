@@ -137,7 +137,7 @@ export function buildReviewStepPrompt(args: {
     args.planText,
   ];
   if (args.gate === 'review') {
-    sections.push('', renderChangesSection(args.changes ?? []));
+    sections.push('', renderChangesSection(args.changes ?? [], args.checkout === true));
     if (args.checkout === true) sections.push('', CHECKOUT_SECTION);
   }
   return [...sections, focusNote].join('\n');
@@ -152,13 +152,17 @@ const CHECKOUT_SECTION = [
   '结论里请带上你实际跑过的命令与输出（让人能分辨「验过了」和「只是读了读」），并优先引用具体文件与行。',
 ].join('\n');
 
-/** 变更段渲染（文件级 unified diff；与 docpane 变更面同一数据形态）。 */
-function renderChangesSection(files: readonly DocumentDiffFile[]): string {
+/** 变更段渲染（文件级 unified diff；与 docpane 变更面同一数据形态）。
+ * 空态按有无检出分叉：变更面只对托管项目可算（服务端无本地库就没得 diff），
+ * 有检出时审核者能自己看出改了什么——说成「无改动」会误导它给出「没改东西，
+ * 通过」的结论。 */
+function renderChangesSection(files: readonly DocumentDiffFile[], checkout: boolean): string {
   if (files.length === 0) {
     return [
       '## 本轮变更',
-      '变更面为空——本轮无改动（会话分支与默认分支无差异，或本项目形态下服务端不计算变更面）。',
-      '请如实说明这一点，不要臆造代码层面的结论。',
+      checkout
+        ? '变更面为空——服务端此刻算不出差异（会话分支与默认分支无差异，或本项目形态下服务端不计算变更面）。请在检出里自行核对本轮实际改了什么；若确实无改动，如实说明，不要臆造代码层面的结论。'
+        : '变更面为空——本轮无改动。请如实说明这一点，不要臆造代码层面的结论。',
     ].join('\n');
   }
   const additions = files.reduce((n, f) => n + f.additions, 0);
