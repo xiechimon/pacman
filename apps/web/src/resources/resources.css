@@ -86,12 +86,17 @@
   text-decoration: none;
 }
 
+/* #486：面板体自持滚动。本应用是固定高度外壳（app.css 的 body
+   overflow:hidden），滚动只能落在面板体上——同 .secondary-body 形。
+   原 overflow:hidden 把 flex item 的自动最小高度归零，列会老实收缩到剩余
+   高度（732 视口 → 688）而内容溢出即被裁，超视口部分任何手势都到不了。 */
 .res-col {
   flex: 1;
   width: 768px;
   margin: 0 auto;
   padding-top: 16px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .res-fab {

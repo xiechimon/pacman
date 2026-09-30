@@ -78,3 +78,54 @@ test('live 列表消费 GET /api/skills（server 换源后 wire 形状不变）'
   expect(hits.length).toBeGreaterThan(0);
   expect(hits[0]).toContain('teamId=team-1');
 });
+
+/** 回归 #486：资源页的面板体必须自持滚动——本应用是固定高度外壳（body
+ *  overflow:hidden），每个面板自己拥有滚动（.secondary-body 同形）。
+ *
+ * 钉住的失败方式：
+ *  ① 面板无滚动容器（overflow:hidden 裁掉溢出）→ 滚轮后末行仍在视口外；
+ *  ② 滚动被上移到 document/外壳 → window.scrollY 非 0 或 topbar 被推走；
+ *  ③ 修法破列几何 → 768 列宽 / topbar 44 高漂移；
+ *  ④ 前置守卫：若内容本就不高于容器，本测会假绿——先断言确有溢出。
+ *
+ * 手势用真滚轮而非 scrollTop 赋值：overflow:hidden 下 scrollTop 赋值照样
+ * 生效（程序化滚动不受 hidden 限制），只有滚轮能分辨「能滚」与「被裁」。 */
+test('回归 #486：技能列表高于视口时末行可由滚轮到达（.res-col 自持滚动）', async ({
+  page,
+}) => {
+  await stubBoot(page);
+  // 20 行 × 80px（64 行盒 + 16 上外边距）+ 搜索行 → 逾 1600px，稳超 688 容器
+  const rows = Array.from({ length: 20 }, (_, i) => ({
+    id: `skill-${i}`,
+    teamId: 'team-1',
+    name: `skill-${String(i).padStart(2, '0')}`,
+    description: `回归行 ${i}`,
+  }));
+  await page.route('**/api/skills*', (route) => route.fulfill({ json: rows }));
+  await page.goto(SKILLS);
+  await expect(page.locator('.res-rowcard')).toHaveCount(rows.length);
+
+  const col = page.locator('.res-col');
+  const widthBefore = (await col.boundingBox())?.width ?? 0;
+  expect(widthBefore).toBe(768);
+
+  const overflow = await col.evaluate((el) => el.scrollHeight - el.clientHeight);
+  expect(overflow).toBeGreaterThan(0);
+
+  await page.mouse.move(720, 400);
+  for (let i = 0; i < 12; i++) await page.mouse.wheel(0, 400);
+
+  const last = page.locator('.res-rowcard').last();
+  await expect(last).toBeInViewport();
+  const box = await last.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box?.y).toBeGreaterThanOrEqual(0);
+  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeLessThanOrEqual(733);
+
+  // 几何未漂移 + 滚动没跑到外层
+  expect((await col.boundingBox())?.width).toBe(widthBefore);
+  const topbar = await page.locator('.res-topbar').boundingBox();
+  expect(topbar?.y).toBe(0);
+  expect(topbar?.height).toBe(44);
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+});
