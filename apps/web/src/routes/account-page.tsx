@@ -12,6 +12,10 @@
 // #114 banner (shared useNotificationPermission). Fixture mode freezes the
 // switch granted: r7 13 shows it on and the headless chromium
 // reports the real API as 'denied'.
+// B2 · secondary 面（XMON-20）：页内三处控件（语言触发器、语言选项行、推送通知
+// 开关）全部走 components/ui 件——前两者 Button ghost 档，开关走 Switch。类名
+// alias 原样留作 e2e 定位锚（#411 别名优先），per-face 几何仍住 secondary.css。
+//
 // #74: the 语言 row is live — it reads/writes the workspace locale
 // (zh-CN authoritative + en, 01 S6) through the i18n provider and persists
 // to the r2 §1.5 dual keys. The dropdown open state is [设计]: the official
@@ -23,6 +27,8 @@ import { useSearchParams } from 'react-router';
 import { useSession } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { useNotificationPermission } from '../board/notify-banner.js';
+import { Button } from '../components/ui/button.js';
+import { Switch } from '../components/ui/switch.js';
 import { USER_MAIL, USER_NAME } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { LOCALE_NAMES, LOCALES } from '../i18n/locale.js';
@@ -69,25 +75,30 @@ export function AccountPage() {
         <div className="account-row account-row--tall">
           <span className="account-label">{t('语言')}</span>
           <span className="account-select-wrap">
-            <button
-              type="button"
-              className="account-select"
+            {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Button，per-face
+                几何仍住 secondary.css 的 .account-select。差额并项——散写形字重
+                400（底座 font-medium）；chevron 走 width/height 属性 12px，底座
+                的 [&_svg]:size-4 会盖过属性，故就地顶回同一链的 size-3。
+                aria-haspopup 在位 = 底座的 active:translate-y-px 本就不触发。 */}
+            <Button
+              variant="ghost"
+              className="account-select font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3"
               aria-haspopup="listbox"
               aria-expanded={langOpen}
               onClick={() => setLangOpen((value) => !value)}
             >
               {LOCALE_NAMES[locale]}
               <ChevronDown width={12} height={12} />
-            </button>
+            </Button>
             {langOpen && (
               <>
                 <ClickCatcher onClose={() => setLangOpen(false)} />
                 <div className="lang-dropdown" role="listbox" aria-label={t('语言')}>
                   {LOCALES.map((code) => (
-                    <button
+                    <Button
                       key={code}
-                      type="button"
-                      className="lang-dropdown-row"
+                      variant="ghost"
+                      className="lang-dropdown-row justify-start gap-0 text-left font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5"
                       role="option"
                       aria-selected={code === locale}
                       onClick={() => {
@@ -101,7 +112,7 @@ export function AccountPage() {
                           <Check width={14} height={14} />
                         </span>
                       )}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </>
@@ -110,21 +121,22 @@ export function AccountPage() {
         </div>
         <div className="account-row">
           <span className="account-label">{t('推送通知')}</span>
-          <button
-            type="button"
+          {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Switch（role/aria-checked
+              由底座透出，per-face 几何仍住 secondary.css 的 .account-switch*）。
+              差额并项走 thumbClassName——底座默认的 checked 位移会与域 css 的
+              left/right 定位叠加成双重位移（switch.tsx 记的那处仓内偏离口）。 */}
+          <Switch
             className="account-switch"
-            role="switch"
-            aria-checked={notifyOn}
+            thumbClassName="account-switch-knob group-data-[size=default]/switch:data-checked:translate-x-0"
             aria-label={t('推送通知')}
-            onClick={() => {
+            checked={notifyOn}
+            onCheckedChange={(checked) => {
               // one-way affordance: the OS permission cannot be revoked from
               // the page, so a granted switch has no click behavior; an off
               // switch drives the #114 banner's requestPermission() path.
-              if (!notifyOn) request();
+              if (checked) request();
             }}
-          >
-            <span className="account-switch-knob" />
-          </button>
+          />
         </div>
       </div>
     </SecondaryShell>

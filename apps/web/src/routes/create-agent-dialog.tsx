@@ -9,6 +9,10 @@
 // re-adjudicated 移除 (the account-swap twin stays with 档 3, out of this
 // ticket).
 //
+// B2 · secondary 面（XMON-20）：弹窗内两件控件（提交钮、名称输入）全走
+// components/ui 件；几何仍由 ui/dialog.css 的 .dlg-agent-create / .dlg-form-input
+// 承载（域 css unlayered 压 utility），类名 alias 原样保留（#411 别名优先）。
+//
 // #485 模型槽两态（原版两处实测：r2 §8.1 capture 20 = 尚未配置服务商时的
 // 告警行 + `配置服务商` 外链；r3 §2 = 服务商配好后同一弹窗的「模型」下拉）：
 // 候选非空 → 弹窗内直接选 provider/modelId，POST body 带上，全程不跳页；
@@ -18,12 +22,13 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
+import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { PROVIDERS_HREF } from '../resources/providers-page.js';
-import { Input } from '../ui/input.js';
 import { AgentModelSelect } from './agent-model-select.js';
 
 /** POST agents body 的创建面字段（reason = 词表最小形 + #485 的模型槽）。 */
@@ -79,16 +84,20 @@ export function CreateAgentDialog({
       title={t('创建 agent')}
       open={open}
       onClose={onClose}
+      // B2 · secondary 面（XMON-20）：底座 = components/ui/Button brand 档，与
+      // ui/dialog.css 的 .dlg-agent-create 同形（--card-button 实底 + 白字、
+      // 禁用换 --primary-disabled）；per-face 几何仍住 dialog.css（域 css
+      // unlayered 压 utility）。差额并项——散写形字重 400、无按下位移。
       footer={
         <div className="dlg-form-foot">
-          <button
-            type="button"
-            className="dlg-agent-create"
+          <Button
+            variant="brand"
+            className="dlg-agent-create px-0 font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
             disabled={name.trim() === ''}
             onClick={submit}
           >
             {t('创建')}
-          </button>
+          </Button>
         </div>
       }
     >
@@ -104,7 +113,7 @@ export function CreateAgentDialog({
         </label>
         <Input
           id="dlg-agent-name"
-          className="dlg-form-input"
+          className="dlg-form-input placeholder:text-current/50"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder={t('输入 Agent 名称')}

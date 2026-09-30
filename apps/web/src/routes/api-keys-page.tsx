@@ -6,16 +6,19 @@
 // plus the one-time plaintext block carrying the 02 §8 canon
 // 「请立即复制密钥，它仅显示一次。」. Row and one-time block shapes are
 // [推断] (no capture: r2 §9-12, r3 §6 图失); mask and copy are observed.
+// B2 · secondary 面（XMON-20）：页内按钮全走 components/ui/Button——空态新建 =
+// brand 档、一次性明文块的复制 = brand/sm 档；类名 alias 原样保留（#411 别名
+// 优先），per-face 几何仍住 secondary.css。
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useApiKeys, useApiMutations, useTodos } from '../api/hooks.js';
 import { mapApiKeys, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { Button } from '../components/ui/button.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, Key } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
-import { Button } from '../ui/button.js';
 import { ApiKeyCreateDialog } from './api-key-create-dialog.js';
 
 export function ApiKeysPage() {
@@ -56,13 +59,16 @@ export function ApiKeysPage() {
             {t('API 密钥用于从命令行接入机器，也让 MCP 客户端能访问你的工作台。')}
           </p>
           <div className="keys-empty-actions">
-            <button
-              type="button"
-              className="keys-create"
+            {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Button brand；
+                per-face 几何（30 高 / 0 20 内垫）仍住 secondary.css 的
+                .keys-create。差额并项——散写形字重 400、无按下位移。 */}
+            <Button
+              variant="brand"
+              className="keys-create font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
               onClick={live ? () => setCreateOpen(true) : undefined}
             >
               {t('新建密钥')}
-            </button>
+            </Button>
             {/* 「查看文档」钮全除（#307 wontfix）：local-first 自托管无文档站
                 可链（#149 schedules 同律）——隐去，spec 08 档 4 出账。 */}
           </div>
@@ -74,12 +80,14 @@ export function ApiKeysPage() {
             .map((key) => (
               <div key={`once-${key.id}`} className="keys-once">
                 <code className="keys-once-value">{key.plaintext}</code>
-                {/* a3-pages 收编：Button primary/compact；12px 字是 per-face
-                    差异（一次性块行内形，见 secondary.css）。 */}
+                {/* a3-pages 收编 → B2 · secondary 面（XMON-20）：Button brand/sm，per-face
+                    值（28 高 / 0 12 内垫 / 12px 字 / 字重 400）以工具类钉回，
+                    border-0 压掉底座 1px 透明边（bg-clip-padding 会把实底下裁
+                    padding box，钮面四周透出 1px 缝）。 */}
                 <Button
-                  variant="primary"
-                  size="compact"
-                  className="keys-once-copy"
+                  variant="brand"
+                  size="sm"
+                  className="keys-once-copy border-0 px-3 text-xs font-normal leading-[inherit] cursor-pointer active:not-aria-[haspopup]:translate-y-0"
                   onClick={
                     live
                       ? () => void navigator.clipboard?.writeText(key.plaintext ?? '')
