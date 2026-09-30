@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 import { BRAND } from '../brand.js';
-import { recordId } from './common.js';
+import { phaseSchema, recordId } from './common.js';
 import { SECRET_MIN_CLI_VERSION } from './secret.js';
 
 /** 观测值仅 "active"；其余状态未采到，词表不收窄外值 [推断]。 */
@@ -84,6 +84,45 @@ export const createAgentBodySchema = z.object({
   mcpServers: z.array(z.string()).optional(),
 });
 export type CreateAgentBody = z.infer<typeof createAgentBodySchema>;
+
+/** Agent 详情概览「进行中」段的载荷行（`GET /api/teams/{id}/agents/{aid}/tasks`）。
+ *
+ * 形状来源 = 参考产品 web 包里的消费组件（Expo web，`/app/_expo/static/js/web/
+ * entry-*.js`，2026-09-30 直读；该端点的响应体本身仍未采），逐字读出的渲染面：
+ *   api(`/api/teams/${teamId}/agents/${agentId}/tasks`) → 整包直接进 state
+ *   <SectionList label={t('agent_modal.in_progress')} count={rows.length}
+ *                empty={t('agent_modal.no_active_tasks')}>
+ *     rows.map(r => <TaskRow task={r} key={r.buildId} onOpen={() => open(r.todo.id)} />)
+ *   TaskRow（`kind === 'build'` 支）：`#${todo.seqNum}` · `todo.title`（单行截断）
+ *     · PhasePill(`state === 'waiting' ? 'queued' : todo.phase`) · 右箭头。
+ *   同组件另一支是墓碑行（被删条目：`label` 删除线 + 「已删除」），本仓无生产者。
+ *
+ * 本 schema 只收消费面真正读到的字段（01 §6：观测不到的字段不收）。
+ *
+ * 列表语义 = 「该 Agent 名下正在跑的 build」，**不是**「指派给它的 todo」——
+ * 实测反证：参考账号 3 条 `phase=review` 且 assignment 指向该 Agent 的 todo，
+ * 该端点恒返回 `[]`（2026-09-30）。同包内 `groupProgress` 的 In progress 判据
+ * 亦为 `queued || BUSY_PHASES`（见 shared IN_PROGRESS_PHASES）。
+ */
+export const agentTaskSchema = z.object({
+  /** 行种类。观测到的字面量只有 'build'（墓碑行的字面量未采 [推断]）。 */
+  kind: z.literal('build'),
+  /** build 自身状态。'waiting' = 已建、尚无机器领取，消费面落 PhasePill 时
+   *  映射为 `queued`。非等待态的 token 未采 [推断]——本仓发 null，消费面按
+   *  `todo.phase` 渲染，渲染结果与原件同（跑起来的 build，其 todo.phase 本身
+   *  就是 planning/building）。 */
+  state: z.literal('waiting').nullable(),
+  /** 行的 key（原件 `key={r.buildId}`）；= todo.latestBuildId。 */
+  buildId: recordId,
+  /** 行内被渲染的字段（含点击落点 id）。 */
+  todo: z.object({
+    id: recordId,
+    seqNum: z.number().int(),
+    title: z.string(),
+    phase: phaseSchema,
+  }),
+});
+export type AgentTask = z.infer<typeof agentTaskSchema>;
 
 /** PATCH /api/teams/{id}/agents/{aid} body [推断]（REST 同名，02 §6.1 词表内；
  * 覆盖面 = 概览/权限 tab 编辑 + per-Agent mcpServers[] 授权勾选，02 §7.1）。 */
