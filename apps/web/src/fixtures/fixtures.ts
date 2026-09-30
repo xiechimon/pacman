@@ -2363,6 +2363,67 @@ export const planOpenReview: FixtureSet = {
   },
 };
 
+/** #469 named scenario (no capture, planOpenReview precedent): the chat
+ *  surface that exercises the two block-rendering paths — an agent reply
+ *  carrying raw block markdown (heading / ordered+unordered nested lists /
+ *  code fence / inline code) and a tool group whose bash stdout renders as
+ *  left-aligned mono blocks instead of flattening into `.chat-note`. The
+ *  robot message holds `markdown` (parsed at render time by
+ *  chat-markdown.tsx), so this fixture drives the same parse+render path
+ *  as the live mapper. */
+const MD_SAMPLE = [
+  '## 检查结果',
+  '',
+  '仓库根目录内容如下，运行 `ls -la` 的输出已折叠在上方工具行。',
+  '',
+  '1. 第一步：确认目录',
+  '   - 子项 A',
+  '   - 子项 B',
+  '2. 第二步：打印问候',
+  '',
+  '- 顶层要点',
+  '  - 嵌套要点',
+  '',
+  '```sh',
+  'total 16',
+  'drwxr-xr-x  4 xmon  staff  128 Sep 30 10:00 .',
+  '```',
+].join('\n');
+
+const MD_TOOL_PILLS = ['bash ls -la', 'bash echo "hello from pacman"'];
+const MD_TOOL_OUTPUTS = [
+  'total 16\ndrwxr-xr-x@ 4 xmon  staff  128 Sep 30 10:00 .\ndrwxr-xr-x@ 6 xmon  staff  192 Sep 30 09:00 ..',
+  'hello from pacman',
+];
+
+const MD_TOOLOUT_TRANSCRIPT: TranscriptItem[] = [
+  { kind: 'run', at: '13:35', machine: 'xmonsMac-3574' },
+  {
+    kind: 'user',
+    text: '列出仓库根目录并打印一句问候',
+    seq: 9,
+    title: '在 README.md 末尾追加一行「r7 rebaseline probe」',
+  },
+  {
+    kind: 'tools',
+    seconds: 19,
+    expanded: false,
+    pills: MD_TOOL_PILLS,
+    outputs: MD_TOOL_OUTPUTS,
+  },
+  { kind: 'robot', markdown: MD_SAMPLE, footer: { seconds: 12 } },
+];
+
+export const mdToolout: FixtureSet = {
+  todos: [probeTodo('review', r7(13, 37))],
+  now: r7(13, 40),
+  detail: {
+    transcript: MD_TOOLOUT_TRANSCRIPT,
+    doc: DOC_V2,
+    changes: probeChanges(false),
+  },
+};
+
 /** r8 63: version dropdown open on the v2 surface. */
 export const versionMenuV2: FixtureSet = withDetail(detailV2(r8(23, 54)), {
   versionMenu: 'versions',

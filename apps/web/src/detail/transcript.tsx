@@ -24,6 +24,7 @@ import {
   Restore,
   Terminal,
 } from '../icons/index.js';
+import { ChatMarkdown } from './chat-markdown.js';
 import { Segments } from './segments.js';
 
 interface TranscriptProps {
@@ -191,10 +192,17 @@ function Row({ item, t, onOpenPlan }: { item: TranscriptItem; t: TFunc; onOpenPl
             <img src="/avatar-robot-1.svg" alt="" />
           </span>
           <span className="chat-text">
-            {item.paragraphs.map((raw, i) => (
-              // fixture order is stable; paragraphs carry no ids
-              <Para key={i} para={Array.isArray(raw) ? { segments: raw } : raw} />
-            ))}
+            {item.markdown != null ? (
+              // #469: block markdown reply — parsed + rendered at render
+              // time (headings / nested lists / code fences); inline code
+              // chips stay `.chat-code`.
+              <ChatMarkdown text={item.markdown} />
+            ) : (
+              (item.paragraphs ?? []).map((raw, i) => (
+                // fixture order is stable; paragraphs carry no ids
+                <Para key={i} para={Array.isArray(raw) ? { segments: raw } : raw} />
+              ))
+            )}
           </span>
           {item.footer != null && (
             <ActionRow
@@ -366,12 +374,23 @@ function ToolsRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'tools' }
       {expanded && (
         <>
           <div className="chat-tools">
-            {item.pills.map((pill) => (
-              <div key={pill} className="chat-tool-pill">
-                <Terminal width={12} height={12} />
-                <span className="chat-tool-label">{pill}</span>
-              </div>
-            ))}
+            {item.pills.map((pill, i) => {
+              // #469: the call's stdout/stderr rides index-aligned in
+              // `outputs`; render it as its own left-aligned mono block
+              // under the pill instead of flattening into `.chat-note`.
+              const output = item.outputs?.[i];
+              return (
+                <div key={`${i}-${pill}`} className="chat-tool">
+                  <div className="chat-tool-pill">
+                    <Terminal width={12} height={12} />
+                    <span className="chat-tool-label">{pill}</span>
+                  </div>
+                  {output != null && output !== '' && (
+                    <pre className="chat-tool-output">{output}</pre>
+                  )}
+                </div>
+              );
+            })}
           </div>
           <button type="button" className="chat-collapse" onClick={() => setExpanded(false)}>
             {t('收起')}
