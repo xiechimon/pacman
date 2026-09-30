@@ -53,10 +53,15 @@ function Button({
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   // type 默认 button：防表单内隐式 submit（仓内 ui/button 同律）
+  // data-variant / data-size 是 shadcn Button 的既有可观测契约（#411 别名
+  // 优先：e2e 材质钉按 data-variant 断言，如 board-filter 顶栏一钮）——适配
+  // 层换 Base UI 底座时须原样透出，丢属性 = 对外 API 不等价。
   return (
     <ButtonPrimitive
       type={type}
       data-slot="button"
+      data-variant={variant}
+      data-size={size}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
