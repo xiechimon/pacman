@@ -226,7 +226,7 @@ test('权限 tab：有密钥时密钥区恰好一行总开关', async ({ page })
   // 副文案 = shared AGENT_PERMISSION_COPY.secrets（原版权限 tab 同一句，品牌
   // 与最低 CLI 版本插值随常量走）；e2e 不跨包取常量，硬写 canon 文案。
   await expect(page.locator('.agent-secret-hint')).toHaveText(
-    '任务执行时将团队密钥以环境变量注入该 Agent 的 shell。所在机器需要 pacman CLI 0.1.28 及以上。',
+    '任务执行时，该 Agent 可在需要密钥的执行步中按需取用团队密钥，每次取用都会留下记录；密钥不预置进 shell 环境。所在机器需要 pacman CLI 0.1.28 及以上。',
   );
 });
 
