@@ -25,6 +25,7 @@
 // the changes/diff file stack scrolls in .doc-files under the pinned head.
 
 import type { DiffFileContent } from '@pacman/shared';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { useBuildChangeFile } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
@@ -81,6 +82,10 @@ interface DocPaneProps {
    *  null）；plan-diff 面不经此柄（#244：全文走 DiffFile.fullContent 槽，
    *  DiffFileBlock 收 null）。 */
   buildId?: string | null;
+  /** #476（#473 决策候选 A）：plan 空态的任务元信息块（TaskMetaBlock）——
+   *  给了就顶替居中「暂无方案」占位；只在 plan 面 doc==null 分支消费，
+   *  不与文档面并存。fixture 面缺省（无数据源），占位字节不变。 */
+  emptyMeta?: ReactNode;
 }
 
 /** 全文视图状态（#225，镜像 #202 deriveFileView 五态）：hidden = hunk 面；
@@ -336,6 +341,7 @@ export function DocPane({
   planDiff,
   onToggleExpand,
   buildId,
+  emptyMeta,
 }: DocPaneProps) {
   const { t } = useI18n();
   // 方案▾/变更▾ 型选钮（#149 接线，#366 升级为右 pane 视图选择器）：
@@ -435,20 +441,20 @@ export function DocPane({
         )}
       </header>
       <div className="doc-pane-body">
-        {doc == null ? (
-          <div className="doc-empty">{t('暂无方案')}</div>
-        ) : (
-          doc.map((block, i) => (
-            <p
-              // fixture order is stable; blocks carry no ids
-              key={i}
-              className={`doc-block doc-block--${block.kind}`}
-            >
-              {block.kind === 'bullet' ? '• ' : ''}
-              <Segments segments={block.segments} codeClassName="doc-code" />
-            </p>
-          ))
-        )}
+        {doc == null
+          ? // #476：live 空态由任务元信息块承接（顶对齐、随 doc-pane-body
+            // 既有滚动）；fixture 面 emptyMeta 缺省 → 居中占位原样。
+            (emptyMeta ?? <div className="doc-empty">{t('暂无方案')}</div>)
+          : doc.map((block, i) => (
+              <p
+                // fixture order is stable; blocks carry no ids
+                key={i}
+                className={`doc-block doc-block--${block.kind}`}
+              >
+                {block.kind === 'bullet' ? '• ' : ''}
+                <Segments segments={block.segments} codeClassName="doc-code" />
+              </p>
+            ))}
       </div>
     </section>
   );

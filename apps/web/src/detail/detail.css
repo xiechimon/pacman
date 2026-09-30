@@ -407,6 +407,62 @@
   color: var(--text-dim);
 }
 
+/* ---- 任务元信息块（#476，#473 决策候选 A + C 尾注）：live 方案空态顶替
+   居中「暂无方案」。几何 = 决策记录：顶对齐走 doc-pane-body 的 16px
+   padding-top（无 absolute、无自带 overflow——不引入新滚动区）；行距 =
+   中列 chat-row 的 18px 律；长串（conv 分支 uuid、issue 标题）在 488px
+   列内 anywhere 折行。label 列定宽对齐；墨色比 dlg-token-row 安静半档
+   （label tertiary 同律，value secondary 而非 primary——meta 是衬底信息，
+   不与文档正文同腔）。 ---- */
+.task-meta-row {
+  display: flex;
+  align-items: baseline;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.task-meta-row + .task-meta-row {
+  margin-top: 18px;
+}
+
+.task-meta-label {
+  flex: none;
+  width: 68px;
+  color: var(--text-tertiary);
+}
+
+.task-meta-value {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.task-meta-code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.task-meta-link {
+  color: var(--chip-plan-fg);
+  text-decoration: none;
+}
+
+.task-meta-link:hover {
+  text-decoration: underline;
+}
+
+.task-meta-code + .task-meta-link {
+  margin-left: 8px;
+}
+
+.task-meta-foot {
+  margin-top: 24px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+}
+
 .doc-block {
   font-size: 15px;
   line-height: 24px;

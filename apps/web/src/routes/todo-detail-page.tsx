@@ -14,7 +14,7 @@
 // （transcript 实时流/步进度/plan 版本/变更 diff/overlay 三件），关口动作
 // 接真端点（开始/确认/驳回/合并/重跑/删除）；fixture 分支（含 chain 脚本）
 // 保持 #56–#75 行为字节不变。
-import type { Assignment } from '@pacman/shared';
+import { type Assignment, conversationBranch, parseGithubIssueSourceRef } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
@@ -25,6 +25,7 @@ import {
   useBuildChanges,
   useBuildUsage,
   useDocumentDiff,
+  useGithubIssueEcho,
   useMachines,
   useMembers,
   useMessages,
@@ -65,6 +66,7 @@ import { RightPane } from '../detail/right-pane.js';
 import { SourceIssueLine } from '../detail/source-issue.js';
 import { SpecBlock } from '../detail/spec-block.js';
 import { StopConfirmDialog } from '../detail/stop-confirm-dialog.js';
+import { TaskMetaBlock, type TaskMetaFields } from '../detail/task-meta-block.js';
 import { Transcript } from '../detail/transcript.js';
 import { UserMenu } from '../detail/user-menu.js';
 import type {
@@ -294,10 +296,15 @@ export function TodoDetailPage() {
     setStopping(false);
   }, [buildId]);
 
+  // 执行机器名（#476 提为单源：transcript stamp 与 meta 块机器行同值）：
+  // steps.machineId × machines 读面；未派发 = null。
+  const machineName = useMemo(
+    () => machinesQ.data?.find((m) => steps.some((s) => s.machineId === m.id))?.name ?? null,
+    [machinesQ.data, steps],
+  );
+
   const liveDetail: DetailContent | undefined = useMemo(() => {
     if (!live || !wireTodo || buildId == null) return undefined;
-    const machineName =
-      machinesQ.data?.find((m) => steps.some((s) => s.machineId === m.id))?.name ?? null;
     return {
       transcript: mapTranscript({
         messages: messagesQ.data?.messages ?? [],
@@ -321,7 +328,7 @@ export function TodoDetailPage() {
     live,
     wireTodo,
     buildId,
-    machinesQ.data,
+    machineName,
     steps,
     messagesQ.data,
     plansQ.data,
@@ -332,6 +339,61 @@ export function TodoDetailPage() {
     changesQ.data,
     changesExpanded,
     stopping,
+  ]);
+
+  // #476 meta 块模型行：指派 agent 的 members actor.modelId（#318 副题
+  // 同投影），缺指派/缺 actor 退 usage 首行 model（本轮实际运行值）。
+  const agentModel = useMemo(() => {
+    const agentId =
+      wireTodo?.assignment?.build?.agentId ?? wireTodo?.assignment?.plan?.agentId ?? null;
+    if (agentId == null) return null;
+    const member = (membersQ.data ?? []).find(
+      (m) => m.memberType === 'agent' && m.actorId === agentId,
+    );
+    return (member?.actor as { modelId?: string | null } | undefined)?.modelId ?? null;
+  }, [wireTodo?.assignment, membersQ.data]);
+
+  // #476 meta 块来源 issue 行的标题真值（ADR 0006 D5：issue 侧为真值）：
+  // 与 SourceIssueLine 同查询键（react-query 去重，不多打一次请求）；拉不
+  // 到（未连接/限流/已删）退本地标题，行不因此丢失（D6 的隐藏律只约束回
+  // 显行自身——meta 行的存在性由本地 sourceRef 决定，echo 只供标题）。
+  const sourceEchoQ = useGithubIssueEcho(
+    live ? wireTodo?.id : undefined,
+    live && wireTodo?.sourceRef != null,
+  );
+
+  // #476（#473 决策候选 A）：live 方案空态的任务元信息——字段序与缺省律
+  // 见 task-meta-block.tsx；fixture 面恒 null（无来源/机器/模型数据源），
+  // 空态占位「暂无方案」字节不变。
+  const taskMeta = useMemo<TaskMetaFields | null>(() => {
+    if (!live || wireTodo == null || buildId == null) return null;
+    const ref = wireTodo.sourceRef != null ? parseGithubIssueSourceRef(wireTodo.sourceRef) : null;
+    const prUrl = buildQ.data?.prUrl ?? null;
+    const prNumber = buildQ.data?.prNumber ?? null;
+    return {
+      sourceIssue:
+        ref != null
+          ? {
+              number: ref.issueNumber,
+              title: sourceEchoQ.data?.title ?? wireTodo.title,
+              url: `https://github.com/${ref.owner}/${ref.repo}/issues/${ref.issueNumber}`,
+            }
+          : null,
+      branch: conversationBranch(buildId),
+      pr: prUrl != null && prNumber != null ? { number: prNumber, url: prUrl } : null,
+      machine: machineName,
+      model: agentModel ?? usageQ.data?.[0]?.model ?? null,
+      createdAt: wireTodo.buildHistory[0]?.createdAt ?? buildQ.data?.createdAt ?? null,
+    };
+  }, [
+    live,
+    wireTodo,
+    buildId,
+    buildQ.data,
+    machineName,
+    agentModel,
+    usageQ.data,
+    sourceEchoQ.data,
   ]);
 
   // live 版本对比面（r8 64→65：上一版本 unified diff）。#244：to 版本
@@ -803,6 +865,11 @@ export function TodoDetailPage() {
                   }}
                   planDiff={view.planDiff}
                   buildId={live ? buildId : null}
+                  emptyMeta={
+                    taskMeta != null ? (
+                      <TaskMetaBlock meta={taskMeta} now={Date.now()} />
+                    ) : undefined
+                  }
                   onToggleExpand={() => {
                     if (live) {
                       setChangesExpanded((v) => !v);
