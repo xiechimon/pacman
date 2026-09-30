@@ -49,13 +49,13 @@ interface RepoFilterBarProps {
 }
 
 /** 顶栏左侧 chip 组。pill 几何沿 #403 类型 chip 组（h-5/11px/px-2）；
- *  focus 环与 shadcn Button 同 idiom（button.tsx 的 --card-button 实线）。 */
+ *  focus 环与 shadcn Button 同 idiom（button.tsx 的 --focus-ring 实线）。 */
 export function RepoFilterBar({ options, selected, onToggle, onClear }: RepoFilterBarProps) {
   const { t } = useI18n();
   const selectedSet = new Set(selected);
   const allActive = selected.length === 0;
   const focus =
-    'focus-visible:[outline:2px_solid_var(--card-button)] focus-visible:outline-offset-2';
+    'focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2';
   const pill =
     'flex h-5 flex-none items-center rounded-full border px-2 text-[11px] leading-none font-medium transition-colors';
   const on = 'border-transparent bg-foreground text-background';
