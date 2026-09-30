@@ -2,12 +2,13 @@
 // 路由 = REST 同名 DELETE（02 §6.1 规则族 + shared DELETE_FACE
 // 'teams/{id}/agents/{aid}'），wire 未采——登记 wire.test.ts INFERRED_ROUTES。
 //
-// canon 出处（本票实测，非转述）：参考产品产线 bundle 的 i18n 四语语料
-// （agent_modal.remove / remove_title / remove_confirm / remove_over_quota）与
-// 通用 ConfirmProvider 行为；删除语义直读 todos.dev 官方 docs——/docs/agents
-// 「Removing an agent」、/docs/memory「A removed agent's entries stay stored but
-// stop being used, since it no longer runs tasks」、/docs/team「Removing an
-// agent is done from the same tab」。
+// canon 出处（本票实测，非转述）：2026-10-01 在登录态的原版上走了全流程（入口
+// → 确认层 → 取消 → 删除 → 落点 `/app/team`）；参考产品产线 bundle 的 i18n 四语
+// 语料（agent_modal.remove / remove_title / remove_confirm / remove_over_quota）
+// 与通用 ConfirmProvider 行为是第二源，两源一致；删除语义直读 todos.dev 官方
+// docs——/docs/agents「Removing an agent」、/docs/memory「A removed agent's
+// entries stay stored but stop being used, since it no longer runs tasks」、
+// /docs/team「Removing an agent is done from the same tab」。
 //
 // 关联面取舍（三件，写死在这里，别处不再复述）：
 //

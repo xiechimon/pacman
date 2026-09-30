@@ -2,10 +2,10 @@ import { expect, type Page, test } from '@playwright/test';
 
 // 删除 Agent（XMON-19 / B2）：概览页脚入口 + DeleteConfirm 家族二次确认。
 //
-// canon 出处（本票实测，非转述）：标题与正文 = 参考产品产线 bundle 的 i18n
-// 语料原文 agent_modal.remove_title / remove_confirm；入口钮文案 =
-// agent_modal.remove。落点（确认后回团队页）是 [推断]——原版确认之后落到哪
-// 需要登录态才能观测，本仓取与详情页 backHref 一致的团队页。
+// canon 出处（本票实测，非转述）：2026-10-01 登录原版走了一遍全流程（入口 →
+// 确认层 → 取消 → 删除 → 落点），文案与落点均为实测；产线 bundle 的 i18n 语料
+// （agent_modal.remove / remove_title / remove_confirm）是第二源，两源逐字一致。
+// 落点实测 = `/app/team`，无提示条。
 //
 // 每例钉一个失败方式：
 // 1. 入口缺失 —— 概览页脚没有删除钮（或长在别的 tab 上）。

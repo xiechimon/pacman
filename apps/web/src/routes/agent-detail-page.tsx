@@ -16,10 +16,11 @@
 //   暴露面，跨缝复制常量等于把 daemon 的私有词表冻进 web；故作只读值行。
 //
 // 删除 Agent（XMON-19/B2）：入口在概览页脚，二次确认接 DeleteConfirm 家族。
-// 标题与正文 = 原版产线 bundle i18n 语料原文（agent_modal.remove_title /
-// remove_confirm），不是转述；删除语义（记忆保留、任务指派摘槽、总管摘绑定）
-// 在 server services/agents.ts 注记。原版同族还有一档 remove_over_quota 提示
-// （删除后仍达计划上限）——本仓没有套餐/Agent 上限模型，无锚可挂，故不渲染。
+// 整个流程 2026-10-01 登录原版实测过一遍（入口 → 确认层 → 取消 → 删除 → 落点），
+// 文案与落点都取自实测，产线 bundle 语料是第二源、两源一致。删除语义（记忆保留、
+// 任务指派摘槽、总管摘绑定）在 server services/agents.ts 注记。原版同族还有一档
+// remove_over_quota 提示（删除后仍达计划上限）——本仓没有套餐/Agent 上限模型，
+// 无锚可挂，故不渲染。
 
 import {
   AGENT_PERMISSION_COPY,
@@ -498,11 +499,10 @@ export function AgentDetailPage() {
           </div>
         )}
       </div>
-      {/* 删除确认（r3 §4 二次确认的文案直读原版产线 bundle 语料，逐字）：
-          标题 = agent_modal.remove_title，正文 = agent_modal.remove_confirm
-          （{name} = Agent 名）。按钮文案沿用 DeleteConfirm 家族默认
-          （取消 / 删除），未观测到原版对这两格的覆盖。取消行为 = 家族律：
-          取消钮 / X / Esc / backdrop 关层且不删。 */}
+      {/* 删除确认（2026-10-01 登录原版实测，与产线 bundle 语料两源一致）：
+          标题 `删除 Agent？`、正文 `将「{name}」移出团队？该 Agent 进行中的任务
+          将被停止。`、两钮 `取消` / `删除`，逐字。取消路径实测：点取消 → 层关、
+          留在详情页、Agent 未删。 */}
       <DeleteConfirm
         open={deleteOpen}
         title={t('删除 Agent？')}
@@ -514,10 +514,10 @@ export function AgentDetailPage() {
         onConfirm={() => {
           setDeleteOpen(false);
           if (agentId === undefined) return;
-          // 删除后落团队页（Members tab 是 Agent 名单所在，docs「Removing an
-          // agent is done from the same tab」）——[推断]：原版确认后落点未观测
-          // （要登录态），本仓取与详情页 backHref / 资源族返回律一致的落点。
-          // search 随行 = #121 Link 律（fixture 场景位不能在这一跳丢）。
+          // 确认后落团队页 `/app/team`，无提示条——2026-10-01 登录原版实测（不再是
+          // 推断：点「删除」后地址先停在详情页，随请求落地切到 `/app/team`，页面
+          // 无 toast/横幅）。search 随行 = #121 Link 律（fixture 的场景位不能在这
+          // 一跳丢；原版无此查询参，观测不到差异）。
           if (live) {
             mutations.deleteAgent.mutate(agentId, {
               onSuccess: () => navigate({ pathname: '/app/team', search }),
