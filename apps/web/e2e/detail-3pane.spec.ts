@@ -11,9 +11,9 @@ import { expect, test } from '@playwright/test';
 //   1. pane widths/abutment wrong  2. tab group survives somewhere
 //   3. head icon trio survives     4. composer escapes the center column,
 //      loses its card form, or overlays the transcript again (#472)
-//   5. section switching dead                                          6.
-//   6. frozen pane-view scenarios (30/31/32) still pop dialogs           7.
-//   7. fresh phase collapses the right pane or loses the fresh block
+//   5. section switching dead      6. frozen pane-view scenarios
+//      (30/31/32) still pop dialogs  7. fresh phase collapses the right
+//      pane or loses the fresh block
 
 const DETAIL_ROUTE = '/app/todo/7ve0iOkQ-JBpSL98zSiGc';
 const FRESH = '/app/todo/fresh-probe?scenario=23';
