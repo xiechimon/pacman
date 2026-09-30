@@ -12,9 +12,10 @@
 // 三面钉扎零改动（#411 别名优先政策）。
 
 import { AlertDialog as AlertDialogPrimitive } from '@base-ui/react/alert-dialog';
-import { type ReactNode, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { useI18n } from '../../i18n/provider.js';
 import { X } from '../../icons/index.js';
+import { useEscClose } from '../../overlay/use-esc.js';
 import { Button } from './button.js';
 
 interface AlertDialogShellProps {
@@ -42,15 +43,10 @@ export function AlertDialogShell({
   width = 448,
 }: AlertDialogShellProps) {
   const { t } = useI18n();
-  // 接管 Esc（AlertDialog 默认不关）：仓内确认面契约的键盘路径
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose, open]);
+  // 接管 Esc（AlertDialog 默认不关）：仓内确认面契约的键盘路径。
+  // #466：走 useEscClose 的 open 周期注册（onClose 走 ref）——消费点全传
+  // 内联箭头，按渲染重挂会在重渲染窗口内丢 Esc（#462 症状 2 同根因）。
+  useEscClose(onClose, open);
 
   return (
     <AlertDialogPrimitive.Root
