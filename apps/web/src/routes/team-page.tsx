@@ -12,6 +12,10 @@
 // itself stays in both layouts — 17c shows it absent, but a toggle with no
 // way back is a trap (divergence noted, 01 册 §8).
 //
+// B2 · secondary 面（XMON-20）：页内控件（布局切换片、创建 Agent 槽）全部走
+// components/ui/Button 底座，per-face 几何仍住 secondary.css（域 css unlayered
+// 压 utility 的仓律），类名 alias 原样保留（#411 别名优先）。
+//
 // #490: chart 此前是把 17c 捕获到的空态当成了唯一状态 —— 那份捕获的团队是
 // 0 个成员，于是 chart 分支写死 暂无成员 字面量，同一份数据下与 grid 自相
 // 矛盾。现在按成员数分流：0 个成员才走空态，否则由 ./team-chart.tsx 出树。
@@ -28,7 +32,9 @@ import {
 } from '../api/hooks.js';
 import { mapTeam, toDisplayTodo, toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
+import { isDeleted } from '../fixtures/deletions.js';
 import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
@@ -43,6 +49,17 @@ import { TeamChart } from './team-chart.js';
 export const TEAM_LAYOUT_STORAGE_KEY = 'pacman.teamMembersLayout';
 
 type TeamLayout = 'grid' | 'chart';
+
+/** B2 · secondary 面（XMON-20）：页内控件全走 components/ui 件，几何仍由
+ *  secondary.css 的 per-face 规则承载（域 css unlayered 压 utility 的仓律），
+ *  类名 alias（#411 别名优先）原样留在元素上。下面这条工具类只并掉底座与
+ *  散写形的差额——Button 自带 active:translate-y-px 的按下位移，散写形没有。
+ *  `not-aria-[haspopup]` 与底座同链，故 tailwind-merge 能直接顶掉它。 */
+const BASE_DELTA = 'active:not-aria-[haspopup]:translate-y-0 font-normal px-0 leading-[inherit]';
+
+/** 布局切换片的两个 chip：底座 + alias + 选中档。 */
+const tabClass = (active: boolean) =>
+  `team-layout-tab ${BASE_DELTA}${active ? ' team-layout-tab--active' : ''}`;
 
 function readStoredLayout(storage: Storage): TeamLayout {
   return storage.getItem(TEAM_LAYOUT_STORAGE_KEY) === 'chart' ? 'chart' : 'grid';
@@ -111,26 +128,26 @@ export function TeamPage() {
           </div>
         )}
         <div className="team-layout-tabs" role="tablist">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             role="tab"
             aria-selected={layout === 'grid'}
-            className={`team-layout-tab${layout === 'grid' ? ' team-layout-tab--active' : ''}`}
+            className={tabClass(layout === 'grid')}
             aria-label="grid"
             onClick={() => switchLayout('grid')}
           >
             <Grid2x2 />
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="ghost"
             role="tab"
             aria-selected={layout === 'chart'}
-            className={`team-layout-tab${layout === 'chart' ? ' team-layout-tab--active' : ''}`}
+            className={tabClass(layout === 'chart')}
             aria-label="chart"
             onClick={() => switchLayout('chart')}
           >
             <ChartNetwork />
-          </button>
+          </Button>
         </div>
       </div>
       {layout === 'grid' ? (
@@ -140,37 +157,46 @@ export function TeamPage() {
               非控件」（report-pages.md:88）的裁决：原版点得进，本仓此前点不
               进，Agent 建出来就再也够不着编辑面。link 反馈态见 secondary.css
               的 .team-agent-card:hover。scenario 随行（#121 Link 律）。 */}
-          {team.agents.map((agent) => (
-            <Link
-              key={agent.id}
-              className="team-agent-card"
-              to={{ pathname: `${AGENTS_HREF}/${agent.id}`, search }}
-            >
-              <span className="team-agent-avatar">
-                <SeededAvatar
-                  name={agent.displayName}
-                  src={agent.avatarUrl}
-                  fallback="/avatar-robot-1.svg"
-                />
-              </span>
-              <span className="team-agent-text">
-                <span className="team-agent-name">{agent.displayName}</span>
-                <span className="team-agent-model">
-                  {agent.model}
-                  {agent.isDefault ? t(' · 默认') : ''}
+          {/* fixture 删除覆面（#66 deletions，#207 侧栏项目行先例）：删掉的 Agent 卡
+              随行隐去，reload 还原；live 面名单 = invalidateAll 重取 members 真值。 */}
+          {team.agents
+            .filter((agent) => !isDeleted(agent.id))
+            .map((agent) => (
+              <Link
+                key={agent.id}
+                className="team-agent-card"
+                to={{ pathname: `${AGENTS_HREF}/${agent.id}`, search }}
+              >
+                <span className="team-agent-avatar">
+                  <SeededAvatar
+                    name={agent.displayName}
+                    src={agent.avatarUrl}
+                    fallback="/avatar-robot-1.svg"
+                  />
                 </span>
-                <span className="team-agent-role">{agent.role ?? t('未设置职责')}</span>
-              </span>
-            </Link>
-          ))}
+                <span className="team-agent-text">
+                  <span className="team-agent-name">{agent.displayName}</span>
+                  <span className="team-agent-model">
+                    {agent.model}
+                    {agent.isDefault ? t(' · 默认') : ''}
+                  </span>
+                  <span className="team-agent-role">{agent.role ?? t('未设置职责')}</span>
+                </span>
+              </Link>
+            ))}
           {/* #170: the dialog family form (r2 §8.1 capture 20) lives in
               create-agent-dialog.tsx — DialogShell law, POST agents on live. */}
-          <button type="button" className="team-create-agent" onClick={() => setCreateOpen(true)}>
+          {/* 差额并项：散写形字重 400（底座 font-medium）、无按下位移。 */}
+          <Button
+            variant="ghost"
+            className={`team-create-agent ${BASE_DELTA}`}
+            onClick={() => setCreateOpen(true)}
+          >
             <span className="team-create-icon">
               <PlusSmall />
             </span>
             {t('创建 Agent')}
-          </button>
+          </Button>
         </div>
       ) : (
         <TeamChart

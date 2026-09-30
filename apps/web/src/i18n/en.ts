@@ -392,6 +392,12 @@ export const EN: Record<string, string> = {
   // #306 sched-card 菜单删除确认（DeleteConfirm 家族泛化随加）。
   删除定时: 'Delete schedule',
   '确定删除该定时？此操作不可撤销。': 'Delete this schedule? This cannot be undone.',
+  // XMON-19/B2 删除 Agent：三串 = 原版产线 bundle 的 en 语料原文
+  // （agent_modal.remove / remove_title / remove_confirm），非回译。
+  '删除 Agent': 'Delete agent',
+  '删除 Agent？': 'Delete agent?',
+  '将「{name}」移出团队？该 Agent 进行中的任务将被停止。':
+    'Remove "{name}" from this team? Active tasks for this agent will be stopped.',
   关闭菜单: 'Close menu',
   复制链接: 'Copy link',
   完成任务: 'Complete todo',

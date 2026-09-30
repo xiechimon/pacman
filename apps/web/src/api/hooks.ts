@@ -756,6 +756,13 @@ export function useApiMutations(teamId: string | undefined) {
         api.patch<AgentRecord>(`/api/teams/${teamId}/agents/${input.id}`, input.body),
       onSuccess: invalidateAll,
     }),
+    // 删除 Agent（XMON-19/B2：DELETE_FACE 'teams/{id}/agents/{aid}' 同名
+    // DELETE）。关联面取舍（memories 不级联 / assignment 摘槽 / chief 摘绑定）
+    // 在 server services/agents.ts，本层只发请求。
+    deleteAgent: useMutation({
+      mutationFn: (id: string) => api.del<void>(`/api/teams/${teamId}/agents/${id}`),
+      onSuccess: invalidateAll,
+    }),
     // 记忆删除（02 §4.4 词表内 DELETE；r5 §6 条目卡删除图标）。
     deleteMemory: useMutation({
       mutationFn: (input: { agentId: string; memoryId: string }) =>

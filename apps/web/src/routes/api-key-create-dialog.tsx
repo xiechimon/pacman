@@ -8,10 +8,10 @@
 
 import { CHIEF_REMOTE_TOOLS } from '@pacman/shared';
 import { useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { Input } from '../components/ui/input.js';
 import { useI18n } from '../i18n/provider.js';
-import { Button } from '../ui/button.js';
-import { Input } from '../ui/input.js';
 
 /** 权限位可选集 = remote tools 49 词表（grants 白名单消费面 =
  * services/mcp-face.ts）。 */
@@ -72,14 +72,26 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
       title={t('新建密钥')}
       open={open}
       onClose={onClose}
+      // B2 · secondary 面（XMON-20）：底座 = components/ui/Button（创建 brand 档 /
+      // 取消 ghost 档）。per-face 值（8 16 内垫 / 13px 字 / 8px 圆角 / 实底色）
+      // 仍住 secondary.css；差额并项——h-auto 保散写形的内垫撑高（底座 h-8
+      // 是定高 32）、取消字重 400、两者均无按下位移。
       footer={
         <div className="apikey-form-footer">
-          <button type="button" className="apikey-form-create" onClick={submit}>
+          <Button
+            variant="brand"
+            className="apikey-form-create h-auto leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+            onClick={submit}
+          >
             {t('创建')}
-          </button>
-          <button type="button" className="apikey-form-cancel" onClick={onClose}>
+          </Button>
+          <Button
+            variant="ghost"
+            className="apikey-form-cancel h-auto font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+            onClick={onClose}
+          >
             {t('取消')}
-          </button>
+          </Button>
         </div>
       }
     >
@@ -87,12 +99,15 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
         <label className="apikey-form-label" htmlFor="apikey-name-input">
           {t('名称（可选）')}
         </label>
-        {/* a3-pages 收编：Input 原语 36px 标准族（surface 底/card-border 描边）；
-            W4 #287 面无视觉基准，padding 8 10 → 36 固定高归一无红项。
+        {/* a3-pages 收编 → B2 · secondary 面（XMON-20）：Input 走 components/ui
+            件，per-face 值（36px 盒 / 8px 圆角 / card-border 描边 / surface 底 /
+            0 12 内垫 / 14px 字）以工具类钉回，不取底座默认档。聚焦环按仓级 #388
+            canon（2px --focus-ring + offset 2，与 B2 门页输入同配方）；过渡窄写
+            压掉 TW 的 transition-colors（属性表含 outline-color，会吞掉环的初值）。
             类名留作 e2e/语义定位别名。 */}
         <Input
           id="apikey-name-input"
-          className="apikey-form-input"
+          className="apikey-form-input h-9 rounded-md border-(--card-border) bg-(--surface) px-3 py-0 text-sm text-foreground placeholder:text-current/50 transition-[color,background-color,border-color] focus-visible:border-(--card-border) focus-visible:ring-0 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 dark:bg-(--surface)"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder={t('如：笔记本、CI 机器')}
@@ -118,12 +133,22 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
         <div className="apikey-form-tools-head">
           <span className="apikey-form-label">{t('工具权限位')}</span>
           <span className="apikey-form-quick">
-            {/* a3-pages 收编：Button text 档；12px/tertiary 字色是 per-face
-                差异（工具表头的轻量动作字，见 secondary.css）。 */}
-            <Button variant="text" className="apikey-form-quickbtn" onClick={grantAll}>
+            {/* a3-pages 收编 → B2 · secondary 面（XMON-20）：Button ghost 档 + per-face
+                工具类钉回 A3 text 档的实测形（无框 / 0 内垫 / tertiary 墨 / 12px 字 /
+                字重 400），并把 ghost 的 hover 档一并顶回原值——散写形无 hover 变化。
+                border-0 压掉底座 1px 透明边（有边即宽 2px，右对齐排会位移）。 */}
+            <Button
+              variant="ghost"
+              className="apikey-form-quickbtn border-0 cursor-pointer px-0 text-xs font-normal leading-[inherit] bg-transparent text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0"
+              onClick={grantAll}
+            >
               {t('全选')}
             </Button>
-            <Button variant="text" className="apikey-form-quickbtn" onClick={clearAll}>
+            <Button
+              variant="ghost"
+              className="apikey-form-quickbtn border-0 cursor-pointer px-0 text-xs font-normal leading-[inherit] bg-transparent text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0"
+              onClick={clearAll}
+            >
               {t('清空')}
             </Button>
           </span>

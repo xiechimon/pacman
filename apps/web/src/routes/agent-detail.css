@@ -447,3 +447,12 @@
   color: var(--text-tertiary);
   font-size: 13px;
 }
+
+/* —— 概览页脚的危险动作位（XMON-19/B2 删除 Agent 入口）——
+   原版把入口摆在状态行之下、作为概览最后一档（r3 §4）。上边距把它与字段
+   列拉开，左对齐落回字段列的起始线（不给 destructive 另造满宽实底钮——
+   破坏性动作在资源族里是低调可点，不是主按钮）。 */
+.agent-danger {
+  display: flex;
+  margin-top: 6px;
+}
