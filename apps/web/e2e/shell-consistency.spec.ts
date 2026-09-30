@@ -59,6 +59,23 @@ async function captureSidebarBox(
   return box as NonNullable<typeof box>;
 }
 
+/** Brand-head content anchors. The sidebar's own box is route-invariant (the
+ *  hop test below), but the head row's *content* rides a second geometry: the
+ *  active pill's inner padding. These two x values are what the eye reads as
+ *  图标和字收紧 when /app/team lights the pill, so the hop is pinned on them
+ *  too — the row repaints its background, the content holds its x. */
+const headContentX = (page: Page) =>
+  page.evaluate(() => {
+    const row = document.querySelector('.sidebar-team-row');
+    const mark = row?.querySelector('.sidebar-brand-mark');
+    const name = row?.querySelector('.sidebar-team-name');
+    if (!row || !mark || !name) throw new Error('sidebar brand head missing');
+    return {
+      iconX: mark.getBoundingClientRect().x,
+      nameX: name.getBoundingClientRect().x,
+    };
+  });
+
 test.describe('chief FAB wakes on every shell family', () => {
   const families = [
     { name: 'board', route: '/app?scenario=01', fab: '.chief-fab', gear: true },
@@ -120,6 +137,22 @@ test.describe('sidebar form is route-invariant', () => {
     await page.locator('.sidebar-row', { hasText: '工作台' }).click();
     await expect(page).toHaveURL('/app?scenario=01');
     await expectSidebarBox(page, sidebar, '/app', boardBox);
+  });
+
+  test('the brand head holds its inner geometry across the /app → /app/team hop', async ({
+    page,
+  }) => {
+    await page.goto('/app?scenario=01');
+    await expect(page.locator(ROUTE_ANCHOR['/app'])).toBeVisible();
+    const board = await headContentX(page);
+
+    await page.locator('.sidebar-team-name').click();
+    await expect(page).toHaveURL('/app/team?scenario=01');
+    // the active pill repaints the row's background only. The r7 12 pill box
+    // (x8 y6 w223 h32) is pinned in sidebar-seam.spec.ts; this is the content
+    // *inside* it — the icon and the name must not drift as the pill lights.
+    await expect(page.locator(ROUTE_ANCHOR['/app/team'])).toBeVisible();
+    await expect.poll(() => headContentX(page)).toEqual(board);
   });
 
   test('collapsed rail survives route hops (storage-backed on every shell)', async ({ page }) => {

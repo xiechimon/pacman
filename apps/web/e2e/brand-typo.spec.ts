@@ -91,6 +91,28 @@ for (const theme of ['light', 'dark'] as const) {
     const hovered = await read();
     expect(hovered).toEqual(rest);
   });
+
+  test(`the sidebar collapse toggle shows no hover face (${theme})`, async ({ page }) => {
+    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
+    await page.goto('/app?scenario=01');
+
+    const read = () =>
+      page.evaluate(() => {
+        const cs = getComputedStyle(document.querySelector('.sidebar-team-collapse')!);
+        return { bg: cs.backgroundColor, shadow: cs.boxShadow, color: cs.color };
+      });
+    const rest = await read();
+    // the open sidebar's collapse toggle carries no surface of its own: no
+    // background and no shadow at rest — the head row it sits in is the whole
+    // separation. Same law as .res-back above, and the reason the hover tint
+    // is banned here: over the row's own fill it reads as a shadow.
+    expect(rest.bg).toBe('rgba(0, 0, 0, 0)');
+    expect(rest.shadow).toBe('none');
+
+    await page.hover('.sidebar-team-collapse');
+    await page.waitForTimeout(300); // past any 150ms color step
+    expect(await read()).toEqual(rest);
+  });
 }
 
 test('res-back keeps a keyboard focus ring', async ({ page }) => {
