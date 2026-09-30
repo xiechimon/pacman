@@ -19,10 +19,10 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { PROVIDERS_HREF } from '../resources/providers-page.js';
-import { Avatar } from '../ui/avatar.js';
 import { Input } from '../ui/input.js';
 import { AgentModelSelect } from './agent-model-select.js';
 
@@ -97,7 +97,7 @@ export function CreateAgentDialog({
           {/* #387: 头像行 = 名称种子的 dicebear 预览——随输入即所得（创建后
               同名恒同像）；空名退回静态机器人资产。「更换」钮全除（#307
               wontfix）：栈内无上传面。 */}
-          <Avatar name={name.trim()} fallback="/avatar-robot-1.svg" />
+          <SeededAvatar name={name.trim()} fallback="/avatar-robot-1.svg" />
         </div>
         <label className="dlg-form-label" htmlFor="dlg-agent-name">
           {t('名称')}

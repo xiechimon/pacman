@@ -19,6 +19,8 @@
 import { BRAND } from '@pacman/shared';
 import { type ComponentType, type SVGProps, useCallback, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router';
+import { KbdHint } from '../components/ui/kbd-hint.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { UserMenu } from '../detail/user-menu.js';
 import { isDeleted } from '../fixtures/deletions.js';
 import { PROJECT_ID, PROJECT_NAME, USER_NAME } from '../fixtures/fixtures.js';
@@ -42,8 +44,6 @@ import {
 } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { readStoredTheme } from '../theme.js';
-import { Avatar } from '../ui/avatar.js';
-import { KbdHint } from '../ui/kbd-hint.js';
 
 /** Which sidebar row carries the active pill: a nav row (工作台 / 定时 /
  *  the team head row on team/account — r7 01/11, r2 07e/24b/24c, r7 12/13),
@@ -346,7 +346,7 @@ export function BoardSidebar({
           aria-expanded={userMenuOpen}
           onClick={toggleUserMenu}
         >
-          <Avatar name={USER_NAME} fallback="/avatar-user.png" />
+          <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
         </button>
         {userMenuPopover}
       </aside>
@@ -531,7 +531,7 @@ export function BoardSidebar({
         aria-expanded={userMenuOpen}
         onClick={toggleUserMenu}
       >
-        <Avatar name={USER_NAME} fallback="/avatar-user.png" />
+        <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
         <span className="sidebar-user-name relative -top-px ml-[9px] text-sm leading-[14px] whitespace-nowrap text-muted-foreground">
           {USER_NAME}
         </span>

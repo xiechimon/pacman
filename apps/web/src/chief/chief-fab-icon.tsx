@@ -4,14 +4,14 @@
 // 生成的静态字形 ChiefFab（资产文件头 Do not edit，切换发生在消费点）。
 // board 路由的 inline 按钮与 ChiefWake 共用本组件，保证两个消费点同步。
 
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ChiefContent } from '../fixtures/records.js';
 import { ChiefFab } from '../icons/index.js';
-import { Avatar } from '../ui/avatar.js';
 
 export function ChiefFabIcon({ chief }: { chief: ChiefContent }) {
   return chief.agent ? (
     <span className="fab-avatar">
-      <Avatar
+      <SeededAvatar
         name={chief.agent.displayName}
         src={chief.agent.avatarUrl}
         fallback="/avatar-robot-1.svg"

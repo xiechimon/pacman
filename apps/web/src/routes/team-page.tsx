@@ -28,12 +28,12 @@ import {
 } from '../api/hooks.js';
 import { mapTeam, toDisplayTodo, toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChartNetwork, ChevronDown, Grid2x2, PlusSmall } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
-import { Avatar } from '../ui/avatar.js';
 import { AGENTS_HREF } from './agent-detail-page.js';
 import { CreateAgentDialog } from './create-agent-dialog.js';
 import { TeamChart } from './team-chart.js';
@@ -147,7 +147,7 @@ export function TeamPage() {
               to={{ pathname: `${AGENTS_HREF}/${agent.id}`, search }}
             >
               <span className="team-agent-avatar">
-                <Avatar
+                <SeededAvatar
                   name={agent.displayName}
                   src={agent.avatarUrl}
                   fallback="/avatar-robot-1.svg"

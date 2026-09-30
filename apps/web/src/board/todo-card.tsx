@@ -10,6 +10,8 @@
 import { Link, useLocation } from 'react-router';
 import { Button } from '../components/ui/button.js';
 import { Card } from '../components/ui/card.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
+import { TagChip, type TagChipData } from '../components/ui/tag-chip.js';
 import { PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -21,8 +23,6 @@ import {
   SearchWhite,
   UserCircle,
 } from '../icons/index.js';
-import { Avatar } from '../ui/avatar.js';
-import { TagChip, type TagChipData } from '../ui/tag-chip.js';
 import { cardAction } from './columns.js';
 import { relativeTime } from './rel-time.js';
 
@@ -111,7 +111,7 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName, tag }: To
             <UserCircle width={20} height={20} className="text-muted-foreground/70" />
           ) : (
             // #387: 执行者头像按 agent displayName 种子生成;未指派退静态资产
-            <Avatar name={todo.agent?.displayName} fallback="/avatar-robot-1.svg" />
+            <SeededAvatar name={todo.agent?.displayName} fallback="/avatar-robot-1.svg" />
           )}
           {badge != null && (
             <span
