@@ -693,9 +693,28 @@
   text-overflow: ellipsis;
 }
 
-/* frozen spinner frame (r7 26/26d: a braille glyph mid-animation) */
+/* #471 spinner reel viewport: one 16px frame slot, clipped — the reel
+   inside scrolls one slot per 90ms step (spinner-reel, motion.css; the
+   r7 26/26d captures froze a single glyph, the replica now turns it).
+   Slot-sized box: frame changes never shift the trailing seconds/label. */
 .chat-spinner {
+  flex: none;
+  display: inline-block;
+  height: 16px;
+  overflow: hidden;
   color: var(--text-dim);
+}
+
+.chat-spinner-reel > span {
+  display: block;
+  height: 16px;
+  line-height: 16px;
+}
+
+/* the live seconds tick: tabular figures stop the 3s→10s width jump from
+   nudging the chevron/label tail (#471) */
+.chat-streaming-secs {
+  font-variant-numeric: tabular-nums;
 }
 
 .chat-done-label {
