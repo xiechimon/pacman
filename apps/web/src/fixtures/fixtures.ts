@@ -16,6 +16,7 @@ import {
   maskApiKey,
   PLACEHOLDER_TITLE_FALLBACK,
   type ProviderRecord,
+  type SecretRecord,
 } from '@pacman/shared';
 import { diffLines } from 'diff';
 import type {
@@ -1466,8 +1467,10 @@ const AGENT_R3_BUILDER: AgentRecord = {
 
 /** Agent 详情 + 创建弹窗模型位的数据集：团队页 roster 与详情页记录同场景，
  *  团队页卡点进详情后 `?scenario=agent-detail` 随行（#121 Link 律）不会丢。
- *  resources 在 RESOURCES 之上补 providers（模型选择器候选源）；memories 的
- *  两形（空 / 非空）由下面两个导出件分持。 */
+ *  resources 在 RESOURCES 之上补 providers（模型选择器候选源）与空 memories
+ *  （记忆 tab 走 shared canon 空态）。本集不带 secrets——密钥区走零密钥空态
+ *  （#510：无密钥时不出开关，没有对象可授）；memories 的两形（空 / 非空）
+ *  由下面两个导出件分持。 */
 const AGENT_DETAIL_RESOURCES: ResourcesContent = {
   ...RESOURCES,
   providers: [AGENT_PROVIDER_R3GW],
@@ -1478,6 +1481,19 @@ export const agentDetail: FixtureSet = {
   ...teamGrid,
   agents: [AGENT_R3_BUILDER],
   resources: AGENT_DETAIL_RESOURCES,
+};
+
+/** #510 密钥区聚合总开关的数据集：两个团队密钥 + 一个未授权的 Agent。
+ *  两个密钥是有意的——per-secret 粒度回退会渲染两行，e2e 的「恰好一行」
+ *  才有牙（只播一个密钥时两种实现都过）。 */
+const AGENT_DETAIL_SECRETS: SecretRecord[] = [
+  { id: 'secret-stripe', teamId: TEAM_ID, name: 'STRIPE_API_KEY', description: null },
+  { id: 'secret-npm', teamId: TEAM_ID, name: 'NPM_TOKEN', description: null },
+];
+
+export const agentDetailSecrets: FixtureSet = {
+  ...agentDetail,
+  resources: { ...AGENT_DETAIL_RESOURCES, secrets: AGENT_DETAIL_SECRETS },
 };
 
 /** #499 named scenario（无 capture，agentDetail 先例）：记忆 tab 的非空语料。

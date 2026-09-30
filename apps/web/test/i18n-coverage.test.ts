@@ -74,11 +74,15 @@ const COMPUTED_KEYS = new Set<string>([
   ...Object.values(FS_PICK_ERROR_COPY),
   // #485: Agent 配置面词表与文案 canon = shared AGENT_TOOL_SWITCHES（权限
   // 六开关文案）、AGENT_TOOL_COPY（六档各自的说明副文案）、
-  // AGENT_PERMISSION_COPY（密钥 / MCP 服务器 / 职责 / 默认 skill 四档副文案
-  // ——secrets 一档内嵌 BRAND 插值，本面不渲染故不收）与 MEMORY_EMPTY_COPY
-  // （记忆 tab 空态），均经 t() 消费、不作字面量出现。
+  // AGENT_PERMISSION_COPY（密钥 / MCP 服务器 / 职责 / 默认 skill 四档副文案）
+  // 与 MEMORY_EMPTY_COPY（记忆 tab 空态），均经 t() 消费、不作字面量出现。
+  // #510 起 secrets 一档也进渲染面（密钥区聚合总开关的副文案）：其键内嵌
+  // BRAND.cliCommandName 与 SECRET_MIN_CLI_VERSION 插值，在 shared 模块加载
+  // 时就已定型，web 侧更不会出现同串字面量——故必须走本表，不能靠 liveness
+  // 的字面量扫描兜。
   ...AGENT_TOOL_SWITCHES,
   ...Object.values(AGENT_TOOL_COPY),
+  AGENT_PERMISSION_COPY.secrets,
   AGENT_PERMISSION_COPY.mcpServers,
   AGENT_PERMISSION_COPY.responsibility,
   AGENT_PERMISSION_COPY.defaultSkill,
@@ -86,7 +90,8 @@ const COMPUTED_KEYS = new Set<string>([
   // #499: 记忆 tab 的搜索/排序词 canon = shared MEMORY_UI_COPY（searchPlaceholder
   // 与 sort 两键本面渲染，sourceLink 未落地故不入 en 词典），经 t() 消费、
   // 不作字面量出现。
-  ...Object.values(MEMORY_UI_COPY),
+  MEMORY_UI_COPY.searchPlaceholder,
+  MEMORY_UI_COPY.sort,
 ]);
 
 /** Data layer: capture-verbatim user/agent content, never translated.
@@ -296,6 +301,16 @@ describe('CJK coverage against the en dict', () => {
       .filter((f) => !(f.text in EN) && !(`${f.rel}::${f.text}` in ALLOWLIST))
       .map((f) => `${f.rel}: ${JSON.stringify(f.text)}`);
     expect([...new Set(missing)]).toEqual([]);
+  });
+});
+
+describe('EN dict coverage of computed keys', () => {
+  // COMPUTED_KEYS 的两条扫描都放行它们（源里没有同串字面量），所以「键写错
+  // 一个字符」在 liveness 与 CJK 扫描下都是静默的——en 面会悄悄回落 zh。
+  // #510 的密钥副文案正落在这条盲区里（键 = shared 侧插值后的成品串），钉住。
+  it('every computed key resolves in EN', () => {
+    const missing = [...COMPUTED_KEYS].filter((key) => !(key in EN));
+    expect(missing).toEqual([]);
   });
 });
 

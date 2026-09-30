@@ -209,6 +209,50 @@ test('权限 tab：MCP 服务器逐个勾选行渲染', async ({ page }) => {
   await expect(detail.locator('.agent-mcp-row').first()).toBeVisible();
 });
 
+// #510：密钥区粒度改回原版的「全有全无」——原版 Agent 权限 tab 是**一行**
+// 「团队密钥 + 总说明 + 单个 switch」，不展开逐个密钥行（2026-09-30 直读
+// 参考产品确认；密钥页的行菜单也只有编辑/删除，没有 per-Agent 矩阵）。
+// 场景 agent-detail-secrets 播两个密钥：回退成 per-secret 粒度会渲染两行，
+// 「恰好一行」才有牙（只播一个密钥时两种实现都过）。
+const DETAIL_SECRETS = '/app/resources/agents/r3-builder?scenario=agent-detail-secrets';
+
+test('权限 tab：有密钥时密钥区恰好一行总开关', async ({ page }) => {
+  await page.goto(DETAIL_SECRETS);
+  await page.locator('.agent-tab').nth(2).click();
+  await expect(page.locator('.agent-secret-row')).toHaveCount(1);
+  await expect(page.locator('.agent-secret-switch')).toHaveCount(1);
+  await expect(page.locator('.agent-secret-name')).toHaveText('团队密钥');
+  // 副文案 = shared AGENT_PERMISSION_COPY.secrets（原版权限 tab 同一句，品牌
+  // 与最低 CLI 版本插值随常量走）；e2e 不跨包取常量，硬写 canon 文案。
+  await expect(page.locator('.agent-secret-hint')).toHaveText(
+    '任务执行时将团队密钥以环境变量注入该 Agent 的 shell。所在机器需要 pacman CLI 0.1.28 及以上。',
+  );
+});
+
+// 勾选态 = `agent.secrets` 非空（wire 的 string[] 表达得了全有全无，无新字段）。
+test('权限 tab：密钥总开关勾选态开→关→回', async ({ page }) => {
+  await page.goto(DETAIL_SECRETS);
+  await page.locator('.agent-tab').nth(2).click();
+  const sw = page.locator('.agent-secret-switch');
+  await expect(sw).toHaveAttribute('aria-checked', 'false'); // 空集 = 关
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'true'); // 开 = 全 id 集
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'false'); // 关 = []
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'true'); // 回
+});
+
+// 零密钥时没有对象可授，出开关就是死控件（原版那行开关在零密钥时也渲染，
+// 但它当时开关的是什么无法观测——不复刻看不出语义的控件，差异留 #510 票面）。
+test('权限 tab：零密钥时是空态，无开关', async ({ page }) => {
+  const detail = await openDetail(page);
+  await detail.locator('.agent-tab').nth(2).click();
+  await expect(detail.locator('.agent-perm-empty')).toHaveText('暂无团队密钥。');
+  await expect(detail.locator('.agent-secret-switch')).toHaveCount(0);
+  await expect(detail.locator('.agent-secret-row')).toHaveCount(0);
+});
+
 test('未知 agent id 不白屏，走回退呈现', async ({ page }) => {
   await page.goto('/app/resources/agents/no-such-agent?scenario=agent-detail');
   await expect(page.locator('.agent-missing')).toBeVisible();

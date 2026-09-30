@@ -151,10 +151,10 @@ export function AgentDetailPage() {
     memorySort === '添加时间'
       ? [...matchedMemories].sort((a, b) => b.createdAt - a.createdAt)
       : matchedMemories;
-
-  const secretOptions = live
-    ? (secretsQ.data ?? []).map((row) => ({ id: row.id, name: row.name }))
-    : [];
+  // 密钥只取 id 集：授权粒度是全有全无（#510），本面不逐条渲染密钥名。
+  const secretIds = live
+    ? (secretsQ.data ?? []).map((row) => row.id)
+    : (fixture.resources?.secrets ?? []).map((row) => row.id);
   const mcpOptions = live
     ? (mcpQ.data ?? []).map((row) => ({ id: row.id, name: row.label }))
     : (fixture.resources?.mcpServers ?? []).map((row) => ({ id: row.name, name: row.name }));
@@ -180,10 +180,6 @@ export function AgentDetailPage() {
       ? [...agent.tools, label].filter((v, i, all) => all.indexOf(v) === i)
       : agent.tools.filter((v) => v !== label);
     patch({ tools: next });
-  };
-  const toggleSecret = (id: string, on: boolean) => {
-    const next = on ? [...agent.secrets, id] : agent.secrets.filter((v) => v !== id);
-    patch({ secrets: next });
   };
   const toggleMcp = (id: string, on: boolean) => {
     const next = on ? [...agent.mcpServers, id] : agent.mcpServers.filter((v) => v !== id);
@@ -426,23 +422,32 @@ export function AgentDetailPage() {
 
             <section className="agent-perm-group">
               <h3 className="agent-perm-title">{t('密钥')}</h3>
-              {/* 该档的 canon 副文案（AGENT_PERMISSION_COPY.secrets）内嵌
-                  BRAND.cliCommandName 与密钥最低 CLI 版本插值，键值随品牌常量
-                  走——不在此渲染，见 #485 票面缺口清单。 */}
-              {secretOptions.length === 0 ? (
+              {/* 授权粒度 = 原版的「全有全无」（#510）：一行「团队密钥 + 总
+                  说明 + 单个 switch」。原版 Agent 权限 tab 不展开逐个密钥行
+                  （2026-09-30 直读参考产品确认），密钥页的行菜单也只有编辑/
+                  删除、没有 per-Agent 矩阵。wire 的 secrets: string[] 表达得
+                  了：开 = 全 id 集，关 = 空集。勾选态 = agent.secrets 非空。
+                  零密钥时不出开关——没有对象可授，出了就是死控件。 */}
+              {secretIds.length === 0 ? (
                 <p className="agent-perm-empty">{t('暂无团队密钥。')}</p>
               ) : (
-                secretOptions.map((secret) => (
-                  <div key={secret.id} className="agent-perm-row">
-                    <span className="agent-perm-name">{secret.name}</span>
-                    <Switch
-                      className="agent-secret-switch"
-                      aria-label={secret.name}
-                      checked={agent.secrets.includes(secret.id)}
-                      onCheckedChange={(checked) => toggleSecret(secret.id, checked)}
-                    />
-                  </div>
-                ))
+                <div className="agent-perm-row agent-secret-row">
+                  <span className="agent-perm-text">
+                    <span className="agent-perm-name agent-secret-name">{t('团队密钥')}</span>
+                    {/* canon 副文案（AGENT_PERMISSION_COPY.secrets）内嵌
+                        BRAND.cliCommandName 与密钥最低 CLI 版本插值，键值随
+                        品牌常量走。 */}
+                    <span className="agent-perm-hint agent-secret-hint">
+                      {t(AGENT_PERMISSION_COPY.secrets)}
+                    </span>
+                  </span>
+                  <Switch
+                    className="agent-secret-switch"
+                    aria-label={t('团队密钥')}
+                    checked={agent.secrets.length > 0}
+                    onCheckedChange={(checked) => patch({ secrets: checked ? secretIds : [] })}
+                  />
+                </div>
               )}
             </section>
 

@@ -17,6 +17,7 @@ import {
   type Phase,
   type ProjectRepoKind,
   type ProviderRecord,
+  type SecretRecord,
   type TagRecord,
 } from '@pacman/shared';
 
@@ -379,6 +380,11 @@ export interface ResourcesContent {
   /** Agent 记忆条目（shared MemoryRecord 同形；live 面 = GET
    *  /api/teams/{id}/agents/{aid}/memories）。agentId 过滤由消费面做。 */
   memories?: MemoryRecord[];
+  /** 团队密钥记录（shared SecretRecord 同形；live 面 = GET
+   *  /api/teams/{id}/secrets）。消费面 = Agent 详情的密钥区（#510：授权粒度
+   *  是全有全无，该区只要 id 集与「有没有密钥」两件事）。密钥 route 自身
+   *  的 fixture 面保持 r7 10 空态字节不变，不读本字段。 */
+  secrets?: SecretRecord[];
 }
 
 /** Inline text run inside a plan-document block; `code` renders the
