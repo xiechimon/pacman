@@ -32,7 +32,7 @@
 
 1. 该域界面**全切 shadcn 件**（含该域弹层内容族，若有）；
 2. 该域**行为 e2e 全绿**（夹具面回归走 apps/web e2e，不用 verify-pacman）；
-3. **视觉探针按 B 重钉**（口径归 #411；重钉清单从 #409 附录 A 按 spec 摘）；
+3. **视觉探针按 B 重钉**（口径归 #411；重钉清单从 #409 附录 A 按 spec 摘——该附录已并入 main，但数字停在 `8c30775`，摘清单前先按 §6.4 的口径重跑）；
 4. **verify-pacman 栈出证据**（截图 + API/SQLite）归档进 `docs/verify/<票号>/` 随 PR 提交；
 5. **未迁残留声明**：该片故意留旧的面（相邻域共享件等）在 PR body 列明，避免「看着全迁完了」的错觉。
 
@@ -148,9 +148,15 @@
 
 即：B2 的「Card 已迁、按钮等值保留」是**当时的**取舍，不是终态。待裁：B2 收尾（两面 Button/Input 补切）还是并入 B3 一并处理。**这是判定而非缺件**——两面都是壳类单文件，换件后须按模板第 2 件重跑 `token-gate` / `machine-authorize` spec。
 
-### 6.4 #409 的重钉底账不在 main 上
+### 6.4 #409 的重钉底账（已并入 main，数字停在 `8c30775`）
 
-每片验收第 3 件要「重钉清单从 #409 附录 A 按 spec 摘」，而 #409 的产物 `docs/research/migration-surface.md`（附录 A/B：46+3 个 spec 的逐文件选择子全表）**只存在于 `research/migration-surface` 分支**（commit `def4b57`，`git ls-remote origin` 可证），main 上没有这个文件。B3 / B4 的 executor 要么先把它合进 main，要么按该 commit 取。同类研究产物也不在 main：`research/dialog-contract`（#418）、`research/baseui-dialog-contract-2`（#430 车道）等分支同形。
+每片验收第 3 件要「重钉清单从 #409 附录 A 按 spec 摘」。该底账是 `docs/research/migration-surface.md`（附录 A/B：46+3 个 spec 的逐文件选择子全表），原先只在 `research/migration-surface` 分支（commit `def4b57`）。
+
+**已解**：按父票裁决 A4=A，该文件已并入 `main`——正文逐字取自 `def4b57`，文件头记明来源与入仓理由。
+
+**但摘清单前必须先重跑**：报告成文于 `8c30775`，并入时已算出与当前树的偏差（复核基线 `9a0613b`，晚 77 个 commit），并以「偏差标注」块**就地**插在报告各节。**附录 A 的 46 spec 全表不是现行清单**（现 e2e 66 个 spec / 61 个有类名钉扎，表内每行的处数与 distinct 都可能已变）；§3.1、§2.1、§4 同此。摘任何数字前先读对应节的标注块。
+
+同类研究产物仍未在 `main`：`research/dialog-contract`（#418）、`research/baseui-dialog-contract-2`（#430 车道）等分支同形。
 
 ## 7. 取数命令
 
