@@ -23,13 +23,15 @@
 
 前四行是 #421 决议原文（数字为 #421 时点值），**`#414 试点片` 行与各行末尾的〔归批增量〕是 XMON-17 按 A2=B 补的**——补的目的是让每个 `ui/` 原语消费点都能指到一批。
 
-| 批 | 内容 | 依据 | 并行 |
-|---|---|---|---|
-| **#414 试点片**〔归批增量〕 | 看板 / 侧栏域（`board/`）的**原语全切**——#414 只迁了卡片族的 token 与工具类，原语消费点仍在；`routes/board-page.tsx` 同域（直引 `board/board.css`） | 该片是最早落地的一批，域已存在；残留不归批就永远没有验收范围 | 已在盘面，本批只做收口 |
-| **B1 弹层族片** | 19 个挂载点（共享壳 14 消费点 + 2 手工壳）收编到 shadcn Dialog；壳类 `.dlg` ×67 是最热重钉单点 | 共享件先行，避免半迁移缝合线在每域重复 | **串行先行** |
-| **B2 热身 + 第一片真域** | token-gate（30 decl）+ machine-authorize（41 decl）+ resources / secondary 之一（#422 裁 = resources）。〔归批增量〕**secondary 面**：`routes/` 下三个页面壳——`api-keys-page.tsx` / `api-key-create-dialog.tsx` / `create-agent-dialog.tsx`（均挂 `secondary/shell.tsx`，样式经 `secondary.css` 注入；先例 = XMON-13 已按本行落地同域的 `routes/machine-authorize-page.tsx`） | 低 2 面小钉扎少；中 9 里两件 shell 单引、边界最整 | 批内错域可并行 |
-| **B3 弹层内容族**（合并一片） | overlays（241）+ overlay（278）+ detail/overlays（404）+ mention-picker（223，先修悬空 token） | 三件同族（dlg-* 内容族）、跨域同源；合并免把 dialog-viewport 34 处钉扎改三遍 | 批内可并行 |
-| **B4 高三件** | chief（464 / 49 处钉扎）+ detail（852 / 41K 单文件）+ pages（899 / prj-* 42 选择子） | 体量与钉扎密度决定必须等管道与重钉口径稳定 | 可并行，**最多两条车道**（避免同批断言冲突） |
+| 批 | 内容 | 依据 | 并行 | 裸控件 |
+|---|---|---|---|---|
+| **#414 试点片**〔归批增量〕 | 看板 / 侧栏域（`board/`）的**原语全切**——#414 只迁了卡片族的 token 与工具类，原语消费点仍在；`routes/board-page.tsx` 同域（直引 `board/board.css`） | 该片是最早落地的一批，域已存在；残留不归批就永远没有验收范围 | 已在盘面，本批只做收口 | 13 |
+| **B1 弹层族片** | 19 个挂载点（共享壳 14 消费点 + 2 手工壳）收编到 shadcn Dialog；壳类 `.dlg` ×67 是最热重钉单点 | 共享件先行，避免半迁移缝合线在每域重复 | **串行先行** | 0 |
+| **B2 热身 + 第一片真域** | token-gate（30 decl）+ machine-authorize（41 decl）+ resources / secondary 之一（#422 裁 = resources）。〔归批增量〕**secondary 面**：`routes/` 下三个页面壳——`api-keys-page.tsx` / `api-key-create-dialog.tsx` / `create-agent-dialog.tsx`（均挂 `secondary/shell.tsx`，样式经 `secondary.css` 注入；先例 = XMON-13 已按本行落地同域的 `routes/machine-authorize-page.tsx`） | 低 2 面小钉扎少；中 9 里两件 shell 单引、边界最整 | 批内错域可并行 | 41 |
+| **B3 弹层内容族**（合并一片） | overlays（241）+ overlay（278）+ detail/overlays（404）+ mention-picker（223，先修悬空 token） | 三件同族（dlg-* 内容族）、跨域同源；合并免把 dialog-viewport 34 处钉扎改三遍 | 批内可并行 | 27 |
+| **B4 高三件** | chief（464 / 49 处钉扎）+ detail（852 / 41K 单文件）+ pages（899 / prj-* 42 选择子） | 体量与钉扎密度决定必须等管道与重钉口径稳定 | 可并行，**最多两条车道**（避免同批断言冲突） | 105 |
+
+「**裸控件**」列是 XMON-20 补的（口径 = 裸 `<button>` / `<input>` / `<select>` / `<textarea>` 四类之和，全域实测见 §6.5）。这五批合计 186 处，加上 `ui/` 原语本体 2 处即全站 **188** 处。
 
 `board/` / `sidebar` **不在「已从盘面消掉」之列**：实测仍有原语消费点（§5.2），归 `#414 试点片` 收口；`routes/` 八个 tsx 按上述两条边（挂哪个 shell / 直引哪个域 css）拆进 `#414 试点片` / `B2` / `第一片真域`，不单开一批。判定与证据见 §6.2。
 
@@ -182,6 +184,44 @@
 
 同类研究产物仍未在 `main`：`research/dialog-contract`（#418）、`research/baseui-dialog-contract-2`（#430 车道）等分支同形。
 
+### 6.5 账本缺口：手搓控件不入账（XMON-20 补）
+
+**问题**：§6.2 的归批口径只认**「有没有引 `ui/` 原语」**这一条。于是「一个 `ui/` 原语都不引、按钮全用裸 `<button>` + 一次性类名手搓」的文件，会被记成「**本次已无原语消费点**」——账面干净，但它恰恰是 shadcn 化最该收的面。
+
+**实例**（用户在看 serve-live 起的 app 时点出来的）：§6.2 把 `team-page.tsx` / `team-chart.tsx` / `account-page.tsx` 三件记成「B2 · secondary 面（本次已无原语消费点）」，可实测：
+
+| 文件 | 裸 `<button>` | `ui/` 原语 import |
+|---|---|---|
+| `apps/web/src/routes/team-page.tsx` | 3（顶部 grid / 组织图切换 ×2 + 创建 Agent ×1） | 0 |
+| `apps/web/src/routes/team-chart.tsx` | 1 | 0 |
+| `apps/web/src/routes/account-page.tsx` | 3 | 0 |
+| `apps/web/src/routes/api-keys-page.tsx` | 1 | 1 |
+| `apps/web/src/routes/api-key-create-dialog.tsx` | 2 | 2 |
+| `apps/web/src/routes/create-agent-dialog.tsx` | 1 | 1 |
+
+这三件的 7 个手搓按钮样式全在 `apps/web/src/secondary/secondary.css`（931 行）里手搓（`.team-layout-tabs` / `.team-layout-tab` / `.team-layout-tab--active`，含自己的媒体查询）。同一页里 `components/ui/button` 与手搓类名两套并存 —— 就是「按钮有两个样式」的来源。
+
+**全域实测**（基线 `fa54bba`）。口径是**四类裸控件之和**——`<button>` / `<input>` / `<select>` / `<textarea>`：口径只数 `<button>` 会漏掉 33 处（`<input>` 22 · `<textarea>` 7 · `<select>` 4），而 `ui/input` 与 `components/ui/input` 两代并存正是同一类问题：
+
+| 域 | `<button>` | `<input>` | `<select>` | `<textarea>` | 合计 | 消费 `components/ui/button` 的文件数 |
+|---|---|---|---|---|---|---|
+| board | 12 | 0 | 0 | 0 | 12 | 3 |
+| chief | 17 | 1 | 0 | 2 | 20 | 0 |
+| detail | 34 | 6 | 0 | 2 | 42 | 0 |
+| overlay | 15 | 3 | 0 | 1 | 19 | 1 |
+| overlays | 8 | 0 | 0 | 0 | 8 | 0 |
+| pages | 35 | 5 | 3 | 0 | 43 | 0 |
+| resources | 15 | 1 | 0 | 1 | 17 | 2 |
+| routes | 18 | 5 | 1 | 1 | 25 | 2 |
+| ui（原语本体） | 1 | 1 | 0 | 0 | 2 | — |
+| **合计** | **155** | **22** | **4** | **7** | **188** | **10 个文件** |
+
+`chief` / `detail` / `pages` / `overlays` 消费 shadcn `Button` 的文件数为 0，与 §0「B3 / B4 未开工」一致。`routes/` 18 处的逐文件分布（供归批对账）：`team-page` 3 · `account-page` 3 · `agent-detail-page` 3 · `agent-model-select` 3 · `api-key-create-dialog` 2 · `api-keys-page` 1 · `board-page` 1 · `create-agent-dialog` 1 · `team-chart` 1。
+
+**口径修订（本行起生效）**：§6.2 的归批判据由**两条边**扩到**三条边**——第三条 = **手搓控件**（裸 `<button>` / `<input>` / `<select>` / `<textarea>` / 一次性类名控件）也构成消费点，同样必须指到某一批。§1 批次表已按此加「裸控件」列（五批合计 186 处 + `ui/` 本体 2 处 = 188）。
+
+**留给后续三行的复核**（XMON-20 的迁移做完后顺带核）：`#414 试点片` / `B3` / `B4` 三行的验收范围是否要按新列重新划——尤其 `#414 试点片` 的「只做收口」是否还成立。
+
 ## 7. 取数命令
 
 ```sh
@@ -196,12 +236,35 @@ for f in $(find apps/web/src -name '*.css' | sort); do
     "$(grep -cE '^[^@/].*\{' $f)"
 done
 
+# 裸控件 census（§6.5）—— 四类之和，全站 188 处
+for t in button input select textarea; do
+  printf "%-10s %s\n" "<$t" "$(grep -rho "<$t" apps/web/src --include=*.tsx | wc -l)"
+done
+# 逐域分解（一域一行，末列 = 四类之和）
+for d in apps/web/src/*/; do
+  b=$(grep -rho '<button' "$d" --include=*.tsx | wc -l)
+  i=$(grep -rho '<input' "$d" --include=*.tsx | wc -l)
+  s=$(grep -rho '<select' "$d" --include=*.tsx | wc -l)
+  t=$(grep -rho '<textarea' "$d" --include=*.tsx | wc -l)
+  [ $((b+i+s+t)) -gt 0 ] && printf "%-22s btn=%-4s input=%-3s select=%-3s textarea=%-3s 合计=%s\n" \
+    "$(basename $d)" "$b" "$i" "$s" "$t" "$((b+i+s+t))"
+done
+# 域名内逐文件（归批对账用；routes/ × routes/ 的 25 处就是这样拆出来的）
+for f in apps/web/src/routes/*.tsx; do
+  n=$(( $(grep -c '<button' "$f") + $(grep -c '<input' "$f") + $(grep -c '<select' "$f") + $(grep -c '<textarea' "$f") ))
+  [ "$n" -gt 0 ] && printf "%-40s %s\n" "$(basename $f)" "$n"
+done
+# 消费 shadcn Button 的文件数
+grep -rl 'components/ui/button' apps/web/src --include=*.tsx | wc -l
+
 # 三闸（本册基线绿；本票未复跑，见下方复跑记录）
 pnpm -r typecheck                       # TC_EXIT=0
 rtk proxy pnpm exec biome ci .          # 0 error / 4 warnings / 25 infos（459 files）
 # 全量 e2e（夹具构建单次；私有端口，跑前 lsof 查占用）
 cd apps/web && E2E_PORT=8429 pnpm exec playwright test    # 472 passed (44.8s)
 ```
+
+**复跑记录（XMON-20 @ `fa54bba`）**：§6.5 的裸控件 census 命令已复跑，读数即 §6.5 两张表（四类合计全站 188 处：`<button>` 155 · `<input>` 22 · `<select>` 4 · `<textarea>` 7；消费 `components/ui/button` 的文件 10 个）。本票只改本册（文档），按仓规「仅文档改动不跑」三闸。
 
 **复跑记录（XMON-17 @ `d37937f`）**：前两条取数命令已复跑，读数即 §5.1 / §5.2 现表（域 css 一行一值、消费点 20 文件 / 22 处）。**三闸未复跑**——本票只改本册，按仓规「仅文档改动不跑」执行，且本 checkout 无 `node_modules`（未跑 `pnpm install`）；三闸的每一片现行读数记录在该片落地提交的 message 里（最近两条：#534 / #535），本册不复述。
 
