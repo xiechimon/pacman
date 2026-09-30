@@ -9,14 +9,13 @@
 | 轨 | 位置 | 状态 |
 |---|---|---|
 | **新轨** | `src/components/ui/` | **新代码一律落这里。** shadcn 件 + Base UI 基（#410 裁决），带仓内偏离记录 |
-| **旧轨** | `src/ui/` | 待退役的手工件（`avatar` / `button` / `card` / `chip` / `dialog` / `input` / `kbd-hint` / `tag-chip`，各带 `.css`）。**只许删、不许加**（#417 裁决，机器门钉住） |
+| **旧轨** | `src/ui/` | 待退役的手工件（现存 `button` / `card` / `chip` / `dialog` / `input`，各带 `.css`；`avatar` / `kbd-hint` / `tag-chip` 已迁新轨，#535）。**只许删、不许加**（#417 裁决，机器门钉住） |
 | 弹层族 | `src/overlay/` + `src/overlays/` | 挂在共享壳上（见第三节），**不自己手搓 OverlayMount + useEscClose** |
 
 规矩一句话：**改已有消费点时才碰旧轨；写新件进新轨。**
 
 <!-- inventory:old-track-frozen -->
 ```text
-avatar.tsx
 button.css
 button.tsx
 card.css
@@ -26,21 +25,18 @@ chip.tsx
 dialog.css
 input.css
 input.tsx
-kbd-hint.css
-kbd-hint.tsx
-tag-chip.css
-tag-chip.tsx
 ```
 <!-- /inventory:old-track-frozen -->
 
 （上面这段是机器门读的冻结名单：`src/ui/` 里出现名单外的新件即报错——迁移期的删除不报错。）
 
-## 二、新轨原语（14）
+## 二、新轨原语（19）
 
 <!-- inventory:new-track -->
 ```text
 alert-dialog-shell.tsx   # 确认面共用底座（删除确认 / 丢草稿确认），走 Base UI AlertDialog
 alert-dialog.tsx
+avatar.tsx               # shadcn Avatar 三件套（Root/Image/Fallback，底座 Base UI）；头像消费别直接用三件套，走 seeded-avatar.tsx
 badge.tsx                # 计数 / 标签 pill；任务状态语义色族见 DESIGN.md
 button.tsx               # 三态 Primary/Ghost/Icon；仓内偏离：focus 环走仓级 #388 canon
 card.tsx
@@ -50,8 +46,12 @@ dropdown-menu.tsx
 empty.tsx
 floating-shell.tsx       # 锚定浮层共用底座（plan-dropdown / chip-popover / more-menu / 用户菜单 / 排序 / chief-model-select / mention-picker）
 input.tsx
+kbd-hint.tsx             # 快捷键悬浮提示 chip（控件 hover/focus-visible 浮出、静息 visibility:hidden）；#468 快捷键提示一律用它
+kbd.tsx                  # 按键角标原语（文档正文里的 ⌘K 角标）；悬浮提示 chip 是 kbd-hint.tsx
 popover.tsx
+seeded-avatar.tsx        # dicebear 种子头像适配层（src 覆盖 > name 种子 > 兜底换图，img 常驻 DOM）；头像一律用它
 switch.tsx               # 仓内偏离：thumbClassName 适配口
+tag-chip.tsx             # 用户数据色标签 chip（tag.color 走 inline style 白字）；落在 badge.tsx 上，别新建皮肤件
 tabs.tsx
 ```
 <!-- /inventory:new-track -->
@@ -66,13 +66,15 @@ tabs.tsx
 | 输入框 | `components/ui/input.tsx` | 别沿用旧轨 `ui/input.tsx` 新起消费点 |
 | 开关 | `components/ui/switch.tsx` | — |
 | 标签页 | `components/ui/tabs.tsx` | — |
-| 计数 / 标签 pill | `components/ui/badge.tsx`（状态色族） | 旧轨 `chip.tsx` / `tag-chip.tsx` 待退役，别加新消费 |
+| 计数 / 标签 pill | `components/ui/badge.tsx`（状态色族） | 旧轨 `chip.tsx` 待退役，别加新消费 |
 | 空态 | `components/ui/empty.tsx` | 别每处自写空态文案块 |
 | 确认对话框 | `components/ui/alert-dialog-shell.tsx` | 别手搓 `OverlayMount` + `useEscClose` |
 | 普通对话框 | `components/ui/dialog-shell.tsx` | 消费点只改 import 路径即可（API 逐字相同） |
 | 锚定浮层（下拉 / 菜单 / popover） | `floating-shell.tsx`，或它上面的 `dropdown-menu.tsx` / `popover.tsx` | 别自造定位壳 |
 | 卡片 / 面板 | 先看 `components/ui/card.tsx`；**但注意下面的消费现状** | 别硬套原语——真卡是 per-face 类族 |
-| **头像** | **只有旧轨 `ui/avatar.tsx`**（新轨尚无对应件） | 现在从旧轨 import 是已知在案状态；迁移到该域时补新轨件，别照抄第二份 |
+| **头像** | `components/ui/seeded-avatar.tsx`（dicebear 种子 + 兜底换图，img 常驻 DOM） | 别直接用 `avatar.tsx` 三件套——尺寸正本在各面 per-face 几何，Root 需走 `contents` |
+| 快捷键提示 chip | `components/ui/kbd-hint.tsx`（落在 `kbd.tsx` 上） | 别自写绝对定位 + 显隐；文档正文里的按键角标用 `kbd.tsx` |
+| 标签 chip（用户数据色） | `components/ui/tag-chip.tsx` | 状态色族仍走 `badge.tsx`；别混两种色来源 |
 
 ## 四、消费现状（2026-09-30 快照，仅供判断，不进门）
 
