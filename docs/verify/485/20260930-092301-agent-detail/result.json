@@ -1,7 +1,7 @@
 {
   "probe": "agent-detail",
   "ok": true,
-  "at": "2026-09-30T08:41:34.556Z",
+  "at": "2026-09-30T09:23:05.920Z",
   "stack": {
     "api": "http://127.0.0.1:8795",
     "web": "http://127.0.0.1:5277",
@@ -16,7 +16,7 @@
     {
       "name": "card-opens-detail-route",
       "ok": true,
-      "detail": "http://127.0.0.1:5277/app/resources/agents/GQufsjyCWpBW17JS7d1NE"
+      "detail": "http://127.0.0.1:5277/app/resources/agents/YszP5f3ACw7gFtgb3FEUC"
     },
     {
       "name": "server-seeded",
@@ -42,6 +42,11 @@
       "name": "overview-thinking-readonly",
       "ok": true,
       "detail": null
+    },
+    {
+      "name": "overview-runtime-derived",
+      "ok": true,
+      "detail": "verify-485-gw"
     },
     {
       "name": "name-persisted",
@@ -107,6 +112,6 @@
     "05-create-model-menu.png",
     "06-team-after-create.png"
   ],
-  "teamId": "ITAWSBx_nv6AfAVVKhiB8",
-  "agentId": "GQufsjyCWpBW17JS7d1NE"
+  "teamId": "Wep6rJLhD0lmqdIaeRE-q",
+  "agentId": "YszP5f3ACw7gFtgb3FEUC"
 }

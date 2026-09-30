@@ -129,6 +129,13 @@ try {
     (await page.locator('.agent-thinking').textContent())?.trim() === '默认' &&
       (await page.locator('.agent-thinking button').count()) === 0,
   );
+  // 运行时档 = provider 位派生（本场景 provider = verify-485-gw 这个 custom
+  // provider，故直接出 id；内置 pi 时出「内置 (pi)」）。
+  check(
+    'overview-runtime-derived',
+    (await page.locator('.agent-runtime').textContent())?.trim() === 'verify-485-gw',
+    await page.locator('.agent-runtime').textContent(),
+  );
 
   // —— 3. 名称行内编辑 → server displayName 变 ──────────────────────────
   await page.locator('.agent-name').click();
