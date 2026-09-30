@@ -19,6 +19,7 @@ import {
   boardDefault,
   boardFailed,
   boardGithubPicker,
+  boardOverflow,
   boardProjectPicker,
   boardR8Overlay,
   boardRepoFilter,
@@ -136,6 +137,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // 三项目三卡（r3 两卡 + r2 一卡 + r4-quiet 零卡）钉仓库轴单选/多选/
       // 空态与「仓库 × 类型」双轴组合收窄。
       'board-repos': boardRepoFilter,
+      // #504 看板列滚动：命名场景（无 capture，board-tags 先例）——待开始
+      // 12 卡撑出溢出，e2e 钉行高不破视口、列头固定、列表自持滚动。
+      'board-overflow': boardOverflow,
       // detail (r7 16–17, 23, 26–28, 36, 38)
       '16': detailPlanning,
       '16d': detailConfirm(true),

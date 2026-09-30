@@ -357,7 +357,7 @@ export function BoardSurface({
         onDragCancel={onDragCancel}
       >
         <div
-          className={`board-scroller absolute inset-x-0 bottom-0 grid grid-cols-4 gap-3.5 overflow-x-auto overflow-y-hidden bg-background px-[17px] pt-3 pb-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+          className={`board-scroller absolute inset-x-0 bottom-0 grid grid-cols-4 grid-rows-[minmax(0,1fr)] gap-3.5 overflow-x-auto overflow-y-hidden bg-background px-[17px] pt-3 pb-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
             banner == null ? 'top-11' : 'top-[121px]'
           }`}
         >
@@ -454,7 +454,10 @@ export function BoardSurface({
 }
 
 /** The list area doubles as the column's drop target so empty columns
- *  accept drops (useDroppable id = column id). */
+ *  accept drops (useDroppable id = column id). #504: the list is the
+ *  column's scroll surface — the 37px header stays fixed while cards
+ *  overflow (overflow-y rides the same native-scrollbar convention as
+ *  .secondary-body / .res-body). */
 function ColumnList({
   columnId,
   empty,
@@ -469,7 +472,7 @@ function ColumnList({
   const { setNodeRef } = useDroppable({ id: columnId });
   return (
     <div
-      className="board-column-list relative flex min-h-0 flex-1 flex-col gap-2 px-[7.25px]"
+      className="board-column-list relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-[7.25px]"
       ref={setNodeRef}
       data-column-list={columnId}
     >
