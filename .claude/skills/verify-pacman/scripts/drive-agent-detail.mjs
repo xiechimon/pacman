@@ -139,6 +139,11 @@ try {
     (await page.locator('.agent-thinking').textContent())?.trim() === '默认' &&
       (await page.locator('.agent-thinking button').count()) === 0,
   );
+  // XMON-18：概览撤掉「状态」行（`agentStatusSchema` 只有一个取值 active）。
+  // 判据取**元素计数为零**，比断言文本更能钉住「没长回来 + 撤行没留空壳」。
+  // 注意这里是「只撤状态」——思考强度那行要留着，上面那条就是它的看门人。
+  const statusRowCount = await page.locator('.agent-status').count();
+  check('overview-no-status-row', statusRowCount === 0, `status=${statusRowCount}`);
   // 运行时档 = provider 位派生（本场景 provider = verify-485-gw 这个 custom
   // provider，故直接出 id；内置 pi 时出「内置 (pi)」）。
   check(

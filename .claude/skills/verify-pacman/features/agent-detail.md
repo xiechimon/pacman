@@ -1,12 +1,12 @@
 # Agent 详情编辑面
 
-团队页的 Agent 卡是进 Agent 详情编辑面的入口。详情面三 tab：概览（头像、名称行内编辑、职责、默认 skill、模型、思考强度与状态只读行）、记忆（条目列表 + 删除）、权限（工具 6 开关 + 团队密钥 + MCP 逐个勾选）。创建 Agent 弹窗按服务商是否就绪走两态：候选非空 = 弹窗内直接选 provider/modelId（不跳页）；候选空 = 「尚未配置模型服务商」告警行 + 配置外链。
+团队页的 Agent 卡是进 Agent 详情编辑面的入口。详情面三 tab：概览（头像、名称行内编辑、职责、默认 skill、模型、思考强度只读行）、记忆（条目列表 + 删除）、权限（工具 6 开关 + 团队密钥 + MCP 逐个勾选）。创建 Agent 弹窗按服务商是否就绪走两态：候选非空 = 弹窗内直接选 provider/modelId（不跳页）；候选空 = 「尚未配置模型服务商」告警行 + 配置外链。
 
 ## Sub-features
 
 - `card-link` — 团队页 `.team-agent-card` 是 `<a>`，点击落 `/app/resources/agents/<id>`，`?scenario=` 随行。
 - `overview-fields` — 名称（行内编辑）、职责、默认 skill、模型选择器，各自提交后 server 记录随之变。
-- `overview-readonly` — 运行时 / 思考强度 / 状态是只读值行（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）；思考强度档位词表经能力读面 `GET /api/capabilities` 到 web（XMON-16 / #499 B3 裁决 A），只读行按该词表呈现档位——存值不在词表内落「默认」（B1 裁「保持只读」：读面 ≠ 写面，选择器仍不出）；`创建于` 无 createdAt 列。三处都不发明。
+- `overview-readonly` — 运行时 / 思考强度是只读值行（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）；思考强度档位词表经能力读面 `GET /api/capabilities` 到 web（XMON-16 / #499 B3 裁决 A），只读行按该词表呈现档位——存值不在词表内落「默认」（B1 裁「保持只读」：读面 ≠ 写面，选择器仍不出）。**XMON-18 裁决（2026-10-01）撤掉 `状态` 行**（`agentStatusSchema` 只有 active 一个取值，零信息量；判据是「页面里不存在」，不是换文案）。同一裁决里 `创建于 …` 也不做——它**从来没渲染过**（此前缺口是「DB 无 createdAt 列」），所以是继续不做、不是撤行；`main` 上不会加这一列。
 - `memory-tab` — 条目列表 + 删除；空态文案 = shared `MEMORY_EMPTY_COPY` canon。
 - `permissions-tab` — 工具 6 开关（文案 = shared `AGENT_TOOL_SWITCHES`，**六档各带说明副文案** = shared `AGENT_TOOL_COPY`）、**团队密钥一行聚合总开关**（#510：粒度 = 原版的全有全无，副文案 = shared `AGENT_PERMISSION_COPY.secrets`；开 = `PATCH { secrets: 团队全部密钥 id }`、关 = `PATCH { secrets: [] }`，勾选态 = `agent.secrets` 非空；零密钥时只有空态 `暂无团队密钥。`、不出开关）、MCP 逐个勾选，落 `PATCH tools/secrets/mcpServers`。
 - `create-model-slot` — 创建弹窗模型槽两态；选中后 `POST /api/teams/{id}/agents` body 带 `provider` 与 `modelId`。
@@ -27,7 +27,8 @@ Preconditions:
 - 从 worktree 路径跑脚本本体，并带 `VERIFY_REPO_ROOT=<worktree 绝对路径>`（用主仓旧脚本验 lane 新代码会得到迷惑症状）。
 
 - 团队页卡是链接并落详情路由 → `node <worktree>/.claude/skills/verify-pacman/scripts/drive-agent-detail.mjs` → `team-card-is-link`（卡元素是 `a`）+ `card-opens-detail-route`（pathname = `/app/resources/agents/<id>`）。
-- 概览回显 = server 真值 → 同命令 → `overview-name` / `overview-role-empty-canon` / `overview-model` / `overview-thinking-readonly`。
+- 概览回显 = server 真值 → 同命令 → `overview-name` / `overview-role-empty-canon` / `overview-model` / `overview-thinking-readonly`（这条在 XMON-18 之后兼作「思考强度行还在」的看门人）。
+- 概览不再摆「状态」行（XMON-18）→ 同命令 → `overview-no-status-row`（`.agent-status` 元素计数为 0）。判据取「不存在」，比断言文本更能钉住「没长回来 + 撤行没留空壳」。
 - 思考强度档位来自能力读面（XMON-16）→ 同命令 → `capabilities-seven-levels`（读面七档有序）/ `thinking-inside-vocabulary-rendered`（PATCH `high` → 行出 `high`）/ `thinking-outside-vocabulary-falls-back`（PATCH `ultra` → 行落「默认」且无按钮）。后两条是「读面接到 UI 上」的判据，只验端点不算数；跑完还原种子态 `thinkingLevel: null`。
 - 改名称、改职责 → 同命令 → `name-persisted` / `role-persisted`（重取 `GET /api/teams/{id}/agents/{aid}` 对字段，不看 UI 回显）。
 - 模型槽清空再选回 → 同命令 → `model-cleared`（provider/modelId 双 null）/ `model-persisted`（`verify-485-gw/claude-sonnet-5`）。

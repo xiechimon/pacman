@@ -10,6 +10,11 @@
 // （两组形状同源 = shared AgentRecord），fixture 面无后端，提交落本地覆盖
 // 记录承载「提交后回显」——live 面则是 S8 律（mutation → invalidateAll 重取）。
 //
+// XMON-18 裁决（2026-10-01）：概览不摆 `状态` 行——`agentStatusSchema` 只有一个
+// 取值 active，摆出来零信息量（原版有这一行，本仓不复刻）；`创建于 …` 也不摆
+// （不需要创建时间，DB 不加 createdAt 列）。**其余只读行保留**：思考强度档位交给
+// agent 编排、不给人手设，但值本身要看得见。
+//
 // 本面明确不做的两件（均因证据/结构缺口，不发明）：
 // · `创建于 …` 状态行——AgentRecord 与 DB agent 表都无 createdAt 列；
 // · 思考强度选择器——B1 已裁「保持只读」；档位词表本身有读面了（XMON-16：
@@ -323,10 +328,6 @@ export function AgentDetailPage() {
                   透出存值——引擎没有的档位不呈现（#499 B3 / XMON-16）。 */}
               <span className="agent-field-label">{t('思考强度')}</span>
               <span className="agent-thinking">{thinkingLevel ?? t('默认')}</span>
-            </div>
-            <div className="agent-field">
-              <span className="agent-field-label">{t('状态')}</span>
-              <span className="agent-status">{agent.status}</span>
             </div>
             {/* 进行中（原版概览最后一段；r3 53 截图拍到的是空态
                 `暂无进行中的任务`）。结构照原件：一张描边卡（bg-surface-secondary
