@@ -1,8 +1,24 @@
 name: ci
 
+# push 只留 main 与 prototype/**（#500）。`web/**` 曾在此列，导致每条车道分支
+# 每次 push 触发两条同 workflow 的 run：push 一条、pull_request 一条，跑的是
+# 同一个 head sha。近 30 条 run 里 5 条 web/** 分支全部 1:1 双跑，且结论会分歧
+# ——web/sidebar-head-polish 的 push run 红、pull_request run 绿（m5 存量 flake），
+# 把 commit status 钉成 UNSTABLE 并误导归因。
+#
+# 不用 concurrency 按 sha 去重：push 的 github.sha 与 pull_request 的
+# event.pull_request.head.sha 是同一个值，两者落进同一 group，
+# cancel-in-progress 会让后注册的那条取消先注册的——谁存活不确定；若存活的是
+# push run，PR 页面只剩一条 cancelled，合并闸反而更糊。收敛触发面才是确定解。
+#
+# 保留 prototype/**：那两个分支（42-pixel-replica / shadcn-visual-tokens）无
+# 开 PR，push run 是它们唯一的 CI 来源；摘掉等于零覆盖。web/** 车道一律开 PR，
+# 由无条件的 pull_request 触发覆盖（lane/** docs/** 本就不在列，同一口径）。
+# 副作用：web/** 分支在「已 push、未开 PR」的窗口内没有 CI——需要早看信号就开
+# draft PR，pull_request 对 draft 同样触发。
 on:
   push:
-    branches: [main, 'web/**', 'prototype/**']
+    branches: [main, 'prototype/**']
   pull_request:
 
 jobs:
