@@ -13,6 +13,12 @@
 //       during the gap, so a frozen counter would lie
 //   F14 stopping + active step must still read 正在停止… (not hijacked by
 //       the quiescent label)
+//   F14b stopping with NO active step (single-render transient — the live
+//       face clears the flag) falls back to the quiescent label, not a
+//       正在停止… row describing an interruption that has nothing running
+//   F17 a stopped run (停止钮 landed, phase not flipped yet) hangs no
+//       执行中... tail — the 已取消 run stamp is the cue; claiming
+//       execution for a dead run would lie
 
 import type { BuildRecord, StepJournalRow } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
@@ -78,7 +84,6 @@ describe('mapTranscript quiescent live tail (#471)', () => {
     expect(last).toMatchObject({ kind: 'streaming', label: '执行中...' });
     // F12: no seconds counter — the gap has no stream events to re-render
     // it, a frozen count would lie.
-    expect(last).toBeDefined();
     if (last?.kind !== 'streaming') throw new Error('tail is not a streaming row');
     expect(last.seconds).toBeUndefined();
   });
@@ -111,5 +116,15 @@ describe('mapTranscript quiescent live tail (#471)', () => {
   test('F14: stopping with an active step still reads 正在停止…', () => {
     const items = render({ todo: todo(9, 'building'), steps: [step('claimed')], stopping: true });
     expect(streamingRows(items).map((r) => r.label)).toEqual(['正在停止…']);
+  });
+
+  test('F14b: stopping with no active step falls back to the quiescent tail', () => {
+    const items = render({ todo: todo(9, 'building'), steps: [step('done')], stopping: true });
+    expect(streamingRows(items).map((r) => r.label)).toEqual(['执行中...']);
+  });
+
+  test('F17: a stopped run hangs no 执行中... tail', () => {
+    const items = render({ todo: todo(9, 'building'), steps: [step('stopped')] });
+    expect(streamingRows(items)).toHaveLength(0);
   });
 });
