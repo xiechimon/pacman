@@ -54,15 +54,19 @@ test('列表可滚：scrollTo 移动 scrollTop，滚轮同样生效', async ({ p
   const after = await list(page).evaluate((el) => el.scrollTop);
   expect(after).toBeGreaterThan(before);
   // wheel 正面钉：与 scrollTo 解耦——归零后滚半屏，scrollTop 必须离开 0
-  // （钉「用户输入可达」，不依赖与 scrollTo 叠加后的具体位次；CI 无头
-  // 合成器对叠加位次的 wheel 派发时机不稳，实测曾吞掉增量）
+  // （钉「用户输入可达」，不依赖与 scrollTo 叠加后的具体位次）。两处时序
+  // 坑：无头合成器对刚落点的 wheel 目标切换有延迟（scrollTo(0) 的
+  // round-trip 垫在 move 与 wheel 之间）；wheel 的平滑滚动落在合成器帧
+  // 上（poll 到离开 0 再断言，即时读会撞 0——两轮 CI 实测同坑，本地有头
+  // 快机器碰巧即时生效）。
   const box = await list(page).boundingBox();
   if (box == null) throw new Error('overflow list missing');
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await list(page).evaluate((el) => el.scrollTo({ top: 0 }));
   await page.mouse.wheel(0, 240);
-  const postWheel = await list(page).evaluate((el) => el.scrollTop);
-  expect(postWheel).toBeGreaterThan(0);
+  await expect
+    .poll(async () => list(page).evaluate((el) => el.scrollTop), { timeout: 2000 })
+    .toBeGreaterThan(0);
 });
 
 test('列头固定：列表滚动时 header 的视口位置不动', async ({ page }) => {
