@@ -3,14 +3,14 @@
 > 正典地位：本册收 #417（Map）的三件规划产物——**批次表**、**每片验收标准模板**、**与三张蓝图票的依赖序**——并把「已落地 / 前沿」两份实测钉在同一处，让 B3 / B4 的执行票不必回翻 issue 线程取口径。
 > 决议来源：#421（批次表与验收口径，2026-09-29 用户全项 agree）、#422（第一片选定，2026-09-29）、#409（迁移面盘点，2026-09-29）；三张蓝图票 = #410（primitives 选型）/ #411（e2e 重钉口径）/ #412（token 管道）。
 > 时效：§5 实测按 `origin/main @ fa54bbad`（2026-10-01，XMON-20 取数时点）取数，命令逐条在 §7；#409 的数字取于 `8c30775`，凡量纲不同或已漂移处均就地标注。
-> 归批口径（XMON-17 定，XMON-20 补第二条边）：**每一处 `ui/` 原语消费点与每一处手搓控件都必须落在某一批里**。裁决 A2=B（父票 XMON-3）：`routes/` 与 `board/` 的残留按域拆回现有各批，不新开「routes 批」；域的判定用两条可复核的边——**挂哪个 shell**（`resources/shell.tsx` / `secondary/shell.tsx`）与**直引哪个域 css**。手搓控件（裸 `<button>`）的入账口径见 §5.3——它们是只认「有没有引 `ui/` 原语」的旧口径下唯一漏账的一类。
+> 归批口径（XMON-17 定，XMON-20 补第二条边）：**每一处 `ui/` 原语消费点与每一处手搓控件都必须落在某一批里**。裁决 A2=B（父票 XMON-3）：`routes/` 与 `board/` 的残留按域拆回现有各批，不新开「routes 批」；域的判定用两条可复核的边——**挂哪个 shell**（`resources/shell.tsx` / `secondary/shell.tsx`）与**直引哪个域 css**。手搓控件（裸 `<button>` / `<input>` / `<select>` / `<textarea>`）的入账口径见 §6.5——它们是只认「有没有引 `ui/` 原语」的旧口径下唯一漏账的一类。
 > 像素纪律：逐域迁移是**纯结构**改动、零视觉重钉（#411 政策 4 + #435 值正本并流后的口径）——per-face 规则仍是几何与配色的正本，组件换成 shadcn 件只换承载结构。
 
 ## 0. 结论一览
 
 | 批 | 内容 | 状态（fa54bbad 实测） |
 |---|---|---|
-| **#414 试点片** | 看板 / 侧栏域（board / sidebar） | **未收口**，剩 1 个 tsx 消费点（`board/notify-banner.tsx`）；裸控件 13 处 / 手搓类 1，见 §5.3 |
+| **#414 试点片** | 看板 / 侧栏域（board / sidebar） | **未收口**，剩 1 个 tsx 消费点（`board/notify-banner.tsx`）；裸控件 13 处，见 §6.5 |
 | **B1 弹层族片** | 19 个挂载点收编 shadcn Dialog | 已落地（#425，证据 `docs/verify/425/`） |
 | **B2 热身片** | token-gate + machine-authorize + secondary 面 | **已落地**（#426 热身两面，证据 `docs/verify/426/`；Button/Input 收尾 XMON-13 / #534；secondary 面 XMON-20，证据 `docs/verify/xmon-20/`） |
 | **第一片真域** | resources 五页（machines / providers / secrets / skills / mcp-servers） | 已落地（#423，证据 `docs/verify/423/`）；`routes/agent-detail.css` 为壳内邻页残留，见 §6.2 |
@@ -158,9 +158,9 @@
 | `routes/` 文件 | 域（边） | 归批 |
 |---|---|---|
 | `api-keys-page.tsx` · `api-key-create-dialog.tsx` · `create-agent-dialog.tsx` | secondary（均挂 `SecondaryShell`；`create-agent-dialog` 由同域的 `team-page.tsx` 渲染） | B2 · secondary 面（XMON-20 已落地） |
-| `agent-detail-page.tsx` (+ `agent-detail.css`) | 资源域（挂 `ResourceShell`，路由级直引 `agent-detail.css`） | 第一片真域（壳内邻页，css 为残留；§5.3 记 3 处裸控件） |
-| `board-page.tsx` | 看板域（直引 `board/board.css`） | #414 试点片（§5.3 记 1 处裸控件） |
-| `team-page.tsx` · `team-chart.tsx` · `account-page.tsx` | secondary | B2 · secondary 面（XMON-20 已落地；§5.2 记的「无原语消费点」只是原语账，裸控件账在 §5.3：11 处 / 10 类） |
+| `agent-detail-page.tsx` (+ `agent-detail.css`) | 资源域（挂 `ResourceShell`，路由级直引 `agent-detail.css`） | 第一片真域（壳内邻页，css 为残留；§6.5 记 6 处裸控件） |
+| `board-page.tsx` | 看板域（直引 `board/board.css`） | #414 试点片（§6.5 记 1 处裸控件） |
+| `team-page.tsx` · `team-chart.tsx` · `account-page.tsx` | secondary | B2 · secondary 面（XMON-20 已落地；§5.2 记的「无原语消费点」只是原语账，裸控件账在 §6.5：本票迁走 11 处） |
 | `machine-authorize-page.tsx` | machine-authorize | B2（XMON-13 / #534 已落地） |
 
 `board/` 侧同律：`board/notify-banner.tsx` → **#414 试点片**。并更正票面旧记——**#414 迁的是卡片族的 token 与工具类，不是原语全切**，实测仍有原语消费点（§5.2 那一行），故 `board/` / `sidebar` 不在「已从盘面消掉」之列。
