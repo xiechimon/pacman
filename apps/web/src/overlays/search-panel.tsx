@@ -19,6 +19,7 @@ import type { SearchResponse } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { relativeTime } from '../board/rel-time.js';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import { PROJECT_ID, PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { AgentRef, FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -37,7 +38,6 @@ import {
 import { PHASE_UI } from '../phase.js';
 import { Avatar } from '../ui/avatar.js';
 import { Input } from '../ui/input.js';
-import { OverlayMount } from './dismiss.js';
 import './overlays.css';
 
 /** 前往 group rows, top to bottom. Canon is the r7 05 bitmap, not r2
@@ -169,12 +169,12 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
   const [cursor, setCursor] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const pointerRef = useRef<{ x: number; y: number } | null>(null);
-  // #137: OverlayMount renders children one commit *after* `open` flips
-  // (useOverlayMount sets `mounted` in an effect), so this effect alone
-  // ran while inputRef.current was still null — ⌘K opened an unfocused
-  // panel. The callback ref below focuses at the real DOM attach; this
-  // effect covers the retained-mount reopen (input never detached, mid-exit
-  // ⌘K, so the ref callback does not re-fire).
+  // #137 two-path focus. The ref callback below focuses at the real DOM
+  // attach — the mount path, and the one that runs when ⌘K opens onto a
+  // panel whose input does not exist yet. This effect is the reopen path:
+  // the retained panel never detaches its input (mid-exit ⌘K), so the ref
+  // callback does not re-fire and the open flip would leave the caret
+  // nowhere. Both paths must stay: dropping either regresses ⌘K focus.
   useEffect(() => {
     if (open) inputRef.current?.focus({ preventScroll: true });
   }, [open]);
@@ -250,16 +250,17 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
   }, [cursor]);
 
   return (
-    <OverlayMount open={open}>
-      {/* scrim as its own control: click outside the panel closes it
-          (Escape does too, via useSearchState) — [推断] affordance, no
-          capture exercises either */}
-      <button
-        type="button"
-        className="search-scrim anim-fade"
-        aria-label={t('关闭搜索')}
-        onClick={onClose}
-      />
+    // #453：视口根面走 DialogShell 的 `viewportRoot` 变体——面板自带 fixed
+    // 几何（.search-panel），scrim 归壳的 Backdrop 位（皮肤经
+    // backdropClassName 给），模态机制（焦点圈定 / 滚动锁 / Esc 层栈）由壳
+    // 承载。zIndex 41 = 仓内 ⌘K 面的原阶梯（scrim 40 / 面板 41）。
+    <DialogShell
+      open={open}
+      onClose={onClose}
+      viewportRoot
+      backdropClassName="search-scrim anim-fade"
+      zIndex={41}
+    >
       <div
         className="search-panel anim-pop"
         role="dialog"
@@ -412,7 +413,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
           </div>
         )}
       </div>
-    </OverlayMount>
+    </DialogShell>
   );
 }
 

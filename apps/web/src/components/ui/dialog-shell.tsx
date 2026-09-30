@@ -13,6 +13,12 @@
 // - 壳类别名（.dlg / .dlg-backdrop / .dlg-head / .dlg-title / .dlg-close /
 //   .dlg-body / .dlg-foot）原样输出——三面钉扎零改动（#411 别名优先政策）；
 // - per-face 类（.dlg-secret-create 等）经 className 透传，规则仍在 dialog.css。
+//
+// #453 视口根变体（`viewportRoot`）：给视口根定位的面（⌘K search-panel）用同一台
+// 行为机器，只是不吃面板几何——容器铺满视口但自身不吃点击（外点落回 Backdrop
+// 位的 scrim），面内容经 className 自带 fixed 几何。容器 z-index 抬到背板之上
+// （fixed + z-index 自建 stacking context，否则遮罩反盖面板、行点不中）；退场
+// 不做布局动画（D4 等价语义）。规则见 dialog.css 的 .dlg-viewport。
 
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { type ReactNode, useCallback, useEffect, useRef } from 'react';
@@ -57,6 +63,16 @@ interface DialogShellProps {
    *  仓内内层的 window 监听收不到。传了本回调即表示「现在有内层开着」——
    *  壳不关自己，转交本回调（由消费者决定关哪层）。 */
   onEscapeWhileNested?: () => void;
+  /** #453 视口根变体：壳不出面板几何，children 自带 fixed 几何。定宽居中弹层
+   *  会把视口根定位的面挤碎（containing block 改变 + 动画期布局位移，#453
+   *  实测），这族面用它。**开它是内容全权**：面板几何与头/体/底由消费者渲染，
+   *  `width` / `height` / `footer` / `headerCenter` / `bare` 一并失效，`title`
+   *  也不参与（容器退为纯管道 role=presentation，dialog 语义由面内自带）。 */
+  viewportRoot?: boolean;
+  /** Backdrop 位类名入参（只作用于视口根态）：视口根态下壳不注入家族皮肤，
+   *  scrim 皮肤由消费者全权给（search-panel 传 `.search-scrim anim-fade`）。
+   *  默认态不开这个口子——11 个既有消费点的背板类串保持逐字不动。 */
+  backdropClassName?: string;
 }
 
 /** 触发位记忆（#389 回陷契约）：关闭态持续记住"最后一个对话框之外的活动元素"，
@@ -91,9 +107,15 @@ export function DialogShell({
   zIndex = 50,
   onBackdropClick,
   onEscapeWhileNested,
+  viewportRoot = false,
+  backdropClassName,
 }: DialogShellProps) {
   const { t } = useI18n();
   const { restore } = useReturnFocus(open);
+  // 只视口根态吃 backdropClassName：默认态的类串因此逐字不动（11 个消费点）。
+  const backdropClass = viewportRoot
+    ? `fixed inset-0${backdropClassName == null ? '' : ` ${backdropClassName}`}`
+    : 'dlg-backdrop fixed inset-0 flex items-center justify-center bg-black/60 duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0';
   return (
     <DialogPrimitive.Root
       open={open}
@@ -116,18 +138,30 @@ export function DialogShell({
         <DialogPrimitive.Backdrop
           data-slot="dialog-overlay"
           style={{ zIndex: zIndex - 1 }}
-          className="dlg-backdrop fixed inset-0 flex items-center justify-center bg-black/60 duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
+          className={backdropClass}
           onClick={onBackdropClick ?? onClose}
         />
         <DialogPrimitive.Popup
           data-slot="dialog-content"
           // #389：关闭后归还触发位（Base UI 的 finalFocus），不经 trigger 推定
           finalFocus={restore}
-          className={`dlg dlg-shell${className != null ? ` ${className}` : ''} fixed top-1/2 left-1/2 flex max-h-[calc(100vh-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-popover text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`}
-          style={{ width, zIndex, ...(height == null ? {} : { height }) }}
-          aria-label={title}
+          className={
+            viewportRoot
+              ? `dlg-viewport${className != null ? ` ${className}` : ''}`
+              : `dlg dlg-shell${className != null ? ` ${className}` : ''} fixed top-1/2 left-1/2 flex max-h-[calc(100vh-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-popover text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`
+          }
+          style={
+            viewportRoot ? { zIndex } : { width, zIndex, ...(height == null ? {} : { height }) }
+          }
+          // 视口根态：容器是纯管道，dialog 语义由面内自己的 role 承载——
+          // 容器不抢名，面内的 role/aria-label 就是这一层的 a11y 身份。
+          // 默认态的 'dialog' 是复述（Base UI 的默认值就是它），不是冗余：
+          // mergeProps 用 for...in 覆盖外部 props，`role={undefined}` 会把
+          // store 的默认值一并抹掉，两态必须各给一个实值。
+          role={viewportRoot ? 'presentation' : 'dialog'}
+          aria-label={viewportRoot ? undefined : title}
         >
-          {bare ? (
+          {viewportRoot || bare ? (
             children
           ) : (
             <>
