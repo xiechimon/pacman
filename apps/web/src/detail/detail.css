@@ -601,12 +601,15 @@
 
 .chat-text {
   margin-left: 11px;
-  /* r8 63–77: robot ink measures ~13px on a 24px pitch and the bubble
-     string widths (r8 68 bubble = 475px) only fit at 13px; the r7 rows
-     carried short single-line messages, so the older 15/20 guess went
-     unexercised there */
-  font-size: 13px;
-  line-height: 24px;
+  /* #470: agent long replies are reading text — 15px ink one step over the
+     14px body baseline, unitless 1.6 so the pitch lands on the same 24px
+     line box the r8 rows carried (row geometry does not drift) and scales
+     with any future size step; the 68ch cap holds the measure inside the
+     60–75 char band when the fluid center column widens. Reading comfort
+     outranks the 13px capture fidelity here. */
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 68ch;
   /* r7 27/36/38 robot rows sample to text-primary (#56 used secondary —
      blends showed the darker ink is the captured one) */
   color: var(--text-primary);
@@ -642,9 +645,13 @@
 
 /* centered dim single line: bare time stamp (13:35), merge announcement,
    🎉 任务已完成 banner (r7 26/36). Rows after a note pack tight (r7 26:
-   note→确认 gap is much smaller than the default row margin). */
+   note→确认 gap is much smaller than the default row margin).
+   #470: the body's 68ch measure cap applies here too — a full-width note
+   wraps mid-token on wide columns; auto side margins keep the box centered
+   inside the cap. */
 .chat-note {
-  margin-top: 20px;
+  margin: 20px auto 0;
+  max-width: 68ch;
   text-align: center;
   font-size: 12px;
   line-height: 16px;
@@ -844,7 +851,10 @@
 
 .composer-placeholder {
   padding: 13px 15px 0;
-  font-size: 13px;
+  /* #470: one step under the 15px thread body — the placeholder used to tie
+     the body at 13px; the 16px line box stays, so the static/live row
+     geometry is untouched */
+  font-size: 14px;
   line-height: 16px;
   color: var(--text-dim);
 }
@@ -861,7 +871,7 @@ textarea.composer-input {
   resize: none;
   background: transparent;
   font:
-    13px / 16px var(--font-inter),
+    14px / 16px var(--font-inter),
     Inter,
     system-ui,
     -apple-system,
