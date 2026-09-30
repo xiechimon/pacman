@@ -9,17 +9,19 @@ agent 编排指的是不给人手设，不是把值藏起来），`创建于 …
 时间，`main` 上不会加 `agent.createdAt` 列；它此前从未渲染过，所以那一条是「不做」
 不是「撤行」）。
 
-合入前 `main` 落了 XMON-15（#536，概览「进行中」段），本车道已并入。XMON-15 顺手
-把 `agent-detail.spec.ts` 里停在旧版的密钥副文案修了（本票早先同款 drive-by 修复
-因此作废、不再带）——本 PR 现净改动只剩撤 `状态` 这一行。
+合入前 `main` 先后落了 XMON-15（#536，概览「进行中」段）与 XMON-19（#539，删除
+Agent），本车道两次并入。XMON-15 顺手把 `agent-detail.spec.ts` 里停在旧版的密钥副
+文案修了（本票早先同款 drive-by 修复因此作废、不再带）——本 PR 净改动只剩撤
+`状态` 这一行。下面的结果是**合并后复跑**：38 项里多出的 9 项删除 Agent 检查来自
+XMON-19，随合并进了本车道，一并跑绿证明两块改动在同一页面上互不打架。
 
 ## 命令
 
 ```sh
 VERIFY_REPO_ROOT=<worktree> VERIFY_PORT=8891 VERIFY_WEB_PORT=5373 \
-  VERIFY_RUN_DIR=<worktree>/.claude/verify-run-trim \
+  VERIFY_RUN_DIR=<worktree>/.claude/verify-run-merge \
   node <worktree>/.claude/skills/verify-pacman/scripts/launch.mjs
-VERIFY_REPO_ROOT=<worktree> VERIFY_RUN_DIR=<worktree>/.claude/verify-run-trim \
+VERIFY_REPO_ROOT=<worktree> VERIFY_RUN_DIR=<worktree>/.claude/verify-run-merge \
   node <worktree>/.claude/skills/verify-pacman/scripts/drive-agent-detail.mjs
 ```
 
@@ -28,7 +30,7 @@ VERIFY_REPO_ROOT=<worktree> VERIFY_RUN_DIR=<worktree>/.claude/verify-run-trim \
 
 ## 结果
 
-`drive agent-detail: PASS`，29 项 check 全绿（完整清单见
+`drive agent-detail: PASS`，38 项 check 全绿（完整清单见
 `agent-detail-result.json`）。与本改动直接相关的四条：
 
 | check | 实测输出 |
@@ -44,8 +46,9 @@ VERIFY_REPO_ROOT=<worktree> VERIFY_RUN_DIR=<worktree>/.claude/verify-run-trim \
 
 ## 截图
 
-- `agent-detail-overview.png` — 概览整屏；模型之下是 `思考强度 / 默认`，再下面是
-  页面底——没有 `状态 / active` 那一行。
+- `agent-detail-overview.png` — 概览整屏（合并后复跑）；模型之下是 `思考强度 / 默认`，
+  再往下是「进行中」空态段与页脚删除入口（XMON-15 / XMON-19 随合并进来）——整屏
+  没有 `状态 / active` 那一行。
 
 源证据目录（本地态，gitignored）：
-`.claude/verify-evidence/2026-09-30T21-05-05-519Z-agent-detail`。
+`.claude/verify-evidence/2026-09-30T22-33-15-173Z-agent-detail`。

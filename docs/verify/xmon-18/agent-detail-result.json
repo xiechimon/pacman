@@ -1,11 +1,11 @@
 {
   "probe": "agent-detail",
   "ok": true,
-  "at": "2026-09-30T21:05:13.364Z",
+  "at": "2026-09-30T22:33:23.469Z",
   "stack": {
     "api": "http://127.0.0.1:8891",
     "web": "http://127.0.0.1:5373",
-    "homeDir": "/home/measure/multica_workspaces/xmon-debb4a8be717/xmon-18-19676cbec368/workdir/pacman/.claude/verify-run-trim/home"
+    "homeDir": "/home/measure/multica_workspaces/xmon-debb4a8be717/xmon-18-19676cbec368/workdir/pacman/.claude/verify-run-merge/home"
   },
   "checks": [
     {
@@ -16,7 +16,7 @@
     {
       "name": "card-opens-detail-route",
       "ok": true,
-      "detail": "http://127.0.0.1:5373/app/resources/agents/eWeVi2FcLtk7FUWoNRtSA"
+      "detail": "http://127.0.0.1:5373/app/resources/agents/ThMnO0IGaTpxRdaxDuReR"
     },
     {
       "name": "server-seeded",
@@ -121,7 +121,7 @@
     {
       "name": "secret-on-writes-full-id-set",
       "ok": true,
-      "detail": "写回 [\"1Tvx555i9I7-_bDUIJufk\",\"UTW6ROHU-oxNrN6WA33He\"]；团队全 id 集 [\"1Tvx555i9I7-_bDUIJufk\",\"UTW6ROHU-oxNrN6WA33He\"]"
+      "detail": "写回 [\"5OxvK7hyV8cW8_KNCerjY\",\"3Bmdw0edspKvUUBOJzNaa\"]；团队全 id 集 [\"5OxvK7hyV8cW8_KNCerjY\",\"3Bmdw0edspKvUUBOJzNaa\"]"
     },
     {
       "name": "secret-stays-checked-when-nonempty",
@@ -152,6 +152,51 @@
       "name": "create-with-model-persisted",
       "ok": true,
       "detail": "verify-485-gw/claude-sonnet-5"
+    },
+    {
+      "name": "delete-confirm-canon-title",
+      "ok": true,
+      "detail": "删除 Agent？"
+    },
+    {
+      "name": "delete-confirm-canon-body",
+      "ok": true,
+      "detail": "将「verify-485-renamed」移出团队？该 Agent 进行中的任务将被停止。"
+    },
+    {
+      "name": "delete-cancel-keeps-row",
+      "ok": true,
+      "detail": "取消后 GET agent 仍 200"
+    },
+    {
+      "name": "delete-lands-on-team",
+      "ok": true,
+      "detail": "http://127.0.0.1:5373/app/team"
+    },
+    {
+      "name": "delete-row-gone-404",
+      "ok": true,
+      "detail": "GET agent → 404"
+    },
+    {
+      "name": "delete-repeat-404",
+      "ok": true,
+      "detail": "复删 → 404"
+    },
+    {
+      "name": "delete-roster-drops-target",
+      "ok": true,
+      "detail": "[\"verify-485-created\"]"
+    },
+    {
+      "name": "delete-roster-keeps-neighbor",
+      "ok": true,
+      "detail": "[\"verify-485-created\"]"
+    },
+    {
+      "name": "delete-roster-count-matches-server",
+      "ok": true,
+      "detail": "UI 1 张卡 / server 1 个 Agent"
     }
   ],
   "artifacts": [
@@ -163,8 +208,10 @@
     "04-permissions.png",
     "05-permissions-secret-on.png",
     "06-create-model-menu.png",
-    "07-team-after-create.png"
+    "07-team-after-create.png",
+    "08-delete-confirm.png",
+    "09-team-after-delete.png"
   ],
-  "teamId": "9C4S1qWXC92G9EteC3NeO",
-  "agentId": "eWeVi2FcLtk7FUWoNRtSA"
+  "teamId": "sUShLeLNoedYBirjQGLY1",
+  "agentId": "ThMnO0IGaTpxRdaxDuReR"
 }
