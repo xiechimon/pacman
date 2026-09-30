@@ -20,7 +20,7 @@ import { loadDaemonConfig } from '../src/config.js';
 import { type DaemonLogger, formatLine } from '../src/log.js';
 import type { MachineApi } from '../src/machine-client.js';
 import { nextBackoffMs, runMachine } from '../src/machine-loop.js';
-import { statePaths } from '../src/state.js';
+import { ensureStateDirs, saveMachineJson, statePaths } from '../src/state.js';
 
 function tmpHome(): string {
   return mkdtempSync(join(tmpdir(), 'pacman-loop-'));
@@ -227,6 +227,8 @@ async function boot(opts: {
   api?: FakeMachineApi;
   backend?: AgentBackend;
   withMachineJson?: boolean;
+  /** 预置 machine.json（既有注册启动路径）：serverUrl 可指向旧 server。 */
+  preEnrolled?: { serverUrl: string };
 }) {
   const home = tmpHome();
   const { logger, lines } = captureLogger();
@@ -241,6 +243,15 @@ async function boot(opts: {
     {},
   );
   const paths = statePaths(home, config.workspacesDir);
+  if (opts.preEnrolled) {
+    ensureStateDirs(paths);
+    saveMachineJson(paths, {
+      machineId: 'm-old',
+      token: 'b'.repeat(64),
+      teamId: 'team-1',
+      serverUrl: opts.preEnrolled.serverUrl,
+    });
+  }
   const api = opts.api ?? new FakeMachineApi();
   const handle = await runMachine({
     config,
@@ -286,6 +297,37 @@ describe('上线序列 canon（02 §5.4/r3 §1.5）', () => {
     await handle.stop();
     await handle.done;
     expect(lines).toContain('[machine] Shutting down…'); // r3 §1.5 退出行
+  });
+});
+
+describe('server 迁移诊断（#519 控制面搬家：machine.json 注册时 serverUrl 与现配置不一致）', () => {
+  test('失败方式：旧 machine.json + 新 PACMAN_SERVER → 启动即警告行（含两地址与再注册指引），照常上线', async () => {
+    const api = new FakeMachineApi();
+    const { handle, lines } = await boot({
+      api,
+      preEnrolled: { serverUrl: 'http://old-host:8787' },
+    });
+    await waitFor(() =>
+      lines.some((l) => l.includes('Online (machineId=m-old); polling http://server')),
+    );
+    // 警告行：[machine] 前缀、含新旧两个地址、含 re-enroll 指引。
+    const warn = lines.find((l) => l.includes('[machine]') && l.includes('re-enroll'));
+    expect(warn).toBeDefined();
+    expect(warn).toContain('http://old-host:8787');
+    expect(warn).toContain('http://server');
+    // 既有注册被沿用（不重复 enroll），轮询继续走配置地址。
+    expect(api.calls).not.toContain('enroll:team-1');
+    await handle.stop();
+    await handle.done;
+  });
+
+  test('一致（或未注册）→ 无该警告行', async () => {
+    const api = new FakeMachineApi();
+    const { handle, lines } = await boot({ api, preEnrolled: { serverUrl: 'http://server' } });
+    await waitFor(() => lines.some((l) => l.includes('Online (machineId=m-old)')));
+    expect(lines.some((l) => l.includes('re-enroll'))).toBe(false);
+    await handle.stop();
+    await handle.done;
   });
 });
 

@@ -112,6 +112,15 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   // enroll（02 §5.2：machine.json 缺省 = 未注册；--api-key --team 非交互路径。
   // 浏览器授权流交互式注册归 M3b/web 接线）。
   let machineJson = loadMachineJson(paths);
+  // server 迁移诊断（#519 控制面搬家）：token 由注册时 server 签发，配置指向
+  // 另一地址后旧 token 打新 server——若对面是全新库，唯一表象是 claim 401
+  // 退避死循环，本行是排障第一线索（轮询地址仍以配置为准，A1「PACMAN_SERVER
+  // 指过去」语义不变）。
+  if (machineJson && machineJson.serverUrl !== config.serverUrl) {
+    logger.machine(
+      `enrolled against ${machineJson.serverUrl} but polling ${config.serverUrl} — if auth fails, re-enroll: logout, then start --api-key <k> --team <id>`,
+    );
+  }
   if (!machineJson) {
     if (!config.apiKey || !config.teamId) {
       throw new Error(
