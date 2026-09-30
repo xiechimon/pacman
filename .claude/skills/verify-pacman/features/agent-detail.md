@@ -10,6 +10,7 @@
 - `memory-tab` — 条目列表 + 删除；空态文案 = shared `MEMORY_EMPTY_COPY` canon。
 - `permissions-tab` — 工具 6 开关（文案 = shared `AGENT_TOOL_SWITCHES`，**六档各带说明副文案** = shared `AGENT_TOOL_COPY`）、**团队密钥一行聚合总开关**（#510：粒度 = 原版的全有全无，副文案 = shared `AGENT_PERMISSION_COPY.secrets`；开 = `PATCH { secrets: 团队全部密钥 id }`、关 = `PATCH { secrets: [] }`，勾选态 = `agent.secrets` 非空；零密钥时只有空态 `暂无团队密钥。`、不出开关）、MCP 逐个勾选，落 `PATCH tools/secrets/mcpServers`。
 - `create-model-slot` — 创建弹窗模型槽两态；选中后 `POST /api/teams/{id}/agents` body 带 `provider` 与 `modelId`。
+- `delete-agent` — 概览页脚 `删除 Agent` 入口 → DeleteConfirm 家族二次确认（标题/正文 = 原版语料原文，`agent_modal.remove_title` / `remove_confirm`）→ 确认后 `DELETE /api/teams/{id}/agents/{aid}` → 落团队页。取消路径（取消 / X / Esc / backdrop）不删不跳。删除语义三件（memories 不级联 / `todo.assignment` 摘槽 / `chief.agentId` 摘绑定）见 `apps/server/src/services/agents.ts`。
 
 ## How to get to it (user POV)
 
@@ -34,6 +35,7 @@ Preconditions:
 - 密钥区聚合总开关（#510）→ 同命令 → `secret-row-single`（`.agent-secret-row` 恰好 1 行）+ `secret-switch-single`（1 个开关）+ `secret-unchecked-when-empty`（未授权时 `aria-checked=false`）+ `secret-on-writes-full-id-set`（开 → server `secrets` = 点击时 `GET secrets` 的全 id 集）+ `secret-stays-checked-when-nonempty`（重取真值非空 → 勾选态保持）+ `secret-off-clears`（关 → `secrets` 空）。
 - 记忆空态 → 同命令 → `memory-empty-canon`。
 - 创建弹窗选模型建 Agent → 同命令 → `create-dialog-model-slot` / `create-dialog-no-warn` / `create-with-model-persisted`（重取 members 投影对 provider/modelId）。
+- 删除 Agent → 同命令 → `delete-confirm-canon-title` / `delete-confirm-canon-body`（确认层文案逐字）+ `delete-cancel-keeps-row`（取消后 `GET agent` 仍 200）+ `delete-lands-on-team` / `delete-row-gone-404` / `delete-repeat-404`（复删 404）+ `delete-roster-drops-target` / `delete-roster-keeps-neighbor` / `delete-roster-count-matches-server`（名单与 server 对账）。
 
 ## Gotchas
 
@@ -42,4 +44,5 @@ Preconditions:
 - **同一模型 id 可能出两行**：`toModelOptions` 是 custom providers ∪ model-sources 非 pi 段的并集，`claude-sonnet-5` 在 providers 与 claude-code 段各一行——断言要按 provider 位分。
 - **浮层截图要等入场动画**：`anim-pop` 从 opacity 0 起，Playwright 的 visible 判定不看 opacity，抢拍会得到与上一张逐字节相同的假图。
 - **PATCH 是 invalidateAll 重取（S8）**：点完给 ~400ms 落窗再读 server，或改读 server 而不依赖 UI 时序。
+- **删除步在脚本末尾，改它要跟着改断言的 Agent 名**：第 9 步删的是第 3 步改名后的 `verify-485-renamed`（不是播种名），断言正文里 `{name}` 要跟 `RENAMED` 常量走；邻居 `verify-485-created` 由第 8 步建出，所以删除步必须在创建步之后。
 - **密钥播种刻意播两个（#510）**：授权粒度是全有全无——写回的是团队全部密钥 id。只播一个时「全 id 集」与「首个 id」两种实现都过；两个才有牙。密钥 `POST` 无幂等键（每次新 id），故断言对「点击时 server 的现行 id 集」，重跑留下的旧密钥不会让断言失真。

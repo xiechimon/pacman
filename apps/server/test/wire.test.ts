@@ -55,6 +55,10 @@ const INFERRED_ROUTES = [
   // 记忆条目卡删除图标（r5 §6 UI 实测；02 §4.4「列表/删除 API 保形」，
   // DELETE_FACE 'teams/{id}/agents/{aid}/memories'）
   'DELETE /api/teams/{id}/agents/{aid}/memories/{mid}',
+  // 删除 Agent（XMON-19/B2）：入口 r3 §4 概览按钮；确认文案与删除语义 2026-10-01
+  // 直读原版产线 bundle（i18n agent_modal.*）+ todos.dev 官方 docs 补采，wire
+  // 未采——DELETE_FACE 'teams/{id}/agents/{aid}'，02 §6.1 同名 DELETE 规则族。
+  'DELETE /api/teams/{id}/agents/{aid}',
   // —— build 详情读面（M5：详情页 overlay 数据源；wire 未采，路径 =
   // builds/{id}/… REST 同族规则（steps 端点先例），02 §6.1 规则族）——
   'GET /api/projects/{id}/commits', // 文件|历史 分段「历史」读面（#149；r2 07e/24 分段 UI 证据，wire 未采，projects/{id}/… REST 同族规则）

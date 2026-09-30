@@ -34,6 +34,7 @@ import { mapTeam, toDisplayTodo, toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
+import { isDeleted } from '../fixtures/deletions.js';
 import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
@@ -156,29 +157,33 @@ export function TeamPage() {
               非控件」（report-pages.md:88）的裁决：原版点得进，本仓此前点不
               进，Agent 建出来就再也够不着编辑面。link 反馈态见 secondary.css
               的 .team-agent-card:hover。scenario 随行（#121 Link 律）。 */}
-          {team.agents.map((agent) => (
-            <Link
-              key={agent.id}
-              className="team-agent-card"
-              to={{ pathname: `${AGENTS_HREF}/${agent.id}`, search }}
-            >
-              <span className="team-agent-avatar">
-                <SeededAvatar
-                  name={agent.displayName}
-                  src={agent.avatarUrl}
-                  fallback="/avatar-robot-1.svg"
-                />
-              </span>
-              <span className="team-agent-text">
-                <span className="team-agent-name">{agent.displayName}</span>
-                <span className="team-agent-model">
-                  {agent.model}
-                  {agent.isDefault ? t(' · 默认') : ''}
+          {/* fixture 删除覆面（#66 deletions，#207 侧栏项目行先例）：删掉的 Agent 卡
+              随行隐去，reload 还原；live 面名单 = invalidateAll 重取 members 真值。 */}
+          {team.agents
+            .filter((agent) => !isDeleted(agent.id))
+            .map((agent) => (
+              <Link
+                key={agent.id}
+                className="team-agent-card"
+                to={{ pathname: `${AGENTS_HREF}/${agent.id}`, search }}
+              >
+                <span className="team-agent-avatar">
+                  <SeededAvatar
+                    name={agent.displayName}
+                    src={agent.avatarUrl}
+                    fallback="/avatar-robot-1.svg"
+                  />
                 </span>
-                <span className="team-agent-role">{agent.role ?? t('未设置职责')}</span>
-              </span>
-            </Link>
-          ))}
+                <span className="team-agent-text">
+                  <span className="team-agent-name">{agent.displayName}</span>
+                  <span className="team-agent-model">
+                    {agent.model}
+                    {agent.isDefault ? t(' · 默认') : ''}
+                  </span>
+                  <span className="team-agent-role">{agent.role ?? t('未设置职责')}</span>
+                </span>
+              </Link>
+            ))}
           {/* #170: the dialog family form (r2 §8.1 capture 20) lives in
               create-agent-dialog.tsx — DialogShell law, POST agents on live. */}
           {/* 差额并项：散写形字重 400（底座 font-medium）、无按下位移。 */}
