@@ -53,14 +53,16 @@ test('列表可滚：scrollTo 移动 scrollTop，滚轮同样生效', async ({ p
   await list(page).evaluate((el) => el.scrollTo({ top: 400 }));
   const after = await list(page).evaluate((el) => el.scrollTop);
   expect(after).toBeGreaterThan(before);
-  // wheel 正面钉：光标悬在列表中央滚一屏，scrollTop 必须再涨
+  // wheel 正面钉：与 scrollTo 解耦——归零后滚半屏，scrollTop 必须离开 0
+  // （钉「用户输入可达」，不依赖与 scrollTo 叠加后的具体位次；CI 无头
+  // 合成器对叠加位次的 wheel 派发时机不稳，实测曾吞掉增量）
   const box = await list(page).boundingBox();
   if (box == null) throw new Error('overflow list missing');
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  const preWheel = await list(page).evaluate((el) => el.scrollTop);
+  await list(page).evaluate((el) => el.scrollTo({ top: 0 }));
   await page.mouse.wheel(0, 240);
   const postWheel = await list(page).evaluate((el) => el.scrollTop);
-  expect(postWheel).toBeGreaterThan(preWheel);
+  expect(postWheel).toBeGreaterThan(0);
 });
 
 test('列头固定：列表滚动时 header 的视口位置不动', async ({ page }) => {
