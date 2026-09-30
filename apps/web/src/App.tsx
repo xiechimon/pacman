@@ -13,6 +13,7 @@ import { PROVIDERS_HREF, ProvidersPage } from './resources/providers-page.js';
 import { SECRETS_HREF, SecretsPage } from './resources/secrets-page.js';
 import { SKILLS_HREF, SkillsPage } from './resources/skills-page.js';
 import { AccountPage } from './routes/account-page.js';
+import { AGENTS_HREF, AgentDetailPage } from './routes/agent-detail-page.js';
 import { ApiKeysPage } from './routes/api-keys-page.js';
 import { BoardPage } from './routes/board-page.js';
 import { MachineAuthorizePage } from './routes/machine-authorize-page.js';
@@ -45,6 +46,10 @@ export const router = createBrowserRouter([
           { path: '/app/project/:id', element: <ProjectPage /> },
           { path: '/app/project/:id/settings', element: <ProjectSettingsPage /> },
           { path: '/app/team', element: <TeamPage /> },
+          // #485：Agent 详情编辑面（r3 §4 实测路由 `/app/resources/agents/<id>`）。
+          // 非侧栏行——只从团队页的 Agent 卡进入（r2 §8.4 命令面板「前往」清单
+          // 里没有 Agents 行）。
+          { path: `${AGENTS_HREF}/:id`, element: <AgentDetailPage /> },
           { path: '/app/account', element: <AccountPage /> },
           { path: '/app/api-keys', element: <ApiKeysPage /> },
           { path: SKILLS_HREF, element: <SkillsPage /> },

@@ -26,6 +26,7 @@ import type {
   GithubReposResponse,
   MachineRecord,
   McpServerRecord,
+  MemoryRecord,
   ModelSourcesEnvelope,
   OAuthAuthorizeResponse,
   PatchAgentBody,
@@ -299,6 +300,32 @@ export const useProviders = (teamId: string | undefined, enabled: boolean) =>
     queryKey: ['providers', teamId],
     queryFn: () => api.get<ProvidersEnvelope>(`/api/teams/${teamId}/providers`),
     enabled: enabled && teamId !== undefined,
+  });
+
+/** Agent 单条读面（r3 §4：GET agents/{aid} 词表内）——详情编辑页的真值源。
+ *  团队页走 members 读面拿到的是展示投影（TeamAgentCard），缺职责/权限四组
+ *  与 provider，够不着编辑面，故详情页直取全记录。 */
+export const useAgent = (
+  teamId: string | undefined,
+  agentId: string | undefined,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: ['agent', teamId, agentId],
+    queryFn: () => api.get<AgentRecord>(`/api/teams/${teamId}/agents/${agentId}`),
+    enabled: enabled && teamId !== undefined && agentId !== undefined,
+  });
+
+/** Agent 记忆读面（02 §4.4/r5 §6：GET agents/{aid}/memories 词表内）。 */
+export const useMemories = (
+  teamId: string | undefined,
+  agentId: string | undefined,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: ['memories', teamId, agentId],
+    queryFn: () => api.get<MemoryRecord[]>(`/api/teams/${teamId}/agents/${agentId}/memories`),
+    enabled: enabled && teamId !== undefined && agentId !== undefined,
   });
 
 // providers 页 runtime tabs 数据源（spec 11 §A3/A4，#356）：pi + claude-code
@@ -697,6 +724,12 @@ export function useApiMutations(teamId: string | undefined) {
     patchAgent: useMutation({
       mutationFn: (input: { id: string; body: PatchAgentBody }) =>
         api.patch<AgentRecord>(`/api/teams/${teamId}/agents/${input.id}`, input.body),
+      onSuccess: invalidateAll,
+    }),
+    // 记忆删除（02 §4.4 词表内 DELETE；r5 §6 条目卡删除图标）。
+    deleteMemory: useMutation({
+      mutationFn: (input: { agentId: string; memoryId: string }) =>
+        api.del<void>(`/api/teams/${teamId}/agents/${input.agentId}/memories/${input.memoryId}`),
       onSuccess: invalidateAll,
     }),
     // W3 steer（#280，06 册 D9）：build 会话运行中补话——POST messages 的

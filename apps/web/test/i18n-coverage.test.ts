@@ -25,9 +25,13 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import {
+  AGENT_PERMISSION_COPY,
+  AGENT_TOOL_COPY,
+  AGENT_TOOL_SWITCHES,
   CHIEF_REBIND_CONFIRM_COPY,
   FS_PICK_ERROR_COPY,
   LOCAL_ERROR_REASON_COPY,
+  MEMORY_EMPTY_COPY,
   NOTIFICATION_BANNER_COPY,
   SKILL_PAGE_COPY,
 } from '@pacman/shared';
@@ -67,6 +71,17 @@ const COMPUTED_KEYS = new Set<string>([
   // #440: fs/pick 分译键 canon = shared FS_PICK_ERROR_COPY（reason code → zh
   // 键映射，浏览钮失败面经常量查 t()），不作字面量出现。
   ...Object.values(FS_PICK_ERROR_COPY),
+  // #485: Agent 配置面词表与文案 canon = shared AGENT_TOOL_SWITCHES（权限
+  // 六开关文案）、AGENT_TOOL_COPY（六档各自的说明副文案）、
+  // AGENT_PERMISSION_COPY（密钥 / MCP 服务器 / 职责 / 默认 skill 四档副文案
+  // ——secrets 一档内嵌 BRAND 插值，本面不渲染故不收）与 MEMORY_EMPTY_COPY
+  // （记忆 tab 空态），均经 t() 消费、不作字面量出现。
+  ...AGENT_TOOL_SWITCHES,
+  ...Object.values(AGENT_TOOL_COPY),
+  AGENT_PERMISSION_COPY.mcpServers,
+  AGENT_PERMISSION_COPY.responsibility,
+  AGENT_PERMISSION_COPY.defaultSkill,
+  MEMORY_EMPTY_COPY,
 ]);
 
 /** Data layer: capture-verbatim user/agent content, never translated.

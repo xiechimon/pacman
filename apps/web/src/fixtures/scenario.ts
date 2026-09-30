@@ -12,6 +12,7 @@
 // Unknown or absent ids fall back to the default board set.
 
 import {
+  agentDetail,
   apiKeysCreated,
   boardChiefProbes,
   boardDarkFresh,
@@ -264,6 +265,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // team chart 组织图（命名场景，无 capture）：3 成员树 + 零成员空态
       'team-org-chart': teamOrgChart,
       'team-org-chart-empty': teamOrgChartEmpty,
+      // Agent 详情编辑面（r3 §4）：团队 roster + 该 agent 的全记录 + providers
+      // 行集，一套内容同时供 /app/team 与 /app/resources/agents/:id 两个路由。
+      'agent-detail': agentDetail,
       '13': boardDefault,
       // account 语言 dropdown open state (issue #74; shape [设计], r2 §11 Q19)
       '13-lang': { ...boardDefault, ui: { langDropdownOpen: true } },

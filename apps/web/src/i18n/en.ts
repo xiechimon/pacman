@@ -582,4 +582,49 @@ export const EN: Record<string, string> = {
   类型: 'Type',
   没有匹配筛选条件的任务: 'No tasks match the selected filters',
   清除筛选: 'Clear filters',
+
+  // —— #485 Agent 详情编辑面（三 tab + 概览字段 + 记忆/权限面）——
+  // 含空格/标点的键一律引号形（对象字面量的键不是标识符）。
+  概览: 'Overview',
+  权限: 'Permissions',
+  职责: 'Responsibility',
+  工具: 'Tools',
+  // 模型 已在 #476 段登记，本段不重复。
+  思考强度: 'Thinking level',
+  状态: 'Status',
+  未设置模型: 'No model',
+  '默认 skill': 'Default skill',
+  '找不到该 Agent。它可能已被删除。': 'Agent not found. It may have been deleted.',
+  '暂无团队密钥。': 'No team secrets yet.',
+  '暂无 MCP 服务器。': 'No MCP servers yet.',
+  // shared canon（packages/shared/src/records/agent.ts、memory.ts），经 t()
+  // 消费、不作字面量出现——i18n-coverage COMPUTED_KEYS 登记。
+  '远程 shell': 'Remote shell',
+  合并分支: 'Merge branches',
+  创建标签: 'Create labels',
+  推送分支: 'Push branches',
+  创建技能: 'Create skills',
+  更新技能: 'Update skills',
+  运行时: 'Runtime',
+  '内置 (pi)': 'Built-in (pi)',
+  '允许该 Agent 在团队中已开启 shell 访问的机器上执行命令。':
+    'Allow this Agent to run commands on machines where shell access is enabled for the team.',
+  '允许该 Agent 通过合并分支进行发布（例如将 develop 合并进 main）。':
+    'Let this Agent publish by merging branches (for example develop into main).',
+  '允许该 Agent 创建 git tag，这可能触发发布流程。':
+    'Let this Agent create git tags, which may trigger a release pipeline.',
+  '允许该 Agent 随时提交并推送其工作分支（自行合并发布改动时需要）。':
+    'Let this Agent commit and push its working branch at any time (needed when it merges release changes itself).',
+  '允许该 Agent 向团队技能库添加新技能。':
+    'Let this Agent add new skills to the team skill library.',
+  '允许该 Agent 修改团队技能库中已有的技能。':
+    'Let this Agent modify skills already in the team skill library.',
+  '该 Agent 执行任务时可使用的团队 MCP 服务器，其工具以 mcp__<服务器>__<工具> 的形式出现。':
+    'Team MCP servers this Agent may use while running tasks; their tools appear as mcp__<server>__<tool>.',
+  '用一两句话说明该 Agent 的职责。该说明会注入它执行的每个任务，也会提供给总管用于分派。':
+    'Describe this Agent’s responsibility in a sentence or two. The text is injected into every task it runs and is given to the chief for dispatch.',
+  '该 Agent 执行任何任务时自动携带的团队技能，无需在消息中 @ 引用。':
+    'The team skill this Agent always carries, without an @ mention in the message.',
+  '尚无记忆。Agent 会在工作中将值得沉淀的经验存入此处。':
+    'No memories yet. The Agent stores experience worth keeping here as it works.',
 };

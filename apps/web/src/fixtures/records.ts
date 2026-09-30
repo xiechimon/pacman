@@ -9,11 +9,14 @@
 // phase 九值枚举单源 = @pacman/shared（02 §4.1；#65 M1 收口），本地不再定义。
 // GithubRepoSummary = repo picker 行封套单源（spec 12 数据契约，#359）。
 import {
+  type AgentRecord,
   type GithubRepoSummary,
+  type MemoryRecord,
   type ModelSource,
   PHASE_VALUES,
   type Phase,
   type ProjectRepoKind,
+  type ProviderRecord,
   type TagRecord,
 } from '@pacman/shared';
 
@@ -291,6 +294,11 @@ export interface FixtureSet {
   projectTab?: 'tasks' | 'files';
   /** Team-route content (issue #70, r7 12); absent = the r7 roster. */
   team?: TeamContent;
+  /** Agent 详情页的记录集（r3 §4 实测样本形状 = shared AgentRecord）。团队页
+   *  的 Agent 卡只带展示投影（TeamAgentCard），不进这里——详情页要的是全
+   *  记录（职责/provider/modelId/思考强度/权限四组）。live 面 = GET
+   *  /api/teams/{id}/agents/{aid}。absent = 详情页走「找不到该 Agent」回退。 */
+  agents?: AgentRecord[];
   /** API-keys route content (issue #70); absent = empty state (r2 19). */
   apiKeys?: ApiKeysContent;
   /** Resource-route display content (issue #69): the row sets of the six
@@ -364,6 +372,14 @@ export interface ResourcesContent {
   /** providers 页 runtime tabs 数据源（spec 11 §A1-A4，#356）：pi +
    *  claude-code 两段，形状 = shared ModelSource（数据契约单源）。 */
   providerSources: ModelSource[];
+  /** custom provider 记录（shared ProviderRecord 同形；live 面 = GET
+   *  /api/teams/{id}/providers）。模型选择器（Agent 详情概览 / 创建 Agent
+   *  弹窗）的候选源——与 live 面共用 `toChiefModelOptions` 同一投影，两侧
+   *  不各写一份。absent = 无服务商（创建弹窗落告警行态）。 */
+  providers?: ProviderRecord[];
+  /** Agent 记忆条目（shared MemoryRecord 同形；live 面 = GET
+   *  /api/teams/{id}/agents/{aid}/memories）。agentId 过滤由消费面做。 */
+  memories?: MemoryRecord[];
 }
 
 /** Inline text run inside a plan-document block; `code` renders the

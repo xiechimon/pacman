@@ -1,0 +1,343 @@
+/* Agent 详情编辑面（#485）。几何随资源族页面：正文落在 ResourceShell 的
+   .res-col 里，本文件只管面内排版。颜色/圆角取既有 token，不新造。 */
+
+.agent-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.agent-tabs {
+  border-bottom: 1px solid var(--border-default);
+}
+
+.agent-tab {
+  height: 32px;
+  font-size: 13px;
+}
+
+/* —— 概览 —— */
+
+.agent-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.agent-head {
+  width: 56px;
+  height: 56px;
+}
+
+.agent-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.agent-field-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agent-field-label {
+  color: var(--text-tertiary);
+  font-size: 12px;
+}
+
+.agent-field-hint {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.agent-name {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 15px;
+  padding: 0;
+  text-align: left;
+}
+
+.agent-name:hover {
+  color: var(--indigo-500);
+}
+
+.agent-name-input {
+  border: 1px solid var(--card-border);
+  background: var(--surface);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 15px;
+  height: 32px;
+  padding: 0 10px;
+}
+
+.agent-role-text {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.agent-role-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.agent-role-input {
+  border: 1px solid var(--card-border);
+  background: var(--surface);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  min-height: 64px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.agent-skill-select {
+  align-self: flex-start;
+  border: 1px solid var(--card-border);
+  background: var(--surface);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  height: 32px;
+  padding: 0 8px;
+}
+
+.agent-thinking,
+.agent-runtime,
+.agent-status {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+/* —— 模型选择器（AgentModelSelect 一面两消费点）——
+   概览 tab 前缀 `agent-model-*`，创建弹窗前缀 `dlg-agent-model-*`；两套类名
+   共用下面同一条规则，几何只在触发钮上分叉（弹窗里撑满行宽）。 */
+
+.agent-model-wrap,
+.dlg-agent-model-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* 概览 tab 的 wrap 是 flex 列（.agent-field）的子项，缺这条会被 align-items:
+   stretch 拉满列宽——菜单的 `right: 0` 就会贴到列右缘而不是触发钮右缘（实测
+   菜单左边缘跑到 x=1007，触发钮右缘在 x=598）。弹窗那个 wrap 刻意撑满行宽
+   （触发钮 width:100%），不套这条。 */
+.agent-model-wrap {
+  align-self: flex-start;
+}
+
+.agent-model-select {
+  align-items: center;
+  border: 1px solid var(--card-border);
+  background: var(--surface);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+}
+
+.dlg-agent-model-select {
+  align-items: center;
+  border: 1px solid var(--card-border);
+  background: var(--surface);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  gap: 6px;
+  height: 36px;
+  justify-content: space-between;
+  padding: 0 12px;
+  width: 100%;
+}
+
+/* 家族层律：30 压 ClickCatcher 的 29（见 overlays/dismiss.tsx；chief-model-menu
+   同律）。缺了这条，透明全屏 catcher 会吃掉菜单行的点击。绝对定位相对各自
+   触发钮的 wrap（FloatingShell 的 container 挂回 wrap，containing block 不变）。 */
+.agent-model-menu,
+.dlg-agent-model-menu {
+  position: absolute;
+  /* 贴触发钮左缘向右展开，不贴右缘：资源族的面板体横向是裁的（#486 起
+     `.res-col` 自持滚动，`overflow-x` 计算成 hidden；#494 把滚动层挪到全宽
+     `.res-body`，横向裁切仍在）。`right: 0` 会让菜单从触发钮往**左**长，越
+     过容器左缘被裁掉一截——实测布局盒 384..604 而只有 450 之后可绘制，
+     「未设置模型」整行与模型名前 9 个字符都看不见。触发钮在列左缘，只有向
+     右展开才在容器内。 */
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  background: var(--popover-bg, var(--surface));
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-popover, 10px);
+  box-shadow: var(--edge-shadow);
+  display: flex;
+  flex-direction: column;
+  max-height: 300px;
+  /* 菜单按内容撑开、封顶后省略：模型名长度随 provider 自定，定宽会让行内容
+     比盒子宽——盒子是 right:0 锚定的，溢出会往左跑，肉眼看到的是模型名开头
+     被切掉（实测 `claude-sonnet-5` 渲染成 `…net-5`）。 */
+  width: max-content;
+  min-width: 220px;
+  max-width: 360px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.agent-model-row,
+.dlg-agent-model-row {
+  align-items: center;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  gap: 8px;
+  padding: 6px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+/* 创建弹窗的模型槽是表单最后一个字段，下方紧贴底栏（.dlg-form-foot，自带底色
+   且在 DOM 里靠后）——向下展开必被压住（实测只剩首行露出来）。故这一面向上
+   展开：菜单底边贴触发钮上缘，覆盖的是上面的名称字段，落点仍在弹窗体内。 */
+.dlg-agent-model-menu {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.agent-model-row:hover,
+.dlg-agent-model-row:hover {
+  background: var(--surface-secondary, rgb(255 255 255 / 6%));
+}
+
+.agent-model-row-name,
+.dlg-agent-model-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* provider 位不参与收缩：短标签挤掉模型名是本末倒置。 */
+.agent-model-row-provider,
+.dlg-agent-model-row-provider {
+  color: var(--text-tertiary);
+  flex: none;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.agent-model-check,
+.dlg-agent-model-check {
+  display: inline-flex;
+}
+
+/* —— 记忆 —— */
+
+.agent-memories {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-memory-empty,
+.agent-perm-empty {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  margin: 0;
+}
+
+.agent-memory-row {
+  align-items: flex-start;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  display: flex;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.agent-memory-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.agent-memory-title {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.agent-memory-content {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* —— 权限 —— */
+
+.agent-perms {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.agent-perm-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-perm-title {
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.agent-perm-row {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.agent-perm-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-perm-name {
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.agent-perm-hint {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.agent-missing {
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
