@@ -1,18 +1,19 @@
 #!/usr/bin/env node
-// verify-pacman drive-machines-local — machines 页本机行 + per-runtime
-// switches 全链（spec 11 A8/A9/A7，#353；先行地图 #354）。
+// verify-pacman drive-machines-local — machines 页本机行 + per-runtime 品牌
+// mark 全链（spec 11 A8/A9/A7，#353；先行地图 #354；#503 开关 → 品牌 mark）。
 //
 // 真用户路径：/app/resources/machines → 本机行钉列表首（hostname）→ 行内
-// pi / Claude Code 两个 role=switch 逐个点按 → 状态写回 → reload 持久 →
-// 「添加机器」dialog 流程不变。
+// pi / Claude Code 两个品牌 mark（启用 = 品牌原色，未启用 = 35% 透明，
+// read-only）→ reload 后展示态与 API 一致 →「添加机器」dialog 流程不变。
 //
 // 真值：GET /api/teams/:id/machines 记录（kind='local' + enabledRuntimes）
-// 与 switch aria-checked 双真值一致；SQLite machine 行 kind / enabledRuntimes
-// 列（A9 migration）。负向：「Pacman 托管机器」facade 行已除；行无 chevron；
-// 本机行无删除控件（不可删）。
+// 与 UI mark 亮度分态（.mach-runtime--on）双真值一致；SQLite machine 行
+// kind / enabledRuntimes 列（A9 migration）。负向：「Pacman 托管机器」facade
+// 行已除；行内零交互控件（#503 摘除开关：无 role=switch / button）；副行已除
+// （无 .res-row-desc）；行无 chevron；本机行无删除控件（不可删）。
 //
-// 幂等设计：不假设 switch 初始全关——先读 API 断言 UI=API 一致，再断言点按
-// 翻转。同栈重跑不假红（重验仍推荐重 launch）。
+// 幂等设计：不假设 enabledRuntimes 初值——期望值从 API 态推导。同栈重跑不假红
+// （重验仍推荐重 launch）。
 //
 // 先行地图语义（A12）：spec 11 实现票（machine 两列 migration + server 本机
 // seed + PATCH + machines 页重写）落地前本 probe 为红——每条 FAIL detail 指向
@@ -116,15 +117,16 @@ const LOCAL_ROW = `${ROW}[data-kind="local"]`;
 const HOST = hostname();
 const extra = { hostname: HOST };
 
-const switchSel = (runtime) => `${LOCAL_ROW} [role="switch"][data-runtime="${runtime}"]`;
-const ariaChecked = async (page, runtime) =>
+const runtimeSel = (runtime) => `${LOCAL_ROW} .mach-runtime[data-runtime="${runtime}"]`;
+/** mark 亮度分态读数（.mach-runtime--on = 启用，与 aria-checked 同义替换）。 */
+const runtimeOn = async (page, runtime) =>
   page
     .evaluate(
       (sel) => {
         const el = document.querySelector(sel);
-        return el == null ? null : el.getAttribute('aria-checked') === 'true';
+        return el == null ? null : el.classList.contains('mach-runtime--on');
       },
-      switchSel(runtime),
+      runtimeSel(runtime),
     )
     .catch(() => null);
 /** GET machines → 本机记录（kind='local'）。 */
@@ -133,16 +135,6 @@ const fetchLocalMachine = async (teamId) => {
   if (!res.ok) return { error: res.error, record: null };
   const rows = Array.isArray(res.data) ? res.data : [];
   return { error: null, record: rows.find((m) => m.kind === 'local') ?? null, rows };
-};
-/** 轮询等待条件成立（写路径无导航信号可等；盲 sleep 会造慢 PATCH 假红）。 */
-const pollUntil = async (fn, timeoutMs = 6000) => {
-  const deadline = Date.now() + timeoutMs;
-  for (;;) {
-    const done = await fn().catch(() => false);
-    if (done === true) return true;
-    if (Date.now() > deadline) return false;
-    await new Promise((r) => setTimeout(r, 250));
-  }
 };
 
 const browser = await chromium.launch();
@@ -180,7 +172,8 @@ try {
   );
 
   // 2) A8：server 启动 seed → API 有本机记录（kind='local'，name=hostname）
-  const before = teamId != null ? await fetchLocalMachine(teamId) : { error: '无 teamId', record: null };
+  const before =
+    teamId != null ? await fetchLocalMachine(teamId) : { error: '无 teamId', record: null };
   check(
     'api-local-row',
     before.record != null && before.record.name === HOST,
@@ -192,10 +185,10 @@ try {
   );
   const localId = before.record?.id ?? null;
   extra.localMachineId = localId;
-  const priorRuntimes = Array.isArray(before.record?.enabledRuntimes)
+  const apiRuntimes = Array.isArray(before.record?.enabledRuntimes)
     ? before.record.enabledRuntimes
     : [];
-  extra.priorEnabledRuntimes = priorRuntimes;
+  extra.enabledRuntimes = apiRuntimes;
 
   // 3) A8：本机行钉列表首 + 行文本含 hostname
   const firstRowKind = await page
@@ -230,90 +223,58 @@ try {
       : `spec 11 A8：本机行不可删——行内命中 ${deleteCtl} 个删除类控件${deleteCtl < 0 ? '（前置本机行缺失）' : ''}`,
   );
 
-  // 5) A8：per-runtime switches = 行内两个 role=switch（pi / claude-code）
-  const piSwitchOk = await softVisible(page, switchSel('pi'));
-  const ccSwitchOk = await softVisible(page, switchSel('claude-code'));
+  // 5) #503：per-runtime 品牌 mark = 行内两个 .mach-runtime（pi / claude-code），
+  //    各带 .mach-mark + 名称 label
+  const piMarkOk = await softVisible(page, `${runtimeSel('pi')} .mach-mark`);
+  const ccMarkOk = await softVisible(page, `${runtimeSel('claude-code')} .mach-mark`);
+  const piLabel = await softText(page, `${runtimeSel('pi')} .mach-runtime-label`);
+  const ccLabel = await softText(page, `${runtimeSel('claude-code')} .mach-runtime-label`);
   check(
-    'switches-present',
-    piSwitchOk && ccSwitchOk,
-    piSwitchOk && ccSwitchOk
-      ? '本机行内 pi + claude-code 两个 role=switch 在位'
-      : `spec 11 A8：本机行应带 per-runtime 开关（[role="switch"][data-runtime]）——实测 pi=${piSwitchOk} claude-code=${ccSwitchOk}`,
+    'marks-present',
+    piMarkOk && ccMarkOk && piLabel === 'pi' && ccLabel === 'Claude Code',
+    piMarkOk && ccMarkOk && piLabel === 'pi' && ccLabel === 'Claude Code'
+      ? '本机行内 pi + Claude Code 两个品牌 mark 在位（mark + 名称）'
+      : `#503：本机行应带 per-runtime 品牌 mark（.mach-runtime[data-runtime] 内 .mach-mark + label）——实测 mark pi=${piMarkOk} cc=${ccMarkOk}，label pi="${piLabel}" cc="${ccLabel}"`,
   );
 
-  // 6) UI=API 一致：aria-checked === enabledRuntimes.includes（幂等基线）
-  const piChecked0 = await ariaChecked(page, 'pi');
-  const ccChecked0 = await ariaChecked(page, 'claude-code');
+  // 6) UI=API 一致：mark 亮度分态 === enabledRuntimes.includes（幂等基线）
+  const piOn0 = await runtimeOn(page, 'pi');
+  const ccOn0 = await runtimeOn(page, 'claude-code');
   const consistent0 =
-    piChecked0 === priorRuntimes.includes('pi') && ccChecked0 === priorRuntimes.includes('claude-code');
+    piOn0 === apiRuntimes.includes('pi') && ccOn0 === apiRuntimes.includes('claude-code');
   check(
-    'switches-ui-api-consistent',
+    'marks-ui-api-consistent',
     consistent0,
     consistent0
-      ? `初始态 UI=API 一致（enabledRuntimes=[${priorRuntimes.join(', ')}]）`
-      : `spec 11 A8/A9：switch aria-checked 应等于 API enabledRuntimes 成员——UI pi=${piChecked0} cc=${ccChecked0} vs API [${priorRuntimes.join(', ')}]`,
+      ? `mark 亮度分态与 API 一致（enabledRuntimes=[${apiRuntimes.join(', ')}]）`
+      : `#503：mark 亮度分态应等于 API enabledRuntimes 成员——UI pi=${piOn0} cc=${ccOn0} vs API [${apiRuntimes.join(', ')}]`,
   );
 
-  // 7) 点按 pi switch → 翻转写回 API（轮询等待写回，非盲 sleep）
-  const piExpected = !priorRuntimes.includes('pi');
-  let piToggled = false;
-  if (piSwitchOk) {
-    await page.click(switchSel('pi')).catch(() => {});
-    const apiFlipped = await pollUntil(async () => {
-      const mid = await fetchLocalMachine(teamId);
-      return (
-        Array.isArray(mid.record?.enabledRuntimes) &&
-        mid.record.enabledRuntimes.includes('pi') === piExpected
-      );
-    });
-    const after = await fetchLocalMachine(teamId);
-    const piNow = Array.isArray(after.record?.enabledRuntimes)
-      ? after.record.enabledRuntimes.includes('pi')
-      : null;
-    const uiNow = await ariaChecked(page, 'pi');
-    piToggled = apiFlipped && piNow === piExpected && uiNow === piExpected;
-    check(
-      'toggle-pi',
-      piToggled,
-      piToggled
-        ? `点按 pi switch → enabledRuntimes.pi=${piExpected}（API+UI 双真值翻转）`
-        : `spec 11 A9：点按 switch 应翻转写回 enabledRuntimes——期望 pi=${piExpected}，轮询 6s 后实测 API=${piNow} UI=${uiNow}`,
-    );
-  } else {
-    check('toggle-pi', false, 'spec 11 A9：pi switch 缺失，点按写回无从验证（前置 switches-present 未达）');
-  }
+  // 7) #503 负向：行内零交互控件（无 role=switch / button；mark 是 read-only 展示）
+  const ctlCount = localRowOk
+    ? await softCount(page, `${LOCAL_ROW} [role="switch"], ${LOCAL_ROW} button`)
+    : -1;
+  check(
+    'no-inline-controls',
+    ctlCount === 0,
+    ctlCount === 0
+      ? '本机行内零交互控件（开关已摘除，mark 为 read-only）'
+      : `#503：本机行不应再有交互控件——行内命中 ${ctlCount} 个 role=switch/button${ctlCount < 0 ? '（前置本机行缺失）' : ''}`,
+  );
 
-  // 8) 点按 claude-code switch → 翻转写回 API（同律轮询）
-  const ccExpected = !priorRuntimes.includes('claude-code');
-  if (ccSwitchOk) {
-    await page.click(switchSel('claude-code')).catch(() => {});
-    const apiFlipped = await pollUntil(async () => {
-      const mid = await fetchLocalMachine(teamId);
-      return (
-        Array.isArray(mid.record?.enabledRuntimes) &&
-        mid.record.enabledRuntimes.includes('claude-code') === ccExpected
-      );
-    });
-    const after = await fetchLocalMachine(teamId);
-    const ccNow = Array.isArray(after.record?.enabledRuntimes)
-      ? after.record.enabledRuntimes.includes('claude-code')
-      : null;
-    const uiNow = await ariaChecked(page, 'claude-code');
-    const ccToggled = apiFlipped && ccNow === ccExpected && uiNow === ccExpected;
-    check(
-      'toggle-cc',
-      ccToggled,
-      ccToggled
-        ? `点按 claude-code switch → enabledRuntimes.claude-code=${ccExpected}（API+UI 双真值翻转）`
-        : `spec 11 A9：点按 switch 应翻转写回 enabledRuntimes——期望 claude-code=${ccExpected}，轮询 6s 后实测 API=${ccNow} UI=${uiNow}`,
-    );
-    extra.enabledRuntimesAfter = after.record?.enabledRuntimes ?? null;
-  } else {
-    check('toggle-cc', false, 'spec 11 A9：claude-code switch 缺失，点按写回无从验证（前置 switches-present 未达）');
-  }
-  await shot(page, '03-switches-toggled.png');
+  // 8) #503 负向：副行已除（id 尾巴 / 并发上限行不存在）
+  const subCount = localRowOk ? await softCount(page, `${LOCAL_ROW} .res-row-desc`) : -1;
+  const noSub = subCount === 0 && !localRowText.includes('· max');
+  check(
+    'no-subline',
+    noSub,
+    noSub
+      ? '本机行无副行（id 尾巴 / 并发上限行已除）'
+      : `#503：本机行副行应整行删除——实测 .res-row-desc=${subCount} 个，行文本「${oneLine(localRowText)}」`,
+  );
+  await shot(page, '03-marks.png');
 
-  // 9) A9：SQLite machine 行真值（kind + enabledRuntimes JSON）
+  // 9) A9：SQLite machine 行真值（kind + enabledRuntimes JSON，与 API 同集）
   const dbTruth =
     localId != null
       ? dbQuery((db) => ({
@@ -336,39 +297,37 @@ try {
       ? `SQLite machine 行 kind=${dbRow.kind}（期望 local）`
       : `spec 11 A9：SQLite machine 表应有 kind='local' 本机行——${dbTruth.reason ?? '行缺失'}`,
   );
+  const dbMatchesApi =
+    Array.isArray(dbParsed) &&
+    dbParsed.length === apiRuntimes.length &&
+    apiRuntimes.every((r) => dbParsed.includes(r));
   check(
     'db-enabled-runtimes',
-    Array.isArray(dbParsed) &&
-      dbParsed.includes('pi') === piExpected &&
-      dbParsed.includes('claude-code') === ccExpected,
+    dbMatchesApi,
     Array.isArray(dbParsed)
-      ? `SQLite enabledRuntimes=[${dbParsed.join(', ')}]（期望 pi=${piExpected}, claude-code=${ccExpected}）`
-      : `spec 11 A9：SQLite machine.enabledRuntimes（JSON 列）应随 switch 写回——${
+      ? `SQLite enabledRuntimes=[${dbParsed.join(', ')}]（API=[${apiRuntimes.join(', ')}]）`
+      : `spec 11 A9：SQLite machine.enabledRuntimes（JSON 列）应与 API 同集——${
           dbTruth.reason ?? (dbRow != null ? `列值 ${JSON.stringify(dbRow?.enabledRuntimes ?? null)} 非 JSON 数组` : '行缺失')
         }`,
   );
 
-  // 10) reload 持久：aria-checked 与 API 仍一致
+  // 10) reload 持久：mark 亮度分态与 API 仍一致
   await page.reload();
   await page.waitForSelector(SHELL, { timeout: 15_000 }).catch(() => {});
   const afterReload = teamId != null ? await fetchLocalMachine(teamId) : { record: null };
-  const apiRuntimes = Array.isArray(afterReload.record?.enabledRuntimes)
+  const apiRuntimes1 = Array.isArray(afterReload.record?.enabledRuntimes)
     ? afterReload.record.enabledRuntimes
     : [];
-  const piChecked1 = await ariaChecked(page, 'pi');
-  const ccChecked1 = await ariaChecked(page, 'claude-code');
-  // 期望成员 = 两次翻转后的目标态（不假设非空——同栈二跑 prior 全开时翻转为全关也合法）
+  const piOn1 = await runtimeOn(page, 'pi');
+  const ccOn1 = await runtimeOn(page, 'claude-code');
   const persisted =
-    apiRuntimes.includes('pi') === piExpected &&
-    apiRuntimes.includes('claude-code') === ccExpected &&
-    piChecked1 === piExpected &&
-    ccChecked1 === ccExpected;
+    piOn1 === apiRuntimes1.includes('pi') && ccOn1 === apiRuntimes1.includes('claude-code');
   check(
     'persist-reload',
     persisted,
     persisted
-      ? `reload 后 switch 态持久（API enabledRuntimes=[${apiRuntimes.join(', ')}]，UI 一致）`
-      : `spec 11 A9：switch 态应随 enabledRuntimes 持久——期望 pi=${piExpected} cc=${ccExpected}，reload 后 UI pi=${piChecked1} cc=${ccChecked1} vs API [${apiRuntimes.join(', ')}]`,
+      ? `reload 后 mark 亮度分态持久（API enabledRuntimes=[${apiRuntimes1.join(', ')}]，UI 一致）`
+      : `#503：mark 亮度分态应随 enabledRuntimes 持久——reload 后 UI pi=${piOn1} cc=${ccOn1} vs API [${apiRuntimes1.join(', ')}]`,
   );
   await shot(page, '04-after-reload.png');
 

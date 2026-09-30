@@ -416,8 +416,10 @@
   background: var(--col-dot-done);
 }
 
-/* 本机行 per-runtime switches（spec 11 A8，#357）：行内右侧 label+switch 对；
-   switch 形 = rerun-switch 先例（36×20 轨道 + 16 knob，#318 真控件语义）。 */
+/* 本机行 per-runtime 品牌 mark（spec 11 A8，#357；#503 开关 → 官方 mark）：
+   行内右侧 mark+名称对，read-only。启用 = 品牌原色，未启用 = mark 35% 透明；
+   状态只在 mark 上分态，名称两态同 --text-dim（整对一起淡会把未启用名淡到
+   读不出）。mark 尺寸走 brand-marks.tsx 的组件默认 16px。 */
 .mach-runtimes {
   margin-left: auto;
   display: flex;
@@ -438,44 +440,14 @@
   white-space: nowrap;
 }
 
-.mach-switch {
-  position: relative;
+.mach-mark {
   flex: none;
-  width: 36px;
-  height: 20px;
-  border-radius: 9999px;
-  background: var(--text-dim);
-  cursor: pointer;
+  display: block;
+  opacity: 0.35;
 }
 
-/* #423：Switch 适配层默认档自带的 hit-area 扩张伪元素（after:-inset-x-3/
-   -inset-y-2）在双 switch 间距 16px 的行内互相重叠，点缝会误触后一个——
-   原手搓 span 无扩张面，按零漂移律关掉。 */
-.mach-switch::after {
-  content: none;
-}
-
-.mach-switch--on {
-  background: var(--card-button);
-}
-
-.mach-switch:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.mach-switch-knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 9999px;
-  background: var(--toggle-knob);
-}
-
-.mach-switch--on .mach-switch-knob {
-  left: 18px;
+.mach-runtime--on .mach-mark {
+  opacity: 1;
 }
 
 /* orange 自定义 tag beside custom provider names (r7 07)。#423 收编：

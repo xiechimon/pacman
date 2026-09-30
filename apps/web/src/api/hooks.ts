@@ -587,8 +587,9 @@ export function useApiMutations(teamId: string | undefined) {
       mutationFn: (id: string) => api.del<void>(`/api/schedules/${id}`),
       onSuccess: invalidateAll,
     }),
-    // 机器页 per-runtime 开关写回（spec 11 A8/A9，#357）：enabledRuntimes
-    // 全量替换；乐观更新 = 点按即翻 aria-checked，成/败都 invalidate 收敛真值。
+    // 机器 per-runtime 写回（spec 11 A8/A9，#357）：enabledRuntimes 全量替换。
+    // #503 起机器页不再渲染开关（mark 为 read-only 展示），本 mutation 作为
+    // 该字段的 web 侧唯一写入口保留，控件面接回来时直接用。
     patchMachineRuntimes: useMutation({
       mutationFn: (input: { id: string; enabledRuntimes: string[] }) =>
         api.patch<MachineRecord>(`/api/machines/${input.id}`, {

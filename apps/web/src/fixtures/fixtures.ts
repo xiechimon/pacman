@@ -1124,14 +1124,13 @@ const RESOURCES: ResourcesContent = {
       ago: '2 天前',
     },
   ],
-  // spec 11 A8（#357）：本机行钉首（hostname canon + per-runtime switches，
+  // spec 11 A8（#357）：本机行钉首（hostname canon + per-runtime 品牌 mark，
   // pi 开 / Claude Code 关 = 两态展示）；托管 facade 行已除。
   machines: [
     {
       id: MACHINE_ID,
       kind: 'local',
       name: MACHINE_NAME,
-      sub: `…${MACHINE_ID.slice(-8)} · max 3`,
       online: true,
       enabledRuntimes: ['pi'],
     },
