@@ -24,7 +24,10 @@ const TEAM_NO_PROVIDERS = '/app/team?scenario=12';
  *  Playwright 路由匹配序 = 注册逆序，这里用单条路由内分派避免顺序陷阱）。 */
 const TEAM_ID = 'team-1';
 
-async function stubLive(page: Page, opts: { hasProviders: boolean; bodies: unknown[] }) {
+async function stubLive(
+  page: Page,
+  opts: { hasProviders: boolean; bodies: unknown[]; models?: Array<{ id: string; name: string }> },
+) {
   await page.route('**/api/**', (route, request) => {
     const path = new URL(request.url()).pathname;
     if (request.method() === 'POST' && path === `/api/teams/${TEAM_ID}/agents`) {
@@ -57,7 +60,7 @@ async function stubLive(page: Page, opts: { hasProviders: boolean; bodies: unkno
                   api: 'anthropic-messages',
                   authHeader: true,
                   compat: { supportsDeveloperRole: false },
-                  models: [{ id: 'claude-sonnet-5', name: 'claude-sonnet-5' }],
+                  models: opts.models ?? [{ id: 'claude-sonnet-5', name: 'claude-sonnet-5' }],
                   id: 'prov-1',
                   createdBy: 'user-1',
                   createdAt: 0,
@@ -124,6 +127,53 @@ test('创建弹窗：模型菜单不被底栏压住（几何）', async ({ page 
   expect(mb.y).toBeGreaterThanOrEqual(0);
   expect(mb.x).toBeGreaterThanOrEqual(0);
   expect(mb.x + mb.width).toBeLessThanOrEqual(1440);
+});
+
+// XMON-39 模型很多时的显示区域：菜单向上展开，而它的 containing block（触发钮
+// 的 wrap）在 `.dlg-body` 这个 overflow-y:auto 的滚动盒里——菜单一旦比触发钮到
+// body 上缘的距离还高，超出的那截就被裁掉。44 行（300px 封顶）时实测菜单顶
+// 100px 落在裁剪带里，「未设置模型」+ 前两个模型既画不出来也点不中
+// （elementFromPoint 落回 .dlg-backdrop / .overlay-click-catcher），且菜单已经
+// 滚到顶、再滚只会把它们推得更远——永远不可达。
+//
+// 每条断言钉一个失败方式：
+// 1. 菜单越出 .dlg-body 的裁剪盒（越出部分不可见不可点）
+// 2. 首行模型点不中 —— 前几个模型选不了
+// 3. 用「截短列表」消灭 bug —— 行数与候选数不符（死规矩：所有模型仍须可见可选）
+// 4. 菜单封顶后仍能滚到最后一行 —— 修好压住、换成「只露前几行、后面的够不着」
+const MANY_MODELS = Array.from({ length: 40 }, (_, i) => {
+  const id = `vendor/model-${String(i + 1).padStart(2, '0')}`;
+  return { id, name: id };
+});
+
+test('模型很多：菜单不越出弹窗体裁剪盒，首行模型可点，44 行一个不少', async ({ page }) => {
+  await stubLive(page, { hasProviders: true, bodies: [], models: MANY_MODELS });
+  const dialog = await openDialog(page, '/app/team');
+  await dialog.locator('.dlg-agent-model-select').click();
+  const menu = dialog.locator('.dlg-agent-model-menu');
+  await expect(menu).toBeVisible();
+
+  const mb = await menu.boundingBox();
+  const bb = await dialog.locator('.dlg-body').boundingBox();
+  expect(mb).not.toBeNull();
+  expect(bb).not.toBeNull();
+  if (mb === null || bb === null) return;
+  expect(mb.y).toBeGreaterThanOrEqual(bb.y - 0.5);
+  expect(mb.y + mb.height).toBeLessThanOrEqual(bb.y + bb.height + 0.5);
+
+  // 行数 = 候选数 + 1（首位恒是「未设置模型」清空行）——不许靠删行/截短藏 bug
+  await expect(dialog.locator('.dlg-agent-model-row')).toHaveCount(MANY_MODELS.length + 1);
+
+  // 被裁的那几行正是列表开头：点第一个模型，看它是否真选得上
+  const firstModel = dialog.locator('.dlg-agent-model-row', { hasText: 'vendor/model-01' });
+  await firstModel.click({ timeout: 5000 });
+  await expect(dialog.locator('.dlg-agent-model-select')).toContainText('vendor/model-01');
+
+  // 末行仍够得着（封顶后的滚动是可达性，不是摆设）
+  await dialog.locator('.dlg-agent-model-select').click();
+  const rows = dialog.locator('.dlg-agent-model-row');
+  await rows.nth(MANY_MODELS.length).click({ timeout: 5000 });
+  await expect(dialog.locator('.dlg-agent-model-select')).toContainText('vendor/model-40');
 });
 
 test('选中模型后提交，POST body 带 provider 与 modelId', async ({ page }) => {
