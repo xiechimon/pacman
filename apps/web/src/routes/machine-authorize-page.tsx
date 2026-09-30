@@ -3,13 +3,21 @@
 // authorized = 完成态；expired = 失效文案）→ confirm 建机（无 apiKey，capability
 // 单次）。无参到达 = 本页自起 start（拿 enrollId 即转入轮询，授权链接可复制
 // 给执行机侧流程）。CLI 主路径（--api-key 两步弹窗，#181/#179）不动。
-// 视觉语言 = token-gate 族同款（surface 面板 + edge 圆角/阴影）。
+// B2 收编（#426）：面板 = 仓内 shadcn Card（bg-card + ring-1 ring-foreground/10 +
+// 12px 边圆角 + shadow-lg，与 token-gate 门页同配方），字样 = 语义标签 + TW 工具
+// 类直引 token 正本；per-face 样式（routes/machine-authorize.css）随片退役。
+// 类名别名（authorize-*）原样保留在元素上（别名保留律 #411 政策 1）；新增
+// e2e 钉扎面按同政策走语义 locator，不再新铸类名钉。提交钮从散写改走 A3
+// 原语 ui/Button primary standard（原散写 =
+// --card-button 实底 + --text-on-accent + 8px 圆角，等值）：shadcn Button 的
+// variant 表无 brand primary 档，换件即改填充色——故本片不动它。
 
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api } from '../api/client.js';
+import { Card } from '../components/ui/card.js';
 import { useI18n } from '../i18n/provider.js';
-import './machine-authorize.css';
+import { Button } from '../ui/button.js';
 
 interface MachineJson {
   machineId: string;
@@ -21,6 +29,9 @@ interface MachineJson {
 type Phase = 'idle' | 'pending' | 'authorizing' | 'authorized' | 'expired' | 'error';
 
 const POLL_INTERVAL_MS = 2_000;
+
+/** 相位文案共用的一档字样（13px / 1.5 行高 / 次级墨）。 */
+const DESC_CLASS = 'authorize-desc text-[13px] leading-normal text-content-secondary';
 
 export function MachineAuthorizePage() {
   const { t } = useI18n();
@@ -92,47 +103,62 @@ export function MachineAuthorizePage() {
   };
 
   return (
-    <div className="authorize-backdrop">
-      <section className="authorize-card" aria-label={t('授权机器')}>
-        <h1 className="authorize-title">{t('授权机器')}</h1>
+    // 独立路由页（pathless 布局，不在 app 壳内）：画布底色铺满视口。底色取
+    // --background（B 页面第一档，board-main 同款），不取 --surface-secondary：
+    // 暗色下 --surface-secondary 与 Card 的 bg-card 同值 #1f1f23，面板会与底同色。
+    <div className="authorize-backdrop fixed inset-0 flex items-center justify-center bg-background">
+      <Card
+        role="region"
+        aria-label={t('授权机器')}
+        className="authorize-card w-[360px] max-w-[calc(100vw-48px)] gap-3 rounded-[12px] p-6 shadow-lg"
+      >
+        <h1 className="authorize-title text-base font-semibold text-foreground">{t('授权机器')}</h1>
         {phase === 'idle' && (
           <>
-            <p className="authorize-desc">{t('生成授权链接，在执行机上完成注册发起。')}</p>
-            <button
-              type="button"
-              className="authorize-submit"
+            <p className={DESC_CLASS}>{t('生成授权链接，在执行机上完成注册发起。')}</p>
+            <Button
+              variant="primary"
+              size="standard"
+              className="authorize-submit w-full font-medium"
               onClick={() => void startEnrollment()}
             >
               {t('生成授权链接')}
-            </button>
+            </Button>
           </>
         )}
         {phase === 'pending' && (
           <>
-            <p className="authorize-desc">
+            <p className={DESC_CLASS}>
               {t('一台执行机请求加入你的团队。确认后它将以自己的凭据连接。')}
             </p>
-            <button type="button" className="authorize-submit" onClick={() => void confirm()}>
+            <Button
+              variant="primary"
+              size="standard"
+              className="authorize-submit w-full font-medium"
+              onClick={() => void confirm()}
+            >
               {t('确认授权')}
-            </button>
+            </Button>
           </>
         )}
-        {phase === 'authorizing' && <p className="authorize-desc">{t('正在授权…')}</p>}
+        {phase === 'authorizing' && <p className={DESC_CLASS}>{t('正在授权…')}</p>}
         {phase === 'authorized' && machine !== null && (
           <>
-            <p className="authorize-desc">{t('授权完成，机器已注册。')}</p>
-            <p className="authorize-meta">machineId: {machine.machineId}</p>
+            <p className={DESC_CLASS}>{t('授权完成，机器已注册。')}</p>
+            <p className="authorize-meta text-xs break-all text-content-tertiary">
+              machineId: {machine.machineId}
+            </p>
           </>
         )}
         {phase === 'expired' && (
-          <p className="authorize-desc">{t('授权链接已失效，请在执行机上重新发起。')}</p>
+          <p className={DESC_CLASS}>{t('授权链接已失效，请在执行机上重新发起。')}</p>
         )}
         {error !== null && phase !== 'authorized' && (
-          <p className="authorize-error" role="alert">
+          <p className="authorize-error text-xs text-accent-rose" role="alert">
             {error}
           </p>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

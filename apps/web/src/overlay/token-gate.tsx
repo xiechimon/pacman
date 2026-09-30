@@ -3,16 +3,23 @@
 // 原请求（client.ts 停车面唤醒 + SSE 重连，auth 单缝）。错 token：停留本页、
 // 清输入、只显通用文案——server {error} 细节不透传（票 AC2）。鉴权关：
 // gateOpen 永不置位，本组件恒不可见（零行为差）。
-// A3-overlays 收编：输入 = ui/Input（36px 实测族）、提交 = ui/Button
-// primary；token-gate-input/-submit 类名保留为 e2e 定位别名
-// （token-gate.spec.ts），样式本体在 ui/input.css / ui/button.css。
+// B2 收编（#426）：面板 = 仓内 shadcn Card（bg-card + ring-1 ring-foreground/10
+// + 12px 边圆角 + shadow-lg，与 dialog 族浮层面同配方），字样 = 语义标签 + TW
+// 工具类直引 token 正本；per-face 样式（overlay/token-gate.css）随片退役。
+// 类名别名（token-gate*）原样保留 = e2e 定位锚（token-gate.spec.ts，#411
+// 政策 1）。面板虽由 Card 承载，表单语义（form + type=submit，回车即提交）
+// 仍由内层 form 原样承接。
+// 输入与提交仍走 A3 原语（ui/Input = 36px 实测族、ui/Button primary =
+// --card-button 实底 + --text-on-accent）：components/ui 无 Input 件、shadcn
+// Button 的 variant 表无 brand primary 档，换件即改填充色——故本片不动它们。
+// 聚焦走既有 htmlFor/id 锚点 pacman-token-input（A3：原语暂无 ref 形态）。
 
 import { type FormEvent, useEffect, useState } from 'react';
 import { passGate, probeToken, useAuth } from '../api/auth.js';
+import { Card } from '../components/ui/card.js';
 import { useI18n } from '../i18n/provider.js';
 import { Button } from '../ui/button.js';
 import { Input } from '../ui/input.js';
-import './token-gate.css';
 
 export function TokenGate() {
   const { t } = useI18n();
@@ -21,9 +28,7 @@ export function TokenGate() {
   const [rejected, setRejected] = useState(false);
   const [probing, setProbing] = useState(false);
 
-  // 每次开门清上一轮残值并聚焦（关门→再开 = 新一轮输入）。A3：输入收编
-  // ui/Input 后 ref 不在其 props 类型上（原语暂无 ref 形态），聚焦改走
-  // 既有 htmlFor/id 锚点 pacman-token-input。
+  // 每次开门清上一轮残值并聚焦（关门→再开 = 新一轮输入）。
   useEffect(() => {
     if (!auth.gateOpen) return;
     setValue('');
@@ -52,42 +57,52 @@ export function TokenGate() {
   };
 
   return (
-    <div className="token-gate-backdrop">
-      <form
-        className="token-gate"
+    // 门页盖住全部 UI：全屏黑幕（--overlay-scrim，正本单源）置于既有 overlay
+    // 层（最大 z-index 41）之上——z-60 是门页专属阶梯，勿并入浮层阶梯。
+    <div className="token-gate-backdrop fixed inset-0 z-60 flex items-center justify-center bg-(--overlay-scrim)">
+      <Card
         role="dialog"
         aria-modal="true"
         aria-label={t('需要访问令牌')}
-        onSubmit={submit}
+        className="token-gate w-[360px] max-w-[calc(100vw-48px)] rounded-[12px] p-6 shadow-lg"
       >
-        <h1 className="token-gate-title">{t('需要访问令牌')}</h1>
-        <p className="token-gate-desc">{t('服务端已开启令牌鉴权，输入访问令牌后继续使用。')}</p>
-        <label className="token-gate-label" htmlFor="pacman-token-input">
-          {t('访问令牌')}
-        </label>
-        <Input
-          id="pacman-token-input"
-          className="token-gate-input"
-          type="password"
-          value={value}
-          autoComplete="off"
-          onChange={(event) => setValue(event.target.value)}
-        />
-        {rejected && (
-          <p className="token-gate-error" role="alert">
-            {t('令牌无效，请重试。')}
+        <form className="flex flex-col gap-3" onSubmit={submit}>
+          <h1 className="token-gate-title text-base font-semibold text-foreground">
+            {t('需要访问令牌')}
+          </h1>
+          <p className="token-gate-desc text-[13px] leading-normal text-content-secondary">
+            {t('服务端已开启令牌鉴权，输入访问令牌后继续使用。')}
           </p>
-        )}
-        <Button
-          type="submit"
-          variant="primary"
-          size="standard"
-          className="token-gate-submit"
-          disabled={probing || value.trim() === ''}
-        >
-          {t('进入')}
-        </Button>
-      </form>
+          <label
+            className="token-gate-label text-xs text-content-tertiary"
+            htmlFor="pacman-token-input"
+          >
+            {t('访问令牌')}
+          </label>
+          <Input
+            id="pacman-token-input"
+            className="token-gate-input"
+            type="password"
+            value={value}
+            autoComplete="off"
+            onChange={(event) => setValue(event.target.value)}
+          />
+          {rejected && (
+            <p className="token-gate-error text-xs text-accent-rose" role="alert">
+              {t('令牌无效，请重试。')}
+            </p>
+          )}
+          <Button
+            type="submit"
+            variant="primary"
+            size="standard"
+            className="token-gate-submit"
+            disabled={probing || value.trim() === ''}
+          >
+            {t('进入')}
+          </Button>
+        </form>
+      </Card>
     </div>
   );
 }
