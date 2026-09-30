@@ -332,6 +332,14 @@ export const EN: Record<string, string> = {
   '希望 Agent 审核时重点关注什么？（可选）':
     'What do you want the Agent to focus on during review? (optional)',
   开始审核: 'Start review',
+  // #509 审核选人独立性提示：默认值优先跨厂商；无跨厂商可选时出声。两档措辞
+  // ——确证同源 vs 无法判定（未配置厂商 = 没有比对基准），都不静默。
+  本次审核与产出同源: 'This review shares a vendor with the producing step',
+  无法判定审核独立性: 'Cannot determine review independence',
+  '审核人与产出该方案的 Agent 来自同一模型厂商，不构成独立复核。':
+    'The reviewer and the Agent that produced this plan use the same model vendor; this is not an independent review.',
+  '产出该方案的 Agent 或所选审核人未配置模型厂商，缺少比对基准，不构成独立复核。':
+    'Neither the producing Agent nor the selected reviewer has a model vendor configured, so there is nothing to compare against; this is not an independent review.',
   // M7 #330 AI 审核消息渲染（r8 §3.1 真 findings 上线）：结论先行 + 编号 findings
   // + 严重度后缀（(blocking)/(suggestion)/(info)）+ 方案引用块 + 修复建议。
   // 服务端消息 kind = REVIEW_VERDICT_KIND（shared/message.ts 双端单源），
@@ -597,6 +605,7 @@ export const EN: Record<string, string> = {
   '找不到该 Agent。它可能已被删除。': 'Agent not found. It may have been deleted.',
   '暂无团队密钥。': 'No team secrets yet.',
   '暂无 MCP 服务器。': 'No MCP servers yet.',
+  团队密钥: 'Team secrets',
   // shared canon（packages/shared/src/records/agent.ts、memory.ts），经 t()
   // 消费、不作字面量出现——i18n-coverage COMPUTED_KEYS 登记。
   '远程 shell': 'Remote shell',
@@ -619,6 +628,8 @@ export const EN: Record<string, string> = {
     'Let this Agent add new skills to the team skill library.',
   '允许该 Agent 修改团队技能库中已有的技能。':
     'Let this Agent modify skills already in the team skill library.',
+  '任务执行时将团队密钥以环境变量注入该 Agent 的 shell。所在机器需要 pacman CLI 0.1.28 及以上。':
+    'Team secrets are injected into this Agent’s shell as environment variables when it runs tasks. The machine must have pacman CLI 0.1.28 or newer.',
   '该 Agent 执行任务时可使用的团队 MCP 服务器，其工具以 mcp__<服务器>__<工具> 的形式出现。':
     'Team MCP servers this Agent may use while running tasks; their tools appear as mcp__<server>__<tool>.',
   '用一两句话说明该 Agent 的职责。该说明会注入它执行的每个任务，也会提供给总管用于分派。':
@@ -627,4 +638,15 @@ export const EN: Record<string, string> = {
     'The team skill this Agent always carries, without an @ mention in the message.',
   '尚无记忆。Agent 会在工作中将值得沉淀的经验存入此处。':
     'No memories yet. The Agent stores experience worth keeping here as it works.',
+
+  // —— #499 记忆 tab 的搜索与排序（配额头 + 搜索框 + 排序档）——
+  // `记忆 · {n} / {max}`：{max} = shared MEMORY_QUOTA_PER_AGENT 插值，不写死
+  // 数字；`搜索记忆…` = shared MEMORY_UI_COPY.searchPlaceholder（经 t() 消费、
+  // 不作字面量出现，i18n-coverage COMPUTED_KEYS 登记）。
+  '记忆 · {n} / {max}': 'Memory · {n} / {max}',
+  '搜索记忆…': 'Search memories…',
+  // 排序第二档（[设计]，见 agent-detail-page.tsx 的 MEMORY_SORT_OPTIONS）。
+  添加时间: 'Added',
+  // 零命中态：与「尚无记忆」canon 空态分开——搜不到不等于没存过。
+  '没有匹配的记忆。': 'No memories match.',
 };

@@ -1,5 +1,6 @@
-// chief-model-select 数据源投影（#358，spec 11 §A10）——失败方式枚举先行，
-// 本文件是场景固化（仓测试规则 3）：
+// 模型候选投影 toModelOptions（#358，spec 11 §A10）——消费面三处（总管压缩
+// 模型选择器 / 创建 Agent 弹窗 / Agent 详情概览），投影本体与消费面无关，
+// 故不叫 chief-*。失败方式枚举先行，本文件是场景固化（仓测试规则 3）：
 // F1  双源空 → 空清单（选择器菜单只剩默认行，不崩）
 // F2  custom providers models[] → 带归属行（provider=providerId、
 //     providerLabel=label 原样，#180 现状逻辑保留）
@@ -18,7 +19,7 @@
 
 import type { ModelSource, ProviderRecord } from '@pacman/shared';
 import { describe, expect, it } from 'vitest';
-import { toChiefModelOptions } from '../src/api/mappers.js';
+import { toModelOptions } from '../src/api/mappers.js';
 
 function provider(
   providerId: string,
@@ -49,13 +50,13 @@ function piSource(models: ModelSource['models']): ModelSource {
   return { runtime: 'pi', installed: true, hostname: 'test-host', models };
 }
 
-describe('toChiefModelOptions（#358 数据源投影）', () => {
+describe('toModelOptions（#358 数据源投影）', () => {
   it('F1: 双源空 → 空清单', () => {
-    expect(toChiefModelOptions([], [])).toEqual([]);
+    expect(toModelOptions([], [])).toEqual([]);
   });
 
   it('F2: custom providers models[] → 带归属行（#180 现状逻辑保留）', () => {
-    const rows = toChiefModelOptions(
+    const rows = toModelOptions(
       [provider('r3-gw', [{ id: 'claude-sonnet-5', name: 'Claude Sonnet 5（R3 网关）' }], 'R3 网关')],
       [],
     );
@@ -70,7 +71,7 @@ describe('toChiefModelOptions（#358 数据源投影）', () => {
   });
 
   it('F2a: 空 id 行跳过、空 name 回退 id', () => {
-    const rows = toChiefModelOptions(
+    const rows = toModelOptions(
       [provider('gw', [{ id: '', name: '幽灵行' }, { id: 'm1', name: '' }])],
       [],
     );
@@ -80,7 +81,7 @@ describe('toChiefModelOptions（#358 数据源投影）', () => {
   });
 
   it('F3: claude-code 段 → runtime 词表值作 provider、品牌名作 label', () => {
-    const rows = toChiefModelOptions(
+    const rows = toModelOptions(
       [],
       [ccSource([{ id: 'claude-opus-4-5', name: 'claude-opus-4-5', slot: 'default' }])],
     );
@@ -95,7 +96,7 @@ describe('toChiefModelOptions（#358 数据源投影）', () => {
   });
 
   it('F4: sources 的 pi 段不产行（归属行由 providers 投影唯一产出）', () => {
-    const rows = toChiefModelOptions(
+    const rows = toModelOptions(
       [provider('r3-gw', [{ id: 'claude-sonnet-5', name: 'Claude Sonnet 5' }])],
       [piSource([{ id: 'claude-sonnet-5', name: 'Claude Sonnet 5' }])],
     );
@@ -110,7 +111,7 @@ describe('toChiefModelOptions（#358 数据源投影）', () => {
   });
 
   it('F5: claude-code 多槽同 id → 去重 first-wins', () => {
-    const rows = toChiefModelOptions(
+    const rows = toModelOptions(
       [],
       [
         ccSource([
@@ -124,7 +125,7 @@ describe('toChiefModelOptions（#358 数据源投影）', () => {
   });
 
   it('F5a: 跨 provider 同 modelId → 两行都留', () => {
-    const rows = toChiefModelOptions(
+    const rows = toModelOptions(
       [provider('r3-gw', [{ id: 'claude-sonnet-5', name: 'Claude Sonnet 5' }])],
       [ccSource([{ id: 'claude-sonnet-5', name: 'claude-sonnet-5', slot: 'sonnet' }])],
     );
@@ -135,11 +136,11 @@ describe('toChiefModelOptions（#358 数据源投影）', () => {
   });
 
   it('F6: 未安装段（models=[]）→ 无行贡献，不崩', () => {
-    expect(toChiefModelOptions([], [ccSource([], false)])).toEqual([]);
+    expect(toModelOptions([], [ccSource([], false)])).toEqual([]);
   });
 
   it('F7: 序 = providers 段在前、非 pi runtime 段按封套序在后', () => {
-    const rows = toChiefModelOptions(
+    const rows = toModelOptions(
       [
         provider('gw-a', [{ id: 'm-a', name: 'M A' }]),
         provider('gw-b', [{ id: 'm-b', name: 'M B' }]),

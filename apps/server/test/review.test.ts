@@ -47,6 +47,8 @@ import { bootServer, issueApiKey, postProject, req } from './helpers.js';
 
 const AGENT_ID = 'agent-review-1';
 const REVIEW_AGENT_ID = 'agent-reviewer-1';
+/** #509 探针：与产出槽 AGENT_ID（provider 'stub-gw'）不同厂商的审核候选。 */
+const CROSS_VENDOR_AGENT_ID = 'agent-rival-1';
 const PLAN_FILE_NAME = 'plan.md';
 
 /** 播种用 git 提交身份（与 build-diff-fulltext 同款；宿主 git 无全局身份时
@@ -313,6 +315,53 @@ describe('AI 审核发起写面（M7 #312）', () => {
       body: { action: 'review', focus: '看看安全' },
     });
     expect(res.status).toBe(400);
+  });
+
+  // #509：审核人的「优先跨厂商」是**界面默认值偏好**，不是服务端策略。服务端
+  // 对 agentId 只做形状校验（zod）与相位门，厂商一律不看——用户显式指定同厂
+  // 商是最高优先，不得被硬拦成 409。下面两条同时钉两侧：同厂商 202、跨厂商 202。
+  test('选人策略不进服务端：显式指定同厂商 agentId 照常受理（不回归成 409）', async () => {
+    const buildId = await w.startBuild(true);
+    const planClaimed = await w.claim();
+    await w.uploadPlan(planClaimed.stepId, '# plan v1');
+    await w.done(planClaimed.stepId, { status: 'success' });
+    expect(w.todoRow().phase).toBe('confirm');
+    // 产出步 Agent = 执行侧槽 AGENT_ID（provider 'stub-gw'）。
+    expect(w.todoRow().assignment?.build?.agentId).toBe(AGENT_ID);
+
+    // 同厂商：REVIEW_AGENT_ID 与 AGENT_ID 同为 'stub-gw'。
+    const sameVendor = await w.startReview(buildId, { agentId: REVIEW_AGENT_ID, focus: '' });
+    expect(sameVendor.status).toBe(202);
+    const sameMeta = parseReviewPromptMeta(
+      w.stepsOf(buildId).find((s) => s.kind === 'review')?.prompt ?? null,
+    );
+    expect(sameMeta?.agentId).toBe(REVIEW_AGENT_ID);
+  });
+
+  test('选人策略不进服务端：跨厂商 agentId 同样照常受理（无厂商判据）', async () => {
+    const buildId = await w.startBuild(true);
+    const planClaimed = await w.claim();
+    await w.uploadPlan(planClaimed.stepId, '# plan v1');
+    await w.done(planClaimed.stepId, { status: 'success' });
+    expect(w.todoRow().phase).toBe('confirm');
+
+    w.s.db
+      .insert(agentTable)
+      .values({
+        id: CROSS_VENDOR_AGENT_ID,
+        teamId: w.s.team.id,
+        displayName: 'stub-rival',
+        provider: 'rival-gw',
+        modelId: 'rival-model',
+      })
+      .run();
+
+    const res = await w.startReview(buildId, { agentId: CROSS_VENDOR_AGENT_ID, focus: '' });
+    expect(res.status).toBe(202);
+    const meta = parseReviewPromptMeta(
+      w.stepsOf(buildId).find((s) => s.kind === 'review')?.prompt ?? null,
+    );
+    expect(meta?.agentId).toBe(CROSS_VENDOR_AGENT_ID);
   });
 
   test('happy path：confirm 态发起审核 → review 步入队 + REVIEW_ANNOUNCEMENT + phase 留 confirm', async () => {

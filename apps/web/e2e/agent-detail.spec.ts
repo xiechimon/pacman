@@ -17,14 +17,39 @@ import { expect, type Page, test } from '@playwright/test';
 // 10. MCP 服务器逐个勾选行不渲染
 // 11. 未知 agent id 白屏（拿不到记录时没有回退呈现）
 //
+// #499 续（记忆 tab 搜索/排序 + 两行的编辑图标），每条断言钉一个失败方式：
+// 12. 记忆 tab 没有配额头 —— `记忆 · n / 100` 不出（或 n 取了过滤后的条数）
+// 13. 搜索框缺失，或过滤是死面（打字后行数不变）
+// 14. 搜索只扫 title，content 命中不出行
+// 15. 搜索对 ASCII 大小写敏感（`probe` 找不到 `PROBE`）
+// 16. 零命中回落「尚无记忆」canon 空态 —— 把「搜不到」说成「一条都没有」
+// 17. `添加时间` 档不排序（行序停在到达序）
+// 18. 排序把搜索条件吃掉（选中排序项后过滤集变回全量）
+// 19. 名称沿用裸文本钮、没有编辑图标（点不出可点感）
+// 20. 职责的编辑钮丢了图标（退回文字钮），或图标钮没有可访问名
+//
 // fixture 场景 = 'agent-detail'：TEAM_R7 的 r3-builder 卡 + 该 agent 的完整
 // 记录（字段 = r3 §4 实测样本原样）+ resources 行集。
+// 'agent-detail-memory' = 同一 agent 的 3 条记忆（记忆 tab 搜索/排序用）。
 const DETAIL = '/app/resources/agents/r3-builder?scenario=agent-detail';
+const MEMORY_DETAIL = '/app/resources/agents/r3-builder?scenario=agent-detail-memory';
 const TEAM = '/app/team?scenario=agent-detail';
 
 async function openDetail(page: Page) {
   await page.goto(DETAIL);
   return page.locator('.agent-detail');
+}
+
+async function openMemory(page: Page) {
+  await page.goto(MEMORY_DETAIL);
+  const detail = page.locator('.agent-detail');
+  await detail.locator('.agent-tab').nth(1).click();
+  return detail;
+}
+
+/** 记忆行标题（按 DOM 序），用于钉排序。 */
+async function memoryTitles(page: Page): Promise<string[]> {
+  return page.locator('.agent-memory-title').allTextContents();
 }
 
 test('团队页的 Agent 卡是链接，点击落到详情路由', async ({ page }) => {
@@ -83,7 +108,7 @@ test('概览：模型选择器打开后列出 provider 与模型名', async ({ p
   // 首行恒是「未设置模型」清空行（可空槽），模型行按模型名定位。
   await expect(menu.locator('.agent-model-row').first()).toHaveText(/未设置模型/);
   // 模型行按 provider 定位：同一个模型 id 可能在 custom providers 与
-  // claude-code 段各有一行（toChiefModelOptions 的并集语义），只有
+  // claude-code 段各有一行（toModelOptions 的并集语义），只有
   // provider 位能把它们分开。
   const row = menu.locator('.agent-model-row', { hasText: 'r3-gw' });
   await expect(row).toHaveCount(1);
@@ -184,7 +209,152 @@ test('权限 tab：MCP 服务器逐个勾选行渲染', async ({ page }) => {
   await expect(detail.locator('.agent-mcp-row').first()).toBeVisible();
 });
 
+// #510：密钥区粒度改回原版的「全有全无」——原版 Agent 权限 tab 是**一行**
+// 「团队密钥 + 总说明 + 单个 switch」，不展开逐个密钥行（2026-09-30 直读
+// 参考产品确认；密钥页的行菜单也只有编辑/删除，没有 per-Agent 矩阵）。
+// 场景 agent-detail-secrets 播两个密钥：回退成 per-secret 粒度会渲染两行，
+// 「恰好一行」才有牙（只播一个密钥时两种实现都过）。
+const DETAIL_SECRETS = '/app/resources/agents/r3-builder?scenario=agent-detail-secrets';
+
+test('权限 tab：有密钥时密钥区恰好一行总开关', async ({ page }) => {
+  await page.goto(DETAIL_SECRETS);
+  await page.locator('.agent-tab').nth(2).click();
+  await expect(page.locator('.agent-secret-row')).toHaveCount(1);
+  await expect(page.locator('.agent-secret-switch')).toHaveCount(1);
+  await expect(page.locator('.agent-secret-name')).toHaveText('团队密钥');
+  // 副文案 = shared AGENT_PERMISSION_COPY.secrets（原版权限 tab 同一句，品牌
+  // 与最低 CLI 版本插值随常量走）；e2e 不跨包取常量，硬写 canon 文案。
+  await expect(page.locator('.agent-secret-hint')).toHaveText(
+    '任务执行时将团队密钥以环境变量注入该 Agent 的 shell。所在机器需要 pacman CLI 0.1.28 及以上。',
+  );
+});
+
+// 勾选态 = `agent.secrets` 非空（wire 的 string[] 表达得了全有全无，无新字段）。
+test('权限 tab：密钥总开关勾选态开→关→回', async ({ page }) => {
+  await page.goto(DETAIL_SECRETS);
+  await page.locator('.agent-tab').nth(2).click();
+  const sw = page.locator('.agent-secret-switch');
+  await expect(sw).toHaveAttribute('aria-checked', 'false'); // 空集 = 关
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'true'); // 开 = 全 id 集
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'false'); // 关 = []
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'true'); // 回
+});
+
+// 零密钥时没有对象可授，出开关就是死控件（原版那行开关在零密钥时也渲染，
+// 但它当时开关的是什么无法观测——不复刻看不出语义的控件，差异留 #510 票面）。
+test('权限 tab：零密钥时是空态，无开关', async ({ page }) => {
+  const detail = await openDetail(page);
+  await detail.locator('.agent-tab').nth(2).click();
+  await expect(detail.locator('.agent-perm-empty')).toHaveText('暂无团队密钥。');
+  await expect(detail.locator('.agent-secret-switch')).toHaveCount(0);
+  await expect(detail.locator('.agent-secret-row')).toHaveCount(0);
+});
+
 test('未知 agent id 不白屏，走回退呈现', async ({ page }) => {
   await page.goto('/app/resources/agents/no-such-agent?scenario=agent-detail');
   await expect(page.locator('.agent-missing')).toBeVisible();
+});
+
+// —— #499：记忆 tab 的配额头、搜索与排序 ——
+
+// 配额 = shared MEMORY_QUOTA_PER_AGENT（records/memory.ts:11），n = 该 Agent
+// 的全部记忆条数（不是过滤后的条数——配额记的是存量，不是眼前的列表长度）。
+test('记忆 tab：配额头 `记忆 · n / 100` 与搜索/排序控件齐在', async ({ page }) => {
+  const detail = await openMemory(page);
+  await expect(detail.locator('.agent-memory-head')).toHaveText('记忆 · 3 / 100');
+  await expect(detail.locator('.agent-memory-search input')).toHaveAttribute(
+    'placeholder',
+    '搜索记忆…',
+  );
+  await expect(detail.locator('.agent-memory-sort')).toContainText('排序');
+  await expect(detail.locator('.agent-memory-row')).toHaveCount(3);
+});
+
+test('记忆 tab：搜索按标题过滤，只留命中行', async ({ page }) => {
+  const detail = await openMemory(page);
+  await detail.locator('.agent-memory-search input').fill('历史轮次');
+  await expect(detail.locator('.agent-memory-row')).toHaveCount(1);
+  await expect(detail.locator('.agent-memory-title')).toHaveText('PROBE 探针的历史轮次');
+});
+
+// 一行一条失败方式：`probe` 只写在第 2 条的 content 里（标题没有），而第 3 条
+// 的标题是 `PROBE`（全大写）——两条都命中才说明扫了 content 且大小写不敏感。
+test('记忆 tab：搜索扫 content 且 ASCII 大小写不敏感', async ({ page }) => {
+  const detail = await openMemory(page);
+  await detail.locator('.agent-memory-search input').fill('probe');
+  await expect(detail.locator('.agent-memory-row')).toHaveCount(2);
+  expect(await memoryTitles(page)).toEqual(['验收只看真机跑通', 'PROBE 探针的历史轮次']);
+});
+
+// 零命中不是「这个 Agent 没有记忆」——回落 canon 空态等于篡改事实。
+test('记忆 tab：零命中出「没有匹配的记忆。」，不回落 canon 空态', async ({ page }) => {
+  const detail = await openMemory(page);
+  await detail.locator('.agent-memory-search input').fill('不存在的词');
+  await expect(detail.locator('.agent-memory-row')).toHaveCount(0);
+  await expect(detail.locator('.agent-memory-no-match')).toHaveText('没有匹配的记忆。');
+  await expect(detail.locator('.agent-memory-empty')).toHaveCount(0);
+  // 配额头仍报存量 3（不是 0）。
+  await expect(detail.locator('.agent-memory-head')).toHaveText('记忆 · 3 / 100');
+});
+
+// fixture 的列序是旧 → 新，`添加时间` 必须把它翻成新 → 旧；否则这一档是死面
+// （选中后行序与 `默认` 一模一样）。
+test('记忆 tab：`添加时间` 档按新 → 旧重排', async ({ page }) => {
+  const detail = await openMemory(page);
+  expect(await memoryTitles(page)).toEqual([
+    '构建分支的命名规律',
+    '验收只看真机跑通',
+    'PROBE 探针的历史轮次',
+  ]);
+  await detail.locator('.agent-memory-sort').click();
+  await detail.locator('.agent-memory-sort-menu .res-sort-row', { hasText: '添加时间' }).click();
+  expect(await memoryTitles(page)).toEqual([
+    'PROBE 探针的历史轮次',
+    '验收只看真机跑通',
+    '构建分支的命名规律',
+  ]);
+});
+
+// 排序不得把搜索条件吃掉：过滤集留在原地，只在集合内重排。
+test('记忆 tab：搜索与排序叠加——排序只在命中集内生效', async ({ page }) => {
+  const detail = await openMemory(page);
+  await detail.locator('.agent-memory-search input').fill('probe');
+  await detail.locator('.agent-memory-sort').click();
+  await detail.locator('.agent-memory-sort-menu .res-sort-row', { hasText: '添加时间' }).click();
+  await expect(detail.locator('.agent-memory-row')).toHaveCount(2);
+  expect(await memoryTitles(page)).toEqual(['PROBE 探针的历史轮次', '验收只看真机跑通']);
+});
+
+// 空列表（一条记忆都没有）时不摆搜索/排序控件——照 skills-page 的先例，空态
+// 顶掉工具行（对着空集搜索没有意义）。
+test('记忆 tab：零记忆时不出搜索行，保留 canon 空态', async ({ page }) => {
+  const detail = await openDetail(page);
+  await detail.locator('.agent-tab').nth(1).click();
+  await expect(detail.locator('.agent-memory-empty')).toBeVisible();
+  await expect(detail.locator('.agent-memory-search')).toHaveCount(0);
+  await expect(detail.locator('.agent-memory-head')).toHaveText('记忆 · 0 / 100');
+});
+
+// —— #499：名称 / 职责两行的编辑图标 ——
+
+test('概览：名称行带编辑图标，点图标同样进编辑态', async ({ page }) => {
+  const detail = await openDetail(page);
+  const icon = detail.locator('.agent-name-edit');
+  await expect(icon).toBeVisible();
+  await expect(icon).toHaveAttribute('aria-label', '编辑');
+  await expect(icon.locator('svg')).toHaveCount(1);
+  await icon.click();
+  await expect(detail.locator('#agent-name-input')).toBeVisible();
+});
+
+test('概览：职责的编辑钮是图标钮，带可访问名', async ({ page }) => {
+  const detail = await openDetail(page);
+  const edit = detail.locator('.agent-role-edit');
+  await expect(edit).toHaveAttribute('aria-label', '编辑');
+  await expect(edit.locator('svg')).toHaveCount(1);
+  await edit.click();
+  await expect(detail.locator('#agent-role-input')).toBeVisible();
 });
