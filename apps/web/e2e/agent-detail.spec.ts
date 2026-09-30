@@ -28,9 +28,17 @@ import { expect, type Page, test } from '@playwright/test';
 // 19. 名称沿用裸文本钮、没有编辑图标（点不出可点感）
 // 20. 职责的编辑钮丢了图标（退回文字钮），或图标钮没有可访问名
 //
+// XMON-15 续（概览「进行中」段），每条断言钉一个失败方式：
+// 21. 零在跑任务时也出计数（`进行中 · 0`），或空态不出 canon 文案
+// 22. 有在跑任务时行数不对 / 行内四个位（序号、标题、chip、箭头）缺位
+// 23. 等机器的一行 chip 不吃 `queued` 档（回落 todo.phase 时同值，
+//     但 conditional 被删掉后行为会随 phase 漂移）
+// 24. 行不是入口 —— 点了不导航到任务详情
+//
 // fixture 场景 = 'agent-detail'：TEAM_R7 的 r3-builder 卡 + 该 agent 的完整
 // 记录（字段 = r3 §4 实测样本原样）+ resources 行集。
 // 'agent-detail-memory' = 同一 agent 的 3 条记忆（记忆 tab 搜索/排序用）。
+// 'agent-detail-active' = 同一 agent 的两行在跑 build（概览「进行中」段）。
 const DETAIL = '/app/resources/agents/r3-builder?scenario=agent-detail';
 const MEMORY_DETAIL = '/app/resources/agents/r3-builder?scenario=agent-detail-memory';
 const TEAM = '/app/team?scenario=agent-detail';
@@ -224,8 +232,11 @@ test('权限 tab：有密钥时密钥区恰好一行总开关', async ({ page })
   await expect(page.locator('.agent-secret-name')).toHaveText('团队密钥');
   // 副文案 = shared AGENT_PERMISSION_COPY.secrets（原版权限 tab 同一句，品牌
   // 与最低 CLI 版本插值随常量走）；e2e 不跨包取常量，硬写 canon 文案。
+  // XMON-15 顺手对齐：XMON-7（#508，142c6cb）把这条 canon 从「以环境变量
+  // 注入 shell」改成「按需取用、不预置进 shell」，本断言没跟上，一直红着；
+  // 现值抄自 packages/shared/src/records/agent.ts 的常量。
   await expect(page.locator('.agent-secret-hint')).toHaveText(
-    '任务执行时将团队密钥以环境变量注入该 Agent 的 shell。所在机器需要 pacman CLI 0.1.28 及以上。',
+    '任务执行时，该 Agent 可在需要密钥的执行步中按需取用团队密钥，每次取用都会留下记录；密钥不预置进 shell 环境。所在机器需要 pacman CLI 0.1.28 及以上。',
   );
 });
 
@@ -357,4 +368,46 @@ test('概览：职责的编辑钮是图标钮，带可访问名', async ({ page 
   await expect(edit.locator('svg')).toHaveCount(1);
   await edit.click();
   await expect(detail.locator('#agent-role-input')).toBeVisible();
+});
+
+// —— XMON-15：概览「进行中」段 ——
+// 形状正典 = shared agentTaskSchema 的注释（逐个字段的原件出处）；服务端过滤
+// 判据的失败方式钉在 apps/server/test/m5-face.test.ts 的同名 describe。
+// 段头与空态文案逐字 = 参考产品 web 包的 agent_modal.in_progress /
+// no_active_tasks（后者经 i18n en.ts 映射为 'No active tasks'）。
+// 两档：agent-detail 不带 agentTasks（canon 空态），agent-detail-active 带
+// 两行 build（等机器 + 跑起来）。
+
+test('概览：零在跑任务时段头不带计数，出 canon 空态', async ({ page }) => {
+  const detail = await openDetail(page);
+  await expect(detail.locator('.agent-tasks-head')).toHaveText('进行中');
+  await expect(detail.locator('.agent-tasks-empty')).toHaveText('暂无进行中的任务');
+  await expect(detail.locator('.agent-task-row')).toHaveCount(0);
+});
+
+test('概览：有在跑任务时列出行，段头带计数', async ({ page }) => {
+  await page.goto(`${DETAIL.replace('agent-detail', 'agent-detail-active')}`);
+  const detail = page.locator('.agent-detail');
+  await expect(detail.locator('.agent-tasks-head')).toHaveText('进行中 · 2');
+  await expect(detail.locator('.agent-tasks-empty')).toHaveCount(0);
+
+  const rows = detail.locator('.agent-task-row');
+  await expect(rows).toHaveCount(2);
+  // 行 = #序号 + 标题 + 状态 chip + 右箭头（原件 TaskRow 的四个位）
+  await expect(rows.nth(0).locator('.agent-task-seq')).toHaveText('#12');
+  await expect(rows.nth(0).locator('.agent-task-title')).toHaveText(
+    'README 文档目录 + 新建 CHANGELOG.md + scripts/',
+  );
+  // 等机器的一行 chip = `queued` 档的文案（待处理）
+  await expect(rows.nth(0).locator('.chip')).toHaveText('待处理');
+  // 跑起来的一行 chip 吃 todo.phase（building → 执行中）
+  await expect(rows.nth(1).locator('.agent-task-seq')).toHaveText('#13');
+  await expect(rows.nth(1).locator('.chip')).toHaveText('执行中');
+  await expect(rows.nth(1).locator('.agent-task-go svg')).toHaveCount(1);
+});
+
+test('概览：点行进任务详情', async ({ page }) => {
+  await page.goto(`${DETAIL.replace('agent-detail', 'agent-detail-active')}`);
+  await page.locator('.agent-task-row').first().click();
+  await expect(page).toHaveURL(/\/app\/todo\/r3-legacy-12$/);
 });

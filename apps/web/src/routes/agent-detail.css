@@ -139,6 +139,77 @@
   font-size: 13px;
 }
 
+/* —— 进行中（概览最后一段）——
+   一张描边卡装整段，结构与原件同形：外层 `rounded-xl border` + 段内
+   `bg-surface-secondary`。段头 11px 三级色，行 `px-4 py-2.5`，空态
+   `px-4 py-1.5` 的三级色小字。行是整块按钮（原件 TaskRow 的 onPress）。
+   序号列 flex-none（`#12` / `#1` 不推挤标题），标题吃余量单行截断——原件
+   `numberOfLines={1}`。 */
+
+.agent-tasks {
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-secondary);
+  overflow: hidden;
+  padding: 6px 0;
+}
+
+.agent-tasks-head {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+  margin: 0;
+  padding: 4px 16px 2px;
+}
+
+.agent-tasks-empty {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+  margin: 0;
+  padding: 6px 16px;
+}
+
+.agent-task-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.agent-task-row:hover {
+  background: var(--surface-hover);
+}
+
+.agent-task-seq {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  flex: none;
+}
+
+.agent-task-title {
+  color: var(--text-primary);
+  font-size: 13px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-task-go {
+  color: var(--text-tertiary);
+  flex: none;
+  display: inline-flex;
+}
+
 /* —— 模型选择器（AgentModelSelect 一面两消费点）——
    概览 tab 前缀 `agent-model-*`，创建弹窗前缀 `dlg-agent-model-*`；两套类名
    共用下面同一条规则，几何只在触发钮上分叉（弹窗里撑满行宽）。 */

@@ -609,6 +609,8 @@ export const EN: Record<string, string> = {
   未设置模型: 'No model',
   '默认 skill': 'Default skill',
   '找不到该 Agent。它可能已被删除。': 'Agent not found. It may have been deleted.',
+  // 概览「进行中」段空态（原文 = 参考产品 web 包 agent_modal.no_active_tasks）。
+  暂无进行中的任务: 'No active tasks',
   '暂无团队密钥。': 'No team secrets yet.',
   '暂无 MCP 服务器。': 'No MCP servers yet.',
   团队密钥: 'Team secrets',

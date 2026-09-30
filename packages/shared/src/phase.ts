@@ -30,6 +30,15 @@ export const PHASE_SEMANTICS: Readonly<Record<Phase, string>> = {
   closed: '未完成即搁置',
 };
 
+/** 「进行中」判据——原创件里的 `In progress` 桶（Agent 详情「进行中」段与
+ *  总管 Progress 的三桶 In progress / To review / Failed 同源）。原件谓词逐字：
+ *  `phase === 'queued' || BUSY_PHASES.includes(phase)`，
+ *  `BUSY_PHASES = ['planning','building','plan_reviewing','implement_reviewing']`；
+ *  同包内 review/confirm 归「等你」（`isAwaitingUser`）、failed 单列、todo 未启动。
+ *  本仓九值词表下 = queued / planning / building（两个 reviewing 子相本仓未采，
+ *  九值权威见 02 §4.1）。 */
+export const IN_PROGRESS_PHASES = ['queued', 'planning', 'building'] as const;
+
 /** 工作台 4 列（#351；前身 = r2 §4.1 的 6 列折叠）——列只是 phase 的折叠
  *  视图，非独立实体（CONTEXT.md）。 */
 export const BOARD_COLUMNS = ['待开始', '执行中', '待处理', '已完成'] as const;

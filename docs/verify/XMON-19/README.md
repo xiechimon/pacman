@@ -76,13 +76,14 @@ changelog：`Delete safeguard warnings: Deleting an agent or machine now warns w
 | 闸 | 命令 | 实际输出 |
 |---|---|---|
 | typecheck | `pnpm typecheck` | shared / web / daemon / server / integration 五包全 `Done` |
-| lint | `npx biome ci . --reporter=github` | **0 error**（仓库存量 4 warnings + 25 infos 不在本票文件内） |
-| server 测试 | `cd apps/server && npx vitest run` | **484 passed / 44 files**（含本票新增 `test/agent-delete.test.ts` 7 例） |
+| lint | `npx biome ci . --reporter=github` | **0 error**（仓库存量 warnings / infos 不在本票文件内） |
+| server 测试 | `cd apps/server && npx vitest run` | **487 passed / 45 files**（含本票新增 `test/agent-delete.test.ts` 7 例） |
 | shared 测试 | `cd packages/shared && npx vitest run test/snapshot.test.ts` | **79 passed**（DELETE_FACE 快照随改） |
-| web e2e（本票新面） | `cd apps/web && E2E_PORT=8401 npx playwright test e2e/agent-delete.spec.ts` | **5 passed** |
-| web e2e（邻面回归） | 同上，`agent-detail` + `team-org-chart` + `escape-wiring` + `dead-buttons` | **67 passed / 1 failed** |
+| web e2e（全量） | `cd apps/web && E2E_PORT=8404 npx playwright test` | **496 passed**（含本票新增 `e2e/agent-delete.spec.ts` 5 例） |
 
-**唯一红灯不在本票**：`e2e/agent-detail.spec.ts:227` 断言的是团队密钥副文案的旧句，而 `packages/shared/src/records/agent.ts` 现行文案已被 #510 改成按需取用句。本票 diff 不含这两个文件，红项无因果；同一红灯在 `docs/verify/xmon-13/README.md` 已记录为存量。
+以上为并入 `main@57458094` 后的复跑值（2026-10-01）；并入前 server 侧是 484 passed / 44 files，差量来自 main 上的新测试。
+
+`e2e/agent-detail.spec.ts` 的红线**已随并 main 消失**：那条断言钉的是团队密钥副文案，交付当时 e2e 期望还停在 #510 之前的旧句（本票 diff 不含该 spec 与 `packages/shared/src/records/agent.ts`，红项与本票无因果；`docs/verify/xmon-13/README.md` 记过同一存量）；main 上上游已把期望同步到现行文案，本次全量 e2e 绿灯。
 
 ## 未覆盖
 
