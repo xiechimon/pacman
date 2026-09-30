@@ -147,6 +147,38 @@ try {
     await page.locator('.agent-runtime').textContent(),
   );
 
+  // —— 2b. 思考强度档位来自能力读面（XMON-16 / #499 B3）────────────────
+  // 读面本体：七档有序（期望值来源 = pi-agent-core 的 ThinkingLevel 联合，
+  // 字面量独立写出，不读实现里的常量）。
+  const caps = await getJson(`${SERVER}/api/capabilities`);
+  check(
+    'capabilities-seven-levels',
+    JSON.stringify(caps.thinkingLevels) ===
+      JSON.stringify(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']),
+    JSON.stringify(caps.thinkingLevels),
+  );
+  // 只读行按读面呈现：词表内的值呈现；词表外的值不呈现（落「默认」）——
+  // 这条是「读面真的接到了 UI 上」的判据，只验端点不算数。
+  await sendJson(agentUrl(agentId), 'PATCH', { thinkingLevel: 'high' });
+  await page.reload();
+  await page.waitForSelector('.agent-overview', { timeout: 15_000 });
+  check(
+    'thinking-inside-vocabulary-rendered',
+    (await page.locator('.agent-thinking').textContent())?.trim() === 'high',
+    await page.locator('.agent-thinking').textContent(),
+  );
+  await sendJson(agentUrl(agentId), 'PATCH', { thinkingLevel: 'ultra' });
+  await page.reload();
+  await page.waitForSelector('.agent-overview', { timeout: 15_000 });
+  check(
+    'thinking-outside-vocabulary-falls-back',
+    (await page.locator('.agent-thinking').textContent())?.trim() === '默认' &&
+      (await page.locator('.agent-thinking button').count()) === 0,
+    await page.locator('.agent-thinking').textContent(),
+  );
+  await shot(page, '01b-thinking-readonly.png');
+  await sendJson(agentUrl(agentId), 'PATCH', { thinkingLevel: null }); // 还原种子态
+
   // —— 3. 名称行内编辑 → server displayName 变 ──────────────────────────
   await page.locator('.agent-name').click();
   await page.locator('#agent-name-input').fill(RENAMED);
