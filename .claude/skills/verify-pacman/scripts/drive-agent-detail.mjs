@@ -167,6 +167,7 @@ try {
     (await page.locator('.agent-thinking').textContent())?.trim() === 'high',
     await page.locator('.agent-thinking').textContent(),
   );
+  await shot(page, '01b-thinking-level-high.png');
   await sendJson(agentUrl(agentId), 'PATCH', { thinkingLevel: 'ultra' });
   await page.reload();
   await page.waitForSelector('.agent-overview', { timeout: 15_000 });
@@ -176,7 +177,7 @@ try {
       (await page.locator('.agent-thinking button').count()) === 0,
     await page.locator('.agent-thinking').textContent(),
   );
-  await shot(page, '01b-thinking-readonly.png');
+  await shot(page, '01c-thinking-outside-vocabulary.png');
   await sendJson(agentUrl(agentId), 'PATCH', { thinkingLevel: null }); // 还原种子态
 
   // —— 3. 名称行内编辑 → server displayName 变 ──────────────────────────

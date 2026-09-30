@@ -30,7 +30,11 @@ VERIFY_REPO_ROOT=<worktree> node <worktree>/.claude/skills/verify-pacman/scripts
 
 ## 截图
 
-- `agent-detail-thinking-readonly.png` — 只读行（词表外值落「默认」态）。
-- `agent-detail-overview.png` — 概览整屏。
+- `agent-detail-thinking-level-high.png` — PATCH `thinkingLevel:"high"` 后重载，只读行出 `high`。
+- `agent-detail-overview.png` — 概览整屏（种子态，只读行 `默认`）。
 
-源证据目录（本地态，gitignored）：`.claude/verify-evidence/2026-09-30T17-58-33-564Z-agent-detail`。
+「词表外值落『默认』」那一张与 `agent-detail-overview.png` 逐字节相同（同页面同
+状态，只读行都出 `默认`），不另存重复件——该态由 `result.json` 的
+`thinking-outside-vocabulary-falls-back` 记录。
+
+源证据目录（本地态，gitignored）：`.claude/verify-evidence/2026-09-30T18-06-51-968Z-agent-detail`。
