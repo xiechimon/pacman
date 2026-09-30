@@ -42,7 +42,8 @@ import { expect, type Page, test } from '@playwright/test';
 const NEW_PROJECT = '/app/project/new?scenario=01';
 const NEW_PROJECT_LIVE = '/app/project/new';
 
-/** tokens.css canon: --indigo-500 #6466e9 (both themes) / --danger #ca3a32. */
+/** shadcn.css 值正本: --indigo-500 #6466e9 (both themes) / --destructive
+ *  #ca3a32（--danger 是它在 tokens.css 的并流别名）. */
 const INDIGO_500 = 'rgb(100, 102, 233)';
 const DANGER = 'rgb(202, 58, 50)';
 

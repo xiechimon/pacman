@@ -3,7 +3,7 @@ import { expect, type Page, test } from '@playwright/test';
 // Issue #388 acceptance (弹层与 focus 视觉缺陷组):
 //   #15 — 点击 topbar 钮 / 新建任务钮后键盘交互（Esc/Tab）不再出现 UA 蓝框
 //         (outline auto rgb(0,95,204))；:focus-visible 统一收编为 indigo ring
-//         （配方沿 .rerun-switch:focus-visible 先例：2px --card-button, offset 2）。
+//         （配方沿 .rerun-switch:focus-visible 先例：2px --focus-ring, offset 2）。
 //   #10 — /app/schedules 新建定时弹层升级 OverlayMount 全屏族：scrim 盖全视口
 //         （含 sidebar——旧 z auto 被 sidebar z1 压过，阴影只盖右 pane）、Esc 关、
 //         背板点击关、入场动画与 dialog 族同款（anim-fade token）。
@@ -13,7 +13,7 @@ const BOARD = '/app?scenario=01';
 const SCHED = '/app/schedules?scenario=r3-92';
 /** UA (Chromium) default focus ring: outline auto + this blue. */
 const UA_BLUE = 'rgb(0, 95, 204)';
-/** --card-button (tokens.css) — the family :focus-visible ring color. */
+/** --focus-ring (shadcn.css 值正本) — the family :focus-visible ring color. */
 const RING = 'rgb(78, 71, 221)';
 
 async function focusedOutline(page: Page) {

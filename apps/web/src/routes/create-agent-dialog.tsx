@@ -12,10 +12,10 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { PROVIDERS_HREF } from '../resources/providers-page.js';
 import { Avatar } from '../ui/avatar.js';
-import { DialogShell } from '../ui/dialog-shell.js';
 import { Input } from '../ui/input.js';
 
 interface CreateAgentDialogProps {

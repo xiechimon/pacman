@@ -12,10 +12,9 @@
 // 延迟 Undo 窗口不落地([设计] 票内裁量 wontfix:关闭即刻生效,重开走
 // closed→todo reopen 面)。
 
+import { FloatingShell } from '../components/ui/floating-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { Ban, Check, Copy, Trash2 } from '../icons/index.js';
-import { OverlayMount } from '../overlays/dismiss.js';
-import { useEscClose } from './use-esc.js';
 import './overlay.css';
 
 interface MoreMenuProps {
@@ -42,13 +41,13 @@ export function MoreMenu({
   canClose,
 }: MoreMenuProps) {
   const { t } = useI18n();
-  useEscClose(onClose, open);
   const copyLink = () => {
     void navigator.clipboard?.writeText(window.location.href);
     onClose();
   };
   return (
-    <OverlayMount open={open}>
+    <FloatingShell open={open} onClose={onClose} className="more-menu-shell">
+      {/* 透明 catcher 保留（外点只关层、不穿透——#425 车道书记为该族待定项） */}
       <button
         type="button"
         className="more-menu-catcher anim-fade"
@@ -91,6 +90,6 @@ export function MoreMenu({
           {t('删除')}
         </button>
       </div>
-    </OverlayMount>
+    </FloatingShell>
   );
 }

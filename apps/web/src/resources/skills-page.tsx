@@ -14,11 +14,13 @@ import { useSearchParams } from 'react-router';
 import { useSkills } from '../api/hooks.js';
 import { mapSkills } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { FloatingShell } from '../components/ui/floating-shell.js';
+import { Input } from '../components/ui/input.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ArrowUpDown, Check, ChevronDown, Puzzle, Search } from '../icons/index.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
-import { EmptyState, RowChevron, Tile } from './parts.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
+import { EmptyState, RowCard, RowChevron, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
 
 export const SKILLS_HREF = '/app/resources/skills';
@@ -38,7 +40,8 @@ export function SkillsPage() {
   const rows = live ? mapSkills(skillsQ.data ?? []) : (fixture.resources?.skills ?? []);
   const [sortOpen, setSortOpen] = useState(false);
   const [sort, setSort] = useState<SortKind>('默认');
-  useEscapeClose(sortOpen, () => setSortOpen(false));
+  // #425 B1:wrap 锚定面——portal 挂进 wrap 保绝对定位几何;Esc 走 FloatingShell。
+  const [sortWrap, setSortWrap] = useState<HTMLSpanElement | null>(null);
   const skills = sort === '名称' ? [...rows].sort((a, b) => a.name.localeCompare(b.name)) : rows;
 
   return (
@@ -63,11 +66,21 @@ export function SkillsPage() {
       ) : (
         <>
           <div className="res-searchrow">
+            {/* #423 真 Input 收编（#422 裁决：原「搜索框」是 div + 占位 span，
+                .res-search-ph 连 CSS 都没有 → 换真 Input 零样式债）：盒形仍由
+                .res-search per-face 规则承载，input 本体零装饰
+                （.res-search-input），focus 环走 #388 家族律。过滤行为无行为
+                票，本面 = 真输入框（原为纯装饰），占位文案同键单源。 */}
             <div className="res-search">
               <Search width={13} height={13} />
-              <span className="res-search-ph">{t('搜索技能...')}</span>
+              <Input
+                className="res-search-input"
+                type="text"
+                placeholder={t('搜索技能...')}
+                aria-label={t('搜索技能...')}
+              />
             </div>
-            <span className="res-sort-wrap">
+            <span className="res-sort-wrap" ref={setSortWrap}>
               <button
                 type="button"
                 className="res-sort"
@@ -79,7 +92,11 @@ export function SkillsPage() {
                 <span>{t('排序')}</span>
                 <ChevronDown width={12} height={12} />
               </button>
-              <OverlayMount open={sortOpen}>
+              <FloatingShell
+                open={sortOpen}
+                onClose={() => setSortOpen(false)}
+                container={sortWrap}
+              >
                 <ClickCatcher onClose={() => setSortOpen(false)} />
                 <div className="res-sort-menu" role="listbox" aria-label={t('排序')}>
                   {SORT_OPTIONS.map((option) => (
@@ -103,18 +120,18 @@ export function SkillsPage() {
                     </button>
                   ))}
                 </div>
-              </OverlayMount>
+              </FloatingShell>
             </span>
           </div>
           {skills.map((skill) => (
-            <div className="res-card res-rowcard" key={skill.name}>
+            <RowCard key={skill.name}>
               <Tile Icon={Puzzle} size="sm" tone="orange" />
               <span className="res-row-text">
                 <span className="res-row-title">{skill.name}</span>
                 <span className="res-row-desc res-row-desc--strong">{skill.description}</span>
               </span>
               <RowChevron />
-            </div>
+            </RowCard>
           ))}
         </>
       )}

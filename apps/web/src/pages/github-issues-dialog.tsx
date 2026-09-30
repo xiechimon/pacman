@@ -9,9 +9,9 @@
 import type { GithubIssueState, TodoRecord } from '@pacman/shared';
 import { useEffect, useState } from 'react';
 import { useApiMutations, useGithubIssues } from '../api/hooks.js';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { Button } from '../ui/button.js';
-import { DialogShell } from '../ui/dialog-shell.js';
 import { TagChip } from '../ui/tag-chip.js';
 
 const STATE_FILTERS: { id: GithubIssueState; label: string }[] = [

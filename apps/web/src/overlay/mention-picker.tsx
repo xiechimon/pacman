@@ -19,9 +19,10 @@
 // real entity endpoints.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { FloatingShell } from '../components/ui/floating-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, FileCheck, Layers, Puzzle, Server, Users, X } from '../icons/index.js';
-import { ClickCatcher, OverlayMount } from '../overlays/dismiss.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 import type { MentionKind, MentionToken } from './mention-token.js';
 import './mention-picker.css';
 
@@ -153,17 +154,9 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
     });
   }, [open]);
 
-  // Esc closes the picker (caller decides whether the outer dialog
-  // also closes via its own useEscClose layer, identical to the
-  // project popover in new-task-dialog).
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
+  // Esc 由 FloatingShell（Base UI layer 栈）接管：嵌在 new-task-dialog 里时
+  // 本面自动成 nested 顶层，Esc 只收本面，外层 dialog 收不到（不再需要旧
+  // 窗口感知 + 调用方分层闸）。
 
   const allSelected = useMemo(() => {
     const list: { kind: MentionKind; id: string; label: string; seq?: number }[] = [];
@@ -219,7 +212,9 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
   };
 
   return (
-    <OverlayMount open={open} exitMs={160}>
+    // #425 B1：壳换 FloatingShell（Base UI 非模态 Dialog）；mention-picker-shell
+    // 类只为退场 CSS 钩子（见 mention-picker.css 尾段），别名锚类逐字保留。
+    <FloatingShell open={open} onClose={onClose} className="mention-picker-shell">
       <ClickCatcher onClose={onClose} />
       <div
         className="mention-picker anim-pop"
@@ -318,7 +313,7 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
           </button>
         </div>
       </div>
-    </OverlayMount>
+    </FloatingShell>
   );
 }
 

@@ -6,7 +6,7 @@
 // providers 面,claude-code 段 provider 位 = runtime 词表值);当前值命中
 // 不了选项时(含仍引用已废 preset 的旧值)裸串 `provider/modelId` 即名,
 // 不空白不崩。
-// 交互 = anchored popover 家族律(#67/#127/dhead chip 先例:OverlayMount +
+// 交互 = anchored popover 家族律(#67/#127/dhead chip 先例:FloatingShell +
 // ClickCatcher + Esc,role=listbox/option);选中当前值 = 空操作关面
 // (chief-agent-dialog 同律)。live:选定即 PATCH chief compactionModel 槽
 // (S8:mutation 后 invalidateAll 重取回显,不做本地乐观态);fixture 面
@@ -14,10 +14,11 @@
 
 import type { ChiefCompactionModel } from '@pacman/shared';
 import { useState } from 'react';
+import { FloatingShell } from '../components/ui/floating-shell.js';
 import type { ChiefModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown } from '../icons/index.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 
 /** fixture 面候选兜底(r5 §2 捕获网关 r3-gw——捕获徽标位原文即 id 本身
  *  `r3-gw · 128k`——+ fixture canon 模型 claude-sonnet-5;chief-agent-dialog
@@ -45,7 +46,8 @@ interface ChiefModelSelectProps {
 export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  useEscapeClose(open, () => setOpen(false));
+  // #425 B1:wrap 锚定面——portal 挂进 wrap 保绝对定位几何;Esc 走 FloatingShell。
+  const [wrap, setWrap] = useState<HTMLSpanElement | null>(null);
   const rows = options ?? DEFAULT_OPTIONS;
   const current =
     value == null
@@ -73,7 +75,7 @@ export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectPro
   };
 
   return (
-    <span className="chief-model-wrap">
+    <span className="chief-model-wrap" ref={setWrap}>
       <button
         type="button"
         className="chief-select"
@@ -84,7 +86,13 @@ export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectPro
         <span>{label}</span>
         <ChevronDown width={12} height={12} />
       </button>
-      <OverlayMount open={open}>
+      {/* #425 B1:chief-model-shell 类只为退场 CSS 钩子(见 chief.css 尾段)。 */}
+      <FloatingShell
+        open={open}
+        onClose={() => setOpen(false)}
+        container={wrap}
+        className="chief-model-shell"
+      >
         <ClickCatcher onClose={() => setOpen(false)} />
         <div className="chief-model-menu anim-pop" role="listbox" aria-label={t('压缩模型')}>
           <button
@@ -123,7 +131,7 @@ export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectPro
             );
           })}
         </div>
-      </OverlayMount>
+      </FloatingShell>
     </span>
   );
 }

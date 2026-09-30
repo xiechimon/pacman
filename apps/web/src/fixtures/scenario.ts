@@ -48,11 +48,13 @@ import {
   detailR8DeleteFresh,
   detailR8Fresh,
   detailReview,
+  detailSpinnerQuiescent,
   detailV3Collapsed,
   diffV1V2,
   diffV2V3,
   history12,
   history15,
+  mdToolout,
   planOpenReview,
   projectFixture,
   projectLocalFiles,
@@ -154,11 +156,20 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #366: plan-card activation pin (smoke surface, no capture): the
       // review changes face with a collapsed plan card in the thread
       'plan-open': planOpenReview,
+      // #469 named scenario (no capture, plan-open precedent): the chat
+      // block-rendering pin — an agent reply with raw block markdown + a
+      // tool group whose bash stdout renders as left-aligned mono blocks
+      'md-toolout': mdToolout,
       // #443 named scenario (no capture, notify-banner precedent): scenario
       // 16's planning surface + chiefUnread 3 — the unread-gated detail FAB
       // face (badge pass-through pin; the shell-consistency detail row and
       // chief-fab.spec ride it).
       'detail-unread': { ...detailPlanning, chiefUnread: 3 },
+      // #471 named scenario (no capture, detail-unread precedent): the
+      // building surface's quiescent gap — agent not streaming, task not
+      // ended — the transcript's live cue is one spinner reel + the static
+      // 执行中... label row; spinner-live.spec rides it.
+      'spinner-quiescent': detailSpinnerQuiescent(),
       // frozen right-pane views (issue #68 captures, re-homed by #366):
       // 30/31/32 sit on the review surface with diff + tool rows expanded,
       // exactly as the captures froze them — the former token/branch/

@@ -47,6 +47,7 @@ import { useI18n } from '../i18n/provider.js';
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
 import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
+import { KbdHint } from '../ui/kbd-hint.js';
 // shell styles live with the board surface; the settings view (101–104)
 // unmounts BoardSurface but keeps the shell, so the route imports them too
 import '../board/board.css';
@@ -390,6 +391,9 @@ export function BoardPage() {
         onClick={() => setChiefView('drawer')}
       >
         <ChiefFabIcon chief={chiefData} />
+        {/* #468: ⌘J 悬浮提示（board 内联钮与 ChiefWakeFab 同批；点击维持
+            open-only）。 */}
+        <KbdHint label="⌘J" />
         {chiefUnread > 0 && <span className="fab-badge">{chiefUnread}</span>}
       </button>
       <AcceptDialog

@@ -5,7 +5,7 @@
 // clickable-through nowhere while an overlay is open. Close affordances are
 // [推断] — no capture exercises them; pixels are unaffected.
 
-import { type CSSProperties, type ReactNode, useEffect } from 'react';
+import { type CSSProperties, type ReactNode, useEffect, useRef } from 'react';
 import { OVERLAY_EXIT_MS, useOverlayMount } from '../overlay/use-overlay-mount.js';
 import './overlays.css';
 
@@ -35,15 +35,32 @@ export function OverlayMount({
   );
 }
 
+/** Escape closes the layer while it is open (#67/#127 family law).
+ *
+ *  The keydown wiring is registered once per open/close cycle, never per
+ *  render (#462): a re-render of the layer while it stays open must not
+ *  detach and re-attach the listener. A re-render whose passive effects are
+ *  still pending when a keydown dispatch starts can flush them from an
+ *  earlier listener in that same dispatch — removing this layer's listener
+ *  mid-dispatch, which the DOM spec skips (a removed listener is not
+ *  invoked), so the Escape never reaches the layer and it stays open until
+ *  a second Escape. Holding the latest `onClose` in a ref keeps the
+ *  listener identity stable while `open` is unchanged; the wiring itself
+ *  stays a passive effect, so the family's layering order (inner layer
+ *  closes first) is untouched. */
 export function useEscapeClose(open: boolean, onClose: () => void) {
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') onCloseRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open]);
 }
 
 export function ClickCatcher({ onClose }: { onClose: () => void }) {

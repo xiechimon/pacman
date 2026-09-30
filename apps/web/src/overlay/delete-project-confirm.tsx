@@ -3,17 +3,12 @@
 // 加键入项目名确认行:输入与项目名精确匹配才解禁删除钮(误删闸门,票面
 // 「确认输入不匹配禁用」)。级联语义不在本层——server services/projects.ts
 // 单源(#189);本层只管确认形状与闸门。
-// A4-deep 收编：删除钮 = ui/Button danger、取消钮 = ui/Button quiet
-// （类别名/禁用形态处置同 delete-confirm.tsx 头注；两面共享
-// .delete-confirm-* css 面，收编必须同构）。
+// #425 B1：壳与底栏换 components/ui/alert-dialog-shell（同 delete-confirm；
+// 两面共享 .delete-confirm-* css 面，收编同构）。
 
 import { useEffect, useState } from 'react';
+import { AlertDialogActions, AlertDialogShell } from '../components/ui/alert-dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
-import { X } from '../icons/index.js';
-import { OverlayMount } from '../overlays/dismiss.js';
-import { Button } from '../ui/button.js';
-import { useEscClose } from './use-esc.js';
-import { FADE_EXIT_MS } from './use-overlay-mount.js';
 import './overlay.css';
 
 interface DeleteProjectConfirmProps {
@@ -33,7 +28,6 @@ export function DeleteProjectConfirm({
 }: DeleteProjectConfirmProps) {
   const { t } = useI18n();
   const [typed, setTyped] = useState('');
-  useEscClose(onClose, open);
   // 每次重开回到空输入:关闭期 typed 随 retained mount 存活,不重置会让
   // 重开的弹层带着上一次的输入(闸门形同虚设)。
   useEffect(() => {
@@ -41,55 +35,30 @@ export function DeleteProjectConfirm({
   }, [open]);
   const prompt = t('输入 {name} 以确认删除', { name: projectName });
   return (
-    <OverlayMount open={open} exitMs={FADE_EXIT_MS}>
-      <button
-        type="button"
-        className="overlay-backdrop anim-fade"
-        aria-label={t('关闭')}
-        onClick={onClose}
+    <AlertDialogShell
+      title={t('确定删除该项目？此操作不可撤销。')}
+      ariaLabel={t('删除项目')}
+      open={open}
+      onClose={onClose}
+      className="delete-confirm--project"
+    >
+      <div className="delete-confirm-summary">{projectName}</div>
+      <div className="delete-confirm-prompt">{prompt}</div>
+      <input
+        className="delete-confirm-input"
+        value={typed}
+        onChange={(e) => setTyped(e.target.value)}
+        aria-label={prompt}
+        autoComplete="off"
+        spellCheck={false}
       />
-      <div
-        className="delete-confirm delete-confirm--project anim-fade"
-        role="alertdialog"
-        aria-modal="true"
-        aria-label={t('删除项目')}
-      >
-        <div className="delete-confirm-head">
-          <div className="delete-confirm-title">{t('确定删除该项目？此操作不可撤销。')}</div>
-          <button
-            type="button"
-            className="delete-confirm-close"
-            aria-label={t('关闭')}
-            onClick={onClose}
-          >
-            <X />
-          </button>
-        </div>
-        <div className="delete-confirm-summary">{projectName}</div>
-        <div className="delete-confirm-prompt">{prompt}</div>
-        <input
-          className="delete-confirm-input"
-          value={typed}
-          onChange={(e) => setTyped(e.target.value)}
-          aria-label={prompt}
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <div className="delete-confirm-actions">
-          <Button variant="quiet" className="delete-confirm-cancel" onClick={onClose}>
-            {t('取消')}
-          </Button>
-          <Button
-            variant="danger"
-            size="standard"
-            className="delete-confirm-delete"
-            disabled={typed !== projectName}
-            onClick={onConfirm}
-          >
-            {t('删除')}
-          </Button>
-        </div>
-      </div>
-    </OverlayMount>
+      <AlertDialogActions
+        cancelLabel={t('取消')}
+        confirmLabel={t('删除')}
+        onCancel={onClose}
+        onConfirm={onConfirm}
+        confirmDisabled={typed !== projectName}
+      />
+    </AlertDialogShell>
   );
 }

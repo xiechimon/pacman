@@ -403,17 +403,30 @@ export type TranscriptItem =
   /** Agent prose: one or more paragraphs of inline segments (r7 36 merge
    *  row, r7 38 legacy rows). `footer` renders the message action row
    *  (copy + optional restore + optional `| 完成 Ns` + optional `›`,
-   *  r8 60/65); paragraph kinds carry the r8 quote/ordinal/bullet forms. */
+   *  r8 60/65); paragraph kinds carry the r8 quote/ordinal/bullet forms.
+   *  #469: an agent reply may instead carry raw block markdown in
+   *  `markdown` — headings / ordered+unordered lists (nested) / code
+   *  fences — parsed to blocks at render time (chat-markdown.tsx). When
+   *  `markdown` is present it takes precedence over `paragraphs`, so the
+   *  frozen capture shapes (paragraph-only) render unchanged. */
   | {
       kind: 'robot';
       /** Object form carries the r8 quote/ordinal/bullet paragraph
-       *  kinds; the plain segment-array form is the r7 prose shape. */
-      paragraphs: (RobotPara | DocSegment[])[];
+       *  kinds; the plain segment-array form is the r7 prose shape.
+       *  Optional — markdown replies (#469) carry `markdown` instead. */
+      paragraphs?: (RobotPara | DocSegment[])[];
+      /** Raw block markdown of the reply (#469). Parsed by the transcript
+       *  renderer, not the mapper, so the fixture surface exercises the
+       *  same parse+render path as live (spec-block.tsx precedent). */
+      markdown?: string;
       footer?: RobotFooter;
     }
   /** Live planning/execution row: elapsed seconds + `›` + step label
-   *  (r7 16 `准备工作区...`, r7 26 `处理中...`, r7 26d `调用工具：bash …`). */
-  | { kind: 'streaming'; seconds: number; label: string }
+   *  (r7 16 `准备工作区...`, r7 26 `处理中...`, r7 26d `调用工具：bash …`).
+   *  #471 quiescent variant: `seconds` absent = the building gap's live
+   *  cue (spinner reel + static 执行中... label, no counter — the gap has
+   *  no stream events that would re-render a tick). */
+  | { kind: 'streaming'; seconds?: number; label: string }
   /** Collapsed plan card: `方案 · v1` row, clamped preview, action row
    *  `完成 Ns` (r7 17). `seconds` absent renders the bare `完成`
    *  (reused-plan card, r8 76); `chevron` adds the trailing `›` of the
@@ -421,8 +434,18 @@ export type TranscriptItem =
   | { kind: 'plan'; title: string; preview: string; seconds?: number; chevron?: boolean }
   /** Tool-call group of a finished run: collapsed = `完成 Ns ▸` single row
    *  (r7 27/36); expanded = `完成 Ns ▾` + one pill per tool call + the
-   *  `收起 ^` link (r7 28). */
-  | { kind: 'tools'; seconds: number; expanded: boolean; pills: string[] }
+   *  `收起 ^` link (r7 28). #469: `outputs[i]` carries the stdout/stderr of
+   *  `pills[i]` (index-aligned; null/absent = that call produced no output
+   *  to show). Each non-empty output renders as its own left-aligned mono
+   *  block under its pill — terminal content no longer flattens into the
+   *  centered dim `.chat-note`. */
+  | {
+      kind: 'tools';
+      seconds: number;
+      expanded: boolean;
+      pills: string[];
+      outputs?: (string | null)[];
+    }
   /** Bare elapsed row: `完成 Ns` action row (r7 36 merge round, r7 38
    *  legacy card). */
   | { kind: 'elapsed'; seconds: number }

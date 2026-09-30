@@ -84,6 +84,16 @@ test('mid-exit reopen refocuses the retained input', async ({ page }) => {
   await expect(input(page)).toBeFocused();
 });
 
+test('scrim 可点关: clicking the dark area closes the panel', async ({ page }) => {
+  await page.goto(BOARD);
+  await openPanel(page);
+
+  // the scrim's own centre sits under the 520×440 panel, so the click goes to
+  // a dark corner: only the scrim paints there
+  await page.locator('.search-scrim').click({ position: { x: 20, y: 20 } });
+  await expect(page.locator('.search-panel')).toBeHidden();
+});
+
 test('常亮互斥: page-layer pill dims while the panel is open, restores on close', async ({
   page,
 }) => {

@@ -10,10 +10,11 @@
 // without build payload data list the doc row alone (no dead rows).
 
 import { useState } from 'react';
+import { FloatingShell } from '../components/ui/floating-shell.js';
 import type { PaneView } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown } from '../icons/index.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from './dismiss.js';
+import { ClickCatcher } from './dismiss.js';
 import './overlays.css';
 
 /** Row/button copy — zh dict keys, rendered through t(). */
@@ -74,8 +75,11 @@ export function PlanDropdown({
 }
 
 /** Type-select button + dropdown, shared by the doc-pane head and the three
- *  section heads (#366): OverlayMount / transparent ClickCatcher / Escape
- *  close ride the #67 anchored-overlay family law. The button label is the
+ *  section heads (#366): #425 B1 起机制换 FloatingShell（Base UI 非模态
+ *  Dialog——Esc 走 layer 栈，不再挂 window 监听）；透明 ClickCatcher 保留
+ *  （外点只关层、不穿透）。本面是族内唯一相对触发位 absolute 锚定的面
+ *  （.plan-dropdown 的 containing block = .doc-select-wrap），故 portal 指回
+ *  wrap 而不是 body——DOM 树位不变，几何逐像素保。The button label is the
  *  active view's own word. */
 export function PaneTypeSelect({
   view,
@@ -93,13 +97,14 @@ export function PaneTypeSelect({
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(initiallyOpen === true);
-  useEscapeClose(open, () => setOpen(false));
+  // portal 目标容器：首 render 后由 ref 落位（commit 内同步重渲，首帧即正确）。
+  const [wrapEl, setWrapEl] = useState<HTMLSpanElement | null>(null);
   const label: PaneRowLabel =
     view === 'doc'
       ? docLabel
       : (SECTION_ROWS.find((row) => row.view === view)?.label ?? '分支与 PR');
   return (
-    <span className="doc-select-wrap">
+    <span className="doc-select-wrap" ref={setWrapEl}>
       <button
         type="button"
         className="doc-pane-select"
@@ -109,18 +114,20 @@ export function PaneTypeSelect({
         {t(label)}
         <ChevronDown width={12} height={12} />
       </button>
-      <OverlayMount open={open}>
-        <ClickCatcher onClose={() => setOpen(false)} />
-        <PlanDropdown
-          docLabel={docLabel}
-          view={view}
-          sections={sections}
-          onSelect={(next) => {
-            setOpen(false);
-            onView(next);
-          }}
-        />
-      </OverlayMount>
+      {wrapEl != null && (
+        <FloatingShell open={open} onClose={() => setOpen(false)} container={wrapEl}>
+          <ClickCatcher onClose={() => setOpen(false)} />
+          <PlanDropdown
+            docLabel={docLabel}
+            view={view}
+            sections={sections}
+            onSelect={(next) => {
+              setOpen(false);
+              onView(next);
+            }}
+          />
+        </FloatingShell>
+      )}
     </span>
   );
 }

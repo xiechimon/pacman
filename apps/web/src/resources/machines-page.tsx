@@ -10,18 +10,20 @@
 // (PATCH /api/machines/{id})，非死钮；行内仍无其它动作钮。
 
 import { MACHINE_RUNTIMES } from '@pacman/shared';
+import { cn } from 'cn';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useApiMutations, useMachines, useTeams } from '../api/hooks.js';
 import { mapMachines } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { Switch } from '../components/ui/switch.js';
 import { TEAM_NAME } from '../fixtures/fixtures.js';
 import type { MachineRow } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { Monitor, ServerThin } from '../icons/index.js';
 import { CreateMachineDialog } from './create-machine-dialog.js';
-import { StatusPill, Tile } from './parts.js';
+import { GroupCard, StatusPill, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
 
 export const MACHINES_HREF = '/app/resources/machines';
@@ -119,7 +121,7 @@ export function MachinesPage() {
       hideNew
       fixture={fixture}
     >
-      <div className="res-card res-group">
+      <GroupCard>
         {machines.map((machine, i) => (
           <div
             className={`res-grow${i > 0 ? ' res-grow--divided' : ''}`}
@@ -142,26 +144,27 @@ export function MachinesPage() {
                   return (
                     <span className="mach-runtime" key={runtime}>
                       <span className="mach-runtime-label">{RUNTIME_LABELS[runtime]}</span>
-                      {/* span 元素 = rerun-switch 先例（#318）：role=switch +
-                          tabIndex 0，Enter/Space 同律；非 button = 行内钮面
-                          零增（dead-buttons §7 钉）。 */}
-                      <span
-                        className={`mach-switch${on ? ' mach-switch--on' : ''}`}
-                        role="switch"
+                      {/* #423 Switch 收编（#422 裁决「换真 Switch」）：Base UI
+                          Root 渲染 span[role=switch] + 隐藏 input（非 button，
+                          d.ts 实读）——dead-buttons §7 的 .res-grow button
+                          count=0 负向钉原意（行体无动作钮）原样成立，spec 零
+                          改动。几何/配色正本仍是 resources.css 的 .mach-switch
+                          族（36×20 / knob 16 / left 2↔18，rerun-switch 先例
+                          形），className 只并掉适配层默认档的溢出项：1px 透明
+                          边框（会顶走 knob 的 2px 定位）、灰 focus ring（#388
+                          环由 CSS 承载）、checked 位移（knob 定位走 CSS left）、
+                          过渡（原形瞬切）；hit-area 扩张伪元素在 CSS 侧关。 */}
+                      <Switch
+                        className={cn(
+                          'mach-switch border-0 transition-none focus-visible:ring-0',
+                          on && 'mach-switch--on',
+                        )}
+                        thumbClassName="mach-switch-knob group-data-[size=default]/switch:data-checked:translate-x-0"
+                        checked={on}
+                        onCheckedChange={() => toggleRuntime(machine, runtime)}
                         data-runtime={runtime}
-                        aria-checked={on}
                         aria-label={RUNTIME_LABELS[runtime]}
-                        tabIndex={0}
-                        onClick={() => toggleRuntime(machine, runtime)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            toggleRuntime(machine, runtime);
-                          }
-                        }}
-                      >
-                        <span className="mach-switch-knob" />
-                      </span>
+                      />
                     </span>
                   );
                 })}
@@ -171,7 +174,7 @@ export function MachinesPage() {
             )}
           </div>
         ))}
-      </div>
+      </GroupCard>
       <button type="button" className="res-add" onClick={() => setAddOpen(true)}>
         <ServerThin width={14} height={14} />
         {t('添加机器')}

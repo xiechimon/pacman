@@ -52,7 +52,6 @@ import type {
   PlanVersion,
   ProjectCommitRow,
   ReviewFinding,
-  RobotPara,
   RunHistoryRow,
   SkillRow,
   TeamAgentCard,
@@ -449,15 +448,12 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
       if (text !== '') entries.push({ at: m.createdAt, item: { kind: 'note', text } });
       continue;
     }
-    // assistant 文本行 → robot 段落（空文本行跳过——pi 工具轮的空 content）。
+    // assistant 文本行 → robot 块级 markdown（#469：原文直入 markdown 槽，
+    // 标题/有序无序列表/代码围栏由 chat-markdown 渲染器在渲染期解析——不再
+    // 把块结构摊平成 chat-para；行内 code 仍走 inlineSegments 的 .chat-code
+    // 芯片。空文本行跳过——pi 工具轮的空 content）。
     if (text !== '') {
-      const paragraphs: RobotPara[] = text
-        .split(/\n{2,}/)
-        .filter((p) => p.trim() !== '')
-        .map((p) => ({ segments: inlineSegments(p.replace(/\n/g, ' ')) }));
-      if (paragraphs.length > 0) {
-        entries.push({ at: m.createdAt, item: { kind: 'robot', paragraphs } });
-      }
+      entries.push({ at: m.createdAt, item: { kind: 'robot', markdown: text } });
     }
   }
 
@@ -491,8 +487,11 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
 
   entries.sort((a, b) => a.at - b.at);
   const items: TranscriptItem[] = [...head];
-  // 连续工具行折叠成 tools 组（r7 27 collapsed `完成 Ns ▸` + pills）。
-  let toolRun: { seconds: number; pills: string[] } | null = null;
+  // 连续工具行折叠成 tools 组（r7 27 collapsed `完成 Ns ▸` + pills）。#469：
+  // 每个 call 的 stdout/stderr（call.result）按 index 平行收进 outputs，渲染
+  // 层在展开的组里给每个 pill 挂一块左对齐等宽输出——终端内容不再摊平进
+  // .chat-note 居中灰通知。
+  let toolRun: { seconds: number; pills: string[]; outputs: (string | null)[] } | null = null;
   const flushTools = () => {
     if (toolRun !== null) {
       items.push({
@@ -500,6 +499,7 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
         seconds: toolRun.seconds,
         expanded: false,
         pills: toolRun.pills,
+        outputs: toolRun.outputs,
       });
       toolRun = null;
     }
@@ -507,9 +507,10 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
   for (const e of entries) {
     if (e.item.kind === '__tool__') {
       const secs = durationSeconds(e.item.call);
-      toolRun = toolRun ?? { seconds: 0, pills: [] };
+      toolRun = toolRun ?? { seconds: 0, pills: [], outputs: [] };
       toolRun.seconds += secs;
       toolRun.pills.push(pillOf(e.item.call));
+      toolRun.outputs.push(resultToText(e.item.call.result));
       continue;
     }
     flushTools();
@@ -536,6 +537,14 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
           ? '准备工作区...'
           : '处理中...',
     });
+  } else if (build && todo.phase === 'building' && !steps.some((s) => s.status === 'stopped')) {
+    // 静止态 live 线索（#471）：building 的步间隙 / agent 非流式窗口没有
+    // claimed/pending 步——对话区不能全静（实测唯一线索只剩头部「执行中」
+    // chip）。挂同族 streaming 行（spinner reel + 静态标签，渲染共用
+    // transcript 组件）；不挂秒数计数：静止期没有流事件驱动重渲，挂上去
+    // 只会冻结说谎。stopped 步在场 = 本轮已被停止钮终结（run 行挂「已取
+    // 消」终态），phase 未翻篇的窗口里不再自称执行中。
+    items.push({ kind: 'streaming', label: '执行中...' });
   }
 
   // 失败行（r8 54/73 canon：橙色标题 + 指引 + 链接行）。
@@ -560,6 +569,34 @@ function durationSeconds(call: ToolCallRecord): number {
     return Math.max(0, Math.round((call.endedAt - call.startedAt) / 1000));
   }
   return 0;
+}
+
+/** 工具执行结果 → 可显示文本（#469 工具输出块的数据面）。pi 的 `call.result`
+ * 是 z.unknown()：bash 多为纯串或 `{type:'text',text}` / `[{type:'text',…}]`
+ * 内容块，宿主工具可能是 `{content|output|stdout|result: …}` 包一层。逐层拆出
+ * 文本；空/不可解析 → null（渲染层跳过该块，不产空框）。不做 JSON 兜底串——
+ * 结构化结果没有稳定的「显示文本」语义，宁可不出块也不糊一坨 JSON。 */
+function resultToText(result: unknown): string | null {
+  if (result == null) return null;
+  if (typeof result === 'string') return result === '' ? null : result;
+  if (Array.isArray(result)) {
+    const joined = result
+      .map(resultToText)
+      .filter((s): s is string => s != null && s !== '')
+      .join('\n');
+    return joined === '' ? null : joined;
+  }
+  if (typeof result === 'object') {
+    const o = result as Record<string, unknown>;
+    if (typeof o.text === 'string') return o.text === '' ? null : o.text;
+    for (const key of ['content', 'output', 'stdout', 'result'] as const) {
+      if (o[key] !== undefined) {
+        const nested = resultToText(o[key]);
+        if (nested != null && nested !== '') return nested;
+      }
+    }
+  }
+  return null;
 }
 
 // —— overlay 三件（Token 用量 / 分支与 PR / 运行历史）———————————————————

@@ -24,21 +24,9 @@
 
 /* ---- new-task dialog (r7 04/14: 672×439, centered both axes) ---- */
 
-.new-task-dialog {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 672px;
-  height: 439px;
-  display: flex;
-  flex-direction: column;
-  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
-  border-radius: var(--edge-radius);
-  overflow: hidden;
-  box-shadow: var(--dialog-shadow);
-  z-index: 21;
-}
+/* #425 B1：.new-task-dialog 面板级壳规则已随 components/ui/dialog-shell.tsx
+   适配层退役（壳机制与皮肤归适配层；672×439 几何经 width/height 入参透传）。
+   本文件保留其头/体/底/动作等面内规则。 */
 
 .new-task-head {
   flex: none;
@@ -244,48 +232,11 @@
 
 /* ---- delete confirm (r7 25: 448×142, centered both axes) ---- */
 
-.delete-confirm {
-  position: fixed;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 448px;
-  height: 142px;
-  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
-  border-radius: var(--edge-radius);
-  background: var(--dialog-bg);
-  box-shadow: var(--dialog-shadow);
-  z-index: 21;
-}
-
-.delete-confirm-head {
-  height: 47px; /* 295–342 incl. the divider below */
-  border-bottom: 1px solid var(--border-default);
-  display: flex;
-  align-items: center;
-  padding: 0 8px 0 16px;
-}
-
-.delete-confirm-title {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.delete-confirm-close {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  color: var(--text-tertiary);
-  cursor: pointer;
-}
+/* #425 B1：确认面板的壳级规则（.delete-confirm / -head / -title / -close）
+   已随 components/ui/alert-dialog-shell.tsx 适配层退役——壳机制换 Base UI
+   AlertDialog，壳几何与皮肤由适配层工具类承载（448 居中、12px 圆角、
+   popover 底、B 的 ring 外环）。本文件保留**面内**规则（summary / seq /
+   actions / --project / prompt / input）与 .overlay-backdrop（锚定族仍用）。 */
 
 .delete-confirm-summary {
   margin: 16px 16px 0;
@@ -489,3 +440,20 @@
 
 /* 放弃并关闭 = ui/Button danger(delete-confirm-delete a3 收编同律),
    类名仅作 e2e 钉,无散写外观规则。 */
+
+/* #425 B1 退场配方（shell 换 Base UI 后旧 OverlayMount 计时手法退役）：
+   Base UI 的 useAnimationsFinished 只看 Popup 本体、不看子树，故用零视觉的
+   visibility 延迟过渡撑住卸载窗，终态由壳的 [data-ending-style] 驱动子级
+   anim-pop。配方同 L1 的 mention-picker（.mention-picker-shell）。 */
+.more-menu-shell {
+  transition: visibility 0s linear var(--dur-fast);
+}
+
+.more-menu-shell[data-ending-style] {
+  visibility: hidden;
+}
+
+.more-menu-shell[data-ending-style] .anim-pop {
+  opacity: 0;
+  transform: scale(0.95) translateY(-4px);
+}

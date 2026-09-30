@@ -97,9 +97,9 @@ pacman 是多 lane coding agent 编排台：看板管理并行 agent 任务，�
 
 ## Colors
 
-**暗色优先（dark-first）**：`:root` 即暗色，`.light` 类切换到浅色。本文件 frontmatter 列暗色值；浅色对应值见 `apps/web/src/styles/tokens.css` 的 `.light` 块（暖白底 #faf7f3 系，非冷灰）。
+**暗色优先（dark-first）**：`:root` 即暗色，`.light` 类切换到浅色。本文件 frontmatter 列暗色值；浅色对应值见 `apps/web/src/styles/shadcn.css` 的 `.light` 块（暖白底 #faf7f3 系，非冷灰）。
 
-- **画布层级**：canvas `#09090b`（页面底色）→ surface `#18181b`（主面板）→ surface-secondary `#1f1f23`（卡片/弹层）→ surface-tertiary `#27272a`（嵌入控件底）。侧栏与主面板同底（`--sidebar-bg` 直引 surface 令牌），层分隔由 1px 接缝线（border 色族）承担。
+- **画布层级**：canvas `#09090b`（页面底色）→ surface `#18181b`（主面板）→ surface-secondary `#1f1f23`（卡片/弹层）→ surface-tertiary `#27272a`（嵌入控件底）。侧栏与主面板同底（同引 surface 令牌，#390 同底律），层分隔由 1px 接缝线（border 色族）承担。
 - **文字四级**：标题/激活态 text-primary；正文/字段值 text-secondary；时间戳/元信息 text-tertiary；禁用/占位 text-dim。禁在正文用 text-dim。
 - **彩色纪律**：indigo 只给主操作与焦点态（按钮、focus ring、激活 tab）；蓝/琥珀/绿/玫红只给状态语义（进行中/待确认/完成/失败），不作装饰。
 - **chip 色族**：idle/plan/confirm/done/failed 五对 bg+fg，表达任务状态机。跨对混用是 bug。
@@ -110,7 +110,7 @@ pacman 是多 lane coding agent 编排台：看板管理并行 agent 任务，�
 
 ## Layout & Spacing
 
-4px 基数阶梯（space-1 到 space-6）。卡片内边距 space-3（12px），栏间距 space-4（16px），页面边距 space-6（24px）。顶栏 44px（43 内容 + 1px 发丝缝），侧栏 240px。**复刻面现有像素级实测值不动——A3 拍板保护视觉回归（批量等值化会动像素）；新写代码一律走 token**（详 `tokens.css` spacing ladder 注释）。
+4px 基数阶梯（space-1 到 space-6）。卡片内边距 space-3（12px），栏间距 space-4（16px），页面边距 space-6（24px）。顶栏 44px（43 内容 + 1px 发丝缝），侧栏 240px。**复刻面现有像素级实测值不动——A3 拍板保护视觉回归（批量等值化会动像素）；新写代码按上方 4px 基数阶梯取值**（Tailwind spacing 即 4px 基数，直写工具类）。
 
 ## Elevation & Depth
 
