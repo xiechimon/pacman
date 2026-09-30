@@ -648,6 +648,112 @@ export function TodoDetailPage() {
                 </div>
               </>
             )}
+            {/* #472：composer 是中心列的最后一个 flex 项（in-flow）——
+                滚动区在卡片上缘之上结束，正文永不被压进不透明卡片底下。 */}
+            {ui.placeholder != null && (
+              <Composer
+                placeholder={
+                  // AI 审核中态（M7 #312，r8 §3.1）:placeholder 改「AI 审核进行中…」
+                  // 与 chip 改「审核中」同步;phase 不动,UI 层覆盖。
+                  reviewActive ? t('AI 审核进行中…') : ui.placeholder
+                }
+                aiReview={
+                  // r7 §4.1 / r8 §3.1: the AI 审核 button only shows on writable
+                  // confirm/review surfaces; failed and waiting-on-user
+                  // composers render the three base tools alone
+                  (phase === 'confirm' || phase === 'review') && !todo.awaitingReply
+                }
+                streaming={streaming}
+                editable={live}
+                draft={live ? liveDraft : undefined}
+                onDraftChange={live ? setLiveDraft : undefined}
+                onAttachment={
+                  live
+                    ? async (files) => {
+                        // #310 三步 wire（r9 §3.1）：每个文件走 grant + upload，
+                        // 失败仅记日志不发（用户继续编辑 draft，已发成功的 token
+                        // 仍落入）；token 拼到 draft。
+                        const tokens: string[] = [];
+                        for (const file of files) {
+                          try {
+                            const r = await attachFile({ file, scope: 'message' });
+                            tokens.push(r.token);
+                          } catch (err) {
+                            console.error('attachment failed', file.name, err);
+                          }
+                        }
+                        appendAttachmentTokens(tokens);
+                      }
+                    : undefined
+                }
+                mentionGroups={mentionGroups}
+                onStop={live && buildId ? () => setStopOpen(true) : undefined}
+                onReview={
+                  // AI 审核钮入口（M7 #312，r8 §3.1）：live 确认/审核面可点，fixture
+                  // 面不动（DOM 字节不变）。
+                  live && (phase === 'confirm' || phase === 'review') && !reviewActive
+                    ? () => setOverlay({ kind: 'review' })
+                    : undefined
+                }
+                onSend={
+                  live
+                    ? (text) => {
+                        // 驳回回路（r5 §4）：confirm 关口发送 = revision + feedback
+                        // → 重规划步入队 → plan v(N+1)（会话流即时呈现）。
+                        if (phase === 'confirm' && buildId && text !== '') {
+                          mutations.stepAction.mutate({
+                            buildId,
+                            body: {
+                              action: 'revision',
+                              side: 'plan',
+                              feedback: text,
+                              clientMessageId: crypto.randomUUID(),
+                            },
+                          });
+                          return;
+                        }
+                        // W3 steer（#280，06 册 D9 / spec #277）：building/review 态
+                        // 发送 = 运行中补话。server 门（claimed 步在跑）收则 201，
+                        // 无在跑步 409 明确拒绝（提示行 + draft 保留，不丢字）。
+                        // 返回 Promise = composer 异步清稿面。
+                        if (
+                          (phase === 'building' || phase === 'review') &&
+                          buildId &&
+                          text !== ''
+                        ) {
+                          return mutations.sendSteer
+                            .mutateAsync({ conversationId: buildId, content: text })
+                            .then(() => {
+                              setLiveDraft('');
+                              return undefined;
+                            });
+                        }
+                        // #320 失败面发送 = 带反馈重启（r9 §3.3：原站 failed 态发消息
+                        // 触发新一轮，消息随新轮入会话——非 steer 语义）。走 steps
+                        // restart 动作位：新 build + 反馈行落新 conv + failed→queued。
+                        // Promise 面 = 成功清稿、被拒（相位漂移 409）保留 draft。
+                        if (phase === 'failed' && buildId && text !== '') {
+                          return mutations.stepAction
+                            .mutateAsync({
+                              buildId,
+                              body: {
+                                action: 'restart',
+                                feedback: text,
+                                clientMessageId: crypto.randomUUID(),
+                              },
+                            })
+                            .then(() => undefined);
+                        }
+                      }
+                    : detail?.revision != null && chain === 'idle'
+                      ? () => {
+                          setChain('streaming');
+                          window.setTimeout(() => setChain('landed'), 900);
+                        }
+                      : undefined
+                }
+              />
+            )}
           </div>
           {/* #447 (ADR 0004 D7)：总管竖板与右栏格位互斥——竖板停靠时
               RightPane 不渲染，面板作为 detail-body 末项接管其格位；收板
@@ -710,108 +816,8 @@ export function TodoDetailPage() {
           )}
           <ChiefWakePanel surface={chief} />
         </div>
-        {ui.placeholder != null && (
-          <>
-            {composerReject != null && <div className="composer-reject">{composerReject}</div>}
-            <Composer
-              placeholder={
-                // AI 审核中态（M7 #312，r8 §3.1）:placeholder 改「AI 审核进行中…」
-                // 与 chip 改「审核中」同步;phase 不动,UI 层覆盖。
-                reviewActive ? t('AI 审核进行中…') : ui.placeholder
-              }
-              aiReview={
-                // r7 §4.1 / r8 §3.1: the AI 审核 button only shows on writable
-                // confirm/review surfaces; failed and waiting-on-user
-                // composers render the three base tools alone
-                (phase === 'confirm' || phase === 'review') && !todo.awaitingReply
-              }
-              streaming={streaming}
-              editable={live}
-              draft={live ? liveDraft : undefined}
-              onDraftChange={live ? setLiveDraft : undefined}
-              onAttachment={
-                live
-                  ? async (files) => {
-                      // #310 三步 wire（r9 §3.1）：每个文件走 grant + upload，
-                      // 失败仅记日志不发（用户继续编辑 draft，已发成功的 token
-                      // 仍落入）；token 拼到 draft。
-                      const tokens: string[] = [];
-                      for (const file of files) {
-                        try {
-                          const r = await attachFile({ file, scope: 'message' });
-                          tokens.push(r.token);
-                        } catch (err) {
-                          console.error('attachment failed', file.name, err);
-                        }
-                      }
-                      appendAttachmentTokens(tokens);
-                    }
-                  : undefined
-              }
-              mentionGroups={mentionGroups}
-              onStop={live && buildId ? () => setStopOpen(true) : undefined}
-              onReview={
-                // AI 审核钮入口（M7 #312，r8 §3.1）：live 确认/审核面可点，fixture
-                // 面不动（DOM 字节不变）。
-                live && (phase === 'confirm' || phase === 'review') && !reviewActive
-                  ? () => setOverlay({ kind: 'review' })
-                  : undefined
-              }
-              onSend={
-                live
-                  ? (text) => {
-                      // 驳回回路（r5 §4）：confirm 关口发送 = revision + feedback
-                      // → 重规划步入队 → plan v(N+1)（会话流即时呈现）。
-                      if (phase === 'confirm' && buildId && text !== '') {
-                        mutations.stepAction.mutate({
-                          buildId,
-                          body: {
-                            action: 'revision',
-                            side: 'plan',
-                            feedback: text,
-                            clientMessageId: crypto.randomUUID(),
-                          },
-                        });
-                        return;
-                      }
-                      // W3 steer（#280，06 册 D9 / spec #277）：building/review 态
-                      // 发送 = 运行中补话。server 门（claimed 步在跑）收则 201，
-                      // 无在跑步 409 明确拒绝（提示行 + draft 保留，不丢字）。
-                      // 返回 Promise = composer 异步清稿面。
-                      if ((phase === 'building' || phase === 'review') && buildId && text !== '') {
-                        return mutations.sendSteer
-                          .mutateAsync({ conversationId: buildId, content: text })
-                          .then(() => {
-                            setLiveDraft('');
-                            return undefined;
-                          });
-                      }
-                      // #320 失败面发送 = 带反馈重启（r9 §3.3：原站 failed 态发消息
-                      // 触发新一轮，消息随新轮入会话——非 steer 语义）。走 steps
-                      // restart 动作位：新 build + 反馈行落新 conv + failed→queued。
-                      // Promise 面 = 成功清稿、被拒（相位漂移 409）保留 draft。
-                      if (phase === 'failed' && buildId && text !== '') {
-                        return mutations.stepAction
-                          .mutateAsync({
-                            buildId,
-                            body: {
-                              action: 'restart',
-                              feedback: text,
-                              clientMessageId: crypto.randomUUID(),
-                            },
-                          })
-                          .then(() => undefined);
-                      }
-                    }
-                  : detail?.revision != null && chain === 'idle'
-                    ? () => {
-                        setChain('streaming');
-                        window.setTimeout(() => setChain('landed'), 900);
-                      }
-                    : undefined
-              }
-            />
-          </>
+        {ui.placeholder != null && composerReject != null && (
+          <div className="composer-reject">{composerReject}</div>
         )}
         {/* #447：FAB 与面板拆挂（面板在 detail-body 右栏格位），共享页面
             层的 chief surface——#443 的 unreadOnly 门控原样保留。 */}

@@ -7,8 +7,8 @@
    r7 bitmaps, both themes — token discipline untouched by #366. */
 
 .detail-shell {
-  /* single source for the right-pane width — the composer/FAB anchors
-     skip the pane with calc() instead of repeating the number */
+  /* single source for the right-pane width — the composer-reject/FAB
+     anchors skip the pane with calc() instead of repeating the number */
   --detail-pane-right: 488px;
   display: flex;
   height: 100%;
@@ -17,8 +17,9 @@
 
 /* #447 (ADR 0004 D7): the chief panel occupies the right-pane slot while
    docked (RightPane unmounts), so the pane-width var narrows to the panel
-   and the composer / composer-reject / detail-fab anchors below keep
-   skipping the right slot by exactly its width + 16px. */
+   and the composer-reject / detail-fab anchors below keep skipping the
+   right slot by exactly its width + 16px. The composer itself needs no
+   pane arithmetic — it is in-flow inside the center column (#472). */
 .detail-shell[data-chief-open] {
   --detail-pane-right: 418px;
 }
@@ -130,8 +131,9 @@
   display: flex;
 }
 
-/* center column: the thread (or the fresh block) — composer and 总管 FAB
-   overlay its bottom from the .detail-main anchor */
+/* center column: the thread (or the fresh block), then the composer as the
+   column's last flex item (#472 in-flow) — only the 总管 FAB still overlays
+   the bottom from the .detail-main anchor */
 .detail-center {
   flex: 1;
   min-width: 0;
@@ -139,11 +141,14 @@
   flex-direction: column;
 }
 
-/* fresh state (todo/queued/closed): the column scrolls as one block */
+/* fresh state (todo/queued/closed): the column scrolls as one block; the
+   bottom padding keeps overflowing content off the composer card top
+   (#472 — same 16px gap law as .chat-col) */
 .detail-fresh {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding-bottom: 16px;
 }
 
 /* right pane: always 488px — no collapse, no hide (#366 rulings 2/3); the
@@ -470,10 +475,13 @@
   display: flex;
   flex-direction: column-reverse;
   overflow-y: auto;
-  /* bottom padding: the composer overlays the column bottom, and a
-     bottom-pinned transcript's last row ends ~114px above the viewport
-     edge (r8 63–77 measure the last footer row at y602–618) */
-  padding: 19px 16px 92px 19px;
+  /* bottom padding = the breathing gap between a bottom-pinned last row
+     and the in-flow composer card top (#472): the scroll port itself ends
+     above the card, so text never passes under it and never sits flush
+     against its edge. 16px keeps the column's inset rhythm (under the old
+     92px overlay reservation the r8 63–77 last footer row landed at
+     y602–618; bottom-pinned rows now ride 16px above the card). */
+  padding: 19px 16px 16px 19px;
 }
 
 .chat-stamp {
@@ -828,14 +836,18 @@
 }
 
 /* ---- composer (#366: the center column's only card — One Card Per
-   Screen). 16px insets, the right anchor skips the 488px pane; h76 +
-   12px radius + recessed fill keep the r7 §3.4 card recipe. ---- */
+   Screen). #472: in-flow as the column's last flex item — the scroll port
+   ends above the card, transcript text never passes under it. Width comes
+   from the column itself (16px side margins carve the insets, no pane
+   arithmetic to drift); h76 + 12px radius + recessed fill keep the r7
+   §3.4 card recipe and the 16px bottom margin keeps the old inset. ---- */
 
 .composer {
-  position: absolute;
-  left: 16px;
-  right: calc(var(--detail-pane-right) + 16px);
-  bottom: 16px;
+  /* relative, not static: the toolbar/send/stop absolutes below anchor to
+     the card — their in-card geometry is untouched by the flow move */
+  position: relative;
+  flex: none;
+  margin: 0 16px 16px;
   height: 76px;
   border: 1px solid var(--border-default);
   border-radius: 12px;
