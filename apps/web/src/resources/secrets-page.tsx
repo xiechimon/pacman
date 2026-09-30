@@ -10,7 +10,7 @@ import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { KeyThin } from '../icons/index.js';
 import { CreateSecretDialog } from './create-secret-dialog.js';
-import { EmptyState, RowChevron, Tile } from './parts.js';
+import { EmptyState, RowCard, RowChevron, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
 
 export const SECRETS_HREF = '/app/resources/secrets';
@@ -50,7 +50,7 @@ export function SecretsPage() {
         />
       ) : (
         secrets.map((secret) => (
-          <div className="res-card res-rowcard" key={secret.id}>
+          <RowCard key={secret.id}>
             <Tile Icon={KeyThin} size="sm" tone="orange" />
             <span className="res-row-text">
               <span className="res-row-title">{secret.name}</span>
@@ -59,7 +59,7 @@ export function SecretsPage() {
               )}
             </span>
             <RowChevron />
-          </div>
+          </RowCard>
         ))
       )}
       <CreateSecretDialog

@@ -131,6 +131,33 @@
   line-height: 16px;
 }
 
+/* #423：搜索盒内的真 Input（components/ui input 底座）。盒形由 .res-search
+   承载，input 本体零装饰——适配层默认档（h-8/边框/px 垫/底噪/focus 灰
+   ring）全部退场；focus 环走 #388 家族律（2px --focus-ring + offset 2，
+   unlayered 恒压适配层的 outline-none）。 */
+.res-search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  font-size: 14px;
+  line-height: 16px;
+  color: var(--text-primary);
+}
+
+.res-search-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.res-search-input:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .res-sort {
   flex: none;
   width: 88px;
@@ -349,15 +376,21 @@
   margin-left: 15px;
 }
 
-/* 未启用 status pill (r7 06/07)。a3-pages 收编：Chip neutral 档（bg/
-   font/line-height/无框公共形吃原语）；r7 实测形 20px 高/4px 圆角/text-dim
-   字保留为高特异性 per-face 差异——06/07 baseline 零像素。 */
-.chip.res-pill {
+/* 未启用 status pill (r7 06/07)。#423 收编：轨 A3 Chip → components/ui
+   Badge 底座；r7 实测形（20px 高/4px 圆角/text-dim 字/pill-idle-bg 底/
+   11px 常规字重）全量留在此 per-face 规则——Badge 默认档的 border/pad/
+   text-xs/font-medium/rounded-4xl 被 unlayered 恒压，06/07 零像素。 */
+.res-pill {
   margin-left: auto;
   flex: none;
   height: 20px;
   padding: 0 5px;
+  border: none;
   border-radius: 4px;
+  background: var(--pill-idle-bg);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 16px;
   color: var(--text-dim);
 }
 
@@ -402,6 +435,13 @@
   cursor: pointer;
 }
 
+/* #423：Switch 适配层默认档自带的 hit-area 扩张伪元素（after:-inset-x-3/
+   -inset-y-2）在双 switch 间距 16px 的行内互相重叠，点缝会误触后一个——
+   原手搓 span 无扩张面，按零漂移律关掉。 */
+.mach-switch::after {
+  content: none;
+}
+
 .mach-switch--on {
   background: var(--card-button);
 }
@@ -425,9 +465,17 @@
   left: 18px;
 }
 
-/* orange 自定义 tag beside custom provider names (r7 07) */
+/* orange 自定义 tag beside custom provider names (r7 07)。#423 收编：
+   components/ui Badge 底座；原形 = 无底无框无垫的纯文字 tag，Badge 默认档
+   （h-5/px-2/border/rounded/text-xs 中重）在此全量退回 per-face 形。 */
 .res-tag {
+  height: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   font-size: 12px;
+  font-weight: 400;
   line-height: 16px;
   color: var(--tile-orange-fg);
 }
@@ -452,23 +500,45 @@
 }
 
 /* providers 页 runtime tablist（spec 11 §A1，#356）：pi / Claude Code 双
-   tab，选中态 = 主色字 + 底部 2px 指示条压 tablist 底线。 */
+   tab，选中态 = 主色字 + 底部 2px 指示条压 tablist 底线。
+   #423 收编：components/ui Tabs（line variant）底座——适配层默认档中本
+   规则未声明的溢出项在此显式退回（w-fit 会缩窄 tablist 底线、p-[3px]/h-8
+   会抬高盒、justify-center 会居中 tab 序、Trigger 的 flex-1 会均分列宽、
+   after: 指示条会与 border-bottom 指示条重影、focus 灰 ring 违 #388 律）。 */
 .res-tabs {
   display: flex;
+  justify-content: flex-start;
   gap: 16px;
+  width: 100%;
+  height: auto;
+  padding: 0;
   border-bottom: 1px solid var(--card-border);
 }
 
 .res-tab {
+  flex: none;
+  height: auto;
   margin-bottom: -1px;
   padding: 0 2px 9px;
   border: none;
   border-bottom: 2px solid transparent;
   background: transparent;
   font-size: 13px;
+  font-weight: 400;
   line-height: 16px;
   color: var(--text-dim);
   cursor: pointer;
+  transition: none;
+}
+
+.res-tab::after {
+  content: none;
+}
+
+.res-tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  box-shadow: none;
 }
 
 .res-tab[aria-selected="true"] {
@@ -555,14 +625,27 @@
   color: var(--text-tertiary);
 }
 
+/* #423：轨 A3 Button primary/compact → components/ui Button brand/sm；
+   per-face 差异 = 12px 横向 padding 与 13px 常规字重（A3 compact 同值，
+   sm 档默认 10px/0.8rem 中字重）。 */
 .res-runtime-empty-action {
   margin-top: 12px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 400;
 }
 
 /* empty state (r7 10): hero tile, heading, two-line description,
-   primary, optional 总管 hint（查看文档 link #307 全除） */
+   primary, optional 总管 hint（查看文档 link #307 全除）。
+   #423 收编：components/ui Empty 底座——默认档是居中/带间隙/balance 的
+   通用空态形，r7 10 实测形是左对齐零间隙列，差异在此 per-face 退回。 */
 .res-empty {
-  padding-top: 24px;
+  gap: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 24px 0 0;
+  text-align: left;
+  text-wrap: wrap;
 }
 
 .res-empty-title {
@@ -588,11 +671,16 @@
   gap: 16px;
 }
 
-/* a3-pages 收编：Button primary/compact 承载公共形（28 高/实底/8 圆角/
-   disabled 降档），per-face 差异 = 11px 横向 padding 与 16 行盒（r7 10 实测，
-   compact 档是 12px）；e2e 钉 .res-empty .res-primary 别名保留。 */
-.btn.res-primary {
+/* #423 收编：components/ui Button brand/sm 承载公共形（28 高/--card-button
+   实底/8 圆角/disabled 换 --primary-disabled），per-face 差异 = 11px 横向
+   padding、13px 常规字重与 16 行盒（r7 10 实测，轨 A3 compact 档同值）；
+   e2e 钉 .res-empty .res-primary 别名保留。选择子键在 button 元素上——
+   EmptyState 的 Link 分支（actionHref，现无消费点）原本就不吃这条规则，
+   换底座不换键。 */
+button.res-primary {
   padding: 0 11px;
+  font-size: 13px;
+  font-weight: 400;
   line-height: 16px;
 }
 

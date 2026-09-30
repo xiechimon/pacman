@@ -19,11 +19,14 @@ import { useSearchParams } from 'react-router';
 import { useApiMutations, useModelSources } from '../api/hooks.js';
 import { RUNTIME_LABELS } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { Badge } from '../components/ui/badge.js';
+import { Button } from '../components/ui/button.js';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
-import { Button } from '../ui/button.js';
 import { CreateProviderDialog } from './create-provider-dialog.js';
+import { GroupCard } from './parts.js';
 import { ResourceShell } from './shell.js';
 
 export const PROVIDERS_HREF = '/app/resources/providers';
@@ -127,26 +130,26 @@ export function ProvidersPage() {
       onNew={() => setCreateOpen(true)}
       fixture={fixture}
     >
-      <div className="res-tabs" role="tablist" aria-label={t('模型服务')}>
-        {MODEL_SOURCE_RUNTIMES.map((rt) => (
-          <button
-            key={rt}
-            type="button"
-            role="tab"
-            data-runtime={rt}
-            aria-selected={runtime === rt}
-            className="res-tab"
-            onClick={() => selectRuntime(rt)}
-          >
-            {RUNTIME_LABELS[rt]}
-          </button>
-        ))}
-      </div>
+      {/* #423 Tabs 收编（#422 裁决：res-tabs 由 ?runtime= 驱动）：受控
+          value/onValueChange 落回原 selectRuntime（写 ?runtime=、历史入栈、
+          回退键可用），role=tablist/tab 与 aria-selected 由 Base UI 承载，
+          data-runtime 句柄原样透出。选中指示条/配色/几何正本仍是
+          resources.css 的 .res-tabs/.res-tab per-face 规则（line variant 的
+          默认档溢出项在那里并掉），providers-tabs 几何钉零改动。 */}
+      <Tabs value={runtime} onValueChange={(value) => selectRuntime(value as ModelSourceRuntime)}>
+        <TabsList variant="line" className="res-tabs" aria-label={t('模型服务')}>
+          {MODEL_SOURCE_RUNTIMES.map((rt) => (
+            <TabsTrigger key={rt} value={rt} data-runtime={rt} className="res-tab">
+              {RUNTIME_LABELS[rt]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
       {active != null && (
         <>
           <RuntimeHead source={active} />
           {active.models.length > 0 ? (
-            <div className="res-card res-group">
+            <GroupCard>
               {active.models.map((model, i) => (
                 <div
                   // pi 段跨 provider 平铺，模型 id 偶发撞名——索引兜底保唯一。
@@ -158,13 +161,19 @@ export function ProvidersPage() {
                   <span className="res-row-text">
                     <span className="res-row-line">
                       <span className="res-row-title">{model.name}</span>
-                      {model.slot != null && <span className="res-tag">{model.slot}</span>}
+                      {/* #423 Badge 收编（#422 裁决）：橙色 slot tag 的透明底/
+                          零垫/12px 字 per-face 形留在 .res-tag CSS。 */}
+                      {model.slot != null && (
+                        <Badge variant="outline" className="res-tag">
+                          {model.slot}
+                        </Badge>
+                      )}
                     </span>
                     <span className="res-row-desc">{model.id}</span>
                   </span>
                 </div>
               ))}
-            </div>
+            </GroupCard>
           ) : active.runtime === 'pi' ? (
             // A3 空态：引导开添加服务商 picker（picker 面见
             // verify features/provider-picker.md）。
@@ -172,9 +181,13 @@ export function ProvidersPage() {
               <p className="res-runtime-empty-text">
                 {t('尚未添加服务商。添加后，服务商的模型会出现在这里。')}
               </p>
+              {/* #423 原语消费点切换（#422 清单）：轨 A3 ui/Button primary/
+                  compact → components/ui Button brand/sm（A3 等价档，
+                  button.tsx 偏离注 3）；12px 垫/13px 字 per-face 差异留在
+                  .res-runtime-empty-action CSS。 */}
               <Button
-                variant="primary"
-                size="compact"
+                variant="brand"
+                size="sm"
                 className="res-runtime-empty-action"
                 onClick={() => setCreateOpen(true)}
               >
