@@ -273,6 +273,7 @@ function agentRecordOf(row: typeof agent.$inferSelect): AgentRecord {
     secrets: row.secrets,
     skills: row.skills,
     mcpServers: row.mcpServers,
+    createdAt: row.createdAt,
   };
 }
 
@@ -864,6 +865,8 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         // （目录删除后死引用不留，不报错）。
         skills: filterKnownSkillIds(ctx.skillsDir, body.skills ?? []),
         mcpServers: body.mcpServers ?? [],
+        // 创建时间（B4/XMON-18）：新建的 Agent 恒写真值——列可空只为存量行。
+        createdAt: Date.now(),
       })
       .run();
     return c.json({ id }, 201); // r5 §1/§8 补录：创建 → 201 {id}

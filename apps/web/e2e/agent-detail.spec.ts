@@ -148,9 +148,12 @@ test('概览：思考强度是只读值行，无模型时显示「默认」', as
   await expect(thinking.locator('button')).toHaveCount(0);
 });
 
-test('概览：状态行显示 active', async ({ page }) => {
+// B4/XMON-18：状态行 = `status · 创建于 日期`（r3 §4 原样）。日期取 fixture 的
+// r5 raw 一手时间戳（1789786840183 → +08:00 采集区的 2026/9/19），断言逐字
+// 同形——只断言「含 active」的话，日期分句整个不渲染也照样绿。
+test('概览：状态行 = `active · 创建于 2026/9/19`', async ({ page }) => {
   const detail = await openDetail(page);
-  await expect(detail.locator('.agent-status')).toContainText('active');
+  await expect(detail.locator('.agent-status')).toHaveText('active · 创建于 2026/9/19');
 });
 
 // 文案逐字 = shared `MEMORY_EMPTY_COPY`（records/memory.ts:18；e2e 不跨包取

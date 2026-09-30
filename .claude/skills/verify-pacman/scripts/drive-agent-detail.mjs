@@ -146,6 +146,21 @@ try {
     (await page.locator('.agent-runtime').textContent())?.trim() === 'verify-485-gw',
     await page.locator('.agent-runtime').textContent(),
   );
+  // B4/XMON-18：状态行 = `status · 创建于 日期`（r3 §4）。两端对：server 记录的
+  // createdAt 是数字真值（本条是「列真的接到了界面上」的判据，只验端点不算数），
+  // UI 逐字同形——日期按 +08:00 采集区渲染，宿主 TZ 不同也不漂。
+  const statusLine = (await page.locator('.agent-status').textContent())?.trim();
+  const createdOn = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  }).format(record0.createdAt);
+  check(
+    'status-line-created-at',
+    typeof record0.createdAt === 'number' && statusLine === `active · 创建于 ${createdOn}`,
+    `${statusLine} / server createdAt=${record0.createdAt}`,
+  );
 
   // —— 2b. 思考强度档位来自能力读面（XMON-16 / #499 B3）────────────────
   // 读面本体：七档有序（期望值来源 = pi-agent-core 的 ThinkingLevel 联合，

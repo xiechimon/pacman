@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 import { BRAND } from '../brand.js';
-import { recordId } from './common.js';
+import { epochMs, recordId } from './common.js';
 import { SECRET_MIN_CLI_VERSION } from './secret.js';
 
 /** 观测值仅 "active"；其余状态未采到，词表不收窄外值 [推断]。 */
@@ -67,6 +67,12 @@ export const agentRecordSchema = z.object({
   skills: z.array(z.string()),
   /** MCP 逐个勾选（关联 mcp_server id [推断]，02 §7.1）。 */
   mcpServers: z.array(z.string()),
+  /** 创建时间（B4/XMON-18）。原版 wire 恒有真值——r5 raw agentActor
+   * `createdAt: 1789786840183` → UI `active · 创建于 2026/9/19`（r3 §4）；
+   * 本仓新建的 Agent 同样恒有真值。**可空**只为一件事：本列落地之前创建的
+   * Agent 取不到真值（当年没存，无可回填的第二来源），null = 未知——读面
+   * 据此不出「创建于 …」分句，不落占位时间戳（0 会渲染成 1970/1/1）。 */
+  createdAt: epochMs.nullable(),
 });
 export type AgentRecord = z.infer<typeof agentRecordSchema>;
 

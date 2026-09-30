@@ -268,10 +268,19 @@ describe('agent record (r3 §4 实测原样)', () => {
     secrets: [],
     skills: [],
     mcpServers: [],
+    // r5 raw 一手值（chief-record-testA.json 的 agentActor.createdAt）——
+    // B4/XMON-18 起本 record 收该字段（此前被 zod 静默剥掉）。
+    createdAt: 1789786840183,
   };
 
   it('parses the observed record', () => {
     expect(agentRecordSchema.parse(sample)).toEqual(sample);
+  });
+
+  it('存量 Agent 的创建时间未知（null）可解析，缺字段不可', () => {
+    expect(agentRecordSchema.parse({ ...sample, createdAt: null }).createdAt).toBeNull();
+    const { createdAt: _drop, ...withoutField } = sample;
+    expect(agentRecordSchema.safeParse(withoutField).success).toBe(false);
   });
 
   it('rejects unobserved status values ([推断] note guards the enum)', () => {

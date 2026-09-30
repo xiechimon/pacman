@@ -10,8 +10,7 @@
 // （两组形状同源 = shared AgentRecord），fixture 面无后端，提交落本地覆盖
 // 记录承载「提交后回显」——live 面则是 S8 律（mutation → invalidateAll 重取）。
 //
-// 本面明确不做的三件（均因证据/结构缺口，不发明）：
-// · `创建于 …` 状态行——AgentRecord 与 DB agent 表都无 createdAt 列；
+// 本面明确不做的两件（均因证据/结构缺口，不发明）：
 // · 思考强度选择器——B1 已裁「保持只读」；档位词表本身有读面了（XMON-16：
 //   `GET /api/capabilities` 投影 shared THINKING_LEVELS），但读面 ≠ 写面，
 //   只读行按读面呈现档位，选择器与 provider 写面的耦合仍不做；
@@ -56,6 +55,7 @@ import { ClickCatcher } from '../overlays/dismiss.js';
 import { ResourceShell } from '../resources/shell.js';
 import './agent-detail.css';
 import { AgentModelSelect } from './agent-model-select.js';
+import { agentStatusLine } from './agent-status-line.js';
 
 /** 资源族根路径（非侧栏行——原版命令面板「前往」清单里没有 Agents 行，
  *  r2 §8.4；本面只从团队页的卡进入）。 */
@@ -294,7 +294,11 @@ export function AgentDetailPage() {
             </div>
             <div className="agent-field">
               <span className="agent-field-label">{t('状态')}</span>
-              <span className="agent-status">{agent.status}</span>
+              {/* B4/XMON-18：`active · 创建于 2026/9/19`（r3 §4）。存量 Agent
+                  的 createdAt 为 null → 只出 status，不摆占位日期。 */}
+              <span className="agent-status">
+                {agentStatusLine(agent.status, agent.createdAt, t)}
+              </span>
             </div>
           </div>
         )}

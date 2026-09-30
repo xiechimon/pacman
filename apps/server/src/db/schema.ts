@@ -320,6 +320,19 @@ export const agent = sqliteTable('agent', {
   secrets: json<string[]>('secrets').notNull().default(sql`'[]'`),
   skills: json<string[]>('skills').notNull().default(sql`'[]'`),
   mcpServers: json<string[]>('mcpServers').notNull().default(sql`'[]'`),
+  /** 创建时间（B4/XMON-18）：原版 wire 一直有这个字段——r5 raw
+   * `GET /api/teams/{id}/chief` 的 agentActor 带 `createdAt: 1789786840183`，
+   * 渲染形 `active · 创建于 2026/9/19`（r3 §4）；此前被 zod 静默剥掉。
+   *
+   * **可空、无默认值**（不取 tag.createdAt 那条 `.notNull().default(0)` 先例）：
+   * 那条先例的前提是「此前无写路径，存量行几乎不存在」，agent 不成立——列落地
+   * 之前创建的 Agent 一定有行，而 0 与真时间戳在 record 里同形，渲染出来是
+   * `1970/1/1`（UI 撒谎）。旧行的真值取不到（wire 里的值当年没存，仓内没有
+   * 可回填的第二来源），故用 null 表达「未知」，读面据此少出一个分句。
+   * NOT NULL 无默认值不可行：实测旧库 `ALTER TABLE agent ADD createdAt integer
+   * NOT NULL` → `Cannot add a NOT NULL column with default value NULL`，已有
+   * Agent 的安装启动即崩。 */
+  createdAt: epochMs('createdAt'),
 });
 
 // —— agent_memory（02 §4.4/r5 §6：配额 100 + 三级溯源；写路径归 M4）———————————

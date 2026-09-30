@@ -121,6 +121,10 @@ export const EN: Record<string, string> = {
   收起: 'Collapse',
   尚无描述: 'No description yet',
   '{y}年{mo}月{d}日 {hh}:{mm} 创建': 'Created {monthShort} {d}, {y} {hh}:{mm}',
+  // Agent 状态行（r3 §4 `active · 创建于 2026/9/19`）。日期形由
+  // routes/agent-status-line 的 createdOn 定型（zh 采集区 +08:00），en 面
+  // 无观测样本，仅译词不译形 [设计]。
+  '创建于 {date}': 'Created {date}',
 
   // —— user-menu popover (r7 §3.5; 新功能/快捷键 行随 #163 隐去，键同删） ——
   帐号: 'Account',

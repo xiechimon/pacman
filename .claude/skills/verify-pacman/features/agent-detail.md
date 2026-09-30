@@ -6,7 +6,7 @@
 
 - `card-link` — 团队页 `.team-agent-card` 是 `<a>`，点击落 `/app/resources/agents/<id>`，`?scenario=` 随行。
 - `overview-fields` — 名称（行内编辑）、职责、默认 skill、模型选择器，各自提交后 server 记录随之变。
-- `overview-readonly` — 运行时 / 思考强度 / 状态是只读值行（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）；思考强度档位词表经能力读面 `GET /api/capabilities` 到 web（XMON-16 / #499 B3 裁决 A），只读行按该词表呈现档位——存值不在词表内落「默认」（B1 裁「保持只读」：读面 ≠ 写面，选择器仍不出）；`创建于` 无 createdAt 列。三处都不发明。
+- `overview-readonly` — 运行时 / 思考强度 / 状态是只读值行（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）；思考强度档位词表经能力读面 `GET /api/capabilities` 到 web（XMON-16 / #499 B3 裁决 A），只读行按该词表呈现档位——存值不在词表内落「默认」（B1 裁「保持只读」：读面 ≠ 写面，选择器仍不出）。状态行带创建时间（XMON-18 / B4）：`active · 创建于 2026/9/19`（r3 §4 原样），值来自 `agent.createdAt` 列（0018 migration，可空），日期按 +08:00 采集区渲染。三处都不发明。
 - `memory-tab` — 条目列表 + 删除；空态文案 = shared `MEMORY_EMPTY_COPY` canon。
 - `permissions-tab` — 工具 6 开关（文案 = shared `AGENT_TOOL_SWITCHES`，**六档各带说明副文案** = shared `AGENT_TOOL_COPY`）、**团队密钥一行聚合总开关**（#510：粒度 = 原版的全有全无，副文案 = shared `AGENT_PERMISSION_COPY.secrets`；开 = `PATCH { secrets: 团队全部密钥 id }`、关 = `PATCH { secrets: [] }`，勾选态 = `agent.secrets` 非空；零密钥时只有空态 `暂无团队密钥。`、不出开关）、MCP 逐个勾选，落 `PATCH tools/secrets/mcpServers`。
 - `create-model-slot` — 创建弹窗模型槽两态；选中后 `POST /api/teams/{id}/agents` body 带 `provider` 与 `modelId`。
@@ -26,7 +26,7 @@ Preconditions:
 - 从 worktree 路径跑脚本本体，并带 `VERIFY_REPO_ROOT=<worktree 绝对路径>`（用主仓旧脚本验 lane 新代码会得到迷惑症状）。
 
 - 团队页卡是链接并落详情路由 → `node <worktree>/.claude/skills/verify-pacman/scripts/drive-agent-detail.mjs` → `team-card-is-link`（卡元素是 `a`）+ `card-opens-detail-route`（pathname = `/app/resources/agents/<id>`）。
-- 概览回显 = server 真值 → 同命令 → `overview-name` / `overview-role-empty-canon` / `overview-model` / `overview-thinking-readonly`。
+- 概览回显 = server 真值 → 同命令 → `overview-name` / `overview-role-empty-canon` / `overview-model` / `overview-thinking-readonly` / `status-line-created-at`（状态行逐字 = `active · 创建于 <server createdAt 的 +08:00 日期>`；只断言「含 active」的话日期分句整条不渲染也照样绿）。
 - 思考强度档位来自能力读面（XMON-16）→ 同命令 → `capabilities-seven-levels`（读面七档有序）/ `thinking-inside-vocabulary-rendered`（PATCH `high` → 行出 `high`）/ `thinking-outside-vocabulary-falls-back`（PATCH `ultra` → 行落「默认」且无按钮）。后两条是「读面接到 UI 上」的判据，只验端点不算数；跑完还原种子态 `thinkingLevel: null`。
 - 改名称、改职责 → 同命令 → `name-persisted` / `role-persisted`（重取 `GET /api/teams/{id}/agents/{aid}` 对字段，不看 UI 回显）。
 - 模型槽清空再选回 → 同命令 → `model-cleared`（provider/modelId 双 null）/ `model-persisted`（`verify-485-gw/claude-sonnet-5`）。
@@ -37,6 +37,7 @@ Preconditions:
 
 ## Gotchas
 
+- **存量 Agent 的 `createdAt` 是 null，不是 0**（XMON-18 / B4）：0018 之前建的 Agent 取不到真值，状态行此时**只出 `active`**（不摆占位日期——`0` 与真时间戳同形，渲染出来是 1970/1/1）。这条 probe 证不到（live 栈里建不出旧行：POST 面恒写真值），由 `apps/server/test/agent-created-at.test.ts` 的旧行/升级两条与 `apps/web/test/agent-status-line.test.ts` 的 null 分支覆盖。
 - **fixture e2e 与 live probe 互不替代**：`apps/web/e2e/agent-detail.spec.ts` + `agent-create-model.spec.ts` 跑 fixture 面（无后端），证明的是交互与两态；落库只能由本 probe 证。本票之前 `patchAgent` 是零消费点的死代码，这条缝从没被 web 面走过。fixture 两个场景：`agent-detail`（零密钥 → 空态）与 `agent-detail-secrets`（两个密钥 → 恰好一行总开关）。
 - **模型行首行恒是「未设置模型」清空行**：按 `hasText` 定位模型行，别用 `nth(0)`。
 - **同一模型 id 可能出两行**：`toModelOptions` 是 custom providers ∪ model-sources 非 pi 段的并集，`claude-sonnet-5` 在 providers 与 claude-code 段各一行——断言要按 provider 位分。

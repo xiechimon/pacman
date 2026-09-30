@@ -452,6 +452,8 @@ export async function executeChiefTool(
           secrets: [],
           skills: [],
           mcpServers: [],
+          // 创建时间（B4/XMON-18）：工具面与 REST 面同律，新建恒写真值。
+          createdAt: Date.now(),
         })
         .run();
       return json({ id }); // r5 §1：POST agents → 201 {id}
