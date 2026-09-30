@@ -23,19 +23,68 @@ function streamUrl(path: string): string {
   return token === null ? path : `${path}?token=${encodeURIComponent(token)}`;
 }
 
-function connect(path: string, onEvent: (ev: Record<string, unknown>) => void): () => void {
-  const es = new EventSource(path);
-  es.onmessage = (e) => {
-    try {
-      onEvent(JSON.parse(e.data as string) as Record<string, unknown>);
-    } catch {
-      // 坏帧静默（心跳/半帧防御）
-    }
+/** 静默看门狗阈值：连接名义 OPEN 却超过此时长收不到任何事件（含心跳）=
+ * 疑似哑连接（TCP 活着但事件不再到达的形态——onerror 永不触发，浏览器不会
+ * 自重连），主动重建并走重连 resync。生产心跳 15s（TEAM_STREAM_PING_INTERVAL_MS）
+ * 恒小于阈值 ⇒ 健康连接不误触；误触代价 = 一次重建 + 一次重取，无语义损失。
+ * 背景（#462）：SSE 事件是边沿触发的一次性发布且服务端无重放，任一事件在
+ * 断连 gap / 哑连接窗口内丢失 = 对应查询永久陈旧（相位 chip / plan 卡停更，
+ * 直到整页重载）——CI 上表现为 m5-web-e2e 间歇性 150s/30s 停等红。 */
+const SSE_SILENCE_WATCHDOG_MS = 20_000;
+
+function connect(
+  path: string,
+  onEvent: (ev: Record<string, unknown>) => void,
+  onResync: () => void,
+): () => void {
+  let es: EventSource | null = null;
+  let openedOnce = false;
+  let disposed = false;
+  let watchdog: ReturnType<typeof setTimeout> | null = null;
+
+  const armWatchdog = (): void => {
+    if (watchdog !== null) clearTimeout(watchdog);
+    watchdog = setTimeout(() => {
+      watchdog = null;
+      // 只处理「OPEN 却静默」的哑连接态：CONNECTING 时浏览器在自重连（其
+      // onopen 会 resync）；fatal CLOSED 走 #253 门页恢复流——两者不接管，
+      // 保持既有 401 语义（不对 fatal 连接做无限重建）。
+      if (disposed || es === null || es.readyState !== EventSource.OPEN) return;
+      es.close();
+      open();
+    }, SSE_SILENCE_WATCHDOG_MS);
   };
-  // 建流后的网络断线由 EventSource 自持重连（浏览器内建退避），onerror 不
-  // 关闭；HTTP 级失败（含 401）则是 fatal（CLOSED，不自动重连），恢复走
-  // REST 面 401 → 门页 → passGate 触发的 effect 重跑（#253）。
-  return () => es.close();
+
+  function open(): void {
+    if (disposed) return;
+    es = new EventSource(path);
+    es.onopen = () => {
+      // 重连成功（非首开）= 断线窗口内的事件已永久丢失（服务端只发给当前
+      // 订阅者，无重放）——全量失效重取补齐（SSE 事件本就只是 invalidate
+      // 提示信号，S8 canon 的重取半；resync = 把丢失的提示补成一次全量）。
+      if (openedOnce) onResync();
+      openedOnce = true;
+      armWatchdog();
+    };
+    es.onmessage = (e) => {
+      armWatchdog();
+      try {
+        onEvent(JSON.parse(e.data as string) as Record<string, unknown>);
+      } catch {
+        // 坏帧静默（心跳/半帧防御）
+      }
+    };
+    // 建流后的网络断线由 EventSource 自持重连（浏览器内建退避），onerror 不
+    // 关闭；HTTP 级失败（含 401）则是 fatal（CLOSED，不自动重连），恢复走
+    // REST 面 401 → 门页 → passGate 触发的 effect 重跑（#253）。
+  }
+  open();
+
+  return () => {
+    disposed = true;
+    if (watchdog !== null) clearTimeout(watchdog);
+    es?.close();
+  };
 }
 
 /** team stream：todo/build 文档事件 + notification + machine_presence →
@@ -49,47 +98,56 @@ export function useTeamStream(teamId: string | undefined, enabled: boolean): voi
   const auth = useAuth();
   useEffect(() => {
     if (teamId === undefined || !enabled || auth.gateOpen) return;
-    return connect(streamUrl(`/api/teams/${teamId}/stream`), (ev) => {
-      switch (ev.type) {
-        case 'todo': {
-          const doc = ev.doc as { id: string };
-          void qc.invalidateQueries({ queryKey: ['todos'] });
-          void qc.invalidateQueries({ queryKey: ['todo', doc.id] });
-          void qc.invalidateQueries({ queryKey: ['schedules'] });
-          break;
+    // resync（#462）：重连/看门狗重建即全量失效重取——补上断线窗口内丢失的
+    // 边沿事件（活跃查询才重取，成本有界；重连本身罕见）。
+    const resync = () => {
+      void qc.invalidateQueries();
+    };
+    return connect(
+      streamUrl(`/api/teams/${teamId}/stream`),
+      (ev) => {
+        switch (ev.type) {
+          case 'todo': {
+            const doc = ev.doc as { id: string };
+            void qc.invalidateQueries({ queryKey: ['todos'] });
+            void qc.invalidateQueries({ queryKey: ['todo', doc.id] });
+            void qc.invalidateQueries({ queryKey: ['schedules'] });
+            break;
+          }
+          case 'build': {
+            const doc = ev.doc as { id: string; todoId: string };
+            void qc.invalidateQueries({ queryKey: ['build', doc.id] });
+            void qc.invalidateQueries({ queryKey: ['steps', doc.id] });
+            void qc.invalidateQueries({ queryKey: ['todos'] });
+            void qc.invalidateQueries({ queryKey: ['todo', doc.todoId] });
+            break;
+          }
+          case 'notification': {
+            const record = ev.notification as NotificationRecord;
+            void qc.invalidateQueries({ queryKey: ['notifications', teamId] });
+            void qc.invalidateQueries({ queryKey: ['chiefThreads', teamId] });
+            void qc.invalidateQueries({ queryKey: ['todos'] });
+            fireDesktopNotification(record);
+            break;
+          }
+          case 'machine_presence':
+            void qc.invalidateQueries({ queryKey: ['machines', teamId] });
+            break;
+          case 'branch_sync': {
+            // M7 #319（08 册附录 B）：分支对话框「同步到机器」结果落账→ team
+            // stream 推回 web，按 buildId 键失效结果卡查询（pending → running
+            // → synced/failed 四态）。事件载荷 = BranchSyncRecord（shared 单源，
+            // `sync` 字段非 `doc`，区别于 todo/build 文档事件 [设计]）。
+            const rec = ev.sync as { buildId: string };
+            void qc.invalidateQueries({ queryKey: ['branchSync', rec.buildId] });
+            break;
+          }
+          default:
+            break; // ping
         }
-        case 'build': {
-          const doc = ev.doc as { id: string; todoId: string };
-          void qc.invalidateQueries({ queryKey: ['build', doc.id] });
-          void qc.invalidateQueries({ queryKey: ['steps', doc.id] });
-          void qc.invalidateQueries({ queryKey: ['todos'] });
-          void qc.invalidateQueries({ queryKey: ['todo', doc.todoId] });
-          break;
-        }
-        case 'notification': {
-          const record = ev.notification as NotificationRecord;
-          void qc.invalidateQueries({ queryKey: ['notifications', teamId] });
-          void qc.invalidateQueries({ queryKey: ['chiefThreads', teamId] });
-          void qc.invalidateQueries({ queryKey: ['todos'] });
-          fireDesktopNotification(record);
-          break;
-        }
-        case 'machine_presence':
-          void qc.invalidateQueries({ queryKey: ['machines', teamId] });
-          break;
-        case 'branch_sync': {
-          // M7 #319（08 册附录 B）：分支对话框「同步到机器」结果落账→ team
-          // stream 推回 web，按 buildId 键失效结果卡查询（pending → running
-          // → synced/failed 四态）。事件载荷 = BranchSyncRecord（shared 单源，
-          // `sync` 字段非 `doc`，区别于 todo/build 文档事件 [设计]）。
-          const rec = ev.sync as { buildId: string };
-          void qc.invalidateQueries({ queryKey: ['branchSync', rec.buildId] });
-          break;
-        }
-        default:
-          break; // ping
-      }
-    });
+      },
+      resync,
+    );
   }, [teamId, enabled, qc, auth]);
 }
 
@@ -138,32 +196,41 @@ export function useConversationStream(
   const auth = useAuth();
   useEffect(() => {
     if (conversationId === undefined || !enabled || auth.gateOpen) return;
-    return connect(streamUrl(`/api/conversations/${conversationId}/stream`), (ev) => {
-      switch (ev.type) {
-        case 'text_delta':
-          liveTextStore.append(conversationId, ev.text as string);
-          break;
-        case 'message':
-          // 终稿行到达：live 缓冲作废，消息面重取接管（收敛律）。
-          liveTextStore.clear(conversationId);
-          void qc.invalidateQueries({ queryKey: ['messages', conversationId] });
-          void qc.invalidateQueries({ queryKey: ['plans'] });
-          onMessage?.();
-          break;
-        case 'step':
-          void qc.invalidateQueries({ queryKey: ['steps', conversationId] });
-          void qc.invalidateQueries({ queryKey: ['build', conversationId] });
-          void qc.invalidateQueries({ queryKey: ['changes', conversationId] });
-          // plan 行经 upload 缝静默落库（routes-machine PUT upload 不发事件），
-          // 仅 message 事件失效 plans 会与 daemon 的 plan.md/transcript 并发
-          // 上传赛跑：message 先到时该轮重取落空，其后无人再失效。step 事件
-          // （finishStep 发，恒在 plan 落库后）补一次失效兜住该 race。
-          void qc.invalidateQueries({ queryKey: ['plans'] });
-          onStep?.();
-          break;
-        default:
-          break; // ping
-      }
-    });
+    // resync（#462）：同 useTeamStream——重连/看门狗重建即全量失效重取，
+    // 补断线窗口内丢失的 message/step 事件（plan 卡/进度行停更的根治面）。
+    const resync = () => {
+      void qc.invalidateQueries();
+    };
+    return connect(
+      streamUrl(`/api/conversations/${conversationId}/stream`),
+      (ev) => {
+        switch (ev.type) {
+          case 'text_delta':
+            liveTextStore.append(conversationId, ev.text as string);
+            break;
+          case 'message':
+            // 终稿行到达：live 缓冲作废，消息面重取接管（收敛律）。
+            liveTextStore.clear(conversationId);
+            void qc.invalidateQueries({ queryKey: ['messages', conversationId] });
+            void qc.invalidateQueries({ queryKey: ['plans'] });
+            onMessage?.();
+            break;
+          case 'step':
+            void qc.invalidateQueries({ queryKey: ['steps', conversationId] });
+            void qc.invalidateQueries({ queryKey: ['build', conversationId] });
+            void qc.invalidateQueries({ queryKey: ['changes', conversationId] });
+            // plan 行经 upload 缝静默落库（routes-machine PUT upload 不发事件），
+            // 仅 message 事件失效 plans 会与 daemon 的 plan.md/transcript 并发
+            // 上传赛跑：message 先到时该轮重取落空，其后无人再失效。step 事件
+            // （finishStep 发，恒在 plan 落库后）补一次失效兜住该 race。
+            void qc.invalidateQueries({ queryKey: ['plans'] });
+            onStep?.();
+            break;
+          default:
+            break; // ping
+        }
+      },
+      resync,
+    );
   }, [conversationId, enabled, qc, onMessage, onStep, auth]);
 }
