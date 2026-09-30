@@ -11,8 +11,18 @@
 //
 // 标签只出 `provider · 模型名`：原版下拉项是 `r3-gw · 128k`，`128k` 是原版
 // 内置模型目录的上下文窗口——pacman 是本地 BYOK，没有这个数据源，不编造。
+//
+// 承载结构 = components/ui/Button ghost（XMON-28/B3），几何正本仍是
+// agent-detail.css 的 `.agent-model-select` / `.agent-model-row`（域 css
+// unlayered，压 utility 层）。底座与散写形的差额在消费点就地并掉：
+// `justify-start`（散写形是 flex-start，底座 justify-center）、`h-auto`
+// （选择行没有定高，底座 h-8 会把它钉成 32px）、`font-normal`（底座
+// font-medium）、`leading-[inherit]`（底座 text-sm 自带 20px 行高，散写形
+// 走 preflight 的 `font: inherit`）、`[&_svg…]:size-3|3.5`（底座 size-4 会
+// 盖过图标自己的 width/height 属性）。
 
 import { useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -50,16 +60,16 @@ export function AgentModelSelect({ value, options, onPick, prefix }: AgentModelS
 
   return (
     <span className={`${prefix}-wrap`} ref={setWrap}>
-      <button
-        type="button"
-        className={`${prefix}-select`}
+      <Button
+        variant="ghost"
+        className={`${prefix}-select justify-start font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3`}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
       >
         <span>{label}</span>
         <ChevronDown width={12} height={12} />
-      </button>
+      </Button>
       <FloatingShell
         open={open}
         onClose={() => setOpen(false)}
@@ -68,9 +78,9 @@ export function AgentModelSelect({ value, options, onPick, prefix }: AgentModelS
       >
         <ClickCatcher onClose={() => setOpen(false)} />
         <div className={`${prefix}-menu anim-pop`} role="listbox" aria-label={t('模型')}>
-          <button
-            type="button"
-            className={`${prefix}-row`}
+          <Button
+            variant="ghost"
+            className={`${prefix}-row justify-start h-auto font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3.5`}
             role="option"
             aria-selected={value == null}
             onClick={() => pick(null)}
@@ -81,14 +91,14 @@ export function AgentModelSelect({ value, options, onPick, prefix }: AgentModelS
                 <Check width={14} height={14} />
               </span>
             )}
-          </button>
+          </Button>
           {options.map((row) => {
             const selected = current?.provider === row.provider && current.modelId === row.modelId;
             return (
-              <button
+              <Button
                 key={`${row.provider}/${row.modelId}`}
-                type="button"
-                className={`${prefix}-row`}
+                variant="ghost"
+                className={`${prefix}-row justify-start h-auto font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3.5`}
                 role="option"
                 aria-selected={selected}
                 onClick={() => pick({ provider: row.provider, modelId: row.modelId })}
@@ -100,7 +110,7 @@ export function AgentModelSelect({ value, options, onPick, prefix }: AgentModelS
                     <Check width={14} height={14} />
                   </span>
                 )}
-              </button>
+              </Button>
             );
           })}
         </div>

@@ -209,11 +209,11 @@
 | chief | 17 | 1 | 0 | 2 | 20 | 14 | 0 |
 | overlay | 15 | 3 | 0 | 1 | 19 | 17 | 1 |
 | resources | 15 | 1 | 0 | 1 | 17 | 14 | 2 |
-| routes | 18 → **7** | 5 | 1 | 1 | 25 → **14** | 17 → **7** | 2 → **8** |
+| routes | 18 → 7 → **1** | 5 | 1 | 1 | 25 → 14 → **8** | 17 → 7 → **4** | 2 → 8 → **9** |
 | board | 12 | 0 | 0 | 0 | 12 | 0 | 3 |
 | overlays | 8 | 0 | 0 | 0 | 8 | 5 | 0 |
 | ui（原语本体） | 1 | 1 | 0 | 0 | 2 | 0 | — |
-| **合计** | **155 → 144** | **22** | **4** | **7** | **188 → 177** | **128 → 118** | **10 → 16 个文件** |
+| **合计** | **155 → 144 → 138** | **22** | **4** | **7** | **188 → 177 → 171** | **128 → 118 → 115** | **10 → 16 → 17 个文件** |
 
 **「手搓类」是 XMON-20 补的第五列**（口径 = 挂在这些裸控件的 `className` 上、且在 `apps/web/src` 任一 `.css` 里被定义成选择子的类名数，域内 distinct）。它才是「按钮有两个样式」的直接读数：一套来自 `components/ui/*`，一套来自域 css。全站 118 类里 `pages` / `detail` / `chief` 三域占 75 类，对应 B4 未开工。
 
@@ -231,7 +231,7 @@
 | `chief/chief-drawer.tsx` | 6 | 0 | 0 | 1 | 7 | 5 | B4 高三件 |
 | `detail/composer.tsx` | 5 | 1 | 0 | 1 | 7 | 5 | B4 高三件 |
 | `resources/create-provider-dialog.tsx` | 6 | 1 | 0 | 0 | 7 | 6 | 第一片真域 |
-| `routes/agent-detail-page.tsx` | 3 | 1 | 1 | 1 | 6 | 6 | 第一片真域（壳内邻页） |
+| `routes/agent-detail-page.tsx` | 0 | 1 | 1 | 1 | 3 | 3 | 第一片真域（壳内邻页） |
 | `overlay/more-menu.tsx` | 5 | 0 | 0 | 0 | 5 | 3 | B3 弹层内容族 |
 | `overlay/new-task-dialog.tsx` | 3 | 1 | 0 | 1 | 5 | 4 | B3 弹层内容族 |
 | `chief/chief-agent-dialog.tsx` | 3 | 1 | 0 | 0 | 4 | 4 | B4 高三件 |
@@ -245,7 +245,6 @@
 | `detail/overlays.tsx` | 3 | 0 | 0 | 0 | 3 | 3 | B3 弹层内容族 |
 | `detail/stop-confirm-dialog.tsx` | 2 | 1 | 0 | 0 | 3 | 2 | B4 高三件 |
 | `detail/transcript.tsx` | 3 | 0 | 0 | 0 | 3 | 4 | B4 高三件 |
-| `routes/agent-model-select.tsx` | 3 | 0 | 0 | 0 | 3 | 0 | 第一片真域（壳内邻页） |
 | `board/repo-filter.tsx` | 2 | 0 | 0 | 0 | 2 | 0 | #414 试点片 |
 | `chief/chief-settings.tsx` | 2 | 0 | 0 | 0 | 2 | 3 | B4 高三件 |
 | `detail/accept-dialog.tsx` | 1 | 1 | 0 | 0 | 2 | 1 | B4 高三件 |
@@ -267,11 +266,17 @@
 | `ui/button.tsx` | 1 | 0 | 0 | 0 | 1 | 0 | 原语自身 |
 | `ui/input.tsx` | 0 | 1 | 0 | 0 | 1 | 0 | 原语自身 |
 
-`chief` / `detail` / `pages` / `overlays` 消费 shadcn `Button` 的文件数为 0，与 §0「B3 / B4 未开工」一致。`routes/` 18 处的逐文件分布（供归批对账）：`team-page` 3 · `account-page` 3 · `agent-detail-page` 3 · `agent-model-select` 3 · `api-key-create-dialog` 2 · `api-keys-page` 1 · `board-page` 1 · `create-agent-dialog` 1 · `team-chart` 1。
+`chief` / `detail` / `pages` / `overlays` 消费 shadcn `Button` 的文件数为 0，与 §0「B3 / B4 未开工」一致。`routes/` 18 处的逐文件分布（供归批对账，基线 `fa54bbad`）：`team-page` 3 · `account-page` 3 · `agent-detail-page` 3 · `agent-model-select` 3 · `api-key-create-dialog` 2 · `api-keys-page` 1 · `board-page` 1 · `create-agent-dialog` 1 · `team-chart` 1。B2 迁走 11 处、XMON-28 迁走 7 处，`routes/` 今余 `board-page` 1 处；其间 `agent-detail-page` 由 XMON-15（#536）加了 1 处，见下方复跑记录。
 
-**口径修订（本行起生效）**：§6.2 的归批判据由**两条边**扩到**三条边**——第三条 = **手搓控件**（裸 `<button>` / `<input>` / `<select>` / `<textarea>` / 一次性类名控件）也构成消费点，同样必须指到某一批。逐文件表的「归属批」列即按此判据落，**45 个文件无一行「未点名」**。
+**口径修订（本行起生效）**：§6.2 的归批判据由**两条边**扩到**三条边**——第三条 = **手搓控件**（裸 `<button>` / `<input>` / `<select>` / `<textarea>` / 一次性类名控件）也构成消费点，同样必须指到某一批。逐文件表的「归属批」列即按此判据落，**45 个文件无一行「未点名」**（XMON-28 后 44 行，`routes/agent-model-select.tsx` 归零出表）。
 
 **三行复核结论（XMON-20 迁移落地后核）**：`#414 试点片` / `B3` / `B4` 三行的**「原语消费点」计数不用改**（§5.2 的两条边照旧有效），但**验收范围要连带手搓控件**——按逐文件表（处数可直接相加，类数按上表域级 distinct 读）：B3 从此是「3 个原语消费点 **+ 30 处裸控件**」，B4 是「11 个原语消费点 **+ 102 处**」，`#414 试点片` 是「1 个原语消费点 **+ 13 处**」；B2 行余 26 处（resources 17 + 壳内邻页 9）+ secondary 残留 4 处。
+
+**复跑记录（XMON-28 @ `38c945b9`，PR #547）**：`routes/agent-detail-page.tsx` 4 处 + `routes/agent-model-select.tsx` 3 处裸 `<button>` 收进 `components/ui` 的 `Button`（ghost），本册三张表按落地后的树刷新（`node scripts/count-raw-controls.mjs`）：域表 `routes` 行 = button **1** / 合计 **8** / 手搓类 **4** / 消费 `ui/button` 的文件数 **9**；全站合计 = **138** / **171** / **115** / **17 文件**；逐文件表删去已归零的 `routes/agent-model-select.tsx` 一行，`routes/agent-detail-page.tsx` 行改为 `0 | 1 | 1 | 1 | 3 | 3`。
+
+上表箭头的**中间值 = XMON-20 @ 其复跑时点**，在其时点上正确；`routes` 行由中间值走到现值之间夹着 XMON-15（#536）——它在本册基线之后、XMON-20 复跑之后给 `agent-detail-page.tsx` 加了「进行中」行，即第 4 处裸 `<button>`（`routes` 因此由 7 变 8，全站由 177 变 178）。所以该行 `7 → 1` 的净差 6 **不是**迁移量：XMON-28 实际迁走的是 **7** 处（`agent-detail-page.tsx` 4 + `agent-model-select.tsx` 3），另 1 处由 XMON-15 带入。手搓类列未对 XMON-15 那个中间态单独取数，故只记两端。
+
+按现值，B2 行余 **20** 处（resources 17 + 壳内邻页 3）+ secondary 残留 4 处 = **24** 处。§0 / §1 的批次表数字仍停在各行标注的时点（B2 行 30 处），未按本行同步——批次级重算不在本次改动范围内。
 
 - **`#414 试点片` 的「本批只做收口」不再成立**：它的 13 处裸控件里 `board/sidebar.tsx` 独占 9 处（侧栏全部导航行），#414 当时只迁了卡片族的 token 与工具类——按新口径这是「原语全切 + 控件全切」两件事，不是一件事。
 - **B4 是最大户且已可量化**：105 处裸控件 / 75 类，`pages/project-new-page.tsx` 一个文件 18 处（全域最大单点）；只按原语消费点开工会把这类文件整片漏掉。

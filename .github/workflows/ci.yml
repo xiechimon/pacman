@@ -60,8 +60,15 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test (vitest, schema snapshots)
-        run: pnpm test
+      # 集成栈单独一步（2026-09-30）：它在场内起真 server + 真 daemon +
+      # Chromium，与轻 project 同跑时在 2 vCPU runner 上争核假红——实测：同 sha
+      # 连跑两次同点同败、纯文档提交也红、本地同一条 10.9s 过。分组清单在根
+      # vitest.config.ts（light + integration 精确等于全量，无泄漏）。
+      - name: Test (vitest，轻 project)
+        run: VITEST_PROJECT_SET=light pnpm test
+
+      - name: Test (vitest，集成栈单独跑)
+        run: VITEST_PROJECT_SET=integration pnpm test
 
       - name: Lint (biome ci)
         run: pnpm lint
