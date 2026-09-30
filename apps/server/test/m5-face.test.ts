@@ -6,7 +6,8 @@
 //    空 delta 不发事件。
 // ② 词表面：machines/models/progress/agents tasks/whats-new 形状与
 //    404/400 语义（skills 面已迁 test/skills-local.test.ts，spec 13 #367）；
-//    埋点两端点 = 204 空实现。
+//    埋点两端点 = 204 空实现。agents tasks 另有一组专门断言（「进行中」段
+//    的行形状与过滤面），见下方同名 describe。
 // ③ [推断] 读面：builds/{id}/plans|changes|usage 未知 build = 404；无产物 =
 //    空集形状（[]/{files:[]}/[]）。
 // ④ 静态托管：/ = index.html；未知 /app 路径 SPA 回退 index.html；资产带
@@ -17,16 +18,19 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  agentTaskSchema,
   conversationStreamEventSchema,
   machineRecordSchema,
   tokenUsageSchema,
 } from '@pacman/shared';
+import { eq } from 'drizzle-orm';
 import type { Hono } from 'hono';
 import { afterAll, describe, expect, test } from 'vitest';
 import {
   agent as agentTable,
   plan as planTable,
   provider as providerTable,
+  todo as todoTable,
 } from '../src/db/schema.js';
 import { bootServer, issueApiKey, openConvStream, postProject, req } from './helpers.js';
 
@@ -297,7 +301,8 @@ describe('M5 词表补齐面（02 §6.1 canonical）', () => {
       expect(progress.todos.total).toBe(1);
       expect(progress.todos.byPhase.todo).toBe(1);
 
-      // agents/{aid}/tasks = assignment 双槽指向该 Agent 的 todo 集。
+      // agents/{aid}/tasks = 该 Agent 名下正在跑的 build 行（形状与过滤面
+      // 的逐条失败方式钉在下面专门的 test 里，这里只钉端点通 + 404/空族）。
       await call(s.app, 'POST', `/api/projects/${projectId}/builds`, {
         body: {
           todoIds: [todoId],
@@ -307,8 +312,8 @@ describe('M5 词表补齐面（02 §6.1 canonical）', () => {
       });
       const tasks = (await (
         await req(s.app, 'GET', `/api/teams/${s.team.id}/agents/${AGENT_ID}/tasks`)
-      ).json()) as { id: string }[];
-      expect(tasks.map((t) => t.id)).toEqual([todoId]);
+      ).json()) as { todo: { id: string } }[];
+      expect(tasks.map((t) => t.todo.id)).toEqual([todoId]);
       const noTasks = (await (
         await req(s.app, 'GET', `/api/teams/${s.team.id}/agents/other/tasks`)
       ).json()) as unknown[];
@@ -320,6 +325,68 @@ describe('M5 词表补齐面（02 §6.1 canonical）', () => {
       // 埋点两端点 = 204 空实现（词表「可空实现」口径）。
       expect((await req(s.app, 'POST', '/api/analytics/first-touch', {})).status).toBe(204);
       expect((await req(s.app, 'POST', '/_mp/api/track', {})).status).toBe(204);
+    } finally {
+      s.dispose();
+    }
+  });
+});
+
+describe('Agent 详情「进行中」段（形状 = shared agentTaskSchema）', () => {
+  // 失败方式清单（先固化，代码是让场景通过的手段）：
+  // ① 未启动的 todo 入列 —— 把「指派给它的 todo」当成「正在跑」；
+  // ② 行形状退回整条 todo record（丢掉 kind/state/buildId/todo 收窄）；
+  // ③ 等机器（queued）不落 state='waiting' —— 消费面的 PhasePill 回落
+  //    todo.phase，两者同值所以渲染看不出来，但 wire 形状错；
+  // ④ 停在关口的 todo（review/confirm）入列 —— 实测反证：参考账号 3 条
+  //    phase=review 且双槽指向该 Agent 的 todo，该端点恒返回 []；
+  // ⑤ 跑起来（planning/building）时 state 不落 null；
+  // ⑥ 别家 Agent 的行串进本 Agent 的列。
+  const pathFor = (teamId: string, agentId: string) =>
+    `/api/teams/${teamId}/agents/${agentId}/tasks`;
+
+  test('只有跑着的 build 入列；形状/状态位逐条对齐原件', async () => {
+    const { s, projectId, todoId } = await setupWorld();
+    try {
+      const path = pathFor(s.team.id, AGENT_ID);
+      const seqNum = (
+        (await (await req(s.app, 'GET', `/api/todos/${todoId}`)).json()) as { seqNum: number }
+      ).seqNum;
+
+      // ① 建档未启动（phase=todo）：不入列。
+      expect(await (await req(s.app, 'GET', path)).json()).toEqual([]);
+
+      // ② 启动（phase=queued，等机器）：一行；③ state 落 'waiting'。
+      const buildId = await startBuild(s, projectId, todoId);
+      const queued = (await (await req(s.app, 'GET', path)).json()) as unknown[];
+      expect(queued).toHaveLength(1);
+      const row = agentTaskSchema.parse(queued[0]);
+      expect(row).toEqual({
+        kind: 'build',
+        state: 'waiting',
+        buildId,
+        todo: { id: todoId, seqNum, title: 'M5 探针', phase: 'queued' },
+      });
+
+      // ⑤ 机器领走后（planning/building）：state 落 null，phase 随行。
+      for (const phase of ['planning', 'building'] as const) {
+        s.db.update(todoTable).set({ phase }).where(eq(todoTable.id, todoId)).run();
+        const live = agentTaskSchema.parse(
+          ((await (await req(s.app, 'GET', path)).json()) as unknown[])[0],
+        );
+        expect(live.state).toBeNull();
+        expect(live.todo.phase).toBe(phase);
+        expect(live.buildId).toBe(buildId);
+      }
+
+      // ④ 停在关口（review / confirm）：出列。
+      for (const phase of ['review', 'confirm', 'done', 'failed', 'closed'] as const) {
+        s.db.update(todoTable).set({ phase }).where(eq(todoTable.id, todoId)).run();
+        expect(await (await req(s.app, 'GET', path)).json()).toEqual([]);
+      }
+
+      // ⑥ 别家 Agent 的列里没有它。
+      s.db.update(todoTable).set({ phase: 'building' }).where(eq(todoTable.id, todoId)).run();
+      expect(await (await req(s.app, 'GET', pathFor(s.team.id, 'agent-other'))).json()).toEqual([]);
     } finally {
       s.dispose();
     }

@@ -10,6 +10,7 @@
 // GithubRepoSummary = repo picker 行封套单源（spec 12 数据契约，#359）。
 import {
   type AgentRecord,
+  type AgentTask,
   type GithubRepoSummary,
   type MemoryRecord,
   type ModelSource,
@@ -321,6 +322,10 @@ export interface FixtureSet {
    *  TagChip 消费面同形）。absent = 筛选条不渲染（无标签数据的场景保持
    *  r7 基线零漂移）；live 面真值 = GET /api/projects/{id}/tags。 */
   tags?: Array<Pick<TagRecord, 'id' | 'name' | 'color'>>;
+  /** Agent 详情概览「进行中」段的 fixture 行集（形状 = shared AgentTask）。
+   *  absent 或空 = canon 空态「暂无进行中的任务」（r3 53 截图即此态）；
+   *  live 面真值 = GET /api/teams/{id}/agents/{aid}/tasks。 */
+  agentTasks?: AgentTask[];
 }
 
 /** GitHub 连接 fixture（#361）：connected 驱动认证钮/picker 面切换；

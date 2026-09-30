@@ -33,9 +33,10 @@ import {
   THINKING_LEVELS,
 } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   useAgent,
+  useAgentTasks,
   useApiMutations,
   useCapabilities,
   useMcpServers,
@@ -55,9 +56,18 @@ import { Switch } from '../components/ui/switch.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
-import { ArrowUpDown, Check, ChevronDown, Search, SquarePen } from '../icons/index.js';
+import {
+  ArrowUpDown,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  SquarePen,
+} from '../icons/index.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
+import { PHASE_UI } from '../phase.js';
 import { ResourceShell } from '../resources/shell.js';
+import { Chip } from '../ui/chip.js';
 import './agent-detail.css';
 import { AgentModelSelect } from './agent-model-select.js';
 
@@ -88,10 +98,12 @@ export function AgentDetailPage() {
   const params = useParams<{ id: string }>();
   const agentId = params.id;
   const { search } = useLocation();
+  const navigate = useNavigate();
   const fixture = resolveScenario(new URLSearchParams(search));
   const { live, teamId } = useLiveData();
 
   const agentQ = useAgent(teamId, agentId, live);
+  const agentTasksQ = useAgentTasks(teamId, agentId, live);
   const memoriesQ = useMemories(teamId, agentId, live);
   const providersQ = useProviders(teamId, live);
   const modelSourcesQ = useModelSources(teamId, live);
@@ -145,6 +157,13 @@ export function AgentDetailPage() {
   const memories = (live ? (memoriesQ.data ?? []) : (fixture.resources?.memories ?? [])).filter(
     (row) => row.agentId === agentId && !removedMemories.includes(row.id),
   );
+
+  // 「进行中」段（概览）。语义 = 该 Agent 名下正在跑的 build，不是「指派给
+  // 它的 todo」——判据在服务端（routes.ts 同名端点），本面只渲染。行形状 =
+  // shared AgentTask，逐字段的原件出处见 agent.ts 的 schema 注释。
+  const agentTasks = live ? (agentTasksQ.data ?? []) : (fixture.agentTasks ?? []);
+  // live 面首帧 data 未到 ≠ 没有在跑的任务：不给空态闪一下。
+  const agentTasksPending = live && agentTasksQ.isPending;
 
   // 搜索扫 title 与 content 两栏（r5 §6 的条目卡就是这两栏文本），ASCII 走
   // 大小写不敏感；排序只在命中集内重排，不重置搜索条件。
@@ -295,6 +314,47 @@ export function AgentDetailPage() {
                   透出存值——引擎没有的档位不呈现（#499 B3 / XMON-16）。 */}
               <span className="agent-field-label">{t('思考强度')}</span>
               <span className="agent-thinking">{thinkingLevel ?? t('默认')}</span>
+            </div>
+            {/* 进行中（原版概览最后一段；r3 53 截图拍到的是空态
+                `暂无进行中的任务`）。结构照原件：一张描边卡（bg-surface-secondary
+                + 11px 三级色段头），空态是段内一行说明文字；段头带计数，
+                但 N=0 时不出「 · 0」（原件 `count > 0 ? ' · N' : ''`）。
+                行 = `#序号` + 标题（单行截断）+ 状态 chip + 右箭头，整行是
+                按钮，落点 = 任务详情（原件 TaskRow onPress 走 todo.id）。
+                行间不画分隔线——原件 Agent 详情这一处没传 `divided`（机器详情
+                的同款列表才传），照抄。 */}
+            <div className="agent-tasks">
+              <p className="agent-tasks-head">
+                {t('进行中')}
+                {agentTasks.length > 0 ? ` · ${agentTasks.length}` : ''}
+              </p>
+              {agentTasksPending ? null : agentTasks.length === 0 ? (
+                <p className="agent-tasks-empty">{t('暂无进行中的任务')}</p>
+              ) : (
+                agentTasks.map((row) => {
+                  // `state === 'waiting'`（build 已建、尚无机器领取）落
+                  // PhasePill 时映射为 `queued`；其余按 todo.phase（原件逐字，
+                  // 见 shared AgentTask 注释）。
+                  const ui = PHASE_UI[row.state === 'waiting' ? 'queued' : row.todo.phase];
+                  return (
+                    <button
+                      key={row.buildId}
+                      type="button"
+                      className="agent-task-row"
+                      onClick={() => navigate(`/app/todo/${row.todo.id}`)}
+                    >
+                      <span className="agent-task-seq">#{row.todo.seqNum}</span>
+                      <span className="agent-task-title">{row.todo.title}</span>
+                      <Chip variant={ui.tone} size="mini">
+                        {t(ui.chip)}
+                      </Chip>
+                      <span className="agent-task-go" aria-hidden="true">
+                        <ChevronRight width={12} height={12} />
+                      </span>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
         )}
