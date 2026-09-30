@@ -7,8 +7,8 @@
    r7 bitmaps, both themes — token discipline untouched by #366. */
 
 .detail-shell {
-  /* single source for the right-pane width — the composer/FAB anchors
-     skip the pane with calc() instead of repeating the number */
+  /* single source for the right-pane width — the composer-reject/FAB
+     anchors skip the pane with calc() instead of repeating the number */
   --detail-pane-right: 488px;
   display: flex;
   height: 100%;
@@ -17,8 +17,9 @@
 
 /* #447 (ADR 0004 D7): the chief panel occupies the right-pane slot while
    docked (RightPane unmounts), so the pane-width var narrows to the panel
-   and the composer / composer-reject / detail-fab anchors below keep
-   skipping the right slot by exactly its width + 16px. */
+   and the composer-reject / detail-fab anchors below keep skipping the
+   right slot by exactly its width + 16px. The composer itself needs no
+   pane arithmetic — it is in-flow inside the center column (#472). */
 .detail-shell[data-chief-open] {
   --detail-pane-right: 418px;
 }
@@ -130,8 +131,9 @@
   display: flex;
 }
 
-/* center column: the thread (or the fresh block) — composer and 总管 FAB
-   overlay its bottom from the .detail-main anchor */
+/* center column: the thread (or the fresh block), then the composer as the
+   column's last flex item (#472 in-flow) — only the 总管 FAB still overlays
+   the bottom from the .detail-main anchor */
 .detail-center {
   flex: 1;
   min-width: 0;
@@ -139,11 +141,14 @@
   flex-direction: column;
 }
 
-/* fresh state (todo/queued/closed): the column scrolls as one block */
+/* fresh state (todo/queued/closed): the column scrolls as one block; the
+   bottom padding keeps overflowing content off the composer card top
+   (#472 — same 16px gap law as .chat-col) */
 .detail-fresh {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  padding-bottom: 16px;
 }
 
 /* right pane: always 488px — no collapse, no hide (#366 rulings 2/3); the
@@ -470,10 +475,13 @@
   display: flex;
   flex-direction: column-reverse;
   overflow-y: auto;
-  /* bottom padding: the composer overlays the column bottom, and a
-     bottom-pinned transcript's last row ends ~114px above the viewport
-     edge (r8 63–77 measure the last footer row at y602–618) */
-  padding: 19px 16px 92px 19px;
+  /* bottom padding = the breathing gap between a bottom-pinned last row
+     and the in-flow composer card top (#472): the scroll port itself ends
+     above the card, so text never passes under it and never sits flush
+     against its edge. 16px keeps the column's inset rhythm (under the old
+     92px overlay reservation the r8 63–77 last footer row landed at
+     y602–618; bottom-pinned rows now ride 16px above the card). */
+  padding: 19px 16px 16px 19px;
 }
 
 .chat-stamp {
@@ -601,12 +609,15 @@
 
 .chat-text {
   margin-left: 11px;
-  /* r8 63–77: robot ink measures ~13px on a 24px pitch and the bubble
-     string widths (r8 68 bubble = 475px) only fit at 13px; the r7 rows
-     carried short single-line messages, so the older 15/20 guess went
-     unexercised there */
-  font-size: 13px;
-  line-height: 24px;
+  /* #470: agent long replies are reading text — 15px ink one step over the
+     14px body baseline, unitless 1.6 so the pitch lands on the same 24px
+     line box the r8 rows carried (row geometry does not drift) and scales
+     with any future size step; the 68ch cap holds the measure inside the
+     60–75 char band when the fluid center column widens. Reading comfort
+     outranks the 13px capture fidelity here. */
+  font-size: 15px;
+  line-height: 1.6;
+  max-width: 68ch;
   /* r7 27/36/38 robot rows sample to text-primary (#56 used secondary —
      blends showed the darker ink is the captured one) */
   color: var(--text-primary);
@@ -640,11 +651,91 @@
   line-height: 13px;
 }
 
+/* ---- block markdown inside an agent reply (#469) ----
+   The chat text box is 13px/24px; block elements get their own pitch so a
+   heading / list / fence reads as structure, not run-on prose. Inline code
+   chips inside these blocks stay `.chat-code` (chat-markdown.tsx). */
+
+/* ATX heading — a real <h2>/<h3>/… element, sized to sit one step above
+   the 13px body without hijacking the doc pane's 16px plan headings. */
+.chat-md-head {
+  margin: 12px 0 4px;
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.35;
+}
+.chat-md-head:first-child {
+  margin-top: 0;
+}
+.chat-md-head--1 {
+  font-size: 18px;
+}
+.chat-md-head--2 {
+  font-size: 16px;
+}
+.chat-md-head--3 {
+  font-size: 14px;
+}
+.chat-md-head--4,
+.chat-md-head--5,
+.chat-md-head--6 {
+  font-size: 13px;
+}
+
+/* list item (ordered + unordered share the row shape): a hanging marker
+   column + the content. Nesting indents via inline margin-left so a child
+   box's left edge sits past its parent's (chat-markdown.tsx DEPTH_PX). */
+.chat-md-item {
+  display: flex;
+  gap: 7px;
+  margin-top: 2px;
+}
+.chat-md-item:first-child {
+  margin-top: 0;
+}
+.chat-md-ordinal,
+.chat-md-marker {
+  flex: none;
+  min-width: 14px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.chat-md-marker {
+  text-align: left;
+}
+.chat-md-content {
+  min-width: 0;
+}
+
+/* fenced code block — the block twin of `.chat-code`: mono, normal
+   contrast, own background + border, wraps instead of scrolling sideways
+   for short lines but caps height for long ones. */
+.chat-md-code {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 320px;
+  overflow: auto;
+}
+
 /* centered dim single line: bare time stamp (13:35), merge announcement,
    🎉 任务已完成 banner (r7 26/36). Rows after a note pack tight (r7 26:
-   note→确认 gap is much smaller than the default row margin). */
+   note→确认 gap is much smaller than the default row margin).
+   #470: the body's 68ch measure cap applies here too — a full-width note
+   wraps mid-token on wide columns; auto side margins keep the box centered
+   inside the cap. */
 .chat-note {
-  margin-top: 20px;
+  margin: 20px auto 0;
+  max-width: 68ch;
   text-align: center;
   font-size: 12px;
   line-height: 16px;
@@ -693,9 +784,28 @@
   text-overflow: ellipsis;
 }
 
-/* frozen spinner frame (r7 26/26d: a braille glyph mid-animation) */
+/* #471 spinner reel viewport: one 16px frame slot, clipped — the reel
+   inside scrolls one slot per 90ms step (spinner-reel, motion.css; the
+   r7 26/26d captures froze a single glyph, the replica now turns it).
+   Slot-sized box: frame changes never shift the trailing seconds/label. */
 .chat-spinner {
+  flex: none;
+  display: inline-block;
+  height: 16px;
+  overflow: hidden;
   color: var(--text-dim);
+}
+
+.chat-spinner-reel > span {
+  display: block;
+  height: 16px;
+  line-height: 16px;
+}
+
+/* the live seconds tick: tabular figures stop the 3s→10s width jump from
+   nudging the chevron/label tail (#471) */
+.chat-streaming-secs {
+  font-variant-numeric: tabular-nums;
 }
 
 .chat-done-label {
@@ -738,6 +848,36 @@
 .chat-tool-label {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* one tool call inside the expanded group: the pill + its output block
+   stacked (#469). The group's flex gap spaces the calls apart. */
+.chat-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* tool stdout/stderr as its own block (#469): left aligned, mono, normal
+   contrast — the terminal-content twin of `.chat-code`, not the centered
+   dim `.chat-note`. pre-wrap keeps the line breaks without forcing a
+   horizontal scrollbar; max-height caps a flood behind a scroll. */
+.chat-tool-output {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  background: var(--code-bg);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow: auto;
 }
 
 /* 收起 link under the expanded tool pills (r7 28) */
@@ -828,14 +968,18 @@
 }
 
 /* ---- composer (#366: the center column's only card — One Card Per
-   Screen). 16px insets, the right anchor skips the 488px pane; h76 +
-   12px radius + recessed fill keep the r7 §3.4 card recipe. ---- */
+   Screen). #472: in-flow as the column's last flex item — the scroll port
+   ends above the card, transcript text never passes under it. Width comes
+   from the column itself (16px side margins carve the insets, no pane
+   arithmetic to drift); h76 + 12px radius + recessed fill keep the r7
+   §3.4 card recipe and the 16px bottom margin keeps the old inset. ---- */
 
 .composer {
-  position: absolute;
-  left: 16px;
-  right: calc(var(--detail-pane-right) + 16px);
-  bottom: 16px;
+  /* relative, not static: the toolbar/send/stop absolutes below anchor to
+     the card — their in-card geometry is untouched by the flow move */
+  position: relative;
+  flex: none;
+  margin: 0 16px 16px;
   height: 76px;
   border: 1px solid var(--border-default);
   border-radius: 12px;
@@ -844,7 +988,10 @@
 
 .composer-placeholder {
   padding: 13px 15px 0;
-  font-size: 13px;
+  /* #470: one step under the 15px thread body — the placeholder used to tie
+     the body at 13px; the 16px line box stays, so the static/live row
+     geometry is untouched */
+  font-size: 14px;
   line-height: 16px;
   color: var(--text-dim);
 }
@@ -861,7 +1008,7 @@ textarea.composer-input {
   resize: none;
   background: transparent;
   font:
-    13px / 16px var(--font-inter),
+    14px / 16px var(--font-inter),
     Inter,
     system-ui,
     -apple-system,

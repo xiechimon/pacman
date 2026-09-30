@@ -7,8 +7,9 @@
 // drawer is open, the unread badge count and the send/thread callbacks.
 // Fixture mode stays fully inert (queries enabled = live), so fixture
 // captures keep their zero-request guarantee.
-// #389/#442: the ⌘J hotkey joins the wake path as the FAB's keyboard twin
-// (open-only; the editable guard lives in overlays/hotkeys). Every page
+// #389/#442/#468: the ⌘J hotkey joins the wake path as the FAB's keyboard
+// cousin — a toggle (open ↔ close) while the FAB click stays open-only;
+// the editable-outside-drawer guard lives in overlays/hotkeys. Every page
 // runs exactly one instance of this hook, so the listener stays a
 // singleton per route.
 
@@ -25,7 +26,7 @@ import { useLiveData } from '../api/provider.js';
 import { useConversationStream } from '../api/sse.js';
 import { chiefDefault } from '../fixtures/fixtures.js';
 import type { ChiefContent, FixtureSet } from '../fixtures/records.js';
-import { useChiefWakeHotkey } from '../overlays/hotkeys.js';
+import { useChiefToggleHotkey } from '../overlays/hotkeys.js';
 
 /** One three-state view: drawer and settings are mutually exclusive by
  *  construction (r5: the gear swaps the drawer for the full-content view). */
@@ -63,11 +64,16 @@ export function useChiefSurface(fixture: FixtureSet): ChiefSurface {
   const chief = fixture.chief;
   const [chiefView, setChiefView] = useState<ChiefView>(chief?.view ?? 'none');
   const chiefViewOpen = chiefView === 'drawer';
-  // #389/#442: ⌘J 呼出 = FAB 点击的键盘孪生（每页恰好一个本 hook 实例，
-  // 监听单点注册；守卫归 hotkeys 模块——输入态目标不误触）。开后焦点
-  // 落草稿框（drawer 的 autofocus 律）。open-only，与 FAB 同语义。
-  const wakeDrawer = useCallback(() => setChiefView('drawer'), []);
-  useChiefWakeHotkey(wakeDrawer);
+  // #389/#442/#468: ⌘J = toggle，再按一次收起（每页恰好一个本 hook 实例，
+  // 监听单点注册；守卫归 hotkeys 模块——drawer 外输入态不误触，drawer 内
+  // 豁免，否则和弦关不上自己打开的面）。开后焦点落草稿框（drawer 的
+  // autofocus 律）。settings 面按 ⌘J 同样换到 drawer（三态单值，drawer
+  // 与 settings 本就互斥）。
+  const toggleDrawer = useCallback(
+    () => setChiefView((prev) => (prev === 'drawer' ? 'none' : 'drawer')),
+    [],
+  );
+  useChiefToggleHotkey(toggleDrawer);
 
   // —— chief live 面（r5 §2/§3.6）：envelope + threads + 活动线程消息 +
   // 会话流订阅；发送 = POST threads / conversations messages。——

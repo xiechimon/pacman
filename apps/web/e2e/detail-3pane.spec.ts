@@ -9,10 +9,11 @@ import { expect, test } from '@playwright/test';
 // there at the same 488px. The composer is the only card in the center
 // column. Each test pins one failure way of the rework:
 //   1. pane widths/abutment wrong  2. tab group survives somewhere
-//   3. head icon trio survives     4. composer escapes the center column
-//      or loses its card form      5. section switching dead            6.
-//   6. frozen pane-view scenarios (30/31/32) still pop dialogs           7.
-//   7. fresh phase collapses the right pane or loses the fresh block
+//   3. head icon trio survives     4. composer escapes the center column,
+//      loses its card form, or overlays the transcript again (#472)
+//   5. section switching dead      6. frozen pane-view scenarios
+//      (30/31/32) still pop dialogs  7. fresh phase collapses the right
+//      pane or loses the fresh block
 
 const DETAIL_ROUTE = '/app/todo/7ve0iOkQ-JBpSL98zSiGc';
 const FRESH = '/app/todo/fresh-probe?scenario=23';
@@ -65,26 +66,75 @@ test('detail head keeps the 更多 icon only — branch/token/history icons are 
   }
 });
 
-test('composer stays inside the center column as its only 12px-radius card', async ({ page }) => {
+test('composer stays in-flow inside the center column: card form, 16px insets, scroll port ends above it', async ({
+  page,
+}) => {
   await page.goto(`${DETAIL_ROUTE}?scenario=17b`);
   const geo = await page.evaluate(() => {
-    const c = document.querySelector('.detail-center')!.getBoundingClientRect();
+    const rect = (sel: string) => document.querySelector(sel)!.getBoundingClientRect();
+    const center = rect('.detail-center');
+    const main = rect('.detail-main');
+    const col = rect('.chat-col');
     const comp = document.querySelector('.composer')!;
     const r = comp.getBoundingClientRect();
     const cs = getComputedStyle(comp);
+    const colCs = getComputedStyle(document.querySelector('.chat-col')!);
     return {
-      centerLeft: c.left,
-      centerRight: c.right,
+      centerLeft: center.left,
+      centerRight: center.right,
+      mainBottom: main.bottom,
+      colBottom: col.bottom,
       compLeft: r.left,
       compRight: r.right,
+      compTop: r.top,
+      compBottom: r.bottom,
       radius: cs.borderRadius,
       border: cs.borderTopWidth,
+      position: cs.position,
+      colPadBottom: Number.parseFloat(colCs.paddingBottom),
     };
   });
+  // the r7 §3.4 card recipe survives the flow move
   expect(geo.radius).toBe('12px');
   expect(geo.border).toBe('1px');
-  expect(geo.compLeft).toBeGreaterThanOrEqual(geo.centerLeft);
-  expect(geo.compRight).toBeLessThanOrEqual(geo.centerRight);
+  // #472 in-flow law: a layout participant, never an overlay again —
+  // relative (not static) because the in-card toolbar/send/stop absolutes
+  // anchor to it
+  expect(geo.position).toBe('relative');
+  // 16px insets inside the center column — never crossing into the pane
+  expect(geo.compLeft).toBeCloseTo(geo.centerLeft + 16, 0);
+  expect(geo.compRight).toBeCloseTo(geo.centerRight - 16, 0);
+  // the card keeps its 16px bottom inset (the old absolute-anchor visual)
+  expect(geo.mainBottom - geo.compBottom).toBeCloseTo(16, 0);
+  // the transcript scroll port ends exactly at the card top: text can no
+  // longer pass under the opaque card…
+  expect(geo.colBottom).toBeCloseTo(geo.compTop, 0);
+  // …and a bottom-pinned last row keeps a real gap from the card edge
+  expect(geo.colPadBottom).toBeGreaterThanOrEqual(16);
+});
+
+test('composer width tracks the center column across both pane states (488 pane / 418 chief dock)', async ({
+  page,
+}) => {
+  await page.goto(`${DETAIL_ROUTE}?scenario=detail-unread`);
+  const measure = () =>
+    page.evaluate(() => {
+      const c = document.querySelector('.detail-center')!.getBoundingClientRect();
+      const r = document.querySelector('.composer')!.getBoundingClientRect();
+      return { center: c.width, comp: r.width };
+    });
+  const pane = await measure();
+  expect(pane.center).toBe(1440 - 240 - 488);
+  expect(pane.comp).toBeCloseTo(pane.center - 32, 0);
+  // chief dock (#447 D7): the panel takes the right slot at 418px and the
+  // composer width follows the column — in-flow needs no pane-var resync
+  await page.locator('.detail-fab').click();
+  await expect(page.locator('.detail-right')).toHaveCount(0);
+  const drawer = page.locator('.chief-drawer');
+  await drawer.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+  const docked = await measure();
+  expect(docked.center).toBeCloseTo(1440 - 240 - 418, 0);
+  expect(docked.comp).toBeCloseTo(docked.center - 32, 0);
 });
 
 test('right pane type select switches between the doc surface and the three sections', async ({
