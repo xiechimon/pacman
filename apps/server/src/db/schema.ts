@@ -402,7 +402,6 @@ export const machine = sqliteTable('machine', {
     .references(() => team.id),
   name: text('name').notNull(),
   online: bool('online').notNull().default(false),
-  maxConcurrent: integer('maxConcurrent').notNull().default(3),
   /** [内部] 机器 token 哈希（64hex 原文不落库，02 §8）。 */
   tokenHash: text('tokenHash'),
   /** [内部] 注册用 API key（重注册复用同一 machineId = 按 key/team 认机器，

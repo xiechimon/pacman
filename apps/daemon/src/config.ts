@@ -9,7 +9,6 @@ import {
   BRAND,
   CLAUDE_CONFIG_FILE_NAME,
   ENV_VARS,
-  MAX_CONCURRENT_DEFAULT,
   WORKSPACES_DIR_GUARD_CANON,
 } from '@pacman/shared';
 import { z } from 'zod';
@@ -25,8 +24,6 @@ export const daemonConfigSchema = z.object({
   /** 持久工作区根（02 §5.5 baseRepo/任务目录的父层）。 */
   workspacesDir: z.string(),
   foreground: z.boolean(),
-  /** 并发上限默认 3（02 §2.5 机器配置默认值，非付费件）。 */
-  maxConcurrent: z.number().int().positive(),
   /** skills 扫描根（spec 14/#371）：PACMAN_SKILLS_DIR 缺省 ~/.agents/skills；
    * 目录不存在 = 空 skills 集，非致命（扫描层降级，config 不校验存在性）。 */
   skillsDir: z.string(),
@@ -45,7 +42,6 @@ export interface DaemonConfigInput {
   home?: string;
   workspacesDir?: string;
   foreground?: boolean;
-  maxConcurrent?: number;
   mcpConfigPath?: string;
   skillsDir?: string;
 }
@@ -93,7 +89,6 @@ export function loadDaemonConfig(
     home,
     workspacesDir,
     foreground: input.foreground ?? false,
-    maxConcurrent: input.maxConcurrent ?? MAX_CONCURRENT_DEFAULT,
     skillsDir,
     // Settings 缝优先级同律：显式入参 > env > 默认（~/.claude.json）。
     mcpConfigPath: resolve(

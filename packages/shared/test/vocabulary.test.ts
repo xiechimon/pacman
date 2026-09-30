@@ -24,7 +24,6 @@ import {
   MACHINE_ENDPOINTS,
   MACHINE_TOKEN_PATTERN,
   MACHINE_WIRE,
-  MAX_CONCURRENT_DEFAULT,
   MCP_CAPABILITY_GROUPS,
   MCP_MIN_CLI_VERSION,
   MCP_MIN_CLI_VERSION_GATE_OBSERVED,
@@ -116,7 +115,6 @@ describe('machine protocol (02 §5, r3 §1.6)', () => {
       streamBodyTimeout: 540_000,
     }); // r3 bundle 原文
     expect(ORPHAN_WORKTREE_TTL_MS).toBe(7 * 24 * 60 * 60 * 1000); // r3 §1.4
-    expect(MAX_CONCURRENT_DEFAULT).toBe(3); // 02 §2.5
     expect(MEMORY_QUOTA_PER_AGENT).toBe(100); // 02 §4.4/r5 §6
   });
 

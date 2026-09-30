@@ -232,7 +232,6 @@ async function setup(
     paths,
     workspace: ws,
     workspacesDir: join(home, 'workspaces'),
-    maxConcurrent: 3,
     mcpConfigPath: join(home, 'claude.json'), // runner-stop 同款占位（步无 mcpServers slug = 不读）
     heartbeatIntervalMs: 60_000,
   };

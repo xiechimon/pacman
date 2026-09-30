@@ -221,7 +221,6 @@ describe('enroll / me / presence / recover（02 §5.2–§5.4）', () => {
       id: w.machineId,
       name: 'test-mbp',
       teamId: w.s.team.id,
-      maxConcurrent: 3, // 02 §2.5 默认值
       latestCliVersion: '0.1.0',
     });
   });
@@ -259,7 +258,7 @@ describe('enroll / me / presence / recover（02 §5.2–§5.4）', () => {
     })();
     const res = await call(w.s.app, 'POST', '/api/machine/presence', {
       cred: w.token,
-      body: { maxConcurrent: 3, cliVersion: '0.1.0' },
+      body: { cliVersion: '0.1.0' },
     });
     expect(machineOkResponseSchema.parse(await res.json())).toEqual({ ok: true });
     const ev = await streamP;
@@ -571,7 +570,6 @@ describe('步骤 journal 全链（02 §5.4 词表 + §4.2 主时序机器侧）'
         teamId: w.s.team.id,
         name: 'other',
         online: false,
-        maxConcurrent: 3,
         tokenHash: createHash('sha256').update('other-token').digest('hex'),
         apiKeyId: null,
         latestCliVersion: null,

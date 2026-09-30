@@ -21,7 +21,6 @@ import {
   build as buildTable,
   chiefMessage,
   chiefThread,
-  machine as machineTable,
   project as projectTable,
   step as stepTable,
   todo as todoTable,
@@ -119,6 +118,8 @@ export interface Stack {
   /** 隔离的技能根（空目录）——诊断脚本合成 chief 系统提示词时要用。 */
   skillsDir: string;
   logLines: () => string[];
+  /** 关掉 daemon 的领活口（chief 步领走后调用；#503 后接替并发门占位）。 */
+  park: () => void;
   close: () => Promise<void>;
 }
 
@@ -154,6 +155,26 @@ export async function bootStack(): Promise<Stack> {
   //   配置的 MCP server 进程。
   const skillsDir = mkdtempSync(join(tmpdir(), 'pacman-eval-skills-'));
   const mcpConfigPath = join(tmpdir(), `pacman-eval-mcp-${randomUUID()}.json`);
+  // claim 占位闸（接替 #503 摘除的 maxConcurrent=1 + 占位步机制）：park 后
+  // daemon 的 claim POST 在 harness 的 fetch 缝挂起，signal abort（停机或
+  // claimTimeout 护栏）时返回 {step:null}——chief 步领走后 flip，chief 派出的
+  // worker 步自此永远领不走，评测不会真去 clone 仓库烧模型。
+  let claimsParked = false;
+  const fetchImpl: typeof fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    if (claimsParked && init?.method === 'POST' && url.endsWith('/api/machine/tasks/claim')) {
+      await new Promise<void>((resolve) => {
+        const sig = init?.signal;
+        if (!sig || sig.aborted) return resolve();
+        sig.addEventListener('abort', () => resolve(), { once: true });
+      });
+      return new Response(JSON.stringify({ step: null }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    return fetch(input, init);
+  };
   const config = loadDaemonConfig(
     {
       serverUrl: server.url,
@@ -175,6 +196,7 @@ export async function bootStack(): Promise<Stack> {
     idleSleepPrevention: false,
     // 空 proxyEnv：relay 实测有代理/无代理均直连可达，本地回环不需要绕。
     proxyEnv: {},
+    fetchImpl,
     claimBackoffBaseMs: 50,
     heartbeatIntervalMs: 500,
   });
@@ -191,6 +213,9 @@ export async function bootStack(): Promise<Stack> {
     home,
     skillsDir,
     logLines,
+    park: () => {
+      claimsParked = true;
+    },
     close: async () => {
       // 判完立刻关栈 = 让 daemon 来不及执行 chief 刚派出去的 build。关栈失败
       // 不该污染这一例的判分（该例的行已经写好了），吞掉即可。
@@ -424,39 +449,6 @@ function pluckText(rows: { content: unknown }[]): string {
   return parts.join('\n').trim();
 }
 
-/** 把机器并发上限压到 1——占位步要在这一步之上生效。 */
-function parkMachine(stack: Stack): string {
-  const db = stack.server.db;
-  const row = db.select().from(machineTable).all()[0];
-  if (!row) throw new Error('没有注册机器');
-  db.update(machineTable).set({ maxConcurrent: 1 }).where(eq(machineTable.id, row.id)).run();
-  return row.id;
-}
-
-/** 占住机器唯一的并发位，让 daemon 领不到 chief 派出去的那个 worker 步。
- *
- * 不占位的后果实测过：`run_builds` 入队的 build 步会被 daemon 立刻领走并真跑
- * ——clone 仓库、起 pi 会话、调模型（用的是 roster 里那个 Agent 的模型）。那是
- * 评测不该触发的下游副作用：拖 60 秒/例，而且花的是没进成本账的 token。
- *
- * 用的是产品自己的并发门（tryClaim 的 running >= maxConcurrent 就拒领），
- * 不是绕过它。占位步在 chief 步**正在跑**时插入——等 chief 步结束再插就晚了，
- * 那时 build 步已经入队、daemon 已经在领。 */
-function occupySlot(stack: Stack, machineId: string, threadId: string): void {
-  stack.server.db
-    .insert(stepTable)
-    .values({
-      id: `evalpark-${randomUUID()}`,
-      buildId: threadId,
-      kind: 'chief',
-      machineId,
-      status: 'claimed',
-      prompt: null,
-      createdAt: Date.now(),
-    })
-    .run();
-}
-
 /** 驱动一个 chief 回合并读回环境终态。 */
 export async function driveTurn(
   stack: Stack,
@@ -473,8 +465,6 @@ export async function driveTurn(
   );
   const t0 = Date.now();
 
-  const machineId = parkMachine(stack);
-
   const sent = await api(
     stack.server.url,
     'POST',
@@ -487,12 +477,12 @@ export async function driveTurn(
     throw new Error(`发消息失败: ${sent.status} ${JSON.stringify(sent.body)}`);
   const threadId = (sent.body as { thread: { id: string } }).thread.id;
 
-  // 等 chief 步被领走后再占位：反过来会把 chief 步自己也堵在门外。
+  // 等 chief 步被领走后再关领活口：反过来会把 chief 步自己也堵在门外。
   await waitFor(() => {
     const s = db.select().from(stepTable).where(eq(stepTable.buildId, threadId)).all();
     return s.some((x) => x.kind === 'chief' && x.status === 'claimed');
   }, 30_000);
-  occupySlot(stack, machineId, threadId);
+  stack.park();
 
   await waitFor(() => {
     const th = db.select().from(chiefThread).where(eq(chiefThread.id, threadId)).get();
@@ -500,10 +490,8 @@ export async function driveTurn(
   }, opts.timeoutMs);
   const wallMs = Date.now() - t0;
 
-  // 占位步也落在 threadId 上（kind='chief'），必须排除，否则 stepStatus 会读成
-  // 'claimed'——而 hold 用例的判据正是要求 stepStatus === 'done'。
   const steps = db.select().from(stepTable).where(eq(stepTable.buildId, threadId)).all();
-  const chiefSteps = steps.filter((s) => s.kind === 'chief' && !s.id.startsWith('evalpark-'));
+  const chiefSteps = steps.filter((s) => s.kind === 'chief');
   const stepStatus = chiefSteps.at(-1)?.status ?? 'missing';
 
   const msgs = db.select().from(chiefMessage).where(eq(chiefMessage.threadId, threadId)).all();

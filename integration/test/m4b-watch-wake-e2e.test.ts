@@ -10,7 +10,7 @@
 // ④ failed wake：第二任务执行步 provider 400 → todo failed → failed wake →
 //    chief 先调 machines 工具再产法证式汇报（r5 §3.5 失败轮实测序）→ watch 解除。
 //
-// stub 脚本按全局消费序编排（maxConcurrent=1 串行化保证轮序）；动态参数
+// stub 脚本按全局消费序编排（daemon 串行领活保证轮序）；动态参数
 // （todoId/buildId）在对应轮消费前填入（responses 数组闭包活引用）。
 
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -153,7 +153,6 @@ beforeAll(async () => {
       teamId: server.teamId,
       home,
       name: 'm4b-wake-mbp',
-      maxConcurrent: 1,
     },
     {},
   );

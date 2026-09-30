@@ -77,9 +77,8 @@ export const machineEnrollConfirmResponseSchema = z.object({ machine: machineJso
 export const machineMeResponseSchema = machineRecordSchema;
 
 /** POST /api/machine/presence body [推断]（02 §5.4：presence 心跳并行失败、
- * 进程不退出；maxConcurrent 上报 = daemon 配置默认值 3，02 §2.5）。 */
+ * 进程不退出）。 */
 export const machinePresenceBodySchema = z.object({
-  maxConcurrent: z.number().int().positive().optional(),
   cliVersion: z.string().optional(),
 });
 export const machineOkResponseSchema = z.object({ ok: z.literal(true) });
@@ -95,11 +94,9 @@ export type MachineRecoverResponse = z.infer<typeof machineRecoverResponseSchema
 // —— tasks/claim（长轮询，节奏 ~75–76s，r3 §1.5/02 §5.4）—————————————————————
 
 /** POST /api/machine/tasks/claim body [推断]（动词：长轮询有实证，POST 为
- * claim 语义惯用形）。 */
-export const machineClaimBodySchema = z.object({
-  /** 本机当前运行步数（并发上限门 = min(machine.maxConcurrent, 上报值)）。 */
-  running: z.number().int().min(0).optional(),
-});
+ * claim 语义惯用形）。#503 起空体：原 `running`（在跑步数）字段只服务已被
+ * 摘除的并发门，server 侧从未读它。 */
+export const machineClaimBodySchema = z.object({});
 
 /** claim 载荷（02 §4.2 三类步 + §5.7 生命周期行所需上下文）[设计]——
  * wire 未采（r3 无 claim 响应样本）；字段 = 主时序执行最小集，凭证不在此

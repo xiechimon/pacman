@@ -77,7 +77,6 @@ beforeAll(async () => {
       teamId: server.teamId,
       home,
       name: 'm4b-mem-mbp',
-      maxConcurrent: 1,
     },
     {},
   );
