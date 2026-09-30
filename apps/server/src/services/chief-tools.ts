@@ -608,7 +608,7 @@ export async function executeChiefTool(
     }
     case 'confirm_builds': {
       const buildIds = strArr(params, 'buildIds');
-      for (const buildId of buildIds) confirmBuild(deps, buildId);
+      for (const buildId of buildIds) await confirmBuild(deps, buildId);
       return json({ confirmed: buildIds });
     }
     case 'cancel_builds': {
@@ -763,13 +763,19 @@ export function transitionTodos(
 }
 
 function buildDeps(deps: ChiefToolDeps) {
-  return { db: deps.db, hub: deps.hub, machineHub: deps.machineHub, user: deps.user };
+  return {
+    db: deps.db,
+    hub: deps.hub,
+    machineHub: deps.machineHub,
+    user: deps.user,
+    reposDir: deps.reposDir,
+  };
 }
-export function confirmBuild(deps: ChiefToolDeps, buildId: string): void {
+export async function confirmBuild(deps: ChiefToolDeps, buildId: string): Promise<void> {
   if (!deps.db.select().from(build).where(eq(build.id, buildId)).get()) {
     throw new HttpError(404, `build ${buildId}`);
   }
-  applyBuildStepAction(buildDeps(deps), buildId, { action: 'confirm' });
+  await applyBuildStepAction(buildDeps(deps), buildId, { action: 'confirm' });
 }
 export function mergeBuild(deps: ChiefToolDeps, buildId: string): void {
   if (!deps.db.select().from(build).where(eq(build.id, buildId)).get()) {

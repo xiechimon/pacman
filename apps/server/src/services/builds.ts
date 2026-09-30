@@ -12,6 +12,7 @@ import type {
   Assignment,
   BuildRecord,
   Phase,
+  ReviewGate,
   ReviewVerdict,
   StepJournalRow,
   StepRecord,
@@ -33,6 +34,7 @@ import {
   build,
   message,
   plan as planTable,
+  project,
   steerPending,
   step,
   stopPending,
@@ -41,6 +43,7 @@ import {
 import { HttpError } from '../lib/errors.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
+import { hasRepoBinding, readBuildChanges } from './git.js';
 import type { MachineWakeHub } from './machines.js';
 import { assertPhaseTransition } from './phase.js';
 import { getTodo, setTodoPhase } from './todos.js';
@@ -56,6 +59,9 @@ export interface BuildDeps {
   /** conversation stream 通道（M5 live streaming：入队步/驳回与合并用户行
    * 即时推送，02 §1.2 会话流）；缺省 = 无会话流面。 */
   convHub?: ConversationStreamHub;
+  /** 托管 bare repo 根（#511 审核关口变更材料 = readBuildChanges 的计算位；
+   * 缺省 = 无变更面（读不到 = 材料如实写「无改动」）。 */
+  reposDir?: string;
 }
 
 type BuildRow = typeof build.$inferSelect;
@@ -388,10 +394,13 @@ export function startBuilds(
  * - {action:"revision", side:"plan", feedback, clientMessageId} → confirm→
  *   planning + 入队重规划步（同 conv continue session 语义归 M3）+ 时间线插
  *   用户驳回消息行（r5 §4）。
- * - {action:"review", agentId, focus?}（M7 #312 / r8 §3.1）→ phase 留 confirm/
- *   review + 入队审核步（kind='review'，不开 worktree 不产 changes）+ 时间线
- *   插 REVIEW_ANNOUNCEMENT；phase 非法（todo/queued/planning/building/done/
- *   failed/closed）→ 409。
+ * - {action:"review", agentId, focus?}（M7 #312 / r8 §3.1；材料随关口分叉
+ *   = #511）→ phase 留 confirm/review + 入队审核步（kind='review'，不产可合并
+ *   changes）+ 时间线插 REVIEW_ANNOUNCEMENT；phase 非法（todo/queued/
+ *   planning/building/done/failed/closed）→ 409。材料：confirm 关口 = 方案
+ *   全文（现行为）；review 关口 = 方案 + 本轮变更（readBuildChanges 同源）
+ *   +（项目绑仓库时）只读检出说明。本函数 async 的唯一原因 = 变更面是 git
+ *   读取，异常经 Promise 拒绝上浮，调用方必须 await。
  * - {action:"restart", feedback, clientMessageId} → 失败面带反馈重启（#320，
  *   r9 §3.3 实测：原站 failed 态发消息触发新一轮，消息随新轮入会话，非
  *   steer 409 语义）：新 build（withPlan 承接失败轮）+ 反馈行落新 conv +
@@ -399,7 +408,7 @@ export function startBuilds(
  *   与 #308 停止钮的落态分界：停止 = 运行轮落上一完成 turn 的 gate（落态非
  *   failed）；restart 门只收 failed——两写面相位隔离，不共享入口。 */
 
-export function applyBuildStepAction(
+export async function applyBuildStepAction(
   deps: BuildDeps,
   buildId: string,
   body:
@@ -407,7 +416,7 @@ export function applyBuildStepAction(
     | { action: 'revision'; side: 'plan'; feedback: string; clientMessageId: string }
     | { action: 'review'; agentId: string; focus?: string }
     | { action: 'restart'; feedback: string; clientMessageId: string },
-): void {
+): Promise<void> {
   const row = deps.db.select().from(build).where(eq(build.id, buildId)).get();
   if (!row) throw new NotFoundError(`build ${buildId}`);
   const todoRecord = getTodo(deps, row.todoId);
@@ -482,13 +491,13 @@ export function applyBuildStepAction(
       content: REVIEW_ANNOUNCEMENT,
       createdAt: nowMs(),
     });
-    // 审核步 prompt：meta header（kind+agentId，claim 载荷据此取 Agent
-    // ——step 表无 agentId 列）+ JSON 输出契约 + plan.md 全文 + 用户 focus。
-    // meta 解析与组装单源 = shared/review.buildReviewStepPrompt；
-    // completeStep 在 verdict 收尾时 emit REVIEW_VERDICT_KIND 消息 + 若
-    // blocking 触发自动修订回路（apps/server/services/machines.ts agentForStep
-    // 同步解析该头取 Agent）。phase 留 confirm/review（review 步是额外 agent
-    // 步，不推进主时序）。
+    // 审核步 prompt：meta header（kind+agentId+gate，claim 载荷据此取 Agent
+    // ——step 表无 agentId 列）+ JSON 输出契约 + plan.md 全文 +（审核关口）
+    // 本轮变更 + 用户 focus。meta 解析与组装单源 =
+    // shared/review.buildReviewStepPrompt；completeStep 在 verdict 收尾时 emit
+    // REVIEW_VERDICT_KIND 消息 + 若 blocking 触发自动修订回路
+    // （apps/server/services/machines.ts agentForStep 同步解析该头取 Agent）。
+    // phase 留 confirm/review（review 步是额外 agent 步，不推进主时序）。
     const plan = deps.db
       .select({ content: planTable.content })
       .from(planTable)
@@ -496,9 +505,32 @@ export function applyBuildStepAction(
       .orderBy(asc(planTable.version))
       .all();
     const planText = plan.map((p) => p.content).join('\n\n---\n\n');
+    // —— 关口分叉（#511，判据 = 既有相位值，不新增状态）——
+    // confirm 关口 = 方案就绪尚未动工：事实还不存在，只审方案（现行为不变）。
+    // review 关口 = 本轮已产出改动：材料 = 方案（对照基准）+ 变更（待审事实）
+    // ——否则审核者只能对方案表态，而它的结论与人的结论被并列呈现，看起来
+    // 像对同一件事的两次独立复核。
+    const gate: ReviewGate = todoRecord.phase === 'review' ? 'review' : 'confirm';
+    const projectRow = deps.db
+      .select()
+      .from(project)
+      .where(eq(project.id, todoRecord.projectId))
+      .get();
+    // 有检出 = 项目绑了仓库（daemon 侧同判据 = claim 载荷 project.repo 非空；
+    // 单源 = git.hasRepoBinding/projectRepoRef）。未绑 = 不写检出段，不谎称。
+    const checkout = hasRepoBinding(projectRow);
+    const changes =
+      gate === 'review'
+        ? deps.reposDir !== undefined
+          ? (await readBuildChanges({ db: deps.db, reposDir: deps.reposDir }, buildId)).files
+          : []
+        : undefined;
     const reviewPrompt = buildReviewStepPrompt({
       agentId: body.agentId,
+      gate,
       planText,
+      ...(changes !== undefined ? { changes } : {}),
+      checkout,
       ...(body.focus !== undefined ? { focus: body.focus } : {}),
     });
     enqueueStep(deps, buildId, 'review', todoRecord.teamId, reviewPrompt);
@@ -601,7 +633,8 @@ export function completeStep(
     // AI 审核步完成（M7 #330，r8 §3.1 真 findings 上线）：emit REVIEW_VERDICT_KIND
     // 消息行（conclusion + 编号 findings，server zod 校验已固）+ 若 blocking →
     // 落 planning + 入队重规划步（REVIEW_REVISE_PROMPT 注入审核事实）回到
-    // 待确认。worktree 不动（hasChanges=false：审核步不开 worktree，r8 §3.1）。
+    // 待确认。审核不计入用户变更（hasChanges 恒 false）：审核关口虽开只读检出
+    // （#511），但 daemon 侧不采集其改动、收尾还会 rewind 回步起点。
     // daemon 未传 findings（解析失败/agent 未按契约）= 默认空 verdict =
     // 落 verdict 消息含空 findings，但不触发修订——避免静默吞错 + 给人看
     // 「审核没结论」兜底。fail 兜底仍可独立走：findings 缺位 + status=failed

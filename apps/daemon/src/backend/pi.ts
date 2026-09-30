@@ -60,6 +60,16 @@ export const PI_CAPABILITIES: AgentBackendCapabilities = {
 /** pi 内建工具默认面（02 §5.6：其余工具面 = pi-coding-agent 内建）。 */
 const PI_BUILTIN_TOOLS = ['read', 'bash', 'edit', 'write'];
 
+/** 只读回合的内建工具面（#511 审核步）：写类工具（edit/write）不下发——审核
+ * 者是来判定的，不是来动手的；bash 保留（跑验证命令是它的职责，也是「验证」
+ * 与「通读」的分界）。单源 = SessionOpts.readOnly 的落点，宿主无从旁路。 */
+const PI_READONLY_TOOLS = ['read', 'bash'];
+
+/** SessionOpts.readOnly → 内建工具名集（纯函数，供 backend 构建与测试共用）。 */
+export function builtinToolNames(readOnly: boolean): readonly string[] {
+  return readOnly ? PI_READONLY_TOOLS : PI_BUILTIN_TOOLS;
+}
+
 // —— skills 执行面注入（spec 14/#371）————————————————————————
 // catalog 是索引不全文：token 预算只与 catalog 长度线性相关，skill 全文由
 // agent 按 description 匹配时经 read 工具（location 绝对路径）按需加载。
@@ -628,7 +638,7 @@ export class PiBackend implements AgentBackend {
       sessionManager,
       settingsManager,
       tools: [
-        ...PI_BUILTIN_TOOLS,
+        ...builtinToolNames(opts.readOnly === true),
         ...remoteTools.map((t) => t.name),
         ...mcpTools.map((t) => t.name),
       ],

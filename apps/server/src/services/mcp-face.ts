@@ -343,7 +343,7 @@ export async function executeMcpTool(
       const buildIds = strArrOf(args, 'buildIds');
       for (const buildId of buildIds) {
         requireTeamBuild(db, buildId, ctx.teamId);
-        confirmBuild(deps, buildId);
+        await confirmBuild(deps, buildId);
       }
       return json({ confirmed: buildIds });
     }

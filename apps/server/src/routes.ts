@@ -326,6 +326,8 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     machineHub: ctx.machineHub,
     user: ctx.user,
     convHub: ctx.convHub,
+    // #511 审核关口材料：变更面计算位（与人的变更面同源）
+    reposDir: ctx.reposDir,
     box: ctx.secretBox,
     ...(ctx.githubFetch !== undefined ? { githubFetch: ctx.githubFetch } : {}),
   };
@@ -1112,7 +1114,9 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
   app.post('/api/builds/:id/steps', async (c) => {
     const body = parseWith(buildStepActionBodySchema, await jsonBody(c), 'body');
     try {
-      applyBuildStepAction(svc, c.req.param('id'), body);
+      // await 必须在位：审核关口的材料组装要读变更面（git 面异步），异常
+      // 经 Promise 拒绝上浮——不 await 会让 409/404 变成未处理拒绝。
+      await applyBuildStepAction(svc, c.req.param('id'), body);
     } catch (err) {
       if (err instanceof PhaseTransitionError) throw conflict(err.message);
       throw err;

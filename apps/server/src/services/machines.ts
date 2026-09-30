@@ -75,7 +75,7 @@ import {
   revokeStepGitCredential,
 } from './credentials.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
-import { githubCloneUrl, hostedCloneUrl, repoDirFor } from './git.js';
+import { projectRepoRef, repoDirFor } from './git.js';
 import { openGithubToken } from './github-connection.js';
 import { canTransitionPhase } from './phase.js';
 import { listProjectTagVocab, resolveFixedTagId, resolveProjectTagIds } from './tags.js';
@@ -788,12 +788,17 @@ function tryClaim(
     // buildTaskPrompt），agent 必拿任务内容。plan.md 在 → 续轮不变。
     const planHandoffMissing =
       cand.stepRow.kind === 'build' && cand.buildRow.withPlan && cand.buildRow.planDocId === null;
-    const session = planHandoffMissing
-      ? { action: 'new' as const, sessionId: null }
-      : {
-          action: priorSessionId ? ('continue' as const) : ('new' as const),
-          sessionId: priorSessionId,
-        };
+    // review 步恒开新会话（#511）：审核是额外 agent 步，不接续主 conv 会话——
+    // 审核者与被审者常是不同的 Agent/模型，接续会让它继承执行轮的上下文，
+    // 且 continue 路径会吃掉服务端注入的审核材料（daemon 侧 CONTINUE_PROMPTS
+    // 只有一句占位文案，plan.md 全文/变更/diff 全在 step.prompt 里）。
+    const session =
+      planHandoffMissing || cand.stepRow.kind === 'review'
+        ? { action: 'new' as const, sessionId: null }
+        : {
+            action: priorSessionId ? ('continue' as const) : ('new' as const),
+            sessionId: priorSessionId,
+          };
     const projectRow = db
       .select()
       .from(project)
@@ -803,18 +808,9 @@ function tryClaim(
     // 托管 = `<origin>/git/<teamId>/<repoName>`（本地主机代位）；github = https
     // 派生（执行凭证 = stepToken 从 github_connection 下发）；local = cloneUrl
     // 即用户仓库绝对路径（validateLocalRepoPath 规范化值——daemon 镜像 clone 源
-    // 与 ff-only 落地面同吃该路径）。
-    const repo =
-      projectRow?.repoKind === 'hosted' && projectRow.repoName !== null
-        ? {
-            kind: 'hosted' as const,
-            cloneUrl: hostedCloneUrl(origin, teamId, projectRow.repoName),
-          }
-        : projectRow?.repoKind === 'github' && projectRow.githubRepo !== null
-          ? { kind: 'github' as const, cloneUrl: githubCloneUrl(projectRow.githubRepo) }
-          : projectRow?.repoKind === 'local' && projectRow.localPath !== null
-            ? { kind: 'local' as const, cloneUrl: projectRow.localPath }
-            : null;
+    // 与 ff-only 落地面同吃该路径）。派生单源 = git.projectRepoRef（#511 起
+    // 审核步的「有无只读检出」判据同吃它）。
+    const repo = projectRepoRef(projectRow, origin);
     // worker 步 remoteTools = 记忆三件套（02 §4.4 写路径 / r5 §6：worker 侧
     // 同族工具经 remoteTools 下发，relay 服务端执行；触发 = spec 指令 + Agent
     // 裁量，宿主不做任务结束蒸馏）。MCP 授权端点随载荷（02 §7.1 per-turn 连接）。
