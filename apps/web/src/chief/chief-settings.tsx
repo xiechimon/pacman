@@ -22,7 +22,7 @@ import {
 } from '../api/hooks.js';
 import { toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
-import type { ChiefContent, ChiefModelOption, ChiefSettingsTab } from '../fixtures/records.js';
+import type { ChiefContent, ChiefSettingsTab, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChevronRight, ChiefFaceDashed } from '../icons/index.js';
 import { Button } from '../ui/button.js';
@@ -87,7 +87,7 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
   const compaction = live
     ? (chiefQ.data?.chief.compactionModel ?? null)
     : (chief.compactionModel ?? null);
-  const modelOptions: ChiefModelOption[] | undefined = live
+  const modelOptions: ModelOption[] | undefined = live
     ? toModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
     : undefined;
   const pickModel = live

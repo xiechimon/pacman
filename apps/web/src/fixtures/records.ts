@@ -679,7 +679,7 @@ export type ChiefSettingsTab = 'agent' | 'charter' | 'memory' | 'watches';
  *  custom providers 并集，api/mappers.ts `toModelOptions` 单源；
  *  fixture = canon 单行）。`provider` 位 = PATCH 值槽的 provider 归属
  *  （custom providerId 或 runtime 词表值 `claude-code`）。 */
-export interface ChiefModelOption {
+export interface ModelOption {
   provider: string;
   /** 显示用来源名（r5 §2 捕获行 `r3-gw · 128k` 徽标位；runtime 段 =
    *  品牌名 `Claude Code`，不译）。 */

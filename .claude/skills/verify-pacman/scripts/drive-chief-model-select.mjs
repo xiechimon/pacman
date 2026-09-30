@@ -10,7 +10,7 @@
 //       后重载，行集合随之变；再铺第二个 provider，行再变（delta 纯由
 //       providers 驱动，claude-code 段同机恒定）。
 //   并集一致性 —— 选择器非默认行 (providerLabel, modelName) 集合 ==
-//       toChiefModelOptions(GET providers, GET model-sources) 的期望投影
+//       toModelOptions(GET providers, GET model-sources) 的期望投影
 //       （driver 内复刻 mapper 逻辑做 UI=API 双真值对拍）。
 //   claude-code 段数据源 = 本机 ~/.claude/settings.json（server homedir 直读，
 //       A4）——机器相关，只断言 UI=API 一致，不断言具体清单（drive-providers
@@ -73,7 +73,7 @@ async function postJson(url, body) {
   return res.json();
 }
 
-// driver 内复刻 api/mappers.ts toChiefModelOptions（#358）做 UI=API 对拍：
+// driver 内复刻 api/mappers.ts toModelOptions（#358）做 UI=API 对拍：
 // custom providers models[]（带 providerId/label 归属；pi 段卫生：空 id 跳过、
 // 空 name 回退 id）∪ 非 pi runtime 段（provider = runtime 词表值），同
 // (provider, modelId) 去重 first-wins。
@@ -248,7 +248,7 @@ try {
       : 'spec 11 A10/AC1：铺底 provider A 后其 models[] 应进选择器行——实测 ' +
         JSON.stringify(afterA.model.slice(0, 6)),
   );
-  // UI=API 双真值：非默认行集合 == toChiefModelOptions 期望投影
+  // UI=API 双真值：非默认行集合 == toModelOptions 期望投影
   const expectedA = teamId != null ? await apiTruth(teamId) : [];
   extra.expectedAfterA = expectedA;
   extra.uiAfterA = afterA.model;

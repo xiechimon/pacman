@@ -19,7 +19,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { DialogShell } from '../components/ui/dialog-shell.js';
-import type { ChiefModelOption } from '../fixtures/records.js';
+import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { PROVIDERS_HREF } from '../resources/providers-page.js';
 import { Avatar } from '../ui/avatar.js';
@@ -44,7 +44,7 @@ interface CreateAgentDialogProps {
    *  投影单源 = api/mappers.ts toModelOptions）。非空 = 出模型选择器；
    *  空 = 出「尚未配置模型服务商」告警行 + 配置外链（原版 r2 §8.1 capture
    *  20 与 r3 §2 两态：服务商配好后同一弹窗出「模型」下拉）。 */
-  modelOptions?: ChiefModelOption[];
+  modelOptions?: ModelOption[];
 }
 
 export function CreateAgentDialog({

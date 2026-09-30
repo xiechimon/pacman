@@ -14,7 +14,7 @@
 
 import { useState } from 'react';
 import { FloatingShell } from '../components/ui/floating-shell.js';
-import type { ChiefModelOption } from '../fixtures/records.js';
+import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown } from '../icons/index.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
@@ -22,7 +22,7 @@ import { ClickCatcher } from '../overlays/dismiss.js';
 interface AgentModelSelectProps {
   /** 当前值（live = agent 记录真值；fixture = 场景记录）；null = 未设置模型。 */
   value: { provider: string; modelId: string } | null;
-  options: ChiefModelOption[];
+  options: ModelOption[];
   /** 选定回调；缺省 = fixture 律（调用面自行决定是否只做本地回显）。 */
   onPick?: (value: { provider: string; modelId: string } | null) => void;
   /** 类名前缀——两个消费点的 e2e 各自钉自己的钩子，几何也各归各的域 CSS：
