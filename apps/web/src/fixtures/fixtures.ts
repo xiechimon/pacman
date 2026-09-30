@@ -1463,6 +1463,10 @@ const AGENT_R3_BUILDER: AgentRecord = {
   secrets: [],
   skills: [],
   mcpServers: [],
+  // r3 §4 的 wire 摘要没收这一位，值取 r5 抓包里同一个 Agent 的
+  // `agentActor.createdAt`（1789786840183 = 2026/9/19，与 r3 §4 截图
+  // `创建于 2026/9/19` 同值）——fixture 面也照真值走，不另造。
+  createdAt: 1789786840183,
 };
 
 /** Agent 详情 + 创建弹窗模型位的数据集：团队页 roster 与详情页记录同场景，

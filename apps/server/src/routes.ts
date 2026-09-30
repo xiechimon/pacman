@@ -273,6 +273,7 @@ function agentRecordOf(row: typeof agent.$inferSelect): AgentRecord {
     secrets: row.secrets,
     skills: row.skills,
     mcpServers: row.mcpServers,
+    createdAt: row.createdAt,
   };
 }
 
@@ -864,6 +865,7 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         // （目录删除后死引用不留，不报错）。
         skills: filterKnownSkillIds(ctx.skillsDir, body.skills ?? []),
         mcpServers: body.mcpServers ?? [],
+        createdAt: nowMs(), // XMON-18/B4：创建时间从此有真值（旧行为 null）
       })
       .run();
     return c.json({ id }, 201); // r5 §1/§8 补录：创建 → 201 {id}

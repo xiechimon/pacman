@@ -108,6 +108,16 @@ export function formatTokens(n: number): string {
   return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`;
 }
 
+/** `YYYY/M/D` 日期（原版 Agent 状态行 `创建于 2026/9/19` 的日期段，XMON-18；
+ * 与 clockTime 同律：格式钉 zh-CN，不随界面语言切。本地时区 = live 语义）。 */
+export function calendarDate(ms: number): string {
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  }).format(ms);
+}
+
 /** `HH:MM` 时间戳行（r7 26 `13:35`；本地时区 = live 语义，fixture 侧另有
  * 冻结时钟）。 */
 export function clockTime(ms: number): string {

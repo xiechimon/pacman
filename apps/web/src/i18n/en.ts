@@ -151,6 +151,7 @@ export const EN: Record<string, string> = {
   每天运行: 'Runs daily',
   每周运行: 'Runs weekly',
   运行一次: 'Runs once',
+  创建于: 'Created',
   '{mo}月{d}日': '{monthShort} {d}',
   '下次 {day} {time}': 'Next {day} {time}',
   自动: 'Auto',

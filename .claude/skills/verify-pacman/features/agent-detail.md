@@ -6,7 +6,7 @@
 
 - `card-link` — 团队页 `.team-agent-card` 是 `<a>`，点击落 `/app/resources/agents/<id>`，`?scenario=` 随行。
 - `overview-fields` — 名称（行内编辑）、职责、默认 skill、模型选择器，各自提交后 server 记录随之变。
-- `overview-readonly` — 运行时 / 思考强度 / 状态是只读值行（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）；思考强度档位词表经能力读面 `GET /api/capabilities` 到 web（XMON-16 / #499 B3 裁决 A），只读行按该词表呈现档位——存值不在词表内落「默认」（B1 裁「保持只读」：读面 ≠ 写面，选择器仍不出）；`创建于` 无 createdAt 列。三处都不发明。
+- `overview-readonly` — 运行时 / 思考强度 / 状态行是只读（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）；思考强度档位词表经能力读面 `GET /api/capabilities` 到 web（XMON-16 / #499 B3 裁决 A），只读行按该词表呈现档位——存值不在词表内落「默认」（B1 裁「保持只读」：读面 ≠ 写面，选择器仍不出）。状态行 = 原版 r3 §4 形态 `active · 创建于 YYYY/M/D`（XMON-18 / B4 裁 A：`agent.createdAt` 列 + `POST /agents` 写路径 + `agentRecordSchema` 投影三件一起落）。**旧行语义**：加列之前建的行 createdAt 为 null，此时只出 `active`——不填 0 占位（record 里占位与真时间戳同形，界面会显示 1970/1/1）、也不发明「未知」文案（原版没有这一态）。三处都不发明。
 - `memory-tab` — 条目列表 + 删除；空态文案 = shared `MEMORY_EMPTY_COPY` canon。
 - `permissions-tab` — 工具 6 开关（文案 = shared `AGENT_TOOL_SWITCHES`，**六档各带说明副文案** = shared `AGENT_TOOL_COPY`）、**团队密钥一行聚合总开关**（#510：粒度 = 原版的全有全无，副文案 = shared `AGENT_PERMISSION_COPY.secrets`；开 = `PATCH { secrets: 团队全部密钥 id }`、关 = `PATCH { secrets: [] }`，勾选态 = `agent.secrets` 非空；零密钥时只有空态 `暂无团队密钥。`、不出开关）、MCP 逐个勾选，落 `PATCH tools/secrets/mcpServers`。
 - `create-model-slot` — 创建弹窗模型槽两态；选中后 `POST /api/teams/{id}/agents` body 带 `provider` 与 `modelId`。
@@ -28,6 +28,7 @@ Preconditions:
 - 团队页卡是链接并落详情路由 → `node <worktree>/.claude/skills/verify-pacman/scripts/drive-agent-detail.mjs` → `team-card-is-link`（卡元素是 `a`）+ `card-opens-detail-route`（pathname = `/app/resources/agents/<id>`）。
 - 概览回显 = server 真值 → 同命令 → `overview-name` / `overview-role-empty-canon` / `overview-model` / `overview-thinking-readonly`。
 - 思考强度档位来自能力读面（XMON-16）→ 同命令 → `capabilities-seven-levels`（读面七档有序）/ `thinking-inside-vocabulary-rendered`（PATCH `high` → 行出 `high`）/ `thinking-outside-vocabulary-falls-back`（PATCH `ultra` → 行落「默认」且无按钮）。后两条是「读面接到 UI 上」的判据，只验端点不算数；跑完还原种子态 `thinkingLevel: null`。
+- 状态行（XMON-18）→ 同命令 → `server-created-at-set`（server 侧 `createdAt` 是非 null 非 0 的毫秒数 = 写路径真的落了值）+ `overview-status-line`（UI 逐字 = `active · 创建于 <该真值渲染出的 YYYY/M/D>`）。两条缺一不可：只验 server = 没证明接上了 UI，只验 UI = 没证明值不是前端编的。**null 分支不在本 probe 覆盖内**（live 栈是全新 scratch 库，没有加列前建的行）——旧行语义由 `apps/server/test/agent-created-at.test.ts` 的 ② 与 ④ 两条锁。
 - 改名称、改职责 → 同命令 → `name-persisted` / `role-persisted`（重取 `GET /api/teams/{id}/agents/{aid}` 对字段，不看 UI 回显）。
 - 模型槽清空再选回 → 同命令 → `model-cleared`（provider/modelId 双 null）/ `model-persisted`（`verify-485-gw/claude-sonnet-5`）。
 - 权限开关 → 同命令 → `perm-six-switches`（6 个）+ `tool-persisted`（server `tools` 数组）。

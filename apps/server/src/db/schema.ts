@@ -320,6 +320,13 @@ export const agent = sqliteTable('agent', {
   secrets: json<string[]>('secrets').notNull().default(sql`'[]'`),
   skills: json<string[]>('skills').notNull().default(sql`'[]'`),
   mcpServers: json<string[]>('mcpServers').notNull().default(sql`'[]'`),
+  /** 创建时间（r5 raw `agentActor.createdAt` 实测位，XMON-18/B4 裁 A）。
+   * 可空：列加进来之前建的行没有真值，写占位会与真时间戳同形（web 会把它
+   * 渲染成一个假日期）；null = 未知，状态行只出 `active`。NOT NULL 无 default
+   * 的 ADD COLUMN 在有行的旧库上会被 SQLite 拒绝（实测 3.53.4：
+   * `Cannot add a NOT NULL column with default value NULL`），可空是唯一
+   * 既过迁移又不说谎的形态。 */
+  createdAt: epochMs('createdAt'),
 });
 
 // —— agent_memory（02 §4.4/r5 §6：配额 100 + 三级溯源；写路径归 M4）———————————

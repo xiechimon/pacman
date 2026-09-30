@@ -134,6 +134,7 @@ export function agentRecordOfRow(row: typeof agent.$inferSelect): AgentRecord {
     secrets: row.secrets,
     skills: row.skills,
     mcpServers: row.mcpServers,
+    createdAt: row.createdAt,
   };
 }
 

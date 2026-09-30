@@ -27,6 +27,8 @@ import { expect, type Page, test } from '@playwright/test';
 // 18. 排序把搜索条件吃掉（选中排序项后过滤集变回全量）
 // 19. 名称沿用裸文本钮、没有编辑图标（点不出可点感）
 // 20. 职责的编辑钮丢了图标（退回文字钮），或图标钮没有可访问名
+// 21. 状态行退回只有 `active`、或把 createdAt 渲染成占位日期（XMON-18：原版
+//     形态是 `active · 创建于 2026/9/19`；不在 fixture 语料里的值不许出现在这行）
 //
 // fixture 场景 = 'agent-detail'：TEAM_R7 的 r3-builder 卡 + 该 agent 的完整
 // 记录（字段 = r3 §4 实测样本原样）+ resources 行集。
@@ -148,9 +150,12 @@ test('概览：思考强度是只读值行，无模型时显示「默认」', as
   await expect(thinking.locator('button')).toHaveCount(0);
 });
 
-test('概览：状态行显示 active', async ({ page }) => {
+// XMON-18（B4 裁 A）：原版 r3 §4 的状态行是 `active · 创建于 2026/9/19` 一整行
+// （无「状态」标签）。fixture 的 createdAt = r5 抓包真值 1789786840183，日期段
+// 由 calendarDate 按本地时区渲染成 `YYYY/M/D`（UTC 与 Asia/Shanghai 同为 9/19）。
+test('概览：状态行 = `active · 创建于 <日期>`', async ({ page }) => {
   const detail = await openDetail(page);
-  await expect(detail.locator('.agent-status')).toContainText('active');
+  await expect(detail.locator('.agent-status')).toHaveText('active · 创建于 2026/9/19');
 });
 
 // 文案逐字 = shared `MEMORY_EMPTY_COPY`（records/memory.ts:18；e2e 不跨包取

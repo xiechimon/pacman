@@ -147,6 +147,28 @@ try {
     await page.locator('.agent-runtime').textContent(),
   );
 
+  // —— 2a. 状态行（XMON-18/B4 裁 A）────────────────────────────────────
+  // 原版 r3 §4 形态 = `active · 创建于 2026/9/19`；日期段必须来自 server 的
+  // createdAt（POST 落的那一下），不是 web 自己编的。两侧都断言：server 侧
+  // 有真值（非 null、非 0 占位），UI 侧逐字等于按该真值渲染出来的行。
+  // 下面的 Intl 调用镜像 apps/web/src/api/mappers.ts 的 calendarDate（脚本是
+  // .mjs，取不到 TS 源），只作对拍用。
+  const calendarDate = (ms) =>
+    new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'numeric', day: 'numeric' }).format(
+      ms,
+    );
+  check(
+    'server-created-at-set',
+    typeof record0.createdAt === 'number' && record0.createdAt > 0,
+    String(record0.createdAt),
+  );
+  const statusText = (await page.locator('.agent-status').textContent())?.trim() ?? '';
+  check(
+    'overview-status-line',
+    statusText === `active · 创建于 ${calendarDate(record0.createdAt)}`,
+    statusText,
+  );
+
   // —— 2b. 思考强度档位来自能力读面（XMON-16 / #499 B3）────────────────
   // 读面本体：七档有序（期望值来源 = pi-agent-core 的 ThinkingLevel 联合，
   // 字面量独立写出，不读实现里的常量）。

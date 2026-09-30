@@ -10,8 +10,7 @@
 // （两组形状同源 = shared AgentRecord），fixture 面无后端，提交落本地覆盖
 // 记录承载「提交后回显」——live 面则是 S8 律（mutation → invalidateAll 重取）。
 //
-// 本面明确不做的三件（均因证据/结构缺口，不发明）：
-// · `创建于 …` 状态行——AgentRecord 与 DB agent 表都无 createdAt 列；
+// 本面明确不做的两件（均因证据/结构缺口，不发明）：
 // · 思考强度选择器——B1 已裁「保持只读」；档位词表本身有读面了（XMON-16：
 //   `GET /api/capabilities` 投影 shared THINKING_LEVELS），但读面 ≠ 写面，
 //   只读行按读面呈现档位，选择器与 provider 写面的耦合仍不做；
@@ -41,7 +40,12 @@ import {
   useSecrets,
   useSkills,
 } from '../api/hooks.js';
-import { RUNTIME_LABELS, toModelOptions, toThinkingLevelDisplay } from '../api/mappers.js';
+import {
+  calendarDate,
+  RUNTIME_LABELS,
+  toModelOptions,
+  toThinkingLevelDisplay,
+} from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
@@ -292,9 +296,17 @@ export function AgentDetailPage() {
               <span className="agent-field-label">{t('思考强度')}</span>
               <span className="agent-thinking">{thinkingLevel ?? t('默认')}</span>
             </div>
+            {/* 状态行（r3 §4 实测形态 `active · 创建于 2026/9/19`，无标签）。
+                createdAt 是 XMON-18/B4 加列后才有真值的位：加列之前建的行落
+                null，此时只出状态本体——不填 1970 占位（record 里占位与真值
+                同形，界面会把 1970/1/1 当真日期显示），也不发明「未知」文案
+                （原版没有这一态）。 */}
             <div className="agent-field">
-              <span className="agent-field-label">{t('状态')}</span>
-              <span className="agent-status">{agent.status}</span>
+              <span className="agent-status">
+                {agent.createdAt != null
+                  ? `${agent.status} · ${t('创建于')} ${calendarDate(agent.createdAt)}`
+                  : agent.status}
+              </span>
             </div>
           </div>
         )}

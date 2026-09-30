@@ -133,10 +133,16 @@
 }
 
 .agent-thinking,
-.agent-runtime,
-.agent-status {
+.agent-runtime {
   color: var(--text-primary);
   font-size: 13px;
+}
+
+/* 状态行是卡片脚注而非字段值（XMON-18/B4：原版 `active · 创建于 2026/9/19`
+   在概览末尾，比字段值淡），故取 hint 那一档的淡色小字。 */
+.agent-status {
+  color: var(--text-tertiary);
+  font-size: 12px;
 }
 
 /* —— 模型选择器（AgentModelSelect 一面两消费点）——

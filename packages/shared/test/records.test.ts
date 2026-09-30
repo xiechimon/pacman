@@ -268,6 +268,8 @@ describe('agent record (r3 §4 实测原样)', () => {
     secrets: [],
     skills: [],
     mcpServers: [],
+    // r5 raw `agentActor.createdAt`（2026/9/19；r3 §4 截图 `创建于 2026/9/19` 同值）。
+    createdAt: 1789786840183,
   };
 
   it('parses the observed record', () => {
@@ -276,6 +278,10 @@ describe('agent record (r3 §4 实测原样)', () => {
 
   it('rejects unobserved status values ([推断] note guards the enum)', () => {
     expect(agentRecordSchema.safeParse({ ...sample, status: 'archived' }).success).toBe(false);
+  });
+
+  it('createdAt 收 null（加列之前建的行无真值，XMON-18/B4 裁 A）', () => {
+    expect(agentRecordSchema.parse({ ...sample, createdAt: null }).createdAt).toBeNull();
   });
 });
 
