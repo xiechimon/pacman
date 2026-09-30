@@ -6,8 +6,8 @@
 // fixture follows the accept-dialog 律 (#148: close on submit).
 
 import { useState } from 'react';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
-import { DialogShell } from '../ui/dialog-shell.js';
 import { Input } from '../ui/input.js';
 
 interface CreateSecretDialogProps {

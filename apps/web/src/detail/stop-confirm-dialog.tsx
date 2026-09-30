@@ -5,9 +5,9 @@
 // 停止钮不挂 handler，DOM 字节不变）。
 
 import { useState } from 'react';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { CheckWhite } from '../icons/index.js';
-import { DialogShell } from '../ui/dialog-shell.js';
 import './overlays.css';
 
 interface StopConfirmDialogProps {

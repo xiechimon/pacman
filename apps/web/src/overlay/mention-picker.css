@@ -261,6 +261,26 @@
   color: rgb(67 56 202);
 }
 
+/* #425 B1 退场（壳换 FloatingShell 后的新配方）：旧选择器
+   `.overlay-mount[data-overlay-state="closed"] .anim-pop` 随 OverlayMount
+   退役（motion.css 的 overlay-mount 规则留给未迁面，本面不再命中）。
+   Base UI 只在 Popup 本体有进行中动画时才延迟卸载（getAnimations 不看
+   子树），故壳挂一条零视觉的 visibility 延迟过渡撑住退场窗（同旧
+   OverlayMount 的计时手法，--dur-fast = 150ms），面内 anim-pop 的退场
+   终态改由壳的 [data-ending-style] 驱动。 */
+.mention-picker-shell {
+  transition: visibility 0s linear var(--dur-fast);
+}
+
+.mention-picker-shell[data-ending-style] {
+  visibility: hidden;
+}
+
+.mention-picker-shell[data-ending-style] .anim-pop {
+  opacity: 0;
+  transform: scale(0.95) translateY(-4px);
+}
+
 /* Composer @ inline listbox (r9 §2.2 / §3.2): 702-wide, anchored
    above the composer. Avatar + name + role description per row. */
 .mention-inline {

@@ -3,92 +3,12 @@
    label/input/textarea/primary/ghost/seg)。家族 = 唯一事实源；消费规则见
    ui/README.md。内容样式(各弹窗业务样式)仍留在各域 css。
 
-/* Modal overlay surfaces (issue #68, r7 §3.5): 448-wide dialogs centered on
-   both axes over a 60% black backdrop (sampled r7 30: #faf7f3 → #646361).
-   Light geometry scanned from r7 30/31/32/34; dark values sampled from the
-   r8 78–81 captures. Header 48 + 1px divider (card-border), close glyph 16
-   centered 12 from the right edge. */
-
-.dlg-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--overlay-scrim);
-}
-
-.dlg {
-  /* width 由 ui/dialog-shell.tsx 透传 style 决定（448 家族律缺省；M7 #312
-     review 对话框 560）。css 不写死以允许多档宽度。 */
-  background: var(--dialog-bg);
-  border-radius: 12px;
-  box-shadow: 0 18px 45px rgb(0 0 0 / 0.25);
-  overflow: hidden;
-  /* #193 viewport law: cap the panel and split it into head / scroll body /
-     pinned foot so a tall form never pushes submit out of the viewport
-     (generalizes the #175 provider-only fix to the whole family). */
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - 48px);
-}
-
-.dlg-head {
-  position: relative;
-  flex: none;
-  display: flex;
-  align-items: center;
-  height: 48px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--card-border);
-}
-
-/* #193: children scroll here; min-height:0 lets the flex item actually
-   shrink under the cap. Short content renders identically (no scrollbar). */
-.dlg-body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-/* #193: pinned footer slot — the fragment carries its own padding
-   (per-face canon spacing); the column stretch keeps full-width primaries
-   (e.g. .dlg-provider-create) at 100%. */
-.dlg-foot {
-  flex: none;
-  display: flex;
-  flex-direction: column;
-}
-
-/* 分支与PR header: centered segmented tabs, no divider (r7 31) */
-.dlg-head--plain {
-  justify-content: center;
-  border-bottom: 0;
-}
-
-.dlg-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.dlg-close {
-  position: absolute;
-  right: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: 0;
-  /* 圆角归一 6→8px（diff-audit 裁决 #1/#4，2026-09-26 用户拍板；
-     主线收口——lane 禁动 ui/ 所以留到这里改） */
-  border-radius: 8px;
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
-}
+/* #425 B1：壳级规则（.dlg-backdrop / .dlg / .dlg-head / .dlg-head--plain /
+   .dlg-title / .dlg-close / .dlg-body / .dlg-foot）随 components/ui/dialog-shell.tsx
+   适配层退役——壳机制换 Base UI Dialog，壳几何改由适配层工具类承载（几何值
+   与本文件原值逐条对齐：#193 封顶三段律、head 48 + 1px 分隔、close 24 居中
+   右 12）。本文件保留**表单族**（.dlg-form-*）与各 per-face 弹窗类；这些类名
+   是 e2e 钉死的别名（#411 别名优先政策），原样不动。 */
 
 /* ==================== .dlg-form-* 弹窗表单样式族(#221)====================
    DialogShell(#68)家族各表单弹窗的实测同形层:secret(#173)/mcp(#174)/
@@ -274,4 +194,19 @@
   .dlg-seg-tab:not([data-active="true"]):hover {
     background-color: var(--seg-hover);
   }
+}
+
+/* #425 B1 退场配方（同 overlay.css 的 .more-menu-shell）：壳换 Base UI 后
+   旧 OverlayMount 的计时驱动退役，改用零视觉 visibility 延迟过渡撑卸载窗 +
+   [data-ending-style] 驱动子级 anim-fade 终态。 */
+.dlg-shell {
+  transition: visibility 0s linear var(--dur-overlay);
+}
+
+.dlg-shell[data-ending-style] {
+  visibility: hidden;
+}
+
+.dlg-shell[data-ending-style] .anim-fade {
+  opacity: 0;
 }

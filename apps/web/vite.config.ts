@@ -11,6 +11,10 @@ const devWebPort = Number(process.env.PACMAN_DEV_WEB_PORT) || 5173;
 // （静态托管/fixture）。
 export default defineConfig({
   plugins: [react()],
+  // @/* 别名（#425）：shadcn CLI 的 preflight 硬查 import alias——tsconfig
+  // paths 与 vite resolve 两处都要有，缺一则 CLI 直接退出。既有相对 import
+  // 不受影响。
+  resolve: { alias: { '@': new URL('./src', import.meta.url).pathname } },
   server: {
     port: devWebPort,
     // strictPort：vite 缺省「被占就静默 +1」在多栈并行下有两重害处——界面

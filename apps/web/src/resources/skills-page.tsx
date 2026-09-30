@@ -14,10 +14,11 @@ import { useSearchParams } from 'react-router';
 import { useSkills } from '../api/hooks.js';
 import { mapSkills } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { FloatingShell } from '../components/ui/floating-shell.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ArrowUpDown, Check, ChevronDown, Puzzle, Search } from '../icons/index.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 import { EmptyState, RowChevron, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
 
@@ -38,7 +39,8 @@ export function SkillsPage() {
   const rows = live ? mapSkills(skillsQ.data ?? []) : (fixture.resources?.skills ?? []);
   const [sortOpen, setSortOpen] = useState(false);
   const [sort, setSort] = useState<SortKind>('默认');
-  useEscapeClose(sortOpen, () => setSortOpen(false));
+  // #425 B1:wrap 锚定面——portal 挂进 wrap 保绝对定位几何;Esc 走 FloatingShell。
+  const [sortWrap, setSortWrap] = useState<HTMLSpanElement | null>(null);
   const skills = sort === '名称' ? [...rows].sort((a, b) => a.name.localeCompare(b.name)) : rows;
 
   return (
@@ -67,7 +69,7 @@ export function SkillsPage() {
               <Search width={13} height={13} />
               <span className="res-search-ph">{t('搜索技能...')}</span>
             </div>
-            <span className="res-sort-wrap">
+            <span className="res-sort-wrap" ref={setSortWrap}>
               <button
                 type="button"
                 className="res-sort"
@@ -79,7 +81,11 @@ export function SkillsPage() {
                 <span>{t('排序')}</span>
                 <ChevronDown width={12} height={12} />
               </button>
-              <OverlayMount open={sortOpen}>
+              <FloatingShell
+                open={sortOpen}
+                onClose={() => setSortOpen(false)}
+                container={sortWrap}
+              >
                 <ClickCatcher onClose={() => setSortOpen(false)} />
                 <div className="res-sort-menu" role="listbox" aria-label={t('排序')}>
                   {SORT_OPTIONS.map((option) => (
@@ -103,7 +109,7 @@ export function SkillsPage() {
                     </button>
                   ))}
                 </div>
-              </OverlayMount>
+              </FloatingShell>
             </span>
           </div>
           {skills.map((skill) => (
