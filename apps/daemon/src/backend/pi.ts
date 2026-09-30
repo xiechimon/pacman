@@ -44,14 +44,16 @@ import type {
   StepEvent,
   ToolCallRecord,
 } from '@pacman/shared';
-import { ENV_VARS } from '@pacman/shared';
+import { ENV_VARS, THINKING_LEVELS } from '@pacman/shared';
 import { SessionNotResumableError } from './errors.js';
 import { connectFailedLine, connectMcpBridge } from './mcp-bridge.js';
 
-/** 02 §6.2/#34：oauth 四家订阅；思考强度 = pi 七档（docs/sdk.md）。 */
+/** 02 §6.2/#34：oauth 四家订阅；思考强度 = pi 七档。
+ *  档位词表取 shared `THINKING_LEVELS` 单源（XMON-16）——server 的能力读面
+ *  要投影同一份词表，而 server 读不到 daemon；常量在此复制一份就是两份真值。 */
 export const PI_CAPABILITIES: AgentBackendCapabilities = {
   name: 'pi',
-  thinkingLevels: ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
+  thinkingLevels: THINKING_LEVELS,
   oauthProviders: ['anthropic', 'openai-codex', 'github-copilot', 'xai'],
   compaction: true,
   sessionResume: true,
