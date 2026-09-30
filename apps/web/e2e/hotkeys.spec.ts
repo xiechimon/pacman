@@ -1,7 +1,8 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// Issue #389 + #442 + #468 acceptance: the 快捷键组 — N opens the new-task dialog
-// from any page (the sidebar gains a 新任务 row carrying the N kbd badge,
+// Issue #389 + #442 + #468 + XMON-37 acceptance: the 快捷键组 — C opens the
+// new-task dialog from any page (XMON-37 retires #389's N; the sidebar keeps
+// its 新任务 row, now carrying the C kbd badge,
 // upstream todos.dev form), and ⌘J (Ctrl+J off macOS — the ⌘K search
 // registration's cmd/ctrl dual-receipt form) wakes the chief drawer with
 // focus landing in the composer (dialog-family autofocus law —
@@ -9,33 +10,35 @@ import { expect, type Page, test } from '@playwright/test';
 // the family, none here). ⌘J is a toggle (#468): the second press closes
 // the drawer, including from the composer focus the open itself landed —
 // the editable guard exempts the drawer's own interior, otherwise the
-// chord could never close what it opened. N stays open-only, matching the
+// chord could never close what it opened. C stays open-only, matching the
 // row-click semantics. Guards keep native semantics: editable targets
 // (input/textarea/select/contenteditable) swallow both keys OUTSIDE the
 // drawer — typing must never wake a surface; ⌘J's guard is editable-only —
 // buttons and links carry no native ⌘J semantics, so a focused control
 // must not block the chord. Space's binding is removed (#442 replaces
 // #389's): scrolling and focused-control activation are fully returned,
-// nothing preventDefaults them. Modifier-less N still passes through
-// modifier chords (⌘N). Each test pins one failure mode:
-// 1. N on the board opens the dialog (hotkey listener live); ⌘N does not
-// 2. the sidebar 新任务 row renders the N badge and click-opens the dialog
-// 3. N on a non-board route opens the dialog in place (no navigation)
-// 4. N on the project page opens that page's own dialog (route-project
+// nothing preventDefaults them. Modifier-less C still passes through modifier
+// chords — ⌘C is the browser's copy and must never wake the dialog — and the
+// retired N opens nothing. Each test pins one failure mode:
+// 1. C on the board opens the dialog (hotkey listener live); ⌘C does not
+//    (copy keeps its chord) and the retired plain N does not
+// 2. the sidebar 新任务 row renders the C badge and click-opens the dialog
+// 3. C on a non-board route opens the dialog in place (no navigation)
+// 4. C on the project page opens that page's own dialog (route-project
 //    chip), not a second global instance
 // 5. Space no longer opens the drawer; ⌘J does with the composer focused,
 //    and ⌘J's default is consumed (a probe listener registered after the
 //    app's sees the delivered keydown already preventDefaulted)
 // 6. ⌘J wakes the drawer on a non-board route (schedules)
-// 7. editable focus OUTSIDE the drawer swallows both keys — the n lands IN
+// 7. editable focus OUTSIDE the drawer swallows both keys — the c lands IN
 //    the input, ⌘J keeps the drawer shut
-// 8. textarea focus (chief composer) swallows N — the guard family is
+// 8. textarea focus (chief composer) swallows C — the guard family is
 //    input + textarea + select + contenteditable; the app ships no
 //    contenteditable surface today, so that branch stays code-only
 //    (a synthetic node would test the guard, not the app)
 // 9. Space on a focused button fires the button natively (activation
 //    returned, no hijack); ⌘J fires the drawer even with a button focused
-//    (guard narrowed to editable-only); modifier-less N stays live
+//    (guard narrowed to editable-only); modifier-less C stays live
 // 10. ⌘J toggles shut from the composer focus (drawer-interior exemption
 //     missing → the guard swallows the closing chord), and the full
 //     open→close→open loop rides one listener
@@ -75,6 +78,21 @@ async function pressUntil(page: Page, key: string, visible: ReturnType<Page['loc
   throw new Error(`${key} never opened ${visible}`);
 }
 
+/** Retired-binding negative (XMON-37), the retry law inverted: six delivered
+ *  presses of the old key could not all be lost if it were still bound, so a
+ *  surface that stays closed across the loop is proof it is unbound. */
+async function pressesStayClosed(
+  page: Page,
+  key: string,
+  surface: ReturnType<Page['locator']>,
+) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(120);
+    await expect(surface).toHaveCount(0);
+  }
+}
+
 /** Escape-until-closed, same retry law as pressUntil: the close listener
  *  registers in a passive effect too, so an Escape fired right after open
  *  can be lost (renderer input processing lags the assertion read under
@@ -109,47 +127,53 @@ async function toggleUntilHidden(page: Page, surface: ReturnType<Page['locator']
   throw new Error('⌘J never closed the drawer');
 }
 
-test('N on the board opens the new-task dialog; ⌘N does not', async ({ page }) => {
+test('C on the board opens the new-task dialog; ⌘C and the retired N do not', async ({
+  page,
+}) => {
   await page.goto(BOARD);
   await expect(page.locator('.sidebar-row').first()).toBeVisible();
-  // modifier chords pass through — ⌘N is the browser's own new-window chord
-  await page.keyboard.press('Meta+n');
+  // modifier chords pass through — ⌘C is the browser's own copy chord and
+  // must keep working (the dialog may not steal it)
+  await page.keyboard.press('Meta+c');
   await expect(dialog(page)).toHaveCount(0);
+  // XMON-37: N is retired — the same press that used to open the dialog now
+  // does nothing, and the listener is proven live by the C press below
+  await pressesStayClosed(page, 'n', dialog(page));
 
-  await pressUntil(page, 'n', dialog(page));
+  await pressUntil(page, 'c', dialog(page));
   // family law: the dialog's spec textarea owns focus on open (#394 单字段面)
   await expect(page.locator('.new-task-spec')).toBeFocused();
   await escapeUntilHidden(page, dialog(page));
   await expect(dialog(page)).toHaveCount(0);
 });
 
-test('sidebar 新任务 row carries the N badge and click-opens the dialog', async ({ page }) => {
+test('sidebar 新任务 row carries the C badge and click-opens the dialog', async ({ page }) => {
   await page.goto(BOARD);
   const row = page.locator('.sidebar-row', { hasText: '新任务' });
   await expect(row).toBeVisible();
-  await expect(row.locator('.sidebar-kbd')).toHaveText('N');
+  await expect(row.locator('.sidebar-kbd')).toHaveText('C');
   await row.click();
   await expect(dialog(page)).toBeVisible();
   await escapeUntilHidden(page, dialog(page));
   await expect(dialog(page)).toHaveCount(0);
 });
 
-test('N on a non-board route opens the dialog in place', async ({ page }) => {
+test('C on a non-board route opens the dialog in place', async ({ page }) => {
   await page.goto(SCHEDULES);
   await expect(page.locator('.sidebar-row').first()).toBeVisible();
-  await pressUntil(page, 'n', dialog(page));
+  await pressUntil(page, 'c', dialog(page));
   // in place — the route never hops to the board
   await expect(page).toHaveURL(/\/app\/schedules/);
   await escapeUntilHidden(page, dialog(page));
   await expect(dialog(page)).toHaveCount(0);
 });
 
-test('N on the project page opens the page’s own dialog (route project chip)', async ({
+test('C on the project page opens the page’s own dialog (route project chip)', async ({
   page,
 }) => {
   await page.goto(PROJECT);
   await expect(page.locator('.sidebar-row').first()).toBeVisible();
-  await pressUntil(page, 'n', dialog(page));
+  await pressUntil(page, 'c', dialog(page));
   // exactly one instance — the page's own (project-empty-new-task.spec pins
   // the chip = the route's project, which the global sidebar dialog cannot
   // know); a second global instance would read 2 here
@@ -208,31 +232,31 @@ test('⌘J wakes the chief drawer on a non-board route', async ({ page }) => {
   await expect(drawer(page)).toHaveCount(0);
 });
 
-test('editable focus swallows N and ⌘J — the n lands IN the input', async ({ page }) => {
+test('editable focus swallows C and ⌘J — the c lands IN the input', async ({ page }) => {
   await page.goto(BOARD);
   // open the ⌘K panel: its input is the editable focus target
   await pressUntil(page, 'Meta+k', page.locator('.search-panel'));
   const field = page.locator('.search-input-row input');
   await expect(field).toBeFocused();
 
-  await page.keyboard.press('n');
+  await page.keyboard.press('c');
   await expect(dialog(page)).toHaveCount(0);
   // #442: the same editable guard swallows ⌘J — typing must never wake a
   // surface, and the chord inserts no text of its own
   await page.keyboard.press('Meta+j');
   await expect(drawer(page)).toHaveCount(0);
-  // no preventDefault hijack — the n typed through into the query
-  await expect(field).toHaveValue('n');
+  // no preventDefault hijack — the c typed through into the query
+  await expect(field).toHaveValue('c');
 });
 
-test('textarea focus (chief composer) swallows N', async ({ page }) => {
+test('textarea focus (chief composer) swallows C', async ({ page }) => {
   await page.goto(BOARD);
   await pressUntil(page, 'Meta+j', drawer(page));
   const composer = page.locator('.chief-composer-input');
   await expect(composer).toBeFocused();
   // fixture composer is readOnly — focus holds but typing lands nowhere;
-  // the guard must keep N from opening the dialog behind the drawer
-  await page.keyboard.press('n');
+  // the guard must keep C from opening the dialog behind the drawer
+  await page.keyboard.press('c');
   await expect(dialog(page)).toHaveCount(0);
   await expect(drawer(page)).toBeVisible();
   await escapeUntilHidden(page, drawer(page));
@@ -246,9 +270,9 @@ test('Space on a focused button activates it natively; ⌘J fires past button fo
   const searchRow = page.locator('.sidebar-row', { hasText: '搜索' });
   await expect(searchRow).toBeVisible();
 
-  // N is guarded by editability only — a focused button does not block it
+  // C is guarded by editability only — a focused button does not block it
   await searchRow.focus();
-  await page.keyboard.press('n');
+  await page.keyboard.press('c');
   await expect(dialog(page)).toBeVisible();
   await escapeUntilHidden(page, dialog(page));
   await expect(dialog(page)).toHaveCount(0);
