@@ -6,7 +6,7 @@
 
 - `card-link` — 团队页 `.team-agent-card` 是 `<a>`，点击落 `/app/resources/agents/<id>`，`?scenario=` 随行。
 - `overview-fields` — 名称（行内编辑）、职责、默认 skill、模型选择器，各自提交后 server 记录随之变。
-- `overview-readonly` — 运行时 / 思考强度是只读值行（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）；思考强度档位词表经能力读面 `GET /api/capabilities` 到 web（XMON-16 / #499 B3 裁决 A），只读行按该词表呈现档位——存值不在词表内落「默认」（B1 裁「保持只读」：读面 ≠ 写面，选择器仍不出）。**XMON-18 裁决（2026-10-01）撤掉另两条**：`状态` 行（`agentStatusSchema` 只有 active 一个取值，零信息量）、`创建于` 行（不需要创建时间，DB 也不加 createdAt 列）。撤行的判据是「页面里不存在」，不是换文案。
+- `overview-readonly` — 运行时 / 思考强度是只读值行（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）；思考强度档位词表经能力读面 `GET /api/capabilities` 到 web（XMON-16 / #499 B3 裁决 A），只读行按该词表呈现档位——存值不在词表内落「默认」（B1 裁「保持只读」：读面 ≠ 写面，选择器仍不出）。**XMON-18 裁决（2026-10-01）撤掉 `状态` 行**（`agentStatusSchema` 只有 active 一个取值，零信息量；判据是「页面里不存在」，不是换文案）。同一裁决里 `创建于 …` 也不做——它**从来没渲染过**（此前缺口是「DB 无 createdAt 列」），所以是继续不做、不是撤行；`main` 上不会加这一列。
 - `memory-tab` — 条目列表 + 删除；空态文案 = shared `MEMORY_EMPTY_COPY` canon。
 - `permissions-tab` — 工具 6 开关（文案 = shared `AGENT_TOOL_SWITCHES`，**六档各带说明副文案** = shared `AGENT_TOOL_COPY`）、**团队密钥一行聚合总开关**（#510：粒度 = 原版的全有全无，副文案 = shared `AGENT_PERMISSION_COPY.secrets`；开 = `PATCH { secrets: 团队全部密钥 id }`、关 = `PATCH { secrets: [] }`，勾选态 = `agent.secrets` 非空；零密钥时只有空态 `暂无团队密钥。`、不出开关）、MCP 逐个勾选，落 `PATCH tools/secrets/mcpServers`。
 - `create-model-slot` — 创建弹窗模型槽两态；选中后 `POST /api/teams/{id}/agents` body 带 `provider` 与 `modelId`。
