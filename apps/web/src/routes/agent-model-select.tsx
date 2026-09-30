@@ -1,5 +1,5 @@
 // Agent 模型选择器（#485）：概览 tab 与创建 Agent 弹窗共用一个面。
-// 候选清单投影 = api/mappers.ts `toChiefModelOptions`（custom providers
+// 候选清单投影 = api/mappers.ts `toModelOptions`（custom providers
 // models[] ∪ model-sources 非 pi 段；与总管压缩模型选择器同源，不各写一份）。
 // 交互 = anchored popover 家族律（FloatingShell + ClickCatcher + Esc，
 // role=listbox/option）；选中当前值 = 空操作关面。

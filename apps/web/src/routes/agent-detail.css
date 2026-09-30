@@ -53,6 +53,14 @@
   margin: 0;
 }
 
+/* 名称值 + 编辑图标同一行（r3 §4 实测两行都带图标；图标是入口而非装饰，
+   故与值拉开 6px 而不是贴死在文本尾）。 */
+.agent-name-row {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+}
+
 .agent-name {
   align-self: flex-start;
   background: none;
@@ -66,6 +74,19 @@
 
 .agent-name:hover {
   color: var(--indigo-500);
+}
+
+/* 图标钮的默认字号（button 底座 text-sm）对图标-only 钮没有意义，只留
+   padding 盒（size-7 由底座给）。 */
+.agent-name-edit,
+.agent-role-edit {
+  color: var(--text-tertiary);
+  padding: 0;
+}
+
+.agent-name-edit:hover,
+.agent-role-edit:hover {
+  color: var(--text-primary);
 }
 
 .agent-name-input {
@@ -258,7 +279,22 @@
   gap: 8px;
 }
 
+/* 配额头（r5 §6 `记忆 · 1 / 100`）：与搜索行同高的一行状态文本，不与列表
+   卡片混在一起，故单独占一行、不上卡片盒形。 */
+.agent-memory-head {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  margin: 0;
+}
+
+/* 搜索行沿用资源族 `.res-searchrow` 的盒形（resources.css，经 ResourceShell
+   在同一面上已加载）；这里只补一条：它是 flex 列的子项，别被拉成 stretch。 */
+.agent-memory-search {
+  flex: none;
+}
+
 .agent-memory-empty,
+.agent-memory-no-match,
 .agent-perm-empty {
   color: var(--text-tertiary);
   font-size: 13px;

@@ -374,7 +374,7 @@ export interface ResourcesContent {
   providerSources: ModelSource[];
   /** custom provider 记录（shared ProviderRecord 同形；live 面 = GET
    *  /api/teams/{id}/providers）。模型选择器（Agent 详情概览 / 创建 Agent
-   *  弹窗）的候选源——与 live 面共用 `toChiefModelOptions` 同一投影，两侧
+   *  弹窗）的候选源——与 live 面共用 `toModelOptions` 同一投影，两侧
    *  不各写一份。absent = 无服务商（创建弹窗落告警行态）。 */
   providers?: ProviderRecord[];
   /** Agent 记忆条目（shared MemoryRecord 同形；live 面 = GET
@@ -676,7 +676,7 @@ export interface ChiefThreadRef {
 export type ChiefSettingsTab = 'agent' | 'charter' | 'memory' | 'watches';
 
 /** 压缩模型选择器行最小投影（#358，spec 11 §A10；live = model-sources ∪
- *  custom providers 并集，api/mappers.ts `toChiefModelOptions` 单源；
+ *  custom providers 并集，api/mappers.ts `toModelOptions` 单源；
  *  fixture = canon 单行）。`provider` 位 = PATCH 值槽的 provider 归属
  *  （custom providerId 或 runtime 词表值 `claude-code`）。 */
 export interface ChiefModelOption {

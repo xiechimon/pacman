@@ -638,4 +638,15 @@ export const EN: Record<string, string> = {
     'The team skill this Agent always carries, without an @ mention in the message.',
   '尚无记忆。Agent 会在工作中将值得沉淀的经验存入此处。':
     'No memories yet. The Agent stores experience worth keeping here as it works.',
+
+  // —— #499 记忆 tab 的搜索与排序（配额头 + 搜索框 + 排序档）——
+  // `记忆 · {n} / {max}`：{max} = shared MEMORY_QUOTA_PER_AGENT 插值，不写死
+  // 数字；`搜索记忆…` = shared MEMORY_UI_COPY.searchPlaceholder（经 t() 消费、
+  // 不作字面量出现，i18n-coverage COMPUTED_KEYS 登记）。
+  '记忆 · {n} / {max}': 'Memory · {n} / {max}',
+  '搜索记忆…': 'Search memories…',
+  // 排序第二档（[设计]，见 agent-detail-page.tsx 的 MEMORY_SORT_OPTIONS）。
+  添加时间: 'Added',
+  // 零命中态：与「尚无记忆」canon 空态分开——搜不到不等于没存过。
+  '没有匹配的记忆。': 'No memories match.',
 };

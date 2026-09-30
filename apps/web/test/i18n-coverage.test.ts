@@ -32,6 +32,7 @@ import {
   FS_PICK_ERROR_COPY,
   LOCAL_ERROR_REASON_COPY,
   MEMORY_EMPTY_COPY,
+  MEMORY_UI_COPY,
   NOTIFICATION_BANNER_COPY,
   SKILL_PAGE_COPY,
 } from '@pacman/shared';
@@ -86,6 +87,11 @@ const COMPUTED_KEYS = new Set<string>([
   AGENT_PERMISSION_COPY.responsibility,
   AGENT_PERMISSION_COPY.defaultSkill,
   MEMORY_EMPTY_COPY,
+  // #499: 记忆 tab 的搜索/排序词 canon = shared MEMORY_UI_COPY（searchPlaceholder
+  // 与 sort 两键本面渲染，sourceLink 未落地故不入 en 词典），经 t() 消费、
+  // 不作字面量出现。
+  MEMORY_UI_COPY.searchPlaceholder,
+  MEMORY_UI_COPY.sort,
 ]);
 
 /** Data layer: capture-verbatim user/agent content, never translated.

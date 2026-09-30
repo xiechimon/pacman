@@ -2,7 +2,7 @@
 // compactionModel 可空 JSON 槽 + PATCH 第三槽,写→GET 回显同值、null 清空)。
 // 数据源(#358,spec 11 §A10——38 项 preset 方案退役,#180 裁决收敛到值回显
 // 层):选项清单 = GET model-sources 封套投影 ∪ custom providers models[]
-// 并集,投影单源在 api/mappers.ts `toChiefModelOptions`(pi 段归属走
+// 并集,投影单源在 api/mappers.ts `toModelOptions`(pi 段归属走
 // providers 面,claude-code 段 provider 位 = runtime 词表值);当前值命中
 // 不了选项时(含仍引用已废 preset 的旧值)裸串 `provider/modelId` 即名,
 // 不空白不崩。

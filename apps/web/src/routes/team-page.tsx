@@ -26,7 +26,7 @@ import {
   useTeams,
   useTodos,
 } from '../api/hooks.js';
-import { mapTeam, toChiefModelOptions, toDisplayTodo } from '../api/mappers.js';
+import { mapTeam, toDisplayTodo, toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -80,16 +80,13 @@ export function TeamPage() {
   const mutations = useApiMutations(teamId);
   const [createOpen, setCreateOpen] = useState(false);
   // #485: 创建弹窗的模型候选——数据源与投影同 Agent 详情页概览（同一份
-  // toChiefModelOptions）。清单非空 = 弹窗出模型选择器；空 = 落「配置服务商」
+  // toModelOptions）。清单非空 = 弹窗出模型选择器；空 = 落「配置服务商」
   // 告警行（原版 capture 20 态）。
   const providersQ = useProviders(teamId, live);
   const modelSourcesQ = useModelSources(teamId, live);
   const modelOptions = live
-    ? toChiefModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
-    : toChiefModelOptions(
-        fixture.resources?.providers ?? [],
-        fixture.resources?.providerSources ?? [],
-      );
+    ? toModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
+    : toModelOptions(fixture.resources?.providers ?? [], fixture.resources?.providerSources ?? []);
   return (
     <SecondaryShell
       route="team"

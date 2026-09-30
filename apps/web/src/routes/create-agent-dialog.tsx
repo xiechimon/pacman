@@ -41,7 +41,7 @@ interface CreateAgentDialogProps {
    *  缺省 = fixture 律（创建即关，#148 accept-dialog 先例）。 */
   onCreate?: (input: CreateAgentInput) => void;
   /** #485: 模型候选（custom providers models[] ∪ model-sources 非 pi 段，
-   *  投影单源 = api/mappers.ts toChiefModelOptions）。非空 = 出模型选择器；
+   *  投影单源 = api/mappers.ts toModelOptions）。非空 = 出模型选择器；
    *  空 = 出「尚未配置模型服务商」告警行 + 配置外链（原版 r2 §8.1 capture
    *  20 与 r3 §2 两态：服务商配好后同一弹窗出「模型」下拉）。 */
   modelOptions?: ChiefModelOption[];

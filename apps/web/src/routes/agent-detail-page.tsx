@@ -22,6 +22,8 @@ import {
   AGENT_TOOL_SWITCHES,
   type AgentRecord,
   MEMORY_EMPTY_COPY,
+  MEMORY_QUOTA_PER_AGENT,
+  MEMORY_UI_COPY,
   type PatchAgentBody,
 } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -36,13 +38,17 @@ import {
   useSecrets,
   useSkills,
 } from '../api/hooks.js';
-import { RUNTIME_LABELS, toChiefModelOptions } from '../api/mappers.js';
+import { RUNTIME_LABELS, toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
+import { FloatingShell } from '../components/ui/floating-shell.js';
+import { Input } from '../components/ui/input.js';
 import { Switch } from '../components/ui/switch.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
+import { ArrowUpDown, Check, ChevronDown, Search, SquarePen } from '../icons/index.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 import { ResourceShell } from '../resources/shell.js';
 import { Avatar } from '../ui/avatar.js';
 import './agent-detail.css';
@@ -62,6 +68,13 @@ const TAB_LABELS: { id: AgentTab; label: string }[] = [
   { id: 'memory', label: '记忆' },
   { id: 'permissions', label: '权限' },
 ];
+
+/** 记忆 tab 的两档序（r5 §6 只观测到 `排序` 钮本体，下拉内容未观测）。
+ *  [设计] 取值同 skills-page #306 的判法：只列数据面能诚实承载的键——
+ *  MemoryRecord 有 createdAt，故第二档是 `添加时间`（新 → 旧）；`默认` =
+ *  到达序（server 投影序，不重排）。 */
+const MEMORY_SORT_OPTIONS = ['默认', '添加时间'] as const;
+type MemorySort = (typeof MEMORY_SORT_OPTIONS)[number];
 
 export function AgentDetailPage() {
   const { t } = useI18n();
@@ -86,6 +99,11 @@ export function AgentDetailPage() {
   const [localPatch, setLocalPatch] = useState<Partial<AgentRecord>>({});
   /** fixture 面的记忆删除：没有 DELETE 后端，落本地已删集（live 面恒空）。 */
   const [removedMemories, setRemovedMemories] = useState<string[]>([]);
+  /** 记忆 tab 的搜索词与排序档（#499）；`#425 B1` 的 wrap 锚定面同 skills-page。 */
+  const [memoryQuery, setMemoryQuery] = useState('');
+  const [memorySort, setMemorySort] = useState<MemorySort>('默认');
+  const [memorySortOpen, setMemorySortOpen] = useState(false);
+  const [memorySortWrap, setMemorySortWrap] = useState<HTMLSpanElement | null>(null);
 
   const fixtureAgent = fixture.agents?.find((row) => row.id === agentId);
   const source = live ? agentQ.data : fixtureAgent;
@@ -105,13 +123,10 @@ export function AgentDetailPage() {
   );
 
   // 模型候选：live = providers ∪ model-sources 真值；fixture = 场景行集。
-  // 投影单源 = toChiefModelOptions（与总管压缩模型选择器同一份）。
+  // 投影单源 = toModelOptions（与总管压缩模型选择器同一份）。
   const modelOptions = live
-    ? toChiefModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
-    : toChiefModelOptions(
-        fixture.resources?.providers ?? [],
-        fixture.resources?.providerSources ?? [],
-      );
+    ? toModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
+    : toModelOptions(fixture.resources?.providers ?? [], fixture.resources?.providerSources ?? []);
 
   // 技能候选：live 的 SkillRecord.id 与 fixture SkillRow.name 同值域
   // （skillRecordSchema：id = frontmatter name 回落目录名）。
@@ -123,6 +138,19 @@ export function AgentDetailPage() {
     (row) => row.agentId === agentId && !removedMemories.includes(row.id),
   );
 
+  // 搜索扫 title 与 content 两栏（r5 §6 的条目卡就是这两栏文本），ASCII 走
+  // 大小写不敏感；排序只在命中集内重排，不重置搜索条件。
+  const memoryNeedle = memoryQuery.trim().toLowerCase();
+  const matchedMemories =
+    memoryNeedle === ''
+      ? memories
+      : memories.filter((row) =>
+          `${row.title}\n${row.content}`.toLowerCase().includes(memoryNeedle),
+        );
+  const visibleMemories =
+    memorySort === '添加时间'
+      ? [...matchedMemories].sort((a, b) => b.createdAt - a.createdAt)
+      : matchedMemories;
   // 密钥只取 id 集：授权粒度是全有全无（#510），本面不逐条渲染密钥名。
   const secretIds = live
     ? (secretsQ.data ?? []).map((row) => row.id)
@@ -261,31 +289,111 @@ export function AgentDetailPage() {
 
         {tab === 'memory' && (
           <div className="agent-memories">
-            {/* 空态文案 = shared MEMORY_EMPTY_COPY（02 §4.4/r5 §6 canon，总管
-                设置记忆 tab 同文），经 t() 消费、不作字面量出现。 */}
+            {/* 配额头（r5 §6 原文 `记忆 · 1 / 100`）。n = 存量条数——配额记的
+                是 Agent 上存了多少，不随搜索收窄；上限取 shared 单源常量，
+                不在这写死 100（server 的超限 409 走同一个常量）。 */}
+            <p className="agent-memory-head">
+              {t('记忆 · {n} / {max}', {
+                n: memories.length,
+                max: MEMORY_QUOTA_PER_AGENT,
+              })}
+            </p>
             {memories.length === 0 ? (
+              /* 空态文案 = shared MEMORY_EMPTY_COPY（02 §4.4/r5 §6 canon，总管
+                 设置记忆 tab 同文），经 t() 消费、不作字面量出现。空列表不摆
+                 搜索/排序控件（skills-page 先例：空态顶掉工具行）。 */
               <p className="agent-memory-empty">{t(MEMORY_EMPTY_COPY)}</p>
             ) : (
-              memories.map((memory) => (
-                <div key={memory.id} className="agent-memory-row">
-                  <span className="agent-memory-text">
-                    <span className="agent-memory-title">{memory.title}</span>
-                    <span className="agent-memory-content">{memory.content}</span>
+              <>
+                {/* 搜索框 + 排序钮行：盒形与开合行为复用资源族既有面
+                    （resources.css 的 .res-search 与 .res-sort 族，#306 家族
+                    律），不另造一套。 */}
+                <div className="agent-memory-search res-searchrow">
+                  <div className="res-search">
+                    <Search width={13} height={13} />
+                    <Input
+                      className="res-search-input"
+                      type="text"
+                      placeholder={t(MEMORY_UI_COPY.searchPlaceholder)}
+                      aria-label={t(MEMORY_UI_COPY.searchPlaceholder)}
+                      value={memoryQuery}
+                      onChange={(event) => setMemoryQuery(event.target.value)}
+                    />
+                  </div>
+                  <span className="res-sort-wrap" ref={setMemorySortWrap}>
+                    <button
+                      type="button"
+                      className="res-sort agent-memory-sort"
+                      aria-haspopup="listbox"
+                      aria-expanded={memorySortOpen}
+                      onClick={() => setMemorySortOpen((v) => !v)}
+                    >
+                      <ArrowUpDown width={13} height={13} />
+                      <span>{t(MEMORY_UI_COPY.sort)}</span>
+                      <ChevronDown width={12} height={12} />
+                    </button>
+                    <FloatingShell
+                      open={memorySortOpen}
+                      onClose={() => setMemorySortOpen(false)}
+                      container={memorySortWrap}
+                    >
+                      <ClickCatcher onClose={() => setMemorySortOpen(false)} />
+                      <div
+                        className="res-sort-menu agent-memory-sort-menu"
+                        role="listbox"
+                        aria-label={t(MEMORY_UI_COPY.sort)}
+                      >
+                        {MEMORY_SORT_OPTIONS.map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            className="res-sort-row"
+                            role="option"
+                            aria-selected={option === memorySort}
+                            onClick={() => {
+                              setMemorySort(option);
+                              setMemorySortOpen(false);
+                            }}
+                          >
+                            <span>{t(option)}</span>
+                            {option === memorySort && (
+                              <span className="res-sort-check">
+                                <Check width={14} height={14} />
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </FloatingShell>
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    className="agent-memory-del"
-                    onClick={() => {
-                      if (agentId === undefined) return;
-                      if (live) mutations.deleteMemory.mutate({ agentId, memoryId: memory.id });
-                      else setRemovedMemories((prev) => [...prev, memory.id]);
-                    }}
-                  >
-                    {t('删除')}
-                  </Button>
                 </div>
-              ))
+                {visibleMemories.length === 0 ? (
+                  /* 搜不到 ≠ 没有记忆：canon 空态说的是「一条都没存过」，
+                     [设计] 另起一行，不改用 MEMORY_EMPTY_COPY。 */
+                  <p className="agent-memory-no-match">{t('没有匹配的记忆。')}</p>
+                ) : (
+                  visibleMemories.map((memory) => (
+                    <div key={memory.id} className="agent-memory-row">
+                      <span className="agent-memory-text">
+                        <span className="agent-memory-title">{memory.title}</span>
+                        <span className="agent-memory-content">{memory.content}</span>
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="agent-memory-del"
+                        onClick={() => {
+                          if (agentId === undefined) return;
+                          if (live) mutations.deleteMemory.mutate({ agentId, memoryId: memory.id });
+                          else setRemovedMemories((prev) => [...prev, memory.id]);
+                        }}
+                      >
+                        {t('删除')}
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </>
             )}
           </div>
         )}
@@ -380,7 +488,9 @@ function useEditorFocus<T extends HTMLElement>(editing: boolean) {
 }
 
 /** 名称行内编辑（r3 §4：名称（行内编辑））——点文本进输入态，Enter 或失焦
- *  提交，Esc 放弃。空串不算提交（displayName 有 min(1) 约束）。 */
+ *  提交，Esc 放弃。空串不算提交（displayName 有 min(1) 约束）。
+ *  行内的编辑图标（r3 §4 实测：名称行带编辑图标）与文本同为入口：图标钮是
+ *  图标-only，靠 aria-label 拿可访问名（SquarePen 自带 aria-hidden）。 */
 function NameRow({ value, onCommit }: { value: string; onCommit: (next: string) => void }) {
   const { t } = useI18n();
   const [draft, setDraft] = useState<string | null>(null);
@@ -389,9 +499,20 @@ function NameRow({ value, onCommit }: { value: string; onCommit: (next: string) 
     return (
       <div className="agent-field">
         <span className="agent-field-label">{t('名称')}</span>
-        <button type="button" className="agent-name" onClick={() => setDraft(value)}>
-          {value}
-        </button>
+        <span className="agent-name-row">
+          <button type="button" className="agent-name" onClick={() => setDraft(value)}>
+            {value}
+          </button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="agent-name-edit"
+            aria-label={t('编辑')}
+            onClick={() => setDraft(value)}
+          >
+            <SquarePen width={14} height={14} />
+          </Button>
+        </span>
       </div>
     );
   }
@@ -438,13 +559,16 @@ function RoleRow({
         <>
           <span className="agent-role-text">{value ?? t('未设置职责')}</span>
           <div className="agent-role-actions">
+            {/* r3 §4 实测：职责行带编辑图标（点击进编辑态）。图标-only 钮，
+                可访问名走 aria-label；文字钮的可点感靠图标补。 */}
             <Button
               variant="ghost"
-              size="sm"
+              size="icon-sm"
               className="agent-role-edit"
+              aria-label={t('编辑')}
               onClick={() => setDraft(value ?? '')}
             >
-              {t('编辑')}
+              <SquarePen width={14} height={14} />
             </Button>
           </div>
         </>
