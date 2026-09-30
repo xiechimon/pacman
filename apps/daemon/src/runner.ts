@@ -573,7 +573,10 @@ export async function runStep(
   //      步起点——不采集、不合并。这一层是必须的：检出与后续步（合并轮）同
   //      目录复用，遗留脏树会被下一步的 commitAll 顺手扫进合并提交。
   //   bash 仍是它的工具（跑验证命令），故 fs 级只写闸做不到——本票「只读」=
-  //   「写入不被采集、不被合并」（票面裁定的可落地形态）。
+  //   「写入不被采集、不被合并」（票面裁定的可落地形态）。残留边界要说清：
+  //   审核者若在 bash 里自己 push（prompt 明令禁止），daemon 拦不住——托管/
+  //   github 形态远端要 per-step 凭证（只在 daemon 内存里、只经参数传给 git
+  //   原语），裸 push 拿不到凭证；local 形态远端是本地路径，推得动。
   if (checkout && ws !== null && deps.workspace && headAtStart !== null) {
     try {
       await deps.workspace.restoreCheckpoint(ws.cwd, headAtStart);
