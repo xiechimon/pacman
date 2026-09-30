@@ -7,17 +7,18 @@
 // 12px 边圆角 + shadow-lg，与 token-gate 门页同配方），字样 = 语义标签 + TW 工具
 // 类直引 token 正本；per-face 样式（routes/machine-authorize.css）随片退役。
 // 类名别名（authorize-*）原样保留在元素上（别名保留律 #411 政策 1）；新增
-// e2e 钉扎面按同政策走语义 locator，不再新铸类名钉。提交钮从散写改走 A3
-// 原语 ui/Button primary standard（原散写 =
-// --card-button 实底 + --text-on-accent + 8px 圆角，等值）：shadcn Button 的
-// variant 表无 brand primary 档，换件即改填充色——故本片不动它。
+// e2e 钉扎面按同政策走语义 locator，不再新铸类名钉。提交钮走仓内 shadcn 件
+// ui/Button brand 档，per-face 值以工具类钉回轨 A3 实测档——32px 高 / 8px
+// 圆角 / 13px 中黑字重 / --card-button 实底：铺开是纯结构换件，per-face 数值
+// 仍是几何正本（#411 政策 4），故不取 shadcn 默认档（默认档圆角 10px、字号
+// 14px 均与本仓 canon 不符）。
 
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api } from '../api/client.js';
+import { Button } from '../components/ui/button.js';
 import { Card } from '../components/ui/card.js';
 import { useI18n } from '../i18n/provider.js';
-import { Button } from '../ui/button.js';
 
 interface MachineJson {
   machineId: string;
@@ -117,9 +118,8 @@ export function MachineAuthorizePage() {
           <>
             <p className={DESC_CLASS}>{t('生成授权链接，在执行机上完成注册发起。')}</p>
             <Button
-              variant="primary"
-              size="standard"
-              className="authorize-submit w-full font-medium"
+              variant="brand"
+              className="authorize-submit w-full border-0 rounded-md px-3 text-[13px] font-medium"
               onClick={() => void startEnrollment()}
             >
               {t('生成授权链接')}
@@ -132,9 +132,8 @@ export function MachineAuthorizePage() {
               {t('一台执行机请求加入你的团队。确认后它将以自己的凭据连接。')}
             </p>
             <Button
-              variant="primary"
-              size="standard"
-              className="authorize-submit w-full font-medium"
+              variant="brand"
+              className="authorize-submit w-full border-0 rounded-md px-3 text-[13px] font-medium"
               onClick={() => void confirm()}
             >
               {t('确认授权')}
