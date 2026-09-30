@@ -605,8 +605,20 @@ export const EN: Record<string, string> = {
   推送分支: 'Push branches',
   创建技能: 'Create skills',
   更新技能: 'Update skills',
+  运行时: 'Runtime',
+  '内置 (pi)': 'Built-in (pi)',
   '允许该 Agent 在团队中已开启 shell 访问的机器上执行命令。':
     'Allow this Agent to run commands on machines where shell access is enabled for the team.',
+  '允许该 Agent 通过合并分支进行发布（例如将 develop 合并进 main）。':
+    'Let this Agent publish by merging branches (for example develop into main).',
+  '允许该 Agent 创建 git tag，这可能触发发布流程。':
+    'Let this Agent create git tags, which may trigger a release pipeline.',
+  '允许该 Agent 随时提交并推送其工作分支（自行合并发布改动时需要）。':
+    'Let this Agent commit and push its working branch at any time (needed when it merges release changes itself).',
+  '允许该 Agent 向团队技能库添加新技能。':
+    'Let this Agent add new skills to the team skill library.',
+  '允许该 Agent 修改团队技能库中已有的技能。':
+    'Let this Agent modify skills already in the team skill library.',
   '该 Agent 执行任务时可使用的团队 MCP 服务器，其工具以 mcp__<服务器>__<工具> 的形式出现。':
     'Team MCP servers this Agent may use while running tasks; their tools appear as mcp__<server>__<tool>.',
   '用一两句话说明该 Agent 的职责。该说明会注入它执行的每个任务，也会提供给总管用于分派。':

@@ -144,6 +144,31 @@ test('权限 tab：6 个工具开关全渲染（r3 §4 全 list）', async ({ pa
   await expect(detail.locator('.agent-tool-switch')).toHaveCount(6);
 });
 
+// 六档说明副文案曾经只出「远程 shell」一条（r3 §4 的清单只记了那一档）；
+// 直读原版权限 tab 后补全，六档各带一条，钉住不回落成一条。
+test('权限 tab：6 档各带说明副文案', async ({ page }) => {
+  const detail = await openDetail(page);
+  await detail.locator('.agent-tab').nth(2).click();
+  const hints = detail.locator('.agent-perm-group').first().locator('.agent-perm-hint');
+  await expect(hints).toHaveCount(6);
+  await expect(hints.nth(1)).toHaveText(
+    '允许该 Agent 通过合并分支进行发布（例如将 develop 合并进 main）。',
+  );
+  await expect(hints.nth(5)).toHaveText('允许该 Agent 修改团队技能库中已有的技能。');
+});
+
+// 运行时档（原版概览在模型之上有这一档）：wire 无独立字段，值由 provider 位
+// 派生——custom provider 直接出 id。
+test('概览：运行时档在模型之上，值由 provider 派生', async ({ page }) => {
+  const detail = await openDetail(page);
+  const runtime = detail.locator('.agent-runtime');
+  await expect(runtime).toHaveText('r3-gw');
+  const labels = detail.locator('.agent-field-label');
+  const texts = await labels.allTextContents();
+  expect(texts.indexOf('运行时')).toBeGreaterThan(-1);
+  expect(texts.indexOf('运行时')).toBeLessThan(texts.indexOf('模型'));
+});
+
 test('权限 tab：工具开关可切换', async ({ page }) => {
   const detail = await openDetail(page);
   await detail.locator('.agent-tab').nth(2).click();

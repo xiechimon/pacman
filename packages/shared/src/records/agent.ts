@@ -24,10 +24,21 @@ export const AGENT_TOOL_SWITCHES = [
   '更新技能',
 ] as const;
 
-/** 6 开关说明文案（r3 §4 原文，权限 tab 对齐用；品牌串经 brand.ts 槽，
- * 版本门常量见 records/secret.ts）。 */
+/** 权限面 6 开关各自的说明副文案（键 = AGENT_TOOL_SWITCHES 的同值域词）。
+ * 文案原文实测自参考产品 Agent 详情页权限 tab（2026-09-30，#485）——r3 §4
+ * 的清单只记了「远程 shell」一档，其余五档是本次直读原版补上的，不是推断。 */
+export const AGENT_TOOL_COPY: Record<(typeof AGENT_TOOL_SWITCHES)[number], string> = {
+  '远程 shell': '允许该 Agent 在团队中已开启 shell 访问的机器上执行命令。',
+  合并分支: '允许该 Agent 通过合并分支进行发布（例如将 develop 合并进 main）。',
+  创建标签: '允许该 Agent 创建 git tag，这可能触发发布流程。',
+  推送分支: '允许该 Agent 随时提交并推送其工作分支（自行合并发布改动时需要）。',
+  创建技能: '允许该 Agent 向团队技能库添加新技能。',
+  更新技能: '允许该 Agent 修改团队技能库中已有的技能。',
+};
+
+/** 权限面其余各档的说明文案（r3 §4 原文；品牌串经 brand.ts 槽，版本门常量
+ * 见 records/secret.ts）。6 开关的副文案见 AGENT_TOOL_COPY。 */
 export const AGENT_PERMISSION_COPY = {
-  remoteShell: '允许该 Agent 在团队中已开启 shell 访问的机器上执行命令。',
   secrets: `任务执行时将团队密钥以环境变量注入该 Agent 的 shell。所在机器需要 ${BRAND.cliCommandName} CLI ${SECRET_MIN_CLI_VERSION} 及以上。`,
   mcpServers:
     '该 Agent 执行任务时可使用的团队 MCP 服务器，其工具以 mcp__<服务器>__<工具> 的形式出现。',

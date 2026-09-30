@@ -18,6 +18,7 @@
 
 import {
   AGENT_PERMISSION_COPY,
+  AGENT_TOOL_COPY,
   AGENT_TOOL_SWITCHES,
   type AgentRecord,
   MEMORY_EMPTY_COPY,
@@ -35,7 +36,7 @@ import {
   useSecrets,
   useSkills,
 } from '../api/hooks.js';
-import { toChiefModelOptions } from '../api/mappers.js';
+import { RUNTIME_LABELS, toChiefModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { Switch } from '../components/ui/switch.js';
@@ -53,10 +54,8 @@ export const AGENTS_HREF = '/app/resources/agents';
 
 type AgentTab = 'overview' | 'memory' | 'permissions';
 
-/** r3 §4 的六档工具里只有远程 shell 一档配了说明文案（shared
- *  AGENT_PERMISSION_COPY.remoteShell），其余五档原版未给副文案。取全 list 的
- *  首项而非写字面串——词表单源在 shared，页面不复制一份。 */
-const REMOTE_SHELL = AGENT_TOOL_SWITCHES[0];
+/** 内置 runtime 的显示值（原版实测原文，Agent 详情概览的「运行时」行）。 */
+const BUILTIN_RUNTIME_LABEL = '内置 (pi)';
 
 const TAB_LABELS: { id: AgentTab; label: string }[] = [
   { id: 'overview', label: '概览' },
@@ -163,6 +162,12 @@ export function AgentDetailPage() {
   };
 
   const defaultSkill = agent.skills[0] ?? null;
+  const runtimeLabel =
+    agent.provider == null || agent.provider === 'pi'
+      ? t(BUILTIN_RUNTIME_LABEL)
+      : agent.provider === 'claude-code'
+        ? RUNTIME_LABELS['claude-code']
+        : agent.provider;
 
   return (
     <ResourceShell
@@ -214,6 +219,16 @@ export function AgentDetailPage() {
                 ))}
               </select>
               <p className="agent-field-hint">{t(AGENT_PERMISSION_COPY.defaultSkill)}</p>
+            </div>
+            <div className="agent-field">
+              {/* 运行时（原版概览在模型之上有这一档，实测值形如 `内置 (pi)`）。
+                  本仓 wire 没有独立 runtime 字段——它就是 provider 位：null/pi
+                  = 内置 pi runtime，claude-code = 本机 Claude Code，其余 =
+                  custom provider 的 id。故只读呈现：做成选择器要落 provider
+                  槽并与下面的模型选择器耦合（换 runtime 得同时改或清 modelId），
+                  且原版「内置」文案在本仓没有对应物——语义裁决见 #499。 */}
+              <span className="agent-field-label">{t('运行时')}</span>
+              <span className="agent-runtime">{runtimeLabel}</span>
             </div>
             <div className="agent-field">
               <div className="agent-field-head">
@@ -286,11 +301,9 @@ export function AgentDetailPage() {
                 <div key={label} className="agent-perm-row">
                   <span className="agent-perm-text">
                     <span className="agent-perm-name">{t(label)}</span>
-                    {label === REMOTE_SHELL && (
-                      <span className="agent-perm-hint">
-                        {t(AGENT_PERMISSION_COPY.remoteShell)}
-                      </span>
-                    )}
+                    {/* 六档各带说明副文案（AGENT_TOOL_COPY 单源；原文实测自
+                        参考产品的权限 tab，r3 §4 那份清单只记了远程 shell）。 */}
+                    <span className="agent-perm-hint">{t(AGENT_TOOL_COPY[label])}</span>
                   </span>
                   <Switch
                     className="agent-tool-switch"
