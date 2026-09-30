@@ -87,22 +87,24 @@ test('无服务商：报告警行并给「配置服务商」外链（capture 20 
   const dialog = await openDialog(page, TEAM_NO_PROVIDERS);
   await expect(dialog.locator('.dlg-agent-warn')).toBeVisible();
   await expect(dialog.locator('.dlg-agent-configure')).toBeVisible();
-  await expect(dialog.locator('.dlg-agent-model')).toHaveCount(0);
+  await expect(dialog.locator('.dlg-agent-model-select')).toHaveCount(0);
 });
 
 test('有服务商：不出告警行，弹窗内直接出模型选择器', async ({ page }) => {
   const dialog = await openDialog(page, TEAM_WITH_PROVIDERS);
-  await expect(dialog.locator('.dlg-agent-model')).toBeVisible();
+  await expect(dialog.locator('.dlg-agent-model-select')).toBeVisible();
   await expect(dialog.locator('.dlg-agent-warn')).toHaveCount(0);
 });
 
 test('模型选择器列出 provider 与模型名，不编造上下文窗口数字', async ({ page }) => {
   const dialog = await openDialog(page, TEAM_WITH_PROVIDERS);
-  await dialog.locator('.dlg-agent-model').click();
-  const rows = dialog.locator('.dlg-agent-model-row');
-  await expect(rows.first()).toContainText('claude-sonnet-5');
-  await expect(rows.first()).toContainText('r3-gw');
-  await expect(rows.first()).not.toContainText('128k');
+  await dialog.locator('.dlg-agent-model-select').click();
+  // 首行恒是「未设置模型」清空行；模型行按 provider 定位（同模型 id 可能在
+  // providers 与 claude-code 段各一行，见 toChiefModelOptions 并集语义）。
+  const row = dialog.locator('.dlg-agent-model-row', { hasText: 'r3-gw' });
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('claude-sonnet-5');
+  await expect(dialog.locator('.dlg-agent-model-menu')).not.toContainText('128k');
 });
 
 test('选中模型后提交，POST body 带 provider 与 modelId', async ({ page }) => {
@@ -110,8 +112,8 @@ test('选中模型后提交，POST body 带 provider 与 modelId', async ({ page
   await stubLive(page, { hasProviders: true, bodies });
   const dialog = await openDialog(page, '/app/team');
   await dialog.locator('#dlg-agent-name').fill('带模型的 agent');
-  await dialog.locator('.dlg-agent-model').click();
-  await dialog.locator('.dlg-agent-model-row').first().click();
+  await dialog.locator('.dlg-agent-model-select').click();
+  await dialog.locator('.dlg-agent-model-row', { hasText: 'r3-gw' }).click();
   await dialog.locator('.dlg-agent-create').click();
   await expect(page.locator('.dlg')).toBeHidden();
   expect(bodies).toHaveLength(1);

@@ -17,8 +17,16 @@
 // 矛盾。现在按成员数分流：0 个成员才走空态，否则由 ./team-chart.tsx 出树。
 import { useCallback, useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { useApiMutations, useChief, useMembers, useTeams, useTodos } from '../api/hooks.js';
-import { mapTeam, toDisplayTodo } from '../api/mappers.js';
+import {
+  useApiMutations,
+  useChief,
+  useMembers,
+  useModelSources,
+  useProviders,
+  useTeams,
+  useTodos,
+} from '../api/hooks.js';
+import { mapTeam, toChiefModelOptions, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -26,6 +34,7 @@ import { useI18n } from '../i18n/provider.js';
 import { ChartNetwork, ChevronDown, Grid2x2, PlusSmall } from '../icons/index.js';
 import { SecondaryShell } from '../secondary/shell.js';
 import { Avatar } from '../ui/avatar.js';
+import { AGENTS_HREF } from './agent-detail-page.js';
 import { CreateAgentDialog } from './create-agent-dialog.js';
 import { TeamChart } from './team-chart.js';
 
@@ -70,6 +79,17 @@ export function TeamPage() {
   // agent card lands in the grid), fixture = accept-dialog 律 (close only)
   const mutations = useApiMutations(teamId);
   const [createOpen, setCreateOpen] = useState(false);
+  // #485: 创建弹窗的模型候选——数据源与投影同 Agent 详情页概览（同一份
+  // toChiefModelOptions）。清单非空 = 弹窗出模型选择器；空 = 落「配置服务商」
+  // 告警行（原版 capture 20 态）。
+  const providersQ = useProviders(teamId, live);
+  const modelSourcesQ = useModelSources(teamId, live);
+  const modelOptions = live
+    ? toChiefModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
+    : toChiefModelOptions(
+        fixture.resources?.providers ?? [],
+        fixture.resources?.providerSources ?? [],
+      );
   return (
     <SecondaryShell
       route="team"
@@ -118,8 +138,17 @@ export function TeamPage() {
       </div>
       {layout === 'grid' ? (
         <div className="team-grid">
+          {/* #485: 卡是进 Agent 详情编辑面的入口（r3 §4「团队页点 Agent 卡
+              进入」）。卡片由 div 改 Link —— 推翻 a3 审计把它归类为「卡表面
+              非控件」（report-pages.md:88）的裁决：原版点得进，本仓此前点不
+              进，Agent 建出来就再也够不着编辑面。link 反馈态见 secondary.css
+              的 .team-agent-card:hover。scenario 随行（#121 Link 律）。 */}
           {team.agents.map((agent) => (
-            <div key={agent.id} className="team-agent-card">
+            <Link
+              key={agent.id}
+              className="team-agent-card"
+              to={{ pathname: `${AGENTS_HREF}/${agent.id}`, search }}
+            >
               <span className="team-agent-avatar">
                 <Avatar
                   name={agent.displayName}
@@ -135,7 +164,7 @@ export function TeamPage() {
                 </span>
                 <span className="team-agent-role">{agent.role ?? t('未设置职责')}</span>
               </span>
-            </div>
+            </Link>
           ))}
           {/* #170: the dialog family form (r2 §8.1 capture 20) lives in
               create-agent-dialog.tsx — DialogShell law, POST agents on live. */}
@@ -156,13 +185,11 @@ export function TeamPage() {
       <CreateAgentDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
+        modelOptions={modelOptions}
         onCreate={
           live
-            ? (displayName) =>
-                mutations.createAgent.mutate(
-                  { displayName },
-                  { onSuccess: () => setCreateOpen(false) },
-                )
+            ? (input) =>
+                mutations.createAgent.mutate(input, { onSuccess: () => setCreateOpen(false) })
             : undefined
         }
       />

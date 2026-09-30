@@ -80,9 +80,14 @@ test('概览：模型选择器打开后列出 provider 与模型名', async ({ p
   await detail.locator('.agent-model-select').click();
   const menu = detail.locator('.agent-model-menu');
   await expect(menu).toBeVisible();
-  const first = menu.locator('.agent-model-row').first();
-  await expect(first).toContainText('claude-sonnet-5');
-  await expect(first).toContainText('r3-gw');
+  // 首行恒是「未设置模型」清空行（可空槽），模型行按模型名定位。
+  await expect(menu.locator('.agent-model-row').first()).toHaveText(/未设置模型/);
+  // 模型行按 provider 定位：同一个模型 id 可能在 custom providers 与
+  // claude-code 段各有一行（toChiefModelOptions 的并集语义），只有
+  // provider 位能把它们分开。
+  const row = menu.locator('.agent-model-row', { hasText: 'r3-gw' });
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('claude-sonnet-5');
 });
 
 test('概览：思考强度是只读值行，无模型时显示「默认」', async ({ page }) => {
