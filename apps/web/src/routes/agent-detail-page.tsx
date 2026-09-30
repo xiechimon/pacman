@@ -21,6 +21,17 @@
 //   `GET /api/capabilities` 投影 shared THINKING_LEVELS），但读面 ≠ 写面，
 //   只读行按读面呈现档位，选择器与 provider 写面的耦合仍不做。
 //
+// 承载结构 = components/ui/Button ghost（XMON-28/B3）：本面四处散写钮
+// （进行中行、记忆排序触发器与选项行、名称行内编辑）换底座，几何与配色正本
+// 仍住 agent-detail.css 与 resources.css 的 `.res-sort*`（域 css unlayered，
+// 压 utility 层），故契约面逐值不动。底座带进来的差额在消费点就地并掉：
+// `justify-start` / `gap-0`（散写形是 flex-start、无序间距）、`h-auto`（行钮
+// 没有定高，底座 h-8 会把 `进行中` 行与名称钮钉成 32px）、`rounded-none`
+// （`.agent-task-row` 无圆角，底座 rounded-lg 会让 hover 底色带弧）、
+// `font-normal`（底座 font-medium）、`leading-[inherit]`（底座 text-sm 自带
+// 20px 行高；散写形走 preflight 的 `font: inherit`，本仓正解就是 inherit）、
+// `[&_svg…]:size-*`（底座 size-4 会盖过图标自己的 width/height 属性）。
+//
 // 删除 Agent（XMON-19/B2）：入口在概览页脚，二次确认接 DeleteConfirm 家族。
 // 整个流程 2026-10-01 登录原版实测过一遍（入口 → 确认层 → 取消 → 删除 → 落点），
 // 文案与落点都取自实测，产线 bundle 语料是第二源、两源一致。删除语义（记忆保留、
@@ -351,10 +362,10 @@ export function AgentDetailPage() {
                   // 见 shared AgentTask 注释）。
                   const ui = PHASE_UI[row.state === 'waiting' ? 'queued' : row.todo.phase];
                   return (
-                    <button
+                    <Button
                       key={row.buildId}
-                      type="button"
-                      className="agent-task-row"
+                      variant="ghost"
+                      className="agent-task-row justify-start h-auto rounded-none font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3"
                       onClick={() => navigate(`/app/todo/${row.todo.id}`)}
                     >
                       <span className="agent-task-seq">#{row.todo.seqNum}</span>
@@ -365,7 +376,7 @@ export function AgentDetailPage() {
                       <span className="agent-task-go" aria-hidden="true">
                         <ChevronRight width={12} height={12} />
                       </span>
-                    </button>
+                    </Button>
                   );
                 })
               )}
@@ -419,17 +430,17 @@ export function AgentDetailPage() {
                     />
                   </div>
                   <span className="res-sort-wrap" ref={setMemorySortWrap}>
-                    <button
-                      type="button"
-                      className="res-sort agent-memory-sort"
+                    <Button
+                      variant="ghost"
+                      className="res-sort agent-memory-sort justify-start gap-0 font-normal"
                       aria-haspopup="listbox"
                       aria-expanded={memorySortOpen}
                       onClick={() => setMemorySortOpen((v) => !v)}
                     >
-                      <ArrowUpDown width={13} height={13} />
+                      <ArrowUpDown width={13} height={13} className="size-[13px]" />
                       <span>{t(MEMORY_UI_COPY.sort)}</span>
-                      <ChevronDown width={12} height={12} />
-                    </button>
+                      <ChevronDown width={12} height={12} className="size-3" />
+                    </Button>
                     <FloatingShell
                       open={memorySortOpen}
                       onClose={() => setMemorySortOpen(false)}
@@ -442,10 +453,10 @@ export function AgentDetailPage() {
                         aria-label={t(MEMORY_UI_COPY.sort)}
                       >
                         {MEMORY_SORT_OPTIONS.map((option) => (
-                          <button
+                          <Button
                             key={option}
-                            type="button"
-                            className="res-sort-row"
+                            variant="ghost"
+                            className="res-sort-row justify-start gap-0 font-normal [&_svg:not([class*='size-'])]:size-3.5"
                             role="option"
                             aria-selected={option === memorySort}
                             onClick={() => {
@@ -459,7 +470,7 @@ export function AgentDetailPage() {
                                 <Check width={14} height={14} />
                               </span>
                             )}
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     </FloatingShell>
@@ -627,9 +638,13 @@ function NameRow({ value, onCommit }: { value: string; onCommit: (next: string) 
       <div className="agent-field">
         <span className="agent-field-label">{t('名称')}</span>
         <span className="agent-name-row">
-          <button type="button" className="agent-name" onClick={() => setDraft(value)}>
+          <Button
+            variant="ghost"
+            className="agent-name justify-start h-auto gap-0 rounded-none font-normal leading-[inherit]"
+            onClick={() => setDraft(value)}
+          >
             {value}
-          </button>
+          </Button>
           <Button
             variant="ghost"
             size="icon-sm"
