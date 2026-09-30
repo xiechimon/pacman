@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>PROTOTYPE · #453 search-panel 壳迁移两案对照（throwaway）</title>
+<style>
+/* —— 本文件是 throwaway 原型（#453 裁决用），不是生产码 ——
+   几何/类名抄自 apps/web/src/overlays/overlays.css:11-36（.search-scrim / .search-panel）
+   壳机制照 #454 分支的 dialog-shell.tsx（模态，Backdrop 位）与 floating-shell.tsx（非模态，无背板）口述复刻。
+   Base UI 未加载：壳的「机制」用 vanilla JS 模拟，只有几何与契约是实测的。 */
+:root{
+  --popover-bg:#18181b; --overlay-scrim:rgba(0,0,0,.55); --edge-radius:12px;
+  --border-default:#27272a; --text:#e4e4e7; --text-dim:#a1a1aa; --accent:#6366f1;
+  --page-bg:#09090b; --card-bg:#111113; --topbar:#0c0c0e;
+}
+*{box-sizing:border-box}
+body{margin:0;font:13px/1.5 ui-sans-serif,-apple-system,"SF Pro Text",system-ui;background:var(--page-bg);color:var(--text)}
+header.proto{padding:10px 14px;border-bottom:1px solid var(--border-default);background:#0b0b0d}
+header.proto h1{margin:0 0 4px;font-size:13px;letter-spacing:.02em}
+header.proto p{margin:0;color:var(--text-dim);font-size:11.5px;max-width:110ch}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--border-default);background:#0b0b0d;position:sticky;top:0;z-index:60}
+.tabs{display:flex;gap:0;border:1px solid var(--border-default);border-radius:8px;overflow:hidden}
+.tabs button{background:transparent;color:var(--text-dim);border:0;padding:5px 10px;font-size:12px;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.toolbar button.act{background:#1c1c1f;color:var(--text);border:1px solid var(--border-default);border-radius:7px;padding:5px 10px;font-size:12px;cursor:pointer}
+.toolbar button.act:hover{border-color:#3f3f46}
+.toolbar .hint{color:var(--text-dim);font-size:11px;margin-left:auto}
+/* —— 应用外壳 mock（看得见 scrim 压暗与让位） —— */
+.app{position:relative;height:560px;display:flex;flex-direction:column}
+.topbar{height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--topbar);border-bottom:1px solid var(--border-default)}
+.topbar .brand{font-weight:600;font-size:12px}
+.topbar .search-trigger{border:1px solid var(--border-default);background:#131316;color:var(--text-dim);border-radius:7px;padding:4px 10px;font-size:11.5px;cursor:pointer}
+/* #137 常亮互斥根标记（search-focus spec 断言面）：搜索开着时压暗、关着时复原 */
+.focus-marker{width:10px;height:10px;border-radius:999px;background:#3f3f46;transition:background .15s}
+.focus-marker[data-dim="true"]{background:#1f1f23}
+.content{flex:1;padding:14px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;overflow:hidden}
+.card{background:var(--card-bg);border:1px solid var(--border-default);border-radius:10px;padding:10px;font-size:12px;color:var(--text-dim);min-height:80px}
+/* —— 真实几何（抄自 overlays.css） —— */
+.search-scrim{position:fixed;inset:0;border:none;padding:0;background:var(--overlay-scrim);cursor:default;z-index:40}
+.search-panel{position:fixed;top:146px;left:50%;width:520px;height:440px;margin-left:-260px;z-index:41;display:flex;flex-direction:column;background:var(--popover-bg);border-radius:var(--edge-radius);border:1px solid var(--border-default);transform-origin:50% 0;overflow:hidden}
+@keyframes pop{from{opacity:.96;transform:scale(.985)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.anim-pop{animation:pop .15s ease-out}
+.anim-fade{animation:fade .12s ease-out}
+.panel-head{padding:10px 12px;border-bottom:1px solid var(--border-default);display:flex;gap:8px;align-items:center}
+.panel-head input{flex:1;background:#101013;border:1px solid var(--border-default);border-radius:7px;color:var(--text);padding:6px 8px;font-size:12px}
+.rows{padding:6px;display:flex;flex-direction:column;gap:2px;overflow:auto}
+.row{padding:6px 8px;border-radius:7px;font-size:12px;color:var(--text-dim)}
+.row[data-lit]{background:#1c1c1f;color:var(--text)}
+/* —— 壳 mock（两案的结构差异） —— */
+.shell-root{position:fixed;inset:0;z-index:39}
+.shell-root[data-variant="a-default"] .wrap{position:fixed;inset:0;display:flex;align-items:flex-start;justify-content:center;padding-top:146px;overflow:hidden;max-height:calc(100vh - 96px);/* 入场动画：transform 使 fixed 后代改以本节点为包含块；transform+overflow:hidden 还会裁剪 fixed 后代（真 bug 的双重机理） */animation:wrapslide .15s ease-out}
+.shell-root[data-variant="a-default"] .wrap .search-panel{position:static;margin:0}
+.shell-root[data-variant="a-vr"] .wrap{position:fixed;inset:0;z-index:41;/* 视口根：不吃几何约束、无动画 transform。z-index 必须抬到背板(40)之上——fixed 容器自建 stacking context，只给面板自己 z-index 会被关在容器里、被遮罩反盖（原型实测发现，见下） */ }
+.shell-root[data-variant="b"] .wrap{position:fixed;inset:0}
+@keyframes wrapslide{from{transform:scale(.985) translateY(-6px)}to{transform:none}}
+.dlg-backdrop{position:fixed;inset:0;background:var(--overlay-scrim);z-index:40}
+/* —— 探针面板 —— */
+.inspector{border-top:1px solid var(--border-default);background:#0b0b0d;padding:10px 14px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.inspector h2{margin:0 0 6px;font-size:11.5px;color:var(--text);letter-spacing:.02em}
+table.kv{border-collapse:collapse;width:100%;font-size:11.5px}
+table.kv td{padding:2px 6px 2px 0;vertical-align:top;color:var(--text-dim)}
+table.kv td:first-child{color:#71717a;white-space:nowrap;width:1%}
+table.kv td b{color:var(--text);font-weight:600}
+.ok{color:#4ade80}.bad{color:#f87171}.warn{color:#fbbf24}
+.chart{display:flex;align-items:flex-end;gap:1px;height:56px;padding:4px;background:#101013;border:1px solid var(--border-default);border-radius:7px}
+.chart i{width:4px;background:#52525b;display:block}
+.chart i.hot{background:#f87171}
+.chart i.zero{background:#4ade80}
+ul.check{list-style:none;margin:0;padding:0;font-size:11.5px}
+ul.check li{padding:2px 0;color:var(--text-dim)}
+pre.diff{background:#101013;border:1px solid var(--border-default);border-radius:7px;padding:10px;font-size:11px;overflow:auto;color:#d4d4d8;max-height:230px}
+.diffbox{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:10px 14px}
+.diffbox h3{margin:0 0 6px;font-size:11.5px}
+.legend{color:#71717a;font-size:11px;padding:0 14px 12px}
+</style>
+</head>
+<body>
+<header class="proto">
+  <h1>PROTOTYPE · #453 search-panel（⌘K）壳迁移——两案对照 <span class="badge" style="color:#fbbf24">throwaway，勿并入 main</span></h1>
+  <p>问题：search-panel 是视口根定位（fixed 面板 + 全视口 scrim），B1 把它塞进「定宽居中弹层」后 containing block 改变、动画期布局位移，5 条 spec 报 <code>element is not stable</code>。两案：<b>A</b> = DialogShell 加「视口根」变体（保留模态机制，壳不吃几何约束，scrim 走 Backdrop 位）；<b>B</b> = 改挂 floating-shell 非模态底座（自持 scrim）。几何与类名抄自仓库真码，壳机制为 vanilla 模拟，Base UI 未加载。A 页里另有「A 默认（受限）」态，用来复现原 bug 的位移机理。</p>
+</header>
+
+<div class="toolbar">
+  <div class="tabs" id="tabs">
+    <button data-v="a-default" aria-pressed="false">A 默认（受限，复现 bug）</button>
+    <button data-v="a-vr" aria-pressed="true">A 视口根（案 A）</button>
+    <button data-v="b" aria-pressed="false">B 非模态（案 B）</button>
+  </div>
+  <button class="act" id="btn-open">打开（⌘K）</button>
+  <button class="act" id="btn-esc">Esc 关闭</button>
+  <button class="act" id="btn-scrim">点 scrim 关闭</button>
+  <button class="act" id="btn-probe">跑稳定性探针</button>
+  <button class="act" id="btn-reset">重置</button>
+  <span class="hint">自由玩：⌘K/Ctrl+K 开，Esc 关；点暗处即 scrim</span>
+</div>
+
+<div class="app" id="app">
+  <div class="topbar">
+    <span class="brand">pacman</span>
+    <button class="search-trigger" id="trigger">搜索 ⌘K</button>
+    <span class="focus-marker" id="focusMarker" data-dim="false" title="#137 常亮互斥根标记（开搜索时应压暗）"></span>
+    <span style="color:#71717a;font-size:11px">#137 标记</span>
+  </div>
+  <div class="content">
+    <div class="card">看板卡 · 让位/压暗可见</div><div class="card">第二列</div><div class="card">第三列</div>
+    <div class="card">第四列</div><div class="card">第五列</div><div class="card">第六列</div>
+  </div>
+  <div id="stage"></div>
+</div>
+
+<div class="inspector">
+  <div>
+    <h2>实时状态（每次动作后刷新）</h2>
+    <table class="kv" id="state"></table>
+  </div>
+  <div>
+    <h2>入场动画期面板左缘漂移（稳定性探针，逐帧采样 400ms）</h2>
+    <div class="chart" id="chart"></div>
+    <div id="probeVerdict" style="margin-top:6px;font-size:11.5px;color:var(--text-dim)">尚未运行</div>
+    <h2 style="margin-top:10px">契约清单（#453 待保三条 + 5 spec 稳定性）</h2>
+    <ul class="check" id="checks"></ul>
+  </div>
+</div>
+
+<div class="diffbox">
+  <div>
+    <h3>案 A 的实施缝（diff 草图）</h3>
+    <pre class="diff">// components/ui/dialog-shell.tsx
+interface DialogShellProps {
+  ...
++ /** 视口根：壳不吃 width/height/max-h/overflow，children 自带
++  *  fixed 几何；Backdrop 仅作 scrim 位，退场不做布局动画。 */
++ viewportRoot?: boolean;
++ /** Backdrop 位类名入参（scrim 皮肤由消费者给）。 */
++ backdropClassName?: string;
+}
+
+// search-panel.tsx（消费点）
+- &lt;button className="search-scrim anim-fade" ... /&gt;
+- &lt;div className="search-panel anim-pop"&gt;…&lt;/div&gt;
++ &lt;DialogShell viewportRoot backdropClassName="search-scrim anim-fade"
++              open={open} onClose={onClose}&gt;
++   &lt;div className="search-panel anim-pop"&gt;…&lt;/div&gt;
++ &lt;/DialogShell&gt;
+// 保留：模态语义（焦点圈定 / aria-modal / body 滚动锁 / Esc 分层）</pre>
+  </div>
+  <div>
+    <h3>案 B 的实施缝（diff 草图）</h3>
+    <pre class="diff">// overlays/search-panel.tsx（消费点）——不碰 dialog-shell
+- &lt;OverlayMount open={open}&gt;
+-   &lt;button className="search-scrim anim-fade" ... /&gt;
+-   &lt;div className="search-panel anim-pop"&gt;…&lt;/div&gt;
+- &lt;/OverlayMount&gt;
++ &lt;FloatingShell open={open} onClose={onClose}&gt;   // #454 非模态底座
++   &lt;button className="search-scrim anim-fade" ... /&gt;  // 自持全视口 scrim
++   &lt;div className="search-panel anim-pop"&gt;…&lt;/div&gt;
++ &lt;/FloatingShell&gt;
+// 代价：Base UI 模态机制整套不参与——焦点圈定 / aria-modal /
+// body 滚动锁 / Esc 分层都得自持或重新钉（search-focus 5 条 spec 重证）</pre>
+  </div>
+</div>
+<div class="legend">注：A 案的「模态机制保留」与 B 案的「机制自持」是两案的全部实质差异——视觉效果两案逐像素相同（同一条 .search-panel 规则、同一个 scrim 皮肤）。</div>
+
+<script>
+// —— 原型状态机（vanilla 模拟壳机制；非 Base UI） ——
+const state = {
+  variant: 'a-vr',
+  open: false,
+  drift: [],           // 逐帧漂移 {x,y}
+  hitOk: null,         // 动画期行中心是否仍可命中（null=未测）
+  closePaths: {esc:null, scrim:null, cmd:null},
+  lastAction: '初始',
+};
+const $ = (s) => document.querySelector(s);
+const stage = $('#stage'), app = $('#app'), chart = $('#chart');
+
+function expectedRect(){
+  const w = app.clientWidth || window.innerWidth;
+  return { x: Math.round((w - 520) / 2), y: 146 };
+}
+
+function render(){
+  // 壳结构按案重建（每次重挂，模拟 portal 重挂载）
+  stage.innerHTML = '';
+  const root = document.createElement('div');
+  root.className = 'shell-root';
+  root.dataset.variant = state.variant;
+  const wrap = document.createElement('div');
+  wrap.className = 'wrap';
+  root.appendChild(wrap);
+
+  let scrimNode = null;
+  if (state.variant === 'a-vr' || state.variant === 'a-default'){
+    // 案 A：scrim = Backdrop 位（壳渲染，类名由 backdropClassName 入参给）
+    scrimNode = document.createElement('div');
+    scrimNode.className = 'dlg-backdrop search-scrim-skin';
+    scrimNode.dataset.role = 'backdrop';
+    root.insertBefore(scrimNode, wrap);
+  } else {
+    // 案 B：scrim = 消费者自持的 button（ClickCatcher 语义：外点只关浮层）
+    scrimNode = document.createElement('button');
+    scrimNode.type = 'button';
+    scrimNode.className = 'search-scrim anim-fade';
+    scrimNode.setAttribute('aria-label','关闭搜索');
+    wrap.appendChild(scrimNode);
+  }
+  scrimNode.addEventListener('click', (e) => { e.stopPropagation(); doClose('scrim'); });
+
+  const panel = document.createElement('div');
+  panel.className = 'search-panel anim-pop';
+  panel.setAttribute('role','dialog');
+  panel.setAttribute('aria-label','搜索');
+  if (state.variant === 'a-default' || state.variant === 'a-vr') panel.setAttribute('aria-modal','true');
+  panel.innerHTML = `
+    <div class="panel-head"><input id="q" placeholder="搜索任务 / 项目 / 文档…" /></div>
+    <div class="rows">
+      <div class="row" data-lit>新建项目：本地文件夹选取</div>
+      <div class="row">#445 看板顶栏重排</div>
+      <div class="row">#447 总管面板贴右竖板</div>
+      <div class="row">ADR 0005 标签真值分叉</div>
+    </div>`;
+  wrap.appendChild(panel);
+
+  if (state.open){
+    stage.appendChild(root);
+    state.lastOpenedAt = performance.now();
+    if (state.variant === 'a-vr' || state.variant === 'b'){ $('#q')?.focus(); }
+    requestAnimationFrame(sampleFrame);
+  }
+  updateInspector();
+}
+
+// —— 稳定性采样：开态头 400ms 逐帧量 x/y 双轴 ——
+function sampleFrame(){
+  const panel = document.querySelector('.search-panel');
+  if (!panel || !state.open) return;
+  const t = performance.now();
+  const r = panel.getBoundingClientRect();
+  const exp = expectedRect();
+  state.drift.push({
+    x: Math.round((r.x - exp.x) * 10) / 10,
+    y: Math.round((r.y - exp.y) * 10) / 10,
+  });
+  // 命中检测（裁剪/遮挡）：行中心此刻的 elementFromPoint 是否仍落在行内
+  const row = panel.querySelector('.row');
+  if (row){ const rr = row.getBoundingClientRect(); const hit = document.elementFromPoint(rr.left + rr.width/2, rr.top + rr.height/2); if (hit && !row.contains(hit) && hit !== row) state.hitOk = false; else if (state.hitOk === null) state.hitOk = true; }
+  if (t - state.lastOpenedAt < 400) requestAnimationFrame(sampleFrame);
+  else { paintChart(); updateInspector(); }
+}
+
+function paintChart(){
+  chart.innerHTML = '';
+  const max = Math.max(1, ...state.drift.map((d) => Math.abs(d.x)));
+  state.drift.forEach((d) => {
+    const i = document.createElement('i');
+    const h = Math.max(2, Math.round((Math.abs(d.x) / max) * 52));
+    i.style.height = h + 'px';
+    i.className = Math.abs(d.x) < 0.6 ? 'zero' : 'hot';
+    i.title = `x ${d.x}px / y ${d.y}px`;
+    chart.appendChild(i);
+  });
+}
+
+function driftVerdict(){
+  if (!state.drift.length) return {txt:'尚未运行', ok:null};
+  const maxX = Math.max(...state.drift.map((d) => Math.abs(d.x)));
+  const maxY = Math.max(...state.drift.map((d) => Math.abs(d.y)));
+  const maxAbs = Math.max(maxX, maxY);
+  // 落定判据：末段是否连续平坦（面板自有 .anim-pop 入场动画也会动 ~4px，150ms 自停
+  // ——那不是缺陷；真缺陷是「永不落定」：祖先布局持续位移）
+  let settle = state.drift.length;
+  for (let i = state.drift.length - 1; i > 0; i--){
+    const d = Math.abs(state.drift[i].x - state.drift[i-1].x) + Math.abs(state.drift[i].y - state.drift[i-1].y);
+    if (d > 0.6){ settle = i; break; }
+  }
+  const flatTailSamples = state.drift.length - settle;   // 末次移动之后的平坦样本数
+  const tailFlat = flatTailSamples >= 3;
+  // 逐帧抖动：Playwright 的 element is not stable 判据 = 相邻两帧盒子不一致
+  let jitter = 0;
+  for (let i = 1; i < state.drift.length; i++){
+    jitter = Math.max(jitter, Math.abs(state.drift[i].x - state.drift[i-1].x) + Math.abs(state.drift[i].y - state.drift[i-1].y));
+  }
+  // 裁剪：fixed 后代落在 transform+overflow:hidden 祖先之外的部分
+  const wrap = document.querySelector('.wrap');
+  const panel = document.querySelector('.search-panel');
+  let clipped = 0;
+  if (wrap && panel){
+    const w = wrap.getBoundingClientRect(), p = panel.getBoundingClientRect();
+    clipped = Math.max(0, Math.round(w.bottom - p.bottom)) || 0;
+    clipped = Math.max(0, Math.round(p.bottom - w.bottom));
+  }
+  const ok = tailFlat && clipped === 0 && state.hitOk !== false;
+  return {
+    txt:`峰值漂移 ${maxAbs.toFixed(1)}px（x ${maxX.toFixed(1)}/y ${maxY.toFixed(1)}）· 逐帧抖动 ${jitter.toFixed(1)}px${jitter > 0.5 ? '（>0.5 = 该帧判不稳定，Playwright 会重试）' : '（两帧一致 = 判稳定）'} · 末段${tailFlat ? `已落定（${flatTailSamples} 帧平）` : '仍在动'} · 被祖先裁剪 ${clipped}px · 动画期点行 ${state.hitOk === null ? '未测' : (state.hitOk ? '命中' : '落空')} —— ${ok ? '稳定（可过 actionability）' : '不稳定（Playwright 报 element is not stable / 点击落空）'}`,
+    ok,
+  };
+}
+
+function updateInspector(){
+  const panel = document.querySelector('.search-panel');
+  const r = panel?.getBoundingClientRect();
+  const exp = expectedRect();
+  const scrim = document.querySelector('.search-scrim, .dlg-backdrop');
+  const wrap = document.querySelector('.wrap');
+  const wrapTransform = wrap ? getComputedStyle(wrap).transform : 'none';
+  const containingBlock = wrapTransform !== 'none'
+      ? 'wrap（transform 祖先 → fixed 退化为相对它定位）'
+      : '视口';
+  const rows = [
+    ['壳', state.variant === 'b' ? 'floating-shell（Base UI 非模态）' : 'dialog-shell（Base UI 模态）' + (state.variant==='a-default'?' · 缺视口根变体':' · 视口根变体')],
+    ['开态', state.open ? '<b class="ok">open</b>' : 'closed'],
+    ['scrim 归属', state.variant === 'b' ? '消费者自持 button（ClickCatcher 语义）' : 'Backdrop 位（壳渲染，类名入参）'],
+    ['包含块（实测算）', containingBlock],
+    ['面板 position', panel ? getComputedStyle(panel).position : '-'],
+    ['panel rect', r ? `x=${r.x.toFixed(1)} y=${r.y.toFixed(1)} ${Math.round(r.width)}×${Math.round(r.height)}` : '-'],
+    ['期望 rect', `x=${exp.x} y=${exp.y} 520×440`],
+    ['aria-modal', panel?.getAttribute('aria-modal') ?? '（无）'],
+    ['焦点', document.activeElement?.id === 'q' ? '搜索输入框' : (document.activeElement?.tagName ?? '-')],
+    ['body 滚动锁', (state.variant==='b' && state.open) ? '无（非模态不锁）' : (state.open ? '锁（模态）' : '-')],
+    ['关路', `Esc=${mark(state.closePaths.esc)} scrim=${mark(state.closePaths.scrim)} ⌘K=${mark(state.closePaths.cmd)}`],
+    ['末次动作', state.lastAction],
+  ];
+  $('#state').innerHTML = rows.map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+
+  // 契约清单
+  const dv = driftVerdict();
+  const modal = state.variant !== 'b';
+  const checks = [
+    ['#137 常亮互斥根标记随开合压暗/复原', state.closePaths.cmd !== null ? true : null],
+    ['scrim 可点关', state.closePaths.scrim],
+    ['⌘K 开合与 useSearchState 接线', state.closePaths.cmd],
+    ['Esc 关闭（A=Base UI layer 栈分层 / B=自持）', state.closePaths.esc],
+    ['入场动画期几何稳定（5 条 spec 的 element is not stable 根因）', dv.ok],
+    [`焦点语义（${modal ? '模态：圈定在面板内' : '非模态：不圈定'}）`, modal ? (document.activeElement?.id==='q') : true],
+  ];
+  $('#checks').innerHTML = checks.map(([t,v]) =>
+    `<li>${v === null ? '○' : (v ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>')} ${t}</li>`).join('');
+  $('#probeVerdict').innerHTML = dv.ok === null ? dv.txt : `<span class="${dv.ok?'ok':'bad'}">${dv.txt}</span>`;
+}
+function mark(v){ return v === null ? '—' : (v ? '<span class="ok">✓</span>' : '<span class="bad">✗</span>'); }
+
+// —— 动作 ——
+function doOpen(via){
+  state.open = true; state.drift = []; state.hitOk = null; state.lastAction = `打开（${via}）`;
+  if (via === 'cmd') state.closePaths.cmd = true;
+  render();
+}
+function doClose(via){
+  if (!state.open) return;
+  state.open = false; state.lastAction = `关闭（${via}）`;
+  if (via === 'esc') state.closePaths.esc = true;
+  if (via === 'scrim') state.closePaths.scrim = true;
+  if (via === 'cmd') state.closePaths.cmd = state.closePaths.cmd !== false;
+  render();
+}
+function setVariant(v){
+  state.variant = v; state.open = false; state.drift = [];
+  state.closePaths = {esc:null, scrim:null, cmd:null}; state.lastAction = '切换案';
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+  ['esc','scrim','cmd'].forEach(k => {});
+  render();
+}
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setVariant(b.dataset.v); });
+$('#btn-open').addEventListener('click', () => doOpen('按钮'));
+$('#btn-esc').addEventListener('click', () => doClose('esc'));
+$('#btn-scrim').addEventListener('click', () => { document.querySelector('.search-scrim, .dlg-backdrop')?.click(); });
+$('#btn-probe').addEventListener('click', () => { state.drift = []; doOpen('探针'); });
+$('#btn-reset').addEventListener('click', () => setVariant(state.variant));
+$('#trigger').addEventListener('click', () => doOpen('按钮'));
+window.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k'){ e.preventDefault(); state.open ? doClose('cmd') : doOpen('cmd'); }
+  else if (e.key === 'Escape' && state.open){ e.preventDefault(); doClose('esc'); }
+});
+// #137 标记：开态压暗
+new MutationObserver(() => {
+  $('#focusMarker').dataset.dim = String(state.open);
+}).observe(app, {childList:true, subtree:true});
+setInterval(() => { $('#focusMarker').dataset.dim = String(state.open); }, 100);
+setVariant('a-vr');
+</script>
+</body>
+</html>
