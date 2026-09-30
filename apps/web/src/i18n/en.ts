@@ -605,6 +605,7 @@ export const EN: Record<string, string> = {
   '找不到该 Agent。它可能已被删除。': 'Agent not found. It may have been deleted.',
   '暂无团队密钥。': 'No team secrets yet.',
   '暂无 MCP 服务器。': 'No MCP servers yet.',
+  团队密钥: 'Team secrets',
   // shared canon（packages/shared/src/records/agent.ts、memory.ts），经 t()
   // 消费、不作字面量出现——i18n-coverage COMPUTED_KEYS 登记。
   '远程 shell': 'Remote shell',
@@ -627,6 +628,8 @@ export const EN: Record<string, string> = {
     'Let this Agent add new skills to the team skill library.',
   '允许该 Agent 修改团队技能库中已有的技能。':
     'Let this Agent modify skills already in the team skill library.',
+  '任务执行时将团队密钥以环境变量注入该 Agent 的 shell。所在机器需要 pacman CLI 0.1.28 及以上。':
+    'Team secrets are injected into this Agent’s shell as environment variables when it runs tasks. The machine must have pacman CLI 0.1.28 or newer.',
   '该 Agent 执行任务时可使用的团队 MCP 服务器，其工具以 mcp__<服务器>__<工具> 的形式出现。':
     'Team MCP servers this Agent may use while running tasks; their tools appear as mcp__<server>__<tool>.',
   '用一两句话说明该 Agent 的职责。该说明会注入它执行的每个任务，也会提供给总管用于分派。':
