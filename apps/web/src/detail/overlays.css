@@ -356,9 +356,9 @@
 }
 
 /* AI 审核模态 (M7 #312, r8 §2.5/§3.1): 560 宽居中（448 弹层律之外新档） + 搜
-   索行 + Agent 行（头像 + 名 + 模型 · 默认；选中行 bg-indigo-500/10）+ 可选
-   关注点 textarea + 32×32 primary「开始审核」按钮。容器走 .dlg-form-* 族层，
-   此处只余 review 独有件。 */
+   索行 + Agent 行（头像 + 名 + 厂商 · 模型；选中行 bg-indigo-500/10）+ 独立性
+   提示行（#509）+ 可选关注点 textarea + 32×32 primary「开始审核」按钮。容器走
+   .dlg-form-* 族层，此处只余 review 独有件。 */
 .review-body {
   display: flex;
   flex-direction: column;
@@ -448,6 +448,32 @@
   font-size: 13px;
   color: var(--text-tertiary);
   text-align: center;
+}
+
+/* 独立性提示行（#509）：默认审核人与产出步跨厂商时**不出现**；同源与无法判
+   定两档共用本容器（两档只差文案，不做红黄分色——这不是错误，是一条事实说
+   明）。左缘 amber 竖条与 chat-review-finding--suggestion 同色，读作「留意」
+   而非「出错」。 */
+.review-notice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--color-warning, #f59e0b);
+  border-radius: 6px;
+  background: var(--surface-secondary);
+}
+
+.review-notice-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.review-notice-body {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
 }
 
 .review-focus-row {
