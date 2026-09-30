@@ -1,6 +1,6 @@
 # 头像(dicebear Lorelei,#387)
 
-头像 = dicebear HTTP API 按 displayName 种子生成(style `lorelei`,9.x)——同名恒同像,无需存储。`avatarUrl` 列语义:null = dicebear 生成(默认);非 null = 显式覆盖。加载失败(离线/API 挂)经 `img onError` 回退 #387 前的静态资产(user=`/avatar-user.png`,agent=`/avatar-robot-1.svg`),CSS 定尺寸不裂图。单源组件 `apps/web/src/ui/avatar.tsx`。
+头像 = dicebear HTTP API 按 displayName 种子生成(style `lorelei`,9.x)——同名恒同像,无需存储。`avatarUrl` 列语义:null = dicebear 生成(默认);非 null = 显式覆盖。加载失败(离线/API 挂)经 `img onError` 回退 #387 前的静态资产(user=`/avatar-user.png`,agent=`/avatar-robot-1.svg`),CSS 定尺寸不裂图。单源组件 = `components/ui/seeded-avatar.tsx`（XMON-14 起落到 shadcn 落点 `components/ui/avatar.tsx` 上；Root 走 `display:contents`，尺寸仍归 per-face 几何正本）。
 
 ## Sub-features
 

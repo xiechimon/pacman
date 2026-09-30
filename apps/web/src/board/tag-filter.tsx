@@ -19,11 +19,11 @@
 import { FIXED_TAGS } from '@pacman/shared';
 import { useState } from 'react';
 import { Button } from '../components/ui/button.js';
+import { TagChip, type TagChipData } from '../components/ui/tag-chip.js';
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
-import { TagChip, type TagChipData } from '../ui/tag-chip.js';
 
 /** URL 参 → 选中词表名集。词表外名/重复名静默丢弃，返回序 = FIXED_TAGS
  *  规范序（URL 确定性与点击序无关，同选集恒同 URL）。 */

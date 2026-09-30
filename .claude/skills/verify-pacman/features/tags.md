@@ -22,7 +22,7 @@ Preconditions:
 1. `launch.mjs` 起隔离栈,`doctor.mjs` 全 PASS。播种/只读渲染是 UI + server 面,无需 daemon。
 2. live 面:看板新建任务对话框(无项目时自动建「默认项目」,同 board-new-task)。
 
-- **固定词表 + 无标题面。** 看板「新建任务」→ 对话框(无标题输入/无标签行)→ 正文多行 → 保存 → 卡标题 = 首行。**跑法:** `node <skill>/scripts/drive-tags.mjs`(自足,无需 daemon/seed)——checks:负空间钉(无 `.new-task-input`/`.new-task-tags`/`.new-task-tag-add`)→ 占位标题落卡 → API todo.title/tagIds 空 → 播种词表 6 行(API + SQLite)→ 详情页无标签行 + h2 = 占位标题 → 无标签卡零占位(卡面无 chip)。
+- **固定词表 + 无标题面。** 看板「新建任务」→ 对话框(无标题输入/无标签行)→ 正文多行 → 保存 → 卡标题 = 首行。**跑法:** `node <skill>/scripts/drive-tags.mjs`(自足,无需 daemon/seed)——checks:类型筛选弹层选中行的 TagChip 落点契约（`[data-slot="badge"]`、20px 几何；XMON-14 起落在 registry Badge 上）→ 负空间钉(无 `.new-task-input`/`.new-task-tags`/`.new-task-tag-add`)→ 占位标题落卡 → API todo.title/tagIds 空 → 播种词表 6 行(API + SQLite)→ 详情页无标签行 + h2 = 占位标题 → 无标签卡零占位(卡面无 chip)。
 - **agent 回填面。** 需 daemon + 真模型,不脚本化——server vitest 覆盖 relay 链(`task-meta.test.ts` 的 set_task_meta 三测);live 复验 = 起完整栈派发任务,看板卡标题在执行开始后被覆盖、详情页出 chip。
 - **验证状态(2026-09-29)**:随 #394 改写,待本票 verify 跑出首份证据。
 

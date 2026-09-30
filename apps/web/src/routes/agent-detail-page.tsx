@@ -43,6 +43,7 @@ import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
 import { Input } from '../components/ui/input.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Switch } from '../components/ui/switch.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -50,7 +51,6 @@ import { useI18n } from '../i18n/provider.js';
 import { ArrowUpDown, Check, ChevronDown, Search, SquarePen } from '../icons/index.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
 import { ResourceShell } from '../resources/shell.js';
-import { Avatar } from '../ui/avatar.js';
 import './agent-detail.css';
 import { AgentModelSelect } from './agent-model-select.js';
 
@@ -216,7 +216,7 @@ export function AgentDetailPage() {
         {tab === 'overview' && (
           <div className="agent-overview">
             <div className="agent-head">
-              <Avatar
+              <SeededAvatar
                 name={agent.displayName}
                 src={agent.avatarUrl}
                 fallback="/avatar-robot-1.svg"

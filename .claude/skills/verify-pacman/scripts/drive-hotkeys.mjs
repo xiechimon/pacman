@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// verify-pacman drive-hotkeys — 快捷键组全链真用户路径（#389）。
+// verify-pacman drive-hotkeys — 快捷键组全链真用户路径（#389 / #442 / #468）。
 //
 // 走真用户路径：侧栏「新任务」行（N 角标）点击开 dialog → Esc → N 热键开
-// dialog → 填标题保存（board 面 live createTodo）→ ⌘K 面板输入态负向
-// （N/Space 均不误触，空格落进输入框）→ Space 呼出总管抽屉且焦点在草稿框
-// → /app/schedules 非看板页 N 开全局 dialog 保存（AppSidebar 内面，live
-// save 同路）。
+// dialog → 填标题保存（board 面 live createTodo）→ FAB 的 ⌘J 悬浮提示
+// （#468；XMON-14 起落在 components/ui 的 kbd 落点上）→ ⌘K 面板输入态负向
+// （N 与 ⌘J 均不误触）→ ⌘J 呼出总管抽屉且焦点在草稿框（#442 起 ⌘J 取代
+// Space）→ /app/schedules 非看板页 N 开全局 dialog 保存（AppSidebar 内面，
+// live save 同路）。
 //
 // 真值：GET /api/todos 两行（board 面 + schedules 面各一）+ SQLite `todo`
 // 表行。UI 面热键 + server 写路径，无需 daemon。
@@ -125,11 +126,34 @@ try {
   check('board-save', true, 'board 面 N 开 → 保存');
   await shot(page, '02-board-saved.png');
 
-  // 4. 输入态负向：⌘K 面板输入框持焦时 N/Space 均不误触，字符照常入框
+  // 3b. FAB 的 ⌘J 悬浮提示（#468）在 XMON-14 后由 components/ui 的 kbd 落点
+  // 承载：registry 数据属性契约 + 静息隐藏 / 父控件悬浮浮出两条可见性律。
+  const hint = page.locator('.chief-fab .kbd-hint');
+  const hintCount = await hint.count();
+  const hintSlot = hintCount > 0 ? await hint.first().getAttribute('data-slot') : null;
+  const hintHiddenAtRest = hintCount > 0 ? !(await hint.first().isVisible()) : false;
+  check(
+    'kbd-hint-registry',
+    hintCount === 1 && hintSlot === 'kbd' && hintHiddenAtRest,
+    `⌘J 提示 n=${hintCount} data-slot=${hintSlot ?? '缺失'} 静息隐藏=${hintHiddenAtRest}`,
+  );
+  await page.locator('.chief-fab').hover();
+  await hint
+    .first()
+    .waitFor({ state: 'visible', timeout: 3000 })
+    .catch(() => {});
+  const hintRevealed = hintCount > 0 && (await hint.first().isVisible());
+  check('kbd-hint-hover-reveals', hintRevealed, `父控件悬浮浮出=${hintRevealed}`);
+  await shot(page, '02b-kbd-hint.png');
+  await page.mouse.move(0, 0);
+
+  // 4. 输入态负向：⌘K 面板输入框持焦时 N / ⌘J 均不误触，字符照常入框
   await pressUntil(page, 'Meta+k', '.search-panel');
   const searchField = '.search-input-row input';
   await page.keyboard.press('n');
   await page.keyboard.press(' ');
+  // ⌘J 的守卫同律：输入态吞键（#442 editable-only guard）
+  await page.keyboard.press('Meta+j');
   const dialogCount = await page.locator('.new-task-dialog').count();
   const drawerCount = await page.locator('.chief-drawer').count();
   const typed = await page.inputValue(searchField);
@@ -140,12 +164,12 @@ try {
   );
   await page.keyboard.press('Escape');
 
-  // 5. Space 呼出总管抽屉，焦点在草稿框；Esc 关（既有）
-  await pressUntil(page, ' ', '.chief-drawer');
+  // 5. ⌘J 呼出总管抽屉，焦点在草稿框；Esc 关（#442 起 ⌘J 取代 Space）
+  await pressUntil(page, 'Meta+j', '.chief-drawer');
   const composerFocused = await page.evaluate(
     () => document.activeElement?.classList.contains('chief-composer-input') ?? false,
   );
-  check('space-wakes-focused', composerFocused, 'Space 开抽屉且草稿框持焦');
+  check('cmdj-wakes-focused', composerFocused, '⌘J 开抽屉且草稿框持焦');
   await shot(page, '03-chief-drawer.png');
   await page.keyboard.press('Escape');
   await page.waitForSelector('.chief-drawer', { state: 'hidden', timeout: 5000 });
