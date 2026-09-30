@@ -354,6 +354,7 @@ export const EN: Record<string, string> = {
   // original like any real user data would) ——
   '准备工作区...': 'Preparing workspace...',
   '处理中...': 'Working on it...',
+  '执行中...': 'Running...',
   '正在停止…': 'Stopping…',
   已取消: 'Cancelled',
   [PROBE_TOOL_CALL_LABEL]: `Calling tool: ${PROBE_TOOL_PILLS[1]}`,

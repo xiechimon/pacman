@@ -412,8 +412,11 @@ export type TranscriptItem =
       footer?: RobotFooter;
     }
   /** Live planning/execution row: elapsed seconds + `›` + step label
-   *  (r7 16 `准备工作区...`, r7 26 `处理中...`, r7 26d `调用工具：bash …`). */
-  | { kind: 'streaming'; seconds: number; label: string }
+   *  (r7 16 `准备工作区...`, r7 26 `处理中...`, r7 26d `调用工具：bash …`).
+   *  #471 quiescent variant: `seconds` absent = the building gap's live
+   *  cue (spinner reel + static 执行中... label, no counter — the gap has
+   *  no stream events that would re-render a tick). */
+  | { kind: 'streaming'; seconds?: number; label: string }
   /** Collapsed plan card: `方案 · v1` row, clamped preview, action row
    *  `完成 Ns` (r7 17). `seconds` absent renders the bare `完成`
    *  (reused-plan card, r8 76); `chevron` adds the trailing `›` of the

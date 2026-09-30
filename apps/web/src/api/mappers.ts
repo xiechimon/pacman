@@ -536,6 +536,14 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
           ? '准备工作区...'
           : '处理中...',
     });
+  } else if (build && todo.phase === 'building' && !steps.some((s) => s.status === 'stopped')) {
+    // 静止态 live 线索（#471）：building 的步间隙 / agent 非流式窗口没有
+    // claimed/pending 步——对话区不能全静（实测唯一线索只剩头部「执行中」
+    // chip）。挂同族 streaming 行（spinner reel + 静态标签，渲染共用
+    // transcript 组件）；不挂秒数计数：静止期没有流事件驱动重渲，挂上去
+    // 只会冻结说谎。stopped 步在场 = 本轮已被停止钮终结（run 行挂「已取
+    // 消」终态），phase 未翻篇的窗口里不再自称执行中。
+    items.push({ kind: 'streaming', label: '执行中...' });
   }
 
   // 失败行（r8 54/73 canon：橙色标题 + 指引 + 链接行）。

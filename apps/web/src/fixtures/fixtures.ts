@@ -769,6 +769,22 @@ export function detailBuilding(lateCapture: boolean): FixtureSet {
   };
 }
 
+/** #471 quiescent building gap (named scenario, no capture — the
+ *  detail-unread precedent): the task is executing but the agent is not
+ *  streaming (no active step) — the transcript keeps one live row through
+ *  the same streaming component: spinner reel + the static 执行中...
+ *  label, no seconds counter. [设计] */
+export function detailSpinnerQuiescent(): FixtureSet {
+  return {
+    todos: [probeTodo('building', r7(13, 35))],
+    now: r7(13, 36),
+    detail: {
+      transcript: [...PROBE_BUILD_OPEN, { kind: 'streaming', label: '执行中...' }],
+      doc: PROBE_PLAN_DOC,
+    },
+  };
+}
+
 /** Detail review state (r7 27/27d collapsed, 27b diff-expanded, 28 diff +
  *  tools expanded). The dark capture carries the user-menu popover. */
 export function detailReview(opts: {

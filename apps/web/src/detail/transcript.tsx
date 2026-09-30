@@ -34,6 +34,12 @@ interface TranscriptProps {
   onOpenPlan?: () => void;
 }
 
+/** #471 braille spinner frames: the classic 10-step dot wheel rotated to
+ *  open on ⠙ — the frame the r7 26/26d captures froze, which doubles as
+ *  the prefers-reduced-motion static frame. The reel turns one 16px slot
+ *  per 90ms step (spinner-reel, styles/motion.css). */
+const SPINNER_FRAMES = ['⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏', '⠋'];
+
 /** Elapsed label: `Ns` under a minute (r7 21s/19s), `Nm Ns` above
  *  (r8 56 plan card `完成 2m 41s`, #74 dict template). */
 function formatElapsed(seconds: number, t: TFunc): string {
@@ -227,12 +233,24 @@ function Row({ item, t, onOpenPlan }: { item: TranscriptItem; t: TFunc; onOpenPl
             <img src="/avatar-robot-1.svg" alt="" />
           </span>
           <span className="chat-streaming">
-            {/* frozen braille spinner frame before the elapsed seconds
-                (r7 16/26/26d rows all show it) */}
-            <span className="chat-spinner">⠙</span>
-            {item.seconds}s
+            {/* #471: the braille spinner the r7 16/26/26d captures froze
+                mid-animation now turns — a 10-frame reel scrolling one slot
+                per 90ms step, frozen back on ⠙ under reduced motion.
+                aria-hidden: the label text is the accessible live cue, the
+                animation is never the only channel. */}
+            <span className="chat-spinner" aria-hidden="true">
+              <span className="chat-spinner-reel">
+                {SPINNER_FRAMES.map((frame) => (
+                  <span key={frame}>{frame}</span>
+                ))}
+              </span>
+            </span>
+            {item.seconds != null && (
+              // tabular figures: the 3s→10s tick must not shift the row tail
+              <span className="chat-streaming-secs">{item.seconds}s</span>
+            )}
             <ChevronRight width={10} height={10} />
-            <span className="chat-streaming-label">{item.label}</span>
+            <span className="chat-streaming-label">{t(item.label)}</span>
           </span>
         </div>
       );
