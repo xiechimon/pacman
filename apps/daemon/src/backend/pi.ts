@@ -70,6 +70,17 @@ export function builtinToolNames(readOnly: boolean): readonly string[] {
   return readOnly ? PI_READONLY_TOOLS : PI_BUILTIN_TOOLS;
 }
 
+/** 会话工具面 = readOnly 判据下的内建面 + remoteTools relay + MCP 工具名。
+ * 只读只摘写类内建工具（edit/write），relay 与 MCP 面照旧——审核者仍要能
+ * 用服务端工具与已授权 MCP 取事实。 */
+export function sessionToolNames(opts: {
+  readOnly: boolean;
+  remoteTools: readonly string[];
+  mcpTools: readonly string[];
+}): string[] {
+  return [...builtinToolNames(opts.readOnly), ...opts.remoteTools, ...opts.mcpTools];
+}
+
 // —— skills 执行面注入（spec 14/#371）————————————————————————
 // catalog 是索引不全文：token 预算只与 catalog 长度线性相关，skill 全文由
 // agent 按 description 匹配时经 read 工具（location 绝对路径）按需加载。
@@ -637,11 +648,11 @@ export class PiBackend implements AgentBackend {
       resourceLoader: loader,
       sessionManager,
       settingsManager,
-      tools: [
-        ...builtinToolNames(opts.readOnly === true),
-        ...remoteTools.map((t) => t.name),
-        ...mcpTools.map((t) => t.name),
-      ],
+      tools: sessionToolNames({
+        readOnly: opts.readOnly === true,
+        remoteTools: remoteTools.map((t) => t.name),
+        mcpTools: mcpTools.map((t) => t.name),
+      }),
       ...(customTools.length > 0 || mcpTools.length > 0
         ? { customTools: [...customTools, ...mcpTools] }
         : {}),

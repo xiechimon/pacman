@@ -30,7 +30,7 @@ import type {
 } from '@pacman/shared';
 import { buildReviewStepPrompt, type DocumentDiffFile } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
-import { builtinToolNames, PI_CAPABILITIES } from '../src/backend/pi.js';
+import { builtinToolNames, PI_CAPABILITIES, sessionToolNames } from '../src/backend/pi.js';
 import { StepJournal } from '../src/journal.js';
 import type { DaemonLogger } from '../src/log.js';
 import type { MachineApi } from '../src/machine-client.js';
@@ -94,6 +94,8 @@ function claimedReview(
 class FakeClient implements MachineApi {
   calls: string[] = [];
   doneBodies: { stepId: string; body: MachineDoneBody }[] = [];
+  /** 回传的 transcript 终稿全文（回退失败行这类 system 行的可观测面）。 */
+  uploadedTranscript = '';
 
   async enroll(): Promise<never> {
     throw new Error('unused');
@@ -138,11 +140,9 @@ class FakeClient implements MachineApi {
       })),
     };
   }
-  async putUpload(
-    _url: string,
-    _headers: Record<string, string>,
-    _body: TranscriptUpload | string,
-  ) {}
+  async putUpload(_url: string, _headers: Record<string, string>, body: TranscriptUpload | string) {
+    this.uploadedTranscript += typeof body === 'string' ? body : JSON.stringify(body);
+  }
   async done(stepId: string, body: MachineDoneBody) {
     this.doneBodies.push({ stepId, body });
     this.calls.push(`done:${stepId}:${body.status}`);
@@ -157,13 +157,16 @@ class FakeClient implements MachineApi {
   async stream(_signal: AbortSignal, _onEvent: (ev: MachineStreamEvent) => void) {}
 }
 
-/** 录制型 fake worktree：全操作进 calls（rewind 序靠 calls 判读）。 */
-function fakeWorkspace(calls: string[]): WorktreeOps {
+/** 录制型 fake worktree：全操作进 calls（rewind 序靠 calls 判读）。检出 cwd
+ * 刻意与裸任务目录不同名（真 WorkspaceManager 两者同路径）——这样「审核者
+ * 跑在检出里还是裸目录里」在断言里可分辨。 */
+const CHECKOUT_CWD = '/tmp/fake-workspace/worktrees/conv-1';
+function fakeWorkspace(calls: string[], opts: { rewindError?: string } = {}): WorktreeOps {
   return {
     async prepare(input) {
       calls.push(`prepare:${input.cloneUrl}`);
       return {
-        cwd: join(input.workspacesRoot, input.conversationId),
+        cwd: CHECKOUT_CWD,
         baseRepoDir: join(input.workspacesRoot, input.projectId, 'repo'),
         branch: `pacman/conv-${input.conversationId}`,
         defaultBranch: 'main',
@@ -193,6 +196,7 @@ function fakeWorkspace(calls: string[]): WorktreeOps {
     },
     async restoreCheckpoint(_cwd, commit) {
       calls.push(`restoreCheckpoint:${commit}`);
+      if (opts.rewindError !== undefined) throw new Error(opts.rewindError);
     },
     async cleanupOrphans() {
       return [];
@@ -224,7 +228,7 @@ function capturingBackend(captured: SessionOpts[]): AgentBackend {
   };
 }
 
-async function setup(claimed: ClaimedStep) {
+async function setup(claimed: ClaimedStep, opts: { rewindError?: string } = {}) {
   const home = mkdtempSync(join(tmpdir(), 'pacman-runner-review-'));
   const paths = statePaths(home, join(home, 'workspaces'));
   const calls: string[] = []; // 单一调用序：client 与 workspace 共写一份（rewind 先于 done 的时序靠它判读）
@@ -237,7 +241,7 @@ async function setup(claimed: ClaimedStep) {
     backend: capturingBackend(captured),
     logger: captureLogger(),
     paths,
-    workspace: fakeWorkspace(calls),
+    workspace: fakeWorkspace(calls, opts),
     workspacesDir: join(home, 'workspaces'),
     mcpConfigPath: join(home, 'claude.json'),
     heartbeatIntervalMs: 60_000,
@@ -248,8 +252,10 @@ async function setup(claimed: ClaimedStep) {
 
 describe('审核步执行面（#511）', () => {
   test('失败方式 1+2：审核关口开只读检出，审核者写入被丢弃、不 commit / 不 push', async () => {
-    const { client, calls } = await setup(claimedReview('review', HOSTED_REPO));
+    const { client, calls, captured } = await setup(claimedReview('review', HOSTED_REPO));
     expect(calls).toContain(`prepare:${HOSTED_REPO.cloneUrl}`);
+    // 审核者跑在检出里（不是裸任务目录）——「能读到文件」的可观测面
+    expect(captured[0]!.cwd).toBe(CHECKOUT_CWD);
     // 写入丢弃：rewind 到步起点（headAtStart），且在 done 之前
     expect(calls).toContain('restoreCheckpoint:abc123');
     expect(calls.indexOf('restoreCheckpoint:abc123')).toBeLessThan(
@@ -269,8 +275,9 @@ describe('审核步执行面（#511）', () => {
     const { calls, captured } = await setup(claimedReview('confirm', HOSTED_REPO));
     expect(calls.some((c) => c.startsWith('prepare'))).toBe(false);
     expect(calls.some((c) => c.startsWith('push:'))).toBe(false);
-    // 无检出 = 不取步起点 head（git 收尾面整段不参与）
+    // 无检出 = 不取步起点 head（git 收尾面整段不参与）+ 会话 cwd 回落裸任务目录
     expect(calls).not.toContain('headCommit');
+    expect(captured[0]!.cwd).not.toBe(CHECKOUT_CWD);
     // 确认关口材料仍含方案（只是不含变更段）
     expect(captured[0]!.prompt).toContain(PLAN_TEXT);
     expect(captured[0]!.prompt).not.toContain('src/parse.ts');
@@ -290,6 +297,24 @@ describe('审核步执行面（#511）', () => {
     expect(captured[0]!.readOnly).toBe(true);
     expect(builtinToolNames(true)).toEqual(['read', 'bash']);
     expect(builtinToolNames(false)).toEqual(['read', 'bash', 'edit', 'write']);
+    // 工具面组装：只读摘掉写类内建工具，relay/MCP 面照旧（审核者仍要取事实）
+    expect(
+      sessionToolNames({ readOnly: true, remoteTools: ['save_memory'], mcpTools: ['mcp__x__y'] }),
+    ).toEqual(['read', 'bash', 'save_memory', 'mcp__x__y']);
+    expect(
+      sessionToolNames({ readOnly: false, remoteTools: ['save_memory'], mcpTools: [] }),
+    ).toEqual(['read', 'bash', 'edit', 'write', 'save_memory']);
+  });
+
+  test('只读检出回退失败不静默：落一条 system 行走 transcript（写入残留要让人看见）', async () => {
+    const { client, calls } = await setup(claimedReview('review', HOSTED_REPO), {
+      rewindError: 'fatal: unable to create file',
+    });
+    expect(calls).toContain('restoreCheckpoint:abc123');
+    // 审核本身仍算成功（verdict 不该因回退失败丢掉），但残留必须可见
+    expect(client.doneBodies[0]!.body.status).toBe('success');
+    expect(client.uploadedTranscript).toContain('审核检出未能回退到本轮起点');
+    expect(client.uploadedTranscript).toContain('fatal: unable to create file');
   });
 
   test('审核关口 + 未绑 repo：不开检出（裸目录退化形），材料仍含变更', async () => {

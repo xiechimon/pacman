@@ -552,18 +552,29 @@ export async function runStep(
   // watchdog 共用 handle.stop()）→ usage 从 handle 累计面兜底（逐消息累积，
   // token 记账不因中断丢失）。
   if (!sawDone) usage = handle.usage();
+
+  /** worktree 回退到步起点（stop/discard 与审核步只读收尾共用一处护栏）；
+   * 返回失败原因，null = 回退成功或不适用（无检出/无起点）。回退失败意味着
+   * 本轮写入可能残留——调用方按各自语义报出去，不静默。 */
+  const rewindToStepStart = async (): Promise<string | null> => {
+    if (ws === null || !deps.workspace || headAtStart === null) return '步起点 commit 不可得';
+    try {
+      await deps.workspace.restoreCheckpoint(ws.cwd, headAtStart);
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+    }
+  };
+
   if (stopped) {
     logger.step(`step stopped by user (discard=${stopReq?.discard === true})`);
     // 丢弃本轮修改 = worktree rewind 到步起点 checkpoint（r9 §3.3「方案和
     // 代码回到上一个版本」；方案文档面天然回上版——plan.md 上传在步收尾，
     // 停止即不上传）。不 commit/push：中断步不产交接物，远端分支停在上一步
     // 收尾态（本地 rewind 后即与远端一致，无需 force push）。
-    if (stopReq?.discard && ws !== null && deps.workspace && headAtStart !== null) {
-      try {
-        await deps.workspace.restoreCheckpoint(ws.cwd, headAtStart);
-      } catch (err) {
-        logger.step(`discard rewind failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
+    if (stopReq?.discard === true) {
+      const failed = await rewindToStepStart();
+      if (failed !== null) logger.step(`discard rewind failed: ${failed}`);
     }
   }
 
@@ -577,11 +588,18 @@ export async function runStep(
   //   审核者若在 bash 里自己 push（prompt 明令禁止），daemon 拦不住——托管/
   //   github 形态远端要 per-step 凭证（只在 daemon 内存里、只经参数传给 git
   //   原语），裸 push 拿不到凭证；local 形态远端是本地路径，推得动。
-  if (checkout && ws !== null && deps.workspace && headAtStart !== null) {
-    try {
-      await deps.workspace.restoreCheckpoint(ws.cwd, headAtStart);
-    } catch (err) {
-      logger.step(`review rewind failed: ${err instanceof Error ? err.message : String(err)}`);
+  //   回退失败不能只写 daemon 日志：那正是「写入残留 + 下一步顺手提交」的窗口，
+  //   落一条 system 行走 transcript 让用户在合并前看得见。
+  if (checkout) {
+    const failed = await rewindToStepStart();
+    if (failed !== null) {
+      logger.step(`review rewind failed: ${failed}`);
+      transcript.upsert({
+        id: `review-rewind-${stepId}`,
+        role: 'system',
+        content: `审核检出未能回退到本轮起点（${failed}）——本轮审核对工作区的写入可能残留，合并前请确认工作区状态`,
+        createdAt: now(),
+      });
     }
   }
 
