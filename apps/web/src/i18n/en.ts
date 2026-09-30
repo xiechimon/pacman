@@ -332,6 +332,14 @@ export const EN: Record<string, string> = {
   '希望 Agent 审核时重点关注什么？（可选）':
     'What do you want the Agent to focus on during review? (optional)',
   开始审核: 'Start review',
+  // #509 审核选人独立性提示：默认值优先跨厂商；无跨厂商可选时出声。两档措辞
+  // ——确证同源 vs 无法判定（未配置厂商 = 没有比对基准），都不静默。
+  本次审核与产出同源: 'This review shares a vendor with the producing step',
+  无法判定审核独立性: 'Cannot determine review independence',
+  '审核人与产出该方案的 Agent 来自同一模型厂商，不构成独立复核。':
+    'The reviewer and the Agent that produced this plan use the same model vendor; this is not an independent review.',
+  '产出该方案的 Agent 或所选审核人未配置模型厂商，缺少比对基准，不构成独立复核。':
+    'Neither the producing Agent nor the selected reviewer has a model vendor configured, so there is nothing to compare against; this is not an independent review.',
   // M7 #330 AI 审核消息渲染（r8 §3.1 真 findings 上线）：结论先行 + 编号 findings
   // + 严重度后缀（(blocking)/(suggestion)/(info)）+ 方案引用块 + 修复建议。
   // 服务端消息 kind = REVIEW_VERDICT_KIND（shared/message.ts 双端单源），

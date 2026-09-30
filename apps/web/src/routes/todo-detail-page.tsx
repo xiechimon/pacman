@@ -61,6 +61,7 @@ import { DetailHead } from '../detail/dhead.js';
 import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
 import { RerunDialog, ReusePanel } from '../detail/overlays.js';
+import { resolveReviewDefault } from '../detail/review-default.js';
 import { type ReviewAgentOption, ReviewDialog } from '../detail/review-dialog.js';
 import { RightPane } from '../detail/right-pane.js';
 import { SourceIssueLine } from '../detail/source-issue.js';
@@ -504,23 +505,36 @@ export function TodoDetailPage() {
   };
 
   // AI 审核候选 Agent（M7 #312，r8 §3.1）：live = members 读面 memberType:"agent"
-  // 行投影；fixture 面 undefined = ReviewDialog 兜底 DEFAULT_AGENT（行 A：r8 §3.1
-  // 仅一处 Agent 选取，canon 单默认行）。
+  // 行投影（#509 起带 provider，供跨厂商判定）；fixture 面 undefined =
+  // ReviewDialog 兜底 DEFAULT_AGENT（行 A：r8 §3.1 仅一处 Agent 选取，canon
+  // 单默认行）。
   const reviewAgents: ReviewAgentOption[] | undefined = live
     ? (membersQ.data ?? [])
         .filter((m) => m.memberType === 'agent')
         .map((m) => {
-          const actor = m.actor as { displayName?: string; modelId?: string | null } | undefined;
+          const actor = m.actor as
+            | { displayName?: string; modelId?: string | null; provider?: string | null }
+            | undefined;
           return {
             id: m.actorId,
             name: actor?.displayName ?? m.actorId,
             model: actor?.modelId ?? '默认',
+            provider: actor?.provider ?? null,
           };
         })
     : undefined;
-  // 默认选中 = 当前任务的 build 槽派生投影（services/todos.ts 双槽同值）；缺
-  // 任务指派 = 行 A canon 单默认。
-  const reviewDefaultId = live ? (todo.agent?.id ?? reviewAgents?.[0]?.id ?? null) : undefined;
+  // 默认选人 + 独立性判定（#509）：跨厂商优先，产出步 Agent = 执行侧槽优先、
+  // 规划槽回退（与服务端 per-step 凭据解析同一条链）；两槽都空 = 无基准，默认
+  // 值退到候选集稳定序第一且不声称独立。判定规则单源 = detail/review-default.ts
+  // ——用户改选后的复判走同一条 classifyReviewChoice（ReviewDialog 内）。
+  const reviewPick = resolveReviewDefault({
+    candidates: reviewAgents ?? [],
+    assignment: wireTodo?.assignment ?? null,
+  });
+  // fixture 面不做判定：reviewAgents undefined → 走 ReviewDialog 兜底单默认行，
+  // producerProvider 也保持 undefined（undefined = 本面不判定）。
+  const reviewDefaultId = live ? reviewPick.defaultAgentId : undefined;
+  const reviewProducerProvider = live ? reviewPick.producerProvider : undefined;
 
   const content = live
     ? wireTodo && buildId
@@ -1012,6 +1026,7 @@ export function TodoDetailPage() {
         onClose={closeOverlay}
         agents={reviewAgents}
         defaultAgentId={reviewDefaultId ?? undefined}
+        producerProvider={reviewProducerProvider}
         onStart={
           // 入队审核步（r8 §3.1 实测）：POST steps {action:"review", agentId, focus?}
           // → server 入队审核步 + 时间线插 REVIEW_ANNOUNCEMENT + phase 留 confirm
