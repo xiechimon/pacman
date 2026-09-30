@@ -78,6 +78,7 @@ import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { projectRepoRef, repoDirFor } from './git.js';
 import { openGithubToken } from './github-connection.js';
 import { canTransitionPhase } from './phase.js';
+import { openProviderKey } from './providers.js';
 import { listProjectTagVocab, resolveFixedTagId, resolveProjectTagIds } from './tags.js';
 import { setTodoPhase, updateTodo, writebackSelfIssueTitle } from './todos.js';
 
@@ -127,6 +128,7 @@ function publishStepStatus(deps: MachineDeps, stepId: string): void {
     createdAt: row.createdAt,
     status: row.status,
     checkpointCommit: row.checkpointCommit,
+    attempts: row.attempts ?? null,
   });
 }
 
@@ -721,6 +723,10 @@ function buildChiefClaim(
       memories,
       // skills 白名单不携带（#372）：chief 是信任面，catalog 全量直通不受
       // 绑定 Agent 勾选约束（daemon 侧 isChief 判定双保险）。
+      // 兜底列表（XMON-44）：非空才携带（空 = 现行为，纯增可选无版本墙）。
+      ...(agentRow.fallbackModels.length > 0
+        ? { fallbackModels: [...agentRow.fallbackModels] }
+        : {}),
     },
     chief: {
       threadId: threadRow.id,
@@ -868,6 +874,11 @@ function tryClaim(
         // catalog 构建）。worker 步恒携带——含空数组（[] = 不注入任何 skill，
         // least-privilege；缺省 = 全量直通是 chief 面语义，两态不得混淆）。
         skills: [...agentRow.skills],
+        // 兜底列表（XMON-44）：非空才携带（空 = 现行为；与 mcpServers 缺省律
+        // 同族，纯增可选无版本墙——旧 daemon 忽略）。
+        ...(agentRow.fallbackModels.length > 0
+          ? { fallbackModels: [...agentRow.fallbackModels] }
+          : {}),
       },
       remoteTools: [...(isGithubProject ? WORKER_REMOTE_TOOLS_GITHUB : WORKER_REMOTE_TOOLS)],
       ...(workerMcp ? { mcpServers: workerMcp } : {}),
@@ -1212,8 +1223,12 @@ export function stepToken(
       : projectRow?.repoKind === 'github' && todoRow
         ? githubExecCredential(deps, todoRow.teamId)
         : null;
+  // 兜底凭证最小集（XMON-44）：agentRow 在位才有兜底语境（todoRow 必同步在位）。
+  const fallbackProviders =
+    agentRow && todoRow ? fallbackProviderConfigs(deps, todoRow.teamId, agentRow) : undefined;
   return {
     provider: toProviderConfig(bundle.provider, agentRow?.provider),
+    ...(fallbackProviders ? { fallbackProviders } : {}),
     secrets: bundle.secrets,
     git,
   };
@@ -1233,23 +1248,68 @@ function githubExecCredential(deps: MachineDeps, teamId: string): GitCredentials
 /** provider 行 → wire ProviderConfig（custom http 端点）；无 custom 行回退
  * agent.provider 直投 api_key kind（preset 38 目录，r3 §2）。stepToken 与
  * chiefStepToken 共用（去重）。 */
+/** bundle provider 槽 → wire ProviderConfig（http 臂；custom 端点，r3 §2 记录
+ * 形状投影）。toProviderConfig 与 fallbackProviderConfigs 共用。 */
+function bundleToProviderConfig(
+  bundle: NonNullable<StepCredentialBundle['provider']>,
+): ProviderConfig {
+  return {
+    kind: 'http', // custom 端点（baseUrl 在位；r3 §2 记录形状投影）
+    providerId: bundle.providerId,
+    label: bundle.label,
+    baseUrl: bundle.baseUrl,
+    api: bundle.api,
+    authHeader: bundle.authHeader,
+    models: bundle.models,
+    ...(bundle.apiKey !== null ? { apiKey: bundle.apiKey } : {}),
+  };
+}
+
 function toProviderConfig(
   bundleProvider: StepCredentialBundle['provider'],
   agentProviderId: string | null | undefined,
 ): ProviderConfig | null {
   if (bundleProvider) {
-    return {
-      kind: 'http', // custom 端点（baseUrl 在位；r3 §2 记录形状投影）
-      providerId: bundleProvider.providerId,
-      label: bundleProvider.label,
-      baseUrl: bundleProvider.baseUrl,
-      api: bundleProvider.api,
-      authHeader: bundleProvider.authHeader,
-      models: bundleProvider.models,
-      ...(bundleProvider.apiKey !== null ? { apiKey: bundleProvider.apiKey } : {}),
-    };
+    return bundleToProviderConfig(bundleProvider);
   }
   return agentProviderId ? { kind: 'api_key', providerId: agentProviderId } : null;
+}
+
+/** 兜底 provider 凭证最小集（XMON-44：leader 裁决 daemon 侧步内换模型重试，
+ * 凭证经 token 一次带回）：= 该步 Agent fallbackModels 实际引用的 provider
+ * 去重集挖去主 provider（主槽已发凭证）。null 槽（沿用 agent.provider）不
+ * 产生条目；引用未建 custom 行的 provider → api_key 直投形（主槽同律，
+ * preset 目录）。明文 key 仅内存态（02 §8 语义不变）；空集 = undefined
+ * （缺省不携带——纯增可选字段）。worker（stepToken）与 chief
+ * （chiefStepToken）共用。 */
+function fallbackProviderConfigs(
+  deps: MachineDeps,
+  teamId: string,
+  agentRow: typeof agent.$inferSelect,
+): ProviderConfig[] | undefined {
+  const ids: string[] = [];
+  for (const f of agentRow.fallbackModels) {
+    const id = f.provider ?? agentRow.provider;
+    if (id === null || id === agentRow.provider || ids.includes(id)) continue;
+    ids.push(id);
+  }
+  if (ids.length === 0) return undefined;
+  return ids.map((id): ProviderConfig => {
+    const opened = openProviderKey({ db: deps.db, box: deps.box }, teamId, id);
+    if (opened === null) {
+      return { kind: 'api_key', providerId: id };
+    }
+    return bundleToProviderConfig({
+      providerId: opened.row.providerId,
+      label: opened.row.label,
+      baseUrl: opened.row.baseUrl,
+      api: opened.row.api,
+      authHeader: opened.row.authHeader,
+      apiKey: opened.apiKey,
+      models: opened.row.models,
+      modelId: null,
+    });
+  });
 }
 
 /** chief 步凭证（绑定 Agent 模型 key；secrets 取用面恒空——chief = 总管探索
@@ -1270,8 +1330,12 @@ function chiefStepToken(
   const agentRow = chiefRow?.agentId
     ? deps.db.select().from(agent).where(eq(agent.id, chiefRow.agentId)).get()
     : undefined;
+  // 兜底凭证最小集（XMON-44）：绑定 Agent 的兜底列表同律下发。
+  const fallbackProviders =
+    agentRow && chiefRow ? fallbackProviderConfigs(deps, chiefRow.teamId, agentRow) : undefined;
   return {
     provider: toProviderConfig(bundle.provider, agentRow?.provider),
+    ...(fallbackProviders ? { fallbackProviders } : {}),
     secrets: bundle.secrets,
     git: null,
   };
@@ -1382,6 +1446,15 @@ export async function finishStep(
   // 合并步落地键，r3 §3.5/§3.9）。
   if (body.commit !== undefined) {
     db.update(step).set({ checkpointCommit: body.commit }).where(eq(step.id, stepId)).run();
+  }
+  // 失败分类 + 模型尝试轨迹落账（XMON-44）：daemon 上报什么落什么，server
+  // 不做文本猜测；旧形状（字段缺省）不动列（恒 null）。attempts 只落账——
+  // server 不写重试循环（leader 裁决：重试在 daemon 步内，A6 不触）。
+  if (body.failureKind !== undefined) {
+    db.update(step).set({ failureKind: body.failureKind }).where(eq(step.id, stepId)).run();
+  }
+  if (body.attempts !== undefined) {
+    db.update(step).set({ attempts: body.attempts }).where(eq(step.id, stepId)).run();
   }
   // per-step 一次性 git 凭证回收（步收尾即撤销，成败均回收——凭证生命周期 =
   // 步生命周期，02 §8 运行时层「不落盘常驻」的 server 半）。

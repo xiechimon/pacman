@@ -271,7 +271,9 @@ describe('agent record (r3 §4 实测原样)', () => {
   };
 
   it('parses the observed record', () => {
-    expect(agentRecordSchema.parse(sample)).toEqual(sample);
+    // XMON-44：观测样本（无 fallbackModels）解析后补默认 []——旧记录读面
+    // 向后兼容（空 = 现行为）。
+    expect(agentRecordSchema.parse(sample)).toEqual({ ...sample, fallbackModels: [] });
   });
 
   it('rejects unobserved status values ([推断] note guards the enum)', () => {

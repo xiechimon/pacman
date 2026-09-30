@@ -246,6 +246,7 @@ export function applyStoppedStep(deps: BuildDeps, stepId: string): void {
       createdAt: stoppedRow.createdAt,
       status: stoppedRow.status,
       checkpointCommit: stoppedRow.checkpointCommit,
+      attempts: stoppedRow.attempts ?? null,
     });
   }
   const buildRow = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
@@ -299,6 +300,7 @@ function enqueueStep(
     createdAt,
     status: 'pending',
     checkpointCommit: null,
+    attempts: null, // XMON-44：pending 步无轨迹（done 才落）。
   });
   return { id, buildId, kind, machineId: null, createdAt };
 }
@@ -327,6 +329,8 @@ export function listSteps(deps: BuildDeps, buildId: string): StepJournalRow[] {
       createdAt: r.createdAt,
       status: r.status,
       checkpointCommit: r.checkpointCommit,
+      // XMON-44：兜底轨迹透出（null = 旧形状上报面，无轨迹）。
+      attempts: r.attempts ?? null,
     }));
 }
 

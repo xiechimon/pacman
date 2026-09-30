@@ -9,9 +9,12 @@ import type {
   ChiefCompactionModel,
   ChiefWatch,
   DocumentDiffFile,
+  FallbackModel,
+  ModelAttempt,
   Phase,
   ProjectRepoKind,
   ProviderApi,
+  StepFailureKind,
   StepKind,
   TodoSourceKind,
   TriggerSource,
@@ -167,6 +170,13 @@ export const step = sqliteTable('step', {
    * （r5 §4「v2 内容忠实执行反馈」宿主等价物）、chief 回合任务文本/wake 事实
    * （r5 §3.1/§3.5）。claim 载荷 `instruction` 位透出。 */
   prompt: text('prompt'),
+  /** [内部] 模型尝试轨迹（XMON-44）：done 回传 attempts（主模型首试 + 各
+   * 兜底，provider/modelId/error 原文/起止时间）；null = 旧形状上报（无
+   * 轨迹）。读面经 listSteps/stepJournalRow.attempts 透出。JSON 列。 */
+  attempts: json<ModelAttempt[]>('attempts'),
+  /** [内部] 失败分类（XMON-44：daemon 上报，server 不做文本猜测）：
+   * model_call / other；null = 旧形状上报。 */
+  failureKind: text('failureKind').$type<StepFailureKind>(),
   createdAt: epochMs('createdAt').notNull(),
 });
 
@@ -316,6 +326,10 @@ export const agent = sqliteTable('agent', {
   provider: text('provider'),
   modelId: text('modelId'),
   thinkingLevel: text('thinkingLevel'),
+  /** 兜底模型有序列表（XMON-44）：空 = 现行为；写面已剥离主模型重复项
+   * （shared stripFallbackModelDupes 单源，行上不变式）。JSON 列
+   * （tools/skills 同族）。 */
+  fallbackModels: json<FallbackModel[]>('fallbackModels').notNull().default(sql`'[]'`),
   tools: json<string[]>('tools').notNull().default(sql`'[]'`),
   secrets: json<string[]>('secrets').notNull().default(sql`'[]'`),
   skills: json<string[]>('skills').notNull().default(sql`'[]'`),

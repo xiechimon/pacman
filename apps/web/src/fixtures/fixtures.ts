@@ -1464,6 +1464,7 @@ const AGENT_R3_BUILDER: AgentRecord = {
   secrets: [],
   skills: [],
   mcpServers: [],
+  fallbackModels: [],
 };
 
 /** Agent 详情 + 创建弹窗模型位的数据集：团队页 roster 与详情页记录同场景，

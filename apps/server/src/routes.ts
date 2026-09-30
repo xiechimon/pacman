@@ -47,6 +47,7 @@ import {
   setSecretBodySchema,
   skillRecordSchema,
   startBuildsBodySchema,
+  stripFallbackModelDupes,
   type TagRecord,
   type TeamMember,
   THINKING_LEVELS,
@@ -272,6 +273,7 @@ function agentRecordOf(row: typeof agent.$inferSelect): AgentRecord {
     provider: row.provider,
     modelId: row.modelId,
     thinkingLevel: row.thinkingLevel,
+    fallbackModels: row.fallbackModels,
     tools: row.tools,
     secrets: row.secrets,
     skills: row.skills,
@@ -849,6 +851,8 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     requireTeam(ctx, teamId);
     const body = parseWith(createAgentBodySchema, await jsonBody(c), 'body');
     const id = newRecordId();
+    const provider = body.provider ?? null;
+    const modelId = body.modelId ?? null;
     ctx.db
       .insert(agent)
       .values({
@@ -858,9 +862,12 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         description: body.description ?? null,
         status: 'active',
         avatarUrl: null,
-        provider: body.provider ?? null,
-        modelId: body.modelId ?? null,
+        provider,
+        modelId,
         thinkingLevel: body.thinkingLevel ?? null,
+        // XMON-44：兜底列表写面去重（与主模型重复项剥离，shared 单源）；
+        // 缺省 = []（空 = 现行为）。
+        fallbackModels: stripFallbackModelDupes(body.fallbackModels ?? [], provider, modelId),
         tools: body.tools ?? [],
         secrets: body.secrets ?? [],
         // spec 13 #367：skills[] 校验源 = 本地现扫存在性；未知 id 静默跳过
@@ -888,6 +895,20 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     // spec 13 #367：skills[] 与 create 同律——现扫存在性过滤，未知 id 静默跳过。
     if (body.skills !== undefined) {
       sets.skills = filterKnownSkillIds(ctx.skillsDir, body.skills);
+    }
+    // XMON-44：主模型/兜底列表任一变动 → 存量列表对新主模型再去重（行上
+    // 不变式「fallbackModels 不含主模型」在 PATCH 面也成立——换主模型撞上
+    // 存量兜底项时剥掉后者）。其余字段不动列表。
+    if (
+      body.fallbackModels !== undefined ||
+      body.provider !== undefined ||
+      body.modelId !== undefined
+    ) {
+      const provider = body.provider !== undefined ? (body.provider ?? null) : row.provider;
+      const modelId = body.modelId !== undefined ? (body.modelId ?? null) : row.modelId;
+      const effective =
+        body.fallbackModels !== undefined ? body.fallbackModels : row.fallbackModels;
+      sets.fallbackModels = stripFallbackModelDupes(effective, provider, modelId);
     }
     for (const key of [
       'displayName',
