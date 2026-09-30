@@ -23,13 +23,15 @@
 
 前四行是 #421 决议原文（数字为 #421 时点值），**`#414 试点片` 行与各行末尾的〔归批增量〕是 XMON-17 按 A2=B 补的**——补的目的是让每个 `ui/` 原语消费点都能指到一批。
 
-| 批 | 内容 | 依据 | 并行 | 裸控件 处 / 类〔XMON-20 增量〕 |
+| 批 | 内容 | 依据 | 并行 | 裸控件 |
 |---|---|---|---|---|
-| **#414 试点片**〔归批增量〕 | 看板 / 侧栏域（`board/`）的**原语全切**——#414 只迁了卡片族的 token 与工具类，原语消费点仍在；`routes/board-page.tsx` 同域（直引 `board/board.css`） | 该片是最早落地的一批，域已存在；残留不归批就永远没有验收范围 | 已在盘面，本批只做收口 | 13 处 / 1 类 |
-| **B1 弹层族片** | 19 个挂载点（共享壳 14 消费点 + 2 手工壳）收编到 shadcn Dialog；壳类 `.dlg` ×67 是最热重钉单点 | 共享件先行，避免半迁移缝合线在每域重复 | **串行先行** | 0 / 0（壳件，控件在内容族批） |
-| **B2 热身 + 第一片真域** | token-gate（30 decl）+ machine-authorize（41 decl）+ resources / secondary 之一（#422 裁 = resources）。〔归批增量〕**secondary 面**：`routes/` 下三个页面壳 + 同域页 `team-page.tsx` / `team-chart.tsx` / `account-page.tsx`（均挂 `secondary/shell.tsx`，样式经 `secondary.css` 注入；先例 = XMON-13 已按本行落地同域的 `routes/machine-authorize-page.tsx`） | 低 2 面小钉扎少；中 9 里两件 shell 单引、边界最整 | 批内错域可并行 | **21 处 / 14 类**（XMON-20 前 32 / 24——secondary 面 11 / 10 已由本票清零；余 21 / 14 = resources 五页 15/13 + 壳内邻页 `routes/agent-detail-page.tsx`、`routes/agent-model-select.tsx` 6/1）。#423 迁的是卡片/徽标/tab/switch/input/empty **件**，页内手搓控件当时不在该行验收范围，`create-*-dialog` 三件更在 #422 的排除面内 |
-| **B3 弹层内容族**（合并一片） | overlays（241）+ overlay（278）+ detail/overlays（404）+ mention-picker（223，先修悬空 token） | 三件同族（dlg-* 内容族）、跨域同源；合并免把 dialog-viewport 34 处钉扎改三遍 | 批内可并行 | 26 处 / 22 类 |
-| **B4 高三件** | chief（464 / 49 处钉扎）+ detail（852 / 41K 单文件）+ pages（899 / prj-* 42 选择子） | 体量与钉扎密度决定必须等管道与重钉口径稳定 | 可并行，**最多两条车道**（避免同批断言冲突） | 83 处 / 59 类 |
+| **#414 试点片**〔归批增量〕 | 看板 / 侧栏域（`board/`）的**原语全切**——#414 只迁了卡片族的 token 与工具类，原语消费点仍在；`routes/board-page.tsx` 同域（直引 `board/board.css`） | 该片是最早落地的一批，域已存在；残留不归批就永远没有验收范围 | 已在盘面，本批只做收口 | 13 |
+| **B1 弹层族片** | 19 个挂载点（共享壳 14 消费点 + 2 手工壳）收编到 shadcn Dialog；壳类 `.dlg` ×67 是最热重钉单点 | 共享件先行，避免半迁移缝合线在每域重复 | **串行先行** | 0 |
+| **B2 热身 + 第一片真域** | token-gate（30 decl）+ machine-authorize（41 decl）+ resources / secondary 之一（#422 裁 = resources）。〔归批增量〕**secondary 面**：`routes/` 下三个页面壳 + 同域页 `team-page.tsx` / `team-chart.tsx` / `account-page.tsx`（均挂 `secondary/shell.tsx`，样式经 `secondary.css` 注入；先例 = XMON-13 已按本行落地同域的 `routes/machine-authorize-page.tsx`） | 低 2 面小钉扎少；中 9 里两件 shell 单引、边界最整 | 批内错域可并行 | 30 |
+| **B3 弹层内容族**（合并一片） | overlays（241）+ overlay（278）+ detail/overlays（404）+ mention-picker（223，先修悬空 token） | 三件同族（dlg-* 内容族）、跨域同源；合并免把 dialog-viewport 34 处钉扎改三遍 | 批内可并行 | 30 |
+| **B4 高三件** | chief（464 / 49 处钉扎）+ detail（852 / 41K 单文件）+ pages（899 / prj-* 42 选择子） | 体量与钉扎密度决定必须等管道与重钉口径稳定 | 可并行，**最多两条车道**（避免同批断言冲突） | 102 |
+
+「**裸控件**」列的口径 = 裸 `<button>` / `<input>` / `<select>` / `<textarea>` 四类之和（全域实测与逐文件账见 §6.5）。值按 **XMON-20 落地后**的树取：五批合计 175 处 + `ui/` 原语本体 2 处 = 全站 **177**（`fa54bba` 基线 188）；B3 行含 `detail/overlays.tsx`（按 §6.2 更正后的边归 B3）。B2 行由 41 降到 30 就是本票迁走的那 11 处。
 
 `board/` / `sidebar` **不在「已从盘面消掉」之列**：实测仍有原语消费点（§5.2），归 `#414 试点片` 收口；`routes/` 八个 tsx 按上述两条边（挂哪个 shell / 直引哪个域 css）拆进 `#414 试点片` / `B2` / `第一片真域`，不单开一批。判定与证据见 §6.2。
 
@@ -130,89 +132,6 @@
 - XMON-17 只把当时剩下的 20 个文件 / 22 处逐行归批（不改代码）；XMON-20 落地后刷新为 17 文件 / 18 处。
 - `detail/overlays.tsx` 的归属批由 B4 更正为 **B3**：它的域 css 是 `detail/overlays.css`（§5.1 归 B3，弹层内容族），原表按目录挂在 B4 是错位。
 
-### 5.3 裸控件账本（手搓控件的入账口径）
-
-§5.2 只认「有没有引 `ui/` 原语」。这个口径有一个洞：**页面若把手搓 `<button>` 与域 css 配套写，`ui/` import 为 0，于是被读成「已无原语消费点」，既不进任何一批，也永远没有验收范围**。XMON-20 开票时实测的就是这一面——`routes/team-page.tsx` / `team-chart.tsx` / `account-page.tsx` 三个文件在 §5.2 里记着「本次已无原语消费点」，实际各有 3 / 1 / 3 处手搓钮，样式全在 `secondary.css` 手写。用户看到的就是这句：
-
-> 「组件也没有复用，页面写的一坨，按钮更是有两个样式，都没有用 shadui？」
-
-本节把这类控件也记账。**三列口径**（逐域一行；域 = `apps/web/src` 下的顶层目录）：
-
-- **裸 `<button>`** = 该域 `*.tsx` 里 `<button` 的出现次数（含多行标签）。
-- **手搓按钮类** = 挂在裸 `<button>` 的 `className` 上、且在 `apps/web/src` 下任一 `.css` 里被定义成选择子的类名数（**域内 distinct**，逐文件列不可直接相加）。这就是「两套按钮样式」的度量：一套来自 `components/ui/button`，一套来自域 css。
-- **消费 shadcn `Button` 的文件** = 引 `components/ui/button` 的 tsx 文件数。
-
-**全站分布（每域一行）**：
-
-| 域 | 裸 `<button>`（开工前 → 现） | 手搓按钮类（开工前 → 现） | 消费 shadcn `Button` 的文件（开工前 → 现） |
-|---|---|---|---|
-| `pages` | 35 → 35 | 27 → 27 | 0 → 0 |
-| `detail` | 34 → 34 | 25 → 25 | 0 → 0 |
-| `chief` | 17 → 17 | 11 → 11 | 0 → 0 |
-| `overlay` | 15 → 15 | 14 → 14 | 1 → 1 |
-| `resources` | 15 → 15 | 13 → 13 | 2 → 2 |
-| `board` | 12 → 12 | 0 → 0 | 3 → 3 |
-| `overlays` | 8 → 8 | 5 → 5 | 0 → 0 |
-| `routes` | 18 → **7** | 14 → **4** | 2 → **8** |
-| `ui` | 1 → 1 | 0 → 0 | 0 → 0 |
-| `api` / `components` / `i18n` / `icons` / `pwa` / `secondary` | 0 → 0 | 0 → 0 | 0（`components` 2 个是 `components/ui` 内部自引） |
-| **合计** | **155 → 144** | **109 → 99** | **10 → 16** |
-
-（开工前 = `fa54bbad`，即 XMON-20 动手前的 main 读数；现 = XMON-20 落地后。`routes` 的 −11 / −10 就是本票迁的 11 处裸钮；合计 −11 / −10 与之一致。`chief` / `detail` / `pages` / `overlays` 消费 shadcn `Button` 的文件数仍为 0——对应 B3 / B4 未开工。）
-
-**逐文件（只列裸 `<button>` > 0 者，按处数降序，42 文件；每行都指得到一批）**：
-
-| 文件 | 裸 `<button>` | 手搓按钮类 | 归属批 |
-|---|---|---|---|
-| `pages/project-new-page.tsx` | 14 | 9 | B4 高三件 |
-| `board/sidebar.tsx` | 9 | 0 | #414 试点片 |
-| `detail/docpane.tsx` | 8 | 6 | B4 高三件 |
-| `pages/project-page.tsx` | 8 | 5 | B4 高三件 |
-| `overlay/mention-picker.tsx` | 7 | 8 | B3 弹层内容族 |
-| `chief/chief-drawer.tsx` | 6 | 4 | B4 高三件 |
-| `detail/branch-dialog.tsx` | 6 | 3 | B4 高三件 |
-| `pages/schedules-page.tsx` | 6 | 6 | B4 高三件 |
-| `resources/create-provider-dialog.tsx` | 6 | 6 | 第一片真域（#422 排除面：壳归 B1、内容族归 B3） |
-| `detail/composer.tsx` | 5 | 3 | B4 高三件 |
-| `overlay/more-menu.tsx` | 5 | 3 | B3 弹层内容族 |
-| `overlays/search-panel.tsx` | 4 | 1 | B3 弹层内容族 |
-| `pages/dir-browser.tsx` | 4 | 4 | B4 高三件 |
-| `resources/create-machine-dialog.tsx` | 4 | 2 | 第一片真域（#422 排除面，同上） |
-| `chief/chief-agent-dialog.tsx` | 3 | 3 | B4 高三件 |
-| `chief/chief-model-select.tsx` | 3 | 2 | B4 高三件 |
-| `detail/overlays.tsx` | 3 | 3 | B3 弹层内容族 |
-| `detail/transcript.tsx` | 3 | 4 | B4 高三件 |
-| `overlay/new-task-dialog.tsx` | 3 | 3 | B3 弹层内容族 |
-| `routes/agent-detail-page.tsx` | 3 | 3 | 第一片真域（壳内邻页，挂 `resources/shell.tsx`） |
-| `routes/agent-model-select.tsx` | 3 | 0 | 第一片真域（壳内邻页，同上） |
-| `board/repo-filter.tsx` | 2 | 0 | #414 试点片 |
-| `chief/chief-settings.tsx` | 2 | 3 | B4 高三件 |
-| `chief/edit-charter-dialog.tsx` | 2 | 2 | B4 高三件 |
-| `detail/dhead.tsx` | 2 | 2 | B4 高三件 |
-| `detail/review-dialog.tsx` | 2 | 2 | B4 高三件 |
-| `detail/stop-confirm-dialog.tsx` | 2 | 2 | B4 高三件 |
-| `detail/user-menu.tsx` | 2 | 0 | B4 高三件 |
-| `overlays/plan-dropdown.tsx` | 2 | 2 | B3 弹层内容族 |
-| `pages/github-issues-dialog.tsx` | 2 | 2 | B4 高三件 |
-| `resources/skills-page.tsx` | 2 | 2 | 第一片真域 |
-| `board/tag-filter.tsx` | 1 | 0 | #414 试点片 |
-| `chief/chief-wake.tsx` | 1 | 0 | B4 高三件 |
-| `detail/accept-dialog.tsx` | 1 | 1 | B4 高三件 |
-| `overlays/chip-popover.tsx` | 1 | 1 | B3 弹层内容族 |
-| `overlays/dismiss.tsx` | 1 | 1 | B3 弹层内容族 |
-| `pages/shell.tsx` | 1 | 1 | B4 高三件 |
-| `resources/create-secret-dialog.tsx` | 1 | 1 | 第一片真域（#422 排除面，同上） |
-| `resources/machines-page.tsx` | 1 | 1 | 第一片真域 |
-| `resources/shell.tsx` | 1 | 1 | 第一片真域 |
-| `routes/board-page.tsx` | 1 | 1 | #414 试点片（直引 `board/board.css`） |
-| `ui/button.tsx` | 1 | 0 | 原语自身（消费点清零后退役） |
-
-**这份账对 #414 / B3 / B4 三行口径的修订**（XMON-20 复核结论）：
-
-- **三行的「原语消费点」计数不变**（§5.2 的两条边照旧有效），但**验收范围要连带手搓控件**：B3 的域面从此是「3 个原语消费点 **+ 26 处裸控件**」，B4 是「11 个原语消费点 **+ 83 处裸控件**」，#414 是「1 个原语消费点 **+ 13 处裸控件**」。若只按原语消费点开工，`pages/project-new-page.tsx`（14 处裸钮，全域最大单点）这类文件会整片漏掉。
-- **B2 · secondary 面 是本口径下第一个按新账收口的面**：它的三个页面壳在 §5.2 里记着「本次已无原语消费点」，靠本节的账才现形。
-- **一处需人裁决的遗留**：`resources/create-*-dialog` 三件（11 处裸控件）在 #422 被划为**排除面**（壳归 B1、内容族归 B3），但 §5.2 把同三件的 `ui/input` 记在「第一片已完成」行下——同一批文件的控件账与原语账落在两行。本节照 #422 原判记在排除面，**是否要把 resources 侧手搓控件单列一行验收，留给父票裁**。
-
 ## 6. 开工前四件的落点（全部已落）
 
 四条都在 2026-09-30 的父票裁决里定了选项，并已各自落地：6.1 = A1（补三件，XMON-14 / #535）、6.2 = A2（按域拆回现有各批，本票）、6.3 = A3（B2 收尾，XMON-13 / #534）、6.4 = A4（底账并 main，XMON-11 / #532）。
@@ -264,10 +183,105 @@
 
 同类研究产物仍未在 `main`：`research/dialog-contract`（#418）、`research/baseui-dialog-contract-2`（#430 车道）等分支同形。
 
+### 6.5 账本缺口：手搓控件不入账（XMON-20 补）
+
+**问题**：§6.2 的归批口径只认**「有没有引 `ui/` 原语」**这一条。于是「一个 `ui/` 原语都不引、按钮全用裸 `<button>` + 一次性类名手搓」的文件，会被记成「**本次已无原语消费点**」——账面干净，但它恰恰是 shadcn 化最该收的面。
+
+**实例**（用户在看 serve-live 起的 app 时点出来的）：§6.2 把 `team-page.tsx` / `team-chart.tsx` / `account-page.tsx` 三件记成「B2 · secondary 面（本次已无原语消费点）」，可实测：
+
+| 文件 | 裸 `<button>` | `ui/` 原语 import |
+|---|---|---|
+| `apps/web/src/routes/team-page.tsx` | 3（顶部 grid / 组织图切换 ×2 + 创建 Agent ×1） | 0 |
+| `apps/web/src/routes/team-chart.tsx` | 1 | 0 |
+| `apps/web/src/routes/account-page.tsx` | 3 | 0 |
+| `apps/web/src/routes/api-keys-page.tsx` | 1 | 1 |
+| `apps/web/src/routes/api-key-create-dialog.tsx` | 2 | 2 |
+| `apps/web/src/routes/create-agent-dialog.tsx` | 1 | 1 |
+
+这三件的 7 个手搓按钮样式全在 `apps/web/src/secondary/secondary.css`（931 行）里手搓（`.team-layout-tabs` / `.team-layout-tab` / `.team-layout-tab--active`，含自己的媒体查询）。同一页里 `components/ui/button` 与手搓类名两套并存 —— 就是「按钮有两个样式」的来源。
+
+**全域实测**。口径是**四类裸控件之和**——`<button>` / `<input>` / `<select>` / `<textarea>`：只数 `<button>` 会漏掉 33 处（`<input>` 22 · `<textarea>` 7 · `<select>` 4），而 `ui/input` 与 `components/ui/input` 两代并存正是同一类问题。下表值按 **XMON-20 落地后**的树取（括号内为 `fa54bba` 基线）：
+
+| 域 | `<button>` | `<input>` | `<select>` | `<textarea>` | 合计 | 手搓类 | 消费 `components/ui/button` 的文件数 |
+|---|---|---|---|---|---|---|---|
+| pages | 35 | 5 | 3 | 0 | 43 | 31 | 0 |
+| detail | 34 | 6 | 0 | 2 | 42 | 30 | 0 |
+| chief | 17 | 1 | 0 | 2 | 20 | 14 | 0 |
+| overlay | 15 | 3 | 0 | 1 | 19 | 17 | 1 |
+| resources | 15 | 1 | 0 | 1 | 17 | 14 | 2 |
+| routes | 18 → **7** | 5 | 1 | 1 | 25 → **14** | 17 → **7** | 2 → **8** |
+| board | 12 | 0 | 0 | 0 | 12 | 0 | 3 |
+| overlays | 8 | 0 | 0 | 0 | 8 | 5 | 0 |
+| ui（原语本体） | 1 | 1 | 0 | 0 | 2 | 0 | — |
+| **合计** | **155 → 144** | **22** | **4** | **7** | **188 → 177** | **128 → 118** | **10 → 16 个文件** |
+
+**「手搓类」是 XMON-20 补的第五列**（口径 = 挂在这些裸控件的 `className` 上、且在 `apps/web/src` 任一 `.css` 里被定义成选择子的类名数，域内 distinct）。它才是「按钮有两个样式」的直接读数：一套来自 `components/ui/*`，一套来自域 css。全站 118 类里 `pages` / `detail` / `chief` 三域占 75 类，对应 B4 未开工。
+
+**逐文件账**（同口径，只列含裸控件者；「手搓类」= 该文件内 distinct，列间不可相加）：
+
+| 文件 | button | input | select | textarea | 合计 | 手搓类 | 归属批 |
+|---|---|---|---|---|---|---|---|
+| `pages/project-new-page.tsx` | 14 | 4 | 0 | 0 | 18 | 12 | B4 高三件 |
+| `board/sidebar.tsx` | 9 | 0 | 0 | 0 | 9 | 0 | #414 试点片 |
+| `pages/project-page.tsx` | 8 | 1 | 0 | 0 | 9 | 5 | B4 高三件 |
+| `pages/schedules-page.tsx` | 6 | 0 | 3 | 0 | 9 | 7 | B4 高三件 |
+| `detail/branch-dialog.tsx` | 6 | 2 | 0 | 0 | 8 | 4 | B4 高三件 |
+| `detail/docpane.tsx` | 8 | 0 | 0 | 0 | 8 | 6 | B4 高三件 |
+| `overlay/mention-picker.tsx` | 7 | 1 | 0 | 0 | 8 | 9 | B3 弹层内容族 |
+| `chief/chief-drawer.tsx` | 6 | 0 | 0 | 1 | 7 | 5 | B4 高三件 |
+| `detail/composer.tsx` | 5 | 1 | 0 | 1 | 7 | 5 | B4 高三件 |
+| `resources/create-provider-dialog.tsx` | 6 | 1 | 0 | 0 | 7 | 6 | 第一片真域 |
+| `routes/agent-detail-page.tsx` | 3 | 1 | 1 | 1 | 6 | 6 | 第一片真域（壳内邻页） |
+| `overlay/more-menu.tsx` | 5 | 0 | 0 | 0 | 5 | 3 | B3 弹层内容族 |
+| `overlay/new-task-dialog.tsx` | 3 | 1 | 0 | 1 | 5 | 4 | B3 弹层内容族 |
+| `chief/chief-agent-dialog.tsx` | 3 | 1 | 0 | 0 | 4 | 4 | B4 高三件 |
+| `detail/review-dialog.tsx` | 2 | 1 | 0 | 1 | 4 | 4 | B4 高三件 |
+| `overlays/search-panel.tsx` | 4 | 0 | 0 | 0 | 4 | 1 | B3 弹层内容族 |
+| `pages/dir-browser.tsx` | 4 | 0 | 0 | 0 | 4 | 4 | B4 高三件 |
+| `resources/create-machine-dialog.tsx` | 4 | 0 | 0 | 0 | 4 | 2 | 第一片真域 |
+| `routes/api-key-create-dialog.tsx` | 0 | 4 | 0 | 0 | 4 | 0 | B2 · secondary 面 |
+| `chief/chief-model-select.tsx` | 3 | 0 | 0 | 0 | 3 | 2 | B4 高三件 |
+| `chief/edit-charter-dialog.tsx` | 2 | 0 | 0 | 1 | 3 | 3 | B4 高三件 |
+| `detail/overlays.tsx` | 3 | 0 | 0 | 0 | 3 | 3 | B3 弹层内容族 |
+| `detail/stop-confirm-dialog.tsx` | 2 | 1 | 0 | 0 | 3 | 2 | B4 高三件 |
+| `detail/transcript.tsx` | 3 | 0 | 0 | 0 | 3 | 4 | B4 高三件 |
+| `routes/agent-model-select.tsx` | 3 | 0 | 0 | 0 | 3 | 0 | 第一片真域（壳内邻页） |
+| `board/repo-filter.tsx` | 2 | 0 | 0 | 0 | 2 | 0 | #414 试点片 |
+| `chief/chief-settings.tsx` | 2 | 0 | 0 | 0 | 2 | 3 | B4 高三件 |
+| `detail/accept-dialog.tsx` | 1 | 1 | 0 | 0 | 2 | 1 | B4 高三件 |
+| `detail/dhead.tsx` | 2 | 0 | 0 | 0 | 2 | 2 | B4 高三件 |
+| `detail/user-menu.tsx` | 2 | 0 | 0 | 0 | 2 | 0 | B4 高三件 |
+| `overlays/plan-dropdown.tsx` | 2 | 0 | 0 | 0 | 2 | 2 | B3 弹层内容族 |
+| `pages/github-issues-dialog.tsx` | 2 | 0 | 0 | 0 | 2 | 2 | B4 高三件 |
+| `resources/create-secret-dialog.tsx` | 1 | 0 | 0 | 1 | 2 | 2 | 第一片真域 |
+| `resources/skills-page.tsx` | 2 | 0 | 0 | 0 | 2 | 2 | 第一片真域 |
+| `board/tag-filter.tsx` | 1 | 0 | 0 | 0 | 1 | 0 | #414 试点片 |
+| `chief/chief-wake.tsx` | 1 | 0 | 0 | 0 | 1 | 0 | B4 高三件 |
+| `overlay/delete-project-confirm.tsx` | 0 | 1 | 0 | 0 | 1 | 1 | B3 弹层内容族 |
+| `overlays/chip-popover.tsx` | 1 | 0 | 0 | 0 | 1 | 1 | B3 弹层内容族 |
+| `overlays/dismiss.tsx` | 1 | 0 | 0 | 0 | 1 | 1 | B3 弹层内容族 |
+| `pages/shell.tsx` | 1 | 0 | 0 | 0 | 1 | 1 | B4 高三件 |
+| `resources/machines-page.tsx` | 1 | 0 | 0 | 0 | 1 | 1 | 第一片真域 |
+| `resources/shell.tsx` | 1 | 0 | 0 | 0 | 1 | 1 | 第一片真域 |
+| `routes/board-page.tsx` | 1 | 0 | 0 | 0 | 1 | 1 | #414 试点片 |
+| `ui/button.tsx` | 1 | 0 | 0 | 0 | 1 | 0 | 原语自身 |
+| `ui/input.tsx` | 0 | 1 | 0 | 0 | 1 | 0 | 原语自身 |
+
+`chief` / `detail` / `pages` / `overlays` 消费 shadcn `Button` 的文件数为 0，与 §0「B3 / B4 未开工」一致。`routes/` 18 处的逐文件分布（供归批对账）：`team-page` 3 · `account-page` 3 · `agent-detail-page` 3 · `agent-model-select` 3 · `api-key-create-dialog` 2 · `api-keys-page` 1 · `board-page` 1 · `create-agent-dialog` 1 · `team-chart` 1。
+
+**口径修订（本行起生效）**：§6.2 的归批判据由**两条边**扩到**三条边**——第三条 = **手搓控件**（裸 `<button>` / `<input>` / `<select>` / `<textarea>` / 一次性类名控件）也构成消费点，同样必须指到某一批。逐文件表的「归属批」列即按此判据落，**45 个文件无一行「未点名」**。
+
+**三行复核结论（XMON-20 迁移落地后核）**：`#414 试点片` / `B3` / `B4` 三行的**「原语消费点」计数不用改**（§5.2 的两条边照旧有效），但**验收范围要连带手搓控件**——按逐文件表（处数可直接相加，类数按上表域级 distinct 读）：B3 从此是「3 个原语消费点 **+ 30 处裸控件**」，B4 是「11 个原语消费点 **+ 102 处**」，`#414 试点片` 是「1 个原语消费点 **+ 13 处**」；B2 行余 26 处（resources 17 + 壳内邻页 9）+ secondary 残留 4 处。
+
+- **`#414 试点片` 的「本批只做收口」不再成立**：它的 13 处裸控件里 `board/sidebar.tsx` 独占 9 处（侧栏全部导航行），#414 当时只迁了卡片族的 token 与工具类——按新口径这是「原语全切 + 控件全切」两件事，不是一件事。
+- **B4 是最大户且已可量化**：105 处裸控件 / 75 类，`pages/project-new-page.tsx` 一个文件 18 处（全域最大单点）；只按原语消费点开工会把这类文件整片漏掉。
+- **B2 · secondary 面是本口径下第一个按新账收口的面**：它的三个页面壳在 §5.2 里记着「本次已无原语消费点」，靠本节的账才现形；XMON-20 迁走后该面只剩 `routes/api-key-create-dialog.tsx` 的 4 个权限位 `<input>`。
+- **一处需人裁决的遗留**：`resources/create-*-dialog` 三件（13 处裸控件）在 #422 被划为**排除面**（壳归 B1、内容族归 B3），但 §5.2 把同三件的 `ui/input` 记在「第一片已完成」行下——同一批文件的控件账与原语账落在两行。本表照 #422 原判记在排除面，**是否要把 resources 侧手搓控件单列一行验收，留给父票裁**。
+
 ## 7. 取数命令
 
 ```sh
-# 裸控件账本（§5.3）—— 每域一行 + 逐文件两表，直接贴进本节
+# 裸控件账本（§6.5）—— 每域一行 + 逐文件两表（四类口径 + 手搓类列），直接贴进本节
 node scripts/count-raw-controls.mjs
 
 # 前沿消费点（§5.2）—— 17 文件 / 18 处：ui/button 14 · ui/input 3 · ui/chip 1
@@ -281,6 +295,27 @@ for f in $(find apps/web/src -name '*.css' | sort); do
     "$(grep -cE '^[^@/].*\{' $f)"
 done
 
+# 裸控件 census（§6.5）—— 四类之和，全站 188 处
+for t in button input select textarea; do
+  printf "%-10s %s\n" "<$t" "$(grep -rho "<$t" apps/web/src --include=*.tsx | wc -l)"
+done
+# 逐域分解（一域一行，末列 = 四类之和）
+for d in apps/web/src/*/; do
+  b=$(grep -rho '<button' "$d" --include=*.tsx | wc -l)
+  i=$(grep -rho '<input' "$d" --include=*.tsx | wc -l)
+  s=$(grep -rho '<select' "$d" --include=*.tsx | wc -l)
+  t=$(grep -rho '<textarea' "$d" --include=*.tsx | wc -l)
+  [ $((b+i+s+t)) -gt 0 ] && printf "%-22s btn=%-4s input=%-3s select=%-3s textarea=%-3s 合计=%s\n" \
+    "$(basename $d)" "$b" "$i" "$s" "$t" "$((b+i+s+t))"
+done
+# 域名内逐文件（归批对账用；routes/ × routes/ 的 25 处就是这样拆出来的）
+for f in apps/web/src/routes/*.tsx; do
+  n=$(( $(grep -c '<button' "$f") + $(grep -c '<input' "$f") + $(grep -c '<select' "$f") + $(grep -c '<textarea' "$f") ))
+  [ "$n" -gt 0 ] && printf "%-40s %s\n" "$(basename $f)" "$n"
+done
+# 消费 shadcn Button 的文件数
+grep -rl 'components/ui/button' apps/web/src --include=*.tsx | wc -l
+
 # 三闸（本册基线绿；本票未复跑，见下方复跑记录）
 pnpm -r typecheck                       # TC_EXIT=0
 rtk proxy pnpm exec biome ci .          # 0 error / 4 warnings / 25 infos（459 files）
@@ -288,7 +323,7 @@ rtk proxy pnpm exec biome ci .          # 0 error / 4 warnings / 25 infos（459 
 cd apps/web && E2E_PORT=8429 pnpm exec playwright test    # 472 passed (44.8s)
 ```
 
-**复跑记录（XMON-20 @ `fa54bbad` + 本票改动）**：§7 的前三条取数命令全部复跑，读数即 §5.1 / §5.2 / §5.3 现表（域 css 一行一值、消费点 17 文件 / 18 处、裸控件 144 处 / 99 类 / 42 文件）。§5.1 的 `secondary.css` 行与 §5.2 / §5.3 的 `routes` 行按本票落地后的树刷新，其余行与 `fa54bbad` 逐值一致。
+**复跑记录（XMON-20 @ `fa54bbad` + 本票改动）**：§7 的三条取数命令全部复跑。§6.5 的 census 按本票落地后的树刷新（四类合计 177 处，`fa54bba` 基线 188；差额 11 = 本票迁走的裸 `<button>`）；§5.1 / §5.2 刷新为「域 css 一行一值 + 消费点 17 文件 / 18 处」，其余行与 `fa54bbad` 逐值一致。
 
 **复跑记录（XMON-17 @ `d37937f`）**：前两条取数命令已复跑，读数即当时 §5.1 / §5.2 的表（消费点 20 文件 / 22 处）。该票**三闸未复跑**——只改本册，按仓规「仅文档改动不跑」执行。
 
