@@ -4,9 +4,13 @@
 // 时间区钉 +08:00（与 detail/fresh-block 的创建时间戳同一理由：采集会话在
 // 该区跑，钉死才让 fixture 输出不随宿主 TZ 漂移）。
 //
-// `createdAt` 为 null = 该 Agent 建于本列落地之前，真值当年没存、仓内没有可
-// 回填的第二来源——此时整条分句不出（少一条信息），不拿占位时间戳顶
+// `createdAt` 缺失（null / undefined）= 该 Agent 建于本列落地之前，真值当年没存、
+// 仓内没有可回填的第二来源——此时整条分句不出（少一条信息），不拿占位时间戳顶
 // （`0` 与真值同形，渲染出来是 1970/1/1，等于把占位当真值播）。
+//
+// 两形都要挡：record 谓词收的是 null，但读面响应不经 zod 运行时校验
+// （api/client.ts 是 `as T`），字段缺席时到手的就是 undefined——漏过去
+// formatter 会把 undefined 当「现在」，渲染出**今天**的日期，比 1970 更隐蔽。
 
 import type { TFunc } from '../i18n/translate.js';
 
@@ -20,7 +24,11 @@ export function createdOn(ms: number): string {
   }).format(ms);
 }
 
-export function agentStatusLine(status: string, createdAt: number | null, t: TFunc): string {
-  if (createdAt === null) return status;
+export function agentStatusLine(
+  status: string,
+  createdAt: number | null | undefined,
+  t: TFunc,
+): string {
+  if (createdAt == null) return status;
   return `${status} · ${t('创建于 {date}', { date: createdOn(createdAt) })}`;
 }
