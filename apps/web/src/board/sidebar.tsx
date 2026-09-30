@@ -355,10 +355,15 @@ export function BoardSidebar({
 
   return (
     <aside className="board-sidebar relative z-10 flex w-60 flex-none flex-col overflow-hidden border-r border-[var(--border-default)] bg-background">
+      {/* 头部几何与选中态无关（dogfood 2026-09-30）：--active 只换底色，不搬
+          内容。pill 的 mx-2 内缩 8px，pl 补 11 让图标仍落在 x19——与非选中态
+          pl-[19px] 同一条线；名字间距恒 11px。r7 12 探针钉的是 pill 盒子
+          （x8 y6 w223 h32，sidebar-seam.spec.ts），盒子不动，盒内内容也不该
+          动——否则点品牌进 /app/team 时图标右移 3px、名字左移 2px，读作收紧。 */}
       <div
         className={`sidebar-team-row flex flex-none items-center text-foreground ${
           selected === 'team'
-            ? 'sidebar-team-row--active mx-2 mt-1.5 mb-[5px] h-8 rounded-lg bg-sidebar-active pl-[14px]'
+            ? 'sidebar-team-row--active mx-2 mt-1.5 mb-[5px] h-8 rounded-lg bg-sidebar-active pl-[11px]'
             : 'h-[43px] pl-[19px]'
         }`}
       >
@@ -377,16 +382,20 @@ export function BoardSidebar({
         </span>
         {/* r2 §1.1: clicking the head name navigates to /app/team */}
         <Link
-          className={`sidebar-team-name relative top-px truncate text-sm leading-6 text-foreground no-underline ${
-            selected === 'team' ? 'ml-1.5' : 'ml-[11px]'
-          }`}
+          className="sidebar-team-name relative top-px ml-[11px] truncate text-sm leading-6 text-foreground no-underline"
           to={{ pathname: '/app/team', search }}
         >
           {BRAND.manifestName}
         </Link>
+        {/* 展开态折叠钮不给自己加面（dogfood 2026-09-30）：无 hover 底色、
+            无阴影。它坐在头部行自己的底上，而那层底（选中 pill / 行本身）
+            已经是分离信号；再叠 5% 灰底（--sidebar-hover 浅色 =
+            rgb(28 25 23 / 0.05)）在行内的深色 pill 上读成阴影。focus 环保留
+            ——键盘模态仍需可见（app.css 全局 :focus-visible 律）。
+            rail 顶部的展开钮不在此列：它骑在自己的 seam 行上，hover 面照旧。 */}
         <button
           type="button"
-          className="sidebar-team-collapse mr-[14px] ml-auto flex size-7 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-muted-foreground hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2"
+          className="sidebar-team-collapse mr-[14px] ml-auto flex size-7 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-muted-foreground focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2"
           aria-label={t('收起侧边栏')}
           onClick={onToggle}
         >
