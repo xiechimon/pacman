@@ -589,7 +589,7 @@ export const EN: Record<string, string> = {
   权限: 'Permissions',
   职责: 'Responsibility',
   工具: 'Tools',
-  模型: 'Model',
+  // 模型 已在 #476 段登记，本段不重复。
   思考强度: 'Thinking level',
   状态: 'Status',
   未设置模型: 'No model',
