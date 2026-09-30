@@ -10,6 +10,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { join } from 'node:path';
 import {
   type AgentRecord,
+  agentTaskSchema,
   apiKeyRecordSchema,
   assignmentSlotSchema,
   BRAND,
@@ -31,6 +32,7 @@ import {
   githubIssueStateSchema,
   githubIssuesResponseSchema,
   githubReposResponseSchema,
+  IN_PROGRESS_PHASES,
   importGithubIssueBodySchema,
   type MemoryRecord,
   PHASE_VALUES,
@@ -1288,17 +1290,39 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json({ fileName, content }); // 封套 [推断]；文本投影
   });
 
-  // Agent 任务面（词表内；载荷未采 [推断] = assignment 双槽任一指向该 Agent
-  // 的 todo 集，r3 §4 Agent 详情「任务」tab 数据源）。
+  // Agent 详情概览「进行中」段的数据源（词表内 r3 §8.2 观测路由；行形状 =
+  // shared agentTaskSchema，其注释记了逐个字段的原件出处）。
+  // 三条判据，每条都有实测依据：
+  // · assignment 双槽任一指向该 Agent——r3 §4 观测到的归属关系；
+  // · phase ∈ IN_PROGRESS_PHASES（queued/planning/building）——原件把
+  //   review/confirm 归「等你」、failed 单列，只有跑着的才算「进行中」；
+  // · latestBuildId 在位——行以 build 为主体（原件 key = buildId），没有
+  //   build 的在跑 todo 不存在，不收进来。
+  // 实测反证（2026-09-30，参考账号）：3 条 phase=review 且双槽指向该 Agent 的
+  // todo，该端点恒返回 []——故「按 assignment 过滤 todo」的旧实现是错的。
   app.get('/api/teams/:id/agents/:aid/tasks', (c) => {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
     const agentId = c.req.param('aid');
     const rows = ctx.db.select().from(todo).where(eq(todo.teamId, teamId)).all();
-    const assigned = rows.filter(
-      (r) => r.assignment?.plan?.agentId === agentId || r.assignment?.build?.agentId === agentId,
+    const inFlight = rows.filter(
+      (r) =>
+        (r.assignment?.plan?.agentId === agentId || r.assignment?.build?.agentId === agentId) &&
+        (IN_PROGRESS_PHASES as readonly string[]).includes(r.phase) &&
+        r.latestBuildId !== null,
     );
-    return c.json(assigned.map((r) => getTodo(svc, r.id)).filter((r) => r !== null));
+    return c.json(
+      inFlight.map((r) =>
+        agentTaskSchema.parse({
+          kind: 'build',
+          // 等机器（queued）= 原件唯一的等待 token；跑起来后发 null，消费面
+          // 回落 todo.phase（见 schema 注释）。
+          state: r.phase === 'queued' ? 'waiting' : null,
+          buildId: r.latestBuildId,
+          todo: { id: r.id, seqNum: r.seqNum, title: r.title, phase: r.phase },
+        }),
+      ),
+    );
   });
 
   // whats-new（词表内：形状保留、内容自选，02 §6.1 [设计]——记录 = whats_new

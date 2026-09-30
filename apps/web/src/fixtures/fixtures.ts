@@ -7,6 +7,7 @@
 
 import {
   type AgentRecord,
+  type AgentTask,
   BRAND,
   conversationBranch,
   derivePlaceholderTitle,
@@ -1547,6 +1548,43 @@ const AGENT_MEMORY_ROWS: MemoryRecord[] = [
 export const agentDetailMemory: FixtureSet = {
   ...agentDetail,
   resources: { ...AGENT_DETAIL_RESOURCES, memories: AGENT_MEMORY_ROWS },
+};
+
+/** Agent 详情「进行中」段的非空语料（无 capture，agentDetail 先例——r3 53
+ *  截图拍到的正是空态「暂无进行中的任务」，行态在观测窗口里长不出来）。
+ *  两行刻意分持两个状态支：第 1 行 `state:'waiting'`（build 已建、等机器，
+ *  消费面把它渲染成 `queued` 的 chip），第 2 行 `state:null`（跑起来了，
+ *  chip 直接吃 todo.phase 的 `building`）。标题取自参考账号里真实存在的两条
+ *  todo（seq 12 / 13），不是编的。
+ *  供 ./e2e/agent-detail.spec.ts 钉行形状、状态位映射与点击落点。 */
+const AGENT_TASK_ROWS: AgentTask[] = [
+  {
+    kind: 'build',
+    state: 'waiting',
+    buildId: 'r3-conv-task-12',
+    todo: {
+      id: 'r3-legacy-12',
+      seqNum: 12,
+      title: 'README 文档目录 + 新建 CHANGELOG.md + scripts/',
+      phase: 'queued',
+    },
+  },
+  {
+    kind: 'build',
+    state: null,
+    buildId: 'r3-conv-task-13',
+    todo: {
+      id: 'r3-legacy-13',
+      seqNum: 13,
+      title: '给 README.md 增加「项目结构」一节并链接贡献指南',
+      phase: 'building',
+    },
+  },
+];
+
+export const agentDetailActive: FixtureSet = {
+  ...agentDetail,
+  agentTasks: AGENT_TASK_ROWS,
 };
 
 /** #444 named scenario（无 capture，notify-banner 先例）：绑定 Agent 的

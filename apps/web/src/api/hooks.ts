@@ -4,6 +4,7 @@
 
 import type {
   AgentRecord,
+  AgentTask,
   ApiKeyRow,
   Assignment,
   BuildRecord,
@@ -325,6 +326,20 @@ export const useMemories = (
   useQuery({
     queryKey: ['memories', teamId, agentId],
     queryFn: () => api.get<MemoryRecord[]>(`/api/teams/${teamId}/agents/${agentId}/memories`),
+    enabled: enabled && teamId !== undefined && agentId !== undefined,
+  });
+
+/** Agent 详情「进行中」段的数据源（词表内 r3 §8.2 观测路由；行形状 =
+ *  shared AgentTask）。语义 = 该 Agent 名下正在跑的 build，**不是**「指派给
+ *  它的 todo」——server 侧判据与实测反证见 routes.ts 同名端点注释。 */
+export const useAgentTasks = (
+  teamId: string | undefined,
+  agentId: string | undefined,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: ['agentTasks', teamId, agentId],
+    queryFn: () => api.get<AgentTask[]>(`/api/teams/${teamId}/agents/${agentId}/tasks`),
     enabled: enabled && teamId !== undefined && agentId !== undefined,
   });
 
