@@ -10,11 +10,16 @@
 // （两组形状同源 = shared AgentRecord），fixture 面无后端，提交落本地覆盖
 // 记录承载「提交后回显」——live 面则是 S8 律（mutation → invalidateAll 重取）。
 //
-// 本面明确不做的三件（均因证据/结构缺口，不发明）：
+// 本面明确不做的两件（均因证据/结构缺口，不发明）：
 // · `创建于 …` 状态行——AgentRecord 与 DB agent 表都无 createdAt 列；
 // · 思考强度选择器——全仓唯一档位枚举在 daemon（pi 七档），无 server/web
-//   暴露面，跨缝复制常量等于把 daemon 的私有词表冻进 web；故作只读值行；
-// · 删除 Agent——无 DELETE 端点，且原版二次确认文案未观测，不凭空造破坏性面。
+//   暴露面，跨缝复制常量等于把 daemon 的私有词表冻进 web；故作只读值行。
+//
+// 删除 Agent（XMON-19/B2）：入口在概览页脚，二次确认接 DeleteConfirm 家族。
+// 标题与正文 = 原版产线 bundle i18n 语料原文（agent_modal.remove_title /
+// remove_confirm），不是转述；删除语义（记忆保留、任务指派摘槽、总管摘绑定）
+// 在 server services/agents.ts 注记。原版同族还有一档 remove_over_quota 提示
+// （删除后仍达计划上限）——本仓没有套餐/Agent 上限模型，无锚可挂，故不渲染。
 
 import {
   AGENT_PERMISSION_COPY,
@@ -27,7 +32,7 @@ import {
   type PatchAgentBody,
 } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useParams } from 'react-router';
+import { useLocation, useNavigate, useParams } from 'react-router';
 import {
   useAgent,
   useApiMutations,
@@ -46,9 +51,11 @@ import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Switch } from '../components/ui/switch.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
+import { isDeleted, markDeleted } from '../fixtures/deletions.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ArrowUpDown, Check, ChevronDown, Search, SquarePen } from '../icons/index.js';
+import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
 import { ResourceShell } from '../resources/shell.js';
 import './agent-detail.css';
@@ -104,11 +111,17 @@ export function AgentDetailPage() {
   const [memorySort, setMemorySort] = useState<MemorySort>('默认');
   const [memorySortOpen, setMemorySortOpen] = useState(false);
   const [memorySortWrap, setMemorySortWrap] = useState<HTMLSpanElement | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const navigate = useNavigate();
 
   const fixtureAgent = fixture.agents?.find((row) => row.id === agentId);
   const source = live ? agentQ.data : fixtureAgent;
+  // fixture 面的删除覆面（#66 deletions）：删掉的 Agent 在本 SPA 会话里不再
+  // 解析出记录，页面落既有「找不到该 Agent」态；reload 还原。
   const agent: AgentRecord | undefined =
-    source === undefined ? undefined : { ...source, ...localPatch };
+    source === undefined || (agentId !== undefined && isDeleted(agentId))
+      ? undefined
+      : { ...source, ...localPatch };
 
   const patch = useCallback(
     (body: PatchAgentBody) => {
@@ -283,6 +296,18 @@ export function AgentDetailPage() {
             <div className="agent-field">
               <span className="agent-field-label">{t('状态')}</span>
               <span className="agent-status">{agent.status}</span>
+            </div>
+            {/* 删除入口（r3 §4：概览页脚「删除 Agent」，在状态行之下）。按
+                钮文案 = 原版语料 agent_modal.remove 原文。 */}
+            <div className="agent-danger">
+              <Button
+                variant="destructive"
+                size="sm"
+                className="agent-delete"
+                onClick={() => setDeleteOpen(true)}
+              >
+                {t('删除 Agent')}
+              </Button>
             </div>
           </div>
         )}
@@ -473,6 +498,36 @@ export function AgentDetailPage() {
           </div>
         )}
       </div>
+      {/* 删除确认（r3 §4 二次确认的文案直读原版产线 bundle 语料，逐字）：
+          标题 = agent_modal.remove_title，正文 = agent_modal.remove_confirm
+          （{name} = Agent 名）。按钮文案沿用 DeleteConfirm 家族默认
+          （取消 / 删除），未观测到原版对这两格的覆盖。取消行为 = 家族律：
+          取消钮 / X / Esc / backdrop 关层且不删。 */}
+      <DeleteConfirm
+        open={deleteOpen}
+        title={t('删除 Agent？')}
+        summary={t('将「{name}」移出团队？该 Agent 进行中的任务将被停止。', {
+          name: agent.displayName,
+        })}
+        ariaLabel={t('删除 Agent')}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => {
+          setDeleteOpen(false);
+          if (agentId === undefined) return;
+          // 删除后落团队页（Members tab 是 Agent 名单所在，docs「Removing an
+          // agent is done from the same tab」）——[推断]：原版确认后落点未观测
+          // （要登录态），本仓取与详情页 backHref / 资源族返回律一致的落点。
+          // search 随行 = #121 Link 律（fixture 场景位不能在这一跳丢）。
+          if (live) {
+            mutations.deleteAgent.mutate(agentId, {
+              onSuccess: () => navigate({ pathname: '/app/team', search }),
+            });
+            return;
+          }
+          markDeleted(agentId);
+          navigate({ pathname: '/app/team', search });
+        }}
+      />
     </ResourceShell>
   );
 }

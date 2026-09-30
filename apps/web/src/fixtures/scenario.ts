@@ -12,6 +12,7 @@
 // Unknown or absent ids fall back to the default board set.
 
 import {
+  agentDelete,
   agentDetail,
   agentDetailMemory,
   agentDetailSecrets,
@@ -274,6 +275,8 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // Agent 详情编辑面（r3 §4）：团队 roster + 该 agent 的全记录 + providers
       // 行集，一套内容同时供 /app/team 与 /app/resources/agents/:id 两个路由。
       'agent-detail': agentDetail,
+      // XMON-19/B2 删除 Agent：同详情面 + 两个 roster 行（删除后名单还剩一个）。
+      'agent-delete': agentDelete,
       // #510 密钥区聚合总开关：同详情面，resources 带两个团队密钥。
       'agent-detail-secrets': agentDetailSecrets,
       // #499 记忆 tab 的非空变体（命名场景，无 capture）：同 agent 的 3 条

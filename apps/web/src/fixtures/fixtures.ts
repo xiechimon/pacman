@@ -1549,6 +1549,23 @@ export const agentDetailMemory: FixtureSet = {
   resources: { ...AGENT_DETAIL_RESOURCES, memories: AGENT_MEMORY_ROWS },
 };
 
+/** XMON-19/B2 删除 Agent 的 e2e 语料（命名场景无 capture，agent-detail
+ *  先例）：roster 两个 Agent——删掉 r3-builder 后名单里还剩一个，卡随行消失
+ *  这一条才有牙（只播一个 Agent 时「删对了」与「整块空掉」两种实现都过）。
+ *  邻居字段形状照 todos.dev 实测 members 行。 */
+const AGENT_DELETE_NEIGHBOR: TeamContent['agents'][number] = {
+  id: 'r3-qa',
+  displayName: 'r3-qa',
+  model: 'claude-sonnet-5',
+  isDefault: false,
+  role: '负责回归测试与验收。',
+};
+
+export const agentDelete: FixtureSet = {
+  ...agentDetail,
+  team: { members: 2, agents: [...TEAM_R7.agents, AGENT_DELETE_NEIGHBOR] },
+};
+
 /** #444 named scenario（无 capture，notify-banner 先例）：绑定 Agent 的
  *  头像骑上总管 FAB。一套内容同时供 board（.chief-fab）与 team
  *  （.secondary-fab）两个消费点（projectFixture 多路由单集先例）；
