@@ -321,7 +321,8 @@ test('任务卡渲染标签 chip：词表配色、无标签零占位、既有几
   await expect(card(page, 'tagfilter-docs').locator('.todo-card-tag')).toHaveText('docs');
   // 无标签卡：零占位（chip 不渲染，不是隐藏空盒）
   await expect(card(page, 'tagfilter-plain').locator('.todo-card-tag')).toHaveCount(0);
-  // 几何护栏：chip 20px（tag-chip.css 单源）溢出 16px 的 row1 但不撑高它；
+  // 几何护栏：chip 20px（components/ui/tag-chip.tsx 单源，XMON-14 起落在 registry
+  // Badge 的 h-5 上）溢出 16px 的 row1 但不撑高它；
   // tagged 卡与无标签卡的 row1 高、卡高、seq 右锚一致（不挤压既有元素）
   const geo = await page.evaluate(() => {
     const probe = (id: string) => {

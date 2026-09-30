@@ -20,9 +20,9 @@
 // at the two slots — both parts consume ONE surface instance so the FAB,
 // the ⌘J hotkey and the panel share a single state.
 
+import { KbdHint } from '../components/ui/kbd-hint.js';
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
-import { KbdHint } from '../ui/kbd-hint.js';
 import { ChiefDrawer } from './chief-drawer.js';
 import { ChiefFabIcon } from './chief-fab-icon.js';
 import type { ChiefSurface } from './use-chief-surface.js';

@@ -252,10 +252,12 @@ describe('M4a Chief 机器协议全环（02 §4.3/§5.4 + r5 §3.1/§3.2/§3.5�
     expect(tokenRes.status).toBe(200);
     const body = (await tokenRes.json()) as {
       provider: unknown;
-      env: Record<string, string>;
+      secrets: Record<string, string>;
       git: unknown;
     };
-    // provider 无 custom 行 → 回退 api_key kind 或 null；env 为对象；不因无 build 行报错。
-    expect(typeof body.env).toBe('object');
+    // provider 无 custom 行 → 回退 api_key kind 或 null；secrets 取用面恒空
+    // （chief = 总管探索步，records/step.ts stepTakesSecrets）；不因无 build 行报错。
+    expect(typeof body.secrets).toBe('object');
+    expect(body.secrets).toEqual({});
   });
 });

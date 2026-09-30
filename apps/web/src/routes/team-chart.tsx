@@ -7,9 +7,10 @@
 // （GET teams/{id}/chief 的 chief.agent.agentId），未绑定时退首个成员；其余
 // 成员按序落子列，末位接虚线「创建 Agent」卡。
 import type { SVGProps } from 'react';
+import { Button } from '../components/ui/button.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { TeamAgentCard } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
-import { Avatar } from '../ui/avatar.js';
 
 /** 皇冠字形：逐字抄自参考产品 chart 根节点（`text-indigo-600`，描边 2.5）。
  *  与同栏位图标不同，它不属于 r7 图标清单（icons/ 由 generate-icons.mjs
@@ -82,7 +83,11 @@ function ChartNode({ agent, crown }: { agent: TeamAgentCard; crown?: boolean }) 
   return (
     <div className={`team-chart-node${crown ? ' team-chart-node--root' : ''}`}>
       <span className="team-chart-avatar">
-        <Avatar name={agent.displayName} src={agent.avatarUrl} fallback="/avatar-robot-1.svg" />
+        <SeededAvatar
+          name={agent.displayName}
+          src={agent.avatarUrl}
+          fallback="/avatar-robot-1.svg"
+        />
       </span>
       <span className="team-chart-text">
         <span className="team-chart-row">
@@ -139,12 +144,20 @@ export function TeamChart({
             .map((a) => (
               <ChartNode key={a.id} agent={a} />
             ))}
-          <button type="button" className="team-chart-create" onClick={onCreate}>
+          {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Button，per-face
+              几何（220×56 / 虚线 / 内垫 10）仍住 secondary.css 的 .team-chart-create。
+              随底座带来的三处差额就地并掉——散写形是 flex-start 而非居中、文本
+              左对齐、且无按下位移。 */}
+          <Button
+            variant="ghost"
+            className="team-chart-create justify-start text-left leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+            onClick={onCreate}
+          >
             <span className="team-chart-create-icon">
               <PlusGlyph />
             </span>
             {t('创建 Agent')}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

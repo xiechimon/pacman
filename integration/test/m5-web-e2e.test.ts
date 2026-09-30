@@ -48,6 +48,9 @@ let paths: StatePaths;
 let home: string;
 let browser: Browser;
 let page: Page;
+// 诊断用：当前被观察的 todo id（每个用例找到自己的票据后写入），超时诊断据此
+// 报 server 侧相位——UI 说「规划中」，server 是否也停在原地，是分叉判读的关键。
+let probeTodoId = '';
 
 beforeAll(async () => {
   // web 生产构建（scenario-blind = 恒 live 数据源，#58 gate）。
@@ -210,8 +213,67 @@ async function openDetail(title: string): Promise<void> {
   await pexpect(page.locator('.detail-shell')).toBeVisible({ timeout: 15_000 });
 }
 
+/**
+ * 超时诊断（2026-09-30 加）：这条脊柱在 CI 上曾连红数十次（同 sha 连跑同点同败、
+ * 纯文档提交也红），而失败信息只有「chip 还是规划中」——UI 停住了，但不知道卡在
+ * 哪一环。超时那一刻把四环证据打进日志，判读口径：
+ *   server 相位也停在原位  → 相位推进根本没发生（daemon 侧问题）
+ *   server 已推进而 UI 没动 → SSE → invalidate → refetch 这一链断了
+ *   stub 零请求            → daemon 没认领（wake/claim 路径）
+ * 只加证据、不改断言。
+ */
+async function dumpSpineDiagnostics(label: string): Promise<void> {
+  const out: string[] = [];
+  try {
+    const chip = await page.locator('.detail-chip').textContent({ timeout: 3_000 });
+    out.push(`UI chip = ${JSON.stringify(chip)}`);
+  } catch (err) {
+    out.push(`UI chip 读不到: ${String(err).slice(0, 120)}`);
+  }
+  try {
+    out.push(`server 相位 = ${probeTodoId ? server.todoPhase(probeTodoId) : '<未记录 todo id>'}`);
+  } catch (err) {
+    out.push(`server 相位读不到: ${String(err).slice(0, 120)}`);
+  }
+  try {
+    const reqs = stub?.requests ?? [];
+    out.push(
+      `stub 收到 ${reqs.length} 次请求；最后一次 = ${JSON.stringify(reqs[reqs.length - 1] ?? null).slice(0, 240)}`,
+    );
+  } catch (err) {
+    out.push(`stub 计数读不到: ${String(err).slice(0, 120)}`);
+  }
+  try {
+    const all = readFileSync(paths.daemonLog, 'utf8')
+      .split('\n')
+      .filter((l) => l.trim() !== '');
+    // [skills] filtered 每轮几十行声明式噪音，会把尾部真正要看的事件挤掉
+    const real = all.filter((l) => !l.includes('[skills] filtered:'));
+    const wake = all.filter((l) => l.includes('[wake]')).length;
+    out.push(
+      `daemon 日志 ${all.length} 行（略去 [skills] filtered ${all.length - real.length} 行）；[wake] ${wake} 条`,
+    );
+    out.push(`daemon 日志尾部 15 行:\n${real.slice(-15).join('\n')}`);
+  } catch (err) {
+    out.push(`daemon 日志读不到: ${String(err).slice(0, 120)}`);
+  }
+  console.error(`\n===== 脊柱超时诊断：${label} =====\n${out.join('\n')}\n===== 诊断结束 =====\n`);
+}
+
+/** 断言包一层诊断：失败时先落证据再抛原错。 */
+async function withDiagnostics<T>(label: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    await dumpSpineDiagnostics(label);
+    throw err;
+  }
+}
+
 async function waitChip(re: RegExp, timeoutMs = 150_000): Promise<void> {
-  await pexpect(page.locator('.detail-chip')).toHaveText(re, { timeout: timeoutMs });
+  await withDiagnostics(`waitChip(${String(re)})`, () =>
+    pexpect(page.locator('.detail-chip')).toHaveText(re, { timeout: timeoutMs }),
+  );
 }
 
 describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', () => {
@@ -230,6 +292,7 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     }[];
     const spine = todos.find((t) => t.title === 'M5 脊柱探针');
     expect(spine).toBeTruthy();
+    probeTodoId = spine!.id;
     buildId = spine!.latestBuildId!;
     expect(buildId).toBeTruthy();
 
@@ -243,9 +306,11 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     // 不同链（transcript/文档面走会话 SSE→invalidate→refetch，负载下可落后
     // 相位 chip 数秒）——显式 30s 预算对齐本文件其他跨进程断言（PR #239 CI
     // red 复盘：5s 默认档在 ubuntu runner 上偶发不够，元素迟到 ≠ 缺席）。
-    await pexpect(page.locator('.chat-plan-title').last()).toHaveText('方案 · v1', {
-      timeout: 30_000,
-    });
+    await withDiagnostics('plan 卡 v1 上屏', () =>
+      pexpect(page.locator('.chat-plan-title').last()).toHaveText('方案 · v1', {
+        timeout: 30_000,
+      }),
+    );
     await pexpect(page.locator('.doc-pane-select').nth(1)).toHaveText(/v1/, {
       timeout: 30_000,
     });
@@ -301,6 +366,7 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
       latestBuildId: string | null;
     }[];
     const target = todos.find((t) => t.title === 'M5 驳回探针');
+    probeTodoId = target!.id;
     const rejectBuildId = target!.latestBuildId!;
 
     await openDetail('M5 驳回探针');
@@ -315,9 +381,11 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     // v2 落回 confirm 关口：plan 卡 v2 + 版本 chip v2 + 用户驳回气泡。
     // （30s 预算同上一处注释——confirm 相位 chip 与会话面不同链。）
     await waitChip(/确认/);
-    await pexpect(page.locator('.chat-plan-title').last()).toHaveText('方案 · v2', {
-      timeout: 30_000,
-    });
+    await withDiagnostics('plan 卡 v2 上屏', () =>
+      pexpect(page.locator('.chat-plan-title').last()).toHaveText('方案 · v2', {
+        timeout: 30_000,
+      }),
+    );
     await pexpect(page.locator('.doc-pane-select').nth(1)).toHaveText(/v2/, {
       timeout: 30_000,
     });
@@ -392,7 +460,9 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
 
     // 直执行轮（withPlan:false + triggerSource schedule）→ 停 review 关口。
     const spine = spineBefore;
-    await waitFor(() => server.todoPhase(spine!.id) === 'review', 150_000);
+    await withDiagnostics('定时轮相位推进到 review', () =>
+      waitFor(() => server.todoPhase(spine!.id) === 'review', 150_000),
+    );
     const after = (await api(server.url, 'GET', `/api/todos/${spine!.id}`)).body as {
       latestBuildId: string | null;
     };

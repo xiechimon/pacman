@@ -4,9 +4,11 @@
 
 import type {
   AgentRecord,
+  AgentTask,
   ApiKeyRow,
   Assignment,
   BuildRecord,
+  CapabilitiesResponse,
   ChiefGetResponse,
   ChiefThread,
   ConversationMessagesResponse,
@@ -328,6 +330,20 @@ export const useMemories = (
     enabled: enabled && teamId !== undefined && agentId !== undefined,
   });
 
+/** Agent 详情「进行中」段的数据源（词表内 r3 §8.2 观测路由；行形状 =
+ *  shared AgentTask）。语义 = 该 Agent 名下正在跑的 build，**不是**「指派给
+ *  它的 todo」——server 侧判据与实测反证见 routes.ts 同名端点注释。 */
+export const useAgentTasks = (
+  teamId: string | undefined,
+  agentId: string | undefined,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: ['agentTasks', teamId, agentId],
+    queryFn: () => api.get<AgentTask[]>(`/api/teams/${teamId}/agents/${agentId}/tasks`),
+    enabled: enabled && teamId !== undefined && agentId !== undefined,
+  });
+
 // providers 页 runtime tabs 数据源（spec 11 §A3/A4，#356）：pi + claude-code
 // 两段。staleTime 0 = 每次 mount 重取——claude-code 段承载「实时反映
 // ~/.claude/settings.json」语义（server 侧每次 GET 重读文件）。
@@ -337,6 +353,19 @@ export const useModelSources = (teamId: string | undefined, enabled: boolean) =>
     queryFn: () => api.get<ModelSourcesEnvelope>(`/api/teams/${teamId}/model-sources`),
     enabled: enabled && teamId !== undefined,
     staleTime: 0,
+  });
+
+/** 能力读面（XMON-16 / #499 B3 裁决 A）：引擎能力词表——当前载荷 = 思考强度
+ * 档位，Agent 详情只读行按它呈现档位。队无关（能力是引擎的事实，不随团队
+ * 分叉），故路径不带 teamId。staleTime 恒新：词表随 server 构建期恒定，进程
+ * 活着就不会变，重取只是空转。fixture 面不经此钩（无后端，直接取 shared
+ * 单源 `THINKING_LEVELS`——那不是第二份真值，就是读面背后同一个常量）。 */
+export const useCapabilities = (enabled: boolean) =>
+  useQuery({
+    queryKey: ['capabilities'],
+    queryFn: () => api.get<CapabilitiesResponse>('/api/capabilities'),
+    enabled,
+    staleTime: Number.POSITIVE_INFINITY,
   });
 
 /** GitHub 连接认证状态读面（#361 G2-T4）：login/scope，无 token 位（02 §8）。
@@ -725,6 +754,13 @@ export function useApiMutations(teamId: string | undefined) {
     patchAgent: useMutation({
       mutationFn: (input: { id: string; body: PatchAgentBody }) =>
         api.patch<AgentRecord>(`/api/teams/${teamId}/agents/${input.id}`, input.body),
+      onSuccess: invalidateAll,
+    }),
+    // 删除 Agent（XMON-19/B2：DELETE_FACE 'teams/{id}/agents/{aid}' 同名
+    // DELETE）。关联面取舍（memories 不级联 / assignment 摘槽 / chief 摘绑定）
+    // 在 server services/agents.ts，本层只发请求。
+    deleteAgent: useMutation({
+      mutationFn: (id: string) => api.del<void>(`/api/teams/${teamId}/agents/${id}`),
       onSuccess: invalidateAll,
     }),
     // 记忆删除（02 §4.4 词表内 DELETE；r5 §6 条目卡删除图标）。

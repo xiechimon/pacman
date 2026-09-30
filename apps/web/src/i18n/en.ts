@@ -206,8 +206,8 @@ export const EN: Record<string, string> = {
   '读取 server 本机 ~/.claude.json 的 mcpServers 段：在该文件添加配置并刷新，即出现在这里。MCP 服务器为 Agent 提供额外工具；授权在每个 Agent 的页面上单独进行。':
     'Reads the mcpServers section of ~/.claude.json on the pacman server machine — add entries there and refresh to see them here. MCP servers give Agents extra tools; authorization happens per Agent, on its own page.',
   '尚无密钥。': 'No secrets yet.',
-  '团队密钥将以环境变量注入每个任务的 shell。值只写不读：保存后只能覆盖或删除，无法再次查看。':
-    'Team secrets are injected into every task shell as environment variables. Values are write-only: once saved they can be overwritten or deleted, never viewed again.',
+  '团队密钥按 Agent 授权，在需要它的执行步中下发，不预置进任务 shell 环境。值只写不读：保存后只能覆盖或删除，无法再次查看。':
+    'Team secrets are granted per Agent and released to the build steps that need them — never pre-set into the task shell environment. Values are write-only: once saved they can be overwritten or deleted, never viewed again.',
   添加密钥: 'Add secret',
   '也可以让总管添加：它会开一张安全输入卡填写值，值不会进入对话。':
     'The Chief can add them too: it opens a secure input card for the value, which never enters the conversation.',
@@ -332,6 +332,14 @@ export const EN: Record<string, string> = {
   '希望 Agent 审核时重点关注什么？（可选）':
     'What do you want the Agent to focus on during review? (optional)',
   开始审核: 'Start review',
+  // #509 审核选人独立性提示：默认值优先跨厂商；无跨厂商可选时出声。两档措辞
+  // ——确证同源 vs 无法判定（未配置厂商 = 没有比对基准），都不静默。
+  本次审核与产出同源: 'This review shares a vendor with the producing step',
+  无法判定审核独立性: 'Cannot determine review independence',
+  '审核人与产出该方案的 Agent 来自同一模型厂商，不构成独立复核。':
+    'The reviewer and the Agent that produced this plan use the same model vendor; this is not an independent review.',
+  '产出该方案的 Agent 或所选审核人未配置模型厂商，缺少比对基准，不构成独立复核。':
+    'Neither the producing Agent nor the selected reviewer has a model vendor configured, so there is nothing to compare against; this is not an independent review.',
   // M7 #330 AI 审核消息渲染（r8 §3.1 真 findings 上线）：结论先行 + 编号 findings
   // + 严重度后缀（(blocking)/(suggestion)/(info)）+ 方案引用块 + 修复建议。
   // 服务端消息 kind = REVIEW_VERDICT_KIND（shared/message.ts 双端单源），
@@ -384,6 +392,12 @@ export const EN: Record<string, string> = {
   // #306 sched-card 菜单删除确认（DeleteConfirm 家族泛化随加）。
   删除定时: 'Delete schedule',
   '确定删除该定时？此操作不可撤销。': 'Delete this schedule? This cannot be undone.',
+  // XMON-19/B2 删除 Agent：三串 = 原版产线 bundle 的 en 语料原文
+  // （agent_modal.remove / remove_title / remove_confirm），非回译。
+  '删除 Agent': 'Delete agent',
+  '删除 Agent？': 'Delete agent?',
+  '将「{name}」移出团队？该 Agent 进行中的任务将被停止。':
+    'Remove "{name}" from this team? Active tasks for this agent will be stopped.',
   关闭菜单: 'Close menu',
   复制链接: 'Copy link',
   完成任务: 'Complete todo',
@@ -591,12 +605,16 @@ export const EN: Record<string, string> = {
   工具: 'Tools',
   // 模型 已在 #476 段登记，本段不重复。
   思考强度: 'Thinking level',
-  状态: 'Status',
+  // 「状态」键随 XMON-18 撤行一并摘除（概览不再摆状态行，en-coverage gate 也不
+  // 容许死键）。
   未设置模型: 'No model',
   '默认 skill': 'Default skill',
   '找不到该 Agent。它可能已被删除。': 'Agent not found. It may have been deleted.',
+  // 概览「进行中」段空态（原文 = 参考产品 web 包 agent_modal.no_active_tasks）。
+  暂无进行中的任务: 'No active tasks',
   '暂无团队密钥。': 'No team secrets yet.',
   '暂无 MCP 服务器。': 'No MCP servers yet.',
+  团队密钥: 'Team secrets',
   // shared canon（packages/shared/src/records/agent.ts、memory.ts），经 t()
   // 消费、不作字面量出现——i18n-coverage COMPUTED_KEYS 登记。
   '远程 shell': 'Remote shell',
@@ -619,6 +637,8 @@ export const EN: Record<string, string> = {
     'Let this Agent add new skills to the team skill library.',
   '允许该 Agent 修改团队技能库中已有的技能。':
     'Let this Agent modify skills already in the team skill library.',
+  '任务执行时，该 Agent 可在需要密钥的执行步中按需取用团队密钥，每次取用都会留下记录；密钥不预置进 shell 环境。所在机器需要 pacman CLI 0.1.28 及以上。':
+    'When running a task, this Agent can retrieve team secrets on demand in the execution steps that need them; every retrieval is recorded, and secrets are never preloaded into the shell environment. The machine must have pacman CLI 0.1.28 or newer.',
   '该 Agent 执行任务时可使用的团队 MCP 服务器，其工具以 mcp__<服务器>__<工具> 的形式出现。':
     'Team MCP servers this Agent may use while running tasks; their tools appear as mcp__<server>__<tool>.',
   '用一两句话说明该 Agent 的职责。该说明会注入它执行的每个任务，也会提供给总管用于分派。':
@@ -627,4 +647,15 @@ export const EN: Record<string, string> = {
     'The team skill this Agent always carries, without an @ mention in the message.',
   '尚无记忆。Agent 会在工作中将值得沉淀的经验存入此处。':
     'No memories yet. The Agent stores experience worth keeping here as it works.',
+
+  // —— #499 记忆 tab 的搜索与排序（配额头 + 搜索框 + 排序档）——
+  // `记忆 · {n} / {max}`：{max} = shared MEMORY_QUOTA_PER_AGENT 插值，不写死
+  // 数字；`搜索记忆…` = shared MEMORY_UI_COPY.searchPlaceholder（经 t() 消费、
+  // 不作字面量出现，i18n-coverage COMPUTED_KEYS 登记）。
+  '记忆 · {n} / {max}': 'Memory · {n} / {max}',
+  '搜索记忆…': 'Search memories…',
+  // 排序第二档（[设计]，见 agent-detail-page.tsx 的 MEMORY_SORT_OPTIONS）。
+  添加时间: 'Added',
+  // 零命中态：与「尚无记忆」canon 空态分开——搜不到不等于没存过。
+  '没有匹配的记忆。': 'No memories match.',
 };

@@ -6,17 +6,19 @@
 // （[推断] r3 注记原样继承）；本层不落库、不写日志。
 // 解析链：step → build → todo → assignment 执行侧槽 → agent → provider 行
 // （按 providerId 寻址 [推断]，r3 §1.5 `using model <provider>/<modelId>` 同串）
-// → SecretBox 解密；env = agent.secrets 授权集（records/agent.ts [推断] 关联
-// secret id）→ 明文映射（02 §8：团队 Secret 注入任务 shell 环境变量）。
+// → SecretBox 解密；secrets = agent.secrets 授权集（records/agent.ts [推断]
+// 关联 secret id）∩ 本步 kind 的取用面（records/step.ts stepTakesSecrets：
+// plan/review/chief 步恒空）→ 名字 → 明文。明文只进返回值，**不铺进 agent
+// 进程环境**——daemon 持有真值，agent 经本地取用通道显式取用。
 
-import type { ProviderApi, SecretBox } from '@pacman/shared';
+import { type ProviderApi, type SecretBox, stepTakesSecrets } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { agent, apiKey, build, chief, chiefThread, step, todo } from '../db/schema.js';
 import { notFound } from '../lib/errors.js';
 import { createApiKey } from './api-keys.js';
 import { openProviderKey, type ProviderDeps } from './providers.js';
-import { openSecretEnv, type SecretDeps } from './secrets.js';
+import { openSecretValues, type SecretDeps } from './secrets.js';
 
 export interface CredentialsDeps {
   db: Db;
@@ -75,8 +77,9 @@ export interface StepCredentialBundle {
     /** Agent 侧选定模型（r3 §1.5 `using model <provider>/<modelId>`）。 */
     modelId: string | null;
   } | null;
-  /** 团队 Secret → 任务 shell 环境变量（仅 agent 授权集，02 §8/r2 权限开关）。 */
-  env: Record<string, string>;
+  /** 本步可取用的团队密钥（名字 → 明文；仅 Agent 授权集 ∩ 本步 kind 的取用
+   * 面，02 §8/r2 权限开关）。plan/review/chief 步恒空（stepTakesSecrets）。 */
+  secrets: Record<string, string>;
   /** 托管 repo git 凭证槽（02 §5.4）；发行面 = issueStepGitCredential，
    * 组装在 machines.stepToken（本解析链不带 step 所有权上下文，恒 null）。 */
   git: null;
@@ -115,15 +118,21 @@ export function resolveStepCredentials(
     }
   }
 
-  // 未指派 Agent = 无注入面（secrets 开关是 per-Agent 授权，r2 权限 tab）。
-  const env = agentRow ? openSecretEnv(boxDeps, todoRow.teamId, agentRow.secrets) : {};
+  // 未指派 Agent = 无取用面（secrets 开关是 per-Agent 授权，r2 权限 tab）；
+  // 按步收窄：不需要密钥的步 kind（plan/review/chief）恒空，与 daemon 侧取用
+  // 通道注册面共用同一条判据（records/step.ts stepTakesSecrets）。
+  const secrets =
+    agentRow && stepTakesSecrets(stepRow.kind)
+      ? openSecretValues(boxDeps, todoRow.teamId, agentRow.secrets)
+      : {};
 
-  return { provider, env, git: null };
+  return { provider, secrets, git: null };
 }
 
 /** chief 步凭证解析（step.buildId = `chief-<threadId>`，无 build/todo 行）：
- * step → chief_thread → chief → 绑定 Agent → provider（SecretBox 解密）+ secrets
- * env（绑定 Agent 授权集，记忆与存储共用同一 Agent，r5 §2/§6）。
+ * step → chief_thread → chief → 绑定 Agent → provider（SecretBox 解密）。
+ * secrets 槽恒空（chief = 总管探索步，取用面恒空，records/step.ts
+ * stepTakesSecrets——记忆与存储共用同一 Agent，r5 §2/§6）。
  * git 槽恒 null（chief 探索基座凭证在 machines.chiefStepToken 组装，需 teamId/
  * workspaceProject 上下文）。载荷形状 = StepCredentialBundle（02 §5.4）。 */
 export function resolveChiefStepCredentials(
@@ -154,6 +163,5 @@ export function resolveChiefStepCredentials(
       };
     }
   }
-  const env = openSecretEnv(boxDeps, threadRow.teamId, agentRow.secrets);
-  return { provider, env, git: null };
+  return { provider, secrets: {}, git: null };
 }

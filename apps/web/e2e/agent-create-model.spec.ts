@@ -100,7 +100,7 @@ test('模型选择器列出 provider 与模型名，不编造上下文窗口数�
   const dialog = await openDialog(page, TEAM_WITH_PROVIDERS);
   await dialog.locator('.dlg-agent-model-select').click();
   // 首行恒是「未设置模型」清空行；模型行按 provider 定位（同模型 id 可能在
-  // providers 与 claude-code 段各一行，见 toChiefModelOptions 并集语义）。
+  // providers 与 claude-code 段各一行，见 toModelOptions 并集语义）。
   const row = dialog.locator('.dlg-agent-model-row', { hasText: 'r3-gw' });
   await expect(row).toHaveCount(1);
   await expect(row).toContainText('claude-sonnet-5');

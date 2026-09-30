@@ -22,6 +22,7 @@ import {
 import { mapCommits, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { localTodo, USER_NAME } from '../fixtures/fixtures.js';
 import type { Phase, ProjectCommitRow, ProjectContent, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -41,7 +42,6 @@ import {
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
 import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
-import { Avatar } from '../ui/avatar.js';
 import { Button } from '../ui/button.js';
 import { GithubIssuesDialog } from './github-issues-dialog.js';
 import { PageShell } from './shell.js';
@@ -434,7 +434,7 @@ function TasksPane({
               </Link>
               <span className="prj-task-time">{relativeTime(todo.phaseAt, now, t)}</span>
               <span className="prj-task-avatar">
-                <Avatar name={USER_NAME} fallback="/avatar-user.png" />
+                <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
               </span>
             </div>
           ))}
@@ -448,7 +448,7 @@ function TasksPane({
               <div className="prj-task-card-head">
                 <span className="prj-task-check" aria-hidden="true" />
                 <span className="prj-task-avatar">
-                  <Avatar name={USER_NAME} fallback="/avatar-user.png" />
+                  <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
                 </span>
               </div>
               {/* #318: 同列表行——标题 <a> 的 ::after 拉伸盖满整卡 */}

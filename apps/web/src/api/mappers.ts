@@ -37,7 +37,6 @@ import { relativeTime } from '../board/rel-time.js';
 import type {
   BranchInfoContent,
   ChiefContent,
-  ChiefModelOption,
   ChiefStreamItem,
   DiffFile,
   DiffLine,
@@ -48,6 +47,7 @@ import type {
   DocSegment,
   MachineRow,
   McpRow,
+  ModelOption,
   PlanDiffContent,
   PlanVersion,
   ProjectCommitRow,
@@ -774,13 +774,25 @@ export function mapMcpServers(rows: McpServerRecord[], now: number): McpRow[] {
 // —— chief（总管 drawer / 设置面）———————————————————————————————
 
 /** runtime 显示名（品牌/runtime 名不译，不走 t()）——单源：providers-page
- * runtime tablist 与 chief 压缩模型选择器（toChiefModelOptions）共消费。
+ * runtime tablist 与 chief 压缩模型选择器（toModelOptions）共消费。
  * 词表闭包 = ModelSourceRuntime；Codex 等后续 runtime 扩在此补（spec 11
  * §A1），两消费面自动同更，不分头改。 */
 export const RUNTIME_LABELS: Record<ModelSourceRuntime, string> = {
   pi: 'pi',
   'claude-code': 'Claude Code',
 };
+
+/** 思考强度只读行的档位投影（XMON-16 / #499 B3 裁决 A）：存值须是能力读面
+ * 给的词表里的那一档才呈现，否则 null（调用面落 r3 §4 观测形「默认」）。
+ * 只读行不说引擎没有的档位——词表即白名单，本层不另存一份档位集，也不
+ * 排序（序由读面给）。返回 null 而非「默认」文案：词典键单源在调用面的
+ * t()，本层不碰 i18n。 */
+export function toThinkingLevelDisplay(
+  value: string | null,
+  levels: readonly string[],
+): string | null {
+  return value !== null && levels.includes(value) ? value : null;
+}
 
 /** 压缩模型选择器候选投影（#358，spec 11 §A10）：custom providers
  * `models[]`（带 providerId/label 归属——model-sources 的 pi 段与其同构
@@ -795,13 +807,10 @@ export const RUNTIME_LABELS: Record<ModelSourceRuntime, string> = {
  * 共用 provider 命名空间，custom provider 若取名 'claude-code' 且撞同
  * modelId，会被 providers 段 first-wins 遮蔽——刻意取该名的撞名罕见，
  * 规格未约束，不去 invent 隔离前缀。 */
-export function toChiefModelOptions(
-  providers: ProviderRecord[],
-  sources: ModelSource[],
-): ChiefModelOption[] {
-  const options: ChiefModelOption[] = [];
+export function toModelOptions(providers: ProviderRecord[], sources: ModelSource[]): ModelOption[] {
+  const options: ModelOption[] = [];
   const seen = new Set<string>();
-  const push = (option: ChiefModelOption) => {
+  const push = (option: ModelOption) => {
     const key = `${option.provider}/${option.modelId}`;
     if (seen.has(key)) return;
     seen.add(key);

@@ -43,7 +43,7 @@ export function SecretsPage() {
         <EmptyState
           Icon={KeyThin}
           title="尚无密钥。"
-          description="团队密钥将以环境变量注入每个任务的 shell。值只写不读：保存后只能覆盖或删除，无法再次查看。"
+          description="团队密钥按 Agent 授权，在需要它的执行步中下发，不预置进任务 shell 环境。值只写不读：保存后只能覆盖或删除，无法再次查看。"
           actionLabel="添加密钥"
           onAction={() => setCreateOpen(true)}
           hint="也可以让总管添加：它会开一张安全输入卡填写值，值不会进入对话。"

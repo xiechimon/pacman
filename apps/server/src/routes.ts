@@ -10,6 +10,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { join } from 'node:path';
 import {
   type AgentRecord,
+  agentTaskSchema,
   apiKeyRecordSchema,
   assignmentSlotSchema,
   BRAND,
@@ -17,6 +18,7 @@ import {
   buildSteerBodySchema,
   buildStepActionBodySchema,
   buildStopBodySchema,
+  capabilitiesResponseSchema,
   chiefSendMessageBodySchema,
   createAgentBodySchema,
   createBranchSyncBodySchema,
@@ -31,6 +33,7 @@ import {
   githubIssueStateSchema,
   githubIssuesResponseSchema,
   githubReposResponseSchema,
+  IN_PROGRESS_PHASES,
   importGithubIssueBodySchema,
   type MemoryRecord,
   PHASE_VALUES,
@@ -46,6 +49,7 @@ import {
   startBuildsBodySchema,
   type TagRecord,
   type TeamMember,
+  THINKING_LEVELS,
   type TodoRecord,
   tokenUsageSchema,
 } from '@pacman/shared';
@@ -76,6 +80,7 @@ import { conflict, HttpError, notFound, parseWith } from './lib/errors.js';
 import { systemGitOps } from './lib/git.js';
 import { githubUserRepos } from './lib/github.js';
 import { newRecordId, nowMs } from './lib/ids.js';
+import { deleteAgent } from './services/agents.js';
 import { createApiKey, listApiKeys } from './services/api-keys.js';
 import {
   grantUpload as grantAttachmentUpload,
@@ -906,6 +911,20 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json(agentRecordOf(updated));
   });
 
+  // Agent 删除面（XMON-19 / B2）：删除入口与二次确认文案直读原版产线 bundle
+  // （agent_modal.remove/remove_title/remove_confirm/remove_over_quota 四语
+  // 语料），删除语义直读 todos.dev 官方 docs——canon 出处与关联面三件取舍
+  // （memories 不级联 / assignment 摘槽 / chief 摘绑定）的完整论证在
+  // services/agents.ts，此处不再复述。路由 = REST 同名 DELETE（02 §6.1 规则族
+  // + DELETE_FACE），wire 未采——登记 wire.test.ts INFERRED_ROUTES。
+  app.delete('/api/teams/:id/agents/:aid', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const agentId = c.req.param('aid');
+    if (!deleteAgent({ db: ctx.db }, teamId, agentId)) throw notFound(`agent ${agentId}`);
+    return c.body(null, 204);
+  });
+
   // —— 团队 MCP server 读面（spec 13/#368 本地 config 只读制：数据源 =
   // server 本机 ~/.claude.json 投影；管理写面 POST/PATCH/DELETE 已随登记制
   // 删除——配置变更 = 直接编辑 config 文件）—————————————————————————
@@ -1216,6 +1235,16 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json(toMachineRecord(updated));
   });
 
+  // 能力读面（XMON-16 / #499 B3 裁决 A；[设计] 面，参考产品 wire 未采此端点）：
+  // 引擎能力词表送 web 的那一条。当前载荷 = 思考强度档位——web 的 Agent 详情
+  // 只读行按它呈现档位，不自己另存一份七档常量。真值单源 = shared
+  // `THINKING_LEVELS`（daemon 的 PI_CAPABILITIES 引同一个数组）；server 读不到
+  // daemon，故编排面 = shared 常量直出，不经机器上报。队无关：能力是引擎的
+  // 事实，不随团队分叉。
+  app.get('/api/capabilities', (c) => {
+    return c.json(capabilitiesResponseSchema.parse({ thinkingLevels: THINKING_LEVELS }));
+  });
+
   // 模型选项面（02 §6.2「model = Provider 下的具名可选项」；provider.models
   // JSON 列聚合投影 [推断]——wire 未采，配置面下拉/Agent 模型槽数据源）。
   app.get('/api/teams/:id/models', (c) => {
@@ -1288,17 +1317,39 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json({ fileName, content }); // 封套 [推断]；文本投影
   });
 
-  // Agent 任务面（词表内；载荷未采 [推断] = assignment 双槽任一指向该 Agent
-  // 的 todo 集，r3 §4 Agent 详情「任务」tab 数据源）。
+  // Agent 详情概览「进行中」段的数据源（词表内 r3 §8.2 观测路由；行形状 =
+  // shared agentTaskSchema，其注释记了逐个字段的原件出处）。
+  // 三条判据，每条都有实测依据：
+  // · assignment 双槽任一指向该 Agent——r3 §4 观测到的归属关系；
+  // · phase ∈ IN_PROGRESS_PHASES（queued/planning/building）——原件把
+  //   review/confirm 归「等你」、failed 单列，只有跑着的才算「进行中」；
+  // · latestBuildId 在位——行以 build 为主体（原件 key = buildId），没有
+  //   build 的在跑 todo 不存在，不收进来。
+  // 实测反证（2026-09-30，参考账号）：3 条 phase=review 且双槽指向该 Agent 的
+  // todo，该端点恒返回 []——故「按 assignment 过滤 todo」的旧实现是错的。
   app.get('/api/teams/:id/agents/:aid/tasks', (c) => {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);
     const agentId = c.req.param('aid');
     const rows = ctx.db.select().from(todo).where(eq(todo.teamId, teamId)).all();
-    const assigned = rows.filter(
-      (r) => r.assignment?.plan?.agentId === agentId || r.assignment?.build?.agentId === agentId,
+    const inFlight = rows.filter(
+      (r) =>
+        (r.assignment?.plan?.agentId === agentId || r.assignment?.build?.agentId === agentId) &&
+        (IN_PROGRESS_PHASES as readonly string[]).includes(r.phase) &&
+        r.latestBuildId !== null,
     );
-    return c.json(assigned.map((r) => getTodo(svc, r.id)).filter((r) => r !== null));
+    return c.json(
+      inFlight.map((r) =>
+        agentTaskSchema.parse({
+          kind: 'build',
+          // 等机器（queued）= 原件唯一的等待 token；跑起来后发 null，消费面
+          // 回落 todo.phase（见 schema 注释）。
+          state: r.phase === 'queued' ? 'waiting' : null,
+          buildId: r.latestBuildId,
+          todo: { id: r.id, seqNum: r.seqNum, title: r.title, phase: r.phase },
+        }),
+      ),
+    );
   });
 
   // whats-new（词表内：形状保留、内容自选，02 §6.1 [设计]——记录 = whats_new

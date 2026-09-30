@@ -22,7 +22,7 @@ PORT=8791 PACMAN_HOME=/tmp/pacman-demo bash apps/server/scripts/demo.sh  # demo 
 ## 密钥三层（02 §8）
 
 - **at-rest**：provider key、team Secret 值统一 AES-256-GCM 加密落库（信封 = `v1` 版本头 + iv + ciphertext + authTag）；密钥源 = 本地 keyfile，不引外部 KMS/口令派生（Q5 锁定）。
-- **运行时**：模型 key per-step 下发（`services/credentials.ts` 解析链；HTTP 端点 `/api/machine/token/{stepId}` 归 M3 接线），executor 内存持有、不落盘常驻；团队 Secret 按 Agent 授权集以环境变量注入任务 shell。
+- **运行时**：模型 key per-step 下发（`services/credentials.ts` 解析链；HTTP 端点 `/api/machine/token/{stepId}` 归 M3 接线），executor 内存持有、不落盘常驻；团队 Secret 按 Agent 授权集下发（按 step kind 收窄：plan/review/chief 步恒空），明文只在 `token/{stepId}` 返回值里出现、不预置进任务 shell 环境——daemon 持真值，agent 经 per-step 取用通道显式取用。
 - **API 面**：key 类字段**写只读掩码**——GET 永不返回 `apiKey` / secret 值；apiKey 存哈希（SHA-256）不存可逆值，创建响应含明文一次 `pacman_<48hex>`（「请立即复制密钥，它仅显示一次。」），此后列表行掩码 `pacman_afe07565…`。
 
 > **护栏（02 §8 恢复口径）：keyfile 丢失 = 全部存量 provider key 与团队 Secret 值报废，需重录。**

@@ -12,7 +12,11 @@
 // Unknown or absent ids fall back to the default board set.
 
 import {
+  agentDelete,
   agentDetail,
+  agentDetailActive,
+  agentDetailMemory,
+  agentDetailSecrets,
   apiKeysCreated,
   boardChiefProbes,
   boardDarkFresh,
@@ -272,6 +276,17 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // Agent 详情编辑面（r3 §4）：团队 roster + 该 agent 的全记录 + providers
       // 行集，一套内容同时供 /app/team 与 /app/resources/agents/:id 两个路由。
       'agent-detail': agentDetail,
+      // XMON-19/B2 删除 Agent：同详情面 + 两个 roster 行（删除后名单还剩一个）。
+      'agent-delete': agentDelete,
+      // #510 密钥区聚合总开关：同详情面，resources 带两个团队密钥。
+      'agent-detail-secrets': agentDetailSecrets,
+      // #499 记忆 tab 的非空变体（命名场景，无 capture）：同 agent 的 3 条
+      // 记忆，钉配额头 / 搜索过滤 / 排序两档。
+      'agent-detail-memory': agentDetailMemory,
+      // XMON-15 概览「进行中」段的非空变体（命名场景，无 capture）：同 agent
+      // 的两行 build（等机器 / 跑起来），钉行形状、状态位映射与点击落点。
+      // 空态不另开场景——agentDetail 自身不带 agentTasks，即 canon 空态。
+      'agent-detail-active': agentDetailActive,
       '13': boardDefault,
       // account 语言 dropdown open state (issue #74; shape [设计], r2 §11 Q19)
       '13-lang': { ...boardDefault, ui: { langDropdownOpen: true } },

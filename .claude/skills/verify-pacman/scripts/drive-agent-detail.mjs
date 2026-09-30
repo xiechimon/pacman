@@ -2,7 +2,8 @@
 // verify-pacman drive-agent-detail — Agent 详情编辑面（#485，r3 §4 实测形态）。
 //
 // 走真用户路径：团队页点 Agent 卡 → 详情路由 → 概览改名称/职责/模型 → 权限
-// 开关 → 记忆空态 → 回团队页用创建弹窗选模型建 Agent。
+// 开关（工具六开关 + #510 密钥区聚合总开关）→ 记忆空态 → 回团队页用创建
+// 弹窗选模型建 Agent。
 //
 // 真值 = server 面（不是 UI 回显）：每次编辑后重取 GET
 // /api/teams/{id}/agents/{aid} 对字段，创建后重取 members 对 provider/modelId。
@@ -71,7 +72,8 @@ if (teamId === undefined) throw new Error('no team seeded');
 const agentUrl = (aid) => `${SERVER}/api/teams/${teamId}/agents/${aid}`;
 const extra = { teamId, agentId: null };
 
-// —— 播种：一个 custom provider（模型选择器的候选源）+ 一个 Agent ─────────
+// —— 播种：一个 custom provider（模型选择器的候选源）+ 两个团队密钥 +
+// 一个 Agent ──────────────────────────────────────────────────────────
 await sendJson(`${SERVER}/api/teams/${teamId}/providers`, 'POST', {
   providerId: 'verify-485-gw',
   label: 'verify-485-gw',
@@ -79,6 +81,14 @@ await sendJson(`${SERVER}/api/teams/${teamId}/providers`, 'POST', {
   api: 'anthropic-messages',
   models: [{ id: 'claude-sonnet-5', name: 'claude-sonnet-5' }],
 }).catch(() => {}); // 409 = 重跑时已存在
+// #510：两个团队密钥。密钥区授权粒度是全有全无——写回的是团队全部密钥 id，
+// 只播一个密钥时「全 id 集」与「首个 id」两种实现都过，两个才有牙。
+// POST 无幂等键（每次新 id），故断言一律对「点击时 server 的现行 id 集」，
+// 重跑留下的旧密钥不会让断言失真。
+const secretsUrl = `${SERVER}/api/teams/${teamId}/secrets`;
+for (const name of ['verify-510-key-a', 'verify-510-key-b']) {
+  await sendJson(secretsUrl, 'POST', { name, description: null, value: `value-${name}` });
+}
 const created = await sendJson(`${SERVER}/api/teams/${teamId}/agents`, 'POST', {
   displayName: AGENT_NAME,
   provider: 'verify-485-gw',
@@ -129,6 +139,11 @@ try {
     (await page.locator('.agent-thinking').textContent())?.trim() === '默认' &&
       (await page.locator('.agent-thinking button').count()) === 0,
   );
+  // XMON-18：概览撤掉「状态」行（`agentStatusSchema` 只有一个取值 active）。
+  // 判据取**元素计数为零**，比断言文本更能钉住「没长回来 + 撤行没留空壳」。
+  // 注意这里是「只撤状态」——思考强度那行要留着，上面那条就是它的看门人。
+  const statusRowCount = await page.locator('.agent-status').count();
+  check('overview-no-status-row', statusRowCount === 0, `status=${statusRowCount}`);
   // 运行时档 = provider 位派生（本场景 provider = verify-485-gw 这个 custom
   // provider，故直接出 id；内置 pi 时出「内置 (pi)」）。
   check(
@@ -136,6 +151,39 @@ try {
     (await page.locator('.agent-runtime').textContent())?.trim() === 'verify-485-gw',
     await page.locator('.agent-runtime').textContent(),
   );
+
+  // —— 2b. 思考强度档位来自能力读面（XMON-16 / #499 B3）────────────────
+  // 读面本体：七档有序（期望值来源 = pi-agent-core 的 ThinkingLevel 联合，
+  // 字面量独立写出，不读实现里的常量）。
+  const caps = await getJson(`${SERVER}/api/capabilities`);
+  check(
+    'capabilities-seven-levels',
+    JSON.stringify(caps.thinkingLevels) ===
+      JSON.stringify(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']),
+    JSON.stringify(caps.thinkingLevels),
+  );
+  // 只读行按读面呈现：词表内的值呈现；词表外的值不呈现（落「默认」）——
+  // 这条是「读面真的接到了 UI 上」的判据，只验端点不算数。
+  await sendJson(agentUrl(agentId), 'PATCH', { thinkingLevel: 'high' });
+  await page.reload();
+  await page.waitForSelector('.agent-overview', { timeout: 15_000 });
+  check(
+    'thinking-inside-vocabulary-rendered',
+    (await page.locator('.agent-thinking').textContent())?.trim() === 'high',
+    await page.locator('.agent-thinking').textContent(),
+  );
+  await shot(page, '01b-thinking-level-high.png');
+  await sendJson(agentUrl(agentId), 'PATCH', { thinkingLevel: 'ultra' });
+  await page.reload();
+  await page.waitForSelector('.agent-overview', { timeout: 15_000 });
+  check(
+    'thinking-outside-vocabulary-falls-back',
+    (await page.locator('.agent-thinking').textContent())?.trim() === '默认' &&
+      (await page.locator('.agent-thinking button').count()) === 0,
+    await page.locator('.agent-thinking').textContent(),
+  );
+  await shot(page, '01c-thinking-outside-vocabulary.png');
+  await sendJson(agentUrl(agentId), 'PATCH', { thinkingLevel: null }); // 还原种子态
 
   // —— 3. 名称行内编辑 → server displayName 变 ──────────────────────────
   await page.locator('.agent-name').click();
@@ -192,6 +240,48 @@ try {
   check('tool-persisted', afterTool.tools.length === 1, JSON.stringify(afterTool.tools));
   await shot(page, '04-permissions.png');
 
+  // —— 6b. 密钥区：一行聚合总开关 → server secrets[] = 团队全 id 集 ────────
+  // 有密钥时恰好一行、一个开关（回退成 per-secret 粒度会渲染 N 行 N 开关）。
+  const allSecretIds = (await getJson(secretsUrl)).map((row) => row.id);
+  const secretSwitch = page.locator('.agent-secret-switch');
+  check(
+    'secret-row-single',
+    (await page.locator('.agent-secret-row').count()) === 1,
+    `${await page.locator('.agent-secret-row').count()} 行`,
+  );
+  check('secret-switch-single', (await secretSwitch.count()) === 1, `${await secretSwitch.count()} 个`);
+  check(
+    'secret-unchecked-when-empty',
+    (await secretSwitch.getAttribute('aria-checked')) === 'false',
+    `secrets=${JSON.stringify((await getJson(agentUrl(agentId))).secrets)}`,
+  );
+
+  await secretSwitch.click();
+  await page.waitForTimeout(400); // invalidateAll 重取的落窗
+  const afterSecretOn = await getJson(agentUrl(agentId));
+  check(
+    'secret-on-writes-full-id-set',
+    afterSecretOn.secrets.length === allSecretIds.length &&
+      allSecretIds.every((id) => afterSecretOn.secrets.includes(id)),
+    `写回 ${JSON.stringify(afterSecretOn.secrets)}；团队全 id 集 ${JSON.stringify(allSecretIds)}`,
+  );
+  // 勾选态 = agent.secrets 非空：重取回来的真值仍非空 → 开关保持勾选。
+  check(
+    'secret-stays-checked-when-nonempty',
+    (await secretSwitch.getAttribute('aria-checked')) === 'true',
+    `${await secretSwitch.count()} 个开关，首个 aria-checked=${await secretSwitch.getAttribute('aria-checked')}`,
+  );
+  await shot(page, '05-permissions-secret-on.png');
+
+  await secretSwitch.click();
+  await page.waitForTimeout(400);
+  const afterSecretOff = await getJson(agentUrl(agentId));
+  check(
+    'secret-off-clears',
+    afterSecretOff.secrets.length === 0,
+    JSON.stringify(afterSecretOff.secrets),
+  );
+
   // —— 7. 记忆 tab：canon 空态 ──────────────────────────────────────────
   await page.locator('.agent-tab').nth(1).click();
   await page.waitForSelector('.agent-memories');
@@ -211,7 +301,7 @@ try {
   await page.locator('#dlg-agent-name').fill('verify-485-created');
   await page.locator('.dlg-agent-model-select').click();
   await page.waitForSelector('.dlg-agent-model-menu');
-  await shot(page, '05-create-model-menu.png');
+  await shot(page, '06-create-model-menu.png');
   await page.locator('.dlg-agent-model-row', { hasText: 'verify-485-gw' }).click();
   await page.locator('.dlg-agent-create').click();
   await page.waitForSelector('.dlg', { state: 'hidden', timeout: 15_000 });
@@ -225,7 +315,78 @@ try {
     fresh?.provider === 'verify-485-gw' && fresh?.modelId === 'claude-sonnet-5',
     `${fresh?.provider}/${fresh?.modelId}`,
   );
-  await shot(page, '06-team-after-create.png');
+  await shot(page, '07-team-after-create.png');
+
+  // —— 9. 删除 Agent（XMON-19/B2）：概览入口 → 二次确认 → live 落库 ────────
+  // 真值面三件：GET agent → 404（行真没了）；members 名单里该 Agent 消失而
+  // 邻居留存；复删仍 404（DELETE_FACE 族律）。取消路径单独钉：确认层可关且
+  // server 行毫发无损（误删通道）。
+  const doomed = page.locator('.team-agent-card', { hasText: RENAMED });
+  await doomed.click();
+  await page.waitForSelector('.agent-overview', { timeout: 15_000 });
+  await page.locator('.agent-delete').click();
+  await page.waitForSelector('.delete-confirm', { timeout: 15_000 });
+  check(
+    'delete-confirm-canon-title',
+    (await page.locator('.delete-confirm-title').textContent())?.trim() === '删除 Agent？',
+    await page.locator('.delete-confirm-title').textContent(),
+  );
+  check(
+    'delete-confirm-canon-body',
+    (await page.locator('.delete-confirm-summary').textContent())?.trim() ===
+      `将「${RENAMED}」移出团队？该 Agent 进行中的任务将被停止。`,
+    await page.locator('.delete-confirm-summary').textContent(),
+  );
+  await shot(page, '08-delete-confirm.png');
+
+  // 取消路径：层关掉、人留在详情页、server 行还在。
+  await page.locator('.delete-confirm-cancel').click();
+  await page.waitForSelector('.delete-confirm', { state: 'hidden', timeout: 15_000 });
+  check(
+    'delete-cancel-keeps-row',
+    (await getJson(agentUrl(agentId)).then(
+      (r) => r.displayName === RENAMED,
+      () => false,
+    )) === true,
+    '取消后 GET agent 仍 200',
+  );
+
+  // 确认路径
+  await page.locator('.agent-delete').click();
+  await page.waitForSelector('.delete-confirm', { timeout: 15_000 });
+  await page.locator('.delete-confirm-delete').click();
+  await page.waitForSelector('[data-route="team"]', { timeout: 15_000 });
+  check(
+    'delete-lands-on-team',
+    new URL(page.url()).pathname === '/app/team',
+    page.url(),
+  );
+
+  const agentGone = await fetch(agentUrl(agentId), { signal: AbortSignal.timeout(8000) });
+  check('delete-row-gone-404', agentGone.status === 404, `GET agent → ${agentGone.status}`);
+  const again = await fetch(agentUrl(agentId), {
+    method: 'DELETE',
+    signal: AbortSignal.timeout(8000),
+  });
+  check('delete-repeat-404', again.status === 404, `复删 → ${again.status}`);
+
+  const membersAfter = await getJson(`${SERVER}/api/teams/${teamId}/members`);
+  const namesAfter = membersAfter
+    .filter((m) => m.memberType === 'agent')
+    .map((m) => m.actor.displayName);
+  check('delete-roster-drops-target', !namesAfter.includes(RENAMED), JSON.stringify(namesAfter));
+  check(
+    'delete-roster-keeps-neighbor',
+    namesAfter.includes('verify-485-created'),
+    JSON.stringify(namesAfter),
+  );
+  const cardsAfter = await page.locator('.team-agent-card').count();
+  check(
+    'delete-roster-count-matches-server',
+    cardsAfter === namesAfter.length,
+    `UI ${cardsAfter} 张卡 / server ${namesAfter.length} 个 Agent`,
+  );
+  await shot(page, '09-team-after-delete.png');
 } finally {
   await browser.close();
 }

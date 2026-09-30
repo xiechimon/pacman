@@ -7,14 +7,17 @@
 
 import {
   type AgentRecord,
+  type AgentTask,
   BRAND,
   conversationBranch,
   derivePlaceholderTitle,
   FIXED_TAGS,
+  type MemoryRecord,
   type ModelSource,
   maskApiKey,
   PLACEHOLDER_TITLE_FALLBACK,
   type ProviderRecord,
+  type SecretRecord,
 } from '@pacman/shared';
 import { diffLines } from 'diff';
 import type {
@@ -1466,15 +1469,139 @@ const AGENT_R3_BUILDER: AgentRecord = {
 /** Agent 详情 + 创建弹窗模型位的数据集：团队页 roster 与详情页记录同场景，
  *  团队页卡点进详情后 `?scenario=agent-detail` 随行（#121 Link 律）不会丢。
  *  resources 在 RESOURCES 之上补 providers（模型选择器候选源）与空 memories
- *  （记忆 tab 走 shared canon 空态）。 */
+ *  （记忆 tab 走 shared canon 空态）。本集不带 secrets——密钥区走零密钥空态
+ *  （#510：无密钥时不出开关，没有对象可授）；memories 的两形（空 / 非空）
+ *  由下面两个导出件分持。 */
+const AGENT_DETAIL_RESOURCES: ResourcesContent = {
+  ...RESOURCES,
+  providers: [AGENT_PROVIDER_R3GW],
+  memories: [],
+};
+
 export const agentDetail: FixtureSet = {
   ...teamGrid,
   agents: [AGENT_R3_BUILDER],
-  resources: {
-    ...RESOURCES,
-    providers: [AGENT_PROVIDER_R3GW],
-    memories: [],
+  resources: AGENT_DETAIL_RESOURCES,
+};
+
+/** #510 密钥区聚合总开关的数据集：两个团队密钥 + 一个未授权的 Agent。
+ *  两个密钥是有意的——per-secret 粒度回退会渲染两行，e2e 的「恰好一行」
+ *  才有牙（只播一个密钥时两种实现都过）。 */
+const AGENT_DETAIL_SECRETS: SecretRecord[] = [
+  { id: 'secret-stripe', teamId: TEAM_ID, name: 'STRIPE_API_KEY', description: null },
+  { id: 'secret-npm', teamId: TEAM_ID, name: 'NPM_TOKEN', description: null },
+];
+
+export const agentDetailSecrets: FixtureSet = {
+  ...agentDetail,
+  resources: { ...AGENT_DETAIL_RESOURCES, secrets: AGENT_DETAIL_SECRETS },
+};
+
+/** #499 named scenario（无 capture，agentDetail 先例）：记忆 tab 的非空语料。
+ *  r5 §6 捕获（截图 134）只有 1 条记忆（`记忆 · 1 / 100`），多行排序在那份
+ *  语料里长不出来；这里给 r3-builder 合成 3 条。三处刻意安排：
+ *  · 列序（旧 → 新）与标题序不同——`默认`（到达序）与 `添加时间`（新 → 旧）
+ *    两档才分得开；
+ *  · 只有第 2 条的 content 含 `probe`、只有第 3 条的 title 含 `PROBE`——搜索
+ *    的「命中 content」与「ASCII 大小写不敏感」各钉一条；
+ *  · `添加时间` 档下两档的先后正好对调。
+ *  供 ./e2e/agent-detail.spec.ts 钉配额头、搜索过滤与排序。 */
+const AGENT_MEMORY_ROWS: MemoryRecord[] = [
+  {
+    id: 'mem-r5-1',
+    agentId: R3_BUILDER.id,
+    teamId: TEAM_ID,
+    title: '构建分支的命名规律',
+    content: '构建分支固定 agent/<运行 id>，不再挂日期后缀。',
+    projectId: PROJECT_ID,
+    sourceTodoId: null,
+    sourceBuildId: null,
+    createdAt: boardDefault.now - 180 * 60_000,
+    updatedAt: boardDefault.now - 180 * 60_000,
   },
+  {
+    id: 'mem-r5-2',
+    agentId: R3_BUILDER.id,
+    teamId: TEAM_ID,
+    title: '验收只看真机跑通',
+    content: '本地绿不算数，要在 probe 机器上真跑一遍再报完成。',
+    projectId: PROJECT_ID,
+    sourceTodoId: null,
+    sourceBuildId: null,
+    createdAt: boardDefault.now - 120 * 60_000,
+    updatedAt: boardDefault.now - 120 * 60_000,
+  },
+  {
+    id: 'mem-r5-3',
+    agentId: R3_BUILDER.id,
+    teamId: TEAM_ID,
+    title: 'PROBE 探针的历史轮次',
+    content: 'r3、r5b、r6、r7 每轮各留一个 commit 收尾。',
+    projectId: PROJECT_ID,
+    sourceTodoId: null,
+    sourceBuildId: null,
+    createdAt: boardDefault.now - 60 * 60_000,
+    updatedAt: boardDefault.now - 60 * 60_000,
+  },
+];
+
+export const agentDetailMemory: FixtureSet = {
+  ...agentDetail,
+  resources: { ...AGENT_DETAIL_RESOURCES, memories: AGENT_MEMORY_ROWS },
+};
+
+/** Agent 详情「进行中」段的非空语料（无 capture，agentDetail 先例——r3 53
+ *  截图拍到的正是空态「暂无进行中的任务」，行态在观测窗口里长不出来）。
+ *  两行刻意分持两个状态支：第 1 行 `state:'waiting'`（build 已建、等机器，
+ *  消费面把它渲染成 `queued` 的 chip），第 2 行 `state:null`（跑起来了，
+ *  chip 直接吃 todo.phase 的 `building`）。标题取自参考账号里真实存在的两条
+ *  todo（seq 12 / 13），不是编的。
+ *  供 ./e2e/agent-detail.spec.ts 钉行形状、状态位映射与点击落点。 */
+const AGENT_TASK_ROWS: AgentTask[] = [
+  {
+    kind: 'build',
+    state: 'waiting',
+    buildId: 'r3-conv-task-12',
+    todo: {
+      id: 'r3-legacy-12',
+      seqNum: 12,
+      title: 'README 文档目录 + 新建 CHANGELOG.md + scripts/',
+      phase: 'queued',
+    },
+  },
+  {
+    kind: 'build',
+    state: null,
+    buildId: 'r3-conv-task-13',
+    todo: {
+      id: 'r3-legacy-13',
+      seqNum: 13,
+      title: '给 README.md 增加「项目结构」一节并链接贡献指南',
+      phase: 'building',
+    },
+  },
+];
+
+export const agentDetailActive: FixtureSet = {
+  ...agentDetail,
+  agentTasks: AGENT_TASK_ROWS,
+};
+
+/** XMON-19/B2 删除 Agent 的 e2e 语料（命名场景无 capture，agent-detail
+ *  先例）：roster 两个 Agent——删掉 r3-builder 后名单里还剩一个，卡随行消失
+ *  这一条才有牙（只播一个 Agent 时「删对了」与「整块空掉」两种实现都过）。
+ *  邻居字段形状照 todos.dev 实测 members 行。 */
+const AGENT_DELETE_NEIGHBOR: TeamContent['agents'][number] = {
+  id: 'r3-qa',
+  displayName: 'r3-qa',
+  model: 'claude-sonnet-5',
+  isDefault: false,
+  role: '负责回归测试与验收。',
+};
+
+export const agentDelete: FixtureSet = {
+  ...agentDetail,
+  team: { members: 2, agents: [...TEAM_R7.agents, AGENT_DELETE_NEIGHBOR] },
 };
 
 /** #444 named scenario（无 capture，notify-banner 先例）：绑定 Agent 的

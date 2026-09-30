@@ -78,6 +78,11 @@ export const WEB_REST_ENDPOINTS: readonly RestEndpoint[] = [
     query: ['teamId'],
     note: 'spec 13 #367：每次请求现扫本地技能目录，无缓存不入库',
   },
+  {
+    method: 'GET',
+    path: '/api/capabilities',
+    note: '[设计] 能力读面（XMON-16 / #499 B3 裁决 A）：引擎能力词表送 web——载荷 = 思考强度档位，单源 shared THINKING_LEVELS',
+  },
   { method: 'GET', path: '/api/whats-new', note: '形状保留、内容自选（02 §6.1）' },
   { method: 'GET', path: '/api/search', query: ['q'], note: '⌘K [设计] 自设（02 §6.3）' },
   // —— POST ——
@@ -139,7 +144,9 @@ export const DELETE_FACE = {
   rule: 'REST 同名 DELETE（02 §6.1）',
   resources: [
     'teams/{id}/machines', // 移除机器（r3 §1.2 限额弹窗「请移除一台」）
-    'teams/{id}/agents', // 删除 Agent（r3 §4 概览按钮）
+    'teams/{id}/agents/{aid}', // 删除 Agent（r3 §4 概览按钮入口；确认文案与删除
+    // 语义 XMON-19 直读原版产线 bundle + todos.dev 官方 docs 补采——canon 见
+    // services/agents.ts 注记）
     'teams/{id}/skills', // 技能删除流（r2 §6.1）；spec 13 #367 复刻面已撤管理写面——观测记录保留
     'teams/{id}/mcp-servers', // 卡片更多菜单 编辑/删除（r3 §5.1）；spec 13 #368 复刻面已撤管理写面——观测记录保留
     'teams/{id}/agents/{aid}/memories', // 记忆条目卡删除图标（r5 §6 UI 实测；02 §4.4「列表/删除 API 保形」）

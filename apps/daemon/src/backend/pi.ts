@@ -44,14 +44,16 @@ import type {
   StepEvent,
   ToolCallRecord,
 } from '@pacman/shared';
-import { ENV_VARS } from '@pacman/shared';
+import { ENV_VARS, THINKING_LEVELS } from '@pacman/shared';
 import { SessionNotResumableError } from './errors.js';
 import { connectFailedLine, connectMcpBridge } from './mcp-bridge.js';
 
-/** 02 §6.2/#34：oauth 四家订阅；思考强度 = pi 七档（docs/sdk.md）。 */
+/** 02 §6.2/#34：oauth 四家订阅；思考强度 = pi 七档。
+ *  档位词表取 shared `THINKING_LEVELS` 单源（XMON-16）——server 的能力读面
+ *  要投影同一份词表，而 server 读不到 daemon；常量在此复制一份就是两份真值。 */
 export const PI_CAPABILITIES: AgentBackendCapabilities = {
   name: 'pi',
-  thinkingLevels: ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
+  thinkingLevels: THINKING_LEVELS,
   oauthProviders: ['anthropic', 'openai-codex', 'github-copilot', 'xai'],
   compaction: true,
   sessionResume: true,
@@ -70,15 +72,22 @@ export function builtinToolNames(readOnly: boolean): readonly string[] {
   return readOnly ? PI_READONLY_TOOLS : PI_BUILTIN_TOOLS;
 }
 
-/** 会话工具面 = readOnly 判据下的内建面 + remoteTools relay + MCP 工具名。
- * 只读只摘写类内建工具（edit/write），relay 与 MCP 面照旧——审核者仍要能
+/** 会话工具面 = readOnly 判据下的内建面 + remoteTools relay + MCP 工具名
+ * + localTools（daemon 本地执行面）。
+ * 只读只摘写类内建工具（edit/write），relay / MCP / 本地面照旧——审核者仍要能
  * 用服务端工具与已授权 MCP 取事实。 */
 export function sessionToolNames(opts: {
   readOnly: boolean;
   remoteTools: readonly string[];
   mcpTools: readonly string[];
+  localTools?: readonly string[];
 }): string[] {
-  return [...builtinToolNames(opts.readOnly), ...opts.remoteTools, ...opts.mcpTools];
+  return [
+    ...builtinToolNames(opts.readOnly),
+    ...opts.remoteTools,
+    ...opts.mcpTools,
+    ...(opts.localTools ?? []),
+  ];
 }
 
 // —— skills 执行面注入（spec 14/#371）————————————————————————
@@ -592,6 +601,29 @@ export class PiBackend implements AgentBackend {
             }),
           )
         : [];
+    // daemon 本地工具（02 §8：团队密钥取用通道的落点）：位形同 remoteTools，
+    // 差别只在 execute 在 daemon 进程内跑（不经 relay、不出机器）——值不进
+    // 子进程环境，只有 agent 显式调用这一次会拿到文本。
+    const localTools = (opts.localTools ?? []).map((def) =>
+      defineTool({
+        name: def.name,
+        label: def.label ?? def.name,
+        description: def.description,
+        parameters: (def.parameters ?? { type: 'object', properties: {} }) as never,
+        execute: async (_id: string, params: Record<string, unknown>) => {
+          try {
+            const text = await def.execute(params ?? {});
+            return { content: [{ type: 'text' as const, text }], details: {} };
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            return {
+              content: [{ type: 'text' as const, text: `${def.name} failed: ${msg}` }],
+              details: {},
+            };
+          }
+        },
+      }),
+    );
     // MCP 薄桥（00/D4、02 §7.1）：per-turn 连接已授权 server → `mcp__<slug>__
     // <tool>` 工具面；单点失败降级不阻断（canon 行经 onMcpLog）。
     const mcpBridge =
@@ -652,9 +684,10 @@ export class PiBackend implements AgentBackend {
         readOnly: opts.readOnly === true,
         remoteTools: remoteTools.map((t) => t.name),
         mcpTools: mcpTools.map((t) => t.name),
+        localTools: localTools.map((t) => t.name),
       }),
-      ...(customTools.length > 0 || mcpTools.length > 0
-        ? { customTools: [...customTools, ...mcpTools] }
+      ...(customTools.length > 0 || mcpTools.length > 0 || localTools.length > 0
+        ? { customTools: [...customTools, ...localTools, ...mcpTools] }
         : {}),
     });
     this.opts.onSession?.(session.sessionId, session.sessionFile);

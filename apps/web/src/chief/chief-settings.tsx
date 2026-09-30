@@ -20,9 +20,9 @@ import {
   useModelSources,
   useProviders,
 } from '../api/hooks.js';
-import { toChiefModelOptions } from '../api/mappers.js';
+import { toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
-import type { ChiefContent, ChiefModelOption, ChiefSettingsTab } from '../fixtures/records.js';
+import type { ChiefContent, ChiefSettingsTab, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChevronRight, ChiefFaceDashed } from '../icons/index.js';
 import { Button } from '../ui/button.js';
@@ -81,14 +81,14 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
     : undefined;
   // #204 压缩模型(#358 数据源切换,spec 11 §A10):live 值 = chief 封套真值
   // (null = 默认);选项 = model-sources ∪ custom providers 并集投影
-  // (mappers.toChiefModelOptions 单源;查询未决 = 空清单,不退 fixture
+  // (mappers.toModelOptions 单源;查询未决 = 空清单,不退 fixture
   // canon);选定 = PATCH compactionModel 槽(null = 清空回默认),invalidateAll
   // 重取回显——选择即关,不持本地乐观态(S8)。
   const compaction = live
     ? (chiefQ.data?.chief.compactionModel ?? null)
     : (chief.compactionModel ?? null);
-  const modelOptions: ChiefModelOption[] | undefined = live
-    ? toChiefModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
+  const modelOptions: ModelOption[] | undefined = live
+    ? toModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
     : undefined;
   const pickModel = live
     ? (value: ChiefCompactionModel | null) =>

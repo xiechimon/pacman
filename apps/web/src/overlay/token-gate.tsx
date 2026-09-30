@@ -9,17 +9,19 @@
 // 类名别名（token-gate*）原样保留 = e2e 定位锚（token-gate.spec.ts，#411
 // 政策 1）。面板虽由 Card 承载，表单语义（form + type=submit，回车即提交）
 // 仍由内层 form 原样承接。
-// 输入与提交仍走 A3 原语（ui/Input = 36px 实测族、ui/Button primary =
-// --card-button 实底 + --text-on-accent）：components/ui 无 Input 件、shadcn
-// Button 的 variant 表无 brand primary 档，换件即改填充色——故本片不动它们。
-// 聚焦走既有 htmlFor/id 锚点 pacman-token-input（A3：原语暂无 ref 形态）。
+// 输入与提交走仓内 shadcn 件（ui/Input / ui/Button brand 档）。两件的 per-face
+// 值以工具类钉回轨 A3 实测档——输入 36px 盒 / 8px 圆角 / --card-border 描边 /
+// --surface 底，提交 32px 高 / 8px 圆角 / 13px 常规字重 / --card-button 实底：
+// 铺开是纯结构换件，per-face 数值仍是几何正本（#411 政策 4），故不取 shadcn
+// 默认档。聚焦环按仓级 #388 canon（2px --focus-ring + offset 2）。
+// 聚焦锚点仍是既有 htmlFor/id（pacman-token-input，开门聚焦）。
 
 import { type FormEvent, useEffect, useState } from 'react';
 import { passGate, probeToken, useAuth } from '../api/auth.js';
+import { Button } from '../components/ui/button.js';
 import { Card } from '../components/ui/card.js';
+import { Input } from '../components/ui/input.js';
 import { useI18n } from '../i18n/provider.js';
-import { Button } from '../ui/button.js';
-import { Input } from '../ui/input.js';
 
 export function TokenGate() {
   const { t } = useI18n();
@@ -81,7 +83,10 @@ export function TokenGate() {
           </label>
           <Input
             id="pacman-token-input"
-            className="token-gate-input"
+            // 过渡窄写 = ui/button 的同一处仓内偏离（TW 的 transition-colors
+            // 属性表含 outline-color，会把 focus 环吞进过渡初值）；dark 档
+            // 另钉一次底，压适配层的 `dark:bg-input/30` 底噪。
+            className="token-gate-input h-9 rounded-md border-(--card-border) bg-(--surface) px-3 py-0 text-sm text-foreground transition-[color,background-color,border-color] focus-visible:border-(--card-border) focus-visible:ring-0 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 dark:bg-(--surface)"
             type="password"
             value={value}
             autoComplete="off"
@@ -94,9 +99,8 @@ export function TokenGate() {
           )}
           <Button
             type="submit"
-            variant="primary"
-            size="standard"
-            className="token-gate-submit"
+            variant="brand"
+            className="token-gate-submit border-0 rounded-md px-3 text-[13px] font-normal"
             disabled={probing || value.trim() === ''}
           >
             {t('进入')}

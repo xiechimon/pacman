@@ -21,9 +21,9 @@ import {
   type ChiefAgentOption,
   UNASSIGNED_AGENT_ID,
 } from '../chief/chief-agent-dialog.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChevronRight, X } from '../icons/index.js';
-import { Avatar } from '../ui/avatar.js';
 import { Button } from '../ui/button.js';
 
 // #168: the rerun/reuse pair joins the dialog family close law (DialogShell
@@ -127,7 +127,7 @@ function AgentRow({
   return (
     <button type="button" className="rerun-agent-row" onClick={onPick}>
       <span className="rerun-agent-avatar">
-        <Avatar name={display.seed} fallback="/avatar-robot-1.svg" />
+        <SeededAvatar name={display.seed} fallback="/avatar-robot-1.svg" />
       </span>
       <span className="rerun-agent-text">
         <span className="rerun-agent-name">{display.name}</span>
