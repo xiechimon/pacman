@@ -7,7 +7,6 @@ import type {
   ApiKeyRow,
   Assignment,
   BuildRecord,
-  CapabilitiesResponse,
   ChiefGetResponse,
   ChiefThread,
   ConversationMessagesResponse,
@@ -338,19 +337,6 @@ export const useModelSources = (teamId: string | undefined, enabled: boolean) =>
     queryFn: () => api.get<ModelSourcesEnvelope>(`/api/teams/${teamId}/model-sources`),
     enabled: enabled && teamId !== undefined,
     staleTime: 0,
-  });
-
-/** 能力读面（XMON-16 / #499 B3 裁决 A）：引擎能力词表——当前载荷 = 思考强度
- * 档位，Agent 详情只读行按它呈现档位。队无关（能力是引擎的事实，不随团队
- * 分叉），故路径不带 teamId。staleTime 恒新：词表随 server 构建期恒定，进程
- * 活着就不会变，重取只是空转。fixture 面不经此钩（无后端，直接取 shared
- * 单源 `THINKING_LEVELS`——那不是第二份真值，就是读面背后同一个常量）。 */
-export const useCapabilities = (enabled: boolean) =>
-  useQuery({
-    queryKey: ['capabilities'],
-    queryFn: () => api.get<CapabilitiesResponse>('/api/capabilities'),
-    enabled,
-    staleTime: Number.POSITIVE_INFINITY,
   });
 
 /** GitHub 连接认证状态读面（#361 G2-T4）：login/scope，无 token 位（02 §8）。

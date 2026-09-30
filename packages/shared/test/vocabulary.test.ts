@@ -15,7 +15,6 @@ import {
   CLAIM_POLL_INTERVAL_MS,
   CLI_COMMANDS,
   CONFIG_KINDS,
-  capabilitiesResponseSchema,
   DB_TABLES,
   DEVICE_ID_PATTERN,
   ENV_VARS,
@@ -495,20 +494,13 @@ describe('AgentBackend seam (01 §5, 00/D1 缝)', () => {
   });
 });
 
-describe('思考强度能力读面（XMON-16 / #499 B3 裁决 A）', () => {
+describe('思考强度档位词表（XMON-16 / #499 B3 裁决 A）', () => {
   it('THINKING_LEVELS = pi ThinkingLevel 七档原样', () => {
     // 期望值来源 = 上游类型（独立真值，不重算）：
     // node_modules/.pnpm/@earendil-works+pi-agent-core@0.86.0/…/dist/types.d.ts:267
     // `export type ThinkingLevel = "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";`
+    // 消费点 = daemon 的 PI_CAPABILITIES（web 侧的读面已随 XMON-18 撤）。
     expect(THINKING_LEVELS).toEqual(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
-  });
-
-  it('能力读面封套只认词表内的档位（词表外一律拒）', () => {
-    expect(capabilitiesResponseSchema.parse({ thinkingLevels: ['off', 'max'] })).toEqual({
-      thinkingLevels: ['off', 'max'],
-    });
-    expect(capabilitiesResponseSchema.safeParse({ thinkingLevels: ['ultra'] }).success).toBe(false);
-    expect(capabilitiesResponseSchema.safeParse({ thinkingLevels: [] }).success).toBe(true); // 空集合法（后端可无档位）
   });
 });
 

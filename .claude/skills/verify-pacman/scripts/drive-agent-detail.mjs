@@ -152,17 +152,12 @@ try {
     await page.locator('.agent-runtime').textContent(),
   );
 
-  // —— 2b. 能力读面本体（XMON-16）──────────────────────────────────────
-  // 概览的「思考强度」行已撤（XMON-18 裁决），web 侧现在零消费点，所以这里只验
-  // 端点形状（七档有序；期望值来源 = pi-agent-core 的 ThinkingLevel 联合，字面量
-  // 独立写出，不读实现里的常量）。端点本身的去留是另一件事，未裁前不删。
-  const caps = await getJson(`${SERVER}/api/capabilities`);
-  check(
-    'capabilities-seven-levels',
-    JSON.stringify(caps.thinkingLevels) ===
-      JSON.stringify(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']),
-    JSON.stringify(caps.thinkingLevels),
-  );
+  // —— 2b. 能力读面已删（XMON-18）→ 钉住它真的是 404，不是只从 UI 上摘掉 ——
+  // 撤行之后 `GET /api/capabilities` 零消费点，端点连同封套 schema、web 的钩与
+  // 投影一起删了。这条防的是「UI 摘了、端点还挂着」——死面留在 server 上没人看
+  // 得见。404 是**路由不存在**（落 SPA/JSON 404），与 401/403 区分开。
+  const capsRes = await fetch(`${SERVER}/api/capabilities`, { signal: AbortSignal.timeout(8000) });
+  check('capabilities-endpoint-gone', capsRes.status === 404, `HTTP ${capsRes.status}`);
 
   // —— 3. 名称行内编辑 → server displayName 变 ──────────────────────────
   await page.locator('.agent-name').click();

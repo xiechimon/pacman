@@ -782,18 +782,6 @@ export const RUNTIME_LABELS: Record<ModelSourceRuntime, string> = {
   'claude-code': 'Claude Code',
 };
 
-/** 思考强度只读行的档位投影（XMON-16 / #499 B3 裁决 A）：存值须是能力读面
- * 给的词表里的那一档才呈现，否则 null（调用面落 r3 §4 观测形「默认」）。
- * 只读行不说引擎没有的档位——词表即白名单，本层不另存一份档位集，也不
- * 排序（序由读面给）。返回 null 而非「默认」文案：词典键单源在调用面的
- * t()，本层不碰 i18n。 */
-export function toThinkingLevelDisplay(
-  value: string | null,
-  levels: readonly string[],
-): string | null {
-  return value !== null && levels.includes(value) ? value : null;
-}
-
 /** 压缩模型选择器候选投影（#358，spec 11 §A10）：custom providers
  * `models[]`（带 providerId/label 归属——model-sources 的 pi 段与其同构
  * 但平铺丢归属，不重复产行）∪ 非 pi runtime 段模型（claude-code = server

@@ -6,7 +6,7 @@
 
 - `card-link` — 团队页 `.team-agent-card` 是 `<a>`，点击落 `/app/resources/agents/<id>`，`?scenario=` 随行。
 - `overview-fields` — 名称（行内编辑）、职责、默认 skill、模型选择器，各自提交后 server 记录随之变。
-- `overview-readonly` — 概览只剩「运行时」一条只读行（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）。**XMON-18 裁决（2026-10-01）撤掉另三条**：`思考强度` 行（档位交给 agent 编排，不给人手设；它原是 `GET /api/capabilities` 在 web 侧的唯一消费点，撤后该读面零消费点，端点与 shared schema 暂留待裁）、`状态` 行（`agentStatusSchema` 只有 active 一个取值）、`创建于` 行（不需要创建时间，DB 也不加 createdAt 列）。撤行的判据是「页面里不存在」，不是换文案。
+- `overview-readonly` — 概览只剩「运行时」一条只读行（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）。**XMON-18 裁决（2026-10-01）撤掉另三条**：`思考强度` 行（档位交给 agent 编排，不给人手设；它原是 `GET /api/capabilities` 在 web 侧的唯一消费点，撤行后该读面零消费点，端点连同封套 schema、web 的钩与投影一并删除——`THINKING_LEVELS` 常量保留，daemon 在引）、`状态` 行（`agentStatusSchema` 只有 active 一个取值）、`创建于` 行（不需要创建时间，DB 也不加 createdAt 列）。撤行的判据是「页面里不存在」，不是换文案。
 - `memory-tab` — 条目列表 + 删除；空态文案 = shared `MEMORY_EMPTY_COPY` canon。
 - `permissions-tab` — 工具 6 开关（文案 = shared `AGENT_TOOL_SWITCHES`，**六档各带说明副文案** = shared `AGENT_TOOL_COPY`）、**团队密钥一行聚合总开关**（#510：粒度 = 原版的全有全无，副文案 = shared `AGENT_PERMISSION_COPY.secrets`；开 = `PATCH { secrets: 团队全部密钥 id }`、关 = `PATCH { secrets: [] }`，勾选态 = `agent.secrets` 非空；零密钥时只有空态 `暂无团队密钥。`、不出开关）、MCP 逐个勾选，落 `PATCH tools/secrets/mcpServers`。
 - `create-model-slot` — 创建弹窗模型槽两态；选中后 `POST /api/teams/{id}/agents` body 带 `provider` 与 `modelId`。
@@ -28,7 +28,7 @@ Preconditions:
 - 团队页卡是链接并落详情路由 → `node <worktree>/.claude/skills/verify-pacman/scripts/drive-agent-detail.mjs` → `team-card-is-link`（卡元素是 `a`）+ `card-opens-detail-route`（pathname = `/app/resources/agents/<id>`）。
 - 概览回显 = server 真值 → 同命令 → `overview-name` / `overview-role-empty-canon` / `overview-model`。
 - 概览不再摆「思考强度」「状态」（XMON-18）→ 同命令 → `overview-no-thinking-status-rows`（两个类名的元素计数都为 0）。判据取「不存在」，比断言文本更能钉住「没长回来 + 撤行没留空壳」。
-- 能力读面本体（XMON-16）→ 同命令 → `capabilities-seven-levels`（读面七档有序）。**只验端点形状**：概览撤行后 web 侧已无消费点，原先那两条「读面接到 UI 上」的判据（`thinking-inside-vocabulary-rendered` / `thinking-outside-vocabulary-falls-back`）随行一起删了，端点去留未裁前不删。
+- 能力读面已删（XMON-18）→ 同命令 → `capabilities-endpoint-gone`（`GET /api/capabilities` 返回 404）。防的是「UI 摘了、端点还挂着」——死面留在 server 上没人看得见。跨缝的 `THINKING_LEVELS` 常量**没删**（daemon 的 `PI_CAPABILITIES` 在引，`apps/daemon/src/backend/pi.ts:56`），所以这条钉的是端点，不是词表。
 - 改名称、改职责 → 同命令 → `name-persisted` / `role-persisted`（重取 `GET /api/teams/{id}/agents/{aid}` 对字段，不看 UI 回显）。
 - 模型槽清空再选回 → 同命令 → `model-cleared`（provider/modelId 双 null）/ `model-persisted`（`verify-485-gw/claude-sonnet-5`）。
 - 权限开关 → 同命令 → `perm-six-switches`（6 个）+ `tool-persisted`（server `tools` 数组）。

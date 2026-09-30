@@ -78,11 +78,6 @@ export const WEB_REST_ENDPOINTS: readonly RestEndpoint[] = [
     query: ['teamId'],
     note: 'spec 13 #367：每次请求现扫本地技能目录，无缓存不入库',
   },
-  {
-    method: 'GET',
-    path: '/api/capabilities',
-    note: '[设计] 能力读面（XMON-16 / #499 B3 裁决 A）：引擎能力词表送 web——载荷 = 思考强度档位，单源 shared THINKING_LEVELS',
-  },
   { method: 'GET', path: '/api/whats-new', note: '形状保留、内容自选（02 §6.1）' },
   { method: 'GET', path: '/api/search', query: ['q'], note: '⌘K [设计] 自设（02 §6.3）' },
   // —— POST ——

@@ -30,15 +30,17 @@ VERIFY_REPO_ROOT=<worktree> VERIFY_RUN_DIR=<worktree>/.claude/verify-run-trim \
 | check | 实测输出 |
 |---|---|
 | `overview-no-thinking-status-rows` | `thinking=0 status=0` |
+| `capabilities-endpoint-gone` | `HTTP 404` |
 
 判据取「元素计数为零」而不是断言文案——撤行最典型的两种坏法（行长回来、撤了行
 但留下空壳类名）都逃不掉。全量 check 与既有面（名称/职责/模型/运行时/权限/密钥/
 记忆/创建弹窗）同批绿，无回归。
 
-`capabilities-seven-levels` 仍在跑，但语义变了：原先它是「读面接到了 UI 上」的
-前一半（后一半是两条已随行删掉的 `thinking-*-rendered` 判据），现在只验端点形状
-——概览撤行后 `GET /api/capabilities` 在 web 侧零消费点，端点与 shared schema
-的去留未裁，未裁前不删。
+同一轮里 `GET /api/capabilities` 那一串也一并删了（判据 `capabilities-endpoint-gone`
+= 该路径返回 404）：撤行之后它在 web 侧零消费点，端点连同封套 schema、web 的
+`useCapabilities` 与 `toThinkingLevelDisplay`（含各自单测）都不留死面。跨缝的
+`THINKING_LEVELS` 常量**没删**——daemon 的 `PI_CAPABILITIES` 在引
+（`apps/daemon/src/backend/pi.ts:56`），它还是活的单源。
 
 ## 截图
 
@@ -46,4 +48,4 @@ VERIFY_REPO_ROOT=<worktree> VERIFY_RUN_DIR=<worktree>/.claude/verify-run-trim \
   与「状态」两行。
 
 源证据目录（本地态，gitignored）：
-`.claude/verify-evidence/2026-09-30T20-17-16-519Z-agent-detail`。
+`.claude/verify-evidence/2026-09-30T20-49-53-287Z-agent-detail`。

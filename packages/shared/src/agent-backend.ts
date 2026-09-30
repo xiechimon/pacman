@@ -140,14 +140,13 @@ export const STEP_EVENT_TYPES = stepEventSchema.options.map(
 
 // —— 01 §5 接口签名（TS 面原样；zod 面 = 上方 wire schema）———————————————
 
-/** 思考强度档位词表单源（能力读面的值域）：pi 七档，逐字 = 上游
- * `ThinkingLevel` 联合（@earendil-works/pi-agent-core 0.86.0
- * dist/types.d.ts:267）。三端同引此常量——daemon 的 `PI_CAPABILITIES`
- * 取它当能力声明、server 的 `GET /api/capabilities` 投影它、web 的 Agent
- * 详情只读行消费它，跨缝不复制常量（XMON-16 / #499 B3 裁决 A）。 */
+/** 思考强度档位词表单源：pi 七档，逐字 = 上游 `ThinkingLevel` 联合
+ * （@earendil-works/pi-agent-core 0.86.0 dist/types.d.ts:267）。唯一消费点 =
+ * daemon 的 `PI_CAPABILITIES`（`apps/daemon/src/backend/pi.ts` 取它当能力
+ * 声明），跨缝不复制常量（XMON-16 / #499 B3 裁决 A）。web 侧无消费点：
+ * 投影它的 `GET /api/capabilities` 已随 XMON-18 撤（思考强度只读行撤行，
+ * 那条读面失去唯一消费者）。 */
 export const THINKING_LEVELS = ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const;
-export const thinkingLevelSchema = z.enum(THINKING_LEVELS);
-export type ThinkingLevel = z.infer<typeof thinkingLevelSchema>;
 
 export interface AgentBackendCapabilities {
   readonly name: string; // 'pi'

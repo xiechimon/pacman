@@ -1,7 +1,7 @@
 {
   "probe": "agent-detail",
   "ok": true,
-  "at": "2026-09-30T20:17:23.013Z",
+  "at": "2026-09-30T20:49:59.871Z",
   "stack": {
     "api": "http://127.0.0.1:8891",
     "web": "http://127.0.0.1:5373",
@@ -16,7 +16,7 @@
     {
       "name": "card-opens-detail-route",
       "ok": true,
-      "detail": "http://127.0.0.1:5373/app/resources/agents/M9fRLka5nuTDlYiBONAd4"
+      "detail": "http://127.0.0.1:5373/app/resources/agents/TVVKv5xvn6pLAmyj3BEFe"
     },
     {
       "name": "server-seeded",
@@ -49,9 +49,9 @@
       "detail": "verify-485-gw"
     },
     {
-      "name": "capabilities-seven-levels",
+      "name": "capabilities-endpoint-gone",
       "ok": true,
-      "detail": "[\"off\",\"minimal\",\"low\",\"medium\",\"high\",\"xhigh\",\"max\"]"
+      "detail": "HTTP 404"
     },
     {
       "name": "name-persisted",
@@ -106,7 +106,7 @@
     {
       "name": "secret-on-writes-full-id-set",
       "ok": true,
-      "detail": "写回 [\"pv8XHV1elZBbEy058oxQ-\",\"H89J87H1GXINzrCcB-bZO\"]；团队全 id 集 [\"pv8XHV1elZBbEy058oxQ-\",\"H89J87H1GXINzrCcB-bZO\"]"
+      "detail": "写回 [\"0UGADGMPquIqsINqK8DRK\",\"T29H1jCzGuBmin9pMyKYo\"]；团队全 id 集 [\"0UGADGMPquIqsINqK8DRK\",\"T29H1jCzGuBmin9pMyKYo\"]"
     },
     {
       "name": "secret-stays-checked-when-nonempty",
@@ -148,6 +148,6 @@
     "06-create-model-menu.png",
     "07-team-after-create.png"
   ],
-  "teamId": "zRFcW0z2PN8fBfnIa_QLU",
-  "agentId": "M9fRLka5nuTDlYiBONAd4"
+  "teamId": "9a6g2C3UcqWs4aHcy_bnZ",
+  "agentId": "TVVKv5xvn6pLAmyj3BEFe"
 }
