@@ -43,6 +43,7 @@ import {
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { readStoredTheme } from '../theme.js';
 import { Avatar } from '../ui/avatar.js';
+import { KbdHint } from '../ui/kbd-hint.js';
 
 /** Which sidebar row carries the active pill: a nav row (工作台 / 定时 /
  *  the team head row on team/account — r7 01/11, r2 07e/24b/24c, r7 12/13),
@@ -278,6 +279,9 @@ export function BoardSidebar({
         <nav className="rail-nav flex flex-none flex-col pt-1">
           <button type="button" className={RAIL_ROW} aria-label={t('搜索')} onClick={onSearch}>
             <Search />
+            {/* #468: rail 态没有常亮 badge 位，悬浮浮出 ⌘K 提示（展开态
+                行的 sidebar-kbd 角标不动）。 */}
+            <KbdHint label="⌘K" placement="right" />
           </button>
           <Link
             className={`${RAIL_ROW} ${selected === 'board' ? RAIL_SELECTED : ''}`}

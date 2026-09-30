@@ -22,6 +22,7 @@
 
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
+import { KbdHint } from '../ui/kbd-hint.js';
 import { ChiefDrawer } from './chief-drawer.js';
 import { ChiefFabIcon } from './chief-fab-icon.js';
 import type { ChiefSurface } from './use-chief-surface.js';
@@ -53,6 +54,8 @@ export function ChiefWakeFab({
       onClick={() => setChiefView('drawer')}
     >
       <ChiefFabIcon chief={chiefData} />
+      {/* #468: ⌘J 悬浮提示（四族共用消费点；点击维持 open-only）。 */}
+      <KbdHint label="⌘J" />
       {chiefUnread > 0 && <span className="fab-badge">{chiefUnread}</span>}
     </button>
   );
