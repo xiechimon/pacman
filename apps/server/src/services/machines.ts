@@ -1176,9 +1176,10 @@ function upsertChiefRow(
   deps.convHub?.publishMessage(row.threadId, row);
 }
 
-/** per-step 凭证下发（02 §5.4/§8：模型 key + git 凭证，daemon 内存持有不落盘
- * 常驻）。解析链单源 = M2c services/credentials.ts（step → build → todo →
- * assignment → agent → provider → SecretBox 解密 + secrets env 授权集）；
+/** per-step 凭证下发（02 §5.4/§8：模型 key + git 凭证 + 团队密钥取用面，
+ * daemon 内存持有不落盘常驻）。解析链单源 = M2c services/credentials.ts
+ * （step → build → todo → assignment → agent → provider → SecretBox 解密 +
+ * 按 step kind 收窄的 secrets 取用面）；
  * 本层只做机器所有权校验 + wire 形状映射（machineTokenResponseSchema）。 */
 export function stepToken(
   deps: MachineDeps,
@@ -1211,7 +1212,11 @@ export function stepToken(
       : projectRow?.repoKind === 'github' && todoRow
         ? githubExecCredential(deps, todoRow.teamId)
         : null;
-  return { provider: toProviderConfig(bundle.provider, agentRow?.provider), env: bundle.env, git };
+  return {
+    provider: toProviderConfig(bundle.provider, agentRow?.provider),
+    secrets: bundle.secrets,
+    git,
+  };
 }
 
 /** GitHub 执行凭证（spec 12 G2-T2）：connection 行 token → per-step
@@ -1247,10 +1252,10 @@ function toProviderConfig(
   return agentProviderId ? { kind: 'api_key', providerId: agentProviderId } : null;
 }
 
-/** chief 步凭证（绑定 Agent 模型 key + secrets env）。git 槽恒 null——chief
- * 「探测仓库」经 docs relay 走 server 端裸库读（A4 黑盒逼近 r5 §3.1 的
- * worktree `git show`），daemon 侧不开 worktree、不需 per-step git 凭证；
- * 不下发死载荷。 */
+/** chief 步凭证（绑定 Agent 模型 key；secrets 取用面恒空——chief = 总管探索
+ * 步，records/step.ts stepTakesSecrets）。git 槽恒 null——chief 「探测仓库」
+ * 经 docs relay 走 server 端裸库读（A4 黑盒逼近 r5 §3.1 的 worktree
+ * `git show`），daemon 侧不开 worktree、不需 per-step git 凭证；不下发死载荷。 */
 function chiefStepToken(
   deps: MachineDeps,
   _stepId: string,
@@ -1267,7 +1272,7 @@ function chiefStepToken(
     : undefined;
   return {
     provider: toProviderConfig(bundle.provider, agentRow?.provider),
-    env: bundle.env,
+    secrets: bundle.secrets,
     git: null,
   };
 }

@@ -110,7 +110,7 @@ class FakeClient implements MachineApi {
         authHeader: true,
         models: [{ id: 'stub-model', name: 'stub-model' }],
       },
-      env: {},
+      secrets: {},
       git: null,
     };
   }

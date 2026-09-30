@@ -77,6 +77,19 @@ export const toolSpecSchema = z.object({
 });
 export type ToolSpec = z.infer<typeof toolSpecSchema>;
 
+/** daemon 本地工具定义（02 §8 密钥取用通道）：位形同 remoteTools（backend 映
+ * 射为 pi customTool），差别只在 execute 的落点——本类在 daemon 进程内跑，
+ * 不经 relay、不出机器。函数字段故非 wire schema（与 executeRemoteTool 同律）。 */
+export interface LocalToolDef {
+  name: string;
+  label?: string;
+  description: string;
+  /** JSON Schema（同 remoteTools.parameters 位形 [设计]）。 */
+  parameters?: unknown;
+  /** 执行：返回结果文本（pi 侧照常消费）。 */
+  execute(params: Record<string, unknown>): Promise<string>;
+}
+
 /** MCP 端点（01 §5 SessionOpts.mcpServers；02 §7.1：per-turn 连接、失败降级
  * 不阻断；工具名 `mcp__<slug>__<tool>`）。spec 13 起本形状只活在 daemon 内部
  * （backend 缝 → pi 会话）：claim wire 改携 slug 列表，端点由 daemon 读本机
@@ -154,6 +167,9 @@ export interface SessionOpts {
   /** remoteTools relay 执行回调（runner 注入 = POST /api/machine/tool/<stepId>
    * {name, params} → {text}）；返回结果文本（r5 §3.1 bundle text() 形）。 */
   executeRemoteTool?: (name: string, params: Record<string, unknown>) => Promise<string>;
+  /** daemon 本地工具（02 §8：团队密钥取用通道的落点）。空/缺省 = 不注册
+   * （既有调用面零回归）。工具名进会话工具面（backend 构建）。 */
+  localTools?: LocalToolDef[];
   /** per-turn 连接、失败降级不阻断（02 §7.1）。 */
   mcpServers?: McpEndpoint[];
   /** skills catalog 白名单（#372；spec 14「SessionOpts 不加字段」的修订——

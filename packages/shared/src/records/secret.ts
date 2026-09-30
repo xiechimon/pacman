@@ -1,8 +1,9 @@
-// secret record（团队密钥）——CONTEXT.md 强制拆两义：secret（团队环境变量）
-// ≠ apiKey（访问令牌）。02 §8：值以环境变量注入任务 shell、只写不读
-// （保存后只能覆盖或删除，无法再次查看，r2 §6.3）、密文经 SecretBox
-// （AES-256-GCM + 本地 keyfile，01 §4.2）。wire record 未实测；
-// 字段证据 = r2 §6.3 表单（名称（环境变量名）/描述（可选）/值），[推断] 投影。
+// secret record（团队密钥）——CONTEXT.md 强制拆两义：secret（团队密钥）
+// ≠ apiKey（访问令牌）。02 §8：值按 Agent 授权、在需要它的执行步经取用通道
+// 下发（不预置进任务 shell 环境）、只写不读（保存后只能覆盖或删除，无法再次
+// 查看，r2 §6.3）、密文经 SecretBox（AES-256-GCM + 本地 keyfile，01 §4.2）。
+// wire record 未实测；字段证据 = r2 §6.3 表单（名称（密钥名）/描述
+// （可选）/值），[推断] 投影。
 
 import { z } from 'zod';
 import { recordId } from './common.js';
@@ -11,7 +12,8 @@ import { recordId } from './common.js';
 export const secretRecordSchema = z.object({
   id: recordId,
   teamId: recordId,
-  /** 环境变量名（表单 ph `STRIPE_API_KEY`，r2 §6.3）。 */
+  /** 密钥名（表单 ph `STRIPE_API_KEY`，r2 §6.3；名形 = 环境变量风格的标识符，
+   * 取用通道按此名寻址）。 */
   name: z.string(),
   description: z.string().nullable(),
 });
@@ -34,7 +36,7 @@ export const SECRET_MIN_CLI_VERSION = '0.1.28';
 export const SECRET_PAGE_COPY = {
   empty: '尚无密钥。',
   inject:
-    '团队密钥将以环境变量注入每个任务的 shell。值只写不读：保存后只能覆盖或删除，无法再次查看。',
+    '团队密钥按 Agent 授权，在需要它的执行步中下发，不预置进任务 shell 环境。值只写不读：保存后只能覆盖或删除，无法再次查看。',
   encryptedNotice: '值将加密存储，保存后无法再次查看。',
   chiefHint: '也可以让总管添加：它会开一张安全输入卡填写值，值不会进入对话。',
 } as const;
