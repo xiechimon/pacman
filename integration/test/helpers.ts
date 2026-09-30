@@ -74,7 +74,10 @@ export async function bootRealServer(opts: {
     secretBox,
     user,
     team,
-    pingIntervalMs: 3_600_000,
+    // 心跳与生产同值（TEAM_STREAM_PING_INTERVAL_MS=15s，config.ts 缺省同源）。
+    // 曾设 1h 关心跳——与生产分叉且使 web 端静默看门狗（#462，20s 阈值以
+    // 心跳为健康基准）在测试里失去心跳参照，故对齐。
+    pingIntervalMs: 15_000,
     claimHoldMs: opts.claimHoldMs ?? 1_000,
     uploads: new Map(),
     enrollments: new Map(),
