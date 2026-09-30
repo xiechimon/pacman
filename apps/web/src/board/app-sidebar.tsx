@@ -7,7 +7,7 @@
 // detail: their fixture ui.searchOpen open states drive the fixture rows)
 // pass searchPanel={false} + their own onSearch opener; every other shell
 // rides the internal panel, which renders nothing while closed.
-// #389: the 新任务 row + N hotkey follow the same override law — routes
+// #389: the 新任务 row + C hotkey follow the same override law — routes
 // with their own dialog (board / project) pass onNewTask and keep their
 // page-anchored save semantics; every other route rides the internal
 // global dialog (useNewTaskSurface, live save path shared with the board).
@@ -41,7 +41,7 @@ export interface AppSidebarProps {
   searchPanel?: boolean;
   /** Search-row opener; defaults to the internal panel. */
   onSearch?: () => void;
-  /** #389: 新任务行 + N 热键的 opener（board/project 传本页 dialog）；缺省 =
+  /** #389: 新任务行 + C 热键的 opener（board/project 传本页 dialog）；缺省 =
    *  内部全局 dialog（useNewTaskSurface）。 */
   onNewTask?: () => void;
 }
@@ -85,7 +85,7 @@ export function AppSidebar({
   const resolvedTodos = todos ?? (live ? (todosQ.data ?? []).map(toDisplayTodo) : fixture.todos);
   const machineOnline = live ? (machinesQ.data ?? []).some((m) => m.online) : fixture.chief != null;
   // #389: 内部全局新建 dialog —— 只在路由未传 onNewTask 时渲染（board/
-  // project 保自有面）；N 热键与侧栏行共用解析后的 opener，单点注册。
+  // project 保自有面）；C 热键与侧栏行共用解析后的 opener，单点注册。
   const internalNewTask = useNewTaskSurface(fixture);
   const openNewTask = onNewTask ?? internalNewTask.openDialog;
   useNewTaskHotkey(openNewTask);

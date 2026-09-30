@@ -1,4 +1,4 @@
-// New-task creation surface (issue #389): the N hotkey and the sidebar
+// New-task creation surface (issue #389): the C hotkey and the sidebar
 // 新任务 row open the same NewTaskDialog on every route. Extracted from
 // board-page's wiring (#66 create / #176 project select / #310 spec+attachments
 // / #311 mentions) so two faces share one save path: the board keeps its
@@ -56,7 +56,7 @@ interface NewTaskSurfaceOpts {
 }
 
 export interface NewTaskSurface {
-  /** 打开 dialog（N 热键 / 侧栏行 / 页面按钮共用的唯一 opener，幂等）。 */
+  /** 打开 dialog（C 热键 / 侧栏行 / 页面按钮共用的唯一 opener，幂等）。 */
   openDialog: () => void;
   /** live 面默认执行 Agent（board 卡片级 开始 复用；02 §6.2 双槽同值）。 */
   firstAgentId: string | null;
