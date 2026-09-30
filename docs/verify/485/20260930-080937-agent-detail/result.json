@@ -1,10 +1,10 @@
 {
   "probe": "agent-detail",
   "ok": true,
-  "at": "2026-09-30T07:55:27.570Z",
+  "at": "2026-09-30T08:09:41.817Z",
   "stack": {
-    "api": "http://127.0.0.1:8791",
-    "web": "http://127.0.0.1:5273",
+    "api": "http://127.0.0.1:8795",
+    "web": "http://127.0.0.1:5277",
     "homeDir": "/Users/xmon/Code/AgentProjects/pacman/.claude/worktrees/team-agent-surface/.claude/verify-run/home"
   },
   "checks": [
@@ -16,7 +16,7 @@
     {
       "name": "card-opens-detail-route",
       "ok": true,
-      "detail": "http://127.0.0.1:5273/app/resources/agents/Oki2UB__KJLEsMB47NFx2"
+      "detail": "http://127.0.0.1:5277/app/resources/agents/arS8kEoyQBi44vTcC8oaa"
     },
     {
       "name": "server-seeded",
@@ -107,6 +107,6 @@
     "05-create-model-menu.png",
     "06-team-after-create.png"
   ],
-  "teamId": "4vpRnC5ZTErWNIqPqlr9T",
-  "agentId": "Oki2UB__KJLEsMB47NFx2"
+  "teamId": "4LaVeYjqUku3bS1FLJyMD",
+  "agentId": "arS8kEoyQBi44vTcC8oaa"
 }
