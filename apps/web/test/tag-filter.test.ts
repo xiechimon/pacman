@@ -12,7 +12,7 @@
 import { FIXED_TAGS } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
 import { cardTag, matchesTagFilter, parseTagParam } from '../src/board/tag-filter.js';
-import type { TagChipData } from '../src/ui/tag-chip.js';
+import type { TagChipData } from '../src/components/ui/tag-chip.js';
 import { todo } from './helpers.js';
 
 /** 固定词表名的全序（测试与实现共用同一单源，防词表漂移时假绿）。 */

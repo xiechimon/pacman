@@ -37,6 +37,7 @@ import { ChiefDrawer } from '../chief/chief-drawer.js';
 import { ChiefFabIcon } from '../chief/chief-fab-icon.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
 import { useChiefSurface } from '../chief/use-chief-surface.js';
+import { KbdHint } from '../components/ui/kbd-hint.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
 import { withoutDeleted } from '../fixtures/deletions.js';
@@ -47,7 +48,6 @@ import { useI18n } from '../i18n/provider.js';
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
 import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
-import { KbdHint } from '../ui/kbd-hint.js';
 // shell styles live with the board surface; the settings view (101–104)
 // unmounts BoardSurface but keeps the shell, so the route imports them too
 import '../board/board.css';

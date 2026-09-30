@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { relativeTime } from '../board/rel-time.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { PROJECT_ID, PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { AgentRef, FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -36,7 +37,6 @@ import {
   Users,
 } from '../icons/index.js';
 import { PHASE_UI } from '../phase.js';
-import { Avatar } from '../ui/avatar.js';
 import { Input } from '../ui/input.js';
 import './overlays.css';
 
@@ -400,7 +400,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
                       onClick={() => go('/app/team')}
                     >
                       <span className="search-row-icon search-row-icon--agent">
-                        <Avatar name={agent.displayName} fallback="/avatar-robot-1.svg" />
+                        <SeededAvatar name={agent.displayName} fallback="/avatar-robot-1.svg" />
                       </span>
                       <span className="search-row-main">
                         <span className="search-row-title">{agent.displayName}</span>

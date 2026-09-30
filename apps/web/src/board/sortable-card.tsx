@@ -4,8 +4,8 @@
 // distance constraint swallows presses that never travel, and dnd-kit
 // suppresses the click that follows a completed drag.
 import { useSortable } from '@dnd-kit/sortable';
+import type { TagChipData } from '../components/ui/tag-chip.js';
 import type { TodoRecord } from '../fixtures/records.js';
-import type { TagChipData } from '../ui/tag-chip.js';
 import { TodoCard } from './todo-card.js';
 
 interface SortableCardProps {

@@ -5,6 +5,7 @@
 // (assignee row), the selected 执行对话 section (agent row + indigo check,
 // the highlight covering label and row), divider, 编辑分配 row.
 
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import {
   AGENT_MODEL_LINE,
   PROJECT_INITIAL,
@@ -14,7 +15,6 @@ import {
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, Settings } from '../icons/index.js';
-import { Avatar } from '../ui/avatar.js';
 import './overlays.css';
 
 interface ChipPopoverProps {
@@ -38,14 +38,14 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
       <div className="chip-popover-section">
         <div className="chip-popover-label">{t('任务')}</div>
         <div className="chip-popover-row">
-          <Avatar name={USER_NAME} fallback="/avatar-user.png" />
+          <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
           {USER_NAME}
         </div>
       </div>
       <div className="chip-popover-section chip-popover-section--selected">
         <div className="chip-popover-label">{t('执行对话')}</div>
         <div className="chip-popover-row">
-          <Avatar name={todo.agent?.displayName} fallback="/avatar-robot-1.svg" />
+          <SeededAvatar name={todo.agent?.displayName} fallback="/avatar-robot-1.svg" />
           {/* 未指派 fallback is [推断]: every capture shows an assigned agent */}
           {todo.agent?.displayName ?? t('未指派')} · {AGENT_MODEL_LINE}
           <span className="chip-popover-check">

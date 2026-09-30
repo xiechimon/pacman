@@ -91,6 +91,32 @@ try {
   await page.goto(`${WEB}/app`);
   await page.waitForSelector('[data-route="board"]', { timeout: 15_000 });
   check('board-ready', true, '看板 shell 就绪');
+
+  // 标签 chip 的落点（XMON-14 起 = components/ui/tag-chip，落在 registry Badge
+  // 上）：类型筛选弹层的选中行是 live 栈上唯一可达的 TagChip 面——#394 起新建
+  // 面没有手动标签入口，任务卡上的 chip 要等 agent 回填 tagIds。
+  await page.click('.board-type-filter');
+  const typeOption = page.locator('.type-filter-option[data-tag="bug"]');
+  await typeOption.waitFor({ state: 'visible', timeout: 5000 });
+  await typeOption.click();
+  const tagChip = typeOption.locator('.tag-chip');
+  // 选中态是点击后的重渲染结果——count() 不自动等待，先等可见再读数
+  await tagChip
+    .first()
+    .waitFor({ state: 'visible', timeout: 5000 })
+    .catch(() => {});
+  const chipCount = await tagChip.count();
+  const chipSlot = chipCount > 0 ? await tagChip.first().getAttribute('data-slot') : null;
+  const chipBox = chipCount > 0 ? await tagChip.first().boundingBox() : null;
+  check(
+    'tag-chip-registry',
+    chipCount === 1 && chipSlot === 'badge' && Math.round(chipBox?.height ?? 0) === 20,
+    `chip n=${chipCount} data-slot=${chipSlot ?? '缺失'} h=${chipBox ? Math.round(chipBox.height) : '缺失'}`,
+  );
+  await shot(page, '01b-tag-chip.png');
+  await typeOption.click(); // 解除选中，回到干净态
+  await page.keyboard.press('Escape');
+
   await page.click('.sidebar-new-task');
   await page.waitForSelector('.new-task-dialog', { timeout: 5000 });
 

@@ -5,11 +5,11 @@
 // chip（ADR 0002 F4 修订——「看板卡不渲染标签」校准退役），本块仍是详情
 // 页的唯一标签消费面。
 
+import { TagChip, type TagChipData } from '../components/ui/tag-chip.js';
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
 import { Copy, SquarePen } from '../icons/index.js';
-import { TagChip, type TagChipData } from '../ui/tag-chip.js';
 
 /** 「2026年9月21日 13:21 创建」 — capture-verbatim format, pinned to the
  *  +08:00 zone the r7 session ran in so fixture output never drifts with host TZ.

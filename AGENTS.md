@@ -58,6 +58,7 @@ Commit 约定：
 - 格式：`<scope>(<ticket>): <subject>` 或 `web(<PR>): <subject>`——scope 跟现有节奏（`web` / `daemon` / `server` / `shared` / `integration` / `docs` / `chore` 等）；subject 短、要点。
 - PR 编号或 issue 编号挂末尾：`(#123)` PR 号。
 - **关票关键字写进 commit message，不是 PR body**：结尾一行 `closes #N`（多 issue 用 `closes #N1, closes #N2`，不能合并写）。squash 合并只把 **commit message** 带进 main，PR body 根本不进 commit——关键字只写在 PR body 里等于没写，票会留着 OPEN（477/478/479/480 四票全中，2026-09-30 又中 #487/#488）。对照实测（2026-09-30 #495）：PR body 一个关键字都不写、只写进 commit message，合并即自动 CLOSED/COMPLETED。开 PR 前先在 commit message 收尾这一行。
+- **否定句里的关票关键字照样生效**：GitHub 的关键字解析器**不认否定词**。写成「不 closes #417」这种否定句，仍然会在合并落地时把 #417 关掉——2026-09-30 实测：Map #417 就是被 PR #522 的 squash 提交这样关掉的（timeline 把 closed 事件挂在该 commit 上），写那句话的本意恰恰是「声明不要关它」。要表达「本 PR 不关某票」，**去掉那个动词**：写「不关闭 #417」或「本 PR 与 #417 无关」，并确认整个 commit message 里没有任何「关票关键字 + 票号」的形态。同上一条，这条也只在 commit message 通道上生效，PR body 不进 commit。
 - **只 commit 自己改过的文件**。`git add <path1> <path2>` 显式路径，**禁 `git add -A` / `git add .`**——同 cwd 可能多个 lane 并行（agent / 人类）。例外：merge 落盘（解决冲突后的 merge commit）语义上是全量 stage，允许 `git commit --no-edit` 完成 merge 而不再 add（merge 状态自带 index）；手工模拟 merge 落普通 commit 不在此例。
 - 永远别 `git commit --no-verify`。
 

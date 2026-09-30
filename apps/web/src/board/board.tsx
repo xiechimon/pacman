@@ -36,11 +36,11 @@ import {
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { Button } from '../components/ui/button.js';
+import type { TagChipData } from '../components/ui/tag-chip.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
 // drawer/settings overlays sit beside it in one place.
 import { useI18n } from '../i18n/provider.js';
-import type { TagChipData } from '../ui/tag-chip.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
 import { columnDropIndex, DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
 import { RepoFilterBar, type RepoOption } from './repo-filter.js';
