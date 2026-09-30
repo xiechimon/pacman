@@ -347,20 +347,19 @@ export interface McpRow {
 }
 
 /** Machine row (spec 11 A8): the local machine pinned first (kind='local',
- *  per-runtime switches, undeletable) plus one row per attached LAN/VPS
- *  machine (name + online dot + id-tail subline). */
+ *  per-runtime 品牌 mark pair, undeletable) plus one row per attached LAN/VPS
+ *  machine (name + online dot). */
 export interface MachineRow {
   /** Machine record id — the `data-machine-id` contract handle. */
   id?: string;
   /** `local` = the server host (pinned first); absent/`remote` = attached. */
   kind?: 'local' | 'remote';
   name: string;
-  /** Subline under the name (`…NJqVhdo_ · max 3`). */
-  sub?: string;
   online?: boolean;
   /** Right-side status pill; absent on online machines. */
   pill?: string;
-  /** Per-runtime switch state (MACHINE_RUNTIMES subset; [] = all off). */
+  /** Per-runtime 启用态（MACHINE_RUNTIMES subset; [] = all off）——驱动 mark
+   *  原色/35% 透明两态。 */
   enabledRuntimes?: string[];
 }
 

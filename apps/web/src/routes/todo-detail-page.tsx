@@ -584,7 +584,6 @@ export function TodoDetailPage() {
         machine: (fixture.resources?.machines ?? []).map((m) => ({
           id: m.name,
           label: m.name,
-          subtitle: m.sub,
         })),
       };
   const ui = PHASE_UI[phase];

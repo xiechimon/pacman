@@ -101,7 +101,6 @@ class FakeMachineApi implements MachineApi {
       name: 'n',
       teamId: 't1',
       online: true,
-      maxConcurrent: 3,
       latestCliVersion: null,
       kind: 'remote' as const,
       enabledRuntimes: [],
@@ -274,14 +273,12 @@ describe('上线序列 canon（02 §5.4/r3 §1.5）', () => {
     expect(lines).toContain('Enrolled in team team-1 (machine m1)'); // r3 §1.2 行形
     expect(lines.some((l) => l === 'Online (machineId=m1); polling http://server')).toBe(true);
     expect(lines).toContain('[recover] no pending steps found');
-    expect(lines).toContain('maxConcurrent changed null -> 3');
     expect(lines).toContain('[wake] push channel connected');
-    // 行序 = canon 序（recover 在 Online 后、wake 在 maxConcurrent 后）。
+    // 行序 = canon 序（recover 在 Online 后、wake 在 recover 后）。
     const idx = (s: string) => lines.findIndex((l) => l.includes(s));
     expect(idx('Loading pi runtime')).toBeLessThan(idx('Online (machineId'));
     expect(idx('Online (machineId')).toBeLessThan(idx('[recover]'));
-    expect(idx('[recover]')).toBeLessThan(idx('maxConcurrent changed'));
-    expect(idx('maxConcurrent changed')).toBeLessThan(idx('[wake] push channel connected'));
+    expect(idx('[recover]')).toBeLessThan(idx('[wake] push channel connected'));
     // enroll 落 machine.json（02 §5.3）。
     expect(existsSync(paths.machineJson)).toBe(true);
     expect(JSON.parse(readFileSync(paths.machineJson, 'utf8')).machineId).toBe('m1');
@@ -378,11 +375,11 @@ describe('步执行全链（02 §5.7 生命周期行 + journal 端点词表）',
 
     // 生命周期行序 canon（02 §5.7）。
     expect(lines).toContain('claim step=s1');
-    expect(lines).toContain('step s1 for conv conv-1 (1/3 running)');
+    expect(lines).toContain('step s1 for conv conv-1 (1 running)');
     expect(lines).toContain('using model stub-gw/stub-model');
     expect(lines).toContain('[workspace] 准备工作区...');
     expect(lines).toContain('new session conv-1');
-    expect(lines).toContain('finished (0/3 running)');
+    expect(lines).toContain('finished (0 running)');
 
     // backend 收到 SessionOpts（provider 凭证内存态 + prompt + cwd + systemPrompt）。
     const opts = created[0]?.opts as {

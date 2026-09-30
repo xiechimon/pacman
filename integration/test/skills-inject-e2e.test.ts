@@ -103,7 +103,6 @@ beforeAll(async () => {
       teamId: server.teamId,
       home,
       name: 'skills-inject-mbp',
-      maxConcurrent: 1,
       skillsDir,
     },
     {},

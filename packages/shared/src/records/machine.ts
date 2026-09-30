@@ -7,11 +7,6 @@
 import { z } from 'zod';
 import { recordId } from './common.js';
 
-/** 并发上限默认值（02 §2.5：maxConcurrent 3 不是付费件，保留为 daemon 配置
- * 默认值；机器页文案 canon「领取构建、规划与审核任务并运行 Agent。并发上限 3」
- * r3 §4）。 */
-export const MAX_CONCURRENT_DEFAULT = 3;
-
 /** per-runtime 开关词表（spec 11 A8/A9 单源：machine.enabledRuntimes 元素、
  * PATCH body、machines 页 switch data-runtime、providers tab runtime 同词表；
  * Codex 后续票再扩，spec 11 A1）。 */
@@ -28,8 +23,6 @@ export const machineRecordSchema = z.object({
   teamId: recordId,
   /** presence（02 §1.2 machine_presence 事件 {machineId, online}）。 */
   online: z.boolean(),
-  /** max 显示（r3 §4）；wire 字段名 [推断]。 */
-  maxConcurrent: z.number().int(),
   /** 机器页数据含 latestCliVersion（r5 §8 实测 "0.1.53"）；用于 MCP/记忆等
    * 版本墙提示（02 §7.1/§8）。 */
   latestCliVersion: z.string().nullable(),
@@ -50,9 +43,6 @@ export const patchMachineBodySchema = z.object({
   enabledRuntimes: z.array(z.enum(MACHINE_RUNTIMES)),
 });
 export type PatchMachineBody = z.infer<typeof patchMachineBodySchema>;
-
-/** 机器页「构建」tab 文案 canon（r3 §4 原文）。 */
-export const MACHINE_BUILDS_TAB_COPY = '领取构建、规划与审核任务并运行 Agent。并发上限 3';
 
 /** 「添加机器」弹窗命令块（r2 11b/r3 §1.2）：安装 CLI + pacman start；底部
  * 「在云服务器上运行？改用 API key 注册」展开 --api-key --team 命令 +

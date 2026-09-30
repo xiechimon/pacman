@@ -1,7 +1,7 @@
 // step 单会话执行（03 M3a：claim → pi 会话 → transcript 回传落库）。
-// 生命周期日志行序 canon = 02 §5.7（`step <id> for conv <uuid> (n/3 running)`
+// 生命周期日志行序 canon = 02 §5.7（`step <id> for conv <uuid> (n running)`
 // → `using model <provider>/<modelId>` → workspace 准备 → `new session <convId>`
-// / `continue session <convId>` → `finished (m/3 running)`；`pushed <convBranch>`
+// / `continue session <convId>` → `finished (m running)`；`pushed <convBranch>`
 // 行属 git 面，归 M3b）。
 // journal 状态机（02 §5.4 recover 细节 [推断] = 04 附录 A 自定等价物）：
 // claimed → running → awaiting-upload →（done | failed）；中断残留由
@@ -47,7 +47,6 @@ export interface RunStepDeps {
   logger: DaemonLogger;
   paths: StatePaths;
   workspacesDir: string;
-  maxConcurrent: number;
   /** 本机 MCP config 路径（spec 13/#368：claim slug 列表在此解析成执行
    * 端点；machine-loop 从 config.mcpConfigPath 注入）。 */
   mcpConfigPath: string;
@@ -70,7 +69,7 @@ export interface RunStepDeps {
 export interface RunStepOptions {
   /** recover 续跑：已有 journal 条目（continue session 解析用）。 */
   resume?: { sessionId: string | null; prompt: string | null };
-  /** 已认领的运行数（canon 行 `(n/3 running)` 的 n）。 */
+  /** 已认领的运行数（canon 行 `(n running)` 的 n）。 */
   running?: number;
 }
 
@@ -208,7 +207,7 @@ export async function runStep(
   const stepId = claimed.step.id;
   const convId = claimed.conversationId;
   const running = opts.running ?? 1;
-  logger.raw(`step ${stepId} for conv ${convId} (${running}/${deps.maxConcurrent} running)`);
+  logger.raw(`step ${stepId} for conv ${convId} (${running} running)`);
 
   // chief 步（回合 = 机器 step，r5 §3.1）：任务文本 = server 合成的 instruction
   // （用户消息 / wake 事实），无 todo 语境；remoteTools relay + systemPrompt 走
@@ -672,7 +671,7 @@ export async function runStep(
   journal.remove(stepId);
   deps.sessionHandles?.delete(stepId);
   deps.stopRequests?.delete(stepId);
-  logger.raw(`finished (${running - 1}/${deps.maxConcurrent} running)`);
+  logger.raw(`finished (${running - 1} running)`);
 }
 
 async function failStep(deps: RunStepDeps, stepId: string, message: string): Promise<void> {

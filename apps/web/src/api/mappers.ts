@@ -741,7 +741,7 @@ export function mapApiKeys(rows: ApiKeyRow[]): DisplayApiKey[] {
 }
 
 /** machines 页投影（spec 11 A8，#357）：本机行（kind='local'）钉列表首，
- * 接入机保持 API 序；enabledRuntimes 原样透传 = switch aria-checked 数据源。 */
+ * 接入机保持 API 序；enabledRuntimes 原样透传 = 品牌 mark 亮度分态数据源。 */
 export function mapMachines(rows: MachineRecord[]): MachineRow[] {
   const local = rows.filter((m) => m.kind === 'local');
   const attached = rows.filter((m) => m.kind !== 'local');
@@ -749,7 +749,6 @@ export function mapMachines(rows: MachineRecord[]): MachineRow[] {
     id: m.id,
     kind: m.kind,
     name: m.name,
-    sub: `…${m.id.slice(-8)} · max ${m.maxConcurrent}`,
     online: m.online,
     enabledRuntimes: m.enabledRuntimes,
   }));

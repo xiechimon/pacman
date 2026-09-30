@@ -60,9 +60,9 @@ export interface MachineApi {
     apiKey: string;
   }): Promise<MachineEnrollResponse>;
   me(): Promise<MachineRecord>;
-  presence(body: { maxConcurrent?: number; cliVersion?: string }): Promise<void>;
+  presence(body: { cliVersion?: string }): Promise<void>;
   recover(): Promise<MachineRecoverResponse>;
-  claim(signal?: AbortSignal, running?: number): Promise<ClaimedStep | null>;
+  claim(signal?: AbortSignal): Promise<ClaimedStep | null>;
   heartbeat(stepId: string): Promise<void>;
   tool(stepId: string, call: ToolCallRecord): Promise<void>;
   /** live transcript 文本增量（machineToolBodySchema 第三形 [设计]，M5 live
@@ -199,7 +199,7 @@ export class MachineClient implements MachineApi {
     });
   }
 
-  async presence(body: { maxConcurrent?: number; cliVersion?: string }): Promise<void> {
+  async presence(body: { cliVersion?: string }): Promise<void> {
     await this.request('POST', '/api/machine/presence', {
       body,
       parse: (raw) => machineOkResponseSchema.parse(raw),
@@ -213,14 +213,13 @@ export class MachineClient implements MachineApi {
     });
   }
 
-  /** claim 长轮询（server hold ~75s，r3 §1.5）；调用方给 signal 控制中断；
-   * running = 本机在跑步数（machineClaimBodySchema 字段，并发门面）。 */
-  async claim(signal?: AbortSignal, running = 0): Promise<ClaimedStep | null> {
+  /** claim 长轮询（server hold ~75s，r3 §1.5）；调用方给 signal 控制中断。 */
+  async claim(signal?: AbortSignal): Promise<ClaimedStep | null> {
     const res = await this.request<{ step: ClaimedStep | null }>(
       'POST',
       '/api/machine/tasks/claim',
       {
-        body: { running },
+        body: {},
         signal,
         parse: (raw) => machineClaimResponseSchema.parse(raw) as { step: ClaimedStep | null },
       },

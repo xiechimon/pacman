@@ -135,7 +135,6 @@ beforeAll(async () => {
       teamId: server.teamId,
       home,
       name: 'm4b-mcp-mbp',
-      maxConcurrent: 1,
       mcpConfigPath: mcpConfig,
     },
     {},

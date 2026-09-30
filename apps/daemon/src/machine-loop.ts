@@ -1,7 +1,7 @@
 // 机器主循环（02 §5.4 上线序列 canon + r3 §1.5 实测行为）：
 // `Loading pi runtime…` → enroll（如未注册）→ presence → `Online (machineId=…);
 // polling <url>` → 防睡（caffeinate 类）→ `[recover]` 步 journal 恢复 →
-// `maxConcurrent changed null -> 3` → `[wake] push channel connected` →
+// `[wake] push channel connected` →
 // claim 长轮询循环（断网指数退避封顶 30s，presence 心跳并行失败，进程不退出）。
 // 退出：SIGTERM → `[machine] Shutting down…`（`[supervisor] stopped` 在
 // supervisor 侧，02 §5.3/r3 §1.5）。
@@ -136,7 +136,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   inMemoryToken = machineJson.token;
   const machineId = machineJson.machineId;
 
-  await client.presence({ maxConcurrent: config.maxConcurrent, cliVersion: DAEMON_VERSION });
+  await client.presence({ cliVersion: DAEMON_VERSION });
   logger.raw(`Online (machineId=${machineId}); polling ${config.serverUrl}`);
 
   // 闲置防睡（darwin caffeinate -i；平台命令表 spawn，01 §4.3）。
@@ -224,8 +224,6 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     }
   }
 
-  logger.raw(`maxConcurrent changed null -> ${config.maxConcurrent}`);
-
   // —— wake SSE（低延迟派发通道；断线持续重连不退出，r3 §1.5）——
   // 低延迟派发全归 server 侧：入队 wake() 同一同步轮直解挂起的 claim hold
   // （tryClaim→waiter 注册为同一同步块，单进程无事件循环间隙可乘——
@@ -309,11 +307,9 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
 
   // —— presence 心跳（并行失败不退出，r3 §1.5）——
   const presenceTimer = setInterval(() => {
-    client
-      .presence({ maxConcurrent: config.maxConcurrent, cliVersion: DAEMON_VERSION })
-      .catch((err: unknown) => {
-        logger.machine(`presence failed: ${err instanceof Error ? err.message : String(err)}`);
-      });
+    client.presence({ cliVersion: DAEMON_VERSION }).catch((err: unknown) => {
+      logger.machine(`presence failed: ${err instanceof Error ? err.message : String(err)}`);
+    });
   }, opts.presenceIntervalMs ?? 30_000);
   presenceTimer.unref?.();
 
@@ -331,7 +327,6 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       paths,
       workspace,
       workspacesDir: config.workspacesDir,
-      maxConcurrent: config.maxConcurrent,
       mcpConfigPath: config.mcpConfigPath,
       sessionHandles,
       stopRequests,

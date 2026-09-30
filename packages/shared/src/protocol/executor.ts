@@ -178,14 +178,14 @@ export const PROXY_ENV_VARS = ['HTTP_PROXY', 'HTTPS_PROXY', 'NO_PROXY'] as const
  * 前缀走品牌槽）。 */
 export const PROXY_PROBE_LOG_CANON = `[${BRAND.cliCommandName}] Proxy: <url>`;
 
-/** 步骤生命周期日志行序模板（02 §5.7，r3 §1.5 实测行序；并发上限默认值 =
- * records/machine.ts MAX_CONCURRENT_DEFAULT，02 §2.5）。 */
+/** 步骤生命周期日志行序模板（02 §5.7，r3 §1.5 实测行序；#503 起在跑步数
+ * 不再带分母——并发上限概念已摘除，行内只出本机在跑步数）。 */
 export const STEP_LIFECYCLE_LOG_LINES = [
   'claim step=<id>',
-  'step <id> for conv <uuid> (n/3 running)',
+  'step <id> for conv <uuid> (n running)',
   'using model <provider>/<modelId>',
   'new session <convId> | continue session <convId>',
   'workspace 准备（准备工作区...）',
   'pushed <convBranch>',
-  'finished (m/3 running)',
+  'finished (m running)',
 ] as const;

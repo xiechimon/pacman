@@ -31,7 +31,6 @@ describe('loadDaemonConfig（Settings 缝优先级）', () => {
     expect(cfg.home.endsWith(BRAND.homeDirName)).toBe(true);
     expect(cfg.workspacesDir).toBe(join(cfg.home, 'workspaces'));
     expect(cfg.foreground).toBe(false);
-    expect(cfg.maxConcurrent).toBe(3); // 02 §2.5 默认值
   });
 
   test('env 层：PACMAN_* 五件词表（r3 §1.1 观测原名 TDS_*，替换相位同形）', () => {

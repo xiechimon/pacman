@@ -87,21 +87,20 @@ describe('M3a demo：server 派 step → daemon 真执行 → transcript 回传�
     // `finished` = 步生命周期末行，落盘在 done ack 之后（响应回程 + journal 收尾）；
     // phase 可见瞬间与日志写入之间存在调度间隙（CI 并行负载下放大），先等末行
     // 落盘再断言全序——等待即覆盖前序各行（02 §5.7 行序 canon）。
-    await waitFor(() => logLines().some((l) => l.includes('finished (0/3 running)')), 30_000);
+    await waitFor(() => logLines().some((l) => l.includes('finished (0 running)')), 30_000);
     const lines = logLines();
     for (const canon of [
       'Loading pi runtime…',
       'Enrolled in team',
       'Online (machineId=',
       '[recover] no pending steps found',
-      'maxConcurrent changed null -> 3',
       '[wake] push channel connected',
       'claim step=',
       `step `,
       'using model stub-gw/stub-model',
       '[workspace] 准备工作区...',
       `new session ${buildId}`,
-      'finished (0/3 running)',
+      'finished (0 running)',
     ]) {
       expect(
         lines.some((l) => l.includes(canon)),

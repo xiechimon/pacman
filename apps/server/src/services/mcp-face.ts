@@ -255,7 +255,6 @@ export async function executeMcpTool(
           id: m.id,
           name: m.name,
           online: m.online,
-          maxConcurrent: m.maxConcurrent,
           latestCliVersion: m.latestCliVersion,
         })),
       );

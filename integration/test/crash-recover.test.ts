@@ -125,13 +125,13 @@ describe('崩溃恢复（T2：AgentSession 缝 × 宿主 durable 编排）', () 
     await waitFor(() => server.todoPhase(world.todoId) === 'confirm', 120_000);
     // `finished` 落盘在 done ack 之后，phase 可见 ≠ 日志已写（调度间隙，CI 并行
     // 负载下放大）——先等末行再断言（m3a-demo 同款竞态，02 §5.7 行序 canon）。
-    await waitFor(() => logLines().some((l) => l.includes('finished (0/3 running)')), 30_000);
+    await waitFor(() => logLines().some((l) => l.includes('finished (0 running)')), 30_000);
 
     const lines = logLines();
     // journal 兜底：会话文件不可续 → 显式回退行 + new session 重发任务文本。
     expect(lines.some((l) => l.includes('continue session unavailable'))).toBe(true);
     expect(lines.filter((l) => l.includes(`new session ${buildId}`))).toHaveLength(2);
-    expect(lines.some((l) => l.includes('finished (0/3 running)'))).toBe(true);
+    expect(lines.some((l) => l.includes('finished (0 running)'))).toBe(true);
     // 任务文本自 journal 快照重发（宿主 durable 面，非引擎持久面）。
     expect(JSON.stringify(stub.requests[1]?.messages ?? [])).toContain('崩溃恢复探针');
 

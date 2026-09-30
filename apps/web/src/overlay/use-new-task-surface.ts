@@ -287,7 +287,6 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
         machine: (fixture.resources?.machines ?? []).map((m) => ({
           id: m.name,
           label: m.name,
-          subtitle: m.sub,
         })),
       };
 

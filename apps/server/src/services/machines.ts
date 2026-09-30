@@ -27,7 +27,6 @@ import {
   FIXED_TAGS,
   GITHUB_ACCESS_TOKEN_USERNAME,
   isChiefConversationId,
-  MAX_CONCURRENT_DEFAULT,
   MCP_MIN_CLI_VERSION,
   machineRecordSchema,
   parseReviewPromptMeta,
@@ -364,7 +363,6 @@ export function toMachineRecord(row: typeof machine.$inferSelect) {
     name: row.name,
     teamId: row.teamId,
     online: row.online,
-    maxConcurrent: row.maxConcurrent,
     latestCliVersion: row.latestCliVersion,
     kind: row.kind,
     enabledRuntimes: row.enabledRuntimes,
@@ -411,7 +409,6 @@ export function seedLocalMachine(db: Db, teamId: string): void {
       teamId,
       name: hostname(),
       online: false,
-      maxConcurrent: MAX_CONCURRENT_DEFAULT,
       tokenHash: null,
       apiKeyId: null,
       latestCliVersion: null,
@@ -468,7 +465,6 @@ export function enrollMachine(
       teamId: input.teamId,
       name: input.name,
       online: false,
-      maxConcurrent: MAX_CONCURRENT_DEFAULT, // 02 §2.5 机器配置默认值
       tokenHash: token.hash,
       apiKeyId: input.keyId,
       latestCliVersion: input.cliVersion ?? null,
@@ -510,7 +506,6 @@ export function authorizeEnrollmentMachine(
       teamId: input.teamId,
       name: input.name,
       online: false,
-      maxConcurrent: MAX_CONCURRENT_DEFAULT,
       tokenHash: token.hash,
       apiKeyId: null,
       latestCliVersion: null,
@@ -526,7 +521,7 @@ export function authorizeEnrollmentMachine(
 export function markPresence(
   deps: MachineDeps,
   machineId: string,
-  body: { maxConcurrent?: number; cliVersion?: string },
+  body: { cliVersion?: string },
 ): void {
   const { db, hub } = deps;
   const row = db.select().from(machine).where(eq(machine.id, machineId)).get();
@@ -535,7 +530,6 @@ export function markPresence(
   db.update(machine)
     .set({
       online: true,
-      ...(body.maxConcurrent !== undefined ? { maxConcurrent: body.maxConcurrent } : {}),
       ...(body.cliVersion !== undefined ? { latestCliVersion: body.cliVersion } : {}),
     })
     .where(eq(machine.id, machineId))
@@ -747,13 +741,8 @@ function tryClaim(
   const { db } = deps;
   const machineRow = db.select().from(machine).where(eq(machine.id, machineId)).get();
   if (!machineRow) return null;
-  // 并发门（02 §2.5：机器页文案「并发上限 3」；claim body running 上报取小）。
-  const running = db
-    .select({ n: sql<number>`count(*)` })
-    .from(step)
-    .where(and(eq(step.machineId, machineId), eq(step.status, 'claimed')))
-    .get();
-  if ((running?.n ?? 0) >= machineRow.maxConcurrent) return null;
+  // #503：并发门摘除——原判据「本机 claimed 步数 ≥ machine.maxConcurrent」不再
+  // 存在，机器领活不受上限约束。
 
   // chief 步与 worker 步共队列，按 createdAt FIFO 交错（chief 派工先于其产生的
   // worker 步入队，天然领先；跨类型仍按 createdAt 保序 [设计]）。
