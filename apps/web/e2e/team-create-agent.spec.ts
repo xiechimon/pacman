@@ -10,7 +10,8 @@ import { expect, type Page, test } from '@playwright/test';
 // 2. family-law close: X / Esc / backdrop, panel clicks survive
 // 3. empty name keeps 创建 disabled; typing lifts it (r2 07 muted indigo)
 // 4. fixture submit closes the dialog
-// 5. chart layout drops the slot entirely (r2 §8.1 17c law)
+// 5. chart layout drops the grid slot for the org chart's own dashed create
+//    node (r2 §8.1 17c + #490)
 // 6. 配置服务商 SPA-navigates to the providers route, scenario rides
 //    along (#121 Link discipline)
 
@@ -57,11 +58,16 @@ test('empty name keeps 创建 disabled; typing lifts it; fixture submit closes',
   await expect(page.locator('.dlg')).toBeHidden();
 });
 
-test('chart layout drops the 创建 Agent slot (17c)', async ({ page }) => {
+test('chart layout drops the grid 创建 Agent slot for the org chart', async ({ page }) => {
   await page.goto(TEAM);
   await page.locator('.team-layout-tab[aria-label="chart"]').click();
-  await expect(page.locator('.team-chart-empty')).toBeVisible();
+  // scenario 12 的团队有 1 个成员 —— chart 出组织图（#490），不再是恒定的
+  // 暂无成员。grid 的 创建 Agent 槽位在 chart 下不渲染，创建位改由组织图
+  // 子列末位的虚线节点承接。
+  await expect(page.locator('.team-chart-node')).toHaveCount(1);
+  await expect(page.locator('.team-chart-empty')).toHaveCount(0);
   await expect(page.locator('.team-create-agent')).toHaveCount(0);
+  await expect(page.locator('.team-chart-create')).toBeVisible();
 });
 
 test('配置服务商 SPA-navigates to the providers route, scenario rides along', async ({ page }) => {

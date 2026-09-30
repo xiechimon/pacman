@@ -220,6 +220,186 @@
   text-align: center;
 }
 
+/* chart layout 组织图 (#490)：照 todos.dev/app/team 的 chart 布局现场实测重建
+   （2026-09-30）。旧的 chart 分支恒渲染 暂无成员 字面量，不读 members ——
+   同一份数据下 grid 说 `N 个成员` 并画出卡片，chart 却说没有成员。
+
+   实测几何（参考产品，2 成员 + 1 绑定总管）：
+   节点卡 220×56 / radius 8 / 1px --border-default / bg --surface；
+   32 圆头像；名字 12px/500；模型行 10px mono --text-dim；
+   行内两枚 18×18 胶囊（服务商 / 皇冠），内字形 12×12；
+   根 → 子列横向 1px --border-strong 连接线 44 宽；
+   子列左缘 28 宽括号连接件（上/左/下三边，左圆角 7）；子列卡片纵向 gap 8。 */
+.team-chart {
+  display: flex;
+  align-items: center;
+  margin-top: 9px; /* 与 .team-grid 同起手线（cards y99, toprow ends y90） */
+}
+
+.team-chart-link {
+  flex: none;
+  width: 44px;
+  height: 1px;
+  background: var(--border-strong);
+}
+
+.team-chart-children {
+  display: flex;
+}
+
+/* 括号列本身不画东西，只给绝对定位的括号当坐标架：高度随子列撑满，于是
+   括号 top/bottom 各留半个卡片高，正好落在首/末子节点的垂直中心上 */
+.team-chart-bracket-col {
+  position: relative;
+  flex: none;
+  width: 28px;
+}
+
+.team-chart-bracket {
+  position: absolute;
+  left: 0;
+  top: 28px;
+  bottom: 28px;
+  width: 28px;
+  border: 1px solid var(--border-strong);
+  border-right: none;
+  border-radius: 7px 0 0 7px;
+}
+
+.team-chart-nodes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.team-chart-node,
+.team-chart-create {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 220px;
+  height: 56px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.team-chart-avatar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--agent-avatar-bg);
+  overflow: hidden;
+}
+
+.team-chart-avatar img {
+  width: 32px;
+  height: 32px;
+}
+
+.team-chart-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.team-chart-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 18px;
+}
+
+.team-chart-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-chart-model {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-chart-provider,
+.team-chart-crown {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+
+.team-chart-provider {
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+}
+
+/* 皇冠 = 总管徽标（参考产品 indigo-500/10 底 + indigo-600 描边字形） */
+.team-chart-crown {
+  background: rgb(99 102 241 / 0.1);
+  color: #4f46e5;
+}
+
+.team-chart-provider svg,
+.team-chart-crown svg {
+  width: 12px;
+  height: 12px;
+}
+
+.team-chart-create {
+  border-style: dashed;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  cursor: pointer;
+  text-align: left;
+}
+
+/* 创建位：24 圆虚线环 + 12 加号 */
+.team-chart-create-icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 50%;
+}
+
+.team-chart-create-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .team-chart-create {
+    transition: background-color var(--dur-fast) var(--ease-standard);
+  }
+
+  .team-chart-create:hover {
+    background-color: var(--surface-secondary);
+  }
+}
+
 .team-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

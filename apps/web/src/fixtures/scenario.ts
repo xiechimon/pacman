@@ -74,6 +74,8 @@ import {
   schedulesFormOnce,
   schedulesList,
   teamGrid,
+  teamOrgChart,
+  teamOrgChartEmpty,
   versionMenuV2,
   versionMenuV3,
 } from './fixtures.js';
@@ -259,6 +261,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // surface by name — the account page renders no fixture content at all,
       // so it rides the default set
       '12': teamGrid,
+      // team chart 组织图（命名场景，无 capture）：3 成员树 + 零成员空态
+      'team-org-chart': teamOrgChart,
+      'team-org-chart-empty': teamOrgChartEmpty,
       '13': boardDefault,
       // account 语言 dropdown open state (issue #74; shape [设计], r2 §11 Q19)
       '13-lang': { ...boardDefault, ui: { langDropdownOpen: true } },

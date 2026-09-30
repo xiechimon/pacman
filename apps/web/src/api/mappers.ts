@@ -715,6 +715,7 @@ export function mapTeam(members: TeamMember[]): TeamContent {
       avatarUrl?: string | null;
       modelId?: string | null;
       description?: string | null;
+      provider?: string | null;
     };
     return {
       id: m.actorId,
@@ -723,6 +724,7 @@ export function mapTeam(members: TeamMember[]): TeamContent {
       model: a.modelId ? `${a.modelId} · 默认` : '未配置模型',
       isDefault: false,
       role: a.description ?? null,
+      provider: a.provider ?? null,
     };
   });
   return { members: members.length, agents: cards };
@@ -898,9 +900,11 @@ export function mapChief(
     ...(bound && env.agentActor
       ? {
           modelSlot: `${env.agentActor.modelId ?? 'n/a'} · 默认`,
-          // #444: FAB 头像位 = 绑定 Agent 全记录里的既有两字段（封套已带，
-          // 零新增请求）。
+          // #444: FAB 头像位 = 绑定 Agent 全记录里的既有字段（封套已带，
+          // 零新增请求）；id 供 team chart 组织图定位根节点（同一封套，
+          // 同为零新增请求）。
           agent: {
+            id: env.agentActor.id,
             displayName: env.agentActor.displayName,
             avatarUrl: env.agentActor.avatarUrl,
           },
