@@ -86,17 +86,25 @@
   text-decoration: none;
 }
 
-/* #486：面板体自持滚动。本应用是固定高度外壳（app.css 的 body
-   overflow:hidden），滚动只能落在面板体上——同 .secondary-body 形。
-   原 overflow:hidden 把 flex item 的自动最小高度归零，列会老实收缩到剩余
-   高度（732 视口 → 688）而内容溢出即被裁，超视口部分任何手势都到不了。 */
-.res-col {
+/* #486/#494：面板体自持滚动，段位与 secondary 同形——全宽 .res-body 承接
+   滚动、.res-col 只在里面居中。本应用是固定高度外壳（app.css 的 body
+   overflow:hidden），滚动只能落在面板体上；#486 前 .res-col 是 overflow:
+   hidden，把 flex item 的自动最小高度归零，列收缩到剩余高度（732 视口 →
+   688）而内容溢出即被裁。拆开而非让 .res-col 自己滚，是因为滚动条会跟着
+   768 窄列悬在版心右缘（离面板右缘 216px），经典滚动条下还要再从版心啃掉
+   约 15px；body 全宽滚动则贴面板右缘，与 .secondary-body 一致。
+   overflow-x 保持裁切（窄列内容不该横向溢出）。 */
+.res-body {
   flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* 窄列本体不滚动也不吃 flex 分配——滚动层是外层 .res-body。 */
+.res-col {
   width: 768px;
   margin: 0 auto;
   padding-top: 16px;
-  overflow-x: hidden;
-  overflow-y: auto;
 }
 
 .res-fab {
