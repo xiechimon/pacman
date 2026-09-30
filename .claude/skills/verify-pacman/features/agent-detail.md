@@ -8,7 +8,7 @@
 - `overview-fields` — 名称（行内编辑）、职责、默认 skill、模型选择器，各自提交后 server 记录随之变。
 - `overview-readonly` — 运行时 / 思考强度 / 状态是只读值行（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）；思考强度档位词表无 server/web 暴露面；`创建于` 无 createdAt 列。三处都不发明。
 - `memory-tab` — 条目列表 + 删除；空态文案 = shared `MEMORY_EMPTY_COPY` canon。
-- `permissions-tab` — 工具 6 开关（文案 = shared `AGENT_TOOL_SWITCHES`，**六档各带说明副文案** = shared `AGENT_TOOL_COPY`）、团队密钥勾选、MCP 逐个勾选，落 `PATCH tools/secrets/mcpServers`。
+- `permissions-tab` — 工具 6 开关（文案 = shared `AGENT_TOOL_SWITCHES`，**六档各带说明副文案** = shared `AGENT_TOOL_COPY`）、**团队密钥一行总开关**（全有全无，开 = 写回团队全部密钥 id，副文案 = shared `AGENT_PERMISSION_COPY.secrets`；零密钥时是空态不出开关）、MCP 逐个勾选，落 `PATCH tools/secrets/mcpServers`。
 - `create-model-slot` — 创建弹窗模型槽两态；选中后 `POST /api/teams/{id}/agents` body 带 `provider` 与 `modelId`。
 
 ## How to get to it (user POV)
@@ -30,6 +30,7 @@ Preconditions:
 - 改名称、改职责 → 同命令 → `name-persisted` / `role-persisted`（重取 `GET /api/teams/{id}/agents/{aid}` 对字段，不看 UI 回显）。
 - 模型槽清空再选回 → 同命令 → `model-cleared`（provider/modelId 双 null）/ `model-persisted`（`verify-485-gw/claude-sonnet-5`）。
 - 权限开关 → 同命令 → `perm-six-switches`（6 个）+ `tool-persisted`（server `tools` 数组）。
+- 团队密钥总开关 → 同命令 → `secret-single-switch`（密钥区恰好一个开关）+ `secret-rows-hidden`（不逐条列密钥名，负向）+ `secrets-all-ids-persisted`（开 = server `secrets` 拿到全 id 集；脚本播种两条密钥，一条也能过就说明断言写松了）。
 - 记忆空态 → 同命令 → `memory-empty-canon`。
 - 创建弹窗选模型建 Agent → 同命令 → `create-dialog-model-slot` / `create-dialog-no-warn` / `create-with-model-persisted`（重取 members 投影对 provider/modelId）。
 

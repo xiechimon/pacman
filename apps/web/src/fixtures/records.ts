@@ -17,6 +17,7 @@ import {
   type Phase,
   type ProjectRepoKind,
   type ProviderRecord,
+  type SecretRecord,
   type TagRecord,
 } from '@pacman/shared';
 
@@ -379,6 +380,10 @@ export interface ResourcesContent {
   /** Agent 记忆条目（shared MemoryRecord 同形；live 面 = GET
    *  /api/teams/{id}/agents/{aid}/memories）。agentId 过滤由消费面做。 */
   memories?: MemoryRecord[];
+  /** 团队密钥行（shared SecretRecord 同形；live 面 = GET
+   *  /api/teams/{id}/secrets，值只写不读故 record 无值位）。Agent 权限 tab
+   *  的「团队密钥」总开关按这份清单决定开合与写回的全 id 集（#510）。 */
+  secrets?: SecretRecord[];
 }
 
 /** Inline text run inside a plan-document block; `code` renders the

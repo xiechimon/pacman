@@ -157,6 +157,30 @@ test('权限 tab：6 档各带说明副文案', async ({ page }) => {
   await expect(hints.nth(5)).toHaveText('允许该 Agent 修改团队技能库中已有的技能。');
 });
 
+// 团队密钥是**一行总开关**，不是逐个密钥一行（#510：实测原版——团队里有密钥
+// 时权限 tab 仍是一行聚合开关，不展开 per-secret 行；#485 做成 per-secret 是
+// 自造粒度）。场景备了两条密钥，正常态应当一条都不露名。
+test('权限 tab：团队密钥是一行总开关，不逐条列密钥', async ({ page }) => {
+  const detail = await openDetail(page);
+  await detail.locator('.agent-tab').nth(2).click();
+  await expect(detail.locator('.agent-secret-switch')).toHaveCount(1);
+  await expect(detail.locator('.agent-secret-switch')).toHaveAttribute('aria-label', '团队密钥');
+  // 负向：两条密钥的名字都不该出现在权限面。
+  await expect(detail.locator('.agent-perms')).not.toContainText('R3_API_KEY');
+  await expect(detail.locator('.agent-perms')).not.toContainText('R3_TOKEN');
+});
+
+test('权限 tab：团队密钥总开关可开可关', async ({ page }) => {
+  const detail = await openDetail(page);
+  await detail.locator('.agent-tab').nth(2).click();
+  const sw = detail.locator('.agent-secret-switch');
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'true');
+  await sw.click();
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+});
+
 // 运行时档（原版概览在模型之上有这一档）：wire 无独立字段，值由 provider 位
 // 派生——custom provider 直接出 id。
 test('概览：运行时档在模型之上，值由 provider 派生', async ({ page }) => {

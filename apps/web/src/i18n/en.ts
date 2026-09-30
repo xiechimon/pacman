@@ -18,6 +18,7 @@
 // user/agent content (todo titles, bubbles, docs) never enters the dict
 // and falls back to the zh original, exactly like the real app would.
 
+import { AGENT_PERMISSION_COPY, BRAND, SECRET_MIN_CLI_VERSION } from '@pacman/shared';
 import { PROBE_TOOL_CALL_LABEL, PROBE_TOOL_PILLS } from '../fixtures/fixtures.js';
 
 export const EN: Record<string, string> = {
@@ -615,6 +616,11 @@ export const EN: Record<string, string> = {
     'Let this Agent create git tags, which may trigger a release pipeline.',
   '允许该 Agent 随时提交并推送其工作分支（自行合并发布改动时需要）。':
     'Let this Agent commit and push its working branch at any time (needed when it merges release changes itself).',
+  团队密钥: 'Team secrets',
+  // 键 = shared canon 的插值结果（品牌名与最低 CLI 版本随常量走），故用计算键
+  // 而非字面串——页面经 t(AGENT_PERMISSION_COPY.secrets) 消费；en 值同样走
+  // 常量插值，改品牌/版本线时两侧一起动。
+  [AGENT_PERMISSION_COPY.secrets]: `Inject team secrets into this Agent’s shell as environment variables when it runs tasks. The machine needs ${BRAND.cliCommandName} CLI ${SECRET_MIN_CLI_VERSION} or later.`,
   '允许该 Agent 向团队技能库添加新技能。':
     'Let this Agent add new skills to the team skill library.',
   '允许该 Agent 修改团队技能库中已有的技能。':

@@ -125,7 +125,7 @@ export function AgentDetailPage() {
 
   const secretOptions = live
     ? (secretsQ.data ?? []).map((row) => ({ id: row.id, name: row.name }))
-    : [];
+    : (fixture.resources?.secrets ?? []).map((row) => ({ id: row.id, name: row.name }));
   const mcpOptions = live
     ? (mcpQ.data ?? []).map((row) => ({ id: row.id, name: row.label }))
     : (fixture.resources?.mcpServers ?? []).map((row) => ({ id: row.name, name: row.name }));
@@ -152,9 +152,10 @@ export function AgentDetailPage() {
       : agent.tools.filter((v) => v !== label);
     patch({ tools: next });
   };
-  const toggleSecret = (id: string, on: boolean) => {
-    const next = on ? [...agent.secrets, id] : agent.secrets.filter((v) => v !== id);
-    patch({ secrets: next });
+  /** 团队密钥是**全有全无**（#510；实测原版：密钥在场时权限 tab 仍是一行聚合
+   *  开关，不展开逐个密钥行）：开 = 写回团队全部密钥 id，关 = 空集。 */
+  const toggleAllSecrets = (on: boolean) => {
+    patch({ secrets: on ? secretOptions.map((secret) => secret.id) : [] });
   };
   const toggleMcp = (id: string, on: boolean) => {
     const next = on ? [...agent.mcpServers, id] : agent.mcpServers.filter((v) => v !== id);
@@ -317,23 +318,24 @@ export function AgentDetailPage() {
 
             <section className="agent-perm-group">
               <h3 className="agent-perm-title">{t('密钥')}</h3>
-              {/* 该档的 canon 副文案（AGENT_PERMISSION_COPY.secrets）内嵌
-                  BRAND.cliCommandName 与密钥最低 CLI 版本插值，键值随品牌常量
-                  走——不在此渲染，见 #485 票面缺口清单。 */}
+              {/* 一行总开关，不逐条列密钥（#510，实测原版语义）。零密钥时不出开关：
+                  没有对象可授，出了就是死控件——原版那时也渲染开关，但它开关的
+                  是什么不可观测，不复刻一个看不出语义的控件。 */}
               {secretOptions.length === 0 ? (
                 <p className="agent-perm-empty">{t('暂无团队密钥。')}</p>
               ) : (
-                secretOptions.map((secret) => (
-                  <div key={secret.id} className="agent-perm-row">
-                    <span className="agent-perm-name">{secret.name}</span>
-                    <Switch
-                      className="agent-secret-switch"
-                      aria-label={secret.name}
-                      checked={agent.secrets.includes(secret.id)}
-                      onCheckedChange={(checked) => toggleSecret(secret.id, checked)}
-                    />
-                  </div>
-                ))
+                <div className="agent-perm-row">
+                  <span className="agent-perm-text">
+                    <span className="agent-perm-name">{t('团队密钥')}</span>
+                    <span className="agent-perm-hint">{t(AGENT_PERMISSION_COPY.secrets)}</span>
+                  </span>
+                  <Switch
+                    className="agent-secret-switch"
+                    aria-label={t('团队密钥')}
+                    checked={agent.secrets.length > 0}
+                    onCheckedChange={toggleAllSecrets}
+                  />
+                </div>
               )}
             </section>
 

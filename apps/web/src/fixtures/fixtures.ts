@@ -1474,6 +1474,13 @@ export const agentDetail: FixtureSet = {
     ...RESOURCES,
     providers: [AGENT_PROVIDER_R3GW],
     memories: [],
+    // 两条团队密钥：权限 tab 的「团队密钥」总开关是**全有全无**（#510，实测
+    // 原版：密钥在场时仍是一行聚合开关，不展开逐个密钥行），两条在场才能钉住
+    // 「开 = 写回全 id 集」而不是「写回一条」。
+    secrets: [
+      { id: 'secret-r3-key', teamId: 'team-r3', name: 'R3_API_KEY', description: null },
+      { id: 'secret-r3-token', teamId: 'team-r3', name: 'R3_TOKEN', description: null },
+    ],
   },
 };
 

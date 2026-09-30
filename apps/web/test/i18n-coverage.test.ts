@@ -73,11 +73,12 @@ const COMPUTED_KEYS = new Set<string>([
   ...Object.values(FS_PICK_ERROR_COPY),
   // #485: Agent 配置面词表与文案 canon = shared AGENT_TOOL_SWITCHES（权限
   // 六开关文案）、AGENT_TOOL_COPY（六档各自的说明副文案）、
-  // AGENT_PERMISSION_COPY（密钥 / MCP 服务器 / 职责 / 默认 skill 四档副文案
-  // ——secrets 一档内嵌 BRAND 插值，本面不渲染故不收）与 MEMORY_EMPTY_COPY
-  // （记忆 tab 空态），均经 t() 消费、不作字面量出现。
+  // AGENT_PERMISSION_COPY（密钥 / MCP 服务器 / 职责 / 默认 skill 四档副文案；
+  // secrets 一档 #510 起在密钥区渲染，内嵌品牌与版本插值，en 键用计算键）
+  // 与 MEMORY_EMPTY_COPY（记忆 tab 空态），均经 t() 消费、不作字面量出现。
   ...AGENT_TOOL_SWITCHES,
   ...Object.values(AGENT_TOOL_COPY),
+  AGENT_PERMISSION_COPY.secrets,
   AGENT_PERMISSION_COPY.mcpServers,
   AGENT_PERMISSION_COPY.responsibility,
   AGENT_PERMISSION_COPY.defaultSkill,

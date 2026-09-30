@@ -1,0 +1,132 @@
+{
+  "probe": "agent-detail",
+  "ok": true,
+  "at": "2026-09-30T10:25:49.045Z",
+  "stack": {
+    "api": "http://127.0.0.1:8795",
+    "web": "http://127.0.0.1:5277",
+    "homeDir": "/Users/xmon/Code/AgentProjects/pacman/.claude/worktrees/team-agent-surface/.claude/verify-run/home"
+  },
+  "checks": [
+    {
+      "name": "team-card-is-link",
+      "ok": true,
+      "detail": "卡元素是 a"
+    },
+    {
+      "name": "card-opens-detail-route",
+      "ok": true,
+      "detail": "http://127.0.0.1:5277/app/resources/agents/2R9MFlxepFMsKZAXFqhyf"
+    },
+    {
+      "name": "server-seeded",
+      "ok": true,
+      "detail": "verify-485-builder"
+    },
+    {
+      "name": "overview-name",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "overview-role-empty-canon",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "overview-model",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "overview-thinking-readonly",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "overview-runtime-derived",
+      "ok": true,
+      "detail": "verify-485-gw"
+    },
+    {
+      "name": "name-persisted",
+      "ok": true,
+      "detail": "verify-485-renamed"
+    },
+    {
+      "name": "role-persisted",
+      "ok": true,
+      "detail": "负责构建与合并"
+    },
+    {
+      "name": "model-menu-has-provider-row",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "model-cleared",
+      "ok": true,
+      "detail": "null/null"
+    },
+    {
+      "name": "model-persisted",
+      "ok": true,
+      "detail": "verify-485-gw/claude-sonnet-5"
+    },
+    {
+      "name": "perm-six-switches",
+      "ok": true,
+      "detail": "6 个"
+    },
+    {
+      "name": "tool-persisted",
+      "ok": true,
+      "detail": "[\"远程 shell\"]"
+    },
+    {
+      "name": "secret-single-switch",
+      "ok": true,
+      "detail": "密钥区开关数 1"
+    },
+    {
+      "name": "secret-rows-hidden",
+      "ok": true,
+      "detail": "不逐条列密钥名"
+    },
+    {
+      "name": "secrets-all-ids-persisted",
+      "ok": true,
+      "detail": "[\"wCsNMsa6Vd3krEAaOE0LX\",\"3kTTvfSemmDaXI2qaYxS7\"]"
+    },
+    {
+      "name": "memory-empty-canon",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "create-dialog-model-slot",
+      "ok": true,
+      "detail": "有服务商时弹窗内出模型选择器"
+    },
+    {
+      "name": "create-dialog-no-warn",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "create-with-model-persisted",
+      "ok": true,
+      "detail": "verify-485-gw/claude-sonnet-5"
+    }
+  ],
+  "artifacts": [
+    "01-overview.png",
+    "02-overview-edited.png",
+    "03-model-menu.png",
+    "04-permissions.png",
+    "05-create-model-menu.png",
+    "06-team-after-create.png"
+  ],
+  "teamId": "cSIjYCzaMSo1PZzyqJ2ub",
+  "agentId": "2R9MFlxepFMsKZAXFqhyf"
+}

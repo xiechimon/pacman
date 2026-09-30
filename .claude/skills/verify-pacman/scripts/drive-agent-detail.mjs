@@ -79,6 +79,18 @@ await sendJson(`${SERVER}/api/teams/${teamId}/providers`, 'POST', {
   api: 'anthropic-messages',
   models: [{ id: 'claude-sonnet-5', name: 'claude-sonnet-5' }],
 }).catch(() => {}); // 409 = 重跑时已存在
+// 两条团队密钥：权限面的「团队密钥」是全有全无（#510），两条在场才能钉住
+// 「开 = 写回全 id 集」而不是「写回一条」。
+await sendJson(`${SERVER}/api/teams/${teamId}/secrets`, 'POST', {
+  name: 'VERIFY_485_KEY_A',
+  description: null,
+  value: 'probe-value-a',
+}).catch(() => {}); // 409 = 重跑时已存在
+await sendJson(`${SERVER}/api/teams/${teamId}/secrets`, 'POST', {
+  name: 'VERIFY_485_KEY_B',
+  description: null,
+  value: 'probe-value-b',
+}).catch(() => {});
 const created = await sendJson(`${SERVER}/api/teams/${teamId}/agents`, 'POST', {
   displayName: AGENT_NAME,
   provider: 'verify-485-gw',
@@ -190,6 +202,24 @@ try {
   await page.waitForTimeout(400);
   const afterTool = await getJson(agentUrl(agentId));
   check('tool-persisted', afterTool.tools.length === 1, JSON.stringify(afterTool.tools));
+
+  // 团队密钥 = 一行总开关（#510 实测原版语义），开 = 写回团队全部密钥 id。
+  const secretSwitch = page.locator('.agent-secret-switch');
+  const secretCount = await secretSwitch.count();
+  check('secret-single-switch', secretCount === 1, `密钥区开关数 ${secretCount}`);
+  check(
+    'secret-rows-hidden',
+    (await page.locator('.agent-perms').textContent())?.includes('VERIFY_485_KEY_A') === false,
+    '不逐条列密钥名',
+  );
+  await secretSwitch.click();
+  await page.waitForTimeout(400);
+  const afterSecret = await getJson(agentUrl(agentId));
+  check(
+    'secrets-all-ids-persisted',
+    afterSecret.secrets.length === 2,
+    JSON.stringify(afterSecret.secrets),
+  );
   await shot(page, '04-permissions.png');
 
   // —— 7. 记忆 tab：canon 空态 ──────────────────────────────────────────
