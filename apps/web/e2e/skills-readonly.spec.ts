@@ -79,20 +79,22 @@ test('live 列表消费 GET /api/skills（server 换源后 wire 形状不变）'
   expect(hits[0]).toContain('teamId=team-1');
 });
 
-/** 回归 #486：资源页的面板体必须自持滚动——本应用是固定高度外壳（body
- *  overflow:hidden），每个面板自己拥有滚动（.secondary-body 同形）。
+/** 回归 #486 + #494：资源页的面板体必须自持滚动，且滚动条落在面板右缘。
+ *  本应用是固定高度外壳（body overflow:hidden），滚动归各面板体自持，形制
+ *  同 secondary 的分段——全宽 body 承接滚动、窄列在里面居中。
  *
  * 钉住的失败方式：
- *  ① 面板无滚动容器（overflow:hidden 裁掉溢出）→ 滚轮后末行仍在视口外；
- *  ② 滚动被上移到 document/外壳 → window.scrollY 非 0 或 topbar 被推走；
- *  ③ 修法破列几何 → 768 列宽 / topbar 44 高漂移；
- *  ④ 前置守卫：若内容本就不高于容器，本测会假绿——先断言确有溢出。
+ *  ① 面板无滚动容器（overflow:hidden 裁掉溢出）→ 滚轮后末行仍在视口外（#486）；
+ *  ② 滚动容器是窄列而非面板体 → 滚动条悬在版心右缘、不在面板右缘（#494）；
+ *  ③ 滚动被上移到 document/外壳 → window.scrollY 非 0 或 topbar 被推走；
+ *  ④ 修法破几何 → 768 列宽 / topbar 44 高漂移；
+ *  ⑤ 前置守卫：若内容本就不高于容器，本测会假绿——先断言确有溢出。
  *
- * 手势用真滚轮而非 scrollTop 赋值：overflow:hidden 下 scrollTop 赋值照样
- * 生效（程序化滚动不受 hidden 限制），只有滚轮能分辨「能滚」与「被裁」。 */
-test('回归 #486：技能列表高于视口时末行可由滚轮到达（.res-col 自持滚动）', async ({
-  page,
-}) => {
+ *  手势用真滚轮而非 scrollTop 赋值：overflow:hidden 下 scrollTop 赋值照样
+ *  生效（程序化滚动不受 hidden 限制），只有滚轮能分辨「能滚」与「被裁」。
+ *  滚动层靠「从窄列往上找第一个真在滚的祖先」定位，不钉类名——钉的是用户
+ *  可见性质（滚动条贴面板右缘），不是某次实现的分层写法。 */
+test('回归 #486/#494：技能列表可由滚轮到达，且滚动条贴面板右缘', async ({ page }) => {
   await stubBoot(page);
   // 20 行 × 80px（64 行盒 + 16 上外边距）+ 搜索行 → 逾 1600px，稳超 688 容器
   const rows = Array.from({ length: 20 }, (_, i) => ({
@@ -105,12 +107,39 @@ test('回归 #486：技能列表高于视口时末行可由滚轮到达（.res-c
   await page.goto(SKILLS);
   await expect(page.locator('.res-rowcard')).toHaveCount(rows.length);
 
+  const shellSel = '[data-route="/app/resources/skills"]';
   const col = page.locator('.res-col');
+  const readScrollLayer = () =>
+    page.evaluate((sel) => {
+      const colEl = document.querySelector(`${sel} .res-col`);
+      const pane = document.querySelector(`${sel} .res-main-col`);
+      let host = null;
+      for (let n = colEl; n != null; n = n.parentElement) {
+        const cs = getComputedStyle(n);
+        const scrolls = cs.overflowY === 'auto' || cs.overflowY === 'scroll';
+        if (scrolls && n.scrollHeight > n.clientHeight + 1) {
+          host = n;
+          break;
+        }
+      }
+      const box = (el) => {
+        if (el == null) return null;
+        const r = el.getBoundingClientRect();
+        return { x: r.x, right: r.right, width: r.width };
+      };
+      return { host: box(host), pane: box(pane), col: box(colEl) };
+    }, shellSel);
+
   const widthBefore = (await col.boundingBox())?.width ?? 0;
   expect(widthBefore).toBe(768);
 
-  const overflow = await col.evaluate((el) => el.scrollHeight - el.clientHeight);
-  expect(overflow).toBeGreaterThan(0);
+  const before = await readScrollLayer();
+  // ⑤ 守卫：走链找得到「真在滚」的祖先才算确有溢出——找不到即 ① 复现
+  expect(before.host).not.toBeNull();
+
+  // ② 滚动层是面板体而非窄列：右缘对齐面板右缘，且比窄列宽
+  expect(before.host?.right).toBeCloseTo(before.pane?.right ?? -1, 0);
+  expect(before.host?.width ?? 0).toBeGreaterThan(before.col?.width ?? 0);
 
   await page.mouse.move(720, 400);
   for (let i = 0; i < 12; i++) await page.mouse.wheel(0, 400);

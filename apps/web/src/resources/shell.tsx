@@ -75,7 +75,9 @@ export function ResourceShell({
             <h1 className="res-title">{t(title)}</h1>
             {newAction}
           </header>
-          <div className="res-col">{children}</div>
+          <div className="res-body">
+            <div className="res-col">{children}</div>
+          </div>
         </div>
         <ChiefWake fixture={fixture} fabClassName="res-fab" />
       </div>
