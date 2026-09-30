@@ -10,7 +10,7 @@
 // (gate/failed are system states, manual entry has no semantics), while
 // reordering inside the column still lands.
 import type { TodoRecord } from '../fixtures/records.js';
-import { COLUMNS } from './columns.js';
+import { type BoardColumnDef, COLUMNS, sortColumnTodos } from './columns.js';
 
 /** Pointer travel needed to tell a drag from a card click (CSS px) — the
  *  PointerSensor activation constraint; clicks keep navigating (r2 §4.2). */
@@ -74,4 +74,34 @@ export function moveTodo(
       });
   }
   return next;
+}
+
+/** 筛选面拖拽落点翻译（#403）：筛选激活时拖拽视图是列的子集，视图内落点
+ *  index 直传给 moveTodo 会被全集列视图错读（隐藏卡占着序位）。翻译规则 =
+ *  锚卡映射：落点之后那张可见卡在全集列视图（排除被拖卡）中的位次；落在
+ *  可见末尾 = 跟在最后一张可见卡之后（而非全集末尾）。无隐藏卡时与旧直传
+ *  `list.indexOf(activeId)` 恒等（dnd.test.ts parity 钉）。
+ *  orderedVisibleIds = 落位后的可见列视图（含被拖卡）。 */
+export function columnDropIndex(
+  column: BoardColumnDef,
+  todos: TodoRecord[],
+  orderedVisibleIds: string[],
+  activeId: string,
+): number {
+  const rest = sortColumnTodos(column, todos.filter(column.accepts)).filter(
+    (t) => t.id !== activeId,
+  );
+  const pos = orderedVisibleIds.indexOf(activeId);
+  const afterId = pos >= 0 ? orderedVisibleIds[pos + 1] : undefined;
+  if (afterId != null) {
+    const at = rest.findIndex((t) => t.id === afterId);
+    if (at >= 0) return at;
+  }
+  const beforeId = pos > 0 ? orderedVisibleIds[pos - 1] : undefined;
+  if (beforeId != null) {
+    const at = rest.findIndex((t) => t.id === beforeId);
+    if (at >= 0) return at + 1;
+  }
+  // 可见集只余被拖卡 / 防御（activeId 不在视图）：落全集末尾。
+  return rest.length;
 }

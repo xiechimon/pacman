@@ -7,7 +7,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 // gone from both sidebar states and /zh/install takes the registered
 // unmatched-path redirect to /app. Non-selected rows tint the
 // --sidebar-hover pill on hover in both themes (#128 cds alpha ladder over
-// the sidebar layer); the selected row keeps its deeper --sidebar-selected
+// the sidebar layer); the selected row keeps its deeper --sidebar-active
 // pill under hover.
 
 declare global {
@@ -124,7 +124,7 @@ test('selected row keeps its own pill under hover', async ({ page }) => {
 
   await board.hover();
   // past the 150ms step: the ::before layer keeps the deeper selected tint
-  // (--sidebar-selected, #128) — hover must not wash it back to the hover
+  // (--sidebar-active, #128) — hover must not wash it back to the hover
   // step
   await page.waitForTimeout(250);
   expect(await pillBg(board)).toBe('rgba(255, 255, 255, 0.1)');

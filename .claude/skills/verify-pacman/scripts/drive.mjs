@@ -167,8 +167,8 @@ try {
     )?.trim();
     check(pendingEmpty === '没有等你处理的任务', `待处理空态文案(实测 ${pendingEmpty})`);
 
-    const newBtn = page.locator('.board-new-task');
-    check(await newBtn.isVisible(), '新建任务按钮可见');
+    const newBtn = page.locator('.sidebar-new-task');
+    check(await newBtn.isVisible(), '侧栏「新任务」行可见');
     await shot(page, '01-board.png');
   }
 
@@ -178,7 +178,7 @@ try {
     await gotoBoard();
     await shot(page, '01-board-before.png');
 
-    await page.click('.board-new-task');
+    await page.click('.sidebar-new-task');
     await page.waitForSelector('.new-task-dialog', { timeout: 5000 });
     check(true, '新建任务 dialog 打开');
     // spec 15 #394：单字段正文——标题输入位移除,占位标题 = 正文首行。

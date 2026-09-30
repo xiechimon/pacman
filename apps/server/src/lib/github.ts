@@ -3,9 +3,15 @@
 // git spawn 桥、services/mcp-face.ts = MCP sdk 桥）；业务语义（OAuth state
 // 与建行）归 services/oauth.ts，本模块只做 HTTP + 错误映射。
 //
-// 认证 API 面（spec 12 / #359 repo picker 代理）：
+// 认证 API 面（spec 12 / #359 repo picker 代理 + #446 issue 读面）：
 // - GET api.github.com/user/repos → 连接用户仓库列表（Authorization: Bearer
 //   <github_connection token>——token 只进头不进 URL，错误 message 只带 URL）
+// - GET repos/{o}/{r}/issues(/n) + labels → issue 列表/单条/label 集（#446
+//   读向，token 纪律同上位）
+// 写面（#452 / ADR 0006——server 唯二的 api.github.com 写入点，穷举律：
+// grep `api.github.com` 的 POST/PATCH 只此两处；不改 scope、不新增凭证面）：
+// - POST repos/{o}/{r}/issues → 自派任务建时建 issue（关键路径之外触发）
+// - PATCH repos/{o}/{r}/issues/{n} → agent 回填标题写进 issue
 // OAuth 面（#231 握手）：
 // - POST github.com/login/oauth/access_token（form-encoded：client_id/
 //   client_secret/code/redirect_uri，Accept: json）→ access_token
@@ -49,12 +55,13 @@ const API_HEADERS = {
 const USER_AGENT = 'pacman-server';
 
 /** 出站错误 → HttpError 单点映射（映射表见文件头注释）。headers 参数 =
- * 认证面扩展位（Authorization 头；错误路径只消费 url，token 永不进 message）。 */
-async function readJson(
+ * 认证面扩展位（Authorization 头；错误路径只消费 url，token 永不进 message）。
+ * 带响应头读出位（#446 issue 列表的 Link rel="next" 分页判定）。 */
+async function readJsonFull(
   fetchImpl: FetchLike,
   url: string,
   headers: Record<string, string> = API_HEADERS,
-): Promise<unknown> {
+): Promise<{ data: unknown; getHeader: (name: string) => string | null }> {
   let res: Awaited<ReturnType<FetchLike>>;
   try {
     res = await fetchImpl(url, {
@@ -66,10 +73,18 @@ async function readJson(
   }
   if (!res.ok) throw mapUpstreamStatus(url, res);
   try {
-    return await res.json();
+    return { data: await res.json(), getHeader: (name) => res.headers.get(name) };
   } catch {
     throw new HttpError(502, `github response not json: ${url}`);
   }
+}
+
+async function readJson(
+  fetchImpl: FetchLike,
+  url: string,
+  headers: Record<string, string> = API_HEADERS,
+): Promise<unknown> {
+  return (await readJsonFull(fetchImpl, url, headers)).data;
 }
 
 function mapFetchThrow(url: string, err: unknown): HttpError {
@@ -180,6 +195,211 @@ export async function githubUserLogin(fetchImpl: FetchLike, token: string): Prom
     throw new HttpError(502, 'github user response missing login');
   }
   return data.login;
+}
+
+// —— issue 读面（#446 / ADR 0005 读向：只读，不在 GitHub 留痕迹）——————————
+//
+// 认证面三端点（token 仅进 Authorization 头，never URL / 错误 message）：
+// - GET /repos/{owner}/{repo}/issues（列表；上游同径返回 PR——按条目
+//   `pull_request` 键滤除）
+// - GET /repos/{owner}/{repo}/issues/{n}（单条含 body；导入建任务的现拉面，
+//   不缓存第二真值）
+// - GET /repos/{owner}/{repo}/labels（仓库 label 集；镜像同步数据源）
+
+/** GitHub label 最小投影（issue 上的 label 与仓库 label 集同形，一型两面；
+ * description 不投影——tag 表无该列）。lib 内部形；color 上游 6-hex 无 #、
+ * 偶缺 → null（归一归 services/tags.ts 消费面，wire 封套归 shared
+ * githubIssueLabelSchema）。 */
+export interface GithubLabel {
+  name: string;
+  color: string | null;
+}
+
+/** issue 列表条目（lib 内部形，snake→camel 不转——字段名皆单词无歧义；
+ * wire 映射归 routes 层 githubIssuesResponseSchema）。 */
+export interface GithubIssueSummary {
+  number: number;
+  title: string;
+  /** 上游 issue state 二值（'all' 只是查询参数，不是条目态）。 */
+  state: 'open' | 'closed';
+  labels: GithubLabel[];
+}
+
+/** 单条 issue 详情（导入面：body 位在此，列表面不带）。 */
+export interface GithubIssueDetail extends GithubIssueSummary {
+  body: string | null;
+}
+
+/** issue 列表单页条数 [设计]（对话面 30 条足够翻页；上游上限 100）。 */
+const ISSUES_PER_PAGE = 30;
+
+/** label 单页上限 [设计]（真实仓库 label 罕见 >100；超限面归需要时再开）。 */
+const LABELS_PER_PAGE = 100;
+
+/** owner/repo 段出站编码（列值已过 isGithubRepoRef 闸，双保险）。 */
+function repoPath(owner: string, repo: string): string {
+  return `repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+}
+
+function authHeaders(token: string): Record<string, string> {
+  return { ...API_HEADERS, authorization: `Bearer ${token}` };
+}
+
+/** 上游 label 数组 → 最小投影（issue.labels 与 /labels 端点同形同律）：
+ * 畸形条目（缺 name/空串）跳过；color 非串 → null。 */
+function parseLabels(raw: unknown): GithubLabel[] {
+  if (!Array.isArray(raw)) return [];
+  const labels: GithubLabel[] = [];
+  for (const entry of raw as Array<Record<string, unknown>>) {
+    if (typeof entry?.name !== 'string' || entry.name === '') continue;
+    labels.push({
+      name: entry.name,
+      color: typeof entry.color === 'string' ? entry.color : null,
+    });
+  }
+  return labels;
+}
+
+/** 上游 issue 条目 → 最小投影；畸形（缺 number/title/state 值域外）返回
+ * null 由调用面跳过（githubUserRepos 同律）。PR 条目（`pull_request` 键）
+ * 同样 null——/issues 上游语义混发。 */
+function projectIssue(raw: Record<string, unknown>): GithubIssueSummary | null {
+  if (raw.pull_request !== undefined) return null;
+  if (typeof raw.number !== 'number' || typeof raw.title !== 'string') return null;
+  if (raw.state !== 'open' && raw.state !== 'closed') return null;
+  return {
+    number: raw.number,
+    title: raw.title,
+    state: raw.state,
+    labels: parseLabels(raw.labels),
+  };
+}
+
+/** 仓库 issue 列表（`GET /repos/{o}/{r}/issues`）。state = open|closed|all、
+ * page 从 1 起（上游同名参数直透）；hasMore = Link 头 rel="next" 在否。
+ * 应答非数组 → 502；畸形/PR 条目跳过。state 值域单源 = shared
+ * GITHUB_ISSUE_STATES（service 层以 GithubIssueState 收口后传入；lib 层
+ * 零依赖纪律不引 shared，此处字面量联合为同值投影）。 */
+export async function githubRepoIssues(
+  fetchImpl: FetchLike,
+  token: string,
+  owner: string,
+  repo: string,
+  opts: { state: 'open' | 'closed' | 'all'; page: number },
+): Promise<{ issues: GithubIssueSummary[]; hasMore: boolean }> {
+  const url =
+    `https://api.github.com/${repoPath(owner, repo)}/issues` +
+    `?state=${opts.state}&page=${opts.page}&per_page=${ISSUES_PER_PAGE}`;
+  const { data, getHeader } = await readJsonFull(fetchImpl, url, authHeaders(token));
+  if (!Array.isArray(data)) {
+    throw new HttpError(502, 'github issues response not an array');
+  }
+  const issues: GithubIssueSummary[] = [];
+  for (const raw of data as Array<Record<string, unknown>>) {
+    const projected = projectIssue(raw);
+    if (projected) issues.push(projected);
+  }
+  const link = getHeader('link');
+  return { issues, hasMore: (link ?? '').includes('rel="next"') };
+}
+
+/** 单条 issue 详情（`GET /repos/{o}/{r}/issues/{n}`；导入面现拉）。畸形
+ * 应答 → 502；上游 404（issue 不存在/私仓无权）经既有映射直透。 */
+export async function githubRepoIssue(
+  fetchImpl: FetchLike,
+  token: string,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+): Promise<GithubIssueDetail> {
+  const url = `https://api.github.com/${repoPath(owner, repo)}/issues/${issueNumber}`;
+  const data = (await readJson(fetchImpl, url, authHeaders(token))) as Record<string, unknown>;
+  const projected = projectIssue(data);
+  if (!projected) {
+    throw new HttpError(502, `github issue response malformed: ${url}`);
+  }
+  return {
+    ...projected,
+    body: typeof data.body === 'string' ? data.body : null,
+  };
+}
+
+/** 仓库 label 集（`GET /repos/{o}/{r}/labels`，单页 LABELS_PER_PAGE
+ * [设计]）。应答非数组 → 502；畸形条目跳过。 */
+export async function githubRepoLabels(
+  fetchImpl: FetchLike,
+  token: string,
+  owner: string,
+  repo: string,
+): Promise<GithubLabel[]> {
+  const url = `https://api.github.com/${repoPath(owner, repo)}/labels?per_page=${LABELS_PER_PAGE}`;
+  const data = await readJson(fetchImpl, url, authHeaders(token));
+  if (!Array.isArray(data)) {
+    throw new HttpError(502, 'github labels response not an array');
+  }
+  return parseLabels(data);
+}
+
+// —— issue 写面（#452 / ADR 0006 写向：server 唯二写入点，文件头穷举律）———
+
+/** JSON 写请求单点（POST/PATCH 共用）：超时/网络/上游状态经既有映射
+ * （mapFetchThrow / mapUpstreamStatus），token 只进 Authorization 头。 */
+async function writeJson(
+  fetchImpl: FetchLike,
+  method: 'POST' | 'PATCH',
+  url: string,
+  token: string,
+  payload: Record<string, unknown>,
+): Promise<unknown> {
+  let res: Awaited<ReturnType<FetchLike>>;
+  try {
+    res = await fetchImpl(url, {
+      method,
+      headers: { ...authHeaders(token), 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+  } catch (err) {
+    throw mapFetchThrow(url, err);
+  }
+  if (!res.ok) throw mapUpstreamStatus(url, res);
+  try {
+    return await res.json();
+  } catch {
+    throw new HttpError(502, `github response not json: ${url}`);
+  }
+}
+
+/** 建 issue（`POST /repos/{o}/{r}/issues`，ADR 0006 D1/D3：标题 = 占位标题
+ * 单源派生、正文 = 任务正文，调用面组装）。应答缺 number → 502（畸形面同
+ * githubRepoIssue 律）。 */
+export async function githubCreateIssue(
+  fetchImpl: FetchLike,
+  token: string,
+  owner: string,
+  repo: string,
+  input: { title: string; body: string },
+): Promise<{ number: number }> {
+  const url = `https://api.github.com/${repoPath(owner, repo)}/issues`;
+  const data = (await writeJson(fetchImpl, 'POST', url, token, input)) as Record<string, unknown>;
+  if (typeof data.number !== 'number') {
+    throw new HttpError(502, `github create issue response missing number: ${url}`);
+  }
+  return { number: data.number };
+}
+
+/** 写 issue 标题（`PATCH /repos/{o}/{r}/issues/{n}`，ADR 0006 D3：agent
+ * 回填标题时写进那枚 issue）。应答体不消费（本地标题已落库，回显面现拉）。 */
+export async function githubUpdateIssueTitle(
+  fetchImpl: FetchLike,
+  token: string,
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  title: string,
+): Promise<void> {
+  const url = `https://api.github.com/${repoPath(owner, repo)}/issues/${issueNumber}`;
+  await writeJson(fetchImpl, 'PATCH', url, token, { title });
 }
 
 // —— OAuth token 交换面（#231 握手：callback 收码后唯一一次出站）———————————

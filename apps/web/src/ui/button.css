@@ -43,8 +43,8 @@
 
 .btn--ghost {
   background: transparent;
-  /* A6 ghost 单源：直引 --card-border（与原 .overlay-btn 同源），不绕
-     --card-ghost-border 别名；tokens.css 别名仍保留给历史消费点 */
+  /* A6 ghost 单源：直引 --card-border（与原 .overlay-btn 同源；#412 D2 起
+     --card-border 是 --border-default 的别名） */
   border: 1px solid var(--card-border);
   color: var(--text-secondary);
 }

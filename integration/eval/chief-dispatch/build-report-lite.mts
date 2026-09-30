@@ -2,7 +2,7 @@
 // Lite report builder for the build-eval / hillclimb loop: a single static
 // report.html with no vendored runtime, fonts, or markdown engine.
 //
-//   node build-report-lite.mjs .claude/hillclimb/<flow>/
+//   node build-report-lite.mts .claude/hillclimb/<flow>/
 //
 // Reads the same on-disk layout as build-report.mjs (baseline/, v<N>/,
 // results.jsonl, errors.jsonl, change.md, summary.json, traces/, _state.json)
@@ -33,15 +33,31 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
-const isNum = (x) => typeof x === 'number' && Number.isFinite(x);
+// Everything read from disk is untrusted JSON, so fields are typed wide
+// (optional / unknown) and narrowed at use. Internal shapes (rows, agg,
+// cases) are exact so the compiler catches wiring mistakes.
+type ResultRow = {
+  prompt_id?: unknown;
+  id?: unknown;
+  case_id?: unknown;
+  rep?: unknown;
+  model?: unknown;
+  status?: unknown;
+  tags?: unknown;
+  prompt?: unknown;
+  grade?: unknown;
+  explanation?: unknown;
+};
+
+const isNum = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x);
 // readText/readJSON refuse symlinks, like the full builder's lib/adapter.mjs:
 // the flow dir is model-influenced, and a prompt-injected agent could plant
 // `summary.json -> ~/.ssh/id_rsa`; the user later runs this builder (outside
 // any sandbox) and the target lands in the shareable report.html. Open
 // O_NOFOLLOW and fstat the fd (not lstat-then-read) so a concurrent writer
 // can't swap in a symlink between the check and the read.
-const readText = (p) => {
-  let fd;
+const readText = (p: string): string => {
+  let fd: number | undefined;
   try {
     fd = openSync(p, FS.O_RDONLY | (FS.O_NOFOLLOW ?? 0));
     if (!fstatSync(fd).isFile()) return '';
@@ -52,43 +68,43 @@ const readText = (p) => {
     if (fd !== undefined) closeSync(fd);
   }
 };
-const readJSON = (p, dflt) => {
+function readJSON<T>(p: string, dflt: T): T {
   try {
-    return JSON.parse(readText(p));
+    return JSON.parse(readText(p)) as T;
   } catch {
     return dflt;
   }
-};
-const esc = (s) =>
+}
+const esc = (s: unknown): string =>
   String(s ?? '').replace(
     /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c,
   );
-const fmt = (x) => (x == null ? '' : x.toFixed(3));
+const fmt = (x: number | null): string => (x == null ? '' : x.toFixed(3));
 // TSV id cells come from untrusted results.jsonl: strip the separators that
 // would forge rows/columns in trajectory/scores.tsv, and neutralize a leading
 // formula trigger so spreadsheet apps don't execute '=WEBSERVICE(...)' on
 // open. Mirrored in the full builder's lib/adapter.mjs so both emit
 // byte-identical scores.tsv.
-const tsvCell = (s) => {
-  const flat = String(s).replace(/[\t\n\r]/g, ' ');
+const tsvCell = (s: string): string => {
+  const flat = s.replace(/[\t\n\r]/g, ' ');
   return /^[=+\-@]/.test(flat) ? "'" + flat : flat;
 };
 
 // Variant directories: exactly `baseline` or `v<N>`, numeric order.
-function discoverVariants(flow) {
+function discoverVariants(flow: string): string[] {
   const names = readdirSync(flow, { withFileTypes: true })
     .filter((e) => e.isDirectory() && /^(baseline|v\d+)$/.test(e.name))
     .map((e) => e.name);
-  const rank = (n) => (n === 'baseline' ? -1 : +n.slice(1));
+  const rank = (n: string) => (n === 'baseline' ? -1 : +n.slice(1));
   return names.sort((a, b) => rank(a) - rank(b));
 }
 
 // Mirrors the full adapter: an object of numeric/boolean grades, a bare
 // boolean, or a bare number (-> {score}).
-function coerceScores(g) {
+function coerceScores(g: unknown): Record<string, number> {
   if (g && typeof g === 'object' && !Array.isArray(g)) {
-    const out = {};
+    const out: Record<string, number> = {};
     for (const [k, v] of Object.entries(g)) if (isNum(v) || typeof v === 'boolean') out[k] = +v;
     return out;
   }
@@ -97,17 +113,24 @@ function coerceScores(g) {
   return {};
 }
 
-function loadRows(p, warnings, dir) {
+/** results.jsonl rows for one variant, keyed by the data-supplied prompt id. */
+type RowsById = Record<string, ResultRow[]>;
+/** Variant dir name -> its rows. Every entry of `variants` gets one. */
+type Rows = Record<string, RowsById>;
+/** Stand-in for a variant with no rows entry. Never mutated. */
+const NO_ROWS: RowsById = {};
+
+function loadRows(p: string, warnings: string[], dir: string): RowsById {
   // Keyed by data-supplied ids: null-prototype so '__proto__' is a key, not a crash.
-  const byId = Object.create(null);
+  const byId: RowsById = Object.create(null);
   readText(p)
     .split('\n')
     .forEach((line, i) => {
       line = line.trim();
       if (!line) return;
-      let r;
+      let r: ResultRow;
       try {
-        r = JSON.parse(line);
+        r = JSON.parse(line) as ResultRow;
       } catch {
         warnings.push(dir + '/results.jsonl:' + (i + 1) + ': malformed JSON, skipped');
         return;
@@ -117,19 +140,21 @@ function loadRows(p, warnings, dir) {
         warnings.push(dir + '/results.jsonl:' + (i + 1) + ': no prompt_id, skipped');
         return;
       }
-      (byId[pid] ||= []).push(r);
+      if (byId[pid] === undefined) byId[pid] = [];
+      byId[pid].push(r);
     });
   return byId;
 }
 
-function countErrors(vdir) {
+type ErrorCounts = { total: number; byClass: Record<string, number> };
+function countErrors(vdir: string): ErrorCounts {
   let total = 0;
-  const byClass = Object.create(null);
+  const byClass: Record<string, number> = Object.create(null);
   for (const line of readText(join(vdir, 'errors.jsonl')).split('\n')) {
     if (!line.trim()) continue;
-    let e;
+    let e: { failure_class?: unknown };
     try {
-      e = JSON.parse(line);
+      e = JSON.parse(line) as { failure_class?: unknown };
     } catch {
       continue;
     }
@@ -143,14 +168,15 @@ function countErrors(vdir) {
 // Inferred metrics, mirroring the full builder's inferMetrics: any
 // explanation for a key -> judge, all-0/1 values -> binary, else float;
 // first-seen order.
-function inferMetrics(rows, variants) {
-  const seen = new Map();
+type MetricKind = 'judge' | 'binary' | 'float';
+function inferMetrics(rows: Rows, variants: string[]): { id: string; kind: MetricKind }[] {
+  const seen = new Map<string, { binary: boolean; judge: boolean }>();
   for (const v of variants)
-    for (const reps of Object.values(rows[v]))
+    for (const reps of Object.values(rows[v] ?? NO_ROWS))
       for (const r of reps) {
         const expl = r.explanation && typeof r.explanation === 'object' ? r.explanation : {};
         for (const [k, val] of Object.entries(coerceScores(r.grade))) {
-          const m = seen.get(k) || { binary: true, judge: false };
+          const m = seen.get(k) ?? { binary: true, judge: false };
           if (val !== 0 && val !== 1) m.binary = false;
           if (k in expl) m.judge = true;
           seen.set(k, m);
@@ -158,18 +184,60 @@ function inferMetrics(rows, variants) {
       }
   return [...seen.entries()].map(([id, s]) => ({
     id,
-    kind: s.judge ? 'judge' : s.binary ? 'binary' : 'float',
+    kind: s.judge ? ('judge' as const) : s.binary ? ('binary' as const) : ('float' as const),
   }));
 }
 
-function build(flowArg) {
+// _state.json drives the split, the declared metrics and the `best` marker.
+// Read as untrusted JSON: every field optional/unknown, narrowed at use.
+type FlowState = {
+  metrics?: unknown;
+  criteria?: unknown;
+  best?: { round?: unknown };
+  [key: string]: unknown;
+};
+
+/** A metric id, plus the kind declared alongside it in _state.json if any. */
+type Metric = { id: string; kind?: unknown };
+
+/** summary.json, written by the loop; only `model` is read out of it. */
+type Summary = { model?: unknown };
+
+/** One row of the variants table. `model` is whatever summary.json held. */
+type Header = { change: string; model: unknown; errors: ErrorCounts };
+
+/** A trace link under a case cell. `rep` is whatever results.jsonl held. */
+type Trace = { rep: unknown; rel: string };
+
+/** One variant's numbers for one case. */
+type CasePer = { mean: number | null; reps: number; truncated: number; traces: Trace[] };
+
+/** One row of the cases table; `per` is keyed by variant dir name. */
+type CaseRow = {
+  id: string;
+  split: string;
+  tags: string[];
+  prompt: string;
+  per: Record<string, CasePer>;
+};
+
+/** One row of the variants table's aggregates. */
+type Agg = {
+  all: number | null;
+  n: number;
+  test: number | null;
+  nTest: number;
+  truncated: number;
+};
+
+function build(flowArg: string) {
   const flow = resolve(flowArg);
   if (!statSync(flow, { throwIfNoEntry: false })?.isDirectory())
     throw new Error('not a directory: ' + flow);
   const variants = discoverVariants(flow);
   if (!variants.length)
     throw new Error('no variant directories (baseline/, v1/, ...) under ' + flow);
-  const warnings = [];
+  const warnings: string[] = [];
   // Same warning the full builder gives: a mis-named variant dir is the usual
   // reason the header shows one variant fewer than expected.
   const nonVariant = new Set([
@@ -194,13 +262,15 @@ function build(flowArg) {
           e.name +
           "/' - variant dirs must be named 'baseline' or 'v<N>'; put the descriptive name in change.md's first line instead",
       );
-  const state = readJSON(join(flow, '_state.json'), {}) || {};
+  const state: FlowState = readJSON<FlowState>(join(flow, '_state.json'), {}) || {};
 
-  const splitOf = Object.create(null);
-  for (const sp of ['train', 'val', 'test'])
-    for (const pid of state[sp + '_ids'] || []) splitOf[String(pid)] = sp;
+  const splitOf: Record<string, string> = Object.create(null);
+  for (const sp of ['train', 'val', 'test']) {
+    const ids = state[sp + '_ids'];
+    for (const pid of Array.isArray(ids) ? ids : []) splitOf[String(pid)] = sp;
+  }
 
-  const rows = Object.create(null);
+  const rows: Rows = Object.create(null);
   for (const v of variants) rows[v] = loadRows(join(flow, v, 'results.jsonl'), warnings, v);
 
   // Same as the full builder: drop non-baseline variants with zero result
@@ -208,27 +278,28 @@ function build(flowArg) {
   // blank column), and refuse to build when the first variant itself has none
   // rather than overwrite a good trajectory/scores.tsv with a header-only file.
   for (let i = variants.length - 1; i > 0; i--) {
-    const v = variants[i];
-    if (Object.keys(rows[v]).length) continue;
+    const v = variants[i] as string;
+    if (Object.keys(rows[v] ?? NO_ROWS).length) continue;
     warnings.push(
       v + ': zero result rows - dropping (run not started or results.jsonl missing/empty)',
     );
     variants.splice(i, 1);
   }
-  if (!Object.keys(rows[variants[0]]).length)
-    throw new Error(variants[0] + '/ has no result rows under ' + flow + ' - nothing to report');
+  const firstVariant = variants[0] as string;
+  if (!Object.keys(rows[firstVariant] ?? NO_ROWS).length)
+    throw new Error(firstVariant + '/ has no result rows under ' + flow + ' - nothing to report');
 
-  const header = Object.create(null);
+  const header: Record<string, Header> = Object.create(null);
   for (const v of variants) {
     const vdir = join(flow, v);
     const change =
       readText(join(vdir, 'change.md'))
         .split('\n')
         .find((l) => l.trim()) || '';
-    const summary = readJSON(join(vdir, 'summary.json'), {}) || {};
+    const summary: Summary = readJSON<Summary>(join(vdir, 'summary.json'), {}) || {};
     // Model: summary.json wins, else the most common row.model (what the app called).
-    const tally = Object.create(null);
-    for (const reps of Object.values(rows[v]))
+    const tally: Record<string, number> = Object.create(null);
+    for (const reps of Object.values(rows[v] ?? NO_ROWS))
       for (const r of reps)
         if (typeof r.model === 'string') tally[r.model] = (tally[r.model] || 0) + 1;
     const rowModel = Object.entries(tally).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
@@ -244,43 +315,50 @@ function build(flowArg) {
   // the first declared-or-inferred binary metric, else the first - the same
   // selection the full builder's lib/adapter.mjs makes, so both builders
   // report the same metric's numbers on the same flow.
+  // Declared entries are bare ids or {id, kind}: the id is only ever used as a
+  // property key or a label, so it is normalized to a string here.
   const metricsCfg = state.metrics || state.criteria;
-  const declared = (Array.isArray(metricsCfg) ? metricsCfg : [])
-    .map((m) => (typeof m === 'string' ? { id: m } : { id: m?.id, kind: m?.kind }))
+  const declared: Metric[] = (Array.isArray(metricsCfg) ? metricsCfg : [])
+    .map((m: unknown): Metric => {
+      if (typeof m === 'string') return { id: m };
+      const { id, kind } = (m ?? {}) as { id?: unknown; kind?: unknown };
+      return { id: String(id ?? ''), kind };
+    })
     .filter((m) => m.id);
-  const metrics = declared.length ? declared : inferMetrics(rows, variants);
+  const metrics: Metric[] = declared.length ? declared : inferMetrics(rows, variants);
   if (!metrics.length) metrics.push({ id: 'score', kind: 'float' });
-  const primary = (metrics.find((m) => m.kind === 'binary') || metrics[0]).id;
+  const primary = (metrics.find((m) => m.kind === 'binary') || metrics[0])?.id ?? '';
 
   // Cases: union of ids across variants, in first-seen order.
-  const ids = [];
-  const seenId = new Set();
+  const ids: string[] = [];
+  const seenId = new Set<string>();
   for (const v of variants)
-    for (const pid of Object.keys(rows[v]))
+    for (const pid of Object.keys(rows[v] ?? NO_ROWS))
       if (!seenId.has(pid)) {
         seenId.add(pid);
         ids.push(pid);
       }
 
-  const okReps = (reps) => reps.filter((r) => r.status == null || r.status === 'ok');
-  const caseMean = (reps, m) => {
+  const okReps = (reps: ResultRow[]) => reps.filter((r) => r.status == null || r.status === 'ok');
+  const caseMean = (reps: ResultRow[], m: string): number | null => {
     const vals = okReps(reps)
       .map((r) => coerceScores(r.grade)[m])
       .filter(isNum);
     return vals.length ? vals.reduce((s, x) => s + x, 0) / vals.length : null;
   };
-  const cases = ids.map((pid) => {
-    const first = variants.map((v) => rows[v][pid]?.[0]).find(Boolean) || {};
+  const cases: CaseRow[] = ids.map((pid) => {
+    const first: ResultRow =
+      variants.map((v) => (rows[v] ?? NO_ROWS)[pid]?.[0]).find(Boolean) || {};
     const tags = Array.isArray(first.tags) ? first.tags.map(String) : [];
-    const per = {};
+    const per: Record<string, CasePer> = {};
     for (const v of variants) {
-      const reps = rows[v][pid] || [];
+      const reps = (rows[v] ?? NO_ROWS)[pid] ?? [];
       per[v] = {
         mean: caseMean(reps, primary),
         reps: reps.length,
         truncated: reps.filter((r) => r.status === 'truncated').length,
         traces: reps
-          .map((r, k) => {
+          .map((r, k): Trace | null => {
             // Link only to files directly inside this variant's traces/ dir:
             // ids and reps come from results.jsonl (data, not trusted), so the
             // composed path must not resolve anywhere else, and a symlinked
@@ -290,7 +368,8 @@ function build(flowArg) {
             // traces/<id>.json a single-rep runner may write (the full builder
             // reads it as rep 0 too).
             const rep = r.rep ?? k;
-            const stems = +rep === 0 ? [pid + '_rep' + rep, pid] : [pid + '_rep' + rep];
+            const repStem = pid + '_rep' + String(rep);
+            const stems = Number(rep) === 0 ? [repStem, pid] : [repStem];
             for (const stem of stems) {
               const rel = v + '/traces/' + stem + '.json';
               const abs = resolve(flow, rel);
@@ -299,47 +378,50 @@ function build(flowArg) {
             }
             return null;
           })
-          .filter(Boolean),
+          .filter((t): t is Trace => t !== null),
       };
     }
     return { id: pid, split: splitOf[pid] || '', tags, prompt: String(first.prompt ?? ''), per };
   });
 
   // Per-variant aggregate: mean over cases that have a value, per split.
-  const agg = {};
+  const agg: Record<string, Agg> = {};
   for (const v of variants) {
-    const all = cases.map((c) => c.per[v].mean).filter(isNum);
+    const all = cases.map((c) => c.per[v]?.mean).filter(isNum);
     const test = cases
       .filter((c) => c.split === 'test')
-      .map((c) => c.per[v].mean)
+      .map((c) => c.per[v]?.mean)
       .filter(isNum);
-    const m = (xs) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
+    const m = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
     agg[v] = {
       all: m(all),
       n: all.length,
       test: m(test),
       nTest: test.length,
-      truncated: cases.reduce((s, c) => s + c.per[v].truncated, 0),
+      truncated: cases.reduce((s, c) => s + (c.per[v]?.truncated ?? 0), 0),
     };
   }
 
   // trajectory/scores.tsv - same shape as the full builder.
   mkdirSync(join(flow, 'trajectory'), { recursive: true });
-  const tsv = [['id', 'split', ...variants].join('\t')];
+  const tsv: string[] = [['id', 'split', ...variants].join('\t')];
   for (const c of cases)
     tsv.push(
-      [tsvCell(c.id), tsvCell(c.split || 'all'), ...variants.map((v) => fmt(c.per[v].mean))].join(
-        '\t',
-      ),
+      [
+        tsvCell(c.id),
+        tsvCell(c.split || 'all'),
+        ...variants.map((v) => fmt(c.per[v]?.mean ?? null)),
+      ].join('\t'),
     );
   writeFileSync(join(flow, 'trajectory', 'scores.tsv'), tsv.join('\n') + '\n');
 
   // _state.json's `best` is {round, test_score}; map the round to a variant
   // name the way the full builder does (0 = baseline), and drop it when the
   // named variant isn't on disk.
-  let best = null;
-  if (Number.isInteger(state.best?.round)) {
-    best = state.best.round === 0 ? 'baseline' : 'v' + state.best.round;
+  let best: string | null = null;
+  const bestRound = state.best?.round;
+  if (typeof bestRound === 'number' && Number.isInteger(bestRound)) {
+    best = bestRound === 0 ? 'baseline' : 'v' + bestRound;
     if (!variants.includes(best)) best = null;
   }
 
@@ -358,15 +440,40 @@ function build(flowArg) {
   return { variants: variants.length, cases: cases.length, warnings };
 }
 
-function render({ flow, variants, header, agg, cases, primary, metrics, warnings, best }) {
+/** Everything render() needs; all of it is built above in build(). */
+type RenderInput = {
+  flow: string;
+  variants: string[];
+  header: Record<string, Header>;
+  agg: Record<string, Agg>;
+  cases: CaseRow[];
+  primary: string;
+  metrics: string[];
+  warnings: string[];
+  best: string | null;
+};
+
+function render({
+  flow,
+  variants,
+  header,
+  agg,
+  cases,
+  primary,
+  metrics,
+  warnings,
+  best,
+}: RenderInput) {
   const hasSplit = cases.some((c) => c.split);
-  const hasTest = variants.some((v) => agg[v].nTest > 0);
-  const th = (label, key) => '<th data-k="' + esc(key) + '">' + esc(label) + '</th>';
+  const hasTest = variants.some((v) => (agg[v]?.nTest ?? 0) > 0);
+  const th = (label: string, key: string) =>
+    '<th data-k="' + esc(key) + '">' + esc(label) + '</th>';
 
   const variantRows = variants
     .map((v) => {
-      const h = header[v],
-        a = agg[v];
+      // build() fills both records for every entry of `variants`.
+      const h = header[v] as Header,
+        a = agg[v] as Agg;
       const err = h.errors.total
         ? h.errors.total +
           ' (' +
@@ -408,7 +515,8 @@ function render({ flow, variants, header, agg, cases, primary, metrics, warnings
     .map((c) => {
       const cells = variants
         .map((v) => {
-          const p = c.per[v];
+          // build() fills c.per for every entry of `variants`.
+          const p = c.per[v] as CasePer;
           const links = p.traces
             .map((t) => '<a href="' + esc(t.rel) + '">rep' + esc(t.rep) + '</a>')
             .join(' ');
@@ -434,7 +542,7 @@ function render({ flow, variants, header, agg, cases, primary, metrics, warnings
         '</td>' +
         cells +
         '<td class="prompt"><details><summary>' +
-        esc(prompt.split('\n')[0].slice(0, 80)) +
+        esc(prompt.split('\n')[0]?.slice(0, 80)) +
         '</summary><pre>' +
         esc(prompt) +
         '</pre></details></td></tr>'
@@ -541,7 +649,7 @@ const SORT_JS = [
 
 const arg = process.argv[2];
 if (!arg || arg === '-h' || arg === '--help') {
-  console.error('usage: node build-report-lite.mjs <flow-dir>   (e.g. .claude/hillclimb/<flow>/)');
+  console.error('usage: node build-report-lite.mts <flow-dir>   (e.g. .claude/hillclimb/<flow>/)');
   process.exit(arg ? 0 : 2);
 }
 try {
@@ -557,6 +665,8 @@ try {
       ' cases) and trajectory/scores.tsv',
   );
 } catch (e) {
-  console.error('build-report-lite: ' + (e?.message || e));
+  // A thrown value is untrusted too: prefer its `message`, else stringify it.
+  const msg = (e as { message?: unknown })?.message;
+  console.error('build-report-lite: ' + String(msg || e));
   process.exit(1);
 }

@@ -350,6 +350,13 @@
   text-align: left;
 }
 
+.more-menu-item svg {
+  flex: none;
+  /* light rows ink the icons with the label (r7 18); dark softens them
+     to tertiary (r8 56) */
+  color: var(--menu-icon);
+}
+
 /* #318: phase-inert rows stay rendered but disabled (原站按相位出项;
    pacman 四行恒定,禁用心智沿 r1「Delete 在 turn 进行中可见但禁用」) */
 .more-menu-item:disabled {
@@ -377,13 +384,6 @@
   height: 45px;
   border-top: 1px solid var(--border-default);
   color: var(--stop);
-}
-
-.more-menu-item svg {
-  flex: none;
-  /* light rows ink the icons with the label (r7 18); dark softens them
-     to tertiary (r8 56) */
-  color: var(--menu-icon);
 }
 
 .more-menu-item[data-action="delete"] svg {

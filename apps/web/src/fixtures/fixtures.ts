@@ -9,6 +9,7 @@ import {
   BRAND,
   conversationBranch,
   derivePlaceholderTitle,
+  FIXED_TAGS,
   type ModelSource,
   maskApiKey,
   PLACEHOLDER_TITLE_FALLBACK,
@@ -323,6 +324,94 @@ export const boardGithubPicker: FixtureSet = {
       },
     ],
   },
+};
+
+/** #403 看板标签筛选命名场景（无 capture，newtask-projects 先例）。tag 行
+ *  = 固定词表六行的 fixture 投影（id 合成 `tag-<name>`，name/color 从
+ *  FIXED_TAGS 单源派生——词表改动两侧同步，不手抄色值）。 */
+const tagFilterRows = FIXED_TAGS.map((t) => ({
+  id: `tag-${t.name}`,
+  name: t.name,
+  color: t.color,
+}));
+
+/** 筛选探针卡工厂：probeTodo 全形底 + 合成 id/seq/标题/tagIds（命名场景
+ *  合成内容，无 capture 基线）。phaseAt 走 r7 时刻序，now 钉 13:55。 */
+function tagFilterProbe(
+  id: string,
+  seqNum: number,
+  title: string,
+  phase: TodoRecord['phase'],
+  tagIds: string[],
+): TodoRecord {
+  return { ...probeTodo(phase, r7(13, 40)), id, seqNum, title, spec: title, tagIds };
+}
+
+/** board-tags：跨列三卡——bug 待开始 / docs 执行中 / 无标签 待处理。
+ *  e2e 钉筛选开/关/切换/URL 携带与「无标签恒可见」裁决面。 */
+export const boardTagFilter: FixtureSet = {
+  ...boardDefault,
+  todos: [
+    tagFilterProbe('tagfilter-bug', 41, 'tagfilter 探针（bug）', 'todo', ['tag-bug']),
+    tagFilterProbe('tagfilter-docs', 42, 'tagfilter 探针（docs）', 'building', ['tag-docs']),
+    tagFilterProbe('tagfilter-plain', 43, 'tagfilter 探针（无标签）', 'review', []),
+  ],
+  now: r7(13, 55),
+  tags: tagFilterRows,
+};
+
+/** board-tags-empty：两卡全 tagged（bug/docs）——选中两词之外任一（如
+ *  chore）即触发板级空结果态（无标签卡不在场，收窄才能见底）。 */
+export const boardTagFilterEmpty: FixtureSet = {
+  ...boardDefault,
+  todos: [
+    tagFilterProbe('tagfilter-e-bug', 44, 'tagfilter 空态探针（bug）', 'todo', ['tag-bug']),
+    tagFilterProbe('tagfilter-e-docs', 45, 'tagfilter 空态探针（docs）', 'building', ['tag-docs']),
+  ],
+  now: r7(13, 55),
+  tags: tagFilterRows,
+};
+
+/** #445 仓库筛选探针卡工厂：tagFilterProbe 同式，多带 projectId 位。 */
+function repoFilterProbe(
+  id: string,
+  seqNum: number,
+  title: string,
+  phase: TodoRecord['phase'],
+  projectId: string,
+  tagIds: string[],
+): TodoRecord {
+  return { ...probeTodo(phase, r7(13, 40)), id, seqNum, title, spec: title, projectId, tagIds };
+}
+
+/** #445 看板仓库筛选命名场景（无 capture，board-tags 先例）：三项目——
+ *  canon r3-lifecycle 两卡（bug tagged 待开始 / 无标签 待处理）+
+ *  r2-inventory 一卡（docs tagged 执行中）+ r4-quiet 零卡（选中即触发
+ *  板级空结果态）。projectNames 在场 = fixture 面仓库筛选渲染门；tags
+ *  同场 = 类型轴/卡片标签 chip 与仓库轴的组合收窄可钉。 */
+export const boardRepoFilter: FixtureSet = {
+  ...boardDefault,
+  projectNames: {
+    [PROJECT_ID]: PROJECT_NAME,
+    'r2-inventory': 'r2-inventory',
+    'r4-quiet': 'r4-quiet',
+  },
+  todos: [
+    repoFilterProbe('repofilter-a', 46, 'repofilter 探针 A（r3·bug）', 'todo', PROJECT_ID, [
+      'tag-bug',
+    ]),
+    repoFilterProbe(
+      'repofilter-b',
+      47,
+      'repofilter 探针 B（r2·docs）',
+      'building',
+      'r2-inventory',
+      ['tag-docs'],
+    ),
+    repoFilterProbe('repofilter-c', 48, 'repofilter 探针 C（r3·无标签）', 'review', PROJECT_ID, []),
+  ],
+  now: r7(13, 55),
+  tags: tagFilterRows,
 };
 
 /** Board with the probe in the given phase (r7 02/22/21/33 …). The dark
@@ -1246,6 +1335,37 @@ export const teamGrid: FixtureSet = {
   todos: boardDefault.todos,
   now: boardDefault.now,
   team: TEAM_R7,
+};
+
+/** #444 named scenario（无 capture，notify-banner 先例）：绑定 Agent 的
+ *  头像骑上总管 FAB。一套内容同时供 board（.chief-fab）与 team
+ *  （.secondary-fab）两个消费点（projectFixture 多路由单集先例）；
+ *  chiefUnread 2 钉角标与头像共存面。avatarUrl null = dicebear 按
+ *  displayName 种子生成，e2e 钉图标来源切换（chief-fab.spec），非像素。 */
+const FAB_AVATAR_CHIEF: ChiefContent = {
+  view: 'drawer',
+  bound: true,
+  modelSlot: 'claude-sonnet-5 · 默认',
+  threadTitle: '新主题',
+  examples: CHIEF_EXAMPLES,
+  agent: { displayName: R3_BUILDER.displayName, avatarUrl: null },
+};
+
+export const chiefFabAvatar: FixtureSet = {
+  ...teamGrid,
+  chiefUnread: 2,
+  chief: FAB_AVATAR_CHIEF,
+};
+
+/** 同面的 avatarUrl 覆盖变体：覆盖值赢过 dicebear 生成（Avatar 原语语义
+ *  在 FAB 层的透传钉）；资产用本地 /avatar-robot-2.svg，零网络。 */
+export const chiefFabAvatarOverride: FixtureSet = {
+  ...teamGrid,
+  chiefUnread: 2,
+  chief: {
+    ...FAB_AVATAR_CHIEF,
+    agent: { displayName: R3_BUILDER.displayName, avatarUrl: '/avatar-robot-2.svg' },
+  },
 };
 
 /** One created API key exercising both r3 §6 display rules: the list row

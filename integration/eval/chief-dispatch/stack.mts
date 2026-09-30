@@ -4,7 +4,7 @@
 // 判分口径：读 end state（todo 行 + build 行的 assignment），不读 transcript——
 // 对 agent 类应用，transcript 是叙述，环境才是答案。
 
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
@@ -17,6 +17,7 @@ import { type MachineHandle, runMachine } from '../../../apps/daemon/src/machine
 import { statePaths } from '../../../apps/daemon/src/state.js';
 import {
   agentMemory as agentMemoryTable,
+  agent as agentTable,
   build as buildTable,
   chiefMessage,
   chiefThread,
@@ -30,6 +31,7 @@ import { repoDirFor } from '../../../apps/server/src/services/git.js';
 import {
   api,
   bootRealServer,
+  AGENT_ID as HELPER_BOOTSTRAP_AGENT_ID,
   type RealServer,
   waitFor,
 } from '../../../integration/test/helpers.js';
@@ -61,6 +63,49 @@ export function disposeLeftovers(): number {
   return n;
 }
 
+/** 反查并清掉「逃逸进程」，返回处理掉的 pid 数。
+ *
+ * 被测 agent 会在 workspaces/<uuid>/ 下用 `nohup vite &` 起 dev server：它不在
+ * harness 持有的任何 handle 里，close() 的 handle.stop()/server.close() 够不着，
+ * 而 disposeLeftovers() 只 rmSync 目录——rmSync 不杀进程。实测评测跑完后 vite 以
+ * ppid=1 的孤儿形态继续 LISTEN 5173，跑 N 轮就从 5173 排到 5173+N，把后续本机
+ * dev 一路往后挤。只能在删目录前按 home 路径反查。 */
+export async function reapEscapees(home: string): Promise<number> {
+  // pgrep -f 是子串匹配，tmpdir() 的 /var/folders/... 足以命中 cmdline 里的
+  // /private/var/folders/...（macOS symlink），不必先 realpath——实测 2026-09-29
+  // 两种 pattern 都命中同一 pid。反过来直接用 home 更稳：realpathSync 在目录已
+  // 删时会抛，而 home 字符串始终可用。
+  let out = '';
+  try {
+    out = execFileSync('pgrep', ['-f', home], { encoding: 'utf8' });
+  } catch {
+    return 0; // pgrep 无匹配时退出码 1，属正常
+  }
+  const pids = out
+    .split('\n')
+    .map((s) => Number(s.trim()))
+    .filter((n) => Number.isInteger(n) && n > 0 && n !== process.pid);
+  if (pids.length === 0) return 0;
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 'SIGTERM');
+    } catch {
+      /* 已退出 */
+    }
+  }
+  // 给 TERM 时间收尾，再对赖着不走的补 KILL（kill 0 先探活，避免打到复用的 pid）。
+  await new Promise((r) => setTimeout(r, 1_000));
+  for (const pid of pids) {
+    try {
+      process.kill(pid, 0);
+      process.kill(pid, 'SIGKILL');
+    } catch {
+      /* TERM 已经够了 */
+    }
+  }
+  return pids.length;
+}
+
 export interface RosterAgent {
   key: string;
   displayName: string;
@@ -71,6 +116,8 @@ export interface RosterAgent {
 export interface Stack {
   server: RealServer;
   home: string;
+  /** 隔离的技能根（空目录）——诊断脚本合成 chief 系统提示词时要用。 */
+  skillsDir: string;
   logLines: () => string[];
   close: () => Promise<void>;
 }
@@ -142,6 +189,7 @@ export async function bootStack(): Promise<Stack> {
   return {
     server,
     home,
+    skillsDir,
     logLines,
     close: async () => {
       // 判完立刻关栈 = 让 daemon 来不及执行 chief 刚派出去的 build。关栈失败
@@ -168,6 +216,10 @@ export async function bootStack(): Promise<Stack> {
       await raceWith(handle.stop(), 15_000);
       await raceWith(handle.done, 15_000);
       await raceWith(server.close(), 5_000);
+      // daemon 停了不等于环境干净：被测 agent 用 nohup 起的 dev server 逃出了
+      // harness 的 handle，得按 home 路径反查清掉（见 reapEscapees）。
+      const reaped = await reapEscapees(home);
+      if (reaped > 0) console.error(`[stack] 清掉 ${reaped} 个逃逸进程`);
       // 一律推迟到整轮结束再删。曾经在 close 里直接 rm：那时 daemon 还在写
       // home/daemon.log，被删后它下次写日志 ENOENT，未捕获异常打死整个 runner
       // （实测两次）。stop() 返回 ≠ 主循环已退出，靠限时等它退出是不可靠的，
@@ -214,6 +266,14 @@ export function seedRepoContent(stack: Stack, projectId: string, projectName: st
   }
 }
 
+/** chief 的思考档位。默认 null = 用绑定 Agent 自己的设置；`PACMAN_EVAL_CHIEF_THINKING`
+ * 可覆盖（off/minimal/low/medium/high/xhigh/max），用来量「降档位省多少、质量掉不掉」
+ * ——一个参数、可一键回退，不动任何产品代码。 */
+function chiefThinkingLevel(): string | null {
+  const v = process.env.PACMAN_EVAL_CHIEF_THINKING;
+  return v !== undefined && v !== '' ? v : null;
+}
+
 export interface SeededWorld {
   providerId: string;
   agentIds: Record<string, string>;
@@ -243,6 +303,11 @@ export async function seedWorld(
   if (prov.status !== 201)
     throw new Error(`建 provider 失败: ${prov.status} ${JSON.stringify(prov.body)}`);
 
+  // helpers 会 seed 一个集成测试用的 Agent（agent-it-1，职责文案是写给 stub LLM
+  // 的）。它不属于场景编制，却会出现在 chief 的团队资源清单里——多一个不该有的
+  // 分派候选，也让「按顺序数条目」多一个错位机会。清掉。
+  server.db.delete(agentTable).where(eq(agentTable.id, HELPER_BOOTSTRAP_AGENT_ID)).run();
+
   const agentIds: Record<string, string> = {};
   for (const a of opts.roster) {
     const res = await api(server.url, 'POST', `/api/teams/${server.teamId}/agents`, {
@@ -257,11 +322,12 @@ export async function seedWorld(
 
   // 总管自己也是一个 Agent（复用 roster 里同模型的那个，省一次建行）。
   const chiefKey =
-    opts.roster.find((a) => a.modelId === opts.chiefModelId)?.key ?? opts.roster[0].key;
+    opts.roster.find((a) => a.modelId === opts.chiefModelId)?.key ?? opts.roster[0]?.key;
+  if (chiefKey === undefined) throw new Error('roster 为空，无法确定总管 agent');
   const chiefAgentId = agentIds[chiefKey];
   if (chiefAgentId === undefined) throw new Error(`总管绑定的 agent 未建出: ${chiefKey}`);
   const bound = await api(server.url, 'PATCH', `/api/teams/${server.teamId}/chief`, {
-    agent: { agentId: chiefAgentId, thinkingLevel: null },
+    agent: { agentId: chiefAgentId, thinkingLevel: chiefThinkingLevel() },
     charter: '',
   });
   if (bound.status !== 200) throw new Error(`绑定总管失败: ${bound.status}`);

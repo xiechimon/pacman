@@ -1,23 +1,25 @@
-// Chief drawer (issue #72): the right-anchored floating panel over the
-// board (r5 100/111/114/116: 418 wide, top 42, right 17, bottom 16, radius
-// 12). Header = thread chip + model slot + icon buttons; body = gate bar
-// (unbound) or hero examples / thread message flow; composer pinned at the
-// bottom. The switcher popover (116) and the view swap to 总管设置 are real
-// state so the surface is clickable in dev; fixture captures never click, so
-// the fixture alone decides the captured state.
+// Chief drawer (issue #72; panel form re-ruled by #447 / ADR 0004): the
+// 总管面板 is a docked right-hand column — 418 wide (the r5 capture value
+// kept as the pinned width), full height, flush right, radius 0, no shadow,
+// one 1px hairline seam on the left. It is a layout citizen, not an overlay:
+// each mount point renders it as the last flex item of a row whose content
+// sibling yields (D2). Header = thread chip + model slot + icon buttons;
+// body = gate bar (unbound) or hero examples / thread message flow;
+// composer pinned at the bottom. The switcher popover (116) and the view
+// swap to 总管设置 are real state so the surface is clickable in dev;
+// fixture captures never click, so the fixture alone decides the captured
+// state.
 //
 // #146 收尾：Esc 关面板（useEscapeClose 弹层族同律——内层的线程切换器
 // popover 先关，再关 drawer）；hero 快捷提示 ×4 点击即发预置词进 chief
 // 线程（live 面 onSend，等同键入发送；fixture 面与发送钮同款惰性）；头部
-// 「新主题」落回新线程视图（live）、「全屏」切面板形态（纯 UI 态，双面
-// 可用；全窗形态无任一批次抓拍——r2 §9-26 `tds.panel-maximized` 未点开、
-// r8-chief-panel-adhoc §3——几何 [推断]：充满定位容器、圆角归零）。
-// composer 行只保留发送钮：语音输入/添加附件/提及为 local-first 无后端面，
-// 裁决隐藏不渲染（#136 台账 wontfix，理由登记在该票评论区）。
+// 「新主题」落回新线程视图（live）。composer 行只保留发送钮：语音输入/
+// 添加附件/提及为 local-first 无后端面，裁决隐藏不渲染（#136 台账
+// wontfix，理由登记在该票评论区）。
 // #306 wontfix 出账：r8 随拍在线程视图头部多出的「更多」（⋮）钮——原站
 // 菜单内容从未点开无正典（r8-chief-panel-adhoc §3），pacman server chief
 // 面亦无线程管理 mutation（GET/POST threads 外无删除/重命名端点），无
-// local-first 对象面，按 M7 处置二分律移除不渲染；头部四钮双视图同律。
+// local-first 对象面，按 M7 处置二分律移除不渲染；头部三钮双视图同律。
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChiefContent, ChiefSegment } from '../fixtures/records.js';
@@ -27,7 +29,6 @@ import {
   BarChart3,
   ChevronDown,
   ChevronRight,
-  ChiefExpand,
   ChiefFaceDashed,
   ChiefFolder,
   ChiefGear,
@@ -116,7 +117,6 @@ export function ChiefDrawer({
   const { t } = useI18n();
   const [threadsOpen, setThreadsOpen] = useState(chief.threadsOpen ?? false);
   const [liveDraft, setLiveDraft] = useState('');
-  const [fullscreen, setFullscreen] = useState(false);
   const draftValue = onSend != null ? liveDraft : (chief.draft ?? '');
   // #146: Esc 与弹层族同律（#127 useEscapeClose 先例）——最内层先关：
   // 线程切换器 popover 开着时第一下 Esc 收 popover，第二下关 drawer。
@@ -128,7 +128,7 @@ export function ChiefDrawer({
   // mounted 滞后 open 一帧（effect 里才 setMounted）——鲜开时 effect 跑在
   // 节点存在之前，故首焦由 ref callback 承载（SearchPanel attachInput
   // 先例）；retained-mount 窗口内重开节点未脱离、ref 不重火，由 [open]
-  // effect 兜住。空格热键呼出与 FAB 点击同路。
+  // effect 兜住。⌘J 热键呼出与 FAB 点击同路。
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const openRef = useRef(open);
   openRef.current = open;
@@ -146,12 +146,7 @@ export function ChiefDrawer({
   };
   return (
     <OverlayMount open={open} exitMs={DRAWER_EXIT_MS}>
-      <aside
-        className={
-          fullscreen ? 'chief-drawer anim-drawer is-fullscreen' : 'chief-drawer anim-drawer'
-        }
-        aria-label={t('总管')}
-      >
+      <aside className="chief-drawer anim-drawer" aria-label={t('总管')}>
         <header className="chief-head">
           <div className="chief-head-row">
             <button
@@ -184,14 +179,6 @@ export function ChiefDrawer({
                   <ChiefGear />
                 </button>
               )}
-              <button
-                type="button"
-                aria-label={fullscreen ? t('退出全屏') : t('全屏')}
-                aria-pressed={fullscreen}
-                onClick={() => setFullscreen((v) => !v)}
-              >
-                <ChiefExpand />
-              </button>
               <button type="button" aria-label={t('关闭')} onClick={onClose}>
                 <X width={16} height={16} />
               </button>

@@ -62,15 +62,21 @@ export function ResourceShell({
   return (
     <div className="res-shell" data-route={href}>
       <AppSidebar fixture={fixture} selected={selected} />
+      {/* #447 (ADR 0004 D2/D6): res-main is the docking row — the topbar +
+          content column live in .res-main-col (flex:1, yields) and the chief
+          panel rides as the last flex item; the wake FAB keeps the res-main
+          absolute anchor. */}
       <div className="res-main">
-        <header className="res-topbar">
-          <a className="res-back" href={backHref} aria-label={t('返回')}>
-            <ChevronLeft width={16} height={16} />
-          </a>
-          <h1 className="res-title">{t(title)}</h1>
-          {newAction}
-        </header>
-        <div className="res-col">{children}</div>
+        <div className="res-main-col">
+          <header className="res-topbar">
+            <a className="res-back" href={backHref} aria-label={t('返回')}>
+              <ChevronLeft width={16} height={16} />
+            </a>
+            <h1 className="res-title">{t(title)}</h1>
+            {newAction}
+          </header>
+          <div className="res-col">{children}</div>
+        </div>
         <ChiefWake fixture={fixture} fabClassName="res-fab" />
       </div>
     </div>

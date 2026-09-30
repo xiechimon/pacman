@@ -114,7 +114,7 @@ class FakeClient implements MachineApi {
       git: null,
     };
   }
-  async uploadUrls(stepId: string, files: { name: string }[]) {
+  async uploadUrls(_stepId: string, files: { name: string }[]) {
     this.uploadNames.push(files.map((f) => f.name));
     return {
       uploads: files.map((f, i) => ({

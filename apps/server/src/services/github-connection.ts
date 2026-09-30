@@ -61,6 +61,19 @@ export function openGithubToken(deps: GithubConnectionDeps, teamId: string): str
   return deps.box.open(row.accessTokenCipher);
 }
 
+/** 连接行存在性（#452 写向；只读行不解密不抛）：createTodo 关键路径判
+ * 「已连接才自建 issue」——未连接 = 不建、不报错、不亮失败态（ADR 0006 D2）；
+ * 密文损坏留给异步出站时降级（停留未建成，可重试）。 */
+export function hasGithubConnection(db: Db, teamId: string): boolean {
+  return (
+    db
+      .select({ teamId: githubConnection.teamId })
+      .from(githubConnection)
+      .where(eq(githubConnection.teamId, teamId))
+      .get() !== undefined
+  );
+}
+
 /** 认证状态读面（#361 G2-T4 封套，shared githubConnectionStatusSchema 单源）：
  * 仅 login/scope——token/密文位永不出现（02 §8 只写不读出 wire）。 */
 export function readGithubConnectionStatus(

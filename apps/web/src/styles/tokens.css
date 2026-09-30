@@ -1,12 +1,14 @@
-/* Design token layer. Dual-source priority (issue #52): app-surface
-   screenshot sampling wins, r1 §4.2 public CSS table fills the rest.
-   #54 re-sampled the app surface from the r7 board captures (01/01b light,
-   02/02b dark): dark surface #18181b and light surface #faf7f3 replace the
-   landing-page samples, and the board palette below is measured from the
-   same bitmaps. Dark = :root default, light = .light on the root element.
-   Font stacks: --font-inter / --font-jetbrains-mono come from the 859B
-   font stylesheet (fonts.css, r1 §4.1); the consuming stacks below follow
-   the r1 records verbatim. */
+/* Token 别名 + 非颜色层（#435 落地 #412 P2b 裁定）：颜色值正本已迁
+   shadcn.css（官方语义词表 + 仓内补位族并存），本文件不再持颜色值——
+   1) 并流/归并的 generic 色名在这里落别名（var 直引正本名），消费方
+      1004 处引用零改动；别名按双主题各声明一次（.light 挂在根元素上，
+      与 :root 同元素竞争，源序后者胜——镜像让 .light 保持完整语义面）；
+   2) 非颜色 token（motion / 字体栈 / 阴影 / 圆角）仍由本文件持有，
+      收编或另立非颜色层属另一票范围。
+   逐名归属与取数见 docs/research/412-token-mapping.md。
+   主题机制：dark = :root 默认，light = 根元素挂 .light（#106 反相规约）。
+   字体栈：--font-inter 来自 859B font stylesheet（fonts.css, r1 §4.1），
+   下面的消费栈按 r1 记录逐字跟随。 */
 
 :root {
   /* motion registry (issue #73, mirrors the official sheet — motion.css):
@@ -19,43 +21,23 @@
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-pop: cubic-bezier(0.22, 1, 0.36, 1);
-  --active-text: #a0a0a5;
-  --surface: #18181b;
-  --surface-secondary: #1f1f23;
-  --surface-tertiary: #27272a;
-  --surface-inset: #09090b;
-  --surface-elevated: #1f1f23;
-  --surface-hover: #1f1f23;
-  --text-primary: #fafaf9;
-  --text-secondary: #d4d4d8;
-  --text-tertiary: #71717a;
-  --text-dim: #52525b;
-  --border-default: #27272a;
-  --border-strong: #3f3f46;
-  --nav-bg: rgba(24, 24, 27, 0.85);
   --font-sans:
     var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial,
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
   --font-mono: ui-monospace, "JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, monospace;
-  --indigo-600: #4f46e5;
-  /* r7 01b/02 sampled: +任务 text and card buttons land on #6466e9, not the
-     landing-page #6366f1; both themes share the dark-captured value */
-  --indigo-500: #6466e9;
-  --indigo-400: #818cf8;
-  --blue-500: #3b82f6;
-  --blue-400: #60a5fa;
-  --amber-500: #f59e0b;
-  --green-500: #22c55e;
-  --rose-500: #f43f5e;
-  --gray-400: #9ca3af;
-  /* board palette, sampled from r7 captures (differs from landing tokens) */
-  --col-bg: #09090b;
-  --card-bg: #1f1f23;
-  --card-border: #27272a;
-  --card-button: #4e47dd;
-  /* A6 收编 ghost 单源：别名直引 --card-border，与 overlay-btn 实测对齐
-     （A3 时代 #2e2e33 vs 实测 #27272a 差异已合，无视觉损失） */
-  --card-ghost-border: var(--card-border);
+
+  /* 并流别名（#412 D1，官方 1:1 对口六名） */
+  --surface-inset: var(--background);
+  --card-bg: var(--card);
+  --popover-bg: var(--popover);
+  --text-primary: var(--foreground);
+  --code-bg: var(--muted);
+  --danger: var(--destructive);
+  /* 缝线归并（#412 D2）：--border-default 为正本（shadcn.css 补位族），
+     --card-border 降别名——light 侧原 #e1dbd2 vs #e2dbd1 的 1–2 阶差按此
+     消解到正本值 */
+  --card-border: var(--border-default);
+
   /* unified border language (#139): the single-source edge recipe for
      elevated surfaces — 1px hairline ring in the --border-default scale,
      12px radius, popover-tier soft shadow. The account menu's approved face
@@ -84,174 +66,27 @@
      flat); the alpha runs hotter than --edge-shadow because a black shadow
      over the near-black column bg has little luminance headroom */
   --lift-shadow: 0 3px 12px rgb(0 0 0 / 0.5);
-  /* sidebar layer (#390 同底律): the sidebar shares the main-area surface
-     token — the layer separation is carried by the drawn 1px
-     --border-default seam alone (#135 裁决 v2), not by a tone step */
-  --sidebar-bg: var(--surface);
-  /* sidebar interaction ladder (#128, claude.ai cds 参照): the row hover /
-     selected pills ride the cds alpha ladder over the sidebar surface
-     (bg-neutral family = neutral-900 at 5% / 10%, dark inverting to
-     the white scale); --surface-hover stays the overlay/canvas hover
-     canon (motion.css) */
-  --sidebar-hover: rgb(255 255 255 / 0.05);
-  --sidebar-selected: rgb(255 255 255 / 0.1);
-  --col-head-text: #bebec1;
-  /* column dot family: one token per board column (#351 4-fold — 待开始 idle,
-     执行中 building, 待处理 confirm, 已完成 done); planning/review dots retired
-     with their columns */
-  --col-dot-idle: #9ea3ae;
-  --col-dot-confirm: #e9a23b;
-  --col-dot-building: #4e81ee;
-  --col-dot-done: #5ec26a;
-  --badge-attention: #e9a23b;
-  --badge-done: #5ec26a;
-  /* fresh-card owner badge (r7 22/22d), same gray in both themes */
-  --badge-idle: #9ea3ae;
-  /* project initial avatar (board card, sidebar, overlays), both themes */
-  --project-avatar-bg: #e97b35;
-  --project-avatar-fg: #ffffff;
-  /* secondary routes (issue #70): team agent avatar disc (r7 12 light
-     sample #eff1f5) and the selected feedback chip tint (r2 32); dark
-     values are [推断], derived from the chip-idle/plan dark family */
-  --agent-avatar-bg: #202733;
-  --chip-active-bg: #26243a;
-  --chip-active-border: #3b3866;
-  /* [推断] indigo-500 at 55% over surface-secondary, mirroring the light sample */
-  --send-disabled: #454690;
   /* alias of the #139 edge shadow tier — every elevated surface (fab,
      popovers, panels) draws one shadow from the single source */
   --fab-shadow: var(--edge-shadow);
-  /* detail palette, sampled from the r7 23/16/17 captures (#56) */
-  --chip-idle-bg: #202733;
-  --chip-idle-fg: #9ea3ae;
-  --chip-plan-bg: #1c2740;
-  --chip-plan-fg: #8b93f8;
-  --chip-confirm-bg: #33221b;
-  --chip-confirm-fg: #f2c24b;
-  --chip-done-bg: #14291c;
-  --chip-done-fg: #5ec26a;
-  --code-bg: #27272a;
-  --popover-bg: #1f1f23;
-  --seg-active: #3f3f46;
-  /* text-tab chip on the #71 secondary routes (r2 24b/24c probe: group bg
-     is --surface-secondary in both themes, the active chip is not) */
-  --tab-chip-bg: #27272a;
-  /* 删除项目 primary danger (r2 24c probe) */
-  --danger: #ca3a32;
-  --stop: #dd524c;
-  /* diff pane (r7 27d dark sample for the stat green; the expanded diff
-     surface was only captured light — dark add-bg is [推断], derived from
-     the chip-done family) */
-  --diff-add-bg: #16281d;
-  --diff-add-fg: #478266;
-  /* r8 dynamic states (#75): failed chip + fail message + del diff row +
-     rerun-dialog agent row + range chip. Light values sampled from the
-     r8 captures; the dark set is [推断] (r8 §5: dark 动态面未拍). */
-  --chip-failed-bg: #351c1a;
-  --chip-failed-fg: #dd524c;
-  --fail-fg: #d98b4a;
-  --diff-del-bg: #2e1c1a;
-  --dialog-row-bg: #27272a;
-  --range-chip-bg: #27272a;
-  --range-chip-border: #3f3f46;
-  /* modal dialogs (issue #68): panel/box fills sampled from the r8 78–81
-     dark captures; disabled 同步 + toggle track likewise. The #66
-     delete-confirm panel rides the same fill (r8 79 probe) */
-  --dialog-bg: #1f1f23;
-  /* dark box rides the panel fill with a border only (r8 79 scan) */
-  --dialog-box-bg: #1f1f23;
-  --indigo-disabled: #4e47dd;
-  --indigo-disabled-fg: #afabf0;
-  --toggle-track: #27272a;
-  --dialog-ring: #44444b;
-  /* segmented-control family hover (#138, dogfood addition — no official
-     capture carries a hovered seg in any batch, same shape as the #121/#128
-     hover rulings): unselected tabs tint with the first step of the cds
-     alpha ladder over whatever group fill they ride, painted on the same
-     box + radius as the active chip (one geometry, two depths). Group
-     containers are --surface-secondary and active chips --tab-chip-bg in
-     both themes, so the old --seg-container-bg / --seg-tab-active-bg pair
-     collapsed into those two */
-  --seg-hover: rgb(255 255 255 / 0.05);
-  /* resource surfaces (r7 06–10, #69): row-card tile tints + status pill +
-     dashed add-machine border, sampled light; dark values are [推断] from
-     the chip families (no dark resource capture exists) */
-  --tile-orange-bg: #33221b;
-  --tile-orange-fg: #f2c24b;
-  --tile-indigo-bg: #1c2740;
-  --tile-indigo-fg: #8b93f8;
-  --tile-hero-bg: #33221b;
-  --pill-idle-bg: #27272a;
-  --dash-border: #3f3f46;
-  /* disabled primary (r8 79 light sample); dark [推断], indigo family dimmed */
-  --primary-disabled: #3d3a8f;
-  /* overlay batch B (issue #67): search-row select/icon tiles and the
-     popover dividers/indigo select. Light values measured off r7 05/05b/
-     19; dark has no capture (r7 §6) — [推断] from the surface ramp */
-  --row-selected: #27272a;
-  --row-icon-bg: #3f3f46;
-  --overlay-divider: #2a2a2e;
-  --overlay-select-indigo: #2a2740;
-  /* chief surfaces (r5 100–104, #72): drawer shadow sampled from the r5
-     100 edge gradient; tab strip colors from the r5 101 group/active pill
-     (dark values [推断], r2 16 dark panel) */
-  --chief-shadow: 0 4px 24px rgb(0 0 0 / 0.35);
-  --chief-tab-bg: #27272a;
-  --chief-tab-active: #3f3f46;
   /* overlay batch A (#66): dialog shadow probed off r7 04 (stronger than
-     --fab-shadow over the backdrop). --danger stays the #71/#2 24c probe
-     value in both themes */
+     --fab-shadow over the backdrop) */
   --dialog-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
-  /* notification banner bell disc (#114), r2 28 dark sample; the glyph on
-     it is --indigo-500 in both themes (r2 01/28) */
-  --notify-icon-bg: #2e2f42;
-  /* disabled primary label + 更多 menu row icons, probed off r8 78/56 */
-  --disabled-fg: #a0a0a5;
-  --menu-icon: #71717a;
-  /* spacing ladder（DESIGN.md §Layout & Spacing）: 4px 基数阶梯供新写代码消费；
-     复刻面现有像素实测值（17/13/3px 等）是 r7/r8 capture 的 ground truth，保留不动
-     ——A3 拍板保护视觉回归（批量等值化会动像素）；只有值恰好落格的新写法才引用。 */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  /* on-accent 文字（DESIGN.md 轨 A #A2）: 白字压 --card-button / --danger /
-     --stop 实心底，两主题同值（r7/r8 实测白字不随主题翻转）；此前 31 处
-     散写 #ffffff/#fff 全部收此单源 */
-  --text-on-accent: #ffffff;
-  /* toggle 白圆点（轨 A #A2）: 开关 knob 的 12/16px 白盘（detail/secondary
-     两处散写同形），两主题同色 */
-  --toggle-knob: #ffffff;
-  /* 浮层遮罩（轨 A #A2）: modal / search / token-gate 全屏黑幕统一值，
-     此前 6 处各写 rgb(0 0 0 / 0.6) */
-  --overlay-scrim: rgb(0 0 0 / 0.6);
+  /* chief 面（r5 100–104, #72）drawer 投影，r5 100 edge gradient 采样 */
+  --chief-shadow: 0 4px 24px rgb(0 0 0 / 0.35);
   color-scheme: dark light;
 }
 
 .light {
-  --active-text: #6e6b69;
-  --surface: #faf7f3;
-  --surface-secondary: #f1ede7;
-  --surface-tertiary: #e8e2d9;
-  --surface-inset: #f2ede6;
-  --surface-elevated: #fdfaf6;
-  --surface-hover: #f2ede6;
-  --text-primary: #1c1917;
-  --text-secondary: #57534e;
-  --text-tertiary: #78716c;
-  --text-dim: #a8a29e;
-  --border-default: #e2dbd1;
-  --border-strong: #cec6bb;
-  --nav-bg: rgba(250, 250, 249, 0.85);
-  --indigo-400: #6366f1;
-  --col-bg: #f1ede7;
-  --card-bg: #ffffff;
-  --card-border: #e1dbd2;
-  --card-button: #4e47dd;
-  /* A6 收编 ghost 单源 light 镜像：见 :root 注释，--card-ghost-border
-     别名指向 --card-border，保持双主题同值 */
-  --card-ghost-border: var(--card-border);
+  /* 并流别名 light 镜像（值随 shadcn.css 正本的 light 侧走） */
+  --surface-inset: var(--background);
+  --card-bg: var(--card);
+  --popover-bg: var(--popover);
+  --text-primary: var(--foreground);
+  --code-bg: var(--muted);
+  --danger: var(--destructive);
+  --card-border: var(--border-default);
+
   /* unified border language (#139), light side: the edge shadow tier dimmed
      to the light surface; the ring rides --border-default's light value via
      the :root alias */
@@ -266,100 +101,11 @@
      card's small-offset family scaled up, so the four-edge profile stays
      consistent with the resting card */
   --lift-shadow: 0 3px 12px rgb(28 25 23 / 0.16);
-  --sidebar-bg: var(--surface);
-  /* sidebar interaction ladder (#128), light side of the cds alpha ladder —
-     warm-ink steps over the sidebar surface, hover 5% / selected 10% */
-  --sidebar-hover: rgb(28 25 23 / 0.05);
-  --sidebar-selected: rgb(28 25 23 / 0.1);
-  --col-head-text: #57534e;
-  --col-dot-idle: #9ea3ae;
-  --col-dot-confirm: #e9a23b;
-  --col-dot-building: #4e81ee;
-  --col-dot-done: #5ec26a;
-  --badge-attention: #e9a23b;
-  --badge-done: #5ec26a;
-  --badge-idle: #9ea3ae;
-  /* secondary routes (issue #70), sampled from r7 12 / r2 32 light */
-  --agent-avatar-bg: #eff1f5;
-  --chip-active-bg: #ebe8f2;
-  --chip-active-border: #cdc9f0;
-  --send-disabled: #9f9ae2;
-  /* detail palette, sampled from the r7 23/16/17 captures (#56) */
-  --chip-idle-bg: #f3f4f6;
-  --chip-idle-fg: #4d5562;
-  --chip-plan-bg: #eff2fe;
-  --chip-plan-fg: #4e47dd;
-  --chip-confirm-bg: #fffbed;
-  --chip-confirm-fg: #a85923;
-  --chip-done-bg: #ecfdf3;
-  --chip-done-fg: #15803d;
-  --code-bg: #e7e2da;
-  --popover-bg: #fdfaf7;
-  --seg-active: #e7e2da;
-  --tab-chip-bg: #faf7f3;
-  --danger: #ca3a32;
-  --stop: #dd524c;
-  /* diff pane, sampled from r7 27/27b: stat/ gutter green #499771, added
-     row tint #eaf1e8 */
-  --diff-add-bg: #eaf1e8;
-  --diff-add-fg: #499771;
-  /* r8 dynamic states (#75), sampled from the r8 light captures: failed
-     chip #fcf3f2/#ca3a32 (54), fail title #cc7c2e (54), del row tint
-     #f8e6e4 (72), rerun-dialog agent row #f1ede7 (56), range chip
-     #eeebe7 / border #d1cdc9 (65) */
-  --chip-failed-bg: #fcf3f2;
-  --chip-failed-fg: #ca3a32;
-  --fail-fg: #cc7c2e;
-  --diff-del-bg: #f8e6e4;
-  --dialog-row-bg: #f1ede7;
-  --range-chip-bg: #eeebe7;
-  --range-chip-border: #d1cdc9;
   /* overlay batch A (#66), light values probed off r7 04/25; the dialog
      shadow is theme-invariant (probed light, r8 79 dark shows the same)
      — mirrored explicitly so .light stays the full semantic-token mirror */
-  --disabled-fg: #ffffff;
-  --menu-icon: #1c1917;
   --dialog-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
-  /* modal dialogs (issue #68), sampled from r7 30/31: panel #fdfaf7, inset
-     box #f1ede7, disabled 同步 #a5a1ea, off-toggle track #e7e2da */
-  --dialog-bg: #fdfaf7;
-  --dialog-box-bg: #f1ede7;
-  --indigo-disabled: #a5a1ea;
-  --indigo-disabled-fg: #ffffff;
-  --toggle-track: #e7e2da;
-  --seg-hover: rgb(28 25 23 / 0.05);
-  /* 运行历史 row ring (r7 32 scan) */
-  --dialog-ring: #cbc8c4;
-  /* resource surfaces (r7 06–10, #69), sampled from the light captures */
-  --tile-orange-bg: #f0e5d5;
-  --tile-orange-fg: #e9a23b;
-  --tile-indigo-bg: #e3dfe7;
-  --tile-indigo-fg: #6466e9;
-  --tile-hero-bg: #f8ead8;
-  --pill-idle-bg: #e7e2da;
-  --dash-border: #e8e2db;
-  --primary-disabled: #a49fe8;
-  /* overlay batch B (issue #67), measured off r7 05/05b/19: selected row
-     tile, result icon tile, popover hairline, indigo select block */
-  --row-selected: #f1ede7;
-  --row-icon-bg: #e7e2da;
-  --overlay-divider: #efebe5;
-  --overlay-select-indigo: #edebf6;
   /* chief surfaces (r5 100–104, #72): shadow from the r5 100 edge
-     gradient, tab strip from the r5 101 group bg / active pill */
+     gradient */
   --chief-shadow: 0 4px 24px rgb(28 25 23 / 0.16);
-  --chief-tab-bg: #eeeae4;
-  --chief-tab-active: #f7f4ef;
-  /* notification banner bell disc (#114), r2 01 light sample */
-  --notify-icon-bg: #e3dfe7;
-  /* 轨 A 家族（spacing / on-accent / knob / scrim）: 主题不变值，循
-     --danger/--stop 惯例显式同值镜像，让 .light 保持完整语义 token 面 */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --text-on-accent: #ffffff;
-  --toggle-knob: #ffffff;
-  --overlay-scrim: rgb(0 0 0 / 0.6);
 }

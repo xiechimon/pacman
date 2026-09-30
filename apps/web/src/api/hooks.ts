@@ -17,7 +17,12 @@ import type {
   DiffFileContent,
   DocumentDiff,
   DocumentDiffFile,
+  FsListResult,
+  FsPickResult,
   GithubConnectionStatus,
+  GithubIssueEcho,
+  GithubIssueState,
+  GithubIssuesResponse,
   GithubReposResponse,
   MachineRecord,
   McpServerRecord,
@@ -43,7 +48,13 @@ import type {
   TokenUsage,
   UserRecord,
 } from '@pacman/shared';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from './client.js';
 
@@ -112,6 +123,33 @@ export const useTags = (projectId: string | undefined, enabled: boolean) =>
     queryFn: () => api.get<TagRecord[]>(`/api/projects/${projectId}/tags`),
     enabled: enabled && projectId !== undefined,
   });
+
+/** #403 看板标签筛选 + #445 卡片标签：看板是 team 面而标签属项目——全
+ * 项目标签集并查（useRunHistoryTokens 同式；queryKey 与 useTags 同键，缓存
+ * 共享去重），合成 tagId → 标签行（TagChipData 同形投影——卡面 chip 吃
+ * name+color）与 tagId → 词表名（筛选谓词面）双解析图。ready = 全部查询
+ * 落定：首载未完时调用面不得激活筛选，否则 tagged 卡会闪隐（map 空 =
+ * 全部不命中）。 */
+export function useProjectTags(projectIds: string[], enabled: boolean) {
+  const queries = useQueries({
+    queries: projectIds.map((id) => ({
+      queryKey: ['tags', id],
+      queryFn: () => api.get<TagRecord[]>(`/api/projects/${id}/tags`),
+      enabled,
+    })),
+  });
+  return useMemo(() => {
+    const tagById = new Map<string, Pick<TagRecord, 'id' | 'name' | 'color'>>();
+    const nameById = new Map<string, string>();
+    for (const q of queries) {
+      for (const tag of q.data ?? []) {
+        tagById.set(tag.id, { id: tag.id, name: tag.name, color: tag.color });
+        nameById.set(tag.id, tag.name);
+      }
+    }
+    return { tagById, nameById, ready: queries.every((q) => !q.isPending) };
+  }, [queries]);
+}
 
 export const useTodos = (teamId: string | undefined, enabled: boolean) =>
   useQuery({
@@ -292,6 +330,54 @@ export const useGithubRepos = (enabled: boolean) =>
     enabled,
   });
 
+/** 应用内目录浏览数据源（#441，ADR 0003 D6 remote/headless 兜底）：
+ *  dir null = 缺省请求（server $HOME 起点，web 无从知道 server HOME）；
+ *  queryKey 含 dir = 快速连点导航按键隔离（W4），keepPreviousData 防塌缩
+ *  闪烁——下钻期间旧列表留显不闪空面。 */
+export const useFsList = (dir: string | null, enabled: boolean) =>
+  useQuery({
+    queryKey: ['fs-list', dir],
+    queryFn: () =>
+      api.get<FsListResult>(
+        dir === null ? '/api/fs/list' : `/api/fs/list?dir=${encodeURIComponent(dir)}`,
+      ),
+    enabled,
+    placeholderData: keepPreviousData,
+    staleTime: 0,
+  });
+
+/** 项目页「从 GitHub issue 建任务」选择器数据面（#446）：state/page 直透
+ * server 代理面；enabled 收窄到弹层开态（关着不发请求，useGithubConnection
+ * 同律）。 */
+export function useGithubIssues(
+  projectId: string | undefined,
+  state: GithubIssueState,
+  page: number,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ['github-issues', projectId, state, page],
+    queryFn: () =>
+      api.get<GithubIssuesResponse>(
+        `/api/projects/${projectId}/github/issues?state=${state}&page=${page}`,
+      ),
+    enabled: enabled && projectId !== undefined,
+  });
+}
+
+/** 来源 issue 只读回显（#452 / ADR 0006 D5/D6）：详情页进入时拉一次——
+ *  staleTime ∞ + retry 关：拉不到（未连接/token 失效/限流/issue 被删）整行
+ *  隐藏，不轮询、不显示陈旧值、不弹错。enabled 收窄到 sourceRef 已落。 */
+export function useGithubIssueEcho(todoId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ['github-issue-echo', todoId],
+    queryFn: () => api.get<GithubIssueEcho>(`/api/todos/${todoId}/github-issue`),
+    enabled: enabled && todoId !== undefined,
+    retry: false,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
 export const useSecrets = (teamId: string | undefined, enabled: boolean) =>
   useQuery({
     queryKey: ['secrets', teamId],
@@ -410,6 +496,22 @@ export function useApiMutations(teamId: string | undefined) {
         }),
       onSuccess: invalidateAll,
     }),
+    // 从 GitHub issue 建任务（#446 / ADR 0005 读向）：server 现拉 issue +
+    // 镜像同步 label 集 → 201 全 TodoRecord（标题/正文/多标签/来源两列已落）。
+    importGithubIssue: useMutation({
+      mutationFn: (input: { projectId: string; number: number }) =>
+        api.post<TodoRecord>(`/api/projects/${input.projectId}/github/issues/import`, {
+          number: input.number,
+        }),
+      onSuccess: invalidateAll,
+    }),
+    // 未建成重试（#452 / ADR 0006 D2）：来源 issue 建失败的任务显式重试；
+    // 成功 → 失效重取（sourceRef 补上，回显行随之升级）。
+    retryGithubIssue: useMutation({
+      mutationFn: (todoId: string) =>
+        api.post<TodoRecord>(`/api/todos/${todoId}/github-issue/retry`, {}),
+      onSuccess: invalidateAll,
+    }),
     patchTodo: useMutation({
       mutationFn: (input: {
         id: string;
@@ -508,6 +610,11 @@ export function useApiMutations(teamId: string | undefined) {
       mutationFn: (body: CreateProjectBody) =>
         api.post<ProjectRecord>('/api/projects', { ...body, ...(teamId ? { teamId } : {}) }),
       onSuccess: invalidateAll,
+    }),
+    // #440 原生文件夹选取（ADR 0003）：取消 = {path:null} 正常结局非错误面；
+    // 纯读取动作，无缓存失效。
+    pickLocalFolder: useMutation({
+      mutationFn: () => api.post<FsPickResult>('/api/fs/pick'),
     }),
     // #189 删除面(#207 接线):级联语义单源在 server services/projects.ts。
     deleteProject: useMutation({

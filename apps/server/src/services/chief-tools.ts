@@ -32,6 +32,7 @@ import {
   tokenUsage,
 } from '../db/schema.js';
 import { HttpError } from '../lib/errors.js';
+import type { FetchLike } from '../lib/github.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { applyBuildStepAction, requestMerge, startBuilds } from './builds.js';
 import { addChiefWatch, clearChiefWake, removeChiefWatches, setChiefWake } from './chief.js';
@@ -63,6 +64,9 @@ export interface ChiefToolDeps {
   /** 本机 MCP config 读路径（spec 13/#368 mcp_servers 工具换源）；缺省 =
    *  ~/.claude.json（config.ts 同默认；测试面显式注入 fixture 路径）。 */
   mcpConfigPath?: string;
+  /** GitHub 出站注入位（#452 写向：create_todo 自建 issue 透传；
+   * AppContext.githubFetch 同族，缺省 globalThis.fetch，测试注入 mock）。 */
+  githubFetch?: FetchLike;
 }
 
 /** 单次 relay 调用的溯源上下文（step → chief thread 解析，services/machines.ts
@@ -136,6 +140,24 @@ function requireTeamTodo(db: Db, todoId: string, teamId: string) {
   if (!row) throw new HttpError(404, `todo ${todoId}`);
   return row;
 }
+/** 分派槽的 agentId 校验。不校验的后果是静默的：模型把长随机 id 抄错一位，
+ * 一个不存在的 agentId 照样落库，直到构建跑起来才炸（而那时用户已经看到
+ * 「已派工」的回执）。抛错经 relay 回到模型眼前（daemon 把它折成工具结果文本
+ * `run_builds rejected: …`），模型可以据此重挑。 */
+/** 单次 docs 读的路径上限。批量读的收益来自「少几趟往返」，不是「一趟读完整
+ * 个仓」——结果过大反而把上下文撑爆，后几趟更贵。超出的条数在应答里显式报出
+ * （omitted），模型可再发一趟接着读。 */
+const DOCS_MAX_PATHS = 24;
+
+function requireTeamAgent(db: Db, agentId: string, teamId: string) {
+  const row = db
+    .select()
+    .from(agent)
+    .where(and(eq(agent.id, agentId), eq(agent.teamId, teamId)))
+    .get();
+  if (!row) throw new HttpError(404, `agent ${agentId}（不在本团队，或 id 抄错了）`);
+  return row;
+}
 /** 48 词表服务端执行。未识别工具名 = 400（词表外不执行，02 §7.2 白名单纪律
  * 同族）。返回 JSON 串。 */
 export async function executeChiefTool(
@@ -145,7 +167,16 @@ export async function executeChiefTool(
   params: Params,
 ): Promise<string> {
   const { db } = deps;
-  const svc = { db, hub: deps.hub, machineHub: deps.machineHub, user: deps.user };
+  // #452 写向：box/githubFetch 透传——chief create_todo 与三条创建路径同律
+  // （已连接 github 项目的任务落库即自建 issue，关键路径之外）。
+  const svc = {
+    db,
+    hub: deps.hub,
+    machineHub: deps.machineHub,
+    user: deps.user,
+    box: deps.box,
+    ...(deps.githubFetch !== undefined ? { githubFetch: deps.githubFetch } : {}),
+  };
   switch (name) {
     // —— 读侧 15 ——
     case 'projects': {
@@ -231,23 +262,28 @@ export async function executeChiefTool(
       // [设计]。无 path → 回项目 repo 元信息（GitHub 形态无本地存储）。
       const projectId = str(params, 'projectId');
       const row = requireProjectRow(db, projectId);
-      const path = optStr(params, 'path');
-      if (path === undefined) {
-        return json({ projectId, name: row.name, repoKind: row.repoKind, path: null });
+      const paths = strArr(params, 'paths');
+      if (paths.length === 0) {
+        return json({ projectId, name: row.name, repoKind: row.repoKind, files: [] });
       }
-      const file = await readFile(
-        { db, reposDir: deps.reposDir },
-        projectId,
-        path,
-        optStr(params, 'ref'),
-      );
+      // 逐条读、逐条记错，不因单条失败整体回退：一次读多个文件时，模型不该
+      // 因为其中一个路径猜错就丢掉另外几个——那会逼它再花一整趟往返重读。
+      const capped = paths.slice(0, DOCS_MAX_PATHS);
+      const ref = optStr(params, 'ref');
+      const files: Record<string, unknown>[] = [];
+      for (const p of capped) {
+        try {
+          const f = await readFile({ db, reposDir: deps.reposDir }, projectId, p, ref);
+          files.push({ path: f.path, ref: f.ref, encoding: f.encoding, content: f.content });
+        } catch (err) {
+          files.push({ path: p, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
       return json({
         projectId,
         name: row.name,
-        path: file.path,
-        ref: file.ref,
-        encoding: file.encoding,
-        content: file.content,
+        files,
+        ...(paths.length > capped.length ? { omitted: paths.length - capped.length } : {}),
       });
     }
     case 'usage': {
@@ -536,6 +572,9 @@ export async function executeChiefTool(
         plan: assignmentIn?.plan?.agentId ? { agentId: assignmentIn.plan.agentId } : null,
         build: assignmentIn?.build?.agentId ? { agentId: assignmentIn.build.agentId } : null,
       };
+      for (const slot of [assignment.plan, assignment.build]) {
+        if (slot !== null) requireTeamAgent(db, slot.agentId, ctx.teamId);
+      }
       const started: unknown[] = [];
       for (const todoId of todoIds) {
         const row = requireTeamTodo(db, todoId, ctx.teamId);

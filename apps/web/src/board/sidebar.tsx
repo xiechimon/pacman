@@ -145,7 +145,7 @@ const groupAria = (t: TFunc, label: string, collapsed: boolean) =>
  *  B 面 hover/selected = --sidebar-hover/--sidebar-active（neutral alpha 梯）。
  *  focus 环走 B 的 ring（全局 indigo outline 在 app.css，本族显式覆盖）。 */
 const ROW_BASE =
-  'relative flex w-full flex-none items-center text-left text-[13px] leading-4 text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-[2px] before:rounded-[6px] before:content-[""] focus-visible:[outline:2px_solid_var(--card-button)] focus-visible:outline-offset-2 [&>span:not(.sidebar-kbd):not(.sidebar-online-dot)]:relative';
+  'relative flex w-full flex-none items-center text-left text-[13px] leading-4 text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-[2px] before:rounded-[6px] before:content-[""] focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>span:not(.sidebar-kbd):not(.sidebar-online-dot)]:relative';
 /** hover 与 selected 互斥挂在行上（旧 css 的 :not(--selected):hover 闸）：
    选中行悬停保持深 pill，不被 hover 梯洗浅。 */
 const ROW_HOVER = 'hover:before:bg-sidebar-hover';
@@ -197,7 +197,7 @@ function RailGroupChevron({
   return (
     <button
       type="button"
-      className={`rail-row rail-group group relative flex h-8 w-10 flex-none cursor-pointer items-center justify-center border-none bg-transparent text-muted-foreground focus-visible:[outline:2px_solid_var(--card-button)] focus-visible:outline-offset-2 ${
+      className={`rail-row rail-group group relative flex h-8 w-10 flex-none cursor-pointer items-center justify-center border-none bg-transparent text-muted-foreground focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 ${
         collapsed ? 'rail-group--collapsed' : ''
       }`}
       aria-label={groupAria(t, label, collapsed)}
@@ -213,7 +213,7 @@ function RailGroupChevron({
 
 /** Rail 行公共件：32px 轨道行 + 24px pill（inset 8/4）。 */
 const RAIL_ROW =
-  'rail-row relative flex h-8 w-10 flex-none items-center justify-center text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-1 before:rounded-[6px] before:content-[""] hover:before:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--card-button)] focus-visible:outline-offset-2 [&>svg]:relative [&>.project-avatar]:relative';
+  'rail-row relative flex h-8 w-10 flex-none items-center justify-center text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-1 before:rounded-[6px] before:content-[""] hover:before:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>svg]:relative [&>.project-avatar]:relative';
 const RAIL_SELECTED = 'rail-row--selected text-foreground before:bg-sidebar-active';
 
 export function BoardSidebar({
@@ -269,7 +269,7 @@ export function BoardSidebar({
       <aside className="board-sidebar board-sidebar--collapsed relative z-10 flex w-10 flex-none flex-col border-r border-[var(--border-default)] bg-background">
         <button
           type="button"
-          className="rail-toggle flex h-11 w-10 flex-none cursor-pointer items-center justify-center border-0 border-b border-[var(--border-default)] bg-transparent text-muted-foreground hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--card-button)] focus-visible:outline-offset-2"
+          className="rail-toggle flex h-11 w-10 flex-none cursor-pointer items-center justify-center border-0 border-b border-[var(--border-default)] bg-transparent text-muted-foreground hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2"
           aria-label={t('展开侧边栏')}
           onClick={onToggle}
         >
@@ -337,7 +337,7 @@ export function BoardSidebar({
         <div className="sidebar-spacer flex-1" />
         <button
           type="button"
-          className="rail-user mb-[11px] flex h-[38px] w-10 flex-none cursor-pointer items-center justify-center border-none bg-transparent outline-none hover:rounded-md hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--card-button)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+          className="rail-user mb-[11px] flex h-[38px] w-10 flex-none cursor-pointer items-center justify-center border-none bg-transparent outline-none hover:rounded-md hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
           aria-label={USER_NAME}
           aria-expanded={userMenuOpen}
           onClick={toggleUserMenu}
@@ -382,7 +382,7 @@ export function BoardSidebar({
         </Link>
         <button
           type="button"
-          className="sidebar-team-collapse mr-[14px] ml-auto flex size-7 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-muted-foreground hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--card-button)] focus-visible:outline-offset-2"
+          className="sidebar-team-collapse mr-[14px] ml-auto flex size-7 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-muted-foreground hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2"
           aria-label={t('收起侧边栏')}
           onClick={onToggle}
         >
@@ -405,10 +405,13 @@ export function BoardSidebar({
           </span>
         </button>
         {/* #389: 新任务行动作行——点击与全局 N 热键同一 opener；行序钉在
-            搜索 之后（sidebar-visual 的 .sidebar-kbd 单数探针吃首枚 ⌘K）。 */}
+            搜索 之后（sidebar-visual 的 .sidebar-kbd 单数探针吃首枚 ⌘K）。
+            #445: sidebar-new-task = 可钉别名（顶栏「+ 任务」撤除后，本行是
+            新建入口的唯一点击面——e2e/integration 的 opener 与焦点回落断言
+            全部指这里）。 */}
         <button
           type="button"
-          className={`sidebar-row ${ROW_BASE} ${ROW_HOVER} h-9 pl-[18px]`}
+          className={`sidebar-row sidebar-new-task ${ROW_BASE} ${ROW_HOVER} h-9 pl-[18px]`}
           onClick={onNewTask}
         >
           <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
@@ -510,7 +513,7 @@ export function BoardSidebar({
 
       <button
         type="button"
-        className="sidebar-user flex h-11 flex-none cursor-pointer items-center border-0 border-t border-[var(--border-default)] bg-transparent px-2 hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--card-button)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+        className="sidebar-user flex h-11 flex-none cursor-pointer items-center border-0 border-t border-[var(--border-default)] bg-transparent px-2 hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
         aria-label={USER_NAME}
         aria-expanded={userMenuOpen}
         onClick={toggleUserMenu}

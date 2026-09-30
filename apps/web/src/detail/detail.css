@@ -15,6 +15,14 @@
   overflow: hidden;
 }
 
+/* #447 (ADR 0004 D7): the chief panel occupies the right-pane slot while
+   docked (RightPane unmounts), so the pane-width var narrows to the panel
+   and the composer / composer-reject / detail-fab anchors below keep
+   skipping the right slot by exactly its width + 16px. */
+.detail-shell[data-chief-open] {
+  --detail-pane-right: 418px;
+}
+
 .detail-main {
   position: relative;
   flex: 1;
@@ -111,7 +119,12 @@
 
 /* ---- body: center thread column + 488px right pane (#366) ---- */
 
+/* position:relative = the chief panel's exit anchor (#447): the retained
+   slide-out element goes absolute over the right-pane slot it just
+   vacated (chief.css closed-state rule) instead of stretching over the
+   head. */
 .detail-body {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -1371,6 +1384,8 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   font-weight: 600;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
+   组件（.fresh-meta svg + svg），无实际级联；按 UI 区段分文件，不重排 */
 .version-menu-row svg {
   color: var(--text-dim);
 }
@@ -1514,6 +1529,8 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   color: var(--text-dim);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
+   组件（.fresh-meta svg + svg），无实际级联；按 UI 区段分文件，不重排 */
 .rerun-agent-row > svg {
   color: var(--text-dim);
 }
@@ -1544,7 +1561,7 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 }
 
 .rerun-switch:focus-visible {
-  outline: 2px solid var(--card-button);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -1615,8 +1632,8 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 }
 
 /* A6：覆盖 A3「保留族类不接 Button 原语」裁决（docs/spec/09）。原三条
-   拒收理由已被化解：(1) ghost 描边 token 单源化（--card-ghost-border
-   别名指向 --card-border，token 双值合并）；(2) Button size 新增
+   拒收理由已被化解：(1) ghost 描边 token 单源化（--card-border 单源，
+   #412 D2 起为 --border-default 别名）；(2) Button size 新增
    overlay 30px 档；(3) Tailwind v4 base 默置 box-sizing: border-box，
    1px 描边不再吃盒高度。5 处 overlay-btn 全部由 ui/button 原语消费
    variant='ghost'|'primary' size='overlay' 替换完成。 */
@@ -1648,4 +1665,45 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   font-size: 10px;
   line-height: 16px;
   text-align: center;
+}
+
+/* ---- 来源 issue 行（#452 / ADR 0006 D5/D6）：live 详情中心列首行。
+   中性安静行——未建成态带重试 text 钮（btn--text 皮肤单源 ui/button.css）；
+   回显态 = 号 + 状态 + 上游现值标题；不一致提示用 tertiary 墨（只提示不
+   覆盖，非错误腔）。拉不到整行隐藏归组件面（无 CSS 态）。 ---- */
+.source-issue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+  min-width: 0;
+}
+
+.source-issue-label {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+.source-issue-number {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+.source-issue-state {
+  flex: none;
+}
+
+.source-issue-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-issue-drift {
+  flex: none;
+  font-style: italic;
+  color: var(--text-tertiary);
 }

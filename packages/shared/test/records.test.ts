@@ -16,6 +16,7 @@ import {
   createTodoBodySchema,
   daemonJsonSchema,
   deviceJsonSchema,
+  githubIssueSourceRef,
   machineJsonSchema,
   mcpServerRecordSchema,
   memoryRecordSchema,
@@ -58,10 +59,23 @@ describe('todo record (02 §4.1 + r3 §3.0 + r5 §3.2)', () => {
     createdBy: 'TVv0DxUu3jTIhYpeWh6mn',
     ownerId: 'usr_mon',
     sourceBuildId: 'chief-6ItyfRe7Q7hru5xFmMu-u-',
+    sourceKind: null,
+    sourceRef: null,
   };
 
   it('parses the full observed field set', () => {
     expect(todoRecordSchema.parse(sample)).toEqual(sample);
+  });
+
+  it('来源两列（#446 / ADR 0005 D6）：github-issue + 引用串过闸，未知种类拒', () => {
+    const imported = {
+      ...sample,
+      sourceKind: 'github-issue',
+      sourceRef: 'github:octo/alpha#7',
+    };
+    expect(todoRecordSchema.parse(imported)).toEqual(imported);
+    expect(todoRecordSchema.safeParse({ ...sample, sourceKind: 'jira' }).success).toBe(false);
+    expect(githubIssueSourceRef('octo', 'alpha', 7)).toBe('github:octo/alpha#7');
   });
 
   it('rejects the作废 exec猜测 (r3 §3.0 正名 building)', () => {
@@ -531,6 +545,8 @@ describe('team stream SSE events (02 §1.2, r5 §7.2 实测扩充)', () => {
     createdBy: null,
     ownerId: 'usr_mon',
     sourceBuildId: null,
+    sourceKind: null,
+    sourceRef: null,
   });
 
   it('parses the ~15s ping heartbeat', () => {

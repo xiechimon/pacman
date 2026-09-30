@@ -3,12 +3,13 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from 'cn';
 
 // 仓内偏离（#414/#425，两处，勿在重拉时丢）：
-// 1) focus 环走仓级 #388 canon（2px 实线 --card-button），去 upstream 的
+// 1) focus 环走仓级 #388 canon（2px 实线 --focus-ring——#435 D3 后环色由
+//    --card-button 语义分离独立成名，值同为 #4e47dd），去 upstream 的
 //    outline-none + 灰 ring；
 // 2) 过渡显式窄写：TW 的 transition-all / transition-colors 属性表都含
 //    outline-color，会把 focus 环吞进过渡初值（#15 探针实测）。
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color] duration-150 select-none focus-visible:[outline:2px_solid_var(--card-button)] focus-visible:outline-offset-2 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color] duration-150 select-none focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

@@ -10,7 +10,7 @@
 |---|---|---|---|
 | 团队 | Team | `team` | 顶层租户边界，项目、Agent、机器、资源与套餐（plan）都归属其下。 |
 | 项目 | Project | `project` | 团队下聚合任务、仓库与文件的单位。 |
-| 仓库 | Repo | `repo` | 项目绑定的代码仓库（Pacman 托管或 GitHub 接入）。是 Project 的属性，不是独立租户层。 |
+| 仓库 | Repo | `repo` | 项目绑定的代码来源，两种形态：GitHub 接入（`githubRepo`）或本地文件夹（`localPath`，必须是 git 仓库——server 三态校验 not_absolute / not_found / not_git）。是 Project 的属性，不是独立租户层。hosted（Pacman 托管）形态已移除。 |
 
 _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的任务检出目录（`~/.pacman/workspaces/<conversationId>`）；禁止用它指代团队或任何界面层级。
 
@@ -23,14 +23,17 @@ _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的�
 | 运行 | Build | `build` | todo 的一次执行：一次运行 = 一个 build = 一个 conversation = 一个 worktree+分支。其 id 与 `conversationId` 同值。 |
 | 对话 | Conversation | `conversation` | build 产生的消息流的别名视图，与其同 UUID；不作为独立实体。 |
 | 方案 | Plan | `plan` | build 内类型化的规划产物卡（Context / Changes / Edge cases / Verification）；不是独立实体。 |
-| 标签 | Tag | `tag` | todo 的 category 标签：固定词表（bug / feature / improvement / refactor / docs / chore），随项目播种；派发时由执行 agent 回填，每任务至多 1 个，无人工创建/挑选 UI（ADR 0002）。 |
-| 占位标题 | Placeholder title | `title`（占位态） | 保存任务时落库的首行截断标题（正文首行 ≤50 字符）；执行 agent 接单后用 LLM 总结回填正式标题覆盖之。 |
+| 标签 | Tag | `tag` | todo 的 category 标签。**词表来源与数量上限随仓库形态分叉**：`githubRepo` 项目 = 该仓库实际的 label 集（动态，issue 挂几个贴几个）；`local` 项目 = 固定 6 词表（bug / feature / improvement / refactor / docs / chore），随项目播种，每任务至多 1 个。两形态都是派发时由执行 agent 回填、无人工创建/挑选 UI（ADR 0002 D4/D5，ADR 0005 D2/D4）。 |
+| 占位标题 | Placeholder title | `title`（占位态） | 保存任务时落库的首行截断标题（正文首行 ≤50 字符）；执行 agent 接单后用 LLM 总结回填正式标题覆盖之。**仅 local 项目**——github 项目从 issue 建的任务直接用 issue 标题，没有占位态（ADR 0005 D5）。 |
+| 来源 | Source | `sourceKind` / `sourceRef` | todo 的外部出处，当前只有 GitHub issue 一种（`sourceRef` 形如 `github:owner/repo#123`）；一个任务至多一个，归 `todo` 既有的溯源家族。github 项目的任务**两侧都有落点**：领来的记下那枚 issue，自派的建一枚（ADR 0005 D6、ADR 0006 D1）。但**不改写 issue 的状态、不自动覆盖**——issue 侧仍是真值，pacman 只显示差异（ADR 0006 D5/D6）。 |
 
 边界裁决：
 - **无 Goal 概念** —— 工作单元只有一个，即 `todo`；「Goal」不引入。
 - **`待验收` 与 `审核` 是同一 phase 的两个界面词**，正名取列名 `待验收`；`完成`（`done`）是动作/按钮，不是阶段名。
 - Build 与 Conversation 是一个实体的两面（执行 vs 消息流），不拆成两套 id。
-- **新建任务无「标题」填写面** —— 用户只写任务正文，标题 = 占位标题 → agent 回填两段式（ADR 0002）；标签的 state 轴不引入，已由 `phase` 承载。
+- **新建任务无「标题」填写面** —— 用户只写任务正文，标题 = 占位标题 → agent 回填两段式（ADR 0002，**仅 local 项目**；github 项目的任务从 issue 取标题，见 ADR 0005 D5）；标签的 state 轴不引入，已由 `phase` 承载。
+- **标签与标题的真值随仓库形态分叉** —— `githubRepo` 项目的元信息对 issue 取真值，`local` 项目留在 pacman 内（ADR 0005 D1）。分叉的依据是约束不是偏好：local 项目没有外部真值可依。读这条词表时不要默认两种形态行为一致。
+- **`issue` 不是 pacman 实体** —— GitHub issue 只在「来源」里作为外部引用出现。pacman 会往 GitHub 建 issue、写它的标题（ADR 0006 D1/D3），但**不引入 Issue 记录、不镜像状态、不做自动同步**——真值方向始终是 issue → pacman（ADR 0005 D1、ADR 0006 D5）。
 
 ## 执行体
 
@@ -41,7 +44,7 @@ _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的�
 | 总管 | Chief | `chief` | 每「用户×团队」一个的调度与对话代理，负责分派任务；领域上区别于干活的 worker Agent。 |
 | 记忆 | Memory | `memory` | Agent 在工作中沉淀的经验条目。todos.dev 写入路径未实测 [黑盒]；复刻采最小机制（02-架构平价 §4.4，全标 [推断]，待 #46 校准）。 |
 
-边界裁决：Agent ≠ Machine（一个是配置好的角色，一个是承载它的物理主机）。Chief 是单独概念，不作为普通 Agent 的子类型混称。
+边界裁决：Agent ≠ Machine（一个是配置好的角色，一个是承载它的物理主机）。Chief 是单独概念，不作为普通 Agent 的子类型混称。**总管面板是布局的一列，不是浮层**（ADR 0004）——界面词「总管面板」指贴右竖板；形态事实归 ADR，此处只钉术语。
 
 ## 资源与配置
 

@@ -40,16 +40,24 @@
 ## baseline 结果（glm-5.3，36 用例 × 3 reps，2026-09-29）
 
 ```
-decision_ok  102/108 = 94.4%   95%CI [90.1%, 98.8%]
-receipt_ok   102/108 = 94.4%
-派工类 67/72 = 93%   负例类 35/36 = 97%
-成本 $6.00   单回合延迟中位 53s
-链路失败 8 条（已落 errors.jsonl，不计分）
+decision_ok  168/176 = 95.5%   95%CI [92.4%, 98.5%]
+原有 36 条 100/105 = 95.2%   新增 28 条 68/71 = 95.8%
+成本 $9.16   链路失败 16 条（8.3%，全 harness_error，已隔离不计分）
 ```
 
-**这个评测已经饱和，测不出改进了。** 余量 5.6 个百分点小于底噪 ±9.6 个百分点——
-想分辨 5 点的提升需要约 271 个回合（现在 108）。要继续用，目标必须从「提准确率」
-转向「保准确率降成本/降延迟」：这个目标在饱和评测上近乎总成立。
+**这个评测已经饱和，测不出改进了。** 余量 4.5 个百分点小于底噪 ±7.5 个百分点。
+
+为此做过一轮加难（36 → 64 条：诱饵路径 8 / 跨类别 6 / 症状归属 6 / 难负例 8），
+并先在 `工作约定` 里补了三条对应判别规则以保证「可判」。**结果是加难失败**：
+新增的 28 条得 95.8%，比原有的 95.2% 还高 0.6 个点。
+
+失败的原因值得记下来：难例之所以难，通常是因为落在类别边界；而为了让边界可判、
+两个专家会同判，就得把判别规则写进提示词——**规则一写进去，模型读规则套规则就
+又是容易的了**。难度没有转移到边界判断，只是换了一批「读规则做题」。
+
+结论：派发决策这件事本身对该模型不难。规则写清、编制干净的前提下它近乎全对。
+这个评测的有效用法不是能力爬坡的尺子，而是**回归门**（改动后路由是否还正确），
+以及下面那条真实缺陷的验证器。
 
 ### 失败形态
 
@@ -64,6 +72,31 @@ receipt_ok   102/108 = 94.4%
 2. **该派而未派 / 无正文**（c03 各 1/3、n12 1/3）：前者做完了探测与建任务却没调
    `run_builds`；后者做了 5 次读侧调用但没吐任何正文——按「无回答 ≠ 否定回答」，
    空回合不得因为「没派工」被判通过。
+
+## 已修复：名字/id 错位（2026-09-29）
+
+上面第 1 类失败查实为产品缺陷，已修，并用本评测验证：
+
+- **成因**：`composeChiefSystemPrompt` 把 agents 清单压成一整行 JSON，分派变成
+  在密集条目里数位置抄 id。失败呈现系统性「往前错一位」——该派最后一个 Agent
+  （铁手），实际派了它前面那个（小柯），而回执正文里名字仍然写对。
+  另有一个放大器：helpers 会给每个测试栈 seed 一个集成测试用 Agent
+  （`agent-it-1`），它不属于场景编制却出现在清单里，多一个错位机会。
+- **修法**：agents 改成一行一个、名字与 id 相邻；场景侧清掉那个遗留 Agent；
+  并给 `run_builds` 加 `requireTeamAgent`——不存在的 agentId 抛错经 relay 回到
+  模型眼前（此前是静默落库，直到构建跑起来才炸，而用户早已看到「已派工」）。
+
+**验证**（同 9 条用例 × 3 reps，修复前取本轮 baseline 的同批行）：
+
+| | 修复前 | 修复后 |
+|---|---|---|
+| 9 条合计 | 20/25 = 80% | 27/27 = 100% |
+| 其中 ops 相关 7 条 | 15/19 | 21/21 |
+
+若错位率不变（21%），21 次全对的偶然概率约 0.7%。
+
+**注意：本文件上面的 baseline 数字早于这次修复**（`harness_sha` 也已随之失效，
+重跑需 `--approve-harness`）。要一份与当前代码一致的基线需重跑全量。
 
 ### 计分边界：哪些回合不算分
 
@@ -87,7 +120,7 @@ pnpm --filter @pacman/integration exec tsx eval/chief-dispatch/run-eval.mts \
   --flow .claude/hillclimb/chief-dispatch --variant baseline --model glm-5.3 --reps 3
 
 # 出报告 → .claude/hillclimb/chief-dispatch/report.html
-node integration/eval/chief-dispatch/build-report-lite.mjs .claude/hillclimb/chief-dispatch/
+node integration/eval/chief-dispatch/build-report-lite.mts .claude/hillclimb/chief-dispatch/
 ```
 
 改动 harness（runner / judgeCase / cases.json / 场景种子 / `chief.ts`）后，
@@ -122,3 +155,96 @@ node integration/eval/chief-dispatch/build-report-lite.mjs .claude/hillclimb/chi
 | `qwen3.8-max` | 4/4 | 4/4 | 11.6s | 可用 |
 | `deepseek-v4-pro` | 2/4 | 1/4 | — | 不稳（502 上游断流） |
 | `gpt-5.6-luna` | 0/4 | 0/4 | — | 不可用（relay 未配账号） |
+## 成本画像与已落杠杆（2026-09-29）
+
+单回合实测：输入 10,957 · 输出 3,149 · cache 读 87,891 · 工具调用 10.7 次。
+成本拆解：**cache 读 43.9%**、输入 29.5%、输出 26.6%。
+
+cache 读是最大项，而它随**往返次数**线性增长（每次工具调用都要把整个上下文
+重发一遍）。成本与往返次数的关系实测是十倍跨度（0 次 $0.011 → 20 次 $0.113）。
+
+工具调用分布（176 条 trace / 1881 次）：`docs` 一个占 **64%**（每回合 6.8 次），
+而它是单文件读接口。前 5 个工具（docs/bash/create_todo/watch_todos/run_builds）
+覆盖 90% 的调用。
+
+### 杠杆①：docs 批量读（已落）
+
+`docs` 的参数由 `path` 改为 `paths: string[]`，一次可读多个文件；逐条读、逐条
+记错（不因单条失败整体回退）；单次上限 24 条，超出在应答里显式报 `omitted`。
+
+全场测量（同 64 条用例，改前 3 reps / 改后 1 rep）：
+
+| | 往返 | 输入 tok | 输出 tok | cache 读 | 成本/回合 | decision_ok |
+|---|---|---|---|---|---|---|
+| 改前 | 10.7 | 10,957 | 3,149 | 87,891 | $0.0520 | 95% (n=176) |
+| 改后 | 6.0 | 10,698 | 2,937 | 65,847 | **$0.0450** | 100% (n=61) |
+| 变化 | −44% | −2% | −7% | −25% | **−14%** | 无回退 |
+
+**每回合省 14%。** 往返砍掉 44% 而输入几乎没动（往返少了、每趟上下文更长，
+两边部分抵消）。
+
+顺带：`harness_paths` 原先漏了工具定义（`packages/shared/src/protocol/chief-tools.ts`）
+与执行体（`apps/server/src/services/chief-tools.ts`）——评测测的正是「总管按工具面
+做派发」，改工具描述居然不触发重新放行。已补。
+
+### 不可安全执行的杠杆
+
+按「从未被调用」裁工具（33/53 个从未出现，占 62% schema 体积）**不可凭本评测做**：
+这 176 条 trace 全来自评测用例，而它们只覆盖「一个用户请求 → 派工决策」，
+`create_project`/`connect_repo`/`set_secret`/`merge_builds` 等之所以没出现，是因为
+**评测故意不覆盖那些场景**（wake 轮、配置轮不在范围），不等于生产不需要。
+裁之前需要真实流量。
+
+### 杠杆②：降思考档位 —— 结构性不通（2026-09-29）
+
+`PACMAN_EVAL_CHIEF_THINKING` 旋钮已加（评测 seed 里一个参数，不动产品代码）。
+但 A/B 显示它对 relay 上的模型**无效**：默认档位输出 4,452 token / $0.0636，
+`low` 档位输出 5,513 / $0.0657（4 条用例里 3 条输出反而变多，纯跑间噪声）。
+
+机制查实（读 pi 的 `dist/core/model-config.d.ts`）：pi 要把档位下发出去，得靠
+模型条目里的 `thinkingFormat`（`zai`/`qwen`/`deepseek`/`openrouter`/…）+ 
+`thinkingLevelMap`（档位 → 该 provider 的请求字段）。而 `materializeProvider` 给
+自定义端点写的条目只有 `reasoning/input/cost/contextWindow/maxTokens`——
+**两个字段都没有**，pi 手里没有可翻译的目标。
+
+**产品含义**：pacman 的自定义端点路径完全没有推理深度控制。对 relay 上的模型，
+推理 token 照生成照计费，用户没有任何开关。输出占成本 26.6%，这一块目前不可管理。
+要打开它得为每个模型声明 `thinkingFormat`/`thinkingLevelMap`（需逐 provider 的
+wire 知识，属 spec 11 的地界）。
+
+`PACMAN_EVAL_CHIEF_THINKING` 保留：对声明了思考能力的模型有效，是评测该有的旋钮。
+
+### 杠杆②补：自定义端点接推理档位 —— 已实现（opt-in），效果未定论（2026-09-29/30）
+
+前一节记的「结构性不通」已解：pi 的 `dist/bundle/chunks/openai-completions-*.js` 里，
+只要模型条目 `reasoning: true` 且 compat 探测到 `supportsReasoningEffort`，就会走
+通用分支下发 `reasoning_effort`（值经 `thinkingLevelMap` 映射）。我们的 relay 三者
+都不匹配，落到 `thinkingFormat:'openai'` + `supportsReasoningEffort:true`。
+
+实现：`PACMAN_CUSTOM_MODEL_REASONING=1` 时，`materializeProvider` 给自定义端点的
+模型条目写 `reasoning:true` + 七档映射 + `compat:{supportsDeveloperRole:false}`。
+**opt-in 而非默认**：不同后端对 `reasoning_effort` 容忍度不同——实测本 relay 只认
+low/high/max，传 `medium` 直接 400，默认打开会让一部分自定义端点整条挂掉。映射只
+写该 relay 确认接受的取值（none/low/high/max），并把七档单调折到四档上。
+`supportsDeveloperRole:false` 必需：`reasoning:true` 会把系统提示词角色从 system
+换成 developer（pi 的 instructionRole 判定），钉住它才保证提示词形态不变。
+
+**wire 证据**（`wire-tap.mts`，把 relay 地址指到本地记录代理）：请求体确实是
+`{"reasoning_effort":"low"}`、`systemRole:"system"`、52 工具、maxTokens 16384。
+
+**效果：未定论。** 同 20 条用例配对 A/B（唯一变量 = 开关）：
+
+| 指标 | 开关关 | 开关开+low | 配对差 ±95%CI | 显著 |
+|---|---|---|---|---|
+| 输出 token | 4,220 | 3,878 | −342 ± 999 | 否 |
+| cache 读 | 123,200 | 90,790 | −32,410 ± 72,189 | 否 |
+| 往返 | 9.35 | 7.70 | −1.65 ± 3.78 | 否 |
+| 成本 | $0.0677 | $0.0577 | −$0.0100 ± $0.0210 | 否 |
+| 延迟 | 62.4s | 54.8s | −7.6 ± 11.3 | 否 |
+| decision_ok | 18/20 | 19/20 | — | — |
+
+六个指标的点估计**全部**朝好的方向，但 n=20 分辨不了；成本要定论需约 80 条配对。
+
+**一条方法论教训**：单次调用的探针会严重高估效应——探针里 `reasoning_effort=low`
+把输出砍到 1/4，真实 agentic 回路里点估计只有 −8%。单发没有工具往返与上下文累积，
+不代表真实负载；评估这类字段必须走真实回路。

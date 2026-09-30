@@ -12,6 +12,7 @@ import { openDbWithHandle } from './db/client.js';
 import { seed } from './db/seed.js';
 import { createKeyfileSecretBox } from './lib/secret-box.js';
 import { ConversationStreamHub, TeamStreamHub } from './services/events.js';
+import { killInFlightPick } from './services/fs-pick.js';
 import { MachineWakeHub, seedLocalMachine } from './services/machines.js';
 import { createScheduler } from './services/scheduler.js';
 import { backfillFixedTags } from './services/tags.js';
@@ -99,6 +100,9 @@ const server = serve(
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
     scheduler.stop();
+    // 在飞原生对话框子进程收尸（#440 S7）：osascript 挂在用户交互上，不收
+    // = 逃逸孤儿（逃逸进程回归纪律，chief-process.test.ts 先例）。
+    killInFlightPick();
     server.close();
     close();
     process.exit(0);

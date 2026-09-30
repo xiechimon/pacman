@@ -20,7 +20,12 @@ import {
   boardGithubPicker,
   boardProjectPicker,
   boardR8Overlay,
+  boardRepoFilter,
+  boardTagFilter,
+  boardTagFilterEmpty,
   boardWithProbe,
+  chiefFabAvatar,
+  chiefFabAvatarOverride,
   chiefGated,
   chiefReady,
   chiefSettings,
@@ -117,6 +122,15 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // newtask-projects 先例）——boardDefault 面 + 已连接 github fixture，
       // e2e 钉 picker 搜索/单选回填/断开/着陆参行为。
       'github-picker': boardGithubPicker,
+      // #403 看板标签筛选：命名场景（无 capture，同上先例）——board-tags
+      // 跨列三卡（bug/docs/无标签）钉筛选行为；board-tags-empty 两卡全
+      // tagged，钉板级空结果态。
+      'board-tags': boardTagFilter,
+      'board-tags-empty': boardTagFilterEmpty,
+      // #445 看板仓库筛选：命名场景（无 capture，同上先例）——board-repos
+      // 三项目三卡（r3 两卡 + r2 一卡 + r4-quiet 零卡）钉仓库轴单选/多选/
+      // 空态与「仓库 × 类型」双轴组合收窄。
+      'board-repos': boardRepoFilter,
       // detail (r7 16–17, 23, 26–28, 36, 38)
       '16': detailPlanning,
       '16d': detailConfirm(true),
@@ -140,6 +154,11 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #366: plan-card activation pin (smoke surface, no capture): the
       // review changes face with a collapsed plan card in the thread
       'plan-open': planOpenReview,
+      // #443 named scenario (no capture, notify-banner precedent): scenario
+      // 16's planning surface + chiefUnread 3 — the unread-gated detail FAB
+      // face (badge pass-through pin; the shell-consistency detail row and
+      // chief-fab.spec ride it).
+      'detail-unread': { ...detailPlanning, chiefUnread: 3 },
       // frozen right-pane views (issue #68 captures, re-homed by #366):
       // 30/31/32 sit on the review surface with diff + tool rows expanded,
       // exactly as the captures froze them — the former token/branch/
@@ -265,6 +284,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '111': chiefReady,
       '114': chiefThread,
       '116': chiefThreadsOpen,
+      // #444 FAB 头像命名场景（无 capture，notify-banner 先例）：绑定
+      // Agent 的头像骑上各族 FAB；override 变体钉 avatarUrl 覆盖优先。
+      'fab-avatar': chiefFabAvatar,
+      'fab-avatar-override': chiefFabAvatarOverride,
     } as Record<string, FixtureSet>)
   : {};
 

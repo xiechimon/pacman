@@ -227,6 +227,21 @@ export const EN: Record<string, string> = {
   暂无内容: 'Nothing yet',
   '创建第一个任务以开始使用。': 'Create your first todo to get started.',
   默认项目: 'Default Project',
+  // #446（ADR 0005 读向）项目页「从 GitHub issue 建任务」入口 + 选择弹层
+  // （状态过滤 / 分页 / 三态行）。
+  '从 GitHub issue 建任务': 'New task from GitHub issue',
+  打开: 'Open',
+  已关闭: 'Closed',
+  'issue 列表加载失败': 'Failed to load issues',
+  '这个状态下没有 issue': 'No issues in this state',
+  上一页: 'Previous page',
+  下一页: 'Next page',
+  '第 {page} 页': 'Page {page}',
+  // #452（ADR 0006 写向）详情页来源 issue 行：未建成 + 重试入口 / 回显
+  // （号 + 状态 + 上游现值标题）/ 不一致中性提示（只提示不覆盖）。
+  'GitHub issue 未建成': 'GitHub issue not created',
+  '来源 issue': 'Source issue',
+  与本地标题不一致: 'Differs from the local title',
   // 桌面通知标题（M5 SSE notification 事件面，02 §9.1 三事件；api/sse.ts
   // 纯函数位消费——非组件 t()，i18n-coverage 以本键位兑现 en 兜底）
   方案已就绪: 'Plan ready',
@@ -252,6 +267,19 @@ export const EN: Record<string, string> = {
   路径不存在: 'Path not found',
   '不是 git 仓库': 'Not a git repository',
   需要绝对路径: 'Absolute path required',
+  浏览: 'Browse',
+  '此部署形态不支持系统对话框，请直接输入路径':
+    'System folder dialog is unavailable in this deployment — type the path directly',
+  已有一个选取对话框在进行中: 'A folder dialog is already open',
+  无法打开系统文件夹对话框: 'Cannot open the system folder dialog',
+  // #441 应用内目录浏览器（ADR 0003 D6 remote/headless 兜底）。
+  浏览本地文件夹: 'Browse local folders',
+  显示隐藏文件: 'Show hidden files',
+  没有子目录: 'No subfolders',
+  子目录均已隐藏: 'All subfolders are hidden',
+  选择: 'Select',
+  'git 仓库': 'Git repository',
+  '目录条目过多，只列出前 {n} 条': 'Too many entries — showing the first {n}',
   基本信息: 'Basic info',
   标签: 'Tags',
   'Pacman 托管': 'Pacman hosted',
@@ -268,8 +296,6 @@ export const EN: Record<string, string> = {
   主题: 'Thread',
   新主题: 'New thread',
   总管设置: 'Chief settings',
-  全屏: 'Fullscreen',
-  退出全屏: 'Exit fullscreen',
   '请先为总管选择一个 Agent。': 'Choose an Agent for the Chief first.',
   选择一个主题开始: 'Pick a thread to start',
   '有什么可以帮你的？': 'How can I help?',
@@ -545,4 +571,9 @@ export const EN: Record<string, string> = {
   // —— local 项目 Files tab 禁用面 (spec 12 / #362 G2-T2 v1) ——
   本地仓库项目暂不支持在线浏览文件:
     'Online file browsing is not available for local repository projects',
+
+  // —— #403/#445 看板筛选面（仓库 chip 组 + 类型 popover + 空结果态）——
+  类型: 'Type',
+  没有匹配筛选条件的任务: 'No tasks match the selected filters',
+  清除筛选: 'Clear filters',
 };

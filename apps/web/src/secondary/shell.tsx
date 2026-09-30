@@ -42,16 +42,26 @@ export function SecondaryShell({
   return (
     <div className="secondary-shell" data-route={route}>
       <AppSidebar fixture={fixture} selected={sidebarSelected} />
+      {/* #447 (ADR 0004 D2/D6): secondary-main is the docking row — head +
+          body live in .secondary-main-col (flex:1, yields) and the chief
+          panel rides as the last flex item; the wake FAB keeps the
+          secondary-main absolute anchor. */}
       <div className="secondary-main">
-        <header className="secondary-head">
-          <Link className="secondary-back" to={{ pathname: '/app', search }} aria-label={t('返回')}>
-            <ChevronLeft />
-          </Link>
-          <div className="secondary-title">{title}</div>
-          {right != null && <div className="secondary-head-right">{right}</div>}
-        </header>
-        <div className="secondary-body">
-          <div className="secondary-col">{children}</div>
+        <div className="secondary-main-col">
+          <header className="secondary-head">
+            <Link
+              className="secondary-back"
+              to={{ pathname: '/app', search }}
+              aria-label={t('返回')}
+            >
+              <ChevronLeft />
+            </Link>
+            <div className="secondary-title">{title}</div>
+            {right != null && <div className="secondary-head-right">{right}</div>}
+          </header>
+          <div className="secondary-body">
+            <div className="secondary-col">{children}</div>
+          </div>
         </div>
         {/* 总管 FAB rides every surface (r7 12/13 bottom-right circle) and
             wakes the shared chief drawer (#129) */}

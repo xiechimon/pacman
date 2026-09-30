@@ -10,10 +10,9 @@
 // by title.
 import type { ProjectFileResponse } from '@pacman/shared';
 import { type ReactNode, useCallback, useMemo, useState } from 'react';
-import { Link, useLocation, useParams, useSearchParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import {
-  useApiMutations,
-  useMembers,
+  useGithubConnection,
   useProjectCommits,
   useProjectFile,
   useProjects,
@@ -40,9 +39,11 @@ import {
   Search,
 } from '../icons/index.js';
 import { NewTaskDialog } from '../overlay/new-task-dialog.js';
+import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { Avatar } from '../ui/avatar.js';
 import { Button } from '../ui/button.js';
+import { GithubIssuesDialog } from './github-issues-dialog.js';
 import { PageShell } from './shell.js';
 import './pages.css';
 
@@ -306,11 +307,15 @@ function TasksPane({
   todos,
   now,
   onNewTask,
+  onOpenGithubIssues,
 }: {
   todos: TaskRow[];
   now: number;
   /** #305: 空态「+ 任务」入口开 NewTaskDialog（与看板新建入口同构）。 */
   onNewTask: () => void;
+  /** #446：github 形态 + 已连接时的「从 GitHub issue 建任务」入口开关；
+   * 缺省 = 入口不渲染（local/hosted/fixture/未连接面零漂移）。 */
+  onOpenGithubIssues?: () => void;
 }) {
   const { t } = useI18n();
   // #318: 行/卡点击 = 导航任务详情(r2 §2 原站点行开详情);search 随行
@@ -361,6 +366,15 @@ function TasksPane({
           value={sort}
           onSelect={setSort}
         />
+        {onOpenGithubIssues !== undefined && (
+          <button
+            type="button"
+            className="prj-tasks-filter prj-issues-entry"
+            onClick={onOpenGithubIssues}
+          >
+            {t('从 GitHub issue 建任务')}
+          </button>
+        )}
         <div className="prj-tasks-view" role="tablist">
           <button
             type="button"
@@ -456,6 +470,8 @@ function TasksPane({
 export function ProjectPage() {
   const { t } = useI18n();
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { search } = useLocation();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   // r2 §2 route table: ?tab=tasks selects the 任务 surface; the capture
@@ -471,17 +487,6 @@ export function ProjectPage() {
   const { live, teamId } = useLiveData();
   const projectsQ = useProjects(teamId, live);
   const todosQ = useTodos(teamId, live);
-  // #305 空态新建入口（与看板新建入口同构）：mutations + 首个 Agent（保存并
-  // 开始的双槽指派，board 同语义——已建屏无开始弹窗，02 §6.2）。
-  const mutations = useApiMutations(teamId);
-  const membersQ = useMembers(teamId, live);
-  const firstAgentId = useMemo(() => {
-    const member = (membersQ.data ?? []).find((m) => m.memberType === 'agent');
-    return member?.actorId ?? null;
-  }, [membersQ.data]);
-  const [newTaskOpen, setNewTaskOpen] = useState(false);
-  // M7 #310 附件 wire：live 创建面 spec 由父持 state,token 才能注入。
-  const [liveSpec, setLiveSpec] = useState('');
   // fixture 面本地新行（board #66 同律）：保存落在客户端集合，页面/侧栏
   // 徽标都吃它；live 面走 mutation + invalidate，不用本地集。
   const [fixtureAdded, setFixtureAdded] = useState<TodoRecord[]>([]);
@@ -528,23 +533,15 @@ export function ProjectPage() {
   const todos = live
     ? (todosQ.data ?? []).map(toDisplayTodo).filter((x) => x.projectId === id)
     : [...fixture.todos, ...fixtureAdded].filter((x) => x.projectId === id);
-  // 保存（#305）：dialog 选中项目优先；未选/查询未决退本页路由项目（空态
-  // 入口长在本项目面上，语义锚 = 路由 id 而非看板的「首项目」）。fixture
-  // 面落 localTodo 本地行（board 同律，approximation：恒 canon projectId）。
-  // spec 15 #394：提交 = 正文单字段；标题 live 面传空串由 server 派生占位，
-  // fixture 面 = localTodo 内同一 shared 规则派生（board 同律）。
-  const createTodo = useCallback(
-    (spec: string, selectedProjectId?: string) => {
-      setNewTaskOpen(false);
-      // 提交后清空 spec,下次打开新建对话框从空开始
-      setLiveSpec('');
-      if (live) {
-        const projectId = selectedProjectId ?? id;
-        if (projectId !== undefined) {
-          mutations.createTodo.mutate({ projectId, spec });
-        }
-        return;
-      }
+  // 新建任务面：dialog 接线 = useNewTaskSurface（board/侧栏全局面同一 save
+  // 路径）。本页差异走 hook 参数位——fixture 落点 = fixtureAdded 本地行
+  // append（seqNum 基线 = scenario 集 + 已加行；canon projectId
+  // approximation 同 #176 律）；锚 = 路由项目 id（#305 律：选择器行置首、
+  // 保存缺省锚本页、不建默认项目）；提及面 = 空 picker；members eager
+  // （保存并开始点击时吃 firstAgentId）。spec 15 #394 同律：提交 = 正文
+  // 单字段，标题 live 面 wire 空串 server 派生、fixture 面 localTodo 内派生。
+  const onFixtureSave = useCallback(
+    (spec: string) => {
       setFixtureAdded((prev) => [
         ...prev,
         localTodo(
@@ -554,54 +551,31 @@ export function ProjectPage() {
         ),
       ]);
     },
-    [live, id, mutations.createTodo, fixture],
+    [fixture],
   );
-  // 保存并开始（r2 §4.2 双钮语义，board 同构）：创建 → POST builds（withPlan，
-  // 首 Agent 双槽指派 [设计]）。fixture 面 = 同保存。
-  const createAndStart = useCallback(
-    (spec: string, selectedProjectId?: string) => {
-      setNewTaskOpen(false);
-      // 提交后清空 spec,下次打开新建对话框从空开始
-      setLiveSpec('');
-      if (!live) {
-        createTodo(spec);
-        return;
-      }
-      const projectId = selectedProjectId ?? id;
-      if (projectId === undefined) return;
-      mutations.createTodo.mutate(
-        { projectId, spec },
-        {
-          onSuccess: (created) =>
-            mutations.startBuilds.mutate({
-              projectId,
-              todoIds: [created.id],
-              assignment: {
-                plan: firstAgentId ? { agentId: firstAgentId } : null,
-                build: firstAgentId ? { agentId: firstAgentId } : null,
-              },
-              withPlan: true,
-            }),
-        },
-      );
+  const { openDialog: openNewTask, dialogProps: newTaskDialogProps } = useNewTaskSurface(fixture, {
+    onFixtureSave,
+    anchorProjectId: id,
+    mentions: false,
+    eager: true,
+  });
+  // 从 GitHub issue 建任务入口（#446 / ADR 0005 读向）：三重门 = live +
+  // github 形态 + 已连接。未连接 = 入口不渲染且页面不报错不空白（connection
+  // 查询失败面容忍，票面验收）；local/hosted/fixture 面零漂移。查询 enabled
+  // 收窄到 github 形态项目（页面挂载不空转，useGithubConnection 同律）。
+  const isGithubRepo = live && wireProject?.repoKind === 'github';
+  const ghConnQ = useGithubConnection(isGithubRepo ? teamId : undefined, isGithubRepo);
+  const ghIssuesAvailable = isGithubRepo && ghConnQ.data?.connected === true;
+  const [issuesOpen, setIssuesOpen] = useState(false);
+  const closeIssues = useCallback(() => setIssuesOpen(false), []);
+  const onIssueImported = useCallback(
+    (record: { id: string }) => {
+      setIssuesOpen(false);
+      // 真用户路径落点：导入即导航任务详情（标题与全部标签当场可见）。
+      navigate({ pathname: `/app/todo/${record.id}`, search });
     },
-    [live, createTodo, id, mutations.createTodo, mutations.startBuilds, firstAgentId],
+    [navigate, search],
   );
-  // #305 dialog 项目行：live = projectsQ 投影、当前项目置首（dialog 未动
-  // 选择的默认行 = rows[0]，即本项目——空态入口的语义锚）；fixture =
-  // scenario projectNames（缺省 undefined → dialog 退 canon 单默认项目，
-  // #176 同律）。
-  const dialogProjects = useMemo(() => {
-    const currentFirst = (rows: { id: string; name: string }[]) => [
-      ...rows.filter((row) => row.id === id),
-      ...rows.filter((row) => row.id !== id),
-    ];
-    if (live) return currentFirst((projectsQ.data ?? []).map((p) => ({ id: p.id, name: p.name })));
-    if (fixture.projectNames == null) return undefined;
-    return currentFirst(
-      Object.entries(fixture.projectNames).map(([pid, name]) => ({ id: pid, name })),
-    );
-  }, [live, projectsQ.data, fixture.projectNames, id]);
   return (
     <PageShell
       fixture={
@@ -610,7 +584,7 @@ export function ProjectPage() {
       selected="none"
       leftTitle={project?.name ?? ''}
       // #389: N 热键/侧栏行走本页 dialog（保存锚路由项目，#305 律）
-      onNewTask={() => setNewTaskOpen(true)}
+      onNewTask={openNewTask}
       tabs={[
         { id: 'tasks', label: '任务' },
         { id: 'files', label: '文件', disabled: isLocalRepo },
@@ -652,42 +626,23 @@ export function ProjectPage() {
         <TasksPane
           todos={todos}
           now={live ? Date.now() : fixture.now}
-          onNewTask={() => setNewTaskOpen(true)}
+          onNewTask={openNewTask}
+          {...(ghIssuesAvailable ? { onOpenGithubIssues: () => setIssuesOpen(true) } : {})}
         />
       )}
-      <NewTaskDialog
-        open={newTaskOpen}
-        onClose={() => setNewTaskOpen(false)}
-        onSave={createTodo}
-        onSaveAndStart={live ? createAndStart : undefined}
-        projects={dialogProjects}
-        {...(live
-          ? {
-              spec: liveSpec,
-              onSpecChange: setLiveSpec,
-              onAttachment: async (files: File[]) => {
-                // #310 三步 wire（r9 §3.1）：每个文件走 grant + upload，
-                // 失败仅记日志不发（用户继续编辑 spec,已发成功的 token 仍
-                // 落入）；token 拼到 spec。多文件按选序拼接，每个 token 占
-                // 独立行（与 detail-page composer / board-page 行为一致）。
-                const tokens: string[] = [];
-                for (const file of files) {
-                  try {
-                    const { attachFile } = await import('../api/attachments.js');
-                    const r = await attachFile({ file, scope: 'spec' });
-                    tokens.push(r.token);
-                  } catch (err) {
-                    console.error('attachment failed', file.name, err);
-                  }
-                }
-                if (tokens.length > 0) {
-                  const joiner = liveSpec === '' || liveSpec.endsWith('\n') ? '' : '\n';
-                  setLiveSpec(`${liveSpec}${joiner}${tokens.join('\n')}\n`);
-                }
-              },
-            }
-          : {})}
-      />
+      {/* dialog 接线 = useNewTaskSurface，本页差异参数位见上方 hook 调用。 */}
+      <NewTaskDialog {...newTaskDialogProps} />
+      {/* #446 issue 选择弹层：门与入口同闸（ghIssuesAvailable），关着不发
+          请求（useGithubIssues enabled 位）。 */}
+      {ghIssuesAvailable && id !== undefined && (
+        <GithubIssuesDialog
+          open={issuesOpen}
+          onClose={closeIssues}
+          projectId={id}
+          teamId={teamId}
+          onImported={onIssueImported}
+        />
+      )}
     </PageShell>
   );
 }
