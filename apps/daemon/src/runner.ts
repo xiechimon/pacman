@@ -22,7 +22,9 @@ import type {
 import {
   FIXED_TAGS,
   PLAN_FILE_NAME,
+  parseReviewPromptMeta,
   REMOTE_TOOL_RETRY_DELAYS_MS,
+  type ReviewGate,
   STREAM_TIMEOUTS_MS,
 } from '@pacman/shared';
 import { SessionNotResumableError } from './backend/errors.js';
@@ -87,7 +89,8 @@ export function buildTaskPrompt(claimed: ClaimedStep): string {
  * M4a）。chief 续轮 = wake 事实走 instruction，本表 chief 值不用（占位保全键）。
  * review（M7 #312，r8 §3.1）= 首轮由 server instruction 注入（含 plan.md 全
  * 文 + 用户 focus），本表保占位空串防 TS 缺键；continue 路径不被使用——审核
- * 步是额外 agent 步，不接续到主 conv 会话。 */
+ * 步是额外 agent 步，不接续到主 conv 会话（#511 起 server 侧恒下发
+ * session.action='new'，runner 侧 review 走 instruction 分支，双保险）。 */
 export const CONTINUE_PROMPTS: Record<ClaimedStep['step']['kind'], string> = {
   plan: '请重新规划该任务，输出更新后的方案。',
   build: '方案已确认。请按方案执行，完成改动。',
@@ -211,11 +214,17 @@ export async function runStep(
 
   // chief 步（回合 = 机器 step，r5 §3.1）：任务文本 = server 合成的 instruction
   // （用户消息 / wake 事实），无 todo 语境；remoteTools relay + systemPrompt 走
-  // chief 块。worker 步：title+spec 或续轮指令。
+  // chief 块。worker 步：title+spec 或续轮指令。review 步（#511）= server 合成
+  // 的审核材料（meta + 输出契约 + 方案全文 + 变更），同 chief 走 instruction。
   const isChief = claimed.step.kind === 'chief';
+  const isReview = claimed.step.kind === 'review';
+  // 关口（#511）：step 表无相位列，prompt 的 meta 头即是它的持久载体。缺省
+  // （无该字段的存量 prompt）= confirm 语义——不开检出、材料不含变更。
+  const reviewGate: ReviewGate =
+    (isReview ? parseReviewPromptMeta(claimed.instruction ?? null)?.gate : undefined) ?? 'confirm';
   const prompt =
     opts.resume?.prompt ??
-    (isChief
+    (isChief || isReview
       ? (claimed.instruction ?? '')
       : claimed.session.action === 'continue' && claimed.session.sessionId
         ? CONTINUE_PROMPTS[claimed.step.kind]
@@ -250,16 +259,18 @@ export async function runStep(
   // workspace 准备（02 §5.5 worktree 契约：基座 clone + `worktree add -b`；
   // 项目未绑 repo = 裸任务目录退化形 [设计]，M3a 兼容）。chief 步 = 只读探索，
   // 不开 worktree（不产可合并改动；仓库读经 remoteTools docs/projects relay，
-  // 黑盒逼近 04 §1 A4）→ 裸任务目录。review 步（M7 #312 / r8 §3.1）= 只读
-  // 审核方案，不动 worktree（与 chief 同律）→ 裸任务目录。
+  // 黑盒逼近 04 §1 A4）→ 裸任务目录。review 步（M7 #312 / #511）= 审核关口
+  // 开**只读检出**：给它产物分支的检出，它才能回答「这段代码跑起来对不对」
+  // ——只给 diff 文本只能回答「看起来对不对」。确认关口无产物可读 → 裸任务
+  // 目录（不开工作区）。
   // repo 三形态同吃 worktree 契约（spec 12 G2-T2，契约零改动）：hosted =
   // http 远端 + per-step key；github = https 远端 + per-step x-access-token
   // （server 从 github_connection 下发）；local = cloneUrl 即用户仓库绝对路径
   // （git clone 本地路径默认硬链接，近零成本；凭证 null）。
   logger.workspace('准备工作区...');
   let ws: PreparedWorkspace | null = null;
-  const isReview = claimed.step.kind === 'review';
-  const repo = isChief || isReview ? null : (claimed.project?.repo ?? null);
+  const checkout = isReview && reviewGate === 'review';
+  const repo = isChief || (isReview && !checkout) ? null : (claimed.project?.repo ?? null);
   if (repo !== null) {
     if (!deps.workspace) {
       clearCredentials(creds);
@@ -352,6 +363,9 @@ export async function runStep(
     // （undefined = 全量 catalog，chief 是信任面）；旧 server 未携带 = 缺省
     // 直通（零回归）。过滤落点 = backend catalog 构建（backend/pi.ts）。
     ...(isChief || agent.skills === undefined ? {} : { skillsAllowlist: agent.skills }),
+    // 只读回合（#511）：审核者不下发 edit/write——写入在工具面即被拒，且它
+    // 对检出造成的任何写入在收尾被丢弃（见下「审核步收尾」）。
+    ...(isReview ? { readOnly: true } : {}),
   };
 
   // continue 解析键：journal 快照（recover 面）优先，其次 claim 载荷携带的
@@ -538,27 +552,65 @@ export async function runStep(
   // watchdog 共用 handle.stop()）→ usage 从 handle 累计面兜底（逐消息累积，
   // token 记账不因中断丢失）。
   if (!sawDone) usage = handle.usage();
+
+  /** worktree 回退到步起点（stop/discard 与审核步只读收尾共用一处护栏）；
+   * 返回失败原因，null = 回退成功或不适用（无检出/无起点）。回退失败意味着
+   * 本轮写入可能残留——调用方按各自语义报出去，不静默。 */
+  const rewindToStepStart = async (): Promise<string | null> => {
+    if (ws === null || !deps.workspace || headAtStart === null) return '步起点 commit 不可得';
+    try {
+      await deps.workspace.restoreCheckpoint(ws.cwd, headAtStart);
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+    }
+  };
+
   if (stopped) {
     logger.step(`step stopped by user (discard=${stopReq?.discard === true})`);
     // 丢弃本轮修改 = worktree rewind 到步起点 checkpoint（r9 §3.3「方案和
     // 代码回到上一个版本」；方案文档面天然回上版——plan.md 上传在步收尾，
     // 停止即不上传）。不 commit/push：中断步不产交接物，远端分支停在上一步
     // 收尾态（本地 rewind 后即与远端一致，无需 force push）。
-    if (stopReq?.discard && ws !== null && deps.workspace && headAtStart !== null) {
-      try {
-        await deps.workspace.restoreCheckpoint(ws.cwd, headAtStart);
-      } catch (err) {
-        logger.step(`discard rewind failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
+    if (stopReq?.discard === true) {
+      const failed = await rewindToStepStart();
+      if (failed !== null) logger.step(`discard rewind failed: ${failed}`);
+    }
+  }
+
+  // —— 审核步收尾（#511）：只读是硬的，两层落点——
+  //   ① 工具面：edit/write 不下发（SessionOpts.readOnly）——常见写路径直接拒；
+  //   ② 检出回退：审核者在检出里跑过的任何写入（含 bash 落盘）一律 rewind 到
+  //      步起点——不采集、不合并。这一层是必须的：检出与后续步（合并轮）同
+  //      目录复用，遗留脏树会被下一步的 commitAll 顺手扫进合并提交。
+  //   bash 仍是它的工具（跑验证命令），故 fs 级只写闸做不到——本票「只读」=
+  //   「写入不被采集、不被合并」（票面裁定的可落地形态）。残留边界要说清：
+  //   审核者若在 bash 里自己 push（prompt 明令禁止），daemon 拦不住——托管/
+  //   github 形态远端要 per-step 凭证（只在 daemon 内存里、只经参数传给 git
+  //   原语），裸 push 拿不到凭证；local 形态远端是本地路径，推得动。
+  //   回退失败不能只写 daemon 日志：那正是「写入残留 + 下一步顺手提交」的窗口，
+  //   落一条 system 行走 transcript 让用户在合并前看得见。
+  if (checkout) {
+    const failed = await rewindToStepStart();
+    if (failed !== null) {
+      logger.step(`review rewind failed: ${failed}`);
+      transcript.upsert({
+        id: `review-rewind-${stepId}`,
+        role: 'system',
+        content: `审核检出未能回退到本轮起点（${failed}）——本轮审核对工作区的写入可能残留，合并前请确认工作区状态`,
+        createdAt: now(),
+      });
     }
   }
 
   // —— git 收尾（02 §5.5：每步结束自动 commit + push 本 conversation 工作
   // 分支；合并步先走 `git merge --no-edit origin/<default>`，r3 §3.6；
-  // 停止步跳过——中断步不产交接物）——
+  // 停止步跳过——中断步不产交接物；审核步跳过——只读步不产交接物）——
   let headCommit: string | null = null;
-  let hasChanges = sawChangeTool; // 未绑 repo 退化形 = transcript 写类工具行 [推断骨架]
-  if (ws !== null && deps.workspace && lastError === null && !stopped) {
+  // 审核步不产改动（#511）：它跑 bash 跑验证命令会被 CHANGE_TOOLS 记为「写过」，
+  // 但那不是本轮的变更——如实报 false（server 侧同样不计入 todo.hasChanges）。
+  let hasChanges = isReview ? false : sawChangeTool; // 未绑 repo 退化形 = transcript 写类工具行 [推断骨架]
+  if (ws !== null && deps.workspace && lastError === null && !stopped && !isReview) {
     const git = deps.workspace;
     try {
       // 提交身份 [设计]（r3 未采 committer 词表）：Agent 名 + 机器位。

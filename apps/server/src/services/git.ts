@@ -101,6 +101,33 @@ export function hostedCloneUrl(origin: string, teamId: string, repoName: string)
   return `${origin}/git${gitHostedRepoPath(teamId, repoName)}`;
 }
 
+/** 项目行的 repo 绑定判据（hosted/github/local 三形态任一在位）。单源：
+ * claim 载荷 repo 位（machines.tryClaim）与「审核步有无只读检出」
+ * （builds.applyBuildStepAction，#511）两处消费——两侧口径漂移会让审核者被
+ * 告知一个不存在的检出（或反之，有检出却不说）。 */
+export function hasRepoBinding(row: ProjectRow | undefined): boolean {
+  // 派生自 projectRepoRef：判据与派生不许各写一条 repoKind 级联——第四种形态
+  // 进来只改一处。origin 只参与 cloneUrl 派生、对判据无影响（传空串即弃）。
+  return projectRepoRef(row, '') !== null;
+}
+
+/** 项目行 → 执行侧 repo 位（三形态 cloneUrl 派生；未绑 = null）。 */
+export function projectRepoRef(
+  row: ProjectRow | undefined,
+  origin: string,
+): { kind: 'hosted' | 'github' | 'local'; cloneUrl: string } | null {
+  if (row?.repoKind === 'hosted' && row.repoName !== null) {
+    return { kind: 'hosted', cloneUrl: hostedCloneUrl(origin, row.teamId, row.repoName) };
+  }
+  if (row?.repoKind === 'github' && row.githubRepo !== null) {
+    return { kind: 'github', cloneUrl: githubCloneUrl(row.githubRepo) };
+  }
+  if (row?.repoKind === 'local' && row.localPath !== null) {
+    return { kind: 'local', cloneUrl: row.localPath };
+  }
+  return null;
+}
+
 /** GitHub 接入 clone URL（https 派生 [设计]；凭证 per-step 注入归 M3，02 §8）。 */
 export function githubCloneUrl(githubRepo: string): string {
   return `https://github.com/${githubRepo}.git`;

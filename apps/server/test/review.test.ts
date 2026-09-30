@@ -16,8 +16,12 @@
 //      消息 + phase 转 planning + 重规划步入队 + 新 plan prompt 注入 blocking 事实
 //   7. 终态闭环（daemon 未传 findings）→ verdict 兜底 message 落地 + 不触发修订
 
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import {
   claimedStepSchema,
+  conversationBranch,
   MERGE_ANNOUNCEMENT,
   parseReviewPromptMeta,
   REVIEW_ANNOUNCEMENT,
@@ -26,22 +30,38 @@ import {
 } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import type { Hono } from 'hono';
-import { beforeEach, describe, expect, test } from 'vitest';
+import { afterAll, beforeEach, describe, expect, test } from 'vitest';
 import {
   agent as agentTable,
   build as buildTable,
   message as messageTable,
   plan as planTable,
+  project as projectTable,
   provider as providerTable,
   step as stepTable,
   todo as todoTable,
 } from '../src/db/schema.js';
+import { runGit } from '../src/lib/git.js';
 import type { TestServer } from './helpers.js';
 import { bootServer, issueApiKey, postProject, req } from './helpers.js';
 
 const AGENT_ID = 'agent-review-1';
 const REVIEW_AGENT_ID = 'agent-reviewer-1';
 const PLAN_FILE_NAME = 'plan.md';
+
+/** 播种用 git 提交身份（与 build-diff-fulltext 同款；宿主 git 无全局身份时
+ * commit 会因 user.email 缺位失败）。 */
+const GIT_ENV = {
+  GIT_AUTHOR_NAME: 'review-probe',
+  GIT_AUTHOR_EMAIL: 'probe@localhost',
+  GIT_COMMITTER_NAME: 'review-probe',
+  GIT_COMMITTER_EMAIL: 'probe@localhost',
+};
+
+const dirs: string[] = [];
+afterAll(() => {
+  for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
 
 async function call(
   app: Hono,
@@ -65,6 +85,9 @@ async function call(
 interface World {
   s: TestServer;
   todoId: string;
+  projectId: string;
+  /** #511：往托管 bare repo 的会话分支推一次真实改动（变更面数据源）。 */
+  seedConvChanges(buildId: string, files: Record<string, string>): Promise<void>;
   machineToken: string;
   startBuild(withPlan?: boolean): Promise<string>;
   claim(): Promise<{ stepId: string; kind: string }>;
@@ -95,7 +118,7 @@ function loadPlanContent(s: TestServer, buildId: string) {
   return s.db.select().from(planTable).where(eq(planTable.buildId, buildId)).all();
 }
 
-async function setupWorld(): Promise<World> {
+async function setupWorld(opts: { hosted?: boolean } = {}): Promise<World> {
   const s = bootServer({ claimHoldMs: 200, pingIntervalMs: 3_600_000 });
   const key = await issueApiKey(s);
   s.db
@@ -143,7 +166,18 @@ async function setupWorld(): Promise<World> {
   });
   expect(enrollRes.status).toBe(200);
   const { token: machineToken } = (await enrollRes.json()) as { token: string; machineId: string };
-  const projectId = await postProject(s.app);
+  // #511：托管形态项目 —— 变更面数据源（readBuildChanges 仅托管形态有本地
+  // bare 读面）与「只读检出」判据都要真实 repo 绑定。
+  let projectId: string;
+  if (opts.hosted) {
+    const hostedRes = await call(s.app, 'POST', '/api/projects', {
+      body: { name: 'review-hosted', repoKind: 'hosted' },
+    });
+    expect(hostedRes.status).toBe(201);
+    projectId = ((await hostedRes.json()) as { id: string }).id;
+  } else {
+    projectId = await postProject(s.app);
+  }
   const todoRes = await call(s.app, 'POST', `/api/projects/${projectId}/todos`, {
     body: { title: '审核探针', spec: '实现一段示例代码供审核' },
   });
@@ -206,9 +240,37 @@ async function setupWorld(): Promise<World> {
     });
   }
 
+  // 会话分支改动播种（#511）：人看的变更面与审核者拿的变更必须同源，所以
+  // 现场按「人的那一侧」造——推 conv 分支进托管 bare repo。
+  async function seedConvChanges(buildId: string, files: Record<string, string>): Promise<void> {
+    const projRow = s.db.select().from(projectTable).where(eq(projectTable.id, projectId)).get();
+    expect(projRow?.repoName).toBeTruthy();
+    const bareDir = join(s.reposDir, s.team.id, `${projRow?.repoName}.git`);
+    const dir = mkdtempSync(join(tmpdir(), 'pacman-review-511-'));
+    dirs.push(dir);
+    const repoDir = join(dir, 'repo');
+    const git = async (args: string[]) => {
+      const r = await runGit(args, { cwd: repoDir, env: GIT_ENV, timeoutMs: 60_000 });
+      expect(r.code, r.stderr).toBe(0);
+    };
+    const clone = await runGit(['clone', bareDir, repoDir], { cwd: dir, env: GIT_ENV });
+    expect(clone.code, clone.stderr).toBe(0);
+    await git(['checkout', '-B', conversationBranch(buildId)]);
+    for (const [path, content] of Object.entries(files)) {
+      const abs = join(repoDir, path);
+      mkdirSync(dirname(abs), { recursive: true });
+      writeFileSync(abs, content);
+    }
+    await git(['add', '-A']);
+    await git(['commit', '-m', 'conv round']);
+    await git(['push', 'origin', conversationBranch(buildId)]);
+  }
+
   return {
     s,
     todoId,
+    projectId,
+    seedConvChanges,
     machineToken,
     startBuild,
     claim,
@@ -517,5 +579,123 @@ describe('AI 审核发起写面（M7 #312）', () => {
     expect(w.todoRow().phase).toBe('confirm');
     // 不入队新 plan 步
     expect(w.stepsOf(buildId).filter((s) => s.kind === 'plan')).toHaveLength(1);
+  });
+});
+
+// #511 审核步材料随关口分叉：外部行为 = 材料里有什么（不是怎么拼字符串）。
+// 失败方式枚举先于实现固化（AGENTS.md 测试规则 3）：
+//   1. 确认关口（phase=confirm）：即使会话分支已推了改动，材料也不含变更
+//      ——那里「只审方案」是正确的（票面 Solution 的硬规则）。
+//   2. 审核关口（phase=review）：材料同时含方案全文与变更（文件路径 + 逐行
+//      diff）——审核者拿到人能拿到的那份。
+//   3. 审核关口但变更面为空：审核步仍能发起，材料如实写「无改动」。
+//   4. 变更来源与人的变更面同源：同一 readBuildChanges 计算路径（同一文件集）。
+//   5. meta 头带 gate（相位值判据），daemon 据此决定开只读检出。
+//   6. review 步 session = new：prompt 真的会被投递（不是接续别人的会话）。
+const CONV_CHANGE_FILE = 'src/parse.ts';
+const CONV_CHANGE_BODY = 'export function parseInput() {}\n';
+const PLAN_V1 = '# plan v1\n\n## Changes\n- 加 parseInput\n';
+
+/** 走到审核关口（plan done → confirm → build done → phase=review）。 */
+async function advanceToReviewGate(w: World): Promise<string> {
+  const buildId = await w.startBuild(true);
+  const planClaimed = await w.claim();
+  await w.uploadPlan(planClaimed.stepId, PLAN_V1);
+  // sessionId 照真 daemon 的 done 回传位给（缺省会让「续轮」判定永不触发，
+  // 于是审核步的 session 分叉面测不到——本票的投递面正踩这条路径）。
+  await w.done(planClaimed.stepId, { status: 'success', sessionId: 'sess-plan' });
+  await w.confirm(buildId);
+  const buildClaimed = await w.claim();
+  expect(buildClaimed.kind).toBe('build');
+  await w.done(buildClaimed.stepId, { status: 'success', sessionId: 'sess-build' });
+  expect(w.todoRow().phase).toBe('review');
+  return buildId;
+}
+
+function reviewPromptOf(w: World, buildId: string): string {
+  const step = w.stepsOf(buildId).find((s) => s.kind === 'review');
+  expect(step).toBeDefined();
+  return step?.prompt ?? '';
+}
+
+describe('审核步材料随关口分叉（#511）', () => {
+  beforeEach(async () => {
+    w = await setupWorld({ hosted: true });
+  });
+  let w: World;
+
+  test('失败方式 1：确认关口材料不含变更——即使会话分支已有改动', async () => {
+    const buildId = await w.startBuild(true);
+    await w.seedConvChanges(buildId, { [CONV_CHANGE_FILE]: CONV_CHANGE_BODY });
+    const planClaimed = await w.claim();
+    await w.uploadPlan(planClaimed.stepId, PLAN_V1);
+    await w.done(planClaimed.stepId, { status: 'success', sessionId: 'sess-plan' });
+    expect(w.todoRow().phase).toBe('confirm');
+
+    const res = await w.startReview(buildId, { agentId: REVIEW_AGENT_ID });
+    expect(res.status).toBe(202);
+    const prompt = reviewPromptOf(w, buildId);
+    expect(prompt).toContain(PLAN_V1);
+    expect(prompt).not.toContain(CONV_CHANGE_FILE);
+    expect(parseReviewPromptMeta(prompt)?.gate).toBe('confirm');
+  });
+
+  test('失败方式 2：审核关口材料含方案 + 变更（文件路径与逐行 diff 都在）', async () => {
+    const buildId = await advanceToReviewGate(w);
+    await w.seedConvChanges(buildId, { [CONV_CHANGE_FILE]: CONV_CHANGE_BODY });
+
+    const res = await w.startReview(buildId, { agentId: REVIEW_AGENT_ID });
+    expect(res.status).toBe(202);
+    const prompt = reviewPromptOf(w, buildId);
+    expect(prompt).toContain(PLAN_V1);
+    expect(prompt).toContain(CONV_CHANGE_FILE);
+    expect(prompt).toContain('+export function parseInput() {}');
+    expect(parseReviewPromptMeta(prompt)?.gate).toBe('review');
+  });
+
+  test('失败方式 3：审核关口变更面为空 → 仍能发起，材料如实写无改动', async () => {
+    const buildId = await advanceToReviewGate(w); // 未推 conv 分支 = 无改动
+    const res = await w.startReview(buildId, { agentId: REVIEW_AGENT_ID });
+    expect(res.status).toBe(202);
+    const prompt = reviewPromptOf(w, buildId);
+    expect(prompt).toContain(PLAN_V1);
+    // 托管项目 = 有只读检出 → 空态不说「本轮无改动」（变更面算不出 ≠ 没改），
+    // 改指检出自行核对
+    expect(prompt).toContain('变更面为空');
+    expect(prompt).toContain('检出');
+    expect(prompt).not.toContain(CONV_CHANGE_FILE);
+    expect(parseReviewPromptMeta(prompt)?.gate).toBe('review');
+  });
+
+  test('失败方式 4：材料里的变更 = 人的变更面同一计算路径（GET /changes 文件集一致）', async () => {
+    const buildId = await advanceToReviewGate(w);
+    await w.seedConvChanges(buildId, {
+      [CONV_CHANGE_FILE]: CONV_CHANGE_BODY,
+      'plan.md': '# plan v1\n\n## Changes\n- 加 parseInput\n- 再改一行\n',
+    });
+    const changesRes = await call(w.s.app, 'GET', `/api/builds/${buildId}/changes`);
+    expect(changesRes.status).toBe(200);
+    const { files } = (await changesRes.json()) as { files: { path: string }[] };
+    expect(files.length).toBeGreaterThan(0);
+
+    await w.startReview(buildId, { agentId: REVIEW_AGENT_ID });
+    const prompt = reviewPromptOf(w, buildId);
+    for (const file of files) expect(prompt).toContain(file.path);
+    expect(prompt).toContain(`本轮共 ${files.length} 个文件改动`);
+  });
+
+  test('失败方式 6：review 步 claim 载荷 session = new（prompt 投递给新会话，不接续主 conv）', async () => {
+    const buildId = await advanceToReviewGate(w);
+    await w.startReview(buildId, { agentId: REVIEW_AGENT_ID });
+    const claimRes = await call(w.s.app, 'POST', '/api/machine/tasks/claim', {
+      cred: w.machineToken,
+      body: {},
+    });
+    const parsed = claimedStepSchema.parse(((await claimRes.json()) as { step: unknown }).step);
+    expect(parsed.step.kind).toBe('review');
+    expect(parsed.session.action).toBe('new');
+    expect(parsed.session.sessionId).toBeNull();
+    // 材料经 instruction 位下发（daemon 侧 prompt 单一来源就是它）
+    expect(parsed.instruction ?? '').toContain(PLAN_V1);
   });
 });

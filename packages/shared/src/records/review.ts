@@ -6,6 +6,7 @@
 // 顺带承担 prompt meta header 的解析形态单源（不落库只走 wire）。
 
 import { z } from 'zod';
+import type { DocumentDiffFile } from './document-diff.js';
 
 /** severity 词表（r8 §3.1 实测：blocking / suggestion / info 三值）。 */
 export const reviewSeveritySchema = z.enum(['blocking', 'suggestion', 'info']);
@@ -44,11 +45,22 @@ export type ReviewVerdict = z.infer<typeof reviewVerdictSchema>;
 
 // —— review 步 prompt 元数据头（agentId 透传载体）————————————————————————
 
+/** 审核关口（#511）：判据复用既有相位值，不新增状态——`confirm` = 方案就绪、
+ * 尚未动工（事实还不存在，只审方案）；`review` = 本轮已产出改动（材料 = 方案
+ * + 变更，审核者拿到的是人能看到的那份）。 */
+export const reviewGateSchema = z.enum(['confirm', 'review']);
+export type ReviewGate = z.infer<typeof reviewGateSchema>;
+
 /** review 步 prompt 第一行 JSON meta 形状：kind + agentId（claim 载荷走
- * 该 agentId 拉取执行 Agent；DB 不冗余）。daemon 解析同型，单源在本文件。 */
+ * 该 agentId 拉取执行 Agent；DB 不冗余）+ gate（#511：step 表无相位列，
+ * prompt 即是关口的持久载体——daemon 据此决定是否开只读检出）。daemon 解析
+ * 同型，单源在本文件。 */
 export const reviewPromptMetaSchema = z.object({
   kind: z.literal('review'),
   agentId: z.string(),
+  /** 缺省 = 无该字段的存量 prompt（#511 之前入队）：按 `confirm` 语义处理
+   * （不开检出、材料不含变更），与旧 server 行为逐字节一致。 */
+  gate: reviewGateSchema.optional(),
 });
 export type ReviewPromptMeta = z.infer<typeof reviewPromptMetaSchema>;
 
@@ -67,25 +79,35 @@ export function parseReviewPromptMeta(prompt: string | null): ReviewPromptMeta |
   }
 }
 
-/** 组装 review 步 prompt（meta header + JSON 输出契约 + plan 全文 + 用户
- * 关注点）。调用方写库到 step.prompt；claim 时解析取 agentId。 */
+/** 审核步材料 = 方案（对照基准）+ 变更（待审事实，仅审核关口）。审核的价值
+ * 在「意图 vs 事实」的对照——只给方案那一半，审核者就只能对方案表态。 */
 export function buildReviewStepPrompt(args: {
   agentId: string;
+  /** 关口（#511）：材料与工作区形态都随它分叉。 */
+  gate: ReviewGate;
   planText: string;
+  /** 审核关口的变更材料。单源 = server git.ts readBuildChanges（与人的变更面
+   * 同一计算路径，不另立一套 diff 逻辑——否则人和 AI 看到的东西会漂移）；
+   * 变更面为空传 `[]`（材料如实写「无改动」）。confirm 关口不传。 */
+  changes?: readonly DocumentDiffFile[];
+  /** 是否真的有只读检出可读（项目已绑仓库 = 同一 repo 绑定位判据）。false =
+   * 不写检出段——不谎称给了一个不存在的检出。 */
+  checkout?: boolean;
   focus?: string;
 }): string {
-  const meta: ReviewPromptMeta = { kind: 'review', agentId: args.agentId };
+  const meta: ReviewPromptMeta = { kind: 'review', agentId: args.agentId, gate: args.gate };
   const focusNote =
     args.focus !== undefined && args.focus.trim() !== ''
       ? `\n\n## 用户关注点\n${args.focus.trim()}`
       : '';
-  return [
+  // r8 §3.1：审核 = 只读；如有 blocking 风险请明确标注。
+  const head =
+    args.gate === 'review'
+      ? '请审核以下方案与本轮变更。**只读**：不得修改文件、不得提交、不得推送；如有 blocking 风险请明确标注，suggestion / info 请按需给出。'
+      : '请审核以下方案。**只审核、不修改 worktree、不动 plan.md**；如有 blocking 风险请明确标注，suggestion / info 请按需给出。';
+  const sections = [
     JSON.stringify(meta),
-    // r8 §3.1：审核 = 只读，不修改 worktree；如有 blocking 风险请明确标注。
-    [
-      '请审核以下方案。**只审核、不修改 worktree、不动 plan.md**；',
-      '如有 blocking 风险请明确标注，suggestion / info 请按需给出。',
-    ].join(''),
+    head,
     '',
     '## 输出契约',
     '本步以单一 JSON 对象结尾输出 findings —— 你的最后一条消息内容必须是下列',
@@ -113,7 +135,53 @@ export function buildReviewStepPrompt(args: {
     '',
     '## 待审核方案',
     args.planText,
-    focusNote,
+  ];
+  if (args.gate === 'review') {
+    sections.push('', renderChangesSection(args.changes ?? [], args.checkout === true));
+    if (args.checkout === true) sections.push('', CHECKOUT_SECTION);
+  }
+  return [...sections, focusNote].join('\n');
+}
+
+/** 审核关口的只读检出说明（#511 阶段 2）：它才是「验证」与「通读」的分界
+ * ——只给 diff 文本，审核者只能判断「这段代码看起来对不对」。 */
+const CHECKOUT_SECTION = [
+  '## 只读检出',
+  '当前工作目录即本轮产物分支的检出：可以读完整文件，也可以实际跑验证命令（测试、构建、最小复现）。',
+  '约束是硬的：不得修改文件、不得提交、不得推送——你对工作区造成的任何写入都会被丢弃，不会被采集、不会被合并。',
+  '结论里请带上你实际跑过的命令与输出（让人能分辨「验过了」和「只是读了读」），并优先引用具体文件与行。',
+].join('\n');
+
+/** 变更段渲染（文件级 unified diff；与 docpane 变更面同一数据形态）。
+ * 空态按有无检出分叉：变更面只对托管项目可算（服务端无本地库就没得 diff），
+ * 有检出时审核者能自己看出改了什么——说成「无改动」会误导它给出「没改东西，
+ * 通过」的结论。 */
+function renderChangesSection(files: readonly DocumentDiffFile[], checkout: boolean): string {
+  if (files.length === 0) {
+    return [
+      '## 本轮变更',
+      checkout
+        ? '变更面为空——服务端此刻算不出差异（会话分支与默认分支无差异，或本项目形态下服务端不计算变更面）。请在检出里自行核对本轮实际改了什么；若确实无改动，如实说明，不要臆造代码层面的结论。'
+        : '变更面为空——本轮无改动。请如实说明这一点，不要臆造代码层面的结论。',
+    ].join('\n');
+  }
+  const additions = files.reduce((n, f) => n + f.additions, 0);
+  const deletions = files.reduce((n, f) => n + f.deletions, 0);
+  const body = files
+    .map((f) =>
+      [
+        `### ${f.path} (+${f.additions} −${f.deletions})`,
+        '```diff',
+        ...f.hunks.flatMap((h) => [h.header, ...h.lines]),
+        '```',
+      ].join('\n'),
+    )
+    .join('\n\n');
+  return [
+    '## 本轮变更',
+    `本轮共 ${files.length} 个文件改动，+${additions} −${deletions}。以下为会话分支相对默认分支的完整 diff：`,
+    '',
+    body,
   ].join('\n');
 }
 

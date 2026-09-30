@@ -162,6 +162,11 @@ export interface SessionOpts {
    * （chief 面全量直通）；[] = 不注入任何 skill（least-privilege，与 MCP
    * 空勾选同律）；名单内未知 slug 静默跳过（#367 容忍语义）。 */
   skillsAllowlist?: string[];
+  /** 只读回合（#511 审核步）：文件写类内建工具（edit/write）不下发——审核者
+   * 是来判定的，不是来动手的；bash 保留（跑验证命令是它的职责）。缺省 =
+   * 全量工具面（worker/chief 步现行为）。落点 = backend 工具面构建，宿主
+   * 无从旁路。 */
+  readOnly?: boolean;
   /** worktree 目录（02 §5.5）。 */
   cwd: string;
   /** 本轮任务文本（实现期精化，01 §5 头部口径）：createSession = 首条用户
