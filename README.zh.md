@@ -66,6 +66,7 @@ server 环境变量（全部可选）：
 |---|---|---|
 | `PACMAN_TOKEN` | 未设 | 守护 `/api/*` 的 Bearer token。设 = 开鉴权（web 首访出 token 门页）；未设 = 关（默认）。两条 SSE stream 端点额外接受 `?token=`（EventSource 设不了 header）。绑非 localhost 接口时务必设。 |
 | `PORT` | `8787` | HTTP 监听端口。 |
+| `HOST` | 未设（全部接口） | HTTP 绑定地址。分体部署（server 在常开主机、daemon 在另一台机器用 `PACMAN_SERVER` 指过来）时设为该主机的局域网/内网地址，并同设 `PACMAN_TOKEN`。显式 `0.0.0.0`/`::` 且 `PACMAN_TOKEN` 未设 → 启动日志 WARN。 |
 | `PACMAN_HOME` | `~/.pacman` | 数据根。server 状态在 `<PACMAN_HOME>/server/`（`server.db`、`secretbox.key`、托管裸仓）；daemon 的 `machine.json`、`daemon.log`、`workspaces/` 在根下。**备份 = 整目录拷走**——密文离了 keyfile 永久不可解，只拷 db 没用。 |
 | `PACMAN_GITHUB_OAUTH_CLIENT_ID`<br>`PACMAN_GITHUB_OAUTH_CLIENT_SECRET` | 未设 | 自注册 GitHub OAuth App 的凭证对，开启 provider OAuth 登录。两件同设或同缺——只配一件 server 启动即报错，不静默。 |
 | `PACMAN_WEB_DIR` | `apps/web/dist`（存在即托管） | SPA 静态托管根覆写；未设且无构建产物 = 纯 API 形态。 |
