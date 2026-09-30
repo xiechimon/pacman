@@ -87,6 +87,10 @@ chief-chip-todo / chief-chip-agent / chief-example-tile / chief-code /
 prj-task-check`；容器卡 10px（`res-card / keys-row / keys-once /
 team-agent-card / keys-empty-tile`）为卡表面非控件。
 
+> **改判（#485，2026-09-30）**：`team-agent-card` 不再是静态卡面——原版
+> r3 §4 实测「团队页点 Agent 卡进入」详情编辑页，卡是入口控件。几何逐值不
+> 动，补了 a 元素重置与 link 反馈态（secondary.css）。其余卡面归类不变。
+
 **textarea（票面口径：保持散写并记录）**：`dlg-form-textarea` /
 `chief-dlg-charter-input`（ui/dialog.css 族类）、`chief-composer-input`
 （chief.css 散写）。

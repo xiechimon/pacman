@@ -2,7 +2,9 @@
 
 本目录是 pacman 用户可见行为的验证正源。驱动前先读本索引,再按 feature 文件当配方执行。map 漏掉的入口 = 验证不完整:顺手的入口验过 ≠ 整个 feature 验过。
 
-Last updated: 2026-09-29（spec 12/#362 G2-T2 + #366 详情页 3-pane 重排 + spec 13 #367 技能页只读本地目录面 + spec 13/#368 MCP 本地 config 只读面 + #371 skills 执行面注入 + spec 12/#361 G2-T4 + spec 12/#360 G2-T3 + spec 11/#354 + spec 12/#359 落地连续增）：
+Last updated: 2026-09-30（#485 Agent 详情编辑面）＋ 2026-09-29（spec 12/#362 G2-T2 + #366 详情页 3-pane 重排 + spec 13 #367 技能页只读本地目录面 + spec 13/#368 MCP 本地 config 只读面 + #371 skills 执行面注入 + spec 12/#361 G2-T4 + spec 12/#360 G2-T3 + spec 11/#354 + spec 12/#359 落地连续增）：
+
+- #485：新增 agent-detail.md 条目 + 定制 probe `scripts/drive-agent-detail.mjs`（团队页卡链接 → 详情三 tab → 名称/职责/模型/权限四处编辑各对一次 server 真值 → 创建弹窗选模型落库）。**live 验 21/21 PASS，证据 docs/verify/485/**。fixture 面回归 = e2e agent-detail.spec + agent-create-model.spec。
 
 - spec 12 / #362 G2-T2：补 local 项目 daemon 执行面条目 local-daemon-executor.md（硬链接镜像 clone + conv 分支推回用户仓库 + merge 步 ff-only 落地 + github per-step token argv 纪律 + Files tab 禁用占位）；配方 = integration g2t2-local-lifecycle 等四面，live re-probe 待补。
 - spec 12 / #361 G2-T4：补 GitHub 连接认证 + repo picker 条目 github-oauth-picker.md + 定制 probe `scripts/probe-github-oauth.mjs`（API 段 + chromium UI 段，authorize 双形自适应）；local-repo-api.md 回补 T4 落地指引。
@@ -72,6 +74,7 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [技能页(只读本地目录面)](./skills-page.md) 技能 = server 本地目录现扫投影:放含 SKILL.md 的子目录→刷新即现,无新建/导入入口,空态指路目录,id = frontmatter name 回落目录名(spec 13 #367)。栈隔离第四轴 `PACMAN_SKILLS_DIR`(launch.mjs 已带)。
 - [MCP 页(只读本地 config 面)](./mcp-servers.md) `~/.claude.json` mcpServers 段投影列表+只读钉扎(无新建/更多入口、写面 404、密钥值不出接口、SQLite 无 mcp_server 表);定制 probe `scripts/drive-mcp.mjs`(#368);daemon 执行面配方 = integration m4b-mcp-e2e。
 - [skills 执行面注入(daemon)](./skills-injection.md) PACMAN_SKILLS_DIR 扫描→`<available_skills>` catalog 追加进 systemPrompt→agent read SKILL.md 按需加载(#371,spec 14)。daemon 侧无 UI 面,canonical 证据 = integration 真栈探针(skills-inject-e2e)。
+- [Agent 详情编辑面](./agent-detail.md) 团队页 Agent 卡(链接)→ `/app/resources/agents/<id>` 三 tab(概览/记忆/权限)；概览名称行内编辑 + 职责 + 模型选择器落 `PATCH agents/{aid}`，权限 6 开关 + 密钥 + MCP 勾选同路径；创建弹窗两态(有服务商 = 内联模型槽，无 = 告警 + 外链)；定制 probe `scripts/drive-agent-detail.mjs`(#485)。**证实 live 21/21 PASS，证据 docs/verify/485/**。
 - [快捷键组(新任务 N + 空格呼出总管)](./hotkeys.md) 侧栏「新任务」行 N 角标 + 全局 N 开 dialog(board/project 自有面,其余路由 AppSidebar 全局 dialog 同 live save 路径) + Space 呼出抽屉草稿框持焦 + 输入态/按钮态守卫负向;定制 probe `scripts/drive-hotkeys.mjs`(#389)。fixture 面回归 = e2e hotkeys.spec。
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
