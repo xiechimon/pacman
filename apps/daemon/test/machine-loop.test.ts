@@ -83,6 +83,8 @@ class FakeMachineApi implements MachineApi {
   /** M7 #308 stop 拉取-确认的 fake 面（steer 同形：可设响应 = discard 位）。 */
   stopResponse: boolean | null = null;
   onStreamEvent: ((ev: MachineStreamEvent) => void) | null = null;
+  /** claim 请求计数（#482：wake 事件不得引发在飞 claim 中断重发）。 */
+  claimCalls = 0;
 
   async enroll(body: { teamId: string; apiKey: string; name?: string }) {
     this.calls.push(`enroll:${body.teamId}`);
@@ -113,6 +115,7 @@ class FakeMachineApi implements MachineApi {
     return { steps: this.recoverSteps };
   }
   async claim(signal?: AbortSignal): Promise<ClaimedStep | null> {
+    this.claimCalls += 1;
     if (this.failClaims > 0) {
       this.failClaims -= 1;
       throw new Error('network down');
@@ -311,6 +314,36 @@ describe('claim 循环与退避（r3 §1.5：断网指数退避封顶 30s，进�
       b = nextBackoffMs(b);
     }
     expect(seq).toEqual([1_000, 2_000, 4_000, 8_000, 16_000, 30_000, 30_000, 30_000]);
+  });
+});
+
+describe('wake SSE 与在飞 claim（#482 裁定：客户端不消费 wake，低延迟派发归 server 侧 hold 直解）', () => {
+  // 失败方式枚举（裁定依据，详 PR body）：server wake() 同轮既推 SSE 又直解
+  // claim 等待者——SSE 可能先于 claim 响应到达；若客户端 abort 在飞 claim，
+  // server 第二次 tryClaim 已把 step 落库 claimed 写向死 socket = 孤儿步。
+  // 本测试钉住裁定：wake 事件对在飞 claim 零作用；若有人重新接线客户端
+  // wake-abort，此处红。
+  test('wake 事件到达时在飞 claim 不中断不重发——挂起保持，随后照常领步', async () => {
+    const api = new FakeMachineApi();
+    const { backend } = fakeBackend([{ type: 'done', usage: [] }]);
+    const { handle, lines } = await boot({ api, backend });
+    await waitFor(() => api.parked !== null); // claim 长轮询挂起（server hold 中）
+    const callsBefore = api.claimCalls;
+
+    api.onStreamEvent?.({ type: 'wake' });
+    await new Promise((r) => setTimeout(r, 50)); // 给潜在 abort→重发链路留时标
+
+    // 在飞 claim 未被中断：仍挂起、无重发、无退避日志。
+    expect(api.parked).not.toBeNull();
+    expect(api.claimCalls).toBe(callsBefore);
+    expect(lines.some((l) => l.includes('claim failed'))).toBe(false);
+
+    // 挂起的 claim 仍能照常收步执行（server 直解路径的客户端终点）。
+    api.parked?.(CLAIMED);
+    await waitFor(() => api.doneBodies.length === 1);
+    expect(api.doneBodies[0]?.body.status).toBe('success');
+    await handle.stop();
+    await handle.done;
   });
 });
 

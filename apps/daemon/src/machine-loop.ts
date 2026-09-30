@@ -227,12 +227,14 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   logger.raw(`maxConcurrent changed null -> ${config.maxConcurrent}`);
 
   // —— wake SSE（低延迟派发通道；断线持续重连不退出，r3 §1.5）——
-  // 双通道语义（02 §5.4）：server 侧入队会直接解决挂起的 claim hold；客户端
-  // wake 事件兜底 = 中断在飞 claim 立即重发（覆盖 hold 未被解决的边界）。
+  // 低延迟派发全归 server 侧：入队 wake() 同一同步轮直解挂起的 claim hold
+  // （tryClaim→waiter 注册为同一同步块，单进程无事件循环间隙可乘——
+  // machine-wire.test.ts「入队即 wake」钉住）。daemon 端不消费 wake 事件
+  // （#482 裁定）：SSE 先于 claim 响应到达时中断在飞 claim 会与 server 已
+  // 落库 claimed 的响应竞态，孤儿化已领步；hold 到期重发（≤75s）即残余
+  // 上界的兜底（多进程部署内存 hub 不共享时同此界）。
   // steer 事件（W3 #279）三号分流：拉取-确认投递到在跑 session handle。
   const streamCtrl = new AbortController();
-  // 盒装引用：规避 TS 对捕获 let 的初始化收窄（wake 回调与 claim 循环异步互访）。
-  const flight: { claim: AbortController | null } = { claim: null };
   const deliverSteer = async (stepId: string): Promise<void> => {
     try {
       const content = await client.steer(stepId);
@@ -283,7 +285,6 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
         await client.stream(
           streamCtrl.signal,
           (ev) => {
-            if (ev.type === 'wake') flight.claim?.abort(new Error('wake'));
             if (ev.type === 'shutdown') void stop();
             if (ev.type === 'steer') void deliverSteer(ev.stepId);
             if (ev.type === 'stop') void deliverStop(ev.stepId);
