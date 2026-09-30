@@ -8,12 +8,13 @@
 
 import { z } from 'zod';
 import { modelUsageSchema, providerConfigSchema, toolCallRecordSchema } from '../agent-backend.js';
+import { fallbackModelSchema } from '../records/agent.js';
 import { epochMs, recordId } from '../records/common.js';
 import { machineRecordSchema } from '../records/machine.js';
 import { messageRoleSchema } from '../records/message.js';
 import { PROJECT_REPO_KINDS } from '../records/project.js';
 import { reviewVerdictSchema } from '../records/review.js';
-import { stepRecordSchema } from '../records/step.js';
+import { modelAttemptSchema, stepFailureKindSchema, stepRecordSchema } from '../records/step.js';
 import {
   machineToolRelayBodySchema,
   machineToolRelayResponseSchema,
@@ -184,6 +185,11 @@ export const claimedStepSchema = z.object({
        * 约束）。无版本墙：纯增可选字段，旧 daemon 忽略 = 现行为全量直通，
        * 不存在 MCP slug 断约那种混发形状失败模式。 */
       skills: z.array(z.string()).optional(),
+      /** 兜底模型有序列表（XMON-44 / XMON-32 终稿：daemon 步内换模型重试的
+       * 配置真值 = agent 行 fallbackModels，server claim 时透传）。空列表/
+       * 缺省 = 无兜底（现行为）。纯增可选字段无版本墙：旧 daemon 忽略 =
+       * 现行为。thinkingLevel 由兜底项继承 agent 现值（不另设槽）。 */
+      fallbackModels: z.array(fallbackModelSchema).optional(),
     })
     .nullable(),
   /** chief 步块（r5 §3.1：Chief 回合 = pi 会话 + 服务端 relay 工具；细节
@@ -340,6 +346,13 @@ export const machineTokenResponseSchema = z.object({
   /** 该步 Agent 的 provider 配置（apiKey 内存态经 SecretBox 解密下发，02 §8
    * 运行时层；无 key 网关可留空 = r3 §2 表单语义）。 */
   provider: providerConfigSchema.nullable(),
+  /** 兜底 provider 凭证最小集（XMON-44：leader 裁决 daemon 步内换模型重试，
+   * 凭证一次带回）：= 该步 Agent fallbackModels 实际引用的 provider 去重集
+   * 挖去主 provider（主槽已发）。null 槽兜底（沿用 agent.provider）不产生
+   * 条目；引用未建 custom 行的 provider = api_key 直投形（preset 目录同
+   * provider 主槽回退律）。内存态、明文不落盘（02 §8 语义不变）。缺省 =
+   * 无跨 provider 兜底。 */
+  fallbackProviders: z.array(providerConfigSchema).optional(),
   /** 本步可取用的团队密钥（名字 → 明文；服务端解析契约 = M2c
    * services/credentials.ts）。明文只出现在本返回值（02 §8 纪律），且**不得**
    * 铺进 agent 进程环境——daemon 持有真值，agent 经本地取用通道显式取用。
@@ -416,6 +429,14 @@ export const machineDoneBodySchema = z.object({
    * agent 终轮 JSON 输出后置入；server 落库 + 判 blocking 触发自动修订。
    * 形状 = records/review.ts reviewVerdictSchema（conclusion + findings[]）。 */
   findings: reviewVerdictSchema.optional(),
+  /** 失败分类（XMON-44：daemon 上报，server 不做错误文本猜测）：
+   * model_call = 模型/供应商调用失败（触发 daemon 侧步内兜底判据）；other =
+   * 其余。仅 status='failed' 时携带；缺省 = 旧 daemon 无分类面。 */
+  failureKind: stepFailureKindSchema.optional(),
+  /** 模型尝试轨迹（XMON-44）：主模型首试 + 各兜底逐次（error 原文，null =
+   * 该模型成功收尾）。server 落 step.attempts（读面经 stepJournalRow 透出，
+   * 「试过哪些模型、各自为何失败」痕迹）。纯增可选：缺省 = 现行为。 */
+  attempts: z.array(modelAttemptSchema).optional(),
 });
 export type MachineDoneBody = z.infer<typeof machineDoneBodySchema>;
 export const machineDoneResponseSchema = machineOkResponseSchema;

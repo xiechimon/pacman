@@ -45,12 +45,32 @@ export type StepRecord = z.infer<typeof stepRecordSchema>;
 export const stepStatusSchema = z.enum(['pending', 'claimed', 'done', 'failed', 'stopped']);
 export type StepStatus = z.infer<typeof stepStatusSchema>;
 
+/** 失败分类（XMON-44 / XMON-32 终稿：分类由 daemon 上报，server 不做错误
+ * 文本猜测）。model_call = 模型/供应商调用失败（pi error 事件、会话创建
+ * throw、流 watchdog 超时）；other = 其余（工作区/git/基建/代码）。 */
+export const stepFailureKindSchema = z.enum(['model_call', 'other']);
+export type StepFailureKind = z.infer<typeof stepFailureKindSchema>;
+
+/** 单次模型尝试行（XMON-44：含主模型首试 + 各兜底；error 原文 = pi error
+ * 事件 message / open throw，null = 该模型成功收尾）。 */
+export const modelAttemptSchema = z.object({
+  provider: z.string(),
+  modelId: z.string(),
+  error: z.string().nullable(),
+  startedAt: epochMs,
+  endedAt: epochMs,
+});
+export type ModelAttempt = z.infer<typeof modelAttemptSchema>;
+
 /** steps 读面/会话流 step 事件行 = record + journal 位透出 [设计]（M5 详情
  * 面进度行/分支 dialog 目标提交数据源；stepRecordSchema 最小投影不含 =
- * zod strip 下 record 对拍不漂移）。server/web 双端单源。 */
+ * zod strip 下 record 对拍不漂移）。server/web 双端单源。
+ * attempts = done 回传的兜底轨迹（XMON-44）：null = 旧形状/无轨迹
+ * （旧 daemon 上报面缺省）。 */
 export const stepJournalRowSchema = stepRecordSchema.extend({
   status: stepStatusSchema,
   checkpointCommit: recordId.nullable(),
+  attempts: z.array(modelAttemptSchema).nullable(),
 });
 export type StepJournalRow = z.infer<typeof stepJournalRowSchema>;
 

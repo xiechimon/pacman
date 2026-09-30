@@ -19,6 +19,29 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
             "displayName": {
               "type": "string",
             },
+            "fallbackModels": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "modelId": {
+                    "minLength": 1,
+                    "type": "string",
+                  },
+                  "provider": {
+                    "type": [
+                      "string",
+                      "null",
+                    ],
+                  },
+                },
+                "required": [
+                  "provider",
+                  "modelId",
+                ],
+                "type": "object",
+              },
+              "type": "array",
+            },
             "id": {
               "type": "string",
             },
@@ -355,6 +378,29 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
                     "displayName": {
                       "type": "string",
                     },
+                    "fallbackModels": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "modelId": {
+                            "minLength": 1,
+                            "type": "string",
+                          },
+                          "provider": {
+                            "type": [
+                              "string",
+                              "null",
+                            ],
+                          },
+                        },
+                        "required": [
+                          "provider",
+                          "modelId",
+                        ],
+                        "type": "object",
+                      },
+                      "type": "array",
+                    },
                     "id": {
                       "type": "string",
                     },
@@ -674,10 +720,55 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "attempts": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "endedAt": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+          "error": {
+            "type": [
+              "string",
+              "null",
+            ],
+          },
+          "modelId": {
+            "type": "string",
+          },
+          "provider": {
+            "type": "string",
+          },
+          "startedAt": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
+          },
+        },
+        "required": [
+          "provider",
+          "modelId",
+          "error",
+          "startedAt",
+          "endedAt",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
     "commit": {
       "type": "string",
     },
     "errorMessage": {
+      "type": "string",
+    },
+    "failureKind": {
+      "enum": [
+        "model_call",
+        "other",
+      ],
       "type": "string",
     },
     "findings": {
@@ -1044,6 +1135,69 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "fallbackProviders": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "api": {
+            "enum": [
+              "anthropic-messages",
+              "openai-completions",
+              "openai-responses",
+            ],
+            "type": "string",
+          },
+          "apiKey": {
+            "type": "string",
+          },
+          "authHeader": {
+            "type": "boolean",
+          },
+          "baseUrl": {
+            "type": "string",
+          },
+          "kind": {
+            "enum": [
+              "api_key",
+              "oauth",
+              "http",
+            ],
+            "type": "string",
+          },
+          "label": {
+            "type": "string",
+          },
+          "models": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "type": "string",
+                },
+                "name": {
+                  "type": "string",
+                },
+              },
+              "required": [
+                "id",
+                "name",
+              ],
+              "type": "object",
+            },
+            "type": "array",
+          },
+          "providerId": {
+            "type": "string",
+          },
+        },
+        "required": [
+          "kind",
+          "providerId",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
     "git": {
       "anyOf": [
         {
@@ -2113,6 +2267,51 @@ exports[`body/封套 schema 快照 > conversationStreamEvent > conversationStrea
         "step": {
           "additionalProperties": false,
           "properties": {
+            "attempts": {
+              "anyOf": [
+                {
+                  "items": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "endedAt": {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer",
+                      },
+                      "error": {
+                        "type": [
+                          "string",
+                          "null",
+                        ],
+                      },
+                      "modelId": {
+                        "type": "string",
+                      },
+                      "provider": {
+                        "type": "string",
+                      },
+                      "startedAt": {
+                        "maximum": 9007199254740991,
+                        "minimum": -9007199254740991,
+                        "type": "integer",
+                      },
+                    },
+                    "required": [
+                      "provider",
+                      "modelId",
+                      "error",
+                      "startedAt",
+                      "endedAt",
+                    ],
+                    "type": "object",
+                  },
+                  "type": "array",
+                },
+                {
+                  "type": "null",
+                },
+              ],
+            },
             "buildId": {
               "type": "string",
             },
@@ -2165,6 +2364,7 @@ exports[`body/封套 schema 快照 > conversationStreamEvent > conversationStrea
             "createdAt",
             "status",
             "checkpointCommit",
+            "attempts",
           ],
           "type": "object",
         },
@@ -2947,6 +3147,51 @@ exports[`body/封套 schema 快照 > stepJournalRow > stepJournalRow.json 1`] = 
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
   "properties": {
+    "attempts": {
+      "anyOf": [
+        {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "endedAt": {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer",
+              },
+              "error": {
+                "type": [
+                  "string",
+                  "null",
+                ],
+              },
+              "modelId": {
+                "type": "string",
+              },
+              "provider": {
+                "type": "string",
+              },
+              "startedAt": {
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer",
+              },
+            },
+            "required": [
+              "provider",
+              "modelId",
+              "error",
+              "startedAt",
+              "endedAt",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        {
+          "type": "null",
+        },
+      ],
+    },
     "buildId": {
       "type": "string",
     },
@@ -2999,6 +3244,7 @@ exports[`body/封套 schema 快照 > stepJournalRow > stepJournalRow.json 1`] = 
     "createdAt",
     "status",
     "checkpointCommit",
+    "attempts",
   ],
   "type": "object",
 }
@@ -3720,6 +3966,30 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > agent > ag
     "displayName": {
       "type": "string",
     },
+    "fallbackModels": {
+      "default": [],
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "modelId": {
+            "minLength": 1,
+            "type": "string",
+          },
+          "provider": {
+            "type": [
+              "string",
+              "null",
+            ],
+          },
+        },
+        "required": [
+          "provider",
+          "modelId",
+        ],
+        "type": "object",
+      },
+      "type": "array",
+    },
     "id": {
       "type": "string",
     },
@@ -3781,6 +4051,7 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > agent > ag
     "provider",
     "modelId",
     "thinkingLevel",
+    "fallbackModels",
     "tools",
     "secrets",
     "skills",

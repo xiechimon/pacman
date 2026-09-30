@@ -134,6 +134,8 @@ export function agentRecordOfRow(row: typeof agent.$inferSelect): AgentRecord {
     secrets: row.secrets,
     skills: row.skills,
     mcpServers: row.mcpServers,
+    // 兜底列表（XMON-44）：record 读面恒携带（shared default []）。
+    fallbackModels: row.fallbackModels,
   };
 }
 

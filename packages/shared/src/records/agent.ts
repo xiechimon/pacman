@@ -47,6 +47,30 @@ export const AGENT_PERMISSION_COPY = {
   defaultSkill: '该 Agent 执行任何任务时自动携带的团队技能，无需在消息中 @ 引用。',
 } as const;
 
+/** 兜底模型槽（XMON-44 / XMON-32 终稿第三节；leader 裁决 daemon 侧步内
+ * 换模型重试，server 持配置真值）。provider null = 沿用 agent.provider
+ * （preset 直投同形）；有序数组，空 = 现行为（无兜底）。 */
+export const fallbackModelSchema = z.object({
+  provider: z.string().nullable(),
+  modelId: z.string().min(1),
+});
+export type FallbackModel = z.infer<typeof fallbackModelSchema>;
+
+/** 写面去重（XMON-32 终稿「fallback 条目不得与主模型重复，server create/patch
+ * 时剥离」）：null 槽先解析到主 provider 再比对；主 modelId 未配 → 无可重复，
+ * 原样返回。纯函数单源——server create/patch 共用，行上不变式
+ * 「fallbackModels 不含主模型」由此成立（claim/token 组装无需复查）。 */
+export function stripFallbackModelDupes(
+  fallbackModels: FallbackModel[],
+  provider: string | null,
+  modelId: string | null,
+): FallbackModel[] {
+  if (modelId === null) return fallbackModels;
+  return fallbackModels.filter(
+    (f) => (f.provider ?? provider) !== provider || f.modelId !== modelId,
+  );
+}
+
 export const agentRecordSchema = z.object({
   id: recordId,
   displayName: z.string(),
@@ -59,6 +83,9 @@ export const agentRecordSchema = z.object({
   modelId: z.string().nullable(),
   /** 思考强度（r3 样本 null = UI「默认」；wire 值词表未采 [推断]）。 */
   thinkingLevel: z.string().nullable(),
+  /** 兜底模型有序列表（XMON-44）：默认 [] = 现行为（写面已剥离主模型重复项，
+   * 读面对旧行/未配置行恒给 []）。thinkingLevel 由兜底项继承 agent 现值。 */
+  fallbackModels: z.array(fallbackModelSchema).default([]),
   /** 权限 6 开关的已开集 + 授予工具；wire 项形 [推断]。 */
   tools: z.array(z.string()),
   /** 团队密钥授权集（关联 secret id [推断]；值只写不读，02 §8）。 */
@@ -71,13 +98,18 @@ export const agentRecordSchema = z.object({
 export type AgentRecord = z.infer<typeof agentRecordSchema>;
 
 /** POST /api/teams/{id}/agents body [推断]（r5 §1/§8 补录端点；字段 =
- * 上文 agentRecordSchema 配置面投影，创建弹窗 r3 §4：名称/职责/模型）。 */
+ * 上文 agentRecordSchema 配置面投影，创建弹窗 r3 §4：名称/职责/模型）。
+ * fallbackModels（XMON-44）：optional 而非 default——zod v4 的 .partial() 会
+ * 保留 default，带 default 的字段在 PATCH 空体上会解析成 []（「清空」语义
+ * 混进「未动」位，无关字段的 PATCH 会误清兜底列表）；create 侧缺省 = 无
+ * 兜底，由 server 写面落 []（空 = 现行为）。 */
 export const createAgentBodySchema = z.object({
   displayName: z.string().min(1),
   description: z.string().nullish(),
   provider: z.string().nullish(),
   modelId: z.string().nullish(),
   thinkingLevel: z.string().nullish(),
+  fallbackModels: z.array(fallbackModelSchema).optional(),
   tools: z.array(z.string()).optional(),
   secrets: z.array(z.string()).optional(),
   skills: z.array(z.string()).optional(),
