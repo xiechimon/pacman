@@ -54,11 +54,11 @@ _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的�
 | 模型服务 | Provider | `provider` | 配了凭证的模型来源（api_key / oauth / 自定义端点三协议）。 |
 | 模型 | Model | `model` | Provider 下的一个具名可选项。[排除项：内置 built-in 模型走 Pro，不在复刻范围。] |
 | MCP 服务器 | MCP server | `mcpServer` | 团队接入、为 Agent 提供额外工具的外部 MCP 服务器（方向：外部 → Agent）；工具名 `mcp__<标识符>__<工具>`。 |
-| 团队密钥 | Secret | `secret` | 以环境变量注入任务 shell 的键值，只写不读。 |
+| 团队密钥 | Secret | `secret` | 按 Agent 授权、按步下发的键值，只写不读；明文不预置进任务 shell 环境（agent 经取用通道显式取用，取用留审计行）。 |
 | API 密钥 | API key | `apiKey` | `pacman_…` 形态的凭证，用于注册机器与作为 MCP Bearer，带读/写工具白名单。 |
 
 边界裁决：
-- **「密钥」是重载词，强制拆两义** —— `secret`（团队环境变量）≠ `apiKey`（访问令牌）。代码里两词严格分开。
+- **「密钥」是重载词，强制拆两义** —— `secret`（团队密钥）≠ `apiKey`（访问令牌）。代码里两词严格分开。
 - **MCP 只有一个方向是实体** —— `mcpServer` 指团队接入外部工具（外部 → Agent）。todos.dev 自身被外部 MCP 客户端连接，是 `apiKey` 的一项能力，不单立 `McpClient`/`McpGateway` 概念。
 - Provider ≠ Model（一个是配凭证的来源，一个是其下的可选项）。
 

@@ -206,8 +206,8 @@ export const EN: Record<string, string> = {
   '读取 server 本机 ~/.claude.json 的 mcpServers 段：在该文件添加配置并刷新，即出现在这里。MCP 服务器为 Agent 提供额外工具；授权在每个 Agent 的页面上单独进行。':
     'Reads the mcpServers section of ~/.claude.json on the pacman server machine — add entries there and refresh to see them here. MCP servers give Agents extra tools; authorization happens per Agent, on its own page.',
   '尚无密钥。': 'No secrets yet.',
-  '团队密钥将以环境变量注入每个任务的 shell。值只写不读：保存后只能覆盖或删除，无法再次查看。':
-    'Team secrets are injected into every task shell as environment variables. Values are write-only: once saved they can be overwritten or deleted, never viewed again.',
+  '团队密钥按 Agent 授权，在需要它的执行步中下发，不预置进任务 shell 环境。值只写不读：保存后只能覆盖或删除，无法再次查看。':
+    'Team secrets are granted per Agent and released to the build steps that need them — never pre-set into the task shell environment. Values are write-only: once saved they can be overwritten or deleted, never viewed again.',
   添加密钥: 'Add secret',
   '也可以让总管添加：它会开一张安全输入卡填写值，值不会进入对话。':
     'The Chief can add them too: it opens a secure input card for the value, which never enters the conversation.',
@@ -628,8 +628,8 @@ export const EN: Record<string, string> = {
     'Let this Agent add new skills to the team skill library.',
   '允许该 Agent 修改团队技能库中已有的技能。':
     'Let this Agent modify skills already in the team skill library.',
-  '任务执行时将团队密钥以环境变量注入该 Agent 的 shell。所在机器需要 pacman CLI 0.1.28 及以上。':
-    'Team secrets are injected into this Agent’s shell as environment variables when it runs tasks. The machine must have pacman CLI 0.1.28 or newer.',
+  '任务执行时，该 Agent 可在需要密钥的执行步中按需取用团队密钥，每次取用都会留下记录；密钥不预置进 shell 环境。所在机器需要 pacman CLI 0.1.28 及以上。':
+    'When running a task, this Agent can retrieve team secrets on demand in the execution steps that need them; every retrieval is recorded, and secrets are never preloaded into the shell environment. The machine must have pacman CLI 0.1.28 or newer.',
   '该 Agent 执行任务时可使用的团队 MCP 服务器，其工具以 mcp__<服务器>__<工具> 的形式出现。':
     'Team MCP servers this Agent may use while running tasks; their tools appear as mcp__<server>__<tool>.',
   '用一两句话说明该 Agent 的职责。该说明会注入它执行的每个任务，也会提供给总管用于分派。':

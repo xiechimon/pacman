@@ -334,15 +334,18 @@ export const machineToolResponseSchema = z.union([
 ]);
 
 /** GET /api/machine/token/{stepId}——per-step 凭证下发（02 §5.4/§8：模型
- * key + 托管 repo git 凭证，daemon 内存持有不落盘常驻）。响应形状 [设计]
- * （端点名 + git fetch 无凭证失败旁证，r3 §1.6）。 */
+ * key + 托管 repo git 凭证 + 团队密钥取用面，daemon 内存持有不落盘常驻）。
+ * 响应形状 [设计]（端点名 + git fetch 无凭证失败旁证，r3 §1.6）。 */
 export const machineTokenResponseSchema = z.object({
   /** 该步 Agent 的 provider 配置（apiKey 内存态经 SecretBox 解密下发，02 §8
    * 运行时层；无 key 网关可留空 = r3 §2 表单语义）。 */
   provider: providerConfigSchema.nullable(),
-  /** 团队 Secret → 任务 shell 环境变量（仅 Agent 授权集，02 §8/r2 权限开关；
-   * 服务端解析契约 = M2c services/credentials.ts）。 */
-  env: z.record(z.string(), z.string()),
+  /** 本步可取用的团队密钥（名字 → 明文；服务端解析契约 = M2c
+   * services/credentials.ts）。明文只出现在本返回值（02 §8 纪律），且**不得**
+   * 铺进 agent 进程环境——daemon 持有真值，agent 经本地取用通道显式取用。
+   * 按 step kind 收窄：plan/review/chief 步恒空（records/step.ts
+   * stepTakesSecrets）。 */
+  secrets: z.record(z.string(), z.string()),
   /** 托管 repo git 凭证（02 §3/§5.4：per-step 注入；接线随 git 面）。 */
   git: z
     .object({

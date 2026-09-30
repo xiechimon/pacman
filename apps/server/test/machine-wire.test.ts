@@ -400,7 +400,7 @@ describe('步骤 journal 全链（02 §5.4 词表 + §4.2 主时序机器侧）'
       api: 'openai-completions',
       authHeader: true,
     });
-    expect(token.env).toEqual({}); // 团队 Secret 授权集（agent.secrets 空 → 空映射，02 §8）
+    expect(token.secrets).toEqual({}); // 团队密钥取用面（agent.secrets 空 → 空映射，02 §8）
     expect(token.git).toBeNull(); // 托管 repo git 凭证槽（credentials.ts：接线随 git 面）
 
     // —— upload-urls + transcript 终稿落库（02 §1.3 数据所有权）——

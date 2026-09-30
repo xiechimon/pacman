@@ -26,6 +26,7 @@ import {
   REMOTE_TOOL_RETRY_DELAYS_MS,
   type ReviewGate,
   STREAM_TIMEOUTS_MS,
+  stepTakesSecrets,
 } from '@pacman/shared';
 import { SessionNotResumableError } from './backend/errors.js';
 import { notInConfigLine, resolveMcpEndpoints } from './backend/mcp-config.js';
@@ -34,6 +35,7 @@ import { type StepJournal, TranscriptBuffer } from './journal.js';
 import type { DaemonLogger } from './log.js';
 import type { MachineApi } from './machine-client.js';
 import { extractReviewVerdict } from './review-findings.js';
+import { buildSecretTool } from './secret-channel.js';
 import type { StatePaths } from './state.js';
 
 /** 停止请求（M7 #308）：discard = 确认弹层「丢弃本轮修改」勾选位——
@@ -337,6 +339,18 @@ export async function runStep(
       }`,
     );
   }
+  // 团队密钥取用通道（02 §8 运行时层）：明文不经进程环境，只有真正需要密钥
+  // 的步 kind 注册本地工具（records/step.ts stepTakesSecrets——规划/审核/总管
+  // 探索步连工具面都没有）。授权面为空也注册：agent 取不到时拿到的是「未授权」
+  // 这条明确原因，而不是一个说不清的缺值。
+  const secretTool = stepTakesSecrets(claimed.step.kind)
+    ? buildSecretTool({
+        creds,
+        stepId,
+        agentId: agent?.id ?? null,
+        onAudit: (line) => logger.step(line),
+      })
+    : null;
   const sessionOpts: SessionOpts = {
     provider,
     modelId: agent.modelId,
@@ -344,6 +358,7 @@ export async function runStep(
     ...(systemPrompt ? { systemPrompt } : {}),
     cwd,
     ...(prompt !== null ? { prompt } : {}),
+    ...(secretTool ? { localTools: [secretTool] } : {}),
     ...(remoteTools && remoteTools.length > 0
       ? {
           remoteTools,

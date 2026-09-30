@@ -39,7 +39,7 @@ export const AGENT_TOOL_COPY: Record<(typeof AGENT_TOOL_SWITCHES)[number], strin
 /** 权限面其余各档的说明文案（r3 §4 原文；品牌串经 brand.ts 槽，版本门常量
  * 见 records/secret.ts）。6 开关的副文案见 AGENT_TOOL_COPY。 */
 export const AGENT_PERMISSION_COPY = {
-  secrets: `任务执行时将团队密钥以环境变量注入该 Agent 的 shell。所在机器需要 ${BRAND.cliCommandName} CLI ${SECRET_MIN_CLI_VERSION} 及以上。`,
+  secrets: `任务执行时，该 Agent 可在需要密钥的执行步中按需取用团队密钥，每次取用都会留下记录；密钥不预置进 shell 环境。所在机器需要 ${BRAND.cliCommandName} CLI ${SECRET_MIN_CLI_VERSION} 及以上。`,
   mcpServers:
     '该 Agent 执行任务时可使用的团队 MCP 服务器，其工具以 mcp__<服务器>__<工具> 的形式出现。',
   responsibility:

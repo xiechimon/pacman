@@ -14,6 +14,18 @@ import { epochMs, recordId } from './common.js';
 export const stepKindSchema = z.enum(['plan', 'build', 'merge', 'chief', 'review']);
 export type StepKind = z.infer<typeof stepKindSchema>;
 
+/** 团队密钥取用面按 step kind 收窄（02 §8 运行时层）：只有真正需要密钥的步
+ * kind 收到非空授权面——规划步/审核步/总管探索步恒空（那三步不构建任何东西，
+ * 多一处暴露就多一处风险）。与仓内既有的按 kind 裁剪同族（review 步不开
+ * worktree、chief 步只读探索）。
+ * 单源：服务端凭据解析面与 daemon 取用通道注册面共用（维护者纪律——密钥的
+ * 下发形状只有一条，加第二个 backend 不必重答一次「密钥怎么送」）。 */
+export const SECRET_STEP_KINDS: readonly StepKind[] = ['build', 'merge'];
+
+export function stepTakesSecrets(kind: StepKind): boolean {
+  return SECRET_STEP_KINDS.includes(kind);
+}
+
 export const stepRecordSchema = z.object({
   id: recordId, // 观测形态 base64 样（r3 §9 `claim step=3iE_…`、r5 §3.1）
   /** 所属 build（≡ conversationId，CONTEXT.md 实体等式）。 */
