@@ -8,18 +8,28 @@
 
 /* ---- ⌘K search panel ------------------------------------------------ */
 
+/* #453：scrim 是 DialogShell（`viewportRoot`）的 Backdrop 位——类名经
+   `backdropClassName` 入参给，皮肤仍由本规则承载。
+   阶梯归适配层的 zIndex 入参（面传 41 → 背板 40）——**本对的 z 与面传的入参
+   同值，改一处必改两处**：CSS 这对是容器 stacking context 万一退化时面板仍压
+   得住背板的兜底，不是在给第二套真值。 */
 .search-scrim {
   position: fixed;
   inset: 0;
-  border: none;
-  padding: 0;
   background: var(--overlay-scrim);
-  cursor: default;
   z-index: 40;
 }
 
+/* 退场终态由 Base UI 的 [data-ending-style] 驱动（旧
+   `.overlay-mount[data-overlay-state="closed"] .anim-fade` 随 OverlayMount 退役）
+   ——配方同 dialog.css 的 .dlg-shell。 */
+.search-scrim[data-ending-style] {
+  opacity: 0;
+}
+
 /* 520×440 centered on the viewport, top 146 (r7 §3.5 family + 05 measure);
-   stacks above the scrim button (z 40) */
+   rides the shell's viewport-root container (z 41, above the scrim — same
+   fallback pairing as .search-scrim above) */
 .search-panel {
   position: fixed;
   top: 146px;
