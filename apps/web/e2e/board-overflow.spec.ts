@@ -13,6 +13,8 @@ import { expect, type Page, test } from '@playwright/test';
 //    「支持滚动」的正面钉）
 // 4. 列头不钉：随列表滚走（37px header 必须静止）
 // 5. 存量场景几何漂移：01（两卡 + 三卡 probe）列底超出或 h-full 语义丢失
+// 6. 卡片上/下缘被裁（XMON-42）：滚动容器按 padding box 裁切，块向
+//    内边距为零时首卡（与滚到底的末卡）的 1px 卡环连同圆角一起消失
 const OVERFLOW = '/app?scenario=board-overflow';
 const list = (page: Page, column = 'todo') =>
   page.locator(`[data-column="${column}"] .board-column-list`);
@@ -76,6 +78,40 @@ test('列头固定：列表滚动时 header 的视口位置不动', async ({ pag
   await list(page).evaluate((el) => el.scrollTo({ top: 400 }));
   const after = (await header.boundingBox())!.y;
   expect(Math.abs(after - before)).toBeLessThanOrEqual(1);
+});
+
+test('卡片上下缘由块向内边距保位：首卡上缘、滚到底的末卡下缘都不贴裁切线', async ({ page }) => {
+  await page.goto(OVERFLOW);
+  const listEl = list(page);
+  // 卡环是 border box 外的 1px box-shadow，滚动容器按 padding box 裁切：
+  // 卡的上缘正好落在裁切线上时，那道 1px 环与圆角上半段被裁掉（XMON-42
+  // 复现——零块向内边距时实测 card.top - list.top == 0）。此处钉「卡缘与
+  // 裁切线之间恒有 1px 让位」，不钉具体内边距值。
+  const top = await page.evaluate(() => {
+    const l = document.querySelector('[data-column="todo"] .board-column-list');
+    const c = document.querySelector('[data-column="todo"] .todo-card');
+    if (l == null || c == null) return null;
+    return { gap: c.getBoundingClientRect().top - l.getBoundingClientRect().top };
+  });
+  expect(top).not.toBeNull();
+  expect(top!.gap).toBeGreaterThanOrEqual(1);
+
+  // 滚到底：末卡下缘同样让位（底端裁切是同一个 padding box 边界）
+  const bottom = await page.evaluate(() => {
+    const l = document.querySelector('[data-column="todo"] .board-column-list');
+    if (l == null) return null;
+    l.scrollTo({ top: l.scrollHeight });
+    const cards = l.querySelectorAll('.todo-card');
+    const last = cards[cards.length - 1];
+    if (last == null) return null;
+    return {
+      gap: l.getBoundingClientRect().bottom - last.getBoundingClientRect().bottom,
+      scrollTop: l.scrollTop,
+    };
+  });
+  expect(bottom).not.toBeNull();
+  expect(bottom!.scrollTop).toBeGreaterThan(0);
+  expect(bottom!.gap).toBeGreaterThanOrEqual(1);
 });
 
 test('存量场景零漂移：01 列完整贴视口、列底不超 scroller 底缘', async ({ page }) => {
