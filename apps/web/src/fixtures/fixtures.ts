@@ -6,6 +6,7 @@
 // records.
 
 import {
+  type AgentRecord,
   BRAND,
   conversationBranch,
   derivePlaceholderTitle,
@@ -13,6 +14,7 @@ import {
   type ModelSource,
   maskApiKey,
   PLACEHOLDER_TITLE_FALLBACK,
+  type ProviderRecord,
 } from '@pacman/shared';
 import { diffLines } from 'diff';
 import type {
@@ -1406,6 +1408,57 @@ export const teamOrgChartEmpty: FixtureSet = {
   todos: boardDefault.todos,
   now: boardDefault.now,
   team: { members: 0, agents: [] },
+};
+
+// ── Agent 详情编辑面（r3 §4 实测样本）────────────────────────────────────
+// 记录字段逐字 = r3 §4 的 wire 样本（provider `r3-gw`、modelId
+// `claude-sonnet-5`、thinkingLevel null、四组权限数组全空）；团队页卡上的
+// `未设置职责` 就是这里 description:null 的呈现。
+
+/** custom provider 样本（r3 §2：BYOK 网关 r3-gw，模型 12 项取一）。 */
+const AGENT_PROVIDER_R3GW: ProviderRecord = {
+  kind: 'custom',
+  providerId: 'r3-gw',
+  label: 'r3-gw',
+  baseUrl: 'https://gw.r3.invalid/v1',
+  api: 'anthropic-messages',
+  authHeader: true,
+  compat: { supportsDeveloperRole: false },
+  models: [{ id: 'claude-sonnet-5', name: 'claude-sonnet-5' }],
+  id: 'provider-r3-gw',
+  createdBy: 'user-r3',
+  createdAt: 0,
+  updatedAt: 0,
+};
+
+/** Agent 记录样本（r3 §4 wire 原样）。 */
+const AGENT_R3_BUILDER: AgentRecord = {
+  id: R3_BUILDER.id,
+  displayName: R3_BUILDER.displayName,
+  description: null,
+  status: 'active',
+  avatarUrl: null,
+  provider: 'r3-gw',
+  modelId: 'claude-sonnet-5',
+  thinkingLevel: null,
+  tools: [],
+  secrets: [],
+  skills: [],
+  mcpServers: [],
+};
+
+/** Agent 详情 + 创建弹窗模型位的数据集：团队页 roster 与详情页记录同场景，
+ *  团队页卡点进详情后 `?scenario=agent-detail` 随行（#121 Link 律）不会丢。
+ *  resources 在 RESOURCES 之上补 providers（模型选择器候选源）与空 memories
+ *  （记忆 tab 走 shared canon 空态）。 */
+export const agentDetail: FixtureSet = {
+  ...teamGrid,
+  agents: [AGENT_R3_BUILDER],
+  resources: {
+    ...RESOURCES,
+    providers: [AGENT_PROVIDER_R3GW],
+    memories: [],
+  },
 };
 
 /** #444 named scenario（无 capture，notify-banner 先例）：绑定 Agent 的
