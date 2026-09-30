@@ -13,6 +13,7 @@ import type {
   ProjectRepoKind,
   ProviderApi,
   StepKind,
+  TodoSourceKind,
   TriggerSource,
 } from '@pacman/shared';
 import { sql } from 'drizzle-orm';
@@ -82,6 +83,12 @@ export const todo = sqliteTable('todo', {
   createdBy: text('createdBy'),
   ownerId: text('ownerId'),
   sourceBuildId: text('sourceBuildId'),
+  /** 来源种类（#446 / ADR 0005 D6，溯源家族位）：null | 'github-issue'
+   * （值域单源 = shared TASK_SOURCE_KINDS）。任务至多一个来源。 */
+  sourceKind: text('sourceKind').$type<TodoSourceKind | null>(),
+  /** 外部引用（#446）：形如 `github:owner/repo#123`（shared
+   * githubIssueSourceRef 单源）；无来源 = null。 */
+  sourceRef: text('sourceRef'),
 });
 
 // tag record 三位补全（#309，r9 §3.4 实测 wire {id, projectId, name, color,

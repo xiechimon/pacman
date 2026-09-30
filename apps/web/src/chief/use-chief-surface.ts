@@ -7,9 +7,9 @@
 // drawer is open, the unread badge count and the send/thread callbacks.
 // Fixture mode stays fully inert (queries enabled = live), so fixture
 // captures keep their zero-request guarantee.
-// #389: the Space hotkey joins the wake path as the FAB's keyboard twin
-// (open-only; editable/interactive guards live in overlays/hotkeys). Every
-// page runs exactly one instance of this hook, so the listener stays a
+// #389/#442: the ⌘J hotkey joins the wake path as the FAB's keyboard twin
+// (open-only; the editable guard lives in overlays/hotkeys). Every page
+// runs exactly one instance of this hook, so the listener stays a
 // singleton per route.
 
 import { useCallback, useMemo, useState } from 'react';
@@ -63,8 +63,8 @@ export function useChiefSurface(fixture: FixtureSet): ChiefSurface {
   const chief = fixture.chief;
   const [chiefView, setChiefView] = useState<ChiefView>(chief?.view ?? 'none');
   const chiefViewOpen = chiefView === 'drawer';
-  // #389: Space 呼出 = FAB 点击的键盘孪生（每页恰好一个本 hook 实例，监听
-  // 单点注册；守卫归 hotkeys 模块——输入态/交互态目标不误触）。开后焦点
+  // #389/#442: ⌘J 呼出 = FAB 点击的键盘孪生（每页恰好一个本 hook 实例，
+  // 监听单点注册；守卫归 hotkeys 模块——输入态目标不误触）。开后焦点
   // 落草稿框（drawer 的 autofocus 律）。open-only，与 FAB 同语义。
   const wakeDrawer = useCallback(() => setChiefView('drawer'), []);
   useChiefWakeHotkey(wakeDrawer);

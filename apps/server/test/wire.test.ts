@@ -94,6 +94,24 @@ const INFERRED_ROUTES = [
   'POST /api/teams/{id}/github/oauth/authorize',
   'GET /api/teams/{id}/github/connection',
   'DELETE /api/teams/{id}/github/connection',
+  // #440（ADR 0003）原生文件夹选取：server 代弹 macOS choose folder（浏览器
+  // 拿不到绝对路径，只能目标机进程代弹）。自有设计面（原站无此端点，第二个
+  // 自觉背离面），02 §6.1 词表外 = INFERRED 入位。
+  'POST /api/fs/pick',
+  // #441（ADR 0003 D6）应用内目录浏览数据源：remote/headless 形态 fs/pick
+  // 422 unavailable 的兜底浏览器 readdir 面（只列目录 + git 提示标记 + 容量
+  // 闸）。自有设计面，02 §6.1 词表外 = INFERRED 入位。
+  'GET /api/fs/list',
+  // #446（ADR 0005 读向）GitHub issue 读面：项目页「从 GitHub issue 建任务」
+  // 的列表代理（state/page 过滤分页）+ 导入建任务（现拉 issue + 镜像同步
+  // label 集）。自有设计面，02 §6.1 词表外 = INFERRED 入位。
+  'GET /api/projects/{id}/github/issues',
+  'POST /api/projects/{id}/github/issues/import',
+  // #452（ADR 0006 写向）来源 issue 只读回显（详情页进入拉一次，拉不到整行
+  // 隐藏）+ 未建成重试入口（建 issue 失败的任务显式重试）。自有设计面，
+  // 02 §6.1 词表外 = INFERRED 入位。
+  'GET /api/todos/{id}/github-issue',
+  'POST /api/todos/{id}/github-issue/retry',
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；

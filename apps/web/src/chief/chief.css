@@ -1,38 +1,45 @@
-/* Chief surfaces (issue #72). Geometry measured from the r5 captures
-   (1438×730, dpr 1): drawer 418 wide, top 42, right 17, bottom 16, radius
-   12; gate bar 54 high inset 17; example grid 2×170 cards, 64 high, gap 10,
-   inset 33; composer inset 17/10. Settings column 766 wide centered on the
-   content area; header 57; tabs 30 high at y60; agent card 44 at y107;
-   compress card 62 at y169. Dark values ride the shared tokens (r2 16
-   sample: panel #18181b, inner cards #1f1f23). */
+/* Chief surfaces (issue #72; panel form re-ruled by #447 / ADR 0004).
+   The drawer is a docked right-hand column, not an overlay: 418 wide (the
+   r5 capture value, kept as the pinned panel width), full height, flush to
+   the container's right edge, radius 0, no shadow, one 1px hairline seam on
+   the left (Hairlines Not Shadows, the .detail-right recipe). Interior
+   geometry still measured from the r5 captures (1438×730, dpr 1): gate bar
+   54 high inset 17; example grid 2×170 cards, 64 high, gap 10, inset 33;
+   composer inset 17/10. Settings column 766 wide centered on the content
+   area; header 57; tabs 30 high at y60; agent card 44 at y107; compress
+   card 62 at y169. Dark values ride the shared tokens (r2 16 sample: panel
+   #18181b, inner cards #1f1f23). */
 
-/* ---- drawer ---- */
+/* ---- drawer (docked column, ADR 0004 D1–D5) ---- */
 
+/* In-flow flex item: every mount point puts the panel last in a flex row
+   (.board-shell / .page-main / .res-main / .secondary-main / .detail-body)
+   whose content sibling is flex:1 min-width:0, so the content yields by
+   exactly 418px (D2). The row's stretch alignment carries the full height. */
 .chief-drawer {
-  position: absolute;
-  top: 42px;
-  right: 17px;
-  bottom: 16px;
+  flex: none;
   width: 418px;
   background: var(--surface);
-  border-radius: 12px;
-  box-shadow: var(--chief-shadow);
+  border-left: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
   z-index: 30;
 }
 
-/* 全屏形态（#146 面板形态切换）：充满 drawer 的定位容器（board = 视口锚，
-   wake 族 = main 列）。最大化形态无任一批次抓拍（r2 §9-26
-   `tds.panel-maximized` 未点开；r8-chief-panel-adhoc §3）——几何 [推断]，
-   贴边即圆角归零。 */
-.chief-drawer.is-fullscreen {
+/* Exit leg only (D4: 内容瞬时贴合，不做布局动画): once the overlay state
+   flips to closed the panel leaves the flow, so the content column snaps
+   back to full width immediately while the retained element plays its
+   translateX slide-out over the slot it just vacated. Anchors: the wake
+   shells and detail dock inside position:relative containers (*-main /
+   .detail-body), so the absolute panel lands exactly on its open-state
+   geometry; on board the containing block is the viewport ICB, which is
+   box-identical to .board-shell (body overflow:hidden clips the slide-out
+   past the right edge). */
+.overlay-mount[data-overlay-state="closed"] .chief-drawer {
+  position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  left: 0;
-  width: auto;
-  border-radius: 0;
 }
 
 .chief-head {
@@ -657,6 +664,25 @@
   justify-content: center;
   cursor: pointer;
   box-shadow: var(--fab-shadow);
+}
+
+/* #444: 绑定 Agent 的头像铺满 FAB 圆（字形的内边距不适用于头像面）。
+   尺寸由本规则钉死——Avatar 加载失败退静态资产时盒子不变，无布局跳动。
+   规则住 chief.css：本文件随 ChiefDrawer 加载，五族 FAB（board inline +
+   四个 wake 壳）都在场。 */
+.fab-avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.fab-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* machine name inside the `运行在 … 上` note: underlined per r5 114 */

@@ -95,7 +95,7 @@ try {
   // ---------- 路径 A：新建任务对话框 ----------
   await page.goto(`${WEB}/app`);
   await page.waitForSelector('[data-route="board"]', { timeout: 15_000 });
-  await page.click('.board-new-task');
+  await page.click('.sidebar-new-task');
   await page.waitForSelector('.new-task-dialog', { timeout: 5000 });
   // spec 15 #394：单字段正文——标题输入位移除。
   await page.fill('.new-task-spec', title);

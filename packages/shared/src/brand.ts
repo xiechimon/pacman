@@ -99,6 +99,11 @@ export const ENV_VARS = {
   /** 本地 MCP config 文件（spec 13/#368）：server 投影 UI 面、daemon 解析
    * 执行端点，各读各机；默认 ~/.claude.json 的 mcpServers 段。 */
   mcpConfig: 'PACMAN_MCP_CONFIG',
+  /** 自定义端点是否声明推理能力（=1 时开）：开了 pi 才下发 reasoning_effort，
+   * 思考深度才受 thinkingLevel 控制。opt-in——不同后端对该字段容忍度不同
+   * （实测某 relay 只认 low/high/max，传 medium 直接 400），默认打开会让一部分
+   * 自定义端点整条挂掉。 */
+  customModelReasoning: 'PACMAN_CUSTOM_MODEL_REASONING',
 } as const;
 
 /** API key 形态 `pacman_<48hex>`（02 §5.8 前缀 = 品牌槽；r3 §6 掩码样例原形

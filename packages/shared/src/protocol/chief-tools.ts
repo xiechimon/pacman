@@ -550,36 +550,70 @@ export const WORKER_MEMORY_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   },
 ];
 
+/** worker 步附件读工具（#310/r9 §3.1）：chief-tools attachment 同形态
+ * （replaySafe + attachmentId 必填）。 */
+const WORKER_ATTACHMENT_TOOL: RemoteToolDef = {
+  name: 'attachment',
+  description:
+    'Fetch an attachment referenced by a task spec or message. ' +
+    'Spec tokens of the form ![name](attachment:<teamId>/<id>.<ext>) embed an attachment; ' +
+    'call with the bare <id> (the part before the extension). ' +
+    'Returns the file content (utf8 for text/* / json / xml, base64 for images / pdf).',
+  parameters: obj({ attachmentId: str('Attachment id.') }, ['attachmentId']),
+  replaySafe: true,
+};
+
+/** set_task_meta local 形态（spec 15 #394 / ADR 0002 D3 原样）：title 必填
+ * 占位回填 + tag 单值固定 6 词表。窄设计：todoId 由 server 从 stepId 钉死
+ * （词表外 tag name = 400），agent 无越权改他任务的参数面。 */
+const SET_TASK_META_TOOL: RemoteToolDef = {
+  name: 'set_task_meta',
+  description:
+    'Set the title and category tag of the task you are currently working on. ' +
+    'Call exactly once before starting work: title = a concise summary of the task spec ' +
+    '(50 chars max, plain text, no markdown); tag = one name from the fixed tag vocabulary ' +
+    'listed in your instructions (omit it when none fits).',
+  parameters: obj(
+    {
+      title: str('Task title, 50 chars max.'),
+      tag: str('Optional tag name from the fixed vocabulary.'),
+    },
+    ['title'],
+  ),
+};
+
+/** set_task_meta github 形态变体（#446 / ADR 0005 D2/D4/D5）：title 可选
+ * （issue 来源的标题已是真值，daemon 不指示回填）；tag 单值改 tags 数组
+ * （词表 = 仓库 label 镜像，issue 挂几个贴几个——「至多 1 个」github 侧
+ * 作废）。校验真值在 server setTaskMeta（按项目形态分支取标签集，不信任
+ * 工具面形状）。 */
+const SET_TASK_META_TOOL_MULTI_TAG: RemoteToolDef = {
+  name: 'set_task_meta',
+  description:
+    'Update the title and/or category tags of the task you are currently working on. ' +
+    'title: a concise summary of the task spec (50 chars max, plain text, no markdown) — ' +
+    'only when your instructions ask you to replace a placeholder title, omit otherwise. ' +
+    'tags: names from the project tag vocabulary listed in your instructions ' +
+    '(several allowed; omit when none fits).',
+  parameters: obj({
+    title: str('Optional task title, 50 chars max.'),
+    tags: arr({ type: 'string' }, 'Optional tag names from the project vocabulary.'),
+  }),
+};
+
 /** worker 步全量工具（r5 §3.1 + #310/r9 §3.1 + spec 15 #394）：记忆三件套 +
  * 附件读 + 任务元信息回填。chief 49 词表（组织/执行面）不外溢到 worker——
- * worker 读路径只挂「任务内可读」面。attachment 同 chief-tools 形态：
- * replaySafe + attachmentId 必填。set_task_meta 窄设计：todoId 由 server 从
- * stepId 钉死（词表外 tag name = 400），agent 无越权改他任务的参数面。 */
+ * worker 读路径只挂「任务内可读」面。 */
 export const WORKER_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   ...WORKER_MEMORY_REMOTE_TOOLS,
-  {
-    name: 'attachment',
-    description:
-      'Fetch an attachment referenced by a task spec or message. ' +
-      'Spec tokens of the form ![name](attachment:<teamId>/<id>.<ext>) embed an attachment; ' +
-      'call with the bare <id> (the part before the extension). ' +
-      'Returns the file content (utf8 for text/* / json / xml, base64 for images / pdf).',
-    parameters: obj({ attachmentId: str('Attachment id.') }, ['attachmentId']),
-    replaySafe: true,
-  },
-  {
-    name: 'set_task_meta',
-    description:
-      'Set the title and category tag of the task you are currently working on. ' +
-      'Call exactly once before starting work: title = a concise summary of the task spec ' +
-      '(50 chars max, plain text, no markdown); tag = one name from the fixed tag vocabulary ' +
-      'listed in your instructions (omit it when none fits).',
-    parameters: obj(
-      {
-        title: str('Task title, 50 chars max.'),
-        tag: str('Optional tag name from the fixed vocabulary.'),
-      },
-      ['title'],
-    ),
-  },
+  WORKER_ATTACHMENT_TOOL,
+  SET_TASK_META_TOOL,
+];
+
+/** github 形态项目的 worker 工具面（#446）：set_task_meta 换多标签变体，
+ * 其余同 WORKER_REMOTE_TOOLS。server claim 按项目形态下发（machines.ts）。 */
+export const WORKER_REMOTE_TOOLS_GITHUB: readonly RemoteToolDef[] = [
+  ...WORKER_MEMORY_REMOTE_TOOLS,
+  WORKER_ATTACHMENT_TOOL,
+  SET_TASK_META_TOOL_MULTI_TAG,
 ];

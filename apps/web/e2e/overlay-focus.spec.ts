@@ -34,7 +34,8 @@ async function focusedOutline(page: Page) {
 test.describe('#15 focus ring收编', () => {
   test('click + key on 新建任务/topbar buttons: never the UA blue box', async ({ page }) => {
     await page.goto(BOARD);
-    const newTask = page.locator('.board-new-task');
+    // #445：顶栏「+ 任务」撤除——新建触发位 = 侧栏「新任务」行
+    const newTask = page.locator('.sidebar-new-task');
     await newTask.click();
     // keyboard interaction after a click flips the focused button into
     // :focus-visible (Chromium heuristic) — the exact dogfood symptom path
@@ -84,7 +85,7 @@ test.describe('#15 focus ring收编', () => {
     for (let i = 0; i < 40 && !found; i++) {
       await page.keyboard.press('Tab');
       found = await page.evaluate(
-        () => document.activeElement?.classList.contains('board-new-task') ?? false,
+        () => document.activeElement?.classList.contains('sidebar-new-task') ?? false,
       );
     }
     expect(found).toBe(true);

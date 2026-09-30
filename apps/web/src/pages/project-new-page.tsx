@@ -29,6 +29,8 @@
 
 import {
   type CreateProjectBody,
+  FS_PICK_ERROR_COPY,
+  type FsPickErrorReason,
   type GithubRepoSummary,
   isGithubRepoRef,
   LOCAL_ERROR_REASON_COPY,
@@ -44,6 +46,7 @@ import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronRight, ImageFrame } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { DirBrowser } from './dir-browser.js';
 import { PageShell } from './shell.js';
 import './pages.css';
 
@@ -80,6 +83,13 @@ export function ProjectNewPage() {
   const [repoSel, setRepoSel] = useState<RepoSel>('none');
   const [githubRepo, setGithubRepo] = useState('');
   const [localPath, setLocalPath] = useState('');
+  // #440：浏览钮在飞位（disabled + server 单飞双保险）与降级提示行文案
+  // （ADR 0003 D4——能力边界说明，非错误级；null = 无提示）。
+  const [pickBusy, setPickBusy] = useState(false);
+  const [pickHint, setPickHint] = useState<string | null>(null);
+  // #441：native 对话框不可用（422 unavailable，remote/headless 形态）时自动
+  // 打开应用内目录浏览器兜底（ADR 0003 D6）；其余错误只落提示行不开 overlay。
+  const [browseOpen, setBrowseOpen] = useState(false);
   const [repoOpen, setRepoOpen] = useState(false);
   // #361 github 面状态位：manualRepo = 手动兜底 input 面；pickerOpen =
   // picker 弹层；oauthError = 着陆 reason 三译 / authorize 失败原文（内联行）。
@@ -96,6 +106,7 @@ export function ProjectNewPage() {
   const autoName = useRef('');
   const closeRepo = useCallback(() => setRepoOpen(false), []);
   const closePicker = useCallback(() => setPickerOpen(false), []);
+  const closeBrowse = useCallback(() => setBrowseOpen(false), []);
   useEscapeClose(repoOpen, closeRepo);
   useEscapeClose(pickerOpen, closePicker);
 
@@ -156,7 +167,39 @@ export function ProjectNewPage() {
   };
   const onLocalPathChange = (value: string) => {
     setLocalPath(value);
+    // 编辑即撤提示（陈旧提示不残留，localErrorText 同律）。
+    setPickHint(null);
     backfillName(pathBasename(value));
+  };
+
+  // #440 浏览钮（ADR 0003 D1/D4）：server 代弹 macOS 原生选文件夹对话框。
+  // 取消 = 静默 no-op（{path:null} 是正常结局）；能力缺失/单飞 = reason 分译
+  // 落中性提示行；未分类失败原文直透（LOCAL_ERROR_REASON_COPY 降级同律）。
+  // 结果直接覆盖 localPath（S11 最后动作赢，#440 失败方式清单）并走既有
+  // basename 回填律。
+  const browseFolder = () => {
+    if (pickBusy) return;
+    setPickBusy(true);
+    setPickHint(null);
+    mutations.pickLocalFolder.mutate(undefined, {
+      onSuccess: (data) => {
+        if (data.path !== null) onLocalPathChange(data.path);
+      },
+      onError: (err) => {
+        const reason = err instanceof ApiError ? err.reason : undefined;
+        setPickHint(
+          reason !== undefined && reason in FS_PICK_ERROR_COPY
+            ? t(FS_PICK_ERROR_COPY[reason as FsPickErrorReason])
+            : err instanceof ApiError
+              ? err.message
+              : t('无法打开系统文件夹对话框'),
+        );
+        // #441 兜底：unavailable = remote/headless 形态（无 GUI 会话），自动开
+        // 应用内目录浏览器（ADR 0003 D6）；busy（409）与未分类错只落提示行。
+        if (reason === 'unavailable') setBrowseOpen(true);
+      },
+      onSettled: () => setPickBusy(false),
+    });
   };
 
   // picker 单选：回填 owner/repo（trigger 面显示）+ 项目名（回填律）+ 收面板。
@@ -333,6 +376,15 @@ export function ProjectNewPage() {
               />
               <button
                 type="button"
+                className="prj-new-browse"
+                aria-label={t('浏览')}
+                disabled={pickBusy}
+                onClick={browseFolder}
+              >
+                {t('浏览')}
+              </button>
+              <button
+                type="button"
                 className="prj-new-repo-swap"
                 aria-label={t('选择仓库')}
                 onClick={() => setRepoOpen(true)}
@@ -461,6 +513,19 @@ export function ProjectNewPage() {
               </button>
             </div>
           </OverlayMount>
+          {/* #441 应用内目录浏览器（ADR 0003 D6 remote/headless 兜底）：仅在
+              local 选态挂载；onPick 走既有 onLocalPathChange（回填 + 名称联动
+              + 编辑即撤提示律，W5）。 */}
+          {repoSel === 'local' && (
+            <DirBrowser
+              open={browseOpen}
+              onClose={closeBrowse}
+              onPick={(path) => {
+                setBrowseOpen(false);
+                onLocalPathChange(path);
+              }}
+            />
+          )}
         </div>
         {/* github 非手动面的内联错误行（着陆 reason 三译 / authorize 400
             原文）与未认证面手动兜底链接（连接态未决时不出，随占位面收敛）。 */}
@@ -479,6 +544,9 @@ export function ProjectNewPage() {
             {localErrorText}
           </div>
         )}
+        {/* #440 降级提示行（ADR 0003 D4）：能力边界说明非错误级——中性色、
+            无 role=alert；仅 local 选态呈现，编辑路径即撤。 */}
+        {repoSel === 'local' && pickHint !== null && <div className="prj-new-hint">{pickHint}</div>}
         <button
           type="button"
           className="prj-new-submit"

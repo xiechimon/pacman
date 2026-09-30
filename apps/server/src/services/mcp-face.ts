@@ -159,7 +159,15 @@ export async function executeMcpTool(
   args: Args,
 ): Promise<string> {
   const { db } = deps;
-  const svc = { db, hub: deps.hub, machineHub: deps.machineHub, user: deps.user };
+  // #452 写向：box/githubFetch 透传——MCP create_todo 与三条创建路径同律。
+  const svc = {
+    db,
+    hub: deps.hub,
+    machineHub: deps.machineHub,
+    user: deps.user,
+    box: deps.box,
+    ...(deps.githubFetch !== undefined ? { githubFetch: deps.githubFetch } : {}),
+  };
   switch (name) {
     // —— 读 11 组（Read the workspace / Read the repo / Read progress）——
     case 'todos': {

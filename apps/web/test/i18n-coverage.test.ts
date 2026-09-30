@@ -26,6 +26,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import {
   CHIEF_REBIND_CONFIRM_COPY,
+  FS_PICK_ERROR_COPY,
   LOCAL_ERROR_REASON_COPY,
   NOTIFICATION_BANNER_COPY,
   SKILL_PAGE_COPY,
@@ -63,6 +64,9 @@ const COMPUTED_KEYS = new Set<string>([
   // #386: local 400 分译键 canon = shared LOCAL_ERROR_REASON_COPY（reason code
   // → zh 键映射，页面经常量查 t()），不作字面量出现。
   ...Object.values(LOCAL_ERROR_REASON_COPY),
+  // #440: fs/pick 分译键 canon = shared FS_PICK_ERROR_COPY（reason code → zh
+  // 键映射，浏览钮失败面经常量查 t()），不作字面量出现。
+  ...Object.values(FS_PICK_ERROR_COPY),
 ]);
 
 /** Data layer: capture-verbatim user/agent content, never translated.

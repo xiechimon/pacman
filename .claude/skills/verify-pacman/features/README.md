@@ -57,7 +57,7 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [停止钮(详情页)](./stop-button.md) 全栈在跑(server+web+真 daemon+stub LLM 门控轮)的中断链:#318 统一 start dialog→streaming→确认弹层→正在停止…→已取消→gate 回落;定制 probe `scripts/drive-stop.mjs`(#308)。
 - [AI 审核发起(详情页)](./review-modal.md) confirm/review 相位 composer「AI 审核」钮→560 模态选 Agent→发起→审核步入队+REVIEW_ANNOUNCEMENT;定制 probe `scripts/drive-review.mjs`(#312);blocking 自动修订回路 `scripts/drive-review-blocking.mjs`(#330/#332)。
 - [@提及(composer+新建任务)](./mentions.md) 提及钮开五分组 picker / textarea 键入 `@` 内联补全→选实体→序列化 token(`[名](agent:{id})`/`#seq`)落文本(#311/#327)。**2026-09-28 live 验通过**。
-- [标签(新建任务+详情meta)](./tags.md) 新建任务 footer 标签钮→面板 pill toggle+内联新建→tagIds 随 createTodo;详情 fresh meta 渲染 TagChip,**看板卡不渲染**(r9 §3.4 校准)(#309/#323)。**2026-09-28 live 验通过**。
+- [标签(新建任务+详情meta)](./tags.md) 新建任务 footer 标签钮→面板 pill toggle+内联新建→tagIds 随 createTodo;详情 fresh meta 渲染 TagChip(#309/#323);看板卡自 #445 起也渲染标签 chip(旧「看板卡不渲染」校准退役)。**2026-09-28 live 验通过(#445 后卡面律更新,待复验)**。
 - [附件(composer+新建任务)](./attachments.md) 添加附件钮(原生文件触发)→三步上传(grant→host→token)→`![名](attachment:…)` 注入 spec→执行面 agent 可读(#310/#331)。live re-probe 待补。
 - [分支同步(详情页右 pane section)](./branch-sync.md) 右 pane 型选→「分支与 PR」静止 section(#366 前为头部弹层)→选机器→同步钮→`POST branch-sync`→daemon git/worktree 执行→结果卡 pending→synced(#319/#328)。#366 后全链 live re-probe 待补。
 - [详情页 3-pane 结构与右 pane 视图](./detail-right-pane.md) 240|fluid|488 三栏贴合、头部单图标、tab 组退役、型选四视图(文档/分支/Token/历史)静止 section、fresh 空占位、composer 唯一卡片;定制 probe `scripts/drive-detail-pane.mjs`(#366)。

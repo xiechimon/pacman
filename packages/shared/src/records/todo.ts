@@ -30,6 +30,37 @@ export const buildHistoryEntrySchema = z.object({
   createdAt: epochMs,
 });
 
+/** 任务（todo record）来源种类值域（#446 / ADR 0005 D6 + #452 / ADR 0006
+ * 写向）：任务可绑定至多一个外部出处。两值 = 同一出处的两个来路方向：
+ * - `github-issue`：任务**来自** issue（导入面，#446）——标题真值在 GitHub
+ *   侧（titleFinal），不可回填覆盖；
+ * - `github-issue-self`：issue **来自**任务（自派建时出站，#452）——标题真值
+ *   在 pacman 侧，占位标题仍走 agent 回填并写进 issue（ADR 0006 D3）；
+ *   sourceRef=null 表示「未建成」（建 issue 失败的可重试态，ADR 0006 D2）。
+ * 出现第二种外部出处（PR / CI 失败 / 外部工单）时重审形状（ADR 0005 重开
+ * 触发条款）。常量取 TASK_ 前缀而非表名前缀：pre-commit 注释纪律黑名单按
+ * 大写词面匹配，表名全大写形会误伤。 */
+export const TASK_SOURCE_KINDS = ['github-issue', 'github-issue-self'] as const;
+export const todoSourceKindSchema = z.enum(TASK_SOURCE_KINDS);
+export type TodoSourceKind = z.infer<typeof todoSourceKindSchema>;
+
+/** 外部引用格式单源（#446：`github:owner/repo#123`）。写入面（server
+ * import 服务）与断言面（测试）同吃，防格式串两处漂移。 */
+export function githubIssueSourceRef(owner: string, repo: string, issueNumber: number): string {
+  return `github:${owner}/${repo}#${issueNumber}`;
+}
+
+/** 外部引用反解单源（#452 写向：回写标题 / 只读回显按 ref 出站）。与
+ * githubIssueSourceRef 严格互逆；不匹配（含 owner/repo 段带 `/` 或 `#` 的
+ * 畸形值）返回 null 由调用面降级。 */
+export function parseGithubIssueSourceRef(
+  ref: string,
+): { owner: string; repo: string; issueNumber: number } | null {
+  const m = /^github:([^/#]+)\/([^/#]+)#(\d+)$/.exec(ref);
+  if (m === null) return null;
+  return { owner: m[1] as string, repo: m[2] as string, issueNumber: Number(m[3]) };
+}
+
 export const todoRecordSchema = z.object({
   id: recordId,
   teamId: recordId,
@@ -61,6 +92,13 @@ export const todoRecordSchema = z.object({
   ownerId: recordId.nullable(),
   /** 来源 build（chief 回合 id，形如 `chief-…`）；人工建时 null [推断]。 */
   sourceBuildId: z.string().nullable(),
+  // —— #446 来源两列（ADR 0005 D6，溯源家族位）——
+  /** 来源种类（TASK_SOURCE_KINDS 注释：导入 vs 自建的方向位）；local 项目 /
+   * 未连接 GitHub 的项目 = null（至多一个来源，两列够用）。 */
+  sourceKind: todoSourceKindSchema.nullable(),
+  /** 外部引用（形如 `github:owner/repo#123`，githubIssueSourceRef 单源）；
+   * 无来源 = null。 */
+  sourceRef: z.string().nullable(),
 });
 export type TodoRecord = z.infer<typeof todoRecordSchema>;
 

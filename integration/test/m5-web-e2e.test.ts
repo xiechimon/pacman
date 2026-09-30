@@ -189,11 +189,12 @@ function collectConvStream(buildId: string): { types: Set<string>; stop(): void 
 
 async function openBoard(): Promise<void> {
   await page.goto(`${server.url}/app`);
-  await pexpect(page.locator('.board-new-task')).toBeVisible({ timeout: 30_000 });
+  // #445：顶栏「+ 任务」撤除——就绪探针与创建入口改指侧栏「新任务」行。
+  await pexpect(page.locator('.sidebar-new-task')).toBeVisible({ timeout: 30_000 });
 }
 
 async function createAndStart(title: string): Promise<void> {
-  await page.locator('.board-new-task').click();
+  await page.locator('.sidebar-new-task').click();
   // spec 15 #394：单字段正文——title 参数即正文首行，占位标题 = 首行原文。
   await pexpect(page.locator('.new-task-spec')).toBeVisible();
   await page.locator('.new-task-spec').fill(title);

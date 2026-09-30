@@ -77,10 +77,11 @@ describe('spec 15 #394 无标题面 + 固定词表（live UI → wire → SQLite
 
   test('对话框无标题输入/无标签 UI；正文首行成占位标题；详情页无标签添加面', async () => {
     await page.goto(`${server.url}/app`);
-    await pexpect(page.locator('.board-new-task')).toBeVisible({ timeout: 30_000 });
+    // #445：顶栏「+ 任务」撤除——就绪探针与创建入口改指侧栏「新任务」行。
+    await pexpect(page.locator('.sidebar-new-task')).toBeVisible({ timeout: 30_000 });
 
     // —— 负空间钉：标题位与手动标签面不存在 ——
-    await page.locator('.board-new-task').click();
+    await page.locator('.sidebar-new-task').click();
     const dialog = page.locator('.new-task-dialog');
     await pexpect(dialog).toBeVisible();
     await pexpect(dialog.locator('.new-task-input')).toHaveCount(0);

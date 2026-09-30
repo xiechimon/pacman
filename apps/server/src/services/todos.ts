@@ -5,15 +5,30 @@
 // agent 行）、buildHistory（build 表投影 {buildId, createdAt}，records/todo.ts
 // 最小投影 [推断]）。
 
-import type { Assignment, Phase, TodoRecord, UserRecord } from '@pacman/shared';
-import { derivePlaceholderTitle, PLACEHOLDER_TITLE_FALLBACK } from '@pacman/shared';
+import type {
+  Assignment,
+  Phase,
+  SecretBox,
+  TodoRecord,
+  TodoSourceKind,
+  UserRecord,
+} from '@pacman/shared';
+import {
+  derivePlaceholderTitle,
+  githubIssueSourceRef,
+  PLACEHOLDER_TITLE_FALLBACK,
+  parseGithubIssueSourceRef,
+} from '@pacman/shared';
 import { and, asc, eq, inArray, max, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { agent, build, step, tag, todo, todoTag } from '../db/schema.js';
+import { agent, build, project, step, tag, todo, todoTag } from '../db/schema.js';
 import { HttpError } from '../lib/errors.js';
+import type { FetchLike } from '../lib/github.js';
+import { githubCreateIssue, githubUpdateIssueTitle } from '../lib/github.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { triggerChiefWakes } from './chief.js';
 import type { TeamStreamHub } from './events.js';
+import { hasGithubConnection, openGithubToken } from './github-connection.js';
 import type { MachineWakeHub } from './machines.js';
 import { notifyTodoPhase } from './notifications.js';
 import { assertPhaseTransition, canManualMovePhase } from './phase.js';
@@ -27,6 +42,13 @@ export interface TodoDeps {
   machineHub?: MachineWakeHub;
   /** 通知收件人（phase 漏斗挂 plan_ready/build_review，02 §9.1）。 */
   user: UserRecord;
+  /** GitHub 写向 deps（#452 / ADR 0006：自建 issue + 标题回写）。box =
+   * github_connection token 解密位；缺省 = 写向关闭（单测/纯本地形态，
+   * local 项目行为逐字节不变）。 */
+  box?: SecretBox;
+  /** GitHub 出站注入位（AppContext.githubFetch 同族；缺省 globalThis.fetch，
+   * 测试注入 mock——零真实出站）。 */
+  githubFetch?: FetchLike;
 }
 
 /** phase 漏斗的通知挂接：进 confirm/review 发 in-app 事件（r5 §7.2 矩阵；
@@ -80,6 +102,8 @@ export function toTodoRecord(deps: TodoDeps, row: TodoRow): TodoRecord {
     createdBy: row.createdBy,
     ownerId: row.ownerId,
     sourceBuildId: row.sourceBuildId,
+    sourceKind: row.sourceKind,
+    sourceRef: row.sourceRef,
   };
 }
 
@@ -111,7 +135,13 @@ export function getTodo(deps: TodoDeps, id: string): TodoRecord | null {
 
 /** POST /api/projects/{id}/todos body {title, spec}（r3 §3.1 抓包原样）+
  *  tagIds 携带位（r9 §3.4 实测，#309）。tagIds 限本项目 tag 集——界外/未知
- *  id 400（项目边界防御 [设计]，错误语义 wire 未观测）。 */
+ *  id 400（项目边界防御 [设计]，错误语义 wire 未观测）。
+ *
+ *  #452 / ADR 0006 写向收口（三条创建路径共用）：已连接 GitHub 的 github
+ *  形态项目，任务以 `sourceKind='github-issue-self'` + `sourceRef=null`
+ *  （未建成）落库，随后**关键路径之外**（fire-and-forget，返回前零 GitHub
+ *  await）出站建 issue、成功补 sourceRef。导入面显式携带 sourceKind =
+ *  不触发（防双 issue）；local/hosted/未连接 = 现行为逐字节不变。 */
 export function createTodo(
   deps: TodoDeps,
   input: {
@@ -124,6 +154,10 @@ export function createTodo(
      * 人工建取值未分离观测 [推断]，按属主用户填）。 */
     createdBy: string | null;
     ownerId: string | null;
+    /** 来源两列（#446 / ADR 0005 D6）：github issue 导入面携带；其余建任
+     * 路面缺省 = null（wire 形状恒在，records/todo.ts）。 */
+    sourceKind?: TodoSourceKind;
+    sourceRef?: string;
   },
 ): TodoRecord {
   const { db, hub } = deps;
@@ -165,6 +199,12 @@ export function createTodo(
   // 恒传显式标题）。
   const title =
     input.title.trim() || derivePlaceholderTitle(input.spec) || PLACEHOLDER_TITLE_FALLBACK;
+  // #452 / ADR 0006 D1/D2：自建 issue 目标判定——纯本地读（project 形态 +
+  // 连接行存在性，不解密不出站），createTodo 返回前零 GitHub await（关键
+  // 路径硬约束，test/github-writeback.test.ts A6 钉死）。导入面显式带
+  // sourceKind = 不触发；box 缺位的 deps（纯本地单测面）= 写向关闭。
+  const selfIssue =
+    input.sourceKind === undefined ? planSelfIssue(deps, input.teamId, input.projectId) : null;
   db.insert(todo)
     .values({
       id,
@@ -186,6 +226,10 @@ export function createTodo(
       createdBy: input.createdBy,
       ownerId: input.ownerId,
       sourceBuildId: null,
+      // 自建 issue 目标（#452）：落库即「未建成」态（sourceRef=null，ADR
+      // 0006 D2 状态值不新开列），异步建成后补 ref。
+      sourceKind: input.sourceKind ?? (selfIssue !== null ? 'github-issue-self' : null),
+      sourceRef: input.sourceRef ?? null,
     })
     .run();
   for (const tagId of tagIds) {
@@ -194,6 +238,8 @@ export function createTodo(
   const record = getTodo(deps, id);
   if (!record) throw new Error('todo missing after insert');
   hub.publishTodoDoc(input.teamId, record);
+  // fire-and-forget（关键路径之外，D2 硬约束）：出站成败不影响本函数返回。
+  if (selfIssue !== null) scheduleSelfIssueCreate(deps, id);
   return record;
 }
 
@@ -319,4 +365,154 @@ export function deleteTodo(deps: TodoDeps, id: string): boolean {
   }
   db.delete(todo).where(eq(todo.id, id)).run();
   return true;
+}
+
+// —— GitHub 写向（#452 / ADR 0006）：自建 issue + 标题回写 ————————————————
+//
+// 状态机（来源两列，不新开列）：
+// - `sourceKind='github-issue-self'` + `sourceRef=null` = 未建成（可重试）；
+// - `sourceKind='github-issue-self'` + `sourceRef='github:o/r#N'` = 已建成；
+// - `sourceKind='github-issue'`（导入面，#446）不触发本段任何出站。
+// 写操作穷举律（ADR 0006 premortem 护栏三）：本段是全仓仅有的两处
+// api.github.com 写入消费位——githubCreateIssue（POST）与
+// githubUpdateIssueTitle（PATCH），token 一律经 openGithubToken 唯一读出点。
+
+/** 在飞自建 issue 写出册（todoId → settled promise）：fire-and-forget 与
+ * 重试入口共用——重试撞在飞 = 409（A10 重试竞态护栏，不双建）；测试面经
+ * flushSelfIssueWrites 确定性等待。 */
+const selfIssueInFlight = new Map<string, Promise<unknown>>();
+
+/** 等待全部在飞自建 issue 写出落定（测试确定性钩子；失败语义 = 停留未建成，
+ * 本函数永不 throw）。 */
+export async function flushSelfIssueWrites(): Promise<void> {
+  await Promise.all([...selfIssueInFlight.values()]);
+}
+
+/** githubRepo 列拆 owner/repo（github-issues.ts requireGithubRepo 同律；
+ * 建项目时已过 isGithubRepoRef 400 闸，lib 层出站再 encodeURIComponent）。 */
+function splitGithubRepo(githubRepo: string): { owner: string; repo: string } {
+  const slash = githubRepo.indexOf('/');
+  return { owner: githubRepo.slice(0, slash), repo: githubRepo.slice(slash + 1) };
+}
+
+/** 自建 issue 目标判定（createTodo 关键路径，纯本地读零出站）：github 形态
+ * + 连接表有行 + deps 带 box（写向开启）→ 目标在；否则 null——local/hosted/
+ * 未连接 = 现行为逐字节不变（A1/A8：不建、不报错、不亮失败态）。连接行只判
+ * 存在性不解密：密文损坏留给异步 job 出站时降级（停留未建成，可重试）。 */
+function planSelfIssue(
+  deps: TodoDeps,
+  teamId: string,
+  projectId: string,
+): { owner: string; repo: string } | null {
+  if (deps.box === undefined) return null;
+  const proj = deps.db
+    .select({ repoKind: project.repoKind, githubRepo: project.githubRepo })
+    .from(project)
+    .where(eq(project.id, projectId))
+    .get();
+  if (proj?.repoKind !== 'github' || proj.githubRepo === null) return null;
+  if (!hasGithubConnection(deps.db, teamId)) return null;
+  return splitGithubRepo(proj.githubRepo);
+}
+
+/** fire-and-forget 派发（createTodo 落库后调用；返回前零 GitHub await——
+ * D2/关键路径硬约束）。失败全吞：任务已是「未建成」态，重试入口兜底。 */
+function scheduleSelfIssueCreate(deps: TodoDeps, todoId: string): void {
+  const pending = runSelfIssueCreate(deps, todoId)
+    .catch(() => undefined)
+    .finally(() => {
+      if (selfIssueInFlight.get(todoId) === pending) selfIssueInFlight.delete(todoId);
+    });
+  selfIssueInFlight.set(todoId, pending);
+}
+
+/** 自建 issue 执行体（fire-and-forget 与重试共用）：现读 todo 行——标题用
+ * **当前值**（agent 可能已回填正式标题，A13/D3：重试与后建都不用过时占
+ * 位）。成功 → 补 sourceRef + v++ + 文档事件（看板实时刷新，A14）。失败 →
+ * HttpError 上抛由调用面分流（schedule 吞、retry 直透）。竞态防御：出站前
+ * 后两次读行，任务被删 / ref 已被补（并发重试）→ 静默放弃不覆盖。 */
+async function runSelfIssueCreate(deps: TodoDeps, todoId: string): Promise<TodoRecord | null> {
+  const { db, hub, box } = deps;
+  const row = getRow(deps, todoId);
+  if (!row || row.sourceKind !== 'github-issue-self' || row.sourceRef !== null) return null;
+  if (!box) throw new HttpError(502, 'github writeback unavailable (no secret box)');
+  const proj = db
+    .select({ repoKind: project.repoKind, githubRepo: project.githubRepo })
+    .from(project)
+    .where(eq(project.id, row.projectId))
+    .get();
+  if (proj?.repoKind !== 'github' || proj.githubRepo === null) {
+    throw new HttpError(404, 'project is not github-backed');
+  }
+  const token = openGithubToken({ db, box }, row.teamId);
+  if (token === null) throw new HttpError(404, 'github connection not found');
+  const { owner, repo } = splitGithubRepo(proj.githubRepo);
+  const { number } = await githubCreateIssue(deps.githubFetch ?? fetch, token, owner, repo, {
+    title: row.title,
+    body: row.spec,
+  });
+  const fresh = getRow(deps, todoId);
+  if (!fresh || fresh.sourceRef !== null) return null; // 删除/已补（并发面）→ 放弃
+  const ref = githubIssueSourceRef(owner, repo, number);
+  db.update(todo)
+    .set({ sourceRef: ref, v: fresh.v + 1 })
+    .where(eq(todo.id, todoId))
+    .run();
+  const record = getTodo(deps, todoId);
+  if (record) hub.publishTodoDoc(record.teamId, record);
+  return record;
+}
+
+/** POST /api/todos/{id}/github-issue/retry 服务面（AC3 重试入口）：未建成 →
+ * 同步重试建站（本请求 await 上游——重试非建任务关键路径，错误直透映射成
+ * 响应状态）。已建成 → 409（A11 不建第二枚）；在飞（fire-and-forget 未落
+ * 定或并发重试）→ 409（A10 竞态）；非自建来源 → 404。重试自身也进在飞册
+ * ——两次并发重试只有一个出站。 */
+export async function retrySelfIssueCreate(deps: TodoDeps, todoId: string): Promise<TodoRecord> {
+  const row = getRow(deps, todoId);
+  if (!row) throw new HttpError(404, `todo ${todoId}`);
+  if (row.sourceKind !== 'github-issue-self') {
+    throw new HttpError(404, 'todo has no self-created github issue');
+  }
+  if (row.sourceRef !== null) throw new HttpError(409, 'github issue already created');
+  if (selfIssueInFlight.has(todoId)) {
+    throw new HttpError(409, 'github issue creation already in flight');
+  }
+  const raw = runSelfIssueCreate(deps, todoId);
+  const guarded = raw
+    .catch(() => undefined)
+    .finally(() => {
+      if (selfIssueInFlight.get(todoId) === guarded) selfIssueInFlight.delete(todoId);
+    });
+  selfIssueInFlight.set(todoId, guarded);
+  const record = await raw; // 上游失败直透（404/429/502 映射归 lib 面）
+  if (!record) throw new HttpError(409, 'github issue already created');
+  return record;
+}
+
+/** 回填标题写进 issue（ADR 0006 D3/D5，setTaskMeta server 侧收口调用）：
+ * 仅自建已建成任务出站 PATCH；未建成静默跳过（B3：后建 issue 时自然用当前
+ * 标题）。失败上抛由调用面吞（B2：本地标题已生效，relay 不回滚不报错，
+ * 漂移交只读回显提示面）。 */
+export async function writebackSelfIssueTitle(
+  deps: TodoDeps,
+  todoId: string,
+  title: string,
+): Promise<void> {
+  const { db, box } = deps;
+  if (!box) return;
+  const row = getRow(deps, todoId);
+  if (!row || row.sourceKind !== 'github-issue-self' || row.sourceRef === null) return;
+  const parsed = parseGithubIssueSourceRef(row.sourceRef);
+  if (parsed === null) return;
+  const token = openGithubToken({ db, box }, row.teamId);
+  if (token === null) return;
+  await githubUpdateIssueTitle(
+    deps.githubFetch ?? fetch,
+    token,
+    parsed.owner,
+    parsed.repo,
+    parsed.issueNumber,
+    title,
+  );
 }

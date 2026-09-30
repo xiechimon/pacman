@@ -6,8 +6,8 @@ import { expect, test } from '@playwright/test';
 //    user-menu「反馈」行随页全除；「新功能/快捷键」行同律隐去（#163 修订：
 //    无 local-first 对象面），余下 帐号/API 密钥/MCP 三行接真导航。
 // 2. 看板指南钮 — #363 全族撤除（? 钮 + BoardGuide 弹层 + HelpCircle 图标
-//    不再渲染），topbar 右动作区恰好剩 +任务 一钮（非存在断言，
-//    sched-empty-docs 同律）。
+//    不再渲染），topbar 右动作区恰好一钮（非存在断言，sched-empty-docs
+//    同律；#445 起该钮 = 无底色类型过滤钮，「+ 任务」撤除改指侧栏行）。
 // 3. project 页 — 「导出」钮不再渲染（wontfix：无导出后端面）；分支 chip
 //    静态化（非 button，[设计] 注记在实现位）；文件|历史 分段真接线
 //    （历史 = 提交历史行，fixture 数据源 = ProjectContent.commits）。
@@ -58,7 +58,7 @@ test('user menu drops its dead rows — 反馈 (#149), 新功能/快捷键 (#163
 
 // —— 2. 看板指南钮全族撤除（#363）—————————————————————————————————————————
 
-test('board topbar drops the 看板指南 button — right actions keep only 任务 (#363)', async ({
+test('board topbar drops the 看板指南 button — right actions keep exactly one button (#363, #445 改指类型钮)', async ({
   page,
 }) => {
   await page.goto('/app');
@@ -67,11 +67,12 @@ test('board topbar drops the 看板指南 button — right actions keep only 任
   await expect(page.locator('.board-guide-wrap')).toHaveCount(0);
   await expect(page.locator('.board-guide-pop')).toHaveCount(0);
   await expect(page.locator('[aria-label="看板指南"]')).toHaveCount(0);
-  // 右动作区恰好剩 +任务 一钮，且仍在场（布局无塌陷）
+  // #445：右动作区恰好一钮 = 类型过滤钮（撤「+ 任务」、上一钮，数量仍 1）
   const actions = page.locator('.board-topbar-actions');
   await expect(actions).toBeVisible();
   await expect(actions.locator('button')).toHaveCount(1);
-  await expect(actions.locator('.board-new-task')).toBeVisible();
+  await expect(actions.locator('.board-type-filter')).toBeVisible();
+  await expect(actions.locator('.board-new-task')).toHaveCount(0);
 });
 
 // —— 2b. #351 列收敛钉：恰 4 列 + 退役列名/收起族不再渲染 ————————————————————
@@ -197,7 +198,7 @@ test('composer toolbar drops the 语音输入 button, keeps attachment + mention
 
 test('new-task dialog tools drop the 语音输入 button, keep two live tools', async ({ page }) => {
   await page.goto('/app?scenario=01');
-  await page.locator('.board-new-task').click();
+  await page.locator('.sidebar-new-task').click();
   const tools = page.locator('.new-task-tools');
   await expect(tools).toBeVisible();
   // #304（08 册 C5）：同律——语音钮不渲染，工具条收窄为附件+提及两钮
@@ -276,7 +277,7 @@ test('project settings drops the avatar 更换 ink (#307, supersedes the #177 ch
 
 // —— 10. chief 抽屉「更多」钮（#306 wontfix 出账）———————————————————————
 
-test('chief drawer drops the ⋮ 更多 button — thread view keeps four head actions (#306)', async ({
+test('chief drawer drops the ⋮ 更多 button — thread view keeps three head actions (#306)', async ({
   page,
 }) => {
   await page.goto('/app?scenario=114');
@@ -284,12 +285,13 @@ test('chief drawer drops the ⋮ 更多 button — thread view keeps four head a
   // #306：r8 随拍线程视图五钮中的 ⋮——菜单内容无正典 + server 无线程管理
   // mutation，wontfix 移除（注记在 chief-drawer.tsx 头部）
   await expect(page.locator('.chief-head-actions button[aria-label="更多"]')).toHaveCount(0);
-  // 四钮全在：新主题 / 总管设置 / 全屏 / 关闭（与新线程视图同律）
-  await expect(actions).toHaveCount(4);
+  // #447：全屏钮随 is-fullscreen 契约作废（形态唯一 = 贴右竖板）——头部余
+  // 三钮：新主题 / 总管设置 / 关闭（与新线程视图同律）
+  await expect(page.locator('.chief-head-actions button[aria-label="全屏"]')).toHaveCount(0);
+  await expect(actions).toHaveCount(3);
   await expect(actions.nth(0)).toHaveAttribute('aria-label', '新主题');
   await expect(actions.nth(1)).toHaveAttribute('aria-label', '总管设置');
-  await expect(actions.nth(2)).toHaveAttribute('aria-label', '全屏');
-  await expect(actions.nth(3)).toHaveAttribute('aria-label', '关闭');
+  await expect(actions.nth(2)).toHaveAttribute('aria-label', '关闭');
 });
 
 // —— 11. schedules 卡片「更多」菜单（#306 接真）———————————————————————————
@@ -493,14 +495,14 @@ test('new-task dialog gates unsaved closes and resets on discard (#318)', async 
   const dialog = page.locator('.new-task-dialog');
   const discard = page.locator('.new-task-discard');
   // 净表单:X 直关不闸
-  await page.locator('.board-new-task').click();
+  await page.locator('.sidebar-new-task').click();
   await expect(dialog).toBeVisible();
   await dialog.locator('.new-task-close').click();
   await expect(dialog).toBeHidden();
   await expect(discard).toHaveCount(0);
   // 正文非空 → X 先过「放弃新建任务？」确认(r9 §3.4 copy 逐字)
   // (#394：标题位移除,dirty = 正文单字段)
-  await page.locator('.board-new-task').click();
+  await page.locator('.sidebar-new-task').click();
   await dialog.locator('.new-task-spec').fill('未保存探针');
   await dialog.locator('.new-task-close').click();
   await expect(discard).toBeVisible();
@@ -520,6 +522,6 @@ test('new-task dialog gates unsaved closes and resets on discard (#318)', async 
   await dialog.locator('.new-task-close').click();
   await discard.locator('.new-task-discard-drop').click();
   await expect(dialog).toBeHidden();
-  await page.locator('.board-new-task').click();
+  await page.locator('.sidebar-new-task').click();
   await expect(dialog.locator('.new-task-spec')).toHaveValue('');
 });

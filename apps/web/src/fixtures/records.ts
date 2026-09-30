@@ -641,8 +641,9 @@ export interface ChiefModelOption {
   modelName: string;
 }
 
-/** The chief surface a scenario renders. `view: 'drawer'` overlays the
- *  board; `view: 'settings'` replaces the content area (r5 101–104). */
+/** The chief surface a scenario renders. `view: 'drawer'` docks the panel
+ *  as the right-hand column (#447 / ADR 0004); `view: 'settings'` replaces
+ *  the content area (r5 101–104). */
 export interface ChiefContent {
   view: 'drawer' | 'settings';
   /** Settings tab rendered when `view: 'settings'`. */
@@ -655,6 +656,11 @@ export interface ChiefContent {
   compactionModel?: { provider: string; modelId: string } | null;
   /** Model slot line when bound (`claude-sonnet-5 · 默认`); `n/a` else. */
   modelSlot?: string;
+  /** #444 绑定 Agent 的头像位（总管 FAB 图标源）：语义走 Avatar 原语
+   *  （avatarUrl 非空覆盖优先，null = dicebear 按 displayName 种子生成）。
+   *  absent = 未绑定（或数据未到位），FAB 保持静态字形。live 面由 mapChief
+   *  从 GET chief 封套的 agentActor 投影，不新增请求。 */
+  agent?: { displayName: string; avatarUrl: string | null };
   /** Header thread-chip label (`新主题` on a fresh thread). */
   threadTitle: string;
   /** Switcher popover open over the drawer (r5 116). */
