@@ -714,11 +714,8 @@
   color: var(--text-primary);
 }
 
-/* keys-once-copy a3-pages 收编进 Button primary/compact；12px 字是一次性
-   块行内形的 per-face 差异（[推断] 面无捕获）。 */
-.btn.keys-once-copy {
-  font-size: 12px;
-}
+/* keys-once-copy 的 per-face 差异（12px 字 / 0 12 内垫 / 28 高，[推断] 面无
+   捕获）现随 components/ui 件走消费点工具类，本文件不再有自己的按钮形态规则。 */
 
 .keys-once-note {
   flex-basis: 100%;
@@ -865,12 +862,8 @@
   gap: 8px;
 }
 
-/* apikey-form-quickbtn a3-pages 收编进 Button text 档；12px/tertiary 字色
-   是工具表头轻量动作字的 per-face 差异。 */
-.btn.apikey-form-quickbtn {
-  font-size: 12px;
-  color: var(--text-tertiary);
-}
+/* apikey-form-quickbtn 的 per-face 差异（12px 字 / tertiary 墨 / 0 内垫）现随
+   components/ui 件走消费点工具类，本文件不再有自己的按钮形态规则。 */
 
 .apikey-form-tools {
   max-height: 264px;

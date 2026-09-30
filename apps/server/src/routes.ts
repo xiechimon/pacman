@@ -80,6 +80,7 @@ import { conflict, HttpError, notFound, parseWith } from './lib/errors.js';
 import { systemGitOps } from './lib/git.js';
 import { githubUserRepos } from './lib/github.js';
 import { newRecordId, nowMs } from './lib/ids.js';
+import { deleteAgent } from './services/agents.js';
 import { createApiKey, listApiKeys } from './services/api-keys.js';
 import {
   grantUpload as grantAttachmentUpload,
@@ -908,6 +909,20 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     }
     const updated = requireAgentRow(ctx, teamId, row.id);
     return c.json(agentRecordOf(updated));
+  });
+
+  // Agent 删除面（XMON-19 / B2）：删除入口与二次确认文案直读原版产线 bundle
+  // （agent_modal.remove/remove_title/remove_confirm/remove_over_quota 四语
+  // 语料），删除语义直读 todos.dev 官方 docs——canon 出处与关联面三件取舍
+  // （memories 不级联 / assignment 摘槽 / chief 摘绑定）的完整论证在
+  // services/agents.ts，此处不再复述。路由 = REST 同名 DELETE（02 §6.1 规则族
+  // + DELETE_FACE），wire 未采——登记 wire.test.ts INFERRED_ROUTES。
+  app.delete('/api/teams/:id/agents/:aid', (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const agentId = c.req.param('aid');
+    if (!deleteAgent({ db: ctx.db }, teamId, agentId)) throw notFound(`agent ${agentId}`);
+    return c.body(null, 204);
   });
 
   // —— 团队 MCP server 读面（spec 13/#368 本地 config 只读制：数据源 =

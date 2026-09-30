@@ -15,11 +15,17 @@
 // （不需要创建时间，DB 不加 createdAt 列）。**其余只读行保留**：思考强度档位交给
 // agent 编排、不给人手设，但值本身要看得见。
 //
-// 本面明确不做的两件（均因证据/结构缺口，不发明）：
+// 本面明确不做的一件（因证据/结构缺口，不发明）：
 // · 思考强度选择器——B1 已裁「保持只读」；档位词表本身有读面了（XMON-16：
 //   `GET /api/capabilities` 投影 shared THINKING_LEVELS），但读面 ≠ 写面，
-//   只读行按读面呈现档位，选择器与 provider 写面的耦合仍不做；
-// · 删除 Agent——无 DELETE 端点，且原版二次确认文案未观测，不凭空造破坏性面。
+//   只读行按读面呈现档位，选择器与 provider 写面的耦合仍不做。
+//
+// 删除 Agent（XMON-19/B2）：入口在概览页脚，二次确认接 DeleteConfirm 家族。
+// 整个流程 2026-10-01 登录原版实测过一遍（入口 → 确认层 → 取消 → 删除 → 落点），
+// 文案与落点都取自实测，产线 bundle 语料是第二源、两源一致。删除语义（记忆保留、
+// 任务指派摘槽、总管摘绑定）在 server services/agents.ts 注记。原版同族还有一档
+// remove_over_quota 提示（删除后仍达计划上限）——本仓没有套餐/Agent 上限模型，
+// 无锚可挂，故不渲染。
 
 import {
   AGENT_PERMISSION_COPY,
@@ -54,6 +60,7 @@ import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Switch } from '../components/ui/switch.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
+import { isDeleted, markDeleted } from '../fixtures/deletions.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import {
@@ -64,6 +71,7 @@ import {
   Search,
   SquarePen,
 } from '../icons/index.js';
+import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
 import { ResourceShell } from '../resources/shell.js';
@@ -124,11 +132,16 @@ export function AgentDetailPage() {
   const [memorySort, setMemorySort] = useState<MemorySort>('默认');
   const [memorySortOpen, setMemorySortOpen] = useState(false);
   const [memorySortWrap, setMemorySortWrap] = useState<HTMLSpanElement | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const fixtureAgent = fixture.agents?.find((row) => row.id === agentId);
   const source = live ? agentQ.data : fixtureAgent;
+  // fixture 面的删除覆面（#66 deletions）：删掉的 Agent 在本 SPA 会话里不再
+  // 解析出记录，页面落既有「找不到该 Agent」态；reload 还原。
   const agent: AgentRecord | undefined =
-    source === undefined ? undefined : { ...source, ...localPatch };
+    source === undefined || (agentId !== undefined && isDeleted(agentId))
+      ? undefined
+      : { ...source, ...localPatch };
 
   const patch = useCallback(
     (body: PatchAgentBody) => {
@@ -356,6 +369,18 @@ export function AgentDetailPage() {
                 })
               )}
             </div>
+            {/* 删除入口（r3 §4：概览页脚「删除 Agent」，在状态行之下）。按
+                钮文案 = 原版语料 agent_modal.remove 原文。 */}
+            <div className="agent-danger">
+              <Button
+                variant="destructive"
+                size="sm"
+                className="agent-delete"
+                onClick={() => setDeleteOpen(true)}
+              >
+                {t('删除 Agent')}
+              </Button>
+            </div>
           </div>
         )}
 
@@ -545,6 +570,35 @@ export function AgentDetailPage() {
           </div>
         )}
       </div>
+      {/* 删除确认（2026-10-01 登录原版实测，与产线 bundle 语料两源一致）：
+          标题 `删除 Agent？`、正文 `将「{name}」移出团队？该 Agent 进行中的任务
+          将被停止。`、两钮 `取消` / `删除`，逐字。取消路径实测：点取消 → 层关、
+          留在详情页、Agent 未删。 */}
+      <DeleteConfirm
+        open={deleteOpen}
+        title={t('删除 Agent？')}
+        summary={t('将「{name}」移出团队？该 Agent 进行中的任务将被停止。', {
+          name: agent.displayName,
+        })}
+        ariaLabel={t('删除 Agent')}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => {
+          setDeleteOpen(false);
+          if (agentId === undefined) return;
+          // 确认后落团队页 `/app/team`，无提示条——2026-10-01 登录原版实测（不再是
+          // 推断：点「删除」后地址先停在详情页，随请求落地切到 `/app/team`，页面
+          // 无 toast/横幅）。search 随行 = #121 Link 律（fixture 的场景位不能在这
+          // 一跳丢；原版无此查询参，观测不到差异）。
+          if (live) {
+            mutations.deleteAgent.mutate(agentId, {
+              onSuccess: () => navigate({ pathname: '/app/team', search }),
+            });
+            return;
+          }
+          markDeleted(agentId);
+          navigate({ pathname: '/app/team', search });
+        }}
+      />
     </ResourceShell>
   );
 }

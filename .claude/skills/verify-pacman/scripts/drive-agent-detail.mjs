@@ -316,6 +316,77 @@ try {
     `${fresh?.provider}/${fresh?.modelId}`,
   );
   await shot(page, '07-team-after-create.png');
+
+  // —— 9. 删除 Agent（XMON-19/B2）：概览入口 → 二次确认 → live 落库 ────────
+  // 真值面三件：GET agent → 404（行真没了）；members 名单里该 Agent 消失而
+  // 邻居留存；复删仍 404（DELETE_FACE 族律）。取消路径单独钉：确认层可关且
+  // server 行毫发无损（误删通道）。
+  const doomed = page.locator('.team-agent-card', { hasText: RENAMED });
+  await doomed.click();
+  await page.waitForSelector('.agent-overview', { timeout: 15_000 });
+  await page.locator('.agent-delete').click();
+  await page.waitForSelector('.delete-confirm', { timeout: 15_000 });
+  check(
+    'delete-confirm-canon-title',
+    (await page.locator('.delete-confirm-title').textContent())?.trim() === '删除 Agent？',
+    await page.locator('.delete-confirm-title').textContent(),
+  );
+  check(
+    'delete-confirm-canon-body',
+    (await page.locator('.delete-confirm-summary').textContent())?.trim() ===
+      `将「${RENAMED}」移出团队？该 Agent 进行中的任务将被停止。`,
+    await page.locator('.delete-confirm-summary').textContent(),
+  );
+  await shot(page, '08-delete-confirm.png');
+
+  // 取消路径：层关掉、人留在详情页、server 行还在。
+  await page.locator('.delete-confirm-cancel').click();
+  await page.waitForSelector('.delete-confirm', { state: 'hidden', timeout: 15_000 });
+  check(
+    'delete-cancel-keeps-row',
+    (await getJson(agentUrl(agentId)).then(
+      (r) => r.displayName === RENAMED,
+      () => false,
+    )) === true,
+    '取消后 GET agent 仍 200',
+  );
+
+  // 确认路径
+  await page.locator('.agent-delete').click();
+  await page.waitForSelector('.delete-confirm', { timeout: 15_000 });
+  await page.locator('.delete-confirm-delete').click();
+  await page.waitForSelector('[data-route="team"]', { timeout: 15_000 });
+  check(
+    'delete-lands-on-team',
+    new URL(page.url()).pathname === '/app/team',
+    page.url(),
+  );
+
+  const agentGone = await fetch(agentUrl(agentId), { signal: AbortSignal.timeout(8000) });
+  check('delete-row-gone-404', agentGone.status === 404, `GET agent → ${agentGone.status}`);
+  const again = await fetch(agentUrl(agentId), {
+    method: 'DELETE',
+    signal: AbortSignal.timeout(8000),
+  });
+  check('delete-repeat-404', again.status === 404, `复删 → ${again.status}`);
+
+  const membersAfter = await getJson(`${SERVER}/api/teams/${teamId}/members`);
+  const namesAfter = membersAfter
+    .filter((m) => m.memberType === 'agent')
+    .map((m) => m.actor.displayName);
+  check('delete-roster-drops-target', !namesAfter.includes(RENAMED), JSON.stringify(namesAfter));
+  check(
+    'delete-roster-keeps-neighbor',
+    namesAfter.includes('verify-485-created'),
+    JSON.stringify(namesAfter),
+  );
+  const cardsAfter = await page.locator('.team-agent-card').count();
+  check(
+    'delete-roster-count-matches-server',
+    cardsAfter === namesAfter.length,
+    `UI ${cardsAfter} 张卡 / server ${namesAfter.length} 个 Agent`,
+  );
+  await shot(page, '09-team-after-delete.png');
 } finally {
   await browser.close();
 }
