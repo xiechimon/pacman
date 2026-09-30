@@ -90,6 +90,32 @@ test('概览：模型选择器打开后列出 provider 与模型名', async ({ p
   await expect(row).toContainText('claude-sonnet-5');
 });
 
+// 几何钉：菜单贴触发钮左缘、向下展开，且整块留在内容列内。
+// 两道前车之鉴都只有几何断言能抓（存在性/文案断言全绿）：
+// · 漏 `.agent-model-wrap` 的 align-self → wrap 被 flex 列拉满宽 → 菜单飘到
+//   离触发钮 400+px；
+// · 菜单贴右缘 → 从触发钮往左长、越过 `.res-col`（overflow: hidden auto）的
+//   左缘，被列裁掉一截，模型名开头看不见。
+test('概览：模型菜单贴触发钮左缘且在内容列内（几何）', async ({ page }) => {
+  const detail = await openDetail(page);
+  const trigger = detail.locator('.agent-model-select');
+  await trigger.click();
+  const menu = detail.locator('.agent-model-menu');
+  await expect(menu).toBeVisible();
+  const tb = await trigger.boundingBox();
+  const mb = await menu.boundingBox();
+  expect(tb).not.toBeNull();
+  expect(mb).not.toBeNull();
+  if (tb === null || mb === null) return;
+  expect(Math.abs(mb.x - tb.x)).toBeLessThanOrEqual(8);
+  expect(Math.abs(mb.y - (tb.y + tb.height))).toBeLessThanOrEqual(8);
+  // 不越内容列左缘（列 = 768 宽居中；越出去就被裁）。
+  const col = await detail.locator('xpath=ancestor::div[contains(@class,"res-col")]').boundingBox();
+  expect(col).not.toBeNull();
+  if (col === null) return;
+  expect(mb.x).toBeGreaterThanOrEqual(col.x - 1);
+});
+
 test('概览：思考强度是只读值行，无模型时显示「默认」', async ({ page }) => {
   const detail = await openDetail(page);
   const thinking = detail.locator('.agent-thinking');

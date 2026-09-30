@@ -107,6 +107,25 @@ test('模型选择器列出 provider 与模型名，不编造上下文窗口数�
   await expect(dialog.locator('.dlg-agent-model-menu')).not.toContainText('128k');
 });
 
+// 几何钉：模型槽是表单最后一个字段，菜单向下展开会撞底栏、被压到只剩首行。
+// 这一面向上展开，且菜单体不得与底栏相交（存在性断言看不出被压住）。
+test('创建弹窗：模型菜单不被底栏压住（几何）', async ({ page }) => {
+  const dialog = await openDialog(page, TEAM_WITH_PROVIDERS);
+  await dialog.locator('.dlg-agent-model-select').click();
+  const menu = dialog.locator('.dlg-agent-model-menu');
+  await expect(menu).toBeVisible();
+  const mb = await menu.boundingBox();
+  const fb = await dialog.locator('.dlg-form-foot').boundingBox();
+  expect(mb).not.toBeNull();
+  expect(fb).not.toBeNull();
+  if (mb === null || fb === null) return;
+  expect(mb.y + mb.height <= fb.y || mb.y >= fb.y + fb.height).toBe(true);
+  // 菜单整个落在视口内（别修好压住、换成溢出到屏幕外）。
+  expect(mb.y).toBeGreaterThanOrEqual(0);
+  expect(mb.x).toBeGreaterThanOrEqual(0);
+  expect(mb.x + mb.width).toBeLessThanOrEqual(1440);
+});
+
 test('选中模型后提交，POST body 带 provider 与 modelId', async ({ page }) => {
   const bodies: unknown[] = [];
   await stubLive(page, { hasProviders: true, bodies });
