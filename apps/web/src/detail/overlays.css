@@ -355,6 +355,25 @@
   padding: 0;
 }
 
+/* 合并前置检查的缺项行（XMON-89）：勾选行下方、同一内缩 16。禁用态本身由
+   .btn--primary:disabled 承载，这行只负责说「缺什么」——没有它用户只知道点
+   不动，不知道该开哪个开关。 */
+.dlg-accept-block {
+  margin: 10px 16px 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+/* server 拒绝行（XMON-89）：同在勾选行下方。--danger 与其余面级错误文案同
+   色（agent-perm-error / composer 被拒提示行族）。 */
+.dlg-accept-reject {
+  margin: 10px 16px 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--danger);
+}
+
 /* AI 审核模态 (M7 #312, r8 §2.5/§3.1): 560 宽居中（448 弹层律之外新档） + 搜
    索行 + Agent 行（头像 + 名 + 厂商 · 模型；选中行 bg-indigo-500/10）+ 独立性
    提示行（#509）+ 可选关注点 textarea + 32×32 primary「开始审核」按钮。容器走
