@@ -35,12 +35,27 @@ interface AgentModelSelectProps {
   options: ModelOption[];
   /** 选定回调；缺省 = fixture 律（调用面自行决定是否只做本地回显）。 */
   onPick?: (value: { provider: string; modelId: string } | null) => void;
-  /** 类名前缀——两个消费点的 e2e 各自钉自己的钩子，几何也各归各的域 CSS：
-   *  概览 tab = `agent-model`，创建弹窗 = `dlg-agent-model`。 */
+  /** 类名前缀——各消费点的 e2e 各自钉自己的钩子，几何也各归各的域 CSS：
+   *  概览 tab = `agent-model`，创建弹窗 = `dlg-agent-model`，兜底列表的添加位
+   *  = `agent-fb-add`（XMON-46）。 */
   prefix: string;
+  /** 「未设置模型」行的开关（#485 面的清空语义）。XMON-46 的添加位是即用即弃
+   *  的选择器（value 恒 null），没有清空对象 → false 时不出这一行，也不把它
+   *  算作已选。缺省 true = 现行为。 */
+  withEmptyOption?: boolean;
+  /** value 为 null 时的触发钮文案（已译串；调用面出 t()，本层不碰词典）。
+   *  缺省 = 「未设置模型」。 */
+  emptyLabel?: string;
 }
 
-export function AgentModelSelect({ value, options, onPick, prefix }: AgentModelSelectProps) {
+export function AgentModelSelect({
+  value,
+  options,
+  onPick,
+  prefix,
+  withEmptyOption = true,
+  emptyLabel,
+}: AgentModelSelectProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [wrap, setWrap] = useState<HTMLSpanElement | null>(null);
@@ -51,7 +66,9 @@ export function AgentModelSelect({ value, options, onPick, prefix }: AgentModelS
   // 值回显：选项命中 → 模型名；未命中（provider 已被改名/删除）→ 裸串兜底，
   // 不空白不崩（chief 选择器同律）。
   const label =
-    value == null ? t('未设置模型') : (current?.modelName ?? `${value.provider}/${value.modelId}`);
+    value == null
+      ? (emptyLabel ?? t('未设置模型'))
+      : (current?.modelName ?? `${value.provider}/${value.modelId}`);
 
   const pick = (next: { provider: string; modelId: string } | null) => {
     setOpen(false); // accept 律：选择即关；真值经 invalidateAll 重取回显
@@ -78,20 +95,22 @@ export function AgentModelSelect({ value, options, onPick, prefix }: AgentModelS
       >
         <ClickCatcher onClose={() => setOpen(false)} />
         <div className={`${prefix}-menu anim-pop`} role="listbox" aria-label={t('模型')}>
-          <Button
-            variant="ghost"
-            className={`${prefix}-row justify-start h-auto font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3.5`}
-            role="option"
-            aria-selected={value == null}
-            onClick={() => pick(null)}
-          >
-            <span className={`${prefix}-row-name`}>{t('未设置模型')}</span>
-            {value == null && (
-              <span className={`${prefix}-check`}>
-                <Check width={14} height={14} />
-              </span>
-            )}
-          </Button>
+          {withEmptyOption && (
+            <Button
+              variant="ghost"
+              className={`${prefix}-row justify-start h-auto font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3.5`}
+              role="option"
+              aria-selected={value == null}
+              onClick={() => pick(null)}
+            >
+              <span className={`${prefix}-row-name`}>{t('未设置模型')}</span>
+              {value == null && (
+                <span className={`${prefix}-check`}>
+                  <Check width={14} height={14} />
+                </span>
+              )}
+            </Button>
+          )}
           {options.map((row) => {
             const selected = current?.provider === row.provider && current.modelId === row.modelId;
             return (

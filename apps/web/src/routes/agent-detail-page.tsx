@@ -89,6 +89,8 @@ import { PHASE_UI } from '../phase.js';
 import { ResourceShell } from '../resources/shell.js';
 import { Chip } from '../ui/chip.js';
 import './agent-detail.css';
+import { AgentFallbackField } from './agent-fallback-field.js';
+import { mainChangePrune, patchFallbackBody } from './agent-fallback-models.js';
 import { AgentModelSelect } from './agent-model-select.js';
 
 /** 资源族根路径（非侧栏行——原版命令面板「前往」清单里没有 Agents 行，
@@ -324,16 +326,28 @@ export function AgentDetailPage() {
                     : null
                 }
                 options={modelOptions}
-                onPick={(next) =>
-                  patch(
-                    next === null
-                      ? { provider: null, modelId: null }
-                      : { provider: next.provider, modelId: next.modelId },
-                  )
-                }
+                onPick={(next) => {
+                  // 换主模型 × 兜底列表（XMON-46）：撞上主模型的存量兜底条目
+                  // 一并剥掉（server 写面同律的前端镜像）。未剥掉就不带这一槽
+                  // ——每次改主模型都白写一遍列表没有意义。
+                  const main = next ?? { provider: null, modelId: null };
+                  const pruned = mainChangePrune(agent.fallbackModels, main);
+                  patch({
+                    provider: main.provider,
+                    modelId: main.modelId,
+                    ...(pruned === null ? {} : { fallbackModels: pruned }),
+                  });
+                }}
                 prefix="agent-model"
               />
             </div>
+            {/* XMON-46 兜底列表：模型槽按序换用（空 = 现行为 = 不兜底）。 */}
+            <AgentFallbackField
+              value={agent.fallbackModels}
+              main={{ provider: agent.provider, modelId: agent.modelId }}
+              options={modelOptions}
+              onChange={(next) => patch(patchFallbackBody(next))}
+            />
             <div className="agent-field">
               {/* 只读值行（B1 裁「保持只读」）：值经能力读面词表解析，不直接
                   透出存值——引擎没有的档位不呈现（#499 B3 / XMON-16）。 */}

@@ -17,6 +17,7 @@ import {
   agentDetailActive,
   agentDetailMemory,
   agentDetailSecrets,
+  agentFallback,
   apiKeysCreated,
   boardChiefProbes,
   boardDarkFresh,
@@ -45,6 +46,7 @@ import {
   detailFailed12,
   detailFailed15Set,
   detailFailedCurrent,
+  detailFallback,
   detailFresh,
   detailFreshDark,
   detailLegacy,
@@ -287,6 +289,12 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // 的两行 build（等机器 / 跑起来），钉行形状、状态位映射与点击落点。
       // 空态不另开场景——agentDetail 自身不带 agentTasks，即 canon 空态。
       'agent-detail-active': agentDetailActive,
+      // XMON-46 兜底模型列表：同 agent 记录带两条存量兜底行（跨 provider 有序）
+      // ——添加/排序/移除与主模型去重都在这一份语料上验；空列表即 agentDetail。
+      'agent-fallback': agentFallback,
+      // XMON-46 兜底轨迹：#12 失败面 + 三次模型尝试（两行切换 + 终态行可展开）。
+      // 无 attempts 的旧数据面不另开场景，走 detail-failed-12（其 fail 行本就不带）。
+      'detail-fallback': detailFallback,
       '13': boardDefault,
       // account 语言 dropdown open state (issue #74; shape [设计], r2 §11 Q19)
       '13-lang': { ...boardDefault, ui: { langDropdownOpen: true } },

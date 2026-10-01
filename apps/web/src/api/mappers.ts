@@ -15,6 +15,7 @@ import type {
   DocumentDiffFile,
   MachineRecord,
   McpServerRecord,
+  ModelAttempt,
   ModelSource,
   ModelSourceRuntime,
   ProviderRecord,
@@ -380,6 +381,21 @@ export interface TranscriptInput {
   stopping?: boolean;
 }
 
+/** 尝试行的模型标签：provider/modelId（与裸串兜底标签同形，不查选项表——
+ *  轨迹讲的是「哪一次跑在哪个模型上」，不是可点的模型名）。 */
+function attemptModel(attempt: ModelAttempt): string {
+  return `${attempt.provider}/${attempt.modelId}`;
+}
+
+/** 尝试行错误原文：压平换行 + 截断（pi error message 可到数百字，对话列里
+ *  「一行一事件」的形状优先于全文）。 */
+const ATTEMPT_ERROR_MAX = 120;
+
+function attemptErrorText(attempt: ModelAttempt): string {
+  const flat = (attempt.error ?? '').replace(/\s+/g, ' ').trim();
+  return flat.length > ATTEMPT_ERROR_MAX ? `${flat.slice(0, ATTEMPT_ERROR_MAX)}…` : flat;
+}
+
 export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
   const {
     messages,
@@ -485,6 +501,29 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     }
   }
 
+  // 兜底轨迹（XMON-46）：step.attempts = 主模型首试 + 各兜底逐次落账。换过
+  // 模型才出行（length > 1）——旧数据/未触发兜底的 attempts 为 null，不渲染
+  // 多余行。每行 = 一次「失败 → 换下一个」，落位锚 = 该次尝试的终态时刻，与
+  // 消息行同一排序面（事件顺序照时间线，不另起段）。
+  for (const s of steps) {
+    const attempts = s.attempts;
+    if (attempts == null) continue;
+    for (let i = 0; i < attempts.length - 1; i += 1) {
+      const failed = attempts[i];
+      const next = attempts[i + 1];
+      if (failed === undefined || next === undefined) continue;
+      entries.push({
+        at: failed.endedAt,
+        item: {
+          kind: 'fallback',
+          model: attemptModel(failed),
+          error: attemptErrorText(failed),
+          next: attemptModel(next),
+        },
+      });
+    }
+  }
+
   entries.sort((a, b) => a.at - b.at);
   const items: TranscriptItem[] = [...head];
   // 连续工具行折叠成 tools 组（r7 27 collapsed `完成 Ns ▸` + pills）。#469：
@@ -547,13 +586,23 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     items.push({ kind: 'streaming', label: '执行中...' });
   }
 
-  // 失败行（r8 54/73 canon：橙色标题 + 指引 + 链接行）。
+  // 失败行（r8 54/73 canon：橙色标题 + 指引 + 链接行）。XMON-46：全部兜底
+  // 也耗尽时，把该步的尝试明细挂上去（展开看「试过哪些模型、各自为何失
+  // 败」）——文案 canon 不动，明细是纯增项。旧数据（attempts 为 null）不挂，
+  // 失败行保持原形。
   if (build?.errorMessage && todo.phase === 'failed') {
+    const failedStep = [...steps]
+      .reverse()
+      .find((s) => s.status === 'failed' && (s.attempts?.length ?? 0) > 0);
+    const attempts = failedStep?.attempts ?? null;
     items.push({
       kind: 'fail',
       title: build.errorMessage,
       body: '请将其重新上线，或重新运行任务以改派其他机器。',
       links: ['查看原始错误', '排查指南'],
+      ...(attempts == null
+        ? {}
+        : { attempts: attempts.map((a) => ({ model: attemptModel(a), error: a.error })) }),
     });
   }
   return items;

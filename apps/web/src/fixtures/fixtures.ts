@@ -1588,6 +1588,26 @@ export const agentDetailActive: FixtureSet = {
   agentTasks: AGENT_TASK_ROWS,
 };
 
+/** XMON-46 兜底模型列表的非空语料（命名场景无 capture，agent-detail 先例）：
+ *  同一 r3-builder 记录，兜底槽带两条存量行——跨 provider 各一条（opus 一条
+ *  + sonnet 一条），「按序换用」的序才有两个不同名字可看。
+ *  候选仍走 AGENT_DETAIL_RESOURCES（r3-gw 一条 + claude-code 四条）：主模型
+ *  r3-gw/claude-sonnet-5 与这两条被候选挖掉后，还剩两条可加——添加位的
+ *  「候选被选光即不出」与「还能加」两态在同一个场景里都能验。
+ *  空列表态不另开场景：agentDetail 自身即 `fallbackModels: []`。 */
+const AGENT_R3_BUILDER_FALLBACK: AgentRecord = {
+  ...AGENT_R3_BUILDER,
+  fallbackModels: [
+    { provider: 'claude-code', modelId: 'claude-opus-4-5' },
+    { provider: 'claude-code', modelId: 'claude-sonnet-5' },
+  ],
+};
+
+export const agentFallback: FixtureSet = {
+  ...agentDetail,
+  agents: [AGENT_R3_BUILDER_FALLBACK],
+};
+
 /** XMON-19/B2 删除 Agent 的 e2e 语料（命名场景无 capture，agent-detail
  *  先例）：roster 两个 Agent——删掉 r3-builder 后名单里还剩一个，卡随行消失
  *  这一条才有牙（只播一个 Agent 时「删对了」与「整块空掉」两种实现都过）。
@@ -2572,6 +2592,51 @@ export const detailFailed12: FixtureSet = {
   todos: [failed12, review13],
   now: r8(23, 14),
   detail: { transcript: transcript12('17:38'), changes: CHANGES_12 },
+};
+
+/** XMON-46 兜底轨迹语料（命名场景无 capture）：#12 的失败面，队列里三次模型
+ *  尝试全用尽——两行 fallback（每次失败换下一档）+ 一行 fail 带 attempts（终
+ *  态行可展开看逐次尝试）。
+ *  行文案逐字等于 mapTranscript 在同样 attempts 上的产物（映射由
+ *  test/fallback-trace.test.ts 钉）；本场景钉的是**渲染**（行序、切换指向、
+ *  展开交互）。无 attempts 的旧数据面不另开场景——transcript12 的 fail 行
+ *  本来就不带 attempts（现行为照旧）。 */
+export const detailFallback: FixtureSet = {
+  todos: [failed12, review13],
+  now: r8(23, 14),
+  detail: {
+    transcript: [
+      { kind: 'run', at: '17:38', machine: MACHINE_NAME },
+      { kind: 'user', text: '开始执行任务', seq: 12, title: failed12.title },
+      {
+        kind: 'fallback',
+        model: 'r3-gw/claude-sonnet-5',
+        error: '429 rate limit exceeded for this account',
+        next: 'claude-code/claude-opus-4-5',
+      },
+      {
+        kind: 'fallback',
+        model: 'claude-code/claude-opus-4-5',
+        error: 'model not enabled for this key: claude-opus-4-5',
+        next: 'claude-code/claude-sonnet-5',
+      },
+      {
+        kind: 'fail',
+        title: '模型调用失败：3 个模型均已尝试',
+        body: '请将其重新上线，或重新运行任务以改派其他机器。',
+        links: ['查看原始错误', '排查指南'],
+        attempts: [
+          { model: 'r3-gw/claude-sonnet-5', error: '429 rate limit exceeded for this account' },
+          {
+            model: 'claude-code/claude-opus-4-5',
+            error: 'model not enabled for this key: claude-opus-4-5',
+          },
+          { model: 'claude-code/claude-sonnet-5', error: null },
+        ],
+      },
+    ],
+    changes: CHANGES_12,
+  },
 };
 
 /** r8 55: board with the failed #12 card in 执行中. */

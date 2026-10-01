@@ -1399,6 +1399,71 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   color: var(--text-dim);
 }
 
+/* 兜底轨迹行（XMON-46）：一次「模型 X 失败 → 已切换 Y」。次级色——它是
+   过程说明，不是失败终态（终态仍是下面那行橙色标题）。 */
+.chat-para--fallback {
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+/* 尝试明细（XMON-46）：每条 = 模型标签（等宽）+ 错误原文，左侧细描边成组，
+   与对话列的左对齐骨架一致（不引卡片）。 */
+.chat-fail-attempts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.chat-fail-attempt {
+  border-left: 2px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 8px;
+}
+
+.chat-fail-attempt-model {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.chat-fail-attempt-error {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+  /* 明细面出全文（轨迹行才截断）：长错误折行不撑宽对话列 */
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 该次尝试没带 error 时的占位（「未提供错误信息」）退到最暗档：与相邻的真实
+   错误原文同色同体，看上去就像那次真的报了这句话。 */
+.chat-fail-attempt-error--none {
+  color: var(--text-dim);
+}
+
+/* 「查看尝试记录 / 收起」切换钮（`%` 图标随态翻转，与 tool 组的 收起 同族） */
+.chat-fail-toggle {
+  align-items: center;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  font-size: 12px;
+  gap: 2px;
+  line-height: 16px;
+  margin-top: 10px;
+  padding: 0;
+}
+
+.chat-fail-toggle-icon {
+  transform: rotate(-90deg);
+}
+
 /* message action-row elapsed tail (r7 17/28, r8 63/65/73): `| 完成 Ns ›` */
 .chat-foot-elapsed {
   white-space: nowrap;

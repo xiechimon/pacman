@@ -214,9 +214,17 @@
    共用下面同一条规则，几何只在触发钮上分叉（弹窗里撑满行宽）。 */
 
 .agent-model-wrap,
-.dlg-agent-model-wrap {
+.dlg-agent-model-wrap,
+.agent-fb-add-wrap {
   position: relative;
   display: inline-flex;
+}
+
+/* 兜底列表的添加位（XMON-46）：挂在 `.agent-field` 列 / `.dlg-form` 表单列里
+   ——前者缺这条会被拉满列宽（同 .agent-model-wrap 的理由），后者是块流、
+   align-self 不参与布局，无副作用。 */
+.agent-fb-add-wrap {
+  align-self: flex-start;
 }
 
 /* 概览 tab 的 wrap 是 flex 列（.agent-field）的子项，缺这条会被 align-items:
@@ -227,7 +235,8 @@
   align-self: flex-start;
 }
 
-.agent-model-select {
+.agent-model-select,
+.agent-fb-add-select {
   align-items: center;
   border: 1px solid var(--card-border);
   background: var(--surface);
@@ -239,6 +248,11 @@
   gap: 6px;
   height: 32px;
   padding: 0 10px;
+}
+
+/* 添加位与值槽同形但更轻：它说的是「这里能加一条」，不是当前值。 */
+.agent-fb-add-select {
+  color: var(--text-tertiary);
 }
 
 .dlg-agent-model-select {
@@ -261,7 +275,8 @@
    同律）。缺了这条，透明全屏 catcher 会吃掉菜单行的点击。绝对定位相对各自
    触发钮的 wrap（FloatingShell 的 container 挂回 wrap，containing block 不变）。 */
 .agent-model-menu,
-.dlg-agent-model-menu {
+.dlg-agent-model-menu,
+.agent-fb-add-menu {
   position: absolute;
   /* 贴触发钮左缘向右展开，不贴右缘：资源族的面板体横向是裁的（#486 起
      `.res-col` 自持滚动，`overflow-x` 计算成 hidden；#494 把滚动层挪到全宽
@@ -290,7 +305,8 @@
 }
 
 .agent-model-row,
-.dlg-agent-model-row {
+.dlg-agent-model-row,
+.agent-fb-add-row {
   align-items: center;
   background: none;
   border: none;
@@ -308,18 +324,21 @@
 /* 创建弹窗的模型槽是表单最后一个字段，下方紧贴底栏（.dlg-form-foot，自带底色
    且在 DOM 里靠后）——向下展开必被压住（实测只剩首行露出来）。故这一面向上
    展开：菜单底边贴触发钮上缘，覆盖的是上面的名称字段，落点仍在弹窗体内。 */
-.dlg-agent-model-menu {
+.dlg-agent-model-menu,
+.agent-fb-add-menu {
   top: auto;
   bottom: calc(100% + 4px);
 }
 
 .agent-model-row:hover,
-.dlg-agent-model-row:hover {
+.dlg-agent-model-row:hover,
+.agent-fb-add-row:hover {
   background: var(--surface-secondary, rgb(255 255 255 / 6%));
 }
 
 .agent-model-row-name,
-.dlg-agent-model-row-name {
+.dlg-agent-model-row-name,
+.agent-fb-add-row-name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -329,11 +348,94 @@
 
 /* provider 位不参与收缩：短标签挤掉模型名是本末倒置。 */
 .agent-model-row-provider,
-.dlg-agent-model-row-provider {
+.dlg-agent-model-row-provider,
+.agent-fb-add-row-provider,
+.agent-fb-provider {
   color: var(--text-tertiary);
   flex: none;
   font-size: 12px;
   white-space: nowrap;
+}
+
+/* —— 兜底模型列表（XMON-46，概览编辑面与创建弹窗共用）—— */
+
+/* 概览 tab 的字段列是 flex 列（子项默认 stretch）：不封顶的话行会被拉到整列
+   宽——行名与右侧三个动作钮隔 700px，序读起来要横跳。宽度锚在表单宽（与创建
+   弹窗的表单列同量级），窄窗口回落到列宽。弹窗那侧 `.dlg-form` 是块流，
+   align-self 不参与、width 100% 本就是这个量级。 */
+.agent-fb {
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 420px;
+  width: 100%;
+}
+
+.agent-fb-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* 行 = 与模型值槽同高的描边行（同一列的控件不各长一个样）。 */
+.agent-fb-row {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  display: flex;
+  font-size: 13px;
+  gap: 8px;
+  height: 32px;
+  padding: 0 6px 0 10px;
+}
+
+.agent-fb-name {
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-fb-actions {
+  align-items: center;
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+
+.agent-fb-btn {
+  align-items: center;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: inline-flex;
+  padding: 4px;
+}
+
+.agent-fb-btn:hover:not(:disabled) {
+  background: var(--surface-secondary, rgb(255 255 255 / 6%));
+  color: var(--text-primary);
+}
+
+/* 越界的排序钮禁用可见：箭头还在，但位置已到头（不出会让行数变化时按钮
+   跳位）。 */
+.agent-fb-btn:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+/* 下移复用 ArrowUp 字形（图标集没有 ArrowDown），翻转 180°。 */
+.agent-fb-down svg {
+  transform: rotate(180deg);
 }
 
 .agent-model-check,

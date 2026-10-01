@@ -489,8 +489,22 @@ export type TranscriptItem =
    *  build; the schedule twin is `scheduled`). */
   | { kind: 'chief' }
   /** Failed-run message: orange title line + body line + link row
-   *  (`查看原始错误` / `排查指南`, r8 54/73, r5 §7 canon). */
-  | { kind: 'fail'; title: string; body: string; links: string[] }
+   *  (`查看原始错误` / `排查指南`, r8 54/73, r5 §7 canon). XMON-46:
+   *  `attempts` = 该步每次模型尝试的明细（主模型首试在前，与契约
+   *  attempts[] 同序），全部兜底耗尽时挂上——展开看「试过哪些模型、
+   *  各自为何失败」。旧数据（attempts 为 null）不带，行保持原形。 */
+  | {
+      kind: 'fail';
+      title: string;
+      body: string;
+      links: string[];
+      attempts?: { model: string; error: string | null }[];
+    }
+  /** 兜底轨迹行（XMON-46）：一次「模型 X 失败 → 已切换 Y」。
+   *  `error` = 该次失败原文按压平 + 120 字截断（空串 = 该次没带 error
+   *  原文，渲染走无原因子句）；换过模型才出行，未触发兜底的时间线没有
+   *  这一行。 */
+  | { kind: 'fallback'; model: string; error: string; next: string }
   /** AI 审核消息（M7 #330，r8 §3.1 60）：结论段 + 编号 findings 列表
    * （每条 = 严重度标签 + 标题 + 描述 + 文件:行 + 可选建议）。服务侧 emit
    * 由 server applyBuildStepAction completeStep 落库（REVIEW_VERDICT_KIND

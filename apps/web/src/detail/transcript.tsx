@@ -215,23 +215,26 @@ function Row({ item, t, onOpenPlan }: { item: TranscriptItem; t: TFunc; onOpenPl
         </div>
       );
     case 'fail':
+      return <FailRow item={item} t={t} />;
+    case 'fallback':
+      // 兜底轨迹行（XMON-46）：一次「模型 X 失败 → 已切换 Y」。error 空串 =
+      // 该次没带 error 原文，走无原因子句——不出一句「失败：，已切换」。
       return (
         <div className="chat-row chat-row--agent">
           <span className="chat-avatar">
             <img src="/avatar-robot-1.svg" alt="" />
           </span>
           <span className="chat-text">
-            <p className="chat-para chat-para--fail">{item.title}</p>
-            <p className="chat-para chat-para--failbody">{item.body}</p>
-            <p className="chat-fail-links">
-              {item.links.map((link) => (
-                <span key={link} className="chat-fail-link">
-                  {link}
-                </span>
-              ))}
+            <p className="chat-para chat-para--fallback">
+              {item.error === ''
+                ? t('模型 {model} 失败，已切换 {next}', { model: item.model, next: item.next })
+                : t('模型 {model} 失败：{error}，已切换 {next}', {
+                    model: item.model,
+                    error: item.error,
+                    next: item.next,
+                  })}
             </p>
           </span>
-          <ActionRow t={t} />
         </div>
       );
     case 'streaming':
@@ -354,6 +357,70 @@ function Row({ item, t, onOpenPlan }: { item: TranscriptItem; t: TFunc; onOpenPl
         </div>
       );
   }
+}
+
+/** 失败行（r8 54/73 canon）+ 兜底尝试明细（XMON-46）：全部兜底也耗尽时，
+ *  该步每次模型尝试随行落账，「查看尝试记录」展开明细——标题/指引/链接三行
+ *  是既有文案 canon，展开面是纯增项。无 attempts（旧数据/未触发兜底）时
+ *  渲染与从前逐字相同，连切换钮都不出。 */
+function FailRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'fail' }>; t: TFunc }) {
+  const [expanded, setExpanded] = useState(false);
+  const attempts = item.attempts ?? [];
+  return (
+    <div className="chat-row chat-row--agent">
+      <span className="chat-avatar">
+        <img src="/avatar-robot-1.svg" alt="" />
+      </span>
+      <span className="chat-text">
+        <p className="chat-para chat-para--fail">{item.title}</p>
+        <p className="chat-para chat-para--failbody">{item.body}</p>
+        <p className="chat-fail-links">
+          {item.links.map((link) => (
+            <span key={link} className="chat-fail-link">
+              {link}
+            </span>
+          ))}
+        </p>
+        {attempts.length > 0 && expanded && (
+          <div className="chat-fail-attempts">
+            {attempts.map((attempt, i) => (
+              // 明细按契约 attempts[] 原序（主模型首试在前）；同模型可能重复
+              // 出现（换回同一模型的兜底），故 key 带下标。
+              <div key={`${i}-${attempt.model}`} className="chat-fail-attempt">
+                <span className="chat-fail-attempt-model">{attempt.model}</span>
+                {/* 缺 error 的占位文案（不是真的错误原文）用弱色：与上面
+                    两行的真实 error 原文长得一样，等于把「没给原因」说成
+                    「原因就是这个」。 */}
+                {attempt.error == null ? (
+                  <span className="chat-fail-attempt-error chat-fail-attempt-error--none">
+                    {t('未提供错误信息')}
+                  </span>
+                ) : (
+                  <span className="chat-fail-attempt-error">{attempt.error}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        {attempts.length > 0 && (
+          <button
+            type="button"
+            className="chat-fail-toggle"
+            aria-expanded={expanded}
+            onClick={() => setExpanded((prev) => !prev)}
+          >
+            {expanded ? t('收起') : t('查看尝试记录')}
+            <ChevronDown
+              width={10}
+              height={10}
+              {...(expanded ? {} : { className: 'chat-fail-toggle-icon' })}
+            />
+          </button>
+        )}
+      </span>
+      <ActionRow t={t} />
+    </div>
+  );
 }
 
 /** Tool-call group (r7 27 collapsed `完成 Ns ▸` / 28 pills + 收起): the

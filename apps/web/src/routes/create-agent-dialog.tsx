@@ -29,13 +29,21 @@ import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { PROVIDERS_HREF } from '../resources/providers-page.js';
+import { AgentFallbackField } from './agent-fallback-field.js';
+import {
+  createFallbackBody,
+  type FallbackEntry,
+  mainChangePrune,
+} from './agent-fallback-models.js';
 import { AgentModelSelect } from './agent-model-select.js';
 
-/** POST agents body 的创建面字段（reason = 词表最小形 + #485 的模型槽）。 */
+/** POST agents body 的创建面字段（reason = 词表最小形 + #485 的模型槽 +
+ *  XMON-46 的兜底列表槽）。`fallbackModels` 缺省 = 不携带（现行为 = 无兜底）。 */
 export interface CreateAgentInput {
   displayName: string;
   provider?: string | null;
   modelId?: string | null;
+  fallbackModels?: FallbackEntry[];
 }
 
 interface CreateAgentDialogProps {
@@ -64,6 +72,15 @@ export function CreateAgentDialog({
   const { search } = useLocation();
   const [name, setName] = useState('');
   const [model, setModel] = useState<{ provider: string; modelId: string } | null>(null);
+  const [fallbacks, setFallbacks] = useState<FallbackEntry[]>([]);
+  // 换主模型时把撞上它的兜底条目一并剥掉（XMON-46：同一模型不出现在两槽里，
+  // 与 server 写面同律）。没剥掉就不动这一槽。
+  const pickMainModel = (next: { provider: string; modelId: string } | null) => {
+    const main = next ?? { provider: null, modelId: null };
+    const pruned = mainChangePrune(fallbacks, main);
+    if (pruned !== null) setFallbacks(pruned);
+    setModel(next);
+  };
   const submit = () => {
     const displayName = name.trim();
     if (displayName === '') return;
@@ -72,12 +89,15 @@ export function CreateAgentDialog({
         displayName,
         provider: model?.provider ?? null,
         modelId: model?.modelId ?? null,
+        // 空列表 = 不携带字段（现行为 = 无兜底）
+        ...createFallbackBody(fallbacks),
       });
     } else {
       onClose();
     }
     setName('');
     setModel(null);
+    setFallbacks([]);
   };
   return (
     <DialogShell
@@ -121,15 +141,25 @@ export function CreateAgentDialog({
         {/* #485 两态：有服务商 → 弹窗内直接选模型（不跳页）；无服务商 → 告警行
             + 配置外链（capture 20 原样）。 */}
         {modelOptions.length > 0 ? (
-          <div className="dlg-agent-model-row-wrap">
-            <span className="dlg-form-label">{t('模型')}</span>
-            <AgentModelSelect
-              value={model}
+          <>
+            <div className="dlg-agent-model-row-wrap">
+              <span className="dlg-form-label">{t('模型')}</span>
+              <AgentModelSelect
+                value={model}
+                options={modelOptions}
+                onPick={pickMainModel}
+                prefix="dlg-agent-model"
+              />
+            </div>
+            {/* XMON-46 兜底列表：模型槽之下的同一字段族（面 = 概览编辑面的
+                同一组件）。主模型没有候选时（无服务商）整段不出——兜底无从谈起。 */}
+            <AgentFallbackField
+              value={fallbacks}
+              main={{ provider: model?.provider ?? null, modelId: model?.modelId ?? null }}
               options={modelOptions}
-              onPick={setModel}
-              prefix="dlg-agent-model"
+              onChange={setFallbacks}
             />
-          </div>
+          </>
         ) : (
           <div className="dlg-agent-warn">
             <span>{t('尚未配置模型服务商')}</span>

@@ -376,6 +376,11 @@ export const EN: Record<string, string> = {
   'Xmon Dai 发起了合并': 'Xmon Dai started a merge',
   '🎉 任务已完成': '🎉 Todo completed',
   '运行在 ': 'Running on ',
+  // —— XMON-46 兜底轨迹（build 时间线）——
+  '模型 {model} 失败：{error}，已切换 {next}': 'Model {model} failed: {error} — switched to {next}',
+  '模型 {model} 失败，已切换 {next}': 'Model {model} failed — switched to {next}',
+  查看尝试记录: 'View attempts',
+  未提供错误信息: 'No error message',
   '远程（HTTP）': 'Remote (HTTP)',
   '2 天前': '2d ago',
   未启用: 'Disabled',
@@ -608,6 +613,14 @@ export const EN: Record<string, string> = {
   // 「状态」键随 XMON-18 撤行一并摘除（概览不再摆状态行，en-coverage gate 也不
   // 容许死键）。
   未设置模型: 'No model',
+  // —— XMON-46 兜底模型列表（概览编辑面 + 创建弹窗，同一面两处挂载）——
+  兜底模型: 'Fallback models',
+  添加兜底模型: 'Add fallback model',
+  上移: 'Move up',
+  下移: 'Move down',
+  移除: 'Remove',
+  '主模型调用失败时，按顺序依次改用这些模型重试；留空 = 不兜底。':
+    'When the main model call fails, these models are tried in order. Empty means no fallback.',
   '默认 skill': 'Default skill',
   '找不到该 Agent。它可能已被删除。': 'Agent not found. It may have been deleted.',
   // 概览「进行中」段空态（原文 = 参考产品 web 包 agent_modal.no_active_tasks）。
