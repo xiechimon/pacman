@@ -21,10 +21,20 @@ import {
   type ChiefAgentOption,
   UNASSIGNED_AGENT_ID,
 } from '../chief/chief-agent-dialog.js';
+import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChevronRight, X } from '../icons/index.js';
-import { Button } from '../ui/button.js';
+
+// XMON-24：老 ui/button overlay 档（30 高 + 12 内边距 + 18 行高 @13px）的
+// 几何/皮肤逐值搬进 registry Button utilities。ghost 另有 1px --card-border
+// 描边 + secondary 墨；老 .btn--ghost 无 hover 规则，hover 底色两档都要清零
+// （dark 档不清会在默认暗色主题下透出 dark:hover:bg-muted/50）。primary 漆面
+// 配 border-none：底座 1px 透明描边 + bg-clip-padding 会在漆边留一圈未 paint 环。
+const OVERLAY_BTN =
+  'h-[30px] px-3 text-[13px] leading-[18px] font-normal border-none cursor-pointer active:not-aria-[haspopup]:translate-y-0';
+const OVERLAY_GHOST =
+  'h-[30px] px-3 text-[13px] leading-[18px] font-normal border-(--card-border) text-(--text-secondary) cursor-pointer hover:bg-transparent dark:hover:bg-transparent hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0';
 
 // #168: the rerun/reuse pair joins the dialog family close law (DialogShell
 // #68) — Esc, backdrop click, and the X head button all carry the same
@@ -80,15 +90,28 @@ function PanelHead({
   const { t } = useI18n();
   return (
     <div className="overlay-head">
+      {/* XMON-24：back/close 切 shadcn ghost——皮肤全在 .overlay-back /
+          .overlay-close per-face（bg transparent 灭 hover 底）；utilities 只清
+          active 位移与 svg 16px 强制（属性 16px，此面同值，纯防底座漂移）。 */}
       {back === true && (
-        <button type="button" className="overlay-back" onClick={onBack} aria-label={t('返回')}>
+        <Button
+          variant="ghost"
+          className="overlay-back active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+          onClick={onBack}
+          aria-label={t('返回')}
+        >
           <ChevronLeft width={16} height={16} />
-        </button>
+        </Button>
       )}
       <span className="overlay-title">{title}</span>
-      <button type="button" className="overlay-close" onClick={onClose} aria-label={t('关闭')}>
+      <Button
+        variant="ghost"
+        className="overlay-close active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+        onClick={onClose}
+        aria-label={t('关闭')}
+      >
         <X width={16} height={16} />
-      </button>
+      </Button>
     </div>
   );
 }
@@ -125,7 +148,15 @@ function AgentRow({
   onPick: () => void;
 }) {
   return (
-    <button type="button" className="rerun-agent-row" onClick={onPick}>
+    // XMON-24：agent 行钮切 shadcn ghost——皮肤全在 .rerun-agent-row
+    // per-face（漆底 dialog-row-bg 压过 hover:bg-muted；h54/gap12 同理）；
+    // utilities 清 justify（w100% 行内容靠左）、字号继承（name/model 自带
+    // 字号，行间空隙不漂）、active 位移与 svg 16px 强制（chevron 属性 14px）。
+    <Button
+      variant="ghost"
+      className="rerun-agent-row justify-start text-[length:inherit] leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+      onClick={onPick}
+    >
       <span className="rerun-agent-avatar">
         <SeededAvatar name={display.seed} fallback="/avatar-robot-1.svg" />
       </span>
@@ -134,7 +165,7 @@ function AgentRow({
         <span className="rerun-agent-model">{display.model}</span>
       </span>
       <ChevronRight width={14} height={14} />
-    </button>
+    </Button>
   );
 }
 
@@ -278,20 +309,20 @@ export function RerunDialog({
           <div className="overlay-actions">
             <Button
               variant="ghost"
-              size="overlay"
+              className={OVERLAY_GHOST}
               onClick={onStart ? () => start(true) : undefined}
             >
               {t('先做规划')}
             </Button>
             <Button
-              variant={reuse ? 'ghost' : 'primary'}
-              size="overlay"
+              variant={reuse ? 'ghost' : 'brand'}
+              className={reuse ? OVERLAY_GHOST : OVERLAY_BTN}
               onClick={onStart ? () => start(false) : undefined}
             >
               {t('立即执行')}
             </Button>
             {reuse && (
-              <Button variant="primary" size="overlay" onClick={onReuse}>
+              <Button variant="brand" className={OVERLAY_BTN} onClick={onReuse}>
                 {t('复用方案')}
               </Button>
             )}
@@ -342,10 +373,10 @@ export function ReusePanel({
       <div className="overlay-body reuse-body">
         <div className="reuse-prompt">{t('选择接下来如何使用这个方案')}</div>
         <div className="overlay-actions">
-          <Button variant="ghost" size="overlay" onClick={onView}>
+          <Button variant="ghost" className={OVERLAY_GHOST} onClick={onView}>
             {t('查看方案')}
           </Button>
-          <Button variant="primary" size="overlay" onClick={onDirect}>
+          <Button variant="brand" className={OVERLAY_BTN} onClick={onDirect}>
             {t('直接执行')}
           </Button>
         </div>

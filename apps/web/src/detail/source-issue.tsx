@@ -10,8 +10,8 @@
 
 import type { TodoRecord } from '@pacman/shared';
 import { useGithubIssueEcho } from '../api/hooks.js';
+import { Button } from '../components/ui/button.js';
 import { useI18n } from '../i18n/provider.js';
-import { Button } from '../ui/button.js';
 
 interface SourceIssueLineProps {
   todo: TodoRecord;
@@ -28,9 +28,12 @@ export function SourceIssueLine({ todo, onRetry, retryPending }: SourceIssueLine
     return (
       <div className="source-issue" data-testid="source-issue-pending">
         <span className="source-issue-label">{t('GitHub issue 未建成')}</span>
+        {/* XMON-24：原 ui/button text 变体（透明底 + indigo 墨 + 零内边距，
+            h32）逐值搬 utilities；老 text 钮无 hover/无 disabled 降档——
+            中性化齐（hover 底双档：dark 是默认主题，不清会透 muted/50）。 */}
         <Button
-          variant="text"
-          className="source-issue-retry"
+          variant="ghost"
+          className="source-issue-retry border-none p-0 text-[13px] font-normal text-(--indigo-500) cursor-pointer hover:bg-transparent dark:hover:bg-transparent hover:text-(--indigo-500) disabled:opacity-100 disabled:pointer-events-auto active:not-aria-[haspopup]:translate-y-0"
           data-testid="source-issue-retry"
           onClick={onRetry}
           disabled={retryPending}

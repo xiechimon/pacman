@@ -5,10 +5,10 @@
 // fixture cord).
 
 import { useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { CheckWhite } from '../icons/index.js';
-import { Button } from '../ui/button.js';
 import './overlays.css';
 
 interface AcceptDialogProps {
@@ -30,13 +30,19 @@ export function AcceptDialog({ open, onClose, onConfirm }: AcceptDialogProps) {
       onClose={onClose}
       footer={
         <div className="dlg-accept-footer">
-          <button type="button" className="dlg-accept-cancel" onClick={onClose}>
-            {t('取消')}
-          </button>
+          {/* XMON-24：裸钮切 shadcn ghost——皮肤全在 .dlg-accept-cancel
+              per-face（unlayered 压底座），utilities 只清 h-8/text-sm/
+              active 位移这些底座差额。 */}
           <Button
-            variant="primary"
-            size="compact"
-            className="dlg-accept-done"
+            variant="ghost"
+            className="dlg-accept-cancel h-auto rounded-none p-0 text-[13px] font-normal hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
+            onClick={onClose}
+          >
+            {t('取消')}
+          </Button>
+          <Button
+            variant="brand"
+            className="dlg-accept-done h-7 border-none text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
             onClick={() => {
               if (onConfirm) onConfirm();
               else onClose();

@@ -30,6 +30,7 @@ import { useState } from 'react';
 import { useBuildChangeFile } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
+import { Button } from '../components/ui/button.js';
 import type {
   ChangesContent,
   DiffFile,
@@ -201,10 +202,18 @@ function DiffFileBlock({
                   : t('二进制文件暂不支持预览')}
             </div>
           )}
-          <button type="button" className="diff-expand" onClick={() => setShowFull((v) => !v)}>
+          {/* XMON-24：切 shadcn ghost——漆底/几何全在 .diff-expand per-face；
+              utilities 清底座圆角（老面漆底直角）、justify、右内边距
+              （per-face 只钉左 13，px-0 后左值仍 per-face 赢）、字重、
+              active 位移与 svg 16px 强制（属性 12px）。 */}
+          <Button
+            variant="ghost"
+            className="diff-expand rounded-none justify-start px-0 font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            onClick={() => setShowFull((v) => !v)}
+          >
             <UnfoldVertical width={12} height={12} />
             {showFull ? t('显示差异') : t('显示完整文件')}
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -235,38 +244,45 @@ function VersionMenu({
   onBase: () => void;
 }) {
   const { t } = useI18n();
+  // XMON-24：菜单行切 shadcn ghost——几何/皮肤全在 .version-menu-row
+  // per-face（space-between 压 justify、bg transparent 灭 hover 底）；
+  // utilities 只清字重、active 位移与 svg 16px 强制（Restore 属性 13px）。
+  // svg 子句与底座字符串逐字节同形（单引号）——twMerge 按字面识别冲突组，
+  // 引号风格不同会双写 size-4/size-auto 赌 CSS 顺序。
+  const rowClass =
+    "version-menu-row font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
   if (menu === 'compare') {
     return (
       <div className="version-menu version-menu--sub">
-        <button type="button" className="version-menu-row" onClick={onCompare}>
+        <Button variant="ghost" className={rowClass} onClick={onCompare}>
           {t('上一版本')}
-        </button>
+        </Button>
       </div>
     );
   }
   return (
     <div className="version-menu">
       {versions.map((row, i) => (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           key={row.v}
-          className={`version-menu-row${i === 0 ? ' version-menu-row--current' : ''}`}
+          className={`${rowClass}${i === 0 ? ' version-menu-row--current' : ''}`}
           onClick={() => onMenu(undefined)}
         >
           <span>
             {row.v} · {relativeTime(row.at, now, t)}
           </span>
           <Restore width={13} height={13} />
-        </button>
+        </Button>
       ))}
-      <button type="button" className="version-menu-row" onClick={() => onMenu('compare')}>
+      <Button variant="ghost" className={rowClass} onClick={() => onMenu('compare')}>
         <span>{t('与其他版本对比…')}</span>
         {diffOpen && diffFrom != null && <span className="version-menu-label">{diffFrom}</span>}
-      </button>
+      </Button>
       {diffOpen && (
-        <button type="button" className="version-menu-row" onClick={onBase}>
+        <Button variant="ghost" className={rowClass} onClick={onBase}>
           <span>{t('回到与 base 对比')}</span>
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -298,16 +314,28 @@ function VersionControl({
   const toggle = () => onVersionMenu?.(versionMenu === 'versions' ? undefined : 'versions');
   return (
     <span className="doc-range-wrap">
+      {/* XMON-24：两 chip 钮切 shadcn ghost——range chip 皮肤全在
+          .doc-range-chip per-face（漆底灭 hover）；select 面与
+          overlays/plan-dropdown 同 class 同 neutralizer 串（逐字节一致，
+          防两消费面漂移）。svg 免底座 16px 强制（属性 12px）。 */}
       {range != null ? (
-        <button type="button" className="doc-range-chip" onClick={toggle}>
+        <Button
+          variant="ghost"
+          className="doc-range-chip font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+          onClick={toggle}
+        >
           {range.from} → {range.to}
           <ChevronDown width={12} height={12} />
-        </button>
+        </Button>
       ) : (
-        <button type="button" className="doc-pane-select" onClick={toggle}>
+        <Button
+          variant="ghost"
+          className="doc-pane-select h-auto rounded-none justify-start gap-0 font-normal active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent [&_svg:not([class*='size-'])]:size-auto"
+          onClick={toggle}
+        >
           {label}
           <ChevronDown width={12} height={12} />
-        </button>
+        </Button>
       )}
       {versionMenu != null && onVersionMenu != null && planVersions != null && (
         <VersionMenu
@@ -399,9 +427,15 @@ export function DocPane({
                 <span className="doc-changes-add">+{added}</span>
                 {removed > 0 && <span className="doc-changes-del"> −{removed}</span>}
               </span>
-              <button type="button" className="doc-expand-all" onClick={onToggleExpand}>
+              {/* XMON-24：切 shadcn ghost——皮肤全在 .doc-expand-all
+                  per-face（无高度声明，h-auto 还原裸钮内容高）。 */}
+              <Button
+                variant="ghost"
+                className="doc-expand-all h-auto rounded-none font-normal hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
+                onClick={onToggleExpand}
+              >
                 {expanded ? t('全部收起') : t('全部展开')}
-              </button>
+              </Button>
             </>
           )}
         </header>

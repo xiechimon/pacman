@@ -465,7 +465,8 @@ test('reuse panel 查看方案 flips the doc pane to the plan face (#318)', asyn
   await expect(page.locator('.overlay-title')).toHaveText('复用方案');
   // 点击前:failed 面 = changes 表面(型选钮取 wrap 内限定,版本 chip 同类名)
   await expect(page.locator('.doc-select-wrap .doc-pane-select')).toContainText('变更');
-  await page.locator('.btn--overlay', { hasText: '查看方案' }).click();
+  // XMON-24：老 .btn--overlay 类随 ui/Button 退役——改取 actions 行内按钮。
+  await page.locator('.overlay-actions button', { hasText: '查看方案' }).click();
   // 查看方案 = 关弹层 + docpane 切 plan 面;fixture 75 无 plan doc →
   // 「暂无方案」占位即模式切换证据(live plan 内容归 verify-pacman)
   await expect(page.locator('.overlay')).toBeHidden();

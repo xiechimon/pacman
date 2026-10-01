@@ -30,6 +30,7 @@
 // either live REST hooks or the fixture set.
 
 import { useMemo, useRef, useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { useI18n } from '../i18n/provider.js';
 import { ArrowUp, Grid2x2, Paperclip, SearchPlus } from '../icons/index.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
@@ -250,48 +251,61 @@ export function Composer({
       />
       <div className="composer-toolbar">
         {/* #304 C5 裁决:语音输入功能不做(local-first 无语音面)——原站
-            首钮移除不渲染,不留死钮;添加附件/AI 审核/提及原样。 */}
-        <button
-          type="button"
-          className="composer-tool"
+            首钮移除不渲染,不留死钮;添加附件/AI 审核/提及原样。
+            XMON-24：三工具钮切 shadcn ghost——皮肤全在 .composer-tool
+            per-face；附件钮可 disabled，老面无禁用降档（无 :disabled
+            规则）→ opacity/pointer-events 双双中性化；svg 免底座强制
+            16px（图标默认 18px 属性）。 */}
+        <Button
+          variant="ghost"
+          className="composer-tool font-normal disabled:opacity-100 disabled:pointer-events-auto active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
           aria-label={t('添加附件')}
           disabled={attaching || !onAttachment}
           onClick={() => fileInputRef.current?.click()}
         >
           <Paperclip />
-        </button>
+        </Button>
         {aiReview && (
-          <button
-            type="button"
-            className="composer-tool"
+          <Button
+            variant="ghost"
+            className="composer-tool font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             aria-label={t('AI 审核')}
             onClick={onReview}
           >
             <SearchPlus />
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          className="composer-tool"
+        <Button
+          variant="ghost"
+          className="composer-tool font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
           aria-label={t('提及')}
           onClick={() => setPickerOpen((value) => !value)}
         >
           <Grid2x2 />
-        </button>
+        </Button>
       </div>
       {streaming && (
-        <button type="button" className="composer-stop" aria-label={t('停止')} onClick={onStop}>
+        // XMON-24：停止钮切 shadcn ghost——漆底/定位/尺寸全在
+        // .composer-stop per-face（漆面压过 hover:bg-muted）；只清 active 位移。
+        <Button
+          variant="ghost"
+          className="composer-stop active:not-aria-[haspopup]:translate-y-0"
+          aria-label={t('停止')}
+          onClick={onStop}
+        >
           <span className="composer-stop-glyph" />
-        </button>
+        </Button>
       )}
-      <button
-        type="button"
-        className={draft.trim() === '' ? 'composer-send' : 'composer-send composer-send--ready'}
+      {/* XMON-24：发送钮切 shadcn ghost——漆底/过渡钉全在 .composer-send
+          (--ready) per-face；ArrowUp 属性 14px，svg 免底座强制 16px。 */}
+      <Button
+        variant="ghost"
+        className={`${draft.trim() === '' ? 'composer-send' : 'composer-send composer-send--ready'} active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto`}
         aria-label={t('发送')}
         onClick={send}
       >
         <ArrowUp width={14} height={14} />
-      </button>
+      </Button>
       <MentionPicker
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}

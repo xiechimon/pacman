@@ -12,9 +12,10 @@
 // 服务端：用户显式改选同厂商照常发起。
 
 import { useEffect, useMemo, useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { Input } from '../components/ui/input.js';
 import { useI18n } from '../i18n/provider.js';
-import { Button } from '../ui/button.js';
 import { classifyReviewChoice } from './review-default.js';
 
 /** AI 审核选择器行最小投影（live = members 读面投影 + 厂商槽 + 模型槽；
@@ -109,13 +110,20 @@ export function ReviewDialog({
       footer={
         <div className="dlg-form-foot">
           <div className="dlg-form-actions">
-            <button type="button" className="chief-dlg-ghost" onClick={onClose}>
-              {t('取消')}
-            </button>
+            {/* XMON-24：取消钮切 shadcn ghost——皮肤全在 .chief-dlg-ghost
+                per-face（dialog.css 共享件，漆底灭 hover）；开始审核切
+                brand——老 primary/compact（h28 px12 @13px 漆面）逐值搬
+                utilities，brand 的 disabled 漆档与老 primary:disabled 同律。 */}
             <Button
-              variant="primary"
-              size="compact"
-              className="review-start"
+              variant="ghost"
+              className="chief-dlg-ghost font-normal active:not-aria-[haspopup]:translate-y-0"
+              onClick={onClose}
+            >
+              {t('取消')}
+            </Button>
+            <Button
+              variant="brand"
+              className="review-start h-7 border-none px-3 text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
               onClick={submit}
               disabled={selected === ''}
             >
@@ -127,8 +135,12 @@ export function ReviewDialog({
     >
       <div className="review-body">
         <div className="review-search">
-          <input
-            className="review-search-input"
+          {/* XMON-24：搜索框切 registry Input——皮肤全在 .review-search-input
+              per-face（flex1/无边框/无底/14px/outline none）；老面是 UA 裸
+              input：1px 2px 内边距、normal 行高、UA 占位灰——utilities 逐条
+              还原（placeholder 用 revert 落回 UA 值，focus ring 清零）。 */}
+          <Input
+            className="review-search-input h-auto rounded-none px-[2px] py-px leading-normal md:leading-normal placeholder:text-[color:revert] focus-visible:border-transparent focus-visible:ring-0"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t('搜索 Agent…')}
@@ -141,10 +153,14 @@ export function ReviewDialog({
             rows.map((row) => {
               const isSelected = row.id === selected;
               return (
-                <button
+                // XMON-24：agent 行钮切 shadcn ghost——皮肤全在
+                // .review-agent-row per-face（漆底灭 hover 底，[data-on]
+                // 选中档同理）；utilities 清 justify（w 撑满行内容靠左）、
+                // 字重与 active 位移。role/aria-selected/data-on 直通。
+                <Button
+                  variant="ghost"
                   key={row.id}
-                  type="button"
-                  className="review-agent-row"
+                  className="review-agent-row justify-start font-normal active:not-aria-[haspopup]:translate-y-0"
                   data-on={isSelected}
                   role="option"
                   aria-selected={isSelected}
@@ -159,7 +175,7 @@ export function ReviewDialog({
                       {row.provider === null ? row.model : `${row.provider} · ${row.model}`}
                     </span>
                   </span>
-                </button>
+                </Button>
               );
             })
           )}

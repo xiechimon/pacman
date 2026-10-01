@@ -110,9 +110,10 @@
   color: var(--text-primary);
 }
 
-/* A4-deep 收编：皮肤（居中/透明底/tertiary 墨/cursor/圆角 8=原语默认，
-   A3 裁决 #1 已归一）归 ui/Button icon 变体；24×24 per-face 几何。 */
-.btn.dlg-copy {
+/* XMON-24：皮肤（透明底/tertiary 墨/hover 增亮/cursor）归 components/ui/
+   button ghost+icon 档与消费端 utilities；此处只留 24×24 per-face 几何
+   （选择器去掉老 .btn 前缀——新 Button 不再渲染该类）。 */
+.dlg-copy {
   flex: none;
   width: 24px;
   height: 24px;
@@ -348,8 +349,8 @@
   cursor: pointer;
 }
 
-/* A3 收编：primary/compact 皮肤归 ui/button.css；50×28 冻结几何 scoped
-   钉住（(0,2,0) 压过 .btn 单类，不赌 import 顺序）。 */
+/* XMON-24：brand 皮肤归 components/ui/button；50×28 冻结几何 scoped
+   钉住（(0,2,0) 压过消费端单类 utilities，不赌 import 顺序）。 */
 .dlg-accept-footer .dlg-accept-done {
   width: 50px;
   padding: 0;
@@ -505,7 +506,7 @@
    primary 钮 28 高的偏离 [推断] —— 实测 r8 截图含 padding，本票以 family 律
    居中代替右锚；未来视觉对拍校准）。 */
 .review-start {
-  /* A3 收编：primary/compact 皮肤归 ui/button.css；几何归 family。 */
+  /* XMON-24：brand 皮肤归 components/ui/button；几何归 family。 */
 }
 
 /* 创建 Agent dialog (issue #170, r2 §8.1 capture 20): name-first form —

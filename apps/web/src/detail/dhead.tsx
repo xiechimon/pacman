@@ -10,6 +10,8 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
+import { Badge } from '../components/ui/badge.js';
+import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -17,8 +19,17 @@ import { ChevronDown, ChevronLeft, EllipsisVertical } from '../icons/index.js';
 import { ChipPopover } from '../overlays/chip-popover.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
-import { Button } from '../ui/button.js';
-import { Chip } from '../ui/chip.js';
+
+/** XMON-24：五态 pill 皮肤落 registry Badge（tag-chip 同律）。token 对与
+ *  原 ui/chip 同源（shadcn.css --chip-*-bg/fg），18px/9999/11px/16px 几何
+ *  逐值搬进 utilities；detail-chip--<tone> 留 DOM 作 e2e 定位别名。 */
+const CHIP_TONE_CLASS: Record<'idle' | 'plan' | 'confirm' | 'done' | 'failed', string> = {
+  idle: 'bg-(--chip-idle-bg) text-(--chip-idle-fg)',
+  plan: 'bg-(--chip-plan-bg) text-(--chip-plan-fg)',
+  confirm: 'bg-(--chip-confirm-bg) text-(--chip-confirm-fg)',
+  done: 'bg-(--chip-done-bg) text-(--chip-done-fg)',
+  failed: 'bg-(--chip-failed-bg) text-(--chip-failed-fg)',
+};
 
 interface DetailHeadProps {
   todo: TodoRecord;
@@ -69,18 +80,22 @@ export function DetailHead({
       </Link>
       <span className="detail-seq">#{todo.seqNum}</span>
       <span className="detail-chipwrap" ref={setChipWrap}>
-        {/* A3: 五态 pill 视觉收编 Chip 原语（variant 同名映射）；detail-chip
-            基类与 detail-chip--<tone> 别名保留——e2e 按 .detail-chip 定位点击。 */}
-        <button
-          type="button"
-          className="detail-chip"
+        {/* XMON-24：wrapper 裸钮切 shadcn ghost——皮肤全在 .detail-chip
+            per-face（unlayered 压底座，含 bg transparent 顺手灭掉 ghost 的
+            hover/aria-expanded 底）；utilities 只清 h-8、字号继承这些底座
+            差额。detail-chip 基类保留——e2e 按 .detail-chip 定位点击。 */}
+        <Button
+          variant="ghost"
+          className="detail-chip h-auto rounded-none text-[length:inherit] leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0"
           aria-expanded={popover}
           onClick={() => setPopover((value) => !value)}
         >
-          <Chip variant={ui.tone} className={`detail-chip--${ui.tone}`}>
+          <Badge
+            className={`detail-chip--${ui.tone} ${CHIP_TONE_CLASS[ui.tone]} h-[18px] gap-[3px] rounded-full border-none px-[7px] py-0 text-[11px] leading-4 font-normal transition-none`}
+          >
             {t(ui.chip)}
-          </Chip>
-        </button>
+          </Badge>
+        </Button>
         <span className="detail-chip-chevron">
           <ChevronDown width={12} height={12} />
         </span>
@@ -111,19 +126,21 @@ export function DetailHead({
       </span>
 
       <div className="detail-head-actions">
-        <button
-          type="button"
-          className="detail-head-icon detail-head-icon--more"
+        {/* XMON-24：更多钮切 shadcn ghost——28×28/透明/tertiary 全在
+            .detail-head-icon per-face；utilities 只清 active 位移与底座
+            svg 16px 强制（EllipsisVertical 按自身默认尺寸渲染）。 */}
+        <Button
+          variant="ghost"
+          className="detail-head-icon detail-head-icon--more active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
           aria-label={t('更多')}
           onClick={onMore}
         >
           <EllipsisVertical />
-        </button>
+        </Button>
         {ui.action != null && (
           <Button
-            variant="primary"
-            size="compact"
-            className="detail-head-action"
+            variant="brand"
+            className="detail-head-action border-none font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
             onClick={onAction}
           >
             {t(ui.action)}
