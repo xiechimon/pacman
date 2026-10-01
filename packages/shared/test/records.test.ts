@@ -6,6 +6,9 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  AGENT_TOOL_COPY,
+  AGENT_TOOL_DEFAULTS,
+  AGENT_TOOL_SWITCHES,
   agentRecordSchema,
   assignmentSchema,
   buildRecordSchema,
@@ -16,6 +19,7 @@ import {
   createTodoBodySchema,
   daemonJsonSchema,
   deviceJsonSchema,
+  filterAgentTools,
   githubIssueSourceRef,
   machineJsonSchema,
   mcpServerRecordSchema,
@@ -276,6 +280,57 @@ describe('agent record (r3 §4 实测原样)', () => {
 
   it('rejects unobserved status values ([推断] note guards the enum)', () => {
     expect(agentRecordSchema.safeParse({ ...sample, status: 'archived' }).success).toBe(false);
+  });
+});
+
+describe('agent 权限开关词表（XMON-84 用户拍板 B：六档全保留）', () => {
+  // 失败方式（先于实现固化）：
+  // 1. 词表恢复不全（六档缺任一）→ UI 少摆开关，用户拍板 B 未被执行。
+  // 2. AGENT_TOOL_COPY 键与词表脱钩 → 某档无副文案（渲染面 undefined）。
+  // 3. filterAgentTools 误伤词表内值（如把恢复的四档也丢掉）→ 授权面静默失能。
+  // 4. filterAgentTools 放行词表外值（自造档）→ 死存储永不清退。
+  // 5. AGENT_TOOL_DEFAULTS 漏「推送分支」→ 新建 Agent 默认推不了工作分支
+  //    （B4 不破坏交付判据）；混入「合并分支」→ 新建即可发布（越权）。
+
+  it('开关词表 = 六档全保留（用户拍板 B；两执法档 + 四待本体档）', () => {
+    expect([...AGENT_TOOL_SWITCHES]).toEqual([
+      '远程 shell',
+      '合并分支',
+      '创建标签',
+      '推送分支',
+      '创建技能',
+      '更新技能',
+    ]);
+    expect(Object.keys(AGENT_TOOL_COPY)).toEqual([...AGENT_TOOL_SWITCHES]);
+  });
+
+  it('filterAgentTools：词表内全保留 + 顺序保持，词表外（自造档）静默丢弃', () => {
+    expect(
+      filterAgentTools(['推送分支', '远程 shell', '合并分支', '创建标签', '自造档', '更新技能']),
+    ).toEqual(['推送分支', '远程 shell', '合并分支', '创建标签', '更新技能']);
+    expect(filterAgentTools([])).toEqual([]);
+  });
+
+  it('新建默认集 = [推送分支]（不破坏交付；合并/四无本体档不默认开）', () => {
+    expect([...AGENT_TOOL_DEFAULTS]).toEqual(['推送分支']);
+  });
+
+  it('读侧宽：存量行的词表内值仍可 parse（清退走写侧过滤，不炸读面）', () => {
+    const row = {
+      id: 'xmon84-legacy',
+      displayName: 'legacy-agent',
+      description: '',
+      status: 'active',
+      avatarUrl: null,
+      provider: 'p',
+      modelId: 'm',
+      thinkingLevel: null,
+      tools: ['远程 shell'],
+      secrets: [],
+      skills: [],
+      mcpServers: [],
+    };
+    expect(agentRecordSchema.parse(row).tools).toEqual(['远程 shell']);
   });
 });
 

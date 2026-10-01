@@ -720,7 +720,8 @@ function buildChiefClaim(
       thinkingLevel,
       memories,
       // skills 白名单不携带（#372）：chief 是信任面，catalog 全量直通不受
-      // 绑定 Agent 勾选约束（daemon 侧 isChief 判定双保险）。
+      // 绑定 Agent 勾选约束（daemon 侧 isChief 判定双保险）。tools 同律不
+      // 携带（XMON-77）：chief 步无 worktree/git 收尾，推送/合并开关无语义。
     },
     chief: {
       threadId: threadRow.id,
@@ -868,6 +869,10 @@ function tryClaim(
         // catalog 构建）。worker 步恒携带——含空数组（[] = 不注入任何 skill，
         // least-privilege；缺省 = 全量直通是 chief 面语义，两态不得混淆）。
         skills: [...agentRow.skills],
+        // 权限开关已开集（XMON-77）：原样透传（执法权在 daemon 收尾闸——只认
+        // 已知档，存量残值自然无效）。恒携带含空数组（[] = 全关 = 不推不并；
+        // 缺省保留给老 server 形 fail-open，两态不得混淆）。
+        tools: [...agentRow.tools],
       },
       remoteTools: [...(isGithubProject ? WORKER_REMOTE_TOOLS_GITHUB : WORKER_REMOTE_TOOLS)],
       ...(workerMcp ? { mcpServers: workerMcp } : {}),

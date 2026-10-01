@@ -44,7 +44,8 @@ async function withRunningTodo(
         provider: null,
         modelId: null,
         thinkingLevel: null,
-        tools: [],
+        // XMON-77：本世界走 /merge 202，合并闸要求 build 槽 Agent 持两开关。
+        tools: ['合并分支', '推送分支'],
         secrets: [],
         skills: [],
         mcpServers: [],

@@ -152,6 +152,8 @@ export async function bootRealServer(opts: {
         opts.agentDescription ?? '你是集成测试执行 Agent：直接简短回答，不使用任何工具。',
       provider: 'stub-gw',
       modelId: 'stub-model',
+      // XMON-77 权限闸：lifecycle 类用例走 build push + merge 全链，两开关先授。
+      tools: ['合并分支', '推送分支'],
     })
     .run();
 
