@@ -1,0 +1,4 @@
+[06:02:32] INFO (2777702): pacman-server online — 机器注册：POST /api/teams/{id}/api-keys 取 key 后 pacman start --api-key <key> --team <teamId>
+    port: 38752
+    dataDir: "/tmp/multica-task-2848857612/xmon53-server-home-xy2MeF/server"
+    teamId: "LuHeCOCWXPvFE3_qw8gSY"

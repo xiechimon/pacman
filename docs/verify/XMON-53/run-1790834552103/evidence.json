@@ -1,0 +1,92 @@
+[
+  {
+    "id": "A1",
+    "claim": "HOST=<非回环> 绑定后，/api/teams 无凭证 401、带 PACMAN_TOKEN 200",
+    "command": "curl -s -o /dev/null -w '%{http_code}' http://172.16.10.126:38752/api/teams",
+    "observed": "无凭证 → 401 {\"error\":\"Unauthorized\"}\n带 token → 200 [{\"id\":\"LuHeCOCWXPvFE3_qw8gSY\",\"name\":\"Owner's team\",\"createdAt\":1790834552785,\"plan\":\"free\",\"avatarStyle\":\"notionist\"}]"
+  },
+  {
+    "id": "A2",
+    "claim": "HOST=<非回环> 时回环口不监听（分体是真的走那张网卡）",
+    "command": "curl -s http://127.0.0.1:38752/api/teams",
+    "observed": "connect ECONNREFUSED 127.0.0.1:38752"
+  },
+  {
+    "id": "B1",
+    "claim": "PACMAN_TOKEN 闸下签发机器 bootstrap apiKey",
+    "command": "curl -s -X POST -H 'Authorization: Bearer <TOKEN>' http://172.16.10.126:38752/api/teams/<teamId>/api-keys",
+    "observed": "201 {\"id\":\"pJTSyyKUz3HoJVCm2Toix\",\"name\":\"xmon53-bootstrap\",\"gitAccess\":true,\"mcpAccess\":true,\"toolGrants\":{\"read\":[],\"write\":[]},\"masked\":\"pacman_c175a344…\",\"createdAt\":1790834573010,\"plaintext\":\"pacman_…"
+  },
+  {
+    "id": "B2",
+    "claim": "daemon 经 PACMAN_SERVER 注册；polling 地址 = 非回环 URL（非 127.0.0.1）",
+    "command": "PACMAN_SERVER=http://172.16.10.126:38752 pacman start --foreground --api-key <k> --team <id>",
+    "observed": "Online (machineId=9HFRrZh-iWOZzCjCDoB_8); polling http://172.16.10.126:38752"
+  },
+  {
+    "id": "B3",
+    "claim": "daemon 本机 machine.json 记录远端控制面地址",
+    "command": "cat /tmp/multica-task-2848857612/xmon53-daemon-home-rretSL/machine.json",
+    "observed": "{\n  \"machineId\": \"9HFRrZh-iWOZzCjCDoB_8\",\n  \"token\": \"<redacted>\",\n  \"teamId\": \"LuHeCOCWXPvFE3_qw8gSY\",\n  \"serverUrl\": \"http://172.16.10.126:38752\"\n}"
+  },
+  {
+    "id": "B4",
+    "claim": "server 侧 SQLite machine 行（注册落库）",
+    "command": "sqlite3 /tmp/multica-task-2848857612/xmon53-server-home-xy2MeF/server/server.db \"SELECT * FROM machine\"",
+    "observed": "{\n  \"id\": \"9HFRrZh-iWOZzCjCDoB_8\",\n  \"name\": \"xmon53-mea\",\n  \"online\": 1,\n  \"kind\": \"remote\",\n  \"latestCliVersion\": \"0.2.0\"\n}"
+  },
+  {
+    "id": "B5",
+    "claim": "web 面 REST 可见该机器",
+    "command": "curl -s -H 'Authorization: Bearer <TOKEN>' http://172.16.10.126:38752/api/teams/<teamId>/machines",
+    "observed": "200 [{\"id\":\"NYs5cgwMkVGFK-2oj9FSK\",\"name\":\"DESKTOP-N9CSRE4\",\"teamId\":\"LuHeCOCWXPvFE3_qw8gSY\",\"online\":false,\"latestCliVersion\":null,\"kind\":\"local\",\"enabledRuntimes\":[]},{\"id\":\"9HFRrZh-iWOZzCjCDoB_8\",\"name\":\"xmon53-mea\",\"teamId\":\"LuHeCOCWXPvFE3_qw8gSY\",\"online\":true,\"latestCliVersion\":\"0.2.0\",\"kind\":\"remote\",\"enabledRuntimes\":[]}]"
+  },
+  {
+    "id": "C1",
+    "claim": "远端 daemon 领到 server 派发的步",
+    "command": "grep 'claim step=' /tmp/multica-task-2848857612/xmon53-daemon-home-rretSL/daemon.log",
+    "observed": "claim step=7weGMJL_MQNx7VRVbxyYX"
+  },
+  {
+    "id": "C2",
+    "claim": "server 侧 step 行绑定到该机器（machineId = 注册机器）",
+    "command": "sqlite3 /tmp/multica-task-2848857612/xmon53-server-home-xy2MeF/server/server.db \"SELECT * FROM step WHERE buildId='01a0f60f-03be-736d-8806-2a096cc01225'\"",
+    "observed": "{\n  \"id\": \"7weGMJL_MQNx7VRVbxyYX\",\n  \"buildId\": \"01a0f60f-03be-736d-8806-2a096cc01225\",\n  \"kind\": \"plan\",\n  \"machineId\": \"9HFRrZh-iWOZzCjCDoB_8\",\n  \"status\": \"claimed\",\n  \"claimedAt\": 1790834574274\n}"
+  },
+  {
+    "id": "D1",
+    "claim": "步内 30s 心跳真到达 server（lastHeartbeatAt 两拍递进）",
+    "command": "sqlite3 /tmp/multica-task-2848857612/xmon53-server-home-xy2MeF/server/server.db \"SELECT lastHeartbeatAt FROM step WHERE id='7weGMJL_MQNx7VRVbxyYX'\"",
+    "observed": "第 1 拍 = 1790834574274 (2026-10-01T06:02:54.274Z)\n第 2 拍 = 1790834604365 (2026-10-01T06:03:24.365Z)\n间隔 = 30s"
+  },
+  {
+    "id": "D2",
+    "claim": "presence 心跳把机器置为 online",
+    "command": "sqlite3 /tmp/multica-task-2848857612/xmon53-server-home-xy2MeF/server/server.db \"SELECT online FROM machine WHERE id='9HFRrZh-iWOZzCjCDoB_8'\"",
+    "observed": "{\n  \"online\": 1\n}"
+  },
+  {
+    "id": "E1",
+    "claim": "步收尾 done（sessionId 回传 = 引擎会话标识落地）",
+    "command": "sqlite3 /tmp/multica-task-2848857612/xmon53-server-home-xy2MeF/server/server.db \"SELECT status, sessionId FROM step\"",
+    "observed": "{\n  \"status\": \"done\",\n  \"sessionId\": \"01a0f60f-0415-700f-a8e8-c286ec620fb3\",\n  \"checkpointCommit\": null\n}"
+  },
+  {
+    "id": "E4",
+    "claim": "本 build 的步队列（首轮 plan + #113 补写轮，两轮均由同一远端机器执行）",
+    "command": "sqlite3 /tmp/multica-task-2848857612/xmon53-server-home-xy2MeF/server/server.db \"SELECT id,kind,status,machineId FROM step WHERE buildId='01a0f60f-03be-736d-8806-2a096cc01225'\"",
+    "observed": "[\n  {\n    \"id\": \"7weGMJL_MQNx7VRVbxyYX\",\n    \"kind\": \"plan\",\n    \"status\": \"done\",\n    \"machineId\": \"9HFRrZh-iWOZzCjCDoB_8\"\n  },\n  {\n    \"id\": \"zKoEWtfOpzdTVTg4TYtV1\",\n    \"kind\": \"plan\",\n    \"status\": \"done\",\n    \"machineId\": \"9HFRrZh-iWOZzCjCDoB_8\"\n  }\n]"
+  },
+  {
+    "id": "E2",
+    "claim": "规划步完成后 todo phase 推进（远端点浏览器无关）",
+    "command": "sqlite3 /tmp/multica-task-2848857612/xmon53-server-home-xy2MeF/server/server.db \"SELECT phase FROM todo WHERE id='dYMXWxkmdYm85ZE_TT10f'\"",
+    "observed": "{\n  \"id\": \"dYMXWxkmdYm85ZE_TT10f\",\n  \"phase\": \"confirm\"\n}"
+  },
+  {
+    "id": "E3",
+    "claim": "transcript 经 upload 回程落库（消息行数）",
+    "command": "sqlite3 /tmp/multica-task-2848857612/xmon53-server-home-xy2MeF/server/server.db \"SELECT count(*) FROM message WHERE conversationId='01a0f60f-03be-736d-8806-2a096cc01225'\"",
+    "observed": "5 行"
+  }
+]
