@@ -160,6 +160,10 @@ class FakeMachineApi implements MachineApi {
       git: null,
     };
   }
+  async skills() {
+    // XMON-112 S2：默认空包 = 零团队技能（既有断言零扰动）。
+    return { skills: [] };
+  }
   async uploadUrls(stepId: string) {
     this.calls.push(`upload-urls:${stepId}`);
     return {

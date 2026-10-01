@@ -38,12 +38,17 @@ function writeSkill(
   return file;
 }
 
-function collect(skillsDir: string, allowlist?: string[]): { catalog: string; logs: string[] } {
+function collect(
+  skillsDir: string,
+  allowlist?: string[],
+  teamSkillsDir?: string,
+): { catalog: string; logs: string[] } {
   const logs: string[] = [];
   const catalog = buildSkillsCatalog({
     skillsDir,
     cwd: tmpdir(),
     ...(allowlist !== undefined ? { allowlist } : {}),
+    ...(teamSkillsDir !== undefined ? { teamSkillsDir } : {}),
     log: (msg) => logs.push(msg),
   });
   return { catalog, logs };
@@ -235,5 +240,105 @@ describe('[skills] 日志行族（02 §5.3 前缀词表扩位）', () => {
     logger.skills('loaded: 1 skills from /tmp/x');
     const lines = readFileSync(logFile, 'utf8').split('\n');
     expect(lines).toContain('[skills] loaded: 1 skills from /tmp/x');
+  });
+});
+
+// —— XMON-112 S2：团队技能物化目录合并（spec 14 增补）—————————————————
+// 失败方式清单：团队/本机同名冲突（团队胜 + collision 行）/ 不相交合并 /
+// cap 50 共享下团队优先 / allowlist=[] 纪律不变 / 零回归金样逐字节。
+
+/** 零回归金样（票面验收 4）：期望字节 = 改动前 buildSkillsCatalog 对同一
+ * fixture 的实际输出（2026-10-01 于 main b9455387 冻结），<ROOT> = 扫描根
+ * 占位。任何触碰无团队目录路径的改动都会被它钉住。 */
+const GOLDEN_CATALOG =
+  "\n\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>golden-skill</name>\n    <description>零回归金样。</description>\n    <location><ROOT>/golden-skill/SKILL.md</location>\n  </skill>\n</available_skills>";
+
+function goldenRoot(tag: string): string {
+  const root = fixtureRoot(tag);
+  writeSkill(root, 'golden-skill', {
+    name: 'golden-skill',
+    description: '零回归金样。',
+    body: 'golden body.',
+  });
+  return root;
+}
+
+describe('团队技能目录合并（XMON-112 S2）', () => {
+  test('零回归金样：无 teamSkillsDir = 与改动前输出逐字节等价', () => {
+    const root = goldenRoot('gold-a');
+    const { catalog } = collect(root);
+    expect(catalog.split(root).join('<ROOT>')).toBe(GOLDEN_CATALOG);
+  });
+
+  test('零回归金样：teamSkillsDir 显式 undefined = 同一字节', () => {
+    const root = goldenRoot('gold-b');
+    const { catalog } = collect(root, undefined, undefined);
+    expect(catalog.split(root).join('<ROOT>')).toBe(GOLDEN_CATALOG);
+  });
+
+  test('同 id 冲突 = 团队条目胜（location/description 均为团队版）+ collision 行点名 winner=团队路径', () => {
+    const local = fixtureRoot('tm-conflict-local');
+    const team = fixtureRoot('tm-conflict-team');
+    const localFile = writeSkill(local, 'dup', { name: 'dup', description: '本机版。' });
+    const teamFile = writeSkill(team, 'dup', { name: 'dup', description: '团队版。' });
+    const { catalog, logs } = collect(local, undefined, team);
+    expect(catalog).toContain('<description>团队版。</description>');
+    expect(catalog).not.toContain('<description>本机版。</description>');
+    expect(catalog).toContain(`<location>${teamFile}</location>`);
+    expect(catalog).not.toContain(`<location>${localFile}</location>`);
+    const collision = logs.find((l) => l.startsWith('collision:'));
+    expect(collision).toBeDefined();
+    expect(collision).toContain(`winner=${teamFile}`);
+    expect(collision).toContain(`loser=${localFile}`);
+  });
+
+  test('不相交合并 = 团队 + 本机都进 catalog（团队条目在前）+ 合并 loaded 行', () => {
+    const local = fixtureRoot('tm-merge-local');
+    const team = fixtureRoot('tm-merge-team');
+    writeSkill(local, 'local-only', { name: 'local-only', description: '本机技能。' });
+    writeSkill(team, 'team-only', { name: 'team-only', description: '团队技能。' });
+    const { catalog, logs } = collect(local, undefined, team);
+    expect(catalog).toContain('<name>team-only</name>');
+    expect(catalog).toContain('<name>local-only</name>');
+    expect(catalog.indexOf('<name>team-only</name>')).toBeLessThan(
+      catalog.indexOf('<name>local-only</name>'),
+    );
+    expect(logs).toContain(`loaded: 2 skills from ${team} + ${local}`);
+  });
+
+  test(`cap ${SKILLS_CATALOG_CAP} 在合并目录共享生效，团队条目优先存活`, () => {
+    const local = fixtureRoot('tm-cap-local');
+    const team = fixtureRoot('tm-cap-team');
+    for (let i = 0; i < SKILLS_CATALOG_CAP; i++) {
+      writeSkill(local, `skill-${String(i).padStart(2, '0')}`, {
+        name: `skill-${String(i).padStart(2, '0')}`,
+        description: `批量技能 ${i}。`,
+      });
+    }
+    writeSkill(team, 'team-vip', { name: 'team-vip', description: '团队技能。' });
+    const { catalog, logs } = collect(local, undefined, team);
+    expect(catalog.split('<skill>').length - 1).toBe(SKILLS_CATALOG_CAP);
+    expect(catalog).toContain('<name>team-vip</name>');
+    expect(logs).toContain(`cap: total=${SKILLS_CATALOG_CAP + 1} truncated=${SKILLS_CATALOG_CAP}`);
+  });
+
+  test('allowlist=[] 纪律不变：团队目录在位也零注入（least-privilege）', () => {
+    const local = fixtureRoot('tm-al-local');
+    const team = fixtureRoot('tm-al-team');
+    writeSkill(local, 'local-only', { name: 'local-only', description: '本机技能。' });
+    writeSkill(team, 'team-only', { name: 'team-only', description: '团队技能。' });
+    const { catalog } = collect(local, [], team);
+    expect(catalog).toBe('');
+  });
+
+  test('allowlist 过滤对合并目录生效：名单外团队条目同样被裁', () => {
+    const local = fixtureRoot('tm-al2-local');
+    const team = fixtureRoot('tm-al2-team');
+    writeSkill(team, 'team-a', { name: 'team-a', description: 'A。' });
+    writeSkill(team, 'team-b', { name: 'team-b', description: 'B。' });
+    const { catalog, logs } = collect(local, ['team-a'], team);
+    expect(catalog).toContain('<name>team-a</name>');
+    expect(catalog).not.toContain('<name>team-b</name>');
+    expect(logs).toContain('filtered: team-b not in agent allowlist');
   });
 });

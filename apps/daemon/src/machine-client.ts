@@ -9,6 +9,7 @@ import {
   type MachineEnrollResponse,
   type MachineRecord,
   type MachineRecoverResponse,
+  type MachineSkillsResponse,
   type MachineSteerResponse,
   type MachineStopResponse,
   type MachineStreamEvent,
@@ -21,6 +22,7 @@ import {
   machineOkResponseSchema,
   machineRecordSchema,
   machineRecoverResponseSchema,
+  machineSkillsResponseSchema,
   machineSteerResponseSchema,
   machineStopResponseSchema,
   machineStreamEventSchema,
@@ -79,6 +81,10 @@ export interface MachineApi {
     opts?: { replaySafe?: boolean; signal?: AbortSignal },
   ): Promise<string>;
   token(stepId: string): Promise<MachineTokenResponse>;
+  /** 按步技能包下发（XMON-109 S1 端点 / XMON-112 S2 消费）：worker 步 =
+   * agent.skills 白名单交集，chief 步 = 信任面全量；非本步凭证/未知步 = 404。
+   * 失败抛错由调用方降级（仅本机技能，会话不阻断）。 */
+  skills(stepId: string): Promise<MachineSkillsResponse>;
   uploadUrls(
     stepId: string,
     files: { name: string; size?: number }[],
@@ -302,6 +308,12 @@ export class MachineClient implements MachineApi {
   async token(stepId: string): Promise<MachineTokenResponse> {
     return this.request('GET', `/api/machine/token/${stepId}`, {
       parse: (raw) => machineTokenResponseSchema.parse(raw),
+    });
+  }
+
+  async skills(stepId: string): Promise<MachineSkillsResponse> {
+    return this.request('GET', `/api/machine/skills/${stepId}`, {
+      parse: (raw) => machineSkillsResponseSchema.parse(raw),
     });
   }
 

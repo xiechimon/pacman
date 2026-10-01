@@ -39,6 +39,7 @@ import type { MachineApi } from './machine-client.js';
 import { extractReviewVerdict } from './review-findings.js';
 import { buildSecretTool } from './secret-channel.js';
 import type { StatePaths } from './state.js';
+import { materializeTeamSkills } from './team-skills.js';
 
 /** 停止请求（M7 #308）：discard = 确认弹层「丢弃本轮修改」勾选位——
  * true 时收尾 rewind worktree 到步起点 checkpoint（r9 §3.3）。 */
@@ -358,6 +359,24 @@ export async function runStep(
       }`,
     );
   }
+  // 团队技能物化（XMON-112 S2，spec 14 增补）：按步拉技能包（server 按
+  // claim agent.skills 白名单交集出包；chief 步 = 信任面全量）→ 内容寻址
+  // 缓存目录。任何失败（server 不可达 / 4xx / 5xx / 非法包）= 仅本机技能 +
+  // `[skills]` 降级行，会话不阻断（spec 14 MCP 降级同律；老 server 无端点
+  // 404 同形 = 版本墙 fail-open）。
+  let teamSkillsDir: string | null = null;
+  try {
+    const skillsPkg = await client.skills(stepId);
+    teamSkillsDir = materializeTeamSkills({
+      cacheRoot: deps.paths.teamSkillsCacheDir,
+      pkg: skillsPkg,
+      log: (msg) => logger.skills(msg),
+    });
+  } catch (err) {
+    logger.skills(
+      `team-fetch-failed: ${err instanceof Error ? err.message : String(err)} — continuing with local skills only`,
+    );
+  }
   // 团队密钥取用通道（02 §8 运行时层）：明文不经进程环境，只有真正需要密钥
   // 的步 kind 注册本地工具（records/step.ts stepTakesSecrets——规划/审核/总管
   // 探索步连工具面都没有）。授权面为空也注册：agent 取不到时拿到的是「未授权」
@@ -397,6 +416,9 @@ export async function runStep(
     // （undefined = 全量 catalog，chief 是信任面）；旧 server 未携带 = 缺省
     // 直通（零回归）。过滤落点 = backend catalog 构建（backend/pi.ts）。
     ...(isChief || agent.skills === undefined ? {} : { skillsAllowlist: agent.skills }),
+    // 团队技能物化目录（XMON-112 S2）：backend 把它排在本机 skillsDir 之前
+    // 扫描（同名冲突团队条目胜，pi first-wins）；null = 纯本机（零回归）。
+    ...(teamSkillsDir !== null ? { teamSkillsDir } : {}),
     // 只读回合（#511）：审核者不下发 edit/write——写入在工具面即被拒，且它
     // 对检出造成的任何写入在收尾被丢弃（见下「审核步收尾」）。
     ...(isReview ? { readOnly: true } : {}),

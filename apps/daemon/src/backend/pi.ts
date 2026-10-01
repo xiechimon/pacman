@@ -126,6 +126,11 @@ export interface SkillsCatalogOpts {
    * 未知 slug（目录已删）静默跳过。过滤先于 cap 闸——白名单内条目不受
    * 目录总量截顶影响。 */
   allowlist?: string[];
+  /** 团队技能物化目录（XMON-112 S2，spec 14 增补）：排在本机 skillsDir 之前
+   * 扫描——pi loadSkills first-wins（先进 Map 者为 winner），同名冲突团队条目
+   * 胜、本机影子进 collision 诊断行（loser）。cap 闸对合并后序列生效，团队
+   * 条目优先占据 cap 名额。缺省 = 纯本机扫描（输出与旧行为逐字节等价）。 */
+  teamSkillsDir?: string;
   /** `[skills] <type>: <msg>` 诊断行出口（machine-loop 接 logger.skills）。 */
   log?: (msg: string) => void;
 }
@@ -141,7 +146,10 @@ export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
     const result = loadSkills({
       cwd: opts.cwd,
       agentDir: NO_PI_DEFAULT_AGENT_DIR,
-      skillPaths: [opts.skillsDir],
+      // 团队目录在前 = first-wins 冲突裁决的胜出序（XMON-112 S2）；缺省时
+      // skillPaths 与旧行为完全一致（零回归判据的扫描面）。
+      skillPaths:
+        opts.teamSkillsDir !== undefined ? [opts.teamSkillsDir, opts.skillsDir] : [opts.skillsDir],
       includeDefaults: false,
     });
     skills = result.skills;
@@ -180,7 +188,13 @@ export function buildSkillsCatalog(opts: SkillsCatalogOpts): string {
     log?.(`cap: description truncated for ${s.name}`);
     return { ...s, description: `${s.description.slice(0, SKILL_DESCRIPTION_CAP)}…` };
   });
-  if (skills.length > 0) log?.(`loaded: ${skills.length} skills from ${opts.skillsDir}`);
+  if (skills.length > 0) {
+    log?.(
+      opts.teamSkillsDir !== undefined
+        ? `loaded: ${skills.length} skills from ${opts.teamSkillsDir} + ${opts.skillsDir}`
+        : `loaded: ${skills.length} skills from ${opts.skillsDir}`,
+    );
+  }
   return formatSkillsForPrompt(skills, 'read');
 }
 
@@ -557,6 +571,7 @@ export class PiBackend implements AgentBackend {
           skillsDir: this.opts.skills.skillsDir,
           cwd: this.opts.skills.cwd,
           ...(opts.skillsAllowlist !== undefined ? { allowlist: opts.skillsAllowlist } : {}),
+          ...(opts.teamSkillsDir !== undefined ? { teamSkillsDir: opts.teamSkillsDir } : {}),
           ...(this.opts.onSkillsLog ? { log: this.opts.onSkillsLog } : {}),
         })
       : '';
