@@ -6,9 +6,9 @@
 
 import { useState } from 'react';
 import { Button } from '../components/ui/button.js';
+import { Checkbox } from '../components/ui/checkbox.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
-import { CheckWhite } from '../icons/index.js';
 import './overlays.css';
 
 interface AcceptDialogProps {
@@ -70,15 +70,11 @@ export function AcceptDialog({
       }
     >
       <div className="dlg-accept">
-        <label className="dlg-accept-check" data-on={merge}>
-          <input
-            type="checkbox"
-            checked={merge}
-            onChange={(event) => setMerge(event.target.checked)}
-          />
-          <CheckWhite width={12} height={12} />
-        </label>
-        <span className="dlg-accept-label">{t('将改动合并到默认分支')}</span>
+        {/* XMON-72：复选行收口 components/ui/checkbox 原语。改之前 .dlg-accept-check
+            从无隐藏 input 的规则，18px tile 里骑着 Mac 原生复选框、白勾被挤成 0 宽。 */}
+        <Checkbox checked={merge} onCheckedChange={setMerge} label={t('将改动合并到默认分支')}>
+          <span className="dlg-accept-label">{t('将改动合并到默认分支')}</span>
+        </Checkbox>
       </div>
       {blocked && (
         <p className="dlg-accept-block">

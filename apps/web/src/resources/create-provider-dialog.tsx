@@ -27,9 +27,10 @@ import {
   type ProviderApi,
 } from '@pacman/shared';
 import { useEffect, useState } from 'react';
+import { Checkbox } from '../components/ui/checkbox.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
-import { CheckWhite, ChevronLeft, PlusSmall } from '../icons/index.js';
+import { ChevronLeft, PlusSmall } from '../icons/index.js';
 import { Input } from '../ui/input.js';
 
 /** API 协议段（r3 §2 实测文案与顺序；wire 值 = providerApiSchema）。 */
@@ -360,18 +361,19 @@ export function CreateProviderDialog({
             placeholder={t('无密钥网关可留空')}
           />
           <div className="dlg-provider-authrow">
-            <label className="dlg-provider-check" data-on={authHeader}>
-              <input
-                id="dlg-provider-authheader"
-                type="checkbox"
-                checked={authHeader}
-                onChange={(event) => setAuthHeader(event.target.checked)}
-              />
-              <CheckWhite width={12} height={12} />
-            </label>
-            <span className="dlg-provider-authlabel">
-              {t('以 Authorization: Bearer 请求头发送 API 密钥')}
-            </span>
+            {/* XMON-72：收口 components/ui/checkbox 原语。改之前 .dlg-provider-check
+                藏了 input 但白勾无条件渲染——未选中态在空 tile 上露勾。id 保留：
+                provider-add-dialog.spec 的 pin 骑它。 */}
+            <Checkbox
+              id="dlg-provider-authheader"
+              checked={authHeader}
+              onCheckedChange={setAuthHeader}
+              label={t('以 Authorization: Bearer 请求头发送 API 密钥')}
+            >
+              <span className="dlg-provider-authlabel">
+                {t('以 Authorization: Bearer 请求头发送 API 密钥')}
+              </span>
+            </Checkbox>
           </div>
           <div className="dlg-form-note">{t('密钥将加密存储，保存后无法再次查看。')}</div>
           <div className="dlg-form-label">{t('模型（可选）')}</div>
