@@ -31,7 +31,8 @@ import { expect, type Page, test } from '@playwright/test';
 //  10. the composer's size follows its content (XMON-102): `rows` used to be
 //      keyed on the draft (empty 1 ↔ drafted 6), so the box jumped 20px →
 //      120px as soon as the first character landed and shrank back on send.
-//      One fixed height on every state now, overflow kept inside the box.
+//      One fixed height on every state now (3 lines), overflow kept inside
+//      the box.
 
 const drawer = (page: Page) => page.locator('.chief-drawer');
 
@@ -272,11 +273,11 @@ test.describe('chief panel docked form (#447)', () => {
     const empty = await measureComposer('/app?scenario=114');
 
     expect(empty.height).toBe(drafted.height);
-    // A fixed track, not an auto one: the box is 6 lines of the composer's
-    // 20px line-height (r5 111's drafted geometry), and the overflow stays
-    // inside it instead of pushing the panel around.
-    expect(drafted.cssHeight).toBe('120px');
-    expect(empty.cssHeight).toBe('120px');
+    // A fixed track, not an auto one: the box is 3 lines of the composer's
+    // 20px line-height, and the overflow stays inside it instead of pushing
+    // the panel around.
+    expect(drafted.cssHeight).toBe('60px');
+    expect(empty.cssHeight).toBe('60px');
     expect(drafted.overflowY).toBe('auto');
   });
 
