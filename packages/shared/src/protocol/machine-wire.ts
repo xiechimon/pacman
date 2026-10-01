@@ -214,6 +214,18 @@ export const claimedStepSchema = z.object({
    * 02 §4.4/r5 §6「worker 侧同族工具经 remoteTools 下发」。位形一手 = bundle
    * 提取，r5 §3.1）。 */
   remoteTools: z.array(remoteToolDefSchema).optional(),
+  /** daemon 本地工具注册依据（XMON-108 R1，XMON-85 规划「权限决策单点在
+   * server」）：server 在 claim 时算好的词集，daemon 照此注册 LocalToolDef
+   * （agent-backend.ts）——词缺席 = 工具不注册（fail-closed；与 mcpServers
+   * 版本墙不同，这里缺省与空数同义，无混发形状失败模式）。当前两词：
+   * remote_shell（AGENT_TOOL_SHELL ∩ machine.shellEnabled 双闸）与
+   * create_tag（agent.tools ∋ 创建标签，与机器旗无关——T1/XMON-111 消费，
+   * 契约由本票一次定死）。worker 步恒携带含空数组（[] = 无本地工具，
+   * least-privilege，skills/tools 同律）；chief 步不携带（chief 无 worktree/
+   * 无本地工具语义，跨机 shell 派发显式缓期）。每条命令的真实闸在预检端点
+   * （本字段只是注册面），步中关闸不影响在跑会话的下一次预检。纯增可选
+   * 字段：旧 daemon 解析即丢弃，无版本墙。 */
+  localTools: z.array(z.string()).optional(),
   /** 已授权 MCP slug 列表（spec 13 断约：原 McpEndpoint[] 改 string[]——
    * server 不再解析端点、不再持有任何 MCP 凭证；执行 daemon 读本机
    * `~/.claude.json` 按 slug 自行解析，per-turn 连接、失败降级不阻断，
@@ -223,6 +235,13 @@ export const claimedStepSchema = z.object({
   mcpServers: z.array(z.string()).optional(),
 });
 export type ClaimedStep = z.infer<typeof claimedStepSchema>;
+
+/** localTools 词值单源（XMON-108 R1）：claim 组装（server）与 daemon 注册/
+ * 判读（R2/XMON-110、T1/XMON-111）共用，不散射字面量。remote_shell 与
+ * MACHINE_CUSTOM_TOOLS 同词（executor.ts：02 §5.6 机器侧自定义工具——
+ * 词表占位自此有本体）。 */
+export const LOCAL_TOOL_REMOTE_SHELL = 'remote_shell';
+export const LOCAL_TOOL_CREATE_TAG = 'create_tag';
 
 /** 响应：{step: null} = 长轮询超时空手（daemon 立即重发，节奏 ≈ hold 时长
  * ≈ 75s，r3 §1.5 实测）。 */
@@ -430,6 +449,52 @@ export const machineDoneBodySchema = z.object({
 export type MachineDoneBody = z.infer<typeof machineDoneBodySchema>;
 export const machineDoneResponseSchema = machineOkResponseSchema;
 
+// —— machine shell 预检/回写（XMON-108 R1 [设计]，MACHINE_WIRE_EXTENSIONS
+//    登记位）—————————————————————————————————————————————————————————————
+
+/** 预检 body 命令长度上限：命令行字符串进审计行（daemon 发什么记什么，
+ * server 不截断命令——截断后的命令在审计上就不是它跑过的命令）。超限 = 400
+ * （异常形，daemon 侧按预检失败处理，不当「未授权」回报 agent）。 */
+export const SHELL_COMMAND_CHAR_LIMIT = 10_000;
+
+/** 回写 output 长度上限：daemon 截断（带截断标记，R2 面）后仍不得超本值
+ * ——schema 面第二道闸（防 bug/越权 daemon 单条命令打爆 DB）。同律适用
+ * errorMessage。 */
+export const SHELL_OUTPUT_CHAR_LIMIT = 100_000;
+
+/** POST /api/machine/shell/{stepId} body（daemon 执行前预检）：command =
+ * 将要 `bash -lc` 的命令原文——审计行先于放行落库（未授权命令从未跑过），
+ * 故命令必须随预检上行。 */
+export const machineShellPrecheckBodySchema = z.object({
+  command: z.string().min(1).max(SHELL_COMMAND_CHAR_LIMIT),
+});
+export type MachineShellPrecheckBody = z.infer<typeof machineShellPrecheckBodySchema>;
+
+/** 预检响应：2xx ⇔ allowed（拒绝 = HTTP 403 {error}，requestMerge 403 先例
+ * 同形——daemon 按 non-2xx 取 error 文本回报 agent，密钥通道「未授权」同律）。
+ * runId = 审计行 id（结果回写键），仅放行时下发。 */
+export const machineShellPrecheckResponseSchema = z.object({
+  allowed: z.literal(true),
+  runId: recordId,
+});
+export type MachineShellPrecheckResponse = z.infer<typeof machineShellPrecheckResponseSchema>;
+
+/** POST /api/machine/shell/{runId}/result body（daemon 执行后回写）：
+ * done = 进程跑完（exitCode 任意值均合法——退出码是命令结果，非执行失败；
+ * 可缺省 = daemon 拿不到退出码的形态）；failed = 执行未完成（spawn 失败/
+ * 超时杀进程组，超时原因走 errorMessage，R2 面约定）。output = 截断后的
+ * 命令输出。终态（done/failed）只写一次；重复回写（网络重试丢响应）=
+ * 幂等 200 不改行（branch-sync transitionBranchSync 同律）。 */
+export const machineShellResultBodySchema = z.object({
+  status: z.enum(['done', 'failed']),
+  exitCode: z.number().int().optional(),
+  output: z.string().max(SHELL_OUTPUT_CHAR_LIMIT).optional(),
+  errorMessage: z.string().max(2_000).optional(),
+});
+export type MachineShellResultBody = z.infer<typeof machineShellResultBodySchema>;
+
+export const machineShellResultResponseSchema = machineOkResponseSchema;
+
 /** 词表外 [设计] 附加端点（wire diff 白名单化用，04 §1/§3 divergence 登记
  * 机制同族）：upload-urls 预签名的落地点——self-host 无对象存储，server 自出
  * 一次性 PUT URL。非协议面外扩：13 端点词表（MACHINE_ENDPOINTS）不改形状，
@@ -460,6 +525,18 @@ export const MACHINE_WIRE_EXTENSIONS = [
     path: '/api/machine/sync-result/{syncId}',
     reason:
       '[设计] M7 #319 分支对话框「同步到机器」daemon 回写结果（08 册附录 B；状态机 pending→running→synced/failed）',
+  },
+  {
+    method: 'POST',
+    path: '/api/machine/shell/{stepId}',
+    reason:
+      '[设计] XMON-108 R1 机器 shell 每调用预检（双开关复核 + 审计行先于放行 + runId 下发；拒绝 = 403）',
+  },
+  {
+    method: 'POST',
+    path: '/api/machine/shell/{runId}/result',
+    reason:
+      '[设计] XMON-108 R1 daemon 回写 shell 执行结果（exitCode/截断输出；终态 done/failed 只写一次）',
   },
 ] as const;
 

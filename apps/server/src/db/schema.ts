@@ -414,6 +414,39 @@ export const machine = sqliteTable('machine', {
   /** per-runtime 开关态（spec 11 A9）：MACHINE_RUNTIMES 词表子集，默认 []
    * 全关；JSON 列（chief.watches 同形）。 */
   enabledRuntimes: json<string[]>('enabledRuntimes').notNull().default(sql`'[]'`),
+  /** 机器层 shell 访问闸（XMON-108 R1）：默认 false，存量行 migration 回填。
+   * 与 agent 层「远程 shell」开关双闸齐开才有 remote_shell（claim localTools
+   * 组装 + 每命令预检复核本列）。 */
+  shellEnabled: bool('shellEnabled').notNull().default(false),
+});
+
+// —— shell_command（XMON-108 R1 机器 shell 审计）：预检/回写两写端点的
+// 审计行（02 §8「每次取用都会留下记录」纪律的 shell 同族）。无 FK——审计
+// 历史独立于 machine/agent/step 行的存废（branch_sync 是活状态表带 FK；本表
+// 是历史账，行终态后永不再改写）。状态机：denied（预检拒绝，插入即终态——
+// 未授权命令从未跑过）/ running（预检放行，先于执行落库）→ done | failed
+// （daemon 回写，终态只写一次；重复回写幂等不改行）。卡 running 的兜底口径
+// （daemon 崩溃未回写）：行保持 running 原样——结局未知本身就是审计事实，
+// 步级 done/failed 提供外层结局，不做 TTL 回收改写。 ————————————————
+export const shellCommand = sqliteTable('shell_command', {
+  /** = 预检响应 runId（recordId 形，结果回写键）。 */
+  id: text('id').primaryKey(),
+  stepId: text('stepId').notNull(),
+  machineId: text('machineId').notNull(),
+  agentId: text('agentId').notNull(),
+  teamId: text('teamId').notNull(),
+  /** 预检上行的命令原文（daemon 发什么记什么，不截断）。 */
+  command: text('command').notNull(),
+  status: text('status').$type<'denied' | 'running' | 'done' | 'failed'>().notNull(),
+  /** done 形可空 = daemon 拿不到退出码；denied/running = null。 */
+  exitCode: integer('exitCode'),
+  /** 截断后的命令输出（上限 = shared SHELL_OUTPUT_CHAR_LIMIT）。 */
+  output: text('output'),
+  /** failed 形的失败原因（超时杀等；上限 2000 字符）。 */
+  errorMessage: text('errorMessage'),
+  createdAt: epochMs('createdAt').notNull(),
+  /** 终态时刻（denied = 插入时刻）。 */
+  finishedAt: epochMs('finishedAt'),
 });
 
 // —— token_usage（build × model 四维计数，02 §6.2/r3 §3.8；记账归 M3）———————————

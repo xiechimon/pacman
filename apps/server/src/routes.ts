@@ -1229,17 +1229,23 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
 
   // per-runtime 开关写回（spec 11 A8/A9，#357）：enabledRuntimes 全量替换；
   // 词表外 runtime = 400（shared patchMachineBodySchema 钉 MACHINE_RUNTIMES）。
+  // XMON-108 R1：shellEnabled 透传——两字段各自缺省 = 不变（单字段 PATCH 不
+  // 撞掉另一字段），开关消费面 = claim 组装 + 每调用预检（机器详情页关掉秒级
+  // 拒下一条命令，非 claim 期一次闸）。
   app.patch('/api/machines/:id', async (c) => {
     const id = c.req.param('id');
     const row = ctx.db.select().from(machine).where(eq(machine.id, id)).get();
     if (!row) throw notFound(`machine ${id}`);
     requireTeam(ctx, row.teamId);
     const body = parseWith(patchMachineBodySchema, await jsonBody(c), 'body');
-    ctx.db
-      .update(machine)
-      .set({ enabledRuntimes: body.enabledRuntimes })
-      .where(eq(machine.id, id))
-      .run();
+    const patch = {
+      ...(body.enabledRuntimes !== undefined ? { enabledRuntimes: body.enabledRuntimes } : {}),
+      ...(body.shellEnabled !== undefined ? { shellEnabled: body.shellEnabled } : {}),
+    };
+    // 全字段缺省 = no-op PATCH（空 set 是非法 SQL，且无变更可写）。
+    if (Object.keys(patch).length > 0) {
+      ctx.db.update(machine).set(patch).where(eq(machine.id, id)).run();
+    }
     const updated = ctx.db.select().from(machine).where(eq(machine.id, id)).get();
     if (!updated) throw notFound(`machine ${id}`);
     return c.json(toMachineRecord(updated));

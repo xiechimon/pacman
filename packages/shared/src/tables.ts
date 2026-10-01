@@ -38,6 +38,7 @@ export const DB_TABLES = [
   'attachment', // M7 #310：composer/新建任务附件 grant/upload/read 三步 wire（r9 §3.1/§4）
   'branch_sync', // M7 #319 分支对话框「同步到机器」状态机（pending/running/synced/failed）；内部状态表无独立 record 投影面
   'github_connection', // spec 12 / #359：GitHub OAuth 连接行（teamId 单行；accessToken 经 SecretBox 密封，token 只写不读出 wire）
+  'shell_command', // XMON-108 R1 机器 shell 审计行（预检 denied/running → done/failed 终态一次）；内部审计表无 record 投影
 ] as const;
 
 export type DbTable = (typeof DB_TABLES)[number];
@@ -62,4 +63,7 @@ export const INTERNAL_ONLY_TABLES = [
   'stop_pending',
   'attachment',
   'github_connection',
+  // XMON-108 R1：shell_command 读位 = 无 REST 读面（审计消费——团队审计
+  // 视图归后续票；本票只有预检/回写两个写端点 + server 侧直查）。
+  'shell_command',
 ] as const;
