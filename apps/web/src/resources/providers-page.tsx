@@ -133,11 +133,11 @@ export function ProvidersPage() {
       {/* #423 Tabs 收编（#422 裁决：res-tabs 由 ?runtime= 驱动）：受控
           value/onValueChange 落回原 selectRuntime（写 ?runtime=、历史入栈、
           回退键可用），role=tablist/tab 与 aria-selected 由 Base UI 承载，
-          data-runtime 句柄原样透出。选中指示条/配色/几何正本仍是
-          resources.css 的 .res-tabs/.res-tab per-face 规则（line variant 的
-          默认档溢出项在那里并掉），providers-tabs 几何钉零改动。 */}
+          data-runtime 句柄原样透出。XMON-73：形态改分段控制器，配色/几何
+          正本移到 pages.css 的 .page-tabs-group/.page-tab（与 topbar
+          「任务|文件」同一份规则），resources.css 不再有 per-face 覆盖。 */}
       <Tabs value={runtime} onValueChange={(value) => selectRuntime(value as ModelSourceRuntime)}>
-        <TabsList variant="line" className="res-tabs" aria-label={t('模型服务')}>
+        <TabsList variant="segmented" className="res-tabs" aria-label={t('模型服务')}>
           {MODEL_SOURCE_RUNTIMES.map((rt) => (
             <TabsTrigger key={rt} value={rt} data-runtime={rt} className="res-tab">
               {RUNTIME_LABELS[rt]}

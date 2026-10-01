@@ -118,7 +118,11 @@
   cursor: pointer;
 }
 
-.page-tab--active {
+/* 选中态两个入口同一条规则：`--active` 由本组件手动挂（TabGroup），
+   `[data-active]` 由 Base UI 的 Tab 自己挂（tabs.tsx 的 segmented 档，
+   XMON-73）。同一份填充，不因承载组件不同而分叉。 */
+.page-tab--active,
+.page-tab[data-active] {
   background: var(--tab-chip-bg);
   color: var(--text-primary);
 }
@@ -1918,7 +1922,7 @@
     transition: background-color var(--dur-fast) var(--ease-standard);
   }
 
-  .page-tab:not(.page-tab--active):hover,
+  .page-tab:not(.page-tab--active):not([data-active]):hover,
   .sched-form-freq-tab:not(.sched-form-freq-tab--active):hover,
   .prj-files-seg-tab:not(.prj-files-seg-tab--active):hover,
   .prj-tasks-view-btn:not(.prj-tasks-view-btn--active):hover {
