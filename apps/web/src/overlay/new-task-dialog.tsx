@@ -25,14 +25,20 @@
 // 并关闭);净表单直关不闸。Esc 分层沿 #176 内层优先律(确认层 → 提及
 // picker → 项目 popover → dialog)。关闭即重置表单(retained-mount 重开 =
 // 净面,闸判定不带脏残留)。#394 起 dirty = 正文单字段（标题/标签面移除）。
+//
+// XMON-95 ⌘↵：保存并开始 除点击外可由 ⌘↵（非 mac = Ctrl+↵）触发，和弦走
+// overlays/hotkeys.ts 的 useChordHotkey（可复用注册位，本票是它的第一个面
+// 内消费点），按钮上带常亮按键角标。守卫/闸/标识三处细节见各自行注。
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { Kbd } from '../components/ui/kbd.js';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, Grid2x2, Paperclip, X } from '../icons/index.js';
 import { ClickCatcher, OverlayMount } from '../overlays/dismiss.js';
+import { isEditableTarget, useChordHotkey } from '../overlays/hotkeys.js';
 import { type MentionGroups, MentionPicker } from './mention-picker.js';
 import { insertMentionText, type MentionToken } from './mention-token.js';
 import './overlay.css';
@@ -57,6 +63,20 @@ interface ProjectOption {
 /** fixture 面项目集兜底:scenarios 不带 projectNames 时退 canon 单默认
  *  项目(r3-lifecycle,#176 票面「至少默认项目」)。 */
 const DEFAULT_PROJECT: ProjectOption = { id: PROJECT_ID, name: PROJECT_NAME };
+
+/** XMON-95 面级守卫：输入态吞键收窄到本面板之外（⌘J 的 drawer-interior
+ *  律平移，hotkeys.ts 注记）。面板打开时 autofocus 落正文 textarea——守卫
+ *  若在面板内照吞，和弦永远打不到「保存并开始」。类名出处 = 下方 DialogShell
+ *  的 className（.dlg 面板根）。提及 picker 是面板外的兄弟层，其输入框照
+ *  吞：在提及面里按 ⌘↵ 不该提交（Enter 在那里是选中语义）。 */
+const isEditableOutsideDialog = (target: EventTarget | null): boolean =>
+  isEditableTarget(target) &&
+  !(target instanceof HTMLElement && target.closest('.new-task-dialog') !== null);
+
+/** XMON-95 界面标识：通用快捷键和弦在这块面板上的字面量。沿用 sidebar
+ *  badge 先例（⌘K / C）——不做平台探测、不进 i18n 词典；非 mac 实际绑定
+ *  Ctrl+↵ 同族（hotkeys 注册处双平台收）。 */
+const START_SHORTCUT_LABEL = '⌘↵';
 
 export interface NewTaskDialogProps {
   /** #73: retained-mount open flag — the exit fade outlives the close. */
@@ -188,6 +208,17 @@ export function NewTaskDialog({
 
   // spec 15 #394: 提交 = 正文 + 项目 id；标题位随输入框一并退役。
   const save = () => onSave(spec, selected?.id);
+
+  // XMON-95：保存并开始 = 按钮点击与 ⌘↵ 共用的同一提交位。闸写在闭包里而
+  // 非只靠按钮 disabled——键盘路径不经过 disabled 的点击拦截，漏这一句 ⌘↵
+  // 会在空正文上落一个空任务。enabled = open：面板关着时监听器不在 window
+  // 上（useChordHotkey 的 opened-gate），否则关掉的对话框仍会吃全站 ⌘↵。
+  const saveAndStart = () => {
+    if (spec.trim() === '') return;
+    if (onSaveAndStart) onSaveAndStart(spec, selected?.id);
+    else save();
+  };
+  useChordHotkey('enter', isEditableOutsideDialog, saveAndStart, open);
 
   // #318 放弃并关闭:清表单 + 关 dialog(父收 open,重置 effect 兜底同律)
   const discardAndClose = () => {
@@ -383,12 +414,21 @@ export function NewTaskDialog({
                 size="default"
                 className="new-task-start"
                 disabled={spec.trim() === ''}
-                onClick={() => {
-                  if (onSaveAndStart) onSaveAndStart(spec, selected?.id);
-                  else save();
-                }}
+                onClick={saveAndStart}
               >
                 {t('保存并开始')}
+                {/* XMON-95 界面标识：常亮按键角标（kbd-hint 的 hover chip 是
+                    另一面，这里要「看得到」，故静息可见）。落在 kbd.tsx 原语
+                    上（COMPONENTS.md「文档正文里的按键角标用 kbd.tsx」），只把
+                    registry 的尺寸/配色档逐项改写到本面：本钮是 brand 档——实底 indigo
+                    + 白字，故边界/墨取白色系而非 border-border/muted-foreground。
+                    aria-hidden：角标是视觉提示，按钮的可及名仍是文字本身。 */}
+                <Kbd
+                  aria-hidden="true"
+                  className="ml-1.5 h-auto min-w-0 rounded-[3px] border border-white/35 bg-transparent px-[3px] py-px text-[11px] leading-4 font-normal text-white/90"
+                >
+                  {START_SHORTCUT_LABEL}
+                </Kbd>
               </Button>
             </div>
           </div>
