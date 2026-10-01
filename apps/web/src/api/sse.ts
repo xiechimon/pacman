@@ -5,6 +5,8 @@
 // 通知 divergence（04 §5/A5）：in-app 事件 1:1 + document.hidden 时页内
 // new Notification()（无 Web Push）。鉴权开时（#253）两条流以 ?token= 建流
 // （streamUrl，协议例外见 api/auth.ts 头注）；门页开着不建流，放行即重连。
+// 连接看护（重连 resync / 静默看门狗 / 漏事件对账）单缝在 sse-connection.ts，
+// 本文件只负责把事件翻成失效重取，并给出对账面。
 
 import type { NotificationRecord } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
@@ -14,6 +16,8 @@ import { readStoredLocale } from '../i18n/locale.js';
 import { translate } from '../i18n/translate.js';
 import { readStoredToken, useAuth } from './auth.js';
 import { liveTextStore } from './live-text.js';
+import { connect } from './sse-connection.js';
+import { streamGuards } from './sse-guards.js';
 
 /** 鉴权开时 stream URL 附 ?token=（#253）——EventSource 无法设 header 的协议
  *  例外，server 仅对两条 stream 端点收 query token（token-auth.ts 契约）。
@@ -21,70 +25,6 @@ import { liveTextStore } from './live-text.js';
 function streamUrl(path: string): string {
   const token = readStoredToken();
   return token === null ? path : `${path}?token=${encodeURIComponent(token)}`;
-}
-
-/** 静默看门狗阈值：连接名义 OPEN 却超过此时长收不到任何事件（含心跳）=
- * 疑似哑连接（TCP 活着但事件不再到达的形态——onerror 永不触发，浏览器不会
- * 自重连），主动重建并走重连 resync。生产心跳 15s（TEAM_STREAM_PING_INTERVAL_MS）
- * 恒小于阈值 ⇒ 健康连接不误触；误触代价 = 一次重建 + 一次重取，无语义损失。
- * 背景（#462）：SSE 事件是边沿触发的一次性发布且服务端无重放，任一事件在
- * 断连 gap / 哑连接窗口内丢失 = 对应查询永久陈旧（相位 chip / plan 卡停更，
- * 直到整页重载）——CI 上表现为 m5-web-e2e 间歇性 150s/30s 停等红。 */
-const SSE_SILENCE_WATCHDOG_MS = 20_000;
-
-function connect(
-  path: string,
-  onEvent: (ev: Record<string, unknown>) => void,
-  onResync: () => void,
-): () => void {
-  let es: EventSource | null = null;
-  let openedOnce = false;
-  let disposed = false;
-  let watchdog: ReturnType<typeof setTimeout> | null = null;
-
-  const armWatchdog = (): void => {
-    if (watchdog !== null) clearTimeout(watchdog);
-    watchdog = setTimeout(() => {
-      watchdog = null;
-      // 只处理「OPEN 却静默」的哑连接态：CONNECTING 时浏览器在自重连（其
-      // onopen 会 resync）；fatal CLOSED 走 #253 门页恢复流——两者不接管，
-      // 保持既有 401 语义（不对 fatal 连接做无限重建）。
-      if (disposed || es === null || es.readyState !== EventSource.OPEN) return;
-      es.close();
-      open();
-    }, SSE_SILENCE_WATCHDOG_MS);
-  };
-
-  function open(): void {
-    if (disposed) return;
-    es = new EventSource(path);
-    es.onopen = () => {
-      // 重连成功（非首开）= 断线窗口内的事件已永久丢失（服务端只发给当前
-      // 订阅者，无重放）——全量失效重取补齐（SSE 事件本就只是 invalidate
-      // 提示信号，S8 canon 的重取半；resync = 把丢失的提示补成一次全量）。
-      if (openedOnce) onResync();
-      openedOnce = true;
-      armWatchdog();
-    };
-    es.onmessage = (e) => {
-      armWatchdog();
-      try {
-        onEvent(JSON.parse(e.data as string) as Record<string, unknown>);
-      } catch {
-        // 坏帧静默（心跳/半帧防御）
-      }
-    };
-    // 建流后的网络断线由 EventSource 自持重连（浏览器内建退避），onerror 不
-    // 关闭；HTTP 级失败（含 401）则是 fatal（CLOSED，不自动重连），恢复走
-    // REST 面 401 → 门页 → passGate 触发的 effect 重跑（#253）。
-  }
-  open();
-
-  return () => {
-    disposed = true;
-    if (watchdog !== null) clearTimeout(watchdog);
-    es?.close();
-  };
 }
 
 /** team stream：todo/build 文档事件 + notification + machine_presence →
@@ -147,6 +87,7 @@ export function useTeamStream(teamId: string | undefined, enabled: boolean): voi
         }
       },
       resync,
+      streamGuards(qc),
     );
   }, [teamId, enabled, qc, auth]);
 }
@@ -231,6 +172,7 @@ export function useConversationStream(
         }
       },
       resync,
+      streamGuards(qc),
     );
   }, [conversationId, enabled, qc, onMessage, onStep, auth]);
 }
