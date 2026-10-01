@@ -12,10 +12,16 @@
 //   8. 开 + /_mp/* 与静态 SPA 壳 → 豁免（204 no-op 与非密 UI）
 //   9. 0.0.0.0 显式绑定 + 关 → WARN 文案；默认绑定/回环/开 → 无 WARN
 //  10. env 映射：PACMAN_TOKEN → authToken（空串 = 关）；HOST → host
+//  11. 开 + /api/mcp 持有效 apiKey（无 PACMAN_TOKEN）→ 穿闸达 mcp 自有鉴权面
+//      （XMON-49，02/A1 分体部署解锁：豁免四条 → 五条，与 machine/git 同族
+//      = 自有 Bearer 凭证面；闸叠其上 = 单 header 双凭证死锁，mcp 整面死）
+//  12. 开 + /api/mcp 无凭证 → mcp 自有 401（文案 ≠ 闸形状，钉来源面）；
+//      PACMAN_TOKEN 冒充 apiKey → mcp 面 401（token 不升格为 MCP 凭证）
 
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { MCP_TOOL_REGISTRY } from '@pacman/shared';
 import { afterAll, describe, expect, test, vi } from 'vitest';
 import { insecureBindWarning, loadConfig, warnInsecureBind } from '../src/config.js';
 import { bootServer, insertGitApiKey, req, type TestServer } from './helpers.js';
@@ -160,6 +166,87 @@ describe('token 鉴权：豁免面四条（失败方式 3/4/5/8）', () => {
   });
 });
 
+describe('token 鉴权：/api/mcp 豁免面（失败方式 11/12，XMON-49 豁免五条）', () => {
+  // 与 machine/git 同族：自有 Bearer 凭证面（mcp-face verifyApiKey + key 级
+  // 工具白名单），闸再叠一道 = 同一 Authorization header 要同时装 PACMAN_TOKEN
+  // 与 apiKey 两个值——必死锁。豁免后自有鉴权自担（无/坏凭证照旧 mcp 401）。
+
+  const ALL_READ = MCP_TOOL_REGISTRY.filter((t) => t.kind === 'read').map((t) => t.grant);
+  const ALL_WRITE = MCP_TOOL_REGISTRY.filter((t) => t.kind === 'write').map((t) => t.grant);
+
+  /** 发行面在保护面内——持 PACMAN_TOKEN 取 mcpAccess key（门页/闸同律）。 */
+  async function issueMcpKey(s: TestServer): Promise<string> {
+    const issued = await reqWith(s, 'POST', `/api/teams/${s.team.id}/api-keys`, authHeaders, {
+      name: 'mcp-gate-probe',
+      gitAccess: false,
+      mcpAccess: true,
+      toolGrants: { read: ALL_READ, write: ALL_WRITE },
+    });
+    expect(issued.status).toBe(201);
+    const { plaintext } = (await issued.json()) as { plaintext: string };
+    return plaintext;
+  }
+
+  function mcpInitialize(s: TestServer, bearer: string): Promise<Response> {
+    return Promise.resolve(
+      s.app.request('/api/mcp', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream',
+          authorization: `Bearer ${bearer}`,
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'initialize',
+          params: {
+            protocolVersion: '2025-03-26',
+            capabilities: {},
+            clientInfo: { name: 'token-auth-test', version: '0' },
+          },
+        }),
+      }),
+    );
+  }
+
+  test('开 + /api/mcp 持有效 apiKey（无 PACMAN_TOKEN）→ 穿闸达 mcp 自有面（initialize 200）', async () => {
+    const s = bootServer({ authToken: TOKEN });
+    const key = await issueMcpKey(s);
+    const res = await mcpInitialize(s, key);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { result?: { serverInfo?: { name?: string } } };
+    expect(body.result?.serverInfo?.name).toBeTruthy();
+  });
+
+  test('开 + /api/mcp 无凭证 → mcp 自有 401（错误文案 ≠ 闸形状，钉来源面）', async () => {
+    const s = bootServer({ authToken: TOKEN });
+    const res = await Promise.resolve(
+      s.app.request('/api/mcp', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }),
+      }),
+    );
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as { error?: string };
+    // mcp-face 文案（'mcp authentication required'）≠ 闸文案（'Unauthorized'）——
+    // 断言前者 = 401 出自 mcp 自有鉴权面而非闸（豁免不产生无鉴权裸面）。
+    expect(body.error).toBe('mcp authentication required');
+  });
+
+  test('开 + /api/mcp 持 PACMAN_TOKEN 冒充 apiKey → mcp 面 401（token 不升格为 MCP 凭证）', async () => {
+    const s = bootServer({ authToken: TOKEN });
+    const res = await mcpInitialize(s, TOKEN);
+    expect(res.status).toBe(401);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toBe('invalid api key');
+  });
+});
+
 describe('token 鉴权：SSE stream ?token= 例外（失败方式 7）', () => {
   test('开 + team stream ?token= 正确 → 流建立（SSE 面）', async () => {
     const s = bootServer({ authToken: TOKEN, pingIntervalMs: 50 });
@@ -213,10 +300,17 @@ describe('保护面守卫：路径变体不绕过（审查加固，Spec#4/5 + �
       '/%61PI/teams', // 编码 + 大小写混合
       '/api/%74eams', // 编码后缀（本就保护，钉住不回归）
       '/api/%6Fauth/callback?code=x&state=bogus', // 编码豁免面 → fail-closed 不豁免
+      '/%61pi/mcp', // mcp 豁免面（XMON-49）编码变体 → 同律 fail-closed 不豁免
     ]) {
       const res = await req(s.app, 'GET', path);
       expect(res.status, path).toBe(401);
     }
+  });
+
+  test('开 + /api/mcp 段边界变体（/api/mcpfoo）无 token → 401（豁免 = 精确匹配，非前缀）', async () => {
+    const s = bootServer({ authToken: TOKEN });
+    const res = await req(s.app, 'POST', '/api/mcpfoo');
+    expect(res.status).toBe(401);
   });
 
   test('开 + 编码前缀路径持正确 Bearer → 闸放行，Hono 解码路由照常可达（200）', async () => {
