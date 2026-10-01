@@ -12,8 +12,7 @@
 // 前置：launch.mjs 起栈 + setup-review-seed.mjs 推到 confirm phase。
 // 用法：VERIFY_REPO_ROOT=<worktree> REVIEW_MACHINE_TOKEN=<token> \
 //      node drive-review-blocking.mjs <todoId> <agentId>
-//   env：VERIFY_EVIDENCE_DIR（缺省主仓 .claude/verify-evidence/<ts>-review-blocking；
-//        证据要随 PR 进 git 须再跑 archive.mjs）
+//   env：VERIFY_EVIDENCE_DIR（缺省主仓 .claude/verify-evidence/<ts>-review-blocking）
 
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
