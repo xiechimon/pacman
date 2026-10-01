@@ -23,7 +23,7 @@ import { mapCommits, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
-import { localTodo, USER_NAME } from '../fixtures/fixtures.js';
+import { localTodo } from '../fixtures/fixtures.js';
 import type { Phase, ProjectCommitRow, ProjectContent, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
@@ -318,6 +318,9 @@ function TasksPane({
   onOpenGithubIssues?: () => void;
 }) {
   const { t } = useI18n();
+  // XMON-105: task-row owner avatar = the logged-in user identity single
+  // source (same face as sidebar chip / account head / chat user rows).
+  const { user } = useLiveData();
   // #318: 行/卡点击 = 导航任务详情(r2 §2 原站点行开详情);search 随行
   // 携带(fixture 面 scenario 参数不丢,todo-card #58 同律)。
   const { search } = useLocation();
@@ -434,7 +437,11 @@ function TasksPane({
               </Link>
               <span className="prj-task-time">{relativeTime(todo.phaseAt, now, t)}</span>
               <span className="prj-task-avatar">
-                <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
+                <SeededAvatar
+                  name={user.displayName}
+                  src={user.avatarUrl}
+                  fallback="/avatar-user.png"
+                />
               </span>
             </div>
           ))}
@@ -448,7 +455,11 @@ function TasksPane({
               <div className="prj-task-card-head">
                 <span className="prj-task-check" aria-hidden="true" />
                 <span className="prj-task-avatar">
-                  <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
+                  <SeededAvatar
+                    name={user.displayName}
+                    src={user.avatarUrl}
+                    fallback="/avatar-user.png"
+                  />
                 </span>
               </div>
               {/* #318: 同列表行——标题 <a> 的 ::after 拉伸盖满整卡 */}

@@ -121,13 +121,15 @@ function AgentRow({
 }: {
   /** seed = #387 头像种子:真实 agent 名才生成 dicebear 头像;未指派(占位
    *  文案非人名)无 seed,渲染静态机器人资产。 */
-  display: { name: string; model: string; seed?: string };
+  display: { name: string; model: string; seed?: string; avatarUrl?: string | null };
   onPick: () => void;
 }) {
   return (
     <button type="button" className="rerun-agent-row" onClick={onPick}>
       <span className="rerun-agent-avatar">
-        <SeededAvatar name={display.seed} fallback="/avatar-robot-1.svg" />
+        {/* XMON-105: explicit avatarUrl rides the same override law as every
+            other agent avatar surface (team page / board card / transcript). */}
+        <SeededAvatar name={display.seed} src={display.avatarUrl} fallback="/avatar-robot-1.svg" />
       </span>
       <span className="rerun-agent-text">
         <span className="rerun-agent-name">{display.name}</span>
@@ -154,7 +156,7 @@ export function RerunDialog({
   reuse: boolean;
   /** Previous run's agent (fixture data, r8 56/74 agent row); doubles as
    *  the display fallback while no explicit selection exists. */
-  agent: { name: string; model: string };
+  agent: { name: string; model: string; avatarUrl?: string | null };
   /** #318 live 候选集(members 读面 memberType:"agent" 投影);缺省 =
    *  fixture 面(选择器退 canon 单行)。 */
   agentOptions?: ChiefAgentOption[];
@@ -194,11 +196,16 @@ export function RerunDialog({
   }, [initialAgentId, touched]);
   const displayFor = (id: string | undefined) => {
     if (id === UNASSIGNED_AGENT_ID) return { name: t('未指派'), model: t('默认') };
-    if (id == null) return { ...agent, seed: agent.name };
+    if (id == null) return { ...agent, seed: agent.name, avatarUrl: agent.avatarUrl ?? null };
     const row = rows.find((r) => r.id === id);
     return row
-      ? { name: row.name, model: row.model ?? t('默认'), seed: row.name }
-      : { ...agent, seed: agent.name };
+      ? {
+          name: row.name,
+          model: row.model ?? t('默认'),
+          seed: row.name,
+          avatarUrl: row.avatarUrl ?? null,
+        }
+      : { ...agent, seed: agent.name, avatarUrl: agent.avatarUrl ?? null };
   };
   const slot = (id: string | undefined) =>
     id != null && id !== UNASSIGNED_AGENT_ID ? { agentId: id } : null;
