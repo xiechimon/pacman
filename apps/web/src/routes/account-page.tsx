@@ -28,6 +28,7 @@ import { useSession } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { useNotificationPermission } from '../board/notify-banner.js';
 import { Button } from '../components/ui/button.js';
+import { Panel, PanelHead, PanelLabel, PanelRow, PanelValue } from '../components/ui/panel.js';
 import { Switch } from '../components/ui/switch.js';
 import { USER_MAIL, USER_NAME } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -55,25 +56,25 @@ export function AccountPage() {
   const notifyOn = permission === 'granted';
   return (
     <SecondaryShell route="account" fixture={fixture} sidebarSelected="team" title={t('帐号')}>
-      <div className="account-card">
-        <div className="account-head">
+      <Panel variant="outlined" className="account-card">
+        <PanelHead className="account-head">
           <span className="account-avatar">
             <img src="/avatar-user.png" alt="" />
           </span>
-        </div>
-        <div className="account-row account-row--name">
-          <span className="account-label">{t('名称')}</span>
-          <span className="account-value">
+        </PanelHead>
+        <PanelRow className="account-row account-row--name">
+          <PanelLabel className="account-label">{t('名称')}</PanelLabel>
+          <PanelValue className="account-value">
             {userName}
             <SquarePen width={14} height={14} />
-          </span>
-        </div>
-        <div className="account-row">
-          <span className="account-label">{t('邮箱')}</span>
-          <span className="account-value account-value--muted">{userEmail}</span>
-        </div>
-        <div className="account-row account-row--tall">
-          <span className="account-label">{t('语言')}</span>
+          </PanelValue>
+        </PanelRow>
+        <PanelRow className="account-row">
+          <PanelLabel className="account-label">{t('邮箱')}</PanelLabel>
+          <PanelValue className="account-value account-value--muted">{userEmail}</PanelValue>
+        </PanelRow>
+        <PanelRow className="account-row account-row--tall">
+          <PanelLabel className="account-label">{t('语言')}</PanelLabel>
           <span className="account-select-wrap">
             {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Button，per-face
                 几何仍住 secondary.css 的 .account-select。差额并项——散写形字重
@@ -118,9 +119,9 @@ export function AccountPage() {
               </>
             )}
           </span>
-        </div>
-        <div className="account-row">
-          <span className="account-label">{t('推送通知')}</span>
+        </PanelRow>
+        <PanelRow className="account-row">
+          <PanelLabel className="account-label">{t('推送通知')}</PanelLabel>
           {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Switch（role/aria-checked
               由底座透出，per-face 几何仍住 secondary.css 的 .account-switch*）。
               差额并项走 thumbClassName——底座默认的 checked 位移会与域 css 的
@@ -137,8 +138,8 @@ export function AccountPage() {
               if (checked) request();
             }}
           />
-        </div>
-      </div>
+        </PanelRow>
+      </Panel>
     </SecondaryShell>
   );
 }

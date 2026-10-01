@@ -30,7 +30,7 @@ input.tsx
 
 （上面这段是机器门读的冻结名单：`src/ui/` 里出现名单外的新件即报错——迁移期的删除不报错。）
 
-## 二、新轨原语（19）
+## 二、新轨原语（20）
 
 <!-- inventory:new-track -->
 ```text
@@ -48,6 +48,7 @@ floating-shell.tsx       # 锚定浮层共用底座（plan-dropdown / chip-popov
 input.tsx
 kbd-hint.tsx             # 快捷键悬浮提示 chip（控件 hover/focus-visible 浮出、静息 visibility:hidden）；#468 快捷键提示一律用它
 kbd.tsx                  # 按键角标原语（文档正文里的 ⌘K 角标）；悬浮提示 chip 是 kbd-hint.tsx
+panel.tsx                # 静息内容容器消解（Panel/PanelHead/PanelRow/PanelLabel/PanelValue）：贴在页面里的方框一律用它；皮肤档 quiet/outlined，per-face 数值留属地 css
 popover.tsx
 seeded-avatar.tsx        # dicebear 种子头像适配层（src 覆盖 > name 种子 > 兜底换图，img 常驻 DOM）；头像一律用它
 switch.tsx               # 仓内偏离：thumbClassName 适配口
@@ -71,7 +72,8 @@ tabs.tsx
 | 确认对话框 | `components/ui/alert-dialog-shell.tsx` | 别手搓 `OverlayMount` + `useEscClose` |
 | 普通对话框 | `components/ui/dialog-shell.tsx` | 消费点只改 import 路径即可（API 逐字相同） |
 | 锚定浮层（下拉 / 菜单 / popover） | `floating-shell.tsx`，或它上面的 `dropdown-menu.tsx` / `popover.tsx` | 别自造定位壳 |
-| 卡片 / 面板 | 先看 `components/ui/card.tsx`；**但注意下面的消费现状** | 别硬套原语——真卡是 per-face 类族 |
+| **静息方框**（页面里不动的卡 / 面板 / 设置块） | `components/ui/panel.tsx`（`Panel` + `PanelHead` / `PanelRow` / `PanelLabel` / `PanelValue`） | 别新起 `.xxx-card` 手写类——皮肤（描边 / 底色 / 圆角）只住 Panel 一处 |
+| 布局块（要自带皮肤的容器） | `components/ui/card.tsx`（shadcn 布局壳；消费点自覆盖 `ring-0` / `py-0` / 圆角） | 别拿它当视觉原件——它的 `ring-1` + `rounded-xl` + `bg-card` 与仓内需求错配，真卡是 per-face 类族 |
 | **头像** | `components/ui/seeded-avatar.tsx`（dicebear 种子 + 兜底换图，img 常驻 DOM） | 别直接用 `avatar.tsx` 三件套——尺寸正本在各面 per-face 几何，Root 需走 `contents` |
 | 快捷键提示 chip | `components/ui/kbd-hint.tsx`（落在 `kbd.tsx` 上） | 别自写绝对定位 + 显隐；文档正文里的按键角标用 `kbd.tsx` |
 | 标签 chip（用户数据色） | `components/ui/tag-chip.tsx` | 状态色族仍走 `badge.tsx`；别混两种色来源 |

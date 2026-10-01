@@ -18,6 +18,7 @@ import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useApiMutations, useProjects } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { Panel, PanelHead, PanelLabel, PanelRow, PanelValue } from '../components/ui/panel.js';
 import { markDeleted } from '../fixtures/deletions.js';
 import { PROJECT_INITIAL } from '../fixtures/fixtures.js';
 import type { ProjectContent } from '../fixtures/records.js';
@@ -68,30 +69,30 @@ export function ProjectSettingsPage() {
         <div className="prj-set-tabs">
           <TabGroup tabs={TABS} tab={tab} onTab={setTab} />
         </div>
-        <div className="prj-set-card">
-          <div className="prj-set-head">
+        <Panel variant="quiet" className="prj-set-card">
+          <PanelHead className="prj-set-head">
             <span className="prj-set-avatar">{PROJECT_INITIAL}</span>
             {/* 「更换」钮全除（#307 wontfix）：头像是静态 PROJECT_INITIAL 资产,
                 栈内无上传面——档 4 二分律下本项 #177 占位 chrome 裁决改判
                 移除（account-swap 同款归档 3，本票不动）。 */}
-          </div>
-          <div className="prj-set-row">
-            <span className="prj-set-label">{t('名称')}</span>
-            <span className="prj-set-value">
+          </PanelHead>
+          <PanelRow className="prj-set-row">
+            <PanelLabel className="prj-set-label">{t('名称')}</PanelLabel>
+            <PanelValue className="prj-set-value">
               {project?.name ?? ''}
               <SquarePen width={14} height={14} />
-            </span>
-          </div>
-          <div className="prj-set-row">
-            <span className="prj-set-label">{t('仓库')}</span>
-            <span className="prj-set-value">
+            </PanelValue>
+          </PanelRow>
+          <PanelRow className="prj-set-row">
+            <PanelLabel className="prj-set-label">{t('仓库')}</PanelLabel>
+            <PanelValue className="prj-set-value">
               {project?.repoName ?? ''}
               {project?.hosted === true && <span className="prj-set-chip">{t('Pacman 托管')}</span>}
-            </span>
-          </div>
-          <div className="prj-set-row">
-            <span className="prj-set-label">{t('目标分支')}</span>
-            <span className="prj-set-value">
+            </PanelValue>
+          </PanelRow>
+          <PanelRow className="prj-set-row">
+            <PanelLabel className="prj-set-label">{t('目标分支')}</PanelLabel>
+            <PanelValue className="prj-set-value">
               {/* 分支 chip = 静态展示(#177 裁决,#149 分支 chip 同律): schema
                   无 defaultBranch 列、无 PATCH 端点,读面固定 main;chevron 保
                   r2 24c 捕获形状。非交互元素——不再是死钮。 */}
@@ -99,20 +100,20 @@ export function ProjectSettingsPage() {
                 {project?.defaultBranch ?? 'main'}
                 <ChevronDown width={12} height={12} />
               </span>
-            </span>
-          </div>
-          <div className="prj-set-row">
-            <span className="prj-set-label">{t('描述')}</span>
-            <span className="prj-set-value prj-set-value--dim">
+            </PanelValue>
+          </PanelRow>
+          <PanelRow className="prj-set-row">
+            <PanelLabel className="prj-set-label">{t('描述')}</PanelLabel>
+            <PanelValue className="prj-set-value prj-set-value--dim">
               {project?.description ?? t('尚无描述')}
               <SquarePen width={14} height={14} />
-            </span>
-          </div>
-        </div>
+            </PanelValue>
+          </PanelRow>
+        </Panel>
         {/* 危险操作区(#207 复活): #189 DELETE /api/projects/:id 已落地,
             卡面 = #177 整除前形状原样归位(r2 24c),钮接真确认流。 */}
         <div className="prj-set-danger-label">{t('危险操作')}</div>
-        <div className="prj-set-card prj-set-card--danger">
+        <Panel variant="quiet" className="prj-set-card prj-set-card--danger">
           <div className="prj-set-danger-title">{t('删除项目')}</div>
           <div className="prj-set-danger-desc">
             {t('将永久删除所有任务与执行记录，此操作不可恢复。')}
@@ -127,7 +128,7 @@ export function ProjectSettingsPage() {
           >
             {t('删除')}
           </Button>
-        </div>
+        </Panel>
       </div>
       {/* 确认弹层(r2 24d, DeleteConfirm 家族): 键入项目名精确匹配才解禁;
           确认后跳项目列表面 —— live 走 DELETE + invalidateAll 重取,fixture
