@@ -491,6 +491,25 @@ test('project task rows and cards are real links to the todo detail (#318)', asy
   await expect(page).toHaveURL(/\/app\/todo\//);
 });
 
+test('new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt)', async ({
+  page,
+}) => {
+  await page.goto('/app?scenario=01');
+  const dialog = page.locator('.new-task-dialog');
+  await page.locator('.sidebar-new-task').click();
+  await expect(dialog).toBeVisible();
+  const hb = await dialog.locator('.new-task-head').boundingBox();
+  const cb = await dialog.locator('.new-task-close').boundingBox();
+  if (hb === null || cb === null) throw new Error('head / close not laid out');
+  // head 的右内垫是 4px（padding: 0 4px 0 12px），叉号靠 margin-left:auto 贴右缘。
+  // #574 把 Button 换到 components/ui/Button 时没重钉选择器（那条写的是
+  // `.btn.new-task-close`，而新原语不吐 btn 类），于是 margin-left:auto 与 28×28
+  // 一起失效，叉号落回居中标题的紧右边——这条断言就是那段欠账的回归钉。
+  expect(Math.abs(hb.x + hb.width - (cb.x + cb.width) - 4)).toBeLessThan(1.5);
+  expect(cb.width).toBeCloseTo(28, 0);
+  expect(cb.height).toBeCloseTo(28, 0);
+});
+
 test('new-task dialog gates unsaved closes and resets on discard (#318)', async ({ page }) => {
   await page.goto('/app?scenario=01');
   const dialog = page.locator('.new-task-dialog');
