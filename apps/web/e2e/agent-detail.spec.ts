@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // Agent 详情编辑面（原版实测形态：r3-protocol-executor.md §4 —— 团队页点 Agent
 // 卡进 `/app/resources/agents/<id>?name=<名>`，三 tab 概览/记忆/权限；C17 捕获 ✓）。
@@ -125,13 +125,16 @@ test('概览：模型选择器打开后列出 provider 与模型名', async ({ p
   await expect(row).toContainText('claude-sonnet-5');
 });
 
-// 几何钉：菜单贴触发钮左缘、向下展开，且整块留在内容列内。
-// 两道前车之鉴都只有几何断言能抓（存在性/文案断言全绿）：
+// 几何钉：菜单贴触发钮右缘、向下展开，且整块留在内容列内。
+// 只有几何断言能抓的前车之鉴（存在性/文案断言全绿）：
 // · 漏 `.agent-model-wrap` 的 align-self → wrap 被 flex 列拉满宽 → 菜单飘到
-//   离触发钮 400+px；
-// · 菜单贴右缘 → 从触发钮往左长、越过 `.res-col`（overflow: hidden auto）的
-//   左缘，被列裁掉一截，模型名开头看不见。
-test('概览：模型菜单贴触发钮左缘且在内容列内（几何）', async ({ page }) => {
+//   离触发钮 400+px（散块布局期的故障）；
+// · 锚错边 → 菜单从触发钮往**外**长，越过 `.res-col` 的缘（`.res-body`
+//   overflow-x: hidden）被裁掉一截，模型名看不见。
+// XMON-117 把触发钮从字段列左缘挪到模板行的**右缘**（个人页模板的值槽在
+// 行右），锚边随之从左翻到右：左锚会让菜单往右长、出列右缘被裁——这正是
+// 下面两条边界断言钉的。
+test('概览：模型菜单贴触发钮右缘且在内容列内（几何）', async ({ page }) => {
   const detail = await openDetail(page);
   const trigger = detail.locator('.agent-model-select');
   await trigger.click();
@@ -142,13 +145,14 @@ test('概览：模型菜单贴触发钮左缘且在内容列内（几何）', as
   expect(tb).not.toBeNull();
   expect(mb).not.toBeNull();
   if (tb === null || mb === null) return;
-  expect(Math.abs(mb.x - tb.x)).toBeLessThanOrEqual(8);
+  expect(Math.abs(mb.x + mb.width - (tb.x + tb.width))).toBeLessThanOrEqual(8);
   expect(Math.abs(mb.y - (tb.y + tb.height))).toBeLessThanOrEqual(8);
-  // 不越内容列左缘（列 = 768 宽居中；越出去就被裁）。
+  // 两缘都留在内容列内（列 = 768 宽居中；越出去就被裁）。
   const col = await detail.locator('xpath=ancestor::div[contains(@class,"res-col")]').boundingBox();
   expect(col).not.toBeNull();
   if (col === null) return;
   expect(mb.x).toBeGreaterThanOrEqual(col.x - 1);
+  expect(mb.x + mb.width).toBeLessThanOrEqual(col.x + col.width + 1);
 });
 
 test('概览：思考强度是只读值行，无模型时显示「默认」', async ({ page }) => {
@@ -523,3 +527,70 @@ test('概览：点行进任务详情', async ({ page }) => {
   await page.locator('.agent-task-row').first().click();
   await expect(page).toHaveURL(/\/app\/todo\/r3-legacy-12$/);
 });
+
+// —— XMON-117：本页按 `/app/account` 的个人页模板复刻 ——
+// 模板 = 一张 profile 卡（头像头 + 行式字段），三 tab 的内容都住在卡里。
+// 钉住的失败方式：概览退回散块字段列（每个字段各自带 label，没有行盒与
+// 分隔线）、头像头掉出卡外、记忆/权限两 tab 回到一张卡一行的散卡布局。
+const OVERVIEW_LABELS = ['名称', '职责', '默认 skill', '运行时', '模型', '思考强度'];
+
+test('概览：六个字段行长在同一张模板卡里，头像头在卡内', async ({ page }) => {
+  const detail = await openDetail(page);
+  const card = detail.locator('.agent-overview .profile-card');
+  await expect(card).toHaveCount(1);
+  await expect(card.locator('.profile-head .profile-avatar img')).toHaveCount(1);
+  await expect(card.locator('.profile-row')).toHaveCount(OVERVIEW_LABELS.length);
+  // 行序即字段序。取 `.profile-label-text`（模板自己的 label 类）而非面内
+  // 别名：别名在、模板类不在，就是「只挂了句柄没吃模板」——正是要钉的退形。
+  expect(await card.locator('.profile-label-text').allTextContents()).toEqual(OVERVIEW_LABELS);
+});
+
+test('记忆 tab：记忆行住在模板卡里', async ({ page }) => {
+  const detail = await openMemory(page);
+  const card = detail.locator('.agent-memories .profile-card');
+  await expect(card).toHaveCount(1);
+  await expect(card.locator('.profile-row.agent-memory-row')).toHaveCount(3);
+});
+
+test('权限 tab：三组开关各自住在模板卡里', async ({ page }) => {
+  const detail = await openDetail(page);
+  await detail.locator('.agent-tab').nth(2).click();
+  const cards = detail.locator('.agent-perms .profile-card');
+  await expect(cards).toHaveCount(3); // 工具 / 密钥 / MCP 服务器
+  // 六档工具开关全在工具组的卡里（不靠散行的 .agent-perm-row 撑）
+  await expect(cards.first().locator('.profile-row')).toHaveCount(6);
+  await expect(cards.first().locator('.agent-tool-switch')).toHaveCount(6);
+});
+
+// 无头像头的卡（记忆 / 权限三组）首件直接是行，行是自带底色与 border-top 的
+// 方盒。失败方式：行的方角把底色顶出卡的圆角外（卡片 overflow: visible 裁不
+// 掉，肉眼是圆角处多一块方角），且那条 border-top 与卡的描边叠成 2px 的顶边。
+test('记忆/权限卡：首行不吃卡的上圆角与描边（无方角外溢、无 2px 顶边）', async ({
+  page,
+}) => {
+  const detail = await openMemory(page);
+  // tab 是条件渲染，两面的首行要各读一次（切走就没了）
+  const memoryFirst = detail.locator('.agent-memories .profile-card > .profile-row:first-child');
+  await expect(memoryFirst).toHaveCount(1);
+  await assertTopCorner(memoryFirst);
+
+  await detail.locator('.agent-tab').nth(2).click();
+  // 3 张权限卡：工具 / 密钥（零密钥时空态也是模板行）/ MCP 服务器
+  const permFirst = detail.locator('.agent-perms .profile-card > .profile-row:first-child');
+  await expect(permFirst).toHaveCount(3);
+  await assertTopCorner(permFirst);
+});
+
+async function assertTopCorner(rows: Locator) {
+  for (const row of await rows.all()) {
+    const { topLeft, topBorder } = await row.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return {
+        topLeft: [cs.borderTopLeftRadius, cs.borderTopRightRadius],
+        topBorder: cs.borderTopWidth,
+      };
+    });
+    expect(topLeft).toEqual(['11px', '11px']);
+    expect(topBorder).toBe('0px');
+  }
+}

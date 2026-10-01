@@ -27,6 +27,7 @@ import { useSearchParams } from 'react-router';
 import { useSession } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { useNotificationPermission } from '../board/notify-banner.js';
+import { ProfileAvatar, ProfileCard, ProfileHead, ProfileRow } from '../components/profile-card.js';
 import { Button } from '../components/ui/button.js';
 import { Switch } from '../components/ui/switch.js';
 import { USER_MAIL, USER_NAME } from '../fixtures/fixtures.js';
@@ -55,25 +56,23 @@ export function AccountPage() {
   const notifyOn = permission === 'granted';
   return (
     <SecondaryShell route="account" fixture={fixture} sidebarSelected="team" title={t('帐号')}>
-      <div className="account-card">
-        <div className="account-head">
-          <span className="account-avatar">
+      {/* XMON-117：卡盒 / 头像头 / 行 / label / 值槽落 components/profile-card
+          的模板件（本页正是模板的来源面）；`account-*` 类名原样留作 e2e
+          定位锚（#411 别名优先），几何正本随之搬到 profile-card.css。 */}
+      <ProfileCard className="account-card">
+        <ProfileHead>
+          <ProfileAvatar className="account-avatar">
             <img src="/avatar-user.png" alt="" />
-          </span>
-        </div>
-        <div className="account-row account-row--name">
-          <span className="account-label">{t('名称')}</span>
-          <span className="account-value">
-            {userName}
-            <SquarePen width={14} height={14} />
-          </span>
-        </div>
-        <div className="account-row">
-          <span className="account-label">{t('邮箱')}</span>
-          <span className="account-value account-value--muted">{userEmail}</span>
-        </div>
-        <div className="account-row account-row--tall">
-          <span className="account-label">{t('语言')}</span>
+          </ProfileAvatar>
+        </ProfileHead>
+        <ProfileRow className="profile-row--name" label={t('名称')}>
+          {userName}
+          <SquarePen width={14} height={14} />
+        </ProfileRow>
+        <ProfileRow label={t('邮箱')} valueClassName="profile-value--muted">
+          {userEmail}
+        </ProfileRow>
+        <ProfileRow className="profile-row--tall" label={t('语言')}>
           <span className="account-select-wrap">
             {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Button，per-face
                 几何仍住 secondary.css 的 .account-select。差额并项——散写形字重
@@ -118,9 +117,8 @@ export function AccountPage() {
               </>
             )}
           </span>
-        </div>
-        <div className="account-row">
-          <span className="account-label">{t('推送通知')}</span>
+        </ProfileRow>
+        <ProfileRow label={t('推送通知')}>
           {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Switch（role/aria-checked
               由底座透出，per-face 几何仍住 secondary.css 的 .account-switch*）。
               差额并项走 thumbClassName——底座默认的 checked 位移会与域 css 的
@@ -137,8 +135,8 @@ export function AccountPage() {
               if (checked) request();
             }}
           />
-        </div>
-      </div>
+        </ProfileRow>
+      </ProfileCard>
     </SecondaryShell>
   );
 }

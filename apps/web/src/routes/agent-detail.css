@@ -11,7 +11,12 @@
    .page-tabs-group / .page-tab（与 topbar「任务|文件」同一份规则）。
    .agent-tabs / .agent-tab 仅作为 e2e 句柄留在 DOM 上，本文件不留规则。 */
 
-/* —— 概览 —— */
+/* —— 概览 ——
+   XMON-117：字段承载结构 = components/profile-card 的个人页模板（卡盒 /
+   头像头 / 行 / label / 值槽的几何正本在 profile-card.css）。本文件只留
+   面内自己的档：卡片与页面的间距、名称/职责两行内编辑器的几何。
+   `.agent-field-label` / `.agent-perm-name` / `.agent-perm-hint` 是旧字段块的
+   类名，作为 e2e 定位锚留在元素上（#411 别名优先），本文件不给他们规则。 */
 
 .agent-overview {
   display: flex;
@@ -19,45 +24,8 @@
   gap: 14px;
 }
 
-.agent-head {
-  width: 56px;
-  height: 56px;
-}
-
-.agent-field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.agent-field-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.agent-field-label {
-  color: var(--text-tertiary);
-  font-size: 12px;
-}
-
-.agent-field-hint {
-  color: var(--text-tertiary);
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 0;
-}
-
-/* 名称值 + 编辑图标同一行（r3 §4 实测两行都带图标；图标是入口而非装饰，
-   故与值拉开 6px 而不是贴死在文本尾）。 */
-.agent-name-row {
-  align-items: center;
-  display: flex;
-  gap: 6px;
-}
-
+/* 名称值 + 编辑图标同一行：值槽的间距由模板给（个人页 r7 13 的 14px）。 */
 .agent-name {
-  align-self: flex-start;
   background: none;
   border: none;
   color: var(--text-primary);
@@ -92,6 +60,7 @@
   font-size: 15px;
   height: 32px;
   padding: 0 10px;
+  width: 100%; /* 编辑器吃满值槽（值槽本行转 grow 档） */
 }
 
 .agent-role-text {
@@ -99,9 +68,11 @@
   font-size: 13px;
 }
 
+/* 动作行贴值槽右缘（模板的值槽默认靠右，编辑态的值槽是列盒，要自己收边） */
 .agent-role-actions {
   display: flex;
   gap: 8px;
+  justify-content: flex-end;
 }
 
 .agent-role-input {
@@ -214,13 +185,9 @@
   display: inline-flex;
 }
 
-/* 概览 tab 的 wrap 是 flex 列（.agent-field）的子项，缺这条会被 align-items:
-   stretch 拉满列宽——菜单的 `right: 0` 就会贴到列右缘而不是触发钮右缘（实测
-   菜单左边缘跑到 x=1007，触发钮右缘在 x=598）。弹窗那个 wrap 刻意撑满行宽
-   （触发钮 width:100%），不套这条。 */
-.agent-model-wrap {
-  align-self: flex-start;
-}
+/* wrap 是模板值槽的行内项（XMON-117 前是 flex 列 .agent-field 的子项，靠
+   `align-self: flex-start` 免得被拉满列宽）。值槽本就是 flex 行盒，
+   inline-flex 的 wrap 按内容定宽，这条不再需要。 */
 
 .agent-model-select {
   align-items: center;
@@ -258,14 +225,14 @@
 .agent-model-menu,
 .dlg-agent-model-menu {
   position: absolute;
-  /* 贴触发钮左缘向右展开，不贴右缘：资源族的面板体横向是裁的（#486 起
-     `.res-col` 自持滚动，`overflow-x` 计算成 hidden；#494 把滚动层挪到全宽
-     `.res-body`，横向裁切仍在）。`right: 0` 会让菜单从触发钮往**左**长，越
-     过容器左缘被裁掉一截——实测布局盒 384..604 而只有 450 之后可绘制，
-     「未设置模型」整行与模型名前 9 个字符都看不见。触发钮在列左缘，只有向
-     右展开才在容器内。 */
+  /* 概览 tab 贴触发钮**右**缘向左展开（XMON-117 起触发钮在模板行的值槽位，
+     即行右缘；此前是散块字段列的左缘，锚的是 `left: 0`）。锚错边就会往
+     **外**长：资源族的面板体横向是裁的（#486 起 `.res-col` 自持滚动，
+     `overflow-x` 计算成 hidden；#494 把滚动层挪到全宽 `.res-body`，横向裁切
+     仍在），出列右缘的那一截整块看不见。弹窗那一面（dlg-*）触发钮在弹窗内
+     仍贴左，由下面的规则单盖。 */
   top: calc(100% + 4px);
-  left: 0;
+  right: 0;
   z-index: 30;
   background: var(--popover-bg, var(--surface));
   border: 1px solid var(--border-default);
@@ -318,6 +285,10 @@
 .dlg-agent-model-menu {
   top: auto;
   bottom: calc(100% + 4px);
+  /* 横向锚回触发钮左缘：弹窗那面的触发钮撑满行宽（width: 100%），菜单比它宽
+     时右锚会往左冒出行左缘；左锚冒的是弹窗体自己的 16px 内垫，仍在弹窗内。 */
+  right: auto;
+  left: 0;
   max-height: 192px;
 }
 
@@ -379,13 +350,11 @@
   margin: 0;
 }
 
+/* XMON-117：行盒（分隔线 / 内垫 / 底色）由模板的 .profile-row 给，本类只留
+   定位句柄与两行的对齐档（记忆行是双行文本，不居中而顶对齐）。 */
 .agent-memory-row {
   align-items: flex-start;
-  border: 1px solid var(--card-border);
-  border-radius: 10px;
-  display: flex;
   gap: 12px;
-  padding: 10px 12px;
 }
 
 /* 权限 tab 的保存失败行（XMON-80/P2）：配方 = 仓内错误文本族（12px /
@@ -398,10 +367,10 @@
 }
 
 /* 零密钥空态 + 出路（XMON-80/P3）。空态文案保持自己的 <p>（既有 e2e 钉着
-   它的文本），入口是同级兄弟，不塞进那段文字里。 */
+   它的文本），入口是同级兄弟，不塞进那段文字里；行盒仍是模板的
+   .profile-row（空态也住卡里，不脱出模板）。 */
 .agent-perm-empty-row {
   align-items: baseline;
-  display: flex;
   gap: 8px;
 }
 
@@ -455,29 +424,9 @@
   margin: 0;
 }
 
-.agent-perm-row {
-  align-items: center;
-  display: flex;
-  gap: 12px;
-  justify-content: space-between;
-}
-
-.agent-perm-text {
-  display: flex;
-  flex-direction: column;
-}
-
-.agent-perm-name {
-  color: var(--text-primary);
-  font-size: 13px;
-}
-
-.agent-perm-hint {
-  color: var(--text-tertiary);
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 0;
-}
+/* XMON-117：行盒形状（label 左 / 开关右、分隔线、内垫）由模板的
+   .profile-row 给；`.agent-perm-row` / `.agent-perm-name` / `.agent-perm-hint`
+   留作面内句柄与 e2e 定位锚（#411 别名优先）。 */
 
 .agent-missing {
   color: var(--text-tertiary);
