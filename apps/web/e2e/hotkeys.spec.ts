@@ -67,13 +67,33 @@ import { expect, type Page, test } from '@playwright/test';
 // 17. the disabled gate holds on the keyboard path too: an empty spec plus
 //     ⌘↵ creates no card (a chord that ignores the button's gate would save
 //     a blank task)
-// 18. plain ↵ in the spec textarea is NOT hijacked — it stays the newline
+// 18. the 未保存闸 confirm layer is the dialog's *sibling*, so the enabled
+//     gate has to cover it as well: with the layer up, ⌘↵ still saves
+//     nothing (the chord would otherwise start a real run under the
+//     "discard?" question)
+// 19. plain ↵ in the spec textarea is NOT hijacked — it stays the newline
 //     key (no modifier, no fire, native default untouched)
-// 19. the 保存并开始 button carries a visible ⌘↵ badge at rest (the
+// 20. the 保存并开始 button carries a visible ⌘↵ badge at rest (the
 //     always-on form; kbd-hint's hover chip is the other face)
+//
+// XMON-87 adds the family's only binding that consumes a native browser key.
+// 21. Tab switches the dialog's project from the composer focus the open
+//     itself lands (the dialog-interior exemption, ⌘J's drawer narrowing),
+//     wraps at the ends, and leaves focus in the composer so typing is not
+//     interrupted
+// 22. the same from the chip's own focus, list open or not; Shift+Tab is NOT
+//     consumed — with Tab spent on switching, it is the way out of the seat
+// 23. off the two driving seats (mention button / footer) Tab stays native
+// 24. the project chip hovers its Tab hint (at rest it stays hidden)
+// 25. outside the dialog (closed) Tab stays native — no dialog, no listbox
 
 const BOARD = '/app?scenario=01';
 const SCHEDULES = '/app/schedules?scenario=01';
+/** XMON-87 的 Tab 换项目要有第二个项目才检得出来（scenario 01 只有一个）：
+ *  boardProjectPicker 场景 = r3-lifecycle + r2-inventory 双行。 */
+const PROJECTS = '/app?scenario=newtask-projects';
+/** 该场景首行的项目 id（显示名 r3-lifecycle）；记忆位存的是 id 不是名字。 */
+const FIRST_PROJECT_ID = 'ZAQczKCu0MOAzC1ZqcFlX';
 const PROJECT = '/app/project/ZAQczKCu0MOAzC1ZqcFlX?scenario=r2-24b&tab=tasks';
 
 const dialog = (page: Page) => page.locator('.new-task-dialog');
@@ -132,21 +152,26 @@ async function escapeUntilHidden(page: Page, surface: ReturnType<Page['locator']
   throw new Error(`Escape never closed ${surface}`);
 }
 
-/** ⌘J-toggle close, same retry law as escapeUntilHidden: a delivered
- *  toggle hides the drawer and the wait ends the loop; a lost key leaves it
- *  open and the re-press IS the toggle. A pathologically slow close makes
- *  the next press reopen — and the one after closes again — so the loop's
- *  end state is deterministically hidden, never a coin flip. */
-async function toggleUntilHidden(page: Page, surface: ReturnType<Page['locator']>) {
+/** toggle close, same retry law as escapeUntilHidden: a delivered toggle
+ *  hides the surface and the wait ends the loop; a lost key leaves it open
+ *  and the re-press IS the toggle. A pathologically slow close makes the
+ *  next press reopen — and the one after closes again — so the loop's end
+ *  state is deterministically hidden, never a coin flip. key 缺省 = ⌘J 抽屉
+ *  （XMON-87 的 ⌘P 项目列表共用同一律）。 */
+async function toggleUntilHidden(
+  page: Page,
+  surface: ReturnType<Page['locator']>,
+  key = 'Meta+j',
+) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    await page.keyboard.press('Meta+j');
+    await page.keyboard.press(key);
     const closed = await surface
       .waitFor({ state: 'hidden', timeout: 1000 })
       .then(() => true)
       .catch(() => false);
     if (closed) return;
   }
-  throw new Error('⌘J never closed the drawer');
+  throw new Error(`${key} never closed the surface`);
 }
 
 test('C on the board opens the new-task dialog; ⌘C and the retired N do not', async ({
@@ -530,4 +555,107 @@ test('the 保存并开始 button carries a visible ⌘↵ badge at rest', async 
   // aria-hidden — the chip is a visual hint; the button's own name is its
   // accessible label (a glyph inside the name would be read aloud)
   await expect(badge).toHaveAttribute('aria-hidden', 'true');
+});
+
+test('Tab cycles the dialog’s project chip from the composer focus', async ({ page }) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chipName = page.locator('.new-task-project-name');
+  await expect(page.locator('.new-task-spec')).toBeFocused();
+  await expect(chipName).toHaveText('r3-lifecycle');
+
+  await page.keyboard.press('Tab');
+  await expect(chipName).toHaveText('r2-inventory');
+  // 换项目不搬打字的手：焦点留在 composer
+  await expect(page.locator('.new-task-spec')).toBeFocused();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('pacman.newTaskProjectId')))
+    .toBe('r2-inventory');
+
+  // 末行再 Tab 环绕回首行（记忆位存的是项目 id：首行的 id 与显示名不同名，
+  // fixture 里 PROJECT_ID 显示为 r3-lifecycle）
+  await page.keyboard.press('Tab');
+  await expect(chipName).toHaveText('r3-lifecycle');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('pacman.newTaskProjectId')))
+    .toBe(FIRST_PROJECT_ID);
+
+  await escapeUntilHidden(page, dialog(page));
+});
+
+test('the chip cycles on Tab while the list is open; Shift+Tab keeps native movement', async ({
+  page,
+}) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chip = page.locator('.new-task-project');
+  const menu = page.locator('.new-task-project-menu');
+  const checked = menu.locator('.new-task-project-row[aria-selected="true"] .new-task-project-row-name');
+
+  // 鼠标开列表：chip 拿焦点，Tab 移的是勾选行（不用先关列表）
+  await chip.click();
+  await expect(menu).toBeVisible();
+  await expect(checked).toHaveText('r3-lifecycle');
+  await page.keyboard.press('Tab');
+  await expect(checked).toHaveText('r2-inventory');
+  await expect(page.locator('.new-task-project-name')).toHaveText('r2-inventory');
+  await expect(chip).toBeFocused();
+  await expect(menu).toBeVisible();
+
+  // Shift+Tab 不吃：Tab 被「换项目」占用后，它是离开驾驶位的出口
+  await page.keyboard.press('Shift+Tab');
+  await expect(chip).not.toBeFocused();
+  await expect(page.locator('.new-task-project-name')).toHaveText('r2-inventory');
+
+  await page.keyboard.press('Escape'); // 分层 Esc:先收列表
+  await expect(menu).toBeHidden();
+  await expect(dialog(page)).toBeVisible();
+  await escapeUntilHidden(page, dialog(page));
+});
+
+test('Tab off the driving seats stays native (mention button keeps its own walk)', async ({
+  page,
+}) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chipName = page.locator('.new-task-project-name');
+  await expect(chipName).toHaveText('r3-lifecycle');
+
+  const mention = page.locator('.new-task-dialog button[aria-label="提及"]');
+  await mention.focus();
+  await page.keyboard.press('Tab');
+  // 项目没被换,焦点照常往前走
+  await expect(chipName).toHaveText('r3-lifecycle');
+  await expect(mention).not.toBeFocused();
+
+  await escapeUntilHidden(page, dialog(page));
+});
+
+test('the project chip hovers its Tab hint (hidden at rest)', async ({ page }) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chip = page.locator('.new-task-project');
+  const hint = chip.locator('.kbd-hint');
+  await expect(hint).toBeHidden();
+  await chip.hover();
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveText('Tab');
+  await escapeUntilHidden(page, dialog(page));
+});
+
+test('with the dialog closed Tab stays native', async ({ page }) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(dialog(page)).toHaveCount(0);
+  await expect(page.locator('.new-task-project')).toHaveCount(0);
+  // 焦点落在页内某个真控件上(原生走位),不是被吞掉
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.tagName ?? ''))
+    .not.toBe('BODY');
+  await expect(page.locator('.new-task-project-menu')).toHaveCount(0);
 });
