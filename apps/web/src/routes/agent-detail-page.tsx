@@ -66,6 +66,7 @@ import {
 } from '../api/hooks.js';
 import { RUNTIME_LABELS, toModelOptions, toThinkingLevelDisplay } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { ProfileAvatar, ProfileCard, ProfileHead, ProfileRow } from '../components/profile-card.js';
 import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
 import { Input } from '../components/ui/input.js';
@@ -286,76 +287,88 @@ export function AgentDetailPage() {
 
         {tab === 'overview' && (
           <div className="agent-overview">
-            <div className="agent-head">
-              <SeededAvatar
-                name={agent.displayName}
-                src={agent.avatarUrl}
-                fallback="/avatar-robot-1.svg"
+            {/* XMON-117：概览按 `/app/account` 的个人页模板复刻——原来是一列
+                各自带 label 的散块，现在是**一张** profile 卡：居中头像头 +
+                行式字段（label 左、值槽右，行间 1px 分隔线）。
+                字段集合与行序逐条不动，只换承载结构；副文案（默认 skill 与
+                职责的说明）跟着 label 走，值槽仍只放值，免得长句把值挤到贴边。 */}
+            <ProfileCard className="agent-card">
+              <ProfileHead>
+                <ProfileAvatar>
+                  {/* 头像走 SeededAvatar 适配层（种子 / 静态兜底 / 失败换图三律），
+                      profile-avatar 只给 64px 圆盒。 */}
+                  <SeededAvatar
+                    name={agent.displayName}
+                    src={agent.avatarUrl}
+                    fallback="/avatar-robot-1.svg"
+                  />
+                </ProfileAvatar>
+              </ProfileHead>
+              <NameRow
+                value={agent.displayName}
+                onCommit={(displayName) => patch({ displayName })}
               />
-            </div>
-            <NameRow value={agent.displayName} onCommit={(displayName) => patch({ displayName })} />
-            <RoleRow value={agent.description} onCommit={(description) => patch({ description })} />
-            <div className="agent-field">
-              <div className="agent-field-head">
-                <span className="agent-field-label">{t('默认 skill')}</span>
-              </div>
-              {/* XMON-75：这一格此前是裸 `<select>`，弹的是 macOS 系统菜单——
-                  与紧邻的模型选择器（自制弹层）并排就是两套弹窗。换成同一个
-                  Select 壳后两格同形。值回显同模型面：候选里没有的值（技能已
-                  被删除）出裸 id，不空白。 */}
-              <Select
-                prefix="agent-skill"
-                value={defaultSkill}
-                options={skillOptions.map((skill) => ({ value: skill.id, label: skill.name }))}
-                label={
-                  defaultSkill === null
-                    ? t('未设置')
-                    : (skillOptions.find((skill) => skill.id === defaultSkill)?.name ??
-                      defaultSkill)
-                }
-                unsetLabel={t('未设置')}
-                menuLabel={t('默认 skill')}
-                onPick={(next) => patch({ skills: next === null ? [] : [next] })}
+              <RoleRow
+                value={agent.description}
+                onCommit={(description) => patch({ description })}
               />
-              <p className="agent-field-hint">{t(AGENT_PERMISSION_COPY.defaultSkill)}</p>
-            </div>
-            <div className="agent-field">
-              {/* 运行时（原版概览在模型之上有这一档，实测值形如 `内置 (pi)`）。
-                  本仓 wire 没有独立 runtime 字段——它就是 provider 位：null/pi
-                  = 内置 pi runtime，claude-code = 本机 Claude Code，其余 =
-                  custom provider 的 id。故只读呈现：做成选择器要落 provider
-                  槽并与下面的模型选择器耦合（换 runtime 得同时改或清 modelId），
-                  且原版「内置」文案在本仓没有对应物——语义裁决见 #499。 */}
-              <span className="agent-field-label">{t('运行时')}</span>
-              <span className="agent-runtime">{runtimeLabel}</span>
-            </div>
-            <div className="agent-field">
-              <div className="agent-field-head">
-                <span className="agent-field-label">{t('模型')}</span>
-              </div>
-              <AgentModelSelect
-                value={
-                  agent.provider != null && agent.modelId != null
-                    ? { provider: agent.provider, modelId: agent.modelId }
-                    : null
-                }
-                options={modelOptions}
-                onPick={(next) =>
-                  patch(
-                    next === null
-                      ? { provider: null, modelId: null }
-                      : { provider: next.provider, modelId: next.modelId },
-                  )
-                }
-                prefix="agent-model"
-              />
-            </div>
-            <div className="agent-field">
-              {/* 只读值行（B1 裁「保持只读」）：值经能力读面词表解析，不直接
-                  透出存值——引擎没有的档位不呈现（#499 B3 / XMON-16）。 */}
-              <span className="agent-field-label">{t('思考强度')}</span>
-              <span className="agent-thinking">{thinkingLevel ?? t('默认')}</span>
-            </div>
+              <ProfileRow
+                label={t('默认 skill')}
+                hint={t(AGENT_PERMISSION_COPY.defaultSkill)}
+                labelClassName="agent-field-label"
+              >
+                {/* XMON-75：这一格此前是裸 `<select>`，弹的是 macOS 系统菜单——
+                    与紧邻的模型选择器（自制弹层）并排就是两套弹窗。换成同一个
+                    Select 壳后两格同形。值回显同模型面：候选里没有的值（技能已
+                    被删除）出裸 id，不空白。 */}
+                <Select
+                  prefix="agent-skill"
+                  value={defaultSkill}
+                  options={skillOptions.map((skill) => ({ value: skill.id, label: skill.name }))}
+                  label={
+                    defaultSkill === null
+                      ? t('未设置')
+                      : (skillOptions.find((skill) => skill.id === defaultSkill)?.name ??
+                        defaultSkill)
+                  }
+                  unsetLabel={t('未设置')}
+                  menuLabel={t('默认 skill')}
+                  onPick={(next) => patch({ skills: next === null ? [] : [next] })}
+                />
+              </ProfileRow>
+              <ProfileRow label={t('运行时')} labelClassName="agent-field-label">
+                {/* 运行时（原版概览在模型之上有这一档，实测值形如 `内置 (pi)`）。
+                    本仓 wire 没有独立 runtime 字段——它就是 provider 位：null/pi
+                    = 内置 pi runtime，claude-code = 本机 Claude Code，其余 =
+                    custom provider 的 id。故只读呈现：做成选择器要落 provider
+                    槽并与下面的模型选择器耦合（换 runtime 得同时改或清 modelId），
+                    且原版「内置」文案在本仓没有对应物——语义裁决见 #499。 */}
+                <span className="agent-runtime">{runtimeLabel}</span>
+              </ProfileRow>
+              <ProfileRow label={t('模型')} labelClassName="agent-field-label">
+                <AgentModelSelect
+                  value={
+                    agent.provider != null && agent.modelId != null
+                      ? { provider: agent.provider, modelId: agent.modelId }
+                      : null
+                  }
+                  options={modelOptions}
+                  onPick={(next) =>
+                    patch(
+                      next === null
+                        ? { provider: null, modelId: null }
+                        : { provider: next.provider, modelId: next.modelId },
+                    )
+                  }
+                  prefix="agent-model"
+                />
+              </ProfileRow>
+              <ProfileRow label={t('思考强度')} labelClassName="agent-field-label">
+                {/* 只读值行（B1 裁「保持只读」）：值经能力读面词表解析，不直接
+                    透出存值——引擎没有的档位不呈现（#499 B3 / XMON-16）。 */}
+                <span className="agent-thinking">{thinkingLevel ?? t('默认')}</span>
+              </ProfileRow>
+            </ProfileCard>
             {/* 进行中（原版概览最后一段；r3 53 截图拍到的是空态
                 `暂无进行中的任务`）。结构照原件：一张描边卡（bg-surface-secondary
                 + 11px 三级色段头），空态是段内一行说明文字；段头带计数，
@@ -497,26 +510,35 @@ export function AgentDetailPage() {
                      [设计] 另起一行，不改用 MEMORY_EMPTY_COPY。 */
                   <p className="agent-memory-no-match">{t('没有匹配的记忆。')}</p>
                 ) : (
-                  visibleMemories.map((memory) => (
-                    <div key={memory.id} className="agent-memory-row">
-                      <span className="agent-memory-text">
-                        <span className="agent-memory-title">{memory.title}</span>
-                        <span className="agent-memory-content">{memory.content}</span>
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        className="agent-memory-del"
-                        onClick={() => {
-                          if (agentId === undefined) return;
-                          if (live) mutations.deleteMemory.mutate({ agentId, memoryId: memory.id });
-                          else setRemovedMemories((prev) => [...prev, memory.id]);
-                        }}
+                  /* XMON-117：记忆行落进同一张模板卡（一卡多行、行间分隔线），
+                     不再一条一张描边卡。行不是 label/值对（没有左侧字段名），
+                     故直接用模板的行盒类，不走 ProfileRow。 */
+                  <ProfileCard className="agent-memory-card">
+                    {visibleMemories.map((memory) => (
+                      <div
+                        key={memory.id}
+                        className="profile-row profile-row--auto agent-memory-row"
                       >
-                        {t('删除')}
-                      </Button>
-                    </div>
-                  ))
+                        <span className="agent-memory-text">
+                          <span className="agent-memory-title">{memory.title}</span>
+                          <span className="agent-memory-content">{memory.content}</span>
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="agent-memory-del"
+                          onClick={() => {
+                            if (agentId === undefined) return;
+                            if (live)
+                              mutations.deleteMemory.mutate({ agentId, memoryId: memory.id });
+                            else setRemovedMemories((prev) => [...prev, memory.id]);
+                          }}
+                        >
+                          {t('删除')}
+                        </Button>
+                      </div>
+                    ))}
+                  </ProfileCard>
                 )}
               </>
             )}
@@ -535,24 +557,32 @@ export function AgentDetailPage() {
                 {t('保存失败，请重试。')}
               </p>
             )}
+            {/* XMON-117：三组各落一张模板卡（个人页那张卡的同一套行盒）——组名
+                留作段头，行 = label（+ 说明副文案）左、开关右，与个人页的
+                推送通知行同形。 */}
             <section className="agent-perm-group">
               <h3 className="agent-perm-title">{t('工具')}</h3>
-              {AGENT_TOOL_SWITCHES.map((label) => (
-                <div key={label} className="agent-perm-row">
-                  <span className="agent-perm-text">
-                    <span className="agent-perm-name">{t(label)}</span>
-                    {/* 六档各带说明副文案（AGENT_TOOL_COPY 单源；原文实测自
-                        参考产品的权限 tab，XMON-84 恢复全六档）。 */}
-                    <span className="agent-perm-hint">{t(AGENT_TOOL_COPY[label])}</span>
-                  </span>
-                  <Switch
-                    className="agent-tool-switch"
-                    aria-label={t(label)}
-                    checked={agent.tools.includes(label)}
-                    onCheckedChange={(checked) => toggleTool(label, checked)}
-                  />
-                </div>
-              ))}
+              <ProfileCard className="agent-perm-card">
+                {AGENT_TOOL_SWITCHES.map((label) => (
+                  <ProfileRow
+                    key={label}
+                    className="agent-perm-row"
+                    label={t(label)}
+                    /* 六档各带说明副文案（AGENT_TOOL_COPY 单源；原文实测自
+                       参考产品的权限 tab，XMON-84 恢复全六档）。 */
+                    hint={t(AGENT_TOOL_COPY[label])}
+                    labelClassName="agent-perm-name"
+                    hintClassName="agent-perm-hint"
+                  >
+                    <Switch
+                      className="agent-tool-switch"
+                      aria-label={t(label)}
+                      checked={agent.tools.includes(label)}
+                      onCheckedChange={(checked) => toggleTool(label, checked)}
+                    />
+                  </ProfileRow>
+                ))}
+              </ProfileCard>
             </section>
 
             <section className="agent-perm-group">
@@ -569,50 +599,66 @@ export function AgentDetailPage() {
                 // 出指向它的入口。search 随行 = 仓内 Link 律（sidebar /
                 // parts.tsx 同法），生产 build 里 scenario 参数本就被编译期
                 // 折叠、不参与路由。
-                <div className="agent-perm-empty-row">
-                  <p className="agent-perm-empty">{t('暂无团队密钥。')}</p>
-                  <Link className="agent-secret-add" to={{ pathname: SECRETS_HREF, search }}>
-                    {t('去添加密钥')}
-                  </Link>
-                </div>
+                <ProfileCard className="agent-perm-card">
+                  <div className="profile-row profile-row--auto agent-perm-empty-row">
+                    <p className="agent-perm-empty">{t('暂无团队密钥。')}</p>
+                    <Link className="agent-secret-add" to={{ pathname: SECRETS_HREF, search }}>
+                      {t('去添加密钥')}
+                    </Link>
+                  </div>
+                </ProfileCard>
               ) : (
-                <div className="agent-perm-row agent-secret-row">
-                  <span className="agent-perm-text">
-                    <span className="agent-perm-name agent-secret-name">{t('团队密钥')}</span>
-                    {/* canon 副文案（AGENT_PERMISSION_COPY.secrets）内嵌
-                        BRAND.cliCommandName 与密钥最低 CLI 版本插值，键值随
-                        品牌常量走。 */}
-                    <span className="agent-perm-hint agent-secret-hint">
-                      {t(AGENT_PERMISSION_COPY.secrets)}
-                    </span>
-                  </span>
-                  <Switch
-                    className="agent-secret-switch"
-                    aria-label={t('团队密钥')}
-                    checked={agent.secrets.length > 0}
-                    onCheckedChange={(checked) => patch({ secrets: checked ? secretIds : [] })}
-                  />
-                </div>
+                <ProfileCard className="agent-perm-card">
+                  <ProfileRow
+                    className="agent-perm-row agent-secret-row"
+                    label={t('团队密钥')}
+                    /* canon 副文案（AGENT_PERMISSION_COPY.secrets）内嵌
+                       BRAND.cliCommandName 与密钥最低 CLI 版本插值，键值随
+                       品牌常量走。 */
+                    hint={t(AGENT_PERMISSION_COPY.secrets)}
+                    labelClassName="agent-perm-name agent-secret-name"
+                    hintClassName="agent-perm-hint agent-secret-hint"
+                  >
+                    <Switch
+                      className="agent-secret-switch"
+                      aria-label={t('团队密钥')}
+                      checked={agent.secrets.length > 0}
+                      onCheckedChange={(checked) => patch({ secrets: checked ? secretIds : [] })}
+                    />
+                  </ProfileRow>
+                </ProfileCard>
               )}
             </section>
 
             <section className="agent-perm-group">
+              {/* 段级说明（整组共用一句，不挂在单行上——挂哪一行都是任选），
+                  形随模板的副文案档（12px 三级色）。 */}
               <h3 className="agent-perm-title">{t('MCP 服务器')}</h3>
-              <p className="agent-perm-hint">{t(AGENT_PERMISSION_COPY.mcpServers)}</p>
+              <p className="profile-hint">{t(AGENT_PERMISSION_COPY.mcpServers)}</p>
               {mcpOptions.length === 0 ? (
-                <p className="agent-perm-empty">{t('暂无 MCP 服务器。')}</p>
-              ) : (
-                mcpOptions.map((server) => (
-                  <div key={server.id} className="agent-perm-row agent-mcp-row">
-                    <span className="agent-perm-name">{server.name}</span>
-                    <Switch
-                      className="agent-mcp-switch"
-                      aria-label={server.name}
-                      checked={agent.mcpServers.includes(server.id)}
-                      onCheckedChange={(checked) => toggleMcp(server.id, checked)}
-                    />
+                <ProfileCard className="agent-perm-card">
+                  <div className="profile-row profile-row--auto agent-perm-empty-row">
+                    <p className="agent-perm-empty">{t('暂无 MCP 服务器。')}</p>
                   </div>
-                ))
+                </ProfileCard>
+              ) : (
+                <ProfileCard className="agent-perm-card">
+                  {mcpOptions.map((server) => (
+                    <ProfileRow
+                      key={server.id}
+                      className="agent-perm-row agent-mcp-row"
+                      label={server.name}
+                      labelClassName="agent-perm-name"
+                    >
+                      <Switch
+                        className="agent-mcp-switch"
+                        aria-label={server.name}
+                        checked={agent.mcpServers.includes(server.id)}
+                        onCheckedChange={(checked) => toggleMcp(server.id, checked)}
+                      />
+                    </ProfileRow>
+                  ))}
+                </ProfileCard>
               )}
             </section>
           </div>
@@ -670,28 +716,30 @@ function NameRow({ value, onCommit }: { value: string; onCommit: (next: string) 
   const [draft, setDraft] = useState<string | null>(null);
   const inputRef = useEditorFocus<HTMLInputElement>(draft !== null);
   if (draft === null) {
+    // 行高 49 = 个人页的名称行（r7 13 探测值，模板里唯一加高的一档）
     return (
-      <div className="agent-field">
-        <span className="agent-field-label">{t('名称')}</span>
-        <span className="agent-name-row">
-          <Button
-            variant="ghost"
-            className="agent-name justify-start h-auto gap-0 rounded-none font-normal leading-[inherit]"
-            onClick={() => setDraft(value)}
-          >
-            {value}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="agent-name-edit"
-            aria-label={t('编辑')}
-            onClick={() => setDraft(value)}
-          >
-            <SquarePen width={14} height={14} />
-          </Button>
-        </span>
-      </div>
+      <ProfileRow
+        className="profile-row--name"
+        label={t('名称')}
+        labelClassName="agent-field-label"
+      >
+        <Button
+          variant="ghost"
+          className="agent-name justify-start h-auto gap-0 rounded-none font-normal leading-[inherit]"
+          onClick={() => setDraft(value)}
+        >
+          {value}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="agent-name-edit"
+          aria-label={t('编辑')}
+          onClick={() => setDraft(value)}
+        >
+          <SquarePen width={14} height={14} />
+        </Button>
+      </ProfileRow>
     );
   }
   const commit = () => {
@@ -700,8 +748,12 @@ function NameRow({ value, onCommit }: { value: string; onCommit: (next: string) 
     setDraft(null);
   };
   return (
-    <div className="agent-field">
-      <span className="agent-field-label">{t('名称')}</span>
+    <ProfileRow
+      className="profile-row--name"
+      label={t('名称')}
+      labelClassName="agent-field-label"
+      valueClassName="profile-value--grow"
+    >
       <input
         id="agent-name-input"
         ref={inputRef}
@@ -714,7 +766,7 @@ function NameRow({ value, onCommit }: { value: string; onCommit: (next: string) 
           if (event.key === 'Escape') setDraft(null);
         }}
       />
-    </div>
+    </ProfileRow>
   );
 }
 
@@ -730,9 +782,15 @@ function RoleRow({
   const { t } = useI18n();
   const [draft, setDraft] = useState<string | null>(null);
   const inputRef = useEditorFocus<HTMLTextAreaElement>(draft !== null);
+  // 说明副文案是这一行的常驻部分（编辑态也在）：它是「怎么写」的指导，
+  // 编辑时撤掉反而最需要它的时候没了。
   return (
-    <div className="agent-field">
-      <span className="agent-field-label">{t('职责')}</span>
+    <ProfileRow
+      label={t('职责')}
+      hint={t(AGENT_PERMISSION_COPY.responsibility)}
+      labelClassName="agent-field-label"
+      valueClassName={draft === null ? undefined : 'profile-value--editor'}
+    >
       {draft === null ? (
         <>
           <span className="agent-role-text">{value ?? t('未设置职责')}</span>
@@ -775,7 +833,6 @@ function RoleRow({
           </div>
         </>
       )}
-      <p className="agent-field-hint">{t(AGENT_PERMISSION_COPY.responsibility)}</p>
-    </div>
+    </ProfileRow>
   );
 }

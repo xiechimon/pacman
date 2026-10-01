@@ -466,69 +466,13 @@
 
 /* ---- account (r7 13) ---- */
 
-/* 皮肤（1px 描边 + --surface 底 + 12px 圆角）= components/ui/panel.tsx 的
-   outlined 档；本类只剩 per-face 几何。 */
+/* 卡盒 / 头像头 / 行 / label / 值槽自 XMON-117 起是 components/profile-card
+   的模板件（几何正本迁 profile-card.css，agent 资料页复刻同一套）；
+   本文件只留帐号面自己的档。`account-card` / `account-avatar` 留作 e2e 定位
+   锚（#411 别名优先），其中卡的上边距是**页面**节奏（card top y60 = 头 44
+   + 16），归消费点，不进共享模板。 */
 .account-card {
-  margin-top: 16px; /* card top y60 */
-  /* visible: the 语言 dropdown (issue #74) must escape the card; the
-     corner clipping the head/last row used to get from overflow:hidden
-     moves onto those two children instead */
-  overflow: visible;
-}
-
-.account-head {
-  height: 120px;
-  padding-top: 16px; /* avatar circle y77..141 */
-  border-radius: 11px 11px 0 0; /* inner radius = card 12 − 1px border */
-  background: var(--surface);
-}
-
-.account-card > .account-row:last-child {
-  border-radius: 0 0 11px 11px;
-}
-
-.account-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--card-bg);
-  overflow: hidden;
-}
-
-.account-avatar img {
-  width: 64px;
-  height: 64px;
-  display: block;
-}
-
-/* 结构与分隔线（flex / 两端对齐 / border-top --border-default）= PanelRow；
-   标签字号色阶 = PanelLabel；值的主色横排 = PanelValue。此处只留 per-face 数值。 */
-.account-row {
-  height: 41px; /* 40 inner + the 1px divider (r7 13 row bounds) */
-  padding: 0 16px;
-  background: var(--surface-secondary);
-}
-
-.account-row--name {
-  height: 49px;
-}
-
-.account-row--tall {
-  height: 57px;
-}
-
-.account-value {
-  gap: 14px; /* value ink ends x1175, edit glyph x1189..1203 (r7 13) */
-  font-size: 14px;
-}
-
-.account-value svg {
-  color: var(--text-tertiary);
-}
-
-.account-value--muted {
-  font-size: 12px; /* mail ink w76 @ r7 13 */
-  color: var(--text-tertiary);
+  margin-top: 16px;
 }
 
 .account-select {
