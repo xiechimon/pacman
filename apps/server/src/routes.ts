@@ -861,7 +861,9 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         provider: body.provider ?? null,
         modelId: body.modelId ?? null,
         thinkingLevel: body.thinkingLevel ?? null,
-        tools: body.tools ?? [],
+        // 缺省 = 不写（tools null = 未设置，存量豁免位，XMON-88 leader 裁决
+        // 2026-10-01）；传数组才落显式已保存态。
+        tools: body.tools ?? null,
         secrets: body.secrets ?? [],
         // spec 13 #367：skills[] 校验源 = 本地现扫存在性；未知 id 静默跳过
         // （目录删除后死引用不留，不报错）。
@@ -900,7 +902,8 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       'mcpServers',
     ] as const) {
       if (body[key] !== undefined) {
-        // null 语义：可空列显式清空（description/provider/modelId/thinkingLevel）。
+        // null 语义：可空列显式清空（description/provider/modelId/
+        // thinkingLevel；tools = 清回未设置（存量豁免位，XMON-88），非清成 []）。
         sets[key] = (body[key] === null ? null : body[key]) as never;
       }
     }

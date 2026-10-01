@@ -84,9 +84,6 @@ async function setupWorld() {
       updatedAt: Date.now(),
     })
     .run();
-  // tools = 双开关闸双开基线（XMON-88）：失败方式 6c 需 merge 步入队后停步——
-  // 停 merge 语义在闸下游不受影响，但入队须执行 Agent 带「合并分支」「推送
-  // 分支」授权。
   s.db
     .insert(agentTable)
     .values({
@@ -95,7 +92,6 @@ async function setupWorld() {
       displayName: 'stub-builder',
       provider: 'stub-gw',
       modelId: 'stub-model',
-      tools: ['合并分支', '推送分支'],
     })
     .run();
   // 双机 = 双 key（enroll 按 key/team 认机器且轮换 token——同 key 二次

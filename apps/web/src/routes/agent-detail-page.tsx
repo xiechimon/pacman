@@ -239,10 +239,14 @@ export function AgentDetailPage() {
     );
   }
 
+  // tools null = 未设置（XMON-88 存量豁免位）：渲染折成全关（显示与闸的
+  // 不一致——未设置放行、显示全关——是 web 线已知缺口，不在本票修）；任一
+  // 开关首动即落显式数组，豁免位自此消失。
+  const agentTools = agent.tools ?? [];
   const toggleTool = (label: string, on: boolean) => {
     const next = on
-      ? [...agent.tools, label].filter((v, i, all) => all.indexOf(v) === i)
-      : agent.tools.filter((v) => v !== label);
+      ? [...agentTools, label].filter((v, i, all) => all.indexOf(v) === i)
+      : agentTools.filter((v) => v !== label);
     patch({ tools: next });
   };
   const toggleMcp = (id: string, on: boolean) => {
@@ -544,7 +548,7 @@ export function AgentDetailPage() {
                   <Switch
                     className="agent-tool-switch"
                     aria-label={t(label)}
-                    checked={agent.tools.includes(label)}
+                    checked={agentTools.includes(label)}
                     onCheckedChange={(checked) => toggleTool(label, checked)}
                   />
                 </div>

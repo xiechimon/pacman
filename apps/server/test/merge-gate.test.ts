@@ -12,6 +12,10 @@
 //    不可认领，不归本闸管）。
 // 5. 403 出线丢失——HttpError 未按 status 出线（REST 面变 500 / 形状非
 //    {error} 单形状）。
+// 6. 存量误伤——tools null/未设置（权限面从未保存过的 Agent）被当全关拒
+//    （XMON-88 leader 裁决 2026-10-01：null = 放行（存量豁免），显式数组
+//    ——含全关 []——才逐项闸；否则所有从未保存权限面的存量 Agent 连
+//    requestMerge 都进不来）。
 
 import { type BuildRecord, MERGE_ANNOUNCEMENT, todoRecordSchema } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
@@ -24,12 +28,12 @@ import { bootServer, postProject, req, type TestServer } from './helpers.js';
 const AGENT_ID = 'agent-merge-gate';
 
 /** 建到 review 关口的 fixture：todo + build 槽指派（insertTools undefined =
- * 槽指派但 Agent 行不存在——悬空引用形；slotAgentId null = 不指派）+ 直执行
- * 一轮到 review（02 §4.2 主时序，机器面归 M3——同 schedules.test.ts
- * runToReview 推进法）。 */
+ * 槽指派但 Agent 行不存在——悬空引用形；null = 行存在但 tools 未设置——
+ * 存量豁免形，列可空；slotAgentId null = 不指派）+ 直执行一轮到 review
+ * （02 §4.2 主时序，机器面归 M3——同 schedules.test.ts runToReview 推进法）。 */
 async function fixtureAtReview(
   slotAgentId: string | null,
-  insertTools?: string[],
+  insertTools?: string[] | null,
 ): Promise<TestServer & { projectId: string; todoId: string; buildId: string }> {
   const s = bootServer();
   const projectId = await postProject(s.app);
@@ -46,7 +50,8 @@ async function fixtureAtReview(
         teamId: s.team.id,
         displayName: '小林',
         modelId: 'm',
-        tools: insertTools,
+        // null = 不写该列（权限面从未保存）；数组（含 []）= 显式已保存态。
+        ...(insertTools === null ? {} : { tools: insertTools }),
       })
       .run();
   }
@@ -136,6 +141,14 @@ describe('requestMerge 双开关闸（XMON-88）', () => {
 
   test('build 槽未指派 → 放行不查（未指派语义归 claim 面，非本闸职责）', async () => {
     const f = await fixtureAtReview(null);
+    const res = await req(f.app, 'POST', `/api/builds/${f.buildId}/merge`);
+    expect(res.status).toBe(202);
+    expect(mergeSteps(f, f.buildId)).toHaveLength(1);
+    f.dispose();
+  });
+
+  test('tools null/未设置 → 202 放行（存量豁免：权限面从未保存的 Agent 不因闸缺项被拒）', async () => {
+    const f = await fixtureAtReview(AGENT_ID, null); // 行存在、tools 列不写
     const res = await req(f.app, 'POST', `/api/builds/${f.buildId}/merge`);
     expect(res.status).toBe(202);
     expect(mergeSteps(f, f.buildId)).toHaveLength(1);

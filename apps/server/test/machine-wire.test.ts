@@ -96,8 +96,6 @@ async function setupWorld(opts: { claimHoldMs?: number } = {}): Promise<World> {
       updatedAt: Date.now(),
     })
     .run();
-  // tools = 双开关闸双开基线（XMON-88）：journal 全链用例走 merge 入队，执行
-  // Agent 须带「合并分支」「推送分支」授权。
   s.db
     .insert(agentTable)
     .values({
@@ -106,7 +104,6 @@ async function setupWorld(opts: { claimHoldMs?: number } = {}): Promise<World> {
       displayName: 'stub-builder',
       provider: 'stub-gw',
       modelId: 'stub-model',
-      tools: ['合并分支', '推送分支'],
     })
     .run();
   // enroll（02 §5.2 路径二：--api-key --team）。

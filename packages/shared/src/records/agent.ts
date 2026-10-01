@@ -59,8 +59,10 @@ export const agentRecordSchema = z.object({
   modelId: z.string().nullable(),
   /** 思考强度（r3 样本 null = UI「默认」；wire 值词表未采 [推断]）。 */
   thinkingLevel: z.string().nullable(),
-  /** 权限 6 开关的已开集 + 授予工具；wire 项形 [推断]。 */
-  tools: z.array(z.string()),
+  /** 权限 6 开关的已开集 + 授予工具；wire 项形 [推断]。null = 权限面从未
+   * 保存（XMON-88 leader 裁决 2026-10-01：闸/前置检查放行（存量豁免）；
+   * 显式数组（含全关 []）= 已保存态，逐项闸）。 */
+  tools: z.array(z.string()).nullable(),
   /** 团队密钥授权集（关联 secret id [推断]；值只写不读，02 §8）。 */
   secrets: z.array(z.string()),
   /** 默认携带/被授予技能（关联 skill id [推断]）。 */
@@ -78,7 +80,9 @@ export const createAgentBodySchema = z.object({
   provider: z.string().nullish(),
   modelId: z.string().nullish(),
   thinkingLevel: z.string().nullish(),
-  tools: z.array(z.string()).optional(),
+  // tools：缺省/显式 null = 创建后保持未设置（存量豁免位，XMON-88）；
+  // 传数组 = 落显式已保存态。
+  tools: z.array(z.string()).nullish(),
   secrets: z.array(z.string()).optional(),
   skills: z.array(z.string()).optional(),
   mcpServers: z.array(z.string()).optional(),

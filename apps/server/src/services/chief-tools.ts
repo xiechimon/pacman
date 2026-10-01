@@ -448,7 +448,9 @@ export async function executeChiefTool(
           provider: optStr(params, 'provider') ?? null,
           modelId: optStr(params, 'modelId') ?? null,
           thinkingLevel: null,
-          tools: [],
+          // 不写 tools = 未设置（存量豁免位，XMON-88）：chief 建的 Agent
+          // 权限面从未保存，不等同显式全关。
+          tools: null,
           secrets: [],
           skills: [],
           mcpServers: [],
@@ -519,7 +521,10 @@ export async function executeChiefTool(
         .where(and(eq(agent.id, agentId), eq(agent.teamId, ctx.teamId)))
         .get();
       if (!row) throw new HttpError(404, `agent ${agentId}`);
-      const tools = new Set(row.tools);
+      // tools null = 未设置（存量豁免位，XMON-88）：关 = 保持 null（一次关闭
+      // 不把豁免位翻成显式全关）；开 = 显式落盘，权限面自此已保存。
+      if (row.tools === null && !enabled) return json({ agentId, remoteShell: enabled });
+      const tools = new Set(row.tools ?? []);
       if (enabled) tools.add('远程 shell');
       else tools.delete('远程 shell');
       db.update(agent)

@@ -143,8 +143,6 @@ export async function bootRealServer(opts: {
       updatedAt: Date.now(),
     })
     .run();
-  // tools = 双开关闸双开基线（XMON-88）：多套件走到 merge 入队（主时序尾段），
-  // 执行 Agent 须带「合并分支」「推送分支」授权，否则 requestMerge 403。
   db.insert(agentTable)
     .values({
       id: AGENT_ID,
@@ -154,7 +152,6 @@ export async function bootRealServer(opts: {
         opts.agentDescription ?? '你是集成测试执行 Agent：直接简短回答，不使用任何工具。',
       provider: 'stub-gw',
       modelId: 'stub-model',
-      tools: ['合并分支', '推送分支'],
     })
     .run();
 

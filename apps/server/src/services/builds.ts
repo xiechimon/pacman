@@ -563,15 +563,19 @@ const MERGE_REQUIRED_TOOLS = [
 /** merge 双开关闸（XMON-88，XMON-26 方案 a）：merge 步执行 Agent 须已开两
  * 授权，任一关 = 403 拒（requestMerge 拒时不落时间线行、不入队 merge 步，
  * phase 留 review 关口）。执行者解析口径 = machines.ts agentForStep：merge 步
- * 走 assignment.build 槽（合并轮复用执行轮会话，同执行 Agent）。build 槽未
- * 指派或 Agent 行不存在 → 放行不查（未指派语义归 claim 面——merge 步本就
- * 不可认领；agent 删除面同步摘槽，agent-delete.test）。 */
+ * 走 assignment.build 槽（合并轮复用执行轮会话，同执行 Agent）。放行不查的三
+ * 形：build 槽未指派（未指派语义归 claim 面——merge 步本就不可认领；agent
+ * 删除面同步摘槽，agent-delete.test）、Agent 行不存在（悬空引用）、tools
+ * null/未设置（存量豁免，XMON-88 leader 裁决 2026-10-01——权限面从未保存
+ * 的 Agent 不因闸缺项被拒；显式数组含全关 [] 才逐项闸）。 */
 function assertMergeTools(deps: BuildDeps, todoRow: typeof todo.$inferSelect): void {
   const agentId = todoRow.assignment?.build?.agentId;
   if (!agentId) return;
   const agentRow = deps.db.select().from(agent).where(eq(agent.id, agentId)).get();
   if (!agentRow) return;
-  const missing = MERGE_REQUIRED_TOOLS.filter((tool) => !agentRow.tools.includes(tool));
+  const { tools } = agentRow;
+  if (tools === null) return;
+  const missing = MERGE_REQUIRED_TOOLS.filter((tool) => !tools.includes(tool));
   if (missing.length > 0) {
     const items = missing.map((tool) => `「${tool}」`).join('、');
     throw new HttpError(

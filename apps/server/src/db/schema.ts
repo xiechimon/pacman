@@ -316,7 +316,11 @@ export const agent = sqliteTable('agent', {
   provider: text('provider'),
   modelId: text('modelId'),
   thinkingLevel: text('thinkingLevel'),
-  tools: json<string[]>('tools').notNull().default(sql`'[]'`),
+  // tools 可空 = 语义位（XMON-88 leader 裁决 2026-10-01）：null = 权限面从未
+  // 保存（存量豁免——闸/前置检查放行，不因缺项拒）；显式数组（含全关 []）=
+  // 已保存态，逐项闸。与 description 等可空列不同：这不是「值缺失」，是可表达
+  // 的第三态。既有 '[]' 行在迁移中不动（= 显式全关，不重写存量数据）。
+  tools: json<string[]>('tools'),
   secrets: json<string[]>('secrets').notNull().default(sql`'[]'`),
   skills: json<string[]>('skills').notNull().default(sql`'[]'`),
   mcpServers: json<string[]>('mcpServers').notNull().default(sql`'[]'`),
