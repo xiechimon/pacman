@@ -466,11 +466,10 @@
 
 /* ---- account (r7 13) ---- */
 
+/* 皮肤（1px 描边 + --surface 底 + 12px 圆角）= components/ui/panel.tsx 的
+   outlined 档；本类只剩 per-face 几何。 */
 .account-card {
   margin-top: 16px; /* card top y60 */
-  border: 1px solid var(--border-default);
-  border-radius: 12px;
-  background: var(--surface);
   /* visible: the 语言 dropdown (issue #74) must escape the card; the
      corner clipping the head/last row used to get from overflow:hidden
      moves onto those two children instead */
@@ -478,9 +477,6 @@
 }
 
 .account-head {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   height: 120px;
   padding-top: 16px; /* avatar circle y77..141 */
   border-radius: 11px 11px 0 0; /* inner radius = card 12 − 1px border */
@@ -505,13 +501,11 @@
   display: block;
 }
 
+/* 结构与分隔线（flex / 两端对齐 / border-top --border-default）= PanelRow；
+   标签字号色阶 = PanelLabel；值的主色横排 = PanelValue。此处只留 per-face 数值。 */
 .account-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   height: 41px; /* 40 inner + the 1px divider (r7 13 row bounds) */
   padding: 0 16px;
-  border-top: 1px solid var(--border-default);
   background: var(--surface-secondary);
 }
 
@@ -523,17 +517,9 @@
   height: 57px;
 }
 
-.account-label {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
 .account-value {
-  display: flex;
-  align-items: center;
   gap: 14px; /* value ink ends x1175, edit glyph x1189..1203 (r7 13) */
   font-size: 14px;
-  color: var(--text-primary);
 }
 
 .account-value svg {
