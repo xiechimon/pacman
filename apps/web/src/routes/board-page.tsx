@@ -42,6 +42,7 @@ import { ChiefDrawer } from '../chief/chief-drawer.js';
 import { ChiefFabIcon } from '../chief/chief-fab-icon.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
 import { useChiefSurface } from '../chief/use-chief-surface.js';
+import { Button } from '../components/ui/button.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
@@ -521,9 +522,14 @@ export function BoardPage() {
         opts={{ fixtureTodos, eager: true, onFixtureSave }}
         apiRef={newTaskApiRef}
       />
-      <button
-        type="button"
-        className="chief-fab"
+      {/* XMON-23 收编：ghost/icon 原语 + chief-fab per-face（48×48 圆、
+          surface 底、fab-shadow）。中和件同 ChiefWakeFab：font-normal
+          （badge 10px 字）、active 位移、svg size-auto（ChiefFab 30.8
+          属性尺寸）。board 内联钮与 ChiefWakeFab 保持同配方。 */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="chief-fab font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
         aria-label={t('总管')}
         onClick={() => setChiefView('drawer')}
       >
@@ -532,7 +538,7 @@ export function BoardPage() {
             open-only）。 */}
         <KbdHint label="⌘J" />
         {chiefUnread > 0 && <span className="fab-badge">{chiefUnread}</span>}
-      </button>
+      </Button>
       <AcceptDialog
         open={overlay?.kind === 'accept'}
         onClose={closeOverlay}

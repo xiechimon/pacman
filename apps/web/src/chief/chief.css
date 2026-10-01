@@ -169,10 +169,10 @@
   color: var(--text-secondary);
 }
 
-/* A6：覆盖 a3-pages「chief-gate-btn 保留散写」裁决。原 .chief-gate-btn
-   50×26 固定宽 + 12px 字形态已由 ui/button 原语消费 variant='primary'
-   size='card' + per-face style={{ width: 50, fontSize: 12 }} 承接，
-   几何差异在 8px 内边距 / 13px 字（btn--card 默认），以视觉零变化为绿。 */
+/* A6/XMON-23：gate 钮 = components/ui Button brand 档（--card-button 实底 +
+   on-accent 墨 = A3 primary 等价位）+ 中和件（h-[26px]/px-2/rounded-md/
+   border-0/font-normal）+ per-face style={{ width: 50, fontSize: 12 }} 承接
+   50×26 固定宽 + 12px 字形态，以视觉零变化为绿。 */
 
 .chief-hero {
   margin: 54px 0 0;
@@ -386,20 +386,28 @@
   margin-top: 10px;
 }
 
-/* A4-deep 收编：居中/cursor/圆角 8（=原语默认）归 ui/Button icon 变体；
-   实底双态是 canon 偏差（icon 皮肤=透明底+tertiary 墨），per-face 保留；
-   .btn 叠类压 .btn--standard height 泄漏。is-on 显式钉 :hover，防原语
-   icon hover 增亮（同特异性）随打包顺序渗进实底态。 */
-.btn.chief-send {
+/* XMON-23 收编：选择器自 .btn 叠类 re-key（components/ui Button 不吐 btn
+   类）；居中/32×32/圆角 8（rounded-md）归原语侧，实底双态是 canon 偏差
+   （ghost 皮肤=透明底），per-face 保留。:hover 增亮（dim→secondary）承旧
+   btn--icon 皮肤——原语 ghost 的 hover 墨（hover:text-foreground，layered）
+   压不过本规则（unlayered），必须自带，否则 hover 静默失配。is-on 双规则
+   同特异性序在后，压 :hover 防增亮渗进实底态。 */
+.chief-send {
   margin-left: auto;
   width: 32px;
   height: 32px;
   background: var(--seg-active);
   color: var(--text-dim);
+  /* 承旧 .btn 的 cursor:pointer（原语与 TW4 preflight 均不给指针墨）。 */
+  cursor: pointer;
 }
 
-.btn.chief-send.is-on,
-.btn.chief-send.is-on:hover {
+.chief-send:hover {
+  color: var(--text-secondary);
+}
+
+.chief-send.is-on,
+.chief-send.is-on:hover {
   background: var(--indigo-500);
   color: var(--text-on-accent);
 }
@@ -421,13 +429,21 @@
   align-items: center;
 }
 
-/* A4-deep 收编：皮肤归 icon 变体；28×28 + margin + 圆角 6（canon 8 的
-   per-face 偏差，r7 实测）保留。 */
-.btn.chief-set-back {
+/* XMON-23 收编：选择器自 .btn 叠类 re-key；28×28 + margin + 圆角 6（canon
+   8 的 per-face 偏差，r7 实测）保留。tertiary 墨 + hover 增亮承旧
+   btn--icon 皮肤（per-face 本不设墨，原语 ghost 无底色墨可承——必须自带，
+   否则返回箭头从 tertiary 变 primary 墨、hover 静默丢失）。 */
+.chief-set-back {
   margin-left: 14px;
   width: 28px;
   height: 28px;
   border-radius: 6px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.chief-set-back:hover {
+  color: var(--text-secondary);
 }
 
 .chief-set-title {
@@ -651,14 +667,15 @@
   margin-top: 20px;
 }
 
-/* chief-edit-btn a3-pages 收编进 Button ghost/compact（28 高/12 内边距/8
-   圆角公共形）；r5 102 实测形的三点差异（描边 token、surface 底、primary
-   字）保留为高特异性 per-face 规则——ghost 档是 --border-default 描边 +
-   透明底。 */
-.btn.chief-edit-btn {
+/* chief-edit-btn XMON-23 收编进 components/ui Button ghost/sm（28 高/8 圆角
+   公共形；12 内边距/13 字由消费点 px-3/text-[13px] 补）；r5 102 实测形的
+   三点差异（描边 token、surface 底、primary 字）保留为 per-face 规则——
+   ghost 档无描边底色（border-color 叠在原语 1px transparent 边上成窗）。 */
+.chief-edit-btn {
   border-color: var(--border-default);
   background: var(--surface);
   color: var(--text-primary);
+  cursor: pointer;
 }
 
 .chief-memo,
