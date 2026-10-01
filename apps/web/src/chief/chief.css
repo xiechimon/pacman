@@ -349,6 +349,13 @@
 .chief-composer-input {
   display: block;
   width: 100%;
+  /* XMON-102：固定尺寸，不随内容增高。此前高度由 `rows` 驱动（空 1 行 ↔
+     有草稿 6 行），键入首字即 20 → 120px 跳变、发送后又缩回，整块面板跟着
+     抖。改由这里钉死 = 20px 行高 × 3 行。超出部分盒内滚动
+     （overflow-y: auto），布局不动、光标行始终可见。 */
+  box-sizing: border-box;
+  height: 60px;
+  overflow-y: auto;
   border: none;
   background: none;
   resize: none;
