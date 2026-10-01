@@ -9,6 +9,7 @@
 import { CHIEF_REMOTE_TOOLS } from '@pacman/shared';
 import { useState } from 'react';
 import { Button } from '../components/ui/button.js';
+import { Checkbox } from '../components/ui/checkbox.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
 import { useI18n } from '../i18n/provider.js';
@@ -112,23 +113,26 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
           onChange={(event) => setName(event.target.value)}
           placeholder={t('如：笔记本、CI 机器')}
         />
+        {/* XMON-75：这两行与下面的读写位此前是裸 `<input type="checkbox">`，
+            画出来是浏览器自带的方框，跟仓内 .dlg-accept-check 那一族的复选
+            tile 不同形。改用 components/ui/checkbox.tsx 统一形态。 */}
         <div className="apikey-form-toggles">
-          <label className="apikey-form-toggle">
-            <input
-              type="checkbox"
-              checked={gitAccess}
-              onChange={(event) => setGitAccess(event.target.checked)}
-            />
+          <Checkbox
+            className="apikey-form-toggle"
+            checked={gitAccess}
+            onCheckedChange={setGitAccess}
+            label={t('Git 读写（托管仓库 push/pull）')}
+          >
             {t('Git 读写（托管仓库 push/pull）')}
-          </label>
-          <label className="apikey-form-toggle">
-            <input
-              type="checkbox"
-              checked={mcpAccess}
-              onChange={(event) => setMcpAccess(event.target.checked)}
-            />
+          </Checkbox>
+          <Checkbox
+            className="apikey-form-toggle"
+            checked={mcpAccess}
+            onCheckedChange={setMcpAccess}
+            label={t('MCP 访问（MCP 客户端接入）')}
+          >
             {t('MCP 访问（MCP 客户端接入）')}
-          </label>
+          </Checkbox>
         </div>
         <div className="apikey-form-tools-head">
           <span className="apikey-form-label">{t('工具权限位')}</span>
@@ -163,19 +167,17 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
             <div key={tool} className="apikey-form-toolrow">
               <span className="apikey-form-toolname">{tool}</span>
               <span className="apikey-form-toolcol">
-                <input
-                  type="checkbox"
-                  aria-label={`${t('读')} ${tool}`}
+                <Checkbox
                   checked={read.has(tool)}
-                  onChange={() => setRead((set) => toggle(set, tool))}
+                  onCheckedChange={() => setRead((set) => toggle(set, tool))}
+                  label={`${t('读')} ${tool}`}
                 />
               </span>
               <span className="apikey-form-toolcol">
-                <input
-                  type="checkbox"
-                  aria-label={`${t('写')} ${tool}`}
+                <Checkbox
                   checked={write.has(tool)}
-                  onChange={() => setWrite((set) => toggle(set, tool))}
+                  onCheckedChange={() => setWrite((set) => toggle(set, tool))}
+                  label={`${t('写')} ${tool}`}
                 />
               </span>
             </div>

@@ -516,8 +516,10 @@
   grid-template-columns: 1fr 1fr;
 }
 
-/* closed custom select (r3 92/92b): a native <select> carries the canon
-   option sets (时 00–23, 分 00/15/30/45) while the wrapper paints the box */
+/* 时/分/日期选择器的盒（r3 92/92b；XMON-75：壳换成 components/ui/select.tsx）。
+   盒子的外观一字未动——变的是盒子里装什么：此前是一个 appearance:none 的原生
+   <select>（盒面是自制的、弹出来的却是系统菜单），现在盒子本身就是触发钮。
+   选箱宽度从「钉 2ch/2em 压 appearance-none 的塌宽」变成自然的 fit-content。 */
 .sched-form-select {
   display: flex;
   align-items: center;
@@ -534,31 +536,21 @@
   cursor: pointer;
 }
 
-.sched-form-select select {
-  border: none;
-  background: transparent;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  appearance: none;
-  cursor: inherit;
-  /* Chromium sizes an appearance-none select below its content inside a
-     fit-content flex wrapper; pin the width to the option text instead */
-  width: 2ch; /* 时/分 values are two digits */
-}
-
-.sched-form-select select.sched-form-date {
-  width: 2em; /* 今天 — two CJK glyphs */
-}
-
-.sched-form-select select:focus {
-  outline: none;
+/* 触发钮在 grid 里默认被拉满一列，wrap 跟着变宽——菜单贴 wrap 就比触发钮宽
+   一大截。wrap 收成 fit-content，菜单的 min-width:100% 才等于盒宽。 */
+.ui-select-wrap.sched-form-wrap {
+  width: fit-content;
 }
 
 /* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
    组件（.sched-card-menu-row），无实际级联；按 UI 区段分文件，不重排 */
 .sched-form-select svg {
   color: var(--text-dim);
+}
+
+/* 候选都极短（00–23 / 00–55 / 今天），贴盒宽即可，不吃壳的 max-content 撑宽。 */
+.ui-select-menu.sched-form-menu {
+  min-width: 100%;
 }
 
 .sched-form-tz {

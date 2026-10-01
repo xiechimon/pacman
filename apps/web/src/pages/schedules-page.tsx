@@ -15,13 +15,13 @@ import { useSearchParams } from 'react-router';
 import { useApiMutations, useProjects, useSchedules, useTodos } from '../api/hooks.js';
 import { mapSchedules, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { Select } from '../components/ui/select.js';
 import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import type { FixtureSet, ScheduleRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
 import {
-  ChevronDown,
   ChevronRight,
   Clock,
   EllipsisVertical,
@@ -200,8 +200,16 @@ function ScheduleForm({
     onSave(): void;
   };
 }) {
-  const { locale, t } = useI18n();
+  const { t } = useI18n();
   useEscapeClose(open, onClose);
+  // 时/分现在是受控选择器（XMON-75），fixture 面没有后端，落局部态承载「选了
+  // 就回显」——live 面照旧走 live.hour/onHour。
+  const [fixtureHour, setFixtureHour] = useState('09');
+  const [fixtureMinute, setFixtureMinute] = useState('00');
+  const hour = live ? live.hour : fixtureHour;
+  const minute = live ? live.minute : fixtureMinute;
+  const onHour = live ? live.onHour : setFixtureHour;
+  const onMinute = live ? live.onMinute : setFixtureMinute;
   const todo = live ? live.todo : fixture.todos[0];
   const repo = live ? live.repo : (fixture.project?.repoName ?? '');
   return (
@@ -259,52 +267,45 @@ function ScheduleForm({
               <>
                 <div className="sched-form-field">{t('日期')}</div>
                 <div className="sched-form-selects">
-                  <span className="sched-form-select">
-                    <select
-                      // key: an uncontrolled select keeps its value across a
-                      // live locale switch — remount so the localized
-                      // defaultValue re-applies (issue #74)
-                      key={locale}
-                      className="sched-form-date"
-                      aria-label={t('日期')}
-                      defaultValue={t('今天')}
-                    >
-                      {/* r3 92b observes 今天; further entries unrecorded */}
-                      <option>{t('今天')}</option>
-                    </select>
-                    <ChevronDown width={12} height={12} />
-                  </span>
+                  {/* r3 92b observes 今天; further entries unrecorded——单候选，
+                      故值就地取 t()（每渲染现取，locale 切换自然跟上，不带
+                      #74 那种「无控 select 重挂」）。 */}
+                  <Select
+                    prefix="sched-form"
+                    value={t('今天')}
+                    options={[{ value: t('今天'), label: t('今天') }]}
+                    label={t('今天')}
+                    menuLabel={t('日期')}
+                    triggerLabel={t('日期')}
+                    onPick={() => undefined}
+                  />
                 </div>
               </>
             )}
             <div className="sched-form-field">{t('时间')}</div>
             <div className="sched-form-selects sched-form-selects--time">
-              <span className="sched-form-select">
-                <select
-                  aria-label={t('时')}
-                  {...(live
-                    ? { value: live.hour, onChange: (e) => live.onHour(e.target.value) }
-                    : { defaultValue: '09' })}
-                >
-                  {HOURS.map((h) => (
-                    <option key={h}>{h}</option>
-                  ))}
-                </select>
-                <ChevronDown width={12} height={12} />
-              </span>
-              <span className="sched-form-select">
-                <select
-                  aria-label={t('分')}
-                  {...(live
-                    ? { value: live.minute, onChange: (e) => live.onMinute(e.target.value) }
-                    : { defaultValue: '00' })}
-                >
-                  {MINUTE_STEPS.map((m) => (
-                    <option key={m}>{m}</option>
-                  ))}
-                </select>
-                <ChevronDown width={12} height={12} />
-              </span>
+              <Select
+                prefix="sched-form"
+                value={hour}
+                options={HOURS.map((h) => ({ value: h, label: h }))}
+                label={hour}
+                menuLabel={t('时')}
+                triggerLabel={t('时')}
+                onPick={(next) => {
+                  if (next !== null) onHour(next);
+                }}
+              />
+              <Select
+                prefix="sched-form"
+                value={minute}
+                options={MINUTE_STEPS.map((m) => ({ value: m, label: m }))}
+                label={minute}
+                menuLabel={t('分')}
+                triggerLabel={t('分')}
+                onPick={(next) => {
+                  if (next !== null) onMinute(next);
+                }}
+              />
             </div>
             <div className="sched-form-tz">{t('按你的本地时区运行（Asia/Shanghai）')}</div>
             <div className="sched-form-row">
