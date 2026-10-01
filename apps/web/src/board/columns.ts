@@ -10,7 +10,7 @@
 
 import type { Phase } from '@pacman/shared';
 import type { TodoRecord } from '../fixtures/records.js';
-import { PHASE_UI } from '../phase.js';
+import { isInFlightPhase, PHASE_UI } from '../phase.js';
 
 export interface BoardColumnDef {
   id: string;
@@ -59,7 +59,7 @@ export const COLUMNS: BoardColumnDef[] = [
     name: '执行中',
     dot: 'var(--col-dot-building)',
     empty: '没有执行中的任务',
-    accepts: (t) => t.phase === 'planning' || t.phase === 'building',
+    accepts: (t) => isInFlightPhase(t.phase),
   },
   {
     id: 'pending',

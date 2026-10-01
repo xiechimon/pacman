@@ -20,6 +20,16 @@ export interface PhaseUi {
   placeholder: string | null;
 }
 
+/** 在飞相位：这两态 UI 没有主按钮（`action === null`，见下表）——人按不动，
+ *  下一态只能由服务端推过来。所以「界面上还有实体停在这两态」是「服务端本该
+ *  在推东西」的可观测证据，也是唯一可用的一条（XMON-60 的静默对账闸门读它，
+ *  看板「执行中」列收的正是这两态）。 */
+export const IN_FLIGHT_PHASES: ReadonlySet<Phase> = new Set<Phase>(['planning', 'building']);
+
+/** 在飞判据（phase 九值枚举上的纯函数）。入参收 string：调用面常拿运行时
+ *  值来问（查询缓存里的行），不必先窄化成 Phase。 */
+export const isInFlightPhase = (phase: string): boolean => IN_FLIGHT_PHASES.has(phase as Phase);
+
 export const PHASE_UI: Record<Phase, PhaseUi> = {
   todo: { chip: '待处理', tone: 'idle', action: '开始', placeholder: null },
   queued: { chip: '待处理', tone: 'idle', action: '开始', placeholder: null },
