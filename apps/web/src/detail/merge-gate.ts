@@ -8,9 +8,19 @@
 // 调用面传进来的是 assignment.build.agentId，不是「卡片上显示的那个 Agent」
 // （显示投影是 build ?? plan 折算，两槽分设时两者会分叉）。
 //
-// 判据未知（无指派 / members 读面未到位）时不拦：server 侧闸对同一情形也是放
-// 行的（无 Agent 可查 = 无闸可查），前端拦下就是纯误伤。这条与 `tools == null`
-// 同支——两者的共同点是「查不出执行者的授权」，处置必须一致。
+// 两条「不拦」的支：
+//
+// 1. 判据未知（无指派 / members 读面未到位）：server 侧闸对同一情形也是放行的
+//    （无 Agent 可查 = 无闸可查），前端拦下就是纯误伤；
+// 2. 授权集为空数组：**存量豁免**（2026-10-01 leader 裁决）。唯一权威存储是
+//    `agent.tools` 列，形状 = `json<string[]>('tools').notNull().default('[]')`
+//    （db/schema.ts）——「从未保存过权限 tab」与「显式全关」被压成同一个值
+//    `[]`，wire 层面分不出来。判 `[]` 为「缺」= 把所有存量 Agent（含 chief
+//    merge_builds 路径、集成栈 m5 脊柱 E2E 的执行 Agent）一刀切成禁按，是用户
+//    没要的破坏性回归（PR #579 CI 红即此因）。
+//
+// 于是本闸只在**非空**授权集上逐项判：非空 = 至少保存过一次权限面，那份选择
+// 是用户表达过的意图，缺哪个开关就点哪个名。空集 = 没有意图可读，放行。
 
 import type { AgentRecord } from '@pacman/shared';
 import { useMemo } from 'react';
@@ -23,9 +33,9 @@ import type { TFunc } from '../i18n/translate.js';
  *  报缺序，稳定序才有可比对的截图与断言）。 */
 export const MERGE_GATE_TOOLS = ['合并分支', '推送分支'] as const;
 
-/** 缺哪几项授权才能合并；空数组 = 放行。 */
+/** 缺哪几项授权才能合并；空数组 / null = 放行（存量豁免，见文件头）。 */
 export function missingMergeTools(tools: readonly string[] | null | undefined): string[] {
-  if (tools == null) return [];
+  if (tools == null || tools.length === 0) return [];
   return MERGE_GATE_TOOLS.filter((tool) => !tools.includes(tool));
 }
 

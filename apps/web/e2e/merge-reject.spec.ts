@@ -10,6 +10,9 @@ import { expect, type Page, test } from '@playwright/test';
 //  1. 详情页：授权缺项时「完成」仍可点 —— 点了必被 server 拒，用户白点一次；
 //  2. 看板：同上（两个入口各写一份接线，一处漏接就是一处静默）；
 //  3. 缺项不点名 —— 用户知道被拒了，但不知道该开哪个开关（等于没给答案）；
+//  3b. 空授权集被当成全关 —— 存量豁免：库里 notNull().default('[]') 让「从未
+//      保存过权限 tab」与「显式全关」同值，判缺 = 把所有存量 Agent 一刀切成
+//      禁按（PR #579 CI 红即此因）；
 //  4. 全开时误伤：明明有权限却点了没反应（前端拦下一个 server 会放行的请求）；
 //  5. server 真拒时弹层静默关 —— 本轮修的主症状，防它从 onError 一路退回去；
 //  6. 成功路径被写坏：正常合并后弹层不关、或残留一条错误行。
@@ -195,11 +198,19 @@ test('详情入口：同一 Agent 在同一弹层上禁用并点名缺项', asyn
   await page.screenshot({ path: resolve(SHOTS, 'XMON-89-detail-blocked.png') });
 });
 
-test('两项都缺时两处开关都被点名', async ({ page }) => {
-  await openBoardAccept(page, []);
+test('非空授权集里两项都缺时，两处开关都被点名', async ({ page }) => {
+  await openBoardAccept(page, ['远程 shell']);
   await expect(page.locator('.dlg-accept-block')).toHaveText(
     '缺少「合并分支、推送分支」授权，无法合并。请在该 Agent 的权限里开启。',
   );
+});
+
+test('空授权集放行（存量豁免）：从未保存过权限 tab 的 Agent 不被拦', async ({ page }) => {
+  // 库里 agent.tools 是 notNull().default('[]')，「从未保存」与「显式全关」同值。
+  // 判空集为缺 = 把所有存量 Agent 一刀切成禁按（PR #579 CI 红即此因）。
+  await openBoardAccept(page, []);
+  await expect(page.locator('.dlg-accept-done')).toBeEnabled();
+  await expect(page.locator('.dlg-accept-block')).toHaveCount(0);
 });
 
 test('两项都开时不拦：完成钮可点，无缺项提示', async ({ page }) => {
