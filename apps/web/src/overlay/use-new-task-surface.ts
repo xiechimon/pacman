@@ -10,6 +10,9 @@
 // #404：project 页同吃本面——差异显式参数化：anchorProjectId = 路由项目
 // 锚（选择器行置首 + 保存缺省解析），mentions 闸 = 提及数据面有无
 // （project 页无此面；machines/skills 查询随闸）。
+// XMON-93：本 hook 只许住 NewTaskSurfaceRoot 隔离叶子——open/liveSpec 态
+// 每次开合与输入都重渲染宿主组件，住页面里 = 整板同步重渲染（ESC 退出
+// 卡顿根因）。页面消费 openDialog/firstAgentId 走叶子的 apiRef。
 // Query discipline: todos/projects were already eager on every shell
 // (deduped TQ keys — zero new traffic); members/skills/machines stay eager
 // only for the board (its card-level 开始 eats firstAgentId before any
@@ -33,7 +36,7 @@ import { useI18n } from '../i18n/provider.js';
 import type { MentionGroups } from './mention-picker.js';
 import type { NewTaskDialogProps } from './new-task-dialog.js';
 
-interface NewTaskSurfaceOpts {
+export interface NewTaskSurfaceOpts {
   /** fixture 面 mention 数据源：board 传合并集（fixture.todos + 本地新建卡）；
    *  缺省 = fixture.todos。 */
   fixtureTodos?: TodoRecord[];

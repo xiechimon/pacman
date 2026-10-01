@@ -9,7 +9,7 @@
 // #67/#127) driving client-side filter/sort, and the search box filters
 // by title.
 import type { ProjectFileResponse } from '@pacman/shared';
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   useGithubConnection,
@@ -39,8 +39,7 @@ import {
   PlusSmall,
   Search,
 } from '../icons/index.js';
-import { NewTaskDialog } from '../overlay/new-task-dialog.js';
-import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
+import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { Button } from '../ui/button.js';
 import { GithubIssuesDialog } from './github-issues-dialog.js';
@@ -553,12 +552,11 @@ export function ProjectPage() {
     },
     [fixture],
   );
-  const { openDialog: openNewTask, dialogProps: newTaskDialogProps } = useNewTaskSurface(fixture, {
-    onFixtureSave,
-    anchorProjectId: id,
-    mentions: false,
-    eager: true,
-  });
+  // XMON-93 隔离面：dialog 的 open/正文态住进 NewTaskSurfaceRoot 叶子内部，
+  // 开合与输入不再整页重渲染（任务列表行同步重渲染 = ESC 退出卡顿的同源
+  // 根因，board 面实测）。opener 走 ref 读，引用恒定。
+  const newTaskApiRef = useRef<NewTaskSurfaceApi | null>(null);
+  const openNewTask = useCallback(() => newTaskApiRef.current?.openDialog(), []);
   // 从 GitHub issue 建任务入口（#446 / ADR 0005 读向）：三重门 = live +
   // github 形态 + 已连接。未连接 = 入口不渲染且页面不报错不空白（connection
   // 查询失败面容忍，票面验收）；local/hosted/fixture 面零漂移。查询 enabled
@@ -630,8 +628,12 @@ export function ProjectPage() {
           {...(ghIssuesAvailable ? { onOpenGithubIssues: () => setIssuesOpen(true) } : {})}
         />
       )}
-      {/* dialog 接线 = useNewTaskSurface，本页差异参数位见上方 hook 调用。 */}
-      <NewTaskDialog {...newTaskDialogProps} />
+      {/* dialog 接线 = NewTaskSurfaceRoot 隔离根，本页差异参数位随 opts 传入。 */}
+      <NewTaskSurfaceRoot
+        fixture={fixture}
+        opts={{ onFixtureSave, anchorProjectId: id, mentions: false, eager: true }}
+        apiRef={newTaskApiRef}
+      />
       {/* #446 issue 选择弹层：门与入口同闸（ghIssuesAvailable），关着不发
           请求（useGithubIssues enabled 位）。 */}
       {ghIssuesAvailable && id !== undefined && (
