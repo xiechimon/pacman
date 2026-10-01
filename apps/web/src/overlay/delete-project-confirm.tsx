@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { AlertDialogActions, AlertDialogShell } from '../components/ui/alert-dialog-shell.js';
+import { Input } from '../components/ui/input.js';
 import { useI18n } from '../i18n/provider.js';
 import './overlay.css';
 
@@ -44,7 +45,7 @@ export function DeleteProjectConfirm({
     >
       <div className="delete-confirm-summary">{projectName}</div>
       <div className="delete-confirm-prompt">{prompt}</div>
-      <input
+      <Input
         className="delete-confirm-input"
         value={typed}
         onChange={(e) => setTyped(e.target.value)}
