@@ -60,6 +60,10 @@ test('account: 退出登录 / 删除 / 更换 removed (avatar stays)', async ({ 
   await expect(page.locator('.account-delete')).toHaveCount(0);
   await expect(page.locator('.account-swap')).toHaveCount(0);
   await expect(page.locator('.account-avatar img')).toBeVisible();
+  // XMON-107：邮箱字段位面已删（本地单用户无邮箱账位面）——卡片只剩
+  // 名称 / 语言 / 推送通知三行，且不再出现「邮箱」文案。
+  await expect(page.locator('.account-card .profile-row')).toHaveCount(3);
+  await expect(page.locator('.account-card')).not.toContainText('邮箱');
 });
 
 test('account switch: default permission renders off; click requests and grants', async ({

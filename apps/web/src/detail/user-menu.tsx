@@ -9,13 +9,14 @@
 // wiring; the capture state still rides the fixture flag. #163: the panel
 // is bottom-anchored above the avatar chip (detail.css `.user-menu`) —
 // the frozen capture top covered the chip off the 732-tall viewport.
+// XMON-107 (用户裁决): the capture's head mail line is removed — pacman
+// 无邮箱账位面（单用户 seed 自动登录），live 态曾渲染 fixture 常量地址。
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
-import { USER_MAIL } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import { applyTheme, type Theme } from '../theme.js';
 
@@ -59,7 +60,6 @@ export function UserMenu({ theme: initialTheme, floating = false }: UserMenuProp
         <SeededAvatar name={user.displayName} src={user.avatarUrl} fallback="/avatar-user.png" />
         <div>
           <div className="user-menu-name">{user.displayName}</div>
-          <div className="user-menu-mail">{USER_MAIL}</div>
         </div>
       </div>
       <div className="user-menu-rows">

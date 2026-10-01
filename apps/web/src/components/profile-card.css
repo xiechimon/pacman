@@ -113,11 +113,6 @@
   color: var(--text-tertiary);
 }
 
-.profile-value--muted {
-  font-size: 12px; /* 邮箱墨宽 76 @ r7 13 */
-  color: var(--text-tertiary);
-}
-
 /* 带副文案的行：高度随内容（label 列两行时行自然变高），上下 8px 内垫
    保住行与行的呼吸，与固定档的 41/49/57 同一节奏。两列档写在基数规则之后
    （同选择器深度递增，不吃 noDescendingSpecificity）。 */

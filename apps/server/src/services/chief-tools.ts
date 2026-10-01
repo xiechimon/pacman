@@ -1,9 +1,10 @@
 // Chief remoteTools 服务端执行面（02 §4.3「服务端定义并执行」；r5 §3.1 relay
 // 位形 = POST /api/machine/tool/<stepId> {name, params} → {text}）。
-// 49 词表（protocol/chief-tools.ts；raw 观测 49 − delete_skills（spec 13
-// #367，本地目录投影无删除面）− set_remote_shell（XMON-77，「远程 shell」
-// 开关无执行本体）+ create_skill/update_skill（XMON-109 spec 13 回摆新增，
-// CHIEF_TOOLS_ADDED 登记））逐件映射到既有服务/DB。
+// 50 词表（protocol/chief-tools.ts；raw 观测 49 − delete_skills（spec 13
+// #367，本地目录投影无删除面）+ create_skill/update_skill（XMON-109 spec 13
+// 回摆新增，CHIEF_TOOLS_ADDED 登记）+ set_remote_shell（XMON-115 回摆，
+// XMON-77 除名解除——「远程 shell」本体 = XMON-108 双闸 + XMON-110 daemon
+// 工具））逐件映射到既有服务/DB。
 // 复刻口径（02 §4.3 尾注 / 04 §1 A4）：Chief = 挂团队工具的 pi 会话，工具
 // 「语义」按 r1 docs 六能力组 + r3/r5 行为证据黑盒逼近；params/results 细形
 // 未采到 wire 原件处一律 [推断]，不冒充实测。返回值 = JSON 串（bundle text()
@@ -18,7 +19,9 @@
 import type { SecretBox, UserRecord } from '@pacman/shared';
 import {
   AGENT_TOOL_DEFAULTS,
+  AGENT_TOOL_SHELL,
   createSkillBodySchema,
+  filterAgentTools,
   isChiefConversationId,
   MEMORY_QUOTA_PER_AGENT,
   updateSkillToolParamsSchema,
@@ -174,7 +177,7 @@ function requireTeamAgent(db: Db, agentId: string, teamId: string) {
   if (!row) throw new HttpError(404, `agent ${agentId}（不在本团队，或 id 抄错了）`);
   return row;
 }
-/** 49 词表服务端执行。未识别工具名 = 400（词表外不执行，02 §7.2 白名单纪律
+/** 50 词表服务端执行。未识别工具名 = 400（词表外不执行，02 §7.2 白名单纪律
  * 同族）。返回 JSON 串。 */
 export async function executeChiefTool(
   deps: ChiefToolDeps,
@@ -566,10 +569,23 @@ export async function executeChiefTool(
       }
       return json({ deleted });
     }
-    // set_remote_shell 已除名（XMON-77 维持至 XMON-84）：「远程 shell」本体未
-    // 实现（开关已随用户拍板 B 恢复，写入点随本体在规划票里重新设计）——改授权
-    // 走 REST PATCH /agents/{aid}）。relay 此名
-    // 落 default = 400 unknown chief tool，与 delete_skills 同律。
+    // set_remote_shell（XMON-115 回摆，XMON-77 除名解除）：chief 会话写某
+    // agent 的「远程 shell」开关——写 agent.tools（开关词），与 REST PATCH
+    // /agents/{aid} 同字段同过滤；执法面 = claim 双闸注册 + 步中每命令预检
+    // （XMON-108），fail-closed。enabled 必填显式（缺省/非布尔 400，不沿用
+    // #573 前缺省 true 的 fail-open 形）。返回体附 tools——XMON-74 证据探针
+    // 按 payload.tools 复核写点结果（docs/verify/XMON-74/xmon74-probe.mjs）。
+    case 'set_remote_shell': {
+      const agentId = str(params, 'agentId');
+      const row = requireTeamAgent(db, agentId, ctx.teamId);
+      const enabledParam = params.enabled;
+      if (typeof enabledParam !== 'boolean')
+        throw new HttpError(400, 'invalid params.enabled: expected boolean');
+      const tools = filterAgentTools(row.tools).filter((t) => t !== AGENT_TOOL_SHELL);
+      if (enabledParam) tools.push(AGENT_TOOL_SHELL);
+      db.update(agent).set({ tools }).where(eq(agent.id, agentId)).run();
+      return json({ agentId, remoteShell: enabledParam, tools });
+    }
     case 'schedule_todo': {
       const todoId = str(params, 'todoId');
       const row = requireTeamTodo(db, todoId, ctx.teamId);
@@ -878,7 +894,7 @@ export interface WorkerMemoryCtx {
 
 /** worker 步 relay 白名单 = 记忆三件套 + 附件读 + set_task_meta + 技能写词
  * （WORKER_REMOTE_TOOLS 单源；
- * 词表外 = 400）。chief 49 词表不外溢到 worker 步——组织/执行面是 Chief 专属
+ * 词表外 = 400）。chief 50 词表不外溢到 worker 步——组织/执行面是 Chief 专属
  * （例外：create_skill/update_skill 双侧都有，XMON-109 拍板 worker 也能写
  * 技能，worker 侧另有 agent 行开关执法）。
  * （r5 §3.1，技能写词 = XMON-109）。attachment：服务层单源 = attachments.readAttachmentMeta，团队

@@ -40,6 +40,10 @@ test('概览页脚有删除入口，点开二次确认（canon 原文逐字）',
   await expect(dialog.locator('.delete-confirm-title')).toHaveText(CANON_TITLE);
   await expect(dialog.locator('.delete-confirm-summary')).toHaveText(CANON_BODY);
   await expect(dialog.locator('.delete-confirm-cancel')).toHaveText('取消');
+  // #574 换 shadcn 原语时漏 re-key：那条 12px/16px 字排 + auto 高写在前缀
+  // `.btn.` 上，而新原语不吐 `btn` 类，于是取消钮退回原语的 text-sm 与 h-8。
+  await expect(dialog.locator('.delete-confirm-cancel')).toHaveCSS('font-size', '12px');
+  await expect(dialog.locator('.delete-confirm-cancel')).toHaveCSS('line-height', '16px');
   await expect(dialog.locator('.delete-confirm-delete')).toHaveText('删除');
 });
 

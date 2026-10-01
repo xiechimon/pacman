@@ -6,9 +6,9 @@
 
 import { useState } from 'react';
 import { Button } from '../components/ui/button.js';
+import { Checkbox } from '../components/ui/checkbox.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
-import { CheckWhite } from '../icons/index.js';
 import './overlays.css';
 
 interface StopConfirmDialogProps {
@@ -51,15 +51,15 @@ export function StopConfirmDialog({ open, onClose, onConfirm }: StopConfirmDialo
       }
     >
       <div className="dlg-accept">
-        <label className="dlg-accept-check" data-on={discard}>
-          <input
-            type="checkbox"
-            checked={discard}
-            onChange={(event) => setDiscard(event.target.checked)}
-          />
-          <CheckWhite width={12} height={12} />
-        </label>
-        <span className="dlg-accept-label">{t('丢弃本轮修改——方案和代码回到上一个版本')}</span>
+        {/* XMON-72：与 accept-dialog 同族同病（.dlg-accept-check 不藏 input），
+            一并收口 components/ui/checkbox 原语。 */}
+        <Checkbox
+          checked={discard}
+          onCheckedChange={setDiscard}
+          label={t('丢弃本轮修改——方案和代码回到上一个版本')}
+        >
+          <span className="dlg-accept-label">{t('丢弃本轮修改——方案和代码回到上一个版本')}</span>
+        </Checkbox>
       </div>
     </DialogShell>
   );

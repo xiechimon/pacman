@@ -10,7 +10,7 @@
 
 | 批 | 内容 | 状态（fa54bbad 实测） |
 |---|---|---|
-| **#414 试点片** | 看板 / 侧栏域（board / sidebar） | **未收口**，剩 1 个 tsx 消费点（`board/notify-banner.tsx`）；裸控件 13 处，见 §6.5 |
+| **#414 试点片** | 看板 / 侧栏域（board / sidebar） | **原语面已收口**（#561：`board/notify-banner.tsx` 切 `components/ui` Button，原语消费点清零，见 §5.2 复跑记录）；裸控件 13 处未动（sidebar 9 等），见 §6.5 |
 | **B1 弹层族片** | 19 个挂载点收编 shadcn Dialog | 已落地（#425，证据 `docs/verify/425/`） |
 | **B2 热身片** | token-gate + machine-authorize + secondary 面 | **已落地**（#426 热身两面，证据 `docs/verify/426/`；Button/Input 收尾 XMON-13 / #534；secondary 面 XMON-20，证据 `docs/verify/xmon-20/`） |
 | **第一片真域** | resources 五页（machines / providers / secrets / skills / mcp-servers） | 已落地（#423，证据 `docs/verify/423/`）；`routes/agent-detail.css` 为壳内邻页残留，见 §6.2 |
@@ -98,7 +98,7 @@
 
 量纲提醒：#409 的原文对 resources.css 报的是 decl 数（#422 已勘误），对高 3 件写的是「行」——两处量纲不一致，上表第 5 列只作**报告值**看，不做差值解读。可比的是同一单位下的实测：高三位次未变（pages > detail > chief），但三册按 decl 均已长大（+195 / +103 / +6）——**B4 开工前的「各自专门决策」须按新体量重做侦察**，不要沿用 #409 的绝对值排工。
 
-### 5.2 仍消费 `ui/` 原语的文件（17 文件 / 18 处）
+### 5.2 仍消费 `ui/` 原语的文件（16 文件 / 17 处）
 
 口径：只计 `from '../ui/<p>.js'` 形态的 import（含 `type` 形态，已标）。`ui/card`、`ui/dialog-shell` 的真实消费点现均为 **0**（`ui/dialog-shell.tsx` 文件已随 B1 删除；`ui/card.tsx` 自 #409 起即死原语）。`ui/avatar` / `ui/tag-chip` / `ui/kbd-hint` 分别于 XMON-14（#535）落点后清零，落点见 §6.1。第三列只计 `components/ui/` 的 import，含 XMON-14 新增的三个适配层（`seeded-avatar` / `kbd-hint` / `tag-chip`）。**本表每一行都指得到一批**（XMON-17 口径）。
 
@@ -118,18 +118,17 @@
 | B4 | `pages/project-page.tsx` | `ui/button` | `seeded-avatar` |
 | B4 | `pages/project-settings-page.tsx` | `ui/button` | - |
 | B4 | `pages/schedules-page.tsx` | `ui/button` | - |
-| #414 试点片 | `board/notify-banner.tsx` | `ui/button` | - |
 | 第一片已完成 | `resources/create-provider-dialog.tsx` | `ui/input` | `dialog-shell` |
 | 第一片已完成 | `resources/create-secret-dialog.tsx` | `ui/input` | `dialog-shell` |
 
-按原语汇总：`ui/button` ×14 · `ui/input` ×3 · `ui/chip` ×1。
+按原语汇总：`ui/button` ×13 · `ui/input` ×3 · `ui/chip` ×1。
 
 与 c95ee5f 的差（36 文件 / 46 处 → 17 文件 / 18 处，−19 / −28）：
 
 - **−21 处** = 三原语消费点，XMON-14（#535）落点后一次切完（avatar 12 / tag-chip 6 / kbd-hint 3）；
 - **−3 处** = `overlay/token-gate.tsx`（button + input）与 `routes/machine-authorize-page.tsx`（button），XMON-13（#534）B2 收尾切完；
 - **−4 处** = secondary 面三文件（`routes/api-keys-page.tsx` button、`routes/api-key-create-dialog.tsx` button + input、`routes/create-agent-dialog.tsx` input），XMON-20 切完——B2 · secondary 面就此清零；
-- XMON-17 只把当时剩下的 20 个文件 / 22 处逐行归批（不改代码）；XMON-20 落地后刷新为 17 文件 / 18 处。
+- XMON-17 只把当时剩下的 20 个文件 / 22 处逐行归批（不改代码）；XMON-20 落地后刷新为 17 文件 / 18 处；#561 再迁走 `board/notify-banner.tsx` 一处（#414 试点片原语消费点清零）——今为 16 文件 / 17 处。
 - `detail/overlays.tsx` 的归属批由 B4 更正为 **B3**：它的域 css 是 `detail/overlays.css`（§5.1 归 B3，弹层内容族），原表按目录挂在 B4 是错位。
 
 ## 6. 开工前四件的落点（全部已落）
@@ -163,7 +162,7 @@
 | `team-page.tsx` · `team-chart.tsx` · `account-page.tsx` | secondary | B2 · secondary 面（XMON-20 已落地；§5.2 记的「无原语消费点」只是原语账，裸控件账在 §6.5：本票迁走 11 处） |
 | `machine-authorize-page.tsx` | machine-authorize | B2（XMON-13 / #534 已落地） |
 
-`board/` 侧同律：`board/notify-banner.tsx` → **#414 试点片**。并更正票面旧记——**#414 迁的是卡片族的 token 与工具类，不是原语全切**，实测仍有原语消费点（§5.2 那一行），故 `board/` / `sidebar` 不在「已从盘面消掉」之列。
+`board/` 侧同律：`board/notify-banner.tsx` → **#414 试点片**。并更正票面旧记——**#414 迁的是卡片族的 token 与工具类，不是原语全切**；该尾巴已由 #561 收口（notify-banner 切 `components/ui` 的 Button，原语消费点清零），但 `sidebar` 的 9 处裸控件仍在（§6.5），按 §6.5 口径「控件全切」未完，`board/` / `sidebar` 仍不在「已从盘面消掉」之列。
 
 两处判定不是缺件、是归属更正：`routes/agent-detail.css` 与 `routes/` 三个 secondary 页面壳各自都指到了批，`board/` 残留回到它自己的域。
 

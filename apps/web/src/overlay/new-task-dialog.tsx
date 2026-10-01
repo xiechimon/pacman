@@ -6,10 +6,11 @@
 // #176: the project chip is a selector — click opens an anchored popover
 // (family law #67/#127: OverlayMount + ClickCatcher + Esc, dhead chip
 // popover precedent), rows = the project set (live = useProjects truth;
-// fixture = scenario projectNames / canon default), selection is pure
-// form state that backfills the chip and rides the submit's projectId.
-// A3-overlays 收编：footer 双钮 = ui/Button（ghost / primary，弹窗语义
-// standard 32 档，r7 实测 30 归一到原语三档）。
+// fixture = scenario projectNames / canon default), selection backfills the
+// chip and rides the submit's projectId（rememberProject 面另落一份
+// localStorage 记忆，见下 XMON-87 段）。
+// A3-overlays 收编：footer 双钮 = components/ui/Button（ghost / brand，弹窗
+// 语义 default 档 32px，r7 实测 30 归一到原语三档）。
 //
 // M7 #310 附件 wire（r9 §3.1）：
 //   - spec 受控：live 创建面父持 state，附件 token 才能注入；fixture/静态
@@ -25,14 +26,28 @@
 // 并关闭);净表单直关不闸。Esc 分层沿 #176 内层优先律(确认层 → 提及
 // picker → 项目 popover → dialog)。关闭即重置表单(retained-mount 重开 =
 // 净面,闸判定不带脏残留)。#394 起 dirty = 正文单字段（标题/标签面移除）。
+//
+// XMON-95 ⌘↵：保存并开始 除点击外可由 ⌘↵（非 mac = Ctrl+↵）触发，和弦走
+// overlays/hotkeys.ts 的 useChordHotkey（可复用注册位，本票是它的第一个面
+// 内消费点），按钮上带常亮按键角标。守卫/闸/标识三处细节见各自行注。
+// XMON-87 选择记忆：rememberProject 面（board / 侧栏全局面）把选中项目 id 落
+// localStorage，刷新后 chip 回上次那行——此前是纯表单 state，刷新即掉回
+// rows[0]（用户实测「选 Pacman → 刷新 → 回第一个」）。锚定面不记忆，理由见
+// 该 prop 注记。
+// XMON-87 续二：Tab 直接换项目（chip 上挂 Tab 悬浮提示 chip，#468 族）——循环
+// 而不是开面（「直接切换」要的是按一下就换）；开态门与守卫见
+// overlays/hotkeys.ts 的 useProjectCycleHotkey。
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { Kbd } from '../components/ui/kbd.js';
+import { KbdHint } from '../components/ui/kbd-hint.js';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, Grid2x2, Paperclip, X } from '../icons/index.js';
 import { ClickCatcher, OverlayMount } from '../overlays/dismiss.js';
+import { isEditableTarget, useChordHotkey, useProjectCycleHotkey } from '../overlays/hotkeys.js';
 import { type MentionGroups, MentionPicker } from './mention-picker.js';
 import { insertMentionText, type MentionToken } from './mention-token.js';
 import './overlay.css';
@@ -54,9 +69,45 @@ interface ProjectOption {
   name: string;
 }
 
+/** XMON-87 选择记忆位(localStorage 键;e2e 镜像 newtask-project-persist.spec.ts)。
+ *  单租户单机、无账号维度——与 pacman.sidebar-collapsed /
+ *  pacman.dirBrowser.lastDir 同律。 */
+export const NEW_TASK_PROJECT_STORAGE_KEY = 'pacman.newTaskProjectId';
+
+/** 读记忆位:隐私模式等抛 = 无记忆(dir-browser W13 同律)。 */
+function readRememberedProject(storage: Storage): string | null {
+  try {
+    return storage.getItem(NEW_TASK_PROJECT_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeRememberedProject(storage: Storage, projectId: string): void {
+  try {
+    storage.setItem(NEW_TASK_PROJECT_STORAGE_KEY, projectId);
+  } catch {
+    // 写不进 = 不记住,选择本身不受损(W13 同律)
+  }
+}
+
 /** fixture 面项目集兜底:scenarios 不带 projectNames 时退 canon 单默认
  *  项目(r3-lifecycle,#176 票面「至少默认项目」)。 */
 const DEFAULT_PROJECT: ProjectOption = { id: PROJECT_ID, name: PROJECT_NAME };
+
+/** XMON-95 面级守卫：输入态吞键收窄到本面板之外（⌘J 的 drawer-interior
+ *  律平移，hotkeys.ts 注记）。面板打开时 autofocus 落正文 textarea——守卫
+ *  若在面板内照吞，和弦永远打不到「保存并开始」。类名出处 = 下方 DialogShell
+ *  的 className（.dlg 面板根）。提及 picker 是面板外的兄弟层，其输入框照
+ *  吞：在提及面里按 ⌘↵ 不该提交（Enter 在那里是选中语义）。 */
+const isEditableOutsideDialog = (target: EventTarget | null): boolean =>
+  isEditableTarget(target) &&
+  !(target instanceof HTMLElement && target.closest('.new-task-dialog') !== null);
+
+/** XMON-95 界面标识：通用快捷键和弦在这块面板上的字面量。沿用 sidebar
+ *  badge 先例（⌘K / C）——不做平台探测、不进 i18n 词典；非 mac 实际绑定
+ *  Ctrl+↵ 同族（hotkeys 注册处双平台收）。 */
+const START_SHORTCUT_LABEL = '⌘↵';
 
 export interface NewTaskDialogProps {
   /** #73: retained-mount open flag — the exit fade outlives the close. */
@@ -84,6 +135,11 @@ export interface NewTaskDialogProps {
   /** #311: mention picker groups（5 类别）。父级从 live hooks 或
    *  fixture 派生；缺省 = 空集合（picker 首层 0 计数）。 */
   mentionGroups?: MentionGroups;
+
+  /** XMON-87 选择记忆:true = 选中行跨刷新存活(挂载读一次、选行写回)。
+   *  缺省 false = 纯表单 state。锚定面(#404 project 页)走缺省——那面的
+   *  未动选择恒等于 rows[0] = 本页路由项目(#305 律),全局记忆会把它顶掉。 */
+  rememberProject?: boolean;
 }
 
 export function NewTaskDialog({
@@ -97,6 +153,7 @@ export function NewTaskDialog({
   onAttachment,
 
   mentionGroups,
+  rememberProject = false,
 }: NewTaskDialogProps) {
   const { t } = useI18n();
   // M7 #310 受控 spec：fallback 模式（fixture 静态 div）内部 useState，
@@ -114,8 +171,13 @@ export function NewTaskDialog({
   const [discardOpen, setDiscardOpen] = useState(false);
   // #176 选择器 state:popover 开态 + 选中行。null = 未动,展示/提交取
   // 首行;live 空项目集时 selected 退 undefined(chip 走 canon 名)。
+  // XMON-87 记忆面:初值 = 上次选中的项目 id。存的值不在行集里(被删/无权限)
+  // = find 打空、selected 落回首行——不报错不白屏,记忆位留着不动(行集可能
+  // 只是还没加载,按缺省清记忆会误伤真值)。
   const [projectOpen, setProjectOpen] = useState(false);
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(() =>
+    rememberProject ? readRememberedProject(localStorage) : null,
+  );
   // M7 #310 附件：file picker ref + 上传中 disable 纸夹扣
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attaching, setAttaching] = useState(false);
@@ -142,8 +204,9 @@ export function NewTaskDialog({
     onClose();
   };
   // Esc 分层 4 层(内层优先):确认层 → 提及 picker → 项目 popover → dialog 关闸
-  // (合并 #311 picker + #318 闸;discardOpen/pickerOpen 由各自 ClickCatcher
-  // / useEscapeClose 单独处理,这里只控 dialog 自身的 Esc 关闸。)
+  // (合并 #311 picker + #318 闸;discardOpen/pickerOpen 各由自己的壳接管 Esc
+  // ——ClickCatcher / FloatingShell(#425 B1 起 picker 走 Base UI layer 栈),
+  // 本文件只控 dialog 自身的 Esc 关闸。)
   // retained mount:dialog 关闭一并收 popover(重开不得带回开态) + 确认层
   // + picker,并重置表单(重开不得带回开态/脏字——闸判定以净面起步)
   useEffect(() => {
@@ -175,6 +238,26 @@ export function NewTaskDialog({
     returnFocusToInvoker();
   }, [open]);
 
+  // XMON-87 续二:Tab 直接换项目(chip 上挂 Tab 提示 chip)。循环而不是开面
+  // ——「直接切换」要的是按一下就换了,不是先弹列表再选;列表那条路(点 chip)
+  // 原样留着。焦点不动:Tab 是打字途中的手势,搬焦点就把打字打断了。
+  // 开态门三条:面板开着、至少两行、未保存闸确认层没起来。
+  //  - 关着:hook 不注册,Tab 交还浏览器(同 ⌘↵ 的 opened-gate)。
+  //  - 单项目:循环是空转,吃下 Tab 只会白挡走位,同样交还浏览器。
+  //  - 确认层起来(open 仍为真,它是 dialog 之外的兄弟层 #318):这一层没有
+  //    焦点陷阱,焦点仍停在 composer 这个「驾驶位」上。此时若不缺席,Tab 会被
+  //    吃下换成项目,键盘用户就再也走不到「继续编辑 / 放弃并关闭」两个钮——
+  //    键盘陷阱。README 的「仍能走到每一个控件」正是靠这一条成立。
+  const cycleProject = useCallback(() => {
+    if (rows.length < 2) return;
+    const index = rows.findIndex((row) => row.id === selected?.id);
+    const next = rows[(index + 1) % rows.length];
+    if (next === undefined) return;
+    setProjectId(next.id);
+    if (rememberProject) writeRememberedProject(localStorage, next.id);
+  }, [rows, selected?.id, rememberProject]);
+  useProjectCycleHotkey(open && !discardOpen && rows.length > 1, cycleProject);
+
   // M7 #310 附件选择回调：files → onAttachment 委托父处理 grant+upload+
   // setSpec 拼 token；reset value 允许同文件再选（change 事件不重发同源）
   const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,6 +271,24 @@ export function NewTaskDialog({
 
   // spec 15 #394: 提交 = 正文 + 项目 id；标题位随输入框一并退役。
   const save = () => onSave(spec, selected?.id);
+
+  // XMON-95：保存并开始 = 按钮点击与 ⌘↵ 共用的同一提交位。闸写在闭包里而
+  // 非只靠按钮 disabled——键盘路径不经过 disabled 的点击拦截，漏这一句 ⌘↵
+  // 会在空正文上落一个空任务。
+  const saveAndStart = () => {
+    if (spec.trim() === '') return;
+    if (onSaveAndStart) onSaveAndStart(spec, selected?.id);
+    else save();
+  };
+  // enabled = open ∩ ¬discardOpen（useChordHotkey 的 opened-gate）。两条都
+  // 缺不得：
+  //  - open：面板关着时监听器不在 window 上，否则关掉的对话框仍会吃全站 ⌘↵。
+  //  - ¬discardOpen：未保存闸确认层是 dialog **之外**的兄弟层（#318），它起来
+  //    时 open 仍是 true，闸只认 open 的话 ⌘↵ 会在「要不要放弃？」这一问之下
+  //    把任务**保存并开始**（真起一次 agent 跑）——用户按下时以为自己在回答
+  //    那一问。确认层的两个按钮都不是可编辑目标，守卫也拦不住，只能由 enabled
+  //    这一层缺席。
+  useChordHotkey('enter', isEditableOutsideDialog, saveAndStart, open && !discardOpen);
 
   // #318 放弃并关闭:清表单 + 关 dialog(父收 open,重置 effect 兜底同律)
   const discardAndClose = () => {
@@ -271,6 +372,10 @@ export function NewTaskDialog({
               <span className="new-task-project-avatar">{projectName.charAt(0).toLowerCase()}</span>
               <span className="new-task-project-name">{projectName}</span>
               <ChevronDown width={12} height={12} />
+              {/* XMON-87 续二:Tab 提示 chip(#468 悬浮 chip 族,静息隐藏,
+                  hover/focus-visible chip 时浮出);label 字面量沿 ⌘K/⌘J
+                  先例,不做平台探测。 */}
+              <KbdHint label="Tab" placement="right" />
             </button>
             {/* #176:anchored popover 家族律(#67/#127)——OverlayMount +
                 ClickCatcher + Esc;空集不开面(live 无项目时提交走建默认
@@ -287,6 +392,7 @@ export function NewTaskDialog({
                     aria-selected={row.id === selected?.id}
                     onClick={() => {
                       setProjectId(row.id);
+                      if (rememberProject) writeRememberedProject(localStorage, row.id);
                       setProjectOpen(false);
                     }}
                   >
@@ -383,12 +489,21 @@ export function NewTaskDialog({
                 size="default"
                 className="new-task-start"
                 disabled={spec.trim() === ''}
-                onClick={() => {
-                  if (onSaveAndStart) onSaveAndStart(spec, selected?.id);
-                  else save();
-                }}
+                onClick={saveAndStart}
               >
                 {t('保存并开始')}
+                {/* XMON-95 界面标识：常亮按键角标（kbd-hint 的 hover chip 是
+                    另一面，这里要「看得到」，故静息可见）。落在 kbd.tsx 原语
+                    上（COMPONENTS.md「文档正文里的按键角标用 kbd.tsx」），只把
+                    registry 的尺寸/配色档逐项改写到本面：本钮是 brand 档——实底 indigo
+                    + 白字，故边界/墨取白色系而非 border-border/muted-foreground。
+                    aria-hidden：角标是视觉提示，按钮的可及名仍是文字本身。 */}
+                <Kbd
+                  aria-hidden="true"
+                  className="ml-1.5 h-auto min-w-0 rounded-[3px] border border-white/35 bg-transparent px-[3px] py-px text-[11px] leading-4 font-normal text-white/90"
+                >
+                  {START_SHORTCUT_LABEL}
+                </Kbd>
               </Button>
             </div>
           </div>

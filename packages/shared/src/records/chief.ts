@@ -125,7 +125,7 @@ export const chiefThreadSchema = z.object({
     openedAt: epochMs,
   }),
   pendingSessionResumeAt: epochMs.nullable(),
-  /** 工具定义/结果哈希表（49 词表的哈希键面，r5 §3.1；词表本体归 M4）。 */
+  /** 工具定义/结果哈希表（50 词表的哈希键面，r5 §3.1；词表本体归 M4）。 */
   toolDefHashes: z.record(z.string(), z.string()),
   toolResultHashes: z.record(z.string(), z.string()),
   activeRun: activeRunSchema,

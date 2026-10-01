@@ -49,9 +49,54 @@ import { expect, type Page, test } from '@playwright/test';
 //     same hint through the shared consumption point
 // 14. the collapsed rail's search icon hovers the ⌘K hint (the expanded
 //     rows already carry their always-on badges)
+//
+// XMON-95 adds the new-task dialog's ⌘↵ (Ctrl+↵ off macOS) chord on
+// 保存并开始 — the first *surface-scoped* chord: it rides the same
+// useChordHotkey registration form, gated on the dialog's open flag, and
+// its guard exempts the dialog's own textarea (the ⌘J drawer-interior
+// exemption law transplanted — the chord that owns a surface must fire from
+// that surface's editable interior, or the autofocused spec textarea would
+// swallow it before it ever ran). Fixture 保存并开始 collapses to the save
+// path by documented design (use-new-task-surface.ts:297 — onSaveAndStart is
+// live-only), so the landing is the local card the 保存 button also lands.
+// 15. ⌘↵ and Ctrl+↵ inside the dialog fire 保存并开始 (card lands, dialog
+//     closes) — both platform receipts on one registration
+// 16. the dialog's dismiss chord stays scoped: with it closed, ⌘↵ on the
+//     board lands nothing (the enabled gate is what keeps a closed dialog's
+//     listener off the window)
+// 17. the disabled gate holds on the keyboard path too: an empty spec plus
+//     ⌘↵ creates no card (a chord that ignores the button's gate would save
+//     a blank task)
+// 18. the 未保存闸 confirm layer is the dialog's *sibling*, so the enabled
+//     gate has to cover it as well: with the layer up, ⌘↵ still saves
+//     nothing (the chord would otherwise start a real run under the
+//     "discard?" question)
+// 19. plain ↵ in the spec textarea is NOT hijacked — it stays the newline
+//     key (no modifier, no fire, native default untouched)
+// 20. the 保存并开始 button carries a visible ⌘↵ badge at rest (the
+//     always-on form; kbd-hint's hover chip is the other face)
+//
+// XMON-87 adds the family's only binding that consumes a native browser key.
+// 21. Tab switches the dialog's project from the composer focus the open
+//     itself lands (the dialog-interior exemption, ⌘J's drawer narrowing),
+//     wraps at the ends, and leaves focus in the composer so typing is not
+//     interrupted
+// 22. the same from the chip's own focus, list open or not; Shift+Tab is NOT
+//     consumed — with Tab spent on switching, it is the way out of the seat
+// 23. off the two driving seats (mention button / footer) Tab stays native
+// 24. the project chip hovers its Tab hint (at rest it stays hidden)
+// 25. outside the dialog (closed) Tab stays native — no dialog, no listbox
+// 26. the 未保存闸 confirm layer is that chord's own sibling too: with it
+//     up, Tab cycles nothing — the layer has no focus trap, so eating Tab
+//     there would be a keyboard trap (继续编辑 / 放弃并关闭 unreachable)
 
 const BOARD = '/app?scenario=01';
 const SCHEDULES = '/app/schedules?scenario=01';
+/** XMON-87 的 Tab 换项目要有第二个项目才检得出来（scenario 01 只有一个）：
+ *  boardProjectPicker 场景 = r3-lifecycle + r2-inventory 双行。 */
+const PROJECTS = '/app?scenario=newtask-projects';
+/** 该场景首行的项目 id（显示名 r3-lifecycle）；记忆位存的是 id 不是名字。 */
+const FIRST_PROJECT_ID = 'ZAQczKCu0MOAzC1ZqcFlX';
 const PROJECT = '/app/project/ZAQczKCu0MOAzC1ZqcFlX?scenario=r2-24b&tab=tasks';
 
 const dialog = (page: Page) => page.locator('.new-task-dialog');
@@ -110,11 +155,13 @@ async function escapeUntilHidden(page: Page, surface: ReturnType<Page['locator']
   throw new Error(`Escape never closed ${surface}`);
 }
 
-/** ⌘J-toggle close, same retry law as escapeUntilHidden: a delivered
- *  toggle hides the drawer and the wait ends the loop; a lost key leaves it
- *  open and the re-press IS the toggle. A pathologically slow close makes
- *  the next press reopen — and the one after closes again — so the loop's
- *  end state is deterministically hidden, never a coin flip. */
+/** toggle close, same retry law as escapeUntilHidden: a delivered toggle
+ *  hides the surface and the wait ends the loop; a lost key leaves it open
+ *  and the re-press IS the toggle. A pathologically slow close makes the
+ *  next press reopen — and the one after closes again — so the loop's end
+ *  state is deterministically hidden, never a coin flip. 键固定 ⌘J——本文件里
+ *  走这条 toggle 循环的面只有 chief 抽屉；XMON-87 的 Tab 换项目是「循环选择」
+ *  语义、不关面，另有用例走 useProjectCycleHotkey。 */
 async function toggleUntilHidden(page: Page, surface: ReturnType<Page['locator']>) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
     await page.keyboard.press('Meta+j');
@@ -124,7 +171,7 @@ async function toggleUntilHidden(page: Page, surface: ReturnType<Page['locator']
       .catch(() => false);
     if (closed) return;
   }
-  throw new Error('⌘J never closed the drawer');
+  throw new Error('Meta+j never closed the surface');
 }
 
 test('C on the board opens the new-task dialog; ⌘C and the retired N do not', async ({
@@ -378,4 +425,260 @@ test('the collapsed rail search icon hovers the ⌘K hint', async ({ page }) => 
   await railSearch.hover();
   await expect(hint).toBeVisible();
   await expect(hint).toHaveText('⌘K');
+});
+
+// ---- XMON-95: the new-task dialog's ⌘↵ chord on 保存并开始 ----------------
+
+/** Open the new-task dialog through the sidebar row (the #445 opener form). */
+async function openNewTask(page: Page) {
+  await page.goto(BOARD);
+  await page.locator('.sidebar-new-task').click();
+  const dialog = page.locator('.new-task-dialog');
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
+
+/** Card landed by the save path, titled by the spec's first line. */
+const landedCard = (page: Page, title: string) =>
+  page.locator('[data-column="todo"] .todo-card', { hasText: title });
+
+/** Chord press with the retry law: the listener registers in a passive
+ *  effect after the dialog's open commit, so a press fired the instant the
+ *  dialog paints can be lost. The loop ends on the *outcome* (the card
+ *  landing) rather than on a surface flipping visible — a lost press lands
+ *  nothing, so re-presses cannot double-fire, and a delivered one exits
+ *  before the next attempt. */
+async function pressUntilCard(page: Page, key: string, card: ReturnType<Page['locator']>) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.press(key);
+    const landed = await card
+      .waitFor({ state: 'visible', timeout: 1000 })
+      .then(() => true)
+      .catch(() => false);
+    if (landed) return;
+  }
+  throw new Error(`${key} never landed ${card}`);
+}
+
+test('⌘↵ and Ctrl+↵ inside the dialog fire 保存并开始 (card lands, dialog closes)', async ({
+  page,
+}) => {
+  const dialog = await openNewTask(page);
+  await dialog.locator('.new-task-spec').fill('⌘↵ 建的卡');
+  // The autofocused spec textarea is an editable target — the chord must
+  // still fire from it (dialog-interior exemption; without it the guard
+  // swallows the press and this wait times out).
+  await pressUntilCard(page, 'Meta+Enter', landedCard(page, '⌘↵ 建的卡'));
+  await expect(dialog).not.toBeVisible();
+
+  // Same registration, non-mac receipt: Ctrl+↵ lands a second card
+  await page.locator('.sidebar-new-task').click();
+  await expect(dialog).toBeVisible();
+  await dialog.locator('.new-task-spec').fill('Ctrl 建的卡');
+  await pressUntilCard(page, 'Control+Enter', landedCard(page, 'Ctrl 建的卡'));
+  await expect(dialog).not.toBeVisible();
+});
+
+test('with the dialog closed, ⌘↵ on the board lands nothing', async ({ page }) => {
+  await page.goto(BOARD);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  const cards = page.locator('[data-column="todo"] .todo-card');
+  const before = await cards.count();
+  // Six delivered presses of a bound chord would land six cards (or at
+  // least one) — a count that never moves is proof the listener is off the
+  // window while the dialog is shut.
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.press('Meta+Enter');
+    await page.waitForTimeout(120);
+    await expect(cards).toHaveCount(before);
+  }
+  await expect(dialog(page)).toHaveCount(0);
+});
+
+test('⌘↵ with an empty spec creates nothing (the button gate holds on the chord)', async ({
+  page,
+}) => {
+  const dialog = await openNewTask(page);
+  const cards = page.locator('[data-column="todo"] .todo-card');
+  const before = await cards.count();
+  await expect(dialog.locator('.new-task-start')).toBeDisabled();
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.press('Meta+Enter');
+    await page.waitForTimeout(120);
+    await expect(cards).toHaveCount(before);
+  }
+  await expect(dialog).toBeVisible();
+});
+
+test('⌘↵ under the 未保存闸 confirm layer saves nothing (the layer owns the screen)', async ({
+  page,
+}) => {
+  const dialog = await openNewTask(page);
+  await dialog.locator('.new-task-spec').fill('闸下不该落的卡');
+  const cards = page.locator('[data-column="todo"] .todo-card');
+  const before = await cards.count();
+  // 弄脏后点 × → 未保存闸确认层起来。该层是 dialog **之外**的兄弟层（#318），
+  // 所以 dialog 仍开着——闸只认 open 的话，⌘↵ 会在这句「要不要放弃？」之下把
+  // 任务保存并开始（真起一次 agent 跑）。确认层两个按钮都不是可编辑目标，
+  // 守卫拦不住，只能靠 enabled 在这一层缺席。
+  await dialog.locator('.new-task-close').click();
+  const layer = page.locator('.new-task-discard');
+  await expect(layer).toBeVisible();
+  // 六次投递若都送达会落六张卡（至少一张）；计数不动 = 和弦在这层缺席。
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.press('Meta+Enter');
+    await page.waitForTimeout(120);
+    await expect(cards).toHaveCount(before);
+  }
+  await expect(layer).toBeVisible();
+  await expect(dialog).toBeVisible();
+});
+
+test('plain ↵ in the spec textarea stays the newline key — no hijack', async ({ page }) => {
+  const dialog = await openNewTask(page);
+  const spec = dialog.locator('.new-task-spec');
+  await spec.fill('第一行');
+  await page.keyboard.press('Enter');
+  // the native default is untouched: the newline lands in the field and the
+  // dialog stays open
+  await expect(spec).toHaveValue('第一行\n');
+  await expect(dialog).toBeVisible();
+  await expect(page.locator('[data-column="todo"] .todo-card', { hasText: '第一行' })).toHaveCount(0);
+});
+
+test('the 保存并开始 button carries a visible ⌘↵ badge at rest', async ({ page }) => {
+  const dialog = await openNewTask(page);
+  const badge = dialog.locator('.new-task-start kbd');
+  // always-on form (not kbd-hint's hover chip): visible with no pointer on it
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveText('⌘↵');
+  // aria-hidden — the chip is a visual hint; the button's own name is its
+  // accessible label (a glyph inside the name would be read aloud)
+  await expect(badge).toHaveAttribute('aria-hidden', 'true');
+});
+
+test('Tab cycles the dialog’s project chip from the composer focus', async ({ page }) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chipName = page.locator('.new-task-project-name');
+  await expect(page.locator('.new-task-spec')).toBeFocused();
+  await expect(chipName).toHaveText('r3-lifecycle');
+
+  await page.keyboard.press('Tab');
+  await expect(chipName).toHaveText('r2-inventory');
+  // 换项目不搬打字的手：焦点留在 composer
+  await expect(page.locator('.new-task-spec')).toBeFocused();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('pacman.newTaskProjectId')))
+    .toBe('r2-inventory');
+
+  // 末行再 Tab 环绕回首行（记忆位存的是项目 id：首行的 id 与显示名不同名，
+  // fixture 里 PROJECT_ID 显示为 r3-lifecycle）
+  await page.keyboard.press('Tab');
+  await expect(chipName).toHaveText('r3-lifecycle');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('pacman.newTaskProjectId')))
+    .toBe(FIRST_PROJECT_ID);
+
+  await escapeUntilHidden(page, dialog(page));
+});
+
+test('the chip cycles on Tab while the list is open; Shift+Tab keeps native movement', async ({
+  page,
+}) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chip = page.locator('.new-task-project');
+  const menu = page.locator('.new-task-project-menu');
+  const checked = menu.locator('.new-task-project-row[aria-selected="true"] .new-task-project-row-name');
+
+  // 鼠标开列表：chip 拿焦点，Tab 移的是勾选行（不用先关列表）
+  await chip.click();
+  await expect(menu).toBeVisible();
+  await expect(checked).toHaveText('r3-lifecycle');
+  await page.keyboard.press('Tab');
+  await expect(checked).toHaveText('r2-inventory');
+  await expect(page.locator('.new-task-project-name')).toHaveText('r2-inventory');
+  await expect(chip).toBeFocused();
+  await expect(menu).toBeVisible();
+
+  // Shift+Tab 不吃：Tab 被「换项目」占用后，它是离开驾驶位的出口
+  await page.keyboard.press('Shift+Tab');
+  await expect(chip).not.toBeFocused();
+  await expect(page.locator('.new-task-project-name')).toHaveText('r2-inventory');
+
+  await page.keyboard.press('Escape'); // 分层 Esc:先收列表
+  await expect(menu).toBeHidden();
+  await expect(dialog(page)).toBeVisible();
+  await escapeUntilHidden(page, dialog(page));
+});
+
+test('Tab off the driving seats stays native (mention button keeps its own walk)', async ({
+  page,
+}) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chipName = page.locator('.new-task-project-name');
+  await expect(chipName).toHaveText('r3-lifecycle');
+
+  const mention = page.locator('.new-task-dialog button[aria-label="提及"]');
+  await mention.focus();
+  await page.keyboard.press('Tab');
+  // 项目没被换,焦点照常往前走
+  await expect(chipName).toHaveText('r3-lifecycle');
+  await expect(mention).not.toBeFocused();
+
+  await escapeUntilHidden(page, dialog(page));
+});
+
+test('the project chip hovers its Tab hint (hidden at rest)', async ({ page }) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chip = page.locator('.new-task-project');
+  const hint = chip.locator('.kbd-hint');
+  await expect(hint).toBeHidden();
+  await chip.hover();
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveText('Tab');
+  await escapeUntilHidden(page, dialog(page));
+});
+
+test('Tab cycles nothing while the 未保存闸 confirm layer is up (that layer owns the keyboard)', async ({
+  page,
+}) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chipName = page.locator('.new-task-project-name');
+  await expect(chipName).toHaveText('r3-lifecycle');
+  await dialog(page).locator('.new-task-spec').fill('脏面');
+  // 走 Esc 这条关闸路：确认层起来时**焦点仍停在 composer**（Tab 的驾驶位之一）。
+  // 点 × 那条路焦点落在关闭钮上，不是驾驶位，测不出这一处——必须走 Esc。
+  // 该层没有焦点陷阱（dismiss.tsx 不装），所以 Tab 若照吃，键盘用户就再也走不到
+  // 「继续编辑 / 放弃并关闭」两个钮，成了键盘陷阱。
+  await page.keyboard.press('Escape');
+  const layer = page.locator('.new-task-discard');
+  await expect(layer).toBeVisible();
+  await expect(page.locator('.new-task-spec')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(chipName).toHaveText('r3-lifecycle');
+  // 换项目与写记忆位是同一个动作：没换 = 也没写。
+  expect(await page.evaluate(() => localStorage.getItem('pacman.newTaskProjectId'))).toBeNull();
+});
+
+test('with the dialog closed Tab stays native', async ({ page }) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await page.keyboard.press('Tab');
+  await expect(dialog(page)).toHaveCount(0);
+  await expect(page.locator('.new-task-project')).toHaveCount(0);
+  // 焦点落在页内某个真控件上(原生走位),不是被吞掉
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.tagName ?? ''))
+    .not.toBe('BODY');
+  await expect(page.locator('.new-task-project-menu')).toHaveCount(0);
 });

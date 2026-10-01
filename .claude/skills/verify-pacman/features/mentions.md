@@ -28,7 +28,7 @@ Preconditions:
 - **内联 @ 路径。** composer textarea(live editable 面)键入 `@` → `.mention-inline` 内联 listbox 出现 → 继续键入过滤 → 选行 → token 落 caret 位。
 - **真值。** 提交后 `GET /api/todos/{id}` 的 spec 或 conversation message content 含序列化 token(`[名](agent:` / `#seq`);详情 spec 渲染面出现 chip。
 
-- **验证状态(2026-09-28)**:主仓脚本化 probe 已补——`drive-mentions.mjs` 10 checks 全绿(对话框 picker + composer picker + 内联 @ 三条路径),证据 `docs/verify/311/2026-09-28T13-29-24-524Z-mentions/`(旧纪律归档路径,历史)。
+- **验证状态(2026-09-28)**:主仓脚本化 probe 已补——`drive-mentions.mjs` 10 checks 全绿(对话框 picker + composer picker + 内联 @ 三条路径),证据归档 `docs/verify/311/2026-09-28T13-29-24-524Z-mentions/`。
 
 ## Gotchas
 

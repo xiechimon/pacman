@@ -153,9 +153,14 @@
   pointer-events: none;
 }
 
-/* A4-deep 收编：皮肤归 ui/Button icon 变体；28×28 + margin-left:auto
-   per-face 几何（hover 底走 motion.css 家族律，类名保留原样命中）。 */
-.btn.new-task-close {
+/* A4-deep 收编：皮肤归 components/ui/Button icon 变体；28×28 + margin-left:auto
+   per-face 几何（hover 底走 motion.css 家族律，类名保留原样命中）。
+   #574 换原语时只搬了结构、没重钉这条选择器：原写 `.btn.new-task-close`，而
+   components/ui/Button 不吐 `btn` 类（`grep -c btn button.tsx` = 0），规则自那
+   以后一次也没命中——28×28 与 margin-left:auto 都丢，叉号落回居中标题的紧右边。
+   同族已 re-key 的先例见 chief.css 与 detail/overlays.css（都写着「选择器去掉老
+   .btn 前缀——新 Button 不再渲染该类」）。 */
+.new-task-close {
   margin-left: auto;
   width: 28px;
   height: 28px;
@@ -264,11 +269,15 @@
   height: 30px;
 }
 
-/* A4-deep 收编：皮肤（透明底/无框/dim 墨/cursor）归 ui/Button quiet 变体；
-   12px/16px 字排与 auto 高是 per-face 实测（quiet 不吃 size，height:auto
-   挡 .btn--standard 的 32 泄漏）。删除钮禁用形态已由原语 danger:disabled
-   承载（opacity .5），本面规则移除。 */
-.btn.delete-confirm-cancel {
+/* A4-deep 收编：皮肤（透明底/无框/dim 墨/cursor）归 components/ui/Button
+   quiet 变体；12px/16px 字排与 auto 高是 per-face 实测（quiet 不吃 size，
+   height:auto 挡原语 size 档的 32 泄漏）。删除钮禁用形态已由原语
+   danger:disabled 承载（opacity .5），本面规则移除。
+   #574 换原语时漏 re-key（与 .new-task-close 同批同病）：原选择器写
+   `.btn.delete-confirm-cancel`，要求元素带 `btn` 类，而 components/ui/Button
+   不吐该类——规则自那以后一次也没命中，取消钮退回原语的 text-sm(14px) 与
+   h-8(32px)。 */
+.delete-confirm-cancel {
   height: auto;
   font-size: 12px;
   line-height: 16px;
