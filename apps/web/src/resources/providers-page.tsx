@@ -19,6 +19,7 @@ import { useSearchParams } from 'react-router';
 import { useApiMutations, useModelSources } from '../api/hooks.js';
 import { RUNTIME_LABELS } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { ClaudeMark, PiMark } from '../components/brand-marks.js';
 import { Badge } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
@@ -38,6 +39,14 @@ export const PROVIDERS_HREF = '/app/resources/providers';
 const RUNTIME_DESCRIPTIONS: Record<ModelSourceRuntime, string> = {
   pi: 'pacman 自有运行时。模型来自你添加的服务商。',
   'claude-code': '本机 Claude Code 配置（~/.claude/settings.json）的模型槽。',
+};
+
+/** runtime → 官方品牌 mark（components/brand-marks.tsx 单源，机器行
+ * RUNTIME_MARKS 同源消费）。键集钉 ModelSourceRuntime：词表扩项时此处
+ * 编译期报错，不会静默退化成无 mark 的 tab。 */
+const RUNTIME_MARKS: Record<ModelSourceRuntime, typeof PiMark> = {
+  pi: PiMark,
+  'claude-code': ClaudeMark,
 };
 
 const isRuntime = (value: string | null): value is ModelSourceRuntime =>
@@ -133,16 +142,25 @@ export function ProvidersPage() {
       {/* #423 Tabs 收编（#422 裁决：res-tabs 由 ?runtime= 驱动）：受控
           value/onValueChange 落回原 selectRuntime（写 ?runtime=、历史入栈、
           回退键可用），role=tablist/tab 与 aria-selected 由 Base UI 承载，
-          data-runtime 句柄原样透出。选中指示条/配色/几何正本仍是
-          resources.css 的 .res-tabs/.res-tab per-face 规则（line variant 的
-          默认档溢出项在那里并掉），providers-tabs 几何钉零改动。 */}
+          data-runtime 句柄原样透出。XMON-73：形态改分段控制器，配色/几何
+          正本移到 pages.css 的 .page-tabs-group/.page-tab（与 topbar
+          「任务|文件」同一份规则），resources.css 不再有 per-face 覆盖
+          （只留 .res-tab-mark 的 mark 间距）。两 tab 前置各自品牌 mark：
+          两个 runtime 都是本机 runtime，仓里已有其官方 mark 正本
+          （components/brand-marks.tsx，机器行 #503 同源消费）。mark
+          aria-hidden，文案照常渲染——可访问名 = RUNTIME_LABELS，读屏与
+          e2e 的 toHaveText('pi'/'Claude Code') 都不受影响。 */}
       <Tabs value={runtime} onValueChange={(value) => selectRuntime(value as ModelSourceRuntime)}>
-        <TabsList variant="line" className="res-tabs" aria-label={t('模型服务')}>
-          {MODEL_SOURCE_RUNTIMES.map((rt) => (
-            <TabsTrigger key={rt} value={rt} data-runtime={rt} className="res-tab">
-              {RUNTIME_LABELS[rt]}
-            </TabsTrigger>
-          ))}
+        <TabsList variant="segmented" className="res-tabs" aria-label={t('模型服务')}>
+          {MODEL_SOURCE_RUNTIMES.map((rt) => {
+            const Mark = RUNTIME_MARKS[rt];
+            return (
+              <TabsTrigger key={rt} value={rt} data-runtime={rt} className="res-tab">
+                <Mark className="res-tab-mark" />
+                {RUNTIME_LABELS[rt]}
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
       </Tabs>
       {active != null && (

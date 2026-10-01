@@ -262,7 +262,7 @@ export function AgentDetailPage() {
     >
       <div className="agent-detail">
         <Tabs value={tab} onValueChange={(value) => setTab(value as AgentTab)}>
-          <TabsList variant="line" className="agent-tabs" aria-label={t('Agent')}>
+          <TabsList variant="segmented" className="agent-tabs" aria-label={t('Agent')}>
             {TAB_LABELS.map((item) => (
               <TabsTrigger key={item.id} value={item.id} className="agent-tab">
                 {t(item.label)}

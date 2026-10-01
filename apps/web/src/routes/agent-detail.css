@@ -7,14 +7,9 @@
   gap: 16px;
 }
 
-.agent-tabs {
-  border-bottom: 1px solid var(--border-default);
-}
-
-.agent-tab {
-  height: 32px;
-  font-size: 13px;
-}
+/* XMON-73：三 tab 改分段控制器，样式正本在 pages.css 的
+   .page-tabs-group / .page-tab（与 topbar「任务|文件」同一份规则）。
+   .agent-tabs / .agent-tab 仅作为 e2e 句柄留在 DOM 上，本文件不留规则。 */
 
 /* —— 概览 —— */
 
