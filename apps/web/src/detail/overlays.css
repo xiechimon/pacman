@@ -332,6 +332,15 @@
   color: var(--text-primary);
 }
 
+/* XMON-26：merge 被拒行内错误行（server 403 原文，AcceptDialog 喂入）——
+   .dlg-provider-oauth-error 同族红字。 */
+.dlg-accept-error {
+  padding: 8px 16px 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--danger);
+}
+
 .dlg-accept-footer {
   display: flex;
   align-items: center;

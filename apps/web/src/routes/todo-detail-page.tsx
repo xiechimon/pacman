@@ -231,6 +231,8 @@ export function TodoDetailPage() {
   // interactively.
   const [overlay, setOverlay] = useState<OverlayState | null>(fixture.overlay ?? null);
   const closeOverlay = useCallback(() => setOverlay(null), []);
+  // XMON-26：merge 被拒（403 权限闸等）在 accept dialog 行内显错，dialog 留开。
+  const [acceptError, setAcceptError] = useState<string | null>(null);
   // #75 version-menu + plan-version diff state: scenario-frozen for the
   // captures, interactive afterwards (63–72).
   const [menu, setMenu] = useState<'versions' | 'compare' | undefined>(fixture.detail?.versionMenu);
@@ -963,14 +965,22 @@ export function TodoDetailPage() {
       />
       <AcceptDialog
         open={overlay?.kind === 'accept'}
-        onClose={closeOverlay}
+        onClose={() => {
+          setAcceptError(null);
+          closeOverlay();
+        }}
+        error={acceptError}
         onConfirm={
           live && buildId
             ? () => {
                 // merge = 202 delegated（r3 §3.6）：合并步机器执行，phase 经
-                // SSE 推进到 done（🎉 时间线行由 server 落库）。
-                mutations.mergeBuild.mutate(buildId);
-                closeOverlay();
+                // SSE 推进到 done（🎉 时间线行由 server 落库）。被拒（XMON-26
+                // 权限闸 403 等）= dialog 留开 + 行内显错，可重试。
+                setAcceptError(null);
+                mutations.mergeBuild.mutate(buildId, {
+                  onSuccess: () => closeOverlay(),
+                  onError: (err) => setAcceptError(err.message),
+                });
               }
             : undefined
         }

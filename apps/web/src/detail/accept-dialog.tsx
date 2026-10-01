@@ -18,9 +18,12 @@ interface AcceptDialogProps {
   /** M5 live 面：完成 = merge 202 delegated（r3 §3.6）；缺省 = fixture
    *  行为（关闭即止）。 */
   onConfirm?: () => void;
+  /** XMON-26：merge 被拒（403 权限闸等）的行内错误文案——非空才显示，
+   *  dialog 留开可重试；缺省 = 无错误面（fixture 字节形不变）。 */
+  error?: string | null;
 }
 
-export function AcceptDialog({ open, onClose, onConfirm }: AcceptDialogProps) {
+export function AcceptDialog({ open, onClose, onConfirm, error }: AcceptDialogProps) {
   const { t } = useI18n();
   const [merge, setMerge] = useState(true);
   return (
@@ -58,6 +61,11 @@ export function AcceptDialog({ open, onClose, onConfirm }: AcceptDialogProps) {
         </label>
         <span className="dlg-accept-label">{t('将改动合并到默认分支')}</span>
       </div>
+      {error != null && error !== '' && (
+        <div className="dlg-accept-error" role="alert">
+          {error}
+        </div>
+      )}
     </DialogShell>
   );
 }

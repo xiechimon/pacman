@@ -335,6 +335,8 @@ export function BoardPage() {
   const [overlay, setOverlay] = useState<OverlayState | null>(fixture.overlay ?? null);
   const [overlayTodo, setOverlayTodo] = useState<TodoRecord | null>(null);
   const closeOverlay = useCallback(() => setOverlay(null), []);
+  // XMON-26：merge 被拒（403 权限闸等）在 accept dialog 行内显错，dialog 留开。
+  const [acceptError, setAcceptError] = useState<string | null>(null);
   const openFor = (todo: TodoRecord, kind: OverlayState['kind']) => {
     setOverlayTodo(todo);
     setOverlay({ kind });
@@ -503,12 +505,20 @@ export function BoardPage() {
       </button>
       <AcceptDialog
         open={overlay?.kind === 'accept'}
-        onClose={closeOverlay}
+        onClose={() => {
+          setAcceptError(null);
+          closeOverlay();
+        }}
+        error={acceptError}
         onConfirm={
           live && overlayTodo?.latestBuildId
             ? () => {
-                mutations.mergeBuild.mutate(overlayTodo.latestBuildId as string);
-                closeOverlay();
+                // 被拒（XMON-26 权限闸 403 等）= dialog 留开 + 行内显错，可重试。
+                setAcceptError(null);
+                mutations.mergeBuild.mutate(overlayTodo.latestBuildId as string, {
+                  onSuccess: () => closeOverlay(),
+                  onError: (err) => setAcceptError(err.message),
+                });
               }
             : undefined
         }
