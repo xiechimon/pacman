@@ -31,12 +31,12 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { skillRecordSchema } from '@pacman/shared';
+import { parseSkillFrontmatter, skillRecordSchema } from '@pacman/shared';
 import { afterAll, describe, expect, test } from 'vitest';
 import { composeChiefSystemPrompt } from '../src/services/chief.js';
 import { type ChiefToolCtx, executeChiefTool } from '../src/services/chief-tools.js';
 import { executeMcpTool } from '../src/services/mcp-face.js';
-import { parseSkillFrontmatter, scanLocalSkills } from '../src/services/skills.js';
+import { scanLocalSkills } from '../src/services/skills.js';
 import { bootServer, req, type TestServer } from './helpers.js';
 
 // —— 隔离技能根脚手架（每个 describe 自建自清）——————————————————————————————

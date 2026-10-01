@@ -4,9 +4,10 @@
 // #306 接真：排序钮开单选 listbox（默认/名称，当前项 ✓，行点击 = 选中即关
 // — lang-dropdown 家族律）。原站排序下拉内容未观测，选项集 [设计]：SkillRow
 // 数据面只有 name/description（无时间戳），可诚实承载的排序键 = 名称。
-// spec 13（#367）只读面：技能 = server 本地目录现扫投影（id = frontmatter
-// name 回落目录名），页面无新建/导入动作——写技能 = 往技能目录放文件，
-// 空态文案指路目录（文案 canon = shared SKILL_PAGE_COPY 单源消费，{dir} =
+// spec 13（#367）只读面 → XMON-114（S3，spec 13 回摆）写面：技能 = server
+// 本地目录现扫投影不变，但页面恢复新建/编辑——topbar「+ 新建」与空态主钮
+// 开 SkillDialog（frontmatter 表单化），行点击开编辑。空态文案指路目录 +
+// 界面新建双入口（canon = shared SKILL_PAGE_COPY 单源消费，{dir} =
 // SKILLS_DIR_DEFAULT；env 覆写在 server 侧，i18n 键经 COMPUTED_KEYS 登记）。
 import { SKILL_PAGE_COPY, SKILLS_DIR_DEFAULT } from '@pacman/shared';
 import { useState } from 'react';
@@ -22,6 +23,7 @@ import { ArrowUpDown, Check, ChevronDown, Puzzle, Search } from '../icons/index.
 import { ClickCatcher } from '../overlays/dismiss.js';
 import { EmptyState, RowCard, RowChevron, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
+import { SkillDialog, type SkillEditTarget } from './skill-dialog.js';
 
 export const SKILLS_HREF = '/app/resources/skills';
 
@@ -43,6 +45,9 @@ export function SkillsPage() {
   // #425 B1:wrap 锚定面——portal 挂进 wrap 保绝对定位几何;Esc 走 FloatingShell。
   const [sortWrap, setSortWrap] = useState<HTMLSpanElement | null>(null);
   const skills = sort === '名称' ? [...rows].sort((a, b) => a.name.localeCompare(b.name)) : rows;
+  // 弹窗态：null = 关；{skill?} 无 skill = 新建，有 = 编辑（XMON-114）。
+  const [dialog, setDialog] = useState<{ skill?: SkillEditTarget } | null>(null);
+  const openCreate = () => setDialog({});
 
   return (
     <ResourceShell
@@ -50,18 +55,21 @@ export function SkillsPage() {
       href={SKILLS_HREF}
       backHref="/app"
       selected={SKILLS_HREF}
-      hideNew
+      onNew={openCreate}
       fixture={fixture}
     >
       {skills.length === 0 ? (
-        // r2 08: the empty state replaces the search row entirely；spec 13：
-        // 只读面——无主钮无提示行，文案指路技能目录（canon = SKILL_PAGE_COPY，
-        // {dir} 插值；en 翻译键 = 同串，i18n-coverage COMPUTED_KEYS 登记）。
+        // r2 08: the empty state replaces the search row entirely；spec 13
+        // 回摆（XMON-114）：双入口口径——主钮开新建弹窗，文案指路目录 +
+        // 界面新建（canon = SKILL_PAGE_COPY，{dir} 插值；en 翻译键 = 同串，
+        // i18n-coverage COMPUTED_KEYS 登记）。
         <EmptyState
           Icon={Puzzle}
           title={SKILL_PAGE_COPY.empty}
           description={SKILL_PAGE_COPY.directoryHint}
           descriptionVars={{ dir: SKILLS_DIR_DEFAULT }}
+          actionLabel="新建技能"
+          onAction={openCreate}
         />
       ) : (
         <>
@@ -124,7 +132,14 @@ export function SkillsPage() {
             </span>
           </div>
           {skills.map((skill) => (
-            <RowCard key={skill.name}>
+            <RowCard
+              key={skill.name}
+              onOpen={() =>
+                setDialog({
+                  skill: { id: skill.name, name: skill.name, description: skill.description },
+                })
+              }
+            >
               <Tile Icon={Puzzle} size="sm" tone="orange" />
               <span className="res-row-text">
                 <span className="res-row-title">{skill.name}</span>
@@ -135,6 +150,7 @@ export function SkillsPage() {
           ))}
         </>
       )}
+      <SkillDialog open={dialog !== null} onClose={() => setDialog(null)} skill={dialog?.skill} />
     </ResourceShell>
   );
 }

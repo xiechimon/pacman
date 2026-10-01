@@ -14,10 +14,9 @@
 // 单目录读取失败（SKILL.md 中途消失/是目录/无权限）= 跳过该条不炸全局
 // （读面容错律只约束读——写面校验失败一律 400/409 显式拒绝，不静默）。
 //
-// frontmatter 解析 = 最小解析器 [设计]（仓内无 yaml 依赖，单行为值、可引号
-// 包裹；折叠块标量标记（`>`/`|` 族）与多行值不受理 = 按缺省回落目录名 /
-// null——真打 anthropics/skills 实测 academy-guide 即 `description: >`
-// 折叠形，语义承自旧 GitHub 扫描面 #223，parser 原样保留）。
+// frontmatter 解析 = 最小解析器 [设计]（XMON-114 起单源在 shared records/
+// skill.ts 的 parseSkillFrontmatter——web 编辑面预填/回读对拍与 server 写面
+// 校验消费同一解析器；SKILL_DIR_NAME_RE 目录名安全域同位上提）。
 
 import {
   type Dirent,
@@ -35,6 +34,8 @@ import {
   type CreateSkillBody,
   MAX_SKILL_FILE_BYTES,
   MAX_SKILL_TOTAL_BYTES,
+  parseSkillFrontmatter,
+  SKILL_DIR_NAME_RE,
   SKILL_ENTRY_FILE,
   type SkillFileBody,
   type SkillRecord,
@@ -56,29 +57,6 @@ export interface LocalSkill {
   description: string | null;
   /** 所在目录名（技能根的一级子目录）。 */
   dirName: string;
-}
-
-/** SKILL.md frontmatter 最小解析（文件头注纪律）；无块/缺字段 → 空洞回落。 */
-export function parseSkillFrontmatter(content: string): {
-  name?: string;
-  description?: string;
-} {
-  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(content);
-  const block = m?.[1];
-  if (block === undefined) return {};
-  const out: { name?: string; description?: string } = {};
-  for (const line of block.split(/\r?\n/)) {
-    const kv = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line);
-    const key = kv?.[1];
-    if (key !== 'name' && key !== 'description') continue;
-    const value = (kv?.[2] ?? '')
-      .trim()
-      .replace(/^(['"])(.*)\1$/, '$2')
-      .trim();
-    // 折叠/文字块标量标记（>、|、>-、|+…）= 多行值，最小解析器不受理 → 缺省回落。
-    if (value !== '' && !/^[>|][+-]?$/.test(value)) out[key] = value;
-  }
-  return out;
 }
 
 /** 现扫技能根：一级子目录（含符号链接目录）中 SKILL.md 在盘者各出一条，
@@ -214,10 +192,6 @@ export function filterKnownSkillIds(skillsDir: string, ids: string[]): string[] 
 }
 
 // —— 写路径（XMON-109 S1，spec 13 回摆）———————————————————————————————————
-
-/** 技能目录名安全域（create 的 body.name = 新目录名）：字母/数字开头，仅
- * 字母数字点横杠下划线，≤64 字符——可作 URL 段与跨平台目录名。 */
-const SKILL_DIR_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
 /** 写面执行者（审计行 actor；REST = member，worker relay = agent，
  * chief relay = 绑定 agent 或无绑定时的 member）。 */

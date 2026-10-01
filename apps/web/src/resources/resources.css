@@ -679,3 +679,40 @@ button.res-primary {
   font-size: 13px;
   line-height: 18px;
 }
+
+/* XMON-114 技能写面：可点行（开编辑弹窗）+ 新建/编辑弹窗的 per-face 差异。
+   族类（dlg-form-*）在 ui/dialog.css，本块只放内容样式与行态。 */
+
+/* 整行可点 = 打开编辑弹窗（role=button 在 parts.tsx RowCard）。cursor 换
+   pointer；focus 环走 #388 家族律（2px --focus-ring + offset 2）。 */
+.res-rowcard--openable {
+  cursor: pointer;
+}
+
+.res-rowcard--openable:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* SKILL.md 正文编辑框：等宽 + 加高（族类 dlg-form-textarea 的 per-face
+   覆写，88 → 160 最小高）。 */
+.dlg-skill-body {
+  min-height: 160px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* 错误行：prj-new-error / dlg-provider-oauth-error 同族配方（12px/16px/
+   --danger，role=alert 在元素侧）；server 原文 detail 行次级色区分。 */
+.dlg-skill-error {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--danger);
+  overflow-wrap: break-word;
+}
+
+.dlg-skill-error-detail {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-tertiary);
+}
