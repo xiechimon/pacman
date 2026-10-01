@@ -25,7 +25,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { GitCredentials } from '@pacman/shared';
 import { afterAll, describe, expect, test } from 'vitest';
-import { commitEnv, gitPrim, runGit } from '../src/git.js';
+import { commitEnv, runGit } from '../src/git.js';
 import { buildCreateTagTool } from '../src/tag-tool.js';
 
 const IDENTITY = { name: 'tag-agent', email: 'tag@pacman.local' };
