@@ -40,6 +40,8 @@ test('sidebar avatar chips (expanded + rail) and user-menu head share one seeded
   // user-menu head echoes the same identity → same image (同名恒同)
   await page.locator('.sidebar-user').click();
   await expect(page.locator('.user-menu-head img')).toHaveAttribute('src', USER_SRC);
+  // XMON-107：菜单头的邮件行已删——head 只剩身份名一行（无邮箱账位面）。
+  await expect(page.locator('.user-menu-mail')).toHaveCount(0);
   await page.keyboard.press('Escape');
 
   // rail chip: collapse via the persisted key (SIDEBAR_STORAGE_KEY mirror)
