@@ -5,6 +5,7 @@
 // 停止钮不挂 handler，DOM 字节不变）。
 
 import { useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { CheckWhite } from '../icons/index.js';
@@ -29,12 +30,23 @@ export function StopConfirmDialog({ open, onClose, onConfirm }: StopConfirmDialo
       onClose={onClose}
       footer={
         <div className="dlg-accept-footer">
-          <button type="button" className="dlg-accept-cancel" onClick={onClose}>
+          {/* XMON-24：两钮切 shadcn ghost。取消皮肤在 .dlg-accept-cancel
+              per-face；停止原本就是 preflight 复位的裸钮（透明/无边框/
+              font:inherit + scoped 50 宽），utilities 逐条还原该形态。 */}
+          <Button
+            variant="ghost"
+            className="dlg-accept-cancel h-auto rounded-none p-0 text-[13px] font-normal hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
+            onClick={onClose}
+          >
             {t('取消')}
-          </button>
-          <button type="button" className="dlg-accept-done" onClick={() => onConfirm(discard)}>
+          </Button>
+          <Button
+            variant="ghost"
+            className="dlg-accept-done h-auto rounded-none p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit active:not-aria-[haspopup]:translate-y-0"
+            onClick={() => onConfirm(discard)}
+          >
             {t('停止')}
-          </button>
+          </Button>
         </div>
       }
     >

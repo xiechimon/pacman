@@ -12,6 +12,7 @@
 import { useState } from 'react';
 import { inlineSegments } from '../api/mappers.js';
 import { type CurrentUser, useLiveData } from '../api/provider.js';
+import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { RobotPara, TranscriptItem } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -95,14 +96,18 @@ function ActionRow({
   );
   if (toggle == null) return <div className="chat-row-icons">{body}</div>;
   return (
-    <button
-      type="button"
-      className="chat-row-icons chat-row-icons--toggle"
+    // XMON-24：行图标 toggle 切 shadcn ghost——皮肤/几何全在
+    // .chat-row-icons(--toggle) per-face（font:inherit 顺手灭底座字号，
+    // bg transparent 灭 hover/aria-expanded 底）；utilities 只清 h-8、
+    // justify、active 位移、svg 强制 16px（chevron 属性 10px）四条差额。
+    <Button
+      variant="ghost"
+      className="chat-row-icons chat-row-icons--toggle h-auto rounded-none justify-start active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
       aria-expanded={toggle.expanded}
       onClick={toggle.onToggle}
     >
       {body}
-    </button>
+    </Button>
   );
 }
 
@@ -308,14 +313,17 @@ function Row({
             <FileTab width={14} height={14} />
             <span className="chat-plan-title">{item.title}</span>
             {onOpenPlan != null ? (
-              <button
-                type="button"
-                className="chat-plan-open"
+              // XMON-24：打开方案钮切 shadcn ghost；皮肤全在 .chat-plan-open
+              // per-face。字号/行高还原裸钮 preflight 的 font:inherit，
+              // svg 免底座强制 16（属性 12px）。span 态不在此列。
+              <Button
+                variant="ghost"
+                className="chat-plan-open h-auto rounded-none justify-start text-[length:inherit] leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
                 aria-label={t('打开方案')}
                 onClick={onOpenPlan}
               >
                 <ExternalLink width={12} height={12} />
-              </button>
+              </Button>
             ) : (
               <span className="chat-plan-open">
                 <ExternalLink width={12} height={12} />
@@ -429,10 +437,17 @@ function ToolsRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'tools' }
               );
             })}
           </div>
-          <button type="button" className="chat-collapse" onClick={() => setExpanded(false)}>
+          {/* XMON-24：收起钮切 shadcn ghost——皮肤全在 .chat-collapse
+              per-face（bg transparent 灭 hover 底）；utilities 只清 h-8、
+              justify、active 位移与 svg 16px 强制（属性 10px）。 */}
+          <Button
+            variant="ghost"
+            className="chat-collapse h-auto rounded-none justify-start font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            onClick={() => setExpanded(false)}
+          >
             {t('收起')}
             <ChevronDown width={10} height={10} className="chat-collapse-icon" />
-          </button>
+          </Button>
         </>
       )}
     </>

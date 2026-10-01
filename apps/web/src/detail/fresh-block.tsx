@@ -11,11 +11,11 @@
 // chip（ADR 0002 F4 修订——「看板卡不渲染标签」校准退役），本块仍是详情
 // 页的唯一标签消费面。
 
+import { Button } from '../components/ui/button.js';
 import { TagChip, type TagChipData } from '../components/ui/tag-chip.js';
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
-import { Button } from '../ui/button.js';
 
 /** 「2026年9月21日 13:21 创建」 — capture-verbatim format, pinned to the
  *  +08:00 zone the r7 session ran in so fixture output never drifts with host TZ.
@@ -81,7 +81,14 @@ export function FreshBlock({ todo, tags, action, onAction }: FreshBlockProps) {
       </div>
       {action != null && onAction != null && (
         <div className="fresh-actions">
-          <Button variant="primary" size="standard" className="fresh-start" onClick={onAction}>
+          {/* XMON-24：老 primary/standard（h32 px12 r8 @13px，.fresh-start
+              无本面规则）逐值搬 brand utilities；border-0 去掉底座 1px
+              透明描边（配 bg-clip-padding 会在漆边留一圈未paint环）。 */}
+          <Button
+            variant="brand"
+            className="fresh-start border-0 px-3 text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
+            onClick={onAction}
+          >
             {t(action)}
           </Button>
           <span className="fresh-action-hint">{t('点开始后选执行机器，Agent 在你的机器上跑')}</span>

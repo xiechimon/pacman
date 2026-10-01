@@ -67,9 +67,10 @@
   color: var(--text-tertiary);
 }
 
-/* A3 收编：五态 pill 视觉归 ui/chip.tsx（.chip/.chip--<tone> 同名 variant，
-   同一 token 对）；此处只余按钮交互层几何。detail-chip--<tone> 类名保留在
-   DOM 作 e2e 定位别名，规则本体删除避免双源。 */
+/* XMON-24：五态 pill 视觉 = registry Badge + dhead 消费端 utilities
+   （--chip-*-bg/fg 同一 token 对）；此处只余按钮交互层几何。
+   detail-chip--<tone> 类名保留在 DOM 作 e2e 定位别名，规则本体
+   删除避免双源。 */
 .detail-chip {
   flex: none;
   margin-left: 8px;
@@ -123,8 +124,8 @@
   cursor: pointer;
 }
 
-/* A3 收编：primary/compact 皮肤与 8px 圆角归 ui/button.css；50.5×28 @12px
-   是 r7 §3.3 冻结几何，scoped override 钉住（(0,2,0) 压过 .btn 单类，
+/* XMON-24：brand 皮肤归 components/ui/button；50.5×28 @12px 是 r7 §3.3
+   冻结几何，scoped override 钉住（(0,2,0) unlayered，恒压底座 utilities，
    不赌样式表 import 顺序）。 */
 .detail-head .detail-head-action {
   flex: none;
@@ -1194,8 +1195,8 @@ textarea.composer-input::placeholder {
 /* XMON-55 P5: with the composer empty the arrow sits in --text-dim, which is
    the same grey the placeholder uses — the button read as disabled while it
    was live and actionable. A draft flips it to the system's brand solid
-   (ui/button.tsx `brand`), so "there is something to send" is visible without
-   reading the textarea. */
+   (components/ui/button.tsx `brand`), so "there is something to send" is
+   visible without reading the textarea. */
 .composer-send--ready {
   background: var(--card-button);
   color: var(--text-on-accent);
@@ -1441,8 +1442,8 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 
 /* ---- issue #75: r8 dynamic states ---- */
 
-/* failed chip (r8 54/73)：视觉已并 .chip--failed（ui/chip.css），
-   detail-chip--failed 类名留 DOM 作别名 */
+/* failed chip (r8 54/73)：视觉 = dhead 消费端 Badge utilities
+   （--chip-failed-bg/fg），detail-chip--failed 类名留 DOM 作别名 */
 
 /* chief-origin marker (r8 54): avatar + dim 12px line */
 .chat-row--chief {
@@ -1905,8 +1906,9 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
    拒收理由已被化解：(1) ghost 描边 token 单源化（--card-border 单源，
    #412 D2 起为 --border-default 别名）；(2) Button size 新增
    overlay 30px 档；(3) Tailwind v4 base 默置 box-sizing: border-box，
-   1px 描边不再吃盒高度。5 处 overlay-btn 全部由 ui/button 原语消费
-   variant='ghost'|'primary' size='overlay' 替换完成。 */
+   1px 描边不再吃盒高度。XMON-24 起 5 处 overlay-btn 全部由
+   components/ui/button 消费（ghost|brand + 消费端 utilities，30 高/12
+   内边距/18 行高钉在 overlays.tsx 的 OVERLAY_* 常量）。 */
 
 /* 复用方案 sub-panel (r8 75): centered prompt over the button row */
 .reuse-body {
@@ -1938,7 +1940,8 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 }
 
 /* ---- 来源 issue 行（#452 / ADR 0006 D5/D6）：live 详情中心列首行。
-   中性安静行——未建成态带重试 text 钮（btn--text 皮肤单源 ui/button.css）；
+   中性安静行——未建成态带重试 text 钮（components/ui/button ghost +
+   消费端 utilities 复刻老 text 变体皮肤）；
    回显态 = 号 + 状态 + 上游现值标题；不一致提示用 tertiary 墨（只提示不
    覆盖，非错误腔）。拉不到整行隐藏归组件面（无 CSS 态）。 ---- */
 .source-issue {

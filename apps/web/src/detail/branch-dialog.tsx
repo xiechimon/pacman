@@ -18,11 +18,12 @@ import { useState } from 'react';
 import { api } from '../api/client.js';
 import { useMachines } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { Input } from '../components/ui/input.js';
 import type { BranchInfoContent } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, Copy } from '../icons/index.js';
-import { Button } from '../ui/button.js';
 import './overlays.css';
 
 interface BranchDialogProps {
@@ -49,8 +50,17 @@ function CopyButton({ value }: { value: string }) {
     });
   };
   return (
-    // A4-deep 收编：icon 变体皮肤；24×24 几何 per-face 留 overlays.css
-    <Button variant="icon" className="dlg-copy" aria-label={t('复制')} onClick={copy}>
+    // XMON-24：icon 钮切 shadcn ghost/icon 档——老 ui/Button icon 变体皮肤
+    // （透明底 tertiary 墨、hover 增亮 secondary、零内边距）逐值搬
+    // utilities；24×24 几何留 overlays.css .dlg-copy per-face（选择器已去
+    // .btn 前缀）。Copy 属性 14px，svg 免底座强制 16px。
+    <Button
+      variant="ghost"
+      size="icon"
+      className="dlg-copy text-(--text-tertiary) hover:bg-transparent dark:hover:bg-transparent hover:text-(--text-secondary) cursor-pointer active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+      aria-label={t('复制')}
+      onClick={copy}
+    >
       <Copy width={14} height={14} />
     </Button>
   );
@@ -116,17 +126,28 @@ export function BranchSyncFields({
         />
       ) : (
         // fixture / fixture 路径占位（r7 31 原始捕获面）
-        <button type="button" className="dlg-machine" disabled>
+        // XMON-24：切 shadcn ghost——几何/皮肤全在 .dlg-machine per-face
+        // （漆底压 hover）；恒 disabled 且老面无禁用降档 → opacity/
+        // pointer-events 双双中性化。ChevronDown 属性 12px，svg 免底座 16px。
+        <Button
+          variant="ghost"
+          className="dlg-machine font-normal disabled:opacity-100 disabled:pointer-events-auto [&_svg:not([class*='size-'])]:size-auto"
+          disabled
+        >
           <span className="dlg-machine-dot" />
           <span className="dlg-machine-name">{info.machine}</span>
           <ChevronDown width={12} height={12} />
-        </button>
+        </Button>
       )}
       <div className="dlg-form-label">{t('同步目录')}</div>
       {canSync ? (
-        <input
+        // XMON-24：目录输入切 registry Input——几何/皮肤全在 .dlg-dir
+        // per-face（h32/padding/border/mono12，unlayered 恒压底座）；老面
+        // 是 UA 裸 input：固有宽度（w-auto 还原）、focus 时 UA outline 环
+        // （outline:auto 复刻，底座的 ring/border 变色清零）。
+        <Input
           type="text"
-          className="dlg-dir dlg-dir--input"
+          className="dlg-dir dlg-dir--input w-auto focus-visible:ring-0 focus-visible:border-transparent focus-visible:[outline:auto]"
           value={directory}
           onChange={(event) => onDirectory(event.target.value)}
           spellCheck={false}
@@ -202,26 +223,29 @@ export function BranchDialog({ info, buildId: buildIdProp, open, onClose }: Bran
     <DialogShell
       headerCenter={
         <div className="dlg-form-seg" role="tablist" aria-label={t('分支与 PR')}>
-          <button
-            type="button"
+          {/* XMON-24：seg tab 切 shadcn ghost——皮肤/几何全在 .dlg-seg-tab
+              per-face（[data-active] 档同理，漆面压 hover/aria-expanded）；
+              role/aria-selected/data-active 直通 Base UI props 透传。 */}
+          <Button
+            variant="ghost"
             role="tab"
             aria-selected={tab === 'sync'}
-            className="dlg-seg-tab"
+            className="dlg-seg-tab font-normal active:not-aria-[haspopup]:translate-y-0"
             data-active={tab === 'sync'}
             onClick={() => setTab('sync')}
           >
             {t('同步到机器')}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="ghost"
             role="tab"
             aria-selected={tab === 'git'}
-            className="dlg-seg-tab"
+            className="dlg-seg-tab font-normal active:not-aria-[haspopup]:translate-y-0"
             data-active={tab === 'git'}
             onClick={() => setTab('git')}
           >
             Git
-          </button>
+          </Button>
         </div>
       }
       open={open}
@@ -287,9 +311,12 @@ function MachinePicker({
   const list = machines.filter((m) => m.online);
   return (
     <div className="dlg-machine-picker">
-      <button
-        type="button"
-        className="dlg-machine"
+      {/* XMON-24：机器 pill 切 shadcn ghost——皮肤全在 .dlg-machine
+          per-face（漆底压 hover/aria-expanded 底）；aria-haspopup 命中底座
+          active 位移豁免，无需中性化。ChevronDown 12px 免底座 16px。 */}
+      <Button
+        variant="ghost"
+        className="dlg-machine font-normal [&_svg:not([class*='size-'])]:size-auto"
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
@@ -297,7 +324,7 @@ function MachinePicker({
         <span className="dlg-machine-dot" data-on={cur?.online ?? false} />
         <span className="dlg-machine-name">{cur?.name ?? t('选择机器')}</span>
         <ChevronDown width={12} height={12} />
-      </button>
+      </Button>
       {open ? (
         <div className="dlg-machine-menu" role="listbox">
           {list.length === 0 ? (
@@ -305,9 +332,14 @@ function MachinePicker({
           ) : (
             list.map((m) => (
               <div key={m.id}>
-                <button
-                  type="button"
-                  className="dlg-machine-opt"
+                {/* XMON-24：菜单项切 shadcn ghost。老面是 preflight 裸
+                    button（透明底/零内边距/inline 排版），全仓无
+                    .dlg-machine-opt CSS——utilities 逐项还原：几何清零、
+                    hover 底/字色双中性（含 dark 默认档）、gap-1 近似老
+                    inline 空白间距（≈3.5px，PR body 声明近似）。 */}
+                <Button
+                  variant="ghost"
+                  className="dlg-machine-opt h-auto rounded-none gap-1 p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent dark:hover:bg-transparent hover:text-inherit active:not-aria-[haspopup]:translate-y-0"
                   data-active={m.id === selected}
                   onClick={() => {
                     onSelect(m.id);
@@ -316,7 +348,7 @@ function MachinePicker({
                 >
                   <span className="dlg-machine-dot" data-on={m.online} />
                   <span>{m.name}</span>
-                </button>
+                </Button>
               </div>
             ))
           )}
@@ -370,9 +402,13 @@ export function SyncButton({
   });
   const live = canSync && buildId !== null && machineId !== null;
   return (
-    <button
-      type="button"
-      className="dlg-sync"
+    // XMON-24：同步钮切 shadcn ghost——漆底/几何全在 .dlg-sync per-face
+    // （w100% h38 indigo-disabled 漆面压 hover；cursor:default 与底座
+    // disabled:pointer-events-none 的箭头光标同效）；老面无 :disabled
+    // 降档 → opacity 中性化。
+    <Button
+      variant="ghost"
+      className="dlg-sync font-normal disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0"
       disabled={!live || disabled || mut.isPending}
       onClick={() => {
         if (!live || buildId === null || machineId === null) return;
@@ -380,7 +416,7 @@ export function SyncButton({
       }}
     >
       {t('同步')}
-    </button>
+    </Button>
   );
 }
 

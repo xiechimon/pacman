@@ -1,6 +1,6 @@
 # 详情页 3-pane 结构与右 pane 视图(detail-right-pane,#366)
 
-详情路由 `/app/todo/:id` 是三栏贴合布局:240 侧栏 | fluid 线程列 | 488 右 pane(docs/design/todos.dev.md 网格)。右 pane 头部型选钮(方案▾/变更▾ 家族)在四个视图间切换:文档面(DocPane plan/changes/diff)与三个静止 section——分支与 PR / Token 用量 / 运行历史(原 #68 头部图标弹层退役为 pane 内容,不再弹模态)。fresh 相位(todo/queued/closed)右 pane 488 常位、渲染克制空态「尚无运行内容」(不折叠不隐藏)。detail-head 只留 更多 单图标 + 相位主钮;composer 是中心列唯一 12px 圆角卡片。
+详情路由 `/app/todo/:id` 是三栏贴合布局:240 侧栏 | fluid 线程列 | 488 右 pane(docs/design/todos.dev.md 网格)。右 pane 头部型选钮(方案▾/变更▾ 家族)在四个视图间切换:文档面(DocPane plan/changes/diff)与三个静止 section——分支与 PR / Token 用量 / 运行历史(原 #68 头部图标弹层退役为 pane 内容,不再弹模态)。fresh 相位(todo/queued/closed)右栏整栏不渲染——488 让给中心列任务简报(XMON-55 P0 #563)。detail-head 只留 更多 单图标 + 相位主钮;composer 是中心列唯一 12px 圆角卡片。
 
 ## Sub-features
 
@@ -12,7 +12,8 @@
 - `branch-section` 分支与 PR section = 原 dialog 同步 tab 字段件共享(BranchSyncFields/SyncButton)+ PR 行并入尾部;live 判别式同 branch-sync.md。
 - `token-section` Token 用量 section:总量/模型/四统计行静止渲染。
 - `history-section` 运行历史 section:运行行(glyph + 当前 chip + meta);原 dialog footer 重跑 close-stub 出账(failed 相位头部主钮承载真动作)。
-- `fresh-empty-state` fresh 相位右 pane 空占位(section 头也不渲染)。
+- `fresh-no-right-pane` fresh 相位右栏整栏不渲染(XMON-55 P0 #563:三 section 都要
+  build 载荷,文档面在无 build 时也只是空占位);三栏几何改在 thread 面钉。
 - `composer-sole-card` composer 16px 内衬锚中心列、12px 圆角 + recessed fill,是中心列唯一卡片;总管 FAB 贴中心列右下角、composer 在场时让位上移(#347 律保留)。
 
 ## How to get to it (user POV)
@@ -27,7 +28,7 @@ Preconditions:
 1. `launch.mjs` 起隔离栈,`doctor.mjs` 全 PASS。**不需要 daemon**——结构面与步执行无关(无 daemon 时 build 停 queued,足够驱动全部视图)。
 
 - **跑法。** `node <skill>/scripts/drive-detail-pane.mjs`(自含 seed:API 直建 provider/agent/project/todo,验完 fresh 面再 POST build 验 thread 面)。
-- **真值。** checks 全绿:三栏几何(240/488/贴合)、tab 组与三图标非存在、右 pane 空态、4 行 listbox、分支 section live 判别式(`.dlg-machine-picker` + `.dlg-dir--input` + 分支名 conv-<buildId>)、全程 `.dlg` 模态零出现、API `todo.latestBuildId` + SQLite todo/build 行双真值;截图 01–06。
+- **真值。** checks 全绿:fresh 面左中贴合 + 右栏不渲染 + 头部单图标、thread 面三栏几何(240/488/贴合)、tab 组非存在、4 行 listbox、分支 section live 判别式(`.dlg-machine-picker` + `.dlg-dir--input` + 分支名 conv-<buildId>)、全程 `.dlg` 模态零出现、API `todo.latestBuildId` + SQLite todo/build 行双真值;截图 01–06。
 - **fixture 面**(r7-16/17b/23 等场景冻结面 + composer 卡片几何)归 apps/web e2e `detail-3pane.spec.ts`,不走本 harness。
 
 ## Gotchas

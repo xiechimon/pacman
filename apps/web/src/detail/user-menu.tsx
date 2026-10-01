@@ -13,6 +13,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useLiveData } from '../api/provider.js';
+import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { USER_MAIL } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
@@ -65,12 +66,26 @@ export function UserMenu({ theme: initialTheme, floating = false }: UserMenuProp
         <div className="user-menu-row">
           {t('外观')}
           <span className="user-menu-seg">
-            <button type="button" data-active={theme === 'light'} onClick={() => select('light')}>
+            {/* XMON-24：分段钮切 shadcn ghost——皮肤全在 detail.css
+                `.user-menu-seg button` 后代选择器 per-face（元素仍是
+                button，选择器照旧命中；data-active 直通）；utilities 只清
+                font-medium 与 active 位移两条底座差额。 */}
+            <Button
+              variant="ghost"
+              className="font-normal active:not-aria-[haspopup]:translate-y-0"
+              data-active={theme === 'light'}
+              onClick={() => select('light')}
+            >
               {t('浅色')}
-            </button>
-            <button type="button" data-active={theme === 'dark'} onClick={() => select('dark')}>
+            </Button>
+            <Button
+              variant="ghost"
+              className="font-normal active:not-aria-[haspopup]:translate-y-0"
+              data-active={theme === 'dark'}
+              onClick={() => select('dark')}
+            >
               {t('深色')}
-            </button>
+            </Button>
           </span>
         </div>
         {ROWS.map(({ label, href }) => (

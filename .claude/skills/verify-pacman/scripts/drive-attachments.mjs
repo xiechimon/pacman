@@ -126,8 +126,11 @@ try {
   );
   await shot(page, '02-spec-token.png');
 
+  // spec 15 #394 单字段面：无标题输入——标题 = server 派生正文首行
+  // （derivePlaceholderTitle），故把标题写成正文首行、token 行随其后。
   const title = `附件验证任务 ${stamp}`;
-  await page.fill('.new-task-input', title);
+  const specWithToken = await page.locator('.new-task-spec').inputValue();
+  await page.fill('.new-task-spec', `${title}\n${specWithToken}`);
   await page.click('.new-task-save');
   await page.waitForSelector('.new-task-dialog', { state: 'hidden', timeout: 5000 });
   check('dialog-closed', true, '保存后 dialog 关闭');
