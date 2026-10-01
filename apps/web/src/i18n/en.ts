@@ -454,6 +454,9 @@ export const EN: Record<string, string> = {
   失败: 'Failed',
   默认: 'Default',
   开始任务: 'Start task',
+  // XMON-55 P0: the hint that rides the 开始 button on the fresh brief
+  '点开始后选执行机器，Agent 在你的机器上跑':
+    'Pick a machine after starting — the agent runs on your machine',
   '规划与执行分用不同 Agent': 'Use different agents for planning and execution',
   先做规划: 'Plan first',
   立即执行: 'Run now',
