@@ -4,9 +4,9 @@
 
 本目录及 SKILL.md 中凡出现 `docs/verify/...` 字样,均为 **2026-10-01 前旧归档纪律的历史记述**(当时证据随 PR 进仓)。现行纪律只一条:证据附 Multica 交付评论,见 SKILL.md「证据归档纪律」。
 
-Last updated: 2026-10-01（XMON-63 证据纪律改口径：证据只落 `.claude/verify-evidence/` 并附 Multica 交付评论，不进 `docs/verify/`、不为验证开 PR；本文件收尾纪律与下列历史归档记述同步标注）＋ 2026-10-01（XMON-41 新任务键位 N → C）＋ 2026-09-30（#485 Agent 详情编辑面）＋ 2026-09-29（spec 12/#362 G2-T2 + #366 详情页 3-pane 重排 + spec 13 #367 技能页只读本地目录面 + spec 13/#368 MCP 本地 config 只读面 + #371 skills 执行面注入 + spec 12/#361 G2-T4 + spec 12/#360 G2-T3 + spec 11/#354 + spec 12/#359 落地连续增）：
+Last updated: 2026-10-01（XMON-63 证据纪律改口径：证据只落 `.claude/verify-evidence/` 并附 Multica 交付评论，不进 `docs/verify/`、不为验证开 PR；同步按用户拍板删除验收记录存量 `docs/verify/XMON-41/`、`docs/verify/XMON-43/`、`integration/verify/xmon-43/` 三目录，其余历史目录未动。本文件收尾纪律与下列历史归档记述同步标注）＋ 2026-10-01（XMON-41 新任务键位 N → C）＋ 2026-09-30（#485 Agent 详情编辑面）＋ 2026-09-29（spec 12/#362 G2-T2 + #366 详情页 3-pane 重排 + spec 13 #367 技能页只读本地目录面 + spec 13/#368 MCP 本地 config 只读面 + #371 skills 执行面注入 + spec 12/#361 G2-T4 + spec 12/#360 G2-T3 + spec 11/#354 + spec 12/#359 落地连续增）：
 
-- XMON-41：新任务快捷键 N → C（键位随票维护）。新增定制 probe `scripts/drive-newtask-key.mjs`（正负成对：新键开 / 旧键 ×5 不开，三条渲染路径各一对 + 输入态守卫 + 侧栏行入口 + 保存全链；旧提交栈加 `--expect=old` 取基线对照）；`drive-hotkeys.mjs` 与 hotkeys.md / board-new-task.md 的角标与开面键同步改 C。live 验 18/18 PASS（subject）+ 12/12 PASS（基线，正负对照），hotkeys 全链复跑 14/14 PASS，证据 `docs/verify/XMON-41/`（历史归档路径，旧纪律）。
+- XMON-41：新任务快捷键 N → C（键位随票维护）。新增定制 probe `scripts/drive-newtask-key.mjs`（正负成对：新键开 / 旧键 ×5 不开，三条渲染路径各一对 + 输入态守卫 + 侧栏行入口 + 保存全链；旧提交栈加 `--expect=old` 取基线对照）；`drive-hotkeys.mjs` 与 hotkeys.md / board-new-task.md 的角标与开面键同步改 C。live 验 18/18 PASS（subject）+ 12/12 PASS（基线，正负对照），hotkeys 全链复跑 14/14 PASS，证据原在 `docs/verify/XMON-41/`（旧纪律归档路径；该目录已按用户拍板随本票删除，此处只留验证结论）。
 - #485：新增 agent-detail.md 条目 + 定制 probe `scripts/drive-agent-detail.mjs`（团队页卡链接 → 详情三 tab → 名称/职责/模型/权限四处编辑各对一次 server 真值 → 创建弹窗选模型落库）。**live 验 21/21 PASS，证据 docs/verify/485/（历史归档路径，旧纪律）**。fixture 面回归 = e2e agent-detail.spec + agent-create-model.spec。
 
 - spec 12 / #362 G2-T2：补 local 项目 daemon 执行面条目 local-daemon-executor.md（硬链接镜像 clone + conv 分支推回用户仓库 + merge 步 ff-only 落地 + github per-step token argv 纪律 + Files tab 禁用占位）；配方 = integration g2t2-local-lifecycle 等四面，live re-probe 待补。
