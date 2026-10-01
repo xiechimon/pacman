@@ -49,6 +49,28 @@ import { expect, type Page, test } from '@playwright/test';
 //     same hint through the shared consumption point
 // 14. the collapsed rail's search icon hovers the ⌘K hint (the expanded
 //     rows already carry their always-on badges)
+//
+// XMON-95 adds the new-task dialog's ⌘↵ (Ctrl+↵ off macOS) chord on
+// 保存并开始 — the first *surface-scoped* chord: it rides the same
+// useChordHotkey registration form, gated on the dialog's open flag, and
+// its guard exempts the dialog's own textarea (the ⌘J drawer-interior
+// exemption law transplanted — the chord that owns a surface must fire from
+// that surface's editable interior, or the autofocused spec textarea would
+// swallow it before it ever ran). Fixture 保存并开始 collapses to the save
+// path by documented design (use-new-task-surface.ts:297 — onSaveAndStart is
+// live-only), so the landing is the local card the 保存 button also lands.
+// 15. ⌘↵ and Ctrl+↵ inside the dialog fire 保存并开始 (card lands, dialog
+//     closes) — both platform receipts on one registration
+// 16. the dialog's dismiss chord stays scoped: with it closed, ⌘↵ on the
+//     board lands nothing (the enabled gate is what keeps a closed dialog's
+//     listener off the window)
+// 17. the disabled gate holds on the keyboard path too: an empty spec plus
+//     ⌘↵ creates no card (a chord that ignores the button's gate would save
+//     a blank task)
+// 18. plain ↵ in the spec textarea is NOT hijacked — it stays the newline
+//     key (no modifier, no fire, native default untouched)
+// 19. the 保存并开始 button carries a visible ⌘↵ badge at rest (the
+//     always-on form; kbd-hint's hover chip is the other face)
 
 const BOARD = '/app?scenario=01';
 const SCHEDULES = '/app/schedules?scenario=01';
@@ -378,4 +400,134 @@ test('the collapsed rail search icon hovers the ⌘K hint', async ({ page }) => 
   await railSearch.hover();
   await expect(hint).toBeVisible();
   await expect(hint).toHaveText('⌘K');
+});
+
+// ---- XMON-95: the new-task dialog's ⌘↵ chord on 保存并开始 ----------------
+
+/** Open the new-task dialog through the sidebar row (the #445 opener form). */
+async function openNewTask(page: Page) {
+  await page.goto(BOARD);
+  await page.locator('.sidebar-new-task').click();
+  const dialog = page.locator('.new-task-dialog');
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
+
+/** Card landed by the save path, titled by the spec's first line. */
+const landedCard = (page: Page, title: string) =>
+  page.locator('[data-column="todo"] .todo-card', { hasText: title });
+
+/** Chord press with the retry law: the listener registers in a passive
+ *  effect after the dialog's open commit, so a press fired the instant the
+ *  dialog paints can be lost. The loop ends on the *outcome* (the card
+ *  landing) rather than on a surface flipping visible — a lost press lands
+ *  nothing, so re-presses cannot double-fire, and a delivered one exits
+ *  before the next attempt. */
+async function pressUntilCard(page: Page, key: string, card: ReturnType<Page['locator']>) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.press(key);
+    const landed = await card
+      .waitFor({ state: 'visible', timeout: 1000 })
+      .then(() => true)
+      .catch(() => false);
+    if (landed) return;
+  }
+  throw new Error(`${key} never landed ${card}`);
+}
+
+test('⌘↵ and Ctrl+↵ inside the dialog fire 保存并开始 (card lands, dialog closes)', async ({
+  page,
+}) => {
+  const dialog = await openNewTask(page);
+  await dialog.locator('.new-task-spec').fill('⌘↵ 建的卡');
+  // The autofocused spec textarea is an editable target — the chord must
+  // still fire from it (dialog-interior exemption; without it the guard
+  // swallows the press and this wait times out).
+  await pressUntilCard(page, 'Meta+Enter', landedCard(page, '⌘↵ 建的卡'));
+  await expect(dialog).not.toBeVisible();
+
+  // Same registration, non-mac receipt: Ctrl+↵ lands a second card
+  await page.locator('.sidebar-new-task').click();
+  await expect(dialog).toBeVisible();
+  await dialog.locator('.new-task-spec').fill('Ctrl 建的卡');
+  await pressUntilCard(page, 'Control+Enter', landedCard(page, 'Ctrl 建的卡'));
+  await expect(dialog).not.toBeVisible();
+});
+
+test('with the dialog closed, ⌘↵ on the board lands nothing', async ({ page }) => {
+  await page.goto(BOARD);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  const cards = page.locator('[data-column="todo"] .todo-card');
+  const before = await cards.count();
+  // Six delivered presses of a bound chord would land six cards (or at
+  // least one) — a count that never moves is proof the listener is off the
+  // window while the dialog is shut.
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.press('Meta+Enter');
+    await page.waitForTimeout(120);
+    await expect(cards).toHaveCount(before);
+  }
+  await expect(dialog(page)).toHaveCount(0);
+});
+
+test('⌘↵ with an empty spec creates nothing (the button gate holds on the chord)', async ({
+  page,
+}) => {
+  const dialog = await openNewTask(page);
+  const cards = page.locator('[data-column="todo"] .todo-card');
+  const before = await cards.count();
+  await expect(dialog.locator('.new-task-start')).toBeDisabled();
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.press('Meta+Enter');
+    await page.waitForTimeout(120);
+    await expect(cards).toHaveCount(before);
+  }
+  await expect(dialog).toBeVisible();
+});
+
+test('⌘↵ under the 未保存闸 confirm layer saves nothing (the layer owns the screen)', async ({
+  page,
+}) => {
+  const dialog = await openNewTask(page);
+  await dialog.locator('.new-task-spec').fill('闸下不该落的卡');
+  const cards = page.locator('[data-column="todo"] .todo-card');
+  const before = await cards.count();
+  // 弄脏后点 × → 未保存闸确认层起来。该层是 dialog **之外**的兄弟层（#318），
+  // 所以 dialog 仍开着——闸只认 open 的话，⌘↵ 会在这句「要不要放弃？」之下把
+  // 任务保存并开始（真起一次 agent 跑）。确认层两个按钮都不是可编辑目标，
+  // 守卫拦不住，只能靠 enabled 在这一层缺席。
+  await dialog.locator('.new-task-close').click();
+  const layer = page.locator('.new-task-discard');
+  await expect(layer).toBeVisible();
+  // 六次投递若都送达会落六张卡（至少一张）；计数不动 = 和弦在这层缺席。
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.press('Meta+Enter');
+    await page.waitForTimeout(120);
+    await expect(cards).toHaveCount(before);
+  }
+  await expect(layer).toBeVisible();
+  await expect(dialog).toBeVisible();
+});
+
+test('plain ↵ in the spec textarea stays the newline key — no hijack', async ({ page }) => {
+  const dialog = await openNewTask(page);
+  const spec = dialog.locator('.new-task-spec');
+  await spec.fill('第一行');
+  await page.keyboard.press('Enter');
+  // the native default is untouched: the newline lands in the field and the
+  // dialog stays open
+  await expect(spec).toHaveValue('第一行\n');
+  await expect(dialog).toBeVisible();
+  await expect(page.locator('[data-column="todo"] .todo-card', { hasText: '第一行' })).toHaveCount(0);
+});
+
+test('the 保存并开始 button carries a visible ⌘↵ badge at rest', async ({ page }) => {
+  const dialog = await openNewTask(page);
+  const badge = dialog.locator('.new-task-start kbd');
+  // always-on form (not kbd-hint's hover chip): visible with no pointer on it
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveText('⌘↵');
+  // aria-hidden — the chip is a visual hint; the button's own name is its
+  // accessible label (a glyph inside the name would be read aloud)
+  await expect(badge).toHaveAttribute('aria-hidden', 'true');
 });
