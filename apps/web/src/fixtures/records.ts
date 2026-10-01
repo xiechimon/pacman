@@ -367,6 +367,9 @@ export interface MachineRow {
   /** Per-runtime 启用态（MACHINE_RUNTIMES subset; [] = all off）——驱动 mark
    *  原色/35% 透明两态。 */
   enabledRuntimes?: string[];
+  /** 机器层 shell 访问闸（XMON-113 R3 起是行内真控件；契约单源 =
+   *  shared machineRecordSchema.shellEnabled）。 */
+  shellEnabled?: boolean;
 }
 
 /** The six resource surfaces' row sets (issue #69). */

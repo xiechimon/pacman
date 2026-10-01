@@ -450,6 +450,39 @@
   opacity: 1;
 }
 
+/* 机器层 shell 开关（XMON-113）：行内唯一控件，贴行右缘。与左侧 runtime
+   mark / status pill 之间留 20px——mark 是展示、开关是控件，贴太近会被读成
+   同一组（#503 摘 mark 的歧义正是「这是不是又在开关 runtime」）。行内无
+   mark 无 pill 时（接入机未观测态）自己撑到右缘。 */
+.mach-shell {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mach-runtimes ~ .mach-shell,
+.res-pill ~ .mach-shell {
+  margin-left: 20px;
+}
+
+.mach-shell-label {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* 保存失败行（XMON-80/P2 同律的机器页位）：12px danger，落在机器卡上方——
+   开关回滚了，这行是「为什么弹回去了」的唯一说明。 */
+.mach-error {
+  margin: 0 0 8px;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 16px;
+}
+
 /* orange 自定义 tag beside custom provider names (r7 07)。#423 收编：
    components/ui Badge 底座；原形 = 无底无框无垫的纯文字 tag，Badge 默认档
    （h-5/px-2/border/rounded/text-xs 中重）在此全量退回 per-face 形。 */

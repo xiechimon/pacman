@@ -1,19 +1,22 @@
 #!/usr/bin/env node
 // verify-pacman drive-machines-local — machines 页本机行 + per-runtime 品牌
-// mark 全链（spec 11 A8/A9/A7，#353；先行地图 #354；#503 开关 → 品牌 mark）。
+// mark + 机器层 shell 开关全链（spec 11 A8/A9/A7，#353；先行地图 #354；
+// #503 开关 → 品牌 mark；XMON-113 行内接回 shell 开关）。
 //
 // 真用户路径：/app/resources/machines → 本机行钉列表首（hostname）→ 行内
 // pi / Claude Code 两个品牌 mark（启用 = 品牌原色，未启用 = 35% 透明，
-// read-only）→ reload 后展示态与 API 一致 →「添加机器」dialog 流程不变。
+// read-only）→ 机器层 shell 开关真点击（拨反 → 落库 → reload 回显 → 拨回）
+// →「添加机器」dialog 流程不变。
 //
-// 真值：GET /api/teams/:id/machines 记录（kind='local' + enabledRuntimes）
-// 与 UI mark 亮度分态（.mach-runtime--on）双真值一致；SQLite machine 行
-// kind / enabledRuntimes 列（A9 migration）。负向：「Pacman 托管机器」facade
-// 行已除；行内零交互控件（#503 摘除开关：无 role=switch / button）；副行已除
-// （无 .res-row-desc）；行无 chevron；本机行无删除控件（不可删）。
+// 真值：GET /api/teams/:id/machines 记录（kind='local' + enabledRuntimes +
+// shellEnabled）与 UI（mark 亮度分态 / 开关 aria-checked）一致；SQLite
+// machine 行 kind / enabledRuntimes / shellEnabled 列（A9 + XMON-108
+// migration）。负向：「Pacman 托管机器」facade 行已除；行内恰一个控件
+// （shell 开关），零 button；副行只承载该开关说明（无 id 尾巴 / 并发上限）；
+// 行无 chevron；本机行无删除控件（不可删）。
 //
-// 幂等设计：不假设 enabledRuntimes 初值——期望值从 API 态推导。同栈重跑不假红
-// （重验仍推荐重 launch）。
+// 幂等设计：不假设 enabledRuntimes / shellEnabled 初值——期望值从 API 态
+// 推导，shell 开关收尾拨回初值。同栈重跑不假红（重验仍推荐重 launch）。
 //
 // 先行地图语义（A12）：spec 11 实现票（machine 两列 migration + server 本机
 // seed + PATCH + machines 页重写）落地前本 probe 为红——每条 FAIL detail 指向
@@ -61,10 +64,12 @@ function check(name, ok, detail) {
   process.stdout.write(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  — ${detail}` : ''}\n`);
 }
 const artifacts = [];
-const shot = async (page, name) => {
-  await page.screenshot({ path: join(EVIDENCE, name) });
+const shot = async (page, name, selector) => {
+  // selector 给了就拍那一块（元素级证据：行内控件细节，全页图看不清）。
+  const target = selector ? page.locator(selector).first() : page;
+  await target.screenshot({ path: join(EVIDENCE, name) });
   artifacts.push(name);
-  process.stdout.write(`shot  ${name}\n`);
+  process.stdout.write(`shot  ${name}${selector ? `  — ${selector}` : ''}\n`);
 };
 
 const getJson = async (url) => {
@@ -109,6 +114,21 @@ const softText = async (page, selector) =>
     .innerText()
     .catch(() => '');
 const oneLine = (s) => (s ?? '').replace(/\s*\n\s*/g, ' / ').slice(0, 200);
+/** 开关态读数（base-ui Switch root 的 aria-checked）；元素缺失 = null。 */
+const switchChecked = async (page, selector) =>
+  page
+    .getAttribute(selector, 'aria-checked')
+    .then((v) => (v == null ? null : v === 'true'))
+    .catch(() => null);
+/** 轮询条件直到成立（写路径是异步的：点击 → PATCH → 落库，读数要等）。 */
+const pollUntil = async (fn, timeoutMs = 6000) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeoutMs) {
+    if ((await fn()) === true) return true;
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return false;
+};
 
 const PAGE_PATH = '/app/resources/machines';
 const SHELL = `[data-route="${PAGE_PATH}"]`;
@@ -250,29 +270,114 @@ try {
       : `#503：mark 亮度分态应等于 API enabledRuntimes 成员——UI pi=${piOn0} cc=${ccOn0} vs API [${apiRuntimes.join(', ')}]`,
   );
 
-  // 7) #503 负向：行内零交互控件（无 role=switch / button；mark 是 read-only 展示）
-  const ctlCount = localRowOk
-    ? await softCount(page, `${LOCAL_ROW} [role="switch"], ${LOCAL_ROW} button`)
-    : -1;
+  // 7) XMON-113：行内控件面 = 机器层 shell 开关**恰一个**。判据是「不许死
+  //    控件」而非「不许有控件」——#503 摘除的 per-runtime 开关全仓只写不读
+  //    （PR #507），shell 开关有消费方（XMON-108 R1 双闸 + 每命令预检）。
+  const SHELL_SW = `${LOCAL_ROW} .mach-shell-switch`;
+  const swCount = localRowOk ? await softCount(page, `${LOCAL_ROW} [role="switch"]`) : -1;
+  const btnCount = localRowOk ? await softCount(page, `${LOCAL_ROW} button`) : -1;
+  const swOnly = swCount === 1 && btnCount === 0;
   check(
-    'no-inline-controls',
-    ctlCount === 0,
-    ctlCount === 0
-      ? '本机行内零交互控件（开关已摘除，mark 为 read-only）'
-      : `#503：本机行不应再有交互控件——行内命中 ${ctlCount} 个 role=switch/button${ctlCount < 0 ? '（前置本机行缺失）' : ''}`,
+    'shell-switch-single',
+    swOnly,
+    swOnly
+      ? '本机行内恰一个控件 = .mach-shell-switch（无 button；per-runtime 位仍是 mark 展示）'
+      : `XMON-113：本机行应恰有一个 role=switch（shell 开关）、零 button——实测 switch=${swCount} button=${btnCount}${swCount < 0 ? '（前置本机行缺失）' : ''}`,
   );
 
-  // 8) #503 负向：副行已除（id 尾巴 / 并发上限行不存在）
-  const subCount = localRowOk ? await softCount(page, `${LOCAL_ROW} .res-row-desc`) : -1;
-  const noSub = subCount === 0 && !localRowText.includes('· max');
+  // 7b) 开关读真值：UI aria-checked === API machine.shellEnabled（幂等基线，
+  //     不假设初值）。
+  const apiShell0 = before.record?.shellEnabled === true;
+  const uiShell0 = await switchChecked(page, SHELL_SW);
   check(
-    'no-subline',
-    noSub,
-    noSub
-      ? '本机行无副行（id 尾巴 / 并发上限行已除）'
-      : `#503：本机行副行应整行删除——实测 .res-row-desc=${subCount} 个，行文本「${oneLine(localRowText)}」`,
+    'shell-ui-api-consistent',
+    uiShell0 === apiShell0,
+    uiShell0 === apiShell0
+      ? `开关读真值一致（API shellEnabled=${apiShell0} / UI aria-checked=${uiShell0}）`
+      : `XMON-113：开关态应等于 GET machines 的 shellEnabled——API=${apiShell0} UI=${uiShell0}`,
+  );
+
+  // 8) 副行只剩「这一个控件是什么」（#503 的 id 尾巴 / 并发上限仍负向）
+  const subText = localRowOk ? await softText(page, `${LOCAL_ROW} .res-row-desc`) : '';
+  const subOk = subText.includes('远程 shell') && !localRowText.includes('· max');
+  check(
+    'subline-shell-hint-only',
+    subOk,
+    subOk
+      ? `副行 = shell 开关说明（「${oneLine(subText)}」）`
+      : `XMON-113：副行应只承载 shell 开关说明、且不含 id 尾巴 / 并发上限——实测 .res-row-desc「${oneLine(subText)}」，行文本「${oneLine(localRowText)}」`,
   );
   await shot(page, '03-marks.png');
+
+  // 8b) 开关写全链：真点击 → PATCH → API 回读 → SQLite 列 → reload 回显。
+  //     目标值由 API 初值取反（幂等：同栈重跑不假红），收尾拨回初值。
+  // （乐观更新这一条本 probe 不断言：localhost 往返比 React 重渲染还快，
+  // 读数分不出先后。它的确定性钉法在 e2e——按住 PATCH 响应再读开关态。）
+  const target = !apiShell0;
+  let writeOk = false;
+  let dbShell = null;
+  let uiAfterReload = null;
+  if (swOnly) {
+    await page.click(SHELL_SW).catch(() => {});
+    writeOk = await pollUntil(async () => {
+      const now = await fetchLocalMachine(teamId);
+      return now.record?.shellEnabled === target;
+    });
+  }
+  check(
+    'shell-write-api',
+    writeOk,
+    writeOk
+      ? `点击后 API 回读 shellEnabled=${target}（写入真落库，初值 ${apiShell0}）`
+      : `XMON-113：拨开关应经 PATCH /api/machines/{id} 落库——API 回读未变（期望 ${target}）`,
+  );
+  const dbShellRes =
+    localId != null
+      ? dbQuery((db) => ({
+          row: db.prepare('SELECT shellEnabled FROM machine WHERE id = ?').get(localId),
+        }))
+      : { ok: false, skipped: true, reason: 'prune' };
+  dbShell = dbShellRes.row?.shellEnabled;
+  const dbShellBool = dbShell === 1 || dbShell === true;
+  check(
+    'shell-write-db',
+    dbShellBool === target,
+    dbShellBool === target
+      ? `SQLite machine.shellEnabled=${dbShell}（与 API 写法一致）`
+      : `XMON-113：SQLite machine.shellEnabled 应随写入变化——实测 ${JSON.stringify(dbShell ?? dbShellRes.reason)}（期望 ${target}）`,
+  );
+  await shot(page, '03b-shell-flipped.png');
+  await shot(page, '03b-row-zoom.png', LOCAL_ROW);
+
+  // 8c) reload 持久回显
+  await page.reload();
+  await page.waitForSelector(SHELL, { timeout: 15_000 }).catch(() => {});
+  uiAfterReload = await switchChecked(page, SHELL_SW);
+  check(
+    'shell-persist-reload',
+    uiAfterReload === target,
+    uiAfterReload === target
+      ? `reload 后开关回显 ${target}（读侧投影持久）`
+      : `XMON-113：reload 后开关应回显写入值——实测 ${uiAfterReload}（期望 ${target}）`,
+  );
+  await shot(page, '03c-shell-after-reload.png');
+
+  // 8d) 收尾：拨回初值，栈留原样（幂等重跑的前提）
+  const restored = await (async () => {
+    if (!swOnly) return false;
+    await page.click(SHELL_SW).catch(() => {});
+    return pollUntil(async () => {
+      const now = await fetchLocalMachine(teamId);
+      return now.record?.shellEnabled === apiShell0;
+    });
+  })();
+  check(
+    'shell-restore',
+    restored,
+    restored
+      ? `开关已拨回初值 ${apiShell0}（栈状态复原）`
+      : `XMON-113：收尾应把开关拨回初值 ${apiShell0}——未复原`,
+  );
 
   // 9) A9：SQLite machine 行真值（kind + enabledRuntimes JSON，与 API 同集）
   const dbTruth =

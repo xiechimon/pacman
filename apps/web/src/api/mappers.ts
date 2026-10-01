@@ -774,6 +774,7 @@ export function mapMachines(rows: MachineRecord[]): MachineRow[] {
     name: m.name,
     online: m.online,
     enabledRuntimes: m.enabledRuntimes,
+    shellEnabled: m.shellEnabled,
   }));
 }
 

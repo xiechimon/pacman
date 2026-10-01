@@ -1,13 +1,15 @@
-// machines 本地化 fixture 面钉（spec 11 A7/A8/A9，#357；#503 开关 → 品牌 mark）。
+// machines 本地化 fixture 面钉（spec 11 A7/A8/A9，#357；#503 开关 → 品牌 mark；
+// XMON-113 行内接回一个活控件 = 机器层 shell 开关）。
 // live 面全链真值 = .claude/skills/verify-pacman/scripts/drive-machines-local.mjs
 // （API+SQLite+UI 三向对照）；本 spec 钉 fixture canon 展示形：
 // 1. 本机行钉列表首（data-kind="local" + data-machine-id + hostname canon）
 // 2. 「Pacman 托管机器」facade 行已除（负向）
 // 3. per-runtime 品牌 mark 在位（data-runtime），亮度分态 = fixture enabledRuntimes canon
-// 4. 行内零交互控件（#503 摘除开关：无 role=switch / button，负向）
-// 5. 副行已除（#503：id 尾巴 / 并发上限行不存在，负向）
+// 4. 行内恰一个控件 = shell 开关（XMON-113）；button / per-runtime switch 仍无（负向）
+// 5. 副行只承载 shell 开关说明（#503 的 id 尾巴 / 并发上限仍负向）
 // 6. 本机行不可删（行内无删除类控件，负向）
 // 7. 行无 chevron 可点感装饰（A7 负向）
+// 开关的读写/回滚行为面（live 打桩）在 machines-shell-switch.spec.ts。
 
 import { expect, test } from '@playwright/test';
 
@@ -50,15 +52,28 @@ test('per-runtime 品牌 mark：两个在位 + 亮度分态 = enabledRuntimes ca
   await expect(cc).not.toHaveClass(/mach-runtime--on/);
 });
 
-test('行内零交互控件（#503 摘除开关，负向）', async ({ page }) => {
+// XMON-113：行内控件面自 #503 的「零控件」改成「恰一个活控件」= 机器层 shell
+// 开关。判据不是「行内不许有控件」，而是「不许有死控件」——#503 摘除的
+// per-runtime 开关全仓只写不读（PR #507），shell 开关有真实消费方（XMON-108
+// R1 双闸 + 每命令预检）。故本条从纯负向改为「恰一个 + 其余仍无」：仍钉死钮
+// （button / 删除 / chevron 归下两条），且 per-runtime 的 switch 不许回来。
+test('行内控件面 = 机器 shell 开关恰一个（XMON-113；其余仍无）', async ({ page }) => {
   await page.goto(MACHINES);
-  await expect(page.locator(`${LOCAL_ROW} [role="switch"]`)).toHaveCount(0);
+  await expect(page.locator(`${LOCAL_ROW} [role="switch"]`)).toHaveCount(1);
+  await expect(page.locator(`${LOCAL_ROW} .mach-shell-switch`)).toHaveCount(1);
   await expect(page.locator(`${LOCAL_ROW} button`)).toHaveCount(0);
+  // per-runtime 位仍是 mark 展示面，不是控件（#503 负向）。
+  await expect(page.locator(`${LOCAL_ROW} .mach-runtime [role="switch"]`)).toHaveCount(0);
 });
 
-test('副行已除（#503：id 尾巴 / 并发上限行不存在，负向）', async ({ page }) => {
+// 副行仍只承载「这一个控件是什么」：id 尾巴与并发上限行不许回来。文案走
+// {tool} 插值（shared AGENT_TOOL_SHELL 单源），故断言按插值后的成品串钉。
+test('副行只剩 shell 开关说明（#503 的 id 尾巴 / 并发上限不许回来）', async ({ page }) => {
   await page.goto(MACHINES);
-  await expect(page.locator(`${LOCAL_ROW} .res-row-desc`)).toHaveCount(0);
+  await expect(page.locator(`${LOCAL_ROW} .res-row-desc`)).toHaveCount(1);
+  await expect(page.locator(`${LOCAL_ROW} .res-row-desc`)).toHaveText(
+    '已授权「远程 shell」的 Agent 可在该机器上执行命令。',
+  );
   await expect(page.locator(LOCAL_ROW)).not.toContainText('· max');
 });
 

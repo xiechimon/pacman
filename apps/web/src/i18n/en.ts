@@ -642,6 +642,10 @@ export const EN: Record<string, string> = {
   去添加密钥: 'Add a secret',
   // XMON-80/P2：权限 tab 保存失败的可见反馈。
   '保存失败，请重试。': 'Save failed. Try again.',
+  // XMON-113：机器行 shell 开关的副文案（机器侧半边；{tool} 插值 = 上面那条
+  // AGENT_TOOL_SHELL 的 en 值，两层开关共用同一词）。
+  '已授权「{tool}」的 Agent 可在该机器上执行命令。':
+    'Agents you have granted {tool} to can run commands on this machine.',
   '暂无 MCP 服务器。': 'No MCP servers yet.',
   团队密钥: 'Team secrets',
   // shared canon（packages/shared/src/records/agent.ts、memory.ts），经 t()

@@ -33,6 +33,7 @@ import type {
   OAuthAuthorizeResponse,
   PatchAgentBody,
   PatchChiefBody,
+  PatchMachineBody,
   PlanRow,
   ProjectFileResponse,
   ProjectRecord,
@@ -651,23 +652,26 @@ export function useApiMutations(teamId: string | undefined) {
       mutationFn: (id: string) => api.del<void>(`/api/schedules/${id}`),
       onSuccess: invalidateAll,
     }),
-    // 机器 per-runtime 写回（spec 11 A8/A9，#357）：enabledRuntimes 全量替换。
-    // #503 起机器页不再渲染开关（mark 为 read-only 展示），本 mutation 作为
-    // 该字段的 web 侧唯一写入口保留，控件面接回来时直接用。
-    patchMachineRuntimes: useMutation({
-      mutationFn: (input: { id: string; enabledRuntimes: string[] }) =>
-        api.patch<MachineRecord>(`/api/machines/${input.id}`, {
-          enabledRuntimes: input.enabledRuntimes,
-        }),
+    // 机器记录写回（spec 11 A8/A9，#357；XMON-113 起承载 shellEnabled 开关）。
+    // body 单字段可选、缺省字段不动（shared patchMachineBodySchema，XMON-108
+    // R1 起）——故这里只发调用点给的那个字段：连带发 enabledRuntimes 会按该
+    // 列的全量替换语义把现值洗掉。乐观更新 + 失败回滚到快照（onMutate 的
+    // 返回值）：失败时若只发 invalidate，重取请求在网络故障下同样失败，界面
+    // 会停在那个从未落库的值上。成功才 invalidate = 用服务端回执收口。
+    patchMachine: useMutation({
+      mutationFn: (input: { id: string; body: PatchMachineBody }) =>
+        api.patch<MachineRecord>(`/api/machines/${input.id}`, input.body),
       onMutate: (input) => {
+        const previous = qc.getQueryData<MachineRecord[]>(['machines', teamId]);
         qc.setQueryData<MachineRecord[]>(['machines', teamId], (rows) =>
-          (rows ?? []).map((m) =>
-            m.id === input.id ? { ...m, enabledRuntimes: input.enabledRuntimes } : m,
-          ),
+          (rows ?? []).map((m) => (m.id === input.id ? { ...m, ...input.body } : m)),
         );
+        return { previous };
       },
       onSuccess: invalidateAll,
-      onError: invalidateAll,
+      onError: (_error, _input, context) => {
+        qc.setQueryData<MachineRecord[]>(['machines', teamId], context?.previous ?? []);
+      },
     }),
     // body 单源 = shared createProjectBodySchema（spec 12 / #360：kind +
     // localPath / githubRepo 契约面；既有 repoKind 调用点同义兼容）。
