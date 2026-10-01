@@ -93,6 +93,7 @@ export function ensureChief(deps: ChiefDeps, teamId: string): ChiefRow {
       agentId: null,
       thinkingLevel: null,
       compactionModel: null, // 默认「与 Chief 相同」（#203）
+      model: null, // 默认继承绑定 Agent 模型（#615）
       charter: '', // raw 观测默认空串（chief-record-testA.json 一手）
       watches: [],
       wakes: [],
@@ -114,6 +115,7 @@ function toChiefRecord(row: ChiefRow): ChiefGetResponse['chief'] {
     agent: row.agentId !== null ? { agentId: row.agentId } : null,
     charter: row.charter,
     compactionModel: row.compactionModel,
+    model: row.model,
     lastTurnAt: row.lastTurnAt,
     createdAt: row.createdAt,
     tz: row.tz,
@@ -213,6 +215,8 @@ export function patchChief(
   }
   if (body.charter !== undefined) sets.charter = body.charter ?? '';
   if (body.compactionModel !== undefined) sets.compactionModel = body.compactionModel;
+  // #615 主模型覆盖槽：undefined = 不动，null = 清空回绑定 Agent 继承。
+  if (body.model !== undefined) sets.model = body.model;
   if (Object.keys(sets).length > 0) {
     deps.db.update(chief).set(sets).where(eq(chief.id, row.id)).run();
   }

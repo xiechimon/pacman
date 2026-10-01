@@ -38,7 +38,7 @@ import {
 import { type ChiefToolCtx, executeChiefTool } from '../src/services/chief-tools.js';
 import { planDocumentDiff } from '../src/services/documents.js';
 import { getTodo, setTodoPhase } from '../src/services/todos.js';
-import { bootServer, postProject, req, type TestServer } from './helpers.js';
+import { bootServer, issueApiKey, postProject, req, type TestServer } from './helpers.js';
 
 const AGENT_ID = 'agent-chief-1';
 const AGENT2_ID = 'agent-chief-2';
@@ -278,6 +278,76 @@ describe('总管设置 4 tab + PATCH /chief（r5 §2）', () => {
     expect(((await cleared.json()) as Env).chief.compactionModel).toBeNull();
     const after = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
     expect(after.chief.compactionModel).toBeNull();
+  });
+
+  test('PATCH /chief model 槽往返：写→GET 回显同值；缺省不动；null 清空回绑定 Agent 继承（#615）', async () => {
+    type Env = { chief: { model: { provider: string; modelId: string } | null } };
+    // 默认 null（= 继承绑定 Agent 模型）。
+    const fresh = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
+    expect(fresh.chief.model).toBeNull();
+    // 写 → 响应回显同值。
+    const model = { provider: 'stub-gw', modelId: 'm-override' };
+    const set = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, { model });
+    expect(set.status).toBe(200);
+    expect(((await set.json()) as Env).chief.model).toEqual(model);
+    // GET 回显同值。
+    const got = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
+    expect(got.chief.model).toEqual(model);
+    // 缺省不动：PATCH 别的槽不清主模型覆盖。
+    const other = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, { charter: '不动它' });
+    expect(((await other.json()) as Env).chief.model).toEqual(model);
+    // null 清空 → GET 回显 null（回继承）。
+    const cleared = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, { model: null });
+    expect(cleared.status).toBe(200);
+    expect(((await cleared.json()) as Env).chief.model).toBeNull();
+    const after = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
+    expect(after.chief.model).toBeNull();
+  });
+
+  test('chief 步 claim 载荷消费 model 覆盖：覆盖在 → 覆盖值；null → 绑定 Agent 模型（#615）', async () => {
+    // 机器面（machine-wire 同配方）：发行 key → Bearer key enroll 拿 machine
+    // token → Bearer token claim。pending step 在队时 claim 立即返回。
+    const plain = await issueApiKey(s);
+    const enroll = await s.app.request('/api/machine/enroll', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${plain}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ teamId, name: 'chief-override-probe', cliVersion: '0.1.0' }),
+    });
+    expect(enroll.status).toBe(200);
+    const { token } = (await enroll.json()) as { token: string };
+    const claim = async () => {
+      const res = await s.app.request('/api/machine/tasks/claim', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { step: { agent: { modelId: string } } | null };
+      if (body.step === null) throw new Error('claim 空手：chief 步未入队或被抢');
+      return body.step.agent.modelId;
+    };
+    const turn = async (content: string) => {
+      const send = await req(s.app, 'POST', `/api/teams/${teamId}/chief/threads`, { content });
+      expect(send.status).toBe(201);
+    };
+
+    // 无覆盖 → 绑定 Agent 模型（seedAgent 默认 stub-model）。
+    await turn('覆盖前回合。');
+    expect(await claim()).toBe('stub-model');
+
+    // 覆盖在 → 载荷带覆盖值（provider+modelId 都换）。
+    const override = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, {
+      model: { provider: 'stub-gw', modelId: 'm-override' },
+    });
+    expect(override.status).toBe(200);
+    await turn('覆盖中回合。');
+    expect(await claim()).toBe('m-override');
+
+    // 清空 → 回绑定 Agent 模型。
+    const cleared = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, { model: null });
+    expect(cleared.status).toBe(200);
+    await turn('清空后回合。');
+    expect(await claim()).toBe('stub-model');
   });
 
   test('PATCH /chief compactionModel 裸字符串/缺字段 → 400（#203）', async () => {
