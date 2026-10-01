@@ -17,7 +17,7 @@
 
 import type { TodoRecord as WireTodo } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
   useApiMutations,
@@ -51,8 +51,7 @@ import { localTodo, overlayContent } from '../fixtures/fixtures.js';
 import type { FixtureSet, OverlayState, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
-import { NewTaskDialog } from '../overlay/new-task-dialog.js';
-import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
+import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 // shell styles live with the board surface; the settings view (101–104)
 // unmounts BoardSurface but keeps the shell, so the route imports them too
@@ -334,11 +333,11 @@ export function BoardPage() {
     },
     [fixture],
   );
-  const {
-    openDialog: openNewTask,
-    firstAgentId,
-    dialogProps: newTaskDialogProps,
-  } = useNewTaskSurface(fixture, { fixtureTodos, eager: true, onFixtureSave });
+  // XMON-93 隔离面：dialog 的 open/正文态住进 NewTaskSurfaceRoot 叶子内部，
+  // 开合与输入不再整板重渲染（原 useNewTaskSurface 住本页 = ESC 关闭触发
+  // 全量卡片同步重渲染，退场动画掉帧）。opener 走 ref 读，引用恒定。
+  const newTaskApiRef = useRef<NewTaskSurfaceApi | null>(null);
+  const openNewTask = useCallback(() => newTaskApiRef.current?.openDialog(), []);
   // Modal overlays over the board (issue #68): the accept dialog opens from
   // the review card's 完成 button (r7 34) or the scenario fixture; the
   // branch dialog from the card's branch icon.
@@ -376,6 +375,9 @@ export function BoardPage() {
   const startBuild = useCallback(
     (todo: TodoRecord, withPlan: boolean) => {
       if (!live) return;
+      // XMON-93：firstAgentId 点击瞬间从隔离面 ref 取——原 props 通路也只在
+      // 点击时被消费，取值时序语义不变（members 落定后恒为最新）。
+      const firstAgentId = newTaskApiRef.current?.firstAgentId ?? null;
       mutations.startBuilds.mutate({
         projectId: todo.projectId,
         todoIds: [todo.id],
@@ -386,7 +388,7 @@ export function BoardPage() {
         withPlan,
       });
     },
-    [live, mutations.startBuilds, firstAgentId],
+    [live, mutations.startBuilds],
   );
 
   // 拖拽落位（#73 / M5 / #160）：fixture = 本地集；live = 逐卡增量 PATCH
@@ -511,10 +513,14 @@ export function BoardPage() {
         onThread={onThread}
         onNewThread={onNewThread}
       />
-      {/* #389: dialog 接线全走 useNewTaskSurface（侧栏 C 热键/新任务行
-          的 opener 也指这里——openNewTask）；fixture 保存落点 = 本页
-          onFixtureSave 本地卡 append（#66 律）。 */}
-      <NewTaskDialog {...newTaskDialogProps} />
+      {/* #389: dialog 接线全走新建任务面（侧栏 C 热键/新任务行的 opener 也
+          指这里——openNewTask）；fixture 保存落点 = 本页 onFixtureSave 本地
+          卡 append（#66 律）。XMON-93：面体住隔离根叶子，本页只持 ref。 */}
+      <NewTaskSurfaceRoot
+        fixture={fixture}
+        opts={{ fixtureTodos, eager: true, onFixtureSave }}
+        apiRef={newTaskApiRef}
+      />
       <button
         type="button"
         className="chief-fab"
