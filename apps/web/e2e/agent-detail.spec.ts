@@ -110,19 +110,45 @@ test('概览：职责位渲染 canon 空态并可编辑', async ({ page }) => {
   await expect(detail.locator('.agent-role-text')).toHaveText('负责构建与合并');
 });
 
-test('概览：模型选择器打开后列出 provider 与模型名', async ({ page }) => {
+// t-0024 两级化：运行时档（一级 = provider 维）与模型档（二级按一级过滤）。
+// fixture agent = r3-gw / claude-sonnet-5；候选源另有 claude-code 段四模型——
+// 二级菜单里不得出现（过滤没生效就是「又混回一列」的退形）。
+test('概览：运行时选择器列服务商与内置行，模型菜单只列当前运行时的模型', async ({ page }) => {
   const detail = await openDetail(page);
+  const runtimeTrigger = detail.locator('.agent-runtime-select');
+  await expect(runtimeTrigger).toContainText('r3-gw');
+  await runtimeTrigger.click();
+  const runtimeMenu = detail.locator('.agent-runtime-menu');
+  await expect(runtimeMenu).toBeVisible();
+  // 首行恒是「内置 (pi)」清空行（provider null 的显示形）；其余按 provider 分组。
+  await expect(runtimeMenu.locator('.agent-runtime-row').first()).toContainText('内置 (pi)');
+  await expect(runtimeMenu.locator('.agent-runtime-row', { hasText: 'r3-gw' })).toHaveCount(1);
+  await expect(runtimeMenu.locator('.agent-runtime-row', { hasText: 'Claude Code' })).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  // 二级：当前运行时 r3-gw 名下只有 claude-sonnet-5，claude-code 段模型不混入。
   await detail.locator('.agent-model-select').click();
   const menu = detail.locator('.agent-model-menu');
   await expect(menu).toBeVisible();
-  // 首行恒是「未设置模型」清空行（可空槽），模型行按模型名定位。
   await expect(menu.locator('.agent-model-row').first()).toHaveText(/未设置模型/);
-  // 模型行按 provider 定位：同一个模型 id 可能在 custom providers 与
-  // claude-code 段各有一行（toModelOptions 的并集语义），只有
-  // provider 位能把它们分开。
-  const row = menu.locator('.agent-model-row', { hasText: 'r3-gw' });
+  const row = menu.locator('.agent-model-row', { hasText: 'claude-sonnet-5' });
   await expect(row).toHaveCount(1);
-  await expect(row).toContainText('claude-sonnet-5');
+  await expect(row).not.toContainText('r3-gw');
+  await expect(menu).not.toContainText('claude-opus-4-5');
+});
+
+// 换运行时的级联：modelId 只在 provider 内有意义，切走必须清掉（否则存值变成
+// 跨 provider 的脏模型）。fixture 面 patch 走本地回显，回读即断言。
+test('概览：切换运行时清掉模型，二级候选换成新运行时的模型', async ({ page }) => {
+  const detail = await openDetail(page);
+  await detail.locator('.agent-runtime-select').click();
+  await detail.locator('.agent-runtime-row', { hasText: 'Claude Code' }).click();
+  await expect(detail.locator('.agent-runtime-select')).toContainText('Claude Code');
+  await expect(detail.locator('.agent-model-select')).toContainText('未设置模型');
+  await detail.locator('.agent-model-select').click();
+  const menu = detail.locator('.agent-model-menu');
+  // claude-haiku-4-5 只活在 claude-code 段——它出现才证明二级真换了源
+  // （sonnet-5 两段同名，不能拿它当判据）。
+  await expect(menu.locator('.agent-model-row', { hasText: 'claude-haiku-4-5' })).toHaveCount(1);
 });
 
 // 几何钉：菜单贴触发钮右缘、向下展开，且整块留在内容列内。
@@ -134,25 +160,31 @@ test('概览：模型选择器打开后列出 provider 与模型名', async ({ p
 // XMON-117 把触发钮从字段列左缘挪到模板行的**右缘**（个人页模板的值槽在
 // 行右），锚边随之从左翻到右：左锚会让菜单往右长、出列右缘被裁——这正是
 // 下面两条边界断言钉的。
-test('概览：模型菜单贴触发钮右缘且在内容列内（几何）', async ({ page }) => {
+test('概览：两级菜单贴触发钮右缘且在内容列内（几何）', async ({ page }) => {
   const detail = await openDetail(page);
-  const trigger = detail.locator('.agent-model-select');
-  await trigger.click();
-  const menu = detail.locator('.agent-model-menu');
-  await expect(menu).toBeVisible();
-  const tb = await trigger.boundingBox();
-  const mb = await menu.boundingBox();
-  expect(tb).not.toBeNull();
-  expect(mb).not.toBeNull();
-  if (tb === null || mb === null) return;
-  expect(Math.abs(mb.x + mb.width - (tb.x + tb.width))).toBeLessThanOrEqual(8);
-  expect(Math.abs(mb.y - (tb.y + tb.height))).toBeLessThanOrEqual(8);
   // 两缘都留在内容列内（列 = 768 宽居中；越出去就被裁）。
-  const col = await detail.locator('xpath=ancestor::div[contains(@class,"res-col")]').boundingBox();
+  const col = await detail
+    .locator('xpath=ancestor::div[contains(@class,"res-col")]')
+    .boundingBox();
   expect(col).not.toBeNull();
   if (col === null) return;
-  expect(mb.x).toBeGreaterThanOrEqual(col.x - 1);
-  expect(mb.x + mb.width).toBeLessThanOrEqual(col.x + col.width + 1);
+  // 一级运行时菜单与二级模型菜单同律：右锚贴触发钮右缘、向下展开。
+  for (const prefix of ['agent-runtime', 'agent-model']) {
+    const trigger = detail.locator(`.${prefix}-select`);
+    await trigger.click();
+    const menu = detail.locator(`.${prefix}-menu`);
+    await expect(menu).toBeVisible();
+    const tb = await trigger.boundingBox();
+    const mb = await menu.boundingBox();
+    expect(tb).not.toBeNull();
+    expect(mb).not.toBeNull();
+    if (tb === null || mb === null) return;
+    expect(Math.abs(mb.x + mb.width - (tb.x + tb.width))).toBeLessThanOrEqual(8);
+    expect(Math.abs(mb.y - (tb.y + tb.height))).toBeLessThanOrEqual(8);
+    expect(mb.x).toBeGreaterThanOrEqual(col.x - 1);
+    expect(mb.x + mb.width).toBeLessThanOrEqual(col.x + col.width + 1);
+    await page.keyboard.press('Escape');
+  }
 });
 
 test('概览：思考强度是只读值行，无模型时显示「默认」', async ({ page }) => {
@@ -204,11 +236,12 @@ test('权限 tab：6 档各带说明副文案', async ({ page }) => {
 });
 
 // 运行时档（原版概览在模型之上有这一档）：wire 无独立字段，值由 provider 位
-// 派生——custom provider 直接出 id。
+// 派生——custom provider 直接出 id。t-0024 起这一档从只读行变成一级选择器
+// （触发钮回读同词），行序仍在模型之上。
 test('概览：运行时档在模型之上，值由 provider 派生', async ({ page }) => {
   const detail = await openDetail(page);
-  const runtime = detail.locator('.agent-runtime');
-  await expect(runtime).toHaveText('r3-gw');
+  const runtime = detail.locator('.agent-runtime-select');
+  await expect(runtime).toContainText('r3-gw');
   const labels = detail.locator('.agent-field-label');
   const texts = await labels.allTextContents();
   expect(texts.indexOf('运行时')).toBeGreaterThan(-1);

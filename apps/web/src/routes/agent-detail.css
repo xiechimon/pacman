@@ -87,8 +87,8 @@
   resize: vertical;
 }
 
-.agent-thinking,
-.agent-runtime {
+/* 运行时档 t-0024 起是选择器触发钮（.agent-runtime-select），只读 span 退役。 */
+.agent-thinking {
   color: var(--text-primary);
   font-size: 13px;
 }
@@ -176,6 +176,7 @@
    的 wrap 按内容定宽，这条不再需要。 */
 
 .agent-model-select,
+.agent-runtime-select,
 .agent-skill-select {
   align-items: center;
   border: 1px solid var(--card-border);
@@ -190,7 +191,8 @@
   padding: 0 10px;
 }
 
-.dlg-agent-model-select {
+.dlg-agent-model-select,
+.dlg-agent-runtime-select {
   align-items: center;
   border: 1px solid var(--card-border);
   background: var(--surface);
@@ -214,13 +216,21 @@
   min-width: 220px;
 }
 
+/* 一级运行时菜单：分组名都是短标识（r3-gw / Claude Code），180 够装；同模型
+   菜单的「按内容撑开」律，min-width 只是地板。 */
+.ui-select-menu.agent-runtime-menu,
+.ui-select-menu.dlg-agent-runtime-menu {
+  min-width: 180px;
+}
+
 /* 概览 tab 贴触发钮**右**缘向左展开（XMON-117 起触发钮在模板行的值槽位，即行
    右缘；此前是散块字段列的左缘，锚的是 `left: 0`）。锚错边就会往**外**长：资源
    族的面板体横向是裁的（#486 起 `.res-col` 自持滚动，`overflow-x` 计算成 hidden；
    #494 把滚动层挪到全宽 `.res-body`，横向裁切仍在），出列右缘的那一截整块看不
    见。壳的缺省贴左缘，故这里只单盖概览面——弹窗那一面（dlg-*）的触发钮在弹窗
    内撑满行宽，仍贴左，见下面那条单盖规则。 */
-.ui-select-menu.agent-model-menu {
+.ui-select-menu.agent-model-menu,
+.ui-select-menu.agent-runtime-menu {
   left: auto;
   right: 0;
 }
@@ -244,8 +254,12 @@
    菜单已滚到顶、再滚只会把它们推得更远，永远不可达。
    192 = 这段距离留 ≥8px 余量：整块落在 body 内，超出的行交给菜单自己滚动
    （6 行可见）。改这条前先量 `.dlg-agent-model-select` 上缘与 `.dlg-body` 上缘
-   之差，封顶值不得越过去——agent-create-model.spec 的几何断言钉着它。 */
-.ui-select-menu.dlg-agent-model-menu {
+   之差，封顶值不得越过去——agent-create-model.spec 的几何断言钉着它。
+   t-0024 两级化：运行时槽住进原模型槽上方那一格，它的触发钮上缘到 body 上缘
+   ≈ 原模型槽的 200~202px（192 封顶对它刚好同律成立）；模型槽下移一格，这段
+   距离只增不减，同一条封顶值两槽共用。 */
+.ui-select-menu.dlg-agent-model-menu,
+.ui-select-menu.dlg-agent-runtime-menu {
   top: auto;
   bottom: calc(100% + 4px);
   /* 横向锚回触发钮左缘：这一面的触发钮撑满行宽（width: 100%），菜单比它宽时右
