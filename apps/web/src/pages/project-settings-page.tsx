@@ -18,6 +18,7 @@ import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useApiMutations, useProjects } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { Button } from '../components/ui/button.js';
 import { Panel, PanelHead, PanelLabel, PanelRow, PanelValue } from '../components/ui/panel.js';
 import { markDeleted } from '../fixtures/deletions.js';
 import { PROJECT_INITIAL } from '../fixtures/fixtures.js';
@@ -26,7 +27,6 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, SquarePen } from '../icons/index.js';
 import { DeleteProjectConfirm } from '../overlay/delete-project-confirm.js';
-import { Button } from '../ui/button.js';
 import { PageShell, TabGroup } from './shell.js';
 import './pages.css';
 
@@ -118,12 +118,15 @@ export function ProjectSettingsPage() {
           <div className="prj-set-danger-desc">
             {t('将永久删除所有任务与执行记录，此操作不可恢复。')}
           </div>
-          {/* a3-pages 收编：Button danger/compact（e2e 钉 .prj-set-delete 别名
-              保留）；圆角 6→8 = 圆角归一。 */}
+          {/* XMON-25 收编：老 ui/Button danger/compact → destructive 变体
+              （语义位）；实底皮肤（--danger 底 + on-accent 字 + compact 几何
+              28/12/13）下沉 per-face .prj-set-delete（unlayered 恒胜
+              destructive 的软底档）；e2e 钉 .prj-set-delete 别名保留；
+              ring-0 掐掉 destructive 的 focus 附加环（本面 focus = #388
+              全局环单源）。圆角 8 两代同值。 */}
           <Button
-            variant="danger"
-            size="compact"
-            className="prj-set-delete"
+            variant="destructive"
+            className="prj-set-delete font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 focus-visible:ring-0"
             onClick={() => setDeleteOpen(true)}
           >
             {t('删除')}

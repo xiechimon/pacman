@@ -225,6 +225,7 @@
 .sched-empty-new {
   width: 75px;
   height: 30px;
+  padding: 0; /* 老 .btn 正典值（base 原语默认 px-2.5 会漂） */
   border: none;
   border-radius: 8px;
   background: var(--card-button);
@@ -332,11 +333,23 @@
   color: var(--chip-idle-fg);
 }
 
-/* A4-deep 收编：皮肤归 ui/Button icon 变体；24×24 per-face 几何。 */
-.btn.sched-card-more {
+/* A4-deep 收编：24×24 per-face 几何。XMON-25 收编：老 ui/Button icon 变体
+   的皮肤下沉 per-face（button.css .btn/.btn--icon 正典值：无边框/透明底/
+   tertiary 字/hover 提亮 secondary/pointer 光标）——unlayered 恒胜 ghost
+   变体的 hover 底色档。 */
+.sched-card-more {
   flex: none;
   width: 24px;
   height: 24px;
+  border: none;
+  border-radius: 8px; /* 老 .btn 正典值（base rounded-lg=10px 会漂） */
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.sched-card-more:hover {
+  color: var(--text-secondary);
 }
 
 /* #306: per-card 更多 menu — anchored under the kebab, right-aligned,
@@ -425,10 +438,20 @@
   color: var(--text-primary);
 }
 
-/* A4-deep 收编：皮肤归 icon 变体；24×24 per-face 几何。 */
-.btn.sched-form-close {
+/* A4-deep 收编：24×24 per-face 几何。XMON-25 收编：icon 变体皮肤下沉
+   per-face（同 sched-card-more，button.css .btn/.btn--icon 正典值）。 */
+.sched-form-close {
   width: 24px;
   height: 24px;
+  border: none;
+  border-radius: 8px; /* 老 .btn 正典值（base rounded-lg=10px 会漂） */
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.sched-form-close:hover {
+  color: var(--text-secondary);
 }
 
 .sched-form-body {
@@ -715,6 +738,7 @@
 .prj-new-submit {
   margin-top: 20px;
   height: 40px;
+  padding: 0; /* 老 .btn 正典值（base 原语默认 px-2.5 会漂） */
   border: none;
   border-radius: 8px;
   background: var(--card-button);
@@ -1373,6 +1397,10 @@
   font-size: 13px;
   color: var(--text-primary);
   outline: none;
+  /* XMON-25 收编：应用内 preflight 已把裸 input 的 padding 归零（playwright
+     探针实测四边 0，不是站外 UA 的 1px 2px）；显式钉 0 以压掉新原语
+     Input 的 px-2.5/py-1（utilities 层），盒高与 caret 起点零漂移。 */
+  padding: 0;
 }
 
 .prj-tasks-search input::placeholder {
@@ -1545,11 +1573,21 @@
   color: var(--text-dim);
 }
 
-/* a3-pages 收编：Button primary/compact 承载公共形；per-face 差异 =
-   16px 顶距与 icon+text 的 4px 间隙。 */
-.btn.prj-tasks-empty-new {
+/* a3-pages 收编：16px 顶距与 icon+text 的 4px 间隙。XMON-25 收编：老
+   ui/Button primary/compact 的公共形下沉 per-face（button.css
+   .btn/.btn--compact 正典值：28 高/0 12 内距/无边框/13 字号/pointer）——
+   底色/字色归 brand 变体（--card-button/--text-on-accent 两代同值），
+   border:none 兼压底座 1px 透明描边的 bg-clip-padding 未 paint 环。 */
+.prj-tasks-empty-new {
   margin-top: 16px;
   gap: 4px;
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px; /* 老 .btn/.btn--compact 正典值——绘制面（brand 底）上
+                         base rounded-lg=10px 肉眼可见，必须钉死 */
+  font-size: 13px;
+  cursor: pointer;
 }
 
 /* ---- #178 tasks toolbar: anchored menus + grid view + match-empty line ---- */
@@ -1710,6 +1748,22 @@
   cursor: default;
 }
 
+/* XMON-25 收编：翻页钮从老 ui/Button quiet 迁 ghost——quiet 皮肤
+   （button.css .btn/.btn--quiet 正典值：零内距/无边框/透明底/13 字号/
+   --text-dim/pointer）此前由老原语类承载，这两面从无 per-face 规则
+   （类名只是 e2e 别名），皮肤下沉为此新规则；unlayered 恒胜 ghost 的
+   hover 底色档。 */
+.prj-issues-prev,
+.prj-issues-next {
+  padding: 0;
+  border: none;
+  border-radius: 8px; /* 老 .btn 正典值（base rounded-lg=10px 会漂） */
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
 .prj-issues-num {
   flex: none;
   font-size: 12px;
@@ -1857,8 +1911,8 @@
 }
 
 /* 危险操作区(#207 复活,#189 DELETE 端点落地): #177 整除的样式原样归位。
-   prj-set-delete a3-pages 收编进 Button danger/compact（28 高/实底/8 圆角
-   与原 6px 圆角差异 = 圆角归一），类名留作 e2e 别名。 */
+   prj-set-delete：XMON-25 迁 components/ui Button destructive 变体
+   （语义位），实底皮肤下沉 per-face 规则（见下）；类名留作 e2e 别名。 */
 .prj-set-danger-label {
   margin: 16px 0 8px;
   font-size: 12px;
@@ -1884,9 +1938,21 @@
   color: var(--text-tertiary);
 }
 
-/* 删除钮走 Button danger/compact；顶距是唯一 per-face 差异。 */
-.btn.prj-set-delete {
+/* XMON-25 收编：老 ui/Button danger/compact 的皮肤下沉 per-face
+   （button.css .btn/.btn--compact/.btn--danger 正典值：28 高/0 12 内距/
+   无边框/--danger 实底/on-accent 字/13 字号/pointer）——unlayered 恒胜
+   destructive 变体的软底档；禁用 opacity .5 两代同值。顶距照旧。 */
+.prj-set-delete {
   margin-top: 12px;
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px; /* 老 .btn/.btn--compact 正典值——绘制面（danger 底）上
+                         base rounded-lg=10px 肉眼可见，必须钉死 */
+  background: var(--danger);
+  color: var(--text-on-accent);
+  font-size: 13px;
+  cursor: pointer;
 }
 
 /* ---- segmented-control hover (issue #138) ----
