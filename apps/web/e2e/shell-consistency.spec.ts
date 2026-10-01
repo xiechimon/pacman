@@ -61,18 +61,23 @@ async function captureSidebarBox(
 
 /** Brand-head content anchors. The sidebar's own box is route-invariant (the
  *  hop test below), but the head row's *content* rides a second geometry: the
- *  active pill's inner padding. These two x values are what the eye reads as
+ *  active pill's inner padding. These three x values are what the eye reads as
  *  图标和字收紧 when /app/team lights the pill, so the hop is pinned on them
- *  too — the row repaints its background, the content holds its x. */
+ *  too — the row repaints its background, the content holds its x. The toggle
+ *  rides the same law from the other side: it is `ml-auto`, so its x is the
+ *  row's right edge minus its own margin, and the pill's 8px inset walks it
+ *  left unless that margin gives the 8px back (XMON-69). */
 const headContentX = (page: Page) =>
   page.evaluate(() => {
     const row = document.querySelector('.sidebar-team-row');
     const mark = row?.querySelector('.sidebar-brand-mark');
     const name = row?.querySelector('.sidebar-team-name');
-    if (!row || !mark || !name) throw new Error('sidebar brand head missing');
+    const toggle = row?.querySelector('.sidebar-team-collapse');
+    if (!row || !mark || !name || !toggle) throw new Error('sidebar brand head missing');
     return {
       iconX: mark.getBoundingClientRect().x,
       nameX: name.getBoundingClientRect().x,
+      toggleX: toggle.getBoundingClientRect().x,
     };
   });
 

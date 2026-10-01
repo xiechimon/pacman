@@ -268,6 +268,9 @@ export function BoardSidebar({
   if (collapsed) {
     return (
       <aside className="board-sidebar board-sidebar--collapsed relative z-10 flex w-10 flex-none flex-col border-r border-[var(--border-default)] bg-background">
+        {/* 展开钮的 hover 面是它骑 seam 行的本分（见展开态注释）；按压面与
+            展开态折叠钮同律禁掉——同一个控件折叠前后的两张脸，按下去都只
+            该是图标本身（XMON-69，律在 motion.css 的 sidebar toggles 段）。 */}
         <button
           type="button"
           className="rail-toggle flex h-11 w-10 flex-none cursor-pointer items-center justify-center border-0 border-b border-[var(--border-default)] bg-transparent text-muted-foreground hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2"
@@ -359,7 +362,11 @@ export function BoardSidebar({
           内容。pill 的 mx-2 内缩 8px，pl 补 11 让图标仍落在 x19——与非选中态
           pl-[19px] 同一条线；名字间距恒 11px。r7 12 探针钉的是 pill 盒子
           （x8 y6 w223 h32，sidebar-seam.spec.ts），盒子不动，盒内内容也不该
-          动——否则点品牌进 /app/team 时图标右移 3px、名字左移 2px，读作收紧。 */}
+          动——否则点品牌进 /app/team 时图标右移 3px、名字左移 2px，读作收紧。
+          右端同律（XMON-69）：折叠钮是 ml-auto，x 由行的右边界减自身 margin
+          定；pill 内缩 8px 后钮若不把这 8px 还回来，就往左走 8px——展开态折叠
+          钮是全头部最右的墨，那一跳读作图标回缩。故选中态 mr 取 6（8+6=14，
+          与非选中态 mr-[14px] 同一条右边界线）。 */}
       <div
         className={`sidebar-team-row flex flex-none items-center text-foreground ${
           selected === 'team'
@@ -392,10 +399,15 @@ export function BoardSidebar({
             已经是分离信号；再叠 5% 灰底（--sidebar-hover 浅色 =
             rgb(28 25 23 / 0.05)）在行内的深色 pill 上读成阴影。focus 环保留
             ——键盘模态仍需可见（app.css 全局 :focus-visible 律）。
-            rail 顶部的展开钮不在此列：它骑在自己的 seam 行上，hover 面照旧。 */}
+            rail 顶部的展开钮不在此列：它骑在自己的 seam 行上，hover 面照旧。
+            按压面两钮一并禁（XMON-69）：motion.css 的全局 button:active 降
+            到 .85，落在 14px 裸图标上读作图标自己缩了一下；律在 motion.css
+            的 sidebar toggles 段，不在这里。 */}
         <button
           type="button"
-          className="sidebar-team-collapse mr-[14px] ml-auto flex size-7 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-muted-foreground focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2"
+          className={`sidebar-team-collapse ml-auto flex size-7 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-muted-foreground focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 ${
+            selected === 'team' ? 'mr-[6px]' : 'mr-[14px]'
+          }`}
           aria-label={t('收起侧边栏')}
           onClick={onToggle}
         >
