@@ -20,6 +20,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FloatingShell } from '../components/ui/floating-shell.js';
+import { Input } from '../components/ui/input.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, FileCheck, Layers, Puzzle, Server, Users, X } from '../icons/index.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
@@ -261,7 +262,7 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
         ) : (
           <>
             <div className="mention-picker-search">
-              <input
+              <Input
                 type="text"
                 className="mention-picker-search-input"
                 placeholder={t('搜索…')}
