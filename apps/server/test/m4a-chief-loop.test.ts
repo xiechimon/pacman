@@ -1,5 +1,5 @@
 // M4a Chief 机器协议全环（server 半，真 HTTP + 机器认证）：绑定 → 发消息 →
-// claim（chief 块 + 49 remoteTools + 绑定 Agent 模型）→ relay 执行（create_todo
+// claim（chief 块 + 50 remoteTools + 绑定 Agent 模型）→ relay 执行（create_todo
 // 溯源 / run_builds 派工 watch + triggerSource:chief）→ transcript 上传落
 // chief_message → done（thread sessionId/lastTurnAt + activeRun 清空 +
 // chief_message 通知）→ 停 review 触发 gate wake 步。
@@ -143,13 +143,13 @@ describe('M4a Chief 机器协议全环（02 §4.3/§5.4 + r5 §3.1/§3.2/§3.5�
   test('claim → relay(create_todo/run_builds) → transcript → done → gate wake', async () => {
     const w = await setupChiefWorld();
 
-    // —— claim：chief 步载荷（chief 块 + 49 remoteTools + 绑定 Agent）——
+    // —— claim：chief 步载荷（chief 块 + 50 remoteTools + 绑定 Agent）——
     const claimed = await w.claim();
     expect(claimed.step.kind).toBe('chief');
     expect(claimed.conversationId).toBe(w.threadId); // conv ≡ chief-<threadId>
     expect(claimed.chief?.threadId).toBe(w.threadId);
     expect(claimed.chief?.systemPrompt).toContain('总管'); // server 合成 system prompt
-    expect(claimed.remoteTools).toHaveLength(CHIEF_TOOL_COUNT); // 49 词表全量
+    expect(claimed.remoteTools).toHaveLength(CHIEF_TOOL_COUNT); // 50 词表全量
     expect(claimed.agent?.id).toBe(AGENT_ID); // 绑定 Agent 执行
     expect(claimed.agent?.modelId).toBe('stub-model');
     // chief 步不携带 skills 白名单（#372：chief 是信任面，不受过滤约束）。
