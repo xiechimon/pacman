@@ -538,7 +538,7 @@ export function AgentDetailPage() {
                   <span className="agent-perm-text">
                     <span className="agent-perm-name">{t(label)}</span>
                     {/* 六档各带说明副文案（AGENT_TOOL_COPY 单源；原文实测自
-                        参考产品的权限 tab，r3 §4 那份清单只记了远程 shell）。 */}
+                        参考产品的权限 tab，XMON-84 恢复全六档）。 */}
                     <span className="agent-perm-hint">{t(AGENT_TOOL_COPY[label])}</span>
                   </span>
                   <Switch

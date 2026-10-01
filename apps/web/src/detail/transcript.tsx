@@ -11,7 +11,9 @@
 
 import { useState } from 'react';
 import { inlineSegments } from '../api/mappers.js';
+import { type CurrentUser, useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { RobotPara, TranscriptItem } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
@@ -30,6 +32,12 @@ import { Segments } from './segments.js';
 
 interface TranscriptProps {
   transcript: TranscriptItem[];
+  /** XMON-105: the run's executing agent — agent message rows (robot /
+   *  fail / streaming / review) render this agent's avatar (avatarUrl
+   *  override > dicebear displayName seed > static robot asset), the same
+   *  identity the board card / team page / ⌘K rows show for it. Null =
+   *  unassigned run, rows keep the static asset. */
+  agent?: { displayName: string; avatarUrl: string | null } | null;
   /** #366: the collapsed plan card's open glyph activates the plan
    *  document in the right pane (doc view, plan surface). Absent = the
    *  glyph stays the inert capture form. */
@@ -126,7 +134,40 @@ function Para({ para }: { para: RobotPara }) {
   );
 }
 
-function Row({ item, t, onOpenPlan }: { item: TranscriptItem; t: TFunc; onOpenPlan?: () => void }) {
+/** XMON-105: agent message-row avatar — the executing agent's own identity
+ *  (avatarUrl override > dicebear displayName seed), static Notionists
+ *  asset only for unassigned runs. Same resolution as every other agent
+ *  avatar surface (board card / team page / ⌘K rows), so one agent reads
+ *  as one face across the app. */
+function AgentRowAvatar({
+  agent,
+}: {
+  agent: { displayName: string; avatarUrl: string | null } | null;
+}) {
+  return (
+    <span className="chat-avatar">
+      <SeededAvatar
+        name={agent?.displayName}
+        src={agent?.avatarUrl}
+        fallback="/avatar-robot-1.svg"
+      />
+    </span>
+  );
+}
+
+function Row({
+  item,
+  t,
+  onOpenPlan,
+  agent,
+  user,
+}: {
+  item: TranscriptItem;
+  t: TFunc;
+  onOpenPlan?: () => void;
+  agent: { displayName: string; avatarUrl: string | null } | null;
+  user: CurrentUser;
+}) {
   switch (item.kind) {
     case 'run':
       return (
@@ -174,7 +215,11 @@ function Row({ item, t, onOpenPlan }: { item: TranscriptItem; t: TFunc; onOpenPl
         <>
           <div className="chat-row">
             <span className="chat-avatar">
-              <img src="/avatar-user.png" alt="" />
+              <SeededAvatar
+                name={user.displayName}
+                src={user.avatarUrl}
+                fallback="/avatar-user.png"
+              />
             </span>
             <span className="chat-bubble">{item.text}</span>
           </div>
@@ -193,9 +238,7 @@ function Row({ item, t, onOpenPlan }: { item: TranscriptItem; t: TFunc; onOpenPl
     case 'robot':
       return (
         <div className="chat-row chat-row--agent">
-          <span className="chat-avatar">
-            <img src="/avatar-robot-1.svg" alt="" />
-          </span>
+          <AgentRowAvatar agent={agent} />
           <span className="chat-text">
             {item.markdown != null ? (
               // #469: block markdown reply — parsed + rendered at render
@@ -222,9 +265,7 @@ function Row({ item, t, onOpenPlan }: { item: TranscriptItem; t: TFunc; onOpenPl
     case 'fail':
       return (
         <div className="chat-row chat-row--agent">
-          <span className="chat-avatar">
-            <img src="/avatar-robot-1.svg" alt="" />
-          </span>
+          <AgentRowAvatar agent={agent} />
           <span className="chat-text">
             <p className="chat-para chat-para--fail">{item.title}</p>
             <p className="chat-para chat-para--failbody">{item.body}</p>
@@ -242,9 +283,7 @@ function Row({ item, t, onOpenPlan }: { item: TranscriptItem; t: TFunc; onOpenPl
     case 'streaming':
       return (
         <div className="chat-row chat-row--agent">
-          <span className="chat-avatar">
-            <img src="/avatar-robot-1.svg" alt="" />
-          </span>
+          <AgentRowAvatar agent={agent} />
           <span className="chat-streaming">
             {/* #471: the braille spinner the r7 16/26/26d captures froze
                 mid-animation now turns — a 10-frame reel scrolling one slot
@@ -307,9 +346,7 @@ function Row({ item, t, onOpenPlan }: { item: TranscriptItem; t: TFunc; onOpenPl
     case 'review':
       return (
         <div className="chat-row chat-row--agent">
-          <span className="chat-avatar">
-            <img src="/avatar-robot-1.svg" alt="" />
-          </span>
+          <AgentRowAvatar agent={agent} />
           <span className="chat-text">
             {/* 结论先行（r8 §3.1 60）：单段总结 — paragraph chip "审核结论"
                 + 文本。 */}
@@ -417,13 +454,16 @@ function ToolsRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'tools' }
   );
 }
 
-export function Transcript({ transcript, onOpenPlan }: TranscriptProps) {
+export function Transcript({ transcript, agent = null, onOpenPlan }: TranscriptProps) {
   const { t } = useI18n();
+  // XMON-105: the user row's avatar is the logged-in user's own identity
+  // (sidebar chip / account head share it), not a per-surface static asset.
+  const { user } = useLiveData();
   return (
     <>
       {transcript.map((item, i) => (
         // fixture order is stable; items carry no ids
-        <Row key={i} item={item} t={t} onOpenPlan={onOpenPlan} />
+        <Row key={i} item={item} t={t} onOpenPlan={onOpenPlan} agent={agent} user={user} />
       ))}
     </>
   );

@@ -19,11 +19,12 @@
 import { BRAND } from '@pacman/shared';
 import { type ComponentType, type SVGProps, useCallback, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router';
+import { useLiveData } from '../api/provider.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { UserMenu } from '../detail/user-menu.js';
 import { isDeleted } from '../fixtures/deletions.js';
-import { PROJECT_ID, PROJECT_NAME, USER_NAME } from '../fixtures/fixtures.js';
+import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
 import {
@@ -229,6 +230,8 @@ export function BoardSidebar({
   projects,
 }: BoardSidebarProps) {
   const { t } = useI18n();
+  // XMON-105: user chip identity single source (live = /api/user/me).
+  const { user } = useLiveData();
   // Links carry the live query string across hops so the fixture scenario
   // survives client-side navigation (todo-card / page-back convention).
   const { search, pathname } = useLocation();
@@ -345,11 +348,11 @@ export function BoardSidebar({
         <button
           type="button"
           className="rail-user mb-[11px] flex h-[38px] w-10 flex-none cursor-pointer items-center justify-center border-none bg-transparent outline-none hover:rounded-md hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
-          aria-label={USER_NAME}
+          aria-label={user.displayName}
           aria-expanded={userMenuOpen}
           onClick={toggleUserMenu}
         >
-          <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
+          <SeededAvatar name={user.displayName} src={user.avatarUrl} fallback="/avatar-user.png" />
         </button>
         {userMenuPopover}
       </aside>
@@ -539,13 +542,13 @@ export function BoardSidebar({
       <button
         type="button"
         className="sidebar-user flex h-11 flex-none cursor-pointer items-center border-0 border-t border-[var(--border-default)] bg-transparent px-2 hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
-        aria-label={USER_NAME}
+        aria-label={user.displayName}
         aria-expanded={userMenuOpen}
         onClick={toggleUserMenu}
       >
-        <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
+        <SeededAvatar name={user.displayName} src={user.avatarUrl} fallback="/avatar-user.png" />
         <span className="sidebar-user-name relative -top-px ml-[9px] text-sm leading-[14px] whitespace-nowrap text-muted-foreground">
-          {USER_NAME}
+          {user.displayName}
         </span>
         <span className="sidebar-user-more ml-auto flex size-6 items-center justify-center text-muted-foreground">
           <EllipsisVertical />

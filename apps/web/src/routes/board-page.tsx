@@ -74,8 +74,17 @@ export function BoardPage() {
   const fixture = resolveScenario(searchParams);
   // chief 面（#72/#129）：三态视图 + live 数据 wiring 由共享 hook 承载，
   // 与其余 shell 族的 FAB 唤醒同一 surface。
+  // XMON-106：`?chief=<threadId>` 深链（通知点击的落地点之一）——交给
+  // useChiefSurface 按 id 定位开 drawer，消费后剥参（replace 不积历史，
+  // tags/projects 等其余参原样保留，同 writeFilterParams 律）。
+  const chiefParam = searchParams.get('chief');
+  const consumeChiefParam = useCallback(() => {
+    const rest = new URLSearchParams(searchParams);
+    rest.delete('chief');
+    navigate(`?${rest.toString()}`, { replace: true });
+  }, [searchParams, navigate]);
   const { chiefView, setChiefView, chiefData, chiefUnread, onSend, onThread, onNewThread } =
-    useChiefSurface(fixture);
+    useChiefSurface(fixture, { threadId: chiefParam, onConsumed: consumeChiefParam });
 
   // —— live 数据面（#83）：查询 + mutations；fixture 模式全部惰性（enabled
   // = live），采集零请求零流。members/skills/machines 归 #389 抽出的

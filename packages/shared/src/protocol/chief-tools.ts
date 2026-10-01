@@ -1,14 +1,14 @@
 // Chief remoteTools 词表——raw 观测 49 件（r5 §3.1，一手来源 = thread 记录
 // toolDefHashes 全键 `docs/research/assets/r5/raw/chief-threads-testA.json`），
-// 现行 48 件 = raw − CHIEF_TOOLS_REMOVED（spec 13 #367 有意 divergence，
-// 登记处见该常量）。
+// 现行 47 件 = raw − CHIEF_TOOLS_REMOVED（有意 divergence，登记处见该常量）。
 // 复刻口径（02 §4.3 尾注）：Chief = 挂团队工具的 pi 会话，行为分毫不求同；
 // 工具「名单」为实测一手，各工具的 description/parameters 细形
 // 未采到 wire 原件 = 全部 [推断] 黑盒逼近（04 §1 A4：不冒充实测），语义按
 // r1 docs 六能力组 + r3/r5 行为证据投影。
 // 分组计数按 raw 键集实数：读 15 + 组织 19 + 执行 5 + 私有 10 = 49
 // （r5 §3.1 正文枚举漏 `delete_skills`，02 §4.3 分组计数随之偏差——raw 键集
-// 为权威，vocabulary.test 对拍）；现行分组 = 组织 18（delete_skills 已除名）。
+// 为权威，vocabulary.test 对拍）；现行分组 = 组织 17（delete_skills、
+// set_remote_shell 两件已除名）。
 // replaySafe = 读工具（bundle 提取：读侧带重试预算 RETRY_DELAYS_MS=[500,2000]、
 // 超时 remoteTool:10s，r5 §3.1）。
 
@@ -47,11 +47,14 @@ export type MachineToolRelayResponse = z.infer<typeof machineToolRelayResponseSc
 
 /** 从 raw 49 键观测词表中有意移除的工具（divergence 登记，对拍测试 =
  * raw 键集 − 本集）。spec 13 #367：delete_skills——技能改本地目录现扫只读
- * 投影（不入库），删除技能 = 从磁盘删目录，server 无删除面可 relay。 */
-export const CHIEF_TOOLS_REMOVED = ['delete_skills'] as const;
+ * 投影（不入库），删除技能 = 从磁盘删目录，server 无删除面可 relay。
+ * XMON-77：set_remote_shell——「远程 shell」本体未实现（XMON-84 用户拍板 B
+ * 后开关保留在权限词表，但写入点随本体在规划票里重新设计，词条维持除名；
+ * 改授权走 REST PATCH /agents/{aid}）。 */
+export const CHIEF_TOOLS_REMOVED = ['delete_skills', 'set_remote_shell'] as const;
 
 /** 词表分组（r5 §3.1 正文分组语义；成员按 raw 键集归位 [推断]；
- * delete_skills 已随 spec 13 除名）。 */
+ * delete_skills、set_remote_shell 已除名）。 */
 export const CHIEF_TOOL_CATEGORIES = {
   read: [
     'projects',
@@ -86,7 +89,6 @@ export const CHIEF_TOOL_CATEGORIES = {
     'delete_agents',
     'set_secret',
     'delete_secrets',
-    'set_remote_shell',
     'schedule_todo',
     'unschedule_todo',
   ],
@@ -105,7 +107,7 @@ export const CHIEF_TOOL_CATEGORIES = {
   ],
 } as const satisfies Record<string, readonly string[]>;
 
-/** 49 键全量（raw toolDefHashes 键集单源投影；vocabulary.test 对拍）。 */
+/** 现行词表键集（raw 49 键 − 除名登记；vocabulary.test 对拍）。 */
 export const CHIEF_TOOL_NAMES: readonly string[] = Object.values(CHIEF_TOOL_CATEGORIES)
   .flat()
   .sort();
@@ -366,14 +368,10 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
     description: 'Delete team secrets by name or id.',
     parameters: obj({ names: idArr('Secret names or ids to delete.') }, ['names']),
   },
-  {
-    name: 'set_remote_shell',
-    description: 'Grant or revoke the remote shell permission switch of an agent.',
-    parameters: obj(
-      { agentId: str('Agent id.'), enabled: { type: 'boolean', description: 'Grant or revoke.' } },
-      ['agentId', 'enabled'],
-    ),
-  },
+  // set_remote_shell 已除名（XMON-77 维持至 XMON-84）：「远程 shell」本体未
+  // 实现（开关已随用户拍板 B 恢复，写入点随本体在规划票里重新设计）——改授权
+  // 走 REST PATCH /agents/{aid}，词条与
+  // handler 均不保留）。
   {
     name: 'schedule_todo',
     description: 'Schedule a todo to rerun (hourly/daily/weekly/once; minute steps 00/15/30/45).',
@@ -512,9 +510,9 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   },
 ];
 
-/** 词表自检：现行 48 件（raw 49 − CHIEF_TOOLS_REMOVED）、键集 =
+/** 词表自检：现行 47 件（raw 49 − CHIEF_TOOLS_REMOVED）、键集 =
  * CHIEF_TOOL_NAMES、读侧全 replaySafe。 */
-export const CHIEF_TOOL_COUNT = 48;
+export const CHIEF_TOOL_COUNT = 47;
 
 /** worker 步记忆三件套（02 §4.4 写路径 / r5 §6：worker 侧同族工具经
  * remoteTools 下发——「bundle 无本地记忆实现」，写路径 = agent 工具 → 服务端
@@ -602,7 +600,7 @@ const SET_TASK_META_TOOL_MULTI_TAG: RemoteToolDef = {
 };
 
 /** worker 步全量工具（r5 §3.1 + #310/r9 §3.1 + spec 15 #394）：记忆三件套 +
- * 附件读 + 任务元信息回填。chief 49 词表（组织/执行面）不外溢到 worker——
+ * 附件读 + 任务元信息回填。chief 47 词表（组织/执行面）不外溢到 worker——
  * worker 读路径只挂「任务内可读」面。 */
 export const WORKER_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   ...WORKER_MEMORY_REMOTE_TOOLS,

@@ -92,6 +92,8 @@ async function setupWorld() {
       displayName: 'stub-builder',
       provider: 'stub-gw',
       modelId: 'stub-model',
+      // XMON-77：本世界含 merge 步（停 merge 步用例），合并闸要求两开关。
+      tools: ['合并分支', '推送分支'],
     })
     .run();
   // 双机 = 双 key（enroll 按 key/team 认机器且轮换 token——同 key 二次

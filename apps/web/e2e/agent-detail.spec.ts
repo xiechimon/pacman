@@ -178,7 +178,9 @@ test('记忆 tab：空态文案与 shared canon 同文', async ({ page }) => {
   );
 });
 
-test('权限 tab：6 个工具开关全渲染（r3 §4 全 list）', async ({ page }) => {
+// XMON-84 用户拍板 B：六开关全保留（四无本体档照常摆出，本体另立规划票）；
+// 其中合并分支/推送分支两档有真实执法面（XMON-77 daemon/server 闸）。
+test('权限 tab：6 个工具开关全渲染（r3 §4 全 list，XMON-84 恢复）', async ({ page }) => {
   const detail = await openDetail(page);
   await detail.locator('.agent-tab').nth(2).click();
   await expect(detail.locator('.agent-tool-switch')).toHaveCount(6);

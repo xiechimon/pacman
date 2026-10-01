@@ -92,8 +92,43 @@ export function useTeamStream(teamId: string | undefined, enabled: boolean): voi
   }, [teamId, enabled, qc, auth]);
 }
 
-/** 桌面通知（04 §5 divergence 口径）：仅 document.hidden 时弹页内
- *  Notification；权限未授予静默跳过（权限请求面 = 真人一次项，M6 清单）。
+/** 通知点击落地 href（XMON-106）：todo 类事件直指详情页；chief_message 走
+ *  看板 `?chief=<threadId>` 深链（board-page 消费：开 drawer 定位线程后剥参）。 */
+function notificationHref(record: NotificationRecord): string {
+  return record.type === 'chief_message'
+    ? `/app?chief=${encodeURIComponent(record.entityId)}`
+    : `/app/todo/${encodeURIComponent(record.entityId)}`;
+}
+
+/** 经 SW 发通知（XMON-106）：通知挂 data.href，点击落 sw.js notificationclick
+ *  ——已开窗口聚焦 + postMessage 客户端路由（PwaBridge 消费），无窗口
+ *  openWindow(href) 新开。SW 未就绪（首访尚在装/注册失败）超 2s 回 false，
+ *  调用方落页内回退——通知不得因等 ready 整个丢失。 */
+async function showViaServiceWorker(
+  title: string,
+  body: string,
+  tag: string,
+  href: string,
+): Promise<boolean> {
+  if (!('serviceWorker' in navigator)) return false;
+  try {
+    const registration = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+    ]);
+    if (registration === null) return false;
+    await registration.showNotification(title, { body, tag, data: { href } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 桌面通知（04 §5 divergence 口径）：仅 document.hidden 时弹；权限未授予
+ *  静默跳过（权限请求面 = 真人一次项，M6 清单）。
+ *  XMON-106：主路经 SW 发（点击可路由回应用，见 showViaServiceWorker）；
+ *  SW 不可用回退页内 Notification + onclick（focus + 整页跳 href）——原
+ *  裸 new Notification() 无 onclick 正是「通知点了没反应」的病灶。
  *  标题文案走 i18n 纯函数面（非组件位——zh 权威 + en 兜底，01/S6）。 */
 function fireDesktopNotification(record: NotificationRecord): void {
   if (!document.hidden) return;
@@ -110,11 +145,19 @@ function fireDesktopNotification(record: NotificationRecord): void {
     (record.entityRef.seqNum !== null
       ? `#${record.entityRef.seqNum} ${record.entityRef.title}`
       : record.entityRef.title);
-  try {
-    new Notification(title, { body, tag: record.id });
-  } catch {
-    // 平台拒绝（移动端等）静默——in-app 未读面兜底
-  }
+  const href = notificationHref(record);
+  void showViaServiceWorker(title, body, record.id, href).then((shown) => {
+    if (shown) return;
+    try {
+      const fallback = new Notification(title, { body, tag: record.id });
+      fallback.onclick = () => {
+        window.focus();
+        window.location.assign(href);
+      };
+    } catch {
+      // 平台拒绝（移动端等）静默——in-app 未读面兜底
+    }
+  });
 }
 
 export interface ConversationStreamHandlers {

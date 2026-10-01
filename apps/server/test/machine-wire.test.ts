@@ -12,6 +12,7 @@ import {
   MACHINE_ENDPOINTS,
   MACHINE_WIRE,
   MACHINE_WIRE_EXTENSIONS,
+  MERGE_ANNOUNCEMENT,
   machineClaimResponseSchema,
   machineEnrollResponseSchema,
   machineOkResponseSchema,
@@ -513,6 +514,13 @@ describe('步骤 journal 全链（02 §5.4 词表 + §4.2 主时序机器侧）'
     expect(todoNow().phase).toBe('review');
 
     // —— merge 202 delegated → 合并步（02 §4.2/A6）→ done 终态 ——
+    // XMON-77 权限闸：合并要求 build 槽 Agent 持 合并分支+推送分支 两开关
+    //（默认全关 = 拒，专段钉 403 面）——满链路世界在发起合并前先授权。
+    w.s.db
+      .update(agentTable)
+      .set({ tools: ['合并分支', '推送分支'] })
+      .where(eq(agentTable.id, AGENT_ID))
+      .run();
     const mergeRes = await call(w.s.app, 'POST', `/api/builds/${buildId}/merge`, { body: {} });
     expect(mergeRes.status).toBe(202);
     expect(await mergeRes.json()).toEqual({ delegated: true });
@@ -620,6 +628,148 @@ describe('claim 载荷：agent.skills 白名单透传（#372）', () => {
     expect(step).not.toBeNull();
     // schema 列默认 '[]'：从未勾选 = 空数组 = 不注入任何 skill。
     expect(step!.agent?.skills).toEqual([]);
+    w.s.dispose();
+  });
+});
+
+describe('claim 载荷：agent.tools 权限开关集透传（XMON-77）', () => {
+  // 失败方式（先于实现固化）：
+  // 1. 勾选集不随 claim 下发 → daemon 收尾闸无从判推送/合并权限（开关摆设）。
+  // 2. 全关（[]）缺省不携带 → daemon 只能把缺省当 fail-open，全关 agent 被迫
+  //    落进「老 server」豁免面——与 skills 同律：worker 步恒携带含空数组。
+  // 3. 透传时过滤/改名 → 存量行残值（如退役的 远程 shell）被 server 静默吞掉，
+  //    执法权应在 daemon 收尾闸（只认已知档，残值自然无效）。
+
+  async function claimWithTools(tools: string[]): Promise<ClaimedStep | null> {
+    const w = await setupWorld({ claimHoldMs: 200 });
+    w.s.db.update(agentTable).set({ tools }).where(eq(agentTable.id, AGENT_ID)).run();
+    await w.startBuild(false);
+    const { body } = await w.claim();
+    const step = body.step ? claimedStepSchema.parse(body.step) : null;
+    w.s.dispose();
+    return step;
+  }
+
+  test('已开集原样携带（读侧宽：存量残值也透传，过滤权不在 claim 面）', async () => {
+    const step = await claimWithTools(['推送分支', '远程 shell']);
+    expect(step).not.toBeNull();
+    expect(step!.agent?.tools).toEqual(['推送分支', '远程 shell']);
+  });
+
+  test('全关 = 携带 []（least-privilege 与 skills 同律；缺省保留给老 server fail-open）', async () => {
+    const step = await claimWithTools([]);
+    expect(step).not.toBeNull();
+    expect(step!.agent?.tools).toEqual([]);
+  });
+});
+
+describe('merge 权限闸：requestMerge 校验 build 槽 Agent 两开关（XMON-77）', () => {
+  // 失败方式（先于实现固化）：
+  // 1. 全关 agent 发起合并 → 202 照发 + 合并步入队 → 步被 daemon 拒/挂死，
+  //    用户在点击面看不到拒绝原因。应在 requestMerge 即 403 点名缺失开关。
+  // 2. 403 后留半套副作用（合并步入队 / MERGE_ANNOUNCEMENT 时间线行 /
+  //    phase 离开 review）→ 点击失败却污染状态机。
+  // 3. 只持合并分支（缺推送）放行 → 三形态 repo 的落地都以 conv 分支 push
+  //    为前置（local ff 落地、hosted applyMergeLanding 读推送态、github done
+  //    语义即已推）——合并步必然在推送处失败，403 应在点击面点名推送分支。
+  // 4. 403 吞掉错误形状（非 {error}）→ wire 契约漂移。
+
+  /** 走到 review 相位（plan→confirm→build 主时序机器侧驱动，复用全链路面）。 */
+  async function reachReview(): Promise<World> {
+    const w = await setupWorld({ claimHoldMs: 200 });
+    const cred = { cred: w.token };
+    const { buildId } = await w.startBuild(true);
+    const { body: claim1 } = await w.claim();
+    const step1 = claimedStepSchema.parse(claim1.step);
+    const planUrls = await call(w.s.app, 'POST', `/api/machine/upload-urls/${step1.step.id}`, {
+      ...cred,
+      body: { files: [{ name: PLAN_FILE_NAME }] },
+    });
+    const planUpload = machineUploadUrlsResponseSchema.parse(await planUrls.json()).uploads[0]!;
+    await call(w.s.app, 'PUT', planUpload.url.replace(/^https?:\/\/[^/]+/, ''), {
+      ...cred,
+      text: '# 方案\n',
+      contentType: 'text/markdown',
+    });
+    await call(w.s.app, 'POST', `/api/machine/done/${step1.step.id}`, {
+      ...cred,
+      body: { status: 'success', sessionId: 'pi-session-1' },
+    });
+    await call(w.s.app, 'POST', `/api/builds/${buildId}/steps`, { body: { action: 'confirm' } });
+    const { body: claim2 } = await w.claim();
+    const step2 = claimedStepSchema.parse(claim2.step);
+    await call(w.s.app, 'POST', `/api/machine/done/${step2.step.id}`, {
+      ...cred,
+      body: { status: 'success', sessionId: 'pi-session-1', hasChanges: true },
+    });
+    expect(w.s.db.select().from(todoTable).where(eq(todoTable.id, w.todoId)).get()!.phase).toBe(
+      'review',
+    );
+    return w;
+  }
+
+  test('全关 agent（默认 []）→ 403 点名两开关；无合并步/无时间线行/相位停 review', async () => {
+    const w = await reachReview();
+    const buildId = w.s.db
+      .select()
+      .from(buildTable)
+      .where(eq(buildTable.todoId, w.todoId))
+      .get()!.id;
+    const mergeRes = await call(w.s.app, 'POST', `/api/builds/${buildId}/merge`, { body: {} });
+    expect(mergeRes.status).toBe(403);
+    const errBody = (await mergeRes.json()) as { error: string };
+    expect(Object.keys(errBody)).toEqual(['error']);
+    expect(errBody.error).toContain('合并分支');
+    expect(errBody.error).toContain('推送分支');
+    // 半套副作用全无：无合并步、无 MERGE_ANNOUNCEMENT 行、相位不动。
+    const steps = w.s.db.select().from(stepTable).where(eq(stepTable.buildId, buildId)).all();
+    expect(steps.every((s) => s.kind !== 'merge')).toBe(true);
+    const msgRows = w.s.db
+      .select()
+      .from(messageTable)
+      .where(eq(messageTable.conversationId, buildId))
+      .all();
+    expect(msgRows.map((m) => m.content)).not.toContain(MERGE_ANNOUNCEMENT);
+    expect(w.s.db.select().from(todoTable).where(eq(todoTable.id, w.todoId)).get()!.phase).toBe(
+      'review',
+    );
+    w.s.dispose();
+  });
+
+  test('只持合并分支（缺推送）→ 403 只点名推送分支（落地以推送为前置）', async () => {
+    const w = await reachReview();
+    w.s.db
+      .update(agentTable)
+      .set({ tools: ['合并分支'] })
+      .where(eq(agentTable.id, AGENT_ID))
+      .run();
+    const buildId = w.s.db
+      .select()
+      .from(buildTable)
+      .where(eq(buildTable.todoId, w.todoId))
+      .get()!.id;
+    const mergeRes = await call(w.s.app, 'POST', `/api/builds/${buildId}/merge`, { body: {} });
+    expect(mergeRes.status).toBe(403);
+    const errBody = (await mergeRes.json()) as { error: string };
+    expect(errBody.error).toContain('推送分支');
+    w.s.dispose();
+  });
+
+  test('两开关齐 → 202 delegated（正路径钉在主时序全链测试）', async () => {
+    const w = await reachReview();
+    w.s.db
+      .update(agentTable)
+      .set({ tools: ['合并分支', '推送分支'] })
+      .where(eq(agentTable.id, AGENT_ID))
+      .run();
+    const buildId = w.s.db
+      .select()
+      .from(buildTable)
+      .where(eq(buildTable.todoId, w.todoId))
+      .get()!.id;
+    const mergeRes = await call(w.s.app, 'POST', `/api/builds/${buildId}/merge`, { body: {} });
+    expect(mergeRes.status).toBe(202);
+    expect(await mergeRes.json()).toEqual({ delegated: true });
     w.s.dispose();
   });
 });

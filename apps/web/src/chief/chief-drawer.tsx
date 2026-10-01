@@ -22,6 +22,7 @@
 // local-first 对象面，按 M7 处置二分律移除不渲染；头部三钮双视图同律。
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ChiefContent, ChiefSegment } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import {
@@ -289,7 +290,21 @@ export function ChiefDrawer({
                   );
                 return (
                   <div key={i} className="chief-msg">
-                    <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
+                    {/* XMON-105: a bound chief answers as its agent — the
+                        stream row carries that agent's identity avatar (the
+                        same face the FAB chip shows); unbound keeps the
+                        dashed chief glyph. */}
+                    {chief.bound && chief.agent ? (
+                      <span className="chief-avatar chief-avatar--img">
+                        <SeededAvatar
+                          name={chief.agent.displayName}
+                          src={chief.agent.avatarUrl}
+                          fallback="/avatar-robot-1.svg"
+                        />
+                      </span>
+                    ) : (
+                      <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
+                    )}
                     <div className="chief-msg-col">
                       {item.paragraphs.map((p, j) => (
                         <p key={j} className="chief-para">
@@ -321,7 +336,6 @@ export function ChiefDrawer({
           <textarea
             ref={attachComposer}
             className="chief-composer-input"
-            rows={onSend != null ? (liveDraft !== '' ? 6 : 1) : chief.draft ? 6 : 1}
             readOnly={onSend == null}
             value={draftValue}
             onChange={onSend != null ? (e) => setLiveDraft(e.target.value) : undefined}

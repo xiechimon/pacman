@@ -12,9 +12,10 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
+import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
-import { USER_MAIL, USER_NAME } from '../fixtures/fixtures.js';
+import { USER_MAIL } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import { applyTheme, type Theme } from '../theme.js';
 
@@ -40,6 +41,7 @@ const ROWS = [
 
 export function UserMenu({ theme: initialTheme, floating = false }: UserMenuProps) {
   const { t } = useI18n();
+  const { user } = useLiveData();
   // Links carry the live query string across hops so the fixture scenario
   // survives client-side navigation (sidebar / todo-card convention).
   const { search } = useLocation();
@@ -54,9 +56,9 @@ export function UserMenu({ theme: initialTheme, floating = false }: UserMenuProp
   return (
     <div className={floating ? 'user-menu user-menu--floating' : 'user-menu'}>
       <div className="user-menu-head">
-        <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
+        <SeededAvatar name={user.displayName} src={user.avatarUrl} fallback="/avatar-user.png" />
         <div>
-          <div className="user-menu-name">{USER_NAME}</div>
+          <div className="user-menu-name">{user.displayName}</div>
           <div className="user-menu-mail">{USER_MAIL}</div>
         </div>
       </div>

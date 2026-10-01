@@ -195,3 +195,30 @@ test('search agent rows + project task rows are seeded (Agent 列表 / 任务行
   await page.goto('/app/project/ZAQczKCu0MOAzC1ZqcFlX?scenario=prj-tasks');
   await expect(page.locator('.prj-task-avatar img').first()).toHaveAttribute('src', USER_SRC);
 });
+
+test('conversation transcript: agent rows carry the assigned agent avatar, user rows the user avatar', async ({
+  page,
+}) => {
+  await stubDicebear(page);
+  // scenario=36 = done 详情面:同一条 todo(执行 agent = r3-builder)的对话列。
+  // 对话是用户点名的面:agent 消息行必须显示该 agent 的头像(与看板卡/团队页
+  // 同种子),用户消息行与侧栏用户 chip 同种子——不再落静态 Notionists 资产。
+  await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=36');
+  await expect(page.locator('.chat-row--agent .chat-avatar img').first()).toHaveAttribute(
+    'src',
+    AGENT_SRC,
+  );
+  await expect(
+    page
+      .locator('.chat-row:not(.chat-row--agent):not(.chat-row--chief) .chat-avatar img')
+      .first(),
+  ).toHaveAttribute('src', USER_SRC);
+});
+
+test('account head shares the seeded user src (same identity as the sidebar chip)', async ({
+  page,
+}) => {
+  await stubDicebear(page);
+  await page.goto('/app/account?scenario=13');
+  await expect(page.locator('.account-avatar img')).toHaveAttribute('src', USER_SRC);
+});

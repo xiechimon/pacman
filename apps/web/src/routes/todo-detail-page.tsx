@@ -52,7 +52,7 @@ import {
   mapTranscript,
   toDisplayTodo,
 } from '../api/mappers.js';
-import { useLiveData } from '../api/provider.js';
+import { useAgentAvatarUrlById, useLiveData } from '../api/provider.js';
 import { useConversationStream } from '../api/sse.js';
 import { ChiefAgentDialog, type ChiefAgentOption } from '../chief/chief-agent-dialog.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
@@ -202,6 +202,9 @@ export function TodoDetailPage() {
   );
   const machinesQ = useMachines(teamId, live);
   const membersQ = useMembers(teamId, live);
+  // XMON-105: avatarUrl override join for the todo's agent ref (transcript
+  // rows + rerun dialog fallback row).
+  const agentAvatarUrl = useAgentAvatarUrlById();
   const projectsQ = useProjects(teamId, live);
   const skillsQ = useSkills(teamId, live);
   const projectBuildsQ = useProjectBuilds(wireTodo?.projectId, live);
@@ -459,11 +462,16 @@ export function TodoDetailPage() {
     ? (membersQ.data ?? [])
         .filter((m) => m.memberType === 'agent')
         .map((m) => {
-          const modelId = (m.actor as { modelId?: string | null } | undefined)?.modelId;
+          const actor = m.actor as
+            | { displayName?: string; modelId?: string | null; avatarUrl?: string | null }
+            | undefined;
           return {
             id: m.actorId,
-            name: (m.actor as { displayName?: string } | undefined)?.displayName ?? m.actorId,
-            ...(modelId ? { model: modelId } : {}),
+            name: actor?.displayName ?? m.actorId,
+            ...(actor?.modelId ? { model: actor.modelId } : {}),
+            // XMON-105: rerun dialog avatar rows resolve the same identity
+            // (avatarUrl override) as every other agent surface.
+            avatarUrl: actor?.avatarUrl ?? null,
           };
         })
     : undefined;
@@ -725,6 +733,17 @@ export function TodoDetailPage() {
                   <div className="chat-pin">
                     <Transcript
                       transcript={view.transcript}
+                      // XMON-105: agent message rows carry the executing
+                      // agent's own avatar (same identity as board card /
+                      // team page), never the logged-in user's.
+                      agent={
+                        todo.agent
+                          ? {
+                              displayName: todo.agent.displayName,
+                              avatarUrl: agentAvatarUrl.get(todo.agent.id) ?? null,
+                            }
+                          : null
+                      }
                       // #366 AC：线程内 plan 卡激活 = 右 pane 切文档面的
                       // plan 显示面（与 复用方案「查看方案」同律）。
                       onOpenPlan={() => {
@@ -982,6 +1001,7 @@ export function TodoDetailPage() {
             detail?.rerunAgent ?? {
               name: todo.agent?.displayName ?? '未指派',
               model: '默认',
+              avatarUrl: todo.agent ? (agentAvatarUrl.get(todo.agent.id) ?? null) : null,
             }
           }
           // #318 统一面(r9 §3.6):候选 = members 读面投影;初始选择 =

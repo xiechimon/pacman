@@ -9,6 +9,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { join } from 'node:path';
 import {
+  AGENT_TOOL_DEFAULTS,
   type AgentRecord,
   agentTaskSchema,
   apiKeyRecordSchema,
@@ -29,6 +30,7 @@ import {
   createTodoBodySchema,
   type FsListResult,
   type FsPickResult,
+  filterAgentTools,
   githubIssueEchoSchema,
   githubIssueStateSchema,
   githubIssuesResponseSchema,
@@ -861,7 +863,12 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         provider: body.provider ?? null,
         modelId: body.modelId ?? null,
         thinkingLevel: body.thinkingLevel ?? null,
-        tools: body.tools ?? [],
+        // tools 写侧过滤（XMON-77：词表外值静默丢弃——filterKnownSkillIds 同
+        // 律，存量残值随下一次写自然清退；词表 = shared AGENT_TOOL_SWITCHES）。
+        // 创建缺省 = AGENT_TOOL_DEFAULTS（XMON-84 B4）：「推送分支」默认开——
+        // 收尾闸落地后新建即推不了工作分支会破坏交付；显式携带（含 [] = 全关）
+        // 照旧尊重，缺省才补默认。
+        tools: filterAgentTools(body.tools ?? [...AGENT_TOOL_DEFAULTS]),
         secrets: body.secrets ?? [],
         // spec 13 #367：skills[] 校验源 = 本地现扫存在性；未知 id 静默跳过
         // （目录删除后死引用不留，不报错）。
@@ -889,13 +896,16 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     if (body.skills !== undefined) {
       sets.skills = filterKnownSkillIds(ctx.skillsDir, body.skills);
     }
+    // XMON-77：tools[] 与 create 同律——写侧过滤（词表外值静默丢弃）。
+    if (body.tools !== undefined) {
+      sets.tools = filterAgentTools(body.tools);
+    }
     for (const key of [
       'displayName',
       'description',
       'provider',
       'modelId',
       'thinkingLevel',
-      'tools',
       'secrets',
       'mcpServers',
     ] as const) {

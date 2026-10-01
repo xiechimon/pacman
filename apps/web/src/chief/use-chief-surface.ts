@@ -13,7 +13,7 @@
 // runs exactly one instance of this hook, so the listener stays a
 // singleton per route.
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   useApiMutations,
   useChief,
@@ -54,7 +54,16 @@ export interface ChiefSurface {
  *  exist — `null` keeps the list default (newest first), `-1` opts out. */
 const NEW_THREAD = -1;
 
-export function useChiefSurface(fixture: FixtureSet): ChiefSurface {
+/** XMON-106 chief 深链（通知点击落地 `/app?chief=<threadId>`）：live 面等
+ *  线程列表落定后按 id 定位——命中则开 drawer 切到该线程；未命中（线程已
+ *  删）安静降级不开。两路结局都调 onConsumed（调用方剥 URL 参，一次性
+ *  消费，防刷新/残留参重开）。fixture 面无线程 id，不消费（采集确定性）。 */
+export interface ChiefDeepLink {
+  threadId: string | null;
+  onConsumed: () => void;
+}
+
+export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): ChiefSurface {
   const { live, teamId } = useLiveData();
   const chiefQ = useChief(teamId, live);
   const chiefThreadsQ = useChiefThreads(teamId, live);
@@ -83,6 +92,19 @@ export function useChiefSurface(fixture: FixtureSet): ChiefSurface {
     live && liveThreads.length > 0 && activeThreadIdx !== NEW_THREAD
       ? (liveThreads[activeThreadIdx ?? 0] ?? null)
       : null;
+  // XMON-106 chief 深链消费（定义见 ChiefDeepLink）：等线程查询落定再定位，
+  // 未决期间不动作（误开新主题面比晚开一拍更糟）。
+  const deepLinkId = deepLink?.threadId ?? null;
+  const onDeepLinkConsumed = deepLink?.onConsumed;
+  useEffect(() => {
+    if (!live || deepLinkId === null || !chiefThreadsQ.isSuccess) return;
+    const idx = liveThreads.findIndex((thread) => thread.id === deepLinkId);
+    if (idx >= 0) {
+      setActiveThreadIdx(idx);
+      setChiefView('drawer');
+    }
+    onDeepLinkConsumed?.();
+  }, [live, deepLinkId, chiefThreadsQ.isSuccess, liveThreads, onDeepLinkConsumed]);
   const chiefMessagesQ = useMessages(live ? (activeThread?.id ?? null) : null, live);
   useConversationStream(
     live ? (activeThread?.id ?? undefined) : undefined,

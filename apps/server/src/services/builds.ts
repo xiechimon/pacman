@@ -20,6 +20,8 @@ import type {
   UserRecord,
 } from '@pacman/shared';
 import {
+  AGENT_TOOL_MERGE,
+  AGENT_TOOL_PUSH,
   buildReviewStepPrompt,
   hasBlockingFinding,
   MERGE_ANNOUNCEMENT,
@@ -31,6 +33,7 @@ import {
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
+  agent,
   build,
   message,
   plan as planTable,
@@ -559,6 +562,27 @@ export function requestMerge(deps: BuildDeps, buildId: string): { delegated: tru
   if (!todoRow) throw new NotFoundError(`todo ${row.todoId}`);
   // 合并关口 = review（「将改动合并到默认分支」确认弹层，r3 §3.6）。
   assertPhaseTransition(todoRow.phase, 'done');
+  // 权限闸（XMON-77）：合并步收尾 = git merge + conv 分支 push（三形态 repo
+  // 的落地都以推送为前置——local ff 落地、hosted applyMergeLanding 读推送态、
+  // github done 语义即已推），assignment.build 槽 Agent 必须同时持有两开关；
+  // 缺 = 403 并点名缺失项（chief merge_builds 与 REST /builds/{id}/merge 两
+  // 生产者同摄于此）。build 槽未指派 = 无权限主体可判，不拦（未指派步不可
+  // 领是既有语义）。
+  const buildAgentId = todoRow.assignment?.build?.agentId;
+  if (buildAgentId) {
+    const agentRow = deps.db.select().from(agent).where(eq(agent.id, buildAgentId)).get();
+    if (agentRow) {
+      const missing = [AGENT_TOOL_MERGE, AGENT_TOOL_PUSH].filter(
+        (t) => !agentRow.tools.includes(t),
+      );
+      if (missing.length > 0) {
+        throw new HttpError(
+          403,
+          `Agent ${agentRow.displayName} 未获「${missing.join('」「')}」授权（Agent 详情页权限 tab），无法发起合并`,
+        );
+      }
+    }
+  }
   // 时间线「发起了合并」行（r3 §3.6 实测：`15:06 Xmon Dai 发起了合并`；
   // 行形 [设计]——role user 纯文本 = shared MERGE_ANNOUNCEMENT 单源，呈现层
   // 拼装时间/actor）。

@@ -250,6 +250,15 @@
   color: var(--text-tertiary);
 }
 
+/* XMON-105: bound-chief stream rows render the agent identity avatar (img
+   form) at the same 24px slot the glyph form occupies. */
+.chief-avatar--img img {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  display: block;
+}
+
 .chief-msg-col {
   flex: 1;
   min-width: 0;
@@ -349,6 +358,13 @@
 .chief-composer-input {
   display: block;
   width: 100%;
+  /* XMON-102：固定尺寸，不随内容增高。此前高度由 `rows` 驱动（空 1 行 ↔
+     有草稿 6 行），键入首字即 20 → 120px 跳变、发送后又缩回，整块面板跟着
+     抖。改由这里钉死 = 20px 行高 × 3 行。超出部分盒内滚动
+     （overflow-y: auto），布局不动、光标行始终可见。 */
+  box-sizing: border-box;
+  height: 60px;
+  overflow-y: auto;
   border: none;
   background: none;
   resize: none;
@@ -805,6 +821,20 @@
   border: 1px solid var(--border-default);
   font-size: 12px;
   flex: none;
+}
+
+/* XMON-105: the img form (agent identity avatar) drops the chip chrome —
+   the avatar image IS the 24px disc, no ring behind it. */
+.chief-pick-avatar--img {
+  background: none;
+  border: none;
+}
+
+.chief-pick-avatar--img img {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  display: block;
 }
 
 /* #318 model 副题(r9 §2.6 选择器行形「name · model」):name 右侧 dim 位,
