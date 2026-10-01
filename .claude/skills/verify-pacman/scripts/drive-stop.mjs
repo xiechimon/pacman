@@ -8,8 +8,7 @@
 // 起门控轮 + seed（provider/agent/api-key/project/todo）+ 真 daemon --foreground。
 // 用法：VERIFY_REPO_ROOT=<worktree> node drive-stop.mjs <todoId>
 //   env：STOP_DAEMON_HOME（daemon scratch home，默认 /tmp/pacman-stop-daemon-home）
-//       VERIFY_EVIDENCE_DIR（缺省主仓 .claude/verify-evidence/<ts>-stop-button；
-//       证据要随 PR 进 git 须再跑 archive.mjs）
+//       VERIFY_EVIDENCE_DIR（缺省主仓 .claude/verify-evidence/<ts>-stop-button）
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';

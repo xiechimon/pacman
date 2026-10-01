@@ -31,4 +31,4 @@ Preconditions:
 - #445 起看板卡渲染标签 chip(`.todo-card-tag`,词表配色,每卡至多 1)——旧「看板卡不渲染」校准律(spec 08 附录 A)已退役;无标签任务卡面仍必须零占位(drive-tags 的 board-card-no-chip 钉的就是这条)。
 - 词表验证镜像在 `drive-tags.mjs` 里**有意硬编码**(EXPECTED_TAGS)——与 shared 脱钩,词表漂移必须让脚本 FAIL;改词表时同步改它。
 - 「保存不派发」的任务长期挂占位标题 + 无标签——预期行为(ADR 0002 Premortem),不是缺陷。
-- 旧票注记(#309 手动标签面)已随 ADR 0002 D5 移除;历史证据在 `docs/verify/309/`(归档不删)。
+- 旧票注记(#309 手动标签面)已随 ADR 0002 D5 移除;历史证据在 `docs/verify/309/`(旧纪律归档路径,历史不删)。

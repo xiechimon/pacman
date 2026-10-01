@@ -2,10 +2,12 @@
 
 本目录是 pacman 用户可见行为的验证正源。驱动前先读本索引,再按 feature 文件当配方执行。map 漏掉的入口 = 验证不完整:顺手的入口验过 ≠ 整个 feature 验过。
 
-Last updated: 2026-10-01（XMON-41 新任务键位 N → C）＋ 2026-09-30（#485 Agent 详情编辑面）＋ 2026-09-29（spec 12/#362 G2-T2 + #366 详情页 3-pane 重排 + spec 13 #367 技能页只读本地目录面 + spec 13/#368 MCP 本地 config 只读面 + #371 skills 执行面注入 + spec 12/#361 G2-T4 + spec 12/#360 G2-T3 + spec 11/#354 + spec 12/#359 落地连续增）：
+本目录及 SKILL.md 中凡出现 `docs/verify/...` 字样,均为 **2026-10-01 前旧归档纪律的历史记述**(当时证据随 PR 进仓)。现行纪律只一条:证据附 Multica 交付评论,见 SKILL.md「证据归档纪律」。
 
-- XMON-41：新任务快捷键 N → C（键位随票维护）。新增定制 probe `scripts/drive-newtask-key.mjs`（正负成对：新键开 / 旧键 ×5 不开，三条渲染路径各一对 + 输入态守卫 + 侧栏行入口 + 保存全链；旧提交栈加 `--expect=old` 取基线对照）；`drive-hotkeys.mjs` 与 hotkeys.md / board-new-task.md 的角标与开面键同步改 C。live 验 18/18 PASS（subject）+ 12/12 PASS（基线，正负对照），hotkeys 全链复跑 14/14 PASS，证据 `docs/verify/XMON-41/`。
-- #485：新增 agent-detail.md 条目 + 定制 probe `scripts/drive-agent-detail.mjs`（团队页卡链接 → 详情三 tab → 名称/职责/模型/权限四处编辑各对一次 server 真值 → 创建弹窗选模型落库）。**live 验 21/21 PASS，证据 docs/verify/485/**。fixture 面回归 = e2e agent-detail.spec + agent-create-model.spec。
+Last updated: 2026-10-01（XMON-63 证据纪律改口径：证据只落 `.claude/verify-evidence/` 并附 Multica 交付评论，不进 `docs/verify/`、不为验证开 PR；本文件收尾纪律与下列历史归档记述同步标注）＋ 2026-10-01（XMON-41 新任务键位 N → C）＋ 2026-09-30（#485 Agent 详情编辑面）＋ 2026-09-29（spec 12/#362 G2-T2 + #366 详情页 3-pane 重排 + spec 13 #367 技能页只读本地目录面 + spec 13/#368 MCP 本地 config 只读面 + #371 skills 执行面注入 + spec 12/#361 G2-T4 + spec 12/#360 G2-T3 + spec 11/#354 + spec 12/#359 落地连续增）：
+
+- XMON-41：新任务快捷键 N → C（键位随票维护）。新增定制 probe `scripts/drive-newtask-key.mjs`（正负成对：新键开 / 旧键 ×5 不开，三条渲染路径各一对 + 输入态守卫 + 侧栏行入口 + 保存全链；旧提交栈加 `--expect=old` 取基线对照）；`drive-hotkeys.mjs` 与 hotkeys.md / board-new-task.md 的角标与开面键同步改 C。live 验 18/18 PASS（subject）+ 12/12 PASS（基线，正负对照），hotkeys 全链复跑 14/14 PASS，证据 `docs/verify/XMON-41/`（历史归档路径，旧纪律）。
+- #485：新增 agent-detail.md 条目 + 定制 probe `scripts/drive-agent-detail.mjs`（团队页卡链接 → 详情三 tab → 名称/职责/模型/权限四处编辑各对一次 server 真值 → 创建弹窗选模型落库）。**live 验 21/21 PASS，证据 docs/verify/485/（历史归档路径，旧纪律）**。fixture 面回归 = e2e agent-detail.spec + agent-create-model.spec。
 
 - spec 12 / #362 G2-T2：补 local 项目 daemon 执行面条目 local-daemon-executor.md（硬链接镜像 clone + conv 分支推回用户仓库 + merge 步 ff-only 落地 + github per-step token argv 纪律 + Files tab 禁用占位）；配方 = integration g2t2-local-lifecycle 等四面，live re-probe 待补。
 - spec 12 / #361 G2-T4：补 GitHub 连接认证 + repo picker 条目 github-oauth-picker.md + 定制 probe `scripts/probe-github-oauth.mjs`（API 段 + chromium UI 段，authorize 双形自适应）；local-repo-api.md 回补 T4 落地指引。
@@ -37,7 +39,7 @@ Last updated: 2026-10-01（XMON-41 新任务键位 N → C）＋ 2026-09-30（#4
 - UI 证据 = 截图(1440×732,与 e2e 同口径)+ `result.json` 的逐条 checks。
 - 变更类证明必须有第二只眼:`GET /api/...` JSON 真值 + SQLite 只读行(见各 feature 文件)。
 - 收尾 `cleanup.mjs` 回收栈;证据默认落**主仓** `.claude/verify-evidence/`(不落 worktree),该目录 gitignored。
-- **证据要随 PR 进 git 必须 `archive.mjs <证据目录> <ticket>`** 归档进 `docs/verify/<ticket>/` 并 commit;PR body 引用归档路径,无归档路径的 verify 声明视为未验证(SKILL.md「证据归档纪律」)。
+- **证据交付必须附到 Multica 交付评论**:`multica issue comment add <issue> --attachment <证据目录>/<file>`(逐个文件,`result.json` + 截图)。证据只落 `.claude/verify-evidence/`(gitignored),**不进仓库、不为验证开 PR**;**证据未附交付评论的 verify 声明视为未验证**(SKILL.md「证据归档纪律」)。
 - 报告跳过的入口时要带尝试过的命令与未满足的前置;不得把「从别的入口验过」当成「该入口已验」。
 
 ## Feature entry contract
@@ -70,12 +72,12 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [GitHub 连接认证 + repo picker(新建项目)](./github-oauth-picker.md) 未认证 = 认证钮 + 手动兜底;已认证 = picker 弹层(搜索/单选回填/断开);authorize 双形自适应(env 未配 400 内联 / 已配 200 URL 形状);手动兜底建 github 项目全链;定制 probe `scripts/probe-github-oauth.mjs`(spec 12 / #361)。
 - [local 项目 daemon 执行面](./local-daemon-executor.md) 硬链接镜像 clone→worktree→conv 分支 push 回用户仓库→merge 步 ff-only 落地(脏区/非 ff = git 自拒 failed 含原文)+github per-step token 不进 argv(PATH shim 捕获)+Files tab 禁用占位;配方 = `integration/test/g2t2-local-lifecycle.test.ts` 等四面(spec 12 / #362)。live re-probe 待补。
 - [模型服务 runtime tabs(providers 页)](./providers-tabs.md) spec 11 A1-A4/A7 先行地图：tablist pi/Claude Code + `?runtime=` 同步 + header 卡安装态 + pi = custom providers models[] 投影 + model-sources API 双真值 + facade / chevron 负向 (#353/#354)；定制 probe `scripts/drive-providers-tabs.mjs`。**实现票落地前红态**。
-- [机器页本机行 + switches](./machines-local-row.md) spec 11 A8/A9/A7：本机行 server seed (kind='local', name=hostname) 钉首不可删 + per-runtime role=switch 翻转写回 enabledRuntimes (API + SQLite 双真值，幂等) + 添加机器流程不变 + facade / chevron 负向 (#353/#354)；定制 probe `scripts/drive-machines-local.mjs`。**#357 实现落地：15/15 PASS，证据 docs/verify/357/**。
+- [机器页本机行 + switches](./machines-local-row.md) spec 11 A8/A9/A7：本机行 server seed (kind='local', name=hostname) 钉首不可删 + per-runtime role=switch 翻转写回 enabledRuntimes (API + SQLite 双真值，幂等) + 添加机器流程不变 + facade / chevron 负向 (#353/#354)；定制 probe `scripts/drive-machines-local.mjs`。**#357 实现落地：15/15 PASS，证据 docs/verify/357/（历史归档路径，旧纪律）**。
 - [添加服务商 picker dialog](./provider-picker.md) spec 11 A5/A6：「新建」开 picker — 页面无 preset 投喂负向 + 搜索客户端过滤 38 项 + 显示名 canon 名称节点等值 (spec 名单) + OAuth 徽标仅族表已接线族 (现仅 github-copilot) / openai-codex 未接线行禁用+「暂未开通」注记 (#385) / xai 行负向 + xai oauthLabel 密钥表单正向 + api_key 族密钥表单 + 自定义端点 disclosure 展开现有表单 + 创建链回归护栏 (#353/#354)；定制 probe `scripts/drive-provider-picker.mjs`。
 - [技能页(只读本地目录面)](./skills-page.md) 技能 = server 本地目录现扫投影:放含 SKILL.md 的子目录→刷新即现,无新建/导入入口,空态指路目录,id = frontmatter name 回落目录名(spec 13 #367)。栈隔离第四轴 `PACMAN_SKILLS_DIR`(launch.mjs 已带)。
 - [MCP 页(只读本地 config 面)](./mcp-servers.md) `~/.claude.json` mcpServers 段投影列表+只读钉扎(无新建/更多入口、写面 404、密钥值不出接口、SQLite 无 mcp_server 表);定制 probe `scripts/drive-mcp.mjs`(#368);daemon 执行面配方 = integration m4b-mcp-e2e。
 - [skills 执行面注入(daemon)](./skills-injection.md) PACMAN_SKILLS_DIR 扫描→`<available_skills>` catalog 追加进 systemPrompt→agent read SKILL.md 按需加载(#371,spec 14)。daemon 侧无 UI 面,canonical 证据 = integration 真栈探针(skills-inject-e2e)。
-- [Agent 详情编辑面](./agent-detail.md) 团队页 Agent 卡(链接)→ `/app/resources/agents/<id>` 三 tab(概览/记忆/权限)；概览名称行内编辑 + 职责 + 模型选择器落 `PATCH agents/{aid}`，权限 6 开关 + 密钥 + MCP 勾选同路径；创建弹窗两态(有服务商 = 内联模型槽，无 = 告警 + 外链)；定制 probe `scripts/drive-agent-detail.mjs`(#485)。**证实 live 21/21 PASS，证据 docs/verify/485/**。
+- [Agent 详情编辑面](./agent-detail.md) 团队页 Agent 卡(链接)→ `/app/resources/agents/<id>` 三 tab(概览/记忆/权限)；概览名称行内编辑 + 职责 + 模型选择器落 `PATCH agents/{aid}`，权限 6 开关 + 密钥 + MCP 勾选同路径；创建弹窗两态(有服务商 = 内联模型槽，无 = 告警 + 外链)；定制 probe `scripts/drive-agent-detail.mjs`(#485)。**证实 live 21/21 PASS，证据 docs/verify/485/（历史归档路径，旧纪律）**。
 - [快捷键组(新任务 C + 空格呼出总管)](./hotkeys.md) 侧栏「新任务」行 C 角标 + 全局 C 开 dialog(board/project 自有面,其余路由 AppSidebar 全局 dialog 同 live save 路径;XMON-41 起 N → C) + Space 呼出抽屉草稿框持焦 + 输入态/按钮态守卫负向;定制 probe `scripts/drive-hotkeys.mjs`(#389) 与键位专测 `scripts/drive-newtask-key.mjs`(XMON-41)。fixture 面回归 = e2e hotkeys.spec。
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
