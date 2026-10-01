@@ -123,6 +123,12 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
         "null",
       ],
     },
+    "localTools": {
+      "items": {
+        "type": "string",
+      },
+      "type": "array",
+    },
     "mcpServers": {
       "items": {
         "type": "string",
@@ -464,6 +470,12 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
                 "string",
                 "null",
               ],
+            },
+            "localTools": {
+              "items": {
+                "type": "string",
+              },
+              "type": "array",
             },
             "mcpServers": {
               "items": {
@@ -4402,6 +4414,9 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > machine > 
     "online": {
       "type": "boolean",
     },
+    "shellEnabled": {
+      "type": "boolean",
+    },
     "teamId": {
       "type": "string",
     },
@@ -4414,6 +4429,7 @@ exports[`record 形状 24 表投影——zod → JSON Schema 快照 > machine > 
     "latestCliVersion",
     "kind",
     "enabledRuntimes",
+    "shellEnabled",
   ],
   "type": "object",
 }
@@ -6162,6 +6178,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > 存储表清单（01 §6
   "branch_sync",
   "github_connection",
   "skill_audit",
+  "shell_command",
 ]
 `;
 

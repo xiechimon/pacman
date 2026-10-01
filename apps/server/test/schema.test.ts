@@ -17,11 +17,12 @@ describe('24 表 migration（01 §6 清单）', () => {
     const tables = Object.values(schema).filter((v) => is(v, SQLiteTable));
     const names = tables.map((t) => getTableConfig(t as SQLiteTable).name).sort();
     expect(names).toEqual([...DB_TABLES].sort());
-    expect(names).toHaveLength(30); // 01 §6 原清单 30 + spec 12 github_connection − skill/mcp_server（spec 13 退役）+ skill_audit（XMON-109 写审计）
+    expect(names).toHaveLength(31); // 01 §6 原清单 30 + spec 12 github_connection（内部凭证表）− skill/mcp_server（spec 13 退役）+ skill_audit（XMON-109 写审计）+ XMON-108 shell_command（内部审计表）
     expect(names).toContain('chief');
     expect(names).toContain('attachment');
     expect(names).toContain('branch_sync');
     expect(names).toContain('github_connection');
+    expect(names).toContain('shell_command');
   });
 
   test('migration SQL 进 repo 且全表覆盖（跨 migration 累计）', () => {

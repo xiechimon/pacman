@@ -34,13 +34,22 @@ export const machineRecordSchema = z.object({
    * （patchMachineBodySchema 钉 MACHINE_RUNTIMES enum）——词表演进时旧库
    * 行仍可读出，入口恒收严。 */
   enabledRuntimes: z.array(z.string()),
+  /** 机器层 shell 访问闸（XMON-108 R1，UI 承诺文案 agent.ts「远程 shell」
+   * 副文案的本体）：与 agent 层「远程 shell」开关联合判定（双闸齐开才有
+   * remote_shell，见 claimedStepSchema.localTools）。默认 false（存量行
+   * migration 回填）——「机器 shell 权限改动秒级热加载」由每调用预检兑现
+   * （POST /api/machine/shell/{stepId} 复读本列，非 claim 期一次闸）。 */
+  shellEnabled: z.boolean(),
 });
 export type MachineRecord = z.infer<typeof machineRecordSchema>;
 
 /** PATCH /api/machines/{id} body（spec 11 数据契约）：enabledRuntimes 全量
- * 替换语义；元素词表钉死 MACHINE_RUNTIMES（词表外 runtime = 400）。 */
+ * 替换语义；元素词表钉死 MACHINE_RUNTIMES（词表外 runtime = 400）。
+ * XMON-108 R1 起两字段各自可选、缺省 = 不动（undefined ≠ 清空/重置）——
+ * 单字段 PATCH（如 R3 机器页只翻 shellEnabled）不再被迫读改写另一字段。 */
 export const patchMachineBodySchema = z.object({
-  enabledRuntimes: z.array(z.enum(MACHINE_RUNTIMES)),
+  enabledRuntimes: z.array(z.enum(MACHINE_RUNTIMES)).optional(),
+  shellEnabled: z.boolean().optional(),
 });
 export type PatchMachineBody = z.infer<typeof patchMachineBodySchema>;
 

@@ -39,6 +39,7 @@ export const DB_TABLES = [
   'branch_sync', // M7 #319 分支对话框「同步到机器」状态机（pending/running/synced/failed）；内部状态表无独立 record 投影面
   'github_connection', // spec 12 / #359：GitHub OAuth 连接行（teamId 单行；accessToken 经 SecretBox 密封，token 只写不读出 wire）
   'skill_audit', // XMON-109 S1：技能写审计行（REST/relay 三入口同表；actor_type member|agent + action create|update + bytes）
+  'shell_command', // XMON-108 R1 机器 shell 审计行（预检 denied/running → done/failed 终态一次）；内部审计表无 record 投影
 ] as const;
 
 export type DbTable = (typeof DB_TABLES)[number];
@@ -63,5 +64,9 @@ export const INTERNAL_ONLY_TABLES = [
   'stop_pending',
   'attachment',
   'github_connection',
-  'skill_audit', // XMON-109：技能写审计只写不读出 wire（读位 = 直接查库运维面，无 record 投影）
+  // XMON-109：技能写审计只写不读出 wire（读位 = 直接查库运维面，无 record 投影）
+  'skill_audit',
+  // XMON-108 R1：shell_command 读位 = 无 REST 读面（审计消费——团队审计
+  // 视图归后续票；本票只有预检/回写两个写端点 + server 侧直查）。
+  'shell_command',
 ] as const;

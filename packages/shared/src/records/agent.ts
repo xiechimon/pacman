@@ -39,6 +39,13 @@ export const AGENT_TOOL_PUSH: AgentToolSwitch = '推送分支';
 export const AGENT_TOOL_SKILL_CREATE: AgentToolSwitch = '创建技能';
 export const AGENT_TOOL_SKILL_UPDATE: AgentToolSwitch = '更新技能';
 
+/** 远程 shell 本体闸（XMON-108 R1 起有执法面）：agent 层开关 ∩ 机器层
+ * `machine.shellEnabled` 双闸齐开才在 claim 组装 localTools 含 remote_shell
+ * （词值单源 = protocol/machine-wire.ts LOCAL_TOOL_REMOTE_SHELL）；步中每条
+ * 命令经预检端点复核双闸（POST /api/machine/shell/{stepId}）。预检/执法
+ * 先例 = requestMerge 403（builds.ts）双开关校验。 */
+export const AGENT_TOOL_SHELL: AgentToolSwitch = '远程 shell';
+
 /** 新建 Agent 的 tools 默认集（XMON-84 B4）：「推送分支」开——收尾闸落地后
  * 缺它 = 提交留本地工作分支，新建即推不了工作分支会破坏交付（不破坏交付
  * 判据）；「合并分支」不默认开——合并进默认分支属发布行为，发布决定留给人

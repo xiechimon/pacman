@@ -16,6 +16,8 @@ import {
   machineEnrollPollBodySchema,
   machineEnrollStartBodySchema,
   machinePresenceBodySchema,
+  machineShellPrecheckBodySchema,
+  machineShellResultBodySchema,
   machineSyncResultBodySchema,
   machineToolBodySchema,
   machineToolRelayBodySchema,
@@ -46,9 +48,11 @@ import {
   machineSkillsPackage,
   markOffline,
   markPresence,
+  precheckShellCommand,
   receivePlanUpload,
   receiveUpload,
   recoverSteps,
+  reportShellResult,
   reportTool,
   reportTranscriptDelta,
   stepToken,
@@ -371,6 +375,28 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
         ...(body.errorMessage !== undefined ? { errorMessage: body.errorMessage } : {}),
       },
     );
+    return c.json({ ok: true as const });
+  });
+
+  // —— POST /api/machine/shell/{stepId}（XMON-108 R1，MACHINE_WIRE_EXTENSIONS
+  // 登记位）：远程 shell 每命令预检——双闸（agent「远程 shell」开关 ∩
+  // machine.shellEnabled）每调用重读 + 审计行先于放行落库。2xx ⇔ allowed
+  // （响应 {allowed:true, runId}）；拒绝 = 403 {error: 原因}（denied 审计行
+  // 已落库）。服务层 = services/machines.ts precheckShellCommand。 ——————————
+  app.post('/api/machine/shell/:stepId', async (c) => {
+    const row = me(c);
+    const body = parseWith(machineShellPrecheckBodySchema, await jsonBody(c), 'body');
+    return c.json(precheckShellCommand(deps, row.id, c.req.param('stepId'), body));
+  });
+
+  // —— POST /api/machine/shell/{runId}/result（XMON-108 R1，MACHINE_WIRE
+  // EXTENSIONS 登记位）：daemon 按预检下发的 runId 回写执行终态
+  // （done/failed；running → 终态只写一次，重复回写幂等 200）。跨机回写 = 403
+  // （sync-result 同律）。服务层 = reportShellResult。 ——————————————————————
+  app.post('/api/machine/shell/:runId/result', async (c) => {
+    const row = me(c);
+    const body = parseWith(machineShellResultBodySchema, await jsonBody(c), 'body');
+    reportShellResult(deps, row.id, c.req.param('runId'), body);
     return c.json({ ok: true as const });
   });
 }
