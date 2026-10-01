@@ -573,7 +573,8 @@ export async function executeChiefTool(
     // agent 的「远程 shell」开关——写 agent.tools（开关词），与 REST PATCH
     // /agents/{aid} 同字段同过滤；执法面 = claim 双闸注册 + 步中每命令预检
     // （XMON-108），fail-closed。enabled 必填显式（缺省/非布尔 400，不沿用
-    // #573 前缺省 true 的 fail-open 形）。
+    // #573 前缺省 true 的 fail-open 形）。返回体附 tools——XMON-74 证据探针
+    // 按 payload.tools 复核写点结果（docs/verify/XMON-74/xmon74-probe.mjs）。
     case 'set_remote_shell': {
       const agentId = str(params, 'agentId');
       const row = requireTeamAgent(db, agentId, ctx.teamId);
@@ -583,7 +584,7 @@ export async function executeChiefTool(
       const tools = filterAgentTools(row.tools).filter((t) => t !== AGENT_TOOL_SHELL);
       if (enabledParam) tools.push(AGENT_TOOL_SHELL);
       db.update(agent).set({ tools }).where(eq(agent.id, agentId)).run();
-      return json({ agentId, remoteShell: enabledParam });
+      return json({ agentId, remoteShell: enabledParam, tools });
     }
     case 'schedule_todo': {
       const todoId = str(params, 'todoId');
