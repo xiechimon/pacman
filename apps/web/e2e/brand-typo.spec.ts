@@ -113,6 +113,60 @@ for (const theme of ['light', 'dark'] as const) {
     await page.waitForTimeout(300); // past any 150ms color step
     expect(await read()).toEqual(rest);
   });
+
+  // XMON-69: the toggle is a bare 14px glyph, so whatever the press state does
+  // to it is read as the glyph itself moving (the report: 图标往左侧缩一下).
+  // Both directions are pinned — the expanded head's toggle and the rail's —
+  // on the frame the mouse is *held* down, i.e. before either state flips.
+  test(`the sidebar toggles hold face and geometry while pressed (${theme})`, async ({
+    page,
+  }) => {
+    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
+    await page.goto('/app?scenario=01');
+
+    const read = (sel: string) =>
+      page.evaluate((s) => {
+        const el = document.querySelector(s)!;
+        const cs = getComputedStyle(el);
+        const icon = el.querySelector('svg')!.getBoundingClientRect();
+        return {
+          bg: cs.backgroundColor,
+          shadow: cs.boxShadow,
+          color: cs.color,
+          opacity: cs.opacity,
+          iconX: icon.x,
+          iconY: icon.y,
+          iconW: icon.width,
+          iconH: icon.height,
+        };
+      }, sel);
+
+    // the pointer settles on the target first (hover is a face of its own —
+    // banned on the head toggle, kept on the rail's), so the delta read here
+    // is the press state alone.
+    const press = async (sel: string) => {
+      const bb = (await page.locator(sel).boundingBox())!;
+      await page.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2);
+      await page.waitForTimeout(300); // past any 150ms color step
+      const hovered = await read(sel);
+      await page.mouse.down();
+      const held = await read(sel);
+      await page.mouse.up();
+      return { hovered, held };
+    };
+
+    // open sidebar: the head's collapse toggle
+    const expanded = await press('.sidebar-team-collapse');
+    expect(expanded.hovered.opacity).toBe('1');
+    expect(expanded.held).toEqual(expanded.hovered);
+    await expect(page.locator('.rail-toggle')).toBeVisible();
+
+    // collapsed rail: the expand toggle, and its release is the expand path
+    const rail = await press('.rail-toggle');
+    expect(rail.hovered.opacity).toBe('1');
+    expect(rail.held).toEqual(rail.hovered);
+    await expect(page.locator('.board-sidebar--collapsed')).toHaveCount(0);
+  });
 }
 
 test('res-back keeps a keyboard focus ring', async ({ page }) => {
