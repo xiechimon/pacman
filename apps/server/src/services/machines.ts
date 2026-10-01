@@ -7,12 +7,14 @@
 // 载荷细形 r3 未采处 = [推断]/[设计]（04 §3 不判负口径），补采后回写 02 §11。
 
 import { hostname } from 'node:os';
+import { join } from 'node:path';
 import type {
   ClaimedStep,
   GitCredentials,
   MachineDoneBody,
   MachineShellPrecheckBody,
   MachineShellResultBody,
+  MachineSkillsResponse,
   MachineStreamEvent,
   MachineSyncCommand,
   MachineTokenResponse,
@@ -25,16 +27,21 @@ import type {
 } from '@pacman/shared';
 import {
   AGENT_TOOL_SHELL,
+  AGENT_TOOL_SKILL_CREATE,
+  AGENT_TOOL_SKILL_UPDATE,
   CHIEF_REMOTE_TOOLS,
+  createSkillBodySchema,
   derivePlaceholderTitle,
   FIXED_TAGS,
   GITHUB_ACCESS_TOKEN_USERNAME,
   isChiefConversationId,
   LOCAL_TOOL_CREATE_TAG,
   LOCAL_TOOL_REMOTE_SHELL,
+  MAX_SKILL_TOTAL_BYTES,
   MCP_MIN_CLI_VERSION,
   machineRecordSchema,
   parseReviewPromptMeta,
+  updateSkillToolParamsSchema,
   WORKER_REMOTE_TOOLS,
   WORKER_REMOTE_TOOLS_GITHUB,
 } from '@pacman/shared';
@@ -58,7 +65,7 @@ import {
   todo,
   tokenUsage,
 } from '../db/schema.js';
-import { HttpError } from '../lib/errors.js';
+import { HttpError, parseWith } from '../lib/errors.js';
 import { systemGitOps } from '../lib/git.js';
 import type { FetchLike } from '../lib/github.js';
 import { hashCredential } from '../lib/hash.js';
@@ -84,6 +91,13 @@ import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { projectRepoRef, repoDirFor } from './git.js';
 import { openGithubToken } from './github-connection.js';
 import { canTransitionPhase } from './phase.js';
+import {
+  createLocalSkill,
+  listSkillFiles,
+  readSkillFile,
+  scanLocalSkills,
+  updateLocalSkill,
+} from './skills.js';
 import { listProjectTagVocab, resolveFixedTagId, resolveProjectTagIds } from './tags.js';
 import { setTodoPhase, updateTodo, writebackSelfIssueTitle } from './todos.js';
 
@@ -988,8 +1002,9 @@ export function reportTranscriptDelta(
 /** remoteTools relay 执行（02 §4.3「服务端定义并执行」；r5 §3.1 bundle：POST
  * /api/machine/tool/<stepId> {name, params} → {text}）。机器所有权校验后按步类
  * 分流：chief 步 = 49 词表（溯源上下文 step → chief_thread → chief）；worker
- * 步 = 记忆三件套白名单（02 §4.4/r5 §6 worker 写路径，溯源 step → build →
- * todo → assignment 槽）。返回 JSON 串（daemon 侧包 {text} 回 pi）。 */
+ * 步 = 记忆三件套 + 附件读 + set_task_meta + 技能写词（02 §4.4/r5 §6 worker
+ * 写路径 + XMON-109 技能写，溯源 step → build → todo → assignment 槽）。
+ * 返回 JSON 串（daemon 侧包 {text} 回 pi）。 */
 export async function executeRelayToolCall(
   deps: MachineDeps,
   machineId: string,
@@ -1035,8 +1050,9 @@ export async function executeRelayToolCall(
   );
 }
 
-/** worker 步 relay = 记忆三件套 + set_task_meta（白名单在
- * executeWorkerMemoryTool / 下方拦截；词表外 400）。溯源上下文（r5 §6 实测
+/** worker 步 relay = 记忆三件套 + set_task_meta + 技能写词 create_skill/
+ * update_skill（白名单在 executeWorkerMemoryTool / 下方拦截；词表外 400；
+ * 技能写词按 agent 行 tools 开关执法 403）。溯源上下文（r5 §6 实测
  * 样本 = 运行中 todo/build）：step → build → todo → assignment 槽 Agent
  * （02 §4.2 按步类取槽）。 */
 async function executeWorkerMemoryToolCall(
@@ -1054,6 +1070,13 @@ async function executeWorkerMemoryToolCall(
   if (name === 'set_task_meta') return setTaskMeta(deps, todoRow, params);
   const slot = row.kind === 'plan' ? todoRow.assignment?.plan : todoRow.assignment?.build;
   const agentId = slot?.agentId;
+  // XMON-109 S1：技能写词（词表恒列，授权执法在 agent 行 tools——403 同
+  // requestMerge 形）。无 agent 步无执行者可审计 = 409（纵深防御位：agent
+  // 空槽步不入 claim 候选，正常流走不到）。
+  if (name === 'create_skill' || name === 'update_skill') {
+    if (!agentId) throw new HttpError(409, 'step has no assigned agent — skill write has no actor');
+    return executeWorkerSkillTool(deps, todoRow, agentId, name, params);
+  }
   if (!agentId) throw new HttpError(409, 'step has no assigned agent — memory has no store');
   return executeWorkerMemoryTool(
     deps.db,
@@ -1068,6 +1091,92 @@ async function executeWorkerMemoryToolCall(
     name,
     params,
   );
+}
+
+/** worker 技能写词执行（XMON-109 S1）：agent 行 tools 开关执法——「创建
+ * 技能/更新技能」未开 = 403（requestMerge 同形：点名开关 + 指路 Agent
+ * 详情页权限 tab；词表恒列与授权执法解耦，缺权调用在此拒）。通过后走
+ * createLocalSkill/updateLocalSkill 单源写路径，审计 actor = 该步 Agent。 */
+async function executeWorkerSkillTool(
+  deps: MachineDeps,
+  todoRow: typeof todo.$inferSelect,
+  agentId: string,
+  name: 'create_skill' | 'update_skill',
+  params: Record<string, unknown>,
+): Promise<string> {
+  const agentRow = deps.db.select().from(agent).where(eq(agent.id, agentId)).get();
+  if (!agentRow) throw new NotFoundError(`agent ${agentId}`);
+  const want = name === 'create_skill' ? AGENT_TOOL_SKILL_CREATE : AGENT_TOOL_SKILL_UPDATE;
+  if (!agentRow.tools.includes(want)) {
+    throw new HttpError(
+      403,
+      `Agent ${agentRow.displayName} 未获「${want}」授权（Agent 详情页权限 tab），无法${name === 'create_skill' ? '创建' : '更新'}技能`,
+    );
+  }
+  const opts = {
+    db: deps.db,
+    skillsDir: deps.skillsDir,
+    teamId: todoRow.teamId,
+    actor: { type: 'agent' as const, id: agentId },
+  };
+  if (name === 'create_skill') {
+    const body = parseWith(createSkillBodySchema, params, 'params');
+    return JSON.stringify(createLocalSkill(opts, body));
+  }
+  const body = parseWith(updateSkillToolParamsSchema, params, 'params');
+  return JSON.stringify(updateLocalSkill(opts, body.skillId, body));
+}
+
+/** GET /api/machine/skills/{stepId}（XMON-109 S1，MACHINE_WIRE_EXTENSIONS
+ * 登记 [设计] 附加端点）：S2 daemon 物化消费契约——按步出技能包。chief 步
+ * = 信任面全量现扫（#372 同律，不受白名单约束）；worker 步 = agentForStep
+ * 解析 Agent 的 skills 白名单 ∩ 现扫。字节闸：单文件 ≤
+ * MAX_SKILL_FILE_BYTES（readSkillFile 同闸，盘上字节数计）、包总量 ≤
+ * MAX_SKILL_TOTAL_BYTES（utf8 字节数累计），超限 400 点名——写面同闸，
+ * 超限技能/包不静默截断（调用方显式修白名单或文件）。 */
+export function machineSkillsPackage(
+  deps: MachineDeps,
+  machineId: string,
+  stepId: string,
+): MachineSkillsResponse {
+  const row = ownedStep(deps, machineId, stepId); // 非本步凭证/未知步 = 404
+  const scanned = scanLocalSkills(deps.skillsDir);
+  let wanted = scanned;
+  if (row.kind !== 'chief') {
+    const buildRow = deps.db.select().from(build).where(eq(build.id, row.buildId)).get();
+    if (!buildRow) throw new NotFoundError(`build ${row.buildId}`);
+    const todoRow = deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
+    if (!todoRow) throw new NotFoundError(`todo ${buildRow.todoId}`);
+    const agentRow = agentForStep(deps, todoRow, row.kind, row.prompt);
+    const whitelist = new Set(agentRow?.skills ?? []);
+    wanted = scanned.filter((s) => whitelist.has(s.id));
+  }
+  const skills: MachineSkillsResponse['skills'] = [];
+  let total = 0;
+  for (const skill of wanted) {
+    const dir = join(deps.skillsDir, skill.dirName);
+    const files: { path: string; content: string }[] = [];
+    for (const path of listSkillFiles(dir)) {
+      const content = readSkillFile(dir, path); // 链接逃逸/缺位 = null（防御位跳过）
+      if (content === null) continue;
+      total += Buffer.byteLength(content, 'utf8');
+      if (total > MAX_SKILL_TOTAL_BYTES) {
+        throw new HttpError(
+          400,
+          `skill files too large: total ${total} bytes (limit ${MAX_SKILL_TOTAL_BYTES})`,
+        );
+      }
+      files.push({ path, content });
+    }
+    skills.push({
+      id: skill.id,
+      name: skill.name,
+      description: skill.description,
+      dirName: skill.dirName,
+      files,
+    });
+  }
+  return { skills };
 }
 
 /** set_task_meta（spec 15 #394 + #446/ADR 0005 分叉律 + #452 写向）：校验按

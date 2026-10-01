@@ -344,6 +344,21 @@ export const agentMemory = sqliteTable('agent_memory', {
 // backend/mcp-config.ts），无表位；旧行经 db/legacy-export.ts 导出后由
 // migration drop。
 
+// —— skill_audit（XMON-109 S1）：技能写审计行。REST（member）/ worker
+// relay（agent，开关执法面）/ chief relay（绑定 agent 或 member）三入口
+// 同表；只写不读出 wire（INTERNAL_ONLY_TABLES 登记）。actorType 词 =
+// 'member' | 'agent'，action 词 = 'create' | 'update'，bytes = 本次写面
+// 落盘内容字节数（列出文件 content 之和）。
+export const skillAudit = sqliteTable('skill_audit', {
+  id: text('id').primaryKey(),
+  skillId: text('skillId').notNull(),
+  actorType: text('actorType').notNull(),
+  actorId: text('actorId').notNull(),
+  action: text('action').notNull(),
+  bytes: integer('bytes').notNull(),
+  createdAt: epochMs('createdAt').notNull(),
+});
+
 // —— provider（38 presets + custom，02 §6.2；apiKey 密文经 SecretBox，02 §8）——————
 export const provider = sqliteTable('provider', {
   id: text('id').primaryKey(),

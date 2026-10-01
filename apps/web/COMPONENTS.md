@@ -30,7 +30,7 @@ input.tsx
 
 （上面这段是机器门读的冻结名单：`src/ui/` 里出现名单外的新件即报错——迁移期的删除不报错。）
 
-## 二、新轨原语（19）
+## 二、新轨原语（21）
 
 <!-- inventory:new-track -->
 ```text
@@ -40,6 +40,7 @@ avatar.tsx               # shadcn Avatar 三件套（Root/Image/Fallback，底�
 badge.tsx                # 计数 / 标签 pill；任务状态语义色族见 DESIGN.md
 button.tsx               # 三态 Primary/Ghost/Icon；仓内偏离：focus 环走仓级 #388 canon
 card.tsx
+checkbox.tsx             # 复选（原生 input + 自制 tile）；**别直接摆裸 `<input type="checkbox">`**——浏览器自带方框与仓内复选行不同族
 dialog-shell.tsx         # 对话框共用底座（11 个消费点，API 与旧轨逐字相同）
 dialog.tsx
 dropdown-menu.tsx
@@ -50,6 +51,7 @@ kbd-hint.tsx             # 快捷键悬浮提示 chip（控件 hover/focus-visib
 kbd.tsx                  # 按键角标原语（文档正文里的 ⌘K 角标）；悬浮提示 chip 是 kbd-hint.tsx
 popover.tsx
 seeded-avatar.tsx        # dicebear 种子头像适配层（src 覆盖 > name 种子 > 兜底换图，img 常驻 DOM）；头像一律用它
+select.tsx               # 单选下拉（触发钮 + FloatingShell 弹层 + role=listbox）；**别再用原生 `<select>`**——它弹的是系统菜单，跟自制弹层并排就是两套弹窗
 switch.tsx               # 仓内偏离：thumbClassName 适配口
 tag-chip.tsx             # 用户数据色标签 chip（tag.color 走 inline style 白字）；落在 badge.tsx 上，别新建皮肤件
 tabs.tsx
@@ -71,6 +73,8 @@ tabs.tsx
 | 确认对话框 | `components/ui/alert-dialog-shell.tsx` | 别手搓 `OverlayMount` + `useEscClose` |
 | 普通对话框 | `components/ui/dialog-shell.tsx` | 消费点只改 import 路径即可（API 逐字相同） |
 | 锚定浮层（下拉 / 菜单 / popover） | `floating-shell.tsx`，或它上面的 `dropdown-menu.tsx` / `popover.tsx` | 别自造定位壳 |
+| **单选下拉**（选一个值出来） | `components/ui/select.tsx` | 别用原生 `<select>`（弹系统菜单，与自制弹层并排两套）、别各面自写触发钮+弹层 |
+| 复选 | `components/ui/checkbox.tsx` | 别摆裸 `<input type="checkbox">`——浏览器自带方框与仓内复选行不同族 |
 | 卡片 / 面板 | 先看 `components/ui/card.tsx`；**但注意下面的消费现状** | 别硬套原语——真卡是 per-face 类族 |
 | **头像** | `components/ui/seeded-avatar.tsx`（dicebear 种子 + 兜底换图，img 常驻 DOM） | 别直接用 `avatar.tsx` 三件套——尺寸正本在各面 per-face 几何，Root 需走 `contents` |
 | 快捷键提示 chip | `components/ui/kbd-hint.tsx`（落在 `kbd.tsx` 上） | 别自写绝对定位 + 显隐；文档正文里的按键角标用 `kbd.tsx` |

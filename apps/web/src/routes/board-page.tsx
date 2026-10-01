@@ -17,7 +17,7 @@
 
 import type { TodoRecord as WireTodo } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
   useApiMutations,
@@ -45,13 +45,13 @@ import { useChiefSurface } from '../chief/use-chief-surface.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
+import { mergeRejectCopy, useMergeGate } from '../detail/merge-gate.js';
 import { withoutDeleted } from '../fixtures/deletions.js';
 import { localTodo, overlayContent } from '../fixtures/fixtures.js';
 import type { FixtureSet, OverlayState, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
-import { NewTaskDialog } from '../overlay/new-task-dialog.js';
-import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
+import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 // shell styles live with the board surface; the settings view (101–104)
 // unmounts BoardSurface but keeps the shell, so the route imports them too
@@ -74,8 +74,17 @@ export function BoardPage() {
   const fixture = resolveScenario(searchParams);
   // chief 面（#72/#129）：三态视图 + live 数据 wiring 由共享 hook 承载，
   // 与其余 shell 族的 FAB 唤醒同一 surface。
+  // XMON-106：`?chief=<threadId>` 深链（通知点击的落地点之一）——交给
+  // useChiefSurface 按 id 定位开 drawer，消费后剥参（replace 不积历史，
+  // tags/projects 等其余参原样保留，同 writeFilterParams 律）。
+  const chiefParam = searchParams.get('chief');
+  const consumeChiefParam = useCallback(() => {
+    const rest = new URLSearchParams(searchParams);
+    rest.delete('chief');
+    navigate(`?${rest.toString()}`, { replace: true });
+  }, [searchParams, navigate]);
   const { chiefView, setChiefView, chiefData, chiefUnread, onSend, onThread, onNewThread } =
-    useChiefSurface(fixture);
+    useChiefSurface(fixture, { threadId: chiefParam, onConsumed: consumeChiefParam });
 
   // —— live 数据面（#83）：查询 + mutations；fixture 模式全部惰性（enabled
   // = live），采集零请求零流。members/skills/machines 归 #389 抽出的
@@ -324,17 +333,33 @@ export function BoardPage() {
     },
     [fixture],
   );
-  const {
-    openDialog: openNewTask,
-    firstAgentId,
-    dialogProps: newTaskDialogProps,
-  } = useNewTaskSurface(fixture, { fixtureTodos, eager: true, onFixtureSave });
+  // XMON-93 隔离面：dialog 的 open/正文态住进 NewTaskSurfaceRoot 叶子内部，
+  // 开合与输入不再整板重渲染（原 useNewTaskSurface 住本页 = ESC 关闭触发
+  // 全量卡片同步重渲染，退场动画掉帧）。opener 走 ref 读，引用恒定。
+  const newTaskApiRef = useRef<NewTaskSurfaceApi | null>(null);
+  const openNewTask = useCallback(() => newTaskApiRef.current?.openDialog(), []);
   // Modal overlays over the board (issue #68): the accept dialog opens from
   // the review card's 完成 button (r7 34) or the scenario fixture; the
   // branch dialog from the card's branch icon.
   const [overlay, setOverlay] = useState<OverlayState | null>(fixture.overlay ?? null);
   const [overlayTodo, setOverlayTodo] = useState<TodoRecord | null>(null);
-  const closeOverlay = useCallback(() => setOverlay(null), []);
+  // XMON-89：合并被拒的可见态，随弹层关闭一并清（不清会在下次开窗时回显上
+  // 一轮的拒绝——弹层是 retained-mount）。
+  const [mergeReject, setMergeReject] = useState<string | null>(null);
+  const closeOverlay = useCallback(() => {
+    setOverlay(null);
+    setMergeReject(null);
+  }, []);
+  // 前置检查（XMON-89）：查的 Agent = merge 步的执行者 = assignment.build 槽。
+  // 从 wire todos 取而不是 overlayTodo（显示投影是 build ?? plan 折算，两槽
+  // 分设时与执行者分叉）。
+  const overlayWire = useMemo(
+    () => (todosQ.data ?? []).find((wire) => wire.id === overlayTodo?.id) ?? null,
+    [todosQ.data, overlayTodo],
+  );
+  const mergeMissing = useMergeGate(
+    live ? (overlayWire?.assignment?.build?.agentId ?? null) : null,
+  );
   const openFor = (todo: TodoRecord, kind: OverlayState['kind']) => {
     setOverlayTodo(todo);
     setOverlay({ kind });
@@ -350,6 +375,9 @@ export function BoardPage() {
   const startBuild = useCallback(
     (todo: TodoRecord, withPlan: boolean) => {
       if (!live) return;
+      // XMON-93：firstAgentId 点击瞬间从隔离面 ref 取——原 props 通路也只在
+      // 点击时被消费，取值时序语义不变（members 落定后恒为最新）。
+      const firstAgentId = newTaskApiRef.current?.firstAgentId ?? null;
       mutations.startBuilds.mutate({
         projectId: todo.projectId,
         todoIds: [todo.id],
@@ -360,7 +388,7 @@ export function BoardPage() {
         withPlan,
       });
     },
-    [live, mutations.startBuilds, firstAgentId],
+    [live, mutations.startBuilds],
   );
 
   // 拖拽落位（#73 / M5 / #160）：fixture = 本地集；live = 逐卡增量 PATCH
@@ -485,10 +513,14 @@ export function BoardPage() {
         onThread={onThread}
         onNewThread={onNewThread}
       />
-      {/* #389: dialog 接线全走 useNewTaskSurface（侧栏 C 热键/新任务行
-          的 opener 也指这里——openNewTask）；fixture 保存落点 = 本页
-          onFixtureSave 本地卡 append（#66 律）。 */}
-      <NewTaskDialog {...newTaskDialogProps} />
+      {/* #389: dialog 接线全走新建任务面（侧栏 C 热键/新任务行的 opener 也
+          指这里——openNewTask）；fixture 保存落点 = 本页 onFixtureSave 本地
+          卡 append（#66 律）。XMON-93：面体住隔离根叶子，本页只持 ref。 */}
+      <NewTaskSurfaceRoot
+        fixture={fixture}
+        opts={{ fixtureTodos, eager: true, onFixtureSave }}
+        apiRef={newTaskApiRef}
+      />
       <button
         type="button"
         className="chief-fab"
@@ -504,11 +536,17 @@ export function BoardPage() {
       <AcceptDialog
         open={overlay?.kind === 'accept'}
         onClose={closeOverlay}
+        missingTools={mergeMissing}
+        rejectReason={mergeReject}
         onConfirm={
           live && overlayTodo?.latestBuildId
             ? () => {
-                mutations.mergeBuild.mutate(overlayTodo.latestBuildId as string);
-                closeOverlay();
+                // XMON-89：关弹层改挂 onSuccess——被拒（403）时弹层留着显原
+                // 因，不再静默关掉。
+                mutations.mergeBuild.mutate(overlayTodo.latestBuildId as string, {
+                  onSuccess: () => closeOverlay(),
+                  onError: (error) => setMergeReject(mergeRejectCopy(error, t)),
+                });
               }
             : undefined
         }

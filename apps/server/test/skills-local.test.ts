@@ -16,8 +16,9 @@
 //   S12 SKILL.md 不可读（EISDIR/中途消失）= 跳过不炸。
 // R REST 面：R1 GET /api/skills = 现扫 record 数组（skillRecordSchema；
 //   teamId = 请求 team 占位）/ R2 未知 team = 404 / R3 无缓存：两次请求之间
-//   加目录立即可见 / R4 空目录 = [] / R5 POST /api/skills 已删 = 404 /
-//   R6 POST /api/skills/scan 已删 = 404 / R7 detail = record + fileNames
+//   加目录立即可见 / R4 空目录 = [] / R5 POST /api/skills 写面已回（XMON-109
+//   spec 13 回摆）：校验闸 400（写面正测 = skill-write.test.ts）/ R6 POST
+//   /api/skills/scan 已删 = 404 / R7 detail = record + fileNames
 //   （嵌套相对路径、posix 分隔、含 SKILL.md 自身）/ R8 file = 内容、缺省
 //   fileName = SKILL.md / R9 未知 sid = 404 / R10 未知 fileName = 404 /
 //   R11 sid/fileName 路径逃逸 = 404（不出技能目录）/ R12 超大文件 = 400。
@@ -227,14 +228,16 @@ describe('skills REST 面（现扫换源）', () => {
     }
   });
 
-  test('R5/R6：POST /api/skills 与 /api/skills/scan 写面已删 = 404', async () => {
+  test('R5/R6：POST /api/skills 写面已回（旧形状 = 400 校验闸）；scan 仍删 = 404', async () => {
     const { s } = setup();
     try {
+      // 旧上传形状（files 为 Record）不过 createSkillBodySchema = 400——写面
+      // 正路径/校验细节由 skill-write.test.ts 钉（XMON-109）。
       const upload = await req(s.app, 'POST', '/api/skills', {
         name: 'x',
         files: { 'SKILL.md': '# x' },
       });
-      expect(upload.status).toBe(404);
+      expect(upload.status).toBe(400);
       const scan = await req(s.app, 'POST', '/api/skills/scan', { repo: 'owner/repo' });
       expect(scan.status).toBe(404);
     } finally {

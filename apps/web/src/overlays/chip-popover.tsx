@@ -5,14 +5,10 @@
 // (assignee row), the selected 执行对话 section (agent row + indigo check,
 // the highlight covering label and row), divider, 编辑分配 row.
 
+import { useAgentAvatarUrlById, useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
-import {
-  AGENT_MODEL_LINE,
-  PROJECT_INITIAL,
-  PROJECT_NAME,
-  USER_NAME,
-} from '../fixtures/fixtures.js';
+import { AGENT_MODEL_LINE, PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, Settings } from '../icons/index.js';
@@ -27,6 +23,10 @@ interface ChipPopoverProps {
 
 export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
   const { t } = useI18n();
+  // XMON-105: the 任务 (owner) row shows the logged-in user's own identity
+  // avatar — single source, same face as the sidebar chip / account head.
+  const { user } = useLiveData();
+  const agentAvatarUrl = useAgentAvatarUrlById();
   return (
     <div className="chip-popover" role="dialog" aria-label={t('任务分配')}>
       <div className="chip-popover-head">
@@ -39,14 +39,18 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
       <div className="chip-popover-section">
         <div className="chip-popover-label">{t('任务')}</div>
         <div className="chip-popover-row">
-          <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
-          {USER_NAME}
+          <SeededAvatar name={user.displayName} src={user.avatarUrl} fallback="/avatar-user.png" />
+          {user.displayName}
         </div>
       </div>
       <div className="chip-popover-section chip-popover-section--selected">
         <div className="chip-popover-label">{t('执行对话')}</div>
         <div className="chip-popover-row">
-          <SeededAvatar name={todo.agent?.displayName} fallback="/avatar-robot-1.svg" />
+          <SeededAvatar
+            name={todo.agent?.displayName}
+            src={todo.agent ? (agentAvatarUrl.get(todo.agent.id) ?? null) : null}
+            fallback="/avatar-robot-1.svg"
+          />
           {/* 未指派 fallback is [推断]: every capture shows an assigned agent */}
           {todo.agent?.displayName ?? t('未指派')} · {AGENT_MODEL_LINE}
           <span className="chip-popover-check">

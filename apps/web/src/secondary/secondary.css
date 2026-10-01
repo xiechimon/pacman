@@ -154,58 +154,18 @@
   color: var(--text-secondary);
 }
 
-/* hairline ring idiom (#138, r7 12 probe: 1px --border-default ring at
-   y60/91 + ~2px padding around the 32×24 cells, cells flush at a hairline
-   seam); active chip rides the family token */
-.team-layout-tabs {
-  display: flex;
-  width: 70px;
-  height: 30px;
-  padding: 2px;
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  background: var(--surface-secondary);
-}
-
-.team-layout-tab {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 24px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-tertiary);
-  cursor: pointer;
-}
-
-.team-layout-tab svg {
-  width: 16px;
-  height: 16px;
-}
-
-.team-layout-tab--active {
-  background: var(--tab-chip-bg);
-  color: var(--text-secondary);
-}
-
-/* segmented-control hover (issue #138): unselected cell tints the --seg-hover
-   step on the chip's own box + radius, fine pointers only (#73) */
-@media (hover: hover) and (pointer: fine) {
-  .team-layout-tab {
-    transition: background-color var(--dur-fast) var(--ease-standard);
-  }
-
-  .team-layout-tab:not(.team-layout-tab--active):hover {
-    background-color: var(--seg-hover);
-  }
-}
+/* XMON-103：布局切换片的盒模型与分段 hover 不再住本文件 —— 两个 chip 的
+   底座 = components/ui/tabs 的 segmented 档，几何/配色走 pages.css 的
+   `.page-tabs-group` / `.page-tab` 正本，#138 家族的过渡与 hover（同一
+   --dur-fast / --ease-standard / --seg-hover）由那条共享规则接手。本页只留
+   别名类（.team-layout-tabs / .team-layout-tab，e2e 与语义定位用）与下面这条
+   布局相关的 margin。 */
 
 /* chart layout (#148): the stats bar drops (r2 §8.1 17c), so space-between
    loses its left child — the auto margin keeps the tablist on its r7 12
-   right edge instead of sliding it to the column's left. */
-.team-toprow--chart .team-layout-tabs {
+   right edge instead of sliding it to the column's left. XMON-103：toprow
+   的直接子节点现在是 tabs 壳（.team-layout-tabs-root），md 落在壳上。 */
+.team-toprow--chart .team-layout-tabs-root {
   margin-left: auto;
 }
 

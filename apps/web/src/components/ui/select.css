@@ -1,0 +1,81 @@
+/* 单选选择器原语（XMON-75）的共用外观。
+   这一份只管「所有下拉长得一样」的部分：锚定位置、层级、弹层皮肤、行与勾选。
+   各面的几何差（贴哪边、封多高、多宽）住各自域 CSS，写
+   `.ui-select-menu.<prefix>-menu` 复合选择器——域 CSS 与本文件同层同权重，
+   复合选择器才不赌模块图的加载顺序。 */
+
+.ui-select-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* 触发钮的皮肤归各面（`.agent-model-select` / `.sched-form-select` 等域 CSS
+   unlayered，压 utility 层）；这里只留各面共用的文字排版。 */
+.ui-select-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* z 30 压 ClickCatcher 的 29（见 overlays/dismiss.tsx）；缺了这条，透明全屏
+   catcher 会吃掉菜单行的点击。绝对定位相对触发钮的 wrap（FloatingShell 的
+   container 挂回 wrap，containing block 不变）。 */
+.ui-select-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  background: var(--popover-bg, var(--surface));
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-popover, 10px);
+  box-shadow: var(--edge-shadow);
+  display: flex;
+  flex-direction: column;
+  max-height: 300px;
+  /* 菜单按内容撑开、封顶后省略：行文案长度随数据自定，定宽会让行内容比盒子宽，
+     溢出往左跑，肉眼看到的是文案开头被切掉。 */
+  width: max-content;
+  max-width: 360px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.ui-select-row {
+  align-items: center;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  gap: 8px;
+  padding: 6px 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.ui-select-row:hover {
+  background: var(--surface-secondary, rgb(255 255 255 / 6%));
+}
+
+.ui-select-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 次级位（模型面的 provider）不参与收缩：短标签挤掉主文案是本末倒置。 */
+.ui-select-row-meta {
+  color: var(--text-tertiary);
+  flex: none;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ui-select-check {
+  display: inline-flex;
+}

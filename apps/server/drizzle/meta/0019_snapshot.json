@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "04b7c840-1fcd-4339-bd8d-62705b6b345c",
+  "id": "3c57aa3a-9699-4efc-9c4b-a1ce85af8efb",
   "prevId": "c332243a-9795-428e-a659-bf4afbd5bedc",
   "tables": {
     "agent": {
@@ -1113,14 +1113,6 @@
           "notNull": true,
           "autoincrement": false,
           "default": "'[]'"
-        },
-        "shellEnabled": {
-          "name": "shellEnabled",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
         }
       },
       "indexes": {},
@@ -1695,8 +1687,8 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "shell_command": {
-      "name": "shell_command",
+    "skill_audit": {
+      "name": "skill_audit",
       "columns": {
         "id": {
           "name": "id",
@@ -1705,67 +1697,39 @@
           "notNull": true,
           "autoincrement": false
         },
-        "stepId": {
-          "name": "stepId",
+        "skillId": {
+          "name": "skillId",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "machineId": {
-          "name": "machineId",
+        "actorType": {
+          "name": "actorType",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "agentId": {
-          "name": "agentId",
+        "actorId": {
+          "name": "actorId",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "teamId": {
-          "name": "teamId",
+        "action": {
+          "name": "action",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "command": {
-          "name": "command",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "exitCode": {
-          "name": "exitCode",
+        "bytes": {
+          "name": "bytes",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "output": {
-          "name": "output",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "errorMessage": {
-          "name": "errorMessage",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "createdAt": {
@@ -1773,13 +1737,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
-        },
-        "finishedAt": {
-          "name": "finishedAt",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
           "autoincrement": false
         }
       },

@@ -3,7 +3,9 @@
 // 认证（02 §8）：enroll = Bearer apiKey（`pacman_<48hex>`，前缀 = 品牌槽）；其余 = Bearer 机器
 // token（64hex，服务端存哈希比对）。错误形状 {error}（r5 §1 族）。
 // 附加端点（[设计] 登记，非词表外扩协议面）：PUT /api/machine/upload/{uploadId}
-// = upload-urls 预签名的落地点（self-host 无对象存储，server 自出一次性 PUT）。
+// = upload-urls 预签名的落地点（self-host 无对象存储，server 自出一次性 PUT）；
+// GET /api/machine/skills/{stepId} = 按步技能包下发（XMON-109 S1，S2 daemon
+// 物化消费契约）。全量登记表 = shared MACHINE_WIRE_EXTENSIONS。
 
 import type { ToolCallRecord } from '@pacman/shared';
 import {
@@ -43,6 +45,7 @@ import {
   findMachineByToken,
   finishStep,
   heartbeatStep,
+  machineSkillsPackage,
   markOffline,
   markPresence,
   precheckShellCommand,
@@ -309,6 +312,15 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
   app.get('/api/machine/token/:stepId', (c) => {
     const row = me(c);
     return c.json(stepToken(deps, row.id, c.req.param('stepId')));
+  });
+
+  // —— GET /api/machine/skills/{stepId}（XMON-109 S1 [设计] 附加端点，
+  // MACHINE_WIRE_EXTENSIONS 登记位）：按步技能包下发（S2 daemon 物化消费
+  // 契约）——worker 步 = agent.skills 白名单交集、chief 步 = 信任面全量；
+  // 字节闸超限 400 点名。非本步凭证/未知步 = 404（ownedStep 同 token 面）。 ———
+  app.get('/api/machine/skills/:stepId', (c) => {
+    const row = me(c);
+    return c.json(machineSkillsPackage(deps, row.id, c.req.param('stepId')));
   });
 
   // —— POST /api/machine/upload-urls/{stepId}（预签名产物上传）—————————————————

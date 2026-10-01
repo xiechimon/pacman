@@ -18,6 +18,7 @@
 import { CHIEF_REBIND_CONFIRM_COPY } from '@pacman/shared';
 import { useEffect, useMemo, useState } from 'react';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, Search } from '../icons/index.js';
 
@@ -28,6 +29,9 @@ export interface ChiefAgentOption {
   id: string;
   name: string;
   model?: string;
+  /** XMON-105: explicit avatar override (members read-side avatarUrl);
+   *  null/absent = dicebear name seed, same law as every agent surface. */
+  avatarUrl?: string | null;
 }
 
 /** #318 未指派行 id(开始 dialog 选择器;onBind('') = 双槽置 null)。 */
@@ -169,7 +173,16 @@ export function ChiefAgentDialog({
                   aria-selected={row.id === boundAgentId}
                   onClick={() => pick(row)}
                 >
-                  <span className="chief-pick-avatar">{row.name.charAt(0)}</span>
+                  {/* XMON-105: agent rows carry the agent's own avatar
+                      (same identity as team page / board / transcript);
+                      the initial chip was a divergent third style. */}
+                  <span className="chief-pick-avatar chief-pick-avatar--img">
+                    <SeededAvatar
+                      name={row.name}
+                      src={row.avatarUrl}
+                      fallback="/avatar-robot-1.svg"
+                    />
+                  </span>
                   <span className="chief-pick-name">{row.name}</span>
                   {row.model != null && row.model !== '' && (
                     <span className="chief-pick-model">{row.model}</span>

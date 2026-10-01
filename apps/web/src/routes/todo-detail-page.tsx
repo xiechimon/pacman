@@ -52,7 +52,7 @@ import {
   mapTranscript,
   toDisplayTodo,
 } from '../api/mappers.js';
-import { useLiveData } from '../api/provider.js';
+import { useAgentAvatarUrlById, useLiveData } from '../api/provider.js';
 import { useConversationStream } from '../api/sse.js';
 import { ChiefAgentDialog, type ChiefAgentOption } from '../chief/chief-agent-dialog.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
@@ -60,6 +60,7 @@ import { Composer } from '../detail/composer.js';
 import { DetailHead } from '../detail/dhead.js';
 import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
+import { mergeRejectCopy, useMergeGate } from '../detail/merge-gate.js';
 import { RerunDialog, ReusePanel } from '../detail/overlays.js';
 import { resolveReviewDefault } from '../detail/review-default.js';
 import { type ReviewAgentOption, ReviewDialog } from '../detail/review-dialog.js';
@@ -202,6 +203,9 @@ export function TodoDetailPage() {
   );
   const machinesQ = useMachines(teamId, live);
   const membersQ = useMembers(teamId, live);
+  // XMON-105: avatarUrl override join for the todo's agent ref (transcript
+  // rows + rerun dialog fallback row).
+  const agentAvatarUrl = useAgentAvatarUrlById();
   const projectsQ = useProjects(teamId, live);
   const skillsQ = useSkills(teamId, live);
   const projectBuildsQ = useProjectBuilds(wireTodo?.projectId, live);
@@ -230,7 +234,16 @@ export function TodoDetailPage() {
   // buttons and the review/failed action buttons open the same set
   // interactively.
   const [overlay, setOverlay] = useState<OverlayState | null>(fixture.overlay ?? null);
-  const closeOverlay = useCallback(() => setOverlay(null), []);
+  // XMON-89：合并被拒的可见态。住页层而非弹层内——弹层是 retained-mount，
+  // 关掉不清会在下一次开窗时回显上一轮的拒绝（并入 closeOverlay）。
+  const [mergeReject, setMergeReject] = useState<string | null>(null);
+  const closeOverlay = useCallback(() => {
+    setOverlay(null);
+    setMergeReject(null);
+  }, []);
+  // 前置检查（XMON-89）：查的 Agent = merge 步的执行者 = assignment.build 槽
+  // （不是卡片上显示的折算值）。
+  const mergeMissing = useMergeGate(live ? (wireTodo?.assignment?.build?.agentId ?? null) : null);
   // #75 version-menu + plan-version diff state: scenario-frozen for the
   // captures, interactive afterwards (63–72).
   const [menu, setMenu] = useState<'versions' | 'compare' | undefined>(fixture.detail?.versionMenu);
@@ -459,11 +472,16 @@ export function TodoDetailPage() {
     ? (membersQ.data ?? [])
         .filter((m) => m.memberType === 'agent')
         .map((m) => {
-          const modelId = (m.actor as { modelId?: string | null } | undefined)?.modelId;
+          const actor = m.actor as
+            | { displayName?: string; modelId?: string | null; avatarUrl?: string | null }
+            | undefined;
           return {
             id: m.actorId,
-            name: (m.actor as { displayName?: string } | undefined)?.displayName ?? m.actorId,
-            ...(modelId ? { model: modelId } : {}),
+            name: actor?.displayName ?? m.actorId,
+            ...(actor?.modelId ? { model: actor.modelId } : {}),
+            // XMON-105: rerun dialog avatar rows resolve the same identity
+            // (avatarUrl override) as every other agent surface.
+            avatarUrl: actor?.avatarUrl ?? null,
           };
         })
     : undefined;
@@ -725,6 +743,17 @@ export function TodoDetailPage() {
                   <div className="chat-pin">
                     <Transcript
                       transcript={view.transcript}
+                      // XMON-105: agent message rows carry the executing
+                      // agent's own avatar (same identity as board card /
+                      // team page), never the logged-in user's.
+                      agent={
+                        todo.agent
+                          ? {
+                              displayName: todo.agent.displayName,
+                              avatarUrl: agentAvatarUrl.get(todo.agent.id) ?? null,
+                            }
+                          : null
+                      }
                       // #366 AC：线程内 plan 卡激活 = 右 pane 切文档面的
                       // plan 显示面（与 复用方案「查看方案」同律）。
                       onOpenPlan={() => {
@@ -964,13 +993,19 @@ export function TodoDetailPage() {
       <AcceptDialog
         open={overlay?.kind === 'accept'}
         onClose={closeOverlay}
+        missingTools={mergeMissing}
+        rejectReason={mergeReject}
         onConfirm={
           live && buildId
             ? () => {
                 // merge = 202 delegated（r3 §3.6）：合并步机器执行，phase 经
-                // SSE 推进到 done（🎉 时间线行由 server 落库）。
-                mutations.mergeBuild.mutate(buildId);
-                closeOverlay();
+                // SSE 推进到 done（🎉 时间线行由 server 落库）。XMON-89：关
+                // 弹层改挂 onSuccess——被拒（403）时弹层留着显原因，不再静默
+                // 关掉。
+                mutations.mergeBuild.mutate(buildId, {
+                  onSuccess: () => closeOverlay(),
+                  onError: (error) => setMergeReject(mergeRejectCopy(error, t)),
+                });
               }
             : undefined
         }
@@ -982,6 +1017,7 @@ export function TodoDetailPage() {
             detail?.rerunAgent ?? {
               name: todo.agent?.displayName ?? '未指派',
               model: '默认',
+              avatarUrl: todo.agent ? (agentAvatarUrl.get(todo.agent.id) ?? null) : null,
             }
           }
           // #318 统一面(r9 §3.6):候选 = members 读面投影;初始选择 =

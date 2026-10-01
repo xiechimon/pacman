@@ -34,6 +34,10 @@ export type AgentToolSwitch = (typeof AGENT_TOOL_SWITCHES)[number];
  * 共用，跨缝不复制字面量。 */
 export const AGENT_TOOL_MERGE: AgentToolSwitch = '合并分支';
 export const AGENT_TOOL_PUSH: AgentToolSwitch = '推送分支';
+/** 技能库写路径（XMON-109 S1）的开关执法位：worker relay create_skill /
+ * update_skill 逐词对照（requestMerge 同形 403）。chief 步免开关（信任面）。 */
+export const AGENT_TOOL_SKILL_CREATE: AgentToolSwitch = '创建技能';
+export const AGENT_TOOL_SKILL_UPDATE: AgentToolSwitch = '更新技能';
 
 /** 远程 shell 本体闸（XMON-108 R1 起有执法面）：agent 层开关 ∩ 机器层
  * `machine.shellEnabled` 双闸齐开才在 claim 组装 localTools 含 remote_shell

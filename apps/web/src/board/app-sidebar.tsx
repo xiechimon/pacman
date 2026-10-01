@@ -12,13 +12,12 @@
 // page-anchored save semantics; every other route rides the internal
 // global dialog (useNewTaskSurface, live save path shared with the board).
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useMachines, useProjects, useSearchResults, useTodos } from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
-import { NewTaskDialog } from '../overlay/new-task-dialog.js';
-import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
+import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
 import { useNewTaskHotkey } from '../overlays/hotkeys.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { attentionCount } from './columns.js';
@@ -86,8 +85,10 @@ export function AppSidebar({
   const machineOnline = live ? (machinesQ.data ?? []).some((m) => m.online) : fixture.chief != null;
   // #389: 内部全局新建 dialog —— 只在路由未传 onNewTask 时渲染（board/
   // project 保自有面）；C 热键与侧栏行共用解析后的 opener，单点注册。
-  const internalNewTask = useNewTaskSurface(fixture);
-  const openNewTask = onNewTask ?? internalNewTask.openDialog;
+  // XMON-93：面体住隔离根叶子（open/正文态不进侧栏渲染），opener 走 ref。
+  const internalNewTaskApiRef = useRef<NewTaskSurfaceApi | null>(null);
+  const openInternalNewTask = useCallback(() => internalNewTaskApiRef.current?.openDialog(), []);
+  const openNewTask = onNewTask ?? openInternalNewTask;
   useNewTaskHotkey(openNewTask);
   return (
     <>
@@ -112,7 +113,7 @@ export function AppSidebar({
           server={live ? searchResults.data : undefined}
         />
       )}
-      {onNewTask == null && <NewTaskDialog {...internalNewTask.dialogProps} />}
+      {onNewTask == null && <NewTaskSurfaceRoot fixture={fixture} apiRef={internalNewTaskApiRef} />}
     </>
   );
 }

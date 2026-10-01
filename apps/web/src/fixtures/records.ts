@@ -594,7 +594,7 @@ export interface DetailContent {
   /** Diff the compare submenu's 上一版本 opens (r8 64 → 65, 70 → 71). */
   compareTarget?: PlanDiffContent;
   /** Agent row of the rerun dialog (r8 56/74): the previous run's agent. */
-  rerunAgent?: { name: string; model: string };
+  rerunAgent?: { name: string; model: string; avatarUrl?: string | null };
   /** Interactive reject-loop script (issue #75 AC3). */
   revision?: RevisionStep;
 }

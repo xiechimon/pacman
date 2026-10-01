@@ -6,7 +6,7 @@
 // 删除流为准补齐，不发明新路径；M2 实现期重放补采（04 册附录 A）。
 
 export interface RestEndpoint {
-  readonly method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  readonly method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   readonly path: string;
   /** 查询参数词表（02 §6.1 `?…=` 归一）。 */
   readonly query?: readonly string[];
@@ -108,6 +108,17 @@ export const WEB_REST_ENDPOINTS: readonly RestEndpoint[] = [
   // （POST/PATCH/DELETE）已从 app 撤除；本行 = 原产品观测记录保留。
   { method: 'POST', path: '/api/teams/{id}/mcp-servers' },
   { method: 'POST', path: '/api/teams/{id}/agents', note: '→ 201 {id}（r5 §1/§8 补录）' },
+  {
+    method: 'POST',
+    path: '/api/skills',
+    query: ['teamId'],
+    note: 'XMON-109（spec 13 回摆）：写路径——建技能目录（body {name,description,files[]}，frontmatter 是唯一真值）；→ 201 record',
+  },
+  {
+    method: 'PUT',
+    path: '/api/teams/{id}/skills/{sid}',
+    note: 'XMON-109（spec 13 回摆）：写路径——覆写式更新（列出者覆写、未列者保留；改名须携带新 SKILL.md）',
+  },
   { method: 'POST', path: '/api/schedules' },
   { method: 'POST', path: '/api/analytics/first-touch', note: '形状保留、内容自选；可空实现' },
   {
@@ -161,19 +172,14 @@ export const DELETE_FACE = {
  * /api/push = todos.dev Web Push 订阅上传（r5 §1 实测 400）；R1 终裁：
  * Web Push/VAPID 不进 spec，sw.js push handler 保留文件形状、服务端不投
  * push（02 §9.1、04 §5）。
- * POST /api/skills = 原产品技能上传面（02 §6.1 观测）；spec 13 #367 裁决
- * 有意 divergence：技能改本地目录只读投影，写技能 = 往目录放文件，无上传面。
- * （POST /api/skills/scan 曾为 #223 [设计] 自设端点，非观测词表成员，随
- * spec 13 直接删除、不入本登记。） */
+ * （POST /api/skills 曾为 spec 13 #367 的有意 divergence：技能改本地目录
+ * 只读投影、无上传面；XMON-109 回摆——写路径进 scope，端点回到词表
+ * WEB_REST_ENDPOINTS，本登记出列。POST /api/skills/scan 曾为 #223 [设计]
+ * 自设端点，非观测词表成员，已删不入本登记。） */
 export const NON_REPLICATED_ENDPOINTS = [
   {
     method: 'POST',
     path: '/api/push',
     reason: 'Web Push 订阅上传——R1 已裁决有意 divergence（02 §9.1 终裁、04 §5）',
-  },
-  {
-    method: 'POST',
-    path: '/api/skills',
-    reason: '技能上传面——spec 13 #367 裁决：技能 = 本地目录现扫只读投影，无写面',
   },
 ] as const;

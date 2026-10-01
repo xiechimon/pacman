@@ -197,9 +197,10 @@ export const EN: Record<string, string> = {
   '搜索技能...': 'Search skills...',
   排序: 'Sort',
   '尚无技能。': 'No skills yet.',
-  // spec 13（#367）技能只读面：空态指路本地技能目录（{dir} = SKILLS_DIR_DEFAULT）
-  '把包含 SKILL.md 的技能目录放进 {dir}，即会出现在这里。':
-    'Drop a skill folder containing SKILL.md into {dir} and it will show up here.',
+  // spec 13 + XMON-109（spec 13 回摆）技能面：双入口口径——本地目录或页面
+  // 新建都会出现在这里（{dir} = SKILLS_DIR_DEFAULT）。
+  '把包含 SKILL.md 的技能目录放进 {dir}，或新建一个技能，即会出现在这里。':
+    'Drop a skill folder containing SKILL.md into {dir}, or create a new skill here, and it will show up in this list.',
   '尚无 MCP 服务器。': 'No MCP servers yet.',
   // spec 13/#368 本地 config 只读制：空态文案 = 配置指引（无添加钮）。
   '读取 server 本机 ~/.claude.json 的 mcpServers 段：在该文件添加配置并刷新，即出现在这里。MCP 服务器为 Agent 提供额外工具；授权在每个 Agent 的页面上单独进行。':
@@ -401,6 +402,13 @@ export const EN: Record<string, string> = {
   复制链接: 'Copy link',
   完成任务: 'Complete todo',
   将改动合并到默认分支: 'Merge the changes into the default branch',
+  // XMON-89 合并被拒的可见化：前置缺项行（{tools} = 1~2 个开关名的顿号串；
+  // 开关名本身是 shared AGENT_TOOL_SWITCHES 的 zh 值域词，locate 后仍按 zh
+  // 出现——与权限 tab 的开关行一致，不另开一份 en 词表）＋ 非 403 失败的固定
+  // 兜底句（403 的 server 原文不翻译：它逐字点名缺哪项，翻一遍反而对不上）。
+  '缺少「{tools}」授权，无法合并。请在该 Agent 的权限里开启。':
+    'Missing the "{tools}" permission, so this merge cannot go through. Turn it on in the agent’s permissions.',
+  '合并请求未送出，请重试。': 'The merge request was not sent. Try again.',
   输入: 'Input',
   输出: 'Output',
   缓存读取: 'Cache read',

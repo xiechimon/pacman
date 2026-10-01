@@ -1,14 +1,15 @@
 // Chief remoteTools 词表——raw 观测 49 件（r5 §3.1，一手来源 = thread 记录
 // toolDefHashes 全键 `docs/research/assets/r5/raw/chief-threads-testA.json`），
-// 现行 47 件 = raw − CHIEF_TOOLS_REMOVED（有意 divergence，登记处见该常量）。
-// 复刻口径（02 §4.3 尾注）：Chief = 挂团队工具的 pi 会话，行为分毫不求同；
-// 工具「名单」为实测一手，各工具的 description/parameters 细形
-// 未采到 wire 原件 = 全部 [推断] 黑盒逼近（04 §1 A4：不冒充实测），语义按
-// r1 docs 六能力组 + r3/r5 行为证据投影。
+// 现行 49 件 = raw − CHIEF_TOOLS_REMOVED + CHIEF_TOOLS_ADDED（divergence
+// 双向登记，登记处见两常量）。复刻口径（02 §4.3 尾注）：Chief = 挂团队
+// 工具的 pi 会话，行为分毫不求同；工具「名单」为实测一手，各工具的
+// description/parameters 细形未采到 wire 原件 = 全部 [推断] 黑盒逼近
+// （04 §1 A4：不冒充实测），语义按 r1 docs 六能力组 + r3/r5 行为证据投影。
 // 分组计数按 raw 键集实数：读 15 + 组织 19 + 执行 5 + 私有 10 = 49
 // （r5 §3.1 正文枚举漏 `delete_skills`，02 §4.3 分组计数随之偏差——raw 键集
-// 为权威，vocabulary.test 对拍）；现行分组 = 组织 17（delete_skills、
-// set_remote_shell 两件已除名）。
+// 为权威，vocabulary.test 对拍）；现行分组 = 组织 19（delete_skills、
+// set_remote_shell 两件已除名；create_skill、update_skill 两件随 XMON-109
+// spec 13 回摆加入——raw 无此二键，经 CHIEF_TOOLS_ADDED 登记）。
 // replaySafe = 读工具（bundle 提取：读侧带重试预算 RETRY_DELAYS_MS=[500,2000]、
 // 超时 remoteTool:10s，r5 §3.1）。
 
@@ -46,15 +47,21 @@ export const machineToolRelayResponseSchema = z.object({
 export type MachineToolRelayResponse = z.infer<typeof machineToolRelayResponseSchema>;
 
 /** 从 raw 49 键观测词表中有意移除的工具（divergence 登记，对拍测试 =
- * raw 键集 − 本集）。spec 13 #367：delete_skills——技能改本地目录现扫只读
- * 投影（不入库），删除技能 = 从磁盘删目录，server 无删除面可 relay。
+ * raw 键集 − 本集）。spec 13 #367：delete_skills——技能改本地目录现扫投影
+ * （不入库），删除技能 = 从磁盘删目录，server 无删除面可 relay。
  * XMON-77：set_remote_shell——「远程 shell」本体未实现（XMON-84 用户拍板 B
  * 后开关保留在权限词表，但写入点随本体在规划票里重新设计，词条维持除名；
  * 改授权走 REST PATCH /agents/{aid}）。 */
 export const CHIEF_TOOLS_REMOVED = ['delete_skills', 'set_remote_shell'] as const;
 
+/** raw 之外有意加入的工具（divergence 反向登记，对拍测试 = raw 键集 −
+ * removed + added）。XMON-109（spec 13 回摆）：create_skill / update_skill
+ * ——chief 自动制作/维护技能收进 scope（chief 免开关，leader 拍板）。 */
+export const CHIEF_TOOLS_ADDED = ['create_skill', 'update_skill'] as const;
+
 /** 词表分组（r5 §3.1 正文分组语义；成员按 raw 键集归位 [推断]；
- * delete_skills、set_remote_shell 已除名）。 */
+ * delete_skills、set_remote_shell 已除名；create_skill、update_skill 随
+ * XMON-109 归组织面——raw 的 delete_skills 即组织位，写件同位）。 */
 export const CHIEF_TOOL_CATEGORIES = {
   read: [
     'projects',
@@ -87,6 +94,8 @@ export const CHIEF_TOOL_CATEGORIES = {
     'create_agent',
     'update_agent',
     'delete_agents',
+    'create_skill',
+    'update_skill',
     'set_secret',
     'delete_secrets',
     'schedule_todo',
@@ -351,6 +360,45 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
     description: 'Delete agents from the team.',
     parameters: obj({ agentIds: idArr('Agent ids to delete.') }, ['agentIds']),
   },
+  // create_skill / update_skill（XMON-109，CHIEF_TOOLS_ADDED 登记）：组织面
+  // 写件，归 delete_skills 的 raw 组织位。写向 = 团队技能根本地目录，body
+  // 语义与 REST 写面同形（frontmatter 是唯一真值）。
+  {
+    name: 'create_skill',
+    description:
+      'Create a team skill as a folder in the team skills directory. The skill is a ' +
+      'SKILL.md entry file (frontmatter name and description are required and must ' +
+      'match the declared values) plus optional extra files.',
+    parameters: obj(
+      {
+        name: str('Skill name; also the folder name and the SKILL.md frontmatter name.'),
+        description: str('One-line skill description; must match the SKILL.md frontmatter.'),
+        files: arr(
+          obj({ path: str('File path inside the skill folder.'), content: str('File text.') }),
+          'Skill files; must include SKILL.md.',
+        ),
+      },
+      ['name', 'description', 'files'],
+    ),
+  },
+  {
+    name: 'update_skill',
+    description:
+      'Update an existing team skill by id. Listed files are overwritten, unlisted files ' +
+      'are kept; include a new SKILL.md to change the frontmatter (including renaming).',
+    parameters: obj(
+      {
+        skillId: str('Skill id to update.'),
+        name: str('Declared skill name; must match the SKILL.md frontmatter.'),
+        description: str('Declared description; must match the SKILL.md frontmatter.'),
+        files: arr(
+          obj({ path: str('File path inside the skill folder.'), content: str('File text.') }),
+          'Files to overwrite; include SKILL.md to change frontmatter.',
+        ),
+      },
+      ['skillId', 'name', 'description', 'files'],
+    ),
+  },
   {
     name: 'set_secret',
     description: 'Create or overwrite a team secret (value is write-only, encrypted at rest).',
@@ -510,9 +558,9 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   },
 ];
 
-/** 词表自检：现行 47 件（raw 49 − CHIEF_TOOLS_REMOVED）、键集 =
- * CHIEF_TOOL_NAMES、读侧全 replaySafe。 */
-export const CHIEF_TOOL_COUNT = 47;
+/** 词表自检：现行 49 件（raw 49 − CHIEF_TOOLS_REMOVED 2 + CHIEF_TOOLS_ADDED
+ * 2）、键集 = CHIEF_TOOL_NAMES、读侧全 replaySafe。 */
+export const CHIEF_TOOL_COUNT = 49;
 
 /** worker 步记忆三件套（02 §4.4 写路径 / r5 §6：worker 侧同族工具经
  * remoteTools 下发——「bundle 无本地记忆实现」，写路径 = agent 工具 → 服务端
@@ -599,13 +647,58 @@ const SET_TASK_META_TOOL_MULTI_TAG: RemoteToolDef = {
   }),
 };
 
-/** worker 步全量工具（r5 §3.1 + #310/r9 §3.1 + spec 15 #394）：记忆三件套 +
- * 附件读 + 任务元信息回填。chief 47 词表（组织/执行面）不外溢到 worker——
- * worker 读路径只挂「任务内可读」面。 */
+/** worker 技能写词（XMON-109 S1）：词表恒列（write 面授权属 agent 行
+ * tools 开关，与词表下发解耦——无开关的 agent 也看到词，执行时 403 点名
+ * 开关，requestMerge 同形）。两形态（local/github）同词同形。 */
+export const WORKER_SKILL_TOOLS: readonly RemoteToolDef[] = [
+  {
+    name: 'create_skill',
+    description:
+      'Create a team skill as a folder in the team skills directory. Requires the ' +
+      '「创建技能」permission switch on your agent row. The SKILL.md frontmatter name ' +
+      'and description must match the declared values.',
+    parameters: obj(
+      {
+        name: str('Skill name; also the folder name and the SKILL.md frontmatter name.'),
+        description: str('One-line skill description; must match the SKILL.md frontmatter.'),
+        files: arr(
+          obj({ path: str('File path inside the skill folder.'), content: str('File text.') }),
+          'Skill files; must include SKILL.md.',
+        ),
+      },
+      ['name', 'description', 'files'],
+    ),
+  },
+  {
+    name: 'update_skill',
+    description:
+      'Update an existing team skill by id. Requires the「更新技能」permission switch ' +
+      'on your agent row. Listed files are overwritten, unlisted files are kept; include ' +
+      'a new SKILL.md to change the frontmatter (including renaming).',
+    parameters: obj(
+      {
+        skillId: str('Skill id to update.'),
+        name: str('Declared skill name; must match the SKILL.md frontmatter.'),
+        description: str('Declared description; must match the SKILL.md frontmatter.'),
+        files: arr(
+          obj({ path: str('File path inside the skill folder.'), content: str('File text.') }),
+          'Files to overwrite; include SKILL.md to change frontmatter.',
+        ),
+      },
+      ['skillId', 'name', 'description', 'files'],
+    ),
+  },
+];
+
+/** worker 步全量工具（r5 §3.1 + #310/r9 §3.1 + spec 15 #394 + XMON-109）：
+ * 记忆三件套 + 附件读 + 任务元信息回填 + 技能写词（恒列，开关执法在
+ * executor）。chief 49 词表（组织/执行面）不外溢到 worker——worker 路径
+ * 只挂「任务内可操作」面（技能写是例外：按 XMON-109 拍板 worker 也写）。 */
 export const WORKER_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   ...WORKER_MEMORY_REMOTE_TOOLS,
   WORKER_ATTACHMENT_TOOL,
   SET_TASK_META_TOOL,
+  ...WORKER_SKILL_TOOLS,
 ];
 
 /** github 形态项目的 worker 工具面（#446）：set_task_meta 换多标签变体，
@@ -614,4 +707,5 @@ export const WORKER_REMOTE_TOOLS_GITHUB: readonly RemoteToolDef[] = [
   ...WORKER_MEMORY_REMOTE_TOOLS,
   WORKER_ATTACHMENT_TOOL,
   SET_TASK_META_TOOL_MULTI_TAG,
+  ...WORKER_SKILL_TOOLS,
 ];

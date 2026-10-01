@@ -252,8 +252,9 @@ describe('web REST vocabulary (02 §6.1 canonical)', () => {
     expect(has('POST', '/api/push')).toBe(false);
   });
 
-  it('excludes the skills write faces — spec 13 #367 本地目录只读投影 (divergence 登记在 NON_REPLICATED_ENDPOINTS)', () => {
-    expect(has('POST', '/api/skills')).toBe(false);
+  it('skills 写面回摆（XMON-109 spec 13 回摆：POST /api/skills + PUT teams/{id}/skills/{sid}）；scan 面仍无', () => {
+    expect(has('POST', '/api/skills')).toBe(true);
+    expect(has('PUT', '/api/teams/{id}/skills/{sid}')).toBe(true);
     expect(has('POST', '/api/skills/scan')).toBe(false);
   });
 });
@@ -461,8 +462,8 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
   });
 });
 
-describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; #310 +attachment; #319 +branch_sync; spec 12 +github_connection; spec 13 −skill −mcp_server; XMON-108 +shell_command)', () => {
-  it('DB table registry is the 01 §6 list + chief + steer/stop_pending + attachment + branch_sync + github_connection + shell_command − skill − mcp_server (30 incl. the todo_tag join)', () => {
+describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; #310 +attachment; #319 +branch_sync; spec 12 +github_connection; spec 13 −skill −mcp_server; XMON-109 +skill_audit; XMON-108 +shell_command)', () => {
+  it('DB table registry is the 01 §6 list + chief + steer/stop_pending + attachment + branch_sync + github_connection − skill − mcp_server + skill_audit + shell_command (30 incl. the todo_tag join)', () => {
     expect(DB_TABLES).toHaveLength(30);
     expect(DB_TABLES).toContain('todo_tag');
     expect(DB_TABLES).toContain('chief');
@@ -474,6 +475,8 @@ describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; 
     expect(DB_TABLES).toContain('shell_command');
     // spec 13 #367：skill 表退役（技能 = 本地目录现扫只读投影，不入库）
     expect(DB_TABLES).not.toContain('skill');
+    // XMON-109 S1：技能写审计行（REST/relay 三入口同表；internal-only 无 record）
+    expect(DB_TABLES).toContain('skill_audit');
   });
 
   it('record shapes cover exactly the 23 wire tables (todo_tag join + steer/stop_pending internal + attachment binary + github_connection credential have none; skill = 磁盘投影无表位 #367, mcp_server = config 投影无表位 #368)', () => {

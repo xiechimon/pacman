@@ -9,7 +9,7 @@
 // #67/#127) driving client-side filter/sort, and the search box filters
 // by title.
 import type { ProjectFileResponse } from '@pacman/shared';
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   useGithubConnection,
@@ -23,7 +23,7 @@ import { mapCommits, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
-import { localTodo, USER_NAME } from '../fixtures/fixtures.js';
+import { localTodo } from '../fixtures/fixtures.js';
 import type { Phase, ProjectCommitRow, ProjectContent, TodoRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
@@ -39,8 +39,7 @@ import {
   PlusSmall,
   Search,
 } from '../icons/index.js';
-import { NewTaskDialog } from '../overlay/new-task-dialog.js';
-import { useNewTaskSurface } from '../overlay/use-new-task-surface.js';
+import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { Button } from '../ui/button.js';
 import { GithubIssuesDialog } from './github-issues-dialog.js';
@@ -318,6 +317,9 @@ function TasksPane({
   onOpenGithubIssues?: () => void;
 }) {
   const { t } = useI18n();
+  // XMON-105: task-row owner avatar = the logged-in user identity single
+  // source (same face as sidebar chip / account head / chat user rows).
+  const { user } = useLiveData();
   // #318: 行/卡点击 = 导航任务详情(r2 §2 原站点行开详情);search 随行
   // 携带(fixture 面 scenario 参数不丢,todo-card #58 同律)。
   const { search } = useLocation();
@@ -434,7 +436,11 @@ function TasksPane({
               </Link>
               <span className="prj-task-time">{relativeTime(todo.phaseAt, now, t)}</span>
               <span className="prj-task-avatar">
-                <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
+                <SeededAvatar
+                  name={user.displayName}
+                  src={user.avatarUrl}
+                  fallback="/avatar-user.png"
+                />
               </span>
             </div>
           ))}
@@ -448,7 +454,11 @@ function TasksPane({
               <div className="prj-task-card-head">
                 <span className="prj-task-check" aria-hidden="true" />
                 <span className="prj-task-avatar">
-                  <SeededAvatar name={USER_NAME} fallback="/avatar-user.png" />
+                  <SeededAvatar
+                    name={user.displayName}
+                    src={user.avatarUrl}
+                    fallback="/avatar-user.png"
+                  />
                 </span>
               </div>
               {/* #318: 同列表行——标题 <a> 的 ::after 拉伸盖满整卡 */}
@@ -553,12 +563,11 @@ export function ProjectPage() {
     },
     [fixture],
   );
-  const { openDialog: openNewTask, dialogProps: newTaskDialogProps } = useNewTaskSurface(fixture, {
-    onFixtureSave,
-    anchorProjectId: id,
-    mentions: false,
-    eager: true,
-  });
+  // XMON-93 隔离面：dialog 的 open/正文态住进 NewTaskSurfaceRoot 叶子内部，
+  // 开合与输入不再整页重渲染（任务列表行同步重渲染 = ESC 退出卡顿的同源
+  // 根因，board 面实测）。opener 走 ref 读，引用恒定。
+  const newTaskApiRef = useRef<NewTaskSurfaceApi | null>(null);
+  const openNewTask = useCallback(() => newTaskApiRef.current?.openDialog(), []);
   // 从 GitHub issue 建任务入口（#446 / ADR 0005 读向）：三重门 = live +
   // github 形态 + 已连接。未连接 = 入口不渲染且页面不报错不空白（connection
   // 查询失败面容忍，票面验收）；local/hosted/fixture 面零漂移。查询 enabled
@@ -630,8 +639,12 @@ export function ProjectPage() {
           {...(ghIssuesAvailable ? { onOpenGithubIssues: () => setIssuesOpen(true) } : {})}
         />
       )}
-      {/* dialog 接线 = useNewTaskSurface，本页差异参数位见上方 hook 调用。 */}
-      <NewTaskDialog {...newTaskDialogProps} />
+      {/* dialog 接线 = NewTaskSurfaceRoot 隔离根，本页差异参数位随 opts 传入。 */}
+      <NewTaskSurfaceRoot
+        fixture={fixture}
+        opts={{ onFixtureSave, anchorProjectId: id, mentions: false, eager: true }}
+        apiRef={newTaskApiRef}
+      />
       {/* #446 issue 选择弹层：门与入口同闸（ghIssuesAvailable），关着不发
           请求（useGithubIssues enabled 位）。 */}
       {ghIssuesAvailable && id !== undefined && (
