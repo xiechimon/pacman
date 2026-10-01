@@ -60,6 +60,7 @@ import { Composer } from '../detail/composer.js';
 import { DetailHead } from '../detail/dhead.js';
 import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
+import { mergeRejectCopy, useMergeGate } from '../detail/merge-gate.js';
 import { RerunDialog, ReusePanel } from '../detail/overlays.js';
 import { resolveReviewDefault } from '../detail/review-default.js';
 import { type ReviewAgentOption, ReviewDialog } from '../detail/review-dialog.js';
@@ -233,7 +234,16 @@ export function TodoDetailPage() {
   // buttons and the review/failed action buttons open the same set
   // interactively.
   const [overlay, setOverlay] = useState<OverlayState | null>(fixture.overlay ?? null);
-  const closeOverlay = useCallback(() => setOverlay(null), []);
+  // XMON-89：合并被拒的可见态。住页层而非弹层内——弹层是 retained-mount，
+  // 关掉不清会在下一次开窗时回显上一轮的拒绝（并入 closeOverlay）。
+  const [mergeReject, setMergeReject] = useState<string | null>(null);
+  const closeOverlay = useCallback(() => {
+    setOverlay(null);
+    setMergeReject(null);
+  }, []);
+  // 前置检查（XMON-89）：查的 Agent = merge 步的执行者 = assignment.build 槽
+  // （不是卡片上显示的折算值）。
+  const mergeMissing = useMergeGate(live ? (wireTodo?.assignment?.build?.agentId ?? null) : null);
   // #75 version-menu + plan-version diff state: scenario-frozen for the
   // captures, interactive afterwards (63–72).
   const [menu, setMenu] = useState<'versions' | 'compare' | undefined>(fixture.detail?.versionMenu);
@@ -983,13 +993,19 @@ export function TodoDetailPage() {
       <AcceptDialog
         open={overlay?.kind === 'accept'}
         onClose={closeOverlay}
+        missingTools={mergeMissing}
+        rejectReason={mergeReject}
         onConfirm={
           live && buildId
             ? () => {
                 // merge = 202 delegated（r3 §3.6）：合并步机器执行，phase 经
-                // SSE 推进到 done（🎉 时间线行由 server 落库）。
-                mutations.mergeBuild.mutate(buildId);
-                closeOverlay();
+                // SSE 推进到 done（🎉 时间线行由 server 落库）。XMON-89：关
+                // 弹层改挂 onSuccess——被拒（403）时弹层留着显原因，不再静默
+                // 关掉。
+                mutations.mergeBuild.mutate(buildId, {
+                  onSuccess: () => closeOverlay(),
+                  onError: (error) => setMergeReject(mergeRejectCopy(error, t)),
+                });
               }
             : undefined
         }
