@@ -293,7 +293,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
             // B3: variant="palette" 皮肤换 Tailwind 工具类——flex-1 + 无框
             // 透明 + 13px 字，行容器几何（40px/padding/分隔线）per-face 保留。
             ref={attachInput}
-            className="flex-1 h-auto border-none p-0 text-[13px] leading-4 placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:!ring-0"
+            className="flex-1 h-auto border-none p-0 text-[13px] md:text-[13px] leading-4 rounded-none bg-transparent dark:bg-transparent placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:!ring-0"
             value={query}
             placeholder={t('搜索任务、项目、成员…')}
             onChange={(event) => onQuery(event.target.value)}
