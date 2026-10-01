@@ -73,7 +73,7 @@ const COMPUTED_KEYS = new Set<string>([
   // 键映射，浏览钮失败面经常量查 t()），不作字面量出现。
   ...Object.values(FS_PICK_ERROR_COPY),
   // #485: Agent 配置面词表与文案 canon = shared AGENT_TOOL_SWITCHES（权限
-  // 工具开关文案；XMON-77 收敛后两档）、AGENT_TOOL_COPY（各档说明副文案）、
+  // 六开关文案；XMON-84 恢复全六档）、AGENT_TOOL_COPY（六档各自的说明副文案）、
   // AGENT_PERMISSION_COPY（密钥 / MCP 服务器 / 职责 / 默认 skill 四档副文案）
   // 与 MEMORY_EMPTY_COPY（记忆 tab 空态），均经 t() 消费、不作字面量出现。
   // #510 起 secrets 一档也进渲染面（密钥区聚合总开关的副文案）：其键内嵌

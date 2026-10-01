@@ -4,7 +4,8 @@
 // 本测试只钉「名单与分组」的实测面，不为 [推断] 细形背书）。
 // 现行词表 = raw − CHIEF_TOOLS_REMOVED（divergence 登记两件：spec 13 #367
 // delete_skills——技能改本地目录只读投影，无删除面；XMON-77 set_remote_shell
-// ——「远程 shell」开关无执行本体，权限词表收敛到 合并分支/推送分支 两档；
+// ——「远程 shell」本体未实现（开关已随 XMON-84 用户拍板 B 恢复，写入点随
+// 本体在规划票里重新设计，词条维持除名）；
 // raw 键集冻结不改）。
 
 import { describe, expect, it } from 'vitest';

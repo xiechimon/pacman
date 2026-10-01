@@ -48,8 +48,9 @@ export type MachineToolRelayResponse = z.infer<typeof machineToolRelayResponseSc
 /** 从 raw 49 键观测词表中有意移除的工具（divergence 登记，对拍测试 =
  * raw 键集 − 本集）。spec 13 #367：delete_skills——技能改本地目录现扫只读
  * 投影（不入库），删除技能 = 从磁盘删目录，server 无删除面可 relay。
- * XMON-77：set_remote_shell——「远程 shell」开关无执行本体，权限词表收敛到
- * 合并分支/推送分支 两档（改授权走 REST PATCH /agents/{aid}）。 */
+ * XMON-77：set_remote_shell——「远程 shell」本体未实现（XMON-84 用户拍板 B
+ * 后开关保留在权限词表，但写入点随本体在规划票里重新设计，词条维持除名；
+ * 改授权走 REST PATCH /agents/{aid}）。 */
 export const CHIEF_TOOLS_REMOVED = ['delete_skills', 'set_remote_shell'] as const;
 
 /** 词表分组（r5 §3.1 正文分组语义；成员按 raw 键集归位 [推断]；
@@ -367,8 +368,9 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
     description: 'Delete team secrets by name or id.',
     parameters: obj({ names: idArr('Secret names or ids to delete.') }, ['names']),
   },
-  // set_remote_shell 已除名（XMON-77：「远程 shell」开关无执行本体，权限词表
-  // 收敛到 合并分支/推送分支——改授权走 REST PATCH /agents/{aid}，词条与
+  // set_remote_shell 已除名（XMON-77 维持至 XMON-84）：「远程 shell」本体未
+  // 实现（开关已随用户拍板 B 恢复，写入点随本体在规划票里重新设计）——改授权
+  // 走 REST PATCH /agents/{aid}，词条与
   // handler 均不保留）。
   {
     name: 'schedule_todo',

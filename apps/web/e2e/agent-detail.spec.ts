@@ -178,26 +178,25 @@ test('记忆 tab：空态文案与 shared canon 同文', async ({ page }) => {
   );
 });
 
-// XMON-77 权限闭环：原版六档中唯一两档映射到真实执行面（合并分支/推送分支
-// → daemon merge/push 收尾闸）；其余四档（远程 shell/创建标签/创建技能/更新
-// 技能）无执行本体，词表收敛——钉住不回摆死开关。
-test('权限 tab：2 个工具开关全渲染（XMON-77 词表收敛）', async ({ page }) => {
+// XMON-84 用户拍板 B：六开关全保留（四无本体档照常摆出，本体另立规划票）；
+// 其中合并分支/推送分支两档有真实执法面（XMON-77 daemon/server 闸）。
+test('权限 tab：6 个工具开关全渲染（r3 §4 全 list，XMON-84 恢复）', async ({ page }) => {
   const detail = await openDetail(page);
   await detail.locator('.agent-tab').nth(2).click();
-  await expect(detail.locator('.agent-tool-switch')).toHaveCount(2);
+  await expect(detail.locator('.agent-tool-switch')).toHaveCount(6);
 });
 
-test('权限 tab：2 档各带说明副文案', async ({ page }) => {
+// 六档说明副文案曾经只出「远程 shell」一条（r3 §4 的清单只记了那一档）；
+// 直读原版权限 tab 后补全，六档各带一条，钉住不回落成一条。
+test('权限 tab：6 档各带说明副文案', async ({ page }) => {
   const detail = await openDetail(page);
   await detail.locator('.agent-tab').nth(2).click();
   const hints = detail.locator('.agent-perm-group').first().locator('.agent-perm-hint');
-  await expect(hints).toHaveCount(2);
-  await expect(hints.nth(0)).toHaveText(
+  await expect(hints).toHaveCount(6);
+  await expect(hints.nth(1)).toHaveText(
     '允许该 Agent 通过合并分支进行发布（例如将 develop 合并进 main）。',
   );
-  await expect(hints.nth(1)).toHaveText(
-    '允许该 Agent 随时提交并推送其工作分支（自行合并发布改动时需要）。',
-  );
+  await expect(hints.nth(5)).toHaveText('允许该 Agent 修改团队技能库中已有的技能。');
 });
 
 // 运行时档（原版概览在模型之上有这一档）：wire 无独立字段，值由 provider 位

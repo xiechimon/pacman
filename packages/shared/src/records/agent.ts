@@ -13,12 +13,20 @@ import { SECRET_MIN_CLI_VERSION } from './secret.js';
 /** 观测值仅 "active"；其余状态未采到，词表不收窄外值 [推断]。 */
 export const agentStatusSchema = z.enum(['active']);
 
-/** 权限面工具开关 UI 词（r3 §4 全 list 文案 canon 的收敛子集）。XMON-77 闭环：
- * 原版六档中唯一两档映射到真实执行面（合并分支/推送分支 → daemon merge/push
- * 收尾闸 + server requestMerge 闸）；其余四档（远程 shell/创建标签/创建技能/
- * 更新技能）无对应执行本体，摘除——存量残值经写侧过滤退役（filterAgentTools）。
+/** 权限面工具 6 开关 UI 词（r3 §4 全 list，文案 canon）。XMON-84 用户拍板 B：
+ * 六档全保留——合并分支/推送分支有真实执法面（daemon merge/push 收尾闸 +
+ * server requestMerge 闸，XMON-77）；其余四档（远程 shell/创建标签/创建技能/
+ * 更新技能）无执行本体，本体另立规划票实现（保留期 = 照常持久化、无执法
+ * 消费方的中间态，不造假 enforcement）。词表外值（自造档）写侧过滤退役。
  * wire 值未观测（样本 tools:[] 恒空）[推断]——tools[] 不收窄为枚举。 */
-export const AGENT_TOOL_SWITCHES = ['合并分支', '推送分支'] as const;
+export const AGENT_TOOL_SWITCHES = [
+  '远程 shell',
+  '合并分支',
+  '创建标签',
+  '推送分支',
+  '创建技能',
+  '更新技能',
+] as const;
 export type AgentToolSwitch = (typeof AGENT_TOOL_SWITCHES)[number];
 
 /** 合并权限 = 两开关齐备（XMON-77：合并步收尾 = git merge + conv 分支 push，
@@ -27,17 +35,28 @@ export type AgentToolSwitch = (typeof AGENT_TOOL_SWITCHES)[number];
 export const AGENT_TOOL_MERGE: AgentToolSwitch = '合并分支';
 export const AGENT_TOOL_PUSH: AgentToolSwitch = '推送分支';
 
-/** 权限面两开关各自的说明副文案（键 = AGENT_TOOL_SWITCHES 的同值域词）。
+/** 新建 Agent 的 tools 默认集（XMON-84 B4）：「推送分支」开——收尾闸落地后
+ * 缺它 = 提交留本地工作分支，新建即推不了工作分支会破坏交付（不破坏交付
+ * 判据）；「合并分支」不默认开——合并进默认分支属发布行为，发布决定留给人
+ * （最小权限判据）。四无本体档与 MCP/密钥一律不默认开。创建路径（REST POST
+ * 与 chief create_agent）同源消费；存量行回填走 migration（PR 内审）。 */
+export const AGENT_TOOL_DEFAULTS: readonly AgentToolSwitch[] = [AGENT_TOOL_PUSH];
+
+/** 权限面 6 开关各自的说明副文案（键 = AGENT_TOOL_SWITCHES 的同值域词）。
  * 文案原文实测自参考产品 Agent 详情页权限 tab（2026-09-30，#485）。 */
 export const AGENT_TOOL_COPY: Record<(typeof AGENT_TOOL_SWITCHES)[number], string> = {
+  '远程 shell': '允许该 Agent 在团队中已开启 shell 访问的机器上执行命令。',
   合并分支: '允许该 Agent 通过合并分支进行发布（例如将 develop 合并进 main）。',
+  创建标签: '允许该 Agent 创建 git tag，这可能触发发布流程。',
   推送分支: '允许该 Agent 随时提交并推送其工作分支（自行合并发布改动时需要）。',
+  创建技能: '允许该 Agent 向团队技能库添加新技能。',
+  更新技能: '允许该 Agent 修改团队技能库中已有的技能。',
 };
 
-/** tools[] 写侧过滤（XMON-77）：词表外值（退役档/自造档）静默丢弃，词表内
- * 保留且顺序不变（读改写全量回写不被重排）。filterKnownSkillIds 同律而非
- * machines enabledRuntimes 的 enum-400 律——UI 是读改写全量，存量残值若
- * 400 会把用户锁死在死值上，过滤则随下一次写自然清退。 */
+/** tools[] 写侧过滤（XMON-77 起）：词表外值（自造档）静默丢弃，词表内保留且
+ * 顺序不变（读改写全量回写不被重排）。filterKnownSkillIds 同律而非 machines
+ * enabledRuntimes 的 enum-400 律——UI 是读改写全量，存量残值若 400 会把
+ * 用户锁死在死值上，过滤则随下一次写自然清退。 */
 export function filterAgentTools(tools: string[]): string[] {
   return tools.filter((t) => (AGENT_TOOL_SWITCHES as readonly string[]).includes(t));
 }
@@ -65,8 +84,8 @@ export const agentRecordSchema = z.object({
   modelId: z.string().nullable(),
   /** 思考强度（r3 样本 null = UI「默认」；wire 值词表未采 [推断]）。 */
   thinkingLevel: z.string().nullable(),
-  /** 权限开关已开集 + 授予工具；wire 项形 [推断]。读侧宽（string[]，存量行
-   * 退役残值可读）；写侧严 = filterAgentTools（XMON-77）——machines
+  /** 权限 6 开关的已开集 + 授予工具；wire 项形 [推断]。读侧宽（string[]，
+   * 存量行残值可读）；写侧严 = filterAgentTools（XMON-77）——machines
    * enabledRuntimes 同一读写分工。 */
   tools: z.array(z.string()),
   /** 团队密钥授权集（关联 secret id [推断]；值只写不读，02 §8）。 */

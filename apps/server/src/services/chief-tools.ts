@@ -15,7 +15,7 @@
 // （sourceBuildId = chief 回合 conv id，records/memory.ts「回合 id」注）、配额 100。
 
 import type { SecretBox, UserRecord } from '@pacman/shared';
-import { isChiefConversationId, MEMORY_QUOTA_PER_AGENT } from '@pacman/shared';
+import { AGENT_TOOL_DEFAULTS, isChiefConversationId, MEMORY_QUOTA_PER_AGENT } from '@pacman/shared';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
@@ -454,7 +454,9 @@ export async function executeChiefTool(
           provider: optStr(params, 'provider') ?? null,
           modelId: optStr(params, 'modelId') ?? null,
           thinkingLevel: null,
-          tools: [],
+          // 创建缺省同 REST POST（XMON-84 B4）：推送分支默认开——chief 建的
+          // Agent 同样要能推工作分支交付；收权限走 update_agent/REST PATCH。
+          tools: [...AGENT_TOOL_DEFAULTS],
           secrets: [],
           skills: [],
           mcpServers: [],
@@ -516,8 +518,9 @@ export async function executeChiefTool(
       }
       return json({ deleted });
     }
-    // set_remote_shell 已除名（XMON-77：「远程 shell」开关无执行本体，权限词表
-    // 收敛到 合并分支/推送分支；改授权走 REST PATCH /agents/{aid}）——relay 此名
+    // set_remote_shell 已除名（XMON-77 维持至 XMON-84）：「远程 shell」本体未
+    // 实现（开关已随用户拍板 B 恢复，写入点随本体在规划票里重新设计）——改授权
+    // 走 REST PATCH /agents/{aid}）。relay 此名
     // 落 default = 400 unknown chief tool，与 delete_skills 同律。
     case 'schedule_todo': {
       const todoId = str(params, 'todoId');

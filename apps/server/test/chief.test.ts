@@ -388,6 +388,18 @@ describe('分派 + 单 todo 直派 + 双 Agent assignment（r5 §3.3/§3.4/§5�
     expect(other.tools).toEqual([]);
   });
 
+  // XMON-84 B4：chief create_agent 无 tools 形参，落创建默认集——缺「推送
+  // 分支」的 Agent 收尾推不了工作分支（daemon 软拒），chief 建的 Agent 同样
+  // 要能交付。失败方式：落 [] → chief 建号即无推送权。
+  test('create_agent 落创建默认集 [推送分支]（XMON-84 B4）', async () => {
+    const out = (await relay('create_agent', { displayName: 'chief 建的交付号' })) as {
+      id: string;
+    };
+    expect(s.db.select().from(agentTable).where(eq(agentTable.id, out.id)).get()!.tools).toEqual([
+      '推送分支',
+    ]);
+  });
+
   test('run_builds 默认 withPlan:false 直派 + triggerSource:chief + assignment 落槽', async () => {
     const todoRec = (await relay('create_todo', { projectId, title: '写文档', spec: 's' })) as {
       id: string;
@@ -717,8 +729,9 @@ describe('47 词表 relay 执行面（02 §4.3）', () => {
     expect(status).toBe(400);
   });
 
-  // XMON-77：set_remote_shell 已除名（「远程 shell」开关无执行本体，权限词表
-  // 收敛到 合并分支/推送分支——改授权走 REST PATCH /agents/{aid}）。relay 此名
+  // XMON-77：set_remote_shell 已除名（「远程 shell」本体未实现；开关虽已随
+  // XMON-84 用户拍板 B 恢复，写入点随本体在规划票里重新设计，词条维持除名）。
+  // relay 此名
   // 落 default = 400，与 delete_skills 同律。
   test('set_remote_shell → 400 unknown chief tool（XMON-77 除名）', async () => {
     let status = 0;

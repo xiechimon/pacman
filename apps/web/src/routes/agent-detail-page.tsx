@@ -515,8 +515,8 @@ export function AgentDetailPage() {
                 <div key={label} className="agent-perm-row">
                   <span className="agent-perm-text">
                     <span className="agent-perm-name">{t(label)}</span>
-                    {/* 每档带说明副文案（AGENT_TOOL_COPY 单源；XMON-77 词表
-                        收敛后两档，AGENT_TOOL_SWITCHES map 自动跟随）。 */}
+                    {/* 六档各带说明副文案（AGENT_TOOL_COPY 单源；原文实测自
+                        参考产品的权限 tab，XMON-84 恢复全六档）。 */}
                     <span className="agent-perm-hint">{t(AGENT_TOOL_COPY[label])}</span>
                   </span>
                   <Switch

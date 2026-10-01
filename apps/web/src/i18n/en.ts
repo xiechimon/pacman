@@ -617,16 +617,26 @@ export const EN: Record<string, string> = {
   团队密钥: 'Team secrets',
   // shared canon（packages/shared/src/records/agent.ts、memory.ts），经 t()
   // 消费、不作字面量出现——i18n-coverage COMPUTED_KEYS 登记。
-  // XMON-77 权限开关词表收敛为两档（合并分支/推送分支）：四个无本体能力的
-  // 开关（远程 shell/创建标签/创建技能/更新技能）连同文案一并摘除。
+  '远程 shell': 'Remote shell',
   合并分支: 'Merge branches',
+  创建标签: 'Create labels',
   推送分支: 'Push branches',
+  创建技能: 'Create skills',
+  更新技能: 'Update skills',
   运行时: 'Runtime',
   '内置 (pi)': 'Built-in (pi)',
+  '允许该 Agent 在团队中已开启 shell 访问的机器上执行命令。':
+    'Allow this Agent to run commands on machines where shell access is enabled for the team.',
   '允许该 Agent 通过合并分支进行发布（例如将 develop 合并进 main）。':
     'Let this Agent publish by merging branches (for example develop into main).',
+  '允许该 Agent 创建 git tag，这可能触发发布流程。':
+    'Let this Agent create git tags, which may trigger a release pipeline.',
   '允许该 Agent 随时提交并推送其工作分支（自行合并发布改动时需要）。':
     'Let this Agent commit and push its working branch at any time (needed when it merges release changes itself).',
+  '允许该 Agent 向团队技能库添加新技能。':
+    'Let this Agent add new skills to the team skill library.',
+  '允许该 Agent 修改团队技能库中已有的技能。':
+    'Let this Agent modify skills already in the team skill library.',
   '任务执行时，该 Agent 可在需要密钥的执行步中按需取用团队密钥，每次取用都会留下记录；密钥不预置进 shell 环境。所在机器需要 pacman CLI 0.1.28 及以上。':
     'When running a task, this Agent can retrieve team secrets on demand in the execution steps that need them; every retrieval is recorded, and secrets are never preloaded into the shell environment. The machine must have pacman CLI 0.1.28 or newer.',
   '该 Agent 执行任务时可使用的团队 MCP 服务器，其工具以 mcp__<服务器>__<工具> 的形式出现。':
