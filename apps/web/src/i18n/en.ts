@@ -597,6 +597,21 @@ export const EN: Record<string, string> = {
   没有匹配筛选条件的任务: 'No tasks match the selected filters',
   清除筛选: 'Clear filters',
 
+  // —— XMON-57 统一筛选面板（两维 + 批次键 + 生效筛选条 + 空词表行）——
+  // 「全选」不复用上面的 `全选`（那条是权限授予面的 'Grant all'）——同一个
+  // zh 词在两个语义域里，en 必须分叉。
+  全部选中: 'Select all',
+  清除: 'Clear',
+  仅此: 'Only this',
+  '已选 {n}/{m}': '{n}/{m} selected',
+  清除全部: 'Clear all',
+  '搜索{name}': 'Search {name}',
+  '清除{name}筛选': 'Clear {name} filter',
+  本作用域内没有可选的仓库: 'No repositories available in this scope',
+  本作用域内没有可选的类型: 'No types available in this scope',
+  '没有与“{q}”匹配的选项': 'No options match “{q}”',
+  '筛选生效：{summary}': 'Filters active: {summary}',
+
   // —— #485 Agent 详情编辑面（三 tab + 概览字段 + 记忆/权限面）——
   // 含空格/标点的键一律引号形（对象字面量的键不是标识符）。
   概览: 'Overview',
