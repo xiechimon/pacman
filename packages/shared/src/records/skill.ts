@@ -78,6 +78,64 @@ export const updateSkillToolParamsSchema = updateSkillBodySchema.extend({
 });
 export type UpdateSkillToolParams = z.infer<typeof updateSkillToolParamsSchema>;
 
+/** 技能目录名安全域（create 的 body.name = 新目录名）：字母/数字开头，仅
+ * 字母数字点横杠下划线，≤64 字符——可作 URL 段与跨平台目录名。XMON-114 自
+ * server services/skills.ts 上提：web 表单预检与 server 写面校验同一闸。 */
+export const SKILL_DIR_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+
+/** SKILL.md frontmatter 最小解析（XMON-114 自 server services/skills.ts 上提
+ * ——web 编辑面预填/回读对拍与 server 写面校验消费同一解析器，防双侧漂移）：
+ * 仓内无 yaml 依赖，单行为值、可引号包裹；折叠块标量标记（`>`/`|` 族）与
+ * 多行值不受理 = 按缺省回落（真打 anthropics/skills 实测 academy-guide 即
+ * `description: >` 折叠形，语义承自旧 GitHub 扫描面 #223）。 */
+export function parseSkillFrontmatter(content: string): {
+  name?: string;
+  description?: string;
+} {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(content);
+  const block = m?.[1];
+  if (block === undefined) return {};
+  const out: { name?: string; description?: string } = {};
+  for (const line of block.split(/\r?\n/)) {
+    const kv = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line);
+    const key = kv?.[1];
+    if (key !== 'name' && key !== 'description') continue;
+    const value = (kv?.[2] ?? '')
+      .trim()
+      .replace(/^(['"])(.*)\1$/, '$2')
+      .trim();
+    // 折叠/文字块标量标记（>、|、>-、|+…）= 多行值，最小解析器不受理 → 缺省回落。
+    if (value !== '' && !/^[>|][+-]?$/.test(value)) out[key] = value;
+  }
+  return out;
+}
+
+/** SKILL.md 入口文件拆分（XMON-114 web 编辑面预填）：frontmatter 字段 +
+ * 正文（frontmatter 块之后的原文，剥前导空行）。无 frontmatter 块 = 全部
+ * 归 body（与 parseSkillFrontmatter 空洞同律）。 */
+export function splitSkillEntry(content: string): {
+  name?: string;
+  description?: string;
+  body: string;
+} {
+  const m = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.exec(content);
+  if (m === null) return { body: content };
+  // 只剥前导空行——正文首行的缩进（如整段代码块）是内容本体，不动。
+  return {
+    ...parseSkillFrontmatter(content),
+    body: content.slice(m[0].length).replace(/^(\r?\n)+/, ''),
+  };
+}
+
+/** SKILL.md 入口文件组装（XMON-114 web 表单面：name/description 表单化 →
+ * frontmatter 由本函数生成，用户只写正文）。正文首尾空白收敛 + 单换行收尾，
+ * 回读对拍（parseSkillFrontmatter(build(...)) 与入参逐字段一致）在调用方。 */
+export function buildSkillEntry(name: string, description: string, body: string): string {
+  const head = `---\nname: ${name}\ndescription: ${description}\n---\n`;
+  const trimmed = body.trim();
+  return trimmed === '' ? head : `${head}\n${trimmed}\n`;
+}
+
 /** 页文案 canon（spec 13 + XMON-109 回摆：双入口口径——放目录进技能根、
  * 或页面/relay 新建，都会出现在这里；{dir} = SKILLS_DIR_DEFAULT 显示位。
  * 单源消费：web resources/skills-page.tsx 经 t() 渲染本常量（i18n-coverage
