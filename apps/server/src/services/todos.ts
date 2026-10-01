@@ -322,7 +322,13 @@ export function updateTodo(
   return record;
 }
 
-/** phase 流转（服务面统一入口：流转表校验 + phaseAt/v 维护 + 文档事件）。 */
+/** phase 流转（服务面统一入口：流转表校验 + phaseAt/v 维护 + 文档事件）。
+ *  同相位幂等（XMON-59）：from === to 是已完成流转的重放（机器 done 重报 /
+ *  daemon recover 重发 / MCP 批量流转重入），不是非法边——对齐 notifyPhaseEntry
+ *  既有的 from === to 早退与 updateTodo 的同相位跳写，此前走 assert 抛 409 会
+ *  把整条 done 收尾连同后续事件一起吞掉。无伴随位或伴随位与现值全同 = 零副
+ *  作用 no-op（重放不改任何可观测状态）；伴随位有实变化 = 只落伴随位 + v（
+ *  phase/phaseAt 不动）+ 文档事件。流转表严格性不动：异相位仍逐边 assert。 */
 export function setTodoPhase(
   deps: TodoDeps,
   id: string,
@@ -334,6 +340,20 @@ export function setTodoPhase(
   const { db } = deps;
   const row = getRow(deps, id);
   if (!row) return null;
+  if (row.phase === to) {
+    const changed = (Object.keys(extra) as (keyof typeof extra)[]).filter(
+      (k) => extra[k] !== undefined && JSON.stringify(extra[k]) !== JSON.stringify(row[k]),
+    );
+    if (changed.length === 0) return getTodo(deps, id);
+    db.update(todo)
+      .set({ ...extra, v: row.v + 1 })
+      .where(eq(todo.id, id))
+      .run();
+    const record = getTodo(deps, id);
+    if (!record) return null;
+    deps.hub.publishTodoDoc(record.teamId, record);
+    return record;
+  }
   assertPhaseTransition(row.phase, to);
   db.update(todo)
     .set({ ...extra, phase: to, phaseAt: nowMs(), v: row.v + 1 })

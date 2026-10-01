@@ -1330,6 +1330,12 @@ export function receivePlanUpload(deps: MachineDeps, upload: PendingUpload, cont
     .values({ id, buildId, version: (last?.version ?? 0) + 1, content, createdAt: nowMs() })
     .run();
   deps.db.update(build).set({ planDocId: id }).where(eq(build.id, buildId)).run();
+  // 落库即发会话流 step 事件（XMON-59 第二断口）：plan 行此前静默落库，web
+  // ['plans', buildId] 在挂载取数读早于提交时无人再失效（方案卡停 v1/空）。
+  // step 事件是既有 web 失效面（sse.ts step 分支已列 plans——message 事件与
+  // plan.md 上传赛跑的兜底），把发布点从 done 收尾提前到落库点：done 面失
+  // 联/延迟/重放均不吞。载荷 = 当前 step 行（stepJournalRow 单源形状）。
+  publishStepStatus(deps, upload.stepId);
 }
 
 /** transcript 终稿落库（02 §1.3 数据所有权：transcript 消息/工具行经上传回传

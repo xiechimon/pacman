@@ -616,11 +616,10 @@ export function completeStep(
       return;
     }
     // plan 卡就绪 → confirm（02 §4.2：phase=confirm 等人工）；hasPlan 据实置位
-    // （无交接物不谎称有方案——看板 plan chip 数据源）。
-    if (planDoc) {
-      deps.db.update(todo).set({ hasPlan: true }).where(eq(todo.id, todoRow.id)).run();
-    }
-    setTodoPhase(deps, todoRow.id, 'confirm');
+    // （无交接物不谎称有方案——看板 plan chip 数据源）。hasPlan 走漏斗 extra
+    // 单次写+发布（XMON-59：直写漏斗外曾无 v 无发布——漏斗同相位幂等化后，
+    // 重放轮 done 直写还会被 no-op 吞掉伴随位，extra 是唯一「写+发」原子位）。
+    setTodoPhase(deps, todoRow.id, 'confirm', planDoc ? { hasPlan: true } : {});
     return;
   }
   if (stepRow.kind === 'build') {

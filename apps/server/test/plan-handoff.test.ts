@@ -16,7 +16,12 @@
 //  6. withPlan=false 直执行面被波及（planDocId 恒 null 误判交接缺失）。
 
 import type { ClaimedStep } from '@pacman/shared';
-import { claimedStepSchema, machineUploadUrlsResponseSchema, PLAN_FILE_NAME } from '@pacman/shared';
+import {
+  claimedStepSchema,
+  conversationStreamEventSchema,
+  machineUploadUrlsResponseSchema,
+  PLAN_FILE_NAME,
+} from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import type { Hono } from 'hono';
 import { describe, expect, test } from 'vitest';
@@ -26,7 +31,7 @@ import {
   step as stepTable,
   todo as todoTable,
 } from '../src/db/schema.js';
-import { bootServer, issueApiKey, postProject } from './helpers.js';
+import { bootServer, issueApiKey, openConvStream, postProject } from './helpers.js';
 
 async function call(
   app: Hono,
@@ -287,6 +292,58 @@ describe('build 步 spec 兜底（#113 候选2：交接物仍缺失 → 强制 n
       expect(buildStep.step.kind).toBe('build');
       expect(buildStep.session).toEqual({ action: 'new', sessionId: null });
       expect(w.todoRow().phase).toBe('building');
+    } finally {
+      w.s.dispose();
+    }
+  });
+});
+
+// XMON-59 第二断口 + 主断口的机器面：plan.md 落库静默无事件（web
+// ['plans', buildId] 失效生命线断——挂载取数读早于提交时方案卡永久停
+// v1/空）；done 同相位重放抛错（journal 卡死）。失败方式清单（先固化）：
+//  1. upload 缝落库（plan 行 + planDocId）不发任何事件 → 无 done 介入时
+//     plans 查询永久陈旧；
+//  2. done 重放（HTTP 响应丢失后 daemon recover 重发）撞同相位 assert
+//     → 500 → journal 卡死，只能重启 recover 且重放仍 500；
+//  3. 重放成功后落库状态被破坏（v/phaseAt 漂移）＝幂等假象。
+describe('XMON-59：upload 缝发事件 + done 重放幂等（相位漏斗静默丢事件）', () => {
+  test('plan.md 落库即发会话流 step 事件（无 done 介入，订阅先于上传）', async () => {
+    const w = await setupWorld();
+    try {
+      const buildId = await w.startBuild(true);
+      const claimed = await w.claim();
+      const stream = await openConvStream(w.s.app, buildId); // 订阅先于上传（SSE 无重放）
+      try {
+        await w.uploadPlan(claimed.step.id, '# 方案 v1');
+        const raw = await stream.next((ev) => ev.type === 'step', 3000);
+        const ev = conversationStreamEventSchema.parse(raw); // shared 单源全形状复验
+        if (ev.type !== 'step') throw new Error(`expected step event, got ${ev.type}`);
+        expect(ev.step).toMatchObject({ id: claimed.step.id, buildId, status: 'claimed' });
+      } finally {
+        stream.close();
+      }
+    } finally {
+      w.s.dispose();
+    }
+  });
+
+  test('done 重放（recover 面）同相位幂等：不 500，重放零副作用（v/phaseAt 不动）', async () => {
+    const w = await setupWorld();
+    try {
+      await w.startBuild(true);
+      const claimed = await w.claim();
+      await w.uploadPlan(claimed.step.id, '# 方案 v1');
+      await w.done(claimed.step.id, { status: 'success', sessionId: 'pi-1' });
+      expect(w.todoRow().phase).toBe('confirm');
+      expect(w.todoRow().hasPlan).toBe(true);
+      const before = w.todoRow();
+      // 重放：现实现 completeStep → setTodoPhase(confirm) 撞同相位 assert 抛
+      // → done 500；修复后幂等放行且不改任何可观测状态。
+      await w.done(claimed.step.id, { status: 'success', sessionId: 'pi-1' });
+      const after = w.todoRow();
+      expect(after.v).toBe(before.v);
+      expect(after.phaseAt).toBe(before.phaseAt);
+      expect(after.phase).toBe('confirm');
     } finally {
       w.s.dispose();
     }
