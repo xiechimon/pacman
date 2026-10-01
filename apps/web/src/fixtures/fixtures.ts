@@ -1165,6 +1165,9 @@ const RESOURCES: ResourcesContent = {
       name: MACHINE_NAME,
       online: true,
       enabledRuntimes: ['pi'],
+      // XMON-113：机器层 shell 闸，fixture canon = 关（与 server migration
+      // 回填 false 同态——存量机器默认不给 shell）。
+      shellEnabled: false,
     },
   ],
   providerSources: [PROVIDER_SOURCE_PI, PROVIDER_SOURCE_CC],

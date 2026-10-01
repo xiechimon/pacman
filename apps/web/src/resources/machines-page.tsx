@@ -8,16 +8,21 @@
 // hosted execution does not exist in the local-first architecture.
 // #503: per-runtime 开关摘除，改官方品牌 mark（启用 = 品牌原色，未启用 =
 // 35% 透明，read-only）。enabledRuntimes 字段与 PATCH /api/machines/{id}
-// 原样保留——控件面以后要接回来再说；行内自此零交互控件。
+// 原样保留——那是死控件（PR #507：「该字段全仓只写不读」），摘除是对的。
+// XMON-113：行内接回**唯一一个活控件**——机器层 shell 闸
+// （machine.shellEnabled，消费方 = claim 组装 localTools 双闸 + 每命令预检，
+// XMON-108 R1）。行内控件面自此 = 这一个开关，死钮纪律（删除 / chevron /
+// per-runtime 开关）原样由 e2e 负向把守。
 
-import { MACHINE_RUNTIMES, type MachineRuntime } from '@pacman/shared';
+import { AGENT_TOOL_SHELL, MACHINE_RUNTIMES, type MachineRuntime } from '@pacman/shared';
 import { cn } from 'cn';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { useMachines, useTeams } from '../api/hooks.js';
+import { useApiMutations, useMachines, useTeams } from '../api/hooks.js';
 import { mapMachines } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { ClaudeMark, PiMark } from '../components/brand-marks.js';
+import { Switch } from '../components/ui/switch.js';
 import { TEAM_NAME } from '../fixtures/fixtures.js';
 import type { MachineRow } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -42,6 +47,12 @@ const RUNTIME_MARKS: Record<MachineRuntime, typeof PiMark> = {
   'claude-code': ClaudeMark,
 };
 
+/** 机器行开关副文案（行内第二行）——机器侧的那半边语义：Agent 权限 tab 的
+ * 同名开关说的是「在哪台机器上能用」，这里说的是「这台机器让不让用」，两者
+ * 齐开预检才放行（XMON-108 R1 双闸）。工具名经 {tool} 插值走 shared
+ * AGENT_TOOL_SHELL 单源——两层开关共用同一个词，词变了不会只改一处。 */
+const MACHINE_SHELL_HINT = '已授权「{tool}」的 Agent 可在该机器上执行命令。';
+
 export function MachinesPage() {
   const { t } = useI18n();
   const [searchParams] = useSearchParams();
@@ -56,8 +67,28 @@ export function MachinesPage() {
   const teamsQ = useTeams(live);
   const teamName = live ? (teamsQ.data?.[0]?.name ?? TEAM_NAME) : TEAM_NAME;
   const [addOpen, setAddOpen] = useState(false);
+  const mutations = useApiMutations(teamId);
 
   const rowKey = (machine: MachineRow): string => machine.id ?? machine.name;
+
+  // shell 开关态：live 面由记录驱动（mutation 的乐观写落在 ['machines'] 缓存
+  // 上），fixture 面（scenario 数据源，无 API）落本地草稿——两态同形，fixture
+  // 面的开关因此也是活的，不是演示死钮。
+  const [shellDraft, setShellDraft] = useState<Record<string, boolean>>({});
+  const shellOn = (machine: MachineRow): boolean =>
+    shellDraft[rowKey(machine)] ?? machine.shellEnabled ?? false;
+  const toggleShell = (machine: MachineRow, on: boolean): void => {
+    if (!live || machine.id == null) {
+      setShellDraft((prev) => ({ ...prev, [rowKey(machine)]: on }));
+      return;
+    }
+    mutations.patchMachine.mutate({ id: machine.id, body: { shellEnabled: on } });
+  };
+  // 保存失败的显式反馈（XMON-80/P2 同律）：本面无 toast，失败只可能来自
+  // shell 开关这条写（页面唯一 mutation），文案是固定句、不透传 server 原文。
+  const shellSaveFailed =
+    mutations.patchMachine.isError &&
+    mutations.patchMachine.variables?.body.shellEnabled !== undefined;
 
   return (
     // r7 06: the machines topbar carries no `+ 新建` — the dashed 添加机器
@@ -70,6 +101,11 @@ export function MachinesPage() {
       hideNew
       fixture={fixture}
     >
+      {shellSaveFailed && (
+        <p className="mach-error" role="alert">
+          {t('保存失败，请重试。')}
+        </p>
+      )}
       <GroupCard>
         {machines.map((machine, i) => (
           <div
@@ -83,6 +119,9 @@ export function MachinesPage() {
               <span className="res-row-line">
                 <span className="res-row-title">{t(machine.name)}</span>
                 {machine.online === true && <span className="res-dot" />}
+              </span>
+              <span className="res-row-desc">
+                {t(MACHINE_SHELL_HINT, { tool: t(AGENT_TOOL_SHELL) })}
               </span>
             </span>
             {machine.kind === 'local' ? (
@@ -107,6 +146,19 @@ export function MachinesPage() {
             ) : (
               machine.pill != null && <StatusPill label={machine.pill} />
             )}
+            {/* 机器层 shell 闸（XMON-113）：唯一行内控件。label 与副文案同
+                词（AGENT_TOOL_SHELL）——两层授权共用一套词汇，用户在 Agent
+                权限 tab 看到的是同一个词。 */}
+            <span className="mach-shell">
+              <span className="mach-shell-label">{t(AGENT_TOOL_SHELL)}</span>
+              <Switch
+                className="mach-shell-switch"
+                data-machine-id={machine.id}
+                aria-label={t(AGENT_TOOL_SHELL)}
+                checked={shellOn(machine)}
+                onCheckedChange={(on) => toggleShell(machine, on)}
+              />
+            </span>
           </div>
         ))}
       </GroupCard>
