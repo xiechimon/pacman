@@ -1315,12 +1315,17 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
      content 定高，底边不动、顶边随行集伸缩。
      #388 收紧（dogfood：菜单与头像之间空了一截）：#163 的 78px 冻结底边
      对可见头像（24px img）留出 36–44px 视觉净空；改为锚到 img 顶 + 4px
-     家族基线间距（chip-popover +3.5 / sched-card-menu +4 同款）。展开态
-     img 顶恒距视口底 34px（.sidebar-user 44px 高、img 居中）→ 38px；
-     rail 态 img 顶 42px（.rail-user 38px + 11px 底距、img 居中）→ 下方
-     collapsed 覆写 46px。净空对 img 而非透明按钮盒测量——盒顶两形态
-     不同高（44/49），单值 bottom 无法同时贴合两形态的可见头像。 */
-  bottom: 38px;
+     家族基线间距（chip-popover +3.5 / sched-card-menu +4 同款）。
+     #610 裁决 v3（dogfood：面板底边盖住账号行顶分隔线）：#388 的净空对
+     img 量，而行盒顶比 img 顶还高 10px，#414 又给账号行加了 border-t
+     分隔线——面板底（38px）落在行顶下方 6px，不透明体 + z-30 把那条线
+     在面板宽内盖住（seam 处 hit-test 命中 .user-menu-rows），投影再糊到
+     行面。净空改对触发行盒顶（可见结构边界）量，家族 4px 不变：展开态
+     行顶恒距视口底 44px（.sidebar-user h-11 贴底）→ 48px；rail 态行顶
+     49px（.rail-user 38px + 11px 底距）→ 下方 collapsed 覆写 53px。对 img
+     的视觉间距随之 ~14/11px——贴合的读数对象是行（触发器本身）这个整体，
+     分隔线恢复可见；投影跨线是浮层正常层次信号（阴影管层次）。 */
+  bottom: 48px;
   width: 224px;
   /* #139 single-source edge recipe: the ring is a shadow spread (no real
      border) so the hairline stays uniform at fractional page zoom */
@@ -1347,12 +1352,13 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
      推出屏外，zoom-probe 的 clipped 契约天然成立。 */
 }
 
-/* #388: rail 形态头像坐得更高（img 顶距视口底 42px）——同款 4px 视觉间距。
+/* #610: rail 形态行顶距视口底 49px（.rail-user 38px + 11px 底距）——与
+   展开态同律：行盒顶 + 4px 家族基线间距（#388 原对 img 顶量，v3 改行顶）。
    floating 菜单两分支都渲染在 aside 内（sidebar.tsx userMenuPopover），
    形态类做后代选择器即可命中；冻结捕获变体（scenario 17，展开态 canon）
    走基规则。 */
 .board-sidebar--collapsed .user-menu--floating {
-  bottom: 46px;
+  bottom: 53px;
 }
 
 .user-menu-head {
