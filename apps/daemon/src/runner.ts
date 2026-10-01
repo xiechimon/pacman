@@ -23,6 +23,7 @@ import {
   AGENT_TOOL_MERGE,
   AGENT_TOOL_PUSH,
   FIXED_TAGS,
+  LOCAL_TOOL_CREATE_TAG,
   PLAN_FILE_NAME,
   parseReviewPromptMeta,
   REMOTE_TOOL_RETRY_DELAYS_MS,
@@ -39,6 +40,7 @@ import type { MachineApi } from './machine-client.js';
 import { extractReviewVerdict } from './review-findings.js';
 import { buildSecretTool } from './secret-channel.js';
 import type { StatePaths } from './state.js';
+import { buildCreateTagTool } from './tag-tool.js';
 
 /** 停止请求（M7 #308）：discard = 确认弹层「丢弃本轮修改」勾选位——
  * true 时收尾 rewind worktree 到步起点 checkpoint（r9 §3.3）。 */
@@ -370,6 +372,17 @@ export async function runStep(
         onAudit: (line) => logger.step(line),
       })
     : null;
+  // create_tag 注册面（XMON-111 T1）：claim localTools 词集是唯一判据（server
+  // claimLocalTools 判定单源，daemon 不自判权限）；词缺席/缺省 = 不注册
+  // （fail-closed）。repo null 步词在也注册：execute 返回「无仓库工作树」明确
+  // 原因（secret-channel 同律）。凭证 = 本步 creds.git（local 形态 null）。
+  const createTagTool = (claimed.localTools ?? []).includes(LOCAL_TOOL_CREATE_TAG)
+    ? buildCreateTagTool({ repoDir: ws?.cwd ?? null, cred: creds.git })
+    : null;
+  const localToolDefs = [
+    ...(secretTool ? [secretTool] : []),
+    ...(createTagTool ? [createTagTool] : []),
+  ];
   const sessionOpts: SessionOpts = {
     provider,
     modelId: agent.modelId,
@@ -377,7 +390,7 @@ export async function runStep(
     ...(systemPrompt ? { systemPrompt } : {}),
     cwd,
     ...(prompt !== null ? { prompt } : {}),
-    ...(secretTool ? { localTools: [secretTool] } : {}),
+    ...(localToolDefs.length > 0 ? { localTools: localToolDefs } : {}),
     ...(remoteTools && remoteTools.length > 0
       ? {
           remoteTools,

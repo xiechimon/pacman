@@ -46,6 +46,14 @@ export const AGENT_TOOL_SKILL_UPDATE: AgentToolSwitch = '更新技能';
  * 先例 = requestMerge 403（builds.ts）双开关校验。 */
 export const AGENT_TOOL_SHELL: AgentToolSwitch = '远程 shell';
 
+/** 创建标签本体闸（XMON-111 T1 起有执法面）：agent 层开关开 = claim 组装
+ * localTools 含 create_tag（词值单源 = protocol/machine-wire.ts
+ * LOCAL_TOOL_CREATE_TAG；机器层无对应闸，与 remote_shell 的双闸形不同）。
+ * 执行体 = daemon tag-tool（annotated tag 创建 + refs/tags 推送经 gitPrim，
+ * per-step 凭证不出 daemon）。发布流不挂接：tag 进 origin 后用户仓自身 CI
+ * 自然生效。 */
+export const AGENT_TOOL_TAG: AgentToolSwitch = '创建标签';
+
 /** 新建 Agent 的 tools 默认集（XMON-84 B4）：「推送分支」开——收尾闸落地后
  * 缺它 = 提交留本地工作分支，新建即推不了工作分支会破坏交付（不破坏交付
  * 判据）；「合并分支」不默认开——合并进默认分支属发布行为，发布决定留给人
