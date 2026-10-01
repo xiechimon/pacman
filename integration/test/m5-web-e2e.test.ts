@@ -24,6 +24,7 @@ import { type MachineHandle, runMachine } from '../../apps/daemon/src/machine-lo
 import { type StatePaths, statePaths } from '../../apps/daemon/src/state.js';
 import { plan as planTable } from '../../apps/server/src/db/schema.js';
 import { api, bootRealServer, type RealServer, waitFor } from './helpers.js';
+import { formatSseProbe, readSseProbe, SSE_PROBE_SOURCE } from './sse-probe.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 // integration/test/<file> → repo root = 三级上跳（resolve 对文件路径先剥
@@ -143,6 +144,8 @@ beforeAll(async () => {
   }, 30_000);
   browser = await chromium.launch();
   page = await browser.newPage({ viewport: { width: 1440, height: 732 } });
+  // SSE/取数探针（XMON-58）：文档装载前注入，只记不改——见 sse-probe.ts 头注。
+  await page.addInitScript({ content: SSE_PROBE_SOURCE });
 }, 300_000);
 
 afterAll(async () => {
@@ -256,6 +259,36 @@ async function dumpSpineDiagnostics(label: string): Promise<void> {
     out.push(`daemon 日志尾部 15 行:\n${real.slice(-15).join('\n')}`);
   } catch (err) {
     out.push(`daemon 日志读不到: ${String(err).slice(0, 120)}`);
+  }
+  // 第五环（XMON-58）：UI 侧那条链自己的账——事件到没到、失效后用没用。
+  // 四环只说得出「server 已推进而 UI 没动」，分不开「帧丢了」与「帧到了但
+  // 重取取回旧值」；这两环的分派方向完全不同（apps/server 投递 vs apps/web
+  // 取数与缓存）。
+  try {
+    const snap = await readSseProbe(page);
+    out.push(`—— SSE/取数探针 ——\n${formatSseProbe(snap)}`);
+    // 第六环（XMON-58）：浏览器侧「流还开着」与服务侧「hub 里还有没有这条
+    // 连接」并排读。心跳是路由自己的 interval 直接写 conn 的（不经 hub），
+    // 所以心跳照常 ≠ 还在 byTeam——只读第五环会把「订阅已被摘掉」误读成
+    // 「投递正常、是前端不反应」，把归属派到 apps/web，方向正好反了。
+    if (typeof snap !== 'string') {
+      const openStreams = snap.streams.filter((s) => s.readyState === 1).length;
+      const teamIds = [
+        ...new Set(
+          snap.streams
+            .map((s) => /^\/api\/teams\/([^/]+)\/stream$/.exec(s.path)?.[1] ?? '')
+            .filter((id) => id !== ''),
+        ),
+      ];
+      for (const teamId of teamIds) {
+        out.push(
+          `hub 订阅数 team ${teamId} = ${server.teamSubscribers(teamId)}` +
+            `（浏览器侧同时开着 ${openStreams} 条流）`,
+        );
+      }
+    }
+  } catch (err) {
+    out.push(`探针读不到: ${String(err).slice(0, 120)}`);
   }
   console.error(`\n===== 脊柱超时诊断：${label} =====\n${out.join('\n')}\n===== 诊断结束 =====\n`);
 }

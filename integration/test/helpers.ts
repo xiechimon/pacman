@@ -36,6 +36,12 @@ export interface RealServer {
   /** POST /api/machine/tasks/claim 请求计数（cadence 时序实测面）。 */
   claimCount: () => number;
   todoPhase(todoId: string): string;
+  /** team stream 当下挂在 hub 上的订阅者数（XMON-58 第六环）。
+   *  浏览器侧 readyState=1 只说明**这条 SSE 响应还开着**——心跳是路由自己
+   *  的 interval 直接写 conn 的（routes.ts `/api/teams/:id/stream`），不经 hub，
+   *  所以「心跳照常」不能证明连接还在 hub 的 byTeam 里。两个数并排读，
+   *  「流开着但订阅已被摘掉」这种静默失联才现形。 */
+  teamSubscribers(teamId: string): number;
   /** 定时调度器（opts.scheduler = true 时创建；tick() 手动驱动或 start()
    * 真实循环——M5 定时轮 E2E 面）。 */
   scheduler: Scheduler | null;
@@ -165,6 +171,7 @@ export async function bootRealServer(opts: {
     todoPhase(todoId: string) {
       return db.select().from(todoTable).where(eq(todoTable.id, todoId)).get()?.phase ?? '';
     },
+    teamSubscribers: (teamId: string) => hub.subscriberCount(teamId),
     scheduler,
     close: () =>
       new Promise<void>((resolve, reject) => {
