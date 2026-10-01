@@ -87,6 +87,8 @@ gh pr create --repo xiechimon/pacman --head xiechimon:<branch>
 裸 `--head <branch>` 曾在双 remote 时期报 `Head sha can't be blank`（worktree + 多 remote 下 head ref 解析走偏）；现单 remote 未复验，继续用全限定写法最稳。已误开裸 body 的 PR 用 `gh pr edit <n> --title --body-file /tmp/pr.md` 补全。
 
 PR body / 长 issue 评论：**写临时文件再 `--body-file`**，不内联 `--body` 多行 markdown。
+- **改完回读**：`gh pr edit <n> --body-file ...` 会被 gh 的 Projects-classic GraphQL 报错打断且**不生效**（#550 实测：命令报错、body 仍是旧的）。改走 `gh api -X PATCH repos/xiechimon/pacman/pulls/<n> --input -`（JSON 由脚本生成，避开 shell 转义），写完用 `gh pr view <n> --json body` 拉回逐字节比对。
+- **要进 PR 的截图/证据必须提交到分支**：Multica 的附件 URL 对匿名读者不可读（`static.multica.ai/...` → `403 MissingKey`、`/api/attachments/<id>/download` → `401`），直接嵌进 PR body 只会渲染成碎图；而 PR body 只能嵌 URL，本地文件没有 URL。故按既有约定提交到任务分支的 `docs/verify/<票号>/`，body 引 `https://raw.githubusercontent.com/xiechimon/pacman/<sha>/<path>`（repo public，raw 匿名可读）。本地留副本只是保底，不是通路。
 
 ## User Override
 
