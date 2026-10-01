@@ -234,7 +234,7 @@ describe('create_tag — annotated tag 创建面（失败方式 1–8）', () =>
   test('失败方式 1：缺省 HEAD — annotated tag 带 message 落在 HEAD', async () => {
     const w = await makeWorld('head');
     const head = await w.commit('a.txt', 'feat a');
-    const tool = buildCreateTagTool({ repoDir: w.work, cred: null });
+    const tool = buildCreateTagTool({ repoDir: w.work, cred: null, identity: IDENTITY });
     const out = await tool.execute({ tag: 'v1.0.0', message: 'release v1.0.0' });
     expect(out).toContain('v1.0.0');
     // annotated：refs/tags/v1.0.0 解引用是 tag 对象，非 commit 直挂。
@@ -252,7 +252,7 @@ describe('create_tag — annotated tag 创建面（失败方式 1–8）', () =>
     const w = await makeWorld('commit');
     const older = await w.commit('a.txt', 'first');
     await w.commit('b.txt', 'second');
-    const tool = buildCreateTagTool({ repoDir: w.work, cred: null });
+    const tool = buildCreateTagTool({ repoDir: w.work, cred: null, identity: IDENTITY });
     const out = await tool.execute({ tag: 'v0.9', message: 'older point', commit: older });
     expect(out).toContain('v0.9');
     expect(await git(['rev-parse', 'v0.9^{commit}'], w.work)).toBe(older);
@@ -261,7 +261,7 @@ describe('create_tag — annotated tag 创建面（失败方式 1–8）', () =>
   test('失败方式 3：message 缺省 = tag 名作注记文本', async () => {
     const w = await makeWorld('msg');
     await w.commit('a.txt', 'feat a');
-    const tool = buildCreateTagTool({ repoDir: w.work, cred: null });
+    const tool = buildCreateTagTool({ repoDir: w.work, cred: null, identity: IDENTITY });
     await tool.execute({ tag: 'v1.2.3' });
     const msg = await git(['tag', '-l', '--format=%(contents:subject)', 'v1.2.3'], w.work);
     expect(msg).toBe('v1.2.3');
@@ -270,7 +270,7 @@ describe('create_tag — annotated tag 创建面（失败方式 1–8）', () =>
   test('失败方式 4：tag 已存在 → git 原错误文本', async () => {
     const w = await makeWorld('exists');
     await w.commit('a.txt', 'feat a');
-    const tool = buildCreateTagTool({ repoDir: w.work, cred: null });
+    const tool = buildCreateTagTool({ repoDir: w.work, cred: null, identity: IDENTITY });
     await tool.execute({ tag: 'v1.0.0', message: 'first' });
     const out = await tool.execute({ tag: 'v1.0.0', message: 'second' });
     expect(out).toContain('already exists');
@@ -282,7 +282,7 @@ describe('create_tag — annotated tag 创建面（失败方式 1–8）', () =>
   test('失败方式 5：tag 名 git 拒绝 → 原错误文本', async () => {
     const w = await makeWorld('badname');
     await w.commit('a.txt', 'feat a');
-    const tool = buildCreateTagTool({ repoDir: w.work, cred: null });
+    const tool = buildCreateTagTool({ repoDir: w.work, cred: null, identity: IDENTITY });
     const out = await tool.execute({ tag: 'bad name~^', message: 'x' });
     expect(out).toContain('not a valid tag name');
   });
@@ -290,7 +290,7 @@ describe('create_tag — annotated tag 创建面（失败方式 1–8）', () =>
   test('失败方式 6：local 形态 — cred null，file 远端真推送成功', async () => {
     const w = await makeWorld('local');
     await w.commit('a.txt', 'feat a');
-    const tool = buildCreateTagTool({ repoDir: w.work, cred: null });
+    const tool = buildCreateTagTool({ repoDir: w.work, cred: null, identity: IDENTITY });
     const out = await tool.execute({ tag: 'v2.0.0', message: 'local push' });
     expect(out).toContain('v2.0.0');
     expect(await remoteTags(w.origin)).toContain('v2.0.0');
@@ -298,14 +298,14 @@ describe('create_tag — annotated tag 创建面（失败方式 1–8）', () =>
 
   test('失败方式 7：tag 参数空 → 明确原因文本', async () => {
     const w = await makeWorld('emptytag');
-    const tool = buildCreateTagTool({ repoDir: w.work, cred: null });
+    const tool = buildCreateTagTool({ repoDir: w.work, cred: null, identity: IDENTITY });
     const out = await tool.execute({ tag: '  ' });
     expect(out).toContain('non-empty');
     expect(await remoteTags(w.origin)).toEqual([]);
   });
 
   test('失败方式 8：步未绑 repo（repoDir null）→ 明确原因文本', async () => {
-    const tool = buildCreateTagTool({ repoDir: null, cred: null });
+    const tool = buildCreateTagTool({ repoDir: null, cred: null, identity: IDENTITY });
     const out = await tool.execute({ tag: 'v1.0.0' });
     expect(out).toContain('no repository');
   });
@@ -316,7 +316,7 @@ describe('create_tag — github 形态真推送（HTTP + x-access-token Basic au
     const w = await makeHttpWorld('gh-ok', PROBE_CRED);
     try {
       await w.commit('a.txt', 'feat a');
-      const tool = buildCreateTagTool({ repoDir: w.work, cred: PROBE_CRED });
+      const tool = buildCreateTagTool({ repoDir: w.work, cred: PROBE_CRED, identity: IDENTITY });
       const out = await tool.execute({ tag: 'v3.0.0', message: 'github shape push' });
       expect(out).toContain('v3.0.0');
       expect(await remoteTags(w.remoteBare)).toContain('v3.0.0');
@@ -334,7 +334,7 @@ describe('create_tag — github 形态真推送（HTTP + x-access-token Basic au
         username: 'x-access-token',
         password: 'ghp_EXPIRED00000000000000000000000000',
       };
-      const tool = buildCreateTagTool({ repoDir: w.work, cred: expired });
+      const tool = buildCreateTagTool({ repoDir: w.work, cred: expired, identity: IDENTITY });
       const out = await tool.execute({ tag: 'v4.0.0', message: 'will fail auth' });
       expect(out).toMatch(/401|Authentication failed|HTTP Basic: Access denied/i);
       // 远端无该 tag（未静默成功）。
@@ -349,7 +349,7 @@ describe('create_tag — github 形态真推送（HTTP + x-access-token Basic au
     try {
       const first = await w.commit('a.txt', 'first');
       // 远端先落 v5.0.0 指向 first。
-      const okTool = buildCreateTagTool({ repoDir: w.work, cred: PROBE_CRED });
+      const okTool = buildCreateTagTool({ repoDir: w.work, cred: PROBE_CRED, identity: IDENTITY });
       await okTool.execute({ tag: 'v5.0.0', message: 'remote wins' });
       expect(await remoteTags(w.remoteBare)).toContain('v5.0.0');
       // 本地删 tag、前进 commit、在新 HEAD 重打同名异值 tag → 推送被拒。

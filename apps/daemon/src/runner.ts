@@ -14,6 +14,7 @@ import type {
   AgentSessionHandle,
   AgentTokenUsage,
   ClaimedStep,
+  CommitIdentity,
   PreparedWorkspace,
   ProviderConfig,
   SessionOpts,
@@ -372,12 +373,20 @@ export async function runStep(
         onAudit: (line) => logger.step(line),
       })
     : null;
+  // 步身份 [设计]（r3 未采 committer 词表）：Agent 名 + 机器位。两处消费同源
+  // ——create_tag 的 tagger 与收尾 commitAll 的提交者署名一致；annotated tag
+  // 没有 git 可用的兜底身份（无全局 user.name/user.email 的机器上直接挂 128），
+  // 故必须显式注入。
+  const stepIdentity: CommitIdentity = {
+    name: claimed.agent?.displayName ?? 'pacman-agent',
+    email: `${claimed.step.machineId ?? 'machine'}@pacman.local`,
+  };
   // create_tag 注册面（XMON-111 T1）：claim localTools 词集是唯一判据（server
   // claimLocalTools 判定单源，daemon 不自判权限）；词缺席/缺省 = 不注册
   // （fail-closed）。repo null 步词在也注册：execute 返回「无仓库工作树」明确
   // 原因（secret-channel 同律）。凭证 = 本步 creds.git（local 形态 null）。
   const createTagTool = (claimed.localTools ?? []).includes(LOCAL_TOOL_CREATE_TAG)
-    ? buildCreateTagTool({ repoDir: ws?.cwd ?? null, cred: creds.git })
+    ? buildCreateTagTool({ repoDir: ws?.cwd ?? null, cred: creds.git, identity: stepIdentity })
     : null;
   const localToolDefs = [
     ...(secretTool ? [secretTool] : []),
@@ -660,15 +669,10 @@ export async function runStep(
   if (ws !== null && deps.workspace && lastError === null && !stopped && !isReview) {
     const git = deps.workspace;
     try {
-      // 提交身份 [设计]（r3 未采 committer 词表）：Agent 名 + 机器位。
-      const identity = {
-        name: claimed.agent?.displayName ?? 'pacman-agent',
-        email: `${claimed.step.machineId ?? 'machine'}@pacman.local`,
-      };
       const committed = await git.commitAll(
         ws.cwd,
         `${claimed.step.kind}: ${claimed.todo?.title ?? claimed.conversationId}`,
-        identity,
+        stepIdentity,
       );
       if (claimed.step.kind === 'merge') {
         const merged = await git.mergeDefaultBranch(ws.cwd, ws.defaultBranch);

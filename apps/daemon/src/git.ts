@@ -233,11 +233,19 @@ export const gitPrim = {
   /** annotated tag 创建（XMON-111 T1）：`git tag -a -m <msg> <tag> [commit]`；
    * commit null = HEAD。tag 已存在 / 名字非法 = git 自拒 → 抛错携带拒绝原文
    * （create_tag 工具原样返回 agent）。--end-of-options 挡 tag 名 `-` 开头
-   * 的选项注入面（push/reset 同律）。 */
-  async tagCreate(dir: string, tag: string, message: string, commit: string | null): Promise<void> {
+   * 的选项注入面（push/reset 同律）。身份必传（同 commit 原语）：annotated
+   * tag 的 tagger ident 没有 git 兜底——无全局 user.name/user.email 的机器
+   * 上 `git tag -a` 直接挂 128（empty ident name）。 */
+  async tagCreate(
+    dir: string,
+    tag: string,
+    message: string,
+    commit: string | null,
+    identity: CommitIdentity,
+  ): Promise<void> {
     await runGitOk(
       ['tag', '-a', '-m', message, '--end-of-options', tag, ...(commit ? [commit] : [])],
-      { cwd: dir, timeoutMs: META_TIMEOUT_MS },
+      { cwd: dir, env: commitEnv(identity), timeoutMs: META_TIMEOUT_MS },
     );
   },
 
