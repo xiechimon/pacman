@@ -275,6 +275,60 @@ describe('claim 载荷：chief 步不带 localTools（XMON-108 R1）', () => {
   });
 });
 
+describe('chief 写入点 → claim 反映（XMON-115）', () => {
+  // 失败方式：executor 写 wire 词 remote_shell 而非开关词「远程 shell」→
+  // claimLocalTools 判 AGENT_TOOL_SHELL 不命中、localTools 永不含 remote_shell；
+  // 授予/撤销任一不生效同理。本测试走 daemon 的真实调用形态（POST
+  // /api/machine/tool/<stepId>，chief 步）——不 mock executor。
+  test('chief 会话 relay set_remote_shell 授予 → 下一次 worker claim localTools 含 remote_shell；撤销 → 不含', async () => {
+    const w = await setupWorld({ shellEnabled: true }); // 机器闸常开，只动 agent 闸
+    // chief 面：绑定 Agent + 开线程 + 领 chief 步（与上一 describe 同法）。
+    w.s.db
+      .insert(agentTable)
+      .values({
+        id: 'chief-agent-115',
+        teamId: w.s.team.id,
+        displayName: 'chief-agent-115',
+        modelId: 'stub-model',
+        provider: 'stub-gw',
+      })
+      .run();
+    const patchRes = await call(w.s.app, 'PATCH', `/api/teams/${w.s.team.id}/chief`, {
+      body: { agent: { agentId: 'chief-agent-115', thinkingLevel: null } },
+    });
+    expect(patchRes.status).toBe(200);
+    const msgRes = await call(w.s.app, 'POST', `/api/teams/${w.s.team.id}/chief/threads`, {
+      body: { content: '给 agent-shell-1 开远程 shell。' },
+    });
+    expect(msgRes.status).toBe(201);
+    const claimRes = await call(w.s.app, 'POST', '/api/machine/tasks/claim', {
+      cred: w.token,
+      body: {},
+    });
+    const chiefStep = claimedStepSchema.parse(((await claimRes.json()) as { step: unknown }).step);
+    expect(chiefStep.step.kind).toBe('chief');
+    // chief 会话触发写点 = daemon relay 的原样调用（{name, params} → {text}）。
+    const grantRes = await call(w.s.app, 'POST', `/api/machine/tool/${chiefStep.step.id}`, {
+      cred: w.token,
+      body: { name: 'set_remote_shell', params: { agentId: AGENT_ID, enabled: true } },
+    });
+    expect(grantRes.status).toBe(200);
+    expect(((await grantRes.json()) as { text: string }).text).toContain('"remoteShell":true');
+    // 授予后的下一次 claim：localTools 反映（验收 #1；词 = 开关词命中判定）。
+    const after = await w.claimWorkerStep();
+    expect(after.localTools).toContain(LOCAL_TOOL_REMOTE_SHELL);
+    // 撤销后的下一次 claim：不反映（fail-closed；机器闸仍开，只关 agent 闸）。
+    const revokeRes = await call(w.s.app, 'POST', `/api/machine/tool/${chiefStep.step.id}`, {
+      cred: w.token,
+      body: { name: 'set_remote_shell', params: { agentId: AGENT_ID, enabled: false } },
+    });
+    expect(revokeRes.status).toBe(200);
+    const afterRevoke = await w.claimWorkerStep();
+    expect(afterRevoke.localTools).not.toContain(LOCAL_TOOL_REMOTE_SHELL);
+    w.s.dispose();
+  });
+});
+
 describe('PATCH /api/machines/{id}：shellEnabled 透传（XMON-108 R1）', () => {
   test('PATCH 走通 + 回显一致（验收 #5 回读）；单字段不撞 enabledRuntimes', async () => {
     const w = await setupWorld();

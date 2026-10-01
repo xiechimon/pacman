@@ -143,9 +143,11 @@ describe('worker 步记忆 relay（r5 §6 写路径 = agent 工具 → 服务端
     s.dispose();
   });
 
-  test('chief 49 词表不外溢：worker 步 relay 非记忆工具 = 400（组织/执行面 Chief 专属）', async () => {
+  test('chief 50 词表不外溢：worker 步 relay 非记忆工具 = 400（组织/执行面 Chief 专属）', async () => {
     const { s, token, step } = await world();
-    for (const name of ['create_todo', 'run_builds', 'projects']) {
+    // set_remote_shell 随 XMON-115 入列：worker 步不得自授 shell（写入点 =
+    // chief 会话专属，组织面）。
+    for (const name of ['create_todo', 'run_builds', 'projects', 'set_remote_shell']) {
       const res = await relay(s.app, token, step.step.id, name, {});
       expect(res.status, name).toBe(400);
       expect(Object.keys((await res.json()) as Record<string, unknown>)).toEqual(['error']);
