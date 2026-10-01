@@ -746,8 +746,14 @@ describe('50 词表 relay 执行面（02 §4.3）', () => {
     const granted = (await relay('set_remote_shell', { agentId: AGENT_ID, enabled: true })) as {
       agentId: string;
       remoteShell: boolean;
+      tools: string[];
     };
-    expect(granted).toEqual({ agentId: AGENT_ID, remoteShell: true });
+    // 返回体带 tools（写点回读，XMON-74 证据探针按此字段复核，见 chief-tools.ts）。
+    expect(granted).toEqual({
+      agentId: AGENT_ID,
+      remoteShell: true,
+      tools: ['推送分支', '远程 shell'],
+    });
     // REST 回读（验收 #2：chief 改后 UI/API 回读一致——UI 消费同一 GET）。
     const readback = await req(s.app, 'GET', `/api/teams/${teamId}/agents/${AGENT_ID}`);
     const record = (await readback.json()) as { tools: string[] };
@@ -762,8 +768,10 @@ describe('50 词表 relay 执行面（02 §4.3）', () => {
       .run();
     const revoked = (await relay('set_remote_shell', { agentId: AGENT_ID, enabled: false })) as {
       remoteShell: boolean;
+      tools: string[];
     };
     expect(revoked.remoteShell).toBe(false);
+    expect(revoked.tools).toEqual(['推送分支']);
     expect(s.db.select().from(agentTable).where(eq(agentTable.id, AGENT_ID)).get()!.tools).toEqual([
       '推送分支',
     ]);
