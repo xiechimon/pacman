@@ -454,9 +454,9 @@ test('任务卡渲染标签 chip：词表配色、无标签零占位、既有几
   await expect(card(page, 'tagfilter-docs').locator('.todo-card-tag')).toHaveText('docs');
   // 无标签卡：零占位（chip 不渲染，不是隐藏空盒）
   await expect(card(page, 'tagfilter-plain').locator('.todo-card-tag')).toHaveCount(0);
-  // 几何护栏：chip 20px（components/ui/tag-chip.tsx 单源，XMON-14 起落在 registry
-  // Badge 的 h-5 上）溢出 16px 的 row1 但不撑高它；
-  // tagged 卡与无标签卡的 row1 高、卡高、seq 右锚一致（不挤压既有元素）
+  // 几何护栏：chip 卡面 16px（todo-card.tsx 的 row-flush per-face 覆写——与
+  // 16px row1 齐平；20px 正本保留给容器更高的三个面，shadcn-primitives 钉），
+  // 不撑高 row1；tagged 卡与无标签卡的 row1 高、卡高、seq 右锚一致（不挤压既有元素）
   const geo = await page.evaluate(() => {
     const probe = (id: string) => {
       const el = document.querySelector(`.todo-card[data-todo-id="${id}"]`)!;
@@ -475,7 +475,7 @@ test('任务卡渲染标签 chip：词表配色、无标签零占位、既有几
   });
   expect(geo.tagged.row1H).toBe(16);
   expect(geo.plain.row1H).toBe(16);
-  expect(geo.tagged.chipH).toBe(20);
+  expect(geo.tagged.chipH).toBe(16);
   expect(geo.tagged.cardH).toBe(geo.plain.cardH);
   // seq 保持右锚（同一列宽网格下两卡右缘差一致）
   expect(geo.tagged.cardRight - geo.tagged.seqRight).toBe(
