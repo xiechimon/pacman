@@ -3,8 +3,9 @@
 // (#366)。live 面(URL 不带 ?scenario=),栈必须已在跑(launch.mjs)。
 //
 // 自含现场:API 建 provider/agent/project/todo(不起 daemon——结构验证不需要
-// 步执行)→ fresh 面验三栏几何/右 pane 空态/头部单图标 → POST build →
-// thread 面验右 pane 四视图(文档/分支与 PR/Token 用量/运行历史)全程无模态。
+// 步执行)→ fresh 面验左中贴合/右栏不渲染(XMON-55 P0 #563:无线程态整栏
+// 让给中心列)/头部单图标 → POST build → thread 面验三栏几何 + 右 pane
+// 四视图(文档/分支与 PR/Token 用量/运行历史)全程无模态。
 //
 // 判别式(与 integration/test/m7-branch-dialog-e2e.test.ts 同款):分支 section
 // live 面 = `.dlg-machine-picker` + `.dlg-dir--input`;buildId 漏传则落回
@@ -128,9 +129,9 @@ const page = await browser.newPage({
 });
 
 try {
-  // —— 1. fresh 面:三栏几何 + 右 pane 空态 + 头部单图标 —————————————
+  // —— 1. fresh 面:左中贴合 + 右栏不渲染 + 头部单图标 ——————————————
   await page.goto(`${WEB}/app/todo/${todoId}`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('.detail-right', { timeout: 15_000 });
+  await page.waitForSelector('.detail-fresh', { timeout: 15_000 });
   const geo = await page.evaluate(() => {
     const rect = (sel) => {
       const el = document.querySelector(sel);
@@ -145,20 +146,15 @@ try {
     };
   });
   check(geo.sidebar?.width === 240, `左栏 240(实测 ${geo.sidebar?.width})`);
-  check(geo.right?.width === 488, `右 pane 488(实测 ${geo.right?.width})`);
+  check(geo.right == null, `fresh 面右栏整栏不渲染(XMON-55 P0;实测 ${geo.right?.width ?? '无'})`);
   check(
     geo.center != null && geo.sidebar != null && geo.center.left === geo.sidebar.right,
     '中栏与左栏贴合(无隙无叠)',
   );
   check(
-    geo.center != null && geo.right != null && geo.right.left === geo.center.right,
-    '右 pane 与中栏贴合(hairline 缝)',
-  );
-  check(
     (await page.locator('.detail-tabs-group, .detail-tab').count()) === 0,
     '文档|聊天 tab 组不存在',
   );
-  check(await page.locator('.right-empty').isVisible(), 'fresh 面右 pane 空占位在位');
   check(
     (await page.locator('.detail-center .fresh-block').count()) === 1,
     'fresh block 落中心列',
@@ -191,6 +187,23 @@ try {
   await page.goto(`${WEB}/app/todo/${todoId}`, { waitUntil: 'networkidle' });
   await page.waitForSelector('.detail-right .doc-pane', { timeout: 15_000 });
   check(true, 'thread 面右 pane 默认文档视图(DocPane 在位)');
+  // 三栏几何在 thread 面钉(fresh 面无右栏,见 XMON-55 P0)。
+  const threadGeo = await page.evaluate(() => {
+    const rect = (sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width) };
+    };
+    return { center: rect('.detail-center'), right: rect('.detail-right') };
+  });
+  check(threadGeo.right?.width === 488, `右 pane 488(实测 ${threadGeo.right?.width})`);
+  check(
+    threadGeo.center != null &&
+      threadGeo.right != null &&
+      threadGeo.right.left === threadGeo.center.right,
+    '右 pane 与中栏贴合(hairline 缝)',
+  );
   await shot(page, '02-thread-doc.png');
 
   await page.click('.detail-right .doc-select-wrap .doc-pane-select');
