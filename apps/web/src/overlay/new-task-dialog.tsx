@@ -29,13 +29,19 @@
 // localStorage,刷新后 chip 回上次那行——此前是纯表单 state,刷新即掉回
 // rows[0](用户实测「选 Pacman → 刷新 → 回第一个」)。锚定面不记忆,理由见
 // 该 prop 注记。
+// XMON-87 续:⌘P / Ctrl+P toggle 项目 popover(chip 上挂 ⌘P 悬浮提示 chip,
+// #468 族),键盘开的那路把焦点落到选中行,Enter 即完成选择。守卫见
+// overlays/hotkeys.ts 的 isEditableOutsideNewTaskDialog——dialog 内焦点在
+// spec textarea 上,照吞守卫会让和弦失效。
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { KbdHint } from '../components/ui/kbd-hint.js';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, Grid2x2, Paperclip, X } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { useProjectPickerHotkey } from '../overlays/hotkeys.js';
 import { Button } from '../ui/button.js';
 import { type MentionGroups, MentionPicker } from './mention-picker.js';
 import { insertMentionText, type MentionToken } from './mention-token.js';
@@ -213,6 +219,36 @@ export function NewTaskDialog({
     returnFocusToInvoker();
   }, [open]);
 
+  // XMON-87 续:⌘P / Ctrl+P toggle 项目选择器(chip 上挂 ⌘P 提示 chip)。
+  // 键盘开的这一路把焦点落到当前选中行——鼠标开的那一路不动焦点(点击本身
+  // 就是选择动作,挪焦点反而打断)。焦点在读行之后落:popover 是挂载时才有
+  // 的行,ref 在 commit 期才挂上。
+  const focusRowRef = useRef(false);
+  const selectedRowRef = useRef<HTMLButtonElement | null>(null);
+  const toggleProjectFromKeyboard = useCallback(() => {
+    if (!projectOpen) focusRowRef.current = true;
+    setProjectOpen((value) => !value);
+  }, [projectOpen]);
+  useProjectPickerHotkey(open, toggleProjectFromKeyboard);
+  useEffect(() => {
+    if (!projectOpen || !focusRowRef.current) return;
+    // 行为什么不在这一个 effect 里落焦点：popover 的行随 OverlayMount 的
+    // mounted 晚一提交才挂上，本 effect 跑在行存在之前，ref 必空。退场保留
+    // 期内重开时行还在,第一帧即命中。帧预算兜空行集(rows 为空时菜单本就
+    // 不开,不能留空转)。
+    let frames = 0;
+    let raf = requestAnimationFrame(function land() {
+      const node = selectedRowRef.current;
+      if (node !== null) {
+        focusRowRef.current = false;
+        node.focus();
+      } else if (++frames < 30) {
+        raf = requestAnimationFrame(land);
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [projectOpen]);
+
   // M7 #310 附件选择回调：files → onAttachment 委托父处理 grant+upload+
   // setSpec 拼 token；reset value 允许同文件再选（change 事件不重发同源）
   const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -309,6 +345,10 @@ export function NewTaskDialog({
               <span className="new-task-project-avatar">{projectName.charAt(0).toLowerCase()}</span>
               <span className="new-task-project-name">{projectName}</span>
               <ChevronDown width={12} height={12} />
+              {/* XMON-87 续:⌘P 提示 chip(#468 悬浮 chip 族,静息隐藏,
+                  hover/focus-visible chip 时浮出);label 字面量沿 ⌘K/⌘J
+                  先例,不做平台探测。 */}
+              <KbdHint label="⌘P" placement="right" />
             </button>
             {/* #176:anchored popover 家族律(#67/#127)——OverlayMount +
                 ClickCatcher + Esc;空集不开面(live 无项目时提交走建默认
@@ -319,6 +359,7 @@ export function NewTaskDialog({
                 {rows.map((row) => (
                   <button
                     key={row.id}
+                    ref={row.id === selected?.id ? selectedRowRef : undefined}
                     type="button"
                     className="new-task-project-row"
                     role="option"

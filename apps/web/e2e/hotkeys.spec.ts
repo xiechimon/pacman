@@ -49,6 +49,12 @@ import { expect, type Page, test } from '@playwright/test';
 //     same hint through the shared consumption point
 // 14. the collapsed rail's search icon hovers the ⌘K hint (the expanded
 //     rows already carry their always-on badges)
+// 15. XMON-87: ⌘P toggles the new-task dialog's project listbox — the chord
+//     must fire from the spec textarea focus the open itself lands (the
+//     dialog-interior exemption, ⌘J's drawer narrowing), and the checked row
+//     takes focus so Enter finishes the pick
+// 16. the project chip hovers its ⌘P hint (at rest it stays hidden)
+// 17. outside the dialog (closed) ⌘P stays inert — no dialog, no listbox
 
 const BOARD = '/app?scenario=01';
 const SCHEDULES = '/app/schedules?scenario=01';
@@ -110,21 +116,26 @@ async function escapeUntilHidden(page: Page, surface: ReturnType<Page['locator']
   throw new Error(`Escape never closed ${surface}`);
 }
 
-/** ⌘J-toggle close, same retry law as escapeUntilHidden: a delivered
- *  toggle hides the drawer and the wait ends the loop; a lost key leaves it
- *  open and the re-press IS the toggle. A pathologically slow close makes
- *  the next press reopen — and the one after closes again — so the loop's
- *  end state is deterministically hidden, never a coin flip. */
-async function toggleUntilHidden(page: Page, surface: ReturnType<Page['locator']>) {
+/** toggle close, same retry law as escapeUntilHidden: a delivered toggle
+ *  hides the surface and the wait ends the loop; a lost key leaves it open
+ *  and the re-press IS the toggle. A pathologically slow close makes the
+ *  next press reopen — and the one after closes again — so the loop's end
+ *  state is deterministically hidden, never a coin flip. key 缺省 = ⌘J 抽屉
+ *  （XMON-87 的 ⌘P 项目列表共用同一律）。 */
+async function toggleUntilHidden(
+  page: Page,
+  surface: ReturnType<Page['locator']>,
+  key = 'Meta+j',
+) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    await page.keyboard.press('Meta+j');
+    await page.keyboard.press(key);
     const closed = await surface
       .waitFor({ state: 'hidden', timeout: 1000 })
       .then(() => true)
       .catch(() => false);
     if (closed) return;
   }
-  throw new Error('⌘J never closed the drawer');
+  throw new Error(`${key} never closed the surface`);
 }
 
 test('C on the board opens the new-task dialog; ⌘C and the retired N do not', async ({
@@ -378,4 +389,52 @@ test('the collapsed rail search icon hovers the ⌘K hint', async ({ page }) => 
   await railSearch.hover();
   await expect(hint).toBeVisible();
   await expect(hint).toHaveText('⌘K');
+});
+
+test('⌘P toggles the dialog’s project listbox; the checked row takes focus', async ({ page }) => {
+  await page.goto(BOARD);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  // the chord must fire from the focus the open itself lands — a guard that
+  // swallows editable targets outright would leave it dead where it is needed
+  await expect(page.locator('.new-task-spec')).toBeFocused();
+
+  const menu = page.locator('.new-task-project-menu');
+  await pressUntil(page, 'Meta+p', menu);
+  await expect(menu.locator('.new-task-project-row[aria-selected="true"]')).toBeFocused();
+  // keyboard path completes: Enter activates the focused row, closing the list
+  await page.keyboard.press('Enter');
+  await expect(menu).toBeHidden();
+  await expect(page.locator('.new-task-project-name')).toHaveText('r3-lifecycle');
+
+  // toggle: the second press closes what the first opened (⌘J's #468 law)
+  await pressUntil(page, 'Meta+p', menu);
+  await toggleUntilHidden(page, menu, 'Meta+p');
+  await expect(menu).toBeHidden();
+
+  await escapeUntilHidden(page, dialog(page));
+});
+
+test('the project chip hovers its ⌘P hint (hidden at rest)', async ({ page }) => {
+  await page.goto(BOARD);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chip = page.locator('.new-task-project');
+  const hint = chip.locator('.kbd-hint');
+  await expect(hint).toBeHidden();
+  await chip.hover();
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveText('⌘P');
+  await escapeUntilHidden(page, dialog(page));
+});
+
+test('with the dialog closed ⌘P stays inert', async ({ page }) => {
+  await page.goto(BOARD);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.keyboard.press('Meta+p');
+    await page.waitForTimeout(120);
+  }
+  await expect(dialog(page)).toHaveCount(0);
+  await expect(page.locator('.new-task-project-menu')).toHaveCount(0);
 });
