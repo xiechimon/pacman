@@ -25,6 +25,7 @@ import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
+import { ChiefPi } from '../icons/index.js';
 import { CreateProviderDialog } from './create-provider-dialog.js';
 import { GroupCard } from './parts.js';
 import { ResourceShell } from './shell.js';
@@ -135,12 +136,24 @@ export function ProvidersPage() {
           回退键可用），role=tablist/tab 与 aria-selected 由 Base UI 承载，
           data-runtime 句柄原样透出。XMON-73：形态改分段控制器，配色/几何
           正本移到 pages.css 的 .page-tabs-group/.page-tab（与 topbar
-          「任务|文件」同一份规则），resources.css 不再有 per-face 覆盖。 */}
+          「任务|文件」同一份规则），resources.css 不再有 per-face 覆盖。
+          pi 面不用文字：pi 是本机自有 runtime，仓库里已有它的品牌字形
+          （icons/ChiefPi，chief 模型槽同源消费），字面量「pi」在分段控制器
+          里读起来像一个手滑的短词；claude-code 是第三方 runtime，仓库没有
+          其品牌字形，保持文字。两者都以 RUNTIME_LABELS 作可访问名——pi 的
+          字形配 sr-only 文本，读屏与 e2e 的 toHaveText('pi') 都不受影响。 */}
       <Tabs value={runtime} onValueChange={(value) => selectRuntime(value as ModelSourceRuntime)}>
         <TabsList variant="segmented" className="res-tabs" aria-label={t('模型服务')}>
           {MODEL_SOURCE_RUNTIMES.map((rt) => (
             <TabsTrigger key={rt} value={rt} data-runtime={rt} className="res-tab">
-              {RUNTIME_LABELS[rt]}
+              {rt === 'pi' ? (
+                <>
+                  <ChiefPi className="size-4" />
+                  <span className="sr-only">{RUNTIME_LABELS[rt]}</span>
+                </>
+              ) : (
+                RUNTIME_LABELS[rt]
+              )}
             </TabsTrigger>
           ))}
         </TabsList>
