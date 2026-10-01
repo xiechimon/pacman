@@ -401,6 +401,13 @@ export const EN: Record<string, string> = {
   复制链接: 'Copy link',
   完成任务: 'Complete todo',
   将改动合并到默认分支: 'Merge the changes into the default branch',
+  // XMON-89 合并被拒的可见化：前置缺项行（{tools} = 1~2 个开关名的顿号串；
+  // 开关名本身是 shared AGENT_TOOL_SWITCHES 的 zh 值域词，locate 后仍按 zh
+  // 出现——与权限 tab 的开关行一致，不另开一份 en 词表）＋ 非 403 失败的固定
+  // 兜底句（403 的 server 原文不翻译：它逐字点名缺哪项，翻一遍反而对不上）。
+  '缺少「{tools}」授权，无法合并。请在该 Agent 的权限里开启。':
+    'Missing the "{tools}" permission, so this merge cannot go through. Turn it on in the agent’s permissions.',
+  '合并请求未送出，请重试。': 'The merge request was not sent. Try again.',
   输入: 'Input',
   输出: 'Output',
   缓存读取: 'Cache read',

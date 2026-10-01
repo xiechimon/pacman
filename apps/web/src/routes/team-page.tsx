@@ -34,6 +34,7 @@ import { mapTeam, toDisplayTodo, toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { isDeleted } from '../fixtures/deletions.js';
 import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -57,9 +58,13 @@ type TeamLayout = 'grid' | 'chart';
  *  `not-aria-[haspopup]` 与底座同链，故 tailwind-merge 能直接顶掉它。 */
 const BASE_DELTA = 'active:not-aria-[haspopup]:translate-y-0 font-normal px-0 leading-[inherit]';
 
-/** 布局切换片的两个 chip：底座 + alias + 选中档。 */
-const tabClass = (active: boolean) =>
-  `team-layout-tab ${BASE_DELTA}${active ? ' team-layout-tab--active' : ''}`;
+/** 布局切换片的两个 chip（XMON-103）：底座 = components/ui/tabs 的分段档，
+ *  几何/配色/过渡全部由 pages.css 的 `.page-tabs-group` / `.page-tab` 与 #138
+ *  家族规则承载（与模型服务页 runtime tab、topbar「任务|文件」同一份规则，
+ *  secondary.css 不再有本页私写的盒模型与 hover 覆盖）。两个 chip 因此共享
+ *  一条尺寸规格和一条缓动。别名类（#411 别名优先）原样留在元素上，作 e2e /
+ *  语义定位用。 */
+const tabClass = (active: boolean) => `team-layout-tab${active ? ' team-layout-tab--active' : ''}`;
 
 function readStoredLayout(storage: Storage): TeamLayout {
   return storage.getItem(TEAM_LAYOUT_STORAGE_KEY) === 'chart' ? 'chart' : 'grid';
@@ -127,28 +132,25 @@ export function TeamPage() {
             <span className="team-members">{t('{n} 个成员', { n: team.members })}</span>
           </div>
         )}
-        <div className="team-layout-tabs" role="tablist">
-          <Button
-            variant="ghost"
-            role="tab"
-            aria-selected={layout === 'grid'}
-            className={tabClass(layout === 'grid')}
-            aria-label="grid"
-            onClick={() => switchLayout('grid')}
-          >
-            <Grid2x2 />
-          </Button>
-          <Button
-            variant="ghost"
-            role="tab"
-            aria-selected={layout === 'chart'}
-            className={tabClass(layout === 'chart')}
-            aria-label="chart"
-            onClick={() => switchLayout('chart')}
-          >
-            <ChartNetwork />
-          </Button>
-        </div>
+        {/* XMON-103：分段控制器正本 = components/ui/tabs 的 segmented 档
+            （pages.css `.page-tabs-group`/`.page-tab`）。受控 value/onValueChange
+            落回 switchLayout（照旧写 localStorage），role=tablist/tab 与
+            aria-selected 由 Base UI 承载，别名类 .team-layout-tabs /
+            .team-layout-tab 原样透出。 */}
+        <Tabs
+          value={layout}
+          onValueChange={(value) => switchLayout(value as TeamLayout)}
+          className="team-layout-tabs-root"
+        >
+          <TabsList variant="segmented" className="team-layout-tabs">
+            <TabsTrigger value="grid" className={tabClass(layout === 'grid')} aria-label="grid">
+              <Grid2x2 />
+            </TabsTrigger>
+            <TabsTrigger value="chart" className={tabClass(layout === 'chart')} aria-label="chart">
+              <ChartNetwork />
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
       {layout === 'grid' ? (
         <div className="team-grid">

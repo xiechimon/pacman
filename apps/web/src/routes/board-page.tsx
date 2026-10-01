@@ -45,6 +45,7 @@ import { useChiefSurface } from '../chief/use-chief-surface.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
+import { mergeRejectCopy, useMergeGate } from '../detail/merge-gate.js';
 import { withoutDeleted } from '../fixtures/deletions.js';
 import { localTodo, overlayContent } from '../fixtures/fixtures.js';
 import type { FixtureSet, OverlayState, TodoRecord } from '../fixtures/records.js';
@@ -343,7 +344,23 @@ export function BoardPage() {
   // branch dialog from the card's branch icon.
   const [overlay, setOverlay] = useState<OverlayState | null>(fixture.overlay ?? null);
   const [overlayTodo, setOverlayTodo] = useState<TodoRecord | null>(null);
-  const closeOverlay = useCallback(() => setOverlay(null), []);
+  // XMON-89：合并被拒的可见态，随弹层关闭一并清（不清会在下次开窗时回显上
+  // 一轮的拒绝——弹层是 retained-mount）。
+  const [mergeReject, setMergeReject] = useState<string | null>(null);
+  const closeOverlay = useCallback(() => {
+    setOverlay(null);
+    setMergeReject(null);
+  }, []);
+  // 前置检查（XMON-89）：查的 Agent = merge 步的执行者 = assignment.build 槽。
+  // 从 wire todos 取而不是 overlayTodo（显示投影是 build ?? plan 折算，两槽
+  // 分设时与执行者分叉）。
+  const overlayWire = useMemo(
+    () => (todosQ.data ?? []).find((wire) => wire.id === overlayTodo?.id) ?? null,
+    [todosQ.data, overlayTodo],
+  );
+  const mergeMissing = useMergeGate(
+    live ? (overlayWire?.assignment?.build?.agentId ?? null) : null,
+  );
   const openFor = (todo: TodoRecord, kind: OverlayState['kind']) => {
     setOverlayTodo(todo);
     setOverlay({ kind });
@@ -513,11 +530,17 @@ export function BoardPage() {
       <AcceptDialog
         open={overlay?.kind === 'accept'}
         onClose={closeOverlay}
+        missingTools={mergeMissing}
+        rejectReason={mergeReject}
         onConfirm={
           live && overlayTodo?.latestBuildId
             ? () => {
-                mutations.mergeBuild.mutate(overlayTodo.latestBuildId as string);
-                closeOverlay();
+                // XMON-89：关弹层改挂 onSuccess——被拒（403）时弹层留着显原
+                // 因，不再静默关掉。
+                mutations.mergeBuild.mutate(overlayTodo.latestBuildId as string, {
+                  onSuccess: () => closeOverlay(),
+                  onError: (error) => setMergeReject(mergeRejectCopy(error, t)),
+                });
               }
             : undefined
         }

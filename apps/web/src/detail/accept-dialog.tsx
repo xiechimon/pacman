@@ -18,11 +18,26 @@ interface AcceptDialogProps {
   /** M5 live 面：完成 = merge 202 delegated（r3 §3.6）；缺省 = fixture
    *  行为（关闭即止）。 */
   onConfirm?: () => void;
+  /** XMON-89 前置检查：执行 Agent 缺这几项授权（detail/merge-gate.ts 的
+   *  missingMergeTools）。非空 = 完成禁用 + 写明缺哪项——点得动才谈得上
+   *  「点了没反应」，禁掉它并把原因写在旁边是同一件事的两半。 */
+  missingTools?: string[];
+  /** XMON-89 服务端拒绝文案：非空 = 弹层不关、把这句话显在勾选行下方。
+   *  改之前两处 merge 都是裸 mutate() + 立即关弹层，403 被静默吞掉——用户
+   *  看到弹层关了、然后无事发生。 */
+  rejectReason?: string | null;
 }
 
-export function AcceptDialog({ open, onClose, onConfirm }: AcceptDialogProps) {
+export function AcceptDialog({
+  open,
+  onClose,
+  onConfirm,
+  missingTools,
+  rejectReason,
+}: AcceptDialogProps) {
   const { t } = useI18n();
   const [merge, setMerge] = useState(true);
+  const blocked = (missingTools?.length ?? 0) > 0;
   return (
     <DialogShell
       title={t('完成任务')}
@@ -43,6 +58,7 @@ export function AcceptDialog({ open, onClose, onConfirm }: AcceptDialogProps) {
           <Button
             variant="brand"
             className="dlg-accept-done h-7 border-none text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
+            disabled={blocked}
             onClick={() => {
               if (onConfirm) onConfirm();
               else onClose();
@@ -64,6 +80,18 @@ export function AcceptDialog({ open, onClose, onConfirm }: AcceptDialogProps) {
         </label>
         <span className="dlg-accept-label">{t('将改动合并到默认分支')}</span>
       </div>
+      {blocked && (
+        <p className="dlg-accept-block">
+          {t('缺少「{tools}」授权，无法合并。请在该 Agent 的权限里开启。', {
+            tools: (missingTools ?? []).join('、'),
+          })}
+        </p>
+      )}
+      {rejectReason != null && (
+        <p className="dlg-accept-reject" role="alert">
+          {rejectReason}
+        </p>
+      )}
     </DialogShell>
   );
 }
