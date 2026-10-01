@@ -230,6 +230,36 @@ export const gitPrim = {
     });
   },
 
+  /** annotated tag 创建（XMON-111 T1）：`git tag -a -m <msg> <tag> [commit]`；
+   * commit null = HEAD。tag 已存在 / 名字非法 = git 自拒 → 抛错携带拒绝原文
+   * （create_tag 工具原样返回 agent）。--end-of-options 挡 tag 名 `-` 开头
+   * 的选项注入面（push/reset 同律）。身份必传（同 commit 原语）：annotated
+   * tag 的 tagger ident 没有 git 兜底——无全局 user.name/user.email 的机器
+   * 上 `git tag -a` 直接挂 128（empty ident name）。 */
+  async tagCreate(
+    dir: string,
+    tag: string,
+    message: string,
+    commit: string | null,
+    identity: CommitIdentity,
+  ): Promise<void> {
+    await runGitOk(
+      ['tag', '-a', '-m', message, '--end-of-options', tag, ...(commit ? [commit] : [])],
+      { cwd: dir, env: commitEnv(identity), timeoutMs: META_TIMEOUT_MS },
+    );
+  },
+
+  /** `git push origin refs/tags/<tag>`（XMON-111 T1）：凭证注入同 push 原语
+   * （per-step token 只经 env credential.helper，不进 argv/磁盘）。远端已有
+   * 同名异值 tag = git 拒绝（永不 force）→ 抛错携带拒绝原文。 */
+  async tagPush(dir: string, tag: string, cred: GitCredentials | null): Promise<void> {
+    await runGitOk(['push', '--end-of-options', 'origin', `refs/tags/${tag}`], {
+      cwd: dir,
+      env: cred ? gitCredentialEnv(cred) : undefined,
+      timeoutMs: NET_TIMEOUT_MS,
+    });
+  },
+
   /** `git merge --ff-only <ref>`（spec 12 local 落地）：脏工作区 / 非 ff =
    * git 自拒 → 抛错，消息携带 git 拒绝原文（failed reason 面）；ff-only 拒绝
    * 时不产生合并状态，无 abort 收尾；永不 force。 */

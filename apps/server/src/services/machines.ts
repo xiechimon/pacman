@@ -29,6 +29,7 @@ import {
   AGENT_TOOL_SHELL,
   AGENT_TOOL_SKILL_CREATE,
   AGENT_TOOL_SKILL_UPDATE,
+  AGENT_TOOL_TAG,
   CHIEF_REMOTE_TOOLS,
   createSkillBodySchema,
   derivePlaceholderTitle,
@@ -693,8 +694,8 @@ function claimMcpSlugs(
  *   真实闸在预检端点复核双闸（precheckShellCommand，机器开关秒级热加载由此
  *   兑现——claim 时快照不作数）。
  * - create_tag = agent 层「创建标签」开关即可（机器层无对应闸，leader 裁定
- *   #4：词值 = shared LOCAL_TOOL_CREATE_TAG；词面量单源常量 AGENT_TOOL_TAG
- *   归 T1/XMON-111，此处先以字面量参与判定）。
+ *   #4：词值 = shared LOCAL_TOOL_CREATE_TAG；词面量单源 = AGENT_TOOL_TAG，
+ *   T1/XMON-111 落地后此处消费常量）。
  * 结果 fail-closed：任一闸没开即不注册该词。 */
 function claimLocalTools(
   machineRow: { shellEnabled: boolean },
@@ -704,7 +705,7 @@ function claimLocalTools(
   if (agentTools.includes(AGENT_TOOL_SHELL) && machineRow.shellEnabled) {
     tools.push(LOCAL_TOOL_REMOTE_SHELL);
   }
-  if (agentTools.includes('创建标签')) {
+  if (agentTools.includes(AGENT_TOOL_TAG)) {
     tools.push(LOCAL_TOOL_CREATE_TAG);
   }
   return tools;
