@@ -25,6 +25,9 @@ export interface StatePaths {
   chatSessionsDir: string;
   agentRuntimeDir: string;
   workspacesDir: string;
+  /** 团队技能物化缓存根（XMON-112 S2，spec 14）：内容寻址目录，
+   * team-skills.ts 首用即建（不常驻空目录）。 */
+  teamSkillsCacheDir: string;
 }
 
 export function statePaths(home: string, workspacesDir?: string): StatePaths {
@@ -38,6 +41,7 @@ export function statePaths(home: string, workspacesDir?: string): StatePaths {
     chatSessionsDir: join(home, 'chat-sessions'),
     agentRuntimeDir: join(home, 'agent-runtime'),
     workspacesDir: workspacesDir ?? join(home, 'workspaces'),
+    teamSkillsCacheDir: join(home, 'team-skills'),
   };
 }
 

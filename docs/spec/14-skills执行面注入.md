@@ -87,6 +87,41 @@ daemon 在创建 agent session 前，**显式扫描** pacman 配置的 skills �
 - pi 的 `disable-model-invocation` frontmatter 字段的 UI 暴露——pacman UI 不区分 catalog / skill，按 agentskills.io 标准 catalog 列出全部、skill 调用经 `/skill:<name>` 走明面触发（具体 pi 是否暴露 `/skill:` 命令不在本 spec 范围）。
 - skills 与 per-agent 授权（`agent.skills` 勾选）的运行时筛选——本 spec 把 catalog 全量注入；per-agent 筛选后续票（与 MCP 「agent 编辑面候选源换」同构）。
 
+## 团队技能物化回摆（XMON-112 S2，2026-10-01）
+
+spec 13 定技能库 server 端写路径（XMON-109 S1：REST 写面 + machine-wire 下发端点 `GET /api/machine/skills/{stepId}`）。本节补 daemon 消费半边：团队技能的**步级物化**——没有它，agent 建的技能只在 server 投影里可见（server 目录 ≠ 各 daemon 目录），任何机器的会话都用不上。
+
+### 数据流
+
+步启动（runner 建会话前）按 stepId 拉技能包——server 出包规则：worker 步 = claim `agent.skills` 白名单 ∩ server 端现扫；chief 步 = 信任面全量；字节闸单文件 ≤ MAX_SKILL_FILE_BYTES、包总量 ≤ MAX_SKILL_TOTAL_BYTES，超限 400 点名（S1 面）——物化到本机缓存目录，经 `SessionOpts.teamSkillsDir` 透传 backend，`buildSkillsCatalog` 与本机 `skillsDir` 合并扫描。
+
+### 缓存策略（内容寻址）
+
+- 缓存根 = `<PACMAN_HOME>/team-skills/`；条目 = `<sha256(包确定性序列化)>/`，其下每技能一个 `dirName/` 子目录（文件逐字节落盘，含嵌套相对路径）。
+- 命中即复用：同包跨步零重写，目录 mtime 触摸（LRU 视为最新使用）；内容变化 = 新 hash 目录。取内容寻址而非 mtime 失效的原因：daemon 无从得知 server 侧目录 mtime，而包内容 hash 天然覆盖「server 改了任何文件」的全部情形，且并发步命中同一目录时天然幂等。
+- 写入原子性：`.tmp-*` 目录 + rename 落位——半写目录永不以 hash 名可见；并发竞争 rename 失败且目标已在位 = 内容相同，直接复用。
+- 生命周期：mtime LRU pruning，保留上限 `TEAM_SKILLS_CACHE_MAX_ENTRIES = 16`（包总量 ≤ 2MB，磁盘上界 ≈ 32MB）；崩溃残留的 `.tmp-*` 一并回收。pruning best-effort，失败只记日志不影响本步。
+- 路径安全（纵深防御）：server 写面已有目录安全正则与相对路径守卫（S1）；daemon 独立复核每条 `dirName`（单段、非 `.`/`..`、不含分隔符）与文件 `path`（相对 posix、无空段 / `.` / `..` / 反斜杠 / 绝对路径）——任一非法 = **整包拒绝**（`team-invalid` 行），绝不部分写入。
+
+### 合并与冲突裁决（团队胜）
+
+- `skillPaths` 顺序 = `[teamSkillsDir, skillsDir]`：pi `loadSkills` first-wins（先进 Map 者为 winner），同名冲突**团队条目胜**、本机影子落 collision 诊断行（winner=团队路径，loser=本机路径）——白名单授予是权威信号，本地同名影子即失效。
+- cap 50 闸对合并后序列生效：团队条目在扫描序前端，优先占据 cap 名额；allowlist 过滤仍先于 cap（#372 语义不变，名单外团队条目同样被裁，`[]` = 零注入纪律不变）。
+- loaded 行：团队目录在位 = `loaded: N skills from <teamDir> + <localDir>`；纯本机 = 原行形不变。
+
+### 降级（spec 14 MCP 降级同律，会话不阻断）
+
+- 拉取失败（server 不可达 / 4xx / 5xx；老 server 无端点 404 同形 = 版本墙 fail-open）→ `[skills] team-fetch-failed: <原因> — continuing with local skills only`，仅本机技能。
+- 非法包 / 写入失败 → `[skills] team-invalid: <原因> — continuing with local skills only`。
+- 空包 `{skills:[]}`（白名单空）→ 零物化（缓存根不创建），catalog 走纯本机路径。
+- **零回归判据**：无 `teamSkillsDir`（白名单空或拉取失败）时 `buildSkillsCatalog` 输出与改动前**逐字节等价**——金样对照测试固化（期望字节 = 改动前实现的实际输出冻结）。
+
+### 契约与日志族增补
+
+- `SessionOpts` 增可选 `teamSkillsDir?: string`（packages/shared，纯加法：旧 backend / 旧调用面零感知；消费落点 = backend catalog 构建）。
+- machine-wire 响应单源 = `machineSkillsResponseSchema`（客户端 zod parse 对拍，`MachineApi.skills(stepId)`）。
+- `[skills]` 日志族增四行形：`team: N skill(s) materialized → <dir>` / `team: N skill(s) cache hit → <dir>`、`team-invalid: …`、`team-fetch-failed: …`、`team-prune: failed …`。
+
 ## Further Notes
 
 ### Premortem（三大死因 + 护栏）

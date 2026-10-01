@@ -114,6 +114,10 @@ class FakeClient implements MachineApi {
       git: null,
     };
   }
+  async skills() {
+    // XMON-112 S2：默认空包 = 零团队技能（既有断言零扰动）。
+    return { skills: [] };
+  }
   async uploadUrls(_stepId: string, files: { name: string }[]) {
     this.uploadNames.push(files.map((f) => f.name));
     return {
