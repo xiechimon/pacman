@@ -194,6 +194,10 @@ class FakeMachineApi implements MachineApi {
   async syncResult(syncId: string, body: { status: string; errorMessage?: string }) {
     this.calls.push(`syncResult:${syncId}:${body.status}`);
   }
+  async shellPrecheck(): Promise<never> {
+    throw new Error('unused');
+  }
+  async shellResult(): Promise<void> {}
 }
 
 function fakeBackend(events: StepEvent[], sessionId = 'pi-sess-1') {
