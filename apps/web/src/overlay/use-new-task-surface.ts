@@ -296,6 +296,10 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
     onSave: createTodo,
     onSaveAndStart: live ? createAndStart : undefined,
     projects: projectRows,
+    // XMON-87 选择记忆:全局面(board / 侧栏)记住上次选的项目;锚定面
+    // (#404 project 页)不记忆——那面的未动选择按 #305 律恒等于本页路由
+    // 项目(锚行置首),全局记忆会把页面语义顶掉。
+    ...(anchorProjectId === undefined ? { rememberProject: true } : {}),
     ...(live ? { spec: liveSpec, onSpecChange: setLiveSpec, onAttachment } : {}),
     ...(mentions ? { mentionGroups } : {}),
   };

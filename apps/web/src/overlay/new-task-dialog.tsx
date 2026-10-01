@@ -25,6 +25,10 @@
 // 并关闭);净表单直关不闸。Esc 分层沿 #176 内层优先律(确认层 → 提及
 // picker → 项目 popover → dialog)。关闭即重置表单(retained-mount 重开 =
 // 净面,闸判定不带脏残留)。#394 起 dirty = 正文单字段（标题/标签面移除）。
+// XMON-87 选择记忆:rememberProject 面(board / 侧栏全局面)把选中项目 id 落
+// localStorage,刷新后 chip 回上次那行——此前是纯表单 state,刷新即掉回
+// rows[0](用户实测「选 Pacman → 刷新 → 回第一个」)。锚定面不记忆,理由见
+// 该 prop 注记。
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DialogShell } from '../components/ui/dialog-shell.js';
@@ -53,6 +57,28 @@ const SPEC_TEMPLATE_LINES = [
 interface ProjectOption {
   id: string;
   name: string;
+}
+
+/** XMON-87 选择记忆位(localStorage 键;e2e 镜像 newtask-project-persist.spec.ts)。
+ *  单租户单机、无账号维度——与 pacman.sidebar-collapsed /
+ *  pacman.dirBrowser.lastDir 同律。 */
+export const NEW_TASK_PROJECT_STORAGE_KEY = 'pacman.newTaskProjectId';
+
+/** 读记忆位:隐私模式等抛 = 无记忆(dir-browser W13 同律)。 */
+function readRememberedProject(storage: Storage): string | null {
+  try {
+    return storage.getItem(NEW_TASK_PROJECT_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeRememberedProject(storage: Storage, projectId: string): void {
+  try {
+    storage.setItem(NEW_TASK_PROJECT_STORAGE_KEY, projectId);
+  } catch {
+    // 写不进 = 不记住,选择本身不受损(W13 同律)
+  }
 }
 
 /** fixture 面项目集兜底:scenarios 不带 projectNames 时退 canon 单默认
@@ -85,6 +111,11 @@ export interface NewTaskDialogProps {
   /** #311: mention picker groups（5 类别）。父级从 live hooks 或
    *  fixture 派生；缺省 = 空集合（picker 首层 0 计数）。 */
   mentionGroups?: MentionGroups;
+
+  /** XMON-87 选择记忆:true = 选中行跨刷新存活(挂载读一次、选行写回)。
+   *  缺省 false = 纯表单 state。锚定面(#404 project 页)走缺省——那面的
+   *  未动选择恒等于 rows[0] = 本页路由项目(#305 律),全局记忆会把它顶掉。 */
+  rememberProject?: boolean;
 }
 
 export function NewTaskDialog({
@@ -98,6 +129,7 @@ export function NewTaskDialog({
   onAttachment,
 
   mentionGroups,
+  rememberProject = false,
 }: NewTaskDialogProps) {
   const { t } = useI18n();
   // M7 #310 受控 spec：fallback 模式（fixture 静态 div）内部 useState，
@@ -115,8 +147,13 @@ export function NewTaskDialog({
   const [discardOpen, setDiscardOpen] = useState(false);
   // #176 选择器 state:popover 开态 + 选中行。null = 未动,展示/提交取
   // 首行;live 空项目集时 selected 退 undefined(chip 走 canon 名)。
+  // XMON-87 记忆面:初值 = 上次选中的项目 id。存的值不在行集里(被删/无权限)
+  // = find 打空、selected 落回首行——不报错不白屏,记忆位留着不动(行集可能
+  // 只是还没加载,按缺省清记忆会误伤真值)。
   const [projectOpen, setProjectOpen] = useState(false);
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(() =>
+    rememberProject ? readRememberedProject(localStorage) : null,
+  );
   // M7 #310 附件：file picker ref + 上传中 disable 纸夹扣
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attaching, setAttaching] = useState(false);
@@ -288,6 +325,7 @@ export function NewTaskDialog({
                     aria-selected={row.id === selected?.id}
                     onClick={() => {
                       setProjectId(row.id);
+                      if (rememberProject) writeRememberedProject(localStorage, row.id);
                       setProjectOpen(false);
                     }}
                   >
