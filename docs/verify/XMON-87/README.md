@@ -37,27 +37,32 @@ r2-inventory 双项目）。
 改动后全绿）。邻面回归：`newtask-project-select.spec.ts` / `project-empty-new-task.spec.ts`
 / `hotkeys.spec.ts` 同批 28 例全绿。
 
-## 续：项目选择器快捷键 ⌘P
+## 续：Tab 直接换项目
 
 需求（issue 评论）：给新建任务 dialog 的项目选择加一个切换快捷键，并按主页「C」
-角标的样子把它提示给用户。
+角标的样子把它提示给用户；用户随后澄清「我的意思是按 TAB，可以直接切换项目」。
 
-`⌘P` / `Ctrl+P`（P = project；与 ⌘K / ⌘J 同族）在 dialog 打开时 toggle 项目选择器，
-再按一次收起（#468 toggle 律）。**键盘开的这一路把焦点落到当前选中行**——鼠标开的那
-一路不动焦点（点击本身就是选择动作）。chip 上挂 ⌘P 提示 chip（`KbdHint`），与「C」
-角标同族：静息隐藏，hover / focus-visible chip 时浮出。
+`Tab` 在 dialog 的**驾驶位**（项目 chip 与 composer textarea）直接换到下一个项目，
+末行环绕回首行；焦点不动——Tab 是打字途中的手势，搬焦点就把打字打断了。列表那条路
+（点 chip 开面）原样留着，且列表开着时 Tab 移的也是勾选行。
 
-守卫按 ⌘J 的 drawer 豁免同律收窄（`isEditableOutsideNewTaskDialog`）：dialog 打开即
-autofocus 落 spec textarea，守卫若照吞输入态，和弦在它唯一该生效的地方就是死的。
-dialog 关着时 hook 不注册（`useChordHotkey(..., enabled)`），⌘P 原样还给浏览器。
+chip 上挂 `Tab` 提示 chip（`KbdHint`），与「C」角标同族：静息隐藏，hover /
+focus-visible chip 时浮出。
+
+三处收窄，缺一不可：只在驾驶位吃（提及 / 保存 / 关闭上的 Tab 原样走位，纯键盘用户
+仍能走到每一个控件）；带修饰键的不吃（⌘Tab / Ctrl+Tab / Alt+Tab 是系统的）；Shift+Tab
+留给原生反向走位——Tab 既然被「换项目」占用，它就是键盘用户离开驾驶位的出口。
+dialog 关着、或项目不足两行时 hook 不注册（单项目循环是空转，吃下 Tab 只会白挡走位）。
 
 | 图 | 说明 | 实测 |
 |---|---|---|
 | `6-sidebar-c-badge.png` | 用户指的参照物：侧栏「新任务」行的常驻 C 角标 | badge = `C` |
-| `7-cmdp-opened-picker.png` | **⌘P** 开选择器 | 菜单可见，焦点 = `button.new-task-project-row`，`aria-selected=true` |
-| `8-cmdp-hint-hover.png` | hover chip | 提示 chip 浮出，字面量 `⌘P` |
+| `9-tab-before.png` | 按 Tab 之前 | chip = `r3-lifecycle`，焦点 = `textarea.new-task-spec` |
+| `10-tab-after.png` | **按一次 Tab**（验收） | chip = `r2-inventory`，焦点仍在 composer，记忆位同步 |
+| `11-tab-hint-hover.png` | hover chip | 提示 chip 浮出，字面量 `Tab` |
 
-自动化：`apps/web/e2e/hotkeys.spec.ts` 新增 3 例（⌘P toggle + 选中行接管焦点、
-chip 悬浮提示静息隐藏、dialog 关闭时 ⌘P 不响应），改动前 2 红，改动后 18 例全绿；
-邻面 `newtask-project-select` / `newtask-project-persist` / `project-empty-new-task`
-同批 13 例全绿。
+自动化：`apps/web/e2e/hotkeys.spec.ts` 新增 5 例（composer 上 Tab 换项目 + 环绕 +
+焦点不动、chip 上 Tab 换勾选行 + Shift+Tab 交还原生、驾驶位之外的 Tab 原样走位、
+chip 悬浮提示静息隐藏、dialog 关闭时 Tab 原样走位），改动前 4 红 1 绿，改动后 20 例
+全绿；邻面 `newtask-project-select` / `newtask-project-persist` /
+`project-empty-new-task` / `overlay-focus` 同批 19 例全绿。

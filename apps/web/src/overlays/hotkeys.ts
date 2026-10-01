@@ -11,7 +11,10 @@
 // open lands focus in the composer (a textarea), and a guard that swallows
 // the chord inside the drawer it owns would make the toggle unable to
 // close itself. Buttons and links still carry no native ⌘J semantics, so a
-// focused control must not block the chord.
+// focused control must not block the chord. XMON-87 adds the family's only
+// binding that consumes a native browser key: Tab switches the new-task
+// dialog's project from its two driving seats (the chip and the composer),
+// with Shift+Tab left native as the keyboard way out of that seat.
 
 import { useEffect } from 'react';
 
@@ -31,14 +34,15 @@ const isEditableOutsideChiefDrawer = (target: EventTarget | null): boolean =>
   isEditableTarget(target) &&
   !(target instanceof HTMLElement && target.closest('.chief-drawer') !== null);
 
-/** ⌘P 专属守卫（XMON-87）：输入态吞键同样收窄到 dialog 之外。dialog 打开
- *  即 autofocus 落 spec textarea，守卫照吞的话，和弦在它唯一该生效的地方
- *  是死的（⌘J drawer 内豁免的同一条理由，异面同律）。dialog 外的输入态
- *  （⌘K 搜索框等）维持原律——那里 ⌘P 不做任何事。类名出处 =
- *  new-task-dialog.tsx 的 DialogShell className。 */
-const isEditableOutsideNewTaskDialog = (target: EventTarget | null): boolean =>
-  isEditableTarget(target) &&
-  !(target instanceof HTMLElement && target.closest('.new-task-dialog') !== null);
+/** Tab 换项目（XMON-87 续二）的「驾驶位」：项目 chip 与 composer textarea。
+ *  Tab 只在这两处被吃下换项目——其余控件（提及 / 保存 / 关闭）保留原生走位，
+ *  纯键盘用户照旧能靠 Tab / Shift+Tab 走到每一个控件。
+ *  类名出处 = new-task-dialog.tsx 的 chip 与 textarea。 */
+const TAB_CYCLE_SEATS = ['.new-task-project', '.new-task-spec'];
+
+const isTabCycleSeat = (target: EventTarget | null): boolean =>
+  target instanceof HTMLElement &&
+  TAB_CYCLE_SEATS.some((selector) => target.closest(selector) !== null);
 
 function useHotkey(
   key: string,
@@ -69,12 +73,8 @@ function useChordHotkey(
   key: string,
   guard: (target: EventTarget | null) => boolean,
   onFire: () => void,
-  /** false = 不注册（面的开态门，XMON-87 ⌘P 用）：比「注册了但守卫恒吞」
-   *  少一条常驻监听，语义也直白。缺省 true = 全局面常驻（⌘J）。 */
-  enabled = true,
 ) {
   useEffect(() => {
-    if (!enabled) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.isComposing) return;
       if (event.repeat) return;
@@ -89,7 +89,7 @@ function useChordHotkey(
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [key, guard, onFire, enabled]);
+  }, [key, guard, onFire]);
 }
 
 /** C → 新建任务 dialog（AppSidebar 全局面；行点击与热键共用一个 opener）。
@@ -106,13 +106,27 @@ export function useChiefToggleHotkey(onToggle: () => void): void {
   useChordHotkey('j', isEditableOutsideChiefDrawer, onToggle);
 }
 
-/** ⌘P / Ctrl+P → 新建任务 dialog 的项目选择器 toggle（XMON-87 续；chip 上挂
- *  ⌘P 提示 chip）。P = project 助记，与 ⌘K / ⌘J 的「⌘ + 字母」同族；宿主的
- *  浏览器打印语义由 useChordHotkey 的 preventDefault 收掉（⌘J 收 Firefox 下载
- *  库的同一条律）。
- *  active = dialog 开态：dialog 关着时不注册，⌘P 原样还给浏览器——这条和弦
- *  只在这个 dialog 里有意义，全局接管没有必要。守卫见
- *  isEditableOutsideNewTaskDialog。 */
-export function useProjectPickerHotkey(active: boolean, onToggle: () => void): void {
-  useChordHotkey('p', isEditableOutsideNewTaskDialog, onToggle, active);
+/** Tab → 新建任务 dialog 换项目（XMON-87 续二；chip 上挂 Tab 提示 chip）。
+ *  与 C / ⌘J 两条裸键同族，但它是唯一一条吃掉浏览器原生语义的绑定：Tab
+ *  换项目之后就不再走位了。三处收窄，缺一不可——
+ *  - 只在驾驶位（chip / composer textarea）吃：别处的 Tab 原样走位；
+ *  - 带修饰键的不吃：⌘Tab（切窗）、Ctrl+Tab（切标签页）、Alt+Tab 是系统的；
+ *  - Shift+Tab 留给原生反向走位：Tab 既然被「换项目」占用，它就是纯键盘用户
+ *    离开驾驶位的出口，一并不吃等于把这面变成鼠标专属。
+ *  active = 面的开态门（dialog 关着、或项目不足两行时不注册——单项目循环是
+ *  空转，吃下 Tab 只会白挡走位）。 */
+export function useProjectCycleHotkey(active: boolean, onCycle: () => void): void {
+  useEffect(() => {
+    if (!active) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      if (event.defaultPrevented || event.isComposing) return;
+      if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      if (!isTabCycleSeat(event.target)) return;
+      event.preventDefault();
+      onCycle();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [active, onCycle]);
 }

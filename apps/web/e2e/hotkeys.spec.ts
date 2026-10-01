@@ -49,15 +49,23 @@ import { expect, type Page, test } from '@playwright/test';
 //     same hint through the shared consumption point
 // 14. the collapsed rail's search icon hovers the ⌘K hint (the expanded
 //     rows already carry their always-on badges)
-// 15. XMON-87: ⌘P toggles the new-task dialog's project listbox — the chord
-//     must fire from the spec textarea focus the open itself lands (the
-//     dialog-interior exemption, ⌘J's drawer narrowing), and the checked row
-//     takes focus so Enter finishes the pick
-// 16. the project chip hovers its ⌘P hint (at rest it stays hidden)
-// 17. outside the dialog (closed) ⌘P stays inert — no dialog, no listbox
+// 15. XMON-87: Tab switches the new-task dialog's project — it must fire from
+//     the spec textarea focus the open itself lands (the dialog-interior
+//     exemption, ⌘J's drawer narrowing), wrap at the ends, and leave focus in
+//     the composer so typing is not interrupted
+// 16. the same from the chip's own focus, list open or not; Shift+Tab is NOT
+//     consumed — with Tab spent on switching, it is the way out of the seat
+// 17. off the two driving seats (mention button / footer) Tab stays native
+// 18. the project chip hovers its Tab hint (at rest it stays hidden)
+// 19. outside the dialog (closed) Tab stays native — no dialog, no listbox
 
 const BOARD = '/app?scenario=01';
 const SCHEDULES = '/app/schedules?scenario=01';
+/** XMON-87 的 Tab 换项目要有第二个项目才检得出来（scenario 01 只有一个）：
+ *  boardProjectPicker 场景 = r3-lifecycle + r2-inventory 双行。 */
+const PROJECTS = '/app?scenario=newtask-projects';
+/** 该场景首行的项目 id（显示名 r3-lifecycle）；记忆位存的是 id 不是名字。 */
+const FIRST_PROJECT_ID = 'ZAQczKCu0MOAzC1ZqcFlX';
 const PROJECT = '/app/project/ZAQczKCu0MOAzC1ZqcFlX?scenario=r2-24b&tab=tasks';
 
 const dialog = (page: Page) => page.locator('.new-task-dialog');
@@ -391,32 +399,85 @@ test('the collapsed rail search icon hovers the ⌘K hint', async ({ page }) => 
   await expect(hint).toHaveText('⌘K');
 });
 
-test('⌘P toggles the dialog’s project listbox; the checked row takes focus', async ({ page }) => {
-  await page.goto(BOARD);
+test('Tab cycles the dialog’s project chip from the composer focus', async ({ page }) => {
+  await page.goto(PROJECTS);
   await expect(page.locator('.sidebar-row').first()).toBeVisible();
   await pressUntil(page, 'c', dialog(page));
-  // the chord must fire from the focus the open itself lands — a guard that
-  // swallows editable targets outright would leave it dead where it is needed
+  const chipName = page.locator('.new-task-project-name');
   await expect(page.locator('.new-task-spec')).toBeFocused();
+  await expect(chipName).toHaveText('r3-lifecycle');
 
-  const menu = page.locator('.new-task-project-menu');
-  await pressUntil(page, 'Meta+p', menu);
-  await expect(menu.locator('.new-task-project-row[aria-selected="true"]')).toBeFocused();
-  // keyboard path completes: Enter activates the focused row, closing the list
-  await page.keyboard.press('Enter');
-  await expect(menu).toBeHidden();
-  await expect(page.locator('.new-task-project-name')).toHaveText('r3-lifecycle');
+  await page.keyboard.press('Tab');
+  await expect(chipName).toHaveText('r2-inventory');
+  // 换项目不搬打字的手：焦点留在 composer
+  await expect(page.locator('.new-task-spec')).toBeFocused();
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('pacman.newTaskProjectId')))
+    .toBe('r2-inventory');
 
-  // toggle: the second press closes what the first opened (⌘J's #468 law)
-  await pressUntil(page, 'Meta+p', menu);
-  await toggleUntilHidden(page, menu, 'Meta+p');
-  await expect(menu).toBeHidden();
+  // 末行再 Tab 环绕回首行（记忆位存的是项目 id：首行的 id 与显示名不同名，
+  // fixture 里 PROJECT_ID 显示为 r3-lifecycle）
+  await page.keyboard.press('Tab');
+  await expect(chipName).toHaveText('r3-lifecycle');
+  await expect
+    .poll(() => page.evaluate(() => localStorage.getItem('pacman.newTaskProjectId')))
+    .toBe(FIRST_PROJECT_ID);
 
   await escapeUntilHidden(page, dialog(page));
 });
 
-test('the project chip hovers its ⌘P hint (hidden at rest)', async ({ page }) => {
-  await page.goto(BOARD);
+test('the chip cycles on Tab while the list is open; Shift+Tab keeps native movement', async ({
+  page,
+}) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chip = page.locator('.new-task-project');
+  const menu = page.locator('.new-task-project-menu');
+  const checked = menu.locator('.new-task-project-row[aria-selected="true"] .new-task-project-row-name');
+
+  // 鼠标开列表：chip 拿焦点，Tab 移的是勾选行（不用先关列表）
+  await chip.click();
+  await expect(menu).toBeVisible();
+  await expect(checked).toHaveText('r3-lifecycle');
+  await page.keyboard.press('Tab');
+  await expect(checked).toHaveText('r2-inventory');
+  await expect(page.locator('.new-task-project-name')).toHaveText('r2-inventory');
+  await expect(chip).toBeFocused();
+  await expect(menu).toBeVisible();
+
+  // Shift+Tab 不吃：Tab 被「换项目」占用后，它是离开驾驶位的出口
+  await page.keyboard.press('Shift+Tab');
+  await expect(chip).not.toBeFocused();
+  await expect(page.locator('.new-task-project-name')).toHaveText('r2-inventory');
+
+  await page.keyboard.press('Escape'); // 分层 Esc:先收列表
+  await expect(menu).toBeHidden();
+  await expect(dialog(page)).toBeVisible();
+  await escapeUntilHidden(page, dialog(page));
+});
+
+test('Tab off the driving seats stays native (mention button keeps its own walk)', async ({
+  page,
+}) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chipName = page.locator('.new-task-project-name');
+  await expect(chipName).toHaveText('r3-lifecycle');
+
+  const mention = page.locator('.new-task-dialog button[aria-label="提及"]');
+  await mention.focus();
+  await page.keyboard.press('Tab');
+  // 项目没被换,焦点照常往前走
+  await expect(chipName).toHaveText('r3-lifecycle');
+  await expect(mention).not.toBeFocused();
+
+  await escapeUntilHidden(page, dialog(page));
+});
+
+test('the project chip hovers its Tab hint (hidden at rest)', async ({ page }) => {
+  await page.goto(PROJECTS);
   await expect(page.locator('.sidebar-row').first()).toBeVisible();
   await pressUntil(page, 'c', dialog(page));
   const chip = page.locator('.new-task-project');
@@ -424,17 +485,19 @@ test('the project chip hovers its ⌘P hint (hidden at rest)', async ({ page }) 
   await expect(hint).toBeHidden();
   await chip.hover();
   await expect(hint).toBeVisible();
-  await expect(hint).toHaveText('⌘P');
+  await expect(hint).toHaveText('Tab');
   await escapeUntilHidden(page, dialog(page));
 });
 
-test('with the dialog closed ⌘P stays inert', async ({ page }) => {
-  await page.goto(BOARD);
+test('with the dialog closed Tab stays native', async ({ page }) => {
+  await page.goto(PROJECTS);
   await expect(page.locator('.sidebar-row').first()).toBeVisible();
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page.keyboard.press('Meta+p');
-    await page.waitForTimeout(120);
-  }
+  await page.keyboard.press('Tab');
   await expect(dialog(page)).toHaveCount(0);
+  await expect(page.locator('.new-task-project')).toHaveCount(0);
+  // 焦点落在页内某个真控件上(原生走位),不是被吞掉
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.tagName ?? ''))
+    .not.toBe('BODY');
   await expect(page.locator('.new-task-project-menu')).toHaveCount(0);
 });
