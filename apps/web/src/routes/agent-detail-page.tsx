@@ -51,7 +51,7 @@ import {
   THINKING_LEVELS,
 } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import {
   useAgent,
   useAgentTasks,
@@ -86,6 +86,7 @@ import {
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
+import { SECRETS_HREF } from '../resources/secrets-page.js';
 import { ResourceShell } from '../resources/shell.js';
 import { Chip } from '../ui/chip.js';
 import './agent-detail.css';
@@ -210,6 +211,17 @@ export function AgentDetailPage() {
   const mcpOptions = live
     ? (mcpQ.data ?? []).map((row) => ({ id: row.id, name: row.label }))
     : (fixture.resources?.mcpServers ?? []).map((row) => ({ id: row.name, name: row.name }));
+
+  // 权限 tab 保存失败的可见反馈（XMON-80/P2）。patchAgent 是全页共用的一条
+  // mutation——概览的名称 / 职责 / 模型 / 默认 skill 也走它，所以裸看 isError
+  // 会把概览的失败挂在权限 tab 的红字上，指到一个用户没动过的控件。判据取
+  // 失败那一次的 variables（todo-detail-page 的 restart 分支同律）：只有失败
+  // 体碰了工具 / 密钥 / MCP 三组，才落在这块面的账上。
+  const failedPatchBody = mutations.patchAgent.variables?.body;
+  const permSaveFailed =
+    mutations.patchAgent.isError &&
+    failedPatchBody !== undefined &&
+    ('tools' in failedPatchBody || 'secrets' in failedPatchBody || 'mcpServers' in failedPatchBody);
 
   if (agent === undefined) {
     return (
@@ -509,6 +521,16 @@ export function AgentDetailPage() {
 
         {tab === 'permissions' && (
           <div className="agent-perms">
+            {/* XMON-80/P2：保存失败的显式反馈。本面无乐观更新——开关由服务端
+                值驱动，失败时控件压根没动过，所以「什么都不说」在用户侧 = 点了
+                没反应（XMON-78 实测）。文案是固定句，不透传 server / statusText
+                原文：500 的 body 对用户不可操作，且网络级失败的原文是英文串，
+                混进中文面反而更糊（todo-detail 的被拒提示行同律）。 */}
+            {permSaveFailed && (
+              <p className="agent-perm-error" role="alert">
+                {t('保存失败，请重试。')}
+              </p>
+            )}
             <section className="agent-perm-group">
               <h3 className="agent-perm-title">{t('工具')}</h3>
               {AGENT_TOOL_SWITCHES.map((label) => (
@@ -538,7 +560,17 @@ export function AgentDetailPage() {
                   了：开 = 全 id 集，关 = 空集。勾选态 = agent.secrets 非空。
                   零密钥时不出开关——没有对象可授，出了就是死控件。 */}
               {secretIds.length === 0 ? (
-                <p className="agent-perm-empty">{t('暂无团队密钥。')}</p>
+                // XMON-80/P3：零密钥时不出开关（没有对象可授），但也不能把
+                // 用户停在一句陈述句上——创建入口本来就在侧栏密钥页，这里给
+                // 出指向它的入口。search 随行 = 仓内 Link 律（sidebar /
+                // parts.tsx 同法），生产 build 里 scenario 参数本就被编译期
+                // 折叠、不参与路由。
+                <div className="agent-perm-empty-row">
+                  <p className="agent-perm-empty">{t('暂无团队密钥。')}</p>
+                  <Link className="agent-secret-add" to={{ pathname: SECRETS_HREF, search }}>
+                    {t('去添加密钥')}
+                  </Link>
+                </div>
               ) : (
                 <div className="agent-perm-row agent-secret-row">
                   <span className="agent-perm-text">

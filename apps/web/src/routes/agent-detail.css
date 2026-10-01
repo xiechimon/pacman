@@ -393,6 +393,34 @@
   padding: 10px 12px;
 }
 
+/* 权限 tab 的保存失败行（XMON-80/P2）：配方 = 仓内错误文本族（12px /
+   --danger，prj-issues-error 同款）——不跨域借 pages.css 的 prj- 前缀类。 */
+.agent-perm-error {
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 16px;
+  margin: 0;
+}
+
+/* 零密钥空态 + 出路（XMON-80/P3）。空态文案保持自己的 <p>（既有 e2e 钉着
+   它的文本），入口是同级兄弟，不塞进那段文字里。 */
+.agent-perm-empty-row {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+}
+
+.agent-secret-add {
+  color: var(--chip-plan-fg);
+  font-size: 12px;
+  line-height: 16px;
+  text-decoration: none;
+}
+
+.agent-secret-add:hover {
+  text-decoration: underline;
+}
+
 .agent-memory-text {
   display: flex;
   flex: 1;

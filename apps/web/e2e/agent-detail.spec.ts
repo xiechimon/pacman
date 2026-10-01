@@ -271,6 +271,109 @@ test('权限 tab：零密钥时是空态，无开关', async ({ page }) => {
   await expect(detail.locator('.agent-secret-row')).toHaveCount(0);
 });
 
+// —— XMON-80/P3：零密钥空态旁必须有出路 ——
+// 钉住的失败方式：用户停在一句陈述句上，看不到「密钥在哪加」。创建入口本来
+// 就在侧栏密钥页（SECRETS_HREF），本 tab 只是不链过去。
+test('权限 tab：零密钥空态旁有去添加密钥的入口，点击落到密钥页', async ({ page }) => {
+  const detail = await openDetail(page);
+  await detail.locator('.agent-tab').nth(2).click();
+  const entry = detail.locator('.agent-secret-add');
+  await expect(entry).toBeVisible();
+  await expect(entry).toHaveText('去添加密钥');
+  await entry.click();
+  await expect(page).toHaveURL(/\/app\/resources\/secrets/);
+  await expect(page.locator('.res-title')).toHaveText('密钥');
+});
+
+// 有密钥时不摆这个入口：那行已经是真开关，再挂一条「去添加」就是同页两处
+// 说同一件事（#510 的聚合行本身就是出口）。
+test('权限 tab：有密钥时不出「去添加密钥」入口', async ({ page }) => {
+  await page.goto(DETAIL_SECRETS);
+  await page.locator('.agent-tab').nth(2).click();
+  await expect(page.locator('.agent-secret-row')).toHaveCount(1);
+  await expect(page.locator('.agent-secret-add')).toHaveCount(0);
+});
+
+// —— XMON-80/P2：保存失败必须有可见反馈 ——
+// 钉住的失败方式：PATCH 返 500 时页面一声不吭（无 toast、无行内错误），用户
+// 视角 = 点了没反应（XMON-78 实测）。本面无乐观更新，开关不动是对的；错的是
+// 连「没保存成功」这件事都不说。
+//
+// live 面启动打桩（承 skills-readonly.spec 的 stubBoot 纪律）：teams / user me
+// 是 teamId 来源、必须成功；其余 GET 一律 500——启动面查询失败 = 应用既有
+// isError 耐受（data ?? [] 族）。page.route 匹配序 = 注册逆序：catch-all 先
+// 注册，具体路由后注册才生效。URL 不带 ?scenario= 即 live 数据源（api/mode.ts
+// 闸门：fixture build 里 scenario 参数缺席 = 真 API），故本 spec 能覆盖 live 面。
+const LIVE_AGENT = {
+  id: 'agent-1',
+  displayName: 'live-builder',
+  description: null,
+  status: 'active',
+  avatarUrl: null,
+  provider: null,
+  modelId: null,
+  thinkingLevel: null,
+  tools: [],
+  secrets: [],
+  skills: [],
+  mcpServers: [],
+};
+
+async function stubLiveBoot(page: Page) {
+  await page.route('**/api/**', (route, request) => {
+    if (request.method() !== 'GET') return route.fallback();
+    return route.fulfill({ status: 500, json: { error: 'e2e stub: not the surface under test' } });
+  });
+  await page.route('**/api/teams', (route) =>
+    route.fulfill({
+      json: [{ id: 'team-1', name: 'Team', createdAt: 0, plan: 'free', avatarStyle: null }],
+    }),
+  );
+  await page.route('**/api/user/me', (route) =>
+    route.fulfill({ json: { id: 'user-1', displayName: '我', avatarUrl: null } }),
+  );
+}
+
+test('权限 tab：保存失败出可见错误反馈，开关不回弹', async ({ page }) => {
+  await stubLiveBoot(page);
+  let patches = 0;
+  await page.route('**/api/teams/team-1/agents/agent-1', (route) => {
+    if (route.request().method() === 'PATCH') {
+      patches += 1;
+      return route.fulfill({ status: 500, json: { error: 'boom' } });
+    }
+    return route.fulfill({ json: LIVE_AGENT });
+  });
+
+  await page.goto('/app/resources/agents/agent-1');
+  await page.locator('.agent-tab').nth(2).click();
+  const sw = page.locator('.agent-tool-switch').first();
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+
+  await sw.click();
+  // 前提守卫：请求真发出去了（否则「有反馈」测的是别的东西）。
+  await expect.poll(() => patches).toBe(1);
+  const error = page.locator('.agent-perm-error');
+  await expect(error).toBeVisible();
+  await expect(error).toHaveText('保存失败，请重试。');
+  // 无乐观更新：失败后控件不停在开态（否则用户以为存上了）。
+  await expect(sw).toHaveAttribute('aria-checked', 'false');
+});
+
+// 反向：保存成功不应留错误行——否则「有反馈」退化成一条永远挂着的红字。
+test('权限 tab：保存成功不出错误行', async ({ page }) => {
+  await stubLiveBoot(page);
+  await page.route('**/api/teams/team-1/agents/agent-1', (route) => {
+    if (route.request().method() === 'PATCH') return route.fulfill({ json: LIVE_AGENT });
+    return route.fulfill({ json: LIVE_AGENT });
+  });
+
+  await page.goto('/app/resources/agents/agent-1');
+  await page.locator('.agent-tab').nth(2).click();
+  await page.locator('.agent-tool-switch').first().click();
+  await expect(page.locator('.agent-perm-error')).toHaveCount(0);
+});
+
 test('未知 agent id 不白屏，走回退呈现', async ({ page }) => {
   await page.goto('/app/resources/agents/no-such-agent?scenario=agent-detail');
   await expect(page.locator('.agent-missing')).toBeVisible();

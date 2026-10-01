@@ -613,6 +613,10 @@ export const EN: Record<string, string> = {
   // 概览「进行中」段空态（原文 = 参考产品 web 包 agent_modal.no_active_tasks）。
   暂无进行中的任务: 'No active tasks',
   '暂无团队密钥。': 'No team secrets yet.',
+  // XMON-80/P3：零密钥空态旁的出口（落到侧栏密钥页）。
+  去添加密钥: 'Add a secret',
+  // XMON-80/P2：权限 tab 保存失败的可见反馈。
+  '保存失败，请重试。': 'Save failed. Try again.',
   '暂无 MCP 服务器。': 'No MCP servers yet.',
   团队密钥: 'Team secrets',
   // shared canon（packages/shared/src/records/agent.ts、memory.ts），经 t()
