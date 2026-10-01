@@ -1,6 +1,6 @@
-/* 复选原语（XMON-75）。形态抄自 `.dlg-accept-check` / `.dlg-provider-check`
-   （18px 方角 tile、4px 圆角、--card-button 实底 + 白勾；关态透明底 + 1px
-   --border-strong 内描边），本文件是它的共用一份。 */
+/* 复选原语（XMON-75 建、XMON-72 收口）：全仓复选形态的唯一持值文件——18px
+   方角 tile、4px 圆角、--card-button 实底 + 白勾；关态透明底 + 1px
+   --border-strong 内描边。新复选面一律消费本件，不另写 tile CSS。 */
 
 .ui-checkbox {
   position: relative;
