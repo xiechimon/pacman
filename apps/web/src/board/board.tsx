@@ -174,10 +174,6 @@ export function BoardSurface({
   const [view, setView] = useState<ColumnView | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropColumnId, setDropColumnId] = useState<string | null>(null);
-  // #351: cards went fluid-width with the even grid, so the DragOverlay
-  // copies the source card's measured width (fixed-width columns used to
-  // size it implicitly through the 262px card rule)
-  const [dragWidth, setDragWidth] = useState<number | null>(null);
   /** Drop settle: the landing preview (view) a settled commit wrote, held
    *  until the rendered data carries it — see the teardown effect below. */
   const [settling, setSettling] = useState<{ columnId: string } | null>(null);
@@ -212,12 +208,7 @@ export function BoardSurface({
   const onDragStart = (event: DragStartEvent) => {
     setSettling(null);
     setView(deriveView(visibleTodos));
-    const id = String(event.active.id);
-    setDragId(id);
-    setDragWidth(
-      document.querySelector(`.todo-card[data-todo-id="${id}"]`)?.getBoundingClientRect().width ??
-        null,
-    );
+    setDragId(String(event.active.id));
     document.body.classList.add('board-dragging');
     window.getSelection()?.removeAllRanges();
   };
@@ -281,7 +272,6 @@ export function BoardSurface({
     if (!retained) setView(null);
     setDragId(null);
     setDropColumnId(null);
-    setDragWidth(null);
     sweep();
   };
 
@@ -315,7 +305,6 @@ export function BoardSurface({
     setView(null);
     setDragId(null);
     setDropColumnId(null);
-    setDragWidth(null);
     sweep();
   };
 
@@ -447,15 +436,28 @@ export function BoardSurface({
               );
             })}
         </div>
-        {/* #391: default drop animation — the overlay glides to the landing
-            slot (250ms ease) instead of snapping out on pointer up; lift
-            shadow = board.css 的 .board-drag-overlay 规则 */}
-        <DragOverlay>
+        {/* #391: the overlay glides to the landing slot instead of snapping
+            out on pointer up; lift shadow = board.css 的 .board-drag-overlay
+            规则。#616 流畅度实测（CDP tracing，1.5s 手势）：
+            - style.willChange 落在 dnd-kit 的 fixed wrapper（transform 的
+              持有者）上。wrapper 的位移由主线程逐 pointermove 提交，无动画
+              提示时 Chromium 把每个新位置当静态位置重栅格（115-120 个
+              RasterTask/手势）；will-change: transform 标记「此层在动」后
+              减半（57-62，n=3）。层仅在手势期存活，无长驻 GPU 内存代价。
+            - dropAnimation 时长保持 #391 的 250ms 正典值，曲线从 dnd-kit
+              默认 ease 换成正典 --ease-pop（motion.css cubic-bezier(.22,1,
+              .36,1)）：收尾滑动要即时起步（延续松手前的运动感）再减速落
+              位，ease 的慢起步读作松手后卡片迟疑。
+            - overlay 宽度不再自测（旧 dragWidth）：PositionedOverlay 本来
+              就把 wrapper 宽度设为 activeNodeRect.width（core 6.3.1），内
+              层块级 div 自然填满——起手少一次 getBoundingClientRect 强制
+              同步布局。 */}
+        <DragOverlay
+          style={{ willChange: 'transform' }}
+          dropAnimation={{ duration: 250, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
+        >
           {dragged != null && (
-            <div
-              className="board-drag-overlay"
-              style={dragWidth == null ? undefined : { width: dragWidth }}
-            >
+            <div className="board-drag-overlay">
               <TodoCard
                 todo={dragged}
                 now={fixture.now}

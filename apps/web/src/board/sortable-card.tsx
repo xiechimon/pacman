@@ -32,6 +32,12 @@ export function SortableCard({
 }: SortableCardProps) {
   const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: todo.id,
+    // #616: 让位卡片过渡——时长保持 dnd-kit 默认 200ms，曲线从默认 ease
+    // 换成正典 --ease-pop（motion.css cubic-bezier(.22,1,.36,1)）：指针越
+    // 过的瞬间让位卡即时起步（ease 的慢起步在快速手势里读作迟钝），再减
+    // 速入位。transition 可中断重定向（CSS transition 特性），来回跨越时
+    // 从当前位置反向，不重启。
+    transition: { duration: 200, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' },
   });
   const style = {
     // dnd-kit utilities' CSS.Transform inlined (utilities is a transitive

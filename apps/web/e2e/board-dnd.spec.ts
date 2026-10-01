@@ -189,8 +189,8 @@ test('pinned group tops 待处理: failed and review+awaitingReply lead the colu
 // themes: the pre-#391 light-only `filter: drop-shadow(0 8px 16px)` parked the
 // shadow mass 8px below the card (the top edge went faint and the dark side
 // had no lift at all), while the box-shadow lift tier keeps all four edges
-// inked. The drop glides the overlay to the landing slot (dnd-kit default
-// 250ms ease) instead of snapping out.
+// inked. The drop glides the overlay to the landing slot (250ms --ease-pop,
+// #616 explicit dropAnimation) instead of snapping out.
 //
 // Pixel-probe geometry: the card parks straddling the sidebar / first-column
 // boundary so each edge's near strip and clean reference strip sit on ONE
@@ -325,7 +325,7 @@ test('drop glides the overlay to the landing slot instead of snapping', async ({
   // from mouse.up, and an injected frame wait would make it vacuously true
 
   // dropAnimation={null} removes the overlay in the same frame as mouse.up;
-  // the settle glide keeps it in flight for the 250ms default animation
+  // the settle glide keeps it in flight for the 250ms drop animation (#616)
   const upAt = Date.now();
   await expect(page.locator('.board-drag-overlay')).toHaveCount(0);
   expect(Date.now() - upAt).toBeGreaterThan(100);
