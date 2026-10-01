@@ -3,12 +3,17 @@
 // kept as the pinned width), full height, flush right, radius 0, no shadow,
 // one 1px hairline seam on the left. It is a layout citizen, not an overlay:
 // each mount point renders it as the last flex item of a row whose content
-// sibling yields (D2). Header = thread chip + model slot + icon buttons;
+// sibling yields (D2). Header = thread chip + model row + icon buttons;
 // body = gate bar (unbound) or hero examples / thread message flow;
 // composer pinned at the bottom. The switcher popover (116) and the view
 // swap to 总管设置 are real state so the surface is clickable in dev;
 // fixture captures never click, so the fixture alone decides the captured
 // state.
+// #615 四连报闭环：模型行由纯显示 span 翻成控制件（button → 主模型覆盖
+// dialog，PATCH chief model 槽落库回显；行首 glyph 换绑定 Agent 头像，与
+// FAB / 消息流同脸闭环）；消息行复制 glyph 翻真 clipboard 钮（local-first
+// 面存在），恢复/foot 折叠 chevron 无后端面按 #306/#146 二分律移除不渲染；
+// gear 各族可达（非 board 面落 board 设置视图深链）。
 //
 // #146 收尾：Esc 关面板（useEscapeClose 弹层族同律——内层的线程切换器
 // popover 先关，再关 drawer）；hero 快捷提示 ×4 点击即发预置词进 chief
@@ -21,33 +26,33 @@
 // 面亦无线程管理 mutation（GET/POST threads 外无删除/重命名端点），无
 // local-first 对象面，按 M7 处置二分律移除不渲染；头部三钮双视图同律。
 
+import type { ChiefCompactionModel } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
-import type { ChiefContent, ChiefSegment } from '../fixtures/records.js';
+import type { ChiefContent, ChiefSegment, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import {
   ArrowUp,
   BarChart3,
+  Check,
   ChevronDown,
-  ChevronRight,
   ChiefFaceDashed,
   ChiefFolder,
   ChiefGear,
   ChiefHash,
-  ChiefPi,
   ChiefUserPlus,
   ChiefUserSolid,
   Copy,
   FileText,
   Grid2x2,
   Plus,
-  Restore,
   X,
 } from '../icons/index.js';
 import { DRAWER_EXIT_MS } from '../overlay/use-overlay-mount.js';
 import { OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import './chief.css';
+import { ChiefModelDialog } from './chief-model-dialog.js';
 
 const EXAMPLE_ICONS = {
   'user-plus': ChiefUserPlus,
@@ -55,6 +60,19 @@ const EXAMPLE_ICONS = {
   grid: Grid2x2,
   bars: BarChart3,
 } as const;
+
+/** Inline runs → plain text（#615 复制钮的 clipboard 载荷：chip 取其label，
+ *  代码段取原文——复制的是读者可见文本）。 */
+function segmentsText(segments: ChiefSegment[]): string {
+  return segments.map((s) => (s.todo != null ? `#${s.todo}` : (s.agent ?? s.text ?? ''))).join('');
+}
+
+/** robot 消息全文（#615 foot 复制钮载荷）：段落换行拼接 + bullet 行随附。 */
+function robotText(item: { paragraphs: ChiefSegment[][]; bullets?: ChiefSegment[][] }): string {
+  const lines = item.paragraphs.map(segmentsText);
+  for (const b of item.bullets ?? []) lines.push(`- ${segmentsText(b)}`);
+  return lines.join('\n');
+}
 
 /** Inline runs: plain text, mono chip, `#N` todo chip, agent chip. */
 function Segments({ segments }: { segments: ChiefSegment[] }) {
@@ -104,6 +122,14 @@ interface DrawerProps {
    * （threadId null = 新主题，wire 注记见 shared chief send schema）；
    * 缺省 = fixture 静态面，钮惰性。 */
   onNewThread?: () => void;
+  /** #615 主模型覆盖槽当前值（live = chief 封套真值；null = 继承绑定
+   *  Agent）；fixture 面缺省 = null。 */
+  modelValue?: ChiefCompactionModel | null;
+  /** #615 主模型候选（live = toModelOptions 并集投影）；缺省 = 仅默认行。 */
+  modelOptions?: ModelOption[];
+  /** #615 live 面：模型 dialog 选定 = PATCH chief model 槽；缺省 = fixture
+   *  律（选择即关，零请求）。 */
+  onPickModel?: (value: ChiefCompactionModel | null) => void;
 }
 
 export function ChiefDrawer({
@@ -114,9 +140,26 @@ export function ChiefDrawer({
   onSend,
   onThread,
   onNewThread,
+  modelValue = null,
+  modelOptions,
+  onPickModel,
 }: DrawerProps) {
   const { t } = useI18n();
   const [threadsOpen, setThreadsOpen] = useState(chief.threadsOpen ?? false);
+  const [modelOpen, setModelOpen] = useState(false);
+  // #615 复制钮的瞬时回执：键 = 消息位（u<i> / r<i>），1.5s 后回 Copy 字形。
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const copyText = (key: string, text: string) => {
+    const clip = navigator.clipboard; // 非安全上下文无 clipboard：静默不回执
+    if (!clip) return;
+    void clip.writeText(text).then(
+      () => {
+        setCopiedKey(key);
+        window.setTimeout(() => setCopiedKey((cur) => (cur === key ? null : cur)), 1500);
+      },
+      () => {},
+    );
+  };
   const [liveDraft, setLiveDraft] = useState('');
   const draftValue = onSend != null ? liveDraft : (chief.draft ?? '');
   // #146: Esc 与弹层族同律（#127 useEscapeClose 先例）——最内层先关：
@@ -211,8 +254,40 @@ export function ChiefDrawer({
           <div className="chief-model">
             {chief.bound ? (
               <>
-                <ChiefPi />
-                <span>{chief.modelSlot}</span>
+                {/* #615 A/B：显示行翻控制件——行首 = 绑定 Agent 头像（FAB /
+                    消息流同脸，XMON-105 律；未取到 agent 投影退 dashed 字形），
+                    点开 = 主模型覆盖 dialog（live PATCH 落库回显）。中和件同
+                    头部 chip 族：h-auto/leading-[inherit]/font-normal 防原语
+                    定值撑高 12px 行、svg size-auto（ChevronDown 12 属性尺寸）。 */}
+                <Button
+                  variant="ghost"
+                  className="chief-model-btn h-auto shrink leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                  aria-label={t('总管主模型')}
+                  aria-haspopup="dialog"
+                  aria-expanded={modelOpen}
+                  onClick={() => setModelOpen(true)}
+                >
+                  <span className="chief-model-avatar chief-model-avatar--img">
+                    {chief.agent ? (
+                      <SeededAvatar
+                        name={chief.agent.displayName}
+                        src={chief.agent.avatarUrl}
+                        fallback="/avatar-robot-1.svg"
+                      />
+                    ) : (
+                      <ChiefFaceDashed width={14} height={14} />
+                    )}
+                  </span>
+                  <span className="chief-model-label">{chief.modelSlot}</span>
+                  <ChevronDown width={12} height={12} />
+                </Button>
+                <ChiefModelDialog
+                  open={modelOpen}
+                  onClose={() => setModelOpen(false)}
+                  value={modelValue}
+                  options={modelOptions}
+                  onPick={onPickModel}
+                />
               </>
             ) : (
               <span>n/a</span>
@@ -313,8 +388,22 @@ export function ChiefDrawer({
                       <div className="chief-msg-col">
                         <div className="chief-bubble">{item.text}</div>
                         <div className="chief-msg-tools">
-                          <Copy width={13} height={13} />
-                          <Restore width={13} height={13} />
+                          {/* #615 C：复制翻真 clipboard 钮（local-first 面存在）；
+                              恢复钮无后端面（chief 无 rewind 端点，#306 注记同
+                              律）按二分律移除不渲染，不留死钮。 */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                            aria-label={t('复制')}
+                            onClick={() => copyText(`u${i}`, item.text)}
+                          >
+                            {copiedKey === `u${i}` ? (
+                              <Check width={13} height={13} />
+                            ) : (
+                              <Copy width={13} height={13} />
+                            )}
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -351,9 +440,22 @@ export function ChiefDrawer({
                         </p>
                       ))}
                       <div className="chief-msg-foot">
-                        <Copy width={13} height={13} />
-                        <span>{t('完成 {n}', { n: item.seconds })}</span>
-                        <ChevronRight width={11} height={11} />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                          aria-label={t('复制')}
+                          onClick={() => copyText(`r${i}`, robotText(item))}
+                        >
+                          {copiedKey === `r${i}` ? (
+                            <Check width={13} height={13} />
+                          ) : (
+                            <Copy width={13} height={13} />
+                          )}
+                        </Button>
+                        {/* live 面 seconds 空串（mapChiefStream 无耗时数据源）
+                            不再渲染空「完成」行；fixture canon 44s 照旧。 */}
+                        {item.seconds !== '' && <span>{t('完成 {n}', { n: item.seconds })}</span>}
                       </div>
                     </div>
                   </div>

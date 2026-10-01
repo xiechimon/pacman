@@ -345,6 +345,11 @@ export const EN: Record<string, string> = {
   '选择总管 Agent': "Choose the Chief's Agent",
   '搜索 Agent…': 'Search Agents…',
   '没有匹配的 Agent': 'No matching Agents',
+  // #615 总管抽屉主模型闭环文案（模型行 aria + 覆盖 dialog 默认行/搜索/空态）。
+  总管主模型: 'Chief main model',
+  '默认（与绑定 Agent 相同）': 'Default (same as bound Agent)',
+  '搜索模型…': 'Search models…',
+  没有匹配的模型: 'No matching models',
   // M7 #312 AI 审核模态文案（r8 §3.1 实测）：Agent 选择 + 关注点 textarea +
   // 提交按钮。dialog 选 Agent 走 dlg-form-* family 共用层,文案独立。
   '选择审核 Agent': 'Choose review Agent',

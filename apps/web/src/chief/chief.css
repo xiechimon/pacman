@@ -103,6 +103,116 @@
   color: var(--text-tertiary);
 }
 
+/* #615 模型行闭环：显示行翻控制件——ghost 原语只出语义，几何/墨全在
+   per-face（头部 chip 族同律）：12px 行高不被原语定值撑高由消费点中和件
+   承载，这里钉行内左对齐 + hover 底（可点 affordance）+ 头像/省略号位。 */
+.chief-model-btn {
+  justify-content: flex-start;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 1px 4px;
+  margin-left: -4px;
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+
+.chief-model-btn:hover {
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+}
+
+.chief-model-avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* 绑定 Agent 头像 = FAB / 消息流同脸（XMON-105 律），行内 14px 位。 */
+.chief-model-avatar--img img {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  display: block;
+}
+
+.chief-model-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* #615 消息行复制钮：20×20 ghost 小钮，dim 墨 hover 升 secondary（旧裸
+   svg 无量无反馈 = 死 glyph）。 */
+.chief-msg-tool {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--text-dim);
+}
+
+.chief-msg-tool:hover {
+  background: var(--surface-secondary);
+  color: var(--text-secondary);
+}
+
+/* #615 主模型覆盖 dialog 行（r5 108 行形：模型名 + provider 副题两行，
+   选中行名升 indigo + 右缘 check，chief-model-check 复用）。 */
+.chief-model-pick {
+  display: flex;
+  flex-direction: column;
+}
+
+.chief-model-pick-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.chief-model-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chief-model-pick-row:hover {
+  background: var(--surface-secondary);
+}
+
+.chief-model-pick-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chief-model-pick-name {
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chief-model-pick-row[aria-selected="true"] .chief-model-pick-name {
+  color: var(--seg-active);
+}
+
+.chief-model-pick-provider {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
 /* thread switcher popover (r5 116) */
 .chief-switcher {
   position: absolute;

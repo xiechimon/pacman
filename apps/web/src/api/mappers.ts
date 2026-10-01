@@ -931,7 +931,12 @@ export function mapChief(
     bound,
     ...(bound && env.agentActor
       ? {
-          modelSlot: `${env.agentActor.modelId ?? 'n/a'} · 默认`,
+          // #615: 行值 = 生效模型（覆盖槽优先，回退绑定 Agent 模型）；`· 默认`
+          // 徽标只在继承态（覆盖槽 null）挂——覆盖态裸模型名，dialog 的 check
+          // 位承担「显式选过」的语义。
+          modelSlot: `${env.chief.model?.modelId ?? env.agentActor.modelId ?? 'n/a'}${
+            env.chief.model == null ? ' · 默认' : ''
+          }`,
           // #444: FAB 头像位 = 绑定 Agent 全记录里的既有字段（封套已带，
           // 零新增请求）；id 供 team chart 组织图定位根节点（同一封套，
           // 同为零新增请求）。

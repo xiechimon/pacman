@@ -13,19 +13,22 @@
 // runs exactly one instance of this hook, so the listener stays a
 // singleton per route.
 
+import type { ChiefCompactionModel } from '@pacman/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   useApiMutations,
   useChief,
   useChiefThreads,
   useMessages,
+  useModelSources,
   useNotifications,
+  useProviders,
 } from '../api/hooks.js';
-import { mapChief } from '../api/mappers.js';
+import { mapChief, toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { useConversationStream } from '../api/sse.js';
 import { chiefDefault } from '../fixtures/fixtures.js';
-import type { ChiefContent, FixtureSet } from '../fixtures/records.js';
+import type { ChiefContent, FixtureSet, ModelOption } from '../fixtures/records.js';
 import { useChiefToggleHotkey } from '../overlays/hotkeys.js';
 
 /** One three-state view: drawer and settings are mutually exclusive by
@@ -48,6 +51,13 @@ export interface ChiefSurface {
    *  examples + `新主题` chip; the next send opens a new chief thread
    *  (threadId null, same wire as the hero-example click). */
   onNewThread?: () => void;
+  /** #615 主模型覆盖槽当前值（live = 封套真值；null = 继承绑定 Agent）。 */
+  modelValue: ChiefCompactionModel | null;
+  /** #615 主模型候选（live = toModelOptions 并集投影；未决 = 空清单）。 */
+  modelOptions?: ModelOption[];
+  /** #615 live only：模型 dialog 选定 = PATCH chief model 槽（invalidateAll
+   *  重取回显，S8 不持本地乐观态）。 */
+  onPickModel?: (value: ChiefCompactionModel | null) => void;
 }
 
 /** activeThreadIdx sentinel (#146): the fresh-thread view while threads
@@ -68,6 +78,10 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
   const chiefQ = useChief(teamId, live);
   const chiefThreadsQ = useChiefThreads(teamId, live);
   const notificationsQ = useNotifications(teamId, live);
+  // #615 主模型候选数据源（chief-settings 同配方：model-sources ∪ custom
+  // providers 并集，spec 11 §A10）——查询 enabled=live，fixture 面零请求不动。
+  const providersQ = useProviders(teamId, live);
+  const modelSourcesQ = useModelSources(teamId, live);
   const mutations = useApiMutations(teamId);
 
   const chief = fixture.chief;
@@ -97,6 +111,13 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
   const deepLinkId = deepLink?.threadId ?? null;
   const onDeepLinkConsumed = deepLink?.onConsumed;
   useEffect(() => {
+    // #615: `?chief=settings` 哨兵（非 board 面 gear 的落点）——不等线程
+    // 查询（与线程定位无关），fixture 面同消费（零请求，仅视图态）。
+    if (deepLinkId === 'settings') {
+      setChiefView('settings');
+      onDeepLinkConsumed?.();
+      return;
+    }
     if (!live || deepLinkId === null || !chiefThreadsQ.isSuccess) return;
     const idx = liveThreads.findIndex((thread) => thread.id === deepLinkId);
     if (idx >= 0) {
@@ -126,6 +147,15 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
     : 0;
   const chiefUnread = live ? liveUnread : (fixture.chiefUnread ?? 0);
 
+  // #615 主模型闭环三件：槽值（封套真值）/ 候选并集 / 选定即 PATCH。
+  const modelValue = live ? (chiefQ.data?.chief.model ?? null) : null;
+  const modelOptions = live
+    ? toModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
+    : undefined;
+  const onPickModel = live
+    ? (value: ChiefCompactionModel | null) => mutations.patchChief.mutate({ model: value })
+    : undefined;
+
   const onSend = live
     ? (text: string) => {
         mutations.chiefSend.mutate(
@@ -142,5 +172,16 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
   const onThread = live ? (_title: string, index: number) => setActiveThreadIdx(index) : undefined;
   const onNewThread = live ? () => setActiveThreadIdx(NEW_THREAD) : undefined;
 
-  return { chiefView, setChiefView, chiefData, chiefUnread, onSend, onThread, onNewThread };
+  return {
+    chiefView,
+    setChiefView,
+    chiefData,
+    chiefUnread,
+    onSend,
+    onThread,
+    onNewThread,
+    modelValue,
+    modelOptions,
+    onPickModel,
+  };
 }

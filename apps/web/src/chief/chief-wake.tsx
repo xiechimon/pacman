@@ -4,9 +4,10 @@
 // route all wake the same live surface the board FAB drives
 // (use-chief-surface). The FAB keeps each family's own class (page-fab /
 // res-fab / secondary-fab / detail-fab — identical 48×48 @ right/bottom 16
-// geometry, r7 §3.4) and the unread badge the captures carry. The gear is
-// board-only (its settings view swaps the board content area, r5 101–104),
-// so it stays hidden here. #443: the detail family gates the button on
+// geometry, r7 §3.4) and the unread badge the captures carry. The gear rides
+// every surface (#615：设置可达性是四连报的一半); off-board it navigates to
+// the board settings view (`?chief=settings` deep link) since the settings
+// content swap only exists on the board route (r5 101–104). #443: the detail family gates the button on
 // unread (unreadOnly) — the hook and the panel stay mounted regardless, so
 // the wake hotkey path never depends on the FAB being rendered.
 //
@@ -20,6 +21,8 @@
 // at the two slots — both parts consume ONE surface instance so the FAB,
 // the ⌘J hotkey and the panel share a single state.
 
+import { useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import { Button } from '../components/ui/button.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
 import type { FixtureSet } from '../fixtures/records.js';
@@ -76,7 +79,17 @@ export function ChiefWakePanel({
   surface: ChiefSurface;
   onSettings?: () => void;
 }) {
-  const { chiefView, setChiefView, chiefData, onSend, onThread, onNewThread } = surface;
+  const {
+    chiefView,
+    setChiefView,
+    chiefData,
+    onSend,
+    onThread,
+    onNewThread,
+    modelValue,
+    modelOptions,
+    onPickModel,
+  } = surface;
   return (
     <ChiefDrawer
       open={chiefView === 'drawer'}
@@ -86,8 +99,19 @@ export function ChiefWakePanel({
       onSend={onSend}
       onThread={onThread}
       onNewThread={onNewThread}
+      modelValue={modelValue}
+      modelOptions={modelOptions}
+      onPickModel={onPickModel}
     />
   );
+}
+
+/** #615: gear 各族可达——非 board 面没有设置视图的内容区位（r5 101–104 是
+ *  board 的内容交换），落 board 设置视图深链 `?chief=settings`（XMON-106
+ *  深链参的同参位扩展）。board 自己仍走内容交换，不经路由。 */
+export function useChiefSettingsNav(): () => void {
+  const navigate = useNavigate();
+  return useCallback(() => navigate('/app?chief=settings'), [navigate]);
 }
 
 export function ChiefWake({
@@ -100,10 +124,11 @@ export function ChiefWake({
   unreadOnly?: boolean;
 }) {
   const surface = useChiefSurface(fixture);
+  const onSettings = useChiefSettingsNav();
   return (
     <>
       <ChiefWakeFab surface={surface} fabClassName={fabClassName} unreadOnly={unreadOnly} />
-      <ChiefWakePanel surface={surface} />
+      <ChiefWakePanel surface={surface} onSettings={onSettings} />
     </>
   );
 }
