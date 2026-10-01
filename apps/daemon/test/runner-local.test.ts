@@ -10,8 +10,15 @@
 //      凭证 {x-access-token, token}；不触发 landing（v1 done = conv 分支已推上）
 //   4. local build 步：push 照常，不触发 landing（落地仅 merge 步）
 //   5. 无 repo 项目（repo null）：不开 worktree，裸任务目录退化形不变
+//   6.（XMON-77 权限闸）merge 步 tools 携带但缺任一开关 → 会话/工作区之前
+//      failStep（done failed，errorMessage 点名缺失开关；无 prepare/commit）
+//   7.（XMON-77）merge 步双开关齐 → 失败方式 1 全流程不变
+//   8.（XMON-77）build 步缺「推送分支」→ commitAll 照做、push/landing 不做、
+//      done success（软拒：提交留本地工作分支）+ transcript 落 push-skip
+//      system 行（用户合并前看得见为何没推上去）
+//   9.（XMON-77）tools 缺省（老 server 版本墙）→ 两闸均不生效（fail-open）
 
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type {
@@ -58,6 +65,7 @@ function captureLogger(): { logger: DaemonLogger; lines: string[] } {
 function claimedStep(
   kind: 'build' | 'merge',
   repo: NonNullable<ClaimedStep['project']>['repo'],
+  opts: { tools?: string[] } = {},
 ): ClaimedStep {
   return {
     step: { id: 's1', buildId: 'conv-1', kind, machineId: 'm1', createdAt: 1 },
@@ -72,6 +80,8 @@ function claimedStep(
       provider: null,
       modelId: 'stub-model',
       thinkingLevel: null,
+      // XMON-77：tools 携带才判权限；缺省 = 老 server 形（fail-open 面）。
+      ...(opts.tools !== undefined ? { tools: opts.tools } : {}),
     },
   };
 }
@@ -236,7 +246,7 @@ async function setup(
     heartbeatIntervalMs: 60_000,
   };
   await runStep(deps, claimed);
-  return { client, calls, pushes, lines };
+  return { client, calls, pushes, lines, paths };
 }
 
 describe('runner repo 形态接线（spec 12 G2-T2）', () => {
@@ -287,5 +297,82 @@ describe('runner repo 形态接线（spec 12 G2-T2）', () => {
     const { calls } = await setup(claimedStep('build', null));
     expect(calls.some((c) => c.startsWith('prepare'))).toBe(false);
     expect(calls.some((c) => c.startsWith('push'))).toBe(false);
+  });
+});
+
+describe('runner 权限闸：合并分支/推送分支（XMON-77）', () => {
+  /** outbox transcript 行（TranscriptBuffer 落盘面，journal.ts）。 */
+  function transcriptRows(paths: {
+    outboxDir: string;
+  }): { id: string; role: string; content: unknown }[] {
+    return JSON.parse(readFileSync(join(paths.outboxDir, 'step-s1.transcript.json'), 'utf8')) as {
+      id: string;
+      role: string;
+      content: unknown;
+    }[];
+  }
+
+  test('失败方式 6：merge 步 tools 携带但缺任一开关 → 会话前 failStep，errorMessage 点名缺失档', async () => {
+    const { client, calls } = await setup(
+      claimedStep('merge', { kind: 'local', cloneUrl: USER_REPO }, { tools: ['合并分支'] }),
+    );
+    expect(client.doneBodies[0]!.body.status).toBe('failed');
+    expect(client.doneBodies[0]!.body.errorMessage).toContain('推送分支');
+    // 闸在会话/工作区之前：无 prepare、无 commit、无 push。
+    expect(calls.some((c) => c.startsWith('prepare'))).toBe(false);
+    expect(calls).not.toContain('commitAll');
+    expect(calls.some((c) => c.startsWith('push'))).toBe(false);
+  });
+
+  test('失败方式 6b：merge 步全关（[]）→ 同拒，两开关齐点名', async () => {
+    const { client } = await setup(
+      claimedStep('merge', { kind: 'local', cloneUrl: USER_REPO }, { tools: [] }),
+    );
+    expect(client.doneBodies[0]!.body.status).toBe('failed');
+    expect(client.doneBodies[0]!.body.errorMessage).toContain('合并分支');
+    expect(client.doneBodies[0]!.body.errorMessage).toContain('推送分支');
+  });
+
+  test('失败方式 7：merge 步双开关齐 → 失败方式 1 全流程不变', async () => {
+    const { client, calls } = await setup(
+      claimedStep(
+        'merge',
+        { kind: 'local', cloneUrl: USER_REPO },
+        {
+          tools: ['合并分支', '推送分支'],
+        },
+      ),
+    );
+    expect(calls).toContain('mergeDefaultBranch');
+    expect(calls).toContain('push:pacman/conv-conv-1');
+    expect(calls).toContain(`landLocalFastForward:${USER_REPO}:pacman/conv-conv-1`);
+    expect(client.doneBodies[0]!.body.status).toBe('success');
+  });
+
+  test('失败方式 8：build 步缺「推送分支」→ 提交留本地，push/landing 不做，transcript 落 push-skip 行', async () => {
+    const { client, calls, paths, lines } = await setup(
+      claimedStep('build', { kind: 'local', cloneUrl: USER_REPO }, { tools: ['合并分支'] }),
+    );
+    expect(calls).toContain('commitAll');
+    expect(calls.some((c) => c.startsWith('push'))).toBe(false);
+    expect(calls.some((c) => c.startsWith('landLocalFastForward'))).toBe(false);
+    // 软拒：步本身成功（提交在本地工作分支），拒的是推送。
+    expect(client.doneBodies[0]!.body.status).toBe('success');
+    const skip = transcriptRows(paths).find((r) => r.id === 'push-skip-s1');
+    expect(skip?.role).toBe('system');
+    expect(String(skip?.content)).toContain('推送分支');
+    expect(lines.some((l) => l.includes('推送分支'))).toBe(true);
+  });
+
+  test('失败方式 8b：build 步持「推送分支」→ push 照常', async () => {
+    const { calls } = await setup(
+      claimedStep('build', { kind: 'local', cloneUrl: USER_REPO }, { tools: ['推送分支'] }),
+    );
+    expect(calls).toContain('push:pacman/conv-conv-1');
+  });
+
+  test('失败方式 9：tools 缺省（老 server 版本墙）→ 两闸 fail-open，push 照常', async () => {
+    const { calls } = await setup(claimedStep('build', { kind: 'local', cloneUrl: USER_REPO }));
+    expect(calls).toContain('push:pacman/conv-conv-1');
   });
 });

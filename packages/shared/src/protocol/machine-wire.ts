@@ -184,6 +184,14 @@ export const claimedStepSchema = z.object({
        * 约束）。无版本墙：纯增可选字段，旧 daemon 忽略 = 现行为全量直通，
        * 不存在 MCP slug 断约那种混发形状失败模式。 */
       skills: z.array(z.string()).optional(),
+      /** 权限开关已开集（XMON-77）：词表 = AGENT_TOOL_SWITCHES（合并分支/
+       * 推送分支），执法落点 = daemon 收尾闸（merge fail-fast + push 软拒）
+       * 与 server requestMerge 闸。worker 步恒携带——含空数组（[] = 全关，
+       * least-privilege；缺省保留给老 server = fail-open 版本墙，两态不得
+       * 混淆）。chief 步不携带（chief 步不开 worktree、无 git 收尾——两开关
+       * 无语义）。读侧宽：存量行残值原样透传，daemon 只认已知档。无版本墙：
+       * 纯增可选字段，旧 daemon 忽略 = 现行为（推送不受限）。 */
+      tools: z.array(z.string()).optional(),
     })
     .nullable(),
   /** chief 步块（r5 §3.1：Chief 回合 = pi 会话 + 服务端 relay 工具；细节

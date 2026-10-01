@@ -1,7 +1,8 @@
 // Chief remoteTools 服务端执行面（02 §4.3「服务端定义并执行」；r5 §3.1 relay
 // 位形 = POST /api/machine/tool/<stepId> {name, params} → {text}）。
-// 48 词表（protocol/chief-tools.ts；raw 观测 49 − delete_skills，spec 13 #367
-// 除名——技能改本地目录只读投影，无删除面可 relay）逐件映射到既有服务/DB。
+// 47 词表（protocol/chief-tools.ts；raw 观测 49 − delete_skills（spec 13
+// #367，本地目录只读投影无删除面）− set_remote_shell（XMON-77，「远程 shell」
+// 开关无执行本体））逐件映射到既有服务/DB。
 // 复刻口径（02 §4.3 尾注 / 04 §1 A4）：Chief = 挂团队工具的 pi 会话，工具
 // 「语义」按 r1 docs 六能力组 + r3/r5 行为证据黑盒逼近；params/results 细形
 // 未采到 wire 原件处一律 [推断]，不冒充实测。返回值 = JSON 串（bundle text()
@@ -158,7 +159,7 @@ function requireTeamAgent(db: Db, agentId: string, teamId: string) {
   if (!row) throw new HttpError(404, `agent ${agentId}（不在本团队，或 id 抄错了）`);
   return row;
 }
-/** 48 词表服务端执行。未识别工具名 = 400（词表外不执行，02 §7.2 白名单纪律
+/** 47 词表服务端执行。未识别工具名 = 400（词表外不执行，02 §7.2 白名单纪律
  * 同族）。返回 JSON 串。 */
 export async function executeChiefTool(
   deps: ChiefToolDeps,
@@ -209,6 +210,11 @@ export async function executeChiefTool(
           provider: a.provider,
           modelId: a.modelId,
           thinkingLevel: a.thinkingLevel,
+          // 授权集投影（XMON-77）：分派面对权限态可见——合并派给未授权
+          // Agent 会在 requestMerge 403，看得见才能挑对（REST PATCH 才是写面）。
+          tools: a.tools,
+          skills: a.skills,
+          mcpServers: a.mcpServers,
         })),
       );
     }
@@ -510,24 +516,9 @@ export async function executeChiefTool(
       }
       return json({ deleted });
     }
-    case 'set_remote_shell': {
-      const agentId = str(params, 'agentId');
-      const enabled = bool(params, 'enabled', true);
-      const row = db
-        .select()
-        .from(agent)
-        .where(and(eq(agent.id, agentId), eq(agent.teamId, ctx.teamId)))
-        .get();
-      if (!row) throw new HttpError(404, `agent ${agentId}`);
-      const tools = new Set(row.tools);
-      if (enabled) tools.add('远程 shell');
-      else tools.delete('远程 shell');
-      db.update(agent)
-        .set({ tools: [...tools] })
-        .where(eq(agent.id, agentId))
-        .run();
-      return json({ agentId, remoteShell: enabled });
-    }
+    // set_remote_shell 已除名（XMON-77：「远程 shell」开关无执行本体，权限词表
+    // 收敛到 合并分支/推送分支；改授权走 REST PATCH /agents/{aid}）——relay 此名
+    // 落 default = 400 unknown chief tool，与 delete_skills 同律。
     case 'schedule_todo': {
       const todoId = str(params, 'todoId');
       const row = requireTeamTodo(db, todoId, ctx.teamId);

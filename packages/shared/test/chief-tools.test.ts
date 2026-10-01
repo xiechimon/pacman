@@ -2,8 +2,10 @@
 // `docs/research/assets/r5/raw/chief-threads-testA.json` 的 toolDefHashes 全键
 // （名单实测；description/parameters 细形 [推断] 黑盒逼近，04 §1 A4 边界——
 // 本测试只钉「名单与分组」的实测面，不为 [推断] 细形背书）。
-// 现行词表 = raw − CHIEF_TOOLS_REMOVED（spec 13 #367 divergence：
-// delete_skills 除名——技能改本地目录只读投影，无删除面；raw 键集冻结不改）。
+// 现行词表 = raw − CHIEF_TOOLS_REMOVED（divergence 登记两件：spec 13 #367
+// delete_skills——技能改本地目录只读投影，无删除面；XMON-77 set_remote_shell
+// ——「远程 shell」开关无执行本体，权限词表收敛到 合并分支/推送分支 两档；
+// raw 键集冻结不改）。
 
 import { describe, expect, it } from 'vitest';
 import {
@@ -78,7 +80,7 @@ const RAW_TOOL_DEF_HASH_KEYS = [
   'workflow_runs',
 ];
 
-describe('48 词表（raw 49 − delete_skills，spec 13 #367）', () => {
+describe('47 词表（raw 49 − delete_skills − set_remote_shell）', () => {
   const rawKeys: string[] = RAW_TOOL_DEF_HASH_KEYS;
   const removed: readonly string[] = CHIEF_TOOLS_REMOVED;
   const expected = rawKeys.filter((name) => !removed.includes(name)).sort();
@@ -93,16 +95,18 @@ describe('48 词表（raw 49 − delete_skills，spec 13 #367）', () => {
     expect(CHIEF_REMOTE_TOOLS.map((t) => t.name).sort()).toEqual(expected);
   });
 
-  it('除名登记 = delete_skills（spec 13 #367 唯一 divergence），词表全域无残迹', () => {
-    expect(removed).toEqual(['delete_skills']);
-    expect(CHIEF_TOOL_NAMES).not.toContain('delete_skills');
-    expect(Object.values(CHIEF_TOOL_CATEGORIES).flat()).not.toContain('delete_skills');
-    expect(CHIEF_REMOTE_TOOLS.map((t) => t.name)).not.toContain('delete_skills');
+  it('除名登记 = delete_skills + set_remote_shell（divergence 全量），词表全域无残迹', () => {
+    expect(removed).toEqual(['delete_skills', 'set_remote_shell']);
+    for (const name of removed) {
+      expect(CHIEF_TOOL_NAMES).not.toContain(name);
+      expect(Object.values(CHIEF_TOOL_CATEGORIES).flat()).not.toContain(name);
+      expect(CHIEF_REMOTE_TOOLS.map((t) => t.name)).not.toContain(name);
+    }
   });
 
-  it('分组 = 读 15 + 组织 18 + 执行 5 + 私有 10（raw 实数 19 − delete_skills）', () => {
+  it('分组 = 读 15 + 组织 17 + 执行 5 + 私有 10（raw 实数 19 − 两件除名）', () => {
     expect(CHIEF_TOOL_CATEGORIES.read).toHaveLength(15);
-    expect(CHIEF_TOOL_CATEGORIES.organize).toHaveLength(18);
+    expect(CHIEF_TOOL_CATEGORIES.organize).toHaveLength(17);
     expect(CHIEF_TOOL_CATEGORIES.execute).toHaveLength(5);
     expect(CHIEF_TOOL_CATEGORIES.private).toHaveLength(10);
   });

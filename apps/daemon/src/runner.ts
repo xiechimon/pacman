@@ -20,6 +20,8 @@ import type {
   WorktreeOps,
 } from '@pacman/shared';
 import {
+  AGENT_TOOL_MERGE,
+  AGENT_TOOL_PUSH,
   FIXED_TAGS,
   PLAN_FILE_NAME,
   parseReviewPromptMeta,
@@ -255,6 +257,23 @@ export async function runStep(
     clearCredentials(creds);
     await failStep(deps, stepId, 'no agent/model on claimed step');
     return;
+  }
+  // 合并权限闸（XMON-77）：合并步收尾 = git merge + conv 分支 push（三形态
+  // repo 落地都以推送为前置），Agent 必须同时持「合并分支」「推送分支」。闸在
+  // 会话/工作区之前——无授权的合并不烧模型回合。tools 携带才判（claim 恒携
+  // 含空数组）；缺省 = 老 server 版本墙 fail-open。
+  const agentTools = agent.tools;
+  if (claimed.step.kind === 'merge' && agentTools !== undefined) {
+    const missing = [AGENT_TOOL_MERGE, AGENT_TOOL_PUSH].filter((t) => !agentTools.includes(t));
+    if (missing.length > 0) {
+      clearCredentials(creds);
+      await failStep(
+        deps,
+        stepId,
+        `Agent 未获「${missing.join('」「')}」授权（Agent 详情页权限 tab），合并步拒绝执行`,
+      );
+      return;
+    }
   }
   logger.raw(`using model ${provider.providerId}/${agent.modelId}`);
 
@@ -649,11 +668,25 @@ export async function runStep(
           createdAt: now(),
         });
       }
-      if (
+      // 推送闸（XMON-77）：Agent 未持「推送分支」= 不推——提交留在本地工作
+      // 分支（步本身照常 success，拒的是推送不是工作），transcript 落 system
+      // 行说明（用户在合并前看得见为何没上去）。tools 携带才判（含空数组 =
+      // 全关）；缺省 = 老 server 版本墙 fail-open 现行为。
+      const pushDenied =
+        claimed.agent?.tools !== undefined && !claimed.agent.tools.includes(AGENT_TOOL_PUSH);
+      const pushWarranted =
         committed.committed ||
         claimed.step.kind === 'merge' ||
-        (await git.countAhead(ws.cwd, ws.defaultBranch)) > 0
-      ) {
+        (await git.countAhead(ws.cwd, ws.defaultBranch)) > 0;
+      if (pushWarranted && pushDenied) {
+        transcript.upsert({
+          id: `push-skip-${stepId}`,
+          role: 'system',
+          content: `Agent 未获「${AGENT_TOOL_PUSH}」授权——本轮提交保留在本地工作分支 ${ws.branch}，未推送到远端`,
+          createdAt: now(),
+        });
+        logger.step(`push skipped: agent lacks ${AGENT_TOOL_PUSH} permission`);
+      } else if (pushWarranted) {
         await git.push(ws.cwd, ws.branch, creds.git);
         logger.raw(`pushed ${ws.branch}`);
         // local 形态落地（spec 12 G2-T2）：merge 步 push 回用户仓库后

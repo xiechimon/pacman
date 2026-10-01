@@ -363,6 +363,31 @@ describe('分派 + 单 todo 直派 + 双 Agent assignment（r5 §3.3/§3.4/§5�
     expect(agents.find((a) => a.id === AGENT2_ID)?.description).toContain('代码');
   });
 
+  // XMON-77 权限闭环读面：chief 分派要能看到每个 Agent 的授权集（合并步
+  // 派给无「合并分支/推送分支」的 Agent 会在 requestMerge 403——提前可见才
+  // 能挑对 Agent）。失败方式：投影缺 tools/skills/mcpServers 任一 → 分派面
+  // 对权限态盲选。
+  test('agents 投影携带授权集 tools/skills/mcpServers（XMON-77 分派面权限可见）', async () => {
+    s.db
+      .update(agentTable)
+      .set({ tools: ['合并分支', '推送分支'], skills: ['slug-a'], mcpServers: ['mcp-1'] })
+      .where(eq(agentTable.id, AGENT_ID))
+      .run();
+    const agents = (await relay('agents', {})) as {
+      id: string;
+      tools: string[];
+      skills: string[];
+      mcpServers: string[];
+    }[];
+    const me = agents.find((a) => a.id === AGENT_ID)!;
+    expect(me.tools).toEqual(['合并分支', '推送分支']);
+    expect(me.skills).toEqual(['slug-a']);
+    expect(me.mcpServers).toEqual(['mcp-1']);
+    // 未勾选的邻 Agent = 空集（least-privilege 可分辨，不是缺字段）。
+    const other = agents.find((a) => a.id === AGENT2_ID)!;
+    expect(other.tools).toEqual([]);
+  });
+
   test('run_builds 默认 withPlan:false 直派 + triggerSource:chief + assignment 落槽', async () => {
     const todoRec = (await relay('create_todo', { projectId, title: '写文档', spec: 's' })) as {
       id: string;
@@ -679,9 +704,9 @@ describe('驳回回路 plan v2 + unified diff（r5 §4/02 §4.2）', () => {
   });
 });
 
-// —— 结构契约: 48 词表 relay 白名单（raw 49 − delete_skills，spec 13 #367）—————
+// —— 结构契约: 47 词表 relay 白名单（raw 49 − delete_skills − set_remote_shell）——
 
-describe('48 词表 relay 执行面（02 §4.3）', () => {
+describe('47 词表 relay 执行面（02 §4.3）', () => {
   test('词表外工具名 → 400（白名单纪律，不执行）', async () => {
     let status = 0;
     try {
@@ -690,6 +715,26 @@ describe('48 词表 relay 执行面（02 §4.3）', () => {
       status = err instanceof HttpError ? err.status : 0;
     }
     expect(status).toBe(400);
+  });
+
+  // XMON-77：set_remote_shell 已除名（「远程 shell」开关无执行本体，权限词表
+  // 收敛到 合并分支/推送分支——改授权走 REST PATCH /agents/{aid}）。relay 此名
+  // 落 default = 400，与 delete_skills 同律。
+  test('set_remote_shell → 400 unknown chief tool（XMON-77 除名）', async () => {
+    let status = 0;
+    let message = '';
+    try {
+      await relay('set_remote_shell', { agentId: AGENT_ID, enabled: true });
+    } catch (err) {
+      status = err instanceof HttpError ? err.status : 0;
+      message = err instanceof HttpError ? err.message : '';
+    }
+    expect(status).toBe(400);
+    expect(message).toContain('set_remote_shell');
+    // agent 行未被写（无远端 shell 残值落库）。
+    expect(s.db.select().from(agentTable).where(eq(agentTable.id, AGENT_ID)).get()!.tools).toEqual(
+      [],
+    );
   });
 
   test('读工具 replaySafe 标记与执行一致（抽样 projects/todos/machines）', async () => {

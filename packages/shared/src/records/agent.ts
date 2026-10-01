@@ -13,31 +13,37 @@ import { SECRET_MIN_CLI_VERSION } from './secret.js';
 /** 观测值仅 "active"；其余状态未采到，词表不收窄外值 [推断]。 */
 export const agentStatusSchema = z.enum(['active']);
 
-/** 权限面工具 6 开关 UI 词（r3 §4 全 list，文案 canon）；wire 值未观测
- * （样本 tools:[] 恒空）[推断]——tools[] 不收窄为枚举。 */
-export const AGENT_TOOL_SWITCHES = [
-  '远程 shell',
-  '合并分支',
-  '创建标签',
-  '推送分支',
-  '创建技能',
-  '更新技能',
-] as const;
+/** 权限面工具开关 UI 词（r3 §4 全 list 文案 canon 的收敛子集）。XMON-77 闭环：
+ * 原版六档中唯一两档映射到真实执行面（合并分支/推送分支 → daemon merge/push
+ * 收尾闸 + server requestMerge 闸）；其余四档（远程 shell/创建标签/创建技能/
+ * 更新技能）无对应执行本体，摘除——存量残值经写侧过滤退役（filterAgentTools）。
+ * wire 值未观测（样本 tools:[] 恒空）[推断]——tools[] 不收窄为枚举。 */
+export const AGENT_TOOL_SWITCHES = ['合并分支', '推送分支'] as const;
+export type AgentToolSwitch = (typeof AGENT_TOOL_SWITCHES)[number];
 
-/** 权限面 6 开关各自的说明副文案（键 = AGENT_TOOL_SWITCHES 的同值域词）。
- * 文案原文实测自参考产品 Agent 详情页权限 tab（2026-09-30，#485）——r3 §4
- * 的清单只记了「远程 shell」一档，其余五档是本次直读原版补上的，不是推断。 */
+/** 合并权限 = 两开关齐备（XMON-77：合并步收尾 = git merge + conv 分支 push，
+ * 三形态 repo 的落地都以推送为前置）。server requestMerge 与 daemon 收尾闸
+ * 共用，跨缝不复制字面量。 */
+export const AGENT_TOOL_MERGE: AgentToolSwitch = '合并分支';
+export const AGENT_TOOL_PUSH: AgentToolSwitch = '推送分支';
+
+/** 权限面两开关各自的说明副文案（键 = AGENT_TOOL_SWITCHES 的同值域词）。
+ * 文案原文实测自参考产品 Agent 详情页权限 tab（2026-09-30，#485）。 */
 export const AGENT_TOOL_COPY: Record<(typeof AGENT_TOOL_SWITCHES)[number], string> = {
-  '远程 shell': '允许该 Agent 在团队中已开启 shell 访问的机器上执行命令。',
   合并分支: '允许该 Agent 通过合并分支进行发布（例如将 develop 合并进 main）。',
-  创建标签: '允许该 Agent 创建 git tag，这可能触发发布流程。',
   推送分支: '允许该 Agent 随时提交并推送其工作分支（自行合并发布改动时需要）。',
-  创建技能: '允许该 Agent 向团队技能库添加新技能。',
-  更新技能: '允许该 Agent 修改团队技能库中已有的技能。',
 };
 
+/** tools[] 写侧过滤（XMON-77）：词表外值（退役档/自造档）静默丢弃，词表内
+ * 保留且顺序不变（读改写全量回写不被重排）。filterKnownSkillIds 同律而非
+ * machines enabledRuntimes 的 enum-400 律——UI 是读改写全量，存量残值若
+ * 400 会把用户锁死在死值上，过滤则随下一次写自然清退。 */
+export function filterAgentTools(tools: string[]): string[] {
+  return tools.filter((t) => (AGENT_TOOL_SWITCHES as readonly string[]).includes(t));
+}
+
 /** 权限面其余各档的说明文案（r3 §4 原文；品牌串经 brand.ts 槽，版本门常量
- * 见 records/secret.ts）。6 开关的副文案见 AGENT_TOOL_COPY。 */
+ * 见 records/secret.ts）。工具开关的副文案见 AGENT_TOOL_COPY。 */
 export const AGENT_PERMISSION_COPY = {
   secrets: `任务执行时，该 Agent 可在需要密钥的执行步中按需取用团队密钥，每次取用都会留下记录；密钥不预置进 shell 环境。所在机器需要 ${BRAND.cliCommandName} CLI ${SECRET_MIN_CLI_VERSION} 及以上。`,
   mcpServers:
@@ -59,7 +65,9 @@ export const agentRecordSchema = z.object({
   modelId: z.string().nullable(),
   /** 思考强度（r3 样本 null = UI「默认」；wire 值词表未采 [推断]）。 */
   thinkingLevel: z.string().nullable(),
-  /** 权限 6 开关的已开集 + 授予工具；wire 项形 [推断]。 */
+  /** 权限开关已开集 + 授予工具；wire 项形 [推断]。读侧宽（string[]，存量行
+   * 退役残值可读）；写侧严 = filterAgentTools（XMON-77）——machines
+   * enabledRuntimes 同一读写分工。 */
   tools: z.array(z.string()),
   /** 团队密钥授权集（关联 secret id [推断]；值只写不读，02 §8）。 */
   secrets: z.array(z.string()),

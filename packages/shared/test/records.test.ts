@@ -6,6 +6,8 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  AGENT_TOOL_COPY,
+  AGENT_TOOL_SWITCHES,
   agentRecordSchema,
   assignmentSchema,
   buildRecordSchema,
@@ -16,6 +18,7 @@ import {
   createTodoBodySchema,
   daemonJsonSchema,
   deviceJsonSchema,
+  filterAgentTools,
   githubIssueSourceRef,
   machineJsonSchema,
   mcpServerRecordSchema,
@@ -276,6 +279,46 @@ describe('agent record (r3 §4 实测原样)', () => {
 
   it('rejects unobserved status values ([推断] note guards the enum)', () => {
     expect(agentRecordSchema.safeParse({ ...sample, status: 'archived' }).success).toBe(false);
+  });
+});
+
+describe('agent 权限开关词表（XMON-77 闭环）', () => {
+  // 失败方式（先于实现固化）：
+  // 1. 词表残留死开关（远程 shell/创建标签/创建技能/更新技能——原版六档中
+  //    无执行本体的四档）→ UI 摆出无效开关、存储永不被消费。
+  // 2. AGENT_TOOL_COPY 键与词表脱钩 → 某档无副文案（渲染面 undefined）。
+  // 3. filterAgentTools 放行词表外值 → 退役存储残值永不清退。
+  // 4. filterAgentTools 丢序/去重 → 读改写回写时开关集被重排（diff 噪声）。
+
+  it('开关词表 = 合并分支/推送分支（唯一两档映射到真实执行面：daemon merge/push 收尾）', () => {
+    expect([...AGENT_TOOL_SWITCHES]).toEqual(['合并分支', '推送分支']);
+    expect(Object.keys(AGENT_TOOL_COPY)).toEqual([...AGENT_TOOL_SWITCHES]);
+  });
+
+  it('filterAgentTools：词表内保留 + 顺序保持，词表外（含退役档）静默丢弃', () => {
+    expect(filterAgentTools(['推送分支', '合并分支', '远程 shell', '创建标签', '自造档'])).toEqual([
+      '推送分支',
+      '合并分支',
+    ]);
+    expect(filterAgentTools([])).toEqual([]);
+  });
+
+  it('读侧宽：存量行的退役值仍可 parse（清退走写侧过滤，不炸读面）', () => {
+    const row = {
+      id: 'xmon77-legacy',
+      displayName: 'legacy-agent',
+      description: '',
+      status: 'active',
+      avatarUrl: null,
+      provider: 'p',
+      modelId: 'm',
+      thinkingLevel: null,
+      tools: ['远程 shell'],
+      secrets: [],
+      skills: [],
+      mcpServers: [],
+    };
+    expect(agentRecordSchema.parse(row).tools).toEqual(['远程 shell']);
   });
 });
 
