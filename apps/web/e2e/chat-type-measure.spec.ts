@@ -13,6 +13,7 @@ import { expect, test } from '@playwright/test';
 //   4. the note loses its centered look inside the cap
 //   5. placeholder ties with the body and the hierarchy collapses
 //   6. bubble / avatar / footer geometry gets dragged along
+//   7. a rule creeps back between a user turn and the agent row
 
 const DONE = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=36';
 const CONFIRM = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=17b';
@@ -128,4 +129,54 @@ test('bubble / avatar / footer keep their own geometry (#470 scope fence)', asyn
   expect(geo.bubbleFont).toBe('15px');
   expect(geo.avatarBox).toEqual({ w: 20, h: 20 });
   expect(geo.footerPad).toBe('31px');
+});
+
+test('turn boundary is air, not a rule: no divider between a user turn and the agent row', async ({
+  page,
+}) => {
+  // XMON-55 P5 follow-up. P3 marked every 用户→agent boundary with a full-bleed
+  // 1px rule; across a transcript that reads as a document <hr> rather than a
+  // change of speaker, and the user asked for it gone. The boundary is carried
+  // by the avatar swap, the centered stamp and air. This pins the three ways
+  // the air-only boundary can regress: a rule creeps back, the gap collapses,
+  // or the gap balloons until the transcript reads as scattered fragments.
+  await page.goto(DONE);
+  const probe = await page.evaluate(() => {
+    // every element in the transcript that paints a horizontal line
+    const ruled = [...document.querySelectorAll('.chat-col *')]
+      .filter((el) => {
+        const cs = getComputedStyle(el);
+        const top = Number.parseFloat(cs.borderTopWidth) || 0;
+        const bot = Number.parseFloat(cs.borderBottomWidth) || 0;
+        return (top > 0 || bot > 0) && el.getBoundingClientRect().height > 0;
+      })
+      .map((el) => el.className);
+    // every 用户→agent boundary: an agent row whose left sibling is the user
+    // turn's action row
+    const turns = [...document.querySelectorAll('.chat-row--agent')]
+      .filter((row) => row.previousElementSibling?.classList.contains('chat-row-icons'))
+      .map((row) => {
+        const cs = getComputedStyle(row);
+        const rect = row.getBoundingClientRect();
+        const prev = row.previousElementSibling!.getBoundingClientRect();
+        return {
+          borderTop: cs.borderTopWidth,
+          paddingTop: cs.paddingTop,
+          gap: rect.top - prev.bottom,
+        };
+      });
+    return { ruled, turns };
+  });
+  // nothing in the transcript draws a line
+  expect(probe.ruled).toEqual([]);
+  // scenario 36 carries two such boundaries — the assertion is not vacuous
+  expect(probe.turns).toHaveLength(2);
+  for (const turn of probe.turns) {
+    expect(turn.borderTop).toBe('0px');
+    expect(turn.paddingTop).toBe('0px');
+    // more than the 14px consecutive-agent packing, well under the 48px the
+    // rule's own padding used to add
+    expect(turn.gap).toBeGreaterThanOrEqual(16);
+    expect(turn.gap).toBeLessThanOrEqual(32);
+  }
 });

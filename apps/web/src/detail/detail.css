@@ -668,16 +668,11 @@
   color: var(--text-dim);
 }
 
-/* XMON-55 P3: turn boundary. The transcript separated "the user asked" from
-   "the agent answered" with vertical air alone, so a long review read as one
-   unbroken block. The rule fires only where a user turn (which ends in its
-   action row) meets an agent row — consecutive agent rows keep packing at
-   14px with no divider between them. */
-.chat-row-icons + .chat-row--agent {
-  margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--border-default);
-}
+/* XMON-55 P3 first drew a full-bleed 1px rule here to mark the 用户→agent turn
+   boundary; across a transcript it read as a document <hr> rather than a change
+   of speaker, so it is gone (user 2026-10-01). The boundary rides the avatar
+   swap, the centered stamp and the row rhythm above — the default agent row
+   margin, not a line. chat-type-measure pins the air. */
 
 /* #306: the tool group's footer row doubles as its expander button —
    keep the div geometry, reset the button chrome */
