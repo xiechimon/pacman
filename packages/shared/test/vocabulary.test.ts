@@ -463,8 +463,8 @@ describe('brand slots (02 §5.8 收口 + 素材替换计划 §2 替换值正典)
 });
 
 describe('record projection (01 §6 / 03 M1; M4a +chief; M7 #308 +stop_pending; #310 +attachment; #319 +branch_sync; spec 12 +github_connection; spec 13 −skill −mcp_server; XMON-109 +skill_audit; XMON-108 +shell_command)', () => {
-  it('DB table registry is the 01 §6 list + chief + steer/stop_pending + attachment + branch_sync + github_connection − skill − mcp_server + skill_audit + shell_command (30 incl. the todo_tag join)', () => {
-    expect(DB_TABLES).toHaveLength(30);
+  it('DB table registry is the 01 §6 list + chief + steer/stop_pending + attachment + branch_sync + github_connection − skill − mcp_server + skill_audit + shell_command (31 incl. the todo_tag join)', () => {
+    expect(DB_TABLES).toHaveLength(31);
     expect(DB_TABLES).toContain('todo_tag');
     expect(DB_TABLES).toContain('chief');
     expect(DB_TABLES).toContain('attachment');
