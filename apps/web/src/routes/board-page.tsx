@@ -30,9 +30,14 @@ import { toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { AppSidebar } from '../board/app-sidebar.js';
 import { type BoardFilters, BoardSurface } from '../board/board.js';
+import type { FilterChip, FilterDimension } from '../board/filter-panel.js';
 import { NotificationBanner, useNotificationBanner } from '../board/notify-banner.js';
-import { matchesProjectFilter, parseProjectsParam, type RepoOption } from '../board/repo-filter.js';
-import { matchesTagFilter, parseTagParam } from '../board/tag-filter.js';
+import {
+  buildRepoOptions,
+  matchesProjectFilter,
+  parseProjectsParam,
+} from '../board/repo-filter.js';
+import { buildTagOptions, matchesTagFilter, parseTagParam } from '../board/tag-filter.js';
 import { ChiefDrawer } from '../chief/chief-drawer.js';
 import { ChiefFabIcon } from '../chief/chief-fab-icon.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
@@ -79,17 +84,19 @@ export function BoardPage() {
   const projectsQ = useProjects(teamId, live);
   const mutations = useApiMutations(teamId);
 
-  // —— #403/#445 看板筛选面：URL ?tags=（类型轴）与 ?projects=（仓库轴）
-  // 为唯一真值（刷新/分享不丢），选中集 = 词表名规范序 / 项目 id 字典序
-  // 规范序。标签数据源：live = 全项目标签集并查（useProjectTags；首载未
-  // 就绪不激活类型轴，防 tagged 卡闪隐），fixture = scenario.tags。仓库
-  // 数据源：live = useProjects，fixture = scenario.projectNames（absent =
-  // 仓库面不渲染，旧场景基线零漂移）；仓库轴零异步依赖——projectId 在卡
-  // 上，直达 URL 在项目列表落定前即可正确收窄。——
+  // —— #403/#445/XMON-57 看板筛选面：URL ?tags=（类型轴）与 ?projects=
+  // （仓库轴）为唯一真值（刷新/分享不丢），选中集 = 词表名字典序规范序 /
+  // 项目 id 字典序规范序。标签数据源：live = 全项目标签集并查
+  // （useProjectTags；首载未就绪不激活类型轴，防 tagged 卡闪隐），
+  // fixture = scenario.tags。仓库数据源：live = useProjects，
+  // fixture = scenario.projectNames；仓库轴零异步依赖——projectId 在卡上，
+  // 直达 URL 在项目列表落定前即可正确收窄。
+  // XMON-57：类型词表从静态 FIXED_TAGS 换成**作用域内真相**——项目标签集
+  // 并集的有序投影（ADR 0005 D2：github 形态词表 = 仓库真实 label 集）。
+  // 此前按 FIXED_TAGS 硬渲染 + 按它做白名单，live github 项目的真实 label
+  // 既进不了弹层也活不过一次 URL 往返，类型轴对这些项目等于失效。
   const rawTags = searchParams.get('tags');
   const rawProjects = searchParams.get('projects');
-  const selectedTags = useMemo(() => parseTagParam(rawTags), [rawTags]);
-  const selectedTagSet = useMemo(() => new Set(selectedTags), [selectedTags]);
   const selectedProjects = useMemo(() => parseProjectsParam(rawProjects), [rawProjects]);
   const selectedProjectSet = useMemo(() => new Set(selectedProjects), [selectedProjects]);
   const projectIds = useMemo(() => (projectsQ.data ?? []).map((p) => p.id), [projectsQ.data]);
@@ -99,20 +106,45 @@ export function BoardPage() {
     return {
       tagById: new Map(rows.map((tag) => [tag.id, tag] as const)),
       nameById: new Map(rows.map((tag) => [tag.id, tag.name] as const)),
+      ordered: rows,
       ready: true,
     };
   }, [fixture]);
   const tagIndex = live ? liveTags : fixtureTags;
   const typeReady = !live || tagIndex.ready;
-  // 组合谓词：仓库 AND 类型；类型轴的就绪闸内嵌（未就绪 = 类型放行，
-  // 防闪隐），谓词各自单源（repo-filter / tag-filter），此处不写第二份。
+  // 词表 = 有序投影去重后的名集。未就绪 = null（parseTagParam 据此返回空集，
+  // 调用面的 typeReady 闸不激活类型收窄）。去重保序：投影按 projectIds 字典序
+  // append，故同名不同色取的是规范序首个项目那行。
+  const tagVocab = useMemo(
+    () => (typeReady ? [...new Set(tagIndex.ordered.map((tag) => tag.name))] : null),
+    [typeReady, tagIndex.ordered],
+  );
+  const selectedTags = useMemo(() => parseTagParam(rawTags, tagVocab), [rawTags, tagVocab]);
+  const selectedTagSet = useMemo(() => new Set(selectedTags), [selectedTags]);
+  // 单轴谓词各自单源（repo-filter.ts / tag-filter.ts），组合谓词只做 AND，
+  // 此处不写第二份判定。
+  const repoOnly = useCallback(
+    (todo: TodoRecord) => matchesProjectFilter(todo, selectedProjectSet),
+    [selectedProjectSet],
+  );
+  const typeOnly = useCallback(
+    (todo: TodoRecord) => matchesTagFilter(todo, selectedTagSet, tagIndex.nameById),
+    [selectedTagSet, tagIndex.nameById],
+  );
+  // 组合谓词：仓库 AND 类型；类型轴的就绪闸内嵌（未就绪 = 类型放行，防闪隐）。
   const matchesBoth = useCallback(
-    (todo: TodoRecord) =>
-      matchesProjectFilter(todo, selectedProjectSet) &&
-      (typeReady ? matchesTagFilter(todo, selectedTagSet, tagIndex.nameById) : true),
-    [selectedProjectSet, typeReady, selectedTagSet, tagIndex.nameById],
+    (todo: TodoRecord) => repoOnly(todo) && (typeReady ? typeOnly(todo) : true),
+    [repoOnly, typeReady, typeOnly],
   );
   const filterActive = selectedProjects.length > 0 || (selectedTags.length > 0 && typeReady);
+  // 选项源（仓库轴）：live = 项目查询序，fixture = scenario.projectNames 书写序。
+  const repoSource = useMemo<{ id: string; name: string }[]>(
+    () =>
+      live
+        ? (projectsQ.data ?? []).map((p) => ({ id: p.id, name: p.name }))
+        : Object.entries(fixture.projectNames ?? {}).map(([id, name]) => ({ id, name })),
+    [live, projectsQ.data, fixture],
+  );
   // 写回 = 规范序 join，清空即删参；replace 不刷历史（筛选不是导航步）。
   // 其余参（scenario 等）原样保留——providers-page 着陆参同律。
   // 逗号段手工拼、其余参全权 URLSearchParams：票面要可读的字面逗号
@@ -137,14 +169,14 @@ export function BoardPage() {
   );
   const toggleTag = useCallback(
     (name: string) => {
-      // 规范序 = FIXED_TAGS 序：复用 parseTagParam 的规范化（单源，不另写
-      // 一份词表序过滤）。
+      // 规范序 = 字典序：复用 parseTagParam 的规范化（单源，不另写一份
+      // 词表序过滤）。词表参必须带上——否则新选的名会被自己的白名单丢掉。
       const next = selectedTags.includes(name)
         ? selectedTags.filter((n) => n !== name)
-        : parseTagParam([...selectedTags, name].join(','));
+        : parseTagParam([...selectedTags, name].join(','), tagVocab);
       writeFilterParams(next, selectedProjects);
     },
-    [selectedTags, selectedProjects, writeFilterParams],
+    [selectedTags, selectedProjects, tagVocab, writeFilterParams],
   );
   const toggleProject = useCallback(
     (id: string) => {
@@ -156,39 +188,41 @@ export function BoardPage() {
     },
     [selectedProjects, selectedTags, writeFilterParams],
   );
+  // 「仅此」= 把该维度的选集塌成单值（全选后取消一个的镜像操作）。
+  const onlyTag = useCallback(
+    (name: string) => writeFilterParams([name], selectedProjects),
+    [selectedProjects, writeFilterParams],
+  );
+  const onlyProject = useCallback(
+    (id: string) => writeFilterParams(selectedTags, [id]),
+    [selectedTags, writeFilterParams],
+  );
+  const clearTags = useCallback(() => {
+    if (selectedTags.length === 0) return;
+    writeFilterParams([], selectedProjects);
+  }, [selectedTags, selectedProjects, writeFilterParams]);
   const clearProjects = useCallback(() => {
     if (selectedProjects.length === 0) return;
     writeFilterParams(selectedTags, []);
   }, [selectedProjects, selectedTags, writeFilterParams]);
+  // 全选 = 写满词表 / 写满项目源。类型轴的「全选」与「无筛选」在命中上等价
+  // （无标签卡恒可见，全选后可见集与空选集相同），但写满而非清空——用户按的
+  // 是「全选」，读数就该是 6/6 而不是 0/6；等价是语义性质，不是按钮该有的
+  // 副作用。
+  // 规范序 = 字典序：词表自身是投影序（FIXED_TAGS 表序 / 项目 append 序），
+  // 直接写会与 toggle 走的 parseTagParam 规范序不一致——同一选集两种 URL。
+  const selectAllTags = useCallback(() => {
+    if (tagVocab == null) return;
+    writeFilterParams([...tagVocab].sort(), selectedProjects);
+  }, [tagVocab, selectedProjects, writeFilterParams]);
+  const selectAllProjects = useCallback(() => {
+    if (repoSource.length === 0) return;
+    writeFilterParams(selectedTags, repoSource.map((project) => project.id).sort());
+  }, [repoSource, selectedTags, writeFilterParams]);
   const clearFilters = useCallback(() => {
     if (selectedProjects.length === 0 && searchParams.get('tags') == null) return;
     writeFilterParams([], []);
   }, [selectedProjects, searchParams, writeFilterParams]);
-  // 仓库面渲染门：live 恒渲染（项目列表即数据源）；fixture 仅
-  // scenario.projectNames 在场时渲染（类型钮不受门控——右动作区恰好一钮）。
-  const repoOptions = useMemo<RepoOption[]>(
-    () =>
-      live
-        ? (projectsQ.data ?? []).map((p) => ({ id: p.id, name: p.name }))
-        : Object.entries(fixture.projectNames ?? {}).map(([id, name]) => ({ id, name })),
-    [live, projectsQ.data, fixture],
-  );
-  const filters: BoardFilters = {
-    ...(live || fixture.projectNames != null
-      ? {
-          repo: {
-            options: repoOptions,
-            selected: selectedProjects,
-            onToggle: toggleProject,
-            onClear: clearProjects,
-          },
-        }
-      : {}),
-    type: { selected: selectedTags, onToggle: toggleTag },
-    active: filterActive,
-    matches: matchesBoth,
-    onClear: clearFilters,
-  };
 
   // New-task dialog (#66): fixture phase has no backend, so a saved task
   // lives in this client-side set — the card lands in 待开始 with the
@@ -201,6 +235,77 @@ export function BoardPage() {
   );
   const liveTodos = useMemo(() => (todosQ.data ?? []).map(toDisplayTodo), [todosQ.data]);
   const todos = live ? liveTodos : fixtureTodos;
+
+  // —— XMON-57 筛选面板装配：两轴选项集（含计数）+ 生效筛选条 + 空态摘要。
+  // 计数口径 = **另一轴收窄后**的命中卡数——本轴自身的选中不参与，否则勾上
+  // 一个选项后其余全变 0，计数就失去导航意义（Multica 的 facet 计数同口径）。
+  const repoOptions = useMemo(
+    () => buildRepoOptions(repoSource, todos, typeOnly),
+    [repoSource, todos, typeOnly],
+  );
+  const tagOptions = useMemo(
+    () => buildTagOptions(tagIndex.ordered, todos, repoOnly, tagIndex.nameById),
+    [tagIndex.ordered, todos, repoOnly, tagIndex.nameById],
+  );
+  // 截断只发生在**读数**上（筛选条 / 空态摘要），选集本身从不截断。
+  const summarize = (labels: string[]): string =>
+    labels.length <= 2
+      ? labels.join(', ')
+      : `${labels.slice(0, 2).join(', ')} +${labels.length - 2}`;
+  const repoLabels = selectedProjects.map(
+    (id) => repoOptions.find((option) => option.id === id)?.name ?? id,
+  );
+  // 生效筛选条：一条一维度，点即清该维度；两轴皆空 = 无条可摘（不画常驻
+  // 「全部」pill——那会把「当前无筛选」表达成一个筛选）。类型轴未就绪时
+  // 不当生效项（同 filterActive 的就绪闸）。
+  const chips: FilterChip[] = [
+    ...(selectedProjects.length > 0
+      ? [{ key: 'repo', label: `${t('仓库')} · ${summarize(repoLabels)}`, onClear: clearProjects }]
+      : []),
+    ...(selectedTags.length > 0 && typeReady
+      ? [{ key: 'type', label: `${t('类型')} · ${summarize(selectedTags)}`, onClear: clearTags }]
+      : []),
+  ];
+  const dimensions: FilterDimension[] = [
+    {
+      key: 'repo',
+      name: '仓库',
+      choices: repoOptions.map((option) => ({
+        value: option.id,
+        label: option.name,
+        count: option.count,
+      })),
+      selected: selectedProjects,
+      onToggle: toggleProject,
+      onSelectAll: selectAllProjects,
+      onClear: clearProjects,
+      onOnly: onlyProject,
+    },
+    {
+      key: 'type',
+      name: '类型',
+      choices: tagOptions.map((option) => ({
+        value: option.name,
+        label: option.name,
+        color: option.color,
+        count: option.count,
+      })),
+      selected: selectedTags,
+      onToggle: toggleTag,
+      onSelectAll: selectAllTags,
+      onClear: clearTags,
+      onOnly: onlyTag,
+    },
+  ];
+  const filters: BoardFilters = {
+    dimensions,
+    chips,
+    totalSelected: selectedProjects.length + selectedTags.length,
+    active: filterActive,
+    matches: matchesBoth,
+    onClear: clearFilters,
+    summary: chips.map((chip) => chip.label).join(' · '),
+  };
   // 新建任务面（#389）：dialog 接线 = useNewTaskSurface（侧栏全局面共享同一
   // save 路径）；board 特有的只有 fixture 保存落点（本地卡 append，#66 律）
   // 与 eager 数据位（卡片级 开始 在 dialog 开之前就吃 firstAgentId）。

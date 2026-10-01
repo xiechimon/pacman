@@ -144,13 +144,21 @@ export function useProjectTags(projectIds: string[], enabled: boolean) {
   return useMemo(() => {
     const tagById = new Map<string, Pick<TagRecord, 'id' | 'name' | 'color'>>();
     const nameById = new Map<string, string>();
+    // XMON-57：**有序**投影。扁平 map 丢掉了 projectId，「同名不同色取哪个」
+    // 就无从判断；本数组按 queries 序（= projectIds 序 = 字典序规范序）
+    // append，先到先得即「取规范序首个项目的那行」，buildTagOptions 吃它。
+    const ordered: Pick<TagRecord, 'id' | 'name' | 'color'>[] = [];
+    const seen = new Set<string>();
     for (const q of queries) {
       for (const tag of q.data ?? []) {
+        if (seen.has(tag.id)) continue;
+        seen.add(tag.id);
+        ordered.push({ id: tag.id, name: tag.name, color: tag.color });
         tagById.set(tag.id, { id: tag.id, name: tag.name, color: tag.color });
         nameById.set(tag.id, tag.name);
       }
     }
-    return { tagById, nameById, ready: queries.every((q) => !q.isPending) };
+    return { tagById, nameById, ordered, ready: queries.every((q) => !q.isPending) };
   }, [queries]);
 }
 

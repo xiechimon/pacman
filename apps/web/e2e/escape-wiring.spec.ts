@@ -23,27 +23,50 @@ const typePopover = (page: Page) => page.locator('.type-filter-popover');
 const typeOption = (page: Page, name: string) =>
   page.locator(`.type-filter-option[data-tag="${name}"]`);
 
-/** window keydown 接线的增删探针：只数**调用**，不依赖应用内部结构。
- *  开层发生在探针安装之前（计数不含开层那一次），关层那一次 rem 是合法的。 */
+/** keydown 接线的增删探针：只数**调用**，不依赖应用内部结构。读点固定在
+ *  「开层期结束、关层之前」——关层本身必然 teardown，把它读进来就要额外论证
+ *  哪几次 rem 合法，而那几个数字是实现的指纹（手写族在 window 挂 1 条，
+ *  Base UI 在 document 挂 3 条/层），钉它等于钉实现而非钉律。开层期读则两条
+ *  机制同判：病根位（重挂）非零即红，teardown 不混入。
+ *
+ *  **数两个目标**：仓内两代弹层机制的落点不同——手写族（dismiss.tsx 的
+ *  useEscapeClose）挂 window，Base UI 的 useDismiss 挂 document
+ *  （floating-ui-react/hooks/useDismiss 实测）。只钉 window 会让走了新轨的
+ *  面得到空虚绿：接线明明在 document 上重挂，探针看不见。两个目标都数，
+ *  再由各用例只对**属于被测层的那一个**断言。 */
 async function installEscapeTap(page: Page) {
   await page.evaluate(() => {
-    const w = window as unknown as { __escTap: { adds: number; rems: number } };
-    w.__escTap = { adds: 0, rems: 0 };
-    const add = window.addEventListener.bind(window);
-    const rem = window.removeEventListener.bind(window);
-    window.addEventListener = ((type: string, fn: unknown, opts?: unknown) => {
-      if (type === 'keydown') w.__escTap.adds += 1;
-      return add(type, fn as EventListener, opts as boolean);
-    }) as typeof window.addEventListener;
-    window.removeEventListener = ((type: string, fn: unknown, opts?: unknown) => {
-      if (type === 'keydown') w.__escTap.rems += 1;
-      return rem(type, fn as EventListener, opts as boolean);
-    }) as typeof window.removeEventListener;
+    const w = window as unknown as {
+      __escTap: { winAdds: number; winRems: number; docAdds: number; docRems: number };
+    };
+    w.__escTap = { winAdds: 0, winRems: 0, docAdds: 0, docRems: 0 };
+    const tap = (target: Window | Document, addsKey: 'winAdds' | 'docAdds', remsKey: 'winRems' | 'docRems') => {
+      const add = target.addEventListener.bind(target);
+      const rem = target.removeEventListener.bind(target);
+      target.addEventListener = ((type: string, fn: unknown, opts?: unknown) => {
+        if (type === 'keydown') w.__escTap[addsKey] += 1;
+        return add(type, fn as EventListener, opts as boolean);
+      }) as typeof target.addEventListener;
+      target.removeEventListener = ((type: string, fn: unknown, opts?: unknown) => {
+        if (type === 'keydown') w.__escTap[remsKey] += 1;
+        return rem(type, fn as EventListener, opts as boolean);
+      }) as typeof target.removeEventListener;
+    };
+    tap(window, 'winAdds', 'winRems');
+    tap(document, 'docAdds', 'docRems');
   });
 }
 
 const readEscapeTap = (page: Page) =>
-  page.evaluate(() => (window as unknown as { __escTap: { adds: number; rems: number } }).__escTap);
+  page.evaluate(
+    () =>
+      (window as unknown as { __escTap: Record<string, number> }).__escTap as {
+        winAdds: number;
+        winRems: number;
+        docAdds: number;
+        docRems: number;
+      },
+  );
 
 async function openTypePopover(page: Page) {
   await typeBtn(page).click();
@@ -58,11 +81,19 @@ test('开着的层不被重渲染重挂 Escape 接线：URL 写回后单次 Esca
   await typeOption(page, 'chore').click();
   await expect(page).toHaveURL(/[\?&]tags=chore(&|$)/);
   await expect(page.locator('.board-filter-empty')).toBeVisible();
+  // 开层期零重挂——**在关层之前读**：关层本身必然产生一次 teardown，把它读
+  // 进来就要额外论证「哪几次 rem 是合法的」，而那几个数字是具体实现的指纹
+  // （手写族在 window 上挂 1 条，Base UI 在 document 上挂 2 条），钉它等于
+  // 钉实现而非钉律。开层期读则两条机制同判：病根位（重挂）非零即红，
+  // teardown 不混入。旧实现在此确定性红（URL 写回那次重渲染 rem+add）。
+  expect(await readEscapeTap(page)).toEqual({
+    winAdds: 0,
+    winRems: 0,
+    docAdds: 0,
+    docRems: 0,
+  });
   await page.keyboard.press('Escape');
   await expect(typePopover(page)).not.toBeVisible();
-  // 开层期零重挂（旧实现：URL 写回那次重渲染产生 rem+add）；唯一一次 rem =
-  // 关层本身。断言放在关层之后读取——无需任何计时等待即已落定。
-  expect(await readEscapeTap(page)).toEqual({ adds: 0, rems: 1 });
 });
 
 // —— #466：对话框族同根因钉（AlertDialogShell 的 Esc 接线）—————————————————
@@ -109,9 +140,18 @@ test('确认弹层不被根组件重渲染重挂 Escape 接线：⌘K 往返后�
   // 每次 commit 都重建确认层吃到的内联 onClose 箭头
   await toggleSearchPanel(page, 'visible');
   await toggleSearchPanel(page, 'hidden');
+  // 开层期零重挂（旧实现：⌘K 往返每次 commit 重挂一次，实测 win adds:2/rems:3）
+  // ——同 popover 钉，**关层之前读**，只钉律（重挂）不钉实现的 teardown 条数。
+  //
+  // **只断 window**：确认层走手写族（AlertDialogShell → dismiss.tsx 的
+  // useEscapeClose），落点在 window——这正是本钉的主体。document 上的增删
+  // 是 ⌘K 搜索面板（新轨，Base UI）自己开合产生的，与被测层无关；把它一并
+  // 钉成零会在「重渲染触发器恰好是另一个弹层」时变成假红。它另有一套律，
+  // 单列一条断言：**开过又关掉的层不留残线**（收支平衡，只断 parity 不断条数
+  // ——条数是实现指纹，parity 才是「没泄漏」）。
+  const tap = await readEscapeTap(page);
+  expect({ winAdds: tap.winAdds, winRems: tap.winRems }).toEqual({ winAdds: 0, winRems: 0 });
+  expect(tap.docAdds).toBe(tap.docRems);
   await page.keyboard.press('Escape');
   await expect(confirmDialog(page)).not.toBeVisible();
-  // 开层期零重挂（旧实现：⌘K 往返每次 commit 重挂一次，实测 adds:2/rems:3）；
-  // 唯一一次 rem = 关层本身。断言同 popover 钉：关层后读取，无计时等待。
-  expect(await readEscapeTap(page)).toEqual({ adds: 0, rems: 1 });
 });

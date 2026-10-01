@@ -16,10 +16,11 @@
 // 部布局走 tailwind 工具类（几何与 #351 的 board.css 规则逐条对齐），按钮走
 // components/ui/button；data-* 钩子、类别名锚点、dnd 逻辑全部原位。阶段点
 // 语义色（column.dot）不随 B 换。
-// #445 顶栏重排：左侧 = 仓库（项目）筛选 chip 组（repo-filter.tsx），右侧
-// 动作区恰好一钮 = 无底色类型过滤 popover 钮（tag-filter.tsx）；「+ 任务」
-// 撤除（与侧栏「新任务」行 + C 热键同 opener，第三入口退役）。任务卡渲染
-// 自己的标签 chip（tagsById 解析图 → cardTag，渲染上限 1）。
+// #445 顶栏重排 / XMON-57 收敛：左侧 = 生效筛选条（一条一维度，点即清该
+// 维度），右侧动作区恰好一钮 = 无底色筛选面板钮（filter-panel.tsx，仓库 +
+// 类型两段）；「+ 任务」撤除（与侧栏「新任务」行 + C 热键同 opener，第三
+// 入口退役）。任务卡渲染自己的标签 chip（tagsById 解析图 → cardTag，渲染
+// 上限 1）。
 
 import {
   closestCorners,
@@ -43,9 +44,9 @@ import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
 import { columnDropIndex, DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
-import { RepoFilterBar, type RepoOption } from './repo-filter.js';
+import { type FilterChip, FilterChips, type FilterDimension, FilterPanel } from './filter-panel.js';
 import { SortableCard } from './sortable-card.js';
-import { cardTag, TypeFilterButton } from './tag-filter.js';
+import { cardTag } from './tag-filter.js';
 import { TodoCard } from './todo-card.js';
 import './board.css';
 
@@ -119,22 +120,13 @@ function commitDrop(
  *  本面只消费现成谓词与回调（fixture/live 分支不渗进渲染层）。命中判定与
  *  URL 规范化单源在 repo-filter.tsx / tag-filter.tsx，此处不写第二份。 */
 export interface BoardFilters {
-  /** 仓库轴（#445）：absent = 无项目数据源，chip 组不渲染（旧 fixture
-   *  场景保持 r7 基线零漂移）。 */
-  repo?: {
-    options: RepoOption[];
-    /** 选中项目 id（字典序规范序）；空 = 全部态。 */
-    selected: string[];
-    onToggle: (id: string) => void;
-    /** 「全部」复位 = 只清仓库轴。 */
-    onClear: () => void;
-  };
-  /** 类型轴：固定词表 popover（恒渲染——右动作区「恰好一钮」钉扎）。 */
-  type: {
-    /** 选中词表名（FIXED_TAGS 规范序）；空 = 无收窄。 */
-    selected: string[];
-    onToggle: (name: string) => void;
-  };
+  /** XMON-57 统一筛选面板的两个维度（仓库 / 类型）。恒两段——作用域里没有
+   *  可选项时该段渲染空态行而非消失，面板形状跨场景稳定。 */
+  dimensions: readonly FilterDimension[];
+  /** 顶栏左侧生效筛选条：一条一维度，点即清该维度；空数组 = 无条可摘。 */
+  chips: readonly FilterChip[];
+  /** 两轴选中值总数（触发钮角标：收起态也读得出筛选在生效）。 */
+  totalSelected: number;
   /** true = 任一轴收窄生效（类型轴 live 首载未完时不激活，防 tagged 卡
    *  闪隐；仓库轴无异步依赖恒即态）。驱动空结果态门。 */
   active: boolean;
@@ -142,6 +134,8 @@ export interface BoardFilters {
   matches: (todo: TodoRecord) => boolean;
   /** 板级空结果态的清除钮 = 双轴一起复位。 */
   onClear: () => void;
+  /** 空结果态里的生效筛选具名（「卡是被筛选藏起来的，不是没有」）。 */
+  summary: string;
 }
 
 interface BoardProps {
@@ -327,22 +321,20 @@ export function BoardSurface({
         <div className="board-topbar-title pointer-events-none absolute inset-x-0 text-center text-sm leading-[22px] font-medium text-foreground">
           {t('工作台')}
         </div>
-        {/* #445 仓库筛选：顶栏左侧独立容器——不进 board-topbar-actions
+        {/* XMON-57 生效筛选条：顶栏左侧独立容器——不进 board-topbar-actions
             （dead-buttons 钉死右动作区恰好一钮）；标题带 absolute +
-            pointer-events-none，hit-test 不拦截 chip。 */}
-        {filters.repo != null && (
-          <RepoFilterBar
-            options={filters.repo.options}
-            selected={filters.repo.selected}
-            onToggle={filters.repo.onToggle}
-            onClear={filters.repo.onClear}
-          />
-        )}
+            pointer-events-none，hit-test 不拦截条。 */}
+        <FilterChips chips={filters.chips} onClearAll={filters.onClear} />
         <div className="board-topbar-actions ml-auto flex items-center pr-3">
-          {/* #445：恰好一钮 = 无底色类型过滤钮（board-type-filter 是 e2e
-              钉死的选择器别名）。「+ 任务」已撤——新建入口 = 侧栏
-              「新任务」行（sidebar-new-task）+ C 热键。 */}
-          <TypeFilterButton selected={filters.type.selected} onToggle={filters.type.onToggle} />
+          {/* 恰好一钮 = 无底色筛选钮（board-type-filter 是 e2e 钉死的选择器
+              别名，语义已从「类型轴」扩到「全轴筛选」，名字按 #411 别名
+              优先保留）。「+ 任务」已撤——新建入口 = 侧栏「新任务」行
+              （sidebar-new-task）+ C 热键。 */}
+          <FilterPanel
+            dimensions={filters.dimensions}
+            totalSelected={filters.totalSelected}
+            onClearAll={filters.onClear}
+          />
         </div>
       </header>
 
@@ -367,6 +359,13 @@ export function BoardSurface({
           {showFilterEmpty && (
             <div className="board-filter-empty col-span-4 flex h-full flex-col items-center justify-center gap-3">
               <span className="text-sm text-muted-foreground">{t('没有匹配筛选条件的任务')}</span>
+              {/* 具名生效筛选：空态要回答「我的卡去哪了」，只说「没有匹配」
+                  会读成「这些卡不存在」。 */}
+              {filters.summary !== '' && (
+                <span className="board-filter-empty-summary text-xs text-muted-foreground">
+                  {t('筛选生效：{summary}', { summary: filters.summary })}
+                </span>
+              )}
               <Button
                 variant="outline"
                 size="sm"
