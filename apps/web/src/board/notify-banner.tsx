@@ -10,8 +10,8 @@
 
 import { NOTIFICATION_BANNER_COPY } from '@pacman/shared';
 import { useCallback, useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { useI18n } from '../i18n/provider.js';
-import { Button } from '../ui/button.js';
 
 /** The 铃铛 glyph (r2 01/28: indigo bell on the tinted disc). Inline because
  *  apps/web/src/icons is generated (scripts/generate-icons.mjs) from the r7
@@ -93,12 +93,17 @@ export function NotificationBanner({ onEnable }: { onEnable: () => void }) {
         <div className="board-notify-banner-title">{t(NOTIFICATION_BANNER_COPY.title)}</div>
         <div className="board-notify-banner-body">{t(NOTIFICATION_BANNER_COPY.body)}</div>
       </div>
-      {/* A3 收编：Button primary/compact；board-notify-banner-action 是
-          e2e(notify-banner.spec) 钉死的选择器别名，布局差值留在 board.css。 */}
+      {/* spec16 #414 试点片收口（#561）：切 components/ui Button——brand 档
+          = 轨 A3 primary 等价迁移位（同 --card-button 实底），sm = compact
+          28px 档。像素纪律（零视觉重钉）：r2 实测 per-face 值（12px 内距 /
+          13px 字号 / 400 字重）按 todo-card 口径以工具类钉回。件本体 B 配方
+          差值（focus 环 #388 canon / 150ms 色过渡 / 1px 透明边）随全站
+          shadcn 件统一，属该收的口，PR body 列明。board-notify-banner-action
+          是 e2e(notify-banner.spec) 钉死的选择器别名，布局差值留在 board.css。 */}
       <Button
-        variant="primary"
-        size="compact"
-        className="board-notify-banner-action"
+        variant="brand"
+        size="sm"
+        className="board-notify-banner-action px-3 text-[13px] font-normal"
         onClick={onEnable}
       >
         {t(NOTIFICATION_BANNER_COPY.action)}
