@@ -14,10 +14,12 @@ import { SECRET_MIN_CLI_VERSION } from './secret.js';
 export const agentStatusSchema = z.enum(['active']);
 
 /** 权限面工具 6 开关 UI 词（r3 §4 全 list，文案 canon）。XMON-84 用户拍板 B：
- * 六档全保留——合并分支/推送分支有真实执法面（daemon merge/push 收尾闸 +
- * server requestMerge 闸，XMON-77）；其余四档（远程 shell/创建标签/创建技能/
- * 更新技能）无执行本体，本体另立规划票实现（保留期 = 照常持久化、无执法
- * 消费方的中间态，不造假 enforcement）。词表外值（自造档）写侧过滤退役。
+ * 六档全保留。执法面现状：合并分支/推送分支 = daemon merge/push 收尾闸 +
+ * server requestMerge 闸（XMON-77）；远程 shell = 机器双闸（agent 开关 ∩
+ * machine.shellEnabled，claim + 每命令预检，XMON-108 R1）+ daemon 工具本体
+ * （#597）+ chief 写点（XMON-115）；创建技能/更新技能 = worker relay 逐词
+ * 403（chief 步免开关，信任面）。创建标签暂无执法消费方（保留期 = 照常
+ * 持久化，不造假 enforcement）。词表外值（自造档）写侧过滤退役。
  * wire 值未观测（样本 tools:[] 恒空）[推断]——tools[] 不收窄为枚举。 */
 export const AGENT_TOOL_SWITCHES = [
   '远程 shell',
