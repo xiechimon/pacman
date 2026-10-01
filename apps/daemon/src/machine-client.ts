@@ -9,6 +9,8 @@ import {
   type MachineEnrollResponse,
   type MachineRecord,
   type MachineRecoverResponse,
+  type MachineShellPrecheckResponse,
+  type MachineShellResultBody,
   type MachineSteerResponse,
   type MachineStopResponse,
   type MachineStreamEvent,
@@ -21,6 +23,8 @@ import {
   machineOkResponseSchema,
   machineRecordSchema,
   machineRecoverResponseSchema,
+  machineShellPrecheckResponseSchema,
+  machineShellResultResponseSchema,
   machineSteerResponseSchema,
   machineStopResponseSchema,
   machineStreamEventSchema,
@@ -105,6 +109,18 @@ export interface MachineApi {
    * （server transition 函数守面）。失败抛错由上层 catch——不回滚已落 sync
    * 状态，仅日志报警 [设计]。 */
   syncResult(syncId: string, body: MachineSyncResultBody): Promise<void>;
+  /** machine shell 每命令预检（XMON-108 R1 / XMON-110 R2）：
+   * POST /api/machine/shell/{stepId}。200 → {allowed, runId}（schema 对拍）；
+   * 403 → MachineApiError（body = server {error} 原因原文，denied 审计行已
+   * 落库）；其余非 2xx / 网络错误原样抛。**不重试**——预检非幂等（server 每
+   * 调用落一行审计，重试丢响应 = 孤儿 running 行）；失败面由 shell-channel
+   * 按「预检失败」口径回报 agent。超时 REMOTE_TOOL_TIMEOUT_MS。 */
+  shellPrecheck(stepId: string, command: string): Promise<MachineShellPrecheckResponse>;
+  /** machine shell 执行终态回写：POST /api/machine/shell/{runId}/result。
+   * server 终态幂等（重复回写 = 200 不改写）→ 5xx/网络错误按
+   * REMOTE_TOOL_RETRY_DELAYS_MS 重试（重放安全）；4xx（409 denied 行 /
+   * 404 / 403 跨机）= 协议错，单次即抛。 */
+  shellResult(runId: string, body: MachineShellResultBody): Promise<void>;
   stream(
     signal: AbortSignal,
     onEvent: (ev: MachineStreamEvent) => void,
@@ -379,6 +395,64 @@ export class MachineClient implements MachineApi {
       body,
       parse: (raw) => machineSyncResultResponseSchema.parse(raw),
     });
+  }
+
+  async shellPrecheck(stepId: string, command: string): Promise<MachineShellPrecheckResponse> {
+    const token = this.opts.getToken?.();
+    const res = await this.fetchImpl(this.url(`/api/machine/shell/${stepId}`), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ command }),
+      signal: AbortSignal.timeout(REMOTE_TOOL_TIMEOUT_MS),
+    });
+    const raw = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (!res.ok) {
+      // 403 的 {error} = 双闸拒绝原因原文（shell-channel 直接回报 agent）；
+      // 其余非 2xx 无原因字段时按状态码兜底。
+      const msg =
+        typeof raw?.error === 'string' ? raw.error : `shell precheck failed (HTTP ${res.status})`;
+      throw new MachineApiError(res.status, msg);
+    }
+    return machineShellPrecheckResponseSchema.parse(raw);
+  }
+
+  async shellResult(runId: string, body: MachineShellResultBody): Promise<void> {
+    // 重试预算 = relayTool replaySafe 同族：server 终态幂等（XMON-108 R1
+    // 「重复回写 = 幂等 200 不改写」）使网络重试/丢响应重放安全；4xx 是协议
+    // 事实（denied 行 409 / runId 404 / 跨机 403），重试只会重复同一拒绝。
+    const delays = [...REMOTE_TOOL_RETRY_DELAYS_MS];
+    let lastErr: unknown;
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      try {
+        const token = this.opts.getToken?.();
+        const res = await this.fetchImpl(this.url(`/api/machine/shell/${runId}/result`), {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            ...(token ? { authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(REMOTE_TOOL_TIMEOUT_MS),
+        });
+        if (res.ok) {
+          machineShellResultResponseSchema.parse(await res.json().catch(() => null));
+          return;
+        }
+        const err = new MachineApiError(res.status, await res.text());
+        if (res.status < 500) throw err;
+        lastErr = err;
+      } catch (err) {
+        if (err instanceof MachineApiError && err.status < 500) throw err;
+        lastErr = err;
+      }
+      const delay = delays[attempt];
+      if (delay === undefined) break;
+      await new Promise((r) => setTimeout(r, delay));
+    }
+    throw lastErr instanceof Error ? lastErr : new Error('shell result writeback failed');
   }
 
   /** wake SSE（02 §1.2 机器通道）：帧解析回调；连接断开自然返回。 */

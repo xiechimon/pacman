@@ -14,6 +14,7 @@ import type {
   AgentSessionHandle,
   AgentTokenUsage,
   ClaimedStep,
+  LocalToolDef,
   PreparedWorkspace,
   ProviderConfig,
   SessionOpts,
@@ -23,6 +24,7 @@ import {
   AGENT_TOOL_MERGE,
   AGENT_TOOL_PUSH,
   FIXED_TAGS,
+  LOCAL_TOOL_REMOTE_SHELL,
   PLAN_FILE_NAME,
   parseReviewPromptMeta,
   REMOTE_TOOL_RETRY_DELAYS_MS,
@@ -38,6 +40,7 @@ import type { DaemonLogger } from './log.js';
 import type { MachineApi } from './machine-client.js';
 import { extractReviewVerdict } from './review-findings.js';
 import { buildSecretTool } from './secret-channel.js';
+import { buildRemoteShellTool } from './shell-channel.js';
 import type { StatePaths } from './state.js';
 
 /** 停止请求（M7 #308）：discard = 确认弹层「丢弃本轮修改」勾选位——
@@ -370,6 +373,20 @@ export async function runStep(
         onAudit: (line) => logger.step(line),
       })
     : null;
+  // 远程 shell 执行通道（XMON-110 R2）：注册面 = claim localTools（server 算好
+  // 双闸「agent 远程 shell ∩ machine.shellEnabled」下发；worker 恒携带含 []、
+  // chief 不携带 = 不注册，fail-closed）。词缺席 = 开关关，agent 工具面不出现
+  // 该词（密钥通道按 kind 裁剪同律）；每条命令的真实闸在 server 预检端点
+  // （POST /api/machine/shell/{stepId}，审计行先于放行），本进程无策略。
+  const remoteShellTool = (claimed.localTools ?? []).includes(LOCAL_TOOL_REMOTE_SHELL)
+    ? buildRemoteShellTool({
+        wire: client,
+        stepId,
+        cwd,
+        onAudit: (line) => logger.step(line),
+      })
+    : null;
+  const localToolDefs = [secretTool, remoteShellTool].filter((t): t is LocalToolDef => t !== null);
   const sessionOpts: SessionOpts = {
     provider,
     modelId: agent.modelId,
@@ -377,7 +394,7 @@ export async function runStep(
     ...(systemPrompt ? { systemPrompt } : {}),
     cwd,
     ...(prompt !== null ? { prompt } : {}),
-    ...(secretTool ? { localTools: [secretTool] } : {}),
+    ...(localToolDefs.length > 0 ? { localTools: localToolDefs } : {}),
     ...(remoteTools && remoteTools.length > 0
       ? {
           remoteTools,
