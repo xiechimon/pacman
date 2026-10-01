@@ -583,7 +583,7 @@ export function ProjectPage() {
       }
       selected="none"
       leftTitle={project?.name ?? ''}
-      // #389: N 热键/侧栏行走本页 dialog（保存锚路由项目，#305 律）
+      // #389: C 热键/侧栏行走本页 dialog（保存锚路由项目，#305 律）
       onNewTask={openNewTask}
       tabs={[
         { id: 'tasks', label: '任务' },

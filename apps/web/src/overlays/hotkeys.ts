@@ -1,4 +1,4 @@
-// Global hotkey wiring (issues #389, #442, #468): N opens the new-task
+// Global hotkey wiring (issues #389, #442, #468): C opens the new-task
 // dialog from any route (open-only, matching the row click semantics);
 // ⌘J (Ctrl+J off macOS) TOGGLES the chief drawer — the second press closes
 // what the first opened (#468), while the FAB click stays open-only. Each
@@ -79,9 +79,11 @@ function useChordHotkey(
   }, [key, guard, onFire]);
 }
 
-/** N → 新建任务 dialog（AppSidebar 全局面；行点击与热键共用一个 opener）。 */
+/** C → 新建任务 dialog（AppSidebar 全局面；行点击与热键共用一个 opener）。
+ *  字符键而非和弦：与 ⌘K 搜索、⌘J 总管三键同在守卫族下——输入态吞键，
+ *  其余场合裸按即开。 */
 export function useNewTaskHotkey(onOpen: () => void): void {
-  useHotkey('n', isEditableTarget, onOpen);
+  useHotkey('c', isEditableTarget, onOpen);
 }
 
 /** ⌘J / Ctrl+J → 总管抽屉 toggle（useChiefSurface 全局面；#468 起可开

@@ -7,7 +7,7 @@
 // #121: the nav rows (rail + expanded, team name and 新建项目 included) are
 // react-router Links — SPA hops carrying the live ?search= along.
 // #127: the avatar chips toggle the user-menu popover (OverlayMount +
-// ClickCatcher + Esc). #389: 新任务 row joins 搜索, sharing the global N
+// ClickCatcher + Esc). #389: 新任务 row joins 搜索, sharing the global C
 // hotkey opener.
 // #414 (shadcn 试点): 视觉层切 B（neutral）token + tailwind 工具类，
 // sidebar.css 随之整件退役——行 pill 的 ::before 层译成 before: 工具类，
@@ -80,7 +80,7 @@ interface BoardSidebarProps {
   attention?: number;
   /** Opens the ⌘K search panel (issue #67); the 搜索 rows are triggers. */
   onSearch?: () => void;
-  /** Opens the new-task dialog (issue #389); the 新任务 row + N hotkey share
+  /** Opens the new-task dialog (issue #389); the 新任务 row + C hotkey share
    *  this opener (AppSidebar resolves own-dialog routes vs the global one). */
   onNewTask: () => void;
   /** Render the 用量 nav row (present from the 05b capture day on). */
@@ -417,7 +417,7 @@ export function BoardSidebar({
             ⌘K
           </span>
         </button>
-        {/* #389: 新任务行动作行——点击与全局 N 热键同一 opener；行序钉在
+        {/* #389: 新任务行动作行——点击与全局 C 热键同一 opener；行序钉在
             搜索 之后（sidebar-visual 的 .sidebar-kbd 单数探针吃首枚 ⌘K）。
             #445: sidebar-new-task = 可钉别名（顶栏「+ 任务」撤除后，本行是
             新建入口的唯一点击面——e2e/integration 的 opener 与焦点回落断言
@@ -432,7 +432,7 @@ export function BoardSidebar({
           </span>
           <span className="sidebar-row-label ml-3 truncate">{t('新任务')}</span>
           <span className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2 rounded-[3px] border border-border px-[3px] py-px text-[11px] leading-4 text-muted-foreground">
-            N
+            C
           </span>
         </button>
         <Link

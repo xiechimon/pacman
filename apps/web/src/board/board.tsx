@@ -18,7 +18,7 @@
 // 语义色（column.dot）不随 B 换。
 // #445 顶栏重排：左侧 = 仓库（项目）筛选 chip 组（repo-filter.tsx），右侧
 // 动作区恰好一钮 = 无底色类型过滤 popover 钮（tag-filter.tsx）；「+ 任务」
-// 撤除（与侧栏「新任务」行 + N 热键同 opener，第三入口退役）。任务卡渲染
+// 撤除（与侧栏「新任务」行 + C 热键同 opener，第三入口退役）。任务卡渲染
 // 自己的标签 chip（tagsById 解析图 → cardTag，渲染上限 1）。
 
 import {
@@ -341,7 +341,7 @@ export function BoardSurface({
         <div className="board-topbar-actions ml-auto flex items-center pr-3">
           {/* #445：恰好一钮 = 无底色类型过滤钮（board-type-filter 是 e2e
               钉死的选择器别名）。「+ 任务」已撤——新建入口 = 侧栏
-              「新任务」行（sidebar-new-task）+ N 热键。 */}
+              「新任务」行（sidebar-new-task）+ C 热键。 */}
           <TypeFilterButton selected={filters.type.selected} onToggle={filters.type.onToggle} />
         </div>
       </header>
@@ -457,7 +457,11 @@ export function BoardSurface({
  *  accept drops (useDroppable id = column id). #504: the list is the
  *  column's scroll surface — the 37px header stays fixed while cards
  *  overflow (overflow-y rides the same native-scrollbar convention as
- *  .secondary-body / .res-body). */
+ *  .secondary-body / .res-body). XMON-42: the 1px block padding is load
+ *  bearing — a scroll container clips at its padding box while the card's
+ *  ring is a box-shadow drawn outside the border box, so with a zero block
+ *  inset the topmost card (and, scrolled to the end, the bottommost one)
+ *  loses that edge; the inline axis already carries 7.25px of inset. */
 function ColumnList({
   columnId,
   empty,
@@ -472,7 +476,7 @@ function ColumnList({
   const { setNodeRef } = useDroppable({ id: columnId });
   return (
     <div
-      className="board-column-list relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-[7.25px]"
+      className="board-column-list relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-[7.25px] py-px"
       ref={setNodeRef}
       data-column-list={columnId}
     >

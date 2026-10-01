@@ -380,7 +380,7 @@ export function BoardPage() {
         onThread={onThread}
         onNewThread={onNewThread}
       />
-      {/* #389: dialog 接线全走 useNewTaskSurface（侧栏 N 热键/新任务行
+      {/* #389: dialog 接线全走 useNewTaskSurface（侧栏 C 热键/新任务行
           的 opener 也指这里——openNewTask）；fixture 保存落点 = 本页
           onFixtureSave 本地卡 append（#66 律）。 */}
       <NewTaskDialog {...newTaskDialogProps} />

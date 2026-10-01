@@ -15,7 +15,7 @@ const BOARD = '/app?scenario=01';
 
 async function openDialog(page: Page) {
   await page.goto(BOARD);
-  // #445：顶栏「+ 任务」撤除——opener = 侧栏「新任务」行（N 热键同解析）
+  // #445：顶栏「+ 任务」撤除——opener = 侧栏「新任务」行（C 热键同解析）
   await page.locator('.sidebar-new-task').click();
   const dialog = page.locator('.new-task-dialog');
   await expect(dialog).toBeVisible();
