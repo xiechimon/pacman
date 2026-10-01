@@ -93,7 +93,6 @@ export const EN: Record<string, string> = {
   // —— todo detail (r7 §3.3–§3.6) ——
   'Token 用量': 'Token usage',
   运行历史: 'Run history',
-  尚无运行内容: 'No run content yet',
   打开方案: 'Open plan',
   添加附件: 'Add attachment',
   'AI 审核': 'AI review',
@@ -455,6 +454,9 @@ export const EN: Record<string, string> = {
   失败: 'Failed',
   默认: 'Default',
   开始任务: 'Start task',
+  // XMON-55 P0: the hint that rides the 开始 button on the fresh brief
+  '点开始后选执行机器，Agent 在你的机器上跑':
+    'Pick a machine after starting — the agent runs on your machine',
   '规划与执行分用不同 Agent': 'Use different agents for planning and execution',
   先做规划: 'Plan first',
   立即执行: 'Run now',

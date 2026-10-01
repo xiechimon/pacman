@@ -56,13 +56,6 @@
       "evidence": ["sizeDistribution: 12px ×40, 15px ×21, 11px ×14", "headings: {} — zero h1-h6 elements", "nav item 12px/500, thread body 15px/400 lh=24px (1.6), primary button 12px/500", "max font size on page is 15px"]
     },
     {
-      "name": "One Card Per Screen",
-      "trigger": "When deciding how to group content in the thread column — agent messages, attachments, cancel events, warnings",
-      "decision": "Chose to leave every thread event naked on the paper background and reserve card treatment (12px radius, #F2EDE6 fill, 1px border) for exactly one element — the message composer — over card-per-message grouping",
-      "reason": "The composer is the only place the user acts; giving it the page's sole rounded, filled, bordered surface makes 'where do I type' answerable at peripheral-vision speed, while card-per-message turns a log into a coupon sheet",
-      "evidence": ["card heuristics: exactly 1 card (697×84, r=12px, border #E2DBD1, bg #F2EDE6)", "radii: 12px ×9 reserved for this surface class vs 6px ×26 for controls", "send button r=8px nests inside composer r=12px (concentric)"]
-    },
-    {
       "name": "Warm Paper over Blue-Gray",
       "trigger": "When picking the neutral ramp for a developer operations tool — a category defaulting to #FFFFFF backgrounds and blue-tinted slate grays",
       "decision": "Chose a fully warm stone ramp — #FAF7F2 paper background, #1C1917→#A8A29E text, #E2DBD1 borders — over cool gray/white, accepting a less tech-cliché first impression",

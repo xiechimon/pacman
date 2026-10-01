@@ -5,15 +5,16 @@ import { expect, test } from '@playwright/test';
 // pane (docs/design/todos.dev.md grid). The right pane owns the doc
 // surface (plan/changes/diff) plus the three former head-icon overlays
 // (分支与 PR / Token 用量 / 运行历史) as static pane sections picked from
-// the document-type select; fresh phases park a restrained empty state
-// there at the same 488px. The composer is the only card in the center
-// column. Each test pins one failure way of the rework:
+// the document-type select; fresh phases render no right pane at all
+// (XMON-55 P0 — the brief takes the whole center column). The composer is
+// the only card in the center column. Each test pins one failure way of the
+// rework:
 //   1. pane widths/abutment wrong  2. tab group survives somewhere
 //   3. head icon trio survives     4. composer escapes the center column,
 //      loses its card form, or overlays the transcript again (#472)
 //   5. section switching dead      6. frozen pane-view scenarios
-//      (30/31/32) still pop dialogs  7. fresh phase collapses the right
-//      pane or loses the fresh block
+//      (30/31/32) still pop dialogs  7. fresh phase keeps the empty right
+//      pane or loses the brief's primary action
 
 const DETAIL_ROUTE = '/app/todo/7ve0iOkQ-JBpSL98zSiGc';
 const FRESH = '/app/todo/fresh-probe?scenario=23';
@@ -113,6 +114,58 @@ test('composer stays in-flow inside the center column: card form, 16px insets, s
   expect(geo.colPadBottom).toBeGreaterThanOrEqual(16);
 });
 
+test('composer controls share one bottom row: stop is the send button\'s sibling', async ({
+  page,
+}) => {
+  // XMON-55 P5. The stop used to be a 14x14 bare --stop block at right:72 /
+  // bottom:17 — 27px adrift of the send button, 4px off its centre line, and
+  // with no glyph inside. This pins the four ways it can regress.
+  await page.goto(`${DETAIL_ROUTE}?scenario=26`);
+  const geo = await page.evaluate(() => {
+    const rect = (sel: string) => {
+      const r = document.querySelector(sel)!.getBoundingClientRect();
+      return {
+        l: r.left,
+        r: r.right,
+        w: r.width,
+        h: r.height,
+        cy: (r.top + r.bottom) / 2,
+      };
+    };
+    const tool = document.querySelector('.composer-tool')!;
+    const toolGlyph = tool.querySelector('svg')!.getBoundingClientRect();
+    const ph = document.querySelector('.composer-placeholder')!.getBoundingClientRect();
+    const phCs = getComputedStyle(document.querySelector('.composer-placeholder')!);
+    const stopCs = getComputedStyle(document.querySelector('.composer-stop')!);
+    const sendCs = getComputedStyle(document.querySelector('.composer-send')!);
+    return {
+      stop: rect('.composer-stop'),
+      send: rect('.composer-send'),
+      toolCy: (tool.getBoundingClientRect().top + tool.getBoundingClientRect().bottom) / 2,
+      toolGlyphL: toolGlyph.left,
+      phTextL: ph.left + Number.parseFloat(phCs.paddingLeft),
+      stopFill: stopCs.backgroundColor,
+      sendFill: sendCs.backgroundColor,
+      stopGlyph: document.querySelectorAll('.composer-stop-glyph').length,
+    };
+  });
+  // a real hit target, not a 14px smudge
+  expect(geo.stop.w).toBe(32);
+  expect(geo.stop.h).toBe(32);
+  // one row, one axis — stop and send share the centre line the toolbar sits
+  // on. The 30px tool box against the 32px buttons leaves 1px of parity, so
+  // the tolerance is 1; the drift this pins was 9px (bottom 4 vs bottom 12).
+  expect(geo.stop.cy).toBeCloseTo(geo.send.cy, 0);
+  expect(Math.abs(geo.toolCy - geo.send.cy)).toBeLessThanOrEqual(1);
+  // an 8px sibling gap, not an orphaned 27px float
+  expect(geo.send.l - geo.stop.r).toBeCloseTo(8, 0);
+  // the red is carried by the glyph, so the fill matches the send button's
+  expect(geo.stopFill).toBe(geo.sendFill);
+  expect(geo.stopGlyph).toBe(1);
+  // the toolbar's ink starts on the placeholder text's own left edge
+  expect(Math.abs(geo.toolGlyphL - geo.phTextL)).toBeLessThanOrEqual(2);
+});
+
 test('composer width tracks the center column across both pane states (488 pane / 418 chief dock)', async ({
   page,
 }) => {
@@ -193,16 +246,34 @@ test('plan card activation in the thread opens the plan doc in the right pane', 
   await expect(page.locator('.doc-pane-body .doc-block').first()).toBeVisible();
 });
 
-test('fresh phase: fresh block centers, right pane holds the 488px empty state', async ({
+test('fresh phase: the brief owns the whole center column, right pane collapses', async ({
   page,
 }) => {
   await page.goto(FRESH);
+  // XMON-55 P0 (reverses #366 修订裁决 3): a fresh todo has no run content, so
+  // the 488px pane that existed only to say 「尚无运行内容」 is gone and the
+  // fresh block takes the full fluid remainder instead.
   await expect(page.locator('.detail-center .fresh-block')).toBeVisible();
-  const right = page.locator('.detail-right');
-  await expect(right).toBeVisible();
-  const width = await right.evaluate((el) => Math.round(el.getBoundingClientRect().width));
-  expect(width).toBe(488);
-  await expect(page.locator('.right-empty')).toBeVisible();
-  await expect(page.locator('.right-empty')).toContainText('尚无运行内容');
+  await expect(page.locator('.detail-right')).toHaveCount(0);
+  await expect(page.locator('.right-empty')).toHaveCount(0);
   await expect(page.locator('.doc-pane')).toHaveCount(0);
+  const center = await page
+    .locator('.detail-center')
+    .evaluate((el) => Math.round(el.getBoundingClientRect().width));
+  expect(center).toBe(1440 - 240);
+
+  // the task title now names the page twice: in the 44px head (XMON-55 P1, so
+  // the reader knows which task they are on while scrolled into the thread) and
+  // on the brief itself
+  await expect(page.locator('.fresh-title')).toHaveText(
+    '在 README.md 末尾追加一行「r7 rebaseline probe」',
+  );
+  await expect(page.locator('.detail-title')).toHaveText(
+    '在 README.md 末尾追加一行「r7 rebaseline probe」',
+  );
+  const start = page.locator('.detail-center .fresh-start');
+  await expect(start).toBeVisible();
+  await expect(start).toHaveText('开始');
+  await start.click();
+  await expect(page.locator('.overlay-title')).toHaveText('开始任务');
 });
