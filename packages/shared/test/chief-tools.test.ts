@@ -3,11 +3,11 @@
 // （名单实测；description/parameters 细形 [推断] 黑盒逼近，04 §1 A4 边界——
 // 本测试只钉「名单与分组」的实测面，不为 [推断] 细形背书）。
 // 现行词表 = raw − CHIEF_TOOLS_REMOVED + CHIEF_TOOLS_ADDED（divergence
-// 双向登记：除名两件 = spec 13 #367 delete_skills——技能改本地目录投影，
-// 无删除面；XMON-77 set_remote_shell——「远程 shell」本体未实现（开关已随
-// XMON-84 用户拍板 B 恢复，写入点随本体在规划票里重新设计，词条维持除名）；
-// 加入两件 = XMON-109 spec 13 回摆 create_skill/update_skill——chief 自动
-// 制作/维护技能收进 scope。raw 键集冻结不改。）
+// 双向登记：除名一件 = spec 13 #367 delete_skills——技能改本地目录投影，
+// 无删除面；set_remote_shell 曾随 XMON-77 除名（本体未实现），XMON-115 随
+// R1/R2 本体落地恢复；加入两件 = XMON-109 spec 13 回摆
+// create_skill/update_skill——chief 自动制作/维护技能收进 scope。
+// raw 键集冻结不改。）
 
 import { describe, expect, it } from 'vitest';
 import {
@@ -83,7 +83,7 @@ const RAW_TOOL_DEF_HASH_KEYS = [
   'workflow_runs',
 ];
 
-describe('49 词表（raw 49 − 除名 2 + 新增 2）', () => {
+describe('50 词表（raw 49 − 除名 1 + 新增 2）', () => {
   const rawKeys: string[] = RAW_TOOL_DEF_HASH_KEYS;
   const removed: readonly string[] = CHIEF_TOOLS_REMOVED;
   const added: readonly string[] = CHIEF_TOOLS_ADDED;
@@ -92,9 +92,9 @@ describe('49 词表（raw 49 − 除名 2 + 新增 2）', () => {
     ...added,
   ].sort();
 
-  it('raw 键集恰 49 件；现行词表 = raw − 除名 + 新增 = 49 件', () => {
+  it('raw 键集恰 49 件；现行词表 = raw − 除名 + 新增 = 50 件', () => {
     expect(rawKeys).toHaveLength(49);
-    expect(CHIEF_TOOL_COUNT).toBe(49);
+    expect(CHIEF_TOOL_COUNT).toBe(50);
     expect(CHIEF_TOOL_COUNT).toBe(rawKeys.length - removed.length + added.length);
   });
 
@@ -103,8 +103,8 @@ describe('49 词表（raw 49 − 除名 2 + 新增 2）', () => {
     expect(CHIEF_REMOTE_TOOLS.map((t) => t.name).sort()).toEqual(expected);
   });
 
-  it('除名登记 = delete_skills + set_remote_shell；新增登记 = create_skill + update_skill（divergence 全量双向）', () => {
-    expect(removed).toEqual(['delete_skills', 'set_remote_shell']);
+  it('除名登记 = delete_skills；新增登记 = create_skill + update_skill（divergence 全量双向）', () => {
+    expect(removed).toEqual(['delete_skills']);
     expect(added).toEqual(['create_skill', 'update_skill']);
     for (const name of removed) {
       expect(CHIEF_TOOL_NAMES).not.toContain(name);
@@ -117,11 +117,25 @@ describe('49 词表（raw 49 − 除名 2 + 新增 2）', () => {
     }
   });
 
-  it('分组 = 读 15 + 组织 19 + 执行 5 + 私有 10（raw 实数 − 两件除名 + 两件新增）', () => {
+  it('分组 = 读 15 + 组织 20 + 执行 5 + 私有 10（raw 实数 − 一件除名 + 两件新增）', () => {
     expect(CHIEF_TOOL_CATEGORIES.read).toHaveLength(15);
-    expect(CHIEF_TOOL_CATEGORIES.organize).toHaveLength(19);
+    expect(CHIEF_TOOL_CATEGORIES.organize).toHaveLength(20);
     expect(CHIEF_TOOL_CATEGORIES.execute).toHaveLength(5);
     expect(CHIEF_TOOL_CATEGORIES.private).toHaveLength(10);
+  });
+
+  // XMON-115：set_remote_shell 随「远程 shell」本体落地（R1 #590 机器双闸 +
+  // R2 #597 daemon 工具）恢复词条——形状钉 pre-#573 原样（raw 键集成员，
+  // 组织位 = delete_secrets 与 schedule_todo 之间）。
+  it('set_remote_shell 词条恢复：组织位 + agentId/enabled 必填 + 写侧不标 replaySafe', () => {
+    expect(rawKeys).toContain('set_remote_shell');
+    expect(CHIEF_TOOL_NAMES).toContain('set_remote_shell');
+    expect(CHIEF_TOOL_CATEGORIES.organize).toContain('set_remote_shell');
+    const def = CHIEF_REMOTE_TOOLS.find((t) => t.name === 'set_remote_shell');
+    expect(def).toBeDefined();
+    expect(def?.replaySafe).toBeUndefined();
+    const params = def?.parameters as { required?: string[] };
+    expect(params.required).toEqual(['agentId', 'enabled']);
   });
 
   it('读侧全 replaySafe（bundle 提取：读工具带重试预算，r5 §3.1）；写侧不标', () => {

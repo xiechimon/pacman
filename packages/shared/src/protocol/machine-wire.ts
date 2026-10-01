@@ -209,7 +209,7 @@ export const claimedStepSchema = z.object({
       trigger: z.enum(['user', 'gate', 'settle', 'failed', 'wake']),
     })
     .optional(),
-  /** remoteTools[]（服务端定义、服务端执行；chief 步 = 49 词表全量，
+  /** remoteTools[]（服务端定义、服务端执行；chief 步 = 50 词表全量，
    * protocol/chief-tools.ts；worker 步 = 记忆三件套 WORKER_MEMORY_REMOTE_TOOLS，
    * 02 §4.4/r5 §6「worker 侧同族工具经 remoteTools 下发」。位形一手 = bundle
    * 提取，r5 §3.1）。 */

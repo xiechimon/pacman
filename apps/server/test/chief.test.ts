@@ -6,6 +6,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+  AGENT_TOOL_PUSH,
+  AGENT_TOOL_SHELL,
   CHIEF_REMOTE_TOOLS,
   CHIEF_TOOL_NAMES,
   CHIEF_TOOLS_ADDED,
@@ -23,6 +25,7 @@ import {
   chiefThread,
   plan as planTable,
   step as stepTable,
+  team as teamTable,
   todo as todoTable,
 } from '../src/db/schema.js';
 import { HttpError } from '../src/lib/errors.js';
@@ -76,6 +79,10 @@ function ctx(over: Partial<ChiefToolCtx> = {}): ChiefToolCtx {
 async function relay(name: string, params: Record<string, unknown>, over?: Partial<ChiefToolCtx>) {
   const text = await executeChiefTool(toolDeps(), ctx(over), name, params);
   return JSON.parse(text) as unknown;
+}
+
+function toolsOf(id: string): string[] {
+  return s.db.select().from(agentTable).where(eq(agentTable.id, id)).get()!.tools;
 }
 
 function seedAgent(id: string, description: string, modelId = 'stub-model') {
@@ -717,9 +724,9 @@ describe('驳回回路 plan v2 + unified diff（r5 §4/02 §4.2）', () => {
   });
 });
 
-// —— 结构契约: 49 词表 relay 白名单（raw 49 − 除名 2 + 新增 2，XMON-109）——————
+// —— 结构契约: 50 词表 relay 白名单（raw 49 − 除名 1 + 新增 2，XMON-109/115）——
 
-describe('49 词表 relay 执行面（02 §4.3）', () => {
+describe('50 词表 relay 执行面（02 §4.3）', () => {
   test('词表外工具名 → 400（白名单纪律，不执行）', async () => {
     let status = 0;
     try {
@@ -730,25 +737,121 @@ describe('49 词表 relay 执行面（02 §4.3）', () => {
     expect(status).toBe(400);
   });
 
-  // XMON-77：set_remote_shell 已除名（「远程 shell」本体未实现；开关虽已随
-  // XMON-84 用户拍板 B 恢复，写入点随本体在规划票里重新设计，词条维持除名）。
-  // relay 此名
-  // 落 default = 400，与 delete_skills 同律。
-  test('set_remote_shell → 400 unknown chief tool（XMON-77 除名）', async () => {
+  // XMON-115：set_remote_shell 写点恢复——「远程 shell」本体已落地（R1 #590
+  // 机器双闸授权 + 每命令预检、R2 #597 daemon remote_shell 工具），#573 期
+  // 「无消费方的假闸」除名理由消失。语义同 pre-#573：对目标 agent.tools
+  // 增删「远程 shell」，与 REST PATCH /agents/{aid} 写同一字段、同过
+  // filterAgentTools——双入口单真值。机器层闸（machine.shellEnabled）不在此
+  // 写：claim 双闸矩阵由 machine-shell.test.ts 钉死，本组只钉 agent 层写点；
+  // 写点落库 = agent.tools 字段本体，claim localTools 反射由两处既有测试
+  // 合成覆盖（本组钉字段值，machine-shell 钉字段 → localTools 映射）。
+  test('set_remote_shell enabled=true 增词：只加「远程 shell」，他开关不动，重复 grant 幂等', async () => {
+    s.db
+      .update(agentTable)
+      .set({ tools: [AGENT_TOOL_PUSH] })
+      .where(eq(agentTable.id, AGENT2_ID))
+      .run();
+    const out = (await relay('set_remote_shell', { agentId: AGENT2_ID, enabled: true })) as {
+      agentId: string;
+      remoteShell: boolean;
+      tools: string[];
+    };
+    expect(out).toEqual({
+      agentId: AGENT2_ID,
+      remoteShell: true,
+      tools: [AGENT_TOOL_PUSH, AGENT_TOOL_SHELL],
+    });
+    expect(toolsOf(AGENT2_ID)).toEqual([AGENT_TOOL_PUSH, AGENT_TOOL_SHELL]);
+    // 幂等：重复 grant 不重复词。
+    await relay('set_remote_shell', { agentId: AGENT2_ID, enabled: true });
+    expect(toolsOf(AGENT2_ID)).toEqual([AGENT_TOOL_PUSH, AGENT_TOOL_SHELL]);
+  });
+
+  test('set_remote_shell enabled=false 删词：只删「远程 shell」，他开关不动，词不在也不报错', async () => {
+    s.db
+      .update(agentTable)
+      .set({ tools: [AGENT_TOOL_PUSH, AGENT_TOOL_SHELL] })
+      .where(eq(agentTable.id, AGENT2_ID))
+      .run();
+    const out = (await relay('set_remote_shell', { agentId: AGENT2_ID, enabled: false })) as {
+      remoteShell: boolean;
+      tools: string[];
+    };
+    expect(out.remoteShell).toBe(false);
+    expect(out.tools).toEqual([AGENT_TOOL_PUSH]);
+    expect(toolsOf(AGENT2_ID)).toEqual([AGENT_TOOL_PUSH]);
+    // 幂等：词已不在，revoke 不报错、不误增。
+    await relay('set_remote_shell', { agentId: AGENT2_ID, enabled: false });
+    expect(toolsOf(AGENT2_ID)).toEqual([AGENT_TOOL_PUSH]);
+  });
+
+  test('set_remote_shell enabled 缺省 = true（pre-#573 语义：缺省即授权）', async () => {
+    await relay('set_remote_shell', { agentId: AGENT2_ID });
+    expect(toolsOf(AGENT2_ID)).toEqual([AGENT_TOOL_SHELL]);
+  });
+
+  test('set_remote_shell 写侧过 filterAgentTools：存量残值随写清退（REST PATCH 同律）', async () => {
+    s.db
+      .update(agentTable)
+      .set({ tools: [AGENT_TOOL_PUSH, '词表外残值'] })
+      .where(eq(agentTable.id, AGENT2_ID))
+      .run();
+    await relay('set_remote_shell', { agentId: AGENT2_ID, enabled: true });
+    expect(toolsOf(AGENT2_ID)).toEqual([AGENT_TOOL_PUSH, AGENT_TOOL_SHELL]);
+  });
+
+  test('set_remote_shell 跨团队 agentId → 404，不写（requireTeamAgent 纵深防御）', async () => {
+    s.db.insert(teamTable).values({ id: 'team-b', name: 'B', createdAt: nowMs() }).run();
+    s.db
+      .insert(agentTable)
+      .values({
+        id: 'agent-b-1',
+        teamId: 'team-b',
+        displayName: 'agent-b-1',
+        description: 'B 队 agent',
+        status: 'active',
+        avatarUrl: null,
+        provider: 'stub-gw',
+        modelId: 'stub-model',
+        thinkingLevel: null,
+        tools: [],
+        secrets: [],
+        skills: [],
+        mcpServers: [],
+      })
+      .run();
     let status = 0;
-    let message = '';
     try {
-      await relay('set_remote_shell', { agentId: AGENT_ID, enabled: true });
+      await relay('set_remote_shell', { agentId: 'agent-b-1', enabled: true });
     } catch (err) {
       status = err instanceof HttpError ? err.status : 0;
-      message = err instanceof HttpError ? err.message : '';
     }
-    expect(status).toBe(400);
-    expect(message).toContain('set_remote_shell');
-    // agent 行未被写（无远端 shell 残值落库）。
-    expect(s.db.select().from(agentTable).where(eq(agentTable.id, AGENT_ID)).get()!.tools).toEqual(
-      [],
-    );
+    expect(status).toBe(404);
+    expect(toolsOf('agent-b-1')).toEqual([]);
+  });
+
+  test('set_remote_shell 不存在 agentId → 404', async () => {
+    let status = 0;
+    try {
+      await relay('set_remote_shell', { agentId: 'agent-nope', enabled: true });
+    } catch (err) {
+      status = err instanceof HttpError ? err.status : 0;
+    }
+    expect(status).toBe(404);
+  });
+
+  test('set_remote_shell 双入口单真值：chief 写 → REST GET 回读一致；REST PATCH 写 → chief agents 投影一致', async () => {
+    await relay('set_remote_shell', { agentId: AGENT2_ID, enabled: true });
+    const get = await req(s.app, 'GET', `/api/teams/${teamId}/agents/${AGENT2_ID}`);
+    expect(get.status).toBe(200);
+    expect(((await get.json()) as { tools: string[] }).tools).toContain(AGENT_TOOL_SHELL);
+    // 反向：REST PATCH 摘掉开关，chief 读投影同字段同值。
+    const patch = await req(s.app, 'PATCH', `/api/teams/${teamId}/agents/${AGENT2_ID}`, {
+      tools: [AGENT_TOOL_PUSH],
+    });
+    expect(patch.status).toBe(200);
+    const agents = (await relay('agents', {})) as Array<{ id: string; tools: string[] }>;
+    expect(agents.find((a) => a.id === AGENT2_ID)!.tools).toEqual([AGENT_TOOL_PUSH]);
   });
 
   test('读工具 replaySafe 标记与执行一致（抽样 projects/todos/machines）', async () => {
@@ -778,9 +881,10 @@ describe('49 词表 relay 执行面（02 §4.3）', () => {
     };
     walk(doc);
     expect(found.length).toBeGreaterThan(0);
-    // divergence 双向登记（XMON-109 spec 13 回摆）：raw 观测 49 键冻结，现行
-    // 词表 = raw − CHIEF_TOOLS_REMOVED（delete_skills/set_remote_shell）
-    // + CHIEF_TOOLS_ADDED（create_skill/update_skill，chief 免开关）。
+    // divergence 双向登记（XMON-109 spec 13 回摆 / XMON-115 恢复）：raw 观测
+    // 49 键冻结，现行词表 = raw − CHIEF_TOOLS_REMOVED（delete_skills；
+    // set_remote_shell 已随本体落地恢复）+ CHIEF_TOOLS_ADDED
+    // （create_skill/update_skill，chief 免开关）。
     const removed: readonly string[] = CHIEF_TOOLS_REMOVED;
     const added: readonly string[] = CHIEF_TOOLS_ADDED;
     const expected = (found[0] as string[]).filter(

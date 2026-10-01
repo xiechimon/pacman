@@ -143,7 +143,7 @@ describe('worker 步记忆 relay（r5 §6 写路径 = agent 工具 → 服务端
     s.dispose();
   });
 
-  test('chief 49 词表不外溢：worker 步 relay 非记忆工具 = 400（组织/执行面 Chief 专属）', async () => {
+  test('chief 50 词表不外溢：worker 步 relay 非记忆工具 = 400（组织/执行面 Chief 专属）', async () => {
     const { s, token, step } = await world();
     for (const name of ['create_todo', 'run_builds', 'projects']) {
       const res = await relay(s.app, token, step.step.id, name, {});
