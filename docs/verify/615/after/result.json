@@ -1,0 +1,86 @@
+{
+  "probe": "chief-drawer",
+  "ok": true,
+  "at": "2026-10-01T23:21:40.796Z",
+  "stack": {
+    "api": "http://127.0.0.1:8795",
+    "web": "http://127.0.0.1:5277",
+    "homeDir": "/Users/xmon/.herdr/worktrees/pacman/hp-pacman-t-0026/.claude/verify-run/home"
+  },
+  "checks": [
+    {
+      "name": "api-team-ready",
+      "ok": true,
+      "detail": "teamId=GqLM_xDkTJgSCd3cfH6RA"
+    },
+    {
+      "name": "offboard-gate-rendered",
+      "ok": true,
+      "detail": "非 board 门控条设置钮在"
+    },
+    {
+      "name": "offboard-gate-reaches-settings",
+      "ok": true,
+      "detail": "落 board 设置视图（参已消费剥除）"
+    },
+    {
+      "name": "seed-bound",
+      "ok": true,
+      "detail": "agent=mbRW7ffLMhrjCYrPoHMM-"
+    },
+    {
+      "name": "model-row-is-control",
+      "ok": true,
+      "detail": "模型行 = button[aria-haspopup=dialog]"
+    },
+    {
+      "name": "model-row-carries-agent-avatar",
+      "ok": true,
+      "detail": "行首 = 绑定 Agent 头像 img"
+    },
+    {
+      "name": "dialog-lists-provider-models",
+      "ok": true,
+      "detail": "dialog 开；含铺底两模型=true；含默认行=true"
+    },
+    {
+      "name": "pick-persists-and-echoes",
+      "ok": true,
+      "detail": "GET chief.model={\"provider\":\"verify-gw-89462\",\"modelId\":\"v-model-b-89462\"}；行回显含=false（v-model-b-89462）"
+    },
+    {
+      "name": "sqlite-row-holds-override",
+      "ok": true,
+      "detail": "chief.model 行={\"provider\":\"verify-gw-89462\",\"modelId\":\"v-model-b-89462\"}"
+    },
+    {
+      "name": "reload-echo",
+      "ok": true,
+      "detail": "重载后行=v-model-b-89462"
+    },
+    {
+      "name": "default-row-clears-to-inherit",
+      "ok": true,
+      "detail": "GET chief.model=null；行=v-model-a-89462 · 默认"
+    },
+    {
+      "name": "copy-button-writes-clipboard",
+      "ok": true,
+      "detail": "剪贴板读回=\"验证复制钮的一句话。\""
+    },
+    {
+      "name": "dead-glyphs-removed",
+      "ok": true,
+      "detail": "裸 svg：tools=0 foot=0"
+    }
+  ],
+  "artifacts": [
+    "01-offboard-settings.png",
+    "02-bound-model-row.png",
+    "06-drawer-head.png",
+    "03-model-dialog.png",
+    "04-after-pick.png",
+    "05-copy-feedback.png"
+  ],
+  "agentId": "mbRW7ffLMhrjCYrPoHMM-"
+}
