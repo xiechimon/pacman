@@ -1,0 +1,648 @@
+{
+  "label": "pr",
+  "baseUrl": "http://127.0.0.1:8477",
+  "ranAt": "2026-10-01T01:31:37.283Z",
+  "checks": [
+    {
+      "id": "A1.01",
+      "title": "最上端卡片上缘与滚动容器裁切线有让位（01）",
+      "ok": true,
+      "detail": "min gapTop=1px（列 pending:1 done:1，padTop=1px）",
+      "evidence": {
+        "geo": [
+          {
+            "column": "pending",
+            "count": 1,
+            "firstId": "r3-legacy-1",
+            "padTop": "1px",
+            "padBottom": "1px",
+            "gapTop": 1,
+            "gapLeft": 7.25,
+            "gapRight": 7.25,
+            "gapBottomAtRest": 676.5,
+            "scrollable": false
+          },
+          {
+            "column": "done",
+            "count": 1,
+            "firstId": "r3-legacy-2",
+            "padTop": "1px",
+            "padBottom": "1px",
+            "gapTop": 1,
+            "gapLeft": 7.25,
+            "gapRight": 7.25,
+            "gapBottomAtRest": 676.5,
+            "scrollable": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "A2.01",
+      "title": "左右卡缘让位未被本次改动影响（01）",
+      "ok": true,
+      "detail": "min 横向 gap=7.25px",
+      "evidence": {}
+    },
+    {
+      "id": "A3.01",
+      "title": "首卡上缘 1px 画的是卡环不是列底色（01）",
+      "ok": true,
+      "detail": "y=94 rgb=223,223,222；列底色参考 rgb=245,245,245 → 卡环在位",
+      "evidence": {
+        "strip": [
+          {
+            "y": 92,
+            "rgb": [
+              245,
+              245,
+              245
+            ]
+          },
+          {
+            "y": 93,
+            "rgb": [
+              245,
+              245,
+              245
+            ]
+          },
+          {
+            "y": 94,
+            "rgb": [
+              223,
+              223,
+              222
+            ]
+          },
+          {
+            "y": 95,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "y": 96,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "y": 97,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          }
+        ],
+        "bgRef": [
+          245,
+          245,
+          245
+        ],
+        "cardTop": 95,
+        "column": "pending",
+        "card": "r3-legacy-1"
+      }
+    },
+    {
+      "id": "A4.01",
+      "title": "滚到底末卡下缘让位（01）",
+      "ok": true,
+      "detail": "该场景无滚动列，跳过（不适用）",
+      "evidence": {}
+    },
+    {
+      "id": "A1.board-overflow",
+      "title": "最上端卡片上缘与滚动容器裁切线有让位（board-overflow）",
+      "ok": true,
+      "detail": "min gapTop=1px（列 todo:1，padTop=1px）",
+      "evidence": {
+        "geo": [
+          {
+            "column": "todo",
+            "count": 12,
+            "firstId": "overflow-01",
+            "padTop": "1px",
+            "padBottom": "1px",
+            "gapTop": 1,
+            "gapLeft": 7.25,
+            "gapRight": 7.25,
+            "gapBottomAtRest": -431,
+            "scrollable": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "A2.board-overflow",
+      "title": "左右卡缘让位未被本次改动影响（board-overflow）",
+      "ok": true,
+      "detail": "min 横向 gap=7.25px",
+      "evidence": {}
+    },
+    {
+      "id": "A3.board-overflow",
+      "title": "首卡上缘 1px 画的是卡环不是列底色（board-overflow）",
+      "ok": true,
+      "detail": "y=94 rgb=223,223,222；列底色参考 rgb=245,245,245 → 卡环在位",
+      "evidence": {
+        "strip": [
+          {
+            "y": 92,
+            "rgb": [
+              245,
+              245,
+              245
+            ]
+          },
+          {
+            "y": 93,
+            "rgb": [
+              245,
+              245,
+              245
+            ]
+          },
+          {
+            "y": 94,
+            "rgb": [
+              223,
+              223,
+              222
+            ]
+          },
+          {
+            "y": 95,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "y": 96,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "y": 97,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          }
+        ],
+        "bgRef": [
+          245,
+          245,
+          245
+        ],
+        "cardTop": 95,
+        "column": "todo",
+        "card": "overflow-01"
+      }
+    },
+    {
+      "id": "A4.board-overflow",
+      "title": "滚到底末卡下缘与裁切线有让位（board-overflow）",
+      "ok": true,
+      "detail": "min gapBottom=1px，scrollTop=432",
+      "evidence": {
+        "bottom": [
+          {
+            "column": "todo",
+            "lastId": "overflow-12",
+            "scrollTop": 432,
+            "gapBottom": 1,
+            "x": 398,
+            "lastBottom": 885
+          }
+        ]
+      }
+    },
+    {
+      "id": "A1.board-repos",
+      "title": "最上端卡片上缘与滚动容器裁切线有让位（board-repos）",
+      "ok": true,
+      "detail": "min gapTop=1px（列 todo:1 building:1 pending:1，padTop=1px）",
+      "evidence": {
+        "geo": [
+          {
+            "column": "todo",
+            "count": 1,
+            "firstId": "repofilter-a",
+            "padTop": "1px",
+            "padBottom": "1px",
+            "gapTop": 1,
+            "gapLeft": 7.25,
+            "gapRight": 7.25,
+            "gapBottomAtRest": 696.5,
+            "scrollable": false
+          },
+          {
+            "column": "building",
+            "count": 1,
+            "firstId": "repofilter-b",
+            "padTop": "1px",
+            "padBottom": "1px",
+            "gapTop": 1,
+            "gapLeft": 7.25,
+            "gapRight": 7.25,
+            "gapBottomAtRest": 696.5,
+            "scrollable": false
+          },
+          {
+            "column": "pending",
+            "count": 1,
+            "firstId": "repofilter-c",
+            "padTop": "1px",
+            "padBottom": "1px",
+            "gapTop": 1,
+            "gapLeft": 7.25,
+            "gapRight": 7.25,
+            "gapBottomAtRest": 696.5,
+            "scrollable": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "A2.board-repos",
+      "title": "左右卡缘让位未被本次改动影响（board-repos）",
+      "ok": true,
+      "detail": "min 横向 gap=7.25px",
+      "evidence": {}
+    },
+    {
+      "id": "A3.board-repos",
+      "title": "首卡上缘 1px 画的是卡环不是列底色（board-repos）",
+      "ok": true,
+      "detail": "y=94 rgb=223,223,222；列底色参考 rgb=245,245,245 → 卡环在位",
+      "evidence": {
+        "strip": [
+          {
+            "y": 92,
+            "rgb": [
+              245,
+              245,
+              245
+            ]
+          },
+          {
+            "y": 93,
+            "rgb": [
+              245,
+              245,
+              245
+            ]
+          },
+          {
+            "y": 94,
+            "rgb": [
+              223,
+              223,
+              222
+            ]
+          },
+          {
+            "y": 95,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "y": 96,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          {
+            "y": 97,
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          }
+        ],
+        "bgRef": [
+          245,
+          245,
+          245
+        ],
+        "cardTop": 95,
+        "column": "todo",
+        "card": "repofilter-a"
+      }
+    },
+    {
+      "id": "A4.board-repos",
+      "title": "滚到底末卡下缘让位（board-repos）",
+      "ok": true,
+      "detail": "该场景无滚动列，跳过（不适用）",
+      "evidence": {}
+    },
+    {
+      "id": "A5",
+      "title": "首卡上缘截图留证（8× 左上角 + 4× 列顶 + 1× 整屏）",
+      "ok": true,
+      "detail": "card-corner-8x, column-top-4x",
+      "evidence": {
+        "shots": [
+          {
+            "name": "card-corner-8x",
+            "zoom": 8,
+            "box": {
+              "x": 261,
+              "y": 87,
+              "w": 64,
+              "h": 26,
+              "cardTop": 95,
+              "listTop": 94
+            },
+            "path": "/tmp/xmon43-ev-pr/shots/pr-card-corner-8x.png"
+          },
+          {
+            "name": "column-top-4x",
+            "zoom": 4,
+            "box": {
+              "x": 265,
+              "y": 92,
+              "w": 260,
+              "h": 46,
+              "cardTop": 95,
+              "listTop": 94
+            },
+            "path": "/tmp/xmon43-ev-pr/shots/pr-column-top-4x.png"
+          }
+        ]
+      }
+    },
+    {
+      "id": "B1",
+      "title": "同看板内连续切换卡片：每次落点与整页新开逐字一致，返回后看板如初",
+      "ok": true,
+      "detail": "三轮（A→B→A）落点全等，看板复原，无控制台/网络故障",
+      "evidence": {
+        "landings": [
+          {
+            "id": "r3-legacy-1",
+            "path": "/app/todo/r3-legacy-1?scenario=01",
+            "shellId": "r3-legacy-1",
+            "menus": 0,
+            "dialogs": 0
+          },
+          {
+            "id": "r3-legacy-2",
+            "path": "/app/todo/r3-legacy-2?scenario=01",
+            "shellId": "r3-legacy-2",
+            "menus": 0,
+            "dialogs": 0
+          },
+          {
+            "id": "r3-legacy-1",
+            "path": "/app/todo/r3-legacy-1?scenario=01",
+            "shellId": "r3-legacy-1",
+            "menus": 0,
+            "dialogs": 0
+          }
+        ],
+        "diffs": [
+          {
+            "id": "r3-legacy-1",
+            "diffs": [],
+            "residMenus": 0,
+            "residDialogs": 0
+          },
+          {
+            "id": "r3-legacy-2",
+            "diffs": [],
+            "residMenus": 0,
+            "residDialogs": 0
+          },
+          {
+            "id": "r3-legacy-1",
+            "diffs": [],
+            "residMenus": 0,
+            "residDialogs": 0
+          }
+        ],
+        "boardDiffs": [],
+        "faults": []
+      }
+    },
+    {
+      "id": "B4",
+      "title": "同看板内逐张扫掠（12 张卡）：每张落点与新开一致，无残留状态",
+      "ok": true,
+      "detail": "12/12 张全等，无控制台/网络故障",
+      "evidence": {
+        "cards": 12,
+        "mismatches": [],
+        "faults": []
+      }
+    },
+    {
+      "id": "B2",
+      "title": "同看板内换卡（同路由换参，不重挂载）：落点与新开一致",
+      "ok": true,
+      "detail": "换到 r3-legacy-2，与整页新开逐字一致，无残留浮层",
+      "evidence": {
+        "before": {
+          "path": "/app/todo/r3-legacy-1?scenario=01",
+          "shellId": "r3-legacy-1"
+        },
+        "after": {
+          "path": "/app/todo/r3-legacy-2?scenario=01",
+          "shellId": "r3-legacy-2",
+          "menus": 0,
+          "dialogs": 0
+        },
+        "rows": 2
+      }
+    },
+    {
+      "id": "B3",
+      "title": "开着「更多」菜单换卡：浮层不跟到下一张卡",
+      "ok": true,
+      "detail": "换到 r3-legacy-2 后浮层已关闭（menus=0 dialogs=0）",
+      "evidence": {
+        "menuBefore": 4,
+        "after": {
+          "shellId": "r3-legacy-2",
+          "menus": 0,
+          "dialogs": 0
+        }
+      }
+    },
+    {
+      "id": "C1",
+      "title": "两张不同看板之间来回切换：各自落点与新开一致，数据面不串",
+      "ok": true,
+      "detail": "board-overflow → overflow-01、01 → r3-legacy-1 均与新开逐字一致",
+      "evidence": {
+        "boardOverflowColumns": [
+          {
+            "column": "todo",
+            "cards": [
+              "overflow-01",
+              "overflow-02",
+              "overflow-03",
+              "overflow-04",
+              "overflow-05",
+              "overflow-06",
+              "overflow-07",
+              "overflow-08",
+              "overflow-09",
+              "overflow-10",
+              "overflow-11",
+              "overflow-12"
+            ]
+          },
+          {
+            "column": "building",
+            "cards": []
+          },
+          {
+            "column": "pending",
+            "cards": []
+          },
+          {
+            "column": "done",
+            "cards": []
+          }
+        ],
+        "board01Columns": [
+          {
+            "column": "todo",
+            "cards": []
+          },
+          {
+            "column": "building",
+            "cards": []
+          },
+          {
+            "column": "pending",
+            "cards": [
+              "r3-legacy-1"
+            ]
+          },
+          {
+            "column": "done",
+            "cards": [
+              "r3-legacy-2"
+            ]
+          }
+        ],
+        "backColumns": [
+          {
+            "column": "todo",
+            "cards": []
+          },
+          {
+            "column": "building",
+            "cards": []
+          },
+          {
+            "column": "pending",
+            "cards": [
+              "r3-legacy-1"
+            ]
+          },
+          {
+            "column": "done",
+            "cards": [
+              "r3-legacy-2"
+            ]
+          }
+        ],
+        "landings": [
+          {
+            "path": "/app/todo/overflow-01?scenario=board-overflow",
+            "shellId": "overflow-01",
+            "menus": 0,
+            "dialogs": 0
+          },
+          {
+            "path": "/app/todo/r3-legacy-1?scenario=01",
+            "shellId": "r3-legacy-1",
+            "menus": 0,
+            "dialogs": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "D2",
+      "title": "仓内看板面（.board-column 结构）只出现在 /app 一条路由",
+      "ok": true,
+      "detail": "带看板列的路由：/app?scenario=01",
+      "evidence": {
+        "found": [
+          {
+            "route": "/app?scenario=01",
+            "boardColumns": 4
+          },
+          {
+            "route": "/app/project/ZAQczKCu0MOAzC1ZqcFlX?scenario=prj-tasks",
+            "boardColumns": 0
+          },
+          {
+            "route": "/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings?scenario=prj-tasks",
+            "boardColumns": 0
+          },
+          {
+            "route": "/app/todo/r3-legacy-1?scenario=01",
+            "boardColumns": 0
+          },
+          {
+            "route": "/app/team?scenario=01",
+            "boardColumns": 0
+          },
+          {
+            "route": "/app/schedules?scenario=01",
+            "boardColumns": 0
+          },
+          {
+            "route": "/app/account?scenario=01",
+            "boardColumns": 0
+          },
+          {
+            "route": "/app/resources/machines?scenario=01",
+            "boardColumns": 0
+          },
+          {
+            "route": "/app/resources/skills?scenario=01",
+            "boardColumns": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "D1",
+      "title": "全流程无 console error / 页面异常 / 失败请求",
+      "ok": true,
+      "detail": "0 条（27 个页面上下文）",
+      "evidence": {
+        "faults": []
+      }
+    }
+  ],
+  "passed": 20,
+  "total": 20,
+  "failedIds": []
+}
