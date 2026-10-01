@@ -287,7 +287,10 @@
 
 /* XMON-117：行盒（分隔线 / 内垫 / 底色）由模板的 .profile-row 给，本类只留
    定位句柄与两行的对齐档（记忆行是双行文本，不居中而顶对齐）。 */
-.agent-memory-row {
+/* 复合选择器而非裸类名：本类与模板的 .profile-row 同层同权重（两者都是单类），
+   靠模块图加载顺序决定谁赢是赌——profile-card.js 先于本文件被 import 才恰好
+   压住，换个 import 次序行就悄悄回中。抬到两类的特异性即与顺序无关。 */
+.profile-row.agent-memory-row {
   align-items: flex-start;
   gap: 12px;
 }
@@ -304,7 +307,7 @@
 /* 零密钥空态 + 出路（XMON-80/P3）。空态文案保持自己的 <p>（既有 e2e 钉着
    它的文本），入口是同级兄弟，不塞进那段文字里；行盒仍是模板的 .profile-row
    （空态也住卡里，不脱出模板）。 */
-.agent-perm-empty-row {
+.profile-row.agent-perm-empty-row {
   align-items: baseline;
   gap: 8px;
 }
