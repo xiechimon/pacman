@@ -432,8 +432,19 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
       hour = (hour + 1) % 24;
     }
     const pad = (n: number) => String(n).padStart(2, '0');
-    await page.locator('select[aria-label="时"]').selectOption(pad(hour));
-    await page.locator('select[aria-label="分"]').selectOption(pad(minute));
+    // XMON-75：时 / 分从原生 <select> 换成 components/ui/select.tsx（触发钮 +
+    // FloatingShell 弹层 + role=listbox/option 行），原生 select 形态在界面里
+    // 已清零。定位改钉新组件的语义钩子：触发钮与弹层共用同一个 aria-label
+    // （时 / 分），行按值取——选择即关面，故两槽各开一次。
+    const pickSelect = async (slot: string, value: string) => {
+      await page.locator(`button[aria-label="${slot}"]`).click();
+      await page
+        .locator(`[role="listbox"][aria-label="${slot}"]`)
+        .getByRole('option', { name: value, exact: true })
+        .click();
+    };
+    await pickSelect('时', pad(hour));
+    await pickSelect('分', pad(minute));
     await page.locator('.sched-form-save').click();
     // 卡落列表（invalidate 重取）。
     await pexpect(page.locator('.sched-card')).toBeVisible({ timeout: 15_000 });
