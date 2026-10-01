@@ -208,9 +208,17 @@ test('非空授权集里两项都缺时，两处开关都被点名', async ({ pa
 test('空授权集放行（存量豁免）：从未保存过权限 tab 的 Agent 不被拦', async ({ page }) => {
   // 库里 agent.tools 是 notNull().default('[]')，「从未保存」与「显式全关」同值。
   // 判空集为缺 = 把所有存量 Agent 一刀切成禁按（PR #579 CI 红即此因）。
+  // 两个入口各钉一次：豁免是本轮新开的支，只测一个入口等于放纵另一处漏接。
   await openBoardAccept(page, []);
   await expect(page.locator('.dlg-accept-done')).toBeEnabled();
   await expect(page.locator('.dlg-accept-block')).toHaveCount(0);
+  mkdirSync(SHOTS, { recursive: true });
+  await page.screenshot({ path: resolve(SHOTS, 'XMON-89-board-exempt.png') });
+
+  await openDetailAccept(page, []);
+  await expect(page.locator('.dlg-accept-done')).toBeEnabled();
+  await expect(page.locator('.dlg-accept-block')).toHaveCount(0);
+  await page.screenshot({ path: resolve(SHOTS, 'XMON-89-detail-exempt.png') });
 });
 
 test('两项都开时不拦：完成钮可点，无缺项提示', async ({ page }) => {
