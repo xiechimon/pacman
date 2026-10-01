@@ -208,7 +208,7 @@ test('两项都开时不拦：完成钮可点，无缺项提示', async ({ page 
   await expect(page.locator('.dlg-accept-block')).toHaveCount(0);
 });
 
-test('server 真拒（403）时弹层不关，server 文案原样显出', async ({ page }) => {
+test('看板入口：server 真拒（403）时弹层不关，server 文案原样显出', async ({ page }) => {
   await openBoardAccept(page, ['合并分支', '推送分支']);
   const reject = '缺少「推送分支」授权，合并被拒绝。';
   let merges = 0;
@@ -223,7 +223,7 @@ test('server 真拒（403）时弹层不关，server 文案原样显出', async 
   await expect(page.locator('.dlg-accept')).toBeVisible();
   await expect(page.locator('.dlg-accept-reject')).toHaveText(reject);
   mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: resolve(SHOTS, 'XMON-89-detail-403.png') });
+  await page.screenshot({ path: resolve(SHOTS, 'XMON-89-board-403.png') });
 });
 
 test('合并成功（202）时弹层照常关，不留错误行', async ({ page }) => {
