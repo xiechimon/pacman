@@ -20,6 +20,7 @@ import type {
   UserRecord,
 } from '@pacman/shared';
 import {
+  type AGENT_TOOL_SWITCHES,
   buildReviewStepPrompt,
   hasBlockingFinding,
   MERGE_ANNOUNCEMENT,
@@ -31,6 +32,7 @@ import {
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
+  agent,
   build,
   message,
   plan as planTable,
@@ -550,6 +552,35 @@ export async function applyBuildStepAction(
   enqueueStep(deps, buildId, 'plan', todoRecord.teamId, replanPrompt);
 }
 
+/** 双开关闸所需授权（XMON-88）：「合并分支」「推送分支」。字面量域 = shared
+ * AGENT_TOOL_SWITCHES（权限面 canon 词表）单源——本地书写经联合类型锚定，
+ * 词表漂移即编译红，不另立无锚字符串常量。 */
+const MERGE_REQUIRED_TOOLS = [
+  '合并分支',
+  '推送分支',
+] as const satisfies readonly (typeof AGENT_TOOL_SWITCHES)[number][];
+
+/** merge 双开关闸（XMON-88，XMON-26 方案 a）：merge 步执行 Agent 须已开两
+ * 授权，任一关 = 403 拒（requestMerge 拒时不落时间线行、不入队 merge 步，
+ * phase 留 review 关口）。执行者解析口径 = machines.ts agentForStep：merge 步
+ * 走 assignment.build 槽（合并轮复用执行轮会话，同执行 Agent）。build 槽未
+ * 指派或 Agent 行不存在 → 放行不查（未指派语义归 claim 面——merge 步本就
+ * 不可认领；agent 删除面同步摘槽，agent-delete.test）。 */
+function assertMergeTools(deps: BuildDeps, todoRow: typeof todo.$inferSelect): void {
+  const agentId = todoRow.assignment?.build?.agentId;
+  if (!agentId) return;
+  const agentRow = deps.db.select().from(agent).where(eq(agent.id, agentId)).get();
+  if (!agentRow) return;
+  const missing = MERGE_REQUIRED_TOOLS.filter((tool) => !agentRow.tools.includes(tool));
+  if (missing.length > 0) {
+    const items = missing.map((tool) => `「${tool}」`).join('、');
+    throw new HttpError(
+      403,
+      `无法发起合并：Agent「${agentRow.displayName}」未开启${items}工具授权`,
+    );
+  }
+}
+
 /** 合并（02 §4.2/A6：merge = 202 delegated 机器执行；机器领合并步 continue
  * session 复用执行轮会话 → git merge --no-edit → phase=done，执行面归 M3）。 */
 export function requestMerge(deps: BuildDeps, buildId: string): { delegated: true } {
@@ -559,6 +590,9 @@ export function requestMerge(deps: BuildDeps, buildId: string): { delegated: tru
   if (!todoRow) throw new NotFoundError(`todo ${row.todoId}`);
   // 合并关口 = review（「将改动合并到默认分支」确认弹层，r3 §3.6）。
   assertPhaseTransition(todoRow.phase, 'done');
+  // 双开关闸（XMON-88）：任一授权关 = 403 拒——下方时间线行与 merge 步入队
+  // 均不发生（相位关口已过、闸拒时不留「发起了合并」痕）。
+  assertMergeTools(deps, todoRow);
   // 时间线「发起了合并」行（r3 §3.6 实测：`15:06 Xmon Dai 发起了合并`；
   // 行形 [设计]——role user 纯文本 = shared MERGE_ANNOUNCEMENT 单源，呈现层
   // 拼装时间/actor）。
