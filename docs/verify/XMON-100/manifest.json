@@ -1,0 +1,1099 @@
+{
+  "web": "http://127.0.0.1:5274",
+  "when": "2026-10-01T18:40:39.855Z",
+  "captures": [
+    {
+      "name": "chart-00",
+      "domPath": "#root > div.secondary-shell > aside.board-sidebar > div.sidebar-team-row > button.sidebar-team-collapse > svg",
+      "attrs": "aria-hidden=true width=14 height=14 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "path:M9 3v18",
+        "path:m16 15-3-3 3-3"
+      ],
+      "box": {
+        "w": 14,
+        "h": 14
+      }
+    },
+    {
+      "name": "chart-01",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > button.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "circle:,,,",
+        "line:21,21,16.65,16.65"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-02",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > button.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "line:12,5,12,19",
+        "line:5,12,19,12"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-03",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M6 5v11",
+        "path:M12 5v6",
+        "path:M18 5v14"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-04",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "circle:,,,",
+        "path:M12 6v6l4 2"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-05",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > button.sidebar-group > span.sidebar-group-chevron > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:m6 9 6 6 6-6"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-08",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M20.5 11H19V7a2 2 0 0 0-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4a2 2 0 0 0-2 2v3.8h1.5a2.6 2.6 0 0 1 0 5.2H2V20a2 2 0 0 0 2 2h3.8v-1.5a2.6 2.6 0 0 1 5.2 0V22H17a2 2 0 0 0 2-2v-4h1.5a2.5 2.5 0 0 0 0-5Z"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-09",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M12 22v-5",
+        "path:M9 8V2",
+        "path:M15 8V2",
+        "path:M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-10",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:m2 21 9.6-9.6",
+        "path:m7.5 15.5 2.3 2.3a1 1 0 0 1 0 1.4l-2.1 2.1a1 1 0 0 1-1.4 0L4 19",
+        "circle:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-11",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "rect:,,,",
+        "line:6,6,6.01,6",
+        "line:6,18,6.01,18"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-12",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z",
+        "path:m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65",
+        "path:m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-13",
+      "domPath": "#root > div.secondary-shell > aside.board-sidebar > button.sidebar-user > span.sidebar-user-more > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=currentColor",
+      "shapes": [
+        "circle:,,,",
+        "circle:,,,",
+        "circle:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-14",
+      "domPath": "div.secondary-shell > div.secondary-main > div.secondary-main-col > header.secondary-head > a.secondary-back > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "polyline:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-15",
+      "domPath": "div.secondary-shell > div.secondary-main > div.secondary-main-col > header.secondary-head > div.secondary-title > svg",
+      "attrs": "aria-hidden=true width=12 height=12 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:m6 9 6 6 6-6"
+      ],
+      "box": {
+        "w": 12,
+        "h": 12
+      }
+    },
+    {
+      "name": "chart-16",
+      "domPath": "#base-ui-_r_3_ > svg",
+      "attrs": "aria-hidden=true width=18 height=18 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "rect:,,,",
+        "rect:,,,",
+        "rect:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-17",
+      "domPath": "#base-ui-_r_4_ > svg",
+      "attrs": "aria-hidden=true width=14 height=14 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "rect:,,,",
+        "rect:,,,",
+        "path:M12 8v4",
+        "path:M5 16v-2a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-18",
+      "domPath": "div.team-chart > div.team-chart-node > span.team-chart-text > span.team-chart-row > span.team-chart-crown > svg",
+      "attrs": "aria-hidden=true width=12 height=12 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M7 17V13C3.5 13 3 10 5 8 5 5 8 3 12 3s7 2 7 5c2 2 1.5 5-2 5v4",
+        "rect:,,,"
+      ],
+      "box": {
+        "w": 12,
+        "h": 12
+      }
+    },
+    {
+      "name": "chart-19",
+      "domPath": "div.team-chart > div.team-chart-node > span.team-chart-text > span.team-chart-row > span.team-chart-provider > svg",
+      "attrs": "aria-hidden=true width=12 height=12 viewBox=0 0 24 24 fill=currentColor",
+      "shapes": [
+        "path:M2 2h15v10h-5V7H2ZM2 7h5v5h5v5H7v5H2ZM17 12h5v10h-5Z"
+      ],
+      "box": {
+        "w": 12,
+        "h": 12
+      }
+    },
+    {
+      "name": "chart-22",
+      "domPath": "div.team-chart > div.team-chart-children > div.team-chart-nodes > button.group/button > span.team-chart-create-icon > svg",
+      "attrs": "aria-hidden=true width=12 height=12 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "line:12,5,12,19",
+        "line:5,12,19,12"
+      ],
+      "box": {
+        "w": 12,
+        "h": 12
+      }
+    },
+    {
+      "name": "chart-23",
+      "domPath": "div.overlay-mount > aside.chief-drawer > header.chief-head > div.chief-head-row > button.group/button > svg",
+      "attrs": "aria-hidden=true width=13 height=13 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "line:4,9,20,9",
+        "line:4,15,20,15",
+        "line:10,3,8,21",
+        "line:16,3,14,21"
+      ],
+      "box": {
+        "w": 13,
+        "h": 13
+      }
+    },
+    {
+      "name": "chart-25",
+      "domPath": "aside.chief-drawer > header.chief-head > div.chief-head-row > div.chief-head-actions > button.group/button > svg",
+      "attrs": "aria-hidden=true width=18 height=18 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "line:12,5,12,19",
+        "line:5,12,19,12"
+      ],
+      "box": {
+        "w": 18,
+        "h": 18
+      }
+    },
+    {
+      "name": "chart-26",
+      "domPath": "aside.chief-drawer > header.chief-head > div.chief-head-row > div.chief-head-actions > button.group/button > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M18 6 6 18",
+        "path:m6 6 12 12"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "chart-27",
+      "domPath": "div.secondary-main > div.overlay-mount > aside.chief-drawer > header.chief-head > div.chief-model > svg",
+      "attrs": "aria-hidden=true width=12 height=12 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round",
+      "shapes": [
+        "path:M5 7h11",
+        "path:M5 12h5",
+        "path:M14 7v10"
+      ],
+      "box": {
+        "w": 12,
+        "h": 12
+      }
+    },
+    {
+      "name": "chart-28",
+      "domPath": "div.overlay-mount > aside.chief-drawer > div.chief-composer > div.chief-composer-bar > button.group/button > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M12 19V5M5 12l7-7 7 7"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-00",
+      "domPath": "#root > div.secondary-shell > aside.board-sidebar > div.sidebar-team-row > button.sidebar-team-collapse > svg",
+      "attrs": "aria-hidden=true width=14 height=14 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "path:M9 3v18",
+        "path:m16 15-3-3 3-3"
+      ],
+      "box": {
+        "w": 14,
+        "h": 14
+      }
+    },
+    {
+      "name": "grid-01",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > button.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "circle:,,,",
+        "line:21,21,16.65,16.65"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-02",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > button.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "line:12,5,12,19",
+        "line:5,12,19,12"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-03",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M6 5v11",
+        "path:M12 5v6",
+        "path:M18 5v14"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-04",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "circle:,,,",
+        "path:M12 6v6l4 2"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-05",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > button.sidebar-group > span.sidebar-group-chevron > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:m6 9 6 6 6-6"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-08",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M20.5 11H19V7a2 2 0 0 0-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4a2 2 0 0 0-2 2v3.8h1.5a2.6 2.6 0 0 1 0 5.2H2V20a2 2 0 0 0 2 2h3.8v-1.5a2.6 2.6 0 0 1 5.2 0V22H17a2 2 0 0 0 2-2v-4h1.5a2.5 2.5 0 0 0 0-5Z"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-09",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M12 22v-5",
+        "path:M9 8V2",
+        "path:M15 8V2",
+        "path:M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-10",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:m2 21 9.6-9.6",
+        "path:m7.5 15.5 2.3 2.3a1 1 0 0 1 0 1.4l-2.1 2.1a1 1 0 0 1-1.4 0L4 19",
+        "circle:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-11",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "rect:,,,",
+        "line:6,6,6.01,6",
+        "line:6,18,6.01,18"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-12",
+      "domPath": "div.secondary-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z",
+        "path:m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65",
+        "path:m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-13",
+      "domPath": "#root > div.secondary-shell > aside.board-sidebar > button.sidebar-user > span.sidebar-user-more > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=currentColor",
+      "shapes": [
+        "circle:,,,",
+        "circle:,,,",
+        "circle:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-14",
+      "domPath": "div.secondary-shell > div.secondary-main > div.secondary-main-col > header.secondary-head > a.secondary-back > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "polyline:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-15",
+      "domPath": "div.secondary-shell > div.secondary-main > div.secondary-main-col > header.secondary-head > div.secondary-title > svg",
+      "attrs": "aria-hidden=true width=12 height=12 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:m6 9 6 6 6-6"
+      ],
+      "box": {
+        "w": 12,
+        "h": 12
+      }
+    },
+    {
+      "name": "grid-16",
+      "domPath": "#base-ui-_r_3_ > svg",
+      "attrs": "aria-hidden=true width=18 height=18 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "rect:,,,",
+        "rect:,,,",
+        "rect:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-17",
+      "domPath": "#base-ui-_r_4_ > svg",
+      "attrs": "aria-hidden=true width=14 height=14 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "rect:,,,",
+        "rect:,,,",
+        "path:M12 8v4",
+        "path:M5 16v-2a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v2"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-18",
+      "domPath": "div.secondary-body > div.secondary-col > div.team-grid > button.group/button > span.team-create-icon > svg",
+      "attrs": "aria-hidden=true width=9 height=9 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=3 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "line:12,5,12,19",
+        "line:5,12,19,12"
+      ],
+      "box": {
+        "w": 12,
+        "h": 12
+      }
+    },
+    {
+      "name": "grid-19",
+      "domPath": "div.overlay-mount > aside.chief-drawer > header.chief-head > div.chief-head-row > button.group/button > svg",
+      "attrs": "aria-hidden=true width=13 height=13 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "line:4,9,20,9",
+        "line:4,15,20,15",
+        "line:10,3,8,21",
+        "line:16,3,14,21"
+      ],
+      "box": {
+        "w": 13,
+        "h": 13
+      }
+    },
+    {
+      "name": "grid-21",
+      "domPath": "aside.chief-drawer > header.chief-head > div.chief-head-row > div.chief-head-actions > button.group/button > svg",
+      "attrs": "aria-hidden=true width=18 height=18 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "line:12,5,12,19",
+        "line:5,12,19,12"
+      ],
+      "box": {
+        "w": 18,
+        "h": 18
+      }
+    },
+    {
+      "name": "grid-22",
+      "domPath": "aside.chief-drawer > header.chief-head > div.chief-head-row > div.chief-head-actions > button.group/button > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M18 6 6 18",
+        "path:m6 6 12 12"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "grid-23",
+      "domPath": "div.secondary-main > div.overlay-mount > aside.chief-drawer > header.chief-head > div.chief-model > svg",
+      "attrs": "aria-hidden=true width=12 height=12 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round",
+      "shapes": [
+        "path:M5 7h11",
+        "path:M5 12h5",
+        "path:M14 7v10"
+      ],
+      "box": {
+        "w": 12,
+        "h": 12
+      }
+    },
+    {
+      "name": "grid-24",
+      "domPath": "div.overlay-mount > aside.chief-drawer > div.chief-composer > div.chief-composer-bar > button.group/button > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M12 19V5M5 12l7-7 7 7"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-00",
+      "domPath": "#root > div.res-shell > aside.board-sidebar > div.sidebar-team-row > button.sidebar-team-collapse > svg",
+      "attrs": "aria-hidden=true width=14 height=14 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "path:M9 3v18",
+        "path:m16 15-3-3 3-3"
+      ],
+      "box": {
+        "w": 14,
+        "h": 14
+      }
+    },
+    {
+      "name": "prov-01",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > button.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "circle:,,,",
+        "line:21,21,16.65,16.65"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-02",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > button.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "line:12,5,12,19",
+        "line:5,12,19,12"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-03",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M6 5v11",
+        "path:M12 5v6",
+        "path:M18 5v14"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-04",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "circle:,,,",
+        "path:M12 6v6l4 2"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-05",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > button.sidebar-group > span.sidebar-group-chevron > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:m6 9 6 6 6-6"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-08",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M20.5 11H19V7a2 2 0 0 0-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4a2 2 0 0 0-2 2v3.8h1.5a2.6 2.6 0 0 1 0 5.2H2V20a2 2 0 0 0 2 2h3.8v-1.5a2.6 2.6 0 0 1 5.2 0V22H17a2 2 0 0 0 2-2v-4h1.5a2.5 2.5 0 0 0 0-5Z"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-09",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M12 22v-5",
+        "path:M9 8V2",
+        "path:M15 8V2",
+        "path:M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-10",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:m2 21 9.6-9.6",
+        "path:m7.5 15.5 2.3 2.3a1 1 0 0 1 0 1.4l-2.1 2.1a1 1 0 0 1-1.4 0L4 19",
+        "circle:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-11",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "rect:,,,",
+        "line:6,6,6.01,6",
+        "line:6,18,6.01,18"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-12",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z",
+        "path:m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65",
+        "path:m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-13",
+      "domPath": "#root > div.res-shell > aside.board-sidebar > button.sidebar-user > span.sidebar-user-more > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=currentColor",
+      "shapes": [
+        "circle:,,,",
+        "circle:,,,",
+        "circle:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-14",
+      "domPath": "div.res-shell > div.res-main > div.res-main-col > header.res-topbar > a.res-back > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "polyline:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-15",
+      "domPath": "div.res-shell > div.res-main > div.res-main-col > header.res-topbar > button.res-new > svg",
+      "attrs": "aria-hidden=true width=13 height=13 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "line:12,5,12,19",
+        "line:5,12,19,12"
+      ],
+      "box": {
+        "w": 13,
+        "h": 13
+      }
+    },
+    {
+      "name": "prov-16",
+      "domPath": "#base-ui-_r_3_ > svg.res-tab-mark",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=165.29 165.29 469.43 469.43 class=res-tab-mark",
+      "shapes": [
+        "path:M165.29 165.29H517.36V400H400V282.65H165.29Z",
+        "path:M165.29 282.65H282.65V400H400V517.36H282.65V634.72H165.29Z",
+        "path:M517.36 400H634.72V634.72H517.36Z"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-17",
+      "domPath": "#base-ui-_r_4_ > svg.res-tab-mark",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=6.2 6.2 235.6 235.6 class=res-tab-mark",
+      "shapes": [
+        "path:M52.4285 162.873L98.7844 136.879L99.5485 134.602L98.7844 133.334H96.4921L88.7237 132.862L62.2346 132.153L39.3113 131.207L17.0249 130.026L11.4214 128.844L6.2 121.873L6.7094 118.447L11.4214 115.257L18.171 115.847L33.0711 116.911L55.485 118.447L71.6586 119.392L95.728 121.873H99.5485L100.058 120.337L98.7844 119.392L97.7656 118.447L74.5877 102.732L49.4995 86.1905L36.3823 76.62L29.3779 71.7757L25.8121 67.2858L24.2839 57.3608L30.6515 50.2716L39.3113 50.8623L41.4763 51.4531L50.2636 58.1879L68.9842 72.7209L93.4357 90.6804L97.0015 93.6343L98.4374 92.6652L98.6571 91.9801L97.0015 89.2625L83.757 65.2772L69.621 40.8192L63.2534 30.6579L61.5978 24.632C60.9565 22.1032 60.579 20.0111 60.579 17.4246L67.8381 7.49965L71.9133 6.19995L81.7193 7.49965L85.7946 11.0443L91.9074 24.9865L101.714 46.8451L116.996 76.62L121.453 85.4816L123.873 93.6343L124.764 96.1155H126.292V94.6976L127.566 77.9197L129.858 57.3608L132.15 30.8942L132.915 23.4505L136.608 14.4708L143.994 9.62643L149.725 12.344L154.437 19.0788L153.8 23.4505L150.998 41.6463L145.522 70.1215L141.957 89.2625H143.994L146.414 86.7813L156.093 74.0206L172.266 53.698L179.398 45.6635L187.803 36.802L193.152 32.5484H203.34L210.726 43.6549L207.415 55.1159L196.972 68.3492L188.312 79.5739L175.896 96.2095L168.191 109.585L168.882 110.689L170.738 110.53L198.755 104.504L213.91 101.787L231.994 98.7149L240.144 102.496L241.036 106.395L237.852 114.311L218.495 119.037L195.826 123.645L162.07 131.592L161.696 131.893L162.137 132.547L177.36 133.925L183.855 134.279H199.774L229.447 136.524L237.215 141.605L241.8 147.867L241.036 152.711L229.065 158.737L213.019 154.956L175.45 145.977L162.587 142.787H160.805V143.85L171.502 154.366L191.242 172.089L215.82 195.011L217.094 200.682L213.91 205.172L210.599 204.699L188.949 188.394L180.544 181.069L161.696 165.118H160.422V166.772L164.752 173.152L187.803 207.771L188.949 218.405L187.294 221.832L181.308 223.959L174.813 222.777L161.187 203.754L147.305 182.486L136.098 163.345L134.745 164.2L128.075 235.42L125.019 239.082L117.887 241.8L111.902 237.31L108.718 229.984L111.902 215.452L115.722 196.547L118.779 181.541L121.58 162.873L123.291 156.636L123.14 156.219L121.773 156.449L107.699 175.752L86.304 204.699L69.3663 222.777L65.291 224.431L58.2867 220.768L58.9235 214.27L62.8713 208.48L86.304 178.705L100.44 160.155L109.551 149.507L109.462 147.967L108.959 147.924L46.6977 188.512L35.6182 189.93L30.7788 185.44L31.4156 178.115L33.7079 175.752L52.4285 162.873Z"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "prov-18",
+      "domPath": "#root > div.res-shell > div.res-main > button.group/button > svg",
+      "attrs": "aria-hidden=true width=30.8 height=30.8 viewBox=0 0 24 24 fill=none stroke=#52525b stroke-width=2.5 stroke-linecap=round",
+      "shapes": [
+        "circle:,,,",
+        "circle:,,,",
+        "line:7.5,17,16.5,17"
+      ],
+      "box": {
+        "w": 31,
+        "h": 31
+      }
+    },
+    {
+      "name": "mach-00",
+      "domPath": "#root > div.res-shell > aside.board-sidebar > div.sidebar-team-row > button.sidebar-team-collapse > svg",
+      "attrs": "aria-hidden=true width=14 height=14 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "path:M9 3v18",
+        "path:m16 15-3-3 3-3"
+      ],
+      "box": {
+        "w": 14,
+        "h": 14
+      }
+    },
+    {
+      "name": "mach-01",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > button.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "circle:,,,",
+        "line:21,21,16.65,16.65"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-02",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > button.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2.5 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "line:12,5,12,19",
+        "line:5,12,19,12"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-03",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M6 5v11",
+        "path:M12 5v6",
+        "path:M18 5v14"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-04",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-row > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "circle:,,,",
+        "path:M12 6v6l4 2"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-05",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > button.sidebar-group > span.sidebar-group-chevron > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:m6 9 6 6 6-6"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-08",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M20.5 11H19V7a2 2 0 0 0-2-2h-4V3.5a2.5 2.5 0 0 0-5 0V5H4a2 2 0 0 0-2 2v3.8h1.5a2.6 2.6 0 0 1 0 5.2H2V20a2 2 0 0 0 2 2h3.8v-1.5a2.6 2.6 0 0 1 5.2 0V22H17a2 2 0 0 0 2-2v-4h1.5a2.5 2.5 0 0 0 0-5Z"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-09",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M12 22v-5",
+        "path:M9 8V2",
+        "path:M15 8V2",
+        "path:M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-10",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:m2 21 9.6-9.6",
+        "path:m7.5 15.5 2.3 2.3a1 1 0 0 1 0 1.4l-2.1 2.1a1 1 0 0 1-1.4 0L4 19",
+        "circle:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-11",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "rect:,,,",
+        "line:6,6,6.01,6",
+        "line:6,18,6.01,18"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-12",
+      "domPath": "div.res-shell > aside.board-sidebar > nav.sidebar-nav > a.sidebar-subrow > span.sidebar-row-icon > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "path:M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z",
+        "path:m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65",
+        "path:m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-13",
+      "domPath": "#root > div.res-shell > aside.board-sidebar > button.sidebar-user > span.sidebar-user-more > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=currentColor",
+      "shapes": [
+        "circle:,,,",
+        "circle:,,,",
+        "circle:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-14",
+      "domPath": "div.res-shell > div.res-main > div.res-main-col > header.res-topbar > a.res-back > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=2 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "polyline:,,,"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-15",
+      "domPath": "div.res-body > div.res-col > div.group/card > div.res-grow > span.res-tile > svg",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=1.75 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "line:8,21,16,21",
+        "line:12,17,12,21"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-16",
+      "domPath": "div.res-col > div.group/card > div.res-grow > span.mach-runtimes > span.mach-runtime > svg.mach-mark",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=165.29 165.29 469.43 469.43 class=mach-mark",
+      "shapes": [
+        "path:M165.29 165.29H517.36V400H400V282.65H165.29Z",
+        "path:M165.29 282.65H282.65V400H400V517.36H282.65V634.72H165.29Z",
+        "path:M517.36 400H634.72V634.72H517.36Z"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-17",
+      "domPath": "div.res-col > div.group/card > div.res-grow > span.mach-runtimes > span.mach-runtime > svg.mach-mark",
+      "attrs": "aria-hidden=true width=16 height=16 viewBox=6.2 6.2 235.6 235.6 class=mach-mark",
+      "shapes": [
+        "path:M52.4285 162.873L98.7844 136.879L99.5485 134.602L98.7844 133.334H96.4921L88.7237 132.862L62.2346 132.153L39.3113 131.207L17.0249 130.026L11.4214 128.844L6.2 121.873L6.7094 118.447L11.4214 115.257L18.171 115.847L33.0711 116.911L55.485 118.447L71.6586 119.392L95.728 121.873H99.5485L100.058 120.337L98.7844 119.392L97.7656 118.447L74.5877 102.732L49.4995 86.1905L36.3823 76.62L29.3779 71.7757L25.8121 67.2858L24.2839 57.3608L30.6515 50.2716L39.3113 50.8623L41.4763 51.4531L50.2636 58.1879L68.9842 72.7209L93.4357 90.6804L97.0015 93.6343L98.4374 92.6652L98.6571 91.9801L97.0015 89.2625L83.757 65.2772L69.621 40.8192L63.2534 30.6579L61.5978 24.632C60.9565 22.1032 60.579 20.0111 60.579 17.4246L67.8381 7.49965L71.9133 6.19995L81.7193 7.49965L85.7946 11.0443L91.9074 24.9865L101.714 46.8451L116.996 76.62L121.453 85.4816L123.873 93.6343L124.764 96.1155H126.292V94.6976L127.566 77.9197L129.858 57.3608L132.15 30.8942L132.915 23.4505L136.608 14.4708L143.994 9.62643L149.725 12.344L154.437 19.0788L153.8 23.4505L150.998 41.6463L145.522 70.1215L141.957 89.2625H143.994L146.414 86.7813L156.093 74.0206L172.266 53.698L179.398 45.6635L187.803 36.802L193.152 32.5484H203.34L210.726 43.6549L207.415 55.1159L196.972 68.3492L188.312 79.5739L175.896 96.2095L168.191 109.585L168.882 110.689L170.738 110.53L198.755 104.504L213.91 101.787L231.994 98.7149L240.144 102.496L241.036 106.395L237.852 114.311L218.495 119.037L195.826 123.645L162.07 131.592L161.696 131.893L162.137 132.547L177.36 133.925L183.855 134.279H199.774L229.447 136.524L237.215 141.605L241.8 147.867L241.036 152.711L229.065 158.737L213.019 154.956L175.45 145.977L162.587 142.787H160.805V143.85L171.502 154.366L191.242 172.089L215.82 195.011L217.094 200.682L213.91 205.172L210.599 204.699L188.949 188.394L180.544 181.069L161.696 165.118H160.422V166.772L164.752 173.152L187.803 207.771L188.949 218.405L187.294 221.832L181.308 223.959L174.813 222.777L161.187 203.754L147.305 182.486L136.098 163.345L134.745 164.2L128.075 235.42L125.019 239.082L117.887 241.8L111.902 237.31L108.718 229.984L111.902 215.452L115.722 196.547L118.779 181.541L121.58 162.873L123.291 156.636L123.14 156.219L121.773 156.449L107.699 175.752L86.304 204.699L69.3663 222.777L65.291 224.431L58.2867 220.768L58.9235 214.27L62.8713 208.48L86.304 178.705L100.44 160.155L109.551 149.507L109.462 147.967L108.959 147.924L46.6977 188.512L35.6182 189.93L30.7788 185.44L31.4156 178.115L33.7079 175.752L52.4285 162.873Z"
+      ],
+      "box": {
+        "w": 16,
+        "h": 16
+      }
+    },
+    {
+      "name": "mach-18",
+      "domPath": "div.res-main > div.res-main-col > div.res-body > div.res-col > button.res-add > svg",
+      "attrs": "aria-hidden=true width=14 height=14 viewBox=0 0 24 24 fill=none stroke=currentColor stroke-width=1.75 stroke-linecap=round stroke-linejoin=round",
+      "shapes": [
+        "rect:,,,",
+        "rect:,,,",
+        "line:6,6,6.01,6",
+        "line:6,18,6.01,18"
+      ],
+      "box": {
+        "w": 14,
+        "h": 14
+      }
+    },
+    {
+      "name": "mach-19",
+      "domPath": "#root > div.res-shell > div.res-main > button.group/button > svg",
+      "attrs": "aria-hidden=true width=30.8 height=30.8 viewBox=0 0 24 24 fill=none stroke=#52525b stroke-width=2.5 stroke-linecap=round",
+      "shapes": [
+        "circle:,,,",
+        "circle:,,,",
+        "line:7.5,17,16.5,17"
+      ],
+      "box": {
+        "w": 31,
+        "h": 31
+      }
+    }
+  ]
+}
