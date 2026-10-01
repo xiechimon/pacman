@@ -121,8 +121,10 @@ export function connect(
       if (typeof seq === 'number') {
         if (lastSeq > 0 && seq > lastSeq + 1) {
           // 跳号 = 取了号却没送达（见 connect() 头注）。证据，不需要闸门；
-          // 顺带把静默窗口归位——连接有漏帧史，下一次判定该更警觉。
+          // 顺带把静默窗口归位并重排计时——连接有漏帧史，下一次判定该更警觉，
+          // 不然这条被吞的可能正是业务帧，而下一轮判定还排在几分钟之后。
           bizWindow = SSE_BIZ_SILENCE_BASE_MS;
+          armBizTimer();
           guards.reconcile();
         }
         lastSeq = seq;

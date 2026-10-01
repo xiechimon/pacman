@@ -113,6 +113,30 @@ describe('seq 空洞 = 证明丢帧', () => {
     expect(reconcile).toHaveBeenCalledTimes(1);
   });
 
+  it('空洞把静默窗口归位——有漏帧史后判定更警觉', () => {
+    const reconcile = vi.fn();
+    const { es } = openStream({ inFlight: () => true, reconcile });
+    const clock = { t: 0, seq: 0 };
+
+    es.push({ type: 'ping', seq: ++clock.seq });
+    es.push({ type: 'todo', seq: ++clock.seq, v: 1, doc: { id: 'todo-1' } });
+
+    // 静默到点 → 对账一次，窗口翻倍成 40s。
+    advanceWithPings(es, 20, clock);
+    expect(reconcile).toHaveBeenCalledTimes(1);
+
+    // 再推一帧但跳号（被吞的那条很可能正是业务帧）→ 立即对账，且窗口归位。
+    clock.seq += 2;
+    es.push({ type: 'ping', seq: clock.seq });
+    expect(reconcile).toHaveBeenCalledTimes(2);
+
+    // 归位后下一轮判定在基准窗口（20s）而不是翻倍后的 40s。
+    advanceWithPings(es, 19, clock);
+    expect(reconcile).toHaveBeenCalledTimes(2);
+    advanceWithPings(es, 1, clock);
+    expect(reconcile).toHaveBeenCalledTimes(3);
+  });
+
   it('重连后 seq 从 1 重新起算，不算空洞', () => {
     const reconcile = vi.fn();
     const { es } = openStream({ inFlight: () => false, reconcile });
