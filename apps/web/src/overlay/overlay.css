@@ -153,9 +153,14 @@
   pointer-events: none;
 }
 
-/* A4-deep 收编：皮肤归 ui/Button icon 变体；28×28 + margin-left:auto
-   per-face 几何（hover 底走 motion.css 家族律，类名保留原样命中）。 */
-.btn.new-task-close {
+/* A4-deep 收编：皮肤归 components/ui/Button icon 变体；28×28 + margin-left:auto
+   per-face 几何（hover 底走 motion.css 家族律，类名保留原样命中）。
+   #574 换原语时只搬了结构、没重钉这条选择器：原写 `.btn.new-task-close`，而
+   components/ui/Button 不吐 `btn` 类（`grep -c btn button.tsx` = 0），规则自那
+   以后一次也没命中——28×28 与 margin-left:auto 都丢，叉号落回居中标题的紧右边。
+   同族已 re-key 的先例见 chief.css 与 detail/overlays.css（都写着「选择器去掉老
+   .btn 前缀——新 Button 不再渲染该类」）。 */
+.new-task-close {
   margin-left: auto;
   width: 28px;
   height: 28px;
