@@ -490,6 +490,15 @@
    不再为它留 per-face 规则；.res-tabs / .res-tab 仅作为版面与 e2e 的句柄
    留在 DOM 上。 */
 
+/* tab 前置品牌 mark（XMON-73）：尺寸走 tabs.tsx 基类的 size-4（16px），
+   此处只补 flex 与 8px 间距（机器行 .mach-runtime 同档间距），不复制
+   .page-tab 的几何——那份规则 topbar「任务|文件」共用。 */
+.res-tab-mark {
+  flex: none;
+  display: block;
+  margin-right: 8px;
+}
+
 /* A2 header 卡：runtime 名 + 一行说明 + 安装态（已安装在 <hostname> /
    未安装指引）。 */
 .res-runtime-head {
