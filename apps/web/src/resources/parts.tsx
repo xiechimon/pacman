@@ -44,15 +44,20 @@ export function Tile({
 }
 
 /** 域内列表行卡组合件（#422 组件层收编）：单行卡（skills / secrets /
- *  mcp 行，64/62px）= Card 底座 + res-rowcard 别名与 per-face 几何。 */
+ *  mcp 行，64/62px）= Card 底座 + res-rowcard 别名与 per-face 几何。
+ *  onOpen（XMON-114 技能行开编辑弹窗）：整行可点——role=button + 键盘
+ *  Enter/Space 同律，样式挂 res-rowcard--openable（cursor + focus 环）。 */
 export function RowCard({
   mcp = false,
   className,
+  onOpen,
   children,
 }: {
   /** mcp 行 62px 高变体（res-rowcard--mcp）。 */
   mcp?: boolean;
   className?: string;
+  /** 整行点击（打开编辑面）；缺省 = 静态行（secrets/mcp 现状）。 */
+  onOpen?: () => void;
   children: ReactNode;
 }) {
   return (
@@ -60,8 +65,22 @@ export function RowCard({
       className={cn(
         'res-card res-rowcard flex-row gap-0 py-0 ring-0',
         mcp && 'res-rowcard--mcp',
+        onOpen !== undefined && 'res-rowcard--openable',
         className,
       )}
+      role={onOpen !== undefined ? 'button' : undefined}
+      tabIndex={onOpen !== undefined ? 0 : undefined}
+      onClick={onOpen}
+      onKeyDown={
+        onOpen !== undefined
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onOpen();
+              }
+            }
+          : undefined
+      }
     >
       {children}
     </Card>

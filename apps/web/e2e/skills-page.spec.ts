@@ -1,18 +1,20 @@
 import { expect, type Page, test } from '@playwright/test';
 
-// spec 13（#367）skills 只读面：技能 = server 本地目录现扫投影（不入库），
-// 页面无新建/导入入口，旧导入路由走 SPA catch-all 回落 /app，空态文案指路
-// 技能目录（SKILLS_DIR_DEFAULT）。旧写面 e2e（skills-add-import /
-// skills-github-scan 两 spec）随端点退役删除。
-// 钉住的失败方式：新建入口复活 / 旧路由仍可达导入表单 / 空态缺目录指引或
-// 残留主钮·总管提示 / live 列表不消费 GET /api/skills。
+// 技能页读面（spec 13 #367 现扫投影 + XMON-114 S3 回摆：页面恢复写面——
+// 新建入口 + 空态主钮开 SkillDialog，写路径 e2e 钉在 skills-write.spec.ts）。
+// 本 spec 前身 = skills-readonly.spec.ts（stubBoot 打桩纪律的首出位；它 spec
+// 注释里「承 skills-readonly」= 指这里，XMON-114 随写面回摆改名）。
+// 技能 = server 本地目录现扫投影（不入库），旧导入路由走 SPA catch-all
+// 回落 /app，空态文案 = 目录 + 界面新建双入口（SKILL_PAGE_COPY 单源）。
+// 钉住的失败方式：新建入口丢失 / 旧路由仍可达导入表单 / 空态缺双入口文案或
+// 主钮 / live 列表不消费 GET /api/skills。
 
 const SKILLS = '/app/resources/skills';
 
-test('技能页无新建入口（.res-new 不渲染），fixture 行集照常渲染', async ({ page }) => {
+test('技能页新建入口（.res-new）在位，fixture 行集照常渲染', async ({ page }) => {
   await page.goto(`${SKILLS}?scenario=06`);
   await expect(page.locator('[data-route="/app/resources/skills"]')).toBeVisible();
-  await expect(page.locator('.res-new')).toHaveCount(0);
+  await expect(page.locator('.res-new')).toHaveCount(1);
   await expect(page.locator('.res-rowcard')).toHaveCount(1);
   await expect(page.locator('.res-rowcard').first()).toContainText('r3-probe-skill');
 });
@@ -25,15 +27,16 @@ test('旧导入路由不可达——catch-all 重定向回 /app（#149 feedback 
   await expect(page.locator('[data-route="/app/resources/skills/import"]')).toHaveCount(0);
 });
 
-test('空态指路技能目录——无主钮、无总管提示行', async ({ page }) => {
+test('空态双入口——目录指引文案 + 新建技能主钮，无总管提示行', async ({ page }) => {
   await page.goto(`${SKILLS}?scenario=01`);
   const empty = page.locator('.res-empty');
   await expect(empty).toBeVisible();
   await expect(empty.locator('.res-empty-title')).toHaveText('尚无技能。');
-  // 目录指引 = SKILLS_DIR_DEFAULT 单源（{dir} 插值渲染进文案）
+  // 目录指引 = SKILLS_DIR_DEFAULT 单源（{dir} 插值渲染进文案）+ 界面新建口径
   await expect(empty.locator('.res-empty-desc')).toContainText('~/.agents/skills');
   await expect(empty.locator('.res-empty-desc')).toContainText('SKILL.md');
-  await expect(empty.locator('.res-primary')).toHaveCount(0);
+  await expect(empty.locator('.res-empty-desc')).toContainText('新建一个技能');
+  await expect(empty.locator('.res-primary')).toHaveText('新建技能');
   await expect(empty.locator('.res-empty-hint')).toHaveCount(0);
 });
 

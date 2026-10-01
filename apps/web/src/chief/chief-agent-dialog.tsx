@@ -17,7 +17,9 @@
 
 import { CHIEF_REBIND_CONFIRM_COPY } from '@pacman/shared';
 import { useEffect, useMemo, useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, Search } from '../icons/index.js';
@@ -128,16 +130,23 @@ export function ChiefAgentDialog({
         confirming != null ? (
           <div className="dlg-form-foot">
             <div className="dlg-form-actions">
-              <button type="button" className="chief-dlg-ghost" onClick={() => setConfirming(null)}>
+              {/* XMON-23 收编：ghost/brand 原语；chief-dlg-* per-face（dialog.css
+                  的 32 高/12 内边距/描边/实底）不动，px-3/text-[13px]/font-normal
+                  对齐旧形；active 位移中和。e2e 钉 .chief-dlg-ghost/.chief-dlg-primary。 */}
+              <Button
+                variant="ghost"
+                className="chief-dlg-ghost px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
+                onClick={() => setConfirming(null)}
+              >
                 {t('取消')}
-              </button>
-              <button
-                type="button"
-                className="chief-dlg-primary"
+              </Button>
+              <Button
+                variant="brand"
+                className="chief-dlg-primary px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
                 onClick={() => onBind?.(confirming.id)}
               >
                 {t('更换')}
-              </button>
+              </Button>
             </div>
           </div>
         ) : undefined
@@ -153,8 +162,14 @@ export function ChiefAgentDialog({
         <div className="chief-pick">
           <div className="chief-pick-search">
             <Search width={14} height={14} />
-            <input
-              className="chief-pick-input"
+            {/* XMON-23 收编：Input 原语 + chief-pick-input per-face（flex/无边
+                无底/14 字/primary 墨）。中和件：h-auto p-0 leading-5（原语
+                h-8/px-2.5/py-1 会改盒；旧行高实测 20px 钉 leading-5）、
+                rounded-none、透明底双主题、placeholder:text-current/50
+                （= preflight 的 currentColor 50% 旧色）、focus 环清零
+                （per-face outline:none 的旧面——环由搜索框容器承担）。 */}
+            <Input
+              className="chief-pick-input h-auto rounded-none border-none bg-transparent p-0 leading-5 placeholder:text-current/50 focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t('搜索 Agent…')}

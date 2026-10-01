@@ -201,6 +201,26 @@ export const EN: Record<string, string> = {
   // 新建都会出现在这里（{dir} = SKILLS_DIR_DEFAULT）。
   '把包含 SKILL.md 的技能目录放进 {dir}，或新建一个技能，即会出现在这里。':
     'Drop a skill folder containing SKILL.md into {dir}, or create a new skill here, and it will show up in this list.',
+  // XMON-114（spec 13 回摆）技能写面：新建/编辑弹窗与错误态。
+  新建技能: 'New skill',
+  编辑技能: 'Edit skill',
+  'SKILL.md 正文': 'SKILL.md body',
+  '这个技能做什么、什么时候用它。': 'What this skill does and when to reach for it.',
+  '正在读取 SKILL.md…': 'Loading SKILL.md…',
+  'frontmatter（name/description）由上方表单生成，这里只写正文。':
+    'The frontmatter (name/description) is generated from the form above — only the body is written here.',
+  'frontmatter（name/description）由上方表单生成；未在此编辑的文件保持原样。':
+    'The frontmatter (name/description) is generated from the form above; files not edited here stay untouched.',
+  '名称须以字母或数字开头，只能含字母、数字、点、横杠、下划线，最长 64 字符。':
+    'The name must start with a letter or digit and may only contain letters, digits, dots, dashes and underscores (64 chars max).',
+  '描述不要用引号整体包裹——写进 frontmatter 后引号会被剥去，与表单值不一致。':
+    'Do not wrap the description in quotes — they are stripped when written to frontmatter and would no longer match the form value.',
+  '内容超出单文件上限（{limit} KB）。': 'Content exceeds the per-file limit ({limit} KB).',
+  '同名技能已存在——换个名称，或从列表打开它编辑。':
+    'A skill with this name already exists — pick another name, or open the existing one from the list to edit it.',
+  '该技能已不存在——可能刚被移动或删除。':
+    'This skill no longer exists — it may have just been moved or deleted.',
+  '内容未通过校验。': 'The content failed validation.',
   '尚无 MCP 服务器。': 'No MCP servers yet.',
   // spec 13/#368 本地 config 只读制：空态文案 = 配置指引（无添加钮）。
   '读取 server 本机 ~/.claude.json 的 mcpServers 段：在该文件添加配置并刷新，即出现在这里。MCP 服务器为 Agent 提供额外工具；授权在每个 Agent 的页面上单独进行。':
@@ -642,6 +662,10 @@ export const EN: Record<string, string> = {
   去添加密钥: 'Add a secret',
   // XMON-80/P2：权限 tab 保存失败的可见反馈。
   '保存失败，请重试。': 'Save failed. Try again.',
+  // XMON-113：机器行 shell 开关的副文案（机器侧半边；{tool} 插值 = 上面那条
+  // AGENT_TOOL_SHELL 的 en 值，两层开关共用同一词）。
+  '已授权「{tool}」的 Agent 可在该机器上执行命令。':
+    'Agents you have granted {tool} to can run commands on this machine.',
   '暂无 MCP 服务器。': 'No MCP servers yet.',
   团队密钥: 'Team secrets',
   // shared canon（packages/shared/src/records/agent.ts、memory.ts），经 t()

@@ -16,6 +16,7 @@ import type {
   CreateProjectBody,
   CreateProviderBody,
   CreateScheduleBody,
+  CreateSkillBody,
   DiffFileContent,
   DocumentDiff,
   DocumentDiffFile,
@@ -33,6 +34,7 @@ import type {
   OAuthAuthorizeResponse,
   PatchAgentBody,
   PatchChiefBody,
+  PatchMachineBody,
   PlanRow,
   ProjectFileResponse,
   ProjectRecord,
@@ -49,8 +51,10 @@ import type {
   TeamRecord,
   TodoRecord,
   TokenUsage,
+  UpdateSkillBody,
   UserRecord,
 } from '@pacman/shared';
+import { SKILL_ENTRY_FILE } from '@pacman/shared';
 import {
   keepPreviousData,
   useMutation,
@@ -470,6 +474,24 @@ export const useSkills = (teamId: string | undefined, enabled: boolean) =>
     enabled: enabled && teamId !== undefined,
   });
 
+/** 单技能入口文件读面（XMON-114 编辑弹窗预填）：GET teams/{id}/skills/{sid}
+ *  /file?fileName=SKILL.md。retry: false——404（目标刚被移除）是编辑面的
+ *  一等错误态，重试只会拖慢呈现。 */
+export const useSkillFile = (
+  teamId: string | undefined,
+  skillId: string | undefined,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: ['skillFile', teamId, skillId],
+    queryFn: () =>
+      api.get<{ fileName: string; content: string }>(
+        `/api/teams/${teamId}/skills/${encodeURIComponent(skillId ?? '')}/file?fileName=${SKILL_ENTRY_FILE}`,
+      ),
+    enabled: enabled && teamId !== undefined && skillId !== undefined,
+    retry: false,
+  });
+
 export const useChief = (teamId: string | undefined, enabled: boolean) =>
   useQuery({
     queryKey: ['chief', teamId],
@@ -651,23 +673,26 @@ export function useApiMutations(teamId: string | undefined) {
       mutationFn: (id: string) => api.del<void>(`/api/schedules/${id}`),
       onSuccess: invalidateAll,
     }),
-    // 机器 per-runtime 写回（spec 11 A8/A9，#357）：enabledRuntimes 全量替换。
-    // #503 起机器页不再渲染开关（mark 为 read-only 展示），本 mutation 作为
-    // 该字段的 web 侧唯一写入口保留，控件面接回来时直接用。
-    patchMachineRuntimes: useMutation({
-      mutationFn: (input: { id: string; enabledRuntimes: string[] }) =>
-        api.patch<MachineRecord>(`/api/machines/${input.id}`, {
-          enabledRuntimes: input.enabledRuntimes,
-        }),
+    // 机器记录写回（spec 11 A8/A9，#357；XMON-113 起承载 shellEnabled 开关）。
+    // body 单字段可选、缺省字段不动（shared patchMachineBodySchema，XMON-108
+    // R1 起）——故这里只发调用点给的那个字段：连带发 enabledRuntimes 会按该
+    // 列的全量替换语义把现值洗掉。乐观更新 + 失败回滚到快照（onMutate 的
+    // 返回值）：失败时若只发 invalidate，重取请求在网络故障下同样失败，界面
+    // 会停在那个从未落库的值上。成功才 invalidate = 用服务端回执收口。
+    patchMachine: useMutation({
+      mutationFn: (input: { id: string; body: PatchMachineBody }) =>
+        api.patch<MachineRecord>(`/api/machines/${input.id}`, input.body),
       onMutate: (input) => {
+        const previous = qc.getQueryData<MachineRecord[]>(['machines', teamId]);
         qc.setQueryData<MachineRecord[]>(['machines', teamId], (rows) =>
-          (rows ?? []).map((m) =>
-            m.id === input.id ? { ...m, enabledRuntimes: input.enabledRuntimes } : m,
-          ),
+          (rows ?? []).map((m) => (m.id === input.id ? { ...m, ...input.body } : m)),
         );
+        return { previous };
       },
       onSuccess: invalidateAll,
-      onError: invalidateAll,
+      onError: (_error, _input, context) => {
+        qc.setQueryData<MachineRecord[]>(['machines', teamId], context?.previous ?? []);
+      },
     }),
     // body 单源 = shared createProjectBodySchema（spec 12 / #360：kind +
     // localPath / githubRepo 契约面；既有 repoKind 调用点同义兼容）。
@@ -751,9 +776,24 @@ export function useApiMutations(teamId: string | undefined) {
       }) => api.post<ApiKeyRow & { plaintext?: string }>(`/api/teams/${teamId}/api-keys`, body),
       onSuccess: invalidateAll,
     }),
-    // skills 无 mutation 面（spec 13 #367：技能 = server 本地目录现扫只读
-    // 投影；写技能 = 往目录放文件，无上传/扫描端点）。mcp-servers 同律
-    // （spec 13 #368：MCP = 本机 ~/.claude.json 只读投影，无建/改/删端点）。
+    // 技能写面（XMON-114 S3，spec 13 回摆）：新建 = POST /api/skills，
+    // 编辑 = PUT teams/{id}/skills/{sid}（覆写语义：列出者覆写、未列者
+    // 保留——弹窗只列 SKILL.md，其余文件原样保留）。成功失效重取列表即现。
+    createSkill: useMutation({
+      mutationFn: (body: CreateSkillBody) =>
+        api.post<SkillRecord>(`/api/skills?teamId=${teamId}`, body),
+      onSuccess: invalidateAll,
+    }),
+    updateSkill: useMutation({
+      mutationFn: (input: { id: string; body: UpdateSkillBody }) =>
+        api.put<SkillRecord>(
+          `/api/teams/${teamId}/skills/${encodeURIComponent(input.id)}`,
+          input.body,
+        ),
+      onSuccess: invalidateAll,
+    }),
+    // mcp-servers 无 mutation 面（spec 13 #368：MCP = 本机 ~/.claude.json
+    // 只读投影，无建/改/删端点）。
     createAgent: useMutation({
       mutationFn: (body: CreateAgentBody) =>
         api.post<{ id: string }>(`/api/teams/${teamId}/agents`, body),

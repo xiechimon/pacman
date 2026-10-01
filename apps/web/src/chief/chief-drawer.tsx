@@ -22,6 +22,7 @@
 // local-first 对象面，按 M7 处置二分律移除不渲染；头部三钮双视图同律。
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ChiefContent, ChiefSegment } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -46,7 +47,6 @@ import {
 } from '../icons/index.js';
 import { DRAWER_EXIT_MS } from '../overlay/use-overlay-mount.js';
 import { OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
-import { Button } from '../ui/button.js';
 import './chief.css';
 
 const EXAMPLE_ICONS = {
@@ -150,19 +150,30 @@ export function ChiefDrawer({
       <aside className="chief-drawer anim-drawer" aria-label={t('总管')}>
         <header className="chief-head">
           <div className="chief-head-row">
-            <button
-              type="button"
-              className="chief-chip"
+            {/* XMON-23 收编：ghost 原语 + chief-chip per-face（几何/墨全在
+                unlayered per-face，恒压原语层）。中和件：h-auto（原语 h-8
+                会撑高 22.5 的行）、leading-[inherit]（原语 text-sm 的定值
+                20px 行高会压掉 15px 标题继承的 22.5，像素对拍实测塌 1px）、
+                shrink（chip 须收缩让 title 省略号生效）、active 位移、
+                svg size-auto（ChiefHash 13px 属性尺寸）。 */}
+            <Button
+              variant="ghost"
+              className="chief-chip h-auto shrink leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
               aria-label={t('主题')}
               onClick={() => setThreadsOpen((v) => !v)}
             >
               <ChiefHash />
               <span className="chief-chip-title">{t(chief.threadTitle)}</span>
               <ChevronDown width={12} height={12} />
-            </button>
+            </Button>
             <div className="chief-head-actions">
-              <button
-                type="button"
+              {/* 头部三钮：同 ghost/icon 收编；20×20 几何由 chief.css 的元素
+                  选择器 .chief-head-actions button 承载（仍是 button 元素，
+                  规则无改）。 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
                 aria-label={t('新主题')}
                 onClick={
                   onNewThread != null
@@ -174,15 +185,27 @@ export function ChiefDrawer({
                 }
               >
                 <Plus width={18} height={18} />
-              </button>
+              </Button>
               {onSettings != null && (
-                <button type="button" aria-label={t('总管设置')} onClick={onSettings}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                  aria-label={t('总管设置')}
+                  onClick={onSettings}
+                >
                   <ChiefGear />
-                </button>
+                </Button>
               )}
-              <button type="button" aria-label={t('关闭')} onClick={onClose}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                aria-label={t('关闭')}
+                onClick={onClose}
+              >
                 <X width={16} height={16} />
-              </button>
+              </Button>
             </div>
           </div>
           <div className="chief-model">
@@ -224,9 +247,13 @@ export function ChiefDrawer({
           {!chief.bound && (
             <div className="chief-gate">
               <span>{t('请先为总管选择一个 Agent。')}</span>
+              {/* XMON-23 收编：brand 档 = A3 primary 等价位（--card-button
+                  实底 + on-accent 墨）。中和件对齐 A6 实测形（50×26、12px 字、
+                  8px 内边距、8 圆角、400 字重）：h-[26px]/px-2/rounded-md/
+                  border-0/font-normal + 既有 inline style；active 位移中和。 */}
               <Button
-                variant="primary"
-                size="card"
+                variant="brand"
+                className="h-[26px] cursor-pointer rounded-md border-0 px-2 font-normal active:not-aria-[haspopup]:translate-y-0"
                 style={{ width: 50, fontSize: 12 }}
                 onClick={onSettings}
               >
@@ -243,9 +270,13 @@ export function ChiefDrawer({
                   return (
                     // #146: 点击即发预置词进 chief 线程（live 面走 onSend，
                     // 等同用户键入发送；zh 权威 canon 串上行，r5 111 逐字）。
-                    <button
-                      type="button"
-                      className="chief-example"
+                    // XMON-23 收编：ghost 原语 + chief-example per-face。中和件：
+                    // justify-start/whitespace-normal/font-normal（原语居中+
+                    // nowrap+medium 会破 170 卡内左对齐换行文案）、active 位移、
+                    // svg size-auto（瓦片字形 14px 属性尺寸）。
+                    <Button
+                      variant="ghost"
+                      className="chief-example justify-start whitespace-normal font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
                       key={ex.text}
                       onClick={onSend != null ? () => onSend(ex.text) : undefined}
                     >
@@ -253,7 +284,7 @@ export function ChiefDrawer({
                         <Icon width={14} height={14} />
                       </span>
                       <span className="chief-example-text">{t(ex.text)}</span>
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -354,12 +385,21 @@ export function ChiefDrawer({
           <div className="chief-composer-bar">
             {/* #146 裁决：语音输入/添加附件/提及 local-first 无后端面——
                 隐藏不渲染（#136 台账 wontfix）。 */}
-            {/* A4-deep 收编：icon 变体皮肤；实底双态（seg-active/indigo）
-                是 canon 偏差，per-face 留 chief.css（.btn.chief-send） */}
+            {/* XMON-23 收编：ghost/icon 原语；实底双态（seg-active/indigo）
+                是 canon 偏差，per-face 留 chief.css（.chief-send，选择器已从
+                .btn 叠类 re-key——原语不吐 btn 类）。rounded-md = 旧 .btn 的
+                8 圆角；border-0 防原语 1px transparent 边 + bg-clip-padding
+                在实底外圈切出 1px 缝（像素对拍实测）；active 位移中和；
+                ArrowUp 16px = 原语 size-4 同值。 */}
             <Button
-              variant="icon"
+              variant="ghost"
+              size="icon"
               aria-label={t('发送')}
-              className={draftValue !== '' ? 'chief-send is-on' : 'chief-send'}
+              className={
+                draftValue !== ''
+                  ? 'chief-send is-on rounded-md border-0 active:not-aria-[haspopup]:translate-y-0'
+                  : 'chief-send rounded-md border-0 active:not-aria-[haspopup]:translate-y-0'
+              }
               onClick={sendLive}
             >
               <ArrowUp width={16} height={16} />

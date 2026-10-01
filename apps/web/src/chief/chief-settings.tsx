@@ -22,10 +22,11 @@ import {
 } from '../api/hooks.js';
 import { toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { Button } from '../components/ui/button.js';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import type { ChiefContent, ChiefSettingsTab, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChevronRight, ChiefFaceDashed } from '../icons/index.js';
-import { Button } from '../ui/button.js';
 import { ChiefAgentDialog, type ChiefAgentOption } from './chief-agent-dialog.js';
 import { ChiefModelSelect } from './chief-model-select.js';
 import './chief.css';
@@ -101,31 +102,56 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
   return (
     <div className="chief-settings">
       <header className="chief-set-head">
-        {/* A4-deep 收编：icon 变体皮肤；28×28 + 圆角 6 per-face 留 chief.css */}
-        <Button variant="icon" className="chief-set-back" aria-label={t('返回')} onClick={onBack}>
+        {/* XMON-23 收编：ghost/icon 原语；28×28 + 圆角 6 + tertiary 墨
+            （含 hover 增亮，承旧 btn--icon 皮肤）per-face 留 chief.css。
+            hover:bg-transparent 中和 ghost 的灰底 hover（per-face 无底色）。 */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="chief-set-back hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
+          aria-label={t('返回')}
+          onClick={onBack}
+        >
           <ChevronLeft width={16} height={16} />
         </Button>
         <h1 className="chief-set-title">{t('总管设置')}</h1>
       </header>
       <div className="chief-set-col">
-        <div className="chief-tabs" role="tablist">
-          {TABS.map((item) => (
-            <button
-              type="button"
-              role="tab"
-              key={item.id}
-              aria-selected={tab === item.id}
-              className={tab === item.id ? 'chief-tab is-active' : 'chief-tab'}
-              onClick={() => setTab(item.id)}
-            >
-              {t(item.label)}
-            </button>
-          ))}
-        </div>
+        {/* XMON-23 收编：Tabs bare 档——零 chrome 原语只出语义（role=
+            tablist/tab、aria-selected、roving tabindex），几何/配色/选中态
+            全由 chief-tabs/chief-tab per-face 承载；is-active 类随受控值
+            条件挂上（e2e 钉该类名）。根 contents 出树，不产生布局盒。 */}
+        <Tabs
+          value={tab}
+          onValueChange={(value) => setTab(value as ChiefSettingsTab)}
+          className="contents"
+        >
+          <TabsList variant="bare" className="chief-tabs">
+            {TABS.map((item) => (
+              <TabsTrigger
+                key={item.id}
+                value={item.id}
+                className={tab === item.id ? 'chief-tab is-active' : 'chief-tab'}
+              >
+                {t(item.label)}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
 
         {tab === 'agent' && (
           <>
-            <button type="button" className="chief-agent-row" onClick={() => setAgentOpen(true)}>
+            {/* XMON-23 收编：ghost 原语 + chief-agent-row per-face（44 行卡
+                几何/底/墨全在 unlayered per-face）。中和件：justify-start
+                （原语居中会破左对齐行）、font-normal、leading-normal（原语
+                text-sm 的 20px 定值行高会替掉继承的 1.5=21px，行内名字
+                垂直挪 0.5px——像素对拍实测出在名字 AA 上）、active 位移、
+                svg size-auto（ChiefFaceDashed 24 / ChevronRight 14 属性尺寸）。 */}
+            <Button
+              variant="ghost"
+              className="chief-agent-row justify-start font-normal leading-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+              onClick={() => setAgentOpen(true)}
+            >
               {boundAgent != null ? (
                 <span className="chief-agent-row-avatar">{boundAgent.name.charAt(0)}</span>
               ) : (
@@ -133,7 +159,7 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
               )}
               <span>{boundAgent != null ? boundAgent.name : t('未设置')}</span>
               <ChevronRight width={14} height={14} className="chief-agent-chev" />
-            </button>
+            </Button>
             <div className="chief-compress">
               <div className="chief-compress-text">
                 <h3>{t('压缩模型')}</h3>
@@ -165,12 +191,14 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
               </div>
             )}
             <div className="chief-charter-actions">
-              {/* a3-pages 收编：Button ghost/compact（e2e 钉 .chief-edit-btn
-                  别名保留）；描边/底/字色 per-face 差异见 chief.css。 */}
+              {/* XMON-23 收编：ghost/sm（h-7=28 高、min(radius-md,12px)=8
+                  圆角 = 旧 ghost/compact 公共形）；px-3/text-[13px] 补齐
+                  compact 档的 12 内边距/13 字；描边 token、surface 底、
+                  primary 字 per-face 留 chief.css（.chief-edit-btn re-key）。 */}
               <Button
                 variant="ghost"
-                size="compact"
-                className="chief-edit-btn"
+                size="sm"
+                className="chief-edit-btn px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
                 onClick={() => setCharterOpen(true)}
               >
                 {t('编辑')}

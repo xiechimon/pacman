@@ -29,7 +29,7 @@ import { expect, test } from '@playwright/test';
 //    任务行导航 / 未保存闸）。
 // 第 5 项（skills 添加技能主钮）已随 spec 13（#367）整体退役——技能改本地
 // 目录只读投影，空态主钮不再存在（出账断言并入第 9 项，导航面钉在
-// skills-readonly.spec.ts）。
+// skills-readonly.spec.ts；XMON-114 写面回摆后改名 skills-page.spec.ts）。
 
 // —— 1. feedback 整页移除 ————————————————————————————————————————————————
 
@@ -218,7 +218,7 @@ test('api-keys empty state drops the 查看文档 button, keeps 新建密钥 (#3
   await expect(page.locator('.keys-create')).toBeVisible();
 });
 
-test('resources empty state drops the 查看文档 link (#307); skills 只读面连主钮也无 (spec 13)', async ({
+test('resources empty state drops the 查看文档 link (#307); skills 空态主钮 = 新建技能弹窗 (XMON-114)', async ({
   page,
 }) => {
   await page.goto('/app/resources/skills?scenario=01');
@@ -226,9 +226,9 @@ test('resources empty state drops the 查看文档 link (#307); skills 只读面
   // 共享 EmptyState 件:skills/secrets 两面空态的文档链接一并出账
   // (双面钉,防单面局部复活漏网;mcp 空态归 #368 只读面专钉,见下条)
   await expect(page.locator('.res-doclink')).toHaveCount(0);
-  // spec 13 (#367):技能 = 本地目录现扫只读投影——空态无「添加技能」主钮
-  // (空态指引文案钉在 skills-readonly.spec.ts)
-  await expect(page.locator('.res-empty .res-primary')).toHaveCount(0);
+  // XMON-114（spec 13 回摆）:技能页恢复写面——空态主钮开新建弹窗
+  // (空态双入口文案钉在 skills-page.spec.ts,弹窗行为钉在 skills-write.spec.ts)
+  await expect(page.locator('.res-empty .res-primary')).toHaveText('新建技能');
   await page.goto('/app/resources/secrets?scenario=01');
   await expect(page.locator('.res-empty')).toBeVisible();
   await expect(page.locator('.res-doclink')).toHaveCount(0);

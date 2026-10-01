@@ -6,6 +6,7 @@
 // 上次未存草稿。
 
 import { useEffect, useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
 
@@ -38,12 +39,23 @@ export function EditCharterDialog({ open, onClose, charter, onSave }: EditCharte
       footer={
         <div className="dlg-form-foot">
           <div className="dlg-form-actions">
-            <button type="button" className="chief-dlg-ghost" onClick={onClose}>
+            {/* XMON-23 收编：ghost/brand 原语；chief-dlg-* per-face（dialog.css）
+                不动，px-3/text-[13px]/font-normal 对齐旧形；active 位移中和。
+                e2e 钉 .chief-dlg-ghost/.chief-dlg-primary。 */}
+            <Button
+              variant="ghost"
+              className="chief-dlg-ghost px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
+              onClick={onClose}
+            >
               {t('取消')}
-            </button>
-            <button type="button" className="chief-dlg-primary" onClick={save}>
+            </Button>
+            <Button
+              variant="brand"
+              className="chief-dlg-primary px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
+              onClick={save}
+            >
               {t('保存章程')}
-            </button>
+            </Button>
           </div>
         </div>
       }
