@@ -430,6 +430,30 @@ export const machineDoneBodySchema = z.object({
 export type MachineDoneBody = z.infer<typeof machineDoneBodySchema>;
 export const machineDoneResponseSchema = machineOkResponseSchema;
 
+/** GET /api/machine/skills/{stepId} 响应（XMON-109 S1 [设计] 附加端点，
+ * MACHINE_WIRE_EXTENSIONS 登记位）：S2 daemon 物化消费契约——按该步
+ * Agent 的 skills 白名单出技能包（chief 步 = 信任面全量）。每技能 =
+ * record 三字段 + dirName（盘位目录名）+ 全文件内容（path 相对技能目录、
+ * posix 分隔）。字节闸：单文件 ≤ MAX_SKILL_FILE_BYTES、包总量 ≤
+ * MAX_SKILL_TOTAL_BYTES，超限 400 点名（读面与写面共用一闸）。 */
+export const machineSkillsResponseSchema = z.object({
+  skills: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      description: z.string().nullable(),
+      dirName: z.string(),
+      files: z.array(
+        z.object({
+          path: z.string(),
+          content: z.string(),
+        }),
+      ),
+    }),
+  ),
+});
+export type MachineSkillsResponse = z.infer<typeof machineSkillsResponseSchema>;
+
 /** 词表外 [设计] 附加端点（wire diff 白名单化用，04 §1/§3 divergence 登记
  * 机制同族）：upload-urls 预签名的落地点——self-host 无对象存储，server 自出
  * 一次性 PUT URL。非协议面外扩：13 端点词表（MACHINE_ENDPOINTS）不改形状，
@@ -449,6 +473,12 @@ export const MACHINE_WIRE_EXTENSIONS = [
     method: 'GET',
     path: '/api/machine/stop',
     reason: '[设计] M7 #308 stop 拉取-确认（停止钮单槽 pending，?stepId=；steer 同律）',
+  },
+  {
+    method: 'GET',
+    path: '/api/machine/skills/{stepId}',
+    reason:
+      '[设计] XMON-109 S1 技能包下发（spec 14 daemon 注入契约的 S2 消费位；agent.skills 白名单交集 + 字节闸；响应 machineSkillsResponseSchema）',
   },
   {
     method: 'PUT',

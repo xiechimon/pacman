@@ -26,6 +26,7 @@ import {
   createProjectBodySchema,
   createProviderBodySchema,
   createScheduleBodySchema,
+  createSkillBodySchema,
   createTagBodySchema,
   createTodoBodySchema,
   type FsListResult,
@@ -166,11 +167,13 @@ import { createSchedule, deleteSchedule, listSchedules } from './services/schedu
 import { search } from './services/search.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './services/secrets.js';
 import {
+  createLocalSkill,
   filterKnownSkillIds,
   listSkillFiles,
   readSkillFile,
   resolveLocalSkill,
   scanLocalSkills,
+  updateLocalSkill,
 } from './services/skills.js';
 import { seedFixedTags } from './services/tags.js';
 import {
@@ -1278,11 +1281,12 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json({ todos: { total: rows.length, byPhase } });
   });
 
-  // —— 技能面（spec 13 #367：本地目录现扫只读投影，不入库无缓存；词表内
-  // GET /api/skills?teamId=、GET teams/{id}/skills/{sid}(+/file?fileName=)；
+  // —— 技能面（spec 13 #367：本地目录现扫投影，不入库无缓存；词表内 GET
+  // /api/skills?teamId=、GET teams/{id}/skills/{sid}(+/file?fileName=)；
   // record = shared skillRecordSchema 保形，id = frontmatter name 回落目录名，
-  // teamId = 请求 team 占位。写面（POST 上传 / GitHub scan）已删——
-  // NON_REPLICATED_ENDPOINTS 登记 divergence）————————————————————
+  // teamId = 请求 team 占位。XMON-109（spec 13 回摆）：写路径进 scope——
+  // POST /api/skills 建、PUT teams/{id}/skills/{sid} 覆写式更新（frontmatter
+  // 是唯一真值），双动作落 skill_audit 审计行；GitHub scan 面仍不出）————
   app.get('/api/skills', (c) => {
     const teamId = c.req.query('teamId') ?? ctx.team.id;
     requireTeam(ctx, teamId);
@@ -1296,6 +1300,40 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
         }),
       ),
     );
+  });
+
+  // POST /api/skills?teamId=（XMON-109）：body {name, description, files[]}；
+  // actor = 请求 member。→ 201 record（id = body.name = 目录名 = frontmatter
+  // name 三者同值；校验细节见 services/skills.ts createLocalSkill）。
+  app.post('/api/skills', async (c) => {
+    const teamId = c.req.query('teamId') ?? ctx.team.id;
+    requireTeam(ctx, teamId);
+    const body = parseWith(createSkillBodySchema, await jsonBody(c), 'body');
+    const record = createLocalSkill(
+      { db: ctx.db, skillsDir: ctx.skillsDir, teamId, actor: { type: 'member', id: ctx.user.id } },
+      body,
+    );
+    return c.json(record, 201);
+  });
+
+  // PUT /api/teams/{id}/skills/{sid}（XMON-109）：覆写式更新——列出者覆写、
+  // 未列者保留；改名须携带新 SKILL.md（frontmatter 是唯一真值）；未知 sid
+  // = 404。→ 200 record（id = 更新后 frontmatter name）。
+  app.put('/api/teams/:id/skills/:sid', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(createSkillBodySchema, await jsonBody(c), 'body');
+    const record = updateLocalSkill(
+      {
+        db: ctx.db,
+        skillsDir: ctx.skillsDir,
+        teamId,
+        actor: { type: 'member', id: ctx.user.id },
+      },
+      c.req.param('sid'),
+      body,
+    );
+    return c.json(record);
   });
 
   app.get('/api/teams/:id/skills/:sid', (c) => {

@@ -1,12 +1,18 @@
-// skills 领域服务（spec 13 资源面本地化，#367 T1）——本地目录现扫只读投影。
-// 每个含 SKILL.md 的一级子目录 = 一个技能；不入库、无缓存，每次请求现扫。
+// skills 领域服务（spec 13 资源面本地化，#367 T1）——本地目录现扫投影 +
+// XMON-109 S1 写路径（spec 13 回摆）。每个含 SKILL.md 的一级子目录 = 一个
+// 技能；不入库、无缓存，每次请求现扫。写面三入口（REST / worker relay /
+// chief relay）同落 createLocalSkill/updateLocalSkill，双动作均落 skill_audit
+// 审计行。
 // 身份模型（2026-09-29 合同修订，对齐 spec 14 daemon 注入契约）：
 // id = SKILL.md frontmatter name，无 frontmatter / 无 name 回落目录名
-// （agentskills.io / pi v0.86.0 同律：frontmatter.name 主键）。
+// （agentskills.io / pi v0.86.0 同律：frontmatter.name 主键）。写面同律：
+// frontmatter 是唯一真值——create 的 body 声明须与 frontmatter 一致；
+// update 改名只能携带新 SKILL.md（目录不动、id 随 frontmatter 走）。
 // 去重（同律）：realpath 相同（符号链接别名）只算一条；id 冲突 = 目录名
 // 字典序先者胜 [设计]（确定性，无静默双条）。
 // 容错（spec 13 premortem 护栏）：技能根缺失/不可读 = 空集不炸 server；
-// 单目录读取失败（SKILL.md 中途消失/是目录/无权限）= 跳过该条不炸全局。
+// 单目录读取失败（SKILL.md 中途消失/是目录/无权限）= 跳过该条不炸全局
+// （读面容错律只约束读——写面校验失败一律 400/409 显式拒绝，不静默）。
 //
 // frontmatter 解析 = 最小解析器 [设计]（仓内无 yaml 依赖，单行为值、可引号
 // 包裹；折叠块标量标记（`>`/`|` 族）与多行值不受理 = 按缺省回落目录名 /
@@ -15,19 +21,30 @@
 
 import {
   type Dirent,
+  lstatSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   realpathSync,
   type Stats,
   statSync,
+  writeFileSync,
 } from 'node:fs';
-import { join, relative, resolve, sep } from 'node:path';
-import { SKILL_ENTRY_FILE } from '@pacman/shared';
+import { dirname, join, relative, resolve, sep } from 'node:path';
+import {
+  type CreateSkillBody,
+  MAX_SKILL_FILE_BYTES,
+  MAX_SKILL_TOTAL_BYTES,
+  SKILL_ENTRY_FILE,
+  type SkillFileBody,
+  type SkillRecord,
+  skillRecordSchema,
+} from '@pacman/shared';
+import type { Db } from '../db/client.js';
+import { skillAudit } from '../db/schema.js';
 import { HttpError } from '../lib/errors.js';
-
-/** 单文件内容读上限（承自旧 fetch 面容量闸 [设计]：文本投影经 JSON 下发，
- * 超大二进制/数据文件不进 wire）。 */
-const MAX_SKILL_FILE_BYTES = 512_000;
+import { newRecordId, nowMs } from '../lib/ids.js';
+import { NotFoundError } from './builds.js';
 
 /** 现扫产物（wire SkillRecord 的 server 内部形——dirName 供 detail/file
  * 端点解析盘位，不出 wire）。 */
@@ -194,4 +211,277 @@ export function readSkillFile(skillDir: string, fileName: string): string | null
 export function filterKnownSkillIds(skillsDir: string, ids: string[]): string[] {
   const known = new Set(scanLocalSkills(skillsDir).map((s) => s.id));
   return ids.filter((id) => known.has(id));
+}
+
+// —— 写路径（XMON-109 S1，spec 13 回摆）———————————————————————————————————
+
+/** 技能目录名安全域（create 的 body.name = 新目录名）：字母/数字开头，仅
+ * 字母数字点横杠下划线，≤64 字符——可作 URL 段与跨平台目录名。 */
+const SKILL_DIR_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+
+/** 写面执行者（审计行 actor；REST = member，worker relay = agent，
+ * chief relay = 绑定 agent 或无绑定时的 member）。 */
+export interface SkillAuditActor {
+  type: 'member' | 'agent';
+  id: string;
+}
+
+/** 单文件路径守卫：相对路径、posix 分隔、无空段/`.`/`..`/反斜杠/NUL、
+ * 不以分隔符开头（绝对路径）。 */
+function assertSafeRelPath(path: string): void {
+  if (
+    path === '' ||
+    path.startsWith('/') ||
+    path.includes('\\') ||
+    path.includes('\0') ||
+    path.split('/').some((seg) => seg === '' || seg === '.' || seg === '..')
+  ) {
+    throw new HttpError(
+      400,
+      `invalid files path ${JSON.stringify(path)}: expected a relative path inside the skill directory (posix separators, no . / .. segments)`,
+    );
+  }
+}
+
+/** 写面全量前置校验（先全量后落盘，无半写）：路径守卫 + 重复 path + 字节闸。
+ * 返回本次写面总字节数（审计 bytes 位）。 */
+function assertWriteFiles(files: SkillFileBody[]): number {
+  const seen = new Set<string>();
+  let total = 0;
+  for (const file of files) {
+    assertSafeRelPath(file.path);
+    if (seen.has(file.path)) {
+      throw new HttpError(400, `invalid body: duplicate file path ${file.path}`);
+    }
+    seen.add(file.path);
+    const size = Buffer.byteLength(file.content, 'utf8');
+    if (size > MAX_SKILL_FILE_BYTES) {
+      throw new HttpError(
+        400,
+        `skill file too large: ${file.path} is ${size} bytes (limit ${MAX_SKILL_FILE_BYTES})`,
+      );
+    }
+    total += size;
+  }
+  if (total > MAX_SKILL_TOTAL_BYTES) {
+    throw new HttpError(
+      400,
+      `skill files too large: total ${total} bytes (limit ${MAX_SKILL_TOTAL_BYTES})`,
+    );
+  }
+  return total;
+}
+
+/** frontmatter 与 body 声明对拍（唯一真值律）：SKILL.md frontmatter 的
+ * name/description 必须在位且与 body 声明逐字一致——frontmatter 是技能
+ * 身份与描述的存储位，body 声明只是显式冗余，两者漂移 = 400 点名两值。 */
+function assertFrontmatterCoherence(
+  entryContent: string,
+  body: { name: string; description: string },
+): { name: string; description: string } {
+  const fm = parseSkillFrontmatter(entryContent);
+  if (!fm.name) {
+    throw new HttpError(
+      400,
+      'invalid SKILL.md frontmatter: name is required (one line, plain value)',
+    );
+  }
+  if (!fm.description) {
+    throw new HttpError(
+      400,
+      'invalid SKILL.md frontmatter: description is required (one line, plain value)',
+    );
+  }
+  if (fm.name !== body.name) {
+    throw new HttpError(
+      400,
+      `invalid body: name (body=${JSON.stringify(body.name)}, SKILL.md frontmatter=${JSON.stringify(fm.name)}) — SKILL.md frontmatter is the source of truth; they must match`,
+    );
+  }
+  if (fm.description !== body.description) {
+    throw new HttpError(
+      400,
+      `invalid body: description (body=${JSON.stringify(body.description)}, SKILL.md frontmatter=${JSON.stringify(fm.description)}) — SKILL.md frontmatter is the source of truth; they must match`,
+    );
+  }
+  return { name: fm.name, description: fm.description };
+}
+
+/** 单文件落盘守卫 + 写：逐段 lstat walk——路径上任一既有符号链接 = 拒写
+ * （拒绝穿越链接写出技能目录；与 readSkillFile「链接逃逸拒读」同律，方向
+ * 相反）；中间段已是普通文件 = 400；落点已存在且非普通文件 = 400。守卫
+ * 全过才 mkdir + 写（同一文件内无半写；多文件间由调用方先全量校验保证）。 */
+function writeSkillFile(dir: string, file: SkillFileBody): void {
+  const target = resolve(dir, file.path);
+  if (target === dir || !target.startsWith(dir + sep)) {
+    throw new HttpError(
+      400,
+      `invalid files path ${JSON.stringify(file.path)}: escapes the skill directory`,
+    );
+  }
+  const segments = file.path.split('/');
+  let cur = dir;
+  for (const seg of segments.slice(0, -1)) {
+    cur = join(cur, seg);
+    let st: Stats;
+    try {
+      st = lstatSync(cur);
+    } catch {
+      continue; // 缺失中间目录：下方 recursive mkdir 补齐
+    }
+    if (st.isSymbolicLink()) {
+      throw new HttpError(
+        400,
+        `refusing to write through symlink: ${file.path} (${seg} is a symlink)`,
+      );
+    }
+    if (!st.isDirectory()) {
+      throw new HttpError(
+        400,
+        `invalid files path ${file.path}: ${seg} exists and is not a directory`,
+      );
+    }
+  }
+  let st: Stats | undefined;
+  try {
+    st = lstatSync(target);
+  } catch {
+    st = undefined;
+  }
+  if (st) {
+    if (st.isSymbolicLink()) {
+      throw new HttpError(400, `refusing to write through symlink: ${file.path}`);
+    }
+    if (!st.isFile()) {
+      throw new HttpError(400, `invalid files path ${file.path}: target exists and is not a file`);
+    }
+  }
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, file.content);
+}
+
+/** 审计行落库（三入口同表：REST / worker relay / chief relay）。 */
+function insertSkillAudit(
+  db: Db,
+  row: {
+    skillId: string;
+    actor: SkillAuditActor;
+    action: 'create' | 'update';
+    bytes: number;
+  },
+): void {
+  db.insert(skillAudit)
+    .values({
+      id: newRecordId(),
+      skillId: row.skillId,
+      actorType: row.actor.type,
+      actorId: row.actor.id,
+      action: row.action,
+      bytes: row.bytes,
+      createdAt: nowMs(),
+    })
+    .run();
+}
+
+/** 建技能（XMON-109：POST /api/skills + relay create_skill 同源）。body.name
+ * = 目录名（须过安全域正则），且须与 SKILL.md frontmatter name 一致——
+ * 由此 create 产物的 id = name = 目录名三者同值；改名语义只在 update
+ * （携带新 frontmatter）。目录名占用或撞既有 id（他目录 frontmatter 同名）
+ * = 409 点名来源；全部校验先于任何落盘。 */
+export function createLocalSkill(
+  opts: { db: Db; skillsDir: string; teamId: string; actor: SkillAuditActor },
+  body: CreateSkillBody,
+): SkillRecord {
+  if (!SKILL_DIR_NAME_RE.test(body.name)) {
+    throw new HttpError(
+      400,
+      `invalid body.name: expected a directory-safe skill name (starts with a letter or digit; letters, digits, dot, dash, underscore; 64 chars max), got ${JSON.stringify(body.name)}`,
+    );
+  }
+  const bytes = assertWriteFiles(body.files);
+  const entry = body.files.find((f) => f.path === SKILL_ENTRY_FILE);
+  if (!entry) {
+    throw new HttpError(
+      400,
+      `invalid body: files must include ${SKILL_ENTRY_FILE} (the skill entry file)`,
+    );
+  }
+  const truth = assertFrontmatterCoherence(entry.content, body);
+  const dir = join(opts.skillsDir, body.name);
+  let occupied = true;
+  try {
+    statSync(dir);
+  } catch {
+    occupied = false;
+  }
+  if (occupied) {
+    throw new HttpError(409, `skill directory ${body.name} already exists`);
+  }
+  const clash = scanLocalSkills(opts.skillsDir).find((s) => s.id === body.name);
+  if (clash) {
+    throw new HttpError(409, `skill id ${body.name} already exists (directory ${clash.dirName})`);
+  }
+  for (const file of body.files) writeSkillFile(dir, file);
+  insertSkillAudit(opts.db, { skillId: truth.name, actor: opts.actor, action: 'create', bytes });
+  return skillRecordSchema.parse({
+    id: truth.name,
+    teamId: opts.teamId,
+    name: truth.name,
+    description: truth.description,
+  });
+}
+
+/** 更新技能（PUT /api/teams/{id}/skills/{sid} + relay update_skill 同源）：
+ * 覆写语义——列出者覆写、未列者保留；目录固定（不随改名移动），id 随
+ * SKILL.md frontmatter 走。携新 SKILL.md = 改 frontmatter（含改名，撞他
+ * id 409）；不携 = body 声明须与现 frontmatter 一致（身份不容隐式改）。
+ * 未知 id = 404（resolveLocalSkill 同读面）。 */
+export function updateLocalSkill(
+  opts: { db: Db; skillsDir: string; teamId: string; actor: SkillAuditActor },
+  skillId: string,
+  body: CreateSkillBody,
+): SkillRecord {
+  const resolved = resolveLocalSkill(opts.skillsDir, skillId);
+  if (!resolved) throw new NotFoundError(`skill ${skillId}`);
+  const bytes = assertWriteFiles(body.files);
+  const entry = body.files.find((f) => f.path === SKILL_ENTRY_FILE);
+  let name: string;
+  let description: string;
+  if (entry) {
+    const truth = assertFrontmatterCoherence(entry.content, body);
+    name = truth.name;
+    description = truth.description;
+    // 改名撞既有 id（排除自身目录）= 409
+    if (name !== resolved.skill.id) {
+      const clash = scanLocalSkills(opts.skillsDir).find(
+        (s) => s.id === name && s.dirName !== resolved.skill.dirName,
+      );
+      if (clash) {
+        throw new HttpError(409, `skill id ${name} already exists (directory ${clash.dirName})`);
+      }
+    }
+  } else {
+    if (body.name !== resolved.skill.id) {
+      throw new HttpError(
+        400,
+        `invalid body: name (body=${JSON.stringify(body.name)}) does not match skill ${JSON.stringify(resolved.skill.id)} — include SKILL.md to rename`,
+      );
+    }
+    if (body.description !== resolved.skill.description) {
+      throw new HttpError(
+        400,
+        `invalid body: description (body=${JSON.stringify(body.description)}) does not match the skill frontmatter — include SKILL.md to change it`,
+      );
+    }
+    name = resolved.skill.id;
+    description = resolved.skill.description ?? body.description;
+  }
+  for (const file of body.files) writeSkillFile(resolved.dir, file);
+  insertSkillAudit(opts.db, { skillId: name, actor: opts.actor, action: 'update', bytes });
+  return skillRecordSchema.parse({
+    id: name,
+    teamId: opts.teamId,
+    name,
+    description,
+  });
 }

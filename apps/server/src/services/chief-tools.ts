@@ -1,8 +1,9 @@
 // Chief remoteTools 服务端执行面（02 §4.3「服务端定义并执行」；r5 §3.1 relay
 // 位形 = POST /api/machine/tool/<stepId> {name, params} → {text}）。
-// 47 词表（protocol/chief-tools.ts；raw 观测 49 − delete_skills（spec 13
-// #367，本地目录只读投影无删除面）− set_remote_shell（XMON-77，「远程 shell」
-// 开关无执行本体））逐件映射到既有服务/DB。
+// 49 词表（protocol/chief-tools.ts；raw 观测 49 − delete_skills（spec 13
+// #367，本地目录投影无删除面）− set_remote_shell（XMON-77，「远程 shell」
+// 开关无执行本体）+ create_skill/update_skill（XMON-109 spec 13 回摆新增，
+// CHIEF_TOOLS_ADDED 登记））逐件映射到既有服务/DB。
 // 复刻口径（02 §4.3 尾注 / 04 §1 A4）：Chief = 挂团队工具的 pi 会话，工具
 // 「语义」按 r1 docs 六能力组 + r3/r5 行为证据黑盒逼近；params/results 细形
 // 未采到 wire 原件处一律 [推断]，不冒充实测。返回值 = JSON 串（bundle text()
@@ -15,7 +16,13 @@
 // （sourceBuildId = chief 回合 conv id，records/memory.ts「回合 id」注）、配额 100。
 
 import type { SecretBox, UserRecord } from '@pacman/shared';
-import { AGENT_TOOL_DEFAULTS, isChiefConversationId, MEMORY_QUOTA_PER_AGENT } from '@pacman/shared';
+import {
+  AGENT_TOOL_DEFAULTS,
+  createSkillBodySchema,
+  isChiefConversationId,
+  MEMORY_QUOTA_PER_AGENT,
+  updateSkillToolParamsSchema,
+} from '@pacman/shared';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
@@ -32,7 +39,7 @@ import {
   todo,
   tokenUsage,
 } from '../db/schema.js';
-import { HttpError } from '../lib/errors.js';
+import { HttpError, parseWith } from '../lib/errors.js';
 import type { FetchLike } from '../lib/github.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { applyBuildStepAction, requestMerge, startBuilds } from './builds.js';
@@ -44,7 +51,7 @@ import { defaultMcpConfigPath, listMcpServers } from './mcp-servers.js';
 import { notifyChiefMessage } from './notifications.js';
 import { createSchedule, deleteSchedule, listSchedules } from './schedules.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './secrets.js';
-import { scanLocalSkills } from './skills.js';
+import { createLocalSkill, scanLocalSkills, updateLocalSkill } from './skills.js';
 import { seedFixedTags } from './tags.js';
 import { createTodo, deleteTodo, getTodo, listTodos, setTodoPhase, updateTodo } from './todos.js';
 
@@ -83,6 +90,14 @@ export interface ChiefToolCtx {
   threadId: string;
   chiefAgentId: string | null;
   conversationId: string;
+}
+
+/** 技能写审计执行者（XMON-109）：绑定 Agent 在位 = agent（r5 §3.2 溯源
+ * 同律，save_memory 共用绑定 Agent）；未绑定 = 发消息的 member。 */
+function skillAuditActor(ctx: ChiefToolCtx): { type: 'member' | 'agent'; id: string } {
+  return ctx.chiefAgentId !== null
+    ? { type: 'agent', id: ctx.chiefAgentId }
+    : { type: 'member', id: ctx.userId };
 }
 
 type Params = Record<string, unknown>;
@@ -159,7 +174,7 @@ function requireTeamAgent(db: Db, agentId: string, teamId: string) {
   if (!row) throw new HttpError(404, `agent ${agentId}（不在本团队，或 id 抄错了）`);
   return row;
 }
-/** 47 词表服务端执行。未识别工具名 = 400（词表外不执行，02 §7.2 白名单纪律
+/** 49 词表服务端执行。未识别工具名 = 400（词表外不执行，02 §7.2 白名单纪律
  * 同族）。返回 JSON 串。 */
 export async function executeChiefTool(
   deps: ChiefToolDeps,
@@ -493,8 +508,41 @@ export async function executeChiefTool(
           .run();
       return json({ deleted: ids });
     }
-    // delete_skills 已除名（spec 13 #367：技能 = 本地目录只读投影，删除 =
+    // delete_skills 已除名（spec 13 #367：技能 = 本地目录投影，删除 =
     // 从磁盘删目录；relay 此名走 default = 400 unknown chief tool）。
+    // create_skill / update_skill（XMON-109 spec 13 回摆）：chief 自动制作/
+    // 维护技能，免 agent 行开关（chief = 信任面，leader 拍板）；写路径与
+    // REST/worker relay 同源 createLocalSkill/updateLocalSkill，审计 actor =
+    // 绑定 Agent（未绑定时 member userId）。
+    case 'create_skill': {
+      const body = parseWith(createSkillBodySchema, params, 'params');
+      return json(
+        createLocalSkill(
+          {
+            db,
+            skillsDir: deps.skillsDir,
+            teamId: ctx.teamId,
+            actor: skillAuditActor(ctx),
+          },
+          body,
+        ),
+      );
+    }
+    case 'update_skill': {
+      const body = parseWith(updateSkillToolParamsSchema, params, 'params');
+      return json(
+        updateLocalSkill(
+          {
+            db,
+            skillsDir: deps.skillsDir,
+            teamId: ctx.teamId,
+            actor: skillAuditActor(ctx),
+          },
+          body.skillId,
+          body,
+        ),
+      );
+    }
     case 'set_secret': {
       const keysvc = { db, box: deps.box };
       const name = str(params, 'name');
@@ -828,9 +876,12 @@ export interface WorkerMemoryCtx {
   attachmentsDir: string;
 }
 
-/** worker 步 relay 白名单 = 记忆三件套 + 附件读（WORKER_REMOTE_TOOLS 单源；
- * 词表外 = 400）。chief 48 词表不外溢到 worker 步——组织/执行面是 Chief 专属
- * （r5 §3.1）。attachment：服务层单源 = attachments.readAttachmentMeta，团队
+/** worker 步 relay 白名单 = 记忆三件套 + 附件读 + set_task_meta + 技能写词
+ * （WORKER_REMOTE_TOOLS 单源；
+ * 词表外 = 400）。chief 49 词表不外溢到 worker 步——组织/执行面是 Chief 专属
+ * （例外：create_skill/update_skill 双侧都有，XMON-109 拍板 worker 也能写
+ * 技能，worker 侧另有 agent 行开关执法）。
+ * （r5 §3.1，技能写词 = XMON-109）。attachment：服务层单源 = attachments.readAttachmentMeta，团队
  * 归属同关，utf8/base64 编码同 chief 路径（chief-tools/mcp-face case 'attachment'
  * 三源同形）。 */
 export async function executeWorkerMemoryTool(

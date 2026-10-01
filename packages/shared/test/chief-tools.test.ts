@@ -2,11 +2,12 @@
 // `docs/research/assets/r5/raw/chief-threads-testA.json` 的 toolDefHashes 全键
 // （名单实测；description/parameters 细形 [推断] 黑盒逼近，04 §1 A4 边界——
 // 本测试只钉「名单与分组」的实测面，不为 [推断] 细形背书）。
-// 现行词表 = raw − CHIEF_TOOLS_REMOVED（divergence 登记两件：spec 13 #367
-// delete_skills——技能改本地目录只读投影，无删除面；XMON-77 set_remote_shell
-// ——「远程 shell」本体未实现（开关已随 XMON-84 用户拍板 B 恢复，写入点随
-// 本体在规划票里重新设计，词条维持除名）；
-// raw 键集冻结不改）。
+// 现行词表 = raw − CHIEF_TOOLS_REMOVED + CHIEF_TOOLS_ADDED（divergence
+// 双向登记：除名两件 = spec 13 #367 delete_skills——技能改本地目录投影，
+// 无删除面；XMON-77 set_remote_shell——「远程 shell」本体未实现（开关已随
+// XMON-84 用户拍板 B 恢复，写入点随本体在规划票里重新设计，词条维持除名）；
+// 加入两件 = XMON-109 spec 13 回摆 create_skill/update_skill——chief 自动
+// 制作/维护技能收进 scope。raw 键集冻结不改。）
 
 import { describe, expect, it } from 'vitest';
 import {
@@ -16,6 +17,7 @@ import {
   CHIEF_TOOL_CATEGORIES,
   CHIEF_TOOL_COUNT,
   CHIEF_TOOL_NAMES,
+  CHIEF_TOOLS_ADDED,
   CHIEF_TOOLS_REMOVED,
   CHIEF_WATCHES_EMPTY_COPY,
   chiefIdFormat,
@@ -81,33 +83,43 @@ const RAW_TOOL_DEF_HASH_KEYS = [
   'workflow_runs',
 ];
 
-describe('47 词表（raw 49 − delete_skills − set_remote_shell）', () => {
+describe('49 词表（raw 49 − 除名 2 + 新增 2）', () => {
   const rawKeys: string[] = RAW_TOOL_DEF_HASH_KEYS;
   const removed: readonly string[] = CHIEF_TOOLS_REMOVED;
-  const expected = rawKeys.filter((name) => !removed.includes(name)).sort();
+  const added: readonly string[] = CHIEF_TOOLS_ADDED;
+  const expected = [
+    ...rawKeys.filter((name) => !removed.includes(name) && !added.includes(name)),
+    ...added,
+  ].sort();
 
-  it('raw 键集恰 49 件 = 现行词表 + 除名登记', () => {
+  it('raw 键集恰 49 件；现行词表 = raw − 除名 + 新增 = 49 件', () => {
     expect(rawKeys).toHaveLength(49);
-    expect(rawKeys).toHaveLength(CHIEF_TOOL_COUNT + removed.length);
+    expect(CHIEF_TOOL_COUNT).toBe(49);
+    expect(CHIEF_TOOL_COUNT).toBe(rawKeys.length - removed.length + added.length);
   });
 
-  it('词表键集 = raw 键集 − 除名登记（无其它增删改名）', () => {
+  it('词表键集 = raw 键集 − 除名登记 + 新增登记（无其它增删改名）', () => {
     expect(CHIEF_TOOL_NAMES).toEqual(expected);
     expect(CHIEF_REMOTE_TOOLS.map((t) => t.name).sort()).toEqual(expected);
   });
 
-  it('除名登记 = delete_skills + set_remote_shell（divergence 全量），词表全域无残迹', () => {
+  it('除名登记 = delete_skills + set_remote_shell；新增登记 = create_skill + update_skill（divergence 全量双向）', () => {
     expect(removed).toEqual(['delete_skills', 'set_remote_shell']);
+    expect(added).toEqual(['create_skill', 'update_skill']);
     for (const name of removed) {
       expect(CHIEF_TOOL_NAMES).not.toContain(name);
       expect(Object.values(CHIEF_TOOL_CATEGORIES).flat()).not.toContain(name);
       expect(CHIEF_REMOTE_TOOLS.map((t) => t.name)).not.toContain(name);
     }
+    // 新增两件不在 raw 键集内（反向登记的语义前提）。
+    for (const name of added) {
+      expect(rawKeys).not.toContain(name);
+    }
   });
 
-  it('分组 = 读 15 + 组织 17 + 执行 5 + 私有 10（raw 实数 19 − 两件除名）', () => {
+  it('分组 = 读 15 + 组织 19 + 执行 5 + 私有 10（raw 实数 − 两件除名 + 两件新增）', () => {
     expect(CHIEF_TOOL_CATEGORIES.read).toHaveLength(15);
-    expect(CHIEF_TOOL_CATEGORIES.organize).toHaveLength(17);
+    expect(CHIEF_TOOL_CATEGORIES.organize).toHaveLength(19);
     expect(CHIEF_TOOL_CATEGORIES.execute).toHaveLength(5);
     expect(CHIEF_TOOL_CATEGORIES.private).toHaveLength(10);
   });

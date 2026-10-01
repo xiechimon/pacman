@@ -5377,11 +5377,6 @@ exports[`协议词表快照（02 §5/§6 canonical） > DELETE 面规则（[推�
       "path": "/api/push",
       "reason": "Web Push 订阅上传——R1 已裁决有意 divergence（02 §9.1 终裁、04 §5）",
     },
-    {
-      "method": "POST",
-      "path": "/api/skills",
-      "reason": "技能上传面——spec 13 #367 裁决：技能 = 本地目录现扫只读投影，无写面",
-    },
   ],
 }
 `;
@@ -5974,6 +5969,19 @@ exports[`协议词表快照（02 §5/§6 canonical） > web REST 端点词表（
   },
   {
     "method": "POST",
+    "note": "XMON-109（spec 13 回摆）：写路径——建技能目录（body {name,description,files[]}，frontmatter 是唯一真值）；→ 201 record",
+    "path": "/api/skills",
+    "query": [
+      "teamId",
+    ],
+  },
+  {
+    "method": "PUT",
+    "note": "XMON-109（spec 13 回摆）：写路径——覆写式更新（列出者覆写、未列者保留；改名须携带新 SKILL.md）",
+    "path": "/api/teams/{id}/skills/{sid}",
+  },
+  {
+    "method": "POST",
     "path": "/api/schedules",
   },
   {
@@ -6153,6 +6161,7 @@ exports[`协议词表快照（02 §5/§6 canonical） > 存储表清单（01 §6
   "attachment",
   "branch_sync",
   "github_connection",
+  "skill_audit",
 ]
 `;
 

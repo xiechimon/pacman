@@ -197,9 +197,10 @@ export const EN: Record<string, string> = {
   '搜索技能...': 'Search skills...',
   排序: 'Sort',
   '尚无技能。': 'No skills yet.',
-  // spec 13（#367）技能只读面：空态指路本地技能目录（{dir} = SKILLS_DIR_DEFAULT）
-  '把包含 SKILL.md 的技能目录放进 {dir}，即会出现在这里。':
-    'Drop a skill folder containing SKILL.md into {dir} and it will show up here.',
+  // spec 13 + XMON-109（spec 13 回摆）技能面：双入口口径——本地目录或页面
+  // 新建都会出现在这里（{dir} = SKILLS_DIR_DEFAULT）。
+  '把包含 SKILL.md 的技能目录放进 {dir}，或新建一个技能，即会出现在这里。':
+    'Drop a skill folder containing SKILL.md into {dir}, or create a new skill here, and it will show up in this list.',
   '尚无 MCP 服务器。': 'No MCP servers yet.',
   // spec 13/#368 本地 config 只读制：空态文案 = 配置指引（无添加钮）。
   '读取 server 本机 ~/.claude.json 的 mcpServers 段：在该文件添加配置并刷新，即出现在这里。MCP 服务器为 Agent 提供额外工具；授权在每个 Agent 的页面上单独进行。':
