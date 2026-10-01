@@ -6,8 +6,9 @@
 // #176: the project chip is a selector — click opens an anchored popover
 // (family law #67/#127: OverlayMount + ClickCatcher + Esc, dhead chip
 // popover precedent), rows = the project set (live = useProjects truth;
-// fixture = scenario projectNames / canon default), selection is pure
-// form state that backfills the chip and rides the submit's projectId.
+// fixture = scenario projectNames / canon default), selection backfills the
+// chip and rides the submit's projectId（rememberProject 面另落一份
+// localStorage 记忆，见下 XMON-87 段）。
 // A3-overlays 收编：footer 双钮 = components/ui/Button（ghost / brand，弹窗
 // 语义 default 档 32px，r7 实测 30 归一到原语三档）。
 //
@@ -240,8 +241,13 @@ export function NewTaskDialog({
   // XMON-87 续二:Tab 直接换项目(chip 上挂 Tab 提示 chip)。循环而不是开面
   // ——「直接切换」要的是按一下就换了,不是先弹列表再选;列表那条路(点 chip)
   // 原样留着。焦点不动:Tab 是打字途中的手势,搬焦点就把打字打断了。
-  // 开态门带「至少两行」:单项目循环是空转,吃下 Tab 只会白挡走位,故那种
-  // 情况下 hook 不注册,Tab 交还浏览器。
+  // 开态门三条:面板开着、至少两行、未保存闸确认层没起来。
+  //  - 关着:hook 不注册,Tab 交还浏览器(同 ⌘↵ 的 opened-gate)。
+  //  - 单项目:循环是空转,吃下 Tab 只会白挡走位,同样交还浏览器。
+  //  - 确认层起来(open 仍为真,它是 dialog 之外的兄弟层 #318):这一层没有
+  //    焦点陷阱,焦点仍停在 composer 这个「驾驶位」上。此时若不缺席,Tab 会被
+  //    吃下换成项目,键盘用户就再也走不到「继续编辑 / 放弃并关闭」两个钮——
+  //    键盘陷阱。README 的「仍能走到每一个控件」正是靠这一条成立。
   const cycleProject = useCallback(() => {
     if (rows.length < 2) return;
     const index = rows.findIndex((row) => row.id === selected?.id);
@@ -250,7 +256,7 @@ export function NewTaskDialog({
     setProjectId(next.id);
     if (rememberProject) writeRememberedProject(localStorage, next.id);
   }, [rows, selected?.id, rememberProject]);
-  useProjectCycleHotkey(open && rows.length > 1, cycleProject);
+  useProjectCycleHotkey(open && !discardOpen && rows.length > 1, cycleProject);
 
   // M7 #310 附件选择回调：files → onAttachment 委托父处理 grant+upload+
   // setSpec 拼 token；reset value 允许同文件再选（change 事件不重发同源）

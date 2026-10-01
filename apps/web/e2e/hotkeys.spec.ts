@@ -86,6 +86,9 @@ import { expect, type Page, test } from '@playwright/test';
 // 23. off the two driving seats (mention button / footer) Tab stays native
 // 24. the project chip hovers its Tab hint (at rest it stays hidden)
 // 25. outside the dialog (closed) Tab stays native — no dialog, no listbox
+// 26. the 未保存闸 confirm layer is that chord's own sibling too: with it
+//     up, Tab cycles nothing — the layer has no focus trap, so eating Tab
+//     there would be a keyboard trap (继续编辑 / 放弃并关闭 unreachable)
 
 const BOARD = '/app?scenario=01';
 const SCHEDULES = '/app/schedules?scenario=01';
@@ -156,22 +159,19 @@ async function escapeUntilHidden(page: Page, surface: ReturnType<Page['locator']
  *  hides the surface and the wait ends the loop; a lost key leaves it open
  *  and the re-press IS the toggle. A pathologically slow close makes the
  *  next press reopen — and the one after closes again — so the loop's end
- *  state is deterministically hidden, never a coin flip. key 缺省 = ⌘J 抽屉
- *  （XMON-87 的 ⌘P 项目列表共用同一律）。 */
-async function toggleUntilHidden(
-  page: Page,
-  surface: ReturnType<Page['locator']>,
-  key = 'Meta+j',
-) {
+ *  state is deterministically hidden, never a coin flip. 键固定 ⌘J——本文件里
+ *  走这条 toggle 循环的面只有 chief 抽屉；XMON-87 的 Tab 换项目是「循环选择」
+ *  语义、不关面，另有用例走 useProjectCycleHotkey。 */
+async function toggleUntilHidden(page: Page, surface: ReturnType<Page['locator']>) {
   for (let attempt = 0; attempt < 6; attempt += 1) {
-    await page.keyboard.press(key);
+    await page.keyboard.press('Meta+j');
     const closed = await surface
       .waitFor({ state: 'hidden', timeout: 1000 })
       .then(() => true)
       .catch(() => false);
     if (closed) return;
   }
-  throw new Error(`${key} never closed the surface`);
+  throw new Error('Meta+j never closed the surface');
 }
 
 test('C on the board opens the new-task dialog; ⌘C and the retired N do not', async ({
@@ -645,6 +645,29 @@ test('the project chip hovers its Tab hint (hidden at rest)', async ({ page }) =
   await expect(hint).toBeVisible();
   await expect(hint).toHaveText('Tab');
   await escapeUntilHidden(page, dialog(page));
+});
+
+test('Tab cycles nothing while the 未保存闸 confirm layer is up (that layer owns the keyboard)', async ({
+  page,
+}) => {
+  await page.goto(PROJECTS);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await pressUntil(page, 'c', dialog(page));
+  const chipName = page.locator('.new-task-project-name');
+  await expect(chipName).toHaveText('r3-lifecycle');
+  await dialog(page).locator('.new-task-spec').fill('脏面');
+  // 走 Esc 这条关闸路：确认层起来时**焦点仍停在 composer**（Tab 的驾驶位之一）。
+  // 点 × 那条路焦点落在关闭钮上，不是驾驶位，测不出这一处——必须走 Esc。
+  // 该层没有焦点陷阱（dismiss.tsx 不装），所以 Tab 若照吃，键盘用户就再也走不到
+  // 「继续编辑 / 放弃并关闭」两个钮，成了键盘陷阱。
+  await page.keyboard.press('Escape');
+  const layer = page.locator('.new-task-discard');
+  await expect(layer).toBeVisible();
+  await expect(page.locator('.new-task-spec')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(chipName).toHaveText('r3-lifecycle');
+  // 换项目与写记忆位是同一个动作：没换 = 也没写。
+  expect(await page.evaluate(() => localStorage.getItem('pacman.newTaskProjectId'))).toBeNull();
 });
 
 test('with the dialog closed Tab stays native', async ({ page }) => {
