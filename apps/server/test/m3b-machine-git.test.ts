@@ -72,9 +72,17 @@ async function setupGitWorld(): Promise<GitWorld> {
   });
   const machineJson = (await enrollRes.json()) as { token: string };
   // agent（provider 面不必要——token 响应的 provider 槽为 null 亦可断言 git 面）。
+  // tools = 双开关闸双开基线（XMON-88）：本套件走 merge 入队，执行 Agent 须
+  // 带「合并分支」「推送分支」授权。
   s.db
     .insert(agentTable)
-    .values({ id: AGENT_ID, teamId: s.team.id, displayName: 'm3b-builder', modelId: 'm' })
+    .values({
+      id: AGENT_ID,
+      teamId: s.team.id,
+      displayName: 'm3b-builder',
+      modelId: 'm',
+      tools: ['合并分支', '推送分支'],
+    })
     .run();
   // 托管 repo 项目（provision = init bare + 种子提交立 main，services/git.ts）。
   const projRes = await call(s.app, 'POST', '/api/projects', {
