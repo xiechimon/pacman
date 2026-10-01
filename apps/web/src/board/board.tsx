@@ -66,6 +66,11 @@ function columnOf(view: ColumnView, id: string): string | null {
   return COLUMNS.find((c) => view[c.id]?.includes(id))?.id ?? null;
 }
 
+/** Two id lists read the same — the landing preview/data agreement test. */
+function sameOrder(x: string[], y: string[]): boolean {
+  return x.length === y.length && x.every((id, i) => id === y[i]);
+}
+
 const COLUMN_IDS = new Set(COLUMNS.map((c) => c.id));
 
 /** #351: 待处理 carries no dropPhase — cross-column gestures into it get no
@@ -173,9 +178,9 @@ export function BoardSurface({
   // copies the source card's measured width (fixed-width columns used to
   // size it implicitly through the 262px card rule)
   const [dragWidth, setDragWidth] = useState<number | null>(null);
-  /** Drop settle: the retained live preview (view) of an in-flight commit,
-   *  cleared by the effect below once the rendered data carries the landing. */
-  const [settling, setSettling] = useState<{ id: string; columnId: string } | null>(null);
+  /** Drop settle: the landing preview (view) a settled commit wrote, held
+   *  until the rendered data carries it — see the teardown effect below. */
+  const [settling, setSettling] = useState<{ columnId: string } | null>(null);
   // changelog 2026-09-12: the drag affordance is desktop-web only
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -189,7 +194,11 @@ export function BoardSurface({
   // #403 筛选面（#445 双轴化）：渲染/拖拽视图消费收窄后的可见集；moveTodo
   // 落位仍走全集（fixture.todos）+ columnDropIndex 锚卡翻译——隐藏卡的
   // orderIndex 序位不被筛选视图的重排错读。
-  const visibleTodos = filters.active ? fixture.todos.filter(filters.matches) : fixture.todos;
+  const narrow = useCallback(
+    (todos: TodoRecord[]) => (filters.active ? todos.filter(filters.matches) : todos),
+    [filters.active, filters.matches],
+  );
+  const visibleTodos = narrow(fixture.todos);
   // 空结果态 = 任一轴收窄生效且收窄后无卡占任何列（closed 不占列，不计入）。
   const showFilterEmpty =
     filters.active && COLUMNS.every((c) => !visibleTodos.some((todo) => c.accepts(todo)));
@@ -250,16 +259,21 @@ export function BoardSurface({
       const next = commitDrop(live, fixture.todos, String(active.id), String(over.id), fixture.now);
       if (next != null) {
         onReorder(next);
-        // 保留 live 预览直到数据追上提交：预览序即提交序（probe dnd-live
-        // D 钉证），留住它 = 落位布局留在屏上——既无源列陈旧帧，dnd-kit 量
-        // drop-glide 终点时也量到落点槽。此处若清 view，live 面会拿尚未通知
-        // 的 query cache 渲染一帧（TanStack observer 通知晚本批一个 pass）：
-        // 卡画回源列、glide 跟着飞回——用户视角的「弹回去」。
+        // 落位预览 = **提交序**，不是手势里的 live 序：列内重排时 live 序还
+        // 是落位前的旧序（onDragOver 不跨列就原样返回），拿它当落位帧等于
+        // 屏上先画回旧序、下一提交才翻成新序。这一拆两半的提交正是回弹的
+        // 来源——dnd-kit 在这两帧之间摘掉 SortableContext 项的 transform，而
+        // 项上那条 transform 过渡仍在跑，浏览器便从「旧布局里被顶开的位置」
+        // 补间到 0：卡先弹到落点上方约一个卡高、再滑回落点（live 面逐帧实
+        // 测）。写提交序 = 落位与摘 transform 落在同一次提交，一次到位。
+        // 留住预览而非直接清 view 的理由不变：live 面 query cache 通知晚本
+        // 批一个 pass，清 view 会拿旧数据渲染一帧。
         const overId = String(over.id);
         const columnId =
           columnOf(live, String(active.id)) ?? (COLUMN_IDS.has(overId) ? overId : null);
         if (columnId != null) {
-          setSettling({ id: String(active.id), columnId });
+          setView(deriveView(narrow(next)));
+          setSettling({ columnId });
           retained = true;
         }
       }
@@ -271,16 +285,20 @@ export function BoardSurface({
     sweep();
   };
 
-  // Drop settle teardown: clear the retained preview once the rendered data
-  // carries the landing (fixture: same tick; live: optimistic write or the
-  // PATCH-round refetch). The deadline covers a failed commit — data never
-  // catches up, so the gesture tears down to server truth instead of freezing
-  // the preview (same end state as the pre-settle onError invalidate).
+  // Drop settle teardown: release the landing preview once the rendered data
+  // reads the same as it (fixture: same tick; live: optimistic write or the
+  // PATCH-round refetch). The comparison is the settled column's order, not
+  // just which column the card sits in: a same-column reorder keeps its column
+  // before and after, so a column-only test would release the preview on the
+  // very first pass — landing the row swap a commit after the gesture
+  // teardown, which is the frame where dnd-kit clears the sortable transforms.
+  // The deadline covers a failed commit — data never catches up, so the
+  // gesture tears down to server truth instead of freezing the preview.
   useEffect(() => {
     if (settling == null) return;
-    const card = fixture.todos.find((todo) => todo.id === settling.id);
-    const dataColumn = card == null ? null : (COLUMNS.find((c) => c.accepts(card))?.id ?? null);
-    if (dataColumn === settling.columnId) {
+    const landed = deriveView(narrow(fixture.todos))[settling.columnId];
+    const preview = view?.[settling.columnId];
+    if (landed != null && preview != null && sameOrder(landed, preview)) {
       setSettling(null);
       setView(null);
       return;
@@ -290,7 +308,7 @@ export function BoardSurface({
       setView(null);
     }, 1200);
     return () => clearTimeout(timer);
-  }, [settling, fixture.todos]);
+  }, [settling, view, fixture.todos, narrow]);
 
   const onDragCancel = () => {
     setSettling(null);
