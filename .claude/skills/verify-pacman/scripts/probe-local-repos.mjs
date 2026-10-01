@@ -12,7 +12,7 @@
 //    (accessToken 只有 cipher 列位,无 plaintext 列)
 // 栈必须已在跑(launch.mjs;坐标取 VERIFY_RUN_DIR/ports.json)。
 // 证据(result.json + responses.json)落 VERIFY_EVIDENCE_DIR;交付见 SKILL.md
-// 「证据归档纪律」(附 Multica 交付评论,不进仓库)。任一断言失败退出码 1。
+// 「证据归档纪律」(cp 进 PR 分支 docs/verify/<票号>/ 随 PR 提交)。任一断言失败退出码 1。
 // 运行前置:proxy env 全 unset(回环请求过代理会 502 假阳性)。
 
 import { execFileSync } from 'node:child_process';
