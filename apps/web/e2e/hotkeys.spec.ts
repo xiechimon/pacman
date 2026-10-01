@@ -485,6 +485,30 @@ test('⌘↵ with an empty spec creates nothing (the button gate holds on the ch
   await expect(dialog).toBeVisible();
 });
 
+test('⌘↵ under the 未保存闸 confirm layer saves nothing (the layer owns the screen)', async ({
+  page,
+}) => {
+  const dialog = await openNewTask(page);
+  await dialog.locator('.new-task-spec').fill('闸下不该落的卡');
+  const cards = page.locator('[data-column="todo"] .todo-card');
+  const before = await cards.count();
+  // 弄脏后点 × → 未保存闸确认层起来。该层是 dialog **之外**的兄弟层（#318），
+  // 所以 dialog 仍开着——闸只认 open 的话，⌘↵ 会在这句「要不要放弃？」之下把
+  // 任务保存并开始（真起一次 agent 跑）。确认层两个按钮都不是可编辑目标，
+  // 守卫拦不住，只能靠 enabled 在这一层缺席。
+  await dialog.locator('.new-task-close').click();
+  const layer = page.locator('.new-task-discard');
+  await expect(layer).toBeVisible();
+  // 六次投递若都送达会落六张卡（至少一张）；计数不动 = 和弦在这层缺席。
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    await page.keyboard.press('Meta+Enter');
+    await page.waitForTimeout(120);
+    await expect(cards).toHaveCount(before);
+  }
+  await expect(layer).toBeVisible();
+  await expect(dialog).toBeVisible();
+});
+
 test('plain ↵ in the spec textarea stays the newline key — no hijack', async ({ page }) => {
   const dialog = await openNewTask(page);
   const spec = dialog.locator('.new-task-spec');

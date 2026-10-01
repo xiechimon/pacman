@@ -8,8 +8,8 @@
 // popover precedent), rows = the project set (live = useProjects truth;
 // fixture = scenario projectNames / canon default), selection is pure
 // form state that backfills the chip and rides the submit's projectId.
-// A3-overlays 收编：footer 双钮 = ui/Button（ghost / primary，弹窗语义
-// standard 32 档，r7 实测 30 归一到原语三档）。
+// A3-overlays 收编：footer 双钮 = components/ui/Button（ghost / brand，弹窗
+// 语义 default 档 32px，r7 实测 30 归一到原语三档）。
 //
 // M7 #310 附件 wire（r9 §3.1）：
 //   - spec 受控：live 创建面父持 state，附件 token 才能注入；fixture/静态
@@ -162,8 +162,9 @@ export function NewTaskDialog({
     onClose();
   };
   // Esc 分层 4 层(内层优先):确认层 → 提及 picker → 项目 popover → dialog 关闸
-  // (合并 #311 picker + #318 闸;discardOpen/pickerOpen 由各自 ClickCatcher
-  // / useEscapeClose 单独处理,这里只控 dialog 自身的 Esc 关闸。)
+  // (合并 #311 picker + #318 闸;discardOpen/pickerOpen 各由自己的壳接管 Esc
+  // ——ClickCatcher / FloatingShell(#425 B1 起 picker 走 Base UI layer 栈),
+  // 本文件只控 dialog 自身的 Esc 关闸。)
   // retained mount:dialog 关闭一并收 popover(重开不得带回开态) + 确认层
   // + picker,并重置表单(重开不得带回开态/脏字——闸判定以净面起步)
   useEffect(() => {
@@ -211,14 +212,21 @@ export function NewTaskDialog({
 
   // XMON-95：保存并开始 = 按钮点击与 ⌘↵ 共用的同一提交位。闸写在闭包里而
   // 非只靠按钮 disabled——键盘路径不经过 disabled 的点击拦截，漏这一句 ⌘↵
-  // 会在空正文上落一个空任务。enabled = open：面板关着时监听器不在 window
-  // 上（useChordHotkey 的 opened-gate），否则关掉的对话框仍会吃全站 ⌘↵。
+  // 会在空正文上落一个空任务。
   const saveAndStart = () => {
     if (spec.trim() === '') return;
     if (onSaveAndStart) onSaveAndStart(spec, selected?.id);
     else save();
   };
-  useChordHotkey('enter', isEditableOutsideDialog, saveAndStart, open);
+  // enabled = open ∩ ¬discardOpen（useChordHotkey 的 opened-gate）。两条都
+  // 缺不得：
+  //  - open：面板关着时监听器不在 window 上，否则关掉的对话框仍会吃全站 ⌘↵。
+  //  - ¬discardOpen：未保存闸确认层是 dialog **之外**的兄弟层（#318），它起来
+  //    时 open 仍是 true，闸只认 open 的话 ⌘↵ 会在「要不要放弃？」这一问之下
+  //    把任务**保存并开始**（真起一次 agent 跑）——用户按下时以为自己在回答
+  //    那一问。确认层的两个按钮都不是可编辑目标，守卫也拦不住，只能由 enabled
+  //    这一层缺席。
+  useChordHotkey('enter', isEditableOutsideDialog, saveAndStart, open && !discardOpen);
 
   // #318 放弃并关闭:清表单 + 关 dialog(父收 open,重置 effect 兜底同律)
   const discardAndClose = () => {
