@@ -34,6 +34,10 @@ export type AgentToolSwitch = (typeof AGENT_TOOL_SWITCHES)[number];
  * 共用，跨缝不复制字面量。 */
 export const AGENT_TOOL_MERGE: AgentToolSwitch = '合并分支';
 export const AGENT_TOOL_PUSH: AgentToolSwitch = '推送分支';
+/** 技能库写路径（XMON-109 S1）的开关执法位：worker relay create_skill /
+ * update_skill 逐词对照（requestMerge 同形 403）。chief 步免开关（信任面）。 */
+export const AGENT_TOOL_SKILL_CREATE: AgentToolSwitch = '创建技能';
+export const AGENT_TOOL_SKILL_UPDATE: AgentToolSwitch = '更新技能';
 
 /** 新建 Agent 的 tools 默认集（XMON-84 B4）：「推送分支」开——收尾闸落地后
  * 缺它 = 提交留本地工作分支，新建即推不了工作分支会破坏交付（不破坏交付
