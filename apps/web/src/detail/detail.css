@@ -1105,8 +1105,14 @@ textarea.composer-input::placeholder {
 
 .composer-toolbar {
   position: absolute;
-  left: 13px;
-  bottom: 4px;
+  /* XMON-55 P5: optical left edge, not box edge — the 30px tool box holds an
+     18px glyph, so box-left 13 put the paperclip's ink 4px right of the
+     placeholder's first character (measured 276 vs 272). 10px lands the glyph
+     on the text's own left edge. Bottom 12 puts this row on the send/stop
+     axis (cy 687) — at bottom 4 the tools sat 9px below the buttons they
+     share the row with. */
+  left: 10px;
+  bottom: 12px;
   display: flex;
   align-items: center;
 }
@@ -1125,17 +1131,34 @@ textarea.composer-input::placeholder {
   cursor: pointer;
 }
 
+/* XMON-55 P5: the stop was a 14x14 bare --stop block floating 27px off the
+   send button, 4px off its centre line, carrying no glyph — it read as a red
+   smudge rather than a control. It is now the send button's sibling: same
+   32px box, same 8px radius, same --surface-tertiary fill, same bottom axis,
+   an 8px gap apart. Red survives as the 10px glyph's colour, so the action
+   stays legible without a saturated block dominating the card. */
 .composer-stop {
   position: absolute;
-  right: 72px;
-  bottom: 17px;
-  width: 14px;
-  height: 14px;
+  right: 53px; /* send right 13 + width 32 + gap 8 */
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   border: none;
-  border-radius: 4px;
-  background: var(--stop);
+  border-radius: 8px;
+  background: var(--surface-tertiary);
+  color: var(--stop);
   padding: 0;
   cursor: pointer;
+}
+
+.composer-stop-glyph {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: currentColor;
 }
 
 /* W3 #280：steer 被拒（409 无在跑步）提示行——composer 上缘外挂一行，
@@ -1166,6 +1189,21 @@ textarea.composer-input::placeholder {
   color: var(--text-dim);
   padding: 0;
   cursor: pointer;
+  /* colour only, 150ms: a per-keystroke state must not charge attention on
+     every character (better-ui motion restraint) */
+  transition:
+    background-color 150ms cubic-bezier(0.2, 0, 0, 1),
+    color 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* XMON-55 P5: with the composer empty the arrow sits in --text-dim, which is
+   the same grey the placeholder uses — the button read as disabled while it
+   was live and actionable. A draft flips it to the system's brand solid
+   (ui/button.tsx `brand`), so "there is something to send" is visible without
+   reading the textarea. */
+.composer-send--ready {
+  background: var(--card-button);
+  color: var(--text-on-accent);
 }
 
 /* #366: the FAB hugs the CENTER column's bottom-right (the right anchor

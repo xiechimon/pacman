@@ -114,6 +114,58 @@ test('composer stays in-flow inside the center column: card form, 16px insets, s
   expect(geo.colPadBottom).toBeGreaterThanOrEqual(16);
 });
 
+test('composer controls share one bottom row: stop is the send button\'s sibling', async ({
+  page,
+}) => {
+  // XMON-55 P5. The stop used to be a 14x14 bare --stop block at right:72 /
+  // bottom:17 — 27px adrift of the send button, 4px off its centre line, and
+  // with no glyph inside. This pins the four ways it can regress.
+  await page.goto(`${DETAIL_ROUTE}?scenario=26`);
+  const geo = await page.evaluate(() => {
+    const rect = (sel: string) => {
+      const r = document.querySelector(sel)!.getBoundingClientRect();
+      return {
+        l: r.left,
+        r: r.right,
+        w: r.width,
+        h: r.height,
+        cy: (r.top + r.bottom) / 2,
+      };
+    };
+    const tool = document.querySelector('.composer-tool')!;
+    const toolGlyph = tool.querySelector('svg')!.getBoundingClientRect();
+    const ph = document.querySelector('.composer-placeholder')!.getBoundingClientRect();
+    const phCs = getComputedStyle(document.querySelector('.composer-placeholder')!);
+    const stopCs = getComputedStyle(document.querySelector('.composer-stop')!);
+    const sendCs = getComputedStyle(document.querySelector('.composer-send')!);
+    return {
+      stop: rect('.composer-stop'),
+      send: rect('.composer-send'),
+      toolCy: (tool.getBoundingClientRect().top + tool.getBoundingClientRect().bottom) / 2,
+      toolGlyphL: toolGlyph.left,
+      phTextL: ph.left + Number.parseFloat(phCs.paddingLeft),
+      stopFill: stopCs.backgroundColor,
+      sendFill: sendCs.backgroundColor,
+      stopGlyph: document.querySelectorAll('.composer-stop-glyph').length,
+    };
+  });
+  // a real hit target, not a 14px smudge
+  expect(geo.stop.w).toBe(32);
+  expect(geo.stop.h).toBe(32);
+  // one row, one axis — stop and send share the centre line the toolbar sits
+  // on. The 30px tool box against the 32px buttons leaves 1px of parity, so
+  // the tolerance is 1; the drift this pins was 9px (bottom 4 vs bottom 12).
+  expect(geo.stop.cy).toBeCloseTo(geo.send.cy, 0);
+  expect(Math.abs(geo.toolCy - geo.send.cy)).toBeLessThanOrEqual(1);
+  // an 8px sibling gap, not an orphaned 27px float
+  expect(geo.send.l - geo.stop.r).toBeCloseTo(8, 0);
+  // the red is carried by the glyph, so the fill matches the send button's
+  expect(geo.stopFill).toBe(geo.sendFill);
+  expect(geo.stopGlyph).toBe(1);
+  // the toolbar's ink starts on the placeholder text's own left edge
+  expect(Math.abs(geo.toolGlyphL - geo.phTextL)).toBeLessThanOrEqual(2);
+});
+
 test('composer width tracks the center column across both pane states (488 pane / 418 chief dock)', async ({
   page,
 }) => {
