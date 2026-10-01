@@ -18,6 +18,7 @@
 import type { SearchResponse } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
+import { useAgentAvatarUrlById } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
@@ -87,6 +88,10 @@ interface TodoRowItem {
 interface AgentRowItem {
   id: string;
   displayName: string;
+  /** XMON-105: explicit avatar override; the live search envelope carries
+   *  no avatarUrl, so live rows join it from the members read-side (same
+   *  identity the team page renders). */
+  avatarUrl?: string | null;
 }
 interface ProjectRowItem {
   id: string;
@@ -192,8 +197,11 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
     : q === ''
       ? []
       : fixture.todos.filter((t) => t.title.toLowerCase().includes(q));
+  // XMON-105: live agent rows join avatarUrl from the members read-side
+  // (the /api/search envelope carries no avatar field).
+  const agentAvatarById = useAgentAvatarUrlById();
   const agents: AgentRowItem[] = useServer
-    ? server.agents
+    ? server.agents.map((a) => ({ ...a, avatarUrl: agentAvatarById.get(a.id) ?? null }))
     : q === ''
       ? []
       : [...new Set(fixture.todos.map((t) => t.agent))]
@@ -402,7 +410,11 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
                       onClick={() => go('/app/team')}
                     >
                       <span className="search-row-icon search-row-icon--agent">
-                        <SeededAvatar name={agent.displayName} fallback="/avatar-robot-1.svg" />
+                        <SeededAvatar
+                          name={agent.displayName}
+                          src={agent.avatarUrl}
+                          fallback="/avatar-robot-1.svg"
+                        />
                       </span>
                       <span className="search-row-main">
                         <span className="search-row-title">{agent.displayName}</span>

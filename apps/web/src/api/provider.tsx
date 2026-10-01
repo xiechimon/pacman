@@ -7,9 +7,22 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createContext, type ReactNode, useContext, useMemo } from 'react';
 import { Outlet, useLocation } from 'react-router';
-import { useSession, useTeams } from './hooks.js';
+import { USER_NAME } from '../fixtures/fixtures.js';
+import { useMembers, useSession, useTeams } from './hooks.js';
 import { isFixtureMode } from './mode.js';
 import { useTeamStream } from './sse.js';
+
+/** 当前登录用户的头像身份（XMON-105 单源）：所有「用户自己」头像位（侧栏
+ *  chip / 用户菜单 / 帐号头 / 对话用户行 / 任务行 owner 位）经此一处解析，
+ *  与 agent 头像同律（avatarUrl 覆盖 > dicebear 名字种子 > 静态兜底由
+ *  SeededAvatar 承载）。live = /api/user/me；fixture = canon 常量，e2e
+ *  种子断言（avatar-dicebear.spec）据此不变。 */
+export interface CurrentUser {
+  displayName: string;
+  avatarUrl: string | null;
+}
+
+const FIXTURE_USER: CurrentUser = { displayName: USER_NAME, avatarUrl: null };
 
 export interface LiveData {
   /** true = 真 API 数据源；false = fixture（scenario）数据源。 */
@@ -18,16 +31,38 @@ export interface LiveData {
   teamId: string | undefined;
   /** seed 用户显示名（时间线 actor 拼装用，r3 §3.6）。 */
   userName: string;
+  /** 当前用户头像身份单源（见 CurrentUser）。 */
+  user: CurrentUser;
 }
 
 const LiveDataContext = createContext<LiveData>({
   live: false,
   teamId: undefined,
   userName: '我',
+  user: FIXTURE_USER,
 });
 
 export function useLiveData(): LiveData {
   return useContext(LiveDataContext);
+}
+
+/** XMON-105: agent avatarUrl 覆盖位 join。todo wire 的 agent 位只投影
+ *  {id,displayName}（server 投影如此，非缺口），而团队页/Agent 详情直接吃
+ *  members 全记录（含 avatarUrl）——todo 系面（看板卡 / chip popover / 对话
+ *  行 / 重跑 dialog）经此一处 join 同一覆盖位，保证同一 agent 在所有面恒同
+ *  像。members 读面全 app 缓存单请求；live 未到位或 fixture = 空表（退名字
+ *  种子，与覆盖位为 null 时逐字节同路）。 */
+export function useAgentAvatarUrlById(): Map<string, string | null> {
+  const { live, teamId } = useLiveData();
+  const members = useMembers(teamId, live);
+  return useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const m of members.data ?? []) {
+      if (m.memberType !== 'agent') continue;
+      map.set(m.actorId, (m.actor as { avatarUrl?: string | null } | undefined)?.avatarUrl ?? null);
+    }
+    return map;
+  }, [members.data]);
 }
 
 const queryClient = new QueryClient({
@@ -52,7 +87,17 @@ export function LiveDataBridge() {
   const teamId = teams.data?.[0]?.id;
   useTeamStream(teamId, live);
   const value = useMemo<LiveData>(
-    () => ({ live, teamId, userName: session.data?.displayName ?? '我' }),
+    () => ({
+      live,
+      teamId,
+      userName: session.data?.displayName ?? '我',
+      user: live
+        ? {
+            displayName: session.data?.displayName ?? USER_NAME,
+            avatarUrl: session.data?.avatarUrl ?? null,
+          }
+        : FIXTURE_USER,
+    }),
     [live, teamId, session.data],
   );
   return (

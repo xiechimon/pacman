@@ -28,6 +28,7 @@ import { useSession } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { useNotificationPermission } from '../board/notify-banner.js';
 import { Button } from '../components/ui/button.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Switch } from '../components/ui/switch.js';
 import { USER_MAIL, USER_NAME } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -58,7 +59,14 @@ export function AccountPage() {
       <div className="account-card">
         <div className="account-head">
           <span className="account-avatar">
-            <img src="/avatar-user.png" alt="" />
+            {/* XMON-105: the account head is the same identity avatar as the
+                sidebar chip / chat user rows (seeded, avatarUrl override),
+                not a per-surface static asset. */}
+            <SeededAvatar
+              name={userName}
+              src={sessionQ.data?.avatarUrl ?? null}
+              fallback="/avatar-user.png"
+            />
           </span>
         </div>
         <div className="account-row account-row--name">

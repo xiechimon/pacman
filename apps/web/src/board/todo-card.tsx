@@ -8,6 +8,7 @@
 // 不是中性表面；全面 chart 化留待铺开期裁决。
 
 import { Link, useLocation } from 'react-router';
+import { useAgentAvatarUrlById } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { Card } from '../components/ui/card.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
@@ -59,6 +60,8 @@ function badgeFor(todo: TodoRecord): 'idle' | 'attention' | 'done' | 'failed' | 
 }
 
 export function TodoCard({ todo, now, onAction, onBranch, projectName, tag }: TodoCardProps) {
+  // XMON-105: executor avatar override join (same identity as team page).
+  const agentAvatarUrl = useAgentAvatarUrlById();
   const chipName = projectName ?? PROJECT_NAME;
   const chipInitial = projectName ? projectName.charAt(0).toLowerCase() : PROJECT_INITIAL;
   const { t } = useI18n();
@@ -111,7 +114,11 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName, tag }: To
             <UserCircle width={20} height={20} className="text-muted-foreground/70" />
           ) : (
             // #387: 执行者头像按 agent displayName 种子生成;未指派退静态资产
-            <SeededAvatar name={todo.agent?.displayName} fallback="/avatar-robot-1.svg" />
+            <SeededAvatar
+              name={todo.agent?.displayName}
+              src={todo.agent ? (agentAvatarUrl.get(todo.agent.id) ?? null) : null}
+              fallback="/avatar-robot-1.svg"
+            />
           )}
           {badge != null && (
             <span

@@ -250,6 +250,15 @@
   color: var(--text-tertiary);
 }
 
+/* XMON-105: bound-chief stream rows render the agent identity avatar (img
+   form) at the same 24px slot the glyph form occupies. */
+.chief-avatar--img img {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  display: block;
+}
+
 .chief-msg-col {
   flex: 1;
   min-width: 0;
@@ -805,6 +814,20 @@
   border: 1px solid var(--border-default);
   font-size: 12px;
   flex: none;
+}
+
+/* XMON-105: the img form (agent identity avatar) drops the chip chrome —
+   the avatar image IS the 24px disc, no ring behind it. */
+.chief-pick-avatar--img {
+  background: none;
+  border: none;
+}
+
+.chief-pick-avatar--img img {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  display: block;
 }
 
 /* #318 model 副题(r9 §2.6 选择器行形「name · model」):name 右侧 dim 位,

@@ -58,10 +58,14 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
   const agentOptions: ChiefAgentOption[] | undefined = live
     ? (membersQ.data ?? [])
         .filter((m) => m.memberType === 'agent')
-        .map((m) => ({
-          id: m.actorId,
-          name: (m.actor as { displayName?: string } | undefined)?.displayName ?? m.actorId,
-        }))
+        .map((m) => {
+          const actor = m.actor as { displayName?: string; avatarUrl?: string | null } | undefined;
+          return {
+            id: m.actorId,
+            name: actor?.displayName ?? m.actorId,
+            avatarUrl: actor?.avatarUrl ?? null,
+          };
+        })
     : undefined;
   const [agentOpen, setAgentOpen] = useState(false);
   const [charterOpen, setCharterOpen] = useState(false);
