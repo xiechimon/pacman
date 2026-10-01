@@ -16,10 +16,11 @@
 // 部布局走 tailwind 工具类（几何与 #351 的 board.css 规则逐条对齐），按钮走
 // components/ui/button；data-* 钩子、类别名锚点、dnd 逻辑全部原位。阶段点
 // 语义色（column.dot）不随 B 换。
-// #445 顶栏重排：左侧 = 仓库（项目）筛选 chip 组（repo-filter.tsx），右侧
-// 动作区恰好一钮 = 无底色类型过滤 popover 钮（tag-filter.tsx）；「+ 任务」
-// 撤除（与侧栏「新任务」行 + C 热键同 opener，第三入口退役）。任务卡渲染
-// 自己的标签 chip（tagsById 解析图 → cardTag，渲染上限 1）。
+// #445 顶栏重排 / XMON-57 收敛：左侧 = 生效筛选条（一条一维度，点即清该
+// 维度），右侧动作区恰好一钮 = 无底色筛选面板钮（filter-panel.tsx，仓库 +
+// 类型两段）；「+ 任务」撤除（与侧栏「新任务」行 + C 热键同 opener，第三
+// 入口退役）。任务卡渲染自己的标签 chip（tagsById 解析图 → cardTag，渲染
+// 上限 1）。
 
 import {
   closestCorners,
@@ -43,9 +44,9 @@ import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
 import { columnDropIndex, DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
-import { RepoFilterBar, type RepoOption } from './repo-filter.js';
+import { type FilterChip, FilterChips, type FilterDimension, FilterPanel } from './filter-panel.js';
 import { SortableCard } from './sortable-card.js';
-import { cardTag, TypeFilterButton } from './tag-filter.js';
+import { cardTag } from './tag-filter.js';
 import { TodoCard } from './todo-card.js';
 import './board.css';
 
@@ -63,6 +64,11 @@ function deriveView(todos: TodoRecord[]): ColumnView {
 
 function columnOf(view: ColumnView, id: string): string | null {
   return COLUMNS.find((c) => view[c.id]?.includes(id))?.id ?? null;
+}
+
+/** Two id lists read the same — the landing preview/data agreement test. */
+function sameOrder(x: string[], y: string[]): boolean {
+  return x.length === y.length && x.every((id, i) => id === y[i]);
 }
 
 const COLUMN_IDS = new Set(COLUMNS.map((c) => c.id));
@@ -119,22 +125,13 @@ function commitDrop(
  *  本面只消费现成谓词与回调（fixture/live 分支不渗进渲染层）。命中判定与
  *  URL 规范化单源在 repo-filter.tsx / tag-filter.tsx，此处不写第二份。 */
 export interface BoardFilters {
-  /** 仓库轴（#445）：absent = 无项目数据源，chip 组不渲染（旧 fixture
-   *  场景保持 r7 基线零漂移）。 */
-  repo?: {
-    options: RepoOption[];
-    /** 选中项目 id（字典序规范序）；空 = 全部态。 */
-    selected: string[];
-    onToggle: (id: string) => void;
-    /** 「全部」复位 = 只清仓库轴。 */
-    onClear: () => void;
-  };
-  /** 类型轴：固定词表 popover（恒渲染——右动作区「恰好一钮」钉扎）。 */
-  type: {
-    /** 选中词表名（FIXED_TAGS 规范序）；空 = 无收窄。 */
-    selected: string[];
-    onToggle: (name: string) => void;
-  };
+  /** XMON-57 统一筛选面板的两个维度（仓库 / 类型）。恒两段——作用域里没有
+   *  可选项时该段渲染空态行而非消失，面板形状跨场景稳定。 */
+  dimensions: readonly FilterDimension[];
+  /** 顶栏左侧生效筛选条：一条一维度，点即清该维度；空数组 = 无条可摘。 */
+  chips: readonly FilterChip[];
+  /** 两轴选中值总数（触发钮角标：收起态也读得出筛选在生效）。 */
+  totalSelected: number;
   /** true = 任一轴收窄生效（类型轴 live 首载未完时不激活，防 tagged 卡
    *  闪隐；仓库轴无异步依赖恒即态）。驱动空结果态门。 */
   active: boolean;
@@ -142,6 +139,8 @@ export interface BoardFilters {
   matches: (todo: TodoRecord) => boolean;
   /** 板级空结果态的清除钮 = 双轴一起复位。 */
   onClear: () => void;
+  /** 空结果态里的生效筛选具名（「卡是被筛选藏起来的，不是没有」）。 */
+  summary: string;
 }
 
 interface BoardProps {
@@ -179,9 +178,9 @@ export function BoardSurface({
   // copies the source card's measured width (fixed-width columns used to
   // size it implicitly through the 262px card rule)
   const [dragWidth, setDragWidth] = useState<number | null>(null);
-  /** Drop settle: the retained live preview (view) of an in-flight commit,
-   *  cleared by the effect below once the rendered data carries the landing. */
-  const [settling, setSettling] = useState<{ id: string; columnId: string } | null>(null);
+  /** Drop settle: the landing preview (view) a settled commit wrote, held
+   *  until the rendered data carries it — see the teardown effect below. */
+  const [settling, setSettling] = useState<{ columnId: string } | null>(null);
   // changelog 2026-09-12: the drag affordance is desktop-web only
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -195,7 +194,11 @@ export function BoardSurface({
   // #403 筛选面（#445 双轴化）：渲染/拖拽视图消费收窄后的可见集；moveTodo
   // 落位仍走全集（fixture.todos）+ columnDropIndex 锚卡翻译——隐藏卡的
   // orderIndex 序位不被筛选视图的重排错读。
-  const visibleTodos = filters.active ? fixture.todos.filter(filters.matches) : fixture.todos;
+  const narrow = useCallback(
+    (todos: TodoRecord[]) => (filters.active ? todos.filter(filters.matches) : todos),
+    [filters.active, filters.matches],
+  );
+  const visibleTodos = narrow(fixture.todos);
   // 空结果态 = 任一轴收窄生效且收窄后无卡占任何列（closed 不占列，不计入）。
   const showFilterEmpty =
     filters.active && COLUMNS.every((c) => !visibleTodos.some((todo) => c.accepts(todo)));
@@ -256,16 +259,21 @@ export function BoardSurface({
       const next = commitDrop(live, fixture.todos, String(active.id), String(over.id), fixture.now);
       if (next != null) {
         onReorder(next);
-        // 保留 live 预览直到数据追上提交：预览序即提交序（probe dnd-live
-        // D 钉证），留住它 = 落位布局留在屏上——既无源列陈旧帧，dnd-kit 量
-        // drop-glide 终点时也量到落点槽。此处若清 view，live 面会拿尚未通知
-        // 的 query cache 渲染一帧（TanStack observer 通知晚本批一个 pass）：
-        // 卡画回源列、glide 跟着飞回——用户视角的「弹回去」。
+        // 落位预览 = **提交序**，不是手势里的 live 序：列内重排时 live 序还
+        // 是落位前的旧序（onDragOver 不跨列就原样返回），拿它当落位帧等于
+        // 屏上先画回旧序、下一提交才翻成新序。这一拆两半的提交正是回弹的
+        // 来源——dnd-kit 在这两帧之间摘掉 SortableContext 项的 transform，而
+        // 项上那条 transform 过渡仍在跑，浏览器便从「旧布局里被顶开的位置」
+        // 补间到 0：卡先弹到落点上方约一个卡高、再滑回落点（live 面逐帧实
+        // 测）。写提交序 = 落位与摘 transform 落在同一次提交，一次到位。
+        // 留住预览而非直接清 view 的理由不变：live 面 query cache 通知晚本
+        // 批一个 pass，清 view 会拿旧数据渲染一帧。
         const overId = String(over.id);
         const columnId =
           columnOf(live, String(active.id)) ?? (COLUMN_IDS.has(overId) ? overId : null);
         if (columnId != null) {
-          setSettling({ id: String(active.id), columnId });
+          setView(deriveView(narrow(next)));
+          setSettling({ columnId });
           retained = true;
         }
       }
@@ -277,16 +285,20 @@ export function BoardSurface({
     sweep();
   };
 
-  // Drop settle teardown: clear the retained preview once the rendered data
-  // carries the landing (fixture: same tick; live: optimistic write or the
-  // PATCH-round refetch). The deadline covers a failed commit — data never
-  // catches up, so the gesture tears down to server truth instead of freezing
-  // the preview (same end state as the pre-settle onError invalidate).
+  // Drop settle teardown: release the landing preview once the rendered data
+  // reads the same as it (fixture: same tick; live: optimistic write or the
+  // PATCH-round refetch). The comparison is the settled column's order, not
+  // just which column the card sits in: a same-column reorder keeps its column
+  // before and after, so a column-only test would release the preview on the
+  // very first pass — landing the row swap a commit after the gesture
+  // teardown, which is the frame where dnd-kit clears the sortable transforms.
+  // The deadline covers a failed commit — data never catches up, so the
+  // gesture tears down to server truth instead of freezing the preview.
   useEffect(() => {
     if (settling == null) return;
-    const card = fixture.todos.find((todo) => todo.id === settling.id);
-    const dataColumn = card == null ? null : (COLUMNS.find((c) => c.accepts(card))?.id ?? null);
-    if (dataColumn === settling.columnId) {
+    const landed = deriveView(narrow(fixture.todos))[settling.columnId];
+    const preview = view?.[settling.columnId];
+    if (landed != null && preview != null && sameOrder(landed, preview)) {
       setSettling(null);
       setView(null);
       return;
@@ -296,7 +308,7 @@ export function BoardSurface({
       setView(null);
     }, 1200);
     return () => clearTimeout(timer);
-  }, [settling, fixture.todos]);
+  }, [settling, view, fixture.todos, narrow]);
 
   const onDragCancel = () => {
     setSettling(null);
@@ -327,22 +339,20 @@ export function BoardSurface({
         <div className="board-topbar-title pointer-events-none absolute inset-x-0 text-center text-sm leading-[22px] font-medium text-foreground">
           {t('工作台')}
         </div>
-        {/* #445 仓库筛选：顶栏左侧独立容器——不进 board-topbar-actions
+        {/* XMON-57 生效筛选条：顶栏左侧独立容器——不进 board-topbar-actions
             （dead-buttons 钉死右动作区恰好一钮）；标题带 absolute +
-            pointer-events-none，hit-test 不拦截 chip。 */}
-        {filters.repo != null && (
-          <RepoFilterBar
-            options={filters.repo.options}
-            selected={filters.repo.selected}
-            onToggle={filters.repo.onToggle}
-            onClear={filters.repo.onClear}
-          />
-        )}
+            pointer-events-none，hit-test 不拦截条。 */}
+        <FilterChips chips={filters.chips} onClearAll={filters.onClear} />
         <div className="board-topbar-actions ml-auto flex items-center pr-3">
-          {/* #445：恰好一钮 = 无底色类型过滤钮（board-type-filter 是 e2e
-              钉死的选择器别名）。「+ 任务」已撤——新建入口 = 侧栏
-              「新任务」行（sidebar-new-task）+ C 热键。 */}
-          <TypeFilterButton selected={filters.type.selected} onToggle={filters.type.onToggle} />
+          {/* 恰好一钮 = 无底色筛选钮（board-type-filter 是 e2e 钉死的选择器
+              别名，语义已从「类型轴」扩到「全轴筛选」，名字按 #411 别名
+              优先保留）。「+ 任务」已撤——新建入口 = 侧栏「新任务」行
+              （sidebar-new-task）+ C 热键。 */}
+          <FilterPanel
+            dimensions={filters.dimensions}
+            totalSelected={filters.totalSelected}
+            onClearAll={filters.onClear}
+          />
         </div>
       </header>
 
@@ -367,6 +377,13 @@ export function BoardSurface({
           {showFilterEmpty && (
             <div className="board-filter-empty col-span-4 flex h-full flex-col items-center justify-center gap-3">
               <span className="text-sm text-muted-foreground">{t('没有匹配筛选条件的任务')}</span>
+              {/* 具名生效筛选：空态要回答「我的卡去哪了」，只说「没有匹配」
+                  会读成「这些卡不存在」。 */}
+              {filters.summary !== '' && (
+                <span className="board-filter-empty-summary text-xs text-muted-foreground">
+                  {t('筛选生效：{summary}', { summary: filters.summary })}
+                </span>
+              )}
               <Button
                 variant="outline"
                 size="sm"

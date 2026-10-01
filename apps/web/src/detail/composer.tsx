@@ -1,8 +1,12 @@
 // Composer (issue #56, r7 §3.4): box anchored x737 w687 h76, placeholder
 // per phase, toolbar 添加附件/AI 审核/提及 @ pitch 36, the 32×32
-// send button, and the streaming stop square (r7 16). The 总管 FAB
+// send button, and the streaming stop button (r7 16). The 总管 FAB
 // overlaps the send button in every capture (r7 §3.4), so the page renders
 // the FAB after the composer and it covers the send pixels.
+// XMON-55 P5: the stop is no longer a 14×14 bare red square — it is the send
+// button's sibling (32×32, same fill, same bottom axis, 8px apart) carrying a
+// 10px --stop glyph; the send lights up on the brand solid once a draft
+// exists. Geometry and rationale live in detail.css.
 //
 // M7 #310 附件 wire 改：
 //   - draft 受控（live editable 面父持 state，附件 token 由父 setDraft 注入；
@@ -276,9 +280,16 @@ export function Composer({
         </button>
       </div>
       {streaming && (
-        <button type="button" className="composer-stop" aria-label={t('停止')} onClick={onStop} />
+        <button type="button" className="composer-stop" aria-label={t('停止')} onClick={onStop}>
+          <span className="composer-stop-glyph" />
+        </button>
       )}
-      <button type="button" className="composer-send" aria-label={t('发送')} onClick={send}>
+      <button
+        type="button"
+        className={draft.trim() === '' ? 'composer-send' : 'composer-send composer-send--ready'}
+        aria-label={t('发送')}
+        onClick={send}
+      >
         <ArrowUp width={14} height={14} />
       </button>
       <MentionPicker

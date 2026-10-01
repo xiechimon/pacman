@@ -237,7 +237,10 @@ export function TodoDetailPage() {
   const [diff, setDiff] = useState(fixture.detail?.planDiff);
   const [chain, setChain] = useState<ChainState>('idle');
   // live 面:变更 pane 展开态 + 版本对比开关(数据来自 documents/{id}/diff)。
-  const [changesExpanded, setChangesExpanded] = useState(false);
+  // XMON-55 P2:默认展开——审核面的全部职责就是让人看 diff,折叠默认把
+  // 488px 栏留成空白,复核者每次都得先点一次「全部展开」。收起态仍一键可达
+  // (全部收起,同一钮位)。
+  const [changesExpanded, setChangesExpanded] = useState(true);
   const [compareOpen, setCompareOpen] = useState(false);
   // #318 复用面板「查看方案」:关弹层并把 docpane 切到被复用方案的 plan
   // 显示面(plans 读面已在;原站行为未捕获——r8 §5/r9 §5 登记,本实现为
@@ -627,6 +630,34 @@ export function TodoDetailPage() {
         ? t('任务状态已变化，消息未送出')
         : null;
 
+  // The phase's single primary action. Head and fresh-block both call it, so
+  // the start affordance sits next to the task brief as well as in the head
+  // corner (XMON-55 P0) without forking the ordering rules.
+  const handlePrimaryAction = () => {
+    if (live) {
+      // 主时序关口（02 §4.2）：todo 开始 = 统一 dialog 面（#318,
+      // r9 §3.6 待开始先开 dialog 再跑）/ confirm 确认 / review 验收
+      // 弹层 / failed 重跑弹层 / done 重开 = 新一轮 build。
+      if (phase === 'todo') setOverlay({ kind: 'rerun' });
+      else if (phase === 'confirm' && buildId)
+        mutations.stepAction.mutate({ buildId, body: { action: 'confirm' } });
+      else if (phase === 'review') setOverlay({ kind: 'accept' });
+      else if (phase === 'failed') setOverlay({ kind: 'rerun' });
+      else if (phase === 'done') startBuild(true);
+      return;
+    }
+    if (chain === 'landed' && detail?.revision != null) {
+      setChain('building');
+      return;
+    }
+    // r7 34: the review-phase 完成 button opens the accept dialog;
+    // r8 54: the failed 重跑 button opens the rerun dialog;
+    // #318: todo 开始 同走统一 dialog 面（fixture 静态形）。
+    if (phase === 'todo') setOverlay({ kind: 'rerun' });
+    if (phase === 'review') setOverlay({ kind: 'accept' });
+    if (phase === 'failed') setOverlay({ kind: 'rerun' });
+  };
+
   return (
     // #447 (ADR 0004 D7): data-chief-open narrows --detail-pane-right to the
     // docked panel width so the composer / FAB / reject-row anchors skip the
@@ -649,30 +680,7 @@ export function TodoDetailPage() {
           phase={live ? phase : (view.phaseOverride ?? todo.phase)}
           onMore={() => setMoreOpen(true)}
           reviewActive={reviewActive}
-          onAction={() => {
-            if (live) {
-              // 主时序关口（02 §4.2）：todo 开始 = 统一 dialog 面（#318,
-              // r9 §3.6 待开始先开 dialog 再跑）/ confirm 确认 / review 验收
-              // 弹层 / failed 重跑弹层 / done 重开 = 新一轮 build。
-              if (phase === 'todo') setOverlay({ kind: 'rerun' });
-              else if (phase === 'confirm' && buildId)
-                mutations.stepAction.mutate({ buildId, body: { action: 'confirm' } });
-              else if (phase === 'review') setOverlay({ kind: 'accept' });
-              else if (phase === 'failed') setOverlay({ kind: 'rerun' });
-              else if (phase === 'done') startBuild(true);
-              return;
-            }
-            if (chain === 'landed' && detail?.revision != null) {
-              setChain('building');
-              return;
-            }
-            // r7 34: the review-phase 完成 button opens the accept dialog;
-            // r8 54: the failed 重跑 button opens the rerun dialog;
-            // #318: todo 开始 同走统一 dialog 面（fixture 静态形）。
-            if (phase === 'todo') setOverlay({ kind: 'rerun' });
-            if (phase === 'review') setOverlay({ kind: 'accept' });
-            if (phase === 'failed') setOverlay({ kind: 'rerun' });
-          }}
+          onAction={handlePrimaryAction}
           chipPopoverOpen={fixture.ui?.chipPopoverOpen === true}
           onEditAssign={() => setAssignOpen(true)}
         />
@@ -690,7 +698,12 @@ export function TodoDetailPage() {
             )}
             {detail == null ? (
               <div className="detail-fresh">
-                <FreshBlock todo={todo} tags={freshTags} />
+                <FreshBlock
+                  todo={todo}
+                  tags={freshTags}
+                  action={ui.action}
+                  onAction={handlePrimaryAction}
+                />
                 {/* M7 #310：live 详情面把用户提交的 spec 渲染在 FreshBlock 之
                     下（fix 丢字 bug ——之前 spec 落 todo.spec 但 UI 从未呈现
                     给用户看）。fixture 面不走此分支：fixture
@@ -833,65 +846,63 @@ export function TodoDetailPage() {
           {/* #447 (ADR 0004 D7)：总管竖板与右栏格位互斥——竖板停靠时
               RightPane 不渲染，面板作为 detail-body 末项接管其格位；收板
               即回位（内容瞬时贴合，D4）。pane 状态（paneView/docMode/
-              diff/menu）全住页面层，重挂载无状态损失。 */}
-          {chief.chiefView !== 'drawer' && (
+              diff/menu）全住页面层，重挂载无状态损失。
+              XMON-55 P0：fresh（无线程）态整栏不渲染——它的三个 section
+              都要 build 载荷，文档面在无 build 时也只是空占位；488px 让给
+              中心列的任务简报，不让空态各占一半。 */}
+          {chief.chiefView !== 'drawer' && detail != null && (
             <RightPane
               view={paneView}
               onView={setPaneView}
               docLabel={docMode === 'changes' ? '变更' : '方案'}
               content={content}
               buildId={live ? buildId : null}
-              empty={detail == null}
             >
-              {detail != null && (
-                <DocPane
-                  mode={docMode}
-                  doc={view.doc}
-                  changes={live ? liveDetail?.changes : detail.changes}
-                  now={live ? Date.now() : fixture.now}
-                  planDropdownOpen={fixture.ui?.planDropdownOpen === true}
-                  onPaneView={setPaneView}
-                  hasSections={content != null}
-                  planVersions={view.planVersions}
-                  versionMenu={menu}
-                  onVersionMenu={setMenu}
-                  onCompare={() => {
-                    if (live) {
-                      setCompareOpen(true);
-                      setMenu(undefined);
-                      return;
-                    }
-                    // 上一版本 (r8 64 → 65/71): opens the previous-version
-                    // diff — the fixture's compare target, or the chain's
-                    // landed diff once the reject loop produced one
-                    setDiff(detail.compareTarget ?? detail.revision?.landed.planDiff);
+              <DocPane
+                mode={docMode}
+                doc={view.doc}
+                changes={live ? liveDetail?.changes : detail.changes}
+                now={live ? Date.now() : fixture.now}
+                planDropdownOpen={fixture.ui?.planDropdownOpen === true}
+                onPaneView={setPaneView}
+                hasSections={content != null}
+                planVersions={view.planVersions}
+                versionMenu={menu}
+                onVersionMenu={setMenu}
+                onCompare={() => {
+                  if (live) {
+                    setCompareOpen(true);
                     setMenu(undefined);
-                  }}
-                  onBase={() => {
-                    if (live) {
-                      setCompareOpen(false);
-                      setMenu(undefined);
-                      return;
-                    }
-                    setDiff(undefined);
-                    setMenu(undefined);
-                  }}
-                  planDiff={view.planDiff}
-                  buildId={live ? buildId : null}
-                  emptyMeta={
-                    taskMeta != null ? (
-                      <TaskMetaBlock meta={taskMeta} now={Date.now()} />
-                    ) : undefined
+                    return;
                   }
-                  onToggleExpand={() => {
-                    if (live) {
-                      setChangesExpanded((v) => !v);
-                      return;
-                    }
-                    setDiff((d) => (d != null ? { ...d, expanded: !d.expanded } : d));
-                  }}
-                />
-              )}
+                  // 上一版本 (r8 64 → 65/71): opens the previous-version
+                  // diff — the fixture's compare target, or the chain's
+                  // landed diff once the reject loop produced one
+                  setDiff(detail.compareTarget ?? detail.revision?.landed.planDiff);
+                  setMenu(undefined);
+                }}
+                onBase={() => {
+                  if (live) {
+                    setCompareOpen(false);
+                    setMenu(undefined);
+                    return;
+                  }
+                  setDiff(undefined);
+                  setMenu(undefined);
+                }}
+                planDiff={view.planDiff}
+                buildId={live ? buildId : null}
+                emptyMeta={
+                  taskMeta != null ? <TaskMetaBlock meta={taskMeta} now={Date.now()} /> : undefined
+                }
+                onToggleExpand={() => {
+                  if (live) {
+                    setChangesExpanded((v) => !v);
+                    return;
+                  }
+                  setDiff((d) => (d != null ? { ...d, expanded: !d.expanded } : d));
+                }}
+              />
             </RightPane>
           )}
           <ChiefWakePanel surface={chief} />

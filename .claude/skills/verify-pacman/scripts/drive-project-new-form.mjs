@@ -12,8 +12,8 @@
 //    githubRepo)、未选形态(repoKind NULL 无 repo 项目)—— API + SQLite 双证
 // 栈必须已在跑(launch.mjs;坐标取 VERIFY_RUN_DIR/ports.json,worktree 车道
 // 传 VERIFY_REPO_ROOT)。道具(真 git 仓/非 git 目录)自建自清。
-// 证据(截图 + result.json)落 VERIFY_EVIDENCE_DIR;随 PR 进 git 须再跑
-// archive.mjs <证据目录> 360。任一断言失败退出码 1。
+// 证据(截图 + result.json)落 VERIFY_EVIDENCE_DIR;交付见 SKILL.md「证据归档
+// 纪律」(附 Multica 交付评论,不进仓库)。任一断言失败退出码 1。
 // 运行前置:proxy env 全 unset(回环请求过代理会 502 假阳性)。
 
 import { execFileSync } from 'node:child_process';

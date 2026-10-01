@@ -30,6 +30,7 @@ import {
   BRAND,
   conversationBranch,
   MERGE_ANNOUNCEMENT,
+  PLAN_SECTIONS,
   REVIEW_VERDICT_KIND,
   reviewVerdictSchema,
 } from '@pacman/shared';
@@ -260,8 +261,23 @@ export function inlineSegments(text: string): DocSegment[] {
   return out.length > 0 ? out : [{ text }];
 }
 
-/** plan.md markdown-lite → DocBlock[]（# 标题 / - 列表 / 段落；`Context:`
- * 段首词保留原文——四段为 LLM 自由文本，不做结构强判，r3 §3.3）。 */
+/** `Context: …` section label → head + the rest of the line (XMON-55 P2).
+ *  plan.md's four canonical sections are written by the LLM as bare
+ *  `Label:` openers far more often than as markdown headings, and they used
+ *  to render as undifferentiated body text — the pane showed four topics at
+ *  one size with nothing marking where each began. The label vocabulary is
+ *  the wire canon (PLAN_SECTIONS, packages/shared/records/plan.ts), so this
+ *  reads the contract rather than guessing at structure. */
+function planSectionHead(line: string): { label: string; rest: string } | null {
+  const m = /^([A-Za-z][A-Za-z ]{0,24}?)\s*:\s*(.*)$/.exec(line);
+  if (m == null) return null;
+  const label = m[1]?.trim() ?? '';
+  if (!PLAN_SECTIONS.some((s) => s.toLowerCase() === label.toLowerCase())) return null;
+  return { label, rest: m[2] ?? '' };
+}
+
+/** plan.md markdown-lite → DocBlock[]（# 标题 / - 列表 / 段落 / 四段标签；
+ *  四段正文仍为 LLM 自由文本，只认标签行，不解析其内容，r3 §3.3）。 */
 export function mapPlanDoc(content: string): DocBlock[] {
   const blocks: DocBlock[] = [];
   let para: string[] = [];
@@ -280,6 +296,13 @@ export function mapPlanDoc(content: string): DocBlock[] {
     if (line.startsWith('#')) {
       flushPara();
       blocks.push({ kind: 'head', segments: inlineSegments(line.replace(/^#+\s*/, '')) });
+      continue;
+    }
+    const section = planSectionHead(line.trim());
+    if (section != null) {
+      flushPara();
+      blocks.push({ kind: 'head', segments: inlineSegments(section.label) });
+      if (section.rest.trim() !== '') para.push(section.rest.trim());
       continue;
     }
     if (/^[-*•]\s+/.test(line)) {

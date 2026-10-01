@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { decodePng, type DecodedPng } from './png.js';
 
 // Issue #137 acceptance: ⌘K opens the panel with the input *already*
 // focused — typing lands without a second click and filters the fixture
@@ -32,6 +33,24 @@ function isLit(locator: Locator) {
 }
 
 const TRANSPARENT = 'rgba(0, 0, 0, 0)';
+
+/** Tallest vertical run of lit pixels in the rect [x0,x1) × [y0,y1), counted
+ *  in device pixels. The caret (--text-primary, near white) clears the luma
+ *  threshold on its own column; the placeholder glyph it sits on (--text-dim)
+ *  stays under it, so a clipped caret reads as a short run and a whole one as
+ *  the input's full height. */
+function tallestRun(img: DecodedPng, x0: number, y0: number, x1: number, y1: number): number {
+  let best = 0;
+  for (let x = x0; x < x1; x += 1) {
+    let run = 0;
+    for (let y = y0; y < y1; y += 1) {
+      const [r, g, b] = img.px(x, y);
+      run = 0.2126 * r + 0.7152 * g + 0.0722 * b > 140 ? run + 1 : 0;
+      if (run > best) best = run;
+    }
+  }
+  return best;
+}
 
 /** ⌘K until the panel answers. goto resolves at `load`, but the hotkey
  *  listener registers in a passive effect after first paint — on a loaded
@@ -133,4 +152,58 @@ test('常亮互斥 holds on the collapsed rail form', async ({ page }) => {
   await page.keyboard.press('Escape');
   await expect(page.locator('.search-panel')).toBeHidden();
   await expect.poll(() => pillBg(rail)).not.toBe(TRANSPARENT);
+});
+
+// XMON-79: the caret was shaved to a sliver in the state ⌘K opens in. The
+// field is a .input--palette — a frameless inline input (no border, no
+// background, no padding) — but it inherited .input's 8px corner radius,
+// which belongs to the boxed skin. Blink's UA sheet forces `overflow: clip`
+// on <input>, clipping to the padding box *following the corners*; at 16px
+// tall an 8px radius is a stadium, and the caret is painted at the text
+// origin — the padding-box left edge, x=0 — exactly where the arc has eaten
+// the height. Empty input is the state the panel opens in, so the reported
+// symptom is this one.
+//
+// Asserted as pixels, not as a computed border-radius: the invariant is that
+// the caret is *visible*, not that some property holds a particular value.
+test('the caret is not clipped where it meets the input edge', async ({ page }) => {
+  await page.goto(BOARD);
+  await openPanel(page);
+  const field = input(page);
+  await expect(field).toBeFocused();
+
+  // The panel scales in from `transform-origin: 50% 0`. Until that transition
+  // ends the input sits at scaled coordinates — mid-flight the 16px field
+  // measures 15.55px wide at x 499 — and a clip built from those numbers
+  // lands beside the caret and reads an empty window. A screenshot settles
+  // the panel by itself (Playwright fast-forwards finite transitions); a box
+  // read does not, so wait the transition out before measuring.
+  await expect(page.locator('.search-panel')).toHaveCSS('transform', 'none');
+  const box = (await field.boundingBox())!;
+
+  // The clip starts one lane left of the input so the caret column is never
+  // flush against the bitmap edge; the row's magnifier sits 3px further left
+  // again, outside the window, so nothing but the caret can light it up.
+  const clip = {
+    x: Math.round(box.x) - 1,
+    y: Math.round(box.y) - 2,
+    width: 4,
+    height: Math.round(box.height) + 4,
+  };
+
+  // A caret blinks, and a screenshot keeps whichever phase it lands in. An
+  // edit that changes the selection restarts the phase visible, so every
+  // frame is taken right after typing+backspacing back to position 0 —
+  // deterministic, rather than a sleep racing the blink timer.
+  const caretHeight = async () => {
+    await page.keyboard.type('a');
+    await page.keyboard.press('Backspace');
+    const shot = decodePng(await page.screenshot({ clip, caret: 'initial' }));
+    return tallestRun(shot, 0, 0, shot.width, shot.height);
+  };
+  const frames = [await caretHeight(), await caretHeight(), await caretHeight()];
+
+  // Full caret height in this field is 16px == the input's own height.
+  // Measured: 6px with the inherited radius, 16px without it.
+  expect(Math.max(...frames)).toBeGreaterThanOrEqual(box.height - 2);
 });

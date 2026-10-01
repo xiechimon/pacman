@@ -177,3 +177,17 @@ a:active {
     transition-duration: 0s;
   }
 }
+
+/* XMON-69: the sidebar's two toggles are the same control on either side of
+   the flip — a bare 14px glyph in a 28px (expanded) / 40px (rail) box with no
+   surface of its own, so the global dim above lands on the glyph alone and is
+   read as the icon shrinking under the cursor. They hold full ink while
+   pressed. The rail toggle keeps its hover face (it rides its own seam row,
+   sidebar.tsx) — only the press dim is excepted. Unlayered on purpose: this
+   file is loaded outside @layer, so a tailwind `active:opacity-100` utility
+   cannot outrank the rule above (measured, 2026-10-01); the exception has to
+   live beside it. */
+.sidebar-team-collapse:active,
+.rail-toggle:active {
+  opacity: 1;
+}

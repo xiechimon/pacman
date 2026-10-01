@@ -1,13 +1,13 @@
 ---
 name: verify-pacman
-description: pacman 行为验证——起隔离 live 栈(server VERIFY_PORT 8791 + vite dev VERIFY_WEB_PORT 5273,独立 PACMAN_HOME scratch),Playwright 走真用户路径(新建任务/建 API 密钥/搜索/主题),证据(截图 + API JSON + SQLite 行)落 .claude/verify-evidence/ 并归档进 docs/verify/<ticket>/ 随 PR 提交。改动后要证明功能真的能跑、要可复核证据时用;fixture 面回归走 apps/web e2e(含视觉 spec 的几何断言),不用本 skill。
+description: pacman 行为验证——起隔离 live 栈(server VERIFY_PORT 8791 + vite dev VERIFY_WEB_PORT 5273,独立 PACMAN_HOME scratch),Playwright 走真用户路径(新建任务/建 API 密钥/搜索/主题),证据(截图 + API JSON + SQLite 行)落 .claude/verify-evidence/(gitignored)并附到 Multica 交付评论,不进仓库、不为验证开 PR。改动后要证明功能真的能跑、要可复核证据时用;fixture 面回归走 apps/web e2e(含视觉 spec 的几何断言),不用本 skill。
 ---
 
 # verify-pacman
 
 pacman = todos.dev 复刻(React/vite web + Hono REST/SSE/SQLite server)。本 skill 起一套**隔离实例**(独立端口 + 独立数据根,绝不碰用户真数据 `~/.pacman` 和 8787/5173 上的活跃 dev 栈),用仓库自带的 Playwright chromium 走真用户路径,产出证据后干净回收。脚本全在 `scripts/`,证据与运行态全在 `.claude/` 下(已被 .gitignore 忽略,不进 git)。
 
-Last updated: 2026-10-01(XMON-41 新任务键位 N → C 随票维护:新增键位专测 `drive-newtask-key.mjs`(新键开 / 旧键 ×5 不开正负成对跑到同一页面状态,三条渲染路径各一对 + 输入态守卫 + 侧栏行入口 + 保存全链;旧提交栈加 `--expect=old` 反转期望取「同等场景」基线);`drive-hotkeys.mjs` 角标与开面键改 C 并复跑全绿 14/14;`features/hotkeys.md` / `features/board-new-task.md` / `features/README.md` 同步。前序:2026-10-01(XMON-19 删除 Agent 票随票维护:`drive-agent-detail.mjs` 尾部补第 9 步删除流程(概览入口 → 确认层 canon 文案 → 取消不删 → 确认后落团队页 + server 行 404 + 复删 404 + 名单对账),`features/agent-detail.md` 补 `delete-agent` 子特性/驱动步/gotcha(删除步依赖第 3 步改名与第 8 步建的邻居)。前序:2026-10-01(XMON-14 落点票随票维护:`drive-hotkeys` 的「Space 呼出抽屉」步改 `⌘J`并补 ⌘J 提示 chip 的 registry 契约/可见性两 check——#442 起 Space 已退役,旧步是残留;`drive-tags` 补类型筛选弹层选中行的 TagChip 落点 check(`data-slot=badge` + 20px);features/avatars·hotkeys·tags 三页同步。前序:2026-09-29(/maintain-verification-skill 维护轮:#351 看板四列工作台落地后本轮 map 校正——三处 SKILL.md 修正:①worktree 车道表述(2026-09-28 起本 skill 已提交进仓,worktree 自带副本,必须从 worktree 路径跑脚本;主仓脚本验 lane 代码 = 旧脚本 fill 30s 超时假象,#386 实战);②定制 probe 清单补全(纯 live 栈组 9 脚本登记:avatars/hotkeys/chief-model-select/detail-pane/mcp/project-new-form/github-oauth/local-repos/M7 六功能族);③spec 11 三 probe 表述由「先行红态」转「落地后应全绿,红即回归」(实现票 #355-#358 全合)。board 条目本身各 lane 已随票维护到位(board-new-task.md 4 列 + 单字段面,证据 docs/verify/351/ 10/10 + 4/4)。前序:#391 验收复盘:「验收签字」硬规则——归档后必须勾 issue Acceptance criteria 框 + 追加验收记录段(关票 ≠ 验收完成,#391 实测票关了三框仍空);归档纪律补 PR 贴图形态(github.com/<owner>/<repo>/raw/<SHA>/ 永久链,私有仓 raw.githubusercontent 恒 404);前序 2026-09-28:#354 spec 11 先行地图:feature map 补三面条目(providers runtime tabs / machines 本机行+switches / 添加服务商 picker)+ 三个先行 probe(drive-providers-tabs / drive-machines-local / drive-provider-picker.mjs)——先行语义(spec 11 A12):实现票落地前红态,FAIL detail 逐条指 spec 条款,实现票验收 = 转绿,详见 features/README.md Last updated;前序同日:证据归档纪律(证据默认落主仓 + archive.mjs 归档进 docs/verify/<ticket>/ + 硬规则「无归档路径的 verify 声明视为未验证」)+ M7 功能闭环维护(feature map 补 6 条 + drive-stop.mjs 修 #318 + stub-llm-verify.mjs 修 Node ≥v20 close bug)。建成日 2026-09-25,5 probe 全 PASS;维护走 `/maintain-verification-skill`)
+Last updated: 2026-10-01(XMON-63 证据纪律改口径:交付组验收流程改为「实现方自证 + 编排核收」后,证据不再归档进 `docs/verify/`、不再随 PR 提交——证据落 `.claude/verify-evidence/`(gitignored)并 `multica issue comment add <issue> --attachment <path>` 附到 Multica 交付评论;硬规则随之由「无归档路径的 verify 声明视为未验证」改为「证据未附交付评论的 verify 声明视为未验证」;`scripts/archive.mjs` 删除,各 probe/drive 脚本头注释与 `features/` 里的归档指令同步清掉;并按用户同日拍板删除验收记录存量三目录——`docs/verify/XMON-41/`、`docs/verify/XMON-43/`、`integration/verify/xmon-43/`(PR #555/#558 带入,共 27 文件),其余 `docs/verify/` 历史目录一个字节未动。下文及 `features/` 中残留的 `docs/verify/` 字样均为 2026-10-01 前旧纪律的**历史记述**,其中的 XMON-41 目录已随本票删除)。前序:2026-10-01(XMON-41 新任务键位 N → C 随票维护:新增键位专测 `drive-newtask-key.mjs`(新键开 / 旧键 ×5 不开正负成对跑到同一页面状态,三条渲染路径各一对 + 输入态守卫 + 侧栏行入口 + 保存全链;旧提交栈加 `--expect=old` 反转期望取「同等场景」基线);`drive-hotkeys.mjs` 角标与开面键改 C 并复跑全绿 14/14;`features/hotkeys.md` / `features/board-new-task.md` / `features/README.md` 同步。前序:2026-10-01(XMON-19 删除 Agent 票随票维护:`drive-agent-detail.mjs` 尾部补第 9 步删除流程(概览入口 → 确认层 canon 文案 → 取消不删 → 确认后落团队页 + server 行 404 + 复删 404 + 名单对账),`features/agent-detail.md` 补 `delete-agent` 子特性/驱动步/gotcha(删除步依赖第 3 步改名与第 8 步建的邻居)。前序:2026-10-01(XMON-14 落点票随票维护:`drive-hotkeys` 的「Space 呼出抽屉」步改 `⌘J`并补 ⌘J 提示 chip 的 registry 契约/可见性两 check——#442 起 Space 已退役,旧步是残留;`drive-tags` 补类型筛选弹层选中行的 TagChip 落点 check(`data-slot=badge` + 20px);features/avatars·hotkeys·tags 三页同步。前序:2026-09-29(/maintain-verification-skill 维护轮:#351 看板四列工作台落地后本轮 map 校正——三处 SKILL.md 修正:①worktree 车道表述(2026-09-28 起本 skill 已提交进仓,worktree 自带副本,必须从 worktree 路径跑脚本;主仓脚本验 lane 代码 = 旧脚本 fill 30s 超时假象,#386 实战);②定制 probe 清单补全(纯 live 栈组 9 脚本登记:avatars/hotkeys/chief-model-select/detail-pane/mcp/project-new-form/github-oauth/local-repos/M7 六功能族);③spec 11 三 probe 表述由「先行红态」转「落地后应全绿,红即回归」(实现票 #355-#358 全合)。board 条目本身各 lane 已随票维护到位(board-new-task.md 4 列 + 单字段面,证据 docs/verify/351/ 10/10 + 4/4)。前序:#391 验收复盘:「验收签字」硬规则——归档后必须勾 issue Acceptance criteria 框 + 追加验收记录段(关票 ≠ 验收完成,#391 实测票关了三框仍空);归档纪律补 PR 贴图形态(github.com/<owner>/<repo>/raw/<SHA>/ 永久链,私有仓 raw.githubusercontent 恒 404);前序 2026-09-28:#354 spec 11 先行地图:feature map 补三面条目(providers runtime tabs / machines 本机行+switches / 添加服务商 picker)+ 三个先行 probe(drive-providers-tabs / drive-machines-local / drive-provider-picker.mjs)——先行语义(spec 11 A12):实现票落地前红态,FAIL detail 逐条指 spec 条款,实现票验收 = 转绿,详见 features/README.md Last updated;前序同日:证据归档纪律(证据默认落主仓 + archive.mjs 归档进 docs/verify/<ticket>/ + 硬规则「无归档路径的 verify 声明视为未验证」)+ M7 功能闭环维护(feature map 补 6 条 + drive-stop.mjs 修 #318 + stub-llm-verify.mjs 修 Node ≥v20 close bug)。建成日 2026-09-25,5 probe 全 PASS;维护走 `/maintain-verification-skill`)
 
 ## 事实底座(2026-09-25 盘问;feature 面演化后跑 `/maintain-verification-skill` 校正)
 
@@ -25,7 +25,7 @@ Last updated: 2026-10-01(XMON-41 新任务键位 N → C 随票维护:新增键�
 
 **worktree 车道**:2026-09-28 起 `.claude/skills/verify-pacman/` 已提交进仓(.gitignore 嵌套例外),**worktree 检出自带本 skill 的完整副本**。跑法:`VERIFY_REPO_ROOT=<worktree 绝对路径>` 起栈(worktree 须已 `pnpm install`),且**必须从 worktree 路径跑脚本自身**(`node <worktree>/.claude/skills/verify-pacman/scripts/...`)——从主仓路径跑会用主仓的旧 probe 脚本验 lane 的新代码,症状极迷惑(旧脚本在 fill 处 30s 超时,而非解析报错;#386 实战烧 5 轮才定位)。**改码后必须重 launch**:worktree 在 `.claude/worktrees/` 下,vite 配置的 `**/.claude/**` watch 忽略会把整个 worktree 罩住,栈运行中改码不会生效(实证见项目记忆),驱动到的就是旧代码。
 
-**lane 收尾必做**(证据随 worktree 消失是本 skill 最大的坑,见「证据归档纪律」):`VERIFY_REPO_ROOT` 只影响栈与运行态,证据默认落主仓;跑完仍须 archive 进 `docs/verify/<ticket>/` 并 commit + 勾 issue 验收框(见「证据归档纪律」),否则 PR 的验证声明不可查证。
+**lane 收尾必做**(证据随 worktree 消失是本 skill 最大的坑,见「证据归档纪律」):`VERIFY_REPO_ROOT` 只影响栈与运行态,证据默认落主仓;跑完仍须把证据附到 Multica 交付评论(见「证据归档纪律」),否则 lane 一收工、运行机一回收,验证声明即不可查证。
 
 ## Launch
 
@@ -109,26 +109,29 @@ node .../scripts/drive-machines-local.mjs    # machines 本机行+switches(machi
 
 ## 证据归档纪律(硬规则)
 
-`.claude/verify-evidence/` 是 gitignored 本地目录,**永远进不了 PR**。带 verify 声明的 PR 必须把证据归档进 `docs/verify/<ticket>/`(ticket = issue 号)并随 PR 提交:
+本 skill 的「归档」= **把证据附到 Multica 交付评论**,不是往仓库里放文件。证据(截图 + API JSON + SQLite 行)落 `.claude/verify-evidence/<时间戳>-<probe>/`——gitignored 本地目录,**不进 git、不进 PR,也不为验证开任何 PR**。带 verify 声明的交付,把证据附到交付评论:
 
 ```sh
-node .../scripts/archive.mjs <证据目录> <ticket>   # → docs/verify/<ticket>/<时间戳>-<probe>/
+multica issue comment add <issue-id> \
+  --attachment <证据目录>/result.json \
+  --attachment <证据目录>/<截图>.png
 ```
 
-- archive 落主仓(与 `VERIFY_REPO_ROOT` 无关),落盘后自检 `git check-ignore`——归档进被忽略的路径直接报错退出(等于没归档)。
-- PR body 引用 archive 打印的仓库相对路径。**无归档路径的 verify 声明视为未验证**,reviewer 无从复核。
-- **PR body 直接内嵌截图**用 `![说明](https://github.com/<owner>/<repo>/raw/<head SHA>/docs/verify/<ticket>/<run>/<file>.png)`——必须 `github.com/.../raw/...` 形态 + commit SHA 永久链:`raw.githubusercontent.com` 对私有仓恒 404(CDN 不透传鉴权),branch 名会随后续提交漂移。GitHub 无附件上传公开 API(web 拖拽生成的 `user-attachments` 链接需浏览器会话),agent 流程一律「证据进仓 + raw 永久链内嵌」,登录且有仓权限的查看者可见图。
-- 证据是 200-300KB/次(截图为主),量级可接受;真值三件套(截图 + API JSON + SQLite 行)照旧,归档只改落盘位置不改口径。
+- **证据未附交付评论的 verify 声明视为未验证**,核收方无从复核。
+- `--attachment` 可重复,逐个文件给(`result.json` + 各截图 PNG);默认只允许 cwd 内的路径,证据目录在 cwd 外时补 `--allow-external-file`。
+- 评论正文写 probe 名 + checks 通过数(逐条对齐 `result.json` 的 ok 计数,不写约数)+ 栈坐标,让核收方能对着附件复核。
+- **禁写「证据见本地路径」**:运行机上的 `.claude/verify-evidence/` 对读者不可达,交付评论里的附件是唯一凭证。
+- 证据是 200-300KB/次(截图为主),量级可接受;真值三件套(截图 + API JSON + SQLite 行)照旧,本纪律只改落点不改口径。
 
-### 验收签字(硬规则,归档同日收尾)
+### 验收签字(硬规则,交付同日收尾)
 
-证据归档只完成「履约」,还差「签字」:issue 的 Acceptance criteria 勾选框不会因 `Closes #N` 自动勾上(#391 实测:票已关、证据在仓,三框仍空,用户视角 = 验收未发生)。PR 合并前后,lane 必须:
+把证据附进交付评论只完成「履约」,还差「签字」:issue 的 Acceptance criteria 勾选框不会因 `Closes #N` 自动勾上(#391 实测:票已关、证据在仓,三框仍空,用户视角 = 验收未发生)。PR 合并前后,lane 必须:
 
 1. `gh issue view <ticket> --json body` 取正文,把已交付的 `- [ ]` 改 `- [x]`(只勾真有证据支撑的框);
-2. 正文末尾追加「验收记录」段:PR 号 + 合并日 + 证据目录相对路径 + probe/e2e 通过数(数字须与归档的 result.json / e2e 日志一致,不写约数);
+2. 正文末尾追加「验收记录」段:证据所在的交付评论 + PR 号 + probe/e2e 通过数(数字须与附上的 result.json / e2e 日志一致,不写约数);
 3. `gh issue edit <ticket> --body-file <tmpfile>` 写回(长正文禁内联 `--body`)。
 
-未交付的框**不勾**,在验收记录里写明缺口。「关票 ≠ 验收完成」——勾框 + 证据指针才是可复核的终态。
+未交付的框**不勾**,在验收记录里写明缺口。「关票 ≠ 验收完成」——勾框 + 交付评论里的证据指针才是可复核的终态。
 
 ## Cleanup
 
@@ -146,9 +149,8 @@ node .../scripts/cleanup.mjs
 | `scripts/doctor.mjs` | 只读体检 |
 | `scripts/drive.mjs` | Playwright probe(本文 Drive 节用法) |
 | `scripts/cleanup.mjs` | 回收栈,保证据 |
-| `scripts/archive.mjs` | 证据归档进 `docs/verify/<ticket>/`(本文「证据归档纪律」) |
 
-env 契约(脚本一致):`VERIFY_REPO_ROOT` / `VERIFY_RUN_DIR` / `VERIFY_PORT` / `VERIFY_WEB_PORT` / `VERIFY_EVIDENCE_DIR`。archive.mjs 不读这些——它固定落主仓,不受 `VERIFY_REPO_ROOT` 影响。
+env 契约(脚本一致):`VERIFY_REPO_ROOT` / `VERIFY_RUN_DIR` / `VERIFY_PORT` / `VERIFY_WEB_PORT` / `VERIFY_EVIDENCE_DIR`。证据交付不进仓库,故无归档脚本:跑完直接 `multica issue comment add --attachment`(本文「证据归档纪律」)。
 
 ## 何时不用本 skill
 

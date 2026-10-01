@@ -93,7 +93,6 @@ export const EN: Record<string, string> = {
   // —— todo detail (r7 §3.3–§3.6) ——
   'Token 用量': 'Token usage',
   运行历史: 'Run history',
-  尚无运行内容: 'No run content yet',
   打开方案: 'Open plan',
   添加附件: 'Add attachment',
   'AI 审核': 'AI review',
@@ -455,6 +454,9 @@ export const EN: Record<string, string> = {
   失败: 'Failed',
   默认: 'Default',
   开始任务: 'Start task',
+  // XMON-55 P0: the hint that rides the 开始 button on the fresh brief
+  '点开始后选执行机器，Agent 在你的机器上跑':
+    'Pick a machine after starting — the agent runs on your machine',
   '规划与执行分用不同 Agent': 'Use different agents for planning and execution',
   先做规划: 'Plan first',
   立即执行: 'Run now',
@@ -597,6 +599,21 @@ export const EN: Record<string, string> = {
   没有匹配筛选条件的任务: 'No tasks match the selected filters',
   清除筛选: 'Clear filters',
 
+  // —— XMON-57 统一筛选面板（两维 + 批次键 + 生效筛选条 + 空词表行）——
+  // 「全选」不复用上面的 `全选`（那条是权限授予面的 'Grant all'）——同一个
+  // zh 词在两个语义域里，en 必须分叉。
+  全部选中: 'Select all',
+  清除: 'Clear',
+  仅此: 'Only this',
+  '已选 {n}/{m}': '{n}/{m} selected',
+  清除全部: 'Clear all',
+  '搜索{name}': 'Search {name}',
+  '清除{name}筛选': 'Clear {name} filter',
+  本作用域内没有可选的仓库: 'No repositories available in this scope',
+  本作用域内没有可选的类型: 'No types available in this scope',
+  '没有与“{q}”匹配的选项': 'No options match “{q}”',
+  '筛选生效：{summary}': 'Filters active: {summary}',
+
   // —— #485 Agent 详情编辑面（三 tab + 概览字段 + 记忆/权限面）——
   // 含空格/标点的键一律引号形（对象字面量的键不是标识符）。
   概览: 'Overview',
@@ -613,6 +630,10 @@ export const EN: Record<string, string> = {
   // 概览「进行中」段空态（原文 = 参考产品 web 包 agent_modal.no_active_tasks）。
   暂无进行中的任务: 'No active tasks',
   '暂无团队密钥。': 'No team secrets yet.',
+  // XMON-80/P3：零密钥空态旁的出口（落到侧栏密钥页）。
+  去添加密钥: 'Add a secret',
+  // XMON-80/P2：权限 tab 保存失败的可见反馈。
+  '保存失败，请重试。': 'Save failed. Try again.',
   '暂无 MCP 服务器。': 'No MCP servers yet.',
   团队密钥: 'Team secrets',
   // shared canon（packages/shared/src/records/agent.ts、memory.ts），经 t()

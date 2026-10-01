@@ -11,8 +11,8 @@
 // 4. SQLite 只读真值:project.localPath 列值 / github_connection 表形
 //    (accessToken 只有 cipher 列位,无 plaintext 列)
 // 栈必须已在跑(launch.mjs;坐标取 VERIFY_RUN_DIR/ports.json)。
-// 证据(result.json + responses.json)落 VERIFY_EVIDENCE_DIR;随 PR 进 git 须
-// 再跑 archive.mjs <证据目录> <ticket>。任一断言失败退出码 1。
+// 证据(result.json + responses.json)落 VERIFY_EVIDENCE_DIR;交付见 SKILL.md
+// 「证据归档纪律」(附 Multica 交付评论,不进仓库)。任一断言失败退出码 1。
 // 运行前置:proxy env 全 unset(回环请求过代理会 502 假阳性)。
 
 import { execFileSync } from 'node:child_process';

@@ -101,6 +101,15 @@ export function DetailHead({
         </FloatingShell>
       </span>
 
+      {/* XMON-55 P1: the head carries the task subject. Without it the only
+          way to tell which task the page belongs to was to read the thread's
+          taskline — the head showed an id and a status word and nothing to
+          attach them to. Ellipsised, never wrapped: the head is a fixed 44px
+          band. */}
+      <span className="detail-title" title={todo.title}>
+        {todo.title}
+      </span>
+
       <div className="detail-head-actions">
         <button
           type="button"

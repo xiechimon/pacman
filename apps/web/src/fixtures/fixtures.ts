@@ -539,17 +539,22 @@ const probe10: TodoRecord = {
   seqNum: 10,
 };
 
-/** Plan document of probe #9, verbatim from the r7 17 doc pane. */
+/** Plan document of probe #9, verbatim from the r7 17 doc pane except for the
+ *  section labels: XMON-55 P2 promotes the four canon sections (PLAN_SECTIONS)
+ *  from body-weight lines to `.doc-block--head`, so the four `label:` paras the
+ *  r7 capture froze as plain text are now head blocks with their remainder
+ *  trailing — what mapPlanDoc's planSectionHead does to the live wire text. */
 const PROBE_PLAN_DOC: DocBlock[] = [
+  { kind: 'head', segments: [{ text: 'Context' }] },
   {
     kind: 'para',
     segments: [
       {
-        text: 'Context: 仓库根目录的 README.md 当前末尾一行为 "r6 rebaseline probe"(文件以换行符结尾)。需求是在文件末尾追加新的一行 "r7 rebaseline probe"。',
+        text: '仓库根目录的 README.md 当前末尾一行为 "r6 rebaseline probe"(文件以换行符结尾)。需求是在文件末尾追加新的一行 "r7 rebaseline probe"。',
       },
     ],
   },
-  { kind: 'para', segments: [{ text: 'Changes:' }] },
+  { kind: 'head', segments: [{ text: 'Changes' }] },
   {
     kind: 'bullet',
     segments: [
@@ -558,8 +563,9 @@ const PROBE_PLAN_DOC: DocBlock[] = [
       },
     ],
   },
-  { kind: 'para', segments: [{ text: 'Edge cases: 无。' }] },
-  { kind: 'para', segments: [{ text: 'Verification:' }] },
+  { kind: 'head', segments: [{ text: 'Edge cases' }] },
+  { kind: 'para', segments: [{ text: '无。' }] },
+  { kind: 'head', segments: [{ text: 'Verification' }] },
   {
     kind: 'bullet',
     segments: [
@@ -707,7 +713,9 @@ const LEGACY_REVIEW_TRANSCRIPT: TranscriptItem[] = [
   },
 ];
 
-/** The probe's one-file changeset (r7 27/27b/36): README.md +1 line. */
+/** The probe's one-file changeset (r7 27/27b/36): README.md +1 line.
+ *  `expanded` is the pane's initial state — review surfaces pass true
+ *  (XMON-55 P2), the captured-collapsed form is opt-in. */
 function probeChanges(expanded: boolean): ChangesContent {
   return {
     expanded,
@@ -807,8 +815,10 @@ export function detailSpinnerQuiescent(): FixtureSet {
   };
 }
 
-/** Detail review state (r7 27/27d collapsed, 27b diff-expanded, 28 diff +
- *  tools expanded). The dark capture carries the user-menu popover. */
+/** Detail review state (r7 27/27b/28). XMON-55 P2 flipped the changes-pane
+ *  default to expanded: the r7 27/27d captures froze it collapsed, which
+ *  left the 488px pane holding one file row over blank space. The dark
+ *  capture carries the user-menu popover. */
 export function detailReview(opts: {
   userMenuOpen: boolean;
   changesExpanded?: boolean;
@@ -823,7 +833,7 @@ export function detailReview(opts: {
         PROBE_BUILD_RESULT,
         probeTools(opts.toolsExpanded ?? false),
       ],
-      changes: probeChanges(opts.changesExpanded ?? false),
+      changes: probeChanges(opts.changesExpanded ?? true),
       userMenuOpen: opts.userMenuOpen,
     },
   };
@@ -841,7 +851,7 @@ export function detailDone(): FixtureSet {
         probeTools(false),
         ...PROBE_MERGE_ROUND,
       ],
-      changes: probeChanges(false),
+      changes: probeChanges(true),
     },
   };
 }
@@ -987,7 +997,7 @@ export function detailLegacyNow(freeze: Pick<FixtureSet, 'overlay' | 'ui'>): Fix
     todos: [legacyNow, ...darkBadgeFillers],
     now: at('2026-09-23', 0, 13),
     chiefUnread: 1,
-    detail: { transcript: LEGACY_NOW_TRANSCRIPT, changes: probeChanges(false) },
+    detail: { transcript: LEGACY_NOW_TRANSCRIPT, changes: probeChanges(true) },
     ...freeze,
   };
 }
@@ -2610,7 +2620,7 @@ export const planOpenReview: FixtureSet = {
       PROBE_BUILD_RESULT,
     ],
     doc: DOC_V2,
-    changes: probeChanges(false),
+    changes: probeChanges(true),
   },
 };
 
@@ -2671,7 +2681,7 @@ export const mdToolout: FixtureSet = {
   detail: {
     transcript: MD_TOOLOUT_TRANSCRIPT,
     doc: DOC_V2,
-    changes: probeChanges(false),
+    changes: probeChanges(true),
   },
 };
 

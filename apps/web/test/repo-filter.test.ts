@@ -8,7 +8,7 @@
 //     不误配（R7）——与标签轴不同，仓库筛选没有「无仓库任务恒可见」：
 //     每张卡必属一个项目，收窄语义就是精确集成员判定。
 import { describe, expect, test } from 'vitest';
-import { matchesProjectFilter, parseProjectsParam } from '../src/board/repo-filter.js';
+import { buildRepoOptions, matchesProjectFilter, parseProjectsParam } from '../src/board/repo-filter.js';
 import { todo } from './helpers.js';
 
 const inProject = (projectId: string) => ({ ...todo(1, 'todo'), projectId });
@@ -55,5 +55,37 @@ describe('matchesProjectFilter（命中判定，精确集成员 + OR 并集）',
     // 混合：已知 + 未知共存 = 按已知的判（并集语义）
     expect(matchesProjectFilter(a, new Set(['p-gone', 'p-a']))).toBe(true);
     expect(matchesProjectFilter(b, new Set(['p-gone', 'p-a']))).toBe(false);
+  });
+});
+
+describe('buildRepoOptions（XMON-57 选项集与计数）', () => {
+  const entries = [
+    { id: 'p-a', name: 'A' },
+    { id: 'p-b', name: 'B' },
+    { id: 'p-quiet', name: 'Quiet' },
+  ];
+  const todos = [
+    { ...todo(1, 'todo'), projectId: 'p-a' },
+    { ...todo(2, 'todo'), projectId: 'p-b' },
+    { ...todo(3, 'todo'), projectId: 'p-b' },
+  ];
+
+  test('行的序 = 来源序（项目无静态全序，不在这里另排）', () => {
+    expect(buildRepoOptions(entries, todos, () => true).map((o) => o.id)).toEqual([
+      'p-a',
+      'p-b',
+      'p-quiet',
+    ]);
+  });
+
+  test('计数 = 另一轴收窄后的卡数；本轴自身不参与，零卡项目计数为 0', () => {
+    expect(buildRepoOptions(entries, todos, () => true).map((o) => o.count)).toEqual([1, 2, 0]);
+    expect(
+      buildRepoOptions(entries, todos, (t) => t.projectId === 'p-b').map((o) => o.count),
+    ).toEqual([0, 2, 0]);
+  });
+
+  test('作用域里没有项目源 = 空选项（面板渲染空态行，不是消失）', () => {
+    expect(buildRepoOptions([], todos, () => true)).toEqual([]);
   });
 });

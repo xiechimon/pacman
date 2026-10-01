@@ -23,6 +23,12 @@
   flex: 1;
   min-width: 0;
   border: none;
+  /* 圆角同属盒状皮肤，裸输入没有要收的角，且必须显式归零：Blink 的 UA
+     样式表给 <input> 强制 overflow: clip，裁切区是 padding box 且沿圆角走。
+     本形态 height: auto + line-height 16px 得 16px 高，配基类的 8px 圆角即
+     胶囊形，而插入符画在文本原点（padding box 左沿，x=0）——正好是圆角吃掉
+     高度的位置，于是空输入态（⌘K 打开后的默认态）只剩半截。 */
+  border-radius: 0;
   outline: none;
   background: transparent;
   padding: 0;

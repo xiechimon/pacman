@@ -18,8 +18,8 @@
 // GitHub App 凭证 + 人环登录,不可自动化——进程内全链证明在
 // apps/server/test/github-oauth.test.ts(mock 上游 14 条),此 probe 不冒充。
 // 栈必须已在跑(launch.mjs;坐标取 VERIFY_RUN_DIR/ports.json)。
-// 证据(result.json + responses.json + 截图)落 VERIFY_EVIDENCE_DIR;随 PR
-// 进 git 须再跑 archive.mjs <证据目录> <ticket>。任一断言失败退出码 1。
+// 证据(result.json + responses.json + 截图)落 VERIFY_EVIDENCE_DIR;交付见
+// SKILL.md「证据归档纪律」(附 Multica 交付评论,不进仓库)。任一断言失败退出码 1。
 // 运行前置:proxy env 全 unset(回环请求过代理会 502 假阳性)。
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';

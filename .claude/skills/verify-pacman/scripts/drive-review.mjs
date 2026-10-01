@@ -10,8 +10,7 @@
 // 前置（配方见 features/review-modal.md）：launch.mjs 起栈 + seed
 // （provider/agent/project/todo/machine 推到 plan done → confirm phase）。
 // 用法：VERIFY_REPO_ROOT=<worktree> node drive-review.mjs <todoId>
-//   env：VERIFY_EVIDENCE_DIR（缺省主仓 .claude/verify-evidence/<ts>-review-modal；
-//        证据要随 PR 进 git 须再跑 archive.mjs）
+//   env：VERIFY_EVIDENCE_DIR（缺省主仓 .claude/verify-evidence/<ts>-review-modal）
 
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';

@@ -485,50 +485,18 @@
 }
 
 /* providers 页 runtime tablist（spec 11 §A1，#356）：pi / Claude Code 双
-   tab，选中态 = 主色字 + 底部 2px 指示条压 tablist 底线。
-   #423 收编：components/ui Tabs（line variant）底座——适配层默认档中本
-   规则未声明的溢出项在此显式退回（w-fit 会缩窄 tablist 底线、p-[3px]/h-8
-   会抬高盒、justify-center 会居中 tab 序、Trigger 的 flex-1 会均分列宽、
-   after: 指示条会与 border-bottom 指示条重影、focus 灰 ring 违 #388 律）。 */
-.res-tabs {
-  display: flex;
-  justify-content: flex-start;
-  gap: 16px;
-  width: 100%;
-  height: auto;
-  padding: 0;
-  border-bottom: 1px solid var(--card-border);
-}
+   tab。XMON-73 起形态 = 分段控制器，样式正本在 pages.css 的
+   .page-tabs-group / .page-tab（与 topbar「任务|文件」同一份规则），本文件
+   不再为它留 per-face 规则；.res-tabs / .res-tab 仅作为版面与 e2e 的句柄
+   留在 DOM 上。 */
 
-.res-tab {
+/* tab 前置品牌 mark（XMON-73）：尺寸走 tabs.tsx 基类的 size-4（16px），
+   此处只补 flex 与 8px 间距（机器行 .mach-runtime 同档间距），不复制
+   .page-tab 的几何——那份规则 topbar「任务|文件」共用。 */
+.res-tab-mark {
   flex: none;
-  height: auto;
-  margin-bottom: -1px;
-  padding: 0 2px 9px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 16px;
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: none;
-}
-
-.res-tab::after {
-  content: none;
-}
-
-.res-tab:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-  box-shadow: none;
-}
-
-.res-tab[aria-selected="true"] {
-  color: var(--text-primary);
-  border-bottom-color: var(--text-primary);
+  display: block;
+  margin-right: 8px;
 }
 
 /* A2 header 卡：runtime 名 + 一行说明 + 安装态（已安装在 <hostname> /
