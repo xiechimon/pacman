@@ -307,10 +307,23 @@
 
 /* 创建弹窗的模型槽是表单最后一个字段，下方紧贴底栏（.dlg-form-foot，自带底色
    且在 DOM 里靠后）——向下展开必被压住（实测只剩首行露出来）。故这一面向上
-   展开：菜单底边贴触发钮上缘，覆盖的是上面的名称字段，落点仍在弹窗体内。 */
+   展开：菜单底边贴触发钮上缘，覆盖的是上面的名称字段，落点仍在弹窗体内。
+
+   XMON-39 高度封顶（不吃家族值的 300px）：菜单的 containing block（触发钮的
+   wrap）在 `.dlg-body` 里，而那是 `overflow-y: auto` 的滚动盒——菜单高过「触发
+   钮上缘到 body 上缘」这段距离时，超出的部分被裁掉。这段距离由模型槽上方那几格
+   （表单上留白 16 + 头像行 + 名称 label + 名称输入 + 模型 label）定死，实测
+   200~202px（dev 204 / fixture build 206.5，再减 4px 的 gap）；300px 比它高，
+   44 行候选时菜单顶 98px 落在裁剪带里——「未设置模型」+ 前两个模型既画不出来
+   也点不中（elementFromPoint 落回 .dlg-backdrop / .overlay-click-catcher），且
+   菜单已滚到顶、再滚只会把它们推得更远，永远不可达。
+   192 = 这段距离留 ≥8px 余量：整块落在 body 内，超出的行交给菜单自己滚动
+   （6 行可见）。改这条前先量 `.dlg-agent-model-select` 上缘与 `.dlg-body` 上缘
+   之差，封顶值不得越过去——agent-create-model.spec 的几何断言钉着它。 */
 .dlg-agent-model-menu {
   top: auto;
   bottom: calc(100% + 4px);
+  max-height: 192px;
 }
 
 .agent-model-row:hover,
