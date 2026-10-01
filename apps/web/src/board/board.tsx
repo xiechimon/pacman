@@ -457,7 +457,11 @@ export function BoardSurface({
  *  accept drops (useDroppable id = column id). #504: the list is the
  *  column's scroll surface — the 37px header stays fixed while cards
  *  overflow (overflow-y rides the same native-scrollbar convention as
- *  .secondary-body / .res-body). */
+ *  .secondary-body / .res-body). XMON-42: the 1px block padding is load
+ *  bearing — a scroll container clips at its padding box while the card's
+ *  ring is a box-shadow drawn outside the border box, so with a zero block
+ *  inset the topmost card (and, scrolled to the end, the bottommost one)
+ *  loses that edge; the inline axis already carries 7.25px of inset. */
 function ColumnList({
   columnId,
   empty,
@@ -472,7 +476,7 @@ function ColumnList({
   const { setNodeRef } = useDroppable({ id: columnId });
   return (
     <div
-      className="board-column-list relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-[7.25px]"
+      className="board-column-list relative flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-[7.25px] py-px"
       ref={setNodeRef}
       data-column-list={columnId}
     >
