@@ -104,6 +104,7 @@ async function setupWorld(opts: { claimHoldMs?: number } = {}): Promise<World> {
       displayName: 'stub-builder',
       provider: 'stub-gw',
       modelId: 'stub-model',
+      tools: ['合并分支', '推送分支'],
     })
     .run();
   // enroll（02 §5.2 路径二：--api-key --team）。

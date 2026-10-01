@@ -74,7 +74,13 @@ async function setupGitWorld(): Promise<GitWorld> {
   // agent（provider 面不必要——token 响应的 provider 槽为 null 亦可断言 git 面）。
   s.db
     .insert(agentTable)
-    .values({ id: AGENT_ID, teamId: s.team.id, displayName: 'm3b-builder', modelId: 'm' })
+    .values({
+      id: AGENT_ID,
+      teamId: s.team.id,
+      displayName: 'm3b-builder',
+      modelId: 'm',
+      tools: ['合并分支', '推送分支'],
+    })
     .run();
   // 托管 repo 项目（provision = init bare + 种子提交立 main，services/git.ts）。
   const projRes = await call(s.app, 'POST', '/api/projects', {
@@ -233,7 +239,13 @@ describe('per-step 一次性 git 凭证（02 §5.4/§8；relay 工具名对照 p
     const { token } = (await enroll.json()) as { token: string };
     s.db
       .insert(agentTable)
-      .values({ id: AGENT_ID, teamId: s.team.id, displayName: 'b', modelId: 'm' })
+      .values({
+        id: AGENT_ID,
+        teamId: s.team.id,
+        displayName: 'b',
+        modelId: 'm',
+        tools: ['合并分支', '推送分支'],
+      })
       .run();
     const projRes = await call(s.app, 'POST', '/api/projects', { body: { name: 'plain' } });
     const project = (await projRes.json()) as { id: string };

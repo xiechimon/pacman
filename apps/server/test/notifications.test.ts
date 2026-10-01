@@ -44,7 +44,7 @@ async function withRunningTodo(
         provider: null,
         modelId: null,
         thinkingLevel: null,
-        tools: [],
+        tools: ['合并分支', '推送分支'],
         secrets: [],
         skills: [],
         mcpServers: [],
