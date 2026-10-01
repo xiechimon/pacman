@@ -580,11 +580,6 @@
   color: var(--text-tertiary);
 }
 
-.account-value--muted {
-  font-size: 12px; /* mail ink w76 @ r7 13 */
-  color: var(--text-tertiary);
-}
-
 .account-select {
   display: flex;
   align-items: center;

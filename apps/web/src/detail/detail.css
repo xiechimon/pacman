@@ -1375,12 +1375,6 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   color: var(--text-primary);
 }
 
-.user-menu-mail {
-  font-size: 11px;
-  line-height: 14px;
-  color: var(--text-dim);
-}
-
 .user-menu-rows {
   padding: 12px 10px;
   display: flex;

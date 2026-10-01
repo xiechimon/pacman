@@ -168,7 +168,6 @@ export const EN: Record<string, string> = {
   // —— account route (r7 13) ——
   更换: 'Change',
   名称: 'Name',
-  邮箱: 'Email',
   语言: 'Language',
   推送通知: 'Push notifications',
 

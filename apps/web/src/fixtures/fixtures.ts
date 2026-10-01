@@ -51,8 +51,6 @@ export const PROJECT_NAME = 'r3-lifecycle';
 /** Sidebar/card project avatar initial (r2 §1.1 首字母头像). */
 export const PROJECT_INITIAL = 'r';
 export const USER_NAME = 'Xmon Dai';
-/** User-menu popover mail line (r7 17 head row). */
-export const USER_MAIL = 'xiechimon@qq.com';
 export const MACHINE_NAME = 'xmonsMac-3574.local';
 export const MACHINE_ID = 'TlZ2sSD4EJCxjNJqVhdo_';
 export const R7_BUILD_ID = '01a0c26e-23ea-734f-9847-cf9cdbce7802';
