@@ -10,6 +10,7 @@
 // without build payload data list the doc row alone (no dead rows).
 
 import { useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
 import type { PaneView } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -105,15 +106,16 @@ export function PaneTypeSelect({
       : (SECTION_ROWS.find((row) => row.view === view)?.label ?? '分支与 PR');
   return (
     <span className="doc-select-wrap" ref={setWrapEl}>
-      <button
-        type="button"
-        className="doc-pane-select"
+      <Button
+        variant="ghost"
+        size="default"
+        className="doc-pane-select h-auto rounded-none justify-start gap-0 font-normal active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent [&_svg:not([class*='size-'])]:size-auto"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
         {t(label)}
         <ChevronDown width={12} height={12} />
-      </button>
+      </Button>
       {wrapEl != null && (
         <FloatingShell open={open} onClose={() => setOpen(false)} container={wrapEl}>
           <ClickCatcher onClose={() => setOpen(false)} />

@@ -19,6 +19,7 @@
 // real entity endpoints.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
 import { Input } from '../components/ui/input.js';
 import { useI18n } from '../i18n/provider.js';
@@ -225,26 +226,28 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
       >
         <div className="mention-picker-head">
           {layer !== 'top' ? (
-            <button
-              type="button"
-              className="mention-picker-back"
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              className="mention-picker-back font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
               aria-label={t('返回')}
               onClick={() => setLayer('top')}
             >
               <ChevronLeft width={14} height={14} />
-            </button>
+            </Button>
           ) : null}
           <div className="mention-picker-title">
             {layer === 'top' ? t('提及') : `${labelFor(t, layer)} · ${counts[layer]}`}
           </div>
-          <button
-            type="button"
-            className="mention-picker-close"
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="mention-picker-close font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             aria-label={t('关闭')}
             onClick={onClose}
           >
             <X width={14} height={14} />
-          </button>
+          </Button>
         </div>
         {layer === 'top' ? (
           <div className="mention-picker-list">
@@ -301,17 +304,23 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
           </>
         )}
         <div className="mention-picker-foot">
-          <button type="button" className="mention-picker-cancel" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="default"
+            className="mention-picker-cancel h-auto rounded-none justify-start gap-0 font-normal active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent [&_svg:not([class*='size-'])]:size-auto"
+            onClick={onClose}
+          >
             {t('取消')}
-          </button>
-          <button
-            type="button"
-            className="mention-picker-insert"
+          </Button>
+          <Button
+            variant="ghost"
+            size="default"
+            className="mention-picker-insert h-auto rounded-none justify-start gap-0 active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent [&_svg:not([class*='size-'])]:size-auto"
             disabled={allSelected.length === 0}
             onClick={insert}
           >
             {t('插入 ({count})', { count: allSelected.length })}
-          </button>
+          </Button>
         </div>
       </div>
     </FloatingShell>

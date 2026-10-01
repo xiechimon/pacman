@@ -5,6 +5,7 @@
 // (assignee row), the selected 执行对话 section (agent row + indigo check,
 // the highlight covering label and row), divider, 编辑分配 row.
 
+import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import {
   AGENT_MODEL_LINE,
@@ -54,10 +55,15 @@ export function ChipPopover({ todo, onEditAssign }: ChipPopoverProps) {
         </div>
       </div>
       <div className="chip-popover-divider" />
-      <button type="button" className="chip-popover-edit" onClick={onEditAssign}>
+      <Button
+        variant="ghost"
+        size="default"
+        className="chip-popover-edit h-auto rounded-none justify-start gap-0 active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+        onClick={onEditAssign}
+      >
         <Settings width={14} height={14} />
         {t('编辑分配')}
-      </button>
+      </Button>
     </div>
   );
 }

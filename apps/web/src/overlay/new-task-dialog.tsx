@@ -407,13 +407,14 @@ export function NewTaskDialog({
         >
           <div className="new-task-discard-title">{t('放弃新建任务？未保存的内容将丢失。')}</div>
           <div className="new-task-discard-actions">
-            <button
-              type="button"
-              className="new-task-discard-keep"
+            <Button
+              variant="ghost"
+              size="default"
+              className="new-task-discard-keep h-auto rounded-none justify-start gap-0 font-normal active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent hover:text-(--text-dim) [&_svg:not([class*='size-'])]:size-auto"
               onClick={() => setDiscardOpen(false)}
             >
               {t('继续编辑')}
-            </button>
+            </Button>
             <Button
               variant="destructive"
               size="default"
