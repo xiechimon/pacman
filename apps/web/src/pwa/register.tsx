@@ -7,6 +7,9 @@
 // `/__pending-nav` slot (iOS suspends background PWA pages and drops the
 // message). The push handler stays as dead code by ruling: the server
 // never sends push (04-验收口径 §5 divergence A5).
+// XMON-106: notificationclick 的供源接通——桌面通知改经
+// registration.showNotification 发出（api/sse.ts fireDesktopNotification，
+// data.href = 落地路由），点击因此走 sw.js 的深链处理回本组件。
 
 import { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router';
@@ -44,6 +47,15 @@ export function PwaBridge() {
       const data = event.data as { type?: unknown; href?: unknown } | null;
       if (data?.type === 'notificationclick' && typeof data.href === 'string') {
         navigate(data.href);
+        // 快路径已路由——顺手清掉 sw 落盘的 pending 槽（XMON-106）：槽是 iOS
+        // 挂起页丢 message 的兜底，postMessage 既已到达，残留槽会让下一次
+        // 冷启动误跳这条旧 href。
+        void caches
+          .open(NAV_CACHE)
+          .then((cache) => cache.delete(NAV_SLOT))
+          .catch(() => {
+            // CacheStorage 不可用（隐私模式等）——路由本身已完成
+          });
       }
     };
     navigator.serviceWorker.addEventListener('message', onMessage);
