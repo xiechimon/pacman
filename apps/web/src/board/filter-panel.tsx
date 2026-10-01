@@ -12,11 +12,14 @@
 // 本文件 = 两轴的**共用视图**：轴自己「有哪些、怎么判」在 tag-filter.ts /
 // repo-filter.ts，这里只吃归一化后的 FilterDimension，不写第二份判定。
 //
-// 弹层机制**有意沿用** dismiss.tsx 家族律（OverlayMount + ClickCatcher +
-// useEscapeClose），不走 components/ui/floating-shell.tsx：本面被
-// e2e/escape-wiring.spec.ts 钉在「开层期 window keydown 接线零重挂」上
-// （adds:0 / rems:1），换 Base UI layer 栈就是换掉那条被钉的机制——那属于
-// 弹层族迁移（#425）的车道，不混进本票。
+// 弹层走新轨原语 components/ui/popover.tsx（Base UI Popover + Positioner），
+// 不自造定位壳/背板/Esc 接线。esc 由 Base UI 的 useDismiss 承接，它挂的是
+// **document** 上的 keydown（floating-ui-react/hooks/useDismiss 实测），与手写
+// 族（dismiss.tsx 的 useEscapeClose，挂 window）落点不同；e2e/escape-wiring
+// 的探针两个目标都数，故本次换机制没有把那条 #462 重挂钉变成空虚绿——
+// 开层期（URL 写回触发重渲染后、关层前读取）两个目标均零增删，实测见该用例。
+// 触发钮走 PopoverTrigger 的 render 合成，Button 原语与 data-variant 契约
+// （board-filter e2e 的材质钉）原样透出。
 //
 // per-face 类名（board-filter-panel / board-type-filter / board-type-filter-count
 // / type-filter-popover / type-filter-option / repo-filter-option /
@@ -29,10 +32,10 @@ import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { EmptyDescription } from '../components/ui/empty.js';
 import { Input } from '../components/ui/input.js';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { TagChip } from '../components/ui/tag-chip.js';
 import { useI18n } from '../i18n/provider.js';
-import { ChevronDown, X } from '../icons/index.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { Funnel, X } from '../icons/index.js';
 
 /** 选项超过此数才给搜索框——短词表（固定 6 词）搜索框是纯噪音。 */
 const SEARCH_THRESHOLD = 8;
@@ -251,63 +254,67 @@ interface FilterPanelProps {
 }
 
 /** 顶栏右动作区的筛选钮（无底色 ghost——与主操作实底材质区分）+ anchored
- *  popover。开态由本组件自持（纯 UI 态，真值在 URL）；关闭三路 = Esc /
- *  外点（click-catcher）/ 重点触发钮（catcher 承接，家族律）。点选**保持
- *  开**——点选即关会把多选取缔成单选。 */
+ *  popover。图标而非文字：Funnel 是本产品自己的筛选语汇（r2 24b 位图里就
+ *  长在 project 任务工具条上），文字钮在此处只占宽不增信息量；可读名走
+ *  aria-label，收起态「筛选在生效」由角标读数承担。
+ *  开态由本组件自持（纯 UI 态，真值在 URL）；关闭三路 = Esc / 外点 /
+ *  重点触发钮，全由 Base UI 承接。点选**保持开**——点选即关会把多选取缔
+ *  成单选。查询串随开合周期复位（下次开层不该带着上次的过滤残留）。 */
 export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPanelProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState<Record<string, string>>({});
-  const close = () => setOpen(false);
-  useEscapeClose(open, close);
   return (
-    <span className="relative flex items-center">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="board-type-filter h-7 gap-1.5 px-2.5 text-sm"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={() => {
-          setOpen((value) => !value);
-          setQuery({});
-        }}
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        setQuery({});
+      }}
+    >
+      <PopoverTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="board-type-filter h-7 gap-1.5 px-2"
+            aria-label={t('筛选')}
+          />
+        }
       >
-        {t('筛选')}
+        <Funnel />
         {totalSelected > 0 && (
           <span className="board-type-filter-count rounded-full bg-accent px-1.5 text-[11px] leading-4 font-normal text-muted-foreground">
             {totalSelected}
           </span>
         )}
-        <ChevronDown width={12} height={12} />
-      </Button>
-      <OverlayMount open={open}>
-        <ClickCatcher onClose={close} />
-        <div
-          className="type-filter-popover board-filter-panel anim-pop absolute top-[calc(100%+6px)] right-0 z-30 flex w-[268px] origin-top-right flex-col rounded-[var(--radius-popover)] bg-[var(--popover-bg)] pb-1 shadow-[var(--fab-shadow)]"
-          role="dialog"
-          aria-label={t('筛选')}
-        >
-          {dimensions.map((dimension, index) => (
-            <DimensionSection
-              key={dimension.key}
-              dimension={dimension}
-              divided={index > 0}
-              query={query[dimension.key] ?? ''}
-              onQuery={(next) => setQuery((prev) => ({ ...prev, [dimension.key]: next }))}
-            />
-          ))}
-          {totalSelected > 0 && (
-            <button
-              type="button"
-              className={`filter-panel-clear ${FOCUS} mt-0.5 flex h-7 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
-              onClick={onClearAll}
-            >
-              {t('清除全部')}
-            </button>
-          )}
-        </div>
-      </OverlayMount>
-    </span>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        side="bottom"
+        sideOffset={6}
+        aria-label={t('筛选')}
+        className="type-filter-popover board-filter-panel w-[268px] gap-0 rounded-[var(--radius-popover)] p-0 pb-1"
+      >
+        {dimensions.map((dimension, index) => (
+          <DimensionSection
+            key={dimension.key}
+            dimension={dimension}
+            divided={index > 0}
+            query={query[dimension.key] ?? ''}
+            onQuery={(next) => setQuery((prev) => ({ ...prev, [dimension.key]: next }))}
+          />
+        ))}
+        {totalSelected > 0 && (
+          <button
+            type="button"
+            className={`filter-panel-clear ${FOCUS} mt-0.5 flex h-7 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
+            onClick={onClearAll}
+          >
+            {t('清除全部')}
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
