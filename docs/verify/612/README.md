@@ -38,6 +38,8 @@ after = 本分支代码。两栈独立端口/数据根，互不干扰。
 | dom-facts-before.json | 改前 DOM 探针：specBlock 透明底/0 边线/0 圆角/14px/0 标题元素；5 气泡（432px 墙 ×2、steer 裸文本 120px、泄漏指令、确认） |
 | dom-facts-after.json | 改后 DOM 探针：specBlock rgb(31,31,35)/1px/12px/15px/2 标题/2 bullet/1 围栏/chip 带端点 href；2 气泡（steer markdown 66px 含代码块、确认 24px）；taskline null |
 | messages-after.json | 改后同一 build 的 wire 行（10 条）：合成行仍在库（数据面不动），只由呈现层按 shared 词表过滤 |
+| drive-detail-pane-result.json | verify-pacman drive-detail-pane 探针 checks 逐条（19/19 ok，fresh/thread/右栏三面回归） |
+| drive-attachments-result.json | verify-pacman drive-attachments 探针 checks 逐条（allOk=true，附件上传全链真用户路径回归） |
 
 ## 回归
 
@@ -46,5 +48,5 @@ after = 本分支代码。两栈独立端口/数据根，互不干扰。
 - apps/web vitest 160/160（含新增 transcript-user-words 11 条、i18n-coverage）。
 - apps/server 566/566、apps/daemon 217/217、packages/shared 200/200。
 - verify-pacman 探针：drive-detail-pane 19/19 ok、drive-attachments allOk=true
-  （栈坐标 8793/5275，证据 `.claude/verify-evidence/20261002-073326-detail-pane`、
-  `2026-10-01T23-33-44-555Z-attachments`——本地目录，复核以本仓 docs/verify/612 为准）。
+  （栈坐标 8793/5275；两探针的 result.json 已归档本目录 drive-*-result.json，
+  checks 逐条可复核）。
