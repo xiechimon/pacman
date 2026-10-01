@@ -93,7 +93,6 @@ export const EN: Record<string, string> = {
   // —— todo detail (r7 §3.3–§3.6) ——
   'Token 用量': 'Token usage',
   运行历史: 'Run history',
-  尚无运行内容: 'No run content yet',
   打开方案: 'Open plan',
   添加附件: 'Add attachment',
   'AI 审核': 'AI review',

@@ -46,12 +46,6 @@ Base unit **2px**. Observed scale: `2, 4, 6, 8, 10, 12, 16, 24`. Dominant: **6px
 - **Reason**: Users of a task console must instantly distinguish "the app speaking" from "the work speaking"; a two-size split makes that subliminal, while bigger chrome would crowd out the content that matters
 - **Evidence**: sizeDistribution 12px ×40 vs 15px ×21; `headings: {}` — zero h1-h6; max font size on page is 15px; primary button 12px/500
 
-### One Card Per Screen
-- **Trigger**: When deciding how to group content in the thread column — agent messages, attachments, cancel events, warnings
-- **Decision**: They chose to leave every thread event naked on the paper background and reserve card treatment (12px radius, `#F2EDE6` fill, 1px border) for exactly one element — the message composer — over card-per-message grouping
-- **Reason**: The composer is the only place the user acts; giving it the page's sole rounded, filled, bordered surface makes "where do I type" answerable at peripheral-vision speed, while card-per-message turns a log into a coupon sheet
-- **Evidence**: card heuristics found exactly one card (697×84, r=12px); 12px radius ×9 reserved for this surface class vs 6px ×26 for controls; send button r=8px nests concentrically inside composer r=12px
-
 ### Warm Paper over Blue-Gray
 - **Trigger**: When picking the neutral ramp for a developer operations tool — a category defaulting to `#FFFFFF` backgrounds and blue-tinted slate grays
 - **Decision**: They chose a fully warm stone ramp — `#FAF7F2` paper background, `#1C1917`→`#A8A29E` text, `#E2DBD1` borders — over cool gray/white, accepting a less tech-cliché first impression

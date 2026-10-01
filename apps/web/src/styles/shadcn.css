@@ -271,8 +271,14 @@
   --surface-tertiary: #e8e2d9;
   --surface-elevated: #fdfaf6;
   --surface-hover: #f2ede6;
-  --text-secondary: #57534e;
-  --text-tertiary: #78716c;
+  /* XMON-55 P4: the light ramp ran one step lighter than its dark mirror —
+     #57534e secondary / #78716c tertiary over #f2ede6 paper. Both stepped
+     down one stone notch (secondary now carries what tertiary did, tertiary
+     what dim did); dim stays put and stays decorative-only: timestamps,
+     inactive icons, placeholder rules. Contrast on the #f2ede6 paper:
+     secondary 8.8:1 and tertiary 6.5:1, against 6.6:1 and 4.1:1 before. */
+  --text-secondary: #44403c;
+  --text-tertiary: #57534e;
   --text-dim: #a8a29e;
   --border-default: #e2dbd1;
   --border-strong: #cec6bb;

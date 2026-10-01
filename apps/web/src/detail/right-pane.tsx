@@ -7,9 +7,9 @@
 // Taste DNA law honored: still pane content on a hairline-divided plane,
 // never modals; the pane itself abuts the thread column on a 1px seam. Content classes ride the #68 dialog family (dlg-token-* /
 // dlg-history-* / dlg-branch-*) so the captured geometry carries over.
-// Fresh phases (todo/queued/closed — no thread yet) keep the pane at the
-// same 488px with a restrained empty state (#366 修订裁决 3：空占位，不折叠
-// 不隐藏).
+// XMON-55 P0 supersedes #366 修订裁决 3 (空占位，不折叠不隐藏): a fresh phase
+// has no build payload, so the page does not mount this pane at all — the
+// 488px goes to the fresh block's task brief instead of a placeholder.
 
 import type { ReactNode } from 'react';
 import type { BuildOverlayContent, PaneView, RunHistoryRow } from '../fixtures/records.js';
@@ -187,22 +187,11 @@ interface RightPaneProps extends Omit<PaneSelectProps, 'sections'> {
   content: BuildOverlayContent | null;
   /** Live branch-sync handle (fixture = null). */
   buildId: string | null;
-  /** Fresh phase (no thread): the restrained empty state replaces everything. */
-  empty?: boolean;
   /** The doc-view surface (DocPane), rendered while view === 'doc'. */
   children?: ReactNode;
 }
 
-export function RightPane({
-  view,
-  docLabel,
-  onView,
-  content,
-  buildId,
-  empty,
-  children,
-}: RightPaneProps) {
-  const { t } = useI18n();
+export function RightPane({ view, docLabel, onView, content, buildId, children }: RightPaneProps) {
   const select = (active: PaneView): PaneSelectProps => ({
     view: active,
     docLabel,
@@ -211,9 +200,7 @@ export function RightPane({
   });
   return (
     <aside className="detail-right">
-      {empty ? (
-        <div className="right-empty">{t('尚无运行内容')}</div>
-      ) : content == null || view === 'doc' ? (
+      {content == null || view === 'doc' ? (
         children
       ) : view === 'branch' ? (
         <BranchSection content={content} buildId={buildId} select={select('branch')} />

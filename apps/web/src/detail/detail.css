@@ -81,8 +81,25 @@
   cursor: pointer;
 }
 
+/* XMON-55 P1: the head's task subject — flex:1 so it eats the slack the
+   actions used to take, min-width:0 so a long title ellipsises instead of
+   pushing the chip and the primary button off the band. */
+.detail-title {
+  flex: 1;
+  min-width: 0;
+  margin-left: 14px;
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .detail-head-actions {
-  margin-left: auto;
+  flex: none;
+  margin-left: 12px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -151,8 +168,9 @@
   padding-bottom: 16px;
 }
 
-/* right pane: always 488px — no collapse, no hide (#366 rulings 2/3); the
-   seam is a 1px hairline (Hairlines Not Shadows) */
+/* right pane: 488px, mounted only where a build payload exists (XMON-55 P0
+   supersedes #366 ruling 3 — fresh phases do not render it); the seam is a
+   1px hairline (Hairlines Not Shadows) */
 .detail-right {
   flex: none;
   width: var(--detail-pane-right);
@@ -186,18 +204,6 @@
 
 .pane-branch-foot {
   margin-top: 16px;
-}
-
-/* fresh-phase placeholder — the pane keeps its 488px and stays quiet
-   (doc-empty family voice) */
-.right-empty {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-dim);
 }
 
 .doc-pane {
@@ -483,20 +489,23 @@
   text-indent: -12px;
 }
 
-/* markdown heading inside a plan doc (r8 56: Context / 假设 / Changes /
-   Verification), measured off the 56 capture: 16px semibold, 18px gap */
-/* heading bands measured off r8 56: section gap 6 above, 9 below, first
-   head sits 3px into the pane body */
+/* Plan-doc section head (r8 56: Context / 假设 / Changes / Verification).
+   XMON-55 P2: a section *label*, not a title — 12px/500 tertiary over 15px
+   body text. The 16px/600 form it replaces outranked the prose it was
+   introducing inside a 488px column, and left the four sections reading as
+   one run-on block. The wider band above is what marks a section boundary. */
 .doc-block--head {
-  margin-top: 6px;
-  margin-bottom: 9px;
-  font-size: 16px;
-  line-height: 22px;
-  font-weight: 600;
+  margin-top: 22px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-tertiary);
 }
 
 .doc-block--head:first-child {
-  margin-top: 3px;
+  margin-top: 0;
 }
 
 .doc-code {
@@ -602,18 +611,24 @@
   margin-top: -4px;
 }
 
+/* XMON-55 P3: the user bubble was a fixed 24px flex box — a two-line
+   message overflowed it. min-height keeps the single-line pill at exactly
+   its old 24px, and the box now grows with the text. 12px radius puts it on
+   the composer's tier: the two filled surfaces on the page are the two
+   places the user speaks. */
 .chat-bubble {
   margin-left: 11px;
   margin-top: 4px;
-  height: 24px;
-  display: flex;
-  align-items: center;
+  min-height: 24px;
+  max-width: 68ch;
   padding: 0 13px;
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--surface-secondary);
   font-size: 15px;
   line-height: 24px;
   color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 
 .chat-taskline {
@@ -651,6 +666,17 @@
   margin-top: 20px;
   padding-left: 31px;
   color: var(--text-dim);
+}
+
+/* XMON-55 P3: turn boundary. The transcript separated "the user asked" from
+   "the agent answered" with vertical air alone, so a long review read as one
+   unbroken block. The rule fires only where a user turn (which ends in its
+   action row) meets an agent row — consecutive agent rows keep packing at
+   14px with no divider between them. */
+.chat-row-icons + .chat-row--agent {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-default);
 }
 
 /* #306: the tool group's footer row doubles as its expander button —
@@ -1174,16 +1200,22 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   bottom: 104px;
 }
 
-/* ---- fresh block (r7 23) ---- */
+/* ---- fresh block (r7 23; re-set as the task brief by XMON-55 P0) ----
+   The fresh phase has no thread and no build payload, so the right pane
+   does not render and this block is the whole page: a 720px measure
+   centred on the column with the phase's primary action attached to it,
+   instead of a title pinned to the left edge of 1200px of nothing. */
 
 .fresh-block {
-  padding: 0 16px;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 72px 16px 0;
 }
 
 .fresh-title {
-  margin: 22px 0 0;
-  font-size: 16px;
-  line-height: 24px;
+  margin: 0;
+  font-size: 22px;
+  line-height: 30px;
   font-weight: 600;
   color: var(--text-primary);
   overflow-wrap: break-word;
@@ -1202,28 +1234,38 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
    无 per-face 样式——ui/README 规则 2。 */
 
 .fresh-nodesc {
-  margin-top: 21px;
+  margin-top: 16px;
   font-size: 14px;
-  line-height: 16px;
-  font-style: italic;
-  color: var(--text-dim);
+  line-height: 22px;
+  color: var(--text-tertiary);
 }
 
 .fresh-meta {
-  margin-top: 24px;
+  margin-top: 20px;
   display: flex;
   align-items: center;
   color: var(--text-tertiary);
 }
 
-.fresh-meta svg + svg {
-  margin-left: 13px;
-}
-
 .fresh-meta-time {
-  margin-left: 15px;
   font-size: 12px;
   line-height: 16px;
+}
+
+/* XMON-55 P0: the phase's primary action, attached to the brief. The head
+   keeps its own 50.5×28 copy (r7 §3.3 frozen geometry) — both call the
+   page's single handler, so neither is a second code path. */
+.fresh-actions {
+  margin-top: 32px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fresh-action-hint {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
 }
 
 /* ---- user-menu popover (r7 17 / 16d captures, 224 wide @ x8; #163
@@ -1498,11 +1540,6 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   font-size: 12px;
 }
 
-/* plan.md section head (r8 63/76): bold 14px line */
-.doc-block--head {
-  font-weight: 600;
-}
-
 /* link-styled mono chip (r8 63/76 first README.md mention) */
 .doc-code--link,
 .chat-code--link {
@@ -1588,8 +1625,6 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   font-weight: 600;
 }
 
-/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
-   组件（.fresh-meta svg + svg），无实际级联；按 UI 区段分文件，不重排 */
 .version-menu-row svg {
   color: var(--text-dim);
 }
@@ -1733,8 +1768,6 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   color: var(--text-dim);
 }
 
-/* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
-   组件（.fresh-meta svg + svg），无实际级联；按 UI 区段分文件，不重排 */
 .rerun-agent-row > svg {
   color: var(--text-dim);
 }
