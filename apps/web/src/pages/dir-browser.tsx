@@ -20,6 +20,7 @@ import { FS_LIST_MAX_ENTRIES } from '@pacman/shared';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client.js';
 import { useFsList } from '../api/hooks.js';
+import { Button } from '../components/ui/button.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, GitCommit } from '../icons/index.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
@@ -127,26 +128,31 @@ export function DirBrowser({
                     <ChevronRight width={12} height={12} />
                   </span>
                 )}
-                <button
-                  type="button"
-                  className="dir-browser-crumb"
+                {/* XMON-25 收编：ghost；h-auto 保内容高（focus 环矩形 =
+                    现行为）、shrink 保面包屑挤压可缩（base shrink-0 会改
+                    溢出行为）。 */}
+                <Button
+                  variant="ghost"
+                  className="dir-browser-crumb h-auto shrink rounded-none font-normal active:not-aria-[haspopup]:translate-y-0"
                   // 末段 = 当前目录（不可再下钻到自己，仍渲染为钮保持一致性）。
                   aria-current={i === crumbs.length - 1 ? 'location' : undefined}
                   onClick={() => setDir(seg.path)}
                 >
                   {seg.label}
-                </button>
+                </Button>
               </span>
             ))}
           </nav>
-          <button
-            type="button"
-            className="dir-browser-dots"
+          {/* XMON-25 收编：ghost；aria-pressed 皮肤正本在 per-face
+              [aria-pressed=true] 规则，unlayered 恒胜 base 的 aria-expanded 档。 */}
+          <Button
+            variant="ghost"
+            className="dir-browser-dots h-auto font-normal active:not-aria-[haspopup]:translate-y-0"
             aria-pressed={showDotfiles}
             onClick={() => setShowDotfiles((v) => !v)}
           >
             {t('显示隐藏文件')}
-          </button>
+          </Button>
         </div>
         <div className="dir-browser-list">
           {listQ.isError ? (
@@ -160,17 +166,29 @@ export function DirBrowser({
               const child = base === '/' ? `/${entry.name}` : `${base}/${entry.name}`;
               return (
                 <div className="dir-browser-row" key={entry.name}>
-                  <button type="button" className="dir-browser-name" onClick={() => setDir(child)}>
+                  {/* XMON-25 收编：ghost；justify-start 对齐位（text-align:left
+                      的 flex 等价）、h-auto 保 18px 内容高。 */}
+                  <Button
+                    variant="ghost"
+                    className="dir-browser-name h-auto justify-start rounded-none font-normal active:not-aria-[haspopup]:translate-y-0"
+                    onClick={() => setDir(child)}
+                  >
                     {entry.name}
-                  </button>
+                  </Button>
                   {entry.git && (
                     <span className="dir-browser-git" role="img" aria-label={t('git 仓库')}>
                       <GitCommit width={13} height={13} />
                     </span>
                   )}
-                  <button type="button" className="dir-browser-pick" onClick={() => onPick(child)}>
+                  {/* XMON-25 收编：ghost；opacity 0→1（行 hover/focus）正本在
+                      per-face，unlayered 恒胜。 */}
+                  <Button
+                    variant="ghost"
+                    className="dir-browser-pick h-auto font-normal active:not-aria-[haspopup]:translate-y-0"
+                    onClick={() => onPick(child)}
+                  >
                     {t('选择')}
-                  </button>
+                  </Button>
                 </div>
               );
             })
