@@ -28,6 +28,10 @@ import { expect, type Page, test } from '@playwright/test';
 //      render verbatim; on the fixture face the click stays inert (send is
 //      live-only, #129 contract) and the view does not change.
 //   9. the open state survives a reload (D9: 刷新即关).
+//  10. the composer's size follows its content (XMON-102): `rows` used to be
+//      keyed on the draft (empty 1 ↔ drafted 6), so the box jumped 20px →
+//      120px as soon as the first character landed and shrank back on send.
+//      One fixed height on every state now, overflow kept inside the box.
 
 const drawer = (page: Page) => page.locator('.chief-drawer');
 
@@ -241,6 +245,39 @@ test.describe('chief panel docked form (#447)', () => {
     await expect(drawer(page)).toBeVisible();
     await expect(page.locator('.chief-examples')).toBeVisible();
     await expect(page.locator('.chief-stream')).toHaveCount(0);
+  });
+
+  test('composer keeps one fixed size whether or not a draft is restored (XMON-102)', async ({
+    page,
+  }) => {
+    // The two fixture rows that straddle the old toggle: r5 111 restores the
+    // localStorage draft into the composer (used to render 6 rows), r5 114 is
+    // a thread view with an empty composer (used to render 1 row). Equal
+    // boxes below = the size no longer reads the content.
+    const measureComposer = async (url: string) => {
+      await page.goto(url);
+      await settled(page);
+      const composer = page.locator('.chief-composer-input');
+      await expect(composer).toBeVisible();
+      const box = await composer.boundingBox();
+      if (box === null) throw new Error(`composer box missing at ${url}`);
+      return {
+        height: Math.round(box.height),
+        cssHeight: await composer.evaluate((el) => getComputedStyle(el).height),
+        overflowY: await composer.evaluate((el) => getComputedStyle(el).overflowY),
+      };
+    };
+
+    const drafted = await measureComposer('/app?scenario=111');
+    const empty = await measureComposer('/app?scenario=114');
+
+    expect(empty.height).toBe(drafted.height);
+    // A fixed track, not an auto one: the box is 6 lines of the composer's
+    // 20px line-height (r5 111's drafted geometry), and the overflow stays
+    // inside it instead of pushing the panel around.
+    expect(drafted.cssHeight).toBe('120px');
+    expect(empty.cssHeight).toBe('120px');
+    expect(drafted.overflowY).toBe('auto');
   });
 
   test('the open state does not persist across a reload (D9)', async ({ page }) => {

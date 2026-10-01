@@ -321,7 +321,6 @@ export function ChiefDrawer({
           <textarea
             ref={attachComposer}
             className="chief-composer-input"
-            rows={onSend != null ? (liveDraft !== '' ? 6 : 1) : chief.draft ? 6 : 1}
             readOnly={onSend == null}
             value={draftValue}
             onChange={onSend != null ? (e) => setLiveDraft(e.target.value) : undefined}
