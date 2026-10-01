@@ -70,6 +70,7 @@ import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
 import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
+import { Select } from '../components/ui/select.js';
 import { Switch } from '../components/ui/switch.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { isDeleted, markDeleted } from '../fixtures/deletions.js';
@@ -298,21 +299,24 @@ export function AgentDetailPage() {
               <div className="agent-field-head">
                 <span className="agent-field-label">{t('默认 skill')}</span>
               </div>
-              <select
-                className="agent-skill-select"
-                value={defaultSkill ?? ''}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  patch({ skills: value === '' ? [] : [value] });
-                }}
-              >
-                <option value="">{t('未设置')}</option>
-                {skillOptions.map((skill) => (
-                  <option key={skill.id} value={skill.id}>
-                    {skill.name}
-                  </option>
-                ))}
-              </select>
+              {/* XMON-75：这一格此前是裸 `<select>`，弹的是 macOS 系统菜单——
+                  与紧邻的模型选择器（自制弹层）并排就是两套弹窗。换成同一个
+                  Select 壳后两格同形。值回显同模型面：候选里没有的值（技能已
+                  被删除）出裸 id，不空白。 */}
+              <Select
+                prefix="agent-skill"
+                value={defaultSkill}
+                options={skillOptions.map((skill) => ({ value: skill.id, label: skill.name }))}
+                label={
+                  defaultSkill === null
+                    ? t('未设置')
+                    : (skillOptions.find((skill) => skill.id === defaultSkill)?.name ??
+                      defaultSkill)
+                }
+                unsetLabel={t('未设置')}
+                menuLabel={t('默认 skill')}
+                onPick={(next) => patch({ skills: next === null ? [] : [next] })}
+              />
               <p className="agent-field-hint">{t(AGENT_PERMISSION_COPY.defaultSkill)}</p>
             </div>
             <div className="agent-field">
