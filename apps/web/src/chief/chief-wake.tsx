@@ -20,6 +20,7 @@
 // at the two slots — both parts consume ONE surface instance so the FAB,
 // the ⌘J hotkey and the panel share a single state.
 
+import { Button } from '../components/ui/button.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -47,9 +48,14 @@ export function ChiefWakeFab({
   const { setChiefView, chiefData, chiefUnread } = surface;
   if (unreadOnly && chiefUnread <= 0) return null;
   return (
-    <button
-      type="button"
-      className={fabClassName}
+    // XMON-23 收编：ghost/icon 原语 + per-face 几何类（各族 *-fab：48×48 圆、
+    // surface 底、fab-shadow——unlayered per-face 恒压原语层）。中和件：
+    // font-normal（badge 10px 字不吃原语 medium）、active 位移、svg size-auto
+    // （ChiefFab 字形带 30.8 尺寸属性，不能被原语 size-4 压成 16）。
+    <Button
+      variant="ghost"
+      size="icon"
+      className={`${fabClassName} font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto`}
       aria-label={t('总管')}
       onClick={() => setChiefView('drawer')}
     >
@@ -57,7 +63,7 @@ export function ChiefWakeFab({
       {/* #468: ⌘J 悬浮提示（四族共用消费点；点击维持 open-only）。 */}
       <KbdHint label="⌘J" />
       {chiefUnread > 0 && <span className="fab-badge">{chiefUnread}</span>}
-    </button>
+    </Button>
   );
 }
 

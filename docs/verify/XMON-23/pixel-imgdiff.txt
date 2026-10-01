@@ -1,0 +1,2 @@
+
+all 30 screenshot pairs pixel-identical

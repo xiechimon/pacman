@@ -14,6 +14,7 @@
 
 import type { ChiefCompactionModel } from '@pacman/shared';
 import { useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -76,16 +77,21 @@ export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectPro
 
   return (
     <span className="chief-model-wrap" ref={setWrap}>
-      <button
-        type="button"
-        className="chief-select"
+      {/* XMON-23 收编：ghost 原语 + chief-select per-face（30 高/描边/底/墨
+          全在 unlayered per-face，恒压原语层；e2e 钉 button.chief-select）。
+          中和件：font-normal（原语 medium 会改字重——per-face 不钉字重）、
+          svg size-auto（ChevronDown 12px 属性尺寸）。aria-haspopup 自带
+          active 位移豁免（原语 :not([aria-haspopup]) 条件），无需中和。 */}
+      <Button
+        variant="ghost"
+        className="chief-select font-normal [&_svg:not([class*='size-'])]:size-auto"
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
         <span>{label}</span>
         <ChevronDown width={12} height={12} />
-      </button>
+      </Button>
       {/* #425 B1:chief-model-shell 类只为退场 CSS 钩子(见 chief.css 尾段)。 */}
       <FloatingShell
         open={open}
