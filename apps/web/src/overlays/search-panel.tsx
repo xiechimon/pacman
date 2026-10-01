@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { relativeTime } from '../board/rel-time.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { PROJECT_ID, PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { AgentRef, FixtureSet, TodoRecord } from '../fixtures/records.js';
@@ -37,7 +38,6 @@ import {
   Users,
 } from '../icons/index.js';
 import { PHASE_UI } from '../phase.js';
-import { Input } from '../ui/input.js';
 import './overlays.css';
 
 /** 前往 group rows, top to bottom. Canon is the r7 05 bitmap, not r2
@@ -289,9 +289,11 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
           <Input
             // the live panel opens focused (r7 05/05b show the caret);
             // the attach callback is the mount-time focus path (#137),
-            // the [open] effect the retained-mount refocus
+            // the [open] effect the retained-mount refocus.
+            // B3: variant="palette" 皮肤换 Tailwind 工具类——flex-1 + 无框
+            // 透明 + 13px 字，行容器几何（40px/padding/分隔线）per-face 保留。
             ref={attachInput}
-            variant="palette"
+            className="flex-1 h-auto border-none p-0 text-[13px] md:text-[13px] leading-4 rounded-none bg-transparent dark:bg-transparent text-(--text-primary) placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:!ring-0"
             value={query}
             placeholder={t('搜索任务、项目、成员…')}
             onChange={(event) => onQuery(event.target.value)}

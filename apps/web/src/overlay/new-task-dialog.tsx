@@ -27,15 +27,14 @@
 // 净面,闸判定不带脏残留)。#394 起 dirty = 正文单字段（标题/标签面移除）。
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, Grid2x2, Paperclip, X } from '../icons/index.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
-import { Button } from '../ui/button.js';
+import { ClickCatcher, OverlayMount } from '../overlays/dismiss.js';
 import { type MentionGroups, MentionPicker } from './mention-picker.js';
 import { insertMentionText, type MentionToken } from './mention-token.js';
-import { FADE_EXIT_MS } from './use-overlay-mount.js';
 import './overlay.css';
 
 /** Spec textarea template lines, verbatim r2 §5.2 / r7 04 placeholder
@@ -310,7 +309,8 @@ export function NewTaskDialog({
               per-face 留 overlay.css。#318 未保存闸:dialog 关闭走
               requestClose(dirty 时先弹确认层)。 */}
           <Button
-            variant="icon"
+            variant="ghost"
+            size="icon"
             className="new-task-close"
             aria-label={t('关闭')}
             onClick={requestClose}
@@ -348,7 +348,8 @@ export function NewTaskDialog({
               {/* #304 C5 裁决:语音输入功能不做(local-first 无语音面)——
                   语音钮移除不渲染,不留死钮;添加附件/提及走 A4 Button 原语。 */}
               <Button
-                variant="icon"
+                variant="ghost"
+                size="icon"
                 aria-label={t('添加附件')}
                 disabled={attaching || !onAttachment}
                 onClick={() => fileInputRef.current?.click()}
@@ -356,7 +357,8 @@ export function NewTaskDialog({
                 <Paperclip />
               </Button>
               <Button
-                variant="icon"
+                variant="ghost"
+                size="icon"
                 aria-label={t('提及')}
                 onClick={() => setPickerOpen((value) => !value)}
               >
@@ -369,7 +371,7 @@ export function NewTaskDialog({
                   类名与规则无关，纯选择器锚点） */}
               <Button
                 variant="ghost"
-                size="standard"
+                size="default"
                 className="new-task-save"
                 disabled={spec.trim() === ''}
                 onClick={save}
@@ -377,8 +379,8 @@ export function NewTaskDialog({
                 {t('保存')}
               </Button>
               <Button
-                variant="primary"
-                size="standard"
+                variant="brand"
+                size="default"
                 className="new-task-start"
                 disabled={spec.trim() === ''}
                 onClick={() => {
@@ -405,16 +407,17 @@ export function NewTaskDialog({
         >
           <div className="new-task-discard-title">{t('放弃新建任务？未保存的内容将丢失。')}</div>
           <div className="new-task-discard-actions">
-            <button
-              type="button"
-              className="new-task-discard-keep"
+            <Button
+              variant="ghost"
+              size="default"
+              className="new-task-discard-keep h-auto rounded-none justify-start gap-0 font-normal active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent hover:text-(--text-dim) [&_svg:not([class*='size-'])]:size-auto"
               onClick={() => setDiscardOpen(false)}
             >
               {t('继续编辑')}
-            </button>
+            </Button>
             <Button
-              variant="danger"
-              size="standard"
+              variant="destructive"
+              size="default"
               className="new-task-discard-drop"
               onClick={discardAndClose}
             >
