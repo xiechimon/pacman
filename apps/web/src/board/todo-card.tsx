@@ -106,6 +106,10 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName, tag }: To
         <Link
           className="todo-card-link text-inherit no-underline after:absolute after:inset-0 after:content-['']"
           to={{ pathname: `/app/todo/${todo.id}`, search }}
+          /* #629 第三锁：标准属性位禁原生链接拖（board.css 的
+             -webkit-user-drag 是 webkit 生效位）——不可拖列的卡按住微移
+             不再冒 Chrome 拖影 chip（「小链接」） */
+          draggable={false}
         >
           {todo.title}
         </Link>
