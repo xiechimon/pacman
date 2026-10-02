@@ -129,6 +129,28 @@
   .chat-spinner-reel {
     animation: none;
   }
+
+  /* tw-animate-css enter/exit (the animate-in / animate-out keyframe pair the
+     shadcn / Base UI overlay parts run under data-open / data-closed) degrade
+     under the same site-wide law (ADR 0009 D4). Keyframe animations only —
+     transitions are left alone: hover/press tints and the tab-indicator slide
+     ride transitions and keep their own reduced-motion handling. Setting
+     duration/iteration-count rather than animation-name lets the
+     .chat-spinner-reel { animation: none } above stay authoritative (name none
+     wins on specificity), so the reel still freezes instead of flashing. A
+     reduced-motion reset has to outrank the utility that sets the duration
+     (.data-open\:animate-in and friends carry class+attribute specificity), so
+     !important is the standard accessibility escape hatch, not a cascade
+     shortcut. */
+  *,
+  ::before,
+  ::after {
+    /* biome-ignore lint/complexity/noImportantStyles: see the reset note above. */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: iteration cap stops any
+       infinite keyframe (caret-blink family) under reduced motion. */
+    animation-iteration-count: 1 !important;
+  }
 }
 
 /* ---- hover / press states (#73) ----
