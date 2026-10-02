@@ -12,12 +12,12 @@
 // （project 页无此面；machines/skills 查询随闸）。
 // XMON-93：本 hook 只许住 NewTaskSurfaceRoot 隔离叶子——open/liveSpec 态
 // 每次开合与输入都重渲染宿主组件，住页面里 = 整板同步重渲染（ESC 退出
-// 卡顿根因）。页面消费 openDialog/firstAgentId 走叶子的 apiRef。
+// 卡顿根因）。页面消费 openDialog 走叶子的 apiRef。
 // Query discipline: todos/projects were already eager on every shell
 // (deduped TQ keys — zero new traffic); members/skills/machines stay eager
-// only for the board (its card-level 开始 eats firstAgentId before any
-// dialog opens) and gate on the dialog's open state everywhere else——
-// project 页 members 同 eager（保存并开始点击时吃 firstAgentId）。
+// only for the board and gate on the dialog's open state everywhere else
+// （#640 前 board eager 位吃 firstAgentId 的卡片级开始已改直发编排回合，
+// eager 语义保持原状不动查询面）。
 
 import type { TodoRecord as WireTodo } from '@pacman/shared';
 import { useCallback, useMemo, useState } from 'react';
@@ -31,6 +31,7 @@ import {
   useTodos,
 } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import type { MentionGroups } from './mention-picker.js';
@@ -40,8 +41,8 @@ export interface NewTaskSurfaceOpts {
   /** fixture 面 mention 数据源：board 传合并集（fixture.todos + 本地新建卡）；
    *  缺省 = fixture.todos。 */
   fixtureTodos?: TodoRecord[];
-  /** true = members/skills/machines 保持 eager（board 现状：卡片级 开始 在
-   *  dialog 开之前就吃 firstAgentId）；缺省 = 随 open 态 gated，不开不发。 */
+  /** true = members/skills/machines 保持 eager（board 现状位，查询面语义
+   *  不动）；缺省 = 随 open 态 gated，不开不发。 */
   eager?: boolean;
   /** fixture 面保存落点（board = 本地卡 append，#66 律；参数 = 正文，标题
    *  由 localTodo 按 shared 规则派生——#394 同律）。缺省 = 仅关 dialog。 */
@@ -61,8 +62,6 @@ export interface NewTaskSurfaceOpts {
 export interface NewTaskSurface {
   /** 打开 dialog（C 热键 / 侧栏行 / 页面按钮共用的唯一 opener，幂等）。 */
   openDialog: () => void;
-  /** live 面默认执行 Agent（board 卡片级 开始 复用；02 §6.2 双槽同值）。 */
-  firstAgentId: string | null;
   /** 直接摊给 <NewTaskDialog>。 */
   dialogProps: NewTaskDialogProps;
 }
@@ -96,12 +95,9 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
   // 新建对话框关闭 = 直接清空（持久化场景下再次打开应从空开始）。
   const [liveSpec, setLiveSpec] = useState('');
 
-  // live 面的默认执行 Agent（开始/重跑无 dialog 位——已建屏无开始弹窗，
-  // assignment 取团队首个 Agent [设计]，02 §6.2 双槽同值；E2E 脊柱口径）。
-  const firstAgentId = useMemo(() => {
-    const member = (membersQ.data ?? []).find((m) => m.memberType === 'agent');
-    return member?.actorId ?? null;
-  }, [membersQ.data]);
+  // #640：保存并开始的第二跳 = 直发总管编排回合（指派由总管按职责文本
+  // 裁定，入口不再吃 firstAgentId）。
+  const { orchestrate } = useOrchestrateStart();
 
   // spec 15 #394：提交 = 正文单字段。标题不再采集——live 面 wire 上 title
   // 恒空串由 server 派生占位（首行截断），agent 接单后回填；fixture 面 =
@@ -139,8 +135,10 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
     [live, resolveProjectId, mutations.createTodo, mutations.createProject, onFixtureSave, t],
   );
 
-  // 保存并开始（r2 §4.2 双钮语义，M5 live）：创建 → POST builds（withPlan，
-  // 首 Agent 双槽指派 [设计]）。fixture 面 = 同 保存。M7 #310:带 spec 走真。
+  // 保存并开始（r2 §4.2 双钮语义；#640 / r14 §5.7 前置裁决落地）：创建 →
+  // 直发总管编排回合（POST /todos/:id/orchestrate，替换原写死 withPlan:true
+  // 的 plan 步）——总管直接规划、按活的类型派发，入口不给选择。T0 反馈 =
+  // toast + 查看会话深链（use-orchestrate-start.ts）。fixture 面 = 同 保存。
   const createAndStart = useCallback(
     (spec: string, selectedProjectId?: string) => {
       setOpen(false);
@@ -152,18 +150,9 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
       const start = (projectId: string) =>
         mutations.createTodo.mutate(
           { projectId, spec },
-
           {
             onSuccess: (created) =>
-              mutations.startBuilds.mutate({
-                projectId,
-                todoIds: [created.id],
-                assignment: {
-                  plan: firstAgentId ? { agentId: firstAgentId } : null,
-                  build: firstAgentId ? { agentId: firstAgentId } : null,
-                },
-                withPlan: true,
-              }),
+              orchestrate(created.id, { savedTitle: t('已保存，交给总管编排') }),
           },
         );
       const projectId = resolveProjectId(selectedProjectId);
@@ -178,10 +167,9 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
       live,
       createTodo,
       mutations.createTodo,
-      mutations.startBuilds,
       mutations.createProject,
       resolveProjectId,
-      firstAgentId,
+      orchestrate,
       t,
     ],
   );
@@ -306,5 +294,5 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
     ...(live ? { spec: liveSpec, onSpecChange: setLiveSpec, onAttachment } : {}),
     ...(mentions ? { mentionGroups } : {}),
   };
-  return { openDialog, firstAgentId, dialogProps };
+  return { openDialog, dialogProps };
 }

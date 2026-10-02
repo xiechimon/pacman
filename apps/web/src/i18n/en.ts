@@ -492,12 +492,10 @@ export const EN: Record<string, string> = {
   失败: 'Failed',
   默认: 'Default',
   开始任务: 'Start task',
-  // XMON-55 P0: the hint that rides the 开始 button on the fresh brief
-  '点开始后选执行机器，Agent 在你的机器上跑':
-    'Pick a machine after starting — the agent runs on your machine',
-  '规划与执行分用不同 Agent': 'Use different agents for planning and execution',
-  先做规划: 'Plan first',
-  立即执行: 'Run now',
+  // XMON-55 P0 / #640: the hint that rides the 开始 button on the fresh brief
+  // —— 开始入口不再选机器/Agent，改为直发总管编排回合后派发。
+  '点开始后由总管编排派发，Agent 在你的机器上跑':
+    'The chief orchestrates and dispatches after you start — the agent runs on your machine',
   // #170 create-agent dialog family
   '创建 agent': 'Create agent',
   '输入 Agent 名称': 'Enter an agent name',
@@ -605,15 +603,10 @@ export const EN: Record<string, string> = {
   '授权链接已失效，请在执行机上重新发起。':
     'This authorization link has expired — restart enrollment on the executor machine.',
   '浏览器授权注册 →': 'Browser authorization →',
-  // W2 #318 桩群校准：开始任务 dialog 统一面（r9 §3.6）+ 新建任务未保存闸
-  // （r9 §3.4）。规划/执行 = assignment.plan/build 双槽的行标签。
-  // #310 附件：dirty 位由 spec 非空承载（附件 token 注入后归 spec）,标签
-  // add 仍为桩（本票不动）。
-  规划: 'Plan',
-  执行: 'Build',
-  在线: 'online',
-  离线: 'offline',
-  '选择 Agent': 'Select agent',
+  // W2 #318 桩群校准：新建任务未保存闸（r9 §3.4）。#310 附件：dirty 位由
+  // spec 非空承载（附件 token 注入后归 spec）,标签 add 仍为桩（本票不动）。
+  // （#640：开始任务 dialog 统一面的 规划/执行/在线/离线/选择 Agent 五键随
+  // 选择面撤销退役——开始入口不再有 dialog 选择器。）
   '放弃新建任务？未保存的内容将丢失。': 'Discard this new task? Unsaved content will be lost.',
   继续编辑: 'Keep editing',
   放弃并关闭: 'Discard and close',
@@ -725,4 +718,15 @@ export const EN: Record<string, string> = {
   总管本轮执行失败: 'The chief turn failed',
   '发送失败，请重试。': 'Send failed. Try again.',
   '恢复失败，请重试。': 'Restore failed. Try again.',
+  // —— #640 开始任务单出口（直发总管编排回合；r14 §5.7 前置裁决落地）——
+  由总管创建: 'Created by chief',
+  来源: 'Source',
+  总管编排会话: 'Chief orchestration session',
+  '这张任务将交给总管重新编排。': 'The chief will re-orchestrate this task.',
+  已交给总管编排: 'Handed to the chief',
+  '已保存，交给总管编排': 'Saved — handed to the chief',
+  '总管将直接规划，并按活的类型派发执行。':
+    'The chief plans first, then dispatches each piece to the right agent.',
+  查看会话: 'View session',
+  未能开始编排: 'Could not start orchestration',
 };

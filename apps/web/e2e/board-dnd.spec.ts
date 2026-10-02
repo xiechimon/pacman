@@ -13,9 +13,9 @@ import { expect, type Page, test } from '@playwright/test';
 //   · every valid target column tints while the gesture flies (base tier),
 //     the hovered one a step hotter — indigo recipe, whole cell (#351
 //     geometry law kept); 待处理 (#351) and the source column stay neutral;
-//   · 执行中 is the start gate: the drop opens the 开始任务 dialog (#318
-//     unified face) and the phase is NOT written until a confirm — cancel
-//     commits nothing;
+//   · 执行中 is the start gate: the drop fires the chief orchestration round
+//     directly (#640 — the #318 choice dialog is gone; the phase is NOT
+//     written locally, the card moves only once the chief dispatches);
 //   · 待开始/已完成 drops commit the phase silently, card lands at the END of
 //     the target column, counts couple (r2 §4.2);
 //   · the overlay unmounts on the pointerup frame — no drop glide (#391's
@@ -117,7 +117,7 @@ test('待开始 → 已完成: silent commit, end-of-column landing, counts coup
   await expect(page.locator('body')).not.toHaveClass(/board-dragging/);
 });
 
-test('待开始 → 执行中: the 开始任务 dialog gates the phase — cancel commits nothing', async ({
+test('待开始 → 执行中: the drop fires orchestration directly — no dialog, no local phase write (#640)', async ({
   page,
 }) => {
   await page.goto('/app?scenario=22');
@@ -131,22 +131,17 @@ test('待开始 → 执行中: the 开始任务 dialog gates the phase — cance
   await page.mouse.up();
   await settleDrop(page);
 
-  // the start gate is up (#318 unified face) and the overlay is gone
-  await expect(page.locator('.overlay-title')).toHaveText('开始任务');
+  // #640: the start gate no longer opens the #318 choice dialog — the drop
+  // fires the chief orchestration round (live-only; fixture mode is inert, so
+  // nothing renders). The gesture teardown still sweeps the drag overlay.
+  await expect(page.locator('.overlay-title')).toHaveCount(0);
   await expect(page.locator('.board-drag-overlay')).toHaveCount(0);
-  // the phase is NOT written: the probe still sits in 待开始, counts untouched
+  // the phase is NOT written locally: the probe still sits in 待开始, counts
+  // untouched (in live it moves only once the chief dispatches via run_builds).
   await expect(
     page.locator(`[data-column="todo"] .todo-card[data-todo-id="${PROBE_ID}"]`),
   ).toBeVisible();
   await expect(page.locator('[data-column="todo"] .board-column-count')).toHaveText('1');
-  await expect(page.locator('[data-column="building"] .board-column-count')).toHaveText('0');
-
-  // cancel (family close law #168: Esc) → still zero commit
-  await page.keyboard.press('Escape');
-  await expect(page.locator('.overlay-title')).toHaveCount(0);
-  await expect(
-    page.locator(`[data-column="todo"] .todo-card[data-todo-id="${PROBE_ID}"]`),
-  ).toBeVisible();
   await expect(page.locator('[data-column="building"] .board-column-count')).toHaveText('0');
 });
 

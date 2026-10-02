@@ -68,6 +68,11 @@ export interface TodoRecord {
    *  field — not in the r3 §3.0 snapshot, needed to reproduce the observed
    *  board placement and card action for waiting-on-user todos. */
   awaitingReply?: boolean;
+  /** #640 / r14 §5.4：总管建的卡（wire sourceBuildId ≠ null 的显示投影）
+   *  ——看板卡底行「由总管创建」芯片的判定位（区分 agent 拆的卡与人手建
+   *  的卡，参考站 11-todo12-card-zoom 同构）。fixture 捕获缺省 = 无芯片，
+   *  基线像素零漂移。 */
+  chiefCreated?: boolean;
 }
 
 /** Token 用量 content (issue #68, r7 30): the cumulative-run figures,
@@ -599,8 +604,6 @@ export interface DetailContent {
   planDiff?: PlanDiffContent;
   /** Diff the compare submenu's 上一版本 opens (r8 64 → 65, 70 → 71). */
   compareTarget?: PlanDiffContent;
-  /** Agent row of the rerun dialog (r8 56/74): the previous run's agent. */
-  rerunAgent?: { name: string; model: string; avatarUrl?: string | null };
   /** Interactive reject-loop script (issue #75 AC3). */
   revision?: RevisionStep;
 }

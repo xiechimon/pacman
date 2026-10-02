@@ -579,8 +579,9 @@ export function ProjectPage() {
   // append（seqNum 基线 = scenario 集 + 已加行；canon projectId
   // approximation 同 #176 律）；锚 = 路由项目 id（#305 律：选择器行置首、
   // 保存缺省锚本页、不建默认项目）；提及面 = 空 picker；members eager
-  // （保存并开始点击时吃 firstAgentId）。spec 15 #394 同律：提交 = 正文
-  // 单字段，标题 live 面 wire 空串 server 派生、fixture 面 localTodo 内派生。
+  // （查询面语义保持原状，#640 后保存并开始直发编排回合不再吃指派）。
+  // spec 15 #394 同律：提交 = 正文单字段，标题 live 面 wire 空串 server
+  // 派生、fixture 面 localTodo 内派生。
   const onFixtureSave = useCallback(
     (spec: string) => {
       setFixtureAdded((prev) => [

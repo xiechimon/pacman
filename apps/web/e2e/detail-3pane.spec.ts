@@ -275,5 +275,6 @@ test('fresh phase: the brief owns the whole center column, right pane collapses'
   await expect(start).toBeVisible();
   await expect(start).toHaveText('开始');
   await start.click();
-  await expect(page.locator('.overlay-title')).toHaveText('开始任务');
+  // #640：todo 相位 开始 = 单出口直发编排回合，不再弹选择 dialog（fixture inert）。
+  await expect(page.locator('.overlay-title')).toHaveCount(0);
 });

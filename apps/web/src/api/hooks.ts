@@ -635,6 +635,17 @@ export function useApiMutations(teamId: string | undefined) {
         }),
       onSuccess: invalidateAll,
     }),
+    // 开始任务单出口（#640 / r14 §5.7）：直发总管编排回合——新 chief 线程
+    // + 编排请求消息（任务原文逐字 = 锚点）+ chief 步入队。409 = 相位闸 /
+    // 总管未绑定 Agent（调用面 toast 显性化，不静默）。
+    orchestrateTodo: useMutation({
+      mutationFn: (id: string) =>
+        api.post<{
+          thread: ChiefThread;
+          message: { id: string; role: 'user'; content: string; createdAt: number };
+        }>(`/api/todos/${id}/orchestrate`, {}),
+      onSuccess: invalidateAll,
+    }),
     stepAction: useMutation({
       mutationFn: (input: {
         buildId: string;
