@@ -59,13 +59,20 @@
      not floating (claude.ai card-tier reference). Both themes follow the
      same shape; opacity differs because the canvas itself differs */
   --card-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
-  /* lift-tier shadow (#391): the DragOverlay copy is the highest-elevation
-     surface while in flight — above the popover tier. Small 3px offset +
-     12px blur keeps ALL four edges inked (the pre-#391 light-only
-     drop-shadow filter bottom-biased the glow and left the dark side
-     flat); the alpha runs hotter than --edge-shadow because a black shadow
-     over the near-black column bg has little luminance headroom */
-  --lift-shadow: 0 3px 12px rgb(0 0 0 / 0.5);
+  /* drag-tier shadow (#616): the lifted drag clone floats on the reference
+     product's live recipe (todos.dev 2026-10-02 capture: inline
+     `box-shadow: rgba(0,0,0,0.18) 0 8px 24px`, one value in BOTH themes) —
+     a wide soft pool 8px below the card instead of #391's four-edge inked
+     tier. Theme-invariant like --dialog-shadow; mirrored in .light to keep
+     the semantic-token mirror complete */
+  --drag-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  /* drop-target tint (#616): the reference tints EVERY valid drop column
+     while a gesture is in flight (indigo-400 ring + indigo-500 at 5%) and
+     the hovered one a step hotter (10%) — tailwind indigo palette values,
+     captured live; invalid targets and the source column stay neutral */
+  --drop-tint-border: rgb(129 140 248);
+  --drop-tint-base: rgb(99 102 241 / 0.05);
+  --drop-tint-hover: rgb(99 102 241 / 0.1);
   /* alias of the #139 edge shadow tier — every elevated surface (fab,
      popovers, panels) draws one shadow from the single source */
   --fab-shadow: var(--edge-shadow);
@@ -97,10 +104,12 @@
      only the opacity drops because the light surface itself already has
      less visual depth, so the shadow needs less to do its job */
   --card-shadow: 0 2px 4px rgb(28 25 23 / 0.07);
-  /* lift-tier shadow (#391), light side: same shape as dark — the resting
-     card's small-offset family scaled up, so the four-edge profile stays
-     consistent with the resting card */
-  --lift-shadow: 0 3px 12px rgb(28 25 23 / 0.16);
+  /* drag-tier shadow (#616) + drop-target tint: theme-invariant — mirrored
+     explicitly so .light stays the full semantic-token mirror */
+  --drag-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  --drop-tint-border: rgb(129 140 248);
+  --drop-tint-base: rgb(99 102 241 / 0.05);
+  --drop-tint-hover: rgb(99 102 241 / 0.1);
   /* overlay batch A (#66), light values probed off r7 04/25; the dialog
      shadow is theme-invariant (probed light, r8 79 dark shows the same)
      — mirrored explicitly so .light stays the full semantic-token mirror */

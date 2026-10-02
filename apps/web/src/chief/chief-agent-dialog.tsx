@@ -15,7 +15,7 @@
 // 带 model 副题)——unassign 前置未指派行、option.model 副题、
 // confirmRebind=false 跳过换绑二次确认(开始面重选无记忆告示语义)。
 
-import { CHIEF_REBIND_CONFIRM_COPY } from '@pacman/shared';
+import { CHIEF_REBIND_CONFIRM_COPY, type TeamMember } from '@pacman/shared';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
@@ -38,6 +38,25 @@ export interface ChiefAgentOption {
 
 /** #318 未指派行 id(开始 dialog 选择器;onBind('') = 双槽置 null)。 */
 export const UNASSIGNED_AGENT_ID = '';
+
+/** members 读面 → 选择器候选投影（#318 单源：detail 页与 board 页 #616 的
+ *  开始任务 dialog 走同一份）。actor.modelId 有值才带副题；avatarUrl 覆盖
+ *  律同 XMON-105 各 agent 面。 */
+export function assignOptionsFromMembers(members: readonly TeamMember[]): ChiefAgentOption[] {
+  return members
+    .filter((m) => m.memberType === 'agent')
+    .map((m) => {
+      const actor = m.actor as
+        | { displayName?: string; modelId?: string | null; avatarUrl?: string | null }
+        | undefined;
+      return {
+        id: m.actorId,
+        name: actor?.displayName ?? m.actorId,
+        ...(actor?.modelId ? { model: actor.modelId } : {}),
+        avatarUrl: actor?.avatarUrl ?? null,
+      };
+    });
+}
 
 /** fixture 面候选兜底(r5 捕获 Agent 名 canon;new-task DEFAULT_PROJECT 同律)。 */
 const DEFAULT_AGENT: ChiefAgentOption = { id: 'r3-builder', name: 'r3-builder' };
