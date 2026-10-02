@@ -312,11 +312,6 @@
   background: var(--tile-hero-bg);
 }
 
-.res-tile--indigo {
-  background: var(--tile-indigo-bg);
-  color: var(--tile-indigo-fg);
-}
-
 .res-row-text {
   margin-left: 12px;
   display: flex;

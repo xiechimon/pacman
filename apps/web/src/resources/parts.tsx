@@ -33,7 +33,7 @@ export function Tile({
 }: {
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
   size: 'sm' | 'lg' | 'hero';
-  tone: 'orange' | 'indigo';
+  tone: 'orange';
 }) {
   const glyph = size === 'sm' ? 12 : size === 'lg' ? 16 : 26;
   return (
