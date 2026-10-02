@@ -309,24 +309,9 @@
   padding: 17px 16px 0;
 }
 
-.dlg-accept-check {
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: 0;
-  border-radius: 4px;
-  background: var(--card-button);
-  color: var(--text-on-accent);
-  cursor: pointer;
-}
-
-.dlg-accept-check[data-on="false"] {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--border-strong);
-}
+/* XMON-72：复选 tile 形态收口 components/ui/checkbox.css（全仓唯一持值文件），
+   原 .dlg-accept-check 两份手搓删除——它从无隐藏 input 的规则，tile 里骑着
+   Mac 原生复选框。这里只留行容器与文字皮肤。 */
 
 .dlg-accept-label {
   font-size: 13px;
@@ -562,50 +547,23 @@
   line-height: 16px;
 }
 
-/* #485 模型槽：候选非空时取代告警行的位置（同一格，两态互斥）。选择器本体
-   （wrap/触发钮/菜单/行）几何全在 routes/agent-detail.css——一面两前缀，
-   与概览 tab 同一条规则；这里只给这一格的标签与选择器纵向排布。 */
-.dlg-agent-model-row-wrap {
+/* #485 模型槽：候选非空时取代告警行的位置（同一格，两态互斥）。t-0024 两级化
+   后这一格变两行（运行时 / 模型），行盒类名随之改 slot。选择器本体（wrap/触发
+   钮/菜单/行）几何全在 routes/agent-detail.css——一面两前缀，与概览 tab 同一
+   条规则；这里只给每行的标签与选择器纵向排布。 */
+.dlg-agent-slot-row {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
 /* 添加模型服务 dialog (wayfinder #175, r8 75 / r3 §2 field order): Bearer
-   复选行。checkbox 骑 .dlg-accept-check 视觉,raw input 如 .dlg-toggle input
-   般 opacity-0 覆叠,整块 tile 都是点击目标。 */
+   复选行。tile 形态在 components/ui/checkbox.css（XMON-72 收口；改之前
+   .dlg-provider-check 藏了 input 但白勾无条件渲染,未选中态露勾）。 */
 .dlg-provider-authrow {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.dlg-provider-check {
-  position: relative;
-  flex: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border: 0;
-  border-radius: 4px;
-  background: var(--card-button);
-  color: var(--text-on-accent);
-  cursor: pointer;
-}
-
-.dlg-provider-check[data-on="false"] {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--border-strong);
-}
-
-.dlg-provider-check input {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
 }
 
 .dlg-provider-authlabel {

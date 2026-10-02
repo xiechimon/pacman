@@ -497,6 +497,9 @@ export const chief = sqliteTable('chief', {
   /** 压缩模型长槽（#203 [设计]；records/chief.ts chiefCompactionModelSchema
    * 值形，null = 默认「与 Chief 相同」）；JSON 列。 */
   compactionModel: json<ChiefCompactionModel>('compactionModel'),
+  /** 主模型覆盖长槽（#615 [设计]，r5 107/108 独立「模型」选择器的落库面；
+   * 值形同 compactionModel，null = 继承绑定 Agent 模型）；JSON 列。 */
+  model: json<ChiefCompactionModel>('model'),
   /** 章程 = 常设指示（r5 §2 章程 tab；raw 默认空串）。 */
   charter: text('charter').notNull().default(''),
   /** watch 条目集（records/chief.ts chiefWatchSchema[]；派工即建、settle/failed

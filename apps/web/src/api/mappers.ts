@@ -28,9 +28,11 @@ import type {
 } from '@pacman/shared';
 import {
   BRAND,
+  classifyUserText,
   conversationBranch,
   MERGE_ANNOUNCEMENT,
   PLAN_SECTIONS,
+  REVIEW_ANNOUNCEMENT,
   REVIEW_VERDICT_KIND,
   reviewVerdictSchema,
 } from '@pacman/shared';
@@ -39,6 +41,7 @@ import type {
   BranchInfoContent,
   ChiefContent,
   ChiefStreamItem,
+  ChiefToolRow,
   DiffFile,
   DiffLine,
   ApiKeyRecord as DisplayApiKey,
@@ -432,7 +435,6 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
   }
 
   const entries: TimelineEntry[] = [];
-  let firstUser = true;
   for (const m of messages) {
     const call = toolCallOfContent(m.content);
     if (call !== null) {
@@ -441,20 +443,27 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     }
     const text = textOfContent(m.content).trim();
     if (m.role === 'user') {
-      // 合并宣告行 content = shared MERGE_ANNOUNCEMENT 单源（server
-      // requestMerge 写入端同款常量；呈现层拼装 actor，r3 §3.6）。
-      if (text === MERGE_ANNOUNCEMENT) {
+      // 宣告行 content = shared 单源常量（server 写入端同款；呈现层拼装
+      // actor）：合并 r3 §3.6，审核 r8 §3.1——同族 note 行形，不是气泡。
+      if (text === MERGE_ANNOUNCEMENT || text === REVIEW_ANNOUNCEMENT) {
         entries.push({
           at: m.createdAt,
-          item: { kind: 'note', text: `${userName} ${MERGE_ANNOUNCEMENT}` },
+          item: { kind: 'note', text: `${userName} ${text}` },
         });
         continue;
       }
-      const userItem: TranscriptItem = firstUser
-        ? { kind: 'user', text, seq: todo.seqNum, title: todo.title }
-        : { kind: 'user', text };
-      firstUser = false;
-      entries.push({ at: m.createdAt, item: userItem });
+      // 系统合成 prompt 行（#612，词表单源 = shared records/prompts）：
+      // 任务文本（title+spec）不成气泡——用户原话的唯一展示面是线程列首的
+      // 描述区，本行是它的 daemon 侧合成版，呈现即双渲染（用户报的套娃）；
+      // 续轮指令 / replan/restart 模板 / 审核材料整行退场——都不是用户的话。
+      if (classifyUserText(text, todo) !== 'user') continue;
+      // 真实用户话语带 markdown 槽（robot 行 #469 同款）：渲染期走
+      // chat-markdown，用户写的围栏/列表/标题不再按字面裸排。taskline
+      // （seq/title）不挂：它是 capture 里任务开头气泡的装饰，任务文本行
+      // 退场后没有合法宿主——且本循环按落库序迭代、显示序在 sort 之后才
+      // 成立，「首条」在 steer 早于终稿上传落库时会认错行；#seq+标题的真值
+      // 展示位是 dhead。fixture 捕获面自带 seq/title，渲染路径保留。
+      entries.push({ at: m.createdAt, item: { kind: 'user', text, markdown: text } });
       continue;
     }
     if (m.role === 'system') {
@@ -877,13 +886,26 @@ const CHIEF_HERO_EXAMPLES = [
 
 export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
   const items: ChiefStreamItem[] = [];
+  // #615 返工：工具行不再丢弃——缓冲进下一个 robot 回合的 tools 折叠面
+  // （foot 折叠箭头展开内容；Multica OuterProcessFold 同族语义）。
+  let pendingTools: ChiefToolRow[] = [];
   for (const m of messages) {
     const call = toolCallOfContent(m.content);
-    if (call !== null) continue; // 工具行不进 chief 流呈现（r5 114/116 无工具行）
+    if (call !== null) {
+      pendingTools.push({
+        name: call.name,
+        ...(call.startedAt !== undefined && call.endedAt !== undefined
+          ? { seconds: Math.max(0, Math.round((call.endedAt - call.startedAt) / 1000)) }
+          : {}),
+        ...(call.isError === true ? { error: true } : {}),
+      });
+      continue; // 工具行不进 chief 流主呈现（r5 114/116 折叠态无工具行）
+    }
     const text = textOfContent(m.content).trim();
     if (text === '') continue;
     if (m.role === 'user') {
-      items.push({ kind: 'user', text });
+      pendingTools = []; // 回合边界：用户行之前的工具行属上一回合且已无归属面
+      items.push({ kind: 'user', text, id: m.id });
       continue;
     }
     if (m.role === 'system') continue;
@@ -907,7 +929,9 @@ export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
       paragraphs,
       ...(bullets.length > 0 ? { bullets } : {}),
       seconds: '',
+      ...(pendingTools.length > 0 ? { tools: pendingTools } : {}),
     });
+    pendingTools = [];
   }
   return items;
 }
@@ -931,7 +955,12 @@ export function mapChief(
     bound,
     ...(bound && env.agentActor
       ? {
-          modelSlot: `${env.agentActor.modelId ?? 'n/a'} · 默认`,
+          // #615: 行值 = 生效模型（覆盖槽优先，回退绑定 Agent 模型）；`· 默认`
+          // 徽标只在继承态（覆盖槽 null）挂——覆盖态裸模型名，dialog 的 check
+          // 位承担「显式选过」的语义。
+          modelSlot: `${env.chief.model?.modelId ?? env.agentActor.modelId ?? 'n/a'}${
+            env.chief.model == null ? ' · 默认' : ''
+          }`,
           // #444: FAB 头像位 = 绑定 Agent 全记录里的既有字段（封套已带，
           // 零新增请求）；id 供 team chart 组织图定位根节点（同一封套，
           // 同为零新增请求）。
@@ -940,6 +969,8 @@ export function mapChief(
             displayName: env.agentActor.displayName,
             avatarUrl: env.agentActor.avatarUrl,
           },
+          // #615 返工：运行时标记位 = 生效模型 provider（覆盖槽优先）。
+          modelProvider: env.chief.model?.provider ?? env.agentActor.provider,
         }
       : {}),
     threadTitle: active?.title ?? '新主题',

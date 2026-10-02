@@ -722,6 +722,16 @@ export function useApiMutations(teamId: string | undefined) {
             }),
       onSuccess: invalidateAll,
     }),
+    // #615 返工：恢复钮「恢复到此处」闭环（server 截断锚后消息 + 重置会话 +
+    // 锚内容重入队；invalidateAll 重取回显，S8 不持本地乐观态）。
+    chiefRewind: useMutation({
+      mutationFn: (input: { threadId: string; messageId: string }) =>
+        api.post<{ deletedCount: number; thread: ChiefThread }>(
+          `/api/teams/${teamId}/chief/threads/${input.threadId}/rewind`,
+          { messageId: input.messageId },
+        ),
+      onSuccess: invalidateAll,
+    }),
     patchChief: useMutation({
       mutationFn: (body: PatchChiefBody) =>
         api.patch<ChiefGetResponse>(`/api/teams/${teamId}/chief`, body),

@@ -5,7 +5,7 @@
 ## Sub-features
 
 - `stop-button-visible` streaming(有 claimed/pending 步)时 `.composer-stop` 渲染可点;非运行面不渲染。
-- `stop-confirm-dialog` 点击开确认弹层(DialogShell 448 族):标题 + 复选行(`.dlg-accept-check` 默认勾选,discard 位)+ 取消/停止。
+- `stop-confirm-dialog` 点击开确认弹层(DialogShell 448 族):标题 + 复选行(components/ui/checkbox 原语,`.dlg-accept .ui-checkbox-input` 默认勾选,discard 位;XMON-72 收口)+ 取消/停止。
 - `stopping-transition` 确认后 streaming 行标签转「正在停止…」(本地乐观态,持续到步终态经 SSE 重取回显)。
 - `cancelled-run-row` 落账后 transcript 顶部运行行出现 `.chat-stamp-cancelled`「已取消」。
 - `gate-fallback` todo phase 回落:本 build 无 done 步 → prevPhase(fresh 任务 = todo,开始钮回位);有 done 步 → 其 gate(plan done → confirm,build done → review)。chip/主按钮随 phase 面自动迁移。
@@ -45,3 +45,4 @@ Preconditions(比其余 probe 多三件——全栈在跑):
 - pending 步(机器未领)停止 = server 即时取消,无 daemon 参与(`{delegated:false}` 200);live daemon 在跑时该窗口毫秒级,probe 走的是 claimed 路径。
 - fish/zsh 方言:`--api-key $(cat file)` 用 `$()` 不用 `()`(Bash 工具 zsh 方言,裸 `()` 当 glob 报错)。
 - 重验 = 重 launch + 重新 seed + 新探针任务(api-key/provider 幂等性不保证,别复用旧栈)。
+- **fresh 详情页两枚「开始」**(banner dhead primary + 主 pane `.fresh-start`,XMON-72 实测):`getByRole('button', {name:'开始'})` strict mode 必撞双;drive-stop 锚 `.fresh-start`。将来票若摘掉 fresh-block 大钮,锚点随之改。

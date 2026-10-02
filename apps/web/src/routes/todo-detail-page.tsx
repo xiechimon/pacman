@@ -86,7 +86,7 @@ import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
 import '../detail/detail.css';
 import { AppSidebar } from '../board/app-sidebar.js';
-import { ChiefWakeFab, ChiefWakePanel } from '../chief/chief-wake.js';
+import { ChiefWakeFab, ChiefWakePanel, useChiefSettingsNav } from '../chief/chief-wake.js';
 import { useChiefSurface } from '../chief/use-chief-surface.js';
 import { markClosed, markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import { overlayContent } from '../fixtures/fixtures.js';
@@ -157,6 +157,8 @@ export function TodoDetailPage() {
   // （detail-body flex 末项）分挂两处、共享同一个 surface 实例（⌘J 监听
   // 与未读角标同源）。
   const chief = useChiefSurface(fixture);
+  // #615: gear 在 detail 面可达——落 board 设置视图深链（chief-wake 同律）。
+  const chiefSettingsNav = useChiefSettingsNav();
   // 右 pane 视图 (#366)：doc = DocPane（方案/变更/diff，相位派生），其余三
   // 值 = 原 head 图标 overlay 三件的静止 section。纯渲染态，capture 场景经
   // ui.paneView 冻结（r7 30/31/32、r8 57/77 的新家）。
@@ -721,6 +723,9 @@ export function TodoDetailPage() {
                   tags={freshTags}
                   action={ui.action}
                   onAction={handlePrimaryAction}
+                  // #612：live 有 spec = 下方简报卡在场，「尚无描述」占位让位
+                  // （两行同屏自相矛盾）；fixture 面恒缺省，r7 23 基线不动。
+                  hasSpec={live && todo.spec.trim() !== ''}
                 />
                 {/* M7 #310：live 详情面把用户提交的 spec 渲染在 FreshBlock 之
                     下（fix 丢字 bug ——之前 spec 落 todo.spec 但 UI 从未呈现
@@ -934,7 +939,7 @@ export function TodoDetailPage() {
               />
             </RightPane>
           )}
-          <ChiefWakePanel surface={chief} />
+          <ChiefWakePanel surface={chief} onSettings={chiefSettingsNav} />
         </div>
         {ui.placeholder != null && composerReject != null && (
           <div className="composer-reject">{composerReject}</div>
