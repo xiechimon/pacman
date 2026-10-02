@@ -1413,6 +1413,9 @@ export function toProviderConfig(
       baseUrl: bundleProvider.baseUrl,
       api: bundleProvider.api,
       authHeader: bundleProvider.authHeader,
+      // 兼容旋钮（#654）：行值原样透传；老 server 不带此位 = daemon 走 pi
+      // 端点探测默认（现状行为，mixed-version 零回归）。
+      compat: bundleProvider.compat,
       models: bundleProvider.models,
       ...(bundleProvider.apiKey !== null ? { apiKey: bundleProvider.apiKey } : {}),
     };

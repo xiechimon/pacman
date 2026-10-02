@@ -10,7 +10,11 @@
 import { z } from 'zod';
 import { epochMs, recordId } from './records/common.js';
 import { messageRecordSchema } from './records/message.js';
-import { providerApiSchema, providerModelSchema } from './records/provider.js';
+import {
+  providerApiSchema,
+  providerCompatSchema,
+  providerModelSchema,
+} from './records/provider.js';
 
 /** 工具调用行（02 §5.6 `toolcall_end` 载荷；transcript 工具行 `> edit README.md`
  * 的数据面，r3 §3.5）。wire 细形未采 [推断]：字段 = pi toolCall + 执行结果的
@@ -60,6 +64,10 @@ export const providerConfigSchema = z.object({
   baseUrl: z.string().optional(),
   /** custom 端点三协议（records/provider.ts providerApiSchema）。 */
   api: providerApiSchema.optional(),
+  /** 兼容旋钮（#654：records/provider.ts providerCompatSchema——maxTokensField
+   * / supportsStore / supportsDeveloperRole；daemon 物化进 pi models.json，
+   * 缺省位 = pi 端点探测默认）。 */
+  compat: providerCompatSchema.optional(),
   authHeader: z.boolean().optional(),
   models: z.array(providerModelSchema).optional(),
   apiKey: z.string().optional(),
@@ -226,6 +234,12 @@ export interface AgentBackend {
   /** continue session <convId>（02 §5.7；id = 会话持久化标识，实现自定——
    * pi 侧 = sessionId/sessionFile，daemon chat-sessions/ 索引解析）。 */
   continueSession(id: string, opts: SessionOpts): Promise<AgentSessionHandle>;
+  /** 协议 400 自适配（#654，可选实现——Multica client.go 按错误回落同律）：
+   * 错误签名命中上游明示的参数/协议不兼容时，返回翻了 compat 旋钮的
+   * provider 配置（供步内一次回落重试）并记录进程内学习（后续步直接干净
+   * 形态物化）；null = 未命中或无可翻。pi 后端实现；claude-code 后端不实现
+   * （A4 零凭据面无 provider 形态可适配，调用面 `?.` 静默跳过）。 */
+  adaptProviderCompat?(provider: ProviderConfig, errorMessage: string): ProviderConfig | null;
 }
 
 /** spec 17 A3 backend 身份词表：`agent.provider` ∈ 此表 = 该步跑对应第二

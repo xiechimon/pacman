@@ -21,6 +21,24 @@ export const providerModelSchema = z.object({
   name: z.string(),
 });
 
+/** custom provider 兼容旋钮（#654，B-C2c 面）：pi models.json provider 级
+ * compat 的记录投影。缺省位 = pi 按端点探测的默认行为（对未知自定义端点
+ * 即现代字段形：max_completion_tokens + store），显式设置才覆盖——三种网关
+ * 兼容坑的落点：token 上限字段名、store 字段、system/developer 角色。 */
+export const providerCompatSchema = z.object({
+  /** 系统提示词走 developer 角色的支持位（r3 §2 表单实测；false = 用
+   * system 角色发）。 */
+  supportsDeveloperRole: z.boolean().optional(),
+  /** token 上限字段名：现代 `max_completion_tokens` / 旧式 `max_tokens`。
+   * 部分网关通道拒现代字段（#654 实测：relay 确定性 400「Model does not
+   * support this protocol」，同形重试恒败）。 */
+  maxTokensField: z.enum(['max_completion_tokens', 'max_tokens']).optional(),
+  /** 是否发送 OpenAI `store` 字段（pi 探测默认对未知端点发 `store:false`）。
+   * 部分网关通道拒该字段（#654 同上）。 */
+  supportsStore: z.boolean().optional(),
+});
+export type ProviderCompat = z.infer<typeof providerCompatSchema>;
+
 /** custom provider 记录（r3 §2 GET /api/teams/{id}/providers 实测原样）。 */
 export const providerRecordSchema = z.object({
   kind: z.literal('custom'),
@@ -30,7 +48,7 @@ export const providerRecordSchema = z.object({
   api: providerApiSchema,
   /** 「以 Authorization: Bearer 请求头发送 API 密钥」复选（r3 §2/§6.2）。 */
   authHeader: z.boolean(),
-  compat: z.object({ supportsDeveloperRole: z.boolean() }),
+  compat: providerCompatSchema,
   models: z.array(providerModelSchema), // `探测模型` 对 /v1/models 拉列表（r3 §2）
   id: recordId,
   createdBy: recordId,
@@ -48,7 +66,7 @@ export const createProviderBodySchema = z.object({
   baseUrl: z.string(),
   api: providerApiSchema,
   authHeader: z.boolean().optional(),
-  compat: z.object({ supportsDeveloperRole: z.boolean() }).optional(),
+  compat: providerCompatSchema.optional(),
   models: z.array(providerModelSchema).optional(),
   apiKey: z.string().nullish(),
 });

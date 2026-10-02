@@ -23,6 +23,7 @@ const BUNDLE: StepCredentialBundle['provider'] = {
   baseUrl: 'http://127.0.0.1:9/v1',
   api: 'openai-completions',
   authHeader: true,
+  compat: {},
   apiKey: 'sk-stub',
   models: [{ id: 'stub-model', name: 'stub-model' }],
   modelId: 'stub-model',
@@ -52,6 +53,9 @@ describe('toProviderConfig（spec 17 A4：runtime 身份零 provider 下发）',
       baseUrl: 'http://127.0.0.1:9/v1',
       api: 'openai-completions',
       authHeader: true,
+      // #654：compat 原样透传（空对象 = 未设旋钮，daemon 物化时按无 compat
+      // 处理——pi 端点探测默认，零行为漂移）。
+      compat: {},
       models: [{ id: 'stub-model', name: 'stub-model' }],
       apiKey: 'sk-stub',
     });
