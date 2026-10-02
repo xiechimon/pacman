@@ -228,6 +228,27 @@ test.describe('chief drawer markdown 面（fixture，#650）', () => {
     await expect(fence).toContainText('curl -s localhost:8787/healthz');
   });
 
+  test('F-R13: todo 提及渲成 chip，锚点指任务详情并可点击导航；字面 #seq/伪 scheme 不出 chip（#675）', async ({
+    page,
+  }) => {
+    const stream = page.locator('.chief-stream');
+    const chip = stream.locator('.mention-chip--todo');
+    await expect(chip).toHaveCount(1);
+    await expect(chip).toHaveText('#1');
+    // 点击行为 = 导航（参考站实测：todo chip click → /app/todo/<id>，
+    // hover 无弹层）。真锚点（router Link）：键盘/中键免费。
+    await expect(chip).toHaveAttribute('href', '/app/todo/r3-legacy-1');
+    // 防正则吃宽：prose 裸 #12 与相邻 scheme 伪链 [伪链](todos:t2) 保持字面文本。
+    await expect(stream).toContainText('prose #12 与 [伪链](todos:t2) 保持字面');
+    expect(await stream.locator('.mention-chip').count()).toBe(
+      await stream.locator('.mention-chip--agent').count() +
+        (await stream.locator('.mention-chip--todo').count()),
+    );
+    // SPA pushState 只钉 pathname（card-press.spec 同律——query 不随钉）。
+    await chip.click();
+    await page.waitForURL((u) => u.pathname === '/app/todo/r3-legacy-1');
+  });
+
   test('F-R4/R5: typing 打字行无 foot；定稿行 foot（复制 + 完成 44s）保留', async ({ page }) => {
     const msgs = page.locator('.chief-stream .chief-msg');
     // note 行不是 .chief-msg：user + 定稿 robot + typing robot = 3。

@@ -5,6 +5,8 @@
 // mention-picker.css so the chip family stays consistent with the
 // composer overlay.
 
+import { Link } from 'react-router';
+
 import type { DocSegment } from '../fixtures/records.js';
 import '../overlay/mention-picker.css';
 
@@ -15,25 +17,34 @@ interface SegmentsProps {
   codeClassName: string;
 }
 
+/** Mention chip — accent color comes from the entity kind (r9 §2.4 token
+ *  family). The chip class lives in mention-picker.css so the picker overlay
+ *  + transcript chip share one rule. */
+function chipClass(kind: DocSegment['mentionKind']): string {
+  return kind != null ? `mention-chip mention-chip--${kind}` : 'mention-chip';
+}
+
 export function Segments({ segments, codeClassName }: SegmentsProps) {
   return (
     <>
       {segments.map((seg, j) =>
         seg.style === 'mention' ? (
-          // Mention chip — accent color comes from the entity kind
-          // (r9 §2.4 token family). The chip class lives in
-          // mention-picker.css so the picker overlay + transcript
-          // chip share one rule.
-          <span
-            key={j}
-            className={
-              seg.mentionKind != null
-                ? `mention-chip mention-chip--${seg.mentionKind}`
-                : 'mention-chip'
-            }
-          >
-            {seg.text}
-          </span>
+          seg.mentionKind === 'todo' && seg.mentionId != null ? (
+            // #675: todo chip click → todo detail. Reference-measured
+            // behavior (todos.dev, live-captured 2026-10-03): the chip is
+            // cursor-pointer, hover shows no popover, and click navigates to
+            // the mentioned todo. A router Link (real anchor) keeps keyboard
+            // activation, middle-click and open-in-new-tab for free. The
+            // other four kinds stay non-clickable spans until their own
+            // navigation ticket.
+            <Link key={j} className={chipClass(seg.mentionKind)} to={`/app/todo/${seg.mentionId}`}>
+              {seg.text}
+            </Link>
+          ) : (
+            <span key={j} className={chipClass(seg.mentionKind)}>
+              {seg.text}
+            </span>
+          )
         ) : seg.style === 'strong' ? (
           // #650: `**bold**` run — a real <strong>, not the old strip-to-
           // plain. Must precede the generic styled-chip branch below
