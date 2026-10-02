@@ -16,6 +16,8 @@
 //      using model claude-code/<model> canon 行在。
 //   D. pi chief remoteTools 零回归——同栈同 daemon，stub LLM pi 总管发一轮
 //      真调 save_memory（pi customTool → relay 同径），memory 行落库。
+//   E. localTools 面——claude-code worker 步（runtimeDrop 退役后工具面到达）
+//      真调 mcp__pacman__remote_shell，预检落 shell_command 行（服务端铁证）。
 // before 面（origin/main 一次性 worktree 栈，`run --before`）：同一 seed/派发
 //   下 chief 步 failed，chief-err system 行含
 //   `remoteTools not supported yet (T4)`——用户「总管本轮执行失败」现象。
@@ -382,10 +384,106 @@ async function runPhase() {
 
     // D. pi chief remoteTools 零回归（同栈同 daemon，pi 总管一轮真调工具）。
     await piChiefFace(database, teamId);
+
+    // E. localTools 面：claude-code worker 步带 remote_shell 走 in-process
+    //    工具（runtimeDrop 退役后 worker 步工具面到达后端）——预检落
+    //    shell_command 行即服务端真执行铁证。
+    await workerLocalToolsFace(database, teamId);
   } catch (err) {
     check(false, 'probe 异常终止（已观察事实仍落盘）', String(err?.message ?? err));
   }
   writeEvidence(database, threadId, transcript);
+}
+
+// —— E 面：localTools（claude-code worker 步真调 remote_shell）———————————
+
+const WORKER_AGENT_NAME = 'verify-647-worker';
+const SHELL_ECHO_TEXT = 't4-local-tools-ok';
+const SHELL_COMMAND = `echo ${SHELL_ECHO_TEXT}`;
+
+async function workerLocalToolsFace(database, teamId) {
+  // 机器 shell 开关（XMON-108 双闸的机器侧；agent 侧开关随创建带）。
+  const machines = await api('GET', `/api/teams/${teamId}/machines`);
+  const machineId = (machines.json ?? []).find((m) => m.online === true)?.id;
+  check(Boolean(machineId), 'E：GET /machines → 在线机器行');
+  const shellOn = await api('PATCH', `/api/machines/${machineId}`, { shellEnabled: true });
+  check(shellOn.status === 200, 'E：PATCH /machines shellEnabled=true → 200');
+
+  const agentRes = await api('POST', `/api/teams/${teamId}/agents`, {
+    displayName: WORKER_AGENT_NAME,
+    description: '验证 worker：按任务指令用 remote_shell 工具执行命令。',
+    provider: 'claude-code',
+    modelId: MODEL_ID,
+    tools: ['远程 shell'],
+  });
+  const workerAgentId = agentRes.json?.id;
+  check(agentRes.status === 201 && Boolean(workerAgentId), 'E：POST /agents (claude worker) → 201');
+
+  // 裸项目（无 repo → 无 worktree/git 收尾面，单证 localTools）；repoKind
+  // 缺席 = 普通项目（schema enum 无 null 档）。
+  const projectRes = await api('POST', '/api/projects', {
+    name: 'verify-647-plain',
+    teamId,
+  });
+  const projectId = projectRes.json?.id;
+  check(projectRes.status === 201 && Boolean(projectId), 'E：POST /projects (plain) → 201');
+
+  const todoRes = await api('POST', `/api/projects/${projectId}/todos`, {
+    title: '用 remote_shell 执行命令并汇报',
+    spec:
+      `使用 remote_shell 工具（不要用本地 shell 工具）执行命令 ${SHELL_COMMAND}，` +
+      '然后在回复里逐字给出该工具返回的输出。',
+  });
+  const todoId = todoRes.json?.id;
+  check(todoRes.status === 201 && Boolean(todoId), 'E：POST /todos → 201');
+
+  const started = await api('POST', `/api/projects/${projectId}/builds`, {
+    todoIds: [todoId],
+    // assignment 两槽恒在（assignmentSchema：plan/build 各 nullable）——直派
+    // = plan 空槽、build 指名。
+    assignment: { plan: null, build: { agentId: workerAgentId } },
+    withPlan: false,
+  });
+  const buildId = started.json?.builds?.[0]?.id;
+  check(started.status === 201 && Boolean(buildId), 'E：POST /builds（直派 build 步）→ 201');
+
+  const buildStep = await poll(
+    () => {
+      const row = database
+        .prepare('SELECT id, kind, status, sessionId FROM step WHERE buildId = ? AND kind = ?')
+        .get(buildId, 'build');
+      return row && ['done', 'failed', 'stopped'].includes(row.status) ? row : null;
+    },
+    420_000,
+    'worker build step terminal',
+  );
+  payloads.workerBuildStep = buildStep;
+  check(buildStep.status === 'done', `E：build 步 done（实际 ${buildStep.status}）`);
+
+  const transcriptPath = buildStep.sessionId ? findSdkTranscript(buildStep.sessionId) : null;
+  let shellToolSeen = false;
+  if (transcriptPath) {
+    const t = parseTranscript(transcriptPath);
+    payloads.workerTranscript = { toolUses: [...new Set(t.toolUses)] };
+    shellToolSeen = t.toolUses.some((n) => n === 'mcp__pacman__remote_shell');
+    check(
+      shellToolSeen,
+      'E：transcript 含 mcp__pacman__remote_shell toolcall（localTools 面注册 + 被调用）',
+      t.toolUses.join(','),
+    );
+  } else {
+    check(false, 'E：worker SDK transcript 未找到', String(buildStep.sessionId));
+  }
+
+  // 服务端铁证：预检落 shell_command 行（status done = 执行真跑完）。
+  const shellRows = database
+    .prepare('SELECT command, status FROM shell_command WHERE command = ?')
+    .all(SHELL_COMMAND);
+  check(
+    shellRows.some((r) => r.status === 'done'),
+    'E：shell_command 行 done（remote_shell 经预检闸 + 真执行）',
+    JSON.stringify(shellRows),
+  );
 }
 
 // —— D 面：pi chief remoteTools（stub LLM 真调 save_memory）———————————————
