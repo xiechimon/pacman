@@ -721,4 +721,8 @@ export const EN: Record<string, string> = {
   添加时间: 'Added',
   // 零命中态：与「尚无记忆」canon 空态分开——搜不到不等于没存过。
   '没有匹配的记忆。': 'No memories match.',
+  // —— #631 总管对话失败闭环（sonner toast + 线程失败行）——
+  总管本轮执行失败: 'The chief turn failed',
+  '发送失败，请重试。': 'Send failed. Try again.',
+  '恢复失败，请重试。': 'Restore failed. Try again.',
 };

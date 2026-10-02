@@ -60,6 +60,19 @@ export const REVIEW_COMPLETE_PLACEHOLDER = 'AI 审核已完成';
  * findings，blocking 项触发自动修订回路）。 */
 export const REVIEW_VERDICT_KIND = 'review_verdict';
 
+/** chief 回合失败行 content kind（#631 [设计]）：daemon chief 步失败上报的
+ * errorMessage 由 server `finishStep` chief 分支落 chief_message system 行
+ * （machine_selected 同族形态——content 为 JSON 串），此前该原因被整个丢弃、
+ * 线程零失败痕迹。写入端（services/machines.ts）与呈现端（web mappers /
+ * chief drawer + toast）双端单源；`message` = 失败原因原文（daemon
+ * errorMessage，透传不加工）。 */
+export const CHIEF_TURN_ERROR_KIND = 'chief_turn_error';
+export const chiefTurnErrorContentSchema = z.object({
+  kind: z.literal(CHIEF_TURN_ERROR_KIND),
+  message: z.string(),
+});
+export type ChiefTurnErrorContent = z.infer<typeof chiefTurnErrorContentSchema>;
+
 /** GET /api/conversations/{id}/messages 响应封套（r5 §3.6 原样）。 */
 export const conversationMessagesResponseSchema = z.object({
   messages: z.array(transcriptRowSchema),

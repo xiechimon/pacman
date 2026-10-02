@@ -244,6 +244,43 @@ describe('M4a Chief 机器协议全环（02 §4.3/§5.4 + r5 §3.1/§3.2/§3.5�
     expect(wakeSteps.length).toBeGreaterThanOrEqual(1); // gate 停驻触发 wake 轮
   });
 
+  // #631 失败闭环：daemon 上报 failed + errorMessage → 落 chief_message
+  // system 行（chief_turn_error 形态）供 web 面渲染/toast；无 errorMessage
+  // 的失败不落空行；通知面不点火（成功才通知，失败靠行 + toast）。
+  test('done(failed) → 失败原因落 chief_message system 行，无通知', async () => {
+    const w = await setupChiefWorld();
+    const claimed = await w.claim();
+    const stepId = claimed.step.id;
+    const doneRes = await w.done(stepId, {
+      status: 'failed',
+      errorMessage: '400: {"message":"Model does not support this protocol."}',
+    });
+    expect(doneRes.status).toBe(200);
+    const stepRow = w.s.db.select().from(stepTable).where(eq(stepTable.id, stepId)).get()!;
+    expect(stepRow.status).toBe('failed');
+    const threadRow = w.s.db
+      .select()
+      .from(chiefThread)
+      .where(eq(chiefThread.id, w.threadId))
+      .get()!;
+    expect(threadRow.activeRun).toBeNull(); // 回合收尾照旧
+    // 失败不通知（通知只在成功回合发；失败反馈走行 + web toast）。
+    const notifs = w.s.db.select().from(notificationTable).all();
+    expect(notifs.filter((n) => n.type === 'chief_message')).toHaveLength(0);
+    const messagesRes = await call(w.s.app, 'GET', `/api/conversations/${w.threadId}/messages`);
+    expect(messagesRes.status).toBe(200);
+    const { messages } = (await messagesRes.json()) as {
+      messages: { id: string; role: string; content: unknown }[];
+    };
+    const failureRow = messages.find((m) => m.id === `chief-err-${stepId}`);
+    expect(failureRow).toBeDefined();
+    expect(failureRow!.role).toBe('system');
+    expect(JSON.parse(failureRow!.content as string)).toEqual({
+      kind: 'chief_turn_error',
+      message: '400: {"message":"Model does not support this protocol."}',
+    });
+  });
+
   test('chief 步 token 下发（绑定 Agent 模型凭证解析，无 build/todo 行）', async () => {
     const w = await setupChiefWorld();
     const claimed = await w.claim();

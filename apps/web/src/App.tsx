@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
 import { ApiProvider, LiveDataBridge } from './api/provider.js';
+import { Toaster } from './components/ui/toaster.js';
 import { I18nProvider } from './i18n/provider.js';
 import { TokenGate } from './overlay/token-gate.js';
 import { ProjectNewPage } from './pages/project-new-page.js';
@@ -72,6 +73,9 @@ export function App() {
         <RouterProvider router={router} />
         {/* #253 token 门页：401 触发的全屏唯一面，鉴权关时恒不可见 */}
         <TokenGate />
+        {/* #631 toast 原语挂载：全站唯一 toaster（sonner，shadcn 官方配方），
+            imperative toast.* 调用面由各 feature 自取。 */}
+        <Toaster />
       </I18nProvider>
     </ApiProvider>
   );

@@ -671,6 +671,10 @@ export type ChiefStreamItem =
   /** Centered dim stamp (`17:26`) or machine line (`运行在 … 上`, the
    *  machine name underlined per r5 114 — `machineName` carries it). */
   | { kind: 'note'; text: string; machineName?: string }
+  /** 回合失败行（#631）：server 落的 chief_turn_error system 行投影——
+   *  居中 danger 色提示 + 失败原因原文（live 面单源 = api/mappers
+   *  mapChiefStream；fixture 面无此行——失败场景走 live 验证）。 */
+  | { kind: 'error'; text: string }
   /** User bubble with avatar + the copy/restore icon pair below it.
    *  `id` = live 面 chief_message id（#615 返工恢复钮的 rewind 锚；fixture
    *  面缺省 = 确认层 accept 律关窗，零请求）。 */
