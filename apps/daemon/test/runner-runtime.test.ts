@@ -14,12 +14,12 @@
 //   5. 非 runtime + 无 provider 无 model → 旧 failStep 文案逐字节（零回归面）
 //   6. backendFor 收到 agent.provider 原值（null 步 → null）
 //   7. runtime worker 步带 remoteTools/localTools（claim 恒携辅助面）→
-//      sessionOpts 不含工具面 + 一条 [runtime] 降级行（显式缺席，非静默），
-//      步照常跑完（T1 验收闭环；T4 接线后降级行消失）
-//   8. runtime chief 步 → remoteTools 透传（后端 open() fail-closed 报
-//      「不支持」——chief 链路不静默降级，spec 17 白名单行）
+//      三面照常进 sessionOpts（#647/T4 接线后 runtimeDrop 退役，无降级行），
+//      步照常跑完
+//   8. runtime chief 步 → remoteTools + relay 透传（#647 后后端把工具面包成
+//      in-process MCP server，chief 词表全量到达执行面）
 //   9. pi worker 步同载荷 → remoteTools/executeRemoteTool/localTools 照常
-//      进 sessionOpts（工具面丢弃只分叉在 runtime 身份上，零回归）
+//      进 sessionOpts（与 runtime 步同形，两后端工具面无分叉）
 
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -313,7 +313,7 @@ describe('runner runtime 步续会话（spec 17 A7）', () => {
   });
 });
 
-describe('runner runtime 步工具面（spec 17 A10：T4 前 SDK 通道缺位）', () => {
+describe('runner runtime 步工具面（spec 17 A10 / #647 T4 接线后）', () => {
   /** worker 步 claim 恒携的辅助 remoteTools（machines.ts WORKER_REMOTE_TOOLS
    * 记忆三件套形状——两件够钉语义）。 */
   const workerRemoteTools: RemoteToolDef[] = [
@@ -321,7 +321,7 @@ describe('runner runtime 步工具面（spec 17 A10：T4 前 SDK 通道缺位）
     { name: 'search_memory', description: '搜记忆', replaySafe: true },
   ];
 
-  test('失败方式 7：runtime worker 步 → 工具面显式缺席 + 降级行，步照常跑完', async () => {
+  test('失败方式 7：runtime worker 步 → 三面照常进 sessionOpts，无降级行，步照常跑完', async () => {
     const claimed = {
       ...claimedStep({ provider: 'claude-code', modelId: 'claude-sonnet-4-5' }),
       remoteTools: workerRemoteTools,
@@ -329,22 +329,19 @@ describe('runner runtime 步工具面（spec 17 A10：T4 前 SDK 通道缺位）
     };
     const { client, lines, sessions } = await setup(claimed);
     expect(sessions).toHaveLength(1);
-    // 三面全缺席：remoteTools + relay 回调 + localTools（build 步的 secret
-    // 工具同批丢弃——claude-code 后端 open() 对非空 localTools fail-closed）。
-    expect(sessions[0]?.remoteTools).toBeUndefined();
-    expect(sessions[0]?.executeRemoteTool).toBeUndefined();
-    expect(sessions[0]?.localTools).toBeUndefined();
-    // 显式缺席 ≠ 静默丢弃：降级行点名被丢工具（A10「明确报」口径）。
-    expect(
-      lines.some((l) => l.includes('remoteTools') && l.includes('save_memory') && l.includes('T4')),
-    ).toBe(true);
-    expect(
-      lines.some((l) => l.includes('localTools') && l.includes('remote_shell') && l.includes('T4')),
-    ).toBe(true);
+    // 三面全到（#647：runtimeDrop 退役）——后端把 host 工具面包成 in-process
+    // MCP server（remoteTools relay / localTools 本地执行）。
+    expect(sessions[0]?.remoteTools).toHaveLength(2);
+    expect(typeof sessions[0]?.executeRemoteTool).toBe('function');
+    // build 步 secret 工具 + remote_shell 都注册（与 pi 步同形）。
+    expect((sessions[0]?.localTools ?? []).map((t) => t.name)).toContain('remote_shell');
+    expect((sessions[0]?.localTools ?? []).length).toBeGreaterThanOrEqual(2);
+    // 降级行退役：无任何 (T4) 字样。
+    expect(lines.some((l) => l.includes('T4'))).toBe(false);
     expect(client.doneBodies[0]?.body.status).toBe('success');
   });
 
-  test('失败方式 8：runtime chief 步 → remoteTools 透传（后端 fail-closed，chief 链路不静默降级）', async () => {
+  test('失败方式 8：runtime chief 步 → remoteTools + relay 透传（chief 词表全量到达执行面）', async () => {
     const claimed: ClaimedStep = {
       ...claimedStep({ provider: 'claude-code', modelId: 'claude-sonnet-4-5' }),
       step: { id: 's1', buildId: 'chief-t1', kind: 'chief', machineId: 'm1', createdAt: 1 },
@@ -357,8 +354,8 @@ describe('runner runtime 步工具面（spec 17 A10：T4 前 SDK 通道缺位）
       ],
     };
     const { sessions } = await setup(claimed);
-    // chief 词表是职责本体：透传给后端 → 真后端 open() 抛「not supported yet
-    // (T4)」→ failStep（spec 17 白名单「chief 链路 remoteTools 面 fail-closed」）。
+    // chief 词表是职责本体：透传给后端 → in-process MCP server 承载
+    // （#647 后 open() 不再 fail-closed）。
     expect(sessions[0]?.remoteTools).toHaveLength(2);
     expect(typeof sessions[0]?.executeRemoteTool).toBe('function');
   });

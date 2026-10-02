@@ -13,8 +13,11 @@
 // + CLI 会话 store 存在性检查（缺失 → SessionNotResumableError，对齐既有
 // 冷重试通道）；A8 steer = 流输入队列（下轮消费）——pi 的中途注入语义差异
 // 已文档化不抹平，interrupt 归 T2；A9 skills catalog 追加 systemPrompt（复用
-// pi 的 buildSkillsCatalog 通道）；A10 remoteTools/localTools/mcpServers
-// fail-closed 明报不支持（落地归 T4）；A11 model verbatim 透传；A13
+// pi 的 buildSkillsCatalog 通道）；A10 工具面已按 #647（T4）接线：host 注入
+// 工具（remoteTools relay + localTools 本地执行）包成一个 `pacman` in-process
+// MCP server（createSdkMcpServer）交给 SDK，McpEndpoint 映射 SDK 原生 config
+// （工具名 `mcp__<slug>__<tool>` 与 pi mcp-bridge 同形）；A11 model verbatim
+// 透传；A13
 // bypassPermissions + readOnly → disallowedTools 收 Edit/Write（SDK 工具名）
 // + AskUserQuestion（非交互 daemon 面，Multica claude.go:1078-1092 同律）；
 // thinkingLevel → SDK effort（域内透传，off/minimal 缺省不发，域外 fail-closed）。
@@ -24,23 +27,31 @@ import { existsSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import {
+  createSdkMcpServer,
   type EffortLevel,
+  type McpServerConfig,
   type Options,
   type Query,
   query,
   type SDKMessage,
   type SDKUserMessage,
+  type SdkMcpToolDefinition,
+  tool,
 } from '@anthropic-ai/claude-agent-sdk';
 import type {
   AgentBackend,
   AgentBackendCapabilities,
   AgentSessionHandle,
   AgentTokenUsage,
+  LocalToolDef,
+  McpEndpoint,
   ModelUsage,
+  RemoteToolDef,
   SessionOpts,
   StepEvent,
   ToolCallRecord,
 } from '@pacman/shared';
+import { z } from 'zod';
 import { SessionNotResumableError } from './errors.js';
 import { appendSkillsCatalog, buildSkillsCatalog } from './pi.js';
 
@@ -442,6 +453,198 @@ export function sdkTranscriptPath(cwd: string, sessionId: string): string {
   );
 }
 
+// —— T4 工具面（#647：SDK mcpServers + createSdkMcpServer in-process 回调）——
+// host 注入工具（remoteTools relay / localTools 本地执行）包成一个 `pacman`
+// in-process MCP server；McpEndpoint 映射 SDK 原生 config。与 pi customTool 的
+// 已知语义差异（票面明示不抹平）：工具名经 MCP 面恒带 `mcp__pacman__` 前缀
+// （pi 裸名）；参数经 zod shape 解析——多出的键被剥、缺 required 报错给模型
+// 自纠（pi 透传 server 校验）。
+
+/** host 注入工具的 in-process server 名（工具名形 `mcp__pacman__<name>`）。 */
+const HOST_MCP_SERVER_NAME = 'pacman';
+
+/** JSON Schema 词表（host 注入面现行为全集，chief-tools obj/str/arr/bool/num
+ *  帮手产物 + 本地工具同形）。词表外形态（type 或键）fail-closed：静默丢
+ *  enum/oneOf 这类约束会让模型看到与 server 校验面漂移的参数形。 */
+function jsonSchemaToZod(schema: unknown, where: string): z.ZodType {
+  if (typeof schema !== 'object' || schema === null || Array.isArray(schema)) {
+    throw new Error(`claude-code backend: tool schema ${where} must be an object (fail-closed)`);
+  }
+  const def = schema as {
+    type?: unknown;
+    description?: unknown;
+    items?: unknown;
+    properties?: unknown;
+    required?: unknown;
+  };
+  const description = typeof def.description === 'string' ? def.description : undefined;
+  const describe = (t: z.ZodType) => (description !== undefined ? t.describe(description) : t);
+  const forbidKeys = (allowed: readonly string[]) => {
+    const extra = Object.keys(schema as Record<string, unknown>).filter(
+      (k) => !allowed.includes(k),
+    );
+    if (extra.length > 0) {
+      throw new Error(
+        `claude-code backend: tool schema ${where} keys [${extra.join(',')}] not in vocabulary (fail-closed)`,
+      );
+    }
+  };
+  switch (def.type) {
+    case 'string':
+      forbidKeys(['type', 'description']);
+      return describe(z.string());
+    case 'number':
+      forbidKeys(['type', 'description']);
+      return describe(z.number());
+    case 'boolean':
+      forbidKeys(['type', 'description']);
+      return describe(z.boolean());
+    case 'array':
+      forbidKeys(['type', 'description', 'items']);
+      return describe(z.array(jsonSchemaToZod(def.items, `${where}.items`)));
+    case 'object': {
+      forbidKeys(['type', 'description', 'properties', 'required']);
+      if (
+        def.properties === undefined ||
+        typeof def.properties !== 'object' ||
+        def.properties === null ||
+        Array.isArray(def.properties)
+      ) {
+        throw new Error(
+          `claude-code backend: tool schema ${where} object properties must be an object (fail-closed)`,
+        );
+      }
+      if (
+        def.required !== undefined &&
+        (!Array.isArray(def.required) || def.required.some((k) => typeof k !== 'string'))
+      ) {
+        throw new Error(
+          `claude-code backend: tool schema ${where} required must be string[] (fail-closed)`,
+        );
+      }
+      const required = new Set((def.required as string[] | undefined) ?? []);
+      const shape: Record<string, z.ZodType> = {};
+      for (const [key, sub] of Object.entries(def.properties)) {
+        const field = jsonSchemaToZod(sub, `${where}.properties.${key}`);
+        shape[key] = required.has(key) ? field : field.optional();
+      }
+      return describe(z.object(shape));
+    }
+    default:
+      throw new Error(
+        `claude-code backend: tool schema ${where} type '${String(def.type)}' not in vocabulary (fail-closed)`,
+      );
+  }
+}
+
+/** 工具 parameters（顶层 JSON Schema object）→ zod raw shape（inputSchema 形）。
+ *  parameters 缺省 = 空参工具（shape {}）。顶层非 object 形 fail-closed。 */
+export function parametersToShape(
+  parameters: unknown,
+  toolName: string,
+): Record<string, z.ZodType> {
+  if (parameters === undefined || parameters === null) return {};
+  if (
+    typeof parameters !== 'object' ||
+    Array.isArray(parameters) ||
+    (parameters as { type?: unknown }).type !== 'object'
+  ) {
+    throw new Error(
+      `claude-code backend: tool '${toolName}' parameters must be an object schema (fail-closed)`,
+    );
+  }
+  // jsonSchemaToZod 的 object 分支恒返回 ZodObject（顶层 type 已判 'object'）。
+  return (jsonSchemaToZod(parameters, `'${toolName}'.parameters`) as z.ZodObject).shape;
+}
+
+/** host 注入工具源（buildHostTools 入参；测试可注入 mock relay/execute）。 */
+export interface HostToolSources {
+  remoteTools: readonly RemoteToolDef[];
+  /** relay 执行回调（runner 注入 = POST /api/machine/tool/<stepId>）。 */
+  relay?: (name: string, params: Record<string, unknown>) => Promise<string>;
+  localTools: readonly LocalToolDef[];
+}
+
+/** remoteTools + localTools → in-process server 工具集。remoteTools 非空而
+ *  relay 缺席 = 内部不变量破裂（runner 恒成对注入），fail-closed 不静默丢。
+ *  handler 闭包钉 def.name 发 relay——CLI 工具名带 `mcp__pacman__` 前缀，
+ *  relay 协议按裸名匹配（服务端 switch(name) 词表）。拒绝/传输失败 → 工具
+ *  结果文本（pi customTool 同律，不抛断回合）；isError 位给模型显式错误信号
+ *  （MCP 原生通道，pi 侧无此概念——transcript 行 isError 随之可观测）。 */
+export function buildHostTools(sources: HostToolSources): SdkMcpToolDefinition[] {
+  if (sources.remoteTools.length > 0 && !sources.relay) {
+    throw new Error('claude-code backend: remoteTools require executeRemoteTool (fail-closed)');
+  }
+  const tools: SdkMcpToolDefinition[] = [];
+  for (const def of sources.remoteTools) {
+    const shape = parametersToShape(def.parameters, def.name);
+    tools.push(
+      tool(def.name, def.description, shape, async (params: Record<string, unknown>) => {
+        try {
+          const text = await sources.relay?.(def.name, params ?? {});
+          return { content: [{ type: 'text' as const, text: text ?? '' }] };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return {
+            content: [{ type: 'text' as const, text: `${def.name} rejected: ${msg}` }],
+            isError: true,
+          };
+        }
+      }),
+    );
+  }
+  for (const def of sources.localTools) {
+    const shape = parametersToShape(def.parameters, def.name);
+    tools.push(
+      tool(def.name, def.description, shape, async (params: Record<string, unknown>) => {
+        try {
+          const text = await def.execute(params ?? {});
+          return { content: [{ type: 'text' as const, text }] };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          return {
+            content: [{ type: 'text' as const, text: `${def.name} failed: ${msg}` }],
+            isError: true,
+          };
+        }
+      }),
+    );
+  }
+  return tools;
+}
+
+/** McpEndpoint → SDK 原生 config（T4 第三面）：http → {type:'http'}；stdio →
+ *  {type:'stdio'}；字段残缺 fail-closed。alwaysLoad 钉 true——pi mcp-bridge
+ *  是预连接 + 全量工具面（工具恒在 prompt），对齐该语义（代价 = 启动等连接
+ *  上限 5s，与 pi 预连接同量级）。 */
+export function mapMcpEndpoint(endpoint: McpEndpoint): McpServerConfig {
+  if (endpoint.transport === 'http') {
+    if (typeof endpoint.url !== 'string' || endpoint.url === '') {
+      throw new Error(
+        `claude-code backend: mcp server '${endpoint.slug}' http transport requires url (fail-closed)`,
+      );
+    }
+    return {
+      type: 'http',
+      url: endpoint.url,
+      ...(endpoint.headers !== undefined ? { headers: endpoint.headers } : {}),
+      alwaysLoad: true,
+    };
+  }
+  if (typeof endpoint.command !== 'string' || endpoint.command === '') {
+    throw new Error(
+      `claude-code backend: mcp server '${endpoint.slug}' stdio transport requires command (fail-closed)`,
+    );
+  }
+  return {
+    type: 'stdio',
+    command: endpoint.command,
+    ...(endpoint.args !== undefined ? { args: [...endpoint.args] } : {}),
+    ...(endpoint.env !== undefined ? { env: endpoint.env } : {}),
+    alwaysLoad: true,
+  };
+}
+
 // —— 后端 ——————————————————————————————————————————————————
 
 export interface ClaudeCodeBackendOpts {
@@ -469,18 +672,30 @@ export class ClaudeCodeBackend implements AgentBackend {
   }
 
   private async open(opts: SessionOpts, resumeId: string | null): Promise<AgentSessionHandle> {
-    // A10 fail-closed（落地归 T4）：明报不支持，不静默丢弃。
-    if (opts.remoteTools && opts.remoteTools.length > 0) {
-      throw new Error('claude-code backend: remoteTools not supported yet (T4)');
+    // T4 工具面（#647）：host 注入工具（remoteTools relay + localTools 本地
+    // 执行）包成一个 in-process MCP server；McpEndpoint 映射 SDK 原生 config。
+    // T1 的四条 fail-closed 到此退役——工具面缺席（三面全空）= 不建 server，
+    // Options.mcpServers 不发（既有调用面零变化）。
+    const hostTools = buildHostTools({
+      remoteTools: opts.remoteTools ?? [],
+      ...(opts.executeRemoteTool ? { relay: opts.executeRemoteTool } : {}),
+      localTools: opts.localTools ?? [],
+    });
+    const mcpServers: Record<string, McpServerConfig> = {};
+    if (hostTools.length > 0) {
+      mcpServers[HOST_MCP_SERVER_NAME] = createSdkMcpServer({
+        name: HOST_MCP_SERVER_NAME,
+        alwaysLoad: true, // 50 件 chief 词表必须全量进 prompt（不defer 给工具搜索）
+        tools: hostTools,
+      });
     }
-    if (opts.localTools && opts.localTools.length > 0) {
-      throw new Error('claude-code backend: localTools not supported yet (T4)');
-    }
-    if (opts.mcpServers && opts.mcpServers.length > 0) {
-      throw new Error('claude-code backend: mcpServers not supported yet (T4)');
-    }
-    if (opts.executeRemoteTool) {
-      throw new Error('claude-code backend: executeRemoteTool not supported yet (T4)');
+    for (const endpoint of opts.mcpServers ?? []) {
+      if (endpoint.slug === HOST_MCP_SERVER_NAME) {
+        throw new Error(
+          `claude-code backend: mcp server slug '${endpoint.slug}' collides with the host tool server (fail-closed)`,
+        );
+      }
+      mcpServers[endpoint.slug] = mapMcpEndpoint(endpoint);
     }
     // A13 thinkingLevel → effort：域内透传；off/minimal 缺省不发（SDK 无对应
     // 档）；域外 fail-closed 不猜。
@@ -509,6 +724,7 @@ export class ClaudeCodeBackend implements AgentBackend {
       permissionMode: 'bypassPermissions',
       disallowedTools,
       includePartialMessages: true, // text_delta/thinking_delta 增量面
+      ...(Object.keys(mcpServers).length > 0 ? { mcpServers } : {}),
       ...(effort !== undefined ? { effort } : {}),
       ...(append !== undefined
         ? { systemPrompt: { type: 'preset', preset: 'claude_code', append } }
