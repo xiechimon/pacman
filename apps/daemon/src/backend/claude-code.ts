@@ -20,7 +20,7 @@
 // thinkingLevel → SDK effort（域内透传，off/minimal 缺省不发，域外 fail-closed）。
 
 import { randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -422,9 +422,24 @@ function userMessage(text: string): SDKUserMessage {
 
 /** CLI 会话 store 惯例 [推断]（r4-foundation 调研；Multica claude.go:936-972
  *  同源）：~/.claude/projects/<cwd-slug>/<sessionId>.jsonl。存在性 = resume
- *  资格的本地判据（空 store/换机 → SessionNotResumableError 冷重试一次）。 */
-function sdkTranscriptPath(cwd: string, sessionId: string): string {
-  return join(homedir(), '.claude', 'projects', cwd.replaceAll('/', '-'), `${sessionId}.jsonl`);
+ *  资格的本地判据（空 store/换机 → SessionNotResumableError 冷重试一次）。
+ *  cwd 先过 realpath：CLI 子进程 cwd 由内核解析符号链接（macOS 工作区
+ *  /tmp → /private/tmp），slug 按解析后路径计——不解析则 /tmp 起头的工作区
+ *  预检恒 miss（#622 verify 实跑：resume 恒回退冷启）。 */
+export function sdkTranscriptPath(cwd: string, sessionId: string): string {
+  let resolved = cwd;
+  try {
+    resolved = realpathSync(cwd);
+  } catch {
+    // cwd 缺失 = 无会话文件可寻，原路径判 miss（resume 冷重试通道兜底）。
+  }
+  return join(
+    homedir(),
+    '.claude',
+    'projects',
+    resolved.replaceAll('/', '-'),
+    `${sessionId}.jsonl`,
+  );
 }
 
 // —— 后端 ——————————————————————————————————————————————————
