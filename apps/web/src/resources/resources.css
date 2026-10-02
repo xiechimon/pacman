@@ -372,20 +372,13 @@
   color: var(--text-dim);
 }
 
-.res-row-more {
-  margin-left: 16px;
-  display: flex;
-  color: var(--text-tertiary);
-}
-
 .res-row-chev {
   margin-left: auto;
   display: flex;
   color: var(--text-dim);
 }
 
-.res-pill ~ .res-row-chev,
-.res-row-more ~ .res-row-chev {
+.res-pill ~ .res-row-chev {
   margin-left: 15px;
 }
 
