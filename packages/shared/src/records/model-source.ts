@@ -12,6 +12,15 @@ export const MODEL_SOURCE_RUNTIMES = ['pi', 'claude-code'] as const;
 export const modelSourceRuntimeSchema = z.enum(MODEL_SOURCE_RUNTIMES);
 export type ModelSourceRuntime = z.infer<typeof modelSourceRuntimeSchema>;
 
+/** runtime 显示名（品牌/runtime 名不译，不走 i18n）——单源：web
+ * RUNTIME_LABELS（providers 页 tablist + toModelOptions 投影）与 server
+ * chief models 工具（#627，providerLabel 行语义对齐 toModelOptions）共消费；
+ * Codex 等后续 runtime 扩在此补（spec 11 §A1），两侧自动同更。 */
+export const MODEL_SOURCE_RUNTIME_LABELS: Record<ModelSourceRuntime, string> = {
+  pi: 'pi',
+  'claude-code': 'Claude Code',
+};
+
 export const modelSourceModelSchema = z.object({
   /** 模型 id（pi = custom provider models[] 的 id；claude-code = settings.json
    *  槽值原样）。 */

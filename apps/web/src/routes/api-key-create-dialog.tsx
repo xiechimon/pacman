@@ -1,6 +1,6 @@
 // API key 新建表单弹窗（W4 #287，05 §6-6 余项）：r3 §6 权限位表单弹窗
 // [推断]（无 capture——图失）——名称（可选）+ gitAccess/mcpAccess 开关 +
-// toolGrants 读写位（CHIEF_REMOTE_TOOLS 50 词表为可选集，r5 §3.1）。
+// toolGrants 读写位（CHIEF_REMOTE_TOOLS 51 词表为可选集，r5 §3.1）。
 // 快捷路径：授予全部（读+写+git+mcp，即旧「默认直发」的全权限形）/ 清空。
 // zh 源串即 i18n key：「全选」二字自 #636 起归筛选面板的全选行，本面用
 // 「授予全部」避开同形碰撞（en 同为 'Grant all'，语义不变）。
@@ -16,7 +16,7 @@ import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
 import { useI18n } from '../i18n/provider.js';
 
-/** 权限位可选集 = remote tools 50 词表（grants 白名单消费面 =
+/** 权限位可选集 = remote tools 51 词表（grants 白名单消费面 =
  * services/mcp-face.ts）。 */
 const TOOL_NAMES = CHIEF_REMOTE_TOOLS.map((tool) => tool.name);
 

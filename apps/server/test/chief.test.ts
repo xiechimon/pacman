@@ -3,8 +3,9 @@
 // 侧产，本层测「宿主机制」——relay 工具落库/溯源、watch-wake 三触发、驳回 v2
 // diff、双 Agent 分槽、绑定/记忆不迁移。[推断]/[设计] 项不冒充实测。
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import {
   CHIEF_REMOTE_TOOLS,
   CHIEF_TOOL_NAMES,
@@ -13,7 +14,7 @@ import {
   CHIEF_WATCH_REASON_DISPATCH,
 } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, test } from 'vitest';
+import { afterAll, beforeEach, describe, expect, test } from 'vitest';
 import {
   agentMemory,
   agent as agentTable,
@@ -60,6 +61,9 @@ function toolDeps() {
     reposDir: s.reposDir,
     attachmentsDir: s.attachmentsDir,
     skillsDir: s.skillsDir,
+    // #627：claude-code 模段读路径 = 隔离空 home（段空、确定性，不读测试机
+    // 真实 ~/.claude）；要 settings.json 行的测试经 relay opts 注入。
+    claudeHomeDir: claudeHome(),
   };
 }
 function ctx(over: Partial<ChiefToolCtx> = {}): ChiefToolCtx {
@@ -73,10 +77,36 @@ function ctx(over: Partial<ChiefToolCtx> = {}): ChiefToolCtx {
     ...over,
   };
 }
-async function relay(name: string, params: Record<string, unknown>, over?: Partial<ChiefToolCtx>) {
-  const text = await executeChiefTool(toolDeps(), ctx(over), name, params);
+async function relay(
+  name: string,
+  params: Record<string, unknown>,
+  over?: Partial<ChiefToolCtx>,
+  opts: { claudeHomeDir?: string } = {},
+) {
+  const text = await executeChiefTool(
+    { ...toolDeps(), ...(opts.claudeHomeDir !== undefined ? opts : {}) },
+    ctx(over),
+    name,
+    params,
+  );
   return JSON.parse(text) as unknown;
 }
+
+// #627 models 工具：claude-code 段 homeDir 注入位（mkdtemp 隔离目录，
+// 可选写入 settings.json 钉住槽位内容）。
+const claudeHomes: string[] = [];
+function claudeHome(settingsJson?: string): string {
+  const dir = mkdtempSync(join(tmpdir(), 'pacman-chief-models-'));
+  claudeHomes.push(dir);
+  if (settingsJson !== undefined) {
+    mkdirSync(join(dir, '.claude'), { recursive: true });
+    writeFileSync(join(dir, '.claude', 'settings.json'), settingsJson);
+  }
+  return dir;
+}
+afterAll(() => {
+  for (const dir of claudeHomes.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
 
 function seedAgent(id: string, description: string, modelId = 'stub-model') {
   s.db
@@ -837,9 +867,9 @@ describe('驳回回路 plan v2 + unified diff（r5 §4/02 §4.2）', () => {
   });
 });
 
-// —— 结构契约: 50 词表 relay 白名单（raw 49 − 除名 1 + 新增 2，XMON-109/115）—————
+// —— 结构契约: 51 词表 relay 白名单（raw 49 − 除名 1 + 新增 3，XMON-109/115/#627）—————
 
-describe('50 词表 relay 执行面（02 §4.3）', () => {
+describe('51 词表 relay 执行面（02 §4.3）', () => {
   test('词表外工具名 → 400（白名单纪律，不执行）', async () => {
     let status = 0;
     try {
@@ -944,8 +974,78 @@ describe('50 词表 relay 执行面（02 §4.3）', () => {
     expect(message).toContain('agent-nope');
   });
 
-  test('读工具 replaySafe 标记与执行一致（抽样 projects/todos/machines）', async () => {
-    for (const name of ['projects', 'todos', 'machines']) {
+  // #627 models 读工具：候选清单行语义 = web toModelOptions 并集律
+  // （custom providers models[] ∪ model-sources 非 pi 段，first-wins 去重）。
+  // 失败方式先于实现钉死：① 无 provider 且 claude-code 未装时报错而非空集；
+  // ② 空 id 行/空 name 回退漏做 → 脏行；③ pi 段重复产行（同 (provider,
+  // modelId) 双行）；④ claude-code 段 providerLabel 落 runtime 原词而非
+  // 显示名 → 与 web 候选不同义；⑤ custom provider 取名 claude-code 撞
+  // modelId 时不按 providers 段 first-wins。
+  test('models：无 custom provider + claude-code 未装 → 空清单不报错', async () => {
+    expect(await relay('models', {})).toEqual([]);
+  });
+
+  test('models：providers ∪ claude-code 并集 + first-wins 去重 + 行卫生', async () => {
+    const provRes = await req(s.app, 'POST', `/api/teams/${teamId}/providers`, {
+      providerId: 'gw-a',
+      label: '网关甲',
+      baseUrl: 'https://a.example.com/v1',
+      api: 'openai-completions',
+      models: [
+        { id: 'model-a', name: '模型甲' },
+        { id: 'model-b', name: '' }, // 空 name 回退 id（web 投影同律）
+        { id: '', name: '空 id 行' }, // 空 id 跳过（providers 段卫生）
+      ],
+    });
+    expect(provRes.status).toBe(201);
+    // claude-code 段：default 槽 + opus 槽同 id → 段内去重留一行。
+    const home = claudeHome(
+      JSON.stringify({
+        model: 'claude-opus-4-5',
+        env: { ANTHROPIC_OPUS_MODEL: 'claude-opus-4-5' },
+      }),
+    );
+    const rows = (await relay('models', {}, undefined, { claudeHomeDir: home })) as {
+      provider: string;
+      providerLabel: string;
+      modelId: string;
+      modelName: string;
+    }[];
+    expect(rows).toEqual([
+      { provider: 'gw-a', providerLabel: '网关甲', modelId: 'model-a', modelName: '模型甲' },
+      { provider: 'gw-a', providerLabel: '网关甲', modelId: 'model-b', modelName: 'model-b' },
+      {
+        provider: 'claude-code',
+        providerLabel: 'Claude Code',
+        modelId: 'claude-opus-4-5',
+        modelName: 'claude-opus-4-5',
+      },
+    ]);
+  });
+
+  test('models：custom provider 取名 claude-code 撞 modelId → providers 段 first-wins（web 投影同律）', async () => {
+    const provRes = await req(s.app, 'POST', `/api/teams/${teamId}/providers`, {
+      providerId: 'claude-code',
+      label: '同名网关',
+      baseUrl: 'https://cc.example.com/v1',
+      api: 'openai-completions',
+      models: [{ id: 'm-cc', name: '同名行' }],
+    });
+    expect(provRes.status).toBe(201);
+    const home = claudeHome(JSON.stringify({ model: 'm-cc' }));
+    const rows = (await relay('models', {}, undefined, { claudeHomeDir: home })) as {
+      provider: string;
+      providerLabel: string;
+      modelId: string;
+      modelName: string;
+    }[];
+    expect(rows).toEqual([
+      { provider: 'claude-code', providerLabel: '同名网关', modelId: 'm-cc', modelName: '同名行' },
+    ]);
+  });
+
+  test('读工具 replaySafe 标记与执行一致（抽样 projects/todos/machines/models）', async () => {
+    for (const name of ['projects', 'todos', 'machines', 'models']) {
       const def = CHIEF_REMOTE_TOOLS.find((t) => t.name === name)!;
       expect(def.replaySafe).toBe(true);
       expect(await relay(name, {})).toBeDefined();
@@ -971,9 +1071,10 @@ describe('50 词表 relay 执行面（02 §4.3）', () => {
     };
     walk(doc);
     expect(found.length).toBeGreaterThan(0);
-    // divergence 双向登记（XMON-109/XMON-115）：raw 观测 49 键冻结，现行
+    // divergence 双向登记（XMON-109/XMON-115/#627）：raw 观测 49 键冻结，现行
     // 词表 = raw − CHIEF_TOOLS_REMOVED（delete_skills）+ CHIEF_TOOLS_ADDED
-    // （create_skill/update_skill，chief 免开关）+ set_remote_shell 回摆。
+    // （create_skill/update_skill，chief 免开关；models，#627 候选清单）
+    // + set_remote_shell 回摆。
     const removed: readonly string[] = CHIEF_TOOLS_REMOVED;
     const added: readonly string[] = CHIEF_TOOLS_ADDED;
     const expected = (found[0] as string[]).filter(
