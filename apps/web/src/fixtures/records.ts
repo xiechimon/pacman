@@ -68,6 +68,11 @@ export interface TodoRecord {
    *  field — not in the r3 §3.0 snapshot, needed to reproduce the observed
    *  board placement and card action for waiting-on-user todos. */
   awaitingReply?: boolean;
+  /** #640 / r14 §5.4：总管建的卡（wire sourceBuildId ≠ null 的显示投影）
+   *  ——看板卡底行「由总管创建」芯片的判定位（区分 agent 拆的卡与人手建
+   *  的卡，参考站 11-todo12-card-zoom 同构）。fixture 捕获缺省 = 无芯片，
+   *  基线像素零漂移。 */
+  chiefCreated?: boolean;
 }
 
 /** Token 用量 content (issue #68, r7 30): the cumulative-run figures,
@@ -464,9 +469,10 @@ export type TranscriptItem =
   | { kind: 'streaming'; seconds?: number; label: string }
   /** Collapsed plan card: `方案 · v1` row, clamped preview, action row
    *  `完成 Ns` (r7 17). `seconds` absent renders the bare `完成`
-   *  (reused-plan card, r8 76); `chevron` adds the trailing `›` of the
-   *  r8 plan cards (63/68/73). */
-  | { kind: 'plan'; title: string; preview: string; seconds?: number; chevron?: boolean }
+   *  (reused-plan card, r8 76). The r8 captures' trailing `›` is gone:
+   *  re-measured 2026-10-02 the reference footer chevron only ever exists
+   *  as a tool-group expander, and a plan card has no group (#634 follow-up). */
+  | { kind: 'plan'; title: string; preview: string; seconds?: number }
   /** Tool-call group of a finished run: collapsed = `完成 Ns ▸` single row
    *  (r7 27/36); expanded = `完成 Ns ▾` + one pill per tool call + the
    *  `收起 ^` link (r7 28). #469: `outputs[i]` carries the stdout/stderr of
@@ -529,11 +535,12 @@ export interface RobotPara {
 }
 
 /** Message action row payload (r8 60/65): copy + optional restore +
- *  optional `| 完成 Ns` + optional trailing chevron. */
+ *  optional `| 完成 Ns`. The captures' trailing chevron is not part of the
+ *  payload anymore: it renders only where a tool group gives it something
+ *  to expand (#634 follow-up, re-measured against the live reference). */
 export interface RobotFooter {
   restore?: boolean;
   seconds?: number;
-  chevron?: boolean;
 }
 
 /** One changed file in the diff pane (r7 27/27b): collapsed = file row
@@ -599,8 +606,6 @@ export interface DetailContent {
   planDiff?: PlanDiffContent;
   /** Diff the compare submenu's 上一版本 opens (r8 64 → 65, 70 → 71). */
   compareTarget?: PlanDiffContent;
-  /** Agent row of the rerun dialog (r8 56/74): the previous run's agent. */
-  rerunAgent?: { name: string; model: string; avatarUrl?: string | null };
   /** Interactive reject-loop script (issue #75 AC3). */
   revision?: RevisionStep;
 }
@@ -758,4 +763,9 @@ export interface ChiefContent {
   draft?: string;
   /** Message flow of an existing thread (r5 114/116). */
   stream?: ChiefStreamItem[];
+  /** #624 回合进行中（r5 113 流式面）：live = 活动线程 `activeRun` 非空的
+   *  投影（api/mappers.ts mapChief 单点判在位，开放形状不读字段）；fixture =
+   *  静态表达同一状态。true = composer 占位切 steer canon（shared
+   *  CHIEF_INPUT_PLACEHOLDER_STEERING）；缺省 = 空闲 canon。 */
+  running?: boolean;
 }

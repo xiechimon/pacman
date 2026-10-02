@@ -9,6 +9,7 @@
 
 import { Link, useLocation } from 'react-router';
 import { useAgentAvatarUrlById } from '../api/provider.js';
+import { Badge } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Card } from '../components/ui/card.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
@@ -154,6 +155,18 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName, tag }: To
         <span className="todo-card-time relative top-[1.5px] ml-[7px] text-[11px] leading-4 text-muted-foreground">
           {relativeTime(todo.phaseAt, now, t)}
         </span>
+        {/* #640 / r14 §5.4：总管建卡芯片（参考站 11-todo12-card-zoom 同构，
+            判定位 = chiefCreated ← wire sourceBuildId）。row-flush 16px 档
+            随 todo-card-tag 同律（26px 底行不溢出行盒）；中性描边 pill，
+            不与 tag 的数据色 chip 抢墨。 */}
+        {todo.chiefCreated === true && (
+          <Badge
+            variant="outline"
+            className="todo-card-chief-chip ml-[10.5px] h-4 flex-none rounded-4xl border-border px-1.5 py-0 text-[10px] leading-none font-normal text-muted-foreground"
+          >
+            {t('由总管创建')}
+          </Badge>
+        )}
         {todo.hasPlan && (
           <span
             className="todo-card-metric ml-[10.5px] flex flex-none items-center text-muted-foreground"

@@ -94,7 +94,9 @@ export function FreshBlock({ todo, tags, action, onAction, hasSpec }: FreshBlock
           >
             {t(action)}
           </Button>
-          <span className="fresh-action-hint">{t('点开始后选执行机器，Agent 在你的机器上跑')}</span>
+          <span className="fresh-action-hint">
+            {t('点开始后由总管编排派发，Agent 在你的机器上跑')}
+          </span>
         </div>
       )}
     </div>

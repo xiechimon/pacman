@@ -326,6 +326,8 @@ export const EN: Record<string, string> = {
   '完成 {n}': 'Done in {n}',
   章程: 'Charter',
   记忆: 'Memory',
+  记忆已更新: 'Memory updated',
+  技能已更新: 'Skill updated',
   关注与提醒: 'Watches & reminders',
   未设置: 'Not set',
   压缩模型: 'Compaction model',
@@ -492,12 +494,10 @@ export const EN: Record<string, string> = {
   失败: 'Failed',
   默认: 'Default',
   开始任务: 'Start task',
-  // XMON-55 P0: the hint that rides the 开始 button on the fresh brief
-  '点开始后选执行机器，Agent 在你的机器上跑':
-    'Pick a machine after starting — the agent runs on your machine',
-  '规划与执行分用不同 Agent': 'Use different agents for planning and execution',
-  先做规划: 'Plan first',
-  立即执行: 'Run now',
+  // XMON-55 P0 / #640: the hint that rides the 开始 button on the fresh brief
+  // —— 开始入口不再选机器/Agent，改为直发总管编排回合后派发。
+  '点开始后由总管编排派发，Agent 在你的机器上跑':
+    'The chief orchestrates and dispatches after you start — the agent runs on your machine',
   // #170 create-agent dialog family
   '创建 agent': 'Create agent',
   '输入 Agent 名称': 'Enter an agent name',
@@ -510,7 +510,9 @@ export const EN: Record<string, string> = {
   'Git 读写（托管仓库 push/pull）': 'Git read/write (hosted repo push/pull)',
   'MCP 访问（MCP 客户端接入）': 'MCP access (MCP client connections)',
   工具权限位: 'Tool grants',
-  全选: 'Grant all',
+  // #636 起 zh「全选」归筛选面板的全选行（en 'Select all'）；本面快捷键换
+  // 「授予全部」避开同形碰撞——zh 源串即 key，两个语义域必须分叉。
+  授予全部: 'Grant all',
   清空: 'Clear all',
   读: 'Read',
   写: 'Write',
@@ -605,15 +607,10 @@ export const EN: Record<string, string> = {
   '授权链接已失效，请在执行机上重新发起。':
     'This authorization link has expired — restart enrollment on the executor machine.',
   '浏览器授权注册 →': 'Browser authorization →',
-  // W2 #318 桩群校准：开始任务 dialog 统一面（r9 §3.6）+ 新建任务未保存闸
-  // （r9 §3.4）。规划/执行 = assignment.plan/build 双槽的行标签。
-  // #310 附件：dirty 位由 spec 非空承载（附件 token 注入后归 spec）,标签
-  // add 仍为桩（本票不动）。
-  规划: 'Plan',
-  执行: 'Build',
-  在线: 'online',
-  离线: 'offline',
-  '选择 Agent': 'Select agent',
+  // W2 #318 桩群校准：新建任务未保存闸（r9 §3.4）。#310 附件：dirty 位由
+  // spec 非空承载（附件 token 注入后归 spec）,标签 add 仍为桩（本票不动）。
+  // （#640：开始任务 dialog 统一面的 规划/执行/在线/离线/选择 Agent 五键随
+  // 选择面撤销退役——开始入口不再有 dialog 选择器。）
   '放弃新建任务？未保存的内容将丢失。': 'Discard this new task? Unsaved content will be lost.',
   继续编辑: 'Keep editing',
   放弃并关闭: 'Discard and close',
@@ -638,10 +635,12 @@ export const EN: Record<string, string> = {
   清除筛选: 'Clear filters',
 
   // —— XMON-57 统一筛选面板（两维 + 批次键 + 生效筛选条 + 空词表行）——
-  // 「全选」不复用上面的 `全选`（那条是权限授予面的 'Grant all'）——同一个
-  // zh 词在两个语义域里，en 必须分叉。
-  全部选中: 'Select all',
-  清除: 'Clear',
+  // #636 批次行照参考站形：全选行（zh「全选」，本域 en 'Select all'）+ 右端
+  // 反选；权限授予面改用「授予全部」避开同形碰撞（zh 源串即 key，两域必须
+  // 分叉）。段内清除钮撤除——清除由全选行满选再点 / 反选 / 顶栏生效筛选条
+  // 三路承接，`清除` 条目随之下架。
+  全选: 'Select all',
+  反选: 'Invert',
   仅此: 'Only this',
   '已选 {n}/{m}': '{n}/{m} selected',
   清除全部: 'Clear all',
@@ -725,4 +724,15 @@ export const EN: Record<string, string> = {
   总管本轮执行失败: 'The chief turn failed',
   '发送失败，请重试。': 'Send failed. Try again.',
   '恢复失败，请重试。': 'Restore failed. Try again.',
+  // —— #640 开始任务单出口（直发总管编排回合；r14 §5.7 前置裁决落地）——
+  由总管创建: 'Created by chief',
+  来源: 'Source',
+  总管编排会话: 'Chief orchestration session',
+  '这张任务将交给总管重新编排。': 'The chief will re-orchestrate this task.',
+  已交给总管编排: 'Handed to the chief',
+  '已保存，交给总管编排': 'Saved — handed to the chief',
+  '总管将直接规划，并按活的类型派发执行。':
+    'The chief plans first, then dispatches each piece to the right agent.',
+  查看会话: 'View session',
+  未能开始编排: 'Could not start orchestration',
 };

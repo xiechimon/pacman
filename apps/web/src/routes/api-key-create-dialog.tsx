@@ -1,7 +1,9 @@
 // API key 新建表单弹窗（W4 #287，05 §6-6 余项）：r3 §6 权限位表单弹窗
 // [推断]（无 capture——图失）——名称（可选）+ gitAccess/mcpAccess 开关 +
 // toolGrants 读写位（CHIEF_REMOTE_TOOLS 50 词表为可选集，r5 §3.1）。
-// 快捷路径：全选（读+写+git+mcp，即旧「默认直发」的全权限形）/ 清空。
+// 快捷路径：授予全部（读+写+git+mcp，即旧「默认直发」的全权限形）/ 清空。
+// zh 源串即 i18n key：「全选」二字自 #636 起归筛选面板的全选行，本面用
+// 「授予全部」避开同形碰撞（en 同为 'Grant all'，语义不变）。
 // 提交走页面注入的 onCreate（POST /api/teams/{id}/api-keys——server 全表单
 // 在位，body schema = createApiKeyBodySchema）。live-only（fixture 面按钮
 // 保持无操作）。
@@ -146,7 +148,7 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
               className="apikey-form-quickbtn border-0 cursor-pointer px-0 text-xs font-normal leading-[inherit] bg-transparent text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0"
               onClick={grantAll}
             >
-              {t('全选')}
+              {t('授予全部')}
             </Button>
             <Button
               variant="ghost"

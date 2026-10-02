@@ -27,7 +27,9 @@ import {
   mergeAcceptedResponseSchema,
   notificationRecordSchema,
   notificationsResponseSchema,
+  orchestrationSourceRef,
   PROVIDER_PRESET_IDS,
+  parseOrchestrationSourceRef,
   patchChiefBodySchema,
   providerRecordSchema,
   scheduleRecordSchema,
@@ -80,6 +82,27 @@ describe('todo record (02 §4.1 + r3 §3.0 + r5 §3.2)', () => {
     expect(todoRecordSchema.parse(imported)).toEqual(imported);
     expect(todoRecordSchema.safeParse({ ...sample, sourceKind: 'jira' }).success).toBe(false);
     expect(githubIssueSourceRef('octo', 'alpha', 7)).toBe('github:octo/alpha#7');
+  });
+
+  it('编排来源（#640 / r14 §5.3）：orchestration 过闸 + chief ref 严格互逆', () => {
+    const dispatched = {
+      ...sample,
+      sourceKind: 'orchestration',
+      sourceRef: 'chief:01a0b86f-04f9-72a8-bba4-75c5cfd6598f',
+    };
+    expect(todoRecordSchema.parse(dispatched)).toEqual(dispatched);
+    // 单源格式：写入面 = chief 线程 id 剥前缀加 scheme；解析面严格互逆。
+    expect(orchestrationSourceRef('chief-01a0b86f-04f9-72a8-bba4-75c5cfd6598f')).toBe(
+      'chief:01a0b86f-04f9-72a8-bba4-75c5cfd6598f',
+    );
+    expect(parseOrchestrationSourceRef('chief:01a0b86f-04f9-72a8-bba4-75c5cfd6598f')).toEqual({
+      threadId: 'chief-01a0b86f-04f9-72a8-bba4-75c5cfd6598f',
+    });
+    // 非 chief 线程 id 拒写（防裸 uuid / build id 混入格式位）。
+    expect(() => orchestrationSourceRef('01a0b86f-04f9-72a8-bba4-75c5cfd6598f')).toThrow();
+    // 畸形 ref 降级 null（scheme 错 / 空段），github 形不串档。
+    expect(parseOrchestrationSourceRef('github:octo/alpha#7')).toBeNull();
+    expect(parseOrchestrationSourceRef('chief:')).toBeNull();
   });
 
   it('rejects the作废 exec猜测 (r3 §3.0 正名 building)', () => {

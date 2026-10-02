@@ -1225,6 +1225,42 @@ export const chiefReady: FixtureSet = {
   },
 };
 
+/** r5 113: 回合进行中流式面（#624 命名场景，手法循 #499/#444 无 capture
+ *  先例）——testA 线程发出后 Chief 在仓库基座跑 git 只读探索（doc §2 实测
+ *  工具行 `git show`），回合未收尾：robot 行无 `完成 Ns` 徽标（seconds 空串
+ *  = live 流式同形），composer 占位切 steer canon（running 位）。线程标题 =
+ *  首句 12 字截断 + …（shared chiefThreadTitle 律）。流内容 [推断]：capture
+ *  仅工具行与占位词可辨（截图 113），拼装循 114 族；捕获面的 `停止` 钮属
+ *  live 停止链，另票裁决不入本景。 */
+export const chiefStreaming: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  chief: {
+    view: 'drawer',
+    bound: true,
+    modelSlot: 'claude-sonnet-5 · 默认',
+    threadTitle: '我想做一个能在浏览器里直…',
+    running: true,
+    stream: [
+      { kind: 'note', text: '17:19' },
+      { kind: 'note', text: '运行在 ', machineName: MACHINE_NAME },
+      { kind: 'user', text: CHIEF_DRAFT },
+      {
+        kind: 'robot',
+        paragraphs: [
+          [
+            {
+              text: '收到。我先读一遍现有入门项目的结构，再把游戏逻辑、画面手感、难度调优拆成并行任务向你汇报方案。',
+            },
+          ],
+        ],
+        seconds: '',
+        tools: [{ name: 'git show' }],
+      },
+    ],
+  },
+};
+
 /** r5 114: thread view with the dispatch report of todo #11 — user bubble,
  *  chief report paragraphs with the #11 / r5-scribe chips, 完成 44s footer. */
 export const chiefThread: FixtureSet = {
@@ -2398,7 +2434,7 @@ const REVIEW_MESSAGE: TranscriptItem = {
       ],
     },
   ],
-  footer: { restore: true, seconds: 53, chevron: true },
+  footer: { restore: true, seconds: 53 },
 };
 
 /** Auto-revision summary after the blocking finding (r8 61/65). */
@@ -2447,11 +2483,11 @@ const RUN1_TO_V2: TranscriptItem[] = [
       },
     ],
   },
-  { kind: 'plan', title: '方案 · v1', preview: R8_PLAN_PREVIEW, seconds: 31, chevron: true },
+  { kind: 'plan', title: '方案 · v1', preview: R8_PLAN_PREVIEW, seconds: 31 },
   { kind: 'note', text: 'Xmon Dai 发起了 AI 审核' },
   REVIEW_MESSAGE,
   ADJUST_V2_MESSAGE,
-  { kind: 'plan', title: '方案 · v2', preview: R8_PLAN_PREVIEW, seconds: 29, chevron: true },
+  { kind: 'plan', title: '方案 · v2', preview: R8_PLAN_PREVIEW, seconds: 29 },
 ];
 
 /** v2 landed (r8 63–66): run-1 transcript, version dropdown rows. */
@@ -2476,7 +2512,7 @@ const RUN1_TO_V3: TranscriptItem[] = [
   ...RUN1_TO_V2,
   { kind: 'user', text: REJECT_FEEDBACK },
   ADJUST_V3_MESSAGE,
-  { kind: 'plan', title: '方案 · v3', preview: R8_PLAN_PREVIEW, seconds: 49, chevron: true },
+  { kind: 'plan', title: '方案 · v3', preview: R8_PLAN_PREVIEW, seconds: 49 },
 ];
 
 function detailV3(now: number): FixtureSet {
@@ -2517,7 +2553,7 @@ const RUN1_FAILED: TranscriptItem[] = [
         ],
       },
     ],
-    footer: { seconds: 29, chevron: true },
+    footer: { seconds: 29 },
   },
   { kind: 'note', text: 'Xmon Dai 发起了合并' },
   {
@@ -2566,7 +2602,7 @@ const REUSED_REVIEW_TRANSCRIPT: TranscriptItem[] = [
         ],
       },
     ],
-    footer: { seconds: 49, chevron: true },
+    footer: { seconds: 49 },
   },
 ];
 
@@ -2598,11 +2634,10 @@ export const boardFailed: FixtureSet = {
   project: projectContent,
 };
 
-/** r8 56: rerun dialog over #12 (no plan doc → no 复用方案 button). */
+/** r8 56: rerun dialog over #12 (no plan doc → no 复用方案 button)。
+ *  #640：dialog 瘦身形（说明行 + 重跑；agent 行/分用开关/双分支已撤销）。 */
 export const rerunDialog12: FixtureSet = {
-  ...withDetail(detailFailed12, {
-    rerunAgent: { name: R3_BUILDER.displayName, model: 'claude-sonnet-5' },
-  }),
+  ...detailFailed12,
   overlay: { kind: 'rerun' },
 };
 
@@ -2750,11 +2785,10 @@ export function diffV2V3(expanded: boolean): FixtureSet {
 /** r8 73: #15 failed detail. */
 export const detailFailed15Set: FixtureSet = detailFailed15(r8n(0, 1));
 
-/** r8 74: rerun dialog with the 复用方案 button (#15 has a plan doc). */
+/** r8 74: rerun dialog with the 复用方案 button (#15 has a plan doc)。
+ *  #640：dialog 瘦身形（重跑降 ghost 次钮 + indigo 复用方案）。 */
 export const rerunDialog15: FixtureSet = {
-  ...withDetail(detailFailed15(r8n(0, 1)), {
-    rerunAgent: { name: R3_BUILDER.displayName, model: 'claude-sonnet-5' },
-  }),
+  ...detailFailed15(r8n(0, 1)),
   overlay: { kind: 'rerun' },
 };
 
@@ -2804,7 +2838,6 @@ export const revisionChain: FixtureSet = {
             title: '方案 · v2',
             preview: R8_PLAN_PREVIEW,
             seconds: 29,
-            chevron: true,
           },
         ],
         planDiff: planDiff('v1', 'v2', LINES_V1, LINES_V2, false),

@@ -16,6 +16,7 @@ import type {
 import {
   derivePlaceholderTitle,
   githubIssueSourceRef,
+  orchestrationSourceRef,
   PLACEHOLDER_TITLE_FALLBACK,
   parseGithubIssueSourceRef,
 } from '@pacman/shared';
@@ -158,6 +159,11 @@ export function createTodo(
      * 路面缺省 = null（wire 形状恒在，records/todo.ts）。 */
     sourceKind?: TodoSourceKind;
     sourceRef?: string;
+    /** 编排来源（#640 / r14 §5.3）：chief 回合建卡携带 = 编排会话 id 落
+     * sourceKind='orchestration' + sourceRef（orchestrationSourceRef 单源，
+     * 答「哪次请求拆的」）。至多一个来源：GitHub 接入项目的自建 issue 写向
+     * 优先占槽（#452 出站零回归；r14 §5.7 GitHub 镜像面开放问题）。 */
+    orchestration?: { threadId: string };
   },
 ): TodoRecord {
   const { db, hub } = deps;
@@ -227,9 +233,20 @@ export function createTodo(
       ownerId: input.ownerId,
       sourceBuildId: null,
       // 自建 issue 目标（#452）：落库即「未建成」态（sourceRef=null，ADR
-      // 0006 D2 状态值不新开列），异步建成后补 ref。
-      sourceKind: input.sourceKind ?? (selfIssue !== null ? 'github-issue-self' : null),
-      sourceRef: input.sourceRef ?? null,
+      // 0006 D2 状态值不新开列），异步建成后补 ref。槽位优先级单源在此：
+      // 显式 sourceKind > 镜像写向 > 编排来源（#640，至多一个来源）。
+      sourceKind:
+        input.sourceKind ??
+        (selfIssue !== null
+          ? 'github-issue-self'
+          : input.orchestration !== undefined
+            ? 'orchestration'
+            : null),
+      sourceRef:
+        input.sourceRef ??
+        (selfIssue === null && input.orchestration !== undefined
+          ? orchestrationSourceRef(input.orchestration.threadId)
+          : null),
     })
     .run();
   for (const tagId of tagIds) {

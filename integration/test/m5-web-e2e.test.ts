@@ -1,8 +1,11 @@
 // M5 端到端主时序全链实跑（#83 票面 / 01 §7.4 脊柱 / 04 §4 M5 行）：
 // 真 web 生产构建（server 同源静态托管，02/A1）+ 真 server + 真 daemon
 // （pi 缝）+ stub LLM，Playwright 驱动 UI 走完整生命周期：
-//   ① 主时序：新建（保存并开始）→ 规划（live transcript）→ 确认 → 执行 →
-//      审核 → 验收合并（202 delegated）→ done（🎉 时间线 + main 落地真值）。
+//   ① 主时序：新建（web 保存 + API 起 build，#640 注）→ 规划（live
+//      transcript）→ 确认 → 执行 → 审核 → 验收合并（202 delegated）→ done
+//      （🎉 时间线 + main 落地真值）。#640：「保存并开始」入口已改直发总管
+//      编排回合，脊柱改走 API 起 build 以保确定性（见 createAndStart 注）；
+//      编排入口覆盖归 server orchestration-source 测 + live verify-pacman。
 //   ② 驳回支线：confirm 关口 composer 发送 feedback → 规划中 → plan v2 →
 //      版本 chip v2 → 确认 → 执行 → 审核（r5 §4 回路 UI 实走）。
 //   ③ 定时轮停 review：UI 建 once 定时 → scheduler.tick 触发 → 直执行新
@@ -23,7 +26,7 @@ import { createDaemonLogger } from '../../apps/daemon/src/log.js';
 import { type MachineHandle, runMachine } from '../../apps/daemon/src/machine-loop.js';
 import { type StatePaths, statePaths } from '../../apps/daemon/src/state.js';
 import { plan as planTable } from '../../apps/server/src/db/schema.js';
-import { api, bootRealServer, type RealServer, waitFor } from './helpers.js';
+import { AGENT_ID, api, bootRealServer, type RealServer, waitFor } from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 // integration/test/<file> → repo root = 三级上跳（resolve 对文件路径先剥
@@ -201,11 +204,32 @@ async function createAndStart(title: string): Promise<void> {
   // spec 15 #394：单字段正文——title 参数即正文首行，占位标题 = 首行原文。
   await pexpect(page.locator('.new-task-spec')).toBeVisible();
   await page.locator('.new-task-spec').fill(title);
-  await page.locator('.new-task-start').click();
+  // #640：「保存并开始」已改直发总管编排回合（chief round → run_builds），不再
+  // 是 withPlan:true 直建 build。本脊柱测的是 plan→confirm→build→review→merge
+  // 生命周期（入口非脊柱本体）；而 chief 回合的 run_builds 会挂 watch，在
+  // confirm/review/done 关口触发 wake 轮，打乱顺序 stub 队列的消费序（m4a 因此
+  // 只用读侧工具，同一纪律）。故此处用 web「保存」落卡 + API startBuilds
+  // （withPlan:true）直起 build，保住脊柱的确定性。「保存并开始 → 编排」入口
+  // 的覆盖归 server orchestration-source 测（D 组）+ live verify-pacman。
+  await page.locator('.new-task-dialog').getByRole('button', { name: '保存', exact: true }).click();
   // 卡落板（SSE/invalidate 驱动，无 reload）。
   await pexpect(page.locator('.todo-card-title', { hasText: title })).toBeVisible({
     timeout: 30_000,
   });
+  // API 直起 withPlan:true build（脊柱走 plan/confirm 关口；triggerSource user）。
+  const todos = (await api(server.url, 'GET', '/api/todos')).body as {
+    id: string;
+    title: string;
+    projectId: string;
+  }[];
+  const created = todos.find((t) => t.title === title);
+  if (!created) throw new Error(`createAndStart: todo 未落库（${title}）`);
+  const started = await api(server.url, 'POST', `/api/projects/${created.projectId}/builds`, {
+    todoIds: [created.id],
+    assignment: { plan: { agentId: AGENT_ID }, build: { agentId: AGENT_ID } },
+    withPlan: true,
+  });
+  if (started.status !== 201) throw new Error(`createAndStart: startBuilds ${started.status}`);
 }
 
 async function openDetail(title: string): Promise<void> {
@@ -280,7 +304,7 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
   let buildId = '';
   let stream: { types: Set<string>; stop(): void };
 
-  test('新建（保存并开始）→ 规划 → 确认 → 执行 → 审核 → 合并 → done', async () => {
+  test('新建 → 规划 → 确认 → 执行 → 审核 → 合并 → done（主时序脊柱）', async () => {
     await openBoard();
     await createAndStart('M5 脊柱探针');
 

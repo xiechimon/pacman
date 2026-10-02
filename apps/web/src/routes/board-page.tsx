@@ -15,21 +15,19 @@
 // machines/notifications/chief + 新建/开始/拖拽排序/验收合并 mutation），
 // fixture 分支保持 #52–#75 行为字节不变（fixture 数据面）。
 
-import type { Assignment, TodoRecord as WireTodo } from '@pacman/shared';
+import type { TodoRecord as WireTodo } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
   useApiMutations,
-  useMachines,
-  useMembers,
   useProjects,
   useProjectTags,
   useSearchResults,
   useTodos,
 } from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
-import { useAgentAvatarUrlById, useLiveData } from '../api/provider.js';
+import { useLiveData } from '../api/provider.js';
 import { AppSidebar } from '../board/app-sidebar.js';
 import { type BoardFilters, BoardSurface } from '../board/board.js';
 import { moveTodo } from '../board/dnd.js';
@@ -41,17 +39,16 @@ import {
   parseProjectsParam,
 } from '../board/repo-filter.js';
 import { buildTagOptions, matchesTagFilter, parseTagParam } from '../board/tag-filter.js';
-import { assignOptionsFromMembers } from '../chief/chief-agent-dialog.js';
 import { ChiefDrawer } from '../chief/chief-drawer.js';
 import { ChiefFabIcon } from '../chief/chief-fab-icon.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
 import { useChiefSurface } from '../chief/use-chief-surface.js';
+import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
 import { Button } from '../components/ui/button.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
 import { mergeRejectCopy, useMergeGate } from '../detail/merge-gate.js';
-import { RerunDialog } from '../detail/overlays.js';
 import { withoutDeleted } from '../fixtures/deletions.js';
 import { localTodo, overlayContent } from '../fixtures/fixtures.js';
 import type { FixtureSet, OverlayState, TodoRecord } from '../fixtures/records.js';
@@ -109,20 +106,10 @@ export function BoardPage() {
   const todosQ = useTodos(teamId, live);
   const projectsQ = useProjects(teamId, live);
   const mutations = useApiMutations(teamId);
-  // #616：拖入执行中 = 开始任务 dialog（#318 统一面）的数据位——机器行读面 +
-  // agent 候选投影（单源 assignOptionsFromMembers，detail 页同款）。fixture
-  // 面全惰性（enabled = live），dialog 退 #75 静态形。
-  const machinesQ = useMachines(teamId, live);
-  const membersQ = useMembers(teamId, live);
-  const agentAvatarUrl = useAgentAvatarUrlById();
-  const assignOptions = useMemo(
-    () => (live ? assignOptionsFromMembers(membersQ.data ?? []) : undefined),
-    [live, membersQ.data],
-  );
-  const firstAgentMemberId = useMemo(() => {
-    const member = (membersQ.data ?? []).find((m) => m.memberType === 'agent');
-    return member?.actorId ?? null;
-  }, [membersQ.data]);
+  // #640（r14 §5.7）：开始任务 = 单出口直发总管编排回合——board 的两个
+  // 入口（卡片 开始 钮 / 拖入执行中）共用；#318 dialog 数据位（机器行 +
+  // agent 候选投影）随选择面撤销退役。
+  const orchestrateStart = useOrchestrateStart();
 
   // —— #403/#445/XMON-57 看板筛选面：URL ?tags=（类型轴）与 ?projects=
   // （仓库轴）为唯一真值（刷新/分享不丢），选中集 = 词表名字典序规范序 /
@@ -259,6 +246,23 @@ export function BoardPage() {
     if (repoSource.length === 0) return;
     writeFilterParams(selectedTags, repoSource.map((project) => project.id).sort());
   }, [repoSource, selectedTags, writeFilterParams]);
+  // 反选 = 选集取源集补集（全选行右端键）：空选反选 = 全选、满选反选 = 清空，
+  // 与全选行的满选再点同守「清除不丢路径」。规范序同全选 = 字典序。
+  const invertTags = useCallback(() => {
+    if (tagVocab == null) return;
+    const picked = new Set(selectedTags);
+    writeFilterParams([...tagVocab].filter((name) => !picked.has(name)).sort(), selectedProjects);
+  }, [tagVocab, selectedTags, selectedProjects, writeFilterParams]);
+  const invertProjects = useCallback(() => {
+    const picked = new Set(selectedProjects);
+    writeFilterParams(
+      selectedTags,
+      repoSource
+        .map((project) => project.id)
+        .filter((id) => !picked.has(id))
+        .sort(),
+    );
+  }, [repoSource, selectedTags, selectedProjects, writeFilterParams]);
   const clearFilters = useCallback(() => {
     if (selectedProjects.length === 0 && searchParams.get('tags') == null) return;
     writeFilterParams([], []);
@@ -299,28 +303,16 @@ export function BoardPage() {
   // 「全部」pill——那会把「当前无筛选」表达成一个筛选）。类型轴未就绪时
   // 不当生效项（同 filterActive 的就绪闸）。
   const chips: FilterChip[] = [
-    ...(selectedProjects.length > 0
-      ? [{ key: 'repo', label: `${t('仓库')} · ${summarize(repoLabels)}`, onClear: clearProjects }]
-      : []),
     ...(selectedTags.length > 0 && typeReady
       ? [{ key: 'type', label: `${t('类型')} · ${summarize(selectedTags)}`, onClear: clearTags }]
       : []),
+    ...(selectedProjects.length > 0
+      ? [{ key: 'repo', label: `${t('仓库')} · ${summarize(repoLabels)}`, onClear: clearProjects }]
+      : []),
   ];
+  // 维度序 = 类型轴在前（#636：参考站的创建者段位由本仓自有 tag 轴取代，用户
+  // 点名「替换成我自己的，比如 tag 的筛选」），仓库轴居参考站的项目段位。
   const dimensions: FilterDimension[] = [
-    {
-      key: 'repo',
-      name: '仓库',
-      choices: repoOptions.map((option) => ({
-        value: option.id,
-        label: option.name,
-        count: option.count,
-      })),
-      selected: selectedProjects,
-      onToggle: toggleProject,
-      onSelectAll: selectAllProjects,
-      onClear: clearProjects,
-      onOnly: onlyProject,
-    },
     {
       key: 'type',
       name: '类型',
@@ -333,8 +325,24 @@ export function BoardPage() {
       selected: selectedTags,
       onToggle: toggleTag,
       onSelectAll: selectAllTags,
+      onInvert: invertTags,
       onClear: clearTags,
       onOnly: onlyTag,
+    },
+    {
+      key: 'repo',
+      name: '仓库',
+      choices: repoOptions.map((option) => ({
+        value: option.id,
+        label: option.name,
+        count: option.count,
+      })),
+      selected: selectedProjects,
+      onToggle: toggleProject,
+      onSelectAll: selectAllProjects,
+      onInvert: invertProjects,
+      onClear: clearProjects,
+      onOnly: onlyProject,
     },
   ];
   const filters: BoardFilters = {
@@ -348,9 +356,8 @@ export function BoardPage() {
   };
   // 新建任务面（#389）：dialog 接线 = useNewTaskSurface（侧栏全局面共享同一
   // save 路径）；board 特有的只有 fixture 保存落点（本地卡 append，#66 律）
-  // 与 eager 数据位（卡片级 开始 在 dialog 开之前就吃 firstAgentId）。
-  // spec 15 #394 同律：参数 = 正文，标题由 localTodo 内 shared 规则派生
-  // （live 面 = wire 空串 server 派生，agent 回填）。
+  // 与 eager 数据位。spec 15 #394 同律：参数 = 正文，标题由 localTodo 内
+  // shared 规则派生（live 面 = wire 空串 server 派生，agent 回填）。
   const onFixtureSave = useCallback(
     (spec: string) => {
       setFixtureTodos((prev) => [
@@ -403,30 +410,17 @@ export function BoardPage() {
   // the r7 baselines carry no banner)
   const notifyBanner = useNotificationBanner(fixture.ui?.notificationBanner === true, live);
 
-  const startBuild = useCallback(
-    (todo: TodoRecord, withPlan: boolean, assignment?: Assignment) => {
+  // #640（r14 §5.7）：开始 = 直发总管编排回合，无 dialog 确认位——两个
+  // 入口（卡片 开始 钮 onAction / 拖入执行中 onStartIntent）同一条发射路。
+  // 落位不写相位：卡留待开始，总管派发（run_builds → queued）后才进执行中；
+  // T0 反馈 = toast + 查看会话深链（use-orchestrate-start.ts）。
+  const startTask = useCallback(
+    (todo: TodoRecord) => {
       if (!live) return;
-      // XMON-93：firstAgentId 点击瞬间从隔离面 ref 取——原 props 通路也只在
-      // 点击时被消费，取值时序语义不变（members 落定后恒为最新）。
-      // #616：拖拽落位路径携带 dialog 选定的双槽 assignment（detail 页
-      // startBuild 同律）；卡片 开始 钮缺省走 firstAgentId 兜底不变。
-      const firstAgentId = newTaskApiRef.current?.firstAgentId ?? null;
-      mutations.startBuilds.mutate({
-        projectId: todo.projectId,
-        todoIds: [todo.id],
-        assignment: assignment ?? {
-          plan: firstAgentId ? { agentId: firstAgentId } : null,
-          build: firstAgentId ? { agentId: firstAgentId } : null,
-        },
-        withPlan,
-      });
+      orchestrateStart.orchestrate(todo.id);
     },
-    [live, mutations.startBuilds],
+    [live, orchestrateStart.orchestrate],
   );
-  // #616：拖入执行中的开始意图——dialog 的目标卡（null = 关）。参考站实测：
-  // 落位不写相位，确认（先做规划/立即执行）才经 startBuilds 提交；取消 =
-  // 零提交，卡回源列。
-  const [startTodo, setStartTodo] = useState<TodoRecord | null>(null);
 
   // 拖拽落位（#73 / M5 / #160，#616 收窄成纯改相）：待开始/已完成列的静默
   // 提交——fixture = 本地集；live = 逐卡增量 PATCH（phase = 手动改相 +
@@ -518,10 +512,10 @@ export function BoardPage() {
           onAction={(todo) => {
             if (live) {
               // r7 34: review 完成 = accept dialog（merge 202 delegated，
-              // r3 §3.6）；todo/queued 开始 = POST builds（02 §4.2）；其余
-              // 关口进详情页操作。
+              // r3 §3.6）；todo 开始 = 直发总管编排回合（#640，无 dialog）；
+              // 其余关口进详情页操作。
               if (todo.phase === 'review' && todo.awaitingReply !== true) openFor(todo, 'accept');
-              else if (todo.phase === 'todo') startBuild(todo, true);
+              else if (todo.phase === 'todo') startTask(todo);
               else navigate(`/app/todo/${todo.id}`);
               return;
             }
@@ -530,11 +524,12 @@ export function BoardPage() {
             if (todo.phase === 'review' && todo.awaitingReply !== true) openFor(todo, 'accept');
           }}
           onBranch={(todo) => openFor(todo, 'branch')}
-          // #73→#616: 静默改相落位（待开始/已完成）commit into the same
+          // #73→#616→#640: 静默改相落位（待开始/已完成）commit into the same
           // client-side todo set as create/delete — column counts and folds
-          // re-derive from it；执行中落位 = 开始意图 → dialog 闸。
+          // re-derive from it；执行中落位 = 开始意图 → 直发编排回合（无
+          // dialog 确认位，T0 反馈 = toast）。
           onPhaseDrop={handlePhaseDrop}
-          onStartIntent={(todo) => setStartTodo(todo)}
+          onStartIntent={startTask}
           filters={filters}
           tagsById={tagIndex.tagById}
         />
@@ -609,38 +604,6 @@ export function BoardPage() {
           info={content.branch}
           buildId={overlayTodo?.latestBuildId ?? null}
           onClose={closeOverlay}
-        />
-      )}
-      {/* #616（todos.dev 2026-10-02 实测）：拖入执行中 = 开始任务 dialog
-          （#318 统一面，detail 页同款接线）——确认前相位不写；确认走
-          startBuilds（携带 dialog 选定 assignment）。fixture 面 = #75 静态
-          形（无 machines/onStart，钮无 wire），与 detail 页 fixture 律一致。 */}
-      {startTodo != null && (
-        <RerunDialog
-          reuse={startTodo.hasPlan}
-          agent={{
-            name: startTodo.agent?.displayName ?? '未指派',
-            model: '默认',
-            avatarUrl: startTodo.agent ? (agentAvatarUrl.get(startTodo.agent.id) ?? null) : null,
-          }}
-          agentOptions={assignOptions}
-          initialAgentId={
-            live ? (startTodo.assignment?.agentId ?? firstAgentMemberId ?? '') : undefined
-          }
-          machines={
-            live
-              ? (machinesQ.data ?? []).map((m) => ({ name: m.name, online: m.online }))
-              : undefined
-          }
-          onClose={() => setStartTodo(null)}
-          onStart={
-            live
-              ? ({ withPlan, assignment }) => {
-                  startBuild(startTodo, withPlan, assignment);
-                  setStartTodo(null);
-                }
-              : undefined
-          }
         />
       )}
     </div>

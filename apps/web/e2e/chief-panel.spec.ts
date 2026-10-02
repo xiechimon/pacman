@@ -33,6 +33,11 @@ import { expect, type Page, test } from '@playwright/test';
 //      120px as soon as the first character landed and shrank back on send.
 //      One fixed height on every state now (3 lines), overflow kept inside
 //      the box.
+//  11. the composer placeholder does not follow the turn state (#624): the
+//      r5 113 running face must carry the steer canon (shared
+//      CHIEF_INPUT_PLACEHOLDER_STEERING), the idle faces (111 fresh thread,
+//      114 ended turn) the idle canon — both values single-sourced from
+//      @pacman/shared, no literal in the drawer file.
 
 const drawer = (page: Page) => page.locator('.chief-drawer');
 
@@ -279,6 +284,26 @@ test.describe('chief panel docked form (#447)', () => {
     expect(drafted.cssHeight).toBe('60px');
     expect(empty.cssHeight).toBe('60px');
     expect(drafted.overflowY).toBe('auto');
+  });
+
+  test('composer placeholder switches to the steer canon while a turn runs (#624)', async ({
+    page,
+  }) => {
+    // r5 113: the running face (activeRun projection = ChiefContent.running)
+    // carries the steer placeholder; the idle faces keep the idle canon —
+    // 111 (fresh thread) and 114 (turn ended, 完成 44s footer) straddle the
+    // two idle shapes. Values verbatim from @pacman/shared
+    // (CHIEF_INPUT_PLACEHOLDER / CHIEF_INPUT_PLACEHOLDER_STEERING).
+    const placeholderAt = async (scenario: string) => {
+      await page.goto(`/app?scenario=${scenario}`);
+      const composer = page.locator('.chief-composer-input');
+      await expect(composer).toBeVisible();
+      return composer.getAttribute('placeholder');
+    };
+
+    expect(await placeholderAt('113')).toBe('向 Agent 补充说明，执行过程中即可送达');
+    expect(await placeholderAt('111')).toBe('有什么可以帮你的？');
+    expect(await placeholderAt('114')).toBe('有什么可以帮你的？');
   });
 
   test('the open state does not persist across a reload (D9)', async ({ page }) => {
