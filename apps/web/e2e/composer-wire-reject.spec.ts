@@ -1,6 +1,5 @@
-import { mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
+import { evidenceShot } from './evidence';
 
 // Composer wire single source (#625): both composer faces — the detail
 // conversation composer and the chief drawer composer — run the same
@@ -32,9 +31,11 @@ const TEAM_ID = 'team-1';
 const USER = { id: 'user-1', displayName: '我', avatarUrl: null };
 const TEAM = { id: TEAM_ID, name: 'Team', createdAt: 0, plan: 'free', avatarStyle: null };
 
-/** Evidence lands in docs/verify/625/ (rides the task branch into the PR
- *  body); rerunnable, no one-off screenshots. */
-const SHOTS = resolve(import.meta.dirname, '../../../docs/verify/625/after');
+// Evidence screenshots go through evidenceShot (no-op by default; to
+// regenerate evidence for a PR, run with
+// PACMAN_E2E_EVIDENCE=docs/verify/<ticket> — see e2e/evidence.ts).
+// Historical evidence = the committed docs/verify/625/after/; regression
+// runs must never rewrite it.
 
 /** Boot face: teams / user me carry the teamId, every other GET 500s.
  *  page.route matches in reverse registration order — catch-all first. */
@@ -156,8 +157,7 @@ test('detail face: a rejected steer (409) keeps the draft word for word', async 
   // testing a no-op.
   await expect.poll(() => posts).toBe(1);
   await expect(input).toHaveValue(DETAIL_DRAFT);
-  mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: resolve(SHOTS, 'detail-reject-keeps-draft.png') });
+  await evidenceShot(page, 'detail-reject-keeps-draft.png');
 });
 
 test('detail face: an accepted steer clears the draft', async ({ page }) => {
@@ -218,8 +218,7 @@ test('chief face: a rejected send (500) keeps the draft and toasts', async ({ pa
   await expect(toast).toBeVisible();
   await expect(toast).toContainText('发送失败，请重试。');
   await expect(toast).toContainText('upstream refused');
-  mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: resolve(SHOTS, 'chief-reject-keeps-draft.png') });
+  await evidenceShot(page, 'chief-reject-keeps-draft.png');
 });
 
 test('chief face: an accepted send clears the draft', async ({ page }) => {
@@ -239,6 +238,5 @@ test('chief face: an accepted send clears the draft', async ({ page }) => {
 
   await expect.poll(() => posts).toBe(1);
   await expect(input).toHaveValue('');
-  mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: resolve(SHOTS, 'chief-send-clears-draft.png') });
+  await evidenceShot(page, 'chief-send-clears-draft.png');
 });

@@ -1,6 +1,5 @@
-import { mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
+import { evidenceShot } from './evidence';
 
 // 复选框样式统一（XMON-72）：仓内复选正典 = components/ui/checkbox.tsx
 // （XMON-75 原语：18px 方角 tile / 4px 圆角 / --card-button 实底 + 白勾，关态
@@ -24,10 +23,9 @@ import { expect, type Page, test } from '@playwright/test';
 // running 态可开它（OverlayKind 无 stop、fixtures 无 activeRun）：由 live 面
 // verify-pacman 的 drive-stop 探针 + 截图证据覆盖，见 docs/verify/XMON-72/。
 //
-// 证据落点 = docs/verify/XMON-72/（跟任务分支一起进 PR body），spec 可重跑
-// 再生，不留一次性截图。
-
-const SHOTS = resolve(import.meta.dirname, '../../../docs/verify/XMON-72');
+// 证据截图走 evidenceShot（默认不落盘；要为本票 PR 再生证据时设
+// PACMAN_E2E_EVIDENCE=docs/verify/<ticket> 再跑，见 e2e/evidence.ts）。
+// 历史证据 = 已提交的 docs/verify/XMON-72/，回归跑不许再重写它。
 
 /** r7 34：accept 弹层冻开在看板面上，merge 默认勾选。 */
 async function openAccept(page: Page) {
@@ -53,8 +51,7 @@ test('accept: 原生 input 藏在 tile 下（不画 Mac 复选框）', async ({ 
   const input = dialog.locator('.dlg-accept input[type="checkbox"]');
   await expect(input).toBeChecked();
   await expect(input).toHaveCSS('opacity', '0');
-  mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: resolve(SHOTS, 'accept-checked.png') });
+  await evidenceShot(page, 'accept-checked.png');
 });
 
 test('accept: 未选中态不露勾', async ({ page }) => {
@@ -63,7 +60,7 @@ test('accept: 未选中态不露勾', async ({ page }) => {
   await input.click();
   await expect(input).not.toBeChecked();
   await expect(dialog.locator('.dlg-accept label svg')).toHaveCount(0);
-  await page.screenshot({ path: resolve(SHOTS, 'accept-unchecked.png') });
+  await evidenceShot(page, 'accept-unchecked.png');
 });
 
 test('accept: 整行可点（文字也是点击目标）', async ({ page }) => {
@@ -104,12 +101,11 @@ test('provider: 未选中态不露白勾（#dlg-provider-authheader id 存活）
   const dialog = await openProviderForm(page);
   const input = dialog.locator('#dlg-provider-authheader');
   await expect(input).toBeChecked();
-  mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: resolve(SHOTS, 'provider-checked.png') });
+  await evidenceShot(page, 'provider-checked.png');
   await input.click();
   await expect(input).not.toBeChecked();
   await expect(dialog.locator('.dlg-provider-authrow label svg')).toHaveCount(0);
-  await page.screenshot({ path: resolve(SHOTS, 'provider-unchecked.png') });
+  await evidenceShot(page, 'provider-unchecked.png');
 });
 
 test('accept: 键盘 Space 切换真 input', async ({ page }) => {

@@ -1,6 +1,5 @@
-import { mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { expect, type Page, test } from '@playwright/test';
+import { evidenceShot } from './evidence';
 
 // 合并被拒的可见化（XMON-89）：XMON-26 给 requestMerge 接上闸之后，缺「合并
 // 分支 / 推送分支」时 server 以 403 拒；改之前两处 merge 按钮是裸 mutate() +
@@ -29,9 +28,9 @@ const CARD_ID = 'todo-1';
 const BUILD_ID = 'build-1';
 const PROJECT_ID = 'proj-1';
 
-/** 证据落点 = docs/verify/XMON-89/（跟任务分支一起进 PR body），spec 可重跑
- *  再生，不留一次性截图。 */
-const SHOTS = resolve(import.meta.dirname, '../../../docs/verify/XMON-89');
+// 证据截图走 evidenceShot（默认不落盘；要为本票 PR 再生证据时设
+// PACMAN_E2E_EVIDENCE=docs/verify/<ticket> 再跑，见 e2e/evidence.ts）。
+// 历史证据 = 已提交的 docs/verify/XMON-89/，回归跑不许再重写它。
 
 const TEAM = { id: TEAM_ID, name: 'Team', createdAt: 0, plan: 'free', avatarStyle: null };
 const USER = { id: 'user-1', displayName: '我', avatarUrl: null };
@@ -185,8 +184,7 @@ test('看板入口：执行 Agent 缺「推送分支」时完成钮禁用并点�
   await expect(dialog).toBeVisible();
   await expect(page.locator('.dlg-accept-done')).toBeDisabled();
   await expect(page.locator('.dlg-accept-block')).toHaveText(BLOCK_COPY);
-  mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: resolve(SHOTS, 'XMON-89-board-blocked.png') });
+  await evidenceShot(page, 'XMON-89-board-blocked.png');
 });
 
 test('详情入口：同一 Agent 在同一弹层上禁用并点名缺项', async ({ page }) => {
@@ -194,8 +192,7 @@ test('详情入口：同一 Agent 在同一弹层上禁用并点名缺项', asyn
   await expect(dialog).toBeVisible();
   await expect(page.locator('.dlg-accept-done')).toBeDisabled();
   await expect(page.locator('.dlg-accept-block')).toHaveText(BLOCK_COPY);
-  mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: resolve(SHOTS, 'XMON-89-detail-blocked.png') });
+  await evidenceShot(page, 'XMON-89-detail-blocked.png');
 });
 
 test('非空授权集里两项都缺时，两处开关都被点名', async ({ page }) => {
@@ -212,13 +209,12 @@ test('空授权集放行（存量豁免）：从未保存过权限 tab 的 Agent
   await openBoardAccept(page, []);
   await expect(page.locator('.dlg-accept-done')).toBeEnabled();
   await expect(page.locator('.dlg-accept-block')).toHaveCount(0);
-  mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: resolve(SHOTS, 'XMON-89-board-exempt.png') });
+  await evidenceShot(page, 'XMON-89-board-exempt.png');
 
   await openDetailAccept(page, []);
   await expect(page.locator('.dlg-accept-done')).toBeEnabled();
   await expect(page.locator('.dlg-accept-block')).toHaveCount(0);
-  await page.screenshot({ path: resolve(SHOTS, 'XMON-89-detail-exempt.png') });
+  await evidenceShot(page, 'XMON-89-detail-exempt.png');
 });
 
 test('两项都开时不拦：完成钮可点，无缺项提示', async ({ page }) => {
@@ -241,8 +237,7 @@ test('看板入口：server 真拒（403）时弹层不关，server 文案原样
   await expect.poll(() => merges).toBe(1);
   await expect(page.locator('.dlg-accept')).toBeVisible();
   await expect(page.locator('.dlg-accept-reject')).toHaveText(reject);
-  mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: resolve(SHOTS, 'XMON-89-board-403.png') });
+  await evidenceShot(page, 'XMON-89-board-403.png');
 });
 
 test('合并成功（202）时弹层照常关，不留错误行', async ({ page }) => {
