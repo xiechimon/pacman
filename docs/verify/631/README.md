@@ -7,5 +7,6 @@
 | `before/` | 修复前复现 | step failed（9s）后 UI 全静默：0 robot 行、0 toast、drawer 无任何失败词（`result.json` no-response-no-feedback）；daemon 失败签名与用户真实 `~/.pacman/daemon.log` 悬案逐字一致（`daemon-log-signature.txt`）；errorMessage 零落库零通知（`truth.json`） |
 | `after-async/` | 修复后（异步回合失败） | toast 弹出（含原因原文）+ 线程内持久失败行 `.chief-error`（`result.json` failure-toast-appears / toast-carries-reason / failure-row-persists-in-thread）；API 失败行 `chief-err-<stepId>` = `{kind:"chief_turn_error"}`（`truth.json`） |
 | `after-sync/` | 修复后（发送被拒，网络层断） | toast「发送失败，请重试。」+ 原因；draft 逐字保留不丢字（`result.json` reject-toast-appears / reject-draft-preserved） |
+| `after-mutations/` | 修复后（恢复 / 主模型 PATCH 被拒，route 注入网络断） | 两面各自弹 toast（`result.json` patch-chief-failure-toast / rewind-failure-toast）；另含 after-async 的 reload 持久化补充证据 `after-async/03-reload-persistence.png`（重载后失败行仍在，rows=2） |
 
-探针脚本（会话内产物，未入库）：`.claude/verify-shots/probe-chief-fail.mjs`（before/after 双模式）、`probe-chief-send-fail.mjs`（route 拦截注入网络失败）。
+探针脚本（会话内产物，未入库）：`.claude/verify-shots/probe-chief-fail.mjs`（before/after 双模式）、`probe-chief-send-fail.mjs`、`probe-mutation-fails.mjs`、`probe-reload.mjs`（route 拦截注入网络失败）。
