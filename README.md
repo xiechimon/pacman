@@ -17,8 +17,7 @@ You file a task on a kanban board. An agent picks it up, checks out a worktree a
 
 ## Why
 
-- **Self-hosted.** One data root (`~/.pacman`), SQLite, no external service in the loop. Your code and your model keys stay on your machines.
-- **Open source.** Apache-2.0 (see [License](#license)).
+- **Gated by design.** Every run stops for you twice — at the plan and at the diff — and the AI reviewer can block, not just comment. The only open-source, self-hostable agent workspace that does this today.
 - **Honest lineage.** pacman began as a clean-room study of todos.dev's public interface (see [Origins](#origins)) and is now an independent product; its roadmap diverges from real usage, not from anyone else's spec.
 
 ## Quickstart
