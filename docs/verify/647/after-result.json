@@ -1,0 +1,120 @@
+{
+  "probe": "claude-code-chief",
+  "ticket": "647",
+  "face": "after",
+  "at": "2026-10-02T15:26:50.784Z",
+  "checks": [
+    {
+      "ok": true,
+      "label": "VERIFY_DAEMON_HOME 已给（daemon.log 断言面）",
+      "detail": null
+    },
+    {
+      "ok": true,
+      "label": "daemon enroll + online（GET /api/teams/{t}/machines）",
+      "detail": null
+    },
+    {
+      "ok": true,
+      "label": "POST /chief/threads → 201（实际 201）",
+      "detail": null
+    },
+    {
+      "ok": true,
+      "label": "A：chief 步 done（实际 done）",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "A：chief 步 sessionId 非空（引擎会话标识回传）",
+      "detail": "06f6d2a2-1593-422d-8f22-54bb3bd23b42"
+    },
+    {
+      "ok": true,
+      "label": "A：无 chief-err system 行（用户面「总管本轮执行失败」不复现）",
+      "detail": ""
+    },
+    {
+      "ok": true,
+      "label": "A：SDK transcript 文件在 ~/.claude/projects 唯一命中",
+      "detail": "/Users/xmon/.claude/projects/-private-tmp-pacman-647-daemon-home-workspaces-chief-01a0fd38-1d03-7cb3-9d98-b27cac49c747/06f6d2a2-1593-422d-8f22-54bb3bd23b42.jsonl"
+    },
+    {
+      "ok": true,
+      "label": "A：transcript 含 mcp__pacman__save_memory toolcall（remoteTools 面 + MCP 命名）",
+      "detail": "Bash,mcp__pacman__save_memory,mcp__pacman__notify_user,mcp__t4echo__echo,Bash"
+    },
+    {
+      "ok": true,
+      "label": "A：transcript 含 assistant text 行",
+      "detail": "我依次调用了 pacman 的 `save_memory`（记忆已存，id `3usbCauYSLjkzmyVXFTEy"
+    },
+    {
+      "ok": true,
+      "label": "B：transcript 含 mcp__t4echo__echo toolcall（mcpServers 面端到端）",
+      "detail": "Bash,mcp__pacman__save_memory,mcp__pacman__notify_user,mcp__t4echo__echo,Bash"
+    },
+    {
+      "ok": true,
+      "label": "A：agent_memory 行 t4-probe（save_memory 经 relay 服务端执行）",
+      "detail": "{\"title\":\"t4-probe\",\"content\":\"remoteTools relay executed via in-process MCP server\"}"
+    },
+    {
+      "ok": true,
+      "label": "A：notification chief_message 行（notify_user 经 relay 服务端执行）",
+      "detail": "{\"id\":\"BOe6J4NAdCwH0p9nYvumJ:chief-01a0fd38-1d03-7cb3-9d98-b27cac49c747\",\"type\":\"chief_message\"}"
+    },
+    {
+      "ok": true,
+      "label": "A：chief_message assistant 行（transcript 上传落库）",
+      "detail": "n=15"
+    },
+    {
+      "ok": true,
+      "label": "C：canon 行 using model claude-code/<model>",
+      "detail": null
+    },
+    {
+      "ok": true,
+      "label": "C：daemon log 无任何 (T4) 降级行（runtimeDrop 退役）",
+      "detail": null
+    },
+    {
+      "ok": true,
+      "label": "D：POST /providers (stub) → 201",
+      "detail": null
+    },
+    {
+      "ok": true,
+      "label": "D：POST /agents (pi) → 201",
+      "detail": null
+    },
+    {
+      "ok": true,
+      "label": "D：PATCH /chief 绑 pi agent → 200",
+      "detail": null
+    },
+    {
+      "ok": true,
+      "label": "D：POST /chief/threads (pi) → 201",
+      "detail": null
+    },
+    {
+      "ok": true,
+      "label": "D：pi chief 步 done（实际 done）",
+      "detail": null
+    },
+    {
+      "ok": true,
+      "label": "D：pi 总管 memory 行落库（customTool → relay 同径零回归）",
+      "detail": null
+    }
+  ],
+  "stack": {
+    "api": "http://127.0.0.1:8795",
+    "root": "/Users/xmon/.herdr/worktrees/pacman/hp-pacman-t-0044-claude-code-host-spec-17-t4",
+    "daemonHome": "/tmp/pacman-647-daemon-home",
+    "db": "/Users/xmon/.herdr/worktrees/pacman/hp-pacman-t-0044-claude-code-host-spec-17-t4/.claude/verify-run/home/server/server.db"
+  },
+  "threadId": "chief-01a0fd38-1d03-7cb3-9d98-b27cac49c747"
+}

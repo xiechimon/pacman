@@ -1,0 +1,18 @@
+{
+  "chiefThread": {
+    "status": 201,
+    "threadId": "chief-01a0fd38-1d03-7cb3-9d98-b27cac49c747"
+  },
+  "chiefStep": {
+    "id": "e-L_XF-I4SgPhRBsXvXm9",
+    "kind": "chief",
+    "status": "done",
+    "sessionId": "06f6d2a2-1593-422d-8f22-54bb3bd23b42"
+  },
+  "piChiefStep": {
+    "id": "ULMBz_c318bWeRVihF_gA",
+    "kind": "chief",
+    "status": "done",
+    "sessionId": "01a0fd39-aa03-7143-8faf-ea9ead2782e4"
+  }
+}
