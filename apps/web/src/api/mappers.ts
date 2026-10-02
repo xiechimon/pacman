@@ -33,6 +33,7 @@ import {
   classifyUserText,
   conversationBranch,
   MERGE_ANNOUNCEMENT,
+  MODEL_SOURCE_RUNTIME_LABELS,
   PLAN_SECTIONS,
   REVIEW_ANNOUNCEMENT,
   REVIEW_VERDICT_KIND,
@@ -855,14 +856,12 @@ export function mapMcpServers(rows: McpServerRecord[], now: number): McpRow[] {
 
 // —— chief（总管 drawer / 设置面）———————————————————————————————
 
-/** runtime 显示名（品牌/runtime 名不译，不走 t()）——单源：providers-page
- * runtime tablist 与 chief 压缩模型选择器（toModelOptions）共消费。
- * 词表闭包 = ModelSourceRuntime；Codex 等后续 runtime 扩在此补（spec 11
- * §A1），两消费面自动同更，不分头改。 */
-export const RUNTIME_LABELS: Record<ModelSourceRuntime, string> = {
-  pi: 'pi',
-  'claude-code': 'Claude Code',
-};
+/** runtime 显示名（品牌/runtime 名不译，不走 t()）——单源已上提 shared
+ * MODEL_SOURCE_RUNTIME_LABELS（#627：server chief models 工具的
+ * providerLabel 行语义与 toModelOptions 对齐，同源共消费）；本名保留为
+ * web 侧消费入口。消费面：providers-page runtime tablist + chief 压缩
+ * 模型选择器（toModelOptions）。 */
+export const RUNTIME_LABELS: Record<ModelSourceRuntime, string> = MODEL_SOURCE_RUNTIME_LABELS;
 
 /** 思考强度只读行的档位投影（XMON-16 / #499 B3 裁决 A）：存值须是能力读面
  * 给的词表里的那一档才呈现，否则 null（调用面落 r3 §4 观测形「默认」）。
