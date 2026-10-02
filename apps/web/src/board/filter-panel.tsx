@@ -3,11 +3,12 @@
 //
 // 为什么不是「两个面各自加个全选键」：原来的痛点是**逐个点选**，而逐个点选
 // 有两个来源——两条轴各占顶栏一半、各自只有单值切换语义。补全选键治的是
-// 症状；把两轴收进同一个面板、批次操作（全选 / 清除 / 仅此）与计数挂在
+// 症状；把两轴收进同一个面板、批次操作（全选 / 反选 / 仅此）与计数挂在
 // 维度行上，才是治因。对照面：Multica 是单 Filter 钮 + 弹层多维；todos.dev
 // 是板级 Filters 图标 + 层内两段（「Created by」「Projects」）。三者同形，
-// 本面取 Multica 的计数与批次、不取 todos.dev 的排除式（并集 + 全选已覆盖，
-// 且换模型要重写 ?projects= 契约）。
+// 本面取 Multica 的计数口径（另一轴收窄后的命中数）、不取 todos.dev 的排除式
+// （并集 + 全选已覆盖，且换模型要重写 ?projects= 契约）；参考站的创建者维度
+// 不搬——本仓自有类型轴（tag）取代它的位置（#636，用户点名）。
 //
 // 本文件 = 两轴的**共用视图**：轴自己「有哪些、怎么判」在 tag-filter.ts /
 // repo-filter.ts，这里只吃归一化后的 FilterDimension，不写第二份判定。
@@ -28,14 +29,14 @@
 // type-filter-popover 是 #445 遗留别名，语义已扩到「全轴筛选」，名字保留
 // 是为了不动既有钉（#411 别名优先政策）。
 //
-// 面板皮肤并全站 popup vocabulary（打磨轮：用户报「过于粗糙、格格不入」，
-// 并入既有语言而非重设计）：壳 p-1（dropdown/menu popup 同档），选项行
-// rounded-md + hover/选中 bg-accent；选中态 = 行首 Check 指示列（槽位恒在、
-// opacity 切换，toggle 零布局位移）+ 实底——仓库轴此前只有 aria-selected
-// 没有可见 cue；维度标题退 text-muted-foreground（chrome 带与内容带用墨色
-// 分层次）；维度间分隔线全出血 -mx-1（DropdownMenuSeparator 同形）；计数
-// 留右端（shortcut 位、tabular-nums）。「仅此」恒渲染（无选中时 disabled），
-// 与批次键同守「控件位置稳定」。
+// 面板皮肤并全站 popup vocabulary（壳 p-1、行 rounded-md + hover/选中
+// bg-accent、维度间分隔线全出血 -mx-1、计数留右端 shortcut 位），行形与批次
+// 行照参考站（todos.dev）实测对齐（#636）：行首 = 16px 圆角 checkbox（选中 =
+// indigo 实底白勾；槽位恒在，toggle 零布局位移）；计数仅有命中时画（零命中
+// 不占右端位）；全选行居行表首（三态 checkbox：空选 off / 部分 mixed / 满选
+// on；满选再点 = 清本维），反选挂该行右端；维度标题行只留标题 + 已选读数
+// （批次键不再挂标题行）。「仅此」hover 现形，与计数共右端槽（静息计数、
+// hover 仅此）——两控件位置都稳定，不随选集大小推移。
 
 import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/button.js';
@@ -67,6 +68,8 @@ export interface FilterDimension {
   selected: readonly string[];
   onToggle: (value: string) => void;
   onSelectAll: () => void;
+  /** 反选 = 选集取源集补集（全选行右端键）；空选反选 = 全选、满选 = 清空。 */
+  onInvert: () => void;
   onClear: () => void;
   onOnly: (value: string) => void;
 }
@@ -79,6 +82,27 @@ export interface FilterChip {
 }
 
 const FOCUS = 'focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2';
+
+/** 行首勾选框（参考站实测形）：16px 圆角方。off = 控制边框空盒；on = indigo
+ *  实底白勾；mixed = indigo 边框 + 横杠（全选行的部分选中态）。槽位恒在，
+ *  状态切换零布局位移。 */
+function CheckBox({ state }: { state: 'off' | 'on' | 'mixed' }) {
+  return (
+    <span
+      aria-hidden
+      className={`flex size-4 flex-none items-center justify-center rounded border transition-colors ${
+        state === 'off'
+          ? 'border-input'
+          : state === 'on'
+            ? 'border-accent-indigo bg-accent-indigo text-primary-foreground'
+            : 'border-accent-indigo text-accent-indigo'
+      }`}
+    >
+      {state === 'on' && <Check className="size-3" />}
+      {state === 'mixed' && <span className="h-0.5 w-2 rounded-full bg-current" />}
+    </span>
+  );
+}
 
 /** 顶栏左侧的生效筛选条。空选中集不渲染任何条——「全部」态没有可摘的
  *  东西，画一个常驻「全部」pill 会把「当前无筛选」表达成一个筛选。
@@ -145,38 +169,24 @@ function DimensionSection({
     [dimension.choices, needle],
   );
   const actionable = dimension.choices.length > 0;
+  const allSelected = actionable && dimension.selected.length === dimension.choices.length;
+  const someSelected = dimension.selected.length > 0;
   return (
     <section className="filter-dimension flex flex-col" data-dimension={dimension.key}>
       {/* 维度间分隔线全出血（壳 p-1 内 -mx-1，DropdownMenuSeparator 同形）；
           my-1 节奏 = 线上线下各 4px，故 divided 时标题不再另加 pt。 */}
       {divided && <div aria-hidden className="-mx-1 mt-1 mb-1 border-t border-border" />}
+      {/* 标题行只留标题 + 已选读数（参考站形：标题带不挂批次键）；批次操作
+          下沉到行表首的全选行。 */}
       <header
-        className={`filter-dimension-head flex items-center gap-1.5 px-1.5 pb-1 ${divided ? 'pt-0' : 'pt-1.5'}`}
+        className={`filter-dimension-head flex items-baseline gap-1.5 px-2 pb-1 ${divided ? 'pt-1' : 'pt-1.5'}`}
       >
-        <span className="filter-dimension-name text-[11px] font-medium text-muted-foreground">
+        <span className="filter-dimension-name text-[11px] font-semibold tracking-wide text-muted-foreground">
           {t(dimension.name)}
         </span>
         <span className="filter-dimension-selected ml-auto text-[11px] text-muted-foreground tabular-nums">
           {t('已选 {n}/{m}', { n: dimension.selected.length, m: dimension.choices.length })}
         </span>
-        {/* 批次键：全选 / 清除。禁用态而非隐藏——控件位置稳定，用户不必
-            找「为什么这行刚才有键现在没了」。 */}
-        <button
-          type="button"
-          disabled={!actionable}
-          className={`filter-dimension-all ${FOCUS} rounded-md px-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground`}
-          onClick={dimension.onSelectAll}
-        >
-          {t('全部选中')}
-        </button>
-        <button
-          type="button"
-          disabled={dimension.selected.length === 0}
-          className={`filter-dimension-clear ${FOCUS} rounded-md px-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground`}
-          onClick={dimension.onClear}
-        >
-          {t('清除')}
-        </button>
       </header>
       {!actionable ? (
         // 空词表不是错误态：作用域里本来就没有可选项（旧 fixture 场景没有
@@ -195,6 +205,41 @@ function DimensionSection({
               onChange={(event) => onQuery(event.target.value)}
             />
           )}
+          {/* 全选行（行表首，参考站位置）：三态 checkbox + 全选文案；满选再点
+              = 清本维——段内清除钮撤除后，「清」由本行满选态 / 反选 / 顶栏
+              生效筛选条三路承接，功能不丢。反选挂该行右端（参考站位置与文案）。 */}
+          <div className="filter-dimension-allrow flex items-center">
+            {/* 真 checkbox（native input）：三态走 indeterminate 属性，语义与
+                键盘/读屏行为白送；整行包 label，点文案即 toggle。勾形/横杠是
+                input 之上的指针穿透覆层（appearance-none 自绘皮肤）。 */}
+            <label className="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent">
+              <span className="relative flex size-4 flex-none">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someSelected && !allSelected;
+                  }}
+                  onChange={() => (allSelected ? dimension.onClear() : dimension.onSelectAll())}
+                  className={`filter-dimension-all ${FOCUS} size-4 cursor-pointer appearance-none rounded border border-input transition-colors checked:border-accent-indigo checked:bg-accent-indigo indeterminate:border-accent-indigo`}
+                />
+                {allSelected && (
+                  <Check className="pointer-events-none absolute inset-0 m-auto size-3 text-primary-foreground" />
+                )}
+                {someSelected && !allSelected && (
+                  <span className="pointer-events-none absolute inset-0 m-auto h-0.5 w-2 rounded-full bg-accent-indigo" />
+                )}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-left">{t('全选')}</span>
+            </label>
+            <button
+              type="button"
+              className={`filter-dimension-invert ${FOCUS} mr-2 shrink-0 rounded px-1 text-xs text-accent-indigo-strong transition-colors hover:underline`}
+              onClick={dimension.onInvert}
+            >
+              {t('反选')}
+            </button>
+          </div>
           <div
             className="filter-dimension-list flex max-h-[220px] flex-col overflow-y-auto"
             role="listbox"
@@ -205,7 +250,10 @@ function DimensionSection({
               const active = selectedSet.has(choice.value);
               const alias = choice.color == null ? 'repo-filter-option' : 'type-filter-option';
               return (
-                <div key={choice.value} className="filter-option-row group flex items-center">
+                <div
+                  key={choice.value}
+                  className="filter-option-row group relative flex items-center"
+                >
                   <button
                     type="button"
                     {...(choice.color == null
@@ -213,16 +261,14 @@ function DimensionSection({
                       : { 'data-tag': choice.value })}
                     role="option"
                     aria-selected={active}
-                    className={`${alias} ${FOCUS} flex h-7 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-xs text-foreground transition-colors hover:bg-accent ${
+                    className={`${alias} ${FOCUS} flex h-7 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent ${
                       active ? 'bg-accent' : ''
                     }`}
                     onClick={() => dimension.onToggle(choice.value)}
                   >
-                    {/* 选中指示列：槽位恒在（opacity 切换）——toggle 与「仅此」
-                        现形都不推挤标签/计数的列位。 */}
-                    <Check
-                      className={`size-3.5 flex-none transition-opacity ${active ? 'opacity-100' : 'opacity-0'}`}
-                    />
+                    {/* 勾选态 = 圆角 checkbox（参考站形）：槽位恒在，toggle 与
+                        「仅此」现形都不推挤标签/计数的列位。 */}
+                    <CheckBox state={active ? 'on' : 'off'} />
                     {active && choice.color != null ? (
                       <TagChip
                         tag={{ id: choice.value, name: choice.label, color: choice.color }}
@@ -232,17 +278,21 @@ function DimensionSection({
                         {choice.label}
                       </span>
                     )}
-                    <span className="filter-option-count ml-auto text-[11px] text-muted-foreground tabular-nums">
-                      {choice.count}
-                    </span>
+                    {/* 计数仅有命中时画（参考站形：零命中不占右端位）。 */}
+                    {choice.count > 0 && (
+                      <span className="filter-option-count ml-auto text-[11px] text-muted-foreground tabular-nums transition-opacity group-hover:opacity-0">
+                        {choice.count}
+                      </span>
+                    )}
                   </button>
                   {/* 「仅此」：多选轴的逆向操作（全选后取消一个的镜像）。
-                      静息透明、hover/focus 现形；恒渲染（无选中时 disabled）
-                      让行右缘几何与选中集大小无关。 */}
+                      静息透明、hover/focus 现形，与计数共右端槽（静息计数、
+                      hover 仅此）；恒渲染（无选中时 disabled）让行右缘几何
+                      与选中集大小无关。 */}
                   <button
                     type="button"
                     disabled={dimension.selected.length === 0}
-                    className={`filter-option-only ${FOCUS} mr-1 shrink-0 rounded px-1 text-[11px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 disabled:hover:text-muted-foreground`}
+                    className={`filter-option-only ${FOCUS} absolute right-2 shrink-0 rounded px-1 text-[11px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 disabled:hover:text-muted-foreground`}
                     onClick={() => dimension.onOnly(choice.value)}
                   >
                     {t('仅此')}

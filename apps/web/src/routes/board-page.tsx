@@ -259,6 +259,23 @@ export function BoardPage() {
     if (repoSource.length === 0) return;
     writeFilterParams(selectedTags, repoSource.map((project) => project.id).sort());
   }, [repoSource, selectedTags, writeFilterParams]);
+  // 反选 = 选集取源集补集（全选行右端键）：空选反选 = 全选、满选反选 = 清空，
+  // 与全选行的满选再点同守「清除不丢路径」。规范序同全选 = 字典序。
+  const invertTags = useCallback(() => {
+    if (tagVocab == null) return;
+    const picked = new Set(selectedTags);
+    writeFilterParams([...tagVocab].filter((name) => !picked.has(name)).sort(), selectedProjects);
+  }, [tagVocab, selectedTags, selectedProjects, writeFilterParams]);
+  const invertProjects = useCallback(() => {
+    const picked = new Set(selectedProjects);
+    writeFilterParams(
+      selectedTags,
+      repoSource
+        .map((project) => project.id)
+        .filter((id) => !picked.has(id))
+        .sort(),
+    );
+  }, [repoSource, selectedTags, selectedProjects, writeFilterParams]);
   const clearFilters = useCallback(() => {
     if (selectedProjects.length === 0 && searchParams.get('tags') == null) return;
     writeFilterParams([], []);
@@ -299,28 +316,16 @@ export function BoardPage() {
   // 「全部」pill——那会把「当前无筛选」表达成一个筛选）。类型轴未就绪时
   // 不当生效项（同 filterActive 的就绪闸）。
   const chips: FilterChip[] = [
-    ...(selectedProjects.length > 0
-      ? [{ key: 'repo', label: `${t('仓库')} · ${summarize(repoLabels)}`, onClear: clearProjects }]
-      : []),
     ...(selectedTags.length > 0 && typeReady
       ? [{ key: 'type', label: `${t('类型')} · ${summarize(selectedTags)}`, onClear: clearTags }]
       : []),
+    ...(selectedProjects.length > 0
+      ? [{ key: 'repo', label: `${t('仓库')} · ${summarize(repoLabels)}`, onClear: clearProjects }]
+      : []),
   ];
+  // 维度序 = 类型轴在前（#636：参考站的创建者段位由本仓自有 tag 轴取代，用户
+  // 点名「替换成我自己的，比如 tag 的筛选」），仓库轴居参考站的项目段位。
   const dimensions: FilterDimension[] = [
-    {
-      key: 'repo',
-      name: '仓库',
-      choices: repoOptions.map((option) => ({
-        value: option.id,
-        label: option.name,
-        count: option.count,
-      })),
-      selected: selectedProjects,
-      onToggle: toggleProject,
-      onSelectAll: selectAllProjects,
-      onClear: clearProjects,
-      onOnly: onlyProject,
-    },
     {
       key: 'type',
       name: '类型',
@@ -333,8 +338,24 @@ export function BoardPage() {
       selected: selectedTags,
       onToggle: toggleTag,
       onSelectAll: selectAllTags,
+      onInvert: invertTags,
       onClear: clearTags,
       onOnly: onlyTag,
+    },
+    {
+      key: 'repo',
+      name: '仓库',
+      choices: repoOptions.map((option) => ({
+        value: option.id,
+        label: option.name,
+        count: option.count,
+      })),
+      selected: selectedProjects,
+      onToggle: toggleProject,
+      onSelectAll: selectAllProjects,
+      onInvert: invertProjects,
+      onClear: clearProjects,
+      onOnly: onlyProject,
     },
   ];
   const filters: BoardFilters = {
