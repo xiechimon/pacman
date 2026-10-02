@@ -7,9 +7,10 @@ import { expect, type Page, test } from '@playwright/test';
 //   1. the model row is a control (button[aria-haspopup=dialog]) that opens
 //      the model dialog; picking a row closes it (accept 律, #148 同律) and
 //      the fixture face sends no PATCH (onPick absent).
-//   2. the row carries the bound agent's identity avatar (same face as the
-//      FAB / stream rows, XMON-105 律) — the ChiefPi trace glyph is gone;
-//      unbound keeps the plain `n/a` line with no control at all.
+//   2. the row carries the runtime mark (pi π glyph / claude-code label —
+//      用户返工裁决：运行时 SVG，不是 Agent 头像; the broken 「ㅋ」 trace is
+//      gone, re-traced π rides the slot); unbound keeps the plain `n/a` line
+//      with no control at all.
 //   3. the message-row copy glyphs are real clipboard buttons (local-first
 //      face exists); 恢复 / foot chevron had no backend and no local-first
 //      object face, so per the #306/#146 二分律 they are gone, not inert.
@@ -41,13 +42,15 @@ test.describe('chief drawer model row (#615)', () => {
     await expect(drawer(page)).toBeVisible();
   });
 
-  test('the model row carries the bound agent avatar, not a runtime glyph', async ({ page }) => {
+  test('the model row carries the runtime mark, not an agent avatar', async ({ page }) => {
     await page.goto('/app?scenario=fab-avatar');
     await expect(drawer(page)).toBeVisible();
     const btn = modelBtn(page);
     await expect(btn).toBeVisible();
-    // identity loop: the same SeededAvatar face the FAB chip shows
-    await expect(btn.locator('.chief-model-avatar img')).toHaveCount(1);
+    // #615 返工裁决：行首 = 运行时标记（fixture 未录 provider 位 = pi 正典
+    // π 字形），不是 Agent 头像——头像脸归 FAB / 消息流各自的面
+    await expect(btn.locator('.chief-model-mark svg')).toHaveCount(1);
+    await expect(btn.locator('.chief-model-mark img')).toHaveCount(0);
 
     // unbound: plain n/a line, no control (nothing to pick until an agent binds)
     await page.goto('/app?scenario=100');

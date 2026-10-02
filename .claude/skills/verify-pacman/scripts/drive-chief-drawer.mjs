@@ -9,8 +9,8 @@
 //   A 主模型闭环：模型行是控制件 → dialog 开（候选 = 铺底 provider 模型并集）
 //     → 选定 → PATCH chief model 槽落库（GET 封套 + SQLite 行双真值）→ 行回显
 //     → 重载仍回显 → 默认行清空回继承（`· 默认` 徽标回）。
-//   B 头像闭环：模型行首 = 绑定 Agent 的 SeededAvatar img（FAB / 消息流同脸），
-//     不再是 ChiefPi trace glyph。
+//   B 运行时标记（返工裁决）：模型行首 = 运行时标记（pi 出 π svg；claude-code
+//     出 RUNTIME_LABELS 文字标），不是 Agent 头像、不是坏 trace glyph。
 //   C 死钮：非 board 面 gear / 门控条设置可达（落 board 设置视图深链）；消息行
 //     复制 = 真 clipboard 钮（读回剪贴板对拍）；恢复/foot chevron 不渲染。
 // 依赖全新库：重验 = 重 launch。
@@ -189,11 +189,15 @@ try {
     btnVisible,
     btnVisible ? '模型行 = button[aria-haspopup=dialog]' : '模型行仍非控制件（纯显示）',
   );
-  const avatarImg = btnVisible ? await modelBtn.locator('.chief-model-avatar img').count() : 0;
+  // #615 返工裁决：行首 = 运行时标记（π 字形 svg），不是 Agent 头像 img
+  const markSvg = btnVisible ? await modelBtn.locator('.chief-model-mark svg').count() : 0;
+  const markImg = btnVisible ? await modelBtn.locator('.chief-model-mark img').count() : 0;
   check(
-    'model-row-carries-agent-avatar',
-    avatarImg === 1,
-    avatarImg === 1 ? '行首 = 绑定 Agent 头像 img' : '行首头像 img 数=' + avatarImg,
+    'model-row-carries-runtime-mark',
+    markSvg === 1 && markImg === 0,
+    markSvg === 1 && markImg === 0
+      ? '行首 = 运行时标记（π svg，无头像 img）'
+      : '行首标记 svg=' + markSvg + ' img=' + markImg,
   );
   await shot(page, '02-bound-model-row.png');
     await page.locator('.chief-head').screenshot({ path: join(EVIDENCE, '06-drawer-head.png') });

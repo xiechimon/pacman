@@ -945,6 +945,8 @@ export function mapChief(
             displayName: env.agentActor.displayName,
             avatarUrl: env.agentActor.avatarUrl,
           },
+          // #615 返工：运行时标记位 = 生效模型 provider（覆盖槽优先）。
+          modelProvider: env.chief.model?.provider ?? env.agentActor.provider,
         }
       : {}),
     threadTitle: active?.title ?? '新主题',

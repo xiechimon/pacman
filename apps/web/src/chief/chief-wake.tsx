@@ -71,7 +71,9 @@ export function ChiefWakeFab({
 }
 
 /** The docked panel for one surface — the last flex item of the docking
- *  row; `onSettings` stays board-only (r5 101–104 content swap). */
+ *  row. `onSettings` = board 的内容交换（r5 101–104）；缺省不再等于「齿轮
+ *  消失」——#615 返工兜底落 board 设置视图深链，齿轮结构上恒在（挂载点漏传
+ *  回调不再复死入口）。 */
 export function ChiefWakePanel({
   surface,
   onSettings,
@@ -79,6 +81,7 @@ export function ChiefWakePanel({
   surface: ChiefSurface;
   onSettings?: () => void;
 }) {
+  const settingsNavFallback = useChiefSettingsNav();
   const {
     chiefView,
     setChiefView,
@@ -95,7 +98,7 @@ export function ChiefWakePanel({
       open={chiefView === 'drawer'}
       chief={chiefData}
       onClose={() => setChiefView('none')}
-      onSettings={onSettings}
+      onSettings={onSettings ?? settingsNavFallback}
       onSend={onSend}
       onThread={onThread}
       onNewThread={onNewThread}

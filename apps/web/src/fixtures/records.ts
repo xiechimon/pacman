@@ -716,6 +716,11 @@ export interface ChiefContent {
    *  absent = 未绑定（或数据未到位），FAB 保持静态字形。live 面由 mapChief
    *  从 GET chief 封套的 agentActor 投影，不新增请求。 */
   agent?: { id?: string; displayName: string; avatarUrl: string | null };
+  /** #615 返工：模型行首 = 运行时标记（用户裁决：要运行时 SVG 不要 Agent
+   *  头像）。值 = 生效模型的 provider 位（覆盖槽优先，回退绑定 Agent）；
+   *  'claude-code' = Claude Code 运行时，其余（custom provider / 缺省）= pi
+   *  运行时。absent = fixture 未录 provider 位，按 pi 正典呈现（r5 111）。 */
+  modelProvider?: string | null;
   /** Header thread-chip label (`新主题` on a fresh thread). */
   threadTitle: string;
   /** Switcher popover open over the drawer (r5 116). */

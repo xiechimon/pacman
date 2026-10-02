@@ -156,9 +156,10 @@ const EXTRA_ICONS = [
   {
     name: 'ChiefPi',
     size: [12, 12],
-    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 7h11"></path><path d="M5 12h5"></path><path d="M14 7v10"></path></svg>',
-    contexts: ['chief model slot glyph (traced from r5 111)'],
-    trace: 'a 1:1 trace of the r5 111 bitmap model-slot glyph',
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 7h16"></path><path d="M9 7v13"></path><path d="M15 7v13"></path></svg>',
+    contexts: ['chief model slot glyph (pi runtime mark, re-traced from r5 111)'],
+    trace:
+      'a re-trace of the r5 111 bitmap model-slot glyph: the first trace misread the 10px bitmap stem/bar topology and rendered a "ㅋ" shape; the magnified bitmap shows the pi runtime mark — top bar over two legs',
   },
 ];
 
