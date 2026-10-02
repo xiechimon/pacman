@@ -1,7 +1,7 @@
 {
   "probe": "chief-drawer",
   "ok": true,
-  "at": "2026-10-02T05:40:57.963Z",
+  "at": "2026-10-02T06:41:43.452Z",
   "stack": {
     "api": "http://127.0.0.1:8795",
     "web": "http://127.0.0.1:5277",
@@ -11,7 +11,7 @@
     {
       "name": "api-team-ready",
       "ok": true,
-      "detail": "teamId=uBB91Rt__krUhF9IOcKmO"
+      "detail": "teamId=-Iltugs7MN5uVaiOJ5ho6"
     },
     {
       "name": "offboard-gate-rendered",
@@ -26,7 +26,7 @@
     {
       "name": "seed-bound",
       "ok": true,
-      "detail": "agent=XmeVFhf7hFdcZYqWbO7lb"
+      "detail": "agent=Slq1mBCDtEPxPyEBfj4gI"
     },
     {
       "name": "model-row-is-control",
@@ -46,22 +46,22 @@
     {
       "name": "pick-persists-and-echoes",
       "ok": true,
-      "detail": "GET chief.model={\"provider\":\"verify-gw-36059\",\"modelId\":\"v-model-b-36059\"}；行回显含=false（v-model-b-36059）"
+      "detail": "GET chief.model={\"provider\":\"verify-gw-82160\",\"modelId\":\"v-model-b-82160\"}；行回显含=false（v-model-b-82160）"
     },
     {
       "name": "sqlite-row-holds-override",
       "ok": true,
-      "detail": "chief.model 行={\"provider\":\"verify-gw-36059\",\"modelId\":\"v-model-b-36059\"}"
+      "detail": "chief.model 行={\"provider\":\"verify-gw-82160\",\"modelId\":\"v-model-b-82160\"}"
     },
     {
       "name": "reload-echo",
       "ok": true,
-      "detail": "重载后行=v-model-b-36059"
+      "detail": "重载后行=v-model-b-82160"
     },
     {
       "name": "default-row-clears-to-inherit",
       "ok": true,
-      "detail": "GET chief.model=null；行=v-model-a-36059 · 默认"
+      "detail": "GET chief.model=null；行=v-model-a-82160 · 默认"
     },
     {
       "name": "copy-button-writes-clipboard",
@@ -82,5 +82,5 @@
     "04-after-pick.png",
     "05-copy-feedback.png"
   ],
-  "agentId": "XmeVFhf7hFdcZYqWbO7lb"
+  "agentId": "Slq1mBCDtEPxPyEBfj4gI"
 }
