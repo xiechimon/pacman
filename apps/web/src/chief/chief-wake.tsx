@@ -92,6 +92,7 @@ export function ChiefWakePanel({
     modelValue,
     modelOptions,
     onPickModel,
+    onRewind,
   } = surface;
   return (
     <ChiefDrawer
@@ -105,6 +106,7 @@ export function ChiefWakePanel({
       modelValue={modelValue}
       modelOptions={modelOptions}
       onPickModel={onPickModel}
+      onRewind={onRewind}
     />
   );
 }

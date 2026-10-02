@@ -347,6 +347,12 @@ export const EN: Record<string, string> = {
   '没有匹配的 Agent': 'No matching Agents',
   // #615 总管抽屉主模型闭环文案（模型行 aria + 覆盖 dialog 默认行/搜索/空态）。
   总管主模型: 'Chief main model',
+  // #615 返工：恢复钮（参考站 live aria 正词）+ 过程折叠 + 确认层 + 工具行失败徽标。
+  恢复到此处: 'Restore to here',
+  '恢复到此处？该条之后的 {n} 条消息会移除，总管从这条重发开新回合。':
+    'Restore to here? The {n} messages after it are removed and the Chief resends from this one as a fresh turn.',
+  展开过程: 'Show process',
+  收起过程: 'Hide process',
   '默认（与绑定 Agent 相同）': 'Default (same as bound Agent)',
   '搜索模型…': 'Search models…',
   没有匹配的模型: 'No matching models',

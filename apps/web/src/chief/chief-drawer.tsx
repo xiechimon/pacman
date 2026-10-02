@@ -32,6 +32,7 @@
 import type { ChiefCompactionModel } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/button.js';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ChiefContent, ChiefSegment, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -40,6 +41,7 @@ import {
   BarChart3,
   Check,
   ChevronDown,
+  ChevronRight,
   ChiefFaceDashed,
   ChiefFolder,
   ChiefGear,
@@ -50,6 +52,7 @@ import {
   FileText,
   Grid2x2,
   Plus,
+  Restore,
   RuntimeClaudeCode,
   RuntimePi,
   X,
@@ -137,6 +140,9 @@ interface DrawerProps {
   /** #615 live 面：模型 dialog 选定 = PATCH chief model 槽；缺省 = fixture
    *  律（选择即关，零请求）。 */
   onPickModel?: (value: ChiefCompactionModel | null) => void;
+  /** #615 返工 live 面：恢复钮确认后 = POST chief threads rewind（截断锚后
+   *  消息 + 新会话重发）；缺省 = fixture 律（确认层 accept 关窗零请求）。 */
+  onRewind?: (messageId: string) => void;
 }
 
 export function ChiefDrawer({
@@ -150,10 +156,16 @@ export function ChiefDrawer({
   modelValue = null,
   modelOptions,
   onPickModel,
+  onRewind,
 }: DrawerProps) {
   const { t } = useI18n();
   const [threadsOpen, setThreadsOpen] = useState(chief.threadsOpen ?? false);
   const [modelOpen, setModelOpen] = useState(false);
+  // #615 返工：恢复钮确认层锚（stream 行 index + live 消息 id）与过程折叠开态集。
+  const [rewindConfirm, setRewindConfirm] = useState<{ index: number; id: string | null } | null>(
+    null,
+  );
+  const [toolsOpen, setToolsOpen] = useState<Set<number>>(() => new Set());
   // #615 复制钮的瞬时回执：键 = 消息位（u<i> / r<i>），1.5s 后回 Copy 字形。
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const copyText = (key: string, text: string) => {
@@ -397,9 +409,7 @@ export function ChiefDrawer({
                       <div className="chief-msg-col">
                         <div className="chief-bubble">{item.text}</div>
                         <div className="chief-msg-tools">
-                          {/* #615 C：复制翻真 clipboard 钮（local-first 面存在）；
-                              恢复钮无后端面（chief 无 rewind 端点，#306 注记同
-                              律）按二分律移除不渲染，不留死钮。 */}
+                          {/* #615 C：复制翻真 clipboard 钮（local-first 面存在）。 */}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -412,6 +422,21 @@ export function ChiefDrawer({
                             ) : (
                               <Copy width={13} height={13} />
                             )}
+                          </Button>
+                          {/* #615 返工（用户裁决覆盖 #306 二分律）：恢复钮闭环
+                              ——aria 正词「恢复到此处」= 参考站 live 同名控件；
+                              语义 = rewind 锚（截断锚后消息 + 新会话重发该条，
+                              server POST chief threads rewind）。破坏性 → 确认
+                              层先行；fixture 面（onRewind 缺省 / id 缺省）走
+                              accept 律关窗零请求。 */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                            aria-label={t('恢复到此处')}
+                            onClick={() => setRewindConfirm({ index: i, id: item.id ?? null })}
+                          >
+                            <Restore width={13} height={13} />
                           </Button>
                         </div>
                       </div>
@@ -465,7 +490,51 @@ export function ChiefDrawer({
                         {/* live 面 seconds 空串（mapChiefStream 无耗时数据源）
                             不再渲染空「完成」行；fixture canon 44s 照旧。 */}
                         {item.seconds !== '' && <span>{t('完成 {n}', { n: item.seconds })}</span>}
+                        {/* #615 返工（用户裁决覆盖 #306 二分律）：foot 折叠箭头
+                            闭环 = 该回合过程披露（Multica OuterProcessFold 同
+                            族：chevron + 展开内容 = 工具步；r5 114 捕获位 = 完
+                            成 Ns 之后的 ›）。展开面 = 被流主呈现滤掉的工具调
+                            用行（chief_message toolcall 投影，DB 既有零新后端）；
+                            无工具行的回合不渲染触发器（无可披露内容）。 */}
+                        {(item.tools?.length ?? 0) > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                            aria-label={toolsOpen.has(i) ? t('收起过程') : t('展开过程')}
+                            aria-expanded={toolsOpen.has(i)}
+                            onClick={() =>
+                              setToolsOpen((cur) => {
+                                const next = new Set(cur);
+                                if (next.has(i)) next.delete(i);
+                                else next.add(i);
+                                return next;
+                              })
+                            }
+                          >
+                            {toolsOpen.has(i) ? (
+                              <ChevronDown width={11} height={11} />
+                            ) : (
+                              <ChevronRight width={11} height={11} />
+                            )}
+                          </Button>
+                        )}
                       </div>
+                      {(item.tools?.length ?? 0) > 0 && toolsOpen.has(i) && (
+                        <div className="chief-turn-tools">
+                          {item.tools?.map((tool, k) => (
+                            <div key={k} className="chief-turn-tool-row">
+                              <span className="chief-turn-tool-name">{tool.name}</span>
+                              {tool.seconds !== undefined && (
+                                <span className="chief-turn-tool-sec">{tool.seconds}s</span>
+                              )}
+                              {tool.error === true && (
+                                <span className="chief-turn-tool-err">{t('失败')}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -517,6 +586,47 @@ export function ChiefDrawer({
             </Button>
           </div>
         </div>
+        {/* #615 返工：恢复钮确认层（破坏性：截断锚后消息并以锚重发）。壳与
+            按钮档复用 chief-agent-dialog 同族 per-face（chief-dlg-ghost /
+            chief-dlg-primary / chief-pick-confirm）。fixture 面 id 缺省 =
+            accept 律关窗零请求。 */}
+        <DialogShell
+          title={t('恢复到此处')}
+          open={rewindConfirm !== null}
+          onClose={() => setRewindConfirm(null)}
+          footer={
+            <div className="dlg-form-foot">
+              <div className="dlg-form-actions">
+                <Button
+                  variant="ghost"
+                  className="chief-dlg-ghost px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
+                  onClick={() => setRewindConfirm(null)}
+                >
+                  {t('取消')}
+                </Button>
+                <Button
+                  variant="brand"
+                  className="chief-dlg-primary px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
+                  onClick={() => {
+                    const anchor = rewindConfirm;
+                    setRewindConfirm(null);
+                    if (anchor?.id != null) onRewind?.(anchor.id);
+                  }}
+                >
+                  {t('恢复到此处')}
+                </Button>
+              </div>
+            </div>
+          }
+        >
+          <div className="chief-pick-confirm">
+            <p className="chief-pick-confirm-copy">
+              {t('恢复到此处？该条之后的 {n} 条消息会移除，总管从这条重发开新回合。', {
+                n: Math.max(0, (chief.stream?.length ?? 0) - (rewindConfirm?.index ?? 0) - 1),
+              })}
+            </p>
+          </div>
+        </DialogShell>
       </aside>
     </OverlayMount>
   );

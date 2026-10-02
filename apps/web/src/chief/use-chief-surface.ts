@@ -58,6 +58,9 @@ export interface ChiefSurface {
   /** #615 live only：模型 dialog 选定 = PATCH chief model 槽（invalidateAll
    *  重取回显，S8 不持本地乐观态）。 */
   onPickModel?: (value: ChiefCompactionModel | null) => void;
+  /** #615 返工 live only：恢复钮「恢复到此处」= POST chief threads rewind
+   *  （threadId 由 surface 持活动线程闭包携带）。 */
+  onRewind?: (messageId: string) => void;
 }
 
 /** activeThreadIdx sentinel (#146): the fresh-thread view while threads
@@ -155,6 +158,12 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
   const onPickModel = live
     ? (value: ChiefCompactionModel | null) => mutations.patchChief.mutate({ model: value })
     : undefined;
+  const onRewind = live
+    ? (messageId: string) => {
+        if (activeThread === null) return;
+        mutations.chiefRewind.mutate({ threadId: activeThread.id, messageId });
+      }
+    : undefined;
 
   const onSend = live
     ? (text: string) => {
@@ -183,5 +192,6 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
     modelValue,
     modelOptions,
     onPickModel,
+    onRewind,
   };
 }

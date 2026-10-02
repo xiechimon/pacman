@@ -1259,6 +1259,12 @@ export const chiefThread: FixtureSet = {
           ],
         ],
         seconds: '44s',
+        // #615 返工：foot 折叠箭头展开面（r5 114 捕获为折叠态，展开内容未
+        // 采——工具行 [推断] 自回执文本「已创建并派工 #11 … 承接」）。
+        tools: [
+          { name: 'create_todo', seconds: 2 },
+          { name: 'run_builds', seconds: 5 },
+        ],
       },
     ],
   },

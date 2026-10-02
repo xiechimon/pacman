@@ -153,6 +153,44 @@
   color: var(--text-secondary);
 }
 
+/* #615 返工：回合过程折叠展开面（Multica OuterProcessFold 同族）：foot 下
+   挂工具行表，mono 名 + 秒数 + 失败徽标，dim 墨压底不抢正文节奏。 */
+.chief-turn-tools {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.chief-turn-tool-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.chief-turn-tool-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chief-turn-tool-sec {
+  flex: none;
+}
+
+.chief-turn-tool-err {
+  flex: none;
+  color: var(--danger);
+}
+
 /* #615 主模型覆盖 dialog 行（r5 108 行形：模型名 + provider 副题两行，
    选中行名升 indigo + 右缘 check，chief-model-check 复用）。 */
 .chief-model-pick {

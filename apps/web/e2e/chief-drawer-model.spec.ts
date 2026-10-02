@@ -59,7 +59,7 @@ test.describe('chief drawer model row (#615)', () => {
     await expect(page.locator('.chief-model')).toContainText('n/a');
   });
 
-  test('message copy glyphs are clipboard buttons; restore/chevron are gone', async ({
+  test('message copy glyphs are clipboard buttons; no bare inert glyphs remain', async ({
     page,
   }) => {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
@@ -79,11 +79,43 @@ test.describe('chief drawer model row (#615)', () => {
     const footClip = await page.evaluate(() => navigator.clipboard.readText());
     expect(footClip).toContain('已创建并派工');
 
-    // #306/#146 二分律: no backend face → removed, not inert (the copy
-    // button's own svg rides inside the button; bare glyph children are gone)
-    await expect(page.locator('.chief-msg-tools button')).toHaveCount(1);
+    // 用户行两钮（复制 + 恢复到此处）皆为真按钮；裸 glyph 子节点零残留
+    // （#615 返工：恢复钮按用户裁决闭环复活，不再按二分律删除）
+    await expect(page.locator('.chief-msg-tools button')).toHaveCount(2);
     await expect(page.locator('.chief-msg-tools > svg')).toHaveCount(0);
     await expect(page.locator('.chief-msg-foot > svg')).toHaveCount(0);
+  });
+
+  test('restore button opens the rewind confirm; the foot chevron discloses tool rows', async ({
+    page,
+  }) => {
+    await page.goto('/app?scenario=114');
+    await expect(drawer(page)).toBeVisible();
+
+    // 恢复钮（参考站 live aria 正词「恢复到此处」）→ 破坏性确认层先行
+    const restore = page.locator('.chief-msg-tools button[aria-label="恢复到此处"]');
+    await expect(restore).toBeVisible();
+    await restore.first().click();
+    const confirm = page.locator('.chief-pick-confirm');
+    await expect(confirm).toBeVisible();
+    await expect(confirm).toContainText('恢复到此处？');
+    // fixture accept 律：确认只关窗（零请求），流不变
+    await page.locator('.chief-dlg-primary').click();
+    await expect(confirm).toHaveCount(0);
+    await expect(page.locator('.chief-msg')).toHaveCount(2);
+
+    // foot 折叠箭头 = 过程披露：展开出该回合工具行（Multica OuterProcessFold 同族）
+    const fold = page.locator('.chief-msg-foot button[aria-label="展开过程"]');
+    await expect(fold).toBeVisible();
+    await expect(page.locator('.chief-turn-tools')).toHaveCount(0);
+    await fold.click();
+    const tools = page.locator('.chief-turn-tools');
+    await expect(tools).toBeVisible();
+    await expect(tools.locator('.chief-turn-tool-row')).toHaveCount(2);
+    await expect(tools).toContainText('create_todo');
+    // 收起回折叠态
+    await page.locator('.chief-msg-foot button[aria-label="收起过程"]').click();
+    await expect(tools).toHaveCount(0);
   });
 
   test('the gear reaches board settings from a wake surface', async ({ page }) => {

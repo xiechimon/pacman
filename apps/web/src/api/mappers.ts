@@ -39,6 +39,7 @@ import type {
   BranchInfoContent,
   ChiefContent,
   ChiefStreamItem,
+  ChiefToolRow,
   DiffFile,
   DiffLine,
   ApiKeyRecord as DisplayApiKey,
@@ -877,13 +878,26 @@ const CHIEF_HERO_EXAMPLES = [
 
 export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
   const items: ChiefStreamItem[] = [];
+  // #615 返工：工具行不再丢弃——缓冲进下一个 robot 回合的 tools 折叠面
+  // （foot 折叠箭头展开内容；Multica OuterProcessFold 同族语义）。
+  let pendingTools: ChiefToolRow[] = [];
   for (const m of messages) {
     const call = toolCallOfContent(m.content);
-    if (call !== null) continue; // 工具行不进 chief 流呈现（r5 114/116 无工具行）
+    if (call !== null) {
+      pendingTools.push({
+        name: call.name,
+        ...(call.startedAt !== undefined && call.endedAt !== undefined
+          ? { seconds: Math.max(0, Math.round((call.endedAt - call.startedAt) / 1000)) }
+          : {}),
+        ...(call.isError === true ? { error: true } : {}),
+      });
+      continue; // 工具行不进 chief 流主呈现（r5 114/116 折叠态无工具行）
+    }
     const text = textOfContent(m.content).trim();
     if (text === '') continue;
     if (m.role === 'user') {
-      items.push({ kind: 'user', text });
+      pendingTools = []; // 回合边界：用户行之前的工具行属上一回合且已无归属面
+      items.push({ kind: 'user', text, id: m.id });
       continue;
     }
     if (m.role === 'system') continue;
@@ -907,7 +921,9 @@ export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
       paragraphs,
       ...(bullets.length > 0 ? { bullets } : {}),
       seconds: '',
+      ...(pendingTools.length > 0 ? { tools: pendingTools } : {}),
     });
+    pendingTools = [];
   }
   return items;
 }
