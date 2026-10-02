@@ -368,6 +368,10 @@ export async function executeChiefTool(
         spec: str(params, 'spec'),
         createdBy: ctx.chiefAgentId, // r5 §3.2：createdBy = Chief 绑定 Agent id
         ownerId: ctx.userId,
+        // #640 / r14 §5.3：编排来源 = 本次 chief 会话（per-request 粒度，
+        // 答「哪次请求拆的」）；GitHub 接入项目镜像槽位优先，裁决单源在
+        // createTodo。
+        orchestration: { threadId: ctx.threadId },
       });
       // sourceBuildId = chief id（r5 §3.2 实测：「sourceBuildId = chief id」，
       // 样本 `chief-<userId>-…` = chief 实例 id，非 thread/conv id）。

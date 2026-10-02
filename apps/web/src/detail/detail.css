@@ -1828,144 +1828,14 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   padding: 12px 16px 16px;
 }
 
-.rerun-agent-label {
-  margin: 2px 0 8px;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-}
-
-.rerun-agent-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  height: 54px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 8px;
-  background: var(--dialog-row-bg);
-  color: var(--text-primary);
-  cursor: pointer;
-}
-
-.rerun-agent-avatar {
-  display: flex;
-  width: 28px;
-  height: 28px;
-}
-
-.rerun-agent-avatar img {
-  width: 28px;
-  height: 28px;
-  border-radius: 9999px;
-}
-
-.rerun-agent-text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-}
-
-.rerun-agent-name {
-  font-size: 13px;
-  line-height: 18px;
-}
-
-.rerun-agent-model {
-  font-size: 11px;
-  line-height: 14px;
-  color: var(--text-dim);
-}
-
-.rerun-agent-row > svg {
-  color: var(--text-dim);
-}
-
-.rerun-switch-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 36px;
-  margin-top: 12px;
+/* #640（r14 §5.7）：开始任务 dialog 撤销选择面后只剩 failed 重跑形——
+   一行说明 + 按钮行。原 #318 的 agent 行/分用开关/机器行族随组件退役。 */
+.rerun-info {
+  padding: 18px 0 2px;
+  text-align: center;
   font-size: 13px;
   line-height: 18px;
   color: var(--text-secondary);
-}
-
-.rerun-switch {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  border-radius: 9999px;
-  background: var(--text-dim);
-}
-
-/* #318: the switch is a real role=switch now — ON flips the track to the
-   accent and parks the knob right; keyboard focus stays visible. */
-.rerun-switch--on {
-  background: var(--card-button);
-}
-
-.rerun-switch:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
-.rerun-switch-knob {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 9999px;
-  background: var(--toggle-knob);
-}
-
-.rerun-switch--on .rerun-switch-knob {
-  left: 18px;
-}
-
-/* #318 机器行(r9 §2.6「自动 / <机器> (在线)」;读面投影,非交互——
-   [设计] 指定机器无 server 槽,样式贴 agent 行语言但无 hover/pointer) */
-.rerun-machine-label {
-  margin: 12px 0 8px;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-}
-
-.rerun-machine-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  height: 40px;
-  padding: 0 12px;
-  border-radius: 8px;
-  background: var(--dialog-row-bg);
-  font-size: 13px;
-  line-height: 18px;
-  color: var(--text-primary);
-}
-
-.rerun-machine-sep,
-.rerun-machine-state {
-  color: var(--text-dim);
-}
-
-.rerun-machine-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 9999px;
-  background: var(--text-dim);
-}
-
-.rerun-machine-dot--online {
-  background: var(--col-dot-done);
 }
 
 .overlay-actions {

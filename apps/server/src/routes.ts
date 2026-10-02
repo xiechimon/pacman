@@ -16,6 +16,7 @@ import {
   assignmentSlotSchema,
   BRAND,
   type BuildRecord,
+  buildOrchestratePrompt,
   buildSteerBodySchema,
   buildStepActionBodySchema,
   buildStopBodySchema,
@@ -574,6 +575,31 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     const record = getTodo(svc, id);
     if (!record) throw notFound(`todo ${id}`);
     return c.json(record);
+  });
+
+  // 开始任务 = 单出口直发总管编排回合（#640 / r14 §5.7，用户 2026-10-02
+  // 前置裁决：入口不再给「先做规划/立即执行」选择，编排为唯一默认路径）。
+  // 新 chief 线程 + 编排请求首条用户消息（任务原文逐字 = 稳定锚点，
+  // r14 §5.2）+ chief 步入队；总管裁定单任务直派或拆子卡（纪律在其 system
+  // prompt 工作约定）。相位闸：todo（开始）/ failed（重跑），其余 409。
+  // wire 未采 → INFERRED_ROUTES 登记（todos/{id}/… REST 同族规则）。
+  app.post('/api/todos/:id/orchestrate', (c) => {
+    const id = c.req.param('id');
+    const record = getTodo(svc, id);
+    if (!record) throw notFound(`todo ${id}`);
+    if (record.phase !== 'todo' && record.phase !== 'failed') {
+      throw conflict(`orchestrate 仅适用于 待开始/失败 相位（当前 ${record.phase}）`);
+    }
+    const content = buildOrchestratePrompt({
+      id: record.id,
+      seqNum: record.seqNum,
+      spec: record.spec,
+      failed: record.phase === 'failed',
+    });
+    const result = sendChiefMessage(svc, record.teamId, { threadId: null, content });
+    // 会话流即时推送（chief 会话 = chief-<threadId> 键，POST threads 同形）。
+    ctx.convHub?.publishMessage(result.thread.id, { ...result.message });
+    return c.json(result, 201);
   });
 
   app.get('/api/builds/:id', (c) => {

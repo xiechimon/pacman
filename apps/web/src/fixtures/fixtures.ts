@@ -2634,11 +2634,10 @@ export const boardFailed: FixtureSet = {
   project: projectContent,
 };
 
-/** r8 56: rerun dialog over #12 (no plan doc → no 复用方案 button). */
+/** r8 56: rerun dialog over #12 (no plan doc → no 复用方案 button)。
+ *  #640：dialog 瘦身形（说明行 + 重跑；agent 行/分用开关/双分支已撤销）。 */
 export const rerunDialog12: FixtureSet = {
-  ...withDetail(detailFailed12, {
-    rerunAgent: { name: R3_BUILDER.displayName, model: 'claude-sonnet-5' },
-  }),
+  ...detailFailed12,
   overlay: { kind: 'rerun' },
 };
 
@@ -2786,11 +2785,10 @@ export function diffV2V3(expanded: boolean): FixtureSet {
 /** r8 73: #15 failed detail. */
 export const detailFailed15Set: FixtureSet = detailFailed15(r8n(0, 1));
 
-/** r8 74: rerun dialog with the 复用方案 button (#15 has a plan doc). */
+/** r8 74: rerun dialog with the 复用方案 button (#15 has a plan doc)。
+ *  #640：dialog 瘦身形（重跑降 ghost 次钮 + indigo 复用方案）。 */
 export const rerunDialog15: FixtureSet = {
-  ...withDetail(detailFailed15(r8n(0, 1)), {
-    rerunAgent: { name: R3_BUILDER.displayName, model: 'claude-sonnet-5' },
-  }),
+  ...detailFailed15(r8n(0, 1)),
   overlay: { kind: 'rerun' },
 };
 

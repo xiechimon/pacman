@@ -103,6 +103,9 @@ export function toDisplayTodo(w: WireTodo): DisplayTodo {
     v: w.v,
     // awaitingReply = 显示扩展（r5b §3.15 [推断] wire 位）——live 侧无对应
     // wire 字段，恒缺省（等待回复面由 review+composer 呈现，不造假值）。
+    // #640：总管建卡判定位 = sourceBuildId（chief 实例 id，r5 §3.2 溯源层
+    // 「谁建的」）——看板卡「由总管创建」芯片消费。
+    chiefCreated: w.sourceBuildId !== null,
   };
 }
 

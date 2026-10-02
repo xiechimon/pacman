@@ -92,6 +92,7 @@ import '../detail/detail.css';
 import { AppSidebar } from '../board/app-sidebar.js';
 import { ChiefWakeFab, ChiefWakePanel, useChiefSettingsNav } from '../chief/chief-wake.js';
 import { useChiefSurface } from '../chief/use-chief-surface.js';
+import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
 import { markClosed, markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import { overlayContent } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -160,7 +161,17 @@ export function TodoDetailPage() {
   // 互斥）——chiefView 因此提到页面层：FAB（detail-main 绝对锚）与面板
   // （detail-body flex 末项）分挂两处、共享同一个 surface 实例（⌘J 监听
   // 与未读角标同源）。
-  const chief = useChiefSurface(fixture);
+  // #640：来源面板「总管编排会话」的页内深链——set 后由 useChiefSurface 的
+  // XMON-106 深链消费机制开抽屉定位线程（消费即清，一次性）。
+  const [chiefLinkThreadId, setChiefLinkThreadId] = useState<string | null>(null);
+  const consumeChiefLink = useCallback(() => setChiefLinkThreadId(null), []);
+  const chief = useChiefSurface(fixture, {
+    threadId: chiefLinkThreadId,
+    onConsumed: consumeChiefLink,
+  });
+  // #640：开始任务单出口——todo 相位主按钮直发总管编排回合（T0 反馈 =
+  // toast + 查看会话深链，use-orchestrate-start.ts）。
+  const orchestrateStart = useOrchestrateStart();
   // #615: gear 在 detail 面可达——落 board 设置视图深链（chief-wake 同律）。
   const chiefSettingsNav = useChiefSettingsNav();
   // 右 pane 视图 (#366)：doc = DocPane（方案/变更/diff，相位派生），其余三
@@ -668,10 +679,11 @@ export function TodoDetailPage() {
   // corner (XMON-55 P0) without forking the ordering rules.
   const handlePrimaryAction = () => {
     if (live) {
-      // 主时序关口（02 §4.2）：todo 开始 = 统一 dialog 面（#318,
-      // r9 §3.6 待开始先开 dialog 再跑）/ confirm 确认 / review 验收
-      // 弹层 / failed 重跑弹层 / done 重开 = 新一轮 build。
-      if (phase === 'todo') setOverlay({ kind: 'rerun' });
+      // 主时序关口（02 §4.2；#640 起 todo 开始 = 单出口直发总管编排回合，
+      // 不再经 dialog 选择面）：todo 开始 = orchestrate / confirm 确认 /
+      // review 验收弹层 / failed 重跑弹层（重跑 = 编排回合 + 复用方案）/
+      // done 重开 = 新一轮 build。
+      if (phase === 'todo') orchestrateStart.orchestrate(todo.id);
       else if (phase === 'confirm' && buildId)
         mutations.stepAction.mutate({ buildId, body: { action: 'confirm' } });
       else if (phase === 'review') setOverlay({ kind: 'accept' });
@@ -684,9 +696,8 @@ export function TodoDetailPage() {
       return;
     }
     // r7 34: the review-phase 完成 button opens the accept dialog;
-    // r8 54: the failed 重跑 button opens the rerun dialog;
-    // #318: todo 开始 同走统一 dialog 面（fixture 静态形）。
-    if (phase === 'todo') setOverlay({ kind: 'rerun' });
+    // r8 54: the failed 重跑 button opens the rerun dialog（#640 瘦身形）。
+    // todo 相位不再开 dialog（#640：开始 = 直发编排，fixture 面 inert）。
     if (phase === 'review') setOverlay({ kind: 'accept' });
     if (phase === 'failed') setOverlay({ kind: 'rerun' });
   };
@@ -727,6 +738,7 @@ export function TodoDetailPage() {
                 todo={wireTodo}
                 onRetry={() => mutations.retryGithubIssue.mutate(wireTodo.id)}
                 retryPending={mutations.retryGithubIssue.isPending}
+                onOpenThread={setChiefLinkThreadId}
               />
             )}
             {detail == null ? (
@@ -1029,31 +1041,20 @@ export function TodoDetailPage() {
         }
       />
       {overlay?.kind === 'rerun' && (
+        /* #640：dialog 只剩 failed 重跑面——重跑 = 直发总管编排回合；
+           reuse（失败轮持有方案文档）保留 r8 §3.4 复用方案 家族。 */
         <RerunDialog
           reuse={todo.hasPlan}
-          agent={
-            detail?.rerunAgent ?? {
-              name: todo.agent?.displayName ?? '未指派',
-              model: '默认',
-              avatarUrl: todo.agent ? (agentAvatarUrl.get(todo.agent.id) ?? null) : null,
-            }
-          }
-          // #318 统一面(r9 §3.6):候选 = members 读面投影;初始选择 =
-          // 执行槽派生 ?? 团队首个 Agent ?? 未指派('');机器行 = GET
-          // machines 读面(展示投影,指定机器无 server 槽——[设计] 注记
-          // 在 overlays.tsx)。fixture 面三者缺省 = #75 静态形字节不变。
-          agentOptions={assignOptions}
-          initialAgentId={live ? (todo.assignment?.agentId ?? firstAgentId ?? '') : undefined}
-          machines={
+          onClose={closeOverlay}
+          onRerun={
             live
-              ? (machinesQ.data ?? []).map((m) => ({ name: m.name, online: m.online }))
+              ? () => {
+                  closeOverlay();
+                  orchestrateStart.orchestrate(todo.id);
+                }
               : undefined
           }
-          onClose={closeOverlay}
           onReuse={() => setOverlay({ kind: 'reuse' })}
-          onStart={
-            live ? ({ withPlan, assignment }) => startBuild(withPlan, assignment) : undefined
-          }
         />
       )}
       {overlay?.kind === 'reuse' && (

@@ -416,48 +416,29 @@ test('more menu 关闭 is phase-gated by the server funnel edges (#318)', async 
   await expect(page).toHaveURL('/app');
 });
 
-test('todo-phase 开始 opens the unified start dialog (#318)', async ({ page }) => {
-  // r9 §3.6:待开始点「开始」先开 dialog 再跑(不再直发 startBuild)
+test('todo-phase 开始 fires orchestration directly — no start dialog (#640)', async ({ page }) => {
+  // #640 / r14 §5.7：卡片级开始入口 = 单出口直发总管编排回合——#318 的
+  // 「先做规划/立即执行 + 指派」选择 dialog 已撤销。fixture 面 inert（无
+  // 后端可发），故点 开始 不再弹任何 dialog（选择面消失的回归钉）。
   await page.goto('/app/todo/fresh-probe?scenario=23');
   await page.locator('.detail-head-action').click();
-  await expect(page.locator('.overlay-title')).toHaveText('开始任务');
+  await expect(page.locator('.overlay-title')).toHaveCount(0);
 });
 
-test('rerun dialog: agent row is a real selector, the split switch a real role=switch (#318)', async ({
+test('failed rerun dialog is the slim single-exit face — no agent selector, no split switch, no plan/run branch (#640)', async ({
   page,
 }) => {
+  // #640：failed 重跑仍开 dialog，但只剩单出口——#318 的 agent 行选择器、
+  // 分用 role=switch、先做规划/立即执行 双分支全部撤销；重跑 = 直发编排回合。
   await page.goto('/app/todo/r8-12?scenario=56');
-  // Agent 行 = 选择器入口(#75 原死钮位);弹层 = #182 家族件
-  await page.locator('.rerun-agent-row').click();
-  const picker = page.locator('.dlg');
-  await expect(picker).toBeVisible();
-  await expect(page.locator('.dlg-title')).toHaveText('选择 Agent');
-  const pickerRows = page.locator('.chief-pick-row');
-  // fixture 面 = 未指派 + canon r3-builder(r5 捕获名)
-  await expect(pickerRows).toHaveCount(2);
-  await expect(pickerRows.first()).toContainText('未指派');
-  // Esc 归内层:只收选择器,开始 dialog 不陪关(Overlay escMuted)
-  await page.keyboard.press('Escape');
-  await expect(picker).toBeHidden();
-  await expect(page.locator('.overlay')).toBeVisible();
-  // 选「未指派」→ Agent 行换未指派面
-  await page.locator('.rerun-agent-row').click();
-  await page.locator('.chief-pick-row', { hasText: '未指派' }).click();
-  await expect(picker).toBeHidden();
-  await expect(page.locator('.rerun-agent-name')).toHaveText('未指派');
-  // 分用开关 = 真 role=switch(原静态 span):ON → 规划/执行双 Agent 行
-  const sw = page.locator('.rerun-switch');
-  await expect(sw).toHaveAttribute('role', 'switch');
-  await expect(sw).toHaveAttribute('aria-checked', 'false');
-  await sw.click();
-  await expect(sw).toHaveAttribute('aria-checked', 'true');
-  await expect(page.locator('.rerun-agent-row')).toHaveCount(2);
-  await expect(page.locator('.rerun-agent-label', { hasText: '规划' })).toBeVisible();
-  await expect(page.locator('.rerun-agent-label', { hasText: '执行' })).toBeVisible();
-  // OFF 收拢回单行
-  await sw.click();
-  await expect(sw).toHaveAttribute('aria-checked', 'false');
-  await expect(page.locator('.rerun-agent-row')).toHaveCount(1);
+  await expect(page.locator('.overlay-title')).toHaveText('开始任务');
+  await expect(page.locator('.rerun-agent-row')).toHaveCount(0);
+  await expect(page.locator('.rerun-switch')).toHaveCount(0);
+  await expect(page.locator('.overlay-actions button', { hasText: '先做规划' })).toHaveCount(0);
+  await expect(page.locator('.overlay-actions button', { hasText: '立即执行' })).toHaveCount(0);
+  // 单出口 = 重跑（scenario 56 无 plan doc → 无 复用方案 第三钮）。
+  await expect(page.locator('.overlay-actions button', { hasText: '重跑' })).toBeVisible();
+  await expect(page.locator('.overlay-actions button', { hasText: '复用方案' })).toHaveCount(0);
 });
 
 test('reuse panel 查看方案 flips the doc pane to the plan face (#318)', async ({ page }) => {
