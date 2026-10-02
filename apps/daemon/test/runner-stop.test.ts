@@ -257,7 +257,7 @@ async function setup(opts: { kind?: 'plan' | 'build'; discard: boolean }) {
   const deps = {
     client,
     journal,
-    backend,
+    backendFor: () => backend,
     logger,
     paths,
     workspace: ws,

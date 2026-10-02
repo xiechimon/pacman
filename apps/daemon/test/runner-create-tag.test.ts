@@ -210,7 +210,7 @@ async function setup(claimed: ClaimedStep) {
   const deps = {
     client,
     journal,
-    backend,
+    backendFor: () => backend,
     logger: captureLogger(),
     paths,
     workspace: fakeWorkspace(),

@@ -246,7 +246,7 @@ async function setup(claimed: ClaimedStep, opts: { rewindError?: string } = {}) 
   const deps = {
     client,
     journal: new StepJournal(paths.outboxDir),
-    backend: capturingBackend(captured),
+    backendFor: () => capturingBackend(captured),
     logger: captureLogger(),
     paths,
     workspace: fakeWorkspace(calls, opts),

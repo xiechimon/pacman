@@ -35,6 +35,7 @@ import {
   derivePlaceholderTitle,
   FIXED_TAGS,
   GITHUB_ACCESS_TOKEN_USERNAME,
+  isBackendRuntimeId,
   isChiefConversationId,
   LOCAL_TOOL_CREATE_TAG,
   LOCAL_TOOL_REMOTE_SHELL,
@@ -1387,9 +1388,14 @@ function githubExecCredential(deps: MachineDeps, teamId: string): GitCredentials
 }
 
 /** provider 行 → wire ProviderConfig（custom http 端点）；无 custom 行回退
- * agent.provider 直投 api_key kind（preset 38 目录，r3 §2）。stepToken 与
- * chiefStepToken 共用（去重）。 */
-function toProviderConfig(
+ * agent.provider 直投 api_key kind（preset 38 目录，r3 §2）。runtime 身份
+ * （spec 17 A4，claude-code ∈ BACKEND_RUNTIME_IDS）例外：无可代发之物，
+ * 回退支返回 null——凭据机器本地（claude 登录或 ANTHROPIC_API_KEY），不再
+ * 凭空造 api_key 配置（旧行为会让 daemon 在 pi 后端炸 model not found）。
+ * stepToken 与 chiefStepToken 共用（去重）；bundle 优先级不动（daemon 侧
+ * runtime 分支才是权威短路——mixed-version 兼容面见 runner）。导出供
+ * provider-config.test 钉非 runtime 支零回归。 */
+export function toProviderConfig(
   bundleProvider: StepCredentialBundle['provider'],
   agentProviderId: string | null | undefined,
 ): ProviderConfig | null {
@@ -1405,6 +1411,7 @@ function toProviderConfig(
       ...(bundleProvider.apiKey !== null ? { apiKey: bundleProvider.apiKey } : {}),
     };
   }
+  if (isBackendRuntimeId(agentProviderId)) return null;
   return agentProviderId ? { kind: 'api_key', providerId: agentProviderId } : null;
 }
 
