@@ -8,7 +8,8 @@
 // 10px --stop glyph; the send lights up on the brand solid once a draft
 // exists. Geometry and rationale live in detail.css.
 //
-// M7 #310 附件 wire 改：
+// M7 #310 附件 wire 改（#625 起实现住 overlay/composer-wire 的
+// useComposerWire，本文件只消费；契约不变）：
 //   - draft 受控（live editable 面父持 state，附件 token 由父 setDraft 注入；
 //     非 editable/fixture 静态 div 面，父不传 draft/onDraftChange → 内部
 //     useState fallback，零行为差）
@@ -25,9 +26,10 @@
 // textarea tracks `@`-prefixed token positions to expose an inline
 // agents-only listbox (r9 §3.2). Both paths route through
 // insertMentionText so the picked mention lands at the caret position
-// without losing focus. The picker is data-source agnostic — the
-// caller (todo-detail-page) feeds in MentionGroups derived from
-// either live REST hooks or the fixture set.
+// without losing focus (#625: both paths live in useComposerWire, this
+// file renders the popover/inline skins). The picker is data-source
+// agnostic — the caller (todo-detail-page) feeds in MentionGroups
+// derived from either live REST hooks or the fixture set.
 
 import { Button } from '../components/ui/button.js';
 import { useI18n } from '../i18n/provider.js';
