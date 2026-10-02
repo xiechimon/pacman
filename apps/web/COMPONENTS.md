@@ -30,7 +30,7 @@ input.tsx
 
 （上面这段是机器门读的冻结名单：`src/ui/` 里出现名单外的新件即报错——迁移期的删除不报错。）
 
-## 二、新轨原语（22）
+## 二、新轨原语（23）
 
 <!-- inventory:new-track -->
 ```text
@@ -56,6 +56,7 @@ select.tsx               # 单选下拉（触发钮 + FloatingShell 弹层 + rol
 switch.tsx               # 仓内偏离：thumbClassName 适配口
 tag-chip.tsx             # 用户数据色标签 chip（tag.color 走 inline style 白字）；落在 badge.tsx 上，别新建皮肤件
 tabs.tsx
+toaster.tsx              # toast 原语（sonner，shadcn 官方配方；#631）：App 根挂一次 <Toaster />，任意处 imperative `toast.*`；**失败反馈别再造静默 catch**——异常/toast 一律走它
 ```
 <!-- /inventory:new-track -->
 
@@ -81,6 +82,7 @@ tabs.tsx
 | **头像** | `components/ui/seeded-avatar.tsx`（dicebear 种子 + 兜底换图，img 常驻 DOM） | 别直接用 `avatar.tsx` 三件套——尺寸正本在各面 per-face 几何，Root 需走 `contents` |
 | 快捷键提示 chip | `components/ui/kbd-hint.tsx`（落在 `kbd.tsx` 上） | 别自写绝对定位 + 显隐；文档正文里的按键角标用 `kbd.tsx` |
 | 标签 chip（用户数据色） | `components/ui/tag-chip.tsx` | 状态色族仍走 `badge.tsx`；别混两种色来源 |
+| **toast / 轻量失败反馈** | `toast.*`（imperative；`components/ui/toaster.tsx` 已在 App 根挂载） | 别静默吞 mutation 错误；**面内已有 scoped 红字行 canon 的（XMON-80/P2）继续走面内，不叠 toast** |
 
 ## 四、消费现状（2026-09-30 快照，仅供判断，不进门）
 

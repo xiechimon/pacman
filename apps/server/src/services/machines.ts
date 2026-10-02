@@ -31,6 +31,7 @@ import {
   AGENT_TOOL_SKILL_UPDATE,
   AGENT_TOOL_TAG,
   CHIEF_REMOTE_TOOLS,
+  CHIEF_TURN_ERROR_KIND,
   createSkillBodySchema,
   derivePlaceholderTitle,
   FIXED_TAGS,
@@ -1592,6 +1593,20 @@ export async function finishStep(
     publishStepStatus(deps, stepId);
     finishChiefTurn(deps, stepRow.buildId, outcome);
     if (outcome.status === 'success') notifyChiefTurn(deps, stepRow.buildId);
+    // #631 失败闭环：build 路径的失败原因有 build.errorMessage 承接，chief
+    // 路径此前零承接——daemon 上报的 errorMessage 落一条 system 行进线程
+    // （machine_selected 同族 content 形态 = JSON 串），会话流 message 事件
+    // 即时推送，web 面渲染为失败行 + toast。无 errorMessage 的终态（stopped
+    // 等）不落。
+    if (outcome.status === 'failed' && outcome.errorMessage) {
+      upsertChiefRow(deps, {
+        id: `chief-err-${stepId}`,
+        threadId: stepRow.buildId,
+        role: 'system',
+        content: JSON.stringify({ kind: CHIEF_TURN_ERROR_KIND, message: outcome.errorMessage }),
+        createdAt: nowMs(),
+      });
+    }
     return;
   }
   if (outcome.status === 'success') {

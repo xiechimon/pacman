@@ -124,8 +124,10 @@ interface DrawerProps {
   onSettings?: () => void;
   onClose: () => void;
   /** M5 live 面：composer 可写 + 发送回调（POST chief 线程消息，r5 §3.6）；
-   * 缺省 = fixture 静态面（readOnly draft，发送钮惰性）。 */
-  onSend?: (text: string) => void;
+   * 缺省 = fixture 静态面（readOnly draft，发送钮惰性）。返回 Promise =
+   * 异步发送（#631：rejected 时 draft 保留不丢字，detail composer 同契）；
+   * 同步 void = 发后即清（原语义）。 */
+  onSend?: (text: string) => void | Promise<void>;
   /** 主题切换（live 面 threads popover 行点击）。 */
   onThread?: (title: string, index: number) => void;
   /** 新主题（头部 +，#146）：落回新线程视图，下一次发送开新 chief 线程
@@ -204,8 +206,14 @@ export function ChiefDrawer({
   }, [open]);
   const sendLive = () => {
     if (onSend == null || liveDraft.trim() === '') return;
-    onSend(liveDraft.trim());
-    setLiveDraft('');
+    // #631：异步被拒保留 draft 不丢字（发送失败 = toast + 原文回草稿框，
+    // detail composer 同律）；成功才清稿。
+    const result = onSend(liveDraft.trim());
+    if (result instanceof Promise) {
+      void result.then(() => setLiveDraft('')).catch(() => {});
+    } else {
+      setLiveDraft('');
+    }
   };
   return (
     <OverlayMount open={open} exitMs={DRAWER_EXIT_MS}>
@@ -366,6 +374,9 @@ export function ChiefDrawer({
                   return (
                     // #146: 点击即发预置词进 chief 线程（live 面走 onSend，
                     // 等同用户键入发送；zh 权威 canon 串上行，r5 111 逐字）。
+                    // #631：onSend 异步化（被拒保留 draft）后 hero 面消费
+                    // fire-and-forget——失败 toast 归 surface，此处无 draft
+                    // 可保，不悬挂未处理 promise。
                     // XMON-23 收编：ghost 原语 + chief-example per-face。中和件：
                     // justify-start/whitespace-normal/font-normal（原语居中+
                     // nowrap+medium 会破 170 卡内左对齐换行文案）、active 位移、
@@ -374,7 +385,7 @@ export function ChiefDrawer({
                       variant="ghost"
                       className="chief-example justify-start whitespace-normal font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
                       key={ex.text}
-                      onClick={onSend != null ? () => onSend(ex.text) : undefined}
+                      onClick={onSend != null ? () => void onSend(ex.text) : undefined}
                     >
                       <span className="chief-example-tile">
                         <Icon width={14} height={14} />
@@ -389,6 +400,15 @@ export function ChiefDrawer({
           {chief.stream && (
             <div className="chief-stream">
               {chief.stream.map((item, i) => {
+                // #631 失败行（chief_turn_error 投影）：居中 danger 提示 +
+                // 原因原文（server 数据，不经 t()——用户/agent 内容同律）。
+                if (item.kind === 'error')
+                  return (
+                    <div key={i} className="chief-error" role="alert">
+                      {t('总管本轮执行失败')}
+                      <span className="chief-error-reason">{item.text}</span>
+                    </div>
+                  );
                 if (item.kind === 'note')
                   return (
                     <div key={i} className="chief-note">

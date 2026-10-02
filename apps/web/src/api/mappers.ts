@@ -28,6 +28,8 @@ import type {
 } from '@pacman/shared';
 import {
   BRAND,
+  CHIEF_TURN_ERROR_KIND,
+  chiefTurnErrorContentSchema,
   classifyUserText,
   conversationBranch,
   MERGE_ANNOUNCEMENT,
@@ -875,6 +877,28 @@ export function toModelOptions(providers: ProviderRecord[], sources: ModelSource
   return options;
 }
 
+/** 解析 CHIEF_TURN_ERROR_KIND 系统消息（#631）：server 落的 chief 回合失败
+ *  行 content 为 JSON 串（machine_selected 同族）；非该 kind / 坏形状 = null
+ *  （空 content 的 pi 尾行等照旧走跳过路径）。toast 触发面与流渲染面共用。 */
+export function chiefTurnErrorOfContent(content: unknown): string | null {
+  if (typeof content !== 'string') return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch {
+    return null;
+  }
+  if (
+    parsed === null ||
+    typeof parsed !== 'object' ||
+    (parsed as { kind?: unknown }).kind !== CHIEF_TURN_ERROR_KIND
+  ) {
+    return null;
+  }
+  const row = chiefTurnErrorContentSchema.safeParse(parsed);
+  return row.success ? row.data.message : null;
+}
+
 /** r5 100/111 hero 网格 canon（卡序 = 抓包序；与 fixtures CHIEF_EXAMPLES
  * 同源文案——live 面单源在此，fixture 面保持自有副本不动）。 */
 const CHIEF_HERO_EXAMPLES = [
@@ -890,6 +914,14 @@ export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
   // （foot 折叠箭头展开内容；Multica OuterProcessFold 同族语义）。
   let pendingTools: ChiefToolRow[] = [];
   for (const m of messages) {
+    // #631 失败行：server 落的 chief_turn_error system 行先于通用 system
+    // 跳过解析（其余 system 行维持跳过不变）。
+    const turnError = m.role === 'system' ? chiefTurnErrorOfContent(m.content) : null;
+    if (turnError !== null) {
+      pendingTools = [];
+      items.push({ kind: 'error', text: turnError });
+      continue;
+    }
     const call = toolCallOfContent(m.content);
     if (call !== null) {
       pendingTools.push({

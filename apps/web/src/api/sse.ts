@@ -8,7 +8,7 @@
 // 连接看护（重连 resync / 静默看门狗 / 漏事件对账）单缝在 sse-connection.ts，
 // 本文件只负责把事件翻成失效重取，并给出对账面。
 
-import type { NotificationRecord } from '@pacman/shared';
+import type { ConversationStepEvent, NotificationRecord, TranscriptRow } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { EN } from '../i18n/en.js';
@@ -161,8 +161,11 @@ function fireDesktopNotification(record: NotificationRecord): void {
 }
 
 export interface ConversationStreamHandlers {
-  onMessage?: () => void;
-  onStep?: () => void;
+  /** message 事件透传行（#631 起）：调用方可检载荷分流（如 chief 失败行）。
+   *  旧契约（无参回调）继续兼容——传 () => void 的调用面不变。 */
+  onMessage?: (row: TranscriptRow) => void;
+  /** step 事件透传载荷（#631 起）：同上，状态分流由调用方自取。 */
+  onStep?: (step: ConversationStepEvent['step']) => void;
 }
 
 /** conversation stream（详情页 live transcript）：text_delta → liveTextStore；
@@ -192,13 +195,15 @@ export function useConversationStream(
           case 'text_delta':
             liveTextStore.append(conversationId, ev.text as string);
             break;
-          case 'message':
+          case 'message': {
+            const row = ev.message as TranscriptRow;
             // 终稿行到达：live 缓冲作废，消息面重取接管（收敛律）。
             liveTextStore.clear(conversationId);
             void qc.invalidateQueries({ queryKey: ['messages', conversationId] });
             void qc.invalidateQueries({ queryKey: ['plans'] });
-            onMessage?.();
+            onMessage?.(row);
             break;
+          }
           case 'step':
             void qc.invalidateQueries({ queryKey: ['steps', conversationId] });
             void qc.invalidateQueries({ queryKey: ['build', conversationId] });
@@ -208,7 +213,7 @@ export function useConversationStream(
             // 上传赛跑：message 先到时该轮重取落空，其后无人再失效。step 事件
             // （finishStep 发，恒在 plan 落库后）补一次失效兜住该 race。
             void qc.invalidateQueries({ queryKey: ['plans'] });
-            onStep?.();
+            onStep?.((ev as ConversationStepEvent).step);
             break;
           default:
             break; // ping

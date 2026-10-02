@@ -5,6 +5,7 @@
 // settings` — the settings swap stays a board-route render decision), the
 // live envelope/threads/messages queries, the conversation SSE while the
 // drawer is open, the unread badge count and the send/thread callbacks.
+// #631 失败反馈也归它：发送/恢复/PATCH 被拒 + 回合异步失败 → toast（sonner）。
 // Fixture mode stays fully inert (queries enabled = live), so fixture
 // captures keep their zero-request guarantee.
 // #389/#442/#468: the ⌘J hotkey joins the wake path as the FAB's keyboard
@@ -13,8 +14,9 @@
 // runs exactly one instance of this hook, so the listener stays a
 // singleton per route.
 
-import type { ChiefCompactionModel } from '@pacman/shared';
+import type { ChiefCompactionModel, TranscriptRow } from '@pacman/shared';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import {
   useApiMutations,
   useChief,
@@ -24,11 +26,12 @@ import {
   useNotifications,
   useProviders,
 } from '../api/hooks.js';
-import { mapChief, toModelOptions } from '../api/mappers.js';
+import { chiefTurnErrorOfContent, mapChief, toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { useConversationStream } from '../api/sse.js';
 import { chiefDefault } from '../fixtures/fixtures.js';
 import type { ChiefContent, FixtureSet, ModelOption } from '../fixtures/records.js';
+import { useI18n } from '../i18n/provider.js';
 import { useChiefToggleHotkey } from '../overlays/hotkeys.js';
 
 /** One three-state view: drawer and settings are mutually exclusive by
@@ -43,8 +46,9 @@ export interface ChiefSurface {
    *  the capture's chiefUnread field). */
   chiefUnread: number;
   /** Composer send (live only; absent = fixture static face, read-only
-   *  draft + inert send). */
-  onSend?: (text: string) => void;
+   *  draft + inert send). 返回 Promise = 异步发送（#631：rejected 时
+   *  drawer 保留 draft 不丢字，detail composer 同契）。 */
+  onSend?: (text: string) => void | Promise<void>;
   /** Thread switch (live only). */
   onThread?: (title: string, index: number) => void;
   /** 新主题 (#146, live only): drop back to the fresh-thread view — hero
@@ -78,6 +82,7 @@ export interface ChiefDeepLink {
 
 export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): ChiefSurface {
   const { live, teamId } = useLiveData();
+  const { t } = useI18n();
   const chiefQ = useChief(teamId, live);
   const chiefThreadsQ = useChiefThreads(teamId, live);
   const notificationsQ = useNotifications(teamId, live);
@@ -130,10 +135,24 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
     onDeepLinkConsumed?.();
   }, [live, deepLinkId, chiefThreadsQ.isSuccess, liveThreads, onDeepLinkConsumed]);
   const chiefMessagesQ = useMessages(live ? (activeThread?.id ?? null) : null, live);
+  // #631 失败闭环（异步半）：chief_turn_error 行经会话流 message 事件到达
+  // → 即时 toast；持久行由该事件的 messages 失效重取渲染（mapChiefStream
+  // error 项）。handlers 必须引用稳定（sse.ts effect 依赖位——内联箭头会
+  // 逐 render 重订阅流）。
+  const streamHandlers = useMemo(
+    () => ({
+      onMessage: (row: TranscriptRow) => {
+        const reason = chiefTurnErrorOfContent(row.content);
+        if (reason === null) return;
+        toast.error(t('总管本轮执行失败'), { description: reason });
+      },
+    }),
+    [t],
+  );
   useConversationStream(
     live ? (activeThread?.id ?? undefined) : undefined,
     live && chiefViewOpen,
-    {},
+    streamHandlers,
   );
   const liveChief = useMemo(() => {
     if (!live || !chiefQ.data) return null;
@@ -151,31 +170,47 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
   const chiefUnread = live ? liveUnread : (fixture.chiefUnread ?? 0);
 
   // #615 主模型闭环三件：槽值（封套真值）/ 候选并集 / 选定即 PATCH。
+  // #631 失败反馈（同步半）：PATCH / rewind / 发送失败 → toast（server 原因
+  // 进 description 透传不翻译——server 数据同 user 内容律）。
+  const toastError = useCallback((title: string, error: unknown) => {
+    const reason = error instanceof Error && error.message !== '' ? error.message : null;
+    toast.error(title, reason !== null ? { description: reason } : undefined);
+  }, []);
   const modelValue = live ? (chiefQ.data?.chief.model ?? null) : null;
   const modelOptions = live
     ? toModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
     : undefined;
   const onPickModel = live
-    ? (value: ChiefCompactionModel | null) => mutations.patchChief.mutate({ model: value })
+    ? (value: ChiefCompactionModel | null) =>
+        mutations.patchChief.mutate(
+          { model: value },
+          { onError: (e) => toastError(t('保存失败，请重试。'), e) },
+        )
     : undefined;
   const onRewind = live
     ? (messageId: string) => {
         if (activeThread === null) return;
-        mutations.chiefRewind.mutate({ threadId: activeThread.id, messageId });
+        mutations.chiefRewind.mutate(
+          { threadId: activeThread.id, messageId },
+          { onError: (e) => toastError(t('恢复失败，请重试。'), e) },
+        );
       }
     : undefined;
 
   const onSend = live
     ? (text: string) => {
-        mutations.chiefSend.mutate(
-          { threadId: activeThread?.id ?? null, content: text },
-          {
-            onSuccess: () => {
-              // 新主题落线程首位（listChiefThreads 新在前）——切回 0 位。
-              if (activeThread === null) setActiveThreadIdx(0);
-            },
-          },
-        );
+        // #631：mutateAsync → promise 契约（drawer 被拒保留 draft）；失败
+        // toast 在此承担后 rethrow 交契约面。
+        return mutations.chiefSend
+          .mutateAsync({ threadId: activeThread?.id ?? null, content: text })
+          .then(() => {
+            // 新主题落线程首位（listChiefThreads 新在前）——切回 0 位。
+            if (activeThread === null) setActiveThreadIdx(0);
+          })
+          .catch((error: unknown) => {
+            toastError(t('发送失败，请重试。'), error);
+            throw error;
+          });
       }
     : undefined;
   const onThread = live ? (_title: string, index: number) => setActiveThreadIdx(index) : undefined;
