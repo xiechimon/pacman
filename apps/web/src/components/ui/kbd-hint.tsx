@@ -17,11 +17,14 @@ import { cn } from 'cn';
 import { Kbd } from './kbd.js';
 
 /** 落位变体 → 几何类。 */
-const PLACEMENT: Record<'above' | 'right', string> = {
+const PLACEMENT: Record<'above' | 'right' | 'below', string> = {
   // 右下角 FAB 族：chip 浮在钮正上方、右对齐
   above: 'bottom-[calc(100%+8px)] right-0',
   // 收起态 rail 行：chip 弹在图标右侧、垂直居中
   right: 'top-1/2 left-[calc(100%+8px)] -translate-y-1/2',
+  // 抽屉头部行（#645 新主题钮）：chip 浮在钮正下方、右对齐——头部贴视口顶，
+  // above 会落到屏外
+  below: 'top-[calc(100%+8px)] right-0',
 };
 
 export function KbdHint({
@@ -29,8 +32,9 @@ export function KbdHint({
   placement = 'above',
 }: {
   label: string;
-  /** above = 右下角 FAB 族（浮在钮上方）；right = rail 行（弹在图标右侧）。 */
-  placement?: 'above' | 'right';
+  /** above = 右下角 FAB 族（浮在钮上方）；right = rail 行（弹在图标右侧）；
+   *  below = 抽屉头部行（浮在钮下方，#645）。 */
+  placement?: 'above' | 'right' | 'below';
 }) {
   return (
     <Kbd
