@@ -45,7 +45,7 @@ pnpm typecheck  # pnpm -r typecheck
 
 ## Dependencies & Install Security
 
-- 锁文件 `pnpm-lock.yaml`：**入 commit 前先确认**——除非是依赖变更伴随的合法 lockfile diff，否则视为误操作（`git reset pnpm-lock.yaml` 退出 staging）。
+- 锁文件 `pnpm-lock.yaml`：**入 commit 前先确认**——除非是依赖变更伴随的合法 lockfile diff，否则视为误操作（`git reset pnpm-lock.yaml` 退出 staging）。已获授权的合法改动，过闸唯一出口是 `PACMAN_ALLOW_LOCKFILE_CHANGE=1 git commit ...`（对齐 pi 的 `PI_ALLOW_LOCKFILE_CHANGE`，接受 `1`/`true`/`yes`）；pre-commit 锁文件闸不提供其它出口。
 - 本地 `pnpm install`；CI 用 `pnpm install --frozen-lockfile`。
 - 引入第三方包前先看 `biome.json` 的禁列：simple-git / isomorphic-git 等已被缝纪律取代，**不要再装**。
 - 不跑 postinstall 脚本除非用户明确允许。
