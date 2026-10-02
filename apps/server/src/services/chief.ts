@@ -386,6 +386,61 @@ export function enqueueChiefStep(
   return id;
 }
 
+/** 恢复到此处（#615 返工，用户裁决覆盖 #306 二分律：恢复钮不删要闭环；
+ * 语义正本 = 参考站 live aria「恢复到此处」+ chatbot-ui regenerate 的截断重发
+ * 族）：截断锚（用户消息）之后的消息行 + 重置 thread 会话（pi 会话不可倒带 →
+ * 下轮 new session）+ 以锚内容重入队 chief 步。活跃回合 409（steer 面同律：
+ * 回合中不 rewind）。锚缺/非本线程/非用户消息 404/400。 */
+export function rewindChiefThread(
+  deps: ChiefDeps,
+  teamId: string,
+  threadId: string,
+  body: { messageId: string },
+): { deletedCount: number; thread: ChiefThread } {
+  const threadRow = getChiefThread(deps, threadId);
+  if (!threadRow || threadRow.teamId !== teamId) {
+    throw new HttpError(404, `chief thread ${threadId}`);
+  }
+  // 锚校验先于活跃回合守门：锚不存在/非用户消息是请求本身的错（404/400），
+  // 不该被回合态遮蔽成 409。
+  const anchor = deps.db
+    .select()
+    .from(chiefMessage)
+    .where(and(eq(chiefMessage.id, body.messageId), eq(chiefMessage.threadId, threadId)))
+    .get();
+  if (!anchor) throw new HttpError(404, `chief message ${body.messageId}`);
+  if (anchor.role !== 'user') {
+    throw new HttpError(400, 'rewind anchor must be a user message');
+  }
+  if (threadRow.activeRun !== null) {
+    throw new HttpError(409, 'chief thread turn in flight (回合中不 rewind)');
+  }
+  // 截断按序位而非时间戳比较：同毫秒落库的消息（测试与快连发都常见）会让
+  // `createdAt >` 漏删；createdAt + rowid 序取锚后全部行。
+  const ordered = deps.db
+    .select({ id: chiefMessage.id })
+    .from(chiefMessage)
+    .where(eq(chiefMessage.threadId, threadId))
+    .orderBy(asc(chiefMessage.createdAt), sql`rowid`)
+    .all();
+  const doomed = ordered.slice(ordered.findIndex((row) => row.id === anchor.id) + 1);
+  for (const row of doomed) {
+    deps.db.delete(chiefMessage).where(eq(chiefMessage.id, row.id)).run();
+  }
+  const now = nowMs();
+  deps.db
+    .update(chiefThread)
+    .set({ sessionId: '', updatedAt: now })
+    .where(eq(chiefThread.id, threadId))
+    .run();
+  const content =
+    typeof anchor.content === 'string' ? anchor.content : (extractText(anchor.content) ?? '');
+  enqueueChiefStep(deps, threadId, { prompt: content, trigger: 'user' });
+  const fresh = getChiefThread(deps, threadId);
+  if (!fresh) throw new Error('chief thread missing after rewind');
+  return { deletedCount: doomed.length, thread: toChiefThreadRecord(fresh) };
+}
+
 // —— watch/wake 主动回路（r5 §3.5）—————————————————————————————————————————
 
 /** 派工即自动 watch（run_builds relay 挂接）；reason canon =

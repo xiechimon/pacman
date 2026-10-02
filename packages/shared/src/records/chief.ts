@@ -178,6 +178,14 @@ export const chiefSendMessageBodySchema = z.object({
 });
 export type ChiefSendMessageBody = z.infer<typeof chiefSendMessageBodySchema>;
 
+/** POST /api/teams/{id}/chief/threads/{tid}/rewind body（#615 返工：恢复钮
+ * 「恢复到此处」闭环，参考站 live aria 正词语义 = 回滚锚点）：锚 = 用户消息
+ * id，截断其后消息并以锚内容重发回合。 */
+export const chiefRewindBodySchema = z.object({
+  messageId: z.string().min(1),
+});
+export type ChiefRewindBody = z.infer<typeof chiefRewindBodySchema>;
+
 /** wake 三触发（02 §4.3/r5 §3.5：gate 停驻 / settle 落地 / failed 失败）。 */
 export const CHIEF_WAKE_KINDS = ['gate', 'settle', 'failed'] as const;
 export type ChiefWakeKind = (typeof CHIEF_WAKE_KINDS)[number];

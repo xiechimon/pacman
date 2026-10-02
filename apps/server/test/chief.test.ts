@@ -350,6 +350,56 @@ describe('总管设置 4 tab + PATCH /chief（r5 §2）', () => {
     expect(await claim()).toBe('stub-model');
   });
 
+  test('POST /chief/threads/:tid/rewind：截断锚后消息 + 重置会话 + 锚内容重入队；activeRun 409；锚缺 404（#615 返工）', async () => {
+    // 两轮：锚 A（POST 建线程）+ 后续 B（同线程续消息）。
+    const created = await req(s.app, 'POST', `/api/teams/${teamId}/chief/threads`, {
+      content: '锚句。',
+    });
+    expect(created.status).toBe(201);
+    const tid = ((await created.json()) as { thread: { id: string } }).thread.id;
+    sendChiefMessage({ db: s.db, hub: s.hub, machineHub: s.machineHub, user: s.user }, teamId, {
+      threadId: tid,
+      content: '后续句。',
+    });
+    const anchor = s.db
+      .select()
+      .from(chiefMessage)
+      .where(eq(chiefMessage.threadId, tid))
+      .all()
+      .find((m) => m.content === '锚句。');
+    expect(anchor).toBeDefined();
+
+    // 活跃回合守门：入队后 activeRun 在位 → 409（steer 面同律，回合中不 rewind）。
+    const busy = await req(s.app, 'POST', `/api/teams/${teamId}/chief/threads/${tid}/rewind`, {
+      messageId: anchor!.id,
+    });
+    expect(busy.status).toBe(409);
+
+    // 回合收尾态（activeRun 清）后 rewind 成立。
+    s.db.update(chiefThread).set({ activeRun: null }).where(eq(chiefThread.id, tid)).run();
+    const res = await req(s.app, 'POST', `/api/teams/${teamId}/chief/threads/${tid}/rewind`, {
+      messageId: anchor!.id,
+    });
+    expect(res.status).toBe(200);
+    // 截断：锚后消息（后续句）移除，锚保留。
+    const msgs = s.db.select().from(chiefMessage).where(eq(chiefMessage.threadId, tid)).all();
+    expect(msgs.map((m) => m.content)).toEqual(['锚句。']);
+    // 会话重置：pi 会话不可倒带 → sessionId 清空，下轮 new session。
+    const thread = s.db.select().from(chiefThread).where(eq(chiefThread.id, tid)).get();
+    expect(thread!.sessionId).toBe('');
+    // 重入队：A 步 + B 步 + rewind 步 = 3，末步 prompt = 锚内容。
+    const steps = s.db.select().from(stepTable).where(eq(stepTable.buildId, tid)).all();
+    expect(steps).toHaveLength(3);
+    expect(steps[2]!.prompt).toBe('锚句。');
+    expect(steps[2]!.status).toBe('pending');
+
+    // 锚缺 / 他线程消息 → 404。
+    const missing = await req(s.app, 'POST', `/api/teams/${teamId}/chief/threads/${tid}/rewind`, {
+      messageId: 'msg-nope',
+    });
+    expect(missing.status).toBe(404);
+  });
+
   test('PATCH /chief compactionModel 裸字符串/缺字段 → 400（#203）', async () => {
     const bare = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, {
       compactionModel: 'm-fast',
