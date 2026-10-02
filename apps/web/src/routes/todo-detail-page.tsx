@@ -319,6 +319,27 @@ export function TodoDetailPage() {
     setStopping(false);
   }, [buildId]);
 
+  // #634: ESC leaves the detail — layered, never「一按就跳走」. An open
+  // floating surface (overlay / dialog / menu / listbox / chip popover) owns
+  // the key first: its own listener closes it on the same event while the
+  // DOM guard below still sees it mounted, so the exit waits for the next
+  // clean ESC. The composer's inline mention state consumes the key with
+  // preventDefault (defaultPrevented guard). Only a clean ESC with nothing
+  // open goes home, carrying the search string — same law as the back link.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      const openSurface = document.querySelector(
+        '.overlay, [role="dialog"], [role="menu"], [role="listbox"]',
+      );
+      if (openSurface !== null) return;
+      const query = searchParams.toString();
+      navigate({ pathname: '/app', ...(query === '' ? {} : { search: `?${query}` }) });
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [navigate, searchParams]);
+
   // 执行机器名（#476 提为单源：transcript stamp 与 meta 块机器行同值）：
   // steps.machineId × machines 读面；未派发 = null。
   const machineName = useMemo(

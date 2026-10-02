@@ -685,6 +685,23 @@
   cursor: pointer;
 }
 
+/* #634 follow-up: the toggle is now the row's inner tail segment (the copy
+   button rides beside it as a sibling), so the row's own 31px inset applies
+   once — zero the nested one. Descendant selector: unlayered rules beat the
+   utility layer, matching the rest of this family. */
+.chat-row-icons .chat-row-icons--toggle {
+  padding-left: 0;
+}
+
+/* #634 follow-up: the footer copy button keeps the inert icon's exact box
+   (13px glyph, no padding, no base border/background) so the #470 geometry
+   fence and the「turn boundary is air」probe (any border reads as a rule)
+   stay green. Unlayered, same law as the toggle skin above. */
+.chat-copy {
+  border: none;
+  background: transparent;
+}
+
 .chat-text {
   margin-left: 11px;
   /* #470: agent long replies are reading text — 15px ink one step over the

@@ -84,9 +84,13 @@ export function DetailHead({
             per-face（unlayered 压底座，含 bg transparent 顺手灭掉 ghost 的
             hover/aria-expanded 底）；utilities 只清 h-8、字号继承这些底座
             差额。detail-chip 基类保留——e2e 按 .detail-chip 定位点击。 */}
+        {/* #634: the chevron rides INSIDE the trigger — the whole chip
+            (pill + arrow + the space between) is one hit target; it used to
+            be a sibling span, so the arrow side of the cluster was dead.
+            gap-0 keeps the chevron's own 5px margin as the only spacing. */}
         <Button
           variant="ghost"
-          className="detail-chip h-auto rounded-none text-[length:inherit] leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0"
+          className="detail-chip h-auto gap-0 rounded-none text-[length:inherit] leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0"
           aria-expanded={popover}
           onClick={() => setPopover((value) => !value)}
         >
@@ -95,10 +99,10 @@ export function DetailHead({
           >
             {t(ui.chip)}
           </Badge>
+          <span className="detail-chip-chevron">
+            <ChevronDown width={12} height={12} />
+          </span>
         </Button>
-        <span className="detail-chip-chevron">
-          <ChevronDown width={12} height={12} />
-        </span>
         <FloatingShell open={popover} onClose={() => setPopover(false)} container={chipWrap}>
           <ClickCatcher onClose={() => setPopover(false)} />
           <ChipPopover
