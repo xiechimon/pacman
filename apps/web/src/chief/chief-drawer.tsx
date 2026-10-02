@@ -61,6 +61,7 @@ import {
   RuntimePi,
   X,
 } from '../icons/index.js';
+import { useComposerWire } from '../overlay/composer-wire.js';
 import { DRAWER_EXIT_MS } from '../overlay/use-overlay-mount.js';
 import { OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import './chief.css';
@@ -185,8 +186,17 @@ export function ChiefDrawer({
       () => {},
     );
   };
-  const [liveDraft, setLiveDraft] = useState('');
-  const draftValue = onSend != null ? liveDraft : (chief.draft ?? '');
+  // #625：输入逻辑层单源——draft / 发送（异步被拒保留 draft，#631 契约）/
+  // 提及 / 附件 wire 住 overlay/composer-wire 的 useComposerWire，detail
+  // composer 消费同一 hook；本文件只剩抽屉皮肤（节点、几何、占位双态）。
+  // live 面 = 内部态草稿（editable）；fixture 面 = 静态只读回显（static
+  // mode，无 setter）。附件 / 提及在 hook 面就绪，按钮渲染开闸不在本票
+  // （#146/#136 隐藏裁决），故此处不传 onAttachment / mentionGroups。
+  const wire = useComposerWire({
+    editable: onSend != null,
+    draft: onSend != null ? undefined : (chief.draft ?? ''),
+    onSend,
+  });
   // #146: Esc 与弹层族同律（#127 useEscapeClose 先例）——最内层先关：
   // 线程切换器 popover 开着时第一下 Esc 收 popover，第二下关 drawer。
   useEscapeClose(open, () => {
@@ -198,27 +208,19 @@ export function ChiefDrawer({
   // 节点存在之前，故首焦由 ref callback 承载（SearchPanel attachInput
   // 先例）；retained-mount 窗口内重开节点未脱离、ref 不重火，由 [open]
   // effect 兜住。⌘J 热键呼出与 FAB 点击同路。
-  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const { textareaRef } = wire;
   const openRef = useRef(open);
   openRef.current = open;
-  const attachComposer = useCallback((node: HTMLTextAreaElement | null) => {
-    composerRef.current = node;
-    if (node && openRef.current) node.focus({ preventScroll: true });
-  }, []);
+  const attachComposer = useCallback(
+    (node: HTMLTextAreaElement | null) => {
+      textareaRef.current = node;
+      if (node && openRef.current) node.focus({ preventScroll: true });
+    },
+    [textareaRef],
+  );
   useEffect(() => {
-    if (open) composerRef.current?.focus({ preventScroll: true });
-  }, [open]);
-  const sendLive = () => {
-    if (onSend == null || liveDraft.trim() === '') return;
-    // #631：异步被拒保留 draft 不丢字（发送失败 = toast + 原文回草稿框，
-    // detail composer 同律）；成功才清稿。
-    const result = onSend(liveDraft.trim());
-    if (result instanceof Promise) {
-      void result.then(() => setLiveDraft('')).catch(() => {});
-    } else {
-      setLiveDraft('');
-    }
-  };
+    if (open) textareaRef.current?.focus({ preventScroll: true });
+  }, [open, textareaRef]);
   return (
     <OverlayMount open={open} exitMs={DRAWER_EXIT_MS}>
       <aside className="chief-drawer anim-drawer" aria-label={t('总管')}>
@@ -578,18 +580,9 @@ export function ChiefDrawer({
             ref={attachComposer}
             className="chief-composer-input"
             readOnly={onSend == null}
-            value={draftValue}
-            onChange={onSend != null ? (e) => setLiveDraft(e.target.value) : undefined}
-            onKeyDown={
-              onSend != null
-                ? (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      sendLive();
-                    }
-                  }
-                : undefined
-            }
+            value={wire.draft}
+            onChange={wire.handleChange}
+            onKeyDown={wire.handleKeyDown}
             placeholder={t(
               chief.running === true ? CHIEF_INPUT_PLACEHOLDER_STEERING : CHIEF_INPUT_PLACEHOLDER,
             )}
@@ -608,11 +601,11 @@ export function ChiefDrawer({
               size="icon"
               aria-label={t('发送')}
               className={
-                draftValue !== ''
+                wire.draft !== ''
                   ? 'chief-send is-on rounded-md border-0 active:not-aria-[haspopup]:translate-y-0'
                   : 'chief-send rounded-md border-0 active:not-aria-[haspopup]:translate-y-0'
               }
-              onClick={sendLive}
+              onClick={wire.send}
             >
               <ArrowUp width={16} height={16} />
             </Button>
