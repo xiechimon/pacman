@@ -27,6 +27,7 @@ import {
   buildTaskPromptText,
   CONTINUE_PROMPTS,
   FIXED_TAGS,
+  isBackendRuntimeId,
   LOCAL_TOOL_CREATE_TAG,
   LOCAL_TOOL_REMOTE_SHELL,
   PLAN_FILE_NAME,
@@ -58,7 +59,11 @@ export interface StopRequest {
 export interface RunStepDeps {
   client: MachineApi;
   journal: StepJournal;
-  backend: AgentBackend;
+  /** per-step 后端解析（spec 17 A3 唯一分叉点）：入参 = claim 载荷的
+   * agent.provider 原值（null / custom provider id / runtime 身份），
+   * runtime 身份（∈ BACKEND_RUNTIME_IDS）→ claude-code 后端，否则 → pi。
+   * machine-loop 注入（懒初始化 registry）；单测注入固定值。 */
+  backendFor: (agentProviderId: string | null | undefined) => AgentBackend;
   logger: DaemonLogger;
   paths: StatePaths;
   workspacesDir: string;
@@ -213,7 +218,7 @@ export async function runStep(
   claimed: ClaimedStep,
   opts: RunStepOptions = {},
 ): Promise<void> {
-  const { client, journal, backend, logger } = deps;
+  const { client, journal, logger } = deps;
   const now = deps.now ?? (() => Date.now());
   const stepId = claimed.step.id;
   const convId = claimed.conversationId;
@@ -251,15 +256,32 @@ export async function runStep(
   });
 
   // per-step 凭证下发（02 §5.4/§8：内存持有，不落盘常驻；push_credential
-  // 对照 = credentials.ts）。
+  // 对照 = credentials.ts）。runtime 身份步（spec 17 A4：agent.provider ∈
+  // BACKEND_RUNTIME_IDS）零凭据——认证机器本地（claude 登录或
+  // ANTHROPIC_API_KEY），daemon 无可注入面；provider 槽 = inert 占位（满足
+  // SessionOpts.provider 必填形状，claude-code 后端不消费）。runtime 分支
+  // 权威短路 creds.provider：未升级 server 的 mixed-version 窗口里老 side 仍
+  // fabricate 伪 api_key 配置，此处不透传伪语义。非 runtime 步逐字节保持
+  // 原行为（creds.provider → agent.provider 回退）。
   const tokenRes = await client.token(stepId);
   const creds = pushCredential(tokenRes);
   const agent = claimed.agent;
+  const runtimeId = isBackendRuntimeId(agent?.provider) ? agent.provider : null;
   const provider: ProviderConfig | null =
-    creds.provider ?? (agent?.provider ? { kind: 'api_key', providerId: agent.provider } : null);
+    runtimeId !== null
+      ? { kind: 'api_key', providerId: runtimeId }
+      : (creds.provider ??
+        (agent?.provider ? { kind: 'api_key', providerId: agent.provider } : null));
+  // 守卫合并判据：runtime 步 provider 恒为 inert 占位（非 null），非 runtime
+  // 步要求 creds/agent 兜底命中——`!provider` 单判据即覆盖两分支，且让 TS 收窄
+  // 供 sessionOpts.provider（必填槽）。
   if (!agent?.modelId || !provider) {
     clearCredentials(creds);
-    await failStep(deps, stepId, 'no agent/model on claimed step');
+    await failStep(
+      deps,
+      stepId,
+      runtimeId !== null ? `${runtimeId} step has no model id` : 'no agent/model on claimed step',
+    );
     return;
   }
   // 合并权限闸（XMON-77）：合并步收尾 = git merge + conv 分支 push（三形态
@@ -279,7 +301,11 @@ export async function runStep(
       return;
     }
   }
-  logger.raw(`using model ${provider.providerId}/${agent.modelId}`);
+  // canon 行（r3 §1.5）：runtime 步 = `claude-code/<modelId>`（inert 占位的
+  // providerId 与 agent.provider 同值）；非 runtime 步不变。canon 行在
+  // backendFor 解析后（失败方式 6：解析入参钉 agent.provider 原值）。
+  const backend = deps.backendFor(agent?.provider);
+  logger.raw(`using model ${provider?.providerId ?? agent.provider}/${agent.modelId}`);
 
   // workspace 准备（02 §5.5 worktree 契约：基座 clone + `worktree add -b`；
   // 项目未绑 repo = 裸任务目录退化形 [设计]，M3a 兼容）。chief 步 = 只读探索，
@@ -423,6 +449,34 @@ export async function runStep(
   const localToolDefs = [secretTool, remoteShellTool, createTagTool].filter(
     (t): t is LocalToolDef => t !== null,
   );
+  // runtime 步工具面（spec 17 A10/T4）：SDK 注入工具通道（mcpServers +
+  // createSdkMcpServer in-process 回调）T4 才接线，本票 claude-code 会话不
+  // 承载任何 host 注入工具。chief 步例外透传——词表是总管职责本体，后端
+  // open() 对非空 remoteTools fail-closed 报「not supported yet (T4)」→ 步
+  // 显式失败（白名单「chief 链路 remoteTools 面 fail-closed」：总管不静默
+  // 降级成没手的空转）。worker/review 步三面是辅助面（记忆写/附件读/meta
+  // 回填/密钥取用/shell/tag/MCP）——记忆读路径走 systemPrompt 注入
+  // （composeWorkerSystemPrompt）、plan.md 产物走 worktree 文件通道，均不
+  // 依赖工具面；显式缺席 + 降级行点名（非静默丢弃），步照常执行（T1 验收
+  // 闭环）；T4 接线后降级行消失。pi 步零变化：分叉只在 runtime 身份上。
+  const runtimeDrop = runtimeId !== null && !isChief ? runtimeId : null;
+  if (runtimeDrop !== null) {
+    if (remoteTools && remoteTools.length > 0) {
+      logger.raw(
+        `[runtime] ${runtimeDrop} step without remoteTools (T4): ${remoteTools.map((t) => t.name).join(', ')}`,
+      );
+    }
+    if (localToolDefs.length > 0) {
+      logger.raw(
+        `[runtime] ${runtimeDrop} step without localTools (T4): ${localToolDefs.map((t) => t.name).join(', ')}`,
+      );
+    }
+    if (mcpEndpoints.length > 0) {
+      logger.raw(
+        `[runtime] ${runtimeDrop} step without mcpServers (T4): ${mcpEndpoints.map((e) => e.slug).join(', ')}`,
+      );
+    }
+  }
   const sessionOpts: SessionOpts = {
     provider,
     modelId: agent.modelId,
@@ -430,8 +484,8 @@ export async function runStep(
     ...(systemPrompt ? { systemPrompt } : {}),
     cwd,
     ...(prompt !== null ? { prompt } : {}),
-    ...(localToolDefs.length > 0 ? { localTools: localToolDefs } : {}),
-    ...(remoteTools && remoteTools.length > 0
+    ...(localToolDefs.length > 0 && runtimeDrop === null ? { localTools: localToolDefs } : {}),
+    ...(remoteTools && remoteTools.length > 0 && runtimeDrop === null
       ? {
           remoteTools,
           // relay 执行（r5 §3.1 bundle：execute → POST tool/<stepId> {name,params}
@@ -444,7 +498,7 @@ export async function runStep(
           },
         }
       : {}),
-    ...(mcpEndpoints.length > 0 ? { mcpServers: mcpEndpoints } : {}),
+    ...(mcpEndpoints.length > 0 && runtimeDrop === null ? { mcpServers: mcpEndpoints } : {}),
     // skills 白名单（#372）：worker/review 步 = claim 携带的 agent.skills 勾选
     // slug（[] 也传——[] = 不注入任何 skill，与 MCP 空勾选同律）；chief 步不传
     // （undefined = 全量 catalog，chief 是信任面）；旧 server 未携带 = 缺省

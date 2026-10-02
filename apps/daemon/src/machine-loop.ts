@@ -11,8 +11,10 @@ import type { AgentBackend, AgentSessionHandle, ClaimedStep } from '@pacman/shar
 import {
   CLAIM_BACKOFF_CAP_MS,
   CLAIM_POLL_INTERVAL_MS,
+  isBackendRuntimeId,
   ORPHAN_WORKTREE_TTL_MS,
 } from '@pacman/shared';
+import { createClaudeCodeBackend } from './backend/claude-code.js';
 import { createPiBackend } from './backend/pi.js';
 import type { DaemonConfig } from './config.js';
 import { StepJournal } from './journal.js';
@@ -37,8 +39,12 @@ export interface MachineLoopOpts {
   config: DaemonConfig;
   paths: StatePaths;
   logger: DaemonLogger;
-  /** 测试注入面（缺省 = pi backend + 内置 fetch）。 */
+  /** pi 后端测试注入面（缺省 = 内建构造；spec 17 A3 起 per-step 解析的
+   * 默认支）。 */
   backend?: AgentBackend;
+  /** claude-code 后端测试注入面（spec 17 A3；缺省 = 首个 runtime 步惰性
+   * 构造，canon 行 `Loading claude-code runtime…` 与 pi 行对仗）。 */
+  claudeCodeBackend?: AgentBackend;
   fetchImpl?: typeof fetch;
   client?: MachineApi;
   /** claim 客户端侧护栏（server hold + 余量）[设计]。 */
@@ -99,6 +105,29 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       // [skills] 诊断行（spec 14/#371；前缀词表 skills 位）。
       onSkillsLog: (msg) => logger.skills(msg),
     });
+
+  // —— per-step 后端解析 registry（spec 17 A3：runner 的 backendFor 唯一
+  // 分叉，此处供解析目标）——claude-code 后端惰性初始化：首 runtime 步才
+  // 构造（零 claude 步的机器不付 SDK 构造/扫描成本），canon 行
+  // `Loading claude-code runtime…` 与 pi 启动行对仗、恰一条。注入面
+  // （测试）预置即免构造，canon 行仍在首解析时落（行为面统一）。
+  let claudeBackend: AgentBackend | null = opts.claudeCodeBackend ?? null;
+  let claudeAnnounced = false;
+  const backendFor = (agentProviderId: string | null | undefined): AgentBackend => {
+    if (!isBackendRuntimeId(agentProviderId)) return backend; // 默认支（pi）
+    if (!claudeAnnounced) {
+      logger.raw('Loading claude-code runtime…');
+      claudeAnnounced = true;
+    }
+    if (claudeBackend === null) {
+      claudeBackend = createClaudeCodeBackend({
+        // skills 通道与 pi 同律（A9 复用 buildSkillsCatalog）。
+        skills: { skillsDir: config.skillsDir, cwd: config.home },
+        onSkillsLog: (msg) => logger.skills(msg),
+      });
+    }
+    return claudeBackend;
+  };
 
   let inMemoryToken = '';
   const client =
@@ -331,7 +360,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     return {
       client,
       journal,
-      backend,
+      backendFor,
       logger,
       paths,
       workspace,

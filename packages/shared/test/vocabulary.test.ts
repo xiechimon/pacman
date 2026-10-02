@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   API_KEY_PATTERN,
+  BACKEND_RUNTIME_IDS,
   BOARD_COLUMNS,
   BOARD_DROP_PHASES,
   BRAND,
@@ -20,6 +21,7 @@ import {
   DEVICE_ID_PATTERN,
   ENV_VARS,
   INTERNAL_ONLY_TABLES,
+  isBackendRuntimeId,
   JOIN_ONLY_TABLES,
   MACHINE_CUSTOM_TOOLS,
   MACHINE_ENDPOINTS,
@@ -34,6 +36,7 @@ import {
   MCP_TOOLS_WRITE,
   MEMORY_QUOTA_PER_AGENT,
   MEMORY_TOOLS,
+  MODEL_SOURCE_RUNTIMES,
   maskApiKey,
   ORPHAN_WORKTREE_TTL_MS,
   PHASE_VALUES,
@@ -497,6 +500,28 @@ describe('AgentBackend seam (01 §5, 00/D1 缝)', () => {
     // stream 通道，protocol/sse.ts）；缝事件面锁定前 15 件（01 §5）。
     expect(STEP_EVENT_TYPES).toHaveLength(15);
     expect(STEP_EVENT_TYPES).toEqual(PI_STREAM_EVENTS.slice(0, 15));
+  });
+
+  it('BACKEND_RUNTIME_IDS = spec 17 A3 backend 身份词表：只收 claude-code（pi 是模型源但非 backend 身份）', () => {
+    // 与 MODEL_SOURCE_RUNTIMES（含 pi）语义分立各自单源：pi agent 的
+    // provider 值是 custom provider id / preset id，不是 'pi'——'pi' 进本表
+    // 会让 resolver 把所有 pi agent 步误派给不存在的 pi-backend-id。
+    expect(BACKEND_RUNTIME_IDS).toEqual(['claude-code']);
+    expect(BACKEND_RUNTIME_IDS).not.toContain('pi');
+    // backend 身份 ⊆ 模型源 runtime（claude-code 既是模型源也是 backend）。
+    for (const id of BACKEND_RUNTIME_IDS) {
+      expect(MODEL_SOURCE_RUNTIMES).toContain(id);
+    }
+  });
+
+  it('isBackendRuntimeId：词表外（custom provider id / pi / null / undefined）一律 false', () => {
+    // spec 17 A3 默认支零回归的判定面：resolver 据此把非 runtime 身份恒走 pi。
+    expect(isBackendRuntimeId('claude-code')).toBe(true);
+    expect(isBackendRuntimeId('stub-gw')).toBe(false); // custom provider id
+    expect(isBackendRuntimeId('pi')).toBe(false); // 模型源词 ≠ backend 身份
+    expect(isBackendRuntimeId('anthropic')).toBe(false); // preset provider id
+    expect(isBackendRuntimeId(null)).toBe(false);
+    expect(isBackendRuntimeId(undefined)).toBe(false);
   });
 });
 
