@@ -449,34 +449,11 @@ export async function runStep(
   const localToolDefs = [secretTool, remoteShellTool, createTagTool].filter(
     (t): t is LocalToolDef => t !== null,
   );
-  // runtime 步工具面（spec 17 A10/T4）：SDK 注入工具通道（mcpServers +
-  // createSdkMcpServer in-process 回调）T4 才接线，本票 claude-code 会话不
-  // 承载任何 host 注入工具。chief 步例外透传——词表是总管职责本体，后端
-  // open() 对非空 remoteTools fail-closed 报「not supported yet (T4)」→ 步
-  // 显式失败（白名单「chief 链路 remoteTools 面 fail-closed」：总管不静默
-  // 降级成没手的空转）。worker/review 步三面是辅助面（记忆写/附件读/meta
-  // 回填/密钥取用/shell/tag/MCP）——记忆读路径走 systemPrompt 注入
-  // （composeWorkerSystemPrompt）、plan.md 产物走 worktree 文件通道，均不
-  // 依赖工具面；显式缺席 + 降级行点名（非静默丢弃），步照常执行（T1 验收
-  // 闭环）；T4 接线后降级行消失。pi 步零变化：分叉只在 runtime 身份上。
-  const runtimeDrop = runtimeId !== null && !isChief ? runtimeId : null;
-  if (runtimeDrop !== null) {
-    if (remoteTools && remoteTools.length > 0) {
-      logger.raw(
-        `[runtime] ${runtimeDrop} step without remoteTools (T4): ${remoteTools.map((t) => t.name).join(', ')}`,
-      );
-    }
-    if (localToolDefs.length > 0) {
-      logger.raw(
-        `[runtime] ${runtimeDrop} step without localTools (T4): ${localToolDefs.map((t) => t.name).join(', ')}`,
-      );
-    }
-    if (mcpEndpoints.length > 0) {
-      logger.raw(
-        `[runtime] ${runtimeDrop} step without mcpServers (T4): ${mcpEndpoints.map((e) => e.slug).join(', ')}`,
-      );
-    }
-  }
+  // 工具面按步全量透传（#647/T4）：claude-code 后端把 host 注入工具
+  // （remoteTools relay + localTools 本地执行）包成 in-process MCP server、
+  // McpEndpoint 映射 SDK 原生 config——T1 期的 runtimeDrop 降级（worker/review
+  // runtime 步丢三面 + 降级行）至此退役。pi 步零变化：三面透传本就是 pi 的
+  // 既有行为。
   const sessionOpts: SessionOpts = {
     provider,
     modelId: agent.modelId,
@@ -484,8 +461,8 @@ export async function runStep(
     ...(systemPrompt ? { systemPrompt } : {}),
     cwd,
     ...(prompt !== null ? { prompt } : {}),
-    ...(localToolDefs.length > 0 && runtimeDrop === null ? { localTools: localToolDefs } : {}),
-    ...(remoteTools && remoteTools.length > 0 && runtimeDrop === null
+    ...(localToolDefs.length > 0 ? { localTools: localToolDefs } : {}),
+    ...(remoteTools && remoteTools.length > 0
       ? {
           remoteTools,
           // relay 执行（r5 §3.1 bundle：execute → POST tool/<stepId> {name,params}
@@ -498,7 +475,7 @@ export async function runStep(
           },
         }
       : {}),
-    ...(mcpEndpoints.length > 0 && runtimeDrop === null ? { mcpServers: mcpEndpoints } : {}),
+    ...(mcpEndpoints.length > 0 ? { mcpServers: mcpEndpoints } : {}),
     // skills 白名单（#372）：worker/review 步 = claim 携带的 agent.skills 勾选
     // slug（[] 也传——[] = 不注入任何 skill，与 MCP 空勾选同律）；chief 步不传
     // （undefined = 全量 catalog，chief 是信任面）；旧 server 未携带 = 缺省
