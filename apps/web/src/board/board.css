@@ -122,19 +122,46 @@ body.board-dragging {
   -webkit-user-select: none;
 }
 
-/* #391: the lifted DragOverlay card rides the lift-tier shadow in BOTH
-   themes — the resting card's small-offset family scaled up, so all four
-   edges keep their ink. box-shadow, not filter: the card is a solid rounded
-   rect, so the filter only added raster-clip risk under the transformed
-   overlay wrapper */
-.board-drag-overlay .todo-card {
-  box-shadow: var(--edge-ring), var(--lift-shadow);
+/* #616（对齐 todos.dev 2026-10-02 实测）：抬升态 = 紧凑复刻卡——身份行 +
+   两行截断标题，8px 圆角 + 1px 实描边，2° 倾角 + 0.92 不透明度 + 宽软影。
+   参考站把整套配方写在 overlay 根的内联 style 上（rotate 与 translate 同一
+   transform）；这里 translate 归 dnd-kit 的 fixed wrapper，倾角/影/透明度
+   落在内层卡上——合成结果逐像素同形。#391 的 --lift-shadow 四边墨配方随
+   正典更替退役（值与理由见 tokens.css --drag-shadow 注释）。 */
+.board-drag-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--card-bg);
+  box-shadow: var(--drag-shadow);
+  opacity: 0.92;
+  transform: rotate(2deg);
 }
 
-/* the column under the pointer tints with the hover token — on the whole
-   cell, header included: the old list-only patch left the 37px header strip
-   and the border ring on the column's own background, so the highlight read
-   as a shadow that never fills the grid cell */
+/* 身份行的项目徽标 = .project-avatar 的紧凑档（参考站 14px/3px 圆角/7px
+   字号，对 16px/4px/10px 的板面档） */
+.board-drag-card .project-avatar {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  font-size: 7px;
+  line-height: 14px;
+}
+
+/* 拖拽中的两级落点染色（#616，参考站实测）：手势在飞时**所有**合法目标列
+   戴上 indigo 环 + 5% 底（data-drop-valid），指针悬停的那一档升到 10%
+   （data-drop）；源列与非法列（待处理）保持素面。切换即时、无过渡——
+   参考站的染色是类名瞬切（getAnimations 全程为空）。整格染，表头含在内
+   （#391 时代的整 cell 律保留）。 */
+.board-column[data-drop-valid] {
+  background: var(--drop-tint-base);
+  border-color: var(--drop-tint-border);
+}
+
 .board-column[data-drop="true"] {
-  background: var(--sidebar-hover);
+  background: var(--drop-tint-hover);
+  border-color: var(--drop-tint-border);
 }

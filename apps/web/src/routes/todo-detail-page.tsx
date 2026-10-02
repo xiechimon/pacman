@@ -54,7 +54,11 @@ import {
 } from '../api/mappers.js';
 import { useAgentAvatarUrlById, useLiveData } from '../api/provider.js';
 import { useConversationStream } from '../api/sse.js';
-import { ChiefAgentDialog, type ChiefAgentOption } from '../chief/chief-agent-dialog.js';
+import {
+  assignOptionsFromMembers,
+  ChiefAgentDialog,
+  type ChiefAgentOption,
+} from '../chief/chief-agent-dialog.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { Composer } from '../detail/composer.js';
 import { DetailHead } from '../detail/dhead.js';
@@ -470,22 +474,10 @@ export function TodoDetailPage() {
   // (chief-settings 同投影);fixture 面 onBind 缺省 → accept 律(选择即关)。——
   // #318: model 副题并入投影(r9 §2.6 选择器行形「name · model」;开始
   // dialog 与编辑分配共用同一候选集)。
+  // #616: 投影收编进 assignOptionsFromMembers（board 页的拖拽落位开始面
+  // 共用，单源在 chief-agent-dialog.tsx；XMON-105 avatarUrl 覆盖律随行）。
   const assignOptions: ChiefAgentOption[] | undefined = live
-    ? (membersQ.data ?? [])
-        .filter((m) => m.memberType === 'agent')
-        .map((m) => {
-          const actor = m.actor as
-            | { displayName?: string; modelId?: string | null; avatarUrl?: string | null }
-            | undefined;
-          return {
-            id: m.actorId,
-            name: actor?.displayName ?? m.actorId,
-            ...(actor?.modelId ? { model: actor.modelId } : {}),
-            // XMON-105: rerun dialog avatar rows resolve the same identity
-            // (avatarUrl override) as every other agent surface.
-            avatarUrl: actor?.avatarUrl ?? null,
-          };
-        })
+    ? assignOptionsFromMembers(membersQ.data ?? [])
     : undefined;
   const bindAssign = live
     ? (agentId: string) =>
