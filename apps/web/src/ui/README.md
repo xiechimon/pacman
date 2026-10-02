@@ -5,7 +5,7 @@ DESIGN.md 轨 A 的代码侧落地。**新代码必须用原语，不新写 per-
 | 原语 | 入口 | 形态 |
 |---|---|---|
 | Button | `ui/button.tsx` | variant: primary / danger / icon / quiet；size: compact(28) |
-| Chip | `ui/chip.tsx` | 任务五态 idle/plan/confirm/done/failed + neutral |
+| Chip | `ui/chip.tsx` | 任务五态 idle/plan/confirm/done/failed |
 | Input | `ui/input.tsx` | 36px 标准（实测族 #221） |
 | DialogShell | `ui/dialog-shell.tsx` | 弹窗壳 + form 族（样式 = `ui/dialog.css`，含 dlg-form-* 类族） |
 
