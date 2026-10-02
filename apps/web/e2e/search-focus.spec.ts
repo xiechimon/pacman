@@ -155,9 +155,9 @@ test('常亮互斥 holds on the collapsed rail form', async ({ page }) => {
 });
 
 // XMON-79: the caret was shaved to a sliver in the state ⌘K opens in. The
-// field is a .input--palette — a frameless inline input (no border, no
-// background, no padding) — but it inherited .input's 8px corner radius,
-// which belongs to the boxed skin. Blink's UA sheet forces `overflow: clip`
+// field was a frameless inline input (the old .input--palette skin, retired
+// with the #574 move to components/ui/input) that inherited .input's 8px
+// corner radius, which belongs to the boxed skin. Blink's UA sheet forces `overflow: clip`
 // on <input>, clipping to the padding box *following the corners*; at 16px
 // tall an 8px radius is a stadium, and the caret is painted at the text
 // origin — the padding-box left edge, x=0 — exactly where the arc has eaten

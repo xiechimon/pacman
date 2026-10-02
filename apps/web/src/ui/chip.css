@@ -32,10 +32,6 @@
   background: var(--chip-failed-bg);
   color: var(--chip-failed-fg);
 }
-.chip--neutral {
-  background: var(--pill-idle-bg);
-  color: var(--text-secondary);
-}
 
 /* mini 尺寸（r7 05b search-row-chip 实测）：14px 高 / 0 6px 垫 / 10px 字 */
 .chip--mini {

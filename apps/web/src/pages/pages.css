@@ -333,6 +333,11 @@
   color: var(--chip-idle-fg);
 }
 
+.sched-card-chip--failed {
+  background: var(--chip-failed-bg);
+  color: var(--chip-failed-fg);
+}
+
 /* A4-deep 收编：24×24 per-face 几何。XMON-25 收编：老 ui/Button icon 变体
    的皮肤下沉 per-face（button.css .btn/.btn--icon 正典值：无边框/透明底/
    tertiary 字/hover 提亮 secondary/pointer 光标）——unlayered 恒胜 ghost

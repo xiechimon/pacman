@@ -10,25 +10,11 @@
   cursor: pointer;
 }
 
-/* size 四档（实测族）：card 26 / compact 28 / standard 32 / overlay 30
-   —— overlay 为 A6 收编补档，承接原 .overlay-btn / .overlay-btn--primary
-   浮层系族（30 高 + 12 内边距 + 18 行高，与 overlay-btn 实测逐字节对齐） */
-.btn--card {
-  height: 26px;
-  padding: 0 8px;
-}
+/* size 单档（实测族）：compact 28 —— card/standard/overlay 档已随各自
+   消费面退役（#658） */
 .btn--compact {
   height: 28px;
   padding: 0 12px;
-}
-.btn--standard {
-  height: 32px;
-  padding: 0 12px;
-}
-.btn--overlay {
-  height: 30px;
-  padding: 0 12px;
-  line-height: 18px;
 }
 
 .btn--primary {
@@ -41,14 +27,6 @@
   cursor: default;
 }
 
-.btn--ghost {
-  background: transparent;
-  /* A6 ghost 单源：直引 --card-border（与原 .overlay-btn 同源；#412 D2 起
-     --card-border 是 --border-default 的别名） */
-  border: 1px solid var(--card-border);
-  color: var(--text-secondary);
-}
-
 .btn--danger {
   background: var(--danger);
   color: var(--text-on-accent);
@@ -57,13 +35,6 @@
 .btn--danger:disabled {
   opacity: 0.5;
   cursor: default;
-}
-
-/* text 变体不吃 size 的 padding（写在 size 声明之后赢同特异性） */
-.btn--text {
-  background: transparent;
-  color: var(--indigo-500);
-  padding: 0;
 }
 
 /* quiet：弱文字钮，r7 25 delete-confirm-cancel canon（text-dim 无框） */

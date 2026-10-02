@@ -58,10 +58,10 @@
   color: var(--text-dim);
 }
 
-/* A5 收编：input 本体皮肤（flex 伸展 + 裸透明 + 13px 字）移入
-   ui/input.css .input--palette；行容器几何（40px/padding/分隔线）
-   per-face 保留。e2e search-focus 钉 .search-input-row input 元素
-   结构选择器，Input 组件渲染的 input 仍命中 */
+/* 行容器几何（40px/padding/分隔线）per-face 保留；input 本体皮肤住
+   components/ui/input（Tailwind，#574 换壳——旧 ui/input.css
+   .input--palette 已随之删除，#658）。e2e search-focus 钉
+   .search-input-row input 元素结构选择器，Input 组件渲染的 input 仍命中 */
 
 .search-list {
   flex: 1;
@@ -238,6 +238,11 @@
 .search-row-chip--done {
   background: var(--chip-done-bg);
   color: var(--chip-done-fg);
+}
+
+.search-row-chip--failed {
+  background: var(--chip-failed-bg);
+  color: var(--chip-failed-fg);
 }
 
 .search-empty {
