@@ -133,17 +133,21 @@ export function parseMentionSegments(text: string): MentionSegment[] {
     }
     const kind = rawKind as MentionKind;
     const label = unescapeLabel(rawLabel ?? '');
-    // A todo link label carries `#<seq>` (the shape the chief prompt
+    // A todo link label carries the seq marker (the shape the chief prompt
     // instructs); recover the board number so parsed tokens honor the
-    // MentionToken contract (seq set when kind === 'todo').
-    const seq = kind === 'todo' ? /^#(\d+)$/.exec(label)?.[1] : undefined;
+    // MentionToken contract (seq set when kind === 'todo'). The hash is
+    // matched via startsWith instead of a regex literal: the i18n-coverage
+    // gate walks this file with the raw TS token scanner, and a bare hash
+    // inside a regex body wedges it into a zero-advance spin (#681).
+    const seqDigits = kind === 'todo' && label.startsWith('#') ? label.slice(1) : '';
+    const seq = /^\d+$/.test(seqDigits) ? Number(seqDigits) : undefined;
     segments.push({
       kind: 'mention',
       token: {
         kind,
         label,
         id: id ?? '',
-        ...(seq !== undefined ? { seq: Number(seq) } : {}),
+        ...(seq !== undefined ? { seq } : {}),
       },
       start: match.index,
       end: match.index + full.length,
