@@ -267,7 +267,8 @@ export async function runStep(
   const creds = pushCredential(tokenRes);
   const agent = claimed.agent;
   const runtimeId = isBackendRuntimeId(agent?.provider) ? agent.provider : null;
-  const provider: ProviderConfig | null =
+  // let（#654）：回落闸翻 compat 旋钮时重赋值（sessionOpts.provider 同步）。
+  let provider: ProviderConfig | null =
     runtimeId !== null
       ? { kind: 'api_key', providerId: runtimeId }
       : (creds.provider ??
@@ -518,33 +519,6 @@ export async function runStep(
     claimed.session.action === 'continue'
       ? (opts.resume?.sessionId ?? claimed.session.sessionId)
       : null;
-  let handle: AgentSessionHandle;
-  let resumed = Boolean(continueId);
-  try {
-    handle = continueId
-      ? await backend.continueSession(continueId, sessionOpts)
-      : await backend.createSession(sessionOpts);
-  } catch (err) {
-    if (continueId && err instanceof SessionNotResumableError) {
-      // 会话文件未落盘（崩溃竞态）→ 回退 new session 重发任务文本 [设计]。
-      logger.step(`continue session unavailable (${continueId}) — falling back to new session`);
-      resumed = false;
-      try {
-        handle = await backend.createSession(sessionOpts);
-      } catch (err2) {
-        await failStep(deps, stepId, err2 instanceof Error ? err2.message : String(err2));
-        return;
-      }
-    } else {
-      await failStep(deps, stepId, err instanceof Error ? err.message : String(err));
-      return;
-    }
-  }
-  logger.raw(resumed ? `continue session ${convId}` : `new session ${convId}`);
-  // 会话持久化索引即时落 journal（崩溃 recover 的 continue 解析键）。
-  journal.update(stepId, { state: 'running', sessionId: handle.sessionId });
-  // steer 投递面注册（W3 #279）：在跑期间 deliverSteer 可达；各收尾路径注销。
-  deps.sessionHandles?.set(stepId, handle);
 
   const transcript = new TranscriptBuffer(deps.paths.outboxDir, stepId);
   if (prompt !== null) {
@@ -564,16 +538,25 @@ export async function runStep(
 
   let usage: AgentTokenUsage = [];
   let lastError: string | null = null;
+  // 最近一次模型错误事件（#654）：auto_retry_start 清 lastError 不清它——流
+  // 超时收尸场景（同形 400 重试烧到 540s 墙）lastError 是超时文案，回落判
+  // 定仍要看得到底层错误签名。
+  let lastModelError: string | null = null;
   let messageSeq = 0;
   let sawChangeTool = false;
   // 自然完成判定（M7 #308）：done 事件在位 = 会话自然收尾，stop 旗标迟到
   // 不改判（停止与自然完成的竞态以完成为准）。
   let sawDone = false;
+  // 零进展判定（#654 回落护栏）：模型输出事件（text_delta / assistant
+  // message_end / toolcall_end）在位 = 有进展——重放会重复执行工具与重复
+  // 落 transcript 行，只允许零进展轮回落重试。
+  let sawProgress = false;
   // 流超时护栏（02 §5.6 r3 bundle 原文三值全用）：首事件 streamFirstEvent、
   // 事件间空闲 streamIdle、流 body 总时长 streamBodyTimeout；超时 = 中断会话
   // 并按 failed 收尾。
   let timedOut = false;
   let watchdog: NodeJS.Timeout | null = null;
+  let bodyTimeout: NodeJS.Timeout | null = null;
   const armWatchdog = (ms: number) => {
     if (watchdog) clearTimeout(watchdog);
     watchdog = setTimeout(() => {
@@ -582,12 +565,17 @@ export async function runStep(
     }, ms);
     watchdog.unref?.();
   };
-  armWatchdog(STREAM_TIMEOUTS_MS.streamFirstEvent);
-  const bodyTimeout = setTimeout(() => {
-    timedOut = true;
-    void handle.stop();
-  }, STREAM_TIMEOUTS_MS.streamBodyTimeout);
-  bodyTimeout.unref?.();
+  // body 总时长护栏按轮独立装设（#654）：回落轮重置预算——零进展轮烧掉的
+  // 全是同形重试空转，不重置会把回落轮直接饿死在墙下。最坏单步 = 两倍
+  // streamBodyTimeout（仅「超时 + 签名命中 + 可翻」的罕见复合可达）。
+  const armBodyTimeout = () => {
+    if (bodyTimeout) clearTimeout(bodyTimeout);
+    bodyTimeout = setTimeout(() => {
+      timedOut = true;
+      void handle.stop();
+    }, STREAM_TIMEOUTS_MS.streamBodyTimeout);
+    bodyTimeout.unref?.();
+  };
   // live transcript 文本增量转发（M5 live streaming）：pi text_delta 按
   // TRANSCRIPT_DELTA_FLUSH_MS 窗口聚合批量 POST（tool/{stepId} 第三形
   // [设计]）；fire-and-forget——失败仅日志，终稿经 transcript 上传兜底。
@@ -607,82 +595,159 @@ export async function runStep(
       );
     });
   };
-  try {
-    for await (const ev of handle.events) {
-      armWatchdog(STREAM_TIMEOUTS_MS.streamIdle);
-      switch (ev.type) {
-        case 'text_delta': {
-          deltaBuf += ev.text;
-          if (deltaTimer === null) {
-            deltaTimer = setTimeout(flushDeltas, TRANSCRIPT_DELTA_FLUSH_MS);
-            deltaTimer.unref?.();
+  // —— 会话轮（#654 协议 400 步内回落，Multica client.go「按错误回落」同
+  // 律）：第一轮零进展且终局错误命中自适配签名 → backend 翻 compat 旋钮 →
+  // 重开一轮（单次预算：第二起失败 / 有进展 / 无可翻即按现状收尾）。——
+  let handle: AgentSessionHandle;
+  let resumed = Boolean(continueId);
+  // 会话开面（两轮共用）：continue 优先 + 会话文件未落盘的冷重试回退
+  // （02 §5.7 崩溃竞态 [设计]）；回落轮沿同开面续会话——误差轮不追加历史，
+  // pi 重试机制本就摘除错误轮，续开即从误差前状态继续。
+  const openSession = (): Promise<AgentSessionHandle> => {
+    resumed = Boolean(continueId);
+    if (continueId === null) return backend.createSession(sessionOpts);
+    return backend.continueSession(continueId, sessionOpts).catch((err: unknown) => {
+      if (!(err instanceof SessionNotResumableError)) throw err;
+      logger.step(`continue session unavailable (${continueId}) — falling back to new session`);
+      resumed = false;
+      return backend.createSession(sessionOpts);
+    });
+  };
+  for (let pass = 0; ; pass++) {
+    if (pass > 0) {
+      // 回落轮状态复位（零进展护栏保证 messageSeq/sawChangeTool/增量缓冲在
+      // 第一轮本就未动）。
+      lastError = null;
+      lastModelError = null;
+      sawDone = false;
+      sawProgress = false;
+      timedOut = false;
+      usage = [];
+    }
+    try {
+      handle = await openSession();
+    } catch (err) {
+      clearInterval(heartbeat);
+      flushDeltas();
+      clearCredentials(creds);
+      await failStep(deps, stepId, err instanceof Error ? err.message : String(err));
+      return;
+    }
+    logger.raw(resumed ? `continue session ${convId}` : `new session ${convId}`);
+    // 会话持久化索引即时落 journal（崩溃 recover 的 continue 解析键）。
+    journal.update(stepId, { state: 'running', sessionId: handle.sessionId });
+    // steer 投递面注册（W3 #279）：在跑期间 deliverSteer 可达；各收尾路径注销。
+    deps.sessionHandles?.set(stepId, handle);
+    armWatchdog(STREAM_TIMEOUTS_MS.streamFirstEvent);
+    armBodyTimeout();
+    try {
+      for await (const ev of handle.events) {
+        armWatchdog(STREAM_TIMEOUTS_MS.streamIdle);
+        switch (ev.type) {
+          case 'text_delta': {
+            sawProgress = true;
+            deltaBuf += ev.text;
+            if (deltaTimer === null) {
+              deltaTimer = setTimeout(flushDeltas, TRANSCRIPT_DELTA_FLUSH_MS);
+              deltaTimer.unref?.();
+            }
+            break;
           }
-          break;
-        }
-        case 'toolcall_end': {
-          if (ev.call.name && CHANGE_TOOLS.has(ev.call.name)) sawChangeTool = true;
-          transcript.upsert({
-            id: ev.call.id,
-            role: 'assistant',
-            content: { kind: 'toolcall', call: ev.call },
-            createdAt: ev.call.endedAt ?? now(),
-          });
-          if (ev.call.result !== undefined) {
-            // live 回传（重试预算 = REMOTE_TOOL_RETRY_DELAYS_MS [500,2000]ms，
-            // r5 §3.1；终败仅日志——终稿 transcript 经 upload-urls 兜底）。
-            const ok = await withRetries(
-              () => client.tool(stepId, ev.call),
-              REMOTE_TOOL_RETRY_DELAYS_MS,
-              logger,
-              `tool relay ${ev.call.id}`,
-            );
-            if (ok === null)
-              logger.step(`tool relay failed for ${ev.call.id} (transcript upload will carry it)`);
+          case 'toolcall_end': {
+            sawProgress = true;
+            if (ev.call.name && CHANGE_TOOLS.has(ev.call.name)) sawChangeTool = true;
+            transcript.upsert({
+              id: ev.call.id,
+              role: 'assistant',
+              content: { kind: 'toolcall', call: ev.call },
+              createdAt: ev.call.endedAt ?? now(),
+            });
+            if (ev.call.result !== undefined) {
+              // live 回传（重试预算 = REMOTE_TOOL_RETRY_DELAYS_MS [500,2000]ms，
+              // r5 §3.1；终败仅日志——终稿 transcript 经 upload-urls 兜底）。
+              const ok = await withRetries(
+                () => client.tool(stepId, ev.call),
+                REMOTE_TOOL_RETRY_DELAYS_MS,
+                logger,
+                `tool relay ${ev.call.id}`,
+              );
+              if (ok === null)
+                logger.step(
+                  `tool relay failed for ${ev.call.id} (transcript upload will carry it)`,
+                );
+            }
+            break;
           }
-          break;
+          case 'message_end': {
+            // user 行不重复落（任务文本行 user-<stepId> 已在缓冲；pi 回声同文）。
+            if (ev.message.role === 'user') break;
+            sawProgress = true;
+            messageSeq += 1;
+            transcript.upsert({
+              id: `msg-${stepId}-${messageSeq}`,
+              role: ev.message.role,
+              content: ev.message.content,
+              createdAt: now(),
+            });
+            break;
+          }
+          case 'error':
+            lastError = ev.error.message;
+            lastModelError = ev.error.message;
+            logger.step(`error: ${ev.error.message} (retryable=${ev.error.retryable})`);
+            break;
+          case 'auto_retry_start':
+            lastError = null; // pi 流级自动重试吸收前错（02 §4.2）
+            logger.step(`auto_retry_start attempt=${ev.attempt}`);
+            break;
+          case 'compaction_start':
+            logger.step('compaction_start');
+            break;
+          case 'done':
+            sawDone = true;
+            usage = ev.usage;
+            break;
+          default:
+            break;
         }
-        case 'message_end': {
-          // user 行不重复落（任务文本行 user-<stepId> 已在缓冲；pi 回声同文）。
-          if (ev.message.role === 'user') break;
-          messageSeq += 1;
-          transcript.upsert({
-            id: `msg-${stepId}-${messageSeq}`,
-            role: ev.message.role,
-            content: ev.message.content,
-            createdAt: now(),
-          });
-          break;
+      }
+    } catch (err) {
+      clearInterval(heartbeat);
+      if (watchdog) clearTimeout(watchdog);
+      if (bodyTimeout) clearTimeout(bodyTimeout);
+      flushDeltas();
+      clearCredentials(creds);
+      await failStep(deps, stepId, err instanceof Error ? err.message : String(err));
+      return;
+    }
+    // —— #654 回落闸（判据取轮内原值，先于下方超时文案覆盖 lastError）：
+    // 零进展 + 终局失败（或超时收尸但底层模型错误在位）+ 签名命中且旋钮
+    // 可翻 → 翻旋钮重开一轮。停止钮经 handle.stop() 收尾不带 error，天然
+    // 不进此闸。——
+    if (pass === 0 && !sawProgress && !sawDone) {
+      const failureText = lastModelError ?? lastError;
+      if (failureText !== null && (lastError !== null || (timedOut && lastModelError !== null))) {
+        const amended: ProviderConfig | null =
+          backend.adaptProviderCompat?.(provider, failureText) ?? null;
+        if (amended !== null) {
+          provider = amended;
+          sessionOpts.provider = amended;
+          logger.step(
+            `protocol fallback: provider ${amended.providerId} compat adapted (${JSON.stringify(
+              amended.compat,
+            )}), retrying session once`,
+          );
+          deps.sessionHandles?.delete(stepId);
+          continue;
         }
-        case 'error':
-          lastError = ev.error.message;
-          logger.step(`error: ${ev.error.message} (retryable=${ev.error.retryable})`);
-          break;
-        case 'auto_retry_start':
-          lastError = null; // pi 流级自动重试吸收前错（02 §4.2）
-          logger.step(`auto_retry_start attempt=${ev.attempt}`);
-          break;
-        case 'compaction_start':
-          logger.step('compaction_start');
-          break;
-        case 'done':
-          sawDone = true;
-          usage = ev.usage;
-          break;
-        default:
-          break;
       }
     }
-  } catch (err) {
-    clearInterval(heartbeat);
-    if (watchdog) clearTimeout(watchdog);
-    flushDeltas();
-    clearCredentials(creds);
-    await failStep(deps, stepId, err instanceof Error ? err.message : String(err));
-    return;
+    break;
   }
   flushDeltas();
   clearInterval(heartbeat);
   if (watchdog) clearTimeout(watchdog);
+  if (bodyTimeout) clearTimeout(bodyTimeout);
   if (timedOut)
     lastError = `stream timeout (first=${STREAM_TIMEOUTS_MS.streamFirstEvent}ms idle=${STREAM_TIMEOUTS_MS.streamIdle}ms)`;
 

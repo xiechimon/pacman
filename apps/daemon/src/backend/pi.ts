@@ -39,6 +39,7 @@ import type {
   AgentSessionHandle,
   AgentTokenUsage,
   ModelUsage,
+  ProviderCompat,
   ProviderConfig,
   SessionOpts,
   StepEvent,
@@ -209,6 +210,58 @@ export function appendSkillsCatalog(base: string | undefined, catalog: string): 
 
 /** models.json custom provider 占位 key（真 key 走 setRuntimeApiKey 内存态）。 */
 const MODELS_JSON_KEY_PLACEHOLDER = 'per-step';
+
+// —— 协议 400 自适配（#654，Multica client.go「按错误回落」同律）——————————
+// pi 对未知自定义端点的默认请求形带现代字段（max_completion_tokens +
+// store:false），部分网关通道确定性拒绝（错误面 = 400「Model does not
+// support this protocol」）。pi 内建重试同形重发恒败；本层做两件事：
+// ① 记录/wire compat 旋钮物化进 models.json（显式配置面）；② 撞上错误
+// 签名时翻旋钮 + 步内回落重试一次，并把翻过的旋钮记进程内学习——后续步
+// 直接以干净形态物化（daemon 重启清零，首次撞错付一次学费）。
+
+/** 进程内学习面：providerId → 已翻旋钮。物化时并入（只填未设置位——
+ * 显式配置压过学习）。 */
+const learnedCompat = new Map<string, ProviderCompat>();
+
+/** 错误签名 → 待翻旋钮。只认 upstream 明示的不兼容（Multica
+ * isUnsupportedParameter 同律不猜）：relay 的协议 400 原文点名不了字段，
+ * 一律翻到最大兼容的旧式形（max_tokens + 无 store——mea shim 实测 229 调用
+ * 零重试耗尽的形态）；OpenAI 形 unsupported parameter 只翻被点名的字段。 */
+export function protocolCompatFlip(errorMessage: string): Partial<ProviderCompat> | null {
+  if (/model does not support this protocol/i.test(errorMessage)) {
+    return { maxTokensField: 'max_tokens', supportsStore: false };
+  }
+  if (/unsupported parameter[^\n]*max_completion_tokens/i.test(errorMessage)) {
+    return { maxTokensField: 'max_tokens' };
+  }
+  if (/unsupported parameter[^\n]*\bstore\b/i.test(errorMessage)) {
+    return { supportsStore: false };
+  }
+  return null;
+}
+
+/** 按错误回落（AgentBackend.adaptProviderCompat 的 pi 实现）：签名命中 →
+ * 返回翻了 compat 旋钮的 provider 配置并记录学习；null = 未命中/无端点/
+ * 旋钮已全在目标态（无可翻即不重试，防循环）。 */
+export function adaptProviderCompat(
+  provider: ProviderConfig,
+  errorMessage: string,
+): ProviderConfig | null {
+  if (!provider.baseUrl) return null; // preset / runtime 惰性位无请求形态可翻
+  const flip = protocolCompatFlip(errorMessage);
+  if (flip === null) return null;
+  const next: ProviderCompat = {
+    ...learnedCompat.get(provider.providerId),
+    ...provider.compat,
+    ...flip,
+  };
+  const prior: ProviderCompat = { ...learnedCompat.get(provider.providerId), ...provider.compat };
+  if (prior.maxTokensField === next.maxTokensField && prior.supportsStore === next.supportsStore) {
+    return null; // 已在目标态仍同错 = 旋钮救不了（坏通道轮询面归 pi 重试）
+  }
+  learnedCompat.set(provider.providerId, next);
+  return { ...provider, compat: next };
+}
 
 /** 自定义端点模型默认值 [设计]（contextWindow 128k = r3 §2 展示默认）。
  * maxTokens 16k：思考型模型单回合推理可占 1-6k token，4096 会在推理阶段
@@ -550,6 +603,12 @@ export class PiBackend implements AgentBackend {
     return this.open(opts, file);
   }
 
+  /** #654 协议 400 自适配（AgentBackend 可选面；纯函数转发——学习态在模块
+   * 级 Map，open() 物化时消费）。 */
+  adaptProviderCompat(provider: ProviderConfig, errorMessage: string): ProviderConfig | null {
+    return adaptProviderCompat(provider, errorMessage);
+  }
+
   private async open(opts: SessionOpts, resumeFile: string | null): Promise<AgentSessionHandle> {
     const modelsPath = join(this.opts.agentDir, 'models.json');
     materializeProvider(modelsPath, opts.provider);
@@ -720,8 +779,25 @@ export class PiBackend implements AgentBackend {
   }
 }
 
+/** compat 旋钮合并：显式配置（wire/record）压过进程内学习（学习只填未设
+ * 置位）。产物只含已设置键——缺省位留给 pi 端点探测默认（既有 provider
+ * 零行为漂移：无 compat 的行物化产物与旧行为逐字节同形）。 */
+function mergedCompat(provider: ProviderConfig): ProviderCompat | undefined {
+  const merged: ProviderCompat = {
+    ...learnedCompat.get(provider.providerId),
+    ...provider.compat,
+  };
+  const hasAny =
+    merged.supportsDeveloperRole !== undefined ||
+    merged.maxTokensField !== undefined ||
+    merged.supportsStore !== undefined;
+  return hasAny ? merged : undefined;
+}
+
 /** custom provider（baseUrl 形态）物化进 models.json（pi 自定义模型机制，
- * docs/models.md）；apiKey 恒占位符——真 key 走 setRuntimeApiKey（02 §8）。 */
+ * docs/models.md）；apiKey 恒占位符——真 key 走 setRuntimeApiKey（02 §8）。
+ * compat（#654）写 provider 级条目——pi provider-composer modelFromJson 对
+ * provider compat 与模型条目做浅合并（getCompat 以显式位覆盖探测默认）。 */
 export function materializeProvider(modelsPath: string, provider: ProviderConfig): void {
   if (!provider.baseUrl) return; // preset provider 走 pi 内建目录
   const raw = existsSync(modelsPath)
@@ -730,11 +806,13 @@ export function materializeProvider(modelsPath: string, provider: ProviderConfig
       })
     : {};
   const providers = raw.providers ?? {};
+  const compat = mergedCompat(provider);
   providers[provider.providerId] = {
     baseUrl: provider.baseUrl,
     api: provider.api ?? 'openai-completions',
     apiKey: MODELS_JSON_KEY_PLACEHOLDER,
     ...(provider.authHeader !== undefined ? { authHeader: provider.authHeader } : {}),
+    ...(compat !== undefined ? { compat } : {}),
     models: (provider.models ?? []).map((m) => ({
       id: m.id,
       name: m.name,
