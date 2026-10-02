@@ -38,7 +38,7 @@ import {
 import { type ChiefToolCtx, executeChiefTool } from '../src/services/chief-tools.js';
 import { planDocumentDiff } from '../src/services/documents.js';
 import { getTodo, setTodoPhase } from '../src/services/todos.js';
-import { bootServer, postProject, req, type TestServer } from './helpers.js';
+import { bootServer, issueApiKey, postProject, req, type TestServer } from './helpers.js';
 
 const AGENT_ID = 'agent-chief-1';
 const AGENT2_ID = 'agent-chief-2';
@@ -278,6 +278,126 @@ describe('总管设置 4 tab + PATCH /chief（r5 §2）', () => {
     expect(((await cleared.json()) as Env).chief.compactionModel).toBeNull();
     const after = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
     expect(after.chief.compactionModel).toBeNull();
+  });
+
+  test('PATCH /chief model 槽往返：写→GET 回显同值；缺省不动；null 清空回绑定 Agent 继承（#615）', async () => {
+    type Env = { chief: { model: { provider: string; modelId: string } | null } };
+    // 默认 null（= 继承绑定 Agent 模型）。
+    const fresh = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
+    expect(fresh.chief.model).toBeNull();
+    // 写 → 响应回显同值。
+    const model = { provider: 'stub-gw', modelId: 'm-override' };
+    const set = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, { model });
+    expect(set.status).toBe(200);
+    expect(((await set.json()) as Env).chief.model).toEqual(model);
+    // GET 回显同值。
+    const got = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
+    expect(got.chief.model).toEqual(model);
+    // 缺省不动：PATCH 别的槽不清主模型覆盖。
+    const other = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, { charter: '不动它' });
+    expect(((await other.json()) as Env).chief.model).toEqual(model);
+    // null 清空 → GET 回显 null（回继承）。
+    const cleared = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, { model: null });
+    expect(cleared.status).toBe(200);
+    expect(((await cleared.json()) as Env).chief.model).toBeNull();
+    const after = (await (await req(s.app, 'GET', `/api/teams/${teamId}/chief`)).json()) as Env;
+    expect(after.chief.model).toBeNull();
+  });
+
+  test('chief 步 claim 载荷消费 model 覆盖：覆盖在 → 覆盖值；null → 绑定 Agent 模型（#615）', async () => {
+    // 机器面（machine-wire 同配方）：发行 key → Bearer key enroll 拿 machine
+    // token → Bearer token claim。pending step 在队时 claim 立即返回。
+    const plain = await issueApiKey(s);
+    const enroll = await s.app.request('/api/machine/enroll', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${plain}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ teamId, name: 'chief-override-probe', cliVersion: '0.1.0' }),
+    });
+    expect(enroll.status).toBe(200);
+    const { token } = (await enroll.json()) as { token: string };
+    const claim = async () => {
+      const res = await s.app.request('/api/machine/tasks/claim', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { step: { agent: { modelId: string } } | null };
+      if (body.step === null) throw new Error('claim 空手：chief 步未入队或被抢');
+      return body.step.agent.modelId;
+    };
+    const turn = async (content: string) => {
+      const send = await req(s.app, 'POST', `/api/teams/${teamId}/chief/threads`, { content });
+      expect(send.status).toBe(201);
+    };
+
+    // 无覆盖 → 绑定 Agent 模型（seedAgent 默认 stub-model）。
+    await turn('覆盖前回合。');
+    expect(await claim()).toBe('stub-model');
+
+    // 覆盖在 → 载荷带覆盖值（provider+modelId 都换）。
+    const override = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, {
+      model: { provider: 'stub-gw', modelId: 'm-override' },
+    });
+    expect(override.status).toBe(200);
+    await turn('覆盖中回合。');
+    expect(await claim()).toBe('m-override');
+
+    // 清空 → 回绑定 Agent 模型。
+    const cleared = await req(s.app, 'PATCH', `/api/teams/${teamId}/chief`, { model: null });
+    expect(cleared.status).toBe(200);
+    await turn('清空后回合。');
+    expect(await claim()).toBe('stub-model');
+  });
+
+  test('POST /chief/threads/:tid/rewind：截断锚后消息 + 重置会话 + 锚内容重入队；activeRun 409；锚缺 404（#615 返工）', async () => {
+    // 两轮：锚 A（POST 建线程）+ 后续 B（同线程续消息）。
+    const created = await req(s.app, 'POST', `/api/teams/${teamId}/chief/threads`, {
+      content: '锚句。',
+    });
+    expect(created.status).toBe(201);
+    const tid = ((await created.json()) as { thread: { id: string } }).thread.id;
+    sendChiefMessage({ db: s.db, hub: s.hub, machineHub: s.machineHub, user: s.user }, teamId, {
+      threadId: tid,
+      content: '后续句。',
+    });
+    const anchor = s.db
+      .select()
+      .from(chiefMessage)
+      .where(eq(chiefMessage.threadId, tid))
+      .all()
+      .find((m) => m.content === '锚句。');
+    expect(anchor).toBeDefined();
+
+    // 活跃回合守门：入队后 activeRun 在位 → 409（steer 面同律，回合中不 rewind）。
+    const busy = await req(s.app, 'POST', `/api/teams/${teamId}/chief/threads/${tid}/rewind`, {
+      messageId: anchor!.id,
+    });
+    expect(busy.status).toBe(409);
+
+    // 回合收尾态（activeRun 清）后 rewind 成立。
+    s.db.update(chiefThread).set({ activeRun: null }).where(eq(chiefThread.id, tid)).run();
+    const res = await req(s.app, 'POST', `/api/teams/${teamId}/chief/threads/${tid}/rewind`, {
+      messageId: anchor!.id,
+    });
+    expect(res.status).toBe(200);
+    // 截断：锚后消息（后续句）移除，锚保留。
+    const msgs = s.db.select().from(chiefMessage).where(eq(chiefMessage.threadId, tid)).all();
+    expect(msgs.map((m) => m.content)).toEqual(['锚句。']);
+    // 会话重置：pi 会话不可倒带 → sessionId 清空，下轮 new session。
+    const thread = s.db.select().from(chiefThread).where(eq(chiefThread.id, tid)).get();
+    expect(thread!.sessionId).toBe('');
+    // 重入队：A 步 + B 步 + rewind 步 = 3，末步 prompt = 锚内容。
+    const steps = s.db.select().from(stepTable).where(eq(stepTable.buildId, tid)).all();
+    expect(steps).toHaveLength(3);
+    expect(steps[2]!.prompt).toBe('锚句。');
+    expect(steps[2]!.status).toBe('pending');
+
+    // 锚缺 / 他线程消息 → 404。
+    const missing = await req(s.app, 'POST', `/api/teams/${teamId}/chief/threads/${tid}/rewind`, {
+      messageId: 'msg-nope',
+    });
+    expect(missing.status).toBe(404);
   });
 
   test('PATCH /chief compactionModel 裸字符串/缺字段 → 400（#203）', async () => {

@@ -84,14 +84,14 @@ const headContentX = (page: Page) =>
 test.describe('chief FAB wakes on every shell family', () => {
   const families = [
     { name: 'board', route: '/app?scenario=01', fab: '.chief-fab', gear: true },
-    { name: 'pages', route: '/app/schedules?scenario=11', fab: '.page-fab', gear: false },
+    { name: 'pages', route: '/app/schedules?scenario=11', fab: '.page-fab', gear: true },
     {
       name: 'resources',
       route: '/app/resources/skills?scenario=06',
       fab: '.res-fab',
-      gear: false,
+      gear: true,
     },
-    { name: 'secondary', route: '/app/team?scenario=12', fab: '.secondary-fab', gear: false },
+    { name: 'secondary', route: '/app/team?scenario=12', fab: '.secondary-fab', gear: true },
     {
       name: 'detail',
       // #443: the detail FAB renders only with unread — the row rides the
@@ -100,7 +100,7 @@ test.describe('chief FAB wakes on every shell family', () => {
       // chief-fab.spec.ts.
       route: '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=detail-unread',
       fab: '.detail-fab',
-      gear: false,
+      gear: true,
     },
   ] as const;
 
@@ -111,8 +111,10 @@ test.describe('chief FAB wakes on every shell family', () => {
 
       await page.locator(fab).click();
       await expect(page.locator('.chief-drawer')).toBeVisible();
-      // the settings gear is the board route's content-swap affordance;
-      // the shared wake surfaces keep the drawer-only head
+      // #615: the gear rides every surface (chief 设置 reachability was half
+      // of the 四连报 — off-board it lands on the board settings view via the
+      // ?chief=settings deep link; the board keeps its content swap). The
+      // off-board navigation itself is pinned in chief-drawer-model.spec.ts.
       await expect(page.locator('.chief-drawer button[aria-label="总管设置"]')).toHaveCount(
         gear ? 1 : 0,
       );

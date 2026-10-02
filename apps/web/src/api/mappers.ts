@@ -41,6 +41,7 @@ import type {
   BranchInfoContent,
   ChiefContent,
   ChiefStreamItem,
+  ChiefToolRow,
   DiffFile,
   DiffLine,
   ApiKeyRecord as DisplayApiKey,
@@ -885,13 +886,26 @@ const CHIEF_HERO_EXAMPLES = [
 
 export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
   const items: ChiefStreamItem[] = [];
+  // #615 返工：工具行不再丢弃——缓冲进下一个 robot 回合的 tools 折叠面
+  // （foot 折叠箭头展开内容；Multica OuterProcessFold 同族语义）。
+  let pendingTools: ChiefToolRow[] = [];
   for (const m of messages) {
     const call = toolCallOfContent(m.content);
-    if (call !== null) continue; // 工具行不进 chief 流呈现（r5 114/116 无工具行）
+    if (call !== null) {
+      pendingTools.push({
+        name: call.name,
+        ...(call.startedAt !== undefined && call.endedAt !== undefined
+          ? { seconds: Math.max(0, Math.round((call.endedAt - call.startedAt) / 1000)) }
+          : {}),
+        ...(call.isError === true ? { error: true } : {}),
+      });
+      continue; // 工具行不进 chief 流主呈现（r5 114/116 折叠态无工具行）
+    }
     const text = textOfContent(m.content).trim();
     if (text === '') continue;
     if (m.role === 'user') {
-      items.push({ kind: 'user', text });
+      pendingTools = []; // 回合边界：用户行之前的工具行属上一回合且已无归属面
+      items.push({ kind: 'user', text, id: m.id });
       continue;
     }
     if (m.role === 'system') continue;
@@ -915,7 +929,9 @@ export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
       paragraphs,
       ...(bullets.length > 0 ? { bullets } : {}),
       seconds: '',
+      ...(pendingTools.length > 0 ? { tools: pendingTools } : {}),
     });
+    pendingTools = [];
   }
   return items;
 }
@@ -939,7 +955,12 @@ export function mapChief(
     bound,
     ...(bound && env.agentActor
       ? {
-          modelSlot: `${env.agentActor.modelId ?? 'n/a'} · 默认`,
+          // #615: 行值 = 生效模型（覆盖槽优先，回退绑定 Agent 模型）；`· 默认`
+          // 徽标只在继承态（覆盖槽 null）挂——覆盖态裸模型名，dialog 的 check
+          // 位承担「显式选过」的语义。
+          modelSlot: `${env.chief.model?.modelId ?? env.agentActor.modelId ?? 'n/a'}${
+            env.chief.model == null ? ' · 默认' : ''
+          }`,
           // #444: FAB 头像位 = 绑定 Agent 全记录里的既有字段（封套已带，
           // 零新增请求）；id 供 team chart 组织图定位根节点（同一封套，
           // 同为零新增请求）。
@@ -948,6 +969,8 @@ export function mapChief(
             displayName: env.agentActor.displayName,
             avatarUrl: env.agentActor.avatarUrl,
           },
+          // #615 返工：运行时标记位 = 生效模型 provider（覆盖槽优先）。
+          modelProvider: env.chief.model?.provider ?? env.agentActor.provider,
         }
       : {}),
     threadTitle: active?.title ?? '新主题',
