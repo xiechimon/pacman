@@ -128,6 +128,10 @@ export interface MachineDeps {
   /** 本机 MCP config 读路径（spec 13/#368；executeChiefTool deps 透传——
    * 缺省 = 工具侧回落 ~/.claude.json，生产接线恒随 ctx 携带）。 */
   mcpConfigPath?: string;
+  /** claude-code 模型段读路径（#627 models 工具，executeChiefTool deps 透传）；
+   * 缺省 = 工具侧回落 os.homedir()（REST model-sources 路由同律），测试注入
+   * 隔离目录钉住 settings.json 内容。 */
+  claudeHomeDir?: string;
   /** conversation stream 通道（M5 live streaming：transcript 行/文本增量/
    * 步状态即时推送，02 §1.2 会话流）；缺省 = 无会话流面（单测形态）。 */
   convHub?: ConversationStreamHub;
@@ -657,7 +661,7 @@ function agentForStep(
   return deps.db.select().from(agent).where(eq(agent.id, agentId)).get() ?? null;
 }
 
-/** chief 步 claim 载荷组装（remoteTools 50 词表全量 + chief 块 + 会话续轮判定）。
+/** chief 步 claim 载荷组装（remoteTools 51 词表全量 + chief 块 + 会话续轮判定）。
  * 无 todo/project 语境：chief「探测仓库」经 docs relay（server 端裸库读，A4
  * 黑盒逼近 r5 §3.1 的 worktree `git show`），故不下发 repo/git 载荷——避免死
  * 载荷（runner chief 分支本就不开 worktree）。 */
@@ -1007,7 +1011,7 @@ export function reportTranscriptDelta(
 
 /** remoteTools relay 执行（02 §4.3「服务端定义并执行」；r5 §3.1 bundle：POST
  * /api/machine/tool/<stepId> {name, params} → {text}）。机器所有权校验后按步类
- * 分流：chief 步 = 50 词表（溯源上下文 step → chief_thread → chief）；worker
+ * 分流：chief 步 = 51 词表（溯源上下文 step → chief_thread → chief）；worker
  * 步 = 记忆三件套 + 附件读 + set_task_meta + 技能写词（02 §4.4/r5 §6 worker
  * 写路径 + XMON-109 技能写，溯源 step → build → todo → assignment 槽）。
  * 返回 JSON 串（daemon 侧包 {text} 回 pi）。 */
@@ -1041,6 +1045,7 @@ export async function executeRelayToolCall(
       attachmentsDir: deps.attachmentsDir,
       skillsDir: deps.skillsDir,
       ...(deps.mcpConfigPath !== undefined ? { mcpConfigPath: deps.mcpConfigPath } : {}),
+      ...(deps.claudeHomeDir !== undefined ? { claudeHomeDir: deps.claudeHomeDir } : {}),
       ...(deps.githubFetch !== undefined ? { githubFetch: deps.githubFetch } : {}),
     },
     {

@@ -621,6 +621,7 @@
 }
 
 .chief-tabs {
+  position: relative; /* 指示条的包含块（#644） */
   display: inline-flex;
   padding: 2px;
   border-radius: 8px;
@@ -628,6 +629,8 @@
 }
 
 .chief-tab {
+  position: relative;
+  z-index: 1; /* 压在滑动指示条之上，chip 自身保持透明底 */
   height: 26px;
   padding: 0 11px;
   border: none;
@@ -639,9 +642,39 @@
 }
 
 .chief-tab.is-active {
-  background: var(--chief-tab-active);
   color: var(--text-primary);
   font-weight: 600;
+}
+
+/* 滑动指示条（#644）：参考站同位置是一根绝对定位 pill 垫在 tab 下层
+   （z-index:0，圆角 6，底色 + 0 1px 2px 5% 黑投影），切换时对它做
+   `left/top/width/height 0.15s ease` 的 CSS transition——数值为 2026-10-02
+   todos.dev 真浏览器实测（getComputedStyle + CSSTransition 记录），
+   ease 即 cubic-bezier(0.25,0.1,0.25,1)，非本仓 --ease-standard。
+   几何由 Base UI 写进内联 --active-tab-* 自定义属性。 */
+.chief-tab-indicator {
+  position: absolute;
+  left: var(--active-tab-left);
+  top: var(--active-tab-top);
+  width: var(--active-tab-width);
+  height: var(--active-tab-height);
+  z-index: 0;
+  border-radius: 6px;
+  background: var(--chief-tab-active);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  pointer-events: none;
+  transition:
+    left var(--dur-fast) ease,
+    top var(--dur-fast) ease,
+    width var(--dur-fast) ease,
+    height var(--dur-fast) ease;
+}
+
+/* r1 §4.3 全站降级律：减弱动效时指示条瞬切（同 motion.css 的 reduce 块） */
+@media (prefers-reduced-motion: reduce) {
+  .chief-tab-indicator {
+    transition: none;
+  }
 }
 
 /* segmented-control hover (issue #138): unselected tab tints the --seg-hover

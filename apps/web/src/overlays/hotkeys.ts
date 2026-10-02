@@ -24,6 +24,15 @@
 // see. Both ride useChordHotkey; the guard is the per-surface half, and
 // isEditableTarget is exported so a consuming face can narrow it to its own
 // interior rather than re-deriving the editable selector.
+//
+// #645 puts the retired N (XMON-37) back as a *drawer-scoped bare key*: the
+// chief drawer head's + (new thread) fires on N while the drawer is open.
+// It rides useHotkey with the same enabled gate the scoped chords use —
+// drawer shut, the listener is off the window and the global retirement
+// holds. Its guard is the plain editable law, NOT ⌘J's drawer-interior
+// exemption: N is an action key, and the open autofocuses the composer, so
+// with the composer focused n types and the fire waits for a non-editable
+// focus (a key the typist owns must never yank the view out from under it).
 
 import { useEffect, useRef } from 'react';
 
@@ -58,21 +67,32 @@ function useHotkey(
   key: string,
   guard: (target: EventTarget | null) => boolean,
   onOpen: () => void,
+  enabled = true,
 ) {
+  // #466 律（useChordHotkey 同形）：接线按 (key, enabled) 周期注册一次，永不
+  // 按渲染注册——最新 guard/onOpen 走 ref。被动 effect 的清理与重挂之间隔着
+  // 一整个调度周期，按渲染重挂会在这段缝里丢掉按键。
+  const guardRef = useRef(guard);
+  const onOpenRef = useRef(onOpen);
   useEffect(() => {
+    guardRef.current = guard;
+    onOpenRef.current = onOpen;
+  });
+  useEffect(() => {
+    if (!enabled) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.isComposing) return;
       if (event.key !== key) return;
       if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (guard(event.target)) return;
+      if (guardRef.current(event.target)) return;
       // preventDefault only when we fire — guarded targets keep their native
       // default untouched.
       event.preventDefault();
-      onOpen();
+      onOpenRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [key, guard, onOpen]);
+  }, [key, enabled]);
 }
 
 /** useHotkey 的修饰键同族通路：cmd/ctrl + 主键触发（⌘K 搜索注册处的形态
@@ -133,6 +153,15 @@ export function useNewTaskHotkey(onOpen: () => void): void {
  *  ⌘J 的原生激活语义，聚焦控件不得挡住和弦。 */
 export function useChiefToggleHotkey(onToggle: () => void): void {
   useChordHotkey('j', isEditableOutsideChiefDrawer, onToggle);
+}
+
+/** N → 总管新主题（#645）：抽屉头部 + 的裸键同族，作用域 = 抽屉开态（enabled
+ *  门，useProjectCycleHotkey 的 active 先例——面关着监听器根本不在 window
+ *  上，XMON-37 的全局退役律照旧成立）。守卫 = _plain_ 输入态律，不带 ⌘J 的
+ *  drawer 内豁免：N 是动作键不是和弦，开抽屉的 autofocus 落 composer，聚焦
+ *  时 n 归打字员，触发等一个非可编辑焦点。 */
+export function useChiefNewThreadHotkey(active: boolean, onNewThread: () => void): void {
+  useHotkey('n', isEditableTarget, onNewThread, active);
 }
 
 /** Tab → 新建任务 dialog 换项目（XMON-87 续二；chip 上挂 Tab 提示 chip）。

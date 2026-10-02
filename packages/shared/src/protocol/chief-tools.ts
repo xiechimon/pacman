@@ -1,6 +1,6 @@
 // Chief remoteTools 词表——raw 观测 49 件（r5 §3.1，一手来源 = thread 记录
 // toolDefHashes 全键 `docs/research/assets/r5/raw/chief-threads-testA.json`），
-// 现行 50 件 = raw − CHIEF_TOOLS_REMOVED + CHIEF_TOOLS_ADDED（divergence
+// 现行 51 件 = raw − CHIEF_TOOLS_REMOVED + CHIEF_TOOLS_ADDED（divergence
 // 双向登记，登记处见两常量）。复刻口径（02 §4.3 尾注）：Chief = 挂团队
 // 工具的 pi 会话，行为分毫不求同；工具「名单」为实测一手，各工具的
 // description/parameters 细形未采到 wire 原件 = 全部 [推断] 黑盒逼近
@@ -11,7 +11,8 @@
 // 除名；create_skill、update_skill 两件随 XMON-109 spec 13 回摆加入——raw
 // 无此二键，经 CHIEF_TOOLS_ADDED 登记；set_remote_shell 随 XMON-115 回摆——
 // 「远程 shell」本体（XMON-108 双闸 + XMON-110 daemon 工具）落地，写入点
-// 恢复正式形态）。
+// 恢复正式形态）+ 读 16（#627 models 加入——chief 建/改 Agent 指定模型前
+// 先读候选清单，raw 无此键，经 CHIEF_TOOLS_ADDED 登记）。
 // replaySafe = 读工具（bundle 提取：读侧带重试预算 RETRY_DELAYS_MS=[500,2000]、
 // 超时 remoteTool:10s，r5 §3.1）。
 
@@ -57,8 +58,10 @@ export const CHIEF_TOOLS_REMOVED = ['delete_skills'] as const;
 
 /** raw 之外有意加入的工具（divergence 反向登记，对拍测试 = raw 键集 −
  * removed + added）。XMON-109（spec 13 回摆）：create_skill / update_skill
- * ——chief 自动制作/维护技能收进 scope（chief 免开关，leader 拍板）。 */
-export const CHIEF_TOOLS_ADDED = ['create_skill', 'update_skill'] as const;
+ * ——chief 自动制作/维护技能收进 scope（chief 免开关，leader 拍板）。
+ * #627：models——读侧候选清单（建/改 Agent 的 provider/modelId 合法值域），
+ * 行语义对齐 web toModelOptions 并集投影（server 侧独立实现）。 */
+export const CHIEF_TOOLS_ADDED = ['create_skill', 'update_skill', 'models'] as const;
 
 /** 词表分组（r5 §3.1 正文分组语义；成员按 raw 键集归位 [推断]；
  * delete_skills 已除名；create_skill、update_skill 随 XMON-109 归组织面——
@@ -69,6 +72,7 @@ export const CHIEF_TOOL_CATEGORIES = {
     'projects',
     'todos',
     'agents',
+    'models',
     'machines',
     'skills',
     'secrets',
@@ -136,7 +140,7 @@ const obj = (properties: Record<string, unknown>, required: string[] = []) => ({
 /** 词表本体。description/parameters 全 [推断]（语义 = r1 docs 六能力组 +
  * r3/r5 行为证据投影；02 §7.2 24 工具白名单同族语义）。 */
 export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
-  // —— 读侧 15（replaySafe，r5 §3.1）——
+  // —— 读侧 16（replaySafe，r5 §3.1；#627 +models）——
   {
     name: 'projects',
     description: 'List the team projects with their repo binding and todo counts.',
@@ -159,6 +163,16 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
     name: 'agents',
     description:
       'List the team agents with their responsibility text (description), model and permissions — the input for dispatch weighting.',
+    parameters: obj({}),
+    replaySafe: true,
+  },
+  // models（#627）：候选模型清单——create_agent/update_agent 的
+  // provider/modelId 值域。agents 工具返回的是各 agent 的已配 modelId，
+  // 不是候选集；本工具才是值域正本。
+  {
+    name: 'models',
+    description:
+      'List the model candidates for agents as rows {provider, providerLabel, modelId, modelName}. Read this before setting provider/modelId on create_agent or update_agent — only values from this list are valid.',
     parameters: obj({}),
     replaySafe: true,
   },
@@ -339,8 +353,8 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
       {
         displayName: str('Agent display name.'),
         description: str('Responsibility text (injected into every task and used for dispatch).'),
-        provider: str('Optional provider id.'),
-        modelId: str('Optional model id.'),
+        provider: str('Optional provider id; call `models` for the candidate list.'),
+        modelId: str('Optional model id; call `models` for the candidate list.'),
       },
       ['displayName'],
     ),
@@ -353,8 +367,8 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
         agentId: str('Agent id.'),
         displayName: str('Optional new display name.'),
         description: str('Optional new responsibility text.'),
-        provider: str('Optional provider id.'),
-        modelId: str('Optional model id.'),
+        provider: str('Optional provider id; call `models` for the candidate list.'),
+        modelId: str('Optional model id; call `models` for the candidate list.'),
       },
       ['agentId'],
     ),
@@ -571,9 +585,9 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   },
 ];
 
-/** 词表自检：现行 50 件（raw 49 − CHIEF_TOOLS_REMOVED 1 + CHIEF_TOOLS_ADDED
- * 2 + set_remote_shell 回摆）、键集 = CHIEF_TOOL_NAMES、读侧全 replaySafe。 */
-export const CHIEF_TOOL_COUNT = 50;
+/** 词表自检：现行 51 件（raw 49 − CHIEF_TOOLS_REMOVED 1 + CHIEF_TOOLS_ADDED
+ * 3 + set_remote_shell 回摆）、键集 = CHIEF_TOOL_NAMES、读侧全 replaySafe。 */
+export const CHIEF_TOOL_COUNT = 51;
 
 /** worker 步记忆三件套（02 §4.4 写路径 / r5 §6：worker 侧同族工具经
  * remoteTools 下发——「bundle 无本地记忆实现」，写路径 = agent 工具 → 服务端
@@ -705,7 +719,7 @@ export const WORKER_SKILL_TOOLS: readonly RemoteToolDef[] = [
 
 /** worker 步全量工具（r5 §3.1 + #310/r9 §3.1 + spec 15 #394 + XMON-109）：
  * 记忆三件套 + 附件读 + 任务元信息回填 + 技能写词（恒列，开关执法在
- * executor）。chief 50 词表（组织/执行面）不外溢到 worker——worker 路径
+ * executor）。chief 51 词表（组织/执行面）不外溢到 worker——worker 路径
  * 只挂「任务内可操作」面（技能写是例外：按 XMON-109 拍板 worker 也写）。 */
 export const WORKER_REMOTE_TOOLS: readonly RemoteToolDef[] = [
   ...WORKER_MEMORY_REMOTE_TOOLS,
