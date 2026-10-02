@@ -28,6 +28,8 @@ import {
   AGENT_PERMISSION_COPY,
   AGENT_TOOL_COPY,
   AGENT_TOOL_SWITCHES,
+  CHIEF_INPUT_PLACEHOLDER,
+  CHIEF_INPUT_PLACEHOLDER_STEERING,
   CHIEF_REBIND_CONFIRM_COPY,
   FS_PICK_ERROR_COPY,
   LOCAL_ERROR_REASON_COPY,
@@ -62,6 +64,12 @@ const COMPUTED_KEYS = new Set<string>([
   // #182: chief 换绑二次确认 copy 同为 shared canon（<agent> 占位由显示层
   // 替换），经 t() 消费、不作字面量出现。
   CHIEF_REBIND_CONFIRM_COPY,
+  // #624: chief 抽屉输入占位双态 canon = shared CHIEF_INPUT_PLACEHOLDER（空闲）
+  // 与 CHIEF_INPUT_PLACEHOLDER_STEERING（回合中 steer），经 t() 消费、不作
+  // 字面量出现（detail 面 phase.ts 的同文 steer 字面量是 detail 域矩阵自持
+  // 副本，与本键集无关，不入 liveness 豁免也不因本键集失效）。
+  CHIEF_INPUT_PLACEHOLDER,
+  CHIEF_INPUT_PLACEHOLDER_STEERING,
   // spec 13 #367: 技能页空态文案 canon = shared SKILL_PAGE_COPY（经 t() 消费，
   // directoryHint 的 {dir} 由 SKILLS_DIR_DEFAULT 插值），不作字面量出现。
   SKILL_PAGE_COPY.empty,

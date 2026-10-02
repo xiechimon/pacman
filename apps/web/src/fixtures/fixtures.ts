@@ -1225,6 +1225,42 @@ export const chiefReady: FixtureSet = {
   },
 };
 
+/** r5 113: 回合进行中流式面（#624 命名场景，手法循 #499/#444 无 capture
+ *  先例）——testA 线程发出后 Chief 在仓库基座跑 git 只读探索（doc §2 实测
+ *  工具行 `git show`），回合未收尾：robot 行无 `完成 Ns` 徽标（seconds 空串
+ *  = live 流式同形），composer 占位切 steer canon（running 位）。线程标题 =
+ *  首句 12 字截断 + …（shared chiefThreadTitle 律）。流内容 [推断]：capture
+ *  仅工具行与占位词可辨（截图 113），拼装循 114 族；捕获面的 `停止` 钮属
+ *  live 停止链，另票裁决不入本景。 */
+export const chiefStreaming: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  chief: {
+    view: 'drawer',
+    bound: true,
+    modelSlot: 'claude-sonnet-5 · 默认',
+    threadTitle: '我想做一个能在浏览器里直…',
+    running: true,
+    stream: [
+      { kind: 'note', text: '17:19' },
+      { kind: 'note', text: '运行在 ', machineName: MACHINE_NAME },
+      { kind: 'user', text: CHIEF_DRAFT },
+      {
+        kind: 'robot',
+        paragraphs: [
+          [
+            {
+              text: '收到。我先读一遍现有入门项目的结构，再把游戏逻辑、画面手感、难度调优拆成并行任务向你汇报方案。',
+            },
+          ],
+        ],
+        seconds: '',
+        tools: [{ name: 'git show' }],
+      },
+    ],
+  },
+};
+
 /** r5 114: thread view with the dispatch report of todo #11 — user bubble,
  *  chief report paragraphs with the #11 / r5-scribe chips, 完成 44s footer. */
 export const chiefThread: FixtureSet = {

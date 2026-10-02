@@ -760,4 +760,9 @@ export interface ChiefContent {
   draft?: string;
   /** Message flow of an existing thread (r5 114/116). */
   stream?: ChiefStreamItem[];
+  /** #624 回合进行中（r5 113 流式面）：live = 活动线程 `activeRun` 非空的
+   *  投影（api/mappers.ts mapChief 单点判在位，开放形状不读字段）；fixture =
+   *  静态表达同一状态。true = composer 占位切 steer canon（shared
+   *  CHIEF_INPUT_PLACEHOLDER_STEERING）；缺省 = 空闲 canon。 */
+  running?: boolean;
 }

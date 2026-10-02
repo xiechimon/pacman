@@ -1061,6 +1061,10 @@ export function mapChief(
     ...(active === null
       ? { examples: CHIEF_HERO_EXAMPLES }
       : { stream: mapChiefStream(opts.messages) }),
+    // #624：回合进行中位 = 活动线程 activeRun 非空（r5 §3.5 开放形状，只判
+    // 在位不读字段）——抽屉占位据此切 steer canon；新主题视图（active null）
+    // 恒空闲。刷新节奏骑 chiefSend invalidateAll / conversation SSE 既有重取。
+    ...(active?.activeRun != null ? { running: true } : {}),
     ...(opts.draft !== undefined ? { draft: opts.draft } : {}),
   };
 }
