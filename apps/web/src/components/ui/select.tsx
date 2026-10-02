@@ -40,6 +40,10 @@ interface SelectProps {
   label: string;
   /** 首行「清空」档的文案；缺省 = 该槽不可空，不出这一行。 */
   unsetLabel?: string;
+  /** 依赖门（t-0024 两级选择器的二级用）：true = 触发钮不可点、弹层不出。
+   *  与「死钮不渲染」(#222) 的分界：这是时序门（上游选定后即启用），不是
+   *  永久无接线的死 affordance。 */
+  disabled?: boolean;
   /** listbox 的可访问名。 */
   menuLabel: string;
   /** 触发钮的可访问名。缺省不出——触发钮文案本身可读时（模型名、skill 名）
@@ -56,6 +60,7 @@ export function Select({
   unsetLabel,
   menuLabel,
   triggerLabel,
+  disabled = false,
   onPick,
 }: SelectProps) {
   const [open, setOpen] = useState(false);
@@ -74,61 +79,66 @@ export function Select({
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={triggerLabel}
+        disabled={disabled}
         onClick={() => setOpen((prev) => !prev)}
       >
         <span className="ui-select-label">{label}</span>
         <ChevronDown width={12} height={12} />
       </Button>
-      <FloatingShell
-        open={open}
-        onClose={() => setOpen(false)}
-        container={wrap}
-        className={`${prefix}-shell`}
-      >
-        <ClickCatcher onClose={() => setOpen(false)} />
-        <div
-          className={`ui-select-menu ${prefix}-menu anim-pop`}
-          role="listbox"
-          aria-label={menuLabel}
+      {/* disabled 态不挂弹层：触发钮已 pointer-events-none，弹层挂着只会留一个
+          永远够不着的 ClickCatcher 面。 */}
+      {!disabled && (
+        <FloatingShell
+          open={open}
+          onClose={() => setOpen(false)}
+          container={wrap}
+          className={`${prefix}-shell`}
         >
-          {unsetLabel !== undefined && (
-            <Button
-              variant="ghost"
-              className={`ui-select-row ${prefix}-row justify-start h-auto font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3.5`}
-              role="option"
-              aria-selected={value === null}
-              onClick={() => pick(null)}
-            >
-              <span className={`ui-select-row-name ${prefix}-row-name`}>{unsetLabel}</span>
-              {value === null && (
-                <span className={`ui-select-check ${prefix}-check`}>
-                  <Check width={14} height={14} />
-                </span>
-              )}
-            </Button>
-          )}
-          {options.map((row) => (
-            <Button
-              key={row.value}
-              variant="ghost"
-              className={`ui-select-row ${prefix}-row justify-start h-auto font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3.5`}
-              role="option"
-              aria-selected={row.value === value}
-              onClick={() => pick(row.value)}
-            >
-              <span className={`ui-select-row-name ${prefix}-row-name`}>{row.label}</span>
-              {row.meta !== undefined && (
-                <span className={`ui-select-row-meta ${prefix}-row-meta`}>{row.meta}</span>
-              )}
-              {row.value === value && (
-                <span className={`ui-select-check ${prefix}-check`}>
-                  <Check width={14} height={14} />
-                </span>
-              )}
-            </Button>
-          ))}
-        </div>
-      </FloatingShell>
+          <ClickCatcher onClose={() => setOpen(false)} />
+          <div
+            className={`ui-select-menu ${prefix}-menu anim-pop`}
+            role="listbox"
+            aria-label={menuLabel}
+          >
+            {unsetLabel !== undefined && (
+              <Button
+                variant="ghost"
+                className={`ui-select-row ${prefix}-row justify-start h-auto font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3.5`}
+                role="option"
+                aria-selected={value === null}
+                onClick={() => pick(null)}
+              >
+                <span className={`ui-select-row-name ${prefix}-row-name`}>{unsetLabel}</span>
+                {value === null && (
+                  <span className={`ui-select-check ${prefix}-check`}>
+                    <Check width={14} height={14} />
+                  </span>
+                )}
+              </Button>
+            )}
+            {options.map((row) => (
+              <Button
+                key={row.value}
+                variant="ghost"
+                className={`ui-select-row ${prefix}-row justify-start h-auto font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3.5`}
+                role="option"
+                aria-selected={row.value === value}
+                onClick={() => pick(row.value)}
+              >
+                <span className={`ui-select-row-name ${prefix}-row-name`}>{row.label}</span>
+                {row.meta !== undefined && (
+                  <span className={`ui-select-row-meta ${prefix}-row-meta`}>{row.meta}</span>
+                )}
+                {row.value === value && (
+                  <span className={`ui-select-check ${prefix}-check`}>
+                    <Check width={14} height={14} />
+                  </span>
+                )}
+              </Button>
+            ))}
+          </div>
+        </FloatingShell>
+      )}
     </span>
   );
 }

@@ -64,7 +64,7 @@ import {
   useSecrets,
   useSkills,
 } from '../api/hooks.js';
-import { RUNTIME_LABELS, toModelOptions, toThinkingLevelDisplay } from '../api/mappers.js';
+import { toModelOptions, toThinkingLevelDisplay } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { ProfileAvatar, ProfileCard, ProfileHead, ProfileRow } from '../components/profile-card.js';
 import { Button } from '../components/ui/button.js';
@@ -92,16 +92,13 @@ import { SECRETS_HREF } from '../resources/secrets-page.js';
 import { ResourceShell } from '../resources/shell.js';
 import { Chip } from '../ui/chip.js';
 import './agent-detail.css';
-import { AgentModelSelect } from './agent-model-select.js';
+import { AgentModelSelect, AgentRuntimeSelect } from './agent-model-select.js';
 
 /** 资源族根路径（非侧栏行——原版命令面板「前往」清单里没有 Agents 行，
  *  r2 §8.4；本面只从团队页的卡进入）。 */
 export const AGENTS_HREF = '/app/resources/agents';
 
 type AgentTab = 'overview' | 'memory' | 'permissions';
-
-/** 内置 runtime 的显示值（原版实测原文，Agent 详情概览的「运行时」行）。 */
-const BUILTIN_RUNTIME_LABEL = '内置 (pi)';
 
 const TAB_LABELS: { id: AgentTab; label: string }[] = [
   { id: 'overview', label: '概览' },
@@ -259,12 +256,9 @@ export function AgentDetailPage() {
   // 存值须落在词表内才呈现，否则落 r3 §4 观测形「默认」。
   const thinkingLevels = capabilitiesQ.data?.thinkingLevels ?? THINKING_LEVELS;
   const thinkingLevel = toThinkingLevelDisplay(agent.thinkingLevel, thinkingLevels);
-  const runtimeLabel =
-    agent.provider == null || agent.provider === 'pi'
-      ? t(BUILTIN_RUNTIME_LABEL)
-      : agent.provider === 'claude-code'
-        ? RUNTIME_LABELS['claude-code']
-        : agent.provider;
+  // 运行时档的存值形：wire 的 provider 位里 'pi' 字面值与 null 同义（都 = 内置），
+  // 归一成 null 再进一级选择器（选择器的清空行即「内置 (pi)」）。
+  const runtimeValue = agent.provider === 'pi' ? null : agent.provider;
 
   return (
     <ResourceShell
@@ -337,29 +331,29 @@ export function AgentDetailPage() {
                 />
               </ProfileRow>
               <ProfileRow label={t('运行时')} labelClassName="agent-field-label">
-                {/* 运行时（原版概览在模型之上有这一档，实测值形如 `内置 (pi)`）。
-                    本仓 wire 没有独立 runtime 字段——它就是 provider 位：null/pi
-                    = 内置 pi runtime，claude-code = 本机 Claude Code，其余 =
-                    custom provider 的 id。故只读呈现：做成选择器要落 provider
-                    槽并与下面的模型选择器耦合（换 runtime 得同时改或清 modelId），
-                    且原版「内置」文案在本仓没有对应物——语义裁决见 #499。 */}
-                <span className="agent-runtime">{runtimeLabel}</span>
+                {/* 运行时档 = 模型槽两级选择器的一级（t-0024 诉求 2；#499 时期
+                    裁「保持只读」的理由是「做成选择器要落 provider 槽并与模型
+                    选择器耦合」——本票要的正是这个耦合：先选运行时/服务商、再
+                    选它名下的模型。wire 仍无独立 runtime 字段，一级就是 provider
+                    位：null/pi = 内置 (pi)，claude-code = 本机 Claude Code，其余
+                    = custom provider id。换一级清二级（modelId 只在 provider 内
+                    有意义）。 */}
+                <AgentRuntimeSelect
+                  value={runtimeValue}
+                  options={modelOptions}
+                  onPick={(next) => {
+                    if (next === runtimeValue) return;
+                    patch({ provider: next, modelId: null });
+                  }}
+                  prefix="agent-runtime"
+                />
               </ProfileRow>
               <ProfileRow label={t('模型')} labelClassName="agent-field-label">
                 <AgentModelSelect
-                  value={
-                    agent.provider != null && agent.modelId != null
-                      ? { provider: agent.provider, modelId: agent.modelId }
-                      : null
-                  }
+                  provider={runtimeValue}
+                  modelId={agent.modelId}
                   options={modelOptions}
-                  onPick={(next) =>
-                    patch(
-                      next === null
-                        ? { provider: null, modelId: null }
-                        : { provider: next.provider, modelId: next.modelId },
-                    )
-                  }
+                  onPick={(next) => patch({ modelId: next })}
                   prefix="agent-model"
                 />
               </ProfileRow>
