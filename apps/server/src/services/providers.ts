@@ -18,6 +18,7 @@ import {
   PROVIDER_OAUTH_PRESET_IDS,
   PROVIDER_PRESET_IDS,
   PROVIDER_XAI_PRESET,
+  type ProviderCompat,
   type ProviderPreset,
   type ProviderRecord,
   type SecretBox,
@@ -70,7 +71,7 @@ export interface ProviderBody {
   baseUrl: string;
   api: ProviderRecord['api'];
   authHeader?: boolean;
-  compat?: { supportsDeveloperRole: boolean };
+  compat?: ProviderCompat;
   models?: { id: string; name: string }[];
   /** 只写位（02 §8）：string = 密封存储；null = 清除（「可以替换或删除」）。 */
   apiKey?: string | null;

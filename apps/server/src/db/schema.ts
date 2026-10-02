@@ -12,6 +12,7 @@ import type {
   Phase,
   ProjectRepoKind,
   ProviderApi,
+  ProviderCompat,
   StepKind,
   TodoSourceKind,
   TriggerSource,
@@ -371,7 +372,7 @@ export const provider = sqliteTable('provider', {
   baseUrl: text('baseUrl').notNull(),
   api: text('api').$type<ProviderApi>().notNull(),
   authHeader: bool('authHeader').notNull().default(true),
-  compat: json<{ supportsDeveloperRole: boolean }>('compat').notNull(),
+  compat: json<ProviderCompat>('compat').notNull(),
   models: json<{ id: string; name: string }[]>('models').notNull().default(sql`'[]'`),
   /** [内部] SecretBox 信封（v1 头 + iv + ciphertext + authTag，01 §4.2）；只写不读（02 §8）。 */
   apiKeyCipher: text('apiKeyCipher'),

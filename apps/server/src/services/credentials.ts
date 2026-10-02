@@ -11,7 +11,12 @@
 // plan/review/chief 步恒空）→ 名字 → 明文。明文只进返回值，**不铺进 agent
 // 进程环境**——daemon 持有真值，agent 经本地取用通道显式取用。
 
-import { type ProviderApi, type SecretBox, stepTakesSecrets } from '@pacman/shared';
+import {
+  type ProviderApi,
+  type ProviderCompat,
+  type SecretBox,
+  stepTakesSecrets,
+} from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { agent, apiKey, build, chief, chiefThread, step, todo } from '../db/schema.js';
@@ -69,6 +74,9 @@ export interface StepCredentialBundle {
     baseUrl: string;
     api: ProviderApi;
     authHeader: boolean;
+    /** 兼容旋钮（#654：provider 行 compat 原样下发；daemon 物化进 pi
+     * models.json，未设置位 = pi 端点探测默认）。 */
+    compat: ProviderCompat;
     /** 明文密钥；无密钥网关 = null（r3 §2「无密钥网关可留空」）。 */
     apiKey: string | null;
     /** 目录模型集（r3 §2 `探测模型` 面）；M3a：daemon 侧 pi models.json
@@ -111,6 +119,7 @@ export function resolveStepCredentials(
         baseUrl: opened.row.baseUrl,
         api: opened.row.api,
         authHeader: opened.row.authHeader,
+        compat: opened.row.compat,
         apiKey: opened.apiKey,
         models: opened.row.models,
         modelId: agentRow.modelId,
@@ -157,6 +166,7 @@ export function resolveChiefStepCredentials(
         baseUrl: opened.row.baseUrl,
         api: opened.row.api,
         authHeader: opened.row.authHeader,
+        compat: opened.row.compat,
         apiKey: opened.apiKey,
         models: opened.row.models,
         modelId: agentRow.modelId,
