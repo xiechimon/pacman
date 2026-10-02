@@ -109,6 +109,29 @@ await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 
 const page = await context.newPage();
 
 // SQLite 真值（只读）：better-sqlite3 走仓内依赖。
+// 无 daemon 的 probe 栈里回合永不收尾（activeRun 恒在位）——rewind 的 409
+// 守门会挡掉一切探针 rewind。scratch 库归 probe 所有：直接清 activeRun 模拟
+// 回合收尾（finishChiefTurn 的同效果面），再走真用户路径点恢复钮。
+function sqliteClearActiveRun(threadId) {
+  if (threadId == null) return false;
+  const require = createRequire(join(REPO, 'apps/server/package.json'));
+  const Database = require('better-sqlite3');
+  const db = new Database(join(stack.homeDir, 'server/server.db'));
+  db.prepare('update chief_thread set activeRun = null where id = ?').run(threadId);
+  db.close();
+  return true;
+}
+
+function sqliteStepCount(threadId) {
+  if (threadId == null) return -1;
+  const require = createRequire(join(REPO, 'apps/server/package.json'));
+  const Database = require('better-sqlite3');
+  const db = new Database(join(stack.homeDir, 'server/server.db'), { readonly: true });
+  const row = db.prepare('select count(*) as n from step where buildId = ?').get(threadId);
+  db.close();
+  return row ? row.n : -1;
+}
+
 function sqliteChiefModel() {
   const require = createRequire(join(REPO, 'apps/server/package.json'));
   const Database = require('better-sqlite3');
@@ -316,6 +339,52 @@ try {
   } else {
     check('copy-button-writes-clipboard', false, '消息行复制钮缺失（仍裸 glyph）');
   }
+  await settled(page);
+  // —— 恢复到此处闭环（#615 返工）：发第二句 → 恢复到第一句 → 截断 + 重入队 ——
+  await page.locator('.chief-composer-input').fill('第二句供 rewind。');
+  await page.keyboard.press('Enter');
+  await page
+    .waitForFunction(
+      () => document.querySelectorAll('.chief-msg-tools button[aria-label="恢复到此处"]').length >= 2,
+      null,
+      { timeout: 8000 },
+    )
+    .catch(() => {});
+  const restoreBtns = page.locator(DRAWER + ' .chief-msg-tools button[aria-label="恢复到此处"]');
+  const nRestore = await restoreBtns.count();
+  const threadsPre = await getJson(SERVER + '/api/teams/' + teamId + '/chief/threads');
+  sqliteClearActiveRun(threadsPre?.[0]?.id ?? null);
+  if (nRestore >= 2) {
+    await restoreBtns.first().click();
+    await page.waitForSelector('.chief-pick-confirm', { state: 'visible', timeout: 8000 }).catch(() => {});
+    await page.locator('.chief-dlg-primary').click();
+    await page
+      .waitForFunction(
+        () => document.querySelectorAll('.chief-msg-tools button[aria-label="恢复到此处"]').length === 1,
+        null,
+        { timeout: 8000 },
+      )
+      .catch(() => {});
+    const threads = await getJson(SERVER + '/api/teams/' + teamId + '/chief/threads');
+    const tid = threads?.[0]?.id ?? null;
+    let userMsgs = [];
+    if (tid != null) {
+      const conv = await getJson(SERVER + '/api/conversations/' + tid + '/messages');
+      userMsgs = (conv.messages ?? []).filter((m) => m.role === 'user');
+    }
+    const sqlSteps = sqliteStepCount(tid);
+    check(
+      'rewind-truncates-and-reenqueues',
+      userMsgs.length === 1 &&
+        userMsgs[0].content === '验证复制钮的一句话。' &&
+        sqlSteps === 3,
+      'user 消息=' + userMsgs.length + '（锚保留）；step 行=' + sqlSteps + '（A+B+rewind）',
+    );
+  } else {
+    check('rewind-truncates-and-reenqueues', false, '恢复钮数=' + nRestore + '（应 ≥2）');
+  }
+  await shot(page, '07-after-rewind.png');
+
   await settled(page);
   const bareTools = await page.locator(DRAWER + ' .chief-msg-tools > svg').count();
   const bareFoot = await page.locator(DRAWER + ' .chief-msg-foot > svg').count();
