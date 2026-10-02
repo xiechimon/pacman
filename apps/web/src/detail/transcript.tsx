@@ -221,7 +221,12 @@ function Row({
                 fallback="/avatar-user.png"
               />
             </span>
-            <span className="chat-bubble">{item.text}</span>
+            {/* #612：真实用户话语带 markdown 槽（live mapper 设置；robot 行
+                #469 同款渲染期解析）——围栏/列表/标题不再按字面裸排。纯文本
+                槽 = fixture 捕获形，DOM 与几何保持不变。 */}
+            <span className={item.markdown != null ? 'chat-bubble chat-bubble--md' : 'chat-bubble'}>
+              {item.markdown != null ? <ChatMarkdown text={item.markdown} /> : item.text}
+            </span>
           </div>
           {item.seq != null && item.title != null && (
             <div className="chat-taskline">

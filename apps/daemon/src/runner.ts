@@ -24,6 +24,8 @@ import type {
 import {
   AGENT_TOOL_MERGE,
   AGENT_TOOL_PUSH,
+  buildTaskPromptText,
+  CONTINUE_PROMPTS,
   FIXED_TAGS,
   LOCAL_TOOL_CREATE_TAG,
   LOCAL_TOOL_REMOTE_SHELL,
@@ -86,29 +88,24 @@ export interface RunStepOptions {
   running?: number;
 }
 
-/** 任务文本（M3a 骨架 [设计]：title + spec 原文；plan.md 产出/git 面归 M3b，
- * 驳回 feedback / 合并指令等续轮 prompt 由调用方经 resume.prompt 传入）。
- * chief 步无 todo → 用 server 合成的 instruction（用户消息/wake 事实）。 */
+/** 任务文本（M3a 骨架 [设计]：title + spec 原文，文本单源 = shared
+ * buildTaskPromptText——web transcript 过滤侧按同一合成式识别本行，#612；
+ * plan.md 产出/git 面归 M3b，驳回 feedback / 合并指令等续轮 prompt 由调用方
+ * 经 resume.prompt 传入）。chief 步无 todo → 用 server 合成的 instruction
+ * （用户消息/wake 事实）。 */
 export function buildTaskPrompt(claimed: ClaimedStep): string {
   const todo = claimed.todo;
   if (!todo) return claimed.instruction ?? '';
-  return `${todo.title}\n\n${todo.spec}`;
+  return buildTaskPromptText(todo.title, todo.spec);
 }
 
-/** continue session 续轮指令 [设计]（02 §4.2：确认→执行步、merge 202
- * delegated→合并步均复用同 conv 会话；驳回 feedback 经 server instruction 注入，
- * M4a）。chief 续轮 = wake 事实走 instruction，本表 chief 值不用（占位保全键）。
- * review（M7 #312，r8 §3.1）= 首轮由 server instruction 注入（含 plan.md 全
- * 文 + 用户 focus），本表保占位空串防 TS 缺键；continue 路径不被使用——审核
- * 步是额外 agent 步，不接续到主 conv 会话（#511 起 server 侧恒下发
- * session.action='new'，runner 侧 review 走 instruction 分支，双保险）。 */
-export const CONTINUE_PROMPTS: Record<ClaimedStep['step']['kind'], string> = {
-  plan: '请重新规划该任务，输出更新后的方案。',
-  build: '方案已确认。请按方案执行，完成改动。',
-  merge: '请把本会话分支的改动合并到默认分支。',
-  chief: '',
-  review: '',
-};
+// continue session 续轮指令 = shared CONTINUE_PROMPTS 单源（#612 起 web
+// transcript 过滤侧消费同一词表——合成指令不再冒名用户气泡）。语义备注：
+// chief 续轮 = wake 事实走 instruction，表内 chief 值不用（占位保全键）；
+// review（M7 #312）首轮由 server instruction 注入（含 plan.md 全文 + 用户
+// focus），continue 路径不被使用——审核步是额外 agent 步，不接续到主 conv
+// 会话（#511 起 server 侧恒下发 session.action='new'，runner 侧 review 走
+// instruction 分支，双保险）。
 
 /** 任务元信息注入的项目形态面（#446 / ADR 0005 分叉律；claim 载荷
  * todo.meta 同形投影）：github 形态携带——词表 = 项目标签集镜像（仓库

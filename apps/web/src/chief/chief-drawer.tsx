@@ -3,12 +3,20 @@
 // kept as the pinned width), full height, flush right, radius 0, no shadow,
 // one 1px hairline seam on the left. It is a layout citizen, not an overlay:
 // each mount point renders it as the last flex item of a row whose content
-// sibling yields (D2). Header = thread chip + model slot + icon buttons;
+// sibling yields (D2). Header = thread chip + model row + icon buttons;
 // body = gate bar (unbound) or hero examples / thread message flow;
 // composer pinned at the bottom. The switcher popover (116) and the view
 // swap to 总管设置 are real state so the surface is clickable in dev;
 // fixture captures never click, so the fixture alone decides the captured
 // state.
+// #615 四连报闭环：模型行由纯显示 span 翻成控制件（button → 主模型覆盖
+// dialog，PATCH chief model 槽落库回显）；行首 = 运行时标记（pi 出 RuntimePi
+// 块状 π、claude-code 出 RuntimeClaudeCode 品牌星标——正本 = 参考站
+// providers 运行时 tab SVG，用户返工裁决：要运行时 SVG 不要 Agent 头像；
+// FAB / 消息流的 Agent 头像脸在各自面继续生效）；消息行复制
+// glyph 翻真 clipboard 钮（local-first 面存在），恢复/foot 折叠 chevron 无
+// 后端面按 #306/#146 二分律移除不渲染；gear 各族可达（非 board 面落 board
+// 设置视图深链，ChiefWakePanel 兜底后结构上恒在）。
 //
 // #146 收尾：Esc 关面板（useEscapeClose 弹层族同律——内层的线程切换器
 // popover 先关，再关 drawer）；hero 快捷提示 ×4 点击即发预置词进 chief
@@ -21,21 +29,23 @@
 // 面亦无线程管理 mutation（GET/POST threads 外无删除/重命名端点），无
 // local-first 对象面，按 M7 处置二分律移除不渲染；头部三钮双视图同律。
 
+import type { ChiefCompactionModel } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/button.js';
+import { DialogShell } from '../components/ui/dialog-shell.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
-import type { ChiefContent, ChiefSegment } from '../fixtures/records.js';
+import type { ChiefContent, ChiefSegment, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import {
   ArrowUp,
   BarChart3,
+  Check,
   ChevronDown,
   ChevronRight,
   ChiefFaceDashed,
   ChiefFolder,
   ChiefGear,
   ChiefHash,
-  ChiefPi,
   ChiefUserPlus,
   ChiefUserSolid,
   Copy,
@@ -43,11 +53,14 @@ import {
   Grid2x2,
   Plus,
   Restore,
+  RuntimeClaudeCode,
+  RuntimePi,
   X,
 } from '../icons/index.js';
 import { DRAWER_EXIT_MS } from '../overlay/use-overlay-mount.js';
 import { OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import './chief.css';
+import { ChiefModelDialog } from './chief-model-dialog.js';
 
 const EXAMPLE_ICONS = {
   'user-plus': ChiefUserPlus,
@@ -55,6 +68,19 @@ const EXAMPLE_ICONS = {
   grid: Grid2x2,
   bars: BarChart3,
 } as const;
+
+/** Inline runs → plain text（#615 复制钮的 clipboard 载荷：chip 取其label，
+ *  代码段取原文——复制的是读者可见文本）。 */
+function segmentsText(segments: ChiefSegment[]): string {
+  return segments.map((s) => (s.todo != null ? `#${s.todo}` : (s.agent ?? s.text ?? ''))).join('');
+}
+
+/** robot 消息全文（#615 foot 复制钮载荷）：段落换行拼接 + bullet 行随附。 */
+function robotText(item: { paragraphs: ChiefSegment[][]; bullets?: ChiefSegment[][] }): string {
+  const lines = item.paragraphs.map(segmentsText);
+  for (const b of item.bullets ?? []) lines.push(`- ${segmentsText(b)}`);
+  return lines.join('\n');
+}
 
 /** Inline runs: plain text, mono chip, `#N` todo chip, agent chip. */
 function Segments({ segments }: { segments: ChiefSegment[] }) {
@@ -91,8 +117,10 @@ interface DrawerProps {
   /** #73 retained-mount open flag; the slide-out outlives the close. */
   open?: boolean;
   chief: ChiefContent;
-  /** Opens the 总管设置 content swap — a board-route affordance (r5
-   *  101–104); absent hides the gear (the shared wake surfaces, #129). */
+  /** Opens 总管设置: board route = content swap (r5 101–104); the wake
+   *  surfaces supply the `?chief=settings` deep-link nav (#615), so the
+   *  gear renders on every surface — absent only hides it for callers
+   *  that explicitly pass nothing (ChiefWakePanel 兜底后结构上恒在). */
   onSettings?: () => void;
   onClose: () => void;
   /** M5 live 面：composer 可写 + 发送回调（POST chief 线程消息，r5 §3.6）；
@@ -104,6 +132,17 @@ interface DrawerProps {
    * （threadId null = 新主题，wire 注记见 shared chief send schema）；
    * 缺省 = fixture 静态面，钮惰性。 */
   onNewThread?: () => void;
+  /** #615 主模型覆盖槽当前值（live = chief 封套真值；null = 继承绑定
+   *  Agent）；fixture 面缺省 = null。 */
+  modelValue?: ChiefCompactionModel | null;
+  /** #615 主模型候选（live = toModelOptions 并集投影）；缺省 = 仅默认行。 */
+  modelOptions?: ModelOption[];
+  /** #615 live 面：模型 dialog 选定 = PATCH chief model 槽；缺省 = fixture
+   *  律（选择即关，零请求）。 */
+  onPickModel?: (value: ChiefCompactionModel | null) => void;
+  /** #615 返工 live 面：恢复钮确认后 = POST chief threads rewind（截断锚后
+   *  消息 + 新会话重发）；缺省 = fixture 律（确认层 accept 关窗零请求）。 */
+  onRewind?: (messageId: string) => void;
 }
 
 export function ChiefDrawer({
@@ -114,9 +153,32 @@ export function ChiefDrawer({
   onSend,
   onThread,
   onNewThread,
+  modelValue = null,
+  modelOptions,
+  onPickModel,
+  onRewind,
 }: DrawerProps) {
   const { t } = useI18n();
   const [threadsOpen, setThreadsOpen] = useState(chief.threadsOpen ?? false);
+  const [modelOpen, setModelOpen] = useState(false);
+  // #615 返工：恢复钮确认层锚（stream 行 index + live 消息 id）与过程折叠开态集。
+  const [rewindConfirm, setRewindConfirm] = useState<{ index: number; id: string | null } | null>(
+    null,
+  );
+  const [toolsOpen, setToolsOpen] = useState<Set<number>>(() => new Set());
+  // #615 复制钮的瞬时回执：键 = 消息位（u<i> / r<i>），1.5s 后回 Copy 字形。
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const copyText = (key: string, text: string) => {
+    const clip = navigator.clipboard; // 非安全上下文无 clipboard：静默不回执
+    if (!clip) return;
+    void clip.writeText(text).then(
+      () => {
+        setCopiedKey(key);
+        window.setTimeout(() => setCopiedKey((cur) => (cur === key ? null : cur)), 1500);
+      },
+      () => {},
+    );
+  };
   const [liveDraft, setLiveDraft] = useState('');
   const draftValue = onSend != null ? liveDraft : (chief.draft ?? '');
   // #146: Esc 与弹层族同律（#127 useEscapeClose 先例）——最内层先关：
@@ -211,8 +273,42 @@ export function ChiefDrawer({
           <div className="chief-model">
             {chief.bound ? (
               <>
-                <ChiefPi />
-                <span>{chief.modelSlot}</span>
+                {/* #615 A/B：显示行翻控制件——行首 = 绑定 Agent 头像（FAB /
+                    消息流同脸，XMON-105 律；未取到 agent 投影退 dashed 字形），
+                    点开 = 主模型覆盖 dialog（live PATCH 落库回显）。中和件同
+                    头部 chip 族：h-auto/leading-[inherit]/font-normal 防原语
+                    定值撑高 12px 行、svg size-auto（ChevronDown 12 属性尺寸）。 */}
+                <Button
+                  variant="ghost"
+                  className="chief-model-btn h-auto shrink leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                  aria-label={t('总管主模型')}
+                  aria-haspopup="dialog"
+                  aria-expanded={modelOpen}
+                  onClick={() => setModelOpen(true)}
+                >
+                  {/* #615 返工（用户裁决）：行首 = 运行时标记，不是 Agent 头像
+                      ——标记正本 = 参考站 providers 运行时 tab 的 SVG（用户指认
+                      /app/resources/providers?runtime=pi 面，DOM 捕获入库）：
+                      pi = RuntimePi 块状 π，claude-code = RuntimeClaudeCode
+                      品牌星标（填色随捕获）。FAB / 消息流的 Agent 头像脸不受
+                      影响（XMON-105 律在其各自面继续生效）。 */}
+                  <span className="chief-model-mark">
+                    {(chief.modelProvider ?? 'pi') === 'claude-code' ? (
+                      <RuntimeClaudeCode width={12} height={12} />
+                    ) : (
+                      <RuntimePi width={12} height={12} />
+                    )}
+                  </span>
+                  <span className="chief-model-label">{chief.modelSlot}</span>
+                  <ChevronDown width={12} height={12} />
+                </Button>
+                <ChiefModelDialog
+                  open={modelOpen}
+                  onClose={() => setModelOpen(false)}
+                  value={modelValue}
+                  options={modelOptions}
+                  onPick={onPickModel}
+                />
               </>
             ) : (
               <span>n/a</span>
@@ -313,8 +409,35 @@ export function ChiefDrawer({
                       <div className="chief-msg-col">
                         <div className="chief-bubble">{item.text}</div>
                         <div className="chief-msg-tools">
-                          <Copy width={13} height={13} />
-                          <Restore width={13} height={13} />
+                          {/* #615 C：复制翻真 clipboard 钮（local-first 面存在）。 */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                            aria-label={t('复制')}
+                            onClick={() => copyText(`u${i}`, item.text)}
+                          >
+                            {copiedKey === `u${i}` ? (
+                              <Check width={13} height={13} />
+                            ) : (
+                              <Copy width={13} height={13} />
+                            )}
+                          </Button>
+                          {/* #615 返工（用户裁决覆盖 #306 二分律）：恢复钮闭环
+                              ——aria 正词「恢复到此处」= 参考站 live 同名控件；
+                              语义 = rewind 锚（截断锚后消息 + 新会话重发该条，
+                              server POST chief threads rewind）。破坏性 → 确认
+                              层先行；fixture 面（onRewind 缺省 / id 缺省）走
+                              accept 律关窗零请求。 */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                            aria-label={t('恢复到此处')}
+                            onClick={() => setRewindConfirm({ index: i, id: item.id ?? null })}
+                          >
+                            <Restore width={13} height={13} />
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -351,10 +474,67 @@ export function ChiefDrawer({
                         </p>
                       ))}
                       <div className="chief-msg-foot">
-                        <Copy width={13} height={13} />
-                        <span>{t('完成 {n}', { n: item.seconds })}</span>
-                        <ChevronRight width={11} height={11} />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                          aria-label={t('复制')}
+                          onClick={() => copyText(`r${i}`, robotText(item))}
+                        >
+                          {copiedKey === `r${i}` ? (
+                            <Check width={13} height={13} />
+                          ) : (
+                            <Copy width={13} height={13} />
+                          )}
+                        </Button>
+                        {/* live 面 seconds 空串（mapChiefStream 无耗时数据源）
+                            不再渲染空「完成」行；fixture canon 44s 照旧。 */}
+                        {item.seconds !== '' && <span>{t('完成 {n}', { n: item.seconds })}</span>}
+                        {/* #615 返工（用户裁决覆盖 #306 二分律）：foot 折叠箭头
+                            闭环 = 该回合过程披露（Multica OuterProcessFold 同
+                            族：chevron + 展开内容 = 工具步；r5 114 捕获位 = 完
+                            成 Ns 之后的 ›）。展开面 = 被流主呈现滤掉的工具调
+                            用行（chief_message toolcall 投影，DB 既有零新后端）；
+                            无工具行的回合不渲染触发器（无可披露内容）。 */}
+                        {(item.tools?.length ?? 0) > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                            aria-label={toolsOpen.has(i) ? t('收起过程') : t('展开过程')}
+                            aria-expanded={toolsOpen.has(i)}
+                            onClick={() =>
+                              setToolsOpen((cur) => {
+                                const next = new Set(cur);
+                                if (next.has(i)) next.delete(i);
+                                else next.add(i);
+                                return next;
+                              })
+                            }
+                          >
+                            {toolsOpen.has(i) ? (
+                              <ChevronDown width={11} height={11} />
+                            ) : (
+                              <ChevronRight width={11} height={11} />
+                            )}
+                          </Button>
+                        )}
                       </div>
+                      {(item.tools?.length ?? 0) > 0 && toolsOpen.has(i) && (
+                        <div className="chief-turn-tools">
+                          {item.tools?.map((tool, k) => (
+                            <div key={k} className="chief-turn-tool-row">
+                              <span className="chief-turn-tool-name">{tool.name}</span>
+                              {tool.seconds !== undefined && (
+                                <span className="chief-turn-tool-sec">{tool.seconds}s</span>
+                              )}
+                              {tool.error === true && (
+                                <span className="chief-turn-tool-err">{t('失败')}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -406,6 +586,47 @@ export function ChiefDrawer({
             </Button>
           </div>
         </div>
+        {/* #615 返工：恢复钮确认层（破坏性：截断锚后消息并以锚重发）。壳与
+            按钮档复用 chief-agent-dialog 同族 per-face（chief-dlg-ghost /
+            chief-dlg-primary / chief-pick-confirm）。fixture 面 id 缺省 =
+            accept 律关窗零请求。 */}
+        <DialogShell
+          title={t('恢复到此处')}
+          open={rewindConfirm !== null}
+          onClose={() => setRewindConfirm(null)}
+          footer={
+            <div className="dlg-form-foot">
+              <div className="dlg-form-actions">
+                <Button
+                  variant="ghost"
+                  className="chief-dlg-ghost px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
+                  onClick={() => setRewindConfirm(null)}
+                >
+                  {t('取消')}
+                </Button>
+                <Button
+                  variant="brand"
+                  className="chief-dlg-primary px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
+                  onClick={() => {
+                    const anchor = rewindConfirm;
+                    setRewindConfirm(null);
+                    if (anchor?.id != null) onRewind?.(anchor.id);
+                  }}
+                >
+                  {t('恢复到此处')}
+                </Button>
+              </div>
+            </div>
+          }
+        >
+          <div className="chief-pick-confirm">
+            <p className="chief-pick-confirm-copy">
+              {t('恢复到此处？该条之后的 {n} 条消息会移除，总管从这条重发开新回合。', {
+                n: Math.max(0, (chief.stream?.length ?? 0) - (rewindConfirm?.index ?? 0) - 1),
+              })}
+            </p>
+          </div>
+        </DialogShell>
       </aside>
     </OverlayMount>
   );

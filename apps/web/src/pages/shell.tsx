@@ -12,6 +12,7 @@ import { Link, useLocation } from 'react-router';
 import { AppSidebar } from '../board/app-sidebar.js';
 import type { SidebarSelected } from '../board/sidebar.js';
 import { ChiefWake } from '../chief/chief-wake.js';
+import { Button } from '../components/ui/button.js';
 import type { FixtureSet } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft } from '../icons/index.js';
@@ -39,17 +40,21 @@ export function TabGroup({
   return (
     <div className="page-tabs-group">
       {tabs.map((item) => (
-        <button
+        // XMON-25 收编：ghost 变体承载交互皮肤，几何/墨色正本仍在 per-face
+        // （.page-tab 的 bg 简写压掉 ghost hover；seg-hover 媒体块 unlayered
+        // 恒胜）。中和位：font-normal（正文 400 基线）、active 位移清零、
+        // disabled 保 pointer-events（禁用 tab 的 hover 微光是现行为）。
+        <Button
           key={item.id}
-          type="button"
-          className={`page-tab${tab === item.id ? ' page-tab--active' : ''}${
-            item.disabled === true ? ' page-tab--disabled' : ''
-          }`}
+          variant="ghost"
+          className={`page-tab font-normal active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto${
+            tab === item.id ? ' page-tab--active' : ''
+          }${item.disabled === true ? ' page-tab--disabled' : ''}`}
           disabled={item.disabled === true}
           onClick={() => onTab?.(item.id)}
         >
           {t(item.label)}
-        </button>
+        </Button>
       ))}
     </div>
   );

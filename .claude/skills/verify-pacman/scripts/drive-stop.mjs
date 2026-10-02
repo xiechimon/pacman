@@ -57,7 +57,9 @@ try {
   await page.screenshot({ path: join(EVIDENCE, '00-detail-fresh.png') });
 
   // —— 真用户路径：开始 → (#318 统一 start dialog) 先做规划 → 规划轮 streaming ——
-  await page.getByRole('button', { name: '开始', exact: true }).click();
+  // XMON-72 随票维护：fresh 详情页现有两枚「开始」（banner dhead primary +
+  // 主 pane .fresh-start），getByRole strict mode 撞双——锚主 pane 大钮。
+  await page.click('.fresh-start');
   // #318 起 todo 相位「开始」先开统一 start dialog(.overlay-panel,含 agent/
   // machine 选择行 + 先做规划/立即执行 双钮),选定后才真起 build。#308 原
   // probe 写于 dialog 引入前,直接等 streaming 会超时——此处补 dialog 一步。
@@ -71,7 +73,8 @@ try {
   // —— 停止钮 → 确认弹层（默认勾选丢弃，r9 §2.3）——
   await page.click('.composer-stop');
   await page.waitForSelector('.dlg-title:has-text("停止当前这一轮？")', { timeout: 5_000 });
-  const checked = await page.$eval('.dlg-accept-check input', (el) => el.checked);
+  // XMON-72：复选行收口 components/ui/checkbox 原语，真 input = .ui-checkbox-input
+  const checked = await page.$eval('.dlg-accept .ui-checkbox-input', (el) => el.checked);
   const label = await page.$eval('.dlg-accept-label', (el) => el.textContent);
   await page.screenshot({ path: join(EVIDENCE, '02-stop-confirm-dialog.png') });
   check('dialog-default-checked', checked === true, `checkbox checked=${checked}`);

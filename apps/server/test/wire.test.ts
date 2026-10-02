@@ -50,6 +50,7 @@ const INFERRED_ROUTES = [
   // 同名 POST [推断]，02 §6.1 规则族（不发明新命名空间）——
   'POST /api/teams/{id}/chief/threads', // 新主题：建线程 + 首条消息 + 入队回合步
   'POST /api/conversations/{id}/messages', // 既有 chief 线程续消息（id=chief-<threadId>）
+  'POST /api/teams/{id}/chief/threads/{tid}/rewind', // #615 返工：恢复钮「恢复到此处」闭环（用户裁决不删；参考站 live aria 正词 + chatbot-ui 截断重发族；threads/{tid}/… REST 同族规则）
   // MCP 管理写面（PATCH/DELETE 'teams/{id}/mcp-servers'）已随 spec 13/#368
   // 本地 config 只读制撤除——GET 读面仍在词表（WEB_REST_ENDPOINTS）。
   // 记忆条目卡删除图标（r5 §6 UI 实测；02 §4.4「列表/删除 API 保形」，

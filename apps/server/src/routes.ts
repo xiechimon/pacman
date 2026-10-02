@@ -20,6 +20,7 @@ import {
   buildStepActionBodySchema,
   buildStopBodySchema,
   capabilitiesResponseSchema,
+  chiefRewindBodySchema,
   chiefSendMessageBodySchema,
   createAgentBodySchema,
   createBranchSyncBodySchema,
@@ -111,6 +112,7 @@ import {
   getChiefThread,
   listChiefThreads,
   patchChief,
+  rewindChiefThread,
   sendChiefMessage,
 } from './services/chief.js';
 import { planDocumentDiff } from './services/documents.js';
@@ -786,6 +788,17 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     // 会话流即时推送（chief 会话 = chief-<threadId> 键，M5 live 面）。
     ctx.convHub?.publishMessage(result.thread.id, { ...result.message });
     return c.json(result, 201);
+  });
+
+  // 恢复到此处（#615 返工，用户裁决恢复钮闭环不删除）：锚 = 用户消息，截断
+  // 其后消息 + 重置会话 + 锚内容重入队；活跃回合 409。语义正本 = 参考站 live
+  // aria「恢复到此处」+ chatbot-ui regenerate 截断重发族 + Multica 无 rewind
+  // （对照负证）。wire 未采 → INFERRED_ROUTES 登记（test/wire.test.ts）。
+  app.post('/api/teams/:id/chief/threads/:tid/rewind', async (c) => {
+    const teamId = c.req.param('id');
+    requireTeam(ctx, teamId);
+    const body = parseWith(chiefRewindBodySchema, await jsonBody(c), 'body');
+    return c.json(rewindChiefThread(svc, teamId, c.req.param('tid'), body));
   });
 
   // 既有线程续消息 = POST /conversations/{id}/messages（REST 同名 [推断]）。

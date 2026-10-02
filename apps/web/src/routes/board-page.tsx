@@ -89,8 +89,19 @@ export function BoardPage() {
     rest.delete('chief');
     navigate(`?${rest.toString()}`, { replace: true });
   }, [searchParams, navigate]);
-  const { chiefView, setChiefView, chiefData, chiefUnread, onSend, onThread, onNewThread } =
-    useChiefSurface(fixture, { threadId: chiefParam, onConsumed: consumeChiefParam });
+  const {
+    chiefView,
+    setChiefView,
+    chiefData,
+    chiefUnread,
+    onSend,
+    onThread,
+    onNewThread,
+    modelValue,
+    modelOptions,
+    onPickModel,
+    onRewind,
+  } = useChiefSurface(fixture, { threadId: chiefParam, onConsumed: consumeChiefParam });
 
   // —— live 数据面（#83）：查询 + mutations；fixture 模式全部惰性（enabled
   // = live），采集零请求零流。members/skills/machines 归 #389 抽出的
@@ -544,6 +555,10 @@ export function BoardPage() {
         onSend={onSend}
         onThread={onThread}
         onNewThread={onNewThread}
+        modelValue={modelValue}
+        modelOptions={modelOptions}
+        onPickModel={onPickModel}
+        onRewind={onRewind}
       />
       {/* #389: dialog 接线全走新建任务面（侧栏 C 热键/新任务行的 opener 也
           指这里——openNewTask）；fixture 保存落点 = 本页 onFixtureSave 本地
