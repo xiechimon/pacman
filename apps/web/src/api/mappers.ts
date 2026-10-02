@@ -38,6 +38,7 @@ import {
   REVIEW_ANNOUNCEMENT,
   REVIEW_VERDICT_KIND,
   reviewVerdictSchema,
+  TRANSCRIPT_PROMPT_ROW_ID_PREFIX,
 } from '@pacman/shared';
 import { relativeTime } from '../board/rel-time.js';
 import type {
@@ -988,6 +989,18 @@ const CHIEF_HERO_EXAMPLES = [
 
 export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
   const items: ChiefStreamItem[] = [];
+  // #667 回声行去重：用户回合双落库——POST 行（server sendChiefMessage，
+  // id = newRecordId 无前缀）+ daemon transcript 回声行（id = `user-<stepId>`，
+  // TRANSCRIPT_PROMPT_ROW_ID_PREFIX）。正本 = POST 行（发送即上屏 + rewind
+  // 锚）；回声行是执行记录面，wake 轮无 POST 行时又是唯一 user 行。判据 =
+  // id 前缀 + 同线程内容孪生（trim 归一与渲染同源）：POST 行永不跳过 →
+  // 连发同文各自渲染恰一次；wake 回声行无孪生 → 原样保留。比对按全集不按
+  // 邻接——chiefThreadMessages 只按 createdAt 排序，同毫秒并列时行序无保证。
+  const postedTexts = new Set(
+    messages
+      .filter((m) => m.role === 'user' && !m.id.startsWith(TRANSCRIPT_PROMPT_ROW_ID_PREFIX))
+      .map((m) => textOfContent(m.content).trim()),
+  );
   // #615 返工：工具行不再丢弃——缓冲进下一个 robot 回合的 tools 折叠面
   // （foot 折叠箭头展开内容；Multica OuterProcessFold 同族语义）。
   let pendingTools: ChiefToolRow[] = [];
@@ -1014,6 +1027,8 @@ export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
     const text = textOfContent(m.content).trim();
     if (text === '') continue;
     if (m.role === 'user') {
+      // #667 回声行有非前缀孪生 → 跳过（POST 行承载同一句话的呈现与锚）。
+      if (m.id.startsWith(TRANSCRIPT_PROMPT_ROW_ID_PREFIX) && postedTexts.has(text)) continue;
       pendingTools = []; // 回合边界：用户行之前的工具行属上一回合且已无归属面
       items.push({ kind: 'user', text, id: m.id });
       continue;
