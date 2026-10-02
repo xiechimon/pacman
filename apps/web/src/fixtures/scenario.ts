@@ -36,6 +36,7 @@ import {
   chiefReady,
   chiefSettings,
   chiefSettingsStaleModel,
+  chiefStreaming,
   chiefThread,
   chiefThreadsOpen,
   compareMenuV2,
@@ -321,6 +322,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // 裸串兜底回显的 fixture 钉（合成 scenario，10-cc-missing 先例）
       '101-stale-model': chiefSettingsStaleModel,
       '111': chiefReady,
+      // #624 r5 113 流式面（回合进行中）：composer 占位 = steer canon 的钉面
+      // （running 位；命名场景手法循 #499/#444 先例，流内容 [推断] 拼装）。
+      '113': chiefStreaming,
       '114': chiefThread,
       '116': chiefThreadsOpen,
       // #444 FAB 头像命名场景（无 capture，notify-banner 先例）：绑定
