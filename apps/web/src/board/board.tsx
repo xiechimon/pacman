@@ -3,15 +3,19 @@
 // (repeat(4, minmax(0, 1fr)), gap 14); the #147 column-collapse family and
 // the #58 scrollLeft persistence retired with the horizontal scroll they
 // served. Header 37 with dot/name/count, empty-state copy centered (r7).
-// #73: drag & drop rides the locked stack (01-stack-v2 §4.1: @dnd-kit/core
-// + sortable). Multi-container pattern: a per-column id list mirrors the
-// committed todo set while a gesture is in flight (live preview), and the
-// settled drop commits through dnd.ts moveTodo — phase rewrite on column
-// change, orderIndex write-back. #351: 待处理 carries no dropPhase — the
-// preview never enters it and a drop there commits nothing (same-column
-// reorder still lands). Desktop-only like the official (changelog
-// 2026-09-12: drag rows appear on desktop web only), so the sensor set is
-// empty on coarse pointers.
+// #73→#616: drag & drop rides the locked stack's core piece only
+// (01-stack-v2 §4.1: @dnd-kit/core) — the reference product (todos.dev,
+// 2026-10-02 live 实测) has NO in-column reordering: siblings never shift
+// during a gesture, an in-column drop commits nothing, and the sortable
+// live-preview mirror (#73 multi-container) retired with it. The gesture is
+// a pure cross-column phase vehicle: 待开始/执行中 cards lift (compact
+// DragCard clone, 2° tilt), every valid target column tints indigo (base
+// 5% / hovered 10%), and the drop routes by column — 执行中 hands the todo
+// to the page's 开始任务 dialog (phase NOT written until 确认, reference
+// behavior), 待开始/已完成 commit the phase silently (dnd.ts moveTodo),
+// 待处理 (#351) and same-column drops do nothing. Desktop-only like the
+// official (changelog 2026-09-12), so the sensor set is empty on coarse
+// pointers.
 // #414 (shadcn 试点): 视觉层切 shadcn 组件 + B（neutral）token——网格/列/头
 // 部布局走 tailwind 工具类（几何与 #351 的 board.css 规则逐条对齐），按钮走
 // components/ui/button；data-* 钩子、类别名锚点、dnd 逻辑全部原位。阶段点
@@ -34,8 +38,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type ReactNode, useCallback, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import type { TagChipData } from '../components/ui/tag-chip.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
@@ -43,82 +46,20 @@ import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // drawer/settings overlays sit beside it in one place.
 import { useI18n } from '../i18n/provider.js';
 import { COLUMNS, sortColumnTodos } from './columns.js';
-import { columnDropIndex, DRAG_THRESHOLD_PX, moveTodo } from './dnd.js';
+import { DRAG_THRESHOLD_PX } from './dnd.js';
+import { DragCard } from './drag-card.js';
+import { DraggableCard } from './draggable-card.js';
 import { type FilterChip, FilterChips, type FilterDimension, FilterPanel } from './filter-panel.js';
-import { SortableCard } from './sortable-card.js';
 import { cardTag } from './tag-filter.js';
-import { TodoCard } from './todo-card.js';
 import './board.css';
 
-/** column id → todo ids in view order; the live-preview mirror while a
- *  drag is in flight (null = no gesture, render straight from the todos) */
-type ColumnView = Record<string, string[]>;
-
-function deriveView(todos: TodoRecord[]): ColumnView {
-  const view: ColumnView = {};
-  for (const column of COLUMNS) {
-    view[column.id] = sortColumnTodos(column, todos.filter(column.accepts)).map((t) => t.id);
-  }
-  return view;
-}
-
-function columnOf(view: ColumnView, id: string): string | null {
-  return COLUMNS.find((c) => view[c.id]?.includes(id))?.id ?? null;
-}
-
-/** Two id lists read the same — the landing preview/data agreement test. */
-function sameOrder(x: string[], y: string[]): boolean {
-  return x.length === y.length && x.every((id, i) => id === y[i]);
-}
-
-const COLUMN_IDS = new Set(COLUMNS.map((c) => c.id));
-
-/** #351: 待处理 carries no dropPhase — cross-column gestures into it get no
- *  highlight, no live preview and no commit (gate/failed are system states);
- *  reordering inside the column is unaffected. */
-function acceptsDrop(columnId: string | null): boolean {
-  if (columnId == null) return false;
+/** #616（todos.dev 2026-10-02 live 实测）：拖拽的落点面只有列——卡片不注
+ *  droppable，over.id 恒为列 id。合法目标 = 有 dropPhase（#351：待处理无
+ *  dropPhase，永远吃不到染色也吃不到提交）且不是被拖卡的源列（参考站：源列
+ *  全程素面）。 */
+function isValidDropTarget(columnId: string | null, sourceColumnId: string | null): boolean {
+  if (columnId == null || columnId === sourceColumnId) return false;
   return COLUMNS.find((c) => c.id === columnId)?.dropPhase != null;
-}
-
-/** Settled-drop commit math, pure so onDragEnd keeps its ordering legible:
- *  #351 待处理 rejection, landing column = wherever the live preview left the
- *  card, same-column reorder via arrayMove, #403 visible-view → full-set rank
- *  through columnDropIndex. null = commit nothing. */
-function commitDrop(
-  live: ColumnView,
-  todos: TodoRecord[],
-  activeId: string,
-  overId: string,
-  now: number,
-): TodoRecord[] | null {
-  // 待处理无落点（#351）：跨列松手在该列 = 不提交；列内重排照常落位
-  const overColumnId = COLUMN_IDS.has(overId) ? overId : columnOf(live, overId);
-  if (
-    overColumnId != null &&
-    !acceptsDrop(overColumnId) &&
-    columnOf(live, activeId) !== overColumnId
-  ) {
-    return null;
-  }
-  const columnId = columnOf(live, activeId) ?? (COLUMN_IDS.has(overId) ? overId : null);
-  if (columnId == null) return null;
-  const liveList = live[columnId];
-  if (liveList == null) return null;
-  const from = liveList.indexOf(activeId);
-  const overIndex = liveList.indexOf(overId);
-  const list =
-    overId !== activeId && overIndex >= 0 ? arrayMove(liveList, from, overIndex) : liveList;
-  // #403：liveList 是筛选后的可见视图——落点经 columnDropIndex 锚卡翻译
-  // 回全集列视图位次再落（隐藏卡占序，直传可见 index 会插错位）。
-  const column = COLUMNS.find((c) => c.id === columnId);
-  if (column == null) return null;
-  return moveTodo(
-    todos,
-    activeId,
-    { columnId, index: columnDropIndex(column, todos, list, activeId) },
-    now,
-  );
 }
 
 /** #403 建轴 / #445 双轴化：看板筛选面——board-page 持有 URL 态与数据源，
@@ -148,8 +89,12 @@ interface BoardProps {
   /** Card callbacks (issue #68): the page owns the modal overlays. */
   onAction?: (todo: TodoRecord) => void;
   onBranch?: (todo: TodoRecord) => void;
-  /** #73: committed drag drop — the page owns the todo list state. */
-  onReorder?: (next: TodoRecord[]) => void;
+  /** #616: silent phase-commit drop (待开始/已完成 targets) — the page owns
+   *  the write path (fixture 本地集 / live 乐观 PATCH)。 */
+  onPhaseDrop?: (todo: TodoRecord, columnId: string) => void;
+  /** #616: 执行中 drop = 开始意图——page 开 开始任务 dialog（#318 统一面），
+   *  确认前相位不写（参考站 2026-10-02 实测：dialog 是落位与提交之间的闸）。 */
+  onStartIntent?: (todo: TodoRecord) => void;
   /** #114: the notification-permission strip between topbar and columns
    *  (r2 §1.3). The route owns the permission state and passes the
    *  rendered banner only while it should show. */
@@ -165,18 +110,15 @@ export function BoardSurface({
   fixture,
   onAction,
   onBranch,
-  onReorder,
+  onPhaseDrop,
+  onStartIntent,
   banner,
   filters,
   tagsById,
 }: BoardProps) {
   const { t } = useI18n();
-  const [view, setView] = useState<ColumnView | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropColumnId, setDropColumnId] = useState<string | null>(null);
-  /** Drop settle: the landing preview (view) a settled commit wrote, held
-   *  until the rendered data carries it — see the teardown effect below. */
-  const [settling, setSettling] = useState<{ columnId: string } | null>(null);
   // changelog 2026-09-12: the drag affordance is desktop-web only
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -187,9 +129,9 @@ export function BoardSurface({
     typeof window === 'undefined' ||
     window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
-  // #403 筛选面（#445 双轴化）：渲染/拖拽视图消费收窄后的可见集；moveTodo
-  // 落位仍走全集（fixture.todos）+ columnDropIndex 锚卡翻译——隐藏卡的
-  // orderIndex 序位不被筛选视图的重排错读。
+  // #403 筛选面（#445 双轴化）：渲染视图消费收窄后的可见集；落位提交走全集
+  // （page 侧 moveTodo）——#616 后手势不产生列内位次，锚卡翻译随
+  // columnDropIndex 一并退役。
   const narrow = useCallback(
     (todos: TodoRecord[]) => (filters.active ? todos.filter(filters.matches) : todos),
     [filters.active, filters.matches],
@@ -205,104 +147,41 @@ export function BoardSurface({
     window.getSelection()?.removeAllRanges();
   }, []);
 
+  const dragged = dragId == null ? null : (fixture.todos.find((t) => t.id === dragId) ?? null);
+  // 源列 = 被拖卡当下所在列（染色排除位 + 同列落位无操作判定）。
+  const sourceColumnId =
+    dragged == null ? null : (COLUMNS.find((c) => c.accepts(dragged))?.id ?? null);
+
   const onDragStart = (event: DragStartEvent) => {
-    setSettling(null);
-    setView(deriveView(visibleTodos));
     setDragId(String(event.active.id));
     document.body.classList.add('board-dragging');
     window.getSelection()?.removeAllRanges();
   };
 
   const onDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    const overColumnId =
-      over == null
-        ? null
-        : COLUMN_IDS.has(String(over.id))
-          ? String(over.id)
-          : columnOf(view ?? {}, String(over.id));
-    setDropColumnId(acceptsDrop(overColumnId) ? overColumnId : null);
-    if (over == null) return;
-    const overId = String(over.id);
-    setView((prev) => {
-      if (prev == null) return prev;
-      const from = columnOf(prev, String(active.id));
-      const to = COLUMN_IDS.has(overId) ? overId : columnOf(prev, overId);
-      if (from == null || to == null || from === to) return prev;
-      // 待处理无落点（#351）：live 预览也不进该列，松手即回源列
-      if (!acceptsDrop(to)) return prev;
-      const fromIds = prev[from];
-      const toIds = prev[to];
-      if (fromIds == null || toIds == null) return prev;
-      const fromList = fromIds.filter((id) => id !== String(active.id));
-      const toList = toIds.filter((id) => id !== String(active.id));
-      const overIndex = toList.indexOf(overId);
-      toList.splice(overIndex >= 0 ? overIndex : toList.length, 0, String(active.id));
-      return { ...prev, [from]: fromList, [to]: toList };
-    });
+    const { over } = event;
+    const overColumnId = over == null ? null : String(over.id);
+    setDropColumnId(isValidDropTarget(overColumnId, sourceColumnId) ? overColumnId : null);
   };
 
+  // #616 落位路由（参考站实测）：执行中 = 开始意图（page 开 开始任务
+  // dialog，确认前不写相位）；待开始/已完成 = 静默改相提交；待处理（#351
+  // 无 dropPhase）/源列/列外 = 无操作，overlay 随指针松开同帧卸载（无
+  // drop 动画——dropAnimation={null}）。
   const onDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    const live = view;
-    let retained = false;
-    if (live != null && over != null && onReorder != null) {
-      const next = commitDrop(live, fixture.todos, String(active.id), String(over.id), fixture.now);
-      if (next != null) {
-        onReorder(next);
-        // 落位预览 = **提交序**，不是手势里的 live 序：列内重排时 live 序还
-        // 是落位前的旧序（onDragOver 不跨列就原样返回），拿它当落位帧等于
-        // 屏上先画回旧序、下一提交才翻成新序。这一拆两半的提交正是回弹的
-        // 来源——dnd-kit 在这两帧之间摘掉 SortableContext 项的 transform，而
-        // 项上那条 transform 过渡仍在跑，浏览器便从「旧布局里被顶开的位置」
-        // 补间到 0：卡先弹到落点上方约一个卡高、再滑回落点（live 面逐帧实
-        // 测）。写提交序 = 落位与摘 transform 落在同一次提交，一次到位。
-        // 留住预览而非直接清 view 的理由不变：live 面 query cache 通知晚本
-        // 批一个 pass，清 view 会拿旧数据渲染一帧。
-        const overId = String(over.id);
-        const columnId =
-          columnOf(live, String(active.id)) ?? (COLUMN_IDS.has(overId) ? overId : null);
-        if (columnId != null) {
-          setView(deriveView(narrow(next)));
-          setSettling({ columnId });
-          retained = true;
-        }
-      }
+    const { over } = event;
+    const overColumnId = over == null ? null : String(over.id);
+    if (dragged != null && isValidDropTarget(overColumnId, sourceColumnId)) {
+      const column = COLUMNS.find((c) => c.id === overColumnId);
+      if (column?.startGate === true) onStartIntent?.(dragged);
+      else if (overColumnId != null) onPhaseDrop?.(dragged, overColumnId);
     }
-    if (!retained) setView(null);
     setDragId(null);
     setDropColumnId(null);
     sweep();
   };
 
-  // Drop settle teardown: release the landing preview once the rendered data
-  // reads the same as it (fixture: same tick; live: optimistic write or the
-  // PATCH-round refetch). The comparison is the settled column's order, not
-  // just which column the card sits in: a same-column reorder keeps its column
-  // before and after, so a column-only test would release the preview on the
-  // very first pass — landing the row swap a commit after the gesture
-  // teardown, which is the frame where dnd-kit clears the sortable transforms.
-  // The deadline covers a failed commit — data never catches up, so the
-  // gesture tears down to server truth instead of freezing the preview.
-  useEffect(() => {
-    if (settling == null) return;
-    const landed = deriveView(narrow(fixture.todos))[settling.columnId];
-    const preview = view?.[settling.columnId];
-    if (landed != null && preview != null && sameOrder(landed, preview)) {
-      setSettling(null);
-      setView(null);
-      return;
-    }
-    const timer = setTimeout(() => {
-      setSettling(null);
-      setView(null);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [settling, view, fixture.todos, narrow]);
-
   const onDragCancel = () => {
-    setSettling(null);
-    setView(null);
     setDragId(null);
     setDropColumnId(null);
     sweep();
@@ -311,14 +190,8 @@ export function BoardSurface({
   const viewTodos = (columnId: string): TodoRecord[] => {
     const column = COLUMNS.find((c) => c.id === columnId);
     if (column == null) return [];
-    if (view == null) return sortColumnTodos(column, visibleTodos.filter(column.accepts));
-    const byId = new Map(fixture.todos.map((t) => [t.id, t]));
-    return (view[columnId] ?? [])
-      .map((id) => byId.get(id))
-      .filter((t): t is TodoRecord => t != null);
+    return sortColumnTodos(column, visibleTodos.filter(column.accepts));
   };
-
-  const dragged = dragId == null ? null : (fixture.todos.find((t) => t.id === dragId) ?? null);
 
   return (
     <div
@@ -392,6 +265,13 @@ export function BoardSurface({
                   className="board-column relative flex h-full flex-col rounded-[12px] border border-border bg-column"
                   aria-label={t(column.name)}
                   data-column={column.id}
+                  /* #616 两级染色：手势在飞时全部合法目标列戴 base 档
+                     （data-drop-valid），指针悬停列升 hover 档（data-drop）。 */
+                  data-drop-valid={
+                    dragged != null && isValidDropTarget(column.id, sourceColumnId)
+                      ? 'true'
+                      : undefined
+                  }
                   data-drop={dropColumnId === column.id ? 'true' : undefined}
                 >
                   <header className="board-column-header flex h-[37px] flex-none items-center px-[13px] pt-[3px]">
@@ -414,56 +294,45 @@ export function BoardSurface({
                     )}
                   </header>
                   <ColumnList columnId={column.id} empty={t(column.empty)} count={todos.length}>
-                    <SortableContext
-                      items={todos.map((t) => t.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      {todos.map((todo) => (
-                        <SortableCard
-                          key={todo.id}
-                          todo={todo}
-                          now={fixture.now}
-                          onAction={onAction}
-                          onBranch={onBranch}
-                          dragSource={dragId === todo.id}
-                          projectName={fixture.projectNames?.[todo.projectId]}
-                          tag={tagsById == null ? null : cardTag(todo, tagsById)}
-                        />
-                      ))}
-                    </SortableContext>
+                    {/* #616 可拖面（参考站实测）：待开始 ✓；待处理/已完成
+                        卡不武装传感器（按下直通卡内链接）；执行中沿用本仓
+                        既有可拖语义（参考站该列空、未能实测——[设计] 保
+                        守保留，其落点同受 isValidDropTarget 约束）。 */}
+                    {todos.map((todo) => (
+                      <DraggableCard
+                        key={todo.id}
+                        todo={todo}
+                        now={fixture.now}
+                        onAction={onAction}
+                        onBranch={onBranch}
+                        draggable={column.id === 'todo' || column.id === 'building'}
+                        projectName={fixture.projectNames?.[todo.projectId]}
+                        tag={tagsById == null ? null : cardTag(todo, tagsById)}
+                      />
+                    ))}
                   </ColumnList>
                 </section>
               );
             })}
         </div>
-        {/* #391: the overlay glides to the landing slot instead of snapping
-            out on pointer up; lift shadow = board.css 的 .board-drag-overlay
-            规则。#616 流畅度实测（CDP tracing，1.5s 手势）：
-            - style.willChange 落在 dnd-kit 的 fixed wrapper（transform 的
-              持有者）上。wrapper 的位移由主线程逐 pointermove 提交，无动画
-              提示时 Chromium 把每个新位置当静态位置重栅格（115-120 个
-              RasterTask/手势）；will-change: transform 标记「此层在动」后
-              减半（57-62，n=3）。层仅在手势期存活，无长驻 GPU 内存代价。
-            - dropAnimation 时长保持 #391 的 250ms 正典值，曲线从 dnd-kit
-              默认 ease 换成正典 --ease-pop（motion.css cubic-bezier(.22,1,
-              .36,1)）：收尾滑动要即时起步（延续松手前的运动感）再减速落
-              位，ease 的慢起步读作松手后卡片迟疑。
-            - overlay 宽度不再自测（旧 dragWidth）：PositionedOverlay 本来
-              就把 wrapper 宽度设为 activeNodeRect.width（core 6.3.1），内
-              层块级 div 自然填满——起手少一次 getBoundingClientRect 强制
-              同步布局。 */}
-        <DragOverlay
-          style={{ willChange: 'transform' }}
-          dropAnimation={{ duration: 250, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
-        >
+        {/* #616（对齐 todos.dev 2026-10-02 实测）：
+            - dropAnimation={null}——参考站 overlay 随 pointerup 同帧卸载
+              （getAnimations 全程为空、无滑翔）；卡片落位由提交数据直接
+              呈现。#391 的 250ms glide 是本仓发明，随正典更替退役。
+            - style.willChange 留在 dnd-kit 的 fixed wrapper（transform 持
+              有者）上：位移由主线程逐 pointermove 提交，无动画提示时
+              Chromium 把每个新位置当静态位置重栅格（实测 115-120 个
+              RasterTask/手势）；will-change: transform 减半（57-62，n=3）。
+              层仅手势期存活，无长驻 GPU 内存代价。参考站内联配方是
+              translate+rotate 同一 transform（自建 overlay），这里
+              translate 归 wrapper、rotate 归 .board-drag-card——合成同形。
+            - overlay 宽度 = 源卡宽（PositionedOverlay 以 activeNodeRect
+              设 wrapper 宽度，core 6.3.1；#616 摘除应用层冗余自测）。
+            - 抬升面 = 紧凑 DragCard（身份行 + 两行标题），不是板面卡复刻。 */}
+        <DragOverlay dropAnimation={null} style={{ willChange: 'transform' }}>
           {dragged != null && (
             <div className="board-drag-overlay">
-              <TodoCard
-                todo={dragged}
-                now={fixture.now}
-                projectName={fixture.projectNames?.[dragged.projectId]}
-                tag={tagsById == null ? null : cardTag(dragged, tagsById)}
-              />
+              <DragCard todo={dragged} projectName={fixture.projectNames?.[dragged.projectId]} />
             </div>
           )}
         </DragOverlay>
