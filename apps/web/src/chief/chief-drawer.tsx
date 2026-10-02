@@ -10,9 +10,10 @@
 // fixture captures never click, so the fixture alone decides the captured
 // state.
 // #615 四连报闭环：模型行由纯显示 span 翻成控制件（button → 主模型覆盖
-// dialog，PATCH chief model 槽落库回显）；行首 = 运行时标记（pi 出 π 字形、
-// claude-code 出 RUNTIME_LABELS 文字标——用户返工裁决：要运行时 SVG 不要
-// Agent 头像；FAB / 消息流的 Agent 头像脸在各自面继续生效）；消息行复制
+// dialog，PATCH chief model 槽落库回显）；行首 = 运行时标记（pi 出 RuntimePi
+// 块状 π、claude-code 出 RuntimeClaudeCode 品牌星标——正本 = 参考站
+// providers 运行时 tab SVG，用户返工裁决：要运行时 SVG 不要 Agent 头像；
+// FAB / 消息流的 Agent 头像脸在各自面继续生效）；消息行复制
 // glyph 翻真 clipboard 钮（local-first 面存在），恢复/foot 折叠 chevron 无
 // 后端面按 #306/#146 二分律移除不渲染；gear 各族可达（非 board 面落 board
 // 设置视图深链，ChiefWakePanel 兜底后结构上恒在）。
@@ -30,7 +31,6 @@
 
 import type { ChiefCompactionModel } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RUNTIME_LABELS } from '../api/mappers.js';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ChiefContent, ChiefSegment, ModelOption } from '../fixtures/records.js';
@@ -44,13 +44,14 @@ import {
   ChiefFolder,
   ChiefGear,
   ChiefHash,
-  ChiefPi,
   ChiefUserPlus,
   ChiefUserSolid,
   Copy,
   FileText,
   Grid2x2,
   Plus,
+  RuntimeClaudeCode,
+  RuntimePi,
   X,
 } from '../icons/index.js';
 import { DRAWER_EXIT_MS } from '../overlay/use-overlay-mount.js';
@@ -274,18 +275,16 @@ export function ChiefDrawer({
                   onClick={() => setModelOpen(true)}
                 >
                   {/* #615 返工（用户裁决）：行首 = 运行时标记，不是 Agent 头像
-                      ——pi 运行时出 π 字形（ChiefPi，r5 111 模型行 glyph 的再
-                      trace）；claude-code 运行时出仓内正本表达 RUNTIME_LABELS
-                      文字标（全仓与参考站均无 Claude 商标 SVG，「别新画」边界
-                      内不造商标件，登记待裁决）。FAB / 消息流的 Agent 头像脸
-                      不受影响（XMON-105 律在其各自面继续生效）。 */}
+                      ——标记正本 = 参考站 providers 运行时 tab 的 SVG（用户指认
+                      /app/resources/providers?runtime=pi 面，DOM 捕获入库）：
+                      pi = RuntimePi 块状 π，claude-code = RuntimeClaudeCode
+                      品牌星标（填色随捕获）。FAB / 消息流的 Agent 头像脸不受
+                      影响（XMON-105 律在其各自面继续生效）。 */}
                   <span className="chief-model-mark">
                     {(chief.modelProvider ?? 'pi') === 'claude-code' ? (
-                      <span className="chief-model-runtime-label">
-                        {RUNTIME_LABELS['claude-code']}
-                      </span>
+                      <RuntimeClaudeCode width={12} height={12} />
                     ) : (
-                      <ChiefPi width={12} height={12} />
+                      <RuntimePi width={12} height={12} />
                     )}
                   </span>
                   <span className="chief-model-label">{chief.modelSlot}</span>

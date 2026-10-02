@@ -124,18 +124,12 @@
 }
 
 /* #615 返工：行首 = 运行时标记位（用户裁决：运行时 SVG，非 Agent 头像）。
-   π 字形 12px；claude-code 运行时出 RUNTIME_LABELS 文字标（全仓与参考站均无
-   Claude 商标 SVG，「别新画」边界内的正本表达）。 */
+   标记正本 = 参考站 providers 运行时 tab SVG（RuntimePi 块状 π /
+   RuntimeClaudeCode 品牌星标），12px 位。 */
 .chief-model-mark {
   flex: none;
   display: inline-flex;
   align-items: center;
-}
-
-.chief-model-runtime-label {
-  font-size: 10px;
-  line-height: 1;
-  letter-spacing: 0.02em;
 }
 
 .chief-model-label {

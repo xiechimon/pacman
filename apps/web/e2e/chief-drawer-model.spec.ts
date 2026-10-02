@@ -7,10 +7,10 @@ import { expect, type Page, test } from '@playwright/test';
 //   1. the model row is a control (button[aria-haspopup=dialog]) that opens
 //      the model dialog; picking a row closes it (accept 律, #148 同律) and
 //      the fixture face sends no PATCH (onPick absent).
-//   2. the row carries the runtime mark (pi π glyph / claude-code label —
-//      用户返工裁决：运行时 SVG，不是 Agent 头像; the broken 「ㅋ」 trace is
-//      gone, re-traced π rides the slot); unbound keeps the plain `n/a` line
-//      with no control at all.
+//   2. the row carries the runtime mark (RuntimePi 块状 π / RuntimeClaudeCode
+//      品牌星标 — 正本 = 参考站 providers 运行时 tab SVG; 用户返工裁决：运行时
+//      SVG，不是 Agent 头像; the broken 「ㅋ」 trace is gone); unbound keeps the
+//      plain `n/a` line with no control at all.
 //   3. the message-row copy glyphs are real clipboard buttons (local-first
 //      face exists); 恢复 / foot chevron had no backend and no local-first
 //      object face, so per the #306/#146 二分律 they are gone, not inert.

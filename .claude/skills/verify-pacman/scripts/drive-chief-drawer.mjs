@@ -9,8 +9,9 @@
 //   A 主模型闭环：模型行是控制件 → dialog 开（候选 = 铺底 provider 模型并集）
 //     → 选定 → PATCH chief model 槽落库（GET 封套 + SQLite 行双真值）→ 行回显
 //     → 重载仍回显 → 默认行清空回继承（`· 默认` 徽标回）。
-//   B 运行时标记（返工裁决）：模型行首 = 运行时标记（pi 出 π svg；claude-code
-//     出 RUNTIME_LABELS 文字标），不是 Agent 头像、不是坏 trace glyph。
+//   B 运行时标记（返工裁决）：模型行首 = 运行时标记 svg（pi = RuntimePi 块状 π；
+//     claude-code = RuntimeClaudeCode 品牌星标；正本 = 参考站 providers 运行时
+//     tab SVG），不是 Agent 头像、不是坏 trace glyph。
 //   C 死钮：非 board 面 gear / 门控条设置可达（落 board 设置视图深链）；消息行
 //     复制 = 真 clipboard 钮（读回剪贴板对拍）；恢复/foot chevron 不渲染。
 // 依赖全新库：重验 = 重 launch。
