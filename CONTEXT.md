@@ -25,7 +25,7 @@ _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的�
 | 方案 | Plan | `plan` | build 内类型化的规划产物卡（Context / Changes / Edge cases / Verification）；不是独立实体。 |
 | 标签 | Tag | `tag` | todo 的 category 标签。**词表来源与数量上限随仓库形态分叉**：`githubRepo` 项目 = 该仓库实际的 label 集（动态，issue 挂几个贴几个）；`local` 项目 = 固定 6 词表（bug / feature / improvement / refactor / docs / chore），随项目播种，每任务至多 1 个。两形态都是派发时由执行 agent 回填、无人工创建/挑选 UI（ADR 0002 D4/D5，ADR 0005 D2/D4）。 |
 | 占位标题 | Placeholder title | `title`（占位态） | 保存任务时落库的首行截断标题（正文首行 ≤50 字符）；执行 agent 接单后用 LLM 总结回填正式标题覆盖之。**仅 local 项目**——github 项目从 issue 建的任务直接用 issue 标题，没有占位态（ADR 0005 D5）。 |
-| 来源 | Source | `sourceKind` / `sourceRef` | todo 的外部出处，当前只有 GitHub issue 一种（`sourceRef` 形如 `github:owner/repo#123`）；一个任务至多一个，归 `todo` 既有的溯源家族。github 项目的任务**两侧都有落点**：领来的记下那枚 issue，自派的建一枚（ADR 0005 D6、ADR 0006 D1）。但**不改写 issue 的状态、不自动覆盖**——issue 侧仍是真值，pacman 只显示差异（ADR 0006 D5/D6）。 |
+| 来源 | Source | `sourceKind` / `sourceRef` | todo 的出处——**外部出处或编排出处**（#640 / r14 §5.3：不再限于外部）；一个任务至多一个，归 `todo` 既有的溯源家族。两族：`github-issue` / `github-issue-self`（外部，`sourceRef` 形如 `github:owner/repo#123`）——github 项目的任务**两侧都有落点**，领来的记下那枚 issue、自派的建一枚（ADR 0005 D6、ADR 0006 D1），但**不改写 issue 的状态、不自动覆盖**，issue 侧仍是真值、pacman 只显示差异（ADR 0006 D5/D6）；`orchestration`（编排，`sourceRef` 形如 `chief:<uuid>`）——总管编排回合拆出的子卡，指向那次请求的编排会话（per-request 粒度，答「哪次请求拆的」，与答「谁建的」的 `createdBy`/`sourceBuildId` 三层各答一问，r14 §5.3）。至多一个来源，GitHub 接入项目的镜像写向优先占槽（r14 §5.7）。 |
 
 边界裁决：
 - **无 Goal 概念** —— 工作单元只有一个，即 `todo`；「Goal」不引入。
