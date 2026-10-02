@@ -1,0 +1,35 @@
+{
+  "phase": "after",
+  "base": "http://127.0.0.1:8400",
+  "generatedAt": "2026-10-02T18:45:33.177Z",
+  "files": {
+    "geometry-streaming.json": {
+      "md5": "052f7534e8e2fc2592f646915525c184",
+      "note": "static geometry+styles, deterministic"
+    },
+    "animated-streaming.json": {
+      "md5": null,
+      "note": "time-dependent, not hashed"
+    },
+    "row-streaming.png": "row clip, deviceScaleFactor 2",
+    "context-streaming.png": "surrounding transcript clip",
+    "reduced-motion-streaming.json": {
+      "md5": null,
+      "note": "freeze contract under prefers-reduced-motion: reduce"
+    },
+    "geometry-quiescent.json": {
+      "md5": "e85b3a87c44e40ef93f9c0fc519278a5",
+      "note": "static geometry+styles, deterministic"
+    },
+    "animated-quiescent.json": {
+      "md5": null,
+      "note": "time-dependent, not hashed"
+    },
+    "row-quiescent.png": "row clip, deviceScaleFactor 2",
+    "context-quiescent.png": "surrounding transcript clip",
+    "reduced-motion-quiescent.json": {
+      "md5": null,
+      "note": "freeze contract under prefers-reduced-motion: reduce"
+    }
+  }
+}

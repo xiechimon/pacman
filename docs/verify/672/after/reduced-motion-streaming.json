@@ -1,0 +1,19 @@
+{
+  "animated": {
+    "animationCount": 0,
+    "animations": [],
+    "reel": null,
+    "dot": {
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "opacity": "0.75",
+      "animationDelay": "0s"
+    }
+  },
+  "dotBackground": [
+    "rgb(82, 82, 91)",
+    "rgb(82, 82, 91)",
+    "rgb(82, 82, 91)"
+  ]
+}

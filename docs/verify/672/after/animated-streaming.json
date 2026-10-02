@@ -1,0 +1,31 @@
+{
+  "animationCount": 3,
+  "animations": [
+    {
+      "name": "ld-linear-dots-fade",
+      "playState": "running",
+      "duration": 900,
+      "iterations": null
+    },
+    {
+      "name": "ld-linear-dots-fade",
+      "playState": "running",
+      "duration": 900,
+      "iterations": null
+    },
+    {
+      "name": "ld-linear-dots-fade",
+      "playState": "running",
+      "duration": 900,
+      "iterations": null
+    }
+  ],
+  "reel": null,
+  "dot": {
+    "animationName": "ld-linear-dots-fade",
+    "animationDuration": "0.9s",
+    "animationTimingFunction": "linear",
+    "opacity": "0.791817",
+    "animationDelay": "-0.9s"
+  }
+}
