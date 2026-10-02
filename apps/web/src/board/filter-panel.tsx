@@ -27,6 +27,15 @@
 // board-filter-clear）= e2e 定位别名（README 规则 2）。board-type-filter 与
 // type-filter-popover 是 #445 遗留别名，语义已扩到「全轴筛选」，名字保留
 // 是为了不动既有钉（#411 别名优先政策）。
+//
+// 面板皮肤并全站 popup vocabulary（打磨轮：用户报「过于粗糙、格格不入」，
+// 并入既有语言而非重设计）：壳 p-1（dropdown/menu popup 同档），选项行
+// rounded-md + hover/选中 bg-accent；选中态 = 行首 Check 指示列（槽位恒在、
+// opacity 切换，toggle 零布局位移）+ 实底——仓库轴此前只有 aria-selected
+// 没有可见 cue；维度标题退 text-muted-foreground（chrome 带与内容带用墨色
+// 分层次）；维度间分隔线全出血 -mx-1（DropdownMenuSeparator 同形）；计数
+// 留右端（shortcut 位、tabular-nums）。「仅此」恒渲染（无选中时 disabled），
+// 与批次键同守「控件位置稳定」。
 
 import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/button.js';
@@ -35,7 +44,7 @@ import { Input } from '../components/ui/input.js';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { TagChip } from '../components/ui/tag-chip.js';
 import { useI18n } from '../i18n/provider.js';
-import { Funnel, X } from '../icons/index.js';
+import { Check, Funnel, X } from '../icons/index.js';
 
 /** 选项超过此数才给搜索框——短词表（固定 6 词）搜索框是纯噪音。 */
 const SEARCH_THRESHOLD = 8;
@@ -137,12 +146,14 @@ function DimensionSection({
   );
   const actionable = dimension.choices.length > 0;
   return (
-    <section
-      className={`filter-dimension flex flex-col ${divided ? 'mt-0.5 border-t border-border pt-1' : ''}`}
-      data-dimension={dimension.key}
-    >
-      <header className="filter-dimension-head flex items-center gap-1.5 px-2 pt-1.5 pb-1">
-        <span className="filter-dimension-name text-[11px] font-medium text-foreground">
+    <section className="filter-dimension flex flex-col" data-dimension={dimension.key}>
+      {/* 维度间分隔线全出血（壳 p-1 内 -mx-1，DropdownMenuSeparator 同形）；
+          my-1 节奏 = 线上线下各 4px，故 divided 时标题不再另加 pt。 */}
+      {divided && <div aria-hidden className="-mx-1 mt-1 mb-1 border-t border-border" />}
+      <header
+        className={`filter-dimension-head flex items-center gap-1.5 px-1.5 pb-1 ${divided ? 'pt-0' : 'pt-1.5'}`}
+      >
+        <span className="filter-dimension-name text-[11px] font-medium text-muted-foreground">
           {t(dimension.name)}
         </span>
         <span className="filter-dimension-selected ml-auto text-[11px] text-muted-foreground tabular-nums">
@@ -153,7 +164,7 @@ function DimensionSection({
         <button
           type="button"
           disabled={!actionable}
-          className={`filter-dimension-all ${FOCUS} rounded px-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40 disabled:hover:text-muted-foreground`}
+          className={`filter-dimension-all ${FOCUS} rounded-md px-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground`}
           onClick={dimension.onSelectAll}
         >
           {t('全部选中')}
@@ -161,7 +172,7 @@ function DimensionSection({
         <button
           type="button"
           disabled={dimension.selected.length === 0}
-          className={`filter-dimension-clear ${FOCUS} rounded px-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40 disabled:hover:text-muted-foreground`}
+          className={`filter-dimension-clear ${FOCUS} rounded-md px-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground`}
           onClick={dimension.onClear}
         >
           {t('清除')}
@@ -170,14 +181,14 @@ function DimensionSection({
       {!actionable ? (
         // 空词表不是错误态：作用域里本来就没有可选项（旧 fixture 场景没有
         // 项目 / 标签源）。说清「本作用域内没有」而不是留一个空壳。
-        <EmptyDescription className="filter-dimension-empty px-2 pt-1 pb-2 text-xs">
+        <EmptyDescription className="filter-dimension-empty px-1.5 pt-1 pb-2 text-xs">
           {dimension.key === 'repo' ? t('本作用域内没有可选的仓库') : t('本作用域内没有可选的类型')}
         </EmptyDescription>
       ) : (
         <>
           {dimension.choices.length > SEARCH_THRESHOLD && (
             <Input
-              className="filter-dimension-search mx-1.5 mb-1 h-6 px-2 text-xs"
+              className="filter-dimension-search mb-1 h-6 px-2 text-xs"
               placeholder={t('搜索{name}', { name: t(dimension.name) })}
               aria-label={t('搜索{name}', { name: t(dimension.name) })}
               value={query}
@@ -202,11 +213,16 @@ function DimensionSection({
                       : { 'data-tag': choice.value })}
                     role="option"
                     aria-selected={active}
-                    className={`${alias} ${FOCUS} flex h-7 min-w-0 flex-1 items-center gap-2 rounded-lg px-2 text-xs text-foreground ${
-                      active ? '' : 'hover:bg-accent'
+                    className={`${alias} ${FOCUS} flex h-7 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-xs text-foreground transition-colors hover:bg-accent ${
+                      active ? 'bg-accent' : ''
                     }`}
                     onClick={() => dimension.onToggle(choice.value)}
                   >
+                    {/* 选中指示列：槽位恒在（opacity 切换）——toggle 与「仅此」
+                        现形都不推挤标签/计数的列位。 */}
+                    <Check
+                      className={`size-3.5 flex-none transition-opacity ${active ? 'opacity-100' : 'opacity-0'}`}
+                    />
                     {active && choice.color != null ? (
                       <TagChip
                         tag={{ id: choice.value, name: choice.label, color: choice.color }}
@@ -216,26 +232,26 @@ function DimensionSection({
                         {choice.label}
                       </span>
                     )}
-                    <span className="filter-option-count text-[11px] text-muted-foreground tabular-nums">
+                    <span className="filter-option-count ml-auto text-[11px] text-muted-foreground tabular-nums">
                       {choice.count}
                     </span>
                   </button>
                   {/* 「仅此」：多选轴的逆向操作（全选后取消一个的镜像）。
-                      静息透明、hover/focus 现形——常驻会让每行两个键。 */}
-                  {dimension.selected.length > 0 && (
-                    <button
-                      type="button"
-                      className={`filter-option-only ${FOCUS} mr-1 shrink-0 rounded px-1 text-[11px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100`}
-                      onClick={() => dimension.onOnly(choice.value)}
-                    >
-                      {t('仅此')}
-                    </button>
-                  )}
+                      静息透明、hover/focus 现形；恒渲染（无选中时 disabled）
+                      让行右缘几何与选中集大小无关。 */}
+                  <button
+                    type="button"
+                    disabled={dimension.selected.length === 0}
+                    className={`filter-option-only ${FOCUS} mr-1 shrink-0 rounded px-1 text-[11px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 disabled:hover:text-muted-foreground`}
+                    onClick={() => dimension.onOnly(choice.value)}
+                  >
+                    {t('仅此')}
+                  </button>
                 </div>
               );
             })}
             {shown.length === 0 && (
-              <EmptyDescription className="filter-dimension-empty px-2 py-1.5 text-xs">
+              <EmptyDescription className="filter-dimension-empty px-1.5 py-1.5 text-xs">
                 {t('没有与“{q}”匹配的选项', { q: query })}
               </EmptyDescription>
             )}
@@ -294,7 +310,7 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
         side="bottom"
         sideOffset={6}
         aria-label={t('筛选')}
-        className="type-filter-popover board-filter-panel w-[268px] gap-0 rounded-[var(--radius-popover)] p-0 pb-1"
+        className="type-filter-popover board-filter-panel w-[268px] gap-0 rounded-[var(--radius-popover)] p-1"
       >
         {dimensions.map((dimension, index) => (
           <DimensionSection
@@ -308,7 +324,7 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
         {totalSelected > 0 && (
           <button
             type="button"
-            className={`filter-panel-clear ${FOCUS} mt-0.5 flex h-7 items-center justify-center rounded-lg text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
+            className={`filter-panel-clear ${FOCUS} mt-0.5 flex h-7 items-center justify-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
             onClick={onClearAll}
           >
             {t('清除全部')}
