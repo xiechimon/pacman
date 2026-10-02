@@ -47,6 +47,27 @@ export function buildRestartPrompt(feedback: string): string {
   return `${RESTART_HEAD}${feedback}${RESTART_TAIL}`;
 }
 
+/** 开始任务编排请求（#640 / r14 §5.2：编排回合的会话 user 消息 = 总目标
+ *  正本，任务原文逐字内嵌 = 稳定锚点；实体引用 [#n](todo:<id>) 走 chief
+ *  正文引用族）。首行短且无 markdown——chiefThreadTitle 取首行前 12 字符做
+ *  线程标题。failed 重跑带相位上下文。本行进 chief 线程渲染成用户气泡
+ *  （它就是用户请求的锚，不是要过滤的合成行；classifyUserText 只管 build
+ *  会话）。 */
+export function buildOrchestratePrompt(todo: {
+  id: string;
+  seqNum: number;
+  spec: string;
+  failed?: boolean;
+}): string {
+  const intent =
+    todo.failed === true ? '上一轮执行失败，重新编排。' : '直接规划，并按活的类型派发执行。';
+  const quoted = todo.spec
+    .split('\n')
+    .map((line) => `> ${line}`.trimEnd())
+    .join('\n');
+  return `开始任务 #${todo.seqNum}\n\n编排请求：[#${todo.seqNum}](todo:${todo.id}) —— ${intent}\n\n任务原文：\n${quoted}`;
+}
+
 /** 非空续轮指令集（chief/review 的占位空串不入集——空文本行由呈现层自有
  *  规则跳过，不属「合成 prompt」语义）。 */
 const SYNTHETIC_EXACT: ReadonlySet<string> = new Set(
