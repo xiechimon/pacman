@@ -1,5 +1,5 @@
 // M4a Chief 机器协议全环（server 半，真 HTTP + 机器认证）：绑定 → 发消息 →
-// claim（chief 块 + 50 remoteTools + 绑定 Agent 模型）→ relay 执行（create_todo
+// claim（chief 块 + 51 remoteTools + 绑定 Agent 模型）→ relay 执行（create_todo
 // 溯源 / run_builds 派工 watch + triggerSource:chief）→ transcript 上传落
 // chief_message → done（thread sessionId/lastTurnAt + activeRun 清空 +
 // chief_message 通知）→ 停 review 触发 gate wake 步。
@@ -143,13 +143,13 @@ describe('M4a Chief 机器协议全环（02 §4.3/§5.4 + r5 §3.1/§3.2/§3.5�
   test('claim → relay(create_todo/run_builds) → transcript → done → gate wake', async () => {
     const w = await setupChiefWorld();
 
-    // —— claim：chief 步载荷（chief 块 + 50 remoteTools + 绑定 Agent）——
+    // —— claim：chief 步载荷（chief 块 + 51 remoteTools + 绑定 Agent）——
     const claimed = await w.claim();
     expect(claimed.step.kind).toBe('chief');
     expect(claimed.conversationId).toBe(w.threadId); // conv ≡ chief-<threadId>
     expect(claimed.chief?.threadId).toBe(w.threadId);
     expect(claimed.chief?.systemPrompt).toContain('总管'); // server 合成 system prompt
-    expect(claimed.remoteTools).toHaveLength(CHIEF_TOOL_COUNT); // 50 词表全量
+    expect(claimed.remoteTools).toHaveLength(CHIEF_TOOL_COUNT); // 51 词表全量
     expect(claimed.agent?.id).toBe(AGENT_ID); // 绑定 Agent 执行
     expect(claimed.agent?.modelId).toBe('stub-model');
     // chief 步不携带 skills 白名单（#372：chief 是信任面，不受过滤约束）。
@@ -242,6 +242,64 @@ describe('M4a Chief 机器协议全环（02 §4.3/§5.4 + r5 §3.1/§3.2/§3.5�
       .all()
       .filter((st) => st.prompt?.includes('[wake:gate]'));
     expect(wakeSteps.length).toBeGreaterThanOrEqual(1); // gate 停驻触发 wake 轮
+  });
+
+  // #627 指定模型自主环：chief 先读候选（models）→ create_agent 用候选行
+  // 的合法 provider/modelId → agents 读回命中。走真 relay wire
+  // （POST /api/machine/tool → executeChiefTool）。
+  test('models 取候选 → create_agent 用合法值 → agents 读回（#627）', async () => {
+    const w = await setupChiefWorld();
+    // 候选面正本 = REST providers 写面（web toModelOptions 同数据源）。
+    const provRes = await call(w.s.app, 'POST', `/api/teams/${w.teamId}/providers`, {
+      body: {
+        providerId: 'gw-m4a',
+        label: 'm4a 网关',
+        baseUrl: 'https://gw.example.com/v1',
+        api: 'openai-completions',
+        models: [
+          { id: 'model-a', name: '模型甲' },
+          { id: 'model-b', name: '模型乙' },
+        ],
+      },
+    });
+    expect(provRes.status).toBe(201);
+
+    const claimed = await w.claim();
+    // 词表下发含 models（#627 CHIEF_TOOLS_ADDED 登记，读侧 replaySafe）。
+    const tools = claimed.remoteTools ?? [];
+    const modelsDef = tools.find((t) => t.name === 'models');
+    expect(modelsDef).toBeDefined();
+    expect(modelsDef?.replaySafe).toBe(true);
+    const stepId = claimed.step.id;
+
+    // —— relay models：并集投影行（claude-code 段 = bootServer 隔离空 home → 空段）——
+    const rows = (await w.relay(stepId, 'models', {})) as {
+      provider: string;
+      providerLabel: string;
+      modelId: string;
+      modelName: string;
+    }[];
+    expect(rows).toEqual([
+      { provider: 'gw-m4a', providerLabel: 'm4a 网关', modelId: 'model-a', modelName: '模型甲' },
+      { provider: 'gw-m4a', providerLabel: 'm4a 网关', modelId: 'model-b', modelName: '模型乙' },
+    ]);
+
+    // —— 从候选取合法值 create_agent → agents 读回全链命中 ——
+    const pick = rows[0]!;
+    const created = (await w.relay(stepId, 'create_agent', {
+      displayName: 'm4a-models-agent',
+      description: '按候选清单配模型的 Agent',
+      provider: pick.provider,
+      modelId: pick.modelId,
+    })) as { id: string };
+    const agents = (await w.relay(stepId, 'agents', {})) as {
+      id: string;
+      provider: string | null;
+      modelId: string | null;
+    }[];
+    const row = agents.find((a) => a.id === created.id);
+    expect(row?.provider).toBe('gw-m4a');
+    expect(row?.modelId).toBe('model-a');
   });
 
   // #631 失败闭环：daemon 上报 failed + errorMessage → 落 chief_message
