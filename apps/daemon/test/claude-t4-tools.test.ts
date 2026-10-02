@@ -176,10 +176,12 @@ describe('buildHostTools（失败方式 4/5/8）', () => {
     expect(err.content).toEqual([{ type: 'text', text: 'remote_shell failed: precheck failed' }]);
   });
 
-  test('50 件 chief 词表全量转换零抛（词表完整性回归）', () => {
+  test('chief 词表全量转换零抛（词表完整性回归——数量随词表单源浮动）', () => {
     const relay = async () => 'ok';
     const tools = buildHostTools({ remoteTools: CHIEF_REMOTE_TOOLS, relay, localTools: [] });
-    expect(tools).toHaveLength(50);
+    // 数量判定钉 CHIEF_REMOTE_TOOLS 单源（词表会增删——#649 加 model 候选读
+    // 工具即从 50 → 51；写死字面量会把词表演进误报成本票回归）。
+    expect(tools).toHaveLength(CHIEF_REMOTE_TOOLS.length);
     const names = new Set(tools.map((t) => t.name));
     for (const def of CHIEF_REMOTE_TOOLS) expect(names.has(def.name)).toBe(true);
   });
