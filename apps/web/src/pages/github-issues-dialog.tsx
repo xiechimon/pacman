@@ -9,10 +9,10 @@
 import type { GithubIssueState, TodoRecord } from '@pacman/shared';
 import { useEffect, useState } from 'react';
 import { useApiMutations, useGithubIssues } from '../api/hooks.js';
+import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { TagChip } from '../components/ui/tag-chip.js';
 import { useI18n } from '../i18n/provider.js';
-import { Button } from '../ui/button.js';
 
 const STATE_FILTERS: { id: GithubIssueState; label: string }[] = [
   { id: 'open', label: '打开' },
@@ -70,9 +70,17 @@ export function GithubIssuesDialog({
       className="dlg-ghissues"
       footer={
         <div className="prj-issues-foot">
+          {/* XMON-25 收编：老 ui/Button quiet 的皮肤（padding 0 / text-dim /
+              13px）下沉 per-face .prj-issues-prev,.prj-issues-next 新规则；
+              禁用态原本无降档（quiet 无 :disabled 规则）→ opacity-100 +
+              pointer-events-auto 保「禁用仍画 pointer 光标」的现行为。
+              leading-[inherit] = 应用内 preflight 对 button 置
+              line-height: inherit，老面继承 foot 行高（13px×1.4286≈18.57）；
+              base text-sm 的比例行高与 normal 都凑不齐该值，inherit 逐位对
+              齐（像素对拍实测 normal 会把 foot 压矮 0.56px）。 */}
           <Button
-            variant="quiet"
-            className="prj-issues-prev"
+            variant="ghost"
+            className="prj-issues-prev h-auto font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:opacity-100"
             disabled={page <= 1 || pending}
             onClick={() => setPage((p) => p - 1)}
           >
@@ -80,8 +88,8 @@ export function GithubIssuesDialog({
           </Button>
           <span className="prj-issues-page">{t('第 {page} 页', { page })}</span>
           <Button
-            variant="quiet"
-            className="prj-issues-next"
+            variant="ghost"
+            className="prj-issues-next h-auto font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:opacity-100"
             disabled={data?.hasMore !== true || pending}
             onClick={() => setPage((p) => p + 1)}
           >
@@ -92,10 +100,14 @@ export function GithubIssuesDialog({
     >
       <div className="prj-issues-filters">
         {STATE_FILTERS.map((filter) => (
-          <button
+          // XMON-25 收编：ghost；--active 选中态正本在 per-face（unlayered）；
+          // leading-[inherit] 对齐 preflight 继承行高（同 prev/next 注释）。
+          <Button
             key={filter.id}
-            type="button"
-            className={`prj-issues-filter${state === filter.id ? ' prj-issues-filter--active' : ''}`}
+            variant="ghost"
+            className={`prj-issues-filter font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0${
+              state === filter.id ? ' prj-issues-filter--active' : ''
+            }`}
             aria-pressed={state === filter.id}
             onClick={() => {
               setState(filter.id);
@@ -103,7 +115,7 @@ export function GithubIssuesDialog({
             }}
           >
             {t(filter.label)}
-          </button>
+          </Button>
         ))}
       </div>
       {issuesQ.isError ? (
@@ -115,10 +127,15 @@ export function GithubIssuesDialog({
       ) : (
         <div className="prj-issues-list">
           {data.issues.map((issue) => (
-            <button
+            // XMON-25 收编：ghost；per-face font:inherit 简写已压掉 base 的
+            // text-sm/font-medium/行高（无需字体中和位）。justify-start =
+            // text-align:left 的 flex 等价位；whitespace-normal 恢复标题
+            // 双行换行（base whitespace-nowrap 会禁掉 wrap 面的 overflow-wrap）；
+            // h-auto 保内容高——base h-8 钉 32px，双行行（60px）会溢出盒外。
+            <Button
               key={issue.number}
-              type="button"
-              className="prj-issues-row"
+              variant="ghost"
+              className="prj-issues-row h-auto justify-start whitespace-normal active:not-aria-[haspopup]:translate-y-0"
               disabled={pending}
               onClick={() => importIssue(issue.number)}
             >
@@ -135,7 +152,7 @@ export function GithubIssuesDialog({
                   ))}
                 </span>
               )}
-            </button>
+            </Button>
           ))}
         </div>
       )}

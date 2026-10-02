@@ -22,6 +22,8 @@ import type {
 import {
   AGENT_TOOL_MERGE,
   AGENT_TOOL_PUSH,
+  buildReplanPrompt,
+  buildRestartPrompt,
   buildReviewStepPrompt,
   hasBlockingFinding,
   MERGE_ANNOUNCEMENT,
@@ -461,7 +463,9 @@ export async function applyBuildStepAction(
       content: body.feedback,
       createdAt,
     });
-    const restartPrompt = `上一轮执行失败。用户反馈：「${body.feedback}」。请把反馈纳入本轮：涉及方案先输出更新后的 plan.md（覆盖 Context/Changes/Edge cases/Verification 四段），再忠实执行完成任务。`;
+    // 文本单源 = shared buildRestartPrompt（#612：web transcript 过滤侧按
+    // 同一模板识别本行，不渲染成用户气泡——feedback 原文已有独立 wire 行）。
+    const restartPrompt = buildRestartPrompt(body.feedback);
     enqueueStep(deps, newId, row.withPlan ? 'plan' : 'build', todoRecord.teamId, restartPrompt);
     setTodoPhase(deps, todoRecord.id, 'queued', {
       assignment,
@@ -549,7 +553,8 @@ export async function applyBuildStepAction(
   setTodoPhase(deps, todoRecord.id, 'planning');
   // 重规划步（同 conv continue session，r5 §4）：feedback 注入续轮指令，v2 忠实
   // 执行反馈（宿主等价物——措辞由 LLM 侧组织，本层给事实与要求）。
-  const replanPrompt = `用户对方案提出驳回。驳回反馈：「${body.feedback}」。请忠实按反馈调整方案，输出更新后的 plan.md（覆盖 Context/Changes/Edge cases/Verification 四段），并在结尾一句话摘要本次调整了什么。`;
+  // 文本单源 = shared buildReplanPrompt（#612：web transcript 过滤侧同款识别）。
+  const replanPrompt = buildReplanPrompt(body.feedback);
   enqueueStep(deps, buildId, 'plan', todoRecord.teamId, replanPrompt);
 }
 

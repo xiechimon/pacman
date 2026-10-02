@@ -22,6 +22,8 @@ import {
 import { mapCommits, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
+import { Button } from '../components/ui/button.js';
+import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { localTodo } from '../fixtures/fixtures.js';
 import type { Phase, ProjectCommitRow, ProjectContent, TodoRecord } from '../fixtures/records.js';
@@ -41,7 +43,6 @@ import {
 } from '../icons/index.js';
 import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
-import { Button } from '../ui/button.js';
 import { GithubIssuesDialog } from './github-issues-dialog.js';
 import { PageShell } from './shell.js';
 import './pages.css';
@@ -81,33 +82,43 @@ function FilesPane({
             （#129 先例），台账 #136 勾兑登记。 */}
       </div>
       <div className="prj-files-seg">
-        <button
-          type="button"
-          className={`prj-files-seg-tab${seg === 'files' ? ' prj-files-seg-tab--active' : ''}`}
+        {/* XMON-25 收编：ghost；13/24 字体与几何正本在 per-face，--active
+            chip 与 seg-hover 媒体块 unlayered 恒胜 base 的 hover 档。 */}
+        <Button
+          variant="ghost"
+          className={`prj-files-seg-tab font-normal active:not-aria-[haspopup]:translate-y-0${
+            seg === 'files' ? ' prj-files-seg-tab--active' : ''
+          }`}
           onClick={() => onSeg('files')}
         >
           {t('文件')}
-        </button>
-        <button
-          type="button"
-          className={`prj-files-seg-tab${seg === 'history' ? ' prj-files-seg-tab--active' : ''}`}
+        </Button>
+        <Button
+          variant="ghost"
+          className={`prj-files-seg-tab font-normal active:not-aria-[haspopup]:translate-y-0${
+            seg === 'history' ? ' prj-files-seg-tab--active' : ''
+          }`}
           onClick={() => onSeg('history')}
         >
           {t('历史')}
-        </button>
+        </Button>
       </div>
       {seg === 'files' ? (
         <div className="prj-files-list">
           {files.map((f) => (
-            <button
+            // XMON-25 收编：ghost；justify-start = 行左对齐位，size-auto 保
+            // FileTab 的 14px 属性尺寸（base 会强制 16）。
+            <Button
               key={f}
-              type="button"
-              className={`prj-file-row${selectedFile === f ? ' prj-file-row--active' : ''}`}
+              variant="ghost"
+              className={`prj-file-row justify-start font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto${
+                selectedFile === f ? ' prj-file-row--active' : ''
+              }`}
               onClick={() => onSelectFile(f)}
             >
               <FileTab width={14} height={14} />
               <span className="prj-file-name">{f}</span>
-            </button>
+            </Button>
           ))}
         </div>
       ) : commits.length === 0 ? (
@@ -277,9 +288,12 @@ function TasksMenuButton<T extends string>({
   useEscapeClose(open, close);
   return (
     <span className="prj-tasks-menu-wrap">
-      <button
-        type="button"
-        className="prj-tasks-filter"
+      {/* XMON-25 收编：ghost；size-auto 保 Funnel 14 / ChevronDown 12 属性
+          尺寸；haspopup 使 base active 位移自动跳过；aria-expanded 底色档
+          被 per-face bg 简写（unlayered）压掉 = 现行为零漂移。 */}
+      <Button
+        variant="ghost"
+        className="prj-tasks-filter font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-auto"
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
@@ -287,7 +301,7 @@ function TasksMenuButton<T extends string>({
         {icon}
         {t(label)}
         <ChevronDown width={12} height={12} />
-      </button>
+      </Button>
       <OverlayMount open={open}>
         <ClickCatcher onClose={close} />
         <TasksMenu
@@ -346,8 +360,15 @@ function TasksPane({
       <div className="prj-tasks-toolbar">
         <div className="prj-tasks-search">
           <Search width={14} height={14} />
-          <input
+          {/* XMON-25 收编：Input 原语；本面 focus 皮肤正本 = per-face
+              `outline: none`（无环面，#388 前的既有行为，unlayered 恒胜），
+              故只需 ring-0 掐掉原语 focus ring、h-auto + leading-[inherit]
+              保内容高——preflight 对裸 input 置 line-height: inherit，
+              inherit 逐位复刻老面（text-sm 的比例行高会抬高）；
+              padding 1px 2px 是 UA 隐式值的收编（pages.css）。 */}
+          <Input
             type="text"
+            className="h-auto rounded-none leading-[inherit] md:leading-[inherit] focus-visible:ring-0"
             placeholder={t('搜索任务…')}
             aria-label={t('搜索任务')}
             value={query}
@@ -369,35 +390,43 @@ function TasksPane({
           onSelect={setSort}
         />
         {onOpenGithubIssues !== undefined && (
-          <button
-            type="button"
-            className="prj-tasks-filter prj-issues-entry"
+          // XMON-25 收编：ghost 复用 .prj-tasks-filter chip 形（类名对不变）。
+          <Button
+            variant="ghost"
+            className="prj-tasks-filter prj-issues-entry font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
             onClick={onOpenGithubIssues}
           >
             {t('从 GitHub issue 建任务')}
-          </button>
+          </Button>
         )}
         <div className="prj-tasks-view" role="tablist">
-          <button
-            type="button"
+          {/* XMON-25 收编：ghost；px-0 保 28×24 图标盒无内边距，size-auto 保
+              ListLines 16 / Grid2x2 14 属性尺寸；role=tab + aria-selected
+              由原语透传。 */}
+          <Button
+            variant="ghost"
             role="tab"
             aria-selected={layout === 'list'}
-            className={`prj-tasks-view-btn${layout === 'list' ? ' prj-tasks-view-btn--active' : ''}`}
+            className={`prj-tasks-view-btn px-0 font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto${
+              layout === 'list' ? ' prj-tasks-view-btn--active' : ''
+            }`}
             aria-label={t('列表视图')}
             onClick={() => switchLayout('list')}
           >
             <ListLines />
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="ghost"
             role="tab"
             aria-selected={layout === 'grid'}
-            className={`prj-tasks-view-btn${layout === 'grid' ? ' prj-tasks-view-btn--active' : ''}`}
+            className={`prj-tasks-view-btn px-0 font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto${
+              layout === 'grid' ? ' prj-tasks-view-btn--active' : ''
+            }`}
             aria-label={t('网格视图')}
             onClick={() => switchLayout('grid')}
           >
             <Grid2x2 width={14} height={14} />
-          </button>
+          </Button>
         </div>
       </div>
       {todos.length === 0 ? (
@@ -407,10 +436,12 @@ function TasksPane({
           </div>
           <div className="prj-tasks-empty-title">{t('暂无内容')}</div>
           <div className="prj-tasks-empty-desc">{t('创建第一个任务以开始使用。')}</div>
+          {/* XMON-25 收编：老 ui/Button primary/compact → brand 变体（等价
+              迁移位）；compact 几何（28 高/12 内边距/13 字号）与 cursor 下沉
+              per-face .prj-tasks-empty-new；size-auto 保 PlusSmall 12px。 */}
           <Button
-            variant="primary"
-            size="compact"
-            className="prj-tasks-empty-new"
+            variant="brand"
+            className="prj-tasks-empty-new font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             onClick={onNewTask}
           >
             <PlusSmall width={12} height={12} />

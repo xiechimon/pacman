@@ -41,6 +41,8 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { ApiError } from '../api/client.js';
 import { useApiMutations, useGithubConnection, useGithubRepos } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { Button } from '../components/ui/button.js';
+import { Input } from '../components/ui/input.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
@@ -63,12 +65,20 @@ function pathBasename(raw: string): string {
   return segment === '.' || segment === '..' ? '' : segment;
 }
 
-/** 重开仓库种类菜单的 swap 钮（github 三面共用，#305 原形不动）。 */
+/** 重开仓库种类菜单的 swap 钮（github 三面共用，#305 原形不动）。
+ *  XMON-25 收编：ghost + size icon；40×40 几何/边框/墨色正本在 per-face；
+ *  size-auto 保 ChevronRight 的 14px 属性尺寸（base 会强制 16）。 */
 function RepoSwapButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button type="button" className="prj-new-repo-swap" aria-label={label} onClick={onClick}>
+    <Button
+      variant="ghost"
+      size="icon"
+      className="prj-new-repo-swap font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+      aria-label={label}
+      onClick={onClick}
+    >
       <ChevronRight width={14} height={14} />
-    </button>
+    </Button>
   );
 }
 
@@ -286,9 +296,14 @@ export function ProjectNewPage() {
         <label className="prj-new-label" htmlFor="prj-new-name">
           {t('项目名称')}
         </label>
-        <input
+        {/* XMON-25 收编：Input 原语；本面 h40/内边距/边框/focus 配方（outline
+            none + indigo 边 + 1px 影）与 ::placeholder 全在 per-face
+            .prj-new-input（unlayered 恒胜）。transition-none = 原裸 input
+            无过渡，focus 边框瞬翻（e2e 同步取 computed 钉 indigo，base 的
+            transition-colors 会让取数落在渐变中途）。 */}
+        <Input
           id="prj-new-name"
-          className="prj-new-input"
+          className="prj-new-input leading-[inherit] md:leading-[inherit] transition-none"
           type="text"
           placeholder="My App"
           value={name}
@@ -301,9 +316,11 @@ export function ProjectNewPage() {
           {repoSel === 'github' ? (
             manualRepo ? (
               <>
-                <input
+                {/* XMON-25 收编：Input；皮肤/几何/focus 正本在 per-face（同
+                    名称输入面，transition-none 同理）。 */}
+                <Input
                   id="prj-new-repo"
-                  className="prj-new-input prj-new-repo-input"
+                  className="prj-new-input prj-new-repo-input leading-[inherit] md:leading-[inherit] transition-none"
                   type="text"
                   placeholder="owner/repo"
                   aria-label={t('GitHub 仓库')}
@@ -314,18 +331,29 @@ export function ProjectNewPage() {
               </>
             ) : connectionPending ? (
               <>
-                {/* live 首取在途：禁用占位（连接态未决，不闪认证钮）。 */}
-                <button type="button" id="prj-new-repo" className="prj-new-repo" disabled>
+                {/* live 首取在途：禁用占位（连接态未决，不闪认证钮）。
+                    XMON-25 收编：ghost；禁用态原面无降档（per-face 无
+                    :disabled 规则）→ opacity-100 + pointer-events-auto 保
+                    「禁用仍画 per-face pointer 光标」的现行为。 */}
+                <Button
+                  variant="ghost"
+                  id="prj-new-repo"
+                  className="prj-new-repo font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:opacity-100"
+                  disabled
+                >
                   <span className="prj-new-repo-placeholder">{t('选择仓库')}</span>
-                </button>
+                </Button>
                 <RepoSwapButton label={t('选择仓库')} onClick={() => setRepoOpen(true)} />
               </>
             ) : connected ? (
               <>
-                <button
-                  type="button"
+                {/* XMON-25 收编：ghost；haspopup 使 base active 位移自动跳过；
+                    aria-expanded 底色档被 per-face bg 简写压掉 = 现行为；
+                    size-auto 保 ChevronRight 14px。 */}
+                <Button
+                  variant="ghost"
                   id="prj-new-repo"
-                  className="prj-new-repo"
+                  className="prj-new-repo font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-auto"
                   aria-haspopup="listbox"
                   aria-expanded={pickerOpen}
                   onClick={() => {
@@ -341,7 +369,7 @@ export function ProjectNewPage() {
                     {githubRepo === '' ? t('选择 GitHub 仓库') : githubRepo}
                   </span>
                   <ChevronRight width={14} height={14} />
-                </button>
+                </Button>
                 <RepoSwapButton
                   label={t('选择仓库')}
                   onClick={() => {
@@ -352,58 +380,66 @@ export function ProjectNewPage() {
               </>
             ) : (
               <>
-                <button
-                  type="button"
+                {/* XMON-25 收编：brand（--card-button 实底等价迁移位）；
+                    h40/flex:1 几何正本在 per-face。 */}
+                <Button
+                  variant="brand"
                   id="prj-new-repo"
-                  className="prj-new-gh-auth"
+                  className="prj-new-gh-auth font-normal active:not-aria-[haspopup]:translate-y-0"
                   onClick={startAuth}
                 >
                   {t('认证 GitHub')}
-                </button>
+                </Button>
                 <RepoSwapButton label={t('选择仓库')} onClick={() => setRepoOpen(true)} />
               </>
             )
           ) : repoSel === 'local' ? (
             <>
-              <input
+              {/* XMON-25 收编：Input；皮肤/几何/focus 正本在 per-face。 */}
+              <Input
                 id="prj-new-repo"
-                className="prj-new-input prj-new-repo-input"
+                className="prj-new-input prj-new-repo-input leading-[inherit] md:leading-[inherit] transition-none"
                 type="text"
                 placeholder="/path/to/repo"
                 aria-label={t('本地文件夹')}
                 value={localPath}
                 onChange={(e) => onLocalPathChange(e.target.value)}
               />
-              <button
-                type="button"
-                className="prj-new-browse"
+              {/* XMON-25 收编：ghost；:disabled .55 + cursor default 正本在
+                  per-face（unlayered 恒胜 base 的 opacity-50）。 */}
+              <Button
+                variant="ghost"
+                className="prj-new-browse font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
                 aria-label={t('浏览')}
                 disabled={pickBusy}
                 onClick={browseFolder}
               >
                 {t('浏览')}
-              </button>
-              <button
-                type="button"
-                className="prj-new-repo-swap"
+              </Button>
+              {/* local 面的种类 swap（RepoSwapButton 同形，#305 内联副本）。 */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="prj-new-repo-swap font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
                 aria-label={t('选择仓库')}
                 onClick={() => setRepoOpen(true)}
               >
                 <ChevronRight width={14} height={14} />
-              </button>
+              </Button>
             </>
           ) : (
-            <button
-              type="button"
+            // XMON-25 收编：ghost（同已连接 picker 触发面口径）。
+            <Button
+              variant="ghost"
               id="prj-new-repo"
-              className="prj-new-repo"
+              className="prj-new-repo font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-auto"
               aria-haspopup="listbox"
               aria-expanded={repoOpen}
               onClick={() => setRepoOpen((value) => !value)}
             >
               <span className="prj-new-repo-placeholder">{t('选择仓库')}</span>
               <ChevronRight width={14} height={14} />
-            </button>
+            </Button>
           )}
           <OverlayMount open={repoOpen}>
             <ClickCatcher onClose={closeRepo} />
@@ -458,12 +494,26 @@ export function ProjectNewPage() {
                 <span className="prj-new-gh-login">
                   {login === undefined || login === '' ? t('已连接') : `${t('已连接')} · ${login}`}
                 </span>
-                <button type="button" className="prj-new-gh-disconnect" onClick={disconnect}>
+                {/* XMON-25 收编：ghost；per-face 不钉高度/行高 → h-auto +
+                    leading-[inherit]：应用内 preflight 对 button 置
+                    line-height: inherit，老面继承 picker-head 的 16px；
+                    normal/text-sm 都会抬高（像素对拍实测 h 16→17）。 */}
+                <Button
+                  variant="ghost"
+                  className="prj-new-gh-disconnect h-auto rounded-none font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+                  onClick={disconnect}
+                >
                   {t('断开连接')}
-                </button>
+                </Button>
               </div>
-              <input
-                className="prj-new-gh-search"
+              {/* XMON-25 收编：Input；本面 per-face 无 focus 配方 → 现行为 =
+                  #388 全局环，原语 outline-none（utilities 层）会压掉 base 层
+                  全局环，故补 #388 同配方 outline + ring-0（branch-dialog
+                  XMON-24 先例）。h-8/px-2.5 与 per-face 32 高/10 内边距同值；
+                  leading-[inherit] 复刻 preflight 对裸 input 的继承行高
+                  （19.5px），text-sm 比例行高会把基线抬 ~0.5px。 */}
+              <Input
+                className="prj-new-gh-search leading-[inherit] md:leading-[inherit] focus-visible:ring-0 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2"
                 type="text"
                 placeholder={t('搜索仓库')}
                 aria-label={t('搜索仓库')}
@@ -501,16 +551,18 @@ export function ProjectNewPage() {
                   {(reposQ.error as Error).message}
                 </div>
               ) : null}
-              <button
-                type="button"
-                className="prj-new-gh-link"
+              {/* XMON-25 收编：ghost；12/16 字体与下划线正本在 per-face，
+                  h-auto 保 16px 内容高。 */}
+              <Button
+                variant="ghost"
+                className="prj-new-gh-link h-auto rounded-none font-normal active:not-aria-[haspopup]:translate-y-0"
                 onClick={() => {
                   setPickerOpen(false);
                   setManualRepo(true);
                 }}
               >
                 {t('手动输入 owner/repo')}
-              </button>
+              </Button>
             </div>
           </OverlayMount>
           {/* #441 应用内目录浏览器（ADR 0003 D6 remote/headless 兜底）：仅在
@@ -535,9 +587,13 @@ export function ProjectNewPage() {
           </div>
         )}
         {showGithubField && !connected && !connectionPending && (
-          <button type="button" className="prj-new-gh-link" onClick={() => setManualRepo(true)}>
+          <Button
+            variant="ghost"
+            className="prj-new-gh-link h-auto rounded-none font-normal active:not-aria-[haspopup]:translate-y-0"
+            onClick={() => setManualRepo(true)}
+          >
             {t('手动输入 owner/repo')}
-          </button>
+          </Button>
         )}
         {localErrorText !== null && (
           <div className="prj-new-error" role="alert">
@@ -547,14 +603,16 @@ export function ProjectNewPage() {
         {/* #440 降级提示行（ADR 0003 D4）：能力边界说明非错误级——中性色、
             无 role=alert；仅 local 选态呈现，编辑路径即撤。 */}
         {repoSel === 'local' && pickHint !== null && <div className="prj-new-hint">{pickHint}</div>}
-        <button
-          type="button"
-          className="prj-new-submit"
+        {/* XMON-25 收编：brand；禁用态正本在 per-face（:disabled .55 +
+            cursor default，unlayered 恒胜 brand 的 lavender 实底档）。 */}
+        <Button
+          variant="brand"
+          className="prj-new-submit font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
           disabled={live ? name.trim() === '' || !formOk : true}
           onClick={live ? submit : undefined}
         >
           {t('创建项目')}
-        </button>
+        </Button>
       </div>
     </PageShell>
   );

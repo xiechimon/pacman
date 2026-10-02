@@ -1,4 +1,6 @@
-// Block-markdown renderer for agent chat replies (issue #469).
+// Block-markdown renderer for chat text (issue #469; #612 起同时服务用户
+// 话语与任务简报——描述区 SpecBlock 与用户气泡的 markdown 槽都渲染到这里，
+// 全站「用户/agent 的块级文本」一套解析器，不再各写一套).
 //
 // Why a web-side lite parser instead of reusing the doc pane's DocBlock
 // pipeline (`mapPlanDoc`): DocBlock is the plan.md display contract, frozen
@@ -12,6 +14,11 @@
 // of the transcript. Parsing runs at render time off the raw `markdown`
 // string (the spec-block.tsx precedent), so the fixture surface exercises
 // the same parse+render path as the live mapper.
+//
+// 附件 token（#310/#612）：![name](attachment:key) 独占一行 = attachment
+// 块（两个写入端——详情页 composer 与新建任务对话框——都按「每个 token 占
+// 独立行」拼接，web api/attachments.ts 契约）。行中内联的 token 不在块语法
+// 内（保持字面文本，与 agent 回复同律）。
 
 import { useMemo } from 'react';
 import { inlineSegments } from '../api/mappers.js';
@@ -20,13 +27,15 @@ import { Segments } from './segments.js';
 
 /** One block of a parsed chat reply. Inline content rides `segments`
  *  (shared with the doc pane / spec block); fenced code keeps its raw text
- *  (no inline parsing inside a code block). */
+ *  (no inline parsing inside a code block); attachment blocks keep the
+ *  token's name + storage key (#612). */
 export type ChatBlock =
   | { kind: 'para'; segments: DocSegment[] }
   | { kind: 'head'; level: number; segments: DocSegment[] }
   | { kind: 'ordered'; depth: number; ordinal: number; segments: DocSegment[] }
   | { kind: 'bullet'; depth: number; segments: DocSegment[] }
-  | { kind: 'code'; lang?: string; text: string };
+  | { kind: 'code'; lang?: string; text: string }
+  | { kind: 'attachment'; name: string; key: string };
 
 /** Indent width per nesting level (px). Two source spaces = one level. */
 const DEPTH_PX = 18;
@@ -39,6 +48,12 @@ const FENCE = /^ {0,3}(`{3,}|~{3,})\s*(\S*)\s*$/;
 const HEADING = /^ {0,3}(#{1,6})\s+(.*)$/;
 const ORDERED = /^(\s*)(\d+)[.)]\s+(.*)$/;
 const BULLET = /^(\s*)[-*•]\s+(.*)$/;
+/** Whole-line attachment token (the #310 spec-block shape): key rides
+ *  teamId/id.ext, the read endpoint is the last segment minus extension.
+ *  (English-only note: this span sits between the backticks the i18n
+ *  coverage scanner misreads out of the FENCE regex — CJK here would be
+ *  swallowed as a template quasi.) */
+const ATTACHMENT_LINE = /^ {0,3}!\[([^\]]*)\]\(attachment:([^)]+)\)\s*$/;
 
 /** Line-based block parser: headings, ordered/unordered lists (nesting by
  *  leading indent), fenced code, and soft-wrapped paragraphs. Inline code /
@@ -79,6 +94,18 @@ export function parseChatMarkdown(text: string): ChatBlock[] {
 
     if (trimmed === '') {
       flushPara();
+      i += 1;
+      continue;
+    }
+
+    const attachment = ATTACHMENT_LINE.exec(raw);
+    if (attachment !== null) {
+      flushPara();
+      blocks.push({
+        kind: 'attachment',
+        name: attachment[1] ?? '',
+        key: attachment[2] ?? '',
+      });
       i += 1;
       continue;
     }
@@ -137,6 +164,41 @@ function HeadingTag({ level, segments }: { level: number; segments: DocSegment[]
   );
 }
 
+/** key teamId/id.ext → id：取末段去扩展名，兼容无扩展名情形
+ *  （spec-block.tsx #310 原 helper，随附件块迁到渲染单源，#612）。 */
+function attachmentIdFromKey(key: string): string {
+  const lastSlash = key.lastIndexOf('/');
+  const tail = lastSlash >= 0 ? key.slice(lastSlash + 1) : key;
+  const dot = tail.lastIndexOf('.');
+  return dot > 0 ? tail.slice(0, dot) : tail;
+}
+
+/** 附件 chip（#310 契约 / #612 起有样式）：image/* → 内联缩略 <img>（src 直
+ *  指 GET /api/attachments/{id}），其它类型 → 文件名链接新标签打开
+ *  （content-type 由浏览器原生处理）。 */
+export function AttachmentChip({ name, attachmentKey }: { name: string; attachmentKey: string }) {
+  const href = `/api/attachments/${encodeURIComponent(attachmentIdFromKey(attachmentKey))}`;
+  const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(attachmentKey);
+  if (isImage) {
+    return (
+      <a
+        className="spec-chip spec-chip--image"
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={name}
+      >
+        <img src={href} alt={name} className="spec-chip-img" />
+      </a>
+    );
+  }
+  return (
+    <a className="spec-chip" href={href} target="_blank" rel="noopener noreferrer" title={name}>
+      {name}
+    </a>
+  );
+}
+
 /** Renders an agent reply's block markdown. Inline code chips reuse the
  *  transcript's `.chat-code` class so the chip family stays consistent. */
 export function ChatMarkdown({ text }: { text: string }) {
@@ -183,6 +245,12 @@ export function ChatMarkdown({ text }: { text: string }) {
               <pre key={i} className="chat-md-code" data-lang={block.lang ?? ''}>
                 {block.text}
               </pre>
+            );
+          case 'attachment':
+            return (
+              <div key={i} className="chat-md-attachment">
+                <AttachmentChip name={block.name} attachmentKey={block.key} />
+              </div>
             );
           case 'para':
             return (
