@@ -728,6 +728,9 @@ function buildChiefClaim(
   if (!chiefRow || !agentRow?.modelId) return null;
   // 思考强度覆盖（PATCH body agent.thinkingLevel，r5 §2）优先，回退绑定 Agent 值。
   const thinkingLevel = chiefRow.thinkingLevel ?? agentRow.thinkingLevel;
+  // 主模型覆盖（#615，r5 107/108 独立「模型」选择器落库面）优先，回退绑定
+  // Agent 的 provider/modelId——覆盖是整对象换（provider+modelId 同槽）。
+  const model = chiefRow.model ?? { provider: agentRow.provider, modelId: agentRow.modelId };
   const claimedAt = nowMs();
   const res = deps.db
     .update(step)
@@ -762,8 +765,8 @@ function buildChiefClaim(
       id: agentRow.id,
       displayName: agentRow.displayName,
       description: agentRow.description,
-      provider: agentRow.provider,
-      modelId: agentRow.modelId,
+      provider: model.provider,
+      modelId: model.modelId,
       thinkingLevel,
       memories,
       // skills 白名单不携带（#372）：chief 是信任面，catalog 全量直通不受

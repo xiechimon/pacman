@@ -49,6 +49,11 @@ export const chiefRecordSchema = z.object({
   /** 压缩模型长槽（#203 [设计]，raw wire 无此键故 optional）；null = 默认
    * （与 Chief 相同）。 */
   compactionModel: chiefCompactionModelSchema.nullable().optional(),
+  /** 主模型覆盖长槽（#615 [设计]：r5 107/108 设置 Agent tab 的独立「模型」
+   * 选择器——可覆盖绑定 Agent 默认模型；pacman 此前缺整槽，抽屉模型行纯
+   * 显示）。值形同 compactionModel（model id 只在 provider 内有意义）；
+   * null = 继承绑定 Agent 模型（抽屉行尾 `· 默认` 徽标语义）。 */
+  model: chiefCompactionModelSchema.nullable().optional(),
   lastTurnAt: epochMs.nullable(),
   createdAt: epochMs,
   /** 用户时区（raw chief-record-testA.json 一手 `tz:"Asia/Shanghai"`；
@@ -139,7 +144,8 @@ export const CHIEF_ENTITY_REF_SCHEMES = ['agent', 'todo'] as const;
 /** PATCH /api/teams/{id}/chief body——`agent` 槽 = r5 §2 抓包原样；`charter`
  * 槽 = 章程 tab 保存面（保存 wire 未采 [推断]，同径 PATCH 最小逼近，04 §3
  * 不判负）；`compactionModel` 槽 = 压缩模型长槽（#203 [设计]，undefined =
- * 不动 / null = 清空回默认）。三槽至少一位。 */
+ * 不动 / null = 清空回默认）；`model` 槽 = 主模型覆盖长槽（#615 [设计]，
+ * undefined = 不动 / null = 清空回绑定 Agent 继承）。四槽至少一位。 */
 export const patchChiefBodySchema = z
   .object({
     agent: z
@@ -150,11 +156,16 @@ export const patchChiefBodySchema = z
       .nullish(),
     charter: z.string().nullish(),
     compactionModel: chiefCompactionModelSchema.nullish(),
+    model: chiefCompactionModelSchema.nullish(),
   })
   .refine(
-    (b) => b.agent !== undefined || b.charter !== undefined || b.compactionModel !== undefined,
+    (b) =>
+      b.agent !== undefined ||
+      b.charter !== undefined ||
+      b.compactionModel !== undefined ||
+      b.model !== undefined,
     {
-      message: 'expected agent and/or charter and/or compactionModel',
+      message: 'expected agent and/or charter and/or compactionModel and/or model',
     },
   );
 export type PatchChiefBody = z.infer<typeof patchChiefBodySchema>;
@@ -166,6 +177,14 @@ export const chiefSendMessageBodySchema = z.object({
   content: z.string().min(1),
 });
 export type ChiefSendMessageBody = z.infer<typeof chiefSendMessageBodySchema>;
+
+/** POST /api/teams/{id}/chief/threads/{tid}/rewind body（#615 返工：恢复钮
+ * 「恢复到此处」闭环，参考站 live aria 正词语义 = 回滚锚点）：锚 = 用户消息
+ * id，截断其后消息并以锚内容重发回合。 */
+export const chiefRewindBodySchema = z.object({
+  messageId: z.string().min(1),
+});
+export type ChiefRewindBody = z.infer<typeof chiefRewindBodySchema>;
 
 /** wake 三触发（02 §4.3/r5 §3.5：gate 停驻 / settle 落地 / failed 失败）。 */
 export const CHIEF_WAKE_KINDS = ['gate', 'settle', 'failed'] as const;

@@ -671,11 +671,30 @@ export type ChiefStreamItem =
   /** Centered dim stamp (`17:26`) or machine line (`运行在 … 上`, the
    *  machine name underlined per r5 114 — `machineName` carries it). */
   | { kind: 'note'; text: string; machineName?: string }
-  /** User bubble with avatar + the copy/restore icon pair below it. */
-  | { kind: 'user'; text: string }
+  /** User bubble with avatar + the copy/restore icon pair below it.
+   *  `id` = live 面 chief_message id（#615 返工恢复钮的 rewind 锚；fixture
+   *  面缺省 = 确认层 accept 律关窗，零请求）。 */
+  | { kind: 'user'; text: string; id?: string }
   /** Chief prose paragraphs + optional bullets + the `完成 Ns ›` footer
-   *  row (r5 116 verification report). */
-  | { kind: 'robot'; paragraphs: ChiefSegment[][]; bullets?: ChiefSegment[][]; seconds: string };
+   *  row (r5 116 verification report). `tools` = 该回合的工具调用行（#615
+   *  返工：foot 折叠箭头展开面；live = chief_message 的 toolcall 行投影，
+   *  r5 114 捕获时折叠态未展开，fixture 行内容 [推断] 自回执文本）。 */
+  | {
+      kind: 'robot';
+      paragraphs: ChiefSegment[][];
+      bullets?: ChiefSegment[][];
+      seconds: string;
+      tools?: ChiefToolRow[];
+    };
+
+/** 回合工具行（#615 返工折叠展开面；ToolCallRecord 的呈现投影）。 */
+export interface ChiefToolRow {
+  name: string;
+  /** 执行秒数（startedAt/endedAt 投影；缺省不呈现）。 */
+  seconds?: number;
+  /** isError 投影（行尾错误徽标）。 */
+  error?: boolean;
+}
 
 /** Thread row of the header switcher popover (r5 116). */
 export interface ChiefThreadRef {
@@ -719,6 +738,11 @@ export interface ChiefContent {
    *  absent = 未绑定（或数据未到位），FAB 保持静态字形。live 面由 mapChief
    *  从 GET chief 封套的 agentActor 投影，不新增请求。 */
   agent?: { id?: string; displayName: string; avatarUrl: string | null };
+  /** #615 返工：模型行首 = 运行时标记（用户裁决：要运行时 SVG 不要 Agent
+   *  头像）。值 = 生效模型的 provider 位（覆盖槽优先，回退绑定 Agent）；
+   *  'claude-code' = Claude Code 运行时，其余（custom provider / 缺省）= pi
+   *  运行时。absent = fixture 未录 provider 位，按 pi 正典呈现（r5 111）。 */
+  modelProvider?: string | null;
   /** Header thread-chip label (`新主题` on a fresh thread). */
   threadTitle: string;
   /** Switcher popover open over the drawer (r5 116). */
