@@ -1,7 +1,7 @@
 {
   "probe": "chief-drawer",
   "ok": true,
-  "at": "2026-10-01T23:21:40.796Z",
+  "at": "2026-10-02T05:40:57.963Z",
   "stack": {
     "api": "http://127.0.0.1:8795",
     "web": "http://127.0.0.1:5277",
@@ -11,7 +11,7 @@
     {
       "name": "api-team-ready",
       "ok": true,
-      "detail": "teamId=GqLM_xDkTJgSCd3cfH6RA"
+      "detail": "teamId=uBB91Rt__krUhF9IOcKmO"
     },
     {
       "name": "offboard-gate-rendered",
@@ -26,7 +26,7 @@
     {
       "name": "seed-bound",
       "ok": true,
-      "detail": "agent=mbRW7ffLMhrjCYrPoHMM-"
+      "detail": "agent=XmeVFhf7hFdcZYqWbO7lb"
     },
     {
       "name": "model-row-is-control",
@@ -34,9 +34,9 @@
       "detail": "模型行 = button[aria-haspopup=dialog]"
     },
     {
-      "name": "model-row-carries-agent-avatar",
+      "name": "model-row-carries-runtime-mark",
       "ok": true,
-      "detail": "行首 = 绑定 Agent 头像 img"
+      "detail": "行首 = 运行时标记（π svg，无头像 img）"
     },
     {
       "name": "dialog-lists-provider-models",
@@ -46,22 +46,22 @@
     {
       "name": "pick-persists-and-echoes",
       "ok": true,
-      "detail": "GET chief.model={\"provider\":\"verify-gw-89462\",\"modelId\":\"v-model-b-89462\"}；行回显含=false（v-model-b-89462）"
+      "detail": "GET chief.model={\"provider\":\"verify-gw-36059\",\"modelId\":\"v-model-b-36059\"}；行回显含=false（v-model-b-36059）"
     },
     {
       "name": "sqlite-row-holds-override",
       "ok": true,
-      "detail": "chief.model 行={\"provider\":\"verify-gw-89462\",\"modelId\":\"v-model-b-89462\"}"
+      "detail": "chief.model 行={\"provider\":\"verify-gw-36059\",\"modelId\":\"v-model-b-36059\"}"
     },
     {
       "name": "reload-echo",
       "ok": true,
-      "detail": "重载后行=v-model-b-89462"
+      "detail": "重载后行=v-model-b-36059"
     },
     {
       "name": "default-row-clears-to-inherit",
       "ok": true,
-      "detail": "GET chief.model=null；行=v-model-a-89462 · 默认"
+      "detail": "GET chief.model=null；行=v-model-a-36059 · 默认"
     },
     {
       "name": "copy-button-writes-clipboard",
@@ -82,5 +82,5 @@
     "04-after-pick.png",
     "05-copy-feedback.png"
   ],
-  "agentId": "mbRW7ffLMhrjCYrPoHMM-"
+  "agentId": "XmeVFhf7hFdcZYqWbO7lb"
 }

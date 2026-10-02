@@ -10,7 +10,7 @@ probe：`.claude/skills/verify-pacman/scripts/drive-chief-drawer.mjs`（本票�
 
 截图对照（PR body 内嵌同组）：
 
-- `06-drawer-head.png`：抽屉头部元素截——before = `⊐` 坏 trace glyph + 纯显示行；after = 绑定 Agent 头像 + 可控行（chevron affordance）。
+- `06-drawer-head.png`：抽屉头部元素截——before = `⊐` 坏 trace glyph + 纯显示行；after（首版）= 绑定 Agent 头像脸；after（返工版，用户裁决要运行时标记）= π 运行时字形 + 可控行。首版头像脸留档 `after/avatar-face-drawer-head.png` 供「原来的脸 vs 运行时的图」对照。
 - `02-bound-model-row.png` / `03-model-dialog.png` / `04-after-pick.png`：主模型闭环三步。
 - `01-offboard-settings.png`：非 board 面门控条设置落地 board 设置视图。
 - `05-copy-feedback.png`：消息行复制钮 + 剪贴板读回对拍。
