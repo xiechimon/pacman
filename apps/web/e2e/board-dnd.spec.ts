@@ -228,10 +228,12 @@ test('待处理/已完成 cards carry no drag sensor', async ({ page }) => {
     const sy = box.y + box.height / 2;
     await page.mouse.move(sx, sy);
     await page.mouse.down();
-    // travel well past the 5px threshold — inside the column, then out over
-    // the board gap so the release is not a click on the card's own link
+    // travel well past the 5px threshold, then release OUTSIDE the card
+    // bounds — #629 killed the native link drag that used to consume this
+    // gesture, so an up inside the card is the browser's click law (pinned
+    // by card-press.spec); the column below the card is empty in scenario 01
     await page.mouse.move(sx + 6, sy + 40, { steps: 6 });
-    await page.mouse.move(sx + 6, sy - 30, { steps: 6 });
+    await page.mouse.move(sx + 6, sy + box.height + 20, { steps: 6 });
     await expect(page.locator('.board-drag-overlay')).toHaveCount(0);
     await expect(page.locator('body')).not.toHaveClass(/board-dragging/);
     await page.mouse.up();

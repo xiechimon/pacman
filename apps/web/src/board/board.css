@@ -122,6 +122,22 @@ body.board-dragging {
   -webkit-user-select: none;
 }
 
+/* #629 卡面选中与原生链接拖拽封锁（参考站 2026-10-02 实测：卡根
+   user-select: none、卡内零 <a>——点击是 Pressable 行为，无原生链接可
+   拖）。本仓卡面是 stretched link：不可拖列（待处理/已完成，#616 传感器
+   不武装）按住微移会命中 <a href> 的缺省可拖性，触发原生 link drag——
+   Chrome 的拖影 chip（链接文本 + URL）即用户报的「偶尔出现一个小链
+   接」。双锁：user-select none（选中高亮绝迹）+ -webkit-user-drag none
+   （拖影绝迹）；TSX 侧 Link draggable="false" 为第三锁（标准属性位）。 */
+.todo-card {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.todo-card-link {
+  -webkit-user-drag: none;
+}
+
 /* #616（对齐 todos.dev 2026-10-02 实测）：抬升态 = 紧凑复刻卡——身份行 +
    两行截断标题，8px 圆角 + 1px 实描边，2° 倾角 + 0.92 不透明度 + 宽软影。
    参考站把整套配方写在 overlay 根的内联 style 上（rotate 与 translate 同一
