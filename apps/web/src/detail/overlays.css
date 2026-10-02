@@ -547,10 +547,11 @@
   line-height: 16px;
 }
 
-/* #485 模型槽：候选非空时取代告警行的位置（同一格，两态互斥）。选择器本体
-   （wrap/触发钮/菜单/行）几何全在 routes/agent-detail.css——一面两前缀，
-   与概览 tab 同一条规则；这里只给这一格的标签与选择器纵向排布。 */
-.dlg-agent-model-row-wrap {
+/* #485 模型槽：候选非空时取代告警行的位置（同一格，两态互斥）。t-0024 两级化
+   后这一格变两行（运行时 / 模型），行盒类名随之改 slot。选择器本体（wrap/触发
+   钮/菜单/行）几何全在 routes/agent-detail.css——一面两前缀，与概览 tab 同一
+   条规则；这里只给每行的标签与选择器纵向排布。 */
+.dlg-agent-slot-row {
   display: flex;
   flex-direction: column;
   gap: 6px;

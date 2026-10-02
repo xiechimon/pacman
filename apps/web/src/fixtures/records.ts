@@ -430,8 +430,11 @@ export type TranscriptItem =
   | { kind: 'run'; at?: string; machine?: string; cancelled?: boolean }
   /** User bubble (`开始执行任务` / `确认`); the taskline chip + title ride
    *  along only on the task-start bubble (r7 26: the 确认 bubble renders
-   *  bubble + icon pair alone). */
-  | { kind: 'user'; text: string; seq?: number; title?: string }
+   *  bubble + icon pair alone). #612: a real user turn may carry its raw
+   *  text in `markdown` (the robot row's #469 pattern) — the renderer
+   *  parses it with chat-markdown at render time; the frozen capture
+   *  shapes (text-only) render unchanged. */
+  | { kind: 'user'; text: string; seq?: number; title?: string; markdown?: string }
   /** Agent prose: one or more paragraphs of inline segments (r7 36 merge
    *  row, r7 38 legacy rows). `footer` renders the message action row
    *  (copy + optional restore + optional `| 完成 Ns` + optional `›`,

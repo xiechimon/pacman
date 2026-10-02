@@ -15,10 +15,12 @@
 //
 // #485 模型槽两态（原版两处实测：r2 §8.1 capture 20 = 尚未配置服务商时的
 // 告警行 + `配置服务商` 外链；r3 §2 = 服务商配好后同一弹窗的「模型」下拉）：
-// 候选非空 → 弹窗内直接选 provider/modelId，POST body 带上，全程不跳页；
-// 候选空 → 保留告警行与外链（不存在的服务商没法"在弹窗内选"，外链是唯一出
-// 路）。下拉项标签只出 `provider · 模型名`——原版的 `· 128k` 是原版内置模型
-// 目录的上下文窗口，pacman 是本地 BYOK，没有这个数据源。
+// 候选非空 → 弹窗内两级选（t-0024：先运行时/服务商、再它名下的模型；POST
+// body 的 provider/modelId 两字段带上，全程不跳页）；候选空 → 保留告警行与
+// 外链（不存在的服务商没法"在弹窗内选"，外链是唯一出路）。改前的单平铺下拉
+// 把 provider 与模型混在一列（用户原话「全部混杂在一起」），两级化后行标签
+// 只出模型名——原版的 `· 128k` 是原版内置模型目录的上下文窗口，pacman 是本
+// 地 BYOK，没有这个数据源。
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
@@ -29,7 +31,7 @@ import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { PROVIDERS_HREF } from '../resources/providers-page.js';
-import { AgentModelSelect } from './agent-model-select.js';
+import { AgentModelSelect, AgentRuntimeSelect } from './agent-model-select.js';
 
 /** POST agents body 的创建面字段（reason = 词表最小形 + #485 的模型槽）。 */
 export interface CreateAgentInput {
@@ -63,21 +65,22 @@ export function CreateAgentDialog({
   // selection survives the hop (#121)
   const { search } = useLocation();
   const [name, setName] = useState('');
-  const [model, setModel] = useState<{ provider: string; modelId: string } | null>(null);
+  // t-0024 两级：一级 provider 位与二级 modelId 分开持（POST body 本就是两
+  // 字段）。换一级清二级——modelId 只在 provider 内有意义，跨 provider 带过去
+  // 是脏值（概览 tab 同律）。
+  const [provider, setProvider] = useState<string | null>(null);
+  const [modelId, setModelId] = useState<string | null>(null);
   const submit = () => {
     const displayName = name.trim();
     if (displayName === '') return;
     if (onCreate != null) {
-      onCreate({
-        displayName,
-        provider: model?.provider ?? null,
-        modelId: model?.modelId ?? null,
-      });
+      onCreate({ displayName, provider, modelId });
     } else {
       onClose();
     }
     setName('');
-    setModel(null);
+    setProvider(null);
+    setModelId(null);
   };
   return (
     <DialogShell
@@ -118,18 +121,33 @@ export function CreateAgentDialog({
           onChange={(event) => setName(event.target.value)}
           placeholder={t('输入 Agent 名称')}
         />
-        {/* #485 两态：有服务商 → 弹窗内直接选模型（不跳页）；无服务商 → 告警行
-            + 配置外链（capture 20 原样）。 */}
+        {/* #485 两态：有服务商 → 弹窗内两级选（运行时/服务商 → 它名下的模型，
+            不跳页）；无服务商 → 告警行 + 配置外链（capture 20 原样）。 */}
         {modelOptions.length > 0 ? (
-          <div className="dlg-agent-model-row-wrap">
-            <span className="dlg-form-label">{t('模型')}</span>
-            <AgentModelSelect
-              value={model}
-              options={modelOptions}
-              onPick={setModel}
-              prefix="dlg-agent-model"
-            />
-          </div>
+          <>
+            <div className="dlg-agent-slot-row">
+              <span className="dlg-form-label">{t('运行时')}</span>
+              <AgentRuntimeSelect
+                value={provider}
+                options={modelOptions}
+                onPick={(next) => {
+                  if (next !== provider) setModelId(null);
+                  setProvider(next);
+                }}
+                prefix="dlg-agent-runtime"
+              />
+            </div>
+            <div className="dlg-agent-slot-row">
+              <span className="dlg-form-label">{t('模型')}</span>
+              <AgentModelSelect
+                provider={provider}
+                modelId={modelId}
+                options={modelOptions}
+                onPick={setModelId}
+                prefix="dlg-agent-model"
+              />
+            </div>
+          </>
         ) : (
           <div className="dlg-agent-warn">
             <span>{t('尚未配置模型服务商')}</span>
