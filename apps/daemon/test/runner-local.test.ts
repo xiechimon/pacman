@@ -245,7 +245,7 @@ async function setup(
   const deps = {
     client,
     journal,
-    backend: completingBackend(),
+    backendFor: () => completingBackend(),
     logger,
     paths,
     workspace: ws,

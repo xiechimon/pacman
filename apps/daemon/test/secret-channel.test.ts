@@ -193,7 +193,7 @@ async function setup(kind: ClaimedStep['step']['kind'], secrets: Record<string, 
   const deps = {
     client,
     journal: new StepJournal(paths.outboxDir),
-    backend: probingBackend(probe),
+    backendFor: () => probingBackend(probe),
     logger,
     paths,
     workspacesDir: join(home, 'workspaces'),

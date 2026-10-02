@@ -235,6 +235,8 @@ function handle(sessionId: string, events: StepEvent[]): AgentSessionHandle {
 async function boot(opts: {
   api?: FakeMachineApi;
   backend?: AgentBackend;
+  /** spec 17 A3：claude-code 后端测试注入面（缺省 = 首个 runtime 步惰性构造）。 */
+  claudeCodeBackend?: AgentBackend;
   withMachineJson?: boolean;
   /** 预置 machine.json（既有注册启动路径）：serverUrl 可指向旧 server。 */
   preEnrolled?: { serverUrl: string };
@@ -268,6 +270,7 @@ async function boot(opts: {
     logger,
     client: api,
     backend: opts.backend ?? fakeBackend([]).backend,
+    claudeCodeBackend: opts.claudeCodeBackend,
     idleSleepPrevention: false,
     presenceIntervalMs: 60_000,
     claimBackoffBaseMs: 10,
@@ -774,6 +777,69 @@ describe('stop 投递（M7 #308：事件 → 拉取-确认 → AgentSessionHandl
     api.onStreamEvent?.({ type: 'stop', stepId: 's1' });
     await waitFor(() => lines.some((l) => l.includes('stop dropped (no live session)')));
     expect(probe.stopCalls).toBe(0);
+    await handle.stop();
+    await handle.done;
+  });
+});
+
+describe('per-step 后端解析（spec 17 A3：backendFor 唯一分叉）', () => {
+  /** runtime 步 claim fixture（provider = claude-code 身份）。 */
+  function claudeClaimed(): ClaimedStep {
+    return { ...CLAIMED, agent: { ...CLAIMED.agent!, provider: 'claude-code' } };
+  }
+
+  test('失败方式 1：claude-code 步 → claude 后端执行，pi 后端零会话 + 惰性行恰好一条', async () => {
+    const api = new FakeMachineApi();
+    const { backend: pi, created: piCreated } = fakeBackend([{ type: 'done', usage: [] }]);
+    const { backend: claude, created: claudeCreated } = fakeBackend([{ type: 'done', usage: [] }]);
+    const { handle, lines } = await boot({ api, backend: pi, claudeCodeBackend: claude });
+    await waitFor(() => api.parked !== null);
+    api.parked?.(claudeClaimed());
+    await waitFor(() => api.doneBodies.length === 1);
+    expect(api.doneBodies[0]?.body.status).toBe('success');
+    // 路由：claude 步只进 claude 后端。
+    expect(claudeCreated).toHaveLength(1);
+    expect(piCreated).toHaveLength(0);
+    // canon：pi 行常驻（启动序列），claude 行惰性（首个 runtime 步）且恰好一条。
+    expect(lines[0]).toBe('Loading pi runtime…');
+    const claudeLines = lines.filter((l) => l === 'Loading claude-code runtime…');
+    expect(claudeLines).toHaveLength(1);
+    // A4 零凭据：FakeMachineApi.token 返回 http stub-gw（mixed-version 面），
+    // runtime 分支权威短路照跑——canon 行落 claude-code。
+    expect(lines).toContain('using model claude-code/stub-model');
+    await handle.stop();
+    await handle.done;
+  });
+
+  test('失败方式 2：pi-only 步流 → 不初始化 claude 后端、无惰性行', async () => {
+    const api = new FakeMachineApi();
+    const { backend: pi, created: piCreated } = fakeBackend([{ type: 'done', usage: [] }]);
+    const { backend: claude, created: claudeCreated } = fakeBackend([{ type: 'done', usage: [] }]);
+    const { handle, lines } = await boot({ api, backend: pi, claudeCodeBackend: claude });
+    await waitFor(() => api.parked !== null);
+    api.parked?.(CLAIMED); // provider='stub-gw'（custom id，非 runtime 身份）
+    await waitFor(() => api.doneBodies.length === 1);
+    expect(piCreated).toHaveLength(1);
+    expect(claudeCreated).toHaveLength(0);
+    expect(lines.some((l) => l === 'Loading claude-code runtime…')).toBe(false);
+    await handle.stop();
+    await handle.done;
+  });
+
+  test('失败方式 3：混合步流（claude 步 + pi 步）→ 各归各后端，惰性行仍恰一条', async () => {
+    const api = new FakeMachineApi();
+    const { backend: pi, created: piCreated } = fakeBackend([{ type: 'done', usage: [] }]);
+    const { backend: claude, created: claudeCreated } = fakeBackend([{ type: 'done', usage: [] }]);
+    const { handle, lines } = await boot({ api, backend: pi, claudeCodeBackend: claude });
+    await waitFor(() => api.parked !== null);
+    api.parked?.(claudeClaimed());
+    await waitFor(() => api.doneBodies.length === 1);
+    await waitFor(() => api.parked !== null);
+    api.parked?.(CLAIMED); // 第二步回归 pi
+    await waitFor(() => api.doneBodies.length === 2);
+    expect(claudeCreated).toHaveLength(1);
+    expect(piCreated).toHaveLength(1);
+    expect(lines.filter((l) => l === 'Loading claude-code runtime…')).toHaveLength(1);
     await handle.stop();
     await handle.done;
   });

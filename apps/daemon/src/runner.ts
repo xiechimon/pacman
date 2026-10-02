@@ -27,6 +27,7 @@ import {
   buildTaskPromptText,
   CONTINUE_PROMPTS,
   FIXED_TAGS,
+  isBackendRuntimeId,
   LOCAL_TOOL_CREATE_TAG,
   LOCAL_TOOL_REMOTE_SHELL,
   PLAN_FILE_NAME,
@@ -58,7 +59,11 @@ export interface StopRequest {
 export interface RunStepDeps {
   client: MachineApi;
   journal: StepJournal;
-  backend: AgentBackend;
+  /** per-step 后端解析（spec 17 A3 唯一分叉点）：入参 = claim 载荷的
+   * agent.provider 原值（null / custom provider id / runtime 身份），
+   * runtime 身份（∈ BACKEND_RUNTIME_IDS）→ claude-code 后端，否则 → pi。
+   * machine-loop 注入（懒初始化 registry）；单测注入固定值。 */
+  backendFor: (agentProviderId: string | null | undefined) => AgentBackend;
   logger: DaemonLogger;
   paths: StatePaths;
   workspacesDir: string;
@@ -213,7 +218,7 @@ export async function runStep(
   claimed: ClaimedStep,
   opts: RunStepOptions = {},
 ): Promise<void> {
-  const { client, journal, backend, logger } = deps;
+  const { client, journal, logger } = deps;
   const now = deps.now ?? (() => Date.now());
   const stepId = claimed.step.id;
   const convId = claimed.conversationId;
@@ -251,15 +256,32 @@ export async function runStep(
   });
 
   // per-step 凭证下发（02 §5.4/§8：内存持有，不落盘常驻；push_credential
-  // 对照 = credentials.ts）。
+  // 对照 = credentials.ts）。runtime 身份步（spec 17 A4：agent.provider ∈
+  // BACKEND_RUNTIME_IDS）零凭据——认证机器本地（claude 登录或
+  // ANTHROPIC_API_KEY），daemon 无可注入面；provider 槽 = inert 占位（满足
+  // SessionOpts.provider 必填形状，claude-code 后端不消费）。runtime 分支
+  // 权威短路 creds.provider：未升级 server 的 mixed-version 窗口里老 side 仍
+  // fabricate 伪 api_key 配置，此处不透传伪语义。非 runtime 步逐字节保持
+  // 原行为（creds.provider → agent.provider 回退）。
   const tokenRes = await client.token(stepId);
   const creds = pushCredential(tokenRes);
   const agent = claimed.agent;
+  const runtimeId = isBackendRuntimeId(agent?.provider) ? agent.provider : null;
   const provider: ProviderConfig | null =
-    creds.provider ?? (agent?.provider ? { kind: 'api_key', providerId: agent.provider } : null);
+    runtimeId !== null
+      ? { kind: 'api_key', providerId: runtimeId }
+      : (creds.provider ??
+        (agent?.provider ? { kind: 'api_key', providerId: agent.provider } : null));
+  // 守卫合并判据：runtime 步 provider 恒为 inert 占位（非 null），非 runtime
+  // 步要求 creds/agent 兜底命中——`!provider` 单判据即覆盖两分支，且让 TS 收窄
+  // 供 sessionOpts.provider（必填槽）。
   if (!agent?.modelId || !provider) {
     clearCredentials(creds);
-    await failStep(deps, stepId, 'no agent/model on claimed step');
+    await failStep(
+      deps,
+      stepId,
+      runtimeId !== null ? `${runtimeId} step has no model id` : 'no agent/model on claimed step',
+    );
     return;
   }
   // 合并权限闸（XMON-77）：合并步收尾 = git merge + conv 分支 push（三形态
@@ -279,7 +301,11 @@ export async function runStep(
       return;
     }
   }
-  logger.raw(`using model ${provider.providerId}/${agent.modelId}`);
+  // canon 行（r3 §1.5）：runtime 步 = `claude-code/<modelId>`（inert 占位的
+  // providerId 与 agent.provider 同值）；非 runtime 步不变。canon 行在
+  // backendFor 解析后（失败方式 6：解析入参钉 agent.provider 原值）。
+  const backend = deps.backendFor(agent?.provider);
+  logger.raw(`using model ${provider?.providerId ?? agent.provider}/${agent.modelId}`);
 
   // workspace 准备（02 §5.5 worktree 契约：基座 clone + `worktree add -b`；
   // 项目未绑 repo = 裸任务目录退化形 [设计]，M3a 兼容）。chief 步 = 只读探索，

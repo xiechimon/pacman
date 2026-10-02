@@ -206,7 +206,7 @@ async function setup(
     {
       client,
       journal,
-      backend,
+      backendFor: () => backend,
       logger,
       paths,
       workspacesDir: join(home, 'workspaces'),

@@ -346,7 +346,7 @@ async function toolNamesFor(localTools?: string[]): Promise<string[]> {
   const deps = {
     client: new FakeClient(),
     journal: new StepJournal(paths.outboxDir),
-    backend: recordingBackend(slot),
+    backendFor: () => recordingBackend(slot),
     logger,
     paths,
     workspacesDir: join(home, 'workspaces'),
