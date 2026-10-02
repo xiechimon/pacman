@@ -9,6 +9,7 @@
 // from the r7 16/17/26/27/28/36/38 and r8 54–77 captures; CONTEXT.md canon
 // names the message flow `transcript`.
 
+import { LinearDots } from 'loading-dev';
 import { useState } from 'react';
 import { inlineSegments } from '../api/mappers.js';
 import { type CurrentUser, useLiveData } from '../api/provider.js';
@@ -43,12 +44,6 @@ interface TranscriptProps {
    *  glyph stays the inert capture form. */
   onOpenPlan?: () => void;
 }
-
-/** #471 braille spinner frames: the classic 10-step dot wheel rotated to
- *  open on ⠙ — the frame the r7 26/26d captures froze, which doubles as
- *  the prefers-reduced-motion static frame. The reel turns one 16px slot
- *  per 90ms step (spinner-reel, styles/motion.css). */
-const SPINNER_FRAMES = ['⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏', '⠋'];
 
 /** Elapsed label: `Ns` under a minute (r7 21s/19s), `Nm Ns` above
  *  (r8 56 plan card `完成 2m 41s`, #74 dict template). */
@@ -329,18 +324,15 @@ function Row({
         <div className="chat-row chat-row--agent">
           <AgentRowAvatar agent={agent} />
           <span className="chat-streaming">
-            {/* #471: the braille spinner the r7 16/26/26d captures froze
-                mid-animation now turns — a 10-frame reel scrolling one slot
-                per 90ms step, frozen back on ⠙ under reduced motion.
-                aria-hidden: the label text is the accessible live cue, the
-                animation is never the only channel. */}
-            <span className="chat-spinner" aria-hidden="true">
-              <span className="chat-spinner-reel">
-                {SPINNER_FRAMES.map((frame) => (
-                  <span key={frame}>{frame}</span>
-                ))}
-              </span>
-            </span>
+            {/* #672: the loading-dev pilot replaces the #471 braille reel —
+                the replica discipline is lifted for this one surface by user
+                decision (2026-10-03, ADR 0009 D4 revision). LinearDots: three
+                currentColor dots wave left→right on the library default 900ms
+                (the old reel's period); the library's React-19 precedence
+                stylesheet freezes them under reduced motion, and its root
+                carries aria-hidden — the label text stays the accessible live
+                cue, the animation is never the only channel. */}
+            <LinearDots size={16} className="chat-spinner" />
             {item.seconds != null && (
               // tabular figures: the 3s→10s tick must not shift the row tail
               <span className="chat-streaming-secs">{item.seconds}s</span>

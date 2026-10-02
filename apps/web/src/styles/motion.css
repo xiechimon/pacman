@@ -95,39 +95,16 @@
   transform: translateX(100%);
 }
 
-/* #471 braille spinner reel: 10 frames × 90ms = a 900ms cycle, one 16px
-   slot per step (steps(10) holds each frame still for its slot). Opens on
-   ⠙ — the frame the r7 26/26d captures froze — which is also what the
-   reduced-motion freeze below settles on. Transform-only by the sheet's
-   performance rule. */
-@keyframes spinner-reel {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-160px);
-  }
-}
-
-.chat-spinner-reel {
-  display: block;
-  animation: spinner-reel 900ms steps(10) infinite;
-}
-
 /* r1 §4.3 convention: the whole site degrades motion under
-   prefers-reduced-motion — the replica mirrors it */
+   prefers-reduced-motion — the replica mirrors it. The loading indicator
+   is not listed here: #672 moved it to loading-dev, whose injected sheet
+   carries its own equivalent freeze (animation: none + static dots). */
 @media (prefers-reduced-motion: reduce) {
   .anim-fade,
   .anim-pop,
   .anim-drawer {
     animation: none;
     transition: none;
-  }
-
-  /* #471: the reel freezes on its first slot (⠙), matching the frozen
-     frame the captures canonized */
-  .chat-spinner-reel {
-    animation: none;
   }
 }
 
