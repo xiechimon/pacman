@@ -60,9 +60,12 @@ interface FreshBlockProps {
   action?: string | null;
   /** The page's single primary handler — same one the head button calls. */
   onAction?: () => void;
+  /** #612：live 面有 spec 时「尚无描述」占位与其下的任务简报卡自相矛盾——
+   *  有描述即让位。fixture 面缺省 = 占位照旧（r7 23 基线字节不变）。 */
+  hasSpec?: boolean;
 }
 
-export function FreshBlock({ todo, tags, action, onAction }: FreshBlockProps) {
+export function FreshBlock({ todo, tags, action, onAction, hasSpec }: FreshBlockProps) {
   const { t } = useI18n();
   return (
     <div className="fresh-block">
@@ -75,7 +78,7 @@ export function FreshBlock({ todo, tags, action, onAction }: FreshBlockProps) {
           ))}
         </div>
       )}
-      <div className="fresh-nodesc">{t('尚无描述')}</div>
+      {hasSpec !== true && <div className="fresh-nodesc">{t('尚无描述')}</div>}
       <div className="fresh-meta">
         <span className="fresh-meta-time">{formatCreatedAt(todo.phaseAt, t)}</span>
       </div>

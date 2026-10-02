@@ -15,6 +15,7 @@ import { useSearchParams } from 'react-router';
 import { useApiMutations, useProjects, useSchedules, useTodos } from '../api/hooks.js';
 import { mapSchedules, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { Button } from '../components/ui/button.js';
 import { Select } from '../components/ui/select.js';
 import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import type { FixtureSet, ScheduleRecord } from '../fixtures/records.js';
@@ -35,7 +36,6 @@ import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { FADE_EXIT_MS } from '../overlay/use-overlay-mount.js';
 import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
-import { Button } from '../ui/button.js';
 import { PageShell } from './shell.js';
 import './pages.css';
 
@@ -135,10 +135,14 @@ function ScheduleCard({
       </div>
       <span className={`sched-card-chip sched-card-chip--${ui.tone}`}>{t(ui.chip)}</span>
       <span className="sched-more-wrap">
-        {/* A4-deep 收编：icon 变体皮肤；24×24 几何 per-face 留 pages.css */}
+        {/* XMON-25 收编：老 ui/Button icon 变体 → ghost + size icon；皮肤
+            （tertiary 墨/hover 增亮/cursor）下沉 per-face .sched-card-more；
+            24×24 几何 per-face 留 pages.css。haspopup 使 base active 位移
+            自动跳过，无需中和位。 */}
         <Button
-          variant="icon"
-          className="sched-card-more"
+          variant="ghost"
+          size="icon"
+          className="sched-card-more font-normal leading-none"
           aria-label={t('更多')}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
@@ -226,10 +230,13 @@ function ScheduleForm({
         <div className="sched-form" role="dialog" aria-modal="true" aria-label={t('新建定时')}>
           <header className="sched-form-head">
             <span className="sched-form-title">{t('新建定时')}</span>
-            {/* A4-deep 收编：icon 变体皮肤；24×24 几何 per-face 留 pages.css */}
+            {/* XMON-25 收编：老 ui/Button icon 变体 → ghost + size icon；皮肤
+                下沉 per-face .sched-form-close；24×24 几何留 pages.css。
+                无 haspopup → active 位移需中和位。 */}
             <Button
-              variant="icon"
-              className="sched-form-close"
+              variant="ghost"
+              size="icon"
+              className="sched-form-close font-normal leading-none active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
               aria-label={t('关闭')}
               onClick={onClose}
             >
@@ -253,14 +260,18 @@ function ScheduleForm({
             </div>
             <div className="sched-form-freq">
               {(['hourly', 'daily', 'weekly', 'once'] as const).map((k) => (
-                <button
+                // XMON-25 收编：ghost；13/24 字体与几何正本在 per-face，
+                // --active chip 与 seg-hover 媒体块 unlayered 恒胜。
+                <Button
                   key={k}
-                  type="button"
-                  className={`sched-form-freq-tab${k === kind ? ' sched-form-freq-tab--active' : ''}`}
+                  variant="ghost"
+                  className={`sched-form-freq-tab font-normal active:not-aria-[haspopup]:translate-y-0${
+                    k === kind ? ' sched-form-freq-tab--active' : ''
+                  }`}
                   onClick={live ? () => live.onKind(k) : undefined}
                 >
                   {t(FREQ_LABEL[k])}
-                </button>
+                </Button>
               ))}
             </div>
             {kind === 'once' && (
@@ -317,12 +328,22 @@ function ScheduleForm({
             </div>
           </div>
           <footer className="sched-form-foot">
-            <button type="button" className="sched-form-cancel" onClick={onClose}>
+            {/* XMON-25 收编：取消 = ghost（per-face bg 简写压掉 hover 档），
+                保存 = brand（--card-button 实底的等价迁移位）。 */}
+            <Button
+              variant="ghost"
+              className="sched-form-cancel font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+              onClick={onClose}
+            >
               {t('取消')}
-            </button>
-            <button type="button" className="sched-form-save" onClick={live?.onSave}>
+            </Button>
+            <Button
+              variant="brand"
+              className="sched-form-save font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+              onClick={live?.onSave}
+            >
               {t('保存')}
-            </button>
+            </Button>
           </footer>
         </div>
       </div>
@@ -385,14 +406,17 @@ export function SchedulesPage() {
       selected="schedules"
       title="定时"
       action={
-        <button
-          type="button"
-          className="page-new-action"
+        // XMON-25 收编：ghost；indigo 14/22 墨色与 padding 0 正本在 per-face。
+        // h-auto 保 22px 内容高（base h-8 会撑高顶栏钮）；size-auto 保
+        // PlusSmall 的 13px 属性尺寸（base 会强制 16）。
+        <Button
+          variant="ghost"
+          className="page-new-action h-auto rounded-none font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
           onClick={live ? () => setFormOpen(true) : undefined}
         >
           <PlusSmall width={13} height={13} />
           {t('新建')}
-        </button>
+        </Button>
       }
     >
       <div className="page-col schedules-body">
@@ -408,13 +432,15 @@ export function SchedulesPage() {
               )}
             </p>
             <div className="sched-empty-actions">
-              <button
-                type="button"
-                className="sched-empty-new"
+              {/* XMON-25 收编：brand（--card-button 实底等价迁移位）；75×30
+                  几何与 cursor 正本在 per-face。 */}
+              <Button
+                variant="brand"
+                className="sched-empty-new font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
                 onClick={live ? () => setFormOpen(true) : undefined}
               >
                 {t('新建定时')}
-              </button>
+              </Button>
               {/* 「查看文档」钮全除（#149 wontfix）：local-first 自托管无
                   文档站可链（官方链接对象不可观测），README 指向上游代码库
                   与产品语义无关——隐去，台账 #136 勾兑登记。 */}

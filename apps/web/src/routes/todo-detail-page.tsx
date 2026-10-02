@@ -721,6 +721,9 @@ export function TodoDetailPage() {
                   tags={freshTags}
                   action={ui.action}
                   onAction={handlePrimaryAction}
+                  // #612：live 有 spec = 下方简报卡在场，「尚无描述」占位让位
+                  // （两行同屏自相矛盾）；fixture 面恒缺省，r7 23 基线不动。
+                  hasSpec={live && todo.spec.trim() !== ''}
                 />
                 {/* M7 #310：live 详情面把用户提交的 spec 渲染在 FreshBlock 之
                     下（fix 丢字 bug ——之前 spec 落 todo.spec 但 UI 从未呈现

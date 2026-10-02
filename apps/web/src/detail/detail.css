@@ -805,6 +805,94 @@
   overflow: auto;
 }
 
+/* ---- markdown 路径的用户气泡（#612）----
+   真实用户话语走 chat-markdown 块：块元素自带换行，pre-wrap 会把源码换行
+   双份计账——md 路径还原 normal。首尾块 margin 归零：药丸内上下留白由
+   24px 行盒的 leading 提供（与纯文本路径同配方），单段短消息高度保持
+   24px（chat-type-measure 的 bubble 几何钉扎在纯文本路径与 md 路径同值）。 */
+.chat-bubble--md {
+  white-space: normal;
+}
+.chat-bubble--md > :first-child {
+  margin-top: 0;
+}
+.chat-bubble--md > :last-child {
+  margin-bottom: 0;
+}
+
+/* 附件块行（#310 token 的块级形；chip 本体见 .spec-chip 族）——块间距与
+   .chat-md-code 同节奏（8px）。 */
+.chat-md-attachment {
+  margin: 8px 0;
+}
+
+/* ---- 附件 chip（#310 契约，#612 首次有样式）----
+   .spec-chip 三个类引入以来没有任何规则：文件 chip 是裸链接、图片附件以
+   原尺寸裸图撑破页面。形 = .chat-taskline-seq chip 同族（code-bg 底 +
+   --border-default 缝线 + 次级字色），文件名是阅读文本给 12px 一档；
+   图片 chip 2px 内衬 + 4px 内圆角（同心圆角：外 6 = 内 4 + 内衬 2），
+   缩略高度 cap 160px ≈ 6 行正文——原图由新标签链接承接，不在流内撑爆。 */
+.spec-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--code-bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  text-decoration: none;
+  /* motion registry（issue #73）：hover 只动 color/border-color 两个属性，
+     150ms 标准档 */
+  transition:
+    color var(--dur-fast) var(--ease-standard),
+    border-color var(--dur-fast) var(--ease-standard);
+}
+.spec-chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.spec-chip--image {
+  padding: 2px;
+  background: transparent;
+  border: none;
+}
+.spec-chip-img {
+  display: block;
+  max-width: 100%;
+  max-height: 160px;
+  border-radius: 4px;
+}
+
+/* ---- 任务简报卡（#612）----
+   用户原话的唯一展示面（线程列首；daemon 合成的首条 title+spec 气泡已在
+   mapper 按 shared prompts 词表退场）。配方 = .composer 卡同族（r7 §3.4：
+   1px --border-default 缝线 + 12px 圆角 + --surface-secondary 底）——线程
+   列里用户说话的两个面（简报卡、输入卡）读作同一材质；16px 侧 margin 与
+   .composer 的列 inset 对齐，13px/15px 内衬 = composer placeholder 的同款
+   inset。15px/1.6 阅读档与 68ch 行宽 cap = #470 给线程正文定的纪律；
+   fresh 态并入 .fresh-block 的 720px 居中轴（简报与标题/元信息同栏）。 */
+.spec-block {
+  margin: 16px 16px 0;
+  padding: 13px 15px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-secondary);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+.spec-block > * {
+  max-width: 68ch;
+}
+.detail-fresh .spec-block {
+  max-width: 720px;
+  margin: 16px auto 0;
+}
+
 /* centered dim single line: bare time stamp (13:35), merge announcement,
    🎉 任务已完成 banner (r7 26/36). Rows after a note pack tight (r7 26:
    note→确认 gap is much smaller than the default row margin).
@@ -1315,12 +1403,17 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
      content 定高，底边不动、顶边随行集伸缩。
      #388 收紧（dogfood：菜单与头像之间空了一截）：#163 的 78px 冻结底边
      对可见头像（24px img）留出 36–44px 视觉净空；改为锚到 img 顶 + 4px
-     家族基线间距（chip-popover +3.5 / sched-card-menu +4 同款）。展开态
-     img 顶恒距视口底 34px（.sidebar-user 44px 高、img 居中）→ 38px；
-     rail 态 img 顶 42px（.rail-user 38px + 11px 底距、img 居中）→ 下方
-     collapsed 覆写 46px。净空对 img 而非透明按钮盒测量——盒顶两形态
-     不同高（44/49），单值 bottom 无法同时贴合两形态的可见头像。 */
-  bottom: 38px;
+     家族基线间距（chip-popover +3.5 / sched-card-menu +4 同款）。
+     #610 裁决 v3（dogfood：面板底边盖住账号行顶分隔线）：#388 的净空对
+     img 量，而行盒顶比 img 顶还高 10px，#414 又给账号行加了 border-t
+     分隔线——面板底（38px）落在行顶下方 6px，不透明体 + z-30 把那条线
+     在面板宽内盖住（seam 处 hit-test 命中 .user-menu-rows），投影再糊到
+     行面。净空改对触发行盒顶（可见结构边界）量，家族 4px 不变：展开态
+     行顶恒距视口底 44px（.sidebar-user h-11 贴底）→ 48px；rail 态行顶
+     49px（.rail-user 38px + 11px 底距）→ 下方 collapsed 覆写 53px。对 img
+     的视觉间距随之 ~14/11px——贴合的读数对象是行（触发器本身）这个整体，
+     分隔线恢复可见；投影跨线是浮层正常层次信号（阴影管层次）。 */
+  bottom: 48px;
   width: 224px;
   /* #139 single-source edge recipe: the ring is a shadow spread (no real
      border) so the hairline stays uniform at fractional page zoom */
@@ -1347,12 +1440,13 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
      推出屏外，zoom-probe 的 clipped 契约天然成立。 */
 }
 
-/* #388: rail 形态头像坐得更高（img 顶距视口底 42px）——同款 4px 视觉间距。
+/* #610: rail 形态行顶距视口底 49px（.rail-user 38px + 11px 底距）——与
+   展开态同律：行盒顶 + 4px 家族基线间距（#388 原对 img 顶量，v3 改行顶）。
    floating 菜单两分支都渲染在 aside 内（sidebar.tsx userMenuPopover），
    形态类做后代选择器即可命中；冻结捕获变体（scenario 17，展开态 canon）
    走基规则。 */
 .board-sidebar--collapsed .user-menu--floating {
-  bottom: 46px;
+  bottom: 53px;
 }
 
 .user-menu-head {
