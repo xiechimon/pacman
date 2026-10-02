@@ -13,6 +13,7 @@ import { expect, type Page, test } from '@playwright/test';
 //  F-R9 fixture 捕获面（r5 114 段数组形）被 markdown 改造误伤（DOM 漂移）
 //  F-R10 live text_delta 增量不上屏（抽屉不读 liveTextStore——原 bug 本体）
 //  F-R11 终稿 message 收敛后打字行残留 / 与落库行重复渲染
+//  F-R12 同文双行（POST + user-<stepId> 回声）双气泡（#667）；连发不同文塌成一条
 //
 // live 面手法 = notify-click.spec 的替身 EventSource + 路由 mock（SSE 帧
 // 程序化注入，不经网络）；fixture 面 = 'chief-md' 命名场景（md-toolout 先例）。
@@ -116,7 +117,10 @@ const THREAD = {
 const USER_ROW = { id: 'm1', role: 'user', content: '派一下凭证链路验证', createdAt: 1 };
 const FINAL_ROW = { id: 'm9', role: 'assistant', content: '验证完成，**全部通过**。', createdAt: 9 };
 
-function mockChiefLiveApi(page: Page, state: { final: boolean }) {
+function mockChiefLiveApi(
+  page: Page,
+  state: { final: boolean; messages?: { id: string; role: 'user' | 'assistant'; content: string; createdAt: number }[] },
+) {
   const json = (body: unknown) => ({
     contentType: 'application/json',
     body: JSON.stringify(body),
@@ -150,7 +154,7 @@ function mockChiefLiveApi(page: Page, state: { final: boolean }) {
     }
     if (p === '/api/conversations/chief-bbb/messages') {
       return route.fulfill(
-        json({ messages: state.final ? [USER_ROW, FINAL_ROW] : [USER_ROW] }),
+        json({ messages: state.messages ?? (state.final ? [USER_ROW, FINAL_ROW] : [USER_ROW]) }),
       );
     }
     if (p === '/api/todos' || p === '/api/projects') return route.fulfill(json([]));
@@ -316,5 +320,35 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
     const final = drawer.locator('.chief-msg').last();
     await expect(final.locator('strong', { hasText: '全部通过' })).toHaveCount(1);
     await expect(final.locator('.chief-msg-foot button[aria-label="复制"]')).toBeVisible();
+  });
+
+  test('F-R12: 双行去重（#667）——同文 POST + user-<stepId> 回声恰一个用户气泡；连发不同文各一条', async ({
+    page,
+  }) => {
+    await stubEventSource(page);
+    await stubDicebear(page);
+    await stubCdnAvatar(page);
+    // 生产对齐：每回合双落库（POST 行 + daemon transcript 回声行 user-<stepId>），
+    // 两句话 → mock 4 条 user 行 + 1 条 robot。
+    const state = {
+      final: true,
+      messages: [
+        { id: 'm1', role: 'user' as const, content: '派一下凭证链路验证', createdAt: 1 },
+        { id: 'user-stepX', role: 'user' as const, content: '派一下凭证链路验证', createdAt: 2 },
+        { id: 'm2', role: 'user' as const, content: '再查一下 token 用量', createdAt: 3 },
+        { id: 'user-stepY', role: 'user' as const, content: '再查一下 token 用量', createdAt: 4 },
+        { id: 'm9', role: 'assistant' as const, content: '两件都办完，**全部通过**。', createdAt: 9 },
+      ],
+    };
+    await mockChiefLiveApi(page, state);
+    await page.goto('/app?chief=chief-bbb');
+
+    const drawer = page.locator('.chief-drawer');
+    await expect(drawer).toBeVisible();
+    // 每句恰一个用户气泡（.chief-bubble 只在 user 行）：2 user + 1 robot = 3 行。
+    await expect(drawer.locator('.chief-bubble')).toHaveCount(2);
+    await expect(drawer.locator('.chief-msg')).toHaveCount(3);
+    await expect(drawer.locator('.chief-bubble', { hasText: '派一下凭证链路验证' })).toHaveCount(1);
+    await expect(drawer.locator('.chief-bubble', { hasText: '再查一下 token 用量' })).toHaveCount(1);
   });
 });

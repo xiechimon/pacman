@@ -17,6 +17,16 @@ export function buildTaskPromptText(title: string, spec: string): string {
   return `${title}\n\n${spec}`;
 }
 
+/** transcript prompt 行 id 前缀（runner.ts `user-<stepId>`，TranscriptBuffer
+ *  幂等键）：wire 契约位——写侧（daemon 组 id）与过滤侧（web #667 回声行
+ *  去重）单源在此，改它就是改双端契约。 */
+export const TRANSCRIPT_PROMPT_ROW_ID_PREFIX = 'user-';
+
+/** transcript prompt 行 id（daemon 写侧单源）。 */
+export function transcriptPromptRowId(stepId: string): string {
+  return `${TRANSCRIPT_PROMPT_ROW_ID_PREFIX}${stepId}`;
+}
+
 /** continue session 续轮指令（daemon 步 kind → prompt 单源；chief/review 走
  *  instruction 分支，本表保占位空串防 TS 缺键）。 */
 export const CONTINUE_PROMPTS: Record<StepKind, string> = {

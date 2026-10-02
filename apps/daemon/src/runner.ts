@@ -36,6 +36,7 @@ import {
   type ReviewGate,
   STREAM_TIMEOUTS_MS,
   stepTakesSecrets,
+  transcriptPromptRowId,
 } from '@pacman/shared';
 import { SessionNotResumableError } from './backend/errors.js';
 import { notInConfigLine, resolveMcpEndpoints } from './backend/mcp-config.js';
@@ -500,7 +501,7 @@ export async function runStep(
   const transcript = new TranscriptBuffer(deps.paths.outboxDir, stepId);
   if (prompt !== null) {
     transcript.upsert({
-      id: `user-${stepId}`,
+      id: transcriptPromptRowId(stepId),
       role: 'user',
       content: prompt,
       createdAt: now(),
