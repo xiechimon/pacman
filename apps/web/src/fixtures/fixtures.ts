@@ -1371,6 +1371,56 @@ export const chiefThreadsOpen: FixtureSet = {
   },
 };
 
+/** #650/#651 named scenario (no capture, mdToolout / chiefStreaming 先例):
+ *  总管抽屉的 markdown 面——定稿 robot 行携带 raw block markdown（`markdown`
+ *  槽优先于段数组，渲染期走共用 chat-markdown 解析，live mapper 同路），
+ *  尾行 = typing 打字面（`typing` 位，无 foot；静态表达 live 流式态，
+ *  scenario 113 的 running 位同手法）。e2e/chief-stream-markdown.spec 钉
+ *  bold/code/mention/列表/栅栏的渲染形与「星号不漏字面」。 */
+const CHIEF_MD_REPLY = [
+  '## 凭证链路验证报告',
+  '',
+  '三项检查已完成，**全部通过**，输出细节在 `docs/verify/` 目录。',
+  '',
+  '- **项目**: 凭证链路验证',
+  '- 次要点: 由 [r5-scribe](agent:a1) 承接复核',
+  '',
+  '1. 第一步：读取配置',
+  '   - 子项：token 门',
+  '2. 第二步：跑通探针',
+  '',
+  '```sh',
+  'curl -s localhost:8787/healthz',
+  '```',
+].join('\n');
+
+export const chiefMarkdown: FixtureSet = {
+  todos: [legacyReview, legacyDone],
+  now: r7(13, 14),
+  chief: {
+    view: 'drawer',
+    bound: true,
+    modelSlot: 'claude-sonnet-5 · 默认',
+    threadTitle: '验证一下凭证链路…',
+    running: true,
+    stream: [
+      { kind: 'note', text: '17:26' },
+      { kind: 'user', text: '验证一下凭证链路，然后给我一份报告' },
+      {
+        kind: 'robot',
+        markdown: CHIEF_MD_REPLY,
+        seconds: '44s',
+      },
+      {
+        kind: 'robot',
+        markdown: '正在复核 **relay 通道** 的重试预算',
+        typing: true,
+        seconds: '',
+      },
+    ],
+  },
+};
+
 /** r5 101–104: the 总管设置 view, one set per tab (unbound agent). */
 export function chiefSettings(tab: ChiefSettingsTab): FixtureSet {
   return {

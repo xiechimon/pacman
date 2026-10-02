@@ -223,39 +223,52 @@ export function pillOf(call: ToolCallRecord): string {
 
 // —— plan.md → DocBlock（文档 pane；四段卡软结构，r3 §3.3）———————————————
 
-/** 行内 `code` 芯片 + 提及方案切分（r7 17 段内 mono chip；**bold** 归并纯文本——
- * 显示契约无 bold 位）。 #311：mention 方案的 `[name](agent:<id>)` /
- * `[name](skill:<id>)` / `[name](project:<id>)` / `[name](machine:<id>)`
- * 也切出独立 mention 段,带 mentionKind 给 segments 渲染对应 accent。
- * mention 段内不展开嵌套 scheme（r9 wire 形只一层）。 */
+/** Mention scheme scan (r9 wire): `[label](kind:id)` for the four schemes
+ *  that serialize as a link — `todo:` keeps its plain `#seq` form (r9 §3.2),
+ *  so it does not show up here. Single global regex, reset before each use. */
+const MENTION_SCHEME = /\[([^\]\n]+?)\]\((agent|skill|project|machine):([A-Za-z0-9_-]+)\)/g;
+
+/** 行内 `code` 芯片 + `**bold**` strong 段 + 提及方案切分（r7 17 段内 mono
+ * chip）。#650：bold 位补进显示契约（#311 时「无 bold 位、`**` 只剥不渲染」
+ * 的旧裁决被总管抽屉实测推翻）——成对 `**` 定界符之间的文本切 strong 段，
+ * 落单的定界符按 CommonMark 语义留字面（不吞尾段）。#311：mention 方案的
+ * `[name](agent:<id>)` / `[name](skill:<id>)` / `[name](project:<id>)` /
+ * `[name](machine:<id>)` 也切出独立 mention 段,带 mentionKind 给 segments
+ * 渲染对应 accent。mention 段内不展开嵌套 scheme（r9 wire 形只一层）；
+ * strong 段内 mention 照常出 chip（chip 形压过粗体，同单层律）。 */
 export function inlineSegments(text: string): DocSegment[] {
   const out: DocSegment[] = [];
   // First pass — extract `code` segments (split is lossless, even
-  // alternation indices are non-code, odd are code). The mention scheme
-  // is rare enough that we can run a second pass per non-code fragment
-  // rather than build a single combined regex that captures both.
+  // alternation indices are non-code, odd are code). Code runs are pulled
+  // out before any emphasis scan, so asterisks inside a code span never
+  // act as delimiters.
   const parts = text.split(/`([^`]+)`/g);
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i] ?? '';
-    if (part === '') continue;
-    if (i % 2 === 1) {
-      out.push({ text: part, style: 'code' });
-      continue;
-    }
-    // Mention scheme scan over the non-code fragment. Single global
-    // regex; matches `[label](kind:id)` for the four schemes that
-    // serialize as a link — `todo:` keeps its plain `#seq` form (r9
-    // §3.2: 任务提及按 #seq 留存), so it does not show up here.
-    const cleaned = part.replaceAll('**', '');
-    const SCHEME = /\[([^\]\n]+?)\]\((agent|skill|project|machine):([A-Za-z0-9_-]+)\)/g;
+
+  // Second pass (#650) — count the `**` delimiters across the non-code
+  // runs, in document order. They pair up (0,1), (2,3), …; an odd trailing
+  // delimiter is a literal character, not a marker. Pairing runs across
+  // code spans (the strong state survives a code run), so a bold lead-in
+  // wrapping an inline chip keeps its chain.
+  let delimiters = 0;
+  for (let i = 0; i < parts.length; i += 2) {
+    delimiters += (parts[i] ?? '').split('**').length - 1;
+  }
+  let budget = delimiters - (delimiters % 2);
+  let strong = false;
+
+  // Plain-text run → mention chips + text segments (bold flag rides along).
+  const pushRun = (frag: string): void => {
+    if (frag === '') return;
+    const pushText = (slice: string): void => {
+      if (slice === '') return;
+      out.push(strong ? { text: slice, style: 'strong' } : { text: slice });
+    };
     let cursor = 0;
-    SCHEME.lastIndex = 0;
+    MENTION_SCHEME.lastIndex = 0;
     for (;;) {
-      const m = SCHEME.exec(cleaned) as RegExpExecArray | null;
+      const m = MENTION_SCHEME.exec(frag) as RegExpExecArray | null;
       if (m === null) break;
-      if (m.index > cursor) {
-        out.push({ text: cleaned.slice(cursor, m.index) });
-      }
+      pushText(frag.slice(cursor, m.index));
       out.push({
         text: m[1] ?? '',
         style: 'mention',
@@ -263,8 +276,27 @@ export function inlineSegments(text: string): DocSegment[] {
       });
       cursor = m.index + m[0].length;
     }
-    if (cursor < cleaned.length) {
-      out.push({ text: cleaned.slice(cursor) });
+    if (cursor < frag.length) pushText(frag.slice(cursor));
+  };
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i] ?? '';
+    if (part === '') continue;
+    if (i % 2 === 1) {
+      out.push({ text: part, style: 'code' });
+      continue;
+    }
+    let rest = part;
+    while (rest !== '') {
+      const at = budget > 0 ? rest.indexOf('**') : -1;
+      if (at < 0) {
+        pushRun(rest);
+        break;
+      }
+      pushRun(rest.slice(0, at));
+      rest = rest.slice(at + 2);
+      budget -= 1;
+      strong = !strong;
     }
   }
   return out.length > 0 ? out : [{ text }];
@@ -987,31 +1019,41 @@ export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
       continue;
     }
     if (m.role === 'system') continue;
-    const lines = text.split('\n').filter((l) => l.trim() !== '');
-    const paragraphs: { text: string }[][] = [];
-    const bullets: { text: string; strong?: boolean }[][] = [];
-    for (const line of lines) {
-      if (/^[-*•]\s+/.test(line)) {
-        const content = line.replace(/^[-*•]\s+/, '');
-        const lead = /^([^:：]+)[:：]\s*(.*)$/.exec(content);
-        bullets.push([
-          lead ? { text: `${lead[1]}:`, strong: true } : { text: content },
-          ...(lead ? [{ text: ` ${lead[2]}` }] : []),
-        ]);
-      } else {
-        paragraphs.push([{ text: line }]);
-      }
-    }
+    // #650: live replies carry their raw text in the `markdown` slot and
+    // render through the shared chat-markdown blocks (transcript robot row
+    // #469 同律) — the hand-rolled paragraph/bullet projection that leaked
+    // literal `**` asterisks is gone. Fixture captures keep their segment
+    // arrays (records.ts ChiefStreamItem: markdown takes precedence when
+    // present, frozen shapes render unchanged).
     items.push({
       kind: 'robot',
-      paragraphs,
-      ...(bullets.length > 0 ? { bullets } : {}),
+      markdown: text,
       seconds: '',
       ...(pendingTools.length > 0 ? { tools: pendingTools } : {}),
     });
     pendingTools = [];
   }
   return items;
+}
+
+/** Streaming partial-markdown guard (#651): an unclosed strong marker at the
+ *  live buffer tail would leak literal asterisks until its partner streams in,
+ *  so the typing face appends the virtual closer (bold-from-opener, the
+ *  mainstream streaming-markdown behavior); the converged final row parses the
+ *  true stored text. Counting skips inline code spans (asterisks inside a chip
+ *  are text) and bails out inside an unclosed code fence, where markers are
+ *  literal fence content and the parser already renders them verbatim. */
+function autoCloseStrong(text: string): string {
+  // Fence openers at line starts (chat-markdown FENCE family, marker only):
+  // an odd count means the buffer tail sits inside an open fence.
+  const fences = text.match(/^ {0,3}(?:`{3,}|~{3,})/gm);
+  if (fences != null && fences.length % 2 === 1) return text;
+  const parts = text.split(/`([^`]+)`/g);
+  let delimiters = 0;
+  for (let i = 0; i < parts.length; i += 2) {
+    delimiters += (parts[i] ?? '').split('**').length - 1;
+  }
+  return delimiters % 2 === 1 ? `${text}**` : text;
 }
 
 export function mapChief(
@@ -1021,6 +1063,10 @@ export function mapChief(
     activeThreadId: string | null;
     messages: MessageRow[];
     draft?: string;
+    /** #651 conversation stream text_delta 累积（liveTextStore 读侧，
+     *  use-chief-surface 注入）：回合进行中且非空 → stream 尾挂 typing
+     *  robot 行；缺省 = fixture 面 / 未订阅，stream 与现状一致。 */
+    liveText?: string;
   },
 ): ChiefContent {
   const bound = env.chief.agent !== null;
@@ -1028,6 +1074,20 @@ export function mapChief(
     opts.activeThreadId !== null
       ? (opts.threads.find((t) => t.id === opts.activeThreadId) ?? null)
       : null;
+  const running = active?.activeRun != null;
+  const chiefStream: ChiefStreamItem[] = active === null ? [] : mapChiefStream(opts.messages);
+  // #651 打字面尾行：回合进行中且 text_delta 缓冲非空才挂——activeRun 是
+  // 陈旧缓冲的 gate（关抽屉/断线窗口里缓冲可能残留上一轮文本，回合已收即
+  // 不渲染）。收敛律 = 详情页同款：终稿 message 事件 clear 缓冲 + messages
+  // 重取接管，typing 行随之退场，不重复不残留。
+  if (running && (opts.liveText ?? '').trim() !== '') {
+    chiefStream.push({
+      kind: 'robot',
+      markdown: autoCloseStrong(opts.liveText ?? ''),
+      typing: true,
+      seconds: '',
+    });
+  }
   return {
     view: 'drawer',
     bound,
@@ -1060,13 +1120,11 @@ export function mapChief(
           })),
         }
       : {}),
-    ...(active === null
-      ? { examples: CHIEF_HERO_EXAMPLES }
-      : { stream: mapChiefStream(opts.messages) }),
+    ...(active === null ? { examples: CHIEF_HERO_EXAMPLES } : { stream: chiefStream }),
     // #624：回合进行中位 = 活动线程 activeRun 非空（r5 §3.5 开放形状，只判
     // 在位不读字段）——抽屉占位据此切 steer canon；新主题视图（active null）
     // 恒空闲。刷新节奏骑 chiefSend invalidateAll / conversation SSE 既有重取。
-    ...(active?.activeRun != null ? { running: true } : {}),
+    ...(running ? { running: true } : {}),
     ...(opts.draft !== undefined ? { draft: opts.draft } : {}),
   };
 }

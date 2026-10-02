@@ -411,7 +411,10 @@ export interface ResourcesContent {
  *  with the kind-driven accent color). */
 export interface DocSegment {
   text: string;
-  style?: 'code' | 'link' | 'mention';
+  /** `strong` = `**bold**` run (#650 — the #311-era "no bold slot" ruling is
+   *  reversed by the chief-drawer markdown ticket; the inline layer now emits
+   *  bold runs instead of stripping the markers). */
+  style?: 'code' | 'link' | 'mention' | 'strong';
   /** Mention chip kind — required when style is 'mention'. */
   mentionKind?: 'todo' | 'skill' | 'agent' | 'project' | 'machine';
 }
@@ -687,11 +690,19 @@ export type ChiefStreamItem =
   /** Chief prose paragraphs + optional bullets + the `完成 Ns ›` footer
    *  row (r5 116 verification report). `tools` = 该回合的工具调用行（#615
    *  返工：foot 折叠箭头展开面；live = chief_message 的 toolcall 行投影，
-   *  r5 114 捕获时折叠态未展开，fixture 行内容 [推断] 自回执文本）。 */
+   *  r5 114 捕获时折叠态未展开，fixture 行内容 [推断] 自回执文本）。
+   *  #650: a live reply instead carries its raw text in `markdown` — parsed
+   *  with the shared chat-markdown blocks at render time (transcript robot
+   *  row #469 同律). When present it takes precedence over `paragraphs`, so
+   *  the frozen capture shapes (segment arrays) render unchanged.
+   *  #651: `typing` = live 打字面尾行（text_delta 缓冲投影）——无 foot
+   *  （复制/完成/折叠皆属定稿行），终稿 message 落库即收敛退场。 */
   | {
       kind: 'robot';
-      paragraphs: ChiefSegment[][];
+      paragraphs?: ChiefSegment[][];
       bullets?: ChiefSegment[][];
+      markdown?: string;
+      typing?: boolean;
       seconds: string;
       tools?: ChiefToolRow[];
     };

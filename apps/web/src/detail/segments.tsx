@@ -34,6 +34,11 @@ export function Segments({ segments, codeClassName }: SegmentsProps) {
           >
             {seg.text}
           </span>
+        ) : seg.style === 'strong' ? (
+          // #650: `**bold**` run — a real <strong>, not the old strip-to-
+          // plain. Must precede the generic styled-chip branch below
+          // (that one turns any unknown style into a mono chip).
+          <strong key={j}>{seg.text}</strong>
         ) : seg.style != null ? (
           // fixture order is stable; segments carry no ids
           <code
