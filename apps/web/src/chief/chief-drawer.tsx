@@ -28,11 +28,16 @@
 // 菜单内容从未点开无正典（r8-chief-panel-adhoc §3），pacman server chief
 // 面亦无线程管理 mutation（GET/POST threads 外无删除/重命名端点），无
 // local-first 对象面，按 M7 处置二分律移除不渲染；头部三钮双视图同律。
+// #645：头部 +（新主题）挂裸键 N（抽屉作用域——overlays/hotkeys 的
+// useChiefNewThreadHotkey，enabled 门 = 开态；输入态守卫 = _plain_ 可编辑
+// 律，composer 聚焦时 n 归打字员）；钮载 KbdHint 的 N 悬浮提示（below 落位）
+// + aria-keyshortcuts；键与钮同 handler（触发 + 收切换器 popover）。
 
 import type { ChiefCompactionModel } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { KbdHint } from '../components/ui/kbd-hint.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ChiefContent, ChiefSegment, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -59,6 +64,7 @@ import {
 } from '../icons/index.js';
 import { DRAWER_EXIT_MS } from '../overlay/use-overlay-mount.js';
 import { OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { useChiefNewThreadHotkey } from '../overlays/hotkeys.js';
 import './chief.css';
 import { ChiefModelDialog } from './chief-model-dialog.js';
 
@@ -204,6 +210,15 @@ export function ChiefDrawer({
   useEffect(() => {
     if (open) composerRef.current?.focus({ preventScroll: true });
   }, [open]);
+  // #645: N = 新主题（抽屉作用域裸键）——与头部 + 钮同一 handler（触发 + 收
+  // 切换器 popover）。enabled 门 = 开态且 live 面（fixture 面钮惰性，键同惰）；
+  // 守卫与输入冲突律归 hotkeys 模块（composer 聚焦时 n 归打字员）。
+  const newThread = useCallback(() => {
+    if (onNewThread == null) return;
+    onNewThread();
+    setThreadsOpen(false);
+  }, [onNewThread]);
+  useChiefNewThreadHotkey(open && onNewThread != null, newThread);
   const sendLive = () => {
     if (onSend == null || liveDraft.trim() === '') return;
     // #631：异步被拒保留 draft 不丢字（发送失败 = toast + 原文回草稿框，
@@ -243,18 +258,16 @@ export function ChiefDrawer({
               <Button
                 variant="ghost"
                 size="icon"
-                className="active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                className="relative active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
                 aria-label={t('新主题')}
-                onClick={
-                  onNewThread != null
-                    ? () => {
-                        onNewThread();
-                        setThreadsOpen(false);
-                      }
-                    : undefined
-                }
+                aria-keyshortcuts="N"
+                onClick={onNewThread != null ? newThread : undefined}
               >
                 <Plus width={18} height={18} />
+                {/* #645: N 悬浮提示（KbdHint 族第四消费点；below = 头部贴视口
+                    顶，above 会落屏外）。relative 由钮自身承载——chip 绝对定位
+                    的包含块。 */}
+                <KbdHint label="N" placement="below" />
               </Button>
               {onSettings != null && (
                 <Button
