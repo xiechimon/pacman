@@ -11,6 +11,13 @@
 // 与 Chip 原语的边界（`ui/chip.tsx`，任务状态五态 + neutral）不变：
 // Chip = 状态色族（token 对）；TagChip = 用户数据色（tag record color 位）。
 //
+// 尺寸正本 20px 有一个 per-face 例外：看板卡身份行（todo-card.tsx 的
+// row-flush 覆写 h-4/leading-4/px-1.5）——16px 行盒里的 20px pill 是卡上
+// 唯一溢出自己行盒的件（上下各 2px，且实底墨重压过标题），卡面收到与
+// mark 齐平的 16px；本层其余消费面（详情 meta / 项目 issues / 筛选面板
+// 选中行）容器都更高，仍走 20px 正本。几何钉：board-filter.spec 的任务卡
+// 用例 + shadcn-primitives.spec 的 tag-chip 用例（两面各钉各的档）。
+//
 // 数据色走 inline style 而非 Tailwind 类：tag.color 是运行期记录字段，不是
 // 设计 token，进不了类名编译面（既有行为原样保留）。
 

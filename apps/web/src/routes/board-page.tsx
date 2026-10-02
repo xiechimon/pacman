@@ -15,21 +15,24 @@
 // machines/notifications/chief + 新建/开始/拖拽排序/验收合并 mutation），
 // fixture 分支保持 #52–#75 行为字节不变（fixture 数据面）。
 
-import type { TodoRecord as WireTodo } from '@pacman/shared';
+import type { Assignment, TodoRecord as WireTodo } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
   useApiMutations,
+  useMachines,
+  useMembers,
   useProjects,
   useProjectTags,
   useSearchResults,
   useTodos,
 } from '../api/hooks.js';
 import { toDisplayTodo } from '../api/mappers.js';
-import { useLiveData } from '../api/provider.js';
+import { useAgentAvatarUrlById, useLiveData } from '../api/provider.js';
 import { AppSidebar } from '../board/app-sidebar.js';
 import { type BoardFilters, BoardSurface } from '../board/board.js';
+import { moveTodo } from '../board/dnd.js';
 import type { FilterChip, FilterDimension } from '../board/filter-panel.js';
 import { NotificationBanner, useNotificationBanner } from '../board/notify-banner.js';
 import {
@@ -38,6 +41,7 @@ import {
   parseProjectsParam,
 } from '../board/repo-filter.js';
 import { buildTagOptions, matchesTagFilter, parseTagParam } from '../board/tag-filter.js';
+import { assignOptionsFromMembers } from '../chief/chief-agent-dialog.js';
 import { ChiefDrawer } from '../chief/chief-drawer.js';
 import { ChiefFabIcon } from '../chief/chief-fab-icon.js';
 import { ChiefSettings } from '../chief/chief-settings.js';
@@ -47,6 +51,7 @@ import { KbdHint } from '../components/ui/kbd-hint.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
 import { mergeRejectCopy, useMergeGate } from '../detail/merge-gate.js';
+import { RerunDialog } from '../detail/overlays.js';
 import { withoutDeleted } from '../fixtures/deletions.js';
 import { localTodo, overlayContent } from '../fixtures/fixtures.js';
 import type { FixtureSet, OverlayState, TodoRecord } from '../fixtures/records.js';
@@ -104,6 +109,20 @@ export function BoardPage() {
   const todosQ = useTodos(teamId, live);
   const projectsQ = useProjects(teamId, live);
   const mutations = useApiMutations(teamId);
+  // #616：拖入执行中 = 开始任务 dialog（#318 统一面）的数据位——机器行读面 +
+  // agent 候选投影（单源 assignOptionsFromMembers，detail 页同款）。fixture
+  // 面全惰性（enabled = live），dialog 退 #75 静态形。
+  const machinesQ = useMachines(teamId, live);
+  const membersQ = useMembers(teamId, live);
+  const agentAvatarUrl = useAgentAvatarUrlById();
+  const assignOptions = useMemo(
+    () => (live ? assignOptionsFromMembers(membersQ.data ?? []) : undefined),
+    [live, membersQ.data],
+  );
+  const firstAgentMemberId = useMemo(() => {
+    const member = (membersQ.data ?? []).find((m) => m.memberType === 'agent');
+    return member?.actorId ?? null;
+  }, [membersQ.data]);
 
   // —— #403/#445/XMON-57 看板筛选面：URL ?tags=（类型轴）与 ?projects=
   // （仓库轴）为唯一真值（刷新/分享不丢），选中集 = 词表名字典序规范序 /
@@ -385,15 +404,17 @@ export function BoardPage() {
   const notifyBanner = useNotificationBanner(fixture.ui?.notificationBanner === true, live);
 
   const startBuild = useCallback(
-    (todo: TodoRecord, withPlan: boolean) => {
+    (todo: TodoRecord, withPlan: boolean, assignment?: Assignment) => {
       if (!live) return;
       // XMON-93：firstAgentId 点击瞬间从隔离面 ref 取——原 props 通路也只在
       // 点击时被消费，取值时序语义不变（members 落定后恒为最新）。
+      // #616：拖拽落位路径携带 dialog 选定的双槽 assignment（detail 页
+      // startBuild 同律）；卡片 开始 钮缺省走 firstAgentId 兜底不变。
       const firstAgentId = newTaskApiRef.current?.firstAgentId ?? null;
       mutations.startBuilds.mutate({
         projectId: todo.projectId,
         todoIds: [todo.id],
-        assignment: {
+        assignment: assignment ?? {
           plan: firstAgentId ? { agentId: firstAgentId } : null,
           build: firstAgentId ? { agentId: firstAgentId } : null,
         },
@@ -402,26 +423,34 @@ export function BoardPage() {
     },
     [live, mutations.startBuilds],
   );
+  // #616：拖入执行中的开始意图——dialog 的目标卡（null = 关）。参考站实测：
+  // 落位不写相位，确认（先做规划/立即执行）才经 startBuilds 提交；取消 =
+  // 零提交，卡回源列。
+  const [startTodo, setStartTodo] = useState<TodoRecord | null>(null);
 
-  // 拖拽落位（#73 / M5 / #160）：fixture = 本地集；live = 逐卡增量 PATCH
-  // （phase = 手动改相 + orderIndex = 列内排序位，server patchTodoBodySchema
-  // 两位）。diff 基线 = 落位前 todo 集：moveTodo 的输出已把 orderIndex 回写
-  // 成列视图序，拿它自身重算再比恒相等（#160 前的死路），故与落位前快照比。
-  const handleReorder = useCallback(
-    (next: TodoRecord[]) => {
+  // 拖拽落位（#73 / M5 / #160，#616 收窄成纯改相）：待开始/已完成列的静默
+  // 提交——fixture = 本地集；live = 逐卡增量 PATCH（phase = 手动改相 +
+  // orderIndex = 列内排序位，server patchTodoBodySchema 两位）。落点 = 目标
+  // 列视图末尾（endOfColumnIndex；参考站无列内位次语义）。diff 基线 = 落位
+  // 前 todo 集：moveTodo 的输出已把 orderIndex 回写成列视图序，拿它自身重
+  // 算再比恒相等（#160 前的死路），故与落位前快照比。
+  const handlePhaseDrop = useCallback(
+    (todo: TodoRecord, columnId: string) => {
+      const next = moveTodo(todos, todo.id, columnId, live ? Date.now() : fixture.now);
+      if (next === todos) return;
       if (!live) {
         setFixtureTodos(next);
         return;
       }
       const changes = new Map<string, ReorderPatch>();
-      for (const todo of next) {
-        const before = todos.find((p) => p.id === todo.id);
+      for (const after of next) {
+        const before = todos.find((p) => p.id === after.id);
         if (before == null) continue;
         const body: ReorderPatch = {};
-        if (before.phase !== todo.phase) body.phase = todo.phase;
-        if (before.orderIndex !== todo.orderIndex) body.orderIndex = todo.orderIndex;
+        if (before.phase !== after.phase) body.phase = after.phase;
+        if (before.orderIndex !== after.orderIndex) body.orderIndex = after.orderIndex;
         if (body.phase === undefined && body.orderIndex === undefined) continue;
-        changes.set(todo.id, body);
+        changes.set(after.id, body);
       }
       if (changes.size === 0) return;
       // 乐观落位：卡片停在落点不弹回再跳；phaseAt 近似 server nowMs()。
@@ -446,7 +475,7 @@ export function BoardPage() {
         );
       }
     },
-    [live, todos, teamId, mutations.patchTodo, queryClient],
+    [live, todos, fixture.now, teamId, mutations.patchTodo, queryClient],
   );
 
   const content = overlayTodo != null ? overlayContent(overlayTodo.id) : null;
@@ -501,9 +530,11 @@ export function BoardPage() {
             if (todo.phase === 'review' && todo.awaitingReply !== true) openFor(todo, 'accept');
           }}
           onBranch={(todo) => openFor(todo, 'branch')}
-          // #73: drag drops commit into the same client-side todo set as
-          // create/delete — column counts and folds re-derive from it
-          onReorder={handleReorder}
+          // #73→#616: 静默改相落位（待开始/已完成）commit into the same
+          // client-side todo set as create/delete — column counts and folds
+          // re-derive from it；执行中落位 = 开始意图 → dialog 闸。
+          onPhaseDrop={handlePhaseDrop}
+          onStartIntent={(todo) => setStartTodo(todo)}
           filters={filters}
           tagsById={tagIndex.tagById}
         />
@@ -578,6 +609,38 @@ export function BoardPage() {
           info={content.branch}
           buildId={overlayTodo?.latestBuildId ?? null}
           onClose={closeOverlay}
+        />
+      )}
+      {/* #616（todos.dev 2026-10-02 实测）：拖入执行中 = 开始任务 dialog
+          （#318 统一面，detail 页同款接线）——确认前相位不写；确认走
+          startBuilds（携带 dialog 选定 assignment）。fixture 面 = #75 静态
+          形（无 machines/onStart，钮无 wire），与 detail 页 fixture 律一致。 */}
+      {startTodo != null && (
+        <RerunDialog
+          reuse={startTodo.hasPlan}
+          agent={{
+            name: startTodo.agent?.displayName ?? '未指派',
+            model: '默认',
+            avatarUrl: startTodo.agent ? (agentAvatarUrl.get(startTodo.agent.id) ?? null) : null,
+          }}
+          agentOptions={assignOptions}
+          initialAgentId={
+            live ? (startTodo.assignment?.agentId ?? firstAgentMemberId ?? '') : undefined
+          }
+          machines={
+            live
+              ? (machinesQ.data ?? []).map((m) => ({ name: m.name, online: m.online }))
+              : undefined
+          }
+          onClose={() => setStartTodo(null)}
+          onStart={
+            live
+              ? ({ withPlan, assignment }) => {
+                  startBuild(startTodo, withPlan, assignment);
+                  setStartTodo(null);
+                }
+              : undefined
+          }
         />
       )}
     </div>

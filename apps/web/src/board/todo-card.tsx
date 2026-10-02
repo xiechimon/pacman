@@ -79,11 +79,15 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName, tag }: To
         <span className="todo-project-name ml-1 truncate text-[11px] leading-4 text-muted-foreground">
           {chipName}
         </span>
-        {/* #445 卡片标签 chip：首行项目名之后（身份行语义位）。20px pill
-            垂直居中溢出 16px 行高上下各 2px——行高/标题位/seq 右锚均不受
-            影响（row1 定高 flex，chip flex-none 只吃项目名的 truncate 余量）。
-            todo-card-tag = e2e 定位别名。 */}
-        {tag != null && <TagChip tag={tag} className="todo-card-tag ml-1 flex-none" />}
+        {/* #445 卡片标签 chip：首行项目名之后（身份行语义位）。卡面走
+            row-flush 档 16px（h-4/leading-4/px-1.5 逐组覆写 TagChip 的
+            20px 正本——身份行三件 mark 16 / 名字 11-16 / chip 16 齐平，
+            pill 不再溢出行盒做卡上最重的墨；正本 20px 保留给详情 meta、
+            项目 issues、筛选面板三个容器更高的面）。row1 定高 flex，chip
+            flex-none 只吃项目名的 truncate 余量。todo-card-tag = e2e 别名。 */}
+        {tag != null && (
+          <TagChip tag={tag} className="todo-card-tag ml-1 flex-none h-4 px-1.5 leading-4" />
+        )}
         <span className="todo-card-seq mr-[13px] ml-auto flex-none text-[11px] leading-4 text-muted-foreground/70">
           #{todo.seqNum}
         </span>

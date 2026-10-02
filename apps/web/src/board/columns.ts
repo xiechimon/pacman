@@ -25,6 +25,11 @@ export interface BoardColumnDef {
    *  column is not a drop target (#351: 待处理 — gate/failed are system
    *  states, a manual drop-in carries no semantics). */
   dropPhase?: Phase;
+  /** #616（todos.dev 2026-10-02 实测）：落位不直接写 dropPhase，而是把
+   *  todo 交给 开始任务 dialog（#318 统一面）——确认（先做规划/立即执行）
+   *  才经 startBuilds 落相位，取消 = 零提交。执行中独有：进该列 = 起一次
+   *  build，需要 agent/机器指派，不是静默改相能承载的。 */
+  startGate?: boolean;
   /** Which todos land in this column. */
   accepts: (todo: TodoRecord) => boolean;
 }
@@ -56,6 +61,7 @@ export const COLUMNS: BoardColumnDef[] = [
   {
     id: 'building',
     dropPhase: 'building',
+    startGate: true,
     name: '执行中',
     dot: 'var(--col-dot-building)',
     empty: '没有执行中的任务',
