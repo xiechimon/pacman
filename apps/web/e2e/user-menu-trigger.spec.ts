@@ -34,24 +34,30 @@ async function expectMenuOnTop(page: Page) {
   expect(top).toBe(true);
 }
 
-/** #163 anchoring law, #388 收紧: capture width/x stand, and the menu bottom
- *  hugs the VISIBLE avatar — the chip button box is transparent and its top
- *  differs per shape (44 vs 49 from the viewport bottom), so the gap is
- *  measured against the avatar img: never covering it (#163 law) and never
- *  floating 一截 away (dogfood #3: the frozen 78px bottom read as a 36–44px
- *  visual gap; the family baseline is ~4px — chip-popover +3.5 / sched-card
- *  -menu +4). Returns the menu-bottom distance from the viewport bottom
+/** #163 anchoring law, #388 收紧, #610 裁决 v3: capture width/x stand, and
+ *  the menu bottom hugs the trigger ROW's top edge — the account row carries
+ *  a visible border-t seam since #414, and the #388 anchor (img top + 4px)
+ *  put the panel bottom 6px BELOW the row top, so the opaque panel hid that
+ *  seam across its width and its shadow smeared the row face (dogfood #610:
+ *  「盖到我这个线上」). The family baseline gap (4px) is therefore measured
+ *  against the row box top, the visible structural edge; against the img the
+ *  law keeps only its #163 half — the panel never covers the avatar.
+ *  Returns the menu-bottom distance from the viewport bottom
  *  (the anchoring invariant: it must not depend on the viewport height). */
 async function expectAnchoredAboveChip(page: Page, chipSel: string) {
   const box = await menu(page).boundingBox();
+  const row = await page.locator(chipSel).boundingBox();
   const img = await page.locator(`${chipSel} img`).boundingBox();
   expect(box).not.toBeNull();
+  expect(row).not.toBeNull();
   expect(img).not.toBeNull();
   expect(box!.x).toBe(8);
   expect(box!.width).toBe(224);
-  const gap = img!.y - (box!.y + box!.height);
-  expect(gap).toBeGreaterThanOrEqual(2); // never covers the avatar
-  expect(gap).toBeLessThanOrEqual(10); // visually 贴合, family baseline gap
+  const gapToRowTop = row!.y - (box!.y + box!.height);
+  expect(gapToRowTop).toBeGreaterThanOrEqual(3); // family 4px, subpixel-safe
+  expect(gapToRowTop).toBeLessThanOrEqual(5);
+  const gapToImg = img!.y - (box!.y + box!.height);
+  expect(gapToImg).toBeGreaterThan(0); // never covers the avatar (#163)
   const viewportHeight = await page.evaluate(() => window.innerHeight);
   return viewportHeight - (box!.y + box!.height);
 }
