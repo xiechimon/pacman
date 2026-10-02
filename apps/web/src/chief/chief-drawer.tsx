@@ -35,9 +35,11 @@ import {
   type ChiefCompactionModel,
 } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
+import { ChatMarkdown } from '../detail/chat-markdown.js';
 import type { ChiefContent, ChiefSegment, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import {
@@ -51,7 +53,6 @@ import {
   ChiefGear,
   ChiefHash,
   ChiefUserPlus,
-  ChiefUserSolid,
   Copy,
   FileText,
   Grid2x2,
@@ -79,9 +80,16 @@ function segmentsText(segments: ChiefSegment[]): string {
   return segments.map((s) => (s.todo != null ? `#${s.todo}` : (s.agent ?? s.text ?? ''))).join('');
 }
 
-/** robot 消息全文（#615 foot 复制钮载荷）：段落换行拼接 + bullet 行随附。 */
-function robotText(item: { paragraphs: ChiefSegment[][]; bullets?: ChiefSegment[][] }): string {
-  const lines = item.paragraphs.map(segmentsText);
+/** robot 消息全文（#615 foot 复制钮载荷）：markdown 行取原文（#469
+ *  transcript 同律——复制的是消息 markdown 源）；段数组行（fixture 捕获形）
+ *  段落换行拼接 + bullet 行随附。 */
+function robotText(item: {
+  paragraphs?: ChiefSegment[][];
+  bullets?: ChiefSegment[][];
+  markdown?: string;
+}): string {
+  if (item.markdown != null) return item.markdown;
+  const lines = (item.paragraphs ?? []).map(segmentsText);
   for (const b of item.bullets ?? []) lines.push(`- ${segmentsText(b)}`);
   return lines.join('\n');
 }
@@ -165,8 +173,32 @@ export function ChiefDrawer({
   onRewind,
 }: DrawerProps) {
   const { t } = useI18n();
+  // #650 / XMON-105: 用户行头像身份单源（live = /api/user/me；fixture =
+  // canon 常量，avatarUrl 覆盖 > dicebear 名字种子 > 静态兜底）。
+  const { user } = useLiveData();
   const [threadsOpen, setThreadsOpen] = useState(chief.threadsOpen ?? false);
   const [modelOpen, setModelOpen] = useState(false);
+  // #651 流式视口：.chief-body 是真滚动容器（overflow: hidden → auto，
+  // chief.css）。打开/切线程落底（chat 面通行律：最新消息在底部；
+  // retained-mount 节点常驻，open 翻 true 时 effect 即发）。
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const streamLen = chief.stream?.length ?? 0;
+  const lastItem = streamLen > 0 ? chief.stream?.[streamLen - 1] : undefined;
+  const typingText =
+    lastItem?.kind === 'robot' && lastItem.typing === true ? (lastItem.markdown ?? '') : null;
+  useEffect(() => {
+    if (!open) return;
+    const el = bodyRef.current;
+    if (el != null) el.scrollTop = el.scrollHeight;
+  }, [open, chief.threadTitle]);
+  // 增量跟随：仅当视口已近底部（<80px）才贴底——用户上翻读历史时不抢
+  // 滚动条。打字行文本与行数任一变化都触发（250ms 聚合窗口粒度）。
+  useEffect(() => {
+    if (!open) return;
+    const el = bodyRef.current;
+    if (el == null) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) el.scrollTop = el.scrollHeight;
+  }, [open, streamLen, typingText]);
   // #615 返工：恢复钮确认层锚（stream 行 index + live 消息 id）与过程折叠开态集。
   const [rewindConfirm, setRewindConfirm] = useState<{ index: number; id: string | null } | null>(
     null,
@@ -351,7 +383,7 @@ export function ChiefDrawer({
           )}
         </header>
 
-        <div className="chief-body">
+        <div className="chief-body" ref={bodyRef}>
           {!chief.bound && (
             <div className="chief-gate">
               <span>{t('请先为总管选择一个 Agent。')}</span>
@@ -428,8 +460,17 @@ export function ChiefDrawer({
                 if (item.kind === 'user')
                   return (
                     <div key={i} className="chief-msg">
-                      {/* r5 114/116: the user avatar is a solid filled glyph */}
-                      <ChiefUserSolid width={24} height={24} className="chief-avatar" />
+                      {/* #650 / XMON-105: 用户行头像接全站单源——与详情页对话
+                          用户行（transcript.tsx）逐字节同配方：avatarUrl 覆盖 >
+                          dicebear 名字种子 > 静态兜底资产。原写死的
+                          ChiefUserSolid 通用人形字形是全站最后一个漏网点。 */}
+                      <span className="chief-avatar chief-avatar--img">
+                        <SeededAvatar
+                          name={user.displayName}
+                          src={user.avatarUrl}
+                          fallback="/avatar-user.png"
+                        />
+                      </span>
                       <div className="chief-msg-col">
                         <div className="chief-bubble">{item.text}</div>
                         <div className="chief-msg-tools">
@@ -484,66 +525,82 @@ export function ChiefDrawer({
                       <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
                     )}
                     <div className="chief-msg-col">
-                      {item.paragraphs.map((p, j) => (
-                        <p key={j} className="chief-para">
-                          <Segments segments={p} />
-                        </p>
-                      ))}
-                      {item.bullets?.map((b, j) => (
-                        <p key={`b${j}`} className="chief-bullet">
-                          <span className="chief-bullet-dot">•</span>
-                          <span>
-                            <Segments segments={b} />
-                          </span>
-                        </p>
-                      ))}
-                      <div className="chief-msg-foot">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                          aria-label={t('复制')}
-                          onClick={() => copyText(`r${i}`, robotText(item))}
-                        >
-                          {copiedKey === `r${i}` ? (
-                            <Check width={13} height={13} />
-                          ) : (
-                            <Copy width={13} height={13} />
-                          )}
-                        </Button>
-                        {/* live 面 seconds 空串（mapChiefStream 无耗时数据源）
+                      {item.markdown != null ? (
+                        // #650: live 回复原文走共用块级解析器（chat-markdown，
+                        // transcript robot 行 #469 同律）——bold / 行内 code /
+                        // mention / 列表 / 代码栅栏与详情页同形；抽屉节奏
+                        // （14px/24px、段距 2px）由 chief.css scoped 覆盖随
+                        // canon。#651 typing 尾行同源同渲染——增量面与终稿面
+                        // 同形，收敛不跳变。
+                        <ChatMarkdown text={item.markdown} />
+                      ) : (
+                        <>
+                          {(item.paragraphs ?? []).map((p, j) => (
+                            <p key={j} className="chief-para">
+                              <Segments segments={p} />
+                            </p>
+                          ))}
+                          {item.bullets?.map((b, j) => (
+                            <p key={`b${j}`} className="chief-bullet">
+                              <span className="chief-bullet-dot">•</span>
+                              <span>
+                                <Segments segments={b} />
+                              </span>
+                            </p>
+                          ))}
+                        </>
+                      )}
+                      {/* #651: typing 打字面是未定稿行——foot（复制/完成/过程
+                          折叠）只属定稿行，打字行不渲染。 */}
+                      {item.typing !== true && (
+                        <div className="chief-msg-foot">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                            aria-label={t('复制')}
+                            onClick={() => copyText(`r${i}`, robotText(item))}
+                          >
+                            {copiedKey === `r${i}` ? (
+                              <Check width={13} height={13} />
+                            ) : (
+                              <Copy width={13} height={13} />
+                            )}
+                          </Button>
+                          {/* live 面 seconds 空串（mapChiefStream 无耗时数据源）
                             不再渲染空「完成」行；fixture canon 44s 照旧。 */}
-                        {item.seconds !== '' && <span>{t('完成 {n}', { n: item.seconds })}</span>}
-                        {/* #615 返工（用户裁决覆盖 #306 二分律）：foot 折叠箭头
+                          {item.seconds !== '' && <span>{t('完成 {n}', { n: item.seconds })}</span>}
+                          {/* #615 返工（用户裁决覆盖 #306 二分律）：foot 折叠箭头
                             闭环 = 该回合过程披露（Multica OuterProcessFold 同
                             族：chevron + 展开内容 = 工具步；r5 114 捕获位 = 完
                             成 Ns 之后的 ›）。展开面 = 被流主呈现滤掉的工具调
                             用行（chief_message toolcall 投影，DB 既有零新后端）；
                             无工具行的回合不渲染触发器（无可披露内容）。 */}
-                        {(item.tools?.length ?? 0) > 0 && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                            aria-label={toolsOpen.has(i) ? t('收起过程') : t('展开过程')}
-                            aria-expanded={toolsOpen.has(i)}
-                            onClick={() =>
-                              setToolsOpen((cur) => {
-                                const next = new Set(cur);
-                                if (next.has(i)) next.delete(i);
-                                else next.add(i);
-                                return next;
-                              })
-                            }
-                          >
-                            {toolsOpen.has(i) ? (
-                              <ChevronDown width={11} height={11} />
-                            ) : (
-                              <ChevronRight width={11} height={11} />
-                            )}
-                          </Button>
-                        )}
-                      </div>
+                          {(item.tools?.length ?? 0) > 0 && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                              aria-label={toolsOpen.has(i) ? t('收起过程') : t('展开过程')}
+                              aria-expanded={toolsOpen.has(i)}
+                              onClick={() =>
+                                setToolsOpen((cur) => {
+                                  const next = new Set(cur);
+                                  if (next.has(i)) next.delete(i);
+                                  else next.add(i);
+                                  return next;
+                                })
+                              }
+                            >
+                              {toolsOpen.has(i) ? (
+                                <ChevronDown width={11} height={11} />
+                              ) : (
+                                <ChevronRight width={11} height={11} />
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      )}
                       {(item.tools?.length ?? 0) > 0 && toolsOpen.has(i) && (
                         <div className="chief-turn-tools">
                           {item.tools?.map((tool, k) => (

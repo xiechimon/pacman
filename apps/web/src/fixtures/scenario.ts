@@ -33,6 +33,7 @@ import {
   chiefFabAvatar,
   chiefFabAvatarOverride,
   chiefGated,
+  chiefMarkdown,
   chiefReady,
   chiefSettings,
   chiefSettingsStaleModel,
@@ -327,6 +328,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       '113': chiefStreaming,
       '114': chiefThread,
       '116': chiefThreadsOpen,
+      // #650/#651 markdown 面命名场景（无 capture，md-toolout 先例）：定稿
+      // robot 行 raw markdown + typing 打字尾行，钉共用解析器进抽屉的渲染形。
+      'chief-md': chiefMarkdown,
       // #444 FAB 头像命名场景（无 capture，notify-banner 先例）：绑定
       // Agent 的头像骑上各族 FAB；override 变体钉 avatarUrl 覆盖优先。
       'fab-avatar': chiefFabAvatar,

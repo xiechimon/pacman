@@ -294,10 +294,13 @@
 
 /* ---- drawer body ---- */
 
+/* #651: 真滚动容器——原 overflow: hidden 把长线程整个裁死（不可滚动），
+   流式增量也会被裁在视野外。auto 只在溢出时出滚动条；打字期贴底跟随归
+   chief-drawer 的滚动 effect（打开/切线程落底、近底才跟随）。 */
 .chief-body {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .chief-gate {
@@ -468,6 +471,23 @@
   padding: 1px 5px;
   font-family: var(--font-mono);
   font-size: 12px;
+}
+
+/* #650: markdown 回复经共用 chat-markdown 块渲染（正本几何在 detail.css），
+   进抽屉后正文节奏随本面 canon：14px/24px、段距 2px（.chief-para 同值）——
+   标题/代码栅栏/行内 chip 的几何保持共用值全站同形，不做第二套。 */
+.chief-msg-col .chat-para {
+  font-size: 14px;
+  line-height: 24px;
+  color: var(--text-primary);
+}
+.chief-msg-col .chat-para + .chat-para {
+  margin-top: 2px;
+}
+.chief-msg-col .chat-md-item {
+  font-size: 14px;
+  line-height: 24px;
+  color: var(--text-primary);
 }
 
 .chief-chip-todo {
