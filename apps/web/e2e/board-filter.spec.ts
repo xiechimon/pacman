@@ -3,8 +3,10 @@ import { expect, type Page, test } from '@playwright/test';
 // XMON-57 看板筛选面收口：顶栏左侧 = 生效筛选条（有筛选才有条），右侧
 // 动作区恰好一钮 = 无底色「筛选」钮，两轴（仓库 / 类型）同住一个 anchored
 // 面板——#445 的「左仓库 chip 组 + 右类型 popover」双入口撤除（逐个点选
-// 的两个来源）。每段带批次键（全部选中 / 清除）、已选读数、per-option
-// 计数与 hover 现形的「仅此」；选项超阈值才出搜索框。
+// 的两个来源）。#636 行形照参考站（todos.dev）实测对齐：行首 16px 圆角
+// checkbox（选中 indigo 实底白勾）、计数仅有命中时画在右端、全选行（三态
+// checkbox + 全选，满选再点 = 清本维）居行表首、反选挂该行右端；维度标题行
+// 留标题 + 已选读数；「仅此」hover 现形与计数共右端槽；选项超阈值才出搜索框。
 // 命中语义未变：双轴 = 仓库 AND 类型；类型轴沿用 #403 裁决（OR 并集 +
 // 无标签恒可见），仓库轴 = 精确集成员（无豁免）。筛选态进 URL
 // （?projects= / ?tags=，replace 写回不刷历史，其余参保留），空结果 =
@@ -32,7 +34,7 @@ import { expect, type Page, test } from '@playwright/test';
 // 14. 空结果渲成空白看板或误导性列空文案；清除钮不清双轴
 // 15. tagged 卡不渲染标签 chip / 无标签卡留占位 / chip 挤压既有元素
 //     几何（row1 高、卡高、seq 右锚漂移）
-// 16. 批次键（全选 / 清除）无效或读数不跟；「仅此」不塌成单值
+// 16. 批次键（全选行 / 反选）无效或读数不跟；「仅此」不塌成单值
 // 17. 计数用了本轴自身收窄（勾一个选项后其余全变 0，失去导航意义）
 // 18. 生效筛选条不显形 / 点条不清该维度 / 清除全条不清双轴
 
@@ -52,10 +54,13 @@ const typeOption = (page: Page, name: string) =>
   page.locator(`.type-filter-option[data-tag="${name}"]`);
 const dim = (page: Page, key: 'repo' | 'type') =>
   page.locator(`.filter-dimension[data-dimension="${key}"]`);
+/** 全选行（行表首）的真 checkbox：三态 = unchecked / indeterminate / checked；
+ *  空选点击 = 全选，满选点击 = 清本维（清除钮撤除后的清除路径之一）。 */
 const dimAll = (page: Page, key: 'repo' | 'type') =>
   dim(page, key).locator('.filter-dimension-all');
-const dimClear = (page: Page, key: 'repo' | 'type') =>
-  dim(page, key).locator('.filter-dimension-clear');
+/** 反选：全选行右端链接键，选集取词表补集。 */
+const dimInvert = (page: Page, key: 'repo' | 'type') =>
+  dim(page, key).locator('.filter-dimension-invert');
 const dimReadout = (page: Page, key: 'repo' | 'type') =>
   dim(page, key).locator('.filter-dimension-selected');
 const optionCount = (page: Page, value: string) =>
@@ -96,6 +101,10 @@ test('类型钮点开 anchored popover：词表 6 词全、aria-expanded 翻转'
   await expect(typeBtn(page)).toHaveAttribute('aria-expanded', 'false');
   await openTypePopover(page);
   await expect(typeBtn(page)).toHaveAttribute('aria-expanded', 'true');
+  // 全选行恒在（行表首）+ 反选挂其右端；空选态 = 三态 checkbox 的 unchecked
+  await expect(dimAll(page, 'type')).toBeVisible();
+  await expect(dimAll(page, 'type')).not.toBeChecked();
+  await expect(dimInvert(page, 'type')).toBeVisible();
   await expect(page.locator('.type-filter-option')).toHaveCount(6);
   for (const name of ['bug', 'feature', 'improvement', 'refactor', 'docs', 'chore']) {
     await expect(typeOption(page, name)).toBeVisible();
@@ -210,10 +219,11 @@ test('仓库段 = 项目选项集 + 计数 + 读数；默认全活、URL 无参�
     await expect(repoOption(page, id)).toHaveAttribute('aria-selected', 'false');
   }
   await expect(dimReadout(page, 'repo')).toHaveText('已选 0/3');
-  // 计数 = 另一轴（类型）收窄后该项目的卡数；两轴皆空 = 各项目全量卡数
+  // 计数 = 另一轴（类型）收窄后该项目的卡数；两轴皆空 = 各项目全量卡数。
+  // 零命中不画计数（参考站形：右端计数位仅在有命中时出现）
   await expect(optionCount(page, PRJ_CANON)).toHaveText('2');
   await expect(optionCount(page, 'r2-inventory')).toHaveText('1');
-  await expect(optionCount(page, 'r4-quiet')).toHaveText('0');
+  await expect(optionCount(page, 'r4-quiet')).toHaveCount(0);
   await page.keyboard.press('Escape');
   // 三卡各就各位：A(r3) 待开始 / B(r2) 执行中 / C(r3) 待处理
   await expect(card(page, 'repofilter-a')).toBeVisible();
@@ -263,7 +273,9 @@ test('仓库多选 = OR 并集；URL 序 = 字典序规范序（与点击序无�
   await expect(card(page, 'repofilter-c')).toBeVisible();
 });
 
-test('仓库再点已选 = 解除；段内清除钮 = 清参复位回全量', async ({ page }) => {
+test('仓库再点已选 = 解除；全选行满选再点 = 清本维（清除钮撤除后的清除路径）', async ({
+  page,
+}) => {
   await page.goto(REPOS);
   await openTypePopover(page);
   await repoOption(page, PRJ_CANON).click();
@@ -271,12 +283,15 @@ test('仓库再点已选 = 解除；段内清除钮 = 清参复位回全量', as
   await repoOption(page, 'r2-inventory').click();
   await expect(page).toHaveURL(new RegExp(`[?&]projects=${PRJ_CANON}(&|$)`));
   await expect(repoOption(page, 'r2-inventory')).toHaveAttribute('aria-selected', 'false');
-  // 段内清除钮：清本维度。清空后自身转禁用态（位置稳定，不消失）
-  await expect(dimClear(page, 'repo')).toBeEnabled();
-  await dimClear(page, 'repo').click();
+  // 部分选中 = 全选行三态的 indeterminate
+  await expect(dimAll(page, 'repo')).toHaveJSProperty('indeterminate', true);
+  // 满选再点全选行 = 清本维：先点满，再点一次回空集（删参）
+  await dimAll(page, 'repo').click();
+  await expect(dimAll(page, 'repo')).toBeChecked();
+  await dimAll(page, 'repo').click();
   await expect(page).not.toHaveURL(/[?&]projects=/);
   await expect(dimReadout(page, 'repo')).toHaveText('已选 0/3');
-  await expect(dimClear(page, 'repo')).toBeDisabled();
+  await expect(dimAll(page, 'repo')).not.toBeChecked();
   // 计数回满量：清空本轴后 canon 段读数回到全量 2（清除不残留收窄）
   await expect(optionCount(page, PRJ_CANON)).toHaveText('2');
   await page.keyboard.press('Escape');
@@ -361,10 +376,11 @@ test('双轴组合 = AND 收窄；组合见底 = 空态；清除钮清双轴', a
   await expect(page).toHaveURL(new RegExp(`[?&]projects=${PRJ_CANON}`));
   await expect(page).toHaveURL(/[?&]tags=bug(&|$)/);
   // 计数口径 = **另一轴**收窄后，本轴自身不参与：canon 已选中但读数仍是 2
-  //（本轴参与就会归零）；r2 因类型轴 bug 收窄而落 0（另一轴确实生效）
+  //（本轴参与就会归零）；r2 因类型轴 bug 收窄而落 0（另一轴确实生效）——
+  // 零命中不画计数，故后两者断言计数位缺席而非文本 0
   await expect(optionCount(page, PRJ_CANON)).toHaveText('2');
-  await expect(optionCount(page, 'r2-inventory')).toHaveText('0');
-  await expect(optionCount(page, 'r4-quiet')).toHaveText('0');
+  await expect(optionCount(page, 'r2-inventory')).toHaveCount(0);
+  await expect(optionCount(page, 'r4-quiet')).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(typePopover(page)).not.toBeVisible();
   await expect(card(page, 'repofilter-a')).toBeVisible();
@@ -408,6 +424,11 @@ test('类型段批次键：全部选中 = 写满词表（读数 N/N，非 0/N）
   await optionOnly(page, 'chore').click();
   await expect(page).toHaveURL(/[?&]tags=chore(&|$)/);
   await expect(dimReadout(page, 'type')).toHaveText('已选 1/6');
+  // 反选 = 选集取词表补集（1/6 → 5/6，URL 序 = 字典序规范序）
+  await dimInvert(page, 'type').click();
+  await expect(page).toHaveURL(/[?&]tags=bug,docs,feature,improvement,refactor(&|$)/);
+  await expect(dimReadout(page, 'type')).toHaveText('已选 5/6');
+  await expect(dimAll(page, 'type')).toHaveJSProperty('indeterminate', true);
 });
 
 test('生效筛选条：只列生效维度、点条清该维度、两轴齐时出「清除全部」', async ({ page }) => {
