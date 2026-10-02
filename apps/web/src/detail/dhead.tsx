@@ -103,7 +103,19 @@ export function DetailHead({
             <ChevronDown width={12} height={12} />
           </span>
         </Button>
-        <FloatingShell open={popover} onClose={() => setPopover(false)} container={chipWrap}>
+        {/* #666: initialFocus=false——焦点留在触发钮。键盘契约（#634）是同一
+            个键再按一次关面；Base UI 缺省会开面即抢焦点进弹层，第二次 Enter
+            落在弹层内部件上（轻则 no-op 关不掉，重则随机激活「编辑分配」）。
+            disablePointerDismissal——外点归 ClickCatcher（家族律），原生
+            outsidePress 只会接住触发钮上的键盘合成 click，与本钮 toggle
+            onClick 双写 state 把关面翻回开面（详见 FloatingShell prop 注）。 */}
+        <FloatingShell
+          open={popover}
+          onClose={() => setPopover(false)}
+          container={chipWrap}
+          initialFocus={false}
+          disablePointerDismissal
+        >
           <ClickCatcher onClose={() => setPopover(false)} />
           <ChipPopover
             todo={todo}

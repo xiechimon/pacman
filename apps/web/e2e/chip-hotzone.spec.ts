@@ -34,4 +34,11 @@ test('H2: keyboard focus + Enter toggles the popover', async ({ page }) => {
   await expect(popover(page)).toBeVisible();
   await page.keyboard.press('Enter');
   await expect(popover(page)).toBeHidden();
+  // #666: the toggle is only a toggle if focus never left the trigger — the
+  // popover must not steal it on open (Base UI initialFocus={false} in dhead).
+  // Without the pin this passed or failed on a race: focus stolen to the
+  // popover's edit row meant the second Enter opened the assignment dialog
+  // instead of closing, and focus lost to the popup shell meant it did
+  // nothing at all (popover stayed open — the flake this assert buries).
+  await expect(chip(page)).toBeFocused();
 });
