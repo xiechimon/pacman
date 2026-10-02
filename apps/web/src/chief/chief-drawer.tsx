@@ -29,7 +29,11 @@
 // 面亦无线程管理 mutation（GET/POST threads 外无删除/重命名端点），无
 // local-first 对象面，按 M7 处置二分律移除不渲染；头部三钮双视图同律。
 
-import type { ChiefCompactionModel } from '@pacman/shared';
+import {
+  CHIEF_INPUT_PLACEHOLDER,
+  CHIEF_INPUT_PLACEHOLDER_STEERING,
+  type ChiefCompactionModel,
+} from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
@@ -544,6 +548,12 @@ export function ChiefDrawer({
         </div>
 
         <div className="chief-composer">
+          {/* #624：占位双态随回合态（r5 §3.6，截图 113）——活动线程 activeRun
+              在位（chief.running，mapChief 单点投影）= steer canon「执行过程中
+              即可送达」，空闲 / 新主题 / 回合收尾 = 空闲 canon。两值经 t() 消费
+              shared 单源常量，抽屉文件零 CJK 占位字面量（en 键由
+              i18n-coverage COMPUTED_KEYS 钉住）；刷新节奏骑既有
+              invalidateAll / conversation SSE 重取，无新增轮询。 */}
           <textarea
             ref={attachComposer}
             className="chief-composer-input"
@@ -560,7 +570,9 @@ export function ChiefDrawer({
                   }
                 : undefined
             }
-            placeholder={t('有什么可以帮你的？')}
+            placeholder={t(
+              chief.running === true ? CHIEF_INPUT_PLACEHOLDER_STEERING : CHIEF_INPUT_PLACEHOLDER,
+            )}
           />
           <div className="chief-composer-bar">
             {/* #146 裁决：语音输入/添加附件/提及 local-first 无后端面——
