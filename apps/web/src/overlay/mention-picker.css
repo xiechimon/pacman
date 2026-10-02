@@ -384,11 +384,6 @@
   line-height: 1.4;
 }
 
-.mention-chip--todo {
-  color: rgb(99 102 241);
-  background: rgb(99 102 241 / 15%);
-}
-
 .mention-chip--agent {
   color: rgb(34 197 94);
   background: rgb(34 197 94 / 15%);
