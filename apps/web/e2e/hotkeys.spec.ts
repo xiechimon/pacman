@@ -89,6 +89,18 @@ import { expect, type Page, test } from '@playwright/test';
 // 26. the 未保存闸 confirm layer is that chord's own sibling too: with it
 //     up, Tab cycles nothing — the layer has no focus trap, so eating Tab
 //     there would be a keyboard trap (继续编辑 / 放弃并关闭 unreachable)
+//
+// #645 puts the retired N back on the board — drawer-scoped: the drawer
+// head's new-thread + fires on a bare N while the drawer is open, and the
+// button carries the family's hover hint.
+// 27. the drawer new-thread + hovers the N hint (at rest it stays hidden)
+//     and advertises aria-keyshortcuts — KbdHint's fourth consumption point
+// 28. with the drawer closed N stays retired: six delivered presses open
+//     neither the drawer nor the dialog (the enabled gate keeps the
+//     listener off the window; XMON-37's global retirement holds). The
+//     live fire / scope / input-guard faces ride the verify-pacman probe
+//     drive-chief-new-thread-key.mjs (docs/verify/645) — fixture faces
+//     cannot observe the fire (onNewThread is live-only)
 
 const BOARD = '/app?scenario=01';
 const SCHEDULES = '/app/schedules?scenario=01';
@@ -425,6 +437,35 @@ test('the collapsed rail search icon hovers the ⌘K hint', async ({ page }) => 
   await railSearch.hover();
   await expect(hint).toBeVisible();
   await expect(hint).toHaveText('⌘K');
+});
+
+test('the drawer new-thread + hovers the N hint and advertises aria-keyshortcuts', async ({
+  page,
+}) => {
+  await page.goto(BOARD);
+  await pressUntil(page, 'Meta+j', drawer(page));
+  const newThread = drawer(page).locator('button[aria-label="新主题"]');
+  await expect(newThread).toBeVisible();
+  await expect(newThread).toHaveAttribute('aria-keyshortcuts', 'N');
+  const hint = newThread.locator('.kbd-hint');
+  await expect(hint).toHaveCount(1);
+  // visibility:hidden at rest — capture faces never grow a phantom chip
+  await expect(hint).toBeHidden();
+  await newThread.hover();
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveText('N');
+});
+
+test('with the drawer closed, N stays retired — neither drawer nor dialog opens', async ({
+  page,
+}) => {
+  await page.goto(BOARD);
+  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  // The new binding is drawer-scoped (the enabled gate): with the drawer
+  // shut the listener is off the window, so the retired-global law
+  // (XMON-37, test 1) holds on the drawer face too.
+  await pressesStayClosed(page, 'n', drawer(page));
+  await expect(dialog(page)).toHaveCount(0);
 });
 
 // ---- XMON-95: the new-task dialog's ⌘↵ chord on 保存并开始 ----------------
