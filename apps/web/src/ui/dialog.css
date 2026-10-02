@@ -123,7 +123,6 @@
 }
 
 /* 次钮(ghost):32 高、card-border 描边、surface 底。 */
-.dlg-form-ghost,
 .chief-dlg-ghost {
   height: 32px;
   padding: 0 12px;
@@ -136,7 +135,6 @@
 }
 
 /* 「+ 添加」行(provider 模型):贴左、无框、secondary 墨。 */
-.dlg-form-add,
 .dlg-provider-model-add {
   align-self: flex-start;
   display: flex;

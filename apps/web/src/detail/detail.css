@@ -912,12 +912,6 @@
   margin-top: 6px;
 }
 
-/* standalone elapsed row (r7 36 merge round, r7 38): a bit more air than
-   the in-card 完成 Ns row */
-.chat-done--solo {
-  margin-top: 13px;
-}
-
 /* schedule-origin marker (r7 38: clock + 由定时发起, left aligned) */
 .chat-scheduled {
   display: flex;
@@ -972,12 +966,6 @@
    nudging the chevron/label tail (#471) */
 .chat-streaming-secs {
   font-variant-numeric: tabular-nums;
-}
-
-.chat-done-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 /* tool-call group (r7 28): full-width pills under the 完成 Ns ▾ header */
@@ -1116,21 +1104,6 @@
      to zero height */
   flex: none;
   overflow: hidden;
-}
-
-.chat-done {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 9px;
-  padding-left: 31px;
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-}
-
-.chat-done svg {
-  color: var(--text-dim);
 }
 
 /* ---- composer (#366: the center column's only card — One Card Per
@@ -1983,11 +1956,6 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
-}
-
-.overlay-actions--history {
-  margin-top: 0;
-  padding: 4px 16px 16px;
 }
 
 /* A6：覆盖 A3「保留族类不接 Button 原语」裁决（docs/spec/09）。原三条

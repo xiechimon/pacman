@@ -161,7 +161,9 @@ export interface AgentBackendCapabilities {
 }
 
 export interface SessionOpts {
-  /** kind: api_key | oauth | http（02 §5.6 配置 kind）。 */
+  /** kind: api_key | oauth | http（02 §5.6 配置 kind）。claude-code runtime 步
+   * 收 inert 占位（`{kind:'api_key', providerId:'claude-code'}`，spec 17 A4
+   * 零凭据语义——认证机器本地，后端不消费该字段）；pi 步语义不变。 */
   provider: ProviderConfig;
   modelId: string;
   thinkingLevel?: string;
@@ -224,6 +226,21 @@ export interface AgentBackend {
   /** continue session <convId>（02 §5.7；id = 会话持久化标识，实现自定——
    * pi 侧 = sessionId/sessionFile，daemon chat-sessions/ 索引解析）。 */
   continueSession(id: string, opts: SessionOpts): Promise<AgentSessionHandle>;
+}
+
+/** spec 17 A3 backend 身份词表：`agent.provider` ∈ 此表 = 该步跑对应第二
+ * 后端（per-step 解析，唯一分叉点在 runner 的 backendFor）。'pi' 是模型源
+ * runtime 但**非** backend 身份——pi 步的 provider 槽承载 custom provider
+ * id，恒走默认支。子集关系 BACKEND_RUNTIME_IDS ⊆ MODEL_SOURCE_RUNTIMES 由
+ * vocabulary.test 静态钉住（backend 必是模型源；模型源不必是 backend）。 */
+export const BACKEND_RUNTIME_IDS = ['claude-code'] as const;
+export type BackendRuntimeId = (typeof BACKEND_RUNTIME_IDS)[number];
+
+/** backend 身份判定（窄类型守卫）：词表外（custom provider id / pi /
+ * null / undefined）一律 false。server 侧 toProviderConfig 与 daemon 侧
+ * runner 凭它分流零凭据通道（A4）。 */
+export function isBackendRuntimeId(v: unknown): v is BackendRuntimeId {
+  return typeof v === 'string' && (BACKEND_RUNTIME_IDS as readonly string[]).includes(v);
 }
 
 /** 会话持久化标识（continueSession 的 id 形）：宿主 durable 编排面——

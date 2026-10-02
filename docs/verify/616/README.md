@@ -50,3 +50,21 @@
 - `building-drop-compare.png` — 落执行中的结局对照：静默写相位（before）vs 开始任务 dialog 闸（after）。
 - `done-gesture-compare.gif` — 落已完成全程 2x 慢放对照（含 250ms glide vs 同帧卸载）。
 - `building-gesture-compare.gif` — 落执行中全程 2x 慢放对照（dialog 弹出可见）。
+
+## 追加节（#629）：参考站「已完成」列卡片 hover/按压/点击实测（2026-10-02）
+
+用户验收 #618 后追问不可拖列（已完成/待处理）的卡面行为。真浏览器实测
+（探针卡实验、真卡零接触）：
+
+- 卡内 `<a>` 元素 **0 个**——点击是 Pressable 行为，不存在原生链接，因此
+  没有拖影 chip、没有 URL tooltip 的物质基础。
+- 卡根与标题 `user-select: none`；按住拖动 = 零选中、零 dragstart、零 overlay。
+- hover：零视觉变化（无底色/阴影/位移），cursor: pointer。
+- **按压 :active = 整卡 bg tint 一档**：light `active:bg-surface-secondary`
+  （实测 rgb 242,237,230）、dark `active:bg-surface-tertiary`——用户说的
+  「长按或点击之后有一种类似 hover 的效果」即此；瞬切无过渡。
+- 点击 = 导航 `/app/todo/<id>` 详情路由（重开钮在详情头，板面卡无按钮）。
+
+pacman 差异与修复（三锁灭「小链接」拖影 + `--surface-press` 按压 tint +
+标题退出全局 a:active 压暗 + 点击导航保留）：证据与验证明细在
+`docs/verify/629/`。
