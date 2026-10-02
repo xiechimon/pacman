@@ -23,7 +23,7 @@ import {
 import { toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
-import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
+import { Tabs, TabsIndicator, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import type { ChiefContent, ChiefSettingsTab, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChevronRight, ChiefFaceDashed } from '../icons/index.js';
@@ -127,6 +127,10 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
           className="contents"
         >
           <TabsList variant="bare" className="chief-tabs">
+            {/* #644 滑动指示条：选中 chip 的底色不再画在 .chief-tab 上，改由
+                这根 pill 承载——切 tab 时它按参考站实测的过渡滑到新位并变宽
+                （几何/动效正本是 chief.css 的 .chief-tab-indicator）。 */}
+            <TabsIndicator className="chief-tab-indicator" />
             {TABS.map((item) => (
               <TabsTrigger
                 key={item.id}

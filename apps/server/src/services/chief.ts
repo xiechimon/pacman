@@ -4,12 +4,12 @@
 //   记忆不迁移：Chief 无独立记忆存储，r5 §2）。
 // - 执行形态：Chief 回合 = 机器 step（kind 'chief'，conv = thread id
 //   `chief-<uuid>`，r5 §3.1 daemon.log 实测）+ pi 会话；模型 = 绑定 Agent 模型。
-// - 线程面落库：chief_thread/chief_message（01 §6）；toolDefHashes = 50 词表
+// - 线程面落库：chief_thread/chief_message（01 §6）；toolDefHashes = 51 词表
 //   哈希键面（值形仿 raw 12 字符 base64url 样 [推断]——哈希输入 = 复刻自定
 //   工具定义，与官方值必然不同，仅形状对齐）。
 // - watch/wake 主动回路（r5 §3.5）：派工即自动 watch（reason canon）；gate 停驻
 //   /settle/failed 三触发 wake 轮；settle/failed 后 watch 自动解除。
-// - 策略层（措辞→spec/分派权重/单 todo 直派）= system prompt 指引 + 50 词表
+// - 策略层（措辞→spec/分派权重/单 todo 直派）= system prompt 指引 + 51 词表
 //   relay 工具面，由 LLM 决策——黑盒逼近（04 §1 A4：[推断]/[设计] 不冒充实测）。
 
 import type {
@@ -225,7 +225,7 @@ export function patchChief(
 
 // —— 线程面（chief_thread/chief_message 落库，01 §6）———————————————————————
 
-/** toolDefHashes = 50 词表哈希键面（thread 创建时定格；值形仿 raw 12 字符
+/** toolDefHashes = 51 词表哈希键面（thread 创建时定格；值形仿 raw 12 字符
  * base64url 样 [推断]）。 */
 export function chiefToolDefHashes(): Record<string, string> {
   const out: Record<string, string> = {};

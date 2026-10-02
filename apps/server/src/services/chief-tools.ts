@@ -1,10 +1,11 @@
 // Chief remoteTools 服务端执行面（02 §4.3「服务端定义并执行」；r5 §3.1 relay
 // 位形 = POST /api/machine/tool/<stepId> {name, params} → {text}）。
-// 50 词表（protocol/chief-tools.ts；raw 观测 49 − delete_skills（spec 13
+// 51 词表（protocol/chief-tools.ts；raw 观测 49 − delete_skills（spec 13
 // #367，本地目录投影无删除面）+ create_skill/update_skill（XMON-109 spec 13
 // 回摆新增，CHIEF_TOOLS_ADDED 登记）+ set_remote_shell（XMON-115 回摆，
 // XMON-77 除名解除——「远程 shell」本体 = XMON-108 双闸 + XMON-110 daemon
-// 工具））逐件映射到既有服务/DB。
+// 工具）+ models（#627 读侧候选清单，CHIEF_TOOLS_ADDED 登记））逐件映射到
+// 既有服务/DB。
 // 复刻口径（02 §4.3 尾注 / 04 §1 A4）：Chief = 挂团队工具的 pi 会话，工具
 // 「语义」按 r1 docs 六能力组 + r3/r5 行为证据黑盒逼近；params/results 细形
 // 未采到 wire 原件处一律 [推断]，不冒充实测。返回值 = JSON 串（bundle text()
@@ -24,6 +25,7 @@ import {
   filterAgentTools,
   isChiefConversationId,
   MEMORY_QUOTA_PER_AGENT,
+  MODEL_SOURCE_RUNTIME_LABELS,
   updateSkillToolParamsSchema,
 } from '@pacman/shared';
 import { and, asc, eq, sql } from 'drizzle-orm';
@@ -52,6 +54,7 @@ import { isGithubRepoRef, readFile } from './git.js';
 import type { MachineWakeHub } from './machines.js';
 import { defaultMcpConfigPath, listMcpServers } from './mcp-servers.js';
 import { notifyChiefMessage } from './notifications.js';
+import { getModelSources, listProviders } from './providers.js';
 import { createSchedule, deleteSchedule, listSchedules } from './schedules.js';
 import { createSecret, deleteSecret, listSecrets, updateSecret } from './secrets.js';
 import { createLocalSkill, scanLocalSkills, updateLocalSkill } from './skills.js';
@@ -75,6 +78,10 @@ export interface ChiefToolDeps {
   /** 本机 MCP config 读路径（spec 13/#368 mcp_servers 工具换源）；缺省 =
    *  ~/.claude.json（config.ts 同默认；测试面显式注入 fixture 路径）。 */
   mcpConfigPath?: string;
+  /** claude-code 模型段读路径（#627 models 工具 = model-sources 同源）：homeDir
+   *  注入位，缺省 = os.homedir()（REST GET /model-sources 路由同律；测试面注入
+   *  隔离目录钉住 settings.json 内容）。 */
+  claudeHomeDir?: string;
   /** GitHub 出站注入位（#452 写向：create_todo 自建 issue 透传；
    * AppContext.githubFetch 同族，缺省 globalThis.fetch，测试注入 mock）。 */
   githubFetch?: FetchLike;
@@ -177,7 +184,7 @@ function requireTeamAgent(db: Db, agentId: string, teamId: string) {
   if (!row) throw new HttpError(404, `agent ${agentId}（不在本团队，或 id 抄错了）`);
   return row;
 }
-/** 50 词表服务端执行。未识别工具名 = 400（词表外不执行，02 §7.2 白名单纪律
+/** 51 词表服务端执行。未识别工具名 = 400（词表外不执行，02 §7.2 白名单纪律
  * 同族）。返回 JSON 串。 */
 export async function executeChiefTool(
   deps: ChiefToolDeps,
@@ -197,7 +204,7 @@ export async function executeChiefTool(
     ...(deps.githubFetch !== undefined ? { githubFetch: deps.githubFetch } : {}),
   };
   switch (name) {
-    // —— 读侧 15 ——
+    // —— 读侧 16（#627 +models）——
     case 'projects': {
       const rows = db.select().from(project).where(eq(project.teamId, ctx.teamId)).all();
       return json(
@@ -235,6 +242,47 @@ export async function executeChiefTool(
           mcpServers: a.mcpServers,
         })),
       );
+    }
+    case 'models': {
+      // #627 候选模型清单：行语义 = web toModelOptions 并集投影（custom
+      // providers models[] ∪ model-sources 非 pi 段，同 (provider, modelId)
+      // first-wins 去重——pi 段与 providers 段同构平铺丢归属，不重复产行）。
+      // 本层独立实现（不 import web 代码），数据面复用 providers /
+      // model-sources 两路由背后的 service 函数；claude-code 段卫生同
+      // getModelSources（文件缺失 → installed:false 空段，不报错）。
+      const keysvc = { db, box: deps.box };
+      const rows: {
+        provider: string;
+        providerLabel: string;
+        modelId: string;
+        modelName: string;
+      }[] = [];
+      const seen = new Set<string>();
+      const push = (row: (typeof rows)[number]) => {
+        const key = `${row.provider}/${row.modelId}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        rows.push(row);
+      };
+      for (const p of listProviders(keysvc, ctx.teamId)) {
+        for (const m of p.models) {
+          if (m.id === '') continue;
+          push({
+            provider: p.providerId,
+            providerLabel: p.label,
+            modelId: m.id,
+            modelName: m.name !== '' ? m.name : m.id,
+          });
+        }
+      }
+      for (const source of getModelSources(keysvc, ctx.teamId, deps.claudeHomeDir).sources) {
+        if (source.runtime === 'pi') continue;
+        const providerLabel = MODEL_SOURCE_RUNTIME_LABELS[source.runtime] ?? source.runtime;
+        for (const m of source.models) {
+          push({ provider: source.runtime, providerLabel, modelId: m.id, modelName: m.name });
+        }
+      }
+      return json(rows);
     }
     case 'machines': {
       const rows = db.select().from(machine).where(eq(machine.teamId, ctx.teamId)).all();
@@ -898,7 +946,7 @@ export interface WorkerMemoryCtx {
 
 /** worker 步 relay 白名单 = 记忆三件套 + 附件读 + set_task_meta + 技能写词
  * （WORKER_REMOTE_TOOLS 单源；
- * 词表外 = 400）。chief 50 词表不外溢到 worker 步——组织/执行面是 Chief 专属
+ * 词表外 = 400）。chief 51 词表不外溢到 worker 步——组织/执行面是 Chief 专属
  * （例外：create_skill/update_skill 双侧都有，XMON-109 拍板 worker 也能写
  * 技能，worker 侧另有 agent 行开关执法）。
  * （r5 §3.1，技能写词 = XMON-109）。attachment：服务层单源 = attachments.readAttachmentMeta，团队

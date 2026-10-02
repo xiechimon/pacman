@@ -109,6 +109,8 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     mcpConfigPath: ctx.mcpConfigPath,
     skillsDir: ctx.skillsDir,
     convHub: ctx.convHub,
+    // #627 models 工具：claude-code 模段读路径（缺省 = 工具侧 os.homedir()）。
+    ...(ctx.claudeHomeDir !== undefined ? { claudeHomeDir: ctx.claudeHomeDir } : {}),
     // #452 写向：set_task_meta 标题回写 + chief create_todo 自建 issue 出站位。
     ...(ctx.githubFetch !== undefined ? { githubFetch: ctx.githubFetch } : {}),
   };
