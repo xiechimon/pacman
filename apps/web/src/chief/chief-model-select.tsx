@@ -11,14 +11,26 @@
 // (chief-agent-dialog 同律)。live:选定即 PATCH chief compactionModel 槽
 // (S8:mutation 后 invalidateAll 重取回显,不做本地乐观态);fixture 面
 // accept 律(#148:选择即关),选项退 canon 单行(DEFAULT_AGENT 同律)。
+//
+// 行渲染 / 行投影 / 回显兜底 / 选中律 / pick 律单源 =
+// components/model-select-core(#626 收敛);本面只留壳(ghost Button +
+// FloatingShell popover)与几何钩子(chief-model-row* 类名组,正本
+// chief.css)。
 
 import type { ChiefCompactionModel } from '@pacman/shared';
 import { useState } from 'react';
+import {
+  createModelPicker,
+  ModelPickRow,
+  type ModelRowSkin,
+  modelEchoLabel,
+  toModelRows,
+} from '../components/model-select-core.js';
 import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
-import { Check, ChevronDown } from '../icons/index.js';
+import { ChevronDown } from '../icons/index.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
 
 /** fixture 面候选兜底(r5 §2 捕获网关 r3-gw——捕获徽标位原文即 id 本身
@@ -32,6 +44,14 @@ const DEFAULT_OPTIONS: ModelOption[] = [
     modelName: 'claude-sonnet-5',
   },
 ];
+
+/** #204 popover 面的类名组:name/provider 直挂行下(无 col 列容器)。 */
+const ROW_SKIN: ModelRowSkin = {
+  row: 'chief-model-row',
+  name: 'chief-model-row-name',
+  provider: 'chief-model-row-provider',
+  check: 'chief-model-check',
+};
 
 interface ChiefModelSelectProps {
   /** 当前值(live = chief 封套真值;fixture = ChiefContent 字段);null =
@@ -50,30 +70,11 @@ export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectPro
   // #425 B1:wrap 锚定面——portal 挂进 wrap 保绝对定位几何;Esc 走 FloatingShell。
   const [wrap, setWrap] = useState<HTMLSpanElement | null>(null);
   const rows = options ?? DEFAULT_OPTIONS;
-  const current =
-    value == null
-      ? null
-      : (rows.find((row) => row.provider === value.provider && row.modelId === value.modelId) ??
-        null);
-  // 值回显:选项命中 → 模型名;未命中(含 preset provider)→ 裸串兜底。
-  const label =
-    value == null
-      ? t('默认（与 Chief 相同）')
-      : (current?.modelName ?? `${value.provider}/${value.modelId}`);
-
-  const pick = (next: ChiefCompactionModel | null) => {
-    // 选中当前值 = 空操作关面(两态同律)。
-    if (
-      next === null
-        ? value === null
-        : value?.provider === next.provider && value?.modelId === next.modelId
-    ) {
-      setOpen(false);
-      return;
-    }
-    setOpen(false); // accept 律:选择即关;live 真值经 invalidateAll 重取回显
-    onPick?.(next);
-  };
+  // 值回显:选项命中 → 模型名;未命中(含 preset provider)→ 裸串兜底
+  // (律单源 model-select-core;默认行文案 = 继承语义,本面传入)。
+  const label = modelEchoLabel(value, rows, t('默认（与 Chief 相同）'));
+  // 选中当前值 = 空操作关面;否则先关面再上报(律单源 model-select-core)。
+  const pick = createModelPicker({ value, close: () => setOpen(false), onPick });
 
   return (
     <span className="chief-model-wrap" ref={setWrap}>
@@ -101,41 +102,23 @@ export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectPro
       >
         <ClickCatcher onClose={() => setOpen(false)} />
         <div className="chief-model-menu anim-pop" role="listbox" aria-label={t('压缩模型')}>
-          <button
-            type="button"
-            className="chief-model-row"
-            role="option"
-            aria-selected={value === null}
-            onClick={() => pick(null)}
-          >
-            <span className="chief-model-row-name">{t('默认（与 Chief 相同）')}</span>
-            {value === null && (
-              <span className="chief-model-check">
-                <Check width={14} height={14} />
-              </span>
-            )}
-          </button>
-          {rows.map((row) => {
-            const selected = current?.provider === row.provider && current?.modelId === row.modelId;
-            return (
-              <button
-                key={`${row.provider}/${row.modelId}`}
-                type="button"
-                className="chief-model-row"
-                role="option"
-                aria-selected={selected}
-                onClick={() => pick({ provider: row.provider, modelId: row.modelId })}
-              >
-                <span className="chief-model-row-name">{row.modelName}</span>
-                <span className="chief-model-row-provider">{row.providerLabel}</span>
-                {selected && (
-                  <span className="chief-model-check">
-                    <Check width={14} height={14} />
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {/* 默认行语义 = 继承 Chief(#626 参数化:文案由本面传入)。 */}
+          <ModelPickRow
+            skin={ROW_SKIN}
+            selected={value === null}
+            label={t('默认（与 Chief 相同）')}
+            onPick={() => pick(null)}
+          />
+          {toModelRows(rows, value).map((row) => (
+            <ModelPickRow
+              key={row.key}
+              skin={ROW_SKIN}
+              selected={row.selected}
+              label={row.label}
+              providerLabel={row.providerLabel}
+              onPick={() => pick(row.value)}
+            />
+          ))}
         </div>
       </FloatingShell>
     </span>

@@ -22,7 +22,9 @@
 //
 // 与 chief/chief-model-select.tsx 的关系不变：两者是同一投影上的两个面——总管
 // 那个带「默认（与 Chief 相同）」行与 compactionModel 语义（可空槽 = 继承
-// Chief），Agent 的模型是自身配置项，没有「继承」态。
+// Chief），Agent 的模型是自身配置项，没有「继承」态。值回显兜底裸串律两面
+// 共用一份，单源在 components/model-select-core（#626 收敛）：本件一级消费
+// providerEchoLabel、二级消费 modelEchoLabel，壳与两级级联律仍归本件。
 //
 // 标签只出模型名：原版下拉项的 `· 128k` 是原版内置模型目录的上下文窗口——
 // pacman 是本地 BYOK，没有这个数据源，不编造；provider 位升去一级后二级行内
@@ -33,6 +35,7 @@
 // utility 层），两处消费各带自己的前缀：概览 tab = `agent-model` /
 // `agent-runtime`，创建弹窗 = `dlg-agent-model` / `dlg-agent-runtime`。
 
+import { modelEchoLabel, providerEchoLabel } from '../components/model-select-core.js';
 import { Select, type SelectOption } from '../components/ui/select.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -76,10 +79,10 @@ export function AgentRuntimeSelect({ value, options, onPick, prefix }: AgentRunt
     value: group.provider,
     label: group.providerLabel,
   }));
-  const current = value == null ? undefined : groups.find((group) => group.provider === value);
   // 值回显：分组命中 → 分组名；未命中（provider 已被改名/删除）→ 裸串兜底，
-  // 不空白不崩（二级同律）。
-  const label = value == null ? t(BUILTIN_RUNTIME_LABEL) : (current?.providerLabel ?? value);
+  // 不空白不崩（律单源 model-select-core，二级同律）。
+  const unset = t(BUILTIN_RUNTIME_LABEL);
+  const label = providerEchoLabel(value, groups, unset);
 
   return (
     <Select
@@ -87,7 +90,7 @@ export function AgentRuntimeSelect({ value, options, onPick, prefix }: AgentRunt
       value={value}
       options={rows}
       label={label}
-      unsetLabel={t(BUILTIN_RUNTIME_LABEL)}
+      unsetLabel={unset}
       menuLabel={t('运行时')}
       onPick={(next) => onPick?.(next)}
     />
@@ -117,14 +120,10 @@ export function AgentModelSelect({
   const rows: SelectOption[] = options
     .filter((row) => row.provider === provider)
     .map((row) => ({ value: row.modelId, label: row.modelName }));
-  const current =
-    modelId == null
-      ? undefined
-      : options.find((row) => row.provider === provider && row.modelId === modelId);
   // 值回显：选项命中 → 模型名；未命中（模型已被改名/删除）→ 裸串兜底，
-  // 不空白不崩（chief 选择器同律）。
-  const label =
-    modelId == null ? t('未设置模型') : (current?.modelName ?? `${provider}/${modelId}`);
+  // 不空白不崩（律单源 model-select-core，chief 选择器同律）。
+  const unset = t('未设置模型');
+  const label = modelEchoLabel({ provider, modelId }, options, unset);
 
   return (
     <Select
@@ -132,7 +131,7 @@ export function AgentModelSelect({
       value={modelId}
       options={rows}
       label={label}
-      unsetLabel={t('未设置模型')}
+      unsetLabel={unset}
       menuLabel={t('模型')}
       disabled={provider === null}
       onPick={(next) => onPick?.(next)}

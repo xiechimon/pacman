@@ -6,14 +6,33 @@
 // 源，不编造，AgentModelSelect 标签律同）。首行「默认（与绑定 Agent 相同）」
 // = null 槽回继承（压缩模型选择器默认行同律）；选中当前值 = 空操作关面；
 // fixture 面 accept 律（onPick 缺省 = 选择即关）。
+//
+// 行渲染 / 行投影 / 选中律 / pick 律单源 = components/model-select-core
+// （#626 收敛）；本面只留壳（DialogShell + 搜索 + 空态）与几何钩子
+// （chief-model-pick-* 类名组，正本 chief.css）。
 
 import type { ChiefCompactionModel } from '@pacman/shared';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  createModelPicker,
+  ModelPickRow,
+  type ModelRowSkin,
+  toModelRows,
+} from '../components/model-select-core.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
-import { Check, Search } from '../icons/index.js';
+import { Search } from '../icons/index.js';
+
+/** r5 108 面的类名组：比 popover 面多一层 col 列容器（名 + 副题纵排）。 */
+const ROW_SKIN: ModelRowSkin = {
+  row: 'chief-model-pick-row',
+  col: 'chief-model-pick-col',
+  name: 'chief-model-pick-name',
+  provider: 'chief-model-pick-provider',
+  check: 'chief-model-check',
+};
 
 interface ChiefModelDialogProps {
   /** #73 retained-mount open flag。 */
@@ -43,22 +62,8 @@ export function ChiefModelDialog({ open, onClose, value, options, onPick }: Chie
         row.modelName.toLowerCase().includes(q) || row.providerLabel.toLowerCase().includes(q),
     );
   }, [options, query]);
-  const isSelected = (row: ModelOption) =>
-    value?.provider === row.provider && value?.modelId === row.modelId;
-
-  const pick = (next: ChiefCompactionModel | null) => {
-    // 选中当前值 = 空操作关面（两态同律）。
-    if (
-      next === null
-        ? value === null
-        : value?.provider === next.provider && value?.modelId === next.modelId
-    ) {
-      onClose();
-      return;
-    }
-    onClose(); // accept 律：选择即关；live 真值经 invalidateAll 重取回显
-    onPick?.(next);
-  };
+  // 选中当前值 = 空操作关面；否则先关面再上报（律单源 model-select-core）。
+  const pick = createModelPicker({ value, close: onClose, onPick });
 
   return (
     <DialogShell title={t('模型')} open={open} onClose={onClose}>
@@ -74,45 +79,23 @@ export function ChiefModelDialog({ open, onClose, value, options, onPick }: Chie
           />
         </div>
         <div className="chief-model-pick-list" role="listbox" aria-label={t('模型')}>
-          <button
-            type="button"
-            className="chief-model-pick-row"
-            role="option"
-            aria-selected={value === null}
-            onClick={() => pick(null)}
-          >
-            <span className="chief-model-pick-col">
-              <span className="chief-model-pick-name">{t('默认（与绑定 Agent 相同）')}</span>
-            </span>
-            {value === null && (
-              <span className="chief-model-check">
-                <Check width={14} height={14} />
-              </span>
-            )}
-          </button>
-          {rows.map((row) => {
-            const selected = isSelected(row);
-            return (
-              <button
-                key={`${row.provider}/${row.modelId}`}
-                type="button"
-                className="chief-model-pick-row"
-                role="option"
-                aria-selected={selected}
-                onClick={() => pick({ provider: row.provider, modelId: row.modelId })}
-              >
-                <span className="chief-model-pick-col">
-                  <span className="chief-model-pick-name">{row.modelName}</span>
-                  <span className="chief-model-pick-provider">{row.providerLabel}</span>
-                </span>
-                {selected && (
-                  <span className="chief-model-check">
-                    <Check width={14} height={14} />
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {/* 默认行语义 = 继承绑定 Agent（#626 参数化：文案由本面传入）。 */}
+          <ModelPickRow
+            skin={ROW_SKIN}
+            selected={value === null}
+            label={t('默认（与绑定 Agent 相同）')}
+            onPick={() => pick(null)}
+          />
+          {toModelRows(rows, value).map((row) => (
+            <ModelPickRow
+              key={row.key}
+              skin={ROW_SKIN}
+              selected={row.selected}
+              label={row.label}
+              providerLabel={row.providerLabel}
+              onPick={() => pick(row.value)}
+            />
+          ))}
           {query.trim() !== '' && rows.length === 0 && (
             <div className="chief-pick-empty">{t('没有匹配的模型')}</div>
           )}
