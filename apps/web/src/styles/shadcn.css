@@ -107,6 +107,9 @@
   --surface-tertiary: #27272a;
   --surface-elevated: #1f1f23;
   --surface-hover: #1f1f23;
+  /* #629 板面卡按压档（参考站 2026-10-02 实测：dark 侧卡底 =
+     surface-secondary，按压 active:bg-surface-tertiary = 深一档） */
+  --surface-press: var(--surface-tertiary);
   /* text 族余 3 档（D1 保档数）：次级 / 三级 / 最暗文字 */
   --text-secondary: #d4d4d8;
   --text-tertiary: #71717a;
@@ -271,6 +274,9 @@
   --surface-tertiary: #e8e2d9;
   --surface-elevated: #fdfaf6;
   --surface-hover: #f2ede6;
+  /* #629 板面卡按压档，light 侧：参考站卡底白、按压
+     active:bg-surface-secondary（实测 rgb 242,237,230 ≈ 本 token） */
+  --surface-press: var(--surface-secondary);
   /* XMON-55 P4: the light ramp ran one step lighter than its dark mirror —
      #57534e secondary / #78716c tertiary over #f2ede6 paper. Both stepped
      down one stone notch (secondary now carries what tertiary did, tertiary

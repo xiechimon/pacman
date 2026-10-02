@@ -170,6 +170,20 @@ a:active {
   opacity: 0.85;
 }
 
+/* #629 板面卡按压面（参考站 2026-10-02 实测）：press = 整卡 bg tint 一档
+   （--surface-press：dark 走 surface-tertiary、light 走 surface-secondary，
+   与参考站 active:bg-* 类逐值同源），瞬切无过渡（参考站 computed
+   transition 0s）。:active 从 stretched link 的 ::after 命中点沿 DOM 祖先
+   链传到卡根。标题链接同时退出上面的全局 a:active 压暗——参考站按压只有
+   bg tint 一个反馈，标题文字不 dim（双重反馈是噪音）。 */
+.todo-card:active {
+  background-color: var(--surface-press);
+}
+
+.todo-card-link:active {
+  opacity: 1;
+}
+
 @media (pointer: coarse) {
   button:active,
   [role="button"]:active,
