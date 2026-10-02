@@ -1,48 +1,52 @@
-# #616 看板拖拽抬升卡流畅度——测量方法与证据
+# #616 看板拖拽——两轮工作的测量方法与证据
+
+第一轮修「录制时阴影不流畅」的性能根因；第二轮按用户裁决对齐参考产品
+（todos.dev）的拖拽逻辑与动画全面重做。两轮的证据都在本目录，方法是同
+一套可复现测量面。
 
 ## 方法
 
-- 栈：`vite build --mode fixture` + `vite preview`（127.0.0.1:8499），Playwright chromium headless，1440x732，dark。
-- 手势：脚本化 pointer 序列（mouse.down → 60-90 步 move，~9ms/步 ≈ 90Hz，跟真实指针节奏同量级），场景 35（已完成列内重排）与场景 01（待处理→待开始跨列）。
-- 计数：CDP `Tracing`（devtools.timeline 类别），窗口自对齐到手势自身的 mousedown/mouseup 事件（trace 时钟是单调钟，不能用墙钟过滤），统计 Paint / RasterTask / Commit / UpdateLayoutTree。
-- 录屏：Playwright recordVideo（25fps webm，等价「录制时」的采样条件），逐帧模板匹配（cv2 NCC）追踪抬升卡位置。
-- 每项 n>=3 复跑；before/after 各跑同一 harness。
+- 栈：`vite build --mode fixture` + `vite preview`，Playwright chromium headless，1440x732，dark。
+- 手势：脚本化 pointer 序列（mouse.down → 55-90 步 move，~9-11ms/步 ≈ 90Hz，同真实指针节奏量级）。
+- 计数：CDP `Tracing`（devtools.timeline），窗口自对齐到手势自身的 mousedown/mouseup 事件（trace 时钟是单调钟，不能用墙钟过滤）。
+- 录屏：Playwright recordVideo（25fps webm，等价「录制时」采样条件），ffmpeg 抽帧 + 模板匹配/像素探针逐帧分析。
+- 每项 n>=3 复跑；before/after 用同一 harness、同一场景、同一手势参数。
+- 参考站取证：已登录真浏览器（ego-browser）对 todos.dev 逐项实测——overlay 内联样式、getAnimations、MutationObserver、逐列拖拽实验；实验用一次性探针卡（标题带「可删」），结束后删除并核对盘面恢复原状，真数据零变动。
 
-## 根因判定（实测，与直觉相反）
+## 参考站行为矩阵（2026-10-02 live 实测，重做的正典依据）
 
-「box-shadow + transform 每帧重绘」**不成立**：把 `--lift-shadow` 整段拿掉（`box-shadow: none !important`），RasterTask 119 vs 基线 120、Paint 不变。
+| 面 | todos.dev 实测 |
+| --- | --- |
+| 可拖列 | 仅待开始（待处理/已完成卡无传感器，按下直通卡内点击） |
+| 抬升面 | 紧凑复刻卡：身份行（14px/3px 项目徽标 + 11px 项目名 + 10px tabular seq）+ 两行截断标题；8px 圆角、1px 描边、padding 10x12、gap 6 |
+| 抬升配方 | 内联 `opacity: 0.92; box-shadow: rgba(0,0,0,0.18) 0 8px 24px; transform: translate(x,y) rotate(2deg)`，1:1 跟手、无 transition |
+| 源卡 | wrapper `opacity: 0.4` 即时，留原槽 |
+| 让位/重排 | 无——手势期兄弟卡零位移，同列落位零提交（无列内重排语义） |
+| 列染色 | 两级 indigo：全部合法目标列 border-indigo-400 + bg-indigo-500/05；悬停列 /10；源列与待处理素面；瞬切无过渡 |
+| 落位 | overlay 随 pointerup 同帧卸载，零动画（getAnimations 全程为空） |
+| 落执行中 | 弹「开始任务」居中模态（448px，fade-in 200ms ease）；确认前相位不写；取消零提交 |
+| 落已完成 | 静默即时提交，无 toast |
+| 静置 hover | 零效果（cursor pointer）；按压态 bg tint |
 
-真实成本：**DragOverlay 层的位移由主线程逐 pointermove 提交内联 transform，且无动画提示**——Chromium 把每个新位置当静态位置处理，overlay 层以 ~0.8 次/帧重栅格。录屏（编码器竞争 GPU/CPU）与 Retina 2x 栅格面积会放大这一成本，即用户报的「录制时阴影不流畅」。
+## 第一轮：性能根因（保留在重做里）
 
-## 数字
+「box-shadow 每帧重绘」直觉被干预实验证伪：去掉 `--lift-shadow`，RasterTask 119 vs 基线 120。真根因 = overlay 层位移由主线程逐 pointermove 提交内联 transform 且无动画提示，Chromium 按静态位置逐帧重栅格。
 
-| 指标（1.5s 列内手势，n=3） | before | after |
+| 指标（1.5s 列内手势，n=3） | before | will-change 后 |
 | --- | --- | --- |
-| RasterTask | 115-120 | **57-62（减半）** |
-| Paint（离散） | 20-27 | 20-27（不变） |
-| 去阴影干预 RasterTask | 119（无效） | — |
+| RasterTask | 115-120 | 57-62（减半） |
 | 8x CPU 节流下 RasterTask | 120 | 62 |
 | 跟手期帧节奏（rAF 中位） | 16.7ms | 16.7ms |
-| 跟手期 overlay transform 更新 | 每帧（gap=1） | 每帧（gap=1） |
+| 标题带锐度 | 11.72 | 11.65（无损） |
 
-落位滑动（36px glide，25fps 采样，距离覆盖率）：
+## 第二轮：重做后的闸与钉扎
 
-| t (ms) | 40 | 80 | 120 | 160 | 200 |
-| --- | --- | --- | --- | --- | --- |
-| before（ease 250ms） | 6% | 14% | 28% | 67% | 81% |
-| after（ease-pop 250ms） | **28%** | **50%** | **78%** | 89% | 94% |
-
-ease 慢起步 = 松手后卡片迟疑再猛追；ease-pop 即时起步、柔和落位。
-
-## 视觉无回归
-
-- 抬升卡几何逐字节一致（摘除冗余 dragWidth 后 wrapper 矩形 `{x:1152.25, y:253, w:264.5, h:114.5}` 前后相同——dnd-kit PositionedOverlay 本就把 wrapper 宽度设为 activeNodeRect.width）。
-- 拖拽中整页截图像素差 0.18%（位置噪声级）；标题文字带锐度 before 11.72 / after 11.65（will-change 不降栅格质量）。
-- `board-dnd.spec` 10/10、`visual-polish` + `sidebar-visual` 20/20 通过（含 lift 阴影四边墨量像素探针、落位滑翔 >100ms 时长下限、glide 终点=落位槽）。
+- `board-dnd.spec` 重写 11 条钉住全部新语义（静默提交落列尾 / 开始任务闸 / 待处理零染色零提交 / 同列零位移零提交 / 待处理与已完成无传感器 / 紧凑抬升配方两主题 / 两级染色两主题 / 无回闪 / 零滑翔）。
+- 全量 e2e 561/561、web vitest 139/139、integration 57/57（含 m5 真栈链）、lint 0 error、typecheck 5/5。
 
 ## 文件
 
-- `glide-compare.gif` — 落位滑动逐帧对照（左 before / 右 after，2x 慢放，帧头标注松手后毫秒）。
-- `shift-compare.gif` — 让位卡过渡对照（ease 200ms vs ease-pop 200ms）。
-- `glide-curve.png` — 滑动距离覆盖率-时间曲线。
-- `mid-drag-before.png` / `mid-drag-after.png` — 拖拽中整页截图（外观一致性）。
+- `lift-tint-compare.png` — 拖拽悬停瞬间对照：整卡 overlay + 单级染色（before）vs 紧凑 2° 倾角卡 + 两级 indigo（after）。
+- `building-drop-compare.png` — 落执行中的结局对照：静默写相位（before）vs 开始任务 dialog 闸（after）。
+- `done-gesture-compare.gif` — 落已完成全程 2x 慢放对照（含 250ms glide vs 同帧卸载）。
+- `building-gesture-compare.gif` — 落执行中全程 2x 慢放对照（dialog 弹出可见）。
