@@ -524,7 +524,6 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
         kind: 'plan',
         title: `方案 · v${p.version}`,
         preview: preview.length > 90 ? `${preview.slice(0, 90)}…` : preview,
-        chevron: true,
       },
     });
   });

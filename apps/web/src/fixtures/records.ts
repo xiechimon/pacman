@@ -464,9 +464,10 @@ export type TranscriptItem =
   | { kind: 'streaming'; seconds?: number; label: string }
   /** Collapsed plan card: `方案 · v1` row, clamped preview, action row
    *  `完成 Ns` (r7 17). `seconds` absent renders the bare `完成`
-   *  (reused-plan card, r8 76); `chevron` adds the trailing `›` of the
-   *  r8 plan cards (63/68/73). */
-  | { kind: 'plan'; title: string; preview: string; seconds?: number; chevron?: boolean }
+   *  (reused-plan card, r8 76). The r8 captures' trailing `›` is gone:
+   *  re-measured 2026-10-02 the reference footer chevron only ever exists
+   *  as a tool-group expander, and a plan card has no group (#634 follow-up). */
+  | { kind: 'plan'; title: string; preview: string; seconds?: number }
   /** Tool-call group of a finished run: collapsed = `完成 Ns ▸` single row
    *  (r7 27/36); expanded = `完成 Ns ▾` + one pill per tool call + the
    *  `收起 ^` link (r7 28). #469: `outputs[i]` carries the stdout/stderr of
@@ -529,11 +530,12 @@ export interface RobotPara {
 }
 
 /** Message action row payload (r8 60/65): copy + optional restore +
- *  optional `| 完成 Ns` + optional trailing chevron. */
+ *  optional `| 完成 Ns`. The captures' trailing chevron is not part of the
+ *  payload anymore: it renders only where a tool group gives it something
+ *  to expand (#634 follow-up, re-measured against the live reference). */
 export interface RobotFooter {
   restore?: boolean;
   seconds?: number;
-  chevron?: boolean;
 }
 
 /** One changed file in the diff pane (r7 27/27b): collapsed = file row

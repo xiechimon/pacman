@@ -57,16 +57,26 @@ function formatElapsed(seconds: number, t: TFunc): string {
   return t('完成 {elapsed}', { elapsed });
 }
 
-/** Message action row (r7 17/28, r8 63/65/73): copy icon, optional
- *  restore icon, then the optional `| 完成 Ns` elapsed tail with an
- *  optional trailing chevron. Every footer variant observed is a subset
- *  of this one row. With `toggle` the row renders as the tool group's
- *  expand/collapse button (#306) instead of a static div. */
+/** Message action row (r7 17/28, r8 63/65/73, #634 follow-up re-measured
+ *  2026-10-02): optional copy button, optional restore icon, then the
+ *  optional `| 完成 Ns` elapsed tail. Every footer variant observed is a
+ *  subset of this one row. With `toggle` the elapsed tail + chevron render
+ *  as the tool group's expand/collapse button (#306) instead of static
+ *  nodes.
+ *
+ *  #634 follow-up: the reference footer's copy is a REAL button (measured:
+ *  robot row copies the message markdown, the user row copies the todo
+ *  markdown link), and its chevron only ever exists as a group expander —
+ *  the done-phase footers carry none. Our copy icon used to be inert
+ *  decoration on every row and the robot/plan footers carried an inert
+ *  `›`: shape without semantics. Now `copy` carries the row's human
+ *  readable text (absent = no copy affordance at all) and the chevron
+ *  renders only where `toggle` gives it something to expand. */
 function ActionRow({
   restore,
   seconds,
   bare,
-  chevron,
+  copy,
   t,
   toggle,
 }: {
@@ -74,40 +84,66 @@ function ActionRow({
   seconds?: number;
   /** `完成` with no seconds (reused-plan card, r8 76). */
   bare?: boolean;
-  /** `›` on plan cards / collapsed tool groups, `⌄` on expanded ones. */
-  chevron?: 'right' | 'down';
+  /** Clipboard payload = the row's human-readable content. Absent = the
+   *  row renders no copy affordance (an icon that copies nothing is the
+   *  bug this follow-up removes). */
+  copy?: string;
   t: TFunc;
   /** #306: the tools group's footer doubles as the expander (collapsed
    *  r7 27 ↔ expanded 28 family, same law as 全部展开/全部收起). */
   toggle?: { expanded: boolean; onToggle: () => void };
 }) {
-  const body = (
+  const tail = (
     <>
-      <Copy width={13} height={13} />
-      {restore === true && <Restore width={13} height={13} />}
       {(seconds != null || bare === true) && (
         <span className="chat-foot-elapsed">
           {seconds != null ? formatElapsed(seconds, t) : t('完成')}
         </span>
       )}
-      {chevron === 'right' && <ChevronRight width={10} height={10} className="chat-foot-chevron" />}
-      {chevron === 'down' && <ChevronDown width={10} height={10} className="chat-foot-chevron" />}
+      {toggle != null &&
+        (toggle.expanded ? (
+          <ChevronDown width={10} height={10} className="chat-foot-chevron" />
+        ) : (
+          <ChevronRight width={10} height={10} className="chat-foot-chevron" />
+        ))}
     </>
   );
-  if (toggle == null) return <div className="chat-row-icons">{body}</div>;
   return (
-    // XMON-24：行图标 toggle 切 shadcn ghost——皮肤/几何全在
-    // .chat-row-icons(--toggle) per-face（font:inherit 顺手灭底座字号，
-    // bg transparent 灭 hover/aria-expanded 底）；utilities 只清 h-8、
-    // justify、active 位移、svg 强制 16px（chevron 属性 10px）四条差额。
-    <Button
-      variant="ghost"
-      className="chat-row-icons chat-row-icons--toggle h-auto rounded-none justify-start active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-      aria-expanded={toggle.expanded}
-      onClick={toggle.onToggle}
-    >
-      {body}
-    </Button>
+    <div className="chat-row-icons">
+      {copy != null && (
+        // p-0 keeps the 13px icon box the inert span carried, so the row
+        // geometry the #470 fence pins does not move.
+        <Button
+          variant="ghost"
+          className="chat-copy h-auto rounded-none justify-start p-0 active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+          aria-label={t('复制')}
+          onClick={() => {
+            void navigator.clipboard.writeText(copy);
+          }}
+        >
+          <Copy width={13} height={13} />
+        </Button>
+      )}
+      {restore === true && <Restore width={13} height={13} />}
+      {toggle == null ? (
+        tail
+      ) : (
+        // XMON-24：行图标 toggle 切 shadcn ghost——皮肤/几何全在
+        // .chat-row-icons(--toggle) per-face（font:inherit 顺手灭底座字号，
+        // bg transparent 灭 hover/aria-expanded 底）；utilities 只清 h-8、
+        // justify、active 位移、svg 强制 16px（chevron 属性 10px）四条差额。
+        // #634 follow-up：toggle 退为行内尾段钮（copy 钮独立成兄弟），
+        // 嵌套钮内的左 padding 由后代选择器归零（unlayered 压 utilities）。
+        <Button
+          variant="ghost"
+          className="chat-row-icons--toggle h-auto rounded-none justify-start active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+          aria-expanded={toggle.expanded}
+          onClick={toggle.onToggle}
+        >
+          {tail}
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -237,10 +273,10 @@ function Row({
               <span className="chat-taskline-title">{item.title}</span>
             </div>
           )}
-          <div className="chat-row-icons">
-            <Copy width={13} height={13} />
-            <Restore width={13} height={13} />
-          </div>
+          {/* #634 follow-up: the user row's copy is real too — the bubble's
+              own text (the reference copies its todo markdown link here;
+              our share surface for that is the 更多 menu's 复制链接). */}
+          <ActionRow restore copy={item.markdown ?? item.text} t={t} />
         </>
       );
     case 'robot':
@@ -264,7 +300,7 @@ function Row({
             <ActionRow
               restore={item.footer.restore}
               seconds={item.footer.seconds}
-              chevron={item.footer.chevron === true ? 'right' : undefined}
+              copy={robotCopyText(item)}
               t={t}
             />
           )}
@@ -285,7 +321,7 @@ function Row({
               ))}
             </p>
           </span>
-          <ActionRow t={t} />
+          <ActionRow copy={[item.title, item.body, ...item.links].join('\n')} t={t} />
         </div>
       );
     case 'streaming':
@@ -342,7 +378,7 @@ function Row({
           <ActionRow
             seconds={item.seconds}
             bare={item.seconds == null}
-            chevron={item.chevron === true ? 'right' : undefined}
+            copy={`${item.title}\n${item.preview}`}
             t={t}
           />
         </>
@@ -403,10 +439,36 @@ function Row({
               </div>
             ))}
           </span>
-          <ActionRow t={t} />
+          <ActionRow copy={reviewCopyText(item)} t={t} />
         </div>
       );
   }
+}
+
+/** #634 follow-up copy payloads — the row's human-readable content, the
+ *  reference footer copy's measured law (robot row copies the message
+ *  markdown verbatim). */
+function robotCopyText(item: Extract<TranscriptItem, { kind: 'robot' }>): string {
+  if (item.markdown != null) return item.markdown;
+  return (item.paragraphs ?? [])
+    .map((raw) => (Array.isArray(raw) ? raw : raw.segments).map((seg) => seg.text).join(''))
+    .join('\n\n');
+}
+
+function reviewCopyText(item: Extract<TranscriptItem, { kind: 'review' }>): string {
+  return [
+    item.conclusion,
+    ...item.findings.map((f) => `${f.id}. (${f.severity}) ${f.summary}`),
+  ].join('\n');
+}
+
+function toolsCopyText(item: Extract<TranscriptItem, { kind: 'tools' }>): string {
+  return item.pills
+    .map((pill, i) => {
+      const output = item.outputs?.[i];
+      return output != null && output !== '' ? `${pill}\n${output}` : pill;
+    })
+    .join('\n');
 }
 
 /** Tool-call group (r7 27 collapsed `完成 Ns ▸` / 28 pills + 收起): the
@@ -420,7 +482,7 @@ function ToolsRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'tools' }
     <>
       <ActionRow
         seconds={item.seconds}
-        chevron={expanded ? 'down' : 'right'}
+        copy={toolsCopyText(item)}
         t={t}
         toggle={{ expanded, onToggle: () => setExpanded((v) => !v) }}
       />

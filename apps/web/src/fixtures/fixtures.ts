@@ -2398,7 +2398,7 @@ const REVIEW_MESSAGE: TranscriptItem = {
       ],
     },
   ],
-  footer: { restore: true, seconds: 53, chevron: true },
+  footer: { restore: true, seconds: 53 },
 };
 
 /** Auto-revision summary after the blocking finding (r8 61/65). */
@@ -2447,11 +2447,11 @@ const RUN1_TO_V2: TranscriptItem[] = [
       },
     ],
   },
-  { kind: 'plan', title: '方案 · v1', preview: R8_PLAN_PREVIEW, seconds: 31, chevron: true },
+  { kind: 'plan', title: '方案 · v1', preview: R8_PLAN_PREVIEW, seconds: 31 },
   { kind: 'note', text: 'Xmon Dai 发起了 AI 审核' },
   REVIEW_MESSAGE,
   ADJUST_V2_MESSAGE,
-  { kind: 'plan', title: '方案 · v2', preview: R8_PLAN_PREVIEW, seconds: 29, chevron: true },
+  { kind: 'plan', title: '方案 · v2', preview: R8_PLAN_PREVIEW, seconds: 29 },
 ];
 
 /** v2 landed (r8 63–66): run-1 transcript, version dropdown rows. */
@@ -2476,7 +2476,7 @@ const RUN1_TO_V3: TranscriptItem[] = [
   ...RUN1_TO_V2,
   { kind: 'user', text: REJECT_FEEDBACK },
   ADJUST_V3_MESSAGE,
-  { kind: 'plan', title: '方案 · v3', preview: R8_PLAN_PREVIEW, seconds: 49, chevron: true },
+  { kind: 'plan', title: '方案 · v3', preview: R8_PLAN_PREVIEW, seconds: 49 },
 ];
 
 function detailV3(now: number): FixtureSet {
@@ -2517,7 +2517,7 @@ const RUN1_FAILED: TranscriptItem[] = [
         ],
       },
     ],
-    footer: { seconds: 29, chevron: true },
+    footer: { seconds: 29 },
   },
   { kind: 'note', text: 'Xmon Dai 发起了合并' },
   {
@@ -2566,7 +2566,7 @@ const REUSED_REVIEW_TRANSCRIPT: TranscriptItem[] = [
         ],
       },
     ],
-    footer: { seconds: 49, chevron: true },
+    footer: { seconds: 49 },
   },
 ];
 
@@ -2804,7 +2804,6 @@ export const revisionChain: FixtureSet = {
             title: '方案 · v2',
             preview: R8_PLAN_PREVIEW,
             seconds: 29,
-            chevron: true,
           },
         ],
         planDiff: planDiff('v1', 'v2', LINES_V1, LINES_V2, false),
