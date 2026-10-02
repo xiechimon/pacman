@@ -512,7 +512,9 @@ export const EN: Record<string, string> = {
   'Git 读写（托管仓库 push/pull）': 'Git read/write (hosted repo push/pull)',
   'MCP 访问（MCP 客户端接入）': 'MCP access (MCP client connections)',
   工具权限位: 'Tool grants',
-  全选: 'Grant all',
+  // #636 起 zh「全选」归筛选面板的全选行（en 'Select all'）；本面快捷键换
+  // 「授予全部」避开同形碰撞——zh 源串即 key，两个语义域必须分叉。
+  授予全部: 'Grant all',
   清空: 'Clear all',
   读: 'Read',
   写: 'Write',
@@ -640,10 +642,12 @@ export const EN: Record<string, string> = {
   清除筛选: 'Clear filters',
 
   // —— XMON-57 统一筛选面板（两维 + 批次键 + 生效筛选条 + 空词表行）——
-  // 「全选」不复用上面的 `全选`（那条是权限授予面的 'Grant all'）——同一个
-  // zh 词在两个语义域里，en 必须分叉。
-  全部选中: 'Select all',
-  清除: 'Clear',
+  // #636 批次行照参考站形：全选行（zh「全选」，本域 en 'Select all'）+ 右端
+  // 反选；权限授予面改用「授予全部」避开同形碰撞（zh 源串即 key，两域必须
+  // 分叉）。段内清除钮撤除——清除由全选行满选再点 / 反选 / 顶栏生效筛选条
+  // 三路承接，`清除` 条目随之下架。
+  全选: 'Select all',
+  反选: 'Invert',
   仅此: 'Only this',
   '已选 {n}/{m}': '{n}/{m} selected',
   清除全部: 'Clear all',
