@@ -215,3 +215,101 @@ test('chief tabs: hover tints, click swaps the view', async ({ page }) => {
   await charter.click();
   await expect(charter).toHaveClass(/is-active/);
 });
+
+// #644: the chief-tab selected fill moved off the chip onto a sliding pill
+// (Base UI TabsIndicator under the tabs, z0 vs chip z1). Motion values are
+// the 2026-10-02 todos.dev live capture: the pill transitions
+// left/top/width/height over 0.15s ease (CSSTransition records observed on
+// left+width when switching). Pins: pill geometry tracks the active chip,
+// chips paint no own fill, transition carries the measured values, and a
+// switch really runs the slide instead of jumping.
+test('chief tabs: indicator pill slides between chips — 150ms ease on left/top/width/height', async ({
+  page,
+}) => {
+  await themed(page, 'light', '/app?scenario=101');
+  const pill = page.locator('.chief-tab-indicator');
+  const agent = page.locator('.chief-tab', { hasText: 'Agent' });
+  const charter = page.locator('.chief-tab', { hasText: '章程' });
+
+  const box = (loc: Locator) =>
+    loc.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, w: r.width, h: r.height };
+    });
+  const aligned = async (chip: Locator) => {
+    const [p, c] = await Promise.all([box(pill), box(chip)]);
+    expect(Math.abs(p.x - c.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(p.y - c.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(p.w - c.w)).toBeLessThanOrEqual(1);
+    expect(Math.abs(p.h - c.h)).toBeLessThanOrEqual(1);
+  };
+
+  await aligned(agent);
+  expect(await bg(agent)).toBe('rgba(0, 0, 0, 0)');
+  const layering = await pill.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    const tabCs = getComputedStyle(document.querySelector('.chief-tab')!);
+    return { pillZ: cs.zIndex, pillPe: cs.pointerEvents, tabZ: tabCs.zIndex };
+  });
+  expect(layering).toEqual({ pillZ: '0', pillPe: 'none', tabZ: '1' });
+
+  const trans = await pill.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return {
+      prop: cs.transitionProperty,
+      dur: cs.transitionDuration,
+      ease: cs.transitionTimingFunction,
+    };
+  });
+  expect(trans.prop).toBe('left, top, width, height');
+  expect(trans.dur).toBe('0.15s, 0.15s, 0.15s, 0.15s');
+  expect(trans.ease).toBe('ease, ease, ease, ease');
+
+  // 切换必须真的滑：transitionrun 事件在过渡起跑时对每个属性各响一次
+  //（rAF 采样在无合成帧的环境里会停摆，事件路径不依赖渲染帧）。
+  await page.evaluate(() => {
+    (window as unknown as Record<string, string[]>).__pillRuns = [];
+    document.addEventListener(
+      'transitionrun',
+      (e) => {
+        const el = e.target as HTMLElement;
+        if (el.classList?.contains('chief-tab-indicator')) {
+          (window as unknown as Record<string, string[]>).__pillRuns.push(
+            (e as TransitionEvent).propertyName,
+          );
+        }
+      },
+      true,
+    );
+  });
+  await charter.click();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        [...new Set((window as unknown as Record<string, string[]>).__pillRuns)].sort(),
+      ),
+    )
+    .toEqual(['left', 'width']);
+  await expect(charter).toHaveClass(/is-active/);
+  // 落位核对要等 150ms 滑行动画跑完——poll 到 pill 与新激活 chip 重合。
+  await expect
+    .poll(async () => {
+      const [p, c] = await Promise.all([box(pill), box(charter)]);
+      return Math.max(
+        Math.abs(p.x - c.x),
+        Math.abs(p.y - c.y),
+        Math.abs(p.w - c.w),
+        Math.abs(p.h - c.h),
+      );
+    })
+    .toBeLessThanOrEqual(1);
+});
+
+test('chief tabs: reduced motion freezes the pill slide (#644)', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await themed(page, 'light', '/app?scenario=101');
+  const dur = await page
+    .locator('.chief-tab-indicator')
+    .evaluate((el) => getComputedStyle(el).transitionDuration);
+  expect(dur.split(', ').every((d) => d === '0s')).toBe(true);
+});

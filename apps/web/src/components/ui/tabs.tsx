@@ -109,4 +109,13 @@ function TabsContent({ className, ...props }: TabsPrimitive.Panel.Props) {
   );
 }
 
-export { Tabs, TabsContent, TabsList, TabsTrigger, tabsListVariants };
+/** 滑动指示条（#644）：Base UI 把激活 tab 的几何写进元素内联的
+ *  `--active-tab-left/top/width/height` 自定义属性，切换时由消费点 CSS 的
+ *  transition 决定滑动形态（参考站实测：left/top/width/height 150ms ease，
+ *  pill 在 tab 下层 z-index:0 位移+变宽）。本原语遵守 bare 律零 chrome——
+ *  不带任何类名，几何/配色/动效全由消费点 per-face 承载。 */
+function TabsIndicator({ className, ...props }: TabsPrimitive.Indicator.Props) {
+  return <TabsPrimitive.Indicator data-slot="tabs-indicator" className={className} {...props} />;
+}
+
+export { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger, tabsListVariants };
