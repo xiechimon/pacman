@@ -326,6 +326,8 @@ export const EN: Record<string, string> = {
   '完成 {n}': 'Done in {n}',
   章程: 'Charter',
   记忆: 'Memory',
+  记忆已更新: 'Memory updated',
+  技能已更新: 'Skill updated',
   关注与提醒: 'Watches & reminders',
   未设置: 'Not set',
   压缩模型: 'Compaction model',

@@ -193,7 +193,10 @@ function Row({
         </div>
       );
     case 'note':
-      return <div className="chat-note">{item.text}</div>;
+      // #634: note text is data (daemon/system prose or mapper labels like
+      // 记忆已更新) — route it through t() so en-dict entries apply; unknown
+      // keys fall back to the zh original (translate.ts law).
+      return <div className="chat-note">{t(item.text)}</div>;
     case 'scheduled':
       return (
         <div className="chat-scheduled">

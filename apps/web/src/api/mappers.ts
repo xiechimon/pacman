@@ -434,6 +434,16 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     });
   }
 
+  // #634: host 工具结果回声（pi 的 tool-result 消息以 role=system 文本块落库）
+  // 与它的 toolcall 行按结果文本配对——配对结果决定回声拿人类面孔还是退场。
+  const toolNameByResult = new Map<string, string>();
+  for (const m of messages) {
+    const paired = toolCallOfContent(m.content);
+    if (paired === null) continue;
+    const pairedText = resultToText(paired.result);
+    if (pairedText !== null && pairedText !== '') toolNameByResult.set(pairedText, paired.name);
+  }
+
   const entries: TimelineEntry[] = [];
   for (const m of messages) {
     const call = toolCallOfContent(m.content);
@@ -477,6 +487,15 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
         }
         continue;
       }
+      // #634: 回声行不裸排 JSON——配对到 toolcall 的按工具拿人类面孔（无面孔
+      // 即退场）；未配对的纯 JSON system 行同律退场（管线无人类面孔）。
+      const echoName = toolNameByResult.get(text);
+      if (echoName !== undefined) {
+        const note = echoNoteOf(echoName);
+        if (note !== null) entries.push({ at: m.createdAt, item: { kind: 'note', text: note } });
+        continue;
+      }
+      if (isJsonPlumbing(text)) continue;
       if (text !== '') entries.push({ at: m.createdAt, item: { kind: 'note', text } });
       continue;
     }
@@ -542,7 +561,10 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
       toolRun = toolRun ?? { seconds: 0, pills: [], outputs: [] };
       toolRun.seconds += secs;
       toolRun.pills.push(pillOf(e.item.call));
-      toolRun.outputs.push(resultToText(e.item.call.result));
+      // #634: 纯 JSON 结果（host 工具回声同族管线）不挂输出板——展开组里那
+      // 条灰板正是用户红圈一的不协调源；终端文本输出照旧（#469 律）。
+      const output = resultToText(e.item.call.result);
+      toolRun.outputs.push(output !== null && isJsonPlumbing(output) ? null : output);
       continue;
     }
     flushTools();
@@ -628,6 +650,29 @@ function resultToText(result: unknown): string | null {
       }
     }
   }
+  return null;
+}
+
+/** #634 机器管线文本判定：纯 JSON 对象/数组（host 工具结果回声、relay 封套）
+ *  不是给人看的行——参考站对话流里从无原始 JSON（实测 2026-10-02）。 */
+function isJsonPlumbing(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return false;
+  try {
+    JSON.parse(trimmed);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** #634 host 工具结果回声的人类面孔：参考站把这类副作用写成居中灰注（实测
+ *  样本 `记忆已更新 · 新增 1 条`），原始 JSON 从不进对话流。null = 该回声没有
+ *  人类面孔、整行退场（set_task_meta 的标题真值在 dhead 已可见）。 */
+function echoNoteOf(toolName: string): string | null {
+  if (toolName === 'set_task_meta') return null;
+  if (toolName.includes('memory')) return '记忆已更新';
+  if (toolName.includes('skill')) return '技能已更新';
   return null;
 }
 
