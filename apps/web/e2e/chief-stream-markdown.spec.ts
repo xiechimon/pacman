@@ -14,6 +14,8 @@ import { expect, type Page, test } from '@playwright/test';
 //  F-R10 live text_delta 增量不上屏（抽屉不读 liveTextStore——原 bug 本体）
 //  F-R11 终稿 message 收敛后打字行残留 / 与落库行重复渲染
 //  F-R12 同文双行（POST + user-<stepId> 回声）双气泡（#667）；连发不同文塌成一条
+//  F-R15 robot 行身份 chip（live 面，#741）：头像+名字 anchor 指 Agent 设置页，
+//        点击全链落详情页真记录（fixture 面钉在 agent-identity-chip.spec）
 // #742 用户气泡 markdown 面（详情页用户行 #612 同款配方；mapper 缝的钉在
 // test/chief-markdown.test.ts F-D1..D5）：
 //  F-R14 live 用户行仍字面吐纯文本——[#16](todo:id) 与 **bold** 在自泡漏出
@@ -165,6 +167,8 @@ function mockChiefLiveApi(
         json({ messages: state.messages ?? (state.final ? [USER_ROW, FINAL_ROW] : [USER_ROW]) }),
       );
     }
+    // #741 F-R15：身份 chip 点击全链——Agent 详情页的记录读面。
+    if (p === '/api/teams/t1/agents/agent-1') return route.fulfill(json(AGENT));
     if (p === '/api/todos' || p === '/api/projects') return route.fulfill(json([]));
     if (
       p === '/api/teams/t1/members' ||
@@ -225,6 +229,9 @@ test.describe('chief drawer markdown 面（fixture，#650）', () => {
     const mention = stream.locator('.mention-chip--agent');
     await expect(mention).toHaveCount(1);
     await expect(mention).toHaveText('r5-scribe');
+    // #741: agent 提及 chip 接通导航（#675 todo 分支同款配方）——href 指
+    // Agent 设置页；点击导航与负例钉在 agent-identity-chip.spec。
+    await expect(mention).toHaveAttribute('href', '/app/resources/agents/a1');
 
     // 有序列表 + 嵌套子项（depth 缩进位）+ 代码栅栏（lang 位 + 原文）。
     await expect(stream.locator('.chat-md-item--ordered').first()).toContainText('第一步：读取配置');
@@ -439,6 +446,32 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
     await expect(drawer.locator('.chief-msg', { hasText: '正在验证' })).toHaveCount(0);
     const final = drawer.locator('.chief-msg').last();
     await expect(final.locator('strong', { hasText: '全部通过' })).toHaveCount(1);
+  });
+
+  test('F-R15: robot 行身份 chip（live 面，#741）——头像+名字 anchor，点击全链进 Agent 设置页', async ({
+    page,
+  }) => {
+    await stubEventSource(page);
+    await stubDicebear(page);
+    await stubCdnAvatar(page);
+    await mockChiefLiveApi(page, { final: true });
+    await page.goto('/app?chief=chief-bbb');
+
+    const drawer = page.locator('.chief-drawer');
+    await expect(drawer).toBeVisible();
+    // live mapper 恒带 agent id（#444 封套）→ robot 行身份成链。
+    const chip = drawer.locator('.chief-msg--identity a.chief-identity');
+    await expect(chip).toHaveCount(1);
+    await expect(chip.locator('.chief-identity-name')).toHaveText('r5-scribe');
+    // live URL 的 ?chief= 参消费后即剥（XMON-106）——href 只钉路径前缀，
+    // 不钉 search 中途态（本仓已知坑）。
+    await expect(chip).toHaveAttribute('href', /^\/app\/resources\/agents\/agent-1/);
+    // 点击 = 同 tab 整页路由（参考站正典），落点解析真记录（AGENT mock）。
+    await chip.click();
+    await page.waitForURL((u) => u.pathname === '/app/resources/agents/agent-1');
+    await expect(page.locator('.agent-detail')).toBeVisible();
+    await expect(page.locator('.agent-missing')).toHaveCount(0);
+    await expect(page.locator('.agent-detail')).toContainText('r5-scribe');
   });
 });
 

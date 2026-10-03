@@ -8,12 +8,15 @@ import type {
   AgentBackend,
   AgentSessionHandle,
   ClaimedStep,
+  DeliveredImage,
+  MachineAttachmentResponse,
   MachineDoneBody,
   MachineStreamEvent,
   StepEvent,
   ToolCallRecord,
   TranscriptUpload,
 } from '@pacman/shared';
+import { formatAttachmentToken } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
 import { PI_CAPABILITIES } from '../src/backend/pi.js';
 import { loadDaemonConfig } from '../src/config.js';
@@ -80,6 +83,9 @@ class FakeMachineApi implements MachineApi {
   /** W3 steer 拉取-确认的 fake 面：可设的拉取响应 + 事件发射口（stream
    * 回调被记录，测试直接注入 steer 事件模拟 server 信号）。 */
   steerResponse: string | null = null;
+  /** #730 图片附件下载 fake 面：id → 响应或 Error。 */
+  attachments: Record<string, MachineAttachmentResponse | Error> = {};
+  attachmentCalls: string[] = [];
   /** M7 #308 stop 拉取-确认的 fake 面（steer 同形：可设响应 = discard 位）。 */
   stopResponse: boolean | null = null;
   onStreamEvent: ((ev: MachineStreamEvent) => void) | null = null;
@@ -190,6 +196,13 @@ class FakeMachineApi implements MachineApi {
   async steer(stepId: string) {
     this.calls.push(`steer:${stepId}`);
     return this.steerResponse;
+  }
+  async attachment(stepId: string, attachmentId: string): Promise<MachineAttachmentResponse> {
+    this.attachmentCalls.push(`${stepId}:${attachmentId}`);
+    const hit = this.attachments[attachmentId];
+    if (hit === undefined) throw new Error(`machine api 404: attachment ${attachmentId}`);
+    if (hit instanceof Error) throw hit;
+    return hit;
   }
   async stop(stepId: string) {
     this.calls.push(`stop:${stepId}`);
@@ -629,6 +642,153 @@ describe('steer 投递（W3 #279：事件 → 拉取-确认 → AgentSessionHand
     await waitFor(() => api.calls.includes('steer:s1'));
     await new Promise((r) => setTimeout(r, 50));
     expect(steered).toEqual([]);
+    release();
+    await handle.stop();
+    await handle.done;
+  });
+
+  test('steer 文本携带整行图片 token → 解析下载 → handle.steer(展开文本, images)（#730）', async () => {
+    const api = new FakeMachineApi();
+    const png = Buffer.from('89504e470d0a1a0a', 'hex');
+    api.attachments.id1 = {
+      fileName: 'shot.png',
+      mimeType: 'image/png',
+      sizeBytes: png.byteLength,
+      contentBase64: png.toString('base64'),
+    };
+    const token = formatAttachmentToken('shot.png', 't1/id1.png');
+    api.steerResponse = `补一张图\n\n${token}`;
+    const steered: { text: string; images?: readonly DeliveredImage[] }[] = [];
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const backend: AgentBackend = {
+      capabilities: PI_CAPABILITIES,
+      async createSession() {
+        return {
+          sessionId: 'pi-sess-steer-img',
+          events: (async function* () {
+            yield { type: 'text_delta', text: '跑着' } as StepEvent;
+            await gate;
+            yield { type: 'done', usage: [] } as StepEvent;
+          })(),
+          async steer(text: string, images?: readonly DeliveredImage[]) {
+            steered.push({ text, images });
+          },
+          async stop() {},
+          usage: () => [],
+        };
+      },
+      async continueSession() {
+        throw new Error('unused');
+      },
+    };
+    const { handle, lines } = await boot({ api, backend });
+    await waitFor(() => api.parked !== null);
+    api.parked?.(CLAIMED);
+    await waitFor(() => lines.some((l) => l.includes('new session conv-1')));
+    api.onStreamEvent?.({ type: 'steer', stepId: 's1' });
+    await waitFor(() => steered.length === 1);
+    expect(steered[0]!.text).toContain('[image attached: shot.png]');
+    expect(steered[0]!.text).not.toContain('attachment:t1/id1.png');
+    expect(steered[0]!.images).toEqual([{ data: png.toString('base64'), mimeType: 'image/png' }]);
+    expect(api.attachmentCalls).toEqual(['s1:id1']);
+    release();
+    await handle.stop();
+    await handle.done;
+  });
+
+  test('失败方式（#730 先判活再下载）：无在跑 handle → 拉取后即丢，不白下字节', async () => {
+    const api = new FakeMachineApi();
+    const token = formatAttachmentToken('shot.png', 't1/id1.png');
+    api.steerResponse = `补一张图\n\n${token}`;
+    api.attachments.id1 = {
+      fileName: 'shot.png',
+      mimeType: 'image/png',
+      sizeBytes: 4,
+      contentBase64: 'AAAA',
+    };
+    const steered: { text: string; images?: readonly DeliveredImage[] }[] = [];
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const backend: AgentBackend = {
+      capabilities: PI_CAPABILITIES,
+      async createSession() {
+        return {
+          sessionId: 'pi-sess-steer-dead',
+          events: (async function* () {
+            yield { type: 'text_delta', text: '跑着' } as StepEvent;
+            await gate;
+            yield { type: 'done', usage: [] } as StepEvent;
+          })(),
+          async steer(text: string, images?: readonly DeliveredImage[]) {
+            steered.push({ text, images });
+          },
+          async stop() {},
+          usage: () => [],
+        };
+      },
+      async continueSession() {
+        throw new Error('unused');
+      },
+    };
+    const { handle, lines } = await boot({ api, backend });
+    await waitFor(() => api.parked !== null);
+    api.parked?.(CLAIMED);
+    await waitFor(() => lines.some((l) => l.includes('new session conv-1')));
+    release();
+    await waitFor(() => api.doneBodies.length === 1); // 步收尾，handle 已注销
+    api.onStreamEvent?.({ type: 'steer', stepId: 's1' });
+    await waitFor(() => lines.some((l) => l.includes('steer dropped (no live session)')));
+    expect(api.attachmentCalls).toHaveLength(0); // 先判活：一字节都没下
+    expect(steered).toHaveLength(0);
+    await handle.stop();
+    await handle.done;
+  });
+
+  test('失败方式（#730 步不崩）：steer 里的图片下载 409 → 注记入 steer 文本、零图片、循环存活', async () => {
+    const api = new FakeMachineApi();
+    const token = formatAttachmentToken('shot.png', 't1/id1.png');
+    api.steerResponse = `补一张图\n\n${token}`;
+    api.attachments.id1 = new Error('machine api 409: attachment id1 not ready (pending)');
+    const steered: { text: string; images?: readonly DeliveredImage[] }[] = [];
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const backend: AgentBackend = {
+      capabilities: PI_CAPABILITIES,
+      async createSession() {
+        return {
+          sessionId: 'pi-sess-steer-fail',
+          events: (async function* () {
+            yield { type: 'text_delta', text: '跑着' } as StepEvent;
+            await gate;
+            yield { type: 'done', usage: [] } as StepEvent;
+          })(),
+          async steer(text: string, images?: readonly DeliveredImage[]) {
+            steered.push({ text, images });
+          },
+          async stop() {},
+          usage: () => [],
+        };
+      },
+      async continueSession() {
+        throw new Error('unused');
+      },
+    };
+    const { handle, lines } = await boot({ api, backend });
+    await waitFor(() => api.parked !== null);
+    api.parked?.(CLAIMED);
+    await waitFor(() => lines.some((l) => l.includes('new session conv-1')));
+    api.onStreamEvent?.({ type: 'steer', stepId: 's1' });
+    await waitFor(() => steered.length === 1);
+    expect(steered[0]!.text).toContain(token); // token 原样保留
+    expect(steered[0]!.text).toContain('不可用');
+    expect(steered[0]!.images ?? []).toHaveLength(0);
     release();
     await handle.stop();
     await handle.done;

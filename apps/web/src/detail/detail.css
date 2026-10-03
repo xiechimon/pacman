@@ -463,6 +463,12 @@
   margin-left: 8px;
 }
 
+/* #682 钉选机器等待标注：build 钉了机器、步未领、机器离线——行尾弱化尾注
+   （步只等该机，不自动改派）。 */
+.task-meta-waiting {
+  color: var(--text-dim);
+}
+
 .task-meta-foot {
   margin-top: 24px;
   font-size: 12px;

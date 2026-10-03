@@ -77,6 +77,17 @@ interface ProjectOption {
   name: string;
 }
 
+/** #682 机器选择器行：live = MachineRecord 最小投影(id/name/online)；
+ * fixture = scenario resources machines（id 缺省退 name）。与项目 chip 同族
+ * （anchored popover + listbox），但选择集多一行「自动」（null = 不钉，
+ * 任何在线机器可领）。offline 机器可选——钉选语义 = 等它上线（claim 过滤
+ * 面保证步只投给该机），与 branch-dialog 的「只列在线」是两个面。 */
+export interface MachineOption {
+  id: string;
+  name: string;
+  online?: boolean;
+}
+
 /** XMON-87 选择记忆位(localStorage 键;e2e 镜像 newtask-project-persist.spec.ts)。
  *  单租户单机、无账号维度——与 pacman.sidebar-collapsed /
  *  pacman.dirBrowser.lastDir 同律。 */
@@ -125,13 +136,16 @@ export interface NewTaskDialogProps {
    *  占位、agent 回填；标签固定词表由 agent 归类）。
    *  #311：spec 参数携带 mention token 内容——父级负责透传到
    *  createTodo body。 */
-  onSave: (spec: string, projectId?: string) => void;
+  onSave: (spec: string, projectId?: string, machineId?: string | null) => void;
   /** M5 live 面：保存并开始 = 创建 + POST builds（r2 §4.2 双钮语义）；
-   * 缺省 = fixture 行为（同 保存）。 */
-  onSaveAndStart?: (spec: string, projectId?: string) => void;
+   * 缺省 = fixture 行为（同 保存）。#682 机器参数同 保存 面。 */
+  onSaveAndStart?: (spec: string, projectId?: string, machineId?: string | null) => void;
   /** M5 live：项目集真值(选择器行数据源);缺省 = fixture canon 单默认
    * 项目(live = projectsQ 投影,fixture = scenario projectNames)。 */
   projects?: ProjectOption[];
+  /** #682：机器集真值（选择器行数据源）；缺省 = 空集（chip 只显「自动」，
+   * 选择器只有自动一行——单机/未加载的降级面）。 */
+  machines?: MachineOption[];
   /** M7 #310 受控 spec：live 创建面父持 state,附件 token 才能注入;fixture
    * 面不传 → 内部 useState fallback。 */
   spec?: string;
@@ -158,6 +172,7 @@ export function NewTaskDialog({
   onSave,
   onSaveAndStart,
   projects,
+  machines,
   spec: specProp,
   onSpecChange,
   onAttachment,
@@ -188,6 +203,12 @@ export function NewTaskDialog({
   const [projectId, setProjectId] = useState<string | null>(() =>
     rememberProject ? readRememberedProject(localStorage) : null,
   );
+  // #682 机器 chip：popover 开态 + 选中行（null = 自动）。纯表单 state（无
+  // XMON-87 记忆——项目记忆解决「跨刷新回第一行」；机器缺省行「自动」就是
+  // 惯性选择，无同痛点）。开一个 popover 收另一个（head 同层双 chip，两面
+  // 同开会让 Esc 分层歧义）。
+  const [machineOpen, setMachineOpen] = useState(false);
+  const [machineId, setMachineId] = useState<string | null>(null);
   // M7 #310 附件：file picker ref + 上传中 disable 纸夹扣
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attaching, setAttaching] = useState(false);
@@ -207,6 +228,11 @@ export function NewTaskDialog({
   const rows = projects ?? [DEFAULT_PROJECT];
   const selected = rows.find((row) => row.id === projectId) ?? rows[0];
   const projectName = selected?.name ?? PROJECT_NAME;
+  // #682：机器行集 + 选中行（首行恒「自动」）。offline 行照常可选——钉选
+  // 语义 = 步只投给该机并等它上线（server claim 过滤面），UI 不替用户挡。
+  const machineRows = machines ?? [];
+  const machineSelected = machineRows.find((row) => row.id === machineId) ?? null;
+  const machineLabel = machineSelected?.name ?? t('自动');
   // #318: 附件 token 注入 spec 后由 spec 非空承载 dirty,不另计。
 
   const dirty = spec.trim() !== '';
@@ -235,9 +261,11 @@ export function NewTaskDialog({
   useEffect(() => {
     if (!open) {
       setProjectOpen(false);
+      setMachineOpen(false);
       setDiscardOpen(false);
       setPickerOpen(false);
       setSpec('');
+      setMachineId(null);
     }
   }, [open]);
   // retained mount：关闭退场后子树卸载,重开 = 重新挂载。autofocus 挂 ref
@@ -344,12 +372,12 @@ export function NewTaskDialog({
     runAttachment(preparePastedFiles(files, counter), caret, () => counter.end());
   };
 
-  // spec 15 #394: 提交 = 正文 + 项目 id；标题位随输入框一并退役。
+  // spec 15 #394: 提交 = 正文 + 项目 id；#682 加机器 chip 选中（null = 自动）。
   // #729 失败方式 3：附件上传在途时阻提交——spec 不得带着还没上传完的
   // 附件离场（draft 保全，token 落地后提交照常）。
   const save = () => {
     if (attachInFlightRef.current > 0) return;
-    onSave(spec, selected?.id);
+    onSave(spec, selected?.id, machineId);
   };
 
   // XMON-95：保存并开始 = 按钮点击与 ⌘↵ 共用的同一提交位。闸写在闭包里而
@@ -358,7 +386,7 @@ export function NewTaskDialog({
   const saveAndStart = () => {
     if (attachInFlightRef.current > 0) return;
     if (spec.trim() === '') return;
-    if (onSaveAndStart) onSaveAndStart(spec, selected?.id);
+    if (onSaveAndStart) onSaveAndStart(spec, selected?.id, machineId);
     else save();
   };
   // enabled = open ∩ ¬discardOpen（useChordHotkey 的 opened-gate）。两条都
@@ -379,19 +407,38 @@ export function NewTaskDialog({
   };
 
   // Mention insert: route through insertMentionText so the picker
-  // and the inline @ listbox share the spacing + caret rules.
-  const insertToken = (token: MentionToken) => {
+  // and the inline @ listbox share the spacing + caret rules (#728:
+  // trailing space included). Multi-select inserts compose in ONE
+  // functional update at the evolving caret — a per-token loop would
+  // read the same stale `spec` closure per call and keep only the last
+  // token (same fix as the composer wire's insertTokens).
+  const insertTokens = (tokens: MentionToken[]) => {
+    if (tokens.length === 0) return;
     const ta = specRef.current;
     if (ta == null) {
-      setSpec((current) => insertMentionText(current, token, null).value);
+      setSpec((current) => {
+        let value = current;
+        for (const token of tokens) value = insertMentionText(value, token, null).value;
+        return value;
+      });
       return;
     }
-    const caret = ta.selectionStart ?? spec.length;
-    const { value, caret: nextCaret } = insertMentionText(spec, token, caret);
-    setSpec(value);
+    const start = ta.selectionStart ?? spec.length;
+    const pending = { caret: start };
+    setSpec((current) => {
+      let value = current;
+      let at = start;
+      for (const token of tokens) {
+        const result = insertMentionText(value, token, at);
+        value = result.value;
+        pending.caret = result.caret;
+        at = result.caret;
+      }
+      return value;
+    });
     requestAnimationFrame(() => {
       ta.focus();
-      ta.setSelectionRange(nextCaret, nextCaret);
+      ta.setSelectionRange(pending.caret, pending.caret);
     });
   };
 
@@ -416,6 +463,10 @@ export function NewTaskDialog({
             setProjectOpen(false);
             return;
           }
+          if (machineOpen) {
+            setMachineOpen(false);
+            return;
+          }
           if (pickerOpen) {
             setPickerOpen(false);
             return;
@@ -426,10 +477,13 @@ export function NewTaskDialog({
         // 由本回调按层序收最上面那层；全关时壳自己走 requestClose（未保存闸）。
         // mention picker 已换 FloatingShell（Base UI 嵌套顶层，escapeKey:
         // isTopmost 自己收），故本闸只覆盖仍走仓内 OverlayMount 的两层。
+        // #682 机器 popover 并入项目 popover 同层（同族 chip 面，双开由开面
+        // 互斥先行收掉）。
         onEscapeWhileNested={
-          projectOpen || discardOpen
+          projectOpen || machineOpen || discardOpen
             ? () => {
                 if (projectOpen) setProjectOpen(false);
+                else if (machineOpen) setMachineOpen(false);
                 else setDiscardOpen(false);
               }
             : undefined
@@ -444,13 +498,19 @@ export function NewTaskDialog({
         height={439}
       >
         <div className="new-task-head">
+          {/* #682 第三轮（用户三审）：标题行回归抓拍形态——项目 chip + 居中
+              标题 + 关闭，机器选择搬去底栏选项区（执行选择与「保存并开始」
+              同族）。项目名 max-width 截断（长名不压居中标题）。 */}
           <span className="new-task-project-wrap">
             <button
               type="button"
               className="new-task-project"
               aria-haspopup="listbox"
               aria-expanded={projectOpen && rows.length > 0}
-              onClick={() => setProjectOpen((value) => !value)}
+              onClick={() => {
+                setMachineOpen(false);
+                setProjectOpen((value) => !value);
+              }}
             >
               <span className="new-task-project-avatar">{projectName.charAt(0).toLowerCase()}</span>
               <span className="new-task-project-name">{projectName}</span>
@@ -557,6 +617,84 @@ export function NewTaskDialog({
                 <Grid2x2 />
               </Button>
             </div>
+            {/* #682 第三轮（用户三审）：机器选择住底栏选项区——执行选择与
+                「保存并开始」同层（语义），与工具簇 12px 组间（工具簇内 6px，
+                2× 律）。popover 向上开（footer 在底，向下开会出对话框边界）。
+                类名独立 new-task-machine* 家族：e2e 的 `.new-task-project*`
+                选择器钉单元素（strict mode），双 chip 共类名会打红整组。 */}
+            <span className="new-task-machine-wrap">
+              <button
+                type="button"
+                className="new-task-machine"
+                aria-haspopup="listbox"
+                aria-expanded={machineOpen && machineRows.length > 0}
+                data-testid="new-task-machine-chip"
+                onClick={() => {
+                  setProjectOpen(false);
+                  setMachineOpen((value) => !value);
+                }}
+              >
+                <span
+                  className="new-task-machine-dot"
+                  data-on={machineSelected?.online ?? true}
+                  aria-hidden="true"
+                />
+                <span className="new-task-machine-name">{machineLabel}</span>
+                <ChevronDown width={12} height={12} />
+              </button>
+              <OverlayMount open={machineOpen}>
+                <ClickCatcher onClose={() => setMachineOpen(false)} />
+                <div
+                  className="new-task-project-menu new-task-machine-menu anim-pop"
+                  role="listbox"
+                  aria-label={t('机器')}
+                >
+                  <button
+                    type="button"
+                    className="new-task-project-row"
+                    role="option"
+                    aria-selected={machineId === null}
+                    onClick={() => {
+                      setMachineId(null);
+                      setMachineOpen(false);
+                    }}
+                  >
+                    <span className="new-task-machine-dot" data-on={true} aria-hidden="true" />
+                    <span className="new-task-project-row-name">{t('自动')}</span>
+                    {machineId === null && (
+                      <span className="new-task-project-check">
+                        <Check width={14} height={14} />
+                      </span>
+                    )}
+                  </button>
+                  {machineRows.map((row) => (
+                    <button
+                      key={row.id}
+                      type="button"
+                      className="new-task-project-row"
+                      role="option"
+                      aria-selected={row.id === machineId}
+                      onClick={() => {
+                        setMachineId(row.id);
+                        setMachineOpen(false);
+                      }}
+                    >
+                      <span
+                        className="new-task-machine-dot"
+                        data-on={row.online ?? true}
+                        aria-hidden="true"
+                      />
+                      <span className="new-task-project-row-name">{row.name}</span>
+                      {row.id === machineId && (
+                        <span className="new-task-project-check">
+                          <Check width={14} height={14} />
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </OverlayMount>
+            </span>
             <div className="new-task-buttons">
               {/* e2e 别名叠加：integration/test/m5-web-e2e.test.ts 钉
                   .new-task-start（overlays lane 误删致 CI 红，此处恢复；
@@ -633,7 +771,7 @@ export function NewTaskDialog({
         onClose={() => setPickerOpen(false)}
         groups={groups}
         onInsert={(tokens) => {
-          for (const token of tokens) insertToken(token);
+          insertTokens(tokens);
           setPickerOpen(false);
         }}
       />

@@ -7,6 +7,7 @@
 // 消费方向（01 §3）：web / server / daemon → shared，三端互不依赖，shared 零反向。
 
 export * from './agent-backend.js';
+export * from './attachment-token.js';
 export * from './brand.js';
 export * from './git-ops.js';
 export * from './phase.js';

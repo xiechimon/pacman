@@ -47,14 +47,16 @@ function localRows(db: ReturnType<typeof bootServer>['db'], teamId: string) {
 }
 
 describe('本机行 seed（spec 11 A8：server 启动 seed，idempotent）', () => {
-  test('seed 建 kind=local 行（name=os.hostname()，enabledRuntimes 默认空）', () => {
+  test('seed 建 kind=local 行（name=os.hostname()，enabledRuntimes 缺省 [pi]）', () => {
     const s = bootServer();
     try {
       seedLocalMachine(s.db, s.team.id);
       const rows = localRows(s.db, s.team.id);
       expect(rows).toHaveLength(1);
       expect(rows[0]?.kind).toBe('local');
-      expect(rows[0]?.enabledRuntimes).toEqual([]);
+      // #682：开关是 claim 真闸后缺省 []（全关）= 新装机一步领不到——
+      // seed/enroll 缺省改 ['pi']（bootstrap 不空转），claude-code opt-in。
+      expect(rows[0]?.enabledRuntimes).toEqual(['pi']);
     } finally {
       s.dispose();
     }
@@ -154,7 +156,8 @@ describe('enroll hostname 同律（spec 11 A9：loopback enroll 落 kind=local�
         .all()
         .find((r) => r.name === 'lan-box');
       expect(row?.kind).toBe('remote');
-      expect(row?.enabledRuntimes).toEqual([]);
+      // #682：enroll 缺省 ['pi']（claim 真闸下的 bootstrap 不空转，同 seed）。
+      expect(row?.enabledRuntimes).toEqual(['pi']);
     } finally {
       s.dispose();
     }
@@ -214,7 +217,8 @@ describe('PATCH /api/machines/{id}（spec 11 A8/A9：enabledRuntimes 写回）',
         enabledRuntimes: 'pi',
       });
       expect(shape.status).toBe(400);
-      expect(localRows(s.db, s.team.id)[0]?.enabledRuntimes).toEqual([]);
+      // 拒写不动存量值（#682 起 seed 缺省 ['pi']，同字段拒绝位零改动）。
+      expect(localRows(s.db, s.team.id)[0]?.enabledRuntimes).toEqual(['pi']);
     } finally {
       s.dispose();
     }

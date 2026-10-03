@@ -28,6 +28,10 @@ export interface StatePaths {
   /** 团队技能物化缓存根（XMON-112 S2，spec 14）：内容寻址目录，
    * team-skills.ts 首用即建（不常驻空目录）。 */
   teamSkillsCacheDir: string;
+  /** 步图片附件素材化根（#730）：worktree **外**的 PACMAN_HOME 面目录
+   * （`<home>/step-attachments/<stepId>/`）——素材落这里保证步后
+   * git status clean（构造性，票面失败方式 1）；resolver 首用即建。 */
+  stepAttachmentsDir: string;
 }
 
 export function statePaths(home: string, workspacesDir?: string): StatePaths {
@@ -42,6 +46,7 @@ export function statePaths(home: string, workspacesDir?: string): StatePaths {
     agentRuntimeDir: join(home, 'agent-runtime'),
     workspacesDir: workspacesDir ?? join(home, 'workspaces'),
     teamSkillsCacheDir: join(home, 'team-skills'),
+    stepAttachmentsDir: join(home, 'step-attachments'),
   };
 }
 

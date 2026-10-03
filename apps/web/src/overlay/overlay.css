@@ -53,6 +53,24 @@
   cursor: pointer;
 }
 
+/* #682 第二轮：机器 chip = 有边界控件（pill，.dlg-machine 惯用法）；第三轮
+   起住底栏——高度对齐 30px 工具钮（光学同排，better-ui 对齐律）。shrink=0：
+   机器标签是派发关键短数据（「自动」或主机名），永不截断。点贴 label。 */
+.new-task-machine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
 .new-task-project-avatar {
   width: 20px;
   height: 20px;
@@ -65,14 +83,20 @@
   text-transform: uppercase;
 }
 
-.new-task-project-name {
+.new-task-project-name,
+.new-task-machine-name {
   font-size: 13px;
   line-height: 16px;
   color: var(--text-primary);
 }
 
-.new-task-project svg {
+.new-task-project svg,
+.new-task-machine svg {
   color: var(--text-tertiary);
+}
+
+.new-task-machine:hover {
+  background: var(--surface-hover);
 }
 
 /* ---- #176 project selector popover (anchored under the head project
@@ -84,6 +108,38 @@
   position: relative;
   display: flex;
   align-items: center;
+}
+
+/* #682 第三轮：机器 chip 住底栏选项区（new-task-actions 内、工具簇后）。
+   组间 12px = 2× 工具簇内 6px（better-layout 组间律）；wrap 不收缩。 */
+.new-task-machine-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-inline-start: 12px; /* 2× 工具簇内 6px；logical 属性随 RTL 翻转 */
+}
+
+.new-task-project {
+  min-width: 0;
+}
+
+/* 项目名让位截断：head 只剩项目 chip（第三轮把机器 chip 搬去底栏），长名
+   封顶不压居中标题（672 弹窗中位净空推得 220px 上限）。 */
+.new-task-project-name {
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.new-task-machine-name {
+  min-width: 0;
+  max-width: 120px; /* 极端主机名兜底（自动 26px 恒完整；pill shrink=0） */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .new-task-project-menu {
@@ -103,6 +159,14 @@
      so this menu and its catcher are scoped inside it — the token keeps
      the family law, the panel's own z carries the root-level order. */
   z-index: var(--z-popover);
+}
+
+/* #682 第三轮：机器 popover 自底栏向上开（footer 在底，向下开会出对话框
+   边界被裁——项目 menu「落对话框内」同律，方向反转）。须排在本体规则之后：
+   同特异性 tie 由后者胜。 */
+.new-task-machine-menu {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .new-task-project-row {
@@ -146,6 +210,21 @@
   margin-left: auto;
   display: flex;
   color: var(--indigo-500);
+}
+
+/* #682 机器 chip 的状态点（项目 chip 的 avatar 槽位换成 dot，几何对齐
+   dlg-machine-dot / res-dot 同族）。data-on=false = 离线机器——可钉选
+   （钉选语义 = 步等它上线），灰点不是禁选态。 */
+.new-task-machine-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--col-dot-done);
+}
+
+.new-task-machine-dot[data-on="false"] {
+  background: var(--col-dot-idle);
 }
 
 .new-task-title-label {

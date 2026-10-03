@@ -94,6 +94,9 @@ export function Composer({
     send,
     handleChange,
     handleKeyDown,
+    handleCaretMoved,
+    handleCompositionEnd,
+    handleBlur,
     textareaRef,
     fileInputRef,
     openFilePicker,
@@ -105,9 +108,14 @@ export function Composer({
     closePicker,
     inlineOpen,
     inlineCaret,
+    inlineQuery,
     inlineAgents,
-    closeInline,
+    inlineHighlight,
+    setInlineHighlight,
+    inlineListboxId,
+    inlineListboxRef,
     insertToken,
+    insertTokens,
     groups,
   } = useComposerWire({
     editable,
@@ -122,6 +130,12 @@ export function Composer({
     <div className="composer composer--with-mention">
       {editable ? (
         <div className="composer-input-wrap">
+          {/* #728 combobox wiring: while the inline listbox is open the
+              textarea announces itself as the combobox and points
+              aria-activedescendant at the highlighted row — it keeps DOM
+              focus the whole time (the listbox rows are non-focusable).
+              keyup/click/select re-judge the token after caret-only moves
+              (a change event never fires for those). */}
           <textarea
             ref={textareaRef}
             className="composer-placeholder composer-input"
@@ -132,11 +146,30 @@ export function Composer({
             // #729: clipboard images/files ride the #310 attachFile chain;
             // a text-only paste never reaches the handler's preventDefault.
             onPaste={handlePaste}
+            onKeyUp={handleCaretMoved}
+            onClick={handleCaretMoved}
+            onSelect={handleCaretMoved}
+            onCompositionEnd={handleCompositionEnd}
+            onBlur={handleBlur}
+            {...(inlineOpen
+              ? {
+                  role: 'combobox',
+                  'aria-expanded': true,
+                  'aria-controls': inlineListboxId,
+                  'aria-autocomplete': 'list' as const,
+                }
+              : {})}
+            {...(inlineOpen && inlineHighlight != null
+              ? { 'aria-activedescendant': `${inlineListboxId}-opt-${inlineHighlight}` }
+              : {})}
           />
           <MentionInline
             open={inlineOpen}
             agents={inlineAgents}
             caret={inlineCaret}
+            query={inlineQuery}
+            highlight={inlineHighlight}
+            onHover={setInlineHighlight}
             onPick={(entry) =>
               insertToken({
                 kind: 'agent',
@@ -144,7 +177,8 @@ export function Composer({
                 label: entry.label,
               })
             }
-            onClose={closeInline}
+            listboxRef={inlineListboxRef}
+            listboxId={inlineListboxId}
           />
         </div>
       ) : (
@@ -222,7 +256,7 @@ export function Composer({
         onClose={closePicker}
         groups={groups}
         onInsert={(tokens) => {
-          for (const token of tokens) insertToken(token);
+          insertTokens(tokens);
           closePicker();
         }}
       />

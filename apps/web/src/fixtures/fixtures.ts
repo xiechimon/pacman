@@ -1728,6 +1728,54 @@ export const agentDetailActive: FixtureSet = {
   agentTasks: AGENT_TASK_ROWS,
 };
 
+/** #741 named scenario（无 capture，chief-md / agentDetail 先例）：agent 身份
+ *  可点进设置的两面语料。① 抽屉 robot 行身份 chip——chief.agent 带 id（live
+ *  mapper 恒带，fixture 面特意给 id 才钉得住「成链」面；无 id 惰性面由单测
+ *  test/chief-identity.test.ts 钉）；② 提及 chip——robot markdown 携五种
+ *  scheme 的 mention wire：agent/todo 成链（#741/#675 两个导航面），
+ *  skill/project/machine 保持惰性 span（参考站落点未实拍取证，票面明确不入
+ *  本票——字面负例要有牙，三种同播）。detail transcript 同场景带一条 agent
+ *  提及——segments 单源的两个消费面（抽屉 + 详情页对话）一套语料钉齐。
+ *  agents 复用 AGENT_R3_BUILDER：身份 chip 点击后 scenario 按 #121 Link 律
+ *  随行，Agent 详情页解析出真记录（fixture 面全链）。 */
+const CHIEF_AGENT_CHIP_REPLY = [
+  '派工回执：由 [r5-scribe](agent:a1) 复核 [#1](todo:r3-legacy-1)。',
+  '',
+  '技能 [deploy](skill:s1)、项目 [web](project:p1) 与机器 [box](machine:m1) 的提及保持惰性。',
+].join('\n');
+
+export const chiefAgentChip: FixtureSet = {
+  ...agentDetail,
+  todos: [legacyReview, legacyDone],
+  chief: {
+    view: 'drawer',
+    bound: true,
+    modelSlot: 'claude-sonnet-5 · 默认',
+    threadTitle: '验证一下凭证链路…',
+    agent: { id: R3_BUILDER.id, displayName: R3_BUILDER.displayName, avatarUrl: null },
+    stream: [
+      { kind: 'note', text: '17:26' },
+      { kind: 'user', text: '验证一下凭证链路，然后给我一份报告' },
+      {
+        kind: 'robot',
+        markdown: CHIEF_AGENT_CHIP_REPLY,
+        seconds: '44s',
+      },
+    ],
+  },
+  detail: {
+    transcript: [
+      { kind: 'run', at: '13:35', machine: 'xmonsMac-3574' },
+      { kind: 'user', text: '开始执行任务', seq: 1 },
+      {
+        kind: 'robot',
+        markdown: '凭证复核由 [r5-scribe](agent:a1) 承接，完成后汇报。',
+        footer: { seconds: 12 },
+      },
+    ],
+  },
+};
+
 /** XMON-19/B2 删除 Agent 的 e2e 语料（命名场景无 capture，agent-detail
  *  先例）：roster 两个 Agent——删掉 r3-builder 后名单里还剩一个，卡随行消失
  *  这一条才有牙（只播一个 Agent 时「删对了」与「整块空掉」两种实现都过）。
