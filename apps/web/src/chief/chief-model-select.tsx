@@ -88,9 +88,14 @@ export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectPro
         className="chief-select font-normal [&_svg:not([class*='size-'])]:size-auto"
         aria-haspopup="listbox"
         aria-expanded={open}
+        // #772: 长值截断后全称走 title 悬停可达（better-typography 截断律）。
+        title={label}
         onClick={() => setOpen((value) => !value)}
       >
-        <span>{label}</span>
+        {/* #772: 值单行截断（chief-select-value 担 min-width:0 收缩 +
+            ellipsis；裸 span 在 flex 下 min-width:auto 永不收缩，省略号
+            永不触发——见 chief.css）。 */}
+        <span className="chief-select-value">{label}</span>
         <ChevronDown width={12} height={12} />
       </Button>
       {/* #425 B1:chief-model-shell 类只为退场 CSS 钩子(见 chief.css 尾段)。 */}
