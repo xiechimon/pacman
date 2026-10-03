@@ -6,6 +6,7 @@
 
 import type { QueryClient } from '@tanstack/react-query';
 import { isInFlightPhase } from '../phase.js';
+import { invalidateConverged } from './invalidate.js';
 import type { StreamGuards } from './sse-connection.js';
 
 /** 对账失效面 = 两条流的事件处理器会失效的查询键并集——「当作漏掉的提示都
@@ -53,12 +54,14 @@ function isInFlightRow(row: unknown): boolean {
   return typeof phase === 'string' && isInFlightPhase(phase);
 }
 
-/** 两条流共用的对账面。 */
+/** 两条流共用的对账面。失效走收敛缝（#717，invalidate.ts）：对账时刻若
+ *  恰有挂载取数在飞，裸失效会被去重吞掉——对账自己变成又一个被吞的提示，
+ *  兜底失效。 */
 export function streamGuards(qc: QueryClient): StreamGuards {
   return {
     inFlight: () => hasInFlightWork(qc),
     reconcile: () => {
-      for (const queryKey of STREAM_QUERY_KEYS) void qc.invalidateQueries({ queryKey });
+      for (const queryKey of STREAM_QUERY_KEYS) void invalidateConverged(qc, { queryKey });
     },
   };
 }

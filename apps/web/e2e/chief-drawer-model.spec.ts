@@ -237,4 +237,24 @@ test.describe('chief drawer model row (#615)', () => {
     // stable contract is the settings view itself, not the URL mid-consumption
     await expect(page.locator('.chief-settings')).toBeVisible();
   });
+
+  test('closing the drawer (⌘J) recycles the model popover with it (#773)', async ({
+    page,
+  }) => {
+    await page.goto('/app?scenario=111');
+    await expect(drawer(page)).toBeVisible();
+    await modelBtn(page).click();
+    const menu = page.locator('.chief-model-pop');
+    await expect(menu).toBeVisible();
+
+    // ⌘J 收起抽屉：弹层跟随回收（X/⌘J 同走 open=false，见 chief-drawer）
+    await page.keyboard.press('Meta+j');
+    await expect(drawer(page)).toHaveCount(0);
+    await expect(menu).toHaveCount(0);
+
+    // 再按 ⌘J 重开：弹层不带回 stale open 态
+    await page.keyboard.press('Meta+j');
+    await expect(drawer(page)).toBeVisible();
+    await expect(menu).toHaveCount(0);
+  });
 });

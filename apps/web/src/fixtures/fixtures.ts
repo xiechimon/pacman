@@ -294,6 +294,24 @@ export const boardProjectPicker: FixtureSet = {
   },
 };
 
+/** #758 机器 chip 选择记忆命名场景（无 capture，newtask-projects 先例）：
+ *  boardDefault 面 + resources 两台机器——在线本机（canon 同源）+ 离线远端，
+ *  记忆面 e2e 的行源（选→刷新→回上次那台 / 悬空记忆落回自动 / 离线机器
+ *  保留记忆如实显示）。只服务对话框的机器 chip，不动 resourcesDefault 的
+ *  r7 06–10 capture 行集。 */
+export const boardMachinePicker: FixtureSet = {
+  ...boardDefault,
+  resources: {
+    skills: [],
+    mcpServers: [],
+    machines: [
+      { id: MACHINE_ID, kind: 'local', name: MACHINE_NAME, online: true },
+      { id: 'mea-wsl-offline', kind: 'remote', name: 'mea-wsl', online: false },
+    ],
+    providerSources: [],
+  },
+};
+
 /** #361 GitHub repo picker 命名场景（无 capture，newtask-projects 先例）：
  *  boardDefault 面 + 已连接 github fixture——picker 行 = shared
  *  GithubRepoSummary 封套同形（spec 12 数据契约），搜索/单选/断开的面数据源。 */
@@ -349,6 +367,41 @@ function tagFilterProbe(
 ): TodoRecord {
   return { ...probeTodo(phase, r7(13, 40)), id, seqNum, title, spec: title, tagIds };
 }
+
+/** #753 拖动矩阵探针卡工厂：probeTodo 全形底 + 合成 id/seq/标题 + 数据位
+ *  覆写（hasChanges 等——矩阵的合法边吃卡面数据，不只吃相位）。命名场景
+ *  合成内容，无 capture 基线（board-tags 先例）。 */
+function dragMatrixProbe(
+  id: string,
+  seqNum: number,
+  title: string,
+  phase: TodoRecord['phase'],
+  over?: Partial<TodoRecord>,
+): TodoRecord {
+  return { ...probeTodo(phase, r7(13, 40)), id, seqNum, title, spec: title, tagIds: [], ...over };
+}
+
+/** board-drag-matrix（#753）：四列满员 + 待处理三相（failed 钉顶 / review+
+ *  awaitingReply 钉顶 / confirm）+ 已完成两态（有变更 = 待处理合法源，无变更
+ *  = 待处理非法源）——e2e 钉 per-source 合法目标矩阵、非法对零提交与
+ *  done→pending 重开落位（写 review，落非钉顶组尾部）。 */
+export const boardDragMatrix: FixtureSet = {
+  ...boardDefault,
+  todos: [
+    dragMatrixProbe('dm-todo', 51, 'dragmatrix 探针（待开始）', 'todo'),
+    dragMatrixProbe('dm-building', 52, 'dragmatrix 探针（执行中）', 'building'),
+    dragMatrixProbe('dm-failed', 53, 'dragmatrix 探针（失败）', 'failed', { hasChanges: true }),
+    dragMatrixProbe('dm-review', 54, 'dragmatrix 探针（待验收）', 'review', {
+      awaitingReply: true,
+    }),
+    dragMatrixProbe('dm-confirm', 55, 'dragmatrix 探针（待确认）', 'confirm'),
+    dragMatrixProbe('dm-done-changes', 56, 'dragmatrix 探针（已完成·有变更）', 'done'),
+    dragMatrixProbe('dm-done-plain', 57, 'dragmatrix 探针（已完成·无变更）', 'done', {
+      hasChanges: false,
+    }),
+  ],
+  now: r7(13, 55),
+};
 
 /** board-tags：跨列三卡——bug 待开始 / docs 执行中 / 无标签 待处理。
  *  e2e 钉筛选开/关/切换/URL 携带与「无标签恒可见」裁决面。 */

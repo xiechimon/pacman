@@ -21,10 +21,11 @@ export interface BoardColumnDef {
   empty: string;
   /** Extra header label, 已完成 only. */
   label?: string;
-  /** Phase a cross-column drop writes (issue #73 manual 改相). Absent = the
-   *  column is not a drop target (#351: 待处理 — gate/failed are system
-   *  states, a manual drop-in carries no semantics). */
-  dropPhase?: Phase;
+  /** Phase a cross-column drop writes (issue #73 manual 改相). Every column
+   *  carries one since #753 (待处理 = `review`, reopen-to-review [设计]) —
+   *  WHICH sources may drop is the per-card matrix in canDropOnColumn, not
+   *  this field. */
+  dropPhase: Phase;
   /** #616（todos.dev 2026-10-02 实测）：落位不直接写 dropPhase，而是把
    *  todo 交给 开始任务 dialog（#318 统一面）——确认（先做规划/立即执行）
    *  才经 startBuilds 落相位，取消 = 零提交。执行中独有：进该列 = 起一次
@@ -69,6 +70,12 @@ export const COLUMNS: BoardColumnDef[] = [
   },
   {
     id: 'pending',
+    // #753（todos.dev 2026-10-03/04 live 重测，推翻 #351「待处理不作落点」）：
+    // 已完成（有变更产物）→ 待处理 合法，落点正名 review = 重开回审核关口
+    // [设计]（参考站 wire 未采到：其机器离线；其 done(有变更) 卡拖拽时本列
+    // 戴 5%/10% 染色，无变更的 done 卡恒素面——hasChanges 闸在
+    // canDropOnColumn）。唯一合法源列 = 已完成。
+    dropPhase: 'review',
     name: '待处理',
     dot: 'var(--col-dot-confirm)',
     empty: '没有等你处理的任务',
@@ -84,6 +91,34 @@ export const COLUMNS: BoardColumnDef[] = [
     accepts: (t) => t.phase === 'done',
   },
 ];
+
+/** 落位合法矩阵（#753，todos.dev 2026-10-03/04 live 重测；shared canBoardDrop
+ *  的卡面镜像——那边是相位级 raw PATCH 判据，这边吃整卡所以带数据位）：
+ *  - 每张卡都可拖；源列恒素面（同列落位 = 无操作）；
+ *  - 执行中 只吃 待开始（拖入 = 开始意图，board.tsx startGate 路由）；
+ *    待处理/已完成 源对它恒素面（实测）；
+ *  - 待处理 只吃 已完成 且 hasChanges（2026-10-04 实测：无变更的 done 卡
+ *    拖拽时 待处理 恒素面）；待开始→待处理 恒素面（实测，#351 该对保留）；
+ *  - 已完成 吃 待开始/执行中/待处理，failed 卡除外（#702：failed→done 保持
+ *    非法——列级染色不许撒谎，客户端同判不收边）；
+ *  - 执行中 源行未测（参考站机器离线）：沿用本仓既有语义 [设计]。 */
+export function canDropOnColumn(todo: TodoRecord, columnId: string): boolean {
+  const src = COLUMNS.find((c) => c.accepts(todo));
+  const dst = COLUMNS.find((c) => c.id === columnId);
+  if (src == null || dst == null || src.id === dst.id) return false;
+  switch (dst.id) {
+    case 'todo':
+      return true;
+    case 'building':
+      return src.id === 'todo';
+    case 'pending':
+      return src.id === 'done' && todo.hasChanges === true;
+    case 'done':
+      return todo.phase !== 'failed';
+    default:
+      return false;
+  }
+}
 
 /** Phase → primary card action, copy from the shared PHASE_UI table.
  *  Waiting-on-user todos get the ghost 回复 button (r3 §3.0 引导 P2 词表 +

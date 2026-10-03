@@ -5,23 +5,84 @@ import { BOARD_DROP_PHASES } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
 import {
   attentionCount,
+  canDropOnColumn,
   COLUMNS,
   sortColumnTodos,
   type BoardColumnDef,
 } from '../src/board/columns.js';
+import type { TodoRecord } from '../src/fixtures/records.js';
 import { todo } from './helpers.js';
 
-// #160 手动改相面落点集单源对拍：server canManualMovePhase 消费 shared
-// BOARD_DROP_PHASES，web 列定义消费 COLUMNS[].dropPhase——持落点列两表必须同集
-// （#351：待处理无落点，不入拍）。
-describe('手动改相面单源（#160 / #351）', () => {
+// #160→#753 手动改相面落点集单源对拍：server canManualMovePhase 消费 shared
+// canBoardDrop/BOARD_DROP_PHASES，web 列定义消费 COLUMNS[].dropPhase——四列
+// 落点两表必须同集（#753：待处理 收 已完成 的重开落位，正名 review）。
+describe('手动改相面单源（#160 / #753）', () => {
   test('持落点列的 dropPhase 集 = shared BOARD_DROP_PHASES', () => {
-    const drops = COLUMNS.flatMap((c) => (c.dropPhase == null ? [] : [c.dropPhase]));
+    const drops = COLUMNS.map((c) => c.dropPhase);
     expect(drops.sort()).toEqual([...BOARD_DROP_PHASES].sort());
   });
 
-  test('待处理不作落点（gate/failed 是系统态，手动拖入无语义）', () => {
-    expect(col('pending').dropPhase).toBeUndefined();
+  test('待处理落点正名 review = 重开回审核关口（#753 [设计]）', () => {
+    expect(col('pending').dropPhase).toBe('review');
+  });
+});
+
+// #753 per-source 落位矩阵（todos.dev 2026-10-03/04 live 重测；执行中源行
+// 未测 = 沿用既有语义 [设计]）。shared canBoardDrop 是相位级镜像，这里钉
+// 卡面级（hasChanges 数据位参与判据）。
+describe('canDropOnColumn（#753 per-source 矩阵）', () => {
+  const withChanges = (t: TodoRecord) => ({ ...t, hasChanges: true });
+
+  test('待开始 源：执行中 ✓ 已完成 ✓；待处理 ✗（实测恒素面）；源列 ✗', () => {
+    const t = todo(1, 'todo');
+    expect(canDropOnColumn(t, 'building')).toBe(true);
+    expect(canDropOnColumn(t, 'done')).toBe(true);
+    expect(canDropOnColumn(t, 'pending')).toBe(false);
+    expect(canDropOnColumn(t, 'todo')).toBe(false);
+  });
+
+  test('待处理 源（confirm/review/awaitingReply）：待开始 ✓ 已完成 ✓；执行中 ✗', () => {
+    for (const t of [todo(1, 'confirm'), todo(2, 'review'), todo(3, 'review', true)]) {
+      expect(canDropOnColumn(t, 'todo'), t.phase).toBe(true);
+      expect(canDropOnColumn(t, 'done'), t.phase).toBe(true);
+      expect(canDropOnColumn(t, 'building'), t.phase).toBe(false);
+      expect(canDropOnColumn(t, 'pending'), t.phase).toBe(false);
+    }
+  });
+
+  test('failed 源：待开始 ✓；已完成 ✗（#702 failed→done 保持非法）', () => {
+    const t = todo(1, 'failed');
+    expect(canDropOnColumn(t, 'todo')).toBe(true);
+    expect(canDropOnColumn(t, 'done')).toBe(false);
+    expect(canDropOnColumn(t, 'building')).toBe(false);
+  });
+
+  test('已完成 源：有变更 → 待处理 ✓（重开）；无变更 → 待处理 ✗（2026-10-04 实测）', () => {
+    const rich = withChanges(todo(1, 'done'));
+    const plain = todo(2, 'done'); // localTodo 底 hasChanges=false
+    expect(canDropOnColumn(rich, 'pending')).toBe(true);
+    expect(canDropOnColumn(rich, 'todo')).toBe(true);
+    expect(canDropOnColumn(rich, 'building')).toBe(false);
+    expect(canDropOnColumn(rich, 'done')).toBe(false);
+    expect(canDropOnColumn(plain, 'pending')).toBe(false);
+    expect(canDropOnColumn(plain, 'todo')).toBe(true);
+  });
+
+  test('执行中 源（未测行 [设计]）：待开始 ✓ 已完成 ✓；待处理 ✗', () => {
+    for (const t of [todo(1, 'planning'), todo(2, 'building')]) {
+      expect(canDropOnColumn(t, 'todo'), t.phase).toBe(true);
+      expect(canDropOnColumn(t, 'done'), t.phase).toBe(true);
+      expect(canDropOnColumn(t, 'pending'), t.phase).toBe(false);
+      expect(canDropOnColumn(t, 'building'), t.phase).toBe(false);
+    }
+  });
+
+  test('closed 不占列 = 无源无落；未知列 = 恒等假', () => {
+    const t = todo(1, 'closed');
+    for (const id of ['todo', 'building', 'pending', 'done']) {
+      expect(canDropOnColumn(t, id), id).toBe(false);
+    }
+    expect(canDropOnColumn(todo(2, 'todo'), 'nope')).toBe(false);
   });
 });
 

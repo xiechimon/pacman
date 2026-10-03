@@ -32,6 +32,7 @@ import { useLiveData } from '../api/provider.js';
 import { useNotificationPermission } from '../board/notify-banner.js';
 import { ProfileAvatar, ProfileCard, ProfileHead, ProfileRow } from '../components/profile-card.js';
 import { Button } from '../components/ui/button.js';
+import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Switch } from '../components/ui/switch.js';
 import { USER_NAME } from '../fixtures/fixtures.js';
@@ -39,7 +40,7 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { LOCALE_NAMES, LOCALES } from '../i18n/locale.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, SquarePen } from '../icons/index.js';
-import { ClickCatcher, useEscapeClose } from '../overlays/dismiss.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 import { SecondaryShell } from '../secondary/shell.js';
 
 export function AccountPage() {
@@ -47,7 +48,12 @@ export function AccountPage() {
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   const [langOpen, setLangOpen] = useState(fixture.ui?.langDropdownOpen === true);
-  useEscapeClose(langOpen, () => setLangOpen(false));
+  // #656：Esc 归 FloatingShell（Base UI layer 栈），旧 useEscapeClose 退役；
+  // wrap 作 Portal container，absolute 面板的包含块原位保真。dock 走 state
+  // 而非 ref 读值：fixture 面（scenario 13-lang）开态即挂载，首帧 ref 尚未
+  // 就位，Portal container=null 不渲染任何东西——state 在 ref 回调里落成，
+  // 下一帧 Portal 拿到真容器（dir-browser 同款）。
+  const [langDock, setLangDock] = useState<HTMLElement | null>(null);
   // M5 live：名称 = GET /api/user/me（seed 单用户 displayName，02 §2.1）。
   // 邮箱行已删（XMON-107 用户裁决）：无邮箱账位面，占位无信息量。
   const { live } = useLiveData();
@@ -80,7 +86,7 @@ export function AccountPage() {
           <SquarePen width={14} height={14} />
         </ProfileRow>
         <ProfileRow className="profile-row--tall" label={t('语言')}>
-          <span className="account-select-wrap">
+          <span className="account-select-wrap" ref={setLangDock}>
             {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Button，per-face
                 几何仍住 secondary.css 的 .account-select。差额并项——散写形字重
                 400（底座 font-medium）；chevron 走 width/height 属性 12px，底座
@@ -96,33 +102,46 @@ export function AccountPage() {
               {LOCALE_NAMES[locale]}
               <ChevronDown width={12} height={12} />
             </Button>
-            {langOpen && (
-              <>
-                <ClickCatcher onClose={() => setLangOpen(false)} />
-                <div className="lang-dropdown" role="listbox" aria-label={t('语言')}>
-                  {LOCALES.map((code) => (
-                    <Button
-                      key={code}
-                      variant="ghost"
-                      className="lang-dropdown-row justify-start gap-0 text-left font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5"
-                      role="option"
-                      aria-selected={code === locale}
-                      onClick={() => {
-                        setLocale(code);
-                        setLangOpen(false);
-                      }}
-                    >
-                      {LOCALE_NAMES[code]}
-                      {code === locale && (
-                        <span className="lang-dropdown-check">
-                          <Check width={14} height={14} />
-                        </span>
-                      )}
-                    </Button>
-                  ))}
-                </div>
-              </>
-            )}
+            {/* #656：语言 dropdown 壳 = FloatingShell（旧条件渲染无退场窗，
+                进场从无动效到 tw 缺省 pop 档——D3 mount → tw default；#666
+                toggle 面律：焦点留触发位、外点归 catcher）。右锚面板，
+                transform-origin 落右上锚边（more-menu 同律）。 */}
+            <FloatingShell
+              open={langOpen}
+              onClose={() => setLangOpen(false)}
+              container={langDock}
+              className="anchored-pop-shell"
+              initialFocus={false}
+              disablePointerDismissal
+            >
+              <ClickCatcher onClose={() => setLangOpen(false)} />
+              <div
+                className={`lang-dropdown origin-top-right ${FLOATING_POP_ANIM}`}
+                role="listbox"
+                aria-label={t('语言')}
+              >
+                {LOCALES.map((code) => (
+                  <Button
+                    key={code}
+                    variant="ghost"
+                    className="lang-dropdown-row justify-start gap-0 text-left font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5"
+                    role="option"
+                    aria-selected={code === locale}
+                    onClick={() => {
+                      setLocale(code);
+                      setLangOpen(false);
+                    }}
+                  >
+                    {LOCALE_NAMES[code]}
+                    {code === locale && (
+                      <span className="lang-dropdown-check">
+                        <Check width={14} height={14} />
+                      </span>
+                    )}
+                  </Button>
+                ))}
+              </div>
+            </FloatingShell>
           </span>
         </ProfileRow>
         <ProfileRow label={t('推送通知')}>

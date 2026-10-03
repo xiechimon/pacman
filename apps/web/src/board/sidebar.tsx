@@ -17,9 +17,10 @@
 // muted-foreground 族。
 
 import { BRAND } from '@pacman/shared';
-import { type ComponentType, type SVGProps, useCallback, useMemo, useState } from 'react';
+import { type ComponentType, type SVGProps, useCallback, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useLiveData } from '../api/provider.js';
+import { FloatingShell } from '../components/ui/floating-shell.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { UserMenu } from '../detail/user-menu.js';
@@ -43,7 +44,7 @@ import {
   Search,
   Server,
 } from '../icons/index.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 import { readStoredTheme } from '../theme.js';
 
 /** Which sidebar row carries the active pill: a nav row (工作台 / 定时 /
@@ -218,6 +219,14 @@ const RAIL_ROW =
   'rail-row relative flex h-8 w-10 flex-none items-center justify-center text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-1 before:rounded-[6px] before:content-[""] hover:before:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>svg]:relative [&>.project-avatar]:relative';
 const RAIL_SELECTED = 'rail-row--selected text-foreground before:bg-sidebar-active';
 
+/** #656 用户菜单进出场：同 FLOATING_POP_ANIM 配方（ADR 0009 D3：
+ *  duration-100 + fade + zoom-95 + slide -8px），方向翻成 bottom——面板底锚
+ *  在头像 chip 上方（#163 锚定律），从锚边滑入即自下而上；transform-origin
+ *  同律落底边。挂在 .user-menu 面板本体（fixed 定位元素自身吃 keyframe
+ *  transform 不换包含块；挂祖先才会）。 */
+const USER_MENU_POP_ANIM =
+  'duration-100 origin-bottom group-data-closed/fshell:fill-mode-forwards group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-open/fshell:zoom-in-95 group-data-open/fshell:slide-in-from-bottom-2 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0 group-data-closed/fshell:zoom-out-95 group-data-closed/fshell:slide-out-to-bottom-2';
+
 export function BoardSidebar({
   collapsed = false,
   onToggle,
@@ -261,16 +270,34 @@ export function BoardSidebar({
   const toggleResourceGroup = useCallback(() => toggleGroup('resource'), [toggleGroup]);
   const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
   const toggleUserMenu = useCallback(() => setUserMenuOpen((open) => !open), []);
-  useEscapeClose(userMenuOpen, closeUserMenu);
+  // #656：OverlayMount/useEscapeClose → FloatingShell（Esc 归 Base UI layer 栈）。
+  // Portal container 指回 aside 本体：`.board-sidebar--collapsed
+  // .user-menu--floating` 的 53px 底边覆写靠后代选择器命中，portal 到 body
+  // 会丢这条几何；挂回原位则 DOM 树位与包含块都不变（fixed 面板不受 aside
+  // overflow 影响，#127 律原样成立）。
+  const dockRef = useRef<HTMLElement | null>(null);
   const userMenuPopover = (
-    <OverlayMount open={userMenuOpen}>
+    <FloatingShell
+      open={userMenuOpen}
+      onClose={closeUserMenu}
+      container={dockRef.current}
+      className="anchored-pop-shell"
+      // #666 律：toggle 面（头像 chip aria-expanded）焦点留触发位 + 外点归
+      // ClickCatcher（原生 outsidePress 只接得住键盘合成 click，与 toggle
+      // onClick 双写会把面「关不掉」）。
+      initialFocus={false}
+      disablePointerDismissal
+    >
       <ClickCatcher onClose={closeUserMenu} />
-      <UserMenu floating theme={readStoredTheme(localStorage)} />
-    </OverlayMount>
+      <UserMenu floating className={USER_MENU_POP_ANIM} theme={readStoredTheme(localStorage)} />
+    </FloatingShell>
   );
   if (collapsed) {
     return (
-      <aside className="board-sidebar board-sidebar--collapsed relative z-(--z-docked) flex w-10 flex-none flex-col border-r border-[var(--border-default)] bg-background">
+      <aside
+        ref={dockRef}
+        className="board-sidebar board-sidebar--collapsed relative z-(--z-docked) flex w-10 flex-none flex-col border-r border-[var(--border-default)] bg-background"
+      >
         {/* 展开钮的 hover 面是它骑 seam 行的本分（见展开态注释）；按压面与
             展开态折叠钮同律禁掉——同一个控件折叠前后的两张脸，按下去都只
             该是图标本身（XMON-69，律在 motion.css 的 sidebar toggles 段）。 */}
@@ -360,7 +387,10 @@ export function BoardSidebar({
   }
 
   return (
-    <aside className="board-sidebar relative z-(--z-docked) flex w-60 flex-none flex-col overflow-hidden border-r border-[var(--border-default)] bg-background">
+    <aside
+      ref={dockRef}
+      className="board-sidebar relative z-(--z-docked) flex w-60 flex-none flex-col overflow-hidden border-r border-[var(--border-default)] bg-background"
+    >
       {/* 头部几何与选中态无关（dogfood 2026-09-30）：--active 只换底色，不搬
           内容。pill 的 mx-2 内缩 8px，pl 补 11 让图标仍落在 x19——与非选中态
           pl-[19px] 同一条线；名字间距恒 11px。r7 12 探针钉的是 pill 盒子

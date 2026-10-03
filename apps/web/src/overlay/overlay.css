@@ -519,7 +519,10 @@
   position: fixed;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%);
+  /* #656：居中位移用 translate 独立属性——tw enter/exit keyframe 会整条接管
+     transform（identity 起步），旧 transform 居中会在动画窗内被顶掉、面板
+     闪到左上偏移位；translate 属性与 keyframe transform 复合，几何恒居中。 */
+  translate: -50% -50%;
   width: 448px;
   padding: 20px 16px 16px;
   border-radius: 12px;

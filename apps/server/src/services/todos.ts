@@ -351,6 +351,13 @@ export function updateTodo(
         'failed 任务的审核关口恢复由合并/审核重跑动作发起（build 腿已交付时），手动改相不收',
       );
     }
+    // #753：done→review = 已完成 拖回 待处理 的重开落位，要求变更产物在——
+    // todos.dev 2026-10-04 live 实测：无变更的 done 卡拖拽时 待处理 列恒素面
+    // （没有可供重开验收的东西）。web 面同判（columns.ts canDropOnColumn 按
+    // hasChanges 收边），本闸 = raw PATCH 面的纵深防御。
+    if (row.phase === 'done' && patch.phase === 'review' && !row.hasChanges) {
+      throw new HttpError(409, '无变更产物的已完成任务不能拖回待处理（没有可重开验收的东西）');
+    }
     sets.phase = patch.phase;
     sets.phaseAt = nowMs();
   }

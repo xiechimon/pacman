@@ -7,19 +7,23 @@
 // 1fr)，280px = 参考站 2026-10-03 实测固定节距），⌘J 停靠 / 窄窗放不下时
 // 横滚回归且滚动条不再隐藏（旧 240px 开态护栏在 1440 停靠态把第四列裁成
 // ~3px 残边、无可滚线索 = #692 病灶）。
-// #73→#616: drag & drop rides the locked stack's core piece only
+// #73→#616→#753: drag & drop rides the locked stack's core piece only
 // (01-stack-v2 §4.1: @dnd-kit/core) — the reference product (todos.dev,
-// 2026-10-02 live 实测) has NO in-column reordering: siblings never shift
-// during a gesture, an in-column drop commits nothing, and the sortable
-// live-preview mirror (#73 multi-container) retired with it. The gesture is
-// a pure cross-column phase vehicle: 待开始/执行中 cards lift (compact
-// DragCard clone, 2° tilt), every valid target column tints indigo (base
-// 5% / hovered 10%), and the drop routes by column — 执行中 hands the todo
-// to the page's 开始任务 dialog (phase NOT written until 确认, reference
-// behavior), 待开始/已完成 commit the phase silently (dnd.ts moveTodo),
-// 待处理 (#351) and same-column drops do nothing. Desktop-only like the
-// official (changelog 2026-09-12), so the sensor set is empty on coarse
-// pointers.
+// live 实测; matrix re-cut 2026-10-03/04 for #753) has NO in-column
+// reordering: siblings never shift during a gesture, an in-column drop
+// commits nothing, and the sortable live-preview mirror (#73
+// multi-container) retired with it. The gesture is a pure cross-column
+// phase vehicle: EVERY card lifts (#753 推翻 2026-10-02 旧测「待处理/已完成
+// 不可拖」— compact DragCard clone, 2° tilt), valid targets tint indigo
+// per the source-card matrix (columns.ts canDropOnColumn 单源；base 5% /
+// hovered 10%，源列与非法对恒素面), and the drop routes by column — 执行中
+// hands the todo to the page's start path (#640 直发编排，phase NOT written
+// locally；2026-10-04 实测参考站该落位开 开始任务 dialog，差异归后续票),
+// 待开始/待处理/已完成 commit the phase silently (dnd.ts moveTodo；待处理 =
+// 已完成有变更卡的重开落位，写 review)。Same-column and invalid-pair drops
+// do nothing (参考站实测：非法落位 = 静默无操作，overlay 同帧卸载无拒绝动
+// 画). Desktop-only like the official (changelog 2026-09-12), so the sensor
+// set is empty on coarse pointers.
 // #414 (shadcn 试点): 视觉层切 shadcn 组件 + B（neutral）token——网格/列/头
 // 部布局走 tailwind 工具类（几何与 #351 的 board.css 规则逐条对齐），按钮走
 // components/ui/button；data-* 钩子、类别名锚点、dnd 逻辑全部原位。阶段点
@@ -49,22 +53,13 @@ import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
 // drawer/settings overlays sit beside it in one place.
 import { useI18n } from '../i18n/provider.js';
-import { COLUMNS, sortColumnTodos } from './columns.js';
+import { COLUMNS, canDropOnColumn, sortColumnTodos } from './columns.js';
 import { DRAG_THRESHOLD_PX } from './dnd.js';
 import { DragCard } from './drag-card.js';
 import { DraggableCard } from './draggable-card.js';
 import { type FilterChip, FilterChips, type FilterDimension, FilterPanel } from './filter-panel.js';
 import { cardTag } from './tag-filter.js';
 import './board.css';
-
-/** #616（todos.dev 2026-10-02 live 实测）：拖拽的落点面只有列——卡片不注
- *  droppable，over.id 恒为列 id。合法目标 = 有 dropPhase（#351：待处理无
- *  dropPhase，永远吃不到染色也吃不到提交）且不是被拖卡的源列（参考站：源列
- *  全程素面）。 */
-function isValidDropTarget(columnId: string | null, sourceColumnId: string | null): boolean {
-  if (columnId == null || columnId === sourceColumnId) return false;
-  return COLUMNS.find((c) => c.id === columnId)?.dropPhase != null;
-}
 
 /** #403 建轴 / #445 双轴化：看板筛选面——board-page 持有 URL 态与数据源，
  *  本面只消费现成谓词与回调（fixture/live 分支不渗进渲染层）。命中判定与
@@ -152,9 +147,11 @@ export function BoardSurface({
   }, []);
 
   const dragged = dragId == null ? null : (fixture.todos.find((t) => t.id === dragId) ?? null);
-  // 源列 = 被拖卡当下所在列（染色排除位 + 同列落位无操作判定）。
-  const sourceColumnId =
-    dragged == null ? null : (COLUMNS.find((c) => c.accepts(dragged))?.id ?? null);
+  // #753：合法目标 = per-source 卡面矩阵（columns.ts canDropOnColumn 单源，
+  // 源列排除/同列无操作都在判据内）；#616 落点面不变——卡片不注 droppable，
+  // over.id 恒为列 id。
+  const isValidDropTarget = (columnId: string | null): boolean =>
+    dragged != null && columnId != null && canDropOnColumn(dragged, columnId);
 
   const onDragStart = (event: DragStartEvent) => {
     setDragId(String(event.active.id));
@@ -165,17 +162,18 @@ export function BoardSurface({
   const onDragOver = (event: DragOverEvent) => {
     const { over } = event;
     const overColumnId = over == null ? null : String(over.id);
-    setDropColumnId(isValidDropTarget(overColumnId, sourceColumnId) ? overColumnId : null);
+    setDropColumnId(isValidDropTarget(overColumnId) ? overColumnId : null);
   };
 
-  // #616 落位路由（参考站实测）：执行中 = 开始意图（page 开 开始任务
-  // dialog，确认前不写相位）；待开始/已完成 = 静默改相提交；待处理（#351
-  // 无 dropPhase）/源列/列外 = 无操作，overlay 随指针松开同帧卸载（无
-  // drop 动画——dropAnimation={null}）。
+  // #616→#753 落位路由（参考站实测）：执行中 = 开始意图（#640 直发编排，
+  // 本地不写相位；唯一合法源 = 待开始）；待开始/待处理/已完成 = 静默改相
+  // 提交（待处理 = 已完成有变更卡的重开，写 review）；非法对/源列/列外 =
+  // 无操作（实测：静默无拒绝动画），overlay 随指针松开同帧卸载（无 drop
+  // 动画——dropAnimation={null}）。
   const onDragEnd = (event: DragEndEvent) => {
     const { over } = event;
     const overColumnId = over == null ? null : String(over.id);
-    if (dragged != null && isValidDropTarget(overColumnId, sourceColumnId)) {
+    if (dragged != null && isValidDropTarget(overColumnId)) {
       const column = COLUMNS.find((c) => c.id === overColumnId);
       if (column?.startGate === true) onStartIntent?.(dragged);
       else if (overColumnId != null) onPhaseDrop?.(dragged, overColumnId);
@@ -270,12 +268,9 @@ export function BoardSurface({
                   aria-label={t(column.name)}
                   data-column={column.id}
                   /* #616 两级染色：手势在飞时全部合法目标列戴 base 档
-                     （data-drop-valid），指针悬停列升 hover 档（data-drop）。 */
-                  data-drop-valid={
-                    dragged != null && isValidDropTarget(column.id, sourceColumnId)
-                      ? 'true'
-                      : undefined
-                  }
+                     （data-drop-valid），指针悬停列升 hover 档（data-drop）。
+                     #753：合法集 = 被拖卡的 per-source 矩阵。 */
+                  data-drop-valid={isValidDropTarget(column.id) ? 'true' : undefined}
                   data-drop={dropColumnId === column.id ? 'true' : undefined}
                 >
                   <header className="board-column-header flex h-[37px] flex-none items-center px-[13px] pt-[3px]">
@@ -298,10 +293,10 @@ export function BoardSurface({
                     )}
                   </header>
                   <ColumnList columnId={column.id} empty={t(column.empty)} count={todos.length}>
-                    {/* #616 可拖面（参考站实测）：待开始 ✓；待处理/已完成
-                        卡不武装传感器（按下直通卡内链接）；执行中沿用本仓
-                        既有可拖语义（参考站该列空、未能实测——[设计] 保
-                        守保留，其落点同受 isValidDropTarget 约束）。 */}
+                    {/* #753 可拖面（todos.dev 2026-10-03/04 live 重测）：
+                        每列的卡都武装传感器——旧「待处理/已完成不可拖」是
+                        2026-10-02 旧测误判，已推翻；点击导航由 PointerSensor
+                        的 distance 阈值保住（未移动的按压直通卡内链接）。 */}
                     {todos.map((todo) => (
                       <DraggableCard
                         key={todo.id}
@@ -309,7 +304,6 @@ export function BoardSurface({
                         now={fixture.now}
                         onAction={onAction}
                         onBranch={onBranch}
-                        draggable={column.id === 'todo' || column.id === 'building'}
                         projectName={fixture.projectNames?.[todo.projectId]}
                         tag={tagsById == null ? null : cardTag(todo, tagsById)}
                       />

@@ -21,8 +21,10 @@ import {
   boardChiefProbes,
   boardDarkFresh,
   boardDefault,
+  boardDragMatrix,
   boardFailed,
   boardGithubPicker,
+  boardMachinePicker,
   boardOverflow,
   boardProjectPicker,
   boardR8Overlay,
@@ -132,6 +134,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #176 new-task dialog 项目选择器:命名场景(无 capture)——boardDefault
       // 面加 projectNames 双项目,e2e 钉选择器行为;无 fixture 行。
       'newtask-projects': boardProjectPicker,
+      // #758 机器 chip 选择记忆：命名场景（无 capture，同上先例）——
+      // boardDefault 面 + resources 两台机器（在线本机 + 离线远端），
+      // e2e 钉「选→刷新→回上次那台」与两条降级路径。
+      'newtask-machines': boardMachinePicker,
       // #361 新建项目 GitHub repo picker：命名场景（无 capture，
       // newtask-projects 先例）——boardDefault 面 + 已连接 github fixture，
       // e2e 钉 picker 搜索/单选回填/断开/着陆参行为。
@@ -141,6 +147,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // tagged，钉板级空结果态。
       'board-tags': boardTagFilter,
       'board-tags-empty': boardTagFilterEmpty,
+      // #753 拖动矩阵：命名场景（无 capture，board-tags 先例）——四列满员 +
+      // 待处理三相 + 已完成两态（有/无变更），e2e 钉 per-source 合法目标
+      // 矩阵与重开落位。
+      'board-drag-matrix': boardDragMatrix,
       // #445 看板仓库筛选：命名场景（无 capture，同上先例）——board-repos
       // 三项目三卡（r3 两卡 + r2 一卡 + r4-quiet 零卡）钉仓库轴单选/多选/
       // 空态与「仓库 × 类型」双轴组合收窄。
