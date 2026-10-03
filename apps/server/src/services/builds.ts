@@ -38,6 +38,7 @@ import type { Db } from '../db/client.js';
 import {
   agent,
   build,
+  machine,
   message,
   plan as planTable,
   project,
@@ -739,6 +740,90 @@ export function applyStepFailure(
   const todoRow = db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
   if (todoRow && canTransitionPhase(todoRow.phase, 'failed')) {
     setTodoPhase(deps, todoRow.id, 'failed');
+  }
+}
+
+// —— #706 build 步失联扫尾（B-C7；#684 chief 扫尾的同型推广）—————————————
+
+/** 失联判定阈值：与 #684 同节奏（CHIEF_ABANDONED_STEP_MS），不自造新节奏——
+ * 2 分钟 = 机器重启/重连窗口之上（presence ~30s、步心跳 ~30s、daemon 冷启
+ * 秒级）。 */
+export const BUILD_ABANDONED_STEP_MS = 120_000;
+
+/** worker 步（plan/build/merge/review）失联扫尾（scheduler tick 驱动，#706）：
+ * 把三类「永不失败也就永不可见」的永挂收进 #631 失败闭环——落账单源 =
+ * applyStepFailure（step failed + build.errorMessage + todo → failed，与机器
+ * 报失败同一条漏斗），事件面 = build 文档 + 会话流 step 事件（web 失败行 +
+ * 相位翻「失败」与报失败同形，不另起通知面）。
+ * ① pending 无人认领且团队零在线机器（daemon 全灭/未注册：步永不 claim）；
+ * ② claimed 心跳停更超阈值且机器离线/失踪（daemon 步中途死亡）；
+ * ③ claimed 自领取后零心跳进展超阈值（B-C7 claim 移交竞态：server 标 claimed
+ *    但机器侧零执行——claim 把 lastHeartbeatAt 置为 claimedAt，故「零进展」
+ *    即 heartbeat 从未推进；机器在线也命中）。
+ * 不动：心跳新鲜的 claimed 步（心跳年龄是活判据，不是墙）；团队有在线机器
+ * 的 pending 步（合法排队，含 #682 钉选离线机器的等待语义）；在线机器上曾
+ * 有心跳后停更的 claimed 步（执行/推送通道部分存活的歧义态，等 presence 过
+ * 期走 ②）。chief 步不在本面（chief.ts 扫尾）。幂等：只扫 pending/claimed，
+ * 终态步天然跳过；daemon 迟到 done 落终态步被忽略（machines 收尾终态幂等）。 */
+export function failAbandonedBuildSteps(deps: BuildDeps, now: number = nowMs()): void {
+  const candidates = deps.db
+    .select()
+    .from(step)
+    .where(
+      and(
+        inArray(step.kind, ['plan', 'build', 'merge', 'review']),
+        inArray(step.status, ['pending', 'claimed']),
+      ),
+    )
+    .all();
+  for (const row of candidates) {
+    const buildRow = deps.db.select().from(build).where(eq(build.id, row.buildId)).get();
+    if (!buildRow) continue; // 孤儿步：无呈现面
+    const todoRow = deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
+    if (!todoRow) continue;
+    let reason: string | null = null;
+    if (row.status === 'pending') {
+      const online = deps.db
+        .select({ id: machine.id })
+        .from(machine)
+        .where(and(eq(machine.teamId, todoRow.teamId), eq(machine.online, true)))
+        .all();
+      if (online.length === 0 && now - row.createdAt > BUILD_ABANDONED_STEP_MS) {
+        reason = `本轮无人认领：团队当前没有在线机器（等待 ${Math.round(BUILD_ABANDONED_STEP_MS / 1000)} 秒超时）。请确认执行机 daemon 在线后重跑。`;
+      }
+    } else {
+      // claimed：claim 置位 heartbeat（machines claim 面），故 null/陈旧一律
+      // 可判——有效心跳取三级回落（heartbeat → 领取时刻 → 入队时刻）。
+      const effectiveBeat = row.lastHeartbeatAt ?? row.claimedAt ?? row.createdAt;
+      if (now - effectiveBeat > BUILD_ABANDONED_STEP_MS) {
+        const machineRow = row.machineId
+          ? deps.db.select().from(machine).where(eq(machine.id, row.machineId)).get()
+          : undefined;
+        const progressed =
+          row.lastHeartbeatAt !== null && row.lastHeartbeatAt > (row.claimedAt ?? row.createdAt);
+        if (machineRow === undefined || !machineRow.online) {
+          reason = `执行机器失联（构建步心跳停更超过 ${Math.round(BUILD_ABANDONED_STEP_MS / 1000)} 秒且机器已离线）。请检查执行机 daemon 状态后重跑。`;
+        } else if (!progressed) {
+          reason = `构建步领取后无进展（领取超过 ${Math.round(BUILD_ABANDONED_STEP_MS / 1000)} 秒仍无心跳，机器侧可能未实际执行）。请检查执行机 daemon 状态后重跑。`;
+        }
+      }
+    }
+    if (reason === null) continue;
+    applyStepFailure(deps, row, reason);
+    const failedBuild = deps.db.select().from(build).where(eq(build.id, row.buildId)).get();
+    if (failedBuild) publishBuild(deps, failedBuild);
+    const failedStep = deps.db.select().from(step).where(eq(step.id, row.id)).get();
+    if (failedStep) {
+      deps.convHub?.publishStep(row.buildId, {
+        id: failedStep.id,
+        buildId: failedStep.buildId,
+        kind: failedStep.kind,
+        machineId: failedStep.machineId,
+        createdAt: failedStep.createdAt,
+        status: failedStep.status,
+        checkpointCommit: failedStep.checkpointCommit,
+      });
+    }
   }
 }
 
