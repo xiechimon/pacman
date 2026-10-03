@@ -161,49 +161,40 @@ export function parseMentionSegments(text: string): MentionSegment[] {
 }
 
 /** Insert a mention token at the given caret offset in the textarea
- *  value, with one leading + one trailing space (r9 §2.2: ` @r3-builder `).
- *  Returns the new value and the caret offset that lands right after
- *  the inserted whitespace. When `at` is `null`, appends to the end. */
+ *  value, with one leading + one trailing space (r9 §2.2: ` @r3-builder `;
+ *  CC rule 26: acceptance always lands a trailing space so the next
+ *  keystroke cannot glue onto the token). A space side is skipped when the
+ *  neighbour is already whitespace — never double spaces.
+ *
+ *  Returns the new value and the caret offset that lands right after the
+ *  inserted trailing space (ticket #728 failure mode 6: a caret inside or
+ *  directly behind the token would let continued typing break the
+ *  markdown link).
+ *
+ *  `replaceEnd` (inline `@` path, #728): when set, the span `[at,
+ *  replaceEnd)` — the detected `@query` token — is consumed by the insert
+ *  instead of staying behind as residue. Callers pass the STORED detection
+ *  range, not a recomputed one (failure mode 5: a caret that drifted after
+ *  detection would otherwise eat neighbouring text). Out-of-range values
+ *  are clamped. When `at` is `null`, appends to the end. */
 export function insertMentionText(
   value: string,
   token: MentionToken,
   at: number | null,
+  replaceEnd?: number,
 ): { value: string; caret: number } {
   const piece = ` ${serializeMention(token)} `;
   if (at == null || at < 0 || at > value.length) {
     return { value: value + piece, caret: value.length + piece.length };
   }
-  // Avoid doubling the leading space when the previous char is already
-  // whitespace; same for the trailing side once we insert.
+  const end = replaceEnd != null && replaceEnd > at ? Math.min(replaceEnd, value.length) : at;
   const before = value.slice(0, at);
-  const after = value.slice(at);
-  const leadingTrimmed = before.length === 0 || /\s/.test(before[before.length - 1] ?? '');
-  const trailingSpace = after.length > 0 && !/^\s/.test(after) ? '' : '';
-  const head = leadingTrimmed ? '' : ' ';
+  const after = value.slice(end);
+  const serialized = serializeMention(token);
+  const head = before.length === 0 || /\s/.test(before[before.length - 1] ?? '') ? '' : ' ';
+  const tail = after.length > 0 && /^\s/.test(after) ? '' : ' ';
   return {
-    value: before + head + serializeMention(token) + trailingSpace + after,
-    caret: before.length + head.length + serializeMention(token).length + trailingSpace.length,
+    value: before + head + serialized + tail + after,
+    caret: before.length + head.length + serialized.length + tail.length,
   };
-}
-
-/** Detect the `@` prefix in the textarea value at the caret offset.
- *  Returns the partial query (text after the last `@` before the caret)
- *  when the caret sits inside a `@`-prefixed token; `null` when the
- *  caret is not in a mentionable position (composer inline @ list
- *  uses this to decide whether to open). */
-export function detectInlineAgentQuery(value: string, caret: number): string | null {
-  if (caret <= 0 || caret > value.length) return null;
-  let i = caret - 1;
-  while (i >= 0) {
-    const ch = value[i];
-    if (ch === '@') {
-      // No whitespace allowed between `@` and the caret.
-      const head = value.slice(i + 1, caret);
-      if (/\s/.test(head)) return null;
-      return head;
-    }
-    if (/\s/.test(ch ?? '')) return null;
-    i -= 1;
-  }
-  return null;
 }
