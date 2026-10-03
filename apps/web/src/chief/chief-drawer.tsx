@@ -33,13 +33,14 @@
 // 律，composer 聚焦时 n 归打字员）；钮载 KbdHint 的 N 悬浮提示（below 落位）
 // + aria-keyshortcuts；键与钮同 handler（触发 + 收切换器 popover）。
 
+import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import {
   CHIEF_INPUT_PLACEHOLDER,
   CHIEF_INPUT_PLACEHOLDER_STEERING,
   type ChiefCompactionModel,
 } from '@pacman/shared';
 import { Atom } from 'loading-dev';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
@@ -69,11 +70,17 @@ import {
   X,
 } from '../icons/index.js';
 import { useComposerWire } from '../overlay/composer-wire.js';
-import { DRAWER_EXIT_MS } from '../overlay/use-overlay-mount.js';
-import { OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { useChiefNewThreadHotkey } from '../overlays/hotkeys.js';
 import './chief.css';
 import { ChiefModelDialog } from './chief-model-dialog.js';
+
+/** 抽屉的 dock 行（ADR 0004 D2：面板是行内最后一个 flex 项、内容兄弟让位 418）。
+ *  挂载点清单（#656 票面）：board-page(.board-shell) / chief-wake 各族壳
+ *  (pages .page-main / resources .res-main / secondary .secondary-main /
+ *  detail .detail-body)。Portal 的 container 必须是这一行本身——传错容器（如
+ *  夹在中间的无名 wrapper）会让 aside 落错父、D2 让位崩（(b′) 实测 240px）。
+ *  故由锚点向上走到最近的 dock 行类，保证 container 恒为真 row。 */
+const DOCK_ROWS = ['board-shell', 'page-main', 'res-main', 'secondary-main', 'detail-body'];
 
 const EXAMPLE_ICONS = {
   'user-plus': ChiefUserPlus,
@@ -236,12 +243,19 @@ export function ChiefDrawer({
     draft: onSend != null ? undefined : (chief.draft ?? ''),
     onSend,
   });
-  // #146: Esc 与弹层族同律（#127 useEscapeClose 先例）——最内层先关：
-  // 线程切换器 popover 开着时第一下 Esc 收 popover，第二下关 drawer。
-  useEscapeClose(open, () => {
-    if (threadsOpen) setThreadsOpen(false);
-    else onClose();
-  });
+  // #146 Esc 分层改由 Base UI 壳代收（见下 onOpenChange）：Base UI 处理 Esc 时
+  // 会拦下事件，窗口监听（旧 useEscapeClose）收不到。
+  // (b″) dock 行发现：锚点 span 原位渲染，向上走到最近的 dock 行类作为 Portal
+  // container——保证 portaled aside 是真 row 的最后一个直接子元素（D2）。
+  const anchorRef = useRef<HTMLSpanElement | null>(null);
+  const [rowEl, setRowEl] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    let node = anchorRef.current?.parentElement ?? null;
+    while (node !== null && !DOCK_ROWS.some((c) => node?.classList.contains(c))) {
+      node = node.parentElement;
+    }
+    setRowEl(node);
+  }, []);
   // #389: 开后焦点落草稿框（dialog 家族 autofocus 律）。OverlayMount 的
   // mounted 滞后 open 一帧（effect 里才 setMounted）——鲜开时 effect 跑在
   // 节点存在之前，故首焦由 ref callback 承载（SearchPanel attachInput
@@ -270,508 +284,549 @@ export function ChiefDrawer({
   }, [onNewThread]);
   useChiefNewThreadHotkey(open && onNewThread != null, newThread);
   return (
-    <OverlayMount open={open} exitMs={DRAWER_EXIT_MS}>
-      <aside className="chief-drawer anim-drawer" aria-label={t('总管')}>
-        <header className="chief-head">
-          <div className="chief-head-row">
-            {/* XMON-23 收编：ghost 原语 + chief-chip per-face（几何/墨全在
+    <DialogPrimitive.Root
+      open={open}
+      modal={false}
+      // 外点不关（docked 布局列现状同）；Esc 分层由壳代收（#146）。
+      disablePointerDismissal
+      onOpenChange={(next: boolean, details?: { reason?: string }) => {
+        if (next) return;
+        if (details?.reason === 'escape-key' && threadsOpen) {
+          setThreadsOpen(false);
+          return;
+        }
+        onClose();
+      }}
+    >
+      {/* 锚点原位占位（hidden 不占布局）；其祖先链向上找 dock 行作 Portal container */}
+      <span ref={anchorRef} hidden aria-hidden="true" />
+      {/* 不用 keepMounted：退场保活靠 Base UI 的 transition-status（exit 播完才
+          卸载，同 OverlayMount 的保留语义、关后 DOM 归零）；keepMounted 会让关态
+          残留隐藏节点，破 e2e 的 count-0 断言与热键的「关=不在 DOM」前提。 */}
+      {rowEl !== null && (
+        <DialogPrimitive.Portal container={rowEl}>
+          <DialogPrimitive.Popup
+            // render 令 Popup 即 aside（贴右布局列本体）；slide 进出场落在 aside
+            // 上，Base UI 经自身动画撑退场卸载窗。
+            render={
+              <aside
+                className="chief-drawer duration-300 data-open:animate-in data-open:slide-in-from-right data-closed:animate-out data-closed:slide-out-to-right"
+                aria-label={t('总管')}
+              />
+            }
+            initialFocus={false}
+            finalFocus={false}
+          >
+            <header className="chief-head">
+              <div className="chief-head-row">
+                {/* XMON-23 收编：ghost 原语 + chief-chip per-face（几何/墨全在
                 unlayered per-face，恒压原语层）。中和件：h-auto（原语 h-8
                 会撑高 22.5 的行）、leading-[inherit]（原语 text-sm 的定值
                 20px 行高会压掉 15px 标题继承的 22.5，像素对拍实测塌 1px）、
                 shrink（chip 须收缩让 title 省略号生效）、active 位移、
                 svg size-auto（ChiefHash 13px 属性尺寸）。 */}
-            <Button
-              variant="ghost"
-              className="chief-chip h-auto shrink leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-              aria-label={t('主题')}
-              onClick={() => setThreadsOpen((v) => !v)}
-            >
-              <ChiefHash />
-              <span className="chief-chip-title">{t(chief.threadTitle)}</span>
-              <ChevronDown width={12} height={12} />
-            </Button>
-            <div className="chief-head-actions">
-              {/* 头部三钮：同 ghost/icon 收编；20×20 几何由 chief.css 的元素
-                  选择器 .chief-head-actions button 承载（仍是 button 元素，
-                  规则无改）。 */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                aria-label={t('新主题')}
-                aria-keyshortcuts="N"
-                onClick={onNewThread != null ? newThread : undefined}
-              >
-                <Plus width={18} height={18} />
-                {/* #645: N 悬浮提示（KbdHint 族第四消费点；below = 头部贴视口
-                    顶，above 会落屏外）。relative 由钮自身承载——chip 绝对定位
-                    的包含块。 */}
-                <KbdHint label="N" placement="below" />
-              </Button>
-              {onSettings != null && (
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                  aria-label={t('总管设置')}
-                  onClick={onSettings}
+                  className="chief-chip h-auto shrink leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                  aria-label={t('主题')}
+                  onClick={() => setThreadsOpen((v) => !v)}
                 >
-                  <ChiefGear />
+                  <ChiefHash />
+                  <span className="chief-chip-title">{t(chief.threadTitle)}</span>
+                  <ChevronDown width={12} height={12} />
                 </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                aria-label={t('关闭')}
-                onClick={onClose}
-              >
-                <X width={16} height={16} />
-              </Button>
-            </div>
-          </div>
-          <div className="chief-model">
-            {chief.bound ? (
-              <>
-                {/* #615 A/B：显示行翻控制件——行首 = 绑定 Agent 头像（FAB /
+                <div className="chief-head-actions">
+                  {/* 头部三钮：同 ghost/icon 收编；20×20 几何由 chief.css 的元素
+                  选择器 .chief-head-actions button 承载（仍是 button 元素，
+                  规则无改）。 */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                    aria-label={t('新主题')}
+                    aria-keyshortcuts="N"
+                    onClick={onNewThread != null ? newThread : undefined}
+                  >
+                    <Plus width={18} height={18} />
+                    {/* #645: N 悬浮提示（KbdHint 族第四消费点；below = 头部贴视口
+                    顶，above 会落屏外）。relative 由钮自身承载——chip 绝对定位
+                    的包含块。 */}
+                    <KbdHint label="N" placement="below" />
+                  </Button>
+                  {onSettings != null && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                      aria-label={t('总管设置')}
+                      onClick={onSettings}
+                    >
+                      <ChiefGear />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                    aria-label={t('关闭')}
+                    onClick={onClose}
+                  >
+                    <X width={16} height={16} />
+                  </Button>
+                </div>
+              </div>
+              <div className="chief-model">
+                {chief.bound ? (
+                  <>
+                    {/* #615 A/B：显示行翻控制件——行首 = 绑定 Agent 头像（FAB /
                     消息流同脸，XMON-105 律；未取到 agent 投影退 dashed 字形），
                     点开 = 主模型覆盖 dialog（live PATCH 落库回显）。中和件同
                     头部 chip 族：h-auto/leading-[inherit]/font-normal 防原语
                     定值撑高 12px 行、svg size-auto（ChevronDown 12 属性尺寸）。 */}
-                <Button
-                  variant="ghost"
-                  className="chief-model-btn h-auto shrink leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                  aria-label={t('总管主模型')}
-                  aria-haspopup="dialog"
-                  aria-expanded={modelOpen}
-                  onClick={() => setModelOpen(true)}
-                >
-                  {/* #615 返工（用户裁决）：行首 = 运行时标记，不是 Agent 头像
+                    <Button
+                      variant="ghost"
+                      className="chief-model-btn h-auto shrink leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                      aria-label={t('总管主模型')}
+                      aria-haspopup="dialog"
+                      aria-expanded={modelOpen}
+                      onClick={() => setModelOpen(true)}
+                    >
+                      {/* #615 返工（用户裁决）：行首 = 运行时标记，不是 Agent 头像
                       ——标记正本 = 参考站 providers 运行时 tab 的 SVG（用户指认
                       /app/resources/providers?runtime=pi 面，DOM 捕获入库）：
                       pi = RuntimePi 块状 π，claude-code = RuntimeClaudeCode
                       品牌星标（填色随捕获）。FAB / 消息流的 Agent 头像脸不受
                       影响（XMON-105 律在其各自面继续生效）。 */}
-                  <span className="chief-model-mark">
-                    {(chief.modelProvider ?? 'pi') === 'claude-code' ? (
-                      <RuntimeClaudeCode width={12} height={12} />
-                    ) : (
-                      <RuntimePi width={12} height={12} />
-                    )}
-                  </span>
-                  <span className="chief-model-label">{chief.modelSlot}</span>
-                  <ChevronDown width={12} height={12} />
-                </Button>
-                <ChiefModelDialog
-                  open={modelOpen}
-                  onClose={() => setModelOpen(false)}
-                  value={modelValue}
-                  options={modelOptions}
-                  onPick={onPickModel}
-                />
-              </>
-            ) : (
-              <span>n/a</span>
-            )}
-          </div>
-          {threadsOpen && (
-            <div className="chief-switcher" role="menu">
-              {(chief.threads ?? []).map((thread, index) => (
-                <button
-                  type="button"
-                  role="menuitem"
-                  key={thread.title}
-                  className={thread.active ? 'chief-switcher-row is-active' : 'chief-switcher-row'}
-                  onClick={
-                    onThread != null
-                      ? () => {
-                          onThread(thread.title, index);
-                          setThreadsOpen(false);
-                        }
-                      : undefined
-                  }
-                >
-                  <ChiefHash width={11} height={11} />
-                  <span>{t(thread.title)}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </header>
+                      <span className="chief-model-mark">
+                        {(chief.modelProvider ?? 'pi') === 'claude-code' ? (
+                          <RuntimeClaudeCode width={12} height={12} />
+                        ) : (
+                          <RuntimePi width={12} height={12} />
+                        )}
+                      </span>
+                      <span className="chief-model-label">{chief.modelSlot}</span>
+                      <ChevronDown width={12} height={12} />
+                    </Button>
+                    <ChiefModelDialog
+                      open={modelOpen}
+                      onClose={() => setModelOpen(false)}
+                      value={modelValue}
+                      options={modelOptions}
+                      onPick={onPickModel}
+                    />
+                  </>
+                ) : (
+                  <span>n/a</span>
+                )}
+              </div>
+              {threadsOpen && (
+                <div className="chief-switcher" role="menu">
+                  {(chief.threads ?? []).map((thread, index) => (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      key={thread.title}
+                      className={
+                        thread.active ? 'chief-switcher-row is-active' : 'chief-switcher-row'
+                      }
+                      onClick={
+                        onThread != null
+                          ? () => {
+                              onThread(thread.title, index);
+                              setThreadsOpen(false);
+                            }
+                          : undefined
+                      }
+                    >
+                      <ChiefHash width={11} height={11} />
+                      <span>{t(thread.title)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </header>
 
-        <div className="chief-body" ref={bodyRef}>
-          {!chief.bound && (
-            <div className="chief-gate">
-              <span>{t('请先为总管选择一个 Agent。')}</span>
-              {/* XMON-23 收编：brand 档 = A3 primary 等价位（--card-button
+            <div className="chief-body" ref={bodyRef}>
+              {!chief.bound && (
+                <div className="chief-gate">
+                  <span>{t('请先为总管选择一个 Agent。')}</span>
+                  {/* XMON-23 收编：brand 档 = A3 primary 等价位（--card-button
                   实底 + on-accent 墨）。中和件对齐 A6 实测形（50×26、12px 字、
                   8px 内边距、8 圆角、400 字重）：h-[26px]/px-2/rounded-md/
                   border-0/font-normal + 既有 inline style；active 位移中和。 */}
-              <Button
-                variant="brand"
-                className="h-[26px] cursor-pointer rounded-md border-0 px-2 font-normal active:not-aria-[haspopup]:translate-y-0"
-                style={{ width: 50, fontSize: 12 }}
-                onClick={onSettings}
-              >
-                {t('设置')}
-              </Button>
-            </div>
-          )}
-          {chief.examples && (
-            <>
-              <h2 className="chief-hero">{t('选择一个主题开始')}</h2>
-              <div className="chief-examples">
-                {chief.examples.map((ex) => {
-                  const Icon = EXAMPLE_ICONS[ex.icon];
-                  return (
-                    // #146: 点击即发预置词进 chief 线程（live 面走 onSend，
-                    // 等同用户键入发送；zh 权威 canon 串上行，r5 111 逐字）。
-                    // #631：onSend 异步化（被拒保留 draft）后 hero 面消费
-                    // fire-and-forget——失败 toast 归 surface，此处无 draft
-                    // 可保，不悬挂未处理 promise。
-                    // XMON-23 收编：ghost 原语 + chief-example per-face。中和件：
-                    // justify-start/whitespace-normal/font-normal（原语居中+
-                    // nowrap+medium 会破 170 卡内左对齐换行文案）、active 位移、
-                    // svg size-auto（瓦片字形 14px 属性尺寸）。
-                    <Button
-                      variant="ghost"
-                      className="chief-example justify-start whitespace-normal font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                      key={ex.text}
-                      onClick={onSend != null ? () => void onSend(ex.text) : undefined}
-                    >
-                      <span className="chief-example-tile">
-                        <Icon width={14} height={14} />
-                      </span>
-                      <span className="chief-example-text">{t(ex.text)}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-          {chief.stream && (
-            <div className="chief-stream">
-              {chief.stream.map((item, i) => {
-                // #631 失败行（chief_turn_error 投影）：居中 danger 提示 +
-                // 原因原文（server 数据，不经 t()——用户/agent 内容同律）。
-                if (item.kind === 'error')
-                  return (
-                    <div key={i} className="chief-error" role="alert">
-                      {t('总管本轮执行失败')}
-                      <span className="chief-error-reason">{item.text}</span>
-                    </div>
-                  );
-                if (item.kind === 'note')
-                  return (
-                    <div key={i} className="chief-note">
-                      {t(item.text)}
-                      {item.machineName && (
-                        <>
-                          <span className="chief-machine">{item.machineName}</span>
-                          {t('上')}
-                        </>
-                      )}
-                    </div>
-                  );
-                if (item.kind === 'user')
-                  return (
-                    <div key={i} className="chief-msg">
-                      {/* #650 / XMON-105: 用户行头像接全站单源——与详情页对话
+                  <Button
+                    variant="brand"
+                    className="h-[26px] cursor-pointer rounded-md border-0 px-2 font-normal active:not-aria-[haspopup]:translate-y-0"
+                    style={{ width: 50, fontSize: 12 }}
+                    onClick={onSettings}
+                  >
+                    {t('设置')}
+                  </Button>
+                </div>
+              )}
+              {chief.examples && (
+                <>
+                  <h2 className="chief-hero">{t('选择一个主题开始')}</h2>
+                  <div className="chief-examples">
+                    {chief.examples.map((ex) => {
+                      const Icon = EXAMPLE_ICONS[ex.icon];
+                      return (
+                        // #146: 点击即发预置词进 chief 线程（live 面走 onSend，
+                        // 等同用户键入发送；zh 权威 canon 串上行，r5 111 逐字）。
+                        // #631：onSend 异步化（被拒保留 draft）后 hero 面消费
+                        // fire-and-forget——失败 toast 归 surface，此处无 draft
+                        // 可保，不悬挂未处理 promise。
+                        // XMON-23 收编：ghost 原语 + chief-example per-face。中和件：
+                        // justify-start/whitespace-normal/font-normal（原语居中+
+                        // nowrap+medium 会破 170 卡内左对齐换行文案）、active 位移、
+                        // svg size-auto（瓦片字形 14px 属性尺寸）。
+                        <Button
+                          variant="ghost"
+                          className="chief-example justify-start whitespace-normal font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                          key={ex.text}
+                          onClick={onSend != null ? () => void onSend(ex.text) : undefined}
+                        >
+                          <span className="chief-example-tile">
+                            <Icon width={14} height={14} />
+                          </span>
+                          <span className="chief-example-text">{t(ex.text)}</span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+              {chief.stream && (
+                <div className="chief-stream">
+                  {chief.stream.map((item, i) => {
+                    // #631 失败行（chief_turn_error 投影）：居中 danger 提示 +
+                    // 原因原文（server 数据，不经 t()——用户/agent 内容同律）。
+                    if (item.kind === 'error')
+                      return (
+                        <div key={i} className="chief-error" role="alert">
+                          {t('总管本轮执行失败')}
+                          <span className="chief-error-reason">{item.text}</span>
+                        </div>
+                      );
+                    if (item.kind === 'note')
+                      return (
+                        <div key={i} className="chief-note">
+                          {t(item.text)}
+                          {item.machineName && (
+                            <>
+                              <span className="chief-machine">{item.machineName}</span>
+                              {t('上')}
+                            </>
+                          )}
+                        </div>
+                      );
+                    if (item.kind === 'user')
+                      return (
+                        <div key={i} className="chief-msg">
+                          {/* #650 / XMON-105: 用户行头像接全站单源——与详情页对话
                           用户行（transcript.tsx）逐字节同配方：avatarUrl 覆盖 >
                           dicebear 名字种子 > 静态兜底资产。原写死的
                           ChiefUserSolid 通用人形字形是全站最后一个漏网点。 */}
-                      <span className="chief-avatar chief-avatar--img">
-                        <SeededAvatar
-                          name={user.displayName}
-                          src={user.avatarUrl}
-                          fallback="/avatar-user.png"
-                        />
-                      </span>
-                      <div className="chief-msg-col">
-                        {/* #742：live 用户行的 markdown 槽（详情页用户行
-                            transcript.tsx #612 同款配方）——经共用块级解析器
-                            渲染，todo 提及 chip / 粗体 / 行内 code / 围栏不再
-                            按字面漏出；气泡类名双态，纯文本槽（fixture 捕获形）
-                            保持字面路径 DOM 与几何逐字不变。复制载荷照旧取
-                            item.text 原文（#469 律），rewind 锚 id 透传不动。 */}
-                        <div
-                          className={
-                            item.markdown != null ? 'chief-bubble chief-bubble--md' : 'chief-bubble'
-                          }
-                        >
-                          {item.markdown != null ? (
-                            <ChatMarkdown text={item.markdown} />
-                          ) : (
-                            item.text
-                          )}
-                        </div>
-                        <div className="chief-msg-tools">
-                          {/* #615 C：复制翻真 clipboard 钮（local-first 面存在）。 */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                            aria-label={t('复制')}
-                            onClick={() => copyText(`u${i}`, item.text)}
-                          >
-                            {copiedKey === `u${i}` ? (
-                              <Check width={13} height={13} />
-                            ) : (
-                              <Copy width={13} height={13} />
-                            )}
-                          </Button>
-                          {/* #615 返工（用户裁决覆盖 #306 二分律）：恢复钮闭环
+                          <span className="chief-avatar chief-avatar--img">
+                            <SeededAvatar
+                              name={user.displayName}
+                              src={user.avatarUrl}
+                              fallback="/avatar-user.png"
+                            />
+                          </span>
+                          <div className="chief-msg-col">
+                            {/* #742：live 用户行的 markdown 槽（详情页用户行
+                                transcript.tsx #612 同款配方）——经共用块级解析器
+                                渲染，todo 提及 chip / 粗体 / 行内 code / 围栏不再
+                                按字面漏出；气泡类名双态，纯文本槽（fixture 捕获形）
+                                保持字面路径 DOM 与几何逐字不变。复制载荷照旧取
+                                item.text 原文（#469 律），rewind 锚 id 透传不动。 */}
+                            <div
+                              className={
+                                item.markdown != null
+                                  ? 'chief-bubble chief-bubble--md'
+                                  : 'chief-bubble'
+                              }
+                            >
+                              {item.markdown != null ? (
+                                <ChatMarkdown text={item.markdown} />
+                              ) : (
+                                item.text
+                              )}
+                            </div>
+                            <div className="chief-msg-tools">
+                              {/* #615 C：复制翻真 clipboard 钮（local-first 面存在）。 */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                                aria-label={t('复制')}
+                                onClick={() => copyText(`u${i}`, item.text)}
+                              >
+                                {copiedKey === `u${i}` ? (
+                                  <Check width={13} height={13} />
+                                ) : (
+                                  <Copy width={13} height={13} />
+                                )}
+                              </Button>
+                              {/* #615 返工（用户裁决覆盖 #306 二分律）：恢复钮闭环
                               ——aria 正词「恢复到此处」= 参考站 live 同名控件；
                               语义 = rewind 锚（截断锚后消息 + 新会话重发该条，
                               server POST chief threads rewind）。破坏性 → 确认
                               层先行；fixture 面（onRewind 缺省 / id 缺省）走
                               accept 律关窗零请求。 */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                            aria-label={t('恢复到此处')}
-                            onClick={() => setRewindConfirm({ index: i, id: item.id ?? null })}
-                          >
-                            <Restore width={13} height={13} />
-                          </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                                aria-label={t('恢复到此处')}
+                                onClick={() => setRewindConfirm({ index: i, id: item.id ?? null })}
+                              >
+                                <Restore width={13} height={13} />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                // #739 在飞存在行：回合在飞但首 token 未至的静默窗口——头像槽
-                // 复用 robot 行的 agent 身份脸（bound = 绑定 Agent，未 bound =
-                // 虚线 chief 字形），右侧 = loading-dev Atom + `处理中...`，与
-                // 详情页对话区 streaming 行同一套词汇（transcript.tsx 正典）。
-                // 不挂秒数（#471），首 delta 到达即被 typing 行取代。
-                if (item.kind === 'streaming')
-                  return (
-                    <div key={i} className="chief-msg">
-                      {chief.bound && chief.agent ? (
-                        <span className="chief-avatar chief-avatar--img">
-                          <SeededAvatar
-                            name={chief.agent.displayName}
-                            src={chief.agent.avatarUrl}
-                            fallback="/avatar-robot-1.svg"
-                          />
-                        </span>
-                      ) : (
-                        <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
-                      )}
-                      <span className="chief-streaming">
-                        {/* #672/#739: loading-dev Atom（16px/900ms，与详情页
-                            chat-spinner 同款）——库自带 reduced-motion 冻结与
-                            aria-hidden，标签文本是可访问的 live 线索。 */}
-                        <Atom size={16} duration={900} className="chief-spinner" />
-                        {item.seconds != null && (
-                          <span className="chief-streaming-secs">{item.seconds}s</span>
-                        )}
-                        <ChevronRight width={10} height={10} />
-                        <span className="chief-streaming-label">{t(item.label)}</span>
-                      </span>
-                    </div>
-                  );
-                return (
-                  <div key={i} className="chief-msg">
-                    {/* XMON-105: a bound chief answers as its agent — the
+                      );
+                    // #739 在飞存在行：回合在飞但首 token 未至的静默窗口——头像槽
+                    // 复用 robot 行的 agent 身份脸（bound = 绑定 Agent，未 bound =
+                    // 虚线 chief 字形），右侧 = loading-dev Atom + `处理中...`，与
+                    // 详情页对话区 streaming 行同一套词汇（transcript.tsx 正典）。
+                    // 不挂秒数（#471），首 delta 到达即被 typing 行取代。
+                    if (item.kind === 'streaming')
+                      return (
+                        <div key={i} className="chief-msg">
+                          {chief.bound && chief.agent ? (
+                            <span className="chief-avatar chief-avatar--img">
+                              <SeededAvatar
+                                name={chief.agent.displayName}
+                                src={chief.agent.avatarUrl}
+                                fallback="/avatar-robot-1.svg"
+                              />
+                            </span>
+                          ) : (
+                            <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
+                          )}
+                          <span className="chief-streaming">
+                            {/* #672/#739: loading-dev Atom（16px/900ms，与详情页
+                                chat-spinner 同款）——库自带 reduced-motion 冻结与
+                                aria-hidden，标签文本是可访问的 live 线索。 */}
+                            <Atom size={16} duration={900} className="chief-spinner" />
+                            {item.seconds != null && (
+                              <span className="chief-streaming-secs">{item.seconds}s</span>
+                            )}
+                            <ChevronRight width={10} height={10} />
+                            <span className="chief-streaming-label">{t(item.label)}</span>
+                          </span>
+                        </div>
+                      );
+                    return (
+                      <div key={i} className="chief-msg">
+                        {/* XMON-105: a bound chief answers as its agent — the
                         stream row carries that agent's identity avatar (the
                         same face the FAB chip shows); unbound keeps the
                         dashed chief glyph. */}
-                    {chief.bound && chief.agent ? (
-                      <span className="chief-avatar chief-avatar--img">
-                        <SeededAvatar
-                          name={chief.agent.displayName}
-                          src={chief.agent.avatarUrl}
-                          fallback="/avatar-robot-1.svg"
-                        />
-                      </span>
-                    ) : (
-                      <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
-                    )}
-                    <div className="chief-msg-col">
-                      {item.markdown != null ? (
-                        // #650: live 回复原文走共用块级解析器（chat-markdown，
-                        // transcript robot 行 #469 同律）——bold / 行内 code /
-                        // mention / 列表 / 代码栅栏与详情页同形；抽屉节奏
-                        // （14px/24px、段距 2px）由 chief.css scoped 覆盖随
-                        // canon。#651 typing 尾行同源同渲染——增量面与终稿面
-                        // 同形，收敛不跳变。
-                        <ChatMarkdown text={item.markdown} />
-                      ) : (
-                        <>
-                          {(item.paragraphs ?? []).map((p, j) => (
-                            <p key={j} className="chief-para">
-                              <Segments segments={p} />
-                            </p>
-                          ))}
-                          {item.bullets?.map((b, j) => (
-                            <p key={`b${j}`} className="chief-bullet">
-                              <span className="chief-bullet-dot">•</span>
-                              <span>
-                                <Segments segments={b} />
-                              </span>
-                            </p>
-                          ))}
-                        </>
-                      )}
-                      {/* #651: typing 打字面是未定稿行——foot（复制/完成/过程
+                        {chief.bound && chief.agent ? (
+                          <span className="chief-avatar chief-avatar--img">
+                            <SeededAvatar
+                              name={chief.agent.displayName}
+                              src={chief.agent.avatarUrl}
+                              fallback="/avatar-robot-1.svg"
+                            />
+                          </span>
+                        ) : (
+                          <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
+                        )}
+                        <div className="chief-msg-col">
+                          {item.markdown != null ? (
+                            // #650: live 回复原文走共用块级解析器（chat-markdown，
+                            // transcript robot 行 #469 同律）——bold / 行内 code /
+                            // mention / 列表 / 代码栅栏与详情页同形；抽屉节奏
+                            // （14px/24px、段距 2px）由 chief.css scoped 覆盖随
+                            // canon。#651 typing 尾行同源同渲染——增量面与终稿面
+                            // 同形，收敛不跳变。
+                            <ChatMarkdown text={item.markdown} />
+                          ) : (
+                            <>
+                              {(item.paragraphs ?? []).map((p, j) => (
+                                <p key={j} className="chief-para">
+                                  <Segments segments={p} />
+                                </p>
+                              ))}
+                              {item.bullets?.map((b, j) => (
+                                <p key={`b${j}`} className="chief-bullet">
+                                  <span className="chief-bullet-dot">•</span>
+                                  <span>
+                                    <Segments segments={b} />
+                                  </span>
+                                </p>
+                              ))}
+                            </>
+                          )}
+                          {/* #651: typing 打字面是未定稿行——foot（复制/完成/过程
                           折叠）只属定稿行，打字行不渲染。 */}
-                      {item.typing !== true && (
-                        <div className="chief-msg-foot">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                            aria-label={t('复制')}
-                            onClick={() => copyText(`r${i}`, robotText(item))}
-                          >
-                            {copiedKey === `r${i}` ? (
-                              <Check width={13} height={13} />
-                            ) : (
-                              <Copy width={13} height={13} />
-                            )}
-                          </Button>
-                          {/* live 面 seconds 空串（mapChiefStream 无耗时数据源）
+                          {item.typing !== true && (
+                            <div className="chief-msg-foot">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                                aria-label={t('复制')}
+                                onClick={() => copyText(`r${i}`, robotText(item))}
+                              >
+                                {copiedKey === `r${i}` ? (
+                                  <Check width={13} height={13} />
+                                ) : (
+                                  <Copy width={13} height={13} />
+                                )}
+                              </Button>
+                              {/* live 面 seconds 空串（mapChiefStream 无耗时数据源）
                             不再渲染空「完成」行；fixture canon 44s 照旧。 */}
-                          {item.seconds !== '' && <span>{t('完成 {n}', { n: item.seconds })}</span>}
-                          {/* #615 返工（用户裁决覆盖 #306 二分律）：foot 折叠箭头
+                              {item.seconds !== '' && (
+                                <span>{t('完成 {n}', { n: item.seconds })}</span>
+                              )}
+                              {/* #615 返工（用户裁决覆盖 #306 二分律）：foot 折叠箭头
                             闭环 = 该回合过程披露（Multica OuterProcessFold 同
                             族：chevron + 展开内容 = 工具步；r5 114 捕获位 = 完
                             成 Ns 之后的 ›）。展开面 = 被流主呈现滤掉的工具调
                             用行（chief_message toolcall 投影，DB 既有零新后端）；
                             无工具行的回合不渲染触发器（无可披露内容）。 */}
-                          {(item.tools?.length ?? 0) > 0 && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                              aria-label={toolsOpen.has(i) ? t('收起过程') : t('展开过程')}
-                              aria-expanded={toolsOpen.has(i)}
-                              onClick={() =>
-                                setToolsOpen((cur) => {
-                                  const next = new Set(cur);
-                                  if (next.has(i)) next.delete(i);
-                                  else next.add(i);
-                                  return next;
-                                })
-                              }
-                            >
-                              {toolsOpen.has(i) ? (
-                                <ChevronDown width={11} height={11} />
-                              ) : (
-                                <ChevronRight width={11} height={11} />
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                      {(item.tools?.length ?? 0) > 0 && toolsOpen.has(i) && (
-                        <div className="chief-turn-tools">
-                          {item.tools?.map((tool, k) => (
-                            <div key={k} className="chief-turn-tool-row">
-                              <span className="chief-turn-tool-name">{tool.name}</span>
-                              {tool.seconds !== undefined && (
-                                <span className="chief-turn-tool-sec">{tool.seconds}s</span>
-                              )}
-                              {tool.error === true && (
-                                <span className="chief-turn-tool-err">{t('失败')}</span>
+                              {(item.tools?.length ?? 0) > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="chief-msg-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                                  aria-label={toolsOpen.has(i) ? t('收起过程') : t('展开过程')}
+                                  aria-expanded={toolsOpen.has(i)}
+                                  onClick={() =>
+                                    setToolsOpen((cur) => {
+                                      const next = new Set(cur);
+                                      if (next.has(i)) next.delete(i);
+                                      else next.add(i);
+                                      return next;
+                                    })
+                                  }
+                                >
+                                  {toolsOpen.has(i) ? (
+                                    <ChevronDown width={11} height={11} />
+                                  ) : (
+                                    <ChevronRight width={11} height={11} />
+                                  )}
+                                </Button>
                               )}
                             </div>
-                          ))}
+                          )}
+                          {(item.tools?.length ?? 0) > 0 && toolsOpen.has(i) && (
+                            <div className="chief-turn-tools">
+                              {item.tools?.map((tool, k) => (
+                                <div key={k} className="chief-turn-tool-row">
+                                  <span className="chief-turn-tool-name">{tool.name}</span>
+                                  {tool.seconds !== undefined && (
+                                    <span className="chief-turn-tool-sec">{tool.seconds}s</span>
+                                  )}
+                                  {tool.error === true && (
+                                    <span className="chief-turn-tool-err">{t('失败')}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        <div className="chief-composer">
-          {/* #624：占位双态随回合态（r5 §3.6，截图 113）——活动线程 activeRun
+            <div className="chief-composer">
+              {/* #624：占位双态随回合态（r5 §3.6，截图 113）——活动线程 activeRun
               在位（chief.running，mapChief 单点投影）= steer canon「执行过程中
               即可送达」，空闲 / 新主题 / 回合收尾 = 空闲 canon。两值经 t() 消费
               shared 单源常量，抽屉文件零 CJK 占位字面量（en 键由
               i18n-coverage COMPUTED_KEYS 钉住）；刷新节奏骑既有
               invalidateAll / conversation SSE 重取，无新增轮询。 */}
-          <textarea
-            ref={attachComposer}
-            className="chief-composer-input"
-            readOnly={onSend == null}
-            value={wire.draft}
-            onChange={wire.handleChange}
-            onKeyDown={wire.handleKeyDown}
-            placeholder={t(
-              chief.running === true ? CHIEF_INPUT_PLACEHOLDER_STEERING : CHIEF_INPUT_PLACEHOLDER,
-            )}
-          />
-          <div className="chief-composer-bar">
-            {/* #146 裁决：语音输入/添加附件/提及 local-first 无后端面——
+              <textarea
+                ref={attachComposer}
+                className="chief-composer-input"
+                readOnly={onSend == null}
+                value={wire.draft}
+                onChange={wire.handleChange}
+                onKeyDown={wire.handleKeyDown}
+                placeholder={t(
+                  chief.running === true
+                    ? CHIEF_INPUT_PLACEHOLDER_STEERING
+                    : CHIEF_INPUT_PLACEHOLDER,
+                )}
+              />
+              <div className="chief-composer-bar">
+                {/* #146 裁决：语音输入/添加附件/提及 local-first 无后端面——
                 隐藏不渲染（#136 台账 wontfix）。 */}
-            {/* XMON-23 收编：ghost/icon 原语；实底双态（seg-active/indigo）
+                {/* XMON-23 收编：ghost/icon 原语；实底双态（seg-active/indigo）
                 是 canon 偏差，per-face 留 chief.css（.chief-send，选择器已从
                 .btn 叠类 re-key——原语不吐 btn 类）。rounded-md = 旧 .btn 的
                 8 圆角；border-0 防原语 1px transparent 边 + bg-clip-padding
                 在实底外圈切出 1px 缝（像素对拍实测）；active 位移中和；
                 ArrowUp 16px = 原语 size-4 同值。 */}
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('发送')}
-              className={
-                wire.draft !== ''
-                  ? 'chief-send is-on rounded-md border-0 active:not-aria-[haspopup]:translate-y-0'
-                  : 'chief-send rounded-md border-0 active:not-aria-[haspopup]:translate-y-0'
-              }
-              onClick={wire.send}
-            >
-              <ArrowUp width={16} height={16} />
-            </Button>
-          </div>
-        </div>
-        {/* #615 返工：恢复钮确认层（破坏性：截断锚后消息并以锚重发）。壳与
-            按钮档复用 chief-agent-dialog 同族 per-face（chief-dlg-ghost /
-            chief-dlg-primary / chief-pick-confirm）。fixture 面 id 缺省 =
-            accept 律关窗零请求。 */}
-        <DialogShell
-          title={t('恢复到此处')}
-          open={rewindConfirm !== null}
-          onClose={() => setRewindConfirm(null)}
-          footer={
-            <div className="dlg-form-foot">
-              <div className="dlg-form-actions">
                 <Button
                   variant="ghost"
-                  className="chief-dlg-ghost px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
-                  onClick={() => setRewindConfirm(null)}
+                  size="icon"
+                  aria-label={t('发送')}
+                  className={
+                    wire.draft !== ''
+                      ? 'chief-send is-on rounded-md border-0 active:not-aria-[haspopup]:translate-y-0'
+                      : 'chief-send rounded-md border-0 active:not-aria-[haspopup]:translate-y-0'
+                  }
+                  onClick={wire.send}
                 >
-                  {t('取消')}
-                </Button>
-                <Button
-                  variant="brand"
-                  className="chief-dlg-primary px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
-                  onClick={() => {
-                    const anchor = rewindConfirm;
-                    setRewindConfirm(null);
-                    if (anchor?.id != null) onRewind?.(anchor.id);
-                  }}
-                >
-                  {t('恢复到此处')}
+                  <ArrowUp width={16} height={16} />
                 </Button>
               </div>
             </div>
-          }
-        >
-          <div className="chief-pick-confirm">
-            <p className="chief-pick-confirm-copy">
-              {t('恢复到此处？该条之后的 {n} 条消息会移除，总管从这条重发开新回合。', {
-                n: Math.max(0, (chief.stream?.length ?? 0) - (rewindConfirm?.index ?? 0) - 1),
-              })}
-            </p>
-          </div>
-        </DialogShell>
-      </aside>
-    </OverlayMount>
+            {/* #615 返工：恢复钮确认层（破坏性：截断锚后消息并以锚重发）。壳与
+            按钮档复用 chief-agent-dialog 同族 per-face（chief-dlg-ghost /
+            chief-dlg-primary / chief-pick-confirm）。fixture 面 id 缺省 =
+            accept 律关窗零请求。 */}
+            <DialogShell
+              title={t('恢复到此处')}
+              open={rewindConfirm !== null}
+              onClose={() => setRewindConfirm(null)}
+              footer={
+                <div className="dlg-form-foot">
+                  <div className="dlg-form-actions">
+                    <Button
+                      variant="ghost"
+                      className="chief-dlg-ghost px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
+                      onClick={() => setRewindConfirm(null)}
+                    >
+                      {t('取消')}
+                    </Button>
+                    <Button
+                      variant="brand"
+                      className="chief-dlg-primary px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
+                      onClick={() => {
+                        const anchor = rewindConfirm;
+                        setRewindConfirm(null);
+                        if (anchor?.id != null) onRewind?.(anchor.id);
+                      }}
+                    >
+                      {t('恢复到此处')}
+                    </Button>
+                  </div>
+                </div>
+              }
+            >
+              <div className="chief-pick-confirm">
+                <p className="chief-pick-confirm-copy">
+                  {t('恢复到此处？该条之后的 {n} 条消息会移除，总管从这条重发开新回合。', {
+                    n: Math.max(0, (chief.stream?.length ?? 0) - (rewindConfirm?.index ?? 0) - 1),
+                  })}
+                </p>
+              </div>
+            </DialogShell>
+          </DialogPrimitive.Popup>
+        </DialogPrimitive.Portal>
+      )}
+    </DialogPrimitive.Root>
   );
 }
