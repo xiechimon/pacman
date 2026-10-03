@@ -105,6 +105,16 @@ jobs:
       - name: E2E (shard ${{ matrix.shard }}/4, #693)
         run: pnpm --filter @pacman/web e2e -- --shard=${{ matrix.shard }}/4
 
+  # 分片聚合闸（#693）：分支保护的 required contexts 不编码 matrix 基数——
+  # 名单写死 e2e (1..4) 的话，将来分片数一调，名单就静默失配（新增分片不
+  # 阻塞合并 = 覆盖面实际下降）。本 job 名固定 e2e-gate、needs 全部分片，
+  # 保护名单只引它；分片数调整不再触碰仓库设置。
+  e2e-gate:
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 0
+
   # 发布产物冒烟（#264，spec #260 Testing Decisions 失败方式枚举的 CI 守）：
   # 独立 job/runner，不与任何 e2e shard 共享 runner（各自写自己的 dist）。
   pack-smoke:
