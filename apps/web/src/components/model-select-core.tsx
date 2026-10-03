@@ -220,6 +220,13 @@ export function ModelPickList({
   const [searchOpen, setSearchOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  // 开面即焦点进清单容器（typeahead 契约：未现形时键必经 listbox 冒泡）。
+  // Base UI 的 initialFocus 是异步移入——重载下它与首键竞态，e2e 实锤丢
+  // 过键；本层在挂载（= 开面，FloatingShell 关面即卸载）同步确立，之后
+  // 它再移到行钮仍在清单内，契约不断。
+  useEffect(() => {
+    listRef.current?.focus();
+  }, []);
   // 现形即焦点进 input（吃掉的那个字符已预填，光标在尾）。
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus();
