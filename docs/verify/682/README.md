@@ -56,3 +56,25 @@ steps fail fast on an unreachable stub provider):
 - The runtime-gate + backfill semantics are additionally pinned in
   `apps/server/test/machine-pin.test.ts` (11 tests) and the chip UI in
   `apps/web/e2e/newtask-machine-pin.spec.ts` (6 tests).
+
+## layout/ — head chip row grouping fix (user feedback on the first review)
+
+The first review pass flagged the two chips reading as one blob. Per the
+better-layout grouping rule (inter-group ≥ 2× intra-group; 8px intra → 16px
+inter), the row now separates the chip groups by 16px (logical property, flips
+under RTL) and bounds the whole cluster at 282px with an ellipsis chain
+(cluster → wrap → button → name), so a long project name truncates inside the
+cluster instead of running under the centered dialog title.
+
+- `before-01-row-default.png` / `after-01-row-default.png` — the row the
+  reviewer saw vs. after: gap 0px → 16px.
+- `before-02-row-long-name.png` / `after-02-row-long-name.png` — 40-char
+  project name: unbounded overflow into the centered title zone → cluster
+  bounded 8px short of the title text zone with ellipsis.
+- `*-03-small-viewport.png` — 720px viewport: the fixed 672px modal stays
+  fully visible (resize stress).
+- `*-04-rtl.png` — `dir=rtl` mirror: the 16px gap flips sides correctly
+  (zh/en ship LTR; this is a hardening check, `margin-inline-start`).
+- `result-before.json` 1/5 PASS / `result-after.json` 5/5 PASS — the numeric
+  checks behind the screenshots (gap, title-zone clearance, ellipsis, viewport
+  fit, RTL gap).

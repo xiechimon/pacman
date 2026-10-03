@@ -80,6 +80,36 @@
   position: relative;
   display: flex;
   align-items: center;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+/* #682 布局律（better-layout：用空间分组，组间 ≥ 2× 组内）：项目/机器
+   两个选择器是两个「组」——组内 8px（chip 内 gap），组间 16px。簇整体
+   max-width（672 弹窗 - head 内边距 12 - 中位标题净空 8px ≈ 282px）让长名
+   在簇内收缩截断，不与居中标题叠压；截断链 = 簇 → wrap → 按钮 → 名字 span
+   各层 min-width:0。menu 行名（-row-name 类）不受此截断（220px 菜单全名）。 */
+.new-task-chips {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 0 1 auto;
+  max-width: 282px;
+}
+
+.new-task-project-wrap + .new-task-project-wrap {
+  margin-inline-start: 16px; /* 2× 组内 8px；logical 属性随 RTL 翻转 */
+}
+
+.new-task-project {
+  min-width: 0;
+}
+
+.new-task-project-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .new-task-project-menu {
