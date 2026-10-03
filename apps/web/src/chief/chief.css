@@ -135,7 +135,6 @@
   min-width: 0;
   max-width: 100%;
   padding: 1px 4px;
-  margin-left: -4px;
   border-radius: 6px;
   color: var(--text-tertiary);
   cursor: pointer;
@@ -214,17 +213,13 @@
   color: var(--danger);
 }
 
-/* #615 主模型覆盖 dialog 行（r5 108 行形：模型名 + provider 副题两行，
-   选中行名升 indigo + 右缘 check，chief-model-check 复用）。 */
-.chief-model-pick {
-  display: flex;
-  flex-direction: column;
-}
-
+/* #615 主模型覆盖行（r5 108 行形：模型名 + provider 副题两行，右缘 check
+   复用 chief-model-check）。#751 起壳是抽屉头锚定弹层（.chief-model-pop
+   列容器自带 search/list 间距），dialog 时代的 .chief-model-pick 包装层
+   退役。 */
 .chief-model-pick-list {
   max-height: 320px;
   overflow-y: auto;
-  padding: 4px;
 }
 
 .chief-model-pick-row {
@@ -258,10 +253,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.chief-model-pick-row[aria-selected="true"] .chief-model-pick-name {
-  color: var(--seg-active);
 }
 
 .chief-model-pick-provider {
@@ -637,6 +628,13 @@ a.chief-identity {
   border-radius: 12px;
 }
 
+/* #732：@ 内联 listbox 的 absolute 锚（mention-picker.css 的 bottom:
+   calc(100% + 6px) + left/right: 0 落在这层；detail composer
+   .composer-input-wrap 同律）。 */
+.chief-composer-input-wrap {
+  position: relative;
+}
+
 .chief-composer-input {
   display: block;
   width: 100%;
@@ -666,6 +664,23 @@ a.chief-identity {
   align-items: center;
   gap: 16px;
   margin-top: 10px;
+}
+
+/* #732：composer 工具钮（添加附件/提及，detail 三工具钮的 chief 等价位）。
+   几何照头部 icon 钮档（chief.css 元素选择器 .chief-head-actions button =
+   20×20，见 #136 台账前的旧 .chief-composer-bar 残档 commit 900d27e6）；
+   中和件照发送钮（cursor:pointer 承旧 .btn，ghost 原语透明底即 canon，
+   无实底双态）。惰性降档：ghost 原语 disabled:opacity-50/pointer-events-none
+   即 canon（fixture 面附件钮禁用形仍可读出 aria）。 */
+.chief-tool {
+  width: 20px;
+  height: 20px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.chief-tool:hover {
+  color: var(--text-secondary);
 }
 
 /* XMON-23 收编：选择器自 .btn 叠类 re-key（components/ui Button 不吐 btn
@@ -948,6 +963,51 @@ a.chief-identity {
   color: var(--text-tertiary);
 }
 
+/* #751 选中行单源：chief 两个 picker 面（抽屉头主模型弹层 + 设置面压缩
+   模型弹层）都经 ModelPickRow 渲染，选中态 therefore 落在基类钩子上而不是
+   各面 skin——令牌对 --pick-selected-bg/-fg 承载此前缺失的角色（选中行
+   填充 + 选中行文字），实测 light 5.45:1 / dark 5.21:1（13px 名，AA 4.5）。
+   被取代的旧规则把 --seg-active（分段控件填充档）当文字色：light 1.24:1，
+   即用户报的「灰色看不清」。 */
+.model-pick-row[aria-selected="true"] {
+  background: var(--pick-selected-bg);
+}
+
+.model-pick-row[aria-selected="true"] .model-pick-name,
+.model-pick-row[aria-selected="true"] .model-pick-check {
+  color: var(--pick-selected-fg);
+}
+
+/* #751 抽屉头主模型 picker：锚定弹层家族律（#67/#127：FloatingShell
+   container=wrap + ClickCatcher + Esc）——wrap 是包含块，菜单贴触发行底下
+   左对齐，与设置面 .chief-model-menu 贴其 select 同律；取代 #615 的居中
+   DialogShell（用户报「在中间出现，而不是在它底下」，对照 .chief-switcher
+   的贴底锚定）。光学内缩 -4px 自 .chief-model-btn 移到 wrap（菜单 left:0
+   才能与钮的视觉左缘齐）。 */
+.chief-model-pop-wrap {
+  position: relative;
+  display: block;
+  margin-left: -4px;
+  min-width: 0;
+}
+
+.chief-model-pop {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  width: 280px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--popover);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--fab-shadow);
+  /* 家族层律同 .chief-model-menu：消费 --z-popover 是层律对齐，实际绘制被
+     抽屉自身 stacking context 收编。 */
+  z-index: var(--z-popover);
+}
+
 /* #656 退场（mention-picker 同款）：面板的退场改由 tw-animate-css 的
    group-data-closed:animate-out 承载（FLOATING_POP_ANIM，挂在 .chief-model-menu
    上、经壳的 group/fshell 读开闭态）。Base UI 只在 Popup 本体有进行中动画时才
@@ -958,6 +1018,15 @@ a.chief-identity {
 }
 
 .chief-model-shell[data-ending-style] {
+  visibility: hidden;
+}
+
+/* #751 抽屉头 picker 壳的同款退场窗（机理见 .chief-model-shell 注）。 */
+.chief-model-pop-shell {
+  transition: visibility 0s linear var(--dur-fast);
+}
+
+.chief-model-pop-shell[data-ending-style] {
   visibility: hidden;
 }
 

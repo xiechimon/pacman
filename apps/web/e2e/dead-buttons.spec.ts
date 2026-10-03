@@ -189,8 +189,8 @@ test('composer toolbar drops the 语音输入 button, keeps attachment + mention
   const toolbar = page.locator('.composer-toolbar');
   await expect(toolbar).toBeVisible();
   // #304（08 册 C5）：语音输入功能不做——钮移除不渲染（wontfix 注记在
-  // composer.tsx 实现位；#146 chief 面同律）。本票唯一移除对象是语音，
-  // 添加附件/提及两工具必须原样在场。
+  // composer.tsx 实现位；总管面同律，附件/提及已在 #732 开闸）。本票唯一
+  // 移除对象是语音，添加附件/提及两工具必须原样在场。
   await expect(toolbar.locator('button[aria-label="语音输入"]')).toHaveCount(0);
   await expect(toolbar.locator('button[aria-label="添加附件"]')).toBeVisible();
   await expect(toolbar.locator('button[aria-label="提及"]')).toBeVisible();
@@ -516,9 +516,14 @@ test('new-task dialog gates unsaved closes and resets on discard (#318)', async 
   await expect(discard).toBeHidden();
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('.new-task-spec')).toHaveValue('未保存探针');
-  // Esc 关闸同律;确认层上 Esc = 内层优先(只收确认层)
+  // Esc 关闸同律;确认层上 Esc = 内层优先(只收确认层)。#656 起确认层 =
+  // FloatingShell sibling root:入焦是异步的(Base UI initialFocus 缺省送焦点
+  // 入层内首个 tabbable = 继续编辑钮),而 sibling root 的 Esc 路由依赖焦点在
+  // 本层内——先等焦落定再按键,否则 Esc 被 modal dialog 吃掉(requestClose
+  // 重开本层,确认层关不掉;CI 分片 runner 上该竞态实测咬人,本地串行恒赢)。
   await page.keyboard.press('Escape');
   await expect(discard).toBeVisible();
+  await expect(discard.locator('.new-task-discard-keep')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(discard).toBeHidden();
   await expect(dialog).toBeVisible();
