@@ -280,6 +280,7 @@ export async function executeChiefTool(
         if (source.runtime === 'pi') continue;
         const providerLabel = MODEL_SOURCE_RUNTIME_LABELS[source.runtime] ?? source.runtime;
         for (const m of source.models) {
+          if (m.id === '') continue;
           push({ provider: source.runtime, providerLabel, modelId: m.id, modelName: m.name });
         }
       }

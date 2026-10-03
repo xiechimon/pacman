@@ -16,7 +16,6 @@ import {
   type ModelSource,
   maskApiKey,
   PLACEHOLDER_TITLE_FALLBACK,
-  type ProviderRecord,
   type SecretRecord,
 } from '@pacman/shared';
 import { diffLines } from 'diff';
