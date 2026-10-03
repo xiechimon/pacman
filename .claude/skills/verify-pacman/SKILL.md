@@ -79,6 +79,7 @@ REVIEW_MACHINE_TOKEN=<t> node .../scripts/drive-review-blocking.mjs <todoId> <ag
 **纯 live 栈 probe**(无 daemon 依赖,launch 后直跑;配方见对应 feature 文件):
 
 ```sh
+REVIEW_MACHINE_TOKEN=<t> node .../scripts/drive-review-reject.mjs <todoId>  # 审核关口人肉打回(#701,review-reject.md;前置 setup-review-seed,无 daemon/LLM 依赖)
 node .../scripts/drive-avatars.mjs             # dicebear 头像(#387,avatars.md)
 node .../scripts/drive-hotkeys.mjs             # C/Space 快捷键(#389,hotkeys.md)
 node .../scripts/drive-newtask-key.mjs         # 新任务键位正负成对(XMON-41,hotkeys.md)
