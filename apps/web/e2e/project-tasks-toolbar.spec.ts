@@ -74,9 +74,9 @@ test('filter menu options cut the list and close on select', async ({ page }) =>
   await filterBtn.click();
   await expect(page.locator('.prj-tasks-menu')).toBeVisible();
   await expect(page.locator('.prj-tasks-menu-row')).toHaveCount(3);
-  // 全部 is the selected default
+  // 全部 is the selected default (t-0070: menu radio item = aria-checked)
   await expect(page.locator('.prj-tasks-menu-row').first()).toHaveAttribute(
-    'aria-selected',
+    'aria-checked',
     'true',
   );
   await page.locator('.prj-tasks-menu-row', { hasText: '全部' }).click();

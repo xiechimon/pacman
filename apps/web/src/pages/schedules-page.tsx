@@ -16,7 +16,14 @@ import { useApiMutations, useProjects, useSchedules, useTodos } from '../api/hoo
 import { mapSchedules, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu.js';
 import { Select } from '../components/ui/select.js';
+import { toastError } from '../components/ui/toaster.js';
 import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import type { FixtureSet, ScheduleRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -34,7 +41,7 @@ import {
 } from '../icons/index.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { FADE_EXIT_MS } from '../overlay/use-overlay-mount.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
 import { PageShell } from './shell.js';
 import './pages.css';
@@ -108,8 +115,6 @@ function ScheduleCard({
   onDelete: () => void;
 }) {
   const { t } = useI18n();
-  const [menuOpen, setMenuOpen] = useState(false);
-  useEscapeClose(menuOpen, () => setMenuOpen(false));
   const ui = PHASE_UI[schedule.todo.phase];
   return (
     <div className="sched-card">
@@ -134,40 +139,45 @@ function ScheduleCard({
         </div>
       </div>
       <span className={`sched-card-chip sched-card-chip--${ui.tone}`}>{t(ui.chip)}</span>
+      {/* t-0070 收编：手搓 role=menu 面 → components/ui/dropdown-menu（Base UI
+          Menu，本仓首个消费点）。开合/Esc/外点关（modal 默认档 = 外点不穿透，
+          ClickCatcher 家族律同语义）/焦点归还全归原语；aria-haspopup、
+          aria-expanded 由 Trigger/Root 自动挂。皮肤正本仍在 per-face
+          .sched-card-more（24×24 几何）与 .sched-card-menu*（160 宽/4 内边距/
+          popover 底/圆角/fab 影/删除行 --stop 墨）；定位正本从 CSS inset 迁到
+          Positioner 参数（side=bottom align=end sideOffset=4 = 原
+          top:calc(100%+4px) right:0）。行 svg 的 size-auto 中和 base 强制
+          size-4，保 Trash2 的 13px 属性尺寸（#607 机理）。 */}
       <span className="sched-more-wrap">
-        {/* XMON-25 收编：老 ui/Button icon 变体 → ghost + size icon；皮肤
-            （tertiary 墨/hover 增亮/cursor）下沉 per-face .sched-card-more；
-            24×24 几何 per-face 留 pages.css。haspopup 使 base active 位移
-            自动跳过，无需中和位。 */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="sched-card-more font-normal leading-none"
-          aria-label={t('更多')}
-          aria-haspopup="menu"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}
-        >
-          <EllipsisVertical />
-        </Button>
-        <OverlayMount open={menuOpen}>
-          <ClickCatcher onClose={() => setMenuOpen(false)} />
-          <div className="sched-card-menu" role="menu" aria-label={t('更多')}>
-            <button
-              type="button"
-              role="menuitem"
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="sched-card-more font-normal leading-none"
+                aria-label={t('更多')}
+              />
+            }
+          >
+            <EllipsisVertical />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            sideOffset={4}
+            aria-label={t('更多')}
+            className="sched-card-menu [&_svg:not([class*='size-'])]:size-auto"
+          >
+            <DropdownMenuItem
               className="sched-card-menu-row"
               data-action="delete"
-              onClick={() => {
-                setMenuOpen(false);
-                onDelete();
-              }}
+              onClick={onDelete}
             >
               <Trash2 width={13} height={13} />
               {t('删除')}
-            </button>
-          </div>
-        </OverlayMount>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </span>
     </div>
   );
@@ -390,14 +400,18 @@ export function SchedulesPage() {
     if (formKind === 'once' && base.getTime() < Date.now()) {
       base.setDate(base.getDate() + 1); // 单次已过点 = 明日同刻 [设计]
     }
-    mutations.createSchedule.mutate({
-      todoId: liveTodo.id,
-      projectId: liveTodo.projectId,
-      kind: formKind,
-      at: base.getTime(),
-      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      machineId: null,
-    });
+    mutations.createSchedule.mutate(
+      {
+        todoId: liveTodo.id,
+        projectId: liveTodo.projectId,
+        kind: formKind,
+        at: base.getTime(),
+        tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        machineId: null,
+      },
+      // #638：表单提交即关（下方 setFormOpen），失败 = 定时没建上却零解释。
+      { onError: (error) => toastError(t('新建定时失败，请重试。'), error) },
+    );
     setFormOpen(false);
   };
   return (
@@ -509,7 +523,11 @@ export function SchedulesPage() {
           if (deleteTarget == null) return;
           // live = DELETE /api/schedules/:id（invalidateAll 重取）；fixture =
           // deletions 覆面（session 局部，重载还原）——todo 删除同律。
-          if (live) mutations.deleteSchedule.mutate(deleteTarget.id);
+          if (live)
+            mutations.deleteSchedule.mutate(deleteTarget.id, {
+              // #638：确认层已关，失败 = 行还在却零解释。
+              onError: (error) => toastError(t('删除定时失败，请重试。'), error),
+            });
           else markDeleted(deleteTarget.id);
           setConfirmOpen(false);
         }}

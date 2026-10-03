@@ -30,6 +30,7 @@ import { liveTextStore } from '../api/live-text.js';
 import { chiefTurnErrorOfContent, mapChief, toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { useConversationStream } from '../api/sse.js';
+import { toastError } from '../components/ui/toaster.js';
 import { chiefDefault } from '../fixtures/fixtures.js';
 import type { ChiefContent, FixtureSet, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -181,12 +182,9 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
   const chiefUnread = live ? liveUnread : (fixture.chiefUnread ?? 0);
 
   // #615 主模型闭环三件：槽值（封套真值）/ 候选并集 / 选定即 PATCH。
-  // #631 失败反馈（同步半）：PATCH / rewind / 发送失败 → toast（server 原因
-  // 进 description 透传不翻译——server 数据同 user 内容律）。
-  const toastError = useCallback((title: string, error: unknown) => {
-    const reason = error instanceof Error && error.message !== '' ? error.message : null;
-    toast.error(title, reason !== null ? { description: reason } : undefined);
-  }, []);
+  // #631 失败反馈（同步半）：PATCH / rewind / 发送失败 → toastError（共享
+  // 原语住 components/ui/toaster.tsx：server 原因进 description 透传不翻译
+  // ——server 数据同 user 内容律；#638 由本文件局部版提为全站单源）。
   const modelValue = live ? (chiefQ.data?.chief.model ?? null) : null;
   const modelOptions = live
     ? toModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])

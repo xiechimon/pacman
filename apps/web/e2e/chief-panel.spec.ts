@@ -138,11 +138,12 @@ test.describe('chief panel docked form (#447)', () => {
       scrollable: el.scrollWidth > el.clientWidth,
       columns: [...el.querySelectorAll('.board-column')].map((c) => c.getBoundingClientRect().width),
     }));
-    // D8: yielding turns into horizontal scroll, not collapsed columns —
-    // the guard value is the .board-scroller minmax() floor (board.css)
+    // D8 (floor re-ruled by #692): yielding turns into horizontal scroll,
+    // not collapsed columns — the floor is the --board-col-min token
+    // consumed by the .board-scroller track rule (board.css)
     expect(open.scrollable).toBe(true);
     expect(open.columns).toHaveLength(4);
-    for (const w of open.columns) expect(w).toBeGreaterThanOrEqual(240);
+    for (const w of open.columns) expect(w).toBeGreaterThanOrEqual(280);
   });
 
   test('closing restores the board grid to its resting geometry', async ({ page }) => {

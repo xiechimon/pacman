@@ -20,6 +20,7 @@ import { useApiMutations, useProjects } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { Panel, PanelHead, PanelLabel, PanelRow, PanelValue } from '../components/ui/panel.js';
+import { toastError } from '../components/ui/toaster.js';
 import { markDeleted } from '../fixtures/deletions.js';
 import { PROJECT_INITIAL } from '../fixtures/fixtures.js';
 import type { ProjectContent } from '../fixtures/records.js';
@@ -144,7 +145,11 @@ export function ProjectSettingsPage() {
           setDeleteOpen(false);
           if (live) {
             if (id !== undefined) {
-              mutations.deleteProject.mutate(id, { onSuccess: () => navigate('/app') });
+              mutations.deleteProject.mutate(id, {
+                onSuccess: () => navigate('/app'),
+                // #638：确认层已关，失败 = 项目还在却零解释。
+                onError: (error) => toastError(t('删除项目失败，请重试。'), error),
+              });
             }
             return;
           }

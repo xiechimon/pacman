@@ -395,6 +395,23 @@
   color: var(--stop);
 }
 
+/* #701 五行面（live review 静息态：打回行插在 完成 之后）——行带按行序重钉：
+   复制链接/关闭 下移一位不吃错带（关闭尤其不能吃 delete 的红带），delete 恒
+   45px 红带。四行 fixture 面无 reject 行，:has() 不命中，上方 nth-child 带
+   逐值原样（捕获几何字节不变）。 */
+.more-menu:has([data-action="reject"]) .more-menu-item:nth-child(3) {
+  height: 37px;
+}
+.more-menu:has([data-action="reject"]) .more-menu-item:nth-child(4) {
+  height: 41px;
+  color: var(--text-primary);
+}
+.more-menu:has([data-action="reject"]) .more-menu-item:nth-child(5) {
+  height: 45px;
+  border-top: 1px solid var(--border-default);
+  color: var(--stop);
+}
+
 .more-menu-item[data-action="delete"] svg {
   color: var(--stop);
 }

@@ -1602,6 +1602,13 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   line-height: 1.5;
 }
 
+/* #700 verdict 提取失败 tag：danger 字色 + 同色淡底（blocking finding 左条
+   同色系）——「判定提取失败」与正常结论 chip 在审核面上一眼可分辨。 */
+.chat-review-tag--error {
+  background: rgba(220, 38, 38, 0.12);
+  color: var(--color-danger, #dc2626);
+}
+
 .chat-review-finding {
   border-left: 3px solid var(--border-default);
   padding-left: 10px;

@@ -236,7 +236,41 @@ function capturingBackend(captured: SessionOpts[]): AgentBackend {
   };
 }
 
+/** #700：按事件脚本回放的 backend——message_end / toolcall_end 原样进
+ * transcript（#519 形状：verdict JSON 文本行 → set_task_meta 工具行 →
+ * 空收尾轮）。 */
+function scriptedBackend(captured: SessionOpts[], script: unknown[]): AgentBackend {
+  const session = (): AgentSessionHandle => ({
+    sessionId: 'pi-sess-review',
+    events: (async function* () {
+      for (const ev of script) yield ev as never;
+      yield { type: 'done', usage: [] } as never;
+    })(),
+    async steer() {},
+    async stop() {},
+    usage: () => [],
+  });
+  return {
+    capabilities: PI_CAPABILITIES,
+    async createSession(opts: SessionOpts) {
+      captured.push(opts);
+      return session();
+    },
+    async continueSession() {
+      throw new Error('审核步不接续主 conv 会话');
+    },
+  };
+}
+
 async function setup(claimed: ClaimedStep, opts: { rewindError?: string } = {}) {
+  return setupWithBackend(claimed, opts, (captured) => capturingBackend(captured));
+}
+
+async function setupWithBackend(
+  claimed: ClaimedStep,
+  opts: { rewindError?: string },
+  backendFor: (captured: SessionOpts[]) => AgentBackend,
+) {
   const home = mkdtempSync(join(tmpdir(), 'pacman-runner-review-'));
   const paths = statePaths(home, join(home, 'workspaces'));
   const calls: string[] = []; // 单一调用序：client 与 workspace 共写一份（rewind 先于 done 的时序靠它判读）
@@ -246,7 +280,7 @@ async function setup(claimed: ClaimedStep, opts: { rewindError?: string } = {}) 
   const deps = {
     client,
     journal: new StepJournal(paths.outboxDir),
-    backendFor: () => capturingBackend(captured),
+    backendFor: () => backendFor(captured),
     logger: captureLogger(),
     paths,
     workspace: fakeWorkspace(calls, opts),
@@ -329,5 +363,67 @@ describe('审核步执行面（#511）', () => {
     const { calls, captured } = await setup(claimedReview('review', null));
     expect(calls.some((c) => c.startsWith('prepare'))).toBe(false);
     expect(captured[0]!.prompt).toContain('src/parse.ts');
+  });
+
+  // —— #700（B-C13）verdict 提取回传面：done body 的 findings / findingsError
+  //    两态。失败方式枚举先于实现固化：
+  //    1. #519 形状（verdict JSON 之后跟 set_task_meta 工具调用 + 空收尾轮）
+  //       → findings 照常携带（旧实现被尾部工具行击穿回 null）。
+  //    2. 全程无 JSON（散文输出）→ findings 缺位、findingsError 携带原因
+  //       （server 据此报「判定提取失败」，不再冒充「审核未返回结论」）。
+  test('#700 失败方式 1：#519 形状全链——JSON 后跟工具调用 → done body 携带 findings', async () => {
+    const verdictJson = JSON.stringify({
+      conclusion: '方案在边界情况上存在硬风险，需修复两处',
+      findings: [
+        { id: '1', severity: 'blocking', summary: '未处理空输入', file: 'src/parse.ts', line: 42 },
+      ],
+    });
+    const { client } = await setupWithBackend(
+      claimedReview('review', HOSTED_REPO),
+      {},
+      (captured) =>
+        scriptedBackend(captured, [
+          { type: 'message_end', message: { role: 'assistant', content: verdictJson } },
+          {
+            type: 'toolcall_end',
+            call: {
+              id: 'call-set-meta',
+              name: 'set_task_meta',
+              arguments: { title: '审核探针' },
+              result: '{}',
+              isError: false,
+              endedAt: 123,
+            },
+          },
+          { type: 'message_end', message: { role: 'assistant', content: '' } },
+        ]),
+    );
+    const body = client.doneBodies[0]!.body;
+    expect(body.status).toBe('success');
+    expect(body.findings).toEqual({
+      conclusion: '方案在边界情况上存在硬风险，需修复两处',
+      findings: [
+        { id: '1', severity: 'blocking', summary: '未处理空输入', file: 'src/parse.ts', line: 42 },
+      ],
+    });
+    expect(body.findingsError).toBeUndefined();
+  });
+
+  test('#700 失败方式 2：全程无 JSON → done body 携带 findingsError、不携带 findings', async () => {
+    const { client } = await setupWithBackend(
+      claimedReview('review', HOSTED_REPO),
+      {},
+      (captured) =>
+        scriptedBackend(captured, [
+          {
+            type: 'message_end',
+            message: { role: 'assistant', content: '看完了，方案整体可行。' },
+          },
+        ]),
+    );
+    const body = client.doneBodies[0]!.body;
+    expect(body.status).toBe('success');
+    expect(body.findings).toBeUndefined();
+    expect(body.findingsError).toContain('未找到');
   });
 });

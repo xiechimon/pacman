@@ -46,6 +46,7 @@ import { useChiefSurface } from '../chief/use-chief-surface.js';
 import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
 import { Button } from '../components/ui/button.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
+import { toastError } from '../components/ui/toaster.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { BranchDialog } from '../detail/branch-dialog.js';
 import { mergeRejectCopy, useMergeGate } from '../detail/merge-gate.js';
@@ -464,12 +465,19 @@ export function BoardPage() {
       for (const [id, body] of changes) {
         mutations.patchTodo.mutate(
           { id, body },
-          // 409/网络败 = 乐观值作废，重取回 server 真值（卡片弹回 = 真值）
-          { onError: () => queryClient.invalidateQueries({ queryKey: ['todos', teamId] }) },
+          // 409/网络败 = 乐观值作废，重取回 server 真值（卡片弹回 = 真值）；
+          // #638 弹回只讲结果不讲原因——toast 点名失败（server 原因进
+          // description），与回滚不互斥（回滚收敛数据，toast 解释发生了什么）。
+          {
+            onError: (error) => {
+              queryClient.invalidateQueries({ queryKey: ['todos', teamId] });
+              toastError(t('移动任务失败，请重试。'), error);
+            },
+          },
         );
       }
     },
-    [live, todos, fixture.now, teamId, mutations.patchTodo, queryClient],
+    [live, todos, fixture.now, teamId, mutations.patchTodo, queryClient, t],
   );
 
   const content = overlayTodo != null ? overlayContent(overlayTodo.id) : null;
@@ -486,8 +494,9 @@ export function BoardPage() {
     ? { ...fixture, todos, now: Date.now(), ...(projectNames ? { projectNames } : {}) }
     : { ...fixture, todos };
   return (
-    // #447 (ADR 0004 D8): data-chief-open scopes the board-column min-width
-    // guard to the docked state — closed, the grid resolves exactly as before.
+    // #447 (ADR 0004): data-chief-open marks the docked-drawer state — the
+    // detail shell carries the same marker (D7). The board column floor is
+    // unconditional since #692 (board.css owns the single-source track rule).
     <div
       className="board-shell h-full"
       data-route="board"

@@ -18,9 +18,12 @@
 //   3. mention insertion — the MentionPicker popover path and the inline
 //      @-query listbox path route through one insertToken so the spacing and
 //      caret-offset rules live in a single place (#311);
-//   4. attachment file-pick wire — the hidden file input ref, the attaching
-//      flag and the re-pick value reset (#310). Grant + upload + token
-//      injection stay with the calling surface (onAttachment delegate).
+//   4. attachment file-pick + clipboard-paste wire — the hidden file input
+//      ref, the attaching flag and the re-pick value reset (#310), plus the
+//      paste capture (#729): files from the clipboard go through the same
+//      delegate, tokens land line-atomic at the captured caret (file-picker
+//      path stays tail-append). Grant + upload stay with the calling
+//      surface (onAttachment delegate returns the tokens it uploaded).
 //
 // Deliberately NOT here: the skins. Both faces keep their own DOM nodes,
 // geometry, class names and extra buttons (detail: toolbar / AI review /
@@ -31,6 +34,7 @@
 
 import type {
   ChangeEvent,
+  ClipboardEvent,
   Dispatch,
   KeyboardEvent,
   MutableRefObject,
@@ -38,6 +42,13 @@ import type {
   SetStateAction,
 } from 'react';
 import { useMemo, useRef, useState } from 'react';
+import {
+  createPastedNameCounter,
+  filesFromClipboardData,
+  insertAttachmentTokens,
+  type PastedNameCounter,
+  preparePastedFiles,
+} from './attachment-paste.js';
 import type { MentionGroups } from './mention-picker.js';
 import { detectInlineAgentQuery, insertMentionText, type MentionToken } from './mention-token.js';
 
@@ -54,9 +65,12 @@ export interface ComposerWireOptions {
    *  success clears the draft, rejection keeps it (#75 reject chain,
    *  #631/#635 chief send). void = clear right after the call. */
   onSend?: (text: string) => void | Promise<void>;
-  /** Attachment delegate (#310): the surface owns grant + upload and
-   *  injects the returned tokens into the draft via setDraft. */
-  onAttachment?: (files: File[]) => void | Promise<void>;
+  /** Attachment delegate (#310, contract widened in #729): the surface
+   *  owns grant + upload and returns the tokens of the files that made it
+   *  (per-file failures toast on the surface). The hook injects the tokens
+   *  into the draft — tail for the file picker, captured caret for a
+   *  clipboard paste — so the line-atomic discipline lives in one place. */
+  onAttachment?: (files: File[]) => string[] | Promise<string[]>;
   /** Entity groups feeding both mention paths (#311). Absent = the inline
    *  listbox never opens and the picker shows zero counts. */
   mentionGroups?: MentionGroups;
@@ -82,6 +96,9 @@ export interface ComposerWire {
   /** True while an onAttachment delegate is in flight. */
   attaching: boolean;
   onPickFiles: (event: ChangeEvent<HTMLInputElement>) => void;
+  /** Textarea onPaste (#729): clipboard files go through onAttachment and
+   *  land line-atomic at the caret; a text-only paste is never touched. */
+  handlePaste: (event: ClipboardEvent<HTMLTextAreaElement>) => void;
   /** MentionPicker popover open state (toolbar path). */
   pickerOpen: boolean;
   togglePicker: () => void;
@@ -134,8 +151,25 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [inlineOpen, setInlineOpen] = useState(false);
   const [inlineCaret, setInlineCaret] = useState<number | null>(null);
+  // Mirror of the freshest committed draft (#729): an upload resolving
+  // seconds after the paste must insert into the text as it stands now —
+  // the render-scoped `draft` closure would be stale and eat everything
+  // typed during the upload.
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  // Paste numbering per draft (CC [Image #N] spirit) + in-flight count
+  // driving the send gate below.
+  const pastedNameCounterRef = useRef<PastedNameCounter | null>(null);
+  if (pastedNameCounterRef.current === null)
+    pastedNameCounterRef.current = createPastedNameCounter();
+  const attachInFlightRef = useRef(0);
+  const pendingCaretRef = useRef<number | null>(null);
 
   const send = () => {
+    // Attachment upload in flight: the send is blocked so a message can
+    // never leave without the tokens still being uploaded (#729 failure
+    // mode 3). The draft survives untouched; Enter sends once landed.
+    if (attachInFlightRef.current > 0) return;
     const text = draft.trim();
     if (text === '' && !editable) {
       // Static capture face: the fixture send stays callable with the empty
@@ -158,14 +192,74 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
 
   const openFilePicker = () => fileInputRef.current?.click();
 
+  /** Upload delegate runner shared by the file-picker and paste paths
+   *  (#729): tracks the attaching flag (a count, so overlapping uploads
+   *  keep the send gate closed until the last one lands), injects the
+   *  returned tokens line-atomic at `caret` (null = tail-append, the
+   *  pre-#729 clip shape), then restores the caret after React commits —
+   *  only when the textarea still owns focus, so a file-picker round trip
+   *  never steals it back. */
+  const runAttachment = (files: File[], caret: number | null, also?: () => void) => {
+    if (!onAttachment) {
+      also?.();
+      return;
+    }
+    attachInFlightRef.current += 1;
+    setAttaching(true);
+    void Promise.resolve(onAttachment(files))
+      .then((tokens) => {
+        if (tokens.length === 0) return;
+        const inserted = insertAttachmentTokens(draftRef.current, tokens, caret);
+        pendingCaretRef.current = inserted.caret;
+        setDraft(inserted.value);
+        requestAnimationFrame(() => {
+          const ta = textareaRef.current;
+          const next = pendingCaretRef.current;
+          pendingCaretRef.current = null;
+          if (ta != null && next != null && document.activeElement === ta) {
+            ta.setSelectionRange(next, next);
+          }
+        });
+      })
+      .catch((err) => {
+        // Per-file failures already toasted on the surface; a delegate-level
+        // rejection is a bug — surface it, never swallow silently (#729
+        // failure mode 4).
+        console.error('attachment delegate failed', err);
+      })
+      .finally(() => {
+        attachInFlightRef.current = Math.max(0, attachInFlightRef.current - 1);
+        if (attachInFlightRef.current === 0) setAttaching(false);
+        also?.();
+      });
+  };
+
   const onPickFiles = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     // Reset the value so picking the same file again re-fires change.
     event.target.value = '';
-    if (files.length === 0 || !onAttachment) return;
-    setAttaching(true);
-    const result = onAttachment(files);
-    void Promise.resolve(result).finally(() => setAttaching(false));
+    if (files.length === 0) return;
+    runAttachment(files, null);
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!onAttachment) return;
+    const files = filesFromClipboardData(event.clipboardData);
+    // Text-only paste (or mixed clipboard read as text): the event is never
+    // touched, so plain text behavior stays byte-identical (#729 failure
+    // mode 7). A mixed file+text clipboard extracts the files and drops the
+    // text — files win per the issue ruling.
+    if (files.length === 0) return;
+    event.preventDefault();
+    // The inline @ listbox would dangle on a query the paste just replaced.
+    setInlineOpen(false);
+    setInlineCaret(null);
+    const counter = pastedNameCounterRef.current as PastedNameCounter;
+    // Per-draft numbering: a blank draft with nothing in flight restarts at
+    // 1; the in-flight guard keeps rapid double pastes from colliding.
+    counter.begin(draftRef.current.trim() === '');
+    const caret = event.currentTarget.selectionStart ?? draftRef.current.length;
+    runAttachment(preparePastedFiles(files, counter), caret, () => counter.end());
   };
 
   /** Insert a mention token at the current caret position. Used by both the
@@ -252,6 +346,7 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     openFilePicker,
     attaching,
     onPickFiles,
+    handlePaste,
     pickerOpen,
     togglePicker: () => setPickerOpen((value) => !value),
     closePicker: () => setPickerOpen(false),

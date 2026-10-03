@@ -3,6 +3,10 @@
 // (repeat(4, minmax(0, 1fr)), gap 14); the #147 column-collapse family and
 // the #58 scrollLeft persistence retired with the horizontal scroll they
 // served. Header 37 with dot/name/count, empty-state copy centered (r7).
+// #692: 列宽单源下限——轨道规则移进 board.css（minmax(var(--board-col-min),
+// 1fr)，280px = 参考站 2026-10-03 实测固定节距），⌘J 停靠 / 窄窗放不下时
+// 横滚回归且滚动条不再隐藏（旧 240px 开态护栏在 1440 停靠态把第四列裁成
+// ~3px 残边、无可滚线索 = #692 病灶）。
 // #73→#616: drag & drop rides the locked stack's core piece only
 // (01-stack-v2 §4.1: @dnd-kit/core) — the reference product (todos.dev,
 // 2026-10-02 live 实测) has NO in-column reordering: siblings never shift
@@ -229,7 +233,7 @@ export function BoardSurface({
         onDragCancel={onDragCancel}
       >
         <div
-          className={`board-scroller absolute inset-x-0 bottom-0 grid grid-cols-4 grid-rows-[minmax(0,1fr)] gap-3.5 overflow-x-auto overflow-y-hidden bg-background px-[17px] pt-3 pb-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+          className={`board-scroller absolute inset-x-0 bottom-0 grid grid-rows-[minmax(0,1fr)] gap-3.5 overflow-x-auto overflow-y-hidden bg-background px-[17px] pt-3 pb-[13px] ${
             banner == null ? 'top-11' : 'top-[121px]'
           }`}
         >

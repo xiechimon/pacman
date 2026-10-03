@@ -81,6 +81,12 @@
   --dialog-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
   /* chief 面（r5 100–104, #72）drawer 投影，r5 100 edge gradient 采样 */
   --chief-shadow: 0 4px 24px rgb(0 0 0 / 0.35);
+  /* 看板列宽下限（#692，唯一宽度 token）：参考站 todos.dev 2026-10-03
+     live 实测——列是 280px 固定节距、从不随视口压缩，放不下就走带原生
+     滚动条的横向滚动。静止 1440 视口的流值实测 281px，故 ≥1440 的静止
+     几何与本 token 无关（1fr 段主导）；⌘J 停靠让位或窄窗时下限接管，
+     溢出策略见 board.css 的 .board-scroller 单源规则。 */
+  --board-col-min: 280px;
   color-scheme: dark light;
 }
 

@@ -13,14 +13,20 @@
   overflow: hidden;
 }
 
-/* D8 (#447 / ADR 0004) 看板护栏：总管竖板停靠时 board-main 让掉 418px，
-   四列若继续走 grid-cols-4 的 minmax(0,1fr) 会被压到 ~176px 失去信息密度
-   ——护栏把轨道下限钉在 240px（施工期实测：1440 视口静止列宽 ≈281px，
-   停靠态可用宽 ≈748px < 4×240+3×14，让位改走 .board-scroller 既有的
-   overflow-x-auto 横滚）。规则以 data-chief-open 限定开态：面板关着时
-   轨道解析与 grid-cols-4 逐值一致，静止几何一字不变。 */
-.board-shell[data-chief-open] .board-scroller {
-  grid-template-columns: repeat(4, minmax(240px, 1fr));
+/* 看板列宽单源规则（#692，取代 #447 / ADR 0004 D8 的开态限定护栏）：
+   列宽下限 = --board-col-min（280px，参考站 todos.dev 2026-10-03 live
+   实测的固定节距），两态同一条规则、不按 data-chief-open 分支。
+   - 静止 ≥1440 视口：1fr 段主导（实测 281px），几何与旧 grid-cols-4 逐值
+     一致；
+   - ⌘J 停靠（board-main 让掉 418px）或窄窗：下限接管，放不下的列走
+     scroller 的 overflow-x-auto 横滚——旧护栏在 1440 停靠态恰好排满三列
+     （748 = 3×240+2×14），第四列只剩 ~3px 残边，且滚动条被隐藏、无任何
+     可滚线索（#692 病灶：无提示的裁切）。对齐参考站后列恒 280px 节距、
+     滚动缘露出诚实的部分列，滚动条恢复原生（scrollbar-width: auto，
+     参考站同值）——只在真有溢出时出现，静止 1440 无溢出即无滚动条，
+     #351 的静止观感不变。 */
+.board-scroller {
+  grid-template-columns: repeat(4, minmax(var(--board-col-min), 1fr));
 }
 
 /* ---- notification permission banner (#114) ---- */

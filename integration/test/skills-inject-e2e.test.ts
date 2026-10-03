@@ -15,7 +15,15 @@ import { createDaemonLogger } from '../../apps/daemon/src/log.js';
 import { type MachineHandle, runMachine } from '../../apps/daemon/src/machine-loop.js';
 import { type StatePaths, statePaths } from '../../apps/daemon/src/state.js';
 import { agent as agentTable, message as messageTable } from '../../apps/server/src/db/schema.js';
-import { AGENT_ID, api, bootRealServer, type RealServer, seedWorld, waitFor } from './helpers.js';
+import {
+  AGENT_ID,
+  api,
+  bootRealServer,
+  daemonLogLines,
+  type RealServer,
+  seedWorld,
+  waitFor,
+} from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 /** SKILL.md 正文 marker：read 结果落库断言键（catalog 触发按需读的实证）。 */
@@ -32,11 +40,7 @@ let world: { projectId: string; todoId: string };
 let buildId = '';
 
 function logLines(): string[] {
-  try {
-    return readFileSync(paths.daemonLog, 'utf8').split('\n');
-  } catch {
-    return [];
-  }
+  return daemonLogLines(paths.daemonLog);
 }
 
 beforeAll(async () => {
@@ -126,10 +130,11 @@ afterAll(async () => {
   await handle?.done;
   await server?.close();
   await stub?.close();
+  const diagTail = logLines().slice(-40).join('\n');
   if (home) rmSync(home, { recursive: true, force: true });
   if (skillsDir) rmSync(skillsDir, { recursive: true, force: true });
   process.stdout.write(
-    `\n[diag] stub requests consumed: ${stub?.requests.length ?? -1}\n[diag] daemon.log tail:\n${logLines().slice(-40).join('\n')}\n`,
+    `\n[diag] stub requests consumed: ${stub?.requests.length ?? -1}\n[diag] daemon.log tail:\n${diagTail}\n`,
   );
 });
 
