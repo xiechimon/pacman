@@ -114,11 +114,23 @@ jobs:
   # 名单写死 e2e (1..4) 的话，将来分片数一调，名单就静默失配（新增分片不
   # 阻塞合并 = 覆盖面实际下降）。本 job 名固定 e2e-gate、needs 全部分片，
   # 保护名单只引它；分片数调整不再触碰仓库设置。
+  #
+  # `if: always()` 与那句显式判定都不是可选装饰（#762）：只写 `needs` 时，
+  # 任一 shard 失败会让本 job **整个 skip**，而分支保护对 `skipped` 与
+  # `successful` / `neutral` 同等放行（GitHub 文档 about-protected-branches
+  # 「Require status checks before merging」）——闸恰好在唯一需要它的时刻是
+  # 开的。always() 保证它永远上报，再按 `needs.e2e.result` 显式判定：只有全
+  # 绿放行，failure / cancelled / skipped 一律失败（fail-closed）。将来若给
+  # e2e 加 paths 过滤让整层跳过，会在这里响亮地红，而不是静默丢掉覆盖面。
   e2e-gate:
     needs: e2e
+    if: always()
     runs-on: ubuntu-latest
     steps:
-      - run: exit 0
+      - name: Aggregate e2e shards
+        run: |
+          echo "e2e result: ${{ needs.e2e.result }}"
+          [ "${{ needs.e2e.result }}" = "success" ]
 
   # 发布产物冒烟（#264，spec #260 Testing Decisions 失败方式枚举的 CI 守）：
   # 独立 job/runner，不与任何 e2e shard 共享 runner（各自写自己的 dist）。
