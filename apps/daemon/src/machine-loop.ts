@@ -7,7 +7,7 @@
 // supervisor 侧，02 §5.3/r3 §1.5）。
 
 import { type ChildProcess, spawn } from 'node:child_process';
-import type { AgentBackend, AgentSessionHandle, ClaimedStep } from '@pacman/shared';
+import type { AgentBackend, AgentSessionHandle, ClaimedStep, DeliveredImage } from '@pacman/shared';
 import {
   CLAIM_BACKOFF_CAP_MS,
   CLAIM_POLL_INTERVAL_MS,
@@ -31,6 +31,7 @@ import {
   type StatePaths,
   saveMachineJson,
 } from './state.js';
+import { resolveStepImages } from './step-attachments.js';
 import { performSync } from './sync.js';
 import { DAEMON_VERSION } from './version.js';
 import { WorkspaceManager } from './workspace.js';
@@ -270,6 +271,8 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   // 落库 claimed 的响应竞态，孤儿化已领步；hold 到期重发（≤75s）即残余
   // 上界的兜底（多进程部署内存 hub 不共享时同此界）。
   // steer 事件（W3 #279）三号分流：拉取-确认投递到在跑 session handle。
+  // #730：steer 文本里的整行图片 token 同步解析下载（先判活再下载——无在跑
+  // handle 时一字节不白下），图片随 handle.steer(text, images) 内联交付。
   const streamCtrl = new AbortController();
   const deliverSteer = async (stepId: string): Promise<void> => {
     try {
@@ -280,7 +283,26 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
         logger.step(`steer dropped (no live session) step=${stepId}`); // 收尾竞态
         return;
       }
-      await live.steer(content);
+      let deliveryText = content;
+      let images: DeliveredImage[] | undefined;
+      try {
+        const resolved = await resolveStepImages({
+          text: content,
+          stepId,
+          client,
+          materializeDir: paths.stepAttachmentsDir,
+          log: (line) => logger.step(line),
+        });
+        deliveryText = resolved.text;
+        if (resolved.images.length > 0) images = [...resolved.images];
+      } catch (err) {
+        logger.step(
+          `steer attachment resolve failed (delivering raw text): ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+      await live.steer(deliveryText, images);
       logger.step(`steer delivered step=${stepId}`);
     } catch (err) {
       logger.step(`steer delivery failed: ${err instanceof Error ? err.message : String(err)}`);

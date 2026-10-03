@@ -38,6 +38,7 @@ import type {
   AgentBackendCapabilities,
   AgentSessionHandle,
   AgentTokenUsage,
+  DeliveredImage,
   ModelUsage,
   ProviderCompat,
   ProviderConfig,
@@ -62,6 +63,33 @@ export const PI_CAPABILITIES: AgentBackendCapabilities = {
 
 /** pi 内建工具默认面（02 §5.6：其余工具面 = pi-coding-agent 内建）。 */
 const PI_BUILTIN_TOOLS = ['read', 'bash', 'edit', 'write'];
+
+// —— #730 图片交付（pi 面原生支持：prompt(text, {images}) / steer(text,
+// images)；pi-ai ImageContent 结构 = {type:'image', data, mimeType}）—————————
+
+/** pi ImageContent 的结构形（pi-ai types.d.ts:256；缝纪律——shared 的
+ * DeliveredImage 结构同体，映射 = 补 type 判别位）。 */
+interface PiImageContent {
+  type: 'image';
+  data: string;
+  mimeType: string;
+}
+
+/** DeliveredImage → pi ImageContent（纯映射，可单测）。 */
+export function toPiImages(images: readonly DeliveredImage[]): PiImageContent[] {
+  return images.map((img) => ({ type: 'image' as const, data: img.data, mimeType: img.mimeType }));
+}
+
+/** input 能力钉翻转（#730 堵点，票面要求如实记录）：pi 按 model.input 决定
+ * 图片真上送还是静默降级成 "(image omitted: model does not support images)"
+ * 占位文本（pi-ai transform-messages downgradeUnsupportedImages）。daemon
+ * 物化的 CUSTOM_MODEL_DEFAULTS input:['text'] 会让本步图片全数降级——本步
+ * 真带图片时把**该会话的** model 对象翻到含 'image'：图片上送、网关/模型
+ * 拒绝时错误可见（#708 链）。幂等：已含 'image' 不重复。 */
+export function ensureImageInput(model: { input: ('text' | 'image')[] }): void {
+  if (model.input.includes('image')) return;
+  model.input = [...model.input, 'image'];
+}
 
 /** 只读回合的内建工具面（#511 审核步）：写类工具（edit/write）不下发——审核
  * 者是来判定的，不是来动手的；bash 保留（跑验证命令是它的职责，也是「验证」
@@ -517,6 +545,7 @@ class PiSessionHandle implements AgentSessionHandle {
 
   constructor(
     private readonly session: AgentSession,
+    private readonly model: { input: ('text' | 'image')[] } | null,
     private readonly onDispose?: () => void,
   ) {
     this.sessionId = session.sessionId;
@@ -544,8 +573,15 @@ class PiSessionHandle implements AgentSessionHandle {
     this.onDispose?.(); // per-turn 资源释放（MCP 桥 close，02 §7.1）
   }
 
-  async steer(text: string): Promise<void> {
-    await this.session.steer(text);
+  async steer(text: string, images?: readonly DeliveredImage[]): Promise<void> {
+    // #730：随话图片先翻本会话的 input 能力钉（见 ensureImageInput 注释），
+    // 再进 pi 的 steer(text, images) —— pi SDK 双参原生支持。
+    if (images !== undefined && images.length > 0 && this.model !== null) {
+      ensureImageInput(this.model);
+      await this.session.steer(text, toPiImages(images));
+    } else {
+      await this.session.steer(text);
+    }
     this.queue.push({ type: 'steer', text });
   }
 
@@ -765,15 +801,32 @@ export class PiBackend implements AgentBackend {
         : {}),
     });
     this.opts.onSession?.(session.sessionId, session.sessionFile);
-    const handle = new PiSessionHandle(session, () => {
+    const handle = new PiSessionHandle(session, model, () => {
       if (mcpBridge) void mcpBridge.close();
     });
+    // #730 首轮图片交付：promptImages 随 prompt 进会话（pi PromptOptions.
+    // images 原生面）。先翻本会话的 input 能力钉（ensureImageInput）——
+    // models.json 的 CUSTOM_MODEL_DEFAULTS input:['text'] 是 daemon 物化的
+    // 目录默认值（pi 据此把图片静默降级成占位文本），本步真带图片时翻到
+    // ['text','image']：图片上送，网关/模型不支持时错误可见（#708 链），
+    // 不静默假装看过。翻的域 = 该会话的 model 对象引用（MaterialRuntime
+    // getModel 返回、createAgentSession 持有同引用）——不写回 models.json，
+    // 不影响其它步（票面失败方式 9：不许全局翻开）。
     if (opts.prompt !== undefined) {
-      void session.prompt(opts.prompt).catch((err: unknown) => {
-        // 失败经事件面报告（message_end stopReason=error / agent_end）；
-        // prompt() 拒绝仅兜底防未处理 rejection。
-        void err;
-      });
+      if (opts.promptImages !== undefined && opts.promptImages.length > 0) {
+        ensureImageInput(model);
+        void session
+          .prompt(opts.prompt, { images: toPiImages(opts.promptImages) })
+          .catch((err: unknown) => {
+            void err;
+          });
+      } else {
+        void session.prompt(opts.prompt).catch((err: unknown) => {
+          // 失败经事件面报告（message_end stopReason=error / agent_end）；
+          // prompt() 拒绝仅兜底防未处理 rejection。
+          void err;
+        });
+      }
     }
     return handle;
   }

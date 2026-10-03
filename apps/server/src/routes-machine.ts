@@ -45,6 +45,7 @@ import {
   findMachineByToken,
   finishStep,
   heartbeatStep,
+  machineAttachmentDownload,
   machineSkillsPackage,
   markOffline,
   markPresence,
@@ -323,6 +324,24 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
   app.get('/api/machine/skills/:stepId', (c) => {
     const row = me(c);
     return c.json(machineSkillsPackage(deps, row.id, c.req.param('stepId')));
+  });
+
+  // —— GET /api/machine/attachment/{stepId}/{attachmentId}（#730 [设计]
+  // 登记位 MACHINE_WIRE_EXTENSIONS）：daemon 侧图片附件下载——machine token
+  // 认证（/api/machine/* 中间件）+ ownedStep（本机步）+ 附件 team 归属（跨
+  // team 404）+ ready 闸（pending/failed 409）。浏览器 session 面
+  // GET /api/attachments/:id 零改动（两条通道独立并存）。 ——————————————
+  app.get('/api/machine/attachment/:stepId/:attachmentId', (c) => {
+    const row = me(c);
+    return c.json(
+      machineAttachmentDownload(
+        deps,
+        row.id,
+        row.teamId,
+        c.req.param('stepId'),
+        c.req.param('attachmentId'),
+      ),
+    );
   });
 
   // —— POST /api/machine/upload-urls/{stepId}（预签名产物上传）—————————————————

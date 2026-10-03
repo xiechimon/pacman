@@ -11,6 +11,7 @@ import { join } from 'node:path';
 import type {
   ClaimedStep,
   GitCredentials,
+  MachineAttachmentResponse,
   MachineDoneBody,
   MachineShellPrecheckBody,
   MachineShellResultBody,
@@ -74,6 +75,7 @@ import type { FetchLike } from '../lib/github.js';
 import { hashCredential } from '../lib/hash.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { newMachineToken } from '../lib/keys.js';
+import { readAttachmentMeta } from './attachments.js';
 import { applyStoppedStep, completeStep, NotFoundError } from './builds.js';
 import {
   chiefClaimContext,
@@ -1145,6 +1147,33 @@ async function executeWorkerSkillTool(
  * MAX_SKILL_FILE_BYTES（readSkillFile 同闸，盘上字节数计）、包总量 ≤
  * MAX_SKILL_TOTAL_BYTES（utf8 字节数累计），超限 400 点名——写面同闸，
  * 超限技能/包不静默截断（调用方显式修白名单或文件）。 */
+/** GET /api/machine/attachment/{stepId}/{attachmentId} 服务层（#730）：daemon
+ * 侧图片交付的下载面。三道闸——ownedStep（本机步，非本机 404）→ 附件 team
+ * 归属（跨 team 404，requireAttachmentRow 单源）→ ready 状态（pending/failed
+ * 409 原因带状态词）。载荷 = readAttachmentMeta 同形（base64 in-memory，
+ * 10MiB cap 即内存预算上界）。机器 token 认证由路由中间件（/api/machine/*）
+ * 先行完成；teamId 取机器行——机器与附件必须同 team。 */
+export function machineAttachmentDownload(
+  deps: MachineDeps,
+  machineId: string,
+  machineTeamId: string,
+  stepId: string,
+  attachmentId: string,
+): MachineAttachmentResponse {
+  ownedStep(deps, machineId, stepId); // 非本机步/未知步 = 404
+  const meta = readAttachmentMeta(
+    { db: deps.db, attachmentsDir: deps.attachmentsDir },
+    machineTeamId,
+    attachmentId,
+  );
+  return {
+    fileName: meta.fileName,
+    mimeType: meta.mimeType,
+    sizeBytes: meta.sizeBytes,
+    contentBase64: meta.content,
+  };
+}
+
 export function machineSkillsPackage(
   deps: MachineDeps,
   machineId: string,

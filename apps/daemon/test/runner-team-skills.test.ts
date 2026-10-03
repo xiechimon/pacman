@@ -157,6 +157,9 @@ class FakeClient implements MachineApi {
   async steer() {
     return null;
   }
+  async attachment(): Promise<never> {
+    throw new Error('unused');
+  }
   async stop() {
     return null;
   }
