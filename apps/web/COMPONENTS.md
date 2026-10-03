@@ -9,15 +9,13 @@
 | 轨 | 位置 | 状态 |
 |---|---|---|
 | **新轨** | `src/components/ui/` | **新代码一律落这里。** shadcn 件 + Base UI 基（#410 裁决），带仓内偏离记录 |
-| **旧轨** | `src/ui/` | 待退役的手工件（现存 `button` / `chip` / `dialog` / `input`，各带 `.css`；`avatar` / `kbd-hint` / `tag-chip` 已迁新轨，#535；`card` 已删——消费点全数迁 `components/ui/card.js`，#658）。**只许删、不许加**（#417 裁决，机器门钉住） |
+| **旧轨** | `src/ui/` | 待退役的手工件（现存 `chip` / `dialog` / `input`，各带 `.css`；`avatar` / `kbd-hint` / `tag-chip` 已迁新轨，#535；`card` 已删——消费点全数迁 `components/ui/card.js`，#658；`button` 已删——消费点全数迁 `components/ui/button.js`，#670）。**只许删、不许加**（#417 裁决，机器门钉住） |
 | 弹层族 | `src/overlay/` + `src/overlays/` | 挂在共享壳上（见第三节），**不自己手搓 OverlayMount + useEscClose** |
 
 规矩一句话：**改已有消费点时才碰旧轨；写新件进新轨。**
 
 <!-- inventory:old-track-frozen -->
 ```text
-button.css
-button.tsx
 chip.css
 chip.tsx
 dialog.css

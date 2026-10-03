@@ -342,8 +342,8 @@
 }
 
 /* 合并前置检查的缺项行（XMON-89）：勾选行下方、同一内缩 16。禁用态本身由
-   .btn--primary:disabled 承载，这行只负责说「缺什么」——没有它用户只知道点
-   不动，不知道该开哪个开关。 */
+   components/ui/button 的 brand disabled 档承载，这行只负责说「缺什么」
+   ——没有它用户只知道点不动，不知道该开哪个开关。 */
 .dlg-accept-block {
   margin: 10px 16px 0;
   font-size: 12px;
