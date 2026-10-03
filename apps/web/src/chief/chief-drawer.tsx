@@ -320,6 +320,7 @@ export function ChiefDrawer({
     pickerOpen,
     togglePicker,
     closePicker,
+    closeInline,
     inlineOpen,
     inlineCaret,
     inlineQuery,
@@ -332,6 +333,18 @@ export function ChiefDrawer({
     insertTokens,
     groups,
   } = wire;
+  // #773：抽屉收起联动收弹层——模型 popover / 切换器 / 提及 picker /
+  // 内联补全 / 恢复确认的 open 态都自持在抽屉内部，抽屉只收容器时它们跟
+  // 着失活（FloatingShell 的 portal 锚随容器走）却不清零，重开即带回
+  // stale 开态。X / Esc / ⌘J 同走 open=false，这里一处收敛。
+  useEffect(() => {
+    if (open) return;
+    setModelOpen(false);
+    setThreadsOpen(false);
+    setRewindConfirm(null);
+    closePicker();
+    closeInline();
+  }, [open, closePicker, closeInline]);
   // #146 Esc 分层改由 Base UI 壳代收（见下 onOpenChange）：Base UI 处理 Esc 时
   // 会拦下事件，窗口监听（旧 useEscapeClose）收不到。
   // (b″) dock 行发现：锚点 span 原位渲染，向上走到最近的 dock 行类作为 Portal

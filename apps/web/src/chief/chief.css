@@ -856,9 +856,11 @@ a.chief-identity {
   display: flex;
   align-items: center;
   gap: 16px;
-  height: 62px;
-  margin-top: 18px;
-  padding: 0 16px;
+  /* #772: 定高改 min-height——英文描述换行（2 行起）时卡片随之长高，
+     不再把第二行顶出卡片；单行时 62 不变（内容 33 + 16 < 62）。 */
+  min-height: 62px;
+  margin-top: 17px;
+  padding: 8px 16px;
   border-radius: 8px;
   background: var(--surface-secondary);
 }
@@ -890,6 +892,10 @@ a.chief-identity {
   gap: 10px;
   height: 30px;
   min-width: 160px;
+  /* #772: 长 provider/model 串不再把框撑满——定宽上限 + 值单行截断。
+     max-width 而非 width：短值（默认行/短模型名）保持原尺寸，无变化；
+     上限保窄抽屉（418 停靠列）不溢出。 */
+  max-width: 200px;
   padding: 0 10px;
   border: 1px solid var(--border-default);
   border-radius: 8px;
@@ -901,7 +907,19 @@ a.chief-identity {
 }
 
 .chief-select svg {
+  flex: none;
   color: var(--text-tertiary);
+}
+
+/* #772 值截断：flex 子 span 默认 min-width:auto 拒绝收缩，省略号永不
+   触发——min-width:0 是截断生效的前提（菜单行 chief-model-row-name 同律，
+   此处是触发钮版）。 */
+.chief-select-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chief-model-menu {
@@ -1033,7 +1051,9 @@ a.chief-identity {
 .chief-charter-empty {
   display: grid;
   place-items: center;
-  height: 78px;
+  /* #772: 定高改 min-height（与 memo/watches/compress 同律）——文案变长
+     换行时盒子长高，单行时 78 不变。 */
+  min-height: 78px;
   margin-top: 17px;
   border: 1px dashed var(--border-strong);
   border-radius: 8px;
@@ -1063,16 +1083,23 @@ a.chief-identity {
 .chief-watches {
   display: flex;
   align-items: center;
-  height: 44px;
+  /* #772: 定高改 min-height + 纵向内边距——英文两行时（watches 实测
+     39px 内容挤在 44 里、上下只剩 2.5px）卡片随之长高且呼吸均匀；
+     单行时 44 不变（19.5 + 16 < 44）。 */
+  min-height: 44px;
   margin-top: 17px;
-  padding: 0 16px;
+  padding: 8px 16px;
   border-radius: 8px;
   background: var(--surface-secondary);
   font-size: 13px;
 }
 
+/* #772: memo 与 watches/charter-empty 统一为居中 + tertiary——三张空态
+   卡之前是两种对齐（memo 左、另两张中）× 两种墨色（memo 二级字、另两张
+   三级字）。文案一字不动，只收对齐与墨色。 */
 .chief-memo {
-  color: var(--text-secondary);
+  justify-content: center;
+  color: var(--text-tertiary);
 }
 
 .chief-watches {

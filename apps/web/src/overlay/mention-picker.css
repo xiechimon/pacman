@@ -15,9 +15,9 @@
   top: 228px;
   left: 50%;
   width: 400px;
-  /* 居中位移不写 transform：本类同时是 .anim-pop 消费者，transform
-     归动画层独占（静态声明 none），居中写在上面会在构建产物的
-     cascade 里被覆盖（#448）。margin 负值居中 = .search-panel 同款。 */
+  /* 居中位移不写 transform：transform 归动画层独占（#656 起 = tw 的
+     enter/exit keyframe），居中写上去会在动画窗内被 keyframe 整条顶掉
+     （#448 同款机理）。margin 负值居中 = .search-panel 同款。 */
   margin-left: -200px;
   max-height: 70vh;
   background: var(--popover-bg);

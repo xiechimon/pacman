@@ -342,6 +342,20 @@ export function NewTaskDialog({
     }
     returnFocusToInvoker();
   }, [open]);
+  // #723 真回归修：闸层拥有键盘时焦点显式落闸内。overlay-mount 退役前送焦
+  // 走注册表；#656 起壳 = FloatingShell 缺省 initialFocus，sibling root 不
+  // 再送焦——焦点停 composer，keep 钮 toBeFocused 落空（hotkeys /
+  // dead-buttons 双面钉）。父 effect 后于壳子树 effect 落子，开层提交后钮
+  // 必已挂载。关层（继续编辑三路）焦点回 composer，还旧终态；drop 路关整
+  // dialog，走 dialog 自身归还，不经此。
+  const keepBtnRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (discardOpen) keepBtnRef.current?.focus();
+  }, [discardOpen]);
+  const closeDiscard = () => {
+    setDiscardOpen(false);
+    specRef.current?.focus();
+  };
 
   // XMON-87 续二:Tab 直接换项目(chip 上挂 Tab 提示 chip)。循环而不是开面
   // ——「直接切换」要的是按一下就换了,不是先弹列表再选;列表那条路(点 chip)
@@ -820,11 +834,11 @@ export function NewTaskDialog({
           catcher,故原生 outsidePress 关闭(#666 律的 catcher 半边)。 */}
       <FloatingShell
         open={discardOpen}
-        onClose={() => setDiscardOpen(false)}
+        onClose={closeDiscard}
         className="anchored-pop-shell anchored-pop-shell--slow"
         disablePointerDismissal
       >
-        <ClickCatcher onClose={() => setDiscardOpen(false)} />
+        <ClickCatcher onClose={closeDiscard} />
         <div
           className="new-task-discard duration-200 group-data-closed/fshell:fill-mode-forwards group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0"
           role="alertdialog"
@@ -837,7 +851,8 @@ export function NewTaskDialog({
               variant="ghost"
               size="default"
               className="new-task-discard-keep h-auto rounded-none justify-start gap-0 font-normal active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent hover:text-(--text-dim) [&_svg:not([class*='size-'])]:size-auto"
-              onClick={() => setDiscardOpen(false)}
+              ref={keepBtnRef}
+              onClick={closeDiscard}
             >
               {t('继续编辑')}
             </Button>

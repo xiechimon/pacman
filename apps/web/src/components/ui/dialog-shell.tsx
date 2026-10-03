@@ -78,7 +78,8 @@ interface DialogShellProps {
    *  也不参与（容器退为纯管道 role=presentation，dialog 语义由面内自带）。 */
   viewportRoot?: boolean;
   /** Backdrop 位类名入参（只作用于视口根态）：视口根态下壳不注入家族皮肤，
-   *  scrim 皮肤由消费者全权给（search-panel 传 `.search-scrim anim-fade`）。
+   *  scrim 皮肤由消费者全权给（search-panel 传 `.search-scrim` + tw 的
+   *  data-open/data-closed fade 变体，#656）。
    *  默认态不开这个口子——11 个既有消费点的背板类串保持逐字不动。 */
   backdropClassName?: string;
 }

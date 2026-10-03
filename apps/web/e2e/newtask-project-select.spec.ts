@@ -1,8 +1,9 @@
 import { expect, type Page, test } from '@playwright/test';
 
 // Wayfinder ticket #176: the new-task dialog's project chip joins the
-// anchored-popover family (#67/#127 law: OverlayMount + ClickCatcher +
-// Escape; dhead chip-popover / account lang-dropdown precedents). The
+// anchored-popover family (#67/#127 law: FloatingShell + ClickCatcher,
+// Esc on the Base UI layer stack since #656; dhead chip-popover /
+// account lang-dropdown precedents). The
 // listbox rows come from the project set — live = useProjects truth,
 // fixture = the scenario's projectNames (scenario newtask-projects
 // carries the r2 session's two projects; scenario 01 has none and falls

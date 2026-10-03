@@ -7,7 +7,8 @@ import { expect, type Page, test } from '@playwright/test';
 // 2. 章程编辑 → DialogShell 编辑弹窗:textarea 占位 r5 102/110 canon +
 //    取消/保存章程;fixture 保存 = accept 律关窗。
 // 3. 压缩模型 #204 翻回交互(server #203 compactionModel 槽就位):button
-//    开 anchored popover(OverlayMount + ClickCatcher + Esc 家族律),
+//    开 anchored popover(FloatingShell + ClickCatcher 家族律,#656 起
+//    Esc 归 Base UI layer 栈),
 //    fixture 面清单 = 默认行 + canon 单行(claude-code/claude-sonnet-5;#770 起
 //    providers 段已除,canon 行取 runtime 源形),选定 =
 //    accept 律关面。live PATCH 写读回归归 live 真机验。
@@ -151,6 +152,51 @@ test('压缩模型 fixture pick = accept 律:选择即关 (#204)', async ({ page
   await expect(page.locator('.chief-model-menu')).toBeHidden();
   // fixture 面无 mutation:select 回显保持 canon 默认文案。
   await expect(select).toContainText('默认（与 Chief 相同）');
+});
+
+// #772: 长 provider/model 串不再把框撑满——值单行截断 ellipsis + title
+// 悬停全称；框定宽上限（两主题）。短值面不受影响（min-width 160 保留）。
+for (const theme of ['dark', 'light'] as const) {
+  test(`压缩模型 long value truncates, full name on title (${theme}, #772)`, async ({
+    page,
+  }) => {
+    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
+    await page.goto('/app?scenario=101-stale-model');
+    const select = page.locator('button.chief-select');
+    await expect(select).toContainText('anthropic/claude-3-5-haiku-20241022');
+    await expect(select).toHaveAttribute('title', 'anthropic/claude-3-5-haiku-20241022');
+    const box = await select.boundingBox();
+    expect(box!.width).toBeLessThanOrEqual(202);
+    const clipped = await select
+      .locator('.chief-select-value')
+      .evaluate((el) => el.scrollWidth > el.clientWidth);
+    expect(clipped).toBe(true);
+  });
+}
+
+// #772 空态卡统一：memo 与 watches/charter-empty 同为居中 + 卡片随文案
+// 长高（英文两行不再顶出卡片）。tab 文案与记忆页互引按票面冻结，只钉几何。
+test('空态卡 centered and growth-proof: memo matches watches (#772)', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('pacman.locale', 'en');
+    localStorage.setItem('pacman-locale', 'en');
+    localStorage.setItem('pacman-theme', 'light');
+  });
+  for (const [scenario, sel] of [['103', '.chief-memo'], ['104', '.chief-watches']] as const) {
+    await page.goto(`/app?scenario=${scenario}`);
+    const card = page.locator(sel);
+    await expect(card).toBeVisible();
+    const geo = await card.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      return {
+        centered: cs.justifyContent === 'center',
+        contained: el.scrollHeight <= Math.ceil(r.height) + 1,
+      };
+    });
+    expect(geo.centered).toBe(true);
+    expect(geo.contained).toBe(true);
+  }
 });
 
 // #358 AC2:preset 方案退役后,仍引用已废 preset 的旧 compactionModel 值
