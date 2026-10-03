@@ -147,6 +147,13 @@ export class WorkspaceManager implements WorktreeOps {
     return gitPrim.countAhead(cwd, defaultBranch);
   }
 
+  /** conv 分支 unified diff（#704 非 hosted 形态投影上报数据源）：
+   * `git diff origin/<default>...HEAD`——merge-base 到工作头的变更，与 server
+   * readBuildChanges 的 `${baseSha}...${headSha}` 同语义。 */
+  async diffAgainstDefault(cwd: string, defaultBranch: string): Promise<string> {
+    return gitPrim.diffAgainstRemoteDefault(cwd, defaultBranch);
+  }
+
   async restoreCheckpoint(cwd: string, commit: string): Promise<void> {
     await gitPrim.resetHard(cwd, commit);
     await gitPrim.cleanFd(cwd);

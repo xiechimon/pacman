@@ -299,6 +299,19 @@ export const gitPrim = {
     return Number.isNaN(n) ? 0 : n;
   },
 
+  /** conv 分支相对 origin/<default> 的 unified diff 原文（#704 非 hosted 形态
+   * 投影上报数据源；三-dot = merge-base 起算，server readBuildChanges 同语义）。
+   * 基座引用缺位（空仓/未 fetch）= 空串——投影按上报零改动处理，不抛错
+   * （探测是收尾附加面，不阻断步收尾）。 */
+  async diffAgainstRemoteDefault(dir: string, defaultBranch: string): Promise<string> {
+    const r = await runGit(['diff', `origin/${defaultBranch}...HEAD`], {
+      cwd: dir,
+      timeoutMs: META_TIMEOUT_MS,
+    });
+    if (r.code !== 0) return '';
+    return r.stdout;
+  },
+
   /** 提交时刻（epoch ms；孤儿回收龄判定用 [设计]）。 */
   async commitTime(dir: string, commit: string): Promise<number | null> {
     const r = await runGit(['log', '-1', '--format=%ct', '--end-of-options', commit], {
