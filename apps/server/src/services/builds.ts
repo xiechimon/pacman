@@ -413,7 +413,9 @@ export function startBuilds(
  * - {action:"restart", feedback, clientMessageId} → 失败面带反馈重启（#320，
  *   r9 §3.3 实测：原站 failed 态发消息触发新一轮，消息随新轮入会话，非
  *   steer 409 语义）：新 build（withPlan 承接失败轮）+ 反馈行落新 conv +
- *   首步入队（instruction 携反馈，revision 同缝）+ failed→queued 漏斗。
+ *   首步入队（instruction 携反馈，#720 起 daemon 以「任务文本 + 指令」组合
+ *   串真投进会话；空白反馈 = 纯重启轮，无反馈行无 instruction）+ failed→queued
+ *   漏斗。
  *   与 #308 停止钮的落态分界：停止 = 运行轮落上一完成 turn 的 gate（落态非
  *   failed）；restart 门只收 failed——两写面相位隔离，不共享入口。 */
 
@@ -460,17 +462,26 @@ export async function applyBuildStepAction(
         createdAt,
       })
       .run();
+    // #720 负例守卫：空白反馈（'  '——schema min(1) 拦不住空串以外的空白，
+    // UI composer 的 text!=='' 同拦不住）不成发送：不落空白用户行、不注入
+    // 「用户反馈：「」」空壳指令——纯重启轮（首步 prompt = null，daemon
+    // #720 投递纯任务文本）。
+    const feedbackText = body.feedback.trim() === '' ? null : body.feedback;
     // 消息先于首步入队：transcript 按 createdAt 排序（反馈行在运行行之上），
     // 且 machine wake（enqueueStep 内）发生在消息落库之后。
-    insertMessageRow(deps, newId, {
-      id: newRecordId(),
-      role: 'user',
-      content: body.feedback,
-      createdAt,
-    });
+    if (feedbackText !== null) {
+      insertMessageRow(deps, newId, {
+        id: newRecordId(),
+        role: 'user',
+        content: feedbackText,
+        createdAt,
+      });
+    }
     // 文本单源 = shared buildRestartPrompt（#612：web transcript 过滤侧按
-    // 同一模板识别本行，不渲染成用户气泡——feedback 原文已有独立 wire 行）。
-    const restartPrompt = buildRestartPrompt(body.feedback);
+    // 同一模板识别本行，不渲染成用户气泡——feedback 原文已有独立 wire 行；
+    // #720：该指令经 claim instruction 位 → daemon 组合串（任务文本 + 指令）
+    // 进会话，超长反馈在单源截断）。
+    const restartPrompt = feedbackText !== null ? buildRestartPrompt(feedbackText) : undefined;
     enqueueStep(deps, newId, row.withPlan ? 'plan' : 'build', todoRecord.teamId, restartPrompt);
     setTodoPhase(deps, todoRecord.id, 'queued', {
       assignment,

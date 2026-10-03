@@ -1,9 +1,10 @@
 // 系统合成 prompt 词表（#612）：transcript 的 role-user wire 行不全是用户
-// 的话——daemon 把任务文本（title+spec）与续轮指令记进会话（runner.ts），
-// server 把 replan/restart 反馈指令与审核材料记进会话（builds.ts）。呈现层
-// （web mapTranscript）需要按本词表把合成行从用户话语里择出去，否则它们以
-// 用户气泡冒名顶替（任务原文还会与描述区双渲染）。写侧与过滤侧单源在此，
-// 文本逐字节即 wire 值——改任何一个字符串都是改双端契约。
+// 的话——daemon 把任务文本（title+spec）、续轮指令与 #720 组合行（任务文本
+// + 重启指令同串）记进会话（runner.ts），server 把 replan/restart 反馈指令与
+// 审核材料记进会话（builds.ts）。呈现层（web mapTranscript）需要按本词表把
+// 合成行从用户话语里择出去，否则它们以用户气泡冒名顶替（任务原文还会与描
+// 述区双渲染）。写侧与过滤侧单源在此，文本逐字节即 wire 值——改任何一个
+// 字符串都是改双端契约。
 //
 // 宣告行（MERGE_ANNOUNCEMENT / REVIEW_ANNOUNCEMENT，message.ts）不在本词表：
 // 它们是要渲染的行（note 家族），不是要消失的行。
@@ -63,10 +64,32 @@ const RESTART_HEAD = '上一轮执行失败。用户反馈：「';
 const RESTART_TAIL =
   '」。请把反馈纳入本轮：涉及方案先输出更新后的 plan.md（覆盖 Context/Changes/Edge cases/Verification 四段），再忠实执行完成任务。';
 
+/** #720 反馈内嵌上界（字符数，UTF-16 单位）：反馈原文的用户行不截断，截断
+ *  只作用于指令内嵌副本（裁决正本 = issue #720 裁决评论）。 */
+export const RESTART_FEEDBACK_MAX_CHARS = 4_000;
+
 /** 失败重启指令（server restart 分支单源）：feedback 内嵌，且 feedback 原文
- *  已作为独立 wire 行落新会话首条。 */
+ *  已作为独立 wire 行落新会话首条。#720 起超长反馈截到 RESTART_FEEDBACK_MAX_CHARS
+ *  ——HEAD/TAIL 形状保持（呈现层 wrappedBy 识别不受影响），代理字符对不从
+ *  中间撕开。 */
 export function buildRestartPrompt(feedback: string): string {
-  return `${RESTART_HEAD}${feedback}${RESTART_TAIL}`;
+  let embedded = feedback;
+  if (feedback.length > RESTART_FEEDBACK_MAX_CHARS) {
+    embedded = feedback.slice(0, RESTART_FEEDBACK_MAX_CHARS);
+    // 代理字符对防半切：界点落在高代理上回退一单位。
+    if (/[\uD800-\uDBFF]$/.test(embedded)) embedded = embedded.slice(0, -1);
+    embedded = `${embedded}……（反馈过长，已截断）`;
+  }
+  return `${RESTART_HEAD}${embedded}${RESTART_TAIL}`;
+}
+
+/** #720 组合 prompt（new session 重启轮投递形，裁决正本 = issue #720 裁决
+ *  评论）：任务文本（title+spec）在前、指令殿后，空行分隔——新会话没有任务
+ *  语境，只发指令 agent 不知道做什么；指令是「带反馈执行」的动作句，殿后拿
+ *  最强注意力。写侧（daemon buildTaskPrompt）与过滤侧（web classifyUserText
+ *  的组合行识别）单源在此。 */
+export function composeTaskPromptWithInstruction(taskText: string, instruction: string): string {
+  return `${taskText}\n\n${instruction}`;
 }
 
 /** 开始任务编排请求（#640 / r14 §5.2：编排回合的会话 user 消息 = 总目标
@@ -100,11 +123,24 @@ function wrappedBy(text: string, head: string, tail: string): boolean {
   return text.length >= head.length + tail.length && text.startsWith(head) && text.endsWith(tail);
 }
 
+/** 纯合成指令判定（SYNTHETIC 词表全量）：CONTINUE 占位句 / replan /
+ *  review-reject（#701）/ restart 模板 / 审核材料 meta。 */
+function isSyntheticInstruction(text: string): boolean {
+  return (
+    SYNTHETIC_EXACT.has(text) ||
+    wrappedBy(text, REPLAN_HEAD, REPLAN_TAIL) ||
+    wrappedBy(text, REVIEW_REJECT_HEAD, REVIEW_REJECT_TAIL) ||
+    wrappedBy(text, RESTART_HEAD, RESTART_TAIL) ||
+    parseReviewPromptMeta(text) !== null
+  );
+}
+
 /** role-user wire 行文本的归属判定：
  *  - `task-prompt` = 任务文本（title+spec 合成，与 todo 当前值精确相等）——
  *    任务简报的重复呈现，描述区是用户原话的唯一展示面；
  *  - `synthetic` = 其余合成指令（续轮/replan/restart 模板、审核材料——审核
- *    材料首行是 review prompt meta JSON，records/review.ts 单源解析）；
+ *    材料首行是 review prompt meta JSON，records/review.ts 单源解析）+ 组合行
+ *    （#720：任务文本前缀 + 合成指令余段同串，new session 重启轮投递形）；
  *  - `user` = 真实用户话语（steer/驳回 feedback/重启 feedback），呈现层照常
  *    渲染成用户气泡。
  *  宣告行不在此判定（见文件头）；调用方先行分流。 */
@@ -115,11 +151,20 @@ export function classifyUserText(
   task: { title: string; spec: string },
 ): UserTextKind {
   // wire 行经呈现层 trim 后比对（daemon 记录的是未 trim 原文）。
-  if (text === buildTaskPromptText(task.title, task.spec).trim()) return 'task-prompt';
-  if (SYNTHETIC_EXACT.has(text)) return 'synthetic';
-  if (wrappedBy(text, REPLAN_HEAD, REPLAN_TAIL)) return 'synthetic';
-  if (wrappedBy(text, REVIEW_REJECT_HEAD, REVIEW_REJECT_TAIL)) return 'synthetic';
-  if (wrappedBy(text, RESTART_HEAD, RESTART_TAIL)) return 'synthetic';
-  if (parseReviewPromptMeta(text) !== null) return 'synthetic';
+  const taskText = buildTaskPromptText(task.title, task.spec).trim();
+  if (text === taskText) return 'task-prompt';
+  if (isSyntheticInstruction(text)) return 'synthetic';
+  // #720 组合行（composeTaskPromptWithInstruction 投递形）：任务前缀剥除后
+  // 余段是合成指令 → 整行退场——任务简报已有描述区、反馈已有独立用户行，
+  // 组合行成气泡即双渲染。余段是用户话语（任务前缀 + 用户自己的话）则不
+  // 属组合行，照常 'user'。
+  if (
+    taskText !== '' &&
+    text.length > taskText.length &&
+    text.startsWith(taskText) &&
+    isSyntheticInstruction(text.slice(taskText.length).trim())
+  ) {
+    return 'synthetic';
+  }
   return 'user';
 }
