@@ -449,7 +449,10 @@ export function seedLocalMachine(db: Db, teamId: string): void {
       apiKeyId: null,
       latestCliVersion: null,
       kind: 'local',
-      enabledRuntimes: [],
+      // #682：runtime 开关缺省 ['pi']——bootstrap 不空转（claim 真闸下 [] 全关
+      // = 新装机一步都领不到）；claude-code 是显式 opt-in（凭据本来就要各机
+      // 登录）。存量 [] 行由 0022 migration 回填同值。
+      enabledRuntimes: ['pi'],
     })
     .run();
 }
@@ -505,7 +508,7 @@ export function enrollMachine(
       apiKeyId: input.keyId,
       latestCliVersion: input.cliVersion ?? null,
       kind: isLocal ? 'local' : 'remote',
-      enabledRuntimes: [],
+      enabledRuntimes: ['pi'],
     })
     .run();
   return { machineId, token: token.plain, teamId: input.teamId, serverUrl: input.serverUrl };
@@ -546,7 +549,7 @@ export function authorizeEnrollmentMachine(
       apiKeyId: null,
       latestCliVersion: null,
       kind: isLocal ? 'local' : 'remote',
-      enabledRuntimes: [],
+      enabledRuntimes: ['pi'],
     })
     .run();
   return { machineId, token: token.plain, teamId: input.teamId, serverUrl: input.serverUrl };
@@ -633,13 +636,23 @@ function claimCandidates(deps: MachineDeps, machineId: string, teamId: string): 
 }
 
 /** chief 步候选（step.buildId = `chief-<threadId>`，join chief_thread 取 teamId；
- * 无 build/todo 行——Chief 回合 = 机器 step，r5 §3.1）。 */
-function claimChiefCandidates(deps: MachineDeps, teamId: string) {
+ * 无 build/todo 行——Chief 回合 = 机器 step，r5 §3.1）。#682 机器亲和：thread
+ * 钉了机器（chief 会话文件是执行机本地资产，轮换认领降级 new session）→ 只
+ * 有该机器可领；未钉 = 任何机器（现状）。与 worker 步的 build.pinnedMachineId
+ * 过滤同语义。 */
+function claimChiefCandidates(deps: MachineDeps, machineId: string, teamId: string) {
   return deps.db
     .select({ stepRow: step, threadRow: chiefThread })
     .from(step)
     .innerJoin(chiefThread, eq(step.buildId, chiefThread.id))
-    .where(and(eq(step.status, 'pending'), eq(step.kind, 'chief'), eq(chiefThread.teamId, teamId)))
+    .where(
+      and(
+        eq(step.status, 'pending'),
+        eq(step.kind, 'chief'),
+        eq(chiefThread.teamId, teamId),
+        or(isNull(chiefThread.pinnedMachineId), eq(chiefThread.pinnedMachineId, machineId)),
+      ),
+    )
     .orderBy(asc(step.createdAt))
     .all();
 }
@@ -725,6 +738,23 @@ function claimLocalTools(
   return tools;
 }
 
+/** #682 enabledRuntimes 真闸——步的 runtime 判定（与 daemon runner 的
+ * backendFor 同律：agent provider ∈ BACKEND_RUNTIME_IDS → claude-code，
+ * 其余（含 BYOK 自定义 provider）→ pi）。判定单源在此；claim 侧消费，
+ * 机器侧开关 = machine.enabledRuntimes（PATCH 热写，秒级生效）。 */
+function stepRuntimeFor(agentProvider: string | null | undefined): 'pi' | 'claude-code' {
+  return isBackendRuntimeId(agentProvider) ? 'claude-code' : 'pi';
+}
+
+/** 机器未开步所需的 runtime = 不可领该步（步留 pending 给能跑的机器——
+ * spec 11 A8「我可以决定本机跑 pi 还是 Claude Code 任务」的兑现位）。 */
+function runtimeGatePasses(
+  machineRow: { enabledRuntimes: string[] },
+  agentProvider: string | null | undefined,
+): boolean {
+  return machineRow.enabledRuntimes.includes(stepRuntimeFor(agentProvider));
+}
+
 function buildChiefClaim(
   deps: MachineDeps,
   machineId: string,
@@ -739,6 +769,9 @@ function buildChiefClaim(
     ? deps.db.select().from(agent).where(eq(agent.id, chiefRow.agentId)).get()
     : undefined;
   if (!chiefRow || !agentRow?.modelId) return null;
+  // #682 enabledRuntimes 真闸（chief 步同律）：chief 绑定 agent 的 runtime
+  // 机器未开 = 该机不可领本回合（候选循环自动试下一条 chief 步）。
+  if (!machineRow || !runtimeGatePasses(machineRow, agentRow.provider)) return null;
   // 思考强度覆盖（PATCH body agent.thinkingLevel，r5 §2）优先，回退绑定 Agent 值。
   const thinkingLevel = chiefRow.thinkingLevel ?? agentRow.thinkingLevel;
   // 主模型覆盖（#615，r5 107/108 独立「模型」选择器落库面）优先，回退绑定
@@ -813,7 +846,7 @@ function tryClaim(
   // chief 步与 worker 步共队列，按 createdAt FIFO 交错（chief 派工先于其产生的
   // worker 步入队，天然领先；跨类型仍按 createdAt 保序 [设计]）。
   const workerCands = claimCandidates(deps, machineId, teamId);
-  const chiefCands = claimChiefCandidates(deps, teamId);
+  const chiefCands = claimChiefCandidates(deps, machineId, teamId);
   const earliestWorker = workerCands[0]?.stepRow.createdAt ?? Number.POSITIVE_INFINITY;
   for (const cand of chiefCands) {
     if (cand.stepRow.createdAt > earliestWorker) break; // worker 更早 → 先走 worker
@@ -828,6 +861,9 @@ function tryClaim(
     const agentRow = agentForStep(deps, cand.todoRow, cand.stepRow.kind, cand.stepRow.prompt);
     // 未指派 Agent = 不可执行（Agent 可空是 UI 语义，派发需模型位 [设计]）。
     if (!agentRow?.modelId) continue;
+    // #682 enabledRuntimes 真闸：机器未开步所需 runtime = 不可领（步留
+    // pending 给能跑的机器——机器开 pi、步跑 claude-code agent = 不投给该机）。
+    if (!runtimeGatePasses(machineRow, agentRow.provider)) continue;
     // 原子领取：仅当仍 pending 时置 claimed（单进程 better-sqlite3 同步写）。
     const claimedAt = nowMs();
     const res = db

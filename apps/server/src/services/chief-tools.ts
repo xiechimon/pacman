@@ -184,6 +184,17 @@ function requireTeamAgent(db: Db, agentId: string, teamId: string) {
   if (!row) throw new HttpError(404, `agent ${agentId}（不在本团队，或 id 抄错了）`);
   return row;
 }
+/** #682 run_builds machineId 校验（requireTeamAgent 同律）：错 id 当场
+ * 400 折进工具结果，模型可重挑——不校验的后果是 build 落一个无人能领的钉。 */
+function requireTeamMachine(db: Db, machineId: string, teamId: string) {
+  const row = db
+    .select()
+    .from(machine)
+    .where(and(eq(machine.id, machineId), eq(machine.teamId, teamId)))
+    .get();
+  if (!row) throw new HttpError(404, `machine ${machineId}（不在本团队，或 id 抄错了）`);
+  return row;
+}
 /** 51 词表服务端执行。未识别工具名 = 400（词表外不执行，02 §7.2 白名单纪律
  * 同族）。返回 JSON 串。 */
 export async function executeChiefTool(
@@ -674,6 +685,15 @@ export async function executeChiefTool(
       // （分派职责权重由 LLM 侧选 agentId，本层落库，r5 §3.3/§5）。
       const todoIds = strArr(params, 'todoIds');
       const withPlan = bool(params, 'withPlan', false);
+      // #682：chief 的机器杠杆——显式 machineId 覆盖；缺省（undefined）回落
+      // 各 todo 的 machineId（startBuilds 缺省链）。null 形不收（LLM 想表达
+      // 「自动」就省略参数；显式 null 会被缺省链回落到 todo 值而非「自动」，
+      // 语义误导故 400）。
+      if (params.machineId === null) {
+        throw new HttpError(400, 'machineId must be a machine id or omitted');
+      }
+      const machineIdIn = optStr(params, 'machineId');
+      if (machineIdIn !== undefined) requireTeamMachine(db, machineIdIn, ctx.teamId);
       const assignmentIn = params.assignment as
         | { plan?: { agentId?: string }; build?: { agentId?: string } }
         | undefined;
@@ -695,6 +715,7 @@ export async function executeChiefTool(
             assignment,
             withPlan,
             triggerSource: 'chief',
+            ...(machineIdIn !== undefined ? { pinnedMachineId: machineIdIn } : {}),
           },
         );
         started.push(...builds);

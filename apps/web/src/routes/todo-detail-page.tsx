@@ -358,6 +358,15 @@ export function TodoDetailPage() {
     () => machinesQ.data?.find((m) => steps.some((s) => s.machineId === m.id))?.name ?? null,
     [machinesQ.data, steps],
   );
+  // #682 钉选机器（等待面数据源）：build 钉了机器、步未领（machineName 空时）
+  // → meta 机器行回落钉选机器名；该机离线 = 行尾等待标注（步只等它上线，
+  // server claim 过滤面保证不自动改派）。
+  const pinnedMachine = useMemo(
+    () => machinesQ.data?.find((m) => m.id === buildQ.data?.pinnedMachineId) ?? null,
+    [machinesQ.data, buildQ.data?.pinnedMachineId],
+  );
+  const machineField = machineName ?? pinnedMachine?.name ?? null;
+  const machineWaiting = machineName == null && pinnedMachine != null && !pinnedMachine.online;
 
   const liveDetail: DetailContent | undefined = useMemo(() => {
     if (!live || !wireTodo || buildId == null) return undefined;
@@ -437,7 +446,8 @@ export function TodoDetailPage() {
           : null,
       branch: conversationBranch(buildId),
       pr: prUrl != null && prNumber != null ? { number: prNumber, url: prUrl } : null,
-      machine: machineName,
+      machine: machineField,
+      machineWaiting,
       model: agentModel ?? usageQ.data?.[0]?.model ?? null,
       createdAt: wireTodo.buildHistory[0]?.createdAt ?? buildQ.data?.createdAt ?? null,
     };
@@ -446,7 +456,8 @@ export function TodoDetailPage() {
     wireTodo,
     buildId,
     buildQ.data,
-    machineName,
+    machineField,
+    machineWaiting,
     agentModel,
     usageQ.data,
     sourceEchoQ.data,

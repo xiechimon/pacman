@@ -348,7 +348,9 @@ export function startBuilds(
     assignment: Assignment;
     withPlan: boolean;
     triggerSource?: TriggerSource; // 默认 user；schedule = 定时触发（services/scheduler.ts）；chief 面归 M4
-    /** 钉选机器（schedule.machineId 透传，null = 自动，r3 §9/02 §6.2）。 */
+    /** 钉选机器（#682 优先级：调用方显式值 > todo.machineId > null 自动）。
+     * schedule.machineId 透传（null = 该 schedule 未钉 → 回落 todo 值）；
+     * chief run_builds 显式 machineId 覆盖；REST 人工启动不传 = todo 值。 */
     pinnedMachineId?: string | null;
   },
 ): BuildRecord[] {
@@ -371,7 +373,9 @@ export function startBuilds(
         withPlan: input.withPlan,
         prevPhase: todoRecord.phase,
         triggerSource,
-        pinnedMachineId: input.pinnedMachineId ?? null,
+        // #682 缺省回落 todo.machineId（任务级默认机器）：null（未钉/清回
+        // 自动）与 undefined（调用方无意见）都落到 todo 值；显式钉 > todo > 自动。
+        pinnedMachineId: input.pinnedMachineId ?? todoRecord.machineId ?? null,
         planDocId: null,
         errorMessage: null,
         prUrl: null,
@@ -440,7 +444,9 @@ export async function applyBuildStepAction(
       throw new HttpError(409, `restart 仅适用于 failed 相位（当前 ${todoRecord.phase}）`);
     }
     // 承接位 [设计]（原站 body 未录，r9 §5）：withPlan 随失败轮，assignment
-    // 随 todo 现值（失败轮跑过 = 指派在位），机器自动（不继承 pin）。
+    // 随 todo 现值（失败轮跑过 = 指派在位），机器不继承失败轮的 pin（schedule
+    // 钉的旧值不带入），回落 #682 的任务级 todo.machineId（任务默认机器是新
+    // 轮的合理起点）。
     const assignment = todoRecord.assignment ?? { plan: null, build: null };
     const newId = newUuidv7();
     const createdAt = nowMs();
@@ -452,7 +458,7 @@ export async function applyBuildStepAction(
         withPlan: row.withPlan,
         prevPhase: todoRecord.phase,
         triggerSource: 'user',
-        pinnedMachineId: null,
+        pinnedMachineId: todoRecord.machineId,
         planDocId: null,
         errorMessage: null,
         prUrl: null,

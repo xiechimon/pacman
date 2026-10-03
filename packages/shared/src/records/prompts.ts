@@ -112,6 +112,9 @@ export function buildOrchestratePrompt(todo: {
   seqNum: number;
   spec: string;
   failed?: boolean;
+  /** 用户在任务上钉选的机器名（#682）：非空 = 附加一行机器约束，chief 裁量
+   *  改派时有据（数据面强制归 claim 过滤，本行只是让约束对 chief 可见）。 */
+  pinnedMachineName?: string;
 }): string {
   const intent =
     todo.failed === true ? '上一轮执行失败，重新编排。' : '直接规划，并按活的类型派发执行。';
@@ -119,7 +122,11 @@ export function buildOrchestratePrompt(todo: {
     .split('\n')
     .map((line) => `> ${line}`.trimEnd())
     .join('\n');
-  return `开始任务 #${todo.seqNum}\n\n编排请求：[#${todo.seqNum}](todo:${todo.id}) —— ${intent}\n\n任务原文：\n${quoted}`;
+  const machine =
+    todo.pinnedMachineName !== undefined
+      ? `\n\n机器：${todo.pinnedMachineName}（用户指定本任务在该机器执行，派发时保持钉选）`
+      : '';
+  return `开始任务 #${todo.seqNum}\n\n编排请求：[#${todo.seqNum}](todo:${todo.id}) —— ${intent}\n\n任务原文：\n${quoted}${machine}`;
 }
 
 /** 非空续轮指令集（chief/review 的占位空串不入集——空文本行由呈现层自有
