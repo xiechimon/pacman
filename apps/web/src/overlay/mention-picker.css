@@ -364,10 +364,9 @@
 
 /* Mention chip rendered in the chat transcript / doc pane (issue
    #311): the same indigo accent + 3px radius the r9 spec calls for
-   on attachment tokens. The Segments renderer consumes
-   parseMentionSegments and tags each mention segment with
-   `mention-chip mention-chip--<kind>` so the chip class is the only
-   thing different from the existing chat-code chip. */
+   on attachment tokens. The Segments renderer tags each mention
+   segment with `mention-chip mention-chip--<kind>` so the chip class
+   is the only thing different from the existing chat-code chip. */
 .mention-chip {
   display: inline-flex;
   align-items: center;
@@ -382,6 +381,22 @@
   font-weight: 500;
   vertical-align: baseline;
   line-height: 1.4;
+  /* #675: the todo chip is a router Link (real anchor) — keep the chip
+     face, drop the UA underline. */
+  text-decoration: none;
+}
+
+/* #675 revival: t-0019's dead-CSS audit found this rule unreachable and
+   #663 deleted it — it was dead only because the emission-side regex did
+   not know the todo scheme. The emitter is now complete (api/mappers.ts
+   MENTION_SCHEME matches `[#n](todo:<id>)` from chief replies), so the
+   rule is live by design. Do not re-delete. Indigo is the reference's own
+   todo identity color (its chip icon is text-indigo-500) and matches the
+   r9 §2.4 composer token family. */
+.mention-chip--todo {
+  color: rgb(99 102 241);
+  background: rgb(99 102 241 / 15%);
+  cursor: pointer;
 }
 
 .mention-chip--agent {

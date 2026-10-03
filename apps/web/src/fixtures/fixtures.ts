@@ -1384,6 +1384,7 @@ const CHIEF_MD_REPLY = [
   '',
   '- **项目**: 凭证链路验证',
   '- 次要点: 由 [r5-scribe](agent:a1) 承接复核',
+  '- 关联任务: [#1](todo:r3-legacy-1) 已进入复核；prose #12 与 [伪链](todos:t2) 保持字面',
   '',
   '1. 第一步：读取配置',
   '   - 子项：token 门',

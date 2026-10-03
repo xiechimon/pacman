@@ -224,18 +224,26 @@ export function pillOf(call: ToolCallRecord): string {
 
 // —— plan.md → DocBlock（文档 pane；四段卡软结构，r3 §3.3）———————————————
 
-/** Mention scheme scan (r9 wire): `[label](kind:id)` for the four schemes
- *  that serialize as a link — `todo:` keeps its plain `#seq` form (r9 §3.2),
- *  so it does not show up here. Single global regex, reset before each use. */
-const MENTION_SCHEME = /\[([^\]\n]+?)\]\((agent|skill|project|machine):([A-Za-z0-9_-]+)\)/g;
+/** Mention scheme scan (r9 wire): `[label](kind:id)` for all five schemes.
+ *  #675: `todo:` joins the family — the chief system prompt instructs the
+ *  exact shape `[#n](todo:<id>)` (services/chief.ts) and the reference wire
+ *  carries it (todos.dev chief messages + todo specs, live-captured
+ *  2026-10-03), so dropping it leaked raw markdown literals into the
+ *  transcript. The composer-side plain `#seq` form (r9 §3.2, emitted by
+ *  overlay/mention-token.ts serializeMention) stays plain text by design:
+ *  recovering a chip from a bare `#N` needs a seq→todo lookup table that
+ *  does not exist yet, and an unguarded `#N` pattern would eat prose
+ *  ("PR #487"). Single global regex, reset before each use. */
+const MENTION_SCHEME = /\[([^\]\n]+?)\]\((agent|skill|project|machine|todo):([A-Za-z0-9_-]+)\)/g;
 
 /** 行内 `code` 芯片 + `**bold**` strong 段 + 提及方案切分（r7 17 段内 mono
  * chip）。#650：bold 位补进显示契约（#311 时「无 bold 位、`**` 只剥不渲染」
  * 的旧裁决被总管抽屉实测推翻）——成对 `**` 定界符之间的文本切 strong 段，
  * 落单的定界符按 CommonMark 语义留字面（不吞尾段）。#311：mention 方案的
  * `[name](agent:<id>)` / `[name](skill:<id>)` / `[name](project:<id>)` /
- * `[name](machine:<id>)` 也切出独立 mention 段,带 mentionKind 给 segments
- * 渲染对应 accent。mention 段内不展开嵌套 scheme（r9 wire 形只一层）；
+ * `[name](machine:<id>)`，以及 #675 补上的 `[#n](todo:<id>)`，都切出独立
+ * mention 段,带 mentionKind + mentionId 给 segments 渲染对应 accent 与
+ * todo 位的点击导航。mention 段内不展开嵌套 scheme（r9 wire 形只一层）；
  * strong 段内 mention 照常出 chip（chip 形压过粗体，同单层律）。 */
 export function inlineSegments(text: string): DocSegment[] {
   const out: DocSegment[] = [];
@@ -273,7 +281,10 @@ export function inlineSegments(text: string): DocSegment[] {
       out.push({
         text: m[1] ?? '',
         style: 'mention',
-        mentionKind: m[2] as 'agent' | 'skill' | 'project' | 'machine',
+        mentionKind: m[2] as 'agent' | 'skill' | 'project' | 'machine' | 'todo',
+        // #675: the wire id rides along — the todo chip's click navigation
+        // (detail/segments.tsx) resolves its route from it, no re-parse.
+        mentionId: m[3],
       });
       cursor = m.index + m[0].length;
     }

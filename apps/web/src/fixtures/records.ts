@@ -417,6 +417,11 @@ export interface DocSegment {
   style?: 'code' | 'link' | 'mention' | 'strong';
   /** Mention chip kind — required when style is 'mention'. */
   mentionKind?: 'todo' | 'skill' | 'agent' | 'project' | 'machine';
+  /** Canonical entity id from the wire link (`[label](kind:id)`), set on
+   *  every mention segment (#675). The todo chip consumes it for click
+   *  navigation to `/app/todo/<id>` — the reference-measured behavior
+   *  (todos.dev todo chip click → todo detail, live-captured 2026-10-03). */
+  mentionId?: string;
 }
 
 /** One plan-document block: free paragraph, bullet (r7 17 doc pane) or

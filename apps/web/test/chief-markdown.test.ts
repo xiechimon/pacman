@@ -13,6 +13,12 @@
 //   F-B4 typing 行携带 foot（复制钮/完成徽标）——打字面不是定稿面
 //   F-B5 流式半途未闭合的 `**` 漏字面星号（闭合符还在路上）
 //   F-B6 未闭合代码栅栏内被误补闭合符（fence 内 ** 是字面内容）
+// #675 todo 提及位（chief 系统提示词让其发 [#n](todo:id)，SCHEME 正则此前不认）：
+//   F-C1 [#n](todo:id) 不出 chip——字面 markdown 漏进 transcript / 抽屉 / 文档 pane
+//   F-C2 todo mention 段不带实体 id——渲染层无法接 /app/todo/<id> 点击导航
+//   F-C3 prose 里的裸 #N 被误判成提及（正则吃宽）
+//   F-C4 相邻 scheme（todos:）或空 id（todo: 无 id）被误配成 chip
+//   F-C5 四旧 scheme（agent/project/skill/machine）段投影被改坏（契约扩展回归钉）
 
 import type { AgentRecord, ChiefGetResponse, ChiefThread } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
@@ -111,10 +117,21 @@ describe('inlineSegments strong 位（#650 F-A1..A4）', () => {
   });
 
   test('F-A4 mention 方案照常出 chip（strong 内外都不破）', () => {
+    // #675：mention 段契约扩展——携带 wire 实体 id（mentionId），四旧 scheme 同律。
     const plain = inlineSegments('派给 [scribe](agent:a1) 承接');
-    expect(plain).toContainEqual({ text: 'scribe', style: 'mention', mentionKind: 'agent' });
+    expect(plain).toContainEqual({
+      text: 'scribe',
+      style: 'mention',
+      mentionKind: 'agent',
+      mentionId: 'a1',
+    });
     const bolded = inlineSegments('**由 [scribe](agent:a1) 承接**');
-    expect(bolded).toContainEqual({ text: 'scribe', style: 'mention', mentionKind: 'agent' });
+    expect(bolded).toContainEqual({
+      text: 'scribe',
+      style: 'mention',
+      mentionKind: 'agent',
+      mentionId: 'a1',
+    });
     expect(bolded.map((s) => s.text).join('')).not.toContain('**');
   });
 
@@ -131,6 +148,70 @@ describe('inlineSegments strong 位（#650 F-A1..A4）', () => {
     const segs = inlineSegments('a ** b');
     expect(segs.map((s) => s.text).join('')).toBe('a ** b');
     expect(segs.filter((s) => s.style === 'strong')).toHaveLength(0);
+  });
+});
+
+describe('inlineSegments todo 提及位（#675 F-C1..C5）', () => {
+  test('F-C1/C2 [#n](todo:id) 切出 mention 段——label 逐字 + 实体 id 随行', () => {
+    const segs = inlineSegments('已创建并派工 [#24](todo:t24)，进入复核');
+    expect(segs).toContainEqual({
+      text: '#24',
+      style: 'mention',
+      mentionKind: 'todo',
+      mentionId: 't24',
+    });
+    expect(segs.map((s) => s.text).join('')).not.toContain('](');
+  });
+
+  test('F-C1 strong 内的 todo 提及照常出 chip（F-A4 同律）', () => {
+    const bolded = inlineSegments('**由 [#1](todo:r3-legacy-1) 承接**');
+    expect(bolded).toContainEqual({
+      text: '#1',
+      style: 'mention',
+      mentionKind: 'todo',
+      mentionId: 'r3-legacy-1',
+    });
+    expect(bolded.map((s) => s.text).join('')).not.toContain('**');
+  });
+
+  test('F-C3 prose 裸 #N 不是提及（正则不吃宽）', () => {
+    expect(inlineSegments('任务 #12 停在 review，另见 PR #487')).toEqual([
+      { text: '任务 #12 停在 review，另见 PR #487' },
+    ]);
+  });
+
+  test('F-C4 相邻 scheme 与空 id 保持字面（todos: / todo: 无 id 不配）', () => {
+    const near = inlineSegments('[伪链](todos:t1) 保持字面');
+    expect(near.filter((s) => s.style === 'mention')).toHaveLength(0);
+    expect(near.map((s) => s.text).join('')).toContain('[伪链](todos:t1)');
+    const empty = inlineSegments('[x](todo:) 保持字面');
+    expect(empty.filter((s) => s.style === 'mention')).toHaveLength(0);
+    expect(empty.map((s) => s.text).join('')).toContain('[x](todo:)');
+  });
+
+  test('F-C5 四旧 scheme 照常出段并携带 wire id（契约扩展回归钉）', () => {
+    const segs = inlineSegments(
+      '[scribe](agent:a1) [proj](project:p1) [sk](skill:s1) [box](machine:m1)',
+    );
+    expect(segs).toContainEqual({
+      text: 'scribe',
+      style: 'mention',
+      mentionKind: 'agent',
+      mentionId: 'a1',
+    });
+    expect(segs).toContainEqual({
+      text: 'proj',
+      style: 'mention',
+      mentionKind: 'project',
+      mentionId: 'p1',
+    });
+    expect(segs).toContainEqual({ text: 'sk', style: 'mention', mentionKind: 'skill', mentionId: 's1' });
+    expect(segs).toContainEqual({
+      text: 'box',
+      style: 'mention',
+      mentionKind: 'machine',
+      mentionId: 'm1',
+    });
   });
 });
 

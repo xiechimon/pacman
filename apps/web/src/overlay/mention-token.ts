@@ -10,11 +10,15 @@
 // (services/chief.ts:570), so the round-trip stays a single canonical
 // encoding.
 //
-// Todos stay as `#seq` plain text per r9 §3.2 ("任务提及 #1 在消息内按
-// #seq 留存"). For chip rendering on the transcript side, callers pass
-// the same `(seq, todoId)` pair to the renderer so it can resolve the
-// chip from the seq without re-parsing the URL. The renderer's job is
-// `entityLookups` lookup, not text parse.
+// Todos have two wire forms (r9 §3.2 + #675 live captures): the composer
+// picker inserts the plain `#seq` token (serializeMention below), which
+// stays plain text on the wire and on screen — recovering a chip from a
+// bare `#N` needs a seq→todoId lookup table that does not exist yet, and
+// an unguarded `#N` scan would eat prose. The chief agent's system prompt
+// (services/chief.ts) instead instructs the markdown link form
+// `[#n](todo:<id>)`, the same encoding as the other four schemes;
+// parseMentionSegments and the live transcript parser (api/mappers.ts
+// MENTION_SCHEME) both recover that form into todo chips (#675).
 //
 // project / skill / machine mentions carry no pre-existing scheme in
 // r9, but the picker UI exposes them as "待设计" stubs — the spec
@@ -40,10 +44,11 @@ export interface MentionToken {
   seq?: number;
 }
 
-/** All five schemes share the markdown link syntax. The host part is
- *  the kind name (lowercased), the path is the canonical id. `todo:`
- *  reuses the seq in the host for human-readable URLs but still
- *  resolves via the id field at parse time. */
+/** All five schemes share the markdown link syntax on the parse side:
+ *  `[label](kind:id)`, host = lowercased kind name, path = canonical id
+ *  (#675: chief replies carry `[#n](todo:<id>)` in exactly this shape).
+ *  The composer-side serializer keeps todo mentions as the plain `#seq`
+ *  token — see serializeMention. */
 const SCHEME_PREFIX: Record<MentionKind, string> = {
   todo: 'todo',
   skill: 'skill',
@@ -108,11 +113,12 @@ export type MentionSegment =
   | { kind: 'mention'; token: MentionToken; start: number; end: number };
 
 /** Single-pass scan that emits text + mention segments. The regex
- *  matches the four scheme forms; todo mentions (plain `#N`) are not
- *  recovered from text alone — the renderer needs the seq→id lookup
- *  table to know which `#N` is a real chip and which is just hash
- *  syntax in user prose. */
-const SCHEME_REGEX = /\[([^\]\n]+?)\]\((agent|skill|project|machine):([A-Za-z0-9_-]+)\)/g;
+ *  matches all five scheme link forms (#675: `todo:` included — chief
+ *  replies carry `[#n](todo:<id>)`). Bare `#N` prose is still not
+ *  recovered from text alone — the renderer would need the seq→id
+ *  lookup table to know which `#N` is a real chip and which is just
+ *  hash syntax in user prose (header comment). */
+const SCHEME_REGEX = /\[([^\]\n]+?)\]\((agent|skill|project|machine|todo):([A-Za-z0-9_-]+)\)/g;
 
 export function parseMentionSegments(text: string): MentionSegment[] {
   const segments: MentionSegment[] = [];
@@ -125,10 +131,24 @@ export function parseMentionSegments(text: string): MentionSegment[] {
     if (match.index > cursor) {
       segments.push({ kind: 'text', text: text.slice(cursor, match.index) });
     }
-    const kind = rawKind as Exclude<MentionKind, 'todo'>;
+    const kind = rawKind as MentionKind;
+    const label = unescapeLabel(rawLabel ?? '');
+    // A todo link label carries the seq marker (the shape the chief prompt
+    // instructs); recover the board number so parsed tokens honor the
+    // MentionToken contract (seq set when kind === 'todo'). The hash is
+    // matched via startsWith instead of a regex literal: the i18n-coverage
+    // gate walks this file with the raw TS token scanner, and a bare hash
+    // inside a regex body wedges it into a zero-advance spin (#681).
+    const seqDigits = kind === 'todo' && label.startsWith('#') ? label.slice(1) : '';
+    const seq = /^\d+$/.test(seqDigits) ? Number(seqDigits) : undefined;
     segments.push({
       kind: 'mention',
-      token: { kind, label: unescapeLabel(rawLabel ?? ''), id: id ?? '' },
+      token: {
+        kind,
+        label,
+        id: id ?? '',
+        ...(seq !== undefined ? { seq } : {}),
+      },
       start: match.index,
       end: match.index + full.length,
     });
