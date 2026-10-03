@@ -51,7 +51,9 @@ beforeAll(async () => {
   stub = await startStubLlm([
     // 轮 1：agent 调 remote_shell（pi 会话内真执行：预检 → bash → 回写）。
     { toolCall: { name: 'remote_shell', arguments: { command: COMMAND } } },
-    // 轮 2：收尾。
+    // 轮 2：真做一处改动（#703 闸 2——执行步无改动过不了 review 闸）。
+    { toolCall: { name: 'bash', arguments: { command: 'printf "shell probe\\n" >> README.md' } } },
+    // 轮 3：收尾。
     { content: '命令已执行。' },
   ]);
   server = await bootRealServer({

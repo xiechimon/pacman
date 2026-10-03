@@ -119,7 +119,11 @@ beforeAll(async () => {
   stub = await startStubLlm([
     // worker 执行步轮 1：调桥接工具 mcp__demo__echo（外部 MCP server 真调用）。
     { toolCall: { name: 'mcp__demo__echo', arguments: { text: 'm4b-bridge' } } },
-    // 轮 2：收尾。
+    // 轮 2：真做一处改动（#703 闸 2——执行步无改动过不了 review 闸）。
+    {
+      toolCall: { name: 'bash', arguments: { command: 'printf "mcp probe line\\n" >> README.md' } },
+    },
+    // 轮 3：收尾。
     { content: '已通过外部 MCP 工具 echo 验证连通。' },
   ]);
   server = await bootRealServer({
