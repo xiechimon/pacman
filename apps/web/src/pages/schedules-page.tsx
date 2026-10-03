@@ -34,8 +34,7 @@ import {
   X,
 } from '../icons/index.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
-import { FADE_EXIT_MS } from '../overlay/use-overlay-mount.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
 import { PageShell } from './shell.js';
 import './pages.css';
@@ -188,10 +187,11 @@ function ScheduleCard({
 /** r3 92/92b dialog. Field values ride the fixture (project + first todo);
  *  the open tab is the scenario's capture state. M5 live 面：`live` 绑定使
  *  tab/时/分受控、保存接真 mutation（DOM 类名与几何不变）。
- *  #388：升级 OverlayMount 全屏族——scrim 盖全视口（z 归 dialog 族档，
- *  pages.css）、Esc / 背板点击 / X / 取消 四路关闭（家族律 #67/#68）、
- *  入场 anim-fade 与 dialog 族同款（motion.css token，居中弹层 fade-only
- *  律）。open/onClose 由页面持有：live 面 = formOpen 真值，fixture 冻结
+ *  #388：全屏族——scrim 盖全视口（z 归 dialog 族档，pages.css）、Esc / 背板
+ *  点击 / X / 取消 四路关闭（家族律 #67/#68；Esc 经 FloatingShell 的 Base UI
+ *  layer 栈）。#656：进出场归 tw-animate-css——scrim 走 group-data-open/closed
+ *  的 fade（居中弹层 fade-only 律，与 dialog 族同档 duration-200）。
+ *  open/onClose 由页面持有：live 面 = formOpen 真值，fixture 冻结
  *  开屏面 = 局部 UI 态（关闭不销毁 scenario，重载还原——deletions.ts
  *  覆面同律）。 */
 function ScheduleForm({
@@ -217,7 +217,7 @@ function ScheduleForm({
   };
 }) {
   const { t } = useI18n();
-  useEscapeClose(open, onClose);
+  // #656：Esc 归 FloatingShell（Base UI layer 栈），旧 useEscapeClose 退役。
   // 时/分现在是受控选择器（XMON-75），fixture 面没有后端，落局部态承载「选了
   // 就回显」——live 面照旧走 live.hour/onHour。
   const [fixtureHour, setFixtureHour] = useState('09');
@@ -229,11 +229,11 @@ function ScheduleForm({
   const todo = live ? live.todo : fixture.todos[0];
   const repo = live ? live.repo : (fixture.project?.repoName ?? '');
   return (
-    <OverlayMount open={open} exitMs={FADE_EXIT_MS}>
+    <FloatingShell open={open} onClose={onClose} className="anchored-pop-shell">
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: Esc closes — see comment */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop is a click-to-dismiss surface */}
       <div
-        className="sched-form-overlay anim-fade"
+        className="sched-form-overlay duration-200 group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0"
         onClick={(event) => {
           // only the backdrop itself dismisses; panel clicks bubble harmlessly
           if (event.target === event.currentTarget) onClose();
@@ -359,7 +359,7 @@ function ScheduleForm({
           </footer>
         </div>
       </div>
-    </OverlayMount>
+    </FloatingShell>
   );
 }
 
