@@ -27,6 +27,7 @@ import {
   buildTaskPromptText,
   CHANGES_DIFF_MAX_BYTES,
   CONTINUE_PROMPTS,
+  composeTaskPromptWithInstruction,
   FIXED_TAGS,
   isBackendRuntimeId,
   LOCAL_TOOL_CREATE_TAG,
@@ -143,11 +144,21 @@ export function streamTimeoutMessage(
  * buildTaskPromptText——web transcript 过滤侧按同一合成式识别本行，#612；
  * plan.md 产出/git 面归 M3b，驳回 feedback / 合并指令等续轮 prompt 由调用方
  * 经 resume.prompt 传入）。chief 步无 todo → 用 server 合成的 instruction
- * （用户消息/wake 事实）。 */
+ * （用户消息/wake 事实）。#720：new session + instruction 在位（失败重启轮，
+ * claim 载荷透出 step.prompt）→ 组合串投递（任务文本 + 指令，形状单源 =
+ * shared composeTaskPromptWithInstruction，裁决正本 = issue #720 裁决评论）
+ * ——此前 instruction 只落 DB 行给 UI 看，用户填的返工理由 agent 从来看不到。
+ * 指令缺席或空白 = 纯任务文本（现行行为，负例：不注入空指令）；投递机制沿
+ * #703/#719 的形状（instruction 在位即投递），不为 new session 造第二套。 */
 export function buildTaskPrompt(claimed: ClaimedStep): string {
   const todo = claimed.todo;
   if (!todo) return claimed.instruction ?? '';
-  return buildTaskPromptText(todo.title, todo.spec);
+  const taskText = buildTaskPromptText(todo.title, todo.spec);
+  // 缺席归一（zod optional：无该字段 = undefined ≠ null）。
+  const instruction = claimed.instruction ?? null;
+  return instruction !== null && instruction.trim() !== ''
+    ? composeTaskPromptWithInstruction(taskText, instruction)
+    : taskText;
 }
 
 // continue session 续轮指令 = shared CONTINUE_PROMPTS 单源（#612 起 web
