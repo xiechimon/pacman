@@ -108,6 +108,47 @@ test.describe('chief drawer model row (#615)', () => {
     }
   });
 
+  test('the picker search is typeahead-only: absent until a key, retracted on clear (#756)', async ({
+    page,
+  }) => {
+    await page.goto('/app?scenario=111');
+    await expect(drawer(page)).toBeVisible();
+    const chipTitle = await page.locator('.chief-chip-title').textContent();
+    await modelBtn(page).click();
+    const menu = page.locator('.chief-model-pop');
+    await expect(menu).toBeVisible();
+    // open state carries zero search footprint (not rendered, not transparent)
+    await expect(menu.locator('.chief-pick-search')).toHaveCount(0);
+    const rowsOpen = await menu.locator('.chief-model-pick-row').count();
+    expect(rowsOpen).toBe(2);
+
+    // a printable key is consumed by the face: the box reveals with the key
+    // prefilled, focus in the input, list filtered — and the drawer's N
+    // hotkey must not steal it (no new-thread view, chip title unchanged)
+    await page.keyboard.press('n');
+    const search = menu.locator('.chief-pick-search input');
+    await expect(search).toBeVisible();
+    await expect(search).toHaveValue('n');
+    await expect(search).toBeFocused();
+    await expect(menu).toBeVisible();
+    expect(await page.locator('.chief-chip-title').textContent()).toBe(chipTitle);
+
+    // a key matching nothing filters to the default row plus the empty state
+    await search.fill('x');
+    await expect(menu.locator('.chief-model-pick-row')).toHaveCount(1);
+    await expect(menu.locator('.chief-pick-empty')).toBeVisible();
+
+    // retract rule: clearing collapses the box and restores the full list,
+    // and typeahead re-arms afterwards
+    await search.fill('');
+    await expect(menu.locator('.chief-pick-search')).toHaveCount(0);
+    await expect(menu.locator('.chief-model-pick-row')).toHaveCount(rowsOpen);
+    await page.keyboard.press('c');
+    await expect(search).toBeVisible();
+    await expect(search).toHaveValue('c');
+    await expect(menu.locator('.chief-model-pick-row')).toHaveCount(2);
+  });
+
   test('the model row carries the runtime mark, not an agent avatar', async ({ page }) => {
     await page.goto('/app?scenario=fab-avatar');
     await expect(drawer(page)).toBeVisible();
