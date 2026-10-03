@@ -94,11 +94,30 @@ export interface RunStepOptions {
   resume?: { sessionId: string | null; prompt: string | null };
   /** 已认领的运行数（canon 行 `(n running)` 的 n）。 */
   running?: number;
+  /** 零进展 auto_retry 预算覆盖（#708 测试注入；缺省 = RETRY_STORM_MAX）。 */
+  retryStormMax?: number;
   /** 流超时三臂覆盖（测试注入毫秒级；缺省 = 02 §5.6 r3 三值）。 */
   streamTimeouts?: { first: number; idle: number; body: number };
   /** 步级流时长上界覆盖（测试注入；缺省 = env PACMAN_STREAM_DURATION_CAP_MS
    * 或 STREAM_DURATION_CAP_DEFAULT_MS）。 */
   streamDurationCapMs?: number;
+}
+
+/** auto_retry 有界生命周期预算（#708 失败方式 2）：连续零进展 auto_retry 的
+ * 允许上限。默认 3 = pi 自身单错重试预算（settings-manager maxRetries ?? 3）
+ * ——预算内的重试归 pi 自己收（连接错 1→2→3 退场形不惊动本护栏）；超过它
+ * 还在同一错误上空转 = 预算被某种机制重置的病态（#519 run4/6 实测 ~40 发/
+ * 10min 同形重试），由 runner 从外部掐断：停会话、根因直报、failed 收尾。
+ * 每轮发数钉死 = 1 + RETRY_STORM_MAX（首轮 + 预算内重试）。 */
+export const RETRY_STORM_MAX = 3;
+
+/** 超时收尸文案与根因组合（#708 失败方式 1）：终态错误优先级 = 真实终态
+ * 错误 > 超时文案；两者并存时组合成文（票面例「stream timeout；根因: 400 …」），
+ * 不静默丢根因。根因只认结构化错误面（pi 错误对象消息——失败方式 4，不做
+ * 字符串猜测）。纯函数；#699 的分臂文案（streamTimeoutMessage）产出后经
+ * 本函数与根因组合，两票在同一收尾点汇流。 */
+export function combineTimeoutWithRootCause(timeoutText: string, rootCause: string | null): string {
+  return rootCause !== null ? `${timeoutText}；根因: ${rootCause}` : timeoutText;
 }
 
 /** 步级流时长绝对上界默认值（#699 失败方式 3）：body 臂改事件重置后，步
@@ -572,8 +591,15 @@ export async function runStep(
   let sawDone = false;
   // 零进展判定（#654 回落护栏）：模型输出事件（text_delta / assistant
   // message_end / toolcall_end）在位 = 有进展——重放会重复执行工具与重复
-  // 落 transcript 行，只允许零进展轮回落重试。
+  // 落 transcript 行，只允许零进展轮回落重试。错误终局行（message_end 携
+  // stopReason=error，pi 结构化错误面）不算进展（#708）：否则真 400 的
+  // message_end 先行落 transcript 就把回落闸永久闭死。
   let sawProgress = false;
+  // auto_retry 有界生命周期（#708 失败方式 2）：连续零进展 auto_retry 计数
+  // （进展事件清零）；超过预算 → 掐断会话（病态空转不再打外部 API）。
+  let zeroProgressRetries = 0;
+  let retryStorm = false;
+  const retryStormMax = opts.retryStormMax ?? RETRY_STORM_MAX;
   // 流超时护栏（02 §5.6 三值 + #699 语义修订）：三臂全部「事件到达即重置」
   // ——first = 首事件期限、idle = 事件间空闲、body = 流 body 预算（#654 先
   // 把重置粒度从步推进到轮，#699 推进到事件，对齐 pi 在树参考实现的
@@ -665,6 +691,8 @@ export async function runStep(
       sawProgress = false;
       timedOut = false;
       timeoutArm = null;
+      zeroProgressRetries = 0;
+      retryStorm = false;
       usage = [];
     }
     try {
@@ -692,6 +720,7 @@ export async function runStep(
         switch (ev.type) {
           case 'text_delta': {
             sawProgress = true;
+            zeroProgressRetries = 0;
             deltaBuf += ev.text;
             if (deltaTimer === null) {
               deltaTimer = setTimeout(flushDeltas, TRANSCRIPT_DELTA_FLUSH_MS);
@@ -701,6 +730,7 @@ export async function runStep(
           }
           case 'toolcall_end': {
             sawProgress = true;
+            zeroProgressRetries = 0;
             if (ev.call.name && CHANGE_TOOLS.has(ev.call.name)) sawChangeTool = true;
             transcript.upsert({
               id: ev.call.id,
@@ -727,7 +757,15 @@ export async function runStep(
           case 'message_end': {
             // user 行不重复落（任务文本行 user-<stepId> 已在缓冲；pi 回声同文）。
             if (ev.message.role === 'user') break;
-            sawProgress = true;
+            // 进展 = 模型输出行（#654 语义「assistant message_end」原义）：
+            // 仅 assistant 非错误终局行计数。system 行（pi 会话开面的
+            // system prompt 回声，每会话必发）不是模型输出——计入进展会把
+            // #654 零进展回落闸在真流上永久闭死（#708 verify 栈实测坐实）；
+            // 错误终局行（stopReason=error，pi 的 400 形）同理不是进展。
+            if (ev.message.role === 'assistant' && ev.message.stopReason !== 'error') {
+              sawProgress = true;
+              zeroProgressRetries = 0;
+            }
             messageSeq += 1;
             transcript.upsert({
               id: `msg-${stepId}-${messageSeq}`,
@@ -744,6 +782,17 @@ export async function runStep(
             break;
           case 'auto_retry_start':
             lastError = null; // pi 流级自动重试吸收前错（02 §4.2）
+            // 有界生命周期（#708 失败方式 2）：连续零进展重试超预算 = 病态空转
+            // （pi 预算被某种机制重置、同形错误无限重发打外部 API）→ 掐断会话；
+            // 收尾按 failed 根因直报（回落闸在下轮判据仍可用）。
+            zeroProgressRetries += 1;
+            if (zeroProgressRetries > retryStormMax) {
+              retryStorm = true;
+              logger.step(
+                `retry storm: ${zeroProgressRetries} consecutive zero-progress auto-retries (max ${retryStormMax}) — stopping session`,
+              );
+              void handle.stop();
+            }
             logger.step(`auto_retry_start attempt=${ev.attempt}`);
             break;
           case 'compaction_start':
@@ -768,12 +817,20 @@ export async function runStep(
       return;
     }
     // —— #654 回落闸（判据取轮内原值，先于下方超时文案覆盖 lastError）：
-    // 零进展 + 终局失败（或超时收尸但底层模型错误在位）+ 签名命中且旋钮
-    // 可翻 → 翻旋钮重开一轮。停止钮经 handle.stop() 收尾不带 error，天然
-    // 不进此闸。——
-    if (pass === 0 && !sawProgress && !sawDone) {
+    // 零进展 + 终局失败（超时收尸 / storm 掐断但底层模型错误在位 / 终局
+    // error 行）+ 签名命中且旋钮可翻 → 翻旋钮重开一轮。停止钮经
+    // handle.stop() 收尾不带 error，天然不进此闸。
+    // #708：不看 sawDone——真 pi 失败流必以 done 收尾（agent_end
+    // willRetry=false → done 映射；#654 脚本流只喂 error 漏测此点，真 400
+    // 会被 sawDone 闭死闸门）；sawProgress 已排除错误终局行（见事件分支）。——
+    if (pass === 0 && !sawProgress) {
       const failureText = lastModelError ?? lastError;
-      if (failureText !== null && (lastError !== null || (timedOut && lastModelError !== null))) {
+      if (
+        failureText !== null &&
+        (lastError !== null ||
+          (timedOut && lastModelError !== null) ||
+          (retryStorm && lastModelError !== null))
+      ) {
         const amended: ProviderConfig | null =
           backend.adaptProviderCompat?.(provider, failureText) ?? null;
         if (amended !== null) {
@@ -796,11 +853,24 @@ export async function runStep(
   if (watchdog) clearTimeout(watchdog);
   if (bodyTimeout) clearTimeout(bodyTimeout);
   if (durationCap) clearTimeout(durationCap);
-  if (timedOut && timeoutArm !== null)
-    lastError = streamTimeoutMessage(timeoutArm, {
-      ...streamTimeouts,
-      durationCap: streamDurationCapMs,
-    });
+  // —— #708 失败方式 1：终态错误优先级 = 真实终态错误 > 超时收尸文案。
+  // 超时收尸与底层错误并存（storm 场景：auto_retry 吸收前错、lastError 被
+  // 清）时组合成文（「stream timeout …；根因: 400 …」），不静默丢根因；
+  // 根因取结构化错误面（error 事件携带的 pi 错误对象消息——失败方式 4）。
+  if (timedOut && timeoutArm !== null) {
+    lastError = combineTimeoutWithRootCause(
+      streamTimeoutMessage(timeoutArm, {
+        ...streamTimeouts,
+        durationCap: streamDurationCapMs,
+      }),
+      lastError ?? lastModelError,
+    );
+  } else if (retryStorm && lastError === null && lastModelError !== null) {
+    // storm 掐断收尾（失败方式 2 立即可见失败）：根因直报，不被超时文案
+    // 覆盖也不等墙。pi 自身预算退场（连接错 1→2→3 形）不走此臂——终局
+    // error 行已在 lastError。
+    lastError = lastModelError;
+  }
   // —— 停止钮中断判定（M7 #308）：旗标 = machine-loop deliverStop 拉取-确认
   // 后置位；sawDone 优先 = stop 与自然完成竞态归完成（success 不改判）。
   // 判定先于 #698 no-op 闸：停止中断的事件流也是零事件零终局形态，闸不得
