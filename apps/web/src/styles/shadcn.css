@@ -39,6 +39,12 @@
   --color-column: var(--column);
   --color-sidebar-hover: var(--sidebar-hover);
   --color-sidebar-active: var(--sidebar-active);
+  /* P0 语义槽的 Tailwind 映射（#787）：inline 模式零输出，用到才生成。 */
+  --color-spot-soft: var(--spot-soft);
+  --color-accent-soft: var(--accent-soft);
+  --color-spot-text-on-tint: var(--spot-text-on-tint);
+  --color-spot-disabled: var(--spot-disabled);
+  --color-spot-disabled-fg: var(--spot-disabled-fg);
   /* 半径族对齐官方乘数形态（#412「对齐 shadcn」裁定 + #410 的 Base UI 代数
      接口）：官方现行 @theme inline 是乘数族。旧 ±px 写法的四档与乘数前四档
      数值全等（--radius = 10px 时 6/8/10/14px），几何零漂移；2xl/3xl/4xl 是
@@ -251,6 +257,18 @@
   /* 浮层遮罩（轨 A #A2）: modal / search / token-gate 全屏黑幕统一值，
      此前 6 处各写 rgb(0 0 0 / 0.6) */
   --overlay-scrim: rgb(0 0 0 / 0.6);
+  /* P0 语义槽（base-ui-theme §2.5/§1.1，#787）：只加名不消费——零视觉 diff。
+     --spot-soft = 选中底实色（spot 14% mix 于面板，P1 落仓后暗 ≈#363140）；
+     --accent-soft = 行 hover 淡 tint（spot 14% mix 于透明）；
+     --spot-text-on-tint = tint 底上的字（暗取 spot 原色 #cba6f7，6.19:1）；
+     --spot-disabled/-fg = 失能 mix 规则（spot 向底色降级，精确比 P5 面票
+     实测钉死，此处为暂定比）。mix 源统一取 --card-button——P1 翻转品牌值
+     时自动跟随，本票零改动。 */
+  --spot-soft: color-mix(in srgb, var(--card-button) 14%, var(--surface));
+  --accent-soft: color-mix(in srgb, var(--card-button) 14%, transparent);
+  --spot-text-on-tint: #cba6f7;
+  --spot-disabled: color-mix(in srgb, var(--card-button) 60%, var(--surface));
+  --spot-disabled-fg: color-mix(in srgb, var(--card-button) 65%, white);
 }
 
 .light {
@@ -377,4 +395,12 @@
   --text-on-accent: #ffffff;
   --toggle-knob: #ffffff;
   --overlay-scrim: rgb(0 0 0 / 0.6);
+  /* P0 语义槽 light 镜像（#787）：公式与暗侧同形，唯 --spot-text-on-tint 取
+     加深紫 #6d28d9（spot 原色在亮 tint 上只有 3.50:1，加深档 4.59:1，强制项）；
+     失能字沿既有 --indigo-disabled-fg light 惯例取白（失能态不按 4.5 验收）。 */
+  --spot-soft: color-mix(in srgb, var(--card-button) 14%, var(--surface));
+  --accent-soft: color-mix(in srgb, var(--card-button) 14%, transparent);
+  --spot-text-on-tint: #6d28d9;
+  --spot-disabled: color-mix(in srgb, var(--card-button) 60%, var(--surface));
+  --spot-disabled-fg: #ffffff;
 }

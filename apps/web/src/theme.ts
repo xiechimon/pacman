@@ -26,7 +26,26 @@ export function readStoredTheme(storage: Storage): Theme {
 
 export function applyTheme(theme: Theme, storage: Storage = localStorage): void {
   const root = document.documentElement;
+  // Theme-switch suppression (base-ui-theme §1.2/F8, better-ui recipe): the
+  // .light flip repaints every color/background/border/shadow token at once —
+  // without it all those transitions fire together and the page smears.
+  // .theme-suppress (motion.css) rides <html> across the flip: add it, force
+  // a reflow so it applies before the flip paints, flip, drop it two frames
+  // later. The class never survives the call (theme-toggle.spec.ts pins the
+  // add and the removal).
+  root.classList.add('theme-suppress');
+  // A same-task style read forces the suppression above into effect before
+  // the class flip below — without it both land in one recalc and the
+  // transitions still fire.
+  void root.offsetHeight;
   root.classList.toggle('light', theme === 'light');
   root.dataset.theme = theme;
   storage.setItem(THEME_STORAGE_KEY, theme);
+  // Two frames: the flip paints transition-free in the first, the second
+  // lets same-task style reads settle before transitions return.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      root.classList.remove('theme-suppress');
+    });
+  });
 }
