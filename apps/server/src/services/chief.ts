@@ -28,6 +28,7 @@ import type {
 import {
   CHIEF_REMOTE_TOOLS,
   CHIEF_THREAD_ID_PREFIX,
+  CHIEF_TURN_ERROR_KIND,
   CHIEF_WATCH_REASON_DISPATCH,
   chiefIdFormat,
   chiefThreadTitle,
@@ -51,7 +52,7 @@ import {
 import { sha256Hex } from '../lib/crypto.js';
 import { HttpError } from '../lib/errors.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
-import type { TeamStreamHub } from './events.js';
+import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import type { MachineWakeHub } from './machines.js';
 import { notifyChiefMessage } from './notifications.js';
 import { scanLocalSkills } from './skills.js';
@@ -756,6 +757,84 @@ export function notifyChiefTurn(deps: ChiefDeps, threadId: string): void {
       ? { name: agentRow.displayName, avatarUrl: agentRow.avatarUrl }
       : { name: deps.user.displayName, avatarUrl: deps.user.avatarUrl },
   });
+}
+
+// —— #684 失联超时兜底（「失败必须可见」的 pending/claimed 半）———————————
+
+/** 失联判定阈值：pending 无人认领 / claimed 心跳停更超过该值且机器离线 →
+ * 回合按失败收尾。2 分钟 = 机器重启/重连窗口之上（presence ~30s、步心跳
+ * ~30s、daemon 冷启秒级）；机器在线时不触发——在线排队是合法语义。 */
+export const CHIEF_ABANDONED_STEP_MS = 120_000;
+
+/** chief 步失联扫尾（scheduler tick 驱动，#684）：把两类「永不失败也就永不
+ * 可见」的永挂收进 #631 失败闭环——
+ * ① pending 无人认领且团队零在线机器（daemon 死亡/未注册：步永不 claim，
+ *    #631 的 done(failed) 路径永不触发，线程 activeRun 永挂——用户实测
+ *    2026-10-03「零回复零 toast」即此形）；
+ * ② claimed 心跳停更且机器离线（daemon 步中途死亡：lastHeartbeatAt 此前
+ *    只写不读，步与 activeRun 双挂）。
+ * 失败收尾 = finishStep chief 分支同语义：step 标 failed + finishChiefTurn
+ * 清 activeRun + chief_turn_error system 行（会话流 message 事件即时推送 →
+ * web toast + 失败行，#631 链原样消费）。机器在线时一律不动（busy 排队合
+ * 法）；非 chief 步不在本面（build 卡 building 归 #682）。幂等：行键 =
+ * chief-err-<stepId>（upsert），步状态翻转后不再进候选集。 */
+export function failAbandonedChiefSteps(
+  deps: { db: Db; convHub?: ConversationStreamHub },
+  now: number = nowMs(),
+): void {
+  const candidates = deps.db
+    .select()
+    .from(step)
+    .where(eq(step.kind, 'chief'))
+    .all()
+    .filter((r) => r.status === 'pending' || r.status === 'claimed');
+  for (const row of candidates) {
+    const thread = deps.db.select().from(chiefThread).where(eq(chiefThread.id, row.buildId)).get();
+    if (!thread) continue; // 线程已删：无呈现面
+    let reason: string | null = null;
+    if (row.status === 'pending') {
+      const online = deps.db
+        .select({ id: machine.id })
+        .from(machine)
+        .where(and(eq(machine.teamId, thread.teamId), eq(machine.online, true)))
+        .all();
+      if (online.length === 0 && now - row.createdAt > CHIEF_ABANDONED_STEP_MS) {
+        reason = `本轮无人认领：团队当前没有在线机器（等待 ${Math.round(CHIEF_ABANDONED_STEP_MS / 1000)} 秒超时）。请确认执行机 daemon 在线后重发。`;
+      }
+    } else {
+      // claimed：心跳停更 + 机器离线双条件——仅推送通道瞬断而心跳仍在（步
+      // 还在跑）不判死；心跳缺位（null）视为不可判，不动。
+      const machineRow = row.machineId
+        ? deps.db.select().from(machine).where(eq(machine.id, row.machineId)).get()
+        : undefined;
+      const stale =
+        row.lastHeartbeatAt !== null && now - row.lastHeartbeatAt > CHIEF_ABANDONED_STEP_MS;
+      if (machineRow !== undefined && !machineRow.online && stale) {
+        reason = `执行机器失联（心跳停更超过 ${Math.round(CHIEF_ABANDONED_STEP_MS / 1000)} 秒且机器已离线）。请检查执行机 daemon 状态后重发。`;
+      }
+    }
+    if (reason === null) continue;
+    deps.db.update(step).set({ status: 'failed' }).where(eq(step.id, row.id)).run();
+    finishChiefTurn(deps, thread.id, { status: 'failed' });
+    const errorRow = {
+      id: `chief-err-${row.id}`,
+      threadId: thread.id,
+      role: 'system' as const,
+      content: JSON.stringify({ kind: CHIEF_TURN_ERROR_KIND, message: reason }),
+      createdAt: now,
+    };
+    upsertChiefMessage(deps.db, errorRow);
+    deps.convHub?.publishMessage(thread.id, errorRow);
+    deps.convHub?.publishStep(thread.id, {
+      id: row.id,
+      buildId: row.buildId,
+      kind: row.kind,
+      machineId: row.machineId,
+      createdAt: row.createdAt,
+      status: 'failed',
+      checkpointCommit: row.checkpointCommit,
+    });
+  }
 }
 
 /** content → 纯文本（assistant 行 content 形 pi 依赖 [推断]：string 或
