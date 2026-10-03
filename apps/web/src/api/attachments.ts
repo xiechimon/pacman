@@ -25,6 +25,22 @@ const MAX_BYTES = 10 * 1024 * 1024;
 const ALLOWED_PREFIXES = ['text/', 'image/'];
 const ALLOWED_EXACT = new Set(['application/json', 'application/pdf', 'application/xml']);
 
+/** Why the chain refused a file (#729): local validation reasons
+ *  (invalid-name / size / mime) never reach the network; grant / upload
+ *  are the two wire steps. Surfaces map the reason to user-facing toast
+ *  copy (overlay/attachment-paste.ts attachmentFailureTitle). */
+export type AttachmentRejectReason = 'invalid-name' | 'size' | 'mime' | 'grant' | 'upload';
+
+export class AttachmentError extends Error {
+  readonly reason: AttachmentRejectReason;
+
+  constructor(reason: AttachmentRejectReason, message: string) {
+    super(message);
+    this.name = 'AttachmentError';
+    this.reason = reason;
+  }
+}
+
 function isAllowedMime(mime: string): boolean {
   if (ALLOWED_EXACT.has(mime)) return true;
   return ALLOWED_PREFIXES.some((p) => mime.startsWith(p));
@@ -67,12 +83,14 @@ interface GrantResponse {
 /** 单文件三步 wire。失败时抛 Error，message 给人读（调用面可直接展示）。 */
 export async function attachFile(input: AttachFileInput): Promise<AttachResult> {
   const { file, scope } = input;
-  if (!isValidFileName(file.name)) throw new Error(`invalid fileName: ${file.name}`);
+  if (!isValidFileName(file.name)) {
+    throw new AttachmentError('invalid-name', `invalid fileName: ${file.name}`);
+  }
   if (file.size <= 0 || file.size > MAX_BYTES) {
-    throw new Error(`size out of range: ${file.size} (max ${MAX_BYTES})`);
+    throw new AttachmentError('size', `size out of range: ${file.size} (max ${MAX_BYTES})`);
   }
   if (!isAllowedMime(file.type || '')) {
-    throw new Error(`mime not allowed: ${file.type || '(empty)'}`);
+    throw new AttachmentError('mime', `mime not allowed: ${file.type || '(empty)'}`);
   }
   // 1) grant
   const grantRes = await fetch('/api/uploads/grant', {
@@ -87,7 +105,7 @@ export async function attachFile(input: AttachFileInput): Promise<AttachResult> 
     }),
   });
   if (!grantRes.ok) {
-    throw new Error(`grant failed: ${grantRes.status} ${await grantRes.text()}`);
+    throw new AttachmentError('grant', `grant failed: ${grantRes.status} ${await grantRes.text()}`);
   }
   const grantBody = (await grantRes.json()) as GrantResponse;
   // 2) 上传（grant.uploadUrl = '/api/uploads'，完整路径 = origin + grant.uploadUrl）
@@ -96,7 +114,7 @@ export async function attachFile(input: AttachFileInput): Promise<AttachResult> 
   form.set('file', file, file.name);
   const upRes = await fetch(`${grantBody.uploadUrl}/upload`, { method: 'POST', body: form });
   if (!upRes.ok) {
-    throw new Error(`upload failed: ${upRes.status} ${await upRes.text()}`);
+    throw new AttachmentError('upload', `upload failed: ${upRes.status} ${await upRes.text()}`);
   }
   // 3) 拼 markdown token
   return {

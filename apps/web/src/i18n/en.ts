@@ -724,6 +724,11 @@ export const EN: Record<string, string> = {
   总管本轮执行失败: 'The chief turn failed',
   '发送失败，请重试。': 'Send failed. Try again.',
   '恢复失败，请重试。': 'Restore failed. Try again.',
+  // —— #729 附件上传失败面（toast 家族同上；大小/类型拒是本地预检可自救，
+  // 各给专名，其余归通用失败）——
+  '附件超过 10MB 上限': 'Attachment exceeds the 10 MB limit',
+  不支持该文件类型: 'That file type is not supported',
+  附件上传失败: 'Attachment upload failed',
   // —— #640 开始任务单出口（直发总管编排回合；r14 §5.7 前置裁决落地）——
   由总管创建: 'Created by chief',
   来源: 'Source',

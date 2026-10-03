@@ -21,6 +21,7 @@
 
 import type { TodoRecord as WireTodo } from '@pacman/shared';
 import { useCallback, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { attachFile } from '../api/attachments.js';
 import {
   useApiMutations,
@@ -34,6 +35,7 @@ import { useLiveData } from '../api/provider.js';
 import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
+import { attachmentFailureTitle } from './attachment-paste.js';
 import type { MentionGroups } from './mention-picker.js';
 import type { NewTaskDialogProps } from './new-task-dialog.js';
 
@@ -176,26 +178,25 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
 
   // M7 #310 附件 wire：live 创建面 spec 由本 hook 持 state,token 才能注入。
   // fixture 面不传 → dialog 内部 useState fallback,行为字节不变。
-  const onAttachment = useCallback(async (files: File[]) => {
-    // #310 三步 wire（r9 §3.1）：每个文件走 grant + upload，失败仅记日志
-    // 不发（用户继续编辑 spec,已发成功的 token 仍落入）；token 拼到 spec。
-    // 多文件按选序拼接，每个 token 占独立行（与 detail-page composer 一致）。
-    const tokens: string[] = [];
-    for (const file of files) {
-      try {
-        const r = await attachFile({ file, scope: 'spec' });
-        tokens.push(r.token);
-      } catch (err) {
-        console.error('attachment failed', file.name, err);
+  // #729 契约收窄：本面只管 grant+upload 与失败 toast，返回成功文件的
+  // token；注入 spec（行原子、粘贴落 caret 位）由 dialog 的 runAttachment
+  // 统一做——与 detail composer 共享同一插入函数，两面不漂移（失败方式 9）。
+  const onAttachment = useCallback(
+    async (files: File[]) => {
+      const tokens: string[] = [];
+      for (const file of files) {
+        try {
+          const r = await attachFile({ file, scope: 'spec' });
+          tokens.push(r.token);
+        } catch (err) {
+          console.error('attachment failed', file.name, err);
+          toast.error(t(attachmentFailureTitle(err)), { description: file.name });
+        }
       }
-    }
-    if (tokens.length > 0) {
-      setLiveSpec((current) => {
-        const joiner = current === '' || current.endsWith('\n') ? '' : '\n';
-        return `${current}${joiner}${tokens.join('\n')}\n`;
-      });
-    }
-  }, []);
+      return tokens;
+    },
+    [t],
+  );
 
   // #176 新建任务 dialog 项目选择器数据位:live = projectsQ 真值投影
   // (undefined = 查询未决);fixture = scenario projectNames(缺省 =
