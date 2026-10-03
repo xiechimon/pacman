@@ -407,6 +407,38 @@
   margin-top: 14px;
 }
 
+/* #739 在飞存在行：详情页 .chat-streaming 的同族皮肤（chief scope —— detail.css
+   只在 todo-detail 路由加载，抽屉落在 board 面必须自带，不能借道）。loading-dev
+   Atom 自有 spinner 盒/动画/reduced-motion 冻结；这里只保留库无法知道的行级排布
+   与暗字色。不挂秒数（#471），故无计数几何；.chief-streaming-secs 保留
+   tabular-nums 以防后续设计挂秒数时数字跳动推移标签尾。 */
+.chief-streaming {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.chief-spinner {
+  flex: none;
+  color: var(--text-dim);
+}
+
+.chief-streaming-label {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chief-streaming-secs {
+  font-variant-numeric: tabular-nums;
+}
+
 .chief-avatar {
   flex: none;
   color: var(--text-tertiary);

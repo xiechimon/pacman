@@ -710,7 +710,14 @@ export type ChiefStreamItem =
       typing?: boolean;
       seconds: string;
       tools?: ChiefToolRow[];
-    };
+    }
+  /** #739 在飞存在行：回合在飞（activeRun 非空）但还没有任何 text_delta 到达
+   *  的静默窗口里，stream 尾挂此行——与详情页对话区 streaming 行同一套词汇
+   *  （loading-dev Atom spinner + `处理中...` 标签，transcript.tsx 正典）。
+   *  `seconds` 缺省 = 不挂秒数（#471 律：静默期没有流事件驱动重渲，秒数计数
+   *  会冻结说谎；本票不加计时器）。label 走渲染层 t()。fixture 捕获面从不
+   *  置 running，故既有捕获不会长出此行（零请求保证不破）。 */
+  | { kind: 'streaming'; seconds?: number; label: string };
 
 /** 回合工具行（#615 返工折叠展开面；ToolCallRecord 的呈现投影）。 */
 export interface ChiefToolRow {

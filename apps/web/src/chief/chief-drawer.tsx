@@ -38,6 +38,7 @@ import {
   CHIEF_INPUT_PLACEHOLDER_STEERING,
   type ChiefCompactionModel,
 } from '@pacman/shared';
+import { Atom } from 'loading-dev';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
@@ -520,6 +521,38 @@ export function ChiefDrawer({
                           </Button>
                         </div>
                       </div>
+                    </div>
+                  );
+                // #739 在飞存在行：回合在飞但首 token 未至的静默窗口——头像槽
+                // 复用 robot 行的 agent 身份脸（bound = 绑定 Agent，未 bound =
+                // 虚线 chief 字形），右侧 = loading-dev Atom + `处理中...`，与
+                // 详情页对话区 streaming 行同一套词汇（transcript.tsx 正典）。
+                // 不挂秒数（#471），首 delta 到达即被 typing 行取代。
+                if (item.kind === 'streaming')
+                  return (
+                    <div key={i} className="chief-msg">
+                      {chief.bound && chief.agent ? (
+                        <span className="chief-avatar chief-avatar--img">
+                          <SeededAvatar
+                            name={chief.agent.displayName}
+                            src={chief.agent.avatarUrl}
+                            fallback="/avatar-robot-1.svg"
+                          />
+                        </span>
+                      ) : (
+                        <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
+                      )}
+                      <span className="chief-streaming">
+                        {/* #672/#739: loading-dev Atom（16px/900ms，与详情页
+                            chat-spinner 同款）——库自带 reduced-motion 冻结与
+                            aria-hidden，标签文本是可访问的 live 线索。 */}
+                        <Atom size={16} duration={900} className="chief-spinner" />
+                        {item.seconds != null && (
+                          <span className="chief-streaming-secs">{item.seconds}s</span>
+                        )}
+                        <ChevronRight width={10} height={10} />
+                        <span className="chief-streaming-label">{t(item.label)}</span>
+                      </span>
                     </div>
                   );
                 return (

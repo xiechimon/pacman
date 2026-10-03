@@ -307,9 +307,86 @@ describe('mapChief typing 尾行（#651 F-B1..B4）', () => {
     expect(typing?.tools).toBeUndefined();
   });
 
-  test('liveText 缺省（fixture 面 / 未订阅）→ stream 与现状一致', () => {
+  test('liveText 缺省但回合在飞 → 存在尾行取代打字行（#739）', () => {
     const content = mapChief(ENV, opts({ phase: 'chief' }));
+    // 无增量文本 → 不挂 typing robot 行
     expect(robotItems(content.stream ?? [])).toHaveLength(0);
     expect(content.running).toBe(true);
+    // #739：改挂在飞存在行（streaming 尾行），静默窗口消失
+    const stream = content.stream ?? [];
+    expect(stream[stream.length - 1]).toMatchObject({ kind: 'streaming', label: '处理中...' });
+  });
+});
+
+describe('mapChief 在飞存在尾行（#739 F1/F2/F4/F6）', () => {
+  const opts = (
+    activeRun: ChiefThread['activeRun'],
+    liveText?: string,
+    activeThreadId: string | null = 'chief-aaa',
+  ) => ({
+    threads: [thread(activeRun)],
+    activeThreadId,
+    messages: [msg('user', '派一下')],
+    ...(liveText !== undefined ? { liveText } : {}),
+  });
+
+  function streamingItems(items: ChiefStreamItem[]) {
+    return items.filter(
+      (i): i is Extract<ChiefStreamItem, { kind: 'streaming' }> => i.kind === 'streaming',
+    );
+  }
+
+  test('存在行：running + 缓冲空 → 尾挂 streaming 存在行（label 处理中...）', () => {
+    const stream = mapChief(ENV, opts({ phase: 'chief' }, '')).stream ?? [];
+    expect(stream[stream.length - 1]).toMatchObject({ kind: 'streaming', label: '处理中...' });
+  });
+
+  test('F4 存在行不挂秒数（#471 静止期无流事件驱动重渲，秒数会冻结说谎）', () => {
+    const stream = mapChief(ENV, opts({ phase: 'chief' })).stream ?? [];
+    const last = stream[stream.length - 1];
+    expect(last).toMatchObject({ kind: 'streaming' });
+    expect((last as { seconds?: number }).seconds).toBeUndefined();
+  });
+
+  test('F1 缓冲非空 → 仅 typing 行，存在行退场（两行互斥）', () => {
+    const stream = mapChief(ENV, opts({ phase: 'chief' }, '正在读取仓库')).stream ?? [];
+    expect(streamingItems(stream)).toHaveLength(0);
+    expect(stream[stream.length - 1]).toMatchObject({ kind: 'robot', typing: true });
+  });
+
+  test('F1 缓冲空↔非空翻转，live 尾行恒至多一行（无二重身）', () => {
+    for (const liveText of ['', '   ', 'x']) {
+      const stream = mapChief(ENV, opts({ phase: 'chief' }, liveText)).stream ?? [];
+      const liveTails = [
+        ...streamingItems(stream),
+        ...robotItems(stream).filter((r) => r.typing),
+      ];
+      expect(liveTails).toHaveLength(1);
+    }
+  });
+
+  test('F2 activeRun null（回合已收）→ 缓冲空也不挂存在行（僵尸行不常驻）', () => {
+    const stream = mapChief(ENV, opts(null)).stream ?? [];
+    expect(streamingItems(stream)).toHaveLength(0);
+  });
+
+  test('收敛律：终稿 assistant 已落库（尾为 robot 行）+ activeRun 未收 → 存在行不再闪', () => {
+    // message → step 的窗口：终稿行已重取进 messages，但 activeRun 要等 step
+    // 事件（#684 失效 chiefThreads）才收口。gate = 尾非 robot → 存在行当场退场，
+    // 不赌 step 时机（否则 running 仍 true + liveText 空会在终稿后再闪存在行）。
+    const stream =
+      mapChief(ENV, {
+        threads: [thread({ phase: 'chief' })],
+        activeThreadId: 'chief-aaa',
+        messages: [msg('user', '派一下'), msg('assistant', '验证完成，全部通过')],
+      }).stream ?? [];
+    expect(streamingItems(stream)).toHaveLength(0);
+    expect(stream[stream.length - 1]).toMatchObject({ kind: 'robot' });
+  });
+
+  test('F6 新主题视图（activeThreadId null）→ 无 stream，存在行不残留', () => {
+    const content = mapChief(ENV, opts({ phase: 'chief' }, '', null));
+    expect(content.stream).toBeUndefined();
+    expect(content.examples).toBeDefined();
   });
 });

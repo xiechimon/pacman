@@ -292,6 +292,20 @@ test.describe('chief drawer markdown 面（fixture，#650）', () => {
     // 用户行头像换 img 后，两钮行（复制/恢复）不受影响。
     await expect(stream.locator('.chief-msg-tools button')).toHaveCount(2);
   });
+
+  test('F-R15: fixture 面（r5 113 running 捕获）不长存在行——ChiefStreamItem 新 kind 零污染', async ({
+    page,
+  }) => {
+    // fixture 直接喂 ChiefContent.stream（不经 mapChief），running 位只切 composer
+    // 占位；#739 的存在行是 live mapper 派生，捕获面尾行仍是定稿 robot 行。
+    await page.goto('/app?scenario=113');
+    await expect(page.locator('.chief-drawer')).toBeVisible();
+    const stream = page.locator('.chief-stream');
+    await expect(stream.locator('.chief-streaming')).toHaveCount(0);
+    // 尾行 = 定稿 robot（带 foot），非在飞存在行。
+    const lastMsg = stream.locator('.chief-msg').last();
+    await expect(lastMsg.locator('.chief-msg-foot')).toHaveCount(1);
+  });
 });
 
 test.describe('chief drawer 流式面（live mock，#651）', () => {
@@ -371,5 +385,51 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
     await expect(drawer.locator('.chief-msg')).toHaveCount(3);
     await expect(drawer.locator('.chief-bubble', { hasText: '派一下凭证链路验证' })).toHaveCount(1);
     await expect(drawer.locator('.chief-bubble', { hasText: '再查一下 token 用量' })).toHaveCount(1);
+  });
+
+  test('F-R14: 在飞存在行（#739）——静默窗口挂 streaming 行，首 delta 收敛为 typing，终稿两行皆退场', async ({
+    page,
+  }) => {
+    await stubEventSource(page);
+    await stubDicebear(page);
+    await stubCdnAvatar(page);
+    // running 在位（THREAD.activeRun）、缓冲空、终稿未落 = 发送到首 token 的
+    // 静默窗口（绑定慢模型时分钟级）。
+    const state = { final: false };
+    await mockChiefLiveApi(page, state);
+    await page.goto('/app?chief=chief-bbb');
+
+    const drawer = page.locator('.chief-drawer');
+    await expect(drawer).toBeVisible();
+    await expect(drawer.locator('.chief-chip-title')).toHaveText('线程乙');
+
+    // 静默窗口：存在行立即可见——loading-dev Atom spinner + 处理中... 标签，
+    // 与详情页 streaming 行同族；user 行 + 存在行 = 2，打字面尚未出现。
+    const presence = drawer.locator('.chief-msg').last();
+    await expect(presence.locator('.chief-streaming')).toBeVisible();
+    await expect(presence.locator('.chief-spinner')).toHaveCount(1);
+    await expect(presence.locator('.chief-streaming-label')).toHaveText('处理中...');
+    // #471：不挂秒数（静止期无流事件驱动重渲，秒数会冻结说谎；本票不加计时器）。
+    await expect(presence.locator('.chief-streaming-secs')).toHaveCount(0);
+    await expect(drawer.locator('.chief-msg')).toHaveCount(2);
+    await expect(presence.locator('.chat-para')).toHaveCount(0);
+
+    const es = await chiefStream(page);
+
+    // 首 delta 到达 → 存在行收敛为 typing 打字行（两行互斥，尾部恒至多一行）。
+    await es.emit({ type: 'text_delta', text: '正在验证 **凭证' });
+    await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
+    const typing = drawer.locator('.chief-msg').last();
+    await expect(typing.locator('.chat-para')).toContainText('正在验证 凭证');
+    await expect(typing.locator('.chief-msg-foot')).toHaveCount(0);
+    await expect(drawer.locator('.chief-msg')).toHaveCount(2);
+
+    // 终稿 message 落库 → 打字行退场，定稿 robot 行接管；存在行/打字行皆不残留。
+    state.final = true;
+    await es.emit({ type: 'message', message: FINAL_ROW });
+    await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
+    await expect(drawer.locator('.chief-msg', { hasText: '正在验证' })).toHaveCount(0);
+    const final = drawer.locator('.chief-msg').last();
+    await expect(final.locator('strong', { hasText: '全部通过' })).toHaveCount(1);
   });
 });
