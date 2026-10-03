@@ -16,7 +16,7 @@
 // 弹层走新轨原语 components/ui/popover.tsx（Base UI Popover + Positioner），
 // 不自造定位壳/背板/Esc 接线。esc 由 Base UI 的 useDismiss 承接，它挂的是
 // **document** 上的 keydown（floating-ui-react/hooks/useDismiss 实测），与手写
-// 族（dismiss.tsx 的 useEscapeClose，挂 window）落点不同；e2e/escape-wiring
+// 族（#67 家族旧手写 hook，挂 window，已随 #656 退役）落点不同；e2e/escape-wiring
 // 的探针两个目标都数，故本次换机制没有把那条 #462 重挂钉变成空虚绿——
 // 开层期（URL 写回触发重渲染后、关层前读取）两个目标均零增删，实测见该用例。
 // 触发钮走 PopoverTrigger 的 render 合成，Button 原语与 data-variant 契约

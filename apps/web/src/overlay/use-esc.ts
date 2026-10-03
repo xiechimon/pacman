@@ -5,8 +5,8 @@
 // （newtask-tags/newtask-project-select 钉着）。开层瞬间的 Esc 丢失风险
 // 由 e2e 重试律兜底（search-focus 先例），不动挂载时序。
 // #466：接线按 enabled 周期注册一次，永不按渲染注册——最新 onClose 走
-// ref（dismiss.tsx useEscapeClose 的同法修复；重渲染重挂的丢失机理见
-// 该处 docblock 与 escape-wiring.spec.ts 的失败面记录）。
+// ref（#67 家族旧手写 Esc hook 的同法修复，该 hook 已随 #656 退役；
+// 重渲染重挂的丢失机理见 escape-wiring.spec.ts 的失败面记录）。
 
 import { useEffect, useRef } from 'react';
 

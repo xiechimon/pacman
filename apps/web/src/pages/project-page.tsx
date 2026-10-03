@@ -223,7 +223,8 @@ const TASK_SORTS: { id: TaskSort; label: string }[] = [
 ];
 
 /** Anchored selection menu (#67/#127 family law): retained-mount exit via
- *  OverlayMount, transparent ClickCatcher + Escape close, plan-dropdown
+ *  FloatingShell (#656), transparent ClickCatcher, Escape on the Base UI
+ *  layer stack, plan-dropdown
  *  row shape (check rides the selected option only); picking an option
  *  both selects and closes. Geometry [设计] — no capture exercises the
  *  toolbar dropdowns. */

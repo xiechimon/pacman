@@ -9,7 +9,7 @@ import { expect, type Page, test } from '@playwright/test';
 // window 监听者会触发那次 flush —— 层的清理在本派发中途跑掉，**被移除的监听
 // 者在本次派发中不再被调用**（DOM 规范），于是这次 Escape 根本没到达该层，层
 // 保持开态直到第二次 Escape。观测指纹：失败轮 100% 出现「派发中途 rem+add」，
-// 通过轮 0/177（探针 200 轮）。dismiss.tsx 的 useEscapeClose 现按 open 周期
+// 通过轮 0/177（探针 200 轮）。#67 家族旧手写 Esc hook（已随 #656 退役）按 open 周期
 // 注册一次（onClose 走 ref），开着的层不再有中途重挂。
 //
 // 每条用例钉一个失败方式：层开着的期间发生 URL 写回重渲染 → 接线被重挂

@@ -8,8 +8,8 @@
 // 创建入口移除：未动表单提交 = 无 repo 普通项目（kind 缺省，server REST /
 // MCP 仍接受 hosted，存量项目不动）。名称回填：local = basename(localPath)，
 // github = repo 段；仅当名称为空或仍等于上次回填值时覆盖（用户手改过则
-// 不动）。弹层家族法 #67/#127：OverlayMount + ClickCatcher + Escape
-// （TasksMenuButton/#176 chip-popover 先例）。提交 body 单源 = shared
+// 不动）。弹层家族法 #67/#127：FloatingShell + ClickCatcher（#656 起 Esc 归
+// Base UI layer 栈；TasksMenuButton/#176 chip-popover 先例）。提交 body 单源 = shared
 // createProjectBodySchema（kind 契约名；github 提交闸与 server 400 门同吃
 // isGithubRepoRef）。
 // #361 (spec 12 G2-T4)：GitHub 仓库 选态成为认证门控的 picker 面，三面：

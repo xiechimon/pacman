@@ -7,7 +7,8 @@ import { expect, type Page, test } from '@playwright/test';
 // 2. 章程编辑 → DialogShell 编辑弹窗:textarea 占位 r5 102/110 canon +
 //    取消/保存章程;fixture 保存 = accept 律关窗。
 // 3. 压缩模型 #204 翻回交互(server #203 compactionModel 槽就位):button
-//    开 anchored popover(OverlayMount + ClickCatcher + Esc 家族律),
+//    开 anchored popover(FloatingShell + ClickCatcher 家族律,#656 起
+//    Esc 归 Base UI layer 栈),
 //    fixture 面清单 = 默认行 + canon 单行(r3-gw/claude-sonnet-5),选定 =
 //    accept 律关面。live PATCH 写读回归归 live 真机验。
 
