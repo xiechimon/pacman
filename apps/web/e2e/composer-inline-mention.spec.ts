@@ -143,7 +143,14 @@ async function openDetail(
     sent.push(request.postData() ?? '');
     return route.fulfill({ status: 201, json: { message: { id: 'msg-1' } } });
   });
+  const membersLoaded = page.waitForResponse(
+    (r) => r.url().includes(`/api/teams/${TEAM_ID}/members`) && r.status() === 200,
+  );
   await page.goto(`/app/todo/${CARD_ID}`);
+  // The inline list only arms once the roster has resolved — typing before
+  // that races the members fetch (the token re-judges on the next key, but
+  // a lone fill would never open the list on a cold cache).
+  await membersLoaded;
   const input = page.locator('.composer-input');
   await expect(input).toBeVisible();
   await expect(input).toBeEditable();

@@ -1,5 +1,35 @@
 # #728 evidence — inline `@` completion aligned with the Claude Code canon
 
+## Before (origin/main, one-shot worktree)
+
+Captured on a detached `origin/main` worktree (`git worktree add --detach
+/tmp/pacman-before-728 origin/main` + `corepack pnpm install`) with the
+archived probe `before-probe.spec.ts.txt` (copy back to `apps/web/e2e/` of
+the MAIN checkout to rerun — it pins the OLD behavior and fails on this
+branch by design):
+
+```sh
+cd /tmp/pacman-before-728/apps/web
+E2E_PORT=8429 PACMAN_E2E_EVIDENCE=/tmp/before-728-shots \
+  npx playwright test e2e/before-728-probe.spec.ts   # 5 passed (4.4s)
+```
+
+| file | defect observed on main | sequence |
+|---|---|---|
+| `before-midword-trigger.png` | no left-boundary check: `foo@` opens the list (canon rules 2-3 forbid) | type `foo@` |
+| `before-enter-listbox-open.png` | state before the Enter probes | type `@bu` |
+| `before-enter-sent.png` | Enter with the list open SENDS the message (r9 §5) — and leaves the stale popup floating over the emptied composer (send never closed the list) | type `@bu`, refocus textarea, Enter → POST count 1 with `@bu`, draft cleared, listbox still visible |
+| `before-enter-wrong-row.png` | the OTHER side of the r9 §5 focus race: the open effect focuses the LAST row (one shared ref, `.current` = last), so a raw Enter activates deploy-bot and leaves the `@` residue | type `@`, wait for the steal, `page.keyboard.press('Enter')` → value `[deploy-bot](agent:agent-3)@` |
+| `before-click-residue.png` | clicking a row inserts WITHOUT consuming the query and WITHOUT a trailing space | type `@bu`, click row 1 → value `[builder](agent:agent-1)@bu` |
+| `before-focus-theft.png` | textarea lost focus to a row (`document.activeElement` = `.mention-inline-row`) — continuous typing and IME break | type `@` |
+
+Note on the r9 §5 "focus race": both Enter facets are real on main and
+which one fires depends on whether the focus-steal effect beat the
+keystroke — the canon fix removes the race entirely (focus never leaves
+the textarea; Enter's meaning is decided by the highlight state).
+
+## After (this branch)
+
 Stack: apps/web e2e on the live face (stubbed boot, no `?scenario=`), spec
 `apps/web/e2e/composer-inline-mention.spec.ts`, port `E2E_PORT=8428`.
 Regenerate every shot with:
