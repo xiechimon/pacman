@@ -39,7 +39,8 @@
   position: relative;
 }
 
-.new-task-project {
+.new-task-project,
+.new-task-machine {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -61,13 +62,15 @@
   text-transform: uppercase;
 }
 
-.new-task-project-name {
+.new-task-project-name,
+.new-task-machine-name {
   font-size: 13px;
   line-height: 16px;
   color: var(--text-primary);
 }
 
-.new-task-project svg {
+.new-task-project svg,
+.new-task-machine svg {
   color: var(--text-tertiary);
 }
 
@@ -76,7 +79,8 @@
    行为由 e2e 钉) ---- */
 
 /* anchor for the popover: the chip cluster inside the relative head */
-.new-task-project-wrap {
+.new-task-project-wrap,
+.new-task-machine-wrap {
   position: relative;
   display: flex;
   align-items: center;
@@ -97,15 +101,17 @@
   max-width: 282px;
 }
 
-.new-task-project-wrap + .new-task-project-wrap {
+.new-task-machine-wrap {
   margin-inline-start: 16px; /* 2× 组内 8px；logical 属性随 RTL 翻转 */
 }
 
-.new-task-project {
+.new-task-project,
+.new-task-machine {
   min-width: 0;
 }
 
-.new-task-project-name {
+.new-task-project-name,
+.new-task-machine-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

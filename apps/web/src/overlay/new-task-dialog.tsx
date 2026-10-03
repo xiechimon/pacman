@@ -460,11 +460,13 @@ export function NewTaskDialog({
             </span>
             {/* #682 机器 chip（项目 chip 同族：OverlayMount + ClickCatcher +
               listbox popover；行集 = 自动 + 机器行）。选中回填 chip，提交随
-              onSave 第三参走 createTodo body。 */}
-            <span className="new-task-project-wrap">
+              onSave 第三参走 createTodo body。类名独立成 new-task-machine* 家
+              族——e2e 的 `.new-task-project*` 选择器钉的是单元素（strict mode），
+              双 chip 共类名会把整组 spec 打红。 */}
+            <span className="new-task-machine-wrap">
               <button
                 type="button"
-                className="new-task-project"
+                className="new-task-machine"
                 aria-haspopup="listbox"
                 aria-expanded={machineOpen && machineRows.length > 0}
                 data-testid="new-task-machine-chip"
@@ -478,7 +480,7 @@ export function NewTaskDialog({
                   data-on={machineSelected?.online ?? true}
                   aria-hidden="true"
                 />
-                <span className="new-task-project-name">{machineLabel}</span>
+                <span className="new-task-machine-name">{machineLabel}</span>
                 <ChevronDown width={12} height={12} />
               </button>
               <OverlayMount open={machineOpen}>
