@@ -12,6 +12,7 @@
 // 488px goes to the fresh block's task brief instead of a placeholder.
 
 import type { ReactNode } from 'react';
+import { useBuild } from '../api/hooks.js';
 import type { BuildOverlayContent, PaneView, RunHistoryRow } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { BarChart3, Check, Download, History, X } from '../icons/index.js';
@@ -143,6 +144,11 @@ function BranchSection({
   // The section mounts while its view is active, so the machines query
   // gates on live alone (the dialog gates on its open flag, #319).
   const sync = useBranchSyncState(info, buildId);
+  // #704 / B-C16：PR 槽真值 = build 行回填（daemon 步收尾只读探测上报）；
+  // null（无 PR / 探测失败 / fixture 面）保持「未创建」诚实态，不造数据。
+  const buildQ = useBuild(buildId, buildId != null);
+  const pr = buildQ.data?.prUrl ?? null;
+  const prNumber = buildQ.data?.prNumber ?? null;
   return (
     <section className="pane-section">
       <SectionHead icon={<Download width={14} height={14} />} select={select} />
@@ -163,7 +169,13 @@ function BranchSection({
           {/* The dialog's Git tab ([推断] minimal PR surface) folds into the
               section tail — one static column, no sub-tabs. */}
           <div className="dlg-form-label pane-branch-pr">Pull Request</div>
-          <div className="dlg-dir">{t('未创建')}</div>
+          {pr !== null && prNumber != null ? (
+            <a className="dlg-dir dlg-pr-link" href={pr} target="_blank" rel="noopener noreferrer">
+              #{prNumber}
+            </a>
+          ) : (
+            <div className="dlg-dir">{t('未创建')}</div>
+          )}
           <div className="pane-branch-foot">
             <SyncButton
               buildId={buildId}

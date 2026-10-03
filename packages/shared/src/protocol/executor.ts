@@ -151,7 +151,9 @@ export type PiStreamEvent = (typeof PI_STREAM_EVENTS)[number];
 /** 配置 kind（02 §5.6：provider 凭证三协议 + MCP stdio）。 */
 export const CONFIG_KINDS = ['api_key', 'oauth', 'http', 'stdio'] as const;
 
-/** 流超时护栏（r3 bundle 原文数值，02 §5.6/01 §4.3 照抄）。 */
+/** 流超时护栏（r3 bundle 原文数值，02 §5.6/01 §4.3 照抄）。数值 = r3 一手
+ * 证据；重置语义 = pacman 侧 #699 修订（三臂事件到达即重置 + 步级绝对上界
+ * PACMAN_STREAM_DURATION_CAP_MS，语义正本 02 §5.6，执行面 runner.ts）。 */
 export const STREAM_TIMEOUTS_MS = {
   streamFirstEvent: 300_000,
   streamIdle: 480_000,

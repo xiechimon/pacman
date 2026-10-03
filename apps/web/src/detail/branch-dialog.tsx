@@ -16,7 +16,7 @@ import type { BranchSyncRecord, BranchSyncStatus, MachineRecord } from '@pacman/
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api/client.js';
-import { useMachines } from '../api/hooks.js';
+import { useBuild, useMachines } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
@@ -219,6 +219,12 @@ export function BranchDialog({ info, buildId: buildIdProp, open, onClose }: Bran
   const buildId = buildIdProp ?? null;
   const [tab, setTab] = useState<'sync' | 'git'>('sync');
   const sync = useBranchSyncState(info, buildId, open === true);
+  // #704 / B-C16：PR 槽真值 = build 行回填的 prUrl/prNumber（daemon 步收尾
+  // 只读探测上报）。buildId 缺席（fixture 面/live 无 build）或探测失败（null）
+  // = 保持「未创建」诚实态——面板分支名在、PR 槽留空，不造数据。
+  const buildQ = useBuild(buildId, buildId != null);
+  const pr = buildQ.data?.prUrl ?? null;
+  const prNumber = buildQ.data?.prNumber ?? null;
 
   return (
     <DialogShell
@@ -289,7 +295,13 @@ export function BranchDialog({ info, buildId: buildIdProp, open, onClose }: Bran
         <div className="dlg-branch-body">
           <BranchBox info={info} />
           <div className="dlg-form-label">Pull Request</div>
-          <div className="dlg-dir">{t('未创建')}</div>
+          {pr !== null && prNumber != null ? (
+            <a className="dlg-dir dlg-pr-link" href={pr} target="_blank" rel="noopener noreferrer">
+              #{prNumber}
+            </a>
+          ) : (
+            <div className="dlg-dir">{t('未创建')}</div>
+          )}
         </div>
       )}
     </DialogShell>

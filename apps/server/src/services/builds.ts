@@ -376,6 +376,7 @@ export function startBuilds(
         errorMessage: null,
         prUrl: null,
         prNumber: null,
+        changes: null,
         diffHash: null,
         createdAt,
       })
@@ -454,6 +455,7 @@ export async function applyBuildStepAction(
         errorMessage: null,
         prUrl: null,
         prNumber: null,
+        changes: null,
         diffHash: null,
         createdAt,
       })

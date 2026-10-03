@@ -166,6 +166,12 @@ export interface WorktreeOps {
   /** conv 分支领先 origin/<defaultBranch> 的提交数（hasChanges 判定，
    * 02 §4.1/r5 §8 列位双键）。 */
   countAhead(cwd: string, defaultBranch: string): Promise<number>;
+  /** conv 分支相对 origin/<defaultBranch> 的 unified diff 原文
+   * （`git diff origin/<default>...HEAD`，#704 变更投影 daemon 上报数据源）。
+   * 可选方法：非 hosted 形态投影走 daemon 步收尾上报，hosted 形态真值源
+   * 仍是 server bare repo——实现缺位时 runner 跳过上报（投影回落空集），
+   * 测试桩与旧实现零破坏。 */
+  diffAgainstDefault?(cwd: string, defaultBranch: string): Promise<string>;
   /** checkpoint 恢复：`git reset --hard <commit>` + `git clean -fd`
    * （`Worktree restored`，r3 §1.4；「恢复到此处」r3 §3.5）。 */
   restoreCheckpoint(cwd: string, commit: string): Promise<void>;
