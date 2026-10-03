@@ -16,6 +16,7 @@ import { useApiMutations, useProjects, useSchedules, useTodos } from '../api/hoo
 import { mapSchedules, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
+import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
 import { Select } from '../components/ui/select.js';
 import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import type { FixtureSet, ScheduleRecord } from '../fixtures/records.js';
@@ -109,7 +110,9 @@ function ScheduleCard({
 }) {
   const { t } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
-  useEscapeClose(menuOpen, () => setMenuOpen(false));
+  // #656：Esc 归 FloatingShell（Base UI layer 栈）；wrap 作 Portal container 保
+  // .sched-card-menu 的绝对定位几何。
+  const [wrap, setWrap] = useState<HTMLSpanElement | null>(null);
   const ui = PHASE_UI[schedule.todo.phase];
   return (
     <div className="sched-card">
@@ -134,7 +137,7 @@ function ScheduleCard({
         </div>
       </div>
       <span className={`sched-card-chip sched-card-chip--${ui.tone}`}>{t(ui.chip)}</span>
-      <span className="sched-more-wrap">
+      <span className="sched-more-wrap" ref={setWrap}>
         {/* XMON-25 收编：老 ui/Button icon 变体 → ghost + size icon；皮肤
             （tertiary 墨/hover 增亮/cursor）下沉 per-face .sched-card-more；
             24×24 几何 per-face 留 pages.css。haspopup 使 base active 位移
@@ -150,9 +153,18 @@ function ScheduleCard({
         >
           <EllipsisVertical />
         </Button>
-        <OverlayMount open={menuOpen}>
+        <FloatingShell
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          container={wrap}
+          className="anchored-pop-shell"
+        >
           <ClickCatcher onClose={() => setMenuOpen(false)} />
-          <div className="sched-card-menu" role="menu" aria-label={t('更多')}>
+          <div
+            className={`sched-card-menu ${FLOATING_POP_ANIM}`}
+            role="menu"
+            aria-label={t('更多')}
+          >
             <button
               type="button"
               role="menuitem"
@@ -167,7 +179,7 @@ function ScheduleCard({
               {t('删除')}
             </button>
           </div>
-        </OverlayMount>
+        </FloatingShell>
       </span>
     </div>
   );

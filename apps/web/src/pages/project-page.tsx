@@ -23,6 +23,7 @@ import { mapCommits, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
 import { Button } from '../components/ui/button.js';
+import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
 import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { localTodo } from '../fixtures/fixtures.js';
@@ -42,7 +43,7 @@ import {
   Search,
 } from '../icons/index.js';
 import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 import { GithubIssuesDialog } from './github-issues-dialog.js';
 import { PageShell } from './shell.js';
 import './pages.css';
@@ -241,7 +242,7 @@ function TasksMenu<T extends string>({
 }) {
   const { t } = useI18n();
   return (
-    <div className="prj-tasks-menu anim-pop" role="listbox" aria-label={t(label)}>
+    <div className={`prj-tasks-menu ${FLOATING_POP_ANIM}`} role="listbox" aria-label={t(label)}>
       {options.map((option) => (
         <button
           key={option.id}
@@ -285,9 +286,11 @@ function TasksMenuButton<T extends string>({
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
-  useEscapeClose(open, close);
+  // #656：Esc 归 FloatingShell（Base UI layer 栈）；锚定 wrap 作 Portal container
+  // 保 .prj-tasks-menu 的绝对定位几何（containing block 不变）。
+  const [wrap, setWrap] = useState<HTMLSpanElement | null>(null);
   return (
-    <span className="prj-tasks-menu-wrap">
+    <span className="prj-tasks-menu-wrap" ref={setWrap}>
       {/* XMON-25 收编：ghost；size-auto 保 Funnel 14 / ChevronDown 12 属性
           尺寸；haspopup 使 base active 位移自动跳过；aria-expanded 底色档
           被 per-face bg 简写（unlayered）压掉 = 现行为零漂移。 */}
@@ -302,7 +305,7 @@ function TasksMenuButton<T extends string>({
         {t(label)}
         <ChevronDown width={12} height={12} />
       </Button>
-      <OverlayMount open={open}>
+      <FloatingShell open={open} onClose={close} container={wrap} className="anchored-pop-shell">
         <ClickCatcher onClose={close} />
         <TasksMenu
           label={label}
@@ -311,7 +314,7 @@ function TasksMenuButton<T extends string>({
           onSelect={onSelect}
           onClose={close}
         />
-      </OverlayMount>
+      </FloatingShell>
     </span>
   );
 }
