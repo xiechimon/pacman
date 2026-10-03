@@ -22,6 +22,13 @@
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import type { CSSProperties, ReactNode } from 'react';
 
+/** 锚定 pop 族的进出场（shadcn 默认档，ADR 0009 D3：duration-100 + fade + zoom-95
+ *  + slide -8px）。挂在**内层面板**上、经壳的具名 group 读 Base UI 的
+ *  data-open/data-closed——transform 不能上 Popup：本族面板是 fixed/absolute
+ *  子级，Popup 带 transform 会把它们的 containing block 拽走（#656）。 */
+export const FLOATING_POP_ANIM =
+  'duration-100 group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-open/fshell:zoom-in-95 group-data-open/fshell:slide-in-from-top-2 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0 group-data-closed/fshell:zoom-out-95 group-data-closed/fshell:slide-out-to-top-2';
+
 interface FloatingShellProps {
   /** #73: retained-mount open flag. */
   open: boolean;
@@ -74,7 +81,9 @@ export function FloatingShell({
       <DialogPrimitive.Portal container={container}>
         <DialogPrimitive.Popup
           data-slot="floating-layer"
-          className={className}
+          // 具名 group：内层面板经 group-data-open/closed/fshell 读本 Popup 的
+          // Base UI 开闭态（FLOATING_POP_ANIM）；不消费该 group 的面零影响。
+          className={`group/fshell${className != null ? ` ${className}` : ''}`}
           style={style}
           // 非模态面不做 aria-modal；语义靠 role 与面自身 aria 承载
           role="dialog"

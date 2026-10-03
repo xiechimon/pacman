@@ -450,19 +450,15 @@
 /* 放弃并关闭 = ui/Button danger(delete-confirm-delete a3 收编同律),
    类名仅作 e2e 钉,无散写外观规则。 */
 
-/* #425 B1 退场配方（shell 换 Base UI 后旧 OverlayMount 计时手法退役）：
-   Base UI 的 useAnimationsFinished 只看 Popup 本体、不看子树，故用零视觉的
-   visibility 延迟过渡撑住卸载窗，终态由壳的 [data-ending-style] 驱动子级
-   anim-pop。配方同 L1 的 mention-picker（.mention-picker-shell）。 */
+/* #656 退场配方：面板的退场改由 tw-animate-css 的 group-data-closed:animate-out
+   承载（FLOATING_POP_ANIM，挂在 .more-menu 上、经壳的 group/fshell 读开闭态）。
+   Base UI 的 useAnimationsFinished 只看 Popup 本体、不看子树，故壳仍挂一条零视觉
+   的 visibility 延迟过渡撑住卸载窗（--dur-fast ≥ 面板 duration-100），让面板的
+   animate-out 播完再卸。配方同 mention-picker / chief-model / ui-select 壳。 */
 .more-menu-shell {
   transition: visibility 0s linear var(--dur-fast);
 }
 
 .more-menu-shell[data-ending-style] {
   visibility: hidden;
-}
-
-.more-menu-shell[data-ending-style] .anim-pop {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
 }

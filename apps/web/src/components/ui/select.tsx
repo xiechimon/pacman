@@ -20,7 +20,7 @@ import { useState } from 'react';
 import { Check, ChevronDown } from '../../icons/index.js';
 import { ClickCatcher } from '../../overlays/dismiss.js';
 import { Button } from './button.js';
-import { FloatingShell } from './floating-shell.js';
+import { FLOATING_POP_ANIM, FloatingShell } from './floating-shell.js';
 import './select.css';
 
 /** 一行候选。`meta` 是行右侧次级文本（模型面的 provider 位用得到），缺省不出。 */
@@ -92,11 +92,13 @@ export function Select({
           open={open}
           onClose={() => setOpen(false)}
           container={wrap}
-          className={`${prefix}-shell`}
+          // ui-select-shell = 本原语共用的退场 visibility 桥（select.css），
+          // 撑住 Base UI 卸载窗让面板的 animate-out 播完（各 prefix 共用一条）。
+          className={`${prefix}-shell ui-select-shell`}
         >
           <ClickCatcher onClose={() => setOpen(false)} />
           <div
-            className={`ui-select-menu ${prefix}-menu anim-pop`}
+            className={`ui-select-menu ${prefix}-menu ${FLOATING_POP_ANIM}`}
             role="listbox"
             aria-label={menuLabel}
           >
