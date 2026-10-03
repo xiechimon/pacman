@@ -524,7 +524,7 @@ export function NewTaskDialog({
           ——面板 transform 会吞 fixed 定位(#176 注记同坑);ClickCatcher
           z29 压 dialog z21,外点 = 只收确认层(继续编辑语义),面板 z31 居顶。
           #656:壳 = FloatingShell(sibling root,MentionPicker 先例);fade 沿
-          旧 anim-fade 的 200ms(--dur-overlay),桥走 slow 变体撑满退场窗。
+          旧淡入配方的 200ms(--dur-overlay),桥走 slow 变体撑满退场窗。
           initialFocus 走缺省(焦点入层)而非 false:sibling root 的 Esc 路由
           依赖焦点在本层内——实测 initialFocus=false 时(焦点留在 dialog)
           Esc 全被 modal dialog 吃掉(→requestClose→重开本层,确认层关不掉);
