@@ -14,6 +14,17 @@
 | `07-transcript-feedback-rows.png` | transcript 两条 feedback 用户气泡均在 |
 | `result.json` | 22 条 check 逐条 ok/label + 栈坐标 + API/SQLite 真值 |
 
+## delivery/ — 续轮指令投递对账（合并态：main + #721 + #719）
+
+打回意图不止要入队，还要**真的到达 agent**。#703（PR #719）修复前，daemon runner 对 continue 步一律发 `CONTINUE_PROMPTS` 占位句、claim 载荷 `instruction` 从不进会话——本票的重规划步是 continue 步，投递依赖该修复。对账在 `origin/main + #721 + #719` 的合并态一次性检出上跑（`delivery-drive.mjs`，真 daemon + 捕获型 stub LLM，双面方法照 #703 证据同款，请求体全文落盘不截断）：**16/16 checks PASS**。
+
+- face 1（server→daemon wire）：claim 载荷 `instruction` 全文 === `buildReviewRejectPrompt(feedback)` 模板合成值（166 字节逐字相等），`session.action='continue'`；
+- face 2（daemon→LLM 请求时间线）：stub 收到的唯一请求 messages 里含意图文本与用户反馈原文，且无占位句顶替（`stub-requests.json` 全文）；
+- face 3（transcript DB 真值）：message 表 `user-<stepId>` 行 content === instruction 全文、step.prompt 同值，重规划步收尾后 phase=confirm（`sqlite-truth.json`）；
+- daemon 日志（`daemon-tail.out`）：HTTP 驱的轮次无本机会话文件 → `falling back to new session`（预期回退，prompt 投递不受影响）。
+
+依赖结论：**#719（或等价 runner 修复）先于/随 #721 合并**，打回意图才达 agent；单独 #721 时相位流转/入队/UI 全部照常，但 agent 收到的是通用占位句（与现状 confirm 关口驳回同病，非本票引入）。
+
 真值面（`result.json` checks 摘要）：
 
 - 打回后 `GET /api/todos/{id}` phase=planning；`latestBuildId` 不换 build（分支不孤儿化）；
