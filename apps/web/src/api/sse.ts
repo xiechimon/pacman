@@ -11,7 +11,7 @@
 
 import type { ConversationStepEvent, NotificationRecord, TranscriptRow } from '@pacman/shared';
 import { isChiefConversationId } from '@pacman/shared';
-import { useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { EN } from '../i18n/en.js';
 import { readStoredLocale } from '../i18n/locale.js';
@@ -159,54 +159,73 @@ export function useConversationStream(
   const auth = useAuth();
   useEffect(() => {
     if (conversationId === undefined || !enabled || auth.gateOpen) return;
-    // resync（#462）：同 useTeamStream——重连/看门狗重建即全量失效重取，
-    // 补断线窗口内丢失的 message/step 事件（plan 卡/进度行停更的根治面）。
-    const resync = () => {
-      void invalidateConverged(qc);
-    };
-    return connect(
-      streamUrl(`/api/conversations/${conversationId}/stream`),
-      (ev) => {
-        switch (ev.type) {
-          case 'text_delta':
-            liveTextStore.append(conversationId, ev.text as string);
-            break;
-          case 'message': {
-            const row = ev.message as TranscriptRow;
-            // 终稿行到达：live 缓冲作废，消息面重取接管（收敛律）。
-            liveTextStore.clear(conversationId);
-            void invalidateConverged(qc, { queryKey: ['messages', conversationId] });
-            void invalidateConverged(qc, { queryKey: ['plans'] });
-            onMessage?.(row);
-            break;
-          }
-          case 'step':
-            void invalidateConverged(qc, { queryKey: ['steps', conversationId] });
-            void invalidateConverged(qc, { queryKey: ['build', conversationId] });
-            void invalidateConverged(qc, { queryKey: ['changes', conversationId] });
-            // plan 行经 upload 缝落库，server 在落库点即发 step 事件（XMON-59，
-            // machines.ts receivePlanUpload），恒早于 done 收尾——message 事件与
-            // plan.md/transcript 并发上传赛跑时，本失效是方案卡收敛的兜底。
-            // #717：失效本身还须经收敛缝——挂载取数在飞时到达的提示会被
-            // query-core 去重吞掉（invalidate.ts 头注），CI 负载下方案卡
-            // 30s 停空的实测根因。
-            void invalidateConverged(qc, { queryKey: ['plans'] });
-            // #684：chief 会话的步终态（done/failed，含失联超时 sweep）必须
-            // 失效线程列表——activeRun 收口只落 chief_thread 行，成功路径靠
-            // notifyChiefTurn 的 notification 事件兜住，失败路径（#631 起零
-            // 通知）此前无人失效：drawer 的 steer 占位符会一直谎称回合在飞。
-            // 前缀失效（无 teamId 限位）与 ['plans'] 同律——活跃查询至多一个。
-            if (isChiefConversationId(conversationId)) {
-              void invalidateConverged(qc, { queryKey: ['chiefThreads'] });
-            }
-            onStep?.((ev as ConversationStepEvent).step);
-            break;
-          default:
-            break; // ping
-        }
-      },
-      resync,
-      streamGuards(qc),
-    );
+    return startConversationStream(conversationId, qc, { onMessage, onStep });
   }, [conversationId, enabled, qc, onMessage, onStep, auth]);
+}
+
+/** 建会话流（非 React 缝——node 单测直驱，#740）。订阅重置语义：流（重）
+ *  建立即先 liveTextStore.clear 再消费事件。服务端在 subscribe 时把在飞段
+ *  缓冲作为一条 text_delta 快照补发（#740 hub 半边），客户端旧缓冲（断线前
+ *  /关抽屉前累积的）若不作废，补发叠加成双份。顺序保证：clear 同步发生在
+ *  connect() 之前、重连清在 resync（onopen）里——EventSource 的任何事件最早
+ *  也在 open 之后到达，不存在「补发先于 clear」的窗口。 */
+export function startConversationStream(
+  conversationId: string,
+  qc: QueryClient,
+  handlers: ConversationStreamHandlers,
+): () => void {
+  const onMessage = handlers.onMessage;
+  const onStep = handlers.onStep;
+  liveTextStore.clear(conversationId);
+  // resync（#462）：重连/看门狗重建即全量失效重取，补断线窗口内丢失的
+  // message/step 事件（plan 卡/进度行停更的根治面）；#740 另加清缓冲——
+  // 新订阅上服务端补发的是当前段全量快照（含断线窗口内流掉的增量）。
+  // 全量失效走 #767 收敛缝（invalidateConverged，#717 根因：挂载取数在飞时
+  // 到达的提示会被 query-core 去重吞掉）。
+  const resync = () => {
+    liveTextStore.clear(conversationId);
+    void invalidateConverged(qc);
+  };
+  return connect(
+    streamUrl(`/api/conversations/${conversationId}/stream`),
+    (ev) => {
+      switch (ev.type) {
+        case 'text_delta':
+          liveTextStore.append(conversationId, ev.text as string);
+          break;
+        case 'message': {
+          const row = ev.message as TranscriptRow;
+          // 终稿行到达：live 缓冲作废，消息面重取接管（收敛律）。
+          liveTextStore.clear(conversationId);
+          void invalidateConverged(qc, { queryKey: ['messages', conversationId] });
+          void invalidateConverged(qc, { queryKey: ['plans'] });
+          onMessage?.(row);
+          break;
+        }
+        case 'step':
+          void invalidateConverged(qc, { queryKey: ['steps', conversationId] });
+          void invalidateConverged(qc, { queryKey: ['build', conversationId] });
+          void invalidateConverged(qc, { queryKey: ['changes', conversationId] });
+          // plan 行经 upload 缝静默落库（routes-machine PUT upload 不发事件），
+          // 仅 message 事件失效 plans 会与 daemon 的 plan.md/transcript 并发
+          // 上传赛跑：message 先到时该轮重取落空，其后无人再失效。step 事件
+          // （finishStep 发，恒在 plan 落库后）补一次失效兜住该 race。
+          void invalidateConverged(qc, { queryKey: ['plans'] });
+          // #684：chief 会话的步终态（done/failed，含失联超时 sweep）必须
+          // 失效线程列表——activeRun 收口只落 chief_thread 行，成功路径靠
+          // notifyChiefTurn 的 notification 事件兜住，失败路径（#631 起零
+          // 通知）此前无人失效：drawer 的 steer 占位符会一直谎称回合在飞。
+          // 前缀失效（无 teamId 限位）与 ['plans'] 同律——活跃查询至多一个。
+          if (isChiefConversationId(conversationId)) {
+            void invalidateConverged(qc, { queryKey: ['chiefThreads'] });
+          }
+          onStep?.((ev as ConversationStepEvent).step);
+          break;
+        default:
+          break; // ping
+      }
+    },
+    resync,
+    streamGuards(qc),
+  );
 }

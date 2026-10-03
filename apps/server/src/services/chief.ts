@@ -63,6 +63,8 @@ export interface ChiefDeps {
   /** 入队即 wake（低延迟派发，02 §5.4）。 */
   machineHub?: MachineWakeHub;
   user: UserRecord;
+  /** #740 会话流 hub：rewind 重置线程时清在飞段补发缓冲（路由层 svc 透传）。 */
+  convHub?: ConversationStreamHub;
 }
 
 /** 资源清单面 deps（spec 13 #367）：systemPrompt 合成的 skills 清单来自本地
@@ -439,6 +441,9 @@ export function rewindChiefThread(
     .set({ sessionId: '', updatedAt: now })
     .where(eq(chiefThread.id, threadId))
     .run();
+  // #740 会话已重置：在飞段补发缓冲同清——重入队的回合从空开始（正常流里
+  // activeRun 门已保证缓冲为空，此处是状态失步防御）。
+  deps.convHub?.clearConversationBuffer(threadId);
   const content =
     typeof anchor.content === 'string' ? anchor.content : (extractText(anchor.content) ?? '');
   enqueueChiefStep(deps, threadId, { prompt: content, trigger: 'user' });
