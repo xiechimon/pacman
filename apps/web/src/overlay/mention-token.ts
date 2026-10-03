@@ -10,11 +10,15 @@
 // (services/chief.ts:570), so the round-trip stays a single canonical
 // encoding.
 //
-// Todos stay as `#seq` plain text per r9 §3.2 ("任务提及 #1 在消息内按
-// #seq 留存"). For chip rendering on the transcript side, callers pass
-// the same `(seq, todoId)` pair to the renderer so it can resolve the
-// chip from the seq without re-parsing the URL. The renderer's job is
-// `entityLookups` lookup, not text parse.
+// Todos have two wire forms (r9 §3.2 + #675 live captures): the composer
+// picker inserts the plain `#seq` token (serializeMention below), which
+// stays plain text on the wire and on screen — recovering a chip from a
+// bare `#N` needs a seq→todoId lookup table that does not exist yet, and
+// an unguarded `#N` scan would eat prose. The chief agent's system prompt
+// (services/chief.ts) instead instructs the markdown link form
+// `[#n](todo:<id>)`, the same encoding as the other four schemes;
+// parseMentionSegments and the live transcript parser (api/mappers.ts
+// MENTION_SCHEME) both recover that form into todo chips (#675).
 //
 // project / skill / machine mentions carry no pre-existing scheme in
 // r9, but the picker UI exposes them as "待设计" stubs — the spec
@@ -40,10 +44,11 @@ export interface MentionToken {
   seq?: number;
 }
 
-/** All five schemes share the markdown link syntax. The host part is
- *  the kind name (lowercased), the path is the canonical id. `todo:`
- *  reuses the seq in the host for human-readable URLs but still
- *  resolves via the id field at parse time. */
+/** All five schemes share the markdown link syntax on the parse side:
+ *  `[label](kind:id)`, host = lowercased kind name, path = canonical id
+ *  (#675: chief replies carry `[#n](todo:<id>)` in exactly this shape).
+ *  The composer-side serializer keeps todo mentions as the plain `#seq`
+ *  token — see serializeMention. */
 const SCHEME_PREFIX: Record<MentionKind, string> = {
   todo: 'todo',
   skill: 'skill',
@@ -108,11 +113,12 @@ export type MentionSegment =
   | { kind: 'mention'; token: MentionToken; start: number; end: number };
 
 /** Single-pass scan that emits text + mention segments. The regex
- *  matches the four scheme forms; todo mentions (plain `#N`) are not
- *  recovered from text alone — the renderer needs the seq→id lookup
- *  table to know which `#N` is a real chip and which is just hash
- *  syntax in user prose. */
-const SCHEME_REGEX = /\[([^\]\n]+?)\]\((agent|skill|project|machine):([A-Za-z0-9_-]+)\)/g;
+ *  matches all five scheme link forms (#675: `todo:` included — chief
+ *  replies carry `[#n](todo:<id>)`). Bare `#N` prose is still not
+ *  recovered from text alone — the renderer would need the seq→id
+ *  lookup table to know which `#N` is a real chip and which is just
+ *  hash syntax in user prose (header comment). */
+const SCHEME_REGEX = /\[([^\]\n]+?)\]\((agent|skill|project|machine|todo):([A-Za-z0-9_-]+)\)/g;
 
 export function parseMentionSegments(text: string): MentionSegment[] {
   const segments: MentionSegment[] = [];
@@ -125,10 +131,24 @@ export function parseMentionSegments(text: string): MentionSegment[] {
     if (match.index > cursor) {
       segments.push({ kind: 'text', text: text.slice(cursor, match.index) });
     }
-    const kind = rawKind as Exclude<MentionKind, 'todo'>;
+    const kind = rawKind as MentionKind;
+    const label = unescapeLabel(rawLabel ?? '');
+    // A todo link label carries the seq marker (the shape the chief prompt
+    // instructs); recover the board number so parsed tokens honor the
+    // MentionToken contract (seq set when kind === 'todo'). The hash is
+    // matched via startsWith instead of a regex literal: the i18n-coverage
+    // gate walks this file with the raw TS token scanner, and a bare hash
+    // inside a regex body wedges it into a zero-advance spin (#681).
+    const seqDigits = kind === 'todo' && label.startsWith('#') ? label.slice(1) : '';
+    const seq = /^\d+$/.test(seqDigits) ? Number(seqDigits) : undefined;
     segments.push({
       kind: 'mention',
-      token: { kind, label: unescapeLabel(rawLabel ?? ''), id: id ?? '' },
+      token: {
+        kind,
+        label,
+        id: id ?? '',
+        ...(seq !== undefined ? { seq } : {}),
+      },
       start: match.index,
       end: match.index + full.length,
     });
@@ -141,49 +161,40 @@ export function parseMentionSegments(text: string): MentionSegment[] {
 }
 
 /** Insert a mention token at the given caret offset in the textarea
- *  value, with one leading + one trailing space (r9 §2.2: ` @r3-builder `).
- *  Returns the new value and the caret offset that lands right after
- *  the inserted whitespace. When `at` is `null`, appends to the end. */
+ *  value, with one leading + one trailing space (r9 §2.2: ` @r3-builder `;
+ *  CC rule 26: acceptance always lands a trailing space so the next
+ *  keystroke cannot glue onto the token). A space side is skipped when the
+ *  neighbour is already whitespace — never double spaces.
+ *
+ *  Returns the new value and the caret offset that lands right after the
+ *  inserted trailing space (ticket #728 failure mode 6: a caret inside or
+ *  directly behind the token would let continued typing break the
+ *  markdown link).
+ *
+ *  `replaceEnd` (inline `@` path, #728): when set, the span `[at,
+ *  replaceEnd)` — the detected `@query` token — is consumed by the insert
+ *  instead of staying behind as residue. Callers pass the STORED detection
+ *  range, not a recomputed one (failure mode 5: a caret that drifted after
+ *  detection would otherwise eat neighbouring text). Out-of-range values
+ *  are clamped. When `at` is `null`, appends to the end. */
 export function insertMentionText(
   value: string,
   token: MentionToken,
   at: number | null,
+  replaceEnd?: number,
 ): { value: string; caret: number } {
   const piece = ` ${serializeMention(token)} `;
   if (at == null || at < 0 || at > value.length) {
     return { value: value + piece, caret: value.length + piece.length };
   }
-  // Avoid doubling the leading space when the previous char is already
-  // whitespace; same for the trailing side once we insert.
+  const end = replaceEnd != null && replaceEnd > at ? Math.min(replaceEnd, value.length) : at;
   const before = value.slice(0, at);
-  const after = value.slice(at);
-  const leadingTrimmed = before.length === 0 || /\s/.test(before[before.length - 1] ?? '');
-  const trailingSpace = after.length > 0 && !/^\s/.test(after) ? '' : '';
-  const head = leadingTrimmed ? '' : ' ';
+  const after = value.slice(end);
+  const serialized = serializeMention(token);
+  const head = before.length === 0 || /\s/.test(before[before.length - 1] ?? '') ? '' : ' ';
+  const tail = after.length > 0 && /^\s/.test(after) ? '' : ' ';
   return {
-    value: before + head + serializeMention(token) + trailingSpace + after,
-    caret: before.length + head.length + serializeMention(token).length + trailingSpace.length,
+    value: before + head + serialized + tail + after,
+    caret: before.length + head.length + serialized.length + tail.length,
   };
-}
-
-/** Detect the `@` prefix in the textarea value at the caret offset.
- *  Returns the partial query (text after the last `@` before the caret)
- *  when the caret sits inside a `@`-prefixed token; `null` when the
- *  caret is not in a mentionable position (composer inline @ list
- *  uses this to decide whether to open). */
-export function detectInlineAgentQuery(value: string, caret: number): string | null {
-  if (caret <= 0 || caret > value.length) return null;
-  let i = caret - 1;
-  while (i >= 0) {
-    const ch = value[i];
-    if (ch === '@') {
-      // No whitespace allowed between `@` and the caret.
-      const head = value.slice(i + 1, caret);
-      if (/\s/.test(head)) return null;
-      return head;
-    }
-    if (/\s/.test(ch ?? '')) return null;
-    i -= 1;
-  }
-  return null;
 }

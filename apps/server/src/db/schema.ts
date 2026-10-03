@@ -138,6 +138,12 @@ export const build = sqliteTable('build', {
   errorMessage: text('errorMessage'),
   prUrl: text('prUrl'),
   prNumber: integer('prNumber'),
+  /** 变更投影（#704 失败方式 5）：非 hosted 形态（github/local）的 conv 分支
+   * diff——真值源 = daemon 步收尾 done.changesDiff（parseUnifiedDiff 解析后
+   * 落此列），readBuildChanges 非 hosted 分支消费。null = 未上报（hosted 形态
+   * 恒 null——真值源是 bare repo；旧 build / 上报失败同形）。空数组 = 已上报
+   * 且零改动（与 null 语义分离，不把「没报」误当「没改」）。 */
+  changes: json<DocumentDiffFile[]>('changes'),
   diffHash: text('diffHash'),
   createdAt: epochMs('createdAt').notNull(),
 });

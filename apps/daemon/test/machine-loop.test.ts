@@ -310,6 +310,14 @@ describe('上线序列 canon（02 §5.4/r3 §1.5）', () => {
     await handle.done;
     expect(lines).toContain('[machine] Shutting down…'); // r3 §1.5 退出行
   });
+
+  test('stop(cause) 退出行带原因后缀（#691：信号名可考）', async () => {
+    const { handle, lines } = await boot({});
+    await waitFor(() => lines.some((l) => l.includes('[wake] push channel connected')));
+    await handle.stop('SIGTERM');
+    await handle.done;
+    expect(lines).toContain('[machine] Shutting down… (SIGTERM)');
+  });
 });
 
 describe('server 迁移诊断（#519 控制面搬家：machine.json 注册时 serverUrl 与现配置不一致）', () => {

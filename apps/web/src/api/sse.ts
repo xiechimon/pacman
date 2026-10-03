@@ -6,9 +6,11 @@
 // new Notification()（无 Web Push）。鉴权开时（#253）两条流以 ?token= 建流
 // （streamUrl，协议例外见 api/auth.ts 头注）；门页开着不建流，放行即重连。
 // 连接看护（重连 resync / 静默看门狗 / 漏事件对账）单缝在 sse-connection.ts，
-// 本文件只负责把事件翻成失效重取，并给出对账面。
+// team 事件的失效键映射单缝在 sse-team-events.ts（#666），本文件负责挂流、
+// 消费映射并承载副作用（桌面通知 / liveTextStore / 透传回调）。
 
 import type { ConversationStepEvent, NotificationRecord, TranscriptRow } from '@pacman/shared';
+import { isChiefConversationId } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { EN } from '../i18n/en.js';
@@ -18,6 +20,7 @@ import { readStoredToken, useAuth } from './auth.js';
 import { liveTextStore } from './live-text.js';
 import { connect } from './sse-connection.js';
 import { streamGuards } from './sse-guards.js';
+import { teamEventInvalidations } from './sse-team-events.js';
 
 /** 鉴权开时 stream URL 附 ?token=（#253）——EventSource 无法设 header 的协议
  *  例外，server 仅对两条 stream 端点收 query token（token-auth.ts 契约）。
@@ -46,44 +49,14 @@ export function useTeamStream(teamId: string | undefined, enabled: boolean): voi
     return connect(
       streamUrl(`/api/teams/${teamId}/stream`),
       (ev) => {
-        switch (ev.type) {
-          case 'todo': {
-            const doc = ev.doc as { id: string };
-            void qc.invalidateQueries({ queryKey: ['todos'] });
-            void qc.invalidateQueries({ queryKey: ['todo', doc.id] });
-            void qc.invalidateQueries({ queryKey: ['schedules'] });
-            break;
-          }
-          case 'build': {
-            const doc = ev.doc as { id: string; todoId: string };
-            void qc.invalidateQueries({ queryKey: ['build', doc.id] });
-            void qc.invalidateQueries({ queryKey: ['steps', doc.id] });
-            void qc.invalidateQueries({ queryKey: ['todos'] });
-            void qc.invalidateQueries({ queryKey: ['todo', doc.todoId] });
-            break;
-          }
-          case 'notification': {
-            const record = ev.notification as NotificationRecord;
-            void qc.invalidateQueries({ queryKey: ['notifications', teamId] });
-            void qc.invalidateQueries({ queryKey: ['chiefThreads', teamId] });
-            void qc.invalidateQueries({ queryKey: ['todos'] });
-            fireDesktopNotification(record);
-            break;
-          }
-          case 'machine_presence':
-            void qc.invalidateQueries({ queryKey: ['machines', teamId] });
-            break;
-          case 'branch_sync': {
-            // M7 #319（08 册附录 B）：分支对话框「同步到机器」结果落账→ team
-            // stream 推回 web，按 buildId 键失效结果卡查询（pending → running
-            // → synced/failed 四态）。事件载荷 = BranchSyncRecord（shared 单源，
-            // `sync` 字段非 `doc`，区别于 todo/build 文档事件 [设计]）。
-            const rec = ev.sync as { buildId: string };
-            void qc.invalidateQueries({ queryKey: ['branchSync', rec.buildId] });
-            break;
-          }
-          default:
-            break; // ping
+        // 事件 → 失效键映射单源 = sse-team-events.ts（纯函数，node 单测
+        // 铺真 wire 形状；#666：todo/build 文档事件带上 ['plans']，方案卡
+        // 与相位 chip 同事件收敛，不再独赌 conv 流活着）。
+        for (const queryKey of teamEventInvalidations(ev, teamId)) {
+          void qc.invalidateQueries({ queryKey });
+        }
+        if (ev.type === 'notification') {
+          fireDesktopNotification(ev.notification as NotificationRecord);
         }
       },
       resync,
@@ -213,6 +186,14 @@ export function useConversationStream(
             // 上传赛跑：message 先到时该轮重取落空，其后无人再失效。step 事件
             // （finishStep 发，恒在 plan 落库后）补一次失效兜住该 race。
             void qc.invalidateQueries({ queryKey: ['plans'] });
+            // #684：chief 会话的步终态（done/failed，含失联超时 sweep）必须
+            // 失效线程列表——activeRun 收口只落 chief_thread 行，成功路径靠
+            // notifyChiefTurn 的 notification 事件兜住，失败路径（#631 起零
+            // 通知）此前无人失效：drawer 的 steer 占位符会一直谎称回合在飞。
+            // 前缀失效（无 teamId 限位）与 ['plans'] 同律——活跃查询至多一个。
+            if (isChiefConversationId(conversationId)) {
+              void qc.invalidateQueries({ queryKey: ['chiefThreads'] });
+            }
             onStep?.((ev as ConversationStepEvent).step);
             break;
           default:

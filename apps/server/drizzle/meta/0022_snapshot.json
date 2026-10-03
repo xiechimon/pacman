@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "56a0a78c-67f8-4ca3-b9a7-6439a49a8c5f",
+  "id": "84f2af78-2221-49e8-9721-fcc7235708c9",
   "prevId": "88cc7b08-2690-495c-b845-275e51d9c5dd",
   "tables": {
     "agent": {
@@ -611,6 +611,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "changes": {
+          "name": "changes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "diffHash": {
           "name": "diffHash",
           "type": "text",
@@ -907,13 +914,6 @@
         "pendingSessionResumeAt": {
           "name": "pendingSessionResumeAt",
           "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "pinnedMachineId": {
-          "name": "pinnedMachineId",
-          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -2292,13 +2292,6 @@
         },
         "sourceRef": {
           "name": "sourceRef",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "machineId": {
-          "name": "machineId",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

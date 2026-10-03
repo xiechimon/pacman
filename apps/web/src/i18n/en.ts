@@ -82,6 +82,11 @@ export const EN: Record<string, string> = {
   '向 Agent 补充说明，执行过程中即可送达':
     'Add details for the Agent — delivered while the run is in progress',
   '请求修改…': 'Request changes…',
+  // #701 审核关口人肉打回（更多菜单入口 + reject 弹层）
+  请求修改: 'Request changes',
+  '需要修改什么？打回后任务回到规划中，按反馈重新出方案。':
+    'What needs to change? The task returns to planning and gets a fresh plan from your feedback.',
+  '打回请求未送出，请重试。': 'The rejection was not sent. Try again.',
 
   // —— relative time (rel-time.ts; compact en forms avoid plural logic) ——
   刚刚: 'just now',
@@ -379,6 +384,9 @@ export const EN: Record<string, string> = {
   // 服务端消息 kind = REVIEW_VERDICT_KIND（shared/message.ts 双端单源），
   // findings 形态 = reviewVerdictSchema（shared/review.ts）。
   审核结论: 'Review conclusion',
+  // #700：verdict 提取失败行——daemon findingsError 原因上浮，审核面以
+  // danger 色 tag 与「审核未返回结论」兜底（旧 daemon 无信号）相区分。
+  判定提取失败: 'Verdict extraction failed',
   '(blocking)': '(blocking)',
   '(suggestion)': '(suggestion)',
   '(info)': '(info)',
@@ -631,6 +639,10 @@ export const EN: Record<string, string> = {
   本地仓库项目暂不支持在线浏览文件:
     'Online file browsing is not available for local repository projects',
 
+  // —— github 项目 Files tab 诚实降级面（#704 / B-C1：文件在 GitHub，外链承接）——
+  'GitHub 仓库项目的文件在 GitHub 上查看': 'Files for GitHub repository projects live on GitHub',
+  '打开 GitHub 仓库': 'Open the GitHub repository',
+
   // —— #403/#445 看板筛选面（仓库 chip 组 + 类型 popover + 空结果态）——
   类型: 'Type',
   没有匹配筛选条件的任务: 'No tasks match the selected filters',
@@ -726,6 +738,11 @@ export const EN: Record<string, string> = {
   总管本轮执行失败: 'The chief turn failed',
   '发送失败，请重试。': 'Send failed. Try again.',
   '恢复失败，请重试。': 'Restore failed. Try again.',
+  // —— #729 附件上传失败面（toast 家族同上；大小/类型拒是本地预检可自救，
+  // 各给专名，其余归通用失败）——
+  '附件超过 10MB 上限': 'Attachment exceeds the 10 MB limit',
+  不支持该文件类型: 'That file type is not supported',
+  附件上传失败: 'Attachment upload failed',
   // —— #640 开始任务单出口（直发总管编排回合；r14 §5.7 前置裁决落地）——
   由总管创建: 'Created by chief',
   来源: 'Source',
@@ -737,4 +754,25 @@ export const EN: Record<string, string> = {
     'The chief plans first, then dispatches each piece to the right agent.',
   查看会话: 'View session',
   未能开始编排: 'Could not start orchestration',
+  // —— #638 全站静默 mutation 失败面接线（toast 标题句；server 原因进
+  // description 透传不译，#631 同律。已有面内 canon 位的面——merge 拒绝行 /
+  // issue 导入内联 / fs-pick 提示行 / OAuth 内联 / 技能弹窗内联——不在此列）——
+  '新建任务失败，请重试。': 'Could not create the task. Try again.',
+  '创建项目失败，请重试。': 'Could not create the project. Try again.',
+  '移动任务失败，请重试。': 'Could not move the task. Try again.',
+  '关闭任务失败，请重试。': 'Could not close the task. Try again.',
+  '删除任务失败，请重试。': 'Could not delete the task. Try again.',
+  '开始运行失败，请重试。': 'Could not start the build. Try again.',
+  '重试失败，请稍后再试。': 'Retry failed. Try again later.',
+  '新建定时失败，请重试。': 'Could not create the schedule. Try again.',
+  '删除定时失败，请重试。': 'Could not delete the schedule. Try again.',
+  '删除项目失败，请重试。': 'Could not delete the project. Try again.',
+  '断开连接失败，请重试。': 'Could not disconnect. Try again.',
+  '添加模型服务失败，请重试。': 'Could not add the provider. Try again.',
+  '添加密钥失败，请重试。': 'Could not add the secret. Try again.',
+  '新建 API 密钥失败，请重试。': 'Could not create the API key. Try again.',
+  '创建 Agent 失败，请重试。': 'Could not create the agent. Try again.',
+  '删除 Agent 失败，请重试。': 'Could not delete the agent. Try again.',
+  '删除记忆失败，请重试。': 'Could not delete the memory. Try again.',
+  '同步失败，请重试。': 'Sync failed. Try again.',
 };

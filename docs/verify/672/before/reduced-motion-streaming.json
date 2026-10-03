@@ -1,0 +1,15 @@
+{
+  "animated": {
+    "animationCount": 0,
+    "animations": [],
+    "reel": {
+      "animationName": "none",
+      "animationDuration": "0s",
+      "animationTimingFunction": "ease",
+      "transform": "none"
+    },
+    "spin": null,
+    "spinDelays": []
+  },
+  "shellBorder": null
+}

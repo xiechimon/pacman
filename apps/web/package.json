@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "e2e": "playwright test",
+    "e2e:affected": "node ../../scripts/e2e-affected.mjs",
     "test": "vitest run",
     "generate:icons": "node ../../scripts/generate-icons.mjs"
   },
@@ -24,6 +25,7 @@
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",
     "diff": "catalog:",
+    "loading-dev": "^0.3.5",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router": "catalog:",

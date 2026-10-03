@@ -17,7 +17,15 @@ import { loadDaemonConfig } from '../../apps/daemon/src/config.js';
 import { createDaemonLogger } from '../../apps/daemon/src/log.js';
 import { type MachineHandle, runMachine } from '../../apps/daemon/src/machine-loop.js';
 import { type StatePaths, statePaths } from '../../apps/daemon/src/state.js';
-import { AGENT_ID, api, bootRealServer, type RealServer, seedWorld, waitFor } from './helpers.js';
+import {
+  AGENT_ID,
+  api,
+  bootRealServer,
+  daemonLogLines,
+  type RealServer,
+  seedWorld,
+  waitFor,
+} from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 let stub: StubLlm;
@@ -27,16 +35,24 @@ let paths: StatePaths;
 let home: string;
 
 function logLines(): string[] {
-  try {
-    return readFileSync(paths.daemonLog, 'utf8').split('\n');
-  } catch {
-    return [];
-  }
+  return daemonLogLines(paths.daemonLog);
 }
 
 beforeAll(async () => {
-  // 门控轮：延迟 8s 的单轮——期间步 claimed、pi 会话在跑，POST steer 窗口。
-  stub = await startStubLlm([{ content: '收到，补上。', delayMs: 8_000 }]);
+  // 门控轮：延迟 8s 的工具轮——期间步 claimed、pi 会话在跑，POST steer 窗口。
+  // #703 产物闸：bash 写 plan.md 让规划步有真产物（纯文本轮过不了闸 1）。
+  stub = await startStubLlm([
+    {
+      toolCall: {
+        name: 'bash',
+        arguments: {
+          command: "printf '# 方案\n\nContext: steer 探针。\nChanges: README 加一行。\n' > plan.md",
+        },
+      },
+      delayMs: 8_000,
+    },
+    { content: '收到，补上。' },
+  ]);
   server = await bootRealServer({ providerBaseUrl: stub.url, claimHoldMs: 1_000 });
   home = mkdtempSync(join(tmpdir(), 'pacman-w3-steer-home-'));
   const config = loadDaemonConfig(

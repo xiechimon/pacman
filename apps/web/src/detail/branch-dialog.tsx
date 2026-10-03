@@ -16,11 +16,12 @@ import type { BranchSyncRecord, BranchSyncStatus, MachineRecord } from '@pacman/
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api/client.js';
-import { useMachines } from '../api/hooks.js';
+import { useBuild, useMachines } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
+import { toastError } from '../components/ui/toaster.js';
 import type { BranchInfoContent } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, Copy } from '../icons/index.js';
@@ -218,6 +219,12 @@ export function BranchDialog({ info, buildId: buildIdProp, open, onClose }: Bran
   const buildId = buildIdProp ?? null;
   const [tab, setTab] = useState<'sync' | 'git'>('sync');
   const sync = useBranchSyncState(info, buildId, open === true);
+  // #704 / B-C16：PR 槽真值 = build 行回填的 prUrl/prNumber（daemon 步收尾
+  // 只读探测上报）。buildId 缺席（fixture 面/live 无 build）或探测失败（null）
+  // = 保持「未创建」诚实态——面板分支名在、PR 槽留空，不造数据。
+  const buildQ = useBuild(buildId, buildId != null);
+  const pr = buildQ.data?.prUrl ?? null;
+  const prNumber = buildQ.data?.prNumber ?? null;
 
   return (
     <DialogShell
@@ -288,7 +295,13 @@ export function BranchDialog({ info, buildId: buildIdProp, open, onClose }: Bran
         <div className="dlg-branch-body">
           <BranchBox info={info} />
           <div className="dlg-form-label">Pull Request</div>
-          <div className="dlg-dir">{t('未创建')}</div>
+          {pr !== null && prNumber != null ? (
+            <a className="dlg-dir dlg-pr-link" href={pr} target="_blank" rel="noopener noreferrer">
+              #{prNumber}
+            </a>
+          ) : (
+            <div className="dlg-dir">{t('未创建')}</div>
+          )}
         </div>
       )}
     </DialogShell>
@@ -399,6 +412,10 @@ export function SyncButton({
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['branchSync', buildId] });
     },
+    // #638（普查账外、验收 grep 命中）：POST 入队被拒（409/5xx/网络）此前
+    // 全静默。ResultCard 的红字是机器异步失败（record.status='failed'）的
+    // 既有 canon 位——与 POST 失败分属两个阶段，不重叠、不双报。
+    onError: (error) => toastError(t('同步失败，请重试。'), error),
   });
   const live = canSync && buildId !== null && machineId !== null;
   return (

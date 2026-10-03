@@ -35,6 +35,8 @@
 
 `board/` / `sidebar` **不在「已从盘面消掉」之列**：实测仍有原语消费点（§5.2），归 `#414 试点片` 收口；`routes/` 八个 tsx 按上述两条边（挂哪个 shell / 直引哪个域 css）拆进 `#414 试点片` / `B2` / `第一片真域`，不单开一批。判定与证据见 §6.2。
 
+**动效批（#656 / ADR 0009，织入 B3/B4，不单开全站波）**：全站进出场动效从 #73 的 motion.css 复刻 registry 收敛到 shadcn / tw-animate-css 默认（方向 B，用户 2026-10-02 拍板；显式撤销 #73 复刻纪律的**动效值面**，几何/配色像素纪律照旧）。机制 = `animate-in` / `animate-out` + Base UI `data-open` / `data-closed` 驱动——popup 自身即面板的（`.dlg` / alert-dialog 壳）用自带 `data-open:`；popup 是包装层、面板为其 fixed/absolute 子级的（FloatingShell 族 / 视口根面）在 popup 挂 `group`、子级面板走 `group-data-open:` / `group-data-closed:`（包装层带 transform 会把 fixed 子级的 containing block 拽走，故动效落子级不落壳）。`useOverlayMount` / `.overlay-mount` / `.anim-*` 手动保活随最后一个消费面退役。14 个消费 tsx 的逐域范围织入 B3/B4——每域结构迁移时顺手收该域动效；首个 PR 落 tw-animate-css 接线（`app.css` 的 `@import`，此前只入依赖未接线，`animate-in` 一族不生成）+ 本条目。验收沿本册 §2 模板 + #656 票 F4 动效断言清单：`anim-fade|anim-pop|anim-drawer|overlay-mount|useOverlayMount` 在 `apps/web/src/**/*.tsx` grep 清零、motion.css 收缩到 D4 保留面（spinner reel / hover-press / 全局 `:active` / reduced-motion 降级律）、D3 三条追认值（dialog `zoom-in-95`、dropdown/popover `duration-100` + slide -8px、挂载淡入归 tw 默认档）原样、保留面契约（segmented pill 150ms ease 逐字、spinner-live duration）全绿、e2e 断言改动 = 0。
+
 ## 2. 每片验收标准模板（#421 决议原文）
 
 1. 该域界面**全切 shadcn 件**（含该域弹层内容族，若有）；

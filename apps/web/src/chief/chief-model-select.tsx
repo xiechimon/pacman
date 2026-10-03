@@ -27,7 +27,7 @@ import {
   toModelRows,
 } from '../components/model-select-core.js';
 import { Button } from '../components/ui/button.js';
-import { FloatingShell } from '../components/ui/floating-shell.js';
+import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown } from '../icons/index.js';
@@ -101,7 +101,11 @@ export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectPro
         className="chief-model-shell"
       >
         <ClickCatcher onClose={() => setOpen(false)} />
-        <div className="chief-model-menu anim-pop" role="listbox" aria-label={t('压缩模型')}>
+        <div
+          className={`chief-model-menu ${FLOATING_POP_ANIM}`}
+          role="listbox"
+          aria-label={t('压缩模型')}
+        >
           {/* 默认行语义 = 继承 Chief(#626 参数化:文案由本面传入)。 */}
           <ModelPickRow
             skin={ROW_SKIN}

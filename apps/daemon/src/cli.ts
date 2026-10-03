@@ -76,11 +76,12 @@ export async function runForeground(opts: StartOptions): Promise<void> {
   const paths = statePaths(config.home, config.workspacesDir);
   const logger = createDaemonLogger({ logFile: paths.daemonLog, stdout: true });
   const handle = await runMachine({ config, paths, logger, idleSleepPrevention: true });
-  const onSignal = () => {
-    void handle.stop();
+  // #691：信号名透传进退出行（SIGTERM/SIGINT 面事后可考）。
+  const onSignal = (signal: string) => {
+    void handle.stop(signal);
   };
-  process.on('SIGTERM', onSignal);
-  process.on('SIGINT', onSignal);
+  process.on('SIGTERM', () => onSignal('SIGTERM'));
+  process.on('SIGINT', () => onSignal('SIGINT'));
   await handle.done;
 }
 

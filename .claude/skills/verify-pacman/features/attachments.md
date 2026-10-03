@@ -25,6 +25,7 @@ Preconditions:
 3. 执行面读取需 daemon + worker 步(attachment 工具在 remoteTools 词表)。
 
 - **跑法。** `node <skill>/scripts/drive-attachments.mjs` 只跑新建任务对话框路径(自足,无需 daemon/seed);`node <skill>/scripts/drive-attachments.mjs <todoId>` 追加 composer 路径(todo 需处于 composer 可编辑相位,seed 走 `setup-review-seed.mjs`)。样本文件写在证据目录里随归档进 PR,便于对照原始字节。
+- **剪贴板粘贴路(#729)。** `node <skill>/scripts/drive-paste.mjs <todoId>`(todoId = `setup-review-seed.mjs` 产出的 confirm 相位任务):canvas 生成 24×24 真 PNG → 合成 ClipboardEvent 粘进 detail composer(caret 行中,断行插入 + caret 落块后行首)→ Enter = revision 发送 → transcript 缩略 chip 像素加载;再走新建任务对话框粘贴 → 保存 → spec 卡片 chip;末了真键盘探针(clipboard-write 权限 + ClipboardItem + Meta+V/Ctrl+V,verdict 记 result.json 不硬断言)。14 checks:wire 捕获(grant 200 / upload 201 / revision 202)+ SQLite 两行(message/spec 两 scope,status=ready)+ 磁盘字节 === 样本 + 读回一致。证据先例 `docs/verify/729/`。注意:粘贴合成名 `pasted-image-<n>` 每 draft 递增——探针的路径 B 必须先于真键盘路跑,否则 counter 被顶号(设计行为,非回归)。
 - **上传路径。** composer/新建任务 → 点 `button[aria-label="添加附件"]` → 文件选择(playwright `setInputFiles`)→ 等上传 → draft/spec 出现 `![名](attachment:...)` token。
 - **真值。** `POST /api/uploads/grant` 返回上传 URL;upload host PUT 200;提交后 message content / todo.spec 含 attachment token;SQLite attachment 表有行(#310 migration 0008);磁盘 `<attachmentsDir>/<storageKey>` 字节等于上传样本;`GET /api/attachments/:id` 读回一致。**未覆盖**:daemon 执行面读附件(worker 步 attachment 工具)——需真 daemon + worker 步,脚本不驱动这一面。
 

@@ -23,6 +23,13 @@ import { mapCommits, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
 import { Button } from '../components/ui/button.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu.js';
 import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { localTodo } from '../fixtures/fixtures.js';
@@ -31,7 +38,6 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import {
   ArrowUpDown,
-  Check,
   ChevronDown,
   FileTab,
   Funnel,
@@ -42,7 +48,6 @@ import {
   Search,
 } from '../icons/index.js';
 import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { GithubIssuesDialog } from './github-issues-dialog.js';
 import { PageShell } from './shell.js';
 import './pages.css';
@@ -221,54 +226,53 @@ const TASK_SORTS: { id: TaskSort; label: string }[] = [
   { id: 'title', label: '标题' },
 ];
 
-/** Anchored selection menu (#67/#127 family law): retained-mount exit via
- *  OverlayMount, transparent ClickCatcher + Escape close, plan-dropdown
- *  row shape (check rides the selected option only); picking an option
- *  both selects and closes. Geometry [设计] — no capture exercises the
- *  toolbar dropdowns. */
+/** 筛选/排序选项组：t-0070 收编到 components/ui/dropdown-menu（Base UI
+ *  Menu RadioGroup）。单选即关走显式 closeOnClick——RadioItem 缺省是
+ *  false（原生菜单 radio 保开语义），本面家族律是 select-and-close
+ *  （#306）；勾形只骑选中项 = RadioItemIndicator 原生律（原「check
+ *  rides the selected option」手搓等价）；roving focus / typeahead /
+ *  Esc / 外点关 / 焦点归还全归原语。行皮肤/几何正本在 per-face
+ *  .prj-tasks-menu-row（28 高/12px 字/透明底——unlayered 恒胜 base 的
+ *  focus:bg-accent，行面无 hover 增亮与收编前一致）；勾色正本
+ *  （indigo-500）钉 per-face 的 indicator 槽选择器；size-auto 中和 base
+ *  强制 size-4，保 Check 14px 属性尺寸（#607 机理）。
+ *  Geometry [设计] — no capture exercises the toolbar dropdowns. */
 function TasksMenu<T extends string>({
-  label,
   options,
   value,
   onSelect,
-  onClose,
 }: {
-  label: string;
   options: { id: T; label: string }[];
   value: T;
   onSelect: (id: T) => void;
-  onClose: () => void;
 }) {
   const { t } = useI18n();
   return (
-    <div className="prj-tasks-menu anim-pop" role="listbox" aria-label={t(label)}>
+    <DropdownMenuRadioGroup value={value} onValueChange={(next) => onSelect(next as T)}>
       {options.map((option) => (
-        <button
+        <DropdownMenuRadioItem
           key={option.id}
-          type="button"
-          className="prj-tasks-menu-row"
-          role="option"
-          aria-selected={option.id === value}
-          onClick={() => {
-            onSelect(option.id);
-            onClose();
-          }}
+          value={option.id}
+          closeOnClick
+          className="prj-tasks-menu-row [&_svg:not([class*='size-'])]:size-auto"
         >
           {t(option.label)}
-          {option.id === value && (
-            <span className="prj-tasks-menu-check">
-              <Check width={14} height={14} />
-            </span>
-          )}
-        </button>
+        </DropdownMenuRadioItem>
       ))}
-    </div>
+    </DropdownMenuRadioGroup>
   );
 }
 
 /** 筛选/排序 trigger + its anchored menu: one component per dropdown so
- *  the open state, the Escape wiring and the relative anchor span travel
- *  together (the chip-popover recipe). */
+ *  the trigger and its popup travel together. 定位正本从 CSS inset 迁到
+ *  Positioner 参数（side=bottom align=start sideOffset=6 = 原
+ *  top:calc(100%+6px) left:0 贴 wrap）；w-auto 中和 base 的
+ *  w-(--anchor-width)——plate 宽正本 = shrink-to-fit ≥ per-face
+ *  min-width，不跟 trigger 宽。trigger 的 aria-haspopup/aria-expanded 与
+ *  toggle 开合归 Trigger/Root（#666 的双写竞态面就此消失）；XMON-25 的
+ *  ghost 收编注释照旧：size-auto 保 Funnel 14 / ChevronDown 12 属性尺寸，
+ *  haspopup 使 base active 位移自动跳过，aria-expanded 底色档被 per-face
+ *  bg 简写（unlayered）压掉 = 零漂移。 */
 function TasksMenuButton<T extends string>({
   icon,
   label,
@@ -283,36 +287,26 @@ function TasksMenuButton<T extends string>({
   onSelect: (id: T) => void;
 }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
-  const close = useCallback(() => setOpen(false), []);
-  useEscapeClose(open, close);
   return (
-    <span className="prj-tasks-menu-wrap">
-      {/* XMON-25 收编：ghost；size-auto 保 Funnel 14 / ChevronDown 12 属性
-          尺寸；haspopup 使 base active 位移自动跳过；aria-expanded 底色档
-          被 per-face bg 简写（unlayered）压掉 = 现行为零漂移。 */}
-      <Button
-        variant="ghost"
-        className="prj-tasks-filter font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-auto"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {icon}
-        {t(label)}
-        <ChevronDown width={12} height={12} />
-      </Button>
-      <OverlayMount open={open}>
-        <ClickCatcher onClose={close} />
-        <TasksMenu
-          label={label}
-          options={options}
-          value={value}
-          onSelect={onSelect}
-          onClose={close}
-        />
-      </OverlayMount>
-    </span>
+    <DropdownMenu>
+      <span className="prj-tasks-menu-wrap">
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              className="prj-tasks-filter font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-auto"
+            />
+          }
+        >
+          {icon}
+          {t(label)}
+          <ChevronDown width={12} height={12} />
+        </DropdownMenuTrigger>
+      </span>
+      <DropdownMenuContent sideOffset={6} aria-label={t(label)} className="prj-tasks-menu w-auto">
+        <TasksMenu options={options} value={value} onSelect={onSelect} />
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -531,8 +525,15 @@ export function ProjectPage() {
   // fixture 面本地新行（board #66 同律）：保存落在客户端集合，页面/侧栏
   // 徽标都吃它；live 面走 mutation + invalidate，不用本地集。
   const [fixtureAdded, setFixtureAdded] = useState<TodoRecord[]>([]);
-  const treeQ = useProjectTree(live ? id : undefined, live ? 'main' : undefined);
+  // wireProject 先行（形态门数据源）；tree 仅 hosted 形态发（#704 / B-C1：
+  // github 形态 tree/file/commits 端点族 hosted-only——404 静默 + console 刷屏
+  // 不可接受，不发无谓请求，文件面走诚实降级 + GitHub 外链）。
   const wireProject = live ? (projectsQ.data ?? []).find((p) => p.id === id) : undefined;
+  const hostedRepo = live && wireProject?.repoKind === 'hosted';
+  const treeQ = useProjectTree(
+    live && hostedRepo ? id : undefined,
+    live && hostedRepo ? 'main' : undefined,
+  );
   // 历史读面惰性：仅 live + 文件 tab + 历史 seg + 托管形态才发（GitHub
   // 接入无本地存储面 = tree/file 同族 404，不发无谓请求）。
   const commitsQ = useProjectCommits(
@@ -604,9 +605,17 @@ export function ProjectPage() {
   // github 形态 + 已连接。未连接 = 入口不渲染且页面不报错不空白（connection
   // 查询失败面容忍，票面验收）；local/hosted/fixture 面零漂移。查询 enabled
   // 收窄到 github 形态项目（页面挂载不空转，useGithubConnection 同律）。
-  const isGithubRepo = live && wireProject?.repoKind === 'github';
-  const ghConnQ = useGithubConnection(isGithubRepo ? teamId : undefined, isGithubRepo);
-  const ghIssuesAvailable = isGithubRepo && ghConnQ.data?.connected === true;
+  const isGithubRepoEntry = live && wireProject?.repoKind === 'github';
+  // github 项目 Files tab 诚实降级（#704 / B-C1）：pacman 不保存该形态的仓库
+  // 文件副本（Multica link-back 只读方向——关联不镜像），文件面 = 说明 + 外链
+  // GitHub；变更与 PR 面走 daemon 上报真值（任务详情 changes / 分支 PR 面板）。
+  // 判据复用 issues 入口同源位（live && repoKind === 'github'）。
+  const githubFilesUrl =
+    isGithubRepoEntry && wireProject?.githubRepo != null
+      ? `https://github.com/${wireProject.githubRepo}`
+      : null;
+  const ghConnQ = useGithubConnection(isGithubRepoEntry ? teamId : undefined, isGithubRepoEntry);
+  const ghIssuesAvailable = isGithubRepoEntry && ghConnQ.data?.connected === true;
   const [issuesOpen, setIssuesOpen] = useState(false);
   const closeIssues = useCallback(() => setIssuesOpen(false), []);
   const onIssueImported = useCallback(
@@ -635,6 +644,20 @@ export function ProjectPage() {
     >
       {tab === 'files' && isLocalRepo ? (
         <div className="prj-files-disabled">{t('本地仓库项目暂不支持在线浏览文件')}</div>
+      ) : tab === 'files' && isGithubRepoEntry ? (
+        <div className="prj-files-disabled">
+          <span>{t('GitHub 仓库项目的文件在 GitHub 上查看')}</span>
+          {githubFilesUrl != null && (
+            <a
+              className="prj-files-github-link"
+              href={githubFilesUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t('打开 GitHub 仓库')}
+            </a>
+          )}
+        </div>
       ) : tab === 'files' ? (
         <div className="prj-files">
           <FilesPane

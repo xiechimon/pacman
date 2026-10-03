@@ -27,9 +27,11 @@ import {
   boardProjectPicker,
   boardR8Overlay,
   boardRepoFilter,
+  boardStress,
   boardTagFilter,
   boardTagFilterEmpty,
   boardWithProbe,
+  chiefAgentChip,
   chiefFabAvatar,
   chiefFabAvatarOverride,
   chiefGated,
@@ -146,6 +148,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #504 看板列滚动：命名场景（无 capture，board-tags 先例）——待开始
       // 12 卡撑出溢出，e2e 钉行高不破视口、列头固定、列表自持滚动。
       'board-overflow': boardOverflow,
+      // #692 看板最坏数据：命名场景（无 capture，board-overflow 先例）——
+      // 超长标题 + 120 卡计数 + 空列，e2e 钉停靠/窄窗/RTL 下列不塌。
+      'board-stress': boardStress,
       // detail (r7 16–17, 23, 26–28, 36, 38)
       '16': detailPlanning,
       '16d': detailConfirm(true),
@@ -180,8 +185,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       'detail-unread': { ...detailPlanning, chiefUnread: 3 },
       // #471 named scenario (no capture, detail-unread precedent): the
       // building surface's quiescent gap — agent not streaming, task not
-      // ended — the transcript's live cue is one spinner reel + the static
-      // 执行中... label row; spinner-live.spec rides it.
+      // ended — the transcript's live cue is one loading indicator (#672:
+      // loading-dev Atom) + the static 执行中... label row;
+      // spinner-live.spec rides it.
       'spinner-quiescent': detailSpinnerQuiescent(),
       // frozen right-pane views (issue #68 captures, re-homed by #366):
       // 30/31/32 sit on the review surface with diff + tool rows expanded,
@@ -331,6 +337,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #650/#651 markdown 面命名场景（无 capture，md-toolout 先例）：定稿
       // robot 行 raw markdown + typing 打字尾行，钉共用解析器进抽屉的渲染形。
       'chief-md': chiefMarkdown,
+      // #741 agent 身份可点进设置命名场景（无 capture，chief-md 先例）：
+      // robot 行身份 chip（头像+名字，带 id 成链）+ 五种提及 scheme 的
+      // 成链/惰性对照 + 详情页 transcript 同场景第二消费面。
+      'chief-agent-chip': chiefAgentChip,
       // #444 FAB 头像命名场景（无 capture，notify-banner 先例）：绑定
       // Agent 的头像骑上各族 FAB；override 变体钉 avatarUrl 覆盖优先。
       'fab-avatar': chiefFabAvatar,

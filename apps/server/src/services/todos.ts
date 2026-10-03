@@ -341,6 +341,16 @@ export function updateTodo(
   if (patch.phase !== undefined && patch.phase !== row.phase) {
     manualPhaseApplied = opts.manualPhase === true && canManualMovePhase(row.phase, patch.phase);
     if (!manualPhaseApplied) assertPhaseTransition(row.phase, patch.phase);
+    // #702：failed→review 是条件边（数据闸在 builds.ts restoreFailedReview，
+    // 唯一放行点 = merge / 审核重跑动作面）。手动 PATCH 漏斗虽经边表放行该边，
+    // 但 raw 改相不带数据闸（半完成 build 会被误放行）——本面拒收，恢复只走
+    // 动作面（#701 同律：闸是 phase 机的一部分，不许客户端直改相位）。
+    if (row.phase === 'failed' && patch.phase === 'review') {
+      throw new HttpError(
+        409,
+        'failed 任务的审核关口恢复由合并/审核重跑动作发起（build 腿已交付时），手动改相不收',
+      );
+    }
     sets.phase = patch.phase;
     sets.phaseAt = nowMs();
   }
@@ -504,7 +514,7 @@ function scheduleSelfIssueCreate(deps: TodoDeps, todoId: string): void {
 async function runSelfIssueCreate(deps: TodoDeps, todoId: string): Promise<TodoRecord | null> {
   const { db, hub, box } = deps;
   const row = getRow(deps, todoId);
-  if (!row || row.sourceKind !== 'github-issue-self' || row.sourceRef !== null) return null;
+  if (row?.sourceKind !== 'github-issue-self' || row.sourceRef !== null) return null;
   if (!box) throw new HttpError(502, 'github writeback unavailable (no secret box)');
   const proj = db
     .select({ repoKind: project.repoKind, githubRepo: project.githubRepo })
@@ -572,7 +582,7 @@ export async function writebackSelfIssueTitle(
   const { db, box } = deps;
   if (!box) return;
   const row = getRow(deps, todoId);
-  if (!row || row.sourceKind !== 'github-issue-self' || row.sourceRef === null) return;
+  if (row?.sourceKind !== 'github-issue-self' || row.sourceRef === null) return;
   const parsed = parseGithubIssueSourceRef(row.sourceRef);
   if (parsed === null) return;
   const token = openGithubToken({ db, box }, row.teamId);

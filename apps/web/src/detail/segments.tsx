@@ -5,8 +5,11 @@
 // mention-picker.css so the chip family stays consistent with the
 // composer overlay.
 
+import { Link } from 'react-router';
+
 import type { DocSegment } from '../fixtures/records.js';
 import '../overlay/mention-picker.css';
+import { AGENTS_HREF } from '../routes/agent-detail-page.js';
 
 interface SegmentsProps {
   segments: DocSegment[];
@@ -15,25 +18,50 @@ interface SegmentsProps {
   codeClassName: string;
 }
 
+/** Mention chip — accent color comes from the entity kind (r9 §2.4 token
+ *  family). The chip class lives in mention-picker.css so the picker overlay
+ *  + transcript chip share one rule. */
+function chipClass(kind: DocSegment['mentionKind']): string {
+  return kind != null ? `mention-chip mention-chip--${kind}` : 'mention-chip';
+}
+
+/** Mention wire kinds whose chip navigates — reference-measured behaviors
+ *  (todos.dev, live-captured): todo click goes to the todo detail (#675),
+ *  agent click routes same-tab to the agent settings page (#741 — the whole
+ *  chip is cursor-pointer, hover changes only the cursor, no popover). A
+ *  router Link (real anchor) keeps keyboard activation, middle-click and
+ *  open-in-new-tab for free. skill/project/machine stay non-clickable spans
+ *  until their own navigation tickets: the reference landing surfaces for
+ *  those three were never captured (project has a pacman route but no
+ *  captured chip behavior; skill/machine have no per-entity route at all).
+ *  No mentionId, no navigation — the chip stays an inert span. */
+function mentionHref(seg: DocSegment): string | null {
+  if (seg.mentionId == null) return null;
+  if (seg.mentionKind === 'todo') return `/app/todo/${seg.mentionId}`;
+  if (seg.mentionKind === 'agent') return `${AGENTS_HREF}/${seg.mentionId}`;
+  return null;
+}
+
+/** One mention segment: navigable kinds render a router Link, the rest an
+ *  inert span — same chip face either way (class family above). */
+function MentionChip({ seg }: { seg: DocSegment }) {
+  const href = mentionHref(seg);
+  const className = chipClass(seg.mentionKind);
+  return href != null ? (
+    <Link className={className} to={href}>
+      {seg.text}
+    </Link>
+  ) : (
+    <span className={className}>{seg.text}</span>
+  );
+}
+
 export function Segments({ segments, codeClassName }: SegmentsProps) {
   return (
     <>
       {segments.map((seg, j) =>
         seg.style === 'mention' ? (
-          // Mention chip — accent color comes from the entity kind
-          // (r9 §2.4 token family). The chip class lives in
-          // mention-picker.css so the picker overlay + transcript
-          // chip share one rule.
-          <span
-            key={j}
-            className={
-              seg.mentionKind != null
-                ? `mention-chip mention-chip--${seg.mentionKind}`
-                : 'mention-chip'
-            }
-          >
-            {seg.text}
-          </span>
+          <MentionChip key={j} seg={seg} />
         ) : seg.style === 'strong' ? (
           // #650: `**bold**` run — a real <strong>, not the old strip-to-
           // plain. Must precede the generic styled-chip branch below

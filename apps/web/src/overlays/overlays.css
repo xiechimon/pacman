@@ -10,26 +10,23 @@
 
 /* #453：scrim 是 DialogShell（`viewportRoot`）的 Backdrop 位——类名经
    `backdropClassName` 入参给，皮肤仍由本规则承载。
-   阶梯归适配层的 zIndex 入参（面传 41 → 背板 40）——**本对的 z 与面传的入参
-   同值，改一处必改两处**：CSS 这对是容器 stacking context 万一退化时面板仍压
-   得住背板的兜底，不是在给第二套真值。 */
+   阶梯归 tokens.css 的 #688 令牌（面吃 --z-modal，适配层背板 = 面板减一 =
+   --z-modal-scrim 同值）：CSS 这对是容器 stacking context 万一退化时面板仍
+   压得住背板的兜底，与适配层入参读同一条阶梯，不存在第二套真值。 */
 .search-scrim {
   position: fixed;
   inset: 0;
   background: var(--overlay-scrim);
-  z-index: 40;
+  z-index: var(--z-modal-scrim);
 }
 
-/* 退场终态由 Base UI 的 [data-ending-style] 驱动（旧
-   `.overlay-mount[data-overlay-state="closed"] .anim-fade` 随 OverlayMount 退役）
-   ——配方同 dialog.css 的 .dlg-shell。 */
-.search-scrim[data-ending-style] {
-  opacity: 0;
-}
+/* #656：背板退场改由 tw-animate-css 自变体承载（search-panel 传
+   data-closed:animate-out fade-out-0），Base UI 经背板自身动画撑住卸载窗，
+   不再需要 [data-ending-style] 的 opacity 终态桥。 */
 
 /* 520×440 centered on the viewport, top 146 (r7 §3.5 family + 05 measure);
-   rides the shell's viewport-root container (z 41, above the scrim — same
-   fallback pairing as .search-scrim above) */
+   rides the shell's viewport-root container (--z-modal, above the scrim —
+   same fallback pairing as .search-scrim above) */
 .search-panel {
   position: fixed;
   top: 146px;
@@ -37,7 +34,7 @@
   width: 520px;
   height: 440px;
   margin-left: -260px;
-  z-index: 41;
+  z-index: var(--z-modal);
   display: flex;
   flex-direction: column;
   background: var(--popover-bg);
@@ -255,7 +252,8 @@
 /* ---- status-chip popover (r7 19/29: 298×193 under the header chip) --- */
 
 /* transparent outside-click layer under the anchored popovers ([推断]
-   dismiss affordance; paints nothing) */
+   dismiss affordance; paints nothing). #688 阶梯 --z-catcher：压全部常驻
+   chrome（--z-docked），被家族 popover（--z-popover）压——外点只关浮层。 */
 .overlay-click-catcher {
   position: fixed;
   inset: 0;
@@ -263,7 +261,7 @@
   padding: 0;
   background: transparent;
   cursor: default;
-  z-index: 29;
+  z-index: var(--z-catcher);
 }
 
 /* anchor for the popover: chip + chevron cluster (popover left = chip
@@ -287,7 +285,7 @@
   border-radius: var(--edge-radius);
   box-shadow: var(--fab-shadow);
   overflow: hidden;
-  z-index: 30;
+  z-index: var(--z-popover);
   text-align: left;
 }
 
@@ -424,7 +422,7 @@
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
-  z-index: 30;
+  z-index: var(--z-popover);
 }
 
 .plan-dropdown-row {

@@ -25,7 +25,9 @@ import {
   AGENT_TOOL_MERGE,
   AGENT_TOOL_PUSH,
   buildTaskPromptText,
+  CHANGES_DIFF_MAX_BYTES,
   CONTINUE_PROMPTS,
+  composeTaskPromptWithInstruction,
   FIXED_TAGS,
   isBackendRuntimeId,
   LOCAL_TOOL_CREATE_TAG,
@@ -41,6 +43,7 @@ import {
 import { SessionNotResumableError } from './backend/errors.js';
 import { notInConfigLine, resolveMcpEndpoints } from './backend/mcp-config.js';
 import { clearCredentials, pushCredential } from './credentials.js';
+import { githubRepoRefOf, probeGithubPr } from './github-probe.js';
 import { type StepJournal, TranscriptBuffer } from './journal.js';
 import type { DaemonLogger } from './log.js';
 import type { MachineApi } from './machine-client.js';
@@ -92,17 +95,89 @@ export interface RunStepOptions {
   resume?: { sessionId: string | null; prompt: string | null };
   /** 已认领的运行数（canon 行 `(n running)` 的 n）。 */
   running?: number;
+  /** 零进展 auto_retry 预算覆盖（#708 测试注入；缺省 = RETRY_STORM_MAX）。 */
+  retryStormMax?: number;
+  /** 流超时三臂覆盖（测试注入毫秒级；缺省 = 02 §5.6 r3 三值）。 */
+  streamTimeouts?: { first: number; idle: number; body: number };
+  /** 步级流时长上界覆盖（测试注入；缺省 = env PACMAN_STREAM_DURATION_CAP_MS
+   * 或 STREAM_DURATION_CAP_DEFAULT_MS）。 */
+  streamDurationCapMs?: number;
+}
+
+/** auto_retry 有界生命周期预算（#708 失败方式 2）：连续零进展 auto_retry 的
+ * 允许上限。默认 3 = pi 自身单错重试预算（settings-manager maxRetries ?? 3）
+ * ——预算内的重试归 pi 自己收（连接错 1→2→3 退场形不惊动本护栏）；超过它
+ * 还在同一错误上空转 = 预算被某种机制重置的病态（#519 run4/6 实测 ~40 发/
+ * 10min 同形重试），由 runner 从外部掐断：停会话、根因直报、failed 收尾。
+ * 每轮发数钉死 = 1 + RETRY_STORM_MAX（首轮 + 预算内重试）。 */
+export const RETRY_STORM_MAX = 3;
+
+/** 超时收尸文案与根因组合（#708 失败方式 1）：终态错误优先级 = 真实终态
+ * 错误 > 超时文案；两者并存时组合成文（票面例「stream timeout；根因: 400 …」），
+ * 不静默丢根因。根因只认结构化错误面（pi 错误对象消息——失败方式 4，不做
+ * 字符串猜测）。纯函数；#699 的分臂文案（streamTimeoutMessage）产出后经
+ * 本函数与根因组合，两票在同一收尾点汇流。 */
+export function combineTimeoutWithRootCause(timeoutText: string, rootCause: string | null): string {
+  return rootCause !== null ? `${timeoutText}；根因: ${rootCause}` : timeoutText;
+}
+
+/** 步级流时长绝对上界默认值（#699 失败方式 3）：body 臂改事件重置后，步
+ * 总时长的唯一不事件化护栏——兜住「日志噪声 / 费用失控」的完全无上界步。
+ * 3600s = 真实任务常态（>9 分钟的规划/审核步）之上、费用失控之下。 */
+export const STREAM_DURATION_CAP_DEFAULT_MS = 3_600_000;
+
+/** 上界 env 旋钮（#699：可配绝对上界）；非法/非正值回落默认值——0 不是
+ * 「拆墙」出口，墙保持是墙。 */
+export const STREAM_DURATION_CAP_ENV = 'PACMAN_STREAM_DURATION_CAP_MS';
+
+function envDurationCapMs(env: NodeJS.ProcessEnv): number | null {
+  const raw = env[STREAM_DURATION_CAP_ENV];
+  if (raw === undefined) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+/** 流超时触发臂（#699 失败方式 4）：first = 首事件期限、idle = 事件间空闲、
+ * body = 流 body 预算、duration = 步级绝对上界。 */
+export type StreamTimeoutArm = 'first' | 'idle' | 'body' | 'duration';
+
+/** 超时收尾文案（#699 失败方式 4）：指名触发臂与各自数值——build.errorMessage
+ * 携带本文案，相位面看到的是真凶，不是笼统的 stream timeout。 */
+export function streamTimeoutMessage(
+  arm: StreamTimeoutArm,
+  timeouts: { first: number; idle: number; body: number; durationCap: number },
+): string {
+  const value =
+    arm === 'first'
+      ? timeouts.first
+      : arm === 'idle'
+        ? timeouts.idle
+        : arm === 'body'
+          ? timeouts.body
+          : timeouts.durationCap;
+  const label = arm === 'duration' ? 'cap' : arm;
+  return `stream timeout (arm=${arm}, ${label}=${value}ms)`;
 }
 
 /** 任务文本（M3a 骨架 [设计]：title + spec 原文，文本单源 = shared
  * buildTaskPromptText——web transcript 过滤侧按同一合成式识别本行，#612；
  * plan.md 产出/git 面归 M3b，驳回 feedback / 合并指令等续轮 prompt 由调用方
  * 经 resume.prompt 传入）。chief 步无 todo → 用 server 合成的 instruction
- * （用户消息/wake 事实）。 */
+ * （用户消息/wake 事实）。#720：new session + instruction 在位（失败重启轮，
+ * claim 载荷透出 step.prompt）→ 组合串投递（任务文本 + 指令，形状单源 =
+ * shared composeTaskPromptWithInstruction，裁决正本 = issue #720 裁决评论）
+ * ——此前 instruction 只落 DB 行给 UI 看，用户填的返工理由 agent 从来看不到。
+ * 指令缺席或空白 = 纯任务文本（现行行为，负例：不注入空指令）；投递机制沿
+ * #703/#719 的形状（instruction 在位即投递），不为 new session 造第二套。 */
 export function buildTaskPrompt(claimed: ClaimedStep): string {
   const todo = claimed.todo;
   if (!todo) return claimed.instruction ?? '';
-  return buildTaskPromptText(todo.title, todo.spec);
+  const taskText = buildTaskPromptText(todo.title, todo.spec);
+  // 缺席归一（zod optional：无该字段 = undefined ≠ null）。
+  const instruction = claimed.instruction ?? null;
+  return instruction !== null && instruction.trim() !== ''
+    ? composeTaskPromptWithInstruction(taskText, instruction)
+    : taskText;
 }
 
 // continue session 续轮指令 = shared CONTINUE_PROMPTS 单源（#612 起 web
@@ -183,7 +258,9 @@ export function composeWorkerSystemPrompt(
 }
 
 /** hasChanges 判定 [推断骨架]（02 §4.1/r5 §8 列位双键；git diff 面归 M3b，
- * 当前 = transcript 含写类工具行）。 */
+ * 当前 = transcript 含写类工具行）。匹配大小写归一：pi 工具名 edit/write/bash、
+ * claude-code 后端透传 SDK 原名 Edit/Write/Bash（#703 闸 2 真值面——不归一会
+ * 把 claude-code 无 repo 步的改动判成零）。 */
 const CHANGE_TOOLS = new Set(['edit', 'write', 'bash']);
 
 /** live transcript 文本增量转发节流窗口 [设计]（M5 live streaming；官方节奏
@@ -241,7 +318,11 @@ export async function runStep(
     (isChief || isReview
       ? (claimed.instruction ?? '')
       : claimed.session.action === 'continue' && claimed.session.sessionId
-        ? CONTINUE_PROMPTS[claimed.step.kind]
+        ? // #703 续轮指令投递：claim 载荷 instruction 在位（补写轮 #113 /
+          // 驳回重规划 r5 §4 / 失败重启反馈）→ 真的进会话——此前一律发
+          // CONTINUE_PROMPTS 占位句，补写轮拿不到「写 plan.md」指令（B-C10
+          // 两轮全空同源）。缺省回落词表（合并轮/确认后执行轮等无指令续轮）。
+          (claimed.instruction ?? CONTINUE_PROMPTS[claimed.step.kind])
         : buildTaskPrompt(claimed));
 
   // journal：claimed（recover 面即时落盘，02 §5.4）。
@@ -527,32 +608,58 @@ export async function runStep(
   let sawDone = false;
   // 零进展判定（#654 回落护栏）：模型输出事件（text_delta / assistant
   // message_end / toolcall_end）在位 = 有进展——重放会重复执行工具与重复
-  // 落 transcript 行，只允许零进展轮回落重试。
+  // 落 transcript 行，只允许零进展轮回落重试。错误终局行（message_end 携
+  // stopReason=error，pi 结构化错误面）不算进展（#708）：否则真 400 的
+  // message_end 先行落 transcript 就把回落闸永久闭死。
   let sawProgress = false;
-  // 流超时护栏（02 §5.6 r3 bundle 原文三值全用）：首事件 streamFirstEvent、
-  // 事件间空闲 streamIdle、流 body 总时长 streamBodyTimeout；超时 = 中断会话
-  // 并按 failed 收尾。
+  // auto_retry 有界生命周期（#708 失败方式 2）：连续零进展 auto_retry 计数
+  // （进展事件清零）；超过预算 → 掐断会话（病态空转不再打外部 API）。
+  let zeroProgressRetries = 0;
+  let retryStorm = false;
+  const retryStormMax = opts.retryStormMax ?? RETRY_STORM_MAX;
+  // 流超时护栏（02 §5.6 三值 + #699 语义修订）：三臂全部「事件到达即重置」
+  // ——first = 首事件期限、idle = 事件间空闲、body = 流 body 预算（#654 先
+  // 把重置粒度从步推进到轮，#699 推进到事件，对齐 pi 在树参考实现的
+  // first/idle 事件重置语义）。事件重置救的是活跃流（失败方式 1）；真死流
+  // 由 idle 臂收（失败方式 2），步级总时长由不事件化的 duration cap 收
+  // （失败方式 3）。超时 = 中断会话并按 failed 收尾，文案指名触发臂与数值
+  // （失败方式 4）。
+  const streamTimeouts = {
+    first: opts.streamTimeouts?.first ?? STREAM_TIMEOUTS_MS.streamFirstEvent,
+    idle: opts.streamTimeouts?.idle ?? STREAM_TIMEOUTS_MS.streamIdle,
+    body: opts.streamTimeouts?.body ?? STREAM_TIMEOUTS_MS.streamBodyTimeout,
+  };
+  const streamDurationCapMs =
+    opts.streamDurationCapMs ?? envDurationCapMs(process.env) ?? STREAM_DURATION_CAP_DEFAULT_MS;
   let timedOut = false;
+  let timeoutArm: StreamTimeoutArm | null = null;
   let watchdog: NodeJS.Timeout | null = null;
   let bodyTimeout: NodeJS.Timeout | null = null;
-  const armWatchdog = (ms: number) => {
+  let durationCap: NodeJS.Timeout | null = null;
+  const tripTimeout = (arm: StreamTimeoutArm) => {
+    timedOut = true;
+    timeoutArm = arm;
+    void handle.stop();
+  };
+  const armWatchdog = (ms: number, arm: 'first' | 'idle') => {
     if (watchdog) clearTimeout(watchdog);
-    watchdog = setTimeout(() => {
-      timedOut = true;
-      void handle.stop();
-    }, ms);
+    watchdog = setTimeout(() => tripTimeout(arm), ms);
     watchdog.unref?.();
   };
-  // body 总时长护栏按轮独立装设（#654）：回落轮重置预算——零进展轮烧掉的
-  // 全是同形重试空转，不重置会把回落轮直接饿死在墙下。最坏单步 = 两倍
-  // streamBodyTimeout（仅「超时 + 签名命中 + 可翻」的罕见复合可达）。
+  // body 总时长护栏（#654 按轮独立装设 + #699 事件到达即重置）：回落轮重置
+  // 预算、每个流事件再重置——零进展轮烧掉的同形重试空转不饿死回落轮，活跃
+  // 长步不死于固定墙。事件重置下安静流先撞更紧的 idle 预算，body 仍独立指名
+  // 在案（数值独立可配；将来 idle 重置面收窄时它仍是兜底）。
   const armBodyTimeout = () => {
     if (bodyTimeout) clearTimeout(bodyTimeout);
-    bodyTimeout = setTimeout(() => {
-      timedOut = true;
-      void handle.stop();
-    }, STREAM_TIMEOUTS_MS.streamBodyTimeout);
+    bodyTimeout = setTimeout(() => tripTimeout('body'), streamTimeouts.body);
     bodyTimeout.unref?.();
+  };
+  // 步级绝对上界（#699 失败方式 3）：不随事件重置、不随回落轮重置（单步一
+  // 份预算）；超界即收——「事件流活跃但完全无上界」的日志/费用失控墙。
+  const armDurationCap = () => {
+    durationCap = setTimeout(() => tripTimeout('duration'), streamDurationCapMs);
+    durationCap.unref?.();
   };
   // live transcript 文本增量转发（M5 live streaming）：pi text_delta 按
   // TRANSCRIPT_DELTA_FLUSH_MS 窗口聚合批量 POST（tool/{stepId} 第三形
@@ -594,12 +701,15 @@ export async function runStep(
   for (let pass = 0; ; pass++) {
     if (pass > 0) {
       // 回落轮状态复位（零进展护栏保证 messageSeq/sawChangeTool/增量缓冲在
-      // 第一轮本就未动）。
+      // 第一轮本就未动）。duration cap 不在此复位——它是步级预算（#699）。
       lastError = null;
       lastModelError = null;
       sawDone = false;
       sawProgress = false;
       timedOut = false;
+      timeoutArm = null;
+      zeroProgressRetries = 0;
+      retryStorm = false;
       usage = [];
     }
     try {
@@ -616,14 +726,18 @@ export async function runStep(
     journal.update(stepId, { state: 'running', sessionId: handle.sessionId });
     // steer 投递面注册（W3 #279）：在跑期间 deliverSteer 可达；各收尾路径注销。
     deps.sessionHandles?.set(stepId, handle);
-    armWatchdog(STREAM_TIMEOUTS_MS.streamFirstEvent);
+    armWatchdog(streamTimeouts.first, 'first');
     armBodyTimeout();
+    if (pass === 0) armDurationCap();
     try {
       for await (const ev of handle.events) {
-        armWatchdog(STREAM_TIMEOUTS_MS.streamIdle);
+        armWatchdog(streamTimeouts.idle, 'idle');
+        // body 预算与 idle 同拍按事件重置（#699 失败方式 1 的核心）。
+        armBodyTimeout();
         switch (ev.type) {
           case 'text_delta': {
             sawProgress = true;
+            zeroProgressRetries = 0;
             deltaBuf += ev.text;
             if (deltaTimer === null) {
               deltaTimer = setTimeout(flushDeltas, TRANSCRIPT_DELTA_FLUSH_MS);
@@ -633,7 +747,10 @@ export async function runStep(
           }
           case 'toolcall_end': {
             sawProgress = true;
-            if (ev.call.name && CHANGE_TOOLS.has(ev.call.name)) sawChangeTool = true;
+            zeroProgressRetries = 0;
+            if (ev.call.name && CHANGE_TOOLS.has(ev.call.name.toLowerCase())) {
+              sawChangeTool = true;
+            }
             transcript.upsert({
               id: ev.call.id,
               role: 'assistant',
@@ -659,7 +776,15 @@ export async function runStep(
           case 'message_end': {
             // user 行不重复落（任务文本行 user-<stepId> 已在缓冲；pi 回声同文）。
             if (ev.message.role === 'user') break;
-            sawProgress = true;
+            // 进展 = 模型输出行（#654 语义「assistant message_end」原义）：
+            // 仅 assistant 非错误终局行计数。system 行（pi 会话开面的
+            // system prompt 回声，每会话必发）不是模型输出——计入进展会把
+            // #654 零进展回落闸在真流上永久闭死（#708 verify 栈实测坐实）；
+            // 错误终局行（stopReason=error，pi 的 400 形）同理不是进展。
+            if (ev.message.role === 'assistant' && ev.message.stopReason !== 'error') {
+              sawProgress = true;
+              zeroProgressRetries = 0;
+            }
             messageSeq += 1;
             transcript.upsert({
               id: `msg-${stepId}-${messageSeq}`,
@@ -676,6 +801,17 @@ export async function runStep(
             break;
           case 'auto_retry_start':
             lastError = null; // pi 流级自动重试吸收前错（02 §4.2）
+            // 有界生命周期（#708 失败方式 2）：连续零进展重试超预算 = 病态空转
+            // （pi 预算被某种机制重置、同形错误无限重发打外部 API）→ 掐断会话；
+            // 收尾按 failed 根因直报（回落闸在下轮判据仍可用）。
+            zeroProgressRetries += 1;
+            if (zeroProgressRetries > retryStormMax) {
+              retryStorm = true;
+              logger.step(
+                `retry storm: ${zeroProgressRetries} consecutive zero-progress auto-retries (max ${retryStormMax}) — stopping session`,
+              );
+              void handle.stop();
+            }
             logger.step(`auto_retry_start attempt=${ev.attempt}`);
             break;
           case 'compaction_start':
@@ -693,18 +829,27 @@ export async function runStep(
       clearInterval(heartbeat);
       if (watchdog) clearTimeout(watchdog);
       if (bodyTimeout) clearTimeout(bodyTimeout);
+      if (durationCap) clearTimeout(durationCap);
       flushDeltas();
       clearCredentials(creds);
       await failStep(deps, stepId, err instanceof Error ? err.message : String(err));
       return;
     }
     // —— #654 回落闸（判据取轮内原值，先于下方超时文案覆盖 lastError）：
-    // 零进展 + 终局失败（或超时收尸但底层模型错误在位）+ 签名命中且旋钮
-    // 可翻 → 翻旋钮重开一轮。停止钮经 handle.stop() 收尾不带 error，天然
-    // 不进此闸。——
-    if (pass === 0 && !sawProgress && !sawDone) {
+    // 零进展 + 终局失败（超时收尸 / storm 掐断但底层模型错误在位 / 终局
+    // error 行）+ 签名命中且旋钮可翻 → 翻旋钮重开一轮。停止钮经
+    // handle.stop() 收尾不带 error，天然不进此闸。
+    // #708：不看 sawDone——真 pi 失败流必以 done 收尾（agent_end
+    // willRetry=false → done 映射；#654 脚本流只喂 error 漏测此点，真 400
+    // 会被 sawDone 闭死闸门）；sawProgress 已排除错误终局行（见事件分支）。——
+    if (pass === 0 && !sawProgress) {
       const failureText = lastModelError ?? lastError;
-      if (failureText !== null && (lastError !== null || (timedOut && lastModelError !== null))) {
+      if (
+        failureText !== null &&
+        (lastError !== null ||
+          (timedOut && lastModelError !== null) ||
+          (retryStorm && lastModelError !== null))
+      ) {
         const amended: ProviderConfig | null =
           backend.adaptProviderCompat?.(provider, failureText) ?? null;
         if (amended !== null) {
@@ -726,15 +871,46 @@ export async function runStep(
   clearInterval(heartbeat);
   if (watchdog) clearTimeout(watchdog);
   if (bodyTimeout) clearTimeout(bodyTimeout);
-  if (timedOut)
-    lastError = `stream timeout (first=${STREAM_TIMEOUTS_MS.streamFirstEvent}ms idle=${STREAM_TIMEOUTS_MS.streamIdle}ms)`;
-
+  if (durationCap) clearTimeout(durationCap);
+  // —— #708 失败方式 1：终态错误优先级 = 真实终态错误 > 超时收尸文案。
+  // 超时收尸与底层错误并存（storm 场景：auto_retry 吸收前错、lastError 被
+  // 清）时组合成文（「stream timeout …；根因: 400 …」），不静默丢根因；
+  // 根因取结构化错误面（error 事件携带的 pi 错误对象消息——失败方式 4）。
+  if (timedOut && timeoutArm !== null) {
+    lastError = combineTimeoutWithRootCause(
+      streamTimeoutMessage(timeoutArm, {
+        ...streamTimeouts,
+        durationCap: streamDurationCapMs,
+      }),
+      lastError ?? lastModelError,
+    );
+  } else if (retryStorm && lastError === null && lastModelError !== null) {
+    // storm 掐断收尾（失败方式 2 立即可见失败）：根因直报，不被超时文案
+    // 覆盖也不等墙。pi 自身预算退场（连接错 1→2→3 形）不走此臂——终局
+    // error 行已在 lastError。
+    lastError = lastModelError;
+  }
   // —— 停止钮中断判定（M7 #308）：旗标 = machine-loop deliverStop 拉取-确认
-  // 后置位；sawDone 优先 = stop 与自然完成竞态归完成（success 不改判）。——
+  // 后置位；sawDone 优先 = stop 与自然完成竞态归完成（success 不改判）。
+  // 判定先于 #698 no-op 闸：停止中断的事件流也是零事件零终局形态，闸不得
+  // 给 stopped 收尾挂 no-op 错误文案。——
   const stopReq = deps.stopRequests?.get(stepId);
   if (stopReq !== undefined) deps.stopRequests?.delete(stepId);
   const stopped = stopReq !== undefined && !sawDone;
   if (stopReq !== undefined && sawDone) logger.step('stop arrived after completion — ignored');
+  // —— #698 静默 no-op 闸：零进展 + 零错误 + 无 done 的轮 = 会话面空转收尾
+  // （backend 事件流自然耗尽而无终局——claude-code pump 生成器耗尽形：终局
+  // 事件缺席时直接 queue.end()）。按 failed 收尾并点名形态：零进展轮不可能
+  // 是合法完成（任何模型产出都算进展），原先按 success 吞掉 = 「界面已开工、
+  // 实际什么都没发生、无任何错误面」的静默 no-op。timedOut / stopped 各有
+  // 更具体的收尾语义（超时看门狗文案 / stopped 状态），不进本闸；sawDone
+  // 在位 = 会话自报自然完成，归完成语义不动。user-role 回声（输入侧
+  // message_end）不算进展——事件面非空不构成「会话真跑过」。
+  if (!timedOut && !stopped && !sawProgress && !sawDone && lastError === null) {
+    lastError =
+      'agent session ended with zero progress and no terminal outcome (silent no-op round)';
+    logger.step('zero-event round: session stream exhausted without progress, done, or error');
+  }
   // abort 吞掉终局 done 事件（backend/pi.ts stopping 位——停止钮与流超时
   // watchdog 共用 handle.stop()）→ usage 从 handle 累计面兜底（逐消息累积，
   // token 记账不因中断丢失）。
@@ -859,6 +1035,45 @@ export async function runStep(
   if (!stopped && lastError !== null) logger.step(`step failed: ${lastError}`);
   journal.update(stepId, { state: 'awaiting-upload' });
 
+  // —— 交付面只读探测 + 上报（#704 / B-C16）：github 形态步收尾时查 conv 分支
+  // 上的 PR（agent 用机器 gh 开的 PR 在服务端本不可见——Multica link-back 同
+  // 方向：只读发现，不代操作）；非 hosted 形态步收尾上报 conv 分支真 diff
+  // （服务端无该形态的本地存储，投影真值源 = 本上报）。两者都只在成功、
+  // 非停止、非只读（review）步算——失败/中断步不产交付面事实；探测/计算失败
+  // = 缺席（面板分支名在、PR 槽留空，不失败不重试——失败方式 ④）。——
+  let prProbe: { number: number; url: string } | null = null;
+  let changesDiff: string | null = null;
+  if (ws !== null && repo !== null && lastError === null && !stopped && !isReview) {
+    const ghRef = repo.kind === 'github' ? githubRepoRefOf(repo.cloneUrl) : null;
+    if (ghRef !== null) {
+      prProbe = await probeGithubPr({
+        owner: ghRef.owner,
+        repo: ghRef.repo,
+        branch: ws.branch,
+        // per-step token（github_connection 下发时）；未连接 = null → 匿名梯
+        // （公开仓可达）。机器 gh 梯在前——agent 开 PR 用的就是它。
+        token: creds.git?.password ?? null,
+      }).catch((err: unknown) => {
+        logger.step(
+          `pr probe failed: ${err instanceof Error ? err.message : String(err)} (panel will show branch without PR)`,
+        );
+        return null;
+      });
+      if (prProbe !== null) logger.step(`pr probe: #${prProbe.number} for ${ws.branch}`);
+    }
+    if (repo.kind !== 'hosted' && deps.workspace?.diffAgainstDefault) {
+      const diff = await deps.workspace.diffAgainstDefault(ws.cwd, ws.defaultBranch);
+      // 上限闸（server 侧同闸）：超限缺席——投影回落空集，PR 面板 GitHub
+      // 链接兜底；不带半截假象。
+      changesDiff = diff.length <= CHANGES_DIFF_MAX_BYTES ? diff : null;
+      if (changesDiff === null && diff.length > 0) {
+        logger.step(
+          `changes diff ${diff.length}B over ${CHANGES_DIFF_MAX_BYTES}B cap — projection falls back to empty`,
+        );
+      }
+    }
+  }
+
   // upload-urls → transcript 终稿 + plan.md 产物回传落库（02 §1.3 数据所有权；
   // plan 即文件、版本 = 文件版本——规划步收尾上传当前版，02 §4.2/r5 §4）。
   try {
@@ -867,11 +1082,17 @@ export async function runStep(
       { name: 'transcript.json', size: JSON.stringify(messages).length },
     ];
     let planContent: string | null = null;
-    if (ws !== null && claimed.step.kind === 'plan' && !stopped) {
-      const planPath = join(ws.cwd, PLAN_FILE_NAME);
+    if (claimed.step.kind === 'plan' && !stopped) {
+      // #703 闸 1 真值面：产物契约不随 repo 形态变化——cwd = worktree 检出或
+      // 无 repo 裸任务目录（此前仅 worktree 收集，无 repo withPlan 恒无方案，
+      // 闸会把它们全拦死）。空白文件不算产物（空方案 = 无方案）。
+      const planPath = join(cwd, PLAN_FILE_NAME);
       if (existsSync(planPath)) {
-        planContent = readFileSync(planPath, 'utf8');
-        files.push({ name: PLAN_FILE_NAME, size: planContent.length });
+        const content = readFileSync(planPath, 'utf8');
+        if (content.trim() !== '') {
+          planContent = content;
+          files.push({ name: PLAN_FILE_NAME, size: content.length });
+        }
       }
     }
     const { uploads } = await client.uploadUrls(stepId, files);
@@ -892,10 +1113,12 @@ export async function runStep(
   }
 
   try {
-    // AI 审核步 findings（M7 #330，r8 §3.1）：仅 review 步携带——其它步类
-    // 无该输出契约，强制 null 避免假阳。解析失败 = 不携带（server 侧 verdict
-    // 兜底「审核未返回结论」+ 不触发修订）。
-    const findings =
+    // AI 审核步 findings（M7 #330，r8 §3.1；#700）：仅 review 步提取——其它
+    // 步类无该输出契约，不提取避免假阳。提取成功 → findings；提取失败 →
+    // findingsError 携带原因（server 侧 verdict 消息区分「判定提取失败」与
+    // 旧 daemon 无信号的「审核未返回结论」兜底）；两态均无 blocking 可判、
+    // 均不触发修订。
+    const reviewExtraction =
       claimed.step.kind === 'review' ? extractReviewVerdict(transcript.messages()) : null;
     await client.done(stepId, {
       status,
@@ -906,7 +1129,12 @@ export async function runStep(
       // per-step checkpoint（done 回传 commit：「恢复到此处」数据源 + 合并步
       // fast-forward 落地键，r3 §3.5/§3.9 [设计]）。
       ...(headCommit !== null ? { commit: headCommit } : {}),
-      ...(findings !== null ? { findings } : {}),
+      ...(reviewExtraction?.status === 'ok' ? { findings: reviewExtraction.verdict } : {}),
+      ...(reviewExtraction?.status === 'failed' ? { findingsError: reviewExtraction.reason } : {}),
+      // 交付面回填（#704）：探测命中才带（无 PR / 失败 = 缺席）；diff 上报
+      // 恒带算得值（含空串——「已上报且零改动」与「未上报」在 server 侧分列）。
+      ...(prProbe !== null ? { prUrl: prProbe.url, prNumber: prProbe.number } : {}),
+      ...(changesDiff !== null ? { changesDiff } : {}),
     });
   } catch (err) {
     logger.step(`done report failed: ${err instanceof Error ? err.message : String(err)}`);

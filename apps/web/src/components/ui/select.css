@@ -18,14 +18,27 @@
   white-space: nowrap;
 }
 
-/* z 30 压 ClickCatcher 的 29（见 overlays/dismiss.tsx）；缺了这条，透明全屏
-   catcher 会吃掉菜单行的点击。绝对定位相对触发钮的 wrap（FloatingShell 的
-   container 挂回 wrap，containing block 不变）。 */
+/* #656 退场 visibility 桥（more-menu / mention-picker / chief-model 壳同款）：
+   面板退场改由 group-data-closed:animate-out 承载，但 Base UI 只在 Popup 本体有
+   进行中动画时才延迟卸载（getAnimations 不看子树），故壳挂一条零视觉的
+   visibility 延迟过渡撑住卸载窗（--dur-fast ≥ 面板 duration-100）。各 prefix 共用
+   本类（select.tsx 的 FloatingShell className 叠 ui-select-shell）。 */
+.ui-select-shell {
+  transition: visibility 0s linear var(--dur-fast);
+}
+
+.ui-select-shell[data-ending-style] {
+  visibility: hidden;
+}
+
+/* #688 阶梯 --z-popover 压 --z-catcher 的 29（见 overlays/dismiss.tsx）；
+   缺了这条，透明全屏 catcher 会吃掉菜单行的点击。绝对定位相对触发钮的
+   wrap（FloatingShell 的 container 挂回 wrap，containing block 不变）。 */
 .ui-select-menu {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  z-index: 30;
+  z-index: var(--z-popover);
   background: var(--popover-bg, var(--surface));
   border: 1px solid var(--border-default);
   border-radius: var(--radius-popover, 10px);

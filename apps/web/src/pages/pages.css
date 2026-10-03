@@ -339,7 +339,7 @@
 }
 
 /* A4-deep 收编：24×24 per-face 几何。XMON-25 收编：老 ui/Button icon 变体
-   的皮肤下沉 per-face（button.css .btn/.btn--icon 正典值：无边框/透明底/
+   的皮肤下沉 per-face（老 .btn/.btn--icon 正典值：无边框/透明底/
    tertiary 字/hover 提亮 secondary/pointer 光标）——unlayered 恒胜 ghost
    变体的 hover 底色档。 */
 .sched-card-more {
@@ -359,16 +359,16 @@
 
 /* #306: per-card 更多 menu — anchored under the kebab, right-aligned,
    lang-dropdown family form [设计] (popover bg, radius 10, 12px rows);
-   danger row inks the icon like more-menu's delete row. */
+   danger row inks the icon like more-menu's delete row.
+   t-0070: 面收编 components/ui/dropdown-menu（Base UI Menu）——定位正本迁
+   Positioner 参数（side=bottom align=end sideOffset=4，锚 = kebab trigger），
+   本规则只留皮肤/尺寸；层叠归 Positioner 的 z-50 isolate。 */
 .sched-more-wrap {
   position: relative;
   display: flex;
 }
 
 .sched-card-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
   width: 160px;
   padding: 4px;
   display: flex;
@@ -376,7 +376,6 @@
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
-  z-index: 30;
 }
 
 .sched-card-menu-row {
@@ -405,15 +404,25 @@
   color: var(--stop);
 }
 
+/* t-0070: 菜单行是 div[role=menuitem]（Base UI Item 渲染元素），不在 #388
+   全局环的 :where(button, a, [role="button"], …) 名单里，且原语 base 带
+   outline-hidden——键盘 roving focus 的可见环按 #388 同配方 per-face 补钉。 */
+.sched-card-menu-row:focus-visible,
+.prj-tasks-menu-row:focus-visible,
+.prj-new-repo-menu-row:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 /* ---- 新建定时 dialog (r3 92/92b) ---- */
 
 .sched-form-overlay {
   position: fixed;
   inset: 0;
-  /* #388: dialog 族档位（.dlg-backdrop 同 z40）。此前 z auto——sidebar
+  /* #388: dialog 族档位（--z-modal-scrim）。此前 z auto——sidebar
      (position:relative z1) 绘制在 scrim 之上，阴影视觉只盖右 pane
-     （dogfood 缺陷）。DeleteConfirm 同 z40 但 DOM 在后，压过本层。 */
-  z-index: 40;
+     （dogfood 缺陷）。DeleteConfirm 同档但 DOM 在后，压过本层。 */
+  z-index: var(--z-modal-scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -444,7 +453,7 @@
 }
 
 /* A4-deep 收编：24×24 per-face 几何。XMON-25 收编：icon 变体皮肤下沉
-   per-face（同 sched-card-more，button.css .btn/.btn--icon 正典值）。 */
+   per-face（同 sched-card-more，老 .btn/.btn--icon 正典值）。 */
 .sched-form-close {
   width: 24px;
   height: 24px;
@@ -812,16 +821,16 @@
   cursor: default;
 }
 
+/* t-0070: 收编 dropdown-menu（Base UI Menu RadioGroup）——定位正本迁
+   Positioner 参数（side=bottom align=start sideOffset=6，anchor 显式钉
+   .prj-new-repo-field：多触发面共锚，plate 恒贴 wrap 左缘）；宽正本 =
+   shrink-to-fit ≥ 200（JSX w-auto 中和 base 的 w-(--anchor-width)）。 */
 .prj-new-repo-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
   min-width: 200px;
   padding: 4px;
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
-  z-index: 30;
 }
 
 .prj-new-repo-menu-row {
@@ -841,9 +850,10 @@
   cursor: pointer;
 }
 
-.prj-new-repo-menu-check {
-  margin-left: auto;
-  display: flex;
+/* t-0070: 勾形改由 RadioItemIndicator 原生槽承载（absolute right-2 =
+   原 margin-left:auto + 行右 8px 内边距的同位）；勾色正本（indigo）仍钉
+   per-face，槽选择器吃 wrapper 的 data-slot 契约。 */
+.prj-new-repo-menu [data-slot="dropdown-menu-radio-item-indicator"] {
   color: var(--indigo-500);
 }
 
@@ -898,7 +908,7 @@
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
-  z-index: 30;
+  z-index: var(--z-popover);
 }
 
 .prj-new-gh-picker-head {
@@ -1001,7 +1011,7 @@
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
-  z-index: 30;
+  z-index: var(--z-popover);
 }
 
 .dir-browser-bar {
@@ -1169,15 +1179,22 @@
 }
 
 /* local 项目 文件 tab 占位面（spec 12 / #362 G2-T2 v1）：一行 disable 文案
-   居中，详细列表/编辑器响应式归后票。 */
+   居中，详细列表/编辑器响应式归后票。github 项目同面复用（#704 / B-C1）：
+   文案 + 外链链接并排（gap 分组），链接用主题色下划线可点形态。 */
 .prj-files-disabled {
   flex: 1;
   min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   font-size: 13px;
   color: var(--text-tertiary);
+}
+
+.prj-files-github-link {
+  color: var(--accent);
+  text-decoration: underline;
 }
 
 .prj-files-pane {
@@ -1579,7 +1596,7 @@
 }
 
 /* a3-pages 收编：16px 顶距与 icon+text 的 4px 间隙。XMON-25 收编：老
-   ui/Button primary/compact 的公共形下沉 per-face（button.css
+   ui/Button primary/compact 的公共形下沉 per-face（老
    .btn/.btn--compact 正典值：28 高/0 12 内距/无边框/13 字号/pointer）——
    底色/字色归 brand 变体（--card-button/--text-on-accent 两代同值），
    border:none 兼压底座 1px 透明描边的 bg-clip-padding 未 paint 环。 */
@@ -1605,18 +1622,16 @@
 }
 
 /* geometry [设计] — no capture exercises the toolbar dropdowns; the
-   popover family plate (plan-dropdown recipe: popover bg / radius 10 /
-   fab shadow / z 30 over the catcher's 29, transform-origin top left) */
+   popover family plate (popover bg / radius 10 / fab shadow)。t-0070:
+   收编 dropdown-menu（Base UI Menu RadioGroup）——定位正本迁 Positioner
+   参数（side=bottom align=start sideOffset=6，锚 = 触发钮 ≡ wrap）；宽正本
+   = shrink-to-fit ≥ 148（JSX w-auto 中和 base 的 w-(--anchor-width)）。 */
 .prj-tasks-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
   min-width: 148px;
   padding: 4px;
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
-  z-index: 30;
 }
 
 /* 菜单行：圆角 6→8 = a3-pages 圆角归一（lang-dropdown-row / chief-model-row
@@ -1638,9 +1653,10 @@
   cursor: pointer;
 }
 
-.prj-tasks-menu-check {
-  margin-left: auto;
-  display: flex;
+/* t-0070: 勾形改由 RadioItemIndicator 原生槽承载（absolute right-2 =
+   原 margin-left:auto + 行右 8px 内边距的同位）；勾色正本（indigo）仍钉
+   per-face，槽选择器吃 wrapper 的 data-slot 契约。 */
+.prj-tasks-menu [data-slot="dropdown-menu-radio-item-indicator"] {
   color: var(--indigo-500);
 }
 
@@ -1754,7 +1770,7 @@
 }
 
 /* XMON-25 收编：翻页钮从老 ui/Button quiet 迁 ghost——quiet 皮肤
-   （button.css .btn/.btn--quiet 正典值：零内距/无边框/透明底/13 字号/
+   （老 .btn/.btn--quiet 正典值：零内距/无边框/透明底/13 字号/
    --text-dim/pointer）此前由老原语类承载，这两面从无 per-face 规则
    （类名只是 e2e 别名），皮肤下沉为此新规则；unlayered 恒胜 ghost 的
    hover 底色档。 */
@@ -1944,7 +1960,7 @@
 }
 
 /* XMON-25 收编：老 ui/Button danger/compact 的皮肤下沉 per-face
-   （button.css .btn/.btn--compact/.btn--danger 正典值：28 高/0 12 内距/
+   （老 .btn/.btn--compact/.btn--danger 正典值：28 高/0 12 内距/
    无边框/--danger 实底/on-accent 字/13 字号/pointer）——unlayered 恒胜
    destructive 变体的软底档；禁用 opacity .5 两代同值。顶距照旧。 */
 .prj-set-delete {

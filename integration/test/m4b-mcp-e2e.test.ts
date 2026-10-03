@@ -12,7 +12,7 @@
 //    全往返）；未授工具 call 被拒（limits every call）；create_todo 以 key 属主
 //    身份落库。
 
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -30,7 +30,15 @@ import { type MachineHandle, runMachine } from '../../apps/daemon/src/machine-lo
 import { type StatePaths, statePaths } from '../../apps/daemon/src/state.js';
 import { message as messageTable, todo as todoTable } from '../../apps/server/src/db/schema.js';
 import { createApiKey } from '../../apps/server/src/services/api-keys.js';
-import { AGENT_ID, api, bootRealServer, type RealServer, seedWorld, waitFor } from './helpers.js';
+import {
+  AGENT_ID,
+  api,
+  bootRealServer,
+  daemonLogLines,
+  type RealServer,
+  seedWorld,
+  waitFor,
+} from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 /** 外部 MCP server（测试内起，client 面对拍端）：echo 工具 + 调用记录。 */
@@ -92,11 +100,7 @@ let world: { projectId: string; todoId: string };
 let buildId = '';
 
 function logLines(): string[] {
-  try {
-    return readFileSync(paths.daemonLog, 'utf8').split('\n');
-  } catch {
-    return [];
-  }
+  return daemonLogLines(paths.daemonLog);
 }
 
 beforeAll(async () => {
@@ -119,7 +123,11 @@ beforeAll(async () => {
   stub = await startStubLlm([
     // worker 执行步轮 1：调桥接工具 mcp__demo__echo（外部 MCP server 真调用）。
     { toolCall: { name: 'mcp__demo__echo', arguments: { text: 'm4b-bridge' } } },
-    // 轮 2：收尾。
+    // 轮 2：真做一处改动（#703 闸 2——执行步无改动过不了 review 闸）。
+    {
+      toolCall: { name: 'bash', arguments: { command: 'printf "mcp probe line\\n" >> README.md' } },
+    },
+    // 轮 3：收尾。
     { content: '已通过外部 MCP 工具 echo 验证连通。' },
   ]);
   server = await bootRealServer({
@@ -159,9 +167,10 @@ afterAll(async () => {
   await server?.close();
   await stub?.close();
   await external?.close();
+  const diagTail = logLines().slice(-40).join('\n');
   if (home) rmSync(home, { recursive: true, force: true });
   process.stdout.write(
-    `\n[diag] stub requests consumed: ${stub?.requests.length ?? -1}\n[diag] daemon.log tail:\n${logLines().slice(-40).join('\n')}\n`,
+    `\n[diag] stub requests consumed: ${stub?.requests.length ?? -1}\n[diag] daemon.log tail:\n${diagTail}\n`,
   );
 });
 

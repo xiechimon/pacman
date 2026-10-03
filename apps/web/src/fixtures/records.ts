@@ -120,7 +120,7 @@ export type PaneView = 'doc' | 'branch' | 'token' | 'history';
  *  outside the 02 §6.2 record contract — resolved per todo from the fixture
  *  layer; the accept dialog carries no payload. Token/history left the
  *  overlay family in #366 (static right-pane sections, PaneView). */
-export type OverlayKind = 'branch' | 'accept' | 'rerun' | 'reuse' | 'review';
+export type OverlayKind = 'branch' | 'accept' | 'rerun' | 'reuse' | 'review' | 'reject';
 
 export interface OverlayState {
   kind: OverlayKind;
@@ -417,6 +417,11 @@ export interface DocSegment {
   style?: 'code' | 'link' | 'mention' | 'strong';
   /** Mention chip kind — required when style is 'mention'. */
   mentionKind?: 'todo' | 'skill' | 'agent' | 'project' | 'machine';
+  /** Canonical entity id from the wire link (`[label](kind:id)`), set on
+   *  every mention segment (#675). The todo chip consumes it for click
+   *  navigation to `/app/todo/<id>` — the reference-measured behavior
+   *  (todos.dev todo chip click → todo detail, live-captured 2026-10-03). */
+  mentionId?: string;
 }
 
 /** One plan-document block: free paragraph, bullet (r7 17 doc pane) or
@@ -509,8 +514,10 @@ export type TranscriptItem =
   /** AI 审核消息（M7 #330，r8 §3.1 60）：结论段 + 编号 findings 列表
    * （每条 = 严重度标签 + 标题 + 描述 + 文件:行 + 可选建议）。服务侧 emit
    * 由 server applyBuildStepAction completeStep 落库（REVIEW_VERDICT_KIND
-   * system message），web mapper 拆出 verdict 形状渲染。 */
-  | { kind: 'review'; conclusion: string; findings: ReviewFinding[] };
+   * system message），web mapper 拆出 verdict 形状渲染。#700：extractionError
+   * 在位 = daemon verdict 提取失败（findingsError 原因）——审核面渲染
+   * 「判定提取失败」行（区别于「审核未返回结论」兜底）。 */
+  | { kind: 'review'; conclusion: string; findings: ReviewFinding[]; extractionError?: string };
 
 /** AI 审核 finding 显示形态（M7 #330，r8 §3.1）：严重度 + 标题 + 描述 +
  * 引用位（文件:行）+ 可选建议。dataSource = server verdict message 解出
@@ -685,8 +692,12 @@ export type ChiefStreamItem =
   | { kind: 'error'; text: string }
   /** User bubble with avatar + the copy/restore icon pair below it.
    *  `id` = live 面 chief_message id（#615 返工恢复钮的 rewind 锚；fixture
-   *  面缺省 = 确认层 accept 律关窗，零请求）。 */
-  | { kind: 'user'; text: string; id?: string }
+   *  面缺省 = 确认层 accept 律关窗，零请求）。#742: a live user row may
+   *  carry its raw text in `markdown` (detail-page user row #612 同款配方)
+   *  — the renderer parses it with chat-markdown at render time, so the
+   *  user's own mentions/markdown no longer leak as literal text; the
+   *  frozen capture shapes (text-only) render unchanged. */
+  | { kind: 'user'; text: string; id?: string; markdown?: string }
   /** Chief prose paragraphs + optional bullets + the `完成 Ns ›` footer
    *  row (r5 116 verification report). `tools` = 该回合的工具调用行（#615
    *  返工：foot 折叠箭头展开面；live = chief_message 的 toolcall 行投影，
@@ -705,7 +716,14 @@ export type ChiefStreamItem =
       typing?: boolean;
       seconds: string;
       tools?: ChiefToolRow[];
-    };
+    }
+  /** #739 在飞存在行：回合在飞（activeRun 非空）但还没有任何 text_delta 到达
+   *  的静默窗口里，stream 尾挂此行——与详情页对话区 streaming 行同一套词汇
+   *  （loading-dev Atom spinner + `处理中...` 标签，transcript.tsx 正典）。
+   *  `seconds` 缺省 = 不挂秒数（#471 律：静默期没有流事件驱动重渲，秒数计数
+   *  会冻结说谎；本票不加计时器）。label 走渲染层 t()。fixture 捕获面从不
+   *  置 running，故既有捕获不会长出此行（零请求保证不破）。 */
+  | { kind: 'streaming'; seconds?: number; label: string };
 
 /** 回合工具行（#615 返工折叠展开面；ToolCallRecord 的呈现投影）。 */
 export interface ChiefToolRow {

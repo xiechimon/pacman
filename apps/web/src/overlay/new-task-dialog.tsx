@@ -38,6 +38,7 @@
 // 而不是开面（「直接切换」要的是按一下就换）；开态门与守卫见
 // overlays/hotkeys.ts 的 useProjectCycleHotkey。
 
+import type { ClipboardEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
@@ -48,6 +49,13 @@ import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, Grid2x2, Paperclip, X } from '../icons/index.js';
 import { ClickCatcher, OverlayMount } from '../overlays/dismiss.js';
 import { isEditableTarget, useChordHotkey, useProjectCycleHotkey } from '../overlays/hotkeys.js';
+import {
+  createPastedNameCounter,
+  filesFromClipboardData,
+  insertAttachmentTokens,
+  type PastedNameCounter,
+  preparePastedFiles,
+} from './attachment-paste.js';
 import { type MentionGroups, MentionPicker } from './mention-picker.js';
 import { insertMentionText, type MentionToken } from './mention-token.js';
 import './overlay.css';
@@ -142,9 +150,11 @@ export interface NewTaskDialogProps {
    * 面不传 → 内部 useState fallback。 */
   spec?: string;
   onSpecChange?: (next: string) => void;
-  /** M7 #310 附件：父组件负责 grant + upload + 拿到 token 后 setSpec 拼
-   * 进 spec。父组件在 live 创建面下应同时传 spec/onSpecChange 才能接住。 */
-  onAttachment?: (files: File[]) => void | Promise<void>;
+  /** M7 #310 附件（#729 契约收窄）：附件钮选件 / 剪贴板粘贴 →
+   * onAttachment(files)，父负责 grant + upload，返回成功文件的 token；
+   * 注入 spec（行原子、粘贴落 caret 位）由本文件的 runAttachment 统一做。
+   * 父组件在 live 创建面下应同时传 spec/onSpecChange 才能接住注入。 */
+  onAttachment?: (files: File[]) => string[] | Promise<string[]>;
 
   /** #311: mention picker groups（5 类别）。父级从 live hooks 或
    *  fixture 派生；缺省 = 空集合（picker 首层 0 计数）。 */
@@ -202,6 +212,19 @@ export function NewTaskDialog({
   // M7 #310 附件：file picker ref + 上传中 disable 纸夹扣
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attaching, setAttaching] = useState(false);
+  // #729：粘贴编号 counter（每 draft 递增，CC [Image #N] 精神）+ 在途上传
+  // 计数（阻保存/⌘↵，state 异步、ref 同步）+ spec 镜像（上传完成时注入
+  // 以最新已提交值为底——render 闭包里的 spec 会吞掉上传期间的打字）+
+  // 待恢复 caret 位。与 overlay/composer-wire.ts 的同名机制同构，共享的
+  // 行原子插入函数保证两面不漂移（票面失败方式 9）。
+  const pastedNameCounterRef = useRef<PastedNameCounter | null>(null);
+  if (pastedNameCounterRef.current === null) {
+    pastedNameCounterRef.current = createPastedNameCounter();
+  }
+  const attachInFlightRef = useRef(0);
+  const pendingCaretRef = useRef<number | null>(null);
+  const specMirrorRef = useRef(spec);
+  specMirrorRef.current = spec;
   const rows = projects ?? [DEFAULT_PROJECT];
   const selected = rows.find((row) => row.id === projectId) ?? rows[0];
   const projectName = selected?.name ?? PROJECT_NAME;
@@ -286,24 +309,82 @@ export function NewTaskDialog({
   }, [rows, selected?.id, rememberProject]);
   useProjectCycleHotkey(open && !discardOpen && rows.length > 1, cycleProject);
 
-  // M7 #310 附件选择回调：files → onAttachment 委托父处理 grant+upload+
-  // setSpec 拼 token；reset value 允许同文件再选（change 事件不重发同源）
+  /** 上传委托运行器（#729：选件与粘贴共用）：attaching 计数跟踪（重叠
+   *  上传保持保存闸关闭到最后一个落地）、返回 token 行原子注入 spec
+   *  （caret=null = 尾追，#310 原形态）、React 提交后恢复 caret——仅当
+   *  textarea 仍持有焦点，文件选择器往返不抢焦点。 */
+  const runAttachment = (files: File[], caret: number | null, also?: () => void) => {
+    if (!onAttachment) {
+      also?.();
+      return;
+    }
+    attachInFlightRef.current += 1;
+    setAttaching(true);
+    void Promise.resolve(onAttachment(files))
+      .then((tokens) => {
+        if (tokens.length === 0) return;
+        const inserted = insertAttachmentTokens(specMirrorRef.current, tokens, caret);
+        pendingCaretRef.current = inserted.caret;
+        setSpec(inserted.value);
+        requestAnimationFrame(() => {
+          const ta = specRef.current;
+          const next = pendingCaretRef.current;
+          pendingCaretRef.current = null;
+          if (ta != null && next != null && document.activeElement === ta) {
+            ta.setSelectionRange(next, next);
+          }
+        });
+      })
+      .catch((err) => {
+        // 单文件失败已由父面 toast；委托整体 reject 是 bug——记日志，
+        // 不静默吞（#729 失败方式 4）。
+        console.error('attachment delegate failed', err);
+      })
+      .finally(() => {
+        attachInFlightRef.current = Math.max(0, attachInFlightRef.current - 1);
+        if (attachInFlightRef.current === 0) setAttaching(false);
+        also?.();
+      });
+  };
+
+  // M7 #310 附件选择回调：files → runAttachment（尾追注入）；reset value
+  // 允许同文件再选（change 事件不重发同源）
   const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = '';
-    if (files.length === 0 || !onAttachment) return;
-    setAttaching(true);
-    const result = onAttachment(files);
-    void Promise.resolve(result).finally(() => setAttaching(false));
+    if (files.length === 0) return;
+    runAttachment(files, null);
+  };
+
+  // #729 剪贴板粘贴：文件走同一条 attachFile 链（父面 grant+upload），
+  // token 行原子落 caret 位；混合剪贴板文件优先、文本忽略；纯文本粘贴
+  // 事件不被触碰（preventDefault 只在见到文件后发生），行为零变化。
+  const handleSpecPaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (!onAttachment) return;
+    const files = filesFromClipboardData(event.clipboardData);
+    if (files.length === 0) return;
+    event.preventDefault();
+    const counter = pastedNameCounterRef.current as PastedNameCounter;
+    // 每 draft 编号：空 spec 且无在途上传时重置回 1；在途守门防快速
+    // 连贴撞号（失败方式 6）。
+    counter.begin(specMirrorRef.current.trim() === '');
+    const caret = event.currentTarget.selectionStart ?? specMirrorRef.current.length;
+    runAttachment(preparePastedFiles(files, counter), caret, () => counter.end());
   };
 
   // spec 15 #394: 提交 = 正文 + 项目 id；#682 加机器 chip 选中（null = 自动）。
-  const save = () => onSave(spec, selected?.id, machineId);
+  // #729 失败方式 3：附件上传在途时阻提交——spec 不得带着还没上传完的
+  // 附件离场（draft 保全，token 落地后提交照常）。
+  const save = () => {
+    if (attachInFlightRef.current > 0) return;
+    onSave(spec, selected?.id, machineId);
+  };
 
   // XMON-95：保存并开始 = 按钮点击与 ⌘↵ 共用的同一提交位。闸写在闭包里而
   // 非只靠按钮 disabled——键盘路径不经过 disabled 的点击拦截，漏这一句 ⌘↵
-  // 会在空正文上落一个空任务。
+  // 会在空正文上落一个空任务。在途上传闸同律进闭包（#729）。
   const saveAndStart = () => {
+    if (attachInFlightRef.current > 0) return;
     if (spec.trim() === '') return;
     if (onSaveAndStart) onSaveAndStart(spec, selected?.id, machineId);
     else save();
@@ -326,19 +407,38 @@ export function NewTaskDialog({
   };
 
   // Mention insert: route through insertMentionText so the picker
-  // and the inline @ listbox share the spacing + caret rules.
-  const insertToken = (token: MentionToken) => {
+  // and the inline @ listbox share the spacing + caret rules (#728:
+  // trailing space included). Multi-select inserts compose in ONE
+  // functional update at the evolving caret — a per-token loop would
+  // read the same stale `spec` closure per call and keep only the last
+  // token (same fix as the composer wire's insertTokens).
+  const insertTokens = (tokens: MentionToken[]) => {
+    if (tokens.length === 0) return;
     const ta = specRef.current;
     if (ta == null) {
-      setSpec((current) => insertMentionText(current, token, null).value);
+      setSpec((current) => {
+        let value = current;
+        for (const token of tokens) value = insertMentionText(value, token, null).value;
+        return value;
+      });
       return;
     }
-    const caret = ta.selectionStart ?? spec.length;
-    const { value, caret: nextCaret } = insertMentionText(spec, token, caret);
-    setSpec(value);
+    const start = ta.selectionStart ?? spec.length;
+    const pending = { caret: start };
+    setSpec((current) => {
+      let value = current;
+      let at = start;
+      for (const token of tokens) {
+        const result = insertMentionText(value, token, at);
+        value = result.value;
+        pending.caret = result.caret;
+        at = result.caret;
+      }
+      return value;
+    });
     requestAnimationFrame(() => {
       ta.focus();
-      ta.setSelectionRange(nextCaret, nextCaret);
+      ta.setSelectionRange(pending.caret, pending.caret);
     });
   };
 
@@ -388,9 +488,11 @@ export function NewTaskDialog({
               }
             : undefined
         }
-        // zIndex 21：仓内浮层阶梯（面板 21 < ClickCatcher 29 < 确认层 31）——
-        // 缺省 50 会压住本文件的 discard 确认层，故按旧值下移
-        zIndex={21}
+        // #688 阶梯 --z-panel-low：低档面板（--z-panel-low < ClickCatcher
+        // --z-catcher < 确认层 --z-confirm）——缺省的 --z-dialog 会压住本
+        // 文件的 discard 确认层，故吃低档；低档仍恒压常驻侧板（--z-docked），
+        // 抽屉开着时本面排上方（#688 裁决，e2e/z-ladder.spec 钉扎）。
+        zIndex="var(--z-panel-low)"
         className="new-task-dialog"
         width={672}
         height={439}
@@ -474,6 +576,9 @@ export function NewTaskDialog({
             placeholder={SPEC_TEMPLATE_LINES.map((line) => t(line)).join('\n')}
             value={spec}
             onChange={(e) => setSpec(e.target.value)}
+            // #729: clipboard images/files ride the #310 attachFile chain;
+            // a text-only paste never reaches the handler's preventDefault.
+            onPaste={handleSpecPaste}
           />
           {/* M7 #310 附件：原生文件多选触发器；选中文件 → onAttachment(files)
               委托父处理 grant+upload+setSpec 拼 token；accept 与 server
@@ -666,7 +771,7 @@ export function NewTaskDialog({
         onClose={() => setPickerOpen(false)}
         groups={groups}
         onInsert={(tokens) => {
-          for (const token of tokens) insertToken(token);
+          insertTokens(tokens);
           setPickerOpen(false);
         }}
       />

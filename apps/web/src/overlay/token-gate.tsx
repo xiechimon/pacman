@@ -59,9 +59,10 @@ export function TokenGate() {
   };
 
   return (
-    // 门页盖住全部 UI：全屏黑幕（--overlay-scrim，正本单源）置于既有 overlay
-    // 层（最大 z-index 41）之上——z-60 是门页专属阶梯，勿并入浮层阶梯。
-    <div className="token-gate-backdrop fixed inset-0 z-60 flex items-center justify-center bg-(--overlay-scrim)">
+    // 门页盖住全部 UI：全屏黑幕（--overlay-scrim，正本单源）置于浮层阶梯的
+    // 模态族之上——#688 阶梯给门页留了专属档 --z-gate（独立档位，不参与
+    // 浮层家族的同档并列；门页显示时应用尚未解锁，其它浮层不可能同场）。
+    <div className="token-gate-backdrop fixed inset-0 z-(--z-gate) flex items-center justify-center bg-(--overlay-scrim)">
       <Card
         role="dialog"
         aria-modal="true"
@@ -83,9 +84,9 @@ export function TokenGate() {
           </label>
           <Input
             id="pacman-token-input"
-            // 过渡窄写 = ui/button 的同一处仓内偏离（TW 的 transition-colors
-            // 属性表含 outline-color，会把 focus 环吞进过渡初值）；dark 档
-            // 另钉一次底，压适配层的 `dark:bg-input/30` 底噪。
+            // 过渡窄写 = components/ui/button 的同一处仓内偏离（TW 的
+            // transition-colors 属性表含 outline-color，会把 focus 环吞进
+            // 过渡初值）；dark 档另钉一次底，压适配层的 `dark:bg-input/30` 底噪。
             className="token-gate-input h-9 rounded-md border-(--card-border) bg-(--surface) px-3 py-0 text-sm text-foreground transition-[color,background-color,border-color] focus-visible:border-(--card-border) focus-visible:ring-0 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 dark:bg-(--surface)"
             type="password"
             value={value}

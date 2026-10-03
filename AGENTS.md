@@ -32,15 +32,16 @@ pnpm typecheck  # pnpm -r typecheck
 ```
 三类必须先通过才能提交。**别跑 `pnpm build`**（vite 全量；不值得 commit 前做）。
 
-测试规则（强制）：
+测试规则（强制，分层职责正本 = `docs/spec/19-测试分层与受影响面.md`）：
 - **禁止写完实现再补 unit test**——要测就先于实现。
-- **E2E 为主**：复杂功能用真 e2e 验证能跑通；开发期只跑与本次改动相关的几条；**禁止一次跑全套 e2e**（`apps/web` e2e 完整跑要 1h+）——收尾/PR 时再执行。
+- **E2E 为主**：复杂功能用真 e2e 验证能跑通；开发期跑受影响面——`pnpm --filter @pacman/web e2e:affected`（改 `src/ui` / styles / i18n / api / fixtures 等共享面时自动回落全量）。**全量 e2e 的执行点在 CI**（4 分片，覆盖面不降）；本地全量仅在收尾复核确需时跑——实测 617 用例 154s（不是旧口径的 1h+），但它是多 lane 内存压力的主力，别当日常。
+- unit 受影响面缩窄：`pnpm exec vitest related --changed`（vitest 5 原生，跨 project 生效，2026-10-03 实测）。
 - **先列失败方式，再写实现**：动某块系统前，先枚举它可能失败的所有场景，写代码是让场景通过的手段。
 - **e2e spec 文件合并/解冲突后必跑 `npx playwright test <spec> --list` 验解析**（M7 实战：typecheck 不覆盖 spec 语法，手工解冲突吞 `});` 到 EOF 才炸——typecheck 绿≠playwright 能解析）。
 
 跑验证服务（port 与 dist/ 互斥）：
 - `dev:web` / `dev:server` / `dev:daemon` ——dev server，端口 `5173` / `8787`。vite 带 `strictPort`——撞端口即启动失败，不静默顺延到下一个空闲口（顺延才是危险的：proxy 目标不变，界面会去驱动持有该端口的别的栈）。覆写：`PACMAN_DEV_WEB_PORT` / `PACMAN_DEV_SERVER_PORT`。
-- **E2E_PORT** 默认 8399——跑前先 `lsof -iTCP:8399` 查占用，占用的是别的车道**不能杀**，换端口。
+- **E2E_PORT** 默认 8399——跑前先 `lsof -iTCP:8399` 查占用，占用的是别的车道**不能杀**，换端口。**`e2e:affected` 默认走 8398**（`E2E_AFFECTED_PORT` 覆写，显式 `E2E_PORT` 优先）——与全量分道，同款撞端口纪律。
 - **同 worktree 内不要并跑两个 playwright**——`vite build --mode fixture` 写同一个 `dist/`，会互踩。跨 worktree 各用各的 dist 无碍。
 
 ## Dependencies & Install Security
@@ -61,6 +62,7 @@ Commit 约定：
 - **否定句里的关票关键字照样生效**：GitHub 的关键字解析器**不认否定词**。写成「不 closes #417」这种否定句，仍然会在合并落地时把 #417 关掉——2026-09-30 实测：Map #417 就是被 PR #522 的 squash 提交这样关掉的（timeline 把 closed 事件挂在该 commit 上），写那句话的本意恰恰是「声明不要关它」。要表达「本 PR 不关某票」，**去掉那个动词**：写「不关闭 #417」或「本 PR 与 #417 无关」，并确认整个 commit message 里没有任何「关票关键字 + 票号」的形态。同上一条，这条也只在 commit message 通道上生效，PR body 不进 commit。
 - **只 commit 自己改过的文件**。`git add <path1> <path2>` 显式路径，**禁 `git add -A` / `git add .`**——同 cwd 可能多个 lane 并行（agent / 人类）。例外：merge 落盘（解决冲突后的 merge commit）语义上是全量 stage，允许 `git commit --no-edit` 完成 merge 而不再 add（merge 状态自带 index）；手工模拟 merge 落普通 commit 不在此例。
 - 永远别 `git commit --no-verify`。
+- 被 pre-commit 闸拦下、且改动确属有意时，唯一放行出口是该闸的显式环境变量：锁文件闸 `PACMAN_ALLOW_LOCKFILE_CHANGE=1`、禁词闸 `PACMAN_ALLOW_BANNED_VOCAB=1`（均接受 `1`/`true`/`yes`）；不提供其它出口。
 
 Worktree（pacman 是多 lane 设计，所以特别强调）：
 - **建 worktree 必须绝对路径**。`git worktree add /Users/xmon/Code/AgentProjects/pacman/.claude/worktrees/<name>`。相对路径 + cwd 漂移（heredoc / cd 改变 cwd 后）会把 worktree 嵌进 `apps/web/src/.claude/worktrees/`，vite watcher 撞上去触发 reload 风暴拖死 dev server。

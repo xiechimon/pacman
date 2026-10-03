@@ -35,6 +35,7 @@ import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
+import { toastError } from '../components/ui/toaster.js';
 import { isDeleted } from '../fixtures/deletions.js';
 import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -214,7 +215,11 @@ export function TeamPage() {
         onCreate={
           live
             ? (input) =>
-                mutations.createAgent.mutate(input, { onSuccess: () => setCreateOpen(false) })
+                mutations.createAgent.mutate(input, {
+                  onSuccess: () => setCreateOpen(false),
+                  // #638：失败 = 弹窗留着（关挂在 onSuccess）但零反馈。
+                  onError: (error) => toastError(t('创建 Agent 失败，请重试。'), error),
+                })
             : undefined
         }
       />
