@@ -236,7 +236,9 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
   if (pastedNameCounterRef.current === null)
     pastedNameCounterRef.current = createPastedNameCounter();
   const attachInFlightRef = useRef(0);
-  const pendingCaretRef = useRef<number | null>(null);
+  // The value+caret produced by the in-flight attachment insert, consumed
+  // by the attach layout effect in the very commit that lands the draft.
+  const pendingAttachRef = useRef<{ value: string; caret: number } | null>(null);
 
   const applyRange = useCallback((next: CompletionRange | null) => {
     const prev = inlineRangeRef.current;
@@ -309,9 +311,10 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
    *  (#729): tracks the attaching flag (a count, so overlapping uploads
    *  keep the send gate closed until the last one lands), injects the
    *  returned tokens line-atomic at `caret` (null = tail-append, the
-   *  pre-#729 clip shape), then restores the caret after React commits —
-   *  only when the textarea still owns focus, so a file-picker round trip
-   *  never steals it back. */
+   *  pre-#729 clip shape), then restores the caret IN the commit that
+   *  lands the draft (the attach layout effect below) — only when the
+   *  textarea still owns focus, so a file-picker round trip never steals
+   *  it back. */
   const runAttachment = (files: File[], caret: number | null, also?: () => void) => {
     if (!onAttachment) {
       also?.();
@@ -323,16 +326,15 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
       .then((tokens) => {
         if (tokens.length === 0) return;
         const inserted = insertAttachmentTokens(draftRef.current, tokens, caret);
-        pendingCaretRef.current = inserted.caret;
+        // The restore rides the attach layout effect below, in the same
+        // commit that lands the new draft. A requestAnimationFrame restore
+        // is a race against the React commit: when the frame callback runs
+        // first, the setSelectionRange clamps against the OLD value and the
+        // committed value then drops the caret at the end (the mid-line
+        // paste spec failing 57 vs 63 under CI timing). The mention path
+        // moved off the same race for the same reason (#728).
+        pendingAttachRef.current = inserted;
         setDraft(inserted.value);
-        requestAnimationFrame(() => {
-          const ta = textareaRef.current;
-          const next = pendingCaretRef.current;
-          pendingCaretRef.current = null;
-          if (ta != null && next != null && document.activeElement === ta) {
-            ta.setSelectionRange(next, next);
-          }
-        });
       })
       .catch((err) => {
         // Per-file failures already toasted on the surface; a delegate-level
@@ -397,6 +399,24 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     // focused; it matters for the popover path, where the toolbar button
     // held focus.
     ta.focus();
+    ta.setSelectionRange(pending.caret, pending.caret);
+  }, [draft]);
+
+  // The attachment-path caret restore (#729), in the commit that lands the
+  // inserted tokens: layout effects run after the DOM mutation and before
+  // any subsequent input event, so the restore can never lose the race
+  // against the commit or interleave with typing. Unlike the mention path
+  // it never calls focus() — a file-picker round trip must not steal focus
+  // back, so the restore only applies while the textarea already owns it.
+  useLayoutEffect(() => {
+    const pending = pendingAttachRef.current;
+    if (pending == null) return;
+    pendingAttachRef.current = null;
+    // The parent did not adopt the insert (rejected/transformed the draft)
+    // — do not fight its value.
+    if (pending.value !== draft) return;
+    const ta = textareaRef.current;
+    if (ta == null || document.activeElement !== ta) return;
     ta.setSelectionRange(pending.caret, pending.caret);
   }, [draft]);
 
