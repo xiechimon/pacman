@@ -72,6 +72,7 @@ import { DRAWER_EXIT_MS } from '../overlay/use-overlay-mount.js';
 import { OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
 import { useChiefNewThreadHotkey } from '../overlays/hotkeys.js';
 import './chief.css';
+import { ChiefIdentity } from './chief-identity.js';
 import { ChiefModelDialog } from './chief-model-dialog.js';
 
 const EXAMPLE_ICONS = {
@@ -522,21 +523,21 @@ export function ChiefDrawer({
                       </div>
                     </div>
                   );
+                // XMON-105: a bound chief answers as its agent — the stream
+                // row carries that agent's identity; unbound keeps the dashed
+                // chief glyph. #741: the bound identity is a chip (avatar +
+                // name, whole chip → the agent's settings page) heading the
+                // row, content full-width below it (reference assistant-
+                // message form) — the row flips to a column. The dashed form
+                // keeps the old side-avatar slot, byte-identical DOM.
+                const identity =
+                  chief.bound && chief.agent ? <ChiefIdentity agent={chief.agent} /> : null;
                 return (
-                  <div key={i} className="chief-msg">
-                    {/* XMON-105: a bound chief answers as its agent — the
-                        stream row carries that agent's identity avatar (the
-                        same face the FAB chip shows); unbound keeps the
-                        dashed chief glyph. */}
-                    {chief.bound && chief.agent ? (
-                      <span className="chief-avatar chief-avatar--img">
-                        <SeededAvatar
-                          name={chief.agent.displayName}
-                          src={chief.agent.avatarUrl}
-                          fallback="/avatar-robot-1.svg"
-                        />
-                      </span>
-                    ) : (
+                  <div
+                    key={i}
+                    className={identity != null ? 'chief-msg chief-msg--identity' : 'chief-msg'}
+                  >
+                    {identity ?? (
                       <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
                     )}
                     <div className="chief-msg-col">
