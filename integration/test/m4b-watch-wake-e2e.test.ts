@@ -30,7 +30,15 @@ import {
   chiefThread,
   step as stepTable,
 } from '../../apps/server/src/db/schema.js';
-import { AGENT_ID, api, bootRealServer, type RealServer, seedWorld, waitFor } from './helpers.js';
+import {
+  AGENT_ID,
+  api,
+  bootRealServer,
+  daemonLogLines,
+  type RealServer,
+  seedWorld,
+  waitFor,
+} from './helpers.js';
 import { type StubLlm, type StubResponse, startStubLlm } from './stub-llm.js';
 
 let stub: StubLlm;
@@ -45,11 +53,7 @@ let threadId = '';
 let build1 = '';
 
 function logLines(): string[] {
-  try {
-    return readFileSync(paths.daemonLog, 'utf8').split('\n');
-  } catch {
-    return [];
-  }
+  return daemonLogLines(paths.daemonLog);
 }
 
 function chiefWatches(): { todoId: string; reason?: string | null }[] {
@@ -168,6 +172,13 @@ beforeAll(async () => {
     heartbeatIntervalMs: 500,
   });
   await waitFor(() => logLines().includes('[wake] push channel connected'), 30_000);
+  // #691：落盘行带 wall-clock 前缀——集成面钉住新格式（logLines 已归一化剥前缀，
+  // 这里读原始面，防悄悄回退成无时间戳）。
+  expect(
+    readFileSync(paths.daemonLog, 'utf8')
+      .split('\n')
+      .some((l) => /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \[wake\] push channel connected$/.test(l)),
+  ).toBe(true);
 
   // 世界 seed：托管 repo 项目（merge 落地需 bare 库）+ 两个 todo。
   world = await seedWorld(
@@ -206,9 +217,10 @@ afterAll(async () => {
   await handle?.done;
   await server?.close();
   await stub?.close();
+  const diagTail = logLines().slice(-50).join('\n');
   if (home) rmSync(home, { recursive: true, force: true });
   process.stdout.write(
-    `\n[diag] stub requests consumed: ${stub?.requests.length ?? -1}\n[diag] daemon.log tail:\n${logLines().slice(-50).join('\n')}\n`,
+    `\n[diag] stub requests consumed: ${stub?.requests.length ?? -1}\n[diag] daemon.log tail:\n${diagTail}\n`,
   );
 });
 
