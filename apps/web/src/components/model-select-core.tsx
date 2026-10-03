@@ -136,7 +136,7 @@ interface ModelPickRowProps {
   label: string;
   /** 行副题 = provider 显示名；默认行不传即不出。副题只投影 providerLabel
    *  ——原版捕获位 r3-gw 后那段 128k 是原版内置模型目录的上下文窗口，本地
-   *  BYOK 无此数据源，不编造（chief-model-dialog 文件头既有裁决）。 */
+   *  BYOK 无此数据源，不编造（chief-model-popover 文件头既有裁决）。 */
   providerLabel?: string;
   onPick: () => void;
 }
@@ -144,13 +144,16 @@ interface ModelPickRowProps {
 /** chief 两面共用的 flat 行（button[role=option] + 名 + 副题 + 选中 check）
  *  单源。行序、搜索过滤、空态归各面壳；本件只出一行。 */
 export function ModelPickRow({ skin, selected, label, providerLabel, onPick }: ModelPickRowProps) {
-  const name = <span className={skin.name}>{label}</span>;
+  // 基类钩子（#751）：选中态是行渲染律的一部分，不是各面皮肤的一部分——
+  // model-pick-* 基类承载选中行底色/墨色单源（chief.css），skin 类继续做
+  // 各面几何与 e2e 别名钉扎（#411 别名优先）。
+  const name = <span className={`${skin.name} model-pick-name`}>{label}</span>;
   const provider =
     providerLabel == null ? null : <span className={skin.provider}>{providerLabel}</span>;
   return (
     <button
       type="button"
-      className={skin.row}
+      className={`${skin.row} model-pick-row`}
       role="option"
       aria-selected={selected}
       onClick={onPick}
@@ -167,7 +170,7 @@ export function ModelPickRow({ skin, selected, label, providerLabel, onPick }: M
         </span>
       )}
       {selected && (
-        <span className={skin.check}>
+        <span className={`${skin.check} model-pick-check`}>
           <Check width={14} height={14} />
         </span>
       )}

@@ -16,18 +16,24 @@
 // 语义不同。换它是 UX 变更，不是机械迁移，故不在本片混做（已在 #425 车道书
 // 记为该族唯一的待定项）。
 //
-// 别名类原样输出（.plan-dropdown / .chip-popover / .more-menu / .overlay-mount
-// 等由各面 className 透传），三面钉扎零改动（#411 别名优先政策）。
+// 别名类原样输出（.plan-dropdown / .chip-popover / .more-menu 等由各面
+// className 透传），三面钉扎零改动（#411 别名优先政策）。
 
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import type { CSSProperties, ReactNode } from 'react';
+import './floating-shell.css';
 
 /** 锚定 pop 族的进出场（shadcn 默认档，ADR 0009 D3：duration-100 + fade + zoom-95
  *  + slide -8px）。挂在**内层面板**上、经壳的具名 group 读 Base UI 的
  *  data-open/data-closed——transform 不能上 Popup：本族面板是 fixed/absolute
- *  子级，Popup 带 transform 会把它们的 containing block 拽走（#656）。 */
+ *  子级，Popup 带 transform 会把它们的 containing block 拽走（#656）。
+ *  group-data-closed/fshell:fill-mode-forwards：tw 的 exit keyframe 缺省
+ *  fill=none，面板动画（100ms）先于壳 visibility 桥（150ms）结束时会在残余
+ *  窗口闪回不透明——forwards 把退场终帧钉住直到卸载。只在 closed 态挂：
+ *  静息/入场后的 computed transform 回到 none（#448 的「居中不借 transform」
+ *  字面钉照旧成立）。 */
 export const FLOATING_POP_ANIM =
-  'duration-100 group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-open/fshell:zoom-in-95 group-data-open/fshell:slide-in-from-top-2 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0 group-data-closed/fshell:zoom-out-95 group-data-closed/fshell:slide-out-to-top-2';
+  'duration-100 group-data-closed/fshell:fill-mode-forwards group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-open/fshell:zoom-in-95 group-data-open/fshell:slide-in-from-top-2 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0 group-data-closed/fshell:zoom-out-95 group-data-closed/fshell:slide-out-to-top-2';
 
 interface FloatingShellProps {
   /** #73: retained-mount open flag. */

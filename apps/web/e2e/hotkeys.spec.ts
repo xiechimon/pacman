@@ -697,14 +697,19 @@ test('Tab cycles nothing while the 未保存闸 confirm layer is up (that layer 
   const chipName = page.locator('.new-task-project-name');
   await expect(chipName).toHaveText('r3-lifecycle');
   await dialog(page).locator('.new-task-spec').fill('脏面');
-  // 走 Esc 这条关闸路：确认层起来时**焦点仍停在 composer**（Tab 的驾驶位之一）。
-  // 点 × 那条路焦点落在关闭钮上，不是驾驶位，测不出这一处——必须走 Esc。
-  // 该层没有焦点陷阱（dismiss.tsx 不装），所以 Tab 若照吃，键盘用户就再也走不到
-  // 「继续编辑 / 放弃并关闭」两个钮，成了键盘陷阱。
+  // 走 Esc 这条关闸路（键盘用户的关闸位；点 × 那条路焦点起点在关闭钮）。
+  // #656 起确认层 = FloatingShell（sibling root）：initialFocus 走缺省，Base UI
+  // 把焦点送进层内首个 tabbable（继续编辑钮；ClickCatcher tabIndex=-1 不在 tab
+  // 序）——sibling root 的 Esc 路由依赖焦点在本层内（new-task-dialog.tsx 注记：
+  // initialFocus=false 时 Esc 全被 modal dialog 吃掉，本层关不掉）。旧
+  // OverlayMount 的「焦点仍停在 composer」契约随壳退役；入焦是异步的，用
+  // toBeFocused 的轮询等它落定，不与单点断言赛跑。焦点入层后 Tab 在两个动作钮
+  // 间原生走位（#247 可达性即此意），composer 的 Tab 和弦（换项目）在这一层
+  // 缺席（enabled = open ∩ ¬discardOpen），哪条路都不会动项目。
   await page.keyboard.press('Escape');
   const layer = page.locator('.new-task-discard');
   await expect(layer).toBeVisible();
-  await expect(page.locator('.new-task-spec')).toBeFocused();
+  await expect(layer.locator('.new-task-discard-keep')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(chipName).toHaveText('r3-lifecycle');
   // 换项目与写记忆位是同一个动作：没换 = 也没写。
