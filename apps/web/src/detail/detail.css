@@ -1138,6 +1138,14 @@
   border: 1px solid var(--border-default);
   border-radius: 12px;
   background: var(--surface-secondary);
+  /* #775 (better-ui: shadows for elevation, borders for structure): the real
+     border stays (detail-3pane pins the 1px card recipe + focus/state edge),
+     --card-shadow adds the card-tier lift so the edge stops reading as a
+     hard cut. Shadow never affects layout. */
+  box-shadow: var(--card-shadow);
+  transition-property: box-shadow;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
 }
 
 .composer-placeholder {
