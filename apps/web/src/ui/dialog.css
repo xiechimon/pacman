@@ -200,18 +200,14 @@
 }
 
 /* #425 B1 退场配方（同 overlay.css 的 .more-menu-shell）：壳换 Base UI 后
-   旧 OverlayMount 的计时驱动退役，改用零视觉 visibility 延迟过渡撑卸载窗 +
-   [data-ending-style] 驱动子级 anim-fade 终态。 */
+   旧计时驱动退役，改用零视觉 visibility 延迟过渡撑卸载窗；子级进出场由
+   tw-animate-css 的 data-open/data-closed 变体自持（#656）。 */
 .dlg-shell {
   transition: visibility 0s linear var(--dur-overlay);
 }
 
 .dlg-shell[data-ending-style] {
   visibility: hidden;
-}
-
-.dlg-shell[data-ending-style] .anim-fade {
-  opacity: 0;
 }
 
 /* #453 视口根变体（DialogShell 的 `viewportRoot`）：壳只出机制，面板几何由面

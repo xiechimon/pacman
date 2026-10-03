@@ -6,8 +6,8 @@
 // All rows render; the collapse toggle persists like the theme.
 // #121: the nav rows (rail + expanded, team name and 新建项目 included) are
 // react-router Links — SPA hops carrying the live ?search= along.
-// #127: the avatar chips toggle the user-menu popover (OverlayMount +
-// ClickCatcher + Esc). #389: 新任务 row joins 搜索, sharing the global C
+// #127: the avatar chips toggle the user-menu popover (FloatingShell +
+// ClickCatcher; Esc rides the Base UI layer stack since #656). #389: 新任务 row joins 搜索, sharing the global C
 // hotkey opener.
 // #414 (shadcn 试点): 视觉层切 B（neutral）token + tailwind 工具类，
 // sidebar.css 随之整件退役——行 pill 的 ::before 层译成 before: 工具类，
