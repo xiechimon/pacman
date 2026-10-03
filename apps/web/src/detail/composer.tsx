@@ -52,10 +52,11 @@ interface ComposerProps {
   /** M5 live 面：占位行换成真 textarea（同几何类名 + input 复位类；
    * fixture 面保持静态 div，DOM 不变）。 */
   editable?: boolean;
-  /** M7 #310：附件钮选中后调 onAttachment(files)，父组件负责
-   * grant + upload + 拼 token 进 draft。父组件在 live 编辑面下应同时传
-   * draft/onDraftChange 才能把 token 注入。 */
-  onAttachment?: (files: File[]) => void | Promise<void>;
+  /** M7 #310（#729 契约收窄）：附件钮选中 / 剪贴板粘贴后调
+   * onAttachment(files)，父组件负责 grant + upload，返回成功文件的
+   * token；注入 draft（行原子、粘贴落 caret 位）由 useComposerWire 统一
+   * 做。父组件在 live 编辑面下应同时传 draft/onDraftChange 才能接住注入。 */
+  onAttachment?: (files: File[]) => string[] | Promise<string[]>;
   /** M7 #310：受控 draft（live 面由父持 state，附件 token 才能注入）。 */
   draft?: string;
   onDraftChange?: (next: string) => void;
@@ -98,6 +99,7 @@ export function Composer({
     openFilePicker,
     attaching,
     onPickFiles,
+    handlePaste,
     pickerOpen,
     togglePicker,
     closePicker,
@@ -127,6 +129,9 @@ export function Composer({
             value={draft}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
+            // #729: clipboard images/files ride the #310 attachFile chain;
+            // a text-only paste never reaches the handler's preventDefault.
+            onPaste={handlePaste}
           />
           <MentionInline
             open={inlineOpen}

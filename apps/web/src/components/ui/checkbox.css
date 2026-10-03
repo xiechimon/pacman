@@ -1,23 +1,14 @@
-/* 复选原语（XMON-75 建、XMON-72 收口）：全仓复选形态的唯一持值文件——18px
-   方角 tile、4px 圆角、--card-button 实底 + 白勾；关态透明底 + 1px
-   --border-strong 内描边。新复选面一律消费本件，不另写 tile CSS。 */
+/* 复选原语（XMON-75 建、XMON-72 收口、#690 迁 Base UI 官方件）：全仓复选
+   形态的唯一持值文件——18px 方角 tile、4px 圆角、--card-button 实底 + 白勾；
+   关态透明底 + 1px --border-strong 内描边。新复选面一律消费本件，不另写
+   tile CSS。tile 本体 = Checkbox.Root 的 span（role=checkbox），状态样式走
+   官方 data-checked / data-unchecked 钩子；隐藏 input 的定位与遮蔽由官方件
+   内联样式持有，本文件不再垫 input。 */
 
 .ui-checkbox {
-  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  cursor: pointer;
-}
-
-/* 真身 input 垫在 tile 底下：键盘 Tab 到的是它，点的是它，视觉是 tile。 */
-.ui-checkbox-input {
-  position: absolute;
-  inset: 0 auto auto 0;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  opacity: 0;
   cursor: pointer;
 }
 
@@ -33,13 +24,20 @@
   color: var(--text-on-accent);
 }
 
-.ui-checkbox[data-on="false"] .ui-checkbox-tile {
+.ui-checkbox-tile[data-unchecked] {
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--border-strong);
 }
 
-/* 仓级 focus 环 canon（#388）：2px 实线 --focus-ring + offset 2。 */
-.ui-checkbox-input:focus-visible + .ui-checkbox-tile {
+/* Indicator 层 display:flex（官方示例同款）：inline 布局下 svg 会吃基线
+   缝隙，白勾将偏离 tile 几何中心。 */
+.ui-checkbox-indicator {
+  display: flex;
+}
+
+/* 仓级 focus 环 canon（#388）：2px 实线 --focus-ring + offset 2。#690 起
+   焦点落在 Root 本体（tabIndex=0 的 span），环直接画在 tile 上。 */
+.ui-checkbox-tile:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }

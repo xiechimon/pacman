@@ -16,7 +16,7 @@
 //   9. build 位错乱：latestBuildId 不指向新 build / prevPhase 不记 failed
 
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { asc, eq } from 'drizzle-orm';
@@ -31,7 +31,15 @@ import {
   step as stepTable,
   todo as todoTable,
 } from '../../apps/server/src/db/schema.js';
-import { AGENT_ID, api, bootRealServer, type RealServer, seedWorld, waitFor } from './helpers.js';
+import {
+  AGENT_ID,
+  api,
+  bootRealServer,
+  daemonLogLines,
+  type RealServer,
+  seedWorld,
+  waitFor,
+} from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 const PLAN_MD = [
@@ -50,11 +58,7 @@ let paths: StatePaths;
 let home: string;
 
 function logLines(): string[] {
-  try {
-    return readFileSync(paths.daemonLog, 'utf8').split('\n');
-  } catch {
-    return [];
-  }
+  return daemonLogLines(paths.daemonLog);
 }
 
 beforeAll(async () => {

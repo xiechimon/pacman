@@ -15,6 +15,7 @@ import { useApiKeys, useApiMutations, useTodos } from '../api/hooks.js';
 import { mapApiKeys, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
+import { toastError } from '../components/ui/toaster.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, Key } from '../icons/index.js';
@@ -125,6 +126,9 @@ export function ApiKeysPage() {
             onSuccess: (res) => {
               if (typeof res.plaintext === 'string') setPlaintext(res.plaintext);
             },
+            // #638：弹窗提交即自关（dialog submit 律），失败 = 密钥没建上、
+            // 明文块也不出现，此前零解释。
+            onError: (error) => toastError(t('新建 API 密钥失败，请重试。'), error),
           })
         }
       />

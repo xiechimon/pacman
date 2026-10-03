@@ -26,6 +26,8 @@ export interface StubRequest {
 export interface StubLlm {
   url: string;
   requests: StubRequest[];
+  /** 每次请求的到达时刻（与 requests 同步 push；#698 诊断面：请求时间线）。 */
+  requestTimes: number[];
   close(): Promise<void>;
 }
 
@@ -40,6 +42,7 @@ export async function startStubLlm(
   opts: { onConsumed?: () => void } = {},
 ): Promise<StubLlm> {
   const requests: StubRequest[] = [];
+  const requestTimes: number[] = [];
   let next = 0;
   const server: Server = createServer((req, res) => {
     if (req.method !== 'POST' || !req.url?.endsWith('/chat/completions')) {
@@ -51,6 +54,7 @@ export async function startStubLlm(
       body += d;
     });
     req.on('end', () => {
+      requestTimes.push(Date.now());
       requests.push(JSON.parse(body) as StubRequest);
       const rsp = responses[Math.min(next, responses.length - 1)] ?? { content: 'ok' };
       next += 1;
@@ -166,6 +170,7 @@ export async function startStubLlm(
   return {
     url: `http://127.0.0.1:${port}/v1`,
     requests,
+    requestTimes,
     close: () =>
       new Promise<void>((resolve, reject) => {
         server.close((err) => (err ? reject(err) : resolve()));

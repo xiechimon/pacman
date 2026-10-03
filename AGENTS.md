@@ -32,15 +32,16 @@ pnpm typecheck  # pnpm -r typecheck
 ```
 三类必须先通过才能提交。**别跑 `pnpm build`**（vite 全量；不值得 commit 前做）。
 
-测试规则（强制）：
+测试规则（强制，分层职责正本 = `docs/spec/19-测试分层与受影响面.md`）：
 - **禁止写完实现再补 unit test**——要测就先于实现。
-- **E2E 为主**：复杂功能用真 e2e 验证能跑通；开发期只跑与本次改动相关的几条；**禁止一次跑全套 e2e**（`apps/web` e2e 完整跑要 1h+）——收尾/PR 时再执行。
+- **E2E 为主**：复杂功能用真 e2e 验证能跑通；开发期跑受影响面——`pnpm --filter @pacman/web e2e:affected`（改 `src/ui` / styles / i18n / api / fixtures 等共享面时自动回落全量）。**全量 e2e 的执行点在 CI**（4 分片，覆盖面不降）；本地全量仅在收尾复核确需时跑——实测 617 用例 154s（不是旧口径的 1h+），但它是多 lane 内存压力的主力，别当日常。
+- unit 受影响面缩窄：`pnpm exec vitest related --changed`（vitest 5 原生，跨 project 生效，2026-10-03 实测）。
 - **先列失败方式，再写实现**：动某块系统前，先枚举它可能失败的所有场景，写代码是让场景通过的手段。
 - **e2e spec 文件合并/解冲突后必跑 `npx playwright test <spec> --list` 验解析**（M7 实战：typecheck 不覆盖 spec 语法，手工解冲突吞 `});` 到 EOF 才炸——typecheck 绿≠playwright 能解析）。
 
 跑验证服务（port 与 dist/ 互斥）：
 - `dev:web` / `dev:server` / `dev:daemon` ——dev server，端口 `5173` / `8787`。vite 带 `strictPort`——撞端口即启动失败，不静默顺延到下一个空闲口（顺延才是危险的：proxy 目标不变，界面会去驱动持有该端口的别的栈）。覆写：`PACMAN_DEV_WEB_PORT` / `PACMAN_DEV_SERVER_PORT`。
-- **E2E_PORT** 默认 8399——跑前先 `lsof -iTCP:8399` 查占用，占用的是别的车道**不能杀**，换端口。
+- **E2E_PORT** 默认 8399——跑前先 `lsof -iTCP:8399` 查占用，占用的是别的车道**不能杀**，换端口。**`e2e:affected` 默认走 8398**（`E2E_AFFECTED_PORT` 覆写，显式 `E2E_PORT` 优先）——与全量分道，同款撞端口纪律。
 - **同 worktree 内不要并跑两个 playwright**——`vite build --mode fixture` 写同一个 `dist/`，会互踩。跨 worktree 各用各的 dist 无碍。
 
 ## Dependencies & Install Security

@@ -38,6 +38,7 @@ import {
   CHIEF_INPUT_PLACEHOLDER_STEERING,
   type ChiefCompactionModel,
 } from '@pacman/shared';
+import { Atom } from 'loading-dev';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
@@ -487,7 +488,23 @@ export function ChiefDrawer({
                         />
                       </span>
                       <div className="chief-msg-col">
-                        <div className="chief-bubble">{item.text}</div>
+                        {/* #742：live 用户行的 markdown 槽（详情页用户行
+                            transcript.tsx #612 同款配方）——经共用块级解析器
+                            渲染，todo 提及 chip / 粗体 / 行内 code / 围栏不再
+                            按字面漏出；气泡类名双态，纯文本槽（fixture 捕获形）
+                            保持字面路径 DOM 与几何逐字不变。复制载荷照旧取
+                            item.text 原文（#469 律），rewind 锚 id 透传不动。 */}
+                        <div
+                          className={
+                            item.markdown != null ? 'chief-bubble chief-bubble--md' : 'chief-bubble'
+                          }
+                        >
+                          {item.markdown != null ? (
+                            <ChatMarkdown text={item.markdown} />
+                          ) : (
+                            item.text
+                          )}
+                        </div>
                         <div className="chief-msg-tools">
                           {/* #615 C：复制翻真 clipboard 钮（local-first 面存在）。 */}
                           <Button
@@ -520,6 +537,38 @@ export function ChiefDrawer({
                           </Button>
                         </div>
                       </div>
+                    </div>
+                  );
+                // #739 在飞存在行：回合在飞但首 token 未至的静默窗口——头像槽
+                // 复用 robot 行的 agent 身份脸（bound = 绑定 Agent，未 bound =
+                // 虚线 chief 字形），右侧 = loading-dev Atom + `处理中...`，与
+                // 详情页对话区 streaming 行同一套词汇（transcript.tsx 正典）。
+                // 不挂秒数（#471），首 delta 到达即被 typing 行取代。
+                if (item.kind === 'streaming')
+                  return (
+                    <div key={i} className="chief-msg">
+                      {chief.bound && chief.agent ? (
+                        <span className="chief-avatar chief-avatar--img">
+                          <SeededAvatar
+                            name={chief.agent.displayName}
+                            src={chief.agent.avatarUrl}
+                            fallback="/avatar-robot-1.svg"
+                          />
+                        </span>
+                      ) : (
+                        <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
+                      )}
+                      <span className="chief-streaming">
+                        {/* #672/#739: loading-dev Atom（16px/900ms，与详情页
+                            chat-spinner 同款）——库自带 reduced-motion 冻结与
+                            aria-hidden，标签文本是可访问的 live 线索。 */}
+                        <Atom size={16} duration={900} className="chief-spinner" />
+                        {item.seconds != null && (
+                          <span className="chief-streaming-secs">{item.seconds}s</span>
+                        )}
+                        <ChevronRight width={10} height={10} />
+                        <span className="chief-streaming-label">{t(item.label)}</span>
+                      </span>
                     </div>
                   );
                 return (
