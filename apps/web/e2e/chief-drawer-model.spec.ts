@@ -4,9 +4,13 @@ import { expect, type Page, test } from '@playwright/test';
 // row used to be a display-only `<span>` carrying a broken π trace — the
 // live loop (verify probe drive-chief-drawer) covers 显示→可改→落库→回显;
 // this spec pins the fixture-face half of the same contract:
-//   1. the model row is a control (button[aria-haspopup=dialog]) that opens
-//      the model dialog; picking a row closes it (accept 律, #148 同律) and
-//      the fixture face sends no PATCH (onPick absent).
+//   1. the model row is a control (button[aria-haspopup=listbox]) that opens
+//      the model popover anchored under the row (#751: the #615 centered
+//      DialogShell read as 「在中间出现」 against the switcher's under-trigger
+//      anchoring); geometry is asserted from live rects, and the selected
+//      row's readability from computed contrast in both themes (#751 A);
+//      picking a row closes the face (accept 律, #148 同律) and the fixture
+//      face sends no PATCH (onPick absent).
 //   2. the row carries the runtime mark (RuntimePi 块状 π / RuntimeClaudeCode
 //      品牌星标 — 正本 = 参考站 providers 运行时 tab SVG; 用户返工裁决：运行时
 //      SVG，不是 Agent 头像; the broken 「ㅋ」 trace is gone); unbound keeps the
@@ -18,10 +22,10 @@ import { expect, type Page, test } from '@playwright/test';
 //      on the board settings view via the ?chief=settings deep link.
 
 const drawer = (page: Page) => page.locator('.chief-drawer');
-const modelBtn = (page: Page) => page.locator('.chief-model button[aria-haspopup="dialog"]');
+const modelBtn = (page: Page) => page.locator('.chief-model button[aria-haspopup="listbox"]');
 
 test.describe('chief drawer model row (#615)', () => {
-  test('the model row is a control that opens the model dialog', async ({ page }) => {
+  test('the model row is a control that opens the anchored model popover', async ({ page }) => {
     await page.goto('/app?scenario=111');
     await expect(drawer(page)).toBeVisible();
     const btn = modelBtn(page);
@@ -29,17 +33,79 @@ test.describe('chief drawer model row (#615)', () => {
     await expect(btn).toContainText('claude-sonnet-5 · 默认');
 
     await btn.click();
-    const dialog = page.locator('.chief-model-pick');
-    await expect(dialog).toBeVisible();
+    const menu = page.locator('.chief-model-pop');
+    await expect(menu).toBeVisible();
+    // the enter animation (slide-in-from-top-2) translates the menu for
+    // 100ms; rects sampled mid-flight are not the resting geometry.
+    await menu.evaluate((el) =>
+      Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined),
+    );
     // the inherit row rides first (compaction select 同律: null = 默认)
-    await expect(dialog.locator('.chief-model-pick-row').nth(0)).toContainText(
+    await expect(menu.locator('.chief-model-pick-row').nth(0)).toContainText(
       '默认（与绑定 Agent 相同）',
     );
 
+    // #751 B: the menu hangs under its trigger like the thread switcher,
+    // not centered over the viewport — live rects, not CSS values.
+    const btnBox = await btn.boundingBox();
+    const menuBox = await menu.boundingBox();
+    const drawerBox = await drawer(page).boundingBox();
+    expect(btnBox).not.toBeNull();
+    expect(menuBox).not.toBeNull();
+    expect(drawerBox).not.toBeNull();
+    if (btnBox == null || menuBox == null || drawerBox == null) throw new Error('missing rects');
+    expect(Math.abs(menuBox.y - (btnBox.y + btnBox.height + 4))).toBeLessThanOrEqual(2);
+    expect(Math.abs(menuBox.x - btnBox.x)).toBeLessThanOrEqual(2);
+    expect(menuBox.x).toBeGreaterThanOrEqual(drawerBox.x);
+    expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(drawerBox.x + drawerBox.width);
+
     // fixture accept 律: picking closes; no live callback, no request
-    await dialog.locator('.chief-model-pick-row').nth(0).click();
-    await expect(dialog).toHaveCount(0);
+    await menu.locator('.chief-model-pick-row').nth(0).click();
+    await expect(menu).toHaveCount(0);
     await expect(drawer(page)).toBeVisible();
+  });
+
+  test('the selected model row is readable in both themes (#751 A)', async ({ page }) => {
+    // #751 A: the retired rule painted --seg-active (a segmented-control
+    // fill) as the selected row's text — 1.24:1 light. Assert the rendered
+    // pair instead of the CSS value: computed name color against the
+    // background it actually renders on must clear AA, and the selected
+    // state must not ride color alone (the row carries a fill).
+    for (const theme of ['dark', 'light'] as const) {
+      await page.goto('/app?scenario=111');
+      await page.evaluate((t) => localStorage.setItem('pacman-theme', t), theme);
+      await page.reload();
+      await expect(drawer(page)).toBeVisible();
+      await modelBtn(page).click();
+      const row = page.locator('.chief-model-pick-row[aria-selected="true"]');
+      const name = row.locator('.chief-model-pick-name');
+      await expect(name).toBeVisible();
+      const ratio = await name.evaluate((el) => {
+        const lin = (c: number) => {
+          const s = c / 255;
+          return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+        };
+        const lum = (rgb: number[]) =>
+          0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
+        const parse = (s: string) => (s.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
+        let bg = 'rgba(0, 0, 0, 0)';
+        let node: Element | null = el;
+        while (node != null && bg === 'rgba(0, 0, 0, 0)') {
+          bg = getComputedStyle(node).backgroundColor;
+          node = node.parentElement;
+        }
+        const [hi, lo] = [lum(parse(getComputedStyle(el).color)), lum(parse(bg))].sort(
+          (a, b) => b - a,
+        );
+        return (hi + 0.05) / (lo + 0.05);
+      });
+      expect(ratio, `${theme} selected-row contrast`).toBeGreaterThanOrEqual(4.5);
+      expect(await row.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(
+        'rgba(0, 0, 0, 0)',
+      );
+      await page.keyboard.press('Escape');
+      await expect(page.locator('.chief-model-pop')).toHaveCount(0);
+    }
   });
 
   test('the model row carries the runtime mark, not an agent avatar', async ({ page }) => {
