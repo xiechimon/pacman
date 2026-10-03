@@ -39,8 +39,20 @@ function logLines(): string[] {
 }
 
 beforeAll(async () => {
-  // 门控轮：延迟 8s 的单轮——期间步 claimed、pi 会话在跑，POST steer 窗口。
-  stub = await startStubLlm([{ content: '收到，补上。', delayMs: 8_000 }]);
+  // 门控轮：延迟 8s 的工具轮——期间步 claimed、pi 会话在跑，POST steer 窗口。
+  // #703 产物闸：bash 写 plan.md 让规划步有真产物（纯文本轮过不了闸 1）。
+  stub = await startStubLlm([
+    {
+      toolCall: {
+        name: 'bash',
+        arguments: {
+          command: "printf '# 方案\n\nContext: steer 探针。\nChanges: README 加一行。\n' > plan.md",
+        },
+      },
+      delayMs: 8_000,
+    },
+    { content: '收到，补上。' },
+  ]);
   server = await bootRealServer({ providerBaseUrl: stub.url, claimHoldMs: 1_000 });
   home = mkdtempSync(join(tmpdir(), 'pacman-w3-steer-home-'));
   const config = loadDaemonConfig(

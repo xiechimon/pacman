@@ -22,18 +22,18 @@ import type {
 import {
   AGENT_TOOL_MERGE,
   AGENT_TOOL_PUSH,
+  buildPlanRewritePrompt,
   buildReplanPrompt,
   buildRestartPrompt,
   buildReviewRejectPrompt,
   buildReviewStepPrompt,
   hasBlockingFinding,
   MERGE_ANNOUNCEMENT,
-  PLAN_FILE_NAME,
   REVIEW_ANNOUNCEMENT,
   REVIEW_VERDICT_KIND,
   STOP_MESSAGE,
 } from '@pacman/shared';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
   agent,
@@ -51,7 +51,7 @@ import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { hasRepoBinding, readBuildChanges } from './git.js';
 import type { MachineWakeHub } from './machines.js';
-import { assertPhaseTransition } from './phase.js';
+import { assertPhaseTransition, canTransitionPhase } from './phase.js';
 import { getTodo, setTodoPhase } from './todos.js';
 
 export interface BuildDeps {
@@ -677,8 +677,9 @@ export function requestMerge(deps: BuildDeps, buildId: string): { delegated: tru
 }
 
 /** plan 步未产 plan.md 的自动补写指令（#113 裁定候选1，02 §4.2「plan 即文件」
- * 交接物契约执行；四段落要求同驳回重规划指令族——措辞由本层给事实与要求）。 */
-const PLAN_REWRITE_PROMPT = `规划步未产出 ${PLAN_FILE_NAME} 交接文件。请将方案写入工作区根目录的 ${PLAN_FILE_NAME}（覆盖 Context/Changes/Edge cases/Verification 四段）再结束本步；若改动已在规划轮完成，${PLAN_FILE_NAME} 如实记录改动内容与验证方式即可。`;
+ * 交接物契约执行；四段落要求同驳回重规划指令族）。#703 起文本单源 =
+ * shared buildPlanRewritePrompt（呈现层过滤侧按同一模板识别续轮指令行）。 */
+const PLAN_REWRITE_PROMPT = buildPlanRewritePrompt();
 
 /** AI 审核 blocking 自动修订 prompt（M7 #330，r8 §3.1 实测 62：「调用工具:
  * edit_plan」+ 调整摘要行）。与驳回重规划轮同形（plan 步 + continue session
@@ -704,11 +705,71 @@ function enqueueReviewRevision(
   enqueueStep(deps, args.buildId, 'plan', args.teamId, args.revisePrompt);
 }
 
+/** 步级失败落账（#703 提取共通漏斗）：step failed + build.errorMessage +
+ * todo → failed（相位边合法时——planning/building/review 均有 failed 边）。
+ * finishStep 的 failed 分支与 #703 产物闸共用；调用方各自负责 publishStepStatus
+ * （事件面在 finishStep 收尾统一发）。 */
+export function applyStepFailure(
+  deps: BuildDeps,
+  stepRow: typeof step.$inferSelect,
+  errorMessage: string,
+): void {
+  const { db } = deps;
+  db.update(step).set({ status: 'failed' }).where(eq(step.id, stepRow.id)).run();
+  const buildRow = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
+  if (!buildRow) return;
+  db.update(build).set({ errorMessage }).where(eq(build.id, buildRow.id)).run();
+  const todoRow = db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
+  if (todoRow && canTransitionPhase(todoRow.phase, 'failed')) {
+    setTodoPhase(deps, todoRow.id, 'failed');
+  }
+}
+
+/** #703 产物闸（B-C10/B-C11/B-C14）：两道闸各自有物可看，无物即无闸（spec 18
+ * §3.1）——方案步没写出方案文档，进不了 confirm 闸；构建步零改动/假完成，进
+ * 不了 review 闸。判定钉「本步该产什么」（plan 步 → 方案文档；build 步 →
+ * 变更），非全局「空即拦」：review 步 hasChanges 恒 false（只读收尾，#511）
+ * 不受闸 2 影响，hasChanges 缺省（老 daemon 版本墙）fail-open。
+ * 真值源 = daemon 侧产物通道：plan 行（runner 收尾上传 plan.md 落库）与 done
+ * 载荷 hasChanges（runner 侧 worktree git 判定 countAhead）——不读服务端
+ * changes 投影（readBuildChanges 对非 hosted 项目恒空，读它把手动项目全拦死；
+ * #704 地界）。首轮 plan 步缺产物不在此闸：#113 补写轮承担「重试一次」，闸只
+ * 拦重试后的仍空。返回 null = 过闸。 */
+function stepArtifactGate(
+  deps: BuildDeps,
+  stepRow: typeof step.$inferSelect,
+  outcome: { hasChanges?: boolean },
+): string | null {
+  if (stepRow.kind === 'plan') {
+    const planRow = deps.db
+      .select({ id: planTable.id })
+      .from(planTable)
+      .where(eq(planTable.buildId, stepRow.buildId))
+      .get();
+    if (planRow !== undefined) return null;
+    // 本 build 首个 plan 步（无其它 plan 步行）→ 补写轮重试，非闸失败。判据
+    // 不用 prompt===null：失败重启轮首步带 restart 指令（prompt 非 null）同样
+    // 该享一次重试，否则重启即硬失败。
+    const priorPlanStep = deps.db
+      .select({ id: step.id })
+      .from(step)
+      .where(and(eq(step.buildId, stepRow.buildId), eq(step.kind, 'plan'), ne(step.id, stepRow.id)))
+      .get();
+    if (priorPlanStep === undefined) return null;
+    return '规划未产出方案';
+  }
+  if (stepRow.kind === 'build' && outcome.hasChanges === false) {
+    return '构建零改动';
+  }
+  return null;
+}
+
 /** 机器步完成后的 phase 推进（M3 claim/journal 面挂接点；M2a 供编排测试
  * 驱动状态机）：规划步成 → confirm（withPlan）/ building（直执行续跑）；
  * 执行步成 → review；合并步成 → done（02 §4.2 主时序）。M7 #330：审核步成
  * → emit REVIEW_VERDICT_KIND 消息 + 若 blocking → planning + enqueue 重规划
- * 步（自动修订回路，r8 §3.1）。 */
+ * 步（自动修订回路，r8 §3.1）。#703 产物闸先于 done 落位——无物步按失败
+ * 收尾，confirm/review 不可达。 */
 export function completeStep(
   deps: BuildDeps,
   stepId: string,
@@ -716,32 +777,44 @@ export function completeStep(
 ): void {
   const stepRow = deps.db.select().from(step).where(eq(step.id, stepId)).get();
   if (!stepRow) throw new NotFoundError(`step ${stepId}`);
-  deps.db.update(step).set({ status: 'done' }).where(eq(step.id, stepId)).run();
   const buildRow = deps.db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
-  if (!buildRow) return;
+  if (!buildRow) {
+    deps.db.update(step).set({ status: 'done' }).where(eq(step.id, stepId)).run();
+    return;
+  }
   const todoRow = deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
-  if (!todoRow) return;
+  if (!todoRow) {
+    deps.db.update(step).set({ status: 'done' }).where(eq(step.id, stepId)).run();
+    return;
+  }
+  // 产物闸（#703）：失败收尾不落 done（完成判据 = 契约产物存在，不是会话
+  // 结束——B-C10 空方案 / B-C11 零改动 / B-C14 假完成同病族）。
+  const gateFailure = stepArtifactGate(deps, stepRow, outcome);
+  if (gateFailure !== null) {
+    applyStepFailure(deps, stepRow, gateFailure);
+    return;
+  }
+  deps.db.update(step).set({ status: 'done' }).where(eq(step.id, stepId)).run();
 
   if (stepRow.kind === 'plan') {
     // 交接物校验（#113：05 §5 实跑发现规划轮可跳过写 plan.md 直接交付，build 轮
-    // 仅剩 confirm 关口措辞而拿不到任务内容）：首轮规划步成功但未产 plan.md →
-    // 不算成——留 planning + 自动补写一轮。有界：仅首轮触发（续轮指令步 prompt
-    // 非 null——补写轮/驳回重规划轮仍无产物 → 放行 confirm，关口决策交还人；
-    // 此时 build 步有 spec 兜底，见 machines.ts claim 合成）。
+    // 仅剩 confirm 关口措辞而拿不到任务内容）：本 build 首个规划步成功但未产
+    // plan.md → 不算成——留 planning + 自动补写一轮（闸只拦重试后的仍空，
+    // B-C10「两轮全空仍进 confirm」由 #703 闸堵死）。
     const planDoc = deps.db
       .select({ id: planTable.id })
       .from(planTable)
       .where(eq(planTable.buildId, stepRow.buildId))
       .get();
-    if (!planDoc && stepRow.prompt === null) {
+    if (!planDoc) {
       enqueueStep(deps, stepRow.buildId, 'plan', todoRow.teamId, PLAN_REWRITE_PROMPT);
       return;
     }
-    // plan 卡就绪 → confirm（02 §4.2：phase=confirm 等人工）；hasPlan 据实置位
-    // （无交接物不谎称有方案——看板 plan chip 数据源）。hasPlan 走漏斗 extra
+    // plan 卡就绪 → confirm（02 §4.2：phase=confirm 等人工）；hasPlan 置位
+    // （闸 1 在位 = 过闸必有产物；plan chip 数据源）。hasPlan 走漏斗 extra
     // 单次写+发布（XMON-59：直写漏斗外曾无 v 无发布——漏斗同相位幂等化后，
     // 重放轮 done 直写还会被 no-op 吞掉伴随位，extra 是唯一「写+发」原子位）。
-    setTodoPhase(deps, todoRow.id, 'confirm', planDoc ? { hasPlan: true } : {});
+    setTodoPhase(deps, todoRow.id, 'confirm', { hasPlan: true });
     return;
   }
   if (stepRow.kind === 'build') {
