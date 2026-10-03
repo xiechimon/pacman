@@ -78,10 +78,6 @@ export interface ChiefToolDeps {
   /** 本机 MCP config 读路径（spec 13/#368 mcp_servers 工具换源）；缺省 =
    *  ~/.claude.json（config.ts 同默认；测试面显式注入 fixture 路径）。 */
   mcpConfigPath?: string;
-  /** claude-code 模型段读路径（#627 models 工具 = model-sources 同源）：homeDir
-   *  注入位，缺省 = os.homedir()（REST GET /model-sources 路由同律；测试面注入
-   *  隔离目录钉住 settings.json 内容）。 */
-  claudeHomeDir?: string;
   /** GitHub 出站注入位（#452 写向：create_todo 自建 issue 透传；
    * AppContext.githubFetch 同族，缺省 globalThis.fetch，测试注入 mock）。 */
   githubFetch?: FetchLike;
@@ -259,8 +255,8 @@ export async function executeChiefTool(
       // providers models[] ∪ model-sources 非 pi 段，同 (provider, modelId)
       // first-wins 去重——pi 段与 providers 段同构平铺丢归属，不重复产行）。
       // 本层独立实现（不 import web 代码），数据面复用 providers /
-      // model-sources 两路由背后的 service 函数；claude-code 段卫生同
-      // getModelSources（文件缺失 → installed:false 空段，不报错）。
+      // model-sources 两路由背后的 service 函数；claude-code 段 = 各执行机
+      // daemon 上报（#707，未上报的机器缺席，不报错）。
       const keysvc = { db, box: deps.box };
       const rows: {
         provider: string;
@@ -286,7 +282,7 @@ export async function executeChiefTool(
           });
         }
       }
-      for (const source of getModelSources(keysvc, ctx.teamId, deps.claudeHomeDir).sources) {
+      for (const source of getModelSources(keysvc, ctx.teamId).sources) {
         if (source.runtime === 'pi') continue;
         const providerLabel = MODEL_SOURCE_RUNTIME_LABELS[source.runtime] ?? source.runtime;
         for (const m of source.models) {

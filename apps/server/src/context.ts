@@ -71,8 +71,4 @@ export interface AppContext {
   /** 本机 MCP config 读路径（spec 13/#368：GET mcp-servers 投影源 +
    *  chief mcp_servers 工具源；config.ts 单源，默认 ~/.claude.json）。 */
   mcpConfigPath: string;
-  /** claude-code 模型段读路径（#627 chief models 工具 = model-sources 同源）：
-   *  homeDir 注入位，缺省 = 工具侧 os.homedir()（REST 路由同律），测试注入
-   *  隔离目录。 */
-  claudeHomeDir?: string;
 }

@@ -37,10 +37,6 @@ export function bootServer(
     /** spec 13（#368）：MCP 本地 config 读路径。缺省 = 唯一不存在路径
      *  （空列表语义，与旧「空 mcp_server 表」行为一致，既有测试零改动）。 */
     mcpConfigPath?: string;
-    /** #627：claude-code 模型段读路径（chief models 工具）。缺省 = 自建隔离
-     *  空目录（无 .claude/settings.json → claude-code 段空，确定性；要模型行
-     *  的测试显式建目录传参）。 */
-    claudeHomeDir?: string;
   } = {},
 ) {
   const db = openMemoryDb();
@@ -57,8 +53,6 @@ export function bootServer(
   const attachmentsDir = opts.attachmentsDir ?? mkdtempSync(join(tmpdir(), 'pacman-att-'));
   const ownSkillsDir = opts.skillsDir === undefined;
   const skillsDir = opts.skillsDir ?? mkdtempSync(join(tmpdir(), 'pacman-skills-'));
-  const ownClaudeHome = opts.claudeHomeDir === undefined;
-  const claudeHomeDir = opts.claudeHomeDir ?? mkdtempSync(join(tmpdir(), 'pacman-claude-home-'));
   const oauthStates: AppContext['oauthStates'] = new Map();
   const app = createApp({
     db,
@@ -84,7 +78,6 @@ export function bootServer(
     ...(opts.webDir !== undefined ? { webDir: opts.webDir } : {}),
     authToken: opts.authToken ?? null,
     mcpConfigPath: opts.mcpConfigPath ?? join(tmpdir(), `pacman-mcp-absent-${randomUUID()}.json`),
-    claudeHomeDir,
   });
   return {
     app,
@@ -104,7 +97,6 @@ export function bootServer(
       if (ownReposDir) rmSync(reposDir, { recursive: true, force: true });
       if (ownAttDir) rmSync(attachmentsDir, { recursive: true, force: true });
       if (ownSkillsDir) rmSync(skillsDir, { recursive: true, force: true });
-      if (ownClaudeHome) rmSync(claudeHomeDir, { recursive: true, force: true });
     },
   };
 }

@@ -169,6 +169,13 @@
       "when": 1791036874716,
       "tag": "0023_red_jimmy_woo",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1791067986000,
+      "tag": "0024_tidy_whirlwind",
+      "breakpoints": true
     }
   ]
 }

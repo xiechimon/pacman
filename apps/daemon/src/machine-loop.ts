@@ -16,6 +16,7 @@ import {
 } from '@pacman/shared';
 import { createClaudeCodeBackend } from './backend/claude-code.js';
 import { createPiBackend } from './backend/pi.js';
+import { readClaudeCodeReport } from './claude-code-models.js';
 import type { DaemonConfig } from './config.js';
 import { StepJournal } from './journal.js';
 import type { DaemonLogger } from './log.js';
@@ -163,6 +164,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       teamId: config.teamId,
       name: config.name,
       cliVersion: DAEMON_VERSION,
+      claudeCode: readClaudeCodeReport(),
     });
     machineJson = {
       machineId: enrolled.machineId,
@@ -176,7 +178,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   inMemoryToken = machineJson.token;
   const machineId = machineJson.machineId;
 
-  await client.presence({ cliVersion: DAEMON_VERSION });
+  await client.presence({ cliVersion: DAEMON_VERSION, claudeCode: readClaudeCodeReport() });
   logger.raw(`Online (machineId=${machineId}); polling ${config.serverUrl}`);
 
   // 闲置防睡（darwin caffeinate -i；平台命令表 spawn，01 §4.3）。
@@ -368,9 +370,11 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
 
   // —— presence 心跳（并行失败不退出，r3 §1.5）——
   const presenceTimer = setInterval(() => {
-    client.presence({ cliVersion: DAEMON_VERSION }).catch((err: unknown) => {
-      logger.machine(`presence failed: ${err instanceof Error ? err.message : String(err)}`);
-    });
+    client
+      .presence({ cliVersion: DAEMON_VERSION, claudeCode: readClaudeCodeReport() })
+      .catch((err: unknown) => {
+        logger.machine(`presence failed: ${err instanceof Error ? err.message : String(err)}`);
+      });
   }, opts.presenceIntervalMs ?? 30_000);
   presenceTimer.unref?.();
 

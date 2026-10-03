@@ -1,11 +1,13 @@
 // 模型服务 route（#356，spec 11 §A1-A4/A7）：runtime tablist（pi / Claude
 // Code），tab 状态同步 ?runtime= search param（刷新/分享/深链回定位）。
-// pacman 是 local-first，自身不提供远程模型服务——页面 = 本机各 runtime
+// pacman 是 local-first，自身不提供远程模型服务——页面 = 各 runtime
 // 的模型来源直读：pi 段 = 用户经「添加服务商」配置的 custom provider 的
-// models[] 投影；claude-code 段 = server 端 fs 直读本机
-// ~/.claude/settings.json 的模型槽（缺失/解析失败 → header 转「未安装」
-// 指引态，不空报不崩）。每 tab = header 卡（runtime 名 + 一行说明 +
-// 安装态）+ 模型行（显示名 → 模型 id）；「Pacman（内置）」facade 行与
+// models[] 投影；claude-code 段 = 各执行机 daemon 读本机
+// ~/.claude/settings.json 经 presence/enroll 上报、server 按机器聚合
+// （#707；缺失/解析失败 → header 转「未安装」指引态，不空报不崩）。
+// 每 tab = header 卡（runtime 名 + 一行说明 +
+// 安装态）+ 模型行（显示名 → 模型 id）；claude-code tab 按机器分段
+// （每台机器一张 header 卡 + 模型行）；「Pacman（内置）」facade 行与
 // 38 项 preset 列表行已除（数据层全留，preset 仅在添加服务商 picker
 // dialog 内出现，A5/A6）。A7 行可点感收编：模型行纯展示无 handler，
 // 不渲染 chevron/三点装饰。
@@ -39,7 +41,7 @@ export const PROVIDERS_HREF = '/app/resources/providers';
 /** runtime 一行说明（A2 header 卡）；词表闭包 = MODEL_SOURCE_RUNTIMES。 */
 const RUNTIME_DESCRIPTIONS: Record<ModelSourceRuntime, string> = {
   pi: 'pacman 自有运行时。模型来自你添加的服务商。',
-  'claude-code': '本机 Claude Code 配置（~/.claude/settings.json）的模型槽。',
+  'claude-code': '执行机 Claude Code 配置（~/.claude/settings.json）的模型槽。',
 };
 
 /** runtime → 官方品牌 mark（components/brand-marks.tsx 单源，机器行
@@ -98,7 +100,9 @@ export function ProvidersPage() {
     ? (sourcesQ.data?.sources ?? [])
     : (fixture.resources?.providerSources ?? []);
   const runtime = parseRuntime(searchParams);
-  const active = sources.find((source) => source.runtime === runtime);
+  // #707：claude-code 段按机器分段——同 runtime 可多段（每台机器一段），
+  // pi 恒一段。单机形态下 matching 恰一段，与旧单段渲染等价。
+  const matching = sources.filter((source) => source.runtime === runtime);
   // 添加 (topbar 新建 / pi 空态引导钮) opens the picker dialog; live
   // submit = POST providers then close (invalidateAll refetches 两封套)，
   // fixture = accept 律
@@ -164,17 +168,18 @@ export function ProvidersPage() {
           })}
         </TabsList>
       </Tabs>
-      {active != null && (
-        <>
-          <RuntimeHead source={active} />
-          {active.models.length > 0 ? (
+      {matching.map((source, si) => (
+        // 多机同 hostname 时 header 文案可撞——key 用索引兜底保唯一。
+        <div key={`${source.hostname}:${si}`}>
+          <RuntimeHead source={source} />
+          {source.models.length > 0 ? (
             <GroupCard>
-              {active.models.map((model, i) => (
+              {source.models.map((model, i) => (
                 <div
                   // pi 段跨 provider 平铺，模型 id 偶发撞名——索引兜底保唯一。
                   key={`${model.id}:${i}`}
                   className={`res-model-row${i > 0 ? ' res-model-row--divided' : ''}`}
-                  data-runtime={active.runtime}
+                  data-runtime={source.runtime}
                   data-model-id={model.id}
                 >
                   <span className="res-row-text">
@@ -193,7 +198,7 @@ export function ProvidersPage() {
                 </div>
               ))}
             </GroupCard>
-          ) : active.runtime === 'pi' ? (
+          ) : source.runtime === 'pi' ? (
             // A3 空态：引导开添加服务商 picker（picker 面见
             // verify features/provider-picker.md）。
             <div className="res-runtime-empty">
@@ -214,13 +219,19 @@ export function ProvidersPage() {
               </Button>
             </div>
           ) : (
-            active.installed && (
+            source.installed && (
               <div className="res-runtime-empty">
                 <p className="res-runtime-empty-text">{t('settings.json 未配置模型槽。')}</p>
               </div>
             )
           )}
-        </>
+        </div>
+      ))}
+      {matching.length === 0 && (
+        // #707：尚无执行机上报过（旧 daemon / 未注册）——缺席不断言未安装。
+        <div className="res-runtime-empty">
+          <p className="res-runtime-empty-text">{t('尚无执行机上报模型信息。')}</p>
+        </div>
       )}
       <CreateProviderDialog
         open={createOpen}
