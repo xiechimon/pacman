@@ -27,7 +27,7 @@
       "width": "8.20312px",
       "height": "16px",
       "display": "block",
-      "overflowY": "hidden",
+      "position": "static",
       "color": "rgb(82, 82, 91)",
       "fontSize": "12px",
       "flex": "0 0 auto",
@@ -48,8 +48,14 @@
     "⠏",
     "⠋"
   ],
-  "dotCount": 0,
-  "dots": [],
+  "parts": {
+    "shell": 0,
+    "orbit": 0,
+    "spin": 0,
+    "ring": 0
+  },
+  "shell": null,
+  "ring": null,
   "secs": {
     "rect": {
       "x": 308.203125,

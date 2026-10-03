@@ -1,10 +1,10 @@
 {
   "phase": "before",
-  "base": "http://127.0.0.1:8400",
-  "generatedAt": "2026-10-02T18:30:41.426Z",
+  "base": "http://127.0.0.1:8402",
+  "generatedAt": "2026-10-03T04:30:57.671Z",
   "files": {
     "geometry-streaming.json": {
-      "md5": "f71c810b5f74cf2690cb28a9ab03b69e",
+      "md5": "8e418c73d0221765301230e64865fc5b",
       "note": "static geometry+styles, deterministic"
     },
     "animated-streaming.json": {
@@ -18,7 +18,7 @@
       "note": "freeze contract under prefers-reduced-motion: reduce"
     },
     "geometry-quiescent.json": {
-      "md5": "0554a64f45a95d16338c035f5e82841c",
+      "md5": "110ff7f7cecfd46d6f460e836814dd95",
       "note": "static geometry+styles, deterministic"
     },
     "animated-quiescent.json": {

@@ -8,7 +8,8 @@
       "animationTimingFunction": "ease",
       "transform": "none"
     },
-    "dot": null
+    "spin": null,
+    "spinDelays": []
   },
-  "dotBackground": []
+  "shellBorder": null
 }

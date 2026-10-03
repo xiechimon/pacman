@@ -5,14 +5,15 @@
       "name": "spinner-reel",
       "playState": "running",
       "duration": 900,
-      "iterations": null
+      "iterations": "Infinity"
     }
   ],
   "reel": {
     "animationName": "spinner-reel",
     "animationDuration": "0.9s",
     "animationTimingFunction": "steps(10)",
-    "transform": "matrix(1, 0, 0, 1, 0, -96)"
+    "transform": "matrix(1, 0, 0, 1, 0, -112)"
   },
-  "dot": null
+  "spin": null,
+  "spinDelays": []
 }
