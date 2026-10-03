@@ -514,8 +514,10 @@ export type TranscriptItem =
   /** AI 审核消息（M7 #330，r8 §3.1 60）：结论段 + 编号 findings 列表
    * （每条 = 严重度标签 + 标题 + 描述 + 文件:行 + 可选建议）。服务侧 emit
    * 由 server applyBuildStepAction completeStep 落库（REVIEW_VERDICT_KIND
-   * system message），web mapper 拆出 verdict 形状渲染。 */
-  | { kind: 'review'; conclusion: string; findings: ReviewFinding[] };
+   * system message），web mapper 拆出 verdict 形状渲染。#700：extractionError
+   * 在位 = daemon verdict 提取失败（findingsError 原因）——审核面渲染
+   * 「判定提取失败」行（区别于「审核未返回结论」兜底）。 */
+  | { kind: 'review'; conclusion: string; findings: ReviewFinding[]; extractionError?: string };
 
 /** AI 审核 finding 显示形态（M7 #330，r8 §3.1）：严重度 + 标题 + 描述 +
  * 引用位（文件:行）+ 可选建议。dataSource = server verdict message 解出

@@ -377,6 +377,9 @@ export const EN: Record<string, string> = {
   // 服务端消息 kind = REVIEW_VERDICT_KIND（shared/message.ts 双端单源），
   // findings 形态 = reviewVerdictSchema（shared/review.ts）。
   审核结论: 'Review conclusion',
+  // #700：verdict 提取失败行——daemon findingsError 原因上浮，审核面以
+  // danger 色 tag 与「审核未返回结论」兜底（旧 daemon 无信号）相区分。
+  判定提取失败: 'Verdict extraction failed',
   '(blocking)': '(blocking)',
   '(suggestion)': '(suggestion)',
   '(info)': '(info)',

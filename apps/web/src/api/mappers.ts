@@ -173,10 +173,12 @@ function systemKindOf(content: unknown): string | null {
 /** 解析 REVIEW_VERDICT_KIND 系统消息的 verdict（M7 #330，r8 §3.1）：
  * server `applyBuildStepAction` 完成时 emit `{kind:'review_verdict',
  * verdict: ReviewVerdict}` system 消息；校验失败 = null（兜底退化为空
- * findings 渲染——service 侧 zod 兜底已固，不会真触发）。 */
+ * findings 渲染——service 侧 zod 兜底已固，不会真触发）。#700：daemon
+ * 提取失败时 server 附 extractionError（原因原文）——审核面据此渲染
+ * 「判定提取失败」行（区别于「审核未返回结论」兜底）。 */
 function reviewVerdictOfContent(
   content: unknown,
-): { conclusion: string; findings: ReviewFinding[] } | null {
+): { conclusion: string; findings: ReviewFinding[]; extractionError?: string } | null {
   if (typeof content !== 'string') return null;
   let parsed: unknown;
   try {
@@ -193,6 +195,7 @@ function reviewVerdictOfContent(
   }
   const verdict = reviewVerdictSchema.safeParse((parsed as { verdict?: unknown }).verdict);
   if (!verdict.success) return null;
+  const extractionError = (parsed as { extractionError?: unknown }).extractionError;
   return {
     conclusion: verdict.data.conclusion,
     findings: verdict.data.findings.map((f) => ({
@@ -204,6 +207,7 @@ function reviewVerdictOfContent(
       ...(f.line !== undefined ? { line: f.line } : {}),
       ...(f.suggestion !== undefined ? { suggestion: f.suggestion } : {}),
     })),
+    ...(typeof extractionError === 'string' ? { extractionError } : {}),
   };
 }
 
