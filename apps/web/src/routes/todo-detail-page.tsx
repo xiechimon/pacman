@@ -42,6 +42,7 @@ import {
   useTodo,
   useTodos,
 } from '../api/hooks.js';
+import { invalidateConverged } from '../api/invalidate.js';
 import { liveTextStore } from '../api/live-text.js';
 import {
   mapBranchInfo,
@@ -305,9 +306,11 @@ export function TodoDetailPage() {
   );
   const streamHandlers = useMemo(
     () => ({
-      // todo/phase 面由 team stream 驱动失效；此处兜底本页 todo 键。
+      // todo/phase 面由 team stream 驱动失效；此处兜底本页 todo 键。走收敛缝
+      // （#717）：挂载取数在飞时到达的提示不得被去重吞掉——chip 停在旧相位
+      // 正是 CI 间歇红的历史指纹。
       onMessage: () => {
-        void qc.invalidateQueries({ queryKey: ['todo', id] });
+        void invalidateConverged(qc, { queryKey: ['todo', id] });
       },
     }),
     [qc, id],
