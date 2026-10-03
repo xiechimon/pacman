@@ -422,6 +422,11 @@ export const transcriptUploadSchema = z.object({
 });
 export type TranscriptUpload = z.infer<typeof transcriptUploadSchema>;
 
+/** findingsError（#700 B-C13）长度上限：daemon 组装侧截断在 500 字符内，
+ * 本值 = schema 面第二道闸（同 SHELL_OUTPUT_CHAR_LIMIT 之律，防 bug
+ * daemon 单条打爆 DB）。 */
+export const FINDINGS_ERROR_CHAR_LIMIT = 2_000;
+
 /** POST /api/machine/done/{stepId}——步骤收尾 body [推断]（02 §5.4 端点名；
  * status 词 = 步级失败无自动重跑语义的最小三值，02 §4.2）。
  * M7 #330：审核步终态可携带 findings（reviewVerdict 形态，shared 单源）——
@@ -445,6 +450,14 @@ export const machineDoneBodySchema = z.object({
    * agent 终轮 JSON 输出后置入；server 落库 + 判 blocking 触发自动修订。
    * 形状 = records/review.ts reviewVerdictSchema（conclusion + findings[]）。 */
   findings: reviewVerdictSchema.optional(),
+  /** AI 审核步 verdict 提取失败原因（#700 B-C13）：review 步 daemon 未能从
+   * transcript 取出合法 verdict 时随 done 携带（findings 缺位；两字段互斥，
+   * 同现 = 新 daemon 对旧 server 的无害冗余，findings 优先）。server 据此
+   * 把 verdict 消息兜底拆成两态：「判定提取失败」+ extractionError 原因上
+   * 浮（web 审核面可分辨提取器失败），两字段皆缺（旧 daemon 无信号）才落
+   * 「审核未返回结论」。非 review 步不携带。长度上限 = schema 面第二道闸
+   * （daemon 侧已截断，防 bug daemon 单条打爆 DB）。 */
+  findingsError: z.string().max(FINDINGS_ERROR_CHAR_LIMIT).optional(),
 });
 export type MachineDoneBody = z.infer<typeof machineDoneBodySchema>;
 export const machineDoneResponseSchema = machineOkResponseSchema;

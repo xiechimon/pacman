@@ -15,6 +15,10 @@
 //   6. 终态闭环（blocking）：done(success, 含 blocking verdict) → REVIEW_VERDICT_KIND
 //      消息 + phase 转 planning + 重规划步入队 + 新 plan prompt 注入 blocking 事实
 //   7. 终态闭环（daemon 未传 findings）→ verdict 兜底 message 落地 + 不触发修订
+//   8. 终态闭环（#700 daemon 报提取失败 findingsError）→ verdict 兜底 message
+//      conclusion「判定提取失败」+ extractionError 原因上浮 + 不触发修订——
+//      与 7 的「审核未返回结论」（旧 daemon 无信号）分开报，提取失败不再
+//      冒充审核没结论。
 
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -627,6 +631,51 @@ describe('AI 审核发起写面（M7 #312）', () => {
     // phase 留 confirm（兜底空 verdict 不触发修订）
     expect(w.todoRow().phase).toBe('confirm');
     // 不入队新 plan 步
+    expect(w.stepsOf(buildId).filter((s) => s.kind === 'plan')).toHaveLength(1);
+  });
+
+  test('终态闭环（#700 daemon 报提取失败）：「判定提取失败」+ 原因上浮 + 不触发修订', async () => {
+    const buildId = await w.startBuild(true);
+    const planClaimed = await w.claim();
+    await w.uploadPlan(planClaimed.stepId, '# plan v1');
+    await w.done(planClaimed.stepId, { status: 'success' });
+    await w.startReview(buildId, { agentId: REVIEW_AGENT_ID });
+
+    // #519 形状下旧 daemon 提取被尾部工具调用击穿 → 空判定；新 daemon 报
+    // findingsError（原因 = 提取器视角的失败事实）
+    const reviewClaimed = await w.claim();
+    await w.done(reviewClaimed.stepId, {
+      status: 'success',
+      findingsError: '审核步输出中未找到 verdict JSON（agent 未按契约输出）',
+    });
+
+    const messages = w.messagesOf(buildId);
+    const verdictRow = messages.find(
+      (m) =>
+        m.role === 'system' &&
+        typeof m.content === 'string' &&
+        (() => {
+          try {
+            const parsed = JSON.parse(m.content) as { kind?: string };
+            return parsed.kind === REVIEW_VERDICT_KIND;
+          } catch {
+            return false;
+          }
+        })(),
+    );
+    expect(verdictRow).toBeDefined();
+    const row = JSON.parse((verdictRow as { content: string }).content) as {
+      verdict: { conclusion: string; findings: unknown[] };
+      extractionError?: string;
+    };
+    // 兜底 conclusion 与旧 daemon 的「审核未返回结论」分开报——提取失败
+    // 不冒充审核没结论
+    expect(row.verdict.conclusion).toBe('判定提取失败');
+    expect(row.verdict.findings).toHaveLength(0);
+    // 原因原文随消息上浮（web 审核面「判定提取失败」行的正文）
+    expect(row.extractionError).toBe('审核步输出中未找到 verdict JSON（agent 未按契约输出）');
+    // 无 blocking 可判：phase 留 confirm、不入队新 plan 步
+    expect(w.todoRow().phase).toBe('confirm');
     expect(w.stepsOf(buildId).filter((s) => s.kind === 'plan')).toHaveLength(1);
   });
 });

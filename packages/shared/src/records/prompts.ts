@@ -47,6 +47,18 @@ export function buildReplanPrompt(feedback: string): string {
   return `${REPLAN_HEAD}${feedback}${REPLAN_TAIL}`;
 }
 
+const REVIEW_REJECT_HEAD = '用户在审核关口请求修改。修改反馈：「';
+const REVIEW_REJECT_TAIL =
+  '」。本轮改动仍保留在会话分支上，不要丢弃既有产物：对照反馈输出更新后的 plan.md（覆盖 Context/Changes/Edge cases/Verification 四段），写清改动将如何调整；执行轮会在同一分支上继续修改。结尾一句话摘要本次调整了什么。';
+
+/** 审核关口人肉打回的重规划指令（#701，server revision 分支 review 关口
+ *  单源）：与 confirm 关口驳回（buildReplanPrompt）同族分词——审核关口的
+ *  事实是改动已产出且在会话分支上，指令必须交代产物保留，否则重规划轮
+ *  另起炉灶、旧改动被孤儿化（票面失败方式 3 的 prompt 半边）。 */
+export function buildReviewRejectPrompt(feedback: string): string {
+  return `${REVIEW_REJECT_HEAD}${feedback}${REVIEW_REJECT_TAIL}`;
+}
+
 const RESTART_HEAD = '上一轮执行失败。用户反馈：「';
 const RESTART_TAIL =
   '」。请把反馈纳入本轮：涉及方案先输出更新后的 plan.md（覆盖 Context/Changes/Edge cases/Verification 四段），再忠实执行完成任务。';
@@ -106,6 +118,7 @@ export function classifyUserText(
   if (text === buildTaskPromptText(task.title, task.spec).trim()) return 'task-prompt';
   if (SYNTHETIC_EXACT.has(text)) return 'synthetic';
   if (wrappedBy(text, REPLAN_HEAD, REPLAN_TAIL)) return 'synthetic';
+  if (wrappedBy(text, REVIEW_REJECT_HEAD, REVIEW_REJECT_TAIL)) return 'synthetic';
   if (wrappedBy(text, RESTART_HEAD, RESTART_TAIL)) return 'synthetic';
   if (parseReviewPromptMeta(text) !== null) return 'synthetic';
   return 'user';

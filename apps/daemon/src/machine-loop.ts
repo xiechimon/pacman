@@ -68,8 +68,9 @@ export interface MachineLoopOpts {
 export interface MachineHandle {
   machineId: string;
   /** 优雅停止：等待在跑步收尾后退出（r3 §1.5 SIGTERM 序列）。硬崩溃面
-   * （journal 残留 + recover 对账）以子进程 SIGKILL 实测（T2 验证）。 */
-  stop(): Promise<void>;
+   * （journal 残留 + recover 对账）以子进程 SIGKILL 实测（T2 验证）。
+   * cause = 触发面标识（#691：信号名进退出行，事后可考）。 */
+  stop(cause?: string): Promise<void>;
   /** 主循环结束（stop 后 resolve）。 */
   done: Promise<void>;
 }
@@ -422,10 +423,10 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     }
   })();
 
-  async function stop(): Promise<void> {
+  async function stop(cause?: string): Promise<void> {
     if (stopping) return;
     stopping = true;
-    logger.machine('Shutting down…');
+    logger.machine(`Shutting down…${cause ? ` (${cause})` : ''}`);
     clearInterval(presenceTimer);
     clearInterval(orphanTimer);
     streamCtrl.abort();

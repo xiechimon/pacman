@@ -27,6 +27,7 @@ import {
   boardProjectPicker,
   boardR8Overlay,
   boardRepoFilter,
+  boardStress,
   boardTagFilter,
   boardTagFilterEmpty,
   boardWithProbe,
@@ -146,6 +147,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #504 看板列滚动：命名场景（无 capture，board-tags 先例）——待开始
       // 12 卡撑出溢出，e2e 钉行高不破视口、列头固定、列表自持滚动。
       'board-overflow': boardOverflow,
+      // #692 看板最坏数据：命名场景（无 capture，board-overflow 先例）——
+      // 超长标题 + 120 卡计数 + 空列，e2e 钉停靠/窄窗/RTL 下列不塌。
+      'board-stress': boardStress,
       // detail (r7 16–17, 23, 26–28, 36, 38)
       '16': detailPlanning,
       '16d': detailConfirm(true),

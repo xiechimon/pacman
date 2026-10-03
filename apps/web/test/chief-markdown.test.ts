@@ -19,8 +19,18 @@
 //   F-C3 prose 里的裸 #N 被误判成提及（正则吃宽）
 //   F-C4 相邻 scheme（todos:）或空 id（todo: 无 id）被误配成 chip
 //   F-C5 四旧 scheme（agent/project/skill/machine）段投影被改坏（契约扩展回归钉）
+// #742 用户气泡 markdown 槽（详情页用户行 #612 同款配方；渲染缝的钉在
+// e2e/chief-stream-markdown.spec.ts F-R14..R17）：
+//   F-D1 live 用户行不进 markdown 槽——用户自己发的 [#16](todo:id) 与粗体标记
+//        在自泡里漏成字面文本（bug 本体；详情页 #612 / robot 行 #650 早已同槽）
+//   F-D2 #667 去重键被槽带偏：同文 POST + 回声不再恰一条，或 rewind 锚 id 漂移
+//   F-D3 wake 回声行（无孪生）被误删；槽内文本被摊平（多行原文不逐字）
+//   F-D4 javascript: 伪链成锚（scheme 白名单退化；现状已挡 → 负例钉住防回归）
+//   F-D5 渲染链出现 dangerouslySetInnerHTML（解析器产 React 节点的 XSS 律退化）
 
 import type { AgentRecord, ChiefGetResponse, ChiefThread } from '@pacman/shared';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
   inlineSegments,
@@ -90,6 +100,16 @@ function thread(activeRun: ChiefThread['activeRun']): ChiefThread {
 
 function robotItems(items: ChiefStreamItem[]) {
   return items.filter((i): i is Extract<ChiefStreamItem, { kind: 'robot' }> => i.kind === 'robot');
+}
+
+function userItems(items: ChiefStreamItem[]) {
+  return items.filter((i): i is Extract<ChiefStreamItem, { kind: 'user' }> => i.kind === 'user');
+}
+
+/** 显式 id 行（chief-user-echo.test.ts 同形）：#667 去重与 #615 rewind 锚
+ *  都吃 id 位，共享计数器工厂 msg() 的自增 id 钉不住。 */
+function row(id: string, role: MessageRow['role'], content: unknown, at = NOW): MessageRow {
+  return { id, role, content, createdAt: at };
 }
 
 describe('inlineSegments strong 位（#650 F-A1..A4）', () => {
@@ -307,9 +327,149 @@ describe('mapChief typing 尾行（#651 F-B1..B4）', () => {
     expect(typing?.tools).toBeUndefined();
   });
 
-  test('liveText 缺省（fixture 面 / 未订阅）→ stream 与现状一致', () => {
+  test('liveText 缺省但回合在飞 → 存在尾行取代打字行（#739）', () => {
     const content = mapChief(ENV, opts({ phase: 'chief' }));
+    // 无增量文本 → 不挂 typing robot 行
     expect(robotItems(content.stream ?? [])).toHaveLength(0);
     expect(content.running).toBe(true);
+    // #739：改挂在飞存在行（streaming 尾行），静默窗口消失
+    const stream = content.stream ?? [];
+    expect(stream[stream.length - 1]).toMatchObject({ kind: 'streaming', label: '处理中...' });
+  });
+});
+
+describe('mapChief 在飞存在尾行（#739 F1/F2/F4/F6）', () => {
+  const opts = (
+    activeRun: ChiefThread['activeRun'],
+    liveText?: string,
+    activeThreadId: string | null = 'chief-aaa',
+  ) => ({
+    threads: [thread(activeRun)],
+    activeThreadId,
+    messages: [msg('user', '派一下')],
+    ...(liveText !== undefined ? { liveText } : {}),
+  });
+
+  function streamingItems(items: ChiefStreamItem[]) {
+    return items.filter(
+      (i): i is Extract<ChiefStreamItem, { kind: 'streaming' }> => i.kind === 'streaming',
+    );
+  }
+
+  test('存在行：running + 缓冲空 → 尾挂 streaming 存在行（label 处理中...）', () => {
+    const stream = mapChief(ENV, opts({ phase: 'chief' }, '')).stream ?? [];
+    expect(stream[stream.length - 1]).toMatchObject({ kind: 'streaming', label: '处理中...' });
+  });
+
+  test('F4 存在行不挂秒数（#471 静止期无流事件驱动重渲，秒数会冻结说谎）', () => {
+    const stream = mapChief(ENV, opts({ phase: 'chief' })).stream ?? [];
+    const last = stream[stream.length - 1];
+    expect(last).toMatchObject({ kind: 'streaming' });
+    expect((last as { seconds?: number }).seconds).toBeUndefined();
+  });
+
+  test('F1 缓冲非空 → 仅 typing 行，存在行退场（两行互斥）', () => {
+    const stream = mapChief(ENV, opts({ phase: 'chief' }, '正在读取仓库')).stream ?? [];
+    expect(streamingItems(stream)).toHaveLength(0);
+    expect(stream[stream.length - 1]).toMatchObject({ kind: 'robot', typing: true });
+  });
+
+  test('F1 缓冲空↔非空翻转，live 尾行恒至多一行（无二重身）', () => {
+    for (const liveText of ['', '   ', 'x']) {
+      const stream = mapChief(ENV, opts({ phase: 'chief' }, liveText)).stream ?? [];
+      const liveTails = [
+        ...streamingItems(stream),
+        ...robotItems(stream).filter((r) => r.typing),
+      ];
+      expect(liveTails).toHaveLength(1);
+    }
+  });
+
+  test('F2 activeRun null（回合已收）→ 缓冲空也不挂存在行（僵尸行不常驻）', () => {
+    const stream = mapChief(ENV, opts(null)).stream ?? [];
+    expect(streamingItems(stream)).toHaveLength(0);
+  });
+
+  test('收敛律：终稿 assistant 已落库（尾为 robot 行）+ activeRun 未收 → 存在行不再闪', () => {
+    // message → step 的窗口：终稿行已重取进 messages，但 activeRun 要等 step
+    // 事件（#684 失效 chiefThreads）才收口。gate = 尾非 robot → 存在行当场退场，
+    // 不赌 step 时机（否则 running 仍 true + liveText 空会在终稿后再闪存在行）。
+    const stream =
+      mapChief(ENV, {
+        threads: [thread({ phase: 'chief' })],
+        activeThreadId: 'chief-aaa',
+        messages: [msg('user', '派一下'), msg('assistant', '验证完成，全部通过')],
+      }).stream ?? [];
+    expect(streamingItems(stream)).toHaveLength(0);
+    expect(stream[stream.length - 1]).toMatchObject({ kind: 'robot' });
+  });
+
+  test('F6 新主题视图（activeThreadId null）→ 无 stream，存在行不残留', () => {
+    const content = mapChief(ENV, opts({ phase: 'chief' }, '', null));
+    expect(content.stream).toBeUndefined();
+    expect(content.examples).toBeDefined();
+  });
+});
+
+describe('mapChiefStream 用户行 markdown 槽（#742 F-D1..D5）', () => {
+  test('F-D1 user 行进 markdown 槽——原文逐字 + rewind 锚 id 透传', () => {
+    const text = '派 [#16](todo:t16) 去处理，**优先** 检查';
+    const items = mapChiefStream([row('u-post-1', 'user', text)]);
+    const users = userItems(items);
+    expect(users).toHaveLength(1);
+    // 槽 = 原文逐字（trim 后），块结构解析归渲染期（#612/#650 同律）
+    expect(users[0]?.markdown).toBe(text);
+    // text 位不变（复制载荷 / 去重键 / 呈现兜底三面吃它）
+    expect(users[0]?.text).toBe(text);
+    // #615 rewind 锚照常透传（渲染换法不得动 id 位）
+    expect(users[0]?.id).toBe('u-post-1');
+  });
+
+  test('F-D2 #667 去重键不吃槽——同文 POST + 回声恰一条，正本就位带槽带锚', () => {
+    const text = '派 [#16](todo:t16) 去处理';
+    const items = mapChiefStream([
+      row('AbCdEfGhIjKlMnOpQrStU', 'user', text, NOW),
+      row('user-LFnKO1KhDH4F1HylsEAfY', 'user', text, NOW + 100),
+      row('msg-r1', 'assistant', '已派工', NOW + 9000),
+    ]);
+    const users = userItems(items);
+    expect(users).toHaveLength(1);
+    expect(users[0]?.id).toBe('AbCdEfGhIjKlMnOpQrStU');
+    expect(users[0]?.markdown).toBe(text);
+  });
+
+  test('F-D3 wake 回声行（无孪生）保留且带槽；多行原文在槽内不摊平', () => {
+    const wake = '[wake:settle] 任务 #5「修复」已合并完成';
+    const steer = '按这个改：\n\n- 圆角 8px\n- 悬停加过渡';
+    const items = mapChiefStream([
+      row('user-stepW', 'user', wake, NOW),
+      row('u-post-2', 'user', steer, NOW + 5000),
+    ]);
+    const users = userItems(items);
+    expect(users).toHaveLength(2);
+    expect(users[0]?.markdown).toBe(wake);
+    // 换行逐字保留——围栏/列表的块结构归渲染期解析，mapper 不摊平
+    expect(users[1]?.markdown).toBe(steer);
+  });
+
+  test('F-D4 javascript: 伪链不成 mention 段（scheme 白名单，防退化负例）', () => {
+    const segs = inlineSegments('别点 [click](javascript:alert(1)) 这个');
+    expect(segs.filter((s) => s.style === 'mention')).toHaveLength(0);
+    expect(segs.map((s) => s.text).join('')).toContain('[click](javascript:alert(1))');
+  });
+
+  test('F-D5 渲染链零 dangerouslySetInnerHTML（解析器产 React 节点，静态钉）', () => {
+    const web = resolve(import.meta.dirname, '..');
+    const chain = [
+      'src/chief/chief-drawer.tsx',
+      'src/detail/chat-markdown.tsx',
+      'src/detail/segments.tsx',
+      'src/api/mappers.ts',
+    ];
+    for (const rel of chain) {
+      expect(readFileSync(resolve(web, rel), 'utf8'), rel).not.toContain(
+        'dangerouslySetInnerHTML',
+      );
+    }
   });
 });

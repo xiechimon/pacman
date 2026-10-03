@@ -27,6 +27,12 @@ import { X } from '../../icons/index.js';
 // 表单族（.dlg-form-* 等 per-face 规则）仍在 dialog.css；壳级规则已随本适配层退役
 import '../../ui/dialog.css';
 
+/** 视口根面（viewportRoot）面板的进出场（shadcn 默认档，ADR 0009 D3）。挂在**面板**
+ *  上、经视口根 Popup 的具名 group 读 Base UI 开闭态——视口根 Popup 是铺满视口的
+ *  包装层，transform 上它会把面板（fixed 子级）的 containing block 拽走（#656）。 */
+export const VIEWPORT_POP_ANIM =
+  'duration-100 group-data-open/dlgvp:animate-in group-data-open/dlgvp:fade-in-0 group-data-open/dlgvp:zoom-in-95 group-data-open/dlgvp:slide-in-from-top-2 group-data-closed/dlgvp:animate-out group-data-closed/dlgvp:fade-out-0 group-data-closed/dlgvp:zoom-out-95 group-data-closed/dlgvp:slide-out-to-top-2';
+
 interface DialogShellProps {
   /** Left header title; absent when `headerCenter` renders instead. */
   title?: string;
@@ -147,7 +153,9 @@ export function DialogShell({
           finalFocus={restore}
           className={
             viewportRoot
-              ? `dlg-viewport${className != null ? ` ${className}` : ''}`
+              ? // 具名 group：视口根面板经 group-data-open/closed/dlgvp 读本 Popup
+                // 的开闭态（VIEWPORT_POP_ANIM）；transform 不上包装层（#656）。
+                `dlg-viewport group/dlgvp${className != null ? ` ${className}` : ''}`
               : `dlg dlg-shell${className != null ? ` ${className}` : ''} fixed top-1/2 left-1/2 flex max-h-[calc(100vh-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-popover text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`
           }
           style={
