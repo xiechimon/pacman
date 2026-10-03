@@ -22,6 +22,14 @@ const THEME_KEY = 'pacman-theme'; // apps/web/src/theme.ts THEME_STORAGE_KEY
 
 const menu = (page: Page) => page.locator('.user-menu');
 
+/** #656: the menu now rides the tw enter keyframe (zoom-95 + bottom slide) —
+ *  geometry/hit-test reads must wait for it to settle, otherwise they catch a
+ *  mid-animation box (precedent: checkbox-unified / dead-buttons settle waits). */
+async function expectMenuSettled(page: Page) {
+  await expect(menu(page)).toBeVisible();
+  await menu(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+}
+
 /** The menu must own the hit-test at its own center — nothing (click
  *  catcher, board content, rail clipping) may sit above the panel. */
 async function expectMenuOnTop(page: Page) {
@@ -69,7 +77,7 @@ test('expanded chip: click opens anchored above the chip, re-click closes', asyn
   const chip = page.locator('.sidebar-user');
   await chip.click();
 
-  await expect(menu(page)).toBeVisible();
+  await expectMenuSettled(page);
   await expect(chip).toHaveAttribute('aria-expanded', 'true');
   await expectAnchoredAboveChip(page, '.sidebar-user');
   await expectMenuOnTop(page);
@@ -103,7 +111,7 @@ test('rail chip opens the same popover, unclipped by the 40px rail', async ({ pa
   const chip = page.locator('.rail-user');
   await chip.click();
 
-  await expect(menu(page)).toBeVisible();
+  await expectMenuSettled(page);
   await expectAnchoredAboveChip(page, '.rail-user');
   await expectMenuOnTop(page);
 
@@ -124,7 +132,7 @@ test('#163 anchoring: bottom distance is viewport-invariant, the chip is never c
     const chipSel = collapsed ? '.rail-user' : '.sidebar-user';
 
     await page.locator(chipSel).click();
-    await expect(menu(page)).toBeVisible();
+    await expectMenuSettled(page);
     const anchorDistance = await expectAnchoredAboveChip(page, chipSel);
 
     // the dogfood symptom window first: at 600px the frozen top:410px
@@ -169,6 +177,6 @@ test('detail route: the trigger opens the menu over the confirm surface', async 
   await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=17b');
   await page.locator('.sidebar-user').click();
 
-  await expect(menu(page)).toBeVisible();
+  await expectMenuSettled(page);
   await expectMenuOnTop(page);
 });

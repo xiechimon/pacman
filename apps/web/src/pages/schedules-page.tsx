@@ -229,11 +229,15 @@ function ScheduleForm({
   const todo = live ? live.todo : fixture.todos[0];
   const repo = live ? live.repo : (fixture.project?.repoName ?? '');
   return (
-    <FloatingShell open={open} onClose={onClose} className="anchored-pop-shell">
+    <FloatingShell
+      open={open}
+      onClose={onClose}
+      className="anchored-pop-shell anchored-pop-shell--slow"
+    >
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: Esc closes — see comment */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop is a click-to-dismiss surface */}
       <div
-        className="sched-form-overlay duration-200 group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0"
+        className="sched-form-overlay duration-200 group-data-closed/fshell:fill-mode-forwards group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0"
         onClick={(event) => {
           // only the backdrop itself dismisses; panel clicks bubble harmlessly
           if (event.target === event.currentTarget) onClose();
