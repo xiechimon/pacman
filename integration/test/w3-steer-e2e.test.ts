@@ -17,7 +17,15 @@ import { loadDaemonConfig } from '../../apps/daemon/src/config.js';
 import { createDaemonLogger } from '../../apps/daemon/src/log.js';
 import { type MachineHandle, runMachine } from '../../apps/daemon/src/machine-loop.js';
 import { type StatePaths, statePaths } from '../../apps/daemon/src/state.js';
-import { AGENT_ID, api, bootRealServer, type RealServer, seedWorld, waitFor } from './helpers.js';
+import {
+  AGENT_ID,
+  api,
+  bootRealServer,
+  daemonLogLines,
+  type RealServer,
+  seedWorld,
+  waitFor,
+} from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 let stub: StubLlm;
@@ -27,11 +35,7 @@ let paths: StatePaths;
 let home: string;
 
 function logLines(): string[] {
-  try {
-    return readFileSync(paths.daemonLog, 'utf8').split('\n');
-  } catch {
-    return [];
-  }
+  return daemonLogLines(paths.daemonLog);
 }
 
 beforeAll(async () => {
