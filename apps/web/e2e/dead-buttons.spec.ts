@@ -479,6 +479,9 @@ test('new-task dialog: the close control anchors to the head’s right edge (#57
   const dialog = page.locator('.new-task-dialog');
   await page.locator('.sidebar-new-task').click();
   await expect(dialog).toBeVisible();
+  // #656: settle the .dlg enter animation (tw-animate-css zoom-in-95) before the
+  // head/close right-edge geometry is measured off the laid-out box.
+  await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
   const hb = await dialog.locator('.new-task-head').boundingBox();
   const cb = await dialog.locator('.new-task-close').boundingBox();
   if (hb === null || cb === null) throw new Error('head / close not laid out');

@@ -32,6 +32,10 @@ async function openAccept(page: Page) {
   await page.goto('/app?scenario=34');
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
+  // #656: the .dlg enter animation (tw-animate-css zoom-in-95) scales the panel
+  // from 0.95 — settle it so interior-geometry measures ride the laid-out box
+  // (the same getAnimations().finished wait the drawer specs use).
+  await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
   return dialog;
 }
 
