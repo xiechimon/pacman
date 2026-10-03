@@ -424,7 +424,7 @@ export async function applyBuildStepAction(
 ): Promise<void> {
   const row = deps.db.select().from(build).where(eq(build.id, buildId)).get();
   if (!row) throw new NotFoundError(`build ${buildId}`);
-  const todoRecord = getTodo(deps, row.todoId);
+  let todoRecord = getTodo(deps, row.todoId);
   if (!todoRecord) throw new NotFoundError(`todo ${row.todoId}`);
 
   if (body.action === 'restart') {
@@ -484,6 +484,15 @@ export async function applyBuildStepAction(
     return;
   }
   if (body.action === 'review') {
+    // #702（B-C17）：failed 相位先过恢复闸——build 腿已交付的 failed 任务可
+    // 「只重跑审核」（恢复回 review 关口再发起，与 merge 出口共用同一条边）；
+    // 未交付 → 409 点名原因（半完成 build 不给审核面）。恢复后重读投影：
+    // 下方关口分叉与材料面按恢复后的 review 关口走。
+    restoreFailedReview(deps, row);
+    if (todoRecord.phase === 'failed') {
+      const restored = getTodo(deps, row.todoId);
+      if (restored) todoRecord = restored;
+    }
     // AI 审核发起仅在 confirm/review 关口允许（r8 §3.1 显隐律）；其余相位一律
     // 409 拒绝（建设期/planning/building/failed/done/closed/queued/todo 都不
     // 该出现该钮，但接口层兜底——钮外误用也要稳定拒绝）。
@@ -558,13 +567,58 @@ export async function applyBuildStepAction(
   enqueueStep(deps, buildId, 'plan', todoRecord.teamId, replanPrompt);
 }
 
+/** failed→review 恢复闸（#702 / #519 B-C17）：build 步已真实交付（分支/PR 在）
+ * 而审核步失败时，failed 相位不再锁死合并路——恢复到 review 关口，merge 与
+ * 只重跑审核两出口共用本闸。条件进服务端判定（「build 步 done 且产物在」）：
+ * build 腿未完成（执行步 failed/未跑）或 done 但零产物（无 checkpointCommit
+ * 且无 PR）的 failed 任务不获得该出路（半完成 build 不许被误放行）。恢复 ≠
+ * 审核通过：落 review 等人工决策，done 仍只能经合并步落地——恢复后的合并 =
+ * 人工接受未完成 AI 审核的交付物，责任在人（02 §4.2 回写）。
+ * 调用方：requestMerge（REST /builds/{id}/merge + chief merge_builds）与
+ * applyBuildStepAction action:"review"（审核重跑）——两者均先经本闸再走
+ * 既有流程，正常 review 相位不经过这里。 */
+function restoreFailedReview(deps: BuildDeps, row: BuildRow): void {
+  const { db } = deps;
+  const todoRow = db.select().from(todo).where(eq(todo.id, row.todoId)).get();
+  if (!todoRow || todoRow.phase !== 'failed') return; // 非失败相位 = 无可恢复
+  // build 腿：本 build 的执行步（序贯取最新）已 done。
+  const buildStep = db
+    .select()
+    .from(step)
+    .where(and(eq(step.buildId, row.id), eq(step.kind, 'build')))
+    .orderBy(asc(step.createdAt))
+    .all()
+    .at(-1);
+  const legDone = buildStep?.status === 'done';
+  // 产物：执行步回传的 conv 分支 HEAD（checkpointCommit =「分支在」）或
+  // PR（prUrl/prNumber =「PR 在」）任一在场。
+  const artifactIn =
+    (buildStep?.checkpointCommit ?? null) !== null || row.prUrl !== null || row.prNumber !== null;
+  if (!legDone || !artifactIn) {
+    const reason = !legDone ? '执行步未完成交付' : '执行步无交付产物（分支/PR 不在）';
+    throw new HttpError(
+      409,
+      `failed 任务的审核关口恢复仅对本轮已交付的 build 开放（${reason}），请重新运行任务`,
+    );
+  }
+  // 走漏斗（条件边在边表里，setTodoPhase 放行）：review 进入通知 + chief wake
+  // 由漏斗照发——「改动就绪等你」对恢复态同样成立，不是静默改相。
+  setTodoPhase(deps, todoRow.id, 'review');
+}
+
 /** 合并（02 §4.2/A6：merge = 202 delegated 机器执行；机器领合并步 continue
  * session 复用执行轮会话 → git merge --no-edit → phase=done，执行面归 M3）。 */
 export function requestMerge(deps: BuildDeps, buildId: string): { delegated: true } {
   const row = deps.db.select().from(build).where(eq(build.id, buildId)).get();
   if (!row) throw new NotFoundError(`build ${buildId}`);
-  const todoRow = deps.db.select().from(todo).where(eq(todo.id, row.todoId)).get();
+  let todoRow = deps.db.select().from(todo).where(eq(todo.id, row.todoId)).get();
   if (!todoRow) throw new NotFoundError(`todo ${row.todoId}`);
+  // #702（B-C17）：failed 相位先过恢复闸（build 腿已交付 → 回 review 关口；
+  // 未交付 → 409 点名原因）。之后的合并关口判定与正常 review 一致。
+  restoreFailedReview(deps, row);
+  if (todoRow.phase === 'failed') {
+    todoRow = deps.db.select().from(todo).where(eq(todo.id, row.todoId)).get()!;
+  }
   // 合并关口 = review（「将改动合并到默认分支」确认弹层，r3 §3.6）。
   assertPhaseTransition(todoRow.phase, 'done');
   // 权限闸（XMON-77）：合并步收尾 = git merge + conv 分支 push（三形态 repo
