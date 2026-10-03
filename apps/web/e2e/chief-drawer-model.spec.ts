@@ -119,12 +119,26 @@ test.describe('chief drawer model row (#615)', () => {
     await expect(menu).toBeVisible();
     // open state carries zero search footprint (not rendered, not transparent)
     await expect(menu.locator('.chief-pick-search')).toHaveCount(0);
+    // scenario 111 is fixture mode: modelOptions is undefined (live-only
+    // union), so the face shows the default row alone by design
     const rowsOpen = await menu.locator('.chief-model-pick-row').count();
-    expect(rowsOpen).toBe(2);
+    expect(rowsOpen).toBe(1);
+
+    // typeahead 接的是面内焦点：FloatingShell 把焦点移进面是异步的，
+    // 没落定就打字会打在触发钮上（抽屉面还会触发 N 新主题热键）——等落定再敲
+    await page.waitForFunction(
+      (sel) => {
+        const el = document.querySelector(sel);
+        return el != null && el.contains(document.activeElement);
+      },
+      '.chief-model-pop',
+    );
 
     // a printable key is consumed by the face: the box reveals with the key
-    // prefilled, focus in the input, list filtered — and the drawer's N
-    // hotkey must not steal it (no new-thread view, chip title unchanged)
+    // prefilled, focus in the input — and the drawer's N hotkey must not
+    // steal it (no new-thread view, chip title unchanged). With no fixture
+    // options the key matches nothing, so the default row plus empty state
+    // show (the filtered-list path is pinned on the settings face instead)
     await page.keyboard.press('n');
     const search = menu.locator('.chief-pick-search input');
     await expect(search).toBeVisible();
@@ -132,6 +146,8 @@ test.describe('chief drawer model row (#615)', () => {
     await expect(search).toBeFocused();
     await expect(menu).toBeVisible();
     expect(await page.locator('.chief-chip-title').textContent()).toBe(chipTitle);
+    await expect(menu.locator('.chief-model-pick-row')).toHaveCount(1);
+    await expect(menu.locator('.chief-pick-empty')).toBeVisible();
 
     // a key matching nothing filters to the default row plus the empty state
     await search.fill('x');
@@ -146,7 +162,8 @@ test.describe('chief drawer model row (#615)', () => {
     await page.keyboard.press('c');
     await expect(search).toBeVisible();
     await expect(search).toHaveValue('c');
-    await expect(menu.locator('.chief-model-pick-row')).toHaveCount(2);
+    await expect(menu.locator('.chief-model-pick-row')).toHaveCount(1);
+    await expect(menu.locator('.chief-pick-empty')).toBeVisible();
   });
 
   test('the model row carries the runtime mark, not an agent avatar', async ({ page }) => {

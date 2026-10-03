@@ -142,6 +142,14 @@ test('压缩模型 search is typeahead-only, same contract as the drawer picker 
   const { menu } = await openModelMenu(page);
   // 开面零搜索占位（不渲染，非透明）——与抽屉头 picker 同形单源
   await expect(menu.locator('.chief-pick-search')).toHaveCount(0);
+  // 同抽屉面：等焦点落进面再打字（FloatingShell 移焦点是异步的）
+  await page.waitForFunction(
+    (sel) => {
+      const el = document.querySelector(sel);
+      return el != null && el.contains(document.activeElement);
+    },
+    '.chief-model-menu',
+  );
   // 可打印字符被面吃掉：框现形、预填该字符、焦点进 input、即刻过滤
   await page.keyboard.press('x');
   const search = menu.locator('.chief-pick-search input');
