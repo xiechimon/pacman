@@ -298,19 +298,38 @@ export function NewTaskDialog({
   };
 
   // Mention insert: route through insertMentionText so the picker
-  // and the inline @ listbox share the spacing + caret rules.
-  const insertToken = (token: MentionToken) => {
+  // and the inline @ listbox share the spacing + caret rules (#728:
+  // trailing space included). Multi-select inserts compose in ONE
+  // functional update at the evolving caret — a per-token loop would
+  // read the same stale `spec` closure per call and keep only the last
+  // token (same fix as the composer wire's insertTokens).
+  const insertTokens = (tokens: MentionToken[]) => {
+    if (tokens.length === 0) return;
     const ta = specRef.current;
     if (ta == null) {
-      setSpec((current) => insertMentionText(current, token, null).value);
+      setSpec((current) => {
+        let value = current;
+        for (const token of tokens) value = insertMentionText(value, token, null).value;
+        return value;
+      });
       return;
     }
-    const caret = ta.selectionStart ?? spec.length;
-    const { value, caret: nextCaret } = insertMentionText(spec, token, caret);
-    setSpec(value);
+    const start = ta.selectionStart ?? spec.length;
+    const pending = { caret: start };
+    setSpec((current) => {
+      let value = current;
+      let at = start;
+      for (const token of tokens) {
+        const result = insertMentionText(value, token, at);
+        value = result.value;
+        pending.caret = result.caret;
+        at = result.caret;
+      }
+      return value;
+    });
     requestAnimationFrame(() => {
       ta.focus();
-      ta.setSelectionRange(nextCaret, nextCaret);
+      ta.setSelectionRange(pending.caret, pending.caret);
     });
   };
 
@@ -547,7 +566,7 @@ export function NewTaskDialog({
         onClose={() => setPickerOpen(false)}
         groups={groups}
         onInsert={(tokens) => {
-          for (const token of tokens) insertToken(token);
+          insertTokens(tokens);
           setPickerOpen(false);
         }}
       />
