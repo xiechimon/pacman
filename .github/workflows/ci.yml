@@ -34,9 +34,10 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      - name: Install ffmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
+      # e2e 迁去独立分片 job（#693）后 ffmpeg 随迁；chromium 留在本 job——
+      # integration vitest 的四个 e2e 套件（m5-web-e2e 等）在场内起真
+      # Chromium（2026-10-03 实测摘掉即红：browserType.launch executable
+      # doesn't exist）。「check 不再需要浏览器面」是误判，浏览器面有两层。
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -73,11 +74,54 @@ jobs:
       - name: Lint (biome ci)
         run: pnpm lint
 
-      - name: E2E (reject-loop chain, #75 AC3)
-        run: pnpm --filter @pacman/web e2e
+  # e2e 全量归 CI（#693 分层职责）：本地开发期只跑受影响面
+  # （pnpm --filter @pacman/web e2e:affected），全量唯一执行点在这。
+  # 4 分片并行（playwright --shard，按测试精确切分、并集 = 全量 83 spec，
+  # 覆盖面不降）：单 shard ≈ setup + fixture build + 1/4 测试量 ≈ 2 分钟，
+  # 远小于原 check job 里串行的 223s e2e 步。独立 job/runner 也顺带消掉了
+  # 「与 check job 同 runner 互写 apps/web/dist」的约束（token-gate 与
+  # webServer 都在各自 runner 的 dist 上工作）。fail-fast 关闭：一个 shard
+  # 红不掩盖其余 shard 的结果。
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4 # reads packageManager from root package.json
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: E2E (shard ${{ matrix.shard }}/4, #693)
+        run: pnpm --filter @pacman/web e2e -- --shard=${{ matrix.shard }}/4
+
+  # 分片聚合闸（#693）：分支保护的 required contexts 不编码 matrix 基数——
+  # 名单写死 e2e (1..4) 的话，将来分片数一调，名单就静默失配（新增分片不
+  # 阻塞合并 = 覆盖面实际下降）。本 job 名固定 e2e-gate、needs 全部分片，
+  # 保护名单只引它；分片数调整不再触碰仓库设置。
+  e2e-gate:
+    needs: e2e
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 0
 
   # 发布产物冒烟（#264，spec #260 Testing Decisions 失败方式枚举的 CI 守）：
-  # 独立 job/runner——不与 check job 的 e2e（同写 apps/web/dist）互踩。
+  # 独立 job/runner，不与任何 e2e shard 共享 runner（各自写自己的 dist）。
   pack-smoke:
     runs-on: ubuntu-latest
     steps:

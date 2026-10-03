@@ -16,6 +16,7 @@ import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { useApiMutations } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { toastError } from '../components/ui/toaster.js';
 import { useI18n } from '../i18n/provider.js';
 
 export interface OrchestrateStart {
@@ -56,10 +57,7 @@ export function useOrchestrateStart(): OrchestrateStart {
             },
           });
         },
-        onError: (error) => {
-          const reason = error instanceof Error && error.message !== '' ? error.message : null;
-          toast.error(t('未能开始编排'), reason !== null ? { description: reason } : undefined);
-        },
+        onError: (error) => toastError(t('未能开始编排'), error),
         onSettled: () => {
           inFlight.current = false;
           setPendingId(null);

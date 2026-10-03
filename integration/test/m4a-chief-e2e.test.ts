@@ -9,7 +9,7 @@
 // stub 工具轮用读侧 `projects`（无动态参数，replaySafe）——create_todo 的溯源
 // 落库已在 server 侧 m4a-chief-loop.test.ts 直证；本测证 pi↔relay 往返本身。
 
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { eq } from 'drizzle-orm';
@@ -25,7 +25,14 @@ import {
   step as stepTable,
   tokenUsage,
 } from '../../apps/server/src/db/schema.js';
-import { AGENT_ID, api, bootRealServer, type RealServer, waitFor } from './helpers.js';
+import {
+  AGENT_ID,
+  api,
+  bootRealServer,
+  daemonLogLines,
+  type RealServer,
+  waitFor,
+} from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 let stub: StubLlm;
@@ -36,11 +43,7 @@ let home: string;
 let threadId = '';
 
 function logLines(): string[] {
-  try {
-    return readFileSync(paths.daemonLog, 'utf8').split('\n');
-  } catch {
-    return [];
-  }
+  return daemonLogLines(paths.daemonLog);
 }
 
 beforeAll(async () => {
@@ -75,9 +78,10 @@ afterAll(async () => {
   await handle?.done;
   await server?.close();
   await stub?.close();
+  const diagTail = logLines().slice(-40).join('\n');
   if (home) rmSync(home, { recursive: true, force: true });
   process.stdout.write(
-    `\n[diag] stub requests consumed: ${stub?.requests.length ?? -1}\n[diag] daemon.log tail:\n${logLines().slice(-40).join('\n')}\n`,
+    `\n[diag] stub requests consumed: ${stub?.requests.length ?? -1}\n[diag] daemon.log tail:\n${diagTail}\n`,
   );
 });
 

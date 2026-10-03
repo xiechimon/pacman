@@ -24,6 +24,7 @@ import {
   AGENT_TOOL_PUSH,
   buildReplanPrompt,
   buildRestartPrompt,
+  buildReviewRejectPrompt,
   buildReviewStepPrompt,
   hasBlockingFinding,
   MERGE_ANNOUNCEMENT,
@@ -398,7 +399,9 @@ export function startBuilds(
  *   的再确认不适用，409 由流转表兜底）。
  * - {action:"revision", side:"plan", feedback, clientMessageId} → confirm→
  *   planning + 入队重规划步（同 conv continue session 语义归 M3）+ 时间线插
- *   用户驳回消息行（r5 §4）。
+ *   用户驳回消息行（r5 §4）。#701：同一动作面在 review 关口 = 人肉打回
+ *   （review→planning，边与 #330 blocking 自动回流共用）；门只开在
+ *   confirm/review，其余相位 409 且不落任何行。
  * - {action:"review", agentId, focus?}（M7 #312 / r8 §3.1；材料随关口分叉
  *   = #511）→ phase 留 confirm/review + 入队审核步（kind='review'，不产可合并
  *   changes）+ 时间线插 REVIEW_ANNOUNCEMENT；phase 非法（todo/queued/
@@ -552,7 +555,18 @@ export async function applyBuildStepAction(
     enqueueStep(deps, buildId, 'review', todoRecord.teamId, reviewPrompt);
     return;
   }
-  // revision：用户驳回消息行进 transcript（role user，r5 §3.6/§4 时间线呈现）。
+  // revision：确认关口驳回（confirm→planning，r5 §4）与审核关口人肉打回
+  // （review→planning，#701 B-C12）共用本动作面。审核闸的「人看」半边此前
+  // 只能点头：静息 review 态消息通道 409（无 claimed 步），打回必须走这里，
+  // 不挂「活跃会话」前提。边与 #330 blocking 自动回流同一条——边表语义
+  // 「不止自动 verdict 能触发」由本分支落地。
+  // 门只开在两个关口：planning 在途时 setTodoPhase 同相位幂等会吞掉断言、
+  // 再叠一个重复 plan 步（补话走 steer 面）；其余相位 409。门先于一切写面
+  // ——非法打回不留 feedback 行（流转断言在 setTodoPhase 内，晚于插行）。
+  if (todoRecord.phase !== 'confirm' && todoRecord.phase !== 'review') {
+    throw new HttpError(409, `revision 仅在待确认/审核关口允许，当前相位 ${todoRecord.phase}`);
+  }
+  // 用户驳回消息行进 transcript（role user，r5 §3.6/§4 时间线呈现）。
   insertMessageRow(deps, buildId, {
     id: newRecordId(),
     role: 'user',
@@ -562,8 +576,13 @@ export async function applyBuildStepAction(
   setTodoPhase(deps, todoRecord.id, 'planning');
   // 重规划步（同 conv continue session，r5 §4）：feedback 注入续轮指令，v2 忠实
   // 执行反馈（宿主等价物——措辞由 LLM 侧组织，本层给事实与要求）。
-  // 文本单源 = shared buildReplanPrompt（#612：web transcript 过滤侧同款识别）。
-  const replanPrompt = buildReplanPrompt(body.feedback);
+  // 文本单源 = shared buildReplanPrompt / buildReviewRejectPrompt（#612：web
+  // transcript 过滤侧同款识别）——两关口事实不同：审核关口改动已产出且在
+  // 会话分支上，指令交代产物保留（不孤儿化，#701 失败方式 3）。
+  const replanPrompt =
+    todoRecord.phase === 'review'
+      ? buildReviewRejectPrompt(body.feedback)
+      : buildReplanPrompt(body.feedback);
   enqueueStep(deps, buildId, 'plan', todoRecord.teamId, replanPrompt);
 }
 
@@ -665,6 +684,24 @@ const PLAN_REWRITE_PROMPT = `规划步未产出 ${PLAN_FILE_NAME} 交接文件�
  * 求。 */
 const REVIEW_REVISE_PROMPT = `用户对方案提出审核反馈，结论含 blocking findings。审核结论：<{conclusion}>。\n\nBlocking findings（必须逐条修复）：\n{blockings}\n\n请忠实按反馈调整方案，输出更新后的 plan.md（覆盖 Context/Changes/Edge cases/Verification 四段），并在结尾一句话摘要本次调整了什么。`;
 
+/** review→planning 修订回流边（M7 #330 phase 表已登边；#700 起独立成函数）：
+ * 相位翻转 + 时间线摘要行 + 重规划步入队三件一体。note 与 revisePrompt 由
+ * 调用方组装——blocking verdict 自动触发（上方）与人肉打回（#701 B-C12，
+ * 「请求修改」语义）走同一条边，边不焊死在自动 verdict 触发上。 */
+function enqueueReviewRevision(
+  deps: BuildDeps,
+  args: { buildId: string; todoId: string; teamId: string; note: string; revisePrompt: string },
+): void {
+  setTodoPhase(deps, args.todoId, 'planning');
+  insertMessageRow(deps, args.buildId, {
+    id: newRecordId(),
+    role: 'system',
+    content: args.note,
+    createdAt: nowMs(),
+  });
+  enqueueStep(deps, args.buildId, 'plan', args.teamId, args.revisePrompt);
+}
+
 /** 机器步完成后的 phase 推进（M3 claim/journal 面挂接点；M2a 供编排测试
  * 驱动状态机）：规划步成 → confirm（withPlan）/ building（直执行续跑）；
  * 执行步成 → review；合并步成 → done（02 §4.2 主时序）。M7 #330：审核步成
@@ -673,7 +710,7 @@ const REVIEW_REVISE_PROMPT = `用户对方案提出审核反馈，结论含 bloc
 export function completeStep(
   deps: BuildDeps,
   stepId: string,
-  outcome: { hasChanges?: boolean; findings?: ReviewVerdict } = {},
+  outcome: { hasChanges?: boolean; findings?: ReviewVerdict; findingsError?: string } = {},
 ): void {
   const stepRow = deps.db.select().from(step).where(eq(step.id, stepId)).get();
   if (!stepRow) throw new NotFoundError(`step ${stepId}`);
@@ -715,14 +752,16 @@ export function completeStep(
     // AI 审核步完成（M7 #330，r8 §3.1 真 findings 上线）：emit REVIEW_VERDICT_KIND
     // 消息行（conclusion + 编号 findings，server zod 校验已固）+ 若 blocking →
     // 落 planning + 入队重规划步（REVIEW_REVISE_PROMPT 注入审核事实）回到
-    // 待确认。审核不计入用户变更（hasChanges 恒 false）：审核关口虽开只读检出
+    // 待确认。审核不计入用户变化（hasChanges 恒 false）：审核关口虽开只读检出
     // （#511），但 daemon 侧不采集其改动、收尾还会 rewind 回步起点。
-    // daemon 未传 findings（解析失败/agent 未按契约）= 默认空 verdict =
-    // 落 verdict 消息含空 findings，但不触发修订——避免静默吞错 + 给人看
-    // 「审核没结论」兜底。fail 兜底仍可独立走：findings 缺位 + status=failed
-    // = finishStep 走 failed 分支不进本函数。
+    // verdict 兜底两态（#700 B-C13）：daemon 报提取失败（findingsError 携带
+    // 原因）= conclusion「判定提取失败」+ extractionError 原因随消息上浮
+    // （web 审核面可分辨「提取器没取出来」）；两字段皆缺（旧 daemon 无信号）
+    // = 保留「审核未返回结论」。两态均无 blocking 可判，不触发修订——但不再
+    // 静默吞错。fail 兜底仍可独立走：findings 缺位 + status=failed = finishStep
+    // 走 failed 分支不进本函数。
     const verdict: ReviewVerdict = outcome.findings ?? {
-      conclusion: '审核未返回结论',
+      conclusion: outcome.findingsError !== undefined ? '判定提取失败' : '审核未返回结论',
       findings: [],
     };
     deps.db
@@ -735,7 +774,11 @@ export function completeStep(
     insertMessageRow(deps, buildRow.id, {
       id: newRecordId(),
       role: 'system',
-      content: JSON.stringify({ kind: REVIEW_VERDICT_KIND, verdict }),
+      content: JSON.stringify({
+        kind: REVIEW_VERDICT_KIND,
+        verdict,
+        ...(outcome.findingsError !== undefined ? { extractionError: outcome.findingsError } : {}),
+      }),
       createdAt: nowMs(),
     });
     if (hasBlockingFinding(verdict)) {
@@ -752,17 +795,16 @@ export function completeStep(
         '<{conclusion}>',
         verdict.conclusion,
       ).replace('{blockings}', blockings);
-      setTodoPhase(deps, todoRow.id, 'planning');
-      // AI 审核自动修订回路的「调整摘要行」（M7 #330，r8 §3.1 62）：
-      // chip → 规划中自动走 phase 字段；该行 = 时间线 dim note
-      // 「AI 审核触发自动修订…」告诉用户「为什么又来一个 plan 步」。
-      insertMessageRow(deps, buildRow.id, {
-        id: newRecordId(),
-        role: 'system',
-        content: `AI 审核检测到 ${blockings.split('\n').length} 处 blocking 风险，已自动入队重规划步`,
-        createdAt: nowMs(),
+      // AI 审核自动修订回路的「调整摘要行」（M7 #330，r8 §3.1 62）：chip →
+      // 规划中自动走 phase 字段；该行 = 时间线 dim note 告诉用户「为什么又
+      // 来一个 plan 步」。
+      enqueueReviewRevision(deps, {
+        buildId: stepRow.buildId,
+        todoId: todoRow.id,
+        teamId: todoRow.teamId,
+        note: `AI 审核检测到 ${blockings.split('\n').length} 处 blocking 风险，已自动入队重规划步`,
+        revisePrompt,
       });
-      enqueueStep(deps, stepRow.buildId, 'plan', todoRow.teamId, revisePrompt);
     }
     return;
   }

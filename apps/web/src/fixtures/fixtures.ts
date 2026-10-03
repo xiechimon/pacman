@@ -434,6 +434,43 @@ export const boardOverflow: FixtureSet = {
   now: r7(13, 55),
 };
 
+/** #692 压力探针卡工厂（无 capture，overflowProbe 先例）：相位可指定，
+ *  同式无标签、单项目。orderIndex 递增 = 列视图序即数组序。 */
+function stressProbe(
+  id: string,
+  seqNum: number,
+  title: string,
+  phase: TodoRecord['phase'],
+): TodoRecord {
+  return { ...probeTodo(phase, r7(13, 40)), id, seqNum, title, spec: title };
+}
+
+/** #692 看板最坏数据命名场景（无 capture，board-overflow 先例）：
+ *  待开始 = 超长混排标题（不可断行拉丁长词 + 长路径），执行中 = 120 卡
+ *  （三位数列头计数 + 列表纵溢出），待处理 = 空列，已完成 = 常规卡。
+ *  e2e 在 ⌘J 停靠 / 窄窗 / RTL 下钉「列不塌、卡可读、列头不溢出」。 */
+export const boardStress: FixtureSet = {
+  ...boardDefault,
+  todos: [
+    stressProbe(
+      'stress-title',
+      51,
+      '重构 SuperCalendarUnavailableNamespaceController 并同步 docs/2026-09-30-architecture-decision-records/supplementary-review-notes.md 里的全部引用路径与脚注编号',
+      'todo',
+    ),
+    ...Array.from({ length: 120 }, (_, i) =>
+      stressProbe(
+        `stress-build-${String(i + 1).padStart(3, '0')}`,
+        100 + i,
+        `批量探针 #${i + 1}`,
+        'building',
+      ),
+    ),
+    stressProbe('stress-done', 900, '常规完成卡', 'done'),
+  ],
+  now: r7(13, 55),
+};
+
 /** Board with the probe in the given phase (r7 02/22/21/33 …). The dark
  *  board pair (02/02b) shows `9 分钟前` on the confirm card → captured
  *  ~13:35 with phaseAt 13:26. Done-phase boards (35/35d) list #9 ahead of

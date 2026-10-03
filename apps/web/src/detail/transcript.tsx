@@ -388,10 +388,23 @@ function Row({
           <AgentRowAvatar agent={agent} />
           <span className="chat-text">
             {/* 结论先行（r8 §3.1 60）：单段总结 — paragraph chip "审核结论"
-                + 文本。 */}
+                + 文本。#700：extractionError 在位 = daemon verdict 提取失败
+                —— chip 换「判定提取失败」（danger 色，与 blocking finding
+                同色系），正文 = daemon 原因；与「审核未返回结论」兜底（旧
+                daemon 无信号）在审核面上一眼可分辨——提取器失败不是审核
+                没结论。 */}
             <p className="chat-para chat-para--review-head">
-              <span className="chat-review-tag">{t('审核结论')}</span>
-              <Segments segments={inlineSegments(item.conclusion)} codeClassName="chat-code" />
+              <span
+                className={`chat-review-tag${
+                  item.extractionError !== undefined ? ' chat-review-tag--error' : ''
+                }`}
+              >
+                {t(item.extractionError !== undefined ? '判定提取失败' : '审核结论')}
+              </span>
+              <Segments
+                segments={inlineSegments(item.extractionError ?? item.conclusion)}
+                codeClassName="chat-code"
+              />
             </p>
             {/* 编号 findings（r8 §3.1 60/61）：每条 = 严重度后缀 + 标题 +
                 描述 + 引用位（文件:行）+ 可选建议。沿用 chat-para--num
@@ -452,7 +465,7 @@ function robotCopyText(item: Extract<TranscriptItem, { kind: 'robot' }>): string
 
 function reviewCopyText(item: Extract<TranscriptItem, { kind: 'review' }>): string {
   return [
-    item.conclusion,
+    item.extractionError ?? item.conclusion,
     ...item.findings.map((f) => `${f.id}. (${f.severity}) ${f.summary}`),
   ].join('\n');
 }

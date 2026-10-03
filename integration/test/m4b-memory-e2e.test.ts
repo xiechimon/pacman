@@ -9,7 +9,7 @@
 //    composeWorkerSystemPrompt `## 记忆` 段 → provider wire 请求体可观测注入
 //    痕迹（stub 捕获的请求体含已存条目 title——transcript 对照的宿主等价物）。
 
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { eq } from 'drizzle-orm';
@@ -23,7 +23,15 @@ import {
   step as stepTable,
   todo as todoTable,
 } from '../../apps/server/src/db/schema.js';
-import { AGENT_ID, api, bootRealServer, type RealServer, seedWorld, waitFor } from './helpers.js';
+import {
+  AGENT_ID,
+  api,
+  bootRealServer,
+  daemonLogLines,
+  type RealServer,
+  seedWorld,
+  waitFor,
+} from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 const MEMORY_TITLE = 'README 只在末尾追加小节';
@@ -41,11 +49,7 @@ let build1 = '';
 let stepStatusAtWrite: string | null = null;
 
 function logLines(): string[] {
-  try {
-    return readFileSync(paths.daemonLog, 'utf8').split('\n');
-  } catch {
-    return [];
-  }
+  return daemonLogLines(paths.daemonLog);
 }
 
 beforeAll(async () => {
@@ -99,9 +103,10 @@ afterAll(async () => {
   await handle?.done;
   await server?.close();
   await stub?.close();
+  const diagTail = logLines().slice(-40).join('\n');
   if (home) rmSync(home, { recursive: true, force: true });
   process.stdout.write(
-    `\n[diag] stub requests consumed: ${stub?.requests.length ?? -1}\n[diag] daemon.log tail:\n${logLines().slice(-40).join('\n')}\n`,
+    `\n[diag] stub requests consumed: ${stub?.requests.length ?? -1}\n[diag] daemon.log tail:\n${diagTail}\n`,
   );
 });
 

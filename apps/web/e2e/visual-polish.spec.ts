@@ -168,7 +168,11 @@ for (const theme of ['light', 'dark'] as const) {
         scrollable: el.scrollWidth > el.clientWidth,
       };
     });
-    expect(metrics.scrollbarWidth).toBe('none');
+    // #692: the overflow policy flipped from always-hidden to reference-
+    // aligned native (scrollbar-width: auto — drawn only while content
+    // actually overflows). Resting at 1440 nothing overflows, so no track
+    // renders (trackGap 0) and the #351 resting look is unchanged.
+    expect(metrics.scrollbarWidth).toBe('auto');
     expect(metrics.trackGap).toBe(0);
     // #351: the even 4-column grid fits the desktop width — the horizontal
     // scroll is gone (overflow-x stays only as the narrow-window fallback)
