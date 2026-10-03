@@ -94,6 +94,49 @@ export interface RunStepOptions {
   resume?: { sessionId: string | null; prompt: string | null };
   /** 已认领的运行数（canon 行 `(n running)` 的 n）。 */
   running?: number;
+  /** 流超时三臂覆盖（测试注入毫秒级；缺省 = 02 §5.6 r3 三值）。 */
+  streamTimeouts?: { first: number; idle: number; body: number };
+  /** 步级流时长上界覆盖（测试注入；缺省 = env PACMAN_STREAM_DURATION_CAP_MS
+   * 或 STREAM_DURATION_CAP_DEFAULT_MS）。 */
+  streamDurationCapMs?: number;
+}
+
+/** 步级流时长绝对上界默认值（#699 失败方式 3）：body 臂改事件重置后，步
+ * 总时长的唯一不事件化护栏——兜住「日志噪声 / 费用失控」的完全无上界步。
+ * 3600s = 真实任务常态（>9 分钟的规划/审核步）之上、费用失控之下。 */
+export const STREAM_DURATION_CAP_DEFAULT_MS = 3_600_000;
+
+/** 上界 env 旋钮（#699：可配绝对上界）；非法/非正值回落默认值——0 不是
+ * 「拆墙」出口，墙保持是墙。 */
+export const STREAM_DURATION_CAP_ENV = 'PACMAN_STREAM_DURATION_CAP_MS';
+
+function envDurationCapMs(env: NodeJS.ProcessEnv): number | null {
+  const raw = env[STREAM_DURATION_CAP_ENV];
+  if (raw === undefined) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+/** 流超时触发臂（#699 失败方式 4）：first = 首事件期限、idle = 事件间空闲、
+ * body = 流 body 预算、duration = 步级绝对上界。 */
+export type StreamTimeoutArm = 'first' | 'idle' | 'body' | 'duration';
+
+/** 超时收尾文案（#699 失败方式 4）：指名触发臂与各自数值——build.errorMessage
+ * 携带本文案，相位面看到的是真凶，不是笼统的 stream timeout。 */
+export function streamTimeoutMessage(
+  arm: StreamTimeoutArm,
+  timeouts: { first: number; idle: number; body: number; durationCap: number },
+): string {
+  const value =
+    arm === 'first'
+      ? timeouts.first
+      : arm === 'idle'
+        ? timeouts.idle
+        : arm === 'body'
+          ? timeouts.body
+          : timeouts.durationCap;
+  const label = arm === 'duration' ? 'cap' : arm;
+  return `stream timeout (arm=${arm}, ${label}=${value}ms)`;
 }
 
 /** 任务文本（M3a 骨架 [设计]：title + spec 原文，文本单源 = shared
@@ -531,30 +574,49 @@ export async function runStep(
   // message_end / toolcall_end）在位 = 有进展——重放会重复执行工具与重复
   // 落 transcript 行，只允许零进展轮回落重试。
   let sawProgress = false;
-  // 流超时护栏（02 §5.6 r3 bundle 原文三值全用）：首事件 streamFirstEvent、
-  // 事件间空闲 streamIdle、流 body 总时长 streamBodyTimeout；超时 = 中断会话
-  // 并按 failed 收尾。
+  // 流超时护栏（02 §5.6 三值 + #699 语义修订）：三臂全部「事件到达即重置」
+  // ——first = 首事件期限、idle = 事件间空闲、body = 流 body 预算（#654 先
+  // 把重置粒度从步推进到轮，#699 推进到事件，对齐 pi 在树参考实现的
+  // first/idle 事件重置语义）。事件重置救的是活跃流（失败方式 1）；真死流
+  // 由 idle 臂收（失败方式 2），步级总时长由不事件化的 duration cap 收
+  // （失败方式 3）。超时 = 中断会话并按 failed 收尾，文案指名触发臂与数值
+  // （失败方式 4）。
+  const streamTimeouts = {
+    first: opts.streamTimeouts?.first ?? STREAM_TIMEOUTS_MS.streamFirstEvent,
+    idle: opts.streamTimeouts?.idle ?? STREAM_TIMEOUTS_MS.streamIdle,
+    body: opts.streamTimeouts?.body ?? STREAM_TIMEOUTS_MS.streamBodyTimeout,
+  };
+  const streamDurationCapMs =
+    opts.streamDurationCapMs ?? envDurationCapMs(process.env) ?? STREAM_DURATION_CAP_DEFAULT_MS;
   let timedOut = false;
+  let timeoutArm: StreamTimeoutArm | null = null;
   let watchdog: NodeJS.Timeout | null = null;
   let bodyTimeout: NodeJS.Timeout | null = null;
-  const armWatchdog = (ms: number) => {
+  let durationCap: NodeJS.Timeout | null = null;
+  const tripTimeout = (arm: StreamTimeoutArm) => {
+    timedOut = true;
+    timeoutArm = arm;
+    void handle.stop();
+  };
+  const armWatchdog = (ms: number, arm: 'first' | 'idle') => {
     if (watchdog) clearTimeout(watchdog);
-    watchdog = setTimeout(() => {
-      timedOut = true;
-      void handle.stop();
-    }, ms);
+    watchdog = setTimeout(() => tripTimeout(arm), ms);
     watchdog.unref?.();
   };
-  // body 总时长护栏按轮独立装设（#654）：回落轮重置预算——零进展轮烧掉的
-  // 全是同形重试空转，不重置会把回落轮直接饿死在墙下。最坏单步 = 两倍
-  // streamBodyTimeout（仅「超时 + 签名命中 + 可翻」的罕见复合可达）。
+  // body 总时长护栏（#654 按轮独立装设 + #699 事件到达即重置）：回落轮重置
+  // 预算、每个流事件再重置——零进展轮烧掉的同形重试空转不饿死回落轮，活跃
+  // 长步不死于固定墙。事件重置下安静流先撞更紧的 idle 预算，body 仍独立指名
+  // 在案（数值独立可配；将来 idle 重置面收窄时它仍是兜底）。
   const armBodyTimeout = () => {
     if (bodyTimeout) clearTimeout(bodyTimeout);
-    bodyTimeout = setTimeout(() => {
-      timedOut = true;
-      void handle.stop();
-    }, STREAM_TIMEOUTS_MS.streamBodyTimeout);
+    bodyTimeout = setTimeout(() => tripTimeout('body'), streamTimeouts.body);
     bodyTimeout.unref?.();
+  };
+  // 步级绝对上界（#699 失败方式 3）：不随事件重置、不随回落轮重置（单步一
+  // 份预算）；超界即收——「事件流活跃但完全无上界」的日志/费用失控墙。
+  const armDurationCap = () => {
+    durationCap = setTimeout(() => tripTimeout('duration'), streamDurationCapMs);
+    durationCap.unref?.();
   };
   // live transcript 文本增量转发（M5 live streaming）：pi text_delta 按
   // TRANSCRIPT_DELTA_FLUSH_MS 窗口聚合批量 POST（tool/{stepId} 第三形
@@ -596,12 +658,13 @@ export async function runStep(
   for (let pass = 0; ; pass++) {
     if (pass > 0) {
       // 回落轮状态复位（零进展护栏保证 messageSeq/sawChangeTool/增量缓冲在
-      // 第一轮本就未动）。
+      // 第一轮本就未动）。duration cap 不在此复位——它是步级预算（#699）。
       lastError = null;
       lastModelError = null;
       sawDone = false;
       sawProgress = false;
       timedOut = false;
+      timeoutArm = null;
       usage = [];
     }
     try {
@@ -618,11 +681,14 @@ export async function runStep(
     journal.update(stepId, { state: 'running', sessionId: handle.sessionId });
     // steer 投递面注册（W3 #279）：在跑期间 deliverSteer 可达；各收尾路径注销。
     deps.sessionHandles?.set(stepId, handle);
-    armWatchdog(STREAM_TIMEOUTS_MS.streamFirstEvent);
+    armWatchdog(streamTimeouts.first, 'first');
     armBodyTimeout();
+    if (pass === 0) armDurationCap();
     try {
       for await (const ev of handle.events) {
-        armWatchdog(STREAM_TIMEOUTS_MS.streamIdle);
+        armWatchdog(streamTimeouts.idle, 'idle');
+        // body 预算与 idle 同拍按事件重置（#699 失败方式 1 的核心）。
+        armBodyTimeout();
         switch (ev.type) {
           case 'text_delta': {
             sawProgress = true;
@@ -695,6 +761,7 @@ export async function runStep(
       clearInterval(heartbeat);
       if (watchdog) clearTimeout(watchdog);
       if (bodyTimeout) clearTimeout(bodyTimeout);
+      if (durationCap) clearTimeout(durationCap);
       flushDeltas();
       clearCredentials(creds);
       await failStep(deps, stepId, err instanceof Error ? err.message : String(err));
@@ -728,8 +795,12 @@ export async function runStep(
   clearInterval(heartbeat);
   if (watchdog) clearTimeout(watchdog);
   if (bodyTimeout) clearTimeout(bodyTimeout);
-  if (timedOut)
-    lastError = `stream timeout (first=${STREAM_TIMEOUTS_MS.streamFirstEvent}ms idle=${STREAM_TIMEOUTS_MS.streamIdle}ms)`;
+  if (durationCap) clearTimeout(durationCap);
+  if (timedOut && timeoutArm !== null)
+    lastError = streamTimeoutMessage(timeoutArm, {
+      ...streamTimeouts,
+      durationCap: streamDurationCapMs,
+    });
   // —— 停止钮中断判定（M7 #308）：旗标 = machine-loop deliverStop 拉取-确认
   // 后置位；sawDone 优先 = stop 与自然完成竞态归完成（success 不改判）。
   // 判定先于 #698 no-op 闸：停止中断的事件流也是零事件零终局形态，闸不得
