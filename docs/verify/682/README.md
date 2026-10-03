@@ -78,3 +78,29 @@ cluster instead of running under the centered dialog title.
 - `result-before.json` 1/5 PASS / `result-after.json` 5/5 PASS — the numeric
   checks behind the screenshots (gap, title-zone clearance, ellipsis, viewport
   fit, RTL gap).
+
+## layout/ round 2 — machine pill, label never truncates (second user review)
+
+Round 1's space-only separation didn't survive review: with a long project name
+the flex chain squeezed the machine chip's label to one visible character
+(「自」 — `labelClipped: true`), and the bare chips still read as one line.
+Round 2 changes the means, not the numbers:
+
+- **Visible group boundary**: the machine chip is now a bordered pill — the
+  repo's own machine-chip idiom (`.dlg-machine` in the branch dialog), which
+  is better-layout's background-shape tier, chosen over a hairline divider
+  (line tier, last resort) because the idiom already exists in the codebase
+  and it gives the status dot an unambiguous home. The project chip keeps its
+  captured bare design (avatar-led); the two treatments now read as two
+  groups.
+- **The machine label never truncates**: machine wrap `flex-shrink: 0`
+  (dispatch-critical short datum — 自动 or a hostname, backstop
+  `max-width: 120px` for pathological hostnames); the project wrap is the
+  yielding element (`flex-shrink: 1` + ellipsis) because it carries
+  arbitrary-length user data.
+- Numbers: `round2-result-before.json` 7/9 (the two fails are exactly the
+  reported defects: label clipped, no boundary) → `round2-result-after.json`
+  9/9 (inter-group 16px, dot-to-label 8px inside the pill, label complete in
+  both shapes, project name yields under a 40-char name, cluster clear of the
+  title zone, 720px viewport, RTL flip). Before shots taken on a detached
+  worktree of the pushed round-1 HEAD; after shots on this branch.

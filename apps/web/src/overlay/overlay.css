@@ -39,8 +39,7 @@
   position: relative;
 }
 
-.new-task-project,
-.new-task-machine {
+.new-task-project {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -48,6 +47,26 @@
   background: transparent;
   padding: 0;
   cursor: pointer;
+}
+
+/* #682 第二轮排版（用户两审后）：机器 chip = 有边界的控件（分组的可见手段
+   归 better-layout 第二梯「背景形状」，比 hairline 分隔线先选；皮肤抄本仓
+   branch-dialog 的 .dlg-machine 机器 pill 惯用法）。shrink=0——机器标签是
+   派发关键短数据（「自动」或主机名），永不截断；簇内让位方 = 项目名（任意
+   长度用户数据，flex 收缩 + ellipsis）。点在 pill 内贴 label，归属无歧义。 */
+.new-task-machine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px 0 10px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  flex: 0 0 auto;
 }
 
 .new-task-project-avatar {
@@ -74,25 +93,36 @@
   color: var(--text-tertiary);
 }
 
+.new-task-machine:hover {
+  background: var(--surface-hover);
+}
+
 /* ---- #176 project selector popover (anchored under the head project
    chip; family form [设计] — lang-dropdown/plan-dropdown 律,无像素门禁,
    行为由 e2e 钉) ---- */
 
 /* anchor for the popover: the chip cluster inside the relative head */
-.new-task-project-wrap,
-.new-task-machine-wrap {
+.new-task-project-wrap {
   position: relative;
   display: flex;
   align-items: center;
   min-width: 0;
-  flex: 0 1 auto;
+  flex: 0 1 auto; /* 让位方：长名时收缩截断（机器 chip shrink=0 不让） */
 }
 
-/* #682 布局律（better-layout：用空间分组，组间 ≥ 2× 组内）：项目/机器
-   两个选择器是两个「组」——组内 8px（chip 内 gap），组间 16px。簇整体
-   max-width（672 弹窗 - head 内边距 12 - 中位标题净空 8px ≈ 282px）让长名
-   在簇内收缩截断，不与居中标题叠压；截断链 = 簇 → wrap → 按钮 → 名字 span
-   各层 min-width:0。menu 行名（-row-name 类）不受此截断（220px 菜单全名）。 */
+.new-task-machine-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-inline-start: 16px; /* 2× 组内 8px；logical 属性随 RTL 翻转 */
+}
+
+/* #682 布局律（better-layout：用空间分组，组间 ≥ 2× 组内）+ 第二轮（用户
+   两审：16px 纯间距仍读成一条线）：组间 16px 之外，机器 chip 自带边界
+   （pill）= 可见分隔手段；簇整体 max-width（672 弹窗 - head 内边距 12 -
+   中位标题净空 8px ≈ 282px）让项目长名在簇内截断，不与居中标题叠压。menu
+   行名（-row-name 类）不受截断（220px 菜单全名）。 */
 .new-task-chips {
   display: flex;
   align-items: center;
@@ -101,18 +131,20 @@
   max-width: 282px;
 }
 
-.new-task-machine-wrap {
-  margin-inline-start: 16px; /* 2× 组内 8px；logical 属性随 RTL 翻转 */
-}
-
-.new-task-project,
-.new-task-machine {
+.new-task-project {
   min-width: 0;
 }
 
-.new-task-project-name,
+.new-task-project-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .new-task-machine-name {
   min-width: 0;
+  max-width: 120px; /* 极端主机名兜底（自动 26px 恒完整；pill shrink=0） */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
