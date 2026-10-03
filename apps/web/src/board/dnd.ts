@@ -3,21 +3,23 @@
 // settled drop DOES to phase/order is pure here so it stays testable
 // without a DOM.
 //
-// Drop semantics (#616, todos.dev 2026-10-02 live 实测): the drag is a pure
-// cross-column phase vehicle — 「在桌面端可将卡片直接拖拽至目标列」= manual
-// phase change, landing at the END of the target column's view. The
-// reference has no in-column reordering at all (siblings never shift
+// Drop semantics (#616, todos.dev live 实测; matrix re-cut by #753): the
+// drag is a pure cross-column phase vehicle — 「在桌面端可将卡片直接拖拽至目标
+// 列」= manual phase change, landing at the END of the target column's view.
+// The reference has no in-column reordering at all (siblings never shift
 // mid-gesture; a same-column drop commits nothing), so the #73/#403 reorder
 // index math and its filter-view anchor translation retired — moveTodo now
 // answers same-column calls with the identity. `orderIndex` write-back
 // stays: every column's committed view order is re-sequenced so the manual
-// order remains the persisted truth (02 §6.2). #351: 待处理 carries no
-// dropPhase — a cross-column drop into it commits nothing (gate/failed are
-// system states). 执行中 does not route through here at all — its drop
-// opens the 开始任务 dialog and only a confirmed start writes the phase
-// (columns.ts startGate).
+// order remains the persisted truth (02 §6.2). #753（2026-10-03/04 重测，推翻
+// #351「待处理不作落点」）: 合法边 = columns.ts canDropOnColumn 的 per-source
+// 矩阵单源——待处理 吃 已完成(有变更) 的重开落位（写 review），failed→已完成
+// 不收（#702），执行中 只吃 待开始。执行中 does not route through here at
+// all — its drop hands the todo to the start path (board.tsx onStartIntent,
+// #640 直发编排；2026-10-04 实测参考站该落位开 开始任务 dialog，差异归后续
+// 票，本仓载体不动).
 import type { TodoRecord } from '../fixtures/records.js';
-import { COLUMNS } from './columns.js';
+import { COLUMNS, canDropOnColumn } from './columns.js';
 
 /** Pointer travel needed to tell a drag from a card click (CSS px) — the
  *  PointerSensor activation constraint; clicks keep navigating (r2 §4.2). */
@@ -29,9 +31,10 @@ export const DRAG_THRESHOLD_PX = 5;
  * relative time restarts, landing the card at the END of the target
  * column's view (#616: the reference keeps no manual in-column rank —
  * done 列是时间序，改相卡落尾即「最新」). Identity returns: unknown
- * todo/column, same-column (no in-column semantics), and 待处理 (#351 —
- * no dropPhase, manual entry carries no meaning). Every column's view
- * order is written back as sequential `orderIndex`.
+ * todo/column, and every pair canDropOnColumn rejects (#753 per-source
+ * matrix — same-column, 待开始→待处理, →执行中 from 待处理/已完成,
+ * 无变更 done→待处理, failed→已完成). Every column's view order is
+ * written back as sequential `orderIndex`.
  */
 export function moveTodo(
   todos: TodoRecord[],
@@ -43,11 +46,9 @@ export function moveTodo(
   if (moved == null) return todos;
   const column = COLUMNS.find((c) => c.id === columnId);
   if (column == null) return todos;
-  const sourceColumn = COLUMNS.find((c) => c.accepts(moved));
-  if (sourceColumn?.id === column.id) return todos;
-  // 待处理无落点（#351）：跨列拖入无语义，原样返回
+  // #753：合法边单源 canDropOnColumn（同列/非法对 = 恒等，不写相位不动序）
+  if (!canDropOnColumn(moved, columnId)) return todos;
   const dropPhase = column.dropPhase;
-  if (dropPhase == null) return todos;
   const placed = { ...moved, phase: dropPhase, phaseAt: now };
   const rest = todos.filter((t) => t.id !== todoId);
   const view = rest.filter((t) => column.accepts(t));

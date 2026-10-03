@@ -21,6 +21,7 @@ import {
   boardChiefProbes,
   boardDarkFresh,
   boardDefault,
+  boardDragMatrix,
   boardFailed,
   boardGithubPicker,
   boardOverflow,
@@ -141,6 +142,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // tagged，钉板级空结果态。
       'board-tags': boardTagFilter,
       'board-tags-empty': boardTagFilterEmpty,
+      // #753 拖动矩阵：命名场景（无 capture，board-tags 先例）——四列满员 +
+      // 待处理三相 + 已完成两态（有/无变更），e2e 钉 per-source 合法目标
+      // 矩阵与重开落位。
+      'board-drag-matrix': boardDragMatrix,
       // #445 看板仓库筛选：命名场景（无 capture，同上先例）——board-repos
       // 三项目三卡（r3 两卡 + r2 一卡 + r4-quiet 零卡）钉仓库轴单选/多选/
       // 空态与「仓库 × 类型」双轴组合收窄。
