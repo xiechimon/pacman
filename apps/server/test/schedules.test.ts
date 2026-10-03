@@ -13,7 +13,7 @@ import {
 } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import { afterEach, describe, expect, test } from 'vitest';
-import { todo as todoTable } from '../src/db/schema.js';
+import { machine as machineTable, todo as todoTable } from '../src/db/schema.js';
 import { completeStep, listSteps } from '../src/services/builds.js';
 import { createScheduler } from '../src/services/scheduler.js';
 import { serverTimezone, wallClockParts } from '../src/services/schedules.js';
@@ -394,6 +394,19 @@ describe('触发闭环 E2E（04 §4 M2：触发 → 新 build 全新重跑，r3 
       assignment: { plan: null, build: null },
       withPlan: false,
     }); // → queued（进行中）
+    // #706：同 tick 兼跑 worker 步失联扫尾——合成 now 越过 120s 阈值时，
+    // pending 步 + 团队零在线机器会被收尾；本测试意图是调度抢占，在线机器
+    // 使手动 build 的 pending 步走合法排队分支，断言焦点不变（在线位置位
+    // 直写 DB，生产置位路径归 machine-wire 面）。
+    s.db
+      .insert(machineTable)
+      .values({
+        id: 'machine-schedule-no-preempt',
+        teamId: s.team.id,
+        name: 'sched-box',
+        online: true,
+      })
+      .run();
     const anchor = new Date('2026-09-01T00:15:00+08:00').getTime();
     const created = scheduleRecordSchema.parse(
       await (

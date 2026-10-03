@@ -981,6 +981,15 @@ a.chief-identity {
   color: var(--text-tertiary);
 }
 
+/* #756 续：ModelPickList 壳——搜索框（现形态）与清单纵排 4px 距；未现形
+   时壳内只有清单，零额外占位（用户裁决：框不常驻）。两面同形单源。 */
+.model-pick-list-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
 /* #751 选中行单源：chief 两个 picker 面（抽屉头主模型弹层 + 设置面压缩
    模型弹层）都经 ModelPickRow 渲染，选中态 therefore 落在基类钩子上而不是
    各面 skin——令牌对 --pick-selected-bg/-fg 承载此前缺失的角色（选中行
@@ -1017,7 +1026,6 @@ a.chief-identity {
   padding: 4px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
   background: var(--popover);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);

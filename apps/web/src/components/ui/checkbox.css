@@ -35,6 +35,14 @@
   display: flex;
 }
 
+/* #771：Indicator 卸载走官方 transition-status——uncheck 后它带着
+   data-ending-style 再多挂一帧才卸载，那一帧里透明底 tile 上还画着白勾
+   就是“关闭闪一下”。本仓无退出动效，直接藏掉 ending 帧（加退出动效那天
+   再删这条）。 */
+.ui-checkbox-indicator[data-ending-style] {
+  display: none;
+}
+
 /* 仓级 focus 环 canon（#388）：2px 实线 --focus-ring + offset 2。#690 起
    焦点落在 Root 本体（tabIndex=0 的 span），环直接画在 tile 上。 */
 .ui-checkbox-tile:focus-visible {
