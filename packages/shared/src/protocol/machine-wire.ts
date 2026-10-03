@@ -551,6 +551,19 @@ export const machineSkillsResponseSchema = z.object({
 });
 export type MachineSkillsResponse = z.infer<typeof machineSkillsResponseSchema>;
 
+/** GET /api/machine/attachment/{stepId}/{attachmentId} 响应（#730 [设计]
+ * MACHINE_WIRE_EXTENSIONS 登记位）：daemon 侧图片交付的下载面——ownedStep
+ * 校验（本机步）+ 附件 team 归属校验（跨 team 404）+ ready 状态闸（pending/
+ * failed = 409 原因带状态词）。base64 载荷与既有工具面 readAttachmentMeta
+ * 同形（10MiB cap = 内存预算上界，同律）。 */
+export const machineAttachmentResponseSchema = z.object({
+  fileName: z.string(),
+  mimeType: z.string(),
+  sizeBytes: z.number().int().min(0),
+  contentBase64: z.string(),
+});
+export type MachineAttachmentResponse = z.infer<typeof machineAttachmentResponseSchema>;
+
 /** 词表外 [设计] 附加端点（wire diff 白名单化用，04 §1/§3 divergence 登记
  * 机制同族）：upload-urls 预签名的落地点——self-host 无对象存储，server 自出
  * 一次性 PUT URL。非协议面外扩：13 端点词表（MACHINE_ENDPOINTS）不改形状，
@@ -576,6 +589,12 @@ export const MACHINE_WIRE_EXTENSIONS = [
     path: '/api/machine/skills/{stepId}',
     reason:
       '[设计] XMON-109 S1 技能包下发（spec 14 daemon 注入契约的 S2 消费位；agent.skills 白名单交集 + 字节闸；响应 machineSkillsResponseSchema）',
+  },
+  {
+    method: 'GET',
+    path: '/api/machine/attachment/{stepId}/{attachmentId}',
+    reason:
+      '[设计] #730 daemon 侧图片附件下载（ownedStep + team 归属 + ready 闸；base64 载荷响应 machineAttachmentResponseSchema）',
   },
   {
     method: 'PUT',

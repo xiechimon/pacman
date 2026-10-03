@@ -129,6 +129,9 @@ class FakeClient implements MachineApi {
     // XMON-112 S2：默认空包 = 零团队技能（既有断言零扰动）。
     return { skills: [] };
   }
+  async attachment(): Promise<never> {
+    throw new Error('unused');
+  }
   async uploadUrls(_stepId: string, files: { name: string }[]) {
     return {
       uploads: files.map((f, i) => ({

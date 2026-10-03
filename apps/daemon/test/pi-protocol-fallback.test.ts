@@ -237,6 +237,9 @@ class FakeClient implements MachineApi {
   async skills() {
     return { skills: [] };
   }
+  async attachment(): Promise<never> {
+    throw new Error('unused');
+  }
   async uploadUrls(_stepId: string, files: { name: string }[]) {
     this.uploadNames.push(files.map((f) => f.name));
     return {

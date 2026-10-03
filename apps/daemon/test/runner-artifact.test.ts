@@ -151,6 +151,9 @@ class FakeClient implements MachineApi {
   async syncResult(_syncId: string, _body: { status: string; errorMessage?: string }) {
     /* no-op stub for branch sync (M7 #319) */
   }
+  async attachment(): Promise<never> {
+    throw new Error('unused');
+  }
   async shellPrecheck(): Promise<never> {
     throw new Error('unused');
   }

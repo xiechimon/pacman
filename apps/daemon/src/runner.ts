@@ -15,6 +15,7 @@ import type {
   AgentTokenUsage,
   ClaimedStep,
   CommitIdentity,
+  DeliveredImage,
   LocalToolDef,
   PreparedWorkspace,
   ProviderConfig,
@@ -51,6 +52,7 @@ import { extractReviewVerdict } from './review-findings.js';
 import { buildSecretTool } from './secret-channel.js';
 import { buildRemoteShellTool } from './shell-channel.js';
 import type { StatePaths } from './state.js';
+import { resolveStepImages } from './step-attachments.js';
 import { buildCreateTagTool } from './tag-tool.js';
 import { materializeTeamSkills } from './team-skills.js';
 
@@ -337,6 +339,34 @@ export async function runStep(
     claimed,
   });
 
+  // —— #730 图片附件解析下载（prompt 面）：整行 `![name](attachment:key)`
+  // token → 内联像素交付。边界（票面）：chief 步不经本机制（chief instruction
+  // 无附件入口）；review 步材料同 string 缝，解析对无 token 文本零触碰。
+  // transcript/journal 侧恒原始文本（上方已落/将落）——web 渲染面 chip 不因
+  // 展开丢；会话消费展开文本 + images。resolver 兜底 catch：解析器自身故障
+  // 降级为原文交付（图片缺位但步不炸——下载失败的可视面已在 resolver 内）。
+  let deliveryPrompt = prompt;
+  let promptImages: DeliveredImage[] | undefined;
+  if (!isChief && prompt !== null) {
+    try {
+      const resolved = await resolveStepImages({
+        text: prompt,
+        stepId,
+        client,
+        materializeDir: deps.paths.stepAttachmentsDir,
+        log: (line) => logger.step(line),
+      });
+      deliveryPrompt = resolved.text;
+      if (resolved.images.length > 0) promptImages = [...resolved.images];
+    } catch (err) {
+      logger.step(
+        `attachment resolve failed (delivering raw text): ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
   // per-step 凭证下发（02 §5.4/§8：内存持有，不落盘常驻；push_credential
   // 对照 = credentials.ts）。runtime 身份步（spec 17 A4：agent.provider ∈
   // BACKEND_RUNTIME_IDS）零凭据——认证机器本地（claude 登录或
@@ -543,7 +573,8 @@ export async function runStep(
     ...(agent.thinkingLevel ? { thinkingLevel: agent.thinkingLevel } : {}),
     ...(systemPrompt ? { systemPrompt } : {}),
     cwd,
-    ...(prompt !== null ? { prompt } : {}),
+    ...(deliveryPrompt !== null ? { prompt: deliveryPrompt } : {}),
+    ...(promptImages !== undefined ? { promptImages } : {}),
     ...(localToolDefs.length > 0 ? { localTools: localToolDefs } : {}),
     ...(remoteTools && remoteTools.length > 0
       ? {

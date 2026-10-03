@@ -43,6 +43,7 @@ import type {
   AgentBackendCapabilities,
   AgentSessionHandle,
   AgentTokenUsage,
+  DeliveredImage,
   LocalToolDef,
   McpEndpoint,
   ModelUsage,
@@ -403,9 +404,10 @@ class ClaudeSessionHandle implements AgentSessionHandle {
   }
 
   /** steer = 流输入队列（下轮消费）+ steer 事件（A8：与 pi 中途注入语义有
-   *  已知差异，文档化不抹平；interrupt 归 T2）。 */
-  async steer(text: string): Promise<void> {
-    this.input.push(userMessage(text));
+   *  已知差异，文档化不抹平；interrupt 归 T2）。images = #730 随话交付的
+   *  图片（内联 image content block 同 prompt 面机制）。 */
+  async steer(text: string, images?: readonly DeliveredImage[]): Promise<void> {
+    this.input.push(buildUserMessage(text, images));
     this.queue.push({ type: 'steer', text });
   }
 
@@ -422,12 +424,44 @@ class ClaudeSessionHandle implements AgentSessionHandle {
   }
 }
 
-/** 流输入用户帧（MessageParam 文本形；parent_tool_use_id = 顶层消息位 null）。 */
-function userMessage(text: string): SDKUserMessage {
+/** 流输入用户帧（MessageParam 文本形；parent_tool_use_id = 顶层消息位 null）。
+ * #730：携带图片时 content 升为块数组 [text, image...]——Claude Code 本尊
+ * 粘贴同机制（parent 正典 §Part 2：inline image content block 进用户消息，
+ * 支持 png/jpeg/gif/webp）；SDKUserMessage.message = MessageParam，content
+ * 块数组是 SDK 明示的合法形。无图片时恒 string（既有 wire 零漂移）。 */
+export function buildUserMessage(text: string, images?: readonly DeliveredImage[]): SDKUserMessage {
+  if (images === undefined || images.length === 0) {
+    return {
+      type: 'user',
+      message: { role: 'user', content: text },
+      parent_tool_use_id: null,
+    };
+  }
   return {
     type: 'user',
-    message: { role: 'user', content: text },
+    message: { role: 'user', content: [textBlock(text), ...images.map(toImageBlock)] },
     parent_tool_use_id: null,
+  };
+}
+
+function textBlock(text: string): { type: 'text'; text: string } {
+  return { type: 'text', text };
+}
+
+/** 内联交付面的 media_type 字面量联合（SDK Base64ImageSource 的类型面；
+ * 运行时保证 = resolver inlineMime 只放行 png/jpeg/gif/webp 四值）。 */
+type InlineImageMediaType = 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp';
+
+/** DeliveredImage → Anthropic image block（base64 source 三字段缺一不可）。 */
+export function toImageBlock(img: DeliveredImage): {
+  type: 'image';
+  source: { type: 'base64'; media_type: InlineImageMediaType; data: string };
+} {
+  return {
+    type: 'image',
+    // mimeType 恒在四值联合内（resolver inlineMime 收口）——cast = 类型面
+    // 与运行时保证的对齐，不是放宽。
+    source: { type: 'base64', media_type: img.mimeType as InlineImageMediaType, data: img.data },
   };
 }
 
@@ -735,8 +769,9 @@ export class ClaudeCodeBackend implements AgentBackend {
     const state = createClaudeMapState({ modelId: opts.modelId });
     // 流输入队列（query 消费面 = 同一实例）：首轮任务文本先入队（02 §4.2
     // createSession = 首条用户消息；缺省 = 开会话不发轮，队列空但保持打开）。
+    // #730：promptImages 随首轮用户消息内联（块数组形）。
     const input = new AsyncQueue<SDKUserMessage>();
-    if (opts.prompt !== undefined) input.push(userMessage(opts.prompt));
+    if (opts.prompt !== undefined) input.push(buildUserMessage(opts.prompt, opts.promptImages));
     const q = query({ prompt: input.iterable(), options: sdkOptions });
     return new ClaudeSessionHandle(q, { sessionId, state, abort, input });
   }
