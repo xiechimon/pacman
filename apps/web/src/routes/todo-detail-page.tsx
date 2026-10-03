@@ -19,6 +19,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { attachFile } from '../api/attachments.js';
+import { ApiError } from '../api/client.js';
 import {
   useApiMutations,
   useBuild,
@@ -66,6 +67,7 @@ import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
 import { mergeRejectCopy, useMergeGate } from '../detail/merge-gate.js';
 import { RerunDialog, ReusePanel } from '../detail/overlays.js';
+import { RejectDialog } from '../detail/reject-dialog.js';
 import { resolveReviewDefault } from '../detail/review-default.js';
 import { type ReviewAgentOption, ReviewDialog } from '../detail/review-dialog.js';
 import { RightPane } from '../detail/right-pane.js';
@@ -254,9 +256,12 @@ export function TodoDetailPage() {
   // XMON-89：合并被拒的可见态。住页层而非弹层内——弹层是 retained-mount，
   // 关掉不清会在下一次开窗时回显上一轮的拒绝（并入 closeOverlay）。
   const [mergeReject, setMergeReject] = useState<string | null>(null);
+  // #701：打回弹层的服务端拒绝原因（XMON-89 同律——被拒弹层不关、原因显性）。
+  const [rejectError, setRejectError] = useState<string | null>(null);
   const closeOverlay = useCallback(() => {
     setOverlay(null);
     setMergeReject(null);
+    setRejectError(null);
   }, []);
   // 前置检查（XMON-89）：查的 Agent = merge 步的执行者 = assignment.build 槽
   // （不是卡片上显示的折算值）。
@@ -663,14 +668,19 @@ export function TodoDetailPage() {
           ? 'changes'
           : 'plan';
 
-  // composer 被拒提示行（W3 #280 steer / #320 restart）：异步 onSend 失败时
-  // draft 保留不丢字，文案按被拒写面分流；restart 错误 scope 到
-  // variables.action（confirm 主钮同走 stepAction，其错误不上此行）。
+  // composer 被拒提示行（W3 #280 steer / #320 restart / #701 review 打回）：
+  // 异步 onSend 失败时 draft 保留不丢字，文案按被拒写面分流；stepAction 错误
+  // scope 到 variables.action ∈ {restart, revision}（confirm 主钮同走
+  // stepAction，其错误不上此行——review 打回与 confirm 驳回共用 revision 位）。
+  const stepActionFailed =
+    mutations.stepAction.isError &&
+    (mutations.stepAction.variables?.body.action === 'restart' ||
+      mutations.stepAction.variables?.body.action === 'revision');
   const composerReject = !live
     ? null
     : mutations.sendSteer.isError
       ? t('当前没有运行中的会话，消息未送出')
-      : mutations.stepAction.isError && mutations.stepAction.variables?.body.action === 'restart'
+      : stepActionFailed
         ? t('任务状态已变化，消息未送出')
         : null;
 
@@ -859,12 +869,13 @@ export function TodoDetailPage() {
                           });
                           return;
                         }
-                        // W3 steer（#280，06 册 D9 / spec #277）：building/review 态
-                        // 发送 = 运行中补话。server 门（claimed 步在跑）收则 201，
-                        // 无在跑步 409 明确拒绝（提示行 + draft 保留，不丢字）。
-                        // 返回 Promise = composer 异步清稿面。
+                        // W3 steer（#280，06 册 D9 / spec #277）：building 态发送 =
+                        // 运行中补话；review 态仅在运行中（AI 审核步在跑等）保持
+                        // 本面——运行补话与静息打回各走各的道，不互抢。server 门
+                        // （claimed 步在跑）收则 201，无在跑步 409 明确拒绝（提示行
+                        // + draft 保留，不丢字）。返回 Promise = composer 异步清稿面。
                         if (
-                          (phase === 'building' || phase === 'review') &&
+                          (phase === 'building' || (phase === 'review' && running)) &&
                           buildId &&
                           text !== ''
                         ) {
@@ -874,6 +885,24 @@ export function TodoDetailPage() {
                               setLiveDraft('');
                               return undefined;
                             });
+                        }
+                        // #701（B-C12）：review 关口静息态发送 = 人肉打回——confirm
+                        // 驳回的动作面复用（POST steps revision → review→planning +
+                        // 重规划步入队，边与 #330 自动回流同一条），不再撞 steer 面
+                        // 的 409 死路；「请求修改…」占位符从此诚实（可填即可发）。
+                        // Promise 面 = restart 同律：成功清稿、被拒（409 竞态）保留。
+                        if (phase === 'review' && !running && buildId && text !== '') {
+                          return mutations.stepAction
+                            .mutateAsync({
+                              buildId,
+                              body: {
+                                action: 'revision',
+                                side: 'plan',
+                                feedback: text,
+                                clientMessageId: crypto.randomUUID(),
+                              },
+                            })
+                            .then(() => undefined);
                         }
                         // #320 失败面发送 = 带反馈重启（r9 §3.3：原站 failed 态发消息
                         // 触发新一轮，消息随新轮入会话——非 steer 语义）。走 steps
@@ -985,6 +1014,16 @@ export function TodoDetailPage() {
         canComplete={canComplete}
         onCloseTask={closeTask}
         canClose={canClose}
+        // #701：审核关口显式打回入口——live review 静息态在场（运行中让位
+        // steer 补话面）；fixture 面/其余相位缺省 = 行不渲染，四行几何不变。
+        onReject={
+          live && phase === 'review' && buildId != null && !running
+            ? () => {
+                setMoreOpen(false);
+                setOverlay({ kind: 'reject' });
+              }
+            : undefined
+        }
       />
       <DeleteConfirm
         open={deleteOpen}
@@ -1036,6 +1075,38 @@ export function TodoDetailPage() {
                   onSuccess: () => closeOverlay(),
                   onError: (error) => setMergeReject(mergeRejectCopy(error, t)),
                 });
+              }
+            : undefined
+        }
+      />
+      <RejectDialog
+        open={overlay?.kind === 'reject'}
+        onClose={closeOverlay}
+        rejectReason={rejectError}
+        onConfirm={
+          // 打回 = revision 动作面（composer 静息发送同一条 mutation）；关弹层
+          // 挂 onSuccess——被拒（409 竞态/相位漂移）弹层留着显原因（XMON-89）。
+          live && buildId
+            ? (feedback) => {
+                setRejectError(null);
+                mutations.stepAction.mutate(
+                  {
+                    buildId,
+                    body: {
+                      action: 'revision',
+                      side: 'plan',
+                      feedback,
+                      clientMessageId: crypto.randomUUID(),
+                    },
+                  },
+                  {
+                    onSuccess: () => closeOverlay(),
+                    onError: (error) =>
+                      setRejectError(
+                        error instanceof ApiError ? error.message : t('打回请求未送出，请重试。'),
+                      ),
+                  },
+                );
               }
             : undefined
         }
