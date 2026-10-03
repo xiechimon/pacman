@@ -17,6 +17,7 @@ import { mapSchedules, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { Select } from '../components/ui/select.js';
+import { toastError } from '../components/ui/toaster.js';
 import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import type { FixtureSet, ScheduleRecord } from '../fixtures/records.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -390,14 +391,18 @@ export function SchedulesPage() {
     if (formKind === 'once' && base.getTime() < Date.now()) {
       base.setDate(base.getDate() + 1); // 单次已过点 = 明日同刻 [设计]
     }
-    mutations.createSchedule.mutate({
-      todoId: liveTodo.id,
-      projectId: liveTodo.projectId,
-      kind: formKind,
-      at: base.getTime(),
-      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      machineId: null,
-    });
+    mutations.createSchedule.mutate(
+      {
+        todoId: liveTodo.id,
+        projectId: liveTodo.projectId,
+        kind: formKind,
+        at: base.getTime(),
+        tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        machineId: null,
+      },
+      // #638：表单提交即关（下方 setFormOpen），失败 = 定时没建上却零解释。
+      { onError: (error) => toastError(t('新建定时失败，请重试。'), error) },
+    );
     setFormOpen(false);
   };
   return (
@@ -509,7 +514,11 @@ export function SchedulesPage() {
           if (deleteTarget == null) return;
           // live = DELETE /api/schedules/:id（invalidateAll 重取）；fixture =
           // deletions 覆面（session 局部，重载还原）——todo 删除同律。
-          if (live) mutations.deleteSchedule.mutate(deleteTarget.id);
+          if (live)
+            mutations.deleteSchedule.mutate(deleteTarget.id, {
+              // #638：确认层已关，失败 = 行还在却零解释。
+              onError: (error) => toastError(t('删除定时失败，请重试。'), error),
+            });
           else markDeleted(deleteTarget.id);
           setConfirmOpen(false);
         }}

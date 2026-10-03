@@ -21,6 +21,7 @@ import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
+import { toastError } from '../components/ui/toaster.js';
 import type { BranchInfoContent } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, Copy } from '../icons/index.js';
@@ -399,6 +400,10 @@ export function SyncButton({
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['branchSync', buildId] });
     },
+    // #638（普查账外、验收 grep 命中）：POST 入队被拒（409/5xx/网络）此前
+    // 全静默。ResultCard 的红字是机器异步失败（record.status='failed'）的
+    // 既有 canon 位——与 POST 失败分属两个阶段，不重叠、不双报。
+    onError: (error) => toastError(t('同步失败，请重试。'), error),
   });
   const live = canSync && buildId !== null && machineId !== null;
   return (

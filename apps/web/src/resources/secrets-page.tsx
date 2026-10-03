@@ -7,7 +7,9 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useApiMutations, useSecrets } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { toastError } from '../components/ui/toaster.js';
 import { resolveScenario } from '../fixtures/scenario.js';
+import { useI18n } from '../i18n/provider.js';
 import { KeyThin } from '../icons/index.js';
 import { CreateSecretDialog } from './create-secret-dialog.js';
 import { EmptyState, RowCard, RowChevron, Tile } from './parts.js';
@@ -16,6 +18,7 @@ import { ResourceShell } from './shell.js';
 export const SECRETS_HREF = '/app/resources/secrets';
 
 export function SecretsPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const fixture = resolveScenario(searchParams);
   // M5 live：GET secrets（只读掩码面，02 §8 值只写不读）。有行 = 复用
@@ -70,6 +73,8 @@ export function SecretsPage() {
             ? (input) =>
                 mutations.createSecret.mutate(input, {
                   onSuccess: () => setCreateOpen(false),
+                  // #638：失败 = 弹窗留着（关挂在 onSuccess）但零反馈。
+                  onError: (error) => toastError(t('添加密钥失败，请重试。'), error),
                 })
             : undefined
         }

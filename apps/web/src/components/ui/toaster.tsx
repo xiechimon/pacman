@@ -16,7 +16,16 @@
 
 import type { CSSProperties } from 'react';
 import { useEffect, useState } from 'react';
-import { Toaster as Sonner, type ToasterProps } from 'sonner';
+import { Toaster as Sonner, type ToasterProps, toast } from 'sonner';
+
+/** #631/#638 失败反馈原语：标题句（调用面已 i18n）+ server 原因进
+ *  description 透传不翻译（server 数据同 user 内容律）。非 Error / 空
+ *  message 不落 description。模块级函数 = 引用恒稳，callback 依赖位安全
+ *  （use-chief-surface 的 #631 首版同款逻辑，#638 提为共享单源）。 */
+export function toastError(title: string, error: unknown): void {
+  const reason = error instanceof Error && error.message !== '' ? error.message : null;
+  toast.error(title, reason !== null ? { description: reason } : undefined);
+}
 
 /** sonner 主题位 = 根元素 .light 位的即时镜像（见文件头注）。 */
 function useSonnerTheme(): ToasterProps['theme'] {
