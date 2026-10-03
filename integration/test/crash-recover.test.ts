@@ -86,8 +86,18 @@ function logLines(): string[] {
 describe('崩溃恢复（T2：AgentSession 缝 × 宿主 durable 编排）', () => {
   test('SIGKILL 于步中 → 重启 → recover 对账 → continue session 续跑 → confirm', async () => {
     stub = await startStubLlm([
-      // 第一轮慢响应：制造崩溃窗口（session 已建、步未收尾）。
+      // 第一轮慢响应：制造崩溃窗口（session 已建、步未收尾）——响应本体不被
+      // 消费（daemon 先死），内容无关紧要。
       { content: '第一轮响应（崩溃前）。', delayMs: 6_000 },
+      // #703 产物闸：恢复后续跑要真产 plan.md（纯文本轮过不了闸 1）。
+      {
+        toolCall: {
+          name: 'bash',
+          arguments: {
+            command: `cat > plan.md <<'EOF'\n# 方案\n\nContext: 崩溃恢复探针。\nChanges: README 加一行。\nEOF`,
+          },
+        },
+      },
       { content: '恢复后续跑完成。' },
     ]);
     server = await bootRealServer({ providerBaseUrl: stub.url, claimHoldMs: 500 });
