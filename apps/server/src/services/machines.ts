@@ -31,6 +31,7 @@ import {
   AGENT_TOOL_SKILL_CREATE,
   AGENT_TOOL_SKILL_UPDATE,
   AGENT_TOOL_TAG,
+  CHANGES_DIFF_MAX_BYTES,
   CHIEF_REMOTE_TOOLS,
   CHIEF_TURN_ERROR_KIND,
   createSkillBodySchema,
@@ -76,7 +77,7 @@ import { hashCredential } from '../lib/hash.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { newMachineToken } from '../lib/keys.js';
 import { readAttachmentMeta } from './attachments.js';
-import { applyStoppedStep, completeStep, NotFoundError } from './builds.js';
+import { applyStoppedStep, completeStep, NotFoundError, toBuildRecord } from './builds.js';
 import {
   chiefClaimContext,
   finishChiefTurn,
@@ -93,7 +94,7 @@ import {
   revokeStepGitCredential,
 } from './credentials.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
-import { projectRepoRef, repoDirFor } from './git.js';
+import { parseUnifiedDiff, projectRepoRef, repoDirFor } from './git.js';
 import { openGithubToken } from './github-connection.js';
 import { canTransitionPhase } from './phase.js';
 import {
@@ -1593,6 +1594,34 @@ export async function finishStep(
   // per-step 一次性 git 凭证回收（步收尾即撤销，成败均回收——凭证生命周期 =
   // 步生命周期，02 §8 运行时层「不落盘常驻」的 server 半）。
   revokeStepGitCredential(deps, stepId);
+  // 交付面回填（#704 / B-C16，Multica link-back 只读方向）：daemon 步收尾
+  // 上报的 PR（github 形态 agent 开的 PR）与变更 diff（非 hosted 形态投影
+  // 真值源）落 build 行。字段缺席 = 未上报/探测失败——保持 null 不造数据
+  // （失败方式 ②④：无 PR 不造假、探测失败按「未知」）。changesDiff 超上限
+  // 丢弃（daemon 侧同闸，此处第二道——两侧闸都不打爆 done 通道与 DB）。
+  // chief 步 buildId 无 build 行，update 无匹配 = no-op。
+  {
+    const sets: Partial<typeof build.$inferSelect> = {};
+    if (body.prUrl !== undefined && body.prNumber !== undefined) {
+      sets.prUrl = body.prUrl;
+      sets.prNumber = body.prNumber;
+    }
+    if (body.changesDiff !== undefined && body.changesDiff.length <= CHANGES_DIFF_MAX_BYTES) {
+      sets.changes = parseUnifiedDiff(body.changesDiff);
+    }
+    if (Object.keys(sets).length > 0) {
+      const updated = db.update(build).set(sets).where(eq(build.id, stepRow.buildId)).run();
+      // 回填即发布：build doc SSE 事件（web「分支 / PR」面板与 changes 面的
+      // 失效重取键）；行不存在（chief conv）changes=0 时不发布。
+      if (updated.changes > 0) {
+        const row = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
+        const todoRow = row
+          ? db.select().from(todo).where(eq(todo.id, row.todoId)).get()
+          : undefined;
+        if (row && todoRow) deps.hub.publishBuildDoc(todoRow.teamId, toBuildRecord(row));
+      }
+    }
+  }
   // 合并步落地（02 §4.2：merge 202 delegated → 机器 git merge + push → server
   // bare repo 默认分支 fast-forward [设计]；r3 §3.6「服务端 main 验证」同语义）。
   // 落地失败（非快进/无 commit）= 步按 failed 收尾（失败仅人工重跑，02/A6）。
