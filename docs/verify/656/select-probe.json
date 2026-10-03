@@ -1,0 +1,18 @@
+{
+  "live": {
+    "animationName": "enter",
+    "anims": [
+      {
+        "name": "enter",
+        "state": "running"
+      }
+    ]
+  },
+  "mid": true,
+  "settled": {
+    "transform": "none",
+    "opacity": "1",
+    "w": 64.3,
+    "h": 300
+  }
+}

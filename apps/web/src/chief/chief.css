@@ -843,22 +843,17 @@
   color: var(--text-tertiary);
 }
 
-/* #425 B1 退场（壳换 FloatingShell 后的配方，mention-picker 同款）：旧选择器
-   `.overlay-mount[data-overlay-state="closed"] .anim-pop` 随 OverlayMount
-   退役。Base UI 只在 Popup 本体有进行中动画时才延迟卸载（getAnimations 不看
-   子树），故壳挂一条零视觉的 visibility 延迟过渡撑住退场窗（--dur-fast =
-   150ms），面内 anim-pop 的退场终态改由壳的 [data-ending-style] 驱动。 */
+/* #656 退场（mention-picker 同款）：面板的退场改由 tw-animate-css 的
+   group-data-closed:animate-out 承载（FLOATING_POP_ANIM，挂在 .chief-model-menu
+   上、经壳的 group/fshell 读开闭态）。Base UI 只在 Popup 本体有进行中动画时才
+   延迟卸载（getAnimations 不看子树），故壳仍挂一条零视觉的 visibility 延迟过渡
+   撑住退场窗（--dur-fast = 150ms ≥ 面板 duration-100），让 animate-out 播完再卸。 */
 .chief-model-shell {
   transition: visibility 0s linear var(--dur-fast);
 }
 
 .chief-model-shell[data-ending-style] {
   visibility: hidden;
-}
-
-.chief-model-shell[data-ending-style] .anim-pop {
-  opacity: 0;
-  transform: scale(0.95) translateY(-4px);
 }
 
 .chief-charter-empty {

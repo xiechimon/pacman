@@ -20,7 +20,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '../components/ui/button.js';
-import { FloatingShell } from '../components/ui/floating-shell.js';
+import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
 import { Input } from '../components/ui/input.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, FileCheck, Layers, Puzzle, Server, Users, X } from '../icons/index.js';
@@ -219,7 +219,7 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
     <FloatingShell open={open} onClose={onClose} className="mention-picker-shell">
       <ClickCatcher onClose={onClose} />
       <div
-        className="mention-picker anim-pop"
+        className={`mention-picker ${FLOATING_POP_ANIM}`}
         role="dialog"
         aria-modal="true"
         aria-label={t('提及')}
@@ -360,9 +360,10 @@ export function MentionInline({ open, agents, caret, onPick, onClose }: MentionI
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
   if (!open) return null;
+  // 条件渲染（关即卸载）= 仅进场：静态 animate-in 挂载即播，无退场窗。
   return (
     <div
-      className="mention-inline anim-pop"
+      className="mention-inline duration-100 animate-in fade-in-0 zoom-in-95 slide-in-from-top-2"
       role="listbox"
       aria-label="Agents"
       data-caret={caret ?? ''}
