@@ -4,8 +4,8 @@
 // 首行截断，执行 agent 接单后经 set_task_meta 回填正式标题，ADR 0002）；
 // footer = composer-style toolbar + 保存 / 保存并开始（闸 = 正文非空）。
 // #176: the project chip is a selector — click opens an anchored popover
-// (family law #67/#127: OverlayMount + ClickCatcher + Esc, dhead chip
-// popover precedent), rows = the project set (live = useProjects truth;
+// (family law #67/#127: FloatingShell + ClickCatcher + Esc——#656 起壳归
+// Base UI layer 栈, dhead chip popover precedent), rows = the project set (live = useProjects truth;
 // fixture = scenario projectNames / canon default), selection backfills the
 // chip and rides the submit's projectId（rememberProject 面另落一份
 // localStorage 记忆，见下 XMON-87 段）。
@@ -24,7 +24,8 @@
 // #318 未保存闸 (r9 §3.4): 正文非空时,三条关闭路径(X / backdrop /
 // Esc)先过「放弃新建任务？未保存的内容将丢失。」确认弹层(继续编辑 / 放弃
 // 并关闭);净表单直关不闸。Esc 分层沿 #176 内层优先律(确认层 → 提及
-// picker → 项目 popover → dialog)。关闭即重置表单(retained-mount 重开 =
+// picker → 项目 popover → dialog;#656 起四层同栈 = Base UI layer 序,
+// 最顶先收)。关闭即重置表单(retained-mount 重开 =
 // 净面,闸判定不带脏残留)。#394 起 dirty = 正文单字段（标题/标签面移除）。
 //
 // XMON-95 ⌘↵：保存并开始 除点击外可由 ⌘↵（非 mac = Ctrl+↵）触发，和弦走
@@ -41,12 +42,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
+import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
 import { Kbd } from '../components/ui/kbd.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
 import { PROJECT_ID, PROJECT_NAME } from '../fixtures/fixtures.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown, Grid2x2, Paperclip, X } from '../icons/index.js';
-import { ClickCatcher, OverlayMount } from '../overlays/dismiss.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 import { isEditableTarget, useChordHotkey, useProjectCycleHotkey } from '../overlays/hotkeys.js';
 import { type MentionGroups, MentionPicker } from './mention-picker.js';
 import { insertMentionText, type MentionToken } from './mention-token.js';
@@ -178,6 +180,10 @@ export function NewTaskDialog({
   const [projectId, setProjectId] = useState<string | null>(() =>
     rememberProject ? readRememberedProject(localStorage) : null,
   );
+  // #656：popover 的 FloatingShell 把 Portal 挂回 chip wrap（absolute 面板的
+  // containing block 原位保真）；wrap 随 dialog 内容先挂，popover 开态翻转时
+  // ref 必已就位。
+  const projectWrapRef = useRef<HTMLSpanElement | null>(null);
   // M7 #310 附件：file picker ref + 上传中 disable 纸夹扣
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attaching, setAttaching] = useState(false);
@@ -218,7 +224,7 @@ export function NewTaskDialog({
     }
   }, [open]);
   // retained mount：关闭退场后子树卸载,重开 = 重新挂载。autofocus 挂 ref
-  // callback（挂载瞬间触发,绕过 OverlayMount 的 effect 时序——首开时
+  // callback（挂载瞬间触发,绕过壳层的 effect 时序——首开时
   // 对话框 effect 早于子树挂载,effect 里聚焦会打空）。useCallback 稳定
   // 引用 = 输入期重渲染不重复触发（同元素同 ref 不重逢）。
   const specRef = useRef<HTMLTextAreaElement | null>(null);
@@ -341,18 +347,9 @@ export function NewTaskDialog({
           }
           requestClose();
         }}
-        // #318 分层 Esc（旧壳四处 useEscClose 的合并）：内层开着时壳不关自己，
-        // 由本回调按层序收最上面那层；全关时壳自己走 requestClose（未保存闸）。
-        // mention picker 已换 FloatingShell（Base UI 嵌套顶层，escapeKey:
-        // isTopmost 自己收），故本闸只覆盖仍走仓内 OverlayMount 的两层。
-        onEscapeWhileNested={
-          projectOpen || discardOpen
-            ? () => {
-                if (projectOpen) setProjectOpen(false);
-                else setDiscardOpen(false);
-              }
-            : undefined
-        }
+        // #318/#656 分层 Esc：四个内层（picker / 项目 popover / discard 闸）
+        // 全部走 FloatingShell（Base UI layer 栈，escapeKey isTopmost 自己收），
+        // onEscapeWhileNested 代收闸退役——壳只控 dialog 自身的 Esc 关闸。
         // zIndex 21：仓内浮层阶梯（面板 21 < ClickCatcher 29 < 确认层 31）——
         // 缺省 50 会压住本文件的 discard 确认层，故按旧值下移
         zIndex={21}
@@ -361,7 +358,7 @@ export function NewTaskDialog({
         height={439}
       >
         <div className="new-task-head">
-          <span className="new-task-project-wrap">
+          <span className="new-task-project-wrap" ref={projectWrapRef}>
             <button
               type="button"
               className="new-task-project"
@@ -377,12 +374,26 @@ export function NewTaskDialog({
                   先例,不做平台探测。 */}
               <KbdHint label="Tab" placement="right" />
             </button>
-            {/* #176:anchored popover 家族律(#67/#127)——OverlayMount +
-                ClickCatcher + Esc;空集不开面(live 无项目时提交走建默认
-                项目路径)。选中回填 chip,提交携带 projectId。 */}
-            <OverlayMount open={projectOpen && rows.length > 0}>
+            {/* #176:anchored popover 家族律(#67/#127)——#656 起壳 =
+                FloatingShell(Esc 归 Base UI 嵌套 layer 栈)+ ClickCatcher;
+                Portal 挂回 chip wrap,absolute 面板几何原位保真。空集不开面
+                (live 无项目时提交走建默认项目路径)。选中回填 chip,提交携带
+                projectId。#666 律:chip 是 toggle 面——焦点留触发位、原生
+                outsidePress 关闭(外点归 catcher)。 */}
+            <FloatingShell
+              open={projectOpen && rows.length > 0}
+              onClose={() => setProjectOpen(false)}
+              container={projectWrapRef.current}
+              className="anchored-pop-shell"
+              initialFocus={false}
+              disablePointerDismissal
+            >
               <ClickCatcher onClose={() => setProjectOpen(false)} />
-              <div className="new-task-project-menu anim-pop" role="listbox" aria-label={t('项目')}>
+              <div
+                className={`new-task-project-menu ${FLOATING_POP_ANIM}`}
+                role="listbox"
+                aria-label={t('项目')}
+              >
                 {rows.map((row) => (
                   <button
                     key={row.id}
@@ -408,7 +419,7 @@ export function NewTaskDialog({
                   </button>
                 ))}
               </div>
-            </OverlayMount>
+            </FloatingShell>
           </span>
           <div className="new-task-title-label">{t('新建任务')}</div>
           {/* A4-deep 收编：icon 变体皮肤；28×28 + margin-left:auto 几何
@@ -511,11 +522,24 @@ export function NewTaskDialog({
       </DialogShell>
       {/* #318 未保存闸确认层(r9 §3.4 copy 逐字):独立层不入 dialog 面板
           ——面板 transform 会吞 fixed 定位(#176 注记同坑);ClickCatcher
-          z29 压 dialog z21,外点 = 只收确认层(继续编辑语义),面板 z31 居顶。 */}
-      <OverlayMount open={discardOpen}>
+          z29 压 dialog z21,外点 = 只收确认层(继续编辑语义),面板 z31 居顶。
+          #656:壳 = FloatingShell(sibling root,MentionPicker 先例);fade 沿
+          旧 anim-fade 的 200ms(--dur-overlay),桥走 slow 变体撑满退场窗。
+          initialFocus 走缺省(焦点入层)而非 false:sibling root 的 Esc 路由
+          依赖焦点在本层内——实测 initialFocus=false 时(焦点留在 dialog)
+          Esc 全被 modal dialog 吃掉(→requestClose→重开本层,确认层关不掉);
+          MentionPicker 同款缺省。#247 Tab 可达性不受损(焦点入层后 Tab 即达
+          两个动作钮),Tab 循环/⌘↵ 的 discardOpen 缺席门原样。外点归
+          catcher,故原生 outsidePress 关闭(#666 律的 catcher 半边)。 */}
+      <FloatingShell
+        open={discardOpen}
+        onClose={() => setDiscardOpen(false)}
+        className="anchored-pop-shell anchored-pop-shell--slow"
+        disablePointerDismissal
+      >
         <ClickCatcher onClose={() => setDiscardOpen(false)} />
         <div
-          className="new-task-discard anim-fade"
+          className="new-task-discard duration-200 group-data-closed/fshell:fill-mode-forwards group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0"
           role="alertdialog"
           aria-modal="true"
           aria-label={t('放弃新建任务？未保存的内容将丢失。')}
@@ -540,7 +564,7 @@ export function NewTaskDialog({
             </Button>
           </div>
         </div>
-      </OverlayMount>
+      </FloatingShell>
       {/* #311 mention picker(sibling layer)。Esc/backdrop 顺序见上分层注记。 */}
       <MentionPicker
         open={pickerOpen}

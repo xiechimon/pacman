@@ -12,3 +12,11 @@
 .anchored-pop-shell[data-ending-style] {
   visibility: hidden;
 }
+
+/* 200ms 面（duration-200 的 fade 族：sched-form scrim / new-task discard，
+   沿旧 --dur-overlay 时序）用本变体撑满退场窗——桥短于面板会把 fade 拦腰
+   截断。与基类叠用（anchored-pop-shell anchored-pop-shell--slow），同特异性
+   后位胜出。 */
+.anchored-pop-shell--slow {
+  transition: visibility 0s linear var(--dur-overlay);
+}
