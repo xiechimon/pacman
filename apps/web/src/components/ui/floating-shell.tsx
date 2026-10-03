@@ -35,6 +35,19 @@ interface FloatingShellProps {
    *  .doc-select-wrap）——把 portal 指回触发容器，DOM 树位与 containing
    *  block 都不变，几何逐像素保。 */
   container?: HTMLElement | null;
+  /** Base UI Popup 初始焦点直通（缺省 = Base UI 缺省：开面即把焦点移进
+   *  弹层）。false = 焦点留在触发位——toggle 型触发面（chip popover，#666）
+   *  的键盘契约是「同一个键再按一次关面」，焦点被弹层抢走后第二次 Enter
+   *  落在弹层内部件上（时序竞态：e2e H2 flake + 键盘用户随机开分配弹窗）。
+   *  Esc 关面不受影响：useDismiss 的 escapeKey 不走 pointer 面。 */
+  initialFocus?: boolean;
+  /** 关掉 Base UI 原生 outside-press 关面（直通 Dialog Root 同名 prop）。
+   *  家族律里外点归 ClickCatcher（全屏透明钮，弹层子树内——Base UI 判
+   *  isInside 不触发原生 dismiss）；原生 outsidePress 实际只会接住键盘合成
+   *  click（焦点在触发钮上按 Enter，事件目标是弹层外的钮）——与触发钮自身
+   *  的 toggle onClick 双写同一 state（capture dismiss 先置 false、React
+   *  onClick 后 !v 翻回 true），toggle 面于是「关不掉」。#666 实测。 */
+  disablePointerDismissal?: boolean;
   children: ReactNode;
 }
 
@@ -44,12 +57,16 @@ export function FloatingShell({
   className,
   style,
   container,
+  initialFocus,
+  disablePointerDismissal,
   children,
 }: FloatingShellProps) {
   return (
     <DialogPrimitive.Root
       open={open}
       modal={false}
+      // undefined = Base UI 缺省（编译面对 undefined 与缺省同判）
+      disablePointerDismissal={disablePointerDismissal}
       onOpenChange={(next: boolean) => {
         if (!next) onClose();
       }}
@@ -61,6 +78,8 @@ export function FloatingShell({
           style={style}
           // 非模态面不做 aria-modal；语义靠 role 与面自身 aria 承载
           role="dialog"
+          // undefined = Base UI 缺省（其编译面对 undefined 与缺省同判）
+          initialFocus={initialFocus}
         >
           {children}
         </DialogPrimitive.Popup>
