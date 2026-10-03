@@ -128,8 +128,9 @@ const CLAUDE_MODEL_SLOT_PATTERN = /^ANTHROPIC_([A-Z0-9_]+)_MODEL$/;
 
 /** claude-code 段（spec 11 §A4）：server 端 fs 直读 settings.json——
  *  文件缺失 / 非法 JSON / 非对象 JSON 一律 installed:false，不空报不崩。
- *  槽值非字符串或空串的项跳过（installed 仍为 true）。 */
-function claudeCodeModelSource(homeDir: string): ModelSource {
+ *  槽值非字符串或空串的项跳过（installed 仍为 true）。
+ *  导出供 chief 收单回落（#774）复用同源：回落判据与 model-sources 读面同文件。 */
+export function claudeCodeModelSource(homeDir: string): ModelSource {
   const host = hostname();
   const notInstalled: ModelSource = {
     runtime: 'claude-code',
