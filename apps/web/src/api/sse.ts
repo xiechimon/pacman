@@ -10,6 +10,7 @@
 // 消费映射并承载副作用（桌面通知 / liveTextStore / 透传回调）。
 
 import type { ConversationStepEvent, NotificationRecord, TranscriptRow } from '@pacman/shared';
+import { isChiefConversationId } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { EN } from '../i18n/en.js';
@@ -185,6 +186,14 @@ export function useConversationStream(
             // 上传赛跑：message 先到时该轮重取落空，其后无人再失效。step 事件
             // （finishStep 发，恒在 plan 落库后）补一次失效兜住该 race。
             void qc.invalidateQueries({ queryKey: ['plans'] });
+            // #684：chief 会话的步终态（done/failed，含失联超时 sweep）必须
+            // 失效线程列表——activeRun 收口只落 chief_thread 行，成功路径靠
+            // notifyChiefTurn 的 notification 事件兜住，失败路径（#631 起零
+            // 通知）此前无人失效：drawer 的 steer 占位符会一直谎称回合在飞。
+            // 前缀失效（无 teamId 限位）与 ['plans'] 同律——活跃查询至多一个。
+            if (isChiefConversationId(conversationId)) {
+              void qc.invalidateQueries({ queryKey: ['chiefThreads'] });
+            }
             onStep?.((ev as ConversationStepEvent).step);
             break;
           default:

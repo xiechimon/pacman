@@ -16,7 +16,7 @@ import type { Db } from '../db/client.js';
 import { build, schedule, todo } from '../db/schema.js';
 import { nowMs } from '../lib/ids.js';
 import { type BuildDeps, startBuilds, toBuildRecord } from './builds.js';
-import { fireDueChiefWakes } from './chief.js';
+import { failAbandonedChiefSteps, fireDueChiefWakes } from './chief.js';
 import type { TeamStreamHub } from './events.js';
 import { PhaseTransitionError } from './phase.js';
 import { computeNextRunAt, dueSchedules, isRecurring, updateNextRunAt } from './schedules.js';
@@ -86,6 +86,9 @@ export function createScheduler(deps: BuildDeps, opts: SchedulerOptions): Schedu
     // chief set_wake 到期触发（r5 §2 关注与提醒「约定到点回头核实」；BuildDeps
     // 与 ChiefDeps 同形，直接复用）。
     fireDueChiefWakes(deps, now);
+    // #684 失联超时兜底：daemon 死亡后 pending/claimed chief 步永挂零反馈，
+    // tick 扫尾把失联回合按失败收进 #631 可见面（chief_turn_error 行 + toast）。
+    failAbandonedChiefSteps(deps, now);
   }
 
   return {

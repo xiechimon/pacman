@@ -471,7 +471,7 @@ function scheduleSelfIssueCreate(deps: TodoDeps, todoId: string): void {
 async function runSelfIssueCreate(deps: TodoDeps, todoId: string): Promise<TodoRecord | null> {
   const { db, hub, box } = deps;
   const row = getRow(deps, todoId);
-  if (!row || row.sourceKind !== 'github-issue-self' || row.sourceRef !== null) return null;
+  if (row?.sourceKind !== 'github-issue-self' || row.sourceRef !== null) return null;
   if (!box) throw new HttpError(502, 'github writeback unavailable (no secret box)');
   const proj = db
     .select({ repoKind: project.repoKind, githubRepo: project.githubRepo })
@@ -539,7 +539,7 @@ export async function writebackSelfIssueTitle(
   const { db, box } = deps;
   if (!box) return;
   const row = getRow(deps, todoId);
-  if (!row || row.sourceKind !== 'github-issue-self' || row.sourceRef === null) return;
+  if (row?.sourceKind !== 'github-issue-self' || row.sourceRef === null) return;
   const parsed = parseGithubIssueSourceRef(row.sourceRef);
   if (parsed === null) return;
   const token = openGithubToken({ db, box }, row.teamId);
