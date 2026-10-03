@@ -100,7 +100,7 @@
   background: transparent;
   padding: 0;
   font-size: 13px;
-  color: var(--indigo-500);
+  color: var(--card-button);
   cursor: pointer;
 }
 
@@ -312,10 +312,11 @@
   color: var(--text-primary);
 }
 
-/* 皇冠 = 总管徽标（参考产品 indigo-500/10 底 + indigo-600 描边字形） */
+/* 皇冠 = 总管徽标（§2.5 回 spot 族：tint 底 + 品牌字形；参考产品为
+   indigo-500/10 底 + indigo-600 描边字形） */
 .team-chart-crown {
-  background: rgb(99 102 241 / 0.1);
-  color: #4f46e5;
+  background: var(--spot-soft);
+  color: var(--card-button);
 }
 
 .team-chart-provider svg,
@@ -505,7 +506,7 @@
   border: none;
   padding: 0;
   border-radius: 999px;
-  background: var(--indigo-500);
+  background: var(--card-button);
   cursor: pointer;
 }
 
@@ -706,7 +707,7 @@
 .lang-dropdown-check {
   margin-left: auto;
   display: flex;
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 /* W4 #287：API key 新建表单弹窗（r3 §6 权限位 [推断]——名称 + git/mcp 开关 +

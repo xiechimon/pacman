@@ -142,7 +142,7 @@
   padding-right: 20px;
 }
 
-/* + 新建 (r7 11: indigo icon+text, ink x1379–1418) */
+/* + 新建 (r7 11: 品牌紫 icon+text, ink x1379–1418) */
 .page-new-action {
   display: flex;
   align-items: center;
@@ -150,7 +150,7 @@
   border: none;
   background: transparent;
   padding: 0;
-  color: var(--indigo-500);
+  color: var(--card-button);
   font-size: 14px;
   line-height: 22px;
   cursor: pointer;
@@ -687,11 +687,11 @@
 }
 
 /* focus-visible 收编（#360, spec 12 输入框去默认蓝）——共享 input 原语
-   同款配方（ui/input.css #A3）：outline none + indigo 边框 + 1px ring。 */
+   同款配方（ui/input.css #A3）：outline none + 品牌环边框 + 1px ring。 */
 .prj-new-input:focus-visible {
   outline: none;
-  border-color: var(--indigo-500);
-  box-shadow: 0 0 0 1px var(--indigo-500);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }
 
 /* -webkit-autofill 覆盖（#360）：UA 自动填充底色不吃 background 覆盖——
@@ -705,7 +705,7 @@
 .prj-new-input:-webkit-autofill:focus-visible {
   box-shadow:
     0 0 0 1000px var(--surface) inset,
-    0 0 0 1px var(--indigo-500);
+    0 0 0 1px var(--focus-ring);
 }
 
 /* local 路径校验错误行（#360）：server 400 reason 分类内联呈现，配方 =
@@ -851,10 +851,10 @@
 }
 
 /* t-0070: 勾形改由 RadioItemIndicator 原生槽承载（absolute right-2 =
-   原 margin-left:auto + 行右 8px 内边距的同位）；勾色正本（indigo）仍钉
+   原 margin-left:auto + 行右 8px 内边距的同位）；勾色正本（品牌紫）仍钉
    per-face，槽选择器吃 wrapper 的 data-slot 契约。 */
 .prj-new-repo-menu [data-slot="dropdown-menu-radio-item-indicator"] {
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 /* ---- GitHub 认证 + repo picker (#361, spec 12 G2-T4) ----
@@ -974,7 +974,7 @@
 .prj-new-gh-row-check {
   margin-left: auto;
   display: flex;
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 .prj-new-gh-empty {
@@ -1082,8 +1082,8 @@
 }
 
 .dir-browser-dots[aria-pressed="true"] {
-  border-color: var(--indigo-500);
-  color: var(--indigo-500);
+  border-color: var(--card-button);
+  color: var(--card-button);
 }
 
 .dir-browser-list {
@@ -1126,7 +1126,7 @@
 .dir-browser-git {
   flex: none;
   display: inline-flex;
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 .dir-browser-pick {
@@ -1654,10 +1654,10 @@
 }
 
 /* t-0070: 勾形改由 RadioItemIndicator 原生槽承载（absolute right-2 =
-   原 margin-left:auto + 行右 8px 内边距的同位）；勾色正本（indigo）仍钉
+   原 margin-left:auto + 行右 8px 内边距的同位）；勾色正本（品牌紫）仍钉
    per-face，槽选择器吃 wrapper 的 data-slot 契约。 */
 .prj-tasks-menu [data-slot="dropdown-menu-radio-item-indicator"] {
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 /* grid view [设计] (ticket note: official capture absent) — card language
@@ -1736,7 +1736,7 @@
 }
 
 .prj-issues-filter--active {
-  border-color: var(--indigo-500);
+  border-color: var(--card-button);
   background: var(--tab-chip-bg);
   color: var(--text-primary);
 }

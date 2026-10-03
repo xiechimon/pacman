@@ -36,7 +36,7 @@
 }
 
 .agent-name:hover {
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 /* 图标钮的默认字号（button 底座 text-sm）对图标-only 钮没有意义，只留

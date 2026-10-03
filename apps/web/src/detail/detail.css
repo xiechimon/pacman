@@ -1885,7 +1885,7 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   height: 16px;
   padding: 0 3px;
   border-radius: 8px;
-  background: var(--indigo-500);
+  background: var(--card-button);
   color: var(--text-on-accent);
   font-size: 10px;
   line-height: 16px;

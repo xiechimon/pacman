@@ -101,7 +101,7 @@
 }
 
 .mention-picker-search-input:focus {
-  border-color: var(--indigo-500);
+  border-color: var(--focus-ring);
 }
 
 .mention-picker-list {

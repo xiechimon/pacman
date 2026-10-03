@@ -420,7 +420,7 @@ export function SyncButton({
   const live = canSync && buildId !== null && machineId !== null;
   return (
     // XMON-24：同步钮切 shadcn ghost——漆底/几何全在 .dlg-sync per-face
-    // （w100% h38 indigo-disabled 漆面压 hover；cursor:default 与底座
+    // （w100% h38 --spot-disabled 漆面压 hover；cursor:default 与底座
     // disabled:pointer-events-none 的箭头光标同效）；老面无 :disabled
     // 降档 → opacity 中性化。
     <Button
