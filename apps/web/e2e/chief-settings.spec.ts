@@ -127,12 +127,35 @@ test('压缩模型 interactive (#204): button opens the anchored model menu', as
   const { menu } = await openModelMenu(page);
   // span 静态化已翻回(button 才是选择器);清单 = 默认行 + fixture canon 单行。
   await expect(page.locator('span.chief-select')).toHaveCount(0);
-  await expect(menu).toHaveAttribute('role', 'listbox');
+  // #756 续：listbox 语义随 ModelPickList 的清单容器（搜索框现形态在
+  // listbox 外），菜单壳只承几何。
+  await expect(menu.locator('.chief-model-pick-list')).toHaveAttribute('role', 'listbox');
   await expect(menu.locator('.chief-model-row')).toHaveCount(2);
   await expect(menu.locator('.chief-model-row').nth(0)).toContainText('默认（与 Chief 相同）');
   await expect(menu.locator('.chief-model-row').nth(0)).toHaveAttribute('aria-selected', 'true');
   await expect(menu.locator('.chief-model-row').nth(1)).toContainText('claude-sonnet-5');
   await expect(menu.locator('.chief-model-row-provider')).toHaveText('r3-gw');
+});
+
+test('压缩模型 search is typeahead-only, same contract as the drawer picker (#756 续)', async ({
+  page,
+}) => {
+  const { menu } = await openModelMenu(page);
+  // 开面零搜索占位（不渲染，非透明）——与抽屉头 picker 同形单源
+  await expect(menu.locator('.chief-pick-search')).toHaveCount(0);
+  // 可打印字符被面吃掉：框现形、预填该字符、焦点进 input、即刻过滤
+  await page.keyboard.press('x');
+  const search = menu.locator('.chief-pick-search input');
+  await expect(search).toBeVisible();
+  await expect(search).toHaveValue('x');
+  await expect(search).toBeFocused();
+  // x 命中不了 canon 行与 provider → 默认行 + 空态
+  await expect(menu.locator('.chief-model-row')).toHaveCount(1);
+  await expect(menu.locator('.chief-pick-empty')).toBeVisible();
+  // 收回律：清空 = 框收回、清单回全量
+  await search.fill('');
+  await expect(menu.locator('.chief-pick-search')).toHaveCount(0);
+  await expect(menu.locator('.chief-model-row')).toHaveCount(2);
 });
 
 test('压缩模型 menu family law (#204): Escape and outside click dismiss', async ({ page }) => {

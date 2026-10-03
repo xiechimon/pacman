@@ -15,8 +15,9 @@
 // 各调用面的 t()，默认行/未设槽文案一律作参数传入。
 
 import type { ChiefCompactionModel } from '@pacman/shared';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ModelOption } from '../fixtures/records.js';
-import { Check } from '../icons/index.js';
+import { Check, Search } from '../icons/index.js';
 
 /** 模型维槽值：对象形 {provider, modelId}（chiefCompactionModelSchema 同构；
  *  agent 面的两字段拼成同形传入）。modelId null = 槽未设；provider null 仅
@@ -175,5 +176,139 @@ export function ModelPickRow({ skin, selected, label, providerLabel, onPick }: M
         </span>
       )}
     </button>
+  );
+}
+
+/** typeahead 搜索框 input 中和件单源（#756 续：用户裁决框不常驻、打字才
+ *  现形）：两面同形，故与搜索框皮肤类一并钉在本层，调用面只传文案。 */
+const SEARCH_INPUT_CLASS =
+  'chief-pick-input h-auto rounded-none border-none bg-transparent p-0 leading-5 placeholder:text-current/50 focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent';
+
+export interface ModelPickListProps {
+  skin: ModelRowSkin;
+  /** 候选清单（序 = 数据源序）；过滤律在本层。 */
+  options: readonly ModelOption[];
+  value: ModelSlotValue | null;
+  /** 默认行文案（清空/继承语义由各面传入，本层不硬编码）。 */
+  defaultLabel: string;
+  /** listbox 的 aria-label 与搜索框占位/空态文案（i18n 单源在各面 t()）。 */
+  listLabel: string;
+  searchPlaceholder?: string;
+  emptyLabel?: string;
+  onPick: (value: ChiefCompactionModel | null) => void;
+}
+
+/** 行清单 + typeahead 搜索的单源壳（#756 续）：chief 两个 picker 面共用。
+ *  搜索框**不常驻**——开面零占位（不渲染，非透明）；壳捕获可打印字符
+ *  （preventDefault + stopPropagation，底层快捷键与行激活都截不到）现形
+ *  搜索框并吃掉该字符（预填 + 即刻过滤 + 焦点进 input）。空格保留给行
+ *  激活（键盘 a11y 契约），不触现形。
+ *  **收回律（本票裁决，写进 PR）**：query 清空 = 收回——框消失、清单回
+ *  全量、焦点回清单容器（后续打字可再现形）；不留空框占位。
+ *  壳随 FloatingShell 卸载重置：重开回无框全清单态。 */
+export function ModelPickList({
+  skin,
+  options,
+  value,
+  defaultLabel,
+  listLabel,
+  searchPlaceholder,
+  emptyLabel,
+  onPick,
+}: ModelPickListProps) {
+  const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  // 开面即焦点进清单容器（typeahead 契约：未现形时键必经 listbox 冒泡）。
+  // Base UI 的 initialFocus 是异步移入——重载下它与首键竞态，e2e 实锤丢
+  // 过键；本层在挂载（= 开面，FloatingShell 关面即卸载）同步确立，之后
+  // 它再移到行钮仍在清单内，契约不断。
+  useEffect(() => {
+    listRef.current?.focus();
+  }, []);
+  // 现形即焦点进 input（吃掉的那个字符已预填，光标在尾）。
+  useEffect(() => {
+    if (searchOpen) inputRef.current?.focus();
+  }, [searchOpen]);
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const source =
+      q === ''
+        ? options
+        : options.filter(
+            (row) =>
+              row.modelName.toLowerCase().includes(q) ||
+              row.providerLabel.toLowerCase().includes(q),
+          );
+    return toModelRows(source, value);
+  }, [options, query, value]);
+
+  return (
+    <div className="model-pick-list-shell">
+      {searchOpen && (
+        <div className="chief-pick-search">
+          <Search width={14} height={14} />
+          <input
+            ref={inputRef}
+            className={SEARCH_INPUT_CLASS}
+            value={query}
+            onChange={(event) => {
+              const next = event.target.value;
+              // 收回律：清空即收回，焦点回清单容器承后续 typeahead。
+              if (next === '') {
+                setSearchOpen(false);
+                setQuery('');
+                listRef.current?.focus();
+                return;
+              }
+              setQuery(next);
+            }}
+            placeholder={searchPlaceholder}
+          />
+        </div>
+      )}
+      <div
+        ref={listRef}
+        className="chief-model-pick-list"
+        role="listbox"
+        aria-label={listLabel}
+        tabIndex={-1}
+        onKeyDown={(event) => {
+          // typeahead 捕获挂在 listbox 上（静态元素禁事件handler 的 biome
+          // 律：交互归有 role 的元素）：未现形时焦点恒在清单内（行钮或本
+          // 容器），键必经此冒泡。现形后键归 input，本 handler 不插手
+          // （Esc 关面归 FloatingShell/Base UI）。空格保留给行激活（键盘
+          // a11y 契约），不触现形；preventDefault + stopPropagation 让底层
+          // 快捷键（hotkeys 的 window 监听认 defaultPrevented）截不到。
+          if (searchOpen || event.metaKey || event.ctrlKey || event.altKey) return;
+          if (event.key.length !== 1 || event.key === ' ' || event.nativeEvent.isComposing) return;
+          event.preventDefault();
+          event.stopPropagation();
+          setSearchOpen(true);
+          setQuery(event.key);
+        }}
+      >
+        <ModelPickRow
+          skin={skin}
+          selected={value === null}
+          label={defaultLabel}
+          onPick={() => onPick(null)}
+        />
+        {rows.map((row) => (
+          <ModelPickRow
+            key={row.key}
+            skin={skin}
+            selected={row.selected}
+            label={row.label}
+            providerLabel={row.providerLabel}
+            onPick={() => onPick(row.value)}
+          />
+        ))}
+        {searchOpen && query.trim() !== '' && rows.length === 0 && emptyLabel != null && (
+          <div className="chief-pick-empty">{emptyLabel}</div>
+        )}
+      </div>
+    </div>
   );
 }
