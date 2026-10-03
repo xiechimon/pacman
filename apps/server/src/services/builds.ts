@@ -611,6 +611,24 @@ const PLAN_REWRITE_PROMPT = `规划步未产出 ${PLAN_FILE_NAME} 交接文件�
  * 求。 */
 const REVIEW_REVISE_PROMPT = `用户对方案提出审核反馈，结论含 blocking findings。审核结论：<{conclusion}>。\n\nBlocking findings（必须逐条修复）：\n{blockings}\n\n请忠实按反馈调整方案，输出更新后的 plan.md（覆盖 Context/Changes/Edge cases/Verification 四段），并在结尾一句话摘要本次调整了什么。`;
 
+/** review→planning 修订回流边（M7 #330 phase 表已登边；#700 起独立成函数）：
+ * 相位翻转 + 时间线摘要行 + 重规划步入队三件一体。note 与 revisePrompt 由
+ * 调用方组装——blocking verdict 自动触发（上方）与人肉打回（#701 B-C12，
+ * 「请求修改」语义）走同一条边，边不焊死在自动 verdict 触发上。 */
+function enqueueReviewRevision(
+  deps: BuildDeps,
+  args: { buildId: string; todoId: string; teamId: string; note: string; revisePrompt: string },
+): void {
+  setTodoPhase(deps, args.todoId, 'planning');
+  insertMessageRow(deps, args.buildId, {
+    id: newRecordId(),
+    role: 'system',
+    content: args.note,
+    createdAt: nowMs(),
+  });
+  enqueueStep(deps, args.buildId, 'plan', args.teamId, args.revisePrompt);
+}
+
 /** 机器步完成后的 phase 推进（M3 claim/journal 面挂接点；M2a 供编排测试
  * 驱动状态机）：规划步成 → confirm（withPlan）/ building（直执行续跑）；
  * 执行步成 → review；合并步成 → done（02 §4.2 主时序）。M7 #330：审核步成
@@ -619,7 +637,7 @@ const REVIEW_REVISE_PROMPT = `用户对方案提出审核反馈，结论含 bloc
 export function completeStep(
   deps: BuildDeps,
   stepId: string,
-  outcome: { hasChanges?: boolean; findings?: ReviewVerdict } = {},
+  outcome: { hasChanges?: boolean; findings?: ReviewVerdict; findingsError?: string } = {},
 ): void {
   const stepRow = deps.db.select().from(step).where(eq(step.id, stepId)).get();
   if (!stepRow) throw new NotFoundError(`step ${stepId}`);
@@ -661,14 +679,16 @@ export function completeStep(
     // AI 审核步完成（M7 #330，r8 §3.1 真 findings 上线）：emit REVIEW_VERDICT_KIND
     // 消息行（conclusion + 编号 findings，server zod 校验已固）+ 若 blocking →
     // 落 planning + 入队重规划步（REVIEW_REVISE_PROMPT 注入审核事实）回到
-    // 待确认。审核不计入用户变更（hasChanges 恒 false）：审核关口虽开只读检出
+    // 待确认。审核不计入用户变化（hasChanges 恒 false）：审核关口虽开只读检出
     // （#511），但 daemon 侧不采集其改动、收尾还会 rewind 回步起点。
-    // daemon 未传 findings（解析失败/agent 未按契约）= 默认空 verdict =
-    // 落 verdict 消息含空 findings，但不触发修订——避免静默吞错 + 给人看
-    // 「审核没结论」兜底。fail 兜底仍可独立走：findings 缺位 + status=failed
-    // = finishStep 走 failed 分支不进本函数。
+    // verdict 兜底两态（#700 B-C13）：daemon 报提取失败（findingsError 携带
+    // 原因）= conclusion「判定提取失败」+ extractionError 原因随消息上浮
+    // （web 审核面可分辨「提取器没取出来」）；两字段皆缺（旧 daemon 无信号）
+    // = 保留「审核未返回结论」。两态均无 blocking 可判，不触发修订——但不再
+    // 静默吞错。fail 兜底仍可独立走：findings 缺位 + status=failed = finishStep
+    // 走 failed 分支不进本函数。
     const verdict: ReviewVerdict = outcome.findings ?? {
-      conclusion: '审核未返回结论',
+      conclusion: outcome.findingsError !== undefined ? '判定提取失败' : '审核未返回结论',
       findings: [],
     };
     deps.db
@@ -681,7 +701,11 @@ export function completeStep(
     insertMessageRow(deps, buildRow.id, {
       id: newRecordId(),
       role: 'system',
-      content: JSON.stringify({ kind: REVIEW_VERDICT_KIND, verdict }),
+      content: JSON.stringify({
+        kind: REVIEW_VERDICT_KIND,
+        verdict,
+        ...(outcome.findingsError !== undefined ? { extractionError: outcome.findingsError } : {}),
+      }),
       createdAt: nowMs(),
     });
     if (hasBlockingFinding(verdict)) {
@@ -698,17 +722,16 @@ export function completeStep(
         '<{conclusion}>',
         verdict.conclusion,
       ).replace('{blockings}', blockings);
-      setTodoPhase(deps, todoRow.id, 'planning');
-      // AI 审核自动修订回路的「调整摘要行」（M7 #330，r8 §3.1 62）：
-      // chip → 规划中自动走 phase 字段；该行 = 时间线 dim note
-      // 「AI 审核触发自动修订…」告诉用户「为什么又来一个 plan 步」。
-      insertMessageRow(deps, buildRow.id, {
-        id: newRecordId(),
-        role: 'system',
-        content: `AI 审核检测到 ${blockings.split('\n').length} 处 blocking 风险，已自动入队重规划步`,
-        createdAt: nowMs(),
+      // AI 审核自动修订回路的「调整摘要行」（M7 #330，r8 §3.1 62）：chip →
+      // 规划中自动走 phase 字段；该行 = 时间线 dim note 告诉用户「为什么又
+      // 来一个 plan 步」。
+      enqueueReviewRevision(deps, {
+        buildId: stepRow.buildId,
+        todoId: todoRow.id,
+        teamId: todoRow.teamId,
+        note: `AI 审核检测到 ${blockings.split('\n').length} 处 blocking 风险，已自动入队重规划步`,
+        revisePrompt,
       });
-      enqueueStep(deps, stepRow.buildId, 'plan', todoRow.teamId, revisePrompt);
     }
     return;
   }
