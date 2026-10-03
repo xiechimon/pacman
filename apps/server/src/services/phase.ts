@@ -13,7 +13,7 @@
 // r1 §443）、closed→todo（reopen，MCP reopen_todos r5 §3.1）。未直接观测的边
 // 标 [推断]（04 §3 不判负）。
 
-import { BOARD_DROP_PHASES, type Phase } from '@pacman/shared';
+import { canBoardDrop, type Phase } from '@pacman/shared';
 
 export const PHASE_TRANSITIONS: Readonly<Record<Phase, readonly Phase[]>> = {
   todo: ['queued', 'closed'],
@@ -51,12 +51,14 @@ export function canTransitionPhase(from: Phase, to: Phase): boolean {
 
 /** 手动改相面（#160 看板拖拽）：HTTP PATCH phase = 用户手动列迁移
  *  （onboarding P2 r3 §3.10「在桌面端可将卡片直接拖拽至目标列」）。
- *  落点集单源 = shared BOARD_DROP_PHASES（#351：持落点列 dropPhase 三值；
- *  closed 不占列故不可作源或落点，待处理不作落点）；系统流（setTodoPhase /
- *  MCP update_todo）仍走上方漏斗不变。[设计]——官方 PATCH wire 未抓
- *  （r3 §3.10 合成拖拽未复现），手动面语义为复刻裁定。 */
+ *  边级判据单源 = shared canBoardDrop（#753 per-source 矩阵：执行中 只吃
+ *  待开始、待处理 只吃 已完成〔review 落点正名〕、failed→done 保持非法
+ *  〔#702〕；旧 #351 平面白名单被 2026-10-03/04 参考站重测推翻）。系统流
+ *  （setTodoPhase / MCP update_todo）仍走上方漏斗不变。[设计]——官方 PATCH
+ *  wire 未抓（2026-10-04 实测参考站落位走 POST complete/uncomplete 语义
+ *  端点），手动面语义为复刻裁定。 */
 export function canManualMovePhase(from: Phase, to: Phase): boolean {
-  return from !== to && from !== 'closed' && BOARD_DROP_PHASES.includes(to);
+  return canBoardDrop(from, to);
 }
 
 /** 非法流转 = 409 语义（错误形状 {error}，r5 §1 实测族）。 */

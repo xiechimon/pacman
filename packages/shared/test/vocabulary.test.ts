@@ -16,6 +16,7 @@ import {
   CLAIM_POLL_INTERVAL_MS,
   CLI_COMMANDS,
   CONFIG_KINDS,
+  canBoardDrop,
   capabilitiesResponseSchema,
   DB_TABLES,
   DEVICE_ID_PATTERN,
@@ -85,9 +86,43 @@ describe('phase 九值权威单源 (02 §4.1, 锁定)', () => {
     expect(boardColumnFor('closed')).toBeNull(); // 不占列不变
   });
 
-  it('manual drop targets are the three writable columns (#351)', () => {
-    // 待处理不作落点：gate/failed 是系统态，手动拖入无语义
-    expect(BOARD_DROP_PHASES).toEqual(['todo', 'building', 'done']);
+  it('manual drop targets are the four writable columns (#753)', () => {
+    // #753（todos.dev 2026-10-03/04 live 重测）推翻 #351「待处理不作落点」：
+    // 已完成(有变更)→待处理 = 重开落位，落点正名 review。
+    expect(BOARD_DROP_PHASES).toEqual(['todo', 'building', 'review', 'done']);
+  });
+
+  it('canBoardDrop is the per-source manual matrix (#753)', () => {
+    // 待开始 源：执行中（开始意图）+ 已完成；待处理 恒非法（实测）
+    expect(canBoardDrop('todo', 'building')).toBe(true);
+    expect(canBoardDrop('todo', 'done')).toBe(true);
+    expect(canBoardDrop('todo', 'review')).toBe(false);
+    // 待处理 源：待开始 + 已完成；执行中 恒非法（实测）
+    expect(canBoardDrop('confirm', 'todo')).toBe(true);
+    expect(canBoardDrop('review', 'todo')).toBe(true);
+    expect(canBoardDrop('confirm', 'done')).toBe(true);
+    expect(canBoardDrop('review', 'done')).toBe(true);
+    expect(canBoardDrop('confirm', 'building')).toBe(false);
+    expect(canBoardDrop('review', 'building')).toBe(false);
+    // failed 源：待开始 ✓；已完成 ✗（#702：failed→done 保持非法）
+    expect(canBoardDrop('failed', 'todo')).toBe(true);
+    expect(canBoardDrop('failed', 'done')).toBe(false);
+    // 已完成 源：待开始 + 待处理（重开回 review；hasChanges 数据闸在 server
+    // updateTodo / web canDropOnColumn，相位级此处放行）；执行中 恒非法（实测）
+    expect(canBoardDrop('done', 'todo')).toBe(true);
+    expect(canBoardDrop('done', 'review')).toBe(true);
+    expect(canBoardDrop('done', 'building')).toBe(false);
+    // 执行中 源（未测行，沿用既有语义 [设计]）：待开始 + 已完成
+    expect(canBoardDrop('building', 'todo')).toBe(true);
+    expect(canBoardDrop('building', 'done')).toBe(true);
+    expect(canBoardDrop('building', 'review')).toBe(false);
+    // 同列 / closed / 非落点相 恒非法
+    expect(canBoardDrop('todo', 'todo')).toBe(false);
+    expect(canBoardDrop('confirm', 'review')).toBe(false);
+    expect(canBoardDrop('planning', 'building')).toBe(false);
+    expect(canBoardDrop('closed', 'todo')).toBe(false);
+    expect(canBoardDrop('done', 'failed')).toBe(false);
+    expect(canBoardDrop('done', 'confirm')).toBe(false);
   });
 });
 
