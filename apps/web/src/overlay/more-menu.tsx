@@ -48,7 +48,7 @@ export function MoreMenu({
   return (
     <FloatingShell open={open} onClose={onClose} className="more-menu-shell">
       {/* 透明 catcher 保留（外点只关层、不穿透——#425 车道书记为该族待定项） */}
-      {/* 透明 catcher 不画任何东西，进出场无需动效（旧 anim-fade 是无效淡入） */}
+      {/* 透明 catcher 不画任何东西，进出场无需动效（旧淡入配方是无效淡入） */}
       <button
         type="button"
         className="more-menu-catcher"

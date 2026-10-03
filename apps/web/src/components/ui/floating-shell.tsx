@@ -16,8 +16,8 @@
 // 语义不同。换它是 UX 变更，不是机械迁移，故不在本片混做（已在 #425 车道书
 // 记为该族唯一的待定项）。
 //
-// 别名类原样输出（.plan-dropdown / .chip-popover / .more-menu / .overlay-mount
-// 等由各面 className 透传），三面钉扎零改动（#411 别名优先政策）。
+// 别名类原样输出（.plan-dropdown / .chip-popover / .more-menu 等由各面
+// className 透传），三面钉扎零改动（#411 别名优先政策）。
 
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import type { CSSProperties, ReactNode } from 'react';
