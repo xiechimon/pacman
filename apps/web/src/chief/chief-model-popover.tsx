@@ -1,15 +1,13 @@
-// 主模型覆盖 dialog（#615：r5 107/108 设置 Agent tab 独立「模型」选择器的
-// 抽屉侧闭环——抽屉模型行点开即本面，选定 → PATCH chief model 槽 → 回显）。
-// 壳 = DialogShell 家族律（X/Esc/backdrop，chief-agent-dialog 同律）；行形 =
-// 模型名 + provider 副题（r5 108 的 `r3-gw · 128k` 副题在 pacman 只投影
-// providerLabel——128k 是原版内置模型目录的上下文窗口，本地 BYOK 无此数据
-// 源，不编造，AgentModelSelect 标签律同）。首行「默认（与绑定 Agent 相同）」
-// = null 槽回继承（压缩模型选择器默认行同律）；选中当前值 = 空操作关面；
-// fixture 面 accept 律（onPick 缺省 = 选择即关）。
-//
+// 主模型覆盖 picker（#615 闭环：抽屉模型行点开即本面，选定 → PATCH chief
+// model 槽 → 回显）。#751 壳换锚定弹层家族律（#67/#127：FloatingShell
+// container=wrap + ClickCatcher + Esc，role=listbox/option）——#615 的居中
+// DialogShell 在抽屉头触发位旁读作「在中间出现」，用户对照 .chief-switcher
+// 的贴底锚定报 bug；壳换机制不换内容：搜索 + 行清单 + accept 律（选中即关）
+// + live PATCH  loop 全部保留。
 // 行渲染 / 行投影 / 选中律 / pick 律单源 = components/model-select-core
-// （#626 收敛）；本面只留壳（DialogShell + 搜索 + 空态）与几何钩子
-// （chief-model-pick-* 类名组，正本 chief.css）。
+// （#626 收敛）；本面只留壳与几何钩子（chief-model-pop* / chief-model-pick-*
+// 类名组，正本 chief.css）。选中行可见态（底色 + 墨 + check）单源在
+// model-pick-* 基类（chief.css #751 段），两 picker 面共享。
 
 import type { ChiefCompactionModel } from '@pacman/shared';
 import { useEffect, useMemo, useState } from 'react';
@@ -19,13 +17,14 @@ import {
   type ModelRowSkin,
   toModelRows,
 } from '../components/model-select-core.js';
-import { DialogShell } from '../components/ui/dialog-shell.js';
+import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
 import { Input } from '../components/ui/input.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { Search } from '../icons/index.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 
-/** r5 108 面的类名组：比 popover 面多一层 col 列容器（名 + 副题纵排）。 */
+/** r5 108 行形的类名组：比压缩弹层面多一层 col 列容器（名 + 副题纵排）。 */
 const ROW_SKIN: ModelRowSkin = {
   row: 'chief-model-pick-row',
   col: 'chief-model-pick-col',
@@ -34,7 +33,7 @@ const ROW_SKIN: ModelRowSkin = {
   check: 'chief-model-check',
 };
 
-interface ChiefModelDialogProps {
+interface ChiefModelPopoverProps {
   /** #73 retained-mount open flag。 */
   open?: boolean;
   onClose: () => void;
@@ -44,9 +43,19 @@ interface ChiefModelDialogProps {
   options?: ModelOption[];
   /** live 面：选定 = PATCH chief model 槽；缺省 = fixture 律（选择即关）。 */
   onPick?: (value: ChiefCompactionModel | null) => void;
+  /** 锚定包含块 = 触发行 wrap（FloatingShell container 律：portal 挂回 wrap
+   *  保绝对定位几何，chief-model-select 同律）。 */
+  container: HTMLElement | null;
 }
 
-export function ChiefModelDialog({ open, onClose, value, options, onPick }: ChiefModelDialogProps) {
+export function ChiefModelPopover({
+  open,
+  onClose,
+  value,
+  options,
+  onPick,
+  container,
+}: ChiefModelPopoverProps) {
   const { t } = useI18n();
   const [query, setQuery] = useState('');
   // retained mount：重开回全清单态、清搜索（chief-agent-dialog 同律）。
@@ -66,8 +75,17 @@ export function ChiefModelDialog({ open, onClose, value, options, onPick }: Chie
   const pick = createModelPicker({ value, close: onClose, onPick });
 
   return (
-    <DialogShell title={t('模型')} open={open} onClose={onClose}>
-      <div className="chief-model-pick">
+    <FloatingShell
+      open={open ?? false}
+      onClose={onClose}
+      container={container}
+      className="chief-model-pop-shell"
+      // 触发钮是 toggle（开态再点关）：Base UI 原生 outside-press 会先关、
+      // 钮自身 onClick 再翻回开（#666 双写竞态）——外点关面归 ClickCatcher。
+      disablePointerDismissal
+    >
+      <ClickCatcher onClose={onClose} />
+      <div className={`chief-model-pop ${FLOATING_POP_ANIM}`}>
         <div className="chief-pick-search">
           <Search width={14} height={14} />
           {/* chief-pick-input per-face 复用（agent dialog 同款的搜索框皮肤）。 */}
@@ -101,6 +119,6 @@ export function ChiefModelDialog({ open, onClose, value, options, onPick }: Chie
           )}
         </div>
       </div>
-    </DialogShell>
+    </FloatingShell>
   );
 }
