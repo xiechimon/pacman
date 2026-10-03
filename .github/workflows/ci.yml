@@ -34,10 +34,15 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      # e2e 迁去独立分片 job（#693）后，chromium / ffmpeg 安装随迁——本 job
-      # 只剩 drizzle / typecheck / vitest / lint，不再需要浏览器面。
+      # e2e 迁去独立分片 job（#693）后 ffmpeg 随迁；chromium 留在本 job——
+      # integration vitest 的四个 e2e 套件（m5-web-e2e 等）在场内起真
+      # Chromium（2026-10-03 实测摘掉即红：browserType.launch executable
+      # doesn't exist）。「check 不再需要浏览器面」是误判，浏览器面有两层。
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install chromium --with-deps
 
       # migration 纪律（01 §6）：drizzle-kit 生成、进 repo、CI 校验 drift——
       # schema 改动未带 migration 再生成 = 红。
