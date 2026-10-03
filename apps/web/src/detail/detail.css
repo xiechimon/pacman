@@ -961,22 +961,14 @@
   text-overflow: ellipsis;
 }
 
-/* #471 spinner reel viewport: one 16px frame slot, clipped — the reel
-   inside scrolls one slot per 90ms step (spinner-reel, motion.css; the
-   r7 26/26d captures froze a single glyph, the replica now turns it).
-   Slot-sized box: frame changes never shift the trailing seconds/label. */
+/* #672 loading indicator slot: a loading-dev Atom root (a 16×16 square at
+   size 16 — the library sheet owns the box, the orbit/spin animation and
+   the reduced-motion freeze; shell and ring strokes paint with
+   currentColor). The skin keeps only what the library cannot know: the
+   row-level no-shrink and the dim text color the #471 reel carried. */
 .chat-spinner {
   flex: none;
-  display: inline-block;
-  height: 16px;
-  overflow: hidden;
   color: var(--text-dim);
-}
-
-.chat-spinner-reel > span {
-  display: block;
-  height: 16px;
-  line-height: 16px;
 }
 
 /* the live seconds tick: tabular figures stop the 3s→10s width jump from

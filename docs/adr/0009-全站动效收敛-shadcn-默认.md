@@ -31,7 +31,7 @@
 | **D1** | **全站进出场动效收敛到 shadcn/tw-animate-css 默认（方向 B）**：以 tw 默认档（150ms `ease` 基档、浮层 fade+zoom-95、已铺开的 duration-100 件维持现值）为正典；motion.css 的复刻 enter/exit 数值作废，`overlay-mount` / `anim-*` / `useOverlayMount` 手动机制随各面退役 |
 | **D2** | **显式撤销 #73 复刻纪律——仅限动效值面**：motion.css 文件头「数值逐条抄参考站样式表」的正本地位对进出场动效废止；#73 / r8 的实测值不再是施工依据。**几何与配色的像素纪律不受影响**（spec 16「纯结构、零视觉重钉」与 #411 口径照旧）——本条撤销不得被扩大解释 |
 | **D3** | **三处既有漂移逐条被 B 追认，不是静默改动**：① dialog `zoom-in-95` = 新正典（r8「仅 fade」口径就此作废）；② dropdown/popover `duration-100` + slide -8px = 新正典；③ 挂载淡入归 tw 默认档。每条在执行票里按「被 B 追认」入账 |
-| **D4** | **保留面（shadcn 无竞争默认，数值不动）**：tab 指示条滑动（#644 参考站实测 left/top/width/height 150ms ease，Base UI Tabs.Indicator 承载）、spinner reel（#471）、hover/press tint 家族（#73/#629）、`prefers-reduced-motion` 全站降级律 |
+| **D4** | **保留面（shadcn 无竞争默认，数值不动）**：tab 指示条滑动（#644 参考站实测 left/top/width/height 150ms ease，Base UI Tabs.Indicator 承载）、~~spinner reel（#471）~~（2026-10-03 修订移出，见文末「修订」：加载指示器改挂 loading-dev Atom 契约，#672）、hover/press tint 家族（#73/#629）、`prefers-reduced-motion` 全站降级律（加载面一份自 #672 起由 loading-dev 库样式承载，行为等价） |
 | **D5** | **排期形态**：动效批织入 spec 16 的 B3/B4 逐域批次（每域结构迁移时顺手收该域动效），不另开全站改动波；spec 16 追加动效批条目入账，验收沿用该册 §2 模板 + 本票 F4 的动效断言清单 |
 
 理由一句话：机制统一（一套 animate-in/out、去掉手动保活）的收益用户已确认要吃，而观感与参考站的动效漂移用户明确接受——B 比 A 少维护一层「桥接值」的账，混合态就此收敛。
@@ -43,3 +43,7 @@
 | **换脸后悔**：全站动效变「通用 shadcn 脸」后，用户对某个面想要参考站观感回来 | 机制已统一，回退 = 改单面数值（duration/ease/enter-*），不是换机制；D4 保留面本来就未动 |
 | **撤销被扩大解释**：施工者拿本 ADR 当「参考对齐作废」的通行证，顺手改几何/配色 | D2 明文「仅限动效值面」；执行票验收含「不得触碰 per-face 几何/配色正本」一条 |
 | **双系统长期残留**：迁移半途而废，一半复刻一半默认，比现在的混合态更乱 | 织入 B3/B4 既有推进机制（不是独立志愿批）；执行票验收 = `anim-*` / `overlay-mount` / `useOverlayMount` 消费点清零（grep 可复核），motion.css 收缩到 D4 保留面 |
+
+## 修订
+
+- **2026-10-03 · #672**：D4 保留面移出 `spinner reel（#471）`。用户 2026-10-03 agree：transcript 加载指示器换 **loading-dev**（MIT，React 19+）试点，指示器为 `Atom`（`size=16`、`duration=900` 钉齐旧 reel 周期——atom 库默认 1000ms；用户看过实物预览后选定）——即**在加载态这一处放弃 todos.dev 复刻纪律**（产品级决定；几何/配色像素纪律不受影响，D2 边界照旧）。加载态的正本契约自此 = loading-dev 库：根节点自带 `aria-hidden`、`prefers-reduced-motion` 冻结由库注入样式承载（`animation: none` + 旋转件静态 `rotate(60deg)` 落定姿态），与本 ADR 的全站降级律行为等价。motion.css 的 `spinner-reel` keyframes 随 reel 一并删除；#656 验收里「motion.css 收缩到 D4 保留面」按修订后的 D4 计。铺开与否（全站加载态统一入口）待用户看过试点实物另裁。
