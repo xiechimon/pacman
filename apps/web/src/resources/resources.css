@@ -216,7 +216,7 @@
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
-  z-index: 30;
+  z-index: var(--z-popover);
 }
 
 .res-sort-row {

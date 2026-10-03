@@ -12,6 +12,10 @@
 /* ---- shared modal backdrop ---- */
 /* a button so keyboard users get the same dismiss path as the click */
 
+/* #688 阶梯：确认面（alert-dialog 族）的背板吃模态 scrim 档——#388 的档位
+   注记本来就写的 z40，此前本规则持 20、tsx 侧 z-40 工具类被 unlayered CSS
+   压掉（层序优先级），实际生效一直是 20：抽屉开着时 scrim 盖不住抽屉。
+   归令牌后 computed = 40，与 delete-confirm 面板（--z-dialog）配对。 */
 .overlay-backdrop {
   position: fixed;
   inset: 0;
@@ -19,7 +23,7 @@
   padding: 0;
   background: var(--overlay-scrim);
   cursor: default;
-  z-index: 20;
+  z-index: var(--z-modal-scrim);
 }
 
 /* ---- new-task dialog (r7 04/14: 672×439, centered both axes) ---- */
@@ -94,8 +98,11 @@
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
   /* drop below the head, inside the 672×439 box so the dialog's
-     overflow:hidden never clips it; 30 sits above the family catcher (29) */
-  z-index: 30;
+     overflow:hidden never clips it; the popover rung (#688 ladder) sits
+     above the family catcher. The dialog panel forms a stacking context,
+     so this menu and its catcher are scoped inside it — the token keeps
+     the family law, the panel's own z carries the root-level order. */
+  z-index: var(--z-popover);
 }
 
 .new-task-project-row {
@@ -316,7 +323,9 @@
 
 /* ---- 更多 menu (r7 18/24: 220×165 @ 1052.5,39.5, right-anchored) ---- */
 
-/* transparent click catcher: closes on outside click without dimming */
+/* transparent click catcher: closes on outside click without dimming.
+   #688 阶梯低档衬底（--z-backdrop-low）：more-menu 是 frozen-anchor 的
+   fixed 面，与 new-task dialog 同吃低档对（20/21），菜单压衬底一档。 */
 .more-menu-catcher {
   position: fixed;
   inset: 0;
@@ -324,7 +333,7 @@
   padding: 0;
   background: transparent;
   cursor: default;
-  z-index: 20;
+  z-index: var(--z-backdrop-low);
 }
 
 .more-menu {
@@ -341,7 +350,7 @@
   border-radius: var(--edge-radius);
   background: var(--popover-bg);
   box-shadow: var(--fab-shadow);
-  z-index: 21;
+  z-index: var(--z-panel-low);
 }
 
 .more-menu-item {
@@ -425,6 +434,8 @@
    [设计]——448 居中、标题行 + 右对齐双钮(继续编辑 / 放弃并关闭);
    ClickCatcher(z29) 压 new-task-dialog(z21),面板 z31 居顶。 ---- */
 
+/* #688 阶梯 --z-confirm：压在低档面板（--z-panel-low 21）与家族 catcher
+   （--z-catcher 29）之上——确认层开着时外点先落 catcher（只收确认层）。 */
 .new-task-discard {
   position: fixed;
   left: 50%;
@@ -435,7 +446,7 @@
   border-radius: 12px;
   background: var(--dialog-bg);
   box-shadow: var(--dialog-shadow);
-  z-index: 31;
+  z-index: var(--z-confirm);
 }
 
 .new-task-discard-title {
