@@ -434,9 +434,11 @@ export function NewTaskDialog({
               }
             : undefined
         }
-        // zIndex 21：仓内浮层阶梯（面板 21 < ClickCatcher 29 < 确认层 31）——
-        // 缺省 50 会压住本文件的 discard 确认层，故按旧值下移
-        zIndex={21}
+        // #688 阶梯 --z-panel-low：低档面板（--z-panel-low < ClickCatcher
+        // --z-catcher < 确认层 --z-confirm）——缺省的 --z-dialog 会压住本
+        // 文件的 discard 确认层，故吃低档；低档仍恒压常驻侧板（--z-docked），
+        // 抽屉开着时本面排上方（#688 裁决，e2e/z-ladder.spec 钉扎）。
+        zIndex="var(--z-panel-low)"
         className="new-task-dialog"
         width={672}
         height={439}

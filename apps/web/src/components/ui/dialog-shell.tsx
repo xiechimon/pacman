@@ -56,10 +56,12 @@ interface DialogShellProps {
   bare?: boolean;
   /** 面板高度 in px（bare 面用；家族缺省按内容自适应）。 */
   height?: number;
-  /** 面板 z-index（缺省 50；背板自动取 zIndex-1）。仓内浮层阶梯把面板钉在
-   *  低位的面（如 new-task 的 21，见 overlay.css 的 21/29/31 阶梯）靠本入参
-   *  与内层浮层共存——适配层里背板与面板是兄弟节点，面板必须高于背板。 */
-  zIndex?: number;
+  /** 面板 z-index（缺省 = 阶梯的 --z-dialog；背板自动取面板减一）。收数字
+   *  或 CSS 值——阶梯令牌走 var()，单源在 tokens.css 的 #688 z ladder，
+   *  适配层不持第二套真值。仓内阶梯把面板钉在低档的面（new-task 的
+   *  --z-panel-low，见 overlay.css 的 21/29/31 组合）靠本入参与内层浮层
+   *  共存——适配层里背板与面板是兄弟节点，面板必须高于背板。 */
+  zIndex?: number | string;
   /** 背板点击的自定义处置（缺省 = onClose）。new-task 的「内层优先」逻辑：
    *  项目浮层/提及 picker 开着时先关内层，否则走未保存闸 requestClose。 */
   onBackdropClick?: () => void;
@@ -110,7 +112,7 @@ export function DialogShell({
   width = 448,
   height,
   bare = false,
-  zIndex = 50,
+  zIndex = 'var(--z-dialog)',
   onBackdropClick,
   onEscapeWhileNested,
   viewportRoot = false,
@@ -118,6 +120,9 @@ export function DialogShell({
 }: DialogShellProps) {
   const { t } = useI18n();
   const { restore } = useReturnFocus(open);
+  // 背板 = 面板减一档（#688 阶梯）：数字档直接减，令牌档走 calc——z-index
+  // 是 <integer> 槽，calc 整数运算合法且 computed value 归一成数字。
+  const backdropZ = typeof zIndex === 'number' ? zIndex - 1 : `calc(${zIndex} - 1)`;
   // 只视口根态吃 backdropClassName：默认态的类串因此逐字不动（11 个消费点）。
   const backdropClass = viewportRoot
     ? `fixed inset-0${backdropClassName == null ? '' : ` ${backdropClassName}`}`
@@ -143,7 +148,7 @@ export function DialogShell({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop
           data-slot="dialog-overlay"
-          style={{ zIndex: zIndex - 1 }}
+          style={{ zIndex: backdropZ }}
           className={backdropClass}
           onClick={onBackdropClick ?? onClose}
         />

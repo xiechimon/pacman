@@ -75,6 +75,7 @@ node .../scripts/drive-stop.mjs <todoId>                          # 停止钮全
 node .../scripts/drive-review.mjs <todoId>                        # AI 审核发起+入队(review-modal.md,#312)
 REVIEW_MACHINE_TOKEN=<t> node .../scripts/drive-review-blocking.mjs <todoId> <agentId>  # blocking 自动修订回路(#330/#332)
 node .../scripts/drive-review-700.mjs <todoA> <todoB>             # verdict 提取真链(#700;stub-review-700 + setup-review-700-seed 前置,review-700.md)
+node .../scripts/drive-failed-review-restore.mjs                 # failed→review 恢复双出口全链(#702;hosted 形态,机器面由探针走真 machine wire,自含 seed)
 ```
 
 **纯 live 栈 probe**(无 daemon 依赖,launch 后直跑;配方见对应 feature 文件):

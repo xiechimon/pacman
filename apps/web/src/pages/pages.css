@@ -419,10 +419,10 @@
 .sched-form-overlay {
   position: fixed;
   inset: 0;
-  /* #388: dialog 族档位（.dlg-backdrop 同 z40）。此前 z auto——sidebar
+  /* #388: dialog 族档位（--z-modal-scrim）。此前 z auto——sidebar
      (position:relative z1) 绘制在 scrim 之上，阴影视觉只盖右 pane
-     （dogfood 缺陷）。DeleteConfirm 同 z40 但 DOM 在后，压过本层。 */
-  z-index: 40;
+     （dogfood 缺陷）。DeleteConfirm 同档但 DOM 在后，压过本层。 */
+  z-index: var(--z-modal-scrim);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -908,7 +908,7 @@
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
-  z-index: 30;
+  z-index: var(--z-popover);
 }
 
 .prj-new-gh-picker-head {
@@ -1011,7 +1011,7 @@
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
-  z-index: 30;
+  z-index: var(--z-popover);
 }
 
 .dir-browser-bar {
