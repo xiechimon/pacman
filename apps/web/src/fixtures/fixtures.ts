@@ -294,6 +294,24 @@ export const boardProjectPicker: FixtureSet = {
   },
 };
 
+/** #758 机器 chip 选择记忆命名场景（无 capture，newtask-projects 先例）：
+ *  boardDefault 面 + resources 两台机器——在线本机（canon 同源）+ 离线远端，
+ *  记忆面 e2e 的行源（选→刷新→回上次那台 / 悬空记忆落回自动 / 离线机器
+ *  保留记忆如实显示）。只服务对话框的机器 chip，不动 resourcesDefault 的
+ *  r7 06–10 capture 行集。 */
+export const boardMachinePicker: FixtureSet = {
+  ...boardDefault,
+  resources: {
+    skills: [],
+    mcpServers: [],
+    machines: [
+      { id: MACHINE_ID, kind: 'local', name: MACHINE_NAME, online: true },
+      { id: 'mea-wsl-offline', kind: 'remote', name: 'mea-wsl', online: false },
+    ],
+    providerSources: [],
+  },
+};
+
 /** #361 GitHub repo picker 命名场景（无 capture，newtask-projects 先例）：
  *  boardDefault 面 + 已连接 github fixture——picker 行 = shared
  *  GithubRepoSummary 封套同形（spec 12 数据契约），搜索/单选/断开的面数据源。 */

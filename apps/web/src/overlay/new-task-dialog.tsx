@@ -38,6 +38,10 @@
 // XMON-87 续二：Tab 直接换项目（chip 上挂 Tab 悬浮提示 chip，#468 族）——循环
 // 而不是开面（「直接切换」要的是按一下就换）；开态门与守卫见
 // overlays/hotkeys.ts 的 useProjectCycleHotkey。
+// #758 机器选择记忆：机器 chip 接上与 XMON-87 同一套 localStorage 机制（键
+// pacman.newTaskMachineId，选即写、选「自动」清、挂载与关闭重开时恢复）。
+// 设计裁决（无条件记忆、不加 hover 线索）与两条恢复降级路径（悬空 → 自动、
+// 离线 → 如实显示）见记忆位与 machinePin 处注释。
 
 import type { ClipboardEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -107,6 +111,38 @@ function readRememberedProject(storage: Storage): string | null {
 function writeRememberedProject(storage: Storage, projectId: string): void {
   try {
     storage.setItem(NEW_TASK_PROJECT_STORAGE_KEY, projectId);
+  } catch {
+    // 写不进 = 不记住,选择本身不受损(W13 同律)
+  }
+}
+
+/** #758 机器 chip 选择记忆位(localStorage 键;e2e 镜像
+ *  newtask-machine-persist.spec.ts)。设计裁决(票面要求先给结论再动手):
+ *  **无条件记忆**——选即写、选「自动」= 清记忆位,不加专门的 hover 线索。
+ *  理由:① chip 常显选中机器名(非「自动」),每次开对话框在保存前都看得到
+ *  钉了哪台——常显的机器名比 hover 才出现的提示是更强的线索,「钉过一次
+ *  之后忘了」的风险已被覆盖;② 「只在非默认时记住」与无条件记在存储面上
+ *  功能等价(恢复「自动」与无记忆不可区分),两方案的差别只剩线索本身;
+ *  ③ 与项目 chip 同一套机制同一个心智模型,不引入新 i18n 字符串。
+ *  不像 rememberProject 那样走 prop 门控:锚定面例外(#404 project 页)来自
+ *  「锚恒等于路由项目」的项目语义(#305 律);机器是全局执行选择,没有任何
+ *  路由要顶掉它的缺省。 */
+export const NEW_TASK_MACHINE_STORAGE_KEY = 'pacman.newTaskMachineId';
+
+/** 读记忆位:隐私模式等抛 = 无记忆(readRememberedProject 同律)。 */
+function readRememberedMachine(storage: Storage): string | null {
+  try {
+    return storage.getItem(NEW_TASK_MACHINE_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** 写记忆位:null(选「自动」) = 清。写不进 = 不记住,选择本身不受损(W13 同律)。 */
+function writeRememberedMachine(storage: Storage, machineId: string | null): void {
+  try {
+    if (machineId === null) storage.removeItem(NEW_TASK_MACHINE_STORAGE_KEY);
+    else storage.setItem(NEW_TASK_MACHINE_STORAGE_KEY, machineId);
   } catch {
     // 写不进 = 不记住,选择本身不受损(W13 同律)
   }
@@ -205,12 +241,16 @@ export function NewTaskDialog({
   const [projectId, setProjectId] = useState<string | null>(() =>
     rememberProject ? readRememberedProject(localStorage) : null,
   );
-  // #682 机器 chip：popover 开态 + 选中行（null = 自动）。纯表单 state（无
-  // XMON-87 记忆——项目记忆解决「跨刷新回第一行」；机器缺省行「自动」就是
-  // 惯性选择，无同痛点）。开一个 popover 收另一个（head 同层双 chip，两面
-  // 同开会让 Esc 分层歧义）。
+  // #682 机器 chip：popover 开态 + 选中行（null = 自动）。#758 接上 XMON-87
+  // 同一套记忆机制：初值 = 上次钉的机器（挂载读一次）。存的值可能不在行集
+  // 里（机器被删/改名，或查询未决行集还没到）——悬空 id 由下方 machinePin
+  // 解析位统一落回「自动」（显示与提交同吃解析值）；记忆位留着不动（项目
+  // 记忆位同律：行集可能只是还没加载，按缺省清记忆会误伤真值）。开一个
+  // popover 收另一个（head 同层双 chip，两面同开会让 Esc 分层歧义）。
   const [machineOpen, setMachineOpen] = useState(false);
-  const [machineId, setMachineId] = useState<string | null>(null);
+  const [machineId, setMachineId] = useState<string | null>(() =>
+    readRememberedMachine(localStorage),
+  );
   // #656：popover 的 FloatingShell 把 Portal 挂回 chip wrap（absolute 面板的
   // containing block 原位保真）；wrap 随 dialog 内容先挂，popover 开态翻转时
   // ref 必已就位。机器 popover 同律（#682 的 chip 面随 #656 家族迁壳）。
@@ -239,6 +279,11 @@ export function NewTaskDialog({
   // 语义 = 步只投给该机并等它上线（server claim 过滤面），UI 不替用户挡。
   const machineRows = machines ?? [];
   const machineSelected = machineRows.find((row) => row.id === machineId) ?? null;
+  // #758 解析后的钉选:显示、aria 与提交同吃这一个值。悬空记忆(机器被删/
+  // 改名/行集未决) → null = 自动,不把指向不存在机器的 pin 带上提交面;
+  // 离线机器 → 行照常命中,id 原样保留并如实显示离线 dot(#687 钉选 =
+  // 等它上线语义,不静默改派)。
+  const machinePin = machineSelected?.id ?? null;
   const machineLabel = machineSelected?.name ?? t('自动');
   // #318: 附件 token 注入 spec 后由 spec 非空承载 dirty,不另计。
 
@@ -272,7 +317,9 @@ export function NewTaskDialog({
       setDiscardOpen(false);
       setPickerOpen(false);
       setSpec('');
-      setMachineId(null);
+      // #758 重开净面 = 记忆面：reset 目标从恒 null 改为记忆值（选即写，
+      // 故通常与当前 state 等值；重读兜住「记忆被并发改动」的边角）。
+      setMachineId(readRememberedMachine(localStorage));
     }
   }, [open]);
   // retained mount：关闭退场后子树卸载,重开 = 重新挂载。autofocus 挂 ref
@@ -384,7 +431,7 @@ export function NewTaskDialog({
   // 附件离场（draft 保全，token 落地后提交照常）。
   const save = () => {
     if (attachInFlightRef.current > 0) return;
-    onSave(spec, selected?.id, machineId);
+    onSave(spec, selected?.id, machinePin);
   };
 
   // XMON-95：保存并开始 = 按钮点击与 ⌘↵ 共用的同一提交位。闸写在闭包里而
@@ -393,7 +440,7 @@ export function NewTaskDialog({
   const saveAndStart = () => {
     if (attachInFlightRef.current > 0) return;
     if (spec.trim() === '') return;
-    if (onSaveAndStart) onSaveAndStart(spec, selected?.id, machineId);
+    if (onSaveAndStart) onSaveAndStart(spec, selected?.id, machinePin);
     else save();
   };
   // enabled = open ∩ ¬discardOpen（useChordHotkey 的 opened-gate）。两条都
@@ -676,15 +723,17 @@ export function NewTaskDialog({
                     type="button"
                     className="new-task-project-row"
                     role="option"
-                    aria-selected={machineId === null}
+                    aria-selected={machinePin === null}
                     onClick={() => {
                       setMachineId(null);
+                      // #758 选「自动」= 清记忆位（写时机与项目 chip 同：选即写）
+                      writeRememberedMachine(localStorage, null);
                       setMachineOpen(false);
                     }}
                   >
                     <span className="new-task-machine-dot" data-on={true} aria-hidden="true" />
                     <span className="new-task-project-row-name">{t('自动')}</span>
-                    {machineId === null && (
+                    {machinePin === null && (
                       <span className="new-task-project-check">
                         <Check width={14} height={14} />
                       </span>
@@ -696,9 +745,11 @@ export function NewTaskDialog({
                       type="button"
                       className="new-task-project-row"
                       role="option"
-                      aria-selected={row.id === machineId}
+                      aria-selected={row.id === machinePin}
                       onClick={() => {
                         setMachineId(row.id);
+                        // #758 选即写（项目 chip 同时机）
+                        writeRememberedMachine(localStorage, row.id);
                         setMachineOpen(false);
                       }}
                     >
@@ -708,7 +759,7 @@ export function NewTaskDialog({
                         aria-hidden="true"
                       />
                       <span className="new-task-project-row-name">{row.name}</span>
-                      {row.id === machineId && (
+                      {row.id === machinePin && (
                         <span className="new-task-project-check">
                           <Check width={14} height={14} />
                         </span>

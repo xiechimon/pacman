@@ -6,7 +6,9 @@ import { expect, type Page, test } from '@playwright/test';
 // 2. popover rows missing the 自动 row or the machine row
 // 3. selecting a machine does not backfill the chip label
 // 4. Esc closes the popover only — the dialog itself stays (layer family law)
-// 5. chip state leaks across close/reopen (reset law)
+// 5. chip selection across close/reopen follows the #758 memory law (the
+//    remembered pin returns; picking 自动 clears it — the old "always reset
+//    to 自动" reset law predates the memory mechanism)
 // 6. a machine-selected save still lands the fixture card (save path intact)
 
 // scenario=06 carries the resources set (machines row) — the board canon
@@ -75,7 +77,9 @@ test('Esc closes the machine popover only — the dialog stays open', async ({ p
   await expect(dialog).toBeVisible();
 });
 
-test('chip selection resets to 自动 after close and reopen', async ({ page }) => {
+test('chip selection survives close and reopen via memory, 自动 clears it (#758)', async ({
+  page,
+}) => {
   const dialog = await openDialog(page);
   await machineChip(dialog).click();
   await dialog
@@ -83,9 +87,22 @@ test('chip selection resets to 自动 after close and reopen', async ({ page }) 
     .getByRole('option', { name: MACHINE })
     .click();
   await expect(machineChip(dialog)).toHaveText(MACHINE);
-  // 净表单关闭（spec 空 = 无未保存闸）再开。
+  // 净表单关闭（spec 空 = 无未保存闸）再开：重开净面 = 记忆面，chip 回
+  // 上次钉的机器（#758；旧「恒回自动」的 reset 律已被记忆机制改掉）。
   await dialog.locator('.new-task-close').click();
   await expect(dialog).not.toBeVisible();
+  await page.locator('.sidebar-new-task').click();
+  const reopened = page.locator('.new-task-dialog');
+  await expect(machineChip(reopened)).toHaveText(MACHINE);
+  // 选「自动」清记忆位：再一轮关闭重开回自动。
+  await machineChip(reopened).click();
+  await reopened
+    .locator('[role="listbox"][aria-label="机器"]')
+    .getByRole('option', { name: '自动' })
+    .click();
+  await expect(machineChip(reopened)).toHaveText(/自动/);
+  await reopened.locator('.new-task-close').click();
+  await expect(reopened).not.toBeVisible();
   await page.locator('.sidebar-new-task').click();
   await expect(machineChip(page.locator('.new-task-dialog'))).toHaveText(/自动/);
 });
