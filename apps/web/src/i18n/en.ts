@@ -735,4 +735,25 @@ export const EN: Record<string, string> = {
     'The chief plans first, then dispatches each piece to the right agent.',
   查看会话: 'View session',
   未能开始编排: 'Could not start orchestration',
+  // —— #638 全站静默 mutation 失败面接线（toast 标题句；server 原因进
+  // description 透传不译，#631 同律。已有面内 canon 位的面——merge 拒绝行 /
+  // issue 导入内联 / fs-pick 提示行 / OAuth 内联 / 技能弹窗内联——不在此列）——
+  '新建任务失败，请重试。': 'Could not create the task. Try again.',
+  '创建项目失败，请重试。': 'Could not create the project. Try again.',
+  '移动任务失败，请重试。': 'Could not move the task. Try again.',
+  '关闭任务失败，请重试。': 'Could not close the task. Try again.',
+  '删除任务失败，请重试。': 'Could not delete the task. Try again.',
+  '开始运行失败，请重试。': 'Could not start the build. Try again.',
+  '重试失败，请稍后再试。': 'Retry failed. Try again later.',
+  '新建定时失败，请重试。': 'Could not create the schedule. Try again.',
+  '删除定时失败，请重试。': 'Could not delete the schedule. Try again.',
+  '删除项目失败，请重试。': 'Could not delete the project. Try again.',
+  '断开连接失败，请重试。': 'Could not disconnect. Try again.',
+  '添加模型服务失败，请重试。': 'Could not add the provider. Try again.',
+  '添加密钥失败，请重试。': 'Could not add the secret. Try again.',
+  '新建 API 密钥失败，请重试。': 'Could not create the API key. Try again.',
+  '创建 Agent 失败，请重试。': 'Could not create the agent. Try again.',
+  '删除 Agent 失败，请重试。': 'Could not delete the agent. Try again.',
+  '删除记忆失败，请重试。': 'Could not delete the memory. Try again.',
+  '同步失败，请重试。': 'Sync failed. Try again.',
 };

@@ -59,6 +59,7 @@ import {
   ChiefAgentDialog,
   type ChiefAgentOption,
 } from '../chief/chief-agent-dialog.js';
+import { toastError } from '../components/ui/toaster.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { Composer } from '../detail/composer.js';
 import { DetailHead } from '../detail/dhead.js';
@@ -483,18 +484,23 @@ export function TodoDetailPage() {
   const startBuild = useCallback(
     (withPlan: boolean, assignment?: Assignment) => {
       if (!live || !wireTodo) return;
-      mutations.startBuilds.mutate({
-        projectId: wireTodo.projectId,
-        todoIds: [wireTodo.id],
-        assignment: assignment ?? {
-          plan: firstAgentId ? { agentId: firstAgentId } : null,
-          build: firstAgentId ? { agentId: firstAgentId } : null,
+      mutations.startBuilds.mutate(
+        {
+          projectId: wireTodo.projectId,
+          todoIds: [wireTodo.id],
+          assignment: assignment ?? {
+            plan: firstAgentId ? { agentId: firstAgentId } : null,
+            build: firstAgentId ? { agentId: firstAgentId } : null,
+          },
+          withPlan,
         },
-        withPlan,
-      });
+        // #638 破坏性后果面（票面优先级 1）：弹层已关、任务停在半启动态却
+        // 零解释——toast 点名失败，server 原因进 description。
+        { onError: (error) => toastError(t('开始运行失败，请重试。'), error) },
+      );
       setOverlay(null);
     },
-    [live, wireTodo, mutations.startBuilds, firstAgentId],
+    [live, wireTodo, mutations.startBuilds, firstAgentId, t],
   );
 
   if (todo == null) return null;
@@ -515,7 +521,11 @@ export function TodoDetailPage() {
     ? (agentId: string) =>
         mutations.patchTodo.mutate(
           { id: todo.id, body: { assignment: { build: { agentId } } } },
-          { onSuccess: () => setAssignOpen(false) },
+          {
+            onSuccess: () => setAssignOpen(false),
+            // #638：失败时弹层留着（关挂在 onSuccess）但零解释——toast 补上。
+            onError: (error) => toastError(t('保存失败，请重试。'), error),
+          },
         )
     : undefined;
 
@@ -543,7 +553,11 @@ export function TodoDetailPage() {
     if (live) {
       mutations.patchTodo.mutate(
         { id: todo.id, body: { phase: 'closed' } },
-        { onSuccess: () => navigate('/app') },
+        {
+          onSuccess: () => navigate('/app'),
+          // #638：关闭失败 = 留在详情页、任务没关，此前零反馈。
+          onError: (error) => toastError(t('关闭任务失败，请重试。'), error),
+        },
       );
       return;
     }
@@ -736,7 +750,12 @@ export function TodoDetailPage() {
             {live && wireTodo?.sourceKind != null && (
               <SourceIssueLine
                 todo={wireTodo}
-                onRetry={() => mutations.retryGithubIssue.mutate(wireTodo.id)}
+                onRetry={() =>
+                  mutations.retryGithubIssue.mutate(wireTodo.id, {
+                    // #638：重试再败此前只是 pending 灯灭——toast 点名失败。
+                    onError: (error) => toastError(t('重试失败，请稍后再试。'), error),
+                  })
+                }
                 retryPending={mutations.retryGithubIssue.isPending}
                 onOpenThread={setChiefLinkThreadId}
               />
@@ -1000,7 +1019,11 @@ export function TodoDetailPage() {
         onConfirm={() => {
           setDeleteOpen(false);
           if (live) {
-            mutations.deleteTodo.mutate(todo.id, { onSuccess: () => navigate('/app') });
+            mutations.deleteTodo.mutate(todo.id, {
+              onSuccess: () => navigate('/app'),
+              // #638：确认层已关（上方 setDeleteOpen），失败 = 任务还在却零解释。
+              onError: (error) => toastError(t('删除任务失败，请重试。'), error),
+            });
             return;
           }
           markDeleted(todo.id);

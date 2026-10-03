@@ -32,6 +32,7 @@ import {
 } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
+import { toastError } from '../components/ui/toaster.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import type { MentionGroups } from './mention-picker.js';
@@ -117,7 +118,11 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
       if (live) {
         const projectId = resolveProjectId(selectedProjectId);
         if (projectId) {
-          mutations.createTodo.mutate({ projectId, spec });
+          // #638：dialog 提交即关（上方 setOpen），失败不能再静默——toast。
+          mutations.createTodo.mutate(
+            { projectId, spec },
+            { onError: (error) => toastError(t('新建任务失败，请重试。'), error) },
+          );
           return;
         }
         // 无项目：先建默认托管项目再落任务（self-host 单用户语义 [设计]，
@@ -125,7 +130,12 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
         mutations.createProject.mutate(
           { name: t('默认项目'), repoKind: 'hosted' },
           {
-            onSuccess: (p) => mutations.createTodo.mutate({ projectId: p.id, spec }),
+            onSuccess: (p) =>
+              mutations.createTodo.mutate(
+                { projectId: p.id, spec },
+                { onError: (error) => toastError(t('新建任务失败，请重试。'), error) },
+              ),
+            onError: (error) => toastError(t('创建项目失败，请重试。'), error),
           },
         );
         return;
@@ -153,6 +163,9 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
           {
             onSuccess: (created) =>
               orchestrate(created.id, { savedTitle: t('已保存，交给总管编排') }),
+            // #638：编排腿自带失败 toast（use-orchestrate-start），创建腿此前
+            // 静默——「保存并开始」点了没反应即此面。
+            onError: (error) => toastError(t('新建任务失败，请重试。'), error),
           },
         );
       const projectId = resolveProjectId(selectedProjectId);
@@ -160,7 +173,10 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
       else
         mutations.createProject.mutate(
           { name: t('默认项目'), repoKind: 'hosted' },
-          { onSuccess: (p) => start(p.id) },
+          {
+            onSuccess: (p) => start(p.id),
+            onError: (error) => toastError(t('创建项目失败，请重试。'), error),
+          },
         );
     },
     [

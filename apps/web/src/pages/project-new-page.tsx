@@ -43,6 +43,7 @@ import { useApiMutations, useGithubConnection, useGithubRepos } from '../api/hoo
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { Input } from '../components/ui/input.js';
+import { toastError } from '../components/ui/toaster.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
@@ -236,7 +237,10 @@ export function ProjectNewPage() {
   const disconnect = () => {
     setPickerOpen(false);
     if (live) {
-      mutations.disconnectGithub.mutate(); // invalidate → status 读面收敛回未认证面
+      // invalidate → status 读面收敛回未认证面；#638 失败 = 连接还挂着却零解释。
+      mutations.disconnectGithub.mutate(undefined, {
+        onError: (error) => toastError(t('断开连接失败，请重试。'), error),
+      });
     } else {
       setFixtureAuth(false);
     }
@@ -283,6 +287,14 @@ export function ProjectNewPage() {
     if (repoSel === 'local') setSubmittedPath(localPath.trim());
     mutations.createProject.mutate(body, {
       onSuccess: (p) => navigate(`/app/project/${p.id}`),
+      // #638：local-400 已有内联错误行（localErrorText，编辑即撤）——不双报。
+      // 其余失败（github ref 校验 400 / 5xx / 网络）此前无任何反馈位，toast
+      // 点名；判据与 localErrorText 的呈现闸同源（本次提交形态 + status）。
+      onError: (error) => {
+        const inlineHandled =
+          repoSel === 'local' && error instanceof ApiError && error.status === 400;
+        if (!inlineHandled) toastError(t('创建项目失败，请重试。'), error);
+      },
     });
   };
 
