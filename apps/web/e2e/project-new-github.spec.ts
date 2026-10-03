@@ -21,6 +21,8 @@ import { expect, type Page, test } from '@playwright/test';
 // 8. 着陆参 oauth=error&reason=denied|state|exchange → 内联三译文案
 //    （#243 词汇不变，落 picker 面内联错误行）
 // 9. 断开钮 → 回未认证面（fixture accept 律）
+// 10. 行表键盘契约（t-0070 裁决③）：焦点进列表 / Arrow roving 回环 /
+//     typeahead / Enter 即选即关生效 / 焦点归还触发钮（重开落选中行）
 
 const NEW_PROJECT = '/app/project/new?scenario=01';
 const PICKER = '/app/project/new?scenario=github-picker';
@@ -164,4 +166,47 @@ test('9. 断开钮 → 回未认证面（fixture accept 律）', async ({ page }
   await picker.locator('.prj-new-gh-disconnect').click();
   await expect(picker).toHaveCount(0);
   await expect(page.locator('.prj-new-gh-auth')).toHaveText('认证 GitHub');
+});
+
+// 10. 行表键盘契约（t-0070 裁决③：混合板维持手搓，契约与 dropdown-menu
+// 收编面同等——开面焦点进列表 / Arrow roving / typeahead / Enter 即选即关
+// 且真实生效 / Esc 与激活后焦点归还触发钮）。
+test('10. 行表键盘契约：焦点进列表、Arrow/typeahead 移动、Enter 选中生效、焦点归还', async ({
+  page,
+}) => {
+  await page.goto(PICKER);
+  await selectGithub(page);
+  const picker = await openPicker(page);
+  const rows = picker.locator('.prj-new-gh-row');
+  await expect(rows).toHaveCount(3);
+  // 开面焦点进列表（无选中行 = 首行）
+  await expect(rows.first()).toBeFocused();
+  // Arrow roving + 末端回环（loopFocus 律）
+  await page.keyboard.press('ArrowDown');
+  await expect(rows.nth(1)).toBeFocused();
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await expect(rows.nth(2)).toBeFocused();
+  // typeahead：单字符前缀命中 xiechimon/pacman（fixture 第三行）；两次
+  // 击键间隔 >500ms 缓冲窗——窗内连击会合成多字符缓冲（"xo" 无命中 =
+  // typeahead 正确行为，不是丢键）。
+  await page.keyboard.press('x');
+  await expect(rows.nth(2)).toBeFocused();
+  await page.waitForTimeout(550);
+  await page.keyboard.press('o');
+  await expect(rows.first()).toBeFocused();
+  // Enter 即选即关且真实生效：trigger 回填 full_name，焦点归还触发钮
+  await page.keyboard.press('ArrowDown');
+  await expect(rows.nth(1)).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(picker).not.toBeVisible();
+  await expect(page.locator('#prj-new-repo')).toContainText('octocat/spoon-knife');
+  await expect(page.locator('#prj-new-repo')).toBeFocused();
+  // 重开（已选中行 = 焦点落选中行）→ Esc 关 + 焦点归还
+  await page.keyboard.press('Enter');
+  await expect(picker).toBeVisible();
+  await expect(rows.nth(1)).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(picker).not.toBeVisible();
+  await expect(page.locator('#prj-new-repo')).toBeFocused();
 });
