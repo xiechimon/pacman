@@ -87,7 +87,13 @@ test.describe('chief drawer model row (#615)', () => {
         };
         const lum = (rgb: number[]) =>
           0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
-        const parse = (s: string) => (s.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
+        const parse = (s: string) => {
+          // color-mix() tokens serialize computed as color(srgb …) fractions,
+          // not rgb() 0–255 ints (#788: the selected-row fill rides --spot-soft)
+          const m = s.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+          if (m) return [m[1], m[2], m[3]].map((v) => Number(v) * 255);
+          return (s.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
+        };
         let bg = 'rgba(0, 0, 0, 0)';
         let node: Element | null = el;
         while (node != null && bg === 'rgba(0, 0, 0, 0)') {
