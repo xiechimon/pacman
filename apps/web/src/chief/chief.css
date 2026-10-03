@@ -26,20 +26,35 @@
   z-index: 30;
 }
 
-/* Exit leg only (D4: 内容瞬时贴合，不做布局动画): once the overlay state
-   flips to closed the panel leaves the flow, so the content column snaps
-   back to full width immediately while the retained element plays its
-   translateX slide-out over the slot it just vacated. Anchors: the wake
-   shells and detail dock inside position:relative containers (*-main /
-   .detail-body), so the absolute panel lands exactly on its open-state
-   geometry; on board the containing block is the viewport ICB, which is
-   box-identical to .board-shell (body overflow:hidden clips the slide-out
-   past the right edge). */
-.overlay-mount[data-overlay-state="closed"] .chief-drawer {
+/* Exit leg only (D4: 内容瞬时贴合，不做布局动画): once the state flips to
+   closed the panel leaves the flow, so the content column snaps back to full
+   width immediately while the retained element (Base UI keepMounted holds it
+   until its slide-out finishes) plays translateX over the slot it just
+   vacated. #656 (b″): the aside is the Base UI Popup, so the closed leg reads
+   its own data-closed (the retired OverlayMount wrapper state is gone).
+   Anchors: the wake shells and detail dock inside position:relative containers
+   (*-main / .detail-body), so the absolute panel lands exactly on its
+   open-state geometry; on board the containing block is the viewport ICB,
+   which is box-identical to .board-shell (body overflow:hidden clips the
+   slide-out past the right edge). */
+.chief-drawer[data-closed] {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
+}
+
+/* (b″) Base UI 的 Portal 恒在 container 里插一层 data-base-ui-portal 包装 div，
+   aside 因此不可能是 row 的字面直接子元素；把包装层设 display:contents 让 aside
+   成为**等效**末位 flex 项：开 = 418 让位（D2），退场 absolute 离流内容瞬回，
+   关 = aside display:none 包装层不贡献盒、内容回全宽。仅限 dock 行内的抽屉
+   Portal，不碰其它 portal。 */
+.board-shell > [data-base-ui-portal],
+.page-main > [data-base-ui-portal],
+.res-main > [data-base-ui-portal],
+.secondary-main > [data-base-ui-portal],
+.detail-body > [data-base-ui-portal] {
+  display: contents;
 }
 
 .chief-head {
