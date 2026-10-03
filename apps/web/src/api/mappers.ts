@@ -1111,17 +1111,39 @@ export function mapChief(
       : null;
   const running = active?.activeRun != null;
   const chiefStream: ChiefStreamItem[] = active === null ? [] : mapChiefStream(opts.messages);
-  // #651 打字面尾行：回合进行中且 text_delta 缓冲非空才挂——activeRun 是
-  // 陈旧缓冲的 gate（关抽屉/断线窗口里缓冲可能残留上一轮文本，回合已收即
-  // 不渲染）。收敛律 = 详情页同款：终稿 message 事件 clear 缓冲 + messages
-  // 重取接管，typing 行随之退场，不重复不残留。
-  if (running && (opts.liveText ?? '').trim() !== '') {
-    chiefStream.push({
-      kind: 'robot',
-      markdown: autoCloseStrong(opts.liveText ?? ''),
-      typing: true,
-      seconds: '',
-    });
+  // #651 打字面尾行 / #739 在飞存在行：回合进行中（activeRun 非空）才挂尾行，
+  // 且两行按 liveText 空/非空互斥——尾部恒至多一行（#739 F1 无二重身）。
+  // activeRun 是陈旧缓冲的 gate（关抽屉/断线窗口里缓冲可能残留上一轮文本，
+  // 回合已收即不渲染）。收敛律 = 详情页同款：终稿 message 事件 clear 缓冲 +
+  // messages 重取接管，尾行随之退场，不重复不残留。
+  if (running) {
+    if ((opts.liveText ?? '').trim() !== '') {
+      // 增量文本已到 → 打字面尾行（#651）。
+      chiefStream.push({
+        kind: 'robot',
+        markdown: autoCloseStrong(opts.liveText ?? ''),
+        typing: true,
+        seconds: '',
+      });
+    } else if (chiefStream[chiefStream.length - 1]?.kind !== 'robot') {
+      // #739 在飞存在行：回合在飞但首 token 未至（机器 wake → claim → pi 会话
+      // 开启 → 模型首 token 的静默窗口，绑定慢模型时被放大到分钟级）——挂
+      // loading-dev Atom + `处理中...`，与详情页 streaming 行同族，消除「发一
+      // 句话就什么也没有」。不挂秒数（#471：静默期无流事件驱动重渲，秒数会
+      // 冻结说谎；本票不加计时器）。首 delta 到达即被上面的 typing 行取代。
+      //
+      // 收敛律「终稿落库 → 尾行退场」的 gate = 尾部不是已落库的 robot 行。
+      // text_delta 只进 liveText（上面 typing 分支），终稿 assistant message 才
+      // 落库重取成 robot 尾行——故终稿一到，尾即 robot，存在行当场退场，不赌
+      // activeRun 被 step 事件（#684 失效 chiefThreads）收口的时机：message →
+      // step 的窗口零闪烁。工具行被 mapChiefStream 缓冲进下一个 robot 行，纯
+      // 工具静默期尾仍是 user 行，存在行照常呈现。
+      //
+      // 僵尸边界（#739 F2，#706 liveness sweeper 落地前接受并注记）：机器死了
+      // 无人收 activeRun、且终稿从不落库 → 尾恒 user 行 → 存在行随 activeRun
+      // 生死（与 composer 占位同一 running 投影单源，不另立状态）。
+      chiefStream.push({ kind: 'streaming', label: '处理中...' });
+    }
   }
   return {
     view: 'drawer',
