@@ -104,7 +104,7 @@ export interface ModelRowVm {
 }
 
 /** 行投影：候选清单 × 当前槽值 → 行视图形清单（顺序 = 候选序，不排序——
- *  序由数据源给，toModelOptions 的并集序即展示序）。 */
+ *  序由数据源给，toModelOptions 的投影序即展示序）。 */
 export function toModelRows(
   options: readonly ModelOption[],
   value: ModelSlotValue | null,

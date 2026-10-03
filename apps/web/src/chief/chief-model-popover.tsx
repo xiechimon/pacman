@@ -39,7 +39,7 @@ interface ChiefModelPopoverProps {
   onClose: () => void;
   /** 当前覆盖值（live = chief 封套真值）；null = 继承绑定 Agent 模型。 */
   value: ChiefCompactionModel | null;
-  /** 候选模型（live = toModelOptions 并集投影）；缺省 = 仅默认行。 */
+  /** 候选模型（live = toModelOptions 投影，非 pi runtime 段）；缺省 = 仅默认行。 */
   options?: ModelOption[];
   /** live 面：选定 = PATCH chief model 槽；缺省 = fixture 律（选择即关）。 */
   onPick?: (value: ChiefCompactionModel | null) => void;

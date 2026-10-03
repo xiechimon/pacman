@@ -8,7 +8,8 @@ import { expect, type Page, test } from '@playwright/test';
 //    取消/保存章程;fixture 保存 = accept 律关窗。
 // 3. 压缩模型 #204 翻回交互(server #203 compactionModel 槽就位):button
 //    开 anchored popover(OverlayMount + ClickCatcher + Esc 家族律),
-//    fixture 面清单 = 默认行 + canon 单行(r3-gw/claude-sonnet-5),选定 =
+//    fixture 面清单 = 默认行 + canon 单行(claude-code/claude-sonnet-5;#770 起
+//    providers 段已除,canon 行取 runtime 源形),选定 =
 //    accept 律关面。live PATCH 写读回归归 live 真机验。
 
 const AGENT_TAB = '/app?scenario=101';
@@ -131,7 +132,7 @@ test('压缩模型 interactive (#204): button opens the anchored model menu', as
   await expect(menu.locator('.chief-model-row').nth(0)).toContainText('默认（与 Chief 相同）');
   await expect(menu.locator('.chief-model-row').nth(0)).toHaveAttribute('aria-selected', 'true');
   await expect(menu.locator('.chief-model-row').nth(1)).toContainText('claude-sonnet-5');
-  await expect(menu.locator('.chief-model-row-provider')).toHaveText('r3-gw');
+  await expect(menu.locator('.chief-model-row-provider')).toHaveText('Claude Code');
 });
 
 test('压缩模型 menu family law (#204): Escape and outside click dismiss', async ({ page }) => {
@@ -154,7 +155,8 @@ test('压缩模型 fixture pick = accept 律:选择即关 (#204)', async ({ page
 
 // #358 AC2:preset 方案退役后,仍引用已废 preset 的旧 compactionModel 值
 // 命中不了任何选项 → 裸串 `provider/modelId` 兜底回显(#180 裁决收敛到值
-// 回显层),不空白不崩;菜单无选中行,canon 行选定仍走 accept 律。
+// 回显层;存量 provider 模型值同律),不空白不崩;菜单无选中行,canon 行选定
+// 仍走 accept 律。
 test('压缩模型 stale preset value (#358): 裸串兜底回显 + 菜单无选中行', async ({ page }) => {
   await page.goto('/app?scenario=101-stale-model');
   const select = page.locator('button.chief-select');

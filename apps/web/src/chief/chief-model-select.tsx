@@ -1,11 +1,10 @@
 // 压缩模型选择器(issue #204:#182 静态化翻回交互——server #203 已落
 // compactionModel 可空 JSON 槽 + PATCH 第三槽,写→GET 回显同值、null 清空)。
 // 数据源(#358,spec 11 §A10——38 项 preset 方案退役,#180 裁决收敛到值回显
-// 层):选项清单 = GET model-sources 封套投影 ∪ custom providers models[]
-// 并集,投影单源在 api/mappers.ts `toModelOptions`(pi 段归属走
-// providers 面,claude-code 段 provider 位 = runtime 词表值);当前值命中
-// 不了选项时(含仍引用已废 preset 的旧值)裸串 `provider/modelId` 即名,
-// 不空白不崩。
+// 层; #770 起 providers 段已除):选项清单 = GET model-sources 非 pi 段投影,
+// 投影单源在 api/mappers.ts `toModelOptions`(claude-code 段 provider 位 =
+// runtime 词表值);当前值命中不了选项时(含仍引用已废 preset / 存量 provider
+// 模型的旧值)裸串 `provider/modelId` 即名,不空白不崩。
 // 交互 = anchored popover 家族律(#67/#127/dhead chip 先例:FloatingShell +
 // ClickCatcher + Esc,role=listbox/option);选中当前值 = 空操作关面
 // (chief-agent-dialog 同律)。live:选定即 PATCH chief compactionModel 槽
@@ -33,13 +32,13 @@ import { useI18n } from '../i18n/provider.js';
 import { ChevronDown } from '../icons/index.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
 
-/** fixture 面候选兜底(r5 §2 捕获网关 r3-gw——捕获徽标位原文即 id 本身
- *  `r3-gw · 128k`——+ fixture canon 模型 claude-sonnet-5;chief-agent-dialog
- *  DEFAULT_AGENT 单默认行同律)。 */
+/** fixture 面候选兜底（#770 起 providers 段已除：canon 行取 runtime 源形——
+ *  provider 位 = runtime 词表值 `claude-code`，与 live 投影同形；此前 r3-gw
+ *  行随 providers 段退役）。chief-agent-dialog DEFAULT_AGENT 单默认行同律）。 */
 const DEFAULT_OPTIONS: ModelOption[] = [
   {
-    provider: 'r3-gw',
-    providerLabel: 'r3-gw',
+    provider: 'claude-code',
+    providerLabel: 'Claude Code',
     modelId: 'claude-sonnet-5',
     modelName: 'claude-sonnet-5',
   },

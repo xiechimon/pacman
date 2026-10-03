@@ -60,7 +60,6 @@ import {
   useMcpServers,
   useMemories,
   useModelSources,
-  useProviders,
   useSecrets,
   useSkills,
 } from '../api/hooks.js';
@@ -126,7 +125,6 @@ export function AgentDetailPage() {
   const agentQ = useAgent(teamId, agentId, live);
   const agentTasksQ = useAgentTasks(teamId, agentId, live);
   const memoriesQ = useMemories(teamId, agentId, live);
-  const providersQ = useProviders(teamId, live);
   const modelSourcesQ = useModelSources(teamId, live);
   const capabilitiesQ = useCapabilities(live);
   const skillsQ = useSkills(teamId, live);
@@ -181,11 +179,13 @@ export function AgentDetailPage() {
     [agentId, live, mutations.patchAgent, t],
   );
 
-  // 模型候选：live = providers ∪ model-sources 真值；fixture = 场景行集。
-  // 投影单源 = toModelOptions（与总管压缩模型选择器同一份）。
+  // 模型候选：live = model-sources 真值（#770 起 providers 段已除，只剩非
+  // pi runtime 段）；fixture = 场景行集。投影单源 = toModelOptions（与总管
+  // 压缩模型选择器同一份）。存量 provider 绑定值命中不了选项，走裸串兜底
+  // 回显（不空白不崩）；切到 runtime 源是单向门（UI 上选不回 provider）。
   const modelOptions = live
-    ? toModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
-    : toModelOptions(fixture.resources?.providers ?? [], fixture.resources?.providerSources ?? []);
+    ? toModelOptions(modelSourcesQ.data?.sources ?? [])
+    : toModelOptions(fixture.resources?.providerSources ?? []);
 
   // 技能候选：live 的 SkillRecord.id 与 fixture SkillRow.name 同值域
   // （skillRecordSchema：id = frontmatter name 回落目录名）。
