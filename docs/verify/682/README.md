@@ -104,3 +104,30 @@ Round 2 changes the means, not the numbers:
   both shapes, project name yields under a 40-char name, cluster clear of the
   title zone, 720px viewport, RTL flip). Before shots taken on a detached
   worktree of the pushed round-1 HEAD; after shots on this branch.
+
+## layout/ round 3 — machine chip moves to the footer (third user review)
+
+The reviewer rejected the machine chip living in the title row at all: the
+head was carrying three things and read as crowded (measured: the chip cluster
+stopped 16px short of the centered title's text zone — numerically the
+"挤到旁边去" complaint; the title itself is absolute-centered and was never
+pushed, but the crowding is real). The reference product has no precedent for
+a machine field (r2-app-ui-inventory: its form fields are project/title/
+description/tags), so placement is pacman's own design decision.
+
+The machine selector now lives in the footer's options zone (left of the
+action row, after the attachments/mention tools):
+
+- **Semantics**: an execution choice belongs with 保存并开始, not with the
+  dialog's identity row; grouping into the existing tools cluster (12px
+  inter-group = 2× the cluster's 6px intra) rather than a new surface.
+- **The head is freed** to the captured design — project chip, centered
+  title, close; the project name keeps its own 220px ellipsis cap so a long
+  name stays clear of the title. Head clearance measured 30px in both shapes.
+- The pill is height-aligned with the 30px tool buttons; its popover opens
+  upward (the footer is at the bottom — downward would clip the dialog edge).
+- Numbers: `round3-result-before.json` 3/12 (chip not in footer; head
+  clearance 16px) → `round3-result-after.json` 12/12 (head clearance 30px
+  short and long shapes, label complete, dot-to-label 8px, tools-to-pill
+  12px, pill 30px, footer no overflow, popover upward inside the dialog,
+  720px viewport, RTL flip). Dialog-family e2e incl. hotkeys 54/54.

@@ -49,16 +49,14 @@
   cursor: pointer;
 }
 
-/* #682 第二轮排版（用户两审后）：机器 chip = 有边界的控件（分组的可见手段
-   归 better-layout 第二梯「背景形状」，比 hairline 分隔线先选；皮肤抄本仓
-   branch-dialog 的 .dlg-machine 机器 pill 惯用法）。shrink=0——机器标签是
-   派发关键短数据（「自动」或主机名），永不截断；簇内让位方 = 项目名（任意
-   长度用户数据，flex 收缩 + ellipsis）。点在 pill 内贴 label，归属无歧义。 */
+/* #682 第二轮：机器 chip = 有边界控件（pill，.dlg-machine 惯用法）；第三轮
+   起住底栏——高度对齐 30px 工具钮（光学同排，better-ui 对齐律）。shrink=0：
+   机器标签是派发关键短数据（「自动」或主机名），永不截断。点贴 label。 */
 .new-task-machine {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 28px;
+  height: 30px;
   padding: 0 12px 0 10px;
   border: 1px solid var(--card-border);
   border-radius: 8px;
@@ -106,37 +104,27 @@
   position: relative;
   display: flex;
   align-items: center;
-  min-width: 0;
-  flex: 0 1 auto; /* 让位方：长名时收缩截断（机器 chip shrink=0 不让） */
 }
 
+/* #682 第三轮：机器 chip 住底栏选项区（new-task-actions 内、工具簇后）。
+   组间 12px = 2× 工具簇内 6px（better-layout 组间律）；wrap 不收缩。 */
 .new-task-machine-wrap {
   position: relative;
   display: flex;
   align-items: center;
   flex: 0 0 auto;
-  margin-inline-start: 16px; /* 2× 组内 8px；logical 属性随 RTL 翻转 */
-}
-
-/* #682 布局律（better-layout：用空间分组，组间 ≥ 2× 组内）+ 第二轮（用户
-   两审：16px 纯间距仍读成一条线）：组间 16px 之外，机器 chip 自带边界
-   （pill）= 可见分隔手段；簇整体 max-width（672 弹窗 - head 内边距 12 -
-   中位标题净空 8px ≈ 282px）让项目长名在簇内截断，不与居中标题叠压。menu
-   行名（-row-name 类）不受截断（220px 菜单全名）。 */
-.new-task-chips {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  flex: 0 1 auto;
-  max-width: 282px;
+  margin-inline-start: 12px; /* 2× 工具簇内 6px；logical 属性随 RTL 翻转 */
 }
 
 .new-task-project {
   min-width: 0;
 }
 
+/* 项目名让位截断：head 只剩项目 chip（第三轮把机器 chip 搬去底栏），长名
+   封顶不压居中标题（672 弹窗中位净空推得 220px 上限）。 */
 .new-task-project-name {
   min-width: 0;
+  max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -164,6 +152,14 @@
   /* drop below the head, inside the 672×439 box so the dialog's
      overflow:hidden never clips it; 30 sits above the family catcher (29) */
   z-index: 30;
+}
+
+/* #682 第三轮：机器 popover 自底栏向上开（footer 在底，向下开会出对话框
+   边界被裁——项目 menu「落对话框内」同律，方向反转）。须排在本体规则之后：
+   同特异性 tie 由后者胜。 */
+.new-task-machine-menu {
+  top: auto;
+  bottom: calc(100% + 4px);
 }
 
 .new-task-project-row {

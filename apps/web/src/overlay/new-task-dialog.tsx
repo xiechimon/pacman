@@ -396,147 +396,61 @@ export function NewTaskDialog({
         height={439}
       >
         <div className="new-task-head">
-          {/* #682 布局律（better-layout）：项目/机器两个选择器 = 两「组」，
-              组间距 16px（≥2× 组内 8px）；簇整体 max-width 让长名在簇内
-              截断（ellipsis），不越中位标题。 */}
-          <div className="new-task-chips">
-            <span className="new-task-project-wrap">
-              <button
-                type="button"
-                className="new-task-project"
-                aria-haspopup="listbox"
-                aria-expanded={projectOpen && rows.length > 0}
-                onClick={() => {
-                  setMachineOpen(false);
-                  setProjectOpen((value) => !value);
-                }}
-              >
-                <span className="new-task-project-avatar">
-                  {projectName.charAt(0).toLowerCase()}
-                </span>
-                <span className="new-task-project-name">{projectName}</span>
-                <ChevronDown width={12} height={12} />
-                {/* XMON-87 续二:Tab 提示 chip(#468 悬浮 chip 族,静息隐藏,
+          {/* #682 第三轮（用户三审）：标题行回归抓拍形态——项目 chip + 居中
+              标题 + 关闭，机器选择搬去底栏选项区（执行选择与「保存并开始」
+              同族）。项目名 max-width 截断（长名不压居中标题）。 */}
+          <span className="new-task-project-wrap">
+            <button
+              type="button"
+              className="new-task-project"
+              aria-haspopup="listbox"
+              aria-expanded={projectOpen && rows.length > 0}
+              onClick={() => {
+                setMachineOpen(false);
+                setProjectOpen((value) => !value);
+              }}
+            >
+              <span className="new-task-project-avatar">{projectName.charAt(0).toLowerCase()}</span>
+              <span className="new-task-project-name">{projectName}</span>
+              <ChevronDown width={12} height={12} />
+              {/* XMON-87 续二:Tab 提示 chip(#468 悬浮 chip 族,静息隐藏,
                   hover/focus-visible chip 时浮出);label 字面量沿 ⌘K/⌘J
                   先例,不做平台探测。 */}
-                <KbdHint label="Tab" placement="right" />
-              </button>
-              {/* #176:anchored popover 家族律(#67/#127)——OverlayMount +
+              <KbdHint label="Tab" placement="right" />
+            </button>
+            {/* #176:anchored popover 家族律(#67/#127)——OverlayMount +
                 ClickCatcher + Esc;空集不开面(live 无项目时提交走建默认
                 项目路径)。选中回填 chip,提交携带 projectId。 */}
-              <OverlayMount open={projectOpen && rows.length > 0}>
-                <ClickCatcher onClose={() => setProjectOpen(false)} />
-                <div
-                  className="new-task-project-menu anim-pop"
-                  role="listbox"
-                  aria-label={t('项目')}
-                >
-                  {rows.map((row) => (
-                    <button
-                      key={row.id}
-                      type="button"
-                      className="new-task-project-row"
-                      role="option"
-                      aria-selected={row.id === selected?.id}
-                      onClick={() => {
-                        setProjectId(row.id);
-                        if (rememberProject) writeRememberedProject(localStorage, row.id);
-                        setProjectOpen(false);
-                      }}
-                    >
-                      <span className="new-task-project-row-avatar">
-                        {row.name.charAt(0).toLowerCase()}
-                      </span>
-                      <span className="new-task-project-row-name">{row.name}</span>
-                      {row.id === selected?.id && (
-                        <span className="new-task-project-check">
-                          <Check width={14} height={14} />
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </OverlayMount>
-            </span>
-            {/* #682 机器 chip（项目 chip 同族：OverlayMount + ClickCatcher +
-              listbox popover；行集 = 自动 + 机器行）。选中回填 chip，提交随
-              onSave 第三参走 createTodo body。类名独立成 new-task-machine* 家
-              族——e2e 的 `.new-task-project*` 选择器钉的是单元素（strict mode），
-              双 chip 共类名会把整组 spec 打红。 */}
-            <span className="new-task-machine-wrap">
-              <button
-                type="button"
-                className="new-task-machine"
-                aria-haspopup="listbox"
-                aria-expanded={machineOpen && machineRows.length > 0}
-                data-testid="new-task-machine-chip"
-                onClick={() => {
-                  setProjectOpen(false);
-                  setMachineOpen((value) => !value);
-                }}
-              >
-                <span
-                  className="new-task-machine-dot"
-                  data-on={machineSelected?.online ?? true}
-                  aria-hidden="true"
-                />
-                <span className="new-task-machine-name">{machineLabel}</span>
-                <ChevronDown width={12} height={12} />
-              </button>
-              <OverlayMount open={machineOpen}>
-                <ClickCatcher onClose={() => setMachineOpen(false)} />
-                <div
-                  className="new-task-project-menu anim-pop"
-                  role="listbox"
-                  aria-label={t('机器')}
-                >
+            <OverlayMount open={projectOpen && rows.length > 0}>
+              <ClickCatcher onClose={() => setProjectOpen(false)} />
+              <div className="new-task-project-menu anim-pop" role="listbox" aria-label={t('项目')}>
+                {rows.map((row) => (
                   <button
+                    key={row.id}
                     type="button"
                     className="new-task-project-row"
                     role="option"
-                    aria-selected={machineId === null}
+                    aria-selected={row.id === selected?.id}
                     onClick={() => {
-                      setMachineId(null);
-                      setMachineOpen(false);
+                      setProjectId(row.id);
+                      if (rememberProject) writeRememberedProject(localStorage, row.id);
+                      setProjectOpen(false);
                     }}
                   >
-                    <span className="new-task-machine-dot" data-on={true} aria-hidden="true" />
-                    <span className="new-task-project-row-name">{t('自动')}</span>
-                    {machineId === null && (
+                    <span className="new-task-project-row-avatar">
+                      {row.name.charAt(0).toLowerCase()}
+                    </span>
+                    <span className="new-task-project-row-name">{row.name}</span>
+                    {row.id === selected?.id && (
                       <span className="new-task-project-check">
                         <Check width={14} height={14} />
                       </span>
                     )}
                   </button>
-                  {machineRows.map((row) => (
-                    <button
-                      key={row.id}
-                      type="button"
-                      className="new-task-project-row"
-                      role="option"
-                      aria-selected={row.id === machineId}
-                      onClick={() => {
-                        setMachineId(row.id);
-                        setMachineOpen(false);
-                      }}
-                    >
-                      <span
-                        className="new-task-machine-dot"
-                        data-on={row.online ?? true}
-                        aria-hidden="true"
-                      />
-                      <span className="new-task-project-row-name">{row.name}</span>
-                      {row.id === machineId && (
-                        <span className="new-task-project-check">
-                          <Check width={14} height={14} />
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </OverlayMount>
-            </span>
-          </div>
+                ))}
+              </div>
+            </OverlayMount>
+          </span>
           <div className="new-task-title-label">{t('新建任务')}</div>
           {/* A4-deep 收编：icon 变体皮肤；28×28 + margin-left:auto 几何
               per-face 留 overlay.css。#318 未保存闸:dialog 关闭走
@@ -598,6 +512,84 @@ export function NewTaskDialog({
                 <Grid2x2 />
               </Button>
             </div>
+            {/* #682 第三轮（用户三审）：机器选择住底栏选项区——执行选择与
+                「保存并开始」同层（语义），与工具簇 12px 组间（工具簇内 6px，
+                2× 律）。popover 向上开（footer 在底，向下开会出对话框边界）。
+                类名独立 new-task-machine* 家族：e2e 的 `.new-task-project*`
+                选择器钉单元素（strict mode），双 chip 共类名会打红整组。 */}
+            <span className="new-task-machine-wrap">
+              <button
+                type="button"
+                className="new-task-machine"
+                aria-haspopup="listbox"
+                aria-expanded={machineOpen && machineRows.length > 0}
+                data-testid="new-task-machine-chip"
+                onClick={() => {
+                  setProjectOpen(false);
+                  setMachineOpen((value) => !value);
+                }}
+              >
+                <span
+                  className="new-task-machine-dot"
+                  data-on={machineSelected?.online ?? true}
+                  aria-hidden="true"
+                />
+                <span className="new-task-machine-name">{machineLabel}</span>
+                <ChevronDown width={12} height={12} />
+              </button>
+              <OverlayMount open={machineOpen}>
+                <ClickCatcher onClose={() => setMachineOpen(false)} />
+                <div
+                  className="new-task-project-menu new-task-machine-menu anim-pop"
+                  role="listbox"
+                  aria-label={t('机器')}
+                >
+                  <button
+                    type="button"
+                    className="new-task-project-row"
+                    role="option"
+                    aria-selected={machineId === null}
+                    onClick={() => {
+                      setMachineId(null);
+                      setMachineOpen(false);
+                    }}
+                  >
+                    <span className="new-task-machine-dot" data-on={true} aria-hidden="true" />
+                    <span className="new-task-project-row-name">{t('自动')}</span>
+                    {machineId === null && (
+                      <span className="new-task-project-check">
+                        <Check width={14} height={14} />
+                      </span>
+                    )}
+                  </button>
+                  {machineRows.map((row) => (
+                    <button
+                      key={row.id}
+                      type="button"
+                      className="new-task-project-row"
+                      role="option"
+                      aria-selected={row.id === machineId}
+                      onClick={() => {
+                        setMachineId(row.id);
+                        setMachineOpen(false);
+                      }}
+                    >
+                      <span
+                        className="new-task-machine-dot"
+                        data-on={row.online ?? true}
+                        aria-hidden="true"
+                      />
+                      <span className="new-task-project-row-name">{row.name}</span>
+                      {row.id === machineId && (
+                        <span className="new-task-project-check">
+                          <Check width={14} height={14} />
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </OverlayMount>
+            </span>
             <div className="new-task-buttons">
               {/* e2e 别名叠加：integration/test/m5-web-e2e.test.ts 钉
                   .new-task-start（overlays lane 误删致 CI 红，此处恢复；
