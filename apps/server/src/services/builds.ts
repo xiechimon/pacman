@@ -24,6 +24,7 @@ import {
   AGENT_TOOL_PUSH,
   buildReplanPrompt,
   buildRestartPrompt,
+  buildReviewRejectPrompt,
   buildReviewStepPrompt,
   hasBlockingFinding,
   MERGE_ANNOUNCEMENT,
@@ -398,7 +399,9 @@ export function startBuilds(
  *   的再确认不适用，409 由流转表兜底）。
  * - {action:"revision", side:"plan", feedback, clientMessageId} → confirm→
  *   planning + 入队重规划步（同 conv continue session 语义归 M3）+ 时间线插
- *   用户驳回消息行（r5 §4）。
+ *   用户驳回消息行（r5 §4）。#701：同一动作面在 review 关口 = 人肉打回
+ *   （review→planning，边与 #330 blocking 自动回流共用）；门只开在
+ *   confirm/review，其余相位 409 且不落任何行。
  * - {action:"review", agentId, focus?}（M7 #312 / r8 §3.1；材料随关口分叉
  *   = #511）→ phase 留 confirm/review + 入队审核步（kind='review'，不产可合并
  *   changes）+ 时间线插 REVIEW_ANNOUNCEMENT；phase 非法（todo/queued/
@@ -543,7 +546,18 @@ export async function applyBuildStepAction(
     enqueueStep(deps, buildId, 'review', todoRecord.teamId, reviewPrompt);
     return;
   }
-  // revision：用户驳回消息行进 transcript（role user，r5 §3.6/§4 时间线呈现）。
+  // revision：确认关口驳回（confirm→planning，r5 §4）与审核关口人肉打回
+  // （review→planning，#701 B-C12）共用本动作面。审核闸的「人看」半边此前
+  // 只能点头：静息 review 态消息通道 409（无 claimed 步），打回必须走这里，
+  // 不挂「活跃会话」前提。边与 #330 blocking 自动回流同一条——边表语义
+  // 「不止自动 verdict 能触发」由本分支落地。
+  // 门只开在两个关口：planning 在途时 setTodoPhase 同相位幂等会吞掉断言、
+  // 再叠一个重复 plan 步（补话走 steer 面）；其余相位 409。门先于一切写面
+  // ——非法打回不留 feedback 行（流转断言在 setTodoPhase 内，晚于插行）。
+  if (todoRecord.phase !== 'confirm' && todoRecord.phase !== 'review') {
+    throw new HttpError(409, `revision 仅在待确认/审核关口允许，当前相位 ${todoRecord.phase}`);
+  }
+  // 用户驳回消息行进 transcript（role user，r5 §3.6/§4 时间线呈现）。
   insertMessageRow(deps, buildId, {
     id: newRecordId(),
     role: 'user',
@@ -553,8 +567,13 @@ export async function applyBuildStepAction(
   setTodoPhase(deps, todoRecord.id, 'planning');
   // 重规划步（同 conv continue session，r5 §4）：feedback 注入续轮指令，v2 忠实
   // 执行反馈（宿主等价物——措辞由 LLM 侧组织，本层给事实与要求）。
-  // 文本单源 = shared buildReplanPrompt（#612：web transcript 过滤侧同款识别）。
-  const replanPrompt = buildReplanPrompt(body.feedback);
+  // 文本单源 = shared buildReplanPrompt / buildReviewRejectPrompt（#612：web
+  // transcript 过滤侧同款识别）——两关口事实不同：审核关口改动已产出且在
+  // 会话分支上，指令交代产物保留（不孤儿化，#701 失败方式 3）。
+  const replanPrompt =
+    todoRecord.phase === 'review'
+      ? buildReviewRejectPrompt(body.feedback)
+      : buildReplanPrompt(body.feedback);
   enqueueStep(deps, buildId, 'plan', todoRecord.teamId, replanPrompt);
 }
 
