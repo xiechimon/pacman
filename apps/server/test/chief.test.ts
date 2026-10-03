@@ -974,18 +974,17 @@ describe('51 词表 relay 执行面（02 §4.3）', () => {
     expect(message).toContain('agent-nope');
   });
 
-  // #627 models 读工具：候选清单行语义 = web toModelOptions 并集律
-  // （custom providers models[] ∪ model-sources 非 pi 段，first-wins 去重）。
+  // #627 models 读工具：候选清单行语义 = web toModelOptions 投影（#770 起
+  // providers 段已除，只剩 model-sources 非 pi 段，first-wins 去重）。
   // 失败方式先于实现钉死：① 无 provider 且 claude-code 未装时报错而非空集；
-  // ② 空 id 行/空 name 回退漏做 → 脏行；③ pi 段重复产行（同 (provider,
-  // modelId) 双行）；④ claude-code 段 providerLabel 落 runtime 原词而非
-  // 显示名 → 与 web 候选不同义；⑤ custom provider 取名 claude-code 撞
-  // modelId 时不按 providers 段 first-wins。
+  // ② 空 id 行漏跳 → 脏行；③ pi 段重复产行；④ claude-code 段 providerLabel
+  // 落 runtime 原词而非显示名 → 与 web 候选不同义；⑤ custom provider 的
+  // models[] 不再被任何候选面引用（providers 写面照常可用）。
   test('models：无 custom provider + claude-code 未装 → 空清单不报错', async () => {
     expect(await relay('models', {})).toEqual([]);
   });
 
-  test('models：providers ∪ claude-code 并集 + first-wins 去重 + 行卫生', async () => {
+  test('models：providers 写面照常，候选只出 claude-code 段（去重 + 行卫生）', async () => {
     const provRes = await req(s.app, 'POST', `/api/teams/${teamId}/providers`, {
       providerId: 'gw-a',
       label: '网关甲',
@@ -993,12 +992,13 @@ describe('51 词表 relay 执行面（02 §4.3）', () => {
       api: 'openai-completions',
       models: [
         { id: 'model-a', name: '模型甲' },
-        { id: 'model-b', name: '' }, // 空 name 回退 id（web 投影同律）
-        { id: '', name: '空 id 行' }, // 空 id 跳过（providers 段卫生）
+        { id: 'model-b', name: '' },
+        { id: '', name: '空 id 行' },
       ],
     });
     expect(provRes.status).toBe(201);
-    // claude-code 段：default 槽 + opus 槽同 id → 段内去重留一行。
+    // claude-code 段：default 槽 + opus 槽同 id → 段内去重留一行；providers
+    // 段（gw-a 三行）一律不产候选行。
     const home = claudeHome(
       JSON.stringify({
         model: 'claude-opus-4-5',
@@ -1012,8 +1012,6 @@ describe('51 词表 relay 执行面（02 §4.3）', () => {
       modelName: string;
     }[];
     expect(rows).toEqual([
-      { provider: 'gw-a', providerLabel: '网关甲', modelId: 'model-a', modelName: '模型甲' },
-      { provider: 'gw-a', providerLabel: '网关甲', modelId: 'model-b', modelName: 'model-b' },
       {
         provider: 'claude-code',
         providerLabel: 'Claude Code',
@@ -1023,7 +1021,7 @@ describe('51 词表 relay 执行面（02 §4.3）', () => {
     ]);
   });
 
-  test('models：custom provider 取名 claude-code 撞 modelId → providers 段 first-wins（web 投影同律）', async () => {
+  test('models：custom provider 取名 claude-code 不再遮蔽 settings 行（#770）', async () => {
     const provRes = await req(s.app, 'POST', `/api/teams/${teamId}/providers`, {
       providerId: 'claude-code',
       label: '同名网关',
@@ -1039,8 +1037,10 @@ describe('51 词表 relay 执行面（02 §4.3）', () => {
       modelId: string;
       modelName: string;
     }[];
+    // providers 段已除：同名 provider 记录存在，但候选行取 settings 槽
+    // （品牌 label 'Claude Code'，name 原样）。
     expect(rows).toEqual([
-      { provider: 'claude-code', providerLabel: '同名网关', modelId: 'm-cc', modelName: '同名行' },
+      { provider: 'claude-code', providerLabel: 'Claude Code', modelId: 'm-cc', modelName: 'm-cc' },
     ]);
   });
 

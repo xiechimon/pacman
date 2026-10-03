@@ -17,7 +17,6 @@ import type {
   McpServerRecord,
   ModelSource,
   ModelSourceRuntime,
-  ProviderRecord,
   SecretRecord,
   SkillRecord,
   TeamMember,
@@ -923,20 +922,19 @@ export function toThinkingLevelDisplay(
   return value !== null && levels.includes(value) ? value : null;
 }
 
-/** 压缩模型选择器候选投影（#358，spec 11 §A10）：custom providers
- * `models[]`（带 providerId/label 归属——model-sources 的 pi 段与其同构
- * 但平铺丢归属，不重复产行）∪ 非 pi runtime 段模型（claude-code = server
- * 直读 ~/.claude/settings.json 的槽位；provider 位 = runtime 词表值，
- * 未安装段 models 恒空天然无贡献）。同 (provider, modelId) 去重
- * first-wins（settings.json default 槽 + env 槽可映同一 id；组件 React
- * key 防撞）；跨 provider 同 modelId 两行都留——model id 只在 provider
- * 内有意义（chiefCompactionModelSchema 对象形槽值立法理由）。providers
- * 段卫生与 server pi 投影对齐：空 id 跳过、空 name 回退 id（shared
- * modelSourceModelSchema 两处 min(1)）。边角：providerId 与 runtime 词表
- * 共用 provider 命名空间，custom provider 若取名 'claude-code' 且撞同
- * modelId，会被 providers 段 first-wins 遮蔽——刻意取该名的撞名罕见，
- * 规格未约束，不去 invent 隔离前缀。 */
-export function toModelOptions(providers: ProviderRecord[], sources: ModelSource[]): ModelOption[] {
+/** 压缩模型选择器候选投影（#358，spec 11 §A10；#770 起 providers 段已除：
+ *  只剩非 pi runtime 段模型（claude-code = server 直读 ~/.claude/settings.json
+ *  的槽位；provider 位 = runtime 词表值，未安装段 models 恒空天然无贡献）。
+ *  用户裁决原文：「自有 relay 不要，Claude Code 肯定做得比我们好」。custom
+ *  providers 的建/改/删（providers 管理页）与存量绑定执行面（daemon
+ *  backendFor 按 agent.provider 原值解析）都不动——本投影只决定 picker 里
+ *  能新选什么，不管已存值与执行。存量 provider 模型值读出来命中不了选项，
+ *  走 model-select-core 的裸串兜底（`provider/modelId` 即名，不空白不崩）。
+ *  同 (provider, modelId) 去重 first-wins（settings.json default 槽 + env 槽
+ *  可映同一 id；组件 React key 防撞）；跨 provider 同 modelId 两行都留——
+ *  model id 只在 provider 内有意义（chiefCompactionModelSchema 对象形槽值
+ *  立法理由）。段卫生：空 id 跳过（shared modelSourceModelSchema min(1)）。 */
+export function toModelOptions(sources: ModelSource[]): ModelOption[] {
   const options: ModelOption[] = [];
   const seen = new Set<string>();
   const push = (option: ModelOption) => {
@@ -945,21 +943,11 @@ export function toModelOptions(providers: ProviderRecord[], sources: ModelSource
     seen.add(key);
     options.push(option);
   };
-  for (const p of providers) {
-    for (const m of p.models) {
-      if (m.id === '') continue;
-      push({
-        provider: p.providerId,
-        providerLabel: p.label,
-        modelId: m.id,
-        modelName: m.name !== '' ? m.name : m.id,
-      });
-    }
-  }
   for (const source of sources) {
     if (source.runtime === 'pi') continue;
     const providerLabel = RUNTIME_LABELS[source.runtime] ?? source.runtime;
     for (const m of source.models) {
+      if (m.id === '') continue;
       push({
         provider: source.runtime,
         providerLabel,
