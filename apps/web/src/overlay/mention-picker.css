@@ -317,6 +317,14 @@
   outline: none;
 }
 
+/* #728 keyboard highlight (combobox pattern): the JS-driven active row
+   paints the same surface as :hover — arrow keys and hover share one
+   visual language, and the textarea keeps DOM focus so :focus never
+   lands on a row anymore. */
+.mention-inline-row--active {
+  background: var(--surface-hover);
+}
+
 .mention-inline-avatar {
   width: 24px;
   height: 24px;
