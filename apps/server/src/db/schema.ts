@@ -90,6 +90,10 @@ export const todo = sqliteTable('todo', {
   /** 外部引用（#446）：形如 `github:owner/repo#123`（shared
    * githubIssueSourceRef 单源）；无来源 = null。 */
   sourceRef: text('sourceRef'),
+  /** 任务的钉选机器（#682，t-0047）：任务级默认机器单源，null = 自动
+   * （语义同 build.pinnedMachineId）。startBuilds 缺省回落本值；orchestrate
+   * 落 chief_thread.pinnedMachineId；写面 = 新建任务 REST / PATCH 面。 */
+  machineId: text('machineId'),
 });
 
 // tag record 三位补全（#309，r9 §3.4 实测 wire {id, projectId, name, color,
@@ -427,8 +431,10 @@ export const machine = sqliteTable('machine', {
   /** 本机 vs 接入机（spec 11 A9，#357）：seed / hostname 匹配 enroll 落
    * 'local'；值域钉 shared machineRecordSchema.kind。 */
   kind: text('kind').notNull().default('remote'),
-  /** per-runtime 开关态（spec 11 A9）：MACHINE_RUNTIMES 词表子集，默认 []
-   * 全关；JSON 列（chief.watches 同形）。 */
+  /** per-runtime 开关态（spec 11 A9）：MACHINE_RUNTIMES 词表子集。#682 起是
+   * claim 真闸（机器未开的 runtime，步不投给该机）；服务面写路径（seed /
+   * enroll）缺省 `['pi']`（bootstrap 不空转），存量 `[]` 行由 0022 回填
+   * `['pi']`。JSON 列（chief.watches 同形）。 */
   enabledRuntimes: json<string[]>('enabledRuntimes').notNull().default(sql`'[]'`),
   /** 机器层 shell 访问闸（XMON-108 R1）：默认 false，存量行 migration 回填。
    * 与 agent 层「远程 shell」开关双闸齐开才有 remote_shell（claim localTools
@@ -530,6 +536,10 @@ export const chiefThread = sqliteTable('chief_thread', {
   sessionId: text('sessionId').notNull(),
   sessionOpenedAt: epochMs('sessionOpenedAt').notNull(),
   pendingSessionResumeAt: epochMs('pendingSessionResumeAt'),
+  /** 机器亲和（#682）：chief 会话文件（pi sessionDir）是执行机本地资产，
+   * 轮换认领会降级 new session——chief 步按本列钉给固定机器（claimChief
+   * Candidates 过滤，与 worker 步的 build.pinnedMachineId 同语义）。 */
+  pinnedMachineId: text('pinnedMachineId'),
   toolDefHashes: json<Record<string, string>>('toolDefHashes').notNull().default(sql`'{}'`),
   toolResultHashes: json<Record<string, string>>('toolResultHashes').notNull().default(sql`'{}'`),
   activeRun: json<ActiveRun>('activeRun'),

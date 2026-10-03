@@ -2,7 +2,9 @@
 // 00/D3 不外包 pi）。触发闭环（r3 §9 + r5 §8 实测语义）：
 // - 到期 → 新 build 全新重跑：triggerSource="schedule"、直执行（观测轮 32s 直达
 //   审核关口、未在方案关口停驻 [推断]）、machineId → build.pinnedMachineId
-//   （null=自动）；到确认/审核关口暂停 = 常规 build 流程（02 §9.2）。
+//   （schedule 显式钉 > todo.machineId #682 任务级默认 > null 自动；r3 §9 的
+//   「schedule null = 自动」现在精确为「schedule 未钉 → 回落 todo 值」）；
+//   到确认/审核关口暂停 = 常规 build 流程（02 §9.2）。
 // - 触发时停驻关口（confirm/review）的旧 build 标 errorMessage:"Cancelled"
 //   + build 文档事件（r5 §8 实测；done 轮旧 build 已合并落地，不标 [推断]）。
 // - `once` 触发后自动出队（r3 §9）；周期档滚动 nextRunAt（cron tz 感知）。

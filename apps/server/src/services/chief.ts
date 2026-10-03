@@ -248,6 +248,7 @@ export function toChiefThreadRecord(row: ThreadRow): ChiefThread {
     lastTurnAt: row.lastTurnAt,
     session: { runtime: 'pi', id: row.sessionId, openedAt: row.sessionOpenedAt },
     pendingSessionResumeAt: row.pendingSessionResumeAt,
+    pinnedMachineId: row.pinnedMachineId,
     toolDefHashes: row.toolDefHashes,
     toolResultHashes: row.toolResultHashes,
     activeRun: row.activeRun,
@@ -288,7 +289,7 @@ function requireBoundAgent(deps: ChiefDeps, row: ChiefRow) {
 export function sendChiefMessage(
   deps: ChiefDeps,
   teamId: string,
-  body: { threadId: string | null; content: string },
+  body: { threadId: string | null; content: string; pinnedMachineId?: string | null },
 ): {
   thread: ChiefThread;
   message: { id: string; role: 'user'; content: string; createdAt: number };
@@ -321,6 +322,10 @@ export function sendChiefMessage(
         sessionId: '', // 引擎会话未开——首轮 new session（done 回传后落值）
         sessionOpenedAt: now,
         pendingSessionResumeAt: null,
+        // #682 机器亲和：编排入口落（chief 会话文件是执行机本地资产，轮换
+        // 认领降级 new session——claim 按 thread 钉机器）。既有线程不回写：
+        // 会话在哪台机器续跑由线程创建时刻决定，中途换机丢上下文。
+        pinnedMachineId: body.pinnedMachineId ?? null,
         toolDefHashes: chiefToolDefHashes(),
         toolResultHashes: {},
         activeRun: null,
