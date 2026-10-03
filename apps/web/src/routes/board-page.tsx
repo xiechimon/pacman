@@ -486,8 +486,9 @@ export function BoardPage() {
     ? { ...fixture, todos, now: Date.now(), ...(projectNames ? { projectNames } : {}) }
     : { ...fixture, todos };
   return (
-    // #447 (ADR 0004 D8): data-chief-open scopes the board-column min-width
-    // guard to the docked state — closed, the grid resolves exactly as before.
+    // #447 (ADR 0004): data-chief-open marks the docked-drawer state — the
+    // detail shell carries the same marker (D7). The board column floor is
+    // unconditional since #692 (board.css owns the single-source track rule).
     <div
       className="board-shell h-full"
       data-route="board"
