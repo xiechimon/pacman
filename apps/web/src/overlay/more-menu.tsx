@@ -12,7 +12,7 @@
 // 延迟 Undo 窗口不落地([设计] 票内裁量 wontfix:关闭即刻生效,重开走
 // closed→todo reopen 面)。
 
-import { FloatingShell } from '../components/ui/floating-shell.js';
+import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { Ban, Check, Copy, Trash2 } from '../icons/index.js';
 import './overlay.css';
@@ -48,13 +48,14 @@ export function MoreMenu({
   return (
     <FloatingShell open={open} onClose={onClose} className="more-menu-shell">
       {/* 透明 catcher 保留（外点只关层、不穿透——#425 车道书记为该族待定项） */}
+      {/* 透明 catcher 不画任何东西，进出场无需动效（旧 anim-fade 是无效淡入） */}
       <button
         type="button"
-        className="more-menu-catcher anim-fade"
+        className="more-menu-catcher"
         aria-label={t('关闭菜单')}
         onClick={onClose}
       />
-      <div className="more-menu anim-pop" role="menu" aria-label={t('更多')}>
+      <div className={`more-menu ${FLOATING_POP_ANIM}`} role="menu" aria-label={t('更多')}>
         <button
           type="button"
           role="menuitem"
