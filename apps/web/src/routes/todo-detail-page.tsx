@@ -18,6 +18,7 @@ import { type Assignment, conversationBranch, parseGithubIssueSourceRef } from '
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { toast } from 'sonner';
 import { attachFile } from '../api/attachments.js';
 import { ApiError } from '../api/client.js';
 import {
@@ -86,6 +87,7 @@ import type {
   PlanDiffContent,
   TranscriptItem,
 } from '../fixtures/records.js';
+import { attachmentFailureTitle } from '../overlay/attachment-paste.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import type { MentionGroups } from '../overlay/mention-picker.js';
 import { MoreMenu } from '../overlay/more-menu.js';
@@ -189,16 +191,9 @@ export function TodoDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   // M7 #310 附件 wire：live editable composer 把 draft 提到此处，附件 token
   // 才能注入；send 时与 text 一起随 content 发出（#280 steer / #75 reject）。
+  // #729 起 token 注入住 useComposerWire（行原子 + caret 位），本页只保留
+  // draft state 与上传委托。
   const [liveDraft, setLiveDraft] = useState('');
-  // 附件 token 拼到 draft 的逻辑（多文件按选序拼接，每个 token 占独立行）。
-  const appendAttachmentTokens = useCallback(
-    (tokens: string[]) => {
-      if (tokens.length === 0) return;
-      const joiner = liveDraft === '' || liveDraft.endsWith('\n') ? '' : '\n';
-      setLiveDraft(`${liveDraft}${joiner}${tokens.join('\n')}\n`);
-    },
-    [liveDraft],
-  );
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
   // W4 #286：live 面服务端搜索（fixture 面不经此钩）。
   const searchResults = useSearchResults(search.query, live && search.open);
@@ -847,8 +842,8 @@ export function TodoDetailPage() {
                   live
                     ? async (files) => {
                         // #310 三步 wire（r9 §3.1）：每个文件走 grant + upload，
-                        // 失败仅记日志不发（用户继续编辑 draft，已发成功的 token
-                        // 仍落入）；token 拼到 draft。
+                        // 失败 toast 点名原因（#729 失败方式 5/12：draft 一字不
+                        // 动，成功文件的 token 仍落入）；注入由 wire hook 做。
                         const tokens: string[] = [];
                         for (const file of files) {
                           try {
@@ -856,9 +851,12 @@ export function TodoDetailPage() {
                             tokens.push(r.token);
                           } catch (err) {
                             console.error('attachment failed', file.name, err);
+                            toast.error(t(attachmentFailureTitle(err)), {
+                              description: file.name,
+                            });
                           }
                         }
-                        appendAttachmentTokens(tokens);
+                        return tokens;
                       }
                     : undefined
                 }
