@@ -97,7 +97,7 @@ test.describe('#15 focus ring收编', () => {
   });
 });
 
-test.describe('#10 schedules 新建定时弹层 = OverlayMount 全屏族', () => {
+test.describe('#10 schedules 新建定时弹层 = FloatingShell 全屏族（tw fade）', () => {
   test('scrim covers the full viewport — sidebar included', async ({ page }) => {
     await page.goto(SCHED);
     await expect(page.locator('.sched-form-overlay')).toBeVisible();
@@ -116,15 +116,14 @@ test.describe('#10 schedules 新建定时弹层 = OverlayMount 全屏族', () =>
     await expect(page.locator('.sched-form-overlay')).toBeHidden();
   });
 
-  test('backdrop click closes; entry rides the dialog-family anim token', async ({ page }) => {
+  test('backdrop click closes; entry rides the tw-animate-css fade', async ({ page }) => {
     await page.goto(SCHED);
     const overlay = page.locator('.sched-form-overlay');
     await expect(overlay).toBeVisible();
-    await expect(overlay).toHaveClass(/anim-fade/);
-    await expect(page.locator('.overlay-mount:has(.sched-form-overlay)')).toHaveAttribute(
-      'data-overlay-state',
-      'open',
-    );
+    // #656: the scrim's enter is the tw-animate-css enter keyframe gated on the
+    // FloatingShell group (replaces the retired .anim-fade + .overlay-mount pair).
+    await expect(overlay).toHaveCSS('animation-name', 'enter');
+    await expect(page.locator('.overlay-mount')).toHaveCount(0);
     // scrim far from the 488-wide centered panel
     await page.mouse.click(80, 80);
     await expect(overlay).toBeHidden();

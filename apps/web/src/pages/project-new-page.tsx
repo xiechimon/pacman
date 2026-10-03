@@ -9,8 +9,8 @@
 // MCP 仍接受 hosted，存量项目不动）。名称回填：local = basename(localPath)，
 // github = repo 段；仅当名称为空或仍等于上次回填值时覆盖（用户手改过则
 // 不动）。repo 种类菜单走 components/ui/dropdown-menu（t-0070，Base UI
-// Menu RadioGroup）；picker 弹层仍走家族法 #67/#127：OverlayMount +
-// ClickCatcher + Escape（chip-popover 先例）。提交 body 单源 = shared
+// Menu RadioGroup）；picker 弹层走家族法 #67/#127 的 #656 壳：FloatingShell
+// + ClickCatcher（Esc 归 Base UI layer 栈，mention-picker 先例）。提交 body 单源 = shared
 // createProjectBodySchema（kind 契约名；github 提交闸与 server 400 门同吃
 // isGithubRepoRef）。
 // #361 (spec 12 G2-T4)：GitHub 仓库 选态成为认证门控的 picker 面，三面：
@@ -50,13 +50,14 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu.js';
+import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
 import { Input } from '../components/ui/input.js';
 import { toastError } from '../components/ui/toaster.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronRight, ImageFrame } from '../icons/index.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 import { DirBrowser } from './dir-browser.js';
 import { PageShell } from './shell.js';
 import './pages.css';
@@ -147,7 +148,11 @@ export function ProjectNewPage() {
   const pendingSwapFocus = useRef(false);
   const closePicker = useCallback(() => setPickerOpen(false), []);
   const closeBrowse = useCallback(() => setBrowseOpen(false), []);
-  useEscapeClose(pickerOpen, closePicker);
+  // #656：picker 的 Esc 归 FloatingShell（Base UI layer 栈），旧 useEscapeClose
+  // 退役。gh picker 以 .prj-new-repo-field（position:relative）作 Portal
+  // container，保面板的绝对定位几何（repo 菜单已归 DropdownMenu，锚走
+  // repoFieldRef）。
+  const [repoFieldWrap, setRepoFieldWrap] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!pendingSwapFocus.current) return;
     pendingSwapFocus.current = false;
@@ -304,10 +309,9 @@ export function ProjectNewPage() {
   const [ghActive, setGhActive] = useState(0);
   // 开面（含着陆参自动开）与行表异步到位后把焦点送进列表：选中行优先，
   // 否则首行；面板已持焦（用户点了搜索框）不抢。delivered 旗标按开合周期
-  // 复位。有界 rAF 重试：OverlayMount 是两段提交（open 帧 mounted 仍 false
-  // → 子树下一帧才存在），live 面行表还要等 reposQ——单次 rAF 会在列表
-  // 就位前放弃，重试到 delivered 或 30 帧预算耗尽（空面 = 无行可聚焦，
-  // 焦点留在触发钮）。
+  // 复位。有界 rAF 重试：open 帧弹层子树刚随 Portal 挂载（#656 壳），
+  // live 面行表还要等 reposQ——单次 rAF 会在列表就位前放弃，重试到
+  // delivered 或 30 帧预算耗尽（空面 = 无行可聚焦，焦点留在触发钮）。
   useEffect(() => {
     if (!pickerVisible) {
       ghFocusDelivered.current = false;
@@ -344,10 +348,10 @@ export function ProjectNewPage() {
     return () => cancelAnimationFrame(raf);
   }, [pickerVisible, hits, githubRepo]);
   // 关面焦点归还：交回 #prj-new-repo（该时点的续作控件：picker 触发钮 /
-  // 手动兜底 input / 认证钮，menu 原语的焦点归还同律）。OverlayMount 保活
-  // 期（exit 150ms）里 visibility:hidden 不立刻掉焦——焦点滞留在关面中的
-  // 行上，故按「active 在 picker 面板子树内（含保活期）或已掉 body」判定
-  // 有界重试（30 帧 > 保活窗，也覆盖分支切换时续作控件晚一帧就位）；
+  // 手动兜底 input / 认证钮，menu 原语的焦点归还同律）。壳退场保活期
+  // （visibility 桥 150ms，floating-shell.css）里不立刻掉焦——焦点滞留在
+  // 关面中的行上，故按「active 在 picker 面板子树内（含保活期）或已掉
+  // body」判定有界重试（30 帧 > 保活窗，也覆盖分支切换时续作控件晚一帧就位）；
   // 焦点在面板外稳位（触发钮 toggle 关面 / 用户已移焦）不抢。
   const pickerWasOpen = useRef(false);
   useEffect(() => {
@@ -483,7 +487,10 @@ export function ProjectNewPage() {
             roving focus / typeahead / 焦点归还全归原语。皮肤/几何正本在
             per-face .prj-new-repo-menu*；定位正本迁 Positioner 参数
             （side=bottom align=start sideOffset=6 = 原 top:calc(100%+6px)
-            left:0），anchor 显式钉 field wrap（多触发面共锚）。 */}
+            left:0），anchor 显式钉 field wrap（多触发面共锚）。同一 wrap 兼作
+            gh picker FloatingShell 的 Portal container（#656，绝对定位几何
+            保真），故 ref 双写：repoFieldRef（Menu anchor）+ repoFieldWrap
+            （Dialog portal 容器态）。 */}
         <DropdownMenu
           open={repoOpen}
           onOpenChange={(next) => {
@@ -491,7 +498,13 @@ export function ProjectNewPage() {
             if (next) setPickerOpen(false);
           }}
         >
-          <div className="prj-new-repo-field" ref={repoFieldRef}>
+          <div
+            className="prj-new-repo-field"
+            ref={(el) => {
+              repoFieldRef.current = el;
+              setRepoFieldWrap(el);
+            }}
+          >
             {repoSel === 'github' ? (
               manualRepo ? (
                 <>
@@ -653,10 +666,25 @@ export function ProjectNewPage() {
                 行表键盘契约手搓（t-0070 裁决③：混合板无 drop-in，维持手搓 +
                 契约对齐收编面）：开面焦点进列表、Arrow/Home/End roving、
                 typeahead、Enter 即选即关、关面焦点归还——实现在上方
-                ghListRef/onGhListKeyDown 一族。 */}
-            <OverlayMount open={pickerVisible}>
+                ghListRef/onGhListKeyDown 一族。
+                #656：壳 = FloatingShell（Base UI layer 栈，Esc 归 escapeKey
+                isTopmost，旧 OverlayMount + useEscapeClose 退役）；Portal 挂回
+                .prj-new-repo-field（repoFieldWrap），absolute 面板几何保真。
+                触发钮是 toggle 面（#prj-new-repo aria-expanded）——#666 律：
+                initialFocus=false 焦点留触发位（开面焦点进列表仍由上方
+                ghFocusDelivered 一族自己送达）+ 外点归 ClickCatcher（原生
+                outsidePress 只接得住键盘合成 click，与 toggle onClick 双写
+                会把面「关不掉」）。 */}
+            <FloatingShell
+              open={pickerVisible}
+              onClose={closePicker}
+              container={repoFieldWrap}
+              className="anchored-pop-shell"
+              initialFocus={false}
+              disablePointerDismissal
+            >
               <ClickCatcher onClose={closePicker} />
-              <div className="prj-new-gh-picker anim-pop">
+              <div className={`prj-new-gh-picker ${FLOATING_POP_ANIM}`}>
                 <div className="prj-new-gh-picker-head">
                   <span className="prj-new-gh-login">
                     {login === undefined || login === ''
@@ -740,7 +768,7 @@ export function ProjectNewPage() {
                   {t('手动输入 owner/repo')}
                 </Button>
               </div>
-            </OverlayMount>
+            </FloatingShell>
             {/* #441 应用内目录浏览器（ADR 0003 D6 remote/headless 兜底）：仅在
               local 选态挂载；onPick 走既有 onLocalPathChange（回填 + 名称联动
               + 编辑即撤提示律，W5）。 */}
