@@ -107,8 +107,12 @@ jobs:
       - name: Install Playwright chromium
         run: pnpm exec playwright install chromium --with-deps
 
+      # 分隔符的位置是有判据的（#765）：pnpm 把 `--` 原样转给脚本，`e2e -- --shard=…`
+      # 于是 playwright 收到一个 `--` 位置参数、`--shard` 根本没进解析——四条分片
+      # 各跑全量 688 用例（实测 4m03–5m32/shard），分片形同虚设。去掉 `--`（pnpm
+      # 会把脚本名之后的未知 flag 直接转发）后每分片 173/171/…，并集 = 全量。
       - name: E2E (shard ${{ matrix.shard }}/4, #693)
-        run: pnpm --filter @pacman/web e2e -- --shard=${{ matrix.shard }}/4
+        run: pnpm --filter @pacman/web e2e --shard=${{ matrix.shard }}/4
 
   # 分片聚合闸（#693）：分支保护的 required contexts 不编码 matrix 基数——
   # 名单写死 e2e (1..4) 的话，将来分片数一调，名单就静默失配（新增分片不
