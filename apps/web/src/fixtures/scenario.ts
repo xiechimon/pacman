@@ -23,6 +23,7 @@ import {
   boardDefault,
   boardFailed,
   boardGithubPicker,
+  boardMachinePicker,
   boardOverflow,
   boardProjectPicker,
   boardR8Overlay,
@@ -132,6 +133,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #176 new-task dialog 项目选择器:命名场景(无 capture)——boardDefault
       // 面加 projectNames 双项目,e2e 钉选择器行为;无 fixture 行。
       'newtask-projects': boardProjectPicker,
+      // #758 机器 chip 选择记忆：命名场景（无 capture，同上先例）——
+      // boardDefault 面 + resources 两台机器（在线本机 + 离线远端），
+      // e2e 钉「选→刷新→回上次那台」与两条降级路径。
+      'newtask-machines': boardMachinePicker,
       // #361 新建项目 GitHub repo picker：命名场景（无 capture，
       // newtask-projects 先例）——boardDefault 面 + 已连接 github fixture，
       // e2e 钉 picker 搜索/单选回填/断开/着陆参行为。
