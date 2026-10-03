@@ -181,7 +181,7 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #471 named scenario (no capture, detail-unread precedent): the
       // building surface's quiescent gap — agent not streaming, task not
       // ended — the transcript's live cue is one loading indicator (#672:
-      // loading-dev LinearDots) + the static 执行中... label row;
+      // loading-dev Atom) + the static 执行中... label row;
       // spinner-live.spec rides it.
       'spinner-quiescent': detailSpinnerQuiescent(),
       // frozen right-pane views (issue #68 captures, re-homed by #366):

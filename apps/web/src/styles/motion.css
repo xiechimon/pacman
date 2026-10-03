@@ -98,7 +98,8 @@
 /* r1 §4.3 convention: the whole site degrades motion under
    prefers-reduced-motion — the replica mirrors it. The loading indicator
    is not listed here: #672 moved it to loading-dev, whose injected sheet
-   carries its own equivalent freeze (animation: none + static dots). */
+   carries its own equivalent freeze (animation: none + a static settle
+   transform on the spinning parts). */
 @media (prefers-reduced-motion: reduce) {
   .anim-fade,
   .anim-pop,

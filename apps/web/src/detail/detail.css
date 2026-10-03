@@ -961,11 +961,11 @@
   text-overflow: ellipsis;
 }
 
-/* #672 loading indicator slot: a loading-dev LinearDots root (15×16px at
-   size 16 — the library sheet owns the box, the flex layout, the dot wave
-   and the reduced-motion freeze; dots fill with currentColor). The skin
-   keeps only what the library cannot know: the row-level no-shrink and the
-   dim text color the #471 reel carried. */
+/* #672 loading indicator slot: a loading-dev Atom root (a 16×16 square at
+   size 16 — the library sheet owns the box, the orbit/spin animation and
+   the reduced-motion freeze; shell and ring strokes paint with
+   currentColor). The skin keeps only what the library cannot know: the
+   row-level no-shrink and the dim text color the #471 reel carried. */
 .chat-spinner {
   flex: none;
   color: var(--text-dim);

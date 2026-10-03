@@ -801,7 +801,7 @@ export function detailBuilding(lateCapture: boolean): FixtureSet {
  *  detail-unread precedent): the task is executing but the agent is not
  *  streaming (no active step) — the transcript keeps one live row through
  *  the same streaming component: loading indicator (#672: loading-dev
- *  LinearDots) + the static 执行中... label, no seconds counter. [设计] */
+ *  Atom) + the static 执行中... label, no seconds counter. [设计] */
 export function detailSpinnerQuiescent(): FixtureSet {
   return {
     todos: [probeTodo('building', r7(13, 35))],

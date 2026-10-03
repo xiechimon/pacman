@@ -9,7 +9,7 @@
 // from the r7 16/17/26/27/28/36/38 and r8 54–77 captures; CONTEXT.md canon
 // names the message flow `transcript`.
 
-import { LinearDots } from 'loading-dev';
+import { Atom } from 'loading-dev';
 import { useState } from 'react';
 import { inlineSegments } from '../api/mappers.js';
 import { type CurrentUser, useLiveData } from '../api/provider.js';
@@ -326,13 +326,16 @@ function Row({
           <span className="chat-streaming">
             {/* #672: the loading-dev pilot replaces the #471 braille reel —
                 the replica discipline is lifted for this one surface by user
-                decision (2026-10-03, ADR 0009 D4 revision). LinearDots: three
-                currentColor dots wave left→right on the library default 900ms
-                (the old reel's period); the library's React-19 precedence
-                stylesheet freezes them under reduced motion, and its root
-                carries aria-hidden — the label text stays the accessible live
-                cue, the animation is never the only channel. */}
-            <LinearDots size={16} className="chat-spinner" />
+                decision (2026-10-03, ADR 0009 D4 revision); the user picked
+                Atom after viewing the live preview. Atom: a 16×16 shell
+                circle with three tilted orbits spinning inner rings, all
+                strokes in currentColor; duration={900} pins the cycle to
+                the old reel's period (the atom default is 1000ms). The
+                library's React-19 precedence stylesheet freezes the spins
+                under reduced motion, and its root carries aria-hidden — the
+                label text stays the accessible live cue, the animation is
+                never the only channel. */}
+            <Atom size={16} duration={900} className="chat-spinner" />
             {item.seconds != null && (
               // tabular figures: the 3s→10s tick must not shift the row tail
               <span className="chat-streaming-secs">{item.seconds}s</span>
