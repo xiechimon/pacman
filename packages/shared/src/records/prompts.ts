@@ -8,6 +8,7 @@
 // 宣告行（MERGE_ANNOUNCEMENT / REVIEW_ANNOUNCEMENT，message.ts）不在本词表：
 // 它们是要渲染的行（note 家族），不是要消失的行。
 
+import { PLAN_FILE_NAME } from './plan.js';
 import { parseReviewPromptMeta } from './review.js';
 import type { StepKind } from './step.js';
 
@@ -57,6 +58,14 @@ export function buildRestartPrompt(feedback: string): string {
   return `${RESTART_HEAD}${feedback}${RESTART_TAIL}`;
 }
 
+/** plan 步补写指令（#113 / #703 单源）：plan 步完成而 plan.md 缺席时的自动
+ *  补写轮 prompt。#703 起该指令经 claim 载荷 instruction 真的进会话（runner
+ *  续轮投递），daemon 把它记成 user 行——呈现层过滤侧按本模板识别（模板行
+ *  不是用户话语）。 */
+export function buildPlanRewritePrompt(): string {
+  return `规划步未产出 ${PLAN_FILE_NAME} 交接文件。请将方案写入工作区根目录的 ${PLAN_FILE_NAME}（覆盖 Context/Changes/Edge cases/Verification 四段）再结束本步；若改动已在规划轮完成，${PLAN_FILE_NAME} 如实记录改动内容与验证方式即可。`;
+}
+
 /** 开始任务编排请求（#640 / r14 §5.2：编排回合的会话 user 消息 = 总目标
  *  正本，任务原文逐字内嵌 = 稳定锚点；实体引用 [#n](todo:<id>) 走 chief
  *  正文引用族）。首行短且无 markdown——chiefThreadTitle 取首行前 12 字符做
@@ -79,10 +88,11 @@ export function buildOrchestratePrompt(todo: {
 }
 
 /** 非空续轮指令集（chief/review 的占位空串不入集——空文本行由呈现层自有
- *  规则跳过，不属「合成 prompt」语义）。 */
-const SYNTHETIC_EXACT: ReadonlySet<string> = new Set(
-  Object.values(CONTINUE_PROMPTS).filter((v) => v !== ''),
-);
+ *  规则跳过，不属「合成 prompt」语义）。#703 补写指令为固定文本，同集收录。 */
+const SYNTHETIC_EXACT: ReadonlySet<string> = new Set([
+  ...Object.values(CONTINUE_PROMPTS).filter((v) => v !== ''),
+  buildPlanRewritePrompt(),
+]);
 
 function wrappedBy(text: string, head: string, tail: string): boolean {
   return text.length >= head.length + tail.length && text.startsWith(head) && text.endsWith(tail);

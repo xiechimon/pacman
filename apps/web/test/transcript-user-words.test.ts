@@ -25,6 +25,7 @@ import {
   CONTINUE_PROMPTS,
   REVIEW_ANNOUNCEMENT,
   type StepJournalRow,
+  buildPlanRewritePrompt,
   buildReplanPrompt,
   buildRestartPrompt,
   buildTaskPromptText,
@@ -136,6 +137,15 @@ describe('mapTranscript 合成 prompt 过滤（#612）', () => {
     // 只剩 feedback 真行；两条模板行退场
     expect(users).toHaveLength(1);
     expect(users[0]?.text).toBe('标题太长了');
+  });
+
+  test('F12 #703 补写轮指令行（plan.md 补写模板）过滤——续轮指令冒名用户话语', () => {
+    // #703 起补写/重规划轮的续轮指令真的进会话（runner 投递 claim 载荷
+    // instruction），daemon 把它记成 user 行——呈现层按同族模板退场。
+    const items = render({
+      messages: [msg('user', buildPlanRewritePrompt(), NOW - 50_000)],
+    });
+    expect(userItems(items)).toHaveLength(0);
   });
 
   test('F5 review 步材料行（首行 JSON meta）过滤', () => {
