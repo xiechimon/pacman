@@ -487,7 +487,23 @@ export function ChiefDrawer({
                         />
                       </span>
                       <div className="chief-msg-col">
-                        <div className="chief-bubble">{item.text}</div>
+                        {/* #742：live 用户行的 markdown 槽（详情页用户行
+                            transcript.tsx #612 同款配方）——经共用块级解析器
+                            渲染，todo 提及 chip / 粗体 / 行内 code / 围栏不再
+                            按字面漏出；气泡类名双态，纯文本槽（fixture 捕获形）
+                            保持字面路径 DOM 与几何逐字不变。复制载荷照旧取
+                            item.text 原文（#469 律），rewind 锚 id 透传不动。 */}
+                        <div
+                          className={
+                            item.markdown != null ? 'chief-bubble chief-bubble--md' : 'chief-bubble'
+                          }
+                        >
+                          {item.markdown != null ? (
+                            <ChatMarkdown text={item.markdown} />
+                          ) : (
+                            item.text
+                          )}
+                        </div>
                         <div className="chief-msg-tools">
                           {/* #615 C：复制翻真 clipboard 钮（local-first 面存在）。 */}
                           <Button

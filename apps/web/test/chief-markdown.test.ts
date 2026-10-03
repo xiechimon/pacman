@@ -19,8 +19,18 @@
 //   F-C3 prose 里的裸 #N 被误判成提及（正则吃宽）
 //   F-C4 相邻 scheme（todos:）或空 id（todo: 无 id）被误配成 chip
 //   F-C5 四旧 scheme（agent/project/skill/machine）段投影被改坏（契约扩展回归钉）
+// #742 用户气泡 markdown 槽（详情页用户行 #612 同款配方；渲染缝的钉在
+// e2e/chief-stream-markdown.spec.ts F-R14..R17）：
+//   F-D1 live 用户行不进 markdown 槽——用户自己发的 [#16](todo:id) 与粗体标记
+//        在自泡里漏成字面文本（bug 本体；详情页 #612 / robot 行 #650 早已同槽）
+//   F-D2 #667 去重键被槽带偏：同文 POST + 回声不再恰一条，或 rewind 锚 id 漂移
+//   F-D3 wake 回声行（无孪生）被误删；槽内文本被摊平（多行原文不逐字）
+//   F-D4 javascript: 伪链成锚（scheme 白名单退化；现状已挡 → 负例钉住防回归）
+//   F-D5 渲染链出现 dangerouslySetInnerHTML（解析器产 React 节点的 XSS 律退化）
 
 import type { AgentRecord, ChiefGetResponse, ChiefThread } from '@pacman/shared';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
   inlineSegments,
@@ -90,6 +100,16 @@ function thread(activeRun: ChiefThread['activeRun']): ChiefThread {
 
 function robotItems(items: ChiefStreamItem[]) {
   return items.filter((i): i is Extract<ChiefStreamItem, { kind: 'robot' }> => i.kind === 'robot');
+}
+
+function userItems(items: ChiefStreamItem[]) {
+  return items.filter((i): i is Extract<ChiefStreamItem, { kind: 'user' }> => i.kind === 'user');
+}
+
+/** 显式 id 行（chief-user-echo.test.ts 同形）：#667 去重与 #615 rewind 锚
+ *  都吃 id 位，共享计数器工厂 msg() 的自增 id 钉不住。 */
+function row(id: string, role: MessageRow['role'], content: unknown, at = NOW): MessageRow {
+  return { id, role, content, createdAt: at };
 }
 
 describe('inlineSegments strong 位（#650 F-A1..A4）', () => {
@@ -311,5 +331,68 @@ describe('mapChief typing 尾行（#651 F-B1..B4）', () => {
     const content = mapChief(ENV, opts({ phase: 'chief' }));
     expect(robotItems(content.stream ?? [])).toHaveLength(0);
     expect(content.running).toBe(true);
+  });
+});
+
+describe('mapChiefStream 用户行 markdown 槽（#742 F-D1..D5）', () => {
+  test('F-D1 user 行进 markdown 槽——原文逐字 + rewind 锚 id 透传', () => {
+    const text = '派 [#16](todo:t16) 去处理，**优先** 检查';
+    const items = mapChiefStream([row('u-post-1', 'user', text)]);
+    const users = userItems(items);
+    expect(users).toHaveLength(1);
+    // 槽 = 原文逐字（trim 后），块结构解析归渲染期（#612/#650 同律）
+    expect(users[0]?.markdown).toBe(text);
+    // text 位不变（复制载荷 / 去重键 / 呈现兜底三面吃它）
+    expect(users[0]?.text).toBe(text);
+    // #615 rewind 锚照常透传（渲染换法不得动 id 位）
+    expect(users[0]?.id).toBe('u-post-1');
+  });
+
+  test('F-D2 #667 去重键不吃槽——同文 POST + 回声恰一条，正本就位带槽带锚', () => {
+    const text = '派 [#16](todo:t16) 去处理';
+    const items = mapChiefStream([
+      row('AbCdEfGhIjKlMnOpQrStU', 'user', text, NOW),
+      row('user-LFnKO1KhDH4F1HylsEAfY', 'user', text, NOW + 100),
+      row('msg-r1', 'assistant', '已派工', NOW + 9000),
+    ]);
+    const users = userItems(items);
+    expect(users).toHaveLength(1);
+    expect(users[0]?.id).toBe('AbCdEfGhIjKlMnOpQrStU');
+    expect(users[0]?.markdown).toBe(text);
+  });
+
+  test('F-D3 wake 回声行（无孪生）保留且带槽；多行原文在槽内不摊平', () => {
+    const wake = '[wake:settle] 任务 #5「修复」已合并完成';
+    const steer = '按这个改：\n\n- 圆角 8px\n- 悬停加过渡';
+    const items = mapChiefStream([
+      row('user-stepW', 'user', wake, NOW),
+      row('u-post-2', 'user', steer, NOW + 5000),
+    ]);
+    const users = userItems(items);
+    expect(users).toHaveLength(2);
+    expect(users[0]?.markdown).toBe(wake);
+    // 换行逐字保留——围栏/列表的块结构归渲染期解析，mapper 不摊平
+    expect(users[1]?.markdown).toBe(steer);
+  });
+
+  test('F-D4 javascript: 伪链不成 mention 段（scheme 白名单，防退化负例）', () => {
+    const segs = inlineSegments('别点 [click](javascript:alert(1)) 这个');
+    expect(segs.filter((s) => s.style === 'mention')).toHaveLength(0);
+    expect(segs.map((s) => s.text).join('')).toContain('[click](javascript:alert(1))');
+  });
+
+  test('F-D5 渲染链零 dangerouslySetInnerHTML（解析器产 React 节点，静态钉）', () => {
+    const web = resolve(import.meta.dirname, '..');
+    const chain = [
+      'src/chief/chief-drawer.tsx',
+      'src/detail/chat-markdown.tsx',
+      'src/detail/segments.tsx',
+      'src/api/mappers.ts',
+    ];
+    for (const rel of chain) {
+      expect(readFileSync(resolve(web, rel), 'utf8'), rel).not.toContain(
+        'dangerouslySetInnerHTML',
+      );
+    }
   });
 });

@@ -692,8 +692,12 @@ export type ChiefStreamItem =
   | { kind: 'error'; text: string }
   /** User bubble with avatar + the copy/restore icon pair below it.
    *  `id` = live 面 chief_message id（#615 返工恢复钮的 rewind 锚；fixture
-   *  面缺省 = 确认层 accept 律关窗，零请求）。 */
-  | { kind: 'user'; text: string; id?: string }
+   *  面缺省 = 确认层 accept 律关窗，零请求）。#742: a live user row may
+   *  carry its raw text in `markdown` (detail-page user row #612 同款配方)
+   *  — the renderer parses it with chat-markdown at render time, so the
+   *  user's own mentions/markdown no longer leak as literal text; the
+   *  frozen capture shapes (text-only) render unchanged. */
+  | { kind: 'user'; text: string; id?: string; markdown?: string }
   /** Chief prose paragraphs + optional bullets + the `完成 Ns ›` footer
    *  row (r5 116 verification report). `tools` = 该回合的工具调用行（#615
    *  返工：foot 折叠箭头展开面；live = chief_message 的 toolcall 行投影，

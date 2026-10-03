@@ -490,6 +490,18 @@
   color: var(--text-primary);
 }
 
+/* #742: markdown 路径的用户气泡（detail.css .chat-bubble--md 的 #612 配方
+   同款）——首/尾块 margin 归零：气泡上下留白由 10px padding 承担，块自带
+   margin（围栏 8px / 标题 12px）不再与它叠出双倍间距或尾部空转；单段短消息
+   保持 24px 行盒 → 44px 药丸高度，与字面路径几何逐值一致。.chief-bubble
+   本无 pre-wrap（.chat-bubble 有），故不需要 white-space 还原位。 */
+.chief-bubble--md > :first-child {
+  margin-top: 0;
+}
+.chief-bubble--md > :last-child {
+  margin-bottom: 0;
+}
+
 .chief-chip-todo {
   display: inline-flex;
   align-items: center;
