@@ -374,6 +374,74 @@ test('detail face: an over-cap paste is rejected with a toast, grant never fires
   expect(uploads.grants).toEqual([]);
 });
 
+test('detail face: a non-image whitelist file (text/plain) is accepted under its real name', async ({
+  page,
+}) => {
+  const uploads = await stubUploads(page);
+  const input = await bootDetail(page);
+
+  await pasteFiles(page, COMPOSER, [{ name: 'notes.txt', type: 'text/plain' }]);
+
+  // Real names are never renamed — only generic clipboard blobs are.
+  await expect(input).toHaveValue(`![notes.txt](attachment:team-1/att-1.png)\n`);
+  await expect.poll(() => uploads.grants.length).toBe(1);
+  expect(uploads.grants[0]).toMatchObject({
+    fileName: 'notes.txt',
+    mimeType: 'text/plain',
+    scope: 'message',
+  });
+});
+
+test('detail face: a mixed file+text clipboard takes the files and drops the text', async ({
+  page,
+}) => {
+  const uploads = await stubUploads(page);
+  const input = await bootDetail(page);
+
+  // The synthetic event carries both a file and plain text; the handler
+  // must preventDefault (text dropped — files win per the ticket ruling).
+  const prevented = await page.evaluate(() => {
+    const ta = document.querySelector('.composer-input');
+    if (!(ta instanceof HTMLTextAreaElement)) throw new Error('no composer');
+    const dt = new DataTransfer();
+    dt.setData('text/plain', 'copied caption');
+    dt.items.add(new File([new Uint8Array([1, 2, 3])], 'image.png', { type: 'image/png' }));
+    const event = new ClipboardEvent('paste', {
+      clipboardData: dt,
+      bubbles: true,
+      cancelable: true,
+    });
+    ta.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+
+  expect(prevented).toBe(true);
+  await expect(input).toHaveValue(`${TOKEN_1}\n`);
+  await expect.poll(() => uploads.grants.length).toBe(1);
+});
+
+test('detail face: a failed upload toasts and the draft survives untouched', async ({ page }) => {
+  await stubBoot(page);
+  await stubDetailSurface(page);
+  await page.route('**/api/uploads/grant', (route, request) => {
+    if (request.method() !== 'POST') return route.fallback();
+    return route.fulfill({ status: 500, json: { error: 'grant boom' } });
+  });
+
+  await page.goto(`/app/todo/${CARD_ID}`);
+  const input = page.locator(COMPOSER);
+  await expect(input).toBeVisible();
+  await input.fill('words that must survive');
+  await setCaret(page, COMPOSER, 5);
+  await pasteFiles(page, COMPOSER, [{ name: 'image.png', type: 'image/png' }]);
+
+  const toast = page.locator('[data-sonner-toast]');
+  await expect(toast).toBeVisible();
+  await expect(toast).toContainText('附件上传失败');
+  // FM12: not one character lost, not a newline inserted.
+  await expect(input).toHaveValue('words that must survive');
+});
+
 test('detail face: Enter during the upload does not send; after it lands, Enter sends the token', async ({
   page,
 }) => {
