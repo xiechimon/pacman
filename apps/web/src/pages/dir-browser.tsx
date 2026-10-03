@@ -17,13 +17,14 @@
 // 弹层家族法 #67/#127：OverlayMount + ClickCatcher + Escape（gh-picker 同款）。
 
 import { FS_LIST_MAX_ENTRIES } from '@pacman/shared';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client.js';
 import { useFsList } from '../api/hooks.js';
 import { Button } from '../components/ui/button.js';
+import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, GitCommit } from '../icons/index.js';
-import { ClickCatcher, OverlayMount, useEscapeClose } from '../overlays/dismiss.js';
+import { ClickCatcher } from '../overlays/dismiss.js';
 
 /** 记住上次位置的 localStorage 键（单租户单机，ADR 0003 D5）。 */
 const LAST_DIR_KEY = 'pacman.dirBrowser.lastDir';
@@ -71,7 +72,18 @@ export function DirBrowser({
   const [dir, setDir] = useState<string | null>(null);
   const [armed, setArmed] = useState(false);
   const [showDotfiles, setShowDotfiles] = useState(false);
-  useEscapeClose(open, onClose);
+  // #656：Esc 归 FloatingShell（Base UI layer 栈）。面板是 absolute top:100%，
+  // 旧 containing block = 最近的非 static 祖先；Portal container 取同一个元素，
+  // 几何逐像素不变（锚点 span 原位，向上走到第一个非 static 祖先）。
+  const anchorRef = useRef<HTMLSpanElement | null>(null);
+  const [dockEl, setDockEl] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    let node = anchorRef.current?.parentElement ?? null;
+    while (node !== null && getComputedStyle(node).position === 'static') {
+      node = node.parentElement;
+    }
+    setDockEl(node);
+  }, []);
 
   // 起点：open 翻真时同步 lastDir（记住上次位置，W1）+ armed 门——query 只在
   // dir 就位后 enabled，避免「缺省请求 + lastDir 请求」双发（W1）。
@@ -116,100 +128,114 @@ export function DirBrowser({
   const crumbs = currentPath !== null ? breadcrumb(currentPath) : [];
 
   return (
-    <OverlayMount open={open}>
-      <ClickCatcher onClose={onClose} />
-      <div className="dir-browser anim-pop" role="dialog" aria-label={t('浏览本地文件夹')}>
-        <div className="dir-browser-bar">
-          <nav className="dir-browser-crumbs">
-            {crumbs.map((seg, i) => (
-              <span key={seg.path} className="dir-browser-crumb-wrap">
-                {i > 0 && (
-                  <span className="dir-browser-crumb-sep" aria-hidden="true">
-                    <ChevronRight width={12} height={12} />
-                  </span>
-                )}
-                {/* XMON-25 收编：ghost；h-auto 保内容高（focus 环矩形 =
+    <>
+      <span ref={anchorRef} hidden aria-hidden="true" />
+      {dockEl !== null && (
+        <FloatingShell
+          open={open}
+          onClose={onClose}
+          container={dockEl}
+          className="anchored-pop-shell"
+        >
+          <ClickCatcher onClose={onClose} />
+          <div
+            className={`dir-browser ${FLOATING_POP_ANIM}`}
+            role="dialog"
+            aria-label={t('浏览本地文件夹')}
+          >
+            <div className="dir-browser-bar">
+              <nav className="dir-browser-crumbs">
+                {crumbs.map((seg, i) => (
+                  <span key={seg.path} className="dir-browser-crumb-wrap">
+                    {i > 0 && (
+                      <span className="dir-browser-crumb-sep" aria-hidden="true">
+                        <ChevronRight width={12} height={12} />
+                      </span>
+                    )}
+                    {/* XMON-25 收编：ghost；h-auto 保内容高（focus 环矩形 =
                     现行为）、shrink 保面包屑挤压可缩（base shrink-0 会改
                     溢出行为）。 */}
-                <Button
-                  variant="ghost"
-                  className="dir-browser-crumb h-auto shrink rounded-none font-normal active:not-aria-[haspopup]:translate-y-0"
-                  // 末段 = 当前目录（不可再下钻到自己，仍渲染为钮保持一致性）。
-                  aria-current={i === crumbs.length - 1 ? 'location' : undefined}
-                  onClick={() => setDir(seg.path)}
-                >
-                  {seg.label}
-                </Button>
-              </span>
-            ))}
-          </nav>
-          {/* XMON-25 收编：ghost；aria-pressed 皮肤正本在 per-face
+                    <Button
+                      variant="ghost"
+                      className="dir-browser-crumb h-auto shrink rounded-none font-normal active:not-aria-[haspopup]:translate-y-0"
+                      // 末段 = 当前目录（不可再下钻到自己，仍渲染为钮保持一致性）。
+                      aria-current={i === crumbs.length - 1 ? 'location' : undefined}
+                      onClick={() => setDir(seg.path)}
+                    >
+                      {seg.label}
+                    </Button>
+                  </span>
+                ))}
+              </nav>
+              {/* XMON-25 收编：ghost；aria-pressed 皮肤正本在 per-face
               [aria-pressed=true] 规则，unlayered 恒胜 base 的 aria-expanded 档。 */}
-          <Button
-            variant="ghost"
-            className="dir-browser-dots h-auto font-normal active:not-aria-[haspopup]:translate-y-0"
-            aria-pressed={showDotfiles}
-            onClick={() => setShowDotfiles((v) => !v)}
-          >
-            {t('显示隐藏文件')}
-          </Button>
-        </div>
-        <div className="dir-browser-list">
-          {listQ.isError ? (
-            <div className="dir-browser-error" role="alert">
-              {(listQ.error as Error).message}
+              <Button
+                variant="ghost"
+                className="dir-browser-dots h-auto font-normal active:not-aria-[haspopup]:translate-y-0"
+                aria-pressed={showDotfiles}
+                onClick={() => setShowDotfiles((v) => !v)}
+              >
+                {t('显示隐藏文件')}
+              </Button>
             </div>
-          ) : (
-            visible.map((entry) => {
-              const base = currentPath ?? '/';
-              // canonical 绝对路径 + 目录名 → 子路径（base 恒以 `/` 开头无尾斜杠）。
-              const child = base === '/' ? `/${entry.name}` : `${base}/${entry.name}`;
-              return (
-                <div className="dir-browser-row" key={entry.name}>
-                  {/* XMON-25 收编：ghost；justify-start 对齐位（text-align:left
-                      的 flex 等价）、h-auto 保 18px 内容高。 */}
-                  <Button
-                    variant="ghost"
-                    className="dir-browser-name h-auto justify-start rounded-none font-normal active:not-aria-[haspopup]:translate-y-0"
-                    onClick={() => setDir(child)}
-                  >
-                    {entry.name}
-                  </Button>
-                  {entry.git && (
-                    <span className="dir-browser-git" role="img" aria-label={t('git 仓库')}>
-                      <GitCommit width={13} height={13} />
-                    </span>
-                  )}
-                  {/* XMON-25 收编：ghost；opacity 0→1（行 hover/focus）正本在
-                      per-face，unlayered 恒胜。 */}
-                  <Button
-                    variant="ghost"
-                    className="dir-browser-pick h-auto font-normal active:not-aria-[haspopup]:translate-y-0"
-                    onClick={() => onPick(child)}
-                  >
-                    {t('选择')}
-                  </Button>
+            <div className="dir-browser-list">
+              {listQ.isError ? (
+                <div className="dir-browser-error" role="alert">
+                  {(listQ.error as Error).message}
                 </div>
-              );
-            })
-          )}
-          {!listQ.isError &&
-            !listQ.isPlaceholderData &&
-            listQ.data !== undefined &&
-            visible.length === 0 && (
-              <div className="dir-browser-empty">
-                {/* 真无子目录 vs 子目录全被 dotfiles 隐藏（toggle 是就近 affordance）
+              ) : (
+                visible.map((entry) => {
+                  const base = currentPath ?? '/';
+                  // canonical 绝对路径 + 目录名 → 子路径（base 恒以 `/` 开头无尾斜杠）。
+                  const child = base === '/' ? `/${entry.name}` : `${base}/${entry.name}`;
+                  return (
+                    <div className="dir-browser-row" key={entry.name}>
+                      {/* XMON-25 收编：ghost；justify-start 对齐位（text-align:left
+                      的 flex 等价）、h-auto 保 18px 内容高。 */}
+                      <Button
+                        variant="ghost"
+                        className="dir-browser-name h-auto justify-start rounded-none font-normal active:not-aria-[haspopup]:translate-y-0"
+                        onClick={() => setDir(child)}
+                      >
+                        {entry.name}
+                      </Button>
+                      {entry.git && (
+                        <span className="dir-browser-git" role="img" aria-label={t('git 仓库')}>
+                          <GitCommit width={13} height={13} />
+                        </span>
+                      )}
+                      {/* XMON-25 收编：ghost；opacity 0→1（行 hover/focus）正本在
+                      per-face，unlayered 恒胜。 */}
+                      <Button
+                        variant="ghost"
+                        className="dir-browser-pick h-auto font-normal active:not-aria-[haspopup]:translate-y-0"
+                        onClick={() => onPick(child)}
+                      >
+                        {t('选择')}
+                      </Button>
+                    </div>
+                  );
+                })
+              )}
+              {!listQ.isError &&
+                !listQ.isPlaceholderData &&
+                listQ.data !== undefined &&
+                visible.length === 0 && (
+                  <div className="dir-browser-empty">
+                    {/* 真无子目录 vs 子目录全被 dotfiles 隐藏（toggle 是就近 affordance）
                     ——两态分译，不对「有但隐藏」谎称「没有」。 */}
-                {entries.length === 0 ? t('没有子目录') : t('子目录均已隐藏')}
+                    {entries.length === 0 ? t('没有子目录') : t('子目录均已隐藏')}
+                  </div>
+                )}
+            </div>
+            {listQ.data?.truncated === true && (
+              <div className="dir-browser-trunc">
+                {t('目录条目过多，只列出前 {n} 条', { n: FS_LIST_MAX_ENTRIES })}
               </div>
             )}
-        </div>
-        {listQ.data?.truncated === true && (
-          <div className="dir-browser-trunc">
-            {t('目录条目过多，只列出前 {n} 条', { n: FS_LIST_MAX_ENTRIES })}
           </div>
-        )}
-      </div>
-    </OverlayMount>
+        </FloatingShell>
+      )}
+    </>
   );
 }
