@@ -21,15 +21,19 @@ import {
   boardChiefProbes,
   boardDarkFresh,
   boardDefault,
+  boardDragMatrix,
   boardFailed,
   boardGithubPicker,
+  boardMachinePicker,
   boardOverflow,
   boardProjectPicker,
   boardR8Overlay,
   boardRepoFilter,
+  boardStress,
   boardTagFilter,
   boardTagFilterEmpty,
   boardWithProbe,
+  chiefAgentChip,
   chiefFabAvatar,
   chiefFabAvatarOverride,
   chiefGated,
@@ -130,6 +134,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #176 new-task dialog 项目选择器:命名场景(无 capture)——boardDefault
       // 面加 projectNames 双项目,e2e 钉选择器行为;无 fixture 行。
       'newtask-projects': boardProjectPicker,
+      // #758 机器 chip 选择记忆：命名场景（无 capture，同上先例）——
+      // boardDefault 面 + resources 两台机器（在线本机 + 离线远端），
+      // e2e 钉「选→刷新→回上次那台」与两条降级路径。
+      'newtask-machines': boardMachinePicker,
       // #361 新建项目 GitHub repo picker：命名场景（无 capture，
       // newtask-projects 先例）——boardDefault 面 + 已连接 github fixture，
       // e2e 钉 picker 搜索/单选回填/断开/着陆参行为。
@@ -139,6 +147,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // tagged，钉板级空结果态。
       'board-tags': boardTagFilter,
       'board-tags-empty': boardTagFilterEmpty,
+      // #753 拖动矩阵：命名场景（无 capture，board-tags 先例）——四列满员 +
+      // 待处理三相 + 已完成两态（有/无变更），e2e 钉 per-source 合法目标
+      // 矩阵与重开落位。
+      'board-drag-matrix': boardDragMatrix,
       // #445 看板仓库筛选：命名场景（无 capture，同上先例）——board-repos
       // 三项目三卡（r3 两卡 + r2 一卡 + r4-quiet 零卡）钉仓库轴单选/多选/
       // 空态与「仓库 × 类型」双轴组合收窄。
@@ -146,6 +158,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #504 看板列滚动：命名场景（无 capture，board-tags 先例）——待开始
       // 12 卡撑出溢出，e2e 钉行高不破视口、列头固定、列表自持滚动。
       'board-overflow': boardOverflow,
+      // #692 看板最坏数据：命名场景（无 capture，board-overflow 先例）——
+      // 超长标题 + 120 卡计数 + 空列，e2e 钉停靠/窄窗/RTL 下列不塌。
+      'board-stress': boardStress,
       // detail (r7 16–17, 23, 26–28, 36, 38)
       '16': detailPlanning,
       '16d': detailConfirm(true),
@@ -332,6 +347,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #650/#651 markdown 面命名场景（无 capture，md-toolout 先例）：定稿
       // robot 行 raw markdown + typing 打字尾行，钉共用解析器进抽屉的渲染形。
       'chief-md': chiefMarkdown,
+      // #741 agent 身份可点进设置命名场景（无 capture，chief-md 先例）：
+      // robot 行身份 chip（头像+名字，带 id 成链）+ 五种提及 scheme 的
+      // 成链/惰性对照 + 详情页 transcript 同场景第二消费面。
+      'chief-agent-chip': chiefAgentChip,
       // #444 FAB 头像命名场景（无 capture，notify-banner 先例）：绑定
       // Agent 的头像骑上各族 FAB；override 变体钉 avatarUrl 覆盖优先。
       'fab-avatar': chiefFabAvatar,

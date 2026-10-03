@@ -52,10 +52,11 @@ interface ComposerProps {
   /** M5 live 面：占位行换成真 textarea（同几何类名 + input 复位类；
    * fixture 面保持静态 div，DOM 不变）。 */
   editable?: boolean;
-  /** M7 #310：附件钮选中后调 onAttachment(files)，父组件负责
-   * grant + upload + 拼 token 进 draft。父组件在 live 编辑面下应同时传
-   * draft/onDraftChange 才能把 token 注入。 */
-  onAttachment?: (files: File[]) => void | Promise<void>;
+  /** M7 #310（#729 契约收窄）：附件钮选中 / 剪贴板粘贴后调
+   * onAttachment(files)，父组件负责 grant + upload，返回成功文件的
+   * token；注入 draft（行原子、粘贴落 caret 位）由 useComposerWire 统一
+   * 做。父组件在 live 编辑面下应同时传 draft/onDraftChange 才能接住注入。 */
+  onAttachment?: (files: File[]) => string[] | Promise<string[]>;
   /** M7 #310：受控 draft（live 面由父持 state，附件 token 才能注入）。 */
   draft?: string;
   onDraftChange?: (next: string) => void;
@@ -93,19 +94,28 @@ export function Composer({
     send,
     handleChange,
     handleKeyDown,
+    handleCaretMoved,
+    handleCompositionEnd,
+    handleBlur,
     textareaRef,
     fileInputRef,
     openFilePicker,
     attaching,
     onPickFiles,
+    handlePaste,
     pickerOpen,
     togglePicker,
     closePicker,
     inlineOpen,
     inlineCaret,
+    inlineQuery,
     inlineAgents,
-    closeInline,
+    inlineHighlight,
+    setInlineHighlight,
+    inlineListboxId,
+    inlineListboxRef,
     insertToken,
+    insertTokens,
     groups,
   } = useComposerWire({
     editable,
@@ -120,6 +130,12 @@ export function Composer({
     <div className="composer composer--with-mention">
       {editable ? (
         <div className="composer-input-wrap">
+          {/* #728 combobox wiring: while the inline listbox is open the
+              textarea announces itself as the combobox and points
+              aria-activedescendant at the highlighted row — it keeps DOM
+              focus the whole time (the listbox rows are non-focusable).
+              keyup/click/select re-judge the token after caret-only moves
+              (a change event never fires for those). */}
           <textarea
             ref={textareaRef}
             className="composer-placeholder composer-input"
@@ -127,11 +143,33 @@ export function Composer({
             value={draft}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
+            // #729: clipboard images/files ride the #310 attachFile chain;
+            // a text-only paste never reaches the handler's preventDefault.
+            onPaste={handlePaste}
+            onKeyUp={handleCaretMoved}
+            onClick={handleCaretMoved}
+            onSelect={handleCaretMoved}
+            onCompositionEnd={handleCompositionEnd}
+            onBlur={handleBlur}
+            {...(inlineOpen
+              ? {
+                  role: 'combobox',
+                  'aria-expanded': true,
+                  'aria-controls': inlineListboxId,
+                  'aria-autocomplete': 'list' as const,
+                }
+              : {})}
+            {...(inlineOpen && inlineHighlight != null
+              ? { 'aria-activedescendant': `${inlineListboxId}-opt-${inlineHighlight}` }
+              : {})}
           />
           <MentionInline
             open={inlineOpen}
             agents={inlineAgents}
             caret={inlineCaret}
+            query={inlineQuery}
+            highlight={inlineHighlight}
+            onHover={setInlineHighlight}
             onPick={(entry) =>
               insertToken({
                 kind: 'agent',
@@ -139,7 +177,8 @@ export function Composer({
                 label: entry.label,
               })
             }
-            onClose={closeInline}
+            listboxRef={inlineListboxRef}
+            listboxId={inlineListboxId}
           />
         </div>
       ) : (
@@ -217,7 +256,7 @@ export function Composer({
         onClose={closePicker}
         groups={groups}
         onInsert={(tokens) => {
-          for (const token of tokens) insertToken(token);
+          insertTokens(tokens);
           closePicker();
         }}
       />

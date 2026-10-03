@@ -9,7 +9,7 @@
 // 步队列 server 持有（02 §4.2/A6）+ 会话持久化索引宿主自持（00/D3）。
 
 import { type ChildProcess, spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +17,15 @@ import { ENV_VARS } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
 import { afterAll, describe, expect, test } from 'vitest';
 import { step as stepTable } from '../../apps/server/src/db/schema.js';
-import { AGENT_ID, api, bootRealServer, type RealServer, seedWorld, waitFor } from './helpers.js';
+import {
+  AGENT_ID,
+  api,
+  bootRealServer,
+  daemonLogLines,
+  type RealServer,
+  seedWorld,
+  waitFor,
+} from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 const DAEMON_DIR = fileURLToPath(new URL('../../apps/daemon', import.meta.url));
@@ -72,16 +80,24 @@ function spawnDaemon(): ChildProcess {
 }
 
 function logLines(): string[] {
-  const logPath = join(home, 'daemon.log');
-  if (!existsSync(logPath)) return [];
-  return readFileSync(logPath, 'utf8').split('\n');
+  return daemonLogLines(join(home, 'daemon.log'));
 }
 
 describe('崩溃恢复（T2：AgentSession 缝 × 宿主 durable 编排）', () => {
   test('SIGKILL 于步中 → 重启 → recover 对账 → continue session 续跑 → confirm', async () => {
     stub = await startStubLlm([
-      // 第一轮慢响应：制造崩溃窗口（session 已建、步未收尾）。
+      // 第一轮慢响应：制造崩溃窗口（session 已建、步未收尾）——响应本体不被
+      // 消费（daemon 先死），内容无关紧要。
       { content: '第一轮响应（崩溃前）。', delayMs: 6_000 },
+      // #703 产物闸：恢复后续跑要真产 plan.md（纯文本轮过不了闸 1）。
+      {
+        toolCall: {
+          name: 'bash',
+          arguments: {
+            command: `cat > plan.md <<'EOF'\n# 方案\n\nContext: 崩溃恢复探针。\nChanges: README 加一行。\nEOF`,
+          },
+        },
+      },
       { content: '恢复后续跑完成。' },
     ]);
     server = await bootRealServer({ providerBaseUrl: stub.url, claimHoldMs: 500 });
@@ -154,6 +170,7 @@ describe('崩溃恢复（T2：AgentSession 缝 × 宿主 durable 编排）', () 
         resolve();
       });
     });
-    expect(logLines()).toContain('[machine] Shutting down…');
+    // #691：SIGTERM 面的信号名进退出行（canonical 后缀），事后可考。
+    expect(logLines()).toContain('[machine] Shutting down… (SIGTERM)');
   }, 240_000);
 });

@@ -74,6 +74,7 @@ import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Select } from '../components/ui/select.js';
 import { Switch } from '../components/ui/switch.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
+import { toastError } from '../components/ui/toaster.js';
 import { isDeleted, markDeleted } from '../fixtures/deletions.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
@@ -159,12 +160,25 @@ export function AgentDetailPage() {
     (body: PatchAgentBody) => {
       if (agentId === undefined) return;
       if (live) {
-        mutations.patchAgent.mutate({ id: agentId, body });
+        // #638 概览半（票面裁决）：名称/职责/模型/默认 skill 失败 → toast；
+        // tools/secrets/mcpServers 三组失败归权限 tab 的 scoped 红字行
+        // （permSaveFailed，XMON-80/P2 canon）——不双报。判据 = 本次 body 的
+        // 键集，与 permSaveFailed 的渲染位判据同源（那里读失败那次的
+        // variables，这里调用点手上有 body）。
+        mutations.patchAgent.mutate(
+          { id: agentId, body },
+          {
+            onError: (error) => {
+              if ('tools' in body || 'secrets' in body || 'mcpServers' in body) return;
+              toastError(t('保存失败，请重试。'), error);
+            },
+          },
+        );
       } else {
         setLocalPatch((prev) => ({ ...prev, ...body }));
       }
     },
-    [agentId, live, mutations.patchAgent],
+    [agentId, live, mutations.patchAgent, t],
   );
 
   // 模型候选：live = providers ∪ model-sources 真值；fixture = 场景行集。
@@ -524,7 +538,14 @@ export function AgentDetailPage() {
                           onClick={() => {
                             if (agentId === undefined) return;
                             if (live)
-                              mutations.deleteMemory.mutate({ agentId, memoryId: memory.id });
+                              mutations.deleteMemory.mutate(
+                                { agentId, memoryId: memory.id },
+                                {
+                                  // #638：失败 = 条目还在，此前零反馈。
+                                  onError: (error) =>
+                                    toastError(t('删除记忆失败，请重试。'), error),
+                                },
+                              );
                             else setRemovedMemories((prev) => [...prev, memory.id]);
                           }}
                         >
@@ -680,6 +701,8 @@ export function AgentDetailPage() {
           if (live) {
             mutations.deleteAgent.mutate(agentId, {
               onSuccess: () => navigate({ pathname: '/app/team', search }),
+              // #638：确认层已关，失败 = Agent 还在却零解释。
+              onError: (error) => toastError(t('删除 Agent 失败，请重试。'), error),
             });
             return;
           }

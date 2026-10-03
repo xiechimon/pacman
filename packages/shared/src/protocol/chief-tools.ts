@@ -487,6 +487,9 @@ export const CHIEF_REMOTE_TOOLS: readonly RemoteToolDef[] = [
           type: 'boolean',
           description: 'Plan first instead of executing directly; defaults to false.',
         },
+        machineId: str(
+          'Optional pinned machine id for the builds; omit to inherit the todo machine (null = automatic).',
+        ),
       },
       ['todoIds'],
     ),

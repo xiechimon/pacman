@@ -18,7 +18,9 @@ import { type Assignment, conversationBranch, parseGithubIssueSourceRef } from '
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { toast } from 'sonner';
 import { attachFile } from '../api/attachments.js';
+import { ApiError } from '../api/client.js';
 import {
   useApiMutations,
   useBuild,
@@ -40,6 +42,7 @@ import {
   useTodo,
   useTodos,
 } from '../api/hooks.js';
+import { invalidateConverged } from '../api/invalidate.js';
 import { liveTextStore } from '../api/live-text.js';
 import {
   mapBranchInfo,
@@ -59,6 +62,7 @@ import {
   ChiefAgentDialog,
   type ChiefAgentOption,
 } from '../chief/chief-agent-dialog.js';
+import { toastError } from '../components/ui/toaster.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { Composer } from '../detail/composer.js';
 import { DetailHead } from '../detail/dhead.js';
@@ -66,6 +70,7 @@ import { DocPane } from '../detail/docpane.js';
 import { FreshBlock } from '../detail/fresh-block.js';
 import { mergeRejectCopy, useMergeGate } from '../detail/merge-gate.js';
 import { RerunDialog, ReusePanel } from '../detail/overlays.js';
+import { RejectDialog } from '../detail/reject-dialog.js';
 import { resolveReviewDefault } from '../detail/review-default.js';
 import { type ReviewAgentOption, ReviewDialog } from '../detail/review-dialog.js';
 import { RightPane } from '../detail/right-pane.js';
@@ -83,6 +88,7 @@ import type {
   PlanDiffContent,
   TranscriptItem,
 } from '../fixtures/records.js';
+import { attachmentFailureTitle } from '../overlay/attachment-paste.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import type { MentionGroups } from '../overlay/mention-picker.js';
 import { MoreMenu } from '../overlay/more-menu.js';
@@ -186,16 +192,9 @@ export function TodoDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   // M7 #310 附件 wire：live editable composer 把 draft 提到此处，附件 token
   // 才能注入；send 时与 text 一起随 content 发出（#280 steer / #75 reject）。
+  // #729 起 token 注入住 useComposerWire（行原子 + caret 位），本页只保留
+  // draft state 与上传委托。
   const [liveDraft, setLiveDraft] = useState('');
-  // 附件 token 拼到 draft 的逻辑（多文件按选序拼接，每个 token 占独立行）。
-  const appendAttachmentTokens = useCallback(
-    (tokens: string[]) => {
-      if (tokens.length === 0) return;
-      const joiner = liveDraft === '' || liveDraft.endsWith('\n') ? '' : '\n';
-      setLiveDraft(`${liveDraft}${joiner}${tokens.join('\n')}\n`);
-    },
-    [liveDraft],
-  );
   const search = useSearchState(fixture.ui?.searchOpen === true, fixture.ui?.searchQuery ?? '');
   // W4 #286：live 面服务端搜索（fixture 面不经此钩）。
   const searchResults = useSearchResults(search.query, live && search.open);
@@ -254,9 +253,12 @@ export function TodoDetailPage() {
   // XMON-89：合并被拒的可见态。住页层而非弹层内——弹层是 retained-mount，
   // 关掉不清会在下一次开窗时回显上一轮的拒绝（并入 closeOverlay）。
   const [mergeReject, setMergeReject] = useState<string | null>(null);
+  // #701：打回弹层的服务端拒绝原因（XMON-89 同律——被拒弹层不关、原因显性）。
+  const [rejectError, setRejectError] = useState<string | null>(null);
   const closeOverlay = useCallback(() => {
     setOverlay(null);
     setMergeReject(null);
+    setRejectError(null);
   }, []);
   // 前置检查（XMON-89）：查的 Agent = merge 步的执行者 = assignment.build 槽
   // （不是卡片上显示的折算值）。
@@ -304,9 +306,11 @@ export function TodoDetailPage() {
   );
   const streamHandlers = useMemo(
     () => ({
-      // todo/phase 面由 team stream 驱动失效；此处兜底本页 todo 键。
+      // todo/phase 面由 team stream 驱动失效；此处兜底本页 todo 键。走收敛缝
+      // （#717）：挂载取数在飞时到达的提示不得被去重吞掉——chip 停在旧相位
+      // 正是 CI 间歇红的历史指纹。
       onMessage: () => {
-        void qc.invalidateQueries({ queryKey: ['todo', id] });
+        void invalidateConverged(qc, { queryKey: ['todo', id] });
       },
     }),
     [qc, id],
@@ -357,6 +361,15 @@ export function TodoDetailPage() {
     () => machinesQ.data?.find((m) => steps.some((s) => s.machineId === m.id))?.name ?? null,
     [machinesQ.data, steps],
   );
+  // #682 钉选机器（等待面数据源）：build 钉了机器、步未领（machineName 空时）
+  // → meta 机器行回落钉选机器名；该机离线 = 行尾等待标注（步只等它上线，
+  // server claim 过滤面保证不自动改派）。
+  const pinnedMachine = useMemo(
+    () => machinesQ.data?.find((m) => m.id === buildQ.data?.pinnedMachineId) ?? null,
+    [machinesQ.data, buildQ.data?.pinnedMachineId],
+  );
+  const machineField = machineName ?? pinnedMachine?.name ?? null;
+  const machineWaiting = machineName == null && pinnedMachine != null && !pinnedMachine.online;
 
   const liveDetail: DetailContent | undefined = useMemo(() => {
     if (!live || !wireTodo || buildId == null) return undefined;
@@ -436,7 +449,8 @@ export function TodoDetailPage() {
           : null,
       branch: conversationBranch(buildId),
       pr: prUrl != null && prNumber != null ? { number: prNumber, url: prUrl } : null,
-      machine: machineName,
+      machine: machineField,
+      machineWaiting,
       model: agentModel ?? usageQ.data?.[0]?.model ?? null,
       createdAt: wireTodo.buildHistory[0]?.createdAt ?? buildQ.data?.createdAt ?? null,
     };
@@ -445,7 +459,8 @@ export function TodoDetailPage() {
     wireTodo,
     buildId,
     buildQ.data,
-    machineName,
+    machineField,
+    machineWaiting,
     agentModel,
     usageQ.data,
     sourceEchoQ.data,
@@ -483,18 +498,23 @@ export function TodoDetailPage() {
   const startBuild = useCallback(
     (withPlan: boolean, assignment?: Assignment) => {
       if (!live || !wireTodo) return;
-      mutations.startBuilds.mutate({
-        projectId: wireTodo.projectId,
-        todoIds: [wireTodo.id],
-        assignment: assignment ?? {
-          plan: firstAgentId ? { agentId: firstAgentId } : null,
-          build: firstAgentId ? { agentId: firstAgentId } : null,
+      mutations.startBuilds.mutate(
+        {
+          projectId: wireTodo.projectId,
+          todoIds: [wireTodo.id],
+          assignment: assignment ?? {
+            plan: firstAgentId ? { agentId: firstAgentId } : null,
+            build: firstAgentId ? { agentId: firstAgentId } : null,
+          },
+          withPlan,
         },
-        withPlan,
-      });
+        // #638 破坏性后果面（票面优先级 1）：弹层已关、任务停在半启动态却
+        // 零解释——toast 点名失败，server 原因进 description。
+        { onError: (error) => toastError(t('开始运行失败，请重试。'), error) },
+      );
       setOverlay(null);
     },
-    [live, wireTodo, mutations.startBuilds, firstAgentId],
+    [live, wireTodo, mutations.startBuilds, firstAgentId, t],
   );
 
   if (todo == null) return null;
@@ -515,7 +535,11 @@ export function TodoDetailPage() {
     ? (agentId: string) =>
         mutations.patchTodo.mutate(
           { id: todo.id, body: { assignment: { build: { agentId } } } },
-          { onSuccess: () => setAssignOpen(false) },
+          {
+            onSuccess: () => setAssignOpen(false),
+            // #638：失败时弹层留着（关挂在 onSuccess）但零解释——toast 补上。
+            onError: (error) => toastError(t('保存失败，请重试。'), error),
+          },
         )
     : undefined;
 
@@ -527,11 +551,20 @@ export function TodoDetailPage() {
   // review/confirm/done→closed 边缺,归 W3 server 票(票面授权前端+注记),
   // 故 canClose 只放行有边的相位,其余 disabled(运行中禁用 = r1 Delete-in-
   // turn 先例)。fixture 面无 wire:关闭走 deletions.ts 会话覆面同律。——
-  const canComplete = phase === 'review' || (live && phase === 'confirm');
+  // #702(B-C17):failed 且 build 腿已交付 → 「完成」出口重新出现(服务端
+  // 恢复闸是权威判定,此处只是钮面可达性:steps 投影里执行步 done)。点开
+  // 同一 accept 弹层 → merge API → server 恢复回 review 关口 + 正常合并委派;
+  // 未交付的 failed(执行步失败/零产物)不亮钮——重跑面(rerun dialog)才是
+  // 它的出口。fixture 面无 steps 数据,不启用(live 判据钉死)。
+  const buildLegDone = steps.some((s) => s.kind === 'build' && s.status === 'done');
+  const canComplete =
+    phase === 'review' ||
+    (live && phase === 'confirm') ||
+    (live && phase === 'failed' && buildLegDone);
   const canClose = phase === 'todo' || phase === 'failed';
   const completeTask = () => {
     setMoreOpen(false);
-    if (phase === 'review') {
+    if (phase === 'review' || phase === 'failed') {
       setOverlay({ kind: 'accept' });
       return;
     }
@@ -543,7 +576,11 @@ export function TodoDetailPage() {
     if (live) {
       mutations.patchTodo.mutate(
         { id: todo.id, body: { phase: 'closed' } },
-        { onSuccess: () => navigate('/app') },
+        {
+          onSuccess: () => navigate('/app'),
+          // #638：关闭失败 = 留在详情页、任务没关，此前零反馈。
+          onError: (error) => toastError(t('关闭任务失败，请重试。'), error),
+        },
       );
       return;
     }
@@ -663,14 +700,19 @@ export function TodoDetailPage() {
           ? 'changes'
           : 'plan';
 
-  // composer 被拒提示行（W3 #280 steer / #320 restart）：异步 onSend 失败时
-  // draft 保留不丢字，文案按被拒写面分流；restart 错误 scope 到
-  // variables.action（confirm 主钮同走 stepAction，其错误不上此行）。
+  // composer 被拒提示行（W3 #280 steer / #320 restart / #701 review 打回）：
+  // 异步 onSend 失败时 draft 保留不丢字，文案按被拒写面分流；stepAction 错误
+  // scope 到 variables.action ∈ {restart, revision}（confirm 主钮同走
+  // stepAction，其错误不上此行——review 打回与 confirm 驳回共用 revision 位）。
+  const stepActionFailed =
+    mutations.stepAction.isError &&
+    (mutations.stepAction.variables?.body.action === 'restart' ||
+      mutations.stepAction.variables?.body.action === 'revision');
   const composerReject = !live
     ? null
     : mutations.sendSteer.isError
       ? t('当前没有运行中的会话，消息未送出')
-      : mutations.stepAction.isError && mutations.stepAction.variables?.body.action === 'restart'
+      : stepActionFailed
         ? t('任务状态已变化，消息未送出')
         : null;
 
@@ -736,7 +778,12 @@ export function TodoDetailPage() {
             {live && wireTodo?.sourceKind != null && (
               <SourceIssueLine
                 todo={wireTodo}
-                onRetry={() => mutations.retryGithubIssue.mutate(wireTodo.id)}
+                onRetry={() =>
+                  mutations.retryGithubIssue.mutate(wireTodo.id, {
+                    // #638：重试再败此前只是 pending 灯灭——toast 点名失败。
+                    onError: (error) => toastError(t('重试失败，请稍后再试。'), error),
+                  })
+                }
                 retryPending={mutations.retryGithubIssue.isPending}
                 onOpenThread={setChiefLinkThreadId}
               />
@@ -818,8 +865,8 @@ export function TodoDetailPage() {
                   live
                     ? async (files) => {
                         // #310 三步 wire（r9 §3.1）：每个文件走 grant + upload，
-                        // 失败仅记日志不发（用户继续编辑 draft，已发成功的 token
-                        // 仍落入）；token 拼到 draft。
+                        // 失败 toast 点名原因（#729 失败方式 5/12：draft 一字不
+                        // 动，成功文件的 token 仍落入）；注入由 wire hook 做。
                         const tokens: string[] = [];
                         for (const file of files) {
                           try {
@@ -827,9 +874,12 @@ export function TodoDetailPage() {
                             tokens.push(r.token);
                           } catch (err) {
                             console.error('attachment failed', file.name, err);
+                            toast.error(t(attachmentFailureTitle(err)), {
+                              description: file.name,
+                            });
                           }
                         }
-                        appendAttachmentTokens(tokens);
+                        return tokens;
                       }
                     : undefined
                 }
@@ -859,12 +909,13 @@ export function TodoDetailPage() {
                           });
                           return;
                         }
-                        // W3 steer（#280，06 册 D9 / spec #277）：building/review 态
-                        // 发送 = 运行中补话。server 门（claimed 步在跑）收则 201，
-                        // 无在跑步 409 明确拒绝（提示行 + draft 保留，不丢字）。
-                        // 返回 Promise = composer 异步清稿面。
+                        // W3 steer（#280，06 册 D9 / spec #277）：building 态发送 =
+                        // 运行中补话；review 态仅在运行中（AI 审核步在跑等）保持
+                        // 本面——运行补话与静息打回各走各的道，不互抢。server 门
+                        // （claimed 步在跑）收则 201，无在跑步 409 明确拒绝（提示行
+                        // + draft 保留，不丢字）。返回 Promise = composer 异步清稿面。
                         if (
-                          (phase === 'building' || phase === 'review') &&
+                          (phase === 'building' || (phase === 'review' && running)) &&
                           buildId &&
                           text !== ''
                         ) {
@@ -874,6 +925,24 @@ export function TodoDetailPage() {
                               setLiveDraft('');
                               return undefined;
                             });
+                        }
+                        // #701（B-C12）：review 关口静息态发送 = 人肉打回——confirm
+                        // 驳回的动作面复用（POST steps revision → review→planning +
+                        // 重规划步入队，边与 #330 自动回流同一条），不再撞 steer 面
+                        // 的 409 死路；「请求修改…」占位符从此诚实（可填即可发）。
+                        // Promise 面 = restart 同律：成功清稿、被拒（409 竞态）保留。
+                        if (phase === 'review' && !running && buildId && text !== '') {
+                          return mutations.stepAction
+                            .mutateAsync({
+                              buildId,
+                              body: {
+                                action: 'revision',
+                                side: 'plan',
+                                feedback: text,
+                                clientMessageId: crypto.randomUUID(),
+                              },
+                            })
+                            .then(() => undefined);
                         }
                         // #320 失败面发送 = 带反馈重启（r9 §3.3：原站 failed 态发消息
                         // 触发新一轮，消息随新轮入会话——非 steer 语义）。走 steps
@@ -985,6 +1054,16 @@ export function TodoDetailPage() {
         canComplete={canComplete}
         onCloseTask={closeTask}
         canClose={canClose}
+        // #701：审核关口显式打回入口——live review 静息态在场（运行中让位
+        // steer 补话面）；fixture 面/其余相位缺省 = 行不渲染，四行几何不变。
+        onReject={
+          live && phase === 'review' && buildId != null && !running
+            ? () => {
+                setMoreOpen(false);
+                setOverlay({ kind: 'reject' });
+              }
+            : undefined
+        }
       />
       <DeleteConfirm
         open={deleteOpen}
@@ -1000,7 +1079,11 @@ export function TodoDetailPage() {
         onConfirm={() => {
           setDeleteOpen(false);
           if (live) {
-            mutations.deleteTodo.mutate(todo.id, { onSuccess: () => navigate('/app') });
+            mutations.deleteTodo.mutate(todo.id, {
+              onSuccess: () => navigate('/app'),
+              // #638：确认层已关（上方 setDeleteOpen），失败 = 任务还在却零解释。
+              onError: (error) => toastError(t('删除任务失败，请重试。'), error),
+            });
             return;
           }
           markDeleted(todo.id);
@@ -1036,6 +1119,38 @@ export function TodoDetailPage() {
                   onSuccess: () => closeOverlay(),
                   onError: (error) => setMergeReject(mergeRejectCopy(error, t)),
                 });
+              }
+            : undefined
+        }
+      />
+      <RejectDialog
+        open={overlay?.kind === 'reject'}
+        onClose={closeOverlay}
+        rejectReason={rejectError}
+        onConfirm={
+          // 打回 = revision 动作面（composer 静息发送同一条 mutation）；关弹层
+          // 挂 onSuccess——被拒（409 竞态/相位漂移）弹层留着显原因（XMON-89）。
+          live && buildId
+            ? (feedback) => {
+                setRejectError(null);
+                mutations.stepAction.mutate(
+                  {
+                    buildId,
+                    body: {
+                      action: 'revision',
+                      side: 'plan',
+                      feedback,
+                      clientMessageId: crypto.randomUUID(),
+                    },
+                  },
+                  {
+                    onSuccess: () => closeOverlay(),
+                    onError: (error) =>
+                      setRejectError(
+                        error instanceof ApiError ? error.message : t('打回请求未送出，请重试。'),
+                      ),
+                  },
+                );
               }
             : undefined
         }

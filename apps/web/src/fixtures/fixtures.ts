@@ -294,6 +294,24 @@ export const boardProjectPicker: FixtureSet = {
   },
 };
 
+/** #758 机器 chip 选择记忆命名场景（无 capture，newtask-projects 先例）：
+ *  boardDefault 面 + resources 两台机器——在线本机（canon 同源）+ 离线远端，
+ *  记忆面 e2e 的行源（选→刷新→回上次那台 / 悬空记忆落回自动 / 离线机器
+ *  保留记忆如实显示）。只服务对话框的机器 chip，不动 resourcesDefault 的
+ *  r7 06–10 capture 行集。 */
+export const boardMachinePicker: FixtureSet = {
+  ...boardDefault,
+  resources: {
+    skills: [],
+    mcpServers: [],
+    machines: [
+      { id: MACHINE_ID, kind: 'local', name: MACHINE_NAME, online: true },
+      { id: 'mea-wsl-offline', kind: 'remote', name: 'mea-wsl', online: false },
+    ],
+    providerSources: [],
+  },
+};
+
 /** #361 GitHub repo picker 命名场景（无 capture，newtask-projects 先例）：
  *  boardDefault 面 + 已连接 github fixture——picker 行 = shared
  *  GithubRepoSummary 封套同形（spec 12 数据契约），搜索/单选/断开的面数据源。 */
@@ -349,6 +367,41 @@ function tagFilterProbe(
 ): TodoRecord {
   return { ...probeTodo(phase, r7(13, 40)), id, seqNum, title, spec: title, tagIds };
 }
+
+/** #753 拖动矩阵探针卡工厂：probeTodo 全形底 + 合成 id/seq/标题 + 数据位
+ *  覆写（hasChanges 等——矩阵的合法边吃卡面数据，不只吃相位）。命名场景
+ *  合成内容，无 capture 基线（board-tags 先例）。 */
+function dragMatrixProbe(
+  id: string,
+  seqNum: number,
+  title: string,
+  phase: TodoRecord['phase'],
+  over?: Partial<TodoRecord>,
+): TodoRecord {
+  return { ...probeTodo(phase, r7(13, 40)), id, seqNum, title, spec: title, tagIds: [], ...over };
+}
+
+/** board-drag-matrix（#753）：四列满员 + 待处理三相（failed 钉顶 / review+
+ *  awaitingReply 钉顶 / confirm）+ 已完成两态（有变更 = 待处理合法源，无变更
+ *  = 待处理非法源）——e2e 钉 per-source 合法目标矩阵、非法对零提交与
+ *  done→pending 重开落位（写 review，落非钉顶组尾部）。 */
+export const boardDragMatrix: FixtureSet = {
+  ...boardDefault,
+  todos: [
+    dragMatrixProbe('dm-todo', 51, 'dragmatrix 探针（待开始）', 'todo'),
+    dragMatrixProbe('dm-building', 52, 'dragmatrix 探针（执行中）', 'building'),
+    dragMatrixProbe('dm-failed', 53, 'dragmatrix 探针（失败）', 'failed', { hasChanges: true }),
+    dragMatrixProbe('dm-review', 54, 'dragmatrix 探针（待验收）', 'review', {
+      awaitingReply: true,
+    }),
+    dragMatrixProbe('dm-confirm', 55, 'dragmatrix 探针（待确认）', 'confirm'),
+    dragMatrixProbe('dm-done-changes', 56, 'dragmatrix 探针（已完成·有变更）', 'done'),
+    dragMatrixProbe('dm-done-plain', 57, 'dragmatrix 探针（已完成·无变更）', 'done', {
+      hasChanges: false,
+    }),
+  ],
+  now: r7(13, 55),
+};
 
 /** board-tags：跨列三卡——bug 待开始 / docs 执行中 / 无标签 待处理。
  *  e2e 钉筛选开/关/切换/URL 携带与「无标签恒可见」裁决面。 */
@@ -431,6 +484,43 @@ export const boardOverflow: FixtureSet = {
   todos: Array.from({ length: 12 }, (_, i) =>
     overflowProbe(`overflow-${String(i + 1).padStart(2, '0')}`, 51 + i, `溢出探针 #${i + 1}`),
   ),
+  now: r7(13, 55),
+};
+
+/** #692 压力探针卡工厂（无 capture，overflowProbe 先例）：相位可指定，
+ *  同式无标签、单项目。orderIndex 递增 = 列视图序即数组序。 */
+function stressProbe(
+  id: string,
+  seqNum: number,
+  title: string,
+  phase: TodoRecord['phase'],
+): TodoRecord {
+  return { ...probeTodo(phase, r7(13, 40)), id, seqNum, title, spec: title };
+}
+
+/** #692 看板最坏数据命名场景（无 capture，board-overflow 先例）：
+ *  待开始 = 超长混排标题（不可断行拉丁长词 + 长路径），执行中 = 120 卡
+ *  （三位数列头计数 + 列表纵溢出），待处理 = 空列，已完成 = 常规卡。
+ *  e2e 在 ⌘J 停靠 / 窄窗 / RTL 下钉「列不塌、卡可读、列头不溢出」。 */
+export const boardStress: FixtureSet = {
+  ...boardDefault,
+  todos: [
+    stressProbe(
+      'stress-title',
+      51,
+      '重构 SuperCalendarUnavailableNamespaceController 并同步 docs/2026-09-30-architecture-decision-records/supplementary-review-notes.md 里的全部引用路径与脚注编号',
+      'todo',
+    ),
+    ...Array.from({ length: 120 }, (_, i) =>
+      stressProbe(
+        `stress-build-${String(i + 1).padStart(3, '0')}`,
+        100 + i,
+        `批量探针 #${i + 1}`,
+        'building',
+      ),
+    ),
+    stressProbe('stress-done', 900, '常规完成卡', 'done'),
+  ],
   now: r7(13, 55),
 };
 
@@ -1689,6 +1779,54 @@ const AGENT_TASK_ROWS: AgentTask[] = [
 export const agentDetailActive: FixtureSet = {
   ...agentDetail,
   agentTasks: AGENT_TASK_ROWS,
+};
+
+/** #741 named scenario（无 capture，chief-md / agentDetail 先例）：agent 身份
+ *  可点进设置的两面语料。① 抽屉 robot 行身份 chip——chief.agent 带 id（live
+ *  mapper 恒带，fixture 面特意给 id 才钉得住「成链」面；无 id 惰性面由单测
+ *  test/chief-identity.test.ts 钉）；② 提及 chip——robot markdown 携五种
+ *  scheme 的 mention wire：agent/todo 成链（#741/#675 两个导航面），
+ *  skill/project/machine 保持惰性 span（参考站落点未实拍取证，票面明确不入
+ *  本票——字面负例要有牙，三种同播）。detail transcript 同场景带一条 agent
+ *  提及——segments 单源的两个消费面（抽屉 + 详情页对话）一套语料钉齐。
+ *  agents 复用 AGENT_R3_BUILDER：身份 chip 点击后 scenario 按 #121 Link 律
+ *  随行，Agent 详情页解析出真记录（fixture 面全链）。 */
+const CHIEF_AGENT_CHIP_REPLY = [
+  '派工回执：由 [r5-scribe](agent:a1) 复核 [#1](todo:r3-legacy-1)。',
+  '',
+  '技能 [deploy](skill:s1)、项目 [web](project:p1) 与机器 [box](machine:m1) 的提及保持惰性。',
+].join('\n');
+
+export const chiefAgentChip: FixtureSet = {
+  ...agentDetail,
+  todos: [legacyReview, legacyDone],
+  chief: {
+    view: 'drawer',
+    bound: true,
+    modelSlot: 'claude-sonnet-5 · 默认',
+    threadTitle: '验证一下凭证链路…',
+    agent: { id: R3_BUILDER.id, displayName: R3_BUILDER.displayName, avatarUrl: null },
+    stream: [
+      { kind: 'note', text: '17:26' },
+      { kind: 'user', text: '验证一下凭证链路，然后给我一份报告' },
+      {
+        kind: 'robot',
+        markdown: CHIEF_AGENT_CHIP_REPLY,
+        seconds: '44s',
+      },
+    ],
+  },
+  detail: {
+    transcript: [
+      { kind: 'run', at: '13:35', machine: 'xmonsMac-3574' },
+      { kind: 'user', text: '开始执行任务', seq: 1 },
+      {
+        kind: 'robot',
+        markdown: '凭证复核由 [r5-scribe](agent:a1) 承接，完成后汇报。',
+        footer: { seconds: 12 },
+      },
+    ],
+  },
 };
 
 /** XMON-19/B2 删除 Agent 的 e2e 语料（命名场景无 capture，agent-detail

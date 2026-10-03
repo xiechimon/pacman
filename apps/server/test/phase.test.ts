@@ -39,6 +39,15 @@ describe('九值权威（02 §4.1）', () => {
     expect(canTransitionPhase('closed', 'todo')).toBe(true); // reopen [推断]
   });
 
+  test('条件边：failed→review 恢复（#702 / #519 B-C17，仅 build 腿已交付合法）', () => {
+    // 边表记「这条流转在相位机上合法」；数据闸（build 步 done 且产物在）进
+    // 服务端判定（builds.ts 恢复闸 = 唯一放行点；PATCH 手动面拒收，见
+    // failed-review-restore.test 失败方式 3）。failed→done 仍非法——完成只
+    // 能经恢复后的 review→done 合并步落地，不许跨过审核关口直达终态。
+    expect(canTransitionPhase('failed', 'review')).toBe(true);
+    expect(canTransitionPhase('failed', 'done')).toBe(false);
+  });
+
   test('定时重跑边（02 §9.2 触发→新 build 全新重跑）', () => {
     expect(canTransitionPhase('done', 'queued')).toBe(true); // done 复跑（r3 §9 实测）
     expect(canTransitionPhase('review', 'queued')).toBe(true); // 停驻轮顶替（r5 §8 Cancelled+新轮）

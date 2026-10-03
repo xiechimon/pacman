@@ -222,6 +222,16 @@
   --row-icon-bg: #3f3f46;
   --overlay-divider: #2a2a2e;
   --overlay-select-indigo: #2a2740;
+  /* 模型 picker 选中行（#751）：此前缺角色令牌，选中行名借 --seg-active
+     （分段控件填充档）当文字色——light 1.24:1 / dark 1.57:1，即用户报的
+     「灰色看不清」。bg light 值采样自 r5 108 选中行 indigo  tint（与
+     --overlay-select-indigo light 同族）；fg light 取品牌 indigo 实底
+     （--card-button 值，= --chip-plan-fg light）——r5 108 的文字像素
+     #6466e9 在该 tint 上实测 3.87:1，不过 13px 正文的 AA 4.5。dark 对
+     取 chip-plan / overlay-indigo dark 族（无 dark 捕获，[推断]）。
+     实测：light 5.45:1、dark 5.21:1。 */
+  --pick-selected-bg: #2a2740;
+  --pick-selected-fg: #8b93f8;
   /* chief surfaces (r5 100–104, #72): tab strip colors from the r5 101
      group/active pill (dark values [推断], r2 16 dark panel) */
   --chief-tab-bg: #27272a;
@@ -352,6 +362,9 @@
   --row-icon-bg: #e7e2da;
   --overlay-divider: #efebe5;
   --overlay-select-indigo: #edebf6;
+  /* 模型 picker 选中行（#751，角色与取值 lineage 见 dark 块同名令牌）。 */
+  --pick-selected-bg: #edebf6;
+  --pick-selected-fg: #4e47dd;
   /* chief surfaces (r5 100–104, #72): tab strip from the r5 101 group bg /
      active pill */
   --chief-tab-bg: #eeeae4;

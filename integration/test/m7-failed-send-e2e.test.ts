@@ -14,11 +14,18 @@
 //   7. 双发竞态：连打两次发送 → 两个新 build（第二次 409 钉）
 //   8. assignment/withPlan 丢失：新轮步无 agent 不可 claim → 卡死 queued
 //   9. build 位错乱：latestBuildId 不指向新 build / prevPhase 不记 failed
+//   10.（#720）反馈进不了 agent 会话：new session 步 prompt 只有 title+spec，
+//       返工理由只落 DB —— stub LLM 请求体 + transcript wire 行双面对账
 
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import {
+  buildRestartPrompt,
+  buildTaskPromptText,
+  composeTaskPromptWithInstruction,
+} from '@pacman/shared';
 import { asc, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { loadDaemonConfig } from '../../apps/daemon/src/config.js';
@@ -31,7 +38,15 @@ import {
   step as stepTable,
   todo as todoTable,
 } from '../../apps/server/src/db/schema.js';
-import { AGENT_ID, api, bootRealServer, type RealServer, seedWorld, waitFor } from './helpers.js';
+import {
+  AGENT_ID,
+  api,
+  bootRealServer,
+  daemonLogLines,
+  type RealServer,
+  seedWorld,
+  waitFor,
+} from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 const PLAN_MD = [
@@ -43,6 +58,20 @@ const PLAN_MD = [
   'Verification: 读回 README.md 确认探针行在位。',
 ].join('\n');
 
+/** user wire 消息文本（openai 双形：纯 string 或 text parts 数组——pi 会话
+ * 首条 user 恒走 parts 形，实测 dump 钉）。 */
+function userWireText(m: { role: string; content?: unknown }): string | null {
+  if (typeof m.content === 'string') return m.content;
+  if (Array.isArray(m.content)) {
+    const parts = m.content.filter(
+      (p): p is { type: 'text'; text: string } =>
+        typeof p === 'object' && p !== null && (p as { type?: string }).type === 'text',
+    );
+    return parts.length > 0 ? parts.map((p) => p.text).join('') : null;
+  }
+  return null;
+}
+
 let stub: StubLlm;
 let server: RealServer;
 let handle: MachineHandle;
@@ -50,11 +79,7 @@ let paths: StatePaths;
 let home: string;
 
 function logLines(): string[] {
-  try {
-    return readFileSync(paths.daemonLog, 'utf8').split('\n');
-  } catch {
-    return [];
-  }
+  return daemonLogLines(paths.daemonLog);
 }
 
 beforeAll(async () => {
@@ -175,6 +200,23 @@ describe('M7 失败面发送 E2E：failed 发消息 → restart → 反馈随新
 
     // 新一轮实跑（失败方式 4/8 端到端）：机器领取 → 规划轮完成 → confirm。
     await waitFor(() => server.todoPhase(world.todoId) === 'confirm', 120_000);
+
+    // —— #720 对账面：反馈真的进了 agent 会话（票面验收 = transcript 可见，
+    // 不是只落 DB）—— stub LLM 全量录请求体（不从截断 dump 推结论），重启轮
+    // 会话首条 user 消息 = 任务文本 + 重启指令组合串（compose 单源），与
+    // transcript 读面的 user-<stepId> wire 行同串。 ——
+    const expectedPrompt = composeTaskPromptWithInstruction(
+      buildTaskPromptText('restart 探针', '这个任务的第一轮会失败。'),
+      buildRestartPrompt('把测试也补上'),
+    );
+    const llmSawFeedback = stub.requests.some((r) =>
+      r.messages.some((m) => m.role === 'user' && userWireText(m) === expectedPrompt),
+    );
+    expect(llmSawFeedback).toBe(true);
+    const faceAfter = await api(server.url, 'GET', `/api/conversations/${newBuildId}/messages`);
+    const rowsAfter = (faceAfter.body as { messages: { role: string; content: unknown }[] })
+      .messages;
+    expect(rowsAfter.some((m) => m.role === 'user' && m.content === expectedPrompt)).toBe(true);
 
     // 相位门（失败方式 6/7）：phase 已离开 failed——对新 build 再发 restart、
     // 对旧 failed build 重放 restart 均 409，不产生第三个 build。

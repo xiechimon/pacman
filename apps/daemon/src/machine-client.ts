@@ -5,6 +5,7 @@
 
 import {
   type ClaimedStep,
+  type MachineAttachmentResponse,
   type MachineDoneBody,
   type MachineEnrollResponse,
   type MachineRecord,
@@ -17,6 +18,7 @@ import {
   type MachineStreamEvent,
   type MachineSyncResultBody,
   type MachineTokenResponse,
+  machineAttachmentResponseSchema,
   machineClaimResponseSchema,
   machineEnrollPollResponseSchema,
   machineEnrollResponseSchema,
@@ -89,6 +91,12 @@ export interface MachineApi {
    * agent.skills 白名单交集，chief 步 = 信任面全量；非本步凭证/未知步 = 404。
    * 失败抛错由调用方降级（仅本机技能，会话不阻断）。 */
   skills(stepId: string): Promise<MachineSkillsResponse>;
+  /** 图片附件下载（#730）：GET /api/machine/attachment/{stepId}/{attachmentId}
+   * → {fileName, mimeType, sizeBytes, contentBase64}。replaySafe 读面带
+   * REMOTE_TOOL_RETRY_DELAYS_MS 重试预算（幂等 GET）；4xx = 协议事实
+   * （pending 409 / 未知 404 / 跨 team 404）单次即抛——调用方按「不可用
+   * 注记」处理，步不崩。 */
+  attachment(stepId: string, attachmentId: string): Promise<MachineAttachmentResponse>;
   uploadUrls(
     stepId: string,
     files: { name: string; size?: number }[],
@@ -331,6 +339,34 @@ export class MachineClient implements MachineApi {
     return this.request('GET', `/api/machine/skills/${stepId}`, {
       parse: (raw) => machineSkillsResponseSchema.parse(raw),
     });
+  }
+
+  async attachment(stepId: string, attachmentId: string): Promise<MachineAttachmentResponse> {
+    // 幂等 GET（relayTool replaySafe 同族）：网络/5xx 按预算重试；4xx 单次抛。
+    const delays = [...REMOTE_TOOL_RETRY_DELAYS_MS];
+    let lastErr: unknown;
+    for (let attempt = 0; attempt <= delays.length; attempt++) {
+      try {
+        return await this.request<MachineAttachmentResponse>(
+          'GET',
+          `/api/machine/attachment/${stepId}/${attachmentId}`,
+          {
+            signal: AbortSignal.timeout(REMOTE_TOOL_TIMEOUT_MS),
+            parse: (raw) => machineAttachmentResponseSchema.parse(raw),
+          },
+        );
+      } catch (err) {
+        lastErr = err;
+        if (err instanceof MachineApiError && err.status < 500) throw err;
+        if (err instanceof MachineApiError) {
+          // 5xx → 重试
+        }
+      }
+      const delay = delays[attempt];
+      if (delay === undefined) break;
+      await new Promise((r) => setTimeout(r, delay));
+    }
+    throw lastErr instanceof Error ? lastErr : new Error('attachment download failed');
   }
 
   async uploadUrls(

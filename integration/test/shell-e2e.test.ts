@@ -6,7 +6,7 @@
 // 断言面三处：server shell_command 审计行（正本）、daemon.log 审计行族
 // （执行机副本）、message 表（agent 真拿到输出）。任一环节静默失败即红。
 
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AGENT_TOOL_SHELL } from '@pacman/shared';
@@ -23,7 +23,15 @@ import {
   shellCommand as shellCommandTable,
   step as stepTable,
 } from '../../apps/server/src/db/schema.js';
-import { AGENT_ID, api, bootRealServer, type RealServer, seedWorld, waitFor } from './helpers.js';
+import {
+  AGENT_ID,
+  api,
+  bootRealServer,
+  daemonLogLines,
+  type RealServer,
+  seedWorld,
+  waitFor,
+} from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 /** 命令与输出 marker：审计行 / message 面共用的对账键。 */
@@ -40,18 +48,16 @@ let world: { projectId: string; todoId: string };
 let buildId = '';
 
 function logLines(): string[] {
-  try {
-    return readFileSync(paths.daemonLog, 'utf8').split('\n');
-  } catch {
-    return [];
-  }
+  return daemonLogLines(paths.daemonLog);
 }
 
 beforeAll(async () => {
   stub = await startStubLlm([
     // 轮 1：agent 调 remote_shell（pi 会话内真执行：预检 → bash → 回写）。
     { toolCall: { name: 'remote_shell', arguments: { command: COMMAND } } },
-    // 轮 2：收尾。
+    // 轮 2：真做一处改动（#703 闸 2——执行步无改动过不了 review 闸）。
+    { toolCall: { name: 'bash', arguments: { command: 'printf "shell probe\\n" >> README.md' } } },
+    // 轮 3：收尾。
     { content: '命令已执行。' },
   ]);
   server = await bootRealServer({
@@ -109,9 +115,10 @@ afterAll(async () => {
   await handle?.done;
   await server?.close();
   await stub?.close();
+  const diagTail = logLines().slice(-40).join('\n');
   if (home) rmSync(home, { recursive: true, force: true });
   process.stdout.write(
-    `\n[diag] stub requests consumed: ${stub?.requests.length ?? -1}\n[diag] daemon.log tail:\n${logLines().slice(-40).join('\n')}\n`,
+    `\n[diag] stub requests consumed: ${stub?.requests.length ?? -1}\n[diag] daemon.log tail:\n${diagTail}\n`,
   );
 });
 

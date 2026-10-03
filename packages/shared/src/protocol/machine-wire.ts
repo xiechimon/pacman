@@ -422,6 +422,11 @@ export const transcriptUploadSchema = z.object({
 });
 export type TranscriptUpload = z.infer<typeof transcriptUploadSchema>;
 
+/** findingsError（#700 B-C13）长度上限：daemon 组装侧截断在 500 字符内，
+ * 本值 = schema 面第二道闸（同 SHELL_OUTPUT_CHAR_LIMIT 之律，防 bug
+ * daemon 单条打爆 DB）。 */
+export const FINDINGS_ERROR_CHAR_LIMIT = 2_000;
+
 /** POST /api/machine/done/{stepId}——步骤收尾 body [推断]（02 §5.4 端点名；
  * status 词 = 步级失败无自动重跑语义的最小三值，02 §4.2）。
  * M7 #330：审核步终态可携带 findings（reviewVerdict 形态，shared 单源）——
@@ -445,9 +450,36 @@ export const machineDoneBodySchema = z.object({
    * agent 终轮 JSON 输出后置入；server 落库 + 判 blocking 触发自动修订。
    * 形状 = records/review.ts reviewVerdictSchema（conclusion + findings[]）。 */
   findings: reviewVerdictSchema.optional(),
+  /** AI 审核步 verdict 提取失败原因（#700 B-C13）：review 步 daemon 未能从
+   * transcript 取出合法 verdict 时随 done 携带（findings 缺位；两字段互斥，
+   * 同现 = 新 daemon 对旧 server 的无害冗余，findings 优先）。server 据此
+   * 把 verdict 消息兜底拆成两态：「判定提取失败」+ extractionError 原因上
+   * 浮（web 审核面可分辨提取器失败），两字段皆缺（旧 daemon 无信号）才落
+   * 「审核未返回结论」。非 review 步不携带。长度上限 = schema 面第二道闸
+   * （daemon 侧已截断，防 bug daemon 单条打爆 DB）。 */
+  findingsError: z.string().max(FINDINGS_ERROR_CHAR_LIMIT).optional(),
+  /** PR 回填（#704 / B-C16，Multica link-back 只读方向）：github 形态步收尾
+   * 时 daemon 只读探测 conv 分支上的 PR（机器 gh / per-step token / 匿名三
+   * 梯，单次有界），探测命中才携带——无 PR / 探测失败 = 缺席（面板分支名在、
+   * PR 槽留空，不造数据、不重试）。server 落 build.prUrl/prNumber 并发布。 */
+  prUrl: z.string().optional(),
+  prNumber: z.number().int().optional(),
+  /** 变更投影上报（#704 失败方式 5：非 hosted 形态投影真值源 = daemon 步
+   * 收尾上报）：conv 分支相对 origin/<default> 的 unified diff 原文。daemon
+   * 侧受 CHANGES_DIFF_MAX_BYTES 上限（超限缺席——投影回落空集而非半截假象）；
+   * server parseUnifiedDiff 解析后落 build.changes 列，readBuildChanges 非
+   * hosted 分支消费。hosted 形态真值源仍是 server bare repo，daemon 不上报
+   * （双真值源漂移面不引入）。 */
+  changesDiff: z.string().optional(),
 });
 export type MachineDoneBody = z.infer<typeof machineDoneBodySchema>;
 export const machineDoneResponseSchema = machineOkResponseSchema;
+
+/** changesDiff 上报字节上限（#704）：daemon 与 server 双侧同吃——daemon 超
+ * 限不上报，server 收到超限载荷丢弃（两道闸都不打爆 done 通道与 DB）。取值
+ * 对齐 diff 全文闸门 DIFF_FILE_MAX_BYTES 量级（1 MiB 的一半），单步 diff 超
+ * 此值时投影按「未知」回落空集，PR 面板仍有 GitHub 链接兜底。 */
+export const CHANGES_DIFF_MAX_BYTES = 512 * 1024;
 
 // —— machine shell 预检/回写（XMON-108 R1 [设计]，MACHINE_WIRE_EXTENSIONS
 //    登记位）—————————————————————————————————————————————————————————————
@@ -519,6 +551,19 @@ export const machineSkillsResponseSchema = z.object({
 });
 export type MachineSkillsResponse = z.infer<typeof machineSkillsResponseSchema>;
 
+/** GET /api/machine/attachment/{stepId}/{attachmentId} 响应（#730 [设计]
+ * MACHINE_WIRE_EXTENSIONS 登记位）：daemon 侧图片交付的下载面——ownedStep
+ * 校验（本机步）+ 附件 team 归属校验（跨 team 404）+ ready 状态闸（pending/
+ * failed = 409 原因带状态词）。base64 载荷与既有工具面 readAttachmentMeta
+ * 同形（10MiB cap = 内存预算上界，同律）。 */
+export const machineAttachmentResponseSchema = z.object({
+  fileName: z.string(),
+  mimeType: z.string(),
+  sizeBytes: z.number().int().min(0),
+  contentBase64: z.string(),
+});
+export type MachineAttachmentResponse = z.infer<typeof machineAttachmentResponseSchema>;
+
 /** 词表外 [设计] 附加端点（wire diff 白名单化用，04 §1/§3 divergence 登记
  * 机制同族）：upload-urls 预签名的落地点——self-host 无对象存储，server 自出
  * 一次性 PUT URL。非协议面外扩：13 端点词表（MACHINE_ENDPOINTS）不改形状，
@@ -544,6 +589,12 @@ export const MACHINE_WIRE_EXTENSIONS = [
     path: '/api/machine/skills/{stepId}',
     reason:
       '[设计] XMON-109 S1 技能包下发（spec 14 daemon 注入契约的 S2 消费位；agent.skills 白名单交集 + 字节闸；响应 machineSkillsResponseSchema）',
+  },
+  {
+    method: 'GET',
+    path: '/api/machine/attachment/{stepId}/{attachmentId}',
+    reason:
+      '[设计] #730 daemon 侧图片附件下载（ownedStep + team 归属 + ready 闸；base64 载荷响应 machineAttachmentResponseSchema）',
   },
   {
     method: 'PUT',

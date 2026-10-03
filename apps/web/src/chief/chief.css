@@ -15,7 +15,15 @@
 /* In-flow flex item: every mount point puts the panel last in a flex row
    (.board-shell / .page-main / .res-main / .secondary-main / .detail-body)
    whose content sibling is flex:1 min-width:0, so the content yields by
-   exactly 418px (D2). The row's stretch alignment carries the full height. */
+   exactly 418px (D2). The row's stretch alignment carries the full height.
+   z: the docked chrome rung of the #688 ladder (tokens.css) — above in-flow
+   content, below every active surface (popovers, scrims, dialogs). The
+   panel is persistent chrome, not an overlay: an open dialog must paint
+   over it (the reference keeps the drawer mounted and dims it under the
+   dialog scrim), and an anchored popover must never lose a DOM-order tie
+   against it. The column also forms a stacking context, so the drawer's
+   own interior popovers (switcher z 5, model menu --z-popover, tab pill
+   0/1) stay scoped inside this plane. */
 .chief-drawer {
   flex: none;
   width: 418px;
@@ -23,7 +31,7 @@
   border-left: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
-  z-index: 30;
+  z-index: var(--z-docked);
 }
 
 /* Exit leg only (D4: 内容瞬时贴合，不做布局动画): once the state flips to
@@ -127,7 +135,6 @@
   min-width: 0;
   max-width: 100%;
   padding: 1px 4px;
-  margin-left: -4px;
   border-radius: 6px;
   color: var(--text-tertiary);
   cursor: pointer;
@@ -206,17 +213,13 @@
   color: var(--danger);
 }
 
-/* #615 主模型覆盖 dialog 行（r5 108 行形：模型名 + provider 副题两行，
-   选中行名升 indigo + 右缘 check，chief-model-check 复用）。 */
-.chief-model-pick {
-  display: flex;
-  flex-direction: column;
-}
-
+/* #615 主模型覆盖行（r5 108 行形：模型名 + provider 副题两行，右缘 check
+   复用 chief-model-check）。#751 起壳是抽屉头锚定弹层（.chief-model-pop
+   列容器自带 search/list 间距），dialog 时代的 .chief-model-pick 包装层
+   退役。 */
 .chief-model-pick-list {
   max-height: 320px;
   overflow-y: auto;
-  padding: 4px;
 }
 
 .chief-model-pick-row {
@@ -252,10 +255,6 @@
   white-space: nowrap;
 }
 
-.chief-model-pick-row[aria-selected="true"] .chief-model-pick-name {
-  color: var(--seg-active);
-}
-
 .chief-model-pick-provider {
   font-size: 11px;
   color: var(--text-tertiary);
@@ -271,6 +270,8 @@
   background: var(--popover-bg);
   border-radius: 8px;
   box-shadow: var(--chief-shadow);
+  /* drawer-local（#688 阶梯外）：切换器锚在抽屉头部，绘制收编于 .chief-drawer
+     的 stacking context，只需压住抽屉内部内容——5 是局部值，不参竞根级层序。 */
   z-index: 5;
 }
 
@@ -422,6 +423,38 @@
   margin-top: 14px;
 }
 
+/* #739 在飞存在行：详情页 .chat-streaming 的同族皮肤（chief scope —— detail.css
+   只在 todo-detail 路由加载，抽屉落在 board 面必须自带，不能借道）。loading-dev
+   Atom 自有 spinner 盒/动画/reduced-motion 冻结；这里只保留库无法知道的行级排布
+   与暗字色。不挂秒数（#471），故无计数几何；.chief-streaming-secs 保留
+   tabular-nums 以防后续设计挂秒数时数字跳动推移标签尾。 */
+.chief-streaming {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.chief-spinner {
+  flex: none;
+  color: var(--text-dim);
+}
+
+.chief-streaming-label {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chief-streaming-secs {
+  font-variant-numeric: tabular-nums;
+}
+
 .chief-avatar {
   flex: none;
   color: var(--text-tertiary);
@@ -434,6 +467,40 @@
   height: 24px;
   border-radius: 9999px;
   display: block;
+}
+
+/* #741: bound-chief robot rows head with the identity chip (avatar + name,
+   whole chip one link into the agent's settings page — interaction canon
+   measured on todos.dev, see chief-identity.tsx), content full-width below
+   (reference assistant-message form). The row flips to a column; the dashed
+   unbound form keeps the side-avatar slot untouched. */
+.chief-msg--identity {
+  flex-direction: column;
+  gap: 6px; /* [设计] header → content 间距，取本面家族 2px/7px/10px 档中值 */
+}
+
+.chief-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px; /* [设计] 参考站实测 3px @ 12px 头像档，按本面 24px 槽等比放大 */
+  align-self: flex-start;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* cursor 只给 anchor 形——无 id 的惰性 span 不冒充可点（参考站 hover 正典：
+   仅指针变化、无背景态，故无 hover 规则；focus 环走全局 :focus-visible）。 */
+a.chief-identity {
+  cursor: pointer;
+}
+
+/* 名字 12px = 参考站实测值（12px/14px、weight 400、次级墨）；行高抬到 16px
+   让 chip 高度由 24px 头像槽主导（XMON-105 canon 不动）。 */
+.chief-identity-name {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  color: var(--text-secondary);
 }
 
 .chief-msg-col {
@@ -505,6 +572,18 @@
   color: var(--text-primary);
 }
 
+/* #742: markdown 路径的用户气泡（detail.css .chat-bubble--md 的 #612 配方
+   同款）——首/尾块 margin 归零：气泡上下留白由 10px padding 承担，块自带
+   margin（围栏 8px / 标题 12px）不再与它叠出双倍间距或尾部空转；单段短消息
+   保持 24px 行盒 → 44px 药丸高度，与字面路径几何逐值一致。.chief-bubble
+   本无 pre-wrap（.chat-bubble 有），故不需要 white-space 还原位。 */
+.chief-bubble--md > :first-child {
+  margin-top: 0;
+}
+.chief-bubble--md > :last-child {
+  margin-bottom: 0;
+}
+
 .chief-chip-todo {
   display: inline-flex;
   align-items: center;
@@ -549,6 +628,13 @@
   border-radius: 12px;
 }
 
+/* #732：@ 内联 listbox 的 absolute 锚（mention-picker.css 的 bottom:
+   calc(100% + 6px) + left/right: 0 落在这层；detail composer
+   .composer-input-wrap 同律）。 */
+.chief-composer-input-wrap {
+  position: relative;
+}
+
 .chief-composer-input {
   display: block;
   width: 100%;
@@ -578,6 +664,23 @@
   align-items: center;
   gap: 16px;
   margin-top: 10px;
+}
+
+/* #732：composer 工具钮（添加附件/提及，detail 三工具钮的 chief 等价位）。
+   几何照头部 icon 钮档（chief.css 元素选择器 .chief-head-actions button =
+   20×20，见 #136 台账前的旧 .chief-composer-bar 残档 commit 900d27e6）；
+   中和件照发送钮（cursor:pointer 承旧 .btn，ghost 原语透明底即 canon，
+   无实底双态）。惰性降档：ghost 原语 disabled:opacity-50/pointer-events-none
+   即 canon（fixture 面附件钮禁用形仍可读出 aria）。 */
+.chief-tool {
+  width: 20px;
+  height: 20px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.chief-tool:hover {
+  color: var(--text-secondary);
 }
 
 /* XMON-23 收编：选择器自 .btn 叠类 re-key（components/ui Button 不吐 btn
@@ -753,9 +856,11 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  height: 62px;
-  margin-top: 18px;
-  padding: 0 16px;
+  /* #772: 定高改 min-height——英文描述换行（2 行起）时卡片随之长高，
+     不再把第二行顶出卡片；单行时 62 不变（内容 33 + 16 < 62）。 */
+  min-height: 62px;
+  margin-top: 17px;
+  padding: 8px 16px;
   border-radius: 8px;
   background: var(--surface-secondary);
 }
@@ -787,6 +892,10 @@
   gap: 10px;
   height: 30px;
   min-width: 160px;
+  /* #772: 长 provider/model 串不再把框撑满——定宽上限 + 值单行截断。
+     max-width 而非 width：短值（默认行/短模型名）保持原尺寸，无变化；
+     上限保窄抽屉（418 停靠列）不溢出。 */
+  max-width: 200px;
   padding: 0 10px;
   border: 1px solid var(--border-default);
   border-radius: 8px;
@@ -798,7 +907,19 @@
 }
 
 .chief-select svg {
+  flex: none;
   color: var(--text-tertiary);
+}
+
+/* #772 值截断：flex 子 span 默认 min-width:auto 拒绝收缩，省略号永不
+   触发——min-width:0 是截断生效的前提（菜单行 chief-model-row-name 同律，
+   此处是触发钮版）。 */
+.chief-select-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chief-model-menu {
@@ -812,8 +933,10 @@
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
-  /* 家族层律:30 压 catcher(29),见 overlays/dismiss.tsx。 */
-  z-index: 30;
+  /* 家族层律（#688 阶梯 --z-popover 压 --z-catcher，见 overlays/dismiss.tsx）。
+     本菜单锚在抽屉内（FloatingShell container=wrap），实际绘制被抽屉自身的
+     stacking context 收编——消费家族令牌是层律对齐，不是根级参竞。 */
+  z-index: var(--z-popover);
 }
 
 .chief-model-row {
@@ -858,6 +981,51 @@
   color: var(--text-tertiary);
 }
 
+/* #751 选中行单源：chief 两个 picker 面（抽屉头主模型弹层 + 设置面压缩
+   模型弹层）都经 ModelPickRow 渲染，选中态 therefore 落在基类钩子上而不是
+   各面 skin——令牌对 --pick-selected-bg/-fg 承载此前缺失的角色（选中行
+   填充 + 选中行文字），实测 light 5.45:1 / dark 5.21:1（13px 名，AA 4.5）。
+   被取代的旧规则把 --seg-active（分段控件填充档）当文字色：light 1.24:1，
+   即用户报的「灰色看不清」。 */
+.model-pick-row[aria-selected="true"] {
+  background: var(--pick-selected-bg);
+}
+
+.model-pick-row[aria-selected="true"] .model-pick-name,
+.model-pick-row[aria-selected="true"] .model-pick-check {
+  color: var(--pick-selected-fg);
+}
+
+/* #751 抽屉头主模型 picker：锚定弹层家族律（#67/#127：FloatingShell
+   container=wrap + ClickCatcher + Esc）——wrap 是包含块，菜单贴触发行底下
+   左对齐，与设置面 .chief-model-menu 贴其 select 同律；取代 #615 的居中
+   DialogShell（用户报「在中间出现，而不是在它底下」，对照 .chief-switcher
+   的贴底锚定）。光学内缩 -4px 自 .chief-model-btn 移到 wrap（菜单 left:0
+   才能与钮的视觉左缘齐）。 */
+.chief-model-pop-wrap {
+  position: relative;
+  display: block;
+  margin-left: -4px;
+  min-width: 0;
+}
+
+.chief-model-pop {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  width: 280px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--popover);
+  border-radius: var(--radius-popover);
+  box-shadow: var(--fab-shadow);
+  /* 家族层律同 .chief-model-menu：消费 --z-popover 是层律对齐，实际绘制被
+     抽屉自身 stacking context 收编。 */
+  z-index: var(--z-popover);
+}
+
 /* #656 退场（mention-picker 同款）：面板的退场改由 tw-animate-css 的
    group-data-closed:animate-out 承载（FLOATING_POP_ANIM，挂在 .chief-model-menu
    上、经壳的 group/fshell 读开闭态）。Base UI 只在 Popup 本体有进行中动画时才
@@ -871,10 +1039,21 @@
   visibility: hidden;
 }
 
+/* #751 抽屉头 picker 壳的同款退场窗（机理见 .chief-model-shell 注）。 */
+.chief-model-pop-shell {
+  transition: visibility 0s linear var(--dur-fast);
+}
+
+.chief-model-pop-shell[data-ending-style] {
+  visibility: hidden;
+}
+
 .chief-charter-empty {
   display: grid;
   place-items: center;
-  height: 78px;
+  /* #772: 定高改 min-height（与 memo/watches/compress 同律）——文案变长
+     换行时盒子长高，单行时 78 不变。 */
+  min-height: 78px;
   margin-top: 17px;
   border: 1px dashed var(--border-strong);
   border-radius: 8px;
@@ -904,16 +1083,23 @@
 .chief-watches {
   display: flex;
   align-items: center;
-  height: 44px;
+  /* #772: 定高改 min-height + 纵向内边距——英文两行时（watches 实测
+     39px 内容挤在 44 里、上下只剩 2.5px）卡片随之长高且呼吸均匀；
+     单行时 44 不变（19.5 + 16 < 44）。 */
+  min-height: 44px;
   margin-top: 17px;
-  padding: 0 16px;
+  padding: 8px 16px;
   border-radius: 8px;
   background: var(--surface-secondary);
   font-size: 13px;
 }
 
+/* #772: memo 与 watches/charter-empty 统一为居中 + tertiary——三张空态
+   卡之前是两种对齐（memo 左、另两张中）× 两种墨色（memo 二级字、另两张
+   三级字）。文案一字不动，只收对齐与墨色。 */
 .chief-memo {
-  color: var(--text-secondary);
+  justify-content: center;
+  color: var(--text-tertiary);
 }
 
 .chief-watches {

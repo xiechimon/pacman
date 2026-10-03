@@ -74,8 +74,46 @@ export function boardColumnFor(phase: Phase): BoardColumn | null {
 
 /** 手动改相面落点集（#160 看板拖拽）= 持落点列 dropPhase 正名（web columns.ts
  *  COLUMNS[].dropPhase 的同表镜像，columns.test.ts 有自动对拍钉单源）。
- *  拖拽只产生「源相占列 → 目标列」：`closed` 不占列故不可作拖拽源或落点；
- *  #351：`待处理` 不作落点（gate/failed 是系统态，手动拖入无语义）。
- *  官方 PATCH wire 未抓（r3 §3.10 合成拖拽未复现），手动面语义为复刻裁定
- *  [设计]；系统流仍走 PHASE_TRANSITIONS 漏斗（server services/phase.ts）。 */
-export const BOARD_DROP_PHASES: readonly Phase[] = ['todo', 'building', 'done'];
+ *  拖拽只产生「源相占列 → 目标列」：`closed` 不占列故不可作拖拽源或落点。
+ *  #753（todos.dev 2026-10-03/04 live 重测，推翻 #351 的「待处理不作落点」）：
+ *  `待处理` 收 已完成→待处理 的重开落位，落点正名 `review`（重开回审核关口
+ *  [设计]——参考站 wire 未能采到：其机器离线，见 #753 侦察记录）。边级合法性
+ *  不在本表：见 canBoardDrop（源列 × 目标列矩阵 + failed→done 例外）。
+ *  官方 PATCH wire 未抓（r3 §3.10 合成拖拽未复现；2026-10-04 实测参考站落位
+ *  走语义动作端点 POST complete/uncomplete，本仓载体仍 = PATCH phase [设计]）；
+ *  系统流仍走 PHASE_TRANSITIONS 漏斗（server services/phase.ts）。 */
+export const BOARD_DROP_PHASES: readonly Phase[] = ['todo', 'building', 'review', 'done'];
+
+/** 手动列迁移矩阵（#753，todos.dev 2026-10-03/04 live 重测）：源相占列 →
+ *  目标落点相的边级判据。实测钉死的格子：
+ *  - 每张卡都可拖（含 待处理/已完成——2026-10-02 旧测「不可拖」已推翻）；
+ *  - 执行中 只吃 待开始 拖入（拖入 = 开始意图；待处理/已完成 源恒素面）；
+ *  - 待处理 只吃 已完成 拖入（2026-10-04 实测：无变更产物的 done 卡拖拽时
+ *    待处理 恒素面——hasChanges 数据闸在 server updateTodo / web
+ *    canDropOnColumn，本函数只答相位级的边）；待开始→待处理 恒素面；
+ *  - 已完成 吃 待开始/执行中/待处理 的拖入，failed 源除外（#702 裁决：
+ *    failed→done 保持非法，done 仍只能经合并步落地）；
+ *  - 源列全程素面（同列落位 = 无操作，dnd.ts moveTodo 恒等）。
+ *  执行中 源行未测（参考站机器离线，列进不去卡）：沿用本仓既有语义
+ *  （→待开始/已完成 合法，→待处理 不收）[设计]。 */
+export function canBoardDrop(from: Phase, to: Phase): boolean {
+  if (from === to || from === 'closed') return false;
+  if (!BOARD_DROP_PHASES.includes(to)) return false;
+  const src = boardColumnFor(from);
+  if (src == null) return false;
+  if (from === 'failed' && to === 'done') return false;
+  switch (to) {
+    case 'todo':
+      return src !== '待开始';
+    case 'building':
+      return src === '待开始';
+    case 'review':
+      return src === '已完成';
+    case 'done':
+      return true;
+    default:
+      // 非落点相（queued/planning/confirm/failed/closed）——上面的白名单
+      // 守卫已挡，这里只是穷尽 Phase 联合的兜底。
+      return false;
+  }
+}

@@ -144,7 +144,12 @@ describe('mapPiSessionEvent（AgentSessionEvent → StepEvent 投影）', () => 
       message: { role: 'assistant', stopReason: 'aborted' },
     });
     expect(stopped).toEqual([
-      { type: 'message_stop', message: { role: 'assistant', content: null } },
+      {
+        type: 'message_stop',
+        // stopReason 透传（#708：pi 结构化终态位随消息行投影——错误终局行
+        // 不算进展的判定依据；messageRecordSchema loose 面不改 wire）。
+        message: { role: 'assistant', content: null, stopReason: 'aborted' },
+      },
     ]);
   });
 

@@ -4,7 +4,7 @@
 // wake 低延迟派发端到端时延）与 T2 的 continue-session 面（合并轮/驳回轮
 // 复用同 conv pi 会话的宿主 durable 编排证据；崩溃 recover 面 = crash-recover.test.ts）。
 
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
@@ -13,7 +13,15 @@ import { createDaemonLogger } from '../../apps/daemon/src/log.js';
 import { type MachineHandle, runMachine } from '../../apps/daemon/src/machine-loop.js';
 import { type StatePaths, statePaths } from '../../apps/daemon/src/state.js';
 import { step as stepTable, tokenUsage } from '../../apps/server/src/db/schema.js';
-import { AGENT_ID, api, bootRealServer, type RealServer, seedWorld, waitFor } from './helpers.js';
+import {
+  AGENT_ID,
+  api,
+  bootRealServer,
+  daemonLogLines,
+  type RealServer,
+  seedWorld,
+  waitFor,
+} from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
 let stub: StubLlm;
@@ -26,7 +34,20 @@ const timing: Record<string, number> = {};
 
 beforeAll(async () => {
   stub = await startStubLlm([
+    // #703 产物闸：stub 必须走真产物路（m3b 同款）——bash 写 plan.md（闸 1
+    // 判据）+ bash 改 README（闸 2 判据）；纯文本轮的空产物步现在过不了闸。
+    {
+      toolCall: {
+        name: 'bash',
+        arguments: {
+          command: `cat > plan.md <<'EOF'\n# 方案\n\nContext: 探针任务，README 当前无探针行。\nChanges: 在 README.md 追加一行 m3a probe。\nEdge cases: 无。\nVerification: 查 README.md 末行。\nEOF`,
+        },
+      },
+    },
     { content: '方案已就绪：Context / Changes / Edge cases / Verification 四段完整。' },
+    {
+      toolCall: { name: 'bash', arguments: { command: 'printf "m3a probe line\\n" >> README.md' } },
+    },
     { content: '修改已完成并验证通过。' },
   ]);
   server = await bootRealServer({ providerBaseUrl: stub.url, claimHoldMs: 1_000 });
@@ -57,11 +78,7 @@ afterAll(async () => {
 });
 
 function logLines(): string[] {
-  try {
-    return readFileSync(paths.daemonLog, 'utf8').split('\n');
-  } catch {
-    return [];
-  }
+  return daemonLogLines(paths.daemonLog);
 }
 
 describe('M3a demo：server 派 step → daemon 真执行 → transcript 回传落库', () => {
@@ -143,8 +160,10 @@ describe('M3a demo：server 派 step → daemon 真执行 → transcript 回传�
     await waitFor(() => server.todoPhase(todoId) === 'review', 120_000);
 
     expect(logLines().some((l) => l.includes(`continue session ${buildId}`))).toBe(true);
-    // 会话续接证据：第二轮 LLM 请求携带第一轮历史（跨 step 的 pi 会话持久化）。
-    const second = stub.requests[1]!;
+    // 会话续接证据：执行步的 LLM 请求携带规划轮历史（跨 step 的 pi 会话
+    // 持久化）——requests[0..1] = 规划步（bash 写 plan.md + 收尾文本），
+    // requests[2] = 执行步续会话。
+    const second = stub.requests[2]!;
     expect(JSON.stringify(second.messages)).toContain('方案已就绪');
     expect(second.messages.length).toBeGreaterThan(stub.requests[0]!.messages.length);
   }, 150_000);

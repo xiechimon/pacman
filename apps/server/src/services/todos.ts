@@ -22,7 +22,7 @@ import {
 } from '@pacman/shared';
 import { and, asc, eq, inArray, max, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { agent, build, project, step, tag, todo, todoTag } from '../db/schema.js';
+import { agent, build, machine, project, step, tag, todo, todoTag } from '../db/schema.js';
 import { HttpError } from '../lib/errors.js';
 import type { FetchLike } from '../lib/github.js';
 import { githubCreateIssue, githubUpdateIssueTitle } from '../lib/github.js';
@@ -105,6 +105,7 @@ export function toTodoRecord(deps: TodoDeps, row: TodoRow): TodoRecord {
     sourceBuildId: row.sourceBuildId,
     sourceKind: row.sourceKind,
     sourceRef: row.sourceRef,
+    machineId: row.machineId,
   };
 }
 
@@ -164,6 +165,9 @@ export function createTodo(
      * 答「哪次请求拆的」）。至多一个来源：GitHub 接入项目的自建 issue 写向
      * 优先占槽（#452 出站零回归；r14 §5.7 GitHub 镜像面开放问题）。 */
     orchestration?: { threadId: string };
+    /** 任务的钉选机器（#682）：null/缺省 = 自动。本团队机器集之外的 id =
+     * 400（tagIds 同律的项目边界防御）。 */
+    machineId?: string | null;
   },
 ): TodoRecord {
   const { db, hub } = deps;
@@ -182,6 +186,18 @@ export function createTodo(
     for (const tagId of tagIds) {
       if (!owned.has(tagId)) throw new HttpError(400, `tag ${tagId} not in project`);
     }
+  }
+  // #682：钉选机器限本团队机器集（tagIds 同律边界防御）；机器被删后任务
+  // 行残值 = startBuilds 回落 todo.machineId 时 claim 过滤自然不命中（步
+  // pending 等待语义同「pin 的机器离线」），不做写时级联。
+  const machineId = input.machineId ?? null;
+  if (machineId !== null) {
+    const machineRow = db
+      .select({ id: machine.id })
+      .from(machine)
+      .where(and(eq(machine.id, machineId), eq(machine.teamId, input.teamId)))
+      .get();
+    if (!machineRow) throw new HttpError(400, `machine ${machineId} not in team`);
   }
   // seqNum = 团队内持久序号（CONTEXT.md `#seqNum`；观测 #11–#14 跨项目递增，
   // 团队级计数 [推断]）。
@@ -247,6 +263,7 @@ export function createTodo(
         (selfIssue === null && input.orchestration !== undefined
           ? orchestrationSourceRef(input.orchestration.threadId)
           : null),
+      machineId,
     })
     .run();
   for (const tagId of tagIds) {
@@ -271,6 +288,10 @@ export function updateTodo(
     phase?: Phase;
     tagIds?: string[];
     orderIndex?: number;
+    /** 钉选机器 patch（#682）：string = 改钉，null = 清回自动，undefined =
+     * 不动。只影响之后新起的 build（claim 过滤按 build 落值）。team 外机器
+     * id = 400（createTodo 同律）。 */
+    machineId?: string | null;
     /** 指派槽级 patch（#208「编辑分配」）：提供的槽覆盖，未提供的槽保持现状；
      * 槽形状 = shared assignmentSlotSchema（02 §6.2 双槽词表）。 */
     assignment?: {
@@ -290,6 +311,18 @@ export function updateTodo(
   if (patch.title !== undefined) sets.title = patch.title;
   if (patch.spec !== undefined) sets.spec = patch.spec;
   if (patch.orderIndex !== undefined) sets.orderIndex = patch.orderIndex;
+  if (patch.machineId !== undefined) {
+    // #682 边界防御同建面：非 null 值必须落在本团队机器集内。
+    if (patch.machineId !== null) {
+      const machineRow = db
+        .select({ id: machine.id })
+        .from(machine)
+        .where(and(eq(machine.id, patch.machineId), eq(machine.teamId, row.teamId)))
+        .get();
+      if (!machineRow) throw new HttpError(400, `machine ${patch.machineId} not in team`);
+    }
+    sets.machineId = patch.machineId;
+  }
   if (patch.assignment !== undefined) {
     // 槽级 merge：未提供的槽保持现状（字段级 patch 语义延伸）。真值 = todo 表
     // JSON 列（db/schema.ts assignment 列），agent 投影随 build 槽自动派生。
@@ -308,6 +341,23 @@ export function updateTodo(
   if (patch.phase !== undefined && patch.phase !== row.phase) {
     manualPhaseApplied = opts.manualPhase === true && canManualMovePhase(row.phase, patch.phase);
     if (!manualPhaseApplied) assertPhaseTransition(row.phase, patch.phase);
+    // #702：failed→review 是条件边（数据闸在 builds.ts restoreFailedReview，
+    // 唯一放行点 = merge / 审核重跑动作面）。手动 PATCH 漏斗虽经边表放行该边，
+    // 但 raw 改相不带数据闸（半完成 build 会被误放行）——本面拒收，恢复只走
+    // 动作面（#701 同律：闸是 phase 机的一部分，不许客户端直改相位）。
+    if (row.phase === 'failed' && patch.phase === 'review') {
+      throw new HttpError(
+        409,
+        'failed 任务的审核关口恢复由合并/审核重跑动作发起（build 腿已交付时），手动改相不收',
+      );
+    }
+    // #753：done→review = 已完成 拖回 待处理 的重开落位，要求变更产物在——
+    // todos.dev 2026-10-04 live 实测：无变更的 done 卡拖拽时 待处理 列恒素面
+    // （没有可供重开验收的东西）。web 面同判（columns.ts canDropOnColumn 按
+    // hasChanges 收边），本闸 = raw PATCH 面的纵深防御。
+    if (row.phase === 'done' && patch.phase === 'review' && !row.hasChanges) {
+      throw new HttpError(409, '无变更产物的已完成任务不能拖回待处理（没有可重开验收的东西）');
+    }
     sets.phase = patch.phase;
     sets.phaseAt = nowMs();
   }

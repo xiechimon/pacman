@@ -19,8 +19,12 @@ export interface TaskMetaFields {
   branch: string | null;
   /** PR（build.prUrl/prNumber；托管 repo / 未创建 = null）。 */
   pr: { number: number; url: string } | null;
-  /** 执行机器名（steps.machineId × machines 读面）；未派发 = null。 */
+  /** 执行机器名（steps.machineId × machines 读面）；未派发但 build 钉了
+   *  机器（#682）= 钉选机器名（步等待该机认领）。 */
   machine: string | null;
+  /** 机器行等待标注（#682）：build 钉了机器、步未领、且该机离线 = true——
+   *  机器行尾注「（等待机器上线）」。钉选语义 = 步只等它，不自动改派。 */
+  machineWaiting: boolean;
   /** 模型 id（指派 agent 的 members actor.modelId，退 usage 首行 model）。 */
   model: string | null;
   /** 创建时间 = 首轮运行 createdAt（todo 表无创建列，buildHistory 首条目
@@ -68,7 +72,14 @@ export function TaskMetaBlock({ meta, now }: { meta: TaskMetaFields; now: number
           )}
         </Row>
       )}
-      {meta.machine != null && <Row label={t('机器')}>{meta.machine}</Row>}
+      {meta.machine != null && (
+        <Row label={t('机器')}>
+          {meta.machine}
+          {meta.machineWaiting && (
+            <span className="task-meta-waiting">{t('（等待机器上线）')}</span>
+          )}
+        </Row>
+      )}
       {meta.model != null && (
         <Row label={t('模型')}>
           <code className="task-meta-code">{meta.model}</code>

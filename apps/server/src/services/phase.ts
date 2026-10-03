@@ -6,13 +6,14 @@
 // （机器领规划步/直执行步）、planning→confirm（plan 卡就绪）、confirm→building
 // （确认 {action:"confirm"}）、confirm→planning（驳回 {action:"revision"} 重规划，
 // r5 §4）、building→review、review→done（合并落地）、failed→queued（重跑，r3
-// §3.7 新 conv/新 build）、{confirm,review,done}→queued（定时重跑：02 §9.2
+// §3.7 新 conv/新 build）、failed→review（#702 条件边：build 腿已交付的 failed
+// 恢复审核关口，恢复闸在 builds.ts）、{confirm,review,done}→queued（定时重跑：02 §9.2
 // 触发→新 build 全新重跑；r3 §9 done 复跑实测「看板 #1 从已完成回到执行中→
 // 待验收」、r5 §8 停驻轮旧 build Cancelled + 新轮）、*→closed（右键 Close，
 // r1 §443）、closed→todo（reopen，MCP reopen_todos r5 §3.1）。未直接观测的边
 // 标 [推断]（04 §3 不判负）。
 
-import { BOARD_DROP_PHASES, type Phase } from '@pacman/shared';
+import { canBoardDrop, type Phase } from '@pacman/shared';
 
 export const PHASE_TRANSITIONS: Readonly<Record<Phase, readonly Phase[]>> = {
   todo: ['queued', 'closed'],
@@ -32,7 +33,15 @@ export const PHASE_TRANSITIONS: Readonly<Record<Phase, readonly Phase[]>> = {
   // 其余出边（reopen 类）未观测 [推断]。
   done: ['queued'],
   // 重跑 = POST builds 新 conv/新分支/新 build（r3 §3.7）；或搁置。
-  failed: ['queued', 'closed'],
+  // #702（#519 B-C17）：failed→review = 条件边——审核步之死不再锁死已完成
+  // build 的合并路（build 步 done 且产物在〔PR/分支在〕时恢复审核关口，merge
+  // 与只重跑审核两出口共用）。合法性数据依赖，静态表不可表达：边表只记
+  // 「这条流转在相位机上合法」，数据闸进服务端判定（builds.ts restoreFailedReview
+  // = 唯一放行点，REST merge / steps action review / chief merge_builds 三生产者
+  // 同摄）；手动 PATCH 面拒收（todos.ts——review 不在手动落点集，raw 改相无
+  // 数据闸）。恢复 ≠ 审核通过：落 review 关口等人工决策，done 仍只能经合并步
+  // 落地（failed→done 保持非法）。
+  failed: ['queued', 'closed', 'review'],
   closed: ['todo'], // reopen [推断]（MCP reopen_todos 词表证据，wire 未采）
 };
 
@@ -42,12 +51,14 @@ export function canTransitionPhase(from: Phase, to: Phase): boolean {
 
 /** 手动改相面（#160 看板拖拽）：HTTP PATCH phase = 用户手动列迁移
  *  （onboarding P2 r3 §3.10「在桌面端可将卡片直接拖拽至目标列」）。
- *  落点集单源 = shared BOARD_DROP_PHASES（#351：持落点列 dropPhase 三值；
- *  closed 不占列故不可作源或落点，待处理不作落点）；系统流（setTodoPhase /
- *  MCP update_todo）仍走上方漏斗不变。[设计]——官方 PATCH wire 未抓
- *  （r3 §3.10 合成拖拽未复现），手动面语义为复刻裁定。 */
+ *  边级判据单源 = shared canBoardDrop（#753 per-source 矩阵：执行中 只吃
+ *  待开始、待处理 只吃 已完成〔review 落点正名〕、failed→done 保持非法
+ *  〔#702〕；旧 #351 平面白名单被 2026-10-03/04 参考站重测推翻）。系统流
+ *  （setTodoPhase / MCP update_todo）仍走上方漏斗不变。[设计]——官方 PATCH
+ *  wire 未抓（2026-10-04 实测参考站落位走 POST complete/uncomplete 语义
+ *  端点），手动面语义为复刻裁定。 */
 export function canManualMovePhase(from: Phase, to: Phase): boolean {
-  return from !== to && from !== 'closed' && BOARD_DROP_PHASES.includes(to);
+  return canBoardDrop(from, to);
 }
 
 /** 非法流转 = 409 语义（错误形状 {error}，r5 §1 实测族）。 */

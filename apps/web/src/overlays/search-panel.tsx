@@ -261,7 +261,8 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
     // #453：视口根面走 DialogShell 的 `viewportRoot` 变体——面板自带 fixed
     // 几何（.search-panel），scrim 归壳的 Backdrop 位（皮肤经
     // backdropClassName 给），模态机制（焦点圈定 / 滚动锁 / Esc 层栈）由壳
-    // 承载。zIndex 41 = 仓内 ⌘K 面的原阶梯（scrim 40 / 面板 41）。
+    // 承载。z 档 = #688 阶梯的 --z-modal（背板由壳减一 = --z-modal-scrim
+    // 同值，overlays.css 的 CSS 对读同一条阶梯）。
     <DialogShell
       open={open}
       onClose={onClose}
@@ -269,7 +270,7 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
       // 背板是 Base UI Backdrop（自带 data-open/data-closed）→ 自变体淡入淡出，
       // 与 .dlg 默认背板同档（duration-200 fade）。
       backdropClassName="search-scrim duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
-      zIndex={41}
+      zIndex="var(--z-modal)"
     >
       <div
         className={`search-panel ${VIEWPORT_POP_ANIM}`}

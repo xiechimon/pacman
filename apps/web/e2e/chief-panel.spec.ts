@@ -7,8 +7,10 @@ import { expect, type Page, test } from '@playwright/test';
 //      wake surface must obey the overlay-family law (useEscapeClose).
 //   2. Esc layering wrong: with the thread switcher popover open (r5 116),
 //      the innermost overlay must close first, the drawer survives one press.
-//   3. composer bar still renders 语音输入/添加附件/提及 — the #146 ruling
-//      hides them (local-first, no backend face); only 发送 remains.
+//   3. composer bar renders the attach + mention tools and 发送 — #732
+//      (ruling change) reopened the tool face the #146 ruling had hidden
+//      (its local-first/no-backend-face premise was retired by the landed
+//      attachment chain and mention wire); 语音输入 stays out (#304 C5).
 //   4. the panel is not a docked column: it must be a 418-wide full-height
 //      flex item flush to the container's right edge — radius 0, no shadow,
 //      a 1px --border-default left seam (D1/D3/D5); the 全屏 toggle and its
@@ -80,13 +82,15 @@ test.describe('chief panel docked form (#447)', () => {
     await expect(drawer(page)).toBeHidden();
   });
 
-  test('composer bar renders the send button only', async ({ page }) => {
+  test('composer bar carries the attach + mention tools and the send button', async ({ page }) => {
     await page.goto('/app?scenario=111');
     const bar = page.locator('.chief-composer-bar');
+    // #732（裁决变更，#146 旧隐藏裁决翻案）：附件/提及开闸渲染，与 detail
+    // 面同一套交互；语音维持 wontfix 不渲染（#304 C5，本票不含）。
     await expect(bar.locator('button[aria-label="语音输入"]')).toHaveCount(0);
-    await expect(bar.locator('button[aria-label="添加附件"]')).toHaveCount(0);
-    await expect(bar.locator('button[aria-label="提及"]')).toHaveCount(0);
-    await expect(bar.locator('button')).toHaveCount(1);
+    await expect(bar.locator('button[aria-label="添加附件"]')).toBeVisible();
+    await expect(bar.locator('button[aria-label="提及"]')).toBeVisible();
+    await expect(bar.locator('button')).toHaveCount(3);
     await expect(bar.locator('button[aria-label="发送"]')).toBeVisible();
   });
 
@@ -138,11 +142,12 @@ test.describe('chief panel docked form (#447)', () => {
       scrollable: el.scrollWidth > el.clientWidth,
       columns: [...el.querySelectorAll('.board-column')].map((c) => c.getBoundingClientRect().width),
     }));
-    // D8: yielding turns into horizontal scroll, not collapsed columns —
-    // the guard value is the .board-scroller minmax() floor (board.css)
+    // D8 (floor re-ruled by #692): yielding turns into horizontal scroll,
+    // not collapsed columns — the floor is the --board-col-min token
+    // consumed by the .board-scroller track rule (board.css)
     expect(open.scrollable).toBe(true);
     expect(open.columns).toHaveLength(4);
-    for (const w of open.columns) expect(w).toBeGreaterThanOrEqual(240);
+    for (const w of open.columns) expect(w).toBeGreaterThanOrEqual(280);
   });
 
   test('closing restores the board grid to its resting geometry', async ({ page }) => {

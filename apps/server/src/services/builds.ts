@@ -22,17 +22,18 @@ import type {
 import {
   AGENT_TOOL_MERGE,
   AGENT_TOOL_PUSH,
+  buildPlanRewritePrompt,
   buildReplanPrompt,
   buildRestartPrompt,
+  buildReviewRejectPrompt,
   buildReviewStepPrompt,
   hasBlockingFinding,
   MERGE_ANNOUNCEMENT,
-  PLAN_FILE_NAME,
   REVIEW_ANNOUNCEMENT,
   REVIEW_VERDICT_KIND,
   STOP_MESSAGE,
 } from '@pacman/shared';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, ne } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
   agent,
@@ -50,7 +51,7 @@ import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { hasRepoBinding, readBuildChanges } from './git.js';
 import type { MachineWakeHub } from './machines.js';
-import { assertPhaseTransition } from './phase.js';
+import { assertPhaseTransition, canTransitionPhase } from './phase.js';
 import { getTodo, setTodoPhase } from './todos.js';
 
 export interface BuildDeps {
@@ -347,7 +348,9 @@ export function startBuilds(
     assignment: Assignment;
     withPlan: boolean;
     triggerSource?: TriggerSource; // 默认 user；schedule = 定时触发（services/scheduler.ts）；chief 面归 M4
-    /** 钉选机器（schedule.machineId 透传，null = 自动，r3 §9/02 §6.2）。 */
+    /** 钉选机器（#682 优先级：调用方显式值 > todo.machineId > null 自动）。
+     * schedule.machineId 透传（null = 该 schedule 未钉 → 回落 todo 值）；
+     * chief run_builds 显式 machineId 覆盖；REST 人工启动不传 = todo 值。 */
     pinnedMachineId?: string | null;
   },
 ): BuildRecord[] {
@@ -370,11 +373,14 @@ export function startBuilds(
         withPlan: input.withPlan,
         prevPhase: todoRecord.phase,
         triggerSource,
-        pinnedMachineId: input.pinnedMachineId ?? null,
+        // #682 缺省回落 todo.machineId（任务级默认机器）：null（未钉/清回
+        // 自动）与 undefined（调用方无意见）都落到 todo 值；显式钉 > todo > 自动。
+        pinnedMachineId: input.pinnedMachineId ?? todoRecord.machineId ?? null,
         planDocId: null,
         errorMessage: null,
         prUrl: null,
         prNumber: null,
+        changes: null,
         diffHash: null,
         createdAt,
       })
@@ -398,7 +404,9 @@ export function startBuilds(
  *   的再确认不适用，409 由流转表兜底）。
  * - {action:"revision", side:"plan", feedback, clientMessageId} → confirm→
  *   planning + 入队重规划步（同 conv continue session 语义归 M3）+ 时间线插
- *   用户驳回消息行（r5 §4）。
+ *   用户驳回消息行（r5 §4）。#701：同一动作面在 review 关口 = 人肉打回
+ *   （review→planning，边与 #330 blocking 自动回流共用）；门只开在
+ *   confirm/review，其余相位 409 且不落任何行。
  * - {action:"review", agentId, focus?}（M7 #312 / r8 §3.1；材料随关口分叉
  *   = #511）→ phase 留 confirm/review + 入队审核步（kind='review'，不产可合并
  *   changes）+ 时间线插 REVIEW_ANNOUNCEMENT；phase 非法（todo/queued/
@@ -409,7 +417,9 @@ export function startBuilds(
  * - {action:"restart", feedback, clientMessageId} → 失败面带反馈重启（#320，
  *   r9 §3.3 实测：原站 failed 态发消息触发新一轮，消息随新轮入会话，非
  *   steer 409 语义）：新 build（withPlan 承接失败轮）+ 反馈行落新 conv +
- *   首步入队（instruction 携反馈，revision 同缝）+ failed→queued 漏斗。
+ *   首步入队（instruction 携反馈，#720 起 daemon 以「任务文本 + 指令」组合
+ *   串真投进会话；空白反馈 = 纯重启轮，无反馈行无 instruction）+ failed→queued
+ *   漏斗。
  *   与 #308 停止钮的落态分界：停止 = 运行轮落上一完成 turn 的 gate（落态非
  *   failed）；restart 门只收 failed——两写面相位隔离，不共享入口。 */
 
@@ -424,7 +434,7 @@ export async function applyBuildStepAction(
 ): Promise<void> {
   const row = deps.db.select().from(build).where(eq(build.id, buildId)).get();
   if (!row) throw new NotFoundError(`build ${buildId}`);
-  const todoRecord = getTodo(deps, row.todoId);
+  let todoRecord = getTodo(deps, row.todoId);
   if (!todoRecord) throw new NotFoundError(`todo ${row.todoId}`);
 
   if (body.action === 'restart') {
@@ -434,7 +444,9 @@ export async function applyBuildStepAction(
       throw new HttpError(409, `restart 仅适用于 failed 相位（当前 ${todoRecord.phase}）`);
     }
     // 承接位 [设计]（原站 body 未录，r9 §5）：withPlan 随失败轮，assignment
-    // 随 todo 现值（失败轮跑过 = 指派在位），机器自动（不继承 pin）。
+    // 随 todo 现值（失败轮跑过 = 指派在位），机器不继承失败轮的 pin（schedule
+    // 钉的旧值不带入），回落 #682 的任务级 todo.machineId（任务默认机器是新
+    // 轮的合理起点）。
     const assignment = todoRecord.assignment ?? { plan: null, build: null };
     const newId = newUuidv7();
     const createdAt = nowMs();
@@ -446,26 +458,36 @@ export async function applyBuildStepAction(
         withPlan: row.withPlan,
         prevPhase: todoRecord.phase,
         triggerSource: 'user',
-        pinnedMachineId: null,
+        pinnedMachineId: todoRecord.machineId,
         planDocId: null,
         errorMessage: null,
         prUrl: null,
         prNumber: null,
+        changes: null,
         diffHash: null,
         createdAt,
       })
       .run();
+    // #720 负例守卫：空白反馈（'  '——schema min(1) 拦不住空串以外的空白，
+    // UI composer 的 text!=='' 同拦不住）不成发送：不落空白用户行、不注入
+    // 「用户反馈：「」」空壳指令——纯重启轮（首步 prompt = null，daemon
+    // #720 投递纯任务文本）。
+    const feedbackText = body.feedback.trim() === '' ? null : body.feedback;
     // 消息先于首步入队：transcript 按 createdAt 排序（反馈行在运行行之上），
     // 且 machine wake（enqueueStep 内）发生在消息落库之后。
-    insertMessageRow(deps, newId, {
-      id: newRecordId(),
-      role: 'user',
-      content: body.feedback,
-      createdAt,
-    });
+    if (feedbackText !== null) {
+      insertMessageRow(deps, newId, {
+        id: newRecordId(),
+        role: 'user',
+        content: feedbackText,
+        createdAt,
+      });
+    }
     // 文本单源 = shared buildRestartPrompt（#612：web transcript 过滤侧按
-    // 同一模板识别本行，不渲染成用户气泡——feedback 原文已有独立 wire 行）。
-    const restartPrompt = buildRestartPrompt(body.feedback);
+    // 同一模板识别本行，不渲染成用户气泡——feedback 原文已有独立 wire 行；
+    // #720：该指令经 claim instruction 位 → daemon 组合串（任务文本 + 指令）
+    // 进会话，超长反馈在单源截断）。
+    const restartPrompt = feedbackText !== null ? buildRestartPrompt(feedbackText) : undefined;
     enqueueStep(deps, newId, row.withPlan ? 'plan' : 'build', todoRecord.teamId, restartPrompt);
     setTodoPhase(deps, todoRecord.id, 'queued', {
       assignment,
@@ -484,6 +506,15 @@ export async function applyBuildStepAction(
     return;
   }
   if (body.action === 'review') {
+    // #702（B-C17）：failed 相位先过恢复闸——build 腿已交付的 failed 任务可
+    // 「只重跑审核」（恢复回 review 关口再发起，与 merge 出口共用同一条边）；
+    // 未交付 → 409 点名原因（半完成 build 不给审核面）。恢复后重读投影：
+    // 下方关口分叉与材料面按恢复后的 review 关口走。
+    restoreFailedReview(deps, row);
+    if (todoRecord.phase === 'failed') {
+      const restored = getTodo(deps, row.todoId);
+      if (restored) todoRecord = restored;
+    }
     // AI 审核发起仅在 confirm/review 关口允许（r8 §3.1 显隐律）；其余相位一律
     // 409 拒绝（建设期/planning/building/failed/done/closed/queued/todo 都不
     // 该出现该钮，但接口层兜底——钮外误用也要稳定拒绝）。
@@ -543,7 +574,18 @@ export async function applyBuildStepAction(
     enqueueStep(deps, buildId, 'review', todoRecord.teamId, reviewPrompt);
     return;
   }
-  // revision：用户驳回消息行进 transcript（role user，r5 §3.6/§4 时间线呈现）。
+  // revision：确认关口驳回（confirm→planning，r5 §4）与审核关口人肉打回
+  // （review→planning，#701 B-C12）共用本动作面。审核闸的「人看」半边此前
+  // 只能点头：静息 review 态消息通道 409（无 claimed 步），打回必须走这里，
+  // 不挂「活跃会话」前提。边与 #330 blocking 自动回流同一条——边表语义
+  // 「不止自动 verdict 能触发」由本分支落地。
+  // 门只开在两个关口：planning 在途时 setTodoPhase 同相位幂等会吞掉断言、
+  // 再叠一个重复 plan 步（补话走 steer 面）；其余相位 409。门先于一切写面
+  // ——非法打回不留 feedback 行（流转断言在 setTodoPhase 内，晚于插行）。
+  if (todoRecord.phase !== 'confirm' && todoRecord.phase !== 'review') {
+    throw new HttpError(409, `revision 仅在待确认/审核关口允许，当前相位 ${todoRecord.phase}`);
+  }
+  // 用户驳回消息行进 transcript（role user，r5 §3.6/§4 时间线呈现）。
   insertMessageRow(deps, buildId, {
     id: newRecordId(),
     role: 'user',
@@ -553,9 +595,53 @@ export async function applyBuildStepAction(
   setTodoPhase(deps, todoRecord.id, 'planning');
   // 重规划步（同 conv continue session，r5 §4）：feedback 注入续轮指令，v2 忠实
   // 执行反馈（宿主等价物——措辞由 LLM 侧组织，本层给事实与要求）。
-  // 文本单源 = shared buildReplanPrompt（#612：web transcript 过滤侧同款识别）。
-  const replanPrompt = buildReplanPrompt(body.feedback);
+  // 文本单源 = shared buildReplanPrompt / buildReviewRejectPrompt（#612：web
+  // transcript 过滤侧同款识别）——两关口事实不同：审核关口改动已产出且在
+  // 会话分支上，指令交代产物保留（不孤儿化，#701 失败方式 3）。
+  const replanPrompt =
+    todoRecord.phase === 'review'
+      ? buildReviewRejectPrompt(body.feedback)
+      : buildReplanPrompt(body.feedback);
   enqueueStep(deps, buildId, 'plan', todoRecord.teamId, replanPrompt);
+}
+
+/** failed→review 恢复闸（#702 / #519 B-C17）：build 步已真实交付（分支/PR 在）
+ * 而审核步失败时，failed 相位不再锁死合并路——恢复到 review 关口，merge 与
+ * 只重跑审核两出口共用本闸。条件进服务端判定（「build 步 done 且产物在」）：
+ * build 腿未完成（执行步 failed/未跑）或 done 但零产物（无 checkpointCommit
+ * 且无 PR）的 failed 任务不获得该出路（半完成 build 不许被误放行）。恢复 ≠
+ * 审核通过：落 review 等人工决策，done 仍只能经合并步落地——恢复后的合并 =
+ * 人工接受未完成 AI 审核的交付物，责任在人（02 §4.2 回写）。
+ * 调用方：requestMerge（REST /builds/{id}/merge + chief merge_builds）与
+ * applyBuildStepAction action:"review"（审核重跑）——两者均先经本闸再走
+ * 既有流程，正常 review 相位不经过这里。 */
+function restoreFailedReview(deps: BuildDeps, row: BuildRow): void {
+  const { db } = deps;
+  const todoRow = db.select().from(todo).where(eq(todo.id, row.todoId)).get();
+  if (!todoRow || todoRow.phase !== 'failed') return; // 非失败相位 = 无可恢复
+  // build 腿：本 build 的执行步（序贯取最新）已 done。
+  const buildStep = db
+    .select()
+    .from(step)
+    .where(and(eq(step.buildId, row.id), eq(step.kind, 'build')))
+    .orderBy(asc(step.createdAt))
+    .all()
+    .at(-1);
+  const legDone = buildStep?.status === 'done';
+  // 产物：执行步回传的 conv 分支 HEAD（checkpointCommit =「分支在」）或
+  // PR（prUrl/prNumber =「PR 在」）任一在场。
+  const artifactIn =
+    (buildStep?.checkpointCommit ?? null) !== null || row.prUrl !== null || row.prNumber !== null;
+  if (!legDone || !artifactIn) {
+    const reason = !legDone ? '执行步未完成交付' : '执行步无交付产物（分支/PR 不在）';
+    throw new HttpError(
+      409,
+      `failed 任务的审核关口恢复仅对本轮已交付的 build 开放（${reason}），请重新运行任务`,
+    );
+  }
+  // 走漏斗（条件边在边表里，setTodoPhase 放行）：review 进入通知 + chief wake
+  // 由漏斗照发——「改动就绪等你」对恢复态同样成立，不是静默改相。
+  setTodoPhase(deps, todoRow.id, 'review');
 }
 
 /** 合并（02 §4.2/A6：merge = 202 delegated 机器执行；机器领合并步 continue
@@ -563,8 +649,14 @@ export async function applyBuildStepAction(
 export function requestMerge(deps: BuildDeps, buildId: string): { delegated: true } {
   const row = deps.db.select().from(build).where(eq(build.id, buildId)).get();
   if (!row) throw new NotFoundError(`build ${buildId}`);
-  const todoRow = deps.db.select().from(todo).where(eq(todo.id, row.todoId)).get();
+  let todoRow = deps.db.select().from(todo).where(eq(todo.id, row.todoId)).get();
   if (!todoRow) throw new NotFoundError(`todo ${row.todoId}`);
+  // #702（B-C17）：failed 相位先过恢复闸（build 腿已交付 → 回 review 关口；
+  // 未交付 → 409 点名原因）。之后的合并关口判定与正常 review 一致。
+  restoreFailedReview(deps, row);
+  if (todoRow.phase === 'failed') {
+    todoRow = deps.db.select().from(todo).where(eq(todo.id, row.todoId)).get()!;
+  }
   // 合并关口 = review（「将改动合并到默认分支」确认弹层，r3 §3.6）。
   assertPhaseTransition(todoRow.phase, 'done');
   // 权限闸（XMON-77）：合并步收尾 = git merge + conv 分支 push（三形态 repo
@@ -602,8 +694,9 @@ export function requestMerge(deps: BuildDeps, buildId: string): { delegated: tru
 }
 
 /** plan 步未产 plan.md 的自动补写指令（#113 裁定候选1，02 §4.2「plan 即文件」
- * 交接物契约执行；四段落要求同驳回重规划指令族——措辞由本层给事实与要求）。 */
-const PLAN_REWRITE_PROMPT = `规划步未产出 ${PLAN_FILE_NAME} 交接文件。请将方案写入工作区根目录的 ${PLAN_FILE_NAME}（覆盖 Context/Changes/Edge cases/Verification 四段）再结束本步；若改动已在规划轮完成，${PLAN_FILE_NAME} 如实记录改动内容与验证方式即可。`;
+ * 交接物契约执行；四段落要求同驳回重规划指令族）。#703 起文本单源 =
+ * shared buildPlanRewritePrompt（呈现层过滤侧按同一模板识别续轮指令行）。 */
+const PLAN_REWRITE_PROMPT = buildPlanRewritePrompt();
 
 /** AI 审核 blocking 自动修订 prompt（M7 #330，r8 §3.1 实测 62：「调用工具:
  * edit_plan」+ 调整摘要行）。与驳回重规划轮同形（plan 步 + continue session
@@ -611,44 +704,134 @@ const PLAN_REWRITE_PROMPT = `规划步未产出 ${PLAN_FILE_NAME} 交接文件�
  * 求。 */
 const REVIEW_REVISE_PROMPT = `用户对方案提出审核反馈，结论含 blocking findings。审核结论：<{conclusion}>。\n\nBlocking findings（必须逐条修复）：\n{blockings}\n\n请忠实按反馈调整方案，输出更新后的 plan.md（覆盖 Context/Changes/Edge cases/Verification 四段），并在结尾一句话摘要本次调整了什么。`;
 
+/** review→planning 修订回流边（M7 #330 phase 表已登边；#700 起独立成函数）：
+ * 相位翻转 + 时间线摘要行 + 重规划步入队三件一体。note 与 revisePrompt 由
+ * 调用方组装——blocking verdict 自动触发（上方）与人肉打回（#701 B-C12，
+ * 「请求修改」语义）走同一条边，边不焊死在自动 verdict 触发上。 */
+function enqueueReviewRevision(
+  deps: BuildDeps,
+  args: { buildId: string; todoId: string; teamId: string; note: string; revisePrompt: string },
+): void {
+  setTodoPhase(deps, args.todoId, 'planning');
+  insertMessageRow(deps, args.buildId, {
+    id: newRecordId(),
+    role: 'system',
+    content: args.note,
+    createdAt: nowMs(),
+  });
+  enqueueStep(deps, args.buildId, 'plan', args.teamId, args.revisePrompt);
+}
+
+/** 步级失败落账（#703 提取共通漏斗）：step failed + build.errorMessage +
+ * todo → failed（相位边合法时——planning/building/review 均有 failed 边）。
+ * finishStep 的 failed 分支与 #703 产物闸共用；调用方各自负责 publishStepStatus
+ * （事件面在 finishStep 收尾统一发）。 */
+export function applyStepFailure(
+  deps: BuildDeps,
+  stepRow: typeof step.$inferSelect,
+  errorMessage: string,
+): void {
+  const { db } = deps;
+  db.update(step).set({ status: 'failed' }).where(eq(step.id, stepRow.id)).run();
+  const buildRow = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
+  if (!buildRow) return;
+  db.update(build).set({ errorMessage }).where(eq(build.id, buildRow.id)).run();
+  const todoRow = db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
+  if (todoRow && canTransitionPhase(todoRow.phase, 'failed')) {
+    setTodoPhase(deps, todoRow.id, 'failed');
+  }
+}
+
+/** #703 产物闸（B-C10/B-C11/B-C14）：两道闸各自有物可看，无物即无闸（spec 18
+ * §3.1）——方案步没写出方案文档，进不了 confirm 闸；构建步零改动/假完成，进
+ * 不了 review 闸。判定钉「本步该产什么」（plan 步 → 方案文档；build 步 →
+ * 变更），非全局「空即拦」：review 步 hasChanges 恒 false（只读收尾，#511）
+ * 不受闸 2 影响，hasChanges 缺省（老 daemon 版本墙）fail-open。
+ * 真值源 = daemon 侧产物通道：plan 行（runner 收尾上传 plan.md 落库）与 done
+ * 载荷 hasChanges（runner 侧 worktree git 判定 countAhead）——不读服务端
+ * changes 投影（readBuildChanges 对非 hosted 项目恒空，读它把手动项目全拦死；
+ * #704 地界）。首轮 plan 步缺产物不在此闸：#113 补写轮承担「重试一次」，闸只
+ * 拦重试后的仍空。返回 null = 过闸。 */
+function stepArtifactGate(
+  deps: BuildDeps,
+  stepRow: typeof step.$inferSelect,
+  outcome: { hasChanges?: boolean },
+): string | null {
+  if (stepRow.kind === 'plan') {
+    const planRow = deps.db
+      .select({ id: planTable.id })
+      .from(planTable)
+      .where(eq(planTable.buildId, stepRow.buildId))
+      .get();
+    if (planRow !== undefined) return null;
+    // 本 build 首个 plan 步（无其它 plan 步行）→ 补写轮重试，非闸失败。判据
+    // 不用 prompt===null：失败重启轮首步带 restart 指令（prompt 非 null）同样
+    // 该享一次重试，否则重启即硬失败。
+    const priorPlanStep = deps.db
+      .select({ id: step.id })
+      .from(step)
+      .where(and(eq(step.buildId, stepRow.buildId), eq(step.kind, 'plan'), ne(step.id, stepRow.id)))
+      .get();
+    if (priorPlanStep === undefined) return null;
+    return '规划未产出方案';
+  }
+  if (stepRow.kind === 'build' && outcome.hasChanges === false) {
+    return '构建零改动';
+  }
+  return null;
+}
+
 /** 机器步完成后的 phase 推进（M3 claim/journal 面挂接点；M2a 供编排测试
  * 驱动状态机）：规划步成 → confirm（withPlan）/ building（直执行续跑）；
  * 执行步成 → review；合并步成 → done（02 §4.2 主时序）。M7 #330：审核步成
  * → emit REVIEW_VERDICT_KIND 消息 + 若 blocking → planning + enqueue 重规划
- * 步（自动修订回路，r8 §3.1）。 */
+ * 步（自动修订回路，r8 §3.1）。#703 产物闸先于 done 落位——无物步按失败
+ * 收尾，confirm/review 不可达。 */
 export function completeStep(
   deps: BuildDeps,
   stepId: string,
-  outcome: { hasChanges?: boolean; findings?: ReviewVerdict } = {},
+  outcome: { hasChanges?: boolean; findings?: ReviewVerdict; findingsError?: string } = {},
 ): void {
   const stepRow = deps.db.select().from(step).where(eq(step.id, stepId)).get();
   if (!stepRow) throw new NotFoundError(`step ${stepId}`);
-  deps.db.update(step).set({ status: 'done' }).where(eq(step.id, stepId)).run();
   const buildRow = deps.db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
-  if (!buildRow) return;
+  if (!buildRow) {
+    deps.db.update(step).set({ status: 'done' }).where(eq(step.id, stepId)).run();
+    return;
+  }
   const todoRow = deps.db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
-  if (!todoRow) return;
+  if (!todoRow) {
+    deps.db.update(step).set({ status: 'done' }).where(eq(step.id, stepId)).run();
+    return;
+  }
+  // 产物闸（#703）：失败收尾不落 done（完成判据 = 契约产物存在，不是会话
+  // 结束——B-C10 空方案 / B-C11 零改动 / B-C14 假完成同病族）。
+  const gateFailure = stepArtifactGate(deps, stepRow, outcome);
+  if (gateFailure !== null) {
+    applyStepFailure(deps, stepRow, gateFailure);
+    return;
+  }
+  deps.db.update(step).set({ status: 'done' }).where(eq(step.id, stepId)).run();
 
   if (stepRow.kind === 'plan') {
     // 交接物校验（#113：05 §5 实跑发现规划轮可跳过写 plan.md 直接交付，build 轮
-    // 仅剩 confirm 关口措辞而拿不到任务内容）：首轮规划步成功但未产 plan.md →
-    // 不算成——留 planning + 自动补写一轮。有界：仅首轮触发（续轮指令步 prompt
-    // 非 null——补写轮/驳回重规划轮仍无产物 → 放行 confirm，关口决策交还人；
-    // 此时 build 步有 spec 兜底，见 machines.ts claim 合成）。
+    // 仅剩 confirm 关口措辞而拿不到任务内容）：本 build 首个规划步成功但未产
+    // plan.md → 不算成——留 planning + 自动补写一轮（闸只拦重试后的仍空，
+    // B-C10「两轮全空仍进 confirm」由 #703 闸堵死）。
     const planDoc = deps.db
       .select({ id: planTable.id })
       .from(planTable)
       .where(eq(planTable.buildId, stepRow.buildId))
       .get();
-    if (!planDoc && stepRow.prompt === null) {
+    if (!planDoc) {
       enqueueStep(deps, stepRow.buildId, 'plan', todoRow.teamId, PLAN_REWRITE_PROMPT);
       return;
     }
-    // plan 卡就绪 → confirm（02 §4.2：phase=confirm 等人工）；hasPlan 据实置位
-    // （无交接物不谎称有方案——看板 plan chip 数据源）。hasPlan 走漏斗 extra
+    // plan 卡就绪 → confirm（02 §4.2：phase=confirm 等人工）；hasPlan 置位
+    // （闸 1 在位 = 过闸必有产物；plan chip 数据源）。hasPlan 走漏斗 extra
     // 单次写+发布（XMON-59：直写漏斗外曾无 v 无发布——漏斗同相位幂等化后，
     // 重放轮 done 直写还会被 no-op 吞掉伴随位，extra 是唯一「写+发」原子位）。
-    setTodoPhase(deps, todoRow.id, 'confirm', planDoc ? { hasPlan: true } : {});
+    setTodoPhase(deps, todoRow.id, 'confirm', { hasPlan: true });
     return;
   }
   if (stepRow.kind === 'build') {
@@ -661,14 +844,16 @@ export function completeStep(
     // AI 审核步完成（M7 #330，r8 §3.1 真 findings 上线）：emit REVIEW_VERDICT_KIND
     // 消息行（conclusion + 编号 findings，server zod 校验已固）+ 若 blocking →
     // 落 planning + 入队重规划步（REVIEW_REVISE_PROMPT 注入审核事实）回到
-    // 待确认。审核不计入用户变更（hasChanges 恒 false）：审核关口虽开只读检出
+    // 待确认。审核不计入用户变化（hasChanges 恒 false）：审核关口虽开只读检出
     // （#511），但 daemon 侧不采集其改动、收尾还会 rewind 回步起点。
-    // daemon 未传 findings（解析失败/agent 未按契约）= 默认空 verdict =
-    // 落 verdict 消息含空 findings，但不触发修订——避免静默吞错 + 给人看
-    // 「审核没结论」兜底。fail 兜底仍可独立走：findings 缺位 + status=failed
-    // = finishStep 走 failed 分支不进本函数。
+    // verdict 兜底两态（#700 B-C13）：daemon 报提取失败（findingsError 携带
+    // 原因）= conclusion「判定提取失败」+ extractionError 原因随消息上浮
+    // （web 审核面可分辨「提取器没取出来」）；两字段皆缺（旧 daemon 无信号）
+    // = 保留「审核未返回结论」。两态均无 blocking 可判，不触发修订——但不再
+    // 静默吞错。fail 兜底仍可独立走：findings 缺位 + status=failed = finishStep
+    // 走 failed 分支不进本函数。
     const verdict: ReviewVerdict = outcome.findings ?? {
-      conclusion: '审核未返回结论',
+      conclusion: outcome.findingsError !== undefined ? '判定提取失败' : '审核未返回结论',
       findings: [],
     };
     deps.db
@@ -681,7 +866,11 @@ export function completeStep(
     insertMessageRow(deps, buildRow.id, {
       id: newRecordId(),
       role: 'system',
-      content: JSON.stringify({ kind: REVIEW_VERDICT_KIND, verdict }),
+      content: JSON.stringify({
+        kind: REVIEW_VERDICT_KIND,
+        verdict,
+        ...(outcome.findingsError !== undefined ? { extractionError: outcome.findingsError } : {}),
+      }),
       createdAt: nowMs(),
     });
     if (hasBlockingFinding(verdict)) {
@@ -698,17 +887,16 @@ export function completeStep(
         '<{conclusion}>',
         verdict.conclusion,
       ).replace('{blockings}', blockings);
-      setTodoPhase(deps, todoRow.id, 'planning');
-      // AI 审核自动修订回路的「调整摘要行」（M7 #330，r8 §3.1 62）：
-      // chip → 规划中自动走 phase 字段；该行 = 时间线 dim note
-      // 「AI 审核触发自动修订…」告诉用户「为什么又来一个 plan 步」。
-      insertMessageRow(deps, buildRow.id, {
-        id: newRecordId(),
-        role: 'system',
-        content: `AI 审核检测到 ${blockings.split('\n').length} 处 blocking 风险，已自动入队重规划步`,
-        createdAt: nowMs(),
+      // AI 审核自动修订回路的「调整摘要行」（M7 #330，r8 §3.1 62）：chip →
+      // 规划中自动走 phase 字段；该行 = 时间线 dim note 告诉用户「为什么又
+      // 来一个 plan 步」。
+      enqueueReviewRevision(deps, {
+        buildId: stepRow.buildId,
+        todoId: todoRow.id,
+        teamId: todoRow.teamId,
+        note: `AI 审核检测到 ${blockings.split('\n').length} 处 blocking 风险，已自动入队重规划步`,
+        revisePrompt,
       });
-      enqueueStep(deps, stepRow.buildId, 'plan', todoRow.teamId, revisePrompt);
     }
     return;
   }

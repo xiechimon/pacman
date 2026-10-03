@@ -19,12 +19,16 @@
 //       的展示位是 dhead。fixture 捕获面的 seq/title 走 records 直供，不经
 //       本 mapper）
 //   F11 spec 事后被改：旧任务文本行（≠ 当前 title+spec）被误滤，历史消失
+//   F13 组合行（任务文本 + 重启指令同串，#720 composeTaskPromptWithInstruction）
+//       渲染成用户气泡——任务+反馈双渲染；截断形同罪；任务前缀 + 用户自己
+//       话语不是组合行，不得误杀
 
 import {
   type BuildRecord,
   CONTINUE_PROMPTS,
   REVIEW_ANNOUNCEMENT,
   type StepJournalRow,
+  buildPlanRewritePrompt,
   buildReplanPrompt,
   buildRestartPrompt,
   buildTaskPromptText,
@@ -138,6 +142,15 @@ describe('mapTranscript 合成 prompt 过滤（#612）', () => {
     expect(users[0]?.text).toBe('标题太长了');
   });
 
+  test('F12 #703 补写轮指令行（plan.md 补写模板）过滤——续轮指令冒名用户话语', () => {
+    // #703 起补写/重规划轮的续轮指令真的进会话（runner 投递 claim 载荷
+    // instruction），daemon 把它记成 user 行——呈现层按同族模板退场。
+    const items = render({
+      messages: [msg('user', buildPlanRewritePrompt(), NOW - 50_000)],
+    });
+    expect(userItems(items)).toHaveLength(0);
+  });
+
   test('F5 review 步材料行（首行 JSON meta）过滤', () => {
     const reviewMaterial = [
       JSON.stringify({ kind: 'review', agentId: 'agent-1', gate: 'confirm' }),
@@ -212,5 +225,36 @@ describe('mapTranscript 合成 prompt 过滤（#612）', () => {
     const users = userItems(items);
     expect(users).toHaveLength(1);
     expect(users[0]?.text).toBe(stalePrompt.trim());
+  });
+
+  // —— #720 组合行族：重启轮 new session 的 wire 行 = 任务文本 + 合成指令
+  // 同串投递（composeTaskPromptWithInstruction）。任务简报已有描述区、反馈已有
+  // 真实用户行，组合行渲染成气泡即双渲染——整行退场。 ——
+  test('F13 组合行（任务文本 + 重启指令）退场，feedback 真行保留', () => {
+    const feedback = '先跑 lint 再提交';
+    const composed = `${buildTaskPromptText(TITLE, SPEC)}\n\n${buildRestartPrompt(feedback)}`;
+    const items = render({
+      messages: [
+        msg('user', feedback, NOW - 50_000),
+        msg('user', composed, NOW - 49_000),
+      ],
+    });
+    const users = userItems(items);
+    expect(users).toHaveLength(1);
+    expect(users[0]?.text).toBe(feedback);
+  });
+
+  test('F13b 组合行（任务文本 + 截断重启指令）同样退场（截断不破识别）', () => {
+    const composed = `${buildTaskPromptText(TITLE, SPEC)}\n\n${buildRestartPrompt('返'.repeat(5000))}`;
+    const items = render({ messages: [msg('user', composed, NOW - 50_000)] });
+    expect(userItems(items)).toHaveLength(0);
+  });
+
+  test('F13c 任务文本后跟用户自己话语 → 不是组合行，保留为用户气泡（不误杀）', () => {
+    const text = `${buildTaskPromptText(TITLE, SPEC)}\n\n另外移动端也要看一眼`;
+    const items = render({ messages: [msg('user', text, NOW - 50_000)] });
+    const users = userItems(items);
+    expect(users).toHaveLength(1);
+    expect(users[0]?.text).toBe(text.trim());
   });
 });

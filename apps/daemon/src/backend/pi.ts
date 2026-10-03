@@ -38,6 +38,7 @@ import type {
   AgentBackendCapabilities,
   AgentSessionHandle,
   AgentTokenUsage,
+  DeliveredImage,
   ModelUsage,
   ProviderCompat,
   ProviderConfig,
@@ -62,6 +63,33 @@ export const PI_CAPABILITIES: AgentBackendCapabilities = {
 
 /** pi 内建工具默认面（02 §5.6：其余工具面 = pi-coding-agent 内建）。 */
 const PI_BUILTIN_TOOLS = ['read', 'bash', 'edit', 'write'];
+
+// —— #730 图片交付（pi 面原生支持：prompt(text, {images}) / steer(text,
+// images)；pi-ai ImageContent 结构 = {type:'image', data, mimeType}）—————————
+
+/** pi ImageContent 的结构形（pi-ai types.d.ts:256；缝纪律——shared 的
+ * DeliveredImage 结构同体，映射 = 补 type 判别位）。 */
+interface PiImageContent {
+  type: 'image';
+  data: string;
+  mimeType: string;
+}
+
+/** DeliveredImage → pi ImageContent（纯映射，可单测）。 */
+export function toPiImages(images: readonly DeliveredImage[]): PiImageContent[] {
+  return images.map((img) => ({ type: 'image' as const, data: img.data, mimeType: img.mimeType }));
+}
+
+/** input 能力钉翻转（#730 堵点，票面要求如实记录）：pi 按 model.input 决定
+ * 图片真上送还是静默降级成 "(image omitted: model does not support images)"
+ * 占位文本（pi-ai transform-messages downgradeUnsupportedImages）。daemon
+ * 物化的 CUSTOM_MODEL_DEFAULTS input:['text'] 会让本步图片全数降级——本步
+ * 真带图片时把**该会话的** model 对象翻到含 'image'：图片上送、网关/模型
+ * 拒绝时错误可见（#708 链）。幂等：已含 'image' 不重复。 */
+export function ensureImageInput(model: { input: ('text' | 'image')[] }): void {
+  if (model.input.includes('image')) return;
+  model.input = [...model.input, 'image'];
+}
 
 /** 只读回合的内建工具面（#511 审核步）：写类工具（edit/write）不下发——审核
  * 者是来判定的，不是来动手的；bash 保留（跑验证命令是它的职责，也是「验证」
@@ -223,6 +251,13 @@ const MODELS_JSON_KEY_PLACEHOLDER = 'per-step';
  * 显式配置压过学习）。 */
 const learnedCompat = new Map<string, ProviderCompat>();
 
+/** server 配置快照（#708 失败方式 3）：providerId → 最近一次物化时的 server
+ * 侧 compat 载荷。变更（PATCH 增/删/改任一位）→ 该 provider 的学习作废——
+ * 否则学习位会把被删除的旧形填回去，配置改动须重启 daemon 才生效（#519
+ * run4 实测形态）。快照未变时学习照旧补位（#654「学费一次」语义零回归）。
+ * pi 侧无此问题：ModelRuntime 每次会话创建重建（models.json 磁盘重读）。 */
+const lastServerCompat = new Map<string, string>();
+
 /** 错误签名 → 待翻旋钮。只认 upstream 明示的不兼容（Multica
  * isUnsupportedParameter 同律不猜）：relay 的协议 400 原文点名不了字段，
  * 一律翻到最大兼容的旧式形（max_tokens + 无 store——mea shim 实测 229 调用
@@ -348,10 +383,18 @@ export function newMapState(): MapState {
 function toMessageRecord(msg: PiMessageLike): {
   role: 'system' | 'user' | 'assistant';
   content: unknown;
+  /** 终态位（#708）：pi 结构化错误面（assistant errorMessage 的 message_end
+   * 携 stopReason=error）。messageRecordSchema loose 透传，不改 wire 面；
+   * runner 消费判「错误行不是进展」（auto_retry 生命周期 / #654 回落闸）。 */
+  stopReason?: string;
 } {
   const role =
     msg.role === 'assistant' ? 'assistant' : msg.role === 'user' ? 'user' : ('system' as const);
-  return { role, content: msg.content ?? null };
+  return {
+    role,
+    content: msg.content ?? null,
+    ...(msg.stopReason !== undefined ? { stopReason: msg.stopReason } : {}),
+  };
 }
 
 function isRetryableError(message: string): boolean {
@@ -517,6 +560,7 @@ class PiSessionHandle implements AgentSessionHandle {
 
   constructor(
     private readonly session: AgentSession,
+    private readonly model: { input: ('text' | 'image')[] } | null,
     private readonly onDispose?: () => void,
   ) {
     this.sessionId = session.sessionId;
@@ -544,9 +588,26 @@ class PiSessionHandle implements AgentSessionHandle {
     this.onDispose?.(); // per-turn 资源释放（MCP 桥 close，02 §7.1）
   }
 
-  async steer(text: string): Promise<void> {
-    await this.session.steer(text);
+  async steer(text: string, images?: readonly DeliveredImage[]): Promise<void> {
+    // #730：随话图片先翻本会话的 input 能力钉（见 ensureImageInput 注释），
+    // 再进 pi 的 steer(text, images) —— pi SDK 双参原生支持。
+    if (images !== undefined && images.length > 0 && this.model !== null) {
+      ensureImageInput(this.model);
+      await this.session.steer(text, toPiImages(images));
+    } else {
+      await this.session.steer(text);
+    }
     this.queue.push({ type: 'steer', text });
+  }
+
+  /** 后端内部错误上浮面（#698）：prompt() 预检拒绝（auth 校验 / compaction
+   * 守卫 / input handler 拒绝）在 agent run 之前 throw——无事件无终局，原先
+   * 被吞掉会把 runner 挂到流超时看门狗（报看门狗不报真凶）。经此注入事件
+   * 面：推 error 事件并收面。幂等：已收面（done 已到）则事件被队列丢弃、
+   * finish 重入无副作用。 */
+  emitBackendError(message: string): void {
+    this.queue.push({ type: 'error', error: { message, retryable: false } });
+    this.finish();
   }
 
   async stop(): Promise<void> {
@@ -765,14 +826,37 @@ export class PiBackend implements AgentBackend {
         : {}),
     });
     this.opts.onSession?.(session.sessionId, session.sessionFile);
-    const handle = new PiSessionHandle(session, () => {
+    const handle = new PiSessionHandle(session, model, () => {
       if (mcpBridge) void mcpBridge.close();
     });
+    // #730 首轮图片交付：promptImages 随 prompt 进会话（pi PromptOptions.
+    // images 原生面）。先翻本会话的 input 能力钉（ensureImageInput）——
+    // models.json 的 CUSTOM_MODEL_DEFAULTS input:['text'] 是 daemon 物化的
+    // 目录默认值（pi 据此把图片静默降级成占位文本），本步真带图片时翻到
+    // ['text','image']：图片上送，网关/模型不支持时错误可见（#708 链），
+    // 不静默假装看过。翻的域 = 该会话的 model 对象引用（MaterialRuntime
+    // getModel 返回、createAgentSession 持有同引用）——不写回 models.json，
+    // 不影响其它步（票面失败方式 9：不许全局翻开）。
     if (opts.prompt !== undefined) {
-      void session.prompt(opts.prompt).catch((err: unknown) => {
-        // 失败经事件面报告（message_end stopReason=error / agent_end）；
-        // prompt() 拒绝仅兜底防未处理 rejection。
-        void err;
+      const promptImages =
+        opts.promptImages !== undefined && opts.promptImages.length > 0
+          ? opts.promptImages
+          : undefined;
+      if (promptImages !== undefined) {
+        ensureImageInput(model);
+      }
+      const sent =
+        promptImages !== undefined
+          ? session.prompt(opts.prompt, { images: toPiImages(promptImages) })
+          : session.prompt(opts.prompt);
+      void sent.catch((err: unknown) => {
+        // 运行期失败经事件面报告（message_end stopReason=error / agent_end）；
+        // 预检拒绝（auth / compaction 守卫 / input handler）在 agent run 之前
+        // throw、无事件面——原先静默吞掉，runner 只能挂到流超时看门狗。转成
+        // error 事件 + 收面（#698）：步快速 failed 且文案是真凶。图片附件
+        // 路径（#730）同走这一收面。
+        const message = err instanceof Error ? err.message : String(err);
+        handle.emitBackendError(`session.prompt rejected: ${message}`);
       });
     }
     return handle;
@@ -797,9 +881,21 @@ function mergedCompat(provider: ProviderConfig): ProviderCompat | undefined {
 /** custom provider（baseUrl 形态）物化进 models.json（pi 自定义模型机制，
  * docs/models.md）；apiKey 恒占位符——真 key 走 setRuntimeApiKey（02 §8）。
  * compat（#654）写 provider 级条目——pi provider-composer modelFromJson 对
- * provider compat 与模型条目做浅合并（getCompat 以显式位覆盖探测默认）。 */
+ * provider compat 与模型条目做浅合并（getCompat 以显式位覆盖探测默认）。
+ * server compat 载荷与上次物化不同 → 学习作废（#708 失败方式 3：配置变更
+ * 即时生效，不留学习位旧形回流）。 */
 export function materializeProvider(modelsPath: string, provider: ProviderConfig): void {
   if (!provider.baseUrl) return; // preset provider 走 pi 内建目录
+  // 配置变更判定先于学习并入（#708）：快照在位且载荷不同 → 作废该 provider
+  // 的学习位；同载荷重复物化不动它。首见（无快照）不动——学习的学费期。
+  const serverCompatKey = JSON.stringify(provider.compat ?? null);
+  if (
+    lastServerCompat.has(provider.providerId) &&
+    lastServerCompat.get(provider.providerId) !== serverCompatKey
+  ) {
+    learnedCompat.delete(provider.providerId);
+  }
+  lastServerCompat.set(provider.providerId, serverCompatKey);
   const raw = existsSync(modelsPath)
     ? (JSON.parse(readFileSync(modelsPath, 'utf8')) as {
         providers?: Record<string, Record<string, unknown>>;

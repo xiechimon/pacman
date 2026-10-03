@@ -211,8 +211,21 @@ export interface SessionOpts {
   cwd: string;
   /** 本轮任务文本（实现期精化，01 §5 头部口径）：createSession = 首条用户
    * 消息（02 §4.2 任务 spec）；continueSession = 续轮消息（驳回 feedback /
-   * 合并指令，02 §4.2 确认回路）。缺省 = 开会话不发轮（Chief 面板形态）。 */
+   * 合并指令，02 §4.2 确认回路）。缺省 = 开会话不发轮（Chief 面板形态）。
+   * (#730) 值 = token 展开后的文本（原始 prompt 归 journal/transcript）。 */
   prompt?: string;
+  /** 首轮随 prompt 交付的图片（#730：daemon 解析步 prompt 里的整行附件
+   * token、经 machine 面下载后的内联交付面）。backend 映射为各自引擎的
+   * image content block（claude-code = MessageParam 块数组；pi =
+   * PromptOptions.images）。缺省 = 无图片（既有调用面零变化）。 */
+  promptImages?: readonly DeliveredImage[];
+}
+
+/** 交付图片（#730）：跨缝中立形态——backend 映射为各自引擎的内联 image
+ * content block。data = 裸 base64（无 data: 前缀）；mimeType = image/*。 */
+export interface DeliveredImage {
+  data: string;
+  mimeType: string;
 }
 
 export interface AgentSessionHandle {
@@ -221,7 +234,9 @@ export interface AgentSessionHandle {
    * （00/D3：durable 语义宿主自持）。 */
   readonly sessionId: string;
   readonly events: AsyncIterable<StepEvent>;
-  steer(text: string): Promise<void>;
+  /** 中途补话（W3 #279）；images = 随话交付的图片（#730，可选——缺省 =
+   * 纯文本，既有调用面零变化）。 */
+  steer(text: string, images?: readonly DeliveredImage[]): Promise<void>;
   stop(): Promise<void>;
   /** build × model × {输入,输出,缓存读,缓存写}（02 §6.2）。 */
   usage(): AgentTokenUsage;
