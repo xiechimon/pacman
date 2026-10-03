@@ -531,8 +531,15 @@ export function ProjectPage() {
   // fixture 面本地新行（board #66 同律）：保存落在客户端集合，页面/侧栏
   // 徽标都吃它；live 面走 mutation + invalidate，不用本地集。
   const [fixtureAdded, setFixtureAdded] = useState<TodoRecord[]>([]);
-  const treeQ = useProjectTree(live ? id : undefined, live ? 'main' : undefined);
+  // wireProject 先行（形态门数据源）；tree 仅 hosted 形态发（#704 / B-C1：
+  // github 形态 tree/file/commits 端点族 hosted-only——404 静默 + console 刷屏
+  // 不可接受，不发无谓请求，文件面走诚实降级 + GitHub 外链）。
   const wireProject = live ? (projectsQ.data ?? []).find((p) => p.id === id) : undefined;
+  const hostedRepo = live && wireProject?.repoKind === 'hosted';
+  const treeQ = useProjectTree(
+    live && hostedRepo ? id : undefined,
+    live && hostedRepo ? 'main' : undefined,
+  );
   // 历史读面惰性：仅 live + 文件 tab + 历史 seg + 托管形态才发（GitHub
   // 接入无本地存储面 = tree/file 同族 404，不发无谓请求）。
   const commitsQ = useProjectCommits(
@@ -604,9 +611,17 @@ export function ProjectPage() {
   // github 形态 + 已连接。未连接 = 入口不渲染且页面不报错不空白（connection
   // 查询失败面容忍，票面验收）；local/hosted/fixture 面零漂移。查询 enabled
   // 收窄到 github 形态项目（页面挂载不空转，useGithubConnection 同律）。
-  const isGithubRepo = live && wireProject?.repoKind === 'github';
-  const ghConnQ = useGithubConnection(isGithubRepo ? teamId : undefined, isGithubRepo);
-  const ghIssuesAvailable = isGithubRepo && ghConnQ.data?.connected === true;
+  const isGithubRepoEntry = live && wireProject?.repoKind === 'github';
+  // github 项目 Files tab 诚实降级（#704 / B-C1）：pacman 不保存该形态的仓库
+  // 文件副本（Multica link-back 只读方向——关联不镜像），文件面 = 说明 + 外链
+  // GitHub；变更与 PR 面走 daemon 上报真值（任务详情 changes / 分支 PR 面板）。
+  // 判据复用 issues 入口同源位（live && repoKind === 'github'）。
+  const githubFilesUrl =
+    isGithubRepoEntry && wireProject?.githubRepo != null
+      ? `https://github.com/${wireProject.githubRepo}`
+      : null;
+  const ghConnQ = useGithubConnection(isGithubRepoEntry ? teamId : undefined, isGithubRepoEntry);
+  const ghIssuesAvailable = isGithubRepoEntry && ghConnQ.data?.connected === true;
   const [issuesOpen, setIssuesOpen] = useState(false);
   const closeIssues = useCallback(() => setIssuesOpen(false), []);
   const onIssueImported = useCallback(
@@ -635,6 +650,20 @@ export function ProjectPage() {
     >
       {tab === 'files' && isLocalRepo ? (
         <div className="prj-files-disabled">{t('本地仓库项目暂不支持在线浏览文件')}</div>
+      ) : tab === 'files' && isGithubRepoEntry ? (
+        <div className="prj-files-disabled">
+          <span>{t('GitHub 仓库项目的文件在 GitHub 上查看')}</span>
+          {githubFilesUrl != null && (
+            <a
+              className="prj-files-github-link"
+              href={githubFilesUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t('打开 GitHub 仓库')}
+            </a>
+          )}
+        </div>
       ) : tab === 'files' ? (
         <div className="prj-files">
           <FilesPane
