@@ -21,10 +21,9 @@ import type { ChiefCompactionModel } from '@pacman/shared';
 import { useState } from 'react';
 import {
   createModelPicker,
-  ModelPickRow,
+  ModelPickList,
   type ModelRowSkin,
   modelEchoLabel,
-  toModelRows,
 } from '../components/model-select-core.js';
 import { Button } from '../components/ui/button.js';
 import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
@@ -106,28 +105,20 @@ export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectPro
         className="chief-model-shell"
       >
         <ClickCatcher onClose={() => setOpen(false)} />
-        <div
-          className={`chief-model-menu ${FLOATING_POP_ANIM}`}
-          role="listbox"
-          aria-label={t('压缩模型')}
-        >
-          {/* 默认行语义 = 继承 Chief(#626 参数化:文案由本面传入)。 */}
-          <ModelPickRow
+        {/* #756 续:行清单 + typeahead 搜索单源归 ModelPickList(与抽屉头
+            picker 同形:开面零搜索占位、打字现形吃字、清空收回);listbox
+            语义随共享层的清单容器,菜单壳只承几何。 */}
+        <div className={`chief-model-menu ${FLOATING_POP_ANIM}`}>
+          <ModelPickList
             skin={ROW_SKIN}
-            selected={value === null}
-            label={t('默认（与 Chief 相同）')}
-            onPick={() => pick(null)}
+            options={rows}
+            value={value}
+            defaultLabel={t('默认（与 Chief 相同）')}
+            listLabel={t('压缩模型')}
+            searchPlaceholder={t('搜索模型…')}
+            emptyLabel={t('没有匹配的模型')}
+            onPick={pick}
           />
-          {toModelRows(rows, value).map((row) => (
-            <ModelPickRow
-              key={row.key}
-              skin={ROW_SKIN}
-              selected={row.selected}
-              label={row.label}
-              providerLabel={row.providerLabel}
-              onPick={() => pick(row.value)}
-            />
-          ))}
         </div>
       </FloatingShell>
     </span>
