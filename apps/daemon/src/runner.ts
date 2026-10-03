@@ -728,13 +728,27 @@ export async function runStep(
   if (bodyTimeout) clearTimeout(bodyTimeout);
   if (timedOut)
     lastError = `stream timeout (first=${STREAM_TIMEOUTS_MS.streamFirstEvent}ms idle=${STREAM_TIMEOUTS_MS.streamIdle}ms)`;
-
   // —— 停止钮中断判定（M7 #308）：旗标 = machine-loop deliverStop 拉取-确认
-  // 后置位；sawDone 优先 = stop 与自然完成竞态归完成（success 不改判）。——
+  // 后置位；sawDone 优先 = stop 与自然完成竞态归完成（success 不改判）。
+  // 判定先于 #698 no-op 闸：停止中断的事件流也是零事件零终局形态，闸不得
+  // 给 stopped 收尾挂 no-op 错误文案。——
   const stopReq = deps.stopRequests?.get(stepId);
   if (stopReq !== undefined) deps.stopRequests?.delete(stepId);
   const stopped = stopReq !== undefined && !sawDone;
   if (stopReq !== undefined && sawDone) logger.step('stop arrived after completion — ignored');
+  // —— #698 静默 no-op 闸：零进展 + 零错误 + 无 done 的轮 = 会话面空转收尾
+  // （backend 事件流自然耗尽而无终局——claude-code pump 生成器耗尽形：终局
+  // 事件缺席时直接 queue.end()）。按 failed 收尾并点名形态：零进展轮不可能
+  // 是合法完成（任何模型产出都算进展），原先按 success 吞掉 = 「界面已开工、
+  // 实际什么都没发生、无任何错误面」的静默 no-op。timedOut / stopped 各有
+  // 更具体的收尾语义（超时看门狗文案 / stopped 状态），不进本闸；sawDone
+  // 在位 = 会话自报自然完成，归完成语义不动。user-role 回声（输入侧
+  // message_end）不算进展——事件面非空不构成「会话真跑过」。
+  if (!timedOut && !stopped && !sawProgress && !sawDone && lastError === null) {
+    lastError =
+      'agent session ended with zero progress and no terminal outcome (silent no-op round)';
+    logger.step('zero-event round: session stream exhausted without progress, done, or error');
+  }
   // abort 吞掉终局 done 事件（backend/pi.ts stopping 位——停止钮与流超时
   // watchdog 共用 handle.stop()）→ usage 从 handle 累计面兜底（逐消息累积，
   // token 记账不因中断丢失）。
