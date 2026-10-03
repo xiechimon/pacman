@@ -320,7 +320,8 @@ export async function readCommitHistory(
 // 变更 pane（r7 27/27b/36）= conv 分支相对默认分支的文件级 unified diff。
 // 端点/封套 wire 未采——形状复用 documentDiffSchema 的 files 段（diffFileSchema
 // 单源，r5 §4 触点同族），登记 wire.test INFERRED_ROUTES（04 §3 不判负口径）。
-// GitHub-backed 项目无本地存储 = 空集（PR 面归后票，02 §3）。
+// GitHub-backed 项目（02 §3）：本地无存储，投影真值 = daemon 步收尾上报
+// （#704 build.changes 列——PR 面亦随同票落地，见 machines.ts finishStep）。
 
 /** unified diff 文本 → diffFileSchema[]（git diff 输出解析 [设计]；行保留
  * `+`/`-`/` ` 前缀 = documents.ts structuredPatch 行形同款约定）。 */
@@ -363,8 +364,13 @@ export function parseUnifiedDiff(text: string): DocumentDiffFile[] {
   return files.filter((f) => f.path !== '' && f.hunks.length > 0);
 }
 
-/** conv 分支相对默认分支的变更文件集（变更 pane 数据源）；无托管 repo /
- * 分支缺位 / 空 diff = 空集（占位文案面归 web，r7 38）。 */
+/** conv 分支相对默认分支的变更文件集（变更 pane 数据源）；无 repo / 分支缺位 /
+ * 空 diff = 空集（占位文案面归 web，r7 38）。
+ * 真值源按形态分叉（#704）：hosted = server bare repo（git 单源，本函数既有
+ * 计算）；非 hosted（github/local）= daemon 步收尾上报的 build.changes 列
+ * （done.changesDiff 解析落库——B-C1 归因「产物核验只能去 GitHub 侧看」的
+ * 补口）。列 null = 未上报（旧 build / 上报失败 / hosted）= 空集不造假；
+ * 空数组 = 已上报且零改动（与 null 语义分离）。 */
 export async function readBuildChanges(
   ctx: RepoCtx,
   buildId: string,
@@ -375,7 +381,7 @@ export async function readBuildChanges(
   if (!todoRow) throw notFound(`todo ${buildRow.todoId}`);
   const projRow = ctx.db.select().from(project).where(eq(project.id, todoRow.projectId)).get();
   if (projRow?.repoKind !== 'hosted' || projRow.repoName === null) {
-    return { files: [] };
+    return { files: buildRow.changes ?? [] };
   }
   const dir = repoDirFor(ctx.reposDir, projRow.teamId, projRow.repoName);
   const { defaultBranch } = await systemGitOps.listBranches(dir);

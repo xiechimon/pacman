@@ -25,6 +25,7 @@ import {
   AGENT_TOOL_MERGE,
   AGENT_TOOL_PUSH,
   buildTaskPromptText,
+  CHANGES_DIFF_MAX_BYTES,
   CONTINUE_PROMPTS,
   FIXED_TAGS,
   isBackendRuntimeId,
@@ -41,6 +42,7 @@ import {
 import { SessionNotResumableError } from './backend/errors.js';
 import { notInConfigLine, resolveMcpEndpoints } from './backend/mcp-config.js';
 import { clearCredentials, pushCredential } from './credentials.js';
+import { githubRepoRefOf, probeGithubPr } from './github-probe.js';
 import { type StepJournal, TranscriptBuffer } from './journal.js';
 import type { DaemonLogger } from './log.js';
 import type { MachineApi } from './machine-client.js';
@@ -873,6 +875,45 @@ export async function runStep(
   if (!stopped && lastError !== null) logger.step(`step failed: ${lastError}`);
   journal.update(stepId, { state: 'awaiting-upload' });
 
+  // —— 交付面只读探测 + 上报（#704 / B-C16）：github 形态步收尾时查 conv 分支
+  // 上的 PR（agent 用机器 gh 开的 PR 在服务端本不可见——Multica link-back 同
+  // 方向：只读发现，不代操作）；非 hosted 形态步收尾上报 conv 分支真 diff
+  // （服务端无该形态的本地存储，投影真值源 = 本上报）。两者都只在成功、
+  // 非停止、非只读（review）步算——失败/中断步不产交付面事实；探测/计算失败
+  // = 缺席（面板分支名在、PR 槽留空，不失败不重试——失败方式 ④）。——
+  let prProbe: { number: number; url: string } | null = null;
+  let changesDiff: string | null = null;
+  if (ws !== null && repo !== null && lastError === null && !stopped && !isReview) {
+    const ghRef = repo.kind === 'github' ? githubRepoRefOf(repo.cloneUrl) : null;
+    if (ghRef !== null) {
+      prProbe = await probeGithubPr({
+        owner: ghRef.owner,
+        repo: ghRef.repo,
+        branch: ws.branch,
+        // per-step token（github_connection 下发时）；未连接 = null → 匿名梯
+        // （公开仓可达）。机器 gh 梯在前——agent 开 PR 用的就是它。
+        token: creds.git?.password ?? null,
+      }).catch((err: unknown) => {
+        logger.step(
+          `pr probe failed: ${err instanceof Error ? err.message : String(err)} (panel will show branch without PR)`,
+        );
+        return null;
+      });
+      if (prProbe !== null) logger.step(`pr probe: #${prProbe.number} for ${ws.branch}`);
+    }
+    if (repo.kind !== 'hosted' && deps.workspace?.diffAgainstDefault) {
+      const diff = await deps.workspace.diffAgainstDefault(ws.cwd, ws.defaultBranch);
+      // 上限闸（server 侧同闸）：超限缺席——投影回落空集，PR 面板 GitHub
+      // 链接兜底；不带半截假象。
+      changesDiff = diff.length <= CHANGES_DIFF_MAX_BYTES ? diff : null;
+      if (changesDiff === null && diff.length > 0) {
+        logger.step(
+          `changes diff ${diff.length}B over ${CHANGES_DIFF_MAX_BYTES}B cap — projection falls back to empty`,
+        );
+      }
+    }
+  }
+
   // upload-urls → transcript 终稿 + plan.md 产物回传落库（02 §1.3 数据所有权；
   // plan 即文件、版本 = 文件版本——规划步收尾上传当前版，02 §4.2/r5 §4）。
   try {
@@ -924,6 +965,10 @@ export async function runStep(
       ...(headCommit !== null ? { commit: headCommit } : {}),
       ...(reviewExtraction?.status === 'ok' ? { findings: reviewExtraction.verdict } : {}),
       ...(reviewExtraction?.status === 'failed' ? { findingsError: reviewExtraction.reason } : {}),
+      // 交付面回填（#704）：探测命中才带（无 PR / 失败 = 缺席）；diff 上报
+      // 恒带算得值（含空串——「已上报且零改动」与「未上报」在 server 侧分列）。
+      ...(prProbe !== null ? { prUrl: prProbe.url, prNumber: prProbe.number } : {}),
+      ...(changesDiff !== null ? { changesDiff } : {}),
     });
   } catch (err) {
     logger.step(`done report failed: ${err instanceof Error ? err.message : String(err)}`);
