@@ -8,7 +8,32 @@ XMON-25（#607）收口声明的 pages 域残留菜单行，收编到
 | `prj-new-repo-menu-row` ×2（role=option） | `DropdownMenuRadioItem`（closeOnClick，select-and-close 家族律 #306） |
 | `prj-tasks-menu-row`（role=option） | `DropdownMenuRadioItem`（同上） |
 | `sched-card-menu-row`（role=menuitem） | `DropdownMenuItem`（role=menuitem 保持） |
-| `prj-new-gh-row`（role=option） | **未收编**——它长在带搜索框的 picker 内容板上，对应原语是 Command（cmdk）或 Combobox 形态，仓内不存在（见报告「缺口声明」） |
+| `prj-new-gh-row`（role=option） | **维持手搓（协调者裁决③）+ 键盘契约补齐到与收编面同等**——它长在带搜索框的 picker 内容板上，Menu 原语承载不了混合板；Command（cmdk）/Combobox 无 drop-in，见下节 |
+
+## prj-new-gh-row：边界理由与键盘契约（裁决③）
+
+**为什么不迁**：coverage map §3.9 对 mention-picker 内容层已有同形裁决先例——
+「无 drop-in（Combobox 需自持 input）……机制层已是 Base UI Dialog，内容层
+手搓合理」。picker 行表同构：搜索 input + 行表的混合板，Menu 原语的焦点/
+typeahead 语义假定弹层内只有 item；引入 cmdk（新依赖）或自建 Combobox
+wrapper（新原语）超出「收编到既有原语」的票面边界。**一致性优于新依赖。**
+
+**但「不迁」≠「键盘可以坏」**：本 PR 给行表手搓补齐了与收编面同等的键盘
+契约（实现 = project-new-page 的 ghListRef/onGhListKeyDown 一族；roving
+tabindex、Arrow/Home/End 回环、typeahead 500ms 缓冲前缀优先、Enter 即选即关
+真实生效、开面焦点进列表——OverlayMount 两段提交与 live 行表异步到位用有界
+rAF 重试兜住、关面焦点归还续作控件——保活期 visibility:hidden 不立刻掉焦，
+按「active 在面板子树内或已掉 body」判定重试）：
+
+- **before（origin/main 0a1069fd 实测）**：开面后焦点不进列表——Arrow/
+  typeahead 全部无效、Enter 只等价再按触发钮（toggle 关面），
+  triggerBackfill 停在「选择 GitHub 仓库」= **激活从未真实发生**。
+- **after（实测，`gh-keyboard-summary.txt` 全量转录）**：焦点开面即进首行；
+  ArrowDown/Up 回环移动；typeahead `x`→xiechimon/pacman、`o`→octocat/
+  hello-world；Enter 即选即关且生效（触发钮回填 octocat/spoon-knife）；
+  Esc 与激活后焦点都归还触发钮；重开落选中行律由 e2e 第 10 用例钉住。
+- 皮肤与 DOM 形态零变化（行仍是 `button[role=option]` + aria-selected，
+  仅加 roving tabindex），像素面不涉及。
 
 ## 方法
 
@@ -95,7 +120,25 @@ law；旧 ClickCatcher 不锁滚）。
 
 ## e2e
 
-受影响 14 spec 文件 173 用例全绿（首跑 42 红全部由 RadioItem 缺省
-closeOnClick=false 触发——原生菜单 radio 保开语义与本面 select-and-close
-家族律冲突，显式 `closeOnClick` 修复后清零；该轮红即「先列失败方式」的
-实测清单）。全量结果见 PR body。
+**首跑 42 红 = 「先列失败方式」的实测清单，不是事故**：全部同根因——
+RadioItem 缺省 `closeOnClick=false`（原生菜单 radio 的保开语义）撞本面
+select-and-close 家族律（#306）。42 条红把「单选不关面」这一个失败模式在
+全部消费路径上钉了出来；显式 `closeOnClick` 一处修复后清零。这是收编类改动
+该有的产出形态：失败方式先于修复现形。
+
+- 受影响 14 spec 173 用例全绿；picker 邻接 5 spec 53 用例全绿。
+- 新增钉扎：project-new-github.spec 第 10 用例 = gh-row 键盘契约（焦点进
+  列表 / Arrow 回环 / typeahead 缓冲窗 / Enter 激活生效 / 焦点归还 / 重开落
+  选中行）。
+- 全量结果见 PR body。
+
+## 本目录文件
+
+- `t0070-probe.mjs` / `t0070-gif.mjs` / `t0070-ghprobe.mjs`：三个探针脚本
+  （node 直跑，双栈同脚本；用法在文件头）。
+- `before/after-results.json` + `geometry-diff.txt` + `pixel-imgdiff.txt`：
+  四面几何/样式对拍。
+- `keyboard-summary.txt`：四面键盘契约对照（收编面）。
+- `gh-before/gh-after-results.json` + `gh-keyboard-summary.txt`：picker 行表
+  键盘契约对照（手搓面）。
+- `*-plate.png` / `*-viewport.png` ×16、`*-menu-motion.gif` ×2。

@@ -37,7 +37,7 @@ import {
   LOCAL_ERROR_REASON_COPY,
   type LocalErrorReason,
 } from '@pacman/shared';
-import { type Ref, useCallback, useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, type Ref, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { ApiError } from '../api/client.js';
 import { useApiMutations, useGithubConnection, useGithubRepos } from '../api/hooks.js';
@@ -288,6 +288,124 @@ export function ProjectNewPage() {
         : true;
   const showGithubField = githubSelected && !manualRepo;
 
+  // t-0070（裁决③：维持手搓 + 键盘契约与 dropdown-menu 收编面同等）：
+  // picker 行表的 roving tabindex / typeahead / 开面焦点进列表 / 关面焦点
+  // 归还触发钮。Menu 原语承载不了「搜索 input + 行表」混合板，Command/
+  // Combobox 无 drop-in（coverage map §3.9 对 mention-picker 内容层的同形
+  // 裁决先例），故契约语义手搓、皮肤与 DOM 形态零变化。
+  const pickerVisible = showGithubField && connected && pickerOpen;
+  const ghListRef = useRef<HTMLDivElement>(null);
+  const ghFocusDelivered = useRef(false);
+  const ghTypeBuf = useRef({ text: '', ts: 0 });
+  const [ghActive, setGhActive] = useState(0);
+  // 开面（含着陆参自动开）与行表异步到位后把焦点送进列表：选中行优先，
+  // 否则首行；面板已持焦（用户点了搜索框）不抢。delivered 旗标按开合周期
+  // 复位。有界 rAF 重试：OverlayMount 是两段提交（open 帧 mounted 仍 false
+  // → 子树下一帧才存在），live 面行表还要等 reposQ——单次 rAF 会在列表
+  // 就位前放弃，重试到 delivered 或 30 帧预算耗尽（空面 = 无行可聚焦，
+  // 焦点留在触发钮）。
+  useEffect(() => {
+    if (!pickerVisible) {
+      ghFocusDelivered.current = false;
+      return;
+    }
+    let raf = 0;
+    let tries = 0;
+    const step = () => {
+      tries += 1;
+      const list = ghListRef.current;
+      if (list !== null) {
+        const plate = list.closest('.prj-new-gh-picker');
+        const active = document.activeElement;
+        if (plate?.contains(active)) {
+          ghFocusDelivered.current = true;
+          return;
+        }
+        if (ghFocusDelivered.current && active !== document.body) return;
+        const rows = [...list.querySelectorAll<HTMLButtonElement>('.prj-new-gh-row')];
+        if (rows.length > 0) {
+          const idx = Math.max(
+            0,
+            hits.findIndex((repo) => repo.full_name === githubRepo),
+          );
+          setGhActive(idx);
+          rows[idx]?.focus();
+          ghFocusDelivered.current = true;
+          return;
+        }
+      }
+      if (tries < 30) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [pickerVisible, hits, githubRepo]);
+  // 关面焦点归还：交回 #prj-new-repo（该时点的续作控件：picker 触发钮 /
+  // 手动兜底 input / 认证钮，menu 原语的焦点归还同律）。OverlayMount 保活
+  // 期（exit 150ms）里 visibility:hidden 不立刻掉焦——焦点滞留在关面中的
+  // 行上，故按「active 在 picker 面板子树内（含保活期）或已掉 body」判定
+  // 有界重试（30 帧 > 保活窗，也覆盖分支切换时续作控件晚一帧就位）；
+  // 焦点在面板外稳位（触发钮 toggle 关面 / 用户已移焦）不抢。
+  const pickerWasOpen = useRef(false);
+  useEffect(() => {
+    if (pickerVisible) {
+      pickerWasOpen.current = true;
+      return;
+    }
+    if (!pickerWasOpen.current) return;
+    pickerWasOpen.current = false;
+    let raf = 0;
+    let tries = 0;
+    const step = () => {
+      tries += 1;
+      const active = document.activeElement;
+      const insidePicker = active?.closest('.prj-new-gh-picker') != null;
+      if (active !== document.body && !insidePicker) return; // 焦点已落面板外稳位，不抢
+      const el = document.getElementById('prj-new-repo');
+      if (el !== null) {
+        el.focus();
+        return;
+      }
+      if (tries < 30) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [pickerVisible]);
+  // 列表键盘：Arrow/Home/End roving（回环 = loopFocus 律）+ typeahead
+  // （500ms 缓冲，前缀命中优先、子串兜底；CJK 走输入法路径，与 Menu 原语
+  // 同限）。Enter/Space = button 原生激活 → pickRepo 即选即关。
+  const onGhListKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const list = ghListRef.current;
+    if (list === null) return;
+    const rows = [...list.querySelectorAll<HTMLButtonElement>('.prj-new-gh-row')];
+    if (rows.length === 0) return;
+    const current = rows.indexOf(document.activeElement as HTMLButtonElement);
+    let next: number | null = null;
+    if (event.key === 'ArrowDown') {
+      next = current < 0 ? 0 : (current + 1) % rows.length;
+    } else if (event.key === 'ArrowUp') {
+      next = current < 0 ? rows.length - 1 : (current - 1 + rows.length) % rows.length;
+    } else if (event.key === 'Home') {
+      next = 0;
+    } else if (event.key === 'End') {
+      next = rows.length - 1;
+    } else if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      const now = Date.now();
+      const text =
+        now - ghTypeBuf.current.ts < 500
+          ? ghTypeBuf.current.text + event.key.toLowerCase()
+          : event.key.toLowerCase();
+      ghTypeBuf.current = { text, ts: now };
+      const label = (el: HTMLElement) => (el.textContent ?? '').trim().toLowerCase();
+      let idx = rows.findIndex((el) => label(el).startsWith(text));
+      if (idx < 0) idx = rows.findIndex((el) => label(el).includes(text));
+      if (idx >= 0) next = idx;
+    }
+    if (next === null) return;
+    event.preventDefault();
+    setGhActive(next);
+    rows[next]?.focus();
+  };
+
   // local 400 错误行：仅当「本次提交的路径仍是输入框现值」时呈现——编辑
   // 路径即撤（陈旧错误不残留）。reason 分类按 server 应答的结构化 code
   // （#386，词汇单源 = shared PROJECT_LOCAL_ERROR_REASONS），消息子串不再
@@ -518,9 +636,13 @@ export function ProjectNewPage() {
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
             {/* picker 弹层（#361）：已认证面专属——头部（已连接 login + 断开钮）/
-              搜索 / 仓库行（单选即回填收面板，aria-selected ≡ check 律）/
-              手动兜底链接。plate = prj-new-repo-menu 同 family recipe。 */}
-            <OverlayMount open={showGithubField && connected && pickerOpen}>
+                搜索 / 仓库行（单选即回填收面板，aria-selected ≡ check 律）/
+                手动兜底链接。plate = prj-new-repo-menu 同 family recipe。
+                行表键盘契约手搓（t-0070 裁决③：混合板无 drop-in，维持手搓 +
+                契约对齐收编面）：开面焦点进列表、Arrow/Home/End roving、
+                typeahead、Enter 即选即关、关面焦点归还——实现在上方
+                ghListRef/onGhListKeyDown 一族。 */}
+            <OverlayMount open={pickerVisible}>
               <ClickCatcher onClose={closePicker} />
               <div className="prj-new-gh-picker anim-pop">
                 <div className="prj-new-gh-picker-head">
@@ -561,14 +683,21 @@ export function ProjectNewPage() {
                     <div className="prj-new-gh-empty">{t('没有匹配的仓库')}</div>
                   )
                 ) : (
-                  <div className="prj-new-gh-list" role="listbox" aria-label={t('GitHub 仓库')}>
-                    {hits.map((repo) => (
+                  <div
+                    className="prj-new-gh-list"
+                    role="listbox"
+                    aria-label={t('GitHub 仓库')}
+                    ref={ghListRef}
+                    onKeyDown={onGhListKeyDown}
+                  >
+                    {hits.map((repo, index) => (
                       <button
                         type="button"
                         key={repo.id}
                         className="prj-new-gh-row"
                         role="option"
                         aria-selected={githubRepo === repo.full_name}
+                        tabIndex={index === ghActive ? 0 : -1}
                         onClick={() => pickRepo(repo)}
                       >
                         {repo.full_name}
