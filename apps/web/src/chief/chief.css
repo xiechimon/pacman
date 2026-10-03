@@ -15,7 +15,15 @@
 /* In-flow flex item: every mount point puts the panel last in a flex row
    (.board-shell / .page-main / .res-main / .secondary-main / .detail-body)
    whose content sibling is flex:1 min-width:0, so the content yields by
-   exactly 418px (D2). The row's stretch alignment carries the full height. */
+   exactly 418px (D2). The row's stretch alignment carries the full height.
+   z: the docked chrome rung of the #688 ladder (tokens.css) — above in-flow
+   content, below every active surface (popovers, scrims, dialogs). The
+   panel is persistent chrome, not an overlay: an open dialog must paint
+   over it (the reference keeps the drawer mounted and dims it under the
+   dialog scrim), and an anchored popover must never lose a DOM-order tie
+   against it. The column also forms a stacking context, so the drawer's
+   own interior popovers (switcher z 5, model menu --z-popover, tab pill
+   0/1) stay scoped inside this plane. */
 .chief-drawer {
   flex: none;
   width: 418px;
@@ -23,7 +31,7 @@
   border-left: 1px solid var(--border-default);
   display: flex;
   flex-direction: column;
-  z-index: 30;
+  z-index: var(--z-docked);
 }
 
 /* Exit leg only (D4: 内容瞬时贴合，不做布局动画): once the overlay state
@@ -256,6 +264,8 @@
   background: var(--popover-bg);
   border-radius: 8px;
   box-shadow: var(--chief-shadow);
+  /* drawer-local（#688 阶梯外）：切换器锚在抽屉头部，绘制收编于 .chief-drawer
+     的 stacking context，只需压住抽屉内部内容——5 是局部值，不参竞根级层序。 */
   z-index: 5;
 }
 
@@ -797,8 +807,10 @@
   background: var(--popover-bg);
   border-radius: var(--radius-popover);
   box-shadow: var(--fab-shadow);
-  /* 家族层律:30 压 catcher(29),见 overlays/dismiss.tsx。 */
-  z-index: 30;
+  /* 家族层律（#688 阶梯 --z-popover 压 --z-catcher，见 overlays/dismiss.tsx）。
+     本菜单锚在抽屉内（FloatingShell container=wrap），实际绘制被抽屉自身的
+     stacking context 收编——消费家族令牌是层律对齐，不是根级参竞。 */
+  z-index: var(--z-popover);
 }
 
 .chief-model-row {

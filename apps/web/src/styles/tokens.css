@@ -3,7 +3,7 @@
    1) 并流/归并的 generic 色名在这里落别名（var 直引正本名），消费方
       1004 处引用零改动；别名按双主题各声明一次（.light 挂在根元素上，
       与 :root 同元素竞争，源序后者胜——镜像让 .light 保持完整语义面）；
-   2) 非颜色 token（motion / 字体栈 / 阴影 / 圆角）仍由本文件持有，
+   2) 非颜色 token（motion / 字体栈 / 阴影 / 圆角 / z 阶梯）仍由本文件持有，
       收编或另立非颜色层属另一票范围。
    逐名归属与取数见 docs/research/412-token-mapping.md。
    主题机制：dark = :root 默认，light = 根元素挂 .light（#106 反相规约）。
@@ -21,6 +21,90 @@
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-pop: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ---- z ladder (#688) ----
+     Single source for root-level stacking: every surface that competes in
+     the ROOT stacking context (fixed/absolute elements with no
+     stacking-context ancestor, plus Base UI portals to body) takes its
+     z-index from these tokens — CSS files via var(), Tailwind classes via
+     z-(--z-*), DialogShell via its zIndex prop. Component-LOCAL stacking
+     does not ride this ladder and keeps its raw values — it never competes
+     across components, so naming it would fake a global contract. Local
+     means either scoped inside an ancestor's stacking context (chief tabs
+     0/1 and switcher 5 inside the drawer, the floating user menu inside
+     the sidebar rail, the mention picker's inline menu) or spatially
+     confined to the content area, which docked chrome never overlaps
+     because content yields to the dock (ADR 0004 D2): the todo-card
+     branch chip / action buttons and the avatar badge (z-10 each).
+     Unrendered registry primitives (ui/dialog.tsx, ui/alert-dialog.tsx —
+     the adapters replaced them) keep their upstream z-50 verbatim.
+
+     The law (user ruling 2026-10-03 + todos.dev live capture 2026-10-03):
+     active surfaces (popovers, dialogs, scrims, hints) ALWAYS paint above
+     persistent docked chrome. The reference puts every dialog on a fixed
+     z 9999 portal host and keeps the open chief drawer mounted, dimmed and
+     non-interactive underneath; we keep our finer-grained modal rungs
+     (40/41/50/60/80 — several modal tiers must coexist and stay ordered)
+     and align the ORDER: docked chrome at the bottom rung, above in-flow
+     content only. Deviation from the reference's single 9999 tier is
+     deliberate: one tier cannot order search vs dialog vs gate vs picker.
+
+     Rungs, bottom to top:
+       --z-docked      persistent docked chrome: the chief drawer column and
+                       the board sidebar rail — above scrolling content,
+                       below EVERY active layer. The #688 bug was the drawer
+                       sitting at 30, tying the popover tier and beating the
+                       low dialog tier (20/21): same-tier elements paint in
+                       DOM order, so the drawer covered the new-task dialog.
+       --z-backdrop-low  the low-tier underlay: more-menu's transparent
+                       catcher and the new-task dialog's dim backdrop.
+       --z-panel-low   the low-tier panel: more-menu and the new-task
+                       dialog. Deliberately UNDER --z-catcher so the
+                       new-task discard confirm's catcher (29) owns outside
+                       clicks while the confirm is open (#318 semantics:
+                       outside = close the confirm only, keep editing).
+       --z-catcher     the anchored-popover family's transparent full-screen
+                       click catcher (overlays/dismiss.tsx) — outside clicks
+                       close the popover and never reach content.
+       --z-popover     the anchored popover family: chip popover, plan
+                       dropdown, sort/repo/dir/tasks/lang/model menus, the
+                       floating user menu, the select menu. One open at a
+                       time (family law), so they share one rung; a popover
+                       anchored inside a dialog or the drawer paints within
+                       THAT surface's stacking context and consumes this
+                       token for family consistency only.
+       --z-confirm     confirm stacked over a low-tier panel (new-task
+                       discard) — above the family catcher by design.
+       --z-hint        instant hints (KbdHint chips). Ties the modal scrim
+                       rung on purpose: a chip lives on hover/focus-visible
+                       of its carrier, and an open scrim blocks both, so
+                       the two never visibly compete.
+       --z-modal-scrim full-viewport scrims of the centered-modal family:
+                       schedule form, detail overlays, the search scrim,
+                       alert-dialog (delete confirm) backdrop.
+       --z-modal       viewport-root modal panel (the search panel).
+       --z-dialog      the DialogShell family panel (default zIndex prop);
+                       the shell derives its backdrop as this minus one (49).
+                       Base UI popover/dropdown positioners ride the same
+                       rung.
+       --z-gate        the token gate — its own tier above the dialog
+                       family by that face's standing note (it gates the
+                       whole app; nothing else is open when it shows).
+       --z-picker      the mention picker — the topmost interactive surface,
+                       nesting above an open dialog. */
+  --z-docked: 10;
+  --z-backdrop-low: 20;
+  --z-panel-low: 21;
+  --z-catcher: 29;
+  --z-popover: 30;
+  --z-confirm: 31;
+  --z-hint: 40;
+  --z-modal-scrim: 40;
+  --z-modal: 41;
+  --z-dialog: 50;
+  --z-gate: 60;
+  --z-picker: 80;
+
   --font-sans:
     var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial,
     sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";

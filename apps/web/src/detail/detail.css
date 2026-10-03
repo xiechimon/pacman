@@ -1405,18 +1405,23 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   box-shadow: var(--edge-ring), var(--edge-shadow);
   display: flex;
   flex-direction: column;
+  /* local（#688 阶梯外）：冻结捕获变体画在侧栏 rail 自己的 stacking
+     context 里，10 只需压住 rail 内部行——根级层序由 rail 的 z 承载。 */
   z-index: 10;
 }
 
 /* #127 live-trigger render (opened from the sidebar avatar chips): fixed
    instead of absolute — the collapsed rail keeps overflow:hidden, which
-   would clip an absolutely-positioned panel to its 40px width, and z 30
-   stacks the menu above the family click-catcher (z 29, overlays.css).
-   The shells sit at the viewport origin and never scroll, so fixed ≡ the
-   absolute capture coords. */
+   would clip an absolutely-positioned panel to its 40px width, and the
+   popover rung (#688 ladder) stacks the menu above the family
+   click-catcher (--z-catcher, overlays.css). The shells sit at the
+   viewport origin and never scroll, so fixed ≡ the absolute capture
+   coords. Both variants render inside the sidebar rail, whose own
+   stacking context (z-(--z-docked), sidebar.tsx) scopes the painting —
+   the token keeps the family law, the rail's z carries the root order. */
 .user-menu--floating {
   position: fixed;
-  z-index: 30;
+  z-index: var(--z-popover);
   /* #163: 底部锚定继承基规则。#139 的 min() 顶部钳制随冻结坐标一并删除
      ——底边恒距视口底的面板在 zoom 收缩的 css viewport 下不会把底边框
      推出屏外，zoom-probe 的 clipped 契约天然成立。 */
@@ -1685,7 +1690,7 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   position: absolute;
   top: 30px;
   right: -2px;
-  z-index: 30;
+  z-index: var(--z-popover);
   width: 212px;
   padding: 4px 0;
   border-radius: var(--radius-popover);
@@ -1758,7 +1763,7 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--z-modal-scrim);
   display: flex;
   align-items: center;
   justify-content: center;
