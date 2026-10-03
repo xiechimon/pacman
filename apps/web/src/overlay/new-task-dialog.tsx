@@ -69,6 +69,17 @@ interface ProjectOption {
   name: string;
 }
 
+/** #682 机器选择器行：live = MachineRecord 最小投影(id/name/online)；
+ * fixture = scenario resources machines（id 缺省退 name）。与项目 chip 同族
+ * （anchored popover + listbox），但选择集多一行「自动」（null = 不钉，
+ * 任何在线机器可领）。offline 机器可选——钉选语义 = 等它上线（claim 过滤
+ * 面保证步只投给该机），与 branch-dialog 的「只列在线」是两个面。 */
+export interface MachineOption {
+  id: string;
+  name: string;
+  online?: boolean;
+}
+
 /** XMON-87 选择记忆位(localStorage 键;e2e 镜像 newtask-project-persist.spec.ts)。
  *  单租户单机、无账号维度——与 pacman.sidebar-collapsed /
  *  pacman.dirBrowser.lastDir 同律。 */
@@ -117,13 +128,16 @@ export interface NewTaskDialogProps {
    *  占位、agent 回填；标签固定词表由 agent 归类）。
    *  #311：spec 参数携带 mention token 内容——父级负责透传到
    *  createTodo body。 */
-  onSave: (spec: string, projectId?: string) => void;
+  onSave: (spec: string, projectId?: string, machineId?: string | null) => void;
   /** M5 live 面：保存并开始 = 创建 + POST builds（r2 §4.2 双钮语义）；
-   * 缺省 = fixture 行为（同 保存）。 */
-  onSaveAndStart?: (spec: string, projectId?: string) => void;
+   * 缺省 = fixture 行为（同 保存）。#682 机器参数同 保存 面。 */
+  onSaveAndStart?: (spec: string, projectId?: string, machineId?: string | null) => void;
   /** M5 live：项目集真值(选择器行数据源);缺省 = fixture canon 单默认
    * 项目(live = projectsQ 投影,fixture = scenario projectNames)。 */
   projects?: ProjectOption[];
+  /** #682：机器集真值（选择器行数据源）；缺省 = 空集（chip 只显「自动」，
+   * 选择器只有自动一行——单机/未加载的降级面）。 */
+  machines?: MachineOption[];
   /** M7 #310 受控 spec：live 创建面父持 state,附件 token 才能注入;fixture
    * 面不传 → 内部 useState fallback。 */
   spec?: string;
@@ -148,6 +162,7 @@ export function NewTaskDialog({
   onSave,
   onSaveAndStart,
   projects,
+  machines,
   spec: specProp,
   onSpecChange,
   onAttachment,
@@ -178,12 +193,23 @@ export function NewTaskDialog({
   const [projectId, setProjectId] = useState<string | null>(() =>
     rememberProject ? readRememberedProject(localStorage) : null,
   );
+  // #682 机器 chip：popover 开态 + 选中行（null = 自动）。纯表单 state（无
+  // XMON-87 记忆——项目记忆解决「跨刷新回第一行」；机器缺省行「自动」就是
+  // 惯性选择，无同痛点）。开一个 popover 收另一个（head 同层双 chip，两面
+  // 同开会让 Esc 分层歧义）。
+  const [machineOpen, setMachineOpen] = useState(false);
+  const [machineId, setMachineId] = useState<string | null>(null);
   // M7 #310 附件：file picker ref + 上传中 disable 纸夹扣
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attaching, setAttaching] = useState(false);
   const rows = projects ?? [DEFAULT_PROJECT];
   const selected = rows.find((row) => row.id === projectId) ?? rows[0];
   const projectName = selected?.name ?? PROJECT_NAME;
+  // #682：机器行集 + 选中行（首行恒「自动」）。offline 行照常可选——钉选
+  // 语义 = 步只投给该机并等它上线（server claim 过滤面），UI 不替用户挡。
+  const machineRows = machines ?? [];
+  const machineSelected = machineRows.find((row) => row.id === machineId) ?? null;
+  const machineLabel = machineSelected?.name ?? t('自动');
   // #318: 附件 token 注入 spec 后由 spec 非空承载 dirty,不另计。
 
   const dirty = spec.trim() !== '';
@@ -212,9 +238,11 @@ export function NewTaskDialog({
   useEffect(() => {
     if (!open) {
       setProjectOpen(false);
+      setMachineOpen(false);
       setDiscardOpen(false);
       setPickerOpen(false);
       setSpec('');
+      setMachineId(null);
     }
   }, [open]);
   // retained mount：关闭退场后子树卸载,重开 = 重新挂载。autofocus 挂 ref
@@ -269,15 +297,15 @@ export function NewTaskDialog({
     void Promise.resolve(result).finally(() => setAttaching(false));
   };
 
-  // spec 15 #394: 提交 = 正文 + 项目 id；标题位随输入框一并退役。
-  const save = () => onSave(spec, selected?.id);
+  // spec 15 #394: 提交 = 正文 + 项目 id；#682 加机器 chip 选中（null = 自动）。
+  const save = () => onSave(spec, selected?.id, machineId);
 
   // XMON-95：保存并开始 = 按钮点击与 ⌘↵ 共用的同一提交位。闸写在闭包里而
   // 非只靠按钮 disabled——键盘路径不经过 disabled 的点击拦截，漏这一句 ⌘↵
   // 会在空正文上落一个空任务。
   const saveAndStart = () => {
     if (spec.trim() === '') return;
-    if (onSaveAndStart) onSaveAndStart(spec, selected?.id);
+    if (onSaveAndStart) onSaveAndStart(spec, selected?.id, machineId);
     else save();
   };
   // enabled = open ∩ ¬discardOpen（useChordHotkey 的 opened-gate）。两条都
@@ -335,6 +363,10 @@ export function NewTaskDialog({
             setProjectOpen(false);
             return;
           }
+          if (machineOpen) {
+            setMachineOpen(false);
+            return;
+          }
           if (pickerOpen) {
             setPickerOpen(false);
             return;
@@ -345,10 +377,13 @@ export function NewTaskDialog({
         // 由本回调按层序收最上面那层；全关时壳自己走 requestClose（未保存闸）。
         // mention picker 已换 FloatingShell（Base UI 嵌套顶层，escapeKey:
         // isTopmost 自己收），故本闸只覆盖仍走仓内 OverlayMount 的两层。
+        // #682 机器 popover 并入项目 popover 同层（同族 chip 面，双开由开面
+        // 互斥先行收掉）。
         onEscapeWhileNested={
-          projectOpen || discardOpen
+          projectOpen || machineOpen || discardOpen
             ? () => {
                 if (projectOpen) setProjectOpen(false);
+                else if (machineOpen) setMachineOpen(false);
                 else setDiscardOpen(false);
               }
             : undefined
@@ -367,7 +402,10 @@ export function NewTaskDialog({
               className="new-task-project"
               aria-haspopup="listbox"
               aria-expanded={projectOpen && rows.length > 0}
-              onClick={() => setProjectOpen((value) => !value)}
+              onClick={() => {
+                setMachineOpen(false);
+                setProjectOpen((value) => !value);
+              }}
             >
               <span className="new-task-project-avatar">{projectName.charAt(0).toLowerCase()}</span>
               <span className="new-task-project-name">{projectName}</span>
@@ -401,6 +439,78 @@ export function NewTaskDialog({
                     </span>
                     <span className="new-task-project-row-name">{row.name}</span>
                     {row.id === selected?.id && (
+                      <span className="new-task-project-check">
+                        <Check width={14} height={14} />
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </OverlayMount>
+          </span>
+          {/* #682 机器 chip（项目 chip 同族：OverlayMount + ClickCatcher +
+              listbox popover；行集 = 自动 + 机器行）。选中回填 chip，提交随
+              onSave 第三参走 createTodo body。 */}
+          <span className="new-task-project-wrap">
+            <button
+              type="button"
+              className="new-task-project"
+              aria-haspopup="listbox"
+              aria-expanded={machineOpen && machineRows.length > 0}
+              data-testid="new-task-machine-chip"
+              onClick={() => {
+                setProjectOpen(false);
+                setMachineOpen((value) => !value);
+              }}
+            >
+              <span
+                className="new-task-machine-dot"
+                data-on={machineSelected?.online ?? true}
+                aria-hidden="true"
+              />
+              <span className="new-task-project-name">{machineLabel}</span>
+              <ChevronDown width={12} height={12} />
+            </button>
+            <OverlayMount open={machineOpen}>
+              <ClickCatcher onClose={() => setMachineOpen(false)} />
+              <div className="new-task-project-menu anim-pop" role="listbox" aria-label={t('机器')}>
+                <button
+                  type="button"
+                  className="new-task-project-row"
+                  role="option"
+                  aria-selected={machineId === null}
+                  onClick={() => {
+                    setMachineId(null);
+                    setMachineOpen(false);
+                  }}
+                >
+                  <span className="new-task-machine-dot" data-on={true} aria-hidden="true" />
+                  <span className="new-task-project-row-name">{t('自动')}</span>
+                  {machineId === null && (
+                    <span className="new-task-project-check">
+                      <Check width={14} height={14} />
+                    </span>
+                  )}
+                </button>
+                {machineRows.map((row) => (
+                  <button
+                    key={row.id}
+                    type="button"
+                    className="new-task-project-row"
+                    role="option"
+                    aria-selected={row.id === machineId}
+                    onClick={() => {
+                      setMachineId(row.id);
+                      setMachineOpen(false);
+                    }}
+                  >
+                    <span
+                      className="new-task-machine-dot"
+                      data-on={row.online ?? true}
+                      aria-hidden="true"
+                    />
+                    <span className="new-task-project-row-name">{row.name}</span>
+                    {row.id === machineId && (
                       <span className="new-task-project-check">
                         <Check width={14} height={14} />
                       </span>

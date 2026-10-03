@@ -141,6 +141,21 @@
   color: var(--indigo-500);
 }
 
+/* #682 机器 chip 的状态点（项目 chip 的 avatar 槽位换成 dot，几何对齐
+   dlg-machine-dot / res-dot 同族）。data-on=false = 离线机器——可钉选
+   （钉选语义 = 步等它上线），灰点不是禁选态。 */
+.new-task-machine-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--col-dot-done);
+}
+
+.new-task-machine-dot[data-on="false"] {
+  background: var(--col-dot-idle);
+}
+
 .new-task-title-label {
   position: absolute;
   left: 0;

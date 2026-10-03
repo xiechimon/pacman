@@ -35,7 +35,7 @@ import { useOrchestrateStart } from '../chief/use-orchestrate-start.js';
 import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import type { MentionGroups } from './mention-picker.js';
-import type { NewTaskDialogProps } from './new-task-dialog.js';
+import type { MachineOption, NewTaskDialogProps } from './new-task-dialog.js';
 
 export interface NewTaskSurfaceOpts {
   /** fixture 面 mention 数据源：board 传合并集（fixture.todos + 本地新建卡）；
@@ -85,9 +85,9 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
   // board 传 eager 保持原 eager 行为字节不变。
   const dataOn = live && (eager || open);
   const membersQ = useMembers(teamId, dataOn);
-  // machines/skills 仅提及面消费（#311）——mentions=false 的面（project）
-  // 不发请求。
-  const machinesQ = useMachines(teamId, dataOn && mentions);
+  // machines 双消费（#311 提及面 + #682 机器 chip）——mentions=false 的面
+  // （project 页）chip 也要数据，故只随 open 门控；skills 仍仅提及面。
+  const machinesQ = useMachines(teamId, dataOn);
   const skillsQ = useSkills(teamId, dataOn && mentions);
   const mutations = useApiMutations(teamId);
 
@@ -110,14 +110,14 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
     [anchorProjectId, projectsQ.data],
   );
   const createTodo = useCallback(
-    (spec: string, selectedProjectId?: string) => {
+    (spec: string, selectedProjectId?: string, machineId?: string | null) => {
       setOpen(false);
       // 提交后清空 spec,下次打开新建对话框从空开始
       setLiveSpec('');
       if (live) {
         const projectId = resolveProjectId(selectedProjectId);
         if (projectId) {
-          mutations.createTodo.mutate({ projectId, spec });
+          mutations.createTodo.mutate({ projectId, spec, machineId });
           return;
         }
         // 无项目：先建默认托管项目再落任务（self-host 单用户语义 [设计]，
@@ -125,7 +125,7 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
         mutations.createProject.mutate(
           { name: t('默认项目'), repoKind: 'hosted' },
           {
-            onSuccess: (p) => mutations.createTodo.mutate({ projectId: p.id, spec }),
+            onSuccess: (p) => mutations.createTodo.mutate({ projectId: p.id, spec, machineId }),
           },
         );
         return;
@@ -139,8 +139,9 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
   // 直发总管编排回合（POST /todos/:id/orchestrate，替换原写死 withPlan:true
   // 的 plan 步）——总管直接规划、按活的类型派发，入口不给选择。T0 反馈 =
   // toast + 查看会话深链（use-orchestrate-start.ts）。fixture 面 = 同 保存。
+  // #682：machineId 透传（orchestrate 面 server 读 todo.machineId 落线程钉）。
   const createAndStart = useCallback(
-    (spec: string, selectedProjectId?: string) => {
+    (spec: string, selectedProjectId?: string, machineId?: string | null) => {
       setOpen(false);
       setLiveSpec('');
       if (!live) {
@@ -149,7 +150,7 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
       }
       const start = (projectId: string) =>
         mutations.createTodo.mutate(
-          { projectId, spec },
+          { projectId, spec, machineId },
           {
             onSuccess: (created) =>
               orchestrate(created.id, { savedTitle: t('已保存，交给总管编排') }),
@@ -281,12 +282,26 @@ export function useNewTaskSurface(fixture: FixtureSet, opts: NewTaskSurfaceOpts 
         })),
       };
 
+  // #682 机器 chip 行集：live = machinesQ 真值投影（undefined = 查询未决 →
+  // 空集，chip 显「自动」）；fixture = scenario resources machines（id 缺省
+  // 退 name——fixture 保存落本地卡不带机器，行集仅供 chip 交互面）。
+  const machineRows = useMemo<MachineOption[]>(() => {
+    if (live)
+      return (machinesQ.data ?? []).map((m) => ({ id: m.id, name: m.name, online: m.online }));
+    return (fixture.resources?.machines ?? []).map((m) => ({
+      id: m.id ?? m.name,
+      name: m.name,
+      online: m.online ?? true,
+    }));
+  }, [live, machinesQ.data, fixture.resources?.machines]);
+
   const dialogProps: NewTaskDialogProps = {
     open,
     onClose: closeDialog,
     onSave: createTodo,
     onSaveAndStart: live ? createAndStart : undefined,
     projects: projectRows,
+    machines: machineRows,
     // XMON-87 选择记忆:全局面(board / 侧栏)记住上次选的项目;锚定面
     // (#404 project 页)不记忆——那面的未动选择按 #305 律恒等于本页路由
     // 项目(锚行置首),全局记忆会把页面语义顶掉。

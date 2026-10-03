@@ -575,10 +575,12 @@ export function useApiMutations(teamId: string | undefined) {
       // spec 15 #394：web 面不产标题——wire 上 title 恒空串 = server 派生占位
       // 标题（首行截断），执行 agent 接单后回填正式标题；标签 = 固定词表
       // agent 归类。chief/mcp 的显式标题路径不经此 hook（REST 契约不变）。
-      mutationFn: (input: { projectId: string; spec: string }) =>
+      mutationFn: (input: { projectId: string; spec: string; machineId?: string | null }) =>
         api.post<TodoRecord>(`/api/projects/${input.projectId}/todos`, {
           title: '',
           spec: input.spec,
+          // #682：新建任务 dialog 机器 chip；null/缺省 = 自动（省略位）。
+          ...(input.machineId != null ? { machineId: input.machineId } : {}),
         }),
       onSuccess: invalidateAll,
     }),

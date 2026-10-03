@@ -261,11 +261,13 @@ export const EN: Record<string, string> = {
   '来源 issue': 'Source issue',
   与本地标题不一致: 'Differs from the local title',
   // #476（#473 决策候选 A + C 尾注）右栏方案空态任务元信息块：行 label
-  // （机器复用侧栏键）+ 尾注引导句。
+  // （机器复用侧栏键）+ 尾注引导句。#682 机器行等待标注（钉选机器离线，
+  // 步只等它上线不自动改派）+ 新建任务机器 chip（自动 = 缺省行）。
   '分支 / PR': 'Branch / PR',
   模型: 'Model',
   创建时间: 'Created',
   方案产出后显示于此: 'The plan will appear here once produced',
+  '（等待机器上线）': '(waiting for the machine to come online)',
   // 桌面通知标题（M5 SSE notification 事件面，02 §9.1 三事件；api/sse.ts
   // 纯函数位消费——非组件 t()，i18n-coverage 以本键位兑现 en 兜底）
   方案已就绪: 'Plan ready',
