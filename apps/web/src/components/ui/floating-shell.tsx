@@ -21,6 +21,7 @@
 
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import type { CSSProperties, ReactNode } from 'react';
+import './floating-shell.css';
 
 /** 锚定 pop 族的进出场（shadcn 默认档，ADR 0009 D3：duration-100 + fade + zoom-95
  *  + slide -8px）。挂在**内层面板**上、经壳的具名 group 读 Base UI 的
