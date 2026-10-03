@@ -106,6 +106,20 @@ a:active {
   }
 }
 
+/* Theme-switch suppression (base-ui-theme §1.2/F8, #787, better-ui recipe):
+   applyTheme (theme.ts) rides .theme-suppress on <html> across the .light
+   flip — every transition off for that paint, so the color / background /
+   border / shadow steps don't smear the page. The class lives for two
+   frames only; a .theme-suppress outside theme.ts + this rule is a bug. */
+.theme-suppress,
+.theme-suppress *,
+.theme-suppress *::before,
+.theme-suppress *::after {
+  /* biome-ignore lint/complexity/noImportantStyles: must outrank every
+     component transition for the single frame the flip paints in. */
+  transition: none !important;
+}
+
 /* XMON-69: the sidebar's two toggles are the same control on either side of
    the flip — a bare 14px glyph in a 28px (expanded) / 40px (rail) box with no
    surface of its own, so the global dim above lands on the glyph alone and is
