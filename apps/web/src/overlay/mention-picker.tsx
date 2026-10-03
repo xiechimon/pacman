@@ -18,7 +18,7 @@
 // pattern (#286): fixture mode keeps DOM-stable; live mode wires the
 // real entity endpoints.
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type Ref, useEffect, useMemo, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
 import { Input } from '../components/ui/input.js';
@@ -328,56 +328,84 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
 }
 
 /** Inline agents-only listbox for the composer's `@` autocomplete
- *  (r9 §3.2: listbox anchored above the composer, only agents,
- *  click inserts the agent mention token; Enter is left for the
- *  textarea to handle — the @ picker closes on selection without
- *  triggering send). */
+ *  (r9 §3.2: listbox anchored above the composer, only agents, click
+ *  inserts the agent mention token).
+ *
+ *  Combobox pattern (#728, canon #727 §1 rules 20-24): the textarea keeps
+ *  focus for the whole open window — rows are non-focusable (tabIndex -1 +
+ *  mousedown preventDefault) and the highlight is exposed through
+ *  aria-activedescendant on the textarea, row ids derived from `listboxId`.
+ *  The old shape attached ONE ref to every row (`.current` = the last row)
+ *  and stole focus on open, breaking continuous typing and IME. Keyboard
+ *  and Esc live in composer-wire's handleKeyDown (single source, #625);
+ *  this skin only renders state and reports hover/pick. */
 export interface MentionInlineProps {
   open: boolean;
   agents: { id: string; label: string; subtitle?: string }[];
-  /** Caret offset inside the textarea value where the `@` token
-   *  started — used to highlight the matching prefix and to keep
-   *  the inline listbox from re-opening on the same keystroke. */
+  /** Start offset of the detected `@` token (data-caret debug anchor). */
   caret: number | null;
+  /** Query text after `@` — only the empty-state copy consumes it. */
+  query: string;
+  /** Highlighted row index; null = none highlighted (top row is NOT
+   *  preselected — CC rule 56 isomorph, Enter without highlight sends). */
+  highlight: number | null;
+  /** Hover moves the highlight (CC rule 24). */
+  onHover: (index: number) => void;
   onPick: (entry: { id: string; label: string }) => void;
-  onClose: () => void;
+  /** Container ref for the wire's outside pointer-down containment check. */
+  listboxRef: Ref<HTMLDivElement>;
+  /** Base element id; rows are `${listboxId}-opt-${index}`. */
+  listboxId: string;
 }
 
-export function MentionInline({ open, agents, caret, onPick, onClose }: MentionInlineProps) {
+export function MentionInline({
+  open,
+  agents,
+  caret,
+  query,
+  highlight,
+  onHover,
+  onPick,
+  listboxRef,
+  listboxId,
+}: MentionInlineProps) {
   const { t } = useI18n();
-  const inputRef = useRef<HTMLButtonElement | null>(null);
+  // Keep the highlighted row visible inside the scrollable listbox.
   useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
-  // Esc closes the inline listbox without disturbing the composer
-  // textarea caret.
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
+    if (!open || highlight == null) return;
+    document.getElementById(`${listboxId}-opt-${highlight}`)?.scrollIntoView({ block: 'nearest' });
+  }, [open, highlight, listboxId]);
   if (!open) return null;
   // 条件渲染（关即卸载）= 仅进场：静态 animate-in 挂载即播，无退场窗。
   return (
     <div
+      ref={listboxRef}
+      id={listboxId}
       className="mention-inline duration-100 animate-in fade-in-0 zoom-in-95 slide-in-from-top-2"
       role="listbox"
       aria-label="Agents"
       data-caret={caret ?? ''}
     >
       {agents.length === 0 ? (
-        <div className="mention-inline-empty">{t('没有可用的 Agent')}</div>
+        <div className="mention-inline-empty">
+          {query === ''
+            ? t('没有可用的 Agent')
+            : t('没有与"{query}"匹配的结果', { query: `@${query}` })}
+        </div>
       ) : (
-        agents.map((agent) => (
+        agents.map((agent, index) => (
           <button
             key={agent.id}
-            ref={inputRef}
+            id={`${listboxId}-opt-${index}`}
             type="button"
-            className="mention-inline-row"
+            tabIndex={-1}
             role="option"
+            aria-selected={index === highlight}
+            className={`mention-inline-row${index === highlight ? ' mention-inline-row--active' : ''}`}
+            // Keep the textarea focused: a row mousedown must not blur it
+            // (focus loss = broken continuous typing + IME, failure mode 4).
+            onMouseDown={(event) => event.preventDefault()}
+            onMouseEnter={() => onHover(index)}
             onClick={() => onPick(agent)}
           >
             <span className="mention-inline-avatar">{agent.label.charAt(0).toLowerCase()}</span>

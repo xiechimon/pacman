@@ -61,12 +61,18 @@ beforeAll(async () => {
         arguments: { title: MEMORY_TITLE, content: MEMORY_CONTENT },
       },
     },
-    // 轮 2：拿到 relay 结果后收尾（delayMs = 采样窗口，坐实「写入早于收尾」）。
+    // 轮 2（任务一）：真做任务改动（#703 闸 2——执行步无改动过不了 review 闸）。
+    {
+      toolCall: { name: 'bash', arguments: { command: 'printf "mem probe line\\n" >> README.md' } },
+    },
+    // 轮 3：拿到结果后收尾（delayMs = 采样窗口，坐实「写入早于收尾」）。
     { content: '已完成：README 追加小节，并已按要求保存一条项目经验到记忆。', delayMs: 1500 },
-    // 轮 3（任务二执行步，spec 无记忆指令）：直接收尾——零写入。
+    // 轮 4（任务二执行步，spec 无记忆指令）：真改动 + 直接收尾——记忆零写入。
+    {
+      toolCall: { name: 'bash', arguments: { command: 'printf "mem task2 line\\n" >> README.md' } },
+    },
+    // 轮 5：任务二收尾。
     { content: '已完成任务二。' },
-    // 轮 4（任务二执行步，无指令第二任务）：直接收尾——零写入。
-    { content: '已完成任务三。' },
   ]);
   server = await bootRealServer({
     providerBaseUrl: stub.url,

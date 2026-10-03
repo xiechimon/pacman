@@ -3,10 +3,12 @@
 // confirm 关口措辞，拿不到 todo 原始 spec 而反问「哪个方案」）。
 // 裁定 = 候选1+2 组合（02 §4.2 注记）：
 //  ① plan 步完成校验交接物 —— 缺失则不算成：留 planning + 自动补写一轮（有界：
-//     仅首轮规划步触发；补写/驳回重规划等续轮指令步仍无产物 → 放行 confirm，
-//     关口决策交还人）。
+//     仅本 build 首个 plan 步触发——#703 起从「prompt===null」改判，失败重启轮
+//     首步同享重试；补写/驳回重规划等续轮仍无产物 → #703 闸 1 失败收尾，不再
+//     放行 confirm——B-C10 实测「两轮全空仍进 confirm」由本缝漏过）。
 //  ② build 步 claim 时交接物仍缺失 → 强制 new session：daemon 走 buildTaskPrompt
 //     = todo 原始 title+spec，agent 必拿任务内容（不依赖模型配合的确定兜底）。
+//     #703 起正常链路 confirm 必有方案（闸 1），本兜底值守升级窗口残留态。
 // 失败方式清单（先固化，代码是让场景通过的手段）：
 //  1. plan 步成功但无 plan.md → 直接 confirm（交接物缺失放行 → build 轮空转）；
 //  2. 自动补写无界 → 模型持续不写则循环入队烧 token；
@@ -27,6 +29,7 @@ import type { Hono } from 'hono';
 import { describe, expect, test } from 'vitest';
 import {
   agent as agentTable,
+  build as buildTable,
   provider as providerTable,
   step as stepTable,
   todo as todoTable,
@@ -174,7 +177,7 @@ describe('plan 关交接物校验（#113 候选1：plan 即文件 plan.md，02 �
     }
   });
 
-  test('补写轮仍无 plan.md → 有界放行 confirm（不再补写第三轮）', async () => {
+  test('补写轮仍无 plan.md → #703 闸 1 失败收尾（confirm 不可达，不再放行）', async () => {
     const w = await setupWorld();
     try {
       const buildId = await w.startBuild(true);
@@ -185,9 +188,9 @@ describe('plan 关交接物校验（#113 候选1：plan 即文件 plan.md，02 �
       expect(rewrite.step.kind).toBe('plan');
       expect(rewrite.session).toEqual({ action: 'continue', sessionId: 'pi-1' });
       expect(rewrite.instruction).toContain(PLAN_FILE_NAME);
-      // 补写轮仍直接交付（无 plan.md）→ 放行 confirm，关口决策交还人。
+      // 补写轮仍直接交付（无 plan.md）→ 失败收尾（B-C10：闸上无物即无闸）。
       await w.done(rewrite.step.id, { status: 'success', sessionId: 'pi-1' });
-      expect(w.todoRow().phase).toBe('confirm');
+      expect(w.todoRow().phase).toBe('failed');
       // 有界：两轮 plan 步封顶，无第三补写步。
       expect(w.stepsOf(buildId).filter((st) => st.kind === 'plan')).toHaveLength(2);
       expect(w.todoRow().hasPlan).toBe(false);
@@ -243,16 +246,18 @@ describe('plan 关交接物校验（#113 候选1：plan 即文件 plan.md，02 �
 });
 
 describe('build 步 spec 兜底（#113 候选2：交接物仍缺失 → 强制 new session）', () => {
-  test('confirm 时 plan.md 缺席 → build 步 claim = new session + todo 原始 spec 随载荷', async () => {
+  test('confirm 时 plan.md 缺席（升级窗口残留态）→ build 步 claim = new session + todo 原始 spec 随载荷', async () => {
     const w = await setupWorld();
     try {
       const buildId = await w.startBuild(true);
-      // 首轮不写 → 自动补写；补写轮仍不写 → 放行 confirm。
+      // #703 起正常链路 confirm 必有方案（闸 1 失败收尾）；planDocId 缺失的
+      // confirm 态只剩老版本 server 已放行的升级窗口残留——直插构造该态：
+      // 正常走到 confirm 后清 planDocId（模拟老库残留）。
       const planStep = await w.claim();
+      await w.uploadPlan(planStep.step.id, '# 方案 v1');
       await w.done(planStep.step.id, { status: 'success', sessionId: 'pi-1' });
-      const rewrite = await w.claim();
-      await w.done(rewrite.step.id, { status: 'success', sessionId: 'pi-1' });
       expect(w.todoRow().phase).toBe('confirm');
+      w.s.db.update(buildTable).set({ planDocId: null }).where(eq(buildTable.id, buildId)).run();
       await confirm(w, buildId);
       // build 步 = new session：daemon 走 buildTaskPrompt = title+spec（agent 必拿
       // 任务内容，不再只有 confirm 关口措辞）。

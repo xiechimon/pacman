@@ -28,6 +28,7 @@ import {
   buildTaskPromptText,
   CHANGES_DIFF_MAX_BYTES,
   CONTINUE_PROMPTS,
+  composeTaskPromptWithInstruction,
   FIXED_TAGS,
   isBackendRuntimeId,
   LOCAL_TOOL_CREATE_TAG,
@@ -164,11 +165,21 @@ export function streamTimeoutMessage(
  * buildTaskPromptText——web transcript 过滤侧按同一合成式识别本行，#612；
  * plan.md 产出/git 面归 M3b，驳回 feedback / 合并指令等续轮 prompt 由调用方
  * 经 resume.prompt 传入）。chief 步无 todo → 用 server 合成的 instruction
- * （用户消息/wake 事实）。 */
+ * （用户消息/wake 事实）。#720：new session + instruction 在位（失败重启轮，
+ * claim 载荷透出 step.prompt）→ 组合串投递（任务文本 + 指令，形状单源 =
+ * shared composeTaskPromptWithInstruction，裁决正本 = issue #720 裁决评论）
+ * ——此前 instruction 只落 DB 行给 UI 看，用户填的返工理由 agent 从来看不到。
+ * 指令缺席或空白 = 纯任务文本（现行行为，负例：不注入空指令）；投递机制沿
+ * #703/#719 的形状（instruction 在位即投递），不为 new session 造第二套。 */
 export function buildTaskPrompt(claimed: ClaimedStep): string {
   const todo = claimed.todo;
   if (!todo) return claimed.instruction ?? '';
-  return buildTaskPromptText(todo.title, todo.spec);
+  const taskText = buildTaskPromptText(todo.title, todo.spec);
+  // 缺席归一（zod optional：无该字段 = undefined ≠ null）。
+  const instruction = claimed.instruction ?? null;
+  return instruction !== null && instruction.trim() !== ''
+    ? composeTaskPromptWithInstruction(taskText, instruction)
+    : taskText;
 }
 
 // continue session 续轮指令 = shared CONTINUE_PROMPTS 单源（#612 起 web
@@ -249,7 +260,9 @@ export function composeWorkerSystemPrompt(
 }
 
 /** hasChanges 判定 [推断骨架]（02 §4.1/r5 §8 列位双键；git diff 面归 M3b，
- * 当前 = transcript 含写类工具行）。 */
+ * 当前 = transcript 含写类工具行）。匹配大小写归一：pi 工具名 edit/write/bash、
+ * claude-code 后端透传 SDK 原名 Edit/Write/Bash（#703 闸 2 真值面——不归一会
+ * 把 claude-code 无 repo 步的改动判成零）。 */
 const CHANGE_TOOLS = new Set(['edit', 'write', 'bash']);
 
 /** live transcript 文本增量转发节流窗口 [设计]（M5 live streaming；官方节奏
@@ -307,7 +320,11 @@ export async function runStep(
     (isChief || isReview
       ? (claimed.instruction ?? '')
       : claimed.session.action === 'continue' && claimed.session.sessionId
-        ? CONTINUE_PROMPTS[claimed.step.kind]
+        ? // #703 续轮指令投递：claim 载荷 instruction 在位（补写轮 #113 /
+          // 驳回重规划 r5 §4 / 失败重启反馈）→ 真的进会话——此前一律发
+          // CONTINUE_PROMPTS 占位句，补写轮拿不到「写 plan.md」指令（B-C10
+          // 两轮全空同源）。缺省回落词表（合并轮/确认后执行轮等无指令续轮）。
+          (claimed.instruction ?? CONTINUE_PROMPTS[claimed.step.kind])
         : buildTaskPrompt(claimed));
 
   // journal：claimed（recover 面即时落盘，02 §5.4）。
@@ -762,7 +779,9 @@ export async function runStep(
           case 'toolcall_end': {
             sawProgress = true;
             zeroProgressRetries = 0;
-            if (ev.call.name && CHANGE_TOOLS.has(ev.call.name)) sawChangeTool = true;
+            if (ev.call.name && CHANGE_TOOLS.has(ev.call.name.toLowerCase())) {
+              sawChangeTool = true;
+            }
             transcript.upsert({
               id: ev.call.id,
               role: 'assistant',
@@ -1094,11 +1113,17 @@ export async function runStep(
       { name: 'transcript.json', size: JSON.stringify(messages).length },
     ];
     let planContent: string | null = null;
-    if (ws !== null && claimed.step.kind === 'plan' && !stopped) {
-      const planPath = join(ws.cwd, PLAN_FILE_NAME);
+    if (claimed.step.kind === 'plan' && !stopped) {
+      // #703 闸 1 真值面：产物契约不随 repo 形态变化——cwd = worktree 检出或
+      // 无 repo 裸任务目录（此前仅 worktree 收集，无 repo withPlan 恒无方案，
+      // 闸会把它们全拦死）。空白文件不算产物（空方案 = 无方案）。
+      const planPath = join(cwd, PLAN_FILE_NAME);
       if (existsSync(planPath)) {
-        planContent = readFileSync(planPath, 'utf8');
-        files.push({ name: PLAN_FILE_NAME, size: planContent.length });
+        const content = readFileSync(planPath, 'utf8');
+        if (content.trim() !== '') {
+          planContent = content;
+          files.push({ name: PLAN_FILE_NAME, size: content.length });
+        }
       }
     }
     const { uploads } = await client.uploadUrls(stepId, files);
