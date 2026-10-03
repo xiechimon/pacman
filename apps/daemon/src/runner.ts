@@ -892,10 +892,12 @@ export async function runStep(
   }
 
   try {
-    // AI 审核步 findings（M7 #330，r8 §3.1）：仅 review 步携带——其它步类
-    // 无该输出契约，强制 null 避免假阳。解析失败 = 不携带（server 侧 verdict
-    // 兜底「审核未返回结论」+ 不触发修订）。
-    const findings =
+    // AI 审核步 findings（M7 #330，r8 §3.1；#700）：仅 review 步提取——其它
+    // 步类无该输出契约，不提取避免假阳。提取成功 → findings；提取失败 →
+    // findingsError 携带原因（server 侧 verdict 消息区分「判定提取失败」与
+    // 旧 daemon 无信号的「审核未返回结论」兜底）；两态均无 blocking 可判、
+    // 均不触发修订。
+    const reviewExtraction =
       claimed.step.kind === 'review' ? extractReviewVerdict(transcript.messages()) : null;
     await client.done(stepId, {
       status,
@@ -906,7 +908,8 @@ export async function runStep(
       // per-step checkpoint（done 回传 commit：「恢复到此处」数据源 + 合并步
       // fast-forward 落地键，r3 §3.5/§3.9 [设计]）。
       ...(headCommit !== null ? { commit: headCommit } : {}),
-      ...(findings !== null ? { findings } : {}),
+      ...(reviewExtraction?.status === 'ok' ? { findings: reviewExtraction.verdict } : {}),
+      ...(reviewExtraction?.status === 'failed' ? { findingsError: reviewExtraction.reason } : {}),
     });
   } catch (err) {
     logger.step(`done report failed: ${err instanceof Error ? err.message : String(err)}`);
