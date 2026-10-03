@@ -130,6 +130,11 @@ export const chiefThreadSchema = z.object({
     openedAt: epochMs,
   }),
   pendingSessionResumeAt: epochMs.nullable(),
+  /** 机器亲和（#682，t-0047 ②-7/④-4）：chief 会话文件（pi sessionDir）是
+   * 执行机本地资产，轮换认领会降级 new session——chief 步按本列钉给固定
+   * 机器（claimChiefCandidates 过滤）。编排入口从 todo.machineId 落值；
+   * null = 未钉（现状：任何在线机器可认领）。 */
+  pinnedMachineId: recordId.nullable(),
   /** 工具定义/结果哈希表（51 词表的哈希键面，r5 §3.1；词表本体归 M4）。 */
   toolDefHashes: z.record(z.string(), z.string()),
   toolResultHashes: z.record(z.string(), z.string()),
