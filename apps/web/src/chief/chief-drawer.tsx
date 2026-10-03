@@ -72,6 +72,7 @@ import {
 import { useComposerWire } from '../overlay/composer-wire.js';
 import { useChiefNewThreadHotkey } from '../overlays/hotkeys.js';
 import './chief.css';
+import { ChiefIdentity } from './chief-identity.js';
 import { ChiefModelDialog } from './chief-model-dialog.js';
 
 /** 抽屉的 dock 行（ADR 0004 D2：面板是行内最后一个 flex 项、内容兄弟让位 418）。
@@ -620,21 +621,21 @@ export function ChiefDrawer({
                           </span>
                         </div>
                       );
+                    // XMON-105: a bound chief answers as its agent — the stream
+                    // row carries that agent's identity; unbound keeps the dashed
+                    // chief glyph. #741: the bound identity is a chip (avatar +
+                    // name, whole chip → the agent's settings page) heading the
+                    // row, content full-width below it (reference assistant-
+                    // message form) — the row flips to a column. The dashed form
+                    // keeps the old side-avatar slot, byte-identical DOM.
+                    const identity =
+                      chief.bound && chief.agent ? <ChiefIdentity agent={chief.agent} /> : null;
                     return (
-                      <div key={i} className="chief-msg">
-                        {/* XMON-105: a bound chief answers as its agent — the
-                        stream row carries that agent's identity avatar (the
-                        same face the FAB chip shows); unbound keeps the
-                        dashed chief glyph. */}
-                        {chief.bound && chief.agent ? (
-                          <span className="chief-avatar chief-avatar--img">
-                            <SeededAvatar
-                              name={chief.agent.displayName}
-                              src={chief.agent.avatarUrl}
-                              fallback="/avatar-robot-1.svg"
-                            />
-                          </span>
-                        ) : (
+                      <div
+                        key={i}
+                        className={identity != null ? 'chief-msg chief-msg--identity' : 'chief-msg'}
+                      >
+                        {identity ?? (
                           <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
                         )}
                         <div className="chief-msg-col">

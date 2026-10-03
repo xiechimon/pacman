@@ -478,6 +478,40 @@
   display: block;
 }
 
+/* #741: bound-chief robot rows head with the identity chip (avatar + name,
+   whole chip one link into the agent's settings page — interaction canon
+   measured on todos.dev, see chief-identity.tsx), content full-width below
+   (reference assistant-message form). The row flips to a column; the dashed
+   unbound form keeps the side-avatar slot untouched. */
+.chief-msg--identity {
+  flex-direction: column;
+  gap: 6px; /* [设计] header → content 间距，取本面家族 2px/7px/10px 档中值 */
+}
+
+.chief-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px; /* [设计] 参考站实测 3px @ 12px 头像档，按本面 24px 槽等比放大 */
+  align-self: flex-start;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* cursor 只给 anchor 形——无 id 的惰性 span 不冒充可点（参考站 hover 正典：
+   仅指针变化、无背景态，故无 hover 规则；focus 环走全局 :focus-visible）。 */
+a.chief-identity {
+  cursor: pointer;
+}
+
+/* 名字 12px = 参考站实测值（12px/14px、weight 400、次级墨）；行高抬到 16px
+   让 chip 高度由 24px 头像槽主导（XMON-105 canon 不动）。 */
+.chief-identity-name {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
 .chief-msg-col {
   flex: 1;
   min-width: 0;
