@@ -800,8 +800,8 @@ export function detailBuilding(lateCapture: boolean): FixtureSet {
 /** #471 quiescent building gap (named scenario, no capture — the
  *  detail-unread precedent): the task is executing but the agent is not
  *  streaming (no active step) — the transcript keeps one live row through
- *  the same streaming component: spinner reel + the static 执行中...
- *  label, no seconds counter. [设计] */
+ *  the same streaming component: loading indicator (#672: loading-dev
+ *  Atom) + the static 执行中... label, no seconds counter. [设计] */
 export function detailSpinnerQuiescent(): FixtureSet {
   return {
     todos: [probeTodo('building', r7(13, 35))],

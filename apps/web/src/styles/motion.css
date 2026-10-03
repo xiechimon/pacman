@@ -95,27 +95,11 @@
   transform: translateX(100%);
 }
 
-/* #471 braille spinner reel: 10 frames × 90ms = a 900ms cycle, one 16px
-   slot per step (steps(10) holds each frame still for its slot). Opens on
-   ⠙ — the frame the r7 26/26d captures froze — which is also what the
-   reduced-motion freeze below settles on. Transform-only by the sheet's
-   performance rule. */
-@keyframes spinner-reel {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-160px);
-  }
-}
-
-.chat-spinner-reel {
-  display: block;
-  animation: spinner-reel 900ms steps(10) infinite;
-}
-
 /* r1 §4.3 convention: the whole site degrades motion under
-   prefers-reduced-motion — the replica mirrors it */
+   prefers-reduced-motion — the replica mirrors it. The loading indicator
+   is not listed here: #672 moved it to loading-dev, whose injected sheet
+   carries its own equivalent freeze (animation: none + a static settle
+   transform on the spinning parts). */
 @media (prefers-reduced-motion: reduce) {
   .anim-fade,
   .anim-pop,
@@ -124,24 +108,18 @@
     transition: none;
   }
 
-  /* #471: the reel freezes on its first slot (⠙), matching the frozen
-     frame the captures canonized */
-  .chat-spinner-reel {
-    animation: none;
-  }
-
   /* tw-animate-css enter/exit (the animate-in / animate-out keyframe pair the
      shadcn / Base UI overlay parts run under data-open / data-closed) degrade
      under the same site-wide law (ADR 0009 D4). Keyframe animations only —
      transitions are left alone: hover/press tints and the tab-indicator slide
      ride transitions and keep their own reduced-motion handling. Setting
-     duration/iteration-count rather than animation-name lets the
-     .chat-spinner-reel { animation: none } above stay authoritative (name none
-     wins on specificity), so the reel still freezes instead of flashing. A
-     reduced-motion reset has to outrank the utility that sets the duration
-     (.data-open\:animate-in and friends carry class+attribute specificity), so
-     !important is the standard accessibility escape hatch, not a cascade
-     shortcut. */
+     duration/iteration-count rather than animation-name lets the loading
+     indicator's freeze (the loading-dev sheet's animation: none on the atom
+     parts, #672) stay authoritative (name none wins on specificity), so the
+     indicator still freezes instead of flashing. A reduced-motion reset has
+     to outrank the utility that sets the duration (.data-open\:animate-in and
+     friends carry class+attribute specificity), so !important is the standard
+     accessibility escape hatch, not a cascade shortcut. */
   *,
   ::before,
   ::after {
