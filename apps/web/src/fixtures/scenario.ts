@@ -31,6 +31,7 @@ import {
   boardTagFilter,
   boardTagFilterEmpty,
   boardWithProbe,
+  chiefAgentChip,
   chiefFabAvatar,
   chiefFabAvatarOverride,
   chiefGated,
@@ -336,6 +337,10 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #650/#651 markdown 面命名场景（无 capture，md-toolout 先例）：定稿
       // robot 行 raw markdown + typing 打字尾行，钉共用解析器进抽屉的渲染形。
       'chief-md': chiefMarkdown,
+      // #741 agent 身份可点进设置命名场景（无 capture，chief-md 先例）：
+      // robot 行身份 chip（头像+名字，带 id 成链）+ 五种提及 scheme 的
+      // 成链/惰性对照 + 详情页 transcript 同场景第二消费面。
+      'chief-agent-chip': chiefAgentChip,
       // #444 FAB 头像命名场景（无 capture，notify-banner 先例）：绑定
       // Agent 的头像骑上各族 FAB；override 变体钉 avatarUrl 覆盖优先。
       'fab-avatar': chiefFabAvatar,

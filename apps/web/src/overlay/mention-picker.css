@@ -409,6 +409,14 @@
   background: rgb(34 197 94 / 15%);
 }
 
+/* #741: the agent chip with a wire id is a router Link into the agent's
+   settings page (reference-measured on todos.dev: whole chip cursor-pointer,
+   hover changes nothing else). Scoped to the anchor so an id-less mention
+   (inert span) never pretends to be clickable. */
+a.mention-chip--agent {
+  cursor: pointer;
+}
+
 .mention-chip--project {
   color: rgb(245 158 11);
   background: rgb(245 158 11 / 15%);
