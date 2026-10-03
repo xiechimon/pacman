@@ -27,6 +27,9 @@ interface UserMenuProps {
    *  (detail.css `.user-menu--floating`); same anchoring law as the
    *  capture-frozen absolute variant (#163). */
   floating?: boolean;
+  /** #656: 进出场工具类落位面（动画必须挂在定位面板本体上——挂在祖先
+   *  会经 keyframe transform 拽走 fixed 子级的 containing block）。 */
+  className?: string;
 }
 
 // 菜单行接真导航（#163）：有真实路由的行渲染为 SPA Link，载当前 search
@@ -40,7 +43,7 @@ const ROWS = [
   { label: 'MCP', href: '/app/resources/mcp-servers' },
 ];
 
-export function UserMenu({ theme: initialTheme, floating = false }: UserMenuProps) {
+export function UserMenu({ theme: initialTheme, floating = false, className }: UserMenuProps) {
   const { t } = useI18n();
   const { user } = useLiveData();
   // Links carry the live query string across hops so the fixture scenario
@@ -55,7 +58,11 @@ export function UserMenu({ theme: initialTheme, floating = false }: UserMenuProp
     setTheme(next);
   };
   return (
-    <div className={floating ? 'user-menu user-menu--floating' : 'user-menu'}>
+    <div
+      className={`user-menu${floating ? ' user-menu--floating' : ''}${
+        className != null && className !== '' ? ` ${className}` : ''
+      }`}
+    >
       <div className="user-menu-head">
         <SeededAvatar name={user.displayName} src={user.avatarUrl} fallback="/avatar-user.png" />
         <div>
