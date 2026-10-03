@@ -120,7 +120,7 @@ export type PaneView = 'doc' | 'branch' | 'token' | 'history';
  *  outside the 02 §6.2 record contract — resolved per todo from the fixture
  *  layer; the accept dialog carries no payload. Token/history left the
  *  overlay family in #366 (static right-pane sections, PaneView). */
-export type OverlayKind = 'branch' | 'accept' | 'rerun' | 'reuse' | 'review';
+export type OverlayKind = 'branch' | 'accept' | 'rerun' | 'reuse' | 'review' | 'reject';
 
 export interface OverlayState {
   kind: OverlayKind;

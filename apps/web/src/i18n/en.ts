@@ -82,6 +82,11 @@ export const EN: Record<string, string> = {
   '向 Agent 补充说明，执行过程中即可送达':
     'Add details for the Agent — delivered while the run is in progress',
   '请求修改…': 'Request changes…',
+  // #701 审核关口人肉打回（更多菜单入口 + reject 弹层）
+  请求修改: 'Request changes',
+  '需要修改什么？打回后任务回到规划中，按反馈重新出方案。':
+    'What needs to change? The task returns to planning and gets a fresh plan from your feedback.',
+  '打回请求未送出，请重试。': 'The rejection was not sent. Try again.',
 
   // —— relative time (rel-time.ts; compact en forms avoid plural logic) ——
   刚刚: 'just now',
