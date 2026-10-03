@@ -86,6 +86,8 @@ export interface TokenUsageContent {
   output: string;
   cacheRead: string;
   cacheWrite: string;
+  /** Cache hit rate display (#777): cacheRead over input plus cacheRead. */
+  cacheHitRate: string;
 }
 
 /** 分支与 PR content (issue #68, r7 31): sync-tab fields. Board cards open
@@ -386,9 +388,9 @@ export interface ResourcesContent {
    *  claude-code 两段，形状 = shared ModelSource（数据契约单源）。 */
   providerSources: ModelSource[];
   /** custom provider 记录（shared ProviderRecord 同形；live 面 = GET
-   *  /api/teams/{id}/providers）。模型选择器（Agent 详情概览 / 创建 Agent
-   *  弹窗）的候选源——与 live 面共用 `toModelOptions` 同一投影，两侧
-   *  不各写一份。absent = 无服务商（创建弹窗落告警行态）。 */
+   *  /api/teams/{id}/providers）。#770 起不再是模型选择器的候选源（投影
+   *  只读 providerSources）——本字段保留给 providers 管理页与存量绑定
+   *  上下文。absent = 无服务商。 */
   providers?: ProviderRecord[];
   /** Agent 记忆条目（shared MemoryRecord 同形；live 面 = GET
    *  /api/teams/{id}/agents/{aid}/memories）。agentId 过滤由消费面做。 */
@@ -743,10 +745,10 @@ export interface ChiefThreadRef {
 
 export type ChiefSettingsTab = 'agent' | 'charter' | 'memory' | 'watches';
 
-/** 压缩模型选择器行最小投影（#358，spec 11 §A10；live = model-sources ∪
- *  custom providers 并集，api/mappers.ts `toModelOptions` 单源；
- *  fixture = canon 单行）。`provider` 位 = PATCH 值槽的 provider 归属
- *  （custom providerId 或 runtime 词表值 `claude-code`）。 */
+/** 压缩模型选择器行最小投影（#358，spec 11 §A10；#770 起 live = model-sources
+ *  非 pi 段，api/mappers.ts `toModelOptions` 单源；fixture = canon 单行）。
+ *  `provider` 位 = PATCH 值槽的 provider 归属（runtime 词表值 `claude-code`；
+ *  存量 custom providerId 只出现在旧值回显，不再是候选）。 */
 export interface ModelOption {
   provider: string;
   /** 显示用来源名（r5 §2 捕获行 `r3-gw · 128k` 徽标位；runtime 段 =

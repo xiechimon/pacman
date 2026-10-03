@@ -626,6 +626,14 @@ a.chief-identity {
   padding: 12px 12px 10px;
   background: var(--surface-secondary);
   border-radius: 12px;
+  /* #775 (better-ui: shadows for elevation): the ring draws the 1px hairline
+     (shadow spread, no layout shift — the card previously had no edge at all
+     and read as flat/cut against the drawer surface), --card-shadow adds the
+     card-tier lift. Single-source tokens, both themes ride along. */
+  box-shadow: var(--edge-ring), var(--card-shadow);
+  transition-property: box-shadow;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
 }
 
 /* #732：@ 内联 listbox 的 absolute 锚（mention-picker.css 的 bottom:

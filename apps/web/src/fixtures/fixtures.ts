@@ -16,7 +16,6 @@ import {
   type ModelSource,
   maskApiKey,
   PLACEHOLDER_TITLE_FALLBACK,
-  type ProviderRecord,
   type SecretRecord,
 } from '@pacman/shared';
 import { diffLines } from 'diff';
@@ -69,6 +68,7 @@ export const PROBE_TOKEN_USAGE: TokenUsageContent = {
   output: '854',
   cacheRead: '54.2k',
   cacheWrite: '27.8k',
+  cacheHitRate: '100%',
 };
 
 /** 分支与 PR overlay of probe #9 (r7 31), sync tab as captured. */
@@ -965,6 +965,7 @@ const LEGACY_TOKEN_USAGE: TokenUsageContent = {
   output: '424',
   cacheRead: '52.3k',
   cacheWrite: '13.4k',
+  cacheHitRate: '100%',
 };
 
 const LEGACY_BRANCH_INFO: BranchInfoContent = {
@@ -1026,6 +1027,7 @@ const LEGACY2_OVERLAY: BuildOverlayContent = {
     output: '388',
     cacheRead: '31.6k',
     cacheWrite: '9.4k',
+    cacheHitRate: '100%',
   },
   branch: {
     branch: conversationBranch('r3-legacy-2'),
@@ -1523,7 +1525,8 @@ export function chiefSettings(tab: ChiefSettingsTab): FixtureSet {
 
 /** #358 AC2 canon（spec 11 §A10）：compactionModel 仍引用已废 preset
  *  （`anthropic` ∈ PROVIDER_PRESET_IDS，preset 方案退役后不再是选项来源），
- *  命中不了 fixture canon 单行（r3-gw）→ 选择器落裸串 `provider/modelId`
+ *  命中不了 fixture canon 单行（#770 起为 claude-code 行）→ 选择器落裸串
+ *  `provider/modelId`
  *  兜底回显，不空白不崩。scenario = 101-stale-model。 */
 export const chiefSettingsStaleModel: FixtureSet = {
   ...chiefSettings('agent'),
@@ -1628,23 +1631,8 @@ export const teamOrgChartEmpty: FixtureSet = {
 // `claude-sonnet-5`、thinkingLevel null、四组权限数组全空）；团队页卡上的
 // `未设置职责` 就是这里 description:null 的呈现。
 
-/** custom provider 样本（r3 §2：BYOK 网关 r3-gw，模型 12 项取一）。 */
-const AGENT_PROVIDER_R3GW: ProviderRecord = {
-  kind: 'custom',
-  providerId: 'r3-gw',
-  label: 'r3-gw',
-  baseUrl: 'https://gw.r3.invalid/v1',
-  api: 'anthropic-messages',
-  authHeader: true,
-  compat: { supportsDeveloperRole: false },
-  models: [{ id: 'claude-sonnet-5', name: 'claude-sonnet-5' }],
-  id: 'provider-r3-gw',
-  createdBy: 'user-r3',
-  createdAt: 0,
-  updatedAt: 0,
-};
-
-/** Agent 记录样本（r3 §4 wire 原样）。 */
+/** Agent 记录样本（r3 §4 wire 原样——存量 provider 绑定：#770 起 picker 不再
+ *  列 providers 段，本记录是存量值裸串回显的 pin 源）。 */
 const AGENT_R3_BUILDER: AgentRecord = {
   id: R3_BUILDER.id,
   displayName: R3_BUILDER.displayName,
@@ -1662,13 +1650,12 @@ const AGENT_R3_BUILDER: AgentRecord = {
 
 /** Agent 详情 + 创建弹窗模型位的数据集：团队页 roster 与详情页记录同场景，
  *  团队页卡点进详情后 `?scenario=agent-detail` 随行（#121 Link 律）不会丢。
- *  resources 在 RESOURCES 之上补 providers（模型选择器候选源）与空 memories
- *  （记忆 tab 走 shared canon 空态）。本集不带 secrets——密钥区走零密钥空态
- *  （#510：无密钥时不出开关，没有对象可授）；memories 的两形（空 / 非空）
- *  由下面两个导出件分持。 */
+ *  resources 在 RESOURCES 之上补空 memories（记忆 tab 走 shared canon 空态）。
+ *  本集不带 providers（#770 起 picker 不再读 providers 段）与 secrets（密钥区
+ *  走零密钥空态，#510：无密钥时不出开关，没有对象可授）；memories 的两形
+ *  （空 / 非空）由下面两个导出件分持。 */
 const AGENT_DETAIL_RESOURCES: ResourcesContent = {
   ...RESOURCES,
-  providers: [AGENT_PROVIDER_R3GW],
   memories: [],
 };
 
@@ -3064,6 +3051,7 @@ const R8_OVERLAY_TOKEN: TokenUsageContent = {
   output: '980',
   cacheRead: '49.7k',
   cacheWrite: '25.4k',
+  cacheHitRate: '100%',
 };
 const R8_OVERLAY_BRANCH: BranchInfoContent = {
   branch: conversationBranch('r8-12'),

@@ -170,7 +170,7 @@ interface DrawerProps {
   /** #615 主模型覆盖槽当前值（live = chief 封套真值；null = 继承绑定
    *  Agent）；fixture 面缺省 = null。 */
   modelValue?: ChiefCompactionModel | null;
-  /** #615 主模型候选（live = toModelOptions 并集投影）；缺省 = 仅默认行。 */
+  /** #615 主模型候选（live = toModelOptions 投影，非 pi runtime 段）；缺省 = 仅默认行。 */
   modelOptions?: ModelOption[];
   /** #615 live 面：模型 dialog 选定 = PATCH chief model 槽；缺省 = fixture
    *  律（选择即关，零请求）。 */

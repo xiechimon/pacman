@@ -1,46 +1,25 @@
-// 模型候选投影 toModelOptions（#358，spec 11 §A10）——消费面三处（总管压缩
-// 模型选择器 / 创建 Agent 弹窗 / Agent 详情概览），投影本体与消费面无关，
-// 故不叫 chief-*。失败方式枚举先行，本文件是场景固化（仓测试规则 3）：
-// F1  双源空 → 空清单（选择器菜单只剩默认行，不崩）
-// F2  custom providers models[] → 带归属行（provider=providerId、
-//     providerLabel=label 原样，#180 现状逻辑保留）
-// F2a provider 模型行空 id 跳过、空 name 回退 id（与 server pi 投影卫生
-//     对齐——shared modelSourceModelSchema 两处 min(1)）
+// 模型候选投影 toModelOptions（#358，spec 11 §A10；#770 起 providers 段已除
+// ——只剩 model-sources 非 pi 段）——消费面三处（总管压缩模型选择器 / 创建
+// Agent 弹窗 / Agent 详情概览），投影本体与消费面无关，故不叫 chief-*。
+// 失败方式枚举先行，本文件是场景固化（仓测试规则 3）：
+// F1  sources 空 → 空清单（选择器菜单只剩默认行，不崩）
+// F2  providers 记录不再是候选源：投影签名只收 sources——custom provider
+//     的 models[] 即使存在也不产行（建/改/删走 providers 管理页，执行面按
+//     存值解析，两者都不经本投影）
 // F3  claude-code 段（installed 带模型）→ provider='claude-code'（runtime
 //     词表值）、providerLabel='Claude Code'（品牌名不译，#356 tab 同律）
-// F4  sources 的 pi 段不产行——server 端 pi 段 = custom providers 同构
-//     flatMap 且无归属，归属行由 F2 唯一产出，防双份
+// F4  sources 的 pi 段不产行（server 端 pi 段 = 旧 providers 同构 flatMap 且
+//     无归属；#770 后归属行不再产出，pi 段恒跳过）
 // F5  同 (provider, modelId) 重复（settings.json default 槽 + env 槽同 id）
 //     → 去重 first-wins（组件 React key `${provider}/${modelId}` 防撞面）
-// F5a 跨 provider 同 modelId → 两行都留（model id 只在 provider 内有意义，
-//     chiefCompactionModelSchema 对象形槽值立法理由）
+// F5a 跨封套条目同键 → 去重 first-wins（留首名）
 // F6  未安装段（installed:false，models=[]）→ 无行贡献，不崩
-// F7  序稳定：custom providers 段在前，非 pi runtime 段按封套序在后
+// F7  序稳定：非 pi runtime 段按封套序
+// F8  空 id 行跳过（shared modelSourceModelSchema min(1) 卫生在本层对齐）
 
-import type { ModelSource, ProviderRecord } from '@pacman/shared';
+import type { ModelSource } from '@pacman/shared';
 import { describe, expect, it } from 'vitest';
 import { toModelOptions } from '../src/api/mappers.js';
-
-function provider(
-  providerId: string,
-  models: { id: string; name: string }[],
-  label = providerId,
-): ProviderRecord {
-  return {
-    kind: 'custom',
-    providerId,
-    label,
-    baseUrl: 'https://api.example.invalid/v1',
-    api: 'anthropic-messages',
-    authHeader: true,
-    compat: { supportsDeveloperRole: false },
-    models,
-    id: `prov-${providerId}`,
-    createdBy: 'user-test',
-    createdAt: 0,
-    updatedAt: 0,
-  };
-}
 
 function ccSource(models: ModelSource['models'], installed = true): ModelSource {
   return { runtime: 'claude-code', installed, hostname: 'test-host', models };
@@ -50,41 +29,15 @@ function piSource(models: ModelSource['models']): ModelSource {
   return { runtime: 'pi', installed: true, hostname: 'test-host', models };
 }
 
-describe('toModelOptions（#358 数据源投影）', () => {
-  it('F1: 双源空 → 空清单', () => {
-    expect(toModelOptions([], [])).toEqual([]);
-  });
-
-  it('F2: custom providers models[] → 带归属行（#180 现状逻辑保留）', () => {
-    const rows = toModelOptions(
-      [provider('r3-gw', [{ id: 'claude-sonnet-5', name: 'Claude Sonnet 5（R3 网关）' }], 'R3 网关')],
-      [],
-    );
-    expect(rows).toEqual([
-      {
-        provider: 'r3-gw',
-        providerLabel: 'R3 网关',
-        modelId: 'claude-sonnet-5',
-        modelName: 'Claude Sonnet 5（R3 网关）',
-      },
-    ]);
-  });
-
-  it('F2a: 空 id 行跳过、空 name 回退 id', () => {
-    const rows = toModelOptions(
-      [provider('gw', [{ id: '', name: '幽灵行' }, { id: 'm1', name: '' }])],
-      [],
-    );
-    expect(rows).toEqual([
-      { provider: 'gw', providerLabel: 'gw', modelId: 'm1', modelName: 'm1' },
-    ]);
+describe('toModelOptions（#358 数据源投影，#770 providers 段已除）', () => {
+  it('F1: sources 空 → 空清单', () => {
+    expect(toModelOptions([])).toEqual([]);
   });
 
   it('F3: claude-code 段 → runtime 词表值作 provider、品牌名作 label', () => {
-    const rows = toModelOptions(
-      [],
-      [ccSource([{ id: 'claude-opus-4-5', name: 'claude-opus-4-5', slot: 'default' }])],
-    );
+    const rows = toModelOptions([
+      ccSource([{ id: 'claude-opus-4-5', name: 'claude-opus-4-5', slot: 'default' }]),
+    ]);
     expect(rows).toEqual([
       {
         provider: 'claude-code',
@@ -95,62 +48,56 @@ describe('toModelOptions（#358 数据源投影）', () => {
     ]);
   });
 
-  it('F4: sources 的 pi 段不产行（归属行由 providers 投影唯一产出）', () => {
-    const rows = toModelOptions(
-      [provider('r3-gw', [{ id: 'claude-sonnet-5', name: 'Claude Sonnet 5' }])],
-      [piSource([{ id: 'claude-sonnet-5', name: 'Claude Sonnet 5' }])],
-    );
-    expect(rows).toEqual([
-      {
-        provider: 'r3-gw',
-        providerLabel: 'r3-gw',
-        modelId: 'claude-sonnet-5',
-        modelName: 'Claude Sonnet 5',
-      },
-    ]);
+  it('F4: sources 的 pi 段不产行', () => {
+    const rows = toModelOptions([piSource([{ id: 'm-a', name: 'M A' }])]);
+    expect(rows).toEqual([]);
   });
 
   it('F5: claude-code 多槽同 id → 去重 first-wins', () => {
-    const rows = toModelOptions(
-      [],
-      [
-        ccSource([
-          { id: 'claude-opus-4-5', name: 'claude-opus-4-5', slot: 'default' },
-          { id: 'claude-opus-4-5', name: 'claude-opus-4-5', slot: 'opus' },
-        ]),
-      ],
-    );
+    const rows = toModelOptions([
+      ccSource([
+        { id: 'claude-opus-4-5', name: 'claude-opus-4-5', slot: 'default' },
+        { id: 'claude-opus-4-5', name: 'claude-opus-4-5', slot: 'opus' },
+      ]),
+    ]);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.modelId).toBe('claude-opus-4-5');
   });
 
-  it('F5a: 跨 provider 同 modelId → 两行都留', () => {
-    const rows = toModelOptions(
-      [provider('r3-gw', [{ id: 'claude-sonnet-5', name: 'Claude Sonnet 5' }])],
-      [ccSource([{ id: 'claude-sonnet-5', name: 'claude-sonnet-5', slot: 'sonnet' }])],
-    );
-    expect(rows.map((r) => `${r.provider}/${r.modelId}`)).toEqual([
-      'r3-gw/claude-sonnet-5',
-      'claude-code/claude-sonnet-5',
+  it('F5a: 跨封套条目同键 → 去重 first-wins（留首名）', () => {
+    const rows = toModelOptions([
+      ccSource([{ id: 'm-x', name: '首名' }]),
+      ccSource([{ id: 'm-x', name: '次名' }]),
+    ]);
+    expect(rows).toEqual([
+      {
+        provider: 'claude-code',
+        providerLabel: 'Claude Code',
+        modelId: 'm-x',
+        modelName: '首名',
+      },
     ]);
   });
 
   it('F6: 未安装段（models=[]）→ 无行贡献，不崩', () => {
-    expect(toModelOptions([], [ccSource([], false)])).toEqual([]);
+    expect(toModelOptions([ccSource([], false)])).toEqual([]);
   });
 
-  it('F7: 序 = providers 段在前、非 pi runtime 段按封套序在后', () => {
-    const rows = toModelOptions(
-      [
-        provider('gw-a', [{ id: 'm-a', name: 'M A' }]),
-        provider('gw-b', [{ id: 'm-b', name: 'M B' }]),
-      ],
-      [piSource([{ id: 'm-a', name: 'M A' }]), ccSource([{ id: 'm-cc', name: 'm-cc' }])],
-    );
-    expect(rows.map((r) => `${r.provider}/${r.modelId}`)).toEqual([
-      'gw-a/m-a',
-      'gw-b/m-b',
-      'claude-code/m-cc',
+  it('F7: 序 = 非 pi runtime 段按封套序', () => {
+    const rows = toModelOptions([
+      piSource([{ id: 'm-a', name: 'M A' }]),
+      ccSource([{ id: 'm-cc', name: 'm-cc' }]),
     ]);
+    expect(rows.map((r) => `${r.provider}/${r.modelId}`)).toEqual(['claude-code/m-cc']);
+  });
+
+  it('F8: 空 id 行跳过', () => {
+    const rows = toModelOptions([
+      ccSource([
+        { id: '', name: '幽灵行' },
+        { id: 'm1', name: 'm1' },
+      ]),
+    ]);
+    expect(rows.map((r) => r.modelId)).toEqual(['m1']);
   });
 });

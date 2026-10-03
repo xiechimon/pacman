@@ -7,19 +7,13 @@
 // 确认 canon);章程编辑 = DialogShell 编辑弹窗(#180 裁决;保存 → PATCH
 // charter 槽)。#204 压缩模型翻回交互(#182 曾静态化:当时 PATCH schema
 // 无模型槽;server #203 落 compactionModel 可空 JSON 槽 + PATCH 第三槽后
-// 启用)= ChiefModelSelect anchored popover,#358 数据源(model-sources ∪
-// custom providers 并集,spec 11 §A10)落账口径见 chief-model-select.tsx
+// 启用)= ChiefModelSelect anchored popover,#358 数据源(model-sources 非 pi
+// 段;#770 起 providers 段已除,spec 11 §A10)落账口径见 chief-model-select.tsx
 // 文件头。
 
 import { BRAND, type ChiefCompactionModel } from '@pacman/shared';
 import { useState } from 'react';
-import {
-  useApiMutations,
-  useChief,
-  useMembers,
-  useModelSources,
-  useProviders,
-} from '../api/hooks.js';
+import { useApiMutations, useChief, useMembers, useModelSources } from '../api/hooks.js';
 import { toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
@@ -48,7 +42,6 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
   const { live, teamId } = useLiveData();
   const chiefQ = useChief(teamId, live);
   const membersQ = useMembers(teamId, live);
-  const providersQ = useProviders(teamId, live);
   const modelSourcesQ = useModelSources(teamId, live);
   const mutations = useApiMutations(teamId);
   const charter = live ? (chiefQ.data?.chief.charter ?? '') : '';
@@ -84,16 +77,17 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
     ? (value: string) =>
         mutations.patchChief.mutate({ charter: value }, { onSuccess: () => setCharterOpen(false) })
     : undefined;
-  // #204 压缩模型(#358 数据源切换,spec 11 §A10):live 值 = chief 封套真值
-  // (null = 默认);选项 = model-sources ∪ custom providers 并集投影
+  // #204 压缩模型(#358 数据源切换,spec 11 §A10;#770 起 providers 段已除):
+  // live 值 = chief 封套真值(null = 默认);选项 = model-sources 非 pi 段投影
   // (mappers.toModelOptions 单源;查询未决 = 空清单,不退 fixture
   // canon);选定 = PATCH compactionModel 槽(null = 清空回默认),invalidateAll
-  // 重取回显——选择即关,不持本地乐观态(S8)。
+  // 重取回显——选择即关,不持本地乐观态(S8)。存量 provider 模型值命中不了
+  // 选项,走裸串兜底回显(不空白不崩);执行面不受影响。
   const compaction = live
     ? (chiefQ.data?.chief.compactionModel ?? null)
     : (chief.compactionModel ?? null);
   const modelOptions: ModelOption[] | undefined = live
-    ? toModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
+    ? toModelOptions(modelSourcesQ.data?.sources ?? [])
     : undefined;
   const pickModel = live
     ? (value: ChiefCompactionModel | null) =>

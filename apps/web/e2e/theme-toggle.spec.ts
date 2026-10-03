@@ -74,6 +74,42 @@ test('clicking the active segment is a stable no-op', async ({ page }) => {
   await expect(darkSeg(page)).toHaveAttribute('data-active', 'true');
 });
 
+// #787 (base-ui-theme F8): the .light flip repaints every token at once —
+// applyTheme rides .theme-suppress (motion.css) across the flip so the
+// color/background/border/shadow transitions don't smear the page. The
+// class must be present for the flip paint and gone two frames later —
+// sticking around would kill every transition site-wide.
+test('theme flip rides the transition suppression and drops it after the paint', async ({
+  page,
+}) => {
+  await page.goto(ROUTE);
+  // Record every class mutation before the flip so the add can't slip past.
+  await page.evaluate(() => {
+    const seen: string[] = [];
+    new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.attributeName === 'class') seen.push(document.documentElement.className);
+      }
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    (window as unknown as { __suppressLog: string[] }).__suppressLog = seen;
+  });
+
+  await lightSeg(page).click();
+
+  expect(await rootTheme(page)).toEqual({ theme: 'light', light: true });
+  const rodeSuppression = await page.evaluate(() =>
+    (window as unknown as { __suppressLog: string[] }).__suppressLog.some((c) =>
+      c.includes('theme-suppress'),
+    ),
+  );
+  expect(rodeSuppression).toBe(true);
+  await expect
+    .poll(async () =>
+      page.evaluate(() => document.documentElement.classList.contains('theme-suppress')),
+    )
+    .toBe(false);
+});
+
 test('icon + apple-touch-icon carry prefers-color-scheme variants that resolve', async ({
   page,
 }) => {
