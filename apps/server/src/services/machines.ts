@@ -74,7 +74,7 @@ import type { FetchLike } from '../lib/github.js';
 import { hashCredential } from '../lib/hash.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { newMachineToken } from '../lib/keys.js';
-import { applyStoppedStep, completeStep, NotFoundError } from './builds.js';
+import { applyStepFailure, applyStoppedStep, completeStep, NotFoundError } from './builds.js';
 import {
   chiefClaimContext,
   finishChiefTurn,
@@ -93,7 +93,6 @@ import {
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { projectRepoRef, repoDirFor } from './git.js';
 import { openGithubToken } from './github-connection.js';
-import { canTransitionPhase } from './phase.js';
 import {
   createLocalSkill,
   listSkillFiles,
@@ -1642,20 +1641,10 @@ export async function finishStep(
     return;
   }
   // failed：步级失败无自动重跑（02 §4.2/r3 §3.7），todo → failed +
-  // build.errorMessage。
-  db.update(step).set({ status: 'failed' }).where(eq(step.id, stepId)).run();
+  // build.errorMessage。落账单源 = builds.applyStepFailure（#703 产物闸的
+  // 失败收尾同函数——闸失败与机器报失败走同一条漏斗）。
+  applyStepFailure(deps, stepRow, outcome.errorMessage ?? `step ${outcome.status}`);
   publishStepStatus(deps, stepId);
-  const buildRow = db.select().from(build).where(eq(build.id, stepRow.buildId)).get();
-  if (buildRow) {
-    db.update(build)
-      .set({ errorMessage: outcome.errorMessage ?? `step ${outcome.status}` })
-      .where(eq(build.id, buildRow.id))
-      .run();
-    const todoRow = db.select().from(todo).where(eq(todo.id, buildRow.todoId)).get();
-    if (todoRow && canTransitionPhase(todoRow.phase, 'failed')) {
-      setTodoPhase(deps, todoRow.id, 'failed');
-    }
-  }
 }
 
 /** 合并落地（M3b [设计]，02 §4.2 merge 202 delegated 的 server 半）：机器合并
