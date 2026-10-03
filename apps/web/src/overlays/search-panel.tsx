@@ -20,7 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useAgentAvatarUrlById } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
-import { DialogShell } from '../components/ui/dialog-shell.js';
+import { DialogShell, VIEWPORT_POP_ANIM } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { PROJECT_ID, PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
@@ -266,11 +266,13 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
       open={open}
       onClose={onClose}
       viewportRoot
-      backdropClassName="search-scrim anim-fade"
+      // 背板是 Base UI Backdrop（自带 data-open/data-closed）→ 自变体淡入淡出，
+      // 与 .dlg 默认背板同档（duration-200 fade）。
+      backdropClassName="search-scrim duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
       zIndex={41}
     >
       <div
-        className="search-panel anim-pop"
+        className={`search-panel ${VIEWPORT_POP_ANIM}`}
         role="dialog"
         aria-label={t('搜索')}
         // kbd marker: while the ↑↓ cursor is live the CSS hover pill stands

@@ -142,10 +142,10 @@ test('the 选择仓库 trigger lists exactly GitHub 仓库 and 本地文件夹',
   await expect(rows.first()).toContainText('GitHub 仓库');
   await expect(rows.nth(1)).toContainText('本地文件夹');
   await expect(menu.locator('.prj-new-repo-menu-row', { hasText: '托管' })).toHaveCount(0);
-  // untouched = no row selected (aria-selected ≡ check rendering mirrors the
-  // user's act)
-  await expect(rows.first()).toHaveAttribute('aria-selected', 'false');
-  await expect(rows.nth(1)).toHaveAttribute('aria-selected', 'false');
+  // untouched = no row selected (aria-checked ≡ indicator check rendering
+  // mirrors the user's act; t-0070 menu radio item spelling)
+  await expect(rows.first()).toHaveAttribute('aria-checked', 'false');
+  await expect(rows.nth(1)).toHaveAttribute('aria-checked', 'false');
 });
 
 test('the GitHub row swaps the trigger for the auth face; manual link reveals the input', async ({
@@ -171,7 +171,7 @@ test('the 本地文件夹 row swaps the trigger for the path input; swap reopens
   await expect(reopened).toBeVisible();
   await expect(
     reopened.locator('.prj-new-repo-menu-row', { hasText: '本地文件夹' }),
-  ).toHaveAttribute('aria-selected', 'true');
+  ).toHaveAttribute('aria-checked', 'true');
 });
 
 test('switching forms drops the other face input', async ({ page }) => {

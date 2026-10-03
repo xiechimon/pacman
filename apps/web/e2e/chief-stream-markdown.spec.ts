@@ -14,6 +14,14 @@ import { expect, type Page, test } from '@playwright/test';
 //  F-R10 live text_delta 增量不上屏（抽屉不读 liveTextStore——原 bug 本体）
 //  F-R11 终稿 message 收敛后打字行残留 / 与落库行重复渲染
 //  F-R12 同文双行（POST + user-<stepId> 回声）双气泡（#667）；连发不同文塌成一条
+// #742 用户气泡 markdown 面（详情页用户行 #612 同款配方；mapper 缝的钉在
+// test/chief-markdown.test.ts F-D1..D5）：
+//  F-R14 live 用户行仍字面吐纯文本——[#16](todo:id) 与 **bold** 在自泡漏出
+//        （bug 本体）；正例 = chip 成锚可点导航，负例 = 裸 #seq / 伪 scheme 字面
+//  F-R15 复制载荷漂移——复制钮拿到渲染后文本（#469 律：复制的是 markdown 源）
+//  F-R16 气泡节奏塌——单行纯文本 live 气泡几何漂移（44px 药丸 = 10px padding
+//        ×2 + 24px 行盒）；多块气泡首/尾块 margin 与 padding 叠出双倍留白
+//  F-R17 fixture 捕获面用户气泡漂移——无槽行被误进 markdown 路径（DOM 不稳）
 //
 // live 面手法 = notify-click.spec 的替身 EventSource + 路由 mock（SSE 帧
 // 程序化注入，不经网络）；fixture 面 = 'chief-md' 命名场景（md-toolout 先例）。
@@ -292,6 +300,20 @@ test.describe('chief drawer markdown 面（fixture，#650）', () => {
     // 用户行头像换 img 后，两钮行（复制/恢复）不受影响。
     await expect(stream.locator('.chief-msg-tools button')).toHaveCount(2);
   });
+
+  test('F-R15: fixture 面（r5 113 running 捕获）不长存在行——ChiefStreamItem 新 kind 零污染', async ({
+    page,
+  }) => {
+    // fixture 直接喂 ChiefContent.stream（不经 mapChief），running 位只切 composer
+    // 占位；#739 的存在行是 live mapper 派生，捕获面尾行仍是定稿 robot 行。
+    await page.goto('/app?scenario=113');
+    await expect(page.locator('.chief-drawer')).toBeVisible();
+    const stream = page.locator('.chief-stream');
+    await expect(stream.locator('.chief-streaming')).toHaveCount(0);
+    // 尾行 = 定稿 robot（带 foot），非在飞存在行。
+    const lastMsg = stream.locator('.chief-msg').last();
+    await expect(lastMsg.locator('.chief-msg-foot')).toHaveCount(1);
+  });
 });
 
 test.describe('chief drawer 流式面（live mock，#651）', () => {
@@ -371,5 +393,159 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
     await expect(drawer.locator('.chief-msg')).toHaveCount(3);
     await expect(drawer.locator('.chief-bubble', { hasText: '派一下凭证链路验证' })).toHaveCount(1);
     await expect(drawer.locator('.chief-bubble', { hasText: '再查一下 token 用量' })).toHaveCount(1);
+  });
+
+  test('F-R14: 在飞存在行（#739）——静默窗口挂 streaming 行，首 delta 收敛为 typing，终稿两行皆退场', async ({
+    page,
+  }) => {
+    await stubEventSource(page);
+    await stubDicebear(page);
+    await stubCdnAvatar(page);
+    // running 在位（THREAD.activeRun）、缓冲空、终稿未落 = 发送到首 token 的
+    // 静默窗口（绑定慢模型时分钟级）。
+    const state = { final: false };
+    await mockChiefLiveApi(page, state);
+    await page.goto('/app?chief=chief-bbb');
+
+    const drawer = page.locator('.chief-drawer');
+    await expect(drawer).toBeVisible();
+    await expect(drawer.locator('.chief-chip-title')).toHaveText('线程乙');
+
+    // 静默窗口：存在行立即可见——loading-dev Atom spinner + 处理中... 标签，
+    // 与详情页 streaming 行同族；user 行 + 存在行 = 2，打字面尚未出现。
+    const presence = drawer.locator('.chief-msg').last();
+    await expect(presence.locator('.chief-streaming')).toBeVisible();
+    await expect(presence.locator('.chief-spinner')).toHaveCount(1);
+    await expect(presence.locator('.chief-streaming-label')).toHaveText('处理中...');
+    // #471：不挂秒数（静止期无流事件驱动重渲，秒数会冻结说谎；本票不加计时器）。
+    await expect(presence.locator('.chief-streaming-secs')).toHaveCount(0);
+    await expect(drawer.locator('.chief-msg')).toHaveCount(2);
+    await expect(presence.locator('.chat-para')).toHaveCount(0);
+
+    const es = await chiefStream(page);
+
+    // 首 delta 到达 → 存在行收敛为 typing 打字行（两行互斥，尾部恒至多一行）。
+    await es.emit({ type: 'text_delta', text: '正在验证 **凭证' });
+    await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
+    const typing = drawer.locator('.chief-msg').last();
+    await expect(typing.locator('.chat-para')).toContainText('正在验证 凭证');
+    await expect(typing.locator('.chief-msg-foot')).toHaveCount(0);
+    await expect(drawer.locator('.chief-msg')).toHaveCount(2);
+
+    // 终稿 message 落库 → 打字行退场，定稿 robot 行接管；存在行/打字行皆不残留。
+    state.final = true;
+    await es.emit({ type: 'message', message: FINAL_ROW });
+    await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
+    await expect(drawer.locator('.chief-msg', { hasText: '正在验证' })).toHaveCount(0);
+    const final = drawer.locator('.chief-msg').last();
+    await expect(final.locator('strong', { hasText: '全部通过' })).toHaveCount(1);
+  });
+});
+
+test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', () => {
+  // 验收样例逐字进 mock：todo 提及 link 形 + 粗体 + 三面字面负例一句话打包。
+  const MD_USER =
+    '派 [#16](todo:t16) 去处理，**优先** 检查；prose #12 与 [伪链](todos:t2) [空](todo:) 保持字面';
+  const PLAIN_USER = '收到，谢谢';
+  const FENCE_USER = '```sh\necho before-and-after\n```';
+
+  async function boot(page: Page) {
+    await stubEventSource(page);
+    await stubDicebear(page);
+    await stubCdnAvatar(page);
+    await mockChiefLiveApi(page, {
+      final: true,
+      messages: [
+        { id: 'm1', role: 'user', content: MD_USER, createdAt: 1 },
+        { id: 'm2', role: 'user', content: PLAIN_USER, createdAt: 2 },
+        { id: 'm3', role: 'user', content: FENCE_USER, createdAt: 3 },
+        { id: 'm9', role: 'assistant', content: '三件都办完。', createdAt: 9 },
+      ],
+    });
+    await page.goto('/app?chief=chief-bbb');
+    const drawer = page.locator('.chief-drawer');
+    await expect(drawer).toBeVisible();
+    return drawer;
+  }
+
+  test('F-R14: 用户气泡走同源解析——todo chip 成锚可点导航、bold 成 strong、负例保持字面', async ({
+    page,
+  }) => {
+    const drawer = await boot(page);
+    const bubble = drawer.locator('.chief-bubble').first();
+    // 气泡类名双态（#612 配方）：live 用户行带槽进 md 路径。
+    await expect(bubble).toHaveClass(/chief-bubble--md/);
+    // 字面漏出归零：粗体定界符与链接语法不再以文本形态出现。
+    await expect(bubble).not.toContainText('**');
+    await expect(bubble).not.toContainText('[#16]');
+    // bold = 真 strong（与 robot 行同一内联层）。
+    await expect(bubble.locator('strong')).toHaveText('优先');
+    // todo chip = 真锚点（router Link，#678 已通面），href 指任务详情。
+    const chip = bubble.locator('.mention-chip--todo');
+    await expect(chip).toHaveCount(1);
+    await expect(chip).toHaveText('#16');
+    await expect(chip).toHaveAttribute('href', '/app/todo/t16');
+    // 负例集（t-0059 probe 三面在用户气泡内同律）：裸 #seq / 相邻 scheme /
+    // 空 id 保持字面文本，chip 总数不因它们增加。
+    await expect(bubble).toContainText('prose #12 与 [伪链](todos:t2) [空](todo:) 保持字面');
+    await expect(bubble.locator('.mention-chip')).toHaveCount(1);
+    // 点击 = 导航（F-R13 同律；SPA pushState 只钉 pathname，放行末位）。
+    await chip.click();
+    await page.waitForURL((u) => u.pathname === '/app/todo/t16');
+  });
+
+  test('F-R15: 复制载荷 = markdown 原文（不是渲染结果）；两钮行（复制/恢复）不受影响', async ({
+    page,
+  }) => {
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    const drawer = await boot(page);
+    const firstUser = drawer.locator('.chief-msg').first();
+    await expect(firstUser.locator('.chief-msg-tools button')).toHaveCount(2);
+    await expect(
+      firstUser.locator('.chief-msg-tools button[aria-label="恢复到此处"]'),
+    ).toBeVisible();
+    await firstUser.locator('.chief-msg-tools button[aria-label="复制"]').click();
+    const clip = await page.evaluate(() => navigator.clipboard.readText());
+    // #469 律：复制的是消息 markdown 源——wire 原文逐字（trim 归一后全等）。
+    expect(clip).toBe(MD_USER);
+  });
+
+  test('F-R16: 单行纯文本气泡几何不漂移（44px 药丸）；多块气泡首/尾块 margin 修剪生效', async ({
+    page,
+  }) => {
+    const drawer = await boot(page);
+    // live 面纯文本消息同样走 md 路径——几何必须与原字面路径逐值咬合。
+    const plain = drawer.locator('.chief-bubble', { hasText: PLAIN_USER });
+    const geo = await plain.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { h: Math.round(r.height), font: getComputedStyle(el).fontSize };
+    });
+    expect(geo.h).toBe(44); // 10px padding ×2 + 24px 行盒（现状逐像素同值）
+    expect(geo.font).toBe('14px');
+    // 整条消息 = 单个代码栅栏：首/尾块 margin 归零，不与 10px/12px padding
+    // 叠出双倍留白（#612 chat-bubble--md 修剪的抽屉版）。
+    const fence = drawer.locator('.chief-bubble', { hasText: 'echo before-and-after' });
+    const pre = fence.locator('pre.chat-md-code');
+    await expect(pre).toBeVisible();
+    const margins = await pre.evaluate((el) => ({
+      top: getComputedStyle(el).marginTop,
+      bottom: getComputedStyle(el).marginBottom,
+    }));
+    expect(margins.top).toBe('0px');
+    expect(margins.bottom).toBe('0px');
+  });
+
+  test('F-R17: fixture 捕获面用户气泡零漂移——无槽走字面路径（无 --md 类、无 chat-md 块）', async ({
+    page,
+  }) => {
+    await stubDicebear(page);
+    await page.goto('/app?scenario=chief-md');
+    await expect(page.locator('.chief-drawer')).toBeVisible();
+    const bubble = page.locator('.chief-stream .chief-bubble');
+    await expect(bubble).toHaveCount(1);
+    await expect(bubble).toHaveText('验证一下凭证链路，然后给我一份报告');
+    // fixture user 项不挂槽（单源在 live mapper）——捕获字节级稳定。
+    await expect(bubble).not.toHaveClass(/chief-bubble--md/);
+    await expect(bubble.locator('.chat-para, .chat-md-item, .chat-md-code')).toHaveCount(0);
   });
 });

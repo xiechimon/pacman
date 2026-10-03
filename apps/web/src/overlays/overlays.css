@@ -20,12 +20,9 @@
   z-index: 40;
 }
 
-/* 退场终态由 Base UI 的 [data-ending-style] 驱动（旧
-   `.overlay-mount[data-overlay-state="closed"] .anim-fade` 随 OverlayMount 退役）
-   ——配方同 dialog.css 的 .dlg-shell。 */
-.search-scrim[data-ending-style] {
-  opacity: 0;
-}
+/* #656：背板退场改由 tw-animate-css 自变体承载（search-panel 传
+   data-closed:animate-out fade-out-0），Base UI 经背板自身动画撑住卸载窗，
+   不再需要 [data-ending-style] 的 opacity 终态桥。 */
 
 /* 520×440 centered on the viewport, top 146 (r7 §3.5 family + 05 measure);
    rides the shell's viewport-root container (z 41, above the scrim — same

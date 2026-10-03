@@ -233,13 +233,18 @@ describe('[skills] 日志行族（02 §5.3 前缀词表扩位）', () => {
     expect(isLogPrefix('skills')).toBe(true);
   });
 
-  test('createDaemonLogger.skills(msg) 落盘 `[skills] msg` canon 行', () => {
+  test('createDaemonLogger.skills(msg) 落盘 `<ts> [skills] msg`（#691 落盘时间戳）', () => {
     const root = fixtureRoot('log');
     const logFile = join(root, 'daemon.log');
     const logger = createDaemonLogger({ logFile });
     logger.skills('loaded: 1 skills from /tmp/x');
     const lines = readFileSync(logFile, 'utf8').split('\n');
-    expect(lines).toContain('[skills] loaded: 1 skills from /tmp/x');
+    // #691：落盘行带 wall-clock 前缀（无痕死亡事故的取证面）；stdout 面保持 canon 无时间戳。
+    expect(
+      lines.some((l) =>
+        /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} \[skills\] loaded: 1 skills from \/tmp\/x$/.test(l),
+      ),
+    ).toBe(true);
   });
 });
 

@@ -3,7 +3,9 @@
 // workspace/recover/wake/mcp/skills，02 §5.3 + r3 §1.5 [mcp] 实测行 M4b 补录
 // + [skills] spec 14/#371 补录）；
 // 上线序列/步骤生命周期 canon 行为无前缀
-// 原文（r3 §1.5 实测样本族）。行格式 `<msg>` 原样落盘 [设计]（时间戳位未采）。
+// 原文（r3 §1.5 实测样本族）。落盘行 = `<wall-clock> <msg>`（#691：时间戳位
+// 改采——无痕死亡事故里落盘行无法与墙钟对齐，取证代价过高）；stdout/pane 面
+// 保持 canon 无时间戳（r3 平价面不动）。
 
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -45,6 +47,12 @@ export function formatLine(fields: LineFields): string {
   return msg;
 }
 
+/** 落盘行 wall-clock 前缀（#691）：本地时区 `YYYY-MM-DD HH:mm:ss`，可排序可 grep。 */
+function wallClock(date = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())} ${p(date.getHours())}:${p(date.getMinutes())}:${p(date.getSeconds())}`;
+}
+
 export function createDaemonLogger(opts: {
   logFile?: string;
   stdout?: boolean;
@@ -60,7 +68,7 @@ export function createDaemonLogger(opts: {
         fields = { msg: line.trimEnd() };
       }
       const text = `${formatLine(fields)}\n`;
-      if (opts.logFile) appendFileSync(opts.logFile, text);
+      if (opts.logFile) appendFileSync(opts.logFile, `${wallClock()} ${text}`);
       if (opts.stdout) process.stdout.write(text);
     },
   };

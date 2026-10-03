@@ -25,7 +25,7 @@ import { loadDaemonConfig } from '../../apps/daemon/src/config.js';
 import { createDaemonLogger } from '../../apps/daemon/src/log.js';
 import { type MachineHandle, runMachine } from '../../apps/daemon/src/machine-loop.js';
 import { type StatePaths, statePaths } from '../../apps/daemon/src/state.js';
-import { plan as planTable } from '../../apps/server/src/db/schema.js';
+import { plan as planTable, step as stepTable } from '../../apps/server/src/db/schema.js';
 import { AGENT_ID, api, bootRealServer, type RealServer, waitFor } from './helpers.js';
 import { type StubLlm, startStubLlm } from './stub-llm.js';
 
@@ -54,6 +54,10 @@ let page: Page;
 // 诊断用：当前被观察的 todo id（每个用例找到自己的票据后写入），超时诊断据此
 // 报 server 侧相位——UI 说「规划中」，server 是否也停在原地，是分叉判读的关键。
 let probeTodoId = '';
+// 诊断用：当前被观察的 build id（conv），超时诊断据此报 DB 真值（plans/steps
+// 行 + 相对时刻）——#698 判因：UI 停住时「plan 行落库没有」与「行在但 UI 没刷」
+// 的分叉只能靠 DB 真值钉死。
+let probeConvId = '';
 
 beforeAll(async () => {
   // web 生产构建（scenario-blind = 恒 live 数据源，#58 gate）。
@@ -267,6 +271,45 @@ async function dumpSpineDiagnostics(label: string): Promise<void> {
   } catch (err) {
     out.push(`stub 计数读不到: ${String(err).slice(0, 120)}`);
   }
+  // #698 证据面：DB 真值 + 事件时间线。plans/steps 行的落库与否与相对时刻，
+  // 把「UI 停住」分叉成「行没落库」（daemon/upload 面）与「行在但 UI 没刷」
+  // （SSE/invalidate 面）；stub 请求时间线给步内轮次节奏（零调用 no-op 与
+  // 正常两轮在计数上不可分时，时刻差仍可分）。
+  try {
+    if (probeConvId !== '') {
+      const plans = server.db
+        .select()
+        .from(planTable)
+        .where(eq(planTable.buildId, probeConvId))
+        .all();
+      out.push(
+        `DB plans 行 ${plans.length} 条: ${plans
+          .map((p) => `v${p.version}@${p.createdAt}(${String(p.content).slice(0, 40)}…)`)
+          .join(' | ')}`,
+      );
+      const steps = server.db
+        .select()
+        .from(stepTable)
+        .where(eq(stepTable.buildId, probeConvId))
+        .all();
+      out.push(
+        `DB steps 行 ${steps.length} 条: ${steps
+          .map((s) => `${s.kind}/${s.status}@${s.createdAt}`)
+          .join(' | ')}`,
+      );
+    }
+  } catch (err) {
+    out.push(`DB 真值读不到: ${String(err).slice(0, 120)}`);
+  }
+  try {
+    const times = stub?.requestTimes ?? [];
+    if (times.length > 0) {
+      const t0 = times[0]!;
+      out.push(`stub 请求时刻（相对首条，ms）: ${times.map((t) => t - t0).join(', ')}`);
+    }
+  } catch (err) {
+    out.push(`stub 时间线读不到: ${String(err).slice(0, 120)}`);
+  }
   try {
     const all = readFileSync(paths.daemonLog, 'utf8')
       .split('\n')
@@ -318,6 +361,7 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     expect(spine).toBeTruthy();
     probeTodoId = spine!.id;
     buildId = spine!.latestBuildId!;
+    probeConvId = buildId;
     expect(buildId).toBeTruthy();
 
     // 会话流采集挂在 build 会话上（SSE 真接线断言面）。
@@ -392,6 +436,7 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     const target = todos.find((t) => t.title === 'M5 驳回探针');
     probeTodoId = target!.id;
     const rejectBuildId = target!.latestBuildId!;
+    probeConvId = rejectBuildId;
 
     await openDetail('M5 驳回探针');
     await waitChip(/确认/);

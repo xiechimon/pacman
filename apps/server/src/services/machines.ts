@@ -1628,6 +1628,7 @@ export async function finishStep(
     completeStep(deps, stepId, {
       hasChanges: outcome.hasChanges,
       ...(outcome.findings !== undefined ? { findings: outcome.findings } : {}),
+      ...(outcome.findingsError !== undefined ? { findingsError: outcome.findingsError } : {}),
     });
     publishStepStatus(deps, stepId);
     return;

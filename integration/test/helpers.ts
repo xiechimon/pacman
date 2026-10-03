@@ -3,7 +3,7 @@
 // 不破：本 harness 以相对路径消费 server/daemon 源码，独立成包。
 
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -223,6 +223,19 @@ export async function seedWorld(
   const res = await api(url, 'POST', `/api/projects/${projectId}/todos`, todo);
   const todoId = (res.body as { id: string }).id;
   return { projectId, todoId };
+}
+
+/** 读 daemon.log 归一化行（#691）：剥掉落盘的 wall-clock 前缀，返回 canon 行面。
+ * 集成层的同步（waitFor）与行内容断言都吃 canon 面——盘上的时间戳是取证面，
+ * 要断言带时间戳的原始形时直接 readFileSync，不走本 helper。 */
+export function daemonLogLines(daemonLog: string): string[] {
+  try {
+    return readFileSync(daemonLog, 'utf8')
+      .split('\n')
+      .map((l) => l.replace(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} /, ''));
+  } catch {
+    return [];
+  }
 }
 
 export async function waitFor(

@@ -564,6 +564,16 @@ class PiSessionHandle implements AgentSessionHandle {
     this.queue.push({ type: 'steer', text });
   }
 
+  /** 后端内部错误上浮面（#698）：prompt() 预检拒绝（auth 校验 / compaction
+   * 守卫 / input handler 拒绝）在 agent run 之前 throw——无事件无终局，原先
+   * 被吞掉会把 runner 挂到流超时看门狗（报看门狗不报真凶）。经此注入事件
+   * 面：推 error 事件并收面。幂等：已收面（done 已到）则事件被队列丢弃、
+   * finish 重入无副作用。 */
+  emitBackendError(message: string): void {
+    this.queue.push({ type: 'error', error: { message, retryable: false } });
+    this.finish();
+  }
+
   async stop(): Promise<void> {
     this.stopping = true;
     await this.session.abort();
@@ -785,9 +795,12 @@ export class PiBackend implements AgentBackend {
     });
     if (opts.prompt !== undefined) {
       void session.prompt(opts.prompt).catch((err: unknown) => {
-        // 失败经事件面报告（message_end stopReason=error / agent_end）；
-        // prompt() 拒绝仅兜底防未处理 rejection。
-        void err;
+        // 运行期失败经事件面报告（message_end stopReason=error / agent_end）；
+        // 预检拒绝（auth / compaction 守卫 / input handler）在 agent run 之前
+        // throw、无事件面——原先静默吞掉，runner 只能挂到流超时看门狗。转成
+        // error 事件 + 收面（#698）：步快速 failed 且文案是真凶。
+        const message = err instanceof Error ? err.message : String(err);
+        handle.emitBackendError(`session.prompt rejected: ${message}`);
       });
     }
     return handle;

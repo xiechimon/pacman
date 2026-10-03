@@ -23,6 +23,7 @@ import { ClaudeMark, PiMark } from '../components/brand-marks.js';
 import { Badge } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
+import { toastError } from '../components/ui/toaster.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
@@ -233,6 +234,9 @@ export function ProvidersPage() {
             ? (body) =>
                 mutations.createProvider.mutate(body, {
                   onSuccess: () => setCreateOpen(false),
+                  // #638：失败 = 弹窗留着但零反馈（connectError 行是 OAuth
+                  // 专属语义位，不复用）——toast 点名。
+                  onError: (error) => toastError(t('添加模型服务失败，请重试。'), error),
                 })
             : undefined
         }
