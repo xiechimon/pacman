@@ -86,6 +86,8 @@ export interface TokenUsageContent {
   output: string;
   cacheRead: string;
   cacheWrite: string;
+  /** Cache hit rate display (#777): cacheRead over input plus cacheRead. */
+  cacheHitRate: string;
 }
 
 /** 分支与 PR content (issue #68, r7 31): sync-tab fields. Board cards open

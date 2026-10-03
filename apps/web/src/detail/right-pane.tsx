@@ -67,6 +67,7 @@ function TokenSection({
     ['输出', stats.output],
     ['缓存读取', stats.cacheRead],
     ['缓存写入', stats.cacheWrite],
+    ['缓存命中率', stats.cacheHitRate],
   ];
   return (
     <section className="pane-section">

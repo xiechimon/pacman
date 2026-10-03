@@ -69,6 +69,7 @@ export const PROBE_TOKEN_USAGE: TokenUsageContent = {
   output: '854',
   cacheRead: '54.2k',
   cacheWrite: '27.8k',
+  cacheHitRate: '100%',
 };
 
 /** 分支与 PR overlay of probe #9 (r7 31), sync tab as captured. */
@@ -965,6 +966,7 @@ const LEGACY_TOKEN_USAGE: TokenUsageContent = {
   output: '424',
   cacheRead: '52.3k',
   cacheWrite: '13.4k',
+  cacheHitRate: '100%',
 };
 
 const LEGACY_BRANCH_INFO: BranchInfoContent = {
@@ -1026,6 +1028,7 @@ const LEGACY2_OVERLAY: BuildOverlayContent = {
     output: '388',
     cacheRead: '31.6k',
     cacheWrite: '9.4k',
+    cacheHitRate: '100%',
   },
   branch: {
     branch: conversationBranch('r3-legacy-2'),
@@ -3064,6 +3067,7 @@ const R8_OVERLAY_TOKEN: TokenUsageContent = {
   output: '980',
   cacheRead: '49.7k',
   cacheWrite: '25.4k',
+  cacheHitRate: '100%',
 };
 const R8_OVERLAY_BRANCH: BranchInfoContent = {
   branch: conversationBranch('r8-12'),

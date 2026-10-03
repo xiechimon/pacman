@@ -455,6 +455,7 @@ export const EN: Record<string, string> = {
   输出: 'Output',
   缓存读取: 'Cache read',
   缓存写入: 'Cache write',
+  缓存命中率: 'Cache hit rate',
   当前: 'Current',
   重跑: 'Rerun',
   构建分支: 'Build branch',
