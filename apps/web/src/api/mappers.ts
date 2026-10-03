@@ -742,6 +742,11 @@ export function mapTokenUsage(usage: TokenUsage[]): TokenUsageContent {
   );
   const total = totals.input + totals.output + totals.cacheRead + totals.cacheWrite;
   const model = usage[0]?.model ?? 'n/a';
+  // #777: hit rate over the input side (input excludes the cached part —
+  // the four terms above sum to the grand total, so this ratio stays <= 100%).
+  const hitBase = totals.input + totals.cacheRead;
+  const cacheHitRate =
+    hitBase === 0 ? '—' : `${((totals.cacheRead / hitBase) * 100).toFixed(1).replace(/\.0$/, '')}%`;
   return {
     total: formatTokens(total),
     model,
@@ -750,6 +755,7 @@ export function mapTokenUsage(usage: TokenUsage[]): TokenUsageContent {
     output: formatTokens(totals.output),
     cacheRead: formatTokens(totals.cacheRead),
     cacheWrite: formatTokens(totals.cacheWrite),
+    cacheHitRate,
   };
 }
 
