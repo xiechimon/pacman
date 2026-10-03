@@ -1041,7 +1041,12 @@ export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
       // #667 回声行有非前缀孪生 → 跳过（POST 行承载同一句话的呈现与锚）。
       if (m.id.startsWith(TRANSCRIPT_PROMPT_ROW_ID_PREFIX) && postedTexts.has(text)) continue;
       pendingTools = []; // 回合边界：用户行之前的工具行属上一回合且已无归属面
-      items.push({ kind: 'user', text, id: m.id });
+      // #742: live 用户行进 markdown 槽（详情页用户行 #612 同款配方，本
+      // 函数 robot 行 #650 同律）——槽值 = trim 后原文逐字，块结构归渲染期
+      // chat-markdown 解析。去重键（postedTexts，吃 MessageRow 原文）与
+      // 复制载荷照旧读 text 位，rewind 锚照旧读 id 位；fixture 面不经本
+      // mapper，捕获形无槽、DOM 零漂移。
+      items.push({ kind: 'user', text, id: m.id, markdown: text });
       continue;
     }
     if (m.role === 'system') continue;
