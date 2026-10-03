@@ -189,8 +189,8 @@ test('composer toolbar drops the 语音输入 button, keeps attachment + mention
   const toolbar = page.locator('.composer-toolbar');
   await expect(toolbar).toBeVisible();
   // #304（08 册 C5）：语音输入功能不做——钮移除不渲染（wontfix 注记在
-  // composer.tsx 实现位；#146 chief 面同律）。本票唯一移除对象是语音，
-  // 添加附件/提及两工具必须原样在场。
+  // composer.tsx 实现位；总管面同律，附件/提及已在 #732 开闸）。本票唯一
+  // 移除对象是语音，添加附件/提及两工具必须原样在场。
   await expect(toolbar.locator('button[aria-label="语音输入"]')).toHaveCount(0);
   await expect(toolbar.locator('button[aria-label="添加附件"]')).toBeVisible();
   await expect(toolbar.locator('button[aria-label="提及"]')).toBeVisible();

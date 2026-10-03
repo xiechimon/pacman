@@ -637,6 +637,13 @@ a.chief-identity {
   border-radius: 12px;
 }
 
+/* #732：@ 内联 listbox 的 absolute 锚（mention-picker.css 的 bottom:
+   calc(100% + 6px) + left/right: 0 落在这层；detail composer
+   .composer-input-wrap 同律）。 */
+.chief-composer-input-wrap {
+  position: relative;
+}
+
 .chief-composer-input {
   display: block;
   width: 100%;
@@ -666,6 +673,23 @@ a.chief-identity {
   align-items: center;
   gap: 16px;
   margin-top: 10px;
+}
+
+/* #732：composer 工具钮（添加附件/提及，detail 三工具钮的 chief 等价位）。
+   几何照头部 icon 钮档（chief.css 元素选择器 .chief-head-actions button =
+   20×20，见 #136 台账前的旧 .chief-composer-bar 残档 commit 900d27e6）；
+   中和件照发送钮（cursor:pointer 承旧 .btn，ghost 原语透明底即 canon，
+   无实底双态）。惰性降档：ghost 原语 disabled:opacity-50/pointer-events-none
+   即 canon（fixture 面附件钮禁用形仍可读出 aria）。 */
+.chief-tool {
+  width: 20px;
+  height: 20px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.chief-tool:hover {
+  color: var(--text-secondary);
 }
 
 /* XMON-23 收编：选择器自 .btn 叠类 re-key（components/ui Button 不吐 btn

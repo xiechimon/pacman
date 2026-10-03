@@ -18,12 +18,11 @@
 // 后端面按 #306/#146 二分律移除不渲染；gear 各族可达（非 board 面落 board
 // 设置视图深链，ChiefWakePanel 兜底后结构上恒在）。
 //
-// #146 收尾：Esc 关面板（useEscapeClose 弹层族同律——内层的线程切换器
-// popover 先关，再关 drawer）；hero 快捷提示 ×4 点击即发预置词进 chief
-// 线程（live 面 onSend，等同键入发送；fixture 面与发送钮同款惰性）；头部
-// 「新主题」落回新线程视图（live）。composer 行只保留发送钮：语音输入/
-// 添加附件/提及为 local-first 无后端面，裁决隐藏不渲染（#136 台账
-// wontfix，理由登记在该票评论区）。
+// #732（2026-10-03 用户裁决全开，翻案 #146 隐藏裁决）：composer 行开闸渲染
+// 附件 + 提及工具（detail composer 同款交互面——内联 @ 补全 #728、剪贴板图片
+// 粘贴 #729、工具条 attach + mention 钮）。#146 的 local-first 无后端面前提
+// 已被落地的 grant/upload/read 链与提及 wire  retire——只开交互面，不加新后端
+// 面。语音输入维持 wontfix 不渲染（#304 C5，本票不含）。
 // #306 wontfix 出账：r8 随拍在线程视图头部多出的「更多」（⋮）钮——原站
 // 菜单内容从未点开无正典（r8-chief-panel-adhoc §3），pacman server chief
 // 面亦无线程管理 mutation（GET/POST threads 外无删除/重命名端点），无
@@ -41,6 +40,9 @@ import {
 } from '@pacman/shared';
 import { Atom } from 'loading-dev';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { attachFile } from '../api/attachments.js';
+import { useMachines, useMembers, useProjects, useSkills, useTodos } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
@@ -63,13 +65,16 @@ import {
   Copy,
   FileText,
   Grid2x2,
+  Paperclip,
   Plus,
   Restore,
   RuntimeClaudeCode,
   RuntimePi,
   X,
 } from '../icons/index.js';
+import { attachmentFailureTitle } from '../overlay/attachment-paste.js';
 import { useComposerWire } from '../overlay/composer-wire.js';
+import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
 import { useChiefNewThreadHotkey } from '../overlays/hotkeys.js';
 import './chief.css';
 import { ChiefIdentity } from './chief-identity.js';
@@ -191,7 +196,59 @@ export function ChiefDrawer({
   const { t } = useI18n();
   // #650 / XMON-105: 用户行头像身份单源（live = /api/user/me；fixture =
   // canon 常量，avatarUrl 覆盖 > dicebear 名字种子 > 静态兜底）。
-  const { user } = useLiveData();
+  const { live, teamId, user } = useLiveData();
+  // #732：live 面的提及数据源（todo-detail-page / new-task-surface 同五源
+  // 投影 canon；enabled=live，fixture 面查询静默 → 空组 → wire EMPTY_GROUPS
+  // → inline 永不开、popover 零计数开面）。
+  const todosQ = useTodos(teamId, live);
+  const membersQ = useMembers(teamId, live);
+  const projectsQ = useProjects(teamId, live);
+  const skillsQ = useSkills(teamId, live);
+  const machinesQ = useMachines(teamId, live);
+  const mentionGroups: MentionGroups = {
+    todo: (todosQ.data ?? []).map((td) => ({
+      id: td.id,
+      label: `#${td.seqNum} ${td.title}`,
+      seq: td.seqNum,
+      subtitle: td.phase,
+    })),
+    agent: (membersQ.data ?? [])
+      .filter((m) => m.memberType === 'agent')
+      .map((m) => ({
+        id: m.actorId,
+        label: (m.actor as { displayName?: string } | undefined)?.displayName ?? m.actorId,
+        subtitle:
+          (m.actor as { description?: string | null } | undefined)?.description ?? undefined,
+      })),
+    project: (projectsQ.data ?? []).map((p) => ({ id: p.id, label: p.name })),
+    skill: (skillsQ.data ?? []).map((s) => ({
+      id: s.id,
+      label: s.name,
+      subtitle: s.description ?? undefined,
+    })),
+    machine: (machinesQ.data ?? []).map((m) => ({ id: m.id, label: m.name })),
+  };
+  // #732：live 面的附件委托（todo-detail-page §#310 同款配方：逐文件 grant +
+  // upload scope 'message'，失败 toast 点名 + 成功 token 仍落；token 注入由
+  // wire hook 行原子做）。fixture 面无委托 → wire 附件链全惰。
+  const onAttachment =
+    onSend != null
+      ? async (files: File[]) => {
+          const tokens: string[] = [];
+          for (const file of files) {
+            try {
+              const r = await attachFile({ file, scope: 'message' });
+              tokens.push(r.token);
+            } catch (err) {
+              console.error('attachment failed', file.name, err);
+              toast.error(t(attachmentFailureTitle(err)), {
+                description: file.name,
+              });
+            }
+          }
+          return tokens;
+        }
+      : undefined;
   const [threadsOpen, setThreadsOpen] = useState(chief.threadsOpen ?? false);
   const [modelOpen, setModelOpen] = useState(false);
   // #651 流式视口：.chief-body 是真滚动容器（overflow: hidden → auto，
@@ -237,13 +294,41 @@ export function ChiefDrawer({
   // 提及 / 附件 wire 住 overlay/composer-wire 的 useComposerWire，detail
   // composer 消费同一 hook；本文件只剩抽屉皮肤（节点、几何、占位双态）。
   // live 面 = 内部态草稿（editable）；fixture 面 = 静态只读回显（static
-  // mode，无 setter）。附件 / 提及在 hook 面就绪，按钮渲染开闸不在本票
-  // （#146/#136 隐藏裁决），故此处不传 onAttachment / mentionGroups。
+  // mode，无 setter）。#732（#146 隐藏裁决翻案）：live 面把数据源两件都传
+  // 进去——mentionGroups（五源 live 投影；fixture 面查询静默 → 空组）与
+  // onAttachment（逐文件 grant + upload 委托）；fixture 面两件皆缺省 →
+  // inline 永不开、picker 零计数、粘贴/选件链全惰。
   const wire = useComposerWire({
     editable: onSend != null,
     draft: onSend != null ? undefined : (chief.draft ?? ''),
     onSend,
+    onAttachment,
+    mentionGroups,
   });
+  const {
+    handlePaste,
+    handleCaretMoved,
+    handleCompositionEnd,
+    handleBlur,
+    fileInputRef,
+    openFilePicker,
+    attaching,
+    onPickFiles,
+    pickerOpen,
+    togglePicker,
+    closePicker,
+    inlineOpen,
+    inlineCaret,
+    inlineQuery,
+    inlineAgents,
+    inlineHighlight,
+    setInlineHighlight,
+    inlineListboxId,
+    inlineListboxRef,
+    insertToken,
+    insertTokens,
+    groups,
+  } = wire;
   // #146 Esc 分层改由 Base UI 壳代收（见下 onOpenChange）：Base UI 处理 Esc 时
   // 会拦下事件，窗口监听（旧 useEscapeClose）收不到。
   // (b″) dock 行发现：锚点 span 原位渲染，向上走到最近的 dock 行类作为 Portal
@@ -747,22 +832,100 @@ export function ChiefDrawer({
               shared 单源常量，抽屉文件零 CJK 占位字面量（en 键由
               i18n-coverage COMPUTED_KEYS 钉住）；刷新节奏骑既有
               invalidateAll / conversation SSE 重取，无新增轮询。 */}
-              <textarea
-                ref={attachComposer}
-                className="chief-composer-input"
-                readOnly={onSend == null}
-                value={wire.draft}
-                onChange={wire.handleChange}
-                onKeyDown={wire.handleKeyDown}
-                placeholder={t(
-                  chief.running === true
-                    ? CHIEF_INPUT_PLACEHOLDER_STEERING
-                    : CHIEF_INPUT_PLACEHOLDER,
-                )}
+              <div className="chief-composer-input-wrap">
+                {/* #732：textarea 皮肤照 detail composer 同款 combobox 律——内联
+                listbox 开窗时报 combobox + 指向高亮行（DOM 焦点恒在框内，
+                listbox 行不可聚焦）；caret-only 移动重判 token（change 事件
+                覆盖不到那些）；fixture 静态面 editable=off → wire 重判永不发动。
+                包层 .chief-composer-input-wrap = listbox 的 absolute 锚
+                （relative，见 chief.css；detail composer .composer-input-wrap
+                同律）。 */}
+                <textarea
+                  ref={attachComposer}
+                  className="chief-composer-input"
+                  readOnly={onSend == null}
+                  value={wire.draft}
+                  onChange={wire.handleChange}
+                  onKeyDown={wire.handleKeyDown}
+                  // #732：剪贴板图片/文件走 #310 attachFile 链（纯文本粘贴永不
+                  // 进 preventDefault，detail composer 同律）。
+                  onPaste={handlePaste}
+                  onKeyUp={handleCaretMoved}
+                  onClick={handleCaretMoved}
+                  onSelect={handleCaretMoved}
+                  onCompositionEnd={handleCompositionEnd}
+                  onBlur={handleBlur}
+                  placeholder={t(
+                    chief.running === true
+                      ? CHIEF_INPUT_PLACEHOLDER_STEERING
+                      : CHIEF_INPUT_PLACEHOLDER,
+                  )}
+                  {...(inlineOpen
+                    ? {
+                        role: 'combobox',
+                        'aria-expanded': true,
+                        'aria-controls': inlineListboxId,
+                        'aria-autocomplete': 'list' as const,
+                      }
+                    : {})}
+                  {...(inlineOpen && inlineHighlight != null
+                    ? { 'aria-activedescendant': `${inlineListboxId}-opt-${inlineHighlight}` }
+                    : {})}
+                />
+                {/* #732：@ 内联 listbox（detail composer 同皮；mention-picker.css
+                的 z-40 阶梯 = 宿主 drawer stacking context 内局部压住 composer）。 */}
+                <MentionInline
+                  open={inlineOpen}
+                  agents={inlineAgents}
+                  caret={inlineCaret}
+                  query={inlineQuery}
+                  highlight={inlineHighlight}
+                  onHover={setInlineHighlight}
+                  onPick={(entry) =>
+                    insertToken({
+                      kind: 'agent',
+                      id: entry.id,
+                      label: entry.label,
+                    })
+                  }
+                  listboxRef={inlineListboxRef}
+                  listboxId={inlineListboxId}
+                />
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                style={{ display: 'none' }}
+                onChange={onPickFiles}
+                // 客户端 mime 守门（与服务层 ALLOWED_MIME_* 镜像，detail
+                // composer 同值）；note accept 只是 hint，最终由 server 强拒兜底。
+                accept="text/*,image/*,application/json,application/pdf,application/xml"
               />
               <div className="chief-composer-bar">
-                {/* #146 裁决：语音输入/添加附件/提及 local-first 无后端面——
-                隐藏不渲染（#136 台账 wontfix）。 */}
+                {/* #732（#146 隐藏裁决翻案）：附件 + 提及开闸渲染（detail composer
+                同款交互面，无新后端面）。语音输入维持 wontfix 不渲染（#304 C5）。
+                fixture 面：onAttachment 缺省 → 附件钮惰性 disabled；mentionGroups
+                空 → popover 零计数开面（wire EMPTY_GROUPS 律）。 */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('添加附件')}
+                  className="chief-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                  disabled={attaching || onAttachment == null}
+                  onClick={openFilePicker}
+                >
+                  <Paperclip width={16} height={16} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('提及')}
+                  className="chief-tool active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                  onClick={togglePicker}
+                >
+                  <Grid2x2 width={16} height={16} />
+                </Button>
                 {/* XMON-23 收编：ghost/icon 原语；实底双态（seg-active/indigo）
                 是 canon 偏差，per-face 留 chief.css（.chief-send，选择器已从
                 .btn 叠类 re-key——原语不吐 btn 类）。rounded-md = 旧 .btn 的
@@ -783,6 +946,18 @@ export function ChiefDrawer({
                   <ArrowUp width={16} height={16} />
                 </Button>
               </div>
+              {/* #732：提及 popover（detail composer 同皮；壳 FloatingShell 非模态
+              Dialog，Esc 走 Base UI layer 栈只收顶层——drawer 侧的 #146 分层律
+              不受扰）。 */}
+              <MentionPicker
+                open={pickerOpen}
+                onClose={closePicker}
+                groups={groups}
+                onInsert={(tokens) => {
+                  insertTokens(tokens);
+                  closePicker();
+                }}
+              />
             </div>
             {/* #615 返工：恢复钮确认层（破坏性：截断锚后消息并以锚重发）。壳与
             按钮档复用 chief-agent-dialog 同族 per-face（chief-dlg-ghost /
