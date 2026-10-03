@@ -38,6 +38,7 @@ pnpm typecheck  # pnpm -r typecheck
 - unit 受影响面缩窄：`pnpm exec vitest related --changed`（vitest 5 原生，跨 project 生效，2026-10-03 实测）。
 - **先列失败方式，再写实现**：动某块系统前，先枚举它可能失败的所有场景，写代码是让场景通过的手段。
 - **e2e spec 文件合并/解冲突后必跑 `npx playwright test <spec> --list` 验解析**（M7 实战：typecheck 不覆盖 spec 语法，手工解冲突吞 `});` 到 EOF 才炸——typecheck 绿≠playwright 能解析）。
+- **机制类改动，验收取实物**：「X 生效了」的机制声称（CSS/动效、落盘/wire 格式、schema、shim 流量、判据字段）必须从**编译产物 / 运行时日志 / 快照套件 / 该形态运行时真值**上取实物；读源码、看配置、装好依赖都不算验收——声称→实物→实案路径表见 `.claude/skills/verify-pacman/SKILL.md`「机制生效验收:实物判据」（#656/#677、#735、#700 等六实例）。
 
 跑验证服务（port 与 dist/ 互斥）：
 - `dev:web` / `dev:server` / `dev:daemon` ——dev server，端口 `5173` / `8787`。vite 带 `strictPort`——撞端口即启动失败，不静默顺延到下一个空闲口（顺延才是危险的：proxy 目标不变，界面会去驱动持有该端口的别的栈）。覆写：`PACMAN_DEV_WEB_PORT` / `PACMAN_DEV_SERVER_PORT`。
