@@ -202,13 +202,15 @@ describe('accept resolution (A1-A5)', () => {
     ).toBe('insert-token');
   });
 
-  test('mid-prompt accept = insert-text, never run (A3)', () => {
+  test('mid-prompt: execute degrades to text, skill still inserts its token (A3)', () => {
     expect(
       resolveSlashAccept({ name: 'clear', kind: 'execute', atStart: false, via: 'enter' }),
     ).toBe('insert-text');
+    // AC49 carries no message-start qualifier: a mid-prompt literal
+    // `/name` would be a dead reference, so skills always land the token.
     expect(
       resolveSlashAccept({ name: 'b-skill', kind: 'insert', atStart: false, via: 'enter' }),
-    ).toBe('insert-text');
+    ).toBe('insert-token');
   });
 
   test('Tab accept never runs (A4)', () => {

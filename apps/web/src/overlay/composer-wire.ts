@@ -376,6 +376,18 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     applyRange(detectCompletionToken(ta.value, caret, MENTION_COMPLETION_SPEC));
   }, [editable, slashEnabled, applySlashRange, applyRange]);
 
+  /** Change-driven re-judge. A value change is always a fresh user edit, so
+   *  it retires the Esc-dismissed markers first: re-typing the identical
+   *  token after Esc must reopen (the markers exist only to swallow the
+   *  dismissing key's own caret-only re-evaluation, which arrives via
+   *  handleCaretMoved below with the markers intact). Both faces share
+   *  this law — the `@` face had the same latent stickiness. */
+  const reevaluateFromChange = useCallback(() => {
+    dismissedRangeRef.current = null;
+    dismissedSlashRef.current = null;
+    reevaluate();
+  }, [reevaluate]);
+
   // Fuzzy-filter the agents by the query (CC rules 14-18: subsequence +
   // smart case + boundary bonus, capped at 15); an empty query lists the
   // roster in order.
@@ -678,7 +690,7 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     const next = event.target.value;
     setDraft(next);
     if (!editable) return;
-    reevaluate();
+    reevaluateFromChange();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {

@@ -165,9 +165,11 @@ export function isMessageStart(value: string, rangeStart: number): boolean {
 export type SlashAcceptVia = 'enter' | 'tab';
 export type SlashAcceptAction = 'run' | 'insert-token' | 'insert-text';
 
-/** Approved accept semantics: message-start + Enter + execute = run;
- *  skill rows (prompt-type) always insert their token; mid-prompt accepts
- *  and every Tab accept land text without running. */
+/** Approved accept semantics (+ #731 AC49 refinement): message-start +
+ *  Enter + execute = run; skill rows (prompt-type) ALWAYS insert their
+ *  token — a mid-prompt literal `/name` would be a dead reference, and
+ *  AC49 carries no message-start qualifier. Only execute rows degrade to
+ *  literal `/name ` text off message-start (rule 40), and Tab never runs. */
 export function resolveSlashAccept({
   kind,
   atStart,
@@ -179,8 +181,7 @@ export function resolveSlashAccept({
   via: SlashAcceptVia;
 }): SlashAcceptAction {
   if (via === 'enter' && atStart && kind === 'execute') return 'run';
-  if (kind === 'insert' && (atStart || via === 'tab')) return 'insert-token';
-  if (kind === 'insert' && !atStart && via === 'enter') return 'insert-text';
+  if (kind === 'insert') return 'insert-token';
   return 'insert-text';
 }
 

@@ -249,6 +249,39 @@ test('mid-prompt accept inserts literal text, never runs (F5)', async ({ page })
   expect(sent).toHaveLength(0);
 });
 
+test('close set: Esc, space, backspace-past-slash, outside click', async ({ page }) => {
+  const { input, menu } = await openDetail(page);
+
+  await input.fill('/');
+  await expect(menu).toBeVisible();
+  await input.press('Escape');
+  await expect(menu).toBeHidden();
+
+  // The dismissing key must not instantly reopen the same token.
+  await expect(menu).toBeHidden();
+
+  // A fresh edit retires the Esc marker: clear and retype the trigger.
+  await input.fill('');
+  await input.pressSequentially('/');
+  await expect(menu).toBeVisible();
+  await input.pressSequentially(' ');
+  await expect(menu).toBeHidden();
+  await expect(input).toHaveValue('/ ');
+
+  await input.fill('/cl');
+  await expect(menu).toBeVisible();
+  await input.press('Backspace');
+  await input.press('Backspace');
+  await input.press('Backspace');
+  await expect(menu).toBeHidden();
+  await expect(input).toHaveValue('');
+
+  await input.fill('/');
+  await expect(menu).toBeVisible();
+  await page.locator('.composer-toolbar').click();
+  await expect(menu).toBeHidden();
+});
+
 test('skill row inserts the wire token with trailing space', async ({ page }) => {
   const { input, rows, sent } = await openDetail(page);
 

@@ -81,6 +81,10 @@
   border-radius: 12px;
   box-shadow: 0 18px 48px rgb(0 0 0 / 22%);
   color: var(--text-primary);
+  /* #688: the picker tier — a floating command surface must paint above
+     every page stacking context, or screenshots catch an empty page while
+     every DOM check passes (the panel then hides beneath opaque layers). */
+  z-index: var(--z-picker);
 }
 
 .slash-help-title {
