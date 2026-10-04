@@ -77,6 +77,7 @@ import {
   insertMentionText,
   type MentionToken,
 } from './mention-token.js';
+import { applyOrderedListEnter } from './ordered-list.js';
 import { usePendingAttachments } from './pending-attachments.js';
 import {
   type BuiltinSlashName,
@@ -138,8 +139,10 @@ export interface ComposerWire {
   /** Textarea onChange: stores the value and re-judges the inline @ token. */
   handleChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
   /** Textarea onKeyDown: completion keys first (↑↓ / Tab / Enter=insert /
-   *  Esc while the listbox is open), then the composer's own Enter-to-send.
-   *  IME composition never triggers either layer (#728 failure mode 8). */
+   *  Esc while the listbox is open), then ordered-list continuation
+   *  (#814: plain Enter on a `1. ` line wins over send), then the
+   *  composer's own Enter-to-send. IME composition never triggers any
+   *  layer (#728 failure mode 8). */
   handleKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   /** Re-judge the token after caret-only moves (keyup / click / select):
    *  the listbox must close when the caret leaves the token and may reopen
@@ -830,8 +833,26 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     }
     // intent === 'ignore': the composer's own keys. Enter sends — but never
     // mid-IME-composition (the composing Enter belongs to the candidate
-    // window; #728 failure mode 8) and never with shift (newline).
+    // window; #728 failure mode 8) and never with shift (newline). A plain
+    // Enter on an ordered-list line (#814) continues the list instead of
+    // sending: the caret restore rides pendingInsertRef like the mention
+    // path (commit-atomic, no rAF race). Modified Enter (shift/meta/ctrl/
+    // alt) never takes the list branch — those keep their ambient meaning.
+    // Priority order for Enter is therefore: completion-accept (above) >
+    // ordered-list continuation > send.
     if (event.key === 'Enter' && !event.shiftKey && !isComposing) {
+      if (event.metaKey !== true && event.ctrlKey !== true && event.altKey !== true) {
+        const ta = textareaRef.current;
+        if (ta != null) {
+          const continued = applyOrderedListEnter(ta.value, ta.selectionStart ?? ta.value.length);
+          if (continued !== null) {
+            event.preventDefault();
+            pendingInsertRef.current = { value: continued.value, caret: continued.caret };
+            setDraft(continued.value);
+            return;
+          }
+        }
+      }
       event.preventDefault();
       send();
     }

@@ -65,6 +65,7 @@ import {
 import { AttachmentStrip } from './attachment-strip.js';
 import { type MentionGroups, MentionPicker } from './mention-picker.js';
 import { insertMentionText, type MentionToken } from './mention-token.js';
+import { applyOrderedListEnter } from './ordered-list.js';
 import { usePendingAttachments } from './pending-attachments.js';
 import './overlay.css';
 
@@ -452,6 +453,25 @@ export function NewTaskDialog({
     runAttachment(preparePastedFiles(files, counter), caret, () => counter.end());
   };
 
+  // #814 有序列表自动续行：正文 textarea 的 plain Enter（无修饰键、
+  // 非 IME 组合中）落在 `1. ` 行上时续编号/空项退 list，其余一律原生
+  // 换行。修饰键 Enter（⌘↵ 保存并开始走 useChordHotkey 面）与 Shift+Enter
+  // 永远不进这一支——它们保持各自的既有语义。
+  const handleSpecKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Enter') return;
+    if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.nativeEvent.isComposing) return;
+    const ta = event.currentTarget;
+    const continued = applyOrderedListEnter(ta.value, ta.selectionStart ?? ta.value.length);
+    if (continued === null) return;
+    event.preventDefault();
+    setSpec(continued.value);
+    const nextCaret = continued.caret;
+    requestAnimationFrame(() => {
+      if (document.activeElement === ta) ta.setSelectionRange(nextCaret, nextCaret);
+    });
+  };
+
   // spec 15 #394: 提交 = 正文 + 项目 id；#682 加机器 chip 选中（null = 自动）。
   // #729 失败方式 3：附件上传在途时阻提交——spec 不得带着还没上传完的
   // 附件离场（draft 保全，token 落地后提交照常）。
@@ -660,6 +680,7 @@ export function NewTaskDialog({
             placeholder={SPEC_TEMPLATE_LINES.map((line) => t(line)).join('\n')}
             value={spec}
             onChange={(e) => setSpec(e.target.value)}
+            onKeyDown={handleSpecKeyDown}
             // #729: clipboard images/files ride the #310 attachFile chain;
             // a text-only paste never reaches the handler's preventDefault.
             onPaste={handleSpecPaste}
