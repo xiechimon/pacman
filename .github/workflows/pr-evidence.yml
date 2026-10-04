@@ -1,0 +1,25 @@
+name: pr-evidence
+
+# PR body evidence gate (#750): image links in the PR body must be embedded
+# (`![...]()`, not `[...]()`) and must answer HTTP 200.
+#
+# Separate file from ci.yml on purpose: the default `pull_request` activity
+# types are only opened/synchronize/reopened, and the body is editable, so
+# `edited` must be listed explicitly. Putting `types:` on ci.yml would
+# re-trigger the whole pipeline on every body edit; here only this job runs.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  # Stable job name: after merge, add it to the branch-protection required
+  # checks (do it after merge, never before, or open lanes get locked out).
+  pr-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check PR evidence links (embedded + reachable)
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python3 scripts/pr-evidence-gate.py
