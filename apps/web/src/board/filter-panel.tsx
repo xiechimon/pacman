@@ -83,8 +83,8 @@ export interface FilterChip {
 
 const FOCUS = 'focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2';
 
-/** 行首勾选框（参考站实测形）：16px 圆角方。off = 控制边框空盒；on = indigo
- *  实底白勾；mixed = indigo 边框 + 横杠（全选行的部分选中态）。槽位恒在，
+/** 行首勾选框（参考站实测形）：16px 圆角方。off = 控制边框空盒；on = 品牌
+ *  实底勾；mixed = 品牌边框 + 横杠（全选行的部分选中态）。槽位恒在，
  *  状态切换零布局位移。 */
 function CheckBox({ state }: { state: 'off' | 'on' | 'mixed' }) {
   return (
@@ -94,8 +94,8 @@ function CheckBox({ state }: { state: 'off' | 'on' | 'mixed' }) {
         state === 'off'
           ? 'border-input'
           : state === 'on'
-            ? 'border-accent-indigo bg-accent-indigo text-primary-foreground'
-            : 'border-accent-indigo text-accent-indigo'
+            ? 'border-(--card-button) bg-(--card-button) text-primary-foreground'
+            : 'border-(--card-button) text-(--card-button)'
       }`}
     >
       {state === 'on' && <Check className="size-3" />}
@@ -221,20 +221,20 @@ function DimensionSection({
                     if (el) el.indeterminate = someSelected && !allSelected;
                   }}
                   onChange={() => (allSelected ? dimension.onClear() : dimension.onSelectAll())}
-                  className={`filter-dimension-all ${FOCUS} size-4 cursor-pointer appearance-none rounded border border-input transition-colors checked:border-accent-indigo checked:bg-accent-indigo indeterminate:border-accent-indigo`}
+                  className={`filter-dimension-all ${FOCUS} size-4 cursor-pointer appearance-none rounded border border-input transition-colors checked:border-(--card-button) checked:bg-(--card-button) indeterminate:border-(--card-button)`}
                 />
                 {allSelected && (
                   <Check className="pointer-events-none absolute inset-0 m-auto size-3 text-primary-foreground" />
                 )}
                 {someSelected && !allSelected && (
-                  <span className="pointer-events-none absolute inset-0 m-auto h-0.5 w-2 rounded-full bg-accent-indigo" />
+                  <span className="pointer-events-none absolute inset-0 m-auto h-0.5 w-2 rounded-full bg-(--card-button)" />
                 )}
               </span>
               <span className="min-w-0 flex-1 truncate text-left">{t('全选')}</span>
             </label>
             <button
               type="button"
-              className={`filter-dimension-invert ${FOCUS} mr-2 shrink-0 rounded px-1 text-xs text-accent-indigo-strong transition-colors hover:underline`}
+              className={`filter-dimension-invert ${FOCUS} mr-2 shrink-0 rounded px-1 text-xs text-(--card-button) transition-colors hover:underline`}
               onClick={dimension.onInvert}
             >
               {t('反选')}

@@ -117,8 +117,8 @@
 .dlg-secret-create:disabled,
 .dlg-provider-create:disabled,
 .dlg-agent-create:disabled {
-  /* lavender sampled from the r8 78 capture (light #a49fe8); dark [推断] */
-  background: var(--primary-disabled);
+  /* 失能底走 --spot-disabled（spot 向底色 mix，精确比 P5 钉死） */
+  background: var(--spot-disabled);
   cursor: default;
 }
 

@@ -2,7 +2,7 @@ import { expect, type Page, test } from '@playwright/test';
 
 // Issue #388 acceptance (弹层与 focus 视觉缺陷组):
 //   #15 — 点击 topbar 钮 / 新建任务钮后键盘交互（Esc/Tab）不再出现 UA 蓝框
-//         (outline auto rgb(0,95,204))；:focus-visible 统一收编为 indigo ring
+//         (outline auto rgb(0,95,204))；:focus-visible 统一收编为品牌环
 //         （配方沿 .rerun-switch:focus-visible 先例：2px --focus-ring, offset 2）。
 //   #10 — /app/schedules 新建定时弹层升级全屏族（#656 起壳 = FloatingShell，
 //         入场 = tw-animate-css fade）：scrim 盖全视口（含 sidebar——旧 z auto
@@ -14,7 +14,7 @@ const SCHED = '/app/schedules?scenario=r3-92';
 /** UA (Chromium) default focus ring: outline auto + this blue. */
 const UA_BLUE = 'rgb(0, 95, 204)';
 /** --focus-ring (shadcn.css 值正本) — the family :focus-visible ring color. */
-const RING = 'rgb(78, 71, 221)';
+const RING = 'rgb(203, 166, 247)';
 
 async function focusedOutline(page: Page) {
   return page.evaluate(() => {
@@ -78,7 +78,7 @@ test.describe('#15 focus ring收编', () => {
     }
   });
 
-  test('Tab focus keeps the indigo ring (keyboard reachability preserved)', async ({ page }) => {
+  test('Tab focus keeps the brand ring (keyboard reachability preserved)', async ({ page }) => {
     await page.goto(BOARD);
     // tab through the chrome until the 新建任务 button owns focus
     let found = false;

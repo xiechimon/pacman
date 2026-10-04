@@ -209,7 +209,7 @@
 .new-task-project-check {
   margin-left: auto;
   display: flex;
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 /* #682 机器 chip 的状态点（项目 chip 的 avatar 槽位换成 dot，几何对齐
@@ -319,7 +319,7 @@
 
 /* A3-overlays 收编：保存/保存并开始 = ui/Button ghost/primary standard
    （new-task-dialog.tsx 头注；r7 实测 30px/12px 高字归原语 32/13 档）。
-   .new-task-start:disabled 走原语 --primary-disabled。 */
+   .new-task-start:disabled 走原语 --spot-disabled。 */
 
 /* ---- delete confirm (r7 25: 448×142, centered both axes) ---- */
 

@@ -4,14 +4,14 @@ import { cn } from 'cn';
 
 // 仓内偏离（#414/#425/#423，三处，勿在重拉时丢）：
 // 1) focus 环走仓级 #388 canon（2px 实线 --focus-ring——#435 D3 后环色由
-//    --card-button 语义分离独立成名，值同为 #4e47dd），去 upstream 的
+//    --card-button 语义分离独立成名，值随品牌走），去 upstream 的
 //    outline-none + 灰 ring；
 // 2) 过渡显式窄写：TW 的 transition-all / transition-colors 属性表都含
 //    outline-color，会把 focus 环吞进过渡初值（#15 探针实测）。
 // 3) brand 档（#423 第一片真域接线）：仓内品牌实底 --card-button +
 //    --text-on-accent 白字，= 轨 A3 ui/Button primary 档等价迁移位（#426
 //    遗留的「brand 档裁决属铺开期」在此落地）。无 hover 档、disabled 换
-//    --primary-disabled 实底不降透明度——两形均逐 A3 原样，零漂移；官方
+//    --spot-disabled 实底不降透明度——两形均逐 A3 原样，零漂移；官方
 //    neutral default 档不动。
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color] duration-150 select-none focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -20,7 +20,7 @@ const buttonVariants = cva(
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary/80',
         brand:
-          'bg-(--card-button) text-(--text-on-accent) disabled:bg-(--primary-disabled) disabled:opacity-100',
+          'bg-(--card-button) text-(--text-on-accent) disabled:bg-(--spot-disabled) disabled:opacity-100',
         outline:
           'border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
         secondary:
