@@ -89,6 +89,9 @@ interface BoardProps {
   /** Card callbacks (issue #68): the page owns the modal overlays. */
   onAction?: (todo: TodoRecord) => void;
   onBranch?: (todo: TodoRecord) => void;
+  /** #828：逐卡分支钮可见性（调用方按数据源判定——fixture 面走
+   *  overlayContent 有无、live 面走 latestBuildId 有无；缺省 = 全显旧行）。 */
+  hasBranch?: (todo: TodoRecord) => boolean;
   /** #616: silent phase-commit drop (待开始/已完成 targets) — the page owns
    *  the write path (fixture 本地集 / live 乐观 PATCH)。 */
   onPhaseDrop?: (todo: TodoRecord, columnId: string) => void;
@@ -114,6 +117,7 @@ export function BoardSurface({
   fixture,
   onAction,
   onBranch,
+  hasBranch,
   onPhaseDrop,
   onStartIntent,
   onResetIntent,
@@ -312,6 +316,7 @@ export function BoardSurface({
                         now={fixture.now}
                         onAction={onAction}
                         onBranch={onBranch}
+                        hasBranch={hasBranch == null ? undefined : hasBranch(todo)}
                         projectName={fixture.projectNames?.[todo.projectId]}
                         tag={tagsById == null ? null : cardTag(todo, tagsById)}
                       />

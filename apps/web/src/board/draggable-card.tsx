@@ -19,6 +19,8 @@ interface DraggableCardProps {
   now: number;
   onAction?: (todo: TodoRecord) => void;
   onBranch?: (todo: TodoRecord) => void;
+  /** #828：透传 TodoCard 的无分支隐藏位。 */
+  hasBranch?: boolean;
   /** M5 live：项目 chip 真名（TodoCard 透传位）。 */
   projectName?: string;
   /** #445：卡片标签行（cardTag 解析结果；null = 不渲染占位）。 */
@@ -30,6 +32,7 @@ export function DraggableCard({
   now,
   onAction,
   onBranch,
+  hasBranch,
   projectName,
   tag,
 }: DraggableCardProps) {
@@ -42,6 +45,7 @@ export function DraggableCard({
         now={now}
         onAction={onAction}
         onBranch={onBranch}
+        hasBranch={hasBranch}
         projectName={projectName}
         tag={tag}
       />
