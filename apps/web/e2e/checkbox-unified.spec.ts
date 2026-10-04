@@ -1,9 +1,10 @@
 import { expect, type Page, test } from '@playwright/test';
 import { evidenceShot } from './evidence';
 
-// 复选框样式统一（XMON-72 建、#690 迁 Base UI 官方件）：仓内复选正典 =
+// 复选框样式统一（XMON-72 建、#690 迁 Base UI 官方件、#789 P2 落 V2 骨架与
+// 手作动效）：仓内复选正典 =
 // components/ui/checkbox.tsx —— Checkbox.Root 渲染 span[role=checkbox]
-// （18px 方角 tile / 4px 圆角 / --card-button 实底 + 白勾，关态透明底 +
+// （16px 方角 tile / 圆角 0 / 开态 --card-button 实底 + 主题色勾，关态透明底 +
 // 1px --border-strong 内描边；状态钩子 = 官方 data-checked / data-unchecked）
 // + 官方隐藏原生 input（1×1 + clip-path inset(50%)，键盘 / 表单语义 /
 // 屏幕阅读器照旧走原生）。#690 迁移改写了本 spec 的定位面（真 input 覆盖层
@@ -14,12 +15,14 @@ import { evidenceShot } from './evidence';
 //   2. accept：未选中态露勾（svg 不随 checked 走，Indicator 没卸载）；
 //   3. accept：整行点击不切换（label 激活行为不再转发到隐藏 input；原语
 //      children 契约 = 整行可点，与 api-key 弹窗先例同）；
-//   4. accept：tile 几何漂移（18×18 / 4px 圆角 / 与文字 gap 8 / 文字 13px）
-//      ——像素纪律：对齐既有自制档数值，不新造；
-//   5. provider：未选中态露白勾（与 2 同族）；id 仍落在真 input[type=checkbox]
+//   4. accept：tile 几何漂移（16×16 / 圆角 0 / 与文字 gap 8 / 文字 13px）
+//      ——V2 骨架（base-ui-theme §1.1），改 CSS 必同 PR 改本条（F6）；
+//   5. accept：手作三值漂移（tile 底色 100ms / 勾进场 140ms 微 overshoot /
+//      勾退场 90ms）——transition 目的态写法，进场读基类、退场读 ending 态；
+//   6. provider：未选中态露白勾（与 2 同族）；id 仍落在真 input[type=checkbox]
 //      上（Base UI 官方契约：id prop 归隐藏 input），provider-add-dialog 的
 //      pin 照常成立；
-//   6. accept：键盘 Space 不切换（官方件 Root tabIndex=0 的键盘契约）。
+//   7. accept：键盘 Space 不切换（官方件 Root tabIndex=0 的键盘契约）。
 // stop-confirm dialog 与 accept 同形（同类同 JSX），但 fixture 面没有
 // running 态可开它（OverlayKind 无 stop、fixtures 无 activeRun）：由 live 面
 // verify-pacman 的 drive-stop 探针 + 截图证据覆盖，见 docs/verify/XMON-72/。
@@ -88,7 +91,7 @@ test('accept: 整行可点（文字也是点击目标）', async ({ page }) => {
   await expect(input).toBeChecked();
 });
 
-test('accept: tile 几何 = 18×18 / 4px 圆角 / 与文字 gap 8 / 文字 13px', async ({
+test('accept: tile 几何 = 16×16 / 圆角 0 / 与文字 gap 8 / 文字 13px', async ({
   page,
 }) => {
   const dialog = await openAccept(page);
@@ -96,11 +99,11 @@ test('accept: tile 几何 = 18×18 / 4px 圆角 / 与文字 gap 8 / 文字 13px'
   const box = await tile.boundingBox();
   expect(box).not.toBeNull();
   if (box == null) return;
-  expect(box.width).toBeGreaterThan(17.5);
-  expect(box.width).toBeLessThan(18.5);
-  expect(box.height).toBeGreaterThan(17.5);
-  expect(box.height).toBeLessThan(18.5);
-  await expect(tile).toHaveCSS('border-radius', '4px');
+  expect(box.width).toBeGreaterThan(15.5);
+  expect(box.width).toBeLessThan(16.5);
+  expect(box.height).toBeGreaterThan(15.5);
+  expect(box.height).toBeLessThan(16.5);
+  await expect(tile).toHaveCSS('border-radius', '0px');
   const label = dialog.locator('.dlg-accept-label');
   await expect(label).toHaveCSS('font-size', '13px');
   const lb = await label.boundingBox();
@@ -109,6 +112,29 @@ test('accept: tile 几何 = 18×18 / 4px 圆角 / 与文字 gap 8 / 文字 13px'
   const gap = lb.x - (box.x + box.width);
   expect(gap).toBeGreaterThan(7.5);
   expect(gap).toBeLessThan(8.5);
+});
+
+test('accept: 手作三值 = tile 底色 100ms / 勾进场 140ms overshoot / 勾退场 90ms', async ({
+  page,
+}) => {
+  const dialog = await openAccept(page);
+  const tile = dialog.locator('.dlg-accept .ui-checkbox-tile');
+  // 进场目的态 = 基类：tile 底色 100ms ease-out（含描边与 press 两档）。
+  const tileTransition = await tile.evaluate(
+    (el) =>
+      `${getComputedStyle(el).transitionProperty} | ${getComputedStyle(el).transitionDuration} | ${getComputedStyle(el).transitionTimingFunction}`,
+  );
+  expect(tileTransition).toContain('background-color');
+  expect(tileTransition).toContain('0.1s');
+  expect(tileTransition).toContain('0.08s');
+  // 勾进场 140ms 微 overshoot（目的态 = indicator 基类）。
+  const indicator = dialog.locator('.dlg-accept .ui-checkbox-indicator');
+  const enterTransition = await indicator.evaluate(
+    (el) =>
+      `${getComputedStyle(el).transitionDuration} | ${getComputedStyle(el).transitionTimingFunction}`,
+  );
+  expect(enterTransition).toContain('0.14s');
+  expect(enterTransition).toContain('cubic-bezier(0.34, 1.4, 0.64, 1)');
 });
 
 test('provider: 未选中态不露白勾（#dlg-provider-authheader id 存活）', async ({
