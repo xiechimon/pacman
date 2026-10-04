@@ -87,6 +87,46 @@ export function insertAttachmentTokens(
 // next to regex literals.)
 const GENERIC_IMAGE_NAME = /^image\.[a-z0-9]+$/i;
 
+/** Whole-line attachment token (the #310 spec-block shape): key rides
+ *  teamId/id.ext, the read endpoint is the last segment minus extension.
+ *  Single source since #757 — detail/chat-markdown.tsx imports this instead
+ *  of carrying its own copy, so the composer strip and the transcript
+ *  renderer can never disagree on what counts as a chip line.
+ *  (English-only note: this span sits between the backticks the i18n
+ *  coverage scanner misreads out of the FENCE regex in chat-markdown —
+ *  CJK here would be swallowed as a template quasi.) */
+export const ATTACHMENT_LINE = /^ {0,3}!\[([^\]]*)\]\(attachment:([^)]+)\)\s*$/;
+
+export interface AttachmentToken {
+  name: string;
+  key: string;
+}
+
+/** Draft-order whole-line attachment tokens (#757 composer strip data).
+ *  Inline tokens sharing a line with prose are skipped — the renderer leaves
+ *  those as literal text (ATTACHMENT_LINE is whole-line anchored), and the
+ *  strip must mirror that rather than chip-ify what the transcript shows as
+ *  text. */
+export function parseAttachmentTokens(text: string): AttachmentToken[] {
+  const out: AttachmentToken[] = [];
+  for (const line of text.split('\n')) {
+    const hit = ATTACHMENT_LINE.exec(line);
+    if (hit !== null) out.push({ name: hit[1] ?? '', key: hit[2] ?? '' });
+  }
+  return out;
+}
+
+/** One file with an upload in flight (#757 in-transit placeholder). `url` is
+ *  a blob object URL for image/* (the strip renders the real bytes at chip
+ *  size, so landing the token never moves layout); null for the typeless
+ *  shapes the chip renders as a name link. */
+export interface PendingAttachment {
+  uid: string;
+  name: string;
+  mime: string;
+  url: string | null;
+}
+
 /** Clipboard blobs that carry no user-meaningful name: empty, the browser
  *  screenshot default image.<ext>, or a bare blob. */
 export function isGenericClipboardName(name: string): boolean {

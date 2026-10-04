@@ -29,6 +29,7 @@ export { FileCheck } from './FileCheck.js';
 export { FileTab } from './FileTab.js';
 export { FileText } from './FileText.js';
 export { Funnel } from './Funnel.js';
+export { GitBranch } from './GitBranch.js';
 export { GitCommit } from './GitCommit.js';
 export { Grid2x2 } from './Grid2x2.js';
 export { History } from './History.js';

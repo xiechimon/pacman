@@ -73,6 +73,7 @@ import {
   X,
 } from '../icons/index.js';
 import { attachmentFailureTitle } from '../overlay/attachment-paste.js';
+import { AttachmentStrip } from '../overlay/attachment-strip.js';
 import { useComposerWire } from '../overlay/composer-wire.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
 import { SkillSuggestStrip } from '../overlay/skill-suggest-strip.js';
@@ -327,6 +328,7 @@ export function ChiefDrawer({
     fileInputRef,
     openFilePicker,
     attaching,
+    pendingAttachments,
     onPickFiles,
     pickerOpen,
     togglePicker,
@@ -744,7 +746,8 @@ export function ChiefDrawer({
                             >
                               {/* #672/#739: loading-dev Atom（16px/900ms，与详情页
                                   chat-spinner 同款）——库自带 reduced-motion 冻结与
-                                  aria-hidden，标签文本是可访问的 live 线索。 */}
+                                  aria-hidden，标签文本是可访问的 live 线索。
+                                  #821: 描边走主题 spot 实色，根上带呼吸脉冲。 */}
                               <Atom size={16} duration={900} className="chief-spinner" />
                               {item.seconds != null && (
                                 <span className="chief-streaming-secs">{item.seconds}s</span>
@@ -985,6 +988,10 @@ export function ChiefDrawer({
                   onDismiss={dismissSuggestion}
                 />
               </div>
+              {/* #757 附件 strip（detail composer 同件：在途占位 + 落定 chip，
+              可点预览）。chief composer 卡是 in-flow 布局，strip 走流式、
+              空时零节点。 */}
+              <AttachmentStrip draft={wire.draft} pending={pendingAttachments} />
               <input
                 ref={fileInputRef}
                 type="file"

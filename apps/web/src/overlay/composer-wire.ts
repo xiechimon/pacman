@@ -22,8 +22,10 @@
 //      ref, the attaching flag and the re-pick value reset (#310), plus the
 //      paste capture (#729): files from the clipboard go through the same
 //      delegate, tokens land line-atomic at the captured caret (file-picker
-//      path stays tail-append). Grant + upload stay with the calling
-//      surface (onAttachment delegate returns the tokens it uploaded).
+//      path stays tail-append). #757 adds the in-flight pending list (one
+//      placeholder card per uploading file). Grant + upload stay with the
+//      calling surface (onAttachment delegate returns the tokens it
+//      uploaded).
 //
 // Inline `@` completion (#728) follows the Claude Code canon (#727 §1):
 // the trigger/filter/keyboard machinery lives in overlay/completion.ts as a
@@ -58,6 +60,7 @@ import {
   filesFromClipboardData,
   insertAttachmentTokens,
   type PastedNameCounter,
+  type PendingAttachment,
   preparePastedFiles,
 } from './attachment-paste.js';
 import {
@@ -76,6 +79,7 @@ import {
   type MentionToken,
 } from './mention-token.js';
 import { applyOrderedListEnter } from './ordered-list.js';
+import { usePendingAttachments } from './pending-attachments.js';
 import {
   type BuiltinSlashName,
   buildSlashSections,
@@ -160,6 +164,9 @@ export interface ComposerWire {
   openFilePicker: () => void;
   /** True while an onAttachment delegate is in flight. */
   attaching: boolean;
+  /** Files with an upload in flight (#757 in-transit placeholders — the
+   *  strip paints one card per entry; entries drop as their run settles). */
+  pendingAttachments: PendingAttachment[];
   onPickFiles: (event: ChangeEvent<HTMLInputElement>) => void;
   /** Textarea onPaste (#729): clipboard files go through onAttachment and
    *  land line-atomic at the caret; a text-only paste is never touched. */
@@ -281,6 +288,13 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
   const inlineListboxRef = useRef<HTMLDivElement | null>(null);
   const [attaching, setAttaching] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // #757 in-transit placeholders: one card per file with an upload in
+  // flight (detail + chief faces render pendingAttachments in the strip).
+  const {
+    pending: pendingAttachments,
+    track: trackPending,
+    untrack: untrackPending,
+  } = usePendingAttachments();
 
   // Inline @ completion state (#728). The ref mirror is the synchronous
   // source of truth for event handlers (React state lags inside the same
@@ -555,7 +569,11 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
    *  pre-#729 clip shape), then restores the caret IN the commit that
    *  lands the draft (the attach layout effect below) — only when the
    *  textarea still owns focus, so a file-picker round trip never steals
-   *  it back. */
+   *  it back. #757: each run also tracks its files as pending entries (one
+   *  placeholder card per file, painted the same tick as the paste) and
+   *  untracks exactly those uids when it settles — success, empty, or
+   *  delegate-level rejection — so overlapping runs never clear each other
+   *  and a failed file's card leaves with its toast. */
   const runAttachment = (files: File[], caret: number | null, also?: () => void) => {
     if (!onAttachment) {
       also?.();
@@ -563,6 +581,7 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     }
     attachInFlightRef.current += 1;
     setAttaching(true);
+    const pendingUids = trackPending(files);
     void Promise.resolve(onAttachment(files))
       .then((tokens) => {
         if (tokens.length === 0) return;
@@ -584,6 +603,7 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
         console.error('attachment delegate failed', err);
       })
       .finally(() => {
+        untrackPending(pendingUids);
         attachInFlightRef.current = Math.max(0, attachInFlightRef.current - 1);
         if (attachInFlightRef.current === 0) setAttaching(false);
         also?.();
@@ -966,6 +986,7 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     fileInputRef,
     openFilePicker,
     attaching,
+    pendingAttachments,
     onPickFiles,
     handlePaste,
     pickerOpen,

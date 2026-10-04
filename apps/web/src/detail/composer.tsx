@@ -34,6 +34,7 @@
 import { Button } from '../components/ui/button.js';
 import { useI18n } from '../i18n/provider.js';
 import { ArrowUp, Grid2x2, Paperclip, SearchPlus } from '../icons/index.js';
+import { AttachmentStrip } from '../overlay/attachment-strip.js';
 import { useComposerWire } from '../overlay/composer-wire.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
 import type { FileMentionEntry } from '../overlay/mention-token.js';
@@ -109,6 +110,7 @@ export function Composer({
     fileInputRef,
     openFilePicker,
     attaching,
+    pendingAttachments,
     onPickFiles,
     handlePaste,
     pickerOpen,
@@ -219,16 +221,6 @@ export function Composer({
             listboxRef={inlineListboxRef}
             listboxId={inlineListboxId}
           />
-          {/* #812 选中确认 strip：listbox 关后把 draft 已落定提及渲染成
-              transcript 同形 chip（新 chip 轻过渡 pop）；弹层开时让路。 */}
-          <ComposerChips draft={draft} files={mentionFiles} suspended={inlineOpen || slashOpen} />
-          {/* #823 自然话 skill 提示条：两弹层都关时才挂载（wire 保证），
-              Tab / 点击接受，Esc / × 单条忽略。 */}
-          <SkillSuggestStrip
-            suggestion={suggestion}
-            onAccept={acceptSuggestion}
-            onDismiss={dismissSuggestion}
-          />
           {/* #731 `/` slash menu: same combobox anchor/geometry as the `@`
               listbox above. Click = Enter-with-highlight semantics. */}
           <SlashMenu
@@ -249,6 +241,20 @@ export function Composer({
       ) : (
         <div className="composer-placeholder">{t(placeholder)}</div>
       )}
+      {/* #757 附件 strip + #812 提及 strip：同一浮列挂盒外上方（盒几何
+          76px 冻结，浮列与 listbox 同锚无布局位移）。共列即天然上下叠放，
+          两面永不互盖；各 strip 空时零节点，列空即零高度不绘制。 */}
+      <div className="composer-float">
+        <ComposerChips draft={draft} files={mentionFiles} suspended={inlineOpen || slashOpen} />
+        <AttachmentStrip draft={draft} pending={pendingAttachments} />
+        {/* #823 自然话 skill 提示条：同浮列叠放（两弹层都关时才挂载，
+            wire 保证），Tab / 点击接受，Esc / × 单条忽略。 */}
+        <SkillSuggestStrip
+          suggestion={suggestion}
+          onAccept={acceptSuggestion}
+          onDismiss={dismissSuggestion}
+        />
+      </div>
       <input
         ref={fileInputRef}
         type="file"

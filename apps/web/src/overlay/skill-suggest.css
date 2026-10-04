@@ -13,6 +13,15 @@
   line-height: 20px;
 }
 
+/* Detail composer float column (#757 contract): the column never
+   intercepts — interactive strips re-enable. The mention strip stays
+   inert (display-only); this strip has accept/dismiss buttons, so it
+   opts back in like the attachment strip. */
+.composer-float > .skill-suggest {
+  margin-top: 0;
+  pointer-events: auto;
+}
+
 .skill-suggest-body {
   display: inline-flex;
   align-items: center;

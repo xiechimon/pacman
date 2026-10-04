@@ -56,6 +56,17 @@ export function formatAttachmentToken(fileName: string, key: string): string {
   return `![${fileName}](attachment:${key})`;
 }
 
+/** 行中 token 形态（#757 标题面）：标题行里夹带的 token 不裸排 scheme，
+ *  只留文件名（chip 名）——纯展示替换，不校验 key 语法（标题不是交付面，
+ *  宽进、渲染律与 web chip 的 label 面一致）。 */
+const INLINE_ATTACHMENT_TOKEN = /!\[([^\]\n]*)\]\(attachment:[^)\s]+\)/g;
+
+/** 文本里的附件 token 替换为文件名（标题派生共用；无 token 文本逐字不变，
+ *  空 label 退为空串由调用面跳过）。 */
+export function renderAttachmentTokensToLabels(text: string): string {
+  return text.replace(INLINE_ATTACHMENT_TOKEN, (_, label: string) => label);
+}
+
 /** 内联图片支持面（Claude Code 本尊 inline = png/jpeg/gif/webp，parent 正典
  * §Part 2；pi processImage 同面）。这四个 ext 走 inline image content block。 */
 export const INLINE_IMAGE_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp'] as const;

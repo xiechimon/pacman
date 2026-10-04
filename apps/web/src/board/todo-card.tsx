@@ -18,8 +18,8 @@ import type { TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import {
   CheckWhite,
-  Download,
   FileText,
+  GitBranch,
   GitCommit,
   SearchWhite,
   UserCircle,
@@ -35,6 +35,9 @@ interface TodoCardProps {
   onAction?: (todo: TodoRecord) => void;
   /** Card branch icon (issue #68): opens the 分支与 PR dialog. */
   onBranch?: (todo: TodoRecord) => void;
+  /** #828: false = 无分支的卡不渲染分支钮（旧下载箭头 glyph 误导 + 无
+   *  内容卡的点击零响应；缺省 true 保持调用方行为不变）。 */
+  hasBranch?: boolean;
   /** M5 live：项目 chip 真名（fixture.projectNames 位）；缺省 = capture
    *  canon 常量（r7 22 `r3-lifecycle`）。 */
   projectName?: string;
@@ -59,7 +62,15 @@ function badgeFor(todo: TodoRecord): 'idle' | 'attention' | 'done' | 'failed' | 
   return null;
 }
 
-export function TodoCard({ todo, now, onAction, onBranch, projectName, tag }: TodoCardProps) {
+export function TodoCard({
+  todo,
+  now,
+  onAction,
+  onBranch,
+  hasBranch = true,
+  projectName,
+  tag,
+}: TodoCardProps) {
   // XMON-105: executor avatar override join (same identity as team page).
   const agentAvatarUrl = useAgentAvatarUrlById();
   const chipName = projectName ?? PROJECT_NAME;
@@ -91,15 +102,17 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName, tag }: To
         <span className="todo-card-seq mr-[13px] ml-auto flex-none text-[11px] leading-4 text-muted-foreground/70">
           #{todo.seqNum}
         </span>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          className="todo-card-branch relative z-10 -mr-[1.5px] h-4 w-[13px] text-muted-foreground"
-          aria-label={t('分支与 PR')}
-          onClick={() => onBranch?.(todo)}
-        >
-          <Download className="size-[13px]" />
-        </Button>
+        {onBranch != null && hasBranch && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="todo-card-branch relative z-10 -mr-[1.5px] h-4 w-[13px] text-muted-foreground"
+            aria-label={t('分支与 PR')}
+            onClick={() => onBranch?.(todo)}
+          >
+            <GitBranch className="size-[13px]" />
+          </Button>
+        )}
       </div>
 
       <h3 className="todo-card-title mt-1 wrap-break-word text-sm leading-5 font-medium text-card-foreground">

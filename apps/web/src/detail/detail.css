@@ -984,11 +984,22 @@
 /* #672 loading indicator slot: a loading-dev Atom root (a 16×16 square at
    size 16 — the library sheet owns the box, the orbit/spin animation and
    the reduced-motion freeze; shell and ring strokes paint with
-   currentColor). The skin keeps only what the library cannot know: the
-   row-level no-shrink and the dim text color the #471 reel carried. */
+   currentColor). #821: the skin rides the spot solid (var(--card-button),
+   both themes follow) and breathes via the shared spinner-breathe pulse
+   (motion.css); static under reduced motion. The skin keeps only what the
+   library cannot know: the row-level no-shrink, the brand color, the pulse.
+   The pulse lives on this root while the spins run one level down
+   (.ld-atom-spin), so the two never override each other. */
 .chat-spinner {
   flex: none;
-  color: var(--text-dim);
+  color: var(--card-button);
+  animation: spinner-breathe 1800ms var(--ease-standard) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-spinner {
+    animation: none;
+  }
 }
 
 /* the live seconds tick: tabular figures stop the 3s→10s width jump from
