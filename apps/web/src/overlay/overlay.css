@@ -95,8 +95,10 @@
   color: var(--text-tertiary);
 }
 
+/* P4 #791：机器行与项目行同框，hover 与 #73 家族同 tint（项目行经
+   motion.css 吃 --accent-soft，本行同值，两档同框无双色）。 */
 .new-task-machine:hover {
-  background: var(--surface-hover);
+  background: var(--accent-soft);
 }
 
 /* ---- #176 project selector popover (anchored under the head project

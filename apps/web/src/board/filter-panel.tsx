@@ -212,7 +212,7 @@ function DimensionSection({
             {/* 真 checkbox（native input）：三态走 indeterminate 属性，语义与
                 键盘/读屏行为白送；整行包 label，点文案即 toggle。勾形/横杠是
                 input 之上的指针穿透覆层（appearance-none 自绘皮肤）。 */}
-            <label className="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent">
+            <label className="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft">
               <span className="relative flex size-4 flex-none">
                 <input
                   type="checkbox"
@@ -261,7 +261,7 @@ function DimensionSection({
                       : { 'data-tag': choice.value })}
                     role="option"
                     aria-selected={active}
-                    className={`${alias} ${FOCUS} flex h-7 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent ${
+                    className={`${alias} ${FOCUS} flex h-7 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft ${
                       active ? 'bg-accent' : ''
                     }`}
                     onClick={() => dimension.onToggle(choice.value)}
@@ -374,7 +374,7 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
         {totalSelected > 0 && (
           <button
             type="button"
-            className={`filter-panel-clear ${FOCUS} mt-0.5 flex h-7 items-center justify-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
+            className={`filter-panel-clear ${FOCUS} mt-0.5 flex h-7 items-center justify-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent-soft hover:text-foreground`}
             onClick={onClearAll}
           >
             {t('清除全部')}

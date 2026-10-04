@@ -113,7 +113,7 @@
    non-cursor hover pill stands down — exactly one lit surface — and a
    real pointer move clears the JS cursor so hover owns it again. The
    .search-panel prefix outranks the generic #73 row-hover tint in
-   motion.css (--surface-hover); same media guard as sidebar.css. */
+   motion.css (--accent-soft); same media guard as sidebar.css. */
 @media (hover: hover) and (pointer: fine) {
   .search-panel .search-row:hover {
     background: var(--row-selected);

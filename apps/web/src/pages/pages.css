@@ -404,6 +404,12 @@
   color: var(--stop);
 }
 
+/* P4 #791（§1.1）：删除行 hover 吃 danger 淡 tint（与 #73 家族的
+   more-menu 删除行同 token；普通行无 hover 面，只键盘 focus 面，不动）。 */
+.sched-card-menu-row[data-action="delete"]:hover {
+  background-color: var(--danger-soft);
+}
+
 /* t-0070: 菜单行是 div[role=menuitem]（Base UI Item 渲染元素），不在 #388
    全局环的 :where(button, a, [role="button"], …) 名单里，且原语 base 带
    outline-hidden——键盘 roving focus 的可见环按 #388 同配方 per-face 补钉。 */

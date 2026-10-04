@@ -807,8 +807,9 @@ export function NewTaskDialog({
                 {/* XMON-95 界面标识：常亮按键角标（kbd-hint 的 hover chip 是
                     另一面，这里要「看得到」，故静息可见）。落在 kbd.tsx 原语
                     上（COMPONENTS.md「文档正文里的按键角标用 kbd.tsx」），只把
-                    registry 的尺寸/配色档逐项改写到本面：本钮是 brand 档——实底 indigo
-                    + 白字，故边界/墨取白色系而非 border-border/muted-foreground。
+                    registry 的尺寸/配色档逐项改写到本面：本钮是 brand 档——实底
+                    品牌紫 + 主题字（--card-button/--text-on-accent），故边界/墨取
+                    白色系而非 border-border/muted-foreground。
                     aria-hidden：角标是视觉提示，按钮的可及名仍是文字本身。 */}
                 <Kbd
                   aria-hidden="true"

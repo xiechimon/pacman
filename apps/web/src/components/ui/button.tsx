@@ -10,17 +10,18 @@ import { cn } from 'cn';
 //    outline-color，会把 focus 环吞进过渡初值（#15 探针实测）。
 // 3) brand 档（#423 第一片真域接线）：仓内品牌实底 --card-button +
 //    --text-on-accent 白字，= 轨 A3 ui/Button primary 档等价迁移位（#426
-//    遗留的「brand 档裁决属铺开期」在此落地）。无 hover 档、disabled 换
-//    --spot-disabled 实底不降透明度——两形均逐 A3 原样，零漂移；官方
-//    neutral default 档不动。
+//    遗留的「brand 档裁决属铺开期」在此落地）。hover brightness(1.07)
+//   （base-ui-theme §1.1 P4 #791，不降透明度——disabled 由 pointer-events-none
+//    承接，hover 不命中）；disabled 换 --spot-disabled 实底不降透明度——两形
+//    均逐 A3 原样，零漂移；官方 neutral default 档不动。
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color] duration-150 select-none focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,filter] duration-150 select-none focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary/80',
         brand:
-          'bg-(--card-button) text-(--text-on-accent) disabled:bg-(--spot-disabled) disabled:opacity-100',
+          'bg-(--card-button) text-(--text-on-accent) hover:brightness-[1.07] disabled:bg-(--spot-disabled) disabled:opacity-100',
         outline:
           'border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
         secondary:

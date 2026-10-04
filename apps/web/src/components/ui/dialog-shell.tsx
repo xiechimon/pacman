@@ -189,7 +189,7 @@ export function DialogShell({
                 )}
                 {headerCenter}
                 <DialogPrimitive.Close
-                  className="dlg-close absolute right-3 flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
+                  className="dlg-close absolute right-3 flex size-6 items-center justify-center rounded-md text-muted-foreground"
                   aria-label={t('关闭')}
                   onClick={onClose}
                 >
