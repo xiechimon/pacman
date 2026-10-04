@@ -330,7 +330,10 @@ function Row({
                 Atom after viewing the live preview. Atom: a 16×16 shell
                 circle with three tilted orbits spinning inner rings, all
                 strokes in currentColor; duration={900} pins the cycle to
-                the old reel's period (the atom default is 1000ms). The
+                the old reel's period (the atom default is 1000ms). #821:
+                currentColor rides the spot solid (both themes follow) and
+                the root breathes (opacity/scale pulse, twice the spin
+                period); static under reduced motion. The
                 library's React-19 precedence stylesheet freezes the spins
                 under reduced motion, and its root carries aria-hidden — the
                 label text stays the accessible live cue, the animation is
