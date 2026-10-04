@@ -24,6 +24,10 @@ const SPEC_MD = [
   '- 悬停态加过渡',
   '- 移动端全宽',
   '',
+  '1. first step',
+  '2. second step',
+  '10. tenth step',
+  '',
   '```css',
   '.login-btn { border-radius: 8px; }',
   '```',
@@ -174,4 +178,38 @@ test('5. 有 spec 的 live 任务不再显示「尚无描述」；空 spec 保�
   await page.goto(`/app/todo/${BRIEF_EMPTY_ID}`);
   await expect(page.locator('.fresh-nodesc')).toBeVisible();
   await expect(page.locator('.spec-block')).toHaveCount(0);
+});
+
+test('6. 有序列表序号与正文区分、与首行基线对齐、双位数不 jog 内容列 (#814 rework)', async ({
+  page,
+}) => {
+  await stubWorld(page);
+  await page.goto(`/app/todo/${BRIEF_ID}`);
+  const rows = page.locator('.spec-block .chat-md-item--ordered');
+  await expect(rows).toHaveCount(3);
+  const pins = await rows.evaluateAll((els) =>
+    els.map((row) => {
+      const ord = row.querySelector('.chat-md-ordinal') as HTMLElement;
+      const content = row.querySelector('.chat-md-content') as HTMLElement;
+      const ordRect = ord.getBoundingClientRect();
+      const contentRect = content.getBoundingClientRect();
+      return {
+        rowAlign: getComputedStyle(row).alignItems,
+        ordColor: getComputedStyle(ord).color,
+        contentColor: getComputedStyle(content).color,
+        ordTop: ordRect.top,
+        contentTop: contentRect.top,
+        contentLeft: contentRect.left,
+      };
+    }),
+  );
+  // 序号与正文不同色（tertiary vs primary），同行基线对齐
+  for (const pin of pins) {
+    expect(pin.rowAlign).toBe('baseline');
+    expect(pin.ordColor).not.toBe(pin.contentColor);
+    expect(Math.abs(pin.ordTop - pin.contentTop)).toBeLessThanOrEqual(1);
+  }
+  // 1. / 2. / 10. 内容列同一起点（双位数不把整列往右 jog）
+  const lefts = pins.map((pin) => pin.contentLeft);
+  expect(Math.max(...lefts) - Math.min(...lefts)).toBeLessThanOrEqual(1);
 });
