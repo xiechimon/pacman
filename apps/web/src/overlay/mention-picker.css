@@ -436,3 +436,11 @@ a.mention-chip--agent {
   color: rgb(14 165 233);
   background: rgb(14 165 233 / 15%);
 }
+
+/* #812: file mentions (bare-path wire, no scheme) get the same chip face so
+   the composer strip renders them in the transcript chip family. Slate is
+   the neutral reference tone — readable on both themes. */
+.mention-chip--file {
+  color: rgb(100 116 139);
+  background: rgb(100 116 139 / 15%);
+}

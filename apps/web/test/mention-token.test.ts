@@ -11,10 +11,12 @@
 //      变 `hello [builder](agent:a1)@bu`——replaceEnd 修复后钉死）
 import { describe, expect, test } from 'vitest';
 import {
+  type FileMentionEntry,
   formatFileInsert,
   insertFileText,
   insertMentionText,
   type MentionToken,
+  parseDraftChips,
   parseMentionSegments,
   serializeMention,
 } from '../src/overlay/mention-token.js';
@@ -149,5 +151,95 @@ describe('insertFileText 裸路径插入（#760，CC rules 26-29 同构）', () 
     const r = insertFileText('', 'apps/web/src/foo(bar).ts', 0);
     const segs = parseMentionSegments(r.value);
     expect(segs.filter((s) => s.kind === 'mention')).toHaveLength(0);
+  });
+});
+
+// #812 composer chip strip 的数据源：draft 文本 → 有序 chip 行（scheme 五类
+// 走 parseMentionSegments，文件走名单精确匹配）。失败方式编号（票面"先列
+// 失败方式"）:
+//   C1 散文幻觉 chip：名单外的路径 / 词中子串必须零 chip
+//   C2 引号/目录形漏认：含空格引号包裹形、目录尾随 / 形必须命中
+//   C3 重叠双 chip：同一 span 被长短两名单项同时命中时只留最长
+//   C4 附件 token 误入：`![x](attachment:…)` 不是五 scheme，不得成 chip
+//   C5 顺序错乱：chip 行按 draft 出现序，strip 渲染与键序才能稳定
+const CHIP_FILES: FileMentionEntry[] = [
+  { path: 'apps/web/src/ui/button.tsx', type: 'blob' },
+  { path: 'apps/web/src/ui', type: 'tree' },
+  { path: 'docs/my notes.md', type: 'blob' },
+];
+
+describe('parseDraftChips（#812，C1–C5）', () => {
+  test('agent scheme 链成 chip（与 transcript 同形：label + id）', () => {
+    const chips = parseDraftChips('hi [builder](agent:a1) ', CHIP_FILES);
+    expect(chips).toHaveLength(1);
+    expect(chips[0]).toMatchObject({ kind: 'agent', id: 'a1', label: 'builder' });
+  });
+
+  test('todo scheme 链成 chip，裸 `#N` 散文不成 chip', () => {
+    expect(parseDraftChips('fix #12 today', CHIP_FILES)).toHaveLength(0);
+    const chips = parseDraftChips('see [#3](todo:t9) ', CHIP_FILES);
+    expect(chips).toHaveLength(1);
+    expect(chips[0]).toMatchObject({ kind: 'todo', id: 't9', label: '#3' });
+  });
+
+  test('文件裸路径（空白边界）成 chip（C1 正例）', () => {
+    const chips = parseDraftChips('see apps/web/src/ui/button.tsx ', CHIP_FILES);
+    expect(chips).toHaveLength(1);
+    expect(chips[0]).toMatchObject({
+      kind: 'file',
+      id: 'apps/web/src/ui/button.tsx',
+      label: 'apps/web/src/ui/button.tsx',
+    });
+  });
+
+  test('词中子串不成 chip（C1：前邻非空白）', () => {
+    expect(parseDraftChips('xapps/web/src/ui/button.tsx ', CHIP_FILES)).toHaveLength(0);
+  });
+
+  test('名单外路径不成 chip（C1）', () => {
+    expect(parseDraftChips('see nope/missing.ts ', CHIP_FILES)).toHaveLength(0);
+  });
+
+  test('含空格路径引号包裹形成 chip，label 去引号（C2）', () => {
+    const chips = parseDraftChips('open "docs/my notes.md" now', CHIP_FILES);
+    expect(chips).toHaveLength(1);
+    expect(chips[0]).toMatchObject({ kind: 'file', id: 'docs/my notes.md', label: 'docs/my notes.md' });
+  });
+
+  test('目录 label 尾随 / 成 chip（C2）', () => {
+    const chips = parseDraftChips('in apps/web/src/ui/ here', CHIP_FILES);
+    expect(chips).toHaveLength(1);
+    expect(chips[0]).toMatchObject({ kind: 'file', id: 'apps/web/src/ui', label: 'apps/web/src/ui/' });
+  });
+
+  test('重叠命中只留最长（C3：短项被斜杠/引号挡在边界外）', () => {
+    const overlapping: FileMentionEntry[] = [
+      { path: 'docs/my', type: 'blob' },
+      { path: 'docs/my notes.md', type: 'blob' },
+    ];
+    const chips = parseDraftChips('open "docs/my notes.md" now', overlapping);
+    expect(chips).toHaveLength(1);
+    expect(chips[0]).toMatchObject({ id: 'docs/my notes.md' });
+  });
+
+  test('附件 token 不成 chip（C4）', () => {
+    expect(parseDraftChips('![pic](attachment:abc123) ', CHIP_FILES)).toHaveLength(0);
+  });
+
+  test('chip 行按 draft 出现序（C5），同路径出现两次成两 chip', () => {
+    const chips = parseDraftChips(
+      'apps/web/src/ui/button.tsx vs [builder](agent:a1) and apps/web/src/ui/button.tsx ',
+      CHIP_FILES,
+    );
+    expect(chips).toHaveLength(3);
+    expect(chips[0]).toMatchObject({ kind: 'file', id: 'apps/web/src/ui/button.tsx' });
+    expect(chips[1]).toMatchObject({ kind: 'agent', id: 'a1' });
+    expect(chips[2]).toMatchObject({ kind: 'file', id: 'apps/web/src/ui/button.tsx' });
+  });
+
+  test('空 draft / 无名单 → 空行（strip 不挂载的依据）', () => {
+    expect(parseDraftChips('', CHIP_FILES)).toHaveLength(0);
+    expect(parseDraftChips('hi [builder](agent:a1) ')).toHaveLength(1);
+    expect(parseDraftChips('see apps/web/src/ui/button.tsx ')).toHaveLength(0);
   });
 });

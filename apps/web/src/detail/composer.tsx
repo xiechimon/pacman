@@ -38,6 +38,7 @@ import { useComposerWire } from '../overlay/composer-wire.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
 import type { FileMentionEntry } from '../overlay/mention-token.js';
 import { SlashHelp, SlashMenu } from '../overlay/slash-menu.js';
+import { ComposerChips } from './composer-chips.js';
 
 interface ComposerProps {
   placeholder: string;
@@ -214,6 +215,9 @@ export function Composer({
             listboxRef={inlineListboxRef}
             listboxId={inlineListboxId}
           />
+          {/* #812 选中确认 strip：listbox 关后把 draft 已落定提及渲染成
+              transcript 同形 chip（新 chip 轻过渡 pop）；弹层开时让路。 */}
+          <ComposerChips draft={draft} files={mentionFiles} suspended={inlineOpen || slashOpen} />
           {/* #731 `/` slash menu: same combobox anchor/geometry as the `@`
               listbox above. Click = Enter-with-highlight semantics. */}
           <SlashMenu

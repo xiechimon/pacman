@@ -1254,6 +1254,36 @@ textarea.composer-input::placeholder {
   text-align: center;
 }
 
+/* #812 composer mention-chip strip：选中落定的确认面——listbox 关后把
+   draft 里的提及渲染成 transcript 同形的 .mention-chip 行。盒外挂载
+   （与 listbox 同锚 bottom: calc(100% + 6px)），composer 76px 盒几何不动；
+   空行/弹层开时零节点（C6/C7）。display-only：pointer-events none，永不
+   拦截 transcript 与 listbox 的点击。 */
+.composer-chips {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  pointer-events: none;
+  /* local（#688 阶梯外）：strip 画在 composer 自己的 stacking context 里，
+     30 只需压住 composer 内部——listbox（40）在其上。 */
+  z-index: 30;
+}
+
+/* 长路径截断：label 收进内 span，省略号不断 chip 框（min-width: 0 允许
+   flex item 收缩到 max-width 之下）。 */
+.composer-chip-label {
+  display: block;
+  overflow: hidden;
+  min-width: 0;
+  max-width: 260px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .composer-send {
   position: absolute;
   right: 13px;
