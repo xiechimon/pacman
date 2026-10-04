@@ -3,9 +3,8 @@
 // 侧产，本层测「宿主机制」——relay 工具落库/溯源、watch-wake 三触发、驳回 v2
 // diff、双 Agent 分槽、绑定/记忆不迁移。[推断]/[设计] 项不冒充实测。
 
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   CHIEF_REMOTE_TOOLS,
   CHIEF_TOOL_NAMES,
@@ -14,7 +13,7 @@ import {
   CHIEF_WATCH_REASON_DISPATCH,
 } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
-import { afterAll, beforeEach, describe, expect, test } from 'vitest';
+import { beforeEach, describe, expect, test } from 'vitest';
 import {
   agentMemory,
   agent as agentTable,
@@ -22,6 +21,7 @@ import {
   chiefMessage,
   chief as chiefTable,
   chiefThread,
+  machine as machineTable,
   plan as planTable,
   step as stepTable,
   todo as todoTable,
@@ -61,9 +61,6 @@ function toolDeps() {
     reposDir: s.reposDir,
     attachmentsDir: s.attachmentsDir,
     skillsDir: s.skillsDir,
-    // #627：claude-code 模段读路径 = 隔离空 home（段空、确定性，不读测试机
-    // 真实 ~/.claude）；要 settings.json 行的测试经 relay opts 注入。
-    claudeHomeDir: claudeHome(),
   };
 }
 function ctx(over: Partial<ChiefToolCtx> = {}): ChiefToolCtx {
@@ -77,36 +74,22 @@ function ctx(over: Partial<ChiefToolCtx> = {}): ChiefToolCtx {
     ...over,
   };
 }
-async function relay(
-  name: string,
-  params: Record<string, unknown>,
-  over?: Partial<ChiefToolCtx>,
-  opts: { claudeHomeDir?: string } = {},
-) {
-  const text = await executeChiefTool(
-    { ...toolDeps(), ...(opts.claudeHomeDir !== undefined ? opts : {}) },
-    ctx(over),
-    name,
-    params,
-  );
+async function relay(name: string, params: Record<string, unknown>, over?: Partial<ChiefToolCtx>) {
+  const text = await executeChiefTool(toolDeps(), ctx(over), name, params);
   return JSON.parse(text) as unknown;
 }
 
-// #627 models 工具：claude-code 段 homeDir 注入位（mkdtemp 隔离目录，
-// 可选写入 settings.json 钉住槽位内容）。
-const claudeHomes: string[] = [];
-function claudeHome(settingsJson?: string): string {
-  const dir = mkdtempSync(join(tmpdir(), 'pacman-chief-models-'));
-  claudeHomes.push(dir);
-  if (settingsJson !== undefined) {
-    mkdirSync(join(dir, '.claude'), { recursive: true });
-    writeFileSync(join(dir, '.claude', 'settings.json'), settingsJson);
-  }
-  return dir;
+// #707 models 工具的 claude-code 行：执行机上报播种（machine 行直插
+// claudeCodeReport——上报语义，不读测试机真实 ~/.claude）。
+function seedMachineReport(
+  name: string,
+  report: { installed: boolean; hostname: string; models: { id: string; name: string }[] },
+): void {
+  s.db
+    .insert(machineTable)
+    .values({ id: `machine-${name}`, teamId, name, claudeCodeReport: report })
+    .run();
 }
-afterAll(() => {
-  for (const dir of claudeHomes.splice(0)) rmSync(dir, { recursive: true, force: true });
-});
 
 function seedAgent(id: string, description: string, modelId = 'stub-model') {
   s.db
@@ -997,15 +980,17 @@ describe('51 词表 relay 执行面（02 §4.3）', () => {
       ],
     });
     expect(provRes.status).toBe(201);
-    // claude-code 段：default 槽 + opus 槽同 id → 段内去重留一行；providers
-    // 段（gw-a 三行）一律不产候选行。
-    const home = claudeHome(
-      JSON.stringify({
-        model: 'claude-opus-4-5',
-        env: { ANTHROPIC_OPUS_MODEL: 'claude-opus-4-5' },
-      }),
-    );
-    const rows = (await relay('models', {}, undefined, { claudeHomeDir: home })) as {
+    // claude-code 段：上报行（default 槽 + opus 槽同 id → 段内去重留一行）；
+    // providers 段（gw-a 三行）一律不产候选行（#770）。
+    seedMachineReport('exec-1', {
+      installed: true,
+      hostname: 'exec-host-1',
+      models: [
+        { id: 'claude-opus-4-5', name: 'claude-opus-4-5' },
+        { id: 'claude-opus-4-5', name: 'claude-opus-4-5' },
+      ],
+    });
+    const rows = (await relay('models', {})) as {
       provider: string;
       providerLabel: string;
       modelId: string;
@@ -1021,7 +1006,7 @@ describe('51 词表 relay 执行面（02 §4.3）', () => {
     ]);
   });
 
-  test('models：custom provider 取名 claude-code 不再遮蔽 settings 行（#770）', async () => {
+  test('models：custom provider 取名 claude-code 不再遮蔽上报行（#770/#707）', async () => {
     const provRes = await req(s.app, 'POST', `/api/teams/${teamId}/providers`, {
       providerId: 'claude-code',
       label: '同名网关',
@@ -1030,14 +1015,18 @@ describe('51 词表 relay 执行面（02 §4.3）', () => {
       models: [{ id: 'm-cc', name: '同名行' }],
     });
     expect(provRes.status).toBe(201);
-    const home = claudeHome(JSON.stringify({ model: 'm-cc' }));
-    const rows = (await relay('models', {}, undefined, { claudeHomeDir: home })) as {
+    seedMachineReport('exec-1', {
+      installed: true,
+      hostname: 'exec-host-1',
+      models: [{ id: 'm-cc', name: 'm-cc' }],
+    });
+    const rows = (await relay('models', {})) as {
       provider: string;
       providerLabel: string;
       modelId: string;
       modelName: string;
     }[];
-    // providers 段已除：同名 provider 记录存在，但候选行取 settings 槽
+    // providers 段已除：同名 provider 记录存在，但候选行取执行机上报
     // （品牌 label 'Claude Code'，name 原样）。
     expect(rows).toEqual([
       { provider: 'claude-code', providerLabel: 'Claude Code', modelId: 'm-cc', modelName: 'm-cc' },

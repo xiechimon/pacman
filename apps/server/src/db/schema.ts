@@ -8,6 +8,7 @@ import type {
   Assignment,
   ChiefCompactionModel,
   ChiefWatch,
+  ClaudeCodeReport,
   DocumentDiffFile,
   Phase,
   ProjectRepoKind,
@@ -446,6 +447,11 @@ export const machine = sqliteTable('machine', {
    * 与 agent 层「远程 shell」开关双闸齐开才有 remote_shell（claim localTools
    * 组装 + 每命令预检复核本列）。 */
   shellEnabled: bool('shellEnabled').notNull().default(false),
+  /** 本机 claude-code 模型上报（#707）：daemon 读本机 settings.json 经
+   * enroll/presence 上行，server 按机器聚合进 model-sources。null = 从未
+   * 上报过（旧 daemon），封套缺席该机、不下发假清单。JSON 列（chief.watches
+   * 同形）。 */
+  claudeCodeReport: json<ClaudeCodeReport | null>('claudeCodeReport'),
 });
 
 // —— shell_command（XMON-108 R1 机器 shell 审计）：预检/回写两写端点的

@@ -6,9 +6,7 @@
 // 判定：协议环逐字段对拍（02 §4.3/§5.4 + r5 §3.1/§3.2/§3.5）；策略层文本由
 // LLM 侧产，此处以 relay params 直投模拟（黑盒逼近，04 §1 A4）。
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { rmSync } from 'node:fs';
 import type { ClaimedStep } from '@pacman/shared';
 import { CHIEF_TOOL_COUNT, claimedStepSchema } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
@@ -64,18 +62,21 @@ interface ChiefWorld {
   ): Promise<void>;
 }
 
-async function setupChiefWorld(opts?: { claudeHomeDir?: string }): Promise<ChiefWorld> {
-  const s = bootServer(
-    opts?.claudeHomeDir === undefined
-      ? { claimHoldMs: 200 }
-      : { claimHoldMs: 200, claudeHomeDir: opts.claudeHomeDir },
-  );
+async function setupChiefWorld(opts?: {
+  claudeCode?: { installed: boolean; hostname: string; models: { id: string; name: string }[] };
+}): Promise<ChiefWorld> {
+  const s = bootServer({ claimHoldMs: 200 });
   disposables.push(() => s.dispose());
   const teamId = s.team.id;
   const key = await issueApiKey(s);
   const enrollRes = await call(s.app, 'POST', '/api/machine/enroll', {
     cred: key,
-    body: { teamId, name: 'm4a-mbp', cliVersion: '0.1.0' },
+    body: {
+      teamId,
+      name: 'm4a-mbp',
+      cliVersion: '0.1.0',
+      ...(opts?.claudeCode !== undefined ? { claudeCode: opts.claudeCode } : {}),
+    },
   });
   const { token } = (await enrollRes.json()) as { token: string };
   // 绑定 Agent（带 modelId → 可派发；provider 面本环不断言）。
@@ -254,16 +255,18 @@ describe('M4a Chief 机器协议全环（02 §4.3/§5.4 + r5 §3.1/§3.2/§3.5�
   // #627 指定模型自主环：chief 先读候选（models）→ create_agent 用候选行
   // 的合法 provider/modelId → agents 读回命中。走真 relay wire
   // （POST /api/machine/tool → executeChiefTool）。#770 起候选只剩
-  // claude-code 段：本环用隔离 home 钉两槽位驱动全链。
+  // claude-code 段：本环用 enroll 上报钉两模型行驱动全链（#707）。
   test('models 取候选 → create_agent 用合法值 → agents 读回（#627）', async () => {
-    const home = mkdtempSync(join(tmpdir(), 'pacman-m4a-models-'));
-    disposables.push(() => rmSync(home, { recursive: true, force: true }));
-    mkdirSync(join(home, '.claude'), { recursive: true });
-    writeFileSync(
-      join(home, '.claude', 'settings.json'),
-      JSON.stringify({ model: 'model-a', env: { ANTHROPIC_OPUS_MODEL: 'model-b' } }),
-    );
-    const w = await setupChiefWorld({ claudeHomeDir: home });
+    const w = await setupChiefWorld({
+      claudeCode: {
+        installed: true,
+        hostname: 'm4a-mbp',
+        models: [
+          { id: 'model-a', name: 'model-a' },
+          { id: 'model-b', name: 'model-b' },
+        ],
+      },
+    });
 
     const claimed = await w.claim();
     // 词表下发含 models（#627 CHIEF_TOOLS_ADDED 登记，读侧 replaySafe）。
@@ -273,7 +276,7 @@ describe('M4a Chief 机器协议全环（02 §4.3/§5.4 + r5 §3.1/§3.2/§3.5�
     expect(modelsDef?.replaySafe).toBe(true);
     const stepId = claimed.step.id;
 
-    // —— relay models：claude-code 段两槽行（bootServer 隔离 home 钉槽位）——
+    // —— relay models：claude-code 段两上报行 ——
     const rows = (await w.relay(stepId, 'models', {})) as {
       provider: string;
       providerLabel: string;

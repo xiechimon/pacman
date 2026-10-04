@@ -5,6 +5,7 @@
 
 import {
   type ClaimedStep,
+  type ClaudeCodeReport,
   type MachineAttachmentResponse,
   type MachineDoneBody,
   type MachineEnrollResponse,
@@ -66,9 +67,10 @@ export interface MachineApi {
     name?: string;
     cliVersion?: string;
     apiKey: string;
+    claudeCode?: ClaudeCodeReport;
   }): Promise<MachineEnrollResponse>;
   me(): Promise<MachineRecord>;
-  presence(body: { cliVersion?: string }): Promise<void>;
+  presence(body: { cliVersion?: string; claudeCode?: ClaudeCodeReport }): Promise<void>;
   recover(): Promise<MachineRecoverResponse>;
   claim(signal?: AbortSignal): Promise<ClaimedStep | null>;
   heartbeat(stepId: string): Promise<void>;
@@ -188,6 +190,7 @@ export class MachineClient implements MachineApi {
     name?: string;
     cliVersion?: string;
     apiKey: string;
+    claudeCode?: ClaudeCodeReport;
   }): Promise<MachineEnrollResponse> {
     const { apiKey, ...rest } = body;
     return this.request<MachineEnrollResponse>('POST', '/api/machine/enroll', {
@@ -229,7 +232,7 @@ export class MachineClient implements MachineApi {
     });
   }
 
-  async presence(body: { cliVersion?: string }): Promise<void> {
+  async presence(body: { cliVersion?: string; claudeCode?: ClaudeCodeReport }): Promise<void> {
     await this.request('POST', '/api/machine/presence', {
       body,
       parse: (raw) => machineOkResponseSchema.parse(raw),

@@ -1,35 +1,20 @@
-// model-sources 端点对拍（spec 11 §A3/A4 + 数据契约，#356）：
-// GET /api/teams/:id/model-sources → { sources: [pi, claude-code] } 恰两段——
-// pi 段 = custom providers models[] 投影（installed 恒 true，server 在跑即
-// pacman 自有 runtime 可用）；claude-code 段 = server 端 fs 直读
-// ~/.claude/settings.json（model + env.ANTHROPIC_*_MODEL 槽），文件缺失/
-// 解析失败 → installed:false，不空报不崩。每次 GET 重读文件（无缓存），
-// 页面「实时反映 settings.json」语义由此承载。
-// homeDir 是服务层注入位：路由生产态缺省 os.homedir()，测试注入 mkdtemp 目录。
+// model-sources 端点对拍（spec 11 §A3/A4 + 数据契约，#356；#707 起
+// claude-code 段跟随执行机）：GET /api/teams/:id/model-sources → pi 一段 +
+// 每台上报过的机器一段 claude-code——pi 段 = custom providers models[]
+// 投影（installed 恒 true）；claude-code 段 = daemon 经 enroll/presence
+// 上行的本机 settings.json 解析结果（server 按机器聚合，不读本机文件）。
+// 失败方式（先于实现固化）：
+// F1 控制面配置不泄漏：上报值 ≠ server 本机值时，封套只含上报值。
+// F2 多机：两台机器各一段 + hostname 如实（按机器名排序）。
+// F3 无 claude-code 的机器：installed:false 段在、models 空。
+// F6 旧 daemon（从未上报）：段缺席，封套仍合法。
+// presence 更新即反映（30s 节拍实时语义的 server 侧）。
 
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { hostname, tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { hostname } from 'node:os';
 import { modelSourcesEnvelopeSchema } from '@pacman/shared';
-import { afterEach, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { getModelSources } from '../src/services/providers.js';
-import { bootServer, req, type TestServer } from './helpers.js';
-
-const cleanups: (() => void)[] = [];
-afterEach(() => {
-  for (const fn of cleanups.splice(0)) fn();
-});
-
-function tmpHome(): string {
-  const dir = mkdtempSync(join(tmpdir(), 'pacman-model-sources-'));
-  cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
-  return dir;
-}
-
-function writeSettings(home: string, content: string): void {
-  mkdirSync(join(home, '.claude'), { recursive: true });
-  writeFileSync(join(home, '.claude', 'settings.json'), content);
-}
+import { bootServer, issueApiKey, req, type TestServer } from './helpers.js';
 
 function modelSourcesPath(s: TestServer): string {
   return `/api/teams/${s.team.id}/model-sources`;
@@ -49,112 +34,132 @@ async function postProvider(s: TestServer): Promise<void> {
   expect(res.status).toBe(201);
 }
 
-describe('getModelSources（服务层，homeDir 注入）', () => {
-  test('全新库：恰 pi + claude-code 两段，pi.models 空，封套过 shared schema', () => {
+/** 注册一台机器换 token（machine wire 面）。 */
+async function enroll(s: TestServer, name: string, claudeCode?: unknown): Promise<string> {
+  const key = await issueApiKey(s);
+  const res = await s.app.request('/api/machine/enroll', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      teamId: s.team.id,
+      name,
+      cliVersion: '0.1.0',
+      ...(claudeCode !== undefined ? { claudeCode } : {}),
+    }),
+  });
+  expect(res.status).toBe(200);
+  return ((await res.json()) as { token: string }).token;
+}
+
+async function presence(token: string, s: TestServer, claudeCode: unknown): Promise<void> {
+  const res = await s.app.request('/api/machine/presence', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ cliVersion: '0.1.0', claudeCode }),
+  });
+  expect(res.status).toBe(200);
+}
+
+function report(host: string, models: { id: string; name: string; slot?: string }[]) {
+  return { installed: models.length > 0, hostname: host, models };
+}
+
+describe('getModelSources（服务层，按机器聚合）', () => {
+  test('全新库：仅 pi 一段（无上报机器时无 claude-code 段），封套过 shared schema', () => {
     const s = bootServer();
-    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id, tmpHome());
+    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id);
     expect(modelSourcesEnvelopeSchema.safeParse(env).success).toBe(true);
-    expect(env.sources.map((src) => src.runtime)).toEqual(['pi', 'claude-code']);
-    const pi = env.sources.find((src) => src.runtime === 'pi');
-    expect(pi?.installed).toBe(true);
-    expect(pi?.hostname).toBe(hostname());
-    expect(pi?.models).toEqual([]);
+    expect(env.sources.map((src) => src.runtime)).toEqual(['pi']);
+    expect(env.sources[0]?.installed).toBe(true);
+    expect(env.sources[0]?.hostname).toBe(hostname());
+    expect(env.sources[0]?.models).toEqual([]);
+    s.dispose();
   });
 
   test('pi 段 = custom providers models[] 投影（id/name 原样，跨 provider 平铺）', async () => {
     const s = bootServer();
     await postProvider(s);
-    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id, tmpHome());
+    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id);
     const pi = env.sources.find((src) => src.runtime === 'pi');
     expect(pi?.models).toEqual([
       { id: 'model-a', name: '模型甲' },
       { id: 'model-b', name: '模型乙' },
     ]);
+    s.dispose();
   });
 
-  test('claude-code：settings.json 缺失 → installed:false + models 空', () => {
+  test('F1：执行机上报值进段——server 本机文件不读，段 hostname/模型 = 上报值', async () => {
     const s = bootServer();
-    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id, tmpHome());
+    const token = await enroll(s, 'exec-1');
+    await presence(token, s, report('exec-host-1', [{ id: 'exec-model', name: 'exec-model' }]));
+    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id);
+    expect(modelSourcesEnvelopeSchema.safeParse(env).success).toBe(true);
+    expect(env.sources.map((src) => src.runtime)).toEqual(['pi', 'claude-code']);
+    const cc = env.sources.find((src) => src.runtime === 'claude-code');
+    expect(cc?.hostname).toBe('exec-host-1');
+    expect(cc?.installed).toBe(true);
+    expect(cc?.models).toEqual([{ id: 'exec-model', name: 'exec-model' }]);
+    s.dispose();
+  });
+
+  test('F2：两台机器各一段 + hostname 如实（按机器名排序）', async () => {
+    const s = bootServer();
+    const tokenB = await enroll(s, 'exec-b');
+    const tokenA = await enroll(s, 'exec-a');
+    await presence(tokenB, s, report('host-b', [{ id: 'model-b', name: 'model-b' }]));
+    await presence(tokenA, s, report('host-a', [{ id: 'model-a', name: 'model-a' }]));
+    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id);
+    const segments = env.sources.filter((src) => src.runtime === 'claude-code');
+    expect(segments).toHaveLength(2);
+    expect(segments.map((seg) => seg.hostname)).toEqual(['host-a', 'host-b']);
+    expect(segments.map((seg) => seg.models[0]?.id)).toEqual(['model-a', 'model-b']);
+    s.dispose();
+  });
+
+  test('F3：无 claude-code 的机器报 installed:false（段在、models 空）', async () => {
+    const s = bootServer();
+    const token = await enroll(s, 'exec-plain');
+    await presence(token, s, { installed: false, hostname: 'plain-host', models: [] });
+    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id);
     const cc = env.sources.find((src) => src.runtime === 'claude-code');
     expect(cc?.installed).toBe(false);
+    expect(cc?.hostname).toBe('plain-host');
     expect(cc?.models).toEqual([]);
-    expect(cc?.hostname).toBe(hostname());
+    s.dispose();
   });
 
-  test('claude-code：model + env.ANTHROPIC_*_MODEL 槽解析（中段小写化）', () => {
+  test('F6：从未上报的机器（旧 daemon）缺席——enroll 不带 claudeCode 即无段', async () => {
     const s = bootServer();
-    const home = tmpHome();
-    writeSettings(
-      home,
-      JSON.stringify({
-        model: 'claude-opus-4-5',
-        env: {
-          ANTHROPIC_OPUS_MODEL: 'claude-opus-4-1',
-          ANTHROPIC_SMALL_FAST_MODEL: 'claude-haiku-4-5',
-          ANTHROPIC_BASE_URL: 'https://not-a-model-slot.example.com',
-        },
-      }),
-    );
-    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id, home);
-    const cc = env.sources.find((src) => src.runtime === 'claude-code');
-    expect(cc?.installed).toBe(true);
-    expect(cc?.models).toEqual([
-      { id: 'claude-opus-4-5', name: 'claude-opus-4-5', slot: 'default' },
-      { id: 'claude-opus-4-1', name: 'claude-opus-4-1', slot: 'opus' },
-      { id: 'claude-haiku-4-5', name: 'claude-haiku-4-5', slot: 'small-fast' },
-    ]);
+    await enroll(s, 'legacy-1');
+    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id);
+    expect(env.sources.map((src) => src.runtime)).toEqual(['pi']);
+    s.dispose();
   });
 
-  test('claude-code：非法 JSON → installed:false（不抛）；非对象 JSON 同律', () => {
+  test('presence 更新即反映：改上报后内容立即变（30s 节拍实时语义）', async () => {
     const s = bootServer();
-    const badJson = tmpHome();
-    writeSettings(badJson, '{ not json');
-    let cc = getModelSources({ db: s.db, box: s.secretBox }, s.team.id, badJson).sources.find(
-      (src) => src.runtime === 'claude-code',
-    );
-    expect(cc?.installed).toBe(false);
-
-    const arrayJson = tmpHome();
-    writeSettings(arrayJson, '["claude-opus-4-5"]');
-    cc = getModelSources({ db: s.db, box: s.secretBox }, s.team.id, arrayJson).sources.find(
-      (src) => src.runtime === 'claude-code',
-    );
-    expect(cc?.installed).toBe(false);
-  });
-
-  test('claude-code：槽值非字符串/空串跳过该槽，installed 仍 true', () => {
-    const s = bootServer();
-    const home = tmpHome();
-    writeSettings(
-      home,
-      JSON.stringify({
-        model: '',
-        env: { ANTHROPIC_OPUS_MODEL: 42, ANTHROPIC_SONNET_MODEL: 'claude-sonnet-5' },
-      }),
-    );
-    const cc = getModelSources({ db: s.db, box: s.secretBox }, s.team.id, home).sources.find(
-      (src) => src.runtime === 'claude-code',
-    );
-    expect(cc?.installed).toBe(true);
-    expect(cc?.models).toEqual([
-      { id: 'claude-sonnet-5', name: 'claude-sonnet-5', slot: 'sonnet' },
-    ]);
-  });
-
-  test('每次调用重读文件：改 settings.json 后内容立即反映（实时语义）', () => {
-    const s = bootServer();
-    const home = tmpHome();
-    writeSettings(home, JSON.stringify({ model: 'claude-opus-4-5' }));
+    const token = await enroll(s, 'exec-1');
+    await presence(token, s, report('exec-host-1', [{ id: 'model-old', name: 'model-old' }]));
     const deps = { db: s.db, box: s.secretBox };
-    const before = getModelSources(deps, s.team.id, home).sources.find(
+    const before = getModelSources(deps, s.team.id).sources.find(
       (src) => src.runtime === 'claude-code',
     );
-    writeSettings(home, JSON.stringify({ model: 'claude-sonnet-5' }));
-    const after = getModelSources(deps, s.team.id, home).sources.find(
+    await presence(token, s, report('exec-host-1', [{ id: 'model-new', name: 'model-new' }]));
+    const after = getModelSources(deps, s.team.id).sources.find(
       (src) => src.runtime === 'claude-code',
     );
-    expect(before?.models[0]?.id).toBe('claude-opus-4-5');
-    expect(after?.models[0]?.id).toBe('claude-sonnet-5');
+    expect(before?.models[0]?.id).toBe('model-old');
+    expect(after?.models[0]?.id).toBe('model-new');
+    s.dispose();
+  });
+
+  test('enroll 即带上报：首个 presence 前已有段', async () => {
+    const s = bootServer();
+    await enroll(s, 'exec-1', report('exec-host-1', [{ id: 'm-early', name: 'm-early' }]));
+    const env = getModelSources({ db: s.db, box: s.secretBox }, s.team.id);
+    const cc = env.sources.find((src) => src.runtime === 'claude-code');
+    expect(cc?.models).toEqual([{ id: 'm-early', name: 'm-early' }]);
+    s.dispose();
   });
 });
 
@@ -165,11 +170,14 @@ describe('GET /api/teams/:id/model-sources（路由面）', () => {
     expect(res.status).toBe(404);
     const body = (await res.json()) as Record<string, unknown>;
     expect(Object.keys(body)).toEqual(['error']);
+    s.dispose();
   });
 
-  test('200：恰两段 + 元素形状（installed/hostname 机器相关位只钉类型）', async () => {
+  test('200：pi 首段 + 上报机段 + 元素形状', async () => {
     const s = bootServer();
     await postProvider(s);
+    const token = await enroll(s, 'exec-1');
+    await presence(token, s, report('exec-host-1', [{ id: 'exec-model', name: 'exec-model' }]));
     const res = await req(s.app, 'GET', modelSourcesPath(s));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
@@ -180,8 +188,8 @@ describe('GET /api/teams/:id/model-sources（路由面）', () => {
     const pi = body.sources.find((src) => src.runtime === 'pi');
     expect(pi?.models).toHaveLength(2);
     const cc = body.sources.find((src) => src.runtime === 'claude-code');
-    expect(typeof cc?.installed).toBe('boolean');
-    expect(typeof cc?.hostname).toBe('string');
-    expect(cc?.hostname).not.toBe('');
+    expect(cc?.installed).toBe(true);
+    expect(cc?.hostname).toBe('exec-host-1');
+    s.dispose();
   });
 });

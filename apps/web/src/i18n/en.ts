@@ -563,11 +563,11 @@ export const EN: Record<string, string> = {
   // #385 族表未接线的 OAuth preset 行注记(如 openai-codex)
   暂未开通: 'Not yet available',
   // #356 runtime tabs(spec 11 §A1-A4;tab 名 pi/Claude Code 不译,槽位名
-  // default/opus/… 为配置标识符不译;{hostname} = server 机器名插值)
+  // default/opus/… 为配置标识符不译;{hostname} = 上报机器名插值)
   'pacman 自有运行时。模型来自你添加的服务商。':
     "pacman's own runtime. Models come from the providers you add.",
-  '本机 Claude Code 配置（~/.claude/settings.json）的模型槽。':
-    "Model slots from this machine's Claude Code configuration (~/.claude/settings.json).",
+  '执行机 Claude Code 配置（~/.claude/settings.json）的模型槽。':
+    'Model slots from the executor machine’s Claude Code config (~/.claude/settings.json).',
   '已安装在 {hostname}': 'Installed on {hostname}',
   未安装: 'Not installed',
   '安装 Claude Code 并完成一次登录后，此处自动展示其模型槽。':
@@ -575,6 +575,7 @@ export const EN: Record<string, string> = {
   '尚未添加服务商。添加后，服务商的模型会出现在这里。':
     'No providers yet. Once you add one, its models appear here.',
   'settings.json 未配置模型槽。': 'No model slots configured in settings.json.',
+  '尚无执行机上报模型信息。': 'No executor has reported model info yet.',
   // #231/#243 OAuth 落地 reason 三译(providers-page 喂 connectError 行)
   '授权已被取消。': 'Authorization was cancelled.',
   '令牌交换失败，请稍后重试。': 'Token exchange failed — please try again.',
