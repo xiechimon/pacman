@@ -68,6 +68,16 @@ import {
 } from './completion.js';
 import type { MentionGroups } from './mention-picker.js';
 import { insertMentionText, type MentionToken } from './mention-token.js';
+import {
+  type BuiltinSlashName,
+  buildSlashSections,
+  insertSlashText,
+  isMessageStart,
+  resolveSlashAccept,
+  SLASH_COMPLETION_SPEC,
+  type SlashRow,
+  type SlashSection,
+} from './slash-commands.js';
 
 export interface ComposerWireOptions {
   /** Live editable face: enables the inline @-query detection on change.
@@ -91,6 +101,16 @@ export interface ComposerWireOptions {
   /** Entity groups feeding both mention paths (#311). Absent = the inline
    *  listbox never opens and the picker shows zero counts. */
   mentionGroups?: MentionGroups;
+  /** Slash-command face (#731). Absent = the `/` detector never runs
+   *  (chief face keeps its current behavior). `reviewAvailable` /
+   *  `stopAvailable` must mirror the toolbar buttons' own display
+   *  conditions so the menu never lists a dead row. */
+  slash?: {
+    reviewAvailable: boolean;
+    stopAvailable: boolean;
+    onReview?: () => void;
+    onStop?: () => void;
+  };
 }
 
 export interface ComposerWire {
@@ -157,6 +177,30 @@ export interface ComposerWire {
   closeInline: () => void;
   /** Insert one mention token at the caret (or over the detected `@query`). */
   insertToken: (token: MentionToken) => void;
+  /** Slash-command menu state (#731, detail face only). Sections carry the
+   *  partition (builtins first, then skills); `slashRows` is the same rows
+   *  flattened for highlight indexing. A zero total means the empty state. */
+  slashOpen: boolean;
+  slashQuery: string;
+  /** Start offset of the detected `/` token (listbox data-caret anchor). */
+  slashCaret: number | null;
+  slashSections: SlashSection[];
+  slashRows: SlashRow[];
+  slashHighlight: number | null;
+  setSlashHighlight: (index: number | null) => void;
+  slashListboxId: string;
+  slashListboxRef: RefObject<HTMLDivElement | null>;
+  closeSlash: () => void;
+  /** Accept a slash row the way Enter/Tab-with-highlight would (`via`
+   *  selects run-vs-insert per the approved semantics). */
+  acceptSlashRow: (row: SlashRow, via: 'enter' | 'tab') => void;
+  /** `/help` panel open state (an execute builtin like the rest). */
+  helpOpen: boolean;
+  closeHelp: () => void;
+  /** Rows for the help panel: the currently available builtins. */
+  helpRows: SlashRow[];
+  /** Team-skill count for the help panel footer line. */
+  helpSkillCount: number;
   /** Batched insert for the popover multi-select: every token composes in
    *  ONE draft update at the evolving caret. The old per-token loop read
    *  the same stale draft closure per call, so only the last token of a
@@ -187,6 +231,7 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     onSend,
     onAttachment,
     mentionGroups,
+    slash: slashOptions,
   } = options;
 
   const [internalDraft, setInternalDraft] = useState('');
@@ -224,6 +269,22 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
   const agentCount = mentionGroups?.agent.length ?? 0;
   const inlineOpen = inlineRange !== null && agentCount > 0;
 
+  // Slash-command completion state (#731). Mirrors the inline `@` shape:
+  // a ref mirror for synchronous event reads, an Esc-dismissed marker so
+  // the dismissing key's own keyup cannot reopen, and a null highlight
+  // (the top row is NOT preselected — Enter without highlight sends).
+  // The two detectors are mutually exclusive by construction (S3); the
+  // apply functions additionally cross-clear so a stale sibling can never
+  // leave two popups open at once (failure mode 4).
+  const [slashRange, setSlashRange] = useState<CompletionRange | null>(null);
+  const slashRangeRef = useRef<CompletionRange | null>(null);
+  const dismissedSlashRef = useRef<CompletionRange | null>(null);
+  const [slashHighlight, setSlashHighlight] = useState<number | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const slashListboxId = useId();
+  const slashListboxRef = useRef<HTMLDivElement | null>(null);
+  const slashEnabled = editable && slashOptions !== undefined;
+
   // Mirror of the freshest committed draft (#729): an upload resolving
   // seconds after the paste must insert into the text as it stands now —
   // the render-scoped `draft` closure would be stale and eat everything
@@ -250,6 +311,11 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
         if (sameRange(dismissed, next)) return;
         dismissedRangeRef.current = null;
       }
+      // Opening the `@` menu retires a stale slash token (mirror of the
+      // slash face's cross-clear above).
+      slashRangeRef.current = null;
+      setSlashRange(null);
+      setSlashHighlight(null);
     }
     inlineRangeRef.current = next;
     setInlineRange(next);
@@ -262,15 +328,53 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     applyRange(null);
   }, [applyRange]);
 
+  const applySlashRange = useCallback((next: CompletionRange | null) => {
+    const prev = slashRangeRef.current;
+    if (prev === next) return;
+    if (prev !== null && next !== null && sameRange(prev, next)) return;
+    if (next !== null) {
+      const dismissed = dismissedSlashRef.current;
+      if (dismissed !== null) {
+        if (sameRange(dismissed, next)) return;
+        dismissedSlashRef.current = null;
+      }
+      // Opening the slash menu retires a stale `@` token (and Esc on the
+      // `@` face retires a stale slash token via applyRange's mirror).
+      inlineRangeRef.current = null;
+      setInlineRange(null);
+      setInlineHighlight(null);
+    }
+    slashRangeRef.current = next;
+    setSlashRange(next);
+    setSlashHighlight(null);
+  }, []);
+
+  const closeSlash = useCallback(() => {
+    applySlashRange(null);
+  }, [applySlashRange]);
+
+  const closeHelp = useCallback(() => {
+    setHelpOpen(false);
+  }, []);
+
   /** Re-judge the token from the live DOM value + caret. Runs on change,
-   *  on caret-only moves (keyup / click / select) and after IME commit. */
+   *  on caret-only moves (keyup / click / select) and after IME commit.
+   *  Slash is judged first; a live slash token suppresses the `@` face. */
   const reevaluate = useCallback(() => {
     if (!editable) return;
     const ta = textareaRef.current;
     if (ta == null) return;
     const caret = ta.selectionStart ?? ta.value.length;
+    if (slashEnabled) {
+      const slash = detectCompletionToken(ta.value, caret, SLASH_COMPLETION_SPEC);
+      if (slash !== null) {
+        applySlashRange(slash);
+        return;
+      }
+      applySlashRange(null);
+    }
     applyRange(detectCompletionToken(ta.value, caret, MENTION_COMPLETION_SPEC));
-  }, [editable, applyRange]);
+  }, [editable, slashEnabled, applySlashRange, applyRange]);
 
   // Fuzzy-filter the agents by the query (CC rules 14-18: subsequence +
   // smart case + boundary bonus, capped at 15); an empty query lists the
@@ -279,6 +383,41 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     if (inlineRange === null || mentionGroups == null) return [];
     return fuzzyFilter(inlineRange.query, mentionGroups.agent, (a) => a.label);
   }, [inlineRange, mentionGroups]);
+
+  // Slash menu rows (#731): builtins gated by availability, then skills in
+  // roster order. Flat rows drive the single highlight index across both
+  // sections. The menu stays open on a zero total to show the empty state.
+  const slashSections: SlashSection[] = useMemo(() => {
+    if (slashRange === null || !slashEnabled) return [];
+    return buildSlashSections({
+      query: slashRange.query,
+      available: {
+        review: slashOptions?.reviewAvailable === true,
+        stop: slashOptions?.stopAvailable === true,
+      },
+      skills: (mentionGroups?.skill ?? []).map((s) => ({
+        id: s.id,
+        name: s.label,
+        ...(s.subtitle != null ? { description: s.subtitle } : {}),
+      })),
+    });
+  }, [slashRange, slashEnabled, slashOptions, mentionGroups]);
+  const slashRows = useMemo(() => slashSections.flatMap((s) => s.rows), [slashSections]);
+  const slashOpen = slashRange !== null && slashEnabled;
+  const slashQuery = slashRange?.query ?? '';
+  const helpSkillCount = mentionGroups?.skill.length ?? 0;
+  const helpRows = useMemo(
+    () =>
+      buildSlashSections({
+        query: '',
+        available: {
+          review: slashOptions?.reviewAvailable === true,
+          stop: slashOptions?.stopAvailable === true,
+        },
+        skills: [],
+      }).flatMap((s) => s.rows),
+    [slashOptions],
+  );
 
   const send = () => {
     // Attachment upload in flight: the send is blocked so a message can
@@ -427,6 +566,10 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
    *  after detection would eat neighbouring text. All tokens compose in one
    *  draft update at the evolving caret (multi-select popover path). */
   const insertTokens = (tokens: MentionToken[]) => {
+    insertTokensAt(tokens, inlineOpen ? inlineRangeRef.current : null);
+  };
+
+  const insertTokensAt = (tokens: MentionToken[], range: CompletionRange | null) => {
     if (tokens.length === 0) return;
     const ta = textareaRef.current;
     if (ta == null) {
@@ -437,10 +580,10 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
       });
       return;
     }
-    const range = inlineOpen ? inlineRangeRef.current : null;
     const start = range !== null ? range.start : (ta.selectionStart ?? ta.value.length);
     const replaceEnd = range !== null ? range.end : undefined;
     closeInline();
+    closeSlash();
     pendingInsertRef.current = null;
     setDraft((current) => {
       let value = current;
@@ -460,16 +603,112 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
 
   const insertToken = (token: MentionToken) => insertTokens([token]);
 
+  /** Run a builtin execute command (#731). Every entry maps to a live
+   *  composer action — there are no placeholder rows (D1). */
+  const runBuiltin = (name: BuiltinSlashName) => {
+    closeSlash();
+    switch (name) {
+      case 'clear':
+        setDraft('');
+        break;
+      case 'attach':
+        openFilePicker();
+        break;
+      case 'mention':
+        setPickerOpen(true);
+        break;
+      case 'review':
+        slashOptions?.onReview?.();
+        break;
+      case 'stop':
+        slashOptions?.onStop?.();
+        break;
+      case 'help':
+        setHelpOpen(true);
+        break;
+    }
+  };
+
+  /** Replace the `/query` span with literal `/name ` text (rule 60) —
+   *  the mid-prompt and Tab shape that never runs anything. Caret restore
+   *  rides pendingInsertRef like the mention path. */
+  const insertSlashLiteral = (name: string) => {
+    const range = slashRangeRef.current;
+    if (range === null) return;
+    closeSlash();
+    pendingInsertRef.current = null;
+    setDraft((current) => {
+      // The range was detected against an older value; clamp it the way the
+      // mention path does instead of recomputing (failure mode 5 family).
+      const start = Math.max(0, Math.min(range.start, current.length));
+      const end = Math.max(start, Math.min(range.end, current.length));
+      const inserted = insertSlashText(current, { start, end, query: range.query }, name);
+      pendingInsertRef.current = { value: inserted.value, caret: inserted.caret };
+      return inserted.value;
+    });
+  };
+
+  /** Accept one slash row per the approved semantics: message-start Enter
+   *  on an execute row runs it; skill rows insert their token; everything
+   *  else lands literal `/name ` text. */
+  const acceptSlashRow = (row: SlashRow, via: 'enter' | 'tab') => {
+    const range = slashRangeRef.current;
+    if (range === null) return;
+    const ta = textareaRef.current;
+    const value = ta?.value ?? '';
+    const action = resolveSlashAccept({
+      name: row.name,
+      kind: row.kind,
+      atStart: isMessageStart(value, range.start),
+      via,
+    });
+    if (action === 'run' && row.builtin !== undefined) {
+      runBuiltin(row.builtin);
+      return;
+    }
+    if (action === 'insert-token' && row.skillId !== undefined) {
+      const skill = mentionGroups?.skill.find((s) => s.id === row.skillId);
+      insertTokensAt([{ kind: 'skill', id: row.skillId, label: skill?.label ?? row.name }], range);
+      return;
+    }
+    insertSlashLiteral(row.name);
+  };
+
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const next = event.target.value;
     setDraft(next);
     if (!editable) return;
-    const caret = event.target.selectionStart ?? next.length;
-    applyRange(detectCompletionToken(next, caret, MENTION_COMPLETION_SPEC));
+    reevaluate();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     const isComposing = event.nativeEvent.isComposing;
+    // Slash face first (#731): while its menu is open the completion keys
+    // belong to it; the `@` face only runs when slash is closed (the two
+    // detectors never co-open, failure mode 4).
+    if (slashOpen) {
+      const slashIntent = completionKeyIntent(
+        { key: event.key, shiftKey: event.shiftKey, isComposing },
+        { open: true, highlight: slashHighlight, matchCount: slashRows.length },
+      );
+      if (slashIntent.kind !== 'ignore') event.preventDefault();
+      if (slashIntent.kind === 'dismiss') {
+        dismissedSlashRef.current = slashRangeRef.current;
+        closeSlash();
+        return;
+      }
+      if (slashIntent.kind === 'navigate') {
+        setSlashHighlight(slashIntent.index);
+        return;
+      }
+      if (slashIntent.kind === 'accept') {
+        const picked = slashRows[slashIntent.index];
+        if (picked != null) {
+          acceptSlashRow(picked, event.key === 'Tab' ? 'tab' : 'enter');
+        }
+        return;
+      }
+    }
     const intent = completionKeyIntent(
       { key: event.key, shiftKey: event.shiftKey, isComposing },
       { open: inlineOpen, highlight: inlineHighlight, matchCount: inlineAgents.length },
@@ -508,21 +747,25 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
   // Outside pointer-down dismiss (web adaptation, #727 @7): clicks anywhere
   // except the textarea (caret re-evaluation handles those) and the listbox
   // itself (row clicks handle those) close the popup. Capture phase so an
-  // inner stopPropagation cannot swallow the dismiss.
+  // inner stopPropagation cannot swallow the dismiss. Covers both the `@`
+  // and the `/` faces (#731).
   useEffect(() => {
-    if (!inlineOpen) return;
+    if (!inlineOpen && !slashOpen) return;
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
       if (target == null) return;
       const ta = textareaRef.current;
-      if (ta != null && ta.contains(target)) return;
+      if (ta?.contains(target)) return;
       const box = inlineListboxRef.current;
-      if (box != null && box.contains(target)) return;
+      if (box?.contains(target)) return;
+      const slashBox = slashListboxRef.current;
+      if (slashBox?.contains(target)) return;
       closeInline();
+      closeSlash();
     };
     document.addEventListener('pointerdown', onPointerDown, true);
     return () => document.removeEventListener('pointerdown', onPointerDown, true);
-  }, [inlineOpen, closeInline]);
+  }, [inlineOpen, slashOpen, closeInline, closeSlash]);
 
   const groups = mentionGroups ?? EMPTY_GROUPS;
 
@@ -534,7 +777,10 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     handleKeyDown,
     handleCaretMoved: reevaluate,
     handleCompositionEnd: reevaluate,
-    handleBlur: closeInline,
+    handleBlur: () => {
+      closeInline();
+      closeSlash();
+    },
     textareaRef,
     fileInputRef,
     openFilePicker,
@@ -556,5 +802,20 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     insertToken,
     insertTokens,
     groups,
+    slashOpen,
+    slashQuery,
+    slashCaret: slashRange?.start ?? null,
+    slashSections,
+    slashRows,
+    slashHighlight,
+    setSlashHighlight,
+    slashListboxId,
+    slashListboxRef,
+    closeSlash,
+    acceptSlashRow,
+    helpOpen,
+    closeHelp,
+    helpRows,
+    helpSkillCount,
   };
 }
