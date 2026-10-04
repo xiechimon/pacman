@@ -24,6 +24,10 @@ import { expect, type Page, test } from '@playwright/test';
 //  F-R16 气泡节奏塌——单行纯文本 live 气泡几何漂移（44px 药丸 = 10px padding
 //        ×2 + 24px 行盒）；多块气泡首/尾块 margin 与 padding 叠出双倍留白
 //  F-R17 fixture 捕获面用户气泡漂移——无槽行被误进 markdown 路径（DOM 不稳）
+// #822 在飞存在行可展开（箭头是死的 → 点开展示实时步骤；mapper 缝的钉在
+// test/chief-flight-expand.test.ts F-E1..E6）：
+//  F-R18 行本体是 button（aria-expanded 开关）→ 展开面 = 正在调用的工具 +
+//        本轮已落库工具行；Enter 可收；typing 接管/终稿落库两帧展开态零残留
 //
 // live 面手法 = notify-click.spec 的替身 EventSource + 路由 mock（SSE 帧
 // 程序化注入，不经网络）；fixture 面 = 'chief-md' 命名场景（md-toolout 先例）。
@@ -129,7 +133,12 @@ const FINAL_ROW = { id: 'm9', role: 'assistant', content: '验证完成，**全�
 
 function mockChiefLiveApi(
   page: Page,
-  state: { final: boolean; messages?: { id: string; role: 'user' | 'assistant'; content: string; createdAt: number }[] },
+  state: {
+    final: boolean;
+    messages?: { id: string; role: string; content: unknown; createdAt: number }[];
+    // #822 F-R18：在飞展开面数据源覆写（activeRun.tool 工具名投影）。
+    activeRun?: { phase: string; tool?: { toolName: string } };
+  },
 ) {
   const json = (body: unknown) => ({
     contentType: 'application/json',
@@ -141,7 +150,8 @@ function mockChiefLiveApi(
     if (p === '/api/user/me') return route.fulfill(json(USER));
     if (p === '/api/teams/t1/notifications')
       return route.fulfill(json({ unreadThreadIds: [] }));
-    if (p === '/api/teams/t1/chief/threads') return route.fulfill(json([THREAD]));
+    if (p === '/api/teams/t1/chief/threads')
+      return route.fulfill(json([{ ...THREAD, activeRun: state.activeRun ?? THREAD.activeRun }]));
     if (p === '/api/teams/t1/chief') {
       return route.fulfill(
         json({
@@ -163,9 +173,10 @@ function mockChiefLiveApi(
       );
     }
     if (p === '/api/conversations/chief-bbb/messages') {
-      return route.fulfill(
-        json({ messages: state.messages ?? (state.final ? [USER_ROW, FINAL_ROW] : [USER_ROW]) }),
-      );
+      // 自定义 messages 原样返回（F-R12 旧语义：final 不再补 FINAL_ROW）；
+      // 缺省集：未决 [USER_ROW] / 终稿 [USER_ROW, FINAL_ROW]。
+      const messages = state.messages ?? (state.final ? [USER_ROW, FINAL_ROW] : [USER_ROW]);
+      return route.fulfill(json({ messages }));
     }
     // #741 F-R15：身份 chip 点击全链——Agent 详情页的记录读面。
     if (p === '/api/teams/t1/agents/agent-1') return route.fulfill(json(AGENT));
@@ -444,6 +455,74 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
     await es.emit({ type: 'message', message: FINAL_ROW });
     await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
     await expect(drawer.locator('.chief-msg', { hasText: '正在验证' })).toHaveCount(0);
+    const final = drawer.locator('.chief-msg').last();
+    await expect(final.locator('strong', { hasText: '全部通过' })).toHaveCount(1);
+  });
+
+  test('F-R18: 在飞存在行可展开（#822）——点箭头看实时步骤，typing 接管不泄漏', async ({
+    page,
+  }) => {
+    await stubEventSource(page);
+    await stubDicebear(page);
+    await stubCdnAvatar(page);
+    // activeRun 带 tool 位 + 本轮已落库工具行 = 展开面两件现货（无新 wire）。
+    const state = {
+      final: false,
+      activeRun: { phase: 'chief', tool: { toolName: 'machines' } },
+      messages: [
+        USER_ROW,
+        {
+          id: 'm5',
+          role: 'assistant',
+          content: {
+            kind: 'toolcall',
+            call: { id: 'c-m5', name: 'todo_write', arguments: {}, startedAt: 3, endedAt: 5000 },
+          },
+          createdAt: 5,
+        },
+      ],
+    };
+    await mockChiefLiveApi(page, state);
+    await page.goto('/app?chief=chief-bbb');
+
+    const drawer = page.locator('.chief-drawer');
+    await expect(drawer).toBeVisible();
+    const presence = drawer.locator('.chief-msg').last();
+    // 行本体是 button：箭头不再是纯装饰。
+    const toggle = presence.locator('.chief-streaming');
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(toggle).toHaveAccessibleName('展开实时步骤');
+    await expect(presence.locator('.chief-turn-tools')).toHaveCount(0);
+
+    // 点开展示全程：正在调用的工具 + 本轮已落库的工具行。
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(toggle).toHaveAccessibleName('收起实时步骤');
+    const panel = presence.locator('.chief-turn-tools');
+    await expect(panel).toBeVisible();
+    await expect(panel).toContainText('正在调用 machines');
+    await expect(panel).toContainText('todo_write');
+
+    // 键盘可达：Enter 收起。
+    await toggle.press('Enter');
+    await expect(presence.locator('.chief-turn-tools')).toHaveCount(0);
+
+    // 取代 race：展开态下首 delta 到达 → typing 接管，展开态不得闪留/泄漏。
+    await toggle.click();
+    await expect(presence.locator('.chief-turn-tools')).toBeVisible();
+    const es = await chiefStream(page);
+    await es.emit({ type: 'text_delta', text: '正在验证 **凭证' });
+    await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
+    await expect(drawer.locator('.chief-turn-tools')).toHaveCount(0);
+
+    // 终稿落库 → 定稿行接管；存在行/展开面皆不残留（mock 按请求实时读
+    // state.messages，终稿行由本测试自行并入——F-R12 旧语义不动）。
+    state.messages = [...state.messages, FINAL_ROW];
+    state.final = true;
+    await es.emit({ type: 'message', message: FINAL_ROW });
+    await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
+    await expect(drawer.locator('.chief-turn-tools')).toHaveCount(0);
     const final = drawer.locator('.chief-msg').last();
     await expect(final.locator('strong', { hasText: '全部通过' })).toHaveCount(1);
   });
