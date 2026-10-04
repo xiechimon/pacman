@@ -16,19 +16,34 @@ import type {
 import {
   derivePlaceholderTitle,
   githubIssueSourceRef,
+  IN_PROGRESS_PHASES,
   orchestrationSourceRef,
   PLACEHOLDER_TITLE_FALLBACK,
   parseGithubIssueSourceRef,
 } from '@pacman/shared';
 import { and, asc, eq, inArray, max, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { agent, build, machine, project, step, tag, todo, todoTag } from '../db/schema.js';
+import {
+  agent,
+  build,
+  documentDiff,
+  machine,
+  message,
+  plan as planTable,
+  project,
+  steerPending,
+  step,
+  stopPending,
+  tag,
+  todo,
+  todoTag,
+} from '../db/schema.js';
 import { HttpError } from '../lib/errors.js';
 import type { FetchLike } from '../lib/github.js';
 import { githubCreateIssue, githubUpdateIssueTitle } from '../lib/github.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 import { triggerChiefWakes } from './chief.js';
-import type { TeamStreamHub } from './events.js';
+import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { hasGithubConnection, openGithubToken } from './github-connection.js';
 import type { MachineWakeHub } from './machines.js';
 import { notifyTodoPhase } from './notifications.js';
@@ -431,6 +446,119 @@ export function setTodoPhase(
   deps.hub.publishTodoDoc(record.teamId, record);
   notifyPhaseEntry(deps, record, row.phase, to);
   return record;
+}
+
+/** 任务重置闸的 started 判据（#755，todos.dev 看板指南「已开始的卡片拖回
+ *  待开始会重置任务」）：进行中相位（queued/planning/building，shared
+ *  IN_PROGRESS_PHASES）或携带任何构建历史（latestBuildId / lastRunAt /
+ *  hasPlan / hasChanges 任一位在位）。confirm/review/failed/done 但零历史 =
+ *  无可中断、无可清空，走静默改相（与 web columns.ts needsResetGate 同表，
+ *  server test 与 columns.test 双面对拍，任一改判据另一面必红）。 */
+export function isStartedTodoRow(row: {
+  phase: Phase;
+  latestBuildId: string | null;
+  lastRunAt: number | null;
+  hasChanges: boolean;
+  hasPlan: boolean;
+}): boolean {
+  if ((IN_PROGRESS_PHASES as readonly string[]).includes(row.phase)) return true;
+  return row.latestBuildId != null || row.lastRunAt != null || row.hasChanges || row.hasPlan;
+}
+
+/** 任务重置（#755）：拖回待开始的确认落位——中断在飞构建 + 清空任务产物 +
+ *  相位回 todo，一次调用内完成（phase PATCH 与构建中断两次写 = 部分失败会
+ *  留下「todo 相位上跑着构建」的残态，本函数是唯一把三者钉在一起的写面）。
+ *  - 中断：claimed 步 = stop_pending 单槽 upsert + machineHub.stopSignal（停止
+ *    钮 requestStop 同律——在线执行机经 machine stream stop 事件即时中断；
+ *    信号发出后行随 build 删除（daemon 只在 SSE 触发时拉取-确认，不轮询，
+ *    故离线残留进程与按钮面同律够不着——dialog 文案如实声明，不虚构送达）。
+ *    pending 步无机器可通知，随 build 行删除而消失（claim 面按 build join，
+ *    无 build 即无领取）。
+ *  - 清空 = 硬删除（参考站「清空对话、方案和改动记录」字面）：build 行 +
+ *    step/message/plan/steer/stop 单槽 + document_diff（planDocId 键）。分支
+ *    同步行随 build FK cascade；todo 行保留（标题/需求/标签/指派/钉选机器是
+ *    任务定义，不是产物）。执行机工作区文件与会话资产不动（daemon 本地物，
+ *    server 够不着——dialog 文案如实声明）。
+ *  - 迟到回报天然免疫：daemon 侧持有的 step/buildId 在删除后任何上报
+ *    （heartbeat/completion）都落进 NotFoundError 404 被忽略，不存在「已删
+ *    build 的落账把相位拽走」的路径（与 applyStoppedStep 的 gate 回落无交集，
+ *    本函数不经过它）。
+ *  非 started 卡 = 无操作返回现记录（调用方本不该调；raw 调用无害）。
+ *  expected 相位/build 快照对不上 = { stale: true } + 现记录（构建在 dialog
+ *  打开后推进了——调用方刷新 dialog 文案重新确认，不得按旧文案重置）。 */
+export function resetTodo(
+  deps: TodoDeps & { convHub?: ConversationStreamHub },
+  id: string,
+  expected?: { phase?: Phase; buildId?: string | null },
+): { stale: boolean; record: TodoRecord } | null {
+  const { db, hub } = deps;
+  const row = getRow(deps, id);
+  if (!row) return null;
+  const current = getTodo(deps, id);
+  if (!current) return null;
+  if (expected?.phase !== undefined && expected.phase !== row.phase) {
+    return { stale: true, record: current };
+  }
+  if (expected?.buildId !== undefined && expected.buildId !== row.latestBuildId) {
+    return { stale: true, record: current };
+  }
+  if (!isStartedTodoRow(row)) return { stale: false, record: current };
+
+  const buildRows = db.select().from(build).where(eq(build.todoId, id)).all();
+  const buildIds = buildRows.map((b) => b.id);
+  if (buildIds.length > 0) {
+    // 先发中断信号（在线 daemon 在行消失前收到 stop；离线则 stop_pending 持久
+    // 化等重连——删除后才发会落进 404 被 daemon 丢弃）。
+    for (const b of buildRows) {
+      const active = db
+        .select()
+        .from(step)
+        .where(and(eq(step.buildId, b.id), inArray(step.status, ['pending', 'claimed'])))
+        .orderBy(asc(step.createdAt))
+        .all()
+        .at(-1);
+      if (active?.status === 'claimed') {
+        db.insert(stopPending)
+          .values({ conversationId: b.id, stepId: active.id, discard: false, createdAt: nowMs() })
+          .onConflictDoUpdate({
+            target: stopPending.conversationId,
+            set: { stepId: active.id, discard: false, createdAt: nowMs() },
+          })
+          .run();
+        deps.machineHub?.stopSignal(row.teamId, active.id);
+      }
+    }
+    const planDocIds = buildRows.map((b) => b.planDocId).filter((v): v is string => v != null);
+    db.delete(stopPending).where(inArray(stopPending.conversationId, buildIds)).run();
+    db.delete(steerPending).where(inArray(steerPending.conversationId, buildIds)).run();
+    db.delete(step).where(inArray(step.buildId, buildIds)).run();
+    db.delete(message).where(inArray(message.conversationId, buildIds)).run();
+    db.delete(planTable).where(inArray(planTable.buildId, buildIds)).run();
+    if (planDocIds.length > 0) {
+      db.delete(documentDiff).where(inArray(documentDiff.documentId, planDocIds)).run();
+    }
+    db.delete(build).where(eq(build.todoId, id)).run();
+    for (const bid of buildIds) deps.convHub?.clearConversationBuffer(bid);
+  }
+  db.update(todo)
+    .set({
+      phase: 'todo',
+      phaseAt: nowMs(),
+      hasPlan: false,
+      hasChanges: false,
+      latestBuildId: null,
+      lastRunAt: null,
+      v: row.v + 1,
+    })
+    .where(eq(todo.id, id))
+    .run();
+
+  const record = getTodo(deps, id);
+  if (!record) return null;
+  hub.publishTodoDoc(record.teamId, record);
+  // 手动改相 parity（updateTodo 手动面）：拖回待开始 ≠ 关口进入，不挂
+  // phase 进入通知/chief wake。
+  return { stale: false, record };
 }
 
 /** DELETE /api/todos/{id}（DELETE_FACE：REST 同名 DELETE [推断]；

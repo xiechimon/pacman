@@ -185,6 +185,7 @@ import {
   deleteTodo,
   getTodo,
   listTodos,
+  resetTodo,
   retrySelfIssueCreate,
   updateTodo,
 } from './services/todos.js';
@@ -1267,6 +1268,38 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     }
     if (!record) throw notFound(`todo ${id}`);
     return c.json(record);
+  });
+
+  // 任务重置（#755）：已开始卡拖回待开始的确认落位——中断在飞构建 + 清空
+  // 产物 + 相位回 todo。body 快照（dialog 打开时刻的相位/build）与服务端
+  // 现值对不上 = 409 + 现记录（构建在确认前推进了，调用方刷新 dialog 文案
+  // 重新确认，不得按旧文案重置）。
+  const resetTodoBodySchema = z.object({
+    expectedPhase: phaseSchema.optional(),
+    expectedBuildId: z.string().nullable().optional(),
+  });
+
+  app.post('/api/todos/:id/reset', async (c) => {
+    const id = c.req.param('id');
+    const body = parseWith(resetTodoBodySchema, await jsonBody(c), 'body');
+    const result = resetTodo(
+      svc,
+      id,
+      body.expectedPhase !== undefined || body.expectedBuildId !== undefined
+        ? { phase: body.expectedPhase, buildId: body.expectedBuildId }
+        : undefined,
+    );
+    if (!result) throw notFound(`todo ${id}`);
+    if (result.stale) {
+      return c.json(
+        {
+          error: '任务在你确认前发生了变化（构建已推进），请按最新状态重新确认。',
+          record: result.record,
+        },
+        409,
+      );
+    }
+    return c.json(result.record);
   });
 
   app.delete('/api/todos/:id', (c) => {

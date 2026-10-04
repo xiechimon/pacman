@@ -358,6 +358,44 @@
   color: var(--text-tertiary);
 }
 
+/* --- 任务重置确认 (#755) --- */
+/* accept 同族的行容器是横向 flex（checkbox 行形态），重置面内容纵 stacked：
+   per-face 根类把行容器掰回 block，其余只定字阶与缩进。 */
+.dlg-reset .dlg-accept {
+  display: block;
+  padding: 17px 16px 0;
+}
+
+.dlg-reset-stale {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.dlg-reset-lead {
+  margin: 0 0 6px;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--text-primary);
+}
+
+.dlg-reset-list {
+  margin: 0 0 6px;
+  padding-left: 18px;
+  list-style: disc;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--text-primary);
+}
+
+.dlg-reset-kept {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
 /* server 拒绝行（XMON-89）：同在勾选行下方。--danger 与其余面级错误文案同
    色（agent-perm-error / composer 被拒提示行族）。 */
 .dlg-accept-reject {
