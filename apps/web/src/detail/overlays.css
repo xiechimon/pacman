@@ -509,7 +509,7 @@
   flex-direction: column;
   gap: 4px;
   padding: 10px 12px;
-  border-left: 3px solid var(--color-warning, #f59e0b);
+  border-left: 3px solid var(--badge-attention);
   border-radius: 6px;
   background: var(--surface-secondary);
 }

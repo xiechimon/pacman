@@ -697,7 +697,7 @@ a.chief-identity {
 }
 
 .chief-composer-input::placeholder {
-  color: var(--text-dim);
+  color: var(--text-tertiary);
 }
 
 .chief-composer-bar {

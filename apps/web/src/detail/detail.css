@@ -1207,7 +1207,7 @@ textarea.composer-input {
   font-variant-numeric: tabular-nums;
 }
 textarea.composer-input::placeholder {
-  color: var(--text-dim);
+  color: var(--text-tertiary);
 }
 
 .composer-toolbar {
@@ -1708,8 +1708,8 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 /* #700 verdict 提取失败 tag：danger 字色 + 同色淡底（blocking finding 左条
    同色系）——「判定提取失败」与正常结论 chip 在审核面上一眼可分辨。 */
 .chat-review-tag--error {
-  background: rgba(220, 38, 38, 0.12);
-  color: var(--color-danger, #dc2626);
+  background: var(--danger-soft);
+  color: var(--destructive);
 }
 
 .chat-review-finding {
@@ -1719,11 +1719,11 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 }
 
 .chat-review-finding--blocking {
-  border-left-color: var(--color-danger, #dc2626);
+  border-left-color: var(--destructive);
 }
 
 .chat-review-finding--suggestion {
-  border-left-color: var(--color-warning, #f59e0b);
+  border-left-color: var(--badge-attention);
 }
 
 .chat-review-finding--info {
@@ -1739,11 +1739,11 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 }
 
 .chat-review-finding--blocking .chat-review-severity {
-  color: var(--color-danger, #dc2626);
+  color: var(--destructive);
 }
 
 .chat-review-finding--suggestion .chat-review-severity {
-  color: var(--color-warning, #f59e0b);
+  color: var(--badge-attention);
 }
 
 .chat-review-quote {
