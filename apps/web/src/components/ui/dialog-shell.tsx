@@ -27,13 +27,16 @@ import { X } from '../../icons/index.js';
 // 表单族（.dlg-form-* 等 per-face 规则）仍在 dialog.css；壳级规则已随本适配层退役
 import '../../ui/dialog.css';
 
-/** 视口根面（viewportRoot）面板的进出场（V2 覆写，base-ui-theme §1.2：
+/** 视口根面（viewportRoot）面板的进场（V2 覆写，base-ui-theme §1.2：
  *  scale .98 + fade、100ms ease-out——替代 ADR 0009 D3 的 slide -8px）。
- *  挂在**面板**上、经视口根 Popup 的具名 group 读 Base UI 开闭态——视口根
+ *  挂在**面板**上、经视口根 Popup 的具名 group 读 Base UI 开态——视口根
  *  Popup 是铺满视口的包装层，transform 上它会把面板（fixed 子级）的
- *  containing block 拽走（#656）。 */
+ *  containing block 拽走（#656）。
+ *  退场不在这里：#844 起退出走 overlays.css 的指定式 transition（同面
+ *  进场 keyframe + 退场 transition；一次性 exit keyframe 会在壳的 150ms
+ *  卸载窗里先播完回弹，卸载前闪几帧全不透明）。 */
 export const VIEWPORT_POP_ANIM =
-  'duration-100 ease-out group-data-open/dlgvp:animate-in group-data-open/dlgvp:fade-in-0 group-data-open/dlgvp:zoom-in-98 group-data-closed/dlgvp:animate-out group-data-closed/dlgvp:fade-out-0 group-data-closed/dlgvp:zoom-out-98';
+  'duration-100 ease-out group-data-open/dlgvp:animate-in group-data-open/dlgvp:fade-in-0 group-data-open/dlgvp:zoom-in-98';
 
 interface DialogShellProps {
   /** Left header title; absent when `headerCenter` renders instead. */
