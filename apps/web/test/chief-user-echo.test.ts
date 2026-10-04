@@ -67,14 +67,15 @@ describe('mapChiefStream 回声行去重（#667 F-C1..C7）', () => {
     expect(users.map((u) => u.text)).toEqual(['总结项目进展', '再查一下 token 用量']);
   });
 
-  test('F-C4 wake 回声行（无 POST 孪生）保留——wake 轮呈现面零变化', () => {
+  test('F-C4 wake 回声行（无 POST 孪生）保留且剥离 marker——呈现 remainder', () => {
     const items = mapChiefStream([
       row('user-LFnKO1KhDH4F1HylsEAfY', 'user', '[wake:settle] 任务 #5「修复」已合并完成', NOW),
       row('msg-r1', 'assistant', '已确认落地', NOW + 9000),
     ]);
     const users = userItems(items);
     expect(users).toHaveLength(1);
-    expect(users[0]?.text).toContain('[wake:settle]');
+    expect(users[0]?.text).toBe('任务 #5「修复」已合并完成');
+    expect(users[0]?.text).not.toContain('[wake:');
   });
 
   test('F-C5 steer 同文（两条 POST + 两条回声）→ 恰两条（真实动作各渲染一次）', () => {
@@ -105,5 +106,58 @@ describe('mapChiefStream 回声行去重（#667 F-C1..C7）', () => {
       row('ZxYwVuTsRqPoNmLkJiHgFe', 'user', '继续', NOW + 100),
     ]);
     expect(userItems(items)).toHaveLength(2);
+  });
+});
+
+describe('mapChiefStream 内部 marker 剥离（#778 F-W1..W6）', () => {
+  test('F-W1 同族四种（gate/settle/failed/wake）前导 marker 都剥', () => {
+    for (const kind of ['gate', 'settle', 'failed', 'wake']) {
+      const items = mapChiefStream([
+        row('user-stepW', 'user', `[wake:${kind}] 任务 #5 已合并完成`, NOW),
+      ]);
+      const users = userItems(items);
+      expect(users).toHaveLength(1);
+      expect(users[0]?.text).toBe('任务 #5 已合并完成');
+      expect(users[0]?.markdown).toBe('任务 #5 已合并完成');
+    }
+  });
+
+  test('F-W2 纯 marker 行（无 remainder）不渲染', () => {
+    const items = mapChiefStream([
+      row('user-stepW', 'user', '[wake:gate]', NOW),
+      row('msg-r1', 'assistant', '已确认落地', NOW + 9000),
+    ]);
+    expect(userItems(items)).toHaveLength(0);
+  });
+
+  test('F-W3 句中 marker 保留（只剥前导一次）', () => {
+    const items = mapChiefStream([row('u-post-1', 'user', '任务 [wake:gate] 别动', NOW)]);
+    expect(userItems(items)[0]?.text).toBe('任务 [wake:gate] 别动');
+  });
+
+  test('F-W4 POST 行与 wake 回声行同 remainder → 恰一条（去重键吃剥离后文本）', () => {
+    const items = mapChiefStream([
+      row('AbCdEfGhIjKlMnOpQrStU', 'user', '任务 #5 已合并完成', NOW),
+      row('user-LFnKO1KhDH4F1HylsEAfY', 'user', '[wake:settle] 任务 #5 已合并完成', NOW + 100),
+    ]);
+    const users = userItems(items);
+    expect(users).toHaveLength(1);
+    expect(users[0]?.id).toBe('AbCdEfGhIjKlMnOpQrStU');
+  });
+
+  test('F-W5 assistant 行不动（协议 token 永不经该面产生）', () => {
+    const items = mapChiefStream([
+      row('msg-r1', 'assistant', '[wake:gate] 是内部触发标记', NOW),
+    ]);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      kind: 'robot',
+      markdown: '[wake:gate] 是内部触发标记',
+    });
+  });
+
+  test('F-W6 POST 行前导 marker 同剥（用户可见边界统一）', () => {
+    const items = mapChiefStream([row('u-post-1', 'user', '[wake:gate] 帮我查一下', NOW)]);
+    expect(userItems(items)[0]?.text).toBe('帮我查一下');
   });
 });
