@@ -23,6 +23,7 @@
 import { useMemo } from 'react';
 import { inlineSegments } from '../api/mappers.js';
 import type { DocSegment } from '../fixtures/records.js';
+import { ATTACHMENT_LINE } from '../overlay/attachment-paste.js';
 import { Segments } from './segments.js';
 
 /** One block of a parsed chat reply. Inline content rides `segments`
@@ -48,12 +49,8 @@ const FENCE = /^ {0,3}(`{3,}|~{3,})\s*(\S*)\s*$/;
 const HEADING = /^ {0,3}(#{1,6})\s+(.*)$/;
 const ORDERED = /^(\s*)(\d+)[.)]\s+(.*)$/;
 const BULLET = /^(\s*)[-*•]\s+(.*)$/;
-/** Whole-line attachment token (the #310 spec-block shape): key rides
- *  teamId/id.ext, the read endpoint is the last segment minus extension.
- *  (English-only note: this span sits between the backticks the i18n
- *  coverage scanner misreads out of the FENCE regex — CJK here would be
- *  swallowed as a template quasi.) */
-const ATTACHMENT_LINE = /^ {0,3}!\[([^\]]*)\]\(attachment:([^)]+)\)\s*$/;
+/** Whole-line attachment token: single-sourced in overlay/attachment-paste.ts
+ *  since #757 (composer strip parses the same shape the renderer chips). */
 
 /** Line-based block parser: headings, ordered/unordered lists (nesting by
  *  leading indent), fenced code, and soft-wrapped paragraphs. Inline code /
@@ -175,10 +172,32 @@ function attachmentIdFromKey(key: string): string {
 
 /** 附件 chip（#310 契约 / #612 起有样式）：image/* → 内联缩略 <img>（src 直
  *  指 GET /api/attachments/{id}），其它类型 → 文件名链接新标签打开
- *  （content-type 由浏览器原生处理）。 */
-export function AttachmentChip({ name, attachmentKey }: { name: string; attachmentKey: string }) {
+ *  （content-type 由浏览器原生处理）。
+ *  #757 onPreview：composer strip 面传入后 image chip 改走 <button>（同类名，
+ *  点开预览浮层而非新标签）；不传 = transcript 旧链形，字节不变。 */
+export function AttachmentChip({
+  name,
+  attachmentKey,
+  onPreview,
+}: {
+  name: string;
+  attachmentKey: string;
+  onPreview?: (name: string, src: string) => void;
+}) {
   const href = `/api/attachments/${encodeURIComponent(attachmentIdFromKey(attachmentKey))}`;
   const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(attachmentKey);
+  if (isImage && onPreview !== undefined) {
+    return (
+      <button
+        type="button"
+        className="spec-chip spec-chip--image spec-chip--preview"
+        title={name}
+        onClick={() => onPreview(name, href)}
+      >
+        <img src={href} alt={name} className="spec-chip-img" />
+      </button>
+    );
+  }
   if (isImage) {
     return (
       <a

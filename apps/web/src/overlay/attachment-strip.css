@@ -1,0 +1,115 @@
+/* Composer attachment strip (issue #757). Single source on purpose: the
+   strip renders on three faces (detail composer, chief drawer, new-task
+   dialog) and neither detail.css nor overlay.css loads on all three — this
+   file is imported by the component itself, so the rules travel with it.
+   Chip geometry is NOT redefined here: cards reuse the .spec-chip family
+   (detail.css), which is why placeholder and settled cards share size. */
+
+/* In-flow base: a wrapping row of cards. Faces position it (below). */
+.attachment-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Degenerate sizes (a 1px tracking gif, a bare ICO) still paint a hittable
+   card: the min applies to placeholder and settled alike, so the landing
+   swap never moves layout. */
+.attachment-strip .spec-chip-img {
+  min-width: 40px;
+  min-height: 40px;
+}
+
+/* Detail composer: the box is a fixed 76px card, so both strips ride one
+   float column above it (the #812 mention strip joins here — same anchor,
+   stacked by flow, never overlapping). Empty strips render null, so an
+   empty column is zero-height and paints nothing. Local z 30 mirrors the
+   old .composer-chips stacking (composer-internal only). Pointer events:
+   the column never intercepts; the attachment strip re-enables for preview
+   clicks while the display-only mention strip stays inert. */
+.composer-float {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.composer-float > .composer-chips {
+  position: static;
+}
+
+.composer-float > .attachment-strip {
+  pointer-events: auto;
+}
+
+/* Chief drawer: the composer card is in-flow, so the strip rides the flow
+   between the input and the tool bar, pushing the bar down while present. */
+.chief-composer > .attachment-strip {
+  margin-top: 8px;
+}
+
+/* New-task dialog: the body is a flex column with the spec textarea on
+   flex: 1 — the strip docks under the textarea and borrows vertical room
+   from it while present. */
+.new-task-body > .attachment-strip {
+  flex: none;
+  padding-bottom: 8px;
+}
+
+/* Preview-mode chips are buttons, not links: undo the UA button chrome so
+   the card keeps its .spec-chip face. */
+.spec-chip--preview {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+  padding: 2px;
+}
+
+/* In-flight card: the thumbnail underneath is the real bytes at chip size,
+   so settling the token swaps nothing geometric. The badge is the only
+   in-transit marker — a static veil, no fake progress, no motion to
+   reduced-motion-guard. */
+.attachment-pending {
+  position: relative;
+}
+
+.attachment-pending-badge {
+  position: absolute;
+  left: 4px;
+  bottom: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgb(0 0 0 / 0.55);
+  color: #fff;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+/* Preview lightbox body: the image contains into the panel, never driving
+   its size. Panel width rides DialogShell width (640); tall images scroll
+   the dlg-body rather than blowing past the 100vh - 48px cap. */
+.attachment-preview-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.attachment-preview-img {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.attachment-preview-broken {
+  padding: 32px 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}

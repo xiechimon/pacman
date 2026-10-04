@@ -62,8 +62,10 @@ import {
   type PastedNameCounter,
   preparePastedFiles,
 } from './attachment-paste.js';
+import { AttachmentStrip } from './attachment-strip.js';
 import { type MentionGroups, MentionPicker } from './mention-picker.js';
 import { insertMentionText, type MentionToken } from './mention-token.js';
+import { usePendingAttachments } from './pending-attachments.js';
 import './overlay.css';
 
 /** Spec textarea template lines, verbatim r2 §5.2 / r7 04 placeholder
@@ -259,6 +261,13 @@ export function NewTaskDialog({
   // M7 #310 附件：file picker ref + 上传中 disable 纸夹扣
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [attaching, setAttaching] = useState(false);
+  // #757 在途占位（composer-wire 同构：track/untrack 精确到本 run 的 uid，
+  // 重叠上传互不清除）。
+  const {
+    pending: pendingAttachments,
+    track: trackPending,
+    untrack: untrackPending,
+  } = usePendingAttachments();
   // #729：粘贴编号 counter（每 draft 递增，CC [Image #N] 精神）+ 在途上传
   // 计数（阻保存/⌘↵，state 异步、ref 同步）+ spec 镜像（上传完成时注入
   // 以最新已提交值为底——render 闭包里的 spec 会吞掉上传期间的打字）+
@@ -380,7 +389,8 @@ export function NewTaskDialog({
   /** 上传委托运行器（#729：选件与粘贴共用）：attaching 计数跟踪（重叠
    *  上传保持保存闸关闭到最后一个落地）、返回 token 行原子注入 spec
    *  （caret=null = 尾追，#310 原形态）、React 提交后恢复 caret——仅当
-   *  textarea 仍持有焦点，文件选择器往返不抢焦点。 */
+   *  textarea 仍持有焦点，文件选择器往返不抢焦点。#757：本 run 的文件先进
+   *  pending（占位卡片），落定/失败即清（与 attaching 计数同 finally）。 */
   const runAttachment = (files: File[], caret: number | null, also?: () => void) => {
     if (!onAttachment) {
       also?.();
@@ -388,6 +398,7 @@ export function NewTaskDialog({
     }
     attachInFlightRef.current += 1;
     setAttaching(true);
+    const pendingUids = trackPending(files);
     void Promise.resolve(onAttachment(files))
       .then((tokens) => {
         if (tokens.length === 0) return;
@@ -409,6 +420,7 @@ export function NewTaskDialog({
         console.error('attachment delegate failed', err);
       })
       .finally(() => {
+        untrackPending(pendingUids);
         attachInFlightRef.current = Math.max(0, attachInFlightRef.current - 1);
         if (attachInFlightRef.current === 0) setAttaching(false);
         also?.();
@@ -663,6 +675,9 @@ export function NewTaskDialog({
             onChange={onPickFiles}
             accept="text/*,image/*,application/json,application/pdf,application/xml"
           />
+          {/* #757 附件 strip：在途占位 + 落定 chip（可点预览）。body 是 flex
+              列，strip 挂正文与 footer 之间、空时零节点。 */}
+          <AttachmentStrip draft={spec} pending={pendingAttachments} />
         </div>
         <div className="new-task-footer">
           <div className="new-task-actions">
