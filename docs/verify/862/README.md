@@ -23,7 +23,9 @@ scratch 栈（server 8796 + web 5278，全新库）+ 真 daemon ×2（独立 PAC
 - `steps.json` — step 行时间线（claimed by A → pending → claimed/done by B）。
 - `transcript.json` — 会话终稿（含 system 注记行）。
 - `daemon-a-tail.log` / `daemon-b-tail.log` — 两机日志尾（含 `falling back to new session`）。
-- `stub-run2.log` — 探针全程输出。
+- `probe.log` — 探针全程输出。
+- `real-model-gap-deepseek.log` / `real-model-gap-glm.log` — 真模型两轮空流失败的
+  探针输出（起步即失败，步未被认领超过数秒；daemon 侧空流原文见下）。
 
 ## 已知缺口（归 T6 / 后续）
 
