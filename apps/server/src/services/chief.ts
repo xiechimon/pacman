@@ -666,7 +666,9 @@ export function composeChiefSystemPrompt(deps: ChiefResourceDeps, teamId: string
           .join('\n')}`
       : 'agents: （无）',
     `machines: ${JSON.stringify(machines.map((m) => ({ id: m.id, name: m.name, online: m.online, latestCliVersion: m.latestCliVersion })))}`,
-    `skills: ${JSON.stringify(skills.map((s) => ({ id: s.id, name: s.name })))}`,
+    // #823：技能清单带 description（agent 自检切合度用——发送后路由节的候选
+    // 也要靠它二次核对；无 description 的技能回落 null，由 skills 工具现查）。
+    `skills: ${JSON.stringify(skills.map((s) => ({ id: s.id, name: s.name, description: s.description })))}`,
     '',
     '## 记忆（与绑定 Agent 共用同一份存储）',
     memories.length > 0
@@ -685,6 +687,10 @@ export function composeChiefSystemPrompt(deps: ChiefResourceDeps, teamId: string
     '- wake 轮：汇报区分「委派已受理」与「结果已确认」两阶段；failed wake 先调 machines 等工具核实环境，再做法证式汇报（失败原因/定性/工作保全位置/环境建议）。',
     '- 正文内联实体引用用自定义 URI markdown：[名](agent:<id>)、[#n](todo:<id>)。',
     '- 记忆写入：仅在用户明确要求或明显值得沉淀时 save_memory（配额 100 条）。',
+    // #823 发送后 skill 路由（claim 时由服务端按用户消息关键词检测，输入时 UI
+    // 不动）：system prompt 末尾的路由节是候选建议不是指令——先用 skills 工具
+    // 核对候选详情，切合才用，不切合直接忽略；普通对话绝不强行调用技能。
+    '- 技能路由提示节在位时：它是服务端按用户消息给的候选（仅建议），先用 skills 工具核对详情，切合才用，不切合直接忽略；普通对话绝不强行调用。',
     '- 用与用户相同的语言回复。',
   ];
   return lines.join('\n');

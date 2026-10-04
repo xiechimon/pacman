@@ -38,6 +38,7 @@ import {
   createSkillBodySchema,
   derivePlaceholderTitle,
   FIXED_TAGS,
+  formatSkillRouteSection,
   GITHUB_ACCESS_TOKEN_USERNAME,
   isBackendRuntimeId,
   isChiefConversationId,
@@ -47,6 +48,7 @@ import {
   MCP_MIN_CLI_VERSION,
   machineRecordSchema,
   parseReviewPromptMeta,
+  suggestSkillsForMessage,
   updateSkillToolParamsSchema,
   WORKER_REMOTE_TOOLS,
   WORKER_REMOTE_TOOLS_GITHUB,
@@ -786,6 +788,23 @@ function buildChiefClaim(
     .run();
   if (res.changes === 0) return null;
   const ctx = chiefClaimContext(deps, threadRow.id);
+  // #823 发送后 skill 路由（claim 时 = worker 开工前路由位）：仅用户触发轮检测
+  // （wake/系统轮跳过——matcher 另有 [wake: 前缀纵深防御）。提示节只进
+  // systemPrompt，step.prompt（用户原文）逐字不动；节恒为"建议"（agent 先用
+  // skills 工具核对详情，不切合直接忽略）——误触发可逆，普通对话零劫持。
+  const trigger = parseChiefTrigger(stepRow.prompt);
+  let systemPrompt = ctx?.systemPrompt ?? '';
+  if (ctx && trigger === 'user') {
+    const hint = suggestSkillsForMessage(
+      stepRow.prompt ?? '',
+      scanLocalSkills(deps.skillsDir).map((s) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+      })),
+    );
+    if (hint) systemPrompt = `${systemPrompt}\n\n${formatSkillRouteSection(hint)}`;
+  }
   // 记忆注入（02 §4.4 读路径最小形；注入形 [推断] 保留）：绑定 Agent 记忆条目。
   const memories = deps.db
     .select({ title: agentMemory.title, content: agentMemory.content })
@@ -824,8 +843,8 @@ function buildChiefClaim(
     },
     chief: {
       threadId: threadRow.id,
-      systemPrompt: ctx?.systemPrompt ?? '',
-      trigger: ctx ? parseChiefTrigger(stepRow.prompt) : 'user',
+      systemPrompt,
+      trigger,
     },
     remoteTools: [...CHIEF_REMOTE_TOOLS],
     ...(chiefMcp ? { mcpServers: chiefMcp } : {}),
