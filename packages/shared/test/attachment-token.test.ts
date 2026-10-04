@@ -18,6 +18,7 @@ import {
   INLINE_IMAGE_MIME_BY_EXT,
   isImageAttachmentExt,
   parseAttachmentTokenLines,
+  renderAttachmentTokensToLabels,
 } from '../src/attachment-token.js';
 
 const KEY = 'team_abc/att_xyz123.png';
@@ -111,5 +112,21 @@ describe('attachment token 契约（#730）', () => {
     const line = '![x](attachment:t1/id1.png)';
     expect(ATTACHMENT_TOKEN_LINE.test(line)).toBe(true);
     expect(ATTACHMENT_TOKEN_LINE.test('prefix ' + line)).toBe(false);
+  });
+});
+
+describe('renderAttachmentTokensToLabels（#757 标题面：裸 token → chip 名）', () => {
+  test('行中 token 替换为文件名，其余文字不动', () => {
+    expect(renderAttachmentTokensToLabels('看这个 ![a.png](attachment:t/i.png) 很重要')).toBe(
+      '看这个 a.png 很重要',
+    );
+  });
+
+  test('无 token 文本逐字不变', () => {
+    expect(renderAttachmentTokensToLabels('修复登录')).toBe('修复登录');
+  });
+
+  test('空 label 退为空串（调用面跳过空行）', () => {
+    expect(renderAttachmentTokensToLabels('![](attachment:t/i.png)')).toBe('');
   });
 });

@@ -38,6 +38,38 @@ describe('derivePlaceholderTitle', () => {
     expect(derivePlaceholderTitle('')).toBe('');
     expect(derivePlaceholderTitle('   \n \n')).toBe('');
   });
+
+  it('#757：首行是附件 token 行时取其后首个正文行（标题面不裸路径）', () => {
+    expect(
+      derivePlaceholderTitle('![pasted-image-1.png](attachment:team-1/att-1.png)\n修复登录'),
+    ).toBe('修复登录');
+  });
+
+  it('#757：正文在前 token 在后时标题不变', () => {
+    expect(derivePlaceholderTitle('修复登录\n![a.png](attachment:t/i.png)')).toBe('修复登录');
+  });
+
+  it('#757：全是 token 行时取首个 token 的文件名（chip 名）', () => {
+    expect(
+      derivePlaceholderTitle('![a.png](attachment:t/i.png)\n![b.png](attachment:t/i2.png)'),
+    ).toBe('a.png');
+  });
+
+  it('#757：空 label 的 token 行跳过', () => {
+    expect(derivePlaceholderTitle('![](attachment:t/i.png)\n修复登录')).toBe('修复登录');
+  });
+
+  it('#757：行中内联 token 只留文件名', () => {
+    expect(derivePlaceholderTitle('看这个 ![a.png](attachment:t/i.png) 很重要')).toBe(
+      '看这个 a.png 很重要',
+    );
+  });
+
+  it('#757：超长文件名按 50 截断（与正文同律）', () => {
+    const label = `${'a'.repeat(60)}.png`;
+    const result = derivePlaceholderTitle(`![${label}](attachment:t/i.png)`);
+    expect(result).toBe(`${label.slice(0, 50)}…`);
+  });
 });
 
 describe('FIXED_TAGS', () => {

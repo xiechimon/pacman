@@ -6,6 +6,7 @@
 // 下表为平价参照而非逐条复刻清单。
 
 import { z } from 'zod';
+import { ATTACHMENT_TOKEN_LINE, renderAttachmentTokensToLabels } from '../attachment-token.js';
 import { agentRecordSchema } from './agent.js';
 import { epochMs, phaseSchema, recordId } from './common.js';
 import type { ModelSource } from './model-source.js';
@@ -231,10 +232,24 @@ export const CHIEF_WAKE_KINDS = ['gate', 'settle', 'failed'] as const;
 export type ChiefWakeKind = (typeof CHIEF_WAKE_KINDS)[number];
 
 /** 线程标题 = 首句截断 + …（r5 §3.6/raw threadTitle 样本「帮 r3-lifecycle
- * 写一份…」）；截断位 [推断]（样本 12 字 + …）。 */
+ * 写一份…」）；截断位 [推断]（样本 12 字 + …）。
+ * #757：附件 token 行不成标题（task-meta derivePlaceholderTitle 同律）——
+ * 独占行跳过、行中夹带只留文件名；全文只剩 token 行时取首个文件名。 */
 export function chiefThreadTitle(firstMessage: string): string {
-  const line = firstMessage.trim().split('\n')[0] ?? '';
-  return line.length > 12 ? `${line.slice(0, 12)}…` : line;
+  let fallback = '';
+  for (const raw of firstMessage.split('\n')) {
+    const line = raw.trim();
+    if (line === '') continue;
+    const token = ATTACHMENT_TOKEN_LINE.exec(line);
+    if (token !== null) {
+      if (fallback === '') fallback = token[1] ?? '';
+      continue;
+    }
+    const rendered = renderAttachmentTokensToLabels(line);
+    if (rendered === '') continue;
+    return rendered.length > 12 ? `${rendered.slice(0, 12)}…` : rendered;
+  }
+  return fallback.length > 12 ? `${fallback.slice(0, 12)}…` : fallback;
 }
 
 /** 换绑二次确认告示 canon（r5 §2 原文，记忆不迁移）。 */
