@@ -18,7 +18,7 @@ import type { Db } from '../db/client.js';
 import { build, schedule, todo } from '../db/schema.js';
 import { nowMs } from '../lib/ids.js';
 import { ATTACHMENT_GC_INTERVAL_MS, type GcLogger, sweepAttachments } from './attachment-gc.js';
-import { type BuildDeps, failAbandonedBuildSteps, startBuilds, toBuildRecord } from './builds.js';
+import { type BuildDeps, startBuilds, sweepAbandonedBuildSteps, toBuildRecord } from './builds.js';
 import { failAbandonedChiefSteps, fireDueChiefWakes } from './chief.js';
 import type { TeamStreamHub } from './events.js';
 import { PhaseTransitionError } from './phase.js';
@@ -105,9 +105,10 @@ export function createScheduler(
     // #684 失联超时兜底：daemon 死亡后 pending/claimed chief 步永挂零反馈，
     // tick 扫尾把失联回合按失败收进 #631 可见面（chief_turn_error 行 + toast）。
     failAbandonedChiefSteps(deps, now);
-    // #706 同型推广到 worker 步：机器消失后 build 步有限时间内按失败收尾
-    // （step failed + build.errorMessage + todo → failed，与机器报失败同漏斗）。
-    failAbandonedBuildSteps(deps, now);
+    // #706/#862 失联扫尾：失联 claimed 步释放回 pending 供他机认领、无人认领
+    // 的 pending 步按失败收尾（step 事件 + build.errorMessage + todo → failed，
+    // 与机器报失败同漏斗）。
+    sweepAbandonedBuildSteps(deps, now);
     // #759 附件回收：tick piggyback，每小时最多扫一次（启动首 tick 即补扫）。
     // sweep 自带 try/catch——回收失败不许打断定时闭环。
     if (gc !== undefined && gc !== null && now - lastGcAt >= ATTACHMENT_GC_INTERVAL_MS) {
