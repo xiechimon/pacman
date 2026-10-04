@@ -22,12 +22,14 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { ApiError, api } from '../api/client.js';
 import {
   useApiMutations,
+  useMachines,
   useProjects,
   useProjectTags,
   useSearchResults,
+  useSteps,
   useTodos,
 } from '../api/hooks.js';
-import { toDisplayTodo } from '../api/mappers.js';
+import { mapBranchInfo, toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { AppSidebar } from '../board/app-sidebar.js';
 import { type BoardFilters, BoardSurface } from '../board/board.js';
@@ -540,9 +542,25 @@ export function BoardPage() {
     [live, todos, fixture.now, teamId, mutations.patchTodo, queryClient, t],
   );
 
-  const content = overlayTodo != null ? overlayContent(overlayTodo.id) : null;
-  // live overlay 数据（验收合并只依赖 latestBuildId——branch dialog 数据面
-  // 归详情页；看板 branch 弹层在 live 下取查询值兜底 null 关闭）。
+  // #828: 看板 branch 弹层的数据面——fixture 面走 overlayContent 冻结值；
+  // live 面按 overlayTodo.latestBuildId 经 mapBranchInfo 现算（与详情页右
+  // pane 同源）。此前 live 面同样走 overlayContent，真 todo id 恒 miss →
+  // content 恒 null → 按钮点击零响应（「点不开」的 bug 半）。两个查询都挂
+  // 在弹层打开门下，平时零请求。
+  const branchOpen = overlay?.kind === 'branch';
+  const branchBuildId = overlayTodo?.latestBuildId ?? null;
+  const branchQueryId = branchOpen ? branchBuildId : null;
+  const branchStepsQ = useSteps(branchQueryId, live && branchQueryId != null);
+  const branchMachinesQ = useMachines(teamId, live && branchOpen);
+  const branchInfo =
+    overlayTodo == null
+      ? null
+      : live
+        ? branchBuildId != null
+          ? mapBranchInfo(branchBuildId, branchStepsQ.data ?? [], branchMachinesQ.data ?? [])
+          : null
+        : (overlayContent(overlayTodo.id)?.branch ?? null);
+  // live overlay 数据（验收合并只依赖 latestBuildId）。
   // live 面 now = 墙钟（相对时间标签随 SSE 失效重渲染滚动）；fixture 面保持
   // 冻结采集时刻（采集确定性）。projectNames = 卡面/搜索/新建 dialog 的
   // 项目 chip 真名位（fixture 面缺省走 capture canon 常量）。
@@ -593,6 +611,12 @@ export function BoardPage() {
             if (todo.phase === 'review' && todo.awaitingReply !== true) openFor(todo, 'accept');
           }}
           onBranch={(todo) => openFor(todo, 'branch')}
+          // #828: 无分支的卡隐藏分支钮——fixture 面以 overlayContent 有无
+          // 为准（点开必有弹层），live 面以 latestBuildId 有无为准（分支
+          // 面按该 buildId 现算）。
+          hasBranch={(todo) =>
+            live ? todo.latestBuildId != null : overlayContent(todo.id) != null
+          }
           // #73→#616→#640: 静默改相落位（待处理/已完成 + 待开始的未开始卡）
           // commit into the same client-side todo set as create/delete — column
           // counts and folds re-derive from it；执行中落位 = 开始意图 → 直发
@@ -669,10 +693,10 @@ export function BoardPage() {
             : undefined
         }
       />
-      {content != null && (
+      {branchInfo != null && (
         <BranchDialog
           open={overlay?.kind === 'branch'}
-          info={content.branch}
+          info={branchInfo}
           buildId={overlayTodo?.latestBuildId ?? null}
           onClose={closeOverlay}
         />

@@ -169,6 +169,18 @@ const EXTRA_ICONS = [
     trace:
       'the todos.dev providers runtime tab Claude Code brand mark (DOM capture 2026-10-02, brand fill kept as captured)',
   },
+  {
+    // #828: the card 分支与 PR button switches off the download-arrow
+    // glyph (which reads as "download" — todos.dev uses the same
+    // download-arrow markup here, ego-browser DOM capture 2026-10-04, so
+    // this diverges from the reference on purpose) to the lucide
+    // git-branch shape.
+    name: 'GitBranch',
+    size: [13, 13],
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" x2="6" y1="3" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>',
+    contexts: ['card 分支与 PR button (lucide git-branch shape, #828)'],
+    trace: 'lucide git-branch shape (ISC), adopted for #828',
+  },
 ];
 
 // D5 replacement batch (#249, 素材替换计划 D5): the five todos.dev custom
@@ -186,6 +198,7 @@ const LUCIDE_OVERRIDE = {
   ServerThin: { icon: 'server', strokeWidth: '1.75' },
   UserCircle: { icon: 'circle-user' },
   FileCheck: { icon: 'square-check-big' },
+  GitBranch: { icon: 'git-branch' },
 };
 
 const LUCIDE_DIR = fileURLToPath(new URL('../node_modules/lucide-static/icons/', import.meta.url));
