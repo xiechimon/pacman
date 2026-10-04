@@ -23,12 +23,15 @@ import { expect, test } from '@playwright/test';
 //      part counts wrong (1 shell / 3 orbits / 3 spins / 3 rings)
 //   L3 row geometry regression: the 20px row height drifts
 //   L4 animation contract broken: not infinite / period ≠ 0.9s (duration
-//      prop) / not running / stagger or tilt spread lost
+//      prop) / not running / stagger or tilt spread lost / breathe pulse
+//      missing or off-period (root must carry exactly one spinner-breathe,
+//      1800ms = twice the spin period so the pulse never beats the orbits)
 //   L5 reduced motion doesn't freeze the spins (or drops the static settle)
 //   L6 spinner root not aria-hidden — the static label is the accessible cue
 //   L7 seconds span missing tabular-nums (width jitter regression)
 //   L8 seconds-less row rendering "undefineds" / a bare "s"
-//   L9 currentColor chain broken: shell/ring stroke ≠ root color (--text-dim)
+//   L9 currentColor chain broken: shell/ring stroke ≠ root color (root rides
+//      the spot solid, #821 — the chain, not the value, is pinned here)
 // Mapper-side modes (phantom/duplicate tails) live in
 // test/transcript-quiescent.test.ts.
 
@@ -68,13 +71,20 @@ test.describe('streaming row loading indicator (scenario 26)', () => {
         timing: a.effect?.getComputedTiming(),
       })),
     );
-    expect(rotation).toHaveLength(3); // L1: every spin carries the rotation
-    for (const r of rotation) {
-      expect(r.name).toBe('ld-atom-rotate'); // L4
+    const spinsAnims = rotation.filter((r) => r.name === 'ld-atom-rotate');
+    expect(spinsAnims).toHaveLength(3); // L1: every spin carries the rotation
+    for (const r of spinsAnims) {
       expect(r.playState).toBe('running'); // L4
       expect(r.timing?.duration).toBe(900); // L4: duration prop = old reel period
       expect(r.timing?.iterations).toBe(Infinity); // L4
     }
+    // L4: the breathe pulse rides the library root (one level above the
+    // spins, so the two never override each other) at twice the spin period
+    const breathe = rotation.filter((r) => r.name === 'spinner-breathe');
+    expect(breathe).toHaveLength(1);
+    expect(breathe[0].playState).toBe('running');
+    expect(breathe[0].timing?.duration).toBe(1800);
+    expect(breathe[0].timing?.iterations).toBe(Infinity);
     const delays = await spins.evaluateAll((els) =>
       els.map((s) => getComputedStyle(s).animationDelay),
     );
@@ -89,10 +99,12 @@ test.describe('streaming row loading indicator (scenario 26)', () => {
     expect(root.width).toBe('16px'); // L2: size prop on both axes
     expect(root.height).toBe('16px'); // L2: the old reel's slot height
     expect(root.position).toBe('relative'); // L2: library root anchors the orbits
+    // L2 geometry is the layout box: offsetWidth/Height ignore the
+    // breathe pulse (a paint-time scale on the root, #821), while
+    // getBoundingClientRect would sample wherever the pulse happens to be.
     const shell = await page.locator('.ld-atom-shell').evaluate((el) => {
-      const r = el.getBoundingClientRect();
       const cs = getComputedStyle(el);
-      return { w: r.width, h: r.height, radius: cs.borderRadius, stroke: cs.borderTopWidth };
+      return { w: el.offsetWidth, h: el.offsetHeight, radius: cs.borderRadius, stroke: cs.borderTopWidth };
     });
     expect(shell.w).toBe(16); // L2
     expect(shell.h).toBe(16);
@@ -119,7 +131,7 @@ test.describe('streaming row loading indicator (scenario 26)', () => {
       );
       return { root, shell, rings };
     });
-    expect(colors.shell).toBe(colors.root); // L9: --text-dim chain
+    expect(colors.shell).toBe(colors.root); // L9: spot currentColor chain
     expect(colors.rings).toHaveLength(3);
     for (const stroke of colors.rings) expect(stroke).toBe(colors.root); // L9
   });

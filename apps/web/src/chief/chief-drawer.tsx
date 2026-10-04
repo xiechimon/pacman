@@ -718,7 +718,8 @@ export function ChiefDrawer({
                           <span className="chief-streaming">
                             {/* #672/#739: loading-dev Atom（16px/900ms，与详情页
                                 chat-spinner 同款）——库自带 reduced-motion 冻结与
-                                aria-hidden，标签文本是可访问的 live 线索。 */}
+                                aria-hidden，标签文本是可访问的 live 线索。
+                                #821: 描边走主题 spot 实色，根上带呼吸脉冲。 */}
                             <Atom size={16} duration={900} className="chief-spinner" />
                             {item.seconds != null && (
                               <span className="chief-streaming-secs">{item.seconds}s</span>

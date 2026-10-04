@@ -14,7 +14,10 @@
      - 全局 :active 压暗、#629 板面卡按压面、XMON-69 侧栏 toggle 例外；
      - prefers-reduced-motion 全站法（含 tw-animate-css keyframe 的降级
        reset——tab pill 的 150ms transition 滑动与 spinner 面走各自文件的
-       reduced-motion 处理，不在此列）。 */
+       reduced-motion 处理，不在此列）。
+     - spinner-breathe 共享 keyframes（#821：在飞 loading 的呼吸脉冲——
+       opacity + scale 双通道，1.8s = Atom 900ms 自旋周期的两倍，避开拍频；
+       颜色与 reduced-motion 静止态走各自文件的 spinner 类，不在此列）。 */
 
 /* r1 §4.3 convention: the whole site degrades motion under
    prefers-reduced-motion — the replica mirrors it. The loading indicator
@@ -144,4 +147,25 @@ a:active {
 .sidebar-team-collapse:active,
 .rail-toggle:active {
   opacity: 1;
+}
+
+/* #821 in-flight spinner breathe: the shared pulse for the loading-dev Atom
+   roots (.chief-spinner in chief.css, .chat-spinner in detail.css). Opacity +
+   scale only (compositor lanes, no layout); 1800ms is twice the Atom 900ms
+   spin period so the pulse never beats against the orbits; ease rides the
+   --ease-standard token. The animation lives on the library root while the
+   spins run one level down (.ld-atom-spin), so the two never override each
+   other. Under reduced motion the roots go static via their own
+   animation: none (same end state as the library freeze + the site-wide
+   reset above — no fight, deterministic from any sheet order). */
+@keyframes spinner-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
 }
