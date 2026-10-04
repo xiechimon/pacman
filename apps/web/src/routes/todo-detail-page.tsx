@@ -33,6 +33,7 @@ import {
   useMessages,
   usePlans,
   useProjectBuilds,
+  useProjectFiles,
   useProjects,
   useRunHistoryTokens,
   useSearchResults,
@@ -91,6 +92,7 @@ import type {
 import { attachmentFailureTitle } from '../overlay/attachment-paste.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import type { MentionGroups } from '../overlay/mention-picker.js';
+import type { FileMentionEntry } from '../overlay/mention-token.js';
 import { MoreMenu } from '../overlay/more-menu.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
 import { PHASE_UI } from '../phase.js';
@@ -219,6 +221,9 @@ export function TodoDetailPage() {
   );
   const machinesQ = useMachines(teamId, live);
   const membersQ = useMembers(teamId, live);
+  // #760 `@` 文件候选：当前项目全仓路径表（失败/非托管/未决 = 空集 →
+  // agents-only，渐进增强不挡主面）。
+  const filesQ = useProjectFiles(wireTodo?.projectId, live);
   // XMON-105: avatarUrl override join for the todo's agent ref (transcript
   // rows + rerun dialog fallback row).
   const agentAvatarUrl = useAgentAvatarUrlById();
@@ -684,6 +689,11 @@ export function TodoDetailPage() {
           label: m.name,
         })),
       };
+  // #760 `@` 文件候选：live = 当前项目全仓路径表；fixture 面无仓库 → 缺省
+  // （agents-only，DOM 字节不变）。
+  const mentionFiles: FileMentionEntry[] | undefined = live
+    ? (filesQ.data?.files ?? []).map((f) => ({ path: f.path, type: f.type }))
+    : undefined;
   const ui = PHASE_UI[phase];
   const detail = live ? liveDetail : fixture.detail;
   const streaming = live ? running : view.transcript.some((item) => item.kind === 'streaming');
@@ -884,6 +894,7 @@ export function TodoDetailPage() {
                     : undefined
                 }
                 mentionGroups={mentionGroups}
+                mentionFiles={mentionFiles}
                 onStop={live && buildId ? () => setStopOpen(true) : undefined}
                 onReview={
                   // AI 审核钮入口（M7 #312，r8 §3.1）：live 确认/审核面可点，fixture

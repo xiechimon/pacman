@@ -11,6 +11,8 @@
 //      变 `hello [builder](agent:a1)@bu`——replaceEnd 修复后钉死）
 import { describe, expect, test } from 'vitest';
 import {
+  formatFileInsert,
+  insertFileText,
   insertMentionText,
   type MentionToken,
   parseMentionSegments,
@@ -106,5 +108,46 @@ describe('serializeMention（既有 wire 形不回归，I3）', () => {
     expect(serializeMention({ kind: 'agent', label: 'a]b\\c', id: 'x' })).toBe(
       '[a\\]b\\\\c](agent:x)',
     );
+  });
+});
+
+// #760 文件插入面：裸路径文本（不走 scheme wire）+ CC 插入纪律。
+// 失败方式钉死：
+//   J1 含空格路径不断成两截（CC rule 27 引号包裹，否则 agent 按空白切分读错）；
+//   J2 尾随空格缺失（rule 26：继续键入粘到路径上）；
+//   J3 @query 残留（inline 路径消费 STORED 区间，insertMentionText I4 同律）；
+//   J4 路径里的括号/方括号被误解析成 mention chip（SCHEME_REGEX 只认
+//      `[label](kind:id)` 全形——`foo(bar).ts` 这类路径必须零 chip）。
+describe('insertFileText 裸路径插入（#760，CC rules 26-29 同构）', () => {
+  test('普通路径：尾随空格 + caret 落空格后（J2/rule 26）', () => {
+    const r = insertFileText('hello @but', 'apps/web/src/ui/button.tsx', 6, 10);
+    expect(r.value).toBe('hello apps/web/src/ui/button.tsx ');
+    expect(r.caret).toBe(r.value.length);
+  });
+
+  test('含空格路径引号包裹（J1/rule 27）', () => {
+    expect(formatFileInsert('apps/web/src/with space.ts')).toBe('"apps/web/src/with space.ts"');
+    const r = insertFileText('@with', 'apps/web/src/with space.ts', 0, 5);
+    expect(r.value).toBe('"apps/web/src/with space.ts" ');
+  });
+
+  test('无空白路径不加引号', () => {
+    expect(formatFileInsert('apps/web/src/ui/button.tsx')).toBe('apps/web/src/ui/button.tsx');
+  });
+
+  test('目录 label 自带尾随 /（CC rule 28/29，调用方拼 label 时已加）', () => {
+    const r = insertFileText('@apps', 'apps/', 0, 5);
+    expect(r.value).toBe('apps/ ');
+  });
+
+  test('@query 被整个替换，无残留（J3，I4 同律）', () => {
+    const r = insertFileText('hello @bu rest', 'apps/web/src/ui/button.tsx', 6, 9);
+    expect(r.value).toBe('hello apps/web/src/ui/button.tsx rest');
+  });
+
+  test('插入的路径不产生 mention chip（J4：括号路径不是 scheme 形）', () => {
+    const r = insertFileText('', 'apps/web/src/foo(bar).ts', 0);
+    const segs = parseMentionSegments(r.value);
+    expect(segs.filter((s) => s.kind === 'mention')).toHaveLength(0);
   });
 });

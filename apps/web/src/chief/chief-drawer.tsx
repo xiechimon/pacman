@@ -324,13 +324,14 @@ export function ChiefDrawer({
     inlineOpen,
     inlineCaret,
     inlineQuery,
-    inlineAgents,
+    inlineRows,
     inlineHighlight,
     setInlineHighlight,
     inlineListboxId,
     inlineListboxRef,
     insertToken,
     insertTokens,
+    insertFile,
     groups,
   } = wire;
   // #773：抽屉收起联动收弹层——模型 popover / 切换器 / 提及 picker /
@@ -897,18 +898,22 @@ export function ChiefDrawer({
                 的 z-40 阶梯 = 宿主 drawer stacking context 内局部压住 composer）。 */}
                 <MentionInline
                   open={inlineOpen}
-                  agents={inlineAgents}
+                  rows={inlineRows}
                   caret={inlineCaret}
                   query={inlineQuery}
                   highlight={inlineHighlight}
                   onHover={setInlineHighlight}
-                  onPick={(entry) =>
-                    insertToken({
-                      kind: 'agent',
-                      id: entry.id,
-                      label: entry.label,
-                    })
-                  }
+                  onPick={(row) => {
+                    if (row.kind === 'agent') {
+                      insertToken({
+                        kind: 'agent',
+                        id: row.id,
+                        label: row.label,
+                      });
+                    } else {
+                      insertFile(row.label);
+                    }
+                  }}
                   listboxRef={inlineListboxRef}
                   listboxId={inlineListboxId}
                 />

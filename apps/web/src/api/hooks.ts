@@ -38,6 +38,7 @@ import type {
   PatchMachineBody,
   PlanRow,
   ProjectFileResponse,
+  ProjectFilesResponse,
   ProjectRecord,
   ProviderPreset,
   ProviderRecord,
@@ -527,6 +528,23 @@ export const useProjectTree = (projectId: string | undefined, ref: string | unde
         `/api/projects/${projectId}/tree${ref !== undefined ? `?ref=${encodeURIComponent(ref)}` : ''}`,
       ),
     enabled: projectId !== undefined,
+  });
+
+/** 全递归文件列举（#760 composer `@` 候选源）：一次取回全仓路径表，客户端
+ * 全量本地 fuzzy。失败（非 hosted 404 / 坏 ref / 未决）一律空集——补全候选
+ * 是渐进增强面，取不到 = agents-only，不弹错（e2e stub 面 500 同理）。 */
+export const useProjectFiles = (projectId: string | undefined, enabled: boolean) =>
+  useQuery({
+    queryKey: ['files', projectId],
+    queryFn: () =>
+      api.get<ProjectFilesResponse>(`/api/projects/${projectId}/files`).catch(() => null),
+    enabled: projectId !== undefined && enabled,
+    // 失败已在 queryFn 内收敛为空（不是重试能修好的：404 非托管 / 大仓截断是
+    // 服务端常态），且静默面不需要重试抖动。
+    retry: false,
+    // 路径表随 ref 变，ref 不在键里——stale 即重取由调用方 invalidate；默认
+    // staleTime 之内复用同一快照，同一会话多次 `@` 不重复打全量。
+    staleTime: 5 * 60 * 1000,
   });
 
 /** 单文件读面(#202 文件查看器;02 §3 读裸库单文件,server 已在,

@@ -128,6 +128,7 @@ import {
   readBuildChanges,
   readCommitHistory,
   readFile,
+  readFiles,
   readTree,
   slugifyRepoName,
   toProjectRecord,
@@ -554,6 +555,13 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
       throw new HttpError(400, 'invalid query path: required');
     }
     return c.json(await readFile(ctx, row.id, path, c.req.query('ref')));
+  });
+
+  // 全递归文件列举（#760 composer `@` 候选源）：tree 面单层，全仓候选另开
+  // 此面。limit 缺省/非法即钳制（渐进增强面，参数宽容不 400）。
+  app.get('/api/projects/:id/files', async (c) => {
+    const row = requireProject(ctx, c.req.param('id'));
+    return c.json(await readFiles(ctx, row.id, c.req.query('ref'), c.req.query('limit')));
   });
 
   app.get('/api/projects/:id/branches', async (c) => {

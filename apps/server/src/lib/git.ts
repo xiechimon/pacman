@@ -127,6 +127,46 @@ export function decodeChunked(buf: Buffer): Buffer {
   return Buffer.concat(out);
 }
 
+/** `ls-tree -l` 行解析（单层 `lsTree` 与全递归 `lsFilesRecursive` 共用；
+ * 子模块 = `commit` 型条目，`cat-file blob` 读不出，候选/浏览两面都滤掉）。 */
+function parseLsTreeLines(stdout: Buffer): GitTreeEntry[] {
+  const entries: GitTreeEntry[] = [];
+  for (const line of stdout.toString('utf8').split('\n')) {
+    if (line === '') continue;
+    // `<mode> <type> <sha> <size|->\t<path>`（-l 出 size；tree 为 `-`；
+    // size 右对齐空格填充 → 按空白段切分）
+    const tab = line.indexOf('\t');
+    if (tab < 0) continue;
+    const meta = line.slice(0, tab).split(/\s+/);
+    const path = line.slice(tab + 1);
+    if (meta[1] !== 'tree' && meta[1] !== 'blob') continue;
+    const type = meta[1] === 'tree' ? 'tree' : 'blob';
+    const rawSize = meta[3];
+    const size = rawSize !== undefined && rawSize !== '-' ? Number.parseInt(rawSize, 10) : null;
+    const name = path.split('/').filter(Boolean).pop() ?? path;
+    entries.push({
+      name,
+      path,
+      type,
+      size: Number.isNaN(size) ? null : size,
+    });
+  }
+  return entries;
+}
+
+/** 全递归文件列举（#760 composer `@` 候选源）：`ls-tree -r -t -l` 一次打全仓
+ * 路径表。缝词表外的只读查询，直调 runGit（readCommitHistory 同先例），不进
+ * GitOps 接口——daemon 侧 worktree 词表不受影响。commit 须是已解析 sha
+ * （调用方先 resolveCommitOr404，与 tree/file 同律）。 */
+export async function lsFilesRecursive(dir: string, commit: string): Promise<GitTreeEntry[]> {
+  const r = await runGit(['ls-tree', '-r', '-t', '-l', commit, '--'], {
+    cwd: dir,
+    timeoutMs: META_TIMEOUT_MS,
+  });
+  if (r.code !== 0) return [];
+  return parseLsTreeLines(r.stdout);
+}
+
 export const systemGitOps: GitOps = {
   async initBareRepo(dir) {
     const init = await runGit(['init', '--bare', dir], { timeoutMs: META_TIMEOUT_MS });
@@ -222,27 +262,7 @@ export const systemGitOps: GitOps = {
     }
     const r = await runGit(args, { cwd: dir, timeoutMs: META_TIMEOUT_MS });
     if (r.code !== 0) return [];
-    const entries: GitTreeEntry[] = [];
-    for (const line of r.stdout.toString('utf8').split('\n')) {
-      if (line === '') continue;
-      // `<mode> <type> <sha> <size|->\t<path>`（-l 出 size；tree 为 `-`；
-      // size 右对齐空格填充 → 按空白段切分）
-      const tab = line.indexOf('\t');
-      if (tab < 0) continue;
-      const meta = line.slice(0, tab).split(/\s+/);
-      const path = line.slice(tab + 1);
-      const type = meta[1] === 'tree' ? 'tree' : 'blob';
-      const rawSize = meta[3];
-      const size = rawSize !== undefined && rawSize !== '-' ? Number.parseInt(rawSize, 10) : null;
-      const name = path.split('/').filter(Boolean).pop() ?? path;
-      entries.push({
-        name,
-        path,
-        type,
-        size: Number.isNaN(size) ? null : size,
-      });
-    }
-    return entries;
+    return parseLsTreeLines(r.stdout);
   },
 
   async readFileAt(dir, commit, path): Promise<GitFileAtRef | null> {
