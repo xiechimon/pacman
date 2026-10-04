@@ -3,8 +3,8 @@
 // 1. 仓库菜单两行「GitHub 仓库」「本地文件夹」,hosted 行创建入口消失
 // 2. 名称回填:local = basename(路径),github = repo 段;手改后不覆盖,清空
 //    后恢复;两形态选态换输入面 + swap 重开菜单
-// 3. focus-visible 收编:项目名输入框 focus = outline none + indigo 边框 +
-//    1px ring(共享 input 原语配方),非 UA 默认蓝 —— 截图证据
+// 3. focus-visible 收编:项目名输入框 focus = outline none + spot 系边框 +
+//    1px ring(共享 input 原语配方,吃 --focus-ring),非 UA 默认蓝 —— 截图证据
 // 4. 本地路径校验错误行:不存在 → 「路径不存在」/ 非 git → 「不是 git 仓库」
 //    (--danger 红),阻止导航;编辑路径即撤陈旧错误
 // 5. 提交闸:local 空路径 = 创建钮 disabled
@@ -42,9 +42,10 @@ const WEB = `http://127.0.0.1:${stack.webPort}`;
 const DB_PATH = join(stack.homeDir, 'server', 'server.db');
 const NEW_PAGE = `${WEB}/app/project/new`;
 
-/** tokens.css canon(dark/light 同值):--indigo-500 / --danger。 */
-const INDIGO_500 = 'rgb(100, 102, 233)';
-const DANGER = 'rgb(202, 58, 50)';
+/** shadcn.css 值正本:探针跑暗色, --focus-ring 暗 #cba6f7(spot 系) /
+ *  --danger 并流 --destructive 暗 #e05a5a(#839 起吃 destructive,旧 #ca3a32 作废)。 */
+const FOCUS_RING = 'rgb(203, 166, 247)';
+const DANGER = 'rgb(224, 90, 90)';
 
 const now = new Date();
 const pad = (n) => String(n).padStart(2, '0');
@@ -194,7 +195,7 @@ try {
     `github 回填:项目名 = repo 段(实际「${await nameValue()}」)`,
   );
 
-  // 5. focus-visible 收编:indigo 边框 + 1px ring,非 UA 蓝(AC 截图)
+  // 5. focus-visible 收编:spot 系边框 + 1px ring,非 UA 蓝(AC 截图)
   await page.locator('#prj-new-name').click();
   const focus = await page.locator('#prj-new-name').evaluate((el) => {
     const s = getComputedStyle(el);
@@ -203,12 +204,12 @@ try {
   payloads.focusStyles = focus;
   check(
     focus.outline === 'none' &&
-      focus.border === INDIGO_500 &&
-      focus.shadow.includes(INDIGO_500) &&
+      focus.border === FOCUS_RING &&
+      focus.shadow.includes(FOCUS_RING) &&
       focus.shadow.includes('1px'),
-    `名称输入框 focus:outline none + indigo 边框 + 1px ring(实际 ${JSON.stringify(focus)})`,
+    `名称输入框 focus:outline none + spot 系边框 + 1px ring(实际 ${JSON.stringify(focus)})`,
   );
-  await shot('03-focus-ring-indigo.png');
+  await shot('03-focus-ring-spot.png');
 
   // 6. 提交闸:local 空路径 = disabled
   await gotoNew();
