@@ -76,6 +76,7 @@ import { attachmentFailureTitle } from '../overlay/attachment-paste.js';
 import { AttachmentStrip } from '../overlay/attachment-strip.js';
 import { useComposerWire } from '../overlay/composer-wire.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
+import { SlashHelp, SlashMenu } from '../overlay/slash-menu.js';
 import { useChiefNewThreadHotkey } from '../overlays/hotkeys.js';
 import './chief.css';
 import { ChiefIdentity } from './chief-identity.js';
@@ -318,6 +319,15 @@ export function ChiefDrawer({
     onSend,
     onAttachment,
     mentionGroups,
+    // #841 `/` slash completion（detail composer #731 同 registry；正本对照
+    // detail/composer.tsx `slash:` 块）。抽屉面无 AI 审核 / 停止句柄（工具条本
+    // 就没这两钮），reviewAvailable / stopAvailable 双 false → 两条按 rule 47
+    // 条件隐藏，菜单只剩 clear / attach / mention / help + 团队技能；`clear`
+    // 语义与 detail 同 = 清空输入框（执行反馈走 wire 内 toast）。
+    slash: {
+      reviewAvailable: false,
+      stopAvailable: false,
+    },
   });
   const {
     handlePaste,
@@ -345,6 +355,22 @@ export function ChiefDrawer({
     insertTokens,
     insertFile,
     groups,
+    // #841 `/` slash menu state（detail composer 同款解构；复用同一 hook
+    // 面，故校验/语义零分叉）。
+    slashOpen,
+    slashQuery,
+    slashCaret,
+    slashSections,
+    slashHighlight,
+    setSlashHighlight,
+    slashListboxId,
+    slashListboxRef,
+    closeSlash,
+    acceptSlashRow,
+    helpOpen,
+    closeHelp,
+    helpRows,
+    helpSkillCount,
   } = wire;
   // #773：抽屉收起联动收弹层——模型 popover / 切换器 / 提及 picker /
   // 内联补全 / 恢复确认的 open 态都自持在抽屉内部，抽屉只收容器时它们跟
@@ -358,7 +384,9 @@ export function ChiefDrawer({
     setStreamOpen(false);
     closePicker();
     closeInline();
-  }, [open, closePicker, closeInline]);
+    closeSlash();
+    closeHelp();
+  }, [open, closePicker, closeInline, closeSlash, closeHelp]);
   // #146 Esc 分层改由 Base UI 壳代收（见下 onOpenChange）：Base UI 处理 Esc 时
   // 会拦下事件，窗口监听（旧 useEscapeClose）收不到。
   // (b″) dock 行发现：锚点 span 原位渲染，向上走到最近的 dock 行类作为 Portal
@@ -948,10 +976,19 @@ export function ChiefDrawer({
                         'aria-controls': inlineListboxId,
                         'aria-autocomplete': 'list' as const,
                       }
-                    : {})}
+                    : slashOpen
+                      ? {
+                          role: 'combobox',
+                          'aria-expanded': true,
+                          'aria-controls': slashListboxId,
+                          'aria-autocomplete': 'list' as const,
+                        }
+                      : {})}
                   {...(inlineOpen && inlineHighlight != null
                     ? { 'aria-activedescendant': `${inlineListboxId}-opt-${inlineHighlight}` }
-                    : {})}
+                    : slashOpen && slashHighlight != null
+                      ? { 'aria-activedescendant': `${slashListboxId}-opt-${slashHighlight}` }
+                      : {})}
                 />
                 {/* #732：@ 内联 listbox（detail composer 同皮；mention-picker.css
                 的 z-40 阶梯 = 宿主 drawer stacking context 内局部压住 composer）。 */}
@@ -975,6 +1012,23 @@ export function ChiefDrawer({
                   }}
                   listboxRef={inlineListboxRef}
                   listboxId={inlineListboxId}
+                />
+                {/* #841 `/` slash menu（detail composer 同皮同锚：包层
+                .chief-composer-input-wrap 即 relative 锚，行不可聚焦、DOM
+                焦点恒在框内；Click = Enter-with-highlight 语义）。 */}
+                <SlashMenu
+                  open={slashOpen}
+                  sections={slashSections.map((s) => ({
+                    title: s.section === 'builtin' ? t('命令') : t('技能'),
+                    rows: s.rows,
+                  }))}
+                  caret={slashCaret}
+                  query={slashQuery}
+                  highlight={slashHighlight}
+                  onHover={setSlashHighlight}
+                  onPick={(row) => acceptSlashRow(row, 'enter')}
+                  listboxRef={slashListboxRef}
+                  listboxId={slashListboxId}
                 />
               </div>
               {/* #757 附件 strip（detail composer 同件：在途占位 + 落定 chip，
@@ -1046,6 +1100,14 @@ export function ChiefDrawer({
                   insertTokens(tokens);
                   closePicker();
                 }}
+              />
+              {/* #841 `/help` panel（detail composer 同件：当前可用 builtins
+              只读一览）。 */}
+              <SlashHelp
+                open={helpOpen}
+                onClose={closeHelp}
+                commands={helpRows}
+                skillCount={helpSkillCount}
               />
             </div>
             {/* #615 返工：恢复钮确认层（破坏性：截断锚后消息并以锚重发）。壳与

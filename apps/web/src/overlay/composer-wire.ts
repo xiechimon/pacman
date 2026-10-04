@@ -54,6 +54,8 @@ import type {
   SetStateAction,
 } from 'react';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { useI18n } from '../i18n/provider.js';
 import {
   createPastedNameCounter,
   filesFromClipboardData,
@@ -259,6 +261,7 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     mentionFiles,
     slash: slashOptions,
   } = options;
+  const { t } = useI18n();
 
   const [internalDraft, setInternalDraft] = useState('');
   const controlled = draftProp !== undefined && onDraftChange !== undefined;
@@ -698,12 +701,17 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     insertFileAt(path, inlineOpen ? inlineRangeRef.current : null);
   };
   /** Run a builtin execute command (#731). Every entry maps to a live
-   *  composer action — there are no placeholder rows (D1). */
+   *  composer action — there are no placeholder rows (D1). `#841 feedback
+   *  law`: an execute row must leave visible feedback — `clear` is the only
+   *  builtin with no surface of its own (attach opens the picker, mention
+   *  opens the popover, review/stop/help each open or halt something), so
+   *  it toasts a light confirmation through the shared sonner source. */
   const runBuiltin = (name: BuiltinSlashName) => {
     closeSlash();
     switch (name) {
       case 'clear':
         setDraft('');
+        toast.success(t('已清空'));
         break;
       case 'attach':
         openFilePicker();

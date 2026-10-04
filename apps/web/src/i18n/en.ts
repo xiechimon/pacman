@@ -109,6 +109,7 @@ export const EN: Record<string, string> = {
   命令: 'Commands',
   '没有匹配"/{query}"的命令': 'No commands match "/{query}"',
   清空输入: 'Clear the input',
+  已清空: 'Cleared',
   打开提及面板: 'Open the mention picker',
   '发起 AI 审核': 'Start an AI review',
   停止当前运行: 'Stop the current run',
