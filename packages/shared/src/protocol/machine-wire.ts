@@ -11,6 +11,7 @@ import { modelUsageSchema, providerConfigSchema, toolCallRecordSchema } from '..
 import { epochMs, recordId } from '../records/common.js';
 import { machineRecordSchema } from '../records/machine.js';
 import { messageRoleSchema } from '../records/message.js';
+import { claudeCodeReportSchema } from '../records/model-source.js';
 import { PROJECT_REPO_KINDS } from '../records/project.js';
 import { reviewVerdictSchema } from '../records/review.js';
 import { stepRecordSchema } from '../records/step.js';
@@ -35,6 +36,9 @@ export const machineEnrollBodySchema = z.object({
   name: z.string().optional(),
   /** CLI 版本（机器页 latestCliVersion 数据源，r5 §8）。 */
   cliVersion: z.string().optional(),
+  /** 本机 claude-code 模型上报（#707）：daemon 读本机 settings.json 随注册
+   *  上行，免等首个 presence 节拍。缺席 = 旧 daemon（server 视为未知）。 */
+  claudeCode: claudeCodeReportSchema.optional(),
 });
 export type MachineEnrollBody = z.infer<typeof machineEnrollBodySchema>;
 
@@ -77,9 +81,11 @@ export const machineEnrollConfirmResponseSchema = z.object({ machine: machineJso
 export const machineMeResponseSchema = machineRecordSchema;
 
 /** POST /api/machine/presence body [推断]（02 §5.4：presence 心跳并行失败、
- * 进程不退出）。 */
+ * 进程不退出）。claudeCode 位（#707）：daemon 读本机 settings.json 随 30s
+ * 节拍上行（小 payload，无新增长连接）；缺席 = 旧 daemon，server 保留旧值。 */
 export const machinePresenceBodySchema = z.object({
   cliVersion: z.string().optional(),
+  claudeCode: claudeCodeReportSchema.optional(),
 });
 export const machineOkResponseSchema = z.object({ ok: z.literal(true) });
 

@@ -110,8 +110,6 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     mcpConfigPath: ctx.mcpConfigPath,
     skillsDir: ctx.skillsDir,
     convHub: ctx.convHub,
-    // #627 models 工具：claude-code 模段读路径（缺省 = 工具侧 os.homedir()）。
-    ...(ctx.claudeHomeDir !== undefined ? { claudeHomeDir: ctx.claudeHomeDir } : {}),
     // #452 写向：set_task_meta 标题回写 + chief create_todo 自建 issue 出站位。
     ...(ctx.githubFetch !== undefined ? { githubFetch: ctx.githubFetch } : {}),
   };
@@ -146,6 +144,7 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
       teamId: body.teamId,
       name: body.name ?? 'machine', // --name 默认 hostname（客户端已带则覆盖）
       ...(body.cliVersion !== undefined ? { cliVersion: body.cliVersion } : {}),
+      ...(body.claudeCode !== undefined ? { claudeCode: body.claudeCode } : {}),
       serverUrl: originOf(c),
     });
     return c.json(result); // = machine.json 形状（r3 §1.3）

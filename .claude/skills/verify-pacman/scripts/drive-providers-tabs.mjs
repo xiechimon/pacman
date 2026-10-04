@@ -16,9 +16,9 @@
 // 实现票的验收清单，不是 harness 故障。
 //
 // 依赖全新库（pi 空态断言，同 api-key probe 律）：先于 drive-provider-picker
-// .mjs 跑；重验 = 重 launch。claude-code 段数据源 = 本机 ~/.claude/settings
-// .json（server 端只读直读，A4）——probe 断言 UI=API 一致性，不断言具体模型
-// 清单内容（机器相关）。
+// .mjs 跑；重验 = 重 launch。claude-code 段数据源 = 执行机上报（#707，A4 修订）：
+// probe 经公开 machine wire 自铺底一台上报过的机器（建 API key → enroll 携
+// claudeCode 上报，无需真 daemon），断言 UI=API=上报值三方一致。
 // 用法：node drive-providers-tabs.mjs
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -83,6 +83,16 @@ const postJson = async (url, body) => {
   if (!res.ok) throw new Error(`POST ${url} → ${res.status}: ${await res.text()}`);
   return res.json();
 };
+const postAuthedJson = async (url, bearer, body) => {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${bearer}`, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) throw new Error(`POST ${url} → ${res.status}: ${await res.text()}`);
+  return res.json();
+};
 
 // 软断言原语：先行 probe 的红态要逐条产出 FAIL detail（不是首个超时即中止），
 // 所有 selector 探测一律不抛。
@@ -104,6 +114,7 @@ const PAGE_PATH = '/app/resources/providers';
 const SHELL = `[data-route="${PAGE_PATH}"]`;
 const HOST = hostname();
 const extra = { hostname: HOST };
+const EXEC_HOST = 'verify-exec-1';
 
 const stamp = Date.now() % 100000;
 const seedProvider = {
@@ -139,6 +150,48 @@ try {
     teamId != null,
     teamId != null ? `GET /api/teams 取到 teamId=${teamId}` : `取 teamId 失败：${teamsRes.error}`,
   );
+
+  // 0b) #707 执行机铺底：建 API key → enroll 携 claudeCode 上报（公开 machine
+  // wire，无需真 daemon）。上报值钉死，与本机真实 settings.json 无关。
+  const ccModelId = `verify-cc-model-${stamp}`;
+  let enrolled = false;
+  let enrollError = '无 teamId';
+  if (teamId != null) {
+    try {
+      const keyRes = await postJson(`${SERVER}/api/teams/${teamId}/api-keys`, {
+        name: `verify-707-${stamp}`,
+        gitAccess: false,
+        mcpAccess: false,
+        toolGrants: { read: [], write: [] },
+      });
+      const apiKey = keyRes.plaintext;
+      if (typeof apiKey !== 'string' || apiKey === '') throw new Error('api-keys 响应缺 plaintext');
+      await postAuthedJson(`${SERVER}/api/machine/enroll`, apiKey, {
+        teamId,
+        name: 'verify-exec-1',
+        cliVersion: '0.1.0-verify',
+        claudeCode: {
+          installed: true,
+          hostname: EXEC_HOST,
+          models: [{ id: ccModelId, name: ccModelId, slot: 'default' }],
+        },
+      });
+      enrolled = true;
+    } catch (err) {
+      enrollError = String(err?.message ?? err);
+    }
+  }
+  check(
+    'enroll-executor-api',
+    enrolled,
+    enrolled
+      ? `执行机 verify-exec-1 enroll 携上报（hostname=${EXEC_HOST}，模型 ${ccModelId}）`
+      : `#707 铺底失败：${enrollError}`,
+  );
+  extra.ccModelId = ccModelId;
+  // 上报后重载页面，使 model-sources 查询拿到含执行机段的封套。
+  await page.reload();
+  await page.waitForSelector(SHELL, { timeout: 15_000 }).catch(() => {});
 
   // 1) A1：runtime tablist = 恰 pi / Claude Code 两 tab，默认 pi，无「内置」字样
   const tablistOk = await softVisible(page, `${SHELL} [role="tablist"]`);
@@ -300,7 +353,8 @@ try {
       : 'spec 11 A1：tab 切换应同步 ?runtime= search param（刷新/分享可回定位）——未达成',
   );
 
-  // 7) 数据契约：GET model-sources = pi + claude-code 两段
+  // 7) 数据契约（#707）：GET model-sources = pi 首段 + 每台上报过的机器一段
+  // claude-code（序固定：pi 首 + 按机器名）
   const msRes =
     teamId != null
       ? await tryGetJson(`${SERVER}/api/teams/${teamId}/model-sources`)
@@ -313,19 +367,33 @@ try {
       : `spec 11 数据契约：GET /api/teams/:id/model-sources 应 200——实测 ${msRes.error}`,
   );
   const sources = msRes.ok && Array.isArray(msRes.data?.sources) ? msRes.data.sources : [];
-  const ccSrc = sources.find((s) => s.runtime === 'claude-code');
+  const ccSegs = sources.filter((s) => s.runtime === 'claude-code');
+  const execSeg = ccSegs.find((s) => s.hostname === EXEC_HOST);
   check(
-    'model-sources-two-runtimes',
-    sources.length === 2 &&
-      sources.some((s) => s.runtime === 'pi') &&
-      ccSrc != null,
-    `spec 11 契约：sources 应恰含 pi + claude-code 两段——实测 [${sources
-      .map((s) => s.runtime)
+    'model-sources-per-machine',
+    sources.length >= 1 &&
+      sources[0]?.runtime === 'pi' &&
+      execSeg != null,
+    `#707 契约：pi 首段 + 上报过的执行机各一段——实测 [${sources
+      .map((s) => `${s.runtime}@${s.hostname}`)
       .join(', ') || '空'}]`,
+  );
+  // #707 F1：段值 = 执行机上报值（非 server 本机配置）——hostname 与模型双钉。
+  const followsExecutor =
+    execSeg != null &&
+    execSeg.installed === true &&
+    Array.isArray(execSeg.models) &&
+    execSeg.models.some((m) => m?.id === ccModelId);
+  check(
+    'executor-following',
+    followsExecutor,
+    followsExecutor
+      ? `claude-code 段跟随执行机：hostname=${EXEC_HOST}，模型含上报值 ${ccModelId}`
+      : `#707 F1：claude-code 段应为执行机上报值——实测段 ${JSON.stringify(execSeg)?.slice(0, 160) ?? '缺席'}`,
   );
   // 封套元素形状（机器无关，可钉死）：{runtime, installed, hostname, models[{id,name,slot?}]}
   const shapeOk =
-    sources.length === 2 &&
+    sources.length >= 1 &&
     sources.every(
       (s) =>
         typeof s.runtime === 'string' &&
@@ -350,43 +418,39 @@ try {
   );
   extra.modelSources = sources;
 
-  // 8) A2/A4：claude-code header 卡（安装态分支以 API 真值为准，两分支皆合法）
+  // 8) A2/A4（#707）：执行机 header 卡——上报过的机器各一张，文案为上报 hostname
   const headSel = `${SHELL} .res-runtime-head[data-runtime="claude-code"]`;
-  const headOk = await softVisible(page, headSel);
-  const headText = headOk ? await softText(page, headSel) : '';
-  let headPass = false;
-  let headDetail;
-  if (!headOk) {
-    headDetail =
-      'spec 11 A2/A4：claude-code tab 应渲染 header 卡（.res-runtime-head[data-runtime]：runtime 名 + 说明 + 安装态）——未实现';
-  } else if (ccSrc?.installed === true) {
-    headPass = headText.includes('已安装') && headText.includes(ccSrc.hostname ?? HOST);
-    headDetail = headPass
-      ? `header 卡安装态：「已安装在 ${ccSrc.hostname}」与 API installed=true 一致`
-      : `spec 11 A2：installed=true 时 header 应含「已安装在 <hostname>」——实测 "${oneLine(headText)}"`;
-  } else if (ccSrc != null) {
-    headPass = headText.includes('未安装');
-    headDetail = headPass
-      ? 'header 卡未安装态：安装指引在位，与 API installed=false 一致'
-      : `spec 11 A4：installed=false 时 header 应转「未安装」指引态——实测 "${oneLine(headText)}"`;
-  } else {
-    headDetail = 'spec 11 A4：header 安装态判定需 model-sources API 真值分支——API 缺失';
-  }
-  check('cc-header-card', headPass, headDetail);
+  const headCount = await softCount(page, headSel);
+  const headTexts = headCount > 0 ? await softText(page, headSel) : '';
+  const headPass =
+    headCount === ccSegs.length && ccSegs.length > 0 && headTexts.includes(EXEC_HOST);
+  check(
+    'cc-header-card',
+    headPass,
+    headPass
+      ? `header 卡按机器分段：${headCount} 张，含上报 hostname「已安装在 ${EXEC_HOST}」`
+      : `#707：claude-code tab 应按上报机器分段渲染 header 卡（API ${ccSegs.length} 段，UI ${headCount} 张）——实测 "${oneLine(headTexts)}"`,
+  );
   await shot(page, '04-cc-header.png');
 
-  // 9) UI=API 一致性：claude-code 可见模型行数 = API models 段长度
-  const ccApiModels = Array.isArray(ccSrc?.models) ? ccSrc.models.length : null;
+  // 9) UI=API 一致性：claude-code 可见模型行数 = 各段 models 长度之和，且上报
+  // 模型行在位（data-model-id 钉死上报值）
+  const ccApiModels = ccSegs.reduce(
+    (n, seg) => n + (Array.isArray(seg.models) ? seg.models.length : 0),
+    0,
+  );
   const ccUiRows = await softCount(
     page,
     `${SHELL} .res-model-row[data-runtime="claude-code"]:visible`,
   );
+  const reportedRowOk = await softVisible(
+    page,
+    `${SHELL} .res-model-row[data-runtime="claude-code"][data-model-id="${ccModelId}"]`,
+  );
   check(
     'cc-model-rows-consistency',
-    ccApiModels != null && ccUiRows === ccApiModels,
-    ccApiModels != null
-      ? `claude-code 模型行 UI=${ccUiRows} vs API=${ccApiModels}`
-      : 'spec 11 A2/A4：claude-code tab 模型行应与 model-sources API models 段一致——API 缺失无从对照',
+    ccUiRows === ccApiModels && reportedRowOk,
+    `claude-code 模型行 UI=${ccUiRows} vs API=${ccApiModels}，上报行 ${ccModelId} ${reportedRowOk ? '在位' : '缺失'}`,
   );
   await shot(page, '05-cc-tab.png');
 

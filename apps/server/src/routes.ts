@@ -1540,9 +1540,10 @@ export function registerRoutes(app: Hono, ctx: AppContext): void {
     return c.json(getProvidersEnvelope(keysvc, teamId));
   });
 
-  // model-sources 面（spec 11 数据契约，#356）：providers 页 runtime tabs
-  // 真值——pi = custom providers models[] 投影；claude-code = server fs
-  // 直读本机 ~/.claude/settings.json（每次 GET 重读，实时语义）。
+  // model-sources 面（spec 11 数据契约，#356；#707 起 claude-code 段跟随
+  // 执行机）：providers 页 runtime tabs 真值——pi = custom providers models[]
+  // 投影；claude-code = 各执行机 daemon 上报的本机 settings.json 解析结果
+  // （按机器聚合，未上报的机器缺席）。
   app.get('/api/teams/:id/model-sources', (c) => {
     const teamId = c.req.param('id');
     requireTeam(ctx, teamId);

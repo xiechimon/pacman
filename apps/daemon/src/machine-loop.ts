@@ -16,6 +16,7 @@ import {
 } from '@pacman/shared';
 import { createClaudeCodeBackend } from './backend/claude-code.js';
 import { createPiBackend } from './backend/pi.js';
+import { readClaudeCodeReport } from './claude-code-models.js';
 import type { DaemonConfig } from './config.js';
 import { StepJournal } from './journal.js';
 import type { DaemonLogger } from './log.js';
@@ -31,7 +32,7 @@ import {
   type StatePaths,
   saveMachineJson,
 } from './state.js';
-import { resolveStepImages } from './step-attachments.js';
+import { resolveStepImages, sweepStepAttachments } from './step-attachments.js';
 import { performSync } from './sync.js';
 import { DAEMON_VERSION } from './version.js';
 import { WorkspaceManager } from './workspace.js';
@@ -163,6 +164,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       teamId: config.teamId,
       name: config.name,
       cliVersion: DAEMON_VERSION,
+      claudeCode: readClaudeCodeReport(),
     });
     machineJson = {
       machineId: enrolled.machineId,
@@ -176,7 +178,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   inMemoryToken = machineJson.token;
   const machineId = machineJson.machineId;
 
-  await client.presence({ cliVersion: DAEMON_VERSION });
+  await client.presence({ cliVersion: DAEMON_VERSION, claudeCode: readClaudeCodeReport() });
   logger.raw(`Online (machineId=${machineId}); polling ${config.serverUrl}`);
 
   // 闲置防睡（darwin caffeinate -i；平台命令表 spawn，01 §4.3）。
@@ -231,6 +233,24 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   sweepOrphans();
   const orphanTimer = setInterval(sweepOrphans, 24 * 60 * 60 * 1000);
   orphanTimer.unref?.();
+
+  // step-attachments scratch 回收（#759 R3：sweepOrphans 同形——上线一次 +
+  // 每日节奏；再生前提见 step-attachments.ts STEP_ATTACHMENTS_TTL_MS）。
+  const sweepStepScratch = () => {
+    try {
+      const removed = sweepStepAttachments(paths.stepAttachmentsDir, { now: Date.now() });
+      if (removed.length > 0) {
+        logger.workspace(`step-attachments recycled: ${removed.length} (${removed.join(', ')})`);
+      }
+    } catch (err: unknown) {
+      logger.workspace(
+        `step-attachments cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  };
+  sweepStepScratch();
+  const stepScratchTimer = setInterval(sweepStepScratch, 24 * 60 * 60 * 1000);
+  stepScratchTimer.unref?.();
 
   // —— [recover] 步 journal 恢复（server 真值对账 + continue session 续跑）——
   const recovered = await client.recover();
@@ -368,9 +388,11 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
 
   // —— presence 心跳（并行失败不退出，r3 §1.5）——
   const presenceTimer = setInterval(() => {
-    client.presence({ cliVersion: DAEMON_VERSION }).catch((err: unknown) => {
-      logger.machine(`presence failed: ${err instanceof Error ? err.message : String(err)}`);
-    });
+    client
+      .presence({ cliVersion: DAEMON_VERSION, claudeCode: readClaudeCodeReport() })
+      .catch((err: unknown) => {
+        logger.machine(`presence failed: ${err instanceof Error ? err.message : String(err)}`);
+      });
   }, opts.presenceIntervalMs ?? 30_000);
   presenceTimer.unref?.();
 
@@ -429,6 +451,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     logger.machine(`Shutting down…${cause ? ` (${cause})` : ''}`);
     clearInterval(presenceTimer);
     clearInterval(orphanTimer);
+    clearInterval(stepScratchTimer);
     streamCtrl.abort();
     claimCtrl.abort();
     caffeinate?.kill();

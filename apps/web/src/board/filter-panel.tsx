@@ -16,7 +16,7 @@
 // 弹层走新轨原语 components/ui/popover.tsx（Base UI Popover + Positioner），
 // 不自造定位壳/背板/Esc 接线。esc 由 Base UI 的 useDismiss 承接，它挂的是
 // **document** 上的 keydown（floating-ui-react/hooks/useDismiss 实测），与手写
-// 族（dismiss.tsx 的 useEscapeClose，挂 window）落点不同；e2e/escape-wiring
+// 族（#67 家族旧手写 hook，挂 window，已随 #656 退役）落点不同；e2e/escape-wiring
 // 的探针两个目标都数，故本次换机制没有把那条 #462 重挂钉变成空虚绿——
 // 开层期（URL 写回触发重渲染后、关层前读取）两个目标均零增删，实测见该用例。
 // 触发钮走 PopoverTrigger 的 render 合成，Button 原语与 data-variant 契约
@@ -83,8 +83,8 @@ export interface FilterChip {
 
 const FOCUS = 'focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2';
 
-/** 行首勾选框（参考站实测形）：16px 圆角方。off = 控制边框空盒；on = indigo
- *  实底白勾；mixed = indigo 边框 + 横杠（全选行的部分选中态）。槽位恒在，
+/** 行首勾选框（参考站实测形）：16px 圆角方。off = 控制边框空盒；on = 品牌
+ *  实底勾；mixed = 品牌边框 + 横杠（全选行的部分选中态）。槽位恒在，
  *  状态切换零布局位移。 */
 function CheckBox({ state }: { state: 'off' | 'on' | 'mixed' }) {
   return (
@@ -94,8 +94,8 @@ function CheckBox({ state }: { state: 'off' | 'on' | 'mixed' }) {
         state === 'off'
           ? 'border-input'
           : state === 'on'
-            ? 'border-accent-indigo bg-accent-indigo text-primary-foreground'
-            : 'border-accent-indigo text-accent-indigo'
+            ? 'border-(--card-button) bg-(--card-button) text-primary-foreground'
+            : 'border-(--card-button) text-(--card-button)'
       }`}
     >
       {state === 'on' && <Check className="size-3" />}
@@ -212,7 +212,7 @@ function DimensionSection({
             {/* 真 checkbox（native input）：三态走 indeterminate 属性，语义与
                 键盘/读屏行为白送；整行包 label，点文案即 toggle。勾形/横杠是
                 input 之上的指针穿透覆层（appearance-none 自绘皮肤）。 */}
-            <label className="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent">
+            <label className="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft">
               <span className="relative flex size-4 flex-none">
                 <input
                   type="checkbox"
@@ -221,20 +221,20 @@ function DimensionSection({
                     if (el) el.indeterminate = someSelected && !allSelected;
                   }}
                   onChange={() => (allSelected ? dimension.onClear() : dimension.onSelectAll())}
-                  className={`filter-dimension-all ${FOCUS} size-4 cursor-pointer appearance-none rounded border border-input transition-colors checked:border-accent-indigo checked:bg-accent-indigo indeterminate:border-accent-indigo`}
+                  className={`filter-dimension-all ${FOCUS} size-4 cursor-pointer appearance-none rounded border border-input transition-colors checked:border-(--card-button) checked:bg-(--card-button) indeterminate:border-(--card-button)`}
                 />
                 {allSelected && (
                   <Check className="pointer-events-none absolute inset-0 m-auto size-3 text-primary-foreground" />
                 )}
                 {someSelected && !allSelected && (
-                  <span className="pointer-events-none absolute inset-0 m-auto h-0.5 w-2 rounded-full bg-accent-indigo" />
+                  <span className="pointer-events-none absolute inset-0 m-auto h-0.5 w-2 rounded-full bg-(--card-button)" />
                 )}
               </span>
               <span className="min-w-0 flex-1 truncate text-left">{t('全选')}</span>
             </label>
             <button
               type="button"
-              className={`filter-dimension-invert ${FOCUS} mr-2 shrink-0 rounded px-1 text-xs text-accent-indigo-strong transition-colors hover:underline`}
+              className={`filter-dimension-invert ${FOCUS} mr-2 shrink-0 rounded px-1 text-xs text-(--card-button) transition-colors hover:underline`}
               onClick={dimension.onInvert}
             >
               {t('反选')}
@@ -261,7 +261,7 @@ function DimensionSection({
                       : { 'data-tag': choice.value })}
                     role="option"
                     aria-selected={active}
-                    className={`${alias} ${FOCUS} flex h-7 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent ${
+                    className={`${alias} ${FOCUS} flex h-7 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft ${
                       active ? 'bg-accent' : ''
                     }`}
                     onClick={() => dimension.onToggle(choice.value)}
@@ -374,7 +374,7 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
         {totalSelected > 0 && (
           <button
             type="button"
-            className={`filter-panel-clear ${FOCUS} mt-0.5 flex h-7 items-center justify-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground`}
+            className={`filter-panel-clear ${FOCUS} mt-0.5 flex h-7 items-center justify-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent-soft hover:text-foreground`}
             onClick={onClearAll}
           >
             {t('清除全部')}

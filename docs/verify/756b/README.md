@@ -1,21 +1,53 @@
-# #756 第二轮：搜索框不常驻（typeahead-only）验收
+# #756: chief picker search is typeahead-only — evidence
 
-契约：开面零搜索占位（不渲染）→ 可打印字符现形（吃掉该字符、预填、
-即刻过滤、焦点进 input）→ 清空收回（框消失、清单回全量、焦点回清单）。
+Contract: opening a chief model picker renders zero search footprint (no
+`.chief-pick-search` node). A printable key reveals the box with the key
+prefilled, filters immediately, and moves focus into the input. Clearing the
+query retracts the box — full list back, focus back on the list container.
+Space stays with row activation (keyboard a11y contract) and never reveals.
 
-## Shots（fixture 面，e2e 同款步骤 manual capture）
+Focus is established synchronously when the list mounts (`ModelPickList` in
+`model-select-core.tsx`), so the first key always travels through the
+listbox even though FloatingShell moves focus in asynchronously. The specs
+additionally wait for focus to settle inside the face before typing.
 
-- `drawer-open-no-box.png` — 抽屉 picker 开面：无 `.chief-pick-search`。
-- `drawer-reveal-empty.png` — 键 `n`：框现形预填 `n` + 默认行 + 空态
-  （fixture 面 modelOptions 缺省，drawer 面恒无候选）。
-- `settings-reveal-filter.png` — 压缩 picker 键 `c`：框预填 `c` + 默认行 +
-  过滤出的 canon 行（claude-sonnet-5），无空态。
+## What the shots show
 
-## Gates（本 worktree，2026-10-04）
+First round (`*-open-no-search.png`, `*-after-*-revealed.png`):
 
-- `pnpm -r typecheck` — clean（/tmp/t0122-typecheck.log）。
-- `pnpm lint` (biome ci) — 0 errors, 11 warnings, 26 infos（/tmp/t0122-lint.log）。
-- `pnpm --filter @pacman/web e2e:affected` — 首轮 139/140：drawer typeahead
-  用例在首键处丢键；根因 = Base UI initialFocus 异步移入与首键竞态。
-  修法 = ModelPickList 挂载即焦点进清单容器（`model-select-core.tsx`）。
-  复跑 **140/140 green**（/tmp/t0122-e2e2.log）；typeahead 用例另 `--repeat-each=5` 全过。
+- `drawer-open-no-search.png`: drawer-head picker open — zero search
+  footprint (no `.chief-pick-search` node), default row only. Scenario 111 is
+  fixture mode, where `modelOptions` is `undefined` (live-only union), so the
+  face shows the default row alone by design.
+- `drawer-after-n-revealed.png`: after pressing `n` — box revealed prefilled
+  with `n`, focused, default row + empty state. The drawer's `N` new-thread
+  hotkey did not steal the key (chip title unchanged, menu still open).
+- `settings-open-no-search.png` / `settings-after-x-revealed.png`: same
+  contract on the settings compaction picker (fixture canon: default + one
+  model row; `x` matches neither, so default + empty state).
+
+Second round (`drawer-open-no-box.png`, `drawer-reveal-empty.png`,
+`settings-reveal-filter.png` — same steps, manual capture):
+
+- `drawer-open-no-box.png`: drawer picker open, no `.chief-pick-search`.
+- `drawer-reveal-empty.png`: key `n` reveals the box prefilled with `n`,
+  default row + empty state (fixture face carries no candidates on this face).
+- `settings-reveal-filter.png`: compaction picker key `c` prefills `c`,
+  default row + the filtered canon row (claude-sonnet-5), no empty state.
+
+## Measured assertions (evidence script output, first round)
+
+- drawer: openRows 1, openSearch 0; after `n`: value `n`, focused true,
+  chip unchanged true.
+- settings: after `x`: value `x`, focused true, 1 row, empty visible true.
+
+## Verification
+
+- `pnpm -r typecheck`: all projects Done, no failures.
+- `pnpm lint`: exit 0 (warnings/infos only).
+- `pnpm --filter @pacman/web exec playwright test
+  e2e/chief-drawer-model.spec.ts e2e/chief-settings.spec.ts --list`:
+  both typeahead tests present.
+- Affected-surface e2e: second round ran 140/140 green after the
+  mount-sync focus fix, with the drawer typeahead case additionally passing
+  `--repeat-each=5`.

@@ -92,8 +92,12 @@ class FakeMachineApi implements MachineApi {
   /** claim 请求计数（#482：wake 事件不得引发在飞 claim 中断重发）。 */
   claimCalls = 0;
 
-  async enroll(body: { teamId: string; apiKey: string; name?: string }) {
+  enrollBodies: unknown[] = [];
+  presenceBodies: unknown[] = [];
+
+  async enroll(body: { teamId: string; apiKey: string; name?: string; claudeCode?: unknown }) {
     this.calls.push(`enroll:${body.teamId}`);
+    this.enrollBodies.push(body);
     return {
       machineId: 'm1',
       token: 'a'.repeat(64),
@@ -113,8 +117,9 @@ class FakeMachineApi implements MachineApi {
       shellEnabled: false,
     };
   }
-  async presence() {
+  async presence(body?: { cliVersion?: string; claudeCode?: unknown }) {
     this.calls.push('presence');
+    this.presenceBodies.push(body);
   }
   async recover() {
     this.calls.push('recover');
@@ -319,6 +324,21 @@ describe('上线序列 canon（02 §5.4/r3 §1.5）', () => {
     expect(existsSync(paths.machineJson)).toBe(true);
     expect(JSON.parse(readFileSync(paths.machineJson, 'utf8')).machineId).toBe('m1');
     expect(api.calls[0]).toBe('enroll:team-1');
+    // #707：enroll 即带本机模型上报（installed/hostname/models 形状不断言
+    // 内容——读的是测试机真实 ~/.claude，只钉上报动作与形状）。
+    const enrollBody = api.enrollBodies[0] as { claudeCode?: unknown };
+    const report = enrollBody.claudeCode as {
+      installed: boolean;
+      hostname: string;
+      models: unknown[];
+    };
+    expect(typeof report.installed).toBe('boolean');
+    expect(typeof report.hostname).toBe('string');
+    expect(report.hostname).not.toBe('');
+    expect(Array.isArray(report.models)).toBe(true);
+    // presence 首跳同样带上报。
+    await waitFor(() => api.presenceBodies.length > 0);
+    expect((api.presenceBodies[0] as { claudeCode?: unknown }).claudeCode !== undefined).toBe(true);
     await handle.stop();
     await handle.done;
     expect(lines).toContain('[machine] Shutting down…'); // r3 §1.5 退出行

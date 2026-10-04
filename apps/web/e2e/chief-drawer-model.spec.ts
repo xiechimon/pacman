@@ -35,8 +35,8 @@ test.describe('chief drawer model row (#615)', () => {
     await btn.click();
     const menu = page.locator('.chief-model-pop');
     await expect(menu).toBeVisible();
-    // the enter animation (slide-in-from-top-2) translates the menu for
-    // 100ms; rects sampled mid-flight are not the resting geometry.
+    // the enter animation (V2 scale-fade 100ms, #790 P3) transforms the menu
+    // for 100ms; rects sampled mid-flight are not the resting geometry.
     await menu.evaluate((el) =>
       Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined),
     );
@@ -54,7 +54,8 @@ test.describe('chief drawer model row (#615)', () => {
     expect(menuBox).not.toBeNull();
     expect(drawerBox).not.toBeNull();
     if (btnBox == null || menuBox == null || drawerBox == null) throw new Error('missing rects');
-    expect(Math.abs(menuBox.y - (btnBox.y + btnBox.height + 4))).toBeLessThanOrEqual(2);
+    // V2 顶部锚距（#790 P3）: menu.top = trigger.bottom + 8（原家族基线 4）。
+    expect(Math.abs(menuBox.y - (btnBox.y + btnBox.height + 8))).toBeLessThanOrEqual(2);
     expect(Math.abs(menuBox.x - btnBox.x)).toBeLessThanOrEqual(2);
     expect(menuBox.x).toBeGreaterThanOrEqual(drawerBox.x);
     expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(drawerBox.x + drawerBox.width);
@@ -87,7 +88,13 @@ test.describe('chief drawer model row (#615)', () => {
         };
         const lum = (rgb: number[]) =>
           0.2126 * lin(rgb[0]) + 0.7152 * lin(rgb[1]) + 0.0722 * lin(rgb[2]);
-        const parse = (s: string) => (s.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
+        const parse = (s: string) => {
+          // color-mix() tokens serialize computed as color(srgb …) fractions,
+          // not rgb() 0–255 ints (#788: the selected-row fill rides --spot-soft)
+          const m = s.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+          if (m) return [m[1], m[2], m[3]].map((v) => Number(v) * 255);
+          return (s.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
+        };
         let bg = 'rgba(0, 0, 0, 0)';
         let node: Element | null = el;
         while (node != null && bg === 'rgba(0, 0, 0, 0)') {
@@ -123,6 +130,16 @@ test.describe('chief drawer model row (#615)', () => {
     // union), so the face shows the default row alone by design
     const rowsOpen = await menu.locator('.chief-model-pick-row').count();
     expect(rowsOpen).toBe(1);
+
+    // typeahead 接的是面内焦点：FloatingShell 把焦点移进面是异步的，
+    // 没落定就打字会打在触发钮上（抽屉面还会触发 N 新主题热键）——等落定再敲
+    await page.waitForFunction(
+      (sel) => {
+        const el = document.querySelector(sel);
+        return el != null && el.contains(document.activeElement);
+      },
+      '.chief-model-pop',
+    );
 
     // a printable key is consumed by the face: the box reveals with the key
     // prefilled, focus in the input — and the drawer's N hotkey must not

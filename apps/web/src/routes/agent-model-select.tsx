@@ -11,8 +11,9 @@
 // 的那一层。machine 维 runtime 是「一台电脑 × 一个 CLI」的执行面概念
 // （docs/research/r10-multica-runtime.md），agent 配置面没有这个选择。
 //
-// 候选清单投影 = api/mappers.ts `toModelOptions`（custom providers models[] ∪
-// model-sources 非 pi 段；与总管压缩模型选择器同源，不各写一份）。一级分组 =
+// 候选清单投影 = api/mappers.ts `toModelOptions`（model-sources 非 pi 段；
+// #770 起 providers 段已除——存量 provider 绑定值命中不了选项，走裸串兜底
+// 回显；与总管压缩模型选择器同源，不各写一份）。一级分组 =
 // 该投影的 provider 位去重保序。
 //
 // 壳 = components/ui/select.tsx（XMON-75）。本件只剩「值怎么投影成行」与两级
@@ -45,8 +46,8 @@ import { useI18n } from '../i18n/provider.js';
  *  页本地常量，两级化后单源移此）。 */
 export const BUILTIN_RUNTIME_LABEL = '内置 (pi)';
 
-/** 一级候选分组：provider 位去重保序（toModelOptions 并集语义——同一模型 id
- *  可能在 custom providers 与 claude-code 段各有一行，分组键只能是 provider）。 */
+/** 一级候选分组：provider 位去重保序（toModelOptions 同键去重语义——分组键
+ *  只能是 provider）。 */
 export function providerGroups(
   options: ModelOption[],
 ): { provider: string; providerLabel: string }[] {

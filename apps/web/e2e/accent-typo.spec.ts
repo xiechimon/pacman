@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-// Issue #390 acceptance (品牌与排版组, 2026-09-28 triage #6/#8/#9):
+// Issue #390 acceptance (品牌与排版组, 2026-09-28 triage #6/#8/#9) —
+// base-ui-theme P5 #791 起更名 accent-typo: 品牌只走 spot 紫（indigo 整族
+// 已删），本 spec 钉品牌色消费面 + 焦点环 + danger 对。
 // - 字重基线: 正文 computed font-weight = 400 (DESIGN.md §Typography 三档
 //   400/500/600 的锚点; inter-var fvar wght 100–900 default 400 且
 //   @font-face 已声明全档范围, 浏览器按请求档实例化, 无需
@@ -13,7 +15,14 @@ import { expect, test } from '@playwright/test';
 //   sidebar-seam / sidebar-nav 既有断言守。
 // - .res-back: hover 无背景变化 (现状即无 hover 面, 此处把律钉死防回潮);
 //   键盘 focus 环由 app.css 全局 :focus-visible 规则承载 (#388, 2px
-//   --focus-ring + offset 2)——本 spec 断言该环在 res-back 上生效。
+//   --focus-ring + offset 2)——本 spec 断言该环在 res-back 上双主题生效
+//   （暗 #cba6f7 / 亮 #8839ef）。
+// - P5 danger 对：--destructive 两值（暗 #e05a5a / 亮 #c73e3e）+ 暗侧深字
+//   翻转（--destructive-foreground 暗 #17171a / 亮 #ffffff），逐对拼
+//   对比度（文本 ≥4.5，§5.1 门）。
+// - P4 行 hover：more-menu 普通行 hover = --accent-soft，删除行 =
+//   --danger-soft（与 token 值探针逐值比对，不估算）。
+// - P4 主钮提亮：brand 档 hover filter = brightness(1.07)（原型 L365）。
 // - 侧栏底 = 主区 --surface: 断言行放在 visual-polish.spec.ts (原 #123
 //   层级断言的翻转, 同票更新)。
 
@@ -169,23 +178,130 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
-test('res-back keeps a keyboard focus ring', async ({ page }) => {
-  await page.goto('/app/resources/skills?scenario=06');
-  // keyboard modality: tab until the back chevron owns focus
-  for (let i = 0; i < 40; i++) {
-    const onBack = await page.evaluate(
-      () => document.activeElement?.classList.contains('res-back') ?? false,
-    );
-    if (onBack) break;
-    await page.keyboard.press('Tab');
-  }
-  await expect(page.locator('.res-back')).toBeFocused();
-  const ring = await page.evaluate(() => {
-    const cs = getComputedStyle(document.querySelector('.res-back')!);
-    return { w: cs.outlineWidth, style: cs.outlineStyle, color: cs.outlineColor };
+for (const theme of ['light', 'dark'] as const) {
+  test(`res-back keeps a keyboard focus ring (${theme})`, async ({ page }) => {
+    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
+    await page.goto('/app/resources/skills?scenario=06');
+    // keyboard modality: tab until the back chevron owns focus
+    for (let i = 0; i < 40; i++) {
+      const onBack = await page.evaluate(
+        () => document.activeElement?.classList.contains('res-back') ?? false,
+      );
+      if (onBack) break;
+      await page.keyboard.press('Tab');
+    }
+    await expect(page.locator('.res-back')).toBeFocused();
+    const ring = await page.evaluate(() => {
+      const cs = getComputedStyle(document.querySelector('.res-back')!);
+      return { w: cs.outlineWidth, style: cs.outlineStyle, color: cs.outlineColor };
+    });
+    expect(ring.style).toBe('solid');
+    expect(ring.w).toBe('2px');
+    // the codebase ring recipe rides --focus-ring (dark #cba6f7 / light #8839ef)
+    expect(ring.color).toBe(theme === 'dark' ? 'rgb(203, 166, 247)' : 'rgb(136, 57, 239)');
   });
-  expect(ring.style).toBe('solid');
-  expect(ring.w).toBe('2px');
-  // the codebase ring recipe rides --focus-ring (#4e47dd, both themes)
-  expect(ring.color).toBe('rgb(78, 71, 221)');
-});
+}
+
+/** Resolve a token to its computed value through a probe element. */
+async function resolveToken(
+  page: import('@playwright/test').Page,
+  token: string,
+): Promise<string> {
+  return page.evaluate((t) => {
+    const probe = document.createElement('div');
+    probe.style.backgroundColor = `var(${t})`;
+    document.body.append(probe);
+    const resolved = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return resolved;
+  }, token);
+}
+
+/** WCAG relative-luminance contrast of two rgb() strings, measured in-page. */
+async function contrastOf(
+  page: import('@playwright/test').Page,
+  fg: string,
+  bg: string,
+): Promise<number> {
+  return page.evaluate(
+    ([f, b]) => {
+      const lum = (s: string) => {
+        const c = s
+          .replace(/^rgba?\(/, '')
+          .replace(/\)$/, '')
+          .split(',')
+          .slice(0, 3)
+          .map((v) => {
+            const x = Number(v.trim()) / 255;
+            return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+          });
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+      };
+      const [l1, l2] = [lum(f), lum(b)].sort((x, y) => y - x);
+      return (l1 + 0.05) / (l2 + 0.05);
+    },
+    [fg, bg] as const,
+  );
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`P5 danger pair: destructive bg + fg resolve and pass 4.5 (${theme})`, async ({
+    page,
+  }) => {
+    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
+    await page.goto('/app?scenario=01');
+    const bg = await resolveToken(page, '--destructive');
+    const fg = await resolveToken(page, '--destructive-foreground');
+    // H 红系两值 + 暗侧深字翻转（§2.1：暗侧白字只有 3.63:1，必须翻深）
+    expect(bg).toBe(theme === 'dark' ? 'rgb(224, 90, 90)' : 'rgb(199, 62, 62)');
+    expect(fg).toBe(theme === 'dark' ? 'rgb(23, 23, 26)' : 'rgb(255, 255, 255)');
+    expect(await contrastOf(page, fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test(`P5 main-button pair passes 4.5 in both themes (${theme})`, async ({ page }) => {
+    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
+    await page.goto('/app?scenario=01');
+    const bg = await resolveToken(page, '--card-button');
+    const fg = await resolveToken(page, '--text-on-accent');
+    expect(bg).toBe(theme === 'dark' ? 'rgb(203, 166, 247)' : 'rgb(136, 57, 239)');
+    expect(fg).toBe(theme === 'dark' ? 'rgb(23, 23, 26)' : 'rgb(255, 255, 255)');
+    expect(await contrastOf(page, fg, bg)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test(`P4 row hover rides accent-soft, delete row rides danger-soft (${theme})`, async ({
+    page,
+  }) => {
+    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
+    await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27');
+    await page.locator('.detail-head-icon--more').click();
+    const menu = page.locator('.more-menu');
+    await expect(menu).toBeVisible();
+
+    const soft = await resolveToken(page, '--accent-soft');
+    const danger = await resolveToken(page, '--danger-soft');
+    const normal = menu.locator('.more-menu-item', { hasText: '复制链接' });
+    await normal.hover();
+    await page.waitForTimeout(300); // past the 150ms color step
+    await expect(normal).toHaveCSS('background-color', soft);
+
+    const del = menu.locator('.more-menu-item[data-action="delete"]');
+    await del.hover();
+    await page.waitForTimeout(300);
+    await expect(del).toHaveCSS('background-color', danger);
+  });
+
+  test(`P4 brand button hover brightens 1.07 (${theme})`, async ({ page }) => {
+    await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
+    await page.goto('/app?scenario=01');
+    await page.locator('.sidebar-new-task').click();
+    const dialog = page.locator('.new-task-dialog');
+    await expect(dialog).toBeVisible();
+    // the brand start button enables once the spec field is non-empty
+    await page.locator('.new-task-spec').fill('hover probe');
+    const start = page.locator('.new-task-start');
+    await expect(start).toBeEnabled();
+    await start.hover();
+    await page.waitForTimeout(300);
+    await expect(start).toHaveCSS('filter', 'brightness(1.07)');
+  });
+}

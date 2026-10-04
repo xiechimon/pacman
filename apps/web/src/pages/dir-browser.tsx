@@ -14,7 +14,8 @@
 //   server 全量返回，隐藏/toggle 是本显示层语义（F16）。
 // - 空目录空态、超大目录截断提示（truncated 旗标，W9/W10）。
 // - localStorage 隐私模式抛 = 读写 try/catch 降级（缺省起点、不记住，W13）。
-// 弹层家族法 #67/#127：OverlayMount + ClickCatcher + Escape（gh-picker 同款）。
+// 弹层家族法 #67/#127：FloatingShell + ClickCatcher（#656 起 Esc 归 Base UI
+// layer 栈；gh-picker 同款）。
 
 import { FS_LIST_MAX_ENTRIES } from '@pacman/shared';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';

@@ -113,7 +113,7 @@
    non-cursor hover pill stands down — exactly one lit surface — and a
    real pointer move clears the JS cursor so hover owns it again. The
    .search-panel prefix outranks the generic #73 row-hover tint in
-   motion.css (--surface-hover); same media guard as sidebar.css. */
+   motion.css (--accent-soft); same media guard as sidebar.css. */
 @media (hover: hover) and (pointer: fine) {
   .search-panel .search-row:hover {
     background: var(--row-selected);
@@ -275,25 +275,53 @@
 .chip-popover {
   position: absolute;
   left: -18px;
-  top: calc(100% + 3.5px);
+  top: calc(100% + 8px);
   width: 298px;
   height: 193px;
   display: flex;
   flex-direction: column;
+  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0。overflow 由
+     hidden 放 visible——圆角归零后 section 底已无需裁角；Arrow 走锚边内侧
+     双三角（面内区，不裁剪）。纵向预算：内容约 156px + 壳 24px < 193 ✓。 */
+  padding: 12px;
   background: var(--popover-bg);
-  /* edge 家族配方（A3：字面量 12px 归 token，等值零像素） */
-  border-radius: var(--edge-radius);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   box-shadow: var(--fab-shadow);
-  overflow: hidden;
+  overflow: visible;
   z-index: var(--z-popover);
   text-align: left;
+}
+
+/* V2 Arrow（描边 12×6，上指锚边）：尖端贴顶框内侧，底座落进 12px 壳垫区。 */
+.chip-popover::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 24px;
+  width: 12px;
+  height: 6px;
+  background: var(--border-default);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.chip-popover::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 25px;
+  width: 10px;
+  height: 5px;
+  background: var(--popover-bg);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 .chip-popover-head {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 12px 0;
+  /* 壳垫 12px 后行内缩清零——字墨 inset 仍是 12（原 12）。纵向不动。 */
+  padding: 5px 0 0;
 }
 
 .chip-popover-avatar {
@@ -323,7 +351,7 @@
 }
 
 .chip-popover-title {
-  padding: 5px 12px 8px;
+  padding: 5px 0 8px;
   font-size: 12px;
   line-height: 16px;
   color: var(--text-primary);
@@ -346,7 +374,7 @@
 }
 
 .chip-popover-label {
-  padding: 0 12px;
+  padding: 0;
   font-size: 11px;
   line-height: 12px;
   font-weight: 500;
@@ -358,7 +386,7 @@
   align-items: center;
   gap: 10px;
   height: 26px;
-  padding: 0 8px 0 12px;
+  padding: 0 4px 0 0;
   font-size: 12px;
   line-height: 16px;
   color: var(--text-tertiary);
@@ -374,7 +402,7 @@
 .chip-popover-check {
   margin-left: auto;
   display: flex;
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 .chip-popover-edit {
@@ -382,7 +410,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
+  padding: 0;
   border: none;
   background: transparent;
   font: inherit;
@@ -410,19 +438,47 @@
 }
 
 /* #366: the row set grew from the single current-type row to the pane-view
-   list — 4px padding + 36px rows keep the r7 20 single-row total at 44. */
+   list — 4px padding + 36px rows keep the r7 20 single-row total at 44.
+   V2 弹层壳（#790 P3，base-ui-theme §1.1）：12px 内边距 / 1px 墨线框 /
+   圆角 0 / 最小宽 220 / 顶部锚距 8px + 12×6 描边 Arrow（anchor 边内侧，
+   面板 overflow 不动即不裁剪）。 */
 .plan-dropdown {
   position: absolute;
-  top: calc(100% - 0.5px);
+  top: calc(100% + 8px);
   right: 0;
   display: flex;
   flex-direction: column;
-  width: 218px;
-  padding: 4px;
+  min-width: 220px;
+  padding: 12px;
   background: var(--popover-bg);
-  border-radius: var(--radius-popover);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   box-shadow: var(--fab-shadow);
   z-index: var(--z-popover);
+}
+
+/* V2 Arrow（描边 12×6，上指锚边）：两层三角叠出描边——::before 墨色底、
+   ::after 面板色收 1px 压上，尖端贴顶框内侧。 */
+.plan-dropdown::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  right: 20px;
+  width: 12px;
+  height: 6px;
+  background: var(--border-default);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.plan-dropdown::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 21px;
+  width: 10px;
+  height: 5px;
+  background: var(--popover-bg);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 .plan-dropdown-row {
@@ -431,7 +487,8 @@
   height: 36px;
   display: flex;
   align-items: center;
-  padding: 0 4px 0 24px;
+  /* 壳垫 12px 后行内左缩 24→16——字墨 inset 仍是 28（原 4+24）。 */
+  padding: 0 4px 0 16px;
   border: none;
   /* A3 圆角归一：可交互控件一律 8px（原 10px，透明底无像素差） */
   border-radius: 8px;
@@ -447,7 +504,7 @@
 .plan-dropdown-check {
   margin-left: auto;
   display: flex;
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 /* #73 pop enter/exit origins: anchored popovers scale from their anchor,

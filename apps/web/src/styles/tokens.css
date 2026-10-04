@@ -153,10 +153,11 @@
   /* drop-target tint (#616): the reference tints EVERY valid drop column
      while a gesture is in flight (indigo-400 ring + indigo-500 at 5%) and
      the hovered one a step hotter (10%) — tailwind indigo palette values,
-     captured live; invalid targets and the source column stay neutral */
-  --drop-tint-border: rgb(129 140 248);
-  --drop-tint-base: rgb(99 102 241 / 0.05);
-  --drop-tint-hover: rgb(99 102 241 / 0.1);
+     captured live; invalid targets and the source column stay neutral.
+     #788 hue: spot dark #cba6f7 in place of indigo-400/500, same 5%/10% steps */
+  --drop-tint-border: rgb(203 166 247);
+  --drop-tint-base: rgb(203 166 247 / 0.05);
+  --drop-tint-hover: rgb(203 166 247 / 0.1);
   /* alias of the #139 edge shadow tier — every elevated surface (fab,
      popovers, panels) draws one shadow from the single source */
   --fab-shadow: var(--edge-shadow);
@@ -194,12 +195,13 @@
      only the opacity drops because the light surface itself already has
      less visual depth, so the shadow needs less to do its job */
   --card-shadow: 0 2px 4px rgb(28 25 23 / 0.07);
-  /* drag-tier shadow (#616) + drop-target tint: theme-invariant — mirrored
-     explicitly so .light stays the full semantic-token mirror */
+  /* drag-tier shadow (#616) + drop-target tint: hue follows the dark side
+     (#788 spot), mirrored explicitly so .light stays the full
+     semantic-token mirror */
   --drag-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
-  --drop-tint-border: rgb(129 140 248);
-  --drop-tint-base: rgb(99 102 241 / 0.05);
-  --drop-tint-hover: rgb(99 102 241 / 0.1);
+  --drop-tint-border: rgb(136 57 239);
+  --drop-tint-base: rgb(136 57 239 / 0.05);
+  --drop-tint-hover: rgb(136 57 239 / 0.1);
   /* overlay batch A (#66), light values probed off r7 04/25; the dialog
      shadow is theme-invariant (probed light, r8 79 dark shows the same)
      — mirrored explicitly so .light stays the full semantic-token mirror */

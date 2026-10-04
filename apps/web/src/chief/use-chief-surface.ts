@@ -24,7 +24,6 @@ import {
   useMessages,
   useModelSources,
   useNotifications,
-  useProviders,
 } from '../api/hooks.js';
 import { liveTextStore } from '../api/live-text.js';
 import { chiefTurnErrorOfContent, mapChief, toModelOptions } from '../api/mappers.js';
@@ -59,7 +58,7 @@ export interface ChiefSurface {
   onNewThread?: () => void;
   /** #615 主模型覆盖槽当前值（live = 封套真值；null = 继承绑定 Agent）。 */
   modelValue: ChiefCompactionModel | null;
-  /** #615 主模型候选（live = toModelOptions 并集投影；未决 = 空清单）。 */
+  /** #615 主模型候选（live = toModelOptions 投影，非 pi runtime 段；未决 = 空清单）。 */
   modelOptions?: ModelOption[];
   /** #615 live only：模型 dialog 选定 = PATCH chief model 槽（invalidateAll
    *  重取回显，S8 不持本地乐观态）。 */
@@ -88,9 +87,9 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
   const chiefQ = useChief(teamId, live);
   const chiefThreadsQ = useChiefThreads(teamId, live);
   const notificationsQ = useNotifications(teamId, live);
-  // #615 主模型候选数据源（chief-settings 同配方：model-sources ∪ custom
-  // providers 并集，spec 11 §A10）——查询 enabled=live，fixture 面零请求不动。
-  const providersQ = useProviders(teamId, live);
+  // #615 主模型候选数据源（chief-settings 同配方：model-sources 非 pi 段，
+  // spec 11 §A10；#770 起 providers 段已除）——查询 enabled=live，fixture
+  // 面零请求不动。
   const modelSourcesQ = useModelSources(teamId, live);
   const mutations = useApiMutations(teamId);
 
@@ -186,9 +185,7 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
   // 原语住 components/ui/toaster.tsx：server 原因进 description 透传不翻译
   // ——server 数据同 user 内容律；#638 由本文件局部版提为全站单源）。
   const modelValue = live ? (chiefQ.data?.chief.model ?? null) : null;
-  const modelOptions = live
-    ? toModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
-    : undefined;
+  const modelOptions = live ? toModelOptions(modelSourcesQ.data?.sources ?? []) : undefined;
   const onPickModel = live
     ? (value: ChiefCompactionModel | null) =>
         mutations.patchChief.mutate(
@@ -212,7 +209,18 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
         // toast 在此承担后 rethrow 交契约面。
         return mutations.chiefSend
           .mutateAsync({ threadId: activeThread?.id ?? null, content: text })
-          .then(() => {
+          .then((result) => {
+            // #774 收单回落显式告知（用户裁决：静默不要）：server 在存量槽失效
+            // 时已同步愈合，响应带回原值 → 成功 toast 点名 stale 值；发送本身
+            // 成功，draft 照常清空（下行新主题切 0 位同）。
+            if (result.modelFallback != null) {
+              const { provider, modelId } = result.modelFallback;
+              toast.success(t('模型已回落到默认'), {
+                description: t('“{stale}”已不可用，本次改用默认模型（与绑定 Agent 相同）发送。', {
+                  stale: `${provider}/${modelId}`,
+                }),
+              });
+            }
             // 新主题落线程首位（listChiefThreads 新在前）——切回 0 位。
             if (activeThread === null) setActiveThreadIdx(0);
           })

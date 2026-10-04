@@ -12,9 +12,11 @@
 // - 策略层（措辞→spec/分派权重/单 todo 直派）= system prompt 指引 + 51 词表
 //   relay 工具面，由 LLM 决策——黑盒逼近（04 §1 A4：[推断]/[设计] 不冒充实测）。
 
+import { homedir } from 'node:os';
 import type {
   ActiveRun,
   AgentRecord,
+  ChiefCompactionModel,
   ChiefGetResponse,
   ChiefThread,
   ChiefWakeKind,
@@ -33,6 +35,7 @@ import {
   chiefIdFormat,
   chiefThreadTitle,
   newChiefThreadId,
+  resolveChiefModelFallback,
 } from '@pacman/shared';
 import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
@@ -55,6 +58,7 @@ import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import type { MachineWakeHub } from './machines.js';
 import { notifyChiefMessage } from './notifications.js';
+import { claudeCodeModelSource } from './providers.js';
 import { scanLocalSkills } from './skills.js';
 
 export interface ChiefDeps {
@@ -288,17 +292,36 @@ function requireBoundAgent(deps: ChiefDeps, row: ChiefRow) {
 
 /** 用户 → Chief 发消息（发送 wire 未采 [设计]）：线程 get-or-create（标题 =
  * 首句截断 + …，r5 §3.6）+ user 消息行落库 + chief 步入队（回合 = 机器 step，
- * r5 §3.1）+ 机器 wake。 */
+ * r5 §3.1）+ 机器 wake。
+ *
+ * #774 收单回落（落点 = 服务端收单而非客户端发送前：① 原子——槽愈合与入队同
+ * 函数，客户端先 PATCH 再 POST 会在 daemon claim 处留竞争窗；② 全入口——新
+ * 主题 / 续消息 / 内部编排三路同走本函数，客户端方案只盖得住抽屉 composer；
+ * ③ 加法契约——响应添可空字段，老 web 忽略即退化现状）。存量槽在当前候选里
+ * 消失（本地换过模型）→ 同步置 null（继承绑定 Agent = picker 默认行）再入队，
+ * claim 恒读到可执行值；调用方（web onSend）凭返回的 modelFallback 显式 toast。
+ * homeDir 注入位：生产缺省 os.homedir()，测试给 mkdtemp（含 .claude/settings.json）。 */
 export function sendChiefMessage(
   deps: ChiefDeps,
   teamId: string,
   body: { threadId: string | null; content: string; pinnedMachineId?: string | null },
+  opts?: { homeDir?: string },
 ): {
   thread: ChiefThread;
   message: { id: string; role: 'user'; content: string; createdAt: number };
+  /** 存量槽回落上报：被愈合掉的原值，无回落 null（web 凭此 toast 告知用户）。 */
+  modelFallback: ChiefCompactionModel | null;
 } {
   const chiefRow = ensureChief(deps, teamId);
   requireBoundAgent(deps, chiefRow);
+  const { effective, fellBackFrom } = resolveChiefModelFallback(chiefRow.model, [
+    claudeCodeModelSource(opts?.homeDir ?? homedir()),
+  ]);
+  let modelFallback: ChiefCompactionModel | null = null;
+  if (fellBackFrom !== null) {
+    deps.db.update(chief).set({ model: effective }).where(eq(chief.id, chiefRow.id)).run();
+    modelFallback = fellBackFrom;
+  }
 
   let threadRow: ThreadRow | undefined;
   if (body.threadId !== null) {
@@ -357,7 +380,7 @@ export function sendChiefMessage(
   deps.db.update(chiefThread).set({ updatedAt: now }).where(eq(chiefThread.id, threadRow.id)).run();
 
   enqueueChiefStep(deps, threadRow.id, { prompt: body.content, trigger: 'user' });
-  return { thread: toChiefThreadRecord(threadRow), message };
+  return { thread: toChiefThreadRecord(threadRow), message, modelFallback };
 }
 
 /** chief 步入队（step 队列复用 [设计]：buildId = conv id = thread id，无 build

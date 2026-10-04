@@ -26,7 +26,6 @@ import {
   useChief,
   useMembers,
   useModelSources,
-  useProviders,
   useTeams,
   useTodos,
 } from '../api/hooks.js';
@@ -103,13 +102,12 @@ export function TeamPage() {
   const mutations = useApiMutations(teamId);
   const [createOpen, setCreateOpen] = useState(false);
   // #485: 创建弹窗的模型候选——数据源与投影同 Agent 详情页概览（同一份
-  // toModelOptions）。清单非空 = 弹窗出模型选择器；空 = 落「配置服务商」
-  // 告警行（原版 capture 20 态）。
-  const providersQ = useProviders(teamId, live);
+  // toModelOptions；#770 起 providers 段已除，只剩 model-sources 非 pi 段）。
+  // 清单非空 = 弹窗出模型选择器；空 = 落「配置服务商」告警行（原版 capture 20 态）。
   const modelSourcesQ = useModelSources(teamId, live);
   const modelOptions = live
-    ? toModelOptions(providersQ.data?.providers ?? [], modelSourcesQ.data?.sources ?? [])
-    : toModelOptions(fixture.resources?.providers ?? [], fixture.resources?.providerSources ?? []);
+    ? toModelOptions(modelSourcesQ.data?.sources ?? [])
+    : toModelOptions(fixture.resources?.providerSources ?? []);
   return (
     <SecondaryShell
       route="team"

@@ -57,7 +57,7 @@
   align-items: center;
   justify-content: center;
   background: var(--notify-icon-bg);
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 .board-notify-banner-text {

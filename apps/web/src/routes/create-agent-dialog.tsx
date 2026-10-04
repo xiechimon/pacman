@@ -47,7 +47,7 @@ interface CreateAgentDialogProps {
   /** M5 live 面：创建 = POST agents（displayName + #485 选定的模型槽）；
    *  缺省 = fixture 律（创建即关，#148 accept-dialog 先例）。 */
   onCreate?: (input: CreateAgentInput) => void;
-  /** #485: 模型候选（custom providers models[] ∪ model-sources 非 pi 段，
+  /** #485: 模型候选（model-sources 非 pi 段，#770 起 providers 段已除；
    *  投影单源 = api/mappers.ts toModelOptions）。非空 = 出模型选择器；
    *  空 = 出「尚未配置模型服务商」告警行 + 配置外链（原版 r2 §8.1 capture
    *  20 与 r3 §2 两态：服务商配好后同一弹窗出「模型」下拉）。 */
@@ -88,8 +88,8 @@ export function CreateAgentDialog({
       open={open}
       onClose={onClose}
       // B2 · secondary 面（XMON-20）：底座 = components/ui/Button brand 档，与
-      // ui/dialog.css 的 .dlg-agent-create 同形（--card-button 实底 + 白字、
-      // 禁用换 --primary-disabled）；per-face 几何仍住 dialog.css（域 css
+      // ui/dialog.css 的 .dlg-agent-create 同形（--card-button 实底 + on-accent 字、
+      // 禁用换 --spot-disabled）；per-face 几何仍住 dialog.css（域 css
       // unlayered 压 utility）。差额并项——散写形字重 400、无按下位移。
       footer={
         <div className="dlg-form-foot">

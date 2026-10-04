@@ -10,6 +10,7 @@ import { hostname } from 'node:os';
 import { join } from 'node:path';
 import type {
   ClaimedStep,
+  ClaudeCodeReport,
   GitCredentials,
   MachineAttachmentResponse,
   MachineDoneBody,
@@ -136,10 +137,6 @@ export interface MachineDeps {
   /** 本机 MCP config 读路径（spec 13/#368；executeChiefTool deps 透传——
    * 缺省 = 工具侧回落 ~/.claude.json，生产接线恒随 ctx 携带）。 */
   mcpConfigPath?: string;
-  /** claude-code 模型段读路径（#627 models 工具，executeChiefTool deps 透传）；
-   * 缺省 = 工具侧回落 os.homedir()（REST model-sources 路由同律），测试注入
-   * 隔离目录钉住 settings.json 内容。 */
-  claudeHomeDir?: string;
   /** conversation stream 通道（M5 live streaming：transcript 行/文本增量/
    * 步状态即时推送，02 §1.2 会话流）；缺省 = 无会话流面（单测形态）。 */
   convHub?: ConversationStreamHub;
@@ -465,6 +462,7 @@ export function enrollMachine(
     name: string;
     cliVersion?: string;
     serverUrl: string;
+    claudeCode?: ClaudeCodeReport;
   },
 ): { machineId: string; token: string; teamId: string; serverUrl: string } {
   const { db } = deps;
@@ -487,6 +485,7 @@ export function enrollMachine(
         apiKeyId: input.keyId,
         ...(input.cliVersion !== undefined ? { latestCliVersion: input.cliVersion } : {}),
         ...(isLocal ? { kind: 'local' as const } : {}),
+        ...(input.claudeCode !== undefined ? { claudeCodeReport: input.claudeCode } : {}),
       })
       .where(eq(machine.id, existing.id))
       .run();
@@ -509,6 +508,7 @@ export function enrollMachine(
       latestCliVersion: input.cliVersion ?? null,
       kind: isLocal ? 'local' : 'remote',
       enabledRuntimes: ['pi'],
+      ...(input.claudeCode !== undefined ? { claudeCodeReport: input.claudeCode } : {}),
     })
     .run();
   return { machineId, token: token.plain, teamId: input.teamId, serverUrl: input.serverUrl };
@@ -560,7 +560,7 @@ export function authorizeEnrollmentMachine(
 export function markPresence(
   deps: MachineDeps,
   machineId: string,
-  body: { cliVersion?: string },
+  body: { cliVersion?: string; claudeCode?: ClaudeCodeReport },
 ): void {
   const { db, hub } = deps;
   const row = db.select().from(machine).where(eq(machine.id, machineId)).get();
@@ -570,6 +570,7 @@ export function markPresence(
     .set({
       online: true,
       ...(body.cliVersion !== undefined ? { latestCliVersion: body.cliVersion } : {}),
+      ...(body.claudeCode !== undefined ? { claudeCodeReport: body.claudeCode } : {}),
     })
     .where(eq(machine.id, machineId))
     .run();
@@ -1089,7 +1090,6 @@ export async function executeRelayToolCall(
       attachmentsDir: deps.attachmentsDir,
       skillsDir: deps.skillsDir,
       ...(deps.mcpConfigPath !== undefined ? { mcpConfigPath: deps.mcpConfigPath } : {}),
-      ...(deps.claudeHomeDir !== undefined ? { claudeHomeDir: deps.claudeHomeDir } : {}),
       ...(deps.githubFetch !== undefined ? { githubFetch: deps.githubFetch } : {}),
     },
     {

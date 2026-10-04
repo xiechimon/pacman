@@ -22,6 +22,7 @@ import {
   chiefMessage,
   chief as chiefTable,
   chiefThread,
+  machine as machineTable,
   plan as planTable,
   step as stepTable,
   todo as todoTable,
@@ -61,9 +62,6 @@ function toolDeps() {
     reposDir: s.reposDir,
     attachmentsDir: s.attachmentsDir,
     skillsDir: s.skillsDir,
-    // #627：claude-code 模段读路径 = 隔离空 home（段空、确定性，不读测试机
-    // 真实 ~/.claude）；要 settings.json 行的测试经 relay opts 注入。
-    claudeHomeDir: claudeHome(),
   };
 }
 function ctx(over: Partial<ChiefToolCtx> = {}): ChiefToolCtx {
@@ -77,19 +75,21 @@ function ctx(over: Partial<ChiefToolCtx> = {}): ChiefToolCtx {
     ...over,
   };
 }
-async function relay(
-  name: string,
-  params: Record<string, unknown>,
-  over?: Partial<ChiefToolCtx>,
-  opts: { claudeHomeDir?: string } = {},
-) {
-  const text = await executeChiefTool(
-    { ...toolDeps(), ...(opts.claudeHomeDir !== undefined ? opts : {}) },
-    ctx(over),
-    name,
-    params,
-  );
+async function relay(name: string, params: Record<string, unknown>, over?: Partial<ChiefToolCtx>) {
+  const text = await executeChiefTool(toolDeps(), ctx(over), name, params);
   return JSON.parse(text) as unknown;
+}
+
+// #707 models 工具的 claude-code 行：执行机上报播种（machine 行直插
+// claudeCodeReport——上报语义，不读测试机真实 ~/.claude）。
+function seedMachineReport(
+  name: string,
+  report: { installed: boolean; hostname: string; models: { id: string; name: string }[] },
+): void {
+  s.db
+    .insert(machineTable)
+    .values({ id: `machine-${name}`, teamId, name, claudeCodeReport: report })
+    .run();
 }
 
 // #627 models 工具：claude-code 段 homeDir 注入位（mkdtemp 隔离目录，
@@ -223,6 +223,72 @@ describe('Chief 线程面落库（02 §4.3/r5 §3.6）', () => {
         content: 'x',
       }),
     ).toThrow(HttpError);
+  });
+});
+
+// —— AC: 收单回落（#774）：存量主模型槽不在候选里 → 同步愈合 + 上报 ————————
+
+describe('收单回落：存量主模型槽不在候选里 → 同步愈合 + 上报（#774）', () => {
+  function setSlot(value: { provider: string; modelId: string } | null) {
+    s.db.update(chiefTable).set({ model: value }).where(eq(chiefTable.id, chiefId)).run();
+  }
+  function slotNow() {
+    return (
+      s.db
+        .select({ model: chiefTable.model })
+        .from(chiefTable)
+        .where(eq(chiefTable.id, chiefId))
+        .get()?.model ?? null
+    );
+  }
+  function send(opts?: { homeDir?: string }) {
+    return sendChiefMessage(
+      { db: s.db, hub: s.hub, machineHub: s.machineHub, user: s.user },
+      teamId,
+      { threadId: null, content: '回落探针。' },
+      opts,
+    );
+  }
+
+  test('槽 null → 无动作（最常见路零语义变化）', () => {
+    const res = send({ homeDir: claudeHome(JSON.stringify({ model: 'new-model' })) });
+    expect(res.modelFallback).toBeNull();
+    expect(slotNow()).toBeNull();
+  });
+
+  test('槽命中候选 → 保留 + modelFallback null', () => {
+    setSlot({ provider: 'claude-code', modelId: 'new-model' });
+    const res = send({ homeDir: claudeHome(JSON.stringify({ model: 'new-model' })) });
+    expect(res.modelFallback).toBeNull();
+    expect(slotNow()).toEqual({ provider: 'claude-code', modelId: 'new-model' });
+  });
+
+  test('槽 stale（claude-code 旧 id）→ 置 null + 上报原值 + 回合照常入队', () => {
+    const stale = { provider: 'claude-code', modelId: 'old-model' };
+    setSlot(stale);
+    const res = send({ homeDir: claudeHome(JSON.stringify({ model: 'new-model' })) });
+    expect(res.modelFallback).toEqual(stale);
+    expect(slotNow()).toBeNull();
+    // 回落不是拒收：回合照常入队，claim 读到的是愈合后的 null（= 继承）。
+    const steps = s.db.select().from(stepTable).where(eq(stepTable.buildId, res.thread.id)).all();
+    expect(steps).toHaveLength(1);
+    expect(steps[0]!.status).toBe('pending');
+  });
+
+  test('custom provider 存量值（无对应段）→ 不动（执行面仍可用，候选面无权裁决）', () => {
+    const custom = { provider: 'my-relay', modelId: 'm-x' };
+    setSlot(custom);
+    const res = send({ homeDir: claudeHome(JSON.stringify({ model: 'new-model' })) });
+    expect(res.modelFallback).toBeNull();
+    expect(slotNow()).toEqual(custom);
+  });
+
+  test('settings.json 缺失（段空）→ claude-code 存量值照样愈合', () => {
+    const stale = { provider: 'claude-code', modelId: 'old-model' };
+    setSlot(stale);
+    const res = send({ homeDir: claudeHome() });
+    expect(res.modelFallback).toEqual(stale);
+    expect(slotNow()).toBeNull();
   });
 });
 
@@ -974,18 +1040,17 @@ describe('51 词表 relay 执行面（02 §4.3）', () => {
     expect(message).toContain('agent-nope');
   });
 
-  // #627 models 读工具：候选清单行语义 = web toModelOptions 并集律
-  // （custom providers models[] ∪ model-sources 非 pi 段，first-wins 去重）。
+  // #627 models 读工具：候选清单行语义 = web toModelOptions 投影（#770 起
+  // providers 段已除，只剩 model-sources 非 pi 段，first-wins 去重）。
   // 失败方式先于实现钉死：① 无 provider 且 claude-code 未装时报错而非空集；
-  // ② 空 id 行/空 name 回退漏做 → 脏行；③ pi 段重复产行（同 (provider,
-  // modelId) 双行）；④ claude-code 段 providerLabel 落 runtime 原词而非
-  // 显示名 → 与 web 候选不同义；⑤ custom provider 取名 claude-code 撞
-  // modelId 时不按 providers 段 first-wins。
+  // ② 空 id 行漏跳 → 脏行；③ pi 段重复产行；④ claude-code 段 providerLabel
+  // 落 runtime 原词而非显示名 → 与 web 候选不同义；⑤ custom provider 的
+  // models[] 不再被任何候选面引用（providers 写面照常可用）。
   test('models：无 custom provider + claude-code 未装 → 空清单不报错', async () => {
     expect(await relay('models', {})).toEqual([]);
   });
 
-  test('models：providers ∪ claude-code 并集 + first-wins 去重 + 行卫生', async () => {
+  test('models：providers 写面照常，候选只出 claude-code 段（去重 + 行卫生）', async () => {
     const provRes = await req(s.app, 'POST', `/api/teams/${teamId}/providers`, {
       providerId: 'gw-a',
       label: '网关甲',
@@ -993,27 +1058,28 @@ describe('51 词表 relay 执行面（02 §4.3）', () => {
       api: 'openai-completions',
       models: [
         { id: 'model-a', name: '模型甲' },
-        { id: 'model-b', name: '' }, // 空 name 回退 id（web 投影同律）
-        { id: '', name: '空 id 行' }, // 空 id 跳过（providers 段卫生）
+        { id: 'model-b', name: '' },
+        { id: '', name: '空 id 行' },
       ],
     });
     expect(provRes.status).toBe(201);
-    // claude-code 段：default 槽 + opus 槽同 id → 段内去重留一行。
-    const home = claudeHome(
-      JSON.stringify({
-        model: 'claude-opus-4-5',
-        env: { ANTHROPIC_OPUS_MODEL: 'claude-opus-4-5' },
-      }),
-    );
-    const rows = (await relay('models', {}, undefined, { claudeHomeDir: home })) as {
+    // claude-code 段：上报行（default 槽 + opus 槽同 id → 段内去重留一行）；
+    // providers 段（gw-a 三行）一律不产候选行（#770）。
+    seedMachineReport('exec-1', {
+      installed: true,
+      hostname: 'exec-host-1',
+      models: [
+        { id: 'claude-opus-4-5', name: 'claude-opus-4-5' },
+        { id: 'claude-opus-4-5', name: 'claude-opus-4-5' },
+      ],
+    });
+    const rows = (await relay('models', {})) as {
       provider: string;
       providerLabel: string;
       modelId: string;
       modelName: string;
     }[];
     expect(rows).toEqual([
-      { provider: 'gw-a', providerLabel: '网关甲', modelId: 'model-a', modelName: '模型甲' },
-      { provider: 'gw-a', providerLabel: '网关甲', modelId: 'model-b', modelName: 'model-b' },
       {
         provider: 'claude-code',
         providerLabel: 'Claude Code',
@@ -1023,7 +1089,7 @@ describe('51 词表 relay 执行面（02 §4.3）', () => {
     ]);
   });
 
-  test('models：custom provider 取名 claude-code 撞 modelId → providers 段 first-wins（web 投影同律）', async () => {
+  test('models：custom provider 取名 claude-code 不再遮蔽上报行（#770/#707）', async () => {
     const provRes = await req(s.app, 'POST', `/api/teams/${teamId}/providers`, {
       providerId: 'claude-code',
       label: '同名网关',
@@ -1032,15 +1098,21 @@ describe('51 词表 relay 执行面（02 §4.3）', () => {
       models: [{ id: 'm-cc', name: '同名行' }],
     });
     expect(provRes.status).toBe(201);
-    const home = claudeHome(JSON.stringify({ model: 'm-cc' }));
-    const rows = (await relay('models', {}, undefined, { claudeHomeDir: home })) as {
+    seedMachineReport('exec-1', {
+      installed: true,
+      hostname: 'exec-host-1',
+      models: [{ id: 'm-cc', name: 'm-cc' }],
+    });
+    const rows = (await relay('models', {})) as {
       provider: string;
       providerLabel: string;
       modelId: string;
       modelName: string;
     }[];
+    // providers 段已除：同名 provider 记录存在，但候选行取执行机上报
+    // （品牌 label 'Claude Code'，name 原样）。
     expect(rows).toEqual([
-      { provider: 'claude-code', providerLabel: '同名网关', modelId: 'm-cc', modelName: '同名行' },
+      { provider: 'claude-code', providerLabel: 'Claude Code', modelId: 'm-cc', modelName: 'm-cc' },
     ]);
   });
 

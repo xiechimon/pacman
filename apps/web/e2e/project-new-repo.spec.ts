@@ -26,7 +26,7 @@ import { expect, type Page, test } from '@playwright/test';
 //
 // focus ring (fixture):
 // 9. the name input's focus-visible ring is the shared input primitive's
-//    indigo (outline none + indigo border + 1px ring), not the UA blue
+//    brand ring (outline none + focus-ring border + 1px ring), not the UA blue
 //
 // submit + error face (live build, stubbed network — skills-readonly
 // precedent; the real-server three-state validation is verify-pacman's
@@ -42,10 +42,10 @@ import { expect, type Page, test } from '@playwright/test';
 const NEW_PROJECT = '/app/project/new?scenario=01';
 const NEW_PROJECT_LIVE = '/app/project/new';
 
-/** shadcn.css 值正本: --indigo-500 #6466e9 (both themes) / --destructive
- *  #ca3a32（--danger 是它在 tokens.css 的并流别名）. */
-const INDIGO_500 = 'rgb(100, 102, 233)';
-const DANGER = 'rgb(202, 58, 50)';
+/** shadcn.css 值正本: --focus-ring 暗 #cba6f7 / --destructive 暗 #e05a5a
+ *  （--danger 是它在 tokens.css 的并流别名）. */
+const FOCUS_RING = 'rgb(203, 166, 247)';
+const DANGER = 'rgb(224, 90, 90)';
 
 async function openMenu(page: Page) {
   await page.goto(NEW_PROJECT);
@@ -231,7 +231,7 @@ test('github owner/repo backfills the repo segment once valid', async ({ page })
 
 // ——— focus ring (fixture) ———
 
-test('the name input focus ring is indigo, not the UA default', async ({ page }) => {
+test('the name input focus ring is the brand ring, not the UA default', async ({ page }) => {
   await page.goto(NEW_PROJECT);
   const name = page.locator('#prj-new-name');
   await name.click();
@@ -240,8 +240,8 @@ test('the name input focus ring is indigo, not the UA default', async ({ page })
     return { outline: s.outlineStyle, border: s.borderTopColor, shadow: s.boxShadow };
   });
   expect(cs.outline).toBe('none');
-  expect(cs.border).toBe(INDIGO_500);
-  expect(cs.shadow).toContain(INDIGO_500);
+  expect(cs.border).toBe(FOCUS_RING);
+  expect(cs.shadow).toContain(FOCUS_RING);
   expect(cs.shadow).toContain('1px');
 });
 

@@ -7,8 +7,10 @@ import { expect, type Page, test } from '@playwright/test';
 // 2. 章程编辑 → DialogShell 编辑弹窗:textarea 占位 r5 102/110 canon +
 //    取消/保存章程;fixture 保存 = accept 律关窗。
 // 3. 压缩模型 #204 翻回交互(server #203 compactionModel 槽就位):button
-//    开 anchored popover(OverlayMount + ClickCatcher + Esc 家族律),
-//    fixture 面清单 = 默认行 + canon 单行(r3-gw/claude-sonnet-5),选定 =
+//    开 anchored popover(FloatingShell + ClickCatcher 家族律,#656 起
+//    Esc 归 Base UI layer 栈),
+//    fixture 面清单 = 默认行 + canon 单行(claude-code/claude-sonnet-5;#770 起
+//    providers 段已除,canon 行取 runtime 源形),选定 =
 //    accept 律关面。live PATCH 写读回归归 live 真机验。
 
 const AGENT_TAB = '/app?scenario=101';
@@ -133,7 +135,7 @@ test('压缩模型 interactive (#204): button opens the anchored model menu', as
   await expect(menu.locator('.chief-model-row').nth(0)).toContainText('默认（与 Chief 相同）');
   await expect(menu.locator('.chief-model-row').nth(0)).toHaveAttribute('aria-selected', 'true');
   await expect(menu.locator('.chief-model-row').nth(1)).toContainText('claude-sonnet-5');
-  await expect(menu.locator('.chief-model-row-provider')).toHaveText('r3-gw');
+  await expect(menu.locator('.chief-model-row-provider')).toHaveText('Claude Code');
 });
 
 test('压缩模型 search is typeahead-only, same contract as the drawer picker (#756 续)', async ({
@@ -142,6 +144,14 @@ test('压缩模型 search is typeahead-only, same contract as the drawer picker 
   const { menu } = await openModelMenu(page);
   // 开面零搜索占位（不渲染，非透明）——与抽屉头 picker 同形单源
   await expect(menu.locator('.chief-pick-search')).toHaveCount(0);
+  // 同抽屉面：等焦点落进面再打字（FloatingShell 移焦点是异步的）
+  await page.waitForFunction(
+    (sel) => {
+      const el = document.querySelector(sel);
+      return el != null && el.contains(document.activeElement);
+    },
+    '.chief-model-menu',
+  );
   // 可打印字符被面吃掉：框现形、预填该字符、焦点进 input、即刻过滤
   await page.keyboard.press('x');
   const search = menu.locator('.chief-pick-search input');
@@ -222,7 +232,8 @@ test('空态卡 centered and growth-proof: memo matches watches (#772)', async (
 
 // #358 AC2:preset 方案退役后,仍引用已废 preset 的旧 compactionModel 值
 // 命中不了任何选项 → 裸串 `provider/modelId` 兜底回显(#180 裁决收敛到值
-// 回显层),不空白不崩;菜单无选中行,canon 行选定仍走 accept 律。
+// 回显层;存量 provider 模型值同律),不空白不崩;菜单无选中行,canon 行选定
+// 仍走 accept 律。
 test('压缩模型 stale preset value (#358): 裸串兜底回显 + 菜单无选中行', async ({ page }) => {
   await page.goto('/app?scenario=101-stale-model');
   const select = page.locator('button.chief-select');

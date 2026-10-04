@@ -15,9 +15,9 @@
   top: 228px;
   left: 50%;
   width: 400px;
-  /* 居中位移不写 transform：本类同时是 .anim-pop 消费者，transform
-     归动画层独占（静态声明 none），居中写在上面会在构建产物的
-     cascade 里被覆盖（#448）。margin 负值居中 = .search-panel 同款。 */
+  /* 居中位移不写 transform：transform 归动画层独占（#656 起 = tw 的
+     enter/exit keyframe），居中写上去会在动画窗内被 keyframe 整条顶掉
+     （#448 同款机理）。margin 负值居中 = .search-panel 同款。 */
   margin-left: -200px;
   max-height: 70vh;
   background: var(--popover-bg);
@@ -53,8 +53,9 @@
   color: var(--text-tertiary);
 }
 
+/* P4 #791：返回/关闭钮与 #73 家族的 dlg-close 同角色，hover 同 tint。 */
 .mention-picker-back:hover {
-  background: var(--surface-hover);
+  background: var(--accent-soft);
   color: var(--text-primary);
 }
 
@@ -79,7 +80,7 @@
 }
 
 .mention-picker-close:hover {
-  background: var(--surface-hover);
+  background: var(--accent-soft);
   color: var(--text-primary);
 }
 
@@ -101,7 +102,7 @@
 }
 
 .mention-picker-search-input:focus {
-  border-color: var(--indigo-500);
+  border-color: var(--focus-ring);
 }
 
 .mention-picker-list {
@@ -244,14 +245,18 @@
   color: var(--text-primary);
 }
 
+/* P4 #791（§2.5/§4 收口）：品牌字形走 spot 族——硬编码 indigo-600/700
+   （#4f46e5/#4338ca）是 P1 槽位清扫的漏网（非 --indigo-* 槽引用）。
+   静息取 --card-button，hover 与实底主钮同机制 brightness(1.07)。 */
 .mention-picker-insert {
   font-size: 12px;
   font-weight: 500;
-  color: rgb(79 70 229);
+  color: var(--card-button);
   background: transparent;
   border: 0;
   cursor: pointer;
   padding: 4px 6px;
+  transition: filter var(--dur-fast) var(--ease-standard);
 }
 
 .mention-picker-insert:disabled {
@@ -260,7 +265,7 @@
 }
 
 .mention-picker-insert:not(:disabled):hover {
-  color: rgb(67 56 202);
+  filter: brightness(1.07);
 }
 
 /* #656 退场：面板的退场改由 tw-animate-css 的 group-data-closed:animate-out

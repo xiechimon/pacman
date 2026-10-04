@@ -626,6 +626,14 @@ a.chief-identity {
   padding: 12px 12px 10px;
   background: var(--surface-secondary);
   border-radius: 12px;
+  /* #775 (better-ui: shadows for elevation): the ring draws the 1px hairline
+     (shadow spread, no layout shift — the card previously had no edge at all
+     and read as flat/cut against the drawer surface), --card-shadow adds the
+     card-tier lift. Single-source tokens, both themes ride along. */
+  box-shadow: var(--edge-ring), var(--card-shadow);
+  transition-property: box-shadow;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
 }
 
 /* #732：@ 内联 listbox 的 absolute 锚（mention-picker.css 的 bottom:
@@ -705,7 +713,7 @@ a.chief-identity {
 
 .chief-send.is-on,
 .chief-send.is-on:hover {
-  background: var(--indigo-500);
+  background: var(--card-button);
   color: var(--text-on-accent);
 }
 
@@ -925,18 +933,43 @@ a.chief-identity {
 .chief-model-menu {
   position: absolute;
   right: 0;
-  top: calc(100% + 4px);
+  top: calc(100% + 8px);
   min-width: 220px;
-  padding: 4px;
+  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px。 */
+  padding: 12px;
   display: flex;
   flex-direction: column;
   background: var(--popover-bg);
-  border-radius: var(--radius-popover);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   box-shadow: var(--fab-shadow);
   /* 家族层律（#688 阶梯 --z-popover 压 --z-catcher，见 overlays/dismiss.tsx）。
      本菜单锚在抽屉内（FloatingShell container=wrap），实际绘制被抽屉自身的
      stacking context 收编——消费家族令牌是层律对齐，不是根级参竞。 */
   z-index: var(--z-popover);
+}
+
+/* V2 Arrow（描边 12×6，上指锚边右上）。 */
+.chief-model-menu::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  right: 16px;
+  width: 12px;
+  height: 6px;
+  background: var(--border-default);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.chief-model-menu::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 17px;
+  width: 10px;
+  height: 5px;
+  background: var(--popover-bg);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 .chief-model-row {
@@ -945,7 +978,8 @@ a.chief-identity {
   gap: 8px;
   width: 100%;
   height: 32px;
-  padding: 0 8px;
+  /* 壳垫 12px 后行内横缩清零——字墨 inset 仍是 12（原 4+8）。 */
+  padding: 0;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -993,7 +1027,7 @@ a.chief-identity {
 /* #751 选中行单源：chief 两个 picker 面（抽屉头主模型弹层 + 设置面压缩
    模型弹层）都经 ModelPickRow 渲染，选中态 therefore 落在基类钩子上而不是
    各面 skin——令牌对 --pick-selected-bg/-fg 承载此前缺失的角色（选中行
-   填充 + 选中行文字），实测 light 5.45:1 / dark 5.21:1（13px 名，AA 4.5）。
+   填充 + 选中行文字；§2.5 选中对：暗 6.19:1 / 亮加深紫 4.59:1）。
    被取代的旧规则把 --seg-active（分段控件填充档）当文字色：light 1.24:1，
    即用户报的「灰色看不清」。 */
 .model-pick-row[aria-selected="true"] {
@@ -1021,17 +1055,42 @@ a.chief-identity {
 .chief-model-pop {
   position: absolute;
   left: 0;
-  top: calc(100% + 4px);
+  top: calc(100% + 8px);
   width: 280px;
-  padding: 4px;
+  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px。 */
+  padding: 12px;
   display: flex;
   flex-direction: column;
   background: var(--popover);
-  border-radius: var(--radius-popover);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   box-shadow: var(--fab-shadow);
   /* 家族层律同 .chief-model-menu：消费 --z-popover 是层律对齐，实际绘制被
      抽屉自身 stacking context 收编。 */
   z-index: var(--z-popover);
+}
+
+/* V2 Arrow（描边 12×6，上指锚边左上）。 */
+.chief-model-pop::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 16px;
+  width: 12px;
+  height: 6px;
+  background: var(--border-default);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.chief-model-pop::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 17px;
+  width: 10px;
+  height: 5px;
+  background: var(--popover);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 /* #656 退场（mention-picker 同款）：面板的退场改由 tw-animate-css 的

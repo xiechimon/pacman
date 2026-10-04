@@ -27,11 +27,13 @@ import { X } from '../../icons/index.js';
 // 表单族（.dlg-form-* 等 per-face 规则）仍在 dialog.css；壳级规则已随本适配层退役
 import '../../ui/dialog.css';
 
-/** 视口根面（viewportRoot）面板的进出场（shadcn 默认档，ADR 0009 D3）。挂在**面板**
- *  上、经视口根 Popup 的具名 group 读 Base UI 开闭态——视口根 Popup 是铺满视口的
- *  包装层，transform 上它会把面板（fixed 子级）的 containing block 拽走（#656）。 */
+/** 视口根面（viewportRoot）面板的进出场（V2 覆写，base-ui-theme §1.2：
+ *  scale .98 + fade、100ms ease-out——替代 ADR 0009 D3 的 slide -8px）。
+ *  挂在**面板**上、经视口根 Popup 的具名 group 读 Base UI 开闭态——视口根
+ *  Popup 是铺满视口的包装层，transform 上它会把面板（fixed 子级）的
+ *  containing block 拽走（#656）。 */
 export const VIEWPORT_POP_ANIM =
-  'duration-100 group-data-open/dlgvp:animate-in group-data-open/dlgvp:fade-in-0 group-data-open/dlgvp:zoom-in-95 group-data-open/dlgvp:slide-in-from-top-2 group-data-closed/dlgvp:animate-out group-data-closed/dlgvp:fade-out-0 group-data-closed/dlgvp:zoom-out-95 group-data-closed/dlgvp:slide-out-to-top-2';
+  'duration-100 ease-out group-data-open/dlgvp:animate-in group-data-open/dlgvp:fade-in-0 group-data-open/dlgvp:zoom-in-98 group-data-closed/dlgvp:animate-out group-data-closed/dlgvp:fade-out-0 group-data-closed/dlgvp:zoom-out-98';
 
 interface DialogShellProps {
   /** Left header title; absent when `headerCenter` renders instead. */
@@ -78,7 +80,8 @@ interface DialogShellProps {
    *  也不参与（容器退为纯管道 role=presentation，dialog 语义由面内自带）。 */
   viewportRoot?: boolean;
   /** Backdrop 位类名入参（只作用于视口根态）：视口根态下壳不注入家族皮肤，
-   *  scrim 皮肤由消费者全权给（search-panel 传 `.search-scrim anim-fade`）。
+   *  scrim 皮肤由消费者全权给（search-panel 传 `.search-scrim` + tw 的
+   *  data-open/data-closed fade 变体，#656）。
    *  默认态不开这个口子——11 个既有消费点的背板类串保持逐字不动。 */
   backdropClassName?: string;
 }
@@ -188,7 +191,7 @@ export function DialogShell({
                 )}
                 {headerCenter}
                 <DialogPrimitive.Close
-                  className="dlg-close absolute right-3 flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
+                  className="dlg-close absolute right-3 flex size-6 items-center justify-center rounded-md text-muted-foreground"
                   aria-label={t('关闭')}
                   onClick={onClose}
                 >

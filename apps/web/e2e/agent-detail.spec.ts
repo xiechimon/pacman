@@ -111,44 +111,37 @@ test('概览：职责位渲染 canon 空态并可编辑', async ({ page }) => {
 });
 
 // t-0024 两级化：运行时档（一级 = provider 维）与模型档（二级按一级过滤）。
-// fixture agent = r3-gw / claude-sonnet-5；候选源另有 claude-code 段四模型——
-// 二级菜单里不得出现（过滤没生效就是「又混回一列」的退形）。
-test('概览：运行时选择器列服务商与内置行，模型菜单只列当前运行时的模型', async ({ page }) => {
+// fixture agent = 存量 provider 绑定（r3-gw / claude-sonnet-5）；#770 起 picker
+// 候选只剩 claude-code 段——本组三件事：存量值裸串回显不断（R1）、一级不再列
+// providers 分组、切到 runtime 源是单向门（选不回 provider）。
+test('概览：存量 provider 绑定裸串回显，一级只列内置行与运行时源', async ({ page }) => {
   const detail = await openDetail(page);
   const runtimeTrigger = detail.locator('.agent-runtime-select');
+  // 存量 provider 值命中不了候选 → 裸串 provider id 即名，不空白不崩。
   await expect(runtimeTrigger).toContainText('r3-gw');
   await runtimeTrigger.click();
   const runtimeMenu = detail.locator('.agent-runtime-menu');
   await expect(runtimeMenu).toBeVisible();
-  // 首行恒是「内置 (pi)」清空行（provider null 的显示形）；其余按 provider 分组。
+  // 首行恒是「内置 (pi)」清空行（provider null 的显示形）；providers 分组已除。
   await expect(runtimeMenu.locator('.agent-runtime-row').first()).toContainText('内置 (pi)');
-  await expect(runtimeMenu.locator('.agent-runtime-row', { hasText: 'r3-gw' })).toHaveCount(1);
+  await expect(runtimeMenu.locator('.agent-runtime-row', { hasText: 'r3-gw' })).toHaveCount(0);
   await expect(runtimeMenu.locator('.agent-runtime-row', { hasText: 'Claude Code' })).toHaveCount(1);
   await page.keyboard.press('Escape');
-  // 二级：当前运行时 r3-gw 名下只有 claude-sonnet-5，claude-code 段模型不混入。
+  // 切到 Claude Code：二级换成它的模型（claude-haiku-4-5 只活在 claude-code
+  // 段——它出现才证明二级真换了源）；切走后旧 provider 选不回来（单向门）。
+  await detail.locator('.agent-runtime-select').click();
+  await detail.locator('.agent-runtime-row', { hasText: 'Claude Code' }).click();
+  await expect(detail.locator('.agent-runtime-select')).toContainText('Claude Code');
   await detail.locator('.agent-model-select').click();
   const menu = detail.locator('.agent-model-menu');
   await expect(menu).toBeVisible();
   await expect(menu.locator('.agent-model-row').first()).toHaveText(/未设置模型/);
-  const row = menu.locator('.agent-model-row', { hasText: 'claude-sonnet-5' });
-  await expect(row).toHaveCount(1);
-  await expect(row).not.toContainText('r3-gw');
-  await expect(menu).not.toContainText('claude-opus-4-5');
-});
-
-// 换运行时的级联：modelId 只在 provider 内有意义，切走必须清掉（否则存值变成
-// 跨 provider 的脏模型）。fixture 面 patch 走本地回显，回读即断言。
-test('概览：切换运行时清掉模型，二级候选换成新运行时的模型', async ({ page }) => {
-  const detail = await openDetail(page);
-  await detail.locator('.agent-runtime-select').click();
-  await detail.locator('.agent-runtime-row', { hasText: 'Claude Code' }).click();
-  await expect(detail.locator('.agent-runtime-select')).toContainText('Claude Code');
-  await expect(detail.locator('.agent-model-select')).toContainText('未设置模型');
-  await detail.locator('.agent-model-select').click();
-  const menu = detail.locator('.agent-model-menu');
-  // claude-haiku-4-5 只活在 claude-code 段——它出现才证明二级真换了源
-  // （sonnet-5 两段同名，不能拿它当判据）。
   await expect(menu.locator('.agent-model-row', { hasText: 'claude-haiku-4-5' })).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await detail.locator('.agent-runtime-select').click();
+  await expect(
+    detail.locator('.agent-runtime-menu .agent-runtime-row', { hasText: 'r3-gw' }),
+  ).toHaveCount(0);
 });
 
 // 几何钉：菜单贴触发钮右缘、向下展开，且整块留在内容列内。
@@ -174,6 +167,10 @@ test('概览：两级菜单贴触发钮右缘且在内容列内（几何）', as
     await trigger.click();
     const menu = detail.locator(`.${prefix}-menu`);
     await expect(menu).toBeVisible();
+    // V2 进场（#790 P3：scale .98 + fade 100ms）窗内量几何会吃到动画帧位移——
+    // 静息锚距恰 8px（顶部锚距正本值），预算 ≤8 零余量。等进场播完再量，钉的是
+    // 静息几何（旧 slide 面同理：位移只存在于窗内）。
+    await page.waitForTimeout(150);
     const tb = await trigger.boundingBox();
     const mb = await menu.boundingBox();
     expect(tb).not.toBeNull();
@@ -236,8 +233,8 @@ test('权限 tab：6 档各带说明副文案', async ({ page }) => {
 });
 
 // 运行时档（原版概览在模型之上有这一档）：wire 无独立字段，值由 provider 位
-// 派生——custom provider 直接出 id。t-0024 起这一档从只读行变成一级选择器
-// （触发钮回读同词），行序仍在模型之上。
+// 派生——存量 provider 值命中不了候选，走裸串回显（直接出 id）。t-0024 起这一
+// 档从只读行变成一级选择器（触发钮回读同词），行序仍在模型之上。
 test('概览：运行时档在模型之上，值由 provider 派生', async ({ page }) => {
   const detail = await openDetail(page);
   const runtime = detail.locator('.agent-runtime-select');

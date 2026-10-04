@@ -425,7 +425,6 @@ describe('#682 chief 线程机器亲和', () => {
           reposDir: w.s.reposDir,
           attachmentsDir: w.s.attachmentsDir,
           skillsDir: w.s.skillsDir,
-          claudeHomeDir: w.s.skillsDir,
         },
         {
           teamId: w.s.team.id,

@@ -218,7 +218,7 @@
 }
 
 .dlg-toggle[data-on="true"] {
-  background: var(--indigo-500);
+  background: var(--card-button);
 }
 
 .dlg-toggle[data-on="true"] .dlg-toggle-knob {
@@ -230,8 +230,8 @@
   height: 38px;
   border: 0;
   border-radius: 8px;
-  background: var(--indigo-disabled);
-  color: var(--indigo-disabled-fg);
+  background: var(--spot-disabled);
+  color: var(--spot-disabled-fg);
   font-size: 13px;
   cursor: default;
 }
@@ -421,8 +421,8 @@
 }
 
 .review-agent-row[data-on="true"] {
-  /* r8 §2.5 实测选中态：bg-indigo-500/10 */
-  background: rgb(99 102 241 / 0.1);
+  /* r8 §2.5 实测选中态：§2.5 选中底（spot 14% mix 于 panel） */
+  background: var(--spot-soft);
 }
 
 .review-agent-avatar {
@@ -509,7 +509,7 @@
 }
 
 .review-focus-input:focus {
-  border-color: var(--indigo-500);
+  border-color: var(--focus-ring);
 }
 
 /* 「开始审核」primary 钮（r8 §2.5 实测 32×32 右锚；footer 律下改用 dlg-form-

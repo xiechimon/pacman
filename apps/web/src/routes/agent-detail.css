@@ -36,7 +36,7 @@
 }
 
 .agent-name:hover {
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 /* 图标钮的默认字号（button 底座 text-sm）对图标-only 钮没有意义，只留
@@ -138,8 +138,9 @@
   text-align: left;
 }
 
+/* P4 #791：任务行 hover 跟主题色走（base-ui-theme §1.1，--accent-soft）。 */
 .agent-task-row:hover {
-  background: var(--surface-hover);
+  background: var(--accent-soft);
 }
 
 .agent-task-seq {

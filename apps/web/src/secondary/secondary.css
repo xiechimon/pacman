@@ -100,7 +100,7 @@
   background: transparent;
   padding: 0;
   font-size: 13px;
-  color: var(--indigo-500);
+  color: var(--card-button);
   cursor: pointer;
 }
 
@@ -312,10 +312,11 @@
   color: var(--text-primary);
 }
 
-/* 皇冠 = 总管徽标（参考产品 indigo-500/10 底 + indigo-600 描边字形） */
+/* 皇冠 = 总管徽标（§2.5 回 spot 族：tint 底 + 品牌字形；参考产品为
+   indigo-500/10 底 + indigo-600 描边字形） */
 .team-chart-crown {
-  background: rgb(99 102 241 / 0.1);
-  color: #4f46e5;
+  background: var(--spot-soft);
+  color: var(--card-button);
 }
 
 .team-chart-provider svg,
@@ -505,7 +506,7 @@
   border: none;
   padding: 0;
   border-radius: 999px;
-  background: var(--indigo-500);
+  background: var(--card-button);
   cursor: pointer;
 }
 
@@ -674,16 +675,42 @@
 
 .lang-dropdown {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 8px);
   right: 0;
-  width: 140px;
-  padding: 4px;
+  /* V2 弹层壳（#790 P3）：最小宽 220 / 12px 内边距 / 1px 墨线框 / 圆角 0 /
+     顶部锚距 8px。 */
+  min-width: 220px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   background: var(--popover-bg);
-  border-radius: var(--radius-popover);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   box-shadow: var(--fab-shadow);
   z-index: var(--z-popover);
+}
+
+/* V2 Arrow（描边 12×6，上指锚边右上）。 */
+.lang-dropdown::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  right: 16px;
+  width: 12px;
+  height: 6px;
+  background: var(--border-default);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.lang-dropdown::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 17px;
+  width: 10px;
+  height: 5px;
+  background: var(--popover-bg);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 .lang-dropdown-row {
@@ -691,7 +718,8 @@
   align-items: center;
   width: 100%;
   height: 32px;
-  padding: 0 8px 0 12px;
+  /* 壳垫 12px 后行内横缩——字墨 inset 落 16（原 4+12）。 */
+  padding: 0 4px 0 4px;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -706,7 +734,7 @@
 .lang-dropdown-check {
   margin-left: auto;
   display: flex;
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 /* W4 #287：API key 新建表单弹窗（r3 §6 权限位 [推断]——名称 + git/mcp 开关 +
