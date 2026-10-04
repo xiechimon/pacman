@@ -1000,14 +1000,16 @@ export function ChiefDrawer({
                   highlight={inlineHighlight}
                   onHover={setInlineHighlight}
                   onPick={(row) => {
-                    if (row.kind === 'agent') {
+                    if (row.kind === 'file') {
+                      insertFile(row.label);
+                    } else {
+                      // #848: every entity kind inserts through serializeMention.
                       insertToken({
-                        kind: 'agent',
+                        kind: row.kind,
                         id: row.id,
                         label: row.label,
+                        ...(row.seq !== undefined ? { seq: row.seq } : {}),
                       });
-                    } else {
-                      insertFile(row.label);
                     }
                   }}
                   listboxRef={inlineListboxRef}

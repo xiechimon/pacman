@@ -68,11 +68,11 @@ import {
   type CompletionRange,
   completionKeyIntent,
   detectCompletionToken,
-  fuzzyFilter,
   MENTION_COMPLETION_SPEC,
 } from './completion.js';
 import type { MentionGroups } from './mention-picker.js';
 import {
+  buildInlineRows,
   type FileMentionEntry,
   type InlineCompletionRow,
   insertFileText,
@@ -302,9 +302,17 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
   const dismissedRangeRef = useRef<CompletionRange | null>(null);
   const [inlineHighlight, setInlineHighlight] = useState<number | null>(null);
   const inlineListboxId = useId();
-  const agentCount = mentionGroups?.agent.length ?? 0;
+  // #848: the listbox opens whenever ANY roster face is non-empty (five
+  // entity kinds + files). mentionFiles absent/empty = the pure five-kind
+  // face (chief drawer, new-task dialog) — byte-identical open law.
+  const entityCount =
+    (mentionGroups?.agent.length ?? 0) +
+    (mentionGroups?.todo.length ?? 0) +
+    (mentionGroups?.skill.length ?? 0) +
+    (mentionGroups?.project.length ?? 0) +
+    (mentionGroups?.machine.length ?? 0);
   const fileCount = mentionFiles?.length ?? 0;
-  const inlineOpen = inlineRange !== null && agentCount + fileCount > 0;
+  const inlineOpen = inlineRange !== null && entityCount + fileCount > 0;
 
   // Slash-command completion state (#731). Mirrors the inline `@` shape:
   // a ref mirror for synchronous event reads, an Esc-dismissed marker so
@@ -425,33 +433,12 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     reevaluate();
   }, [reevaluate]);
 
-  // Unified `@` roster (#760: agents + files, ONE fuzzy pass — CC rules
-  // 14-18: subsequence + smart case + boundary bonus, capped at 15).
-  // Concatenation order is the tie-break (stable sort): agents keep roster
-  // priority, files (enumeration order = git order) follow. An empty query
-  // lists the concatenated roster in order. mentionFiles absent/empty = the
-  // #728 agents-only list, unchanged.
-  const inlineRows = useMemo(() => {
+  // Unified `@` roster (#848: five entity kinds + files, ONE fuzzy pass —
+  //  CC rules 14-18 via buildInlineRows in mention-token.ts). The wire owns
+  //  only the React memo; order / tie-break / cap live with the builder.
+  const inlineRows: InlineCompletionRow[] = useMemo(() => {
     if (inlineRange === null || mentionGroups == null) return [];
-    const rows: InlineCompletionRow[] = [
-      ...mentionGroups.agent.map(
-        (a): InlineCompletionRow => ({
-          kind: 'agent',
-          id: a.id,
-          label: a.label,
-          ...(a.subtitle !== undefined ? { subtitle: a.subtitle } : {}),
-        }),
-      ),
-      ...(mentionFiles ?? []).map(
-        (f): InlineCompletionRow => ({
-          kind: 'file',
-          id: f.path,
-          label: f.type === 'tree' ? `${f.path}/` : f.path,
-          fileType: f.type,
-        }),
-      ),
-    ];
-    return fuzzyFilter(inlineRange.query, rows, (r) => r.label);
+    return buildInlineRows(inlineRange.query, mentionGroups, mentionFiles);
   }, [inlineRange, mentionGroups, mentionFiles]);
 
   // Slash menu rows (#731): builtins gated by availability, then skills in
@@ -832,10 +819,19 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     }
     if (intent.kind === 'accept') {
       const picked = inlineRows[intent.index];
-      if (picked?.kind === 'agent') {
-        insertTokens([{ kind: 'agent', id: picked.id, label: picked.label }]);
-      } else if (picked?.kind === 'file') {
+      if (picked?.kind === 'file') {
         insertFile(picked.label);
+      } else if (picked !== undefined) {
+        // #848: every entity kind inserts through serializeMention (agent /
+        // project / skill / machine → `[label](scheme:id)`, todo → `#seq`).
+        insertTokens([
+          {
+            kind: picked.kind,
+            id: picked.id,
+            label: picked.label,
+            ...(picked.seq !== undefined ? { seq: picked.seq } : {}),
+          },
+        ]);
       }
       return;
     }

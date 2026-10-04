@@ -660,12 +660,12 @@ export const EN: Record<string, string> = {
   // —— mention picker (issue #311, r9 §2.2/§3.2) ——
   // Top layer 5 category rows + drill-in search + footer Insert (N) count.
   // 与侧边栏/搜索面板的「任务/技能/Agents/项目/机器」键一致,只追加弹层
-  // 本地需要的 6 个键(搜索/空集/返回/插入 (n)/两个 empty 分支)。
+  // 本地需要的 5 个键(搜索/空集/返回/插入 (n)/空态 query 分支；#848 起内联
+  // 空态复用「没有可引用的对象」，「没有可用的 Agent」退役)。
   '搜索…': 'Search…',
   没有可引用的对象: 'Nothing to mention',
   '没有与"{query}"匹配的结果': 'No results matching “{query}”',
   '插入 ({count})': 'Insert ({count})',
-  '没有可用的 Agent': 'No Agents available',
 
   // —— local 项目 Files tab 禁用面 (spec 12 / #362 G2-T2 v1) ——
   本地仓库项目暂不支持在线浏览文件:

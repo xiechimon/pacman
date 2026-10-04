@@ -12,9 +12,11 @@
 import { describe, expect, test } from 'vitest';
 import {
   type FileMentionEntry,
+  buildInlineRows,
   formatFileInsert,
   insertFileText,
   insertMentionText,
+  type InlineRosterGroups,
   type MentionToken,
   parseDraftChips,
   parseMentionSegments,
@@ -241,5 +243,63 @@ describe('parseDraftChips（#812，C1–C5）', () => {
     expect(parseDraftChips('', CHIP_FILES)).toHaveLength(0);
     expect(parseDraftChips('hi [builder](agent:a1) ')).toHaveLength(1);
     expect(parseDraftChips('see apps/web/src/ui/button.tsx ')).toHaveLength(0);
+  });
+});
+
+// #848 内联 @ 开五类：拼装序 + 跨类过滤 + cap（#728 手感复用——同一
+// fuzzyFilter，不另造 matcher）。失败方式编号：
+//   R1 空 query 不止 agents：五类 + 文件按拼装序（agent → todo → skill →
+//      project → machine → file），仍 cap 15；
+//   R2 query 只命中对应类（如 skill 名），agent 行不混入；
+//   R3 smart case 跨类生效（含大写 query 大小写敏感）；
+//   R4 todo 行携带 seq（插入侧 serialize 成 `#seq` 的依据）；
+//   R5 files 缺省 = 纯五类面（chief / 新建任务面语义不回归）。
+const ROSTER: InlineRosterGroups = {
+  agent: [{ id: 'a1', label: 'builder' }],
+  todo: [{ id: 't1', label: '#3 fix login', seq: 3 }],
+  skill: [{ id: 's1', label: 'review' }],
+  project: [{ id: 'p1', label: 'pacman' }],
+  machine: [{ id: 'm1', label: 'mea' }],
+};
+
+describe('buildInlineRows（#848，R1–R5）', () => {
+  test('空 query：五类 + 文件按拼装序（R1）', () => {
+    const rows = buildInlineRows('', ROSTER, [{ path: 'a.ts', type: 'blob' }]);
+    expect(rows.map((r) => r.kind)).toEqual(['agent', 'todo', 'skill', 'project', 'machine', 'file']);
+    expect(rows[0]).toMatchObject({ kind: 'agent', id: 'a1', label: 'builder' });
+    expect(rows[5]).toMatchObject({ kind: 'file', id: 'a.ts', label: 'a.ts' });
+  });
+
+  test('query 跨类过滤：只留命中的类（R2）', () => {
+    const rows = buildInlineRows('rev', ROSTER, [{ path: 'a.ts', type: 'blob' }]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ kind: 'skill', id: 's1' });
+  });
+
+  test('smart case 跨类生效（R3）', () => {
+    expect(buildInlineRows('REVIEW', ROSTER)).toHaveLength(0);
+    expect(buildInlineRows('review', ROSTER)).toHaveLength(1);
+  });
+
+  test('todo 行携带 seq（R4）', () => {
+    const rows = buildInlineRows('', ROSTER);
+    expect(rows[1]).toMatchObject({ kind: 'todo', id: 't1', seq: 3 });
+  });
+
+  test('files 缺省 = 纯五类面（R5）', () => {
+    const rows = buildInlineRows('', ROSTER);
+    expect(rows).toHaveLength(5);
+    expect(rows.some((r) => r.kind === 'file')).toBe(false);
+  });
+
+  test('空 query 仍 cap 15（R1：#728 手感不回归）', () => {
+    const big: InlineRosterGroups = {
+      agent: Array.from({ length: 20 }, (_, i) => ({ id: `a${i}`, label: `agent-${i}` })),
+      todo: [],
+      skill: [],
+      project: [],
+      machine: [],
+    };
+    expect(buildInlineRows('', big)).toHaveLength(15);
   });
 });
