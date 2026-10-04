@@ -4,8 +4,8 @@ import { expect, test } from '@playwright/test';
 // is the official bordered pill (r7 01/02 probe: 26×20 box, 1px
 // --border-default ring, right-anchored) sitting clear of the 搜索 label —
 // the row-content lift rule must not demote it into the label's flow; the
-// hover and selected pills share ONE geometry (the official 32px inset
-// pill, radius 6) with the selected state one cds alpha step deeper than
+// hover and selected faces share ONE geometry (the official 32px inset face,
+// V2 骨架方角 #792 P6) with the selected state one cds alpha step deeper than
 // the hover instead of a different shape; the machine-online dot keeps its
 // absolute anchor (same lift-rule hazard as the kbd chip).
 
@@ -99,12 +99,13 @@ for (const theme of ['light', 'dark'] as const) {
         sidebarClientWidth: sidebar.clientWidth,
       };
     });
-    // one pill geometry for both states — selected is a deepen, not a shape
+    // one face geometry for both states — selected is a deepen, not a shape
     expect(geo.plain).toEqual(geo.selected);
-    // the official 32px inset pill (r7 01/02 probe: 2px vertical inset)
+    // the official 32px inset face (r7 01/02 probe: 2px vertical inset),
+    // V2 骨架方角 (#792 P6)
     expect(geo.selected.top).toBe('2px');
     expect(geo.selected.bottom).toBe('2px');
-    expect(geo.selected.radius).toBe('6px');
+    expect(geo.selected.radius).toBe('0px');
     // no margin hack on the selected row → no right-edge clip; the row
     // fills the sidebar's content box (the #135 seam takes its 1px of the
     // 240px border-box, so clientWidth — not the outer rect — is the law)

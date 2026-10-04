@@ -264,7 +264,7 @@ export function BoardSurface({
               return (
                 <section
                   key={column.id}
-                  className="board-column relative flex h-full flex-col rounded-[12px] border border-border bg-column"
+                  className="board-column relative flex h-full flex-col rounded-none border border-border bg-column"
                   aria-label={t(column.name)}
                   data-column={column.id}
                   /* #616 两级染色：手势在飞时全部合法目标列戴 base 档

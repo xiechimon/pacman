@@ -148,7 +148,7 @@ const groupAria = (t: TFunc, label: string, collapsed: boolean) =>
  *  B 面 hover/selected = --sidebar-hover/--sidebar-active（neutral alpha 梯）。
  *  focus 环走 B 的 ring（全局 indigo outline 在 app.css，本族显式覆盖）。 */
 const ROW_BASE =
-  'relative flex w-full flex-none items-center text-left text-[13px] leading-4 text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-[2px] before:rounded-[6px] before:content-[""] focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>span:not(.sidebar-kbd):not(.sidebar-online-dot)]:relative';
+  'relative flex w-full flex-none items-center text-left text-[13px] leading-4 text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-[2px] before:rounded-none before:content-[""] focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>span:not(.sidebar-kbd):not(.sidebar-online-dot)]:relative';
 /** hover 与 selected 互斥挂在行上（旧 css 的 :not(--selected):hover 闸）：
    选中行悬停保持深 pill，不被 hover 梯洗浅。 */
 const ROW_HOVER = 'hover:before:bg-sidebar-hover';
@@ -214,9 +214,9 @@ function RailGroupChevron({
   );
 }
 
-/** Rail 行公共件：32px 轨道行 + 24px pill（inset 8/4）。 */
+/** Rail 行公共件：32px 轨道行 + 方角 hover 面（inset 8/4，V2 骨架）。 */
 const RAIL_ROW =
-  'rail-row relative flex h-8 w-10 flex-none items-center justify-center text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-1 before:rounded-[6px] before:content-[""] hover:before:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>svg]:relative [&>.project-avatar]:relative';
+  'rail-row relative flex h-8 w-10 flex-none items-center justify-center text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-1 before:rounded-none before:content-[""] hover:before:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>svg]:relative [&>.project-avatar]:relative';
 const RAIL_SELECTED = 'rail-row--selected text-foreground before:bg-sidebar-active';
 
 /** #656 用户菜单进出场：同 FLOATING_POP_ANIM 的 V2 配方（base-ui-theme §1.2：
@@ -374,7 +374,7 @@ export function BoardSidebar({
         <div className="sidebar-spacer flex-1" />
         <button
           type="button"
-          className="rail-user mb-[11px] flex h-[38px] w-10 flex-none cursor-pointer items-center justify-center border-none bg-transparent outline-none hover:rounded-md hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+          className="rail-user mb-[11px] flex h-[38px] w-10 flex-none cursor-pointer items-center justify-center border-none bg-transparent outline-none hover:rounded-none hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
           aria-label={user.displayName}
           aria-expanded={userMenuOpen}
           onClick={toggleUserMenu}
@@ -403,7 +403,7 @@ export function BoardSidebar({
       <div
         className={`sidebar-team-row flex flex-none items-center text-foreground ${
           selected === 'team'
-            ? 'sidebar-team-row--active mx-2 mt-1.5 mb-[5px] h-8 rounded-lg bg-sidebar-active pl-[11px]'
+            ? 'sidebar-team-row--active mx-2 mt-1.5 mb-[5px] h-8 rounded-none bg-sidebar-active pl-[11px]'
             : 'h-[43px] pl-[19px]'
         }`}
       >
@@ -438,7 +438,7 @@ export function BoardSidebar({
             的 sidebar toggles 段，不在这里。 */}
         <button
           type="button"
-          className={`sidebar-team-collapse ml-auto flex size-7 cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-0 text-muted-foreground focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 ${
+          className={`sidebar-team-collapse ml-auto flex size-7 cursor-pointer items-center justify-center rounded-none border-none bg-transparent p-0 text-muted-foreground focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 ${
             selected === 'team' ? 'mr-[6px]' : 'mr-[14px]'
           }`}
           aria-label={t('收起侧边栏')}

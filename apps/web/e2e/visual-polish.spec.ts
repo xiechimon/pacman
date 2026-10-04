@@ -7,18 +7,19 @@ import { expect, type Page, test } from '@playwright/test';
 // layer separation; the board scroller's track stays hidden
 // (scrollbar-width: none + ::-webkit-scrollbar display: none) — #351 turned
 // it into an even 4-column grid with no desktop horizontal scroll.
-// Issue #139 acceptance (边框体系统一) — 看板面已随 #414 切到 B 面配方：
-// the board card family now rides shadcn's border recipe (1px real border in
-// the --border scale + 12px radius + shadow-sm); the #139 inset ring +
-// --card-shadow stack still holds on the not-yet-migrated surfaces (the
-// notify banner), which is what the banner test pins.
+// Issue #139 acceptance (边框体系统一) — 看板面已随 #414 切到 B 面配方，
+// V2 骨架（#792 P6）收敛方角：the board card family rides shadcn's border
+// recipe (1px real border in the --border scale + radius 0 + shadow-sm);
+// the #139 inset ring + --card-shadow stack still holds on the not-yet-migrated
+// surfaces (the notify banner), which is what the banner test pins.
 // Issue #161 acceptance (卡片阴影/边框统一): the small-card family (todo /
 // notify banner / column container) shares a tighter card-tier shadow
 // (--card-shadow) so the cards read as grounded instead of floating;
 // the account popover stays on the popover-tier (--edge-shadow) because it
-// opens over content and needs visible separation. The popover rides the
-// V2 弹层壳（#790 P3: 1px 墨线框 + 圆角 0, more-menu 同律）instead of the
-// card family's edge ring + 12px radius.
+// opens over content and needs visible separation. Card, column and banner
+// share the edge ring + radius 0 — the seam between the banner and the column
+// container is visually continuous. The popover rides the V2 弹层壳
+// (#790 P3: 1px 墨线框 + 圆角 0, more-menu 同律) instead of the card family.
 // Each surface is asserted in both themes — the polish is a dual-theme contract.
 
 /** resolved single-source ring + the --border-default color it must ride */
@@ -66,10 +67,10 @@ for (const theme of ['light', 'dark'] as const) {
     const card = await edgeContract(page, '.todo-card');
     // #425 基切换后的配方（政策见 #411「配方类」）：base 形态的 Card 用
     // 1px ring 外环（`ring-1 ring-foreground/10`）替代 #414 的 1px 实描边 +
-    // shadow-sm；半径仍由消费点钉死 12px。**保留的原意图**：不得回到 #139 的
+    // shadow-sm；V2 骨架（#792 P6）半径归零。**保留的原意图**：不得回到 #139 的
     // inset 环（分数缩放下发丝不匀）——那条断言是本测试的真回归守卫。
     expect(card.border).toBe('0px');
-    expect(card.radius).toBe('12px');
+    expect(card.radius).toBe('0px');
     expect(card.shadow).toContain('0px 0px 0px 1px');
     expect(card.shadow).not.toContain('inset');
   });
@@ -81,10 +82,10 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/app?scenario=01');
 
     const column = await edgeContract(page, '.board-column');
-    // #414（B 面）：列容器与卡片同行——1px 实描边 + 12px 圆角 + shadow-sm；
-    // 通知条仍是旧的 inset 环配方（未迁面，见 board.css 残留层）
+    // #414（B 面）+ V2 骨架（#792 P6）：列容器与卡片同行——1px 实描边 +
+    // 方角 + shadow-sm；通知条仍是旧的 inset 环配方（未迁面，见 board.css 残留层）
     expect(column.border).toBe('1px');
-    expect(column.radius).toBe('12px');
+    expect(column.radius).toBe('0px');
     expect(column.borderColorOwn).toBe(column.borderToken);
     expect(column.shadow).not.toContain('inset');
   });
@@ -97,10 +98,10 @@ for (const theme of ['light', 'dark'] as const) {
 
     const banner = await edgeContract(page, '.board-notify-banner');
     // #161 通知条↔看板列边框对齐: the banner sits at the same elevation
-    // tier as the column container — same ring, same radius, same shadow —
-    // so the two surfaces read as one language
+    // tier as the column container — same ring, same radius (V2 骨架方角),
+    // same shadow — so the two surfaces read as one language
     expect(banner.border).toBe('0px');
-    expect(banner.radius).toBe('12px');
+    expect(banner.radius).toBe('0px');
     expect(banner.shadow.startsWith(banner.ring)).toBe(true);
     expect(banner.ring.startsWith(`${banner.borderColor} `)).toBe(true);
     expect(banner.shadow).toContain(banner.cardShadow);

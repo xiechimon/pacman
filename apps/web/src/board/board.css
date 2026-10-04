@@ -40,7 +40,7 @@
   right: 17px;
   height: 64px;
   border: 0;
-  border-radius: var(--edge-radius);
+  border-radius: 0;
   background: var(--surface-secondary);
   box-shadow: var(--edge-ring), var(--card-shadow);
   display: flex;
@@ -145,7 +145,7 @@ body.board-dragging {
 }
 
 /* #616（对齐 todos.dev 2026-10-02 实测）：抬升态 = 紧凑复刻卡——身份行 +
-   两行截断标题，8px 圆角 + 1px 实描边，2° 倾角 + 0.92 不透明度 + 宽软影。
+   两行截断标题，方角 + 1px 实描边，2° 倾角 + 0.92 不透明度 + 宽软影。
    参考站把整套配方写在 overlay 根的内联 style 上（rotate 与 translate 同一
    transform）；这里 translate 归 dnd-kit 的 fixed wrapper，倾角/影/透明度
    落在内层卡上——合成结果逐像素同形。#391 的 --lift-shadow 四边墨配方随
@@ -156,7 +156,7 @@ body.board-dragging {
   gap: 6px;
   padding: 10px 12px;
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--card-bg);
   box-shadow: var(--drag-shadow);
   opacity: 0.92;
