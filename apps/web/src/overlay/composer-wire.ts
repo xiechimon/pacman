@@ -67,7 +67,13 @@ import {
   MENTION_COMPLETION_SPEC,
 } from './completion.js';
 import type { MentionGroups } from './mention-picker.js';
-import { insertMentionText, type MentionToken } from './mention-token.js';
+import {
+  type FileMentionEntry,
+  type InlineCompletionRow,
+  insertFileText,
+  insertMentionText,
+  type MentionToken,
+} from './mention-token.js';
 
 export interface ComposerWireOptions {
   /** Live editable face: enables the inline @-query detection on change.
@@ -91,6 +97,11 @@ export interface ComposerWireOptions {
   /** Entity groups feeding both mention paths (#311). Absent = the inline
    *  listbox never opens and the picker shows zero counts. */
   mentionGroups?: MentionGroups;
+  /** File candidates for the inline `@` list (#760). Absent/empty = the
+   *  agents-only listbox of #728, byte-identical. Supplied only where a
+   *  project context exists (detail composer); the chief drawer and the
+   *  new-task dialog stay agents-only. */
+  mentionFiles?: FileMentionEntry[];
 }
 
 export interface ComposerWire {
@@ -139,9 +150,10 @@ export interface ComposerWire {
   inlineCaret: number | null;
   /** The query text after `@` — drives filtering and the empty-state copy. */
   inlineQuery: string;
-  /** Agent entries fuzzy-filtered by the query (subsequence + smart case +
-   *  boundary bonus, capped at 15 — CC rules 14-18). */
-  inlineAgents: MentionGroups['agent'];
+  /** Unified inline `@` rows (#760: agents + files, one fuzzy pass over the
+   *  concatenated roster — ties keep roster order so agents stay first;
+   *  capped at 15, CC rules 14-18 + COMPLETION_CAP). */
+  inlineRows: InlineCompletionRow[];
   /** Highlighted row index; null = nothing highlighted, so Enter keeps its
    *  send semantics (CC rule 56 isomorph — the top row is NOT preselected). */
   inlineHighlight: number | null;
@@ -162,6 +174,9 @@ export interface ComposerWire {
    *  the same stale draft closure per call, so only the last token of a
    *  multi-select survived (#728 failure mode 11 coverage). */
   insertTokens: (tokens: MentionToken[]) => void;
+  /** Insert a file path at the caret (#760: bare path text + trailing space,
+   *  same STORED-range consumption as the token path). */
+  insertFile: (path: string) => void;
   /** mentionGroups with the empty-groups fallback applied (the picker opens
    *  on empty groups so the user still sees the zero counts, r9 §2.2). */
   groups: MentionGroups;
@@ -187,6 +202,7 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     onSend,
     onAttachment,
     mentionGroups,
+    mentionFiles,
   } = options;
 
   const [internalDraft, setInternalDraft] = useState('');
@@ -222,7 +238,8 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
   const [inlineHighlight, setInlineHighlight] = useState<number | null>(null);
   const inlineListboxId = useId();
   const agentCount = mentionGroups?.agent.length ?? 0;
-  const inlineOpen = inlineRange !== null && agentCount > 0;
+  const fileCount = mentionFiles?.length ?? 0;
+  const inlineOpen = inlineRange !== null && agentCount + fileCount > 0;
 
   // Mirror of the freshest committed draft (#729): an upload resolving
   // seconds after the paste must insert into the text as it stands now —
@@ -272,13 +289,34 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     applyRange(detectCompletionToken(ta.value, caret, MENTION_COMPLETION_SPEC));
   }, [editable, applyRange]);
 
-  // Fuzzy-filter the agents by the query (CC rules 14-18: subsequence +
-  // smart case + boundary bonus, capped at 15); an empty query lists the
-  // roster in order.
-  const inlineAgents = useMemo(() => {
+  // Unified `@` roster (#760: agents + files, ONE fuzzy pass — CC rules
+  // 14-18: subsequence + smart case + boundary bonus, capped at 15).
+  // Concatenation order is the tie-break (stable sort): agents keep roster
+  // priority, files (enumeration order = git order) follow. An empty query
+  // lists the concatenated roster in order. mentionFiles absent/empty = the
+  // #728 agents-only list, unchanged.
+  const inlineRows = useMemo(() => {
     if (inlineRange === null || mentionGroups == null) return [];
-    return fuzzyFilter(inlineRange.query, mentionGroups.agent, (a) => a.label);
-  }, [inlineRange, mentionGroups]);
+    const rows: InlineCompletionRow[] = [
+      ...mentionGroups.agent.map(
+        (a): InlineCompletionRow => ({
+          kind: 'agent',
+          id: a.id,
+          label: a.label,
+          ...(a.subtitle !== undefined ? { subtitle: a.subtitle } : {}),
+        }),
+      ),
+      ...(mentionFiles ?? []).map(
+        (f): InlineCompletionRow => ({
+          kind: 'file',
+          id: f.path,
+          label: f.type === 'tree' ? `${f.path}/` : f.path,
+          fileType: f.type,
+        }),
+      ),
+    ];
+    return fuzzyFilter(inlineRange.query, rows, (r) => r.label);
+  }, [inlineRange, mentionGroups, mentionFiles]);
 
   const send = () => {
     // Attachment upload in flight: the send is blocked so a message can
@@ -420,21 +458,23 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     ta.setSelectionRange(pending.caret, pending.caret);
   }, [draft]);
 
-  /** Insert mention tokens at the caret, or — when the inline listbox is
-   *  open — over the STORED detection range `[start, end)` so the `@query`
-   *  is consumed instead of left behind as residue. The stored range is the
-   *  contract (#728 failure mode 5): recomputing from a caret that drifted
-   *  after detection would eat neighbouring text. All tokens compose in one
-   *  draft update at the evolving caret (multi-select popover path). */
-  const insertTokens = (tokens: MentionToken[]) => {
-    if (tokens.length === 0) return;
+  /** Text insertion over the STORED detection range `[start, end)` so the
+   *  `@query` is consumed instead of left behind as residue. The stored range
+   *  is the contract (#728 failure mode 5): recomputing from a caret that
+   *  drifted after detection would eat neighbouring text. All pieces compose
+   *  in ONE draft update at the evolving caret (multi-select popover path —
+   *  the old per-token loop read the same stale draft closure per call, so
+   *  only the last token of a multi-select survived, #728 failure mode 11). */
+  const applyTextInsert = (
+    produce: (
+      current: string,
+      at: number,
+      end: number | undefined,
+    ) => { value: string; caret: number },
+  ) => {
     const ta = textareaRef.current;
     if (ta == null) {
-      setDraft((current) => {
-        let value = current;
-        for (const token of tokens) value = insertMentionText(value, token, null).value;
-        return value;
-      });
+      setDraft((current) => produce(current, current.length, undefined).value);
       return;
     }
     const range = inlineOpen ? inlineRangeRef.current : null;
@@ -443,22 +483,36 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     closeInline();
     pendingInsertRef.current = null;
     setDraft((current) => {
-      let value = current;
-      let at = start;
-      let end = replaceEnd;
+      const result = produce(current, start, replaceEnd);
+      pendingInsertRef.current = { value: result.value, caret: result.caret };
+      return result.value;
+    });
+  };
+
+  const insertTokens = (tokens: MentionToken[]) => {
+    if (tokens.length === 0) return;
+    applyTextInsert((value, at, end) => {
+      let current = value;
+      let caret = at;
+      let rest = end;
       for (const token of tokens) {
-        const result = insertMentionText(value, token, at, end);
-        value = result.value;
-        pendingInsertRef.current = { value, caret: result.caret };
         // Later tokens land after the previous insertion, never re-replacing.
-        at = result.caret;
-        end = undefined;
+        const result = insertMentionText(current, token, caret, rest);
+        current = result.value;
+        caret = result.caret;
+        rest = undefined;
       }
-      return value;
+      return { value: current, caret };
     });
   };
 
   const insertToken = (token: MentionToken) => insertTokens([token]);
+
+  /** File path insert (#760): bare path text + trailing space (CC rule 26),
+   *  same STORED-range consumption as the token path. */
+  const insertFile = (path: string) => {
+    applyTextInsert((value, at, end) => insertFileText(value, path, at, end));
+  };
 
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     const next = event.target.value;
@@ -472,7 +526,7 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     const isComposing = event.nativeEvent.isComposing;
     const intent = completionKeyIntent(
       { key: event.key, shiftKey: event.shiftKey, isComposing },
-      { open: inlineOpen, highlight: inlineHighlight, matchCount: inlineAgents.length },
+      { open: inlineOpen, highlight: inlineHighlight, matchCount: inlineRows.length },
     );
     if (intent.kind !== 'ignore') event.preventDefault();
     if (intent.kind === 'dismiss') {
@@ -490,9 +544,11 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
       return;
     }
     if (intent.kind === 'accept') {
-      const picked = inlineAgents[intent.index];
-      if (picked != null) {
+      const picked = inlineRows[intent.index];
+      if (picked?.kind === 'agent') {
         insertTokens([{ kind: 'agent', id: picked.id, label: picked.label }]);
+      } else if (picked?.kind === 'file') {
+        insertFile(picked.label);
       }
       return;
     }
@@ -547,7 +603,7 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     inlineOpen,
     inlineCaret: inlineRange?.start ?? null,
     inlineQuery: inlineRange?.query ?? '',
-    inlineAgents,
+    inlineRows,
     inlineHighlight,
     setInlineHighlight,
     inlineListboxId,
@@ -555,6 +611,7 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     closeInline,
     insertToken,
     insertTokens,
+    insertFile,
     groups,
   };
 }

@@ -516,3 +516,92 @@ test('geometry: the listbox stays anchored above the composer (#688 ladder untou
   expect(Math.abs(lb.width - cb.width)).toBeLessThanOrEqual(8);
   expect(Math.abs(lb.x - cb.x)).toBeLessThanOrEqual(8);
 });
+
+// #760: `@` 文件候选面（Claude Code 主候选面同构）。
+//
+// Candidate source = `GET /api/projects/:id/files`（全递归路径表）；插入形 =
+// 裸路径 + 尾随空格（CC rules 26-29），不走 scheme wire。分区规则：同一列表、
+// 同一 fuzzy 分排序，ties 时 agents 在前（roster 序），总 cap 15 不动。
+// 无文件面（未 stub = 500 → 空集）即本文件既有全部用例：agents-only 不回归。
+const FILES = [
+  { path: 'apps/web/src/ui/button.tsx', type: 'blob', size: 120 },
+  { path: 'apps/web/src/ui', type: 'tree', size: null },
+  { path: 'docs/spec/19-foo.md', type: 'blob', size: 40 },
+];
+
+/** openDetail + files 面 stub（等 files 取到再打字，免冷缓存竞态）。 */
+async function openDetailWithFiles(page: Page) {
+  const opened = await openDetail(page);
+  await page.route(`**/api/projects/${PROJECT_ID}/files*`, (route) =>
+    route.fulfill({
+      json: { ref: 'HEAD', commit: 'c'.repeat(40), truncated: false, files: FILES },
+    }),
+  );
+  const filesLoaded = page.waitForResponse(
+    (r) => r.url().includes(`/api/projects/${PROJECT_ID}/files`) && r.status() === 200,
+  );
+  // 重进一次让 files 查询挂上 stub（openDetail 的首次请求已走 500  fallback →
+  // 空集；reload 后 stub 生效）。react-query 对 500 不重试（retry: false）。
+  await page.reload();
+  await filesLoaded;
+  const input = page.locator('.composer-input');
+  await expect(input).toBeVisible();
+  await expect(input).toBeEditable();
+  return { ...opened, input, listbox: page.locator('.mention-inline'), rows: page.locator('.mention-inline-row') };
+}
+
+test('files: empty query lists agents then files in roster order', async ({ page }) => {
+  const { input, rows } = await openDetailWithFiles(page);
+  await input.fill('@');
+  // 3 agents（roster 序）+ 3 files（枚举序），总 cap 15 未触发
+  await expect(rows).toHaveCount(6);
+  await expect(rows.nth(0)).toContainText('builder');
+  await expect(rows.nth(2)).toContainText('deploy-bot');
+  await expect(rows.nth(3)).toContainText('apps/web/src/ui/button.tsx');
+  await expect(rows.nth(4)).toContainText('apps/web/src/ui/');
+  await evidenceShot(page, 'files-unified-list.png');
+});
+
+test('files: fuzzy filters both faces, agents keep ties', async ({ page }) => {
+  const { input, rows } = await openDetailWithFiles(page);
+  // "butt" 是 button.tsx 的子序列；agents 无人命中 → 只有文件行
+  await input.fill('@butt');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('apps/web/src/ui/button.tsx');
+
+  // 既有 agents 查询不受文件面污染（"bld" 只命中 builder）
+  await input.fill('@bld');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('builder');
+});
+
+test('files: Enter inserts the bare path with a trailing space and sends on second Enter', async ({
+  page,
+}) => {
+  const { input, listbox, rows, sent } = await openDetailWithFiles(page);
+  await input.fill('@butt');
+  await expect(rows).toHaveCount(1);
+  await input.press('ArrowDown');
+  await input.press('Enter');
+  // 裸路径 + 尾随空格（CC rule 26），@query 无残留
+  await expect(input).toHaveValue('apps/web/src/ui/button.tsx ');
+  await expect(listbox).toBeHidden();
+  expect(sent).toHaveLength(0);
+  await evidenceShot(page, 'files-insert-path.png');
+
+  await input.press('Enter');
+  await expect.poll(() => sent.length).toBe(1);
+  expect(sent[0]).toContain('apps/web/src/ui/button.tsx');
+});
+
+test('files: directory row inserts with a trailing slash', async ({ page }) => {
+  const { input, rows } = await openDetailWithFiles(page);
+  await input.fill('@ui/');
+  // button.tsx 与 ui/ 目录都命中（同一 fuzzy 分，stub 序）；第二行是目录
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(1)).toContainText('apps/web/src/ui/');
+  await input.press('ArrowDown');
+  await input.press('ArrowDown');
+  await input.press('Enter');
+  await expect(input).toHaveValue('apps/web/src/ui/ ');
+});

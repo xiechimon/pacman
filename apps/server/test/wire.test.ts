@@ -118,6 +118,10 @@ const INFERRED_ROUTES = [
   // 02 §6.1 词表外 = INFERRED 入位。
   'GET /api/todos/{id}/github-issue',
   'POST /api/todos/{id}/github-issue/retry',
+  // #760 composer `@` 文件候选面：tree 面单层，全递归候选另开此面（limit
+  // 缺省 2000/最大 5000 + truncated）。自有设计面，02 §6.1 词表外 =
+  // INFERRED 入位。
+  'GET /api/projects/{id}/files',
 ];
 
 /** M2 已实现核心面（M2a：todo/build CRUD + team stream + seed 保形；

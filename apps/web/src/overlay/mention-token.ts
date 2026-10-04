@@ -31,6 +31,29 @@
 /** Mention kind — the five categories the popover exposes (r9 §2.2). */
 export type MentionKind = 'todo' | 'skill' | 'agent' | 'project' | 'machine';
 
+/** File candidate from the project enumeration face (#760
+ * `GET /api/projects/:id/files`). */
+export interface FileMentionEntry {
+  /** Repo-root-relative path (no trailing slash; the row label adds it for
+   *  directories). */
+  path: string;
+  type: 'blob' | 'tree';
+}
+
+/** One row of the unified inline `@` listbox (#760): entity agents and file
+ * candidates share one list, one fuzzy pass, one highlight cycle. Files are
+ * NOT MentionTokens — they insert as bare path text (no scheme wire). */
+export interface InlineCompletionRow {
+  kind: 'agent' | 'file';
+  /** Agent actor id / file path (dirs carry the trailing `/` in the label,
+   *  the id stays the bare path). */
+  id: string;
+  /** Agent display name / file path (`/`-suffixed for directories). */
+  label: string;
+  subtitle?: string;
+  fileType?: 'blob' | 'tree';
+}
+
 /** Structured mention token emitted by the picker. `seq` is the todo
  *  number on board, used by the transcript renderer to look up the
  *  todo record for chip rendering. `id` is the canonical entity id. */
@@ -160,6 +183,38 @@ export function parseMentionSegments(text: string): MentionSegment[] {
   return segments;
 }
 
+/** 文件插入形（#760，CC rules 26-29 同构）：裸路径文本（不走 scheme wire——
+ * agent 在项目 worktree 对相对路径原生可读，见票面裁决）。含空白路径引号
+ * 包裹（rule 27）；目录调用方已带尾随 `/`（rule 28/29）。 */
+export function formatFileInsert(path: string): string {
+  return /\s/.test(path) ? `"${path}"` : path;
+}
+
+/** 文件 token 插入（#760）：与 insertMentionText 同一空格纪律——前导空格防
+ * 粘连（已是空白邻位则免）、尾随空格恒落地（rule 26：插入后紧跟的按键不能
+ * 粘到 token 上）。`at/replaceEnd` 语义与 insertMentionText 同（消费 STORED
+ * 检测区间，`@query` 不留残）。 */
+export function insertFileText(
+  value: string,
+  path: string,
+  at: number | null,
+  replaceEnd?: number,
+): { value: string; caret: number } {
+  const serialized = formatFileInsert(path);
+  if (at == null || at < 0 || at > value.length) {
+    const piece = ` ${serialized} `;
+    return { value: value + piece, caret: value.length + piece.length };
+  }
+  const end = replaceEnd != null && replaceEnd > at ? Math.min(replaceEnd, value.length) : at;
+  const before = value.slice(0, at);
+  const after = value.slice(end);
+  const head = before.length === 0 || /\s/.test(before[before.length - 1] ?? '') ? '' : ' ';
+  const tail = after.length > 0 && /^\s/.test(after) ? '' : ' ';
+  return {
+    value: before + head + serialized + tail + after,
+    caret: before.length + head.length + serialized.length + tail.length,
+  };
+}
 /** Insert a mention token at the given caret offset in the textarea
  *  value, with one leading + one trailing space (r9 §2.2: ` @r3-builder `;
  *  CC rule 26: acceptance always lands a trailing space so the next

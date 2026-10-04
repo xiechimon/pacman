@@ -7,7 +7,7 @@
 //   远端以本地 bare 代位（git 协议面同形）。
 // git 客户端调用带 GIT_TERMINAL_PROMPT=0（401 时不吊住等输入）。
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -182,6 +182,90 @@ describe('托管形态：bare repo + git http-backend（02 §3 锁定）', () =>
     expect(headTree.entries).toHaveLength(1);
   });
 
+  // files 全递归候选面（#760 composer `@` 候选源）：一次打全仓路径表。
+  // 失败方式钉死：
+  //   F1 大仓无界 → limit 缺省 2000/最大 5000，超了 git 序截断 + truncated；
+  //   F2 子模块 gitlink（commit 型）列出来也读不了 → 服务端滤掉；
+  //   F3 插入的 path agent 侧读不到 → round-trip：候选 path 原样 file?path=
+  //      取回字节（裸路径可读性的 wire 实证）；
+  //   F4 坏 ref / 非托管 / 未知项目 → 404（tree/file 同口径，web 静默退回
+  //      agents-only）。
+  test('GET /api/projects/{id}/files → 全递归 + 目录条目 + 上界 + round-trip（#760）', async () => {
+    const record = await createProject({ name: 'files-probe', repoKind: 'hosted' });
+    const dir = workdir('files');
+    const repoDir = join(dir, 'repo');
+    expect((await git(['clone', authedUrl(record), repoDir], dir)).code).toBe(0);
+    writeFileSync(join(repoDir, 'README.md'), '# files-probe\n');
+    mkdirSync(join(repoDir, 'apps', 'web', 'src'), { recursive: true });
+    writeFileSync(join(repoDir, 'apps', 'web', 'src', 'button.tsx'), 'export const B = 1;\n');
+    writeFileSync(join(repoDir, 'apps', 'web', 'src', 'with space.ts'), 'export const S = 1;\n');
+    expect((await git(['checkout', '-B', 'main'], repoDir)).code).toBe(0);
+    expect((await git(['add', '.'], repoDir)).code).toBe(0);
+    // 子模块 gitlink（160000）：目标须是真实对象（新 git 拒绝空 sha 入 index；
+    // hash-object 写一个哑 blob 取 sha——ls-tree 只读 tree 对象，目标内容无妨）
+    const subSha = (await git(['hash-object', '-w', 'apps/web/src/button.tsx'], repoDir)).stdout
+      .toString()
+      .trim();
+    expect(subSha).toMatch(/^[0-9a-f]{40}$/);
+    expect(
+      (await git(['update-index', '--add', '--cacheinfo', '160000', subSha, 'vendor/sub'], repoDir))
+        .code,
+    ).toBe(0);
+    expect((await git(['commit', '-m', 'feat: files'], repoDir)).code).toBe(0);
+    expect((await git(['push', '-u', 'origin', 'main'], repoDir)).code, 'push').toBe(0);
+
+    const res = await req(s.app, 'GET', `/api/projects/${record.id}/files?ref=main`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      ref: string;
+      commit: string;
+      truncated: boolean;
+      files: { path: string; type: string; size: number | null }[];
+    };
+    expect(body.ref).toBe('main');
+    expect(body.commit).toMatch(/^[0-9a-f]{40}$/);
+    expect(body.truncated).toBe(false);
+    const paths = body.files.map((f) => f.path);
+    expect(paths).toContain('README.md');
+    expect(paths).toContain('apps/web/src/button.tsx');
+    expect(paths).toContain('apps/web/src/with space.ts');
+    // 目录条目（tree 型，插入时尾随 `/`，CC rule 28/29 同款）
+    expect(paths).toContain('apps');
+    expect(paths).toContain('apps/web/src');
+    expect(body.files.find((f) => f.path === 'apps')?.type).toBe('tree');
+    // 子模块 gitlink 滤掉（F2：列出来也读不了的死候选）——父目录 vendor/
+    // 作为 tree 照常保留，只有 commit 型条目本身消失
+    expect(paths).not.toContain('vendor/sub');
+    expect(paths).toContain('vendor');
+
+    // 上界（F1）：limit=2 → 截断 + 置位；非法 limit → 缺省，不 400
+    const capped = (await (
+      await req(s.app, 'GET', `/api/projects/${record.id}/files?ref=main&limit=2`)
+    ).json()) as { truncated: boolean; files: unknown[] };
+    expect(capped.files).toHaveLength(2);
+    expect(capped.truncated).toBe(true);
+    const fallback = (await (
+      await req(s.app, 'GET', `/api/projects/${record.id}/files?ref=main&limit=abc`)
+    ).json()) as { truncated: boolean; files: { path: string }[] };
+    expect(fallback.truncated).toBe(false);
+    expect(fallback.files.length).toBe(body.files.length);
+
+    // round-trip（F3）：候选 path 原样取回字节
+    const file = (await (
+      await req(
+        s.app,
+        'GET',
+        `/api/projects/${record.id}/file?path=apps/web/src/button.tsx&ref=main`,
+      )
+    ).json()) as { content: string };
+    expect(file.content).toBe('export const B = 1;\n');
+
+    // 坏 ref → 404（F4）
+    expect(
+      (await req(s.app, 'GET', `/api/projects/${record.id}/files?ref=no-such-ref`)).status,
+    ).toBe(404);
+  });
+
   // commits 读面（#149 文件|历史 分段「历史」数据源；[推断] 路由，
   // wire.test INFERRED_ROUTES 登记）：种子提交 + README 提交 = 2 行，
   // 新→旧序（git log 同序），行形 = sha/shortSha/message/authorName/at。
@@ -290,6 +374,9 @@ describe('托管形态：bare repo + git http-backend（02 §3 锁定）', () =>
       githubRepo: 'octocat/hello',
     });
     expect((await req(s.app, 'GET', `/api/projects/${gh.id}/tree`)).status).toBe(404);
+    // files 面同口径：非托管无本地库 404 + 未知项目 404（F4）
+    expect((await req(s.app, 'GET', `/api/projects/${gh.id}/files`)).status).toBe(404);
+    expect((await req(s.app, 'GET', `/api/projects/${newUuidv7()}/files`)).status).toBe(404);
   });
 });
 

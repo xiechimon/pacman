@@ -23,9 +23,18 @@ import { Button } from '../components/ui/button.js';
 import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
 import { Input } from '../components/ui/input.js';
 import { useI18n } from '../i18n/provider.js';
-import { ChevronLeft, FileCheck, Layers, Puzzle, Server, Users, X } from '../icons/index.js';
+import {
+  ChevronLeft,
+  FileCheck,
+  FileText,
+  Layers,
+  Puzzle,
+  Server,
+  Users,
+  X,
+} from '../icons/index.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
-import type { MentionKind, MentionToken } from './mention-token.js';
+import type { InlineCompletionRow, MentionKind, MentionToken } from './mention-token.js';
 import './mention-picker.css';
 
 /** One entity row inside a drilled-in category. The picker renders the
@@ -327,9 +336,8 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
   );
 }
 
-/** Inline agents-only listbox for the composer's `@` autocomplete
- *  (r9 §3.2: listbox anchored above the composer, only agents, click
- *  inserts the agent mention token).
+/** Inline unified `@` listbox for the composer (#728 agents-only origin, #760
+ *  agents + files).
  *
  *  Combobox pattern (#728, canon #727 §1 rules 20-24): the textarea keeps
  *  focus for the whole open window — rows are non-focusable (tabIndex -1 +
@@ -338,10 +346,14 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
  *  The old shape attached ONE ref to every row (`.current` = the last row)
  *  and stole focus on open, breaking continuous typing and IME. Keyboard
  *  and Esc live in composer-wire's handleKeyDown (single source, #625);
- *  this skin only renders state and reports hover/pick. */
+ *  this skin only renders state and reports hover/pick.
+ *
+ *  Partition (#760): ONE list, one ranking — kind travels per row and the
+ *  glyph tells them apart (agent initial vs file glyph). No section headers:
+ *  headers are not rows and would corrupt the ↑↓ cycle. */
 export interface MentionInlineProps {
   open: boolean;
-  agents: { id: string; label: string; subtitle?: string }[];
+  rows: InlineCompletionRow[];
   /** Start offset of the detected `@` token (data-caret debug anchor). */
   caret: number | null;
   /** Query text after `@` — only the empty-state copy consumes it. */
@@ -351,7 +363,7 @@ export interface MentionInlineProps {
   highlight: number | null;
   /** Hover moves the highlight (CC rule 24). */
   onHover: (index: number) => void;
-  onPick: (entry: { id: string; label: string }) => void;
+  onPick: (row: InlineCompletionRow) => void;
   /** Container ref for the wire's outside pointer-down containment check. */
   listboxRef: Ref<HTMLDivElement>;
   /** Base element id; rows are `${listboxId}-opt-${index}`. */
@@ -360,7 +372,7 @@ export interface MentionInlineProps {
 
 export function MentionInline({
   open,
-  agents,
+  rows,
   caret,
   query,
   highlight,
@@ -383,19 +395,19 @@ export function MentionInline({
       id={listboxId}
       className="mention-inline duration-100 ease-out animate-in fade-in-0 zoom-in-98"
       role="listbox"
-      aria-label="Agents"
+      aria-label={t('提及')}
       data-caret={caret ?? ''}
     >
-      {agents.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="mention-inline-empty">
           {query === ''
             ? t('没有可用的 Agent')
             : t('没有与"{query}"匹配的结果', { query: `@${query}` })}
         </div>
       ) : (
-        agents.map((agent, index) => (
+        rows.map((row, index) => (
           <button
-            key={agent.id}
+            key={`${row.kind}:${row.id}`}
             id={`${listboxId}-opt-${index}`}
             type="button"
             tabIndex={-1}
@@ -406,14 +418,18 @@ export function MentionInline({
             // (focus loss = broken continuous typing + IME, failure mode 4).
             onMouseDown={(event) => event.preventDefault()}
             onMouseEnter={() => onHover(index)}
-            onClick={() => onPick(agent)}
+            onClick={() => onPick(row)}
           >
-            <span className="mention-inline-avatar">{agent.label.charAt(0).toLowerCase()}</span>
+            {row.kind === 'agent' ? (
+              <span className="mention-inline-avatar">{row.label.charAt(0).toLowerCase()}</span>
+            ) : (
+              <span className="mention-inline-avatar mention-inline-avatar--file">
+                <FileText width={14} height={14} />
+              </span>
+            )}
             <span className="mention-inline-main">
-              <span className="mention-inline-title">{agent.label}</span>
-              {agent.subtitle != null && (
-                <span className="mention-inline-sub">{agent.subtitle}</span>
-              )}
+              <span className="mention-inline-title">{row.label}</span>
+              {row.subtitle != null && <span className="mention-inline-sub">{row.subtitle}</span>}
             </span>
           </button>
         ))

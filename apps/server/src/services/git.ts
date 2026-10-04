@@ -21,6 +21,7 @@ import {
   type ProjectBranchesResponse,
   type ProjectCommitsResponse,
   type ProjectFileResponse,
+  type ProjectFilesResponse,
   type ProjectRecord,
   type ProjectTreeResponse,
 } from '@pacman/shared';
@@ -28,7 +29,7 @@ import { eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { build as buildTable, project, todo as todoTable } from '../db/schema.js';
 import { HttpError, notFound } from '../lib/errors.js';
-import { isSafeRepoPath, runGit, systemGitOps } from '../lib/git.js';
+import { isSafeRepoPath, lsFilesRecursive, runGit, systemGitOps } from '../lib/git.js';
 
 export type ProjectRow = typeof project.$inferSelect;
 
@@ -231,6 +232,33 @@ export async function readTree(
   const subPath = pathParam !== undefined && pathParam !== '' ? pathParam : undefined;
   const entries = await systemGitOps.lsTree(dir, commit, subPath);
   return { ref, commit, path: subPath ?? '', entries };
+}
+
+/** 全递归候选上界（#760 files 面）：缺省 2000，最大 5000。截断按 git 序取
+ * 前 N + truncated 置位——召回降级但交互帧率不降（客户端全量本地 fuzzy）。 */
+export const PROJECT_FILES_DEFAULT_LIMIT = 2000;
+export const PROJECT_FILES_MAX_LIMIT = 5000;
+
+/** 全递归文件列举（#760 composer `@` 候选源）：读裸库 ref 全树路径表。
+ * 口径与 tree/file 同族——非托管形态/坏 ref = 404（web 侧静默退回
+ * agents-only，不弹错）。limit 非数字/越界即钳制，不 400（补全候选是
+ * 渐进增强面，参数宽容）。 */
+export async function readFiles(
+  ctx: RepoCtx,
+  projectId: string,
+  refParam?: string,
+  limitParam?: string,
+): Promise<ProjectFilesResponse> {
+  const dir = requireHostedRepoDir(ctx, projectId);
+  const ref = refParam ?? 'HEAD';
+  const commit = await resolveCommitOr404(dir, ref);
+  const parsed = limitParam === undefined || limitParam === '' ? NaN : Number(limitParam);
+  const limit = Number.isInteger(parsed)
+    ? Math.min(Math.max(parsed, 1), PROJECT_FILES_MAX_LIMIT)
+    : PROJECT_FILES_DEFAULT_LIMIT;
+  const all = await lsFilesRecursive(dir, commit);
+  const files = all.slice(0, limit).map((e) => ({ path: e.path, type: e.type, size: e.size }));
+  return { ref, commit, truncated: all.length > files.length, files };
 }
 
 /** 二进制判定：首 8KB 含 NUL（git 同款启发式 [设计]）。 */

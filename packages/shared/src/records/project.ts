@@ -124,6 +124,28 @@ export const projectTreeResponseSchema = z.object({
 });
 export type ProjectTreeResponse = z.infer<typeof projectTreeResponseSchema>;
 
+/** `GET /api/projects/{id}/files?ref=&limit=` 响应（#760：composer `@` 文件
+ * 补全候选源——既有 tree 面单层，全递归候选另开此面，上界见 FILES 上限）。
+ * 形状复用 tree 条目投影 + 截断位；子模块（commit 型）服务端已滤掉。 */
+export const projectFilesResponseSchema = z.object({
+  /** 请求 ref 回显（缺省 `HEAD`）。 */
+  ref: z.string(),
+  /** 解析后的 commit sha（ref 不存在 = 404 {error}，与 tree/file 同口径）。 */
+  commit: z.string(),
+  /** 行数超 limit 即截断（git 序取前 N）；截断只影响召回，不影响交互帧率
+   * （客户端全量本地 fuzzy）。 */
+  truncated: z.boolean(),
+  files: z.array(
+    z.object({
+      path: z.string(),
+      type: z.enum(['blob', 'tree']),
+      /** blob 字节数；tree 为 null（ls-tree -l 语义，与 tree 面同形）。 */
+      size: z.number().int().nullable(),
+    }),
+  ),
+});
+export type ProjectFilesResponse = z.infer<typeof projectFilesResponseSchema>;
+
 /** `GET /api/projects/{id}/file?path=&ref=` 响应（02 §3 读单文件）。 */
 export const projectFileResponseSchema = z.object({
   ref: z.string(),

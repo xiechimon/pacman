@@ -36,6 +36,7 @@ import { useI18n } from '../i18n/provider.js';
 import { ArrowUp, Grid2x2, Paperclip, SearchPlus } from '../icons/index.js';
 import { useComposerWire } from '../overlay/composer-wire.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
+import type { FileMentionEntry } from '../overlay/mention-token.js';
 
 interface ComposerProps {
   placeholder: string;
@@ -64,6 +65,9 @@ interface ComposerProps {
    *  投影；fixture = 父级从 fixture.todos / fixture.resources 提取。
    *  缺省 = 所有分组空（弹层仍可开但只显 0 计数）。 */
   mentionGroups?: MentionGroups;
+  /** #760：文件候选（`GET /api/projects/:id/files` 投影）。缺省/空 = #728
+   *  agents-only 内联面，字节行为不变。 */
+  mentionFiles?: FileMentionEntry[];
   /** 停止钮点击（M7 #308，r9 §3.3：确认弹层入口）；缺省 = 静态捕获面
    * （fixture 按钮不接线，DOM 字节不变）。 */
   onStop?: () => void;
@@ -82,6 +86,7 @@ export function Composer({
   draft: draftProp,
   onDraftChange,
   mentionGroups,
+  mentionFiles,
   onStop,
   onReview,
 }: ComposerProps) {
@@ -109,13 +114,14 @@ export function Composer({
     inlineOpen,
     inlineCaret,
     inlineQuery,
-    inlineAgents,
+    inlineRows,
     inlineHighlight,
     setInlineHighlight,
     inlineListboxId,
     inlineListboxRef,
     insertToken,
     insertTokens,
+    insertFile,
     groups,
   } = useComposerWire({
     editable,
@@ -124,6 +130,7 @@ export function Composer({
     onSend,
     onAttachment,
     mentionGroups,
+    mentionFiles,
   });
 
   return (
@@ -165,18 +172,22 @@ export function Composer({
           />
           <MentionInline
             open={inlineOpen}
-            agents={inlineAgents}
+            rows={inlineRows}
             caret={inlineCaret}
             query={inlineQuery}
             highlight={inlineHighlight}
             onHover={setInlineHighlight}
-            onPick={(entry) =>
-              insertToken({
-                kind: 'agent',
-                id: entry.id,
-                label: entry.label,
-              })
-            }
+            onPick={(row) => {
+              if (row.kind === 'agent') {
+                insertToken({
+                  kind: 'agent',
+                  id: row.id,
+                  label: row.label,
+                });
+              } else {
+                insertFile(row.label);
+              }
+            }}
             listboxRef={inlineListboxRef}
             listboxId={inlineListboxId}
           />
