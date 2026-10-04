@@ -816,41 +816,39 @@ export function TodoDetailPage() {
                 {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
               </div>
             ) : (
-              <>
-                {/* M7 #310：live 详情面在线程列首展示用户提交 spec（#366：
-                    随 3-pane 重排从 doc 列迁到中心列——用户原始输入属于线
-                    程流，右 pane 只放 agent 产物面）。fixture 不走（无
-                    spec data wire 视觉回归风险）。 */}
-                {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
-                <div className="chat-col">
-                  {/* margin-top:auto pins an overflowing transcript to the
+              <div className="chat-col">
+                {/* margin-top:auto pins an overflowing transcript to the
                       newest row at first paint (r8 63–77) and keeps short r7
                       transcripts top-aligned — no scroll scripting, so the
                       fixture capture is deterministic */}
-                  <div className="chat-pin">
-                    <Transcript
-                      transcript={view.transcript}
-                      // XMON-105: agent message rows carry the executing
-                      // agent's own avatar (same identity as board card /
-                      // team page), never the logged-in user's.
-                      agent={
-                        todo.agent
-                          ? {
-                              displayName: todo.agent.displayName,
-                              avatarUrl: agentAvatarUrl.get(todo.agent.id) ?? null,
-                            }
-                          : null
-                      }
-                      // #366 AC：线程内 plan 卡激活 = 右 pane 切文档面的
-                      // plan 显示面（与 复用方案「查看方案」同律）。
-                      onOpenPlan={() => {
-                        setPaneView('doc');
-                        setPlanView(true);
-                      }}
-                    />
-                  </div>
+                <div className="chat-pin">
+                  {/* #827：简报卡住线程列首（随流滚动，不钉住）——此前它挂
+                        在 chat-col 之外，长线程下恒占列首视口（M7 #310 把它
+                        从 doc 列迁到中心列的理由不变：用户原始输入属于线程
+                        流）。fixture 面无 spec 数据，捕获字节不动。 */}
+                  {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
+                  <Transcript
+                    transcript={view.transcript}
+                    // XMON-105: agent message rows carry the executing
+                    // agent's own avatar (same identity as board card /
+                    // team page), never the logged-in user's.
+                    agent={
+                      todo.agent
+                        ? {
+                            displayName: todo.agent.displayName,
+                            avatarUrl: agentAvatarUrl.get(todo.agent.id) ?? null,
+                          }
+                        : null
+                    }
+                    // #366 AC：线程内 plan 卡激活 = 右 pane 切文档面的
+                    // plan 显示面（与 复用方案「查看方案」同律）。
+                    onOpenPlan={() => {
+                      setPaneView('doc');
+                      setPlanView(true);
+                    }}
+                  />
                 </div>
-              </>
+              </div>
             )}
             {/* #472：composer 是中心列的最后一个 flex 项（in-flow）——
                 滚动区在卡片上缘之上结束，正文永不被压进不透明卡片底下。 */}

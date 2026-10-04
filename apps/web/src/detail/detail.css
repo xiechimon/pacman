@@ -627,6 +627,7 @@
   margin-left: 11px;
   margin-top: 4px;
   min-height: 24px;
+  min-width: 0;
   max-width: 68ch;
   padding: 0 13px;
   border-radius: 0;
@@ -660,6 +661,8 @@
 
 .chat-taskline-title {
   margin-left: 5px;
+  min-width: 0;
+  overflow-wrap: break-word;
   font-size: 15px;
   line-height: 20px;
   font-weight: 600;
@@ -718,6 +721,7 @@
      outranks the 13px capture fidelity here. */
   font-size: 15px;
   line-height: 1.6;
+  min-width: 0;
   max-width: 68ch;
   /* r7 27/36/38 robot rows sample to text-primary (#56 used secondary —
      blends showed the darker ink is the captured one) */
