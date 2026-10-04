@@ -22,10 +22,10 @@ const PROJ = '/app/project/ZAQczKCu0MOAzC1ZqcFlX';
 
 const HOVER_DARK = 'rgba(255, 255, 255, 0.05)'; // --seg-hover dark
 const HOVER_LIGHT = 'rgba(28, 25, 23, 0.05)'; // --seg-hover light
-const CHIP_DARK = 'rgb(39, 39, 42)'; // --tab-chip-bg dark
-const CHIP_LIGHT = 'rgb(250, 247, 243)'; // --tab-chip-bg light
-const GROUP_DARK = 'rgb(31, 31, 35)'; // --surface-secondary dark
-const GROUP_LIGHT = 'rgb(241, 237, 231)'; // --surface-secondary light
+const CHIP_DARK = 'rgb(30, 30, 34)'; // --tab-chip-bg dark
+const CHIP_LIGHT = 'rgb(231, 227, 218)'; // --tab-chip-bg light
+const GROUP_DARK = 'rgb(38, 38, 43)'; // --surface-secondary dark
+const GROUP_LIGHT = 'rgb(221, 216, 204)'; // --surface-secondary light
 
 const bg = (loc: Locator) =>
   loc.evaluate((el) => getComputedStyle(el).backgroundColor);

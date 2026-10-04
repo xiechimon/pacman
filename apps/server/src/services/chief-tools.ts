@@ -78,10 +78,6 @@ export interface ChiefToolDeps {
   /** 本机 MCP config 读路径（spec 13/#368 mcp_servers 工具换源）；缺省 =
    *  ~/.claude.json（config.ts 同默认；测试面显式注入 fixture 路径）。 */
   mcpConfigPath?: string;
-  /** claude-code 模型段读路径（#627 models 工具 = model-sources 同源）：homeDir
-   *  注入位，缺省 = os.homedir()（REST GET /model-sources 路由同律；测试面注入
-   *  隔离目录钉住 settings.json 内容）。 */
-  claudeHomeDir?: string;
   /** GitHub 出站注入位（#452 写向：create_todo 自建 issue 透传；
    * AppContext.githubFetch 同族，缺省 globalThis.fetch，测试注入 mock）。 */
   githubFetch?: FetchLike;
@@ -257,11 +253,10 @@ export async function executeChiefTool(
     case 'models': {
       // #627 候选模型清单：行语义 = web toModelOptions 投影（#770 起 providers
       // 段已除，只剩 model-sources 非 pi 段，同 (provider, modelId) first-wins
-      // 去重——pi 段平铺丢归属，不重复产行）。
-      // 本层独立实现（不 import web 代码），数据面复用 model-sources 路由背后
-      // 的 service 函数；claude-code 段卫生同 getModelSources（文件缺失 →
-      // installed:false 空段，不报错）。存量 provider 绑定照旧由 agents 读面
-      // 原值返回、执行面按原值解析，本工具只决定 chief 可新选什么。
+      // 去重）。本层独立实现（不 import web 代码），数据面复用 model-sources
+      // 路由背后的 service 函数；claude-code 段 = 各执行机 daemon 上报（#707，
+      // 未上报的机器缺席，不报错）。存量 provider 绑定照旧由 agents 读面原值
+      // 返回、执行面按原值解析，本工具只决定 chief 可新选什么。
       const keysvc = { db, box: deps.box };
       const rows: {
         provider: string;
@@ -276,7 +271,7 @@ export async function executeChiefTool(
         seen.add(key);
         rows.push(row);
       };
-      for (const source of getModelSources(keysvc, ctx.teamId, deps.claudeHomeDir).sources) {
+      for (const source of getModelSources(keysvc, ctx.teamId).sources) {
         if (source.runtime === 'pi') continue;
         const providerLabel = MODEL_SOURCE_RUNTIME_LABELS[source.runtime] ?? source.runtime;
         for (const m of source.models) {

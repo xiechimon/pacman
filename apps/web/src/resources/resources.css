@@ -79,7 +79,7 @@
   border: none;
   background: transparent;
   padding: 0;
-  color: var(--indigo-500);
+  color: var(--card-button);
   font-size: 13px;
   line-height: 16px;
   cursor: pointer;
@@ -239,7 +239,7 @@
 .res-sort-check {
   margin-left: auto;
   display: flex;
-  color: var(--indigo-500);
+  color: var(--card-button);
 }
 
 /* row cards: skills/mcp single row (64/62px), machines/providers grouped */
@@ -646,7 +646,7 @@
 }
 
 /* #423 收编：components/ui Button brand/sm 承载公共形（28 高/--card-button
-   实底/8 圆角/disabled 换 --primary-disabled），per-face 差异 = 11px 横向
+   实底/8 圆角/disabled 换 --spot-disabled），per-face 差异 = 11px 横向
    padding、13px 常规字重与 16 行盒（r7 10 实测，轨 A3 compact 档同值）；
    e2e 钉 .res-empty .res-primary 别名保留。选择子键在 button 元素上——
    EmptyState 的 Link 分支（actionHref，现无消费点）原本就不吃这条规则，

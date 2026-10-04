@@ -12,6 +12,6 @@
 
 .input:focus-visible {
   outline: none;
-  border-color: var(--indigo-500);
-  box-shadow: 0 0 0 1px var(--indigo-500);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 1px var(--focus-ring);
 }

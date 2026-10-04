@@ -186,6 +186,6 @@ test('res-back keeps a keyboard focus ring', async ({ page }) => {
   });
   expect(ring.style).toBe('solid');
   expect(ring.w).toBe('2px');
-  // the codebase ring recipe rides --focus-ring (#4e47dd, both themes)
-  expect(ring.color).toBe('rgb(78, 71, 221)');
+  // the codebase ring recipe rides --focus-ring (dark #cba6f7)
+  expect(ring.color).toBe('rgb(203, 166, 247)');
 });

@@ -626,6 +626,14 @@ a.chief-identity {
   padding: 12px 12px 10px;
   background: var(--surface-secondary);
   border-radius: 12px;
+  /* #775 (better-ui: shadows for elevation): the ring draws the 1px hairline
+     (shadow spread, no layout shift — the card previously had no edge at all
+     and read as flat/cut against the drawer surface), --card-shadow adds the
+     card-tier lift. Single-source tokens, both themes ride along. */
+  box-shadow: var(--edge-ring), var(--card-shadow);
+  transition-property: box-shadow;
+  transition-duration: var(--dur-fast);
+  transition-timing-function: var(--ease-out);
 }
 
 /* #732：@ 内联 listbox 的 absolute 锚（mention-picker.css 的 bottom:
@@ -705,7 +713,7 @@ a.chief-identity {
 
 .chief-send.is-on,
 .chief-send.is-on:hover {
-  background: var(--indigo-500);
+  background: var(--card-button);
   color: var(--text-on-accent);
 }
 
@@ -993,7 +1001,7 @@ a.chief-identity {
 /* #751 选中行单源：chief 两个 picker 面（抽屉头主模型弹层 + 设置面压缩
    模型弹层）都经 ModelPickRow 渲染，选中态 therefore 落在基类钩子上而不是
    各面 skin——令牌对 --pick-selected-bg/-fg 承载此前缺失的角色（选中行
-   填充 + 选中行文字），实测 light 5.45:1 / dark 5.21:1（13px 名，AA 4.5）。
+   填充 + 选中行文字；§2.5 选中对：暗 6.19:1 / 亮加深紫 4.59:1）。
    被取代的旧规则把 --seg-active（分段控件填充档）当文字色：light 1.24:1，
    即用户报的「灰色看不清」。 */
 .model-pick-row[aria-selected="true"] {

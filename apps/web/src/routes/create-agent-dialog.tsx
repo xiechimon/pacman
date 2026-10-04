@@ -88,8 +88,8 @@ export function CreateAgentDialog({
       open={open}
       onClose={onClose}
       // B2 · secondary 面（XMON-20）：底座 = components/ui/Button brand 档，与
-      // ui/dialog.css 的 .dlg-agent-create 同形（--card-button 实底 + 白字、
-      // 禁用换 --primary-disabled）；per-face 几何仍住 dialog.css（域 css
+      // ui/dialog.css 的 .dlg-agent-create 同形（--card-button 实底 + on-accent 字、
+      // 禁用换 --spot-disabled）；per-face 几何仍住 dialog.css（域 css
       // unlayered 压 utility）。差额并项——散写形字重 400、无按下位移。
       footer={
         <div className="dlg-form-foot">

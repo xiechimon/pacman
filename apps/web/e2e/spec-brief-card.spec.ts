@@ -142,9 +142,9 @@ test('4. 简报卡配方 = composer 卡家族（1px 边线 / 12px 圆角 / surfa
   });
   expect(cs.borderTop).toBe('1px');
   expect(cs.radius).toBe('12px');
-  // --surface-secondary 暗色侧 #1f1f23；--border-default #27272a（shadcn.css 正本）
-  expect(cs.bg).toBe('rgb(31, 31, 35)');
-  expect(cs.borderColor).toBe('rgb(39, 39, 42)');
+  // --surface-secondary 暗色侧 #26262b；--border-default #26262b（shadcn.css 正本）
+  expect(cs.bg).toBe('rgb(38, 38, 43)');
+  expect(cs.borderColor).toBe('rgb(38, 38, 43)');
   expect(cs.fontSize).toBe('15px');
 });
 

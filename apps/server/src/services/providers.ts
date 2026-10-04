@@ -3,13 +3,14 @@
 // （shared providerRecordSchema 同判），值经 SecretBox 密封落 [内部]
 // apiKeyCipher 列；keyfile 丢失 = 存量 provider key 报废需重录（README 护栏）。
 // presets[] 38 项目录单源 = shared PROVIDER_PRESET_IDS/OAUTH/XAI 常量（r3 §2）。
-// model-sources 面（spec 11 §A3/A4，#356）：providers 页 runtime tabs 的
-// 数据契约——pi 段 = custom providers models[] 投影；claude-code 段 =
-// server 端 fs 直读 ~/.claude/settings.json（不经 daemon），每次调用重读
-// 文件承载「实时反映」语义。
+// model-sources 面（spec 11 §A3/A4，#356；#707 起 claude-code 段跟随执行机）：
+// providers 页 runtime tabs 的数据契约——pi 段 = custom providers models[]
+// 投影；claude-code 段 = 各执行机 daemon 上报的本机 settings.json 解析结果
+// （server 按机器聚合，不读本机文件）。
+// fs 直读 helper（claudeCodeModelSource）为 chief 收单回落（#774）保留。
 
 import { readFileSync } from 'node:fs';
-import { homedir, hostname } from 'node:os';
+import { hostname } from 'node:os';
 import { join } from 'node:path';
 import {
   type ModelSource,
@@ -25,7 +26,7 @@ import {
 } from '@pacman/shared';
 import { and, asc, eq } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
-import { provider } from '../db/schema.js';
+import { machine, provider } from '../db/schema.js';
 import { conflict, notFound } from '../lib/errors.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
 
@@ -162,15 +163,37 @@ export function claudeCodeModelSource(homeDir: string): ModelSource {
   return { runtime: 'claude-code', installed: true, hostname: host, models };
 }
 
-/** GET /api/teams/{id}/model-sources 封套（spec 11 数据契约：恰 pi +
- *  claude-code 两段，序固定）。homeDir 是测试注入位，生产态缺省
- *  os.homedir()。pi 投影丢弃空 id 行、空 name 回退 id——封套须过
- *  shared modelSourcesEnvelopeSchema（两处 min(1)）。 */
-export function getModelSources(
-  deps: ProviderDeps,
-  teamId: string,
-  homeDir: string = homedir(),
-): ModelSourcesEnvelope {
+/** 上报过的机器的 claude-code 段（#707 model-sources 按机器聚合面）：
+ *  每台上报过的机器一段（installed 如实，含 false），hostname = daemon
+ *  上报的本机 hostname。从未上报的机器（旧 daemon）缺席、不下发假清单。
+ *  按机器名排序，序固定。 */
+export function listClaudeCodeSources(db: Db, teamId: string): ModelSourcesEnvelope['sources'] {
+  return db
+    .select()
+    .from(machine)
+    .where(eq(machine.teamId, teamId))
+    .orderBy(asc(machine.name))
+    .all()
+    .flatMap((row) => {
+      const report = row.claudeCodeReport;
+      if (report === null) return [];
+      return [
+        {
+          runtime: 'claude-code' as const,
+          installed: report.installed,
+          hostname: report.hostname,
+          models: report.models,
+        },
+      ];
+    });
+}
+
+/** GET /api/teams/{id}/model-sources 封套（spec 11 数据契约 + #707）：
+ *  pi 一段（custom providers models[] 投影，空 id 行丢弃、空 name 回退 id——
+ *  封套须过 shared modelSourcesEnvelopeSchema）+ 每台上报过的机器一段
+ *  claude-code（序固定：pi 首 + 按机器名）。
+ *  从未上报的机器缺席——server 不读本机 settings.json，不下发假清单。 */
+export function getModelSources(deps: ProviderDeps, teamId: string): ModelSourcesEnvelope {
   const piModels = listProviders(deps, teamId).flatMap((p) =>
     p.models
       .filter((m) => m.id !== '')
@@ -179,7 +202,7 @@ export function getModelSources(
   return {
     sources: [
       { runtime: 'pi', installed: true, hostname: hostname(), models: piModels },
-      claudeCodeModelSource(homeDir),
+      ...listClaudeCodeSources(deps.db, teamId),
     ],
   };
 }
