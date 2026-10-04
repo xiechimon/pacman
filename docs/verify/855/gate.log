@@ -1,0 +1,14 @@
+$ ui-drift-gate:
+ui-drift-gate: GREEN — 5 bare <input> site(s), 5 deliberate-native, 0 uncommented.
+
+$ pnpm -r typecheck:
+packages/shared typecheck: Done
+apps/web typecheck: Done
+apps/server typecheck: Done
+apps/daemon typecheck: Done
+integration typecheck: Done
+
+$ e2e:affected tail:
+  ✓  444 e2e/user-menu-trigger.spec.ts:176:1 › detail route: the trigger opens the menu over the confirm surface (366ms)
+
+  444 passed (2.5m)
