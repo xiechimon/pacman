@@ -118,7 +118,13 @@ export function MachinesPage() {
             <span className="res-row-text">
               <span className="res-row-line">
                 <span className="res-row-title">{t(machine.name)}</span>
-                {machine.online === true && <span className="res-dot" />}
+                {/* online 读 machine.online（与 new-task-machine-dot /
+                    dlg-machine-dot 同族语义）：在线绿点，离线灰点——离线行
+                    此前无任何表示，daemon 死后机器页看不出。undefined（无该
+                    字段的旧 fixture）保持不渲染，存量 capture 零漂移。 */}
+                {machine.online !== undefined && (
+                  <span className="res-dot" data-on={machine.online !== false} />
+                )}
               </span>
               <span className="res-row-desc">
                 {t(MACHINE_SHELL_HINT, { tool: t(AGENT_TOOL_SHELL) })}
