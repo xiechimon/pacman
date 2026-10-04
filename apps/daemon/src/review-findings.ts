@@ -13,8 +13,19 @@
 //   - 全程无有效 verdict = 提取失败（reason 上浮 wire findingsError，web
 //     审核面区分「判定提取失败」与「审核未返回结论」）；JSON 在但
 //     reviewVerdictSchema 不过 = 提取失败附 zod 原因（shared 单源校验）。
+// （#808 逐 finding 降级：结论在、findings 是数组、且至少一条 finding 可用
+// 时，好条目保留、坏条目丢弃（丢弃明细注记进 conclusion，不走 extractionError
+// ——web 审核面把 extractionError 在位渲染成「判定提取失败」头，正常 verdict
+// 伴随它会被误读；wire 双键互斥也不容同现）。结论缺席 / findings 非数组 /
+// 全坏（一条可用都没有——空 findings 含义是「方案通过」，不可把全坏 verdict
+// 静默折成通过）= 仍提取失败。）
 
-import { type ReviewVerdict, reviewVerdictSchema } from '@pacman/shared';
+import {
+  type ReviewFinding,
+  type ReviewVerdict,
+  reviewFindingSchema,
+  reviewVerdictSchema,
+} from '@pacman/shared';
 
 type TranscriptMessageLike = {
   role: 'system' | 'user' | 'assistant';
@@ -55,8 +66,8 @@ export type ReviewVerdictExtraction =
  * 带省略号标记——zod issues 可枚举出长串，不值得整段上浮）。 */
 const REASON_CHAR_LIMIT = 500;
 
-function capReason(text: string): string {
-  return text.length > REASON_CHAR_LIMIT ? `${text.slice(0, REASON_CHAR_LIMIT)}…` : text;
+function capReason(text: string, limit: number = REASON_CHAR_LIMIT): string {
+  return text.length > limit ? `${text.slice(0, limit)}…` : text;
 }
 
 /** 从末尾 ```json ...``` code fence 取一段；无 fence = null。 */
@@ -75,13 +86,19 @@ function extractCodeFence(text: string): string | null {
  *     提取失败，不折叠成「未返回」；
  *  3. 前面消息里有多个 JSON → 取最后一条**含有效 verdict** 的（终稿
  *     语义）——非 verdict 消息（坏 JSON / 尾部散文）不挡回溯；
- *  4. JSON 在但 schema 不过 → failed 附 zod 原因（若无更早有效 verdict）。 */
+ *  4. JSON 在但 schema 不过 → failed 附 zod 原因（若无更早有效 verdict）。
+ * （#808 降级顺位：严格有效的 verdict（新→旧）> 逐 finding 降级（最新可降
+ * 级者）> failed。降级只在「结论在 + findings 是数组 + 至少一条可用」时成
+ * 立；全坏仍 failed，不误放行。） */
 export function extractReviewVerdict(
   messages: readonly TranscriptMessageLike[],
 ): ReviewVerdictExtraction {
   // 最新的 schema 失败原因（尾→头扫首次遇到 = 最末一次 JSON 尝试）；
   // 有更早有效 verdict 时作废，全程无有效 verdict 时作为失败原因上浮。
   let schemaFailure: string | null = null;
+  // 最新的可降级 verdict（#808：严格校验挂了但部分 findings 可用——严格
+  // 有效者优先，按新→旧顺位；无严格有效时它才转正）。
+  let degraded: ReviewVerdict | null = null;
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i];
     if (m?.role !== 'assistant') continue;
@@ -119,12 +136,16 @@ export function extractReviewVerdict(
             );
             schemaFailure = capReason(parts.join('; '));
           }
+          if (degraded === null) degraded = tryDegradedVerdict(parsed);
         } catch {
           // 解析失败继续下一个候选切片
         }
       }
     }
   }
+  // #808：无严格有效 verdict，但最新一次 JSON 尝试可降级 → 好条目 verdict
+  // 转正（丢弃明细已注记进 conclusion）；不可降级才诚实报失败。
+  if (degraded !== null) return { status: 'ok', verdict: degraded };
   return {
     status: 'failed',
     reason:
@@ -132,6 +153,42 @@ export function extractReviewVerdict(
         ? capReason(`verdict JSON 契约校验失败：${schemaFailure}`)
         : '审核步输出中未找到 verdict JSON（agent 未按契约输出）',
   };
+}
+
+/** 逐 finding 降级（#808）：结论在、findings 是数组、且至少一条 finding
+ * 可用 → 好条目保留、坏条目丢弃，丢弃明细注记进 conclusion 后返回 verdict；
+ * 否则返回 null（结论缺席 / findings 非数组 / 全坏——调用方仍走 failed，
+ * 不把全坏 verdict 静默折成「方案通过」的空 findings）。 */
+function tryDegradedVerdict(parsed: unknown): ReviewVerdict | null {
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+  const obj = parsed as { conclusion?: unknown; findings?: unknown };
+  if (typeof obj.conclusion !== 'string' || !Array.isArray(obj.findings)) return null;
+  const kept: ReviewFinding[] = [];
+  const dropped: string[] = [];
+  obj.findings.forEach((item, index) => {
+    const single = reviewFindingSchema.safeParse(item);
+    if (single.success) {
+      kept.push(single.data);
+      return;
+    }
+    const rawId =
+      item !== null && typeof item === 'object' && 'id' in item
+        ? (item as { id?: unknown }).id
+        : undefined;
+    const first = single.error.issues[0];
+    const where = typeof rawId === 'string' && rawId !== '' ? `id=${rawId}` : `#${index + 1}`;
+    dropped.push(
+      first !== undefined
+        ? `findings[${index}](${where}): ${first.path.join('.')}: ${first.message}`
+        : `findings[${index}](${where}): 格式错误`,
+    );
+  });
+  if (kept.length === 0 || dropped.length === 0) return null;
+  const note = capReason(
+    `（注：${dropped.length} 条 finding 因格式问题被丢弃：${dropped.join('；')}）`,
+    400,
+  );
+  return { conclusion: `${obj.conclusion}${note}`, findings: kept };
 }
 
 /** 从文本中抠出首段 `{...}` 顶层 JSON 跨度（粗略花括号配对——LLM 偶尔在
