@@ -1,0 +1,77 @@
+/* Skill-suggestion hint bar (issue #823): a ghost-style strip — visible
+   enough to notice, quiet enough to ignore. In-flow under the textarea (it
+   only renders while both completion popups are closed, so it never covers
+   a listbox); the kbd chip mirrors the Tab-accept key. */
+
+.skill-suggest {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.skill-suggest-body {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 2px 8px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.skill-suggest-body:hover {
+  border-style: solid;
+  color: var(--foreground);
+}
+
+.skill-suggest-icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.skill-suggest-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skill-suggest-key {
+  flex: none;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  background: var(--muted);
+}
+
+.skill-suggest-close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.skill-suggest-close:hover {
+  opacity: 1;
+  background: var(--muted);
+}

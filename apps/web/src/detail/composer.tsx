@@ -37,6 +37,7 @@ import { ArrowUp, Grid2x2, Paperclip, SearchPlus } from '../icons/index.js';
 import { useComposerWire } from '../overlay/composer-wire.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
 import type { FileMentionEntry } from '../overlay/mention-token.js';
+import { SkillSuggestStrip } from '../overlay/skill-suggest-strip.js';
 import { SlashHelp, SlashMenu } from '../overlay/slash-menu.js';
 import { ComposerChips } from './composer-chips.js';
 
@@ -141,6 +142,9 @@ export function Composer({
     closeHelp,
     helpRows,
     helpSkillCount,
+    suggestion,
+    acceptSuggestion,
+    dismissSuggestion,
   } = useComposerWire({
     editable,
     draft: draftProp,
@@ -218,6 +222,13 @@ export function Composer({
           {/* #812 选中确认 strip：listbox 关后把 draft 已落定提及渲染成
               transcript 同形 chip（新 chip 轻过渡 pop）；弹层开时让路。 */}
           <ComposerChips draft={draft} files={mentionFiles} suspended={inlineOpen || slashOpen} />
+          {/* #823 自然话 skill 提示条：两弹层都关时才挂载（wire 保证），
+              Tab / 点击接受，Esc / × 单条忽略。 */}
+          <SkillSuggestStrip
+            suggestion={suggestion}
+            onAccept={acceptSuggestion}
+            onDismiss={dismissSuggestion}
+          />
           {/* #731 `/` slash menu: same combobox anchor/geometry as the `@`
               listbox above. Click = Enter-with-highlight semantics. */}
           <SlashMenu
