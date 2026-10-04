@@ -44,7 +44,6 @@
 // precedent (chat-page and chat-window share the conversation logic while
 // each keeps its own shell).
 
-import { type SkillSuggestion, suggestSkill } from '@pacman/shared';
 import type {
   ChangeEvent,
   ClipboardEvent,
@@ -235,17 +234,6 @@ export interface ComposerWire {
   /** mentionGroups with the empty-groups fallback applied (the picker opens
    *  on empty groups so the user still sees the zero counts, r9 §2.2). */
   groups: MentionGroups;
-  /** Natural-language skill suggestion (#823): the matched team skill for
-   *  the current draft, or null. Live only while both completion popups are
-   *  closed (the `/` and `@` faces own their keys — this face never steals
-   *  Tab/Enter/Esc from them) and never on static faces. */
-  suggestion: SkillSuggestion | null;
-  /** Accept the suggestion the way Tab-with-hint would: inserts the skill
-   *  token at the caret without consuming any typed text. */
-  acceptSuggestion: () => void;
-  /** Dismiss this suggestion instance (single-ignore: Esc or the strip's
-   *  close button; the ignore lasts until the draft is sent). */
-  dismissSuggestion: () => void;
 }
 
 const EMPTY_GROUPS: MentionGroups = {
@@ -330,12 +318,6 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
   const slashListboxId = useId();
   const slashListboxRef = useRef<HTMLDivElement | null>(null);
   const slashEnabled = editable && slashOptions !== undefined;
-
-  // Natural-language skill suggestion (#823): the skill dismissed by an
-  // explicit Esc / close-button stays dismissed until the draft is sent —
-  // typing more text never resurrects the same nudge, a different matched
-  // skill still shows.
-  const [dismissedSkillId, setDismissedSkillId] = useState<string | null>(null);
 
   // Mirror of the freshest committed draft (#729): an upload resolving
   // seconds after the paste must insert into the text as it stands now —
@@ -490,34 +472,6 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
   const slashRows = useMemo(() => slashSections.flatMap((s) => s.rows), [slashSections]);
   const slashOpen = slashRange !== null && slashEnabled;
   const slashQuery = slashRange?.query ?? '';
-
-  // Skill suggestion (#823): draft-derived, over the same skill vocab that
-  // feeds the mention picker and the `/` menu (mentionGroups.skill — the
-  // useSkills projection, never a side table). Suppressed while either
-  // completion popup is open so Tab/Enter/Esc keep their menu meaning, and
-  // off entirely on static faces. A dismissed skill is excluded from the
-  // retry so a multi-intent draft falls through to the next live nudge
-  // instead of going quiet entirely.
-  const suggestion = useMemo<SkillSuggestion | null>(() => {
-    if (!editable) return null;
-    if (slashOpen || inlineOpen) return null;
-    const skills = (mentionGroups?.skill ?? []).map((s) => ({
-      id: s.id,
-      name: s.label,
-      ...(s.subtitle !== undefined ? { description: s.subtitle } : {}),
-    }));
-    const hit = suggestSkill(draft, skills);
-    if (hit === null) return null;
-    if (hit.skillId !== dismissedSkillId) return hit;
-    return suggestSkill(
-      draft,
-      skills.filter((s) => s.id !== dismissedSkillId),
-    );
-  }, [draft, mentionGroups, editable, slashOpen, inlineOpen, dismissedSkillId]);
-  // Synchronous mirror for event handlers (same React-state-lag rationale
-  // as the inline range ref above).
-  const suggestionRef = useRef<SkillSuggestion | null>(null);
-  suggestionRef.current = suggestion;
   const helpSkillCount = mentionGroups?.skill.length ?? 0;
   const helpRows = useMemo(
     () =>
@@ -537,9 +491,6 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     // never leave without the tokens still being uploaded (#729 failure
     // mode 3). The draft survives untouched; Enter sends once landed.
     if (attachInFlightRef.current > 0) return;
-    // A sent draft retires the single-ignore (#823): the next draft judges
-    // its suggestion fresh.
-    setDismissedSkillId(null);
     const text = draft.trim();
     if (text === '' && !editable) {
       // Static capture face: the fixture send stays callable with the empty
@@ -735,25 +686,6 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     insertTokensAt(tokens, inlineOpen ? inlineRangeRef.current : null);
   };
 
-  /** Accept the live suggestion: the skill token lands at the caret, the
-   *  typed prose stays untouched (range null = pure caret insert, nothing
-   *  consumed). The new draft references the skill, so the matcher goes
-   *  quiet on its own — no extra state to clear. Plain function (not
-   *  useCallback): it must close over the current render's insertTokensAt,
-   *  whose controlled-mode setDraft carries the fresh draft — a frozen
-   *  first-render closure would insert into the empty initial draft. */
-  const acceptSuggestion = () => {
-    const hit = suggestionRef.current;
-    if (hit === null) return;
-    insertTokensAt([{ kind: 'skill', id: hit.skillId, label: hit.skillName }], null);
-  };
-
-  const dismissSuggestion = () => {
-    const hit = suggestionRef.current;
-    if (hit === null) return;
-    setDismissedSkillId(hit.skillId);
-  };
-
   const insertToken = (token: MentionToken) => insertTokens([token]);
 
   /** File path insert (#760): bare path text + trailing space (CC rule 26),
@@ -899,25 +831,6 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
       }
       return;
     }
-    // intent === 'ignore': the skill-suggestion face (#823) runs here —
-    // reachable only with both completion popups closed (their open-state
-    // branches above all return first), so Tab/Esc can never steal a menu
-    // key. IME composition never triggers either layer (#728 failure
-    // mode 8 carries over).
-    if (!slashOpen && !inlineOpen && suggestionRef.current !== null && !isComposing) {
-      if (event.key === 'Tab') {
-        event.preventDefault();
-        acceptSuggestion();
-        return;
-      }
-      if (event.key === 'Escape') {
-        // preventDefault is load-bearing for the #634 Esc ladder (see the
-        // inline dismiss above): closing the hint consumes the key.
-        event.preventDefault();
-        dismissSuggestion();
-        return;
-      }
-    }
     // intent === 'ignore': the composer's own keys. Enter sends — but never
     // mid-IME-composition (the composing Enter belongs to the candidate
     // window; #728 failure mode 8) and never with shift (newline). A plain
@@ -1005,9 +918,6 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     insertTokens,
     insertFile,
     groups,
-    suggestion,
-    acceptSuggestion,
-    dismissSuggestion,
     slashOpen,
     slashQuery,
     slashCaret: slashRange?.start ?? null,
