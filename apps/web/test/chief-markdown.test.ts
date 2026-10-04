@@ -439,7 +439,7 @@ describe('mapChiefStream 用户行 markdown 槽（#742 F-D1..D5）', () => {
     expect(users[0]?.markdown).toBe(text);
   });
 
-  test('F-D3 wake 回声行（无孪生）保留且带槽；多行原文在槽内不摊平', () => {
+  test('F-D3 wake 回声行（无孪生）保留、剥 marker 且带槽；多行原文在槽内不摊平', () => {
     const wake = '[wake:settle] 任务 #5「修复」已合并完成';
     const steer = '按这个改：\n\n- 圆角 8px\n- 悬停加过渡';
     const items = mapChiefStream([
@@ -448,7 +448,8 @@ describe('mapChiefStream 用户行 markdown 槽（#742 F-D1..D5）', () => {
     ]);
     const users = userItems(items);
     expect(users).toHaveLength(2);
-    expect(users[0]?.markdown).toBe(wake);
+    expect(users[0]?.markdown).toBe('任务 #5「修复」已合并完成');
+    expect(users[0]?.text).toBe('任务 #5「修复」已合并完成');
     // 换行逐字保留——围栏/列表的块结构归渲染期解析，mapper 不摊平
     expect(users[1]?.markdown).toBe(steer);
   });

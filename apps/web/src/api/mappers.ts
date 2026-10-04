@@ -996,19 +996,33 @@ const CHIEF_HERO_EXAMPLES = [
   { icon: 'bars' as const, text: '查一下这个月的 token 用量' },
 ];
 
+/** 内部 wake 标记（server chief.ts WAKE_PROMPT_PREFIX + parseChiefTrigger
+ *  同族 gate/settle/failed/wake）：用户可见边界统一剥离前导 marker，只动
+ *  显示层，存量数据不动。只剥前导一次：句中出现保持原样（用户原文），
+ *  assistant 行不动（协议 token 永不经该面产生，动了会 corrupt 正常引用）。 */
+const WAKE_MARKER_PREFIX_RE = /^\[wake:\w+\]\s*/;
+
+function stripWakeMarker(text: string): string {
+  return text.replace(WAKE_MARKER_PREFIX_RE, '');
+}
+
 export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
   const items: ChiefStreamItem[] = [];
   // #667 回声行去重：用户回合双落库——POST 行（server sendChiefMessage，
   // id = newRecordId 无前缀）+ daemon transcript 回声行（id = `user-<stepId>`，
   // TRANSCRIPT_PROMPT_ROW_ID_PREFIX）。正本 = POST 行（发送即上屏 + rewind
   // 锚）；回声行是执行记录面，wake 轮无 POST 行时又是唯一 user 行。判据 =
-  // id 前缀 + 同线程内容孪生（trim 归一与渲染同源）：POST 行永不跳过 →
-  // 连发同文各自渲染恰一次；wake 回声行无孪生 → 原样保留。比对按全集不按
+  // id 前缀 + 同线程内容孪生（trim + #778 marker 剥离双归一，与渲染同源）：
+  // POST 行永不跳过 → 连发同文各自渲染恰一次；wake 回声行无孪生 → 剥 marker
+  // 后保留 remainder。比对按全集不按
   // 邻接——chiefThreadMessages 只按 createdAt 排序，同毫秒并列时行序无保证。
+  // #667 回声行有非前缀孪生 → 跳过（POST 行承载同一句话的呈现与锚）。
+  // #778 去重键吃剥离后文本（与渲染同源）：wake 回声行剥 marker 后与 POST
+  // 行同文即孪生，仍恰渲染一条。
   const postedTexts = new Set(
     messages
       .filter((m) => m.role === 'user' && !m.id.startsWith(TRANSCRIPT_PROMPT_ROW_ID_PREFIX))
-      .map((m) => textOfContent(m.content).trim()),
+      .map((m) => stripWakeMarker(textOfContent(m.content).trim())),
   );
   // #615 返工：工具行不再丢弃——缓冲进下一个 robot 回合的 tools 折叠面
   // （foot 折叠箭头展开内容；Multica OuterProcessFold 同族语义）。
@@ -1033,15 +1047,19 @@ export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
       });
       continue; // 工具行不进 chief 流主呈现（r5 114/116 折叠态无工具行）
     }
-    const text = textOfContent(m.content).trim();
-    if (text === '') continue;
+    const rawText = textOfContent(m.content).trim();
+    if (rawText === '') continue;
     if (m.role === 'user') {
+      // #778 用户可见边界剥离内部 marker（显示层，落库不动）。
+      const text = stripWakeMarker(rawText);
+      // 纯 marker 行（无 remainder）不渲染。
+      if (text === '') continue;
       // #667 回声行有非前缀孪生 → 跳过（POST 行承载同一句话的呈现与锚）。
       if (m.id.startsWith(TRANSCRIPT_PROMPT_ROW_ID_PREFIX) && postedTexts.has(text)) continue;
       pendingTools = []; // 回合边界：用户行之前的工具行属上一回合且已无归属面
       // #742: live 用户行进 markdown 槽（详情页用户行 #612 同款配方，本
-      // 函数 robot 行 #650 同律）——槽值 = trim 后原文逐字，块结构归渲染期
-      // chat-markdown 解析。去重键（postedTexts，吃 MessageRow 原文）与
+      // 函数 robot 行 #650 同律）——槽值 = 剥 marker 后文本逐字（#778 显示层），
+      // 块结构归渲染期 chat-markdown 解析。去重键（postedTexts，吃剥离后文本）与
       // 复制载荷照旧读 text 位，rewind 锚照旧读 id 位；fixture 面不经本
       // mapper，捕获形无槽、DOM 零漂移。
       items.push({ kind: 'user', text, id: m.id, markdown: text });
@@ -1056,7 +1074,7 @@ export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
     // present, frozen shapes render unchanged).
     items.push({
       kind: 'robot',
-      markdown: text,
+      markdown: rawText,
       seconds: '',
       ...(pendingTools.length > 0 ? { tools: pendingTools } : {}),
     });
