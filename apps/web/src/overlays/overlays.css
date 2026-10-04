@@ -520,3 +520,29 @@
 .search-panel {
   transform-origin: 50% 0;
 }
+
+/* #844 二段关闭闪：面板退出曾经是 100ms 一次性 keyframe（animate-out），
+   而 Base UI 的卸载窗由壳上 visibility 过渡撑住 150ms（--dur-fast，
+   dialog.css：getAnimations 不看子树）——keyframe 在 ~128ms 先播完，回弹
+   到 opacity 1，卸载（~181ms）才来，中间几帧整面全不透明 = 第二下 Ctrl+K
+   看到的那一闪。退出改走指定式 transition（base-ui-theme §1.2 生产形态，
+   checkbox #771/P2 同律：交互态变化用 transition，不用一次性 keyframe，
+   终态一直按住到卸载；进场 keyframe 不动，见 VIEWPORT_POP_ANIM）。 */
+.dlg-viewport .search-panel {
+  transition:
+    opacity 100ms ease-out,
+    transform 100ms ease-out;
+}
+
+.dlg-viewport[data-closed] .search-panel {
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+/* D4：退出 transition 各文件自理（motion.css 全局 reset 只管 keyframe，
+   checkbox 先例同此）。 */
+@media (prefers-reduced-motion: reduce) {
+  .dlg-viewport .search-panel {
+    transition: none;
+  }
+}

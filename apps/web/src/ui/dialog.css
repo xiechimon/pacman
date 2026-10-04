@@ -218,11 +218,12 @@
    2. z-index 由适配层的 zIndex 入参给（背板 = zIndex − 1）。fixed + z-index
       自建 stacking context，容器不抬 z 会把面自身的 z 关在里面被背板反盖，
       行点不中。
-   3. 退场只动 opacity/transform（D4：内容瞬时贴合，不做布局动画）；#656 起面板
-      退场由 tw-animate-css 的 group-data-closed/dlgvp:animate-out 承载
-      （VIEWPORT_POP_ANIM，挂在面板上、经本 Popup 的 group/dlgvp 读开闭态），
-      本壳只留零视觉的 visibility 延迟过渡撑住 Base UI 的卸载窗
-      （getAnimations 不看子树）。 */
+   3. 退场只动 opacity/transform（D4：内容瞬时贴合，不做布局动画）；面板退出
+      由 overlays.css 的指定式 transition 承载（#844：经本 Popup 的
+      group/dlgvp + data-closed 读开闭态；一次性 exit keyframe 会在 150ms
+      卸载窗里先播完回弹，卸载前闪几帧——进场仍是 VIEWPORT_POP_ANIM 的
+      keyframe），本壳只留零视觉的 visibility 延迟过渡撑住 Base UI 的
+      卸载窗（getAnimations 不看子树）。 */
 .dlg-viewport {
   position: fixed;
   inset: 0;
