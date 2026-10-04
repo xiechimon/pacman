@@ -933,18 +933,43 @@ a.chief-identity {
 .chief-model-menu {
   position: absolute;
   right: 0;
-  top: calc(100% + 4px);
+  top: calc(100% + 8px);
   min-width: 220px;
-  padding: 4px;
+  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px。 */
+  padding: 12px;
   display: flex;
   flex-direction: column;
   background: var(--popover-bg);
-  border-radius: var(--radius-popover);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   box-shadow: var(--fab-shadow);
   /* 家族层律（#688 阶梯 --z-popover 压 --z-catcher，见 overlays/dismiss.tsx）。
      本菜单锚在抽屉内（FloatingShell container=wrap），实际绘制被抽屉自身的
      stacking context 收编——消费家族令牌是层律对齐，不是根级参竞。 */
   z-index: var(--z-popover);
+}
+
+/* V2 Arrow（描边 12×6，上指锚边右上）。 */
+.chief-model-menu::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  right: 16px;
+  width: 12px;
+  height: 6px;
+  background: var(--border-default);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.chief-model-menu::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 17px;
+  width: 10px;
+  height: 5px;
+  background: var(--popover-bg);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 .chief-model-row {
@@ -953,7 +978,8 @@ a.chief-identity {
   gap: 8px;
   width: 100%;
   height: 32px;
-  padding: 0 8px;
+  /* 壳垫 12px 后行内横缩清零——字墨 inset 仍是 12（原 4+8）。 */
+  padding: 0;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -1029,17 +1055,42 @@ a.chief-identity {
 .chief-model-pop {
   position: absolute;
   left: 0;
-  top: calc(100% + 4px);
+  top: calc(100% + 8px);
   width: 280px;
-  padding: 4px;
+  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px。 */
+  padding: 12px;
   display: flex;
   flex-direction: column;
   background: var(--popover);
-  border-radius: var(--radius-popover);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   box-shadow: var(--fab-shadow);
   /* 家族层律同 .chief-model-menu：消费 --z-popover 是层律对齐，实际绘制被
      抽屉自身 stacking context 收编。 */
   z-index: var(--z-popover);
+}
+
+/* V2 Arrow（描边 12×6，上指锚边左上）。 */
+.chief-model-pop::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 16px;
+  width: 12px;
+  height: 6px;
+  background: var(--border-default);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.chief-model-pop::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 17px;
+  width: 10px;
+  height: 5px;
+  background: var(--popover);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 /* #656 退场（mention-picker 同款）：面板的退场改由 tw-animate-css 的

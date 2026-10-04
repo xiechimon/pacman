@@ -167,6 +167,10 @@ test('概览：两级菜单贴触发钮右缘且在内容列内（几何）', as
     await trigger.click();
     const menu = detail.locator(`.${prefix}-menu`);
     await expect(menu).toBeVisible();
+    // V2 进场（#790 P3：scale .98 + fade 100ms）窗内量几何会吃到动画帧位移——
+    // 静息锚距恰 8px（顶部锚距正本值），预算 ≤8 零余量。等进场播完再量，钉的是
+    // 静息几何（旧 slide 面同理：位移只存在于窗内）。
+    await page.waitForTimeout(150);
     const tb = await trigger.boundingBox();
     const mb = await menu.boundingBox();
     expect(tb).not.toBeNull();

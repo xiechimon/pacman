@@ -898,17 +898,44 @@
 
 .prj-new-gh-picker {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 0;
   right: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 8px;
+  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px /
+     最小宽 220（横向拉伸面，窄容器下限）。 */
+  min-width: 220px;
+  padding: 12px;
   background: var(--popover-bg);
-  border-radius: var(--radius-popover);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   box-shadow: var(--fab-shadow);
   z-index: var(--z-popover);
+}
+
+/* V2 Arrow（描边 12×6，上指锚边左上）。 */
+.prj-new-gh-picker::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 16px;
+  width: 12px;
+  height: 6px;
+  background: var(--border-default);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.prj-new-gh-picker::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 17px;
+  width: 10px;
+  height: 5px;
+  background: var(--popover-bg);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 .prj-new-gh-picker-head {
@@ -1001,17 +1028,44 @@
    选择钮回填）。geometry [设计] — 上游无像素采集，贴仓内锚定弹层词汇。 */
 .dir-browser {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 0;
   right: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px;
+  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px /
+     最小宽 220（横向拉伸面，窄容器下限）。 */
+  min-width: 220px;
+  padding: 12px;
   background: var(--popover-bg);
-  border-radius: var(--radius-popover);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   box-shadow: var(--fab-shadow);
   z-index: var(--z-popover);
+}
+
+/* V2 Arrow（描边 12×6，上指锚边左上）。 */
+.dir-browser::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 16px;
+  width: 12px;
+  height: 6px;
+  background: var(--border-default);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.dir-browser::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 17px;
+  width: 10px;
+  height: 5px;
+  background: var(--popover-bg);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 .dir-browser-bar {

@@ -381,7 +381,7 @@ export function MentionInline({
     <div
       ref={listboxRef}
       id={listboxId}
-      className="mention-inline duration-100 animate-in fade-in-0 zoom-in-95 slide-in-from-top-2"
+      className="mention-inline duration-100 ease-out animate-in fade-in-0 zoom-in-98"
       role="listbox"
       aria-label="Agents"
       data-caret={caret ?? ''}
