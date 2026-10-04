@@ -9,7 +9,7 @@
 // 待开始→待处理 与 →执行中(非待开始源) 恒等；执行中 不经此路（startGate →
 // #640 直发编排，本地不写相位）。
 import { describe, expect, test } from 'vitest';
-import { moveTodo } from '../src/board/dnd.js';
+import { moveTodo, resetTodoLocal } from '../src/board/dnd.js';
 import type { TodoRecord } from '../src/fixtures/records.js';
 import { NOW, todo } from './helpers.js';
 
@@ -117,5 +117,38 @@ describe('moveTodo（#753：per-source 矩阵的新合法对与恒等对）', ()
       const input = [t];
       expect(moveTodo(input, t.id, 'building', NOW), t.phase).toBe(input);
     }
+  });
+});
+
+describe('resetTodoLocal（#755 fixture 面重置投影）', () => {
+  test('started 卡：落待开始列尾 + 产物位清空（与 server resetTodo 写面对齐）', () => {
+    const a = todo(1, 'todo');
+    const run = { ...todo(2, 'building'), hasPlan: true, hasChanges: true, lastRunAt: NOW - 1 };
+    const next = resetTodoLocal([a, run], run.id, NOW);
+    const moved = next.find((t) => t.id === run.id)!;
+    expect(moved.phase).toBe('todo');
+    expect(moved.phaseAt).toBe(NOW);
+    expect(moved.hasPlan).toBe(false);
+    expect(moved.hasChanges).toBe(false);
+    expect(moved.latestBuildId).toBeNull();
+    expect(moved.lastRunAt).toBeNull();
+    expect(next.filter((t) => t.phase === 'todo').map((t) => t.id)).toEqual([a.id, run.id]);
+  });
+
+  test('非 started 卡 = 恒等（静默改相走 moveTodo，不经此路）', () => {
+    const done = {
+      ...todo(1, 'done'),
+      latestBuildId: null,
+      lastRunAt: null,
+      hasChanges: false,
+      hasPlan: false,
+    };
+    const input = [todo(2, 'todo'), done];
+    expect(resetTodoLocal(input, done.id, NOW)).toBe(input);
+  });
+
+  test('未知 id = 恒等', () => {
+    const input = [todo(1, 'todo')];
+    expect(resetTodoLocal(input, 'nope', NOW)).toBe(input);
   });
 });

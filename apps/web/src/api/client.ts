@@ -17,6 +17,9 @@ export class ApiError extends Error {
     /** 结构化分类 code（#386）：可分类 400 随 {error} 携带，web 按 code
      *  分译；未分类错误面缺省。 */
     readonly reason?: string,
+    /** 响应体原样（#755 重置闸 409 随包带现记录，调用方刷新 dialog 用；
+     *  其余面忽略）。 */
+    readonly data?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -40,8 +43,11 @@ function send(
 
 async function settle<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const body = (await res.json().catch(() => null)) as { error?: string; reason?: string } | null;
-    throw new ApiError(res.status, body?.error ?? res.statusText, body?.reason);
+    const body = (await res.json().catch(() => null)) as {
+      error?: string;
+      reason?: string;
+    } | null;
+    throw new ApiError(res.status, body?.error ?? res.statusText, body?.reason, body);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

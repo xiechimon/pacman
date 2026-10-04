@@ -19,6 +19,7 @@ import type { TodoRecord as WireTodo } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
+import { ApiError, api } from '../api/client.js';
 import {
   useApiMutations,
   useProjects,
@@ -30,7 +31,7 @@ import { toDisplayTodo } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { AppSidebar } from '../board/app-sidebar.js';
 import { type BoardFilters, BoardSurface } from '../board/board.js';
-import { moveTodo } from '../board/dnd.js';
+import { moveTodo, resetTodoLocal } from '../board/dnd.js';
 import type { FilterChip, FilterDimension } from '../board/filter-panel.js';
 import { NotificationBanner, useNotificationBanner } from '../board/notify-banner.js';
 import {
@@ -38,6 +39,7 @@ import {
   matchesProjectFilter,
   parseProjectsParam,
 } from '../board/repo-filter.js';
+import { ResetConfirmDialog } from '../board/reset-confirm-dialog.js';
 import { buildTagOptions, matchesTagFilter, parseTagParam } from '../board/tag-filter.js';
 import { ChiefDrawer } from '../chief/chief-drawer.js';
 import { ChiefFabIcon } from '../chief/chief-fab-icon.js';
@@ -389,6 +391,64 @@ export function BoardPage() {
     setOverlay(null);
     setMergeReject(null);
   }, []);
+  // #755 重置确认闸：待确认的落位卡 + dialog 打开时刻的相位/build 快照
+  // （confirm 重放竞态的服务端复核位）+ stale 标记（构建在 dialog 打开后
+  // 推进了——清单按现记录刷新、弹层不关重新确认）+ 在飞标记。
+  const [resetTarget, setResetTarget] = useState<TodoRecord | null>(null);
+  const [resetSnapshot, setResetSnapshot] = useState<{
+    phase: TodoRecord['phase'];
+    buildId: string | null;
+  } | null>(null);
+  const [resetStale, setResetStale] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const openResetGate = useCallback((todo: TodoRecord) => {
+    setResetTarget(todo);
+    setResetSnapshot({ phase: todo.phase, buildId: todo.latestBuildId });
+    setResetStale(false);
+  }, []);
+  const closeResetGate = useCallback(() => {
+    setResetTarget(null);
+    setResetSnapshot(null);
+    setResetStale(false);
+  }, []);
+  const confirmReset = useCallback(async () => {
+    if (resetTarget == null || resetSnapshot == null) return;
+    // fixture 面无后端：dialog 面 parity + 本地重置投影（dnd.ts
+    // resetTodoLocal，与 server resetTodo 的 todo 写面逐位对齐）。
+    if (!live) {
+      setFixtureTodos((prev) => resetTodoLocal(prev, resetTarget.id, fixture.now));
+      closeResetGate();
+      return;
+    }
+    setResetting(true);
+    try {
+      await api.post<TodoRecord>(`/api/todos/${resetTarget.id}/reset`, {
+        expectedPhase: resetSnapshot.phase,
+        expectedBuildId: resetSnapshot.buildId,
+      });
+      closeResetGate();
+      await queryClient.invalidateQueries({ queryKey: ['todos', teamId] });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        // 构建在 dialog 打开后推进了：按现记录刷新快照、显 stale 提示，
+        // 弹层不关——按新文案重新确认（旧文案作废）。
+        await queryClient.invalidateQueries({ queryKey: ['todos', teamId] });
+        const record = (error.data as { record?: WireTodo } | null)?.record;
+        if (record != null) {
+          const display = toDisplayTodo(record);
+          setResetTarget(display);
+          setResetSnapshot({ phase: display.phase, buildId: display.latestBuildId });
+        }
+        setResetStale(true);
+      } else {
+        closeResetGate();
+        await queryClient.invalidateQueries({ queryKey: ['todos', teamId] });
+        toastError(t('重置任务失败，请重试。'), error);
+      }
+    } finally {
+      setResetting(false);
+    }
+  }, [resetTarget, resetSnapshot, live, fixture.now, teamId, queryClient, t, closeResetGate]);
   // 前置检查（XMON-89）：查的 Agent = merge 步的执行者 = assignment.build 槽。
   // 从 wire todos 取而不是 overlayTodo（显示投影是 build ?? plan 折算，两槽
   // 分设时与执行者分叉）。
@@ -533,12 +593,14 @@ export function BoardPage() {
             if (todo.phase === 'review' && todo.awaitingReply !== true) openFor(todo, 'accept');
           }}
           onBranch={(todo) => openFor(todo, 'branch')}
-          // #73→#616→#640: 静默改相落位（待开始/已完成）commit into the same
-          // client-side todo set as create/delete — column counts and folds
-          // re-derive from it；执行中落位 = 开始意图 → 直发编排回合（无
-          // dialog 确认位，T0 反馈 = toast）。
+          // #73→#616→#640: 静默改相落位（待处理/已完成 + 待开始的未开始卡）
+          // commit into the same client-side todo set as create/delete — column
+          // counts and folds re-derive from it；执行中落位 = 开始意图 → 直发
+          // 编排回合（无 dialog 确认位，T0 反馈 = toast）；#755：待开始落点的
+          // 已开始卡 = 重置意图 → 确认闸（确认前零提交）。
           onPhaseDrop={handlePhaseDrop}
           onStartIntent={startTask}
+          onResetIntent={openResetGate}
           filters={filters}
           tagsById={tagIndex.tagById}
         />
@@ -615,6 +677,15 @@ export function BoardPage() {
           onClose={closeOverlay}
         />
       )}
+      {/* #755 重置确认闸：已开始卡拖回待开始的落位闸——取消零提交，确认走
+          POST /api/todos/:id/reset（fixture 面本地投影）。 */}
+      <ResetConfirmDialog
+        open={resetTarget != null}
+        onClose={closeResetGate}
+        onConfirm={() => void confirmReset()}
+        confirming={resetting}
+        stale={resetStale}
+      />
     </div>
   );
 }

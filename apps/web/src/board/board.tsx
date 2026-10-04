@@ -19,8 +19,9 @@
 // hovered 10%，源列与非法对恒素面), and the drop routes by column — 执行中
 // hands the todo to the page's start path (#640 直发编排，phase NOT written
 // locally；2026-10-04 实测参考站该落位开 开始任务 dialog，差异归后续票),
-// 待开始/待处理/已完成 commit the phase silently (dnd.ts moveTodo；待处理 =
-// 已完成有变更卡的重开落位，写 review)。Same-column and invalid-pair drops
+// 待处理/已完成 commit the phase silently (dnd.ts moveTodo；待处理 =
+// 已完成有变更卡的重开落位，写 review)；待开始双轨：未开始卡静默改相，
+// 已开始卡走重置确认闸（#755 onResetIntent，确认前零提交）。Same-column and invalid-pair drops
 // do nothing (参考站实测：非法落位 = 静默无操作，overlay 同帧卸载无拒绝动
 // 画). Desktop-only like the official (changelog 2026-09-12), so the sensor
 // set is empty on coarse pointers.
@@ -53,7 +54,7 @@ import type { FixtureSet, TodoRecord } from '../fixtures/records.js';
 // #72: the 总管 FAB moved to the route (board-page.tsx) so the chief
 // drawer/settings overlays sit beside it in one place.
 import { useI18n } from '../i18n/provider.js';
-import { COLUMNS, canDropOnColumn, sortColumnTodos } from './columns.js';
+import { COLUMNS, canDropOnColumn, needsResetGate, sortColumnTodos } from './columns.js';
 import { DRAG_THRESHOLD_PX } from './dnd.js';
 import { DragCard } from './drag-card.js';
 import { DraggableCard } from './draggable-card.js';
@@ -94,6 +95,10 @@ interface BoardProps {
   /** #616: 执行中 drop = 开始意图——page 开 开始任务 dialog（#318 统一面），
    *  确认前相位不写（参考站 2026-10-02 实测：dialog 是落位与提交之间的闸）。 */
   onStartIntent?: (todo: TodoRecord) => void;
+  /** #755: 已开始卡拖回待开始 = 重置意图——page 开重置确认 dialog；取消 =
+   *  零提交（本面在 opened 前不写任何乐观值，卡片不动），确认走
+   *  POST /api/todos/:id/reset。 */
+  onResetIntent?: (todo: TodoRecord) => void;
   /** #114: the notification-permission strip between topbar and columns
    *  (r2 §1.3). The route owns the permission state and passes the
    *  rendered banner only while it should show. */
@@ -111,6 +116,7 @@ export function BoardSurface({
   onBranch,
   onPhaseDrop,
   onStartIntent,
+  onResetIntent,
   banner,
   filters,
   tagsById,
@@ -167,15 +173,17 @@ export function BoardSurface({
 
   // #616→#753 落位路由（参考站实测）：执行中 = 开始意图（#640 直发编排，
   // 本地不写相位；唯一合法源 = 待开始）；待开始/待处理/已完成 = 静默改相
-  // 提交（待处理 = 已完成有变更卡的重开，写 review）；非法对/源列/列外 =
-  // 无操作（实测：静默无拒绝动画），overlay 随指针松开同帧卸载（无 drop
-  // 动画——dropAnimation={null}）。
+  // 提交（待处理 = 已完成有变更卡的重开，写 review）；#755：待开始落点 +
+  // 已开始卡 = 重置意图（开确认 dialog，本面零提交——乐观值与 PATCH 都不发，
+  // 卡片停在源列）；非法对/源列/列外 = 无操作（实测：静默无拒绝动画），
+  // overlay 随指针松开同帧卸载（无 drop 动画——dropAnimation={null}）。
   const onDragEnd = (event: DragEndEvent) => {
     const { over } = event;
     const overColumnId = over == null ? null : String(over.id);
     if (dragged != null && isValidDropTarget(overColumnId)) {
       const column = COLUMNS.find((c) => c.id === overColumnId);
       if (column?.startGate === true) onStartIntent?.(dragged);
+      else if (overColumnId === 'todo' && needsResetGate(dragged)) onResetIntent?.(dragged);
       else if (overColumnId != null) onPhaseDrop?.(dragged, overColumnId);
     }
     setDragId(null);

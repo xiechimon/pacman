@@ -8,7 +8,7 @@
 // 2026-09-12 pinning, rebound to 待处理 by #351). Card order inside a column
 // = manual order from drag drops (#73), pinned group first in 待处理.
 
-import type { Phase } from '@pacman/shared';
+import { IN_PROGRESS_PHASES, type Phase } from '@pacman/shared';
 import type { TodoRecord } from '../fixtures/records.js';
 import { isInFlightPhase, PHASE_UI } from '../phase.js';
 
@@ -118,6 +118,18 @@ export function canDropOnColumn(todo: TodoRecord, columnId: string): boolean {
     default:
       return false;
   }
+}
+
+/** 重置闸的 started 判据（#755，todos.dev 看板指南「已开始的卡片拖回待开始
+ *  会重置任务」）：进行中相位（shared IN_PROGRESS_PHASES =
+ *  queued/planning/building——注意 web 本地 IN_FLIGHT_PHASES 只含
+ *  planning/building，那是「无主按钮」UI 谓词，不是开始谓词）或携带任何构建
+ *  历史（latestBuildId / lastRunAt / hasPlan / hasChanges 任一位在位）。
+ *  confirm/review/failed/done 但零历史 = 无可中断、无可清空，走静默改相。
+ *  与 server isStartedTodoRow 同表（server test 与 columns.test 双面对拍）。 */
+export function needsResetGate(todo: TodoRecord): boolean {
+  if ((IN_PROGRESS_PHASES as readonly string[]).includes(todo.phase)) return true;
+  return todo.latestBuildId != null || todo.lastRunAt != null || todo.hasChanges || todo.hasPlan;
 }
 
 /** Phase → primary card action, copy from the shared PHASE_UI table.
