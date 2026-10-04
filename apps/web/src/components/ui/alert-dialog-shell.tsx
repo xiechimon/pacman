@@ -71,7 +71,7 @@ export function AlertDialogShell({
           <div className="delete-confirm-head relative flex h-12 flex-none items-center border-b border-border px-4">
             <div className="delete-confirm-title text-sm font-medium text-foreground">{title}</div>
             <AlertDialogPrimitive.Close
-              className="delete-confirm-close absolute right-3 flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"
+              className="delete-confirm-close absolute right-3 flex size-6 items-center justify-center rounded-md text-muted-foreground"
               aria-label={t('关闭')}
               onClick={onClose}
             >

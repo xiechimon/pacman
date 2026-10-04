@@ -138,8 +138,9 @@
   text-align: left;
 }
 
+/* P4 #791：任务行 hover 跟主题色走（base-ui-theme §1.1，--accent-soft）。 */
 .agent-task-row:hover {
-  background: var(--surface-hover);
+  background: var(--accent-soft);
 }
 
 .agent-task-seq {

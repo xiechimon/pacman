@@ -44,6 +44,7 @@
   /* P0 语义槽的 Tailwind 映射（#787）：inline 模式零输出，用到才生成。 */
   --color-spot-soft: var(--spot-soft);
   --color-accent-soft: var(--accent-soft);
+  --color-danger-soft: var(--danger-soft);
   --color-spot-text-on-tint: var(--spot-text-on-tint);
   --color-spot-disabled: var(--spot-disabled);
   --color-spot-disabled-fg: var(--spot-disabled-fg);
@@ -239,7 +240,8 @@
   /* 浮层遮罩（轨 A #A2）: modal / search / token-gate 全屏黑幕统一值，
      此前 6 处各写 rgb(0 0 0 / 0.6) */
   --overlay-scrim: rgb(0 0 0 / 0.6);
-  /* P0 语义槽（base-ui-theme §2.5/§1.1，#787）：只加名不消费——零视觉 diff。
+  /* P0 语义槽（base-ui-theme §2.5/§1.1，#787）：P4 #791 起被行 hover 消费
+     （motion.css #73 家族吃 --accent-soft，删除行吃 --danger-soft）。
      --spot-soft = 选中底实色（spot 14% mix 于面板，P1 落仓后暗 ≈#363140）；
      --accent-soft = 行 hover 淡 tint（spot 14% mix 于透明）；
      --spot-text-on-tint = tint 底上的字（暗取 spot 原色 #cba6f7，6.19:1）；
@@ -248,6 +250,9 @@
      时自动跟随，本票零改动。 */
   --spot-soft: color-mix(in srgb, var(--card-button) 14%, var(--surface));
   --accent-soft: color-mix(in srgb, var(--card-button) 14%, transparent);
+  /* danger 行 hover 淡 tint（base-ui-theme §1.1：删除行吃 danger 淡 tint，
+     与 accent-soft 同 14% 配方，源换 --destructive；P4 #791 落消费） */
+  --danger-soft: color-mix(in srgb, var(--destructive) 14%, transparent);
   --spot-text-on-tint: #cba6f7;
   --spot-disabled: color-mix(in srgb, var(--card-button) 60%, var(--surface));
   --spot-disabled-fg: color-mix(in srgb, var(--card-button) 65%, white);
@@ -374,6 +379,7 @@
      失能字沿既有 light 惯例取白（失能态不按 4.5 验收）。 */
   --spot-soft: color-mix(in srgb, var(--card-button) 14%, var(--surface));
   --accent-soft: color-mix(in srgb, var(--card-button) 14%, transparent);
+  --danger-soft: color-mix(in srgb, var(--destructive) 14%, transparent);
   --spot-text-on-tint: #6d28d9;
   --spot-disabled: color-mix(in srgb, var(--card-button) 60%, var(--surface));
   --spot-disabled-fg: #ffffff;
