@@ -1,6 +1,5 @@
-// Board todo card（#414 shadcn 试点）：视觉层切到 shadcn 组件 + B（neutral）
-// token——Card 承载盒型（bg-card/border/rounded-xl/shadow-sm），动作钮走
-// shadcn Button。行为与锚点原位：stretched title link、data-todo-id、
+// Board todo card（V2 骨架，base-ui-theme §1.1）：卡壳方角无圆角——Card 承载
+// 盒型（bg-card/border/ring 1px/shadow-sm），动作钮走 shadcn Button。行为与锚点原位：stretched title link、data-todo-id、
 // todo-card/todo-card-action--* 类别名、相对时间、phase 徽标全部保留；
 // 几何沿用 r7 实测（9.5-13.5-11.5 padding / 26 底行）；宽度随 #351 的
 // 四列流体网格铺满列宽（原 262 定宽随横向滚动一起退役）。
@@ -73,7 +72,7 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName, tag }: To
   return (
     <Card
       data-todo-id={todo.id}
-      className="todo-card relative w-full gap-0 rounded-[12px] px-[13.5px] pt-[9.5px] pb-[11.5px]"
+      className="todo-card relative w-full gap-0 rounded-none px-[13.5px] pt-[9.5px] pb-[11.5px]"
     >
       <div className="todo-card-row1 flex h-4 items-center">
         <span className="project-avatar">{chipInitial}</span>
@@ -190,7 +189,7 @@ export function TodoCard({ todo, now, onAction, onBranch, projectName, tag }: To
           <Button
             variant={action.kind === 'primary' ? 'default' : 'outline'}
             size="xs"
-            className={`todo-card-action todo-card-action--${action.kind} relative z-10 h-[26px] flex-none rounded-md px-[7.25px] text-xs`}
+            className={`todo-card-action todo-card-action--${action.kind} relative z-10 h-[26px] flex-none rounded-none px-[7.25px] text-xs`}
             onClick={() => onAction?.(todo)}
           >
             {t(action.label)}

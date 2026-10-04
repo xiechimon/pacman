@@ -6,8 +6,8 @@ import { expect, type Page, test } from '@playwright/test';
 // phase vehicle:
 //   · 可拖面 = 每一列（#753 实测：四列的卡按压超过阈值都进 grabbing 拖拽）；
 //   · the lift is a COMPACT clone (.board-drag-card: identity row + 2-line
-//     title, 8px radius, 2° tilt, 0.92 opacity, --drag-shadow) — not the
-//     board card copy; the source wrapper dims to 0.4 and keeps its slot;
+//     title, V2 骨架方角 (#792 P6), 2° tilt, 0.92 opacity, --drag-shadow) —
+//     not the board card copy; the source wrapper dims to 0.4 and keeps its slot;
 //   · siblings NEVER shift mid-gesture and a same-column drop commits
 //     nothing (the reference has no in-column reorder — #73/#403's sortable
 //     preview retired with it);
@@ -527,7 +527,7 @@ for (const theme of ['light', 'dark'] as const) {
     const expected = await resolveStyle(page, {
       'box-shadow': 'var(--drag-shadow)',
       transform: 'rotate(2deg)',
-      'border-radius': '8px',
+      'border-radius': '0px',
     });
     const actual = await card.evaluate((el) => {
       const cs = getComputedStyle(el);
