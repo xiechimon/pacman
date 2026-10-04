@@ -629,7 +629,7 @@
   min-height: 24px;
   max-width: 68ch;
   padding: 0 13px;
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--surface-secondary);
   font-size: 15px;
   line-height: 24px;
@@ -901,7 +901,7 @@
   margin: 16px 16px 0;
   padding: 13px 15px;
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--surface-secondary);
   font-size: 15px;
   line-height: 1.6;
@@ -1136,7 +1136,7 @@
   margin: 0 16px 16px;
   height: 76px;
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: 0;
   background: var(--surface-secondary);
   /* #775 (better-ui: shadows for elevation, borders for structure): the real
      border stays (detail-3pane pins the 1px card recipe + focus/state edge),
@@ -1227,7 +1227,7 @@ textarea.composer-input::placeholder {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-tertiary);
   color: var(--stop);
   padding: 0;
@@ -1261,7 +1261,7 @@ textarea.composer-input::placeholder {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-tertiary);
   display: flex;
   align-items: center;

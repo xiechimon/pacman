@@ -135,7 +135,7 @@
   min-width: 0;
   max-width: 100%;
   padding: 1px 4px;
-  border-radius: 6px;
+  border-radius: 0;
   color: var(--text-tertiary);
   cursor: pointer;
 }
@@ -166,7 +166,7 @@
 .chief-msg-tool {
   width: 20px;
   height: 20px;
-  border-radius: 4px;
+  border-radius: 0;
   color: var(--text-dim);
 }
 
@@ -180,7 +180,7 @@
 .chief-turn-tools {
   margin-top: 6px;
   padding: 6px 8px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-secondary);
   display: flex;
   flex-direction: column;
@@ -229,7 +229,7 @@
   width: 100%;
   padding: 7px 8px;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   font: inherit;
   text-align: left;
@@ -268,7 +268,7 @@
   width: 262px;
   padding: 4px;
   background: var(--popover-bg);
-  border-radius: 8px;
+  border-radius: 0;
   box-shadow: var(--chief-shadow);
   /* drawer-local（#688 阶梯外）：切换器锚在抽屉头部，绘制收编于 .chief-drawer
      的 stacking context，只需压住抽屉内部内容——5 是局部值，不参竞根级层序。 */
@@ -286,7 +286,7 @@
   padding: 0 8px;
   border: none;
   background: none;
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 13px;
   color: var(--text-secondary);
   cursor: pointer;
@@ -326,7 +326,7 @@
   margin: 0 17px;
   padding: 0 12px 0 20px;
   background: var(--surface-secondary);
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 13px;
   color: var(--text-secondary);
 }
@@ -362,7 +362,7 @@
   height: 64px;
   padding: 0 12px;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-secondary);
   cursor: pointer;
   text-align: left;
@@ -372,7 +372,7 @@
   flex: none;
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--seg-active);
   display: flex;
   align-items: center;
@@ -625,7 +625,7 @@ a.chief-identity {
   margin: 10px 17px;
   padding: 12px 12px 10px;
   background: var(--surface-secondary);
-  border-radius: 12px;
+  border-radius: 0;
   /* #775 (better-ui: shadows for elevation): the ring draws the 1px hairline
      (shadow spread, no layout shift — the card previously had no edge at all
      and read as flat/cut against the drawer surface), --card-shadow adds the
@@ -742,7 +742,7 @@ a.chief-identity {
   margin-left: 14px;
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: 0;
   color: var(--text-tertiary);
   cursor: pointer;
 }
@@ -770,7 +770,7 @@ a.chief-identity {
   position: relative; /* 指示条的包含块（#644） */
   display: inline-flex;
   padding: 2px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--chief-tab-bg);
 }
 
@@ -781,7 +781,7 @@ a.chief-identity {
   padding: 0 11px;
   border: none;
   background: none;
-  border-radius: 6px;
+  border-radius: 0;
   font-size: 13px;
   color: var(--text-secondary);
   cursor: pointer;
@@ -805,7 +805,7 @@ a.chief-identity {
   width: var(--active-tab-width);
   height: var(--active-tab-height);
   z-index: 0;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--chief-tab-active);
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   pointer-events: none;
@@ -844,7 +844,7 @@ a.chief-identity {
   margin-top: 17px;
   padding: 0 16px;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-secondary);
   font-size: 14px;
   color: var(--text-secondary);
@@ -869,7 +869,7 @@ a.chief-identity {
   min-height: 62px;
   margin-top: 17px;
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-secondary);
 }
 
@@ -955,7 +955,7 @@ a.chief-identity {
   height: 32px;
   padding: 0 8px;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   font: inherit;
   font-size: 12px;
@@ -1072,7 +1072,7 @@ a.chief-identity {
   min-height: 78px;
   margin-top: 17px;
   border: 1px dashed var(--border-strong);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-secondary);
   font-size: 13px;
   color: var(--text-tertiary);
@@ -1105,7 +1105,7 @@ a.chief-identity {
   min-height: 44px;
   margin-top: 17px;
   padding: 8px 16px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-secondary);
   font-size: 13px;
 }
@@ -1187,7 +1187,7 @@ a.chief-identity {
 .chief-charter-text {
   margin-top: 17px;
   padding: 12px 16px;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface-secondary);
   font-size: 13px;
   line-height: 20px;
@@ -1240,7 +1240,7 @@ a.chief-identity {
   height: 40px;
   padding: 0 8px;
   border: none;
-  border-radius: 8px;
+  border-radius: 0;
   background: none;
   font-size: 14px;
   color: var(--text-primary);

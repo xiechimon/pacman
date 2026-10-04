@@ -95,8 +95,8 @@ test('composer stays in-flow inside the center column: card form, 16px insets, s
       colPadBottom: Number.parseFloat(colCs.paddingBottom),
     };
   });
-  // the r7 §3.4 card recipe survives the flow move
-  expect(geo.radius).toBe('12px');
+  // the r7 §3.4 card recipe survives the flow move, V2 骨架方角 (#792 P6)
+  expect(geo.radius).toBe('0px');
   expect(geo.border).toBe('1px');
   // #472 in-flow law: a layout participant, never an overlay again —
   // relative (not static) because the in-card toolbar/send/stop absolutes
