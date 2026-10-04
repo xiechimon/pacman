@@ -35,8 +35,8 @@ test.describe('chief drawer model row (#615)', () => {
     await btn.click();
     const menu = page.locator('.chief-model-pop');
     await expect(menu).toBeVisible();
-    // the enter animation (slide-in-from-top-2) translates the menu for
-    // 100ms; rects sampled mid-flight are not the resting geometry.
+    // the enter animation (V2 scale-fade 100ms, #790 P3) transforms the menu
+    // for 100ms; rects sampled mid-flight are not the resting geometry.
     await menu.evaluate((el) =>
       Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined),
     );
@@ -54,7 +54,8 @@ test.describe('chief drawer model row (#615)', () => {
     expect(menuBox).not.toBeNull();
     expect(drawerBox).not.toBeNull();
     if (btnBox == null || menuBox == null || drawerBox == null) throw new Error('missing rects');
-    expect(Math.abs(menuBox.y - (btnBox.y + btnBox.height + 4))).toBeLessThanOrEqual(2);
+    // V2 顶部锚距（#790 P3）: menu.top = trigger.bottom + 8（原家族基线 4）。
+    expect(Math.abs(menuBox.y - (btnBox.y + btnBox.height + 8))).toBeLessThanOrEqual(2);
     expect(Math.abs(menuBox.x - btnBox.x)).toBeLessThanOrEqual(2);
     expect(menuBox.x).toBeGreaterThanOrEqual(drawerBox.x);
     expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(drawerBox.x + drawerBox.width);

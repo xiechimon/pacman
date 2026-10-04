@@ -219,13 +219,13 @@ const RAIL_ROW =
   'rail-row relative flex h-8 w-10 flex-none items-center justify-center text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-1 before:rounded-[6px] before:content-[""] hover:before:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>svg]:relative [&>.project-avatar]:relative';
 const RAIL_SELECTED = 'rail-row--selected text-foreground before:bg-sidebar-active';
 
-/** #656 用户菜单进出场：同 FLOATING_POP_ANIM 配方（ADR 0009 D3：
- *  duration-100 + fade + zoom-95 + slide -8px），方向翻成 bottom——面板底锚
- *  在头像 chip 上方（#163 锚定律），从锚边滑入即自下而上；transform-origin
- *  同律落底边。挂在 .user-menu 面板本体（fixed 定位元素自身吃 keyframe
- *  transform 不换包含块；挂祖先才会）。 */
+/** #656 用户菜单进出场：同 FLOATING_POP_ANIM 的 V2 配方（base-ui-theme §1.2：
+ *  duration-100 + ease-out + fade + zoom-98，无 slide），方向翻成 bottom——
+ *  面板底锚在头像 chip 上方（#163 锚定律），origin 落底边。挂在 .user-menu
+ *  面板本体（fixed 定位元素自身吃 keyframe transform 不换包含块；挂祖先
+ *  才会）。 */
 const USER_MENU_POP_ANIM =
-  'duration-100 origin-bottom group-data-closed/fshell:fill-mode-forwards group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-open/fshell:zoom-in-95 group-data-open/fshell:slide-in-from-bottom-2 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0 group-data-closed/fshell:zoom-out-95 group-data-closed/fshell:slide-out-to-bottom-2';
+  'duration-100 ease-out origin-bottom group-data-closed/fshell:fill-mode-forwards group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-open/fshell:zoom-in-98 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0 group-data-closed/fshell:zoom-out-98';
 
 export function BoardSidebar({
   collapsed = false,
