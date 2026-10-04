@@ -253,3 +253,74 @@ export function insertMentionText(
     caret: before.length + head.length + serialized.length + tail.length,
   };
 }
+
+/** Composer chip strip 的一行（#812）：draft 文本里已落定的提及。scheme
+ * 五类复用 parseMentionSegments（transcript chip 同一解析面）；文件走名单
+ * 精确匹配——#760 插入纪律恒落空白垫（前后空格），散文里的子串因边界不合
+ * 格也不会误认。wire 本体不动，strip 只读。 */
+export interface DraftChip {
+  kind: MentionKind | 'file';
+  /** scheme 实体 id / 名单路径（目录为去尾斜杠的裸 path）。 */
+  id: string;
+  /** chip 文案：scheme label / 文件 label（目录带尾随斜杠，引号包裹形去引号）。 */
+  label: string;
+  start: number;
+  end: number;
+}
+
+/** 名单文件 token 扫描：每个序列化形（空白即引号包裹、目录带尾随斜杠——
+ * 与插入侧 formatFileInsert 同形）在空白或串边界处命中才算；重叠命中只留
+ * 最长（目录与其子项同现时不双 chip）。indexOf 直扫，无正则回溯面。 */
+function scanFileChips(draft: string, files: readonly FileMentionEntry[]): DraftChip[] {
+  const hits: DraftChip[] = [];
+  for (const f of files) {
+    const label = f.type === 'tree' ? `${f.path}/` : f.path;
+    const serialized = formatFileInsert(label);
+    let from = 0;
+    for (;;) {
+      const at = draft.indexOf(serialized, from);
+      if (at === -1) break;
+      from = at + serialized.length;
+      const before = at === 0 ? '' : (draft[at - 1] ?? '');
+      const after =
+        at + serialized.length >= draft.length ? '' : (draft[at + serialized.length] ?? '');
+      const bounded = (before === '' || /\s/.test(before)) && (after === '' || /\s/.test(after));
+      if (bounded) {
+        hits.push({ kind: 'file', id: f.path, label, start: at, end: at + serialized.length });
+      }
+    }
+  }
+  // 起点同、留长者；跨类重叠（scheme 链恰落路径内之类病态）先到先得——
+  // scheme 先入，同起点时 scheme 胜。
+  hits.sort((a, b) => a.start - b.start || b.end - a.end);
+  const kept: DraftChip[] = [];
+  for (const h of hits) {
+    if (!kept.some((k) => h.start < k.end && k.start < h.end)) kept.push(h);
+  }
+  kept.sort((a, b) => a.start - b.start);
+  return kept;
+}
+
+/** draft 全文 → 有序 chip 行（#812 strip 数据源）。scheme 链与文件 token
+ * 合并后按出现序排；任一跨类重叠以前者为准（上式先到先得）。 */
+export function parseDraftChips(draft: string, files?: readonly FileMentionEntry[]): DraftChip[] {
+  const chips: DraftChip[] = [];
+  for (const seg of parseMentionSegments(draft)) {
+    if (seg.kind !== 'mention') continue;
+    chips.push({
+      kind: seg.token.kind,
+      id: seg.token.id,
+      label: seg.token.label,
+      start: seg.start,
+      end: seg.end,
+    });
+  }
+  if (files !== undefined) chips.push(...scanFileChips(draft, files));
+  chips.sort((a, b) => a.start - b.start || b.end - a.end);
+  const kept: DraftChip[] = [];
+  for (const c of chips) {
+    if (!kept.some((k) => c.start < k.end && k.start < c.end)) kept.push(c);
+  }
+  kept.sort((a, b) => a.start - b.start);
+  return kept;
+}

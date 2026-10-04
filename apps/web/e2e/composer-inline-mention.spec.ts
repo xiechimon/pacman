@@ -605,3 +605,99 @@ test('files: directory row inserts with a trailing slash', async ({ page }) => {
   await input.press('Enter');
   await expect(input).toHaveValue('apps/web/src/ui/ ');
 });
+
+// #812：选中即渲染 chip（composer 内确认 strip，与 transcript 的
+// .mention-chip 同形 + 新 chip 轻过渡 pop）。失败方式编号：
+//   C6 strip 与 listbox 叠挂（listbox 开着时 strip 让路，选中落定才现形）
+//   C7 空 draft / 无 chip 时 strip 零节点（fixture 面 DOM 字节不变）
+//   C8 pop 只播一次（无关编辑不重播——key 稳定，已有 chip 去 fresh 态）
+//   C9 动效机制实物（#746：断言 computed animation-name，非只读类名）
+test('chips: Enter-select renders the file chip with a fresh pop', async ({ page }) => {
+  const { input, rows } = await openDetailWithFiles(page);
+  await input.fill('@butt');
+  await expect(rows).toHaveCount(1);
+  await input.press('ArrowDown');
+  await input.press('Enter');
+  const strip = page.locator('.composer-chips');
+  await expect(strip).toBeVisible();
+  await expect(strip.locator('.mention-chip')).toHaveCount(1);
+  await expect(strip.locator('.mention-chip')).toContainText('apps/web/src/ui/button.tsx');
+  // 新 chip 带 fresh 态（轻过渡的挂载钩子）。
+  await expect(strip.locator('.composer-chip--fresh')).toHaveCount(1);
+  // C9：过渡真在播——编译产物里有该 animation（类名写了≠生效，#656 前例）。
+  const animationName = await strip
+    .locator('.composer-chip--fresh')
+    .evaluate((el) => getComputedStyle(el).animationName);
+  expect(animationName).not.toBe('none');
+  await evidenceShot(page, 'chips-file-fresh.png');
+});
+
+test('chips: agent select renders the agent chip', async ({ page }) => {
+  const { input, rows } = await openDetailWithFiles(page);
+  await input.fill('@bld');
+  await expect(rows).toHaveCount(1);
+  await input.press('ArrowDown');
+  await input.press('Enter');
+  const strip = page.locator('.composer-chips');
+  await expect(strip.locator('.mention-chip--agent')).toHaveCount(1);
+  await expect(strip.locator('.mention-chip--agent')).toContainText('builder');
+});
+
+test('chips: Tab and click render the identical chip (accept 路径一致）', async ({
+  page,
+}) => {
+  const { input, rows } = await openDetailWithFiles(page);
+  await input.fill('@butt');
+  await expect(rows).toHaveCount(1);
+  await input.press('Tab');
+  const strip = page.locator('.composer-chips');
+  await expect(strip.locator('.mention-chip')).toContainText('apps/web/src/ui/button.tsx');
+
+  await input.fill('');
+  await expect(strip).toBeHidden();
+  await input.fill('@butt');
+  await expect(rows).toHaveCount(1);
+  await rows.first().click();
+  await expect(strip.locator('.mention-chip')).toContainText('apps/web/src/ui/button.tsx');
+  await expect(strip.locator('.composer-chip--fresh')).toHaveCount(1);
+});
+
+test('chips: editing the path retires the chip; the pop plays only once (C8)', async ({
+  page,
+}) => {
+  const { input, rows } = await openDetailWithFiles(page);
+  await input.fill('@butt');
+  await expect(rows).toHaveCount(1);
+  await input.press('ArrowDown');
+  await input.press('Enter');
+  const strip = page.locator('.composer-chips');
+  await expect(strip.locator('.composer-chip--fresh')).toHaveCount(1);
+
+  // 无关编辑（尾随空格后加字）：chip 留，fresh 退。
+  await input.press('x');
+  await expect(strip.locator('.mention-chip')).toHaveCount(1);
+  await expect(strip.locator('.composer-chip--fresh')).toHaveCount(0);
+
+  // 把路径吃掉：chip 退，strip 卸载（C7）。
+  await input.fill('');
+  await expect(strip).toHaveCount(0);
+});
+
+test('chips: the strip yields while the listbox is open (C6)', async ({ page }) => {
+  const { input, listbox, rows } = await openDetailWithFiles(page);
+  await input.fill('@butt');
+  await expect(rows).toHaveCount(1);
+  await input.press('ArrowDown');
+  await input.press('Enter');
+  const strip = page.locator('.composer-chips');
+  await expect(strip).toBeVisible();
+
+  // 再开一次 @：listbox 现形期间 strip 让路，不叠挂。
+  await input.pressSequentially('@');
+  await expect(listbox).toBeVisible();
+  await expect(strip).toHaveCount(0);
+
+  await input.press('Escape');
+  await expect(listbox).toBeHidden();
+  await expect(strip).toBeVisible();
+});
