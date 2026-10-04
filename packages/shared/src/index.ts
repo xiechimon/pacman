@@ -15,6 +15,7 @@ export * from './protocol/index.js';
 export * from './records/index.js';
 export * from './scheduler.js';
 export * from './secret-box.js';
+export * from './skill-route.js';
 export * from './tables.js';
 // spec 15 #394：占位标题派生 + 固定标签词表（ADR 0002 自觉背离原站的面）。
 export * from './task-meta.js';
