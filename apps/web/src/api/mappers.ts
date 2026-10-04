@@ -1007,6 +1007,16 @@ function stripWakeMarker(text: string): string {
 }
 
 export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
+  return collectChiefStream(messages).items;
+}
+
+/** #822 内部组装：items + 本轮尾部尚未归属的工具行（user 行之后的 toolcall
+ *  投影——调用方决定其归属面：定稿 robot 行由本函数内直挂；在飞 streaming 行
+ *  由 mapChief 挂展开面）。数据源不变（messages 参数），不新增请求。 */
+function collectChiefStream(messages: MessageRow[]): {
+  items: ChiefStreamItem[];
+  trailingTools: ChiefToolRow[];
+} {
   const items: ChiefStreamItem[] = [];
   // #667 回声行去重：用户回合双落库——POST 行（server sendChiefMessage，
   // id = newRecordId 无前缀）+ daemon transcript 回声行（id = `user-<stepId>`，
@@ -1080,7 +1090,7 @@ export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
     });
     pendingTools = [];
   }
-  return items;
+  return { items, trailingTools: pendingTools };
 }
 
 /** Streaming partial-markdown guard (#651): an unclosed strong marker at the
@@ -1122,7 +1132,9 @@ export function mapChief(
       ? (opts.threads.find((t) => t.id === opts.activeThreadId) ?? null)
       : null;
   const running = active?.activeRun != null;
-  const chiefStream: ChiefStreamItem[] = active === null ? [] : mapChiefStream(opts.messages);
+  // #822：在飞展开面数据源（已有 messages 投影的二次归属，不新增请求）。
+  const collected = active === null ? null : collectChiefStream(opts.messages);
+  const chiefStream: ChiefStreamItem[] = collected?.items ?? [];
   // #651 打字面尾行 / #739 在飞存在行：回合进行中（activeRun 非空）才挂尾行，
   // 且两行按 liveText 空/非空互斥——尾部恒至多一行（#739 F1 无二重身）。
   // activeRun 是陈旧缓冲的 gate（关抽屉/断线窗口里缓冲可能残留上一轮文本，
@@ -1154,7 +1166,15 @@ export function mapChief(
       // 僵尸边界（#739 F2，#706 liveness sweeper 落地前接受并注记）：机器死了
       // 无人收 activeRun、且终稿从不落库 → 尾恒 user 行 → 存在行随 activeRun
       // 生死（与 composer 占位同一 running 投影单源，不另立状态）。
-      chiefStream.push({ kind: 'streaming', label: '处理中...' });
+      //
+      // #822：本轮尚未归属的工具行挂展开面（tools 缺省 = 本轮暂无工具调用，
+      // 面板走 fallback 行；typing 接管后本行缺席，工具归宿回归终稿 robot
+      // 行，单时刻无双面）。
+      chiefStream.push({
+        kind: 'streaming',
+        label: '处理中...',
+        ...((collected?.trailingTools.length ?? 0) > 0 ? { tools: collected?.trailingTools } : {}),
+      });
     }
   }
   return {
@@ -1194,6 +1214,9 @@ export function mapChief(
     // 在位不读字段）——抽屉占位据此切 steer canon；新主题视图（active null）
     // 恒空闲。刷新节奏骑 chiefSend invalidateAll / conversation SSE 既有重取。
     ...(running ? { running: true } : {}),
+    // #822：在飞展开面首行 = activeRun.tool.toolName（已有 threads 查询的视
+    // 图投影，不新增请求）；activeRun 无工具位即缺省，面板走 fallback 行。
+    ...(active?.activeRun?.tool != null ? { runningTool: active.activeRun.tool.toolName } : {}),
     ...(opts.draft !== undefined ? { draft: opts.draft } : {}),
   };
 }

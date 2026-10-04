@@ -785,9 +785,15 @@
 
 /* list item (ordered + unordered share the row shape): a hanging marker
    column + the content. Nesting indents via inline margin-left so a child
-   box's left edge sits past its parent's (chat-markdown.tsx DEPTH_PX). */
+   box's left edge sits past its parent's (chat-markdown.tsx DEPTH_PX).
+   Baseline-aligned (#814 rework): the ordinal tracks the content's first
+   line even when that line carries a taller inline box (code chip), so the
+   marker never floats off the text row. Ordinal ink = tertiary: secondary
+   sits ~30 steps under the body and reads as body text; tertiary doubles
+   the step in both themes while staying 400 (below-18px floor). */
 .chat-md-item {
   display: flex;
+  align-items: baseline;
   gap: 7px;
   margin-top: 2px;
 }
@@ -797,10 +803,18 @@
 .chat-md-ordinal,
 .chat-md-marker {
   flex: none;
-  min-width: 14px;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+/* Two-digit gutter: with tabular figures right-aligned in a 3ch column the
+   content keeps one straight left edge from 1. through 99. (14px only fits
+   a single digit — the 10th item used to jog the whole column right.) */
+.chat-md-ordinal {
+  min-width: 3ch;
+}
+.chat-md-marker {
+  min-width: 14px;
 }
 .chat-md-marker {
   text-align: left;
@@ -1189,6 +1203,8 @@ textarea.composer-input {
     "Microsoft YaHei",
     sans-serif;
   color: var(--text-primary);
+  /* #814 rework: tabular figures — same digit-column law as .new-task-spec. */
+  font-variant-numeric: tabular-nums;
 }
 textarea.composer-input::placeholder {
   color: var(--text-dim);

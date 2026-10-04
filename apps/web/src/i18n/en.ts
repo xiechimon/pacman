@@ -118,6 +118,18 @@ export const EN: Record<string, string> = {
   '停止当前这一轮？': 'Stop this round?',
   '丢弃本轮修改——方案和代码回到上一个版本':
     'Discard this round’s changes — plan and code revert to the previous version',
+  '把任务重置回待开始？': 'Reset the task back to Todo?',
+  确认重置: 'Confirm reset',
+  '任务在你打开确认框后发生了变化，下面是最新状态，请重新确认。':
+    'The task changed while this dialog was open — this is the latest state. Confirm again.',
+  '以下内容将被清空，无法恢复：': 'The following will be cleared and cannot be recovered:',
+  '中断运行中的构建（在线的执行机即时中断；离线机器的残留进程够不着）':
+    'Interrupt the running build (online executors stop immediately; offline leftovers are out of reach)',
+  清空对话记录: 'Clear the conversation',
+  清空方案版本: 'Clear the plan versions',
+  清空改动记录: 'Clear the change records',
+  '保留：标题、需求说明、标签与人员指派。运行历史保留，可供审计。执行机工作区文件不受影响。':
+    'Kept: title, spec, tags and assignment. Run history stays for audit. Executor workspace files are untouched.',
   发送: 'Send',
   '当前没有运行中的会话，消息未送出': 'No active run — the message was not delivered',
   '任务状态已变化，消息未送出': 'The task state changed — the message was not delivered',
@@ -374,6 +386,11 @@ export const EN: Record<string, string> = {
     'Restore to here? The {n} messages after it are removed and the Chief resends from this one as a fresh turn.',
   展开过程: 'Show process',
   收起过程: 'Hide process',
+  // #822 在飞存在行展开面：行开关 aria + 正在调用的工具 + 空面 fallback。
+  展开实时步骤: 'Show live steps',
+  收起实时步骤: 'Hide live steps',
+  '正在调用 {n}': 'Calling {n}',
+  '等待 Agent 响应…': 'Waiting for the agent…',
   '默认（与绑定 Agent 相同）': 'Default (same as bound Agent)',
   '搜索模型…': 'Search models…',
   没有匹配的模型: 'No matching models',
@@ -778,6 +795,7 @@ export const EN: Record<string, string> = {
   '新建任务失败，请重试。': 'Could not create the task. Try again.',
   '创建项目失败，请重试。': 'Could not create the project. Try again.',
   '移动任务失败，请重试。': 'Could not move the task. Try again.',
+  '重置任务失败，请重试。': 'Could not reset the task. Try again.',
   '关闭任务失败，请重试。': 'Could not close the task. Try again.',
   '删除任务失败，请重试。': 'Could not delete the task. Try again.',
   '开始运行失败，请重试。': 'Could not start the build. Try again.',

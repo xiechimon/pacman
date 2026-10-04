@@ -19,7 +19,7 @@
 // #640 直发编排；2026-10-04 实测参考站该落位开 开始任务 dialog，差异归后续
 // 票，本仓载体不动).
 import type { TodoRecord } from '../fixtures/records.js';
-import { COLUMNS, canDropOnColumn } from './columns.js';
+import { COLUMNS, canDropOnColumn, needsResetGate } from './columns.js';
 
 /** Pointer travel needed to tell a drag from a card click (CSS px) — the
  *  PointerSensor activation constraint; clicks keep navigating (r2 §4.2). */
@@ -70,4 +70,38 @@ export function moveTodo(
       });
   }
   return next;
+}
+
+/**
+ * 本地重置（#755 fixture 面：无后端可调，dialog 确认的本地投影）——先经
+ * moveTodo 落待开始列尾，再清空产物位（hasPlan/hasChanges/latestBuildId/
+ * lastRunAt），与 server resetTodo 的 todo 写面逐位对齐。非 started 卡或
+ * 非待开始落点 = 恒等（调用方本不该调）。
+ */
+export function resetTodoLocal(todos: TodoRecord[], todoId: string, now: number): TodoRecord[] {
+  const moved = todos.find((t) => t.id === todoId);
+  if (moved == null || !needsResetGate(moved)) return todos;
+  // 同列（queued 相位本就住待开始列）：只清产物位，不动位次。
+  if (moved.phase === 'todo' || moved.phase === 'queued') {
+    return todos.map((t) =>
+      t.id === todoId
+        ? {
+            ...t,
+            phase: 'todo',
+            phaseAt: now,
+            hasPlan: false,
+            hasChanges: false,
+            latestBuildId: null,
+            lastRunAt: null,
+          }
+        : t,
+    );
+  }
+  const next = moveTodo(todos, todoId, 'todo', now);
+  if (next === todos) return todos;
+  return next.map((t) =>
+    t.id === todoId
+      ? { ...t, hasPlan: false, hasChanges: false, latestBuildId: null, lastRunAt: null }
+      : t,
+  );
 }

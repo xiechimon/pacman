@@ -724,8 +724,11 @@ export type ChiefStreamItem =
    *  （loading-dev Atom spinner + `处理中...` 标签，transcript.tsx 正典）。
    *  `seconds` 缺省 = 不挂秒数（#471 律：静默期没有流事件驱动重渲，秒数计数
    *  会冻结说谎；本票不加计时器）。label 走渲染层 t()。fixture 捕获面从不
-   *  置 running，故既有捕获不会长出此行（零请求保证不破）。 */
-  | { kind: 'streaming'; seconds?: number; label: string };
+   *  置 running，故既有捕获不会长出此行（零请求保证不破）。
+   *  #822：`tools` = 本轮已落库但尚未归属的工具行（user 行之后的 toolcall 投
+   *  影，#615 robot 行 tools 折叠同族语义）——展开面工具表的数据源；缺省 =
+   *  本轮暂无工具调用，面板走 fallback 行。 */
+  | { kind: 'streaming'; seconds?: number; label: string; tools?: ChiefToolRow[] };
 
 /** 回合工具行（#615 返工折叠展开面；ToolCallRecord 的呈现投影）。 */
 export interface ChiefToolRow {
@@ -799,4 +802,8 @@ export interface ChiefContent {
    *  静态表达同一状态。true = composer 占位切 steer canon（shared
    *  CHIEF_INPUT_PLACEHOLDER_STEERING）；缺省 = 空闲 canon。 */
   running?: boolean;
+  /** #822 在飞存在行展开面首行：活动线程 `activeRun.tool.toolName` 的投影
+   *  （已有 threads 查询的视图投影，不新增请求）；缺省 = activeRun 无工具
+   *  位，面板走 fallback 行。 */
+  runningTool?: string;
 }

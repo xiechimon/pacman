@@ -403,6 +403,38 @@ export const boardDragMatrix: FixtureSet = {
   now: r7(13, 55),
 };
 
+/** board-reset-gate（#755）：拖回待开始的确认闸面——started 卡（执行中 /
+ *  已完成有变更，探针底自带构建历史）落待开始开 dialog；零历史卡（待确认 /
+ *  已完成无历史四位全清）走静默改相。合成内容，无 capture 基线（board-tags
+ *  先例）。 */
+const resetGateProbe = (
+  id: string,
+  seqNum: number,
+  title: string,
+  phase: TodoRecord['phase'],
+  over?: Partial<TodoRecord>,
+): TodoRecord => ({
+  ...dragMatrixProbe(id, seqNum, title, phase),
+  latestBuildId: null,
+  lastRunAt: null,
+  hasChanges: false,
+  hasPlan: false,
+  buildHistory: [],
+  ...over,
+});
+
+export const boardResetGate: FixtureSet = {
+  ...boardDefault,
+  todos: [
+    dragMatrixProbe('rg-todo', 61, 'resetgate 探针（待开始）', 'todo'),
+    dragMatrixProbe('rg-building', 62, 'resetgate 探针（执行中·有历史）', 'building'),
+    dragMatrixProbe('rg-done-history', 63, 'resetgate 探针（已完成·有变更）', 'done'),
+    resetGateProbe('rg-confirm-fresh', 64, 'resetgate 探针（待确认·零历史）', 'confirm'),
+    resetGateProbe('rg-done-fresh', 65, 'resetgate 探针（已完成·零历史）', 'done'),
+  ],
+  now: r7(13, 55),
+};
+
 /** board-tags：跨列三卡——bug 待开始 / docs 执行中 / 无标签 待处理。
  *  e2e 钉筛选开/关/切换/URL 携带与「无标签恒可见」裁决面。 */
 export const boardTagFilter: FixtureSet = {

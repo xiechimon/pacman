@@ -7,11 +7,12 @@ import {
   attentionCount,
   canDropOnColumn,
   COLUMNS,
+  needsResetGate,
   sortColumnTodos,
   type BoardColumnDef,
 } from '../src/board/columns.js';
 import type { TodoRecord } from '../src/fixtures/records.js';
-import { todo } from './helpers.js';
+import { NOW, todo } from './helpers.js';
 
 // #160→#753 手动改相面落点集单源对拍：server canManualMovePhase 消费 shared
 // canBoardDrop/BOARD_DROP_PHASES，web 列定义消费 COLUMNS[].dropPhase——四列
@@ -174,5 +175,41 @@ describe('sortColumnTodos（orderIndex = 手动序，01 §4.1）', () => {
     const failed = { ...todo(2, 'failed'), orderIndex: 5 };
     const sorted = sortColumnTodos(pending, [review, failed]);
     expect(sorted.map((t) => t.id)).toEqual([failed.id, review.id]);
+  });
+});
+
+// #755 重置闸 started 判据（与 server isStartedTodoRow 同表：进行中相位或
+// 任一历史位在位；confirm/review/failed/done 但零历史 = 静默改相）。
+describe('needsResetGate（#755 拖回待开始确认闸）', () => {
+  const fresh = (t: TodoRecord): TodoRecord => ({
+    ...t,
+    latestBuildId: null,
+    lastRunAt: null,
+    hasChanges: false,
+    hasPlan: false,
+  });
+
+  test('进行中相位（queued/planning/building）恒需闸', () => {
+    for (const phase of ['queued', 'planning', 'building'] as const) {
+      expect(needsResetGate(fresh(todo(1, phase))), phase).toBe(true);
+    }
+  });
+
+  test('历史四位任一在位即需闸（相位无关）', () => {
+    const base = fresh(todo(1, 'done'));
+    expect(needsResetGate({ ...base, latestBuildId: 'b1' })).toBe(true);
+    expect(needsResetGate({ ...base, lastRunAt: NOW - 1 })).toBe(true);
+    expect(needsResetGate({ ...base, hasChanges: true })).toBe(true);
+    expect(needsResetGate({ ...base, hasPlan: true })).toBe(true);
+  });
+
+  test('零历史 confirm/review/failed/done = 静默改相（无可中断、无可清空）', () => {
+    for (const phase of ['confirm', 'review', 'failed', 'done'] as const) {
+      expect(needsResetGate(fresh(todo(1, phase))), phase).toBe(false);
+    }
+  });
+
+  test('全新 todo 卡 = 静默（同列规则另保，判据本身 false）', () => {
+    expect(needsResetGate(fresh(todo(1, 'todo')))).toBe(false);
   });
 });

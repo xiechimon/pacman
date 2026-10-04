@@ -21,8 +21,10 @@ import { expect, type Page, test } from '@playwright/test';
 //     written locally, the card moves only once the chief dispatches;
 //     2026-10-04 实测参考站该落位开 开始任务 dialog——差异归后续票，本仓
 //     载体不动);
-//   · 待开始/待处理/已完成 drops commit the phase silently, card lands at
+//   · 待处理/已完成 drops commit the phase silently, card lands at
 //     the END of the target column's view, counts couple (r2 §4.2);
+//     待开始双轨 (#755)：未开始卡（零历史）静默改相，已开始卡开重置确认闸
+//     （中断构建 + 清空对话/方案/改动），确认前零提交；
 //   · the overlay unmounts on the pointerup frame — no drop glide (#391's
 //     250ms flight was a pacman invention; the reference snaps).
 // The pointer sequence uses trusted moves past the PointerSensor 5px
@@ -376,7 +378,7 @@ test('待处理(confirm) → 已完成 / → 待开始: silent phase commits (#7
   ).toBeVisible();
 });
 
-test('待处理(confirm) → 待开始: silent phase commit (#753)', async ({ page }) => {
+test('待处理(confirm，有历史） → 待开始：开重置确认闸，不静默改相 (#755)', async ({ page }) => {
   await page.goto('/app?scenario=board-drag-matrix');
   const list = await page.locator('[data-column="todo"] .board-column-list').boundingBox();
   if (list == null) throw new Error('todo list missing');
@@ -387,13 +389,25 @@ test('待处理(confirm) → 待开始: silent phase commit (#753)', async ({ pa
   await settleDrag(page);
   await page.mouse.up();
   await settleDrop(page);
-  const moved = page.locator('[data-column="todo"] .todo-card[data-todo-id="dm-confirm"]');
-  await expect(moved).toBeVisible();
-  await expect(page.locator('[data-column="todo"] .board-column-count')).toHaveText('2');
-  await expect(page.locator('[data-column="pending"] .board-column-count')).toHaveText('2');
+  // dm-confirm 自带方案历史（hasPlan）= started：落位开重置 dialog，
+  // 卡片停在源列，计数不动（#755 以前这里是静默改相，旧断言随正典更替改写）。
+  await expect(page.locator('.dlg-reset')).toBeVisible();
+  await expect(
+    page.locator('[data-column="pending"] .todo-card[data-todo-id="dm-confirm"]'),
+  ).toBeVisible();
+  await expect(page.locator('[data-column="todo"] .board-column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="pending"] .board-column-count')).toHaveText('3');
+  // 取消 = 零提交：弹层关，卡片不动，计数不动。
+  await page.locator('.dlg-reset').getByRole('button', { name: '取消' }).click();
+  await expect(page.locator('.dlg-reset')).toBeHidden();
+  await expect(
+    page.locator('[data-column="pending"] .todo-card[data-todo-id="dm-confirm"]'),
+  ).toBeVisible();
+  await expect(page.locator('[data-column="todo"] .board-column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="pending"] .board-column-count')).toHaveText('3');
 });
 
-test('执行中 → 待开始: silent phase commit — gesture only, reset semantics stay out (#753/#640)', async ({
+test('执行中 → 待开始：开重置确认闸 — gesture 只开闸，不写相位 (#755/#640)', async ({
   page,
 }) => {
   await page.goto('/app?scenario=board-drag-matrix');
@@ -406,13 +420,92 @@ test('执行中 → 待开始: silent phase commit — gesture only, reset seman
   await settleDrag(page);
   await page.mouse.up();
   await settleDrop(page);
-  // 本票只放行手势：提交仍是既有改相载体（写 todo），参考站的「拖回待开始
-  // 重置任务（中断构建 + 清空对话/方案/改动）」语义归后续票，不得从这里漏进来
+  // #753 留下的「静默改相」断言作废：dm-building 有构建历史 = started，
+  // 落位必须先经重置确认闸（中断构建 + 清空对话/方案/改动），确认前零提交。
+  await expect(page.locator('.dlg-reset')).toBeVisible();
+  await expect(page.locator('.dlg-reset').getByText('清空对话记录')).toBeVisible();
+  await expect(page.locator('.dlg-reset').getByText('清空方案版本')).toBeVisible();
+  await expect(page.locator('.dlg-reset').getByText('清空改动记录')).toBeVisible();
   await expect(
-    page.locator('[data-column="todo"] .todo-card[data-todo-id="dm-building"]'),
+    page.locator('[data-column="building"] .todo-card[data-todo-id="dm-building"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-column="building"] .board-column-count')).toHaveText('0');
+  await expect(page.locator('[data-column="building"] .board-column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="todo"] .board-column-count')).toHaveText('1');
+});
+
+// ---- 重置确认闸 (#755, scenario board-reset-gate) ----
+// started 卡（有构建历史）落待开始开 dialog；零历史卡走静默改相。
+// dialog 文案逐条点名清空范围（中断构建 + 对话/方案/改动），取消零提交。
+
+test('重置闸·确认：started 卡确认后落待开始（fixture 本地重置投影）(#755)', async ({
+  page,
+}) => {
+  await page.goto('/app?scenario=board-reset-gate');
+  const list = await page.locator('[data-column="todo"] .board-column-list').boundingBox();
+  if (list == null) throw new Error('todo list missing');
+  await dragTo(page, '.todo-card[data-todo-id="rg-building"]', {
+    x: list.x + list.width / 2,
+    y: list.y + list.height - 24,
+  });
+  await settleDrag(page);
+  await page.mouse.up();
+  await settleDrop(page);
+  await expect(page.locator('.dlg-reset')).toBeVisible();
+  await page.locator('.dlg-reset').getByRole('button', { name: '确认重置' }).click();
+  await expect(page.locator('.dlg-reset')).toBeHidden();
+  await expect(
+    page.locator('[data-column="todo"] .todo-card[data-todo-id="rg-building"]'),
+  ).toBeVisible();
   await expect(page.locator('[data-column="todo"] .board-column-count')).toHaveText('2');
+  await expect(page.locator('[data-column="building"] .board-column-count')).toHaveText('0');
+});
+
+test('重置闸·取消：零提交（卡片不动、计数不动、无请求发出）(#755)', async ({ page }) => {
+  await page.goto('/app?scenario=board-reset-gate');
+  // 取消路径不得产生任何写请求：fixture 面本就没有后端，此处再加一道
+  // 请求拦截断言——落位与取消全程零 fetch。
+  const writes: string[] = [];
+  page.on('request', (req) => {
+    if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method())) writes.push(req.url());
+  });
+  const list = await page.locator('[data-column="todo"] .board-column-list').boundingBox();
+  if (list == null) throw new Error('todo list missing');
+  await dragTo(page, '.todo-card[data-todo-id="rg-done-history"]', {
+    x: list.x + list.width / 2,
+    y: list.y + list.height - 24,
+  });
+  await settleDrag(page);
+  await page.mouse.up();
+  await settleDrop(page);
+  await expect(page.locator('.dlg-reset')).toBeVisible();
+  await page.locator('.dlg-reset').getByRole('button', { name: '取消' }).click();
+  await expect(page.locator('.dlg-reset')).toBeHidden();
+  await expect(
+    page.locator('[data-column="done"] .todo-card[data-todo-id="rg-done-history"]'),
+  ).toBeVisible();
+  await expect(page.locator('[data-column="todo"] .board-column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="done"] .board-column-count')).toHaveText('2');
+  expect(writes).toEqual([]);
+});
+
+test('重置闸·静默：零历史卡拖回待开始不设闸 (#755)', async ({ page }) => {
+  await page.goto('/app?scenario=board-reset-gate');
+  const list = await page.locator('[data-column="todo"] .board-column-list').boundingBox();
+  if (list == null) throw new Error('todo list missing');
+  // 已完成·零历史：无可中断、无可清空 = 静默改相，dialog 不出现。
+  await dragTo(page, '.todo-card[data-todo-id="rg-done-fresh"]', {
+    x: list.x + list.width / 2,
+    y: list.y + list.height - 24,
+  });
+  await settleDrag(page);
+  await page.mouse.up();
+  await settleDrop(page);
+  await expect(page.locator('.dlg-reset')).toBeHidden();
+  await expect(
+    page.locator('[data-column="todo"] .todo-card[data-todo-id="rg-done-fresh"]'),
+  ).toBeVisible();
+  await expect(page.locator('[data-column="todo"] .board-column-count')).toHaveText('2');
+  await expect(page.locator('[data-column="done"] .board-column-count')).toHaveText('1');
 });
 
 // ---- draggable from every column (#753; rewrites 「待处理/已完成 cards
