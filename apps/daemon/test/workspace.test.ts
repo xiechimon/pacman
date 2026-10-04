@@ -37,6 +37,7 @@ function fakeLogger(): DaemonLogger & { lines: string[] } {
     wake: (m) => prefixed('wake', m),
     mcp: (m) => prefixed('mcp', m),
     skills: (m) => prefixed('skills', m),
+    gate: (m) => prefixed('gate', m),
   };
 }
 

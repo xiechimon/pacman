@@ -107,6 +107,8 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       onMcpLog: (msg) => logger.mcp(msg),
       // [skills] 诊断行（spec 14/#371；前缀词表 skills 位）。
       onSkillsLog: (msg) => logger.skills(msg),
+      // [gate] 裁决行（#866 T5 命令闸；只记非放行裁决，allow 静默）。
+      onGateLog: (msg) => logger.gate(msg),
     });
 
   // —— per-step 后端解析 registry（spec 17 A3：runner 的 backendFor 唯一
