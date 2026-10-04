@@ -151,6 +151,9 @@
   --badge-done: #5ec26a;
   /* fresh-card owner badge (r7 22/22d), same gray in both themes */
   --badge-idle: #9ea3ae;
+  /* attention pill digit (#837: sidebar 工作台计数徽标；深字两主题同值，
+     8.26:1 on --badge-attention) */
+  --badge-attention-fg: #17171a;
   /* project initial avatar (board card, sidebar, overlays), both themes */
   --project-avatar-bg: #e97b35;
   --project-avatar-fg: #ffffff;
@@ -310,6 +313,9 @@
   --col-dot-done: #5ec26a;
   --badge-attention: #e9a23b;
   --badge-done: #5ec26a;
+  /* attention pill digit (#837: sidebar 工作台计数徽标；深字两主题同值，
+     8.26:1 on --badge-attention) */
+  --badge-attention-fg: #17171a;
   --badge-idle: #9ea3ae;
   --agent-avatar-bg: #e7e3da;
   /* detail palette：plan 回 spot 族（§2.5），其余保留 */

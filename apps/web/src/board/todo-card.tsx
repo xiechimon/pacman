@@ -200,7 +200,7 @@ export function TodoCard({
         <span className="todo-card-spacer flex-1" />
         {action != null && (
           <Button
-            variant={action.kind === 'primary' ? 'default' : 'outline'}
+            variant={action.kind === 'primary' ? 'brand' : 'outline'}
             size="xs"
             className={`todo-card-action todo-card-action--${action.kind} relative z-10 h-[26px] flex-none rounded-none px-[7.25px] text-xs`}
             onClick={() => onAction?.(todo)}

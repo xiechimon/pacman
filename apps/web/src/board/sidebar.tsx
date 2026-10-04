@@ -490,7 +490,7 @@ export function BoardSidebar({
           </span>
           <span className="sidebar-row-label ml-3 truncate">{t('工作台')}</span>
           {attention > 0 && (
-            <span className="sidebar-badge mr-[18px] ml-auto h-4 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] leading-4 text-primary-foreground">
+            <span className="sidebar-badge mr-[18px] ml-auto h-4 min-w-4 rounded-full bg-(--badge-attention) px-1 text-center text-[10px] leading-4 font-semibold text-(--badge-attention-fg)">
               {attention}
             </span>
           )}

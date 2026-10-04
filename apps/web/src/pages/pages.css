@@ -689,7 +689,7 @@
 }
 
 .prj-new-input::placeholder {
-  color: var(--text-dim);
+  color: var(--text-tertiary);
 }
 
 /* focus-visible 收编（#360, spec 12 输入框去默认蓝）——共享 input 原语
@@ -746,7 +746,7 @@
 
 .prj-new-repo-placeholder {
   font-size: 14px;
-  color: var(--text-dim);
+  color: var(--text-tertiary);
 }
 
 /* biome-ignore lint/style/noDescendingSpecificity: 区段序是契约——锚是别的
@@ -977,7 +977,7 @@
 }
 
 .prj-new-gh-search::placeholder {
-  color: var(--text-dim);
+  color: var(--text-tertiary);
 }
 
 .prj-new-gh-list {
@@ -1486,7 +1486,7 @@
 }
 
 .prj-tasks-search input::placeholder {
-  color: var(--text-dim);
+  color: var(--text-tertiary);
 }
 
 .prj-tasks-filter {
