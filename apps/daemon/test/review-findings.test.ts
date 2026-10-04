@@ -12,7 +12,15 @@
 //      在时以它为准（最后一条有效 verdict = 终稿）。
 // 附带：`{...}` 尾随散文（此前整段 parse 必败且无跨度回退）→ 首段跨度
 // 提取；pi 形态 content（text block 数组 / 单 block 对象）照常解析。
+// #808（B-C13 follow-up：模型把 line 写成字符串，严格校验曾整单丢弃）：
+//   5. line 全是数字字符串 → coerce 后整单保留（blocking 照常可判）；
+//   6. 部分 finding 坏（词表外 severity 等）→ 好条目保留 + 坏条目丢弃 +
+//      结论注记丢弃明细，不整单丢弃；
+//   7. findings 全坏（结论在但无一可用）→ failed，不误放行为通过（空
+//      findings 含义是「方案通过」，不可静默折）；
+//   8. 顺位：严格有效（新→旧）> 降级（最新可降级者）> failed。
 
+import { hasBlockingFinding } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
 import { extractReviewVerdict, type ReviewVerdictExtraction } from '../src/review-findings.js';
 
@@ -195,5 +203,103 @@ describe('AI 审核 findings 提取（M7 #330 / #700）', () => {
       assistantMsg('{"conclusion":"OK","findings":[]} 以上，请按此处理。'),
     ]);
     expect(verdict.conclusion).toBe('OK');
+  });
+
+  test('#808 失败方式 5：7 findings 全 line-字符串（含 1 blocking）→ 整单保留 + blocking 照常可判', () => {
+    // #709 实测形态：qwen3.8-max 把 7 条 findings 的 line 全写成字符串。
+    const payload = JSON.stringify({
+      conclusion: '方案在边界情况有硬风险',
+      findings: [
+        { id: '1', severity: 'blocking', summary: '空指针未防御', file: 'src/a.ts', line: '12' },
+        { id: '2', severity: 'suggestion', summary: '补日志', file: 'src/a.ts', line: '30' },
+        { id: '3', severity: 'info', summary: '拼写', line: '1' },
+        { id: '4', severity: 'suggestion', summary: '提取函数', file: 'src/b.ts', line: '88' },
+        { id: '5', severity: 'info', summary: '注释', line: '5' },
+        { id: '6', severity: 'suggestion', summary: '加测试', file: 'src/c.ts', line: '200' },
+        { id: '7', severity: 'info', summary: '换行', line: '7' },
+      ],
+    });
+    const verdict = expectOk([assistantMsg(`\`\`\`json\n${payload}\n\`\`\``)]);
+    expect(verdict.findings).toHaveLength(7);
+    for (const f of verdict.findings) {
+      if (f.line !== undefined) expect(typeof f.line).toBe('number');
+    }
+    expect(verdict.findings[0]?.line).toBe(12);
+    // blocking 可判 = server 侧自动修订回路照常触发（本票核心验收）。
+    expect(hasBlockingFinding(verdict)).toBe(true);
+  });
+
+  test('#808 失败方式 6：部分 finding 坏（词表外 severity）→ 好条目保留 + 坏条目丢弃 + 结论注记', () => {
+    const verdict = expectOk([
+      assistantMsg(
+        JSON.stringify({
+          conclusion: '两处需修',
+          findings: [
+            { id: '1', severity: 'blocking', summary: '真风险', file: 'src/a.ts', line: 3 },
+            { id: '2', severity: 'critical', summary: '词表外', file: 'src/a.ts', line: 4 },
+            { id: '3', severity: 'info', summary: '小建议', line: '9' },
+          ],
+        }),
+      ),
+    ]);
+    expect(verdict.findings.map((f) => f.id)).toEqual(['1', '3']);
+    expect(verdict.findings[1]?.line).toBe(9);
+    expect(hasBlockingFinding(verdict)).toBe(true);
+    expect(verdict.conclusion).toContain('两处需修');
+    expect(verdict.conclusion).toContain('1 条 finding 因格式问题被丢弃');
+    expect(verdict.conclusion).toContain('id=2');
+  });
+
+  test('#808 失败方式 7：findings 全坏（结论在但无一可用）→ failed，不误放行为通过', () => {
+    const reason = expectFailed([
+      assistantMsg(
+        JSON.stringify({
+          conclusion: '方案有硬风险',
+          findings: [
+            { id: '1', severity: 'critical', summary: '词表外' },
+            { id: '2', severity: 'blocking' },
+          ],
+        }),
+      ),
+    ]);
+    expect(reason).toContain('契约校验失败');
+  });
+
+  test('#808 失败方式 8 顺位：新消息可降级、旧消息严格有效 → 取旧的严格有效 verdict（终稿语义不变）', () => {
+    const verdict = expectOk([
+      assistantMsg(
+        '{"conclusion":"旧终稿","findings":[{"id":"1","severity":"info","summary":"x"}]}',
+      ),
+      assistantMsg(
+        JSON.stringify({
+          conclusion: '新尝试',
+          findings: [
+            { id: '1', severity: 'blocking', summary: '真风险' },
+            { id: '2', severity: 'critical', summary: '词表外' },
+          ],
+        }),
+      ),
+    ]);
+    // 新消息严格校验挂（critical 词表外）但可降级；旧消息严格有效。
+    // 降级顺位低于严格有效 → 仍取旧的严格有效 verdict。
+    expect(verdict.conclusion).toBe('旧终稿');
+  });
+
+  test('#808 失败方式 8 续：新消息可降级、无更早有效 verdict → 降级转正', () => {
+    const verdict = expectOk([
+      assistantMsg('纯散文，没有 JSON。'),
+      assistantMsg(
+        JSON.stringify({
+          conclusion: '新尝试',
+          findings: [
+            { id: '1', severity: 'blocking', summary: '真风险' },
+            { id: '2', severity: 'critical', summary: '词表外' },
+          ],
+        }),
+      ),
+    ]);
+    expect(verdict.findings).toHaveLength(1);
+    expect(hasBlockingFinding(verdict)).toBe(true);
+    expect(verdict.conclusion).toContain('被丢弃');
   });
 });

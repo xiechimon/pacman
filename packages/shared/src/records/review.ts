@@ -25,8 +25,9 @@ export const reviewFindingSchema = z.object({
   description: z.string().optional(),
   /** 引用文件路径（r8 60/65：file 字段；缺省 = 无引用）。 */
   file: z.string().optional(),
-  /** 文件内行号（r8 60/65：file:line 形式；缺省 = 仅文件）。 */
-  line: z.number().int().positive().optional(),
+  /** 文件内行号（r8 60/65：file:line 形式；缺省 = 仅文件）。#808：模型常把
+   * 行号写成字符串（如 "line": "1"）——coerce 容错，保持 int/positive 语义。 */
+  line: z.coerce.number().int().positive().optional(),
   /** 建议修复段（r8 60/65：建议段；缺省 = 无建议）。 */
   suggestion: z.string().optional(),
 });
@@ -123,7 +124,7 @@ export function buildReviewStepPrompt(args: {
             summary: '<finding 标题>',
             description: '<finding 解释>',
             file: '<可选：受影响文件相对路径>',
-            line: '<可选：受影响行号>',
+            line: 42,
             suggestion: '<可选：修复建议>',
           },
         ],
@@ -132,6 +133,8 @@ export function buildReviewStepPrompt(args: {
       2,
     ),
     '```',
+    // #808：示例里的 line 必须是数字形（不要写成字符串）；无行号时省略该字段。
+    '注意：line 是数字行号（如 42），不要写成字符串；没有行号时省略该字段。',
     '',
     '## 待审核方案',
     args.planText,
