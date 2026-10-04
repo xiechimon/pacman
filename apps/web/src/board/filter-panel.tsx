@@ -83,14 +83,14 @@ export interface FilterChip {
 
 const FOCUS = 'focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2';
 
-/** 行首勾选框（参考站实测形）：16px 圆角方。off = 控制边框空盒；on = 品牌
+/** 行首勾选框（参考站实测形）：16px 方角。off = 控制边框空盒；on = 品牌
  *  实底勾；mixed = 品牌边框 + 横杠（全选行的部分选中态）。槽位恒在，
  *  状态切换零布局位移。 */
 function CheckBox({ state }: { state: 'off' | 'on' | 'mixed' }) {
   return (
     <span
       aria-hidden
-      className={`flex size-4 flex-none items-center justify-center rounded border transition-colors ${
+      className={`flex size-4 flex-none items-center justify-center rounded-none border transition-colors ${
         state === 'off'
           ? 'border-input'
           : state === 'on'
@@ -221,7 +221,7 @@ function DimensionSection({
                     if (el) el.indeterminate = someSelected && !allSelected;
                   }}
                   onChange={() => (allSelected ? dimension.onClear() : dimension.onSelectAll())}
-                  className={`filter-dimension-all ${FOCUS} size-4 cursor-pointer appearance-none rounded border border-input transition-colors checked:border-(--card-button) checked:bg-(--card-button) indeterminate:border-(--card-button)`}
+                  className={`filter-dimension-all ${FOCUS} size-4 cursor-pointer appearance-none rounded-none border border-input transition-colors checked:border-(--card-button) checked:bg-(--card-button) indeterminate:border-(--card-button)`}
                 />
                 {allSelected && (
                   <Check className="pointer-events-none absolute inset-0 m-auto size-3 text-primary-foreground" />

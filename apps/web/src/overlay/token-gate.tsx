@@ -87,7 +87,7 @@ export function TokenGate() {
             // 过渡窄写 = components/ui/button 的同一处仓内偏离（TW 的
             // transition-colors 属性表含 outline-color，会把 focus 环吞进
             // 过渡初值）；dark 档另钉一次底，压适配层的 `dark:bg-input/30` 底噪。
-            className="token-gate-input h-9 rounded-md border-(--card-border) bg-(--surface) px-3 py-0 text-sm text-foreground transition-[color,background-color,border-color] focus-visible:border-(--card-border) focus-visible:ring-0 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 dark:bg-(--surface)"
+            className="token-gate-input h-9 rounded-none border-(--card-border) bg-(--surface) px-3 py-0 text-sm text-foreground transition-[color,background-color,border-color] focus-visible:border-(--card-border) focus-visible:ring-0 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 dark:bg-(--surface)"
             type="password"
             value={value}
             autoComplete="off"

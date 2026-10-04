@@ -94,7 +94,7 @@
   height: 28px;
   padding: 0 10px;
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface-inset);
   color: var(--text-primary);
   font-size: 12px;

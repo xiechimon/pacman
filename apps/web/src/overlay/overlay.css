@@ -53,7 +53,7 @@
   cursor: pointer;
 }
 
-/* #682 第二轮：机器 chip = 有边界控件（pill，.dlg-machine 惯用法）；第三轮
+/* #682 第二轮：机器 chip = 有边界控件（方角选择触发钮，.dlg-machine 惯用法）；第三轮
    起住底栏——高度对齐 30px 工具钮（光学同排，better-ui 对齐律）。shrink=0：
    机器标签是派发关键短数据（「自动」或主机名），永不截断。点贴 label。 */
 .new-task-machine {
@@ -63,7 +63,7 @@
   height: 30px;
   padding: 0 12px 0 10px;
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   color: var(--text-primary);
   font-size: 13px;
@@ -427,14 +427,14 @@
   color: var(--text-secondary);
 }
 
-/* A3 圆角归一：可交互控件一律 8px（原 6px，diff-audit #1）。 */
+/* #849 输入框圆角归零（Base UI 官方语言）：盒装输入一律 0。 */
 .delete-confirm-input {
   display: block;
   width: calc(100% - 32px);
   margin: 8px 16px 0;
   height: 30px;
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: 0;
   background: transparent;
   padding: 0 10px;
   font-family: inherit;

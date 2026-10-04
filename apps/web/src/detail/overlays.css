@@ -78,7 +78,7 @@
 
 .dlg-branch-box {
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--dialog-box-bg);
 }
 
@@ -126,7 +126,7 @@
   height: 30px;
   padding: 0 14px 0 11px;
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   color: var(--text-primary);
   font-size: 13px;
@@ -149,7 +149,7 @@
   line-height: 32px;
   padding: 0 16px;
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   font-family: var(--font-mono);
   font-size: 12px;
@@ -422,7 +422,7 @@
   height: 36px;
   padding: 0 12px;
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
 }
 
@@ -537,7 +537,7 @@
   min-height: 80px;
   padding: 12px;
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   font-size: 14px;
   line-height: 20px;

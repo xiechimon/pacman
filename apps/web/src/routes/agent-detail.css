@@ -55,7 +55,7 @@
 .agent-name-input {
   border: 1px solid var(--card-border);
   background: var(--surface);
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--text-primary);
   font-size: 15px;
   height: 32px;
@@ -78,7 +78,7 @@
 .agent-role-input {
   border: 1px solid var(--card-border);
   background: var(--surface);
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--text-primary);
   font-family: inherit;
   font-size: 13px;
@@ -182,7 +182,7 @@
   align-items: center;
   border: 1px solid var(--card-border);
   background: var(--surface);
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
@@ -197,7 +197,7 @@
   align-items: center;
   border: 1px solid var(--card-border);
   background: var(--surface);
-  border-radius: 8px;
+  border-radius: 0;
   color: var(--text-primary);
   cursor: pointer;
   display: inline-flex;
