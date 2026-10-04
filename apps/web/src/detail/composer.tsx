@@ -37,6 +37,7 @@ import { ArrowUp, Grid2x2, Paperclip, SearchPlus } from '../icons/index.js';
 import { useComposerWire } from '../overlay/composer-wire.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
 import type { FileMentionEntry } from '../overlay/mention-token.js';
+import { SlashHelp, SlashMenu } from '../overlay/slash-menu.js';
 
 interface ComposerProps {
   placeholder: string;
@@ -123,6 +124,22 @@ export function Composer({
     insertTokens,
     insertFile,
     groups,
+    // #731 `/` slash completion: availability mirrors the toolbar buttons'
+    // own display conditions (a command with no live action is omitted,
+    // never a dead row).
+    slashOpen,
+    slashQuery,
+    slashCaret,
+    slashSections,
+    slashHighlight,
+    setSlashHighlight,
+    slashListboxId,
+    slashListboxRef,
+    acceptSlashRow,
+    helpOpen,
+    closeHelp,
+    helpRows,
+    helpSkillCount,
   } = useComposerWire({
     editable,
     draft: draftProp,
@@ -131,6 +148,12 @@ export function Composer({
     onAttachment,
     mentionGroups,
     mentionFiles,
+    slash: {
+      reviewAvailable: aiReview && onReview !== undefined,
+      stopAvailable: streaming && onStop !== undefined,
+      ...(onReview !== undefined ? { onReview } : {}),
+      ...(onStop !== undefined ? { onStop } : {}),
+    },
   });
 
   return (
@@ -190,6 +213,22 @@ export function Composer({
             }}
             listboxRef={inlineListboxRef}
             listboxId={inlineListboxId}
+          />
+          {/* #731 `/` slash menu: same combobox anchor/geometry as the `@`
+              listbox above. Click = Enter-with-highlight semantics. */}
+          <SlashMenu
+            open={slashOpen}
+            sections={slashSections.map((s) => ({
+              title: s.section === 'builtin' ? t('命令') : t('技能'),
+              rows: s.rows,
+            }))}
+            caret={slashCaret}
+            query={slashQuery}
+            highlight={slashHighlight}
+            onHover={setSlashHighlight}
+            onPick={(row) => acceptSlashRow(row, 'enter')}
+            listboxRef={slashListboxRef}
+            listboxId={slashListboxId}
           />
         </div>
       ) : (
@@ -270,6 +309,14 @@ export function Composer({
           insertTokens(tokens);
           closePicker();
         }}
+      />
+      {/* #731 `/help` panel: read-only FloatingShell over the available
+          builtins. */}
+      <SlashHelp
+        open={helpOpen}
+        onClose={closeHelp}
+        commands={helpRows}
+        skillCount={helpSkillCount}
       />
     </div>
   );

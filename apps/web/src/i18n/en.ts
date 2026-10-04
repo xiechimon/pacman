@@ -105,6 +105,16 @@ export const EN: Record<string, string> = {
   'AI 审核进行中…': 'AI review in progress…',
   提及: 'Mention',
   停止: 'Stop',
+  // #731 `/` slash completion vocabulary (zh keys, en values).
+  命令: 'Commands',
+  '没有匹配"/{query}"的命令': 'No commands match "/{query}"',
+  清空输入: 'Clear the input',
+  打开提及面板: 'Open the mention picker',
+  '发起 AI 审核': 'Start an AI review',
+  停止当前运行: 'Stop the current run',
+  查看命令说明: 'Show command help',
+  命令说明: 'Command help',
+  '团队技能来自技能页面（共 {count} 个）': 'Team skills come from the Skills page ({count} total)',
   '停止当前这一轮？': 'Stop this round?',
   '丢弃本轮修改——方案和代码回到上一个版本':
     'Discard this round’s changes — plan and code revert to the previous version',
