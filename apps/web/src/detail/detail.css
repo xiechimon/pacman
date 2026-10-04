@@ -67,8 +67,8 @@
   color: var(--text-tertiary);
 }
 
-/* XMON-24：五态 pill 视觉 = registry Badge + dhead 消费端 utilities
-   （--chip-*-bg/fg 同一 token 对）；此处只余按钮交互层几何。
+/* #853：五态 pill 视觉 = ui/chip 原语（dhead 消费端只透传
+   detail-chip--<tone> 定位别名 + 保形几何）；此处只余按钮交互层几何。
    detail-chip--<tone> 类名保留在 DOM 作 e2e 定位别名，规则本体
    删除避免双源。 */
 .detail-chip {

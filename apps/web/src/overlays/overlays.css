@@ -207,39 +207,12 @@
   color: var(--text-dim);
 }
 
+/* #853：行 chip 皮肤收进 ui/chip 原语（mini 档 = 本面 14px/0 6px/10px
+   实测，r7 05b）——此处只留行内定位几何（右对齐 + 不挤压），五态 token
+   对零重复。 */
 .search-row-chip {
   flex: none;
   margin-left: auto;
-  height: 14px;
-  padding: 0 6px;
-  border-radius: 9999px;
-  font-size: 10px;
-  line-height: 14px;
-}
-
-.search-row-chip--idle {
-  background: var(--chip-idle-bg);
-  color: var(--chip-idle-fg);
-}
-
-.search-row-chip--plan {
-  background: var(--chip-plan-bg);
-  color: var(--chip-plan-fg);
-}
-
-.search-row-chip--confirm {
-  background: var(--chip-confirm-bg);
-  color: var(--chip-confirm-fg);
-}
-
-.search-row-chip--done {
-  background: var(--chip-done-bg);
-  color: var(--chip-done-fg);
-}
-
-.search-row-chip--failed {
-  background: var(--chip-failed-bg);
-  color: var(--chip-failed-fg);
 }
 
 .search-empty {
