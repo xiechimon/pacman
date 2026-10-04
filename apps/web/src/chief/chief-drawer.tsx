@@ -73,6 +73,7 @@ import {
   X,
 } from '../icons/index.js';
 import { attachmentFailureTitle } from '../overlay/attachment-paste.js';
+import { AttachmentStrip } from '../overlay/attachment-strip.js';
 import { useComposerWire } from '../overlay/composer-wire.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
 import { useChiefNewThreadHotkey } from '../overlays/hotkeys.js';
@@ -326,6 +327,7 @@ export function ChiefDrawer({
     fileInputRef,
     openFilePicker,
     attaching,
+    pendingAttachments,
     onPickFiles,
     pickerOpen,
     togglePicker,
@@ -975,6 +977,10 @@ export function ChiefDrawer({
                   listboxId={inlineListboxId}
                 />
               </div>
+              {/* #757 附件 strip（detail composer 同件：在途占位 + 落定 chip，
+              可点预览）。chief composer 卡是 in-flow 布局，strip 走流式、
+              空时零节点。 */}
+              <AttachmentStrip draft={wire.draft} pending={pendingAttachments} />
               <input
                 ref={fileInputRef}
                 type="file"

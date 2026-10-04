@@ -23,6 +23,7 @@ import {
   filesFromClipboardData,
   insertAttachmentTokens,
   isGenericClipboardName,
+  parseAttachmentTokens,
   pastedImageExt,
   preparePastedFiles,
 } from '../src/overlay/attachment-paste.js';
@@ -288,5 +289,39 @@ describe('preparePastedFiles —— 通名 blob 重命名（FM6）', () => {
     for (const name of names) {
       expect(isValidFileName(name)).toBe(true);
     }
+  });
+});
+
+describe('parseAttachmentTokens —— draft 整行 token 解析（#757  strip 数据源）', () => {
+  it('独占一行的 token 解析出 name + key', () => {
+    expect(parseAttachmentTokens(`${TOKEN}\n`)).toEqual([
+      { name: 'pasted-image-1.png', key: 'team-1/att-1.png' },
+    ]);
+  });
+
+  it('多 token 行按 draft 序返回', () => {
+    expect(parseAttachmentTokens(`hello\n${TOKEN}\n${TOKEN2}\n world`)).toEqual([
+      { name: 'pasted-image-1.png', key: 'team-1/att-1.png' },
+      { name: 'pasted-image-2.png', key: 'team-1/att-2.png' },
+    ]);
+  });
+
+  it('行中内联 token 不解析（与 ATTACHMENT_LINE 同律，不 chip 化）', () => {
+    expect(parseAttachmentTokens(`look ${TOKEN} here`)).toEqual([]);
+  });
+
+  it('空 draft 与纯文字返回空集', () => {
+    expect(parseAttachmentTokens('')).toEqual([]);
+    expect(parseAttachmentTokens('just words\nmore words')).toEqual([]);
+  });
+
+  it('解析结果与渲染器同源：每个命中行经 parseChatMarkdown 都是 attachment 块', () => {
+    const draft = `note\n${TOKEN}\n${TOKEN2}\ntail`;
+    const parsed = parseAttachmentTokens(draft);
+    const blocks = parseChatMarkdown(draft).filter((b) => b.kind === 'attachment');
+    expect(parsed.length).toBe(blocks.length);
+    expect(parsed.map((p) => p.key)).toEqual(
+      blocks.map((b) => (b.kind === 'attachment' ? b.key : '')),
+    );
   });
 });

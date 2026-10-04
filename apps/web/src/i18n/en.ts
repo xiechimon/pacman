@@ -778,6 +778,9 @@ export const EN: Record<string, string> = {
   '附件超过 10MB 上限': 'Attachment exceeds the 10 MB limit',
   不支持该文件类型: 'That file type is not supported',
   附件上传失败: 'Attachment upload failed',
+  // —— #757 composer 附件 strip（在途占位 + 落定 chip，同面中文键）——
+  附件: 'Attachments',
+  上传中: 'Uploading',
   // —— #640 开始任务单出口（直发总管编排回合；r14 §5.7 前置裁决落地）——
   由总管创建: 'Created by chief',
   来源: 'Source',

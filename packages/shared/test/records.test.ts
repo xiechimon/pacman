@@ -16,6 +16,7 @@ import {
   chiefGetResponseSchema,
   chiefRecordSchema,
   chiefThreadSchema,
+  chiefThreadTitle,
   createTodoBodySchema,
   daemonJsonSchema,
   deviceJsonSchema,
@@ -732,5 +733,29 @@ describe('search response (02 §6.3 [设计] 自设 wire)', () => {
         agents: [{ id: 'a', displayName: 'r3-builder' }],
       }),
     ).toMatchObject({ projects: [{ id: 'p', name: 'p' }] });
+  });
+});
+
+describe('chiefThreadTitle (#757：附件 token 行不裸路径)', () => {
+  it('纯文本首句照旧截断', () => {
+    expect(chiefThreadTitle('帮 r3-lifecycle 写一份构建文档吧')).toBe('帮 r3-lifecyc…');
+  });
+
+  it('首行是附件 token 行时取其后首个正文行', () => {
+    expect(
+      chiefThreadTitle('![pasted-image-1.png](attachment:team-1/att-1.png)\n看看这个报错'),
+    ).toBe('看看这个报错');
+  });
+
+  it('全是 token 行时取首个 token 的文件名（12 字同律截断）', () => {
+    expect(chiefThreadTitle('![pasted-image-1.png](attachment:team-1/att-1.png)')).toBe(
+      'pasted-image…',
+    );
+  });
+
+  it('行中内联 token 只留文件名（仍受 12 字截断）', () => {
+    expect(chiefThreadTitle('看这个 ![a.png](attachment:t/i.png) 很重要')).toBe(
+      '看这个 a.png 很重…',
+    );
   });
 });
