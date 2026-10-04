@@ -1103,8 +1103,6 @@
 
 .chat-plan-title {
   margin-left: 6px;
-  min-width: 0;
-  overflow-wrap: break-word;
 }
 
 /* #366: the open glyph is a real button when the page wires plan-card
