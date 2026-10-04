@@ -374,6 +374,11 @@ export const EN: Record<string, string> = {
     'Restore to here? The {n} messages after it are removed and the Chief resends from this one as a fresh turn.',
   展开过程: 'Show process',
   收起过程: 'Hide process',
+  // #822 在飞存在行展开面：行开关 aria + 正在调用的工具 + 空面 fallback。
+  展开实时步骤: 'Show live steps',
+  收起实时步骤: 'Hide live steps',
+  '正在调用 {n}': 'Calling {n}',
+  '等待 Agent 响应…': 'Waiting for the agent…',
   '默认（与绑定 Agent 相同）': 'Default (same as bound Agent)',
   '搜索模型…': 'Search models…',
   没有匹配的模型: 'No matching models',

@@ -440,6 +440,26 @@
   overflow: hidden;
 }
 
+/* #822 在飞存在行可展开：行本体是 button（箭头可点），中和件 = 背景/边框/
+   内边距/字形四清零（保留 .chief-streaming 的行级排布与暗字色，折叠态几何
+   与旧 span 逐字一致）；展开面挂同列下方，复用 .chief-turn-tools 整套皮肤
+   （margin/padding/gap 不另起）。显隐直接切（#615 折叠同律，无过渡）。 */
+.chief-streaming-col {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+button.chief-streaming {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .chief-spinner {
   flex: none;
   color: var(--text-dim);

@@ -280,6 +280,16 @@ export function ChiefDrawer({
     null,
   );
   const [toolsOpen, setToolsOpen] = useState<Set<number>>(() => new Set());
+  // #822 在飞存在行展开态：streaming 行是 button（箭头可点），展开面 = 正在
+  // 调用的工具 + 本轮已落库的工具行（mapChief 投影，无新 wire）。取代 race
+  // 护栏见下 hasStreaming effect——typing 接管那一帧 streaming 缺席即清零，
+  // 展开态永不泄漏到 typing 行；动效取直接显隐（#615 foot 折叠同律，仓内无
+  // V2 scale-fade 现货，不新造动效体系）。
+  const [streamOpen, setStreamOpen] = useState(false);
+  const hasStreaming = chief.stream?.some((s) => s.kind === 'streaming') ?? false;
+  useEffect(() => {
+    if (!hasStreaming) setStreamOpen(false);
+  }, [hasStreaming]);
   // #615 复制钮的瞬时回执：键 = 消息位（u<i> / r<i>），1.5s 后回 Copy 字形。
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const copyText = (key: string, text: string) => {
@@ -343,6 +353,7 @@ export function ChiefDrawer({
     setModelOpen(false);
     setThreadsOpen(false);
     setRewindConfirm(null);
+    setStreamOpen(false);
     closePicker();
     closeInline();
   }, [open, closePicker, closeInline]);
@@ -715,17 +726,62 @@ export function ChiefDrawer({
                           ) : (
                             <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
                           )}
-                          <span className="chief-streaming">
-                            {/* #672/#739: loading-dev Atom（16px/900ms，与详情页
-                                chat-spinner 同款）——库自带 reduced-motion 冻结与
-                                aria-hidden，标签文本是可访问的 live 线索。 */}
-                            <Atom size={16} duration={900} className="chief-spinner" />
-                            {item.seconds != null && (
-                              <span className="chief-streaming-secs">{item.seconds}s</span>
+                          {/* #822：在飞存在行可展开——整行是 button（箭头不再是
+                          纯装饰），展开面挂同列下方（.chief-turn-tools 同皮，
+                          #615 折叠同族）。秒数/计时器不挂（#471 律：静默期无
+                          流事件驱动重渲，计数会冻结说谎）。 */}
+                          <div className="chief-streaming-col">
+                            <button
+                              type="button"
+                              className="chief-streaming"
+                              aria-expanded={streamOpen}
+                              aria-label={t(streamOpen ? '收起实时步骤' : '展开实时步骤')}
+                              onClick={() => setStreamOpen((v) => !v)}
+                            >
+                              {/* #672/#739: loading-dev Atom（16px/900ms，与详情页
+                                  chat-spinner 同款）——库自带 reduced-motion 冻结与
+                                  aria-hidden，标签文本是可访问的 live 线索。 */}
+                              <Atom size={16} duration={900} className="chief-spinner" />
+                              {item.seconds != null && (
+                                <span className="chief-streaming-secs">{item.seconds}s</span>
+                              )}
+                              {streamOpen ? (
+                                <ChevronDown width={10} height={10} />
+                              ) : (
+                                <ChevronRight width={10} height={10} />
+                              )}
+                              <span className="chief-streaming-label">{t(item.label)}</span>
+                            </button>
+                            {streamOpen && (
+                              <div className="chief-turn-tools">
+                                {chief.runningTool != null && (
+                                  <div className="chief-turn-tool-row">
+                                    <span className="chief-turn-tool-name">
+                                      {t('正在调用 {n}', { n: chief.runningTool })}
+                                    </span>
+                                  </div>
+                                )}
+                                {item.tools?.map((tool, k) => (
+                                  <div key={k} className="chief-turn-tool-row">
+                                    <span className="chief-turn-tool-name">{tool.name}</span>
+                                    {tool.seconds !== undefined && (
+                                      <span className="chief-turn-tool-sec">{tool.seconds}s</span>
+                                    )}
+                                    {tool.error === true && (
+                                      <span className="chief-turn-tool-err">{t('失败')}</span>
+                                    )}
+                                  </div>
+                                ))}
+                                {chief.runningTool == null && (item.tools?.length ?? 0) === 0 && (
+                                  <div className="chief-turn-tool-row">
+                                    <span className="chief-turn-tool-name">
+                                      {t('等待 Agent 响应…')}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
                             )}
-                            <ChevronRight width={10} height={10} />
-                            <span className="chief-streaming-label">{t(item.label)}</span>
-                          </span>
+                          </div>
                         </div>
                       );
                     // XMON-105: a bound chief answers as its agent — the stream
