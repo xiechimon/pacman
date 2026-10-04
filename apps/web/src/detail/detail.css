@@ -1411,17 +1411,42 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
      分隔线恢复可见；投影跨线是浮层正常层次信号（阴影管层次）。 */
   bottom: 48px;
   width: 224px;
-  /* #139 single-source edge recipe: the ring is a shadow spread (no real
-     border) so the hairline stays uniform at fractional page zoom */
-  border: 0;
-  border-radius: var(--edge-radius);
+  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0。#139 ring 配方
+     由实框取代（more-menu 同律）；投影沿现行。底边 48px 是 #610 dogfood
+     净空，不动。Arrow 翻到底边下指触发行。 */
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   background: var(--popover-bg);
-  box-shadow: var(--edge-ring), var(--edge-shadow);
+  box-shadow: var(--edge-shadow);
   display: flex;
   flex-direction: column;
   /* local（#688 阶梯外）：冻结捕获变体画在侧栏 rail 自己的 stacking
      context 里，10 只需压住 rail 内部行——根级层序由 rail 的 z 承载。 */
   z-index: 10;
+}
+
+/* V2 Arrow（描边 12×6，下指触发行左上）。 */
+.user-menu::before {
+  content: "";
+  position: absolute;
+  bottom: 1px;
+  left: 20px;
+  width: 12px;
+  height: 6px;
+  background: var(--border-default);
+  clip-path: polygon(0 0, 50% 100%, 100% 0);
+}
+
+.user-menu::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  left: 21px;
+  width: 10px;
+  height: 5px;
+  background: var(--popover-bg);
+  clip-path: polygon(0 0, 50% 100%, 100% 0);
 }
 
 /* #127 live-trigger render (opened from the sidebar avatar chips): fixed
@@ -1455,7 +1480,8 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   display: flex;
   align-items: center;
   gap: 11px;
-  padding: 14px 12px 14px 14px;
+  /* 壳垫 12px 后行内横缩清零——头像 inset 落 12（原 12/14）。纵向 14px 不动。 */
+  padding: 14px 0;
   border-bottom: 1px solid var(--border-default);
 }
 
@@ -1472,7 +1498,8 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
 }
 
 .user-menu-rows {
-  padding: 12px 10px;
+  /* 壳垫 12px 后行内缩清零——字墨 inset 落 12（原 10）。纵向 12px 不动。 */
+  padding: 12px 0;
   display: flex;
   flex-direction: column;
   gap: 12px;

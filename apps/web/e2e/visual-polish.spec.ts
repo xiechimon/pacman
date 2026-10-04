@@ -18,8 +18,8 @@ import { expect, type Page, test } from '@playwright/test';
 // the account popover stays on the popover-tier (--edge-shadow) because it
 // opens over content and needs visible separation. Card, column and banner
 // share the edge ring + radius 0 — the seam between the banner and the column
-// container is visually continuous. (The account popover keeps its 12px
-// overlay shell; overlay bone rides P3, not this ticket.)
+// container is visually continuous. The popover rides the V2 弹层壳
+// (#790 P3: 1px 墨线框 + 圆角 0, more-menu 同律) instead of the card family.
 // Each surface is asserted in both themes — the polish is a dual-theme contract.
 
 /** resolved single-source ring + the --border-default color it must ride */
@@ -107,17 +107,17 @@ for (const theme of ['light', 'dark'] as const) {
     expect(banner.shadow).toContain(banner.cardShadow);
   });
 
-  test(`account popover rides the same edge ring as the card but keeps popover-tier shadow (${theme})`, async ({
+  test(`account popover rides the V2 shell border, keeps popover-tier shadow (${theme})`, async ({
     page,
   }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=17');
 
     const menu = await edgeContract(page, '.user-menu');
-    expect(menu.border).toBe('0px');
-    expect(menu.radius).toBe('12px');
-    expect(menu.shadow.startsWith(menu.ring)).toBe(true);
-    expect(menu.ring.startsWith(`${menu.borderColor} `)).toBe(true);
+    // V2 弹层壳（#790 P3）: 1px 实框墨线 + 圆角 0,框色走 --border-default。
+    expect(menu.border).toBe('1px');
+    expect(menu.radius).toBe('0px');
+    expect(menu.borderColorOwn).toBe(menu.borderColor);
     // #161: the popover opens over content and needs visible separation,
     // so it stays on the heavier --edge-shadow tier — NOT --card-shadow
     expect(menu.shadow).toContain(menu.edgeShadow);

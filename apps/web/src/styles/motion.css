@@ -45,13 +45,19 @@
   }
 }
 
-/* ---- hover / press states (#73) ----
-   Row and menu surfaces tint with the official --surface-hover token over
-   the standard 150ms color step; hover is gated to fine pointers like the
-   official sheet's @media (hover:hover) and (pointer:fine) block, and coarse
-   pointers zero the transition on press (same sheet, pointer:coarse block).
+/* ---- hover / press states (#73, base-ui-theme P4 #791) ----
+   Row and menu surfaces tint with the theme accent-soft token
+   (color-mix spot 14%, shadcn.css 值正本） over the standard 150ms color
+   step; danger rows (the more-menu 删除行） ride the parallel danger-soft
+   tint instead. Hover is gated to fine pointers like the official sheet's
+   @media (hover:hover) and (pointer:fine) block, and coarse pointers zero
+   the transition on press (same sheet, pointer:coarse block).
    Board cards carry NO hover styling: r2 28 vs 28b (hover-moment recapture)
-   are pixel-identical, so a card hover lift/tint would be a divergence. */
+   are pixel-identical, so a card hover lift/tint would be a divergence.
+   不跟本 tint 的行 hover（有意为例外，见各自注释）：侧栏行（§2.2 [保留]
+   cds alpha 梯）、搜索行（overlays.css #159 以 --row-selected 覆写本族，
+   键盘 cursor 与 hover 共面）、提及/下拉选中行（hover 即选中语义）、分段
+   chip（--seg-hover 自立 token，有专属 spec 钉扎）。 */
 @media (hover: hover) and (pointer: fine) {
   .more-menu-item,
   .plan-dropdown-row,
@@ -74,7 +80,13 @@
   .dlg-close:hover,
   .new-task-close:hover,
   .delete-confirm-close:hover {
-    background-color: var(--surface-hover);
+    background-color: var(--accent-soft);
+  }
+
+  /* 删除行（§1.1：删除行吃 danger 淡 tint）——more-menu 的 danger 行由
+     data-action 锚定（nth-child 锚行序，#701 证明行序会动）。 */
+  .more-menu-item[data-action="delete"]:hover {
+    background-color: var(--danger-soft);
   }
 }
 

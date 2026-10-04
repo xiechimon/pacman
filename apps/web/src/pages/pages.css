@@ -404,6 +404,12 @@
   color: var(--stop);
 }
 
+/* P4 #791（§1.1）：删除行 hover 吃 danger 淡 tint（与 #73 家族的
+   more-menu 删除行同 token；普通行无 hover 面，只键盘 focus 面，不动）。 */
+.sched-card-menu-row[data-action="delete"]:hover {
+  background-color: var(--danger-soft);
+}
+
 /* t-0070: 菜单行是 div[role=menuitem]（Base UI Item 渲染元素），不在 #388
    全局环的 :where(button, a, [role="button"], …) 名单里，且原语 base 带
    outline-hidden——键盘 roving focus 的可见环按 #388 同配方 per-face 补钉。 */
@@ -898,17 +904,44 @@
 
 .prj-new-gh-picker {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 0;
   right: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 8px;
+  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px /
+     最小宽 220（横向拉伸面，窄容器下限）。 */
+  min-width: 220px;
+  padding: 12px;
   background: var(--popover-bg);
-  border-radius: var(--radius-popover);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   box-shadow: var(--fab-shadow);
   z-index: var(--z-popover);
+}
+
+/* V2 Arrow（描边 12×6，上指锚边左上）。 */
+.prj-new-gh-picker::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 16px;
+  width: 12px;
+  height: 6px;
+  background: var(--border-default);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.prj-new-gh-picker::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 17px;
+  width: 10px;
+  height: 5px;
+  background: var(--popover-bg);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 .prj-new-gh-picker-head {
@@ -1001,17 +1034,44 @@
    选择钮回填）。geometry [设计] — 上游无像素采集，贴仓内锚定弹层词汇。 */
 .dir-browser {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 0;
   right: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px;
+  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px /
+     最小宽 220（横向拉伸面，窄容器下限）。 */
+  min-width: 220px;
+  padding: 12px;
   background: var(--popover-bg);
-  border-radius: var(--radius-popover);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
   box-shadow: var(--fab-shadow);
   z-index: var(--z-popover);
+}
+
+/* V2 Arrow（描边 12×6，上指锚边左上）。 */
+.dir-browser::before {
+  content: "";
+  position: absolute;
+  top: 1px;
+  left: 16px;
+  width: 12px;
+  height: 6px;
+  background: var(--border-default);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.dir-browser::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 17px;
+  width: 10px;
+  height: 5px;
+  background: var(--popover-bg);
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 .dir-browser-bar {
