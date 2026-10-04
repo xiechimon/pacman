@@ -661,6 +661,8 @@ a.chief-identity {
   font-size: 13px;
   line-height: 20px;
   color: var(--text-primary);
+  /* #814 rework: tabular figures — same digit-column law as .new-task-spec. */
+  font-variant-numeric: tabular-nums;
 }
 
 .chief-composer-input::placeholder {

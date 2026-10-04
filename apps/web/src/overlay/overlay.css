@@ -315,6 +315,10 @@
   line-height: 20px;
   color: var(--text-primary);
   outline: none;
+  /* #814 rework: tabular figures so `1. ` / `2. ` markers share one
+     advance width — the text after the marker keeps a straight column
+     instead of jogging with the digit (measured 2.8px on 1 vs 2). */
+  font-variant-numeric: tabular-nums;
 }
 
 .new-task-spec::placeholder {
