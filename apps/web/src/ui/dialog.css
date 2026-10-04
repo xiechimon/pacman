@@ -60,7 +60,7 @@
 .dlg-form-input {
   height: 36px;
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   padding: 0 12px;
   font-size: 14px;
@@ -72,7 +72,7 @@
 .chief-dlg-charter-input {
   min-height: 88px;
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   padding: 8px 12px;
   font-size: 14px;

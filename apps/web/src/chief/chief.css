@@ -942,7 +942,7 @@ a.chief-identity {
   max-width: 200px;
   padding: 0 10px;
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   font: inherit;
   font-size: 13px;
@@ -1373,7 +1373,7 @@ a.chief-identity {
   height: 36px;
   padding: 0 12px;
   border: 1px solid var(--card-border);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   color: var(--text-tertiary);
 }

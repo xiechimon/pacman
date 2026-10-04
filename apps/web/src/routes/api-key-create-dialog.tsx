@@ -103,14 +103,14 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
           {t('名称（可选）')}
         </label>
         {/* a3-pages 收编 → B2 · secondary 面（XMON-20）：Input 走 components/ui
-            件，per-face 值（36px 盒 / 8px 圆角 / card-border 描边 / surface 底 /
+            件，per-face 值（36px 盒 / 0 圆角 / card-border 描边 / surface 底 /
             0 12 内垫 / 14px 字）以工具类钉回，不取底座默认档。聚焦环按仓级 #388
             canon（2px --focus-ring + offset 2，与 B2 门页输入同配方）；过渡窄写
             压掉 TW 的 transition-colors（属性表含 outline-color，会吞掉环的初值）。
             类名留作 e2e/语义定位别名。 */}
         <Input
           id="apikey-name-input"
-          className="apikey-form-input h-9 rounded-md border-(--card-border) bg-(--surface) px-3 py-0 text-sm text-foreground placeholder:text-current/50 transition-[color,background-color,border-color] focus-visible:border-(--card-border) focus-visible:ring-0 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 dark:bg-(--surface)"
+          className="apikey-form-input h-9 rounded-none border-(--card-border) bg-(--surface) px-3 py-0 text-sm text-foreground placeholder:text-current/50 transition-[color,background-color,border-color] focus-visible:border-(--card-border) focus-visible:ring-0 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 dark:bg-(--surface)"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder={t('如：笔记本、CI 机器')}
