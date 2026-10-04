@@ -11,12 +11,24 @@
 // 段;#770 起 providers 段已除,spec 11 §A10)落账口径见 chief-model-select.tsx
 // 文件头。
 
-import { BRAND, type ChiefCompactionModel } from '@pacman/shared';
+import {
+  BRAND,
+  type ChiefCompactionModel,
+  MEMORY_EMPTY_COPY,
+  MEMORY_QUOTA_PER_AGENT,
+} from '@pacman/shared';
 import { useState } from 'react';
-import { useApiMutations, useChief, useMembers, useModelSources } from '../api/hooks.js';
+import {
+  useApiMutations,
+  useChief,
+  useMembers,
+  useMemories,
+  useModelSources,
+} from '../api/hooks.js';
 import { toModelOptions } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
+import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Tabs, TabsIndicator, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import type { ChiefContent, ChiefSettingsTab, ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -47,7 +59,11 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
   const charter = live ? (chiefQ.data?.chief.charter ?? '') : '';
   const boundAgent =
     live && chiefQ.data?.agentActor != null
-      ? { id: chiefQ.data.agentActor.id, name: chiefQ.data.agentActor.displayName }
+      ? {
+          id: chiefQ.data.agentActor.id,
+          name: chiefQ.data.agentActor.displayName,
+          avatarUrl: chiefQ.data.agentActor.avatarUrl,
+        }
       : null;
   const agentOptions: ChiefAgentOption[] | undefined = live
     ? (membersQ.data ?? [])
@@ -63,6 +79,14 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
     : undefined;
   const [agentOpen, setAgentOpen] = useState(false);
   const [charterOpen, setCharterOpen] = useState(false);
+  // #811: 记忆 tab 读绑定 Agent 的记忆集（agent-detail 同源 useMemories；
+  // 未绑定不请求，判据与 Agent 面 boundAgent 同源——误报未选即源于此）。
+  const memoriesQ = useMemories(teamId, boundAgent?.id, live && boundAgent != null);
+  const memories = memoriesQ.data ?? [];
+  // #811: 关注 tab 读 chief 封套 watches/wakes（派工自动 watch、settle 后
+  // 自动解；手动取关无服务端 mutation，故本面只读——见报告）。
+  const watches = live ? (chiefQ.data?.watches ?? []) : [];
+  const wakes = live ? (chiefQ.data?.wakes ?? []) : [];
   // live 提交 = PATCH chief(父侧 onSuccess 关窗,create-secret 同律);
   // fixture 面 callbacks 缺省 → dialog 走 accept 律(提交即关)。
   const bindAgent = live
@@ -151,7 +175,19 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
               onClick={() => setAgentOpen(true)}
             >
               {boundAgent != null ? (
-                <span className="chief-agent-row-avatar">{boundAgent.name.charAt(0)}</span>
+                boundAgent.avatarUrl != null ? (
+                  /* #811: 已绑定行接 agentActor.avatarUrl（封套自带，不新增
+                      请求；XMON-105 --img 律：图即 24 圆盘，去 chip 底边）。 */
+                  <span className="chief-agent-row-avatar chief-agent-row-avatar--img">
+                    <SeededAvatar
+                      name={boundAgent.name}
+                      src={boundAgent.avatarUrl}
+                      fallback="/avatar-robot-1.svg"
+                    />
+                  </span>
+                ) : (
+                  <span className="chief-agent-row-avatar">{boundAgent.name.charAt(0)}</span>
+                )
               ) : (
                 <ChiefFaceDashed width={24} height={24} />
               )}
@@ -205,17 +241,63 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
           </>
         )}
 
-        {tab === 'memory' && (
-          <div className="chief-memo">
-            {t('尚未选择 Agent。请先在「Agent」页选定 Agent，记忆将保存在该 Agent 上。')}
-          </div>
-        )}
+        {tab === 'memory' &&
+          (live && boundAgent != null ? (
+            memoriesQ.data != null ? (
+              <div className="chief-memory">
+                {/* 配额头与 agent-detail 同文（`记忆 · n / 100`，上限取 shared
+                    单源常量）；行只读，管理落 Agent 详情记忆 tab。 */}
+                <p className="chief-memory-head">
+                  {t('记忆 · {n} / {max}', { n: memories.length, max: MEMORY_QUOTA_PER_AGENT })}
+                </p>
+                {memories.length === 0 ? (
+                  <p className="chief-memo">{t(MEMORY_EMPTY_COPY)}</p>
+                ) : (
+                  <div className="chief-memory-card">
+                    {memories.map((memory) => (
+                      <div key={memory.id} className="chief-memory-row">
+                        <span className="chief-memory-title">{memory.title}</span>
+                        <span className="chief-memory-content">{memory.content}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null
+          ) : (
+            <div className="chief-memo">
+              {t('尚未选择 Agent。请先在「Agent」页选定 Agent，记忆将保存在该 Agent 上。')}
+            </div>
+          ))}
 
-        {tab === 'watches' && (
-          <div className="chief-watches">
-            {t('暂无跟进事项。总管关注某个任务，或约定到点回头核实时，会按主题列在这里。')}
-          </div>
-        )}
+        {tab === 'watches' &&
+          (live && (watches.length > 0 || wakes.length > 0) ? (
+            <div className="chief-watch">
+              {watches.map((watch) => (
+                <div key={watch.threadId} className="chief-watch-card">
+                  <span className="chief-watch-title">{watch.title}</span>
+                  <span className="chief-watch-meta">{watch.threadTitle}</span>
+                </div>
+              ))}
+              {wakes.map((wake) => {
+                const note = typeof wake.note === 'string' ? wake.note : null;
+                const at = typeof wake.at === 'number' ? wake.at : null;
+                const id = typeof wake.id === 'string' ? wake.id : null;
+                return (
+                  <div key={id ?? `${at}`} className="chief-watch-card">
+                    <span className="chief-watch-title">{note ?? t('到点提醒')}</span>
+                    {at != null && (
+                      <span className="chief-watch-meta">{new Date(at).toLocaleString()}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="chief-watches">
+              {t('暂无跟进事项。总管关注某个任务，或约定到点回头核实时，会按主题列在这里。')}
+            </div>
+          ))}
       </div>
       {/* 弹窗挂在 tab 条件块外:切换 tab 不带走开态(dialog 遮罩层级高于
           设置面)。 */}

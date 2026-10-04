@@ -358,6 +358,8 @@ export const EN: Record<string, string> = {
     'No Agent selected yet. Pick an Agent on the "Agent" tab first; memories are saved on that Agent.',
   '暂无跟进事项。总管关注某个任务，或约定到点回头核实时，会按主题列在这里。':
     'Nothing being watched yet. When the Chief watches a todo, or promises to check back at a set time, it is listed here by thread.',
+  // #811 关注 tab：无备注 wake 行的回退文案（有备注显示备注原文）。
+  到点提醒: 'Scheduled check-in',
   // #182 设置面接线：选择总管 Agent dialog + 章程编辑弹窗；换绑二次确认
   // copy 走 shared CHIEF_REBIND_CONFIRM_COPY canon（<agent> 占位，显示层替换，
   // i18n-coverage COMPUTED_KEYS 登记）。

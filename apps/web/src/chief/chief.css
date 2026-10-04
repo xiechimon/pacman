@@ -759,6 +759,9 @@ a.chief-identity {
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
+  /* #811: 标题是全宽绝对定位覆盖层，会盖住返回钮拦截点选——纯文本标题
+     不需要命中测试，放行到底层按钮（布局/绘制零变化）。 */
+  pointer-events: none;
 }
 
 .chief-set-col {
@@ -1232,6 +1235,80 @@ a.chief-identity {
   font-size: 12px;
   color: var(--text-primary);
   flex: none;
+}
+
+/* #811: 已绑定行 avatarUrl 非空形态（XMON-105 --img 律：图即 24 圆盘，
+   去 chip 底边——与 dialog 候选行 .chief-pick-avatar--img 同形）。 */
+.chief-agent-row-avatar--img {
+  background: none;
+  border: none;
+}
+
+.chief-agent-row-avatar--img img {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  display: block;
+}
+
+/* #811: 设置面记忆/关注列表（只读；管理落 Agent 详情 / 自动解 watch）。
+   卡形承空态卡面（surface-secondary + 8 圆角 + 17 上距），行间分隔线
+   承 XMON-117 一卡多行律。 */
+.chief-memory-head {
+  margin-top: 17px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.chief-memory-card,
+.chief-watch-card {
+  margin-top: 17px;
+  border-radius: 8px;
+  background: var(--surface-secondary);
+  font-size: 13px;
+}
+
+.chief-memory-card {
+  padding: 4px 16px;
+}
+
+.chief-memory-row {
+  display: block;
+  padding: 8px 0;
+}
+
+.chief-memory-row + .chief-memory-row {
+  border-top: 1px solid var(--border-default);
+}
+
+.chief-memory-title {
+  display: block;
+  color: var(--text-primary);
+}
+
+.chief-memory-content {
+  display: block;
+  color: var(--text-secondary);
+}
+
+.chief-watch {
+  display: flex;
+  flex-direction: column;
+}
+
+.chief-watch-card {
+  padding: 8px 16px;
+}
+
+.chief-watch-title {
+  display: block;
+  color: var(--text-primary);
+}
+
+.chief-watch-meta {
+  display: block;
+  color: var(--text-tertiary);
+  font-size: 12px;
 }
 
 /* live 既有章程呈现位(r5 未拍非空章程 tab,[设计]:空态块语言换实文)。 */

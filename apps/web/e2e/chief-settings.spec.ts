@@ -14,6 +14,17 @@ import { expect, type Page, test } from '@playwright/test';
 //    accept 律关面。live PATCH 写读回归归 live 真机验。
 
 const AGENT_TAB = '/app?scenario=101';
+
+// #811: 返回钮可点——标题覆盖层曾拦截点选（.chief-set-title 全宽绝对
+// 定位盖住按钮），点返回应回到总管抽屉。Playwright 的 actionability 即回归
+// 钉：覆盖重现时 click 在此超时。
+test('返回按钮可用：点击回到总管抽屉 (#811)', async ({ page }) => {
+  await page.goto(AGENT_TAB);
+  await expect(page.locator('.chief-settings')).toBeVisible();
+  await page.locator('.chief-set-back').click();
+  await expect(page.locator('.chief-settings')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '总管' })).toBeVisible();
+});
 const CHARTER_TAB = '/app?scenario=102';
 
 async function openAgentDialog(page: Page) {
