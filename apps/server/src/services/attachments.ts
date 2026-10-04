@@ -21,6 +21,7 @@ import {
 } from '../lib/attachments-token.js';
 import { HttpError } from '../lib/errors.js';
 import { newRecordId, nowMs } from '../lib/ids.js';
+import { TEAM_ATTACHMENTS_QUOTA_BYTES, teamAttachmentBytes } from './attachment-gc.js';
 
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -149,6 +150,14 @@ export function grantUpload(deps: AttachmentDeps, input: GrantInput): GrantOutpu
   const ext = extOf(input.fileName);
   if (ext === '' || !ALLOWED_EXTS.has(ext)) {
     throw new HttpError(400, `file extension not allowed: ${ext || '(none)'}`);
+  }
+  // 总量配额走准入（#759 R4：超限拒 grant，不删有引用件——误删为 0）。
+  const usedBytes = teamAttachmentBytes(deps.db, deps.teamId);
+  if (usedBytes + input.size > TEAM_ATTACHMENTS_QUOTA_BYTES) {
+    throw new HttpError(
+      400,
+      `team attachment quota exceeded: ${usedBytes} + ${input.size} > ${TEAM_ATTACHMENTS_QUOTA_BYTES}`,
+    );
   }
   const id = newRecordId();
   const storageKey = `${deps.teamId}/${id}.${ext}`;

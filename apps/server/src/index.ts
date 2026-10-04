@@ -77,9 +77,11 @@ warnInsecureBind(logger, config);
 
 // cron 定时闭环（02 §9.2 宿主自持）：启动即补扫 + tick 循环。
 // deps 含 user（M2c 通知面）：定时轮停 review 经 build 漏斗发 build_review（r5 §7.2）。
+// #759 附件回收挂 tick（首 tick 即补扫，之后每小时一次；pino 直传 = GcLogger）。
 const scheduler = createScheduler(
   { db, hub, user: seeded.user, convHub },
   { tickMs: config.schedulerTickMs },
+  { attachmentsDir, logger },
 );
 scheduler.start();
 
