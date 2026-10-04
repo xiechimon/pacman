@@ -431,6 +431,12 @@
   background: var(--col-dot-done);
 }
 
+/* data-on=false = 离线机器（与 overlay 的 new-task-machine-dot 同族同值；
+   灰点只表示状态，不禁用该行——步可钉离线机器等它上线）。 */
+.res-dot[data-on="false"] {
+  background: var(--col-dot-idle);
+}
+
 /* 本机行 per-runtime 品牌 mark（spec 11 A8，#357；#503 开关 → 官方 mark）：
    行内右侧 mark+名称对，read-only。启用 = 品牌原色，未启用 = mark 35% 透明；
    状态只在 mark 上分态，名称两态同 --text-dim（整对一起淡会把未启用名淡到
