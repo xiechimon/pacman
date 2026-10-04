@@ -13,7 +13,7 @@
 // 3/10）。原文保真律：journal/transcript 侧的原始文本不经本模块（runner
 // 在解析前已落 transcript）——web 渲染面的 chip 形态不因展开而丢。
 
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import type { DeliveredImage, MachineAttachmentResponse } from '@pacman/shared';
 import {
@@ -75,6 +75,38 @@ export function materializeFile(
   const path = join(dir, safeFileName(fileName));
   writeFileSync(path, bytes);
   return path;
+}
+
+/** 步素材 scratch 保质期（#759 R3，策略正本 docs/spec/20 §4：步以分钟/小时
+ * 计，72h = 步早死透 + 机器离线一个周末回来仍可复用；再生前提 = 源附件
+ * 仍在 server + 步文本仍含 token + 机器在线，走正常下载路径）。 */
+export const STEP_ATTACHMENTS_TTL_MS = 72 * 60 * 60 * 1000;
+
+/** 超龄步目录回收（返回被收的 stepId；根缺省 = 空数组不抛；根下零散文件
+ * 不动——只收步目录。落盘即建的目录 mtime 随素材写入刷新，在跑步天然新鲜，
+ * 无需 journal 对账）。 */
+export function sweepStepAttachments(
+  materializeDir: string,
+  opts?: { ttlMs?: number; now?: number },
+): string[] {
+  if (!existsSync(materializeDir)) return [];
+  const ttlMs = opts?.ttlMs ?? STEP_ATTACHMENTS_TTL_MS;
+  const now = opts?.now ?? Date.now();
+  const removed: string[] = [];
+  for (const entry of readdirSync(materializeDir)) {
+    const full = join(materializeDir, entry);
+    let mtimeMs: number | undefined;
+    try {
+      const st = statSync(full);
+      if (st.isDirectory()) mtimeMs = st.mtimeMs;
+    } catch {
+      continue;
+    }
+    if (mtimeMs === undefined || now - mtimeMs < ttlMs) continue;
+    rmSync(full, { recursive: true, force: true });
+    removed.push(entry);
+  }
+  return removed;
 }
 
 /** 下载面最小结构（MachineApi.attachment 的投影——测试注入最小 fake 即可，

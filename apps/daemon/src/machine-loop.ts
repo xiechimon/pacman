@@ -32,7 +32,7 @@ import {
   type StatePaths,
   saveMachineJson,
 } from './state.js';
-import { resolveStepImages } from './step-attachments.js';
+import { resolveStepImages, sweepStepAttachments } from './step-attachments.js';
 import { performSync } from './sync.js';
 import { DAEMON_VERSION } from './version.js';
 import { WorkspaceManager } from './workspace.js';
@@ -234,6 +234,24 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
   const orphanTimer = setInterval(sweepOrphans, 24 * 60 * 60 * 1000);
   orphanTimer.unref?.();
 
+  // step-attachments scratch 回收（#759 R3：sweepOrphans 同形——上线一次 +
+  // 每日节奏；再生前提见 step-attachments.ts STEP_ATTACHMENTS_TTL_MS）。
+  const sweepStepScratch = () => {
+    try {
+      const removed = sweepStepAttachments(paths.stepAttachmentsDir, { now: Date.now() });
+      if (removed.length > 0) {
+        logger.workspace(`step-attachments recycled: ${removed.length} (${removed.join(', ')})`);
+      }
+    } catch (err: unknown) {
+      logger.workspace(
+        `step-attachments cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  };
+  sweepStepScratch();
+  const stepScratchTimer = setInterval(sweepStepScratch, 24 * 60 * 60 * 1000);
+  stepScratchTimer.unref?.();
+
   // —— [recover] 步 journal 恢复（server 真值对账 + continue session 续跑）——
   const recovered = await client.recover();
   if (recovered.steps.length === 0) {
@@ -433,6 +451,7 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
     logger.machine(`Shutting down…${cause ? ` (${cause})` : ''}`);
     clearInterval(presenceTimer);
     clearInterval(orphanTimer);
+    clearInterval(stepScratchTimer);
     streamCtrl.abort();
     claimCtrl.abort();
     caffeinate?.kill();
