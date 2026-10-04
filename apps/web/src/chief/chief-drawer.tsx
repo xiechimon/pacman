@@ -76,6 +76,7 @@ import { attachmentFailureTitle } from '../overlay/attachment-paste.js';
 import { AttachmentStrip } from '../overlay/attachment-strip.js';
 import { useComposerWire } from '../overlay/composer-wire.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
+import { SkillSuggestStrip } from '../overlay/skill-suggest-strip.js';
 import { useChiefNewThreadHotkey } from '../overlays/hotkeys.js';
 import './chief.css';
 import { ChiefIdentity } from './chief-identity.js';
@@ -345,6 +346,9 @@ export function ChiefDrawer({
     insertTokens,
     insertFile,
     groups,
+    suggestion,
+    acceptSuggestion,
+    dismissSuggestion,
   } = wire;
   // #773：抽屉收起联动收弹层——模型 popover / 切换器 / 提及 picker /
   // 内联补全 / 恢复确认的 open 态都自持在抽屉内部，抽屉只收容器时它们跟
@@ -975,6 +979,13 @@ export function ChiefDrawer({
                   }}
                   listboxRef={inlineListboxRef}
                   listboxId={inlineListboxId}
+                />
+                {/* #823 自然话 skill 提示条（detail composer 同款；两弹层都关
+                时才挂载，wire 保证）。 */}
+                <SkillSuggestStrip
+                  suggestion={suggestion}
+                  onAccept={acceptSuggestion}
+                  onDismiss={dismissSuggestion}
                 />
               </div>
               {/* #757 附件 strip（detail composer 同件：在途占位 + 落定 chip，

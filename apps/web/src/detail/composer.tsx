@@ -38,6 +38,7 @@ import { AttachmentStrip } from '../overlay/attachment-strip.js';
 import { useComposerWire } from '../overlay/composer-wire.js';
 import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/mention-picker.js';
 import type { FileMentionEntry } from '../overlay/mention-token.js';
+import { SkillSuggestStrip } from '../overlay/skill-suggest-strip.js';
 import { SlashHelp, SlashMenu } from '../overlay/slash-menu.js';
 import { ComposerChips } from './composer-chips.js';
 
@@ -143,6 +144,9 @@ export function Composer({
     closeHelp,
     helpRows,
     helpSkillCount,
+    suggestion,
+    acceptSuggestion,
+    dismissSuggestion,
   } = useComposerWire({
     editable,
     draft: draftProp,
@@ -243,6 +247,13 @@ export function Composer({
       <div className="composer-float">
         <ComposerChips draft={draft} files={mentionFiles} suspended={inlineOpen || slashOpen} />
         <AttachmentStrip draft={draft} pending={pendingAttachments} />
+        {/* #823 自然话 skill 提示条：同浮列叠放（两弹层都关时才挂载，
+            wire 保证），Tab / 点击接受，Esc / × 单条忽略。 */}
+        <SkillSuggestStrip
+          suggestion={suggestion}
+          onAccept={acceptSuggestion}
+          onDismiss={dismissSuggestion}
+        />
       </div>
       <input
         ref={fileInputRef}

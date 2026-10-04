@@ -115,6 +115,10 @@ export const EN: Record<string, string> = {
   查看命令说明: 'Show command help',
   命令说明: 'Command help',
   '团队技能来自技能页面（共 {count} 个）': 'Team skills come from the Skills page ({count} total)',
+  // #823 natural-language skill auto-suggest vocabulary.
+  '检测到 skill「{name}」，Tab 接受': 'Skill detected: {name} — Tab to accept',
+  '接受 skill 建议：{name}': 'Accept skill suggestion: {name}',
+  '忽略 skill 建议': 'Dismiss skill suggestion',
   '停止当前这一轮？': 'Stop this round?',
   '丢弃本轮修改——方案和代码回到上一个版本':
     'Discard this round’s changes — plan and code revert to the previous version',
