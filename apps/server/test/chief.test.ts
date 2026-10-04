@@ -3,8 +3,9 @@
 // 侧产，本层测「宿主机制」——relay 工具落库/溯源、watch-wake 三触发、驳回 v2
 // diff、双 Agent 分槽、绑定/记忆不迁移。[推断]/[设计] 项不冒充实测。
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import {
   CHIEF_REMOTE_TOOLS,
   CHIEF_TOOL_NAMES,
@@ -13,7 +14,7 @@ import {
   CHIEF_WATCH_REASON_DISPATCH,
 } from '@pacman/shared';
 import { eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, test } from 'vitest';
+import { afterAll, beforeEach, describe, expect, test } from 'vitest';
 import {
   agentMemory,
   agent as agentTable,
@@ -90,6 +91,22 @@ function seedMachineReport(
     .values({ id: `machine-${name}`, teamId, name, claudeCodeReport: report })
     .run();
 }
+
+// #627 models 工具：claude-code 段 homeDir 注入位（mkdtemp 隔离目录，
+// 可选写入 settings.json 钉住槽位内容）。
+const claudeHomes: string[] = [];
+function claudeHome(settingsJson?: string): string {
+  const dir = mkdtempSync(join(tmpdir(), 'pacman-chief-models-'));
+  claudeHomes.push(dir);
+  if (settingsJson !== undefined) {
+    mkdirSync(join(dir, '.claude'), { recursive: true });
+    writeFileSync(join(dir, '.claude', 'settings.json'), settingsJson);
+  }
+  return dir;
+}
+afterAll(() => {
+  for (const dir of claudeHomes.splice(0)) rmSync(dir, { recursive: true, force: true });
+});
 
 function seedAgent(id: string, description: string, modelId = 'stub-model') {
   s.db
@@ -206,6 +223,72 @@ describe('Chief 线程面落库（02 §4.3/r5 §3.6）', () => {
         content: 'x',
       }),
     ).toThrow(HttpError);
+  });
+});
+
+// —— AC: 收单回落（#774）：存量主模型槽不在候选里 → 同步愈合 + 上报 ————————
+
+describe('收单回落：存量主模型槽不在候选里 → 同步愈合 + 上报（#774）', () => {
+  function setSlot(value: { provider: string; modelId: string } | null) {
+    s.db.update(chiefTable).set({ model: value }).where(eq(chiefTable.id, chiefId)).run();
+  }
+  function slotNow() {
+    return (
+      s.db
+        .select({ model: chiefTable.model })
+        .from(chiefTable)
+        .where(eq(chiefTable.id, chiefId))
+        .get()?.model ?? null
+    );
+  }
+  function send(opts?: { homeDir?: string }) {
+    return sendChiefMessage(
+      { db: s.db, hub: s.hub, machineHub: s.machineHub, user: s.user },
+      teamId,
+      { threadId: null, content: '回落探针。' },
+      opts,
+    );
+  }
+
+  test('槽 null → 无动作（最常见路零语义变化）', () => {
+    const res = send({ homeDir: claudeHome(JSON.stringify({ model: 'new-model' })) });
+    expect(res.modelFallback).toBeNull();
+    expect(slotNow()).toBeNull();
+  });
+
+  test('槽命中候选 → 保留 + modelFallback null', () => {
+    setSlot({ provider: 'claude-code', modelId: 'new-model' });
+    const res = send({ homeDir: claudeHome(JSON.stringify({ model: 'new-model' })) });
+    expect(res.modelFallback).toBeNull();
+    expect(slotNow()).toEqual({ provider: 'claude-code', modelId: 'new-model' });
+  });
+
+  test('槽 stale（claude-code 旧 id）→ 置 null + 上报原值 + 回合照常入队', () => {
+    const stale = { provider: 'claude-code', modelId: 'old-model' };
+    setSlot(stale);
+    const res = send({ homeDir: claudeHome(JSON.stringify({ model: 'new-model' })) });
+    expect(res.modelFallback).toEqual(stale);
+    expect(slotNow()).toBeNull();
+    // 回落不是拒收：回合照常入队，claim 读到的是愈合后的 null（= 继承）。
+    const steps = s.db.select().from(stepTable).where(eq(stepTable.buildId, res.thread.id)).all();
+    expect(steps).toHaveLength(1);
+    expect(steps[0]!.status).toBe('pending');
+  });
+
+  test('custom provider 存量值（无对应段）→ 不动（执行面仍可用，候选面无权裁决）', () => {
+    const custom = { provider: 'my-relay', modelId: 'm-x' };
+    setSlot(custom);
+    const res = send({ homeDir: claudeHome(JSON.stringify({ model: 'new-model' })) });
+    expect(res.modelFallback).toBeNull();
+    expect(slotNow()).toEqual(custom);
+  });
+
+  test('settings.json 缺失（段空）→ claude-code 存量值照样愈合', () => {
+    const stale = { provider: 'claude-code', modelId: 'old-model' };
+    setSlot(stale);
+    const res = send({ homeDir: claudeHome() });
+    expect(res.modelFallback).toEqual(stale);
+    expect(slotNow()).toBeNull();
   });
 });
 

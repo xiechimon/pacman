@@ -9,6 +9,7 @@ import type {
   Assignment,
   BuildRecord,
   CapabilitiesResponse,
+  ChiefCompactionModel,
   ChiefGetResponse,
   ChiefThread,
   ConversationMessagesResponse,
@@ -725,14 +726,22 @@ export function useApiMutations(teamId: string | undefined) {
       onSuccess: invalidateAll,
     }),
     chiefSend: useMutation({
+      // #774 收单回落：响应带 modelFallback（被愈合掉的存量原值，无回落 null；
+      // 可空 = 老 server 混跑窗口容忍缺失，缺席即无回落语义）。
       mutationFn: (input: { threadId: string | null; content: string }) =>
         input.threadId === null
-          ? api.post<{ thread: ChiefThread }>(`/api/teams/${teamId}/chief/threads`, {
-              content: input.content,
-            })
-          : api.post<{ thread: ChiefThread }>(`/api/conversations/${input.threadId}/messages`, {
-              content: input.content,
-            }),
+          ? api.post<{ thread: ChiefThread; modelFallback?: ChiefCompactionModel | null }>(
+              `/api/teams/${teamId}/chief/threads`,
+              {
+                content: input.content,
+              },
+            )
+          : api.post<{ thread: ChiefThread; modelFallback?: ChiefCompactionModel | null }>(
+              `/api/conversations/${input.threadId}/messages`,
+              {
+                content: input.content,
+              },
+            ),
       onSuccess: invalidateAll,
     }),
     // #615 返工：恢复钮「恢复到此处」闭环（server 截断锚后消息 + 重置会话 +

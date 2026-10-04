@@ -7,9 +7,14 @@
 // providers 页 runtime tabs 的数据契约——pi 段 = custom providers models[]
 // 投影；claude-code 段 = 各执行机 daemon 上报的本机 settings.json 解析结果
 // （server 按机器聚合，不读本机文件）。
+// fs 直读 helper（claudeCodeModelSource）为 chief 收单回落（#774）保留。
 
+import { readFileSync } from 'node:fs';
 import { hostname } from 'node:os';
+import { join } from 'node:path';
 import {
+  type ModelSource,
+  type ModelSourceModel,
   type ModelSourcesEnvelope,
   PROVIDER_OAUTH_PRESET_IDS,
   PROVIDER_PRESET_IDS,
@@ -115,6 +120,47 @@ export function getProvidersEnvelope(
   teamId: string,
 ): { presets: ProviderPreset[]; providers: ProviderRecord[] } {
   return { presets: providerPresets(), providers: listProviders(deps, teamId) };
+}
+
+/** claude-code 槽位键模式：env.ANTHROPIC_<SLOT>_MODEL。ANTHROPIC_MODEL
+ *  本体无中段（`ANTHROPIC_` 与 `_MODEL` 之间需至少一段）天然不命中，
+ *  不会与顶层 model 的 default 槽撞名。 */
+const CLAUDE_MODEL_SLOT_PATTERN = /^ANTHROPIC_([A-Z0-9_]+)_MODEL$/;
+
+/** claude-code 段（spec 11 §A4）：server 端 fs 直读 settings.json——
+ *  文件缺失 / 非法 JSON / 非对象 JSON 一律 installed:false，不空报不崩。
+ *  槽值非字符串或空串的项跳过（installed 仍为 true）。
+ *  导出供 chief 收单回落（#774）复用同源：回落判据与 model-sources 读面同文件。 */
+export function claudeCodeModelSource(homeDir: string): ModelSource {
+  const host = hostname();
+  const notInstalled: ModelSource = {
+    runtime: 'claude-code',
+    installed: false,
+    hostname: host,
+    models: [],
+  };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(join(homeDir, '.claude', 'settings.json'), 'utf8'));
+  } catch {
+    return notInstalled;
+  }
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return notInstalled;
+  const settings = raw as { model?: unknown; env?: unknown };
+  const models: ModelSourceModel[] = [];
+  if (typeof settings.model === 'string' && settings.model !== '') {
+    models.push({ id: settings.model, name: settings.model, slot: 'default' });
+  }
+  const env = settings.env;
+  if (typeof env === 'object' && env !== null && !Array.isArray(env)) {
+    for (const [key, value] of Object.entries(env)) {
+      const match = CLAUDE_MODEL_SLOT_PATTERN.exec(key);
+      const slot = match?.[1];
+      if (slot === undefined || typeof value !== 'string' || value === '') continue;
+      models.push({ id: value, name: value, slot: slot.toLowerCase().replace(/_/g, '-') });
+    }
+  }
+  return { runtime: 'claude-code', installed: true, hostname: host, models };
 }
 
 /** 上报过的机器的 claude-code 段（#707 model-sources 按机器聚合面）：

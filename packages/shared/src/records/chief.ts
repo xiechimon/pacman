@@ -8,6 +8,8 @@
 import { z } from 'zod';
 import { agentRecordSchema } from './agent.js';
 import { epochMs, phaseSchema, recordId } from './common.js';
+import type { ModelSource } from './model-source.js';
+import { modelSourceRuntimeSchema } from './model-source.js';
 
 /** chief 实例 id 形 `chief-<userId>-<teamId>`（r5 §3.6/r2 §1.5 实测）。 */
 export const chiefIdFormat = (userId: string, teamId: string) => `chief-${userId}-${teamId}`;
@@ -35,6 +37,39 @@ export const chiefCompactionModelSchema = z.object({
   modelId: z.string(),
 });
 export type ChiefCompactionModel = z.infer<typeof chiefCompactionModelSchema>;
+
+/** 存量主模型槽的发送前回落判定（#774 纯函数：server 收单 + 单测同源消费，
+ *  web 不需要——回落由 server 算好随响应返回，客户端只管 toast 告知）。
+ *
+ * 触发条件：槽非空，且 provider 是已知非 pi runtime（toModelOptions 同律，
+ * pi 段恒跳过），且 (provider, modelId) 未命中该段。典型案 = 本地 Claude
+ * 运行时换过模型，旧 id 在 settings.json 里已无对应；段整体缺席（文件缺失/
+ * 未安装）同判——该段零候选，存量值无从执行。
+ *
+ * 回落目标恒为 null（继承绑定 Agent = picker 默认行）：回到用户做覆盖选择
+ * 之前的状态，不替用户发明模型选择（列表第一项可能是不同价格/质量的模型）。
+ *
+ * 不碰的（原样返回，fellBackFrom null）：
+ * - 槽已 null / 命中候选——无动作；
+ * - provider 不在 runtime 词表里（#770 前的 custom provider 存量值）：执行面
+ *   仍按原值解析且可用，候选面无权裁决，动它等于毁掉可用配置；
+ * - provider 为 pi：picker 从无此行，slot 不该持有，保守不动。 */
+export function resolveChiefModelFallback(
+  stored: ChiefCompactionModel | null,
+  sources: ModelSource[],
+): { effective: ChiefCompactionModel | null; fellBackFrom: ChiefCompactionModel | null } {
+  if (stored === null) return { effective: null, fellBackFrom: null };
+  // 未知命名空间先行：不是 runtime 词表成员 = custom relay 存量，无权裁决。
+  if (modelSourceRuntimeSchema.safeParse(stored.provider).success === false) {
+    return { effective: stored, fellBackFrom: null };
+  }
+  if (stored.provider === 'pi') return { effective: stored, fellBackFrom: null };
+  const hit = sources
+    .find((s) => s.runtime === stored.provider)
+    ?.models.some((m) => m.id === stored.modelId);
+  if (hit === true) return { effective: stored, fellBackFrom: null };
+  return { effective: null, fellBackFrom: stored };
+}
 
 export const chiefRecordSchema = z.object({
   id: z.string(),

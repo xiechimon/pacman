@@ -21,6 +21,7 @@ import {
   deviceJsonSchema,
   filterAgentTools,
   githubIssueSourceRef,
+  type ModelSource,
   machineJsonSchema,
   mcpServerRecordSchema,
   memoryRecordSchema,
@@ -32,6 +33,7 @@ import {
   parseOrchestrationSourceRef,
   patchChiefBodySchema,
   providerRecordSchema,
+  resolveChiefModelFallback,
   scheduleRecordSchema,
   searchResponseSchema,
   startBuildsBodySchema,
@@ -529,6 +531,52 @@ describe('chief (02 §4.3, r5 §2/§3 实测)', () => {
     expect(chiefRecordSchema.parse({ ...record, compactionModel: null })).toEqual({
       ...record,
       compactionModel: null,
+    });
+  });
+
+  it('收单回落判定 resolveChiefModelFallback（#774：一槽一判六态）', () => {
+    const sources: ModelSource[] = [
+      { runtime: 'pi', installed: true, hostname: 'h', models: [] },
+      {
+        runtime: 'claude-code',
+        installed: true,
+        hostname: 'h',
+        models: [{ id: 'new-model', name: 'new-model', slot: 'default' }],
+      },
+    ];
+    // F1 槽 null → 无动作。
+    expect(resolveChiefModelFallback(null, sources)).toEqual({
+      effective: null,
+      fellBackFrom: null,
+    });
+    // F2 命中候选 → 保留。
+    const hit = { provider: 'claude-code', modelId: 'new-model' };
+    expect(resolveChiefModelFallback(hit, sources)).toEqual({
+      effective: hit,
+      fellBackFrom: null,
+    });
+    // F3 claude-code 旧 id → 愈合 null + 上报原值。
+    const stale = { provider: 'claude-code', modelId: 'old-model' };
+    expect(resolveChiefModelFallback(stale, sources)).toEqual({
+      effective: null,
+      fellBackFrom: stale,
+    });
+    // F4 custom provider 存量值（无对应段）→ 不动（候选面无权裁决）。
+    const custom = { provider: 'my-relay', modelId: 'm-x' };
+    expect(resolveChiefModelFallback(custom, sources)).toEqual({
+      effective: custom,
+      fellBackFrom: null,
+    });
+    // F5 provider 为 pi → 不动（picker 从无此行）。
+    const pi = { provider: 'pi', modelId: 'm-x' };
+    expect(resolveChiefModelFallback(pi, sources)).toEqual({
+      effective: pi,
+      fellBackFrom: null,
+    });
+    // F6 段缺席（settings.json 缺失态）→ 该段存量值照样 stale。
+    expect(resolveChiefModelFallback(stale, [])).toEqual({
+      effective: null,
+      fellBackFrom: stale,
     });
   });
 });

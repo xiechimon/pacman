@@ -740,6 +740,10 @@ export const EN: Record<string, string> = {
   总管本轮执行失败: 'The chief turn failed',
   '发送失败，请重试。': 'Send failed. Try again.',
   '恢复失败，请重试。': 'Restore failed. Try again.',
+  // —— #774 收单回落显式告知（成功 toast，非失败面；用户裁决静默不要）——
+  模型已回落到默认: 'Model fell back to default',
+  '“{stale}”已不可用，本次改用默认模型（与绑定 Agent 相同）发送。':
+    '“{stale}” is no longer available; sent with the default model (same as the bound agent) instead.',
   // —— #729 附件上传失败面（toast 家族同上；大小/类型拒是本地预检可自救，
   // 各给专名，其余归通用失败）——
   '附件超过 10MB 上限': 'Attachment exceeds the 10 MB limit',
