@@ -110,10 +110,13 @@ async function stubBoot(page: Page) {
 }
 
 /** Boot the live detail face (building phase, empty conversation) with a
- *  member roster and a counted steer POST endpoint. */
+ *  member roster and a counted steer POST endpoint. `extra` stubs the
+ *  skill / machine faces (#848 five-kind coverage); absent = 500 → empty
+ *  groups (the pre-#848 three-face shape: agents + todo + project). */
 async function openDetail(
   page: Page,
   agents: { id: string; displayName: string; description?: string }[] = AGENTS,
+  extra?: { skills?: { id: string; name: string; description?: string }[]; machines?: { id: string; name: string }[] },
 ) {
   await stubBoot(page);
   const members = [
@@ -129,7 +132,20 @@ async function openDetail(
   await page.route(`**/api/teams/${TEAM_ID}/members`, (route) => route.fulfill({ json: members }));
   await page.route('**/api/todos?*', (route) => route.fulfill({ json: [WIRE_CARD] }));
   await page.route(`**/api/todos/${CARD_ID}`, (route) => route.fulfill({ json: WIRE_CARD }));
-  await page.route('**/api/projects', (route) => route.fulfill({ json: [PROJECT] }));
+  // `?*` is load-bearing: the hook requests `/api/projects?teamId=…` and a
+  // bare `**/api/projects` glob never matches a query URL (#848 stub fix —
+  // before, the project face silently 500'd in every test below).
+  await page.route('**/api/projects?*', (route) => route.fulfill({ json: [PROJECT] }));
+  if (extra?.skills !== undefined) {
+    const skills = extra.skills;
+    await page.route('**/api/skills?*', (route) => route.fulfill({ json: skills }));
+  }
+  if (extra?.machines !== undefined) {
+    const machines = extra.machines;
+    await page.route(`**/api/teams/${TEAM_ID}/machines`, (route) =>
+      route.fulfill({ json: machines }),
+    );
+  }
   await page.route(`**/api/builds/${BUILD_ID}`, (route) => route.fulfill({ json: WIRE_BUILD }));
   await page.route(`**/api/builds/${BUILD_ID}/steps`, (route) => route.fulfill({ json: [] }));
   await page.route(`**/api/builds/${BUILD_ID}/plans`, (route) => route.fulfill({ json: [] }));
@@ -149,7 +165,9 @@ async function openDetail(
   await page.goto(`/app/todo/${CARD_ID}`);
   // The inline list only arms once the roster has resolved — typing before
   // that races the members fetch (the token re-judges on the next key, but
-  // a lone fill would never open the list on a cold cache).
+  // a lone fill would never open the list on a cold cache). Extra faces
+  // (skills/machines) need no explicit wait: the five-kind tests assert row
+  // counts through expect auto-retry.
   await membersLoaded;
   const input = page.locator('.composer-input');
   await expect(input).toBeVisible();
@@ -200,12 +218,16 @@ test('filter: fuzzy subsequence, smart case, empty-state row', async ({ page }) 
   await expect(page.locator('.mention-inline-empty')).toContainText('没有与"@Bui"匹配的结果');
   await evidenceShot(page, 'filter-smart-case-empty.png');
 
-  // Empty query lists the roster in order (rule 8/13 isomorph).
+  // Empty query lists the roster in order (rule 8/13 isomorph): agents in
+  // roster order, then todo / project (#848 five-kind face — skills and
+  // machines 500 in this helper, so they stay empty).
   await input.fill('@');
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(5);
   await expect(rows.nth(0)).toContainText('builder');
   await expect(rows.nth(1)).toContainText('reviewer');
   await expect(rows.nth(2)).toContainText('deploy-bot');
+  await expect(rows.nth(3)).toContainText('#9 内联提及探针');
+  await expect(rows.nth(4)).toContainText('pacman');
 });
 
 test('filter: candidate list caps at 15 (CN=15)', async ({ page }) => {
@@ -221,7 +243,7 @@ test('filter: candidate list caps at 15 (CN=15)', async ({ page }) => {
 test('keyboard: arrows cycle the highlight, the top row is NOT preselected', async ({ page }) => {
   const { input, rows } = await openDetail(page);
   await input.fill('@');
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(5);
   // CC rule 56 isomorph: opening highlights nothing — Enter would send.
   await expect(page.locator('.mention-inline-row--active')).toHaveCount(0);
 
@@ -233,7 +255,7 @@ test('keyboard: arrows cycle the highlight, the top row is NOT preselected', asy
   await expect(rows.nth(0)).toHaveClass(/mention-inline-row--active/);
   // Wrap up past the first row → last row (cyclic, ticket acceptance).
   await input.press('ArrowUp');
-  await expect(rows.nth(2)).toHaveClass(/mention-inline-row--active/);
+  await expect(rows.nth(4)).toHaveClass(/mention-inline-row--active/);
   // Wrap down past the last row → first row.
   await input.press('ArrowDown');
   await expect(rows.nth(0)).toHaveClass(/mention-inline-row--active/);
@@ -376,7 +398,7 @@ test('close set: backspace shortens the query, backspacing past @ closes (F7)', 
 
   await input.press('Backspace'); // '@' — empty query, full roster
   await expect(listbox).toBeVisible();
-  await expect(rows).toHaveCount(3);
+  await expect(rows).toHaveCount(5);
 
   await input.press('Backspace'); // '' — past the trigger, closed
   await expect(listbox).toBeHidden();
@@ -522,7 +544,9 @@ test('geometry: the listbox stays anchored above the composer (#688 ladder untou
 // Candidate source = `GET /api/projects/:id/files`（全递归路径表）；插入形 =
 // 裸路径 + 尾随空格（CC rules 26-29），不走 scheme wire。分区规则：同一列表、
 // 同一 fuzzy 分排序，ties 时 agents 在前（roster 序），总 cap 15 不动。
-// 无文件面（未 stub = 500 → 空集）即本文件既有全部用例：agents-only 不回归。
+// 无文件面（未 stub = 500 → 空集）即本文件既有全部用例：#728 手感（触发 /
+// 过滤 / 键盘 / 关闭集）不回归，只是空 query 的 roster 从 agents-only 长成
+// 五类（+todo +project）。
 const FILES = [
   { path: 'apps/web/src/ui/button.tsx', type: 'blob', size: 120 },
   { path: 'apps/web/src/ui', type: 'tree', size: null },
@@ -550,15 +574,17 @@ async function openDetailWithFiles(page: Page) {
   return { ...opened, input, listbox: page.locator('.mention-inline'), rows: page.locator('.mention-inline-row') };
 }
 
-test('files: empty query lists agents then files in roster order', async ({ page }) => {
+test('files: empty query lists entities then files in roster order', async ({ page }) => {
   const { input, rows } = await openDetailWithFiles(page);
   await input.fill('@');
-  // 3 agents（roster 序）+ 3 files（枚举序），总 cap 15 未触发
-  await expect(rows).toHaveCount(6);
+  // 3 agents + todo + project（roster 序）+ 3 files（枚举序），总 cap 15 未触发
+  await expect(rows).toHaveCount(8);
   await expect(rows.nth(0)).toContainText('builder');
   await expect(rows.nth(2)).toContainText('deploy-bot');
-  await expect(rows.nth(3)).toContainText('apps/web/src/ui/button.tsx');
-  await expect(rows.nth(4)).toContainText('apps/web/src/ui/');
+  await expect(rows.nth(3)).toContainText('#9 内联提及探针');
+  await expect(rows.nth(4)).toContainText('pacman');
+  await expect(rows.nth(5)).toContainText('apps/web/src/ui/button.tsx');
+  await expect(rows.nth(6)).toContainText('apps/web/src/ui/');
   await evidenceShot(page, 'files-unified-list.png');
 });
 
@@ -700,4 +726,83 @@ test('chips: the strip yields while the listbox is open (C6)', async ({ page }) 
   await input.press('Escape');
   await expect(listbox).toBeHidden();
   await expect(strip).toBeVisible();
+});
+
+// #848: 内联 @ 开五类（#727 D3 落地）。popover 的五类词表在内联面同一
+// fuzzy 手感下可触发、可插入、落 chip；`/` 菜单与 popover 的键位不动。
+const FIVE_KIND = {
+  skills: [{ id: 'skill-1', name: 'code-review', description: 'Reviews code' }],
+  machines: [{ id: 'machine-1', name: 'mea' }],
+};
+
+test('five-kind: bare @ lists all five kinds in roster order', async ({ page }) => {
+  const { input, rows } = await openDetail(page, AGENTS, FIVE_KIND);
+  await input.fill('@');
+  // agents ×3 → todo → skill → project → machine（buildInlineRows 拼装序）
+  await expect(rows).toHaveCount(7);
+  await expect(rows.nth(0)).toContainText('builder');
+  await expect(rows.nth(3)).toContainText('#9 内联提及探针');
+  await expect(rows.nth(4)).toContainText('code-review');
+  await expect(rows.nth(5)).toContainText('pacman');
+  await expect(rows.nth(6)).toContainText('mea');
+  await evidenceShot(page, 'five-kind-list.png');
+});
+
+test('five-kind: skill Tab-inserts the scheme token and the chip confirms', async ({
+  page,
+}) => {
+  const { input, rows } = await openDetail(page, AGENTS, FIVE_KIND);
+  await input.fill('@code');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('code-review');
+  await input.press('Tab');
+  await expect(input).toHaveValue('[code-review](skill:skill-1) ');
+  const strip = page.locator('.composer-chips');
+  await expect(strip.locator('.mention-chip--skill')).toHaveCount(1);
+  await expect(strip.locator('.mention-chip--skill')).toContainText('code-review');
+  await evidenceShot(page, 'five-kind-skill-insert.png');
+});
+
+test('five-kind: todo Enter-inserts the plain #seq token without sending', async ({
+  page,
+}) => {
+  const { input, rows, sent } = await openDetail(page, AGENTS, FIVE_KIND);
+  await input.fill('@内联');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toContainText('#9 内联提及探针');
+  await input.press('ArrowDown');
+  await input.press('Enter');
+  // todo wire 形是纯文本 #seq（serializeMention 既有语义，不走 scheme 链）
+  await expect(input).toHaveValue('#9 ');
+  expect(sent).toHaveLength(0);
+  await input.press('Enter');
+  await expect.poll(() => sent.length).toBe(1);
+});
+
+test('five-kind: project click inserts the scheme token and the chip confirms', async ({
+  page,
+}) => {
+  const { input, rows } = await openDetail(page, AGENTS, FIVE_KIND);
+  await input.fill('@pacm');
+  await expect(rows).toHaveCount(1);
+  await rows.first().click();
+  await expect(input).toHaveValue('[pacman](project:proj-1) ');
+  const strip = page.locator('.composer-chips');
+  await expect(strip.locator('.mention-chip--project')).toHaveCount(1);
+});
+
+test('five-kind: machine Enter-inserts without sending; second Enter sends', async ({
+  page,
+}) => {
+  const { input, listbox, rows, sent } = await openDetail(page, AGENTS, FIVE_KIND);
+  await input.fill('@mea');
+  await expect(rows).toHaveCount(1);
+  await input.press('ArrowDown');
+  await input.press('Enter');
+  await expect(input).toHaveValue('[mea](machine:machine-1) ');
+  await expect(listbox).toBeHidden();
+  expect(sent).toHaveLength(0);
+  await input.press('Enter');
+  await expect.poll(() => sent.length).toBe(1);
+  expect(sent[0]).toContain('[mea](machine:machine-1)');
 });

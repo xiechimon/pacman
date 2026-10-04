@@ -337,7 +337,7 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
 }
 
 /** Inline unified `@` listbox for the composer (#728 agents-only origin, #760
- *  agents + files).
+ *  agents + files, #848 all five entity kinds + files).
  *
  *  Combobox pattern (#728, canon #727 §1 rules 20-24): the textarea keeps
  *  focus for the whole open window — rows are non-focusable (tabIndex -1 +
@@ -348,9 +348,9 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
  *  and Esc live in composer-wire's handleKeyDown (single source, #625);
  *  this skin only renders state and reports hover/pick.
  *
- *  Partition (#760): ONE list, one ranking — kind travels per row and the
- *  glyph tells them apart (agent initial vs file glyph). No section headers:
- *  headers are not rows and would corrupt the ↑↓ cycle. */
+ *  Partition (#848): ONE list, one ranking — kind travels per row and the
+ *  glyph tells them apart (agent initial vs per-kind icon vs file glyph).
+ *  No section headers: headers are not rows and would corrupt the ↑↓ cycle. */
 export interface MentionInlineProps {
   open: boolean;
   rows: InlineCompletionRow[];
@@ -368,6 +368,25 @@ export interface MentionInlineProps {
   listboxRef: Ref<HTMLDivElement>;
   /** Base element id; rows are `${listboxId}-opt-${index}`. */
   listboxId: string;
+}
+
+/** Per-kind glyph for non-agent inline rows (#848 — the popover's icon
+ *  family, reused so the two faces read as one vocabulary). */
+function InlineKindIcon({ kind }: { kind: InlineCompletionRow['kind'] }) {
+  switch (kind) {
+    case 'todo':
+      return <FileCheck width={14} height={14} />;
+    case 'skill':
+      return <Puzzle width={14} height={14} />;
+    case 'project':
+      return <Layers width={14} height={14} />;
+    case 'machine':
+      return <Server width={14} height={14} />;
+    case 'file':
+      return <FileText width={14} height={14} />;
+    case 'agent':
+      return null;
+  }
 }
 
 export function MentionInline({
@@ -401,7 +420,7 @@ export function MentionInline({
       {rows.length === 0 ? (
         <div className="mention-inline-empty">
           {query === ''
-            ? t('没有可用的 Agent')
+            ? t('没有可引用的对象')
             : t('没有与"{query}"匹配的结果', { query: `@${query}` })}
         </div>
       ) : (
@@ -424,7 +443,7 @@ export function MentionInline({
               <span className="mention-inline-avatar">{row.label.charAt(0).toLowerCase()}</span>
             ) : (
               <span className="mention-inline-avatar mention-inline-avatar--file">
-                <FileText width={14} height={14} />
+                <InlineKindIcon kind={row.kind} />
               </span>
             )}
             <span className="mention-inline-main">

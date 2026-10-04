@@ -1,6 +1,7 @@
+import { fuzzyFilter } from './completion.js';
+
 // Mention-token wire format (issue #311, spec 08 §3 附录 A 档 2 提及行 +
-// docs/research/r9-attachments-mentions.md §3.2): the textual form
-// carried in the composer textarea / new-task spec textarea, plus the
+// docs/research/r9-attachments-mentions.md §3.2): the textual form// carried in the composer textarea / new-task spec textarea, plus the
 // reverse parse used by the transcript + doc-pane renderers to recover
 // entity chips.
 //
@@ -40,18 +41,98 @@ export interface FileMentionEntry {
   type: 'blob' | 'tree';
 }
 
-/** One row of the unified inline `@` listbox (#760): entity agents and file
- * candidates share one list, one fuzzy pass, one highlight cycle. Files are
- * NOT MentionTokens — they insert as bare path text (no scheme wire). */
+/** One row of the unified inline `@` listbox (#728 agents-only origin, #760
+ *  + agents/files, #848 all five entity kinds + files): every non-file row
+ *  carries its MentionKind and inserts through serializeMention; file rows
+ *  insert as bare path text (no scheme wire). */
 export interface InlineCompletionRow {
-  kind: 'agent' | 'file';
-  /** Agent actor id / file path (dirs carry the trailing `/` in the label,
+  kind: MentionKind | 'file';
+  /** Entity id / file path (dirs carry the trailing `/` in the label,
    *  the id stays the bare path). */
   id: string;
-  /** Agent display name / file path (`/`-suffixed for directories). */
+  /** Display label: entity name (todo = `#seq title`) / file path
+   *  (`/`-suffixed for directories). */
   label: string;
   subtitle?: string;
   fileType?: 'blob' | 'tree';
+  /** Todo board number — set when kind === 'todo' so the insert side can
+   *  serialize the plain `#seq` token. */
+  seq?: number;
+}
+
+/** Entity groups feeding the inline `@` listbox (#848). Structural subset of
+ *  the popover's MentionGroups (mention-picker.ts) — kept structural (not
+ *  imported) so this pure module stays React-free. */
+export type InlineRosterGroups = Record<
+  MentionKind,
+  { id: string; label: string; subtitle?: string; seq?: number }[]
+>;
+
+/** Unified inline `@` roster (#848: five entity kinds + files, ONE fuzzy
+ *  pass — CC rules 14-18 via the shared fuzzyFilter, capped at 15).
+ *  Concatenation order is the tie-break (stable sort): agents first (the
+ *  #728/#760 feel — a bare `@` keeps listing agents on top), then todo /
+ *  skill / project / machine in popover order, files last (enumeration =
+ *  git order). An empty query lists the concatenated roster in order.
+ *  files absent/empty = the pure five-kind face (chief drawer,
+ *  new-task dialog). */
+export function buildInlineRows(
+  query: string,
+  groups: InlineRosterGroups,
+  files?: readonly FileMentionEntry[],
+): InlineCompletionRow[] {
+  const rows: InlineCompletionRow[] = [
+    ...groups.agent.map(
+      (a): InlineCompletionRow => ({
+        kind: 'agent',
+        id: a.id,
+        label: a.label,
+        ...(a.subtitle !== undefined ? { subtitle: a.subtitle } : {}),
+      }),
+    ),
+    ...groups.todo.map(
+      (t): InlineCompletionRow => ({
+        kind: 'todo',
+        id: t.id,
+        label: t.label,
+        ...(t.subtitle !== undefined ? { subtitle: t.subtitle } : {}),
+        ...(t.seq !== undefined ? { seq: t.seq } : {}),
+      }),
+    ),
+    ...groups.skill.map(
+      (s): InlineCompletionRow => ({
+        kind: 'skill',
+        id: s.id,
+        label: s.label,
+        ...(s.subtitle !== undefined ? { subtitle: s.subtitle } : {}),
+      }),
+    ),
+    ...groups.project.map(
+      (p): InlineCompletionRow => ({
+        kind: 'project',
+        id: p.id,
+        label: p.label,
+        ...(p.subtitle !== undefined ? { subtitle: p.subtitle } : {}),
+      }),
+    ),
+    ...groups.machine.map(
+      (m): InlineCompletionRow => ({
+        kind: 'machine',
+        id: m.id,
+        label: m.label,
+        ...(m.subtitle !== undefined ? { subtitle: m.subtitle } : {}),
+      }),
+    ),
+    ...(files ?? []).map(
+      (f): InlineCompletionRow => ({
+        kind: 'file',
+        id: f.path,
+        label: f.type === 'tree' ? `${f.path}/` : f.path,
+        fileType: f.type,
+      }),
+    ),
+  ];
+  return fuzzyFilter(query, rows, (r) => r.label);
 }
 
 /** Structured mention token emitted by the picker. `seq` is the todo
