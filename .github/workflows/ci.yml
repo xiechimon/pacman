@@ -114,6 +114,12 @@ jobs:
       - name: E2E (shard ${{ matrix.shard }}/4, #693)
         run: pnpm --filter @pacman/web e2e --shard=${{ matrix.shard }}/4
 
+      # 编译产物闸（#747）：上面的 E2E 步经 webServer fixture-build 已写出
+      # apps/web/dist，本步只做 grep 断言，不另付全构建。防的是 #656/#677
+      # 的真故障：tw-animate-css 装了、类名写了但没 @import，全族编译成空。
+      - name: CSS mechanism gate (#747)
+        run: node scripts/css-mechanism-gate.mjs
+
   # 分片聚合闸（#693）：分支保护的 required contexts 不编码 matrix 基数——
   # 名单写死 e2e (1..4) 的话，将来分片数一调，名单就静默失配（新增分片不
   # 阻塞合并 = 覆盖面实际下降）。本 job 名固定 e2e-gate、needs 全部分片，
