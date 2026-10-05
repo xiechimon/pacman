@@ -884,6 +884,56 @@ function tryClaim(
     // #682 enabledRuntimes 真闸：机器未开步所需 runtime = 不可领（步留
     // pending 给能跑的机器——机器开 pi、步跑 claude-code agent = 不投给该机）。
     if (!runtimeGatePasses(machineRow, agentRow.provider)) continue;
+    // continue session 判定（02 §5.7：合并轮/重规划轮复用同 conv pi 会话）。
+    // #863 T2 起判定前移到领取前——会话亲和闸需要同一份事实（prior session +
+    // 交接缺失位）；候选步自身 pending ⇒ sessionId 恒空不进结果集，且判定与
+    // 领取在同一同步块内（单进程 better-sqlite3），前后移零语义差。
+    const prior = db
+      .select({ sessionId: step.sessionId, machineId: step.machineId })
+      .from(step)
+      .where(and(eq(step.buildId, cand.stepRow.buildId), sql`${step.sessionId} is not null`))
+      .orderBy(asc(step.createdAt))
+      .all();
+    const priorRow = prior.length > 0 ? (prior[prior.length - 1] ?? null) : null;
+    const priorSessionId = priorRow?.sessionId ?? null;
+    // plan.md 交接缺失的 build 步强制 new session（#113 裁定候选2 兜底）：plan 关
+    // 未产交接物时续轮会话里无可指方案（confirm 措辞空转 → agent 反问「哪个方案」，
+    // 05 §5 实跑）；new session 令 daemon 以 todo 原始 title+spec 开工（runner
+    // buildTaskPrompt），agent 必拿任务内容。plan.md 在 → 续轮不变。
+    const planHandoffMissing =
+      cand.stepRow.kind === 'build' && cand.buildRow.withPlan && cand.buildRow.planDocId === null;
+    // review 步恒开新会话（#511）：审核是额外 agent 步，不接续主 conv 会话——
+    // 审核者与被审者常是不同的 Agent/模型，接续会让它继承执行轮的上下文，
+    // 且 continue 路径会吃掉服务端注入的审核材料（daemon 侧 CONTINUE_PROMPTS
+    // 只有一句占位文案，plan.md 全文/变更/diff 全在 step.prompt 里）。
+    // #863 T2 会话亲和（machine-execution-plane §4-7，正确性项）：conv 会话
+    // 文件是执行机本地资产——会续接 prior session 的步优先回「持有该会话的
+    // 机器」（= 链尾 session 步的 machineId，与 continue 判定同源）。其机在
+    // 线且 runtime 闸开 = 它是有效候选人，本机跳过该步（步留 pending 等它
+    // 领；跳过只作用于本候选，更晚的它 build 步照领，与钉选过滤同型的每机
+    // 可见性语义，无队头阻塞）。其机离线/被删/闸关/归属空 = 放行本机（换机
+    // → daemon SessionNotResumable 回退新会话 + RESUME_FRESH_SESSION_NOTE
+    // 显式降级标记，#862 T1 契约不替它预判）。恒新会话的步（review/交接缺
+    // 失/首步）无会话文件依赖，不亲和。钉选 build（pinnedMachineId 非空）不
+    // 亲和：钉选 SQL 过滤下唯有钉选机可见，亲和再挡 = 唯一可见者也被挡死；
+    // 且钉选 = 用户显式选择，盖过软偏好。会话机在线但不领（楔住）的等待上
+    // 界归 T3 离线钉选超时策略（#864），本票不做。
+    const sessionContinuing =
+      priorSessionId !== null &&
+      cand.stepRow.kind !== 'review' &&
+      !planHandoffMissing &&
+      cand.buildRow.pinnedMachineId === null;
+    if (
+      sessionContinuing &&
+      priorRow !== null &&
+      priorRow.machineId !== null &&
+      priorRow.machineId !== machineId
+    ) {
+      const ownerRow = db.select().from(machine).where(eq(machine.id, priorRow.machineId)).get();
+      if (ownerRow?.online && runtimeGatePasses(ownerRow, agentRow.provider)) {
+        continue;
+      }
+    }
     // 原子领取：仅当仍 pending 时置 claimed（单进程 better-sqlite3 同步写）。
     const claimedAt = nowMs();
     const res = db
@@ -896,24 +946,6 @@ function tryClaim(
     if (cand.todoRow.phase === 'queued') {
       setTodoPhase(deps, cand.todoRow.id, cand.stepRow.kind === 'plan' ? 'planning' : 'building');
     }
-    // continue session 判定（02 §5.7：合并轮/重规划轮复用同 conv pi 会话）。
-    const prior = db
-      .select({ sessionId: step.sessionId })
-      .from(step)
-      .where(and(eq(step.buildId, cand.stepRow.buildId), sql`${step.sessionId} is not null`))
-      .orderBy(asc(step.createdAt))
-      .all();
-    const priorSessionId = prior.length > 0 ? (prior[prior.length - 1]?.sessionId ?? null) : null;
-    // plan.md 交接缺失的 build 步强制 new session（#113 裁定候选2 兜底）：plan 关
-    // 未产交接物时续轮会话里无可指方案（confirm 措辞空转 → agent 反问「哪个方案」，
-    // 05 §5 实跑）；new session 令 daemon 以 todo 原始 title+spec 开工（runner
-    // buildTaskPrompt），agent 必拿任务内容。plan.md 在 → 续轮不变。
-    const planHandoffMissing =
-      cand.stepRow.kind === 'build' && cand.buildRow.withPlan && cand.buildRow.planDocId === null;
-    // review 步恒开新会话（#511）：审核是额外 agent 步，不接续主 conv 会话——
-    // 审核者与被审者常是不同的 Agent/模型，接续会让它继承执行轮的上下文，
-    // 且 continue 路径会吃掉服务端注入的审核材料（daemon 侧 CONTINUE_PROMPTS
-    // 只有一句占位文案，plan.md 全文/变更/diff 全在 step.prompt 里）。
     const session =
       planHandoffMissing || cand.stepRow.kind === 'review'
         ? { action: 'new' as const, sessionId: null }
