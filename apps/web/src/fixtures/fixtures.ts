@@ -762,7 +762,7 @@ const PROBE_BUILD_RESULT: TranscriptItem = {
       },
     ],
   ],
-  footer: { restore: true },
+  footer: {},
 };
 
 /** The two tool calls of the execution round (r7 28 expanded form:
@@ -2687,7 +2687,7 @@ const REVIEW_MESSAGE: TranscriptItem = {
       ],
     },
   ],
-  footer: { restore: true, seconds: 53 },
+  footer: { seconds: 53 },
 };
 
 /** Auto-revision summary after the blocking finding (r8 61/65). */

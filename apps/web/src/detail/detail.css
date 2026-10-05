@@ -980,12 +980,18 @@
 }
 
 /* #873 活行披露头是 shadcn ghost 钮（与总管 button.chief-streaming 同律）：
-   背景/边框/内边距/字形四清零，保留 .chat-streaming 的行级排布与暗字色——
-   折叠态几何与旧 span 逐字一致（20px 行高不动）。 */
+   背景/边框/字形清零，保留 .chat-streaming 的行级排布与暗字色。
+   #885（WCAG 2.5.8 靶尺寸）：命中盒 20px → 24px，墨迹与外框不动——纵向
+   +2px 内边距被等量 margin-block 负值抵掉，content box 仍是 20px
+   （spinner-live L3 栅栏读的 getComputedStyle height 逐字不变），相邻行
+   位置零位移；只有 border box（真实命中区）长到 24px。span 形态不是
+   交互靶，保持 20px 原样。 */
 button.chat-streaming {
   border: none;
   background: transparent;
-  padding: 0;
+  height: 24px;
+  padding: 2px 0;
+  margin-block: -2px;
   font: inherit;
   text-align: left;
   cursor: pointer;

@@ -444,9 +444,10 @@
 }
 
 /* #822 在飞存在行可展开：行本体是 button（箭头可点），中和件 = 背景/边框/
-   内边距/字形四清零（保留 .chief-streaming 的行级排布与暗字色，折叠态几何
-   与旧 span 逐字一致）；展开面挂同列下方，复用 .chief-turn-tools 整套皮肤
-   （margin/padding/gap 不另起）。显隐直接切（#615 折叠同律，无过渡）。 */
+   字形清零（保留 .chief-streaming 的行级排布与暗字色；折叠态墨迹与旧 span
+   逐字一致，命中盒自 #885 起加高到 24px，见下方 button 规则）；展开面挂
+   同列下方，复用 .chief-turn-tools 整套皮肤（margin/padding/gap 不另起）。
+   显隐直接切（#615 折叠同律，无过渡）。 */
 .chief-streaming-col {
   display: flex;
   flex-direction: column;
@@ -454,10 +455,16 @@
   min-width: 0;
 }
 
+/* #885（WCAG 2.5.8 靶尺寸）：与详情面 button.chat-streaming 同一条法——
+   纵向内边距被等量 margin-block 负值抵掉，墨迹与外框占位零位移，只有
+   border box（真实命中区）长高。本行的自然内容高是 21px（font: inherit
+   的行框 strut），+2×1.5px 内边距 = 24px 命中盒。两皮肤共享 LiveRow
+   （#873 单源），靶高法也两面同规。 */
 button.chief-streaming {
   background: none;
   border: none;
-  padding: 0;
+  padding: 1.5px 0;
+  margin-block: -1.5px;
   font: inherit;
   text-align: left;
   cursor: pointer;

@@ -40,7 +40,8 @@ import { ResourceShell } from './shell.js';
 
 export const MACHINES_HREF = '/app/resources/machines';
 
-/** runtime 显示名（专有名词，双语言同形；词表单源 = shared MACHINE_RUNTIMES）。 */
+/** runtime 可读名（专有名词，双语言同形；词表单源 = shared MACHINE_RUNTIMES）。
+ *  #887 起不再上屏为文字——挂在 mark 容器上做 aria-label 与 title 悬停提示。 */
 const RUNTIME_LABELS: Record<MachineRuntime, string> = {
   pi: 'pi',
   'claude-code': 'Claude Code',
@@ -165,15 +166,19 @@ export function MachinesPage() {
                     const on = (machine.enabledRuntimes ?? []).includes(runtime);
                     const Mark = RUNTIME_MARKS[runtime];
                     return (
-                      // mark 是装饰（aria-hidden），可读名走紧邻的 label——状态
-                      // 由 mark 的实色/35% 透明两态承载，故不设 aria-label。
+                      // #887 图标独形：文字名撤下，可辨识性不跟着删——容器
+                      // role="img" + aria-label 给读屏报名字，title 给悬停提示。
+                      // mark 仍是装饰（aria-hidden）；on/off 两态仍由 mark 的
+                      // 实色/35% 透明承载（enabledRuntimes 全仓只写不读，#503）。
                       <span
                         className={cn('mach-runtime', on && 'mach-runtime--on')}
                         key={runtime}
                         data-runtime={runtime}
+                        role="img"
+                        aria-label={RUNTIME_LABELS[runtime]}
+                        title={RUNTIME_LABELS[runtime]}
                       >
                         <Mark className="mach-mark" />
-                        <span className="mach-runtime-label">{RUNTIME_LABELS[runtime]}</span>
                       </span>
                     );
                   })}

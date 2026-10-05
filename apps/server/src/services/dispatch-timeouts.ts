@@ -1,28 +1,45 @@
-// 派发超时策略（#864 T3）：钉选机器离线的宽限与文案。
+// 派发超时策略（#864 T3 + #881 收口）：钉选机器离线/被闸挡的宽限与文案，
+// 会话机楔住的亲和等待上界。
 //
 // 为什么单列一个叶子模块：这条策略同时管 worker 步（builds.ts 的
-// sweepAbandonedBuildSteps）与 chief 回合（chief.ts 的 failAbandonedChiefSteps），
-// 而 chief.ts → builds.ts 之间隔着 todos.ts → chief.ts 的既有环，值 import 会把
-// 环拉直成真环。零依赖的叶子让「一个策略一个数」在代码层可见。
+// sweepAbandonedBuildSteps）、chief 回合（chief.ts 的 failAbandonedChiefSteps）
+// 与 claim 亲和闸（machines.ts 的 tryClaim），而 machines.ts ↔ builds.ts /
+// chief.ts 之间已有环（machines 正向 import 两家），值 import 会把环拉直成真环。
+// 零依赖的叶子让「一个策略一个数」在代码层可见。
 //
-// 策略本身（#864 裁决，见票面三问）：
-// - 等多久：钉选机器离线的 pending 步等 PIN_OFFLINE_GRACE_MS。比无人认领的
-//   120 秒（BUILD_ABANDONED_STEP_MS / CHIEF_ABANDONED_STEP_MS）长得多——那一档
-//   是环境错配（团队根本没机器能跑），这一档常是「我指定的那台暂时不在」
-//   （笔记本合盖、daemon 重启、SSE 断连抖动），短窗口会杀掉合法的等待。
+// 策略本身（#864 裁决 + #881 补两条缝，票面三问）：
+// - 等多久：钉选机器离线的 pending 步等 PIN_OFFLINE_GRACE_MS；钉选机器在线
+//   但 enabledRuntimes 闸挡（#881 ①）同宽限同漏斗。比无人认领的 120 秒
+//   （BUILD_ABANDONED_STEP_MS / CHIEF_ABANDONED_STEP_MS）长得多——那一档是
+//   环境错配（团队根本没机器能跑），这一档常是「我指定的那台暂时不在/暂没
+//   开这个 runtime」（笔记本合盖、daemon 重启、SSE 断连抖动、刚关错开关），
+//   短窗口会杀掉合法的等待。闸挡与离线同宽限：runtime 开关是 PATCH 热写、
+//   秒级生效，宽限给的是「用户正在改配置」的窗口，不是自愈窗口。
+// - 会话机楔住（#881 ②）：亲和等待 SESSION_WEDGE_GRACE_MS。闸只让行到宽限
+//   （且会话机忙 = 持有 claimed 步时不放行）；宽限后他机认领换机，降级走
+//   #862 T1 的 daemon 注记（server 不预判）。
 // - 谁通知：不新增通知通道，走既有失败漏斗——worker 步 = 步事件 + build.
 //   errorMessage + todo → failed（看板失败卡 + 详情 banner）；chief 回合 =
-//   chief_turn_error 行 + 会话流 message 事件（web toast，#631 链）。
-// - 能否转自动：不自动改派。pin 的语义是确定性（t-0047 调研、#682 落地），
-//   静默换机会让「钉 A 机」变成不确定；超时的产物是可见的失败加显式出口，
-//   不是另一台机器上的静默重跑。
+//   chief_turn_error 行 + 会话流 message 事件（web toast，#631 链）。② 不产
+//   失败——步被他机正常领走，降级标记由 daemon 真值面写（RESUME_FRESH_
+//   SESSION_NOTE）。
+// - 能否转自动：钉选两缝（离线/闸挡）不自动改派。pin 的语义是确定性
+//   （t-0047 调研、#682 落地），静默换机会让「钉 A 机」变成不确定；超时的
+//   产物是可见的失败加显式出口，不是另一台机器上的静默重跑。② 是自动降级
+//   ——亲和是 server 侧软偏好不是用户约束，楔住时换机 + 显式注记优于失败。
 //
-// 判据口径：pending + 钉选机不在线（行缺失 = 已移除，同离线语义）+ 步的最后
-// 活动时刻（心跳 → 领取 → 入队）已过宽限。锚在「最后活动」而非入队时刻，是为
-// T1 释放（#862）留窗口：长跑步被释放回 pending 后，机器回来的机会从失联时刻
-// 起算，而不是从入队时刻倒扣。
+// 判据口径：pending + 钉选机不在线（行缺失 = 已移除，同离线语义）/ 钉选机
+// 闸挡 + 步的最后活动时刻（心跳 → 领取 → 入队）已过宽限。锚在「最后活动」
+// 而非入队时刻，是为 T1 释放（#862）留窗口：长跑步被释放回 pending 后，
+// 机器回来的机会从失联时刻起算，而不是从入队时刻倒扣。
 
 export const PIN_OFFLINE_GRACE_MS = 10 * 60_000;
+
+/** #881 ②：会话机在线但楔住（不领且手上无 claimed 步）时，亲和闸让行的
+ *  上界。盖过 claim 长轮询节奏（hold ≈ 75s + 断网退避封顶 30s）一个量级，
+ *  在线健康机器领本机会步本在一两个周期内——超此仍无认领 = 楔住判定可信；
+ *  同 10 分钟量级让「有界等待」一族数字可读。 */
+export const SESSION_WEDGE_GRACE_MS = 10 * 60_000;
 
 /** 步的最后活动时刻：心跳 → 领取 → 入队（T1 释放保留 claimedAt/lastHeartbeatAt
  *  作死亡时刻审计，故释放后的 pending 步锚在失联时刻）。 */
@@ -51,3 +68,21 @@ export const WORKER_PIN_OFFLINE_HINT =
  *  的主力机、清回自动，或（todo 钉选来源的线程）把任务的机器改掉。 */
 export const CHIEF_PIN_OFFLINE_HINT =
   '请让它上线后重发，或改 chief 设置的主力机，或清回自动（任务钉了机器时，把任务的机器改为其它在线机器）。';
+
+/** #881 ①：钉选机器在线但 enabledRuntimes 不含本步 runtime 的失败文案
+ *  （离线版同形：点名机器，runtime 名原样透出，出口 = 开 runtime 或改钉）。 */
+export function pinRuntimeBlockedReason(
+  machineName: string,
+  runtimeId: string,
+  hint: string,
+): string {
+  return `本轮无人认领：钉选的机器「${machineName}」未开启本步所需的 runtime「${runtimeId}」。${hint}`;
+}
+
+/** #881 ① worker 步尾注：runtime 开关 PATCH 热写秒级生效，出口即时可动作。 */
+export const WORKER_PIN_RUNTIME_HINT =
+  '请在机器页为它开启该 runtime 后重跑，或把任务的机器改为其它在线机器（重跑沿用任务的钉选）。';
+
+/** #881 ① chief 回合尾注：动作面是「重发」。 */
+export const CHIEF_PIN_RUNTIME_HINT =
+  '请在机器页为它开启该 runtime 后重发，或把任务的机器改为其它在线机器。';

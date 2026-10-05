@@ -1,0 +1,38 @@
+/* Official 859B font stylesheet (r1 §4.1): two woff2 @font-face + Arial
+   metric-override fallbacks + font-family variables, reproduced verbatim
+   in structure. woff2 files byte-identical with the r1 records
+   (48,256 / 40,404 B), carried over from prototype/fonts/. */
+
+@font-face {
+  font-family: "inter";
+  src: url("/fonts/inter-var.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: optional;
+}
+@font-face {
+  font-family: "inter Fallback";
+  src: local("Arial");
+  ascent-override: 89.79%;
+  descent-override: 22.36%;
+  line-gap-override: 0.00%;
+  size-adjust: 107.89%;
+}
+@font-face {
+  font-family: "jetbrainsMono";
+  src: url("/fonts/jetbrains-mono-var.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: optional;
+}
+@font-face {
+  font-family: "jetbrainsMono Fallback";
+  src: local("Arial");
+  ascent-override: 77.57%;
+  descent-override: 22.82%;
+  line-gap-override: 0.00%;
+  size-adjust: 131.49%;
+}
+
+:root {
+  --font-inter: "inter", "inter Fallback";
+  --font-jetbrains-mono: "jetbrainsMono", "jetbrainsMono Fallback";
+}

@@ -461,8 +461,8 @@ export type TranscriptItem =
   | { kind: 'user'; text: string; seq?: number; title?: string; markdown?: string }
   /** Agent prose: one or more paragraphs of inline segments (r7 36 merge
    *  row, r7 38 legacy rows). `footer` renders the message action row
-   *  (copy + optional restore + optional `| 完成 Ns` + optional `›`,
-   *  r8 60/65); paragraph kinds carry the r8 quote/ordinal/bullet forms.
+   *  (copy + optional `| 完成 Ns` + optional `›`, r8 60/65); paragraph
+   *  kinds carry the r8 quote/ordinal/bullet forms.
    *  #469: an agent reply may instead carry raw block markdown in
    *  `markdown` — headings / ordered+unordered lists (nested) / code
    *  fences — parsed to blocks at render time (chat-markdown.tsx). When
@@ -560,12 +560,13 @@ export interface RobotPara {
   bullet?: boolean;
 }
 
-/** Message action row payload (r8 60/65): copy + optional restore +
- *  optional `| 完成 Ns`. The captures' trailing chevron is not part of the
- *  payload anymore: it renders only where a tool group gives it something
- *  to expand (#634 follow-up, re-measured against the live reference). */
+/** Message action row payload (r8 60/65): copy + optional `| 完成 Ns`.
+ *  The captures' trailing chevron is not part of the payload anymore: it
+ *  renders only where a tool group gives it something to expand (#634
+ *  follow-up, re-measured against the live reference). The restore glyph
+ *  the captures show beside the copy is likewise not part of the payload:
+ *  this product has no build-level rewind object surface for it (#884). */
 export interface RobotFooter {
-  restore?: boolean;
   seconds?: number;
 }
 
