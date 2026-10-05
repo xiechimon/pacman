@@ -45,6 +45,7 @@ function captureLogger(): DaemonLogger {
     recover: push,
     wake: push,
     skills: push,
+    gate: push,
     mcp: push,
   };
 }

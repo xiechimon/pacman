@@ -39,6 +39,7 @@ import {
   Users,
 } from '../icons/index.js';
 import { PHASE_UI } from '../phase.js';
+import { Chip } from '../ui/chip.js';
 import './overlays.css';
 
 /** 前往 group rows, top to bottom. Canon is the r7 05 bitmap, not r2
@@ -136,7 +137,11 @@ function TodoRow({
         <span className="search-row-sub">{projectName ?? PROJECT_NAME}</span>
       </span>
       <span className="search-row-time">{relativeTime(todo.phaseAt, now, t)}</span>
-      <span className={`search-row-chip search-row-chip--${ui.tone}`}>{t(ui.chip)}</span>
+      {/* #853：行 chip 即 Chip 原语 mini 档——皮肤（五态 token 对）与
+          mini 几何（14px/0 6px/10px）全在 ui/chip；此处只留行内定位。 */}
+      <Chip variant={ui.tone} size="mini" className="search-row-chip">
+        {t(ui.chip)}
+      </Chip>
     </button>
   );
 }

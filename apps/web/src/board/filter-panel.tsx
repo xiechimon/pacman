@@ -209,8 +209,8 @@ function DimensionSection({
               = 清本维——段内清除钮撤除后，「清」由本行满选态 / 反选 / 顶栏
               生效筛选条三路承接，功能不丢。反选挂该行右端（参考站位置与文案）。 */}
           <div className="filter-dimension-allrow flex items-center">
-            {/* 真 checkbox（native input）：三态走 indeterminate 属性，语义与
-                键盘/读屏行为白送；整行包 label，点文案即 toggle。勾形/横杠是
+            {/* deliberate-native（#855）：真 checkbox 三态走 indeterminate 属性，
+                语义与键盘/读屏行为白送；整行包 label，点文案即 toggle。勾形/横杠是
                 input 之上的指针穿透覆层（appearance-none 自绘皮肤）。 */}
             <label className="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft">
               <span className="relative flex size-4 flex-none">

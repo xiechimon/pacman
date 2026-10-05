@@ -328,6 +328,9 @@ export function ChiefDrawer({
       reviewAvailable: false,
       stopAvailable: false,
     },
+    // #860: textarea follows the content up to 6 lines (20px), scrolling
+    // internally beyond it (the XMON-102 fixed-height law is superseded).
+    growCap: 120,
   });
   const {
     handlePaste,
@@ -1037,6 +1040,9 @@ export function ChiefDrawer({
               可点预览）。chief composer 卡是 in-flow 布局，strip 走流式、
               空时零节点。 */}
               <AttachmentStrip draft={wire.draft} pending={pendingAttachments} />
+              {/* deliberate-native（#855）：隐藏的文件选择触发器
+                  （display:none，编程式打开），可见皮肤在附件 Button 上；
+                  Input 原语是可见输入框皮肤，此处无可收编之物。 */}
               <input
                 ref={fileInputRef}
                 type="file"

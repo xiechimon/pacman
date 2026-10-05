@@ -680,9 +680,12 @@ a.chief-identity {
   /* XMON-102：固定尺寸，不随内容增高。此前高度由 `rows` 驱动（空 1 行 ↔
      有草稿 6 行），键入首字即 20 → 120px 跳变、发送后又缩回，整块面板跟着
      抖。改由这里钉死 = 20px 行高 × 3 行。超出部分盒内滚动
-     （overflow-y: auto），布局不动、光标行始终可见。 */
+     （overflow-y: auto），布局不动、光标行始终可见。
+     #860 反转上半：3 行基座保留，内容增高跟随到 6 行（wire growCap），
+     超限回盒内滚动——抖动以 120px 上限为界。 */
   box-sizing: border-box;
   height: 60px;
+  max-height: 120px;
   overflow-y: auto;
   border: none;
   background: none;
@@ -1385,6 +1388,15 @@ a.chief-identity {
   font-size: 14px;
   color: var(--text-primary);
   outline: none;
+}
+
+/* #855：框内 input 进 Input 原语后的中性护栏——底座 focus-visible 环
+   （ring/box-shadow）与本面「皮肤在容器行、框内零装饰」冲突，unlayered
+   位直接并掉，不赌 utility 同层排序。 */
+.chief-pick-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: transparent;
 }
 
 .chief-pick-list {

@@ -43,6 +43,7 @@ export * from './memory.js';
 export * from './message.js';
 export * from './model-source.js';
 export * from './notification.js';
+export * from './permission-rules.js';
 export * from './plan.js';
 export * from './project.js';
 export * from './prompts.js';

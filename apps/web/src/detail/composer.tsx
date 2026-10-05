@@ -1,4 +1,5 @@
-// Composer (issue #56, r7 §3.4): box anchored x737 w687 h76, placeholder
+// Composer (issue #56, r7 §3.4): box anchored x737 w687 h76 → min-h84
+// (#860: 3-line textarea + auto-grow), placeholder
 // per phase, toolbar 添加附件/AI 审核/提及 @ pitch 36, the 32×32
 // send button, and the streaming stop button (r7 16). The 总管 FAB
 // overlaps the send button in every capture (r7 §3.4), so the page renders
@@ -157,6 +158,9 @@ export function Composer({
       ...(onReview !== undefined ? { onReview } : {}),
       ...(onStop !== undefined ? { onStop } : {}),
     },
+    // #860: textarea follows the content up to 6 lines (16px), scrolling
+    // internally beyond it; the card rides min-height (detail.css).
+    growCap: 96,
   });
 
   return (
@@ -239,13 +243,16 @@ export function Composer({
       ) : (
         <div className="composer-placeholder">{t(placeholder)}</div>
       )}
-      {/* #757 附件 strip + #812 提及 strip：同一浮列挂盒外上方（盒几何
-          76px 冻结，浮列与 listbox 同锚无布局位移）。共列即天然上下叠放，
+      {/* #757 附件 strip + #812 提及 strip：同一浮列挂盒外上方（盒底沿
+          min-84 起随内容增高，浮列与 listbox 同锚无布局位移）。共列即天然上下叠放，
           两面永不互盖；各 strip 空时零节点，列空即零高度不绘制。 */}
       <div className="composer-float">
         <ComposerChips draft={draft} files={mentionFiles} suspended={inlineOpen || slashOpen} />
         <AttachmentStrip draft={draft} pending={pendingAttachments} />
       </div>
+      {/* deliberate-native（#855）：隐藏的文件选择触发器（display:none，
+          编程式打开），可见皮肤在附件 Button 上；Input 原语是可见输入框皮肤，
+          此处无可收编之物。 */}
       <input
         ref={fileInputRef}
         type="file"
@@ -270,7 +277,7 @@ export function Composer({
           disabled={attaching || !onAttachment}
           onClick={openFilePicker}
         >
-          <Paperclip />
+          <Paperclip width={16} height={16} />
         </Button>
         {aiReview && (
           <Button
@@ -279,7 +286,7 @@ export function Composer({
             aria-label={t('AI 审核')}
             onClick={onReview}
           >
-            <SearchPlus />
+            <SearchPlus width={16} height={16} />
           </Button>
         )}
         <Button
@@ -288,7 +295,7 @@ export function Composer({
           aria-label={t('提及')}
           onClick={togglePicker}
         >
-          <Grid2x2 />
+          <Grid2x2 width={16} height={16} />
         </Button>
       </div>
       {streaming && (

@@ -10,7 +10,6 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
-import { Badge } from '../components/ui/badge.js';
 import { Button } from '../components/ui/button.js';
 import { FloatingShell } from '../components/ui/floating-shell.js';
 import type { TodoRecord } from '../fixtures/records.js';
@@ -19,17 +18,12 @@ import { ChevronDown, ChevronLeft, EllipsisVertical } from '../icons/index.js';
 import { ChipPopover } from '../overlays/chip-popover.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
+import { Chip } from '../ui/chip.js';
 
-/** XMON-24：五态 pill 皮肤落 registry Badge（tag-chip 同律）。token 对与
- *  原 ui/chip 同源（shadcn.css --chip-*-bg/fg），18px/9999/11px/16px 几何
- *  逐值搬进 utilities；detail-chip--<tone> 留 DOM 作 e2e 定位别名。 */
-const CHIP_TONE_CLASS: Record<'idle' | 'plan' | 'confirm' | 'done' | 'failed', string> = {
-  idle: 'bg-(--chip-idle-bg) text-(--chip-idle-fg)',
-  plan: 'bg-(--chip-plan-bg) text-(--chip-plan-fg)',
-  confirm: 'bg-(--chip-confirm-bg) text-(--chip-confirm-fg)',
-  done: 'bg-(--chip-done-bg) text-(--chip-done-fg)',
-  failed: 'bg-(--chip-failed-bg) text-(--chip-failed-fg)',
-};
+/** #853：头 chip 即 Chip 原语（18px/9999/11px + 五态 token 对全在
+ *  ui/chip）——XMON-24 的 Badge + utilities 转写与原语逐值同形，本票收进
+ *  原语本体；detail-chip--<tone> 留 DOM 作 e2e 定位别名（className 透传），
+ *  shrink/nowrap 是触发钮内 flex 项的保形几何。 */
 
 interface DetailHeadProps {
   todo: TodoRecord;
@@ -94,11 +88,9 @@ export function DetailHead({
           aria-expanded={popover}
           onClick={() => setPopover((value) => !value)}
         >
-          <Badge
-            className={`detail-chip--${ui.tone} ${CHIP_TONE_CLASS[ui.tone]} h-[18px] gap-[3px] rounded-full border-none px-[7px] py-0 text-[11px] leading-4 font-normal transition-none`}
-          >
+          <Chip variant={ui.tone} className={`detail-chip--${ui.tone} shrink-0 whitespace-nowrap`}>
             {t(ui.chip)}
-          </Badge>
+          </Chip>
           <span className="detail-chip-chevron">
             <ChevronDown width={12} height={12} />
           </span>
