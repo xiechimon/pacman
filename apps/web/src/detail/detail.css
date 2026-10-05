@@ -979,10 +979,39 @@
   max-width: 100%;
 }
 
+/* #873 活行披露头是 shadcn ghost 钮（与总管 button.chief-streaming 同律）：
+   背景/边框/内边距/字形四清零，保留 .chat-streaming 的行级排布与暗字色——
+   折叠态几何与旧 span 逐字一致（20px 行高不动）。 */
+button.chat-streaming {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
 .chat-streaming-label {
   color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* #873 活行展开面（在跑步：哪一步 / 哪台机器）——同一行文字族的暗色小字，
+   左对齐、无底、无边框，展开时挂在该行下方（不撑行高）。 */
+.chat-live-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  padding-left: 31px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-tertiary);
+}
+
+.chat-live-line {
+  overflow-wrap: anywhere;
 }
 
 /* #672 loading indicator slot: a loading-dev Atom root (a 16×16 square at

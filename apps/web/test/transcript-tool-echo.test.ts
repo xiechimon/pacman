@@ -55,7 +55,6 @@ function render(messages: MessageRow[]): TranscriptItem[] {
     machineName: null,
     userName: 'Xmon Dai',
     liveText: '',
-    now: NOW,
   });
 }
 

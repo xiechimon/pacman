@@ -78,7 +78,6 @@ function render(overrides: {
     machineName: null,
     userName: 'Xmon Dai',
     liveText: '',
-    now: NOW,
   });
 }
 

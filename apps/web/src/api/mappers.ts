@@ -453,7 +453,6 @@ export interface TranscriptInput {
   userName: string;
   /** conversation stream text_delta 累积（live 打字面；'' = 无进行中文本）。 */
   liveText: string;
-  now: number;
   /** 停止钮确认后的过渡态（M7 #308，r9 §3.3「正在停止…」）：stop 已被
    * 受理、步终态未回（live 面本地旗标；缺省 false = 捕获面不受扰）。 */
   stopping?: boolean;
@@ -469,7 +468,6 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     machineName,
     userName,
     liveText,
-    now,
     stopping = false,
   } = input;
   const head: TranscriptItem[] = [];
@@ -636,7 +634,10 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     }
     items.push({
       kind: 'streaming',
-      seconds: Math.max(1, Math.round((now - running.createdAt) / 1000)),
+      // #873：不在投影期把「已用秒数」算成一个死数——投影只在别的事件驱动
+      // 重渲时才跑，静默窗口里那个数会冻住说谎（用户实测卡在 1s）。挂真实
+      // 起点，走秒归渲染层的 1s 计时器（live-row 的 useLiveSeconds）。
+      startedAt: running.createdAt,
       label: stopping
         ? '正在停止…' // 停止过渡态（M7 #308，r9 §3.3：中断在途）
         : running.kind === 'plan' && steps.length === 1 && running.status === 'pending'
