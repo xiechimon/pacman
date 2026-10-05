@@ -153,6 +153,24 @@ export function textOfContent(content: unknown): string {
   return '';
 }
 
+/** content 里的 thinking 文本（#955 段行）：只在**没有非空 text** 的 assistant
+ *  行上取——混合行（存量的原始块数组）仍走 text 面，思考不重复呈现。 */
+export function thinkingOfContent(content: unknown): string | null {
+  if (!Array.isArray(content)) return null;
+  let sawText = false;
+  const parts: string[] = [];
+  for (const block of content) {
+    if (block === null || typeof block !== 'object') continue;
+    const b = block as { type?: string; text?: string; thinking?: string };
+    if (b.type === 'text' && typeof b.text === 'string' && b.text.trim() !== '') sawText = true;
+    if (b.type === 'thinking' && typeof b.thinking === 'string' && b.thinking.trim() !== '') {
+      parts.push(b.thinking);
+    }
+  }
+  if (sawText || parts.length === 0) return null;
+  return parts.join('');
+}
+
 export function toolCallOfContent(content: unknown): ToolCallRecord | null {
   if (content !== null && typeof content === 'object' && !Array.isArray(content)) {
     const c = content as { kind?: string; call?: ToolCallRecord };
@@ -563,7 +581,13 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     // 芯片。空文本行跳过——pi 工具轮的空 content）。
     if (text !== '') {
       entries.push({ at: m.createdAt, item: { kind: 'robot', markdown: text } });
+      continue;
     }
+    // #955：思考段行——无正文的 assistant 行若是 thinking 块，单列一行（与
+    // 总管抽屉同一张脸；两面同改，不给共享层加分支）。
+    const thinking = m.role === 'assistant' ? thinkingOfContent(m.content) : null;
+    if (thinking !== null)
+      entries.push({ at: m.createdAt, item: { kind: 'thinking', text: thinking } });
   }
 
   // 步标记：确认气泡（withPlan 的执行步入队时刻 = 确认点击，r7 26d）+
@@ -1024,14 +1048,19 @@ function stripWakeMarker(text: string): string {
   return text.replace(WAKE_MARKER_PREFIX_RE, '');
 }
 
-export function mapChiefStream(messages: MessageRow[]): ChiefStreamItem[] {
-  return collectChiefStream(messages).items;
+export function mapChiefStream(messages: MessageRow[], inlineTools = false): ChiefStreamItem[] {
+  return collectChiefStream(messages, inlineTools).items;
 }
 
 /** #822 内部组装：items + 本轮尾部尚未归属的工具行（user 行之后的 toolcall
  *  投影——调用方决定其归属面：定稿 robot 行由本函数内直挂；在飞 streaming 行
  *  由 mapChief 挂展开面）。数据源不变（messages 参数），不新增请求。 */
-function collectChiefStream(messages: MessageRow[]): {
+function collectChiefStream(
+  messages: MessageRow[],
+  /** #955：回合在飞（`activeRun` 非空）时工具行**平铺进主呈现**并与文本段按序
+   *  交错；收口后恢复 r5 canon 的折叠形（工具折进后续 robot 行的披露）。 */
+  inlineTools = false,
+): {
   items: ChiefStreamItem[];
   trailingTools: ChiefToolRow[];
 } {
@@ -1073,10 +1102,29 @@ function collectChiefStream(messages: MessageRow[]): {
           : {}),
         ...(call.isError === true ? { error: true } : {}),
       });
+      // #955：在飞期间工具行平铺（顺序由 createdAt 承载，段行必排在它之后）；
+      // 收口后不产出——工具回到 robot 行的 `tools` 折叠面（r5 canon）。
+      if (inlineTools) {
+        items.push({
+          kind: 'tool',
+          name: call.name,
+          ...(call.startedAt !== undefined ? { startedAt: call.startedAt } : {}),
+          ...(call.startedAt !== undefined && call.endedAt !== undefined
+            ? { seconds: Math.max(0, Math.round((call.endedAt - call.startedAt) / 1000)) }
+            : {}),
+          ...(call.result === undefined ? { running: true } : {}),
+          ...(call.isError === true ? { error: true } : {}),
+        });
+      }
       continue; // 工具行不进 chief 流主呈现（r5 114/116 折叠态无工具行）
     }
     const rawText = textOfContent(m.content).trim();
-    if (rawText === '') continue;
+    if (rawText === '') {
+      // #955：思考段行——无正文的 assistant 行若是 thinking 块，单列一行。
+      const thinking = m.role === 'assistant' ? thinkingOfContent(m.content) : null;
+      if (thinking !== null) items.push({ kind: 'thinking', text: thinking });
+      continue;
+    }
     if (m.role === 'user') {
       // #778 用户可见边界剥离内部 marker（显示层，落库不动）。
       const text = stripWakeMarker(rawText);
@@ -1156,7 +1204,7 @@ export function mapChief(
       : null;
   const running = active?.activeRun != null;
   // #822：在飞展开面数据源（已有 messages 投影的二次归属，不新增请求）。
-  const collected = active === null ? null : collectChiefStream(opts.messages);
+  const collected = active === null ? null : collectChiefStream(opts.messages, running);
   const chiefStream: ChiefStreamItem[] = collected?.items ?? [];
   // #651 打字面尾行 / #739 在飞存在行：回合进行中（activeRun 非空）才挂尾行，
   // 且两行按 liveText 空/非空互斥——尾部恒至多一行（#739 F1 无二重身）。

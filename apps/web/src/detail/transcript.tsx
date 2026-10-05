@@ -12,6 +12,7 @@
 import { useState } from 'react';
 import { inlineSegments } from '../api/mappers.js';
 import { type CurrentUser, useLiveData } from '../api/provider.js';
+import { ThinkingRow } from '../components/chat/agent-rows.js';
 import { LiveRow, LiveSignal } from '../components/chat/live-row.js';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
@@ -325,6 +326,15 @@ function Row({
           {item.footer != null && (
             <ActionRow seconds={item.footer.seconds} copy={robotCopyText(item)} t={t} />
           )}
+        </div>
+      );
+    case 'thinking':
+      return (
+        <div className="chat-row chat-row--agent">
+          <AgentRowAvatar agent={agent} />
+          <span className="chat-text">
+            <ThinkingRow text={item.text} />
+          </span>
         </div>
       );
     case 'fail':
