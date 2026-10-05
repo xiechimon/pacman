@@ -14,7 +14,8 @@
 | `contrast-949.md` | better-colors 双模 27 对门控实测表（渲染对 + token 解析对，WCAG 2.x 公式）：**0 未过**，域最低 4.5:1；含实测抓出并换槽的 `--text-dim × --popover-bg` 三面（亮 2.89 < 槽地板 3 → `--text-tertiary`，#908 裁决 2 授权、token 值零改动）；report-only 软发丝线 3 对与 §1.7/1.8 表值逐位吻合 | 3 |
 | `live-stack/` | 定制探针（`drive-949-overlays.mjs`，随本 PR 进 `.claude/skills/verify-pacman/scripts/`）：A ⌘K 面板真路径 9 项（几何/皮肤/行钮收编/hover pill/键盘光标 data-selected/StatusChip sm/常亮互斥调暗律/scrim 点击关/退出透明度单调）+ B chip popover 真路径 7 项（锚定几何/V2 壳+Arrow/ClickCatcher 收编/data-selected section/行 hover tint/编辑分配中和/Esc 分层）+ D 机制 2 项（退役选择子零规则/调暗 utility 在场）+ E 对比度双模 2 项 = **38 checks 全 PASS，failures 0**（双主题）；截图 01/02/03/05 + `result.json` + `contrast.json` | 3、4 |
 | `build-artifact-grep.txt` | 编译产物机制实物：`vite build --mode fixture` 的 dist 上 grep——18 个退役选择子 **0 规则**；类别名存活面与报备一致（`.doc-select-wrap` css 1 = detail.css 兄弟选择器活住址、`.doc-pane-select` css 5 = #945 账、sidebar/rail 别名仅 JS 类串）；新载体（data-row-kind / data-selected / chip-chevron / html[data-search-open] utility）全在场 | 4、5 |
-| `local-full-e2e.log` | 验收 1「合并前本地全量一次」实物：终版代码全量 e2e（E2E_PORT=8402）全日志 | 1 |
+| `local-full-e2e.log` | 验收 1「合并前本地全量一次」实物：终版代码全量 e2e（E2E_PORT=8402）**809 passed (1.8m)** 全日志 | 1 |
+| `local-full-e2e-merged.log` | merge origin/main（#947 落地）后的合并头全量复跑：**809 passed (3.9m)**；同头 web unit 446/446、integration 60/60 | 1 |
 
 C 段（plan dropdown）live 面声明：型选盘挂在详情右 pane 的 doc 面上，live 栈到达它需要 build 载荷数据（daemon + LLM 全链）——本 probe 显式声明跳过该面的 live 走查，覆盖面 = fixture e2e（detail-3pane / dead-buttons §6 / m7-branch-dialog integration，全绿）+ parity 探针菜单行全态（含 hover/focus/checked 复合态，双模 KEPT）。
 
