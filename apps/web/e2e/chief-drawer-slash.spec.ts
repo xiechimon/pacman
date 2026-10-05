@@ -111,10 +111,11 @@ async function openDrawer(page: Page) {
   );
   await page.goto('/app');
   await membersLoaded;
-  await page.locator('.chief-fab').click();
+  // #950 载体：.chief-fab → aria-label 总管钮；.chief-composer-input → testid。
+  await page.getByRole('button', { name: '总管', exact: true }).click();
   const drawer = page.locator('.chief-drawer');
   await expect(drawer).toBeVisible();
-  const input = page.locator('.chief-composer-input');
+  const input = page.getByTestId('chief-composer-input');
   await expect(input).toBeVisible();
   await expect(input).toBeEditable();
   const menu = drawer.locator('.slash-menu');

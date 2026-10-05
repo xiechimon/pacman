@@ -5,7 +5,7 @@ import { evidencePanelShot } from './evidence';
 // row used to be a display-only `<span>` carrying a broken π trace — the
 // live loop (verify probe drive-chief-drawer) covers 显示→可改→落库→回显;
 // this spec pins the fixture-face half of the same contract:
-//   1. the model row is a control (button.chief-model-btn) that opens
+//   1. the model row is a control (aria-label 总管主模型 钮, #950 载体) that opens
 //      the model popover anchored under the row (#751: the #615 centered
 //      DialogShell read as 「在中间出现」 against the switcher's under-trigger
 //      anchoring); geometry is asserted from live rects, and the selected
@@ -23,7 +23,9 @@ import { evidencePanelShot } from './evidence';
 //      on the board settings view via the ?chief=settings deep link.
 
 const drawer = (page: Page) => page.locator('.chief-drawer');
-const modelBtn = (page: Page) => page.locator('.chief-model button.chief-model-btn');
+// #950: 类名 locator 退役——触发钮载体 = role + aria-label（一级）。
+const modelBtn = (page: Page) => page.getByRole('button', { name: '总管主模型' });
+const modelMenu = (page: Page) => page.getByRole('dialog', { name: '模型' });
 
 test.describe('chief drawer model row (#615)', () => {
   test('the model row is a control that opens the anchored model popover', async ({ page }) => {
@@ -34,7 +36,7 @@ test.describe('chief drawer model row (#615)', () => {
     await expect(btn).toContainText('claude-sonnet-5 · 默认');
 
     await btn.click();
-    const menu = page.locator('.chief-model-pop');
+    const menu = modelMenu(page);
     await expect(menu).toBeVisible();
     // the enter animation (V2 scale-fade 100ms, #790 P3) transforms the menu
     // for 100ms; rects sampled mid-flight are not the resting geometry.
@@ -42,9 +44,7 @@ test.describe('chief drawer model row (#615)', () => {
       Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined),
     );
     // the inherit row rides first (compaction select 同律: null = 默认)
-    await expect(menu.locator('.chief-model-pick-row').nth(0)).toContainText(
-      '默认（与绑定 Agent 相同）',
-    );
+    await expect(menu.getByRole('option').nth(0)).toContainText('默认（与绑定 Agent 相同）');
 
     // #751 B: the menu hangs under its trigger like the thread switcher,
     // not centered over the viewport — live rects, not CSS values.
@@ -62,7 +62,7 @@ test.describe('chief drawer model row (#615)', () => {
     expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(drawerBox.x + drawerBox.width);
 
     // fixture accept 律: picking closes; no live callback, no request
-    await menu.locator('.chief-model-pick-row').nth(0).click();
+    await menu.getByRole('option').nth(0).click();
     await expect(menu).toHaveCount(0);
     await expect(drawer(page)).toBeVisible();
   });
@@ -79,8 +79,8 @@ test.describe('chief drawer model row (#615)', () => {
       await page.reload();
       await expect(drawer(page)).toBeVisible();
       await modelBtn(page).click();
-      const row = page.locator('.chief-model-pick-row[aria-selected="true"]');
-      const name = row.locator('.chief-model-pick-name');
+      const row = page.getByRole('option', { selected: true });
+      const name = row.getByTestId('model-pick-name');
       await expect(name).toBeVisible();
       const ratio = await name.evaluate((el) => {
         const lin = (c: number) => {
@@ -112,7 +112,7 @@ test.describe('chief drawer model row (#615)', () => {
         'rgba(0, 0, 0, 0)',
       );
       await page.keyboard.press('Escape');
-      await expect(page.locator('.chief-model-pop')).toHaveCount(0);
+      await expect(modelMenu(page)).toHaveCount(0);
     }
   });
 
@@ -127,24 +127,24 @@ test.describe('chief drawer model row (#615)', () => {
     await page.goto('/app?scenario=111');
     await expect(drawer(page)).toBeVisible();
     await modelBtn(page).click();
-    const menu = page.locator('.chief-model-pop');
+    const menu = modelMenu(page);
     await expect(menu).toBeVisible();
     await menu.evaluate((el) =>
       Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined),
     );
-    const row = menu.locator('.chief-model-pick-row[aria-selected="true"]');
+    const row = menu.getByRole('option', { selected: true });
     await expect(row).toHaveCount(1);
     // 证据帧（PACMAN_E2E_EVIDENCE 未设时零写入）：整块弹层连底色到边一起拍
     await evidencePanelShot(page, '872-drawer-picker.png', menu);
 
     const geo = await row.evaluate((el) => {
       const r = el.getBoundingClientRect();
-      const panelEl = el.closest('.chief-model-pop') as HTMLElement;
+      const panelEl = el.closest('[role="dialog"]') as HTMLElement;
       const p = panelEl.getBoundingClientRect();
       const cs = getComputedStyle(el);
       const pcs = getComputedStyle(panelEl);
-      const name = el.querySelector('.model-pick-name') as HTMLElement;
-      const check = el.querySelector('.model-pick-check') as HTMLElement;
+      const name = el.querySelector('[data-testid="model-pick-name"]') as HTMLElement;
+      const check = el.querySelector('[data-testid="model-pick-check"]') as HTMLElement;
       return {
         fillLeft: r.left - p.left,
         fillRight: p.right - r.right,
@@ -165,7 +165,7 @@ test.describe('chief drawer model row (#615)', () => {
 
     // 清单是滚动容器：铺满不许把内容撑成横向溢出
     const scroll = await menu
-      .locator('.chief-model-pick-list')
+      .getByRole('listbox')
       .evaluate((el) => ({ sw: el.scrollWidth, cw: el.clientWidth }));
     expect(scroll.sw).toBe(scroll.cw);
   });
@@ -175,15 +175,16 @@ test.describe('chief drawer model row (#615)', () => {
   }) => {
     await page.goto('/app?scenario=111');
     await expect(drawer(page)).toBeVisible();
-    const chipTitle = await page.locator('.chief-chip-title').textContent();
+    const chipBtn = page.getByRole('button', { name: '主题', exact: true });
+    const chipTitle = await chipBtn.textContent();
     await modelBtn(page).click();
-    const menu = page.locator('.chief-model-pop');
+    const menu = modelMenu(page);
     await expect(menu).toBeVisible();
     // open state carries zero search footprint (not rendered, not transparent)
-    await expect(menu.locator('.chief-pick-search')).toHaveCount(0);
+    await expect(menu.getByPlaceholder('搜索模型…')).toHaveCount(0);
     // scenario 111 is fixture mode: modelOptions is undefined (live-only
     // union), so the face shows the default row alone by design
-    const rowsOpen = await menu.locator('.chief-model-pick-row').count();
+    const rowsOpen = await menu.getByRole('option').count();
     expect(rowsOpen).toBe(1);
 
     // typeahead 接的是面内焦点：FloatingShell 把焦点移进面是异步的，
@@ -193,7 +194,7 @@ test.describe('chief drawer model row (#615)', () => {
         const el = document.querySelector(sel);
         return el != null && el.contains(document.activeElement);
       },
-      '.chief-model-pop',
+      '[role="dialog"][aria-label="模型"]',
     );
 
     // a printable key is consumed by the face: the box reveals with the key
@@ -202,30 +203,30 @@ test.describe('chief drawer model row (#615)', () => {
     // options the key matches nothing, so the default row plus empty state
     // show (the filtered-list path is pinned on the settings face instead)
     await page.keyboard.press('n');
-    const search = menu.locator('.chief-pick-search input');
+    const search = menu.getByPlaceholder('搜索模型…');
     await expect(search).toBeVisible();
     await expect(search).toHaveValue('n');
     await expect(search).toBeFocused();
     await expect(menu).toBeVisible();
-    expect(await page.locator('.chief-chip-title').textContent()).toBe(chipTitle);
-    await expect(menu.locator('.chief-model-pick-row')).toHaveCount(1);
-    await expect(menu.locator('.chief-pick-empty')).toBeVisible();
+    expect(await chipBtn.textContent()).toBe(chipTitle);
+    await expect(menu.getByRole('option')).toHaveCount(1);
+    await expect(menu.getByText('没有匹配的模型')).toBeVisible();
 
     // a key matching nothing filters to the default row plus the empty state
     await search.fill('x');
-    await expect(menu.locator('.chief-model-pick-row')).toHaveCount(1);
-    await expect(menu.locator('.chief-pick-empty')).toBeVisible();
+    await expect(menu.getByRole('option')).toHaveCount(1);
+    await expect(menu.getByText('没有匹配的模型')).toBeVisible();
 
     // retract rule: clearing collapses the box and restores the full list,
     // and typeahead re-arms afterwards
     await search.fill('');
-    await expect(menu.locator('.chief-pick-search')).toHaveCount(0);
-    await expect(menu.locator('.chief-model-pick-row')).toHaveCount(rowsOpen);
+    await expect(menu.getByPlaceholder('搜索模型…')).toHaveCount(0);
+    await expect(menu.getByRole('option')).toHaveCount(rowsOpen);
     await page.keyboard.press('c');
     await expect(search).toBeVisible();
     await expect(search).toHaveValue('c');
-    await expect(menu.locator('.chief-model-pick-row')).toHaveCount(1);
-    await expect(menu.locator('.chief-pick-empty')).toBeVisible();
+    await expect(menu.getByRole('option')).toHaveCount(1);
+    await expect(menu.getByText('没有匹配的模型')).toBeVisible();
   });
 
   test('the model row carries the runtime mark, not an agent avatar', async ({ page }) => {
@@ -235,14 +236,15 @@ test.describe('chief drawer model row (#615)', () => {
     await expect(btn).toBeVisible();
     // #615 返工裁决：行首 = 运行时标记（fixture 未录 provider 位 = pi 正典
     // π 字形），不是 Agent 头像——头像脸归 FAB / 消息流各自的面
-    await expect(btn.locator('.chief-model-mark svg')).toHaveCount(1);
-    await expect(btn.locator('.chief-model-mark img')).toHaveCount(0);
+    // #950: mark 槽 = 行钮首个 span（结构载体；svg 存在 + 无 img 语义不变）。
+    await expect(btn.locator('span').first().locator('svg')).toHaveCount(1);
+    await expect(btn.locator('img')).toHaveCount(0);
 
     // unbound: plain n/a line, no control (nothing to pick until an agent binds)
     await page.goto('/app?scenario=100');
     await expect(drawer(page)).toBeVisible();
     await expect(modelBtn(page)).toHaveCount(0);
-    await expect(page.locator('.chief-model')).toContainText('n/a');
+    await expect(page.getByText('n/a', { exact: true })).toBeVisible();
   });
 
   test('message copy glyphs are clipboard buttons; no bare inert glyphs remain', async ({
@@ -252,14 +254,14 @@ test.describe('chief drawer model row (#615)', () => {
     await page.goto('/app?scenario=114');
     await expect(drawer(page)).toBeVisible();
 
-    const copy = page.locator('.chief-msg-tools button[aria-label="复制"]');
+    const copy = page.getByTestId('chief-msg-tools').getByRole('button', { name: '复制' });
     await expect(copy).toBeVisible();
     await copy.click();
     const clip = await page.evaluate(() => navigator.clipboard.readText());
     expect(clip).toContain('CONTRIBUTING.md');
 
     // the foot copy wires the assistant text the same way
-    const footCopy = page.locator('.chief-msg-foot button[aria-label="复制"]');
+    const footCopy = page.getByTestId('chief-msg-foot').getByRole('button', { name: '复制' });
     await expect(footCopy).toBeVisible();
     await footCopy.click();
     const footClip = await page.evaluate(() => navigator.clipboard.readText());
@@ -267,9 +269,9 @@ test.describe('chief drawer model row (#615)', () => {
 
     // 用户行两钮（复制 + 恢复到此处）皆为真按钮；裸 glyph 子节点零残留
     // （#615 返工：恢复钮按用户裁决闭环复活，不再按二分律删除）
-    await expect(page.locator('.chief-msg-tools button')).toHaveCount(2);
-    await expect(page.locator('.chief-msg-tools > svg')).toHaveCount(0);
-    await expect(page.locator('.chief-msg-foot > svg')).toHaveCount(0);
+    await expect(page.getByTestId('chief-msg-tools').getByRole('button')).toHaveCount(2);
+    await expect(page.getByTestId('chief-msg-tools').locator('> svg')).toHaveCount(0);
+    await expect(page.getByTestId('chief-msg-foot').locator('> svg')).toHaveCount(0);
   });
 
   test('restore button opens the rewind confirm; the foot chevron discloses tool rows', async ({
@@ -279,28 +281,32 @@ test.describe('chief drawer model row (#615)', () => {
     await expect(drawer(page)).toBeVisible();
 
     // 恢复钮（参考站 live aria 正词「恢复到此处」）→ 破坏性确认层先行
-    const restore = page.locator('.chief-msg-tools button[aria-label="恢复到此处"]');
+    const restore = page
+      .getByTestId('chief-msg-tools')
+      .getByRole('button', { name: '恢复到此处' });
     await expect(restore).toBeVisible();
     await restore.first().click();
-    const confirm = page.locator('.chief-pick-confirm');
+    // #950: 确认层载体 = dialog role + 可及名（DialogShell aria-label=title）。
+    const confirm = page.getByRole('dialog', { name: '恢复到此处' });
     await expect(confirm).toBeVisible();
     await expect(confirm).toContainText('恢复到此处？');
     // fixture accept 律：确认只关窗（零请求），流不变
-    await page.locator('.chief-dlg-primary').click();
+    await confirm.getByRole('button', { name: '恢复到此处' }).click();
     await expect(confirm).toHaveCount(0);
-    await expect(page.locator('.chief-msg')).toHaveCount(2);
+    await expect(page.getByTestId('chief-msg')).toHaveCount(2);
 
     // foot 折叠箭头 = 过程披露：展开出该回合工具行（Multica OuterProcessFold 同族）
-    const fold = page.locator('.chief-msg-foot button[aria-label="展开过程"]');
+    const foot = page.getByTestId('chief-msg-foot');
+    const fold = foot.getByRole('button', { name: '展开过程' });
     await expect(fold).toBeVisible();
-    await expect(page.locator('.chief-turn-tools')).toHaveCount(0);
+    await expect(page.getByTestId('chief-turn-tools')).toHaveCount(0);
     await fold.click();
-    const tools = page.locator('.chief-turn-tools');
+    const tools = page.getByTestId('chief-turn-tools');
     await expect(tools).toBeVisible();
-    await expect(tools.locator('.chief-turn-tool-row')).toHaveCount(2);
+    await expect(tools.locator('div')).toHaveCount(2);
     await expect(tools).toContainText('create_todo');
     // 收起回折叠态
-    await page.locator('.chief-msg-foot button[aria-label="收起过程"]').click();
+    await foot.getByRole('button', { name: '收起过程' }).click();
     await expect(tools).toHaveCount(0);
   });
 
@@ -314,7 +320,7 @@ test.describe('chief drawer model row (#615)', () => {
     await gear.click();
     // the deep-link param is consumed (stripped) once the view lands — the
     // stable contract is the settings view itself, not the URL mid-consumption
-    await expect(page.locator('.chief-settings')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '总管设置' })).toBeVisible();
   });
 
   test('closing the drawer (⌘J) recycles the model popover with it (#773)', async ({
@@ -323,7 +329,7 @@ test.describe('chief drawer model row (#615)', () => {
     await page.goto('/app?scenario=111');
     await expect(drawer(page)).toBeVisible();
     await modelBtn(page).click();
-    const menu = page.locator('.chief-model-pop');
+    const menu = modelMenu(page);
     await expect(menu).toBeVisible();
 
     // ⌘J 收起抽屉：弹层跟随回收（X/⌘J 同走 open=false，见 chief-drawer）

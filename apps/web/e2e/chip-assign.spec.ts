@@ -30,17 +30,19 @@ async function openAssignDialog(page: Page) {
 test('编辑分配 opens the agent pick dialog with search + bound row checked', async ({ page }) => {
   const dialog = await openAssignDialog(page);
   await expect(dialog.locator('.dlg-title')).toHaveText('选择执行 Agent');
-  await expect(dialog.locator('.chief-pick-input')).toHaveAttribute('placeholder', '搜索 Agent…');
-  await expect(dialog.locator('.chief-pick-row')).toHaveCount(1);
-  await expect(dialog.locator('.chief-pick-name')).toHaveText('r3-builder');
-  // 当前绑定行 = probe todo 的 r3-builder:aria-selected + ✓
-  await expect(dialog.locator('.chief-pick-row')).toHaveAttribute('aria-selected', 'true');
-  await expect(dialog.locator('.chief-pick-check')).toBeVisible();
+  // #950: .chief-pick-input → getByPlaceholder（placeholder 语义由 locator 承载）；
+  // .chief-pick-row/-name → role=option + option 内文本。
+  await expect(dialog.getByPlaceholder('搜索 Agent…')).toBeVisible();
+  await expect(dialog.getByRole('option')).toHaveCount(1);
+  await expect(dialog.getByRole('option').getByText('r3-builder')).toHaveText('r3-builder');
+  // 当前绑定行 = probe todo 的 r3-builder:选中态钉 aria-selected
+  // （#950:.chief-pick-check ✓ 图形不再单独钉，态载体归行的 aria-selected）。
+  await expect(dialog.getByRole('option')).toHaveAttribute('aria-selected', 'true');
 });
 
 test('fixture pick closes the dialog (accept 律); popover row echo unchanged', async ({ page }) => {
   const dialog = await openAssignDialog(page);
-  await dialog.locator('.chief-pick-row').click();
+  await dialog.getByRole('option').click();
   await expect(page.locator('.dlg')).toBeHidden();
   // 回显基线:重开 popover,执行对话行仍是绑定 agent(fixture 不写数据)
   await page.locator('.detail-chip').click();
@@ -69,9 +71,11 @@ test('assign dialog family law: X, Escape and backdrop dismiss; panel clicks do 
 
 test('assign dialog search filters the list; no match shows the empty row', async ({ page }) => {
   const dialog = await openAssignDialog(page);
-  await dialog.locator('.chief-pick-input').fill('不存在');
-  await expect(dialog.locator('.chief-pick-row')).toHaveCount(0);
-  await expect(dialog.locator('.chief-pick-empty')).toHaveText('没有匹配的 Agent');
-  await dialog.locator('.chief-pick-input').fill('r3');
-  await expect(dialog.locator('.chief-pick-row')).toHaveCount(1);
+  // #950: .chief-pick-input → getByPlaceholder;.chief-pick-row → role=option;
+  // .chief-pick-empty → getByText(空态文案)。
+  await dialog.getByPlaceholder('搜索 Agent…').fill('不存在');
+  await expect(dialog.getByRole('option')).toHaveCount(0);
+  await expect(dialog.getByText('没有匹配的 Agent')).toHaveText('没有匹配的 Agent');
+  await dialog.getByPlaceholder('搜索 Agent…').fill('r3');
+  await expect(dialog.getByRole('option')).toHaveCount(1);
 });

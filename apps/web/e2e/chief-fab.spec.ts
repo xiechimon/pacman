@@ -81,8 +81,10 @@ test.describe('FAB icon follows the bound agent (#444)', () => {
   }) => {
     await stubDicebear(page);
     await page.goto('/app?scenario=fab-avatar');
-    const fab = page.locator('.chief-fab');
-    const img = fab.locator('.fab-avatar img');
+    // #950: .chief-fab/.fab-avatar 类退役——FAB 载体 = role + aria-label
+    // （resources 家族 #944 同款），头像 img 直取（wrapper 无独立语义）。
+    const fab = page.getByRole('button', { name: '总管', exact: true });
+    const img = fab.locator('img');
     await expect(img).toHaveAttribute('src', R3_SRC);
     await expect(fab.locator('svg')).toHaveCount(0);
     await expect(fab.locator('.fab-badge')).toHaveText('2');
@@ -101,14 +103,14 @@ test.describe('FAB icon follows the bound agent (#444)', () => {
     await stubDicebear(page);
     await page.goto('/app/team?scenario=fab-avatar');
     const fab = page.locator('.secondary-fab');
-    await expect(fab.locator('.fab-avatar img')).toHaveAttribute('src', R3_SRC);
+    await expect(fab.locator('img')).toHaveAttribute('src', R3_SRC);
     await expect(fab.locator('svg')).toHaveCount(0);
     await expect(fab.locator('.fab-badge')).toHaveText('2');
   });
 
   test('avatarUrl override wins over the generated face', async ({ page }) => {
     await page.goto('/app?scenario=fab-avatar-override');
-    await expect(page.locator('.chief-fab .fab-avatar img')).toHaveAttribute(
+    await expect(page.getByRole('button', { name: '总管', exact: true }).locator('img')).toHaveAttribute(
       'src',
       '/avatar-robot-2.svg',
     );
@@ -118,6 +120,7 @@ test.describe('FAB icon follows the bound agent (#444)', () => {
     await page.goto('/app/team?scenario=12');
     const fab = page.locator('.secondary-fab');
     await expect(fab.locator('svg')).toHaveCount(1);
-    await expect(fab.locator('.fab-avatar')).toHaveCount(0);
+    // #950: 无头像面 = 无 img（.fab-avatar wrapper 类退役）。
+    await expect(fab.locator('img')).toHaveCount(0);
   });
 });

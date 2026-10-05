@@ -17,12 +17,25 @@
 
 import { CHIEF_REBIND_CONFIRM_COPY, type TeamMember } from '@pacman/shared';
 import { useEffect, useMemo, useState } from 'react';
+import { SEARCH_BOX_CLS, SEARCH_INPUT_CLASS } from '../components/model-select-core.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, Search } from '../icons/index.js';
+
+/** Agent 候选行钮（#950 裸控件收编，旧 .chief-pick-row 等值：40 行 /
+ *  14px 字 / px-8 / gap-10 / hover surface-secondary）。Button ghost 底座按
+ *  七通道律归零（#908 裁决 3）；whitespace-normal 承旧行换行律（长名不截）；
+ *  选中态只出 Check 勾不出底色（旧面同律）。 */
+const AGENT_PICK_ROW_CLS =
+  "h-10 w-full cursor-pointer justify-start gap-2.5 whitespace-normal rounded-none border-none bg-transparent px-2 text-left text-sm font-normal text-(--text-primary) hover:bg-(--surface-secondary) hover:text-(--text-primary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+
+/** 头像位（旧 .chief-pick-avatar--img 等值，XMON-105 律：图即 24 圆盘，
+ *  去 chip 底边——img 几何由 wrapper 的 [&_img] 承（SeededAvatar contents
+ *  律，img 的 containing block 在消费面）。 */
+const PICK_AVATAR_CLS = 'flex-none [&_img]:block [&_img]:size-6 [&_img]:rounded-full';
 
 /** 选择器行最小投影(live = members 读面投影;fixture = canon 默认行)。
  *  #318: model 副题(r9 §2.6 行形「r3-builder · claude-sonnet-5 · 默认」的
@@ -147,21 +160,21 @@ export function ChiefAgentDialog({
       onClose={onClose}
       footer={
         confirming != null ? (
-          <div className="dlg-form-foot">
-            <div className="dlg-form-actions">
-              {/* XMON-23 收编：ghost/brand 原语；chief-dlg-* per-face（dialog.css
-                  的 32 高/12 内边距/描边/实底）不动，px-3/text-[13px]/font-normal
-                  对齐旧形；active 位移中和。e2e 钉 .chief-dlg-ghost/.chief-dlg-primary。 */}
+          // #950 per-face 清零：.dlg-form-foot/.dlg-form-actions 容器 utility
+          // 等值迁移（spec/22 §5.4）；钮 = outline/brand 件正典 + chief 内联档
+          // 保留 px-3/text-[13px]。e2e 载体 = getByRole('button')。
+          <div className="flex flex-col px-4 pb-4">
+            <div className="flex justify-end gap-2">
               <Button
-                variant="ghost"
-                className="chief-dlg-ghost px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
+                variant="outline"
+                className="px-3 text-[13px]"
                 onClick={() => setConfirming(null)}
               >
                 {t('取消')}
               </Button>
               <Button
                 variant="brand"
-                className="chief-dlg-primary px-3 text-[13px] font-normal active:not-aria-[haspopup]:translate-y-0"
+                className="px-3 text-[13px]"
                 onClick={() => onBind?.(confirming.id)}
               >
                 {t('更换')}
@@ -172,37 +185,40 @@ export function ChiefAgentDialog({
       }
     >
       {confirming != null ? (
-        <div className="chief-pick-confirm">
-          <p className="chief-pick-confirm-copy">
+        <div className="flex flex-col gap-4 p-4">
+          <p className="text-[13px] leading-5 text-(--text-primary)">
             {t(confirmCopy ?? CHIEF_REBIND_CONFIRM_COPY).replaceAll('<agent>', confirming.name)}
           </p>
         </div>
       ) : (
-        <div className="chief-pick">
-          <div className="chief-pick-search">
+        <div className="flex flex-col gap-3 p-4">
+          <div className={SEARCH_BOX_CLS}>
             <Search width={14} height={14} />
-            {/* XMON-23 收编：Input 原语 + chief-pick-input per-face（flex/无边
-                无底/14 字/primary 墨）。中和件：h-auto p-0 leading-5（原语
-                h-8/px-2.5/py-1 会改盒；旧行高实测 20px 钉 leading-5）、
-                rounded-none、透明底双主题、placeholder:text-current/50
-                （= preflight 的 currentColor 50% 旧色）、focus 环清零
-                （per-face outline:none 的旧面——环由搜索框容器承担）。 */}
+            {/* #855→#950：Input 原语 + SEARCH_INPUT_CLASS 中和件单源
+                （model-select-core，两面同形）；框形由 SEARCH_BOX_CLS 承载，
+                环走 #388 家族律。e2e 载体 = getByPlaceholder / role。 */}
             <Input
-              className="chief-pick-input h-auto rounded-none border-none bg-transparent p-0 leading-5 placeholder:text-current/50 focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent"
+              className={SEARCH_INPUT_CLASS}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder={t('搜索 Agent…')}
             />
           </div>
-          <div className="chief-pick-list" role="listbox" aria-label={dlgTitle}>
+          <div
+            className="flex max-h-60 flex-col overflow-y-auto"
+            role="listbox"
+            aria-label={dlgTitle}
+          >
             {rows.length === 0 ? (
-              <div className="chief-pick-empty">{t('没有匹配的 Agent')}</div>
+              <div className="px-2 py-4 text-center text-[13px] text-(--text-tertiary)">
+                {t('没有匹配的 Agent')}
+              </div>
             ) : (
               rows.map((row) => (
-                <button
+                <Button
                   key={row.id}
-                  type="button"
-                  className="chief-pick-row"
+                  variant="ghost"
+                  className={AGENT_PICK_ROW_CLS}
                   role="option"
                   aria-selected={row.id === boundAgentId}
                   onClick={() => pick(row)}
@@ -210,23 +226,23 @@ export function ChiefAgentDialog({
                   {/* XMON-105: agent rows carry the agent's own avatar
                       (same identity as team page / board / transcript);
                       the initial chip was a divergent third style. */}
-                  <span className="chief-pick-avatar chief-pick-avatar--img">
+                  <span className={PICK_AVATAR_CLS}>
                     <SeededAvatar
                       name={row.name}
                       src={row.avatarUrl}
                       fallback="/avatar-robot-1.svg"
                     />
                   </span>
-                  <span className="chief-pick-name">{row.name}</span>
+                  <span>{row.name}</span>
                   {row.model != null && row.model !== '' && (
-                    <span className="chief-pick-model">{row.model}</span>
+                    <span className="text-xs text-(--text-dim)">{row.model}</span>
                   )}
                   {row.id === boundAgentId && (
-                    <span className="chief-pick-check">
+                    <span className="ml-auto flex flex-none text-(--text-tertiary)">
                       <Check width={14} height={14} />
                     </span>
                   )}
-                </button>
+                </Button>
               ))
             )}
           </div>

@@ -191,8 +191,9 @@ async function openChiefDrawer(page: Page) {
     return route.fulfill({ json: [] });
   });
   await page.goto('/app');
-  await page.locator('.chief-fab').click();
-  const input = page.locator('.chief-composer-input');
+  // #950 载体：.chief-fab → aria-label 总管钮；.chief-composer-input → testid。
+  await page.getByRole('button', { name: '总管', exact: true }).click();
+  const input = page.getByTestId('chief-composer-input');
   await expect(input).toBeVisible();
   await expect(input).toBeEditable();
   return input;

@@ -44,19 +44,31 @@ export function useLiveSeconds(startedAt: number | null | undefined): number | n
   return Math.max(1, Math.round((now - startedAt) / 1000));
 }
 
-/** Per-surface skin. The row skeleton and every behaviour stay shared. */
+/** Per-surface skin. The row skeleton and every behaviour stay shared.
+ *  detail 面仍走类名（detail.css，#945 清零面）；chief 面 #950 清零后 =
+ *  token utility（旧 .chief-streaming 族等值）。headBtn = 仅 Button 形态
+ *  （disclosure 在位）追加的行钮中和：#885 靶高律（自然内容高 21px 的
+ *  font:inherit 行框 = text-sm leading-normal，+2×1.5px 内边距 = 24px 命中
+ *  盒，纵向内边距被等量负 margin 抵掉、墨迹零位移）+ ghost 件配方七通道
+ *  归零（旧 button.chief-streaming 的 background:none/border:none unlayered
+ *  恒压件层——迁移后逐通道显式钉回：无 hover 涂底、无 hover/expanded 墨变、
+ *  tertiary 墨常驻）。detail 面 headBtn 留空：其 per-face CSS 自有同款律。 */
 const SKIN = {
   detail: {
     head: 'chat-streaming',
+    headBtn: '',
     spinner: 'chat-spinner',
     secs: 'chat-streaming-secs',
     label: 'chat-streaming-label',
   },
   chief: {
-    head: 'chief-streaming',
-    spinner: 'chief-spinner',
-    secs: 'chief-streaming-secs',
-    label: 'chief-streaming-label',
+    head: 'flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs leading-4 text-(--text-tertiary)',
+    headBtn:
+      '-my-[1.5px] cursor-pointer border-none bg-transparent py-[1.5px] text-left text-sm leading-normal hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary)',
+    spinner:
+      'flex-none animate-[spinner-breathe_1800ms_var(--ease-standard)_infinite] text-(--card-button) motion-reduce:animate-none',
+    secs: 'tabular-nums',
+    label: 'truncate text-(--text-dim)',
   },
 } as const;
 
@@ -124,7 +136,7 @@ export function LiveRow({
       ) : (
         <Button
           variant="ghost"
-          className={`${skin.head} h-auto rounded-none justify-start font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto`}
+          className={`${skin.head} ${skin.headBtn} h-auto rounded-none justify-start font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto`}
           aria-label={t(expanded ? disclosure.collapse : disclosure.expand)}
           aria-expanded={expanded}
           onClick={() => setExpanded((v) => !v)}

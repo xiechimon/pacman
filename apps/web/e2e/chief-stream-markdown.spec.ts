@@ -9,7 +9,7 @@ import { expect, type Page, test } from '@playwright/test';
 //  F-R5 定稿行 foot 丢失（typing gate 误伤定稿行）
 //  F-R6 用户行头像仍是写死的通用人形字形（没接 XMON-105 单源）
 //  F-R7 live 面 avatarUrl 覆盖不生效（不是 /api/user/me 的真值）
-//  F-R8 .chief-body 仍不可滚动（overflow hidden），流式增量被裁在视野外
+//  F-R8 抽屉体（chief-body testid）仍不可滚动（overflow hidden），流式增量被裁在视野外
 //  F-R9 fixture 捕获面（r5 114 段数组形）被 markdown 改造误伤（DOM 漂移）
 //  F-R10 live text_delta 增量不上屏（抽屉不读 liveTextStore——原 bug 本体）
 //  F-R11 终稿 message 收敛后打字行残留 / 与落库行重复渲染
@@ -222,7 +222,7 @@ test.describe('chief drawer markdown 面（fixture，#650）', () => {
   test('F-R1/R2/R3: robot markdown 行走共用块解析——bold/标题/列表/栅栏/chip 全渲染，星号零漏出', async ({
     page,
   }) => {
-    const stream = page.locator('.chief-stream');
+    const stream = page.getByTestId('chief-stream');
     // 字面星号一个不漏（定稿行 + 打字行全文范围）。
     await expect(stream).not.toContainText('**');
 
@@ -257,7 +257,7 @@ test.describe('chief drawer markdown 面（fixture，#650）', () => {
   test('F-R13: todo 提及渲成 chip，锚点指任务详情并可点击导航；字面 #seq/伪 scheme 不出 chip（#675）', async ({
     page,
   }) => {
-    const stream = page.locator('.chief-stream');
+    const stream = page.getByTestId('chief-stream');
     const chip = stream.locator('.mention-chip--todo');
     await expect(chip).toHaveCount(1);
     await expect(chip).toHaveText('#1');
@@ -276,30 +276,35 @@ test.describe('chief drawer markdown 面（fixture，#650）', () => {
   });
 
   test('F-R4/R5: typing 打字行无 foot；定稿行 foot（复制 + 完成 44s）保留', async ({ page }) => {
-    const msgs = page.locator('.chief-stream .chief-msg');
-    // note 行不是 .chief-msg：user + 定稿 robot + typing robot = 3。
+    // #950 载体：行 = chief-msg testid（#910 二级：无 role 的结构行）。
+    const msgs = page.getByTestId('chief-stream').getByTestId('chief-msg');
+    // note 行不是消息行：user + 定稿 robot + typing robot = 3。
     await expect(msgs).toHaveCount(3);
 
     const final = msgs.nth(1);
-    await expect(final.locator('.chief-msg-foot button[aria-label="复制"]')).toBeVisible();
-    await expect(final.locator('.chief-msg-foot')).toContainText('完成 44s');
+    const finalFoot = final.getByTestId('chief-msg-foot');
+    await expect(finalFoot.getByRole('button', { name: '复制' })).toBeVisible();
+    await expect(finalFoot).toContainText('完成 44s');
 
     const typing = msgs.nth(2);
-    await expect(typing.locator('.chief-msg-foot')).toHaveCount(0);
+    await expect(typing.getByTestId('chief-msg-foot')).toHaveCount(0);
     await expect(typing.locator('strong')).toHaveText('relay 通道');
   });
 
   test('F-R6/R8: 用户行头像 = 真人身份 img（XMON-105 单源），抽屉体可滚动', async ({ page }) => {
-    const userRow = page.locator('.chief-stream .chief-msg').first();
-    const img = userRow.locator('.chief-avatar img');
+    const userRow = page.getByTestId('chief-stream').getByTestId('chief-msg').first();
+    // #950 载体：头像 = 行内 img（.chief-avatar 槽类退役；XMON-105 img 律）。
+    const img = userRow.locator('img');
     await expect(img).toBeVisible();
     // fixture 面 avatarUrl null → dicebear 名字种子（USER_NAME canon）。
     await expect(img).toHaveAttribute('src', /api\.dicebear\.com.*Xmon%20Dai/);
-    // 写死的通用人形字形退场。
-    await expect(userRow.locator('.chief-avatar > svg')).toHaveCount(0);
+    // 写死的通用人形字形退场（行直接子级无 svg 字形槽）。
+    await expect(userRow.locator('> svg')).toHaveCount(0);
 
     // 滚动容器：overflow-y auto（原 hidden 把长线程整个裁死）。
-    const overflow = await page.locator('.chief-body').evaluate((el) => getComputedStyle(el).overflowY);
+    const overflow = await page
+      .getByTestId('chief-body')
+      .evaluate((el) => getComputedStyle(el).overflowY);
     expect(overflow).toBe('auto');
   });
 
@@ -308,15 +313,17 @@ test.describe('chief drawer markdown 面（fixture，#650）', () => {
   }) => {
     await page.goto('/app?scenario=114');
     await expect(page.locator('.chief-drawer')).toBeVisible();
-    const stream = page.locator('.chief-stream');
-    // 段数组形照旧：chief-para 存在、chat-md 块零出现。
-    await expect(stream.locator('.chief-para').first()).toContainText('已创建并派工');
+    const stream = page.getByTestId('chief-stream');
+    // 段数组形照旧：字面段落 <p> 存在、chat-md 块零出现（.chief-para 类退役，
+    // 字面路径载体 = p 元素本身）。
+    await expect(stream.locator('p').first()).toContainText('已创建并派工');
     await expect(stream.locator('.chat-para, .chat-md-item, .chat-md-code')).toHaveCount(0);
-    // todo / agent 实体 chip 保留（ChiefSegment 家族不受 markdown 槽影响）。
-    await expect(stream.locator('.chief-chip-todo')).toHaveCount(1);
-    await expect(stream.locator('.chief-chip-agent')).toHaveCount(1);
+    // todo / agent 实体 chip 保留（ChiefSegment 家族不受 markdown 槽影响；
+    // testid 载体——文本载体区分不了 chip 与漏出字面量，F-R1/R3 语义所在）。
+    await expect(stream.getByTestId('chief-chip-todo')).toHaveCount(1);
+    await expect(stream.getByTestId('chief-chip-agent')).toHaveCount(1);
     // 用户行头像换 img 后，两钮行（复制/恢复）不受影响。
-    await expect(stream.locator('.chief-msg-tools button')).toHaveCount(2);
+    await expect(stream.getByTestId('chief-msg-tools').getByRole('button')).toHaveCount(2);
   });
 
   test('F-R15: fixture 面（r5 113 running 捕获）不长存在行——ChiefStreamItem 新 kind 零污染', async ({
@@ -326,11 +333,12 @@ test.describe('chief drawer markdown 面（fixture，#650）', () => {
     // 占位；#739 的存在行是 live mapper 派生，捕获面尾行仍是定稿 robot 行。
     await page.goto('/app?scenario=113');
     await expect(page.locator('.chief-drawer')).toBeVisible();
-    const stream = page.locator('.chief-stream');
-    await expect(stream.locator('.chief-streaming')).toHaveCount(0);
+    const stream = page.getByTestId('chief-stream');
+    // #950 载体：在飞存在行 = 实时步骤 disclosure 钮（.chief-streaming 类退役）。
+    await expect(stream.getByRole('button', { name: /实时步骤/ })).toHaveCount(0);
     // 尾行 = 定稿 robot（带 foot），非在飞存在行。
-    const lastMsg = stream.locator('.chief-msg').last();
-    await expect(lastMsg.locator('.chief-msg-foot')).toHaveCount(1);
+    const lastMsg = stream.getByTestId('chief-msg').last();
+    await expect(lastMsg.getByTestId('chief-msg-foot')).toHaveCount(1);
   });
 });
 
@@ -345,11 +353,11 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
 
     const drawer = page.locator('.chief-drawer');
     await expect(drawer).toBeVisible();
-    await expect(drawer.locator('.chief-chip-title')).toHaveText('线程乙');
+    await expect(drawer.getByRole('button', { name: '主题', exact: true })).toHaveText('线程乙');
 
     // F-R7: live 面用户行头像 = /api/user/me 的 avatarUrl 覆盖真值。
-    const userRow = drawer.locator('.chief-msg').first();
-    await expect(userRow.locator('.chief-avatar img')).toHaveAttribute(
+    const userRow = drawer.getByTestId('chief-msg').first();
+    await expect(userRow.locator('img')).toHaveAttribute(
       'src',
       'https://cdn.example/me.png',
     );
@@ -358,13 +366,13 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
 
     // F-R10: 增量一：打字面上屏，粗体即时渲染（增量面与终稿面同一解析器）。
     await es.emit({ type: 'text_delta', text: '正在验证 **凭证' });
-    const typing = drawer.locator('.chief-msg').last();
+    const typing = drawer.getByTestId('chief-msg').last();
     await expect(typing.locator('.chat-para')).toContainText('正在验证 凭证');
     await expect(typing.locator('strong')).toHaveText('凭证');
     await expect(typing).not.toContainText('**');
     // user 行 + typing 行；打字面无 foot。
-    await expect(drawer.locator('.chief-msg')).toHaveCount(2);
-    await expect(typing.locator('.chief-msg-foot')).toHaveCount(0);
+    await expect(drawer.getByTestId('chief-msg')).toHaveCount(2);
+    await expect(typing.getByTestId('chief-msg-foot')).toHaveCount(0);
 
     // F-R10: 增量二：同一段落追加（250ms 聚合窗口的下一批）。
     await es.emit({ type: 'text_delta', text: '链路**，马上出报告' });
@@ -375,12 +383,14 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
     state.final = true;
     await es.emit({ type: 'message', message: FINAL_ROW });
     // 打字行退场：user + 定稿 robot = 2 行，「正在验证」文本零残留。
-    await expect(drawer.locator('.chief-msg')).toHaveCount(2);
-    await expect(drawer.locator('.chief-msg', { hasText: '正在验证' })).toHaveCount(0);
+    await expect(drawer.getByTestId('chief-msg')).toHaveCount(2);
+    await expect(drawer.getByTestId('chief-msg').filter({ hasText: '正在验证' })).toHaveCount(0);
     // 定稿行恰一条（不重复），粗体渲染 + foot 归位。
-    const final = drawer.locator('.chief-msg').last();
+    const final = drawer.getByTestId('chief-msg').last();
     await expect(final.locator('strong', { hasText: '全部通过' })).toHaveCount(1);
-    await expect(final.locator('.chief-msg-foot button[aria-label="复制"]')).toBeVisible();
+    await expect(
+      final.getByTestId('chief-msg-foot').getByRole('button', { name: '复制' }),
+    ).toBeVisible();
   });
 
   test('F-R12: 双行去重（#667）——同文 POST + user-<stepId> 回声恰一个用户气泡；连发不同文各一条', async ({
@@ -406,11 +416,15 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
 
     const drawer = page.locator('.chief-drawer');
     await expect(drawer).toBeVisible();
-    // 每句恰一个用户气泡（.chief-bubble 只在 user 行）：2 user + 1 robot = 3 行。
-    await expect(drawer.locator('.chief-bubble')).toHaveCount(2);
-    await expect(drawer.locator('.chief-msg')).toHaveCount(3);
-    await expect(drawer.locator('.chief-bubble', { hasText: '派一下凭证链路验证' })).toHaveCount(1);
-    await expect(drawer.locator('.chief-bubble', { hasText: '再查一下 token 用量' })).toHaveCount(1);
+    // 每句恰一个用户气泡（chief-bubble testid 只在 user 行）：2 user + 1 robot = 3 行。
+    await expect(drawer.getByTestId('chief-bubble')).toHaveCount(2);
+    await expect(drawer.getByTestId('chief-msg')).toHaveCount(3);
+    await expect(
+      drawer.getByTestId('chief-bubble').filter({ hasText: '派一下凭证链路验证' }),
+    ).toHaveCount(1);
+    await expect(
+      drawer.getByTestId('chief-bubble').filter({ hasText: '再查一下 token 用量' }),
+    ).toHaveCount(1);
   });
 
   test('F-R14: 在飞存在行（#739）——静默窗口挂 streaming 行，首 delta 收敛为 typing，终稿两行皆退场', async ({
@@ -427,35 +441,38 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
 
     const drawer = page.locator('.chief-drawer');
     await expect(drawer).toBeVisible();
-    await expect(drawer.locator('.chief-chip-title')).toHaveText('线程乙');
+    await expect(drawer.getByRole('button', { name: '主题', exact: true })).toHaveText('线程乙');
 
     // 静默窗口：存在行立即可见——loading-dev Atom spinner + 处理中... 标签，
     // 与详情页 streaming 行同族；user 行 + 存在行 = 2，打字面尚未出现。
-    const presence = drawer.locator('.chief-msg').last();
-    await expect(presence.locator('.chief-streaming')).toBeVisible();
-    await expect(presence.locator('.chief-spinner')).toHaveCount(1);
-    await expect(presence.locator('.chief-streaming-label')).toHaveText('处理中...');
+    // #950 载体：存在行 = 实时步骤 disclosure 钮；spinner = 呼吸动画名
+    // （motion.css 载体层单源 keyframes，类名为 animate-[…] utility 产物）。
+    const presence = drawer.getByTestId('chief-msg').last();
+    const toggle = presence.getByRole('button', { name: /实时步骤/ });
+    await expect(toggle).toBeVisible();
+    await expect(presence.locator('[class*="spinner-breathe"]')).toHaveCount(1);
+    await expect(presence.getByText('处理中...')).toHaveText('处理中...');
     // #471：不挂秒数（静止期无流事件驱动重渲，秒数会冻结说谎；本票不加计时器）。
-    await expect(presence.locator('.chief-streaming-secs')).toHaveCount(0);
-    await expect(drawer.locator('.chief-msg')).toHaveCount(2);
+    await expect(presence.getByText(/^\d+s$/)).toHaveCount(0);
+    await expect(drawer.getByTestId('chief-msg')).toHaveCount(2);
     await expect(presence.locator('.chat-para')).toHaveCount(0);
 
     const es = await chiefStream(page);
 
     // 首 delta 到达 → 存在行收敛为 typing 打字行（两行互斥，尾部恒至多一行）。
     await es.emit({ type: 'text_delta', text: '正在验证 **凭证' });
-    await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
-    const typing = drawer.locator('.chief-msg').last();
+    await expect(drawer.getByRole('button', { name: /实时步骤/ })).toHaveCount(0);
+    const typing = drawer.getByTestId('chief-msg').last();
     await expect(typing.locator('.chat-para')).toContainText('正在验证 凭证');
-    await expect(typing.locator('.chief-msg-foot')).toHaveCount(0);
-    await expect(drawer.locator('.chief-msg')).toHaveCount(2);
+    await expect(typing.getByTestId('chief-msg-foot')).toHaveCount(0);
+    await expect(drawer.getByTestId('chief-msg')).toHaveCount(2);
 
     // 终稿 message 落库 → 打字行退场，定稿 robot 行接管；存在行/打字行皆不残留。
     state.final = true;
     await es.emit({ type: 'message', message: FINAL_ROW });
-    await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
-    await expect(drawer.locator('.chief-msg', { hasText: '正在验证' })).toHaveCount(0);
-    const final = drawer.locator('.chief-msg').last();
+    await expect(drawer.getByRole('button', { name: /实时步骤/ })).toHaveCount(0);
+    await expect(drawer.getByTestId('chief-msg').filter({ hasText: '正在验证' })).toHaveCount(0);
+    const final = drawer.getByTestId('chief-msg').last();
     await expect(final.locator('strong', { hasText: '全部通过' })).toHaveCount(1);
   });
 
@@ -475,7 +492,7 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
 
     // 第一轮文本流出 → 打字面上屏。
     await es.emit({ type: 'text_delta', text: '先看任务现状和失败原因' });
-    const tail = drawer.locator('.chief-msg').last();
+    const tail = drawer.getByTestId('chief-msg').last();
     await expect(tail.locator('.chat-para')).toContainText('先看任务现状和失败原因');
 
     // 轮中工具行落库（message 事件，重取在飞、messages 仍是 [USER_ROW]）：
@@ -492,7 +509,7 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
         createdAt: 5,
       },
     });
-    await expect(drawer.locator('.chief-msg').last().locator('.chat-para')).toContainText(
+    await expect(drawer.getByTestId('chief-msg').last().locator('.chat-para')).toContainText(
       '先看任务现状和失败原因',
     );
 
@@ -506,9 +523,9 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
     state.messages = [USER_ROW, ROUND1];
     await es.emit({ type: 'message', message: ROUND1 });
     await expect(
-      drawer.locator('.chief-msg', { hasText: '先看任务现状和失败原因' }),
+      drawer.getByTestId('chief-msg').filter({ hasText: '先看任务现状和失败原因' }),
     ).toHaveCount(1);
-    await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
+    await expect(drawer.getByRole('button', { name: /实时步骤/ })).toHaveCount(0);
   });
 
   test('F-R18: 在飞存在行可展开（#822）——点箭头看实时步骤，typing 接管不泄漏', async ({
@@ -539,21 +556,22 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
 
     const drawer = page.locator('.chief-drawer');
     await expect(drawer).toBeVisible();
-    const presence = drawer.locator('.chief-msg').last();
-    // 行本体是 button：箭头不再是纯装饰。
-    const toggle = presence.locator('.chief-streaming');
+    const presence = drawer.getByTestId('chief-msg').last();
+    // 行本体是 button：箭头不再是纯装饰（#950 载体 = disclosure aria-label）。
+    const toggle = presence.getByRole('button', { name: /实时步骤/ });
     await expect(toggle).toBeVisible();
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(toggle).toHaveAccessibleName('展开实时步骤');
-    await expect(presence.locator('.chief-turn-tools')).toHaveCount(0);
+    await expect(presence.getByTestId('chief-turn-tools')).toHaveCount(0);
     // #885（WCAG 2.5.8）：活行命中盒 24px。21px 自然行 + 上下 1.5px 内边距，
     // margin-block 负值等量抵掉——命中区长到 24，墨迹纹丝不动（ink 距盒顶
     // 恰为那 1.5px 补偿量）。
     const hit = await toggle.boundingBox();
     expect(hit?.height).toBe(24);
-    const inkInset = await toggle.evaluate((el) => {
-      const label = el.querySelector('.chief-streaming-label')!.getBoundingClientRect();
-      return Number((label.y - el.getBoundingClientRect().y).toFixed(1));
+    const label = presence.getByText('处理中...');
+    const inkInset = await label.evaluate((el) => {
+      const btn = el.closest('button') as HTMLElement;
+      return Number((el.getBoundingClientRect().y - btn.getBoundingClientRect().y).toFixed(1));
     });
     expect(inkInset).toBe(1.5);
 
@@ -561,31 +579,31 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await expect(toggle).toHaveAccessibleName('收起实时步骤');
-    const panel = presence.locator('.chief-turn-tools');
+    const panel = presence.getByTestId('chief-turn-tools');
     await expect(panel).toBeVisible();
     await expect(panel).toContainText('正在调用 machines');
     await expect(panel).toContainText('todo_write');
 
     // 键盘可达：Enter 收起。
     await toggle.press('Enter');
-    await expect(presence.locator('.chief-turn-tools')).toHaveCount(0);
+    await expect(presence.getByTestId('chief-turn-tools')).toHaveCount(0);
 
     // 取代 race：展开态下首 delta 到达 → typing 接管，展开态不得闪留/泄漏。
     await toggle.click();
-    await expect(presence.locator('.chief-turn-tools')).toBeVisible();
+    await expect(presence.getByTestId('chief-turn-tools')).toBeVisible();
     const es = await chiefStream(page);
     await es.emit({ type: 'text_delta', text: '正在验证 **凭证' });
-    await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
-    await expect(drawer.locator('.chief-turn-tools')).toHaveCount(0);
+    await expect(drawer.getByRole('button', { name: /实时步骤/ })).toHaveCount(0);
+    await expect(drawer.getByTestId('chief-turn-tools')).toHaveCount(0);
 
     // 终稿落库 → 定稿行接管；存在行/展开面皆不残留（mock 按请求实时读
     // state.messages，终稿行由本测试自行并入——F-R12 旧语义不动）。
     state.messages = [...state.messages, FINAL_ROW];
     state.final = true;
     await es.emit({ type: 'message', message: FINAL_ROW });
-    await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
-    await expect(drawer.locator('.chief-turn-tools')).toHaveCount(0);
-    const final = drawer.locator('.chief-msg').last();
+    await expect(drawer.getByRole('button', { name: /实时步骤/ })).toHaveCount(0);
+    await expect(drawer.getByTestId('chief-turn-tools')).toHaveCount(0);
+    const final = drawer.getByTestId('chief-msg').last();
     await expect(final.locator('strong', { hasText: '全部通过' })).toHaveCount(1);
   });
 
@@ -601,9 +619,10 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
     const drawer = page.locator('.chief-drawer');
     await expect(drawer).toBeVisible();
     // live mapper 恒带 agent id（#444 封套）→ robot 行身份成链。
-    const chip = drawer.locator('.chief-msg--identity a.chief-identity');
+    // #950 载体：身份 chip = 行内唯一 link（.chief-identity 类退役）。
+    const chip = drawer.getByRole('link');
     await expect(chip).toHaveCount(1);
-    await expect(chip.locator('.chief-identity-name')).toHaveText('r5-scribe');
+    await expect(chip).toHaveText('r5-scribe');
     // live URL 的 ?chief= 参消费后即剥（XMON-106）——href 只钉路径前缀，
     // 不钉 search 中途态（本仓已知坑）。
     await expect(chip).toHaveAttribute('href', /^\/app\/resources\/agents\/agent-1/);
@@ -646,9 +665,10 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
     page,
   }) => {
     const drawer = await boot(page);
-    const bubble = drawer.locator('.chief-bubble').first();
-    // 气泡类名双态（#612 配方）：live 用户行带槽进 md 路径。
-    await expect(bubble).toHaveClass(/chief-bubble--md/);
+    const bubble = drawer.getByTestId('chief-bubble').first();
+    // 渲染路径双态（#612 配方）：live 用户行带槽进 md 路径（#950 载体 =
+    // data-md 属性，旧表现类 chief-bubble--md 退役，#910 裁定 3 状态归 data-*）。
+    await expect(bubble).toHaveAttribute('data-md', '');
     // 字面漏出归零：粗体定界符与链接语法不再以文本形态出现。
     await expect(bubble).not.toContainText('**');
     await expect(bubble).not.toContainText('[#16]');
@@ -673,12 +693,11 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
   }) => {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
     const drawer = await boot(page);
-    const firstUser = drawer.locator('.chief-msg').first();
-    await expect(firstUser.locator('.chief-msg-tools button')).toHaveCount(2);
-    await expect(
-      firstUser.locator('.chief-msg-tools button[aria-label="恢复到此处"]'),
-    ).toBeVisible();
-    await firstUser.locator('.chief-msg-tools button[aria-label="复制"]').click();
+    const firstUser = drawer.getByTestId('chief-msg').first();
+    const tools = firstUser.getByTestId('chief-msg-tools');
+    await expect(tools.getByRole('button')).toHaveCount(2);
+    await expect(tools.getByRole('button', { name: '恢复到此处' })).toBeVisible();
+    await tools.getByRole('button', { name: '复制' }).click();
     const clip = await page.evaluate(() => navigator.clipboard.readText());
     // #469 律：复制的是消息 markdown 源——wire 原文逐字（trim 归一后全等）。
     expect(clip).toBe(MD_USER);
@@ -689,7 +708,7 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
   }) => {
     const drawer = await boot(page);
     // live 面纯文本消息同样走 md 路径——几何必须与原字面路径逐值咬合。
-    const plain = drawer.locator('.chief-bubble', { hasText: PLAIN_USER });
+    const plain = drawer.getByTestId('chief-bubble').filter({ hasText: PLAIN_USER });
     const geo = await plain.evaluate((el) => {
       const r = el.getBoundingClientRect();
       return { h: Math.round(r.height), font: getComputedStyle(el).fontSize };
@@ -698,7 +717,7 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
     expect(geo.font).toBe('14px');
     // 整条消息 = 单个代码栅栏：首/尾块 margin 归零，不与 10px/12px padding
     // 叠出双倍留白（#612 chat-bubble--md 修剪的抽屉版）。
-    const fence = drawer.locator('.chief-bubble', { hasText: 'echo before-and-after' });
+    const fence = drawer.getByTestId('chief-bubble').filter({ hasText: 'echo before-and-after' });
     const pre = fence.locator('pre.chat-md-code');
     await expect(pre).toBeVisible();
     const margins = await pre.evaluate((el) => ({
@@ -715,11 +734,11 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
     await stubDicebear(page);
     await page.goto('/app?scenario=chief-md');
     await expect(page.locator('.chief-drawer')).toBeVisible();
-    const bubble = page.locator('.chief-stream .chief-bubble');
+    const bubble = page.getByTestId('chief-stream').getByTestId('chief-bubble');
     await expect(bubble).toHaveCount(1);
     await expect(bubble).toHaveText('验证一下凭证链路，然后给我一份报告');
     // fixture user 项不挂槽（单源在 live mapper）——捕获字节级稳定。
-    await expect(bubble).not.toHaveClass(/chief-bubble--md/);
+    await expect(bubble).not.toHaveAttribute('data-md', '');
     await expect(bubble.locator('.chat-para, .chat-md-item, .chat-md-code')).toHaveCount(0);
   });
 });

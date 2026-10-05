@@ -16,6 +16,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, test } from 'vitest';
 import { ChiefIdentity } from '../src/chief/chief-identity.js';
+import { AVATAR_IMG_CLS } from '../src/chief/recipes.js';
 import type { ChiefContent } from '../src/fixtures/records.js';
 
 type BoundAgent = NonNullable<ChiefContent['agent']>;
@@ -37,19 +38,22 @@ describe('chief robot 行身份 chip（#741）', () => {
   test('F-U6: agent.id 在位 → anchor，href = /app/resources/agents/<id>', () => {
     const markup = render(WITH_ID);
     expect(markup).toMatch(/<a [^>]*href="\/app\/resources\/agents\/r3-builder"/);
-    expect(markup).toContain('chief-identity');
+    // #950: chip 基底从 .chief-identity 迁到 token utility（anchor 根同串）。
+    expect(markup).toMatch(/<a [^>]*class="[^"]*inline-flex items-center gap-1\.5/);
   });
 
   test('F-U7: agent.id 缺位 → 惰性 span，无 anchor，名字照常', () => {
     const markup = render(NO_ID);
     expect(markup).not.toContain('<a ');
-    expect(markup).toMatch(/<span [^>]*class="[^"]*chief-identity/);
+    // #950: 惰性 span 形同基底 utility（.chief-identity 等值串）。
+    expect(markup).toMatch(/<span [^>]*class="inline-flex items-center gap-1\.5[^"]*"/);
     expect(markup).toContain('r3-builder');
   });
 
   test('F-U8: chip 渲染名字（头像 + 名字并排的参考站形态）', () => {
     const markup = render(WITH_ID);
-    expect(markup).toContain('chief-identity-name');
+    // #950: 名字 span 载体从 .chief-identity-name 迁到 text utility。
+    expect(markup).toMatch(/<span class="[^"]*text-xs leading-4[^"]*">r3-builder<\/span>/);
     expect(markup).toMatch(/<span[^>]*>r3-builder<\/span>/);
   });
 
@@ -58,9 +62,11 @@ describe('chief robot 行身份 chip（#741）', () => {
     expect(markup).toContain('href="/app/resources/agents/r3-builder?scenario=chief-agent-chip"');
   });
 
-  test('F-U10: 头像槽位保 XMON-105 单源（chief-avatar--img + SeededAvatar img）', () => {
+  test('F-U10: 头像槽位保 XMON-105 单源（AVATAR_IMG_CLS + SeededAvatar img）', () => {
     const markup = render(WITH_ID);
-    expect(markup).toContain('chief-avatar--img');
+    // #950: .chief-avatar--img → recipes.ts AVATAR_IMG_CLS 单源（import 钉串；
+    // 静态标记里 `[&_img]` 的 & 被转义成 &amp;，按转义形比对）。
+    expect(markup).toContain(AVATAR_IMG_CLS.replaceAll('&', '&amp;'));
     expect(markup).toContain('<img');
     expect(markup).toContain('api.dicebear.com');
   });

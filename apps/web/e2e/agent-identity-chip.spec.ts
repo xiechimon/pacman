@@ -41,12 +41,14 @@ test.describe('抽屉 robot 行身份 chip（fixture，#741 缺口 1）', () => 
   test('F-E1/E2/E10: 头像+名字并排成链，href 指 Agent 设置页，几何 canon 不漂移', async ({
     page,
   }) => {
-    const chip = page.locator('.chief-stream a.chief-identity');
+    // #950 载体：身份 chip = 名字可及名 link（.chief-identity 类退役；
+    // markdown 面的 mention chip 也是 link，按 name 区分）。
+    const chip = page.getByTestId('chief-stream').getByRole('link', { name: 'r3-builder' });
     await expect(chip).toHaveCount(1);
     // 参考站 chip 形态：头像 + 名字并排，名字 = 绑定 agent 的 displayName。
-    const img = chip.locator('.chief-avatar--img img');
+    const img = chip.locator('img');
     await expect(img).toBeVisible();
-    await expect(chip.locator('.chief-identity-name')).toHaveText('r3-builder');
+    await expect(chip.getByText('r3-builder')).toHaveText('r3-builder');
     // 整块 = router Link，href 携 scenario（#121 Link 律，详情页解析真记录）。
     await expect(chip).toHaveAttribute('href', `${AGENT_HREF}?scenario=chief-agent-chip`);
     // 几何 canon：头像槽 24px（XMON-105），名字 12px（参考站实测值）。
@@ -54,13 +56,13 @@ test.describe('抽屉 robot 行身份 chip（fixture，#741 缺口 1）', () => 
     expect(box?.width).toBe(24);
     expect(box?.height).toBe(24);
     const fontSize = await chip
-      .locator('.chief-identity-name')
+      .getByText('r3-builder')
       .evaluate((el) => getComputedStyle(el).fontSize);
     expect(fontSize).toBe('12px');
   });
 
   test('F-E9: hover 只变 cursor，不发明背景态（参考站正典）', async ({ page }) => {
-    const chip = page.locator('.chief-stream a.chief-identity');
+    const chip = page.getByTestId('chief-stream').getByRole('link', { name: 'r3-builder' });
     const bgBefore = await chip.evaluate((el) => getComputedStyle(el).backgroundColor);
     await chip.hover();
     const bgAfter = await chip.evaluate((el) => getComputedStyle(el).backgroundColor);
@@ -69,7 +71,7 @@ test.describe('抽屉 robot 行身份 chip（fixture，#741 缺口 1）', () => 
   });
 
   test('F-E3: 点击 → SPA 导航进 Agent 设置页，详情页解析出真记录', async ({ page }) => {
-    await page.locator('.chief-stream a.chief-identity').click();
+    await page.getByTestId('chief-stream').getByRole('link', { name: 'r3-builder' }).click();
     await page.waitForURL((u) => u.pathname === AGENT_HREF);
     // scenario 随行 → 详情页解析 AGENT_R3_BUILDER（不是「找不到该 Agent」回退）。
     await expect(page.locator('.agent-detail')).toBeVisible();
@@ -80,7 +82,7 @@ test.describe('抽屉 robot 行身份 chip（fixture，#741 缺口 1）', () => 
   });
 
   test('F-E4: 键盘可达——focus 落在 chip 上，Enter 激活导航', async ({ page }) => {
-    const chip = page.locator('.chief-stream a.chief-identity');
+    const chip = page.getByTestId('chief-stream').getByRole('link', { name: 'r3-builder' });
     await chip.focus();
     const focused = await chip.evaluate((el) => el === document.activeElement);
     expect(focused).toBe(true);
@@ -97,7 +99,7 @@ test.describe('agent 提及 chip（fixture，#741 缺口 2）', () => {
   test('F-E5: 抽屉面 agent 提及 chip 成链并可点击导航（F-R13 同款配方）', async ({ page }) => {
     await page.goto(SCENARIO);
     await expect(page.locator('.chief-drawer')).toBeVisible();
-    const chip = page.locator('.chief-stream .mention-chip--agent');
+    const chip = page.getByTestId('chief-stream').locator('.mention-chip--agent');
     await expect(chip).toHaveCount(1);
     await expect(chip).toHaveText('r5-scribe');
     // #675 todo chip 同款配方：裸 href（不带 scenario），SPA pushState 只钉 pathname。
@@ -120,7 +122,7 @@ test.describe('agent 提及 chip（fixture，#741 缺口 2）', () => {
   test('F-E7: skill/project/machine 提及仍是惰性 span（字面负例）', async ({ page }) => {
     await page.goto(SCENARIO);
     await expect(page.locator('.chief-drawer')).toBeVisible();
-    const stream = page.locator('.chief-stream');
+    const stream = page.getByTestId('chief-stream');
     for (const kind of ['skill', 'project', 'machine'] as const) {
       const chip = stream.locator(`.mention-chip--${kind}`);
       await expect(chip, kind).toHaveCount(1);
@@ -142,12 +144,15 @@ test.describe('惰性面零变化（#741 负例）', () => {
     await stubDicebear(page);
     await page.goto('/app?scenario=114');
     await expect(page.locator('.chief-drawer')).toBeVisible();
-    const stream = page.locator('.chief-stream');
+    const stream = page.getByTestId('chief-stream');
     // dashed 字形照旧（绑定但无 agent 投影 → ChiefFaceDashed，XMON-105 律；
-    // 114 语料只有一条 robot 行）。
-    await expect(stream.locator('svg.chief-avatar')).toHaveCount(1);
-    // 身份 chip 零出现：既不成链也不渲染名字。
-    await expect(stream.locator('.chief-identity')).toHaveCount(0);
-    await expect(stream.locator('.chief-msg--identity')).toHaveCount(0);
+    // 114 语料只有一条 robot 行）。#950 载体：行直接子级 svg = 头像槽字形
+    // （identity 形头像在 link 内，字面路径 chip svg 更深，皆不匹配）。
+    await expect(stream.getByTestId('chief-msg').locator('> svg')).toHaveCount(1);
+    // 身份 chip 零出现：既不成链也不渲染名字（无 link、无翻列行）。
+    await expect(stream.getByRole('link')).toHaveCount(0);
+    await expect(
+      stream.getByTestId('chief-msg').filter({ has: page.getByRole('link') }),
+    ).toHaveCount(0);
   });
 });

@@ -291,13 +291,19 @@ test('chief drawer drops the ⋮ 更多 button — thread view keeps three head 
   page,
 }) => {
   await page.goto('/app?scenario=114');
-  const actions = page.locator('.chief-head-actions button');
+  const drawer = page.locator('.chief-drawer');
+  // #950 载体：.chief-head-actions 容器类随 chief.css 退役——动作簇 = 新主题钮
+  // 的父行（header 内与 chip 钮平级的 ml-auto 行），计数与三钮顺序语义原样。
+  const actions = drawer
+    .getByRole('button', { name: '新主题', exact: true })
+    .locator('xpath=..')
+    .getByRole('button');
   // #306：r8 随拍线程视图五钮中的 ⋮——菜单内容无正典 + server 无线程管理
   // mutation，wontfix 移除（注记在 chief-drawer.tsx 头部）
-  await expect(page.locator('.chief-head-actions button[aria-label="更多"]')).toHaveCount(0);
+  await expect(drawer.getByRole('button', { name: '更多', exact: true })).toHaveCount(0);
   // #447：全屏钮随 is-fullscreen 契约作废（形态唯一 = 贴右竖板）——头部余
   // 三钮：新主题 / 总管设置 / 关闭（与新线程视图同律）
-  await expect(page.locator('.chief-head-actions button[aria-label="全屏"]')).toHaveCount(0);
+  await expect(drawer.getByRole('button', { name: '全屏', exact: true })).toHaveCount(0);
   await expect(actions).toHaveCount(3);
   await expect(actions.nth(0)).toHaveAttribute('aria-label', '新主题');
   await expect(actions.nth(1)).toHaveAttribute('aria-label', '总管设置');
