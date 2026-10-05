@@ -46,6 +46,7 @@ function captureLogger(): DaemonLogger {
     wake: noop,
     skills: noop,
     mcp: noop,
+    gate: noop,
   };
 }
 
