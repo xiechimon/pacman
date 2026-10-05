@@ -3,10 +3,13 @@
 // (repeat(4, minmax(0, 1fr)), gap 14); the #147 column-collapse family and
 // the #58 scrollLeft persistence retired with the horizontal scroll they
 // served. Header 37 with dot/name/count, empty-state copy centered (r7).
-// #692: 列宽单源下限——轨道规则移进 board.css（minmax(var(--board-col-min),
-// 1fr)，280px = 参考站 2026-10-03 实测固定节距），⌘J 停靠 / 窄窗放不下时
-// 横滚回归且滚动条不再隐藏（旧 240px 开态护栏在 1440 停靠态把第四列裁成
-// ~3px 残边、无可滚线索 = #692 病灶）。
+// #692: 列宽单源下限——轨道规则 = scroller 上的 grid-cols 工具类
+// （minmax(var(--board-col-min), 1fr)，280px = 参考站 2026-10-03 实测固定
+// 节距），⌘J 停靠 / 窄窗放不下时横滚回归且滚动条不再隐藏（旧 240px 开态
+// 护栏在 1440 停靠态把第四列裁成 ~3px 残边、无可滚线索 = #692 病灶）。
+// #943: board.css 清零——本文件吃进来的最后三条规则（scroller 轨道、拖拽
+// 落点两级染色、body.board-dragging 手势锁）分别迁为 scroller/列上的工具类
+// 与 motion.css 的 body 级钩子。
 // #73→#616→#753: drag & drop rides the locked stack's core piece only
 // (01-stack-v2 §4.1: @dnd-kit/core) — the reference product (todos.dev,
 // live 实测; matrix re-cut 2026-10-03/04 for #753) has NO in-column
@@ -47,6 +50,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { cn } from 'cn';
 import { type ReactNode, useCallback, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import type { TagChipData } from '../components/ui/tag-chip.js';
@@ -60,7 +64,6 @@ import { DragCard } from './drag-card.js';
 import { DraggableCard } from './draggable-card.js';
 import { type FilterChip, FilterChips, type FilterDimension, FilterPanel } from './filter-panel.js';
 import { cardTag } from './tag-filter.js';
-import './board.css';
 
 /** #403 建轴 / #445 双轴化：看板筛选面——board-page 持有 URL 态与数据源，
  *  本面只消费现成谓词与回调（fixture/live 分支不渗进渲染层）。命中判定与
@@ -151,7 +154,7 @@ export function BoardSurface({
     filters.active && COLUMNS.every((c) => !visibleTodos.some((todo) => c.accepts(todo)));
 
   const sweep = useCallback(() => {
-    document.body.classList.remove('board-dragging');
+    delete document.body.dataset.boardDragging;
     // changelog 2026-09-14: the highlight is swept again on teardown
     window.getSelection()?.removeAllRanges();
   }, []);
@@ -165,7 +168,9 @@ export function BoardSurface({
 
   const onDragStart = (event: DragStartEvent) => {
     setDragId(String(event.active.id));
-    document.body.classList.add('board-dragging');
+    // 手势态载体 = data 属性（#910 裁定 3 灰区：状态类归行为、载体改
+    // data-*；律在 motion.css 的 body[data-board-dragging] 段）。
+    document.body.dataset.boardDragging = '';
     window.getSelection()?.removeAllRanges();
   };
 
@@ -242,8 +247,22 @@ export function BoardSurface({
         onDragEnd={onDragEnd}
         onDragCancel={onDragCancel}
       >
+        {/* #692 列宽单源规则（原 board.css .board-scroller，取代 #447 /
+            ADR 0004 D8 的开态限定护栏）：列宽下限 = --board-col-min
+            （280px，参考站 todos.dev 2026-10-03 live 实测的固定节距），
+            两态同一条规则、不按 data-chief-open 分支。
+            - 静止 ≥1440 视口：1fr 段主导（实测 281px），几何与旧
+              grid-cols-4 逐值一致；
+            - ⌘J 停靠（board-main 让掉 418px）或窄窗：下限接管，放不下的
+              列走 overflow-x-auto 横滚——旧护栏在 1440 停靠态恰好排满三列
+              （748 = 3×240+2×14），第四列只剩 ~3px 残边，且滚动条被隐藏、
+              无任何可滚线索（#692 病灶：无提示的裁切）。对齐参考站后列恒
+              280px 节距、滚动缘露出诚实的部分列，滚动条恢复原生
+              （scrollbar-width: auto，参考站同值）——只在真有溢出时出现，
+              静止 1440 无溢出即无滚动条，#351 的静止观感不变。 */}
         <div
-          className={`board-scroller absolute inset-x-0 bottom-0 grid grid-rows-[minmax(0,1fr)] gap-3.5 overflow-x-auto overflow-y-hidden bg-background px-[17px] pt-3 pb-[13px] ${
+          data-testid="board-scroller"
+          className={`board-scroller absolute inset-x-0 bottom-0 grid grid-cols-[repeat(4,minmax(var(--board-col-min),1fr))] grid-rows-[minmax(0,1fr)] gap-3.5 overflow-x-auto overflow-y-hidden bg-background px-[17px] pt-3 pb-[13px] ${
             banner == null ? 'top-11' : 'top-[121px]'
           }`}
         >
@@ -276,12 +295,24 @@ export function BoardSurface({
               return (
                 <section
                   key={column.id}
-                  className="board-column relative flex h-full flex-col rounded-none border border-border bg-column"
+                  /* #616 两级染色（原 board.css [data-drop-valid]/[data-drop]
+                     规则，#943 迁条件工具类）：手势在飞时全部合法目标列戴
+                     base 档（5% 底 + 品牌描边），指针悬停列升 hover 档
+                     （10% 底）；源列与非法列（待处理）保持素面。切换即时、
+                     无过渡（参考站的染色是类名瞬切，getAnimations 全程为
+                     空）。整格染，表头含在内（#391 时代的整 cell 律保留）。
+                     #753：合法集 = 被拖卡的 per-source 矩阵。data-* 属性
+                     原位保留（e2e 与 a11y 载体）；cn 合并保证 hover 档压过
+                     base 档（同组工具类后者胜，等价旧 CSS 的规则序）。 */
+                  className={cn(
+                    'board-column relative flex h-full flex-col rounded-none border border-border bg-column',
+                    isValidDropTarget(column.id) &&
+                      'border-(--drop-tint-border) bg-(--drop-tint-base)',
+                    dropColumnId === column.id &&
+                      'border-(--drop-tint-border) bg-(--drop-tint-hover)',
+                  )}
                   aria-label={t(column.name)}
                   data-column={column.id}
-                  /* #616 两级染色：手势在飞时全部合法目标列戴 base 档
-                     （data-drop-valid），指针悬停列升 hover 档（data-drop）。
-                     #753：合法集 = 被拖卡的 per-source 矩阵。 */
                   data-drop-valid={isValidDropTarget(column.id) ? 'true' : undefined}
                   data-drop={dropColumnId === column.id ? 'true' : undefined}
                 >
@@ -295,7 +326,10 @@ export function BoardSurface({
                     </span>
                     {/* count always renders, `0` included (r2 §4.1 计数 0/1;
                   r7 02/01b: digit present on empty columns, x = name+9) */}
-                    <span className="board-column-count ml-[9px] text-xs leading-4 text-muted-foreground/70">
+                    <span
+                      data-testid="column-count"
+                      className="board-column-count ml-[9px] text-xs leading-4 text-muted-foreground/70"
+                    >
                       {todos.length}
                     </span>
                     {column.label && (
@@ -342,7 +376,7 @@ export function BoardSurface({
             - 抬升面 = 紧凑 DragCard（身份行 + 两行标题），不是板面卡复刻。 */}
         <DragOverlay dropAnimation={null} style={{ willChange: 'transform' }}>
           {dragged != null && (
-            <div className="board-drag-overlay">
+            <div data-testid="drag-overlay" className="board-drag-overlay">
               <DragCard todo={dragged} projectName={fixture.projectNames?.[dragged.projectId]} />
             </div>
           )}

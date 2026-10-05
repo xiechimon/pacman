@@ -12,6 +12,9 @@
      - hover / press tint（#73，official sheet 的 hover:hover + pointer:fine
        门与 pointer:coarse 零过渡律）；
      - 全局 :active 压暗、#629 板面卡按压面、XMON-69 侧栏 toggle 例外；
+     - #73 板面拖拽手势锁（body[data-board-dragging]：grabbing 指针 +
+       全页选区封锁；#943 随 board.css 清零迁入，body 级状态钩与
+       .theme-suppress 同族）；
      - prefers-reduced-motion 全站法（含 tw-animate-css keyframe 的降级
        reset——tab pill 的 150ms transition 滑动与 spinner 面走各自文件的
        reduced-motion 处理，不在此列）。
@@ -119,6 +122,19 @@ a:active {
   a:active {
     transition-duration: 0s;
   }
+}
+
+/* #73 drag-gesture law (relocated from board.css by #943, board per-face
+   CSS 清零): while a board drag is in flight the whole document stops
+   selecting text (changelog 2026-09-14 hygiene) and the pointer reads as
+   grabbing. The data attribute is toggled on <body> by board.tsx for the
+   gesture's duration — a body-level state hook, same family as
+   .theme-suppress below, so the rule lives in the carrier motion layer, not
+   a per-face file. Carrier per #910 裁定 3 (状态类归行为，载体改 data-*). */
+body[data-board-dragging] {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Theme-switch suppression (base-ui-theme §1.2/F8, #787, better-ui recipe):

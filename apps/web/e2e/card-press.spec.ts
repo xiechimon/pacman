@@ -13,6 +13,9 @@ import { expect, type Page, test } from '@playwright/test';
 //     light surface-secondary，参考站 active:bg-* 同源），标题链接不吃全局
 //     a:active 压暗（参考站单一反馈）；
 //   · 点击（未移动）导航详情路由——参考站同款效果，钉住不被封锁误伤。
+// #943/#910 重钉：卡 = [data-todo-id] 属性载体（列 scope 走既有
+// data-column）；标题链接 = 卡内唯一 role=link；dnd 浮层 =
+// data-testid="drag-overlay"（二级：portal 容器无 role）。断言值不动。
 
 /** Two responsive frame boundaries — flushes React tasks queued before it
  *  (the same-column drop teardown, #753). */
@@ -41,7 +44,7 @@ for (const theme of ['light', 'dark'] as const) {
   test(`press tints the whole card one surface step (${theme})`, async ({ page }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app?scenario=01');
-    const card = page.locator('[data-column="done"] .todo-card').first();
+    const card = page.locator('[data-column="done"] [data-todo-id]').first();
     const box = await card.boundingBox();
     if (box == null) throw new Error('done card missing');
     const cx = box.x + box.width / 2;
@@ -57,7 +60,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(card).toHaveCSS('background-color', expectedPress);
     // single feedback: the stretched link does NOT dim under the global a:active
     const linkOpacity = await card
-      .locator('.todo-card-link')
+      .getByRole('link')
       .evaluate((el) => getComputedStyle(el).opacity);
     expect(linkOpacity).toBe('1');
 
@@ -74,9 +77,9 @@ for (const theme of ['light', 'dark'] as const) {
 
 test('card face is selection- and native-drag-locked (「小链接」绝迹)', async ({ page }) => {
   await page.goto('/app?scenario=01');
-  const card = page.locator('[data-column="done"] .todo-card').first();
+  const card = page.locator('[data-column="done"] [data-todo-id]').first();
   await expect(card).toHaveCSS('user-select', 'none');
-  const link = card.locator('.todo-card-link');
+  const link = card.getByRole('link');
   await expect(link).toHaveAttribute('draggable', 'false');
   const userDrag = await link.evaluate((el) => getComputedStyle(el).webkitUserDrag);
   expect(userDrag).toBe('none');
@@ -110,7 +113,7 @@ test('card face is selection- and native-drag-locked (「小链接」绝迹)', a
   }));
   expect(mid.dragstarts).toBe(0);
   expect(mid.selection).toBe('');
-  await expect(page.locator('.board-drag-overlay .board-drag-card')).toBeVisible();
+  await expect(page.getByTestId('drag-overlay').locator('[data-todo-id]')).toBeVisible();
   // release OUTSIDE the card bounds but inside the source column: a press
   // that travels and lifts off the card is an aborted gesture, not a click
   // (up inside the card bounds is the browser's click law — that face is
@@ -120,12 +123,12 @@ test('card face is selection- and native-drag-locked (「小链接」绝迹)', a
   await settleFrames(page);
   await page.waitForTimeout(300);
   expect(new URL(page.url()).pathname).toBe('/app');
-  await expect(page.locator('.board-drag-overlay')).toHaveCount(0);
+  await expect(page.getByTestId('drag-overlay')).toHaveCount(0);
 });
 
 test('plain click on a done card still navigates to the detail route', async ({ page }) => {
   await page.goto('/app?scenario=01');
-  const card = page.locator('[data-column="done"] .todo-card').first();
+  const card = page.locator('[data-column="done"] [data-todo-id]').first();
   const id = await card.getAttribute('data-todo-id');
   await card.click();
   // SPA pushState keeps the scenario query — match the path, not the full URL

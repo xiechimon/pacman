@@ -11,10 +11,15 @@
 // hotkey opener.
 // #414 (shadcn 试点): 视觉层切 B（neutral）token + tailwind 工具类，
 // sidebar.css 随之整件退役——行 pill 的 ::before 层译成 before: 工具类，
-// 行高/内距/轨道宽全部按 r7 实测原值保留。类别名（sidebar-row/rail-row/
-// sidebar-kbd…）原位保留作 e2e 锚点；brand mark 的 mask 是唯一工具类
+// 行高/内距/轨道宽全部按 r7 实测原值保留。brand mark 的 mask 是唯一工具类
 // 表达不了的规则，落 inline style。选中态/hover 的语义色不变，墨色走
 // muted-foreground 族。
+// #943: 裸控件收编——九个行钮/头像钮全走 components/ui Button（ghost 档 +
+// ROW_BTN/RAIL_BTN 中和件：行视觉盒在 before: pill，件配方的涂底/圆角/
+// 边框/press 位移逐位归零，r7 几何不动）。类别名（sidebar-row/rail-row/
+// sidebar-kbd…）按 spec/22 §5.0 别名残留律原位保留（跨域 spec 与
+// overlays.css 的 :root[data-search-open] 覆写仍消费它们），本域 spec 的
+// 钉扎载体已按 #910 换 role/label/text + 少量二级 testid。
 
 import { BRAND } from '@pacman/shared';
 import {
@@ -27,6 +32,7 @@ import {
 } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useLiveData } from '../api/provider.js';
+import { Button } from '../components/ui/button.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
@@ -52,6 +58,7 @@ import {
   Server,
 } from '../icons/index.js';
 import { readStoredTheme } from '../theme.js';
+import { ProjectAvatar } from './project-avatar.js';
 
 /** Which sidebar row carries the active pill: a nav row (工作台 / 定时 /
  *  the team head row on team/account — r7 01/11, r2 07e/24b/24c, r7 12/13),
@@ -160,6 +167,17 @@ const ROW_BASE =
 const ROW_HOVER = 'hover:before:bg-sidebar-hover';
 const ROW_SELECTED = 'text-foreground before:bg-sidebar-active';
 
+/** 行钮中和件（#943 裸控件收编 Button）：行的视觉盒 = before: pill 层，
+ *  Button 自带的件配方在行面上逐位归零——ghost hover/aria-expanded 的整盒
+ *  涂底会与 pill 叠色（hover:bg-transparent 双侧），size 档的 gap/右内距
+ *  会推挤图标与 truncate 位（gap-0 pr-0），font-medium/rounded-lg/1px 透明
+ *  边对 r7 实测行几何（pill x8、图标 x19、方角）都是漂移源，press 位移按
+ *  XMON-69 例外律同族禁掉（fab 钮同款 active:not-aria-[haspopup] 形态，
+ *  变体链一致才吃得掉件基类）。focus 环件基类与行族同值（#388 canon），
+ *  不重复写。 */
+const ROW_BTN =
+  'justify-start gap-0 rounded-none border-none pr-0 font-normal hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+
 function GroupHeader({
   label,
   collapsed,
@@ -171,9 +189,9 @@ function GroupHeader({
 }) {
   const { t } = useI18n();
   return (
-    <button
-      type="button"
-      className={`sidebar-group group ${ROW_BASE} ${ROW_HOVER} h-9 cursor-pointer border-none bg-transparent pl-[19px] ${
+    <Button
+      variant="ghost"
+      className={`sidebar-group group ${ROW_BASE} ${ROW_HOVER} ${ROW_BTN} h-9 cursor-pointer bg-transparent pl-[19px] aria-expanded:bg-transparent aria-expanded:text-muted-foreground ${
         collapsed ? 'sidebar-group--collapsed' : ''
       }`}
       aria-label={groupAria(t, label, collapsed)}
@@ -186,7 +204,7 @@ function GroupHeader({
       <span className="sidebar-group-label ml-[11px] text-[13px] leading-4 text-muted-foreground">
         {t(label)}
       </span>
-    </button>
+    </Button>
   );
 }
 
@@ -204,9 +222,9 @@ function RailGroupChevron({
 }) {
   const { t } = useI18n();
   return (
-    <button
-      type="button"
-      className={`rail-row rail-group group relative flex h-8 w-10 flex-none cursor-pointer items-center justify-center border-none bg-transparent text-muted-foreground focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 ${
+    <Button
+      variant="ghost"
+      className={`rail-row rail-group group relative h-8 w-10 flex-none cursor-pointer rounded-none border-none bg-transparent text-muted-foreground hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-muted-foreground active:not-aria-[haspopup]:translate-y-0 ${
         collapsed ? 'rail-group--collapsed' : ''
       }`}
       aria-label={groupAria(t, label, collapsed)}
@@ -216,7 +234,7 @@ function RailGroupChevron({
       <span className="transition-transform duration-150 group-[.rail-group--collapsed]:[transform:rotate(-90deg)]">
         <ChevronDown />
       </span>
-    </button>
+    </Button>
   );
 }
 
@@ -224,6 +242,10 @@ function RailGroupChevron({
 const RAIL_ROW =
   'rail-row relative flex h-8 w-10 flex-none items-center justify-center text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-1 before:rounded-none before:content-[""] hover:before:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>svg]:relative [&>.project-avatar]:relative';
 const RAIL_SELECTED = 'rail-row--selected text-foreground before:bg-sidebar-active';
+/** Rail 行钮中和件（#943）：与 ROW_BTN 同理——rail 钮的视觉盒同样是
+ *  before: pill，件配方的涂底/圆角/边框/press 位移归零。 */
+const RAIL_BTN =
+  'cursor-pointer rounded-none border-none bg-transparent hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 /** 用户菜单 popover（#127：两侧栏 avatar chip 共用一开合态，分支各 render
  *  自己的 Popover Root——同一时刻只挂载一支。#854 收编
@@ -312,21 +334,26 @@ export function BoardSidebar({
         {/* 展开钮的 hover 面是它骑 seam 行的本分（见展开态注释）；按压面与
             展开态折叠钮同律禁掉——同一个控件折叠前后的两张脸，按下去都只
             该是图标本身（XMON-69，律在 motion.css 的 sidebar toggles 段）。 */}
-        <button
-          type="button"
-          className="rail-toggle flex h-11 w-10 flex-none cursor-pointer items-center justify-center border-0 border-b border-[var(--border-default)] bg-transparent text-muted-foreground hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2"
+        <Button
+          variant="ghost"
+          className="rail-toggle h-11 w-10 flex-none cursor-pointer rounded-none border-0 border-b border-[var(--border-default)] bg-transparent text-muted-foreground hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover dark:hover:text-muted-foreground active:not-aria-[haspopup]:translate-y-0"
           aria-label={t('展开侧边栏')}
           onClick={onToggle}
         >
           <PanelLeftOpen />
-        </button>
+        </Button>
         <nav className="rail-nav flex flex-none flex-col pt-1">
-          <button type="button" className={RAIL_ROW} aria-label={t('搜索')} onClick={onSearch}>
+          <Button
+            variant="ghost"
+            className={`${RAIL_ROW} ${RAIL_BTN}`}
+            aria-label={t('搜索')}
+            onClick={onSearch}
+          >
             <Search />
             {/* #468: rail 态没有常亮 badge 位，悬浮浮出 ⌘K 提示（展开态
                 行的 sidebar-kbd 角标不动）。 */}
             <KbdHint label="⌘K" placement="right" />
-          </button>
+          </Button>
           <Link
             className={`${RAIL_ROW} ${selected === 'board' ? RAIL_SELECTED : ''}`}
             to={{ pathname: '/app', search }}
@@ -360,7 +387,7 @@ export function BoardSidebar({
                   aria-current={pathname === href ? 'page' : undefined}
                   aria-label={row.name}
                 >
-                  <span className="project-avatar">{row.name.charAt(0).toLowerCase()}</span>
+                  <ProjectAvatar char={row.name.charAt(0).toLowerCase()} />
                 </Link>
               );
             })}
@@ -387,9 +414,9 @@ export function BoardSidebar({
           open={userMenuOpen}
           onOpenChange={setUserMenuOpen}
           trigger={
-            <button
-              type="button"
-              className="rail-user mb-[11px] flex h-[38px] w-10 flex-none cursor-pointer items-center justify-center border-none bg-transparent outline-none hover:rounded-none hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+            <Button
+              variant="ghost"
+              className="rail-user mb-[11px] h-[38px] w-10 flex-none cursor-pointer rounded-none border-none bg-transparent outline-none hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover aria-expanded:bg-transparent [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
               aria-label={user.displayName}
             >
               <SeededAvatar
@@ -397,7 +424,7 @@ export function BoardSidebar({
                 src={user.avatarUrl}
                 fallback="/avatar-user.png"
               />
-            </button>
+            </Button>
           }
         />
       </aside>
@@ -416,6 +443,7 @@ export function BoardSidebar({
           钮是全头部最右的墨，那一跳读作图标回缩。故选中态 mr 取 6（8+6=14，
           与非选中态 mr-[14px] 同一条右边界线）。 */}
       <div
+        data-testid="team-row"
         className={`sidebar-team-row flex flex-none items-center text-foreground ${
           selected === 'team'
             ? 'sidebar-team-row--active mx-2 mt-1.5 mb-[5px] h-8 rounded-none bg-sidebar-active pl-[11px]'
@@ -426,6 +454,7 @@ export function BoardSidebar({
           {/* 品牌槽（#390）：mark = logo.svg 真资产 alpha mask，随
               currentColor 取行墨——工具类表达不了 mask url，inline 承载 */}
           <span
+            data-testid="brand-mark"
             className="sidebar-brand-mark block size-4"
             aria-hidden="true"
             style={{
@@ -435,10 +464,14 @@ export function BoardSidebar({
             }}
           />
         </span>
-        {/* r2 §1.1: clicking the head name navigates to /app/team */}
+        {/* r2 §1.1: clicking the head name navigates to /app/team。
+            aria-current = team 页选中态的语义载体（#910 裁定 3：状态类
+            断言归行为、载体改 aria-*；sidebar-team-row--active 类名按
+            §5.0 别名残留律原位保留，spec 不再钉它）。 */}
         <Link
           className="sidebar-team-name relative top-px ml-[11px] truncate text-sm leading-6 text-foreground no-underline"
           to={{ pathname: '/app/team', search }}
+          aria-current={selected === 'team' ? 'page' : undefined}
         >
           {BRAND.manifestName}
         </Link>
@@ -451,22 +484,23 @@ export function BoardSidebar({
             按压面两钮一并禁（XMON-69）：motion.css 的全局 button:active 降
             到 .85，落在 14px 裸图标上读作图标自己缩了一下；律在 motion.css
             的 sidebar toggles 段，不在这里。 */}
-        <button
-          type="button"
-          className={`sidebar-team-collapse ml-auto flex size-7 cursor-pointer items-center justify-center rounded-none border-none bg-transparent p-0 text-muted-foreground focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 ${
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className={`sidebar-team-collapse ml-auto size-7 cursor-pointer rounded-none border-none bg-transparent p-0 text-muted-foreground hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 ${
             selected === 'team' ? 'mr-[6px]' : 'mr-[14px]'
           }`}
           aria-label={t('收起侧边栏')}
           onClick={onToggle}
         >
           <PanelLeftClose />
-        </button>
+        </Button>
       </div>
 
       <nav className="sidebar-nav flex min-h-0 flex-[0_1_auto] flex-col overflow-y-auto border-t border-[var(--border-default)] pt-[9.5px]">
-        <button
-          type="button"
-          className={`sidebar-row ${ROW_BASE} ${ROW_HOVER} h-9 pl-[18px]`}
+        <Button
+          variant="ghost"
+          className={`sidebar-row ${ROW_BASE} ${ROW_HOVER} ${ROW_BTN} h-9 cursor-pointer pl-[18px]`}
           onClick={onSearch}
         >
           <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
@@ -476,15 +510,15 @@ export function BoardSidebar({
           <span className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2 rounded-[3px] border border-border px-[3px] py-px text-[11px] leading-4 text-muted-foreground">
             ⌘K
           </span>
-        </button>
+        </Button>
         {/* #389: 新任务行动作行——点击与全局 C 热键同一 opener；行序钉在
             搜索 之后（sidebar-visual 的 .sidebar-kbd 单数探针吃首枚 ⌘K）。
             #445: sidebar-new-task = 可钉别名（顶栏「+ 任务」撤除后，本行是
             新建入口的唯一点击面——e2e/integration 的 opener 与焦点回落断言
             全部指这里）。 */}
-        <button
-          type="button"
-          className={`sidebar-row sidebar-new-task ${ROW_BASE} ${ROW_HOVER} h-9 pl-[18px]`}
+        <Button
+          variant="ghost"
+          className={`sidebar-row sidebar-new-task ${ROW_BASE} ${ROW_HOVER} ${ROW_BTN} h-9 cursor-pointer pl-[18px]`}
           onClick={onNewTask}
         >
           <span className="sidebar-row-icon flex size-4 flex-none items-center justify-center">
@@ -494,7 +528,7 @@ export function BoardSidebar({
           <span className="sidebar-kbd absolute top-1/2 right-[17px] -translate-y-1/2 rounded-[3px] border border-border px-[3px] py-px text-[11px] leading-4 text-muted-foreground">
             C
           </span>
-        </button>
+        </Button>
         <Link
           className={`sidebar-row ${ROW_BASE} h-9 pl-[18px] ${selected === 'board' ? `sidebar-row--selected ${ROW_SELECTED}` : ROW_HOVER}`}
           to={{ pathname: '/app', search }}
@@ -550,7 +584,7 @@ export function BoardSidebar({
                   to={{ pathname: href, search }}
                   aria-current={pathname === href ? 'page' : undefined}
                 >
-                  <span className="project-avatar">{row.name.charAt(0).toLowerCase()}</span>
+                  <ProjectAvatar char={row.name.charAt(0).toLowerCase()} />
                   <span className="sidebar-subrow-label ml-3 truncate">{row.name}</span>
                 </Link>
               );
@@ -576,7 +610,10 @@ export function BoardSidebar({
               </span>
               <span className="sidebar-subrow-label ml-3 truncate">{t(label)}</span>
               {machineOnline && label === '机器' && (
-                <span className="sidebar-online-dot absolute top-1/2 right-4 size-[5px] -translate-y-1/2 rounded-full bg-primary" />
+                <span
+                  data-testid="online-dot"
+                  className="sidebar-online-dot absolute top-1/2 right-4 size-[5px] -translate-y-1/2 rounded-full bg-primary"
+                />
               )}
             </Link>
           ))}
@@ -588,9 +625,9 @@ export function BoardSidebar({
         open={userMenuOpen}
         onOpenChange={setUserMenuOpen}
         trigger={
-          <button
-            type="button"
-            className="sidebar-user flex h-11 flex-none cursor-pointer items-center border-0 border-t border-[var(--border-default)] bg-transparent px-2 hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+          <Button
+            variant="ghost"
+            className="sidebar-user h-11 flex-none cursor-pointer justify-start gap-0 rounded-none border-0 border-t border-[var(--border-default)] bg-transparent px-2 font-normal hover:bg-sidebar-hover hover:text-muted-foreground dark:hover:bg-sidebar-hover aria-expanded:bg-transparent aria-expanded:text-muted-foreground outline-none [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
             aria-label={user.displayName}
           >
             <SeededAvatar
@@ -604,7 +641,7 @@ export function BoardSidebar({
             <span className="sidebar-user-more ml-auto flex size-6 items-center justify-center text-muted-foreground">
               <EllipsisVertical />
             </span>
-          </button>
+          </Button>
         }
       />
     </aside>

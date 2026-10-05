@@ -25,9 +25,10 @@
 // per-face 类名（board-filter-panel / board-type-filter / board-type-filter-count
 // / type-filter-popover / type-filter-option / repo-filter-option /
 // filter-dimension-* / filter-option-* / filter-chip / board-filter-empty /
-// board-filter-clear）= e2e 定位别名（README 规则 2）。board-type-filter 与
-// type-filter-popover 是 #445 遗留别名，语义已扩到「全轴筛选」，名字保留
-// 是为了不动既有钉（#411 别名优先政策）。
+// board-filter-clear）历史上是 e2e 定位别名；#411 别名优先政策已被 #910
+// 裁定 1 废止——本域 spec 重钉到 role/label/text 一级载体，类名按 §5.0
+// 别名残留纪律原位保留（零 CSS 规则的惰性钩子，终摘属 #952/#953），供
+// 未重钉的跨域 spec 与 integration 面过渡期继续命中。
 //
 // 面板皮肤并全站 popup vocabulary（壳 p-1、行 rounded-md + hover/选中
 // bg-accent、维度间分隔线全出血 -mx-1、计数留右端 shortcut 位），行形与批次
@@ -38,6 +39,7 @@
 // （批次键不再挂标题行）。「仅此」hover 现形，与计数共右端槽（静息计数、
 // hover 仅此）——两控件位置都稳定，不随选集大小推移。
 
+import { Checkbox as CheckboxPrimitive } from '@base-ui/react/checkbox';
 import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { EmptyDescription } from '../components/ui/empty.js';
@@ -121,26 +123,25 @@ export function FilterChips({
   return (
     <div className="board-filter-chips flex min-w-0 items-center gap-1.5 overflow-x-auto pl-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {chips.map((chip) => (
-        <button
+        <Button
           key={chip.key}
-          type="button"
           data-dimension={chip.key}
-          className={`filter-chip ${FOCUS} flex h-5 flex-none items-center gap-1 rounded-full border border-transparent bg-foreground px-2 text-[11px] leading-none font-medium text-background transition-colors`}
+          className="filter-chip h-5 flex-none gap-1 rounded-full border border-transparent bg-foreground px-2 text-[11px] leading-none font-medium text-background hover:bg-foreground active:not-aria-[haspopup]:translate-y-0"
           aria-label={t('清除{name}筛选', { name: chip.label })}
           onClick={chip.onClear}
         >
           <span className="filter-chip-label max-w-40 truncate">{chip.label}</span>
-          <X width={10} height={10} />
-        </button>
+          <X className="size-2.5" />
+        </Button>
       ))}
       {chips.length > 1 && (
-        <button
-          type="button"
-          className={`filter-chips-clear ${FOCUS} flex h-5 flex-none items-center rounded-full px-2 text-[11px] leading-none font-medium text-muted-foreground transition-colors hover:text-foreground`}
+        <Button
+          variant="ghost"
+          className="filter-chips-clear h-5 flex-none rounded-full border-none px-2 text-[11px] leading-none font-medium text-muted-foreground hover:bg-transparent hover:text-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
           onClick={onClearAll}
         >
           {t('清除全部')}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -209,19 +210,29 @@ function DimensionSection({
               = 清本维——段内清除钮撤除后，「清」由本行满选态 / 反选 / 顶栏
               生效筛选条三路承接，功能不丢。反选挂该行右端（参考站位置与文案）。 */}
           <div className="filter-dimension-allrow flex items-center">
-            {/* deliberate-native（#855）：真 checkbox 三态走 indeterminate 属性，
-                语义与键盘/读屏行为白送；整行包 label，点文案即 toggle。勾形/横杠是
-                input 之上的指针穿透覆层（appearance-none 自绘皮肤）。 */}
+            {/* deliberate-official（#855 → #943 裸控件收编）：三态改走 Base UI
+                官方 Checkbox Root（components/ui/checkbox 共享件包的同一底座，
+                indeterminate 是官方一等 prop——aria-checked="mixed" 与隐藏
+                原生 input 的键盘/表单/读屏语义白送）。共享件 API 现未透出
+                indeterminate（checked: boolean），扩共享件属 #908 单裁决面，
+                故本行直接消费 Root——先例 = chief-drawer 直消费 DialogPrimitive；
+                皮肤零 CSS 纯工具类（关态 border-input 空盒 / 开态 --card-button
+                实底白勾 / mixed 品牌边框 + 横杠，逐值沿 #855 自绘皮肤），勾形
+                与横杠仍是 tile 之上的指针穿透覆层。整行包 label，点文案即
+                toggle（官方合成：tile 直点由 Root preventDefault 接管，不经
+                label 二次翻转）。 */}
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime (official composition); the static check cannot see through the component. */}
             <label className="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft">
               <span className="relative flex size-4 flex-none">
-                <input
-                  type="checkbox"
+                <CheckboxPrimitive.Root
                   checked={allSelected}
-                  ref={(el) => {
-                    if (el) el.indeterminate = someSelected && !allSelected;
-                  }}
-                  onChange={() => (allSelected ? dimension.onClear() : dimension.onSelectAll())}
-                  className={`filter-dimension-all ${FOCUS} size-4 cursor-pointer appearance-none rounded-none border border-input transition-colors checked:border-(--card-button) checked:bg-(--card-button) indeterminate:border-(--card-button)`}
+                  indeterminate={someSelected && !allSelected}
+                  onCheckedChange={() =>
+                    allSelected ? dimension.onClear() : dimension.onSelectAll()
+                  }
+                  className={`filter-dimension-all ${FOCUS} size-4 cursor-pointer rounded-none border transition-colors ${
+                    allSelected || someSelected ? 'border-(--card-button)' : 'border-input'
+                  } ${allSelected ? 'bg-(--card-button)' : 'bg-transparent'}`}
                 />
                 {allSelected && (
                   <Check className="pointer-events-none absolute inset-0 m-auto size-3 text-primary-foreground" />
@@ -232,13 +243,13 @@ function DimensionSection({
               </span>
               <span className="min-w-0 flex-1 truncate text-left">{t('全选')}</span>
             </label>
-            <button
-              type="button"
-              className={`filter-dimension-invert ${FOCUS} mr-2 shrink-0 rounded px-1 text-xs text-(--card-button) transition-colors hover:underline`}
+            <Button
+              variant="link"
+              className="filter-dimension-invert mr-2 h-auto shrink-0 rounded border-none px-1 text-xs font-normal text-(--card-button) active:not-aria-[haspopup]:translate-y-0"
               onClick={dimension.onInvert}
             >
               {t('反选')}
-            </button>
+            </Button>
           </div>
           <div
             className="filter-dimension-list flex max-h-[220px] flex-col overflow-y-auto"
@@ -254,14 +265,14 @@ function DimensionSection({
                   key={choice.value}
                   className="filter-option-row group relative flex items-center"
                 >
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
                     {...(choice.color == null
                       ? { 'data-project': choice.value }
                       : { 'data-tag': choice.value })}
                     role="option"
                     aria-selected={active}
-                    className={`${alias} ${FOCUS} flex h-7 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft ${
+                    className={`${alias} h-7 min-w-0 flex-1 justify-start gap-2 rounded-md border-none px-2 text-xs font-normal text-foreground hover:bg-accent-soft dark:hover:bg-accent-soft active:not-aria-[haspopup]:translate-y-0 ${
                       active ? 'bg-accent' : ''
                     }`}
                     onClick={() => dimension.onToggle(choice.value)}
@@ -280,23 +291,30 @@ function DimensionSection({
                     )}
                     {/* 计数仅有命中时画（参考站形：零命中不占右端位）。 */}
                     {choice.count > 0 && (
-                      <span className="filter-option-count ml-auto text-[11px] text-muted-foreground tabular-nums transition-opacity group-hover:opacity-0">
+                      <span
+                        data-testid="option-count"
+                        className="filter-option-count ml-auto text-[11px] text-muted-foreground tabular-nums transition-opacity group-hover:opacity-0"
+                      >
                         {choice.count}
                       </span>
                     )}
-                  </button>
+                  </Button>
                   {/* 「仅此」：多选轴的逆向操作（全选后取消一个的镜像）。
                       静息透明、hover/focus 现形，与计数共右端槽（静息计数、
                       hover 仅此）；恒渲染（无选中时 disabled）让行右缘几何
                       与选中集大小无关。 */}
-                  <button
-                    type="button"
+                  {/* 静息隐藏、行 hover 现形：disabled 档把件基类的
+                      disabled:opacity-50 归零回 opacity-0（现形仍由
+                      group-hover 承担，双层变体链压在单层之上），
+                      pointer-events-none 天然吃掉 disabled:hover 染色。 */}
+                  <Button
+                    variant="ghost"
                     disabled={dimension.selected.length === 0}
-                    className={`filter-option-only ${FOCUS} absolute right-2 shrink-0 rounded px-1 text-[11px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 disabled:hover:text-muted-foreground`}
+                    className="filter-option-only absolute right-2 h-auto shrink-0 rounded border-none px-1 text-[11px] font-normal text-muted-foreground opacity-0 transition-opacity hover:bg-transparent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 dark:hover:bg-transparent disabled:opacity-0 disabled:group-hover:opacity-100 active:not-aria-[haspopup]:translate-y-0"
                     onClick={() => dimension.onOnly(choice.value)}
                   >
                     {t('仅此')}
-                  </button>
+                  </Button>
                 </div>
               );
             })}
@@ -350,7 +368,10 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
       >
         <Funnel />
         {totalSelected > 0 && (
-          <span className="board-type-filter-count rounded-full bg-accent px-1.5 text-[11px] leading-4 font-normal text-muted-foreground">
+          <span
+            data-testid="filter-count"
+            className="board-type-filter-count rounded-full bg-accent px-1.5 text-[11px] leading-4 font-normal text-muted-foreground"
+          >
             {totalSelected}
           </span>
         )}
@@ -372,13 +393,13 @@ export function FilterPanel({ dimensions, totalSelected, onClearAll }: FilterPan
           />
         ))}
         {totalSelected > 0 && (
-          <button
-            type="button"
-            className={`filter-panel-clear ${FOCUS} mt-0.5 flex h-7 items-center justify-center rounded-md text-xs text-muted-foreground transition-colors hover:bg-accent-soft hover:text-foreground`}
+          <Button
+            variant="ghost"
+            className="filter-panel-clear mt-0.5 h-7 w-full rounded-md border-none text-xs font-normal text-muted-foreground hover:bg-accent-soft hover:text-foreground dark:hover:bg-accent-soft active:not-aria-[haspopup]:translate-y-0"
             onClick={onClearAll}
           >
             {t('清除全部')}
-          </button>
+          </Button>
         )}
       </PopoverContent>
     </Popover>

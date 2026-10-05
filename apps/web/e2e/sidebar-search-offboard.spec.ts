@@ -21,7 +21,9 @@ for (const [name, url] of [
     await page.goto(url);
     await expect(panel(page)).toBeHidden();
 
-    await page.locator('.sidebar-row', { hasText: '搜索' }).click();
+    // #910 一级载体：侧栏（complementary）里的 搜索 行钮（可及名 = 「搜索 ⌘K」，
+    // 子串命中）。旧 .sidebar-row 类名钉退役（#943）。
+    await page.getByRole('complementary').getByRole('button', { name: '搜索' }).click();
     await expect(panel(page)).toBeVisible();
 
     await page.keyboard.press('Escape');

@@ -8,6 +8,12 @@ import { expect, test } from '@playwright/test';
 // V2 骨架方角 #792 P6) with the selected state one cds alpha step deeper than
 // the hover instead of a different shape; the machine-online dot keeps its
 // absolute anchor (same lift-rule hazard as the kbd chip).
+//
+// #943/#910 重钉：类名载体全退役——行 = nav 内的 link/button（一级
+// role/tag + 文本），选中态 = aria-current="page"，侧栏 = aside
+// （complementary），在线点 = data-testid="online-dot"（二级：aria 不可见
+// 的纯装饰结构钩子）。探针期望值不动（本域 token 槽与行几何零改动，
+// #915 翻值后的现值即新正典）。
 
 /** Parse a computed rgb()/rgba() color. */
 const parse = (c: string) => {
@@ -30,16 +36,21 @@ const over = (fg: string, bg: string) => {
 const dist = (x: { r: number; g: number; b: number }, y: { r: number; g: number; b: number }) =>
   Math.abs(x.r - y.r) + Math.abs(x.g - y.g) + Math.abs(x.b - y.b);
 
+/** 侧栏行集合（nav 内的 link + button 行）——类名退役后的行载体。 */
+const ROWS = 'nav a, nav button';
+
 for (const theme of ['light', 'dark'] as const) {
   test(`⌘K chip is a bordered pill clear of the label (${theme})`, async ({ page }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app?scenario=01');
 
-    const m = await page.evaluate(() => {
-      const kbd = document.querySelector('.sidebar-kbd');
-      const row = kbd?.closest('.sidebar-row');
-      const label = row?.querySelector('.sidebar-row-label');
-      const sidebar = document.querySelector('.board-sidebar');
+    const m = await page.evaluate((rowsSel) => {
+      const rows = [...document.querySelectorAll(rowsSel)];
+      const row = rows.find((el) => el.textContent?.includes('搜索'));
+      const spans = row ? [...row.querySelectorAll('span')] : [];
+      const kbd = spans.find((s) => s.textContent?.trim() === '⌘K');
+      const label = spans.find((s) => s.textContent?.trim() === '搜索');
+      const sidebar = document.querySelector('aside');
       if (!kbd || !row || !label || !sidebar) throw new Error('sidebar search row missing');
       const kr = kbd.getBoundingClientRect();
       const lr = label.getBoundingClientRect();
@@ -54,7 +65,7 @@ for (const theme of ['light', 'dark'] as const) {
         labelRight: lr.right,
         sidebarRight: sr.right,
       };
-    });
+    }, ROWS);
     // absolute anchor — the lift rule for row content must not demote it
     // into the label's flow (the #128 overlap bug)
     expect(m.pos).toBe('absolute');
@@ -73,7 +84,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app?scenario=01');
 
-    const geo = await page.evaluate(() => {
+    const geo = await page.evaluate((rowsSel) => {
       const pill = (el: Element) => {
         const cs = getComputedStyle(el, '::before');
         return {
@@ -84,12 +95,13 @@ for (const theme of ['light', 'dark'] as const) {
           radius: cs.borderTopLeftRadius,
         };
       };
-      const selected = document.querySelector('.sidebar-row--selected');
-      const plain = [...document.querySelectorAll('.sidebar-row')].find(
-        (el) => !el.classList.contains('sidebar-row--selected'),
+      const selected = document.querySelector('nav a[aria-current="page"]');
+      const plain = [...document.querySelectorAll(rowsSel)].find(
+        (el) =>
+          el.getAttribute('aria-current') !== 'page' && el.textContent?.includes('定时'),
       );
       if (!selected || !plain) throw new Error('sidebar rows missing');
-      const sidebar = document.querySelector('.board-sidebar')!;
+      const sidebar = document.querySelector('aside')!;
       return {
         selected: pill(selected),
         plain: pill(plain),
@@ -98,7 +110,7 @@ for (const theme of ['light', 'dark'] as const) {
         sidebarWidth: sidebar.getBoundingClientRect().width,
         sidebarClientWidth: sidebar.clientWidth,
       };
-    });
+    }, ROWS);
     // one face geometry for both states — selected is a deepen, not a shape
     expect(geo.plain).toEqual(geo.selected);
     // the official 32px inset face (r7 01/02 probe: 2px vertical inset),
@@ -119,19 +131,19 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/app?scenario=01');
 
     const sidebarBg = await page.evaluate(
-      () => getComputedStyle(document.querySelector('.board-sidebar')!).backgroundColor,
+      () => getComputedStyle(document.querySelector('aside')!).backgroundColor,
     );
-    await page.hover('.sidebar-row:has-text("定时")');
+    await page.getByRole('link', { name: '定时' }).hover();
     await page.waitForTimeout(300); // the 150ms color step settles
-    const hoverBg = await page.evaluate(
-      () =>
-        getComputedStyle(
-          [...document.querySelectorAll('.sidebar-row')].find((el) => el.matches(':hover'))!,
-          '::before',
-        ).backgroundColor,
-    );
+    const hoverBg = await page.evaluate((rowsSel) => {
+      const el = [...document.querySelectorAll(rowsSel)].find((r) => r.matches(':hover'));
+      if (!el) throw new Error('no hovered row');
+      return getComputedStyle(el, '::before').backgroundColor;
+    }, ROWS);
     const selectedBg = await page.evaluate(
-      () => getComputedStyle(document.querySelector('.sidebar-row--selected')!, '::before').backgroundColor,
+      () =>
+        getComputedStyle(document.querySelector('nav a[aria-current="page"]')!, '::before')
+          .backgroundColor,
     );
 
     const bg = parse(sidebarBg);
@@ -143,10 +155,12 @@ for (const theme of ['light', 'dark'] as const) {
     expect(dist(selected, bg)).toBeGreaterThan(dist(hover, bg) + 6);
 
     // hovering the selected row must not wash it back to the hover step
-    await page.hover('.sidebar-row--selected');
+    await page.getByRole('link', { name: '工作台' }).hover();
     await page.waitForTimeout(300);
     const selectedHovered = await page.evaluate(
-      () => getComputedStyle(document.querySelector('.sidebar-row--selected')!, '::before').backgroundColor,
+      () =>
+        getComputedStyle(document.querySelector('nav a[aria-current="page"]')!, '::before')
+          .backgroundColor,
     );
     expect(selectedHovered).toBe(selectedBg);
   });
@@ -158,8 +172,8 @@ test('machine-online dot keeps its absolute anchor', async ({ page }) => {
   await page.goto('/app?scenario=100');
 
   const dot = await page.evaluate(() => {
-    const el = document.querySelector('.sidebar-online-dot');
-    const row = el?.closest('.sidebar-subrow');
+    const el = document.querySelector('[data-testid="online-dot"]');
+    const row = el?.closest('a');
     if (!el || !row) throw new Error('machine-online dot missing');
     const cs = getComputedStyle(el);
     const dr = el.getBoundingClientRect();

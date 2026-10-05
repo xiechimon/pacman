@@ -78,10 +78,11 @@ describe('spec 15 #394 无标题面 + 固定词表（live UI → wire → SQLite
   test('对话框无标题输入/无标签 UI；正文首行成占位标题；详情页无标签添加面', async () => {
     await page.goto(`${server.url}/app`);
     // #445：顶栏「+ 任务」撤除——就绪探针与创建入口改指侧栏「新任务」行。
-    await pexpect(page.locator('.sidebar-new-task')).toBeVisible({ timeout: 30_000 });
+    // #943/#910：类名钉换一级 role+name 载体（integration 面同律）。
+    await pexpect(page.getByRole('button', { name: '新任务' })).toBeVisible({ timeout: 30_000 });
 
     // —— 负空间钉：标题位与手动标签面不存在 ——
-    await page.locator('.sidebar-new-task').click();
+    await page.getByRole('button', { name: '新任务' }).click();
     const dialog = page.locator('.new-task-dialog');
     await pexpect(dialog).toBeVisible();
     await pexpect(dialog.locator('.new-task-input')).toHaveCount(0);
@@ -91,7 +92,7 @@ describe('spec 15 #394 无标题面 + 固定词表（live UI → wire → SQLite
     // —— 保存（保存钮 = 创建不开始，fresh 态停留）→ 卡落板，标题 = 首行 ——
     await dialog.locator('.new-task-spec').fill('394 占位标题探针\n\n现在的情况：第二行不进标题');
     await page.locator('.new-task-save').click();
-    await pexpect(page.locator('.todo-card-title', { hasText: '394 占位标题探针' })).toBeVisible({
+    await pexpect(page.getByRole('link', { name: '394 占位标题探针' })).toBeVisible({
       timeout: 30_000,
     });
 
@@ -106,10 +107,7 @@ describe('spec 15 #394 无标题面 + 固定词表（live UI → wire → SQLite
     expect(probe!.tagIds).toEqual([]);
 
     // —— 详情页：无标签 → chips 行不渲染、无添加 affordance（D5 只读律）——
-    await page
-      .locator('.todo-card', { hasText: '394 占位标题探针' })
-      .locator('.todo-card-link')
-      .click();
+    await page.getByRole('link', { name: '394 占位标题探针' }).click();
     await pexpect(page.locator('.detail-shell')).toBeVisible({ timeout: 15_000 });
     await pexpect(page.locator('.fresh-tags')).toHaveCount(0);
   }, 180_000);

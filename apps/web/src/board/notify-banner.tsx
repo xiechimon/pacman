@@ -85,13 +85,30 @@ export function useNotificationBanner(
 export function NotificationBanner({ onEnable }: { onEnable: () => void }) {
   const { t } = useI18n();
   return (
-    <section className="board-notify-banner" aria-label={t(NOTIFICATION_BANNER_COPY.title)}>
-      <span className="board-notify-banner-icon">
+    /* 几何/色出处（r2 01 亮 / 28 暗实测，原 board.css 规则族，#943 迁工具
+       类）：条带挂在 topbar 边框下 12px（top 56 = 44 + 12）、64px 高卡片、
+       与 scroller 列同 17px 内缩；发丝环 + 卡投影双层。 */
+    <section
+      className="board-notify-banner absolute inset-x-[17px] top-14 flex h-16 items-center rounded-none border-0 bg-(--surface-secondary) px-4 [box-shadow:var(--edge-ring),var(--card-shadow)]"
+      aria-label={t(NOTIFICATION_BANNER_COPY.title)}
+    >
+      <span className="board-notify-banner-icon flex size-7 flex-none items-center justify-center rounded-full bg-(--notify-icon-bg) text-(--card-button)">
         <Bell />
       </span>
-      <div className="board-notify-banner-text">
-        <div className="board-notify-banner-title">{t(NOTIFICATION_BANNER_COPY.title)}</div>
-        <div className="board-notify-banner-body">{t(NOTIFICATION_BANNER_COPY.body)}</div>
+      <div className="board-notify-banner-text ml-3.5 min-w-0">
+        <div className="board-notify-banner-title text-sm leading-5 font-medium text-foreground">
+          {t(NOTIFICATION_BANNER_COPY.title)}
+        </div>
+        {/* 正文墨色（#943 better-colors 实测修正）：旧 --text-dim ×
+            --surface-secondary 配对亮模 2.73:1 / 暗模 3.12:1，连 spec/22
+            §1.7 给 --text-dim 定的 floor 3 都不到（正典门控对是 text-dim ×
+            --background，本面底是 surface-secondary，配对是本文件自造的）。
+            12px 正文按 AA 要 4.5：换次级文本的正角色 token
+            --muted-foreground（仓内 todo-card 时间/列计数同款习语），双模
+            实测 ≥6.9（docs/verify/943/contrast.json）。 */}
+        <div className="board-notify-banner-body text-xs leading-4 text-muted-foreground">
+          {t(NOTIFICATION_BANNER_COPY.body)}
+        </div>
       </div>
       {/* spec16 #414 试点片收口（#561）：切 components/ui Button——brand 档
           = 轨 A3 primary 等价迁移位（同 --card-button 实底），sm = compact
@@ -99,11 +116,12 @@ export function NotificationBanner({ onEnable }: { onEnable: () => void }) {
           13px 字号 / 400 字重）按 todo-card 口径以工具类钉回。件本体 B 配方
           差值（focus 环 #388 canon / 150ms 色过渡 / 1px 透明边）随全站
           shadcn 件统一，属该收的口，PR body 列明。board-notify-banner-action
-          是 e2e(notify-banner.spec) 钉死的选择器别名，布局差值留在 board.css。 */}
+          是 e2e(notify-banner.spec) 钉死的选择器别名；ml-auto/flex-none 的
+          布局差值原住 board.css，#943 随文件清零迁到件上。 */}
       <Button
         variant="brand"
         size="sm"
-        className="board-notify-banner-action px-3 text-[13px] font-normal"
+        className="board-notify-banner-action ml-auto flex-none px-3 text-[13px] font-normal"
         onClick={onEnable}
       >
         {t(NOTIFICATION_BANNER_COPY.action)}

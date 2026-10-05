@@ -11,6 +11,10 @@ import { expect, type Page, test } from '@playwright/test';
 // 'denied', so the live permission can never pin a fixture row. The stub
 // below replaces window.Notification to make the requestPermission()
 // resolution deterministic and observable (call count).
+//
+// #943/#910 重钉：banner 的载体 = region role（<section aria-label=标题>），
+// 三段文案走一级 text，开启钮走 role+name——.board-notify-banner* 类名钉
+// 退役（board.css 清零，类名按 §5.0 别名残留律留在 DOM）。
 
 declare global {
   interface Window {
@@ -48,28 +52,28 @@ function stubNotification(
   );
 }
 
+const banner = (page: Page) => page.getByRole('region', { name: '浏览器通知未开启' });
+
 test('permission=default → banner renders the canon copy', async ({ page }) => {
   await stubNotification(page, 'default', 'granted');
   await page.goto('/app?scenario=notify-banner');
 
-  const banner = page.locator('.board-notify-banner');
-  await expect(banner).toBeVisible();
-  await expect(banner.locator('.board-notify-banner-title')).toHaveText('浏览器通知未开启');
-  await expect(banner.locator('.board-notify-banner-body')).toHaveText(
+  await expect(banner(page)).toBeVisible();
+  await expect(banner(page).getByText('浏览器通知未开启')).toHaveText('浏览器通知未开启');
+  await expect(banner(page).getByText('标签页切换到后台时，通过桌面通知提醒你。')).toHaveText(
     '标签页切换到后台时，通过桌面通知提醒你。',
   );
-  await expect(banner.locator('.board-notify-banner-action')).toHaveText('开启');
+  await expect(banner(page).getByRole('button', { name: '开启' })).toHaveText('开启');
 });
 
 test('开启 → requestPermission() fires; granted hides the bar', async ({ page }) => {
   await stubNotification(page, 'default', 'granted');
   await page.goto('/app?scenario=notify-banner');
 
-  const banner = page.locator('.board-notify-banner');
-  await expect(banner).toBeVisible();
-  await banner.locator('.board-notify-banner-action').click();
+  await expect(banner(page)).toBeVisible();
+  await banner(page).getByRole('button', { name: '开启' }).click();
 
-  await expect(banner).toHaveCount(0);
+  await expect(banner(page)).toHaveCount(0);
   expect(await page.evaluate(() => window.__permCalls)).toBe(1);
   // the sse.ts fireDesktopNotification gate reads this exact slot —
   // granted here is what unlocks the 后台桌面通知 chain
@@ -80,11 +84,10 @@ test('开启 → denied resolution also hides the bar', async ({ page }) => {
   await stubNotification(page, 'default', 'denied');
   await page.goto('/app?scenario=notify-banner');
 
-  const banner = page.locator('.board-notify-banner');
-  await expect(banner).toBeVisible();
-  await banner.locator('.board-notify-banner-action').click();
+  await expect(banner(page)).toBeVisible();
+  await banner(page).getByRole('button', { name: '开启' }).click();
 
-  await expect(banner).toHaveCount(0);
+  await expect(banner(page)).toHaveCount(0);
   expect(await page.evaluate(() => window.__permCalls)).toBe(1);
 });
 
@@ -93,6 +96,6 @@ test('scenarios without the flag never render the strip', async ({ page }) => {
   // the r7-baselined matrix rows depend on it
   await stubNotification(page, 'default', 'granted');
   await page.goto('/app?scenario=01');
-  await expect(page.locator('.board-notify-banner')).toHaveCount(0);
+  await expect(banner(page)).toHaveCount(0);
   expect(await page.evaluate(() => window.__permCalls)).toBe(0);
 });
