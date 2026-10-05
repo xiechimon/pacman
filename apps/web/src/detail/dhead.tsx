@@ -63,9 +63,9 @@ export function DetailHead({
     : PHASE_UI[phase ?? todo.phase];
   const { search } = useLocation();
   const [popover, setPopover] = useState(chipPopoverOpen === true);
-  // #425 B1：chip popover 是 wrap 锚定面（.chip-popover 相对 .detail-chipwrap
-  // 绝对定位）——portal 挂进 wrap 子树保几何；Esc 由 FloatingShell（Base UI
-  // layer 栈）承载。
+  // #425 B1：chip popover 是 wrap 锚定面（popover 面板相对本 wrap 绝对
+  // 定位，#949 起 wrap 的 relative 锚位由 utility 承载）——portal 挂进
+  // wrap 子树保几何；Esc 由 FloatingShell（Base UI layer 栈）承载。
   const [chipWrap, setChipWrap] = useState<HTMLSpanElement | null>(null);
   return (
     <header className="detail-head">
@@ -73,7 +73,7 @@ export function DetailHead({
         <ChevronLeft />
       </Link>
       <span className="detail-seq">#{todo.seqNum}</span>
-      <span className="detail-chipwrap" ref={setChipWrap}>
+      <span className="relative flex items-center" ref={setChipWrap}>
         {/* XMON-24：wrapper 裸钮切 shadcn ghost——皮肤全在 .detail-chip
             per-face（unlayered 压底座，含 bg transparent 顺手灭掉 ghost 的
             hover/aria-expanded 底）；utilities 只清 h-8、字号继承这些底座
@@ -91,7 +91,14 @@ export function DetailHead({
           <Chip variant={ui.tone} className={`detail-chip--${ui.tone} shrink-0 whitespace-nowrap`}>
             {t(ui.chip)}
           </Chip>
-          <span className="detail-chip-chevron">
+          {/* #949: chevron 皮肤等值迁 utility（规则原住 overlays.css，随
+              #949 清零；5px 左距 / 三级墨 / flex-none）。testid = 二级
+              载体（触发钮内无 role 的结构钩子，chip-hotzone 的 H1 热区
+              钉扎位，#910 裁定 1）。 */}
+          <span
+            className="ml-[5px] flex flex-none text-(--text-tertiary)"
+            data-testid="chip-chevron"
+          >
             <ChevronDown width={12} height={12} />
           </span>
         </Button>

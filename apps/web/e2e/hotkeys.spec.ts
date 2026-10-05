@@ -294,8 +294,9 @@ test('⌘J wakes the chief drawer on a non-board route', async ({ page }) => {
 test('editable focus swallows C and ⌘J — the c lands IN the input', async ({ page }) => {
   await page.goto(BOARD);
   // open the ⌘K panel: its input is the editable focus target
-  await pressUntil(page, 'Meta+k', page.locator('.search-panel'));
-  const field = page.locator('.search-input-row input');
+  // #949: 面板载体 = role dialog + 可及名（.search-panel 类钉退役）
+  await pressUntil(page, 'Meta+k', page.getByRole('dialog', { name: '搜索' }));
+  const field = page.getByRole('dialog', { name: '搜索' }).getByRole('textbox');
   await expect(field).toBeFocused();
 
   await page.keyboard.press('c');
@@ -341,7 +342,7 @@ test('Space on a focused button activates it natively; ⌘J fires past button fo
   // drawer stays shut — no hijack
   await searchRow.focus();
   await page.keyboard.press('Space');
-  await expect(page.locator('.search-panel')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '搜索' })).toBeVisible();
   await expect(drawer(page)).toHaveCount(0);
 
   // Close the panel (its input holds focus — editable would swallow the
@@ -349,7 +350,7 @@ test('Space on a focused button activates it natively; ⌘J fires past button fo
   // must fire even with a control focused — the chord carries no native
   // activation semantics of its own
   await page.keyboard.press('Escape');
-  await expect(page.locator('.search-panel')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '搜索' })).toBeHidden();
   await searchRow.focus();
   await pressUntil(page, 'Meta+j', drawer(page));
   await expect(page.locator('.chief-composer-input')).toBeFocused();

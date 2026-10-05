@@ -61,14 +61,12 @@
    Board cards carry NO hover styling: r2 28 vs 28b (hover-moment recapture)
    are pixel-identical, so a card hover lift/tint would be a divergence.
    不跟本 tint 的行 hover（有意为例外，见各自注释）：侧栏行（§2.2 [保留]
-   cds alpha 梯）、搜索行（overlays.css #159 以 --row-selected 覆写本族，
-   键盘 cursor 与 hover 共面）、提及/下拉选中行（hover 即选中语义）、分段
-   chip（--seg-hover 自立 token，有专属 spec 钉扎）。 */
+   cds alpha 梯）、提及/下拉选中行（hover 即选中语义）、分段 chip
+   （--seg-hover 自立 token，有专属 spec 钉扎）。搜索行/型选盘行/chip
+   popover 行原挂本族（搜索行以 --row-selected 覆写），#949 per-face 清零
+   随各自行的 utility 自持同值 tint，不再走本选择子族。 */
 @media (hover: hover) and (pointer: fine) {
   .more-menu-item,
-  .plan-dropdown-row,
-  .search-row,
-  .chip-popover-row,
   .new-task-project-row,
   .todo-card-branch,
   .dlg-close,
@@ -78,9 +76,6 @@
   }
 
   .more-menu-item:hover,
-  .plan-dropdown-row:hover,
-  .search-row:hover,
-  .chip-popover-row:hover,
   .new-task-project-row:hover,
   .todo-card-branch:hover,
   .dlg-close:hover,

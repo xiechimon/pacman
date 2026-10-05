@@ -134,13 +134,15 @@ test('board todo card executor avatar seeds by the bound agent; fresh card keeps
 test('detail chip popover: user row + 执行对话 agent row both seeded', async ({ page }) => {
   await stubDicebear(page);
   await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=19');
-  const popover = page.locator('.chip-popover');
+  // #949 载体：popover = role dialog + 可及名；行族 = data-row-kind，选中
+  // section = data-selected（旧 .chip-popover-row/.chip-popover-section--selected 类钉退役）
+  const popover = page.getByRole('dialog', { name: '任务分配' });
   await expect(popover).toBeVisible();
-  await expect(popover.locator('.chip-popover-row', { hasText: 'Xmon Dai' }).locator('img'))
-    .toHaveAttribute('src', USER_SRC);
-  await expect(
-    popover.locator('.chip-popover-section--selected .chip-popover-row img'),
-  ).toHaveAttribute('src', AGENT_SRC);
+  await expect(popover.locator('[data-row-kind="owner"] img')).toHaveAttribute('src', USER_SRC);
+  await expect(popover.locator('[data-selected] [data-row-kind="agent"] img')).toHaveAttribute(
+    'src',
+    AGENT_SRC,
+  );
 });
 
 test('create-agent dialog: empty name keeps the static asset; typing previews the seeded avatar', async ({
@@ -181,14 +183,17 @@ test('search agent rows + project task rows are seeded (Agent 列表 / 任务行
   for (let attempt = 0; attempt < 6; attempt += 1) {
     await page.keyboard.press('Meta+k');
     const opened = await page
-      .locator('.search-panel')
+      .getByRole('dialog', { name: '搜索' })
       .waitFor({ state: 'visible', timeout: 1000 })
       .then(() => true)
       .catch(() => false);
     if (opened) break;
   }
   await page.keyboard.type('r3-builder');
-  await expect(page.locator('.search-row-icon--agent img').first()).toHaveAttribute(
+  // #949：agent 行头像位 = data-row-kind 行族载体（.search-row-icon--agent 类钉退役）
+  await expect(
+    page.getByRole('dialog', { name: '搜索' }).locator('[data-row-kind="agent"] img').first(),
+  ).toHaveAttribute(
     'src',
     AGENT_SRC,
   );

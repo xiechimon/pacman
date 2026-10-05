@@ -200,13 +200,18 @@ test('right pane type select switches between the doc surface and the three sect
 
   const select = page.locator('.doc-select-wrap .doc-pane-select');
   await select.click();
-  const dropdown = page.locator('.plan-dropdown');
+  // #949 载体：盘 = role menu，行 = menuitemradio + 文案（.plan-dropdown/
+  // .plan-dropdown-row 类钉随 overlays.css 清零退役）。不钉可及名：Base UI
+  // 把 popup 的名字经 aria-labelledby 绑到触发钮（压过 aria-label
+  // 「面板视图」），名 = 当前视图词，随选择漂移；测试上下文里开着的 menu
+  // 恒唯一，裸 role 即够。
+  const dropdown = page.getByRole('menu');
   await expect(dropdown).toBeVisible();
-  await expect(dropdown.locator('.plan-dropdown-row')).toHaveCount(4);
-  await expect(dropdown.locator('.plan-dropdown-row').first()).toContainText('变更');
+  await expect(dropdown.getByRole('menuitemradio')).toHaveCount(4);
+  await expect(dropdown.getByRole('menuitemradio').first()).toContainText('变更');
 
   // pick Token 用量 → static section in the pane, no dialog anywhere
-  await dropdown.locator('.plan-dropdown-row', { hasText: 'Token 用量' }).click();
+  await dropdown.getByRole('menuitemradio', { name: 'Token 用量' }).click();
   await expect(dropdown).toBeHidden();
   await expect(page.locator('.dlg')).toHaveCount(0);
   await expect(page.locator('.detail-right .doc-pane')).toHaveCount(0);
@@ -214,7 +219,7 @@ test('right pane type select switches between the doc surface and the three sect
 
   // the section head carries the same select — switch back to the doc view
   await page.locator('.doc-select-wrap .doc-pane-select').click();
-  await page.locator('.plan-dropdown-row', { hasText: '变更' }).click();
+  await page.getByRole('menuitemradio', { name: '变更' }).click();
   await expect(page.locator('.detail-right .doc-pane')).toBeVisible();
   await expect(page.locator('.dlg-token-total')).toHaveCount(0);
 });
