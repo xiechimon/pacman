@@ -458,6 +458,121 @@
 3. **Input 方角无 inline 理由**（§2.6 override 6）：`rounded-none` 沿旧语言但件内无注释记录行为理由。批次若要圆角输入框，回视觉方向票补裁。
 4. **几何 token 落点**：`--pad-card`/`--pad-page`/`--row-h`/`--label-*`/`--title-*` 是定版新增的具名 token（现行 apps/web 无）。#915/首批落地时须决定这些新几何 token 落哪个文件——本册给值与用途，落点随 #915 值翻转票的非颜色层口径（tokens.css 现持非颜色 token，是自然落点）。
 
+## 5. 老 ui/ 原语退役正典表（#942）
+
+> 状态：**已裁决并生效**（2026-10-06，#942 wayfinder task 产出，账与消费点 grep 逐点复核 @ b38e70d7）。12 张域票（#943–#953）只执行本表，不自行设计。本节管「老 `src/ui/` 原语与 `ui/dialog.css` 别名逐点迁到什么件、e2e 钉扎换到什么载体、哪张票执行」；色值/几何值不在此钉——一律取本册 §1.7/1.8（#915 翻值后）与 §2 阶梯。
+
+### 5.0 执行总则
+
+- **退役面界定 = 规则住址**。只有规则住在 `src/ui/`（chip.css / input.css / dialog.css）的类与原语件属于本表。同 `dlg-` 前缀但规则住在域 CSS 的 per-face 类（`dlg-accept-*`、`dlg-enroll-*`、`dlg-branch-*`、`dlg-history-*`、`dlg-token-*`、`dlg-provider-*`（除 create/seg-tab/model-add 三枚）、`dlg-skill-*`、`dlg-ghissues`、`dlg-agent-*`（除 create）、`dlg-reset-*`、`dlg-machine-*`、`dlg-toggle*` 等）归各域票的 per-face CSS 清零账，**不属本表**；`--toggle-track`/`--toggle-knob` 两槽退役走 §1.6 + §4-2 既有裁定。
+- **对旧账的更正**：#908/#913 侦察账「老原语消费 20 文件 24 处」把两类不该入账的面计了进去——① 已经 shadcn 化的 `components/ui/input.js` import（16 处，如 overlay/ 三件、skills-page、filter-panel，它们不是退役对象，已是正典形态）；② 仅前缀相同的 per-face 类消费点。本表 §5.1 的逐点账以「规则住址」重新划界，域票以本表为准，不再追旧账里的幽灵点（如 #944 票面的「skills-page chip/input 消费」实为 shadcn Input，无动作）。
+- **时序**（#913 裁决 3）：消费面迁移 = 各域票随改（#910 裁定 2，同 PR 完成类退役 + spec 重钉）；`ui/` 目录终删 + dialog-shell 壳级别名摘除 + `.dlg-shell`/`.dlg-viewport` 机制内联 = #952（唯一持有 `components/ui/` 既有件改动授权的票）；终态核账 = #953。
+- **载体与替换类同 PR 落地**：语义载体（role/label/text，#910 一级）不依赖任何新属性，域票可先行重钉；需要新增载体（`data-tone`、testid）的点，载体随 StatusChip 件/执行票落 DOM，钉它的 spec 在同一个 PR 里重钉——两票永不同刻改同一 spec。
+- **别名类残留合法**：类名从 CSS 规则退役 ≠ 立刻从 DOM 摘除。执行域完成 per-face 清零前，别名类（`detail-chip--*`、`search-row-chip` 等）可经 className 透传存活；#952 删 `ui/` 目录前 grep 消费点 = 0 的既有核过律不变。
+
+### 5.1 消费面逐点总账（grep 复核 @ b38e70d7）
+
+**Chip 原语（`ui/chip.tsx`）——3 文件 3 处**：
+
+| # | 消费点 | 形态 | 目标件（§5.2） | e2e 载体判定 | 执行票 |
+| --- | --- | --- | --- | --- | --- |
+| C1 | `detail/dhead.tsx` | md，`detail-chip--<tone>` 别名透传，外套 `.detail-chip` ghost Button | StatusChip default | chip 文案 = 一级 text（`reject-chain`/`review-reject` 的 toHaveText 原样保语义）；触发面 `.detail-chip`/`.detail-chip-chevron` 是 detail per-face，归 #945 一并处置 | #945 |
+| C2 | `overlays/search-panel.tsx` | mini，`search-row-chip` 定位类透传 | StatusChip size="sm" | 文案一级 text；`search-row-chip` 定位职责改行内 utility（overlays.css 清零同 PR） | #949 |
+| C3 | `routes/agent-detail-page.tsx` | mini，无别名 | StatusChip size="sm" | `agent-detail.spec` 的 `.chip` locator ×2 → 行 scope `getByText`（行为断言语义不动） | #952（**本票抽查已实装**，见 §5.6） |
+
+同名不同族（`mention-chip--*`、`composer-chip--*`、`chip-popover-*`、`agent-identity-chip`、`spec-chip--*`、KbdHint）不属五态原语，归各域 per-face 账。五态 tone 的唯一语义源 = `phase.ts` 的 `PHASE_UI.tone`，StatusChip API 对齐该字段名。
+
+**老 Input 原语（`ui/input.tsx`，36px）——2 文件 8 处**：
+
+| # | 消费点 | 处数 | 目标件（§5.3） | e2e 载体判定 | 执行票 |
+| --- | --- | --- | --- | --- | --- |
+| I1 | `resources/create-provider-dialog.tsx` | 6 | components/ui Input | getByLabel / placeholder 属性断言不动 | #944 |
+| I2 | `resources/create-secret-dialog.tsx` | 2 | components/ui Input | 同上 | #944（**本票抽查已实装**，见 §5.6） |
+
+**shadcn Input 挂 `.dlg-form-input` 老类（混装形态）——2 文件 3 处**：
+
+| # | 消费点 | 处数 | 处置 | 执行票 |
+| --- | --- | --- | --- | --- |
+| I3 | `resources/skill-dialog.tsx` | 2 | 摘类，件不动（几何即正典 h-8） | #944 |
+| I4 | `routes/create-agent-dialog.tsx` | 1 | 摘类 | #952 |
+
+**`ui/dialog.css` 表单/按钮/分段族消费面——11 文件**（逐类处置见 §5.4）：
+
+| 文件 | 所挂 dialog.css 类 | 执行票 |
+| --- | --- | --- |
+| `resources/create-provider-dialog.tsx` | dlg-form、-foot、-label、-input、-note、-seg、dlg-provider-seg-tab、dlg-provider-create、dlg-provider-model-add | #944 |
+| `resources/create-secret-dialog.tsx` | dlg-form、-foot、-label、-input、-textarea、dlg-secret-note、dlg-secret-create | #944（已抽查实装） |
+| `resources/skill-dialog.tsx` | dlg-form、-foot、-label、-input、-textarea、-note、-primary | #944 |
+| `routes/create-agent-dialog.tsx` | dlg-form、-foot、-label、-input、dlg-agent-create | #952 |
+| `detail/branch-dialog.tsx` | dlg-form-foot、-label、-seg、dlg-seg-tab | #945 |
+| `detail/review-dialog.tsx` | dlg-form-foot、-actions、-label、chief-dlg-ghost | #945 |
+| `detail/reject-dialog.tsx` | dlg-form-foot、-actions、-label、chief-dlg-ghost | #945 |
+| `detail/right-pane.tsx` | dlg-form-label | #945 |
+| `chief/chief-drawer.tsx` | dlg-form-foot、-actions、chief-dlg-primary、chief-dlg-ghost | #950 |
+| `chief/chief-agent-dialog.tsx` | dlg-form-foot、-actions、chief-dlg-primary、chief-dlg-ghost | #950 |
+| `chief/edit-charter-dialog.tsx` | dlg-form、-foot、-actions、chief-dlg-charter-input、chief-dlg-primary、chief-dlg-ghost | #950 |
+
+**载体层（`components/ui/` 适配层，非域票面）**：`dialog-shell.tsx`（import dialog.css + 输出 `.dlg-shell`/`.dlg-viewport` 机制类与壳级别名 `.dlg`/`.dlg-head`/`.dlg-title`/`.dlg-close`/`.dlg-body`/`.dlg-foot`/`.dlg-backdrop`）、`alert-dialog-shell.tsx`（`.dlg-shell`）→ #952（§5.5）。
+
+### 5.2 chip 五态 → StatusChip（`components/ui/status-chip.tsx`，#942 落件）
+
+- **先例形态**：沿 TagChip（落已有 registry Badge 上、不自建 registry 件）与 SeededAvatar（registry Avatar 适配层）同形——本地适配件、零 CSS、皮肤全为 token utility 类。
+- **不走 registry 语义皮肤**（destructive/secondary 等）：五对 `--chip-*` 槽在 §1.7/1.8 是 1:1 翻值槽（0 退），对比度已实测封版；registry 语义皮肤会弃掉实测槽，且 plan/confirm 两态在 registry 档里没有语义对应。Badge 只借几何骨架（h-5 / rounded-4xl / px-2 / text-xs / font-medium / shrink-0 / whitespace-nowrap）。
+- **几何正典**：default 档 = Badge registry 默认（h-5 20px，替旧 md 18px）；`size="sm"` 档（替旧 mini 14px）= `h-4 px-1.5 text-[10px]`（16px，先例 = tag-chip 的 todo-card row-flush 16px 档）。18→20、14→16 的增长是 D2 几何自由重设计的有意结果，非回归；某消费面行盒确实容不下时按 tag-chip per-face 例外律处置（件头注释记行为理由，域票自裁）。
+- **色彩正典**：`bg-(--chip-<tone>-bg) text-(--chip-<tone>-fg)` 五对 utility（§3.1 token 类优先；值随 #915 翻，本表不钉值）。tailwind-merge 覆盖 Badge 基皮肤的 bg-primary/text-primary-foreground 两槽，与 TagChip 手法一致。
+- **API**：`<StatusChip tone="idle|plan|confirm|done|failed" size?="default|sm" className?>`——旧 prop 名 `variant` 改 `tone`（对齐 `PHASE_UI.tone` 字段名，避免与 Badge 的 variant 皮肤轴混淆）；`className` 透传（别名类存活至执行域退役）。
+- **状态载体（#910 裁定 3 灰区：状态类断言归行为）**：`data-tone="<tone>"` 属性替代 `.chip--<tone>` 状态类；文案断言走一级 text 载体。`.chip`/`.chip--*` 类名 locator 退役。
+- **视觉断言处置**：旧 18/14px 几何钉与 `--chip-*` 色值钉属视觉断言，整条按 #910 裁定 3 重写，值取 #915 翻值后的 §1.7/1.8 实测列（probe-dump 对照表流程，#921 工具）。
+
+### 5.3 input 36px 老族 → shadcn Input / Textarea（§2.6-1 已定值的执行细则)
+
+- **目标件**：`components/ui/input.tsx`（h-8 32px / rounded-none / border-input / px-2.5 / text-base→md:text-sm）。**不留任何 per-face 几何覆写**——36px 不以别名、utility 或 size 档任何形式存续（§2.6-1：4px 收缩是 D2 有意结果；真需高控件走 Button/Input 的 size 阶梯，不另造死值）。
+- **三种执行形态**：① 老件 import 点（I1/I2）：import 路径 `'../ui/input.js'` → `'../components/ui/input.js'`，同 PR 摘除 className 上的 `.dlg-form-input`；② 混装点（I3/I4）：只摘 `.dlg-form-input` 类；③ 裸 `<input>`：收编 Input 件（#851 裸控件账，各域票按自己账目走，不属本表逐点）。
+- **focus 环正典** = 件自带 `focus-visible:border-ring` + `ring-3 ring-ring/50`；旧 `.input` 的 1px 描边 + 发丝环退役。§2.6-2 的 2px outline 环是 Button 档专属，**不外推到 Input**。
+- **e2e 载体**：表单输入一律 `getByLabel` 一级（`htmlFor`/`id` 配对是语义资产，保留不动——它不是类名别名）；placeholder 断言 = `toHaveAttribute('placeholder', …)` 行为断言原样。`.dlg-form-input`/`.input` 类名 pin 实测 0 处，无重钉面。
+- **textarea（`.dlg-form-textarea` 族，裸控件）**：目标件 = `components/ui/textarea.tsx`（registry base-nova 件，**#942 已落件**；唯一记录内偏离 = `rounded-lg`→`rounded-none`，理由：与 §2.6-6 Input 方角语言同族 + 旧 `.dlg-form-textarea` radius 0 同形迁移）。几何正典 = registry 默认（`field-sizing-content` + `min-h-16`）；旧 88px 最小高不留（D2），charter 高字段保留显式 override `min-h-[120px]`（行为理由：章程全文多行编辑空间，#950 执行）。旧 `resize: vertical` 退役（field-sizing 自增长替代手动拖拽）。消费点：create-secret-dialog ×1（已抽查实装）、skill-dialog ×1（#944）、edit-charter-dialog ×1（#950）。e2e 载体：有 label 的走 getByLabel；charter textarea 无 label，走 dialog scope `getByRole('textbox')`（唯一 textbox，chief-settings.spec 的 `.chief-dlg-charter-input` pin ×2 据此重钉）。
+
+### 5.4 `ui/dialog.css` `.dlg-*` 别名逐条处置表
+
+处置口径按 #910 裁定 3 机械判定：行为断言语义不动、只换载体；视觉断言整条按新正典重写。「pin 数」= e2e + integration 的类名 locator 实测计数 @ b38e70d7。
+
+| 类（规则组） | 处置 | 目标载体 | e2e 重钉（pin 数 → 载体） | 执行票 |
+| --- | --- | --- | --- | --- |
+| `.dlg-form` | 退役 | 容器 utility：`flex flex-col gap-3 px-4 pt-4 pb-3`（现值 12/16px 已在 §2.2 阶梯上，等值迁移即正典） | 1（agent-create-model 的几何 boundingBox）→ 视觉断言，随 #952 按新正典重写；结构 scope 用 getByRole('dialog') | #944/#950/#952（各自 JSX）；spec 随 #952 |
+| `.dlg-form-foot` | 退役 | 容器 utility：`flex flex-col px-4 pb-4` | 1（agent-create-model boundingBox）→ 同上 | 同上 |
+| `.dlg-form-actions` | 退役 | 容器 utility：`flex justify-end gap-2` | 0 | #945/#950 |
+| `.dlg-form-label` | 退役 | 裸 `<label htmlFor>` + utility：`mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--text-primary)`（字号/字距 = c.css 定版 `--label-size`/`--label-spacing`；#915 落 token 后改 `text-(--label-size) tracking-(--label-spacing)`，§4-4）。**不拉 registry Label 件**：label 无交互机制，裸 `<label>` 不在 #851 裸控件清单；getByLabel 一级载体只依赖 htmlFor/id，不依赖件 | 0（label 类无 pin；载体 = getByLabel） | #944/#945/#950/#952 |
+| `.dlg-form-input` | 退役 | §5.3 Input 件 | 0 | #944/#952 |
+| `.dlg-form-textarea`、`.chief-dlg-charter-input` | 退役 | §5.3 Textarea 件（charter 加 `min-h-[120px]`） | 2（chief-settings）→ dialog scope getByRole('textbox') | #944（secret 已由本票实装）/#950 |
+| `.dlg-form-note`、`.dlg-secret-note` | 退役 | `<p>` + utility：`text-xs leading-4 text-(--text-tertiary)` | 1（secret-add-dialog toContainText）→ 一级 getByText(/值将加密存储/)，断言语义不动 | #944（secret 已由本票实装） |
+| `.dlg-form-primary`、`.dlg-secret-create`、`.dlg-provider-create`、`.dlg-agent-create`、`.chief-dlg-primary` | 退役 | Button `variant="brand"`（§2.6-3 即此迁移位）；钉底独占 = 加 `w-full`；chief 内联档保留消费点既有 `px-3 text-[13px]` utility | 19（secret 3、provider 7、agent 5、chief-primary 4）→ getByRole('button', { name }) 一级（按钮文案即语义）；disabled/enabled/toBeInViewport 均行为断言，语义不动 | #944（secret/provider）/#950（chief）/#952（agent）；dialog-viewport.spec 内的对应 pin 随各按钮执行票同 PR 重钉 |
+| `.chief-dlg-ghost` | 退役 | Button `variant="outline"`（旧形 card-border 描边 + surface 底 ≈ outline 档 border-border/bg-background；#915 翻值后自动对齐新色板） | 3（chief-settings、dialog-viewport）→ getByRole('button', { name }) | #945（review/reject）/#950（chief 三件） |
+| `.dlg-provider-model-add` | 退役 | Button `variant="ghost"` + utility：`self-start px-0 text-(--text-secondary)`（旧形：贴左、无框、secondary 墨） | 2（provider-add-dialog、dialog-viewport）→ getByRole('button', { name }) | #944 |
+| `.dlg-form-seg`、`.dlg-seg-tab`、`.dlg-provider-seg-tab` | 退役 | Tabs 件 default 档（registry 几何 `rounded-lg bg-muted p-[3px] h-8` 与旧 30px/3px/8px 族近同形，差值 D2 吸收）；provider block 形态 = TabsList `w-full` + TabsTrigger `flex-1`。**不用 segmented 档**——该档类名绑 pages.css `.page-tabs-group`，属 #946 面，跨文件依赖不进 dialog 族。选中态载体 = `role=tab` + `aria-selected`（Base UI 自带）；`data-active="true"` 断言 → getByRole('tab', { selected: true })；hover tint 行为 → TabsTrigger hover utility，`--seg-hover`/`--tab-chip-bg` 值随 #915 | 6（segmented-controls 2、provider-add-dialog 4）→ 行为断言语义不动，locator 换 role/文案；segmented-controls.spec 的 branch-seg 用例随 #945 重钉，该 spec 其余家族用例不动 | #945（branch）/#944（provider） |
+| `.dlg-shell`、`.dlg-viewport`（选择器机制层：退场配方 + 视口根容器） | dialog.css 规则退役，机制**内联进适配层** utility：shell = `[transition:visibility_0s_linear_var(--dur-overlay)] data-[ending-style]:invisible`；viewport = `fixed inset-0 pointer-events-none [&>*]:pointer-events-auto [transition:visibility_0s_linear_var(--dur-fast)] data-[ending-style]:invisible`（z-index 已是适配层入参，无类依赖） | 0（两类名无 spec pin；dialog-viewport.spec 钉的是行为面） | #952（dialog.css 终删点，components/ui 授权票） |
+
+### 5.5 壳级别名同族（dialog-shell.tsx 输出面，关联登记）
+
+`.dlg`/`.dlg-backdrop`/`.dlg-head`/`.dlg-head--plain`/`.dlg-title`/`.dlg-close`/`.dlg-body`/`.dlg-foot` 的规则本体已随 #425 B1 退役，现存的是 `dialog-shell.tsx` 适配层按 #411 别名政策输出的**类名残影**——#910 裁定 1 已废止该政策，故一并登记处置（本表管辖裁定，执行归 #952）：
+
+| 别名 | 替代载体（#910 两级制） | pin 面 |
+| --- | --- | --- |
+| `.dlg`（面板） | `getByRole('dialog')`（Popup 自带 role=dialog + aria-label=title） | `locator('.dlg')` 80 处——各域票随改重钉（别名残留 DOM 至 #952，重钉可先行） |
+| `.dlg-title` | dialog 可及名断言（aria-label）或 dialog scope 内一级 text | 17 处，同上 |
+| `.dlg-close` | `getByRole('button', { name: '关闭' })`（aria-label 已在件上） | 7 处，同上 |
+| `.dlg-head`/`.dlg-body`/`.dlg-foot` | 结构容器：优先 role-scope（dialog 内几何关系断言直接量子元素）；确需结构钩子才补二级 testid（`dialog-head`/`dialog-body`/`dialog-foot`，kebab-case 无前缀律） | 8 处（agent-create-model、dialog-viewport），重钉时逐点判 |
+| `.dlg-backdrop` | 无载体需求（外点关闭 = 坐标点击行为面，不 locator） | 0 |
+
+类名输出的摘除点 = #952（dialog-shell.tsx 单点，与 §5.4 机制内联同 PR）。
+
+### 5.6 抽查实装记录（#942 本票，映射无损证明）
+
+按票面抽 2 个消费点实装并保 e2e 行为断言语义不变：
+
+- **C3**（`routes/agent-detail-page.tsx` mini chip）→ StatusChip `size="sm"`；`agent-detail.spec` 的 `.chip` locator ×2 改行 scope `getByText`（文案断言 = 行为，语义一字不动）。
+- **I2 + secret 弹窗全族**（`resources/create-secret-dialog.tsx`）→ Input ×2 换件摘类、label/note/foot/form 按 §5.4 utility 化、裸 textarea → Textarea 件、裸 button `.dlg-secret-create` → Button brand + `w-full`；`secret-add-dialog.spec` 重钉：`#dlg-secret-*` → getByLabel（id/htmlFor 保留为语义资产）、`.dlg-secret-create` → getByRole('button')、`.dlg-secret-note` → getByText；壳级 `.dlg`/`.dlg-title`/`.dlg-close` locator 本轮**保留**（别名退役权属 #952，抽查不越权改共享件）。该点裸控件账 −2（button + textarea 收编），`.dlg-*` 类消费清零（secret 面）。
+- 36→32px 与 chip 14→16px 为 D2 授权几何变化；两 spec 无视觉断言，无需重钉数值。证据（fixture 栈实测 + e2e 输出）在 `docs/verify/942/`。
+
 ## 附录：复现
 
 ```sh

@@ -23,13 +23,15 @@ async function openDialog(page: Page) {
 test('res-new opens the 添加密钥 dialog with the captured fields', async ({ page }) => {
   const dialog = await openDialog(page);
   await expect(dialog.locator('.dlg-title')).toHaveText('添加密钥');
-  await expect(dialog.locator('#dlg-secret-name')).toHaveAttribute(
+  // #942 正典表 §5.3/§5.4 载体：表单输入 getByLabel 一级、note 一级 text、
+  // 提交钮 getByRole——行为断言语义与原 id/类名 locator 版一字不动。
+  await expect(dialog.getByLabel('名称（环境变量名）')).toHaveAttribute(
     'placeholder',
     'STRIPE_API_KEY',
   );
-  await expect(dialog.locator('#dlg-secret-desc')).toHaveAttribute('placeholder', '该密钥的用途');
-  await expect(dialog.locator('#dlg-secret-value')).toHaveAttribute('placeholder', '粘贴密钥的值');
-  await expect(dialog.locator('.dlg-secret-note')).toContainText('值将加密存储');
+  await expect(dialog.getByLabel('描述（可选）')).toHaveAttribute('placeholder', '该密钥的用途');
+  await expect(dialog.getByLabel('值')).toHaveAttribute('placeholder', '粘贴密钥的值');
+  await expect(dialog.getByText('值将加密存储')).toContainText('值将加密存储');
 });
 
 test('family law: X, Escape and backdrop dismiss; panel clicks do not', async ({ page }) => {
@@ -50,18 +52,18 @@ test('family law: X, Escape and backdrop dismiss; panel clicks do not', async ({
 
 test('empty name or value keeps the submit disabled; filling lifts it', async ({ page }) => {
   const dialog = await openDialog(page);
-  const submit = dialog.locator('.dlg-secret-create');
+  const submit = dialog.getByRole('button', { name: '添加密钥' });
   await expect(submit).toBeDisabled();
-  await dialog.locator('#dlg-secret-name').fill('STRIPE_API_KEY');
+  await dialog.getByLabel('名称（环境变量名）').fill('STRIPE_API_KEY');
   await expect(submit).toBeDisabled();
-  await dialog.locator('#dlg-secret-value').fill('sk-test-170');
+  await dialog.getByLabel('值').fill('sk-test-170');
   await expect(submit).toBeEnabled();
 });
 
 test('fixture submit closes the dialog (accept 律)', async ({ page }) => {
   const dialog = await openDialog(page);
-  await dialog.locator('#dlg-secret-name').fill('STRIPE_API_KEY');
-  await dialog.locator('#dlg-secret-value').fill('sk-test-170');
-  await dialog.locator('.dlg-secret-create').click();
+  await dialog.getByLabel('名称（环境变量名）').fill('STRIPE_API_KEY');
+  await dialog.getByLabel('值').fill('sk-test-170');
+  await dialog.getByRole('button', { name: '添加密钥' }).click();
   await expect(page.locator('.dlg')).toBeHidden();
 });
