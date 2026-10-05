@@ -162,14 +162,18 @@ export const chiefGetResponseSchema = z.object({
   watches: z.array(chiefWatchSchema),
   /** wakes[] 非空形态未实测（r5 §10：set_wake 实走遗留）[推断]，开放条目。 */
   wakes: z.array(z.record(z.string(), z.unknown())),
-  /** 编排状态块（#895 spec 21 A5 [设计]，加法契约）：defaultMachineId =
+  /** 编排状态块（#895 spec 21 A5 [设计]，加法契约——optional：老封套/老
+   *  web 不带它仍可 parse，忽略即退化现状，machineId 槽同律）：defaultMachineId =
    *  请求者主力机（chief.machineId，null = 自动）；activity = per 机
    *  running/waiting 计数（team 域 chief 步计数——machines 页是团队面）。
-   *  消费方 = machines 页三态读标注（A8：join useMachines，行内零控件）。 */
-  orchestration: z.object({
-    defaultMachineId: recordId.nullable(),
-    activity: z.array(chiefOrchestrationActivitySchema),
-  }),
+   *  消费方 = machines 页三态读标注（A8：join useMachines，行内零控件）。
+   *  server 恒发全块（getChiefEnvelope）；缺省仅出现在旧响应/旧客户端面。 */
+  orchestration: z
+    .object({
+      defaultMachineId: recordId.nullable(),
+      activity: z.array(chiefOrchestrationActivitySchema),
+    })
+    .optional(),
 });
 export type ChiefGetResponse = z.infer<typeof chiefGetResponseSchema>;
 
