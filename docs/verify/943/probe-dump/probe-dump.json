@@ -2,8 +2,8 @@
   "meta": {
     "tool": "probe-dump",
     "ticket": 921,
-    "date": "2026-10-05T18:59:25.052Z",
-    "commit": "494a2296",
+    "date": "2026-10-05T19:48:23.130Z",
+    "commit": "ec0d1fb8",
     "port": 8397,
     "specs": [
       "board-dnd",
@@ -38,7 +38,7 @@
     "evaluateProbeSites": 34,
     "assertionSites": 195,
     "collectedStyle": 73,
-    "collectedBox": 151,
+    "collectedBox": 152,
     "collectedWait": 0,
     "collectedCss": 7,
     "collectedStyleSites": 34,
@@ -1007,6 +1007,36 @@
     },
     {
       "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "board-dnd.spec.ts",
+      "l": 59,
+      "loc": "[data-todo-id=\"dm-building\"] >> nth=0",
+      "v": {
+        "x": 560.25,
+        "y": 95,
+        "width": 264.5,
+        "height": 94.5
+      },
+      "tt": "per-source target matrix: the tint set follows the dragged card (#753)"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "board-dnd.spec.ts",
+      "l": 65,
+      "loc": "[data-column-list=\"building\"]",
+      "v": {
+        "x": 553,
+        "y": 94,
+        "width": 279,
+        "height": 624
+      },
+      "tt": "per-source target matrix: the tint set follows the dragged card (#753)"
+    },
+    {
+      "k": "p",
       "p": "style",
       "cls": "Locator",
       "f": "board-docked-reflow.spec.ts",
@@ -1049,36 +1079,6 @@
         ]
       },
       "tt": "overflow is reachable: wheel scrolls and the last column lands whole"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "board-dnd.spec.ts",
-      "l": 59,
-      "loc": "[data-todo-id=\"dm-building\"] >> nth=0",
-      "v": {
-        "x": 560.25,
-        "y": 95,
-        "width": 264.5,
-        "height": 94.5
-      },
-      "tt": "per-source target matrix: the tint set follows the dragged card (#753)"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "board-dnd.spec.ts",
-      "l": 65,
-      "loc": "[data-column-list=\"building\"]",
-      "v": {
-        "x": 553,
-        "y": 94,
-        "width": 279,
-        "height": 624
-      },
-      "tt": "per-source target matrix: the tint set follows the dragged card (#753)"
     },
     {
       "k": "p",
@@ -1262,36 +1262,6 @@
       "k": "p",
       "p": "box",
       "cls": "Locator",
-      "f": "board-dnd.spec.ts",
-      "l": 59,
-      "loc": "[data-todo-id=\"dm-confirm\"] >> nth=0",
-      "v": {
-        "x": 855.25,
-        "y": 300,
-        "width": 264.5,
-        "height": 94.5
-      },
-      "tt": "per-source target matrix: the tint set follows the dragged card (#753)"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "board-dnd.spec.ts",
-      "l": 65,
-      "loc": "[data-column-list=\"pending\"]",
-      "v": {
-        "x": 848,
-        "y": 94,
-        "width": 279,
-        "height": 624
-      },
-      "tt": "per-source target matrix: the tint set follows the dragged card (#753)"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
       "f": "board-overflow.spec.ts",
       "l": 67,
       "loc": "[data-column-list=\"todo\"]",
@@ -1324,10 +1294,10 @@
       "cls": "Locator",
       "f": "board-dnd.spec.ts",
       "l": 59,
-      "loc": "[data-todo-id=\"dm-done-changes\"] >> nth=0",
+      "loc": "[data-todo-id=\"dm-confirm\"] >> nth=0",
       "v": {
-        "x": 1150.25,
-        "y": 95,
+        "x": 855.25,
+        "y": 300,
         "width": 264.5,
         "height": 94.5
       },
@@ -1339,12 +1309,42 @@
       "cls": "Locator",
       "f": "board-dnd.spec.ts",
       "l": 65,
-      "loc": "[data-column-list=\"done\"]",
+      "loc": "[data-column-list=\"pending\"]",
       "v": {
-        "x": 1143,
+        "x": 848,
         "y": 94,
         "width": 279,
         "height": 624
+      },
+      "tt": "per-source target matrix: the tint set follows the dragged card (#753)"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "board-docked-reflow.spec.ts",
+      "l": 146,
+      "loc": "[data-column=\"todo\"] [data-todo-id] >> nth=0",
+      "v": {
+        "x": 265.25,
+        "y": 95,
+        "width": 263.5,
+        "height": 214.5
+      },
+      "tt": "cards keep their resting width while docked"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "board-dnd.spec.ts",
+      "l": 59,
+      "loc": "[data-todo-id=\"dm-done-changes\"] >> nth=0",
+      "v": {
+        "x": 1150.25,
+        "y": 95,
+        "width": 264.5,
+        "height": 94.5
       },
       "tt": "per-source target matrix: the tint set follows the dragged card (#753)"
     },
@@ -1367,6 +1367,21 @@
       "k": "p",
       "p": "box",
       "cls": "Locator",
+      "f": "board-dnd.spec.ts",
+      "l": 65,
+      "loc": "[data-column-list=\"done\"]",
+      "v": {
+        "x": 1143,
+        "y": 94,
+        "width": 279,
+        "height": 624
+      },
+      "tt": "per-source target matrix: the tint set follows the dragged card (#753)"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
       "f": "board-overflow.spec.ts",
       "l": 82,
       "loc": "[data-column=\"todo\"] header",
@@ -1377,21 +1392,6 @@
         "height": 37
       },
       "tt": "列头固定：列表滚动时 header 的视口位置不动"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "board-docked-reflow.spec.ts",
-      "l": 146,
-      "loc": "[data-column=\"todo\"] [data-todo-id] >> nth=0",
-      "v": {
-        "x": 265.25,
-        "y": 95,
-        "width": 263.5,
-        "height": 214.5
-      },
-      "tt": "cards keep their resting width while docked"
     },
     {
       "k": "p",
@@ -1626,6 +1626,16 @@
       "k": "p",
       "p": "style",
       "cls": "Locator",
+      "f": "card-press.spec.ts",
+      "l": 64,
+      "loc": "[data-column=\"done\"] [data-todo-id] >> nth=0 >> internal:role=link",
+      "v": "1",
+      "tt": "press tints the whole card one surface step (dark)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
       "f": "board-docked-reflow.spec.ts",
       "l": 46,
       "loc": "internal:testid=[data-testid=\"board-scroller\"s]",
@@ -1669,13 +1679,18 @@
     },
     {
       "k": "p",
-      "p": "style",
+      "p": "box",
       "cls": "Locator",
-      "f": "card-press.spec.ts",
-      "l": 64,
-      "loc": "[data-column=\"done\"] [data-todo-id] >> nth=0 >> internal:role=link",
-      "v": "1",
-      "tt": "press tints the whole card one surface step (dark)"
+      "f": "board-dnd.spec.ts",
+      "l": 268,
+      "loc": "[data-column-list=\"building\"]",
+      "v": {
+        "x": 553,
+        "y": 94,
+        "width": 279,
+        "height": 624
+      },
+      "tt": "invalid pairs: no tint on the hovered target, release commits nothing (#753)"
     },
     {
       "k": "p",
@@ -1692,13 +1707,13 @@
       "p": "box",
       "cls": "Locator",
       "f": "board-dnd.spec.ts",
-      "l": 268,
-      "loc": "[data-column-list=\"building\"]",
+      "l": 46,
+      "loc": "[data-todo-id=\"dm-confirm\"] >> nth=0",
       "v": {
-        "x": 553,
-        "y": 94,
-        "width": 279,
-        "height": 624
+        "x": 855.25,
+        "y": 300,
+        "width": 264.5,
+        "height": 94.5
       },
       "tt": "invalid pairs: no tint on the hovered target, release commits nothing (#753)"
     },
@@ -1722,11 +1737,26 @@
       "p": "box",
       "cls": "Locator",
       "f": "board-dnd.spec.ts",
+      "l": 268,
+      "loc": "[data-column-list=\"done\"]",
+      "v": {
+        "x": 1143,
+        "y": 94,
+        "width": 279,
+        "height": 624
+      },
+      "tt": "invalid pairs: no tint on the hovered target, release commits nothing (#753)"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "board-dnd.spec.ts",
       "l": 46,
-      "loc": "[data-todo-id=\"dm-confirm\"] >> nth=0",
+      "loc": "[data-todo-id=\"dm-failed\"] >> nth=0",
       "v": {
         "x": 855.25,
-        "y": 300,
+        "y": 95,
         "width": 264.5,
         "height": 94.5
       },
@@ -1776,36 +1806,6 @@
         ]
       },
       "tt": "RTL mirror: the first column stays whole at the scroll-start edge"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "board-dnd.spec.ts",
-      "l": 268,
-      "loc": "[data-column-list=\"done\"]",
-      "v": {
-        "x": 1143,
-        "y": 94,
-        "width": 279,
-        "height": 624
-      },
-      "tt": "invalid pairs: no tint on the hovered target, release commits nothing (#753)"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "board-dnd.spec.ts",
-      "l": 46,
-      "loc": "[data-todo-id=\"dm-failed\"] >> nth=0",
-      "v": {
-        "x": 855.25,
-        "y": 95,
-        "width": 264.5,
-        "height": 94.5
-      },
-      "tt": "invalid pairs: no tint on the hovered target, release commits nothing (#753)"
     },
     {
       "k": "p",
@@ -2139,6 +2139,30 @@
     },
     {
       "k": "p",
+      "p": "style",
+      "cls": "Page",
+      "f": "board-filter.spec.ts",
+      "l": 504,
+      "v": {
+        "tagged": {
+          "cardH": 94.5,
+          "row1H": 16,
+          "seqRight": 503.25,
+          "cardRight": 529.75,
+          "chipH": 16
+        },
+        "plain": {
+          "cardH": 94.5,
+          "row1H": 16,
+          "seqRight": 1093.25,
+          "cardRight": 1119.75,
+          "chipH": null
+        }
+      },
+      "tt": "任务卡渲染标签 chip：词表配色、无标签零占位、既有几何不漂移"
+    },
+    {
+      "k": "p",
       "p": "box",
       "cls": "Locator",
       "f": "board-dnd.spec.ts",
@@ -2166,30 +2190,6 @@
         "height": 94.5
       },
       "tt": "重置闸·取消：零提交（卡片不动、计数不动、无请求发出）(#755)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Page",
-      "f": "board-filter.spec.ts",
-      "l": 504,
-      "v": {
-        "tagged": {
-          "cardH": 94.5,
-          "row1H": 16,
-          "seqRight": 503.25,
-          "cardRight": 529.75,
-          "chipH": 16
-        },
-        "plain": {
-          "cardH": 94.5,
-          "row1H": 16,
-          "seqRight": 1093.25,
-          "cardRight": 1119.75,
-          "chipH": null
-        }
-      },
-      "tt": "任务卡渲染标签 chip：词表配色、无标签零占位、既有几何不漂移"
     },
     {
       "k": "p",
@@ -2223,6 +2223,26 @@
     },
     {
       "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "sidebar-nav.spec.ts",
+      "l": 27,
+      "loc": "internal:role=link[name=\"定时\"i]",
+      "v": "rgba(0, 0, 0, 0)",
+      "tt": "hover tints the row pill — dark default + light theme"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "sidebar-nav.spec.ts",
+      "l": 27,
+      "loc": "internal:role=link[name=\"定时\"i]",
+      "v": "rgba(255, 252, 248, 0.05)",
+      "tt": "hover tints the row pill — dark default + light theme"
+    },
+    {
+      "k": "p",
       "p": "box",
       "cls": "Locator",
       "f": "board-dnd.spec.ts",
@@ -2235,16 +2255,6 @@
         "height": 94.5
       },
       "tt": "cards from every column arm the drag gesture (#753)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "sidebar-nav.spec.ts",
-      "l": 27,
-      "loc": "internal:role=link[name=\"定时\"i]",
-      "v": "rgba(0, 0, 0, 0)",
-      "tt": "hover tints the row pill — dark default + light theme"
     },
     {
       "k": "p",
@@ -2268,7 +2278,7 @@
       "f": "sidebar-nav.spec.ts",
       "l": 27,
       "loc": "internal:role=link[name=\"定时\"i]",
-      "v": "rgba(255, 252, 248, 0.05)",
+      "v": "rgba(28, 25, 20, 0.05)",
       "tt": "hover tints the row pill — dark default + light theme"
     },
     {
@@ -2278,8 +2288,8 @@
       "f": "sidebar-nav.spec.ts",
       "l": 27,
       "loc": "internal:role=link[name=\"定时\"i]",
-      "v": "rgba(28, 25, 20, 0.05)",
-      "tt": "hover tints the row pill — dark default + light theme"
+      "v": "rgba(0, 0, 0, 0)",
+      "tt": "rail hover tints the 24px pill"
     },
     {
       "k": "p",
@@ -2298,7 +2308,7 @@
       "f": "sidebar-nav.spec.ts",
       "l": 27,
       "loc": "internal:role=link[name=\"定时\"i]",
-      "v": "rgba(0, 0, 0, 0)",
+      "v": "rgba(255, 252, 248, 0.05)",
       "tt": "rail hover tints the 24px pill"
     },
     {
@@ -2330,16 +2340,6 @@
         "height": 624
       },
       "tt": "cards from every column arm the drag gesture (#753)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "sidebar-nav.spec.ts",
-      "l": 27,
-      "loc": "internal:role=link[name=\"定时\"i]",
-      "v": "rgba(255, 252, 248, 0.05)",
-      "tt": "rail hover tints the 24px pill"
     },
     {
       "k": "p",
@@ -2543,7 +2543,7 @@
       "cls": "Locator",
       "f": "board-dnd.spec.ts",
       "l": 569,
-      "loc": "[data-testid=\"board-scroller\"] [data-todo-id]",
+      "loc": "internal:testid=[data-testid=\"board-scroller\"s] >> [data-todo-id]",
       "v": [
         {
           "id": "7ve0iOkQ-JBpSL98zSiGc",
@@ -2605,7 +2605,7 @@
       "cls": "Locator",
       "f": "board-dnd.spec.ts",
       "l": 585,
-      "loc": "[data-testid=\"board-scroller\"] [data-todo-id]",
+      "loc": "internal:testid=[data-testid=\"board-scroller\"s] >> [data-todo-id]",
       "v": [
         {
           "id": "7ve0iOkQ-JBpSL98zSiGc",
@@ -2673,71 +2673,6 @@
     },
     {
       "k": "p",
-      "p": "style",
-      "cls": "Page",
-      "f": "sidebar-seam.spec.ts",
-      "l": 137,
-      "v": {
-        "seamColor": "rgb(45, 42, 36)",
-        "topbarColor": "rgb(45, 42, 36)",
-        "navColor": "rgb(45, 42, 36)",
-        "navTop": 43
-      },
-      "tt": "resources: the full-width line reads one color across the seam (dark)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Page",
-      "f": "board-dnd.spec.ts",
-      "l": 119,
-      "v": {
-        "box-shadow": "rgba(0, 0, 0, 0.18) 0px 8px 24px 0px",
-        "border-radius": "0px"
-      },
-      "tt": "lifted card rides the compact drag-tier recipe (light)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "board-dnd.spec.ts",
-      "l": 634,
-      "loc": "[data-testid=\"drag-overlay\"] [data-todo-id]",
-      "v": {
-        "box-shadow": "rgba(0, 0, 0, 0.18) 0px 8px 24px 0px",
-        "rotate": "2deg",
-        "opacity": "0.92",
-        "border-radius": "0px"
-      },
-      "tt": "lifted card rides the compact drag-tier recipe (light)"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "board-dnd.spec.ts",
-      "l": 662,
-      "loc": "[data-testid=\"drag-overlay\"]",
-      "v": {
-        "x": 295.25,
-        "y": 135,
-        "width": 264.5,
-        "height": 82.5
-      },
-      "tt": "lifted card rides the compact drag-tier recipe (light)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Page",
-      "f": "board-dnd.spec.ts",
-      "l": 666,
-      "v": "0.4",
-      "tt": "lifted card rides the compact drag-tier recipe (light)"
-    },
-    {
-      "k": "p",
       "p": "box",
       "cls": "Locator",
       "f": "shell-consistency.spec.ts",
@@ -2780,6 +2715,86 @@
         "height": 732
       },
       "tt": "expanded sidebar keeps identical geometry across /app ↔ /app/team ↔ resources hops"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Page",
+      "f": "sidebar-seam.spec.ts",
+      "l": 137,
+      "v": {
+        "seamColor": "rgb(45, 42, 36)",
+        "topbarColor": "rgb(45, 42, 36)",
+        "navColor": "rgb(45, 42, 36)",
+        "navTop": 43
+      },
+      "tt": "resources: the full-width line reads one color across the seam (dark)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Page",
+      "f": "board-dnd.spec.ts",
+      "l": 119,
+      "v": {
+        "box-shadow": "rgba(0, 0, 0, 0.18) 0px 8px 24px 0px",
+        "border-radius": "0px"
+      },
+      "tt": "lifted card rides the compact drag-tier recipe (light)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "board-dnd.spec.ts",
+      "l": 634,
+      "loc": "internal:testid=[data-testid=\"drag-overlay\"s] >> [data-todo-id]",
+      "v": {
+        "box-shadow": "rgba(0, 0, 0, 0.18) 0px 8px 24px 0px",
+        "rotate": "2deg",
+        "opacity": "0.92",
+        "border-radius": "0px"
+      },
+      "tt": "lifted card rides the compact drag-tier recipe (light)"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "shell-consistency.spec.ts",
+      "l": 45,
+      "loc": "internal:role=complementary",
+      "v": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 732
+      },
+      "tt": "expanded sidebar keeps identical geometry across /app ↔ /app/team ↔ resources hops"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "board-dnd.spec.ts",
+      "l": 662,
+      "loc": "internal:testid=[data-testid=\"drag-overlay\"s]",
+      "v": {
+        "x": 295.25,
+        "y": 135,
+        "width": 264.5,
+        "height": 82.5
+      },
+      "tt": "lifted card rides the compact drag-tier recipe (light)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Page",
+      "f": "board-dnd.spec.ts",
+      "l": 666,
+      "v": "0.4",
+      "tt": "lifted card rides the compact drag-tier recipe (light)"
     },
     {
       "k": "p",
@@ -2813,18 +2828,16 @@
     },
     {
       "k": "p",
-      "p": "box",
-      "cls": "Locator",
+      "p": "style",
+      "cls": "Page",
       "f": "shell-consistency.spec.ts",
-      "l": 45,
-      "loc": "internal:role=complementary",
+      "l": 71,
       "v": {
-        "x": 0,
-        "y": 0,
-        "width": 240,
-        "height": 732
+        "iconX": 19,
+        "nameX": 46,
+        "toggleX": 197
       },
-      "tt": "expanded sidebar keeps identical geometry across /app ↔ /app/team ↔ resources hops"
+      "tt": "the brand head holds its inner geometry across the /app → /app/team hop"
     },
     {
       "k": "p",
@@ -2857,7 +2870,7 @@
       "cls": "Locator",
       "f": "board-dnd.spec.ts",
       "l": 634,
-      "loc": "[data-testid=\"drag-overlay\"] [data-todo-id]",
+      "loc": "internal:testid=[data-testid=\"drag-overlay\"s] >> [data-todo-id]",
       "v": {
         "box-shadow": "rgba(0, 0, 0, 0.18) 0px 8px 24px 0px",
         "rotate": "2deg",
@@ -2872,7 +2885,7 @@
       "cls": "Locator",
       "f": "board-dnd.spec.ts",
       "l": 662,
-      "loc": "[data-testid=\"drag-overlay\"]",
+      "loc": "internal:testid=[data-testid=\"drag-overlay\"s]",
       "v": {
         "x": 295.25,
         "y": 135,
@@ -2889,19 +2902,6 @@
       "l": 666,
       "v": "0.4",
       "tt": "lifted card rides the compact drag-tier recipe (dark)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Page",
-      "f": "shell-consistency.spec.ts",
-      "l": 71,
-      "v": {
-        "iconX": 19,
-        "nameX": 46,
-        "toggleX": 197
-      },
-      "tt": "the brand head holds its inner geometry across the /app → /app/team hop"
     },
     {
       "k": "p",
@@ -2924,6 +2924,36 @@
       "cls": "Locator",
       "f": "shell-consistency.spec.ts",
       "l": 57,
+      "loc": "internal:role=complementary",
+      "v": {
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 732
+      },
+      "tt": "collapsed rail survives route hops (storage-backed on every shell)"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "shell-consistency.spec.ts",
+      "l": 45,
+      "loc": "internal:role=complementary",
+      "v": {
+        "x": 0,
+        "y": 0,
+        "width": 40,
+        "height": 732
+      },
+      "tt": "collapsed rail survives route hops (storage-backed on every shell)"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "shell-consistency.spec.ts",
+      "l": 45,
       "loc": "internal:role=complementary",
       "v": {
         "x": 0,
@@ -2962,36 +2992,6 @@
         "height": 114.5
       },
       "tt": "valid targets tint base tier, hovered column tints hot (light)"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "shell-consistency.spec.ts",
-      "l": 45,
-      "loc": "internal:role=complementary",
-      "v": {
-        "x": 0,
-        "y": 0,
-        "width": 40,
-        "height": 732
-      },
-      "tt": "collapsed rail survives route hops (storage-backed on every shell)"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "shell-consistency.spec.ts",
-      "l": 45,
-      "loc": "internal:role=complementary",
-      "v": {
-        "x": 0,
-        "y": 0,
-        "width": 40,
-        "height": 732
-      },
-      "tt": "collapsed rail survives route hops (storage-backed on every shell)"
     },
     {
       "k": "p",
@@ -3550,6 +3550,21 @@
       "cls": "Locator",
       "f": "user-menu-trigger.spec.ts",
       "l": 55,
+      "loc": ".user-menu",
+      "v": {
+        "x": 8,
+        "y": 475,
+        "width": 224,
+        "height": 209
+      },
+      "tt": "#163 anchoring: bottom distance is viewport-invariant, the chip is never covered — both shapes"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "user-menu-trigger.spec.ts",
+      "l": 58,
       "loc": ".user-menu",
       "v": {
         "x": 8,

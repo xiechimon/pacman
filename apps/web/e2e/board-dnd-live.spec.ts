@@ -156,8 +156,8 @@ test('live: done(有变更)→待处理 fires PATCH phase=review, optimistic lan
   await expect(
     page.locator(`[data-column="pending"] [data-todo-id="${CARD_ID}"]`),
   ).toBeVisible();
-  await expect(page.locator('[data-column="pending"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="done"] [data-testid="column-count"]')).toHaveText('0');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('0');
   // the reopened card reads as the review gate (action button 完成 =
   // PHASE_UI[review]；徽标纯图标无文字，整卡断 chip 词恒错)
   await expect(
@@ -181,8 +181,8 @@ test('live: PATCH 409 = 乐观值作废，卡片弹回源列 + toast 点名失�
     page.locator(`[data-column="done"] [data-todo-id="${CARD_ID}"]`),
     'card bounced back to 已完成',
   ).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator('[data-column="done"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="pending"] [data-testid="column-count"]')).toHaveText('0');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('0');
   // and the toast names the failure (#638: 弹回只讲结果，toast 讲原因)
   await expect(page.locator('[data-sonner-toast]').first()).toBeVisible();
   await expect(page.locator('[data-sonner-toast]').first()).toContainText('移动任务失败');

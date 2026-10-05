@@ -12,6 +12,9 @@
      - hover / press tint（#73，official sheet 的 hover:hover + pointer:fine
        门与 pointer:coarse 零过渡律）；
      - 全局 :active 压暗、#629 板面卡按压面、XMON-69 侧栏 toggle 例外；
+     - #73 板面拖拽手势锁（body[data-board-dragging]：grabbing 指针 +
+       全页选区封锁；#943 随 board.css 清零迁入，body 级状态钩与
+       .theme-suppress 同族）；
      - prefers-reduced-motion 全站法（含 tw-animate-css keyframe 的降级
        reset——tab pill 的 150ms transition 滑动与 spinner 面走各自文件的
        reduced-motion 处理，不在此列）。

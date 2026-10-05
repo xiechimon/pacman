@@ -8,7 +8,8 @@
 // 经公开 REST 建第二个项目（repo 维度要 ≥2 选项才走得进三态 mixed）。
 //
 // 检查面：
-//   A. 板面/侧栏渲染与几何（4 列、轨道 ≥280、seam 同色、侧栏 240）
+//   A. 板面/侧栏渲染与几何（4 列、轨道 ≥280、seam 同色、侧栏 240、
+//      卡面项目徽标皮肤在场——A5 是 Spec 轴评审抓出的漏迁失败方式）
 //   B. 裸控件收编实物（行钮 data-slot=button / data-variant=ghost）
 //   C. 交互真路径（hover pill 染色、折叠/rail、项目组收展、用户菜单开合、
 //      筛选面板三态 checkbox mixed→true→false、生效条 chip 清除、计数徽章）
@@ -267,6 +268,20 @@ for (const theme of ['dark', 'light']) {
       .evaluate((el) => getComputedStyle(el).gridTemplateColumns);
     const widths = tracks.split(' ').map((v) => Number.parseFloat(v));
     check(widths.length === 4 && widths.every((w) => w >= 279), `A2 轨道 4 段 ≥280（实测 ${tracks}）`);
+    // A5 = 本票实战抓出的失败方式（Spec 轴评审）：.project-avatar 规则随
+    // board.css 删除后，消费面若漏迁工具类，卡面首字母退化成裸字——probe
+    // 与 e2e 都不天然覆盖（无既有断言面），故显式钉渲染皮肤。
+    const avatar = await page.evaluate(() => {
+      const el = document.querySelector('[data-todo-id] .project-avatar');
+      if (el == null) return null;
+      const cs = getComputedStyle(el);
+      return { bg: cs.backgroundColor, w: el.getBoundingClientRect().width };
+    });
+    check(
+      avatar != null && avatar.bg !== 'rgba(0, 0, 0, 0)' && avatar.w === 16,
+      `A5 卡面项目徽标带皮（bg=${avatar?.bg} w=${avatar?.w}；前置=drive new-task 已落卡）`,
+    );
+
     const seam = await page.evaluate(() => {
       const aside = document.querySelector('aside');
       const header = document.querySelector('[data-route="board"] header');

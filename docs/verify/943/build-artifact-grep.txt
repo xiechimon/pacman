@@ -1,5 +1,5 @@
 # 编译产物机制实物（#943）
-# 来源: vite build --mode fixture 的 dist CSS（全量 e2e 809/809 绿后同一构建），css 文件: index-BGSsrTL2.css
+# 来源: vite build --mode fixture 的 dist CSS（终版代码全量 e2e 809/809 绿后同一构建），css 文件: index-BGSsrTL2.css
 # 判读: 「规则」行 = CSS 规则选择器命中次数,退役面必须 0;载体行 = 新工具类/新机制律,必须在场(>0)。
    0  .board-notify-banner 规则
    2  .project-avatar 规则

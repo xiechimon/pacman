@@ -9,8 +9,9 @@
 | `probe-dump/probe-comparison.md` | #921 工具对照表（18 spec、224 视觉行）：**KEPT 224 / DRIFT 0 / VIOLATION 0 / NOT-RUN 0** | 2 |
 | `probe-dump/probe-dump.json` | 结构化全量 dump（sites/values/rows） | 2 |
 | `contrast-943.md` | better-colors 双模 32 对实测表（渲染对 + token 解析对，WCAG 2.x 公式）：**0 未过**；含实测抓出并修掉的 notify-body 配对（2.73→10.12） | 3 |
-| `live-stack/drive-943-board-sidebar/` | 定制探针（`drive-943-board-sidebar.mjs`，随本 PR 进 `.claude/skills/verify-pacman/scripts/`）：A 几何 4 项 + B 件槽 1 项 + C 交互真路径 14 项 + D 机制 2 项 + E 对比度双模 2 项 = **23 checks 全 PASS，failures 0**；截图 02–07（板面/rail/筛选面板/用户菜单，双主题）+ `result.json` + `contrast.json` | 3、4 |
+| `live-stack/drive-943-board-sidebar/` | 定制探针（`drive-943-board-sidebar.mjs`，随本 PR 进 `.claude/skills/verify-pacman/scripts/`）：A 几何 5 项（含 A5 卡面项目徽标带皮——Spec 轴评审抓出的漏迁失败方式，显式钉渲染皮肤）+ B 件槽 1 项 + C 交互真路径 14 项 + D 机制 2 项 + E 对比度双模 2 项 = **24 checks 全 PASS，failures 0**；截图 02–07（板面/rail/筛选面板/用户菜单，双主题）+ `result.json` + `contrast.json` | 3、4 |
 | `live-stack/drive-board/`、`live-stack/drive-new-task/` | 既有 probe 回归（board 布局 / 新建任务全链落库）：PASS | 4 |
+| `local-full-e2e.log` | 验收 1「合并前本地全量一次」实物：终版代码全量 e2e（E2E_PORT=8398）**809 passed (1.9m)**、0 failed 全日志 | 1 |
 | `build-artifact-grep.txt` | 编译产物机制实物：`vite build --mode fixture` 的 dist CSS 上 grep——board.css 退役选择器 0 命中、`body[data-board-dragging]` 在场、工具类新载体在场 | 4、5 |
 
 ## 复现

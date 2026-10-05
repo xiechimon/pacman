@@ -1,7 +1,7 @@
 {
   "probe": "new-task",
   "ok": true,
-  "at": "2026-10-05T19:18:56.672Z",
+  "at": "2026-10-05T19:43:14.809Z",
   "stack": {
     "api": "http://127.0.0.1:8795",
     "web": "http://127.0.0.1:5277",
@@ -31,13 +31,13 @@
     "02-new-task-card.png"
   ],
   "apiTodo": {
-    "id": "Qyq0wJNx4dyoF-rOuQ7ob",
-    "teamId": "l5IDM2csurPdpXfjwnFOA",
-    "projectId": "w9YWfRh-fBWwWwGAa6GQx",
-    "title": "验证任务 36780",
-    "spec": "验证任务 36780",
+    "id": "6eckss5n043rn2eDKrvR8",
+    "teamId": "GxAjTwyrnGQSzHl3R7vkm",
+    "projectId": "M20l04EbHH2KtYPMILn9-",
+    "title": "验证任务 94981",
+    "spec": "验证任务 94981",
     "phase": "todo",
-    "phaseAt": 1791227937647,
+    "phaseAt": 1791229396294,
     "seqNum": 1,
     "orderIndex": 0,
     "tagIds": [],
@@ -50,16 +50,16 @@
     "buildHistory": [],
     "sourceTodo": null,
     "v": 1,
-    "createdBy": "AUC_37Q9NEUWlaHlVcKkS",
-    "ownerId": "AUC_37Q9NEUWlaHlVcKkS",
+    "createdBy": "Pv-iu1GPqqAfqtkYuehmV",
+    "ownerId": "Pv-iu1GPqqAfqtkYuehmV",
     "sourceBuildId": null,
     "sourceKind": null,
     "sourceRef": null,
     "machineId": null
   },
   "dbTodo": {
-    "id": "Qyq0wJNx4dyoF-rOuQ7ob",
-    "title": "验证任务 36780",
+    "id": "6eckss5n043rn2eDKrvR8",
+    "title": "验证任务 94981",
     "phase": "todo",
     "seqNum": 1
   }

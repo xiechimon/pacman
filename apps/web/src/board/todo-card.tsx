@@ -25,6 +25,7 @@ import {
   UserCircle,
 } from '../icons/index.js';
 import { cardAction } from './columns.js';
+import { ProjectAvatar } from './project-avatar.js';
 import { relativeTime } from './rel-time.js';
 
 interface TodoCardProps {
@@ -90,7 +91,7 @@ export function TodoCard({
       className="todo-card relative w-full gap-0 rounded-none px-[13.5px] pt-[9.5px] pb-[11.5px] select-none"
     >
       <div className="todo-card-row1 flex h-4 items-center">
-        <span className="project-avatar">{chipInitial}</span>
+        <ProjectAvatar char={chipInitial} />
         <span className="todo-project-name ml-1 truncate text-[11px] leading-4 text-muted-foreground">
           {chipName}
         </span>

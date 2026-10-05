@@ -11,6 +11,10 @@
     },
     {
       "ok": true,
+      "label": "A5 卡面项目徽标带皮（bg=rgb(255, 155, 120) w=16；前置=drive new-task 已落卡）"
+    },
+    {
+      "ok": true,
       "label": "A3 seam 与顶栏分隔线同色（rgb(45, 42, 36)）"
     },
     {

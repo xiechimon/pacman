@@ -1,6 +1,6 @@
 # Probe dump — old baseline → new measured (#921)
 
-Run 2026-10-05T18:59:25.052Z · commit `494a2296` · port 8397 · playwright 1.63.0 · workers 4
+Run 2026-10-05T19:48:23.130Z · commit `ec0d1fb8` · port 8397 · playwright 1.63.0 · workers 4
 
 Specs: board-dnd board-dnd-live board-docked-reflow board-filter board-overflow card-press sidebar-nav sidebar-seam sidebar-search-offboard sidebar-visual shell-consistency user-menu-nav user-menu-trigger hotkeys notify-banner chief-fab theme-toggle footer-copy (18 files) · tests 163 passed / 0 failed
 

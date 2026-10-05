@@ -58,6 +58,7 @@ import {
   Server,
 } from '../icons/index.js';
 import { readStoredTheme } from '../theme.js';
+import { ProjectAvatar } from './project-avatar.js';
 
 /** Which sidebar row carries the active pill: a nav row (工作台 / 定时 /
  *  the team head row on team/account — r7 01/11, r2 07e/24b/24c, r7 12/13),
@@ -176,14 +177,6 @@ const ROW_SELECTED = 'text-foreground before:bg-sidebar-active';
  *  不重复写。 */
 const ROW_BTN =
   'justify-start gap-0 rounded-none border-none pr-0 font-normal hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
-
-/** 项目行首字母徽标（原 board.css .project-avatar，#943 随文件清零迁工具
- *  类）：16px 方tile、4px 圆角、10px 首字母。消费面全在本域（sidebar 两态
- *  行 + todo-card 板面卡）；drag-card 的 14px 紧凑档在 drag-card.tsx 自持；
- *  overlay 的 new-task 项目 picker 走自己的 .new-task-project-avatar
- *  （overlay.css，#948 面），不吃本配方。 */
-const PROJECT_AVATAR =
-  'project-avatar flex-none size-4 rounded-[4px] bg-(--project-avatar-bg) text-center text-[10px] leading-4 font-medium text-(--project-avatar-fg)';
 
 function GroupHeader({
   label,
@@ -394,7 +387,7 @@ export function BoardSidebar({
                   aria-current={pathname === href ? 'page' : undefined}
                   aria-label={row.name}
                 >
-                  <span className={PROJECT_AVATAR}>{row.name.charAt(0).toLowerCase()}</span>
+                  <ProjectAvatar char={row.name.charAt(0).toLowerCase()} />
                 </Link>
               );
             })}
@@ -591,7 +584,7 @@ export function BoardSidebar({
                   to={{ pathname: href, search }}
                   aria-current={pathname === href ? 'page' : undefined}
                 >
-                  <span className={PROJECT_AVATAR}>{row.name.charAt(0).toLowerCase()}</span>
+                  <ProjectAvatar char={row.name.charAt(0).toLowerCase()} />
                   <span className="sidebar-subrow-label ml-3 truncate">{row.name}</span>
                 </Link>
               );

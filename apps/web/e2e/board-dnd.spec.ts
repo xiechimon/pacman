@@ -85,7 +85,7 @@ async function dragInSourceColumn(page: Page, fromSel: string): Promise<void> {
  *  (collision → onDragOver → setDropColumnId → re-render) are FIFO-flushed. */
 async function settleDrag(page: Page): Promise<void> {
   await page
-    .locator('[data-testid="drag-overlay"] [data-todo-id]')
+    .getByTestId('drag-overlay').locator('[data-todo-id]')
     .waitFor({ state: 'visible', timeout: 15_000 });
   await settleDrop(page);
 }
@@ -143,7 +143,7 @@ test('待开始 → 已完成: silent commit, end-of-column landing, counts coup
   await settleDrag(page);
   // three feedback states ride the gesture: lifted compact card, hovered
   // column tint, grabbing body
-  await expect(page.locator('[data-testid="drag-overlay"] [data-todo-id]')).toBeVisible();
+  await expect(page.getByTestId('drag-overlay').locator('[data-todo-id]')).toBeVisible();
   await expect(page.locator('[data-column="done"]')).toHaveAttribute('data-drop', 'true');
   await expect(page.locator('body')).toHaveAttribute('data-board-dragging', '');
 
@@ -159,10 +159,10 @@ test('待开始 → 已完成: silent commit, end-of-column landing, counts coup
   expect(doneOrder[doneOrder.length - 1]).toBe(PROBE_ID);
   await expect(page.locator('[data-column="todo"] [data-todo-id]')).toHaveCount(0);
   // header counts couple with the committed set (r2 §4.2)
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('0');
-  await expect(page.locator('[data-column="done"] [data-testid="column-count"]')).toHaveText('2');
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('0');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('2');
   // the gesture teardown sweeps overlay + body class
-  await expect(page.locator('[data-testid="drag-overlay"]')).toHaveCount(0);
+  await expect(page.getByTestId('drag-overlay')).toHaveCount(0);
   await expect(page.locator('body')).not.toHaveAttribute('data-board-dragging', '');
 });
 
@@ -184,14 +184,14 @@ test('待开始 → 执行中: the drop fires orchestration directly — no dial
   // fires the chief orchestration round (live-only; fixture mode is inert, so
   // nothing renders). The gesture teardown still sweeps the drag overlay.
   await expect(page.locator('.overlay-title')).toHaveCount(0);
-  await expect(page.locator('[data-testid="drag-overlay"]')).toHaveCount(0);
+  await expect(page.getByTestId('drag-overlay')).toHaveCount(0);
   // the phase is NOT written locally: the probe still sits in 待开始, counts
   // untouched (in live it moves only once the chief dispatches via run_builds).
   await expect(
     page.locator(`[data-column="todo"] [data-todo-id="${PROBE_ID}"]`),
   ).toBeVisible();
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="building"] [data-testid="column-count"]')).toHaveText('0');
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="building"]').getByTestId('column-count')).toHaveText('0');
 });
 
 // ---- the per-source target matrix (#753, todos.dev 2026-10-03/04 live 重测;
@@ -224,14 +224,14 @@ test('per-source target matrix: the tint set follows the dragged card (#753)', a
     // same-column release: zero commit, teardown sweeps
     await page.mouse.up();
     await settleDrop(page);
-    await expect(page.locator('[data-testid="drag-overlay"]')).toHaveCount(0);
+    await expect(page.getByTestId('drag-overlay')).toHaveCount(0);
     await expect(page.locator('body')).not.toHaveAttribute('data-board-dragging', '');
   }
   // nothing moved anywhere: counts are the untouched scenario shape
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="building"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="pending"] [data-testid="column-count"]')).toHaveText('3');
-  await expect(page.locator('[data-column="done"] [data-testid="column-count"]')).toHaveText('2');
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="building"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('3');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('2');
 });
 
 test('hover tier rides the hovered valid target for the new pairs (#753)', async ({ page }) => {
@@ -291,10 +291,10 @@ test('invalid pairs: no tint on the hovered target, release commits nothing (#75
     ).toBeVisible();
   }
   // counts are the untouched scenario shape
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="building"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="pending"] [data-testid="column-count"]')).toHaveText('3');
-  await expect(page.locator('[data-column="done"] [data-testid="column-count"]')).toHaveText('2');
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="building"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('3');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('2');
 });
 
 test('待开始 → 待处理 stays invalid (#351 pair kept inside the #753 matrix)', async ({ page }) => {
@@ -319,8 +319,8 @@ test('待开始 → 待处理 stays invalid (#351 pair kept inside the #753 matr
   await expect(
     page.locator(`[data-column="todo"] [data-todo-id="${PROBE_ID}"]`),
   ).toBeVisible();
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="pending"] [data-testid="column-count"]')).toHaveText('1');
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('1');
 });
 
 // ---- commits for the newly enabled pairs (#753) ----
@@ -345,8 +345,8 @@ test('已完成(有变更) → 待处理: reopen commits review, lands after the
   const moved = page.locator('[data-column="pending"] [data-todo-id="r3-legacy-2"]');
   await expect(moved).toBeVisible();
   await expect(moved.getByRole('button', { name: '完成' })).toBeVisible();
-  await expect(page.locator('[data-column="done"] [data-testid="column-count"]')).toHaveText('0');
-  await expect(page.locator('[data-column="pending"] [data-testid="column-count"]')).toHaveText('2');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('0');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('2');
   // landing: the pinned review+awaitingReply card keeps the top; the reopened
   // card (review, no awaitingReply) lands AFTER it — end of the non-pinned run
   const order = await page
@@ -377,8 +377,8 @@ test('待处理(confirm) → 已完成 / → 待开始: silent phase commits (#7
     .locator('[data-column="done"] [data-todo-id]')
     .evaluateAll((els) => els.map((e) => e.getAttribute('data-todo-id')));
   expect(doneOrder[doneOrder.length - 1]).toBe('dm-confirm');
-  await expect(page.locator('[data-column="done"] [data-testid="column-count"]')).toHaveText('3');
-  await expect(page.locator('[data-column="pending"] [data-testid="column-count"]')).toHaveText('2');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('3');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('2');
 
   // failed 卡不动（#702 客户端同判）：待处理 只剩 pinned 组 + 无变化
   await expect(
@@ -403,16 +403,16 @@ test('待处理(confirm，有历史） → 待开始：开重置确认闸，不�
   await expect(
     page.locator('[data-column="pending"] [data-todo-id="dm-confirm"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="pending"] [data-testid="column-count"]')).toHaveText('3');
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('3');
   // 取消 = 零提交：弹层关，卡片不动，计数不动。
   await page.locator('.dlg-reset').getByRole('button', { name: '取消' }).click();
   await expect(page.locator('.dlg-reset')).toBeHidden();
   await expect(
     page.locator('[data-column="pending"] [data-todo-id="dm-confirm"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="pending"] [data-testid="column-count"]')).toHaveText('3');
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('3');
 });
 
 test('执行中 → 待开始：开重置确认闸 — gesture 只开闸，不写相位 (#755/#640)', async ({
@@ -437,8 +437,8 @@ test('执行中 → 待开始：开重置确认闸 — gesture 只开闸，不�
   await expect(
     page.locator('[data-column="building"] [data-todo-id="dm-building"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-column="building"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('1');
+  await expect(page.locator('[data-column="building"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('1');
 });
 
 // ---- 重置确认闸 (#755, scenario board-reset-gate) ----
@@ -464,8 +464,8 @@ test('重置闸·确认：started 卡确认后落待开始（fixture 本地重�
   await expect(
     page.locator('[data-column="todo"] [data-todo-id="rg-building"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('2');
-  await expect(page.locator('[data-column="building"] [data-testid="column-count"]')).toHaveText('0');
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('2');
+  await expect(page.locator('[data-column="building"]').getByTestId('column-count')).toHaveText('0');
 });
 
 test('重置闸·取消：零提交（卡片不动、计数不动、无请求发出）(#755)', async ({ page }) => {
@@ -491,8 +491,8 @@ test('重置闸·取消：零提交（卡片不动、计数不动、无请求发
   await expect(
     page.locator('[data-column="done"] [data-todo-id="rg-done-history"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="done"] [data-testid="column-count"]')).toHaveText('2');
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('2');
   expect(writes).toEqual([]);
 });
 
@@ -512,8 +512,8 @@ test('重置闸·静默：零历史卡拖回待开始不设闸 (#755)', async ({
   await expect(
     page.locator('[data-column="todo"] [data-todo-id="rg-done-fresh"]'),
   ).toBeVisible();
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('2');
-  await expect(page.locator('[data-column="done"] [data-testid="column-count"]')).toHaveText('1');
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('2');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('1');
 });
 
 // ---- draggable from every column (#753; rewrites 「待处理/已完成 cards
@@ -527,7 +527,7 @@ test('cards from every column arm the drag gesture (#753)', async ({ page }) => 
     await settleDrag(page);
     // the gesture armed: overlay up, body class on, source wrapper dims
     await expect(
-      page.locator('[data-testid="drag-overlay"] [data-todo-id]'),
+      page.getByTestId('drag-overlay').locator('[data-todo-id]'),
       `${id}: overlay`,
     ).toBeVisible();
     await expect(page.locator('body')).toHaveAttribute('data-board-dragging', '');
@@ -539,13 +539,13 @@ test('cards from every column arm the drag gesture (#753)', async ({ page }) => 
     expect(dim, `${id}: source dim`).toBe('0.4');
     await page.mouse.up();
     await settleDrop(page);
-    await expect(page.locator('[data-testid="drag-overlay"]')).toHaveCount(0);
+    await expect(page.getByTestId('drag-overlay')).toHaveCount(0);
   }
   // same-column flights committed nothing
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="building"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-column="pending"] [data-testid="column-count"]')).toHaveText('3');
-  await expect(page.locator('[data-column="done"] [data-testid="column-count"]')).toHaveText('2');
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="building"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('3');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('2');
 });
 
 test('click navigation survives sensor arming on the newly draggable columns (#753/#629)', async ({
@@ -566,7 +566,7 @@ test('same-column gesture: siblings never shift, drop is a no-op', async ({ page
   await page.goto('/app?scenario=22');
   const box = await page.locator('[data-column="todo"] [data-todo-id]').first().boundingBox();
   if (box == null) throw new Error('probe card missing');
-  const before = await page.locator('[data-testid="board-scroller"] [data-todo-id]').evaluateAll((els) =>
+  const before = await page.getByTestId('board-scroller').locator('[data-todo-id]').evaluateAll((els) =>
     els.map((e) => {
       const r = e.getBoundingClientRect();
       return { id: e.getAttribute('data-todo-id'), x: Math.round(r.x), y: Math.round(r.y) };
@@ -582,7 +582,7 @@ test('same-column gesture: siblings never shift, drop is a no-op', async ({ page
   await settleDrag(page);
 
   // no live preview: every board card keeps its slot, no wrapper transform
-  const mid = await page.locator('[data-testid="board-scroller"] [data-todo-id]').evaluateAll((els) =>
+  const mid = await page.getByTestId('board-scroller').locator('[data-todo-id]').evaluateAll((els) =>
     els.map((e) => {
       const r = e.getBoundingClientRect();
       return { id: e.getAttribute('data-todo-id'), x: Math.round(r.x), y: Math.round(r.y) };
@@ -601,8 +601,8 @@ test('same-column gesture: siblings never shift, drop is a no-op', async ({ page
   await settleDrop(page);
   // no-op: no dialog, no commit, counts untouched
   await expect(page.locator('.overlay-title')).toHaveCount(0);
-  await expect(page.locator('[data-column="todo"] [data-testid="column-count"]')).toHaveText('1');
-  await expect(page.locator('[data-testid="drag-overlay"]')).toHaveCount(0);
+  await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.getByTestId('drag-overlay')).toHaveCount(0);
 });
 
 // ---- lifted face: the compact drag-tier recipe (#616, replaces #391's
@@ -625,7 +625,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.mouse.move(sx + 30, sy + 40, { steps: 8 });
     await settleDrag(page);
 
-    const card = page.locator('[data-testid="drag-overlay"] [data-todo-id]');
+    const card = page.getByTestId('drag-overlay').locator('[data-todo-id]');
     await expect(card).toBeVisible();
     const expected = await resolveStyle(page, {
       'box-shadow': 'var(--drag-shadow)',
@@ -659,7 +659,7 @@ for (const theme of ['light', 'dark'] as const) {
     await expect(card.locator('img')).toHaveCount(0);
     await expect(card).toContainText('#9');
     // overlay wrapper keeps the source card's width (PositionedOverlay law)
-    const wrapBox = await page.locator('[data-testid="drag-overlay"]').boundingBox();
+    const wrapBox = await page.getByTestId('drag-overlay').boundingBox();
     if (wrapBox == null) throw new Error('overlay wrapper missing');
     expect(Math.abs(wrapBox.width - sourceBox.width)).toBeLessThanOrEqual(1);
     // the source wrapper dims to the reference's 0.4 and keeps its slot
@@ -786,7 +786,7 @@ test('overlay unmounts with the pointerup frame — no glide', async ({ page }) 
   await page.mouse.up();
   // two rAF boundaries ≈ 33ms — a 250ms glide would still be mounted here
   await settleDrop(page);
-  await expect(page.locator('[data-testid="drag-overlay"]')).toHaveCount(0);
+  await expect(page.getByTestId('drag-overlay')).toHaveCount(0);
   await expect(
     page.locator(`[data-column="done"] [data-todo-id="${PROBE_ID}"]`),
   ).toBeVisible();

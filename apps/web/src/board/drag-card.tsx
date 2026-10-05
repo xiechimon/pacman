@@ -15,6 +15,7 @@
 
 import { PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { TodoRecord } from '../fixtures/records.js';
+import { ProjectAvatar } from './project-avatar.js';
 
 interface DragCardProps {
   todo: TodoRecord;
@@ -31,12 +32,14 @@ export function DragCard({ todo, projectName }: DragCardProps) {
       data-todo-id={todo.id}
     >
       <div className="board-drag-card-row1 flex items-center gap-1.5">
-        {/* 身份行项目徽标 = .project-avatar 配方的紧凑档（参考站 14px/3px
-            圆角/7px 字号，对 16px/4px/10px 的板面档）——原 board.css 的
-            后代选择器覆写，#943 起直接以紧凑值落工具类。 */}
-        <span className="project-avatar flex-none rounded-[3px] bg-(--project-avatar-bg) text-center text-[7px] leading-[14px] font-medium text-(--project-avatar-fg) size-3.5">
-          {initial}
-        </span>
+        {/* 身份行项目徽标 = ProjectAvatar 的紧凑档（参考站 14px/3px 圆角/
+            7px 字号，对 16px/4px/10px 的板面档）——原 board.css 的后代
+            选择器覆写，#943 起走 className 逐组覆写（TagChip row-flush
+            档同手法）。 */}
+        <ProjectAvatar
+          char={initial}
+          className="size-3.5 rounded-[3px] text-[7px] leading-[14px]"
+        />
         <span className="board-drag-card-project min-w-0 flex-1 truncate text-[11px] leading-4 text-muted-foreground">
           {name}
         </span>
