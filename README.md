@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/icon-512-dark.png" />
+  <img src="apps/web/public/icon-512-light.png" alt="pacman icon" width="128" />
+</picture>
+
 # pacman
 
 A self-hosted, open-source **agent workspace**: a task board where you write the tasks and AI agents build them on your own machines.

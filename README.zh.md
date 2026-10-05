@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/icon-512-dark.png" />
+  <img src="apps/web/public/icon-512-light.png" alt="pacman 图标" width="128" />
+</picture>
+
 # pacman
 
 自托管、开源的 **agent workspace**：一块任务看板——你写任务，AI agent 在你自己的机器上把它们做出来。
