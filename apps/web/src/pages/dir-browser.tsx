@@ -16,6 +16,8 @@
 // - localStorage 隐私模式抛 = 读写 try/catch 降级（缺省起点、不记住，W13）。
 // 弹层家族法 #67/#127：FloatingShell + ClickCatcher（#656 起 Esc 归 Base UI
 // layer 栈；gh-picker 同款）。
+// #946：per-face 类（dir-browser-*）退役——皮肤迁 token utility 等值，e2e
+// 载体迁语义位（role=dialog/list/listitem、按钮文案、aria-pressed）。
 
 import { FS_LIST_MAX_ENTRIES } from '@pacman/shared';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -29,6 +31,32 @@ import { ClickCatcher } from '../overlays/dismiss.js';
 
 /** 记住上次位置的 localStorage 键（单租户单机，ADR 0003 D5）。 */
 const LAST_DIR_KEY = 'pacman.dirBrowser.lastDir';
+
+/** 弹层板（原 .dir-browser，#441 family plate / plan-dropdown 律）：V2 弹层壳
+ *  （#790 P3——12px 内边距 / 1px 墨线框 / 直角 / 顶部锚距 8px / 最小宽 220）
+ *  + 上指锚边左上的描边 Arrow（12×6 外三角压 10×5 内三角，clip-path utility
+ *  承载，#944 RES_SORT_MENU_CLS 同形、此面锚左）。geometry [设计]——上游无
+ *  像素采集，贴仓内锚定弹层词汇。 */
+const PLATE_CLS =
+  "absolute top-[calc(100%+8px)] inset-x-0 z-(--z-popover) flex min-w-[220px] flex-col gap-1.5 rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+
+/** 面包屑段钮（原 .dir-browser-crumb，ghost 底座七通道中和）。 */
+const CRUMB_CLS =
+  'h-auto max-w-40 shrink cursor-pointer truncate rounded-none border-none bg-transparent p-0 text-xs font-normal leading-4 text-(--text-secondary) hover:bg-transparent hover:text-(--text-primary) hover:underline dark:hover:bg-transparent aria-[current=location]:font-medium aria-[current=location]:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0';
+
+/** dotfiles toggle 钮（原 .dir-browser-dots，pill 带框形 + aria-pressed
+ *  品牌态；pressed×hover 叠态钉品牌墨 = 旧 unlayered 规则序的等值）。 */
+const DOTS_CLS =
+  'h-auto flex-none cursor-pointer rounded-full border border-(--border-default) bg-transparent px-2 py-0.5 text-[11px] font-normal leading-4 whitespace-nowrap text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-pressed:border-(--card-button) aria-pressed:text-(--card-button) aria-pressed:hover:text-(--card-button) active:not-aria-[haspopup]:translate-y-0';
+
+/** 行名钮（原 .dir-browser-name，ghost 底座；行钮自身无 hover 涂底）。 */
+const ROW_NAME_CLS =
+  'h-auto min-w-0 flex-1 cursor-pointer justify-start truncate rounded-none border-none bg-transparent px-1 text-[13px] font-normal leading-[18px] text-(--text-primary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+
+/** 「选择」钮（原 .dir-browser-pick）：静息隐身，行 hover（group）/自身
+ *  focus-visible 现身。 */
+const PICK_CLS =
+  'h-auto flex-none cursor-pointer rounded-[6px] border border-(--border-default) bg-transparent px-2.5 py-0.5 text-xs font-normal leading-4 text-(--text-secondary) opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
 
 function readLastDir(): string | null {
   try {
@@ -140,25 +168,26 @@ export function DirBrowser({
         >
           <ClickCatcher onClose={onClose} />
           <div
-            className={`dir-browser ${FLOATING_POP_ANIM}`}
+            className={`${PLATE_CLS} ${FLOATING_POP_ANIM}`}
             role="dialog"
             aria-label={t('浏览本地文件夹')}
           >
-            <div className="dir-browser-bar">
-              <nav className="dir-browser-crumbs">
+            <div className="flex items-center gap-2 px-1">
+              <nav className="flex min-w-0 flex-1 flex-wrap items-center gap-0.5">
                 {crumbs.map((seg, i) => (
-                  <span key={seg.path} className="dir-browser-crumb-wrap">
+                  <span key={seg.path} className="inline-flex min-w-0 items-center gap-0.5">
                     {i > 0 && (
-                      <span className="dir-browser-crumb-sep" aria-hidden="true">
+                      <span className="inline-flex text-(--text-tertiary)" aria-hidden="true">
                         <ChevronRight width={12} height={12} />
                       </span>
                     )}
                     {/* XMON-25 收编：ghost；h-auto 保内容高（focus 环矩形 =
                     现行为）、shrink 保面包屑挤压可缩（base shrink-0 会改
-                    溢出行为）。 */}
+                    溢出行为）。hover 提亮 + 下划线 = 原 per-face hover 面；
+                    末段（aria-current=location）primary 墨 + 500 字重。 */}
                     <Button
                       variant="ghost"
-                      className="dir-browser-crumb h-auto shrink rounded-none font-normal active:not-aria-[haspopup]:translate-y-0"
+                      className={CRUMB_CLS}
                       // 末段 = 当前目录（不可再下钻到自己，仍渲染为钮保持一致性）。
                       aria-current={i === crumbs.length - 1 ? 'location' : undefined}
                       onClick={() => setDir(seg.path)}
@@ -168,20 +197,21 @@ export function DirBrowser({
                   </span>
                 ))}
               </nav>
-              {/* XMON-25 收编：ghost；aria-pressed 皮肤正本在 per-face
-              [aria-pressed=true] 规则，unlayered 恒胜 base 的 aria-expanded 档。 */}
+              {/* XMON-25 收编：ghost；aria-pressed 选中态（品牌描边 + 品牌墨，
+              原 per-face [aria-pressed=true] 规则）迁 aria-pressed 变体
+              utility，pressed×hover 叠态钉品牌墨（旧 unlayered 恒压序的等值）。 */}
               <Button
                 variant="ghost"
-                className="dir-browser-dots h-auto font-normal active:not-aria-[haspopup]:translate-y-0"
+                className={DOTS_CLS}
                 aria-pressed={showDotfiles}
                 onClick={() => setShowDotfiles((v) => !v)}
               >
                 {t('显示隐藏文件')}
               </Button>
             </div>
-            <div className="dir-browser-list">
+            <ul className="flex max-h-72 flex-col overflow-y-auto">
               {listQ.isError ? (
-                <div className="dir-browser-error" role="alert">
+                <div className="px-3 py-2 text-xs leading-4 text-(--danger)" role="alert">
                   {(listQ.error as Error).message}
                 </div>
               ) : (
@@ -190,31 +220,35 @@ export function DirBrowser({
                   // canonical 绝对路径 + 目录名 → 子路径（base 恒以 `/` 开头无尾斜杠）。
                   const child = base === '/' ? `/${entry.name}` : `${base}/${entry.name}`;
                   return (
-                    <div className="dir-browser-row" key={entry.name}>
+                    <li
+                      className="group flex h-8 items-center gap-1.5 rounded-[6px] px-1 hover:bg-(--surface)"
+                      key={entry.name}
+                    >
                       {/* XMON-25 收编：ghost；justify-start 对齐位（text-align:left
-                      的 flex 等价）、h-auto 保 18px 内容高。 */}
+                      的 flex 等价）、h-auto 保 18px 内容高。行钮自身无 hover
+                      涂底面（hover 高亮骑整行盒，group 面）。 */}
                       <Button
                         variant="ghost"
-                        className="dir-browser-name h-auto justify-start rounded-none font-normal active:not-aria-[haspopup]:translate-y-0"
+                        className={ROW_NAME_CLS}
                         onClick={() => setDir(child)}
                       >
                         {entry.name}
                       </Button>
                       {entry.git && (
-                        <span className="dir-browser-git" role="img" aria-label={t('git 仓库')}>
+                        <span
+                          className="inline-flex flex-none text-(--card-button)"
+                          role="img"
+                          aria-label={t('git 仓库')}
+                        >
                           <GitCommit width={13} height={13} />
                         </span>
                       )}
-                      {/* XMON-25 收编：ghost；opacity 0→1（行 hover/focus）正本在
-                      per-face，unlayered 恒胜。 */}
-                      <Button
-                        variant="ghost"
-                        className="dir-browser-pick h-auto font-normal active:not-aria-[haspopup]:translate-y-0"
-                        onClick={() => onPick(child)}
-                      >
+                      {/* XMON-25 收编：ghost；opacity 0→1（行 hover 经 group /
+                      自身 focus-visible）utility 等值承接。 */}
+                      <Button variant="ghost" className={PICK_CLS} onClick={() => onPick(child)}>
                         {t('选择')}
                       </Button>
-                    </div>
+                    </li>
                   );
                 })
               )}
@@ -222,15 +256,15 @@ export function DirBrowser({
                 !listQ.isPlaceholderData &&
                 listQ.data !== undefined &&
                 visible.length === 0 && (
-                  <div className="dir-browser-empty">
+                  <li className="px-3 py-2 text-xs leading-4 text-(--text-tertiary)">
                     {/* 真无子目录 vs 子目录全被 dotfiles 隐藏（toggle 是就近 affordance）
                     ——两态分译，不对「有但隐藏」谎称「没有」。 */}
                     {entries.length === 0 ? t('没有子目录') : t('子目录均已隐藏')}
-                  </div>
+                  </li>
                 )}
-            </div>
+            </ul>
             {listQ.data?.truncated === true && (
-              <div className="dir-browser-trunc">
+              <div className="border-t border-(--border-default) p-1 text-[11px] leading-4 text-(--text-tertiary)">
                 {t('目录条目过多，只列出前 {n} 条', { n: FS_LIST_MAX_ENTRIES })}
               </div>
             )}

@@ -47,18 +47,21 @@ const NEW_PROJECT_LIVE = '/app/project/new';
 const FOCUS_RING = 'rgb(216, 156, 252)';
 const DANGER = 'rgb(255, 170, 185)';
 
+// #946/#910 载体：#prj-new-name / #prj-new-repo 的 id 与 label 配对是语义
+// 资产（原样保留）；菜单 = role=menu（aria-label 仓库），行 = menuitemradio；
+// 认证钮/兜底链接/swap/提交 = role=button + 文案；错误行 = role=alert。
 async function openMenu(page: Page) {
   await page.goto(NEW_PROJECT);
   await page.locator('#prj-new-repo').click();
-  const menu = page.locator('.prj-new-repo-menu');
+  const menu = page.getByRole('menu', { name: '仓库' });
   await expect(menu).toBeVisible();
   return menu;
 }
 
 async function selectRow(page: Page, label: string) {
   const menu = await openMenu(page);
-  await menu.locator('.prj-new-repo-menu-row', { hasText: label }).click();
-  await expect(page.locator('.prj-new-repo-menu')).not.toBeVisible();
+  await menu.getByRole('menuitemradio', { name: label }).click();
+  await expect(page.getByRole('menu', { name: '仓库' })).not.toBeVisible();
 }
 
 /** #361: the github face is auth-gated — the owner/repo input sits behind
@@ -66,7 +69,7 @@ async function selectRow(page: Page, label: string) {
  *  link renders immediately; live stubs the connection GET to 500, the link
  *  appears once the status query settles). Returns the revealed input. */
 async function revealManualRepoInput(page: Page) {
-  const link = page.locator('.prj-new-gh-link');
+  const link = page.getByRole('button', { name: '手动输入 owner/repo' });
   await expect(link).toBeVisible();
   await link.click();
   return page.locator('#prj-new-repo');
@@ -124,12 +127,12 @@ async function fillLiveForm(page: Page, opts: { kind: 'local' | 'github'; value:
 /** Open the menu from either face: none-state = click the trigger button,
  *  input face (github/local) = click the swap button. */
 async function selectLiveRow(page: Page, label: string) {
-  const swap = page.locator('.prj-new-repo-swap');
+  const swap = page.getByRole('button', { name: '选择仓库' });
   if (await swap.isVisible()) await swap.click();
   else await page.locator('#prj-new-repo').click();
-  const menu = page.locator('.prj-new-repo-menu');
+  const menu = page.getByRole('menu', { name: '仓库' });
   await expect(menu).toBeVisible();
-  await menu.locator('.prj-new-repo-menu-row', { hasText: label }).click();
+  await menu.getByRole('menuitemradio', { name: label }).click();
   await expect(menu).not.toBeVisible();
 }
 
@@ -137,11 +140,11 @@ async function selectLiveRow(page: Page, label: string) {
 
 test('the 选择仓库 trigger lists exactly GitHub 仓库 and 本地文件夹', async ({ page }) => {
   const menu = await openMenu(page);
-  const rows = menu.locator('.prj-new-repo-menu-row');
+  const rows = menu.getByRole('menuitemradio');
   await expect(rows).toHaveCount(2);
   await expect(rows.first()).toContainText('GitHub 仓库');
   await expect(rows.nth(1)).toContainText('本地文件夹');
-  await expect(menu.locator('.prj-new-repo-menu-row', { hasText: '托管' })).toHaveCount(0);
+  await expect(menu.getByRole('menuitemradio', { name: '托管' })).toHaveCount(0);
   // untouched = no row selected (aria-checked ≡ indicator check rendering
   // mirrors the user's act; t-0070 menu radio item spelling)
   await expect(rows.first()).toHaveAttribute('aria-checked', 'false');
@@ -152,8 +155,11 @@ test('the GitHub row swaps the trigger for the auth face; manual link reveals th
   page,
 }) => {
   await selectRow(page, 'GitHub 仓库');
-  // #361：github 未认证选态 = 认证钮面；owner/repo input 收进手动兜底链接后
-  await expect(page.locator('.prj-new-gh-auth')).toBeVisible();
+  // #361：github 未认证选态 = 认证钮面；owner/repo input 收进手动兜底链接后。
+  // 载体说明：认证钮持 id=prj-new-repo（续作控件单 id 律），label「仓库」的
+  // htmlFor 关联使其可及名 = 仓库（内容文案不参与命名）——面判定走 id + 文案。
+  await expect(page.locator('#prj-new-repo')).toBeVisible();
+  await expect(page.locator('#prj-new-repo')).toHaveText('认证 GitHub');
   const input = await revealManualRepoInput(page);
   await expect(input).toHaveAttribute('placeholder', 'owner/repo');
   await input.fill('xiechimon/pacman');
@@ -166,27 +172,27 @@ test('the 本地文件夹 row swaps the trigger for the path input; swap reopens
   await expect(input).toHaveAttribute('aria-label', '本地文件夹');
   await input.fill('/Users/me/code/my-app');
   await expect(input).toHaveValue('/Users/me/code/my-app');
-  await page.locator('.prj-new-repo-swap').click();
-  const reopened = page.locator('.prj-new-repo-menu');
+  await page.getByRole('button', { name: '选择仓库' }).click();
+  const reopened = page.getByRole('menu', { name: '仓库' });
   await expect(reopened).toBeVisible();
   await expect(
-    reopened.locator('.prj-new-repo-menu-row', { hasText: '本地文件夹' }),
+    reopened.getByRole('menuitemradio', { name: '本地文件夹' }),
   ).toHaveAttribute('aria-checked', 'true');
 });
 
 test('switching forms drops the other face input', async ({ page }) => {
   await selectRow(page, 'GitHub 仓库');
   await revealManualRepoInput(page);
-  await page.locator('.prj-new-repo-swap').click();
-  await page.locator('.prj-new-repo-menu-row', { hasText: '本地文件夹' }).click();
-  await expect(page.locator('input[aria-label="GitHub 仓库"]')).toHaveCount(0);
-  await expect(page.locator('input[aria-label="本地文件夹"]')).toHaveCount(1);
+  await page.getByRole('button', { name: '选择仓库' }).click();
+  await page.getByRole('menuitemradio', { name: '本地文件夹' }).click();
+  await expect(page.getByRole('textbox', { name: 'GitHub 仓库' })).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: '本地文件夹' })).toHaveCount(1);
 });
 
 test('Escape closes the repo popover', async ({ page }) => {
   await openMenu(page);
   await page.keyboard.press('Escape');
-  await expect(page.locator('.prj-new-repo-menu')).not.toBeVisible();
+  await expect(page.getByRole('menu', { name: '仓库' })).not.toBeVisible();
 });
 
 // ——— name backfill (fixture) ———
@@ -252,7 +258,7 @@ test('untouched submit posts a repo-less body and navigates on 201', async ({ pa
   const bodies = await stubCreateProject(page, () => ({ json: okProject }));
   await page.goto(NEW_PROJECT_LIVE);
   await page.locator('#prj-new-name').fill('Plain');
-  const submit = page.locator('.prj-new-submit');
+  const submit = page.getByRole('button', { name: '创建项目' });
   await expect(submit).toBeEnabled();
   await submit.click();
   await expect(page).toHaveURL(/\/app\/project\/proj-1$/);
@@ -264,12 +270,12 @@ test('local and github submits carry kind + their wire field', async ({ page }) 
   const bodies = await stubCreateProject(page, () => ({ json: okProject }));
   await page.goto(NEW_PROJECT_LIVE);
   await fillLiveForm(page, { kind: 'local', value: '/tmp/my-repo' });
-  await page.locator('.prj-new-submit').click();
+  await page.getByRole('button', { name: '创建项目' }).click();
   await expect(page).toHaveURL(/\/app\/project\/proj-1$/);
 
   await page.goto(NEW_PROJECT_LIVE);
   await fillLiveForm(page, { kind: 'github', value: 'xiechimon/pacman' });
-  await page.locator('.prj-new-submit').click();
+  await page.getByRole('button', { name: '创建项目' }).click();
   await expect(page).toHaveURL(/\/app\/project\/proj-1$/);
 
   expect(bodies).toEqual([
@@ -282,7 +288,7 @@ test('empty local path / invalid github ref keep 创建项目 disabled', async (
   await stubBoot(page);
   await stubCreateProject(page, () => ({ json: okProject }));
   await page.goto(NEW_PROJECT_LIVE);
-  const submit = page.locator('.prj-new-submit');
+  const submit = page.getByRole('button', { name: '创建项目' });
   await page.locator('#prj-new-name').fill('Gated');
   await selectLiveRow(page, '本地文件夹');
   await expect(submit).toBeDisabled();
@@ -312,8 +318,8 @@ for (const [reason, copy] of [
     }));
     await page.goto(NEW_PROJECT_LIVE);
     await fillLiveForm(page, { kind: 'local', value: '/nope' });
-    await page.locator('.prj-new-submit').click();
-    const error = page.locator('.prj-new-error');
+    await page.getByRole('button', { name: '创建项目' }).click();
+    const error = page.getByRole('alert');
     await expect(error).toBeVisible();
     await expect(error).toHaveText(copy);
     expect(await error.evaluate((el) => getComputedStyle(el).color)).toBe(DANGER);

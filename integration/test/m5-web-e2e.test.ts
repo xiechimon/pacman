@@ -504,11 +504,12 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
 
   test('定时轮停 review：UI 建 once 定时 → tick 触发 → 直执行 → 停审核 + 由定时发起（r3 §9）', async () => {
     // UI 建定时：schedules 页 → 新建 → 单次 tab → 下一刻钟档（02 §9.2 分档
-    // 00/15/30/45）→ 保存。
+    // 00/15/30/45）→ 保存。#946/#910 载体：顶栏动作/弹层/频率 tab/保存走
+    // role+文案语义位（类名别名退役面）。
     await page.goto(`${server.url}/app/schedules`);
-    await page.locator('.page-new-action').click();
-    await pexpect(page.locator('.sched-form')).toBeVisible();
-    await page.locator('.sched-form-freq-tab', { hasText: '单次' }).click();
+    await page.getByRole('button', { name: '新建', exact: true }).click();
+    await pexpect(page.getByRole('dialog', { name: '新建定时' })).toBeVisible();
+    await page.getByRole('button', { name: '单次' }).click();
     const next = new Date(Date.now() + 60_000);
     let minute = Math.ceil(next.getMinutes() / 15) * 15;
     let hour = next.getHours();
@@ -530,9 +531,9 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     };
     await pickSelect('时', pad(hour));
     await pickSelect('分', pad(minute));
-    await page.locator('.sched-form-save').click();
-    // 卡落列表（invalidate 重取）。
-    await pexpect(page.locator('.sched-card')).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: '保存' }).click();
+    // 卡落列表（invalidate 重取）：卡面一级 text 载体（下次运行行）。
+    await pexpect(page.getByText('下次')).toBeVisible({ timeout: 15_000 });
     const schedules = (await api(server.url, 'GET', '/api/schedules')).body as {
       id: string;
       kind: string;

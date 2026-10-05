@@ -40,6 +40,12 @@ import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChartNetwork, ChevronDown, Grid2x2, PlusSmall } from '../icons/index.js';
+import {
+  SEG_GROUP_CLS,
+  SEG_TAB_ACTIVE_CLS,
+  SEG_TAB_CLS,
+  SEG_TAB_IDLE_CLS,
+} from '../pages/parts.js';
 import { SecondaryShell } from '../secondary/shell.js';
 import { AGENTS_HREF } from './agent-detail-page.js';
 import { CreateAgentDialog } from './create-agent-dialog.js';
@@ -64,7 +70,10 @@ const BASE_DELTA = 'active:not-aria-[haspopup]:translate-y-0 font-normal px-0 le
  *  secondary.css 不再有本页私写的盒模型与 hover 覆盖）。两个 chip 因此共享
  *  一条尺寸规格和一条缓动。别名类（#411 别名优先）原样留在元素上，作 e2e /
  *  语义定位用。 */
-const tabClass = (active: boolean) => `team-layout-tab${active ? ' team-layout-tab--active' : ''}`;
+const tabClass = (active: boolean) =>
+  `${SEG_TAB_CLS} team-layout-tab${
+    active ? ` team-layout-tab--active ${SEG_TAB_ACTIVE_CLS}` : ` ${SEG_TAB_IDLE_CLS}`
+  }`;
 
 function readStoredLayout(storage: Storage): TeamLayout {
   return storage.getItem(TEAM_LAYOUT_STORAGE_KEY) === 'chart' ? 'chart' : 'grid';
@@ -131,17 +140,18 @@ export function TeamPage() {
             <span className="team-members">{t('{n} 个成员', { n: team.members })}</span>
           </div>
         )}
-        {/* XMON-103：分段控制器正本 = components/ui/tabs 的 segmented 档
-            （pages.css `.page-tabs-group`/`.page-tab`）。受控 value/onValueChange
-            落回 switchLayout（照旧写 localStorage），role=tablist/tab 与
-            aria-selected 由 Base UI 承载，别名类 .team-layout-tabs /
-            .team-layout-tab 原样透出。 */}
+        {/* XMON-103：分段控制器正本 = components/ui/tabs 的 segmented 档；
+            #946 起皮肤 = pages/parts 的 SEG_* 配方（原 pages.css
+            `.page-tabs-group`/`.page-tab` 规则的 utility 等值）。受控
+            value/onValueChange 落回 switchLayout（照旧写 localStorage），
+            role=tablist/tab 与 aria-selected 由 Base UI 承载，别名类
+            .team-layout-tabs / .team-layout-tab 原样透出。 */}
         <Tabs
           value={layout}
           onValueChange={(value) => switchLayout(value as TeamLayout)}
           className="team-layout-tabs-root"
         >
-          <TabsList variant="segmented" className="team-layout-tabs">
+          <TabsList variant="segmented" className={`team-layout-tabs ${SEG_GROUP_CLS}`}>
             <TabsTrigger value="grid" className={tabClass(layout === 'grid')} aria-label="grid">
               <Grid2x2 />
             </TabsTrigger>

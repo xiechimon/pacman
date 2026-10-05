@@ -12,12 +12,13 @@ import { expect, test } from '@playwright/test';
 
 const SETTINGS = '/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings?scenario=r2-24c';
 
+// #946/#910 载体：分支 chip = 行内一级 text（main）；「非 button」断言走
+// role=button 名匹配（chip 无可及名亦不匹配 /main/）。
 test('settings: target branch is a static chip, not a button', async ({ page }) => {
   await page.goto(SETTINGS);
-  const chip = page.locator('span.prj-set-branch');
+  const chip = page.getByText('main', { exact: true });
   await expect(chip).toBeVisible();
-  await expect(chip).toHaveText(/main/);
   // chevron 保 r2 24c 捕获形状
   await expect(chip.locator('svg')).toHaveCount(1);
-  await expect(page.locator('button.prj-set-branch')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /main/ })).toHaveCount(0);
 });

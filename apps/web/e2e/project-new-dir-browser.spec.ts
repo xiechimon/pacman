@@ -105,32 +105,39 @@ async function stubFsList(page: Page): Promise<() => string[]> {
   return () => [...searches];
 }
 
+// #946/#910 载体：面板 = role=dialog（aria-label 浏览本地文件夹）；目录行
+// = role=listitem（行内名字钮精确名过滤）；面包屑 = nav（role=navigation）
+// 内的按钮精确名；提示行 = role=status；错误行 = role=alert。
+const DIALOG = { name: '浏览本地文件夹' };
+
 async function openLocalFace(page: Page) {
   await page.goto(NEW_PROJECT_LIVE);
   await page.locator('#prj-new-repo').click();
-  await page
-    .locator('.prj-new-repo-menu-row', { hasText: '本地文件夹' })
-    .click();
-  await expect(page.locator('.prj-new-repo-menu')).not.toBeVisible();
-  return page.locator('input[aria-label="本地文件夹"]');
+  await page.getByRole('menuitemradio', { name: '本地文件夹' }).click();
+  await expect(page.getByRole('menu', { name: '仓库' })).not.toBeVisible();
+  return page.getByRole('textbox', { name: '本地文件夹' });
 }
 
 /** 422 兜底入口：点浏览钮 → overlay 打开。 */
 async function openBrowser(page: Page) {
-  await page.locator('.prj-new-browse').click();
-  await expect(page.locator('.dir-browser')).toBeVisible();
+  await page.getByRole('button', { name: '浏览' }).click();
+  await expect(page.getByRole('dialog', DIALOG)).toBeVisible();
 }
 
 /** 行定位器（名字精确匹配）。 */
 function row(page: Page, name: string) {
   return page
-    .locator('.dir-browser-row')
-    .filter({ has: page.locator('.dir-browser-name', { hasText: new RegExp(`^${name}$`) }) });
+    .getByRole('dialog', DIALOG)
+    .getByRole('listitem')
+    .filter({ has: page.getByRole('button', { name, exact: true }) });
 }
 
 /** 面包屑段定位器（精确匹配）。 */
 function crumb(page: Page, label: string) {
-  return page.locator('.dir-browser-crumb').filter({ hasText: new RegExp(`^${label}$`) });
+  return page
+    .getByRole('dialog', DIALOG)
+    .getByRole('navigation')
+    .getByRole('button', { name: label, exact: true });
 }
 
 test('422 unavailable → overlay 自动打开；Escape/点外部关闭后提示行仍在、输入不动', async ({
@@ -142,18 +149,18 @@ test('422 unavailable → overlay 自动打开；Escape/点外部关闭后提示
   const input = await openLocalFace(page);
   await openBrowser(page);
   // 422 中性提示行与 overlay 并存（ADR 0003 D4/D6）。
-  await expect(page.locator('.prj-new-hint')).toContainText('请直接输入路径');
+  await expect(page.getByRole('status')).toContainText('请直接输入路径');
   // Escape 关（弹层家族法 #67/#127）：输入不动、提示行仍在（W11/W12）。
   await page.keyboard.press('Escape');
-  await expect(page.locator('.dir-browser')).not.toBeVisible();
+  await expect(page.getByRole('dialog', DIALOG)).not.toBeVisible();
   await expect(input).toHaveValue('');
-  await expect(page.locator('.prj-new-hint')).toBeVisible();
+  await expect(page.getByRole('status')).toBeVisible();
   // 重开后点外部（ClickCatcher）关：同样不带走输入与提示。
   await openBrowser(page);
   await page.mouse.click(10, 10);
-  await expect(page.locator('.dir-browser')).not.toBeVisible();
+  await expect(page.getByRole('dialog', DIALOG)).not.toBeVisible();
   await expect(input).toHaveValue('');
-  await expect(page.locator('.prj-new-hint')).toBeVisible();
+  await expect(page.getByRole('status')).toBeVisible();
 });
 
 test('缺省起点 = server HOME（首请无 dir 参）；git 标记；dotfiles 默认隐藏', async ({ page }) => {
@@ -166,8 +173,8 @@ test('缺省起点 = server HOME（首请无 dir 参）；git 标记；dotfiles 
   // 首请无 dir 参 = server 判 HOME 起点（web 无从知道 server HOME）。
   expect(searches()[0]).toBe('');
   // git 标记：demo 有、plain 无（提示不硬过滤——两者都在列）。
-  await expect(row(page, 'demo').locator('.dir-browser-git')).toHaveCount(1);
-  await expect(row(page, 'plain').locator('.dir-browser-git')).toHaveCount(0);
+  await expect(row(page, 'demo').getByRole('img', { name: 'git 仓库' })).toHaveCount(1);
+  await expect(row(page, 'plain').getByRole('img', { name: 'git 仓库' })).toHaveCount(0);
   // dotfiles 默认隐藏（仿 macOS ⌘⇧. 习惯）。
   await expect(row(page, '.config')).toHaveCount(0);
   // 面包屑 = HOME 路径段。
@@ -182,7 +189,7 @@ test('点行名下钻 + 面包屑跳任意层级（含根）', async ({ page }) 
   await openLocalFace(page);
   await openBrowser(page);
   // 下钻 demo：请求带 canonical dir，列其子目录，面包屑长出 demo 段。
-  await row(page, 'demo').locator('.dir-browser-name').click();
+  await row(page, 'demo').getByRole('button', { name: 'demo', exact: true }).click();
   await expect(row(page, 'src')).toBeVisible();
   expect(searches().at(-1)).toContain(`dir=${encodeURIComponent(`${HOME}/demo`)}`);
   await expect(crumb(page, 'demo')).toBeVisible();
@@ -200,12 +207,12 @@ test('单击「选择」→ 回填输入框 + basename 项目名联动 + 关 ove
   await stubFsList(page);
   const input = await openLocalFace(page);
   await openBrowser(page);
-  await row(page, 'demo').locator('.dir-browser-pick').click();
+  await row(page, 'demo').getByRole('button', { name: '选择' }).click();
   await expect(input).toHaveValue(`${HOME}/demo`);
   await expect(page.locator('#prj-new-name')).toHaveValue('demo');
-  await expect(page.locator('.dir-browser')).not.toBeVisible();
+  await expect(page.getByRole('dialog', DIALOG)).not.toBeVisible();
   // 选中即撤提示（编辑即撤律同族，W5）。
-  await expect(page.locator('.prj-new-hint')).toHaveCount(0);
+  await expect(page.getByRole('status')).toHaveCount(0);
 });
 
 test('dotfiles toggle：默认隐藏，toggle 后显示，aria-pressed 可断言', async ({ page }) => {
@@ -214,7 +221,7 @@ test('dotfiles toggle：默认隐藏，toggle 后显示，aria-pressed 可断言
   await stubFsList(page);
   await openLocalFace(page);
   await openBrowser(page);
-  const dots = page.locator('.dir-browser-dots');
+  const dots = page.getByRole('button', { name: '显示隐藏文件' });
   await expect(dots).toHaveAttribute('aria-pressed', 'false');
   await expect(row(page, '.config')).toHaveCount(0);
   await dots.click();
@@ -229,7 +236,7 @@ test('记住上次位置：reload 后重开 = lastDir 起点', async ({ page }) 
   await openLocalFace(page);
   await openBrowser(page);
   // 下钻 demo（列表成功即写 lastDir）。
-  await row(page, 'demo').locator('.dir-browser-name').click();
+  await row(page, 'demo').getByRole('button', { name: 'demo', exact: true }).click();
   await expect(row(page, 'src')).toBeVisible();
   // 整页重载模拟新会话：localStorage 是唯一记忆载体。
   await page.reload();
@@ -245,8 +252,8 @@ test('空目录 = 空态文案，非白屏', async ({ page }) => {
   await stubFsList(page);
   await openLocalFace(page);
   await openBrowser(page);
-  await row(page, 'empty').locator('.dir-browser-name').click();
-  await expect(page.locator('.dir-browser-empty')).toContainText('没有子目录');
+  await row(page, 'empty').getByRole('button', { name: 'empty', exact: true }).click();
+  await expect(page.getByText('没有子目录')).toBeVisible();
 });
 
 test('子目录全被 dotfiles 隐藏 = 空态不谎称「没有子目录」，toggle 后现身', async ({ page }) => {
@@ -255,13 +262,13 @@ test('子目录全被 dotfiles 隐藏 = 空态不谎称「没有子目录」，t
   await stubFsList(page);
   await openLocalFace(page);
   await openBrowser(page);
-  await row(page, 'dotonly').locator('.dir-browser-name').click();
+  await row(page, 'dotonly').getByRole('button', { name: 'dotonly', exact: true }).click();
   // 有子目录但全是 dotfiles：空态分译，不对「有但隐藏」谎称「没有」。
-  await expect(page.locator('.dir-browser-empty')).toContainText('子目录均已隐藏');
+  await expect(page.getByText('子目录均已隐藏')).toBeVisible();
   // toggle 显示隐藏文件 → .hidden 现身，空态撤。
-  await page.locator('.dir-browser-dots').click();
+  await page.getByRole('button', { name: '显示隐藏文件' }).click();
   await expect(row(page, '.hidden')).toBeVisible();
-  await expect(page.locator('.dir-browser-empty')).toHaveCount(0);
+  await expect(page.getByText('子目录均已隐藏')).toHaveCount(0);
 });
 
 test('超大目录 = 截断提示行', async ({ page }) => {
@@ -270,8 +277,8 @@ test('超大目录 = 截断提示行', async ({ page }) => {
   await stubFsList(page);
   await openLocalFace(page);
   await openBrowser(page);
-  await row(page, 'big').locator('.dir-browser-name').click();
-  await expect(page.locator('.dir-browser-trunc')).toContainText('只列出前');
+  await row(page, 'big').getByRole('button', { name: 'big', exact: true }).click();
+  await expect(page.getByText('只列出前')).toBeVisible();
 });
 
 test('列表 500 → overlay 内错误行，overlay 不关，面包屑仍可导航', async ({ page }) => {
@@ -280,12 +287,12 @@ test('列表 500 → overlay 内错误行，overlay 不关，面包屑仍可导�
   await stubFsList(page);
   await openLocalFace(page);
   await openBrowser(page);
-  await row(page, 'boom').locator('.dir-browser-name').click();
-  const error = page.locator('.dir-browser-error');
+  await row(page, 'boom').getByRole('button', { name: 'boom', exact: true }).click();
+  const error = page.getByRole('alert');
   await expect(error).toBeVisible();
   await expect(error).toContainText('boom');
   // overlay 不关，面包屑仍在（上一好数据承 W3）——点面包屑即可离开错误面。
-  await expect(page.locator('.dir-browser')).toBeVisible();
+  await expect(page.getByRole('dialog', DIALOG)).toBeVisible();
   await expect(crumb(page, 'e2e')).toBeVisible();
   await crumb(page, 'e2e').click();
   await expect(row(page, 'demo')).toBeVisible();
@@ -306,7 +313,7 @@ test('lastDir 失效 400 → 自动回落缺省 HOME，不死端', async ({ page
   await expect(row(page, 'demo')).toBeVisible();
   // 回落后的请求不带 dir 参（server HOME 语义）。
   expect(searches().at(-1)).toBe('');
-  await expect(page.locator('.dir-browser-error')).toHaveCount(0);
+  await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
 test('409 busy → 不开 overlay，仅提示行（#440 行为不动面）', async ({ page }) => {
@@ -314,9 +321,9 @@ test('409 busy → 不开 overlay，仅提示行（#440 行为不动面）', asy
   await stubPick(page, 409, 'busy');
   await stubFsList(page);
   await openLocalFace(page);
-  await page.locator('.prj-new-browse').click();
-  await expect(page.locator('.prj-new-hint')).toContainText('已有一个选取对话框在进行中');
-  await expect(page.locator('.dir-browser')).toHaveCount(0);
+  await page.getByRole('button', { name: '浏览' }).click();
+  await expect(page.getByRole('status')).toContainText('已有一个选取对话框在进行中');
+  await expect(page.getByRole('dialog', DIALOG)).toHaveCount(0);
 });
 
 test('pick 未分类错（500 无 reason）→ 不开 overlay，原文直透提示行', async ({ page }) => {
@@ -328,7 +335,7 @@ test('pick 未分类错（500 无 reason）→ 不开 overlay，原文直透提�
   });
   await stubFsList(page);
   await openLocalFace(page);
-  await page.locator('.prj-new-browse').click();
-  await expect(page.locator('.prj-new-hint')).toContainText('pick exploded');
-  await expect(page.locator('.dir-browser')).toHaveCount(0);
+  await page.getByRole('button', { name: '浏览' }).click();
+  await expect(page.getByRole('status')).toContainText('pick exploded');
+  await expect(page.getByRole('dialog', DIALOG)).toHaveCount(0);
 });
