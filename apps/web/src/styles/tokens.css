@@ -3,8 +3,8 @@
    1) 并流/归并的 generic 色名在这里落别名（var 直引正本名），消费方
       1004 处引用零改动；别名按双主题各声明一次（.light 挂在根元素上，
       与 :root 同元素竞争，源序后者胜——镜像让 .light 保持完整语义面）；
-   2) 非颜色 token（motion / 字体栈 / 阴影 / 圆角 / z 阶梯）仍由本文件持有，
-      收编或另立非颜色层属另一票范围。
+   2) 非颜色 token（motion / 字体栈 / 阴影 / 圆角 / 密度与标签几何 / z 阶梯）
+      仍由本文件持有（几何定版值取 spec/22 §2，#915 翻值）。
    逐名归属与取数见 docs/research/412-token-mapping.md。
    主题机制：dark = :root 默认，light = 根元素挂 .light（#106 反相规约）。
    字体栈：--font-inter 来自 859B font stylesheet（fonts.css, r1 §4.1），
@@ -124,7 +124,7 @@
 
   /* unified border language (#139): the single-source edge recipe for
      elevated surfaces — 1px hairline ring in the --border-default scale,
-     12px radius, popover-tier soft shadow. The account menu's approved face
+     14px radius, popover-tier soft shadow. The account menu's approved face
      is the canon; the board card family adopts it in place of #123's
      low-alpha ring. The ring is an inset box-shadow spread, not a CSS
      border: at fractional page zoom (110%/125%/150%) a real 1px border lands
@@ -132,17 +132,20 @@
      edge vanished at 110%), while a shadow-spread ring stays a uniform
      hairline at every zoom */
   --edge-ring: inset 0 0 0 1px var(--border-default);
-  --edge-radius: 12px;
-  --radius-popover: 10px;
-  --edge-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
+  /* 几何定版（spec/22 §2.1，#915）：抬升面发丝环半径 14px 与 --radius 基值
+     同档，popover 族 12px */
+  --edge-radius: 14px;
+  --radius-popover: 12px;
+  /* 投影四档定版（spec/22 §2.4，C · 纸兰分层软投影语言）：card 静止 →
+     edge 抬升 → dialog 模态逐档加深加宽；暗侧值取 c.css 持值 */
+  --edge-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
   /* card-tier resting shadow (#161): the small-card family (todo / notify
-     banner / column container) sits one elevation below the popover tier —
-     tight 4px blur / 2px y-offset, ~half the opacity. The popover keeps
-     --edge-shadow because the account menu opens over content and needs
-     visible separation; cards on the canvas only need to look grounded,
-     not floating (claude.ai card-tier reference). Both themes follow the
-     same shape; opacity differs because the canvas itself differs */
-  --card-shadow: 0 2px 4px rgb(0 0 0 / 0.2);
+     banner / column container) sits one elevation below the popover tier.
+     The popover keeps --edge-shadow because the account menu opens over
+     content and needs visible separation; cards on the canvas only need to
+     look grounded, not floating. Both themes follow the same shape;
+     opacity differs because the canvas itself differs */
+  --card-shadow: 0 2px 6px rgb(0 0 0 / 0.24);
   /* drag-tier shadow (#616): the lifted drag clone floats on the reference
      product's live recipe (todos.dev 2026-10-02 capture: inline
      `box-shadow: rgba(0,0,0,0.18) 0 8px 24px`, one value in BOTH themes) —
@@ -151,26 +154,21 @@
      the semantic-token mirror complete */
   --drag-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
   /* drop-target tint (#616): the reference tints EVERY valid drop column
-     while a gesture is in flight (indigo-400 ring + indigo-500 at 5%) and
-     the hovered one a step hotter (10%) — tailwind indigo palette values,
-     captured live; invalid targets and the source column stay neutral.
-     #788 hue: spot dark #cba6f7 in place of indigo-400/500, same 5%/10% steps */
-  --drop-tint-border: rgb(203 166 247);
-  --drop-tint-base: rgb(203 166 247 / 0.05);
-  --drop-tint-hover: rgb(203 166 247 / 0.1);
+     while a gesture is in flight (ring + 5% fill) and the hovered one a step
+     hotter (10%); invalid targets and the source column stay neutral.
+     #915 hue: spot dark #d89cfc in place of the old spot, same 5%/10% steps */
+  --drop-tint-border: rgb(216 156 252);
+  --drop-tint-base: rgb(216 156 252 / 0.05);
+  --drop-tint-hover: rgb(216 156 252 / 0.1);
   /* alias of the #139 edge shadow tier — every elevated surface (fab,
      popovers, panels) draws one shadow from the single source */
   --fab-shadow: var(--edge-shadow);
-  /* #854 盘投影（overlay 盘三件套之一）: 手搓 overlay 盘（sheet/菜单/popup）
-     不再吃 --fab-shadow 的柔和档，改吃 Base UI 官方 menu hero 的硬偏移档
-     （light 侧 `0.25rem 0.25rem 0 rgb(0 0 0 / 12%)` 逐字取用，0 blur / 无
-     负 spread），零模糊的实体投影与直角 + 1px 实线成套。
-     暗侧按 spec §2.7「暗：无投影，线框承重」= Base UI hero 自己的暗色分支，
-     投影归 none，1px 墨线独承（用户 2026-10-05 裁定）。 */
+  /* 盘投影（overlay 盘三件套之一，spec/22 §2.4/§2.6-7）: 手搓 overlay 盘
+     （sheet/菜单/popup）暗侧无投影、线框承重（1px 墨线独承，用户 2026-10-05
+     裁定不变）；亮侧走定版软 blur 档（C · 纸兰分层软投影语言）。 */
   --plate-shadow: none;
-  /* overlay batch A (#66): dialog shadow probed off r7 04 (stronger than
-     --fab-shadow over the backdrop) */
-  --dialog-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
+  /* overlay batch A (#66): dialog 模态投影，定版最深档（spec/22 §2.4） */
+  --dialog-shadow: 0 12px 32px rgb(0 0 0 / 0.45);
   /* chief 面（r5 100–104, #72）drawer 投影，r5 100 edge gradient 采样 */
   --chief-shadow: 0 4px 24px rgb(0 0 0 / 0.35);
   /* 看板列宽下限（#692，唯一宽度 token）：参考站 todos.dev 2026-10-03
@@ -179,6 +177,20 @@
      几何与本 token 无关（1fr 段主导）；⌘J 停靠让位或窄窗时下限接管，
      溢出策略见 board.css 的 .board-scroller 单源规则。 */
   --board-col-min: 280px;
+  /* 密度与标签几何（spec/22 §2.2/§2.3/§4.4 定版新增，#915 落点 = 本文件；
+     主题恒定，消费随各域批次接线）：卡片/面板内边距、页面级留白、列表行高
+     （40px = 32px 控件 + 4px×2 竖向 padding，与 shadcn 控件默认高自洽）；
+     标签字号/字距/无大写变换（有意弃 all-caps）、标题字重/字距（Inter
+     可变字体） */
+  --pad-card: 16px;
+  --pad-page: 28px;
+  --row-h: 40px;
+  --font-label: var(--font-sans);
+  --label-size: 12px;
+  --label-transform: none;
+  --label-spacing: 0.01em;
+  --title-weight: 590;
+  --title-tracking: -0.02em;
   color-scheme: dark light;
 }
 
@@ -194,28 +206,27 @@
 
   /* unified border language (#139), light side: the edge shadow tier dimmed
      to the light surface; the ring rides --border-default's light value via
-     the :root alias */
-  --radius-popover: 10px;
-  --edge-shadow: 0 5px 14px rgb(28 25 23 / 0.14);
-  /* #854 盘投影 light：硬偏移档只落亮侧（Base UI hero 的亮色分支），暗侧
-     是 none —— 见 :root 注与 spec §2.7 */
-  --plate-shadow: 4px 4px 0 rgb(0 0 0 / 0.12);
-  /* card-tier resting shadow (#161), light side: 2px y-offset / 4px blur /
-     7% opacity over the warm-ink palette. Same shape as the dark side —
-     only the opacity drops because the light surface itself already has
-     less visual depth, so the shadow needs less to do its job */
-  --card-shadow: 0 2px 4px rgb(28 25 23 / 0.07);
+     the :root alias. 投影四档定版 spec/22 §2.4 */
+  --radius-popover: 12px;
+  --edge-shadow: 0 8px 24px rgb(28 25 23 / 0.14);
+  /* 盘投影 light：定版软 blur 档（暗侧 none，线框承重——见 :root 注与
+     spec/22 §2.6-7） */
+  --plate-shadow: 0 6px 16px rgb(0 0 0 / 0.12);
+  /* card-tier resting shadow (#161), light side: 2px y-offset / 8px blur /
+     8% opacity over the warm-paper palette. Same shape family as the dark
+     side — only the opacity drops because the light surface itself already
+     has less visual depth, so the shadow needs less to do its job */
+  --card-shadow: 0 2px 8px rgb(28 25 23 / 0.08);
   /* drag-tier shadow (#616) + drop-target tint: hue follows the dark side
-     (#788 spot), mirrored explicitly so .light stays the full
+     (#915 spot), mirrored explicitly so .light stays the full
      semantic-token mirror */
   --drag-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
-  --drop-tint-border: rgb(136 57 239);
-  --drop-tint-base: rgb(136 57 239 / 0.05);
-  --drop-tint-hover: rgb(136 57 239 / 0.1);
-  /* overlay batch A (#66), light values probed off r7 04/25; the dialog
-     shadow is theme-invariant (probed light, r8 79 dark shows the same)
+  --drop-tint-border: rgb(127 45 167);
+  --drop-tint-base: rgb(127 45 167 / 0.05);
+  --drop-tint-hover: rgb(127 45 167 / 0.1);
+  /* overlay batch A (#66), light: dialog 模态投影定版档（spec/22 §2.4）
      — mirrored explicitly so .light stays the full semantic-token mirror */
-  --dialog-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
+  --dialog-shadow: 0 12px 32px rgb(28 25 23 / 0.18);
   /* chief surfaces (r5 100–104, #72): shadow from the r5 100 edge
      gradient */
   --chief-shadow: 0 4px 24px rgb(28 25 23 / 0.16);

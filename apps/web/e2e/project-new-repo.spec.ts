@@ -42,10 +42,10 @@ import { expect, type Page, test } from '@playwright/test';
 const NEW_PROJECT = '/app/project/new?scenario=01';
 const NEW_PROJECT_LIVE = '/app/project/new';
 
-/** shadcn.css 值正本: --focus-ring 暗 #cba6f7 / --destructive 暗 #e05a5a
+/** shadcn.css 值正本: --focus-ring 暗 #d89cfc / --destructive 暗 #ffaab9
  *  （--danger 是它在 tokens.css 的并流别名）. */
-const FOCUS_RING = 'rgb(203, 166, 247)';
-const DANGER = 'rgb(224, 90, 90)';
+const FOCUS_RING = 'rgb(216, 156, 252)';
+const DANGER = 'rgb(255, 170, 185)';
 
 async function openMenu(page: Page) {
   await page.goto(NEW_PROJECT);

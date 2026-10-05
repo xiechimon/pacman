@@ -197,8 +197,8 @@ for (const theme of ['light', 'dark'] as const) {
     });
     expect(ring.style).toBe('solid');
     expect(ring.w).toBe('2px');
-    // the codebase ring recipe rides --focus-ring (dark #cba6f7 / light #8839ef)
-    expect(ring.color).toBe(theme === 'dark' ? 'rgb(203, 166, 247)' : 'rgb(136, 57, 239)');
+    // the codebase ring recipe rides --focus-ring (dark #d89cfc / light #7f2da7)
+    expect(ring.color).toBe(theme === 'dark' ? 'rgb(216, 156, 252)' : 'rgb(127, 45, 167)');
   });
 }
 
@@ -252,9 +252,10 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/app?scenario=01');
     const bg = await resolveToken(page, '--destructive');
     const fg = await resolveToken(page, '--destructive-foreground');
-    // H 红系两值 + 暗侧深字翻转（§2.1：暗侧白字只有 3.63:1，必须翻深）
-    expect(bg).toBe(theme === 'dark' ? 'rgb(224, 90, 90)' : 'rgb(199, 62, 62)');
-    expect(fg).toBe(theme === 'dark' ? 'rgb(23, 23, 26)' : 'rgb(255, 255, 255)');
+    // 定版红系两值（spec/22 §1.7/§1.8）：暗侧高明度粉底 + 深字（7.52:1），
+    // 亮侧深玫红底 + 白字（7.25:1）
+    expect(bg).toBe(theme === 'dark' ? 'rgb(255, 170, 185)' : 'rgb(157, 44, 76)');
+    expect(fg).toBe(theme === 'dark' ? 'rgb(71, 36, 43)' : 'rgb(255, 255, 255)');
     expect(await contrastOf(page, fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
 
@@ -263,8 +264,8 @@ for (const theme of ['light', 'dark'] as const) {
     await page.goto('/app?scenario=01');
     const bg = await resolveToken(page, '--card-button');
     const fg = await resolveToken(page, '--text-on-accent');
-    expect(bg).toBe(theme === 'dark' ? 'rgb(203, 166, 247)' : 'rgb(136, 57, 239)');
-    expect(fg).toBe(theme === 'dark' ? 'rgb(23, 23, 26)' : 'rgb(255, 255, 255)');
+    expect(bg).toBe(theme === 'dark' ? 'rgb(216, 156, 252)' : 'rgb(127, 45, 167)');
+    expect(fg).toBe(theme === 'dark' ? 'rgb(30, 27, 22)' : 'rgb(255, 255, 255)');
     expect(await contrastOf(page, fg, bg)).toBeGreaterThanOrEqual(4.5);
   });
 
