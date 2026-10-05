@@ -49,6 +49,12 @@ import {
 } from '../db/schema.js';
 import { HttpError } from '../lib/errors.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
+import {
+  PIN_OFFLINE_GRACE_MS,
+  pinOfflineReason,
+  stepActivityAt,
+  WORKER_PIN_OFFLINE_HINT,
+} from './dispatch-timeouts.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { hasRepoBinding, readBuildChanges } from './git.js';
 import type { MachineWakeHub } from './machines.js';
@@ -748,18 +754,24 @@ export function applyStepFailure(
 export const BUILD_ABANDONED_STEP_MS = 120_000;
 
 /** worker 步（plan/build/merge/review）失联 sweep（scheduler tick 驱动）：
- * 失联 claimed 步**释放回 pending**供他机认领续跑（#862 T1 tracer），只有
- * 「pending 且团队零在线机器」仍按失败收尾（等谁来跑都不确定，归 T3 定超时
- * 策略；本票不动）：
+ * 失联 claimed 步**释放回 pending**供他机认领续跑（#862 T1 tracer）；pending
+ * 步在「没有机器能接它」持续超时后按失败收尾（①/#706 与 ④/#864 T3 两条）：
  * ① pending 无人认领且团队零在线机器（daemon 全灭/未注册）→ 失败收尾；
  * ② claimed 心跳停更超阈值且机器离线/失踪（daemon 步中途死亡）→ 释放；
  * ③ claimed 自领取后零心跳进展超阈值（B-C7 claim 移交竞态：server 标 claimed
  *    但机器侧零执行——claim 把 lastHeartbeatAt 置为 claimedAt，故「零进展」
- *    即 heartbeat 从未推进；机器在线也命中）→ 释放。
- * 不动：心跳新鲜的 claimed 步（心跳年龄是活判据，不是墙）；团队有在线机器
- * 的 pending 步（合法排队，含 #682 钉选离线机器的等待语义）；在线机器上曾
- * 有心跳后停更的 claimed 步（执行/推送通道部分存活的歧义态，等 presence 过
- * 期走 ②）。chief 步不在本面（chief.ts 扫尾）。
+ *    即 heartbeat 从未推进；机器在线也命中）→ 释放；
+ * ④ #864 T3：pending 且**钉选的机器不在线**（被删 = 同离线）× 步最后活动已过
+ *    PIN_OFFLINE_GRACE_MS → 失败收尾（不自动改派：pin 是确定性约束，静默换机
+ *    会违背它；文案点名机器与出口）。判据先于 ①——两条同时成立时点名钉选机
+ *    的那句更能指向动作。
+ * 不动：心跳新鲜的 claimed 步（心跳年龄是活判据，不是墙）；团队有在线机器且
+ * 钉选机在线的 pending 步（合法排队，含 #682 钉选在线机器的等待语义——步等
+ * 它认领，别机不抢）；在线机器上曾有心跳后停更的 claimed 步（执行/推送通道
+ * 部分存活的歧义态，等 presence 过期走 ②）。chief 步不在本面（chief.ts 扫尾）。
+ * 已知缝（不在本票）：钉选机**在线**但 enabledRuntimes 闸挡住该步的 runtime →
+ * 仍是无期 pending（闸在 claim 路径 machines.ts tryClaim，判据要重算 agent 的
+ * provider，不在本 sweep 的直读面）。
  * 释放语义：status → pending + machineId 清空（认领原子位复位，他机/同机可
  * 重领）；pinnedMachineId 保留（钉选过滤重算，钉选机才能接）；claimedAt/
  * lastHeartbeatAt 保留作死亡时刻审计（重领即覆写）；createdAt 不动（FIFO
@@ -787,18 +799,36 @@ export function sweepAbandonedBuildSteps(deps: BuildDeps, now: number = nowMs())
     if (!todoRow) continue;
     let reason: string | null = null;
     if (row.status === 'pending') {
-      const online = deps.db
-        .select({ id: machine.id })
-        .from(machine)
-        .where(and(eq(machine.teamId, todoRow.teamId), eq(machine.online, true)))
-        .all();
-      if (online.length === 0 && now - row.createdAt > BUILD_ABANDONED_STEP_MS) {
-        reason = `本轮无人认领：团队当前没有在线机器（等待 ${Math.round(BUILD_ABANDONED_STEP_MS / 1000)} 秒超时）。请确认执行机 daemon 在线后重跑。`;
+      // ④ #864 T3：钉选机器离线超时。先于「团队零在线机器」判——同一条步上
+      // 两条判据都成立时，点名钉选机的文案更具体、出口更明确。判据 = 钉选机
+      // 不在线（行缺失 = 已移除，同离线语义）× 步最后活动已过宽限（锚在心跳/
+      // 领取而非入队，给 T1 释放后的机器回归留窗口）。
+      const pinnedId = buildRow.pinnedMachineId;
+      const pinnedRow =
+        pinnedId === null
+          ? undefined
+          : deps.db.select().from(machine).where(eq(machine.id, pinnedId)).get();
+      if (
+        pinnedId !== null &&
+        (pinnedRow === undefined || !pinnedRow.online) &&
+        now - stepActivityAt(row) > PIN_OFFLINE_GRACE_MS
+      ) {
+        reason = pinOfflineReason(pinnedRow?.name ?? null, WORKER_PIN_OFFLINE_HINT);
+      }
+      if (reason === null) {
+        const online = deps.db
+          .select({ id: machine.id })
+          .from(machine)
+          .where(and(eq(machine.teamId, todoRow.teamId), eq(machine.online, true)))
+          .all();
+        if (online.length === 0 && now - row.createdAt > BUILD_ABANDONED_STEP_MS) {
+          reason = `本轮无人认领：团队当前没有在线机器（等待 ${Math.round(BUILD_ABANDONED_STEP_MS / 1000)} 秒超时）。请确认执行机 daemon 在线后重跑。`;
+        }
       }
     } else {
       // claimed：claim 置位 heartbeat（machines claim 面），故 null/陈旧一律
       // 可判——有效心跳取三级回落（heartbeat → 领取时刻 → 入队时刻）。
-      const effectiveBeat = row.lastHeartbeatAt ?? row.claimedAt ?? row.createdAt;
+      const effectiveBeat = stepActivityAt(row);
       if (now - effectiveBeat > BUILD_ABANDONED_STEP_MS) {
         const machineRow = row.machineId
           ? deps.db.select().from(machine).where(eq(machine.id, row.machineId)).get()

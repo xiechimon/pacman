@@ -55,6 +55,12 @@ import {
 import { sha256Hex } from '../lib/crypto.js';
 import { HttpError } from '../lib/errors.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
+import {
+  CHIEF_PIN_OFFLINE_HINT,
+  PIN_OFFLINE_GRACE_MS,
+  pinOfflineReason,
+  stepActivityAt,
+} from './dispatch-timeouts.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import type { MachineWakeHub } from './machines.js';
 import { notifyChiefMessage } from './notifications.js';
@@ -805,13 +811,16 @@ export function notifyChiefTurn(deps: ChiefDeps, threadId: string): void {
  * ~30s、daemon 冷启秒级）；机器在线时不触发——在线排队是合法语义。 */
 export const CHIEF_ABANDONED_STEP_MS = 120_000;
 
-/** chief 步失联扫尾（scheduler tick 驱动，#684）：把两类「永不失败也就永不
+/** chief 步失联扫尾（scheduler tick 驱动，#684）：把三类「永不失败也就永不
  * 可见」的永挂收进 #631 失败闭环——
  * ① pending 无人认领且团队零在线机器（daemon 死亡/未注册：步永不 claim，
  *    #631 的 done(failed) 路径永不触发，线程 activeRun 永挂——用户实测
  *    2026-10-03「零回复零 toast」即此形）；
  * ② claimed 心跳停更且机器离线（daemon 步中途死亡：lastHeartbeatAt 此前
- *    只写不读，步与 activeRun 双挂）。
+ *    只写不读，步与 activeRun 双挂）；
+ * ③ #864 T3：pending 且**线程钉选的机器不在线**（#682 chief 亲和的镜像面：
+ *    钉了离线的机器 = 别机领不走，回合永挂）× 步最后活动已过 PIN_OFFLINE_
+ *    GRACE_MS → 失败收尾（与 worker 步同政策同阈值，见 dispatch-timeouts.ts）。
  * 失败收尾 = finishStep chief 分支同语义：step 标 failed + finishChiefTurn
  * 清 activeRun + chief_turn_error system 行（会话流 message 事件即时推送 →
  * web toast + 失败行，#631 链原样消费）。机器在线时一律不动（busy 排队合
@@ -832,13 +841,30 @@ export function failAbandonedChiefSteps(
     if (!thread) continue; // 线程已删：无呈现面
     let reason: string | null = null;
     if (row.status === 'pending') {
-      const online = deps.db
-        .select({ id: machine.id })
-        .from(machine)
-        .where(and(eq(machine.teamId, thread.teamId), eq(machine.online, true)))
-        .all();
-      if (online.length === 0 && now - row.createdAt > CHIEF_ABANDONED_STEP_MS) {
-        reason = `本轮无人认领：团队当前没有在线机器（等待 ${Math.round(CHIEF_ABANDONED_STEP_MS / 1000)} 秒超时）。请确认执行机 daemon 在线后重发。`;
+      // #864 T3：钉选机器离线超时（worker 步同政策，见 dispatch-timeouts.ts）。
+      // 先于「团队零在线机器」判——chief 线程被钉到离线机器时，别机领不走
+      // （claimChiefCandidates 的亲和过滤），回合与 worker 步一样会永挂。
+      const pinnedId = thread.pinnedMachineId;
+      const pinnedRow =
+        pinnedId === null
+          ? undefined
+          : deps.db.select().from(machine).where(eq(machine.id, pinnedId)).get();
+      if (
+        pinnedId !== null &&
+        (pinnedRow === undefined || !pinnedRow.online) &&
+        now - stepActivityAt(row) > PIN_OFFLINE_GRACE_MS
+      ) {
+        reason = pinOfflineReason(pinnedRow?.name ?? null, CHIEF_PIN_OFFLINE_HINT);
+      }
+      if (reason === null) {
+        const online = deps.db
+          .select({ id: machine.id })
+          .from(machine)
+          .where(and(eq(machine.teamId, thread.teamId), eq(machine.online, true)))
+          .all();
+        if (online.length === 0 && now - row.createdAt > CHIEF_ABANDONED_STEP_MS) {
+          reason = `本轮无人认领：团队当前没有在线机器（等待 ${Math.round(CHIEF_ABANDONED_STEP_MS / 1000)} 秒超时）。请确认执行机 daemon 在线后重发。`;
+        }
       }
     } else {
       // claimed：心跳停更 + 机器离线双条件——仅推送通道瞬断而心跳仍在（步

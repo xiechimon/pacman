@@ -1991,6 +1991,19 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   color: var(--text-secondary);
 }
 
+/* #864 T3：钉选机器离线时的显式出口行（只在离线时出现，见 overlays.tsx
+   RerunDialog 的 pin 注释）。居中跟 rerun-info 同族：一行说明 + 一颗次钮。 */
+.rerun-pin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 8px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+}
+
 .overlay-actions {
   display: flex;
   justify-content: flex-end;
