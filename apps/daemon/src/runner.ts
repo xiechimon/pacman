@@ -44,6 +44,7 @@ import {
   transcriptPromptRowId,
   transcriptResumeNoteRowId,
 } from '@pacman/shared';
+import { createActivityTracker } from './activity.js';
 import { SessionNotResumableError } from './backend/errors.js';
 import { notInConfigLine, resolveMcpEndpoints } from './backend/mcp-config.js';
 import {
@@ -317,6 +318,27 @@ export async function runStep(
   const convId = claimed.conversationId;
   const running = opts.running ?? 1;
   logger.raw(`step ${stepId} for conv ${convId} (${running} running)`);
+
+  // 步活动相位上报（#905）：黑盒窗口（工作区准备 / 会话开启 / 模型思考 /
+  // 工具执行）里 daemon 侧本就有事件到达，此前往 UI 一个都不转发。tracker
+  // 无定时器（重发由真实流事件驱动，静默期零上报 = 「卡住」诚实可辨，
+  // #471）；fire-and-forget——旧 server 对第四形 400 只警告一次，步不受影响。
+  let activityRelayWarned = false;
+  const activity = createActivityTracker({
+    send: (report) => {
+      client.activity?.(stepId, report)?.catch((err: unknown) => {
+        if (activityRelayWarned) return;
+        activityRelayWarned = true;
+        logger.step(
+          `activity relay failed (suppressed until next step): ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+    },
+    ...(deps.now !== undefined ? { now: deps.now } : {}),
+  });
+  activity.setPhase('preparing');
 
   // chief 步（回合 = 机器 step，r5 §3.1）：任务文本 = server 合成的 instruction
   // （用户消息 / wake 事实），无 todo 语境；remoteTools relay + systemPrompt 走
@@ -785,6 +807,7 @@ export async function runStep(
       retryStorm = false;
       usage = [];
     }
+    activity.setPhase('starting');
     try {
       handle = await openSession();
     } catch (err) {
@@ -807,10 +830,14 @@ export async function runStep(
         armWatchdog(streamTimeouts.idle, 'idle');
         // body 预算与 idle 同拍按事件重置（#699 失败方式 1 的核心）。
         armBodyTimeout();
+        // 活动相位（#905）：任何流事件都是 liveness——与看门狗同点记账，
+        // 驱动「最近信号」的节流重发；相位切换在各 case 里。
+        activity.noteEvent();
         switch (ev.type) {
           case 'text_delta': {
             sawProgress = true;
             zeroProgressRetries = 0;
+            activity.setPhase('responding');
             deltaBuf += ev.text;
             if (deltaTimer === null) {
               deltaTimer = setTimeout(flushDeltas, TRANSCRIPT_DELTA_FLUSH_MS);
@@ -818,11 +845,27 @@ export async function runStep(
             }
             break;
           }
+          case 'thinking_delta':
+          case 'thinking': {
+            // #905：思考期是黑盒窗口的主段（baseline.md §B）——内容不上 wire
+            // （安全判定同文），但「正在思考」这个事实是这段时间唯一的活动
+            // 证据，转发相位。
+            activity.setPhase('thinking');
+            break;
+          }
           case 'toolcall_end': {
             sawProgress = true;
             zeroProgressRetries = 0;
             if (ev.call.name && CHANGE_TOOLS.has(ev.call.name.toLowerCase())) {
               sawChangeTool = true;
+            }
+            // #905 两段发射（pi/claude-code 同律）：无 result = 调用块流完、
+            // 工具开始执行（此前这半被丢，工具执行期 UI 静默）；带 result =
+            // 执行终态。相位面据此显示「正在执行工具：<名>」。
+            if (ev.call.result === undefined) {
+              activity.toolStarted(ev.call.id, ev.call.name || 'tool');
+            } else {
+              activity.toolEnded(ev.call.id);
             }
             transcript.upsert({
               id: ev.call.id,
@@ -886,9 +929,18 @@ export async function runStep(
               void handle.stop();
             }
             logger.step(`auto_retry_start attempt=${ev.attempt}`);
+            // #905「为什么久」：重试轮是分钟级静默的常见根因，此前只进日志。
+            activity.setPhase('retrying', { attempt: ev.attempt });
+            break;
+          case 'auto_retry_end':
+            activity.setPhase('awaiting_model');
             break;
           case 'compaction_start':
             logger.step('compaction_start');
+            activity.setPhase('compacting');
+            break;
+          case 'compaction_end':
+            activity.setPhase('awaiting_model');
             break;
           case 'done':
             sawDone = true;

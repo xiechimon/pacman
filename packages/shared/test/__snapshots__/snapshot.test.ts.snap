@@ -1366,6 +1366,50 @@ exports[`AgentBackend 缝 + 机器面 wire schema 快照（01 §5 / 02 §5 canon
       ],
       "type": "object",
     },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "activity": {
+          "additionalProperties": false,
+          "properties": {
+            "attempt": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer",
+            },
+            "phase": {
+              "enum": [
+                "preparing",
+                "starting",
+                "thinking",
+                "responding",
+                "tool",
+                "retrying",
+                "compacting",
+                "awaiting_model",
+              ],
+              "type": "string",
+            },
+            "tool": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "phase",
+          ],
+          "type": "object",
+        },
+        "kind": {
+          "const": "activity",
+          "type": "string",
+        },
+      },
+      "required": [
+        "kind",
+        "activity",
+      ],
+      "type": "object",
+    },
   ],
 }
 `;
@@ -2316,6 +2360,60 @@ exports[`body/封套 schema 快照 > conversationStreamEvent > conversationStrea
       "required": [
         "type",
         "step",
+      ],
+      "type": "object",
+    },
+    {
+      "additionalProperties": false,
+      "properties": {
+        "activity": {
+          "additionalProperties": false,
+          "properties": {
+            "at": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer",
+            },
+            "attempt": {
+              "maximum": 9007199254740991,
+              "minimum": -9007199254740991,
+              "type": "integer",
+            },
+            "phase": {
+              "enum": [
+                "preparing",
+                "starting",
+                "thinking",
+                "responding",
+                "tool",
+                "retrying",
+                "compacting",
+                "awaiting_model",
+              ],
+              "type": "string",
+            },
+            "stepId": {
+              "type": "string",
+            },
+            "tool": {
+              "type": "string",
+            },
+          },
+          "required": [
+            "phase",
+            "stepId",
+            "at",
+          ],
+          "type": "object",
+        },
+        "type": {
+          "const": "activity",
+          "type": "string",
+        },
+      },
+      "required": [
+        "type",
+        "activity",
       ],
       "type": "object",
     },

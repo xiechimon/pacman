@@ -19,6 +19,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
+import { activityStore } from '../api/activity.js';
 import { attachFile } from '../api/attachments.js';
 import { ApiError } from '../api/client.js';
 import {
@@ -320,6 +321,11 @@ export function TodoDetailPage() {
   useEffect(() => {
     if (buildId != null) liveTextStore.prune(buildId, knownDetailIds);
   }, [buildId, knownDetailIds]);
+  // #905 活动相位读侧（chief use-chief-surface 同律）：单槽快照引用稳定；
+  // stepId 对在跑步的过滤在 mapTranscript 内（W1）。
+  const activity = useSyncExternalStore(activityStore.subscribe, () =>
+    buildId != null ? activityStore.get(buildId) : null,
+  );
   const streamHandlers = useMemo(
     () => ({
       // todo/phase 面由 team stream 驱动失效；此处兜底本页 todo 键。走收敛缝
@@ -406,6 +412,7 @@ export function TodoDetailPage() {
         userName,
         liveText,
         stopping,
+        activity,
       }),
       ...(latestPlan ? { doc: mapPlanDoc(latestPlan.content) } : {}),
       ...(changesQ.data
@@ -424,6 +431,7 @@ export function TodoDetailPage() {
     buildQ.data,
     userName,
     liveText,
+    activity,
     latestPlan,
     changesQ.data,
     changesExpanded,

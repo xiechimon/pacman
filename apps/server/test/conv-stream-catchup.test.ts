@@ -391,3 +391,81 @@ describe('chief wire 面：中途进场补发（#740 票面症状路径）', () 
     }
   });
 });
+
+// —— #905 活动相位：单槽补发、终态清空、跨会话隔离 ————————————————
+// 失败方式（先固化）：
+//   A1 进场无补发：断线重连/换页后活行退回「处理中…」黑盒，直到下一次相位
+//      变化才有信号——subscribe 必须补发最后一份 activity。
+//   A2 死相位复活：步终局（done/failed/stopped）或 rewind 后，新订阅仍补发
+//      「思考中」——终态清空点必须覆盖 activity 单槽（与文本缓冲同律）。
+//   A3 陈旧叠加：单槽语义——连续多份 activity 只补发最后一份，不回放历史。
+//   A4 跨会话串扰：A 会话的相位不进 B 会话补发。
+//   A5 wire 词表：activity 帧逐帧过 shared conversationStreamEventSchema。
+
+describe('hub 活动相位（#905）', () => {
+  const act = (phase: 'thinking' | 'tool' | 'responding', at: number, extra?: object) =>
+    ({ stepId: 'step-1', at, phase, ...extra }) as import('@pacman/shared').StepActivity;
+
+  function activityFrames(conn: FakeConn): unknown[] {
+    return conn.frames.filter((f) => (f as { type: string }).type === 'activity');
+  }
+
+  test('A1/A3/A5: 零订阅期多份 activity → 进场只补发最后一份，帧过词表', () => {
+    const hub = new ConversationStreamHub();
+    hub.publishActivity('c1', act('thinking', 100));
+    hub.publishActivity('c1', act('tool', 200, { tool: 'bash' }));
+    const conn = new FakeConn();
+    hub.subscribe('c1', conn);
+    const frames = activityFrames(conn);
+    expect(frames).toHaveLength(1);
+    expect(frames[0]).toEqual({
+      type: 'activity',
+      activity: { stepId: 'step-1', at: 200, phase: 'tool', tool: 'bash' },
+    });
+    expect(conversationStreamEventSchema.parse(frames[0])).toBeTruthy();
+    // 补发之后 live 相位照常直达。
+    hub.publishActivity('c1', act('responding', 300));
+    expect(activityFrames(conn)).toHaveLength(2);
+  });
+
+  test('A2: step 终态（done/failed/stopped）清 activity；claimed 不清', () => {
+    for (const status of ['done', 'failed', 'stopped'] as const) {
+      const hub = new ConversationStreamHub();
+      hub.publishActivity('c1', act('thinking', 100));
+      hub.publishStep('c1', stepRow('c1', status));
+      const conn = subscribeFresh(hub, 'c1');
+      expect(activityFrames(conn)).toHaveLength(0);
+    }
+    const hub = new ConversationStreamHub();
+    hub.publishActivity('c1', act('thinking', 100));
+    hub.publishStep('c1', stepRow('c1', 'claimed'));
+    const conn = subscribeFresh(hub, 'c1');
+    expect(activityFrames(conn)).toHaveLength(1);
+  });
+
+  test('A2: clearConversationBuffer（rewind 通道）同清 activity', () => {
+    const hub = new ConversationStreamHub();
+    hub.publishActivity('c1', act('thinking', 100));
+    hub.clearConversationBuffer('c1');
+    expect(activityFrames(subscribeFresh(hub, 'c1'))).toHaveLength(0);
+  });
+
+  test('A4: 跨会话隔离——A 的相位不进 B 的补发与 live 流', () => {
+    const hub = new ConversationStreamHub();
+    hub.publishActivity('cA', act('thinking', 100));
+    const b = subscribeFresh(hub, 'cB');
+    expect(activityFrames(b)).toHaveLength(0);
+    hub.publishActivity('cA', act('tool', 200, { tool: 'read' }));
+    expect(activityFrames(b)).toHaveLength(0);
+  });
+
+  test('缓冲会话数上限同律驱逐 activity 单槽（无界内存防御）', () => {
+    const hub = new ConversationStreamHub();
+    for (let i = 0; i <= CONV_TEXT_BUFFER_MAX_CONVS; i++) {
+      hub.publishActivity(`c${i}`, act('thinking', i));
+    }
+    // 最旧会话（c0）被驱逐：进场零补发；最新会话仍在。
+    expect(activityFrames(subscribeFresh(hub, 'c0'))).toHaveLength(0);
+    expect(activityFrames(subscribeFresh(hub, `c${CONV_TEXT_BUFFER_MAX_CONVS}`))).toHaveLength(1);
+  });
+});

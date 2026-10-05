@@ -9,6 +9,7 @@
 
 import type { ToolCallRecord } from '@pacman/shared';
 import {
+  machineActivityBodySchema,
   machineClaimBodySchema,
   machineDoneBodySchema,
   machineEnrollBodySchema,
@@ -53,6 +54,7 @@ import {
   receivePlanUpload,
   receiveUpload,
   recoverSteps,
+  reportActivity,
   reportShellResult,
   reportTool,
   reportTranscriptDelta,
@@ -73,6 +75,16 @@ function isDeltaBody(raw: unknown): boolean {
     typeof raw === 'object' &&
     'kind' in raw &&
     (raw as { kind: unknown }).kind === 'transcript_delta'
+  );
+}
+
+/** activity 判别（第四形 [设计]，#905）：kind 判别位与 delta 同族。 */
+function isActivityBody(raw: unknown): boolean {
+  return (
+    raw !== null &&
+    typeof raw === 'object' &&
+    'kind' in raw &&
+    (raw as { kind: unknown }).kind === 'activity'
   );
 }
 
@@ -294,16 +306,22 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     return c.json({ ok: true as const });
   });
 
-  // —— POST /api/machine/tool/{stepId}（同径双形，r5 §3.1 bundle 提取）：
+  // —— POST /api/machine/tool/{stepId}（同径双形，r5 §3.1 bundle 提取；增量
+  // 第三形 transcript delta [设计]、第四形 activity [#905]）：
   // ① remoteTools relay 执行 {name, params} → {text}（chief 步服务端工具）；
   // ② live transcript 工具行回传 toolCallRecord → {ok:true}（worker 步内建工具）。
-  // 分流判别：有 params 无 id = relay（machineToolBodySchema union）。———————
+  // 分流判别：kind = delta/activity；有 params 无 id = relay（machineToolBodySchema union）。———
   app.post('/api/machine/tool/:stepId', async (c) => {
     const row = me(c);
     const raw = await jsonBody(c);
     if (isDeltaBody(raw)) {
       const delta = parseWith(machineTranscriptDeltaBodySchema, raw, 'body');
       reportTranscriptDelta(deps, row.id, c.req.param('stepId'), delta.text);
+      return c.json({ ok: true as const });
+    }
+    if (isActivityBody(raw)) {
+      const act = parseWith(machineActivityBodySchema, raw, 'body');
+      reportActivity(deps, row.id, c.req.param('stepId'), act.activity);
       return c.json({ ok: true as const });
     }
     if (isRelayBody(raw)) {

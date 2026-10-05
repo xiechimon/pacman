@@ -17,6 +17,7 @@
 import type { ChiefCompactionModel, TranscriptRow } from '@pacman/shared';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
+import { activityStore } from '../api/activity.js';
 import {
   useApiMutations,
   useChief,
@@ -172,6 +173,11 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
   useEffect(() => {
     if (activeThreadId !== null) liveTextStore.prune(activeThreadId, knownChiefIds);
   }, [activeThreadId, knownChiefIds]);
+  // #905 活动相位读侧（键 = 线程 id，liveText 同律）：单槽快照引用稳定，
+  // useSyncExternalStore 直读安全。
+  const activity = useSyncExternalStore(activityStore.subscribe, () =>
+    activeThreadId !== null ? activityStore.get(activeThreadId) : null,
+  );
   const liveChief = useMemo(() => {
     if (!live || !chiefQ.data) return null;
     return mapChief(chiefQ.data, {
@@ -179,8 +185,9 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
       activeThreadId: activeThread?.id ?? null,
       messages: chiefMessagesQ.data?.messages ?? [],
       liveText,
+      activity,
     });
-  }, [live, chiefQ.data, liveThreads, activeThread, chiefMessagesQ.data, liveText]);
+  }, [live, chiefQ.data, liveThreads, activeThread, chiefMessagesQ.data, liveText, activity]);
 
   const chiefData = live ? (liveChief ?? chiefDefault) : (chief ?? chiefDefault);
   const liveUnread = live

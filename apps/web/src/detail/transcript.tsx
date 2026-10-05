@@ -12,7 +12,7 @@
 import { useState } from 'react';
 import { inlineSegments } from '../api/mappers.js';
 import { type CurrentUser, useLiveData } from '../api/provider.js';
-import { LiveRow } from '../components/chat/live-row.js';
+import { LiveRow, LiveSignal } from '../components/chat/live-row.js';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { RobotPara, TranscriptItem } from '../fixtures/records.js';
@@ -348,6 +348,7 @@ function Row({
           <LiveRow
             variant="detail"
             label={item.label}
+            labelVars={item.labelVars}
             startedAt={item.startedAt}
             seconds={item.seconds}
             disclosure={
@@ -362,6 +363,9 @@ function Row({
                     {t('执行机器：{n}', { n: liveStep.machine })}
                   </span>
                 )}
+                {/* #905：「在动 vs 卡住」判据——最近活动信号的走表新鲜度；
+                    无信号（fixture / 旧 server / 静默期）整行缺席不摆死数。 */}
+                <LiveSignal at={item.signalAt} className="chat-live-line" />
               </div>
             )}
           </LiveRow>

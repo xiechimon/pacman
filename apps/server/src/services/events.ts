@@ -12,6 +12,7 @@ import type {
   BuildRecord,
   ConversationStepEvent,
   NotificationRecord,
+  StepActivity,
   TodoRecord,
   TranscriptRow,
 } from '@pacman/shared';
@@ -121,6 +122,9 @@ export class ConversationStreamHub {
   private readonly byConv = new Map<string, Set<TeamStreamConnection>>();
   /** 在飞段文本缓冲（conversationId → 自上一条落库行以来的增量拼接）。 */
   private readonly textBuffers = new Map<string, string>();
+  /** 每会话最后一份步活动相位（#905，瞬态单槽）：订阅进场补发用，步终态
+   *  即清。LRU 上限与 textBuffers 同值（delete+set 触碰序）。 */
+  private readonly lastActivity = new Map<string, StepActivity>();
 
   subscribe(conversationId: string, conn: TeamStreamConnection): () => void {
     let set = this.byConv.get(conversationId);
@@ -134,6 +138,12 @@ export class ConversationStreamHub {
     const buffered = this.textBuffers.get(conversationId);
     if (buffered !== undefined && buffered !== '') {
       void conn.send({ type: 'text_delta', text: buffered });
+    }
+    // 活动相位同律补发（#905）：断线重连 / 换页进场立即拿到在跑步的当前
+    // 相位，不用等下一次相位变化。
+    const activity = this.lastActivity.get(conversationId);
+    if (activity !== undefined) {
+      void conn.send({ type: 'activity', activity });
     }
     return () => {
       set?.delete(conn);
@@ -170,6 +180,18 @@ export class ConversationStreamHub {
     this.publish(conversationId, { type: 'text_delta', text });
   }
 
+  /** 步活动相位（#905）：daemon 上报经 reportActivity 盖章后瞬态转发；
+   *  单槽留最后一份供订阅补发。 */
+  publishActivity(conversationId: string, activity: StepActivity): void {
+    this.lastActivity.delete(conversationId);
+    this.lastActivity.set(conversationId, activity);
+    if (this.lastActivity.size > CONV_TEXT_BUFFER_MAX_CONVS) {
+      const oldest = this.lastActivity.keys().next().value;
+      if (oldest !== undefined) this.lastActivity.delete(oldest);
+    }
+    this.publish(conversationId, { type: 'activity', activity });
+  }
+
   /** 步状态流转（pending/claimed/done/failed/stopped）。 */
   publishStep(conversationId: string, step: ConversationStepEvent['step']): void {
     // 终态 = 回合/步终局（终稿行通常先行落库，此为兜底；stopped/failed 无终稿
@@ -180,9 +202,11 @@ export class ConversationStreamHub {
     this.publish(conversationId, { type: 'step', step });
   }
 
-  /** rewind / 线程重置通道：显式清空在飞段缓冲（状态失步防御）。 */
+  /** rewind / 线程重置通道：显式清空在飞段缓冲（状态失步防御）。活动单槽
+   *  同清（#905）：终局/重置后不得再向进场订阅补发死相位。 */
   clearConversationBuffer(conversationId: string): void {
     this.textBuffers.delete(conversationId);
+    this.lastActivity.delete(conversationId);
   }
 
   publish(conversationId: string, payload: object): void {

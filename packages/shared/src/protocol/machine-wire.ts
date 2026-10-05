@@ -14,7 +14,7 @@ import { messageRoleSchema } from '../records/message.js';
 import { claudeCodeReportSchema } from '../records/model-source.js';
 import { PROJECT_REPO_KINDS } from '../records/project.js';
 import { reviewVerdictSchema } from '../records/review.js';
-import { stepRecordSchema } from '../records/step.js';
+import { stepActivityReportSchema, stepRecordSchema } from '../records/step.js';
 import {
   machineToolRelayBodySchema,
   machineToolRelayResponseSchema,
@@ -346,8 +346,20 @@ export const machineTranscriptDeltaBodySchema = z.object({
 });
 export type MachineTranscriptDeltaBody = z.infer<typeof machineTranscriptDeltaBodySchema>;
 
+/** POST /api/machine/tool/{stepId} 第四形 [设计]（#905 步活动相位）：daemon
+ * 从既有 StepEvent 流派生的「在做什么」信号（相位变化 / 新事件到达时节流
+ * 重发）。服务端盖 {stepId, at} 后瞬态转发到 conversation stream 的 activity
+ * 事件，不落库——终稿 transcript 仍是内容正本（02 §1.3 数据所有权不变；
+ * 相位词表与安全判定 = records/step.ts stepActivitySchema + docs/verify/905）。 */
+export const machineActivityBodySchema = z.object({
+  kind: z.literal('activity'),
+  activity: stepActivityReportSchema,
+});
+export type MachineActivityBody = z.infer<typeof machineActivityBodySchema>;
+
 /** POST /api/machine/tool/{stepId}——同径双形（r5 §3.1 bundle 提取）+ 复刻
- * 增量第三形（transcript delta [设计]，machineTranscriptDeltaBodySchema）：
+ * 增量第三形（transcript delta [设计]，machineTranscriptDeltaBodySchema）+
+ * #905 第四形（activity [设计]，machineActivityBodySchema）：
  * ① live transcript 工具行回传（worker 步内建工具）= toolCallRecord，与
  *    upload-urls 终稿按 toolCall id 幂等去重 [设计]；body [推断]（r3 §1.6
  *    端点名 + transcript 工具行证据）。
@@ -355,11 +367,15 @@ export type MachineTranscriptDeltaBody = z.infer<typeof machineTranscriptDeltaBo
  *    位形一手 = bundle `request(serverUrl, /api/machine/tool/<stepId>, …,
  *    {name, params})` + `reply.body.text`（r5 §3.1 raw）。
  * ③ transcript delta = {kind:"transcript_delta", text} → {ok:true}。
- * 服务端按 body 形状分流（kind 判别位 = delta；有 params 无 id = relay）。 */
+ * ④ activity = {kind:"activity", activity} → {ok:true}。
+ * 服务端按 body 形状分流（kind 判别位 = delta/activity；有 params 无 id =
+ * relay）。旧 server 收第四形按 union 解析失败 400——daemon 侧 fire-and-forget
+ * （与 ③ 同纪律），步不受影响。 */
 export const machineToolBodySchema = z.union([
   toolCallRecordSchema,
   machineToolRelayBodySchema,
   machineTranscriptDeltaBodySchema,
+  machineActivityBodySchema,
 ]);
 
 /** relay 执行响应（bundle 消费面 `reply.body?.text`）；失败 = {error}(+transient)。 */

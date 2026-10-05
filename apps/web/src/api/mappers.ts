@@ -19,6 +19,7 @@ import type {
   ModelSourceRuntime,
   SecretRecord,
   SkillRecord,
+  StepActivity,
   TeamMember,
   TokenUsage,
   ToolCallRecord,
@@ -66,6 +67,7 @@ import type {
   TokenUsageContent,
   TranscriptItem,
 } from '../fixtures/records.js';
+import { activityLabel } from './activity.js';
 import type { ApiKeyRow, PlanRow, StepRow } from './hooks.js';
 
 /** transcript 消息行（GET messages 封套行形，shared transcriptRowSchema）。 */
@@ -456,6 +458,10 @@ export interface TranscriptInput {
   /** 停止钮确认后的过渡态（M7 #308，r9 §3.3「正在停止…」）：stop 已被
    * 受理、步终态未回（live 面本地旗标；缺省 false = 捕获面不受扰）。 */
   stopping?: boolean;
+  /** #905 步活动相位（activityStore 读侧；缺省/null = 无信号——旧 server、
+   *  fixture 捕获或静默窗口，streaming 行回落既有基础标签）。消费侧带
+   *  stepId 过滤：陈旧步的相位不挂到在跑步头上（W1）。 */
+  activity?: StepActivity | null;
 }
 
 export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
@@ -469,6 +475,7 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
     userName,
     liveText,
     stopping = false,
+    activity = null,
   } = input;
   const head: TranscriptItem[] = [];
   if (build?.triggerSource === 'schedule') head.push({ kind: 'scheduled' });
@@ -632,17 +639,27 @@ export function mapTranscript(input: TranscriptInput): TranscriptItem[] {
         paragraphs: [{ segments: [{ text: liveText }] }],
       });
     }
+    // #905：活动相位接管行标签——stepId 对在跑步过滤（W1 陈旧相位不跨步）；
+    // stopping 过渡态优先级更高（停止在途比模型相位更要解释）；无信号 =
+    // 既有基础标签原样（fixture 捕获 / 旧 server 零回归）。
+    const act = activity != null && activity.stepId === running.id ? activity : null;
+    const actLabel = act != null && !stopping ? activityLabel(act) : null;
     items.push({
       kind: 'streaming',
       // #873：不在投影期把「已用秒数」算成一个死数——投影只在别的事件驱动
       // 重渲时才跑，静默窗口里那个数会冻住说谎（用户实测卡在 1s）。挂真实
       // 起点，走秒归渲染层的 1s 计时器（live-row 的 useLiveSeconds）。
       startedAt: running.createdAt,
-      label: stopping
-        ? '正在停止…' // 停止过渡态（M7 #308，r9 §3.3：中断在途）
-        : running.kind === 'plan' && steps.length === 1 && running.status === 'pending'
-          ? '准备工作区...'
-          : '处理中...',
+      label:
+        actLabel != null
+          ? actLabel.label
+          : stopping
+            ? '正在停止…' // 停止过渡态（M7 #308，r9 §3.3：中断在途）
+            : running.kind === 'plan' && steps.length === 1 && running.status === 'pending'
+              ? '准备工作区...'
+              : '处理中...',
+      ...(actLabel?.vars !== undefined ? { labelVars: actLabel.vars } : {}),
+      ...(actLabel != null && act != null ? { signalAt: act.at } : {}),
     });
   } else if (build && todo.phase === 'building' && !steps.some((s) => s.status === 'stopped')) {
     // 静止态 live 线索（#471）：building 的步间隙 / agent 非流式窗口没有
@@ -1125,6 +1142,11 @@ export function mapChief(
      *  use-chief-surface 注入）：回合进行中且非空 → stream 尾挂 typing
      *  robot 行；缺省 = fixture 面 / 未订阅，stream 与现状一致。 */
     liveText?: string;
+    /** #905 步活动相位（activityStore 读侧，use-chief-surface 注入）：在飞
+     *  存在行的标签/工具名/最近信号数据源。chief 封套不带 step id，陈旧防
+     *  线 = hub 单槽 + 步终态清（server/web 镜像律）+ activeRun 门（回合已
+     *  收即不渲染尾行）。缺省 = fixture 面 / 旧 server，行为与现状一致。 */
+    activity?: StepActivity | null;
   },
 ): ChiefContent {
   const bound = env.chief.agent !== null;
@@ -1171,9 +1193,14 @@ export function mapChief(
       // #822：本轮尚未归属的工具行挂展开面（tools 缺省 = 本轮暂无工具调用，
       // 面板走 fallback 行；typing 接管后本行缺席，工具归宿回归终稿 robot
       // 行，单时刻无双面）。
+      // #905：活动相位接管存在行标签（详情页同一条 activityLabel 单源）；
+      // 无信号回落「处理中...」原样。
+      const actLabel = opts.activity != null ? activityLabel(opts.activity) : null;
       chiefStream.push({
         kind: 'streaming',
-        label: '处理中...',
+        label: actLabel?.label ?? '处理中...',
+        ...(actLabel?.vars !== undefined ? { labelVars: actLabel.vars } : {}),
+        ...(opts.activity != null ? { signalAt: opts.activity.at } : {}),
         ...((collected?.trailingTools.length ?? 0) > 0 ? { tools: collected?.trailingTools } : {}),
       });
     }
@@ -1217,7 +1244,13 @@ export function mapChief(
     ...(running ? { running: true } : {}),
     // #822：在飞展开面首行 = activeRun.tool.toolName（已有 threads 查询的视
     // 图投影，不新增请求）；activeRun 无工具位即缺省，面板走 fallback 行。
-    ...(active?.activeRun?.tool != null ? { runningTool: active.activeRun.tool.toolName } : {}),
+    // #905：activity 相位是活信号（daemon 实时上报），activeRun.tool 是
+    // [推断] 形状且全库无写入方——tool 相位在位时以前者为准。
+    ...(opts.activity?.phase === 'tool' && opts.activity.tool != null
+      ? { runningTool: opts.activity.tool }
+      : active?.activeRun?.tool != null
+        ? { runningTool: active.activeRun.tool.toolName }
+        : {}),
     ...(opts.draft !== undefined ? { draft: opts.draft } : {}),
   };
 }
