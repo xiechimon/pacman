@@ -190,7 +190,7 @@ test('C on the board opens the new-task dialog; ⌘C and the retired N do not', 
   page,
 }) => {
   await page.goto(BOARD);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   // modifier chords pass through — ⌘C is the browser's own copy chord and
   // must keep working (the dialog may not steal it)
   await page.keyboard.press('Meta+c');
@@ -208,9 +208,9 @@ test('C on the board opens the new-task dialog; ⌘C and the retired N do not', 
 
 test('sidebar 新任务 row carries the C badge and click-opens the dialog', async ({ page }) => {
   await page.goto(BOARD);
-  const row = page.locator('.sidebar-row', { hasText: '新任务' });
+  const row = page.getByRole('button', { name: '新任务' });
   await expect(row).toBeVisible();
-  await expect(row.locator('.sidebar-kbd')).toHaveText('C');
+  await expect(row.getByText('C', { exact: true })).toHaveText('C');
   await row.click();
   await expect(dialog(page)).toBeVisible();
   await escapeUntilHidden(page, dialog(page));
@@ -219,7 +219,7 @@ test('sidebar 新任务 row carries the C badge and click-opens the dialog', asy
 
 test('C on a non-board route opens the dialog in place', async ({ page }) => {
   await page.goto(SCHEDULES);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'c', dialog(page));
   // in place — the route never hops to the board
   await expect(page).toHaveURL(/\/app\/schedules/);
@@ -231,7 +231,7 @@ test('C on the project page opens the page’s own dialog (route project chip)',
   page,
 }) => {
   await page.goto(PROJECT);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'c', dialog(page));
   // exactly one instance — the page's own (project-empty-new-task.spec pins
   // the chip = the route's project, which the global sidebar dialog cannot
@@ -246,7 +246,7 @@ test('Space no longer opens the drawer; ⌘J does, composer focused, default con
   page,
 }) => {
   await page.goto(BOARD);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   // #442: the Space binding is gone — it is the native scroll key again and
   // must not wake the drawer (the ⌘N test's immediate-count negative form)
   await page.keyboard.press('Space');
@@ -283,7 +283,7 @@ test('Space no longer opens the drawer; ⌘J does, composer focused, default con
 
 test('⌘J wakes the chief drawer on a non-board route', async ({ page }) => {
   await page.goto(SCHEDULES);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'Meta+j', drawer(page));
   await expect(page.locator('.chief-composer-input')).toBeFocused();
   await expect(page).toHaveURL(/\/app\/schedules/);
@@ -326,7 +326,7 @@ test('Space on a focused button activates it natively; ⌘J fires past button fo
   page,
 }) => {
   await page.goto(BOARD);
-  const searchRow = page.locator('.sidebar-row', { hasText: '搜索' });
+  const searchRow = page.getByRole('button', { name: '搜索' });
   await expect(searchRow).toBeVisible();
 
   // C is guarded by editability only — a focused button does not block it
@@ -361,7 +361,7 @@ test('⌘J toggles: the second press closes the drawer from its own composer foc
   page,
 }) => {
   await page.goto(BOARD);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'Meta+j', drawer(page));
   await expect(page.locator('.chief-composer-input')).toBeFocused();
   // The drawer-interior exemption law (#468): the composer is an editable
@@ -379,7 +379,7 @@ test('⌘J toggles: the second press closes the drawer from its own composer foc
 
 test('⌘J toggle rides the non-board singleton hook too (schedules)', async ({ page }) => {
   await page.goto(SCHEDULES);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'Meta+j', drawer(page));
   await toggleUntilHidden(page, drawer(page));
   await expect(drawer(page)).toHaveCount(0);
@@ -388,7 +388,7 @@ test('⌘J toggle rides the non-board singleton hook too (schedules)', async ({ 
 
 test('FAB click stays open-only; ⌘J closes what the click opened', async ({ page }) => {
   await page.goto(BOARD);
-  const fab = page.locator('.chief-fab');
+  const fab = page.getByRole('button', { name: '总管' });
   await expect(fab).toBeVisible();
   await fab.click();
   await expect(drawer(page)).toBeVisible();
@@ -405,7 +405,7 @@ test('the robot FAB surfaces the ⌘J hint on hover; at rest it stays hidden', a
   page,
 }) => {
   await page.goto(BOARD);
-  const fab = page.locator('.chief-fab');
+  const fab = page.getByRole('button', { name: '总管' });
   const hint = fab.locator('.kbd-hint');
   await expect(hint).toHaveCount(1);
   // visibility:hidden at rest — capture faces never grow a phantom chip
@@ -430,7 +430,7 @@ test('a wake-family FAB carries the same ⌘J hint (shared consumption point)', 
 test('the collapsed rail search icon hovers the ⌘K hint', async ({ page }) => {
   await page.goto(BOARD);
   await page.locator('button[aria-label="收起侧边栏"]').click();
-  const railSearch = page.locator('.rail-row[aria-label="搜索"]');
+  const railSearch = page.getByRole('button', { name: '搜索' });
   await expect(railSearch).toBeVisible();
   const hint = railSearch.locator('.kbd-hint');
   await expect(hint).toBeHidden();
@@ -460,7 +460,7 @@ test('with the drawer closed, N stays retired — neither drawer nor dialog open
   page,
 }) => {
   await page.goto(BOARD);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   // The new binding is drawer-scoped (the enabled gate): with the drawer
   // shut the listener is off the window, so the retired-global law
   // (XMON-37, test 1) holds on the drawer face too.
@@ -473,7 +473,7 @@ test('with the drawer closed, N stays retired — neither drawer nor dialog open
 /** Open the new-task dialog through the sidebar row (the #445 opener form). */
 async function openNewTask(page: Page) {
   await page.goto(BOARD);
-  await page.locator('.sidebar-new-task').click();
+  await page.getByRole('button', { name: '新任务' }).click();
   const dialog = page.locator('.new-task-dialog');
   await expect(dialog).toBeVisible();
   return dialog;
@@ -481,7 +481,7 @@ async function openNewTask(page: Page) {
 
 /** Card landed by the save path, titled by the spec's first line. */
 const landedCard = (page: Page, title: string) =>
-  page.locator('[data-column="todo"] .todo-card', { hasText: title });
+  page.locator('[data-column="todo"] [data-todo-id]', { hasText: title });
 
 /** Chord press with the retry law: the listener registers in a passive
  *  effect after the dialog's open commit, so a press fired the instant the
@@ -513,7 +513,7 @@ test('⌘↵ and Ctrl+↵ inside the dialog fire 保存并开始 (card lands, di
   await expect(dialog).not.toBeVisible();
 
   // Same registration, non-mac receipt: Ctrl+↵ lands a second card
-  await page.locator('.sidebar-new-task').click();
+  await page.getByRole('button', { name: '新任务' }).click();
   await expect(dialog).toBeVisible();
   await dialog.locator('.new-task-spec').fill('Ctrl 建的卡');
   await pressUntilCard(page, 'Control+Enter', landedCard(page, 'Ctrl 建的卡'));
@@ -522,8 +522,8 @@ test('⌘↵ and Ctrl+↵ inside the dialog fire 保存并开始 (card lands, di
 
 test('with the dialog closed, ⌘↵ on the board lands nothing', async ({ page }) => {
   await page.goto(BOARD);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
-  const cards = page.locator('[data-column="todo"] .todo-card');
+  await expect(page.getByRole('complementary')).toBeVisible();
+  const cards = page.locator('[data-column="todo"] [data-todo-id]');
   const before = await cards.count();
   // Six delivered presses of a bound chord would land six cards (or at
   // least one) — a count that never moves is proof the listener is off the
@@ -540,7 +540,7 @@ test('⌘↵ with an empty spec creates nothing (the button gate holds on the ch
   page,
 }) => {
   const dialog = await openNewTask(page);
-  const cards = page.locator('[data-column="todo"] .todo-card');
+  const cards = page.locator('[data-column="todo"] [data-todo-id]');
   const before = await cards.count();
   await expect(dialog.locator('.new-task-start')).toBeDisabled();
   for (let attempt = 0; attempt < 6; attempt += 1) {
@@ -556,7 +556,7 @@ test('⌘↵ under the 未保存闸 confirm layer saves nothing (the layer owns 
 }) => {
   const dialog = await openNewTask(page);
   await dialog.locator('.new-task-spec').fill('闸下不该落的卡');
-  const cards = page.locator('[data-column="todo"] .todo-card');
+  const cards = page.locator('[data-column="todo"] [data-todo-id]');
   const before = await cards.count();
   // 弄脏后点 × → 未保存闸确认层起来。该层是 dialog **之外**的兄弟层（#318），
   // 所以 dialog 仍开着——闸只认 open 的话，⌘↵ 会在这句「要不要放弃？」之下把
@@ -584,7 +584,7 @@ test('plain ↵ in the spec textarea stays the newline key — no hijack', async
   // dialog stays open
   await expect(spec).toHaveValue('第一行\n');
   await expect(dialog).toBeVisible();
-  await expect(page.locator('[data-column="todo"] .todo-card', { hasText: '第一行' })).toHaveCount(0);
+  await expect(page.locator('[data-column="todo"] [data-todo-id]', { hasText: '第一行' })).toHaveCount(0);
 });
 
 test('the 保存并开始 button carries a visible ⌘↵ badge at rest', async ({ page }) => {
@@ -600,7 +600,7 @@ test('the 保存并开始 button carries a visible ⌘↵ badge at rest', async 
 
 test('Tab cycles the dialog’s project chip from the composer focus', async ({ page }) => {
   await page.goto(PROJECTS);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'c', dialog(page));
   const chipName = page.locator('.new-task-project-name');
   await expect(page.locator('.new-task-spec')).toBeFocused();
@@ -629,7 +629,7 @@ test('the chip cycles on Tab while the list is open; Shift+Tab keeps native move
   page,
 }) => {
   await page.goto(PROJECTS);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'c', dialog(page));
   const chip = page.locator('.new-task-project');
   const menu = page.locator('.new-task-project-menu');
@@ -660,7 +660,7 @@ test('Tab off the driving seats stays native (mention button keeps its own walk)
   page,
 }) => {
   await page.goto(PROJECTS);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'c', dialog(page));
   const chipName = page.locator('.new-task-project-name');
   await expect(chipName).toHaveText('r3-lifecycle');
@@ -677,7 +677,7 @@ test('Tab off the driving seats stays native (mention button keeps its own walk)
 
 test('the project chip hovers its Tab hint (hidden at rest)', async ({ page }) => {
   await page.goto(PROJECTS);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'c', dialog(page));
   const chip = page.locator('.new-task-project');
   const hint = chip.locator('.kbd-hint');
@@ -692,7 +692,7 @@ test('Tab cycles nothing while the 未保存闸 confirm layer is up (that layer 
   page,
 }) => {
   await page.goto(PROJECTS);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'c', dialog(page));
   const chipName = page.locator('.new-task-project-name');
   await expect(chipName).toHaveText('r3-lifecycle');
@@ -718,7 +718,7 @@ test('Tab cycles nothing while the 未保存闸 confirm layer is up (that layer 
 
 test('with the dialog closed Tab stays native', async ({ page }) => {
   await page.goto(PROJECTS);
-  await expect(page.locator('.sidebar-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   await page.keyboard.press('Tab');
   await expect(dialog(page)).toHaveCount(0);
   await expect(page.locator('.new-task-project')).toHaveCount(0);

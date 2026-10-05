@@ -9,6 +9,9 @@ import { expect, type Page, test } from '@playwright/test';
 //    闪回源列），invalidate 重取收敛到 server 真值；
 //  · 失败路：409 = 乐观值作废，重取回真值（卡片弹回 = 真值）+ toast 点名
 //    失败（#638 弹回只讲结果不讲原因，toast 补原因）。
+// #943/#910 重钉：卡 = [data-todo-id] 属性载体、列表 = [data-column-list]、
+// 浮层 = data-testid="drag-overlay"、列计数 = data-testid="column-count"、
+// 动作钮 = role+name 一级载体。断言语义与数值不动。
 
 const TEAM_ID = 'team-1';
 const CARD_ID = 'todo-753';
@@ -84,9 +87,9 @@ async function stubWorld(page: Page, mode: 'ok' | '409'): Promise<Stub> {
 /** Press the done card and carry it into the pending column's list area;
  *  leaves the button down (caller arms the trace, then ups). */
 async function dragDoneToPending(page: Page): Promise<void> {
-  const fromBox = await page.locator(`.todo-card[data-todo-id="${CARD_ID}"]`).boundingBox();
+  const fromBox = await page.locator(`[data-todo-id="${CARD_ID}"]`).boundingBox();
   if (fromBox == null) throw new Error('done card missing');
-  const list = await page.locator('[data-column="pending"] .board-column-list').boundingBox();
+  const list = await page.locator('[data-column-list="pending"]').boundingBox();
   if (list == null) throw new Error('pending list missing');
   const sx = fromBox.x + fromBox.width / 2;
   const sy = fromBox.y + fromBox.height / 2;
@@ -95,7 +98,8 @@ async function dragDoneToPending(page: Page): Promise<void> {
   await page.mouse.move(sx - 8, sy + 6, { steps: 4 });
   await page.mouse.move(list.x + list.width / 2, list.y + 60, { steps: 12 });
   await page
-    .locator('.board-drag-overlay .board-drag-card')
+    .getByTestId('drag-overlay')
+    .locator('[data-todo-id]')
     .waitFor({ state: 'visible', timeout: 15_000 });
   await page.evaluate(
     () => new Promise<void>((res) => requestAnimationFrame(() => requestAnimationFrame(() => res()))),
@@ -107,7 +111,7 @@ test('live: done(有变更)→待处理 fires PATCH phase=review, optimistic lan
 }) => {
   const stub = await stubWorld(page, 'ok');
   await page.goto('/app');
-  await expect(page.locator(`[data-column="done"] .todo-card[data-todo-id="${CARD_ID}"]`)).toBeVisible();
+  await expect(page.locator(`[data-column="done"] [data-todo-id="${CARD_ID}"]`)).toBeVisible();
 
   await dragDoneToPending(page);
   await expect(page.locator('[data-column="pending"]')).toHaveAttribute('data-drop', 'true');
@@ -118,7 +122,7 @@ test('live: done(有变更)→待处理 fires PATCH phase=review, optimistic lan
     (window as unknown as { __flashTrace: typeof trace }).__flashTrace = trace;
     const t0 = performance.now();
     const tick = () => {
-      const grid = document.querySelector(`.board-scroller .todo-card[data-todo-id="${id}"]`);
+      const grid = document.querySelector(`[data-testid="board-scroller"] [data-todo-id="${id}"]`);
       trace.push({
         t: Math.round(performance.now() - t0),
         col: grid?.closest('section[data-column]')?.getAttribute('data-column') ?? null,
@@ -150,21 +154,23 @@ test('live: done(有变更)→待处理 fires PATCH phase=review, optimistic lan
   const backFrames = trace.slice(firstPending + 1).filter((s) => s.col === 'done');
   expect(backFrames, `frames back in 已完成: ${JSON.stringify(backFrames)}`).toEqual([]);
   await expect(
-    page.locator(`[data-column="pending"] .todo-card[data-todo-id="${CARD_ID}"]`),
+    page.locator(`[data-column="pending"] [data-todo-id="${CARD_ID}"]`),
   ).toBeVisible();
-  await expect(page.locator('[data-column="pending"] .board-column-count')).toHaveText('1');
-  await expect(page.locator('[data-column="done"] .board-column-count')).toHaveText('0');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('0');
   // the reopened card reads as the review gate (action button 完成 =
   // PHASE_UI[review]；徽标纯图标无文字，整卡断 chip 词恒错)
   await expect(
-    page.locator(`[data-column="pending"] .todo-card[data-todo-id="${CARD_ID}"] .todo-card-action`),
+    page
+      .locator(`[data-column="pending"] [data-todo-id="${CARD_ID}"]`)
+      .getByRole('button', { name: '完成' }),
   ).toHaveText('完成');
 });
 
 test('live: PATCH 409 = 乐观值作废，卡片弹回源列 + toast 点名失败（#638）', async ({ page }) => {
   const stub = await stubWorld(page, '409');
   await page.goto('/app');
-  await expect(page.locator(`[data-column="done"] .todo-card[data-todo-id="${CARD_ID}"]`)).toBeVisible();
+  await expect(page.locator(`[data-column="done"] [data-todo-id="${CARD_ID}"]`)).toBeVisible();
 
   await dragDoneToPending(page);
   await page.mouse.up();
@@ -172,11 +178,11 @@ test('live: PATCH 409 = 乐观值作废，卡片弹回源列 + toast 点名失�
   // the bounce-back IS the truth: server refused, invalidate refetch returns
   // the original phase, the card renders back in 已完成
   await expect(
-    page.locator(`[data-column="done"] .todo-card[data-todo-id="${CARD_ID}"]`),
+    page.locator(`[data-column="done"] [data-todo-id="${CARD_ID}"]`),
     'card bounced back to 已完成',
   ).toBeVisible({ timeout: 10_000 });
-  await expect(page.locator('[data-column="done"] .board-column-count')).toHaveText('1');
-  await expect(page.locator('[data-column="pending"] .board-column-count')).toHaveText('0');
+  await expect(page.locator('[data-column="done"]').getByTestId('column-count')).toHaveText('1');
+  await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('0');
   // and the toast names the failure (#638: 弹回只讲结果，toast 讲原因)
   await expect(page.locator('[data-sonner-toast]').first()).toBeVisible();
   await expect(page.locator('[data-sonner-toast]').first()).toContainText('移动任务失败');

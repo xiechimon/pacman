@@ -15,14 +15,17 @@ import { expect, type Page, test } from '@playwright/test';
 // 5. 存量场景几何漂移：01（两卡 + 三卡 probe）列底超出或 h-full 语义丢失
 // 6. 卡片上/下缘被裁（XMON-42）：滚动容器按 padding box 裁切，块向
 //    内边距为零时首卡（与滚到底的末卡）的 1px 卡环连同圆角一起消失
+// #943/#910 重钉：scroller = data-testid（二级：无 role 的滚动结构容器）、
+// 列 = 既有 [data-column] 属性载体、列表 = 既有 [data-column-list]、
+// 列头 = 列内 header 标签、卡 = [data-todo-id]。断言值不动（几何零改动，
+// board.css 的轨道规则原值迁 scroller 工具类）。
 const OVERFLOW = '/app?scenario=board-overflow';
-const list = (page: Page, column = 'todo') =>
-  page.locator(`[data-column="${column}"] .board-column-list`);
+const list = (page: Page, column = 'todo') => page.locator(`[data-column-list="${column}"]`);
 
 test('溢出列底边不冲出视口：列贴 scroller 可视高度（行高钉死）', async ({ page }) => {
   await page.goto(OVERFLOW);
   const probe = await page.evaluate(() => {
-    const scroller = document.querySelector('.board-scroller');
+    const scroller = document.querySelector('[data-testid="board-scroller"]');
     const column = document.querySelector('[data-column="todo"]');
     if (scroller == null || column == null) return null;
     const s = scroller.getBoundingClientRect();
@@ -73,7 +76,7 @@ test('列表可滚：scrollTo 移动 scrollTop，滚轮同样生效', async ({ p
 
 test('列头固定：列表滚动时 header 的视口位置不动', async ({ page }) => {
   await page.goto(OVERFLOW);
-  const header = page.locator('[data-column="todo"] .board-column-header');
+  const header = page.locator('[data-column="todo"] header');
   const before = (await header.boundingBox())!.y;
   await list(page).evaluate((el) => el.scrollTo({ top: 400 }));
   const after = (await header.boundingBox())!.y;
@@ -88,8 +91,8 @@ test('卡片上下缘由块向内边距保位：首卡上缘、滚到底的末�
   // 复现——零块向内边距时实测 card.top - list.top == 0）。此处钉「卡缘与
   // 裁切线之间恒有 1px 让位」，不钉具体内边距值。
   const top = await page.evaluate(() => {
-    const l = document.querySelector('[data-column="todo"] .board-column-list');
-    const c = document.querySelector('[data-column="todo"] .todo-card');
+    const l = document.querySelector('[data-column-list="todo"]');
+    const c = document.querySelector('[data-column="todo"] [data-todo-id]');
     if (l == null || c == null) return null;
     return { gap: c.getBoundingClientRect().top - l.getBoundingClientRect().top };
   });
@@ -98,10 +101,10 @@ test('卡片上下缘由块向内边距保位：首卡上缘、滚到底的末�
 
   // 滚到底：末卡下缘同样让位（底端裁切是同一个 padding box 边界）
   const bottom = await page.evaluate(() => {
-    const l = document.querySelector('[data-column="todo"] .board-column-list');
+    const l = document.querySelector('[data-column-list="todo"]');
     if (l == null) return null;
     l.scrollTo({ top: l.scrollHeight });
-    const cards = l.querySelectorAll('.todo-card');
+    const cards = l.querySelectorAll('[data-todo-id]');
     const last = cards[cards.length - 1];
     if (last == null) return null;
     return {
@@ -117,8 +120,8 @@ test('卡片上下缘由块向内边距保位：首卡上缘、滚到底的末�
 test('存量场景零漂移：01 列完整贴视口、列底不超 scroller 底缘', async ({ page }) => {
   await page.goto('/app?scenario=01');
   const probe = await page.evaluate(() => {
-    const scroller = document.querySelector('.board-scroller');
-    const columns = [...document.querySelectorAll('.board-column')];
+    const scroller = document.querySelector('[data-testid="board-scroller"]');
+    const columns = [...document.querySelectorAll('[data-column]')];
     if (scroller == null || columns.length !== 4) return null;
     const s = scroller.getBoundingClientRect();
     return {

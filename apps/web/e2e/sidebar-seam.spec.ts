@@ -10,6 +10,11 @@ import { expect, test } from '@playwright/test';
 // rail toggle grows to 44px so its divider aligns with the topbar border
 // too (r7 03's y42..43 divider realigned by the 裁决, registered in
 // 01 §8). Viewport is the e2e canon 1440×732.
+// #943/#910 重钉：本域载体换语义钩子——侧栏 = aside（complementary）、
+// nav 段 = aside nav、团队头行 = data-testid="team-row"（二级：无 role 的
+// 结构探针位）、rail 展开钮 = button[aria-label="展开侧边栏"]、board 顶栏 =
+// [data-route="board"] 的首个 header（banner）。.page-topbar/.res-topbar 属
+// pages/resources 域，留待各自批次重钉。探针期望值不动（几何零改动）。
 
 const SEAM_VARIANTS = ['light', 'dark'] as const;
 
@@ -20,10 +25,10 @@ test.describe('sidebar seam + full-width divider (dogfood 裁决 v2)', () => {
       await page.goto('/app?scenario=01');
 
       const m = await page.evaluate(() => {
-        const sidebar = document.querySelector('.board-sidebar')!;
-        const topbar = document.querySelector('.board-topbar')!;
-        const nav = document.querySelector('.sidebar-nav')!;
-        const team = document.querySelector('.sidebar-team-row')!;
+        const sidebar = document.querySelector('aside')!;
+        const topbar = document.querySelector('[data-route="board"] header')!;
+        const nav = document.querySelector('aside nav')!;
+        const team = document.querySelector('[data-testid="team-row"]')!;
         const ss = getComputedStyle(sidebar);
         const ns = getComputedStyle(nav);
         return {
@@ -61,8 +66,8 @@ test.describe('sidebar seam + full-width divider (dogfood 裁决 v2)', () => {
       await page.goto('/app/team?scenario=12');
 
       const m = await page.evaluate(() => {
-        const pill = document.querySelector('.sidebar-team-row--active')!;
-        const nav = document.querySelector('.sidebar-nav')!;
+        const pill = document.querySelector('[data-testid="team-row"]')!;
+        const nav = document.querySelector('aside nav')!;
         const r = pill.getBoundingClientRect();
         return { x: r.x, y: r.y, w: r.width, h: r.height, navTop: nav.getBoundingClientRect().top };
       });
@@ -80,9 +85,9 @@ test.describe('sidebar seam + full-width divider (dogfood 裁决 v2)', () => {
       await page.goto('/app?scenario=01');
 
       const m = await page.evaluate(() => {
-        const rail = document.querySelector('.board-sidebar--collapsed')!;
-        const toggle = document.querySelector('.rail-toggle')!;
-        const topbar = document.querySelector('.board-topbar')!;
+        const rail = document.querySelector('aside')!;
+        const toggle = document.querySelector('button[aria-label="展开侧边栏"]')!;
+        const topbar = document.querySelector('[data-route="board"] header')!;
         const ss = getComputedStyle(rail);
         return {
           borderRightW: ss.borderRightWidth,
@@ -109,9 +114,9 @@ test.describe('sidebar seam + full-width divider (dogfood 裁决 v2)', () => {
       await page.goto('/app/schedules?scenario=11');
 
       const m = await page.evaluate(() => {
-        const sidebar = document.querySelector('.board-sidebar')!;
+        const sidebar = document.querySelector('aside')!;
         const topbar = document.querySelector('.page-topbar')!;
-        const nav = document.querySelector('.sidebar-nav')!;
+        const nav = document.querySelector('aside nav')!;
         return {
           seamColor: getComputedStyle(sidebar).borderRightColor,
           topbarColor: getComputedStyle(topbar).borderBottomColor,
@@ -130,9 +135,11 @@ test.describe('sidebar seam + full-width divider (dogfood 裁决 v2)', () => {
       await page.goto('/app/resources/skills?scenario=06');
 
       const m = await page.evaluate(() => {
-        const sidebar = document.querySelector('.board-sidebar')!;
+        // 并集解（#943×#944）：侧栏/nav = board 域重钉（aside 语义载体），
+        // topbar = resources 域重钉（#944 的 resource-topbar testid）。
+        const sidebar = document.querySelector('aside')!;
         const topbar = document.querySelector('[data-testid="resource-topbar"]')!;
-        const nav = document.querySelector('.sidebar-nav')!;
+        const nav = document.querySelector('aside nav')!;
         return {
           seamColor: getComputedStyle(sidebar).borderRightColor,
           topbarColor: getComputedStyle(topbar).borderBottomColor,

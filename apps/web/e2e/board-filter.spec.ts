@@ -37,6 +37,15 @@ import { expect, type Page, test } from '@playwright/test';
 // 16. 批次键（全选行 / 反选）无效或读数不跟；「仅此」不塌成单值
 // 17. 计数用了本轴自身收窄（勾一个选项后其余全变 0，失去导航意义）
 // 18. 生效筛选条不显形 / 点条不清该维度 / 清除全条不清双轴
+// #943/#910 重钉：选项 = 既有 [data-project]/[data-tag] 属性载体、维度段 =
+// section[data-dimension]、全选 = role=checkbox（Base UI 官方件，三态走
+// aria-checked=mixed，替代 toHaveJSProperty('indeterminate')）、反选/仅此/
+// 清除 = role+name 一级、触发钮 = button「筛选」、弹层 = dialog「筛选」
+// （Base UI Popup 自带 role）、生效条 = header 内 [data-dimension]、计数
+// 徽章 = data-testid（filter-count/option-count/column-count，二级：裸数字
+// 无 role）、板级空态 = 一级 text。TagChip 无 props 透传（共享件不动），
+// chip 载体 = inline background-color 属性钉（tag-chip.tsx 文档契约：数据
+// 色走 inline style）+ exact text。断言语义与数值不动。
 
 const TAGS = '/app?scenario=board-tags';
 const EMPTY = '/app?scenario=board-tags-empty';
@@ -45,35 +54,47 @@ const REPOS = '/app?scenario=board-repos';
  *  dead-buttons/avatar-dicebear 同款先例）。 */
 const PRJ_CANON = 'ZAQczKCu0MOAzC1ZqcFlX';
 
-const card = (page: Page, id: string) => page.locator(`.todo-card[data-todo-id="${id}"]`);
-/** 两轴同住一个面板，per-face 类名区分轴：仓库行 data-project（素文本，
+const card = (page: Page, id: string) => page.locator(`[data-todo-id="${id}"]`);
+/** 两轴同住一个面板，data 属性区分轴：仓库行 data-project（素文本，
  *  项目无色彩位），类型行 data-tag（选中态渲染词表配色 TagChip）。 */
+const option = (page: Page, value: string) =>
+  page.locator(`[data-project="${value}"], [data-tag="${value}"]`);
 const repoOption = (page: Page, id?: string) =>
-  page.locator(id == null ? '.repo-filter-option' : `.repo-filter-option[data-project="${id}"]`);
-const typeOption = (page: Page, name: string) =>
-  page.locator(`.type-filter-option[data-tag="${name}"]`);
+  page.locator(id == null ? '[data-project]' : `[data-project="${id}"]`);
+const typeOption = (page: Page, name: string) => page.locator(`[data-tag="${name}"]`);
 const dim = (page: Page, key: 'repo' | 'type') =>
-  page.locator(`.filter-dimension[data-dimension="${key}"]`);
-/** 全选行（行表首）的真 checkbox：三态 = unchecked / indeterminate / checked；
- *  空选点击 = 全选，满选点击 = 清本维（清除钮撤除后的清除路径之一）。 */
-const dimAll = (page: Page, key: 'repo' | 'type') =>
-  dim(page, key).locator('.filter-dimension-all');
+  page.locator(`section[data-dimension="${key}"]`);
+/** 全选行（行表首）的 checkbox（Base UI 官方件 role=checkbox）：三态 =
+ *  aria-checked false / mixed / true；空选点击 = 全选，满选点击 = 清本维
+ *  （清除钮撤除后的清除路径之一）。 */
+const dimAll = (page: Page, key: 'repo' | 'type') => dim(page, key).getByRole('checkbox');
 /** 反选：全选行右端链接键，选集取词表补集。 */
 const dimInvert = (page: Page, key: 'repo' | 'type') =>
-  dim(page, key).locator('.filter-dimension-invert');
-const dimReadout = (page: Page, key: 'repo' | 'type') =>
-  dim(page, key).locator('.filter-dimension-selected');
+  dim(page, key).getByRole('button', { name: '反选' });
+const dimReadout = (page: Page, key: 'repo' | 'type') => dim(page, key).getByText(/已选 \d/);
 const optionCount = (page: Page, value: string) =>
-  page.locator(`.filter-option-row:has([data-project="${value}"], [data-tag="${value}"]) .filter-option-count`);
-/** 「仅此」：静息透明（opacity-0）、hover/focus 现形——断言前先 hover。 */
+  option(page, value).getByTestId('option-count');
+/** 「仅此」：静息透明（opacity-0）、hover/focus 现形——断言前先 hover。
+ *  钮是选项的行内兄弟（行容器无 role），经父级 scope 走 role+name。 */
 const optionOnly = (page: Page, value: string) =>
-  page.locator(`.filter-option-row:has([data-project="${value}"], [data-tag="${value}"]) .filter-option-only`);
+  option(page, value).locator('..').getByRole('button', { name: '仅此' });
+/** 生效筛选条住在顶栏（<header>，banner role）；维度段住在弹层——同用
+ *  data-dimension，故 chip 一律 header scope。 */
 const filterChip = (page: Page, key: 'repo' | 'type') =>
-  page.locator(`.filter-chip[data-dimension="${key}"]`);
-const typeBtn = (page: Page) => page.locator('.board-type-filter');
-const typePopover = (page: Page) => page.locator('.type-filter-popover');
+  page.locator(`header [data-dimension="${key}"]`);
+const chipsBar = (page: Page) => page.locator('header [data-dimension]');
+const chipsClear = (page: Page) =>
+  page.locator('header').getByRole('button', { name: '清除全部' });
+// exact：生效筛选条 chip 的 aria-label（清除…筛选）含「筛选」子串，
+// 子串匹配会在有 chip 时撞 strict mode（#943 实测）
+const typeBtn = (page: Page) => page.getByRole('button', { name: '筛选', exact: true });
+const typePopover = (page: Page) => page.getByRole('dialog', { name: '筛选' });
 const count = (page: Page, column: string) =>
-  page.locator(`.board-column[data-column="${column}"] .board-column-count`);
+  page.locator(`[data-column="${column}"]`).getByTestId('column-count');
+const filterEmpty = (page: Page) => page.getByText('没有匹配筛选条件的任务');
+/** TagChip 载体：数据色 inline style 是 tag-chip.tsx 的文档契约（运行期
+ *  记录字段进不了类名编译面）——属性钉 + exact text，不钉类名/data-slot。 */
+const CHIP = '[style*="background-color"]';
 
 async function openTypePopover(page: Page) {
   await typeBtn(page).click();
@@ -84,12 +105,14 @@ test('旧场景（无 projectNames）不渲染仓库面；右动作区恰好一�
   page,
 }) => {
   await page.goto('/app?scenario=01');
-  await expect(page.locator('.board-repo-filter')).toHaveCount(0);
-  const actions = page.locator('.board-topbar-actions');
-  await expect(actions.locator('button')).toHaveCount(1);
+  // 旧仓库筛选条的语义负钉：无筛选时顶栏不挂任何维度 chip
+  await expect(chipsBar(page)).toHaveCount(0);
+  const banner = page.getByRole('banner');
+  await expect(banner.getByRole('button')).toHaveCount(1);
   await expect(typeBtn(page)).toBeVisible();
-  // 「+ 任务」全族非存在（第三入口撤除，防单面复活漏网）
-  await expect(page.locator('.board-new-task')).toHaveCount(0);
+  // 「+ 任务」全族非存在（第三入口撤除，防单面复活漏网）——顶栏内不得
+  // 出现任何名含「任务」的钮（侧栏 新任务 行在 banner 外，不受累）
+  await expect(banner.getByRole('button', { name: /任务/ })).toHaveCount(0);
   // 无底色材质：ghost 变体，rest 态背景透明（与主操作实底材质区分）
   await expect(typeBtn(page)).toHaveAttribute('data-variant', 'ghost');
   const bg = await typeBtn(page).evaluate((el) => getComputedStyle(el).backgroundColor);
@@ -103,9 +126,9 @@ test('类型钮点开 anchored popover：词表 6 词全、aria-expanded 翻转'
   await expect(typeBtn(page)).toHaveAttribute('aria-expanded', 'true');
   // 全选行恒在（行表首）+ 反选挂其右端；空选态 = 三态 checkbox 的 unchecked
   await expect(dimAll(page, 'type')).toBeVisible();
-  await expect(dimAll(page, 'type')).not.toBeChecked();
+  await expect(dimAll(page, 'type')).toHaveAttribute('aria-checked', 'false');
   await expect(dimInvert(page, 'type')).toBeVisible();
-  await expect(page.locator('.type-filter-option')).toHaveCount(6);
+  await expect(page.locator('[data-tag]')).toHaveCount(6);
   for (const name of ['bug', 'feature', 'improvement', 'refactor', 'docs', 'chore']) {
     await expect(typeOption(page, name)).toBeVisible();
     await expect(typeOption(page, name)).toHaveAttribute('aria-selected', 'false');
@@ -121,7 +144,7 @@ test('类型单选收窄：命中卡可见、其余 tagged 隐、无标签恒可
   await expect(page).toHaveURL(/[?&]tags=bug(&|$)/);
   expect(page.url()).toContain('scenario=board-tags');
   // 触发钮上的计数徽章 = 收起态的选中提示（弹层不开也读得出筛选在生效）
-  await expect(page.locator('.board-type-filter-count')).toHaveText('1');
+  await expect(page.getByTestId('filter-count')).toHaveText('1');
   await expect(card(page, 'tagfilter-bug')).toBeVisible();
   await expect(card(page, 'tagfilter-docs')).toHaveCount(0);
   // 无标签恒可见（裁决面）
@@ -142,12 +165,13 @@ test('类型多选 = OR 并集；URL 序 = 词表规范序；点选保持弹层�
   await expect(page).toHaveURL(/[?&]tags=bug,docs(&|$)/);
   // 多选弹层保持开（点选即关会把多选取缔成单选）
   await expect(typePopover(page)).toBeVisible();
-  await expect(page.locator('.board-type-filter-count')).toHaveText('2');
+  await expect(page.getByTestId('filter-count')).toHaveText('2');
   // 选中态可见：选中行渲染词表配色 TagChip，未选行不渲染
   await expect(typeOption(page, 'bug')).toHaveAttribute('aria-selected', 'true');
-  await expect(typeOption(page, 'bug').locator('.tag-chip')).toBeVisible();
+  await expect(typeOption(page, 'bug').locator(CHIP)).toBeVisible();
+  await expect(typeOption(page, 'bug').locator(CHIP)).toHaveText('bug');
   await expect(typeOption(page, 'chore')).toHaveAttribute('aria-selected', 'false');
-  await expect(typeOption(page, 'chore').locator('.tag-chip')).toHaveCount(0);
+  await expect(typeOption(page, 'chore').locator(CHIP)).toHaveCount(0);
   // 并集：两张 tagged 卡 + 无标签卡全在
   await expect(card(page, 'tagfilter-bug')).toBeVisible();
   await expect(card(page, 'tagfilter-docs')).toBeVisible();
@@ -163,7 +187,7 @@ test('再点已选词 = 解除该词（切换语义）', async ({ page }) => {
   await typeOption(page, 'docs').click();
   await expect(page).toHaveURL(/[?&]tags=bug(&|$)/);
   await expect(typeOption(page, 'docs')).toHaveAttribute('aria-selected', 'false');
-  await expect(page.locator('.board-type-filter-count')).toHaveText('1');
+  await expect(page.getByTestId('filter-count')).toHaveText('1');
   await expect(card(page, 'tagfilter-docs')).toHaveCount(0);
   await expect(card(page, 'tagfilter-bug')).toBeVisible();
 });
@@ -210,8 +234,8 @@ test('仓库段 = 项目选项集 + 计数 + 读数；默认全活、URL 无参�
 }) => {
   await page.goto(REPOS);
   // 无筛选时顶栏左侧不画任何条——「全部」不是一种筛选，不该有条可摘
-  await expect(page.locator('.filter-chip')).toHaveCount(0);
-  await expect(page.locator('.board-type-filter-count')).toHaveCount(0);
+  await expect(chipsBar(page)).toHaveCount(0);
+  await expect(page.getByTestId('filter-count')).toHaveCount(0);
   expect(page.url()).not.toContain('projects=');
   await openTypePopover(page);
   await expect(repoOption(page)).toHaveCount(3);
@@ -283,15 +307,15 @@ test('仓库再点已选 = 解除；全选行满选再点 = 清本维（清除�
   await repoOption(page, 'r2-inventory').click();
   await expect(page).toHaveURL(new RegExp(`[?&]projects=${PRJ_CANON}(&|$)`));
   await expect(repoOption(page, 'r2-inventory')).toHaveAttribute('aria-selected', 'false');
-  // 部分选中 = 全选行三态的 indeterminate
-  await expect(dimAll(page, 'repo')).toHaveJSProperty('indeterminate', true);
+  // 部分选中 = 全选行三态的 mixed（#943：官方件 aria-checked 载体）
+  await expect(dimAll(page, 'repo')).toHaveAttribute('aria-checked', 'mixed');
   // 满选再点全选行 = 清本维：先点满，再点一次回空集（删参）
   await dimAll(page, 'repo').click();
-  await expect(dimAll(page, 'repo')).toBeChecked();
+  await expect(dimAll(page, 'repo')).toHaveAttribute('aria-checked', 'true');
   await dimAll(page, 'repo').click();
   await expect(page).not.toHaveURL(/[?&]projects=/);
   await expect(dimReadout(page, 'repo')).toHaveText('已选 0/3');
-  await expect(dimAll(page, 'repo')).not.toBeChecked();
+  await expect(dimAll(page, 'repo')).toHaveAttribute('aria-checked', 'false');
   // 计数回满量：清空本轴后 canon 段读数回到全量 2（清除不残留收窄）
   await expect(optionCount(page, PRJ_CANON)).toHaveText('2');
   await page.keyboard.press('Escape');
@@ -325,8 +349,8 @@ test('仓库带参直达 = 预选；未知项目 id 不误配 = 板级空态', a
   await expect(card(page, 'repofilter-a')).toHaveCount(0);
   // 未知 id（已删项目/脏 URL）：不命中任何卡，走板级空态而非空白看板
   await page.goto(`${REPOS}&projects=p-gone`);
-  await expect(page.locator('.board-filter-empty')).toBeVisible();
-  await expect(page.locator('.board-column')).toHaveCount(0);
+  await expect(filterEmpty(page)).toBeVisible();
+  await expect(page.locator('[data-column]')).toHaveCount(0);
 });
 
 test('零卡项目选中 = 板级空态明示 + 摘要；清除回全量', async ({ page }) => {
@@ -334,15 +358,13 @@ test('零卡项目选中 = 板级空态明示 + 摘要；清除回全量', async
   await openTypePopover(page);
   await repoOption(page, 'r4-quiet').click();
   await page.keyboard.press('Escape');
-  const empty = page.locator('.board-filter-empty');
-  await expect(empty).toBeVisible();
-  await expect(empty).toContainText('没有匹配筛选条件的任务');
+  await expect(filterEmpty(page)).toBeVisible();
   // 空态带生效摘要——用户读得出「是谁把它清空的」
-  await expect(page.locator('.board-filter-empty-summary')).toBeVisible();
-  await expect(page.locator('.board-column')).toHaveCount(0);
-  await page.locator('.board-filter-clear').click();
+  await expect(page.getByText(/^筛选生效：/)).toBeVisible();
+  await expect(page.locator('[data-column]')).toHaveCount(0);
+  await page.getByRole('button', { name: '清除筛选' }).click();
   await expect(page).not.toHaveURL(/[?&]projects=/);
-  await expect(page.locator('.board-column')).toHaveCount(4);
+  await expect(page.locator('[data-column]')).toHaveCount(4);
   await expect(card(page, 'repofilter-a')).toBeVisible();
 });
 
@@ -355,13 +377,11 @@ test('类型轴空结果态沿用：板级明示 + 清除（board-tags-empty）'
   // 多选弹层保持开——板级空态在层后成形；收层（家族律 Escape）再操作清除钮
   await page.keyboard.press('Escape');
   await expect(typePopover(page)).not.toBeVisible();
-  const empty = page.locator('.board-filter-empty');
-  await expect(empty).toBeVisible();
-  await expect(empty).toContainText('没有匹配筛选条件的任务');
-  await expect(page.locator('.board-column')).toHaveCount(0);
-  await page.locator('.board-filter-clear').click();
+  await expect(filterEmpty(page)).toBeVisible();
+  await expect(page.locator('[data-column]')).toHaveCount(0);
+  await page.getByRole('button', { name: '清除筛选' }).click();
   await expect(page).not.toHaveURL(/[?&]tags=/);
-  await expect(page.locator('.board-column')).toHaveCount(4);
+  await expect(page.locator('[data-column]')).toHaveCount(4);
   await expect(card(page, 'tagfilter-e-bug')).toBeVisible();
   await expect(card(page, 'tagfilter-e-docs')).toBeVisible();
 });
@@ -391,12 +411,12 @@ test('双轴组合 = AND 收窄；组合见底 = 空态；清除钮清双轴', a
   await repoOption(page, PRJ_CANON).click(); // 解除 canon
   await repoOption(page, 'r2-inventory').click();
   await page.keyboard.press('Escape');
-  await expect(page.locator('.board-filter-empty')).toBeVisible();
+  await expect(filterEmpty(page)).toBeVisible();
   // 清除钮一次清双轴
-  await page.locator('.board-filter-clear').click();
+  await page.getByRole('button', { name: '清除筛选' }).click();
   await expect(page).not.toHaveURL(/[?&]projects=/);
   await expect(page).not.toHaveURL(/[?&]tags=/);
-  await expect(page.locator('.board-column')).toHaveCount(4);
+  await expect(page.locator('[data-column]')).toHaveCount(4);
   await expect(card(page, 'repofilter-a')).toBeVisible();
   await expect(card(page, 'repofilter-b')).toBeVisible();
   await expect(card(page, 'repofilter-c')).toBeVisible();
@@ -409,7 +429,7 @@ test('类型段批次键：全部选中 = 写满词表（读数 N/N，非 0/N）
   await openTypePopover(page);
   await expect(dimReadout(page, 'type')).toHaveText('已选 0/6');
   // 短词表不出搜索框（阈值 8）——固定 6 词下搜索是纯噪音
-  await expect(page.locator('.filter-dimension-search')).toHaveCount(0);
+  await expect(dim(page, 'type').getByRole('textbox')).toHaveCount(0);
   await dimAll(page, 'type').click();
   // 全选与「无筛选」在命中上等价（无标签恒可见），但按键语义要读得出：
   // 用户按的是「全选」，读数就该是 6/6。URL 序 = 字典序规范序。
@@ -428,27 +448,27 @@ test('类型段批次键：全部选中 = 写满词表（读数 N/N，非 0/N）
   await dimInvert(page, 'type').click();
   await expect(page).toHaveURL(/[?&]tags=bug,docs,feature,improvement,refactor(&|$)/);
   await expect(dimReadout(page, 'type')).toHaveText('已选 5/6');
-  await expect(dimAll(page, 'type')).toHaveJSProperty('indeterminate', true);
+  await expect(dimAll(page, 'type')).toHaveAttribute('aria-checked', 'mixed');
 });
 
 test('生效筛选条：只列生效维度、点条清该维度、两轴齐时出「清除全部」', async ({ page }) => {
   await page.goto(REPOS);
-  await expect(page.locator('.filter-chip')).toHaveCount(0);
+  await expect(chipsBar(page)).toHaveCount(0);
   await openTypePopover(page);
   await repoOption(page, PRJ_CANON).click();
   await page.keyboard.press('Escape');
   await expect(filterChip(page, 'repo')).toBeVisible();
   await expect(filterChip(page, 'repo')).toContainText('仓库');
   await expect(filterChip(page, 'type')).toHaveCount(0);
-  await expect(page.locator('.board-type-filter-count')).toHaveText('1');
+  await expect(page.getByTestId('filter-count')).toHaveText('1');
   // 单条时不出「清除全部」——没有第二条可清
-  await expect(page.locator('.filter-chips-clear')).toHaveCount(0);
+  await expect(chipsClear(page)).toHaveCount(0);
   await openTypePopover(page);
   await typeOption(page, 'bug').click();
   await page.keyboard.press('Escape');
   await expect(filterChip(page, 'type')).toBeVisible();
-  await expect(page.locator('.filter-chips-clear')).toBeVisible();
-  await expect(page.locator('.board-type-filter-count')).toHaveText('2');
+  await expect(chipsClear(page)).toBeVisible();
+  await expect(page.getByTestId('filter-count')).toHaveText('2');
   // 点条 = 只清该维度，另一维度不动
   await filterChip(page, 'repo').click();
   await expect(page).not.toHaveURL(/[?&]projects=/);
@@ -458,32 +478,39 @@ test('生效筛选条：只列生效维度、点条清该维度、两轴齐时�
   await openTypePopover(page);
   await repoOption(page, PRJ_CANON).click();
   await page.keyboard.press('Escape');
-  await page.locator('.filter-chips-clear').click();
+  await chipsClear(page).click();
   await expect(page).not.toHaveURL(/[?&]tags=/);
   await expect(page).not.toHaveURL(/[?&]projects=/);
-  await expect(page.locator('.filter-chip')).toHaveCount(0);
-  await expect(page.locator('.board-type-filter-count')).toHaveCount(0);
+  await expect(chipsBar(page)).toHaveCount(0);
+  await expect(page.getByTestId('filter-count')).toHaveCount(0);
 });
 
 test('任务卡渲染标签 chip：词表配色、无标签零占位、既有几何不漂移', async ({ page }) => {
   await page.goto(TAGS);
   // tagged 卡：chip 在场、文本 = 词表名、底色 = 词表色（bug #ef4444）
-  const bugChip = card(page, 'tagfilter-bug').locator('.todo-card-tag');
+  const bugChip = card(page, 'tagfilter-bug').locator(CHIP);
   await expect(bugChip).toBeVisible();
   await expect(bugChip).toHaveText('bug');
   await expect(bugChip).toHaveCSS('background-color', 'rgb(239, 68, 68)');
-  await expect(card(page, 'tagfilter-docs').locator('.todo-card-tag')).toHaveText('docs');
-  // 无标签卡：零占位（chip 不渲染，不是隐藏空盒）
-  await expect(card(page, 'tagfilter-plain').locator('.todo-card-tag')).toHaveCount(0);
+  await expect(card(page, 'tagfilter-docs').locator(CHIP)).toHaveText('docs');
+  // 无标签卡：零占位（chip 不渲染，不是隐藏空盒）——任何词表名都不成 chip
+  await expect(card(page, 'tagfilter-plain').locator(CHIP)).toHaveCount(0);
+  await expect(
+    card(page, 'tagfilter-plain').getByText(/^(bug|feature|improvement|refactor|docs|chore)$/),
+  ).toHaveCount(0);
   // 几何护栏：chip 卡面 16px（todo-card.tsx 的 row-flush per-face 覆写——与
   // 16px row1 齐平；20px 正本保留给容器更高的三个面，shadcn-primitives 钉），
   // 不撑高 row1；tagged 卡与无标签卡的 row1 高、卡高、seq 右锚一致（不挤压既有元素）
   const geo = await page.evaluate(() => {
     const probe = (id: string) => {
-      const el = document.querySelector(`.todo-card[data-todo-id="${id}"]`)!;
-      const row1 = el.querySelector('.todo-card-row1')!;
-      const seq = el.querySelector('.todo-card-seq')!;
-      const chip = el.querySelector('.todo-card-tag');
+      const el = document.querySelector(`[data-todo-id="${id}"]`)!;
+      // 身份行 = 卡根首个子元素；序号 = 「#数字」文本徽标；chip = inline
+      // 数据色件（类名载体退役，#943/#910）
+      const row1 = el.firstElementChild!;
+      const seq = [...el.querySelectorAll('span')].find((sp) =>
+        /^#\d+$/.test(sp.textContent?.trim() ?? ''),
+      )!;
+      const chip = el.querySelector('[style*="background-color"]');
       return {
         cardH: el.getBoundingClientRect().height,
         row1H: row1.getBoundingClientRect().height,

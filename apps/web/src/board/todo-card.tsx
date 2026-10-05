@@ -25,6 +25,7 @@ import {
   UserCircle,
 } from '../icons/index.js';
 import { cardAction } from './columns.js';
+import { ProjectAvatar } from './project-avatar.js';
 import { relativeTime } from './rel-time.js';
 
 interface TodoCardProps {
@@ -81,12 +82,16 @@ export function TodoCard({
   const fresh = badge === 'idle';
   const { search } = useLocation();
   return (
+    /* #629 卡面选中封锁（参考站 2026-10-02 实测：卡根 user-select: none、
+       卡内零 <a>——点击是 Pressable 行为，无原生链接可拖）。select-none 原
+       住 board.css .todo-card 规则，#943 随文件清零迁到件上；配对的第二锁
+       （标题链接 -webkit-user-drag）在下方 Link。 */
     <Card
       data-todo-id={todo.id}
-      className="todo-card relative w-full gap-0 rounded-none px-[13.5px] pt-[9.5px] pb-[11.5px]"
+      className="todo-card relative w-full gap-0 rounded-none px-[13.5px] pt-[9.5px] pb-[11.5px] select-none"
     >
       <div className="todo-card-row1 flex h-4 items-center">
-        <span className="project-avatar">{chipInitial}</span>
+        <ProjectAvatar char={chipInitial} />
         <span className="todo-project-name ml-1 truncate text-[11px] leading-4 text-muted-foreground">
           {chipName}
         </span>
@@ -117,11 +122,15 @@ export function TodoCard({
 
       <h3 className="todo-card-title mt-1 wrap-break-word text-sm leading-5 font-medium text-card-foreground">
         <Link
-          className="todo-card-link text-inherit no-underline after:absolute after:inset-0 after:content-['']"
+          /* #629 双锁之二/三（本仓卡面是 stretched link，参考站无 <a>）：
+             不可拖列（待处理/已完成，#616 传感器不武装）按住微移会命中
+             <a href> 的缺省可拖性，触发原生 link drag——Chrome 的拖影 chip
+             （链接文本 + URL）即用户报的「偶尔出现一个小链接」。
+             [-webkit-user-drag:none] 是 webkit 生效位（原 board.css
+             .todo-card-link 规则，#943 迁工具类），draggable={false} 是
+             标准属性位第三锁；选中高亮由卡根 select-none 绝迹。 */
+          className="todo-card-link text-inherit no-underline after:absolute after:inset-0 after:content-[''] [-webkit-user-drag:none]"
           to={{ pathname: `/app/todo/${todo.id}`, search }}
-          /* #629 第三锁：标准属性位禁原生链接拖（board.css 的
-             -webkit-user-drag 是 webkit 生效位）——不可拖列的卡按住微移
-             不再冒 Chrome 拖影 chip（「小链接」） */
           draggable={false}
         >
           {todo.title}

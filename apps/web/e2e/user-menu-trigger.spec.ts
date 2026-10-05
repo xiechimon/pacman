@@ -1,9 +1,11 @@
-import { expect, type Page, test } from '@playwright/test';
+import { type Locator, expect, type Page, test } from '@playwright/test';
 
-// Issue #127 acceptance: the sidebar avatar chips (expanded .sidebar-user
-// and rail .rail-user) open the user-menu popover on a real click — toggle
-// on the chip, close on outside click and Esc, the anchored-overlay family
-// affordances.
+// Issue #127 acceptance: the sidebar avatar chips (expanded + rail shapes)
+// open the user-menu popover on a real click — toggle on the chip, close on
+// outside click and Esc, the anchored-overlay family affordances.
+// #943/#910: the chips ride the一级 role carrier — both shapes are the
+// button whose accessible name is the fixture user (aria-label = USER_NAME,
+// fixtures.ts 'Xmon Dai'); the .sidebar-user/.rail-user class pins retired.
 // #163 replaces the frozen-capture geometry assertion (224×244 @ (8,410),
 // r7 17/16d) with the anchoring law — precedent: #135 re-cut the
 // visual-polish assertions with 裁决 v2. The menu is bottom-anchored above
@@ -19,8 +21,12 @@ import { expect, type Page, test } from '@playwright/test';
 
 const BOARD = '/app?scenario=01';
 const THEME_KEY = 'pacman-theme'; // apps/web/src/theme.ts THEME_STORAGE_KEY
+/** 用户 chip 的一级载体：aria-label = fixture USER_NAME（'Xmon Dai'），
+ *  展开态与 rail 态同名同钮（#127 两态共开合面）。 */
+const USER_NAME = 'Xmon Dai';
 
 const menu = (page: Page) => page.locator('.user-menu');
+const userChip = (page: Page) => page.getByRole('button', { name: USER_NAME });
 
 /** #656: the menu rides an enter keyframe (scale .98 + fade) — geometry/
  *  hit-test reads must wait for it to settle, otherwise they catch a
@@ -28,14 +34,14 @@ const menu = (page: Page) => page.locator('.user-menu');
  *  #854: the transition moved off the panel onto the primitive's Popup wrapper
  *  (the panel is now its static child), so the wait has to watch the ancestor
  *  that actually animates — reading the panel's own animations returns an empty
- *  list and the sample lands mid-scale (measured 222.59 against the 224 box). */
+ *  list and the sample lands mid-scale (measured 222.59 against the 224 box).
+ *  #943/#910 裁定 1: data-slot 不作 spec 钉扎载体——动画等待改爬直接父级
+ *  （Popup wrapper 就是 .user-menu 的 parentElement，#854 的「静态子」结构）。 */
 async function expectMenuSettled(page: Page) {
   await expect(menu(page)).toBeVisible();
   await menu(page).evaluate((el) =>
     Promise.all(
-      (el.closest('[data-slot="popover-content"]') ?? el)
-        .getAnimations({ subtree: true })
-        .map((a) => a.finished),
+      (el.parentElement ?? el).getAnimations({ subtree: true }).map((a) => a.finished),
     ),
   );
 }
@@ -77,10 +83,10 @@ async function expectMenuOnTop(page: Page) {
  *  law keeps only its #163 half — the panel never covers the avatar.
  *  Returns the menu-bottom distance from the viewport bottom
  *  (the anchoring invariant: it must not depend on the viewport height). */
-async function expectAnchoredAboveChip(page: Page, chipSel: string) {
+async function expectAnchoredAboveChip(page: Page, chip: Locator) {
   const box = await menu(page).boundingBox();
-  const row = await page.locator(chipSel).boundingBox();
-  const img = await page.locator(`${chipSel} img`).boundingBox();
+  const row = await chip.boundingBox();
+  const img = await chip.locator('img').boundingBox();
   expect(box).not.toBeNull();
   expect(row).not.toBeNull();
   expect(img).not.toBeNull();
@@ -99,12 +105,12 @@ test('expanded chip: click opens anchored above the chip, re-click closes', asyn
   await page.goto(BOARD);
   await expect(menu(page)).toBeHidden();
 
-  const chip = page.locator('.sidebar-user');
+  const chip = userChip(page);
   await chip.click();
 
   await expectMenuSettled(page);
   await expect(chip).toHaveAttribute('aria-expanded', 'true');
-  await expectAnchoredAboveChip(page, '.sidebar-user');
+  await expectAnchoredAboveChip(page, chip);
   await expectMenuOnTop(page);
 
   // re-clicking the chip lands on the family click-catcher at the same
@@ -116,7 +122,7 @@ test('expanded chip: click opens anchored above the chip, re-click closes', asyn
 
 test('outside click and Esc close the open menu', async ({ page }) => {
   await page.goto(BOARD);
-  const chip = page.locator('.sidebar-user');
+  const chip = userChip(page);
 
   await chip.click();
   await expect(menu(page)).toBeVisible();
@@ -133,11 +139,11 @@ test('rail chip opens the same popover, unclipped by the 40px rail', async ({ pa
   await page.addInitScript(() => localStorage.setItem('pacman.sidebar-collapsed', '1'));
   await page.goto(BOARD);
 
-  const chip = page.locator('.rail-user');
+  const chip = userChip(page);
   await chip.click();
 
   await expectMenuSettled(page);
-  await expectAnchoredAboveChip(page, '.rail-user');
+  await expectAnchoredAboveChip(page, chip);
   await expectMenuOnTop(page);
 
   await page.keyboard.press('Escape');
@@ -154,18 +160,19 @@ test('#163 anchoring: bottom distance is viewport-invariant, the chip is never c
       await page.evaluate(() => localStorage.setItem('pacman.sidebar-collapsed', '1'));
       await page.reload();
     }
-    const chipSel = collapsed ? '.rail-user' : '.sidebar-user';
+    // 两态同钮同名（#910 一级载体下 shape 差异对 spec 不可见）
+    const chip = userChip(page);
 
-    await page.locator(chipSel).click();
+    await chip.click();
     await expectMenuSettled(page);
-    const anchorDistance = await expectAnchoredAboveChip(page, chipSel);
+    const anchorDistance = await expectAnchoredAboveChip(page, chip);
 
     // the dogfood symptom window first: at 600px the frozen top:410px
     // buried the chip — the anchored panel must ride the bottom instead
     for (const height of [600, 900, 550, 732]) {
       await page.setViewportSize({ width: 1440, height });
       await expectMenuRepositioned(page);
-      const distance = await expectAnchoredAboveChip(page, chipSel);
+      const distance = await expectAnchoredAboveChip(page, chip);
       // bottom-anchored: the distance does not depend on the viewport height
       expect(Math.abs(distance - anchorDistance)).toBeLessThanOrEqual(1);
     }
@@ -181,7 +188,7 @@ test('外观 row works from the click-opened menu and the choice survives reopen
   page,
 }) => {
   await page.goto(BOARD);
-  await page.locator('.sidebar-user').click();
+  await userChip(page).click();
 
   const light = page.locator('.user-menu-seg button', { hasText: '浅色' });
   await expect(light).toHaveAttribute('data-active', 'false'); // scenario 01 rides dark
@@ -195,13 +202,13 @@ test('外观 row works from the click-opened menu and the choice survives reopen
   // close + reopen: the remounted menu reads the stored theme
   await page.keyboard.press('Escape');
   await expect(menu(page)).toBeHidden();
-  await page.locator('.sidebar-user').click();
+  await userChip(page).click();
   await expect(light).toHaveAttribute('data-active', 'true');
 });
 
 test('detail route: the trigger opens the menu over the confirm surface', async ({ page }) => {
   await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=17b');
-  await page.locator('.sidebar-user').click();
+  await userChip(page).click();
 
   await expectMenuSettled(page);
   await expectMenuOnTop(page);

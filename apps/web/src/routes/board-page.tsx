@@ -61,9 +61,6 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
 import { SearchPanel, useSearchState } from '../overlays/search-panel.js';
-// shell styles live with the board surface; the settings view (101–104)
-// unmounts BoardSurface but keeps the shell, so the route imports them too
-import '../board/board.css';
 
 /** 拖拽提交逐卡发送的字段（#160）：手动改相 + 列内排序位（server
  *  patchTodoBodySchema 两位；首次落位会把触及列的 orderIndex 一次性
@@ -576,7 +573,7 @@ export function BoardPage() {
     // detail shell carries the same marker (D7). The board column floor is
     // unconditional since #692 (board.css owns the single-source track rule).
     <div
-      className="board-shell h-full"
+      className="board-shell flex h-full overflow-hidden"
       data-route="board"
       data-chief-open={chiefView === 'drawer' ? '' : undefined}
     >
