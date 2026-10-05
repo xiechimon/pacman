@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-// #851 drift gate: one style, one implementation. Every UI face that has
-// been consolidated into `apps/web/src/components/ui/*` (or the styles/
-// token single-source) must not grow a second implementation in domain CSS.
+// Drift gate: one style, one implementation. Every UI face that has been
+// consolidated into `apps/web/src/components/ui/*` (or the styles/ token
+// single-source) must not grow a second implementation in domain CSS or JSX.
 //
 // What this checks (all source-only, no build needed):
 //   G1  No live `.btn` / `.btn--*` selectors. The old button skins were
@@ -16,8 +16,14 @@
 //   G3  The canonical `.chip--*` variants are defined exactly once, in
 //       `ui/chip.css`. Per-face chip families (search-row-chip--*,
 //       mention-chip--*, detail-chip--*) are separate skins with their own
-//      收编 tickets — this gate only pins the canonical six against
+//       收编 tickets — this gate only pins the canonical six against
 //       redefinition elsewhere.
+//   G4  Every bare `<input` in apps/web/src either lives in an Input
+//       primitive itself or carries a `deliberate-native` marker comment
+//       within the 12 lines above it (#855, parent #851). Text-like inputs
+//       migrate to components/ui/input.tsx; deliberate-native sites (hidden
+//       file triggers, tri-state checkboxes, custom-switch a11y layers)
+//       document their reason at the site instead.
 //
 // Known single-site exception (G2-ALLOW): attachment-strip.css
 // `.attachment-pending-badge` paints white text on a theme-invariant black
@@ -28,7 +34,7 @@
 // Usage: node scripts/ui-drift-gate.mjs
 // Exit 0 when all gates hold; exit 1 otherwise, listing the offending sites.
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..');
@@ -48,28 +54,45 @@ const HEX_ALLOWLIST = [
 // G3: canonical chip variants, single home.
 const CHIP_HOME_REL = rel(join(WEB_SRC, 'ui/chip.css'));
 const CHIP_VARIANTS = ['idle', 'plan', 'confirm', 'done', 'failed', 'mini'];
+// G4: bare `<input>` marker discipline.
+const INPUT_MARKER = 'deliberate-native';
+const INPUT_MARKER_WINDOW_LINES = 12;
+// Files that ARE the primitive: bare <input> is the implementation there.
+const INPUT_PRIMITIVE_FILES = new Set(['ui/input.tsx', 'components/ui/input.tsx']);
 
 const failures = [];
 
-function walk(dir, out = []) {
-  for (const entry of readdirSync(dir)) {
-    const path = join(dir, entry);
-    if (statSync(path).isDirectory()) walk(path, out);
-    else if (path.endsWith('.css')) out.push(path);
+function walk(dir, extension, out = []) {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) walk(path, extension, out);
+    else if (path.endsWith(extension)) out.push(path);
   }
   return out;
 }
 
-function stripComments(text) {
+// G1-G3 scan stylesheets, where only CSS block comments exist.
+function stripCssComments(text) {
   return text.replace(/\/\*[\s\S]*?\*\//g, '\n');
 }
 
-const cssFiles = walk(WEB_SRC);
+/** G4 strips JSX block comments, TS block comments, and line comments so that
+ *  `<input` mentioned in prose (e.g. api-key-create-dialog's XMON-75 note)
+ *  does not count as a site. String literals are left alone: a literal
+ *  "<input" inside a string is rare and errs on the side of flagging. */
+function stripJsxComments(source) {
+  return source
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, (m) => '\n'.repeat((m.match(/\n/g) || []).length))
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => '\n'.repeat((m.match(/\n/g) || []).length))
+    .replace(/(^|[ \t])\/\/[^\n]*/g, '$1');
+}
+
+const cssFiles = walk(WEB_SRC, '.css');
 
 // --- G1: dead .btn selectors -------------------------------------------------
 const BTN_RE = /\.btn(?![\w-])|\.btn--[\w-]+/;
 for (const file of cssFiles) {
-  const text = stripComments(readFileSync(file, 'utf8'));
+  const text = stripCssComments(readFileSync(file, 'utf8'));
   text.split('\n').forEach((line, i) => {
     const m = line.match(BTN_RE);
     if (m) failures.push(`G1 ${rel(file)}:${i + 1}: live \`${m[0]}\` selector (${line.trim()})`);
@@ -80,7 +103,7 @@ for (const file of cssFiles) {
 const HEX_RE = /#[0-9a-fA-F]{3,8}\b/;
 for (const file of cssFiles) {
   if (file === HEX_SOURCE) continue;
-  const text = stripComments(readFileSync(file, 'utf8'));
+  const text = stripCssComments(readFileSync(file, 'utf8'));
   text.split('\n').forEach((line, i) => {
     if (!HEX_RE.test(line)) return;
     const allowed = HEX_ALLOWLIST.some(
@@ -112,7 +135,7 @@ for (const file of cssFiles) {
 // --- G3: canonical chip variants defined once, at home -----------------------
 const chipDefs = new Map();
 for (const file of cssFiles) {
-  const text = stripComments(readFileSync(file, 'utf8'));
+  const text = stripCssComments(readFileSync(file, 'utf8'));
   text.split('\n').forEach((line, i) => {
     const m = line.match(/^\s*\.chip--([a-z]+)\b/);
     if (m) {
@@ -131,10 +154,36 @@ for (const variant of CHIP_VARIANTS) {
   }
 }
 
+// --- G4: bare <input> sites (input facet, #855) ------------------------------
+const INPUT_RE = /<input(?![A-Za-z0-9-])/;
+const tsxFiles = walk(WEB_SRC, '.tsx');
+let inputSites = 0;
+let deliberateInputs = 0;
+for (const file of tsxFiles) {
+  const relPath = rel(file);
+  if (INPUT_PRIMITIVE_FILES.has(relPath)) continue;
+  const raw = readFileSync(file, 'utf8');
+  const lines = raw.split('\n');
+  const clean = stripJsxComments(raw).split('\n');
+  for (let i = 0; i < clean.length; i++) {
+    // Bare <input followed by whitespace, newline, /, or > — never <Input
+    // (capital I fails the lowercase match) nor a longer tag like <inputish.
+    if (!INPUT_RE.test(clean[i])) continue;
+    inputSites++;
+    const windowStart = Math.max(0, i - INPUT_MARKER_WINDOW_LINES);
+    const hasMarker = lines.slice(windowStart, i + 1).some((l) => l.includes(INPUT_MARKER));
+    if (hasMarker) deliberateInputs++;
+    else
+      failures.push(
+        `G4 ${relPath}:${i + 1}: bare <input> without \`${INPUT_MARKER}\` — migrate to components/ui/input.tsx or annotate the reason`,
+      );
+  }
+}
+
 // --- verdict -----------------------------------------------------------------
 if (failures.length === 0) {
   console.log(
-    `[ui-drift-gate] PASS: no live .btn selectors, no hex escapes, ${CHIP_VARIANTS.length} chip variants single-sourced (${cssFiles.length} css files scanned).`,
+    `[ui-drift-gate] PASS: no live .btn selectors, no hex escapes, ${CHIP_VARIANTS.length} chip variants single-sourced (${cssFiles.length} css files scanned); ${inputSites} bare <input> site(s), ${deliberateInputs} deliberate-native.`,
   );
   process.exit(0);
 }
