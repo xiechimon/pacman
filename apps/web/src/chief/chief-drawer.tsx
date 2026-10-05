@@ -272,7 +272,9 @@ export function ChiefDrawer({
   // 纵向滚动容器（reversed=false）。
   const { requestFollow } = useChatFollow({
     ref: bodyRef,
-    dep: [streamLen, typingText],
+    // 增长信号 = 行数 + 打字行文本（250ms 聚合粒度）。拼成一个字符串而不是
+    // 数组：[…] 字面量每次渲染都是新身份，效应会跟着每一次无关重渲跑。
+    dep: `${streamLen}:${typingText ?? ''}`,
     reversed: false,
     active: open,
     resetDep: chief.threadTitle,
