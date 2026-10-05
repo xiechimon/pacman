@@ -9,10 +9,10 @@
 // from the r7 16/17/26/27/28/36/38 and r8 54–77 captures; CONTEXT.md canon
 // names the message flow `transcript`.
 
-import { Atom } from 'loading-dev';
 import { useState } from 'react';
 import { inlineSegments } from '../api/mappers.js';
 import { type CurrentUser, useLiveData } from '../api/provider.js';
+import { LiveRow } from '../components/chat/live-row.js';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { RobotPara, TranscriptItem } from '../fixtures/records.js';
@@ -31,8 +31,20 @@ import {
 import { ChatMarkdown } from './chat-markdown.js';
 import { Segments } from './segments.js';
 
+/** Live step facts the streaming row discloses (#873): the panel is the one
+ *  thing the row can say that the timeline does not already carry. Null =
+ *  no panel, and with it no chevron. */
+export interface LiveStep {
+  /** Phase label of the running step (规划 / 构建 / 审核). */
+  step: string;
+  /** Executing machine name, when one is already known. */
+  machine: string | null;
+}
+
 interface TranscriptProps {
   transcript: TranscriptItem[];
+  /** #873: the running step behind the live row (null = unknown/fixture). */
+  liveStep?: LiveStep | null;
   /** XMON-105: the run's executing agent — agent message rows (robot /
    *  fail / streaming / review) render this agent's avatar (avatarUrl
    *  override > dicebear displayName seed > static robot asset), the same
@@ -192,12 +204,14 @@ function Row({
   onOpenPlan,
   agent,
   user,
+  liveStep,
 }: {
   item: TranscriptItem;
   t: TFunc;
   onOpenPlan?: () => void;
   agent: { displayName: string; avatarUrl: string | null } | null;
   user: CurrentUser;
+  liveStep: LiveStep | null;
 }) {
   switch (item.kind) {
     case 'run':
@@ -323,29 +337,34 @@ function Row({
       return (
         <div className="chat-row chat-row--agent">
           <AgentRowAvatar agent={agent} />
-          <span className="chat-streaming">
-            {/* #672: the loading-dev pilot replaces the #471 braille reel —
-                the replica discipline is lifted for this one surface by user
-                decision (2026-10-03, ADR 0009 D4 revision); the user picked
-                Atom after viewing the live preview. Atom: a 16×16 shell
-                circle with three tilted orbits spinning inner rings, all
-                strokes in currentColor; duration={900} pins the cycle to
-                the old reel's period (the atom default is 1000ms). #821:
-                currentColor rides the spot solid (both themes follow) and
-                the root breathes (opacity/scale pulse, twice the spin
-                period); static under reduced motion. The
-                library's React-19 precedence stylesheet freezes the spins
-                under reduced motion, and its root carries aria-hidden — the
-                label text stays the accessible live cue, the animation is
-                never the only channel. */}
-            <Atom size={16} duration={900} className="chat-spinner" />
-            {item.seconds != null && (
-              // tabular figures: the 3s→10s tick must not shift the row tail
-              <span className="chat-streaming-secs">{item.seconds}s</span>
+          {/* #873: the row itself is the shared live row (components/chat/
+              live-row) — same skeleton, same disclosure rule and same honest
+              clock as the chief drawer's in-flight row. What differs per
+              surface is the skin and what the panel discloses: here it is
+              the running step (which step, on which machine), which is the
+              only thing this surface knows that the timeline does not
+              already show. No panel data = no panel, and then no chevron
+              either (#634: a shape must carry semantics). */}
+          <LiveRow
+            variant="detail"
+            label={item.label}
+            startedAt={item.startedAt}
+            seconds={item.seconds}
+            disclosure={
+              liveStep != null ? { expand: '展开实时步骤', collapse: '收起实时步骤' } : null
+            }
+          >
+            {liveStep != null && (
+              <div className="chat-live-panel">
+                <span className="chat-live-line">{t('本步：{n}', { n: liveStep.step })}</span>
+                {liveStep.machine != null && (
+                  <span className="chat-live-line">
+                    {t('执行机器：{n}', { n: liveStep.machine })}
+                  </span>
+                )}
+              </div>
             )}
-            <ChevronRight width={10} height={10} />
-            <span className="chat-streaming-label">{t(item.label)}</span>
-          </span>
+          </LiveRow>
         </div>
       );
     case 'plan':
@@ -535,7 +554,12 @@ function ToolsRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'tools' }
   );
 }
 
-export function Transcript({ transcript, agent = null, onOpenPlan }: TranscriptProps) {
+export function Transcript({
+  transcript,
+  agent = null,
+  onOpenPlan,
+  liveStep = null,
+}: TranscriptProps) {
   const { t } = useI18n();
   // XMON-105: the user row's avatar is the logged-in user's own identity
   // (sidebar chip / account head share it), not a per-surface static asset.
@@ -544,7 +568,15 @@ export function Transcript({ transcript, agent = null, onOpenPlan }: TranscriptP
     <>
       {transcript.map((item, i) => (
         // fixture order is stable; items carry no ids
-        <Row key={i} item={item} t={t} onOpenPlan={onOpenPlan} agent={agent} user={user} />
+        <Row
+          key={i}
+          item={item}
+          t={t}
+          onOpenPlan={onOpenPlan}
+          agent={agent}
+          user={user}
+          liveStep={liveStep}
+        />
       ))}
     </>
   );

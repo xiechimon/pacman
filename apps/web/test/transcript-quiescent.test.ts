@@ -11,6 +11,11 @@
 //   F11 no build → phantom tail
 //   F12 quiescent tail carrying a seconds counter — nothing re-renders
 //       during the gap, so a frozen counter would lie
+//   F18 (#873) the live tail carrying a PRE-COMPUTED seconds value — the
+//       projection ran once and the number froze at whatever it was then
+//       (the reported `1s` stuck for the whole step). The row must instead
+//       carry the step's real start stamp, so the renderer's clock is the
+//       only thing that produces the number
 //   F14 stopping + active step must still read 正在停止… (not hijacked by
 //       the quiescent label)
 //   F14b stopping with NO active step (single-render transient — the live
@@ -68,7 +73,6 @@ function render(overrides: {
     machineName: null,
     userName: 'Xmon Dai',
     liveText: '',
-    now: NOW,
     ...(overrides.stopping !== undefined ? { stopping: overrides.stopping } : {}),
   });
 }
@@ -98,7 +102,10 @@ describe('mapTranscript quiescent live tail (#471)', () => {
     const rows = streamingRows(items);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.label).toBe('处理中...');
-    expect(rows[0]?.seconds).toBeTypeOf('number');
+    // F18 (#873): the live row carries the step's START STAMP, not a number
+    // computed at projection time — only the stamp keeps ticking.
+    expect(rows[0]?.startedAt).toBe(step('claimed').createdAt);
+    expect(rows[0]?.seconds).toBeUndefined();
   });
 
   test('F10: phases past building hang no live tail', () => {

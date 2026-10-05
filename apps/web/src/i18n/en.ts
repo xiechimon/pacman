@@ -392,6 +392,10 @@ export const EN: Record<string, string> = {
   收起实时步骤: 'Hide live steps',
   '正在调用 {n}': 'Calling {n}',
   '等待 Agent 响应…': 'Waiting for the agent…',
+  // #873 详情活行披露面：在跑步两行（步类 + 执行机器）；行开关 aria 复用
+  // #822 的「展开/收起实时步骤」——同一手势两面同词。
+  '本步：{n}': 'This step: {n}',
+  '执行机器：{n}': 'Machine: {n}',
   '默认（与绑定 Agent 相同）': 'Default (same as bound Agent)',
   '搜索模型…': 'Search models…',
   没有匹配的模型: 'No matching models',

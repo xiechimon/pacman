@@ -16,7 +16,7 @@
 // 保持 #56–#75 行为字节不变。
 import { type Assignment, conversationBranch, parseGithubIssueSourceRef } from '@pacman/shared';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { toast } from 'sonner';
 import { attachFile } from '../api/attachments.js';
@@ -63,6 +63,7 @@ import {
   ChiefAgentDialog,
   type ChiefAgentOption,
 } from '../chief/chief-agent-dialog.js';
+import { useChatFollow } from '../components/chat/use-chat-follow.js';
 import { toastError } from '../components/ui/toaster.js';
 import { AcceptDialog } from '../detail/accept-dialog.js';
 import { Composer } from '../detail/composer.js';
@@ -79,7 +80,7 @@ import { SourceIssueLine } from '../detail/source-issue.js';
 import { SpecBlock } from '../detail/spec-block.js';
 import { StopConfirmDialog } from '../detail/stop-confirm-dialog.js';
 import { TaskMetaBlock, type TaskMetaFields } from '../detail/task-meta-block.js';
-import { Transcript } from '../detail/transcript.js';
+import { type LiveStep, Transcript } from '../detail/transcript.js';
 import { UserMenu } from '../detail/user-menu.js';
 import type {
   DetailContent,
@@ -333,7 +334,8 @@ export function TodoDetailPage() {
   useConversationStream(buildId ?? undefined, live, streamHandlers);
 
   const steps = stepsQ.data ?? [];
-  const running = steps.some((s) => s.status === 'claimed' || s.status === 'pending');
+  const runningStep = steps.find((s) => s.status === 'claimed' || s.status === 'pending') ?? null;
+  const running = runningStep !== null;
   // AI 审核中态（M7 #312，r8 §3.1）：chip 改「审核中」、composer placeholder 改
   // 「AI 审核进行中…」、期间显示停止钮（复用 #308）。判定 = 存在 kind=review
   // 的活动步（claimed/pending）。phase 不动（review 步是额外 agent 步）。
@@ -398,7 +400,6 @@ export function TodoDetailPage() {
         machineName,
         userName,
         liveText,
-        now: Date.now(),
         stopping,
       }),
       ...(latestPlan ? { doc: mapPlanDoc(latestPlan.content) } : {}),
@@ -502,6 +503,38 @@ export function TodoDetailPage() {
         planDiff: livePlanDiff,
       }
     : fixtureView;
+
+  // #873 会话跟随单源（components/chat/use-chat-follow）：列容器是
+  // column-reverse（最新在 scrollTop 0 侧），规则与总管抽屉逐字同款——增长
+  // 只在读者已贴最新端时拖动视口；读者自己发出去的那条永远跳到最新。
+  const chatColRef = useRef<HTMLDivElement | null>(null);
+  const { requestFollow } = useChatFollow({
+    ref: chatColRef,
+    dep: view.transcript,
+    reversed: true,
+    // 会话列只在真挂了 transcript 的那一支持存在（fresh 面没有 .chat-col）。
+    active: live && view.transcript.length > 0,
+  });
+  // 在飞行数据（活行披露面 + 会话跟随时机）：步类词表 = 详情头部 chip 同族。
+  const liveStep = useMemo<LiveStep | null>(
+    () =>
+      runningStep == null
+        ? null
+        : {
+            step:
+              runningStep.kind === 'review'
+                ? '审核中'
+                : runningStep.kind === 'plan'
+                  ? '规划中'
+                  : '执行中',
+            // 真值 = 该步实际领取的机器（machineName 由 steps×machines 解出，
+            // 未领取为 null）。不取 machineField：它会回落到 build 钉选的机器
+            // ——钉了一台还没来领的机器时，面板会声称「执行机器 = 那台」，
+            // 而步其实还在等（钉选等待态在 meta 块另有标注）。
+            machine: machineName,
+          },
+    [runningStep, machineName],
+  );
 
   // live 指派：dialog 未给显式 assignment 时取团队首个 Agent（02 §6.2 双槽
   // 同值）；#318 开始 dialog 统一面携带选定双槽（分用开关 OFF = 同值，
@@ -826,11 +859,13 @@ export function TodoDetailPage() {
                 {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
               </div>
             ) : (
-              <div className="chat-col">
+              <div className="chat-col" ref={chatColRef}>
                 {/* margin-top:auto pins an overflowing transcript to the
                       newest row at first paint (r8 63–77) and keeps short r7
                       transcripts top-aligned — no scroll scripting, so the
-                      fixture capture is deterministic */}
+                      fixture capture is deterministic. #873: the reader's own
+                      send still jumps here (useChatFollow), which the layout
+                      alone never did. */}
                 <div className="chat-pin">
                   {/* #827：简报卡住线程列首（随流滚动，不钉住）——此前它挂
                         在 chat-col 之外，长线程下恒占列首视口（M7 #310 把它
@@ -839,6 +874,9 @@ export function TodoDetailPage() {
                   {live && todo.spec.trim() !== '' && <SpecBlock spec={todo.spec} />}
                   <Transcript
                     transcript={view.transcript}
+                    // #873：活行披露面 = 在跑步（哪一步、哪台机器）——详情面
+                    // 唯一时间线里没有的事；fixture 面无此数据 = 无面板。
+                    liveStep={live ? liveStep : null}
                     // XMON-105: agent message rows carry the executing
                     // agent's own avatar (same identity as board card /
                     // team page), never the logged-in user's.
@@ -914,6 +952,10 @@ export function TodoDetailPage() {
                 onSend={
                   live
                     ? (text) => {
+                        // #873：读者自己发出去的那条必须看得见——这一刻先跳到
+                        // 最新端（四个分流出口共用；被拒 409 不清稿，落在最新端
+                        // 也无害）。增长跟随的其余判断在 useChatFollow 里。
+                        if (text !== '') requestFollow();
                         // 驳回回路（r5 §4）：confirm 关口发送 = revision + feedback
                         // → 重规划步入队 → plan v(N+1)（会话流即时呈现）。
                         if (phase === 'confirm' && buildId && text !== '') {

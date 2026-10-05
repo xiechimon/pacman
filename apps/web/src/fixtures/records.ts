@@ -471,12 +471,17 @@ export type TranscriptItem =
       markdown?: string;
       footer?: RobotFooter;
     }
-  /** Live planning/execution row: elapsed seconds + `›` + step label
-   *  (r7 16 `准备工作区...`, r7 26 `处理中...`, r7 26d `调用工具：bash …`).
-   *  #471 quiescent variant: `seconds` absent = the building gap's live
-   *  cue (spinner reel + static 执行中... label, no counter — the gap has
-   *  no stream events that would re-render a tick). */
-  | { kind: 'streaming'; seconds?: number; label: string }
+  /** Live planning/execution row: elapsed seconds + step label (r7 16
+   *  `准备工作区...`, r7 26 `处理中...`, r7 26d `调用工具：bash …`).
+   *  Two time sources, one honest rule (#873): `startedAt` = the live row's
+   *  real start stamp — the row ticks `Ns` itself so the count never freezes
+   *  between re-renders; `seconds` = a frozen capture value (fixture
+   *  surfaces only). Neither = the #471 quiescent variant (the building
+   *  gap's live cue, spinner + static 执行中... label, no counter at all —
+   *  never a stale number). The capture's trailing `›` now renders only
+   *  where the row has a panel behind it (#634「形必须带义」, the detail twin
+   *  of #822): live rows disclose the running step, capture rows carry none. */
+  | { kind: 'streaming'; seconds?: number; startedAt?: number; label: string }
   /** Collapsed plan card: `方案 · v1` row, clamped preview, action row
    *  `完成 Ns` (r7 17). `seconds` absent renders the bare `完成`
    *  (reused-plan card, r8 76). The r8 captures' trailing `›` is gone:

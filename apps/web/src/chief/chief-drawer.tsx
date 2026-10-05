@@ -38,12 +38,13 @@ import {
   CHIEF_INPUT_PLACEHOLDER_STEERING,
   type ChiefCompactionModel,
 } from '@pacman/shared';
-import { Atom } from 'loading-dev';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { attachFile } from '../api/attachments.js';
 import { useMachines, useMembers, useProjects, useSkills, useTodos } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { LiveRow } from '../components/chat/live-row.js';
+import { useChatFollow } from '../components/chat/use-chat-follow.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
@@ -264,34 +265,27 @@ export function ChiefDrawer({
   const lastItem = streamLen > 0 ? chief.stream?.[streamLen - 1] : undefined;
   const typingText =
     lastItem?.kind === 'robot' && lastItem.typing === true ? (lastItem.markdown ?? '') : null;
-  useEffect(() => {
-    if (!open) return;
-    const el = bodyRef.current;
-    if (el != null) el.scrollTop = el.scrollHeight;
-  }, [open, chief.threadTitle]);
-  // 增量跟随：仅当视口已近底部（<80px）才贴底——用户上翻读历史时不抢
-  // 滚动条。打字行文本与行数任一变化都触发（250ms 聚合窗口粒度）。
-  useEffect(() => {
-    if (!open) return;
-    const el = bodyRef.current;
-    if (el == null) return;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) el.scrollTop = el.scrollHeight;
-  }, [open, streamLen, typingText]);
+  // #873 跟随单源（components/chat/use-chat-follow，详情页对话列同款）：打开/
+  // 切线程落底（chat 面通行律：最新消息在底部；retained-mount 节点常驻，
+  // open 翻 true 时 effect 即发）；增量仅在视口已近底部时贴底——上翻读历史时
+  // 不抢滚动条。打字行文本与行数是增长信号（250ms 聚合粒度）。本面是普通
+  // 纵向滚动容器（reversed=false）。
+  const { requestFollow } = useChatFollow({
+    ref: bodyRef,
+    // 增长信号 = 行数 + 打字行文本（250ms 聚合粒度）。拼成一个字符串而不是
+    // 数组：[…] 字面量每次渲染都是新身份，效应会跟着每一次无关重渲跑。
+    dep: `${streamLen}:${typingText ?? ''}`,
+    reversed: false,
+    active: open,
+    resetDep: chief.threadTitle,
+  });
   // #615 返工：恢复钮确认层锚（stream 行 index + live 消息 id）与过程折叠开态集。
   const [rewindConfirm, setRewindConfirm] = useState<{ index: number; id: string | null } | null>(
     null,
   );
   const [toolsOpen, setToolsOpen] = useState<Set<number>>(() => new Set());
-  // #822 在飞存在行展开态：streaming 行是 button（箭头可点），展开面 = 正在
-  // 调用的工具 + 本轮已落库的工具行（mapChief 投影，无新 wire）。取代 race
-  // 护栏见下 hasStreaming effect——typing 接管那一帧 streaming 缺席即清零，
-  // 展开态永不泄漏到 typing 行；动效取直接显隐（#615 foot 折叠同律，仓内无
-  // V2 scale-fade 现货，不新造动效体系）。
-  const [streamOpen, setStreamOpen] = useState(false);
-  const hasStreaming = chief.stream?.some((s) => s.kind === 'streaming') ?? false;
-  useEffect(() => {
-    if (!hasStreaming) setStreamOpen(false);
-  }, [hasStreaming]);
+  // #822→#873 在飞存在行的展开态由共享 LiveRow 自持：typing 行接管那一帧
+  // streaming 分支整棵卸载，展开态随之清零（取代 race 不再需要抽屉级护栏）。
   // #615 复制钮的瞬时回执：键 = 消息位（u<i> / r<i>），1.5s 后回 Copy 字形。
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const copyText = (key: string, text: string) => {
@@ -316,7 +310,15 @@ export function ChiefDrawer({
   const wire = useComposerWire({
     editable: onSend != null,
     draft: onSend != null ? undefined : (chief.draft ?? ''),
-    onSend,
+    // #873：读者自己发出去的那条必须看得见——跳最新端与详情面同一规则
+    // （useChatFollow.requestFollow），四个分流出口之外的通用发送面。
+    onSend:
+      onSend == null
+        ? undefined
+        : (text: string) => {
+            requestFollow();
+            return onSend(text);
+          },
     onAttachment,
     mentionGroups,
     // #841 `/` slash completion（detail composer #731 同 registry；正本对照
@@ -384,7 +386,6 @@ export function ChiefDrawer({
     setModelOpen(false);
     setThreadsOpen(false);
     setRewindConfirm(null);
-    setStreamOpen(false);
     closePicker();
     closeInline();
     closeSlash();
@@ -759,34 +760,18 @@ export function ChiefDrawer({
                           ) : (
                             <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
                           )}
-                          {/* #822：在飞存在行可展开——整行是 button（箭头不再是
-                          纯装饰），展开面挂同列下方（.chief-turn-tools 同皮，
-                          #615 折叠同族）。秒数/计时器不挂（#471 律：静默期无
-                          流事件驱动重渲，计数会冻结说谎）。 */}
+                          {/* #873：行骨架/展开律/走秒律全部收进共享 LiveRow
+                          （components/chat/live-row）——与详情页 streaming 行
+                          同一份行为源。本面只提供皮肤（chief-*）与展开面内容
+                          （#822 的过程披露：正在调用的工具 + 本轮已落库工具行）。
+                          秒数不挂：本面没有真实起点（activeRun 封套不带时间戳），
+                          没有起点就不摆数字（#471 律），而不是摆一个冻结的数。 */}
                           <div className="chief-streaming-col">
-                            <button
-                              type="button"
-                              className="chief-streaming"
-                              aria-expanded={streamOpen}
-                              aria-label={t(streamOpen ? '收起实时步骤' : '展开实时步骤')}
-                              onClick={() => setStreamOpen((v) => !v)}
+                            <LiveRow
+                              variant="chief"
+                              label={item.label}
+                              disclosure={{ expand: '展开实时步骤', collapse: '收起实时步骤' }}
                             >
-                              {/* #672/#739: loading-dev Atom（16px/900ms，与详情页
-                                  chat-spinner 同款）——库自带 reduced-motion 冻结与
-                                  aria-hidden，标签文本是可访问的 live 线索。
-                                  #821: 描边走主题 spot 实色，根上带呼吸脉冲。 */}
-                              <Atom size={16} duration={900} className="chief-spinner" />
-                              {item.seconds != null && (
-                                <span className="chief-streaming-secs">{item.seconds}s</span>
-                              )}
-                              {streamOpen ? (
-                                <ChevronDown width={10} height={10} />
-                              ) : (
-                                <ChevronRight width={10} height={10} />
-                              )}
-                              <span className="chief-streaming-label">{t(item.label)}</span>
-                            </button>
-                            {streamOpen && (
                               <div className="chief-turn-tools">
                                 {chief.runningTool != null && (
                                   <div className="chief-turn-tool-row">
@@ -814,7 +799,7 @@ export function ChiefDrawer({
                                   </div>
                                 )}
                               </div>
-                            )}
+                            </LiveRow>
                           </div>
                         </div>
                       );
