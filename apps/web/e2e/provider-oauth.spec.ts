@@ -14,12 +14,16 @@ import { expect, type Page, test } from '@playwright/test';
 // 4. reason=exchange → 交换失败文案(#243 三译)
 // 5. reason=state(#243:state 缺/过期改 302 着陆)→ 过期文案 + 重开弹窗
 // 6. ?oauth=connected 静默着陆(不弹窗、无错误行)
+// #944/#910 载体:.res-new → role+文案;.dlg-provider-preset →
+// [data-preset-id];.dlg-provider-badge → '(OAuth)' 文案;
+// .dlg-provider-note → '暂未开通' 文案;.dlg-provider-oauth-error →
+// role=alert(错误行语义载体,随本票落 DOM)。
 
 const PROVIDERS = '/app/resources/providers?scenario=01';
 
 async function openDialog(page: Page) {
   await page.goto(PROVIDERS);
-  await page.locator('.res-new').click();
+  await page.getByRole('button', { name: '新建', exact: true }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   return dialog;
@@ -29,19 +33,17 @@ test('OAuth 徽标只骑已接线族(GitHub Copilot),codex 未接线行无徽标
   page,
 }) => {
   const dialog = await openDialog(page);
-  await expect(dialog.locator('.dlg-provider-badge')).toHaveCount(1);
+  await expect(dialog.getByText('(OAuth)')).toHaveCount(1);
   await expect(
-    dialog
-      .locator('.dlg-provider-preset', { hasText: 'GitHub Copilot' })
-      .locator('.dlg-provider-badge'),
+    dialog.locator('[data-preset-id]', { hasText: 'GitHub Copilot' }).getByText('(OAuth)'),
   ).toHaveCount(1);
   // #385:openai-codex 族表未接线——徽标摘除,行禁用 + 右端「暂未开通」注记
-  const codex = dialog.locator('.dlg-provider-preset', { hasText: 'OpenAI Codex' });
-  await expect(codex.locator('.dlg-provider-badge')).toHaveCount(0);
+  const codex = dialog.locator('[data-preset-id]', { hasText: 'OpenAI Codex' });
+  await expect(codex.getByText('(OAuth)')).toHaveCount(0);
   await expect(codex).toBeDisabled();
-  await expect(codex.locator('.dlg-provider-note')).toHaveText('暂未开通');
+  await expect(codex.getByText('暂未开通')).toHaveText('暂未开通');
   // xai = api_key 行:picker 面不渲染其 oauthLabel(展示位在密钥表单内)
-  await expect(dialog.locator('.dlg-provider-preset', { hasText: 'xAI' }).first()).not.toContainText(
+  await expect(dialog.locator('[data-preset-id]', { hasText: 'xAI' }).first()).not.toContainText(
     'SuperGrok',
   );
   await expect(dialog.getByText('SuperGrok')).toHaveCount(0);
@@ -51,7 +53,7 @@ test('OAuth 徽标只骑已接线族(GitHub Copilot),codex 未接线行无徽标
 // 不进 api_key 表单,picker 面原样。
 test('codex 未接线行点击零动作:不关窗、不进表单', async ({ page }) => {
   const dialog = await openDialog(page);
-  const codex = dialog.locator('.dlg-provider-preset', { hasText: 'OpenAI Codex' });
+  const codex = dialog.locator('[data-preset-id]', { hasText: 'OpenAI Codex' });
   await codex.click({ force: true });
   await expect(page.locator('.dlg')).toBeVisible();
   await expect(dialog.locator('#dlg-provider-id')).toHaveCount(0);
@@ -60,18 +62,18 @@ test('codex 未接线行点击零动作:不关窗、不进表单', async ({ page
 
 test('fixture 面点已接线徽标行 = accept 律(关窗),重开列表仍在', async ({ page }) => {
   const dialog = await openDialog(page);
-  await dialog.locator('.dlg-provider-preset', { hasText: 'GitHub Copilot' }).click();
+  await dialog.locator('[data-preset-id]', { hasText: 'GitHub Copilot' }).click();
   await expect(page.locator('.dlg')).toBeHidden();
   const again = await openDialog(page);
-  await expect(again.locator('.dlg-provider-badge')).toHaveCount(1);
-  await expect(again.locator('.dlg-provider-oauth-error')).toHaveCount(0);
+  await expect(again.getByText('(OAuth)')).toHaveCount(1);
+  await expect(again.getByRole('alert')).toHaveCount(0);
 });
 
 test('着陆参 oauth=error&reason=denied 自动重开弹窗 + 文案 + 清参', async ({ page }) => {
   await page.goto(`${PROVIDERS}&oauth=error&reason=denied`);
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('.dlg-provider-oauth-error')).toHaveText('授权已被取消。');
+  await expect(dialog.getByRole('alert')).toHaveText('授权已被取消。');
   // 清参后刷新不重放
   await expect(page).toHaveURL((url) => !url.searchParams.has('oauth'));
   await page.reload();
@@ -80,7 +82,7 @@ test('着陆参 oauth=error&reason=denied 自动重开弹窗 + 文案 + 清参',
 
 test('着陆参 oauth=error&reason=exchange 走交换失败文案', async ({ page }) => {
   await page.goto(`${PROVIDERS}&oauth=error&reason=exchange`);
-  await expect(page.locator('.dlg-provider-oauth-error')).toHaveText('令牌交换失败，请稍后重试。');
+  await expect(page.locator('.dlg').getByRole('alert')).toHaveText('令牌交换失败，请稍后重试。');
 });
 
 // #243：state 缺/过期 callback 改 302 着陆（不再裸 400）——reason=state 走
@@ -89,7 +91,7 @@ test('着陆参 oauth=error&reason=state 走过期文案 + 重开弹窗', async 
   await page.goto(`${PROVIDERS}&oauth=error&reason=state`);
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('.dlg-provider-oauth-error')).toHaveText('连接已过期，请重新发起。');
+  await expect(dialog.getByRole('alert')).toHaveText('连接已过期，请重新发起。');
 });
 
 test('着陆参 oauth=connected 静默：不弹窗、无错误行', async ({ page }) => {

@@ -18,12 +18,18 @@ import { expect, type Page, test } from '@playwright/test';
 // 7. 必填 gate + 协议段切换
 // 8. fixture 提交关窗(accept 律),重开回干净 picker
 // 9. 模型行撑溢时 submit 恒可达(body scrolls)
+// #944/#910 载体:.res-new → role+文案;.dlg-provider-search → getByLabel;
+// .dlg-provider-preset → [data-preset-id] 二级载体;.dlg-provider-custom/
+// -create/-back/-model-add → getByRole(button)+文案(exact 防「添加模型」
+// 前缀吞「添加模型服务」);.dlg-provider-seg-tab → role=tab(aria-selected
+// 断言语义不动,正典表 §5.4);.dlg-provider-badge/-note → 文案一级;
+// #dlg-provider-* id 与壳级 .dlg/.dlg-title/.dlg-close 原样保留(§5.6/#952)。
 
 const PROVIDERS = '/app/resources/providers?scenario=01';
 
 async function openPicker(page: Page) {
   await page.goto(PROVIDERS);
-  await page.locator('.res-new').click();
+  await page.getByRole('button', { name: '新建', exact: true }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   return dialog;
@@ -31,59 +37,59 @@ async function openPicker(page: Page) {
 
 async function openCustomForm(page: Page) {
   const dialog = await openPicker(page);
-  await dialog.locator('.dlg-provider-custom').click();
+  await dialog.getByRole('button', { name: '自定义端点' }).click();
   await expect(dialog.locator('#dlg-provider-id')).toBeVisible();
   return dialog;
 }
 
-test('res-new opens the picker: 38 preset rows, search, 自定义端点 entry, no dead submit', async ({
+test('topbar 新建 opens the picker: 38 preset rows, search, 自定义端点 entry, no dead submit', async ({
   page,
 }) => {
   const dialog = await openPicker(page);
   await expect(dialog.locator('.dlg-title')).toHaveText('添加模型服务');
-  await expect(dialog.locator('.dlg-provider-search')).toBeVisible();
-  await expect(dialog.locator('.dlg-provider-preset')).toHaveCount(38);
-  await expect(dialog.locator('.dlg-provider-custom')).toHaveText('自定义端点');
+  await expect(dialog.getByLabel('搜索服务商...')).toBeVisible();
+  await expect(dialog.locator('[data-preset-id]')).toHaveCount(38);
+  await expect(dialog.getByRole('button', { name: '自定义端点' })).toHaveText('自定义端点');
   // 目录序 = server providerPresets() wire 序(oauth 2 + xai 打头)
-  await expect(dialog.locator('.dlg-provider-preset').first()).toContainText('GitHub Copilot');
+  await expect(dialog.locator('[data-preset-id]').first()).toContainText('GitHub Copilot');
   // #222:picker 面无必填字段,不得渲染禁用态 submit
-  await expect(dialog.locator('.dlg-provider-create')).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: '添加模型服务' })).toHaveCount(0);
 });
 
 test('search filters by display name and id, case-insensitive; empty query restores 38', async ({
   page,
 }) => {
   const dialog = await openPicker(page);
-  const search = dialog.locator('.dlg-provider-search');
+  const search = dialog.getByLabel('搜索服务商...');
   await search.fill('deepseek');
-  await expect(dialog.locator('.dlg-provider-preset')).toHaveCount(1);
-  await expect(dialog.locator('.dlg-provider-preset').first()).toContainText('DeepSeek');
+  await expect(dialog.locator('[data-preset-id]')).toHaveCount(1);
+  await expect(dialog.locator('[data-preset-id]').first()).toContainText('DeepSeek');
   await search.fill('MOONSHOT');
-  await expect(dialog.locator('.dlg-provider-preset')).toHaveCount(2);
+  await expect(dialog.locator('[data-preset-id]')).toHaveCount(2);
   await search.fill('z-ai');
-  await expect(dialog.locator('.dlg-provider-preset')).toHaveCount(2);
+  await expect(dialog.locator('[data-preset-id]')).toHaveCount(2);
   await search.fill('no-such-provider');
-  await expect(dialog.locator('.dlg-provider-preset')).toHaveCount(0);
+  await expect(dialog.locator('[data-preset-id]')).toHaveCount(0);
   await search.fill('');
-  await expect(dialog.locator('.dlg-provider-preset')).toHaveCount(38);
+  await expect(dialog.locator('[data-preset-id]')).toHaveCount(38);
 });
 
 test('OAuth badge rides wired family rows only (github-copilot); codex unwired carries a note, xai none', async ({
   page,
 }) => {
   const dialog = await openPicker(page);
-  await expect(dialog.locator('.dlg-provider-badge')).toHaveCount(1);
+  await expect(dialog.getByText('(OAuth)')).toHaveCount(1);
   await expect(
-    dialog.locator('.dlg-provider-preset', { hasText: 'GitHub Copilot' }).locator('.dlg-provider-badge'),
+    dialog.locator('[data-preset-id]', { hasText: 'GitHub Copilot' }).getByText('(OAuth)'),
   ).toHaveCount(1);
   // #385:openai-codex 族表未接线——徽标摘除,行禁用 + 「暂未开通」注记
-  const codex = dialog.locator('.dlg-provider-preset', { hasText: 'OpenAI Codex' });
-  await expect(codex.locator('.dlg-provider-badge')).toHaveCount(0);
+  const codex = dialog.locator('[data-preset-id]', { hasText: 'OpenAI Codex' });
+  await expect(codex.getByText('(OAuth)')).toHaveCount(0);
   await expect(codex).toBeDisabled();
-  await expect(codex.locator('.dlg-provider-note')).toHaveText('暂未开通');
-  const xai = dialog.locator('.dlg-provider-preset', { hasText: 'xAI' });
+  await expect(codex.getByText('暂未开通')).toHaveText('暂未开通');
+  const xai = dialog.locator('[data-preset-id]', { hasText: 'xAI' });
   await expect(xai).toHaveCount(1);
-  await expect(xai.locator('.dlg-provider-badge')).toHaveCount(0);
+  await expect(xai.getByText('(OAuth)')).toHaveCount(0);
   // xai oauthLabel 的展示位 = 其密钥表单,picker 面不出现
   await expect(dialog.getByText('SuperGrok')).toHaveCount(0);
 });
@@ -92,20 +98,21 @@ test('自定义端点 opens the existing form (fields and defaults unchanged); �
   page,
 }) => {
   const dialog = await openPicker(page);
-  await dialog.locator('.dlg-provider-custom').click();
+  await dialog.getByRole('button', { name: '自定义端点' }).click();
   await expect(dialog.locator('#dlg-provider-id')).toHaveValue('');
   await expect(dialog.locator('#dlg-provider-label')).toBeVisible();
   await expect(dialog.locator('#dlg-provider-baseurl')).toBeVisible();
   await expect(dialog.locator('#dlg-provider-apikey')).toBeVisible();
   // r3 §2 defaults: OpenAI Completions protocol active, Bearer checkbox on
+  // (协议段 = Tabs 件,选中态载体 role=tab + aria-selected,正典表 §5.4)
   await expect(
-    dialog.locator('.dlg-provider-seg-tab', { hasText: 'OpenAI Completions' }),
+    dialog.getByRole('tab', { name: 'OpenAI Completions' }),
   ).toHaveAttribute('aria-selected', 'true');
   await expect(dialog.locator('#dlg-provider-authheader')).toBeChecked();
-  await expect(dialog.locator('.dlg-provider-create')).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: '添加模型服务' })).toBeDisabled();
   // 返回列表
-  await dialog.locator('.dlg-provider-back').click();
-  await expect(dialog.locator('.dlg-provider-preset')).toHaveCount(38);
+  await dialog.getByRole('button', { name: '返回' }).click();
+  await expect(dialog.locator('[data-preset-id]')).toHaveCount(38);
   await expect(dialog.locator('#dlg-provider-id')).toHaveCount(0);
 });
 
@@ -113,14 +120,14 @@ test('api_key row enters its preset key form prefilled; xai form shows the oauth
   page,
 }) => {
   const dialog = await openPicker(page);
-  await dialog.locator('.dlg-provider-preset', { hasText: 'DeepSeek' }).click();
+  await dialog.locator('[data-preset-id]', { hasText: 'DeepSeek' }).click();
   await expect(dialog.locator('#dlg-provider-id')).toHaveValue('deepseek');
   await expect(dialog.locator('#dlg-provider-label')).toHaveValue('DeepSeek');
   // 目录未采 baseUrl——留空由用户填,不发明
   await expect(dialog.locator('#dlg-provider-baseurl')).toHaveValue('');
   // 换 preset 进入 = 干净表单(不带上一 preset 的残值)
-  await dialog.locator('.dlg-provider-back').click();
-  await dialog.locator('.dlg-provider-preset', { hasText: 'xAI' }).click();
+  await dialog.getByRole('button', { name: '返回' }).click();
+  await dialog.locator('[data-preset-id]', { hasText: 'xAI' }).click();
   await expect(dialog.locator('#dlg-provider-id')).toHaveValue('xai');
   await expect(dialog.locator('#dlg-provider-label')).toHaveValue('xAI');
   await expect(dialog.getByText('Sign in with SuperGrok or X Premium')).toBeVisible();
@@ -144,7 +151,7 @@ test('family law: X, Escape and backdrop dismiss; panel clicks do not', async ({
 
 test('providerId/label/baseUrl gate the submit; protocol segment swaps', async ({ page }) => {
   const dialog = await openCustomForm(page);
-  const submit = dialog.locator('.dlg-provider-create');
+  const submit = dialog.getByRole('button', { name: '添加模型服务' });
   await expect(submit).toBeDisabled();
   await dialog.locator('#dlg-provider-id').fill('relay-355');
   await expect(submit).toBeDisabled();
@@ -153,12 +160,12 @@ test('providerId/label/baseUrl gate the submit; protocol segment swaps', async (
   await dialog.locator('#dlg-provider-baseurl').fill('https://relay-355.example.com/v1');
   await expect(submit).toBeEnabled();
   // protocol segment swaps the selection
-  await dialog.locator('.dlg-provider-seg-tab', { hasText: 'Anthropic Messages' }).click();
+  await dialog.getByRole('tab', { name: 'Anthropic Messages' }).click();
   await expect(
-    dialog.locator('.dlg-provider-seg-tab', { hasText: 'Anthropic Messages' }),
+    dialog.getByRole('tab', { name: 'Anthropic Messages' }),
   ).toHaveAttribute('aria-selected', 'true');
   await expect(
-    dialog.locator('.dlg-provider-seg-tab', { hasText: 'OpenAI Completions' }),
+    dialog.getByRole('tab', { name: 'OpenAI Completions' }),
   ).toHaveAttribute('aria-selected', 'false');
 });
 
@@ -169,18 +176,18 @@ test('fixture submit closes the dialog (accept 律) and reopens a clean picker',
   await dialog.locator('#dlg-provider-id').fill('relay-355');
   await dialog.locator('#dlg-provider-label').fill('R 355 网关');
   await dialog.locator('#dlg-provider-baseurl').fill('https://relay-355.example.com/v1');
-  await dialog.locator('.dlg-provider-create').click();
+  await dialog.getByRole('button', { name: '添加模型服务' }).click();
   await expect(page.locator('.dlg')).toBeHidden();
   // reopen: picker 面全量列表 + 空搜索;表单字段随 open→false 边全重置
   const again = await openPicker(page);
-  await expect(again.locator('.dlg-provider-preset')).toHaveCount(38);
-  await expect(again.locator('.dlg-provider-search')).toHaveValue('');
-  await again.locator('.dlg-provider-custom').click();
+  await expect(again.locator('[data-preset-id]')).toHaveCount(38);
+  await expect(again.getByLabel('搜索服务商...')).toHaveValue('');
+  await again.getByRole('button', { name: '自定义端点' }).click();
   await expect(again.locator('#dlg-provider-id')).toHaveValue('');
   await expect(again.locator('#dlg-provider-label')).toHaveValue('');
   await expect(again.locator('#dlg-provider-baseurl')).toHaveValue('');
   await expect(again.locator('#dlg-provider-apikey')).toHaveValue('');
-  await expect(again.locator('.dlg-provider-create')).toBeDisabled();
+  await expect(again.getByRole('button', { name: '添加模型服务' })).toBeDisabled();
 });
 
 test('model rows keep the submit reachable (dialog body scrolls)', async ({ page }) => {
@@ -188,12 +195,12 @@ test('model rows keep the submit reachable (dialog body scrolls)', async ({ page
   await dialog.locator('#dlg-provider-id').fill('relay-355');
   await dialog.locator('#dlg-provider-label').fill('R 355 网关');
   await dialog.locator('#dlg-provider-baseurl').fill('https://relay-355.example.com/v1');
-  const addModel = dialog.locator('.dlg-provider-model-add');
+  const addModel = dialog.getByRole('button', { name: '添加模型', exact: true });
   await addModel.click();
   await addModel.click();
   await addModel.click();
   await expect(dialog.locator('[aria-label="模型 ID"]')).toHaveCount(3);
-  const submit = dialog.locator('.dlg-provider-create');
+  const submit = dialog.getByRole('button', { name: '添加模型服务' });
   // .dlg is overflow:hidden with no max-height — the body must scroll so a
   // tall form never pushes the submit out of the viewport (live finding)
   await expect(submit).toBeInViewport();

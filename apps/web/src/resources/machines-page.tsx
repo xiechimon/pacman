@@ -28,6 +28,7 @@ import { useApiMutations, useChief, useMachines, useTeams } from '../api/hooks.j
 import { mapMachines } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { ClaudeMark, PiMark } from '../components/brand-marks.js';
+import { Button } from '../components/ui/button.js';
 import { Switch } from '../components/ui/switch.js';
 import { TEAM_NAME } from '../fixtures/fixtures.js';
 import type { MachineRow } from '../fixtures/records.js';
@@ -35,7 +36,17 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { Monitor, ServerThin } from '../icons/index.js';
 import { CreateMachineDialog } from './create-machine-dialog.js';
-import { GroupCard, StatusPill, Tile } from './parts.js';
+import {
+  GroupCard,
+  OnlineDot,
+  RowDesc,
+  RowGrow,
+  RowLine,
+  RowText,
+  RowTitle,
+  StatusPill,
+  Tile,
+} from './parts.js';
 import { ResourceShell } from './shell.js';
 
 export const MACHINES_HREF = '/app/resources/machines';
@@ -130,7 +141,7 @@ export function MachinesPage() {
       fixture={fixture}
     >
       {shellSaveFailed && (
-        <p className="mach-error" role="alert">
+        <p className="mt-0 mb-2 text-xs leading-4 text-(--danger)" role="alert">
           {t('保存失败，请重试。')}
         </p>
       )}
@@ -138,47 +149,50 @@ export function MachinesPage() {
         {machines.map((machine, i) => {
           const chief = chiefState(machine);
           return (
-            <div
-              className={`res-grow${i > 0 ? ' res-grow--divided' : ''}`}
+            <RowGrow
+              divided={i > 0}
               key={rowKey(machine)}
               data-machine-id={machine.id}
               data-kind={machine.kind ?? 'remote'}
             >
               <Tile Icon={Monitor} size="lg" tone="orange" />
-              <span className="res-row-text">
-                <span className="res-row-line">
-                  <span className="res-row-title">{t(machine.name)}</span>
+              <RowText className="ml-4">
+                <RowLine>
+                  <RowTitle>{t(machine.name)}</RowTitle>
                   {/* online 读 machine.online（与 new-task-machine-dot /
                     dlg-machine-dot 同族语义）：在线绿点，离线灰点——离线行
                     此前无任何表示，daemon 死后机器页看不出。undefined（无该
-                    字段的旧 fixture）保持不渲染，存量 capture 零漂移。 */}
-                  {machine.online !== undefined && (
-                    <span className="res-dot" data-on={machine.online !== false} />
-                  )}
-                </span>
-                <span className="res-row-desc">
-                  {t(MACHINE_SHELL_HINT, { tool: t(AGENT_TOOL_SHELL) })}
-                </span>
-              </span>
+                    字段的旧 fixture）保持不渲染，存量 capture 零漂移。
+                    data-on 是状态载体（#910 裁定 3）。 */}
+                  {machine.online !== undefined && <OnlineDot on={machine.online !== false} />}
+                </RowLine>
+                <RowDesc>{t(MACHINE_SHELL_HINT, { tool: t(AGENT_TOOL_SHELL) })}</RowDesc>
+              </RowText>
               {machine.kind === 'local' ? (
-                <span className="mach-runtimes">
+                <span className="ml-auto flex items-center gap-4">
                   {MACHINE_RUNTIMES.map((runtime) => {
                     const on = (machine.enabledRuntimes ?? []).includes(runtime);
                     const Mark = RUNTIME_MARKS[runtime];
                     return (
                       // #887 图标独形：文字名撤下，可辨识性不跟着删——容器
                       // role="img" + aria-label 给读屏报名字，title 给悬停提示。
-                      // mark 仍是装饰（aria-hidden）；on/off 两态仍由 mark 的
-                      // 实色/35% 透明承载（enabledRuntimes 全仓只写不读，#503）。
+                      // mark 仍是装饰（aria-hidden）；on/off 两态由 mark 的
+                      // 实色/35% 透明承载（enabledRuntimes 全仓只写不读，#503），
+                      // data-enabled 是状态断言载体（原 .mach-runtime--on 修饰类；
+                      // 不叫 data-on——那是行内在线点 OnlineDot 的既有载体，
+                      // 两者同屏，名字撞了选择器就分不开）。
                       <span
-                        className={cn('mach-runtime', on && 'mach-runtime--on')}
+                        className="flex items-center"
                         key={runtime}
                         data-runtime={runtime}
+                        data-enabled={on}
                         role="img"
                         aria-label={RUNTIME_LABELS[runtime]}
                         title={RUNTIME_LABELS[runtime]}
                       >
-                        <Mark className="mach-mark" />
+                        <Mark
+                          className={cn('block flex-none', on ? 'opacity-100' : 'opacity-35')}
+                        />
                       </span>
                     );
                   })}
@@ -187,21 +201,34 @@ export function MachinesPage() {
                 machine.pill != null && <StatusPill label={machine.pill} />
               )}
               {/* #895 三态读标注（A8）：纯文本/badge 读态——无 handler、无
-                button、无 menu（行内活控件纪律仍 = shell 闸恰一个）。 */}
+                button、无 menu（行内活控件纪律仍 = shell 闸恰一个）。
+                margin-left:auto 同 StatusPill 律：本地行 runtimes 已吃 auto
+                时贴其右，远端行自己撑到行右。状态行行首点只作装饰（aria
+                语义在文案），等待灰点与离线灰点同色——「在等谁」与「机器
+                在不在线」是两个正交事实，别用颜色再表达一遍。 */}
               {(chief.host || chief.running || chief.waiting) && (
-                <span className="mach-orchestration">
+                <span className="ml-auto flex flex-none items-center gap-2">
                   {chief.host && (
-                    <span className="mach-orchestration-host" data-orchestration="host">
+                    <span
+                      className="inline-flex h-5 items-center rounded-[4px] border border-(--border-default) bg-(--surface-secondary) px-1.5 text-[11px] leading-5 whitespace-nowrap text-(--text-primary)"
+                      data-orchestration="host"
+                    >
                       {t('总管主机')}
                     </span>
                   )}
                   {chief.running && (
-                    <span className="mach-orchestration-running" data-orchestration="running">
+                    <span
+                      className="inline-flex items-center gap-1.5 text-xs leading-4 whitespace-nowrap text-(--text-tertiary) before:block before:size-1.5 before:rounded-full before:bg-(--col-dot-done) before:content-['']"
+                      data-orchestration="running"
+                    >
                       {t('总管回合进行中')}
                     </span>
                   )}
                   {chief.waiting && (
-                    <span className="mach-orchestration-waiting" data-orchestration="waiting">
+                    <span
+                      className="inline-flex items-center gap-1.5 text-xs leading-4 whitespace-nowrap text-(--text-tertiary) before:block before:size-1.5 before:rounded-full before:bg-(--col-dot-idle) before:content-['']"
+                      data-orchestration="waiting"
+                    >
                       {t('总管等待机器')}
                     </span>
                   )}
@@ -209,25 +236,41 @@ export function MachinesPage() {
               )}
               {/* 机器层 shell 闸（XMON-113）：唯一行内控件。label 与副文案同
                 词（AGENT_TOOL_SHELL）——两层授权共用一套词汇，用户在 Agent
-                权限 tab 看到的是同一个词。 */}
-              <span className="mach-shell">
-                <span className="mach-shell-label">{t(AGENT_TOOL_SHELL)}</span>
+                权限 tab 看到的是同一个词。与左侧 runtime mark / status pill
+                之间留 20px——mark 是展示、开关是控件，贴太近会被读成同一组
+                （#503 摘 mark 的歧义正是「这是不是又在开关 runtime」）；
+                行内无 mark 无 pill 时（接入机未观测态）自己撑到右缘。 */}
+              <span
+                className={cn(
+                  'flex flex-none items-center gap-2',
+                  machine.kind === 'local' || machine.pill != null ? 'ml-5' : 'ml-auto',
+                )}
+              >
+                <span className="text-xs leading-4 whitespace-nowrap text-(--text-tertiary)">
+                  {t(AGENT_TOOL_SHELL)}
+                </span>
                 <Switch
-                  className="mach-shell-switch"
                   data-machine-id={machine.id}
                   aria-label={t(AGENT_TOOL_SHELL)}
                   checked={shellOn(machine)}
                   onCheckedChange={(on) => toggleShell(machine, on)}
                 />
               </span>
-            </div>
+            </RowGrow>
           );
         })}
       </GroupCard>
-      <button type="button" className="res-add" onClick={() => setAddOpen(true)}>
+      {/* dashed 全宽 添加机器 钮（r7 06）：Button ghost 底座（#851 裸控件
+          收编）+ dashed 大钮形态 utility；46px 高是阶梯外一次性尺寸（§3.1a），
+          件默认的 hover 底色就地并掉（原形无 hover 态）。 */}
+      <Button
+        variant="ghost"
+        className="mt-4 h-[46px] w-full gap-2 border-dashed border-(--dash-border) text-[13px] leading-4 font-normal text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5"
+        onClick={() => setAddOpen(true)}
+      >
         <ServerThin width={14} height={14} />
         {t('添加机器')}
-      </button>
+      </Button>
       <CreateMachineDialog
         open={addOpen}
         onClose={() => setAddOpen(false)}

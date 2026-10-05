@@ -12,7 +12,17 @@ import { useLiveData } from '../api/provider.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { Network } from '../icons/index.js';
-import { EmptyState, RowCard, Tile } from './parts.js';
+import {
+  EmptyState,
+  RowAgo,
+  RowCard,
+  RowDesc,
+  RowKind,
+  RowLine,
+  RowText,
+  RowTitle,
+  Tile,
+} from './parts.js';
 import { ResourceShell } from './shell.js';
 
 export const MCP_HREF = '/app/resources/mcp-servers';
@@ -47,14 +57,14 @@ export function McpServersPage() {
         servers.map((server) => (
           <RowCard mcp key={server.name}>
             <Tile Icon={Network} size="sm" tone="orange" />
-            <span className="res-row-text">
-              <span className="res-row-line">
-                <span className="res-row-title">{server.name}</span>
-                <span className="res-row-kind">{t(server.kind)}</span>
-              </span>
-              <span className="res-row-desc">{server.url}</span>
-            </span>
-            <span className="res-row-ago">{t(server.ago)}</span>
+            <RowText>
+              <RowLine>
+                <RowTitle>{server.name}</RowTitle>
+                <RowKind>{t(server.kind)}</RowKind>
+              </RowLine>
+              <RowDesc>{server.url}</RowDesc>
+            </RowText>
+            <RowAgo>{t(server.ago)}</RowAgo>
           </RowCard>
         ))
       )}

@@ -24,6 +24,11 @@
 //
 // 次序纪律：后于 drive-providers-tabs.mjs 跑——tabs 的 pi 空态断言要求库内
 // 无 custom provider，本 probe 的 e2e 会建一个。重验 = 重 launch。
+// #944 载体迁移：类名钩 → 语义/data-* 载体，断言语义不变——.res-new →
+// [data-testid="resource-new"]、.dlg-picker-search → input[aria-label=
+// "搜索服务商..."]、.dlg-picker-row → [data-preset-id]、.dlg-picker-custom /
+// .dlg-provider-create / -model-add → button:text-is(文案)；#dlg-provider-*
+// id 载体与 .dlg / .dlg-close 壳句柄不变（#952 面）。
 // 用法：node drive-provider-picker.mjs
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -169,7 +174,7 @@ const oneLine = (s) => (s ?? '').replace(/\s*\n\s*/g, ' / ').slice(0, 200);
 const PAGE_PATH = '/app/resources/providers';
 const SHELL = `[data-route="${PAGE_PATH}"]`;
 const DLG = '[role="dialog"]';
-const ROW = `${DLG} .dlg-picker-row[data-preset-id]`;
+const ROW = `${DLG} [data-preset-id]`;
 const ROW_VISIBLE = `${ROW}:visible`;
 const extra = {};
 
@@ -225,23 +230,23 @@ try {
   );
 
   // 2) 「新建」开 dialog（既有入口，重构前后皆应在位）
-  await page.click(`${SHELL} .res-new`).catch(() => {});
+  await page.click(`${SHELL} [data-testid="resource-new"]`).catch(() => {});
   const dlgOk = await softVisible(page, DLG);
   check(
     'new-opens-dialog',
     dlgOk,
-    dlgOk ? '「新建」开添加服务商 dialog' : '.res-new 点击后 [role=dialog] 未出现',
+    dlgOk ? '「新建」开添加服务商 dialog' : '[data-testid="resource-new"] 点击后 [role=dialog] 未出现',
   );
   await shot(page, '01-dialog-open.png');
 
   // 2) A6：搜索框
-  const searchOk = dlgOk && (await softVisible(page, `${DLG} .dlg-picker-search`));
+  const searchOk = dlgOk && (await softVisible(page, `${DLG} input[aria-label="搜索服务商..."]`));
   check(
     'picker-search-present',
     searchOk === true,
     searchOk
-      ? 'picker 搜索框在位（.dlg-picker-search）'
-      : 'spec 11 A6：dialog 应为 picker 形态，顶部搜索框（.dlg-picker-search）——未实现（现状为自定义网关表单直陈）',
+      ? 'picker 搜索框在位（input[aria-label="搜索服务商..."]）'
+      : 'spec 11 A6：dialog 应为 picker 形态，顶部搜索框（input[aria-label="搜索服务商..."]）——未实现（现状为自定义网关表单直陈）',
   );
 
   // 3) A5/A6：38 项 preset 行（与 shared PROVIDER_PRESET_IDS 1:1 同数）
@@ -250,7 +255,7 @@ try {
     'preset-rows-38',
     rowCount === 38,
     rowCount === 38
-      ? 'preset 行 38 项在位（.dlg-picker-row[data-preset-id]）'
+      ? 'preset 行 38 项在位（[data-preset-id]）'
       : `spec 11 A5/A6：dialog 内应渲染 38 项 preset 行——实测 ${rowCount} 项`,
   );
 
@@ -313,9 +318,10 @@ try {
   let filterDetail = '搜索框缺失，过滤无从验证';
   let filtersOk = false;
   if (searchOk) {
-    // .first() 消除逗号选择器双腿同时命中时的 strict-mode 违例（吞错会伪装成 spec 红）
+    // #944 载体迁移：.dlg-picker-search 类名钩 → aria-label 一级（dialog 内唯一
+    // 搜索框，无双腿歧义；.first() 仅防意外多命中把 strict-mode 违例吞成 spec 红）
     const searchInput = page
-      .locator(`${DLG} .dlg-picker-search input, ${DLG} input.dlg-picker-search`)
+      .locator(`${DLG} input[aria-label="搜索服务商..."]`)
       .first();
     await searchInput.fill('qwen').catch(() => {});
     await page.waitForTimeout(300); // 客户端过滤随击即应，给一帧渲染余量
@@ -376,7 +382,7 @@ try {
 
   // 8b) A6 正向：xai 的 oauthLabel 在其密钥表单内展示（spec 11 名单注；行不带
   //     '(OAuth)' 后缀的负向已在 oauth-badge-wired-only 钉）。无外网请求。
-  await page.click(`${SHELL} .res-new`).catch(() => {});
+  await page.click(`${SHELL} [data-testid="resource-new"]`).catch(() => {});
   const xaiReopen = await softVisible(page, DLG);
   const xaiRowSel = `${ROW}[data-preset-id="xai"]`;
   let xaiLabelOk = false;
@@ -399,9 +405,9 @@ try {
   }
 
   // 9) A6：底部「自定义端点」disclosure 入口
-  await page.click(`${SHELL} .res-new`).catch(() => {});
+  await page.click(`${SHELL} [data-testid="resource-new"]`).catch(() => {});
   const reopened = await softVisible(page, DLG);
-  const entrySel = `${DLG} .dlg-picker-custom`;
+  const entrySel = `${DLG} button:text-is("自定义端点")`;
   const entryOk = reopened && (await softVisible(page, entrySel));
   const entryText = entryOk ? await softText(page, entrySel) : '';
   check(
@@ -409,14 +415,14 @@ try {
     entryOk === true && entryText.includes('自定义端点'),
     entryOk
       ? `「自定义端点」入口在位（"${oneLine(entryText)}"）`
-      : 'spec 11 A6：dialog 底部应有「自定义端点」disclosure 入口（.dlg-picker-custom）——未实现',
+      : 'spec 11 A6：dialog 底部应有「自定义端点」disclosure 入口（button:text-is("自定义端点")）——未实现',
   );
 
   // 10) A6：disclosure 展开现有自定义网关表单（既有句柄保全）
   const formFieldsOk = async () =>
     (await softVisible(page, '#dlg-provider-id', 2000)) &&
     (await softVisible(page, '#dlg-provider-baseurl', 2000)) &&
-    (await softVisible(page, `${DLG} .dlg-provider-create`, 2000));
+    (await softVisible(page, `${DLG} button:text-is("添加模型服务")`, 2000));
   let formReachable = false;
   if (entryOk) {
     await page.click(entrySel).catch(() => {});
@@ -430,7 +436,7 @@ try {
     entryOk === true && formReachable,
     entryOk
       ? formReachable
-        ? 'disclosure 展开现有自定义网关表单（#dlg-provider-id/baseurl/.dlg-provider-create 句柄保全）'
+        ? 'disclosure 展开现有自定义网关表单（#dlg-provider-id/baseurl/button:text-is("添加模型服务") 句柄保全）'
         : 'spec 11 A6：disclosure 展开后应见现有表单三句柄——字段未出现'
       : `spec 11 A6：「自定义端点」入口缺失——现有表单为${formReachable ? '外露形态（现状）' : '不可达'}`,
   );
@@ -442,7 +448,7 @@ try {
     await page.fill('#dlg-provider-id', newProvider.providerId).catch(() => {});
     await page.fill('#dlg-provider-label', newProvider.label).catch(() => {});
     await page.fill('#dlg-provider-baseurl', newProvider.baseUrl).catch(() => {});
-    await page.click(`${DLG} .dlg-provider-model-add`).catch(() => {});
+    await page.click(`${DLG} button:text-is("添加模型")`).catch(() => {});
     const modelInputOk = await softVisible(page, `${DLG} input[aria-label="模型 ID"]`);
     if (modelInputOk) {
       await page
@@ -452,7 +458,7 @@ try {
         .catch(() => {});
     }
     await shot(page, '06-form-filled.png');
-    await page.click(`${DLG} .dlg-provider-create`).catch(() => {});
+    await page.click(`${DLG} button:text-is("添加模型服务")`).catch(() => {});
     created = await softHidden(page, DLG);
   }
   check(

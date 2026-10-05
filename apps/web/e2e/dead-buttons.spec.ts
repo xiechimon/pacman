@@ -175,14 +175,15 @@ test('doc pane 型选行 click re-selects the current type and closes (#306)', a
 
 test('machines rows render no inline action buttons (#222 wontfix 出账)', async ({ page }) => {
   await page.goto('/app/resources/machines?scenario=06');
-  // 在线机器行在（scenario=06 fixture 含一台 online 机器，行首 res-dot）
-  await expect(page.locator('.res-dot').first()).toBeVisible();
+  // 在线机器行在（scenario=06 fixture 含一台 online 机器，行首在线点）。
+  // #944/#910 载体：.res-dot → [data-on]；.res-grow → div[data-kind]。
+  await expect(page.locator('[data-on]').first()).toBeVisible();
   // #222:r8 §3.5 原站在线机器行右侧三行内动作图标——机器行自 #503 起零真
   // 控件（per-runtime 开关摘除，品牌 mark 为 read-only 展示；enabledRuntimes
-  // 仍走 PATCH，但界面无控件面）。行外唯一动作钮 = 添加机器 .res-add(不在钉
-  // 内);其余动作无依托,不渲染死钮:行内零 button(行尾 chevron 已随 spec 11
+  // 仍走 PATCH，但界面无控件面）。行外唯一动作钮 = 添加机器(不在钉内);
+  // 其余动作无依托,不渲染死钮:行内零 button(行尾 chevron 已随 spec 11
   // A7 无 handler 行收编移除)。
-  await expect(page.locator('.res-grow button')).toHaveCount(0);
+  await expect(page.locator('div[data-kind] button')).toHaveCount(0);
 });
 
 // —— 8. 语音输入钮（#304 C5）——————————————————————————————————————————
@@ -226,17 +227,21 @@ test('resources empty state drops the 查看文档 link (#307); skills 空态主
   page,
 }) => {
   await page.goto('/app/resources/skills?scenario=01');
-  await expect(page.locator('.res-empty')).toBeVisible();
+  // #944/#910 载体：.res-empty → resource-empty testid；.res-doclink 类名钩
+  // → link 文案一级；.res-primary → 空态内 role=button。
+  const skillsEmpty = page.getByTestId('resource-empty');
+  await expect(skillsEmpty).toBeVisible();
   // 共享 EmptyState 件:skills/secrets 两面空态的文档链接一并出账
   // (双面钉,防单面局部复活漏网;mcp 空态归 #368 只读面专钉,见下条)
-  await expect(page.locator('.res-doclink')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: '查看文档' })).toHaveCount(0);
   // XMON-114（spec 13 回摆）:技能页恢复写面——空态主钮开新建弹窗
   // (空态双入口文案钉在 skills-page.spec.ts,弹窗行为钉在 skills-write.spec.ts)
-  await expect(page.locator('.res-empty .res-primary')).toHaveText('新建技能');
+  await expect(skillsEmpty.getByRole('button', { name: '新建技能' })).toHaveText('新建技能');
   await page.goto('/app/resources/secrets?scenario=01');
-  await expect(page.locator('.res-empty')).toBeVisible();
-  await expect(page.locator('.res-doclink')).toHaveCount(0);
-  await expect(page.locator('.res-empty .res-primary')).toBeVisible();
+  const secretsEmpty = page.getByTestId('resource-empty');
+  await expect(secretsEmpty).toBeVisible();
+  await expect(page.getByRole('link', { name: '查看文档' })).toHaveCount(0);
+  await expect(secretsEmpty.getByRole('button', { name: '添加密钥' })).toBeVisible();
 });
 
 // spec 13/#368:MCP 页翻转为本地 config 只读面——新建/编辑入口全撤,
@@ -246,16 +251,17 @@ test('mcp page is read-only: 无新建入口、行无更多菜单 ink、空态�
 }) => {
   // 空态(scenario 01):无新建钮、无 primary 动作、文案含配置路径。
   await page.goto('/app/resources/mcp-servers?scenario=01');
-  await expect(page.locator('.res-new')).toHaveCount(0);
-  await expect(page.locator('.res-empty')).toBeVisible();
-  await expect(page.locator('.res-empty .res-primary')).toHaveCount(0);
-  await expect(page.locator('.res-empty-desc')).toContainText('~/.claude.json');
+  await expect(page.getByRole('button', { name: '新建', exact: true })).toHaveCount(0);
+  const empty = page.getByTestId('resource-empty');
+  await expect(empty).toBeVisible();
+  await expect(empty.getByRole('button')).toHaveCount(0);
+  await expect(empty.locator('p')).toContainText('~/.claude.json');
   // 行态(scenario 07):只读行,无更多菜单 ink、无弹窗挂载位。
   await page.goto('/app/resources/mcp-servers?scenario=07');
-  await expect(page.locator('.res-rowcard--mcp')).toHaveCount(1);
-  await expect(page.locator('.res-row-more')).toHaveCount(0);
+  await expect(page.locator('[data-testid="resource-row"][data-mcp]')).toHaveCount(1);
+  await expect(page.locator('[data-testid="resource-row"] button')).toHaveCount(0);
   await expect(page.locator('.dlg')).toHaveCount(0);
-  await expect(page.locator('.res-new')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '新建', exact: true })).toHaveCount(0);
 });
 
 test('create-agent dialog drops the avatar 更换 ink (#307)', async ({ page }) => {
@@ -336,20 +342,22 @@ test('skills 排序 opens the single-select listbox, picking an option closes it
   page,
 }) => {
   await page.goto('/app/resources/skills?scenario=08');
-  const sort = page.locator('.res-sort');
+  // #944/#910 载体：.res-sort → role=button+文案；.res-sort-menu → role=menu；
+  // .res-sort-row → role=menuitemradio（Base UI RadioItem 原生语义）。
+  const sort = page.getByRole('button', { name: '排序' });
   await expect(sort).toHaveAttribute('aria-expanded', 'false');
   await sort.click();
-  const menu = page.locator('.res-sort-menu');
+  const menu = page.getByRole('menu');
   await expect(menu).toBeVisible();
   await expect(sort).toHaveAttribute('aria-expanded', 'true');
   // 两行默认/名称，当前项默认 ✓（#854 收编 RadioItem：选中态走原生
   // aria-checked，不再是手搓 aria-selected）
-  await expect(menu.locator('.res-sort-row')).toHaveCount(2);
-  await expect(menu.locator('.res-sort-row[aria-checked="true"]')).toHaveText(/默认/);
+  await expect(menu.getByRole('menuitemradio')).toHaveCount(2);
+  await expect(menu.locator('[role="menuitemradio"][aria-checked="true"]')).toHaveText(/默认/);
   // 行点击 = 选中即关（lang-dropdown 律）
-  await menu.locator('.res-sort-row', { hasText: '名称' }).click();
+  await menu.getByRole('menuitemradio', { name: '名称' }).click();
   await expect(menu).toBeHidden();
-  await expect(page.locator('.res-rowcard')).toHaveCount(1);
+  await expect(page.getByTestId('resource-row')).toHaveCount(1);
   // Esc 关（家族律）与重开
   await sort.click();
   await expect(menu).toBeVisible();

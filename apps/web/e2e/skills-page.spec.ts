@@ -11,12 +11,14 @@ import { expect, type Page, test } from '@playwright/test';
 
 const SKILLS = '/app/resources/skills';
 
-test('技能页新建入口（.res-new）在位，fixture 行集照常渲染', async ({ page }) => {
+test('技能页新建入口（topbar 新建钮）在位，fixture 行集照常渲染', async ({ page }) => {
   await page.goto(`${SKILLS}?scenario=06`);
   await expect(page.locator('[data-route="/app/resources/skills"]')).toBeVisible();
-  await expect(page.locator('.res-new')).toHaveCount(1);
-  await expect(page.locator('.res-rowcard')).toHaveCount(1);
-  await expect(page.locator('.res-rowcard').first()).toContainText('r3-probe-skill');
+  // #944/#910 载体：.res-new → role+文案一级；.res-rowcard → resource-row
+  // 二级结构 testid（行卡无 role）。
+  await expect(page.getByRole('button', { name: '新建', exact: true })).toHaveCount(1);
+  await expect(page.getByTestId('resource-row')).toHaveCount(1);
+  await expect(page.getByTestId('resource-row').first()).toContainText('r3-probe-skill');
 });
 
 test('旧导入路由不可达——catch-all 重定向回 /app（#149 feedback 路由同律）', async ({
@@ -29,15 +31,18 @@ test('旧导入路由不可达——catch-all 重定向回 /app（#149 feedback 
 
 test('空态双入口——目录指引文案 + 新建技能主钮，无总管提示行', async ({ page }) => {
   await page.goto(`${SKILLS}?scenario=01`);
-  const empty = page.locator('.res-empty');
+  const empty = page.getByTestId('resource-empty');
   await expect(empty).toBeVisible();
-  await expect(empty.locator('.res-empty-title')).toHaveText('尚无技能。');
-  // 目录指引 = SKILLS_DIR_DEFAULT 单源（{dir} 插值渲染进文案）+ 界面新建口径
-  await expect(empty.locator('.res-empty-desc')).toContainText('~/.agents/skills');
-  await expect(empty.locator('.res-empty-desc')).toContainText('SKILL.md');
-  await expect(empty.locator('.res-empty-desc')).toContainText('新建一个技能');
-  await expect(empty.locator('.res-primary')).toHaveText('新建技能');
-  await expect(empty.locator('.res-empty-hint')).toHaveCount(0);
+  await expect(empty.getByRole('heading')).toHaveText('尚无技能。');
+  // 目录指引 = SKILLS_DIR_DEFAULT 单源（{dir} 插值渲染进文案）+ 界面新建口径。
+  // desc = 空态里唯一的 p（hint 缺席时）——描述断言语义与原 .res-empty-desc 同。
+  const desc = empty.locator('p');
+  await expect(desc).toContainText('~/.agents/skills');
+  await expect(desc).toContainText('SKILL.md');
+  await expect(desc).toContainText('新建一个技能');
+  await expect(empty.getByRole('button', { name: '新建技能' })).toHaveText('新建技能');
+  // 无总管提示行：hint 是第二个 p，缺席 = p 恰一个（原 .res-empty-hint 计数 0）。
+  await expect(desc).toHaveCount(1);
 });
 
 /** live 启动面打桩（承 skills-github-scan 的 stubBoot 纪律）：teams/user me
@@ -73,10 +78,10 @@ test('live 列表消费 GET /api/skills（server 换源后 wire 形状不变）'
   });
   await page.goto(SKILLS);
 
-  await expect(page.locator('.res-rowcard')).toHaveCount(2);
-  await expect(page.locator('.res-rowcard').nth(0)).toContainText('deploy');
-  await expect(page.locator('.res-rowcard').nth(0)).toContainText('部署流程手册');
-  await expect(page.locator('.res-rowcard').nth(1)).toContainText('review');
+  await expect(page.getByTestId('resource-row')).toHaveCount(2);
+  await expect(page.getByTestId('resource-row').nth(0)).toContainText('deploy');
+  await expect(page.getByTestId('resource-row').nth(0)).toContainText('部署流程手册');
+  await expect(page.getByTestId('resource-row').nth(1)).toContainText('review');
   // 请求带 teamId（hooks 族律）；id = frontmatter name（server 现扫语义）
   expect(hits.length).toBeGreaterThan(0);
   expect(hits[0]).toContain('teamId=team-1');
@@ -108,13 +113,15 @@ test('回归 #486/#494：技能列表可由滚轮到达，且滚动条贴面板�
   }));
   await page.route('**/api/skills*', (route) => route.fulfill({ json: rows }));
   await page.goto(SKILLS);
-  await expect(page.locator('.res-rowcard')).toHaveCount(rows.length);
+  await expect(page.getByTestId('resource-row')).toHaveCount(rows.length);
 
   const shellSel = '[data-route="/app/resources/skills"]';
-  const col = page.locator('.res-col');
+  // #944/#910 载体：.res-col/.res-topbar → 结构 testid（无 role 容器）；
+  // .res-main-col 类名 = chief docking 跨域句柄，随壳存活（#950 面）。
+  const col = page.getByTestId('resource-col');
   const readScrollLayer = () =>
     page.evaluate((sel) => {
-      const colEl = document.querySelector(`${sel} .res-col`);
+      const colEl = document.querySelector(`${sel} [data-testid="resource-col"]`);
       const pane = document.querySelector(`${sel} .res-main-col`);
       let host = null;
       for (let n = colEl; n != null; n = n.parentElement) {
@@ -147,7 +154,7 @@ test('回归 #486/#494：技能列表可由滚轮到达，且滚动条贴面板�
   await page.mouse.move(720, 400);
   for (let i = 0; i < 12; i++) await page.mouse.wheel(0, 400);
 
-  const last = page.locator('.res-rowcard').last();
+  const last = page.getByTestId('resource-row').last();
   await expect(last).toBeInViewport();
   const box = await last.boundingBox();
   expect(box).not.toBeNull();
@@ -156,7 +163,7 @@ test('回归 #486/#494：技能列表可由滚轮到达，且滚动条贴面板�
 
   // 几何未漂移 + 滚动没跑到外层
   expect((await col.boundingBox())?.width).toBe(widthBefore);
-  const topbar = await page.locator('.res-topbar').boundingBox();
+  const topbar = await page.getByTestId('resource-topbar').boundingBox();
   expect(topbar?.y).toBe(0);
   expect(topbar?.height).toBe(44);
   expect(await page.evaluate(() => window.scrollY)).toBe(0);

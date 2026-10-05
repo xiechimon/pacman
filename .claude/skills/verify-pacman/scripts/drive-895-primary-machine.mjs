@@ -273,7 +273,9 @@ check('N7 他机 claim 空手（step null）', claimBody?.step == null, JSON.str
 
 // N8 machines 页「总管主机」徽标。
 await page.goto(WEB + '/app/resources/machines');
-const primaryRow = page.locator('.res-grow[data-machine-id="' + primaryId + '"]');
+// #944 载体迁移：.res-grow → div[data-machine-id]（div 元素名限定防串——
+// shell 开关元素也带 data-machine-id）；.res-dot → [data-on]（状态载体属性值不变）。
+const primaryRow = page.locator('div[data-machine-id="' + primaryId + '"]');
 await primaryRow.waitFor({ state: 'visible', timeout: 8000 });
 const hostBadge = primaryRow.locator('[data-orchestration="host"]');
 check('N8 machines 页主力机行带「总管主机」徽标', (await hostBadge.textContent()) === '总管主机');
@@ -297,7 +299,7 @@ const waitingBadge = primaryRow.locator('[data-orchestration="waiting"]');
 check(
   'N10 machines 页主力机行带「总管等待机器」标注 + 离线灰点',
   (await waitingBadge.textContent()) === '总管等待机器' &&
-    (await primaryRow.locator('.res-dot').getAttribute('data-on')) === 'false',
+    (await primaryRow.locator('[data-on]').getAttribute('data-on')) === 'false',
 );
 await shot(page, '03-machines-waiting-badge.png');
 

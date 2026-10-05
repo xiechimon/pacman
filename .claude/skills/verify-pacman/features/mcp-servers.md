@@ -5,7 +5,7 @@ spec 13/#368 起 MCP 页 = server 本机 `~/.claude.json` mcpServers 段的只�
 ## Sub-features
 
 - `mcp-list`: GET `/api/teams/{id}/mcp-servers` = config 投影 record(label=键名、slug=键小写、stdio 的 url 槽=command 预览、hasCredential/credentialKeys 只键名)。
-- `mcp-readonly`: 页面无 `.res-new`、行无 `.res-row-more` ink、无弹窗;POST/PATCH/DELETE 同路径 = 404。
+- `mcp-readonly`: 页面无新建入口(`[data-testid="resource-new"]` 计数 0)、行无更多菜单 ink(`[data-testid="resource-row"]` 行内 `button` 计数 0,dead-buttons.spec 同 canon)、无弹窗;POST/PATCH/DELETE 同路径 = 404。
 - `mcp-empty`: config 文件缺失/无 mcpServers 段 = 空态,文案指向 `~/.claude.json`(fixture e2e dead-buttons #368 钉)。
 - `mcp-exec`: agent.mcpServers[] 勾选后,daemon 本机解析连接;未知 slug 降级行 `[mcp] <slug>: not in local config — …`,每回合 `[mcp] loaded from <path>: …` 打出实际加载集。
 
@@ -36,7 +36,7 @@ Preconditions:
    VERIFY_REPO_ROOT=<worktree> node .claude/skills/verify-pacman/scripts/drive-mcp.mjs
    ```
 
-- probe 断言面:API JSON(slugs/transport/credentialKeys 投影 + 密钥值不出现 + 写面三动词 404)、SQLite(`mcp_server` 表不存在)、UI(行渲染 = config 键名、`.res-new`/`.res-row-more` 均 0)+ 截图。
+- probe 断言面:API JSON(slugs/transport/credentialKeys 投影 + 密钥值不出现 + 写面三动词 404)、SQLite(`mcp_server` 表不存在)、UI(行渲染 = config 键名(`[data-testid="resource-row"][data-mcp]` 行 + 行内精确文本节点)、`[data-testid="resource-new"]`/行内 `button` 均 0)+ 截图。
 - 执行面(daemon 解析 slug 真连外部 MCP server)不铺 UI 栈配方——正源 = `integration/test/m4b-mcp-e2e.test.ts`(真 server + 真 daemon + stub LLM + 测试内起外部 MCP),跑该集成测试即本面证据;断言含 `mcp__demo__echo` 真调用、dead 端点 connect-failed 行、ghost slug not-in-config 行、loaded-from 行。
 
 ## Gotchas
@@ -46,3 +46,4 @@ Preconditions:
 - record 的 createdAt/updatedAt = config 文件 mtime,页面相对时间列(「X 分钟前」)语义是「配置最近修改」,不是登记时间。
 - daemon 执行面读的是 **daemon 所在机器**的 config(多机各读各机,spec 13 Q6)——单机验证栈两侧同文件是退化形;跨机分歧看 `[mcp] loaded from <path>` 行的实际路径。
 - 改码后必须重 launch(worktree 在 `.claude/worktrees/` 下,vite watch 忽略罩住整个 worktree,运行中改码不生效)。
+- **#944 载体迁移**:类名钩 → 语义/data-* 载体(断言语义不变)——`.res-rowcard--mcp` → `[data-testid="resource-row"][data-mcp]`、`.res-empty` → `[data-testid="resource-empty"]`、`.res-row-title` → 文案一级(行内精确文本节点)、`.res-new` → `[data-testid="resource-new"]`、`.res-row-more` 负向 → 行内 `button` 计数 0。

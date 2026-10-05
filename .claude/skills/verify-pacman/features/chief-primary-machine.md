@@ -5,7 +5,7 @@
 ## Sub-features
 
 - `settings-machine-slot` — 设置 Agent tab「机器」行：`button.chief-host-select`（值 = 机器名或「自动」）开 popover（`.chief-host-menu`，listbox 语义在内层 `.chief-host-list`）；自动行 + 机器行（online dot 如实离线灰）；选定 = PATCH chief machineId 槽 → invalidateAll 重取回显（无本地乐观态）。类名独立 `chief-host*` 家族——`button.chief-select`（压缩模型）被 e2e strict mode 钉单元素，共类名会打红。
-- `machines-annotations` — machines 页 `[data-orchestration="host|running|waiting"]` 三态读标注（`.mach-orchestration` 容器零 button 零 menu——行内活控件纪律 = shell 闸恰一个）；无标注数据的行零节点（存量 capture 零漂移）。
+- `machines-annotations` — machines 页 `[data-orchestration="host|running|waiting"]` 三态读标注（标注节点零 button 零 menu——行内活控件纪律 = shell 闸恰一个；#944 载体迁移：原 `.mach-orchestration*` 容器/状态类退役，三态只走 data-orchestration 属性承载，machines-chief-state.spec 同 canon）；无标注数据的行零节点（存量 capture 零漂移）。
 - `default-chain` — 新线程钉选缺省链：`todo.machineId`（orchestrate 入口）→ `chief.machineId` → null；既有线程不回写。
 - `failure-copy` — 主力机离线超宽限（10 分钟）的失败行点名机器 + 出口文案含「改 chief 设置的主力机」「清回自动」。
 - `envelope-orchestration` — GET /chief 封套 `orchestration` 块：`defaultMachineId` + per 机 `{running, waiting}`（waiting = 被钉 pending × 该机不可执行——离线或 runtime 闸关）。

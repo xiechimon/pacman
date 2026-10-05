@@ -12,7 +12,7 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { KeyThin } from '../icons/index.js';
 import { CreateSecretDialog } from './create-secret-dialog.js';
-import { EmptyState, RowCard, RowChevron, Tile } from './parts.js';
+import { EmptyState, RowCard, RowChevron, RowDesc, RowText, RowTitle, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
 
 export const SECRETS_HREF = '/app/resources/secrets';
@@ -55,12 +55,10 @@ export function SecretsPage() {
         secrets.map((secret) => (
           <RowCard key={secret.id}>
             <Tile Icon={KeyThin} size="sm" tone="orange" />
-            <span className="res-row-text">
-              <span className="res-row-title">{secret.name}</span>
-              {secret.description != null && (
-                <span className="res-row-desc res-row-desc--strong">{secret.description}</span>
-              )}
-            </span>
+            <RowText>
+              <RowTitle>{secret.name}</RowTitle>
+              {secret.description != null && <RowDesc strong>{secret.description}</RowDesc>}
+            </RowText>
             <RowChevron />
           </RowCard>
         ))

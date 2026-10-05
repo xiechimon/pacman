@@ -6,6 +6,10 @@
 // env——密钥值只应出现在 config 文件,绝不上接口)。
 // 真值三面:API JSON(config 投影 + 404 写面 + 无密钥值)、UI(行渲染 +
 // 无新建/更多入口)、SQLite(mcp_server 表不存在)。
+// #944 载体迁移:类名钩 → 语义/data-* 载体(.res-rowcard--mcp →
+// [data-testid="resource-row"][data-mcp]、.res-empty → resource-empty
+// testid、.res-row-title → 文案一级、.res-new → resource-new testid、
+// .res-row-more 负向 → 行内 button 计数 0;断言语义不变)。
 // 用法:node drive-mcp.mjs   (栈必须已在跑;证据目录同 drive.mjs 纪律)
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -145,18 +149,20 @@ try {
   await page.goto(`${WEB}/app/resources/mcp-servers`);
   await page.waitForSelector('[data-route="/app/resources/mcp-servers"]', { timeout: 15_000 });
   // live 数据 = react-query 异步到达——先行壳后行卡,等其一出现再断言。
-  await page.waitForSelector('.res-rowcard--mcp, .res-empty', { timeout: 15_000 });
-  const cards = page.locator('.res-rowcard--mcp');
+  await page.waitForSelector('[data-testid="resource-row"][data-mcp], [data-testid="resource-empty"]', { timeout: 15_000 });
+  const cards = page.locator('[data-testid="resource-row"][data-mcp]');
   const cardCount = await cards.count();
   check(cardCount === EXPECT_SLUGS.length, `页面渲染 ${cardCount} 行(期望 ${EXPECT_SLUGS.length})`);
+  // #944 载体迁移:.res-row-title 类名钩 → 文案一级——行标题断言改按期望
+  // slug 命中行内**精确文本节点**(getByText exact;节点级等值,强度不减)。
   const titles = [];
-  for (let i = 0; i < cardCount; i += 1) {
-    titles.push(await cards.nth(i).locator('.res-row-title').innerText());
+  for (const slug of EXPECT_SLUGS) {
+    if ((await cards.getByText(slug, { exact: true }).count()) > 0) titles.push(slug);
   }
   extra.rowTitles = titles;
-  check(titles.includes('demo') && titles.includes('local'), `行标题 = config 键名(${JSON.stringify(titles)})`);
-  check((await page.locator('.res-new').count()) === 0, '无新建入口(.res-new = 0)');
-  check((await page.locator('.res-row-more').count()) === 0, '行无更多菜单 ink(.res-row-more = 0)');
+  check(titles.length === EXPECT_SLUGS.length, `行标题 = config 键名(${JSON.stringify(titles)})`);
+  check((await page.locator('[data-testid="resource-new"]').count()) === 0, '无新建入口([data-testid="resource-new"] = 0)');
+  check((await page.locator('[data-testid="resource-row"] button').count()) === 0, '行无更多菜单 ink([data-testid="resource-row"] button = 0)');
   await shot(page, '01-mcp-page-live.png');
 } catch (err) {
   check(false, `probe 异常:${String(err?.message ?? err)}`);

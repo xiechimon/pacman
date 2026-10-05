@@ -29,7 +29,9 @@
 
 import { expect, type Page, test } from '@playwright/test';
 
-const SWITCH = '.mach-shell-switch';
+// #944/#910 载体：.mach-shell-switch 类名钩退役 → role=switch 一级
+// （aria-label = AGENT_TOOL_SHELL，行内恰一个开关，行 scope 即唯一定位）。
+const SWITCH = '[role="switch"]';
 const ERROR = '[role="alert"]';
 
 interface StubMachine {
@@ -109,7 +111,7 @@ test('每行开关读自己的记录真值（本机开 / 接入机关）', async
 test('接入机行同样有开关：授权面覆盖非本机机器', async ({ page }) => {
   await stubStack(page, [LOCAL, REMOTE]);
   await page.goto('/app/resources/machines');
-  await expect(page.locator('.res-grow[data-kind="remote"]').locator(SWITCH)).toHaveCount(1);
+  await expect(page.locator('div[data-kind="remote"]').locator(SWITCH)).toHaveCount(1);
 });
 
 test('拨 on：PATCH 单字段 {shellEnabled:true}，刷新后仍 on（读侧真值一致）', async ({ page }) => {

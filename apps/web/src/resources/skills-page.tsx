@@ -15,6 +15,7 @@ import { useSearchParams } from 'react-router';
 import { useSkills } from '../api/hooks.js';
 import { mapSkills } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
+import { Button } from '../components/ui/button.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +27,22 @@ import { Input } from '../components/ui/input.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ArrowUpDown, ChevronDown, Puzzle, Search } from '../icons/index.js';
-import { EmptyState, RowCard, RowChevron, Tile } from './parts.js';
+import {
+  EmptyState,
+  RES_SEARCH_BOX_CLS,
+  RES_SEARCH_INPUT_CLS,
+  RES_SEARCH_ROW_CLS,
+  RES_SORT_MENU_CLS,
+  RES_SORT_ROW_CLS,
+  RES_SORT_TRIGGER_CLS,
+  RES_SORT_WRAP_CLS,
+  RowCard,
+  RowChevron,
+  RowDesc,
+  RowText,
+  RowTitle,
+  Tile,
+} from './parts.js';
 import { ResourceShell } from './shell.js';
 import { SkillDialog, type SkillEditTarget } from './skill-dialog.js';
 
@@ -75,16 +91,16 @@ export function SkillsPage() {
         />
       ) : (
         <>
-          <div className="res-searchrow">
+          <div className={RES_SEARCH_ROW_CLS}>
             {/* #423 真 Input 收编（#422 裁决：原「搜索框」是 div + 占位 span，
-                .res-search-ph 连 CSS 都没有 → 换真 Input 零样式债）：盒形仍由
-                .res-search per-face 规则承载，input 本体零装饰
-                （.res-search-input），focus 环走 #388 家族律。过滤行为无行为
-                票，本面 = 真输入框（原为纯装饰），占位文案同键单源。 */}
-            <div className="res-search">
+                连 CSS 都没有 → 换真 Input 零样式债）：盒形由共享配方
+                RES_SEARCH_BOX_CLS 承载，input 本体零装饰，focus 环走 #388
+                家族律。过滤行为无行为票，本面 = 真输入框（原为纯装饰），
+                占位文案同键单源。 */}
+            <div className={RES_SEARCH_BOX_CLS}>
               <Search width={13} height={13} />
               <Input
-                className="res-search-input"
+                className={RES_SEARCH_INPUT_CLS}
                 type="text"
                 placeholder={t('搜索技能...')}
                 aria-label={t('搜索技能...')}
@@ -93,10 +109,14 @@ export function SkillsPage() {
             {/* #854 收编 dropdown-menu（Base UI Menu RadioGroup，#714
                 playbook）：单选即关走显式 closeOnClick；勾形改由
                 RadioItemIndicator 原生槽承载；定位正本迁 Positioner 参数
-                （side=bottom align=end sideOffset=8）。 */}
-            <span className="res-sort-wrap">
+                （side=bottom align=end sideOffset=8）。触发钮 = Button
+                ghost 底座（#851 裸控件收编），88px 定宽是本面档（记忆 tab
+                内容宽，见 RES_SORT_TRIGGER_CLS 注）。 */}
+            <span className={RES_SORT_WRAP_CLS}>
               <DropdownMenu>
-                <DropdownMenuTrigger render={<button type="button" className="res-sort" />}>
+                <DropdownMenuTrigger
+                  render={<Button variant="ghost" className={`w-[88px] ${RES_SORT_TRIGGER_CLS}`} />}
+                >
                   <ArrowUpDown width={13} height={13} />
                   <span>{t('排序')}</span>
                   <ChevronDown width={12} height={12} />
@@ -106,7 +126,7 @@ export function SkillsPage() {
                   side="bottom"
                   sideOffset={8}
                   aria-label={t('排序')}
-                  className="res-sort-menu"
+                  className={RES_SORT_MENU_CLS}
                 >
                   <DropdownMenuRadioGroup
                     value={sort}
@@ -117,7 +137,7 @@ export function SkillsPage() {
                         key={option}
                         value={option}
                         closeOnClick
-                        className="res-sort-row [&_svg:not([class*='size-'])]:size-auto"
+                        className={RES_SORT_ROW_CLS}
                       >
                         <span>{t(option)}</span>
                       </DropdownMenuRadioItem>
@@ -137,10 +157,10 @@ export function SkillsPage() {
               }
             >
               <Tile Icon={Puzzle} size="sm" tone="orange" />
-              <span className="res-row-text">
-                <span className="res-row-title">{skill.name}</span>
-                <span className="res-row-desc res-row-desc--strong">{skill.description}</span>
-              </span>
+              <RowText>
+                <RowTitle>{skill.name}</RowTitle>
+                <RowDesc strong>{skill.description}</RowDesc>
+              </RowText>
               <RowChevron />
             </RowCard>
           ))}

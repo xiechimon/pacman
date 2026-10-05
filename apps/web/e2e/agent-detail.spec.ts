@@ -72,7 +72,10 @@ test('团队页的 Agent 卡是链接，点击落到详情路由', async ({ page
 test('详情路由直链可打开，不落 catch-all', async ({ page }) => {
   const detail = await openDetail(page);
   await expect(detail).toBeVisible();
-  await expect(page.locator('.res-title')).toHaveText('r3-builder');
+  // #944/#910 载体：.res-title → heading 一级（topbar h1，可及名 = 标题文案）。
+  await expect(page.getByRole('heading', { level: 1, name: 'r3-builder' })).toHaveText(
+    'r3-builder',
+  );
 });
 
 test('三 tab 齐在，概览默认选中，点记忆切内容', async ({ page }) => {
@@ -157,7 +160,7 @@ test('概览：两级菜单贴触发钮右缘且在内容列内（几何）', as
   const detail = await openDetail(page);
   // 两缘都留在内容列内（列 = 768 宽居中；越出去就被裁）。
   const col = await detail
-    .locator('xpath=ancestor::div[contains(@class,"res-col")]')
+    .locator('xpath=ancestor::div[@data-testid="resource-col"]')
     .boundingBox();
   expect(col).not.toBeNull();
   if (col === null) return;
@@ -318,7 +321,7 @@ test('权限 tab：零密钥空态旁有去添加密钥的入口，点击落到�
   await expect(entry).toHaveText('去添加密钥');
   await entry.click();
   await expect(page).toHaveURL(/\/app\/resources\/secrets/);
-  await expect(page.locator('.res-title')).toHaveText('密钥');
+  await expect(page.getByRole('heading', { level: 1, name: '密钥' })).toHaveText('密钥');
 });
 
 // 有密钥时不摆这个入口：那行已经是真开关，再挂一条「去添加」就是同页两处
@@ -469,7 +472,10 @@ test('记忆 tab：`添加时间` 档按新 → 旧重排', async ({ page }) => 
   await detail.locator('.agent-memory-sort').click();
   // #854 收编 dropdown-menu：面板 portal 到 body（不再挂 wrap 包含块），
   // 作用域收在 .agent-detail 里就找不到它了。
-  await page.locator('.agent-memory-sort-menu .res-sort-row', { hasText: '添加时间' }).click();
+  await page
+    .locator('.agent-memory-sort-menu')
+    .getByRole('menuitemradio', { name: '添加时间' })
+    .click();
   expect(await memoryTitles(page)).toEqual([
     'PROBE 探针的历史轮次',
     '验收只看真机跑通',
@@ -484,7 +490,10 @@ test('记忆 tab：搜索与排序叠加——排序只在命中集内生效', a
   await detail.locator('.agent-memory-sort').click();
   // #854 收编 dropdown-menu：面板 portal 到 body（不再挂 wrap 包含块），
   // 作用域收在 .agent-detail 里就找不到它了。
-  await page.locator('.agent-memory-sort-menu .res-sort-row', { hasText: '添加时间' }).click();
+  await page
+    .locator('.agent-memory-sort-menu')
+    .getByRole('menuitemradio', { name: '添加时间' })
+    .click();
   await expect(detail.locator('.agent-memory-row')).toHaveCount(2);
   expect(await memoryTitles(page)).toEqual(['PROBE 探针的历史轮次', '验收只看真机跑通']);
 });

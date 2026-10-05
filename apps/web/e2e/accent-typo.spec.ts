@@ -85,17 +85,17 @@ for (const theme of ['light', 'dark'] as const) {
     expect(m.nameHref).toContain('/app/team');
   });
 
-  test(`res-back hover shows no background change (${theme})`, async ({ page }) => {
+  test(`resources back chevron hover shows no background change (${theme})`, async ({ page }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app/resources/skills?scenario=06');
 
     const read = () =>
       page.evaluate(() => {
-        const cs = getComputedStyle(document.querySelector('.res-back')!);
+        const cs = getComputedStyle(document.querySelector('[aria-label="返回"]')!);
         return { bg: cs.backgroundColor, color: cs.color };
       });
     const rest = await read();
-    await page.hover('.res-back');
+    await page.hover('[aria-label="返回"]');
     await page.waitForTimeout(300); // past any 150ms color step
     const hovered = await read();
     expect(hovered).toEqual(rest);
@@ -179,20 +179,21 @@ for (const theme of ['light', 'dark'] as const) {
 }
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`res-back keeps a keyboard focus ring (${theme})`, async ({ page }) => {
+  test(`resources back chevron keeps a keyboard focus ring (${theme})`, async ({ page }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app/resources/skills?scenario=06');
     // keyboard modality: tab until the back chevron owns focus
     for (let i = 0; i < 40; i++) {
       const onBack = await page.evaluate(
-        () => document.activeElement?.classList.contains('res-back') ?? false,
+        () => document.activeElement?.matches('[aria-label="返回"]') ?? false,
       );
       if (onBack) break;
       await page.keyboard.press('Tab');
     }
-    await expect(page.locator('.res-back')).toBeFocused();
+    // #944/#910 载体：.res-back → aria-label 一级（back link 语义名）。
+    await expect(page.locator('[aria-label="返回"]')).toBeFocused();
     const ring = await page.evaluate(() => {
-      const cs = getComputedStyle(document.querySelector('.res-back')!);
+      const cs = getComputedStyle(document.querySelector('[aria-label="返回"]')!);
       return { w: cs.outlineWidth, style: cs.outlineStyle, color: cs.outlineColor };
     });
     expect(ring.style).toBe('solid');

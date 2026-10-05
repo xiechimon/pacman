@@ -173,7 +173,7 @@ test.describe('chief panel docked form (#447)', () => {
     {
       name: 'resources',
       route: '/app/resources/skills?scenario=06',
-      fab: '.res-fab',
+      fab: '[aria-label="总管"]', // #944: .res-fab 类名钩退役 → aria-label 一级
       col: '.res-main-col',
     },
     {

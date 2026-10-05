@@ -88,7 +88,7 @@ test.describe('chief FAB wakes on every shell family', () => {
     {
       name: 'resources',
       route: '/app/resources/skills?scenario=06',
-      fab: '.res-fab',
+      fab: '[aria-label="总管"]', // #944: .res-fab 类名钩退役 → aria-label 一级
       gear: true,
     },
     { name: 'secondary', route: '/app/team?scenario=12', fab: '.secondary-fab', gear: true },
