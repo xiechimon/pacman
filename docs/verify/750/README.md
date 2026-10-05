@@ -12,6 +12,10 @@ Local runs of `scripts/pr-evidence-gate.py` against crafted bodies
 - `fixture-mixed.md` — one embedded link plus one bare URL → RED naming the
   bare line only, so the embedded occurrence is proven clean.
 
+`real-body-858.txt` replays the body #858 actually shipped through the fixed
+gate: un-wrapping its two embeds back to bare URLs turns the verdict RED and
+names both lines, while the body as it stands now stays GREEN.
+
 The bare-URL rule (added after #858 shipped two bare image URLs that the
 gate did not see) is what `fixture-bare-url.md` and `fixture-mixed.md`
 pin. Only `raw.githubusercontent.com` image URLs are in scope; bare links
