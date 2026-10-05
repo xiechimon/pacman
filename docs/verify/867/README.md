@@ -29,7 +29,21 @@
 - daemon 日志证明**预检发生在工作区准备之前**：`claim step=…` → `[step] failed: <同一段文案>`，
   **没有** `Loading claude-code runtime…`、**没有** `[workspace] 准备工作区...`、**没有** `new session`。
 
-## 三、判定来源：CLI 自己的答案
+## 三、跨机实测：远端 mea（WSL2 / Linux，另一套凭据落点）
+
+本机 macOS 的凭据在 keychain，Linux 的落在 `~/.claude/.credentials.json` + settings env
+——同一份预检在另一套落点上是否成立，在 `mea` 上按同一份探针跑了两遍（server 与 daemon
+都在 mea 本机起，`/home/measure/pacman-t6-867` 独立检出，不碰用户自己的 `:8787` 部署）：
+
+| 场景 | 预检判定 | 步的结果 |
+|---|---|---|
+| **A. 空 HOME + 无 `ANTHROPIC_*`**（`live-nocred-mea-remote.json`） | `loggedIn:false`（rc=1） | `[step] failed: <点名机器/凭据类/补法>`——日志里**没有** `Loading claude-code runtime…`、**没有** `[workspace]`、**没有** `new session` |
+| **B. mea 真实凭据**（`live-credentialed-mea.json`） | `loggedIn:true`（oauth_token） | 预检放行 → `Loading claude-code runtime…` → `[workspace] 准备工作区...` → `new session` → 走到真模型调用（本探针用的 `claude-sonnet-4-5` 在该 relay 上不存在，于是 `model_not_found` 显式失败——**这也是本票 `is_error` 修复的现场**：改前同一轮会被折成 `done`） |
+
+B 这一列是本票最要紧的反向证据：**有凭据的远端机器不会被误拦**（预检的假阳性代价是拦掉
+本可跑的活，方向比漏放更危险）。
+
+## 四、判定来源：CLI 自己的答案
 
 预检跑 `claude auth status`（机器本地的 `claude`，实测 ~140ms，无网络无模型调用），
 输出与退出码见 `claude-auth-status-probe.txt`：
@@ -48,7 +62,7 @@
 本可跑的任务，代价高于漏放；这条路径的运行期兜底是同一票修的
 `result.is_error` 映射（见 `apps/daemon/test/map-claude-event.test.ts` 失败方式 10/11）。
 
-## 四、复现
+## 五、复现
 
 探针脚本不入仓（与本仓既有取证惯例一致：`862` 那轮的 live 探针同样是 lane 本地）。复现步骤：
 
@@ -69,7 +83,7 @@ env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u ANTHROPIC_BASE_URL \
 ——`#682` 的 runtime 开关缺省只有 `pi`，机器不主动开 claude-code 就领不到 runtime 步
 （与凭据是**两道独立的机器级闸**，本票只管第二道）。
 
-## 五、测试面
+## 六、测试面
 
 - daemon 单测：46 文件 / 431 用例（含本票新增 `claude-code-auth.test.ts` 10 例、
   `map-claude-event` 失败方式 10/11、`runner-runtime` 失败方式 10/11/12、
