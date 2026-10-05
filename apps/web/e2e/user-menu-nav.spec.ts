@@ -15,7 +15,9 @@ async function openMenu(page: Page) {
   await page.evaluate(() => {
     (window as unknown as Record<string, unknown>).__spaMarker = 'alive';
   });
-  await page.locator('.sidebar-user').click();
+  // #910 一级载体：用户 chip 的可及名 = fixture USER_NAME（aria-label）。
+  // 旧 .sidebar-user 类名钉退役（#943）。
+  await page.getByRole('complementary').getByRole('button', { name: 'Xmon Dai' }).click();
   await expect(page.locator('.user-menu')).toBeVisible();
 }
 

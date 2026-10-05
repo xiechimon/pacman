@@ -22,17 +22,22 @@ import { expect, type Page, test } from '@playwright/test';
 // 9. RTL 镜像塌版：dir=rtl 下首列不在滚动起点缘完整可见
 // 10. 静止面回归：1440 静止态列宽/无横滚与改前逐值一致（≥1440 流值
 //     281 > 280 下限，token 不介入）
+// #943/#910 重钉：scroller = data-testid（二级：无 role 滚动容器）、列 =
+// 既有 [data-column]、卡 = [data-todo-id]、卡标题 = h3、列头 = header 标签、
+// 空态 = 一级 text（r2 §4.1 正典文案）、停靠态 = [data-route="board"] 的
+// data-chief-open 属性。几何期望值不动——board.css 的轨道规则原值迁
+// scroller 工具类（grid-cols-[repeat(4,minmax(var(--board-col-min),1fr))]）。
 const STRESS = '/app?scenario=board-stress';
 const FLOOR = 280; // --board-col-min 的镜像值：钉几何，不读 CSS 变量
 
 const drawer = (page: Page) => page.locator('.chief-drawer');
-const scroller = (page: Page) => page.locator('.board-scroller');
+const scroller = (page: Page) => page.getByTestId('board-scroller');
 
 /** ⌘J 开抽屉并等入场动画落定（chief-panel.spec settled 同式：等
  *  anim-drawer 的 animation finished，transform 归位后才可量几何）。 */
 async function dock(page: Page) {
   await page.keyboard.press('Meta+j');
-  await expect(page.locator('.board-shell[data-chief-open]')).toHaveCount(1);
+  await expect(page.locator('[data-route="board"][data-chief-open]')).toHaveCount(1);
   await drawer(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
 }
 
@@ -45,7 +50,7 @@ function measure(page: Page) {
       clientWidth: el.clientWidth,
       scrollWidth: el.scrollWidth,
       scrollLeft: el.scrollLeft,
-      columns: [...el.querySelectorAll('.board-column')].map((c) => {
+      columns: [...el.querySelectorAll('[data-column]')].map((c) => {
         const r = c.getBoundingClientRect();
         return {
           id: c.getAttribute('data-column'),
@@ -61,7 +66,7 @@ function measure(page: Page) {
 test.describe('board reflow under the docked chief drawer (#692)', () => {
   test('docked columns hold the 280px floor and the first column is whole', async ({ page }) => {
     await page.goto(STRESS);
-    await page.waitForSelector('.board-column');
+    await page.waitForSelector('[data-column]');
     await dock(page);
 
     const m = await measure(page);
@@ -78,7 +83,7 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
 
   test('the clipped next column peeks >=16px at the scroll edge', async ({ page }) => {
     await page.goto(STRESS);
-    await page.waitForSelector('.board-column');
+    await page.waitForSelector('[data-column]');
     await dock(page);
 
     // 失败方式 3：残边无意义（3px 边渣读作破损，不读作可滚）。
@@ -93,7 +98,7 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
 
   test('overflow is reachable: wheel scrolls and the last column lands whole', async ({ page }) => {
     await page.goto(STRESS);
-    await page.waitForSelector('.board-column');
+    await page.waitForSelector('[data-column]');
     await dock(page);
 
     // 失败方式 4：横滚不可达（滚动条隐藏 + 滚不动 = 末列不存在）。
@@ -119,7 +124,7 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
     page,
   }) => {
     await page.goto(STRESS);
-    await page.waitForSelector('.board-column');
+    await page.waitForSelector('[data-column]');
     await dock(page);
     // 失败方式 5：披露机制本体（参考站 scrollbar-width: auto 同值；
     // auto 只在真溢出时画轨道，静止 1440 无溢出即无滚动条）
@@ -128,15 +133,15 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
 
   test('cards keep their resting width while docked', async ({ page }) => {
     await page.goto(STRESS);
-    await page.waitForSelector('.todo-card');
+    await page.waitForSelector('[data-todo-id]');
     const resting = await page
-      .locator('[data-column="todo"] .todo-card')
+      .locator('[data-column="todo"] [data-todo-id]')
       .first()
       .boundingBox();
     expect(resting).not.toBeNull();
     await dock(page);
     const docked = await page
-      .locator('[data-column="todo"] .todo-card')
+      .locator('[data-column="todo"] [data-todo-id]')
       .first()
       .boundingBox();
     expect(docked).not.toBeNull();
@@ -149,15 +154,15 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
     page,
   }) => {
     await page.goto(STRESS);
-    await page.waitForSelector('.todo-card');
+    await page.waitForSelector('[data-todo-id]');
     await dock(page);
 
     // 失败方式 7a：超长不可断行标题把卡撑出列（横向溢出）
-    const card = page.locator('[data-column="todo"] .todo-card').first();
+    const card = page.locator('[data-column="todo"] [data-todo-id]').first();
     const overflow = await card.evaluate((el) => ({
       spill: el.scrollWidth - el.clientWidth,
       titleSpill: (() => {
-        const t = el.querySelector('.todo-card-title');
+        const t = el.querySelector('h3');
         return t == null ? 0 : t.scrollWidth - t.clientWidth;
       })(),
     }));
@@ -165,7 +170,7 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
     expect(overflow.titleSpill).toBeLessThanOrEqual(1);
 
     // 失败方式 7b：三位数列头计数撑破列头
-    const header = page.locator('[data-column="building"] .board-column-header');
+    const header = page.locator('[data-column="building"] header');
     await expect(header).toContainText('120');
     const headSpill = await header.evaluate((el) => el.scrollWidth - el.clientWidth);
     expect(headSpill).toBeLessThanOrEqual(1);
@@ -175,7 +180,9 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
     const pending = m.columns.find((c) => c.id === 'pending');
     expect(pending).toBeDefined();
     expect(pending!.width).toBeGreaterThanOrEqual(FLOOR - 1);
-    await expect(page.locator('[data-column="pending"] .board-column-empty')).toBeVisible();
+    await expect(
+      page.locator('[data-column="pending"]').getByText('没有等你处理的任务'),
+    ).toBeVisible();
   });
 
   test('narrowest usable viewport (1024) docked: floor holds and the page itself never scrolls', async ({
@@ -183,7 +190,7 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
   }) => {
     await page.setViewportSize({ width: 1024, height: 732 });
     await page.goto(STRESS);
-    await page.waitForSelector('.board-column');
+    await page.waitForSelector('[data-column]');
     await dock(page);
 
     // 失败方式 8：窄窗停靠（board-main = 1024−240−418 = 366）列跌破下限，
@@ -200,7 +207,7 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
 
   test('RTL mirror: the first column stays whole at the scroll-start edge', async ({ page }) => {
     await page.goto(STRESS);
-    await page.waitForSelector('.board-column');
+    await page.waitForSelector('[data-column]');
     // 应用尚未出 RTL 词表；本条钉的是布局原语的方向无关性（grid +
     // overflow 随 dir 镜像），dir 由文档根注入。
     await page.evaluate(() => document.documentElement.setAttribute('dir', 'rtl'));
@@ -219,7 +226,7 @@ test.describe('board reflow under the docked chief drawer (#692)', () => {
 
   test('resting geometry at 1440 is untouched by the floor token', async ({ page }) => {
     await page.goto('/app?scenario=01');
-    await page.waitForSelector('.board-column');
+    await page.waitForSelector('[data-column]');
     // 失败方式 10：静止面回归——1440 流值 (1166−42)/4 = 281 > 280，
     // token 不介入：四列等宽 ~281、无横滚（与改前实测逐值一致）。
     const m = await measure(page);

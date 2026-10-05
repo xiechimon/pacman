@@ -201,11 +201,12 @@ function collectConvStream(buildId: string): { types: Set<string>; stop(): void 
 async function openBoard(): Promise<void> {
   await page.goto(`${server.url}/app`);
   // #445：顶栏「+ 任务」撤除——就绪探针与创建入口改指侧栏「新任务」行。
-  await pexpect(page.locator('.sidebar-new-task')).toBeVisible({ timeout: 30_000 });
+  // #943/#910：类名钉换一级 role+name 载体（integration 面同律）。
+  await pexpect(page.getByRole('button', { name: '新任务' })).toBeVisible({ timeout: 30_000 });
 }
 
 async function createAndStart(title: string): Promise<void> {
-  await page.locator('.sidebar-new-task').click();
+  await page.getByRole('button', { name: '新任务' }).click();
   // spec 15 #394：单字段正文——title 参数即正文首行，占位标题 = 首行原文。
   await pexpect(page.locator('.new-task-spec')).toBeVisible();
   await page.locator('.new-task-spec').fill(title);
@@ -218,7 +219,7 @@ async function createAndStart(title: string): Promise<void> {
   // 的覆盖归 server orchestration-source 测（D 组）+ live verify-pacman。
   await page.locator('.new-task-dialog').getByRole('button', { name: '保存', exact: true }).click();
   // 卡落板（SSE/invalidate 驱动，无 reload）。
-  await pexpect(page.locator('.todo-card-title', { hasText: title })).toBeVisible({
+  await pexpect(page.getByRole('link', { name: title })).toBeVisible({
     timeout: 30_000,
   });
   // API 直起 withPlan:true build（脊柱走 plan/confirm 关口；triggerSource user）。
@@ -238,7 +239,7 @@ async function createAndStart(title: string): Promise<void> {
 }
 
 async function openDetail(title: string): Promise<void> {
-  await page.locator('.todo-card', { hasText: title }).locator('.todo-card-link').click();
+  await page.getByRole('link', { name: title }).click();
   await pexpect(page.locator('.detail-shell')).toBeVisible({ timeout: 15_000 });
 }
 
@@ -572,10 +573,8 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     // UI 面：看板卡回 待处理 列（#351：review 并入待处理）+ 详情时间线
     // 「由定时发起」标记（r7 38）。
     await openBoard();
-    const reviewCol = page
-      .locator('.board-column')
-      .filter({ has: page.locator('.board-column-name', { hasText: '待处理' }) });
-    await pexpect(reviewCol.locator('.todo-card', { hasText: 'M5 脊柱探针' })).toBeVisible({
+    const reviewCol = page.getByRole('region', { name: '待处理' });
+    await pexpect(reviewCol.locator('[data-todo-id]', { hasText: 'M5 脊柱探针' })).toBeVisible({
       timeout: 15_000,
     });
     await openDetail('M5 脊柱探针');

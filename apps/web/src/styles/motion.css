@@ -121,6 +121,19 @@ a:active {
   }
 }
 
+/* #73 drag-gesture law (relocated from board.css by #943, board per-face
+   CSS 清零): while a board drag is in flight the whole document stops
+   selecting text (changelog 2026-09-14 hygiene) and the pointer reads as
+   grabbing. The data attribute is toggled on <body> by board.tsx for the
+   gesture's duration — a body-level state hook, same family as
+   .theme-suppress below, so the rule lives in the carrier motion layer, not
+   a per-face file. Carrier per #910 裁定 3 (状态类归行为，载体改 data-*). */
+body[data-board-dragging] {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* Theme-switch suppression (base-ui-theme §1.2/F8, #787, better-ui recipe):
    applyTheme (theme.ts) rides .theme-suppress on <html> across the .light
    flip — every transition off for that paint, so the color / background /
