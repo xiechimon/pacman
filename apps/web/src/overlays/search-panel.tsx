@@ -10,19 +10,29 @@
 // #159: every row is a live SPA hop (todo→详情, 项目→项目页, agent→团队,
 // 前往→对应路由) carrying the current ?search= along (#121 convention) and
 // closing the panel. The highlight is hover-followed: no row is lit at
-// rest, CSS :hover lights the row under the mouse, ↑↓ moves a keyboard
-// cursor (data-kbd on the panel suppresses the hover pill so exactly one
-// row stays lit; Enter hops to it), and any real pointer movement hands
-// the highlight back to the mouse.
+// rest, the hover pill lights the row under the mouse, ↑↓ moves a keyboard
+// cursor (while it lives the hover pill stands down so exactly one row
+// stays lit; Enter hops to it), and any real pointer movement hands the
+// highlight back to the mouse.
+//
+// #949: overlays.css 清零——面板/行/输入行皮肤全部等值迁 utility（r7 实测
+// 几何逐值保留）；行钮收编 components/ui Button（ghost + ROW 中和串，#908
+// 裁决 3 七通道）；行 chip 按 spec/22 §5.1 C2 换 StatusChip size="sm"
+// （mini 14px → sm 16px 是 §5.2 正典增长）；#159 的 hover 让位律从
+// data-kbd CSS 覆写改为渲染期条件类（cursor 翻转本就触发重渲染，同帧
+// 换类，机制时序不变）；选中态载体 = data-selected（#910 裁定 3），行族
+// 载体 = data-row-kind（todo 行计数/定位的语义盲区继任者）。
 
 import type { SearchResponse } from '@pacman/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useAgentAvatarUrlById } from '../api/provider.js';
 import { relativeTime } from '../board/rel-time.js';
+import { Button } from '../components/ui/button.js';
 import { DialogShell, VIEWPORT_POP_ANIM } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
+import { StatusChip } from '../components/ui/status-chip.js';
 import { PROJECT_ID, PROJECT_INITIAL, PROJECT_NAME } from '../fixtures/fixtures.js';
 import type { AgentRef, FixtureSet, TodoRecord } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
@@ -39,8 +49,6 @@ import {
   Users,
 } from '../icons/index.js';
 import { PHASE_UI } from '../phase.js';
-import { Chip } from '../ui/chip.js';
-import './overlays.css';
 
 /** 前往 group rows, top to bottom. Canon is the r7 05 bitmap, not r2
  *  §8.4: the live set dropped 帐号/API 密钥 (r6) and grew the selected
@@ -59,6 +67,37 @@ const NAV_ROWS = [
   { label: '机器', Icon: Server, href: '/app/resources/machines' },
   { label: '模型服务', Icon: Layers, href: '/app/resources/providers' },
 ];
+
+/** 行钮皮肤（#949 per-face 清零）：旧 .search-row 规则的等值 utility——
+ *  r7 实测几何逐值保留（40px 行 / 8px 圆角 = Button 底座 rounded-lg 同值 /
+ *  calc(100%-16px) 行宽 + 8px 侧距 / 13px 字）。Button ghost 件配方按
+ *  #908 裁决 3 七通道中和：hover 涂底换成 --row-selected 正典 pill（本族
+ *  不吃 motion.css #73 的 accent-soft 淡 tint，键盘 cursor 与 hover 共面）、
+ *  hover 墨色钉住行墨、press 位移禁掉（XMON-69 例外律变体链）、1px 透明边
+ *  归零（border-none，r7 行盒）、font-medium 归 normal、justify/gap 随档位。
+ *  focus 环 = 件基类 #388 canon，与旧全局环同值，不重复写。 */
+const ROW_BASE =
+  'mx-2 flex h-10 w-[calc(100%-16px)] cursor-pointer items-center justify-start gap-[15px] whitespace-normal rounded-[8px] border-none bg-transparent pl-4 pr-2 text-left text-[13px] leading-4 font-normal text-(--text-secondary) hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&>svg]:flex-none [&>svg]:text-(--text-tertiary)';
+
+/** 结果行（任务/项目/agent）差额：icon tile 列距 10px、左垫 8px。 */
+const ROW_RESULT = 'gap-2.5 pl-2';
+
+/** #159 hover 跟随的三态行底（渲染期条件类，旧 data-kbd CSS 覆写的等值
+ *  机制）：静息 = 透明；鼠标态 = hover 亮正典 pill；键盘 cursor 活着 =
+ *  非选中行的 hover pill 让位（唯一亮面律），选中行静息底 + hover 同值
+ *  恒亮。dark: 双写中和 ghost 件的 dark:hover:bg-muted/50（--row-selected
+ *  自带主题翻转，值同源）。 */
+function rowLitClasses(selected: boolean, kbd: boolean): string {
+  if (selected)
+    return 'bg-(--row-selected) hover:bg-(--row-selected) dark:hover:bg-(--row-selected)';
+  if (kbd) return 'hover:bg-transparent dark:hover:bg-transparent';
+  return 'hover:bg-(--row-selected) dark:hover:bg-(--row-selected)';
+}
+
+/** 28px icon tile（结果行首列）：--row-icon-bg 底 + 8px 圆角；项目/agent
+ *  档在消费点 cn 覆写。 */
+const ROW_ICON =
+  'flex size-7 flex-none items-center justify-center rounded-[8px] bg-(--row-icon-bg) text-(--text-tertiary)';
 
 interface SearchPanelProps {
   fixture: FixtureSet;
@@ -103,6 +142,7 @@ function TodoRow({
   todo,
   now,
   selected,
+  kbd,
   index,
   onActivate,
   projectName,
@@ -112,6 +152,8 @@ function TodoRow({
   /** #159: lit only while the ↑↓ keyboard cursor sits here — the mouse
    *  hover pill is CSS (:hover), and at rest no row is selected. */
   selected: boolean;
+  /** 键盘 cursor 活着（hover pill 让位态，#159）。 */
+  kbd: boolean;
   /** Flat row position in the list (keyboard cursor + scroll-into-view). */
   index: number;
   onActivate: () => void;
@@ -121,36 +163,47 @@ function TodoRow({
   const { t } = useI18n();
   const ui = PHASE_UI[todo.phase];
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      data-row-kind="todo"
       data-row-index={index}
+      data-selected={selected ? '' : undefined}
       onClick={onActivate}
-      className={`search-row search-row--todo${selected ? ' search-row--selected' : ''}`}
+      className={`${ROW_BASE} ${ROW_RESULT} ${rowLitClasses(selected, kbd)}`}
     >
-      <span className="search-row-icon">
+      <span className={ROW_ICON}>
         <FileCheck width={16} height={16} />
       </span>
-      <span className="search-row-main">
-        <span className="search-row-title">
+      <span className="flex w-[358px] min-w-0 flex-none flex-col">
+        <span className="truncate text-xs leading-4 text-(--text-primary)">
           #{todo.seqNum} {todo.title}
         </span>
-        <span className="search-row-sub">{projectName ?? PROJECT_NAME}</span>
+        <span className="text-[10px] leading-3 text-(--text-tertiary)">
+          {projectName ?? PROJECT_NAME}
+        </span>
       </span>
-      <span className="search-row-time">{relativeTime(todo.phaseAt, now, t)}</span>
-      {/* #853：行 chip 即 Chip 原语 mini 档——皮肤（五态 token 对）与
-          mini 几何（14px/0 6px/10px）全在 ui/chip；此处只留行内定位。 */}
-      <Chip variant={ui.tone} size="mini" className="search-row-chip">
+      {/* 时间列墨 = --text-tertiary（#949 better-colors 实测换槽：
+          --text-dim × --popover-bg 亮模 2.89 < 槽地板 3，#908 裁决 2
+          换消费面引用，token 值不动） */}
+      <span className="flex-none text-[11px] leading-[15px] text-(--text-tertiary)">
+        {relativeTime(todo.phaseAt, now, t)}
+      </span>
+      {/* #853→#949：行 chip = StatusChip sm 档（spec/22 §5.1 C2）——五态
+          token 对皮肤在件内，旧 mini 14px → sm 16px 是 §5.2 正典增长；
+          行内只剩定位职责（右贴 + 不挤压）。 */}
+      <StatusChip tone={ui.tone} size="sm" className="ml-auto flex-none">
         {t(ui.chip)}
-      </Chip>
-    </button>
+      </StatusChip>
+    </Button>
   );
 }
 
 /** #137 常亮互斥: one lit focus surface globally. While any search panel
  *  is open, `data-search-open` on the root dims the page-layer 常亮
- *  selected pills (overlays.css); the panel's own selected row stays the
- *  single lit surface. Module-level count so a route-owned panel and the
- *  shell-owned panel (app-sidebar) never clobber each other's marker. */
+ *  selected pills（sidebar.tsx 的 [html[data-search-open]] utility 变体消费
+ *  本标记，#949 起规则不住 CSS 文件）; the panel's own selected row stays
+ *  the single lit surface. Module-level count so a route-owned panel and
+ *  the shell-owned panel (app-sidebar) never clobber each other's marker. */
 let openPanelCount = 0;
 function useSingleLitSurface(open: boolean) {
   useEffect(() => {
@@ -174,8 +227,9 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
   const openRef = useRef(open);
   openRef.current = open;
   // #159 hover 跟随: the ↑↓ keyboard cursor — the only JS-owned highlight.
-  // null = at-rest / mouse-owned (rows light via CSS :hover, zero
-  // re-renders); a real pointer movement releases the cursor (让位).
+  // null = at-rest / mouse-owned (rows light via the hover pill utilities,
+  // zero extra re-renders); a real pointer movement releases the cursor
+  // (让位).
   const [cursor, setCursor] = useState<number | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const pointerRef = useRef<{ x: number; y: number } | null>(null);
@@ -262,28 +316,35 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
       ?.scrollIntoView({ block: 'nearest' });
   }, [cursor]);
 
+  const kbd = cursor != null;
+
   return (
     // #453：视口根面走 DialogShell 的 `viewportRoot` 变体——面板自带 fixed
-    // 几何（.search-panel），scrim 归壳的 Backdrop 位（皮肤经
-    // backdropClassName 给），模态机制（焦点圈定 / 滚动锁 / Esc 层栈）由壳
-    // 承载。z 档 = #688 阶梯的 --z-modal（背板由壳减一 = --z-modal-scrim
-    // 同值，overlays.css 的 CSS 对读同一条阶梯）。
+    // 几何（520×440 / top 146 / 居中负边距，r7 §3.5 实测），scrim 归壳的
+    // Backdrop 位（皮肤经 backdropClassName 给），模态机制（焦点圈定 /
+    // 滚动锁 / Esc 层栈）由壳承载。z 档 = #688 阶梯的 --z-modal（背板由壳
+    // 减一 = --z-modal-scrim 同值；面板与 scrim 的 z utility 是容器
+    // stacking context 万一退化时仍压得住的兜底，与适配层入参读同一条
+    // 阶梯，不存在第二套真值）。
+    // #844 二段关闭闪：进场走 VIEWPORT_POP_ANIM keyframe（group/dlgvp 读壳
+    // Popup 开态），退场走指定式 transition（opacity + scale 100ms，
+    // group-data-closed/dlgvp 终态按住到卸载窗结束——一次性 exit keyframe
+    // 会在壳 150ms visibility 桥里先播完回弹，闪几帧全不透明）；origin 顶
+    // 心（r7 家族律），reduced-motion 关过渡（D4 各文件自理）。
     <DialogShell
       open={open}
       onClose={onClose}
       viewportRoot
       // 背板是 Base UI Backdrop（自带 data-open/data-closed）→ 自变体淡入淡出，
-      // 与 .dlg 默认背板同档（duration-200 fade）。
-      backdropClassName="search-scrim duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
+      // 与 .dlg 默认背板同档（duration-200 fade）。壳已给 fixed inset-0，
+      // 这里只带 scrim 皮肤 + z 兜底（--overlay-scrim = 60% 黑，r7 canon）。
+      backdropClassName="z-(--z-modal-scrim) bg-(--overlay-scrim) duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
       zIndex="var(--z-modal)"
     >
       <div
-        className={`search-panel ${VIEWPORT_POP_ANIM}`}
+        className={`fixed top-[146px] left-1/2 z-(--z-modal) flex h-[440px] w-[520px] -ml-[260px] flex-col overflow-hidden rounded-(--edge-radius) bg-(--popover-bg) shadow-(--fab-shadow) origin-top transition-[opacity,scale] group-data-closed/dlgvp:scale-[0.98] group-data-closed/dlgvp:opacity-0 motion-reduce:transition-none ${VIEWPORT_POP_ANIM}`}
         role="dialog"
         aria-label={t('搜索')}
-        // kbd marker: while the ↑↓ cursor is live the CSS hover pill stands
-        // down (overlays.css) so exactly one row is lit (#159)
-        data-kbd={cursor != null ? '' : undefined}
         // entering the panel (incl. a synthetic pointer jump straight onto
         // a row) hands the highlight to the mouse as well
         onMouseEnter={releaseCursor}
@@ -297,17 +358,18 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
             setCursor(null);
         }}
       >
-        <div className="search-input-row">
+        <div className="flex h-10 flex-none items-center gap-[3px] border-b border-(--card-border) pl-[17px] pr-4 text-(--text-tertiary)">
           <Search width={13} height={13} />
           {/* A5 收编：palette 裸输入形态（r7 05 canon）；e2e search-focus
-              钉 .search-input-row input 元素结构选择器——Input 渲染的
-              input 元素天然满足，ref 经 React 19 ref-as-prop 透传 */}
+              钉面板 scope 的 textbox 语义载体——Input 渲染的 input 元素
+              天然满足，ref 经 React 19 ref-as-prop 透传 */}
           <Input
             // the live panel opens focused (r7 05/05b show the caret);
             // the attach callback is the mount-time focus path (#137),
             // the [open] effect the retained-mount refocus.
             // B3: variant="palette" 皮肤换 Tailwind 工具类——flex-1 + 无框
-            // 透明 + 13px 字，行容器几何（40px/padding/分隔线）per-face 保留。
+            // 透明 + 13px 字；行容器几何（40px/垫距/分隔线）已随 #949 迁
+            // 上方行 utility。
             ref={attachInput}
             className="flex-1 h-auto border-none p-0 text-[13px] md:text-[13px] leading-4 rounded-none bg-transparent dark:bg-transparent text-(--text-primary) placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:!ring-0"
             value={query}
@@ -337,34 +399,43 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
           />
         </div>
         {q === '' ? (
-          <div className="search-list" ref={listRef}>
-            <div className="search-group-label">{t('前往')}</div>
+          <div className="flex-1 overflow-y-auto pb-2" ref={listRef}>
+            <div className="px-4 pt-3 pb-1 text-[11px] leading-[15px] text-(--text-tertiary)">
+              {t('前往')}
+            </div>
             {NAV_ROWS.map(({ label, Icon, href }, index) => (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 key={label}
+                data-row-kind="nav"
                 data-row-index={index}
-                className={`search-row${cursor === index ? ' search-row--selected' : ''}`}
+                data-selected={cursor === index ? '' : undefined}
+                className={`${ROW_BASE} ${rowLitClasses(cursor === index, kbd)}`}
                 onClick={() => go(href)}
               >
                 <Icon width={16} height={16} />
                 {t(label)}
-              </button>
+              </Button>
             ))}
           </div>
         ) : hitCount === 0 ? (
-          <div className="search-empty">{t('没有与“{q}”匹配的结果', { q: query.trim() })}</div>
+          <div className="px-4 py-6 text-[13px] leading-4 text-(--text-tertiary)">
+            {t('没有与“{q}”匹配的结果', { q: query.trim() })}
+          </div>
         ) : (
-          <div className="search-list" ref={listRef}>
+          <div className="flex-1 overflow-y-auto pb-2" ref={listRef}>
             {todos.length > 0 && (
               <>
-                <div className="search-group-label">{t('任务')}</div>
+                <div className="px-4 pt-3 pb-1 text-[11px] leading-[15px] text-(--text-tertiary)">
+                  {t('任务')}
+                </div>
                 {todos.map((todo, index) => (
                   <TodoRow
                     key={todo.id}
                     todo={todo}
                     now={fixture.now}
                     selected={cursor === index}
+                    kbd={kbd}
                     index={index}
                     onActivate={() => go(`/app/todo/${todo.id}`)}
                     projectName={
@@ -380,54 +451,69 @@ export function SearchPanel({ fixture, query, onQuery, open, onClose, server }: 
             )}
             {projects.length > 0 && (
               <>
-                <div className="search-group-label">{t('项目')}</div>
+                <div className="px-4 pt-3 pb-1 text-[11px] leading-[15px] text-(--text-tertiary)">
+                  {t('项目')}
+                </div>
                 {projects.map((project, index) => (
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
                     key={project.id}
+                    data-row-kind="project"
                     data-row-index={todos.length + index}
-                    className={`search-row search-row--todo${
-                      cursor === todos.length + index ? ' search-row--selected' : ''
-                    }`}
+                    data-selected={cursor === todos.length + index ? '' : undefined}
+                    className={`${ROW_BASE} ${ROW_RESULT} ${rowLitClasses(
+                      cursor === todos.length + index,
+                      kbd,
+                    )}`}
                     onClick={() => go(`/app/project/${project.id}`)}
                   >
-                    <span className="search-row-icon search-row-icon--project">
+                    <span
+                      className={`${ROW_ICON} bg-(--project-avatar-bg) text-[10px] font-medium text-(--project-avatar-fg)`}
+                    >
                       {project.name.charAt(0).toLowerCase() || PROJECT_INITIAL}
                     </span>
-                    <span className="search-row-main">
-                      <span className="search-row-title">{project.name}</span>
+                    <span className="flex w-[358px] min-w-0 flex-none flex-col">
+                      <span className="truncate text-xs leading-4 text-(--text-primary)">
+                        {project.name}
+                      </span>
                     </span>
-                  </button>
+                  </Button>
                 ))}
               </>
             )}
             {agents.length > 0 && (
               <>
-                <div className="search-group-label search-group-label--upper">Agents</div>
+                <div className="px-4 pt-3 pb-1 text-[11px] leading-[15px] text-(--text-tertiary) uppercase">
+                  Agents
+                </div>
                 {agents.map((agent, index) => {
                   // flat cursor space: todos → 项目 rows → agents (#159)
                   const rowIndex = todos.length + projects.length + index;
                   return (
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
                       key={agent.id}
+                      data-row-kind="agent"
                       data-row-index={rowIndex}
-                      className={`search-row search-row--todo${
-                        cursor === rowIndex ? ' search-row--selected' : ''
-                      }`}
+                      data-selected={cursor === rowIndex ? '' : undefined}
+                      className={`${ROW_BASE} ${ROW_RESULT} ${rowLitClasses(cursor === rowIndex, kbd)}`}
                       onClick={() => go('/app/team')}
                     >
-                      <span className="search-row-icon search-row-icon--agent">
+                      <span
+                        className={`${ROW_ICON} bg-transparent [&_img]:size-4 [&_img]:rounded-full`}
+                      >
                         <SeededAvatar
                           name={agent.displayName}
                           src={agent.avatarUrl}
                           fallback="/avatar-robot-1.svg"
                         />
                       </span>
-                      <span className="search-row-main">
-                        <span className="search-row-title">{agent.displayName}</span>
+                      <span className="flex w-[358px] min-w-0 flex-none flex-col">
+                        <span className="truncate text-xs leading-4 text-(--text-primary)">
+                          {agent.displayName}
+                        </span>
                       </span>
-                    </button>
+                    </Button>
                   );
                 })}
               </>
