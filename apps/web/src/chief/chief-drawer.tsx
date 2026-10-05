@@ -325,6 +325,9 @@ export function ChiefDrawer({
       reviewAvailable: false,
       stopAvailable: false,
     },
+    // #860: textarea follows the content up to 6 lines (20px), scrolling
+    // internally beyond it (the XMON-102 fixed-height law is superseded).
+    growCap: 120,
   });
   const {
     handlePaste,

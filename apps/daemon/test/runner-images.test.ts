@@ -46,6 +46,7 @@ function captureLogger(): { logger: DaemonLogger; lines: string[] } {
     recover: (msg) => push('recover', msg),
     wake: (msg) => push('wake', msg),
     skills: (msg) => push('skills', msg),
+    gate: (msg) => push('gate', msg),
     mcp: (msg) => push('mcp', msg),
   };
   return { logger, lines };

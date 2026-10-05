@@ -129,6 +129,11 @@ export interface ComposerWireOptions {
     onReview?: () => void;
     onStop?: () => void;
   };
+  /** Auto-grow ceiling in px (#860): the textarea keeps its CSS base height
+   *  and grows with content up to this cap, scrolling internally beyond it.
+   *  Absent = fixed height (no autosize). Per-face values live at the call
+   *  sites (chief 120 = 6 lines, detail 96 = 6 lines). */
+  growCap?: number;
 }
 
 export interface ComposerWire {
@@ -141,9 +146,11 @@ export interface ComposerWire {
   /** Textarea onChange: stores the value and re-judges the inline @ token. */
   handleChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
   /** Textarea onKeyDown: completion keys first (↑↓ / Tab / Enter=insert /
-   *  Esc while the listbox is open), then ordered-list continuation
-   *  (#814: plain Enter on a `1. ` line wins over send), then the
-   *  composer's own Enter-to-send. IME composition never triggers any
+   *  Esc while the listbox is open), then the composer's own Enter-to-send.
+   *  Enter always sends (#860 dialog law). Shift+Enter is the newline key:
+   *  on an ordered-list line it continues the list through the shared #814
+   *  helper (same nesting/exit semantics as the new-task face), anywhere
+   *  else it keeps its native newline. IME composition never triggers any
    *  layer (#728 failure mode 8). */
   handleKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
   /** Re-judge the token after caret-only moves (keyup / click / select):
@@ -260,6 +267,7 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     mentionGroups,
     mentionFiles,
     slash: slashOptions,
+    growCap,
   } = options;
   const { t } = useI18n();
 
@@ -622,6 +630,20 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
     ta.setSelectionRange(pending.caret, pending.caret);
   }, [draft]);
 
+  // Textarea auto-grow (#860): the box keeps its CSS base height and follows
+  // the content up to growCap, scrolling internally beyond it. Height never
+  // touches the caret, so this rides after the caret restores above without
+  // ordering constraints; clearing the draft (send) falls back to the CSS
+  // base through the reset below.
+  useLayoutEffect(() => {
+    if (growCap == null) return;
+    const ta = textareaRef.current;
+    if (ta == null) return;
+    ta.style.height = '';
+    const grown = Math.min(ta.scrollHeight, growCap);
+    if (grown > ta.clientHeight) ta.style.height = `${grown}px`;
+  }, [draft, growCap]);
+
   /** Text insertion over a STORED detection range `[start, end)` so the
    *  `@query` (or `/query`) is consumed instead of left behind as residue.
    *  The stored range is the contract (#728 failure mode 5): recomputing
@@ -835,17 +857,23 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
       }
       return;
     }
-    // intent === 'ignore': the composer's own keys. Enter sends — but never
-    // mid-IME-composition (the composing Enter belongs to the candidate
-    // window; #728 failure mode 8) and never with shift (newline). A plain
-    // Enter on an ordered-list line (#814) continues the list instead of
-    // sending: the caret restore rides pendingInsertRef like the mention
-    // path (commit-atomic, no rAF race). Modified Enter (shift/meta/ctrl/
-    // alt) never takes the list branch — those keep their ambient meaning.
+    // intent === 'ignore': the composer's own keys. Enter always sends —
+    // but never mid-IME-composition (the composing Enter belongs to the
+    // candidate window; #728 failure mode 8). Shift+Enter is the newline
+    // key: on an ordered-list line (#860) it continues the list instead of
+    // sending — the caret restore rides pendingInsertRef like the mention
+    // path (commit-atomic, no rAF race); anywhere else it falls through to
+    // the native newline. Modified Enter (meta/ctrl/alt) keeps its ambient
+    // meaning, except unshifted modified Enter which still sends.
     // Priority order for Enter is therefore: completion-accept (above) >
-    // ordered-list continuation > send.
-    if (event.key === 'Enter' && !event.shiftKey && !isComposing) {
-      if (event.metaKey !== true && event.ctrlKey !== true && event.altKey !== true) {
+    // send, with Shift+Enter taking the list branch first.
+    if (event.key === 'Enter' && !isComposing) {
+      if (
+        event.shiftKey &&
+        event.metaKey !== true &&
+        event.ctrlKey !== true &&
+        event.altKey !== true
+      ) {
         const ta = textareaRef.current;
         if (ta != null) {
           const continued = applyOrderedListEnter(ta.value, ta.selectionStart ?? ta.value.length);
@@ -856,9 +884,12 @@ export function useComposerWire(options: ComposerWireOptions): ComposerWire {
             return;
           }
         }
+        return;
       }
-      event.preventDefault();
-      send();
+      if (!event.shiftKey) {
+        event.preventDefault();
+        send();
+      }
     }
   };
 

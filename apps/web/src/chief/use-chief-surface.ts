@@ -156,14 +156,22 @@ export function useChiefSurface(fixture: FixtureSet, deepLink?: ChiefDeepLink): 
     streamHandlers,
   );
   // #651 打字面读侧：conversation stream 的 text_delta 已由 sse.ts 按会话
-  // 累积进 liveTextStore（终稿 message 事件落库即 clear + messages 失效
-  // 重取）。此前抽屉从不读该缓冲——增量全丢，回复只能等重取整段一次性蹦出。
-  // 读法与详情页同款（todo-detail-page useSyncExternalStore），键 = 活动
-  // 线程 id（chief 步 buildId ≡ conv id ≡ thread id，server chief.ts）。
+  // 累积进 liveTextStore。#857 收敛交接：终稿 message 事件只记 handoff，缓冲
+  // 的丢弃推迟到 messages 已含该行——读数走 getVisible（纯函数，无闪清无双份），
+  // 落盘走 prune effect。键 = 活动线程 id（chief 步 buildId ≡ conv id ≡ thread id，
+  // server chief.ts）。
   const activeThreadId = live ? (activeThread?.id ?? null) : null;
-  const liveText = useSyncExternalStore(liveTextStore.subscribe, () =>
-    activeThreadId !== null ? liveTextStore.get(activeThreadId) : '',
+  const chiefMessagesData = chiefMessagesQ.data;
+  const knownChiefIds = useMemo(
+    () => new Set((chiefMessagesData?.messages ?? []).map((m) => m.id)),
+    [chiefMessagesData],
   );
+  const liveText = useSyncExternalStore(liveTextStore.subscribe, () =>
+    activeThreadId !== null ? liveTextStore.getVisible(activeThreadId, knownChiefIds) : '',
+  );
+  useEffect(() => {
+    if (activeThreadId !== null) liveTextStore.prune(activeThreadId, knownChiefIds);
+  }, [activeThreadId, knownChiefIds]);
   const liveChief = useMemo(() => {
     if (!live || !chiefQ.data) return null;
     return mapChief(chiefQ.data, {

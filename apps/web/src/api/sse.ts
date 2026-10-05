@@ -1,7 +1,8 @@
 // SSE 接线（M5，02 §1.2 全 SSE 无 WS）：原生 EventSource（同源 cookie 会话，
 // 01 §4.1 锁定）。策略 = S8 canon「SSE 事件仅作 invalidateQueries 提示信号，
 // server state 全走查询失效重取」；conversation stream 的 text_delta 例外
-// 进 liveTextStore（流式打字面，终稿 message 行落库后收敛）。
+// 进 liveTextStore（流式打字面，终稿 message 行落库记 handoff、消费侧收敛后
+// 交接——#857，见 live-text.ts）。
 // 通知 divergence（04 §5/A5）：in-app 事件 1:1 + document.hidden 时页内
 // new Notification()（无 Web Push）。鉴权开时（#253）两条流以 ?token= 建流
 // （streamUrl，协议例外见 api/auth.ts 头注）；门页开着不建流，放行即重连。
@@ -19,6 +20,7 @@ import { translate } from '../i18n/translate.js';
 import { readStoredToken, useAuth } from './auth.js';
 import { invalidateConverged } from './invalidate.js';
 import { liveTextStore } from './live-text.js';
+import { textOfContent } from './mappers.js';
 import { connect } from './sse-connection.js';
 import { streamGuards } from './sse-guards.js';
 import { teamEventInvalidations } from './sse-team-events.js';
@@ -195,14 +197,24 @@ export function startConversationStream(
           break;
         case 'message': {
           const row = ev.message as TranscriptRow;
-          // 终稿行到达：live 缓冲作废，消息面重取接管（收敛律）。
-          liveTextStore.clear(conversationId);
+          // #857 收敛交接：终稿行到达只记 handoff，不清缓冲——messages 重取在
+          // 飞时打字面保留，收敛（消费侧 knownIds 含该行）才交接给落库行。只记
+          // assistant 文本行：工具行/用户行到达时缓冲前缀尚无落库行覆盖。
+          if (row.role === 'assistant' && textOfContent(row.content).trim() !== '') {
+            liveTextStore.noteSettled(conversationId, row.id);
+          }
           void invalidateConverged(qc, { queryKey: ['messages', conversationId] });
           void invalidateConverged(qc, { queryKey: ['plans'] });
           onMessage?.(row);
           break;
         }
-        case 'step':
+        case 'step': {
+          // #857：步终态兜底清缓冲（hub 同律）——失败/停止无终稿行时 stale 不
+          // 跨回合累积；正常收尾时 handoff 早已收敛交接，清即 no-op。
+          const step = (ev as ConversationStepEvent).step;
+          if (step.status === 'done' || step.status === 'failed' || step.status === 'stopped') {
+            liveTextStore.clear(conversationId);
+          }
           void invalidateConverged(qc, { queryKey: ['steps', conversationId] });
           void invalidateConverged(qc, { queryKey: ['build', conversationId] });
           void invalidateConverged(qc, { queryKey: ['changes', conversationId] });
@@ -219,8 +231,9 @@ export function startConversationStream(
           if (isChiefConversationId(conversationId)) {
             void invalidateConverged(qc, { queryKey: ['chiefThreads'] });
           }
-          onStep?.((ev as ConversationStepEvent).step);
+          onStep?.(step);
           break;
+        }
         default:
           break; // ping
       }
