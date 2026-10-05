@@ -34,6 +34,21 @@ jobs:
           node-version: 24
           cache: pnpm
 
+      # 施工期止血闸（#851，#908 波 0a）：per-face CSS 逐文件行数与裸控件
+      # 总数只许降不许升。比较基准取 PR base sha 上的基线文件（下面先
+      # fetch），所以分支内重新冻结基线抬不高自己的天花板（脚本内 D3）。
+      # 纯源码扫描、零依赖，故意排在 install 之前：违规车道的红灯一分钟内
+      # 就到，不用等整个 check job 跑完。push（main / prototype/**）没有
+      # base sha，退回仓内基线自校——main 上「树高于账本」同样红。
+      - name: UI debt gate (#851)
+        env:
+          UI_DEBT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -n "$UI_DEBT_BASE_SHA" ]; then
+            git fetch --depth=1 origin "$UI_DEBT_BASE_SHA"
+          fi
+          node scripts/ui-debt-gate.mjs
+
       # e2e 迁去独立分片 job（#693）后 ffmpeg 随迁；chromium 留在本 job——
       # integration vitest 的四个 e2e 套件（m5-web-e2e 等）在场内起真
       # Chromium（2026-10-03 实测摘掉即红：browserType.launch executable
