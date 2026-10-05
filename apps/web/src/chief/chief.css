@@ -227,10 +227,8 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  /* #872 整行铺满：横向内衬归基类 .model-pick-row（单源），本面只留纵向
-     7px；--model-pick-ink 补回本面原有的 8px 行内衬，字墨位不动。 */
+  /* #872 整行铺满：横向内衬归基类 .model-pick-row（单源），本面只留纵向 7px。 */
   padding-block: 7px;
-  --model-pick-ink: 8px;
   border: none;
   border-radius: 0;
   background: transparent;
@@ -1022,8 +1020,8 @@ a.chief-identity {
   gap: 8px;
   width: 100%;
   height: 32px;
-  /* #872：横向内衬归基类 .model-pick-row（本面 --model-pick-ink 缺省 0，
-     字墨 inset 仍是 12）；本面只声明零纵向内衬，行高由 height 钉 32。 */
+  /* #872：横向内衬归基类 .model-pick-row；本面只声明零纵向内衬，行高由
+     height 钉 32。 */
   padding-block: 0;
   border: none;
   border-radius: 0;
@@ -1072,11 +1070,22 @@ a.chief-identity {
 /* #872 整行铺满：横向内衬单源在本层——弹层壳只留纵向 12px（.chief-model-pop
    / .chief-model-menu 的 padding: 12px 0），行自带等量横向内衬，选中/hover
    底色因此伸到弹层内缘（用户报「中间还有间隙，要全覆盖的」；参考站 todos.dev
-   同面也是壳零横垫 + 行自垫）。--model-pick-ink 是该面在壳垫之外原有的行内
-   衬（抽屉面 8px，设置面 0），补回后字墨与行尾勾零位移。 */
+   同面也是壳零横垫 + 行自垫）。
+   #883 内缩统一：此前抽屉面另垫了历史遗留的 8px 行内衬（--model-pick-ink），
+   两面字墨距面板内缘 20px vs 12px 各走各的节奏。面级覆盖已摘除，两面字墨
+   同为 12px——与同面板内搜索框的 12px 横缩（#872）同节奏。 */
 .model-pick-row {
-  --model-pick-gutter: 12px;
-  padding-inline: calc(var(--model-pick-gutter) + var(--model-pick-ink, 0px));
+  padding-inline: 12px;
+}
+
+/* #883 行焦点环画在内侧：行盒左右缘 == listbox 裁剪盒（.chief-model-pick-list
+   是滚动容器，#872 整行铺满后行左右缘贴死裁剪盒），全局环配方（app.css
+   #388：2px solid --focus-ring，offset +2px）把环带画在行盒外 2~4px——左右
+   段恒被裁，顶/底边贴清单内容缘时也被裁，键盘 Tab 只剩行下一条横杠（单行
+   清单连横杠都没了，环整个不可见）。offset -2px 把环带整个收回行盒内侧，
+   四边完整；只覆写 offset——色彩/线宽/样式仍归全局单源。 */
+.model-pick-row:focus-visible {
+  outline-offset: -2px;
 }
 
 /* 壳垫移交后，壳内另外两块各自补回原位：搜索框（输入面，贴边没有整行底色的
