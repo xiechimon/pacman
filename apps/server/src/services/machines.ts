@@ -804,11 +804,17 @@ function buildChiefClaim(
   if (res.changes === 0) return null;
   const ctx = chiefClaimContext(deps, threadRow.id);
   // #823 发送后 skill 路由（claim 时 = worker 开工前路由位）：仅用户触发轮检测
-  // （wake/系统轮跳过——matcher 另有 [wake: 前缀纵深防御）。提示节只进
-  // systemPrompt，step.prompt（用户原文）逐字不动；节恒为"建议"（agent 先用
-  // skills 工具核对详情，不切合直接忽略）——误触发可逆，普通对话零劫持。
+  // （wake/系统轮跳过——matcher 另有 [wake: 前缀纵深防御）。节恒为"建议"（agent
+  // 先用 skills 工具核对详情，不切合直接忽略）——误触发可逆，普通对话零劫持。
+  //
+  // 落点 = **instruction（每轮用户消息）**，不是 systemPrompt。路由节按本条
+  // 消息的关键词生成，是 per-run 值；写进 system prompt 会让每轮字节都变、
+  // 下一轮前缀缓存整体失效（Multica MUL-5377 同坑，见 docs/spec/24）。
+  // step.prompt 在库里仍是用户原文逐字不动（下方 enqueue 侧职责），本处只是
+  // 把节附在**投递文本**之后。
   const trigger = parseChiefTrigger(stepRow.prompt);
-  let systemPrompt = ctx?.systemPrompt ?? '';
+  const systemPrompt = ctx?.systemPrompt ?? '';
+  let routeSection = '';
   if (ctx && trigger === 'user') {
     const hint = suggestSkillsForMessage(
       stepRow.prompt ?? '',
@@ -818,7 +824,7 @@ function buildChiefClaim(
         description: s.description,
       })),
     );
-    if (hint) systemPrompt = `${systemPrompt}\n\n${formatSkillRouteSection(hint)}`;
+    if (hint) routeSection = formatSkillRouteSection(hint);
   }
   // 记忆注入（02 §4.4 读路径最小形；注入形 [推断] 保留）：绑定 Agent 记忆条目。
   const memories = deps.db
@@ -841,7 +847,12 @@ function buildChiefClaim(
       action: threadRow.sessionId !== '' ? 'continue' : 'new',
       sessionId: threadRow.sessionId !== '' ? threadRow.sessionId : null,
     },
-    ...(stepRow.prompt !== null ? { instruction: stepRow.prompt } : {}),
+    ...(stepRow.prompt !== null
+      ? {
+          instruction:
+            routeSection === '' ? stepRow.prompt : `${stepRow.prompt}\n\n${routeSection}`,
+        }
+      : {}),
     agent: {
       id: agentRow.id,
       displayName: agentRow.displayName,
