@@ -456,9 +456,10 @@
 }
 
 /* 本机行 per-runtime 品牌 mark（spec 11 A8，#357；#503 开关 → 官方 mark）：
-   行内右侧 mark+名称对，read-only。启用 = 品牌原色，未启用 = mark 35% 透明；
-   状态只在 mark 上分态，名称两态同 --text-dim（整对一起淡会把未启用名淡到
-   读不出）。mark 尺寸走 brand-marks.tsx 的组件默认 16px。 */
+   行内右侧图标对，read-only。#887 图标独形——文字名撤下，可读名挂容器
+   （role="img" + aria-label + title 悬停提示）。启用 = 品牌原色，未启用 =
+   mark 35% 透明。mark 尺寸走 brand-marks.tsx 的组件默认 16px；两图标间距
+   16px 保持（多 runtime 同屏的排布节律不因去文字而塌）。 */
 .mach-runtimes {
   margin-left: auto;
   display: flex;
@@ -469,14 +470,6 @@
 .mach-runtime {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.mach-runtime-label {
-  font-size: 12px;
-  line-height: 16px;
-  color: var(--text-dim);
-  white-space: nowrap;
 }
 
 .mach-mark {
@@ -563,8 +556,8 @@
    留在 DOM 上。 */
 
 /* tab 前置品牌 mark（XMON-73）：尺寸走 tabs.tsx 基类的 size-4（16px），
-   此处只补 flex 与 8px 间距（机器行 .mach-runtime 同档间距），不复制
-   .page-tab 的几何——那份规则 topbar「任务|文件」共用。 */
+   此处只补 flex 与 8px 的 mark/名间距（自持；机器行原同档间距已随 #887
+   图标独形撤下），不复制 .page-tab 的几何——那份规则 topbar「任务|文件」共用。 */
 .res-tab-mark {
   flex: none;
   display: block;
