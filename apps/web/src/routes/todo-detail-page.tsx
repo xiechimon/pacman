@@ -527,9 +527,13 @@ export function TodoDetailPage() {
                 : runningStep.kind === 'plan'
                   ? '规划中'
                   : '执行中',
-            machine: machineField,
+            // 真值 = 该步实际领取的机器（machineName 由 steps×machines 解出，
+            // 未领取为 null）。不取 machineField：它会回落到 build 钉选的机器
+            // ——钉了一台还没来领的机器时，面板会声称「执行机器 = 那台」，
+            // 而步其实还在等（钉选等待态在 meta 块另有标注）。
+            machine: machineName,
           },
-    [runningStep, machineField],
+    [runningStep, machineName],
   );
 
   // live 指派：dialog 未给显式 assignment 时取团队首个 Agent（02 §6.2 双槽
