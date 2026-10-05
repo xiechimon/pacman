@@ -25,11 +25,11 @@
 //       file triggers, tri-state checkboxes, custom-switch a11y layers)
 //       document their reason at the site instead.
 //
-// Known single-site exception (G2-ALLOW): attachment-strip.css
-// `.attachment-pending-badge` paints white text on a theme-invariant black
-// veil (`rgb(0 0 0/0.55)`); no theme-invariant white-text token exists yet.
-// Tracked by the color-escape follow-up of #851 — the allowlist entry names
-// the file + selector so a second escape anywhere else still fails.
+// The former single-site exception is closed: #854 minted `--text-on-veil`
+// (styles/shadcn.css, both theme mirrors) for the white text over the
+// theme-invariant black veil, and `overlay/attachment-strip.css` consumes it.
+// No escape is allowlisted any more — HEX_ALLOWLIST stays as the mechanism so
+// that any future exception has to name its file + selector explicitly.
 //
 // Usage: node scripts/ui-drift-gate.mjs
 // Exit 0 when all gates hold; exit 1 otherwise, listing the offending sites.
@@ -43,14 +43,9 @@ const rel = (p) => relative(WEB_SRC, p);
 
 // G2: the only file allowed to hold color values.
 const HEX_SOURCE = join(WEB_SRC, 'styles/shadcn.css');
-// G2-ALLOW: file-relative + selector + reason (see header).
-const HEX_ALLOWLIST = [
-  {
-    file: 'overlay/attachment-strip.css',
-    selector: '.attachment-pending-badge',
-    reason: '#851-followup: theme-invariant white on black veil, no token yet',
-  },
-];
+// G2-ALLOW: file-relative + selector + reason. Empty since #854: every color
+// value lives in the token source again (see header).
+const HEX_ALLOWLIST = [];
 // G3: canonical chip variants, single home.
 const CHIP_HOME_REL = rel(join(WEB_SRC, 'ui/chip.css'));
 const CHIP_VARIANTS = ['idle', 'plan', 'confirm', 'done', 'failed', 'mini'];

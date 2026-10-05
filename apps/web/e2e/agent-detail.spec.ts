@@ -467,7 +467,9 @@ test('记忆 tab：`添加时间` 档按新 → 旧重排', async ({ page }) => 
     'PROBE 探针的历史轮次',
   ]);
   await detail.locator('.agent-memory-sort').click();
-  await detail.locator('.agent-memory-sort-menu .res-sort-row', { hasText: '添加时间' }).click();
+  // #854 收编 dropdown-menu：面板 portal 到 body（不再挂 wrap 包含块），
+  // 作用域收在 .agent-detail 里就找不到它了。
+  await page.locator('.agent-memory-sort-menu .res-sort-row', { hasText: '添加时间' }).click();
   expect(await memoryTitles(page)).toEqual([
     'PROBE 探针的历史轮次',
     '验收只看真机跑通',
@@ -480,7 +482,9 @@ test('记忆 tab：搜索与排序叠加——排序只在命中集内生效', a
   const detail = await openMemory(page);
   await detail.locator('.agent-memory-search input').fill('probe');
   await detail.locator('.agent-memory-sort').click();
-  await detail.locator('.agent-memory-sort-menu .res-sort-row', { hasText: '添加时间' }).click();
+  // #854 收编 dropdown-menu：面板 portal 到 body（不再挂 wrap 包含块），
+  // 作用域收在 .agent-detail 里就找不到它了。
+  await page.locator('.agent-memory-sort-menu .res-sort-row', { hasText: '添加时间' }).click();
   await expect(detail.locator('.agent-memory-row')).toHaveCount(2);
   expect(await memoryTitles(page)).toEqual(['PROBE 探针的历史轮次', '验收只看真机跑通']);
 });

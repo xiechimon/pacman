@@ -9,13 +9,17 @@
 // (#306 校准: a rendered option row must act, not just check). Surfaces
 // without build payload data list the doc row alone (no dead rows).
 
-import { useState } from 'react';
 import { Button } from '../components/ui/button.js';
-import { FloatingShell } from '../components/ui/floating-shell.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu.js';
 import type { PaneView } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
-import { Check, ChevronDown } from '../icons/index.js';
-import { ClickCatcher } from './dismiss.js';
+import { ChevronDown } from '../icons/index.js';
 import './overlays.css';
 
 /** Row/button copy — zh dict keys, rendered through t(). */
@@ -30,58 +34,18 @@ const SECTION_ROWS: Array<{ view: PaneView; label: PaneRowLabel }> = [
   { view: 'history', label: '运行历史' },
 ];
 
-/** The listbox panel itself (no open-state management). */
-export function PlanDropdown({
-  docLabel,
-  view,
-  sections = true,
-  onSelect,
-}: {
-  /** Doc row label — the phase-derived document type (方案 or 变更). */
-  docLabel: DocTypeLabel;
-  /** Active pane view; its row carries the ✓. */
-  view: PaneView;
-  /** false = no build payload (fresh/legacy surfaces): the doc row alone. */
-  sections?: boolean;
-  /** Row click: pick the view — the owner closes the dropdown (same
-   *  contract as lang-dropdown rows). */
-  onSelect: (view: PaneView) => void;
-}) {
-  const { t } = useI18n();
-  const rows: Array<{ view: PaneView; label: PaneRowLabel }> = [
-    { view: 'doc', label: docLabel },
-    ...(sections ? SECTION_ROWS : []),
-  ];
-  return (
-    <div className="plan-dropdown" role="listbox" aria-label={t('面板视图')}>
-      {rows.map((row) => (
-        <button
-          key={row.view}
-          type="button"
-          className="plan-dropdown-row"
-          role="option"
-          aria-selected={row.view === view}
-          onClick={() => onSelect(row.view)}
-        >
-          {t(row.label)}
-          {row.view === view && (
-            <span className="plan-dropdown-check">
-              <Check width={14} height={14} />
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /** Type-select button + dropdown, shared by the doc-pane head and the three
- *  section heads (#366): #425 B1 起机制换 FloatingShell（Base UI 非模态
- *  Dialog——Esc 走 layer 栈，不再挂 window 监听）；透明 ClickCatcher 保留
- *  （外点只关层、不穿透）。本面是族内唯一相对触发位 absolute 锚定的面
- *  （.plan-dropdown 的 containing block = .doc-select-wrap），故 portal 指回
- *  wrap 而不是 body——DOM 树位不变，几何逐像素保。The button label is the
- *  active view's own word. */
+ *  section heads (#366). #854 收编到 components/ui/dropdown-menu（Base UI
+ *  Menu RadioGroup，#714 playbook）：单选即关走显式 closeOnClick（RadioItem
+ *  缺省 false，原生 radio 保开语义；本面家族律是 select-and-close #306）；
+ *  勾形改由 RadioItemIndicator 原生槽承载（同位旧 margin-left:auto 勾，
+ *  勾色仍钉 per-face indicator 槽选择器）；roving focus / typeahead /
+ *  Esc / 外点关 / 焦点归还全归原语（modal 默认档 = 外点不穿透，
+ *  ClickCatcher 家族律同语义）。皮肤/几何正本仍在 per-face
+ *  .plan-dropdown*（V2 弹层壳 + Arrow + 36px 行）；定位正本从 CSS inset
+ *  迁到 Positioner 参数（side=bottom align=end sideOffset=8 = 原
+ *  top:calc(100%+8px) right:0）。The button label is the active view's
+ *  own word. */
 export function PaneTypeSelect({
   view,
   docLabel,
@@ -97,39 +61,50 @@ export function PaneTypeSelect({
   initiallyOpen?: boolean;
 }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(initiallyOpen === true);
-  // portal 目标容器：首 render 后由 ref 落位（commit 内同步重渲，首帧即正确）。
-  const [wrapEl, setWrapEl] = useState<HTMLSpanElement | null>(null);
+  const rows: Array<{ view: PaneView; label: PaneRowLabel }> = [
+    { view: 'doc', label: docLabel },
+    ...(sections ? SECTION_ROWS : []),
+  ];
   const label: PaneRowLabel =
     view === 'doc'
       ? docLabel
       : (SECTION_ROWS.find((row) => row.view === view)?.label ?? '分支与 PR');
   return (
-    <span className="doc-select-wrap" ref={setWrapEl}>
-      <Button
-        variant="ghost"
-        size="default"
-        className="doc-pane-select h-auto rounded-none justify-start gap-0 font-normal active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent [&_svg:not([class*='size-'])]:size-auto"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {t(label)}
-        <ChevronDown width={12} height={12} />
-      </Button>
-      {wrapEl != null && (
-        <FloatingShell open={open} onClose={() => setOpen(false)} container={wrapEl}>
-          <ClickCatcher onClose={() => setOpen(false)} />
-          <PlanDropdown
-            docLabel={docLabel}
-            view={view}
-            sections={sections}
-            onSelect={(next) => {
-              setOpen(false);
-              onView(next);
-            }}
-          />
-        </FloatingShell>
-      )}
+    <span className="doc-select-wrap">
+      <DropdownMenu defaultOpen={initiallyOpen}>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="default"
+              className="doc-pane-select h-auto rounded-none justify-start gap-0 font-normal active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent [&_svg:not([class*='size-'])]:size-auto"
+            />
+          }
+        >
+          {t(label)}
+          <ChevronDown width={12} height={12} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          side="bottom"
+          sideOffset={8}
+          aria-label={t('面板视图')}
+          className="plan-dropdown"
+        >
+          <DropdownMenuRadioGroup value={view} onValueChange={(next) => onView(next as PaneView)}>
+            {rows.map((row) => (
+              <DropdownMenuRadioItem
+                key={row.view}
+                value={row.view}
+                closeOnClick
+                className="plan-dropdown-row [&_svg:not([class*='size-'])]:size-auto"
+              >
+                {t(row.label)}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </span>
   );
 }

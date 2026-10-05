@@ -67,7 +67,13 @@ import { toModelOptions, toThinkingLevelDisplay } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { ProfileAvatar, ProfileCard, ProfileHead, ProfileRow } from '../components/profile-card.js';
 import { Button } from '../components/ui/button.js';
-import { FloatingShell } from '../components/ui/floating-shell.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu.js';
 import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Select } from '../components/ui/select.js';
@@ -77,16 +83,8 @@ import { toastError } from '../components/ui/toaster.js';
 import { isDeleted, markDeleted } from '../fixtures/deletions.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
-import {
-  ArrowUpDown,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Search,
-  SquarePen,
-} from '../icons/index.js';
+import { ArrowUpDown, ChevronDown, ChevronRight, Search, SquarePen } from '../icons/index.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
 import { SECRETS_HREF } from '../resources/secrets-page.js';
 import { ResourceShell } from '../resources/shell.js';
@@ -138,11 +136,10 @@ export function AgentDetailPage() {
   const [localPatch, setLocalPatch] = useState<Partial<AgentRecord>>({});
   /** fixture 面的记忆删除：没有 DELETE 后端，落本地已删集（live 面恒空）。 */
   const [removedMemories, setRemovedMemories] = useState<string[]>([]);
-  /** 记忆 tab 的搜索词与排序档（#499）；`#425 B1` 的 wrap 锚定面同 skills-page。 */
+  /** 记忆 tab 的搜索词与排序档（#499）；排序壳与 skills-page 同源（#854 起
+   *  同为 components/ui/dropdown-menu，wrap 只承布局）。 */
   const [memoryQuery, setMemoryQuery] = useState('');
   const [memorySort, setMemorySort] = useState<MemorySort>('默认');
-  const [memorySortOpen, setMemorySortOpen] = useState(false);
-  const [memorySortWrap, setMemorySortWrap] = useState<HTMLSpanElement | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const fixtureAgent = fixture.agents?.find((row) => row.id === agentId);
@@ -466,51 +463,50 @@ export function AgentDetailPage() {
                       onChange={(event) => setMemoryQuery(event.target.value)}
                     />
                   </div>
-                  <span className="res-sort-wrap" ref={setMemorySortWrap}>
-                    <Button
-                      variant="ghost"
-                      className="res-sort agent-memory-sort justify-start gap-0 font-normal"
-                      aria-haspopup="listbox"
-                      aria-expanded={memorySortOpen}
-                      onClick={() => setMemorySortOpen((v) => !v)}
-                    >
-                      <ArrowUpDown width={13} height={13} className="size-[13px]" />
-                      <span>{t(MEMORY_UI_COPY.sort)}</span>
-                      <ChevronDown width={12} height={12} className="size-3" />
-                    </Button>
-                    <FloatingShell
-                      open={memorySortOpen}
-                      onClose={() => setMemorySortOpen(false)}
-                      container={memorySortWrap}
-                    >
-                      <ClickCatcher onClose={() => setMemorySortOpen(false)} />
-                      <div
-                        className="res-sort-menu agent-memory-sort-menu"
-                        role="listbox"
-                        aria-label={t(MEMORY_UI_COPY.sort)}
-                      >
-                        {MEMORY_SORT_OPTIONS.map((option) => (
+                  <span className="res-sort-wrap">
+                    {/* #854 收编：本面与 skills 排序共用同一组类名
+                        （.res-sort / .res-sort-menu / .res-sort-row，正本
+                        resources.css），原是一对同款手搓壳；盘面收编后
+                        定位归 Positioner，手搓 absolute 壳会被在流面板顶掉，
+                        故同 PR 一并收编到 components/ui/dropdown-menu——
+                        同一块盘只剩一种实现。 */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
                           <Button
-                            key={option}
                             variant="ghost"
-                            className="res-sort-row justify-start gap-0 font-normal [&_svg:not([class*='size-'])]:size-3.5"
-                            role="option"
-                            aria-selected={option === memorySort}
-                            onClick={() => {
-                              setMemorySort(option);
-                              setMemorySortOpen(false);
-                            }}
-                          >
-                            <span>{t(option)}</span>
-                            {option === memorySort && (
-                              <span className="res-sort-check">
-                                <Check width={14} height={14} />
-                              </span>
-                            )}
-                          </Button>
-                        ))}
-                      </div>
-                    </FloatingShell>
+                            className="res-sort agent-memory-sort justify-start gap-0 font-normal"
+                          />
+                        }
+                      >
+                        <ArrowUpDown width={13} height={13} className="size-[13px]" />
+                        <span>{t(MEMORY_UI_COPY.sort)}</span>
+                        <ChevronDown width={12} height={12} className="size-3" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        side="bottom"
+                        sideOffset={8}
+                        aria-label={t(MEMORY_UI_COPY.sort)}
+                        className="res-sort-menu agent-memory-sort-menu"
+                      >
+                        <DropdownMenuRadioGroup
+                          value={memorySort}
+                          onValueChange={(next) => setMemorySort(next as MemorySort)}
+                        >
+                          {MEMORY_SORT_OPTIONS.map((option) => (
+                            <DropdownMenuRadioItem
+                              key={option}
+                              value={option}
+                              closeOnClick
+                              className="res-sort-row [&_svg:not([class*='size-'])]:size-auto"
+                            >
+                              <span>{t(option)}</span>
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </span>
                 </div>
                 {visibleMemories.length === 0 ? (

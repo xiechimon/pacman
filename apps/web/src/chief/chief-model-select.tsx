@@ -5,16 +5,16 @@
 // 投影单源在 api/mappers.ts `toModelOptions`(claude-code 段 provider 位 =
 // runtime 词表值);当前值命中不了选项时(含仍引用已废 preset / 存量 provider
 // 模型的旧值)裸串 `provider/modelId` 即名,不空白不崩。
-// 交互 = anchored popover 家族律(#67/#127/dhead chip 先例:FloatingShell +
-// ClickCatcher + Esc,role=listbox/option);选中当前值 = 空操作关面
-// (chief-agent-dialog 同律)。live:选定即 PATCH chief compactionModel 槽
-// (S8:mutation 后 invalidateAll 重取回显,不做本地乐观态);fixture 面
-// accept 律(#148:选择即关),选项退 canon 单行(DEFAULT_AGENT 同律)。
+//
+// 交互 = 锚定 popover 律：开合 / Esc / 外点关 / 焦点归还全归 Base UI Popover
+// 原语；选中当前值 = 空操作关面 (chief-agent-dialog 同律)。live:选定即 PATCH
+// chief compactionModel 槽 (S8:mutation 后 invalidateAll 重取回显,不做本地
+// 乐观态);fixture 面 accept 律(#148:选择即关),选项退 canon 单行
+// (DEFAULT_AGENT 同律)。
 //
 // 行渲染 / 行投影 / 回显兜底 / 选中律 / pick 律单源 =
 // components/model-select-core(#626 收敛);本面只留壳(ghost Button +
-// FloatingShell popover)与几何钩子(chief-model-row* 类名组,正本
-// chief.css)。
+// Popover 原语)与几何钩子(chief-model-row* 类名组,正本 chief.css)。
 
 import type { ChiefCompactionModel } from '@pacman/shared';
 import { useState } from 'react';
@@ -25,11 +25,10 @@ import {
   modelEchoLabel,
 } from '../components/model-select-core.js';
 import { Button } from '../components/ui/button.js';
-import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown } from '../icons/index.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 
 /** fixture 面候选兜底（#770 起 providers 段已除：canon 行取 runtime 源形——
  *  provider 位 = runtime 词表值 `claude-code`，与 live 投影同形；此前 r3-gw
@@ -65,8 +64,6 @@ interface ChiefModelSelectProps {
 export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectProps) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
-  // #425 B1:wrap 锚定面——portal 挂进 wrap 保绝对定位几何;Esc 走 FloatingShell。
-  const [wrap, setWrap] = useState<HTMLSpanElement | null>(null);
   const rows = options ?? DEFAULT_OPTIONS;
   // 值回显:选项命中 → 模型名;未命中(含 preset provider)→ 裸串兜底
   // (律单源 model-select-core;默认行文案 = 继承语义,本面传入)。
@@ -75,39 +72,42 @@ export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectPro
   const pick = createModelPicker({ value, close: () => setOpen(false), onPick });
 
   return (
-    <span className="chief-model-wrap" ref={setWrap}>
-      {/* XMON-23 收编：ghost 原语 + chief-select per-face（30 高/描边/底/墨
-          全在 unlayered per-face，恒压原语层；e2e 钉 button.chief-select）。
-          中和件：font-normal（原语 medium 会改字重——per-face 不钉字重）、
-          svg size-auto（ChevronDown 12px 属性尺寸）。aria-haspopup 自带
-          active 位移豁免（原语 :not([aria-haspopup]) 条件），无需中和。 */}
-      <Button
-        variant="ghost"
-        className="chief-select font-normal [&_svg:not([class*='size-'])]:size-auto"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        // #772: 长值截断后全称走 title 悬停可达（better-typography 截断律）。
-        title={label}
-        onClick={() => setOpen((value) => !value)}
-      >
-        {/* #772: 值单行截断（chief-select-value 担 min-width:0 收缩 +
-            ellipsis；裸 span 在 flex 下 min-width:auto 永不收缩，省略号
-            永不触发——见 chief.css）。 */}
-        <span className="chief-select-value">{label}</span>
-        <ChevronDown width={12} height={12} />
-      </Button>
-      {/* #425 B1:chief-model-shell 类只为退场 CSS 钩子(见 chief.css 尾段)。 */}
-      <FloatingShell
-        open={open}
-        onClose={() => setOpen(false)}
-        container={wrap}
-        className="chief-model-shell"
-      >
-        <ClickCatcher onClose={() => setOpen(false)} />
-        {/* #756 续:行清单 + typeahead 搜索单源归 ModelPickList(与抽屉头
-            picker 同形:开面零搜索占位、打字现形吃字、清空收回);listbox
-            语义随共享层的清单容器,菜单壳只承几何。 */}
-        <div className={`chief-model-menu ${FLOATING_POP_ANIM}`}>
+    <span className="chief-model-wrap">
+      {/* #854 收编 components/ui/popover（Base UI Popover + Positioner）：
+          开合 / Esc / 外点关 / 焦点归还全归原语；ModelPickList（含 typeahead
+          搜索 + 选中律）原样做面板内容。定位正本迁 Positioner 参数
+          （side=bottom align=end sideOffset=8 = 原 top:calc(100%+8px)
+          right:0）；面板宽正本 = shrink-to-fit ≥ 220（w-auto 中和 base 的
+          w-72）。XMON-23 收编注释照旧：ghost 原语 + chief-select per-face、
+          font-normal 中和字重、svg size-auto 保 ChevronDown 12px 属性尺寸。
+          active 位移豁免（原语 :not([aria-haspopup]) 条件）照旧，无需中和。 */}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={
+            <Button
+              variant="ghost"
+              className="chief-select font-normal [&_svg:not([class*='size-'])]:size-auto"
+              // #772: 长值截断后全称走 title 悬停可达（better-typography 截断律）。
+              title={label}
+            />
+          }
+        >
+          {/* #772: 值单行截断（chief-select-value 担 min-width:0 收缩 +
+              ellipsis；裸 span 在 flex 下 min-width:auto 永不收缩，省略号
+              永不触发——见 chief.css）。 */}
+          <span className="chief-select-value">{label}</span>
+          <ChevronDown width={12} height={12} />
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          side="bottom"
+          sideOffset={8}
+          aria-label={t('压缩模型')}
+          className="chief-model-menu w-auto"
+        >
+          {/* #756 续:行清单 + typeahead 搜索单源归 ModelPickList(与抽屉头
+              picker 同形:开面零搜索占位、打字现形吃字、清空收回);listbox
+              语义随共享层的清单容器,菜单壳只承几何。 */}
           <ModelPickList
             skin={ROW_SKIN}
             options={rows}
@@ -118,8 +118,8 @@ export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectPro
             emptyLabel={t('没有匹配的模型')}
             onPick={pick}
           />
-        </div>
-      </FloatingShell>
+        </PopoverContent>
+      </Popover>
     </span>
   );
 }

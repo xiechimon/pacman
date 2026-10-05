@@ -161,6 +161,13 @@
   /* alias of the #139 edge shadow tier — every elevated surface (fab,
      popovers, panels) draws one shadow from the single source */
   --fab-shadow: var(--edge-shadow);
+  /* #854 盘投影（overlay 盘三件套之一）: 手搓 overlay 盘（sheet/菜单/popup）
+     不再吃 --fab-shadow 的柔和档，改吃 Base UI 官方 menu hero 的硬偏移档
+     （light 侧 `0.25rem 0.25rem 0 rgb(0 0 0 / 12%)` 逐字取用，0 blur / 无
+     负 spread），零模糊的实体投影与直角 + 1px 实线成套。
+     暗侧按 spec §2.7「暗：无投影，线框承重」= Base UI hero 自己的暗色分支，
+     投影归 none，1px 墨线独承（用户 2026-10-05 裁定）。 */
+  --plate-shadow: none;
   /* overlay batch A (#66): dialog shadow probed off r7 04 (stronger than
      --fab-shadow over the backdrop) */
   --dialog-shadow: 0 5px 14px rgb(0 0 0 / 0.4);
@@ -190,6 +197,9 @@
      the :root alias */
   --radius-popover: 10px;
   --edge-shadow: 0 5px 14px rgb(28 25 23 / 0.14);
+  /* #854 盘投影 light：硬偏移档只落亮侧（Base UI hero 的亮色分支），暗侧
+     是 none —— 见 :root 注与 spec §2.7 */
+  --plate-shadow: 4px 4px 0 rgb(0 0 0 / 0.12);
   /* card-tier resting shadow (#161), light side: 2px y-offset / 4px blur /
      7% opacity over the warm-ink palette. Same shape as the dark side —
      only the opacity drops because the light surface itself already has
