@@ -737,7 +737,6 @@ export function composeChiefSystemPrompt(deps: ChiefResourceDeps, teamId: string
     : undefined;
   const projects = deps.db.select().from(project).where(eq(project.teamId, teamId)).all();
   const agents = deps.db.select().from(agent).where(eq(agent.teamId, teamId)).all();
-  const machines = deps.db.select().from(machine).where(eq(machine.teamId, teamId)).all();
   // spec 13 #367：skills 清单 = 本地目录现扫（id = frontmatter name 回落目录名）。
   const skills = scanLocalSkills(deps.skillsDir);
   const memories = agentRow
@@ -769,7 +768,12 @@ export function composeChiefSystemPrompt(deps: ChiefResourceDeps, teamId: string
           )
           .join('\n')}`
       : 'agents: （无）',
-    `machines: ${JSON.stringify(machines.map((m) => ({ id: m.id, name: m.name, online: m.online, latestCliVersion: m.latestCliVersion })))}`,
+    // machines 清单（含 online / latestCliVersion）**刻意不进本提示词**：
+    // online 随 presence 心跳翻，而本提示词每轮 claim 重新合成一次——它一变，
+    // 整段 system prompt 的字节就变，下一轮 continue session 的前缀缓存整体
+    // 失效（Multica MUL-5377 同坑，见 docs/spec/24）。chief 要环境事实时经
+    // `machines` 远程工具现查（工作约定「failed wake 先调 machines 等工具
+    // 核实环境」已是既有纪律），不必靠一份随心跳过期的快照。
     // #823：技能清单带 description（agent 自检切合度用——发送后路由节的候选
     // 也要靠它二次核对；无 description 的技能回落 null，由 skills 工具现查）。
     `skills: ${JSON.stringify(skills.map((s) => ({ id: s.id, name: s.name, description: s.description })))}`,
