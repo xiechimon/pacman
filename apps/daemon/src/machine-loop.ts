@@ -113,6 +113,8 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       onSkillsLog: (msg) => logger.skills(msg),
       // [gate] 裁决行（#866 T5 命令闸；只记非放行裁决，allow 静默）。
       onGateLog: (msg) => logger.gate(msg),
+      // 非 SSE 响应诊断文案的「哪台机器」位（#882；与 #867 同值来源）。
+      machineName: config.name,
     });
 
   // —— per-step 后端解析 registry（spec 17 A3：runner 的 backendFor 唯一
