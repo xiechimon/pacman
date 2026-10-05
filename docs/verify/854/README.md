@@ -68,7 +68,7 @@
 | `pnpm -r typecheck` | exit 0 |
 | `pnpm lint` | exit 0（10 warning 全在 `integration/test/w3-steer-e2e.test.ts`，与本改动无关，main 上既有） |
 | `vitest test/i18n-coverage.test.ts test/i18n-scan.test.ts` | 18 passed |
-| `pnpm --filter @pacman/web e2e:affected` | 见下方 |
+| `pnpm --filter @pacman/web e2e:affected` | 784 passed（改的是共享样式面，自动回落全量） |
 | `node scripts/ui-drift-gate.mjs`（G2-ALLOW 条目已删） | PASS |
 
 ### 漂移闸
