@@ -18,9 +18,10 @@ const ROUTE = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=19';
 
 async function openAssignDialog(page: Page) {
   await page.goto(ROUTE);
-  const popover = page.locator('.chip-popover');
+  // #949 载体：popover = role dialog + 可及名；编辑分配 = role button + 文案
+  const popover = page.getByRole('dialog', { name: '任务分配' });
   await expect(popover).toBeVisible();
-  await popover.locator('.chip-popover-edit').click();
+  await popover.getByRole('button', { name: '编辑分配' }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   await expect(popover).toBeHidden();
@@ -44,9 +45,10 @@ test('fixture pick closes the dialog (accept 律); popover row echo unchanged', 
   await expect(page.locator('.dlg')).toBeHidden();
   // 回显基线:重开 popover,执行对话行仍是绑定 agent(fixture 不写数据)
   await page.locator('.detail-chip').click();
-  const popover = page.locator('.chip-popover');
+  const popover = page.getByRole('dialog', { name: '任务分配' });
   await expect(popover).toBeVisible();
-  await expect(popover.locator('.chip-popover-section--selected')).toContainText('r3-builder');
+  // 选中 section 的状态载体 = data-selected（#910 裁定 3，.chip-popover-section--selected 类钉退役）
+  await expect(popover.locator('[data-selected]')).toContainText('r3-builder');
 });
 
 test('assign dialog family law: X, Escape and backdrop dismiss; panel clicks do not', async ({

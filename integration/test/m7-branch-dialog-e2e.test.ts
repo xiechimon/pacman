@@ -93,7 +93,8 @@ describe('分支同步面 buildId 接线（#346 回归钉）', () => {
     const select = page.locator('.detail-right .doc-select-wrap .doc-pane-select');
     await pexpect(select).toBeVisible({ timeout: 30_000 });
     await select.click();
-    await page.locator('.plan-dropdown-row', { hasText: '分支与 PR' }).click();
+    // #949 载体：盘行 = menuitemradio + 文案（.plan-dropdown-row 类钉退役）
+    await page.getByRole('menuitemradio', { name: '分支与 PR' }).click();
 
     // 判别式：live 面 = 机器 picker + 可编辑目录输入（section 内）。
     await pexpect(page.locator('.detail-right .dlg-machine-picker')).toBeVisible({

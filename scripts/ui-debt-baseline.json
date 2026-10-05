@@ -1,6 +1,6 @@
 {
   "frozenFrom": {
-    "sha": "034bf7d58491bb12a5cbbc686b1a5e261d088cc5",
+    "sha": "4db2e6c168181a0fadb25e874ccc85919f1218f0",
     "date": "2026-10-05"
   },
   "scope": "apps/web/src; per-face css = *.css minus the ui-debt-gate.mjs WHITELIST (carrier layer); bare controls = <button|<input|<select|<textarea occurrences in *.tsx minus components/ui/",
@@ -16,7 +16,6 @@
     "overlay/mention-picker.css": 446,
     "overlay/overlay.css": 644,
     "overlay/slash-menu.css": 117,
-    "overlays/overlays.css": 541,
     "pages/pages.css": 2058,
     "routes/agent-detail.css": 396,
     "ui/chip.css": 42,
@@ -24,7 +23,7 @@
     "ui/input.css": 17
   },
   "rawControls": {
-    "total": 42,
+    "total": 37,
     "files": {
       "chief/chief-agent-dialog.tsx": 1,
       "chief/chief-drawer.tsx": 3,
@@ -41,8 +40,6 @@
       "overlay/more-menu.tsx": 6,
       "overlay/new-task-dialog.tsx": 7,
       "overlay/slash-menu.tsx": 1,
-      "overlays/dismiss.tsx": 1,
-      "overlays/search-panel.tsx": 4,
       "pages/project-new-page.tsx": 1,
       "routes/agent-detail-page.tsx": 2,
       "ui/input.tsx": 1

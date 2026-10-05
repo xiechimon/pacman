@@ -112,7 +112,8 @@ test('开着的层不被重渲染重挂 Escape 接线：URL 写回后单次 Esca
 
 const DETAIL = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27';
 const confirmDialog = (page: Page) => page.locator('.delete-confirm');
-const searchPanel = (page: Page) => page.locator('.search-panel');
+// #949: 面板载体 = role dialog + 可及名（.search-panel 类钉退役）
+const searchPanel = (page: Page) => page.getByRole('dialog', { name: '搜索' });
 
 /** ⌘K toggle 走 search-focus 重试律：送达的一按翻转面板态即出环，丢失的
  *  一按留在原态、重按即是。开/关两向共用（until = 目标态）。 */

@@ -151,10 +151,13 @@ test('doc pane 变更▾ opens the document-type listbox and closes on Escape', 
   const select = page.locator('.doc-select-wrap .doc-pane-select');
   await expect(select).toContainText('变更');
   await select.click();
-  const dropdown = page.locator('.plan-dropdown');
+  // #949 载体：盘 = role menu，行 = menuitemradio（类钉退役）。不钉可及名：
+  // Base UI 经 aria-labelledby 把 popup 名字绑到触发钮（压过 aria-label
+  // 「面板视图」），名 = 当前视图词随选择漂移；开着的 menu 恒唯一。
+  const dropdown = page.getByRole('menu');
   await expect(dropdown).toBeVisible();
   // #366：listbox 首行 = 当前文档型（✓ 行），其后三行 = 右 pane 静止 section
-  await expect(dropdown.locator('.plan-dropdown-row').first()).toContainText('变更');
+  await expect(dropdown.getByRole('menuitemradio').first()).toContainText('变更');
   await page.keyboard.press('Escape');
   await expect(dropdown).toBeHidden();
 });
@@ -162,11 +165,11 @@ test('doc pane 变更▾ opens the document-type listbox and closes on Escape', 
 test('doc pane 型选行 click re-selects the current type and closes (#306)', async ({ page }) => {
   await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27');
   await page.locator('.doc-select-wrap .doc-pane-select').click();
-  const dropdown = page.locator('.plan-dropdown');
+  const dropdown = page.getByRole('menu'); // #949 载体（上一条同注）
   await expect(dropdown).toBeVisible();
   // r5b §3.7：选择器行，非确认入口——选当前型行即关（#366 后首行 = 文档行，
   // 重选 = 留在文档面）
-  await dropdown.locator('.plan-dropdown-row').first().click();
+  await dropdown.getByRole('menuitemradio').first().click();
   await expect(dropdown).toBeHidden();
   await expect(page.locator('.detail-right .doc-pane')).toBeVisible();
 });

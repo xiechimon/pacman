@@ -11,7 +11,8 @@ import { expect, type Page, test } from '@playwright/test';
 // is already asserted in shell-consistency.spec.ts ("the collapse toggle
 // works off-board and the state rides back").
 
-const panel = (page: Page) => page.locator('.search-panel');
+// #949: 面板载体 = role dialog + 可及名（.search-panel 类钉退役）
+const panel = (page: Page) => page.getByRole('dialog', { name: '搜索' });
 
 for (const [name, url] of [
   ['secondary', '/app/team?scenario=12'],

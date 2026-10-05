@@ -17,9 +17,11 @@
 // #943: 裸控件收编——九个行钮/头像钮全走 components/ui Button（ghost 档 +
 // ROW_BTN/RAIL_BTN 中和件：行视觉盒在 before: pill，件配方的涂底/圆角/
 // 边框/press 位移逐位归零，r7 几何不动）。类别名（sidebar-row/rail-row/
-// sidebar-kbd…）按 spec/22 §5.0 别名残留律原位保留（跨域 spec 与
-// overlays.css 的 :root[data-search-open] 覆写仍消费它们），本域 spec 的
-// 钉扎载体已按 #910 换 role/label/text + 少量二级 testid。
+// sidebar-kbd…）按 spec/22 §5.0 别名残留律原位保留（跨域 spec 仍消费它们），
+// 本域 spec 的钉扎载体已按 #910 换 role/label/text + 少量二级 testid。
+// #949: #137 常亮互斥的调暗覆写从 overlays.css 的 :root[data-search-open]
+// 规则迁进本文件的 SEARCH_OPEN_DIM utility 变体（选中档常量随行携带，
+// 不再依赖类别名选择器——标记写入方 = overlays/search-panel）。
 
 import { BRAND } from '@pacman/shared';
 import {
@@ -165,7 +167,15 @@ const ROW_BASE =
 /** hover 与 selected 互斥挂在行上（旧 css 的 :not(--selected):hover 闸）：
    选中行悬停保持深 pill，不被 hover 梯洗浅。 */
 const ROW_HOVER = 'hover:before:bg-sidebar-hover';
-const ROW_SELECTED = 'text-foreground before:bg-sidebar-active';
+/** #137 常亮互斥（#949 起 utility 承载，旧 overlays.css 的
+   :root[data-search-open] 覆写等值迁移）：⌘K 面板开着时它是全局唯一亮
+   focus 面——页层选中 pill 在 scrim 下卸底、墨色降回二级，面板关闭根
+   标记清除即恢复。变体钉 html[data-search-open] 祖先（特异性压过行自身
+   的 selected 档），标记的写入方 = overlays/search-panel 的
+   useSingleLitSurface。 */
+const SEARCH_OPEN_DIM =
+  '[html[data-search-open]_&]:before:bg-transparent [html[data-search-open]_&]:text-(--text-secondary)';
+const ROW_SELECTED = `text-foreground before:bg-sidebar-active ${SEARCH_OPEN_DIM}`;
 
 /** 行钮中和件（#943 裸控件收编 Button）：行的视觉盒 = before: pill 层，
  *  Button 自带的件配方在行面上逐位归零——ghost hover/aria-expanded 的整盒
@@ -241,7 +251,7 @@ function RailGroupChevron({
 /** Rail 行公共件：32px 轨道行 + 方角 hover 面（inset 8/4，V2 骨架）。 */
 const RAIL_ROW =
   'rail-row relative flex h-8 w-10 flex-none items-center justify-center text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-1 before:rounded-none before:content-[""] hover:before:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>svg]:relative [&>.project-avatar]:relative';
-const RAIL_SELECTED = 'rail-row--selected text-foreground before:bg-sidebar-active';
+const RAIL_SELECTED = `rail-row--selected text-foreground before:bg-sidebar-active ${SEARCH_OPEN_DIM}`;
 /** Rail 行钮中和件（#943）：与 ROW_BTN 同理——rail 钮的视觉盒同样是
  *  before: pill，件配方的涂底/圆角/边框/press 位移归零。 */
 const RAIL_BTN =

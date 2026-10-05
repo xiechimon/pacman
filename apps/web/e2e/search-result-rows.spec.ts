@@ -7,14 +7,18 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 // keyboard cursor (Enter hops to it), and a real pointer move hands the
 // highlight back to hover (让位). Rides the plain board scenario ('01') —
 // every open state comes from the hotkey, never the fixture flag.
+//
+// #949 载体（#910 裁定 1/3）：面板 = role dialog + 可及名「搜索」；结果行
+// 族 = data-row-kind（todo/nav，旧 .search-row--todo 类继任）；键盘光标
+// 选中态 = data-selected（状态类断言归行为，载体换 data-*）。
 
 const BOARD = '/app?scenario=01';
 /** Matches the fixture probe pair r3-legacy-1 / r3-legacy-2 (title
  *  includes()), fixture order — nothing else on scenario 01. */
 const PROBE = 'r3 lifecycle probe';
 
-const panel = (page: Page) => page.locator('.search-panel');
-const todoRows = (page: Page) => page.locator('.search-row--todo');
+const panel = (page: Page) => page.getByRole('dialog', { name: '搜索' });
+const todoRows = (page: Page) => panel(page).locator('[data-row-kind="todo"]');
 const TRANSPARENT = 'rgba(0, 0, 0, 0)';
 
 /** Background of the row element itself — an unlit row is transparent. */
@@ -39,7 +43,7 @@ const isLit = (locator: Locator) =>
  *  predate hydration. The retry only re-presses a *lost* hotkey (same
  *  guard as search-focus.spec.ts). */
 async function openPanel(page: Page) {
-  await expect(page.locator('.sidebar-row, .rail-row').first()).toBeVisible();
+  await expect(page.getByRole('complementary')).toBeVisible();
   for (let attempt = 0; attempt < 6; attempt += 1) {
     await page.keyboard.press('Meta+k');
     const opened = await panel(page)
@@ -73,7 +77,7 @@ test('前往行点击 → 面板关闭 + 跳对应路由', async ({ page }) => {
   await page.goto(BOARD);
   await openPanel(page);
 
-  await page.locator('.search-row', { hasText: '定时' }).click();
+  await panel(page).getByRole('button', { name: '定时' }).click();
   await expect(page).toHaveURL('/app/schedules?scenario=01');
   await expect(panel(page)).toBeHidden();
 });
@@ -84,7 +88,7 @@ test('静息无常亮;hover 哪行亮哪行,且只亮一行', async ({ page }) =
 
   // typed-in results at rest: no fixed lit row (#159 replaces the r7 05
   // default-selected keyboard-cursor row)
-  await expect(page.locator('.search-row--selected')).toHaveCount(0);
+  await expect(panel(page).locator('[data-selected]')).toHaveCount(0);
 
   const first = todoRows(page).first();
   const second = todoRows(page).nth(1);
@@ -102,13 +106,13 @@ test('↑↓ 键盘光标接管高亮;Enter 跳光标行', async ({ page }) => {
 
   await page.keyboard.press('ArrowDown');
   const first = todoRows(page).first();
-  await expect(first).toHaveClass(/search-row--selected/);
+  await expect(first).toHaveAttribute('data-selected', '');
   await expect.poll(() => isLit(first)).toBe(true);
 
   await page.keyboard.press('ArrowDown');
   const second = todoRows(page).nth(1);
-  await expect(second).toHaveClass(/search-row--selected/);
-  await expect(first).not.toHaveClass(/search-row--selected/);
+  await expect(second).toHaveAttribute('data-selected', '');
+  await expect(first).not.toHaveAttribute('data-selected');
 
   await page.keyboard.press('Enter');
   // second result = the probe2 sibling, fixture order
@@ -124,12 +128,12 @@ test('鼠标一动让位:键盘光标交还 hover', async ({ page }) => {
   await page.keyboard.press('ArrowDown');
   const first = todoRows(page).first();
   const second = todoRows(page).nth(1);
-  await expect(second).toHaveClass(/search-row--selected/);
+  await expect(second).toHaveAttribute('data-selected', '');
 
   // a real pointer move over another row drops the keyboard cursor — hover
   // owns the highlight again, and it is the only lit row
   await first.hover();
-  await expect(page.locator('.search-row--selected')).toHaveCount(0);
+  await expect(panel(page).locator('[data-selected]')).toHaveCount(0);
   await expect.poll(() => isLit(first)).toBe(true);
   await expect.poll(() => rowBg(second)).toBe(TRANSPARENT);
 });

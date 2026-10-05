@@ -18,7 +18,9 @@ const DETAIL = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27';
 const BOARD = /\/app\?scenario=27$/;
 
 const chip = (page: import('@playwright/test').Page) => page.locator('.detail-chip');
-const popover = (page: import('@playwright/test').Page) => page.locator('.chip-popover');
+// #949 载体：popover = role dialog + 可及名（.chip-popover 类钉退役）
+const popover = (page: import('@playwright/test').Page) =>
+  page.getByRole('dialog', { name: '任务分配' });
 const confirmDialog = (page: import('@playwright/test').Page) => page.locator('.delete-confirm');
 
 test('E1: clean ESC leaves the detail, carrying the search home', async ({ page }) => {
