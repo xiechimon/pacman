@@ -20,12 +20,11 @@ or marked deliberate-native. `node scripts/ui-drift-gate.mjs` is GREEN
 
 - `node scripts/ui-drift-gate.mjs` green (see gate.log).
 - `pnpm -r typecheck` green, all 5 workspace projects.
-- `pnpm --filter @pacman/web e2e:affected`: 444 passed, 0 failed
+- `pnpm --filter @pacman/web e2e:affected`: 445 passed, 0 failed
   (includes `agent-detail.spec.ts` name inline-edit roundtrip and
   `chief-drawer-model.spec.ts` typeahead search).
-- Repo-wide `pnpm lint` is red on main too
-  (`integration/eval/chief-dispatch/build-report-lite.mts` useTemplate,
-  untouched by this change); all 9 files touched here are biome-clean.
+- Repo-wide `pnpm lint` (biome ci) green; the 9 files touched here are
+  biome-clean.
 
 ## Screenshots (after state, focused)
 
