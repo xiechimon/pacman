@@ -19,6 +19,7 @@ import type {
 import { formatAttachmentToken } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
 import { PI_CAPABILITIES } from '../src/backend/pi.js';
+import type { ClaudeCodeAuthProbe } from '../src/claude-code-auth.js';
 import { loadDaemonConfig } from '../src/config.js';
 import { type DaemonLogger, formatLine } from '../src/log.js';
 import type { MachineApi } from '../src/machine-client.js';
@@ -256,6 +257,8 @@ async function boot(opts: {
   backend?: AgentBackend;
   /** spec 17 A3：claude-code 后端测试注入面（缺省 = 首个 runtime 步惰性构造）。 */
   claudeCodeBackend?: AgentBackend;
+  /** #867 T6：凭据预检注入面（缺省 = 已登录桩）。 */
+  claudeCodeAuthProbe?: () => Promise<ClaudeCodeAuthProbe>;
   withMachineJson?: boolean;
   /** 预置 machine.json（既有注册启动路径）：serverUrl 可指向旧 server。 */
   preEnrolled?: { serverUrl: string };
@@ -290,6 +293,11 @@ async function boot(opts: {
     client: api,
     backend: opts.backend ?? fakeBackend([]).backend,
     claudeCodeBackend: opts.claudeCodeBackend,
+    // #867 T6：runtime 步先过机器本地凭据预检——缺省真探针在 CI（无 claude
+    // 登录）会探成「未登录」把 runtime 步拦掉，故测试恒注已登录桩。
+    claudeCodeAuthProbe:
+      opts.claudeCodeAuthProbe ??
+      (async () => ({ state: 'logged-in', method: 'oauth_token', provider: 'firstParty' })),
     idleSleepPrevention: false,
     presenceIntervalMs: 60_000,
     claimBackoffBaseMs: 10,
@@ -1010,6 +1018,32 @@ describe('per-step 后端解析（spec 17 A3：backendFor 唯一分叉）', () =
     await waitFor(() => api.doneBodies.length === 1);
     expect(piCreated).toHaveLength(1);
     expect(claudeCreated).toHaveLength(0);
+    expect(lines.some((l) => l === 'Loading claude-code runtime…')).toBe(false);
+    await handle.stop();
+    await handle.done;
+  });
+
+  test('失败方式 4：runtime 步 + 本机无 claude 凭据 → 步前失败，文案点名本机机器名（#867 T6）', async () => {
+    const api = new FakeMachineApi();
+    const { backend: pi, created: piCreated } = fakeBackend([]);
+    const { backend: claude, created: claudeCreated } = fakeBackend([]);
+    const { handle, lines } = await boot({
+      api,
+      backend: pi,
+      claudeCodeBackend: claude,
+      claudeCodeAuthProbe: async () => ({ state: 'not-logged-in', provider: 'firstParty' }),
+    });
+    await waitFor(() => api.parked !== null);
+    api.parked?.(claudeClaimed());
+    await waitFor(() => api.doneBodies.length === 1);
+    expect(api.doneBodies[0]?.body.status).toBe('failed');
+    // 机器名走 config.name（上线序列那个值，与 machines 页同源）。
+    const msg = api.doneBodies[0]?.body.errorMessage ?? '';
+    expect(msg).toContain('test-mbp');
+    expect(msg).toContain('ANTHROPIC_API_KEY');
+    // 预检在 backendFor 之前：连 claude 后端都没构造，模型回合零消耗。
+    expect(claudeCreated).toHaveLength(0);
+    expect(piCreated).toHaveLength(0);
     expect(lines.some((l) => l === 'Loading claude-code runtime…')).toBe(false);
     await handle.stop();
     await handle.done;

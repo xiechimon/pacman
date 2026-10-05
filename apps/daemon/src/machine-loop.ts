@@ -16,6 +16,7 @@ import {
 } from '@pacman/shared';
 import { createClaudeCodeBackend } from './backend/claude-code.js';
 import { createPiBackend } from './backend/pi.js';
+import { type ClaudeCodeAuthProbe, probeClaudeCodeAuth } from './claude-code-auth.js';
 import { readClaudeCodeReport } from './claude-code-models.js';
 import type { DaemonConfig } from './config.js';
 import { StepJournal } from './journal.js';
@@ -47,6 +48,9 @@ export interface MachineLoopOpts {
   /** claude-code 后端测试注入面（spec 17 A3；缺省 = 首个 runtime 步惰性
    * 构造，canon 行 `Loading claude-code runtime…` 与 pi 行对仗）。 */
   claudeCodeBackend?: AgentBackend;
+  /** claude-code 凭据预检注入面（#867 T6；缺省 = 真探针
+   * `claude auth status`。测试注入固定三态，免得 CI 上真探成「未登录」）。 */
+  claudeCodeAuthProbe?: () => Promise<ClaudeCodeAuthProbe>;
   fetchImpl?: typeof fetch;
   client?: MachineApi;
   /** claim 客户端侧护栏（server hold + 余量）[设计]。 */
@@ -129,6 +133,9 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
         // skills 通道与 pi 同律（A9 复用 buildSkillsCatalog）。
         skills: { skillsDir: config.skillsDir, cwd: config.home },
         onSkillsLog: (msg) => logger.skills(msg),
+        // 缺凭据失败文案的「哪台机器」位（#867 T6；机器名 = 注册/上线序列里
+        // 那一个，与 machines 页显示同值）。
+        machineName: config.name,
       });
     }
     return claudeBackend;
@@ -415,6 +422,9 @@ export async function runMachine(opts: MachineLoopOpts): Promise<MachineHandle> 
       mcpConfigPath: config.mcpConfigPath,
       sessionHandles,
       stopRequests,
+      // #867 T6：runtime 步凭据预检（机器名进失败文案；探针缺省 = 真 CLI）。
+      machineName: config.name,
+      claudeCodeAuthProbe: opts.claudeCodeAuthProbe ?? probeClaudeCodeAuth,
       ...(opts.heartbeatIntervalMs !== undefined
         ? { heartbeatIntervalMs: opts.heartbeatIntervalMs }
         : {}),

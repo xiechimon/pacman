@@ -15,6 +15,9 @@
 //      判定）；interrupt → message_stop
 //   8. session_id 未刮出 → init 帧落 state（A7 resume 通道）
 //   9. 词表外成员（status/hook/log、非 tool_result user 帧）→ 静默不计
+//  10. subtype success + is_error（CLI 的 API 错形，如缺凭据）→ error 不得折成
+//      done（#867 T6；原映射只看 subtype，凭据拒绝被当作正常收工）
+//  11. auth 类失败 → 文案点名机器 + 凭据类 + 补法（state.machineName 注入）
 
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 import { type StepEvent, stepEventSchema } from '@pacman/shared';
@@ -162,6 +165,32 @@ const RESULT_ERROR: SDKMessage = {
   session_id: 'sdk-sess-uuid-1',
 } as unknown as SDKMessage;
 
+/** 机器缺 claude 凭据时的实测形（#867 T6，2026-10-05 本机空 HOME 取样）：
+ * subtype 仍是 success，`is_error:true` 才是真话，错误文本在 result 字段。 */
+const RESULT_AUTH_ERROR: SDKMessage = {
+  type: 'result',
+  subtype: 'success',
+  is_error: true,
+  result: 'Not logged in · Please run /login',
+  usage: { input_tokens: 0, output_tokens: 0 },
+  num_turns: 1,
+  total_cost_usd: 0,
+  session_id: 'sdk-sess-uuid-1',
+} as unknown as SDKMessage;
+
+/** 同轮的 assistant 帧（结构化错误类；auth 文案在 content 里）。 */
+const ASSISTANT_AUTH_ERROR: SDKMessage = {
+  type: 'assistant',
+  error: 'authentication_failed',
+  message: {
+    id: 'msg_auth',
+    role: 'assistant',
+    content: [{ type: 'text', text: 'Not logged in · Please run /login' }],
+    model: '<synthetic>',
+    stop_reason: 'stop_sequence',
+  },
+} as unknown as SDKMessage;
+
 describe('mapClaudeMessage（spec 17 事件映射表，词表 01 §5 锁定）', () => {
   test('失败方式 1：全序列产出过 stepEventSchema（映射不漂出 16 型词表）', () => {
     const { events } = feed([
@@ -296,6 +325,29 @@ describe('mapClaudeMessage（spec 17 事件映射表，词表 01 §5 锁定）',
     const { events: stopEvents } = feed([RESULT_ERROR], state);
     expect(stopEvents.find((e) => e.type === 'message_stop')).toBeDefined();
     expect(stopEvents.some((e) => e.type === 'error')).toBe(false);
+  });
+
+  test('失败方式 10：subtype success + is_error → error 事件（不得折成 done）', () => {
+    // #867 T6 的核心缺陷面：CLI 在 API 出错时仍发 subtype:"success"，
+    // is_error 才是真话。原映射只看 subtype → 零 token 的拒绝被当成正常
+    // 收工（步静默 success、零产出）。本用例只喂 result 帧（无 assistant
+    // 错误类）= 一切 is_error 的公共臂：文案 = CLI 原文，不被 auth 话术覆盖。
+    const { events } = feed([RESULT_AUTH_ERROR]);
+    expect(events.some((e) => e.type === 'done')).toBe(false);
+    const err = events.find((e) => e.type === 'error');
+    expect(err).toBeDefined();
+    expect((err as { error: { message: string } }).error.message).toContain(
+      'Not logged in · Please run /login',
+    );
+  });
+
+  test('失败方式 11：auth 类失败文案点名机器 + 补法（state.machineName）', () => {
+    const state = createClaudeMapState({ machineName: 'daemon-mea' });
+    const { events } = feed([ASSISTANT_AUTH_ERROR, RESULT_AUTH_ERROR], state);
+    const err = events.find((e) => e.type === 'error') as { error: { message: string } };
+    expect(err.error.message).toContain('daemon-mea');
+    expect(err.error.message).toContain('ANTHROPIC_API_KEY');
+    expect(err.error.message).toContain('/login');
   });
 
   test('失败方式 8：system init 的 session_id 刮进 state（A7 resume 通道）', () => {
