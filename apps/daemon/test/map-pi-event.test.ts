@@ -139,6 +139,27 @@ describe('mapPiSessionEvent（AgentSessionEvent → StepEvent 投影）', () => 
       message: { role: 'assistant', stopReason: 'error', errorMessage: 'invalid prompt' },
     });
     expect((fatal[1] as { error: { retryable: boolean } }).error.retryable).toBe(false);
+    // #882 装饰位：宿主注入的 diagnose 追加响应真实形态；retryable 仍取**原始**
+    // 文案——追加段里带状态码数字，先判再装饰才不会被自己的诊断带偏。
+    const decorated = mapPiSessionEvent(
+      {
+        type: 'message_end',
+        message: {
+          role: 'assistant',
+          stopReason: 'error',
+          errorMessage: 'Stream ended without finish_reason',
+        },
+      },
+      newMapState({
+        diagnose: (m) =>
+          `${m}\nprovider response: POST http://host/chat/completions -> 200 text/html (not an SSE stream); first bytes: "<!doctype html>"; status 500 note`,
+      }),
+    );
+    expect((decorated[1] as { error: { message: string } }).error.message).toContain(
+      'POST http://host/chat/completions -> 200 text/html',
+    );
+    // 装饰段里带 `500`，原始文案里没有 → retryable 必须是 false。
+    expect((decorated[1] as { error: { retryable: boolean } }).error.retryable).toBe(false);
     const stopped = map({
       type: 'message_end',
       message: { role: 'assistant', stopReason: 'aborted' },

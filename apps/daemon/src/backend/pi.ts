@@ -18,7 +18,7 @@
 // （内存态，不持久化）；models.json 落盘的 apiKey 恒为占位符。
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, hostname } from 'node:os';
 import { join } from 'node:path';
 import {
   type AgentSession,
@@ -52,6 +52,11 @@ import { ENV_VARS, THINKING_LEVELS } from '@pacman/shared';
 import { buildGatedBashOperations } from './command-gate.js';
 import { SessionNotResumableError } from './errors.js';
 import { connectFailedLine, connectMcpBridge } from './mcp-bridge.js';
+import {
+  enrichProviderError,
+  type ProviderResponseSink,
+  wrapProviderFetch,
+} from './provider-response.js';
 
 /** 02 §6.2/#34：oauth 四家订阅；思考强度 = pi 七档。
  *  档位词表取 shared `THINKING_LEVELS` 单源（XMON-16）——server 的能力读面
@@ -377,10 +382,18 @@ export interface AgentSessionEventLike {
 export interface MapState {
   usage: Map<string, ModelUsage>;
   calls: Map<string, ToolCallRecord>;
+  /** 错误文案装饰面（#882）：pi 的结构化错误文案 → 宿主可见文案。宿主注入
+   *  「拼上 provider 响应真实形态」的闭包；缺省 = 原样（既有调用面零回归，
+   *  纯映射面不 import 诊断模块）。 */
+  diagnose?: (message: string) => string;
 }
 
-export function newMapState(): MapState {
-  return { usage: new Map(), calls: new Map() };
+export function newMapState(opts?: { diagnose?: (message: string) => string }): MapState {
+  return {
+    usage: new Map(),
+    calls: new Map(),
+    ...(opts?.diagnose !== undefined ? { diagnose: opts.diagnose } : {}),
+  };
 }
 
 function toMessageRecord(msg: PiMessageLike): {
@@ -467,7 +480,13 @@ export function mapPiSessionEvent(event: AgentSessionEventLike, state: MapState)
       const out: StepEvent[] = [{ type: 'message_end', message: toMessageRecord(msg) }];
       if (msg.role === 'assistant' && msg.stopReason === 'error') {
         const message = msg.errorMessage ?? 'unknown error';
-        out.push({ type: 'error', error: { message, retryable: isRetryableError(message) } });
+        // retryable 取**原始**文案（#882 失败方式 7）：追加的响应形态里带着
+        // 状态码数字，先判再装饰——否则 `-> 500` 这类事实会把重试语义带偏。
+        const retryable = isRetryableError(message);
+        out.push({
+          type: 'error',
+          error: { message: state.diagnose?.(message) ?? message, retryable },
+        });
       }
       return out;
     }
@@ -557,7 +576,7 @@ class PiSessionHandle implements AgentSessionHandle {
   readonly sessionId: string;
   readonly events: AsyncIterable<StepEvent>;
   private readonly queue = new EventQueue();
-  private readonly state = newMapState();
+  private readonly state: MapState;
   private closed = false;
   private stopping = false;
 
@@ -565,8 +584,10 @@ class PiSessionHandle implements AgentSessionHandle {
     private readonly session: AgentSession,
     private readonly model: { input: ('text' | 'image')[] } | null,
     private readonly onDispose?: () => void,
+    diagnose?: (message: string) => string,
   ) {
     this.sessionId = session.sessionId;
+    this.state = newMapState(diagnose !== undefined ? { diagnose } : undefined);
     this.events = this.queue.iterable();
     session.subscribe((event) => {
       for (const mapped of mapPiSessionEvent(
@@ -645,6 +666,9 @@ export interface PiBackendOpts {
   /** `[gate]` 裁决行出口（#866 T5 命令闸：machine-loop 接 logger.gate；只记
    * 非放行裁决，allow 静默）。缺省 = 仍门控，只是不落行。 */
   onGateLog?: (msg: string) => void;
+  /** 本机机器名（#882：非 SSE 响应诊断文案的「哪台机器」位；缺省 =
+   * os.hostname()）。与 #867 同值来源 = config.name。 */
+  machineName?: string;
 }
 
 export class PiBackend implements AgentBackend {
@@ -689,6 +713,25 @@ export class PiBackend implements AgentBackend {
     if (!model) {
       throw new Error(`model ${opts.provider.providerId}/${opts.modelId} not found`);
     }
+    // —— #882 非 SSE 响应诊断：把记录用的 fetch 接进 provider 请求面 ——
+    // pi 的请求选项有 `fetch` 位（pi-ai types.d.ts `ProviderRequestOptions.fetch`；
+    // 三家适配器都消费：openai-completions / openai-responses / anthropic-messages），
+    // 而 pi-coding-agent 的 createAgentSession 没有把它暴露出来——唯一的接点
+    // 是本会话 runtime 的 streamSimple（会话级私有对象，开出即抛，不外泄）。
+    // 包一层只做「旁路记录 + 原样返回」：请求与响应都不改写，适配器不吃这个
+    // 位时整条诊断静默降级（fail-open，见 provider-response.ts）。
+    const providerResponses: ProviderResponseSink = { current: null };
+    const diagnosedFetch = wrapProviderFetch(globalThis.fetch, providerResponses);
+    const streamSimple = runtime.streamSimple.bind(runtime);
+    runtime.streamSimple = (requestModel, context, options) =>
+      streamSimple(requestModel, context, { ...options, fetch: diagnosedFetch });
+    const diagnose = (message: string): string =>
+      enrichProviderError(message, providerResponses.current, {
+        ...(this.opts.machineName !== undefined
+          ? { machineName: this.opts.machineName }
+          : { machineName: hostname() }),
+        ...(opts.provider.baseUrl !== undefined ? { providerBaseUrl: opts.provider.baseUrl } : {}),
+      });
     // skills catalog 注入（spec 14/#371）：每次会话创建扫描一次；catalog 追加
     // 到 systemPrompt 末尾（不覆盖既有段）；空 skills 集 = systemPrompt 原样。
     // skillsAllowlist（#372）：per-agent 白名单过滤，undefined = 全量直通。
@@ -846,9 +889,14 @@ export class PiBackend implements AgentBackend {
         : { customTools: [gatedBash] }),
     });
     this.opts.onSession?.(session.sessionId, session.sessionFile);
-    const handle = new PiSessionHandle(session, model, () => {
-      if (mcpBridge) void mcpBridge.close();
-    });
+    const handle = new PiSessionHandle(
+      session,
+      model,
+      () => {
+        if (mcpBridge) void mcpBridge.close();
+      },
+      diagnose,
+    );
     // #730 首轮图片交付：promptImages 随 prompt 进会话（pi PromptOptions.
     // images 原生面）。先翻本会话的 input 能力钉（ensureImageInput）——
     // models.json 的 CUSTOM_MODEL_DEFAULTS input:['text'] 是 daemon 物化的
