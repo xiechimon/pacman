@@ -845,8 +845,16 @@ export async function runStep(
   /** 无增量后端的兜底：按 message content 的块序封段（tool_use 跳过——工具
    *  自有行）。只在「本消息期间一个段都没封出来」时调用，否则与增量面双份。 */
   const sealFromContent = async (content: unknown): Promise<void> => {
-    if (!Array.isArray(content)) return;
-    for (const block of content) {
+    // 三种载荷形都吃（与 web 的 textOfContent / review-findings 的 contentToText
+    // 同归一）：纯字符串、单体块、块数组。窄成数组会让「字符串形 assistant 行」
+    // 整条丢失——审核步的 verdict（#519 形状）就是纯 JSON 字符串。
+    const blocks = Array.isArray(content) ? content : [content];
+    for (const block of blocks) {
+      if (typeof block === 'string') {
+        const sealedText = segments.append('text', block);
+        if (sealedText !== null) await emitSegment(sealedText);
+        continue;
+      }
       if (block === null || typeof block !== 'object') continue;
       const b = block as { type?: string; text?: string; thinking?: string };
       const sealed =

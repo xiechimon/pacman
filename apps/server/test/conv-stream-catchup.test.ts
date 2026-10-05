@@ -112,18 +112,19 @@ describe('hub 缓冲：进场补发与接缝（#740 失败方式 ①⑥）', () 
 });
 
 describe('hub 缓冲：清空点（#740 失败方式 ②）', () => {
-  test('message 行落库即清——终稿行 / 工具行 / 用户行一律清（镜像 web 收敛律）', () => {
+  test('清空点（#955 段界律）：文本行 / 用户行清，工具行与仅思考行不清', () => {
     const hub = new ConversationStreamHub();
     hub.publishTextDelta('c1', '段一');
-    // 终稿 assistant 文本行。
+    // assistant 文本行 = 段界。
     hub.publishMessage('c1', {
       id: 'm1',
       role: 'assistant',
-      content: '终稿',
+      content: [{ type: 'text', text: '终稿' }],
       createdAt: 1,
-    } as TranscriptRow);
+    } as unknown as TranscriptRow);
     expect(textFrames(subscribeFresh(hub, 'c1'))).toEqual([]);
-    // live 工具行（回合内 message 事件——web liveTextStore 同事件即清）。
+    // live 工具行**不清**（#955 D7）：它带 500ms/2000ms 重试链、可能迟到，
+    // 一次迟到就把正在流的下一段抹掉——这正是旧律（任何行都清）的病灶。
     hub.publishTextDelta('c1', '段二');
     hub.publishMessage('c1', {
       id: 'm2',
@@ -131,14 +132,22 @@ describe('hub 缓冲：清空点（#740 失败方式 ②）', () => {
       content: { kind: 'toolcall', call: { name: 'bash' } },
       createdAt: 2,
     } as unknown as TranscriptRow);
-    expect(textFrames(subscribeFresh(hub, 'c1'))).toEqual([]);
-    // 用户行（新回合开始 / steer）：死回合残段不得补进新回合开头。
+    expect(textFrames(subscribeFresh(hub, 'c1'))).toEqual(['段二']);
+    // 仅思考段行**不清**：思考内容从不进文本缓冲，清它只会误伤同窗的正文。
+    hub.publishMessage('c1', {
+      id: 'm2b',
+      role: 'assistant',
+      content: [{ type: 'thinking', thinking: '想一下' }],
+      createdAt: 3,
+    } as unknown as TranscriptRow);
+    expect(textFrames(subscribeFresh(hub, 'c1'))).toEqual(['段二']);
+    // 用户行（新回合开始 / steer）照旧清：死回合残段不得补进新回合开头。
     hub.publishTextDelta('c1', '段三');
     hub.publishMessage('c1', {
       id: 'm3',
       role: 'user',
       content: '再来',
-      createdAt: 3,
+      createdAt: 4,
     } as TranscriptRow);
     expect(textFrames(subscribeFresh(hub, 'c1'))).toEqual([]);
   });
