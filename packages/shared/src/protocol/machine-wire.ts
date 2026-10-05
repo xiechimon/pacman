@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { modelUsageSchema, providerConfigSchema, toolCallRecordSchema } from '../agent-backend.js';
 import { epochMs, recordId } from '../records/common.js';
 import { machineRecordSchema } from '../records/machine.js';
-import { messageRoleSchema } from '../records/message.js';
+import { messageRoleSchema, transcriptRowSchema } from '../records/message.js';
 import { claudeCodeReportSchema } from '../records/model-source.js';
 import { PROJECT_REPO_KINDS } from '../records/project.js';
 import { reviewVerdictSchema } from '../records/review.js';
@@ -357,9 +357,24 @@ export const machineActivityBodySchema = z.object({
 });
 export type MachineActivityBody = z.infer<typeof machineActivityBodySchema>;
 
+/** POST /api/machine/tool/{stepId} 第五形 [设计]（#955 段实时落库，ADR 0011
+ *  D1/D2）：daemon 在**写入端**把模型连续输出按「一段连续同类型增量」封成
+ *  transcript 行后即时上报。服务端与 live 工具行同律——ownedStep 校验后
+ *  **先落库再广播**（`upsertMessage`/`upsertChiefRow`），与终稿 upload-urls
+ *  按同 id 幂等去重（`onConflictDoUpdate`）。段 id 与终稿同形
+ *  `msg-<stepId>-<seq>`（seq = 封段序号）。旧 daemon 不发本形 = 零回归；
+ *  旧 server 收本形按 union 解析失败 400——daemon 侧 fire-and-forget（与第三
+ *  形同纪律），步不受影响。 */
+export const machineTranscriptRowBodySchema = z.object({
+  kind: z.literal('transcript_row'),
+  row: transcriptRowSchema,
+});
+export type MachineTranscriptRowBody = z.infer<typeof machineTranscriptRowBodySchema>;
+
 /** POST /api/machine/tool/{stepId}——同径双形（r5 §3.1 bundle 提取）+ 复刻
  * 增量第三形（transcript delta [设计]，machineTranscriptDeltaBodySchema）+
- * #905 第四形（activity [设计]，machineActivityBodySchema）：
+ * #905 第四形（activity [设计]，machineActivityBodySchema）+ #955 第五形
+ * （transcript row [设计]，machineTranscriptRowBodySchema）：
  * ① live transcript 工具行回传（worker 步内建工具）= toolCallRecord，与
  *    upload-urls 终稿按 toolCall id 幂等去重 [设计]；body [推断]（r3 §1.6
  *    端点名 + transcript 工具行证据）。
@@ -376,6 +391,7 @@ export const machineToolBodySchema = z.union([
   machineToolRelayBodySchema,
   machineTranscriptDeltaBodySchema,
   machineActivityBodySchema,
+  machineTranscriptRowBodySchema,
 ]);
 
 /** relay 执行响应（bundle 消费面 `reply.body?.text`）；失败 = {error}(+transient)。 */

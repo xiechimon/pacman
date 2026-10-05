@@ -157,9 +157,11 @@ export class ConversationStreamHub {
 
   /** transcript 行落库推送（live 工具行 / 终稿行 / 用户行同事件）。 */
   publishMessage(conversationId: string, message: TranscriptRow): void {
-    // 镜像收敛律：任何落库行都终结当前打字段（web liveTextStore 同事件即清），
-    // 缓冲不清则补发与已落库行双份呈现。
-    this.clearConversationBuffer(conversationId);
+    // 段界律（#955 / ADR 0011 D7）：**只有 assistant 文本行**终结当前打字段。
+    // 旧律「任何落库行都清」在工具行上会出事——工具行的上报带 500ms/2000ms
+    // 重试链，可能迟到，一次迟到就把正在流的下一段抹掉；且 web 侧 #857 起已
+    // 是只认 assistant 文本行的 handoff，两侧改到同律镜像才重新成立。
+    if (endsInFlightSegment(message)) this.clearConversationBuffer(conversationId);
     this.publish(conversationId, { type: 'message', message });
   }
 
@@ -216,6 +218,27 @@ export class ConversationStreamHub {
       void conn.send(payload);
     }
   }
+}
+
+/** 落库行是否终结在飞段（#955 / ADR 0011 D7）：只有 **assistant 文本行**是
+ *  段界——工具行不是（它的上报带 500ms/2000ms 重试链、可能迟到，一次迟到就
+ *  把正在流的下一段抹掉），thinking 行不是（思考内容从不进文本缓冲），用户行
+ *  不是（回合边界由 rewind/step 面负责）。判据与 web 侧 handoff（sse.ts：
+ *  role==='assistant' 且抽出的文本非空）同源。 */
+function endsInFlightSegment(message: TranscriptRow): boolean {
+  return message.role === 'assistant' && hasVisibleText(message.content);
+}
+
+/** content 里是否含非空 text 块（字符串形与块数组形都吃——#955 之后新行是
+ *  单类型块数组，存量行是原始块数组或纯字符串）。 */
+function hasVisibleText(content: unknown): boolean {
+  if (typeof content === 'string') return content.trim() !== '';
+  if (!Array.isArray(content)) return false;
+  return content.some((block) => {
+    if (block === null || typeof block !== 'object') return false;
+    const b = block as { type?: string; text?: string };
+    return b.type === 'text' && typeof b.text === 'string' && b.text.trim() !== '';
+  });
 }
 
 /** 保尾弃头截断：取字节上限内的最长尾部后缀（二分后缀长；截断边界可能劈裂

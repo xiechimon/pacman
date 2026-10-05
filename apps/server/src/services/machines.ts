@@ -25,6 +25,7 @@ import type {
   StepActivityReport,
   StepRecord,
   ToolCallRecord,
+  TranscriptRow,
   TranscriptUpload,
   UserRecord,
 } from '@pacman/shared';
@@ -1140,6 +1141,38 @@ export function reportTranscriptDelta(
   const row = ownedStep(deps, machineId, stepId);
   if (text === '') return;
   deps.convHub?.publishTextDelta(row.buildId, text);
+}
+
+/** 段行实时落库（machineToolBodySchema 第五形 [设计]，#955 / ADR 0011 D2）：
+ *  daemon 在写入端封段后上报，本层与 live 工具行同律——ownedStep 校验后
+ *  **先落库再广播**（`upsertMessage`/`upsertChiefRow` 内含 publishMessage），
+ *  与终稿 upload-urls 按同 id 幂等去重（`onConflictDoUpdate`）。旧 daemon 不
+ *  发此形 = 零回归；旧 server 收此形按 union 解析失败 400 = daemon 侧
+ *  fire-and-forget，步不受影响（与第三形同纪律）。 */
+export function reportTranscriptRow(
+  deps: MachineDeps,
+  machineId: string,
+  stepId: string,
+  row: TranscriptRow,
+): void {
+  const owned = ownedStep(deps, machineId, stepId);
+  if (isChiefConversation(owned.buildId)) {
+    upsertChiefRow(deps, {
+      id: row.id,
+      threadId: owned.buildId,
+      role: row.role,
+      content: row.content,
+      createdAt: row.createdAt,
+    });
+    return;
+  }
+  upsertMessage(deps, {
+    id: row.id,
+    conversationId: owned.buildId,
+    role: row.role,
+    content: row.content,
+    createdAt: row.createdAt,
+  });
 }
 
 /** 步活动相位上报（machineToolBodySchema 第四形 [设计]，#905）：server 盖

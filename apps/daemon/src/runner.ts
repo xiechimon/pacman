@@ -59,6 +59,7 @@ import type { DaemonLogger } from './log.js';
 import type { MachineApi } from './machine-client.js';
 import { extractReviewVerdict } from './review-findings.js';
 import { buildSecretTool } from './secret-channel.js';
+import { type SealedSegment, SegmentBuffer, segmentContent } from './segment.js';
 import { buildRemoteShellTool } from './shell-channel.js';
 import type { StatePaths } from './state.js';
 import { resolveStepImages } from './step-attachments.js';
@@ -776,12 +777,29 @@ export async function runStep(
     durationCap = setTimeout(() => tripTimeout('duration'), streamDurationCapMs);
     durationCap.unref?.();
   };
+  // —— 段（#955 / ADR 0011）———————————————————————————————————————————————
+  // 把模型的连续输出按「一段连续同类型增量」封成 transcript 行：封出即落
+  // journal（终稿 upload-urls 读的就是这份）+ 实时上报（server 先落库再广播，
+  // 第五形）。封口触点在事件循环里：类型变化 / 工具到达 / 消息结束 / 步收尾。
+  // 与 deltaBuf 的关系：deltaBuf = 直播打字面的增量（第三形，瞬态），
+  // SegmentBuffer = 同一份文本的落行视图；两者吃同一个 `ev.text`，无独立漂移源。
+  const segments = new SegmentBuffer();
+  let sealedInMessage = false;
+  let lastRowCreatedAt = 0;
+  /** 行时刻强制单调：同毫秒并列会让 chiefThreadMessages 的 createdAt 排序不稳，
+   *  段序会跟着抖。 */
+  const rowCreatedAt = (): number => {
+    lastRowCreatedAt = Math.max(now(), lastRowCreatedAt + 1);
+    return lastRowCreatedAt;
+  };
   // live transcript 文本增量转发（M5 live streaming）：pi text_delta 按
   // TRANSCRIPT_DELTA_FLUSH_MS 窗口聚合批量 POST（tool/{stepId} 第三形
   // [设计]）；fire-and-forget——失败仅日志，终稿经 transcript 上传兜底。
   let deltaBuf = '';
   let deltaTimer: NodeJS.Timeout | null = null;
-  const flushDeltas = () => {
+  /** 落地当前增量并 **await**。封段前必调：web 的 handoff 按缓冲长度对齐，
+   *  增量还没到就先发段行，那一截会在打字行里再显示一遍（双份）。 */
+  const flushDeltasNow = async (): Promise<void> => {
     if (deltaTimer !== null) {
       clearTimeout(deltaTimer);
       deltaTimer = null;
@@ -789,11 +807,57 @@ export async function runStep(
     const text = deltaBuf;
     deltaBuf = '';
     if (text === '') return;
-    client.transcriptDelta(stepId, text).catch((err: unknown) => {
+    try {
+      await client.transcriptDelta(stepId, text);
+    } catch (err: unknown) {
       logger.step(
         `transcript delta relay failed: ${err instanceof Error ? err.message : String(err)}`,
       );
-    });
+    }
+  };
+  const flushDeltas = (): void => {
+    void flushDeltasNow();
+  };
+  /** 封段 → journal + 实时上报。顺序硬性：先 await 增量落地，再发段行。 */
+  const emitSegment = async (seg: SealedSegment): Promise<void> => {
+    await flushDeltasNow();
+    sealedInMessage = true;
+    messageSeq += 1;
+    const row = {
+      id: `msg-${stepId}-${messageSeq}`,
+      role: 'assistant' as const,
+      content: segmentContent(seg),
+      createdAt: rowCreatedAt(),
+    };
+    transcript.upsert(row);
+    try {
+      await client.transcriptRow?.(stepId, row);
+    } catch (err: unknown) {
+      // 上报失败不打断步——终稿 upload-urls 兜底（与工具行同纪律）。
+      logger.step(`segment row relay failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+  /** 封出当前未封段并落行；无内容 = no-op。 */
+  const sealSegment = async (): Promise<void> => {
+    const seg = segments.seal();
+    if (seg !== null) await emitSegment(seg);
+  };
+  /** 无增量后端的兜底：按 message content 的块序封段（tool_use 跳过——工具
+   *  自有行）。只在「本消息期间一个段都没封出来」时调用，否则与增量面双份。 */
+  const sealFromContent = async (content: unknown): Promise<void> => {
+    if (!Array.isArray(content)) return;
+    for (const block of content) {
+      if (block === null || typeof block !== 'object') continue;
+      const b = block as { type?: string; text?: string; thinking?: string };
+      const sealed =
+        b.type === 'thinking' && typeof b.thinking === 'string'
+          ? segments.replace('thinking', b.thinking)
+          : b.type === 'text' && typeof b.text === 'string'
+            ? segments.append('text', b.text)
+            : null;
+      if (sealed !== null) await emitSegment(sealed);
+    }
+    await sealSegment();
   };
   // —— 会话轮（#654 协议 400 步内回落，Multica client.go「按错误回落」同
   // 律）：第一轮零进展且终局错误命中自适配签名 → backend 翻 compat 旋钮 →
@@ -873,14 +937,24 @@ export async function runStep(
               deltaTimer = setTimeout(flushDeltas, TRANSCRIPT_DELTA_FLUSH_MS);
               deltaTimer.unref?.();
             }
+            // #955：正文段同源进缓冲；类型切换时把上一段交出并落行。
+            const sealedText = segments.append('text', ev.text);
+            if (sealedText !== null) await emitSegment(sealedText);
             break;
           }
-          case 'thinking_delta':
-          case 'thinking': {
-            // #905：思考期是黑盒窗口的主段（baseline.md §B）——内容不上 wire
-            // （安全判定同文），但「正在思考」这个事实是这段时间唯一的活动
-            // 证据，转发相位。
+          case 'thinking_delta': {
+            // #905 的相位面不变（思考内容不上 activity wire）；#955 起内容按
+            // 段落行——思考与正文同律，只是它有「增量」与「块终全文」两个来源。
             activity.setPhase('thinking');
+            const sealedThinking = segments.append('thinking', ev.text);
+            if (sealedThinking !== null) await emitSegment(sealedThinking);
+            break;
+          }
+          case 'thinking': {
+            // 块终全文 = **权威替换**（增量已累积过，再 append 会让该段翻倍）。
+            activity.setPhase('thinking');
+            const sealedFull = segments.replace('thinking', ev.text);
+            if (sealedFull !== null) await emitSegment(sealedFull);
             break;
           }
           case 'toolcall_end': {
@@ -889,6 +963,9 @@ export async function runStep(
             if (ev.call.name && CHANGE_TOOLS.has(ev.call.name.toLowerCase())) {
               sawChangeTool = true;
             }
+            // #955：工具到达先封段——文本段行必须排在它之后的工具行**之前**
+            // （否则流式期工具会显示在自己前导文本的上方，轮末再跳一次）。
+            await sealSegment();
             // #905 两段发射（pi/claude-code 同律）：无 result = 调用块流完、
             // 工具开始执行（此前这半被丢，工具执行期 UI 静默）；带 result =
             // 执行终态。相位面据此显示「正在执行工具：<名>」。
@@ -901,9 +978,19 @@ export async function runStep(
               id: ev.call.id,
               role: 'assistant',
               content: { kind: 'toolcall', call: ev.call },
-              createdAt: ev.call.endedAt ?? now(),
+              createdAt: rowCreatedAt(),
             });
-            if (ev.call.result !== undefined) {
+            if (ev.call.result === undefined) {
+              // #955 起**开始半也发一行**：进行中的工具要在流式期可见（带秒数）。
+              // 开始半不挂重试——结束半必发、同 id 覆盖，开始半丢了不影响终态。
+              await client.tool(stepId, ev.call).catch((err: unknown) => {
+                logger.step(
+                  `tool start relay failed for ${ev.call.id}: ${
+                    err instanceof Error ? err.message : String(err)
+                  }`,
+                );
+              });
+            } else {
               // live 回传（重试预算 = REMOTE_TOOL_RETRY_DELAYS_MS [500,2000]ms，
               // r5 §3.1；终败仅日志——终稿 transcript 经 upload-urls 兜底）。
               const ok = await withRetries(
@@ -931,13 +1018,28 @@ export async function runStep(
               sawProgress = true;
               zeroProgressRetries = 0;
             }
-            messageSeq += 1;
-            transcript.upsert({
-              id: `msg-${stepId}-${messageSeq}`,
-              role: ev.message.role,
-              content: ev.message.content,
-              createdAt: now(),
-            });
+            if (ev.message.role !== 'assistant') {
+              // 非 assistant 行照旧整行落库（无段语义：system prompt 回声等）。
+              messageSeq += 1;
+              transcript.upsert({
+                id: `msg-${stepId}-${messageSeq}`,
+                role: ev.message.role,
+                content: ev.message.content,
+                createdAt: rowCreatedAt(),
+              });
+              break;
+            }
+            // #955：assistant 行不再整条落库——先封出尾部残留段。整条消息期间
+            // 一个段都没封出来（不吐增量的 provider）才按 content 块兜底，否则
+            // 与增量面双份。
+            const hadRows = sealedInMessage;
+            sealedInMessage = false;
+            const trailing = segments.seal();
+            if (hadRows || trailing !== null) {
+              if (trailing !== null) await emitSegment(trailing);
+            } else {
+              await sealFromContent(ev.message.content);
+            }
             break;
           }
           case 'error':
@@ -1022,6 +1124,8 @@ export async function runStep(
     }
     break;
   }
+  // #955：收尾封出残留段——终稿 upload-urls 读的就是这份 journal。
+  await sealSegment();
   flushDeltas();
   clearInterval(heartbeat);
   if (watchdog) clearTimeout(watchdog);
