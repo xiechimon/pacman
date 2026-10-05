@@ -8,6 +8,7 @@
 // machine-loop recover 面对账续跑。
 
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { hostname } from 'node:os';
 import { join } from 'node:path';
 import type {
   AgentBackend,
@@ -45,6 +46,11 @@ import {
 } from '@pacman/shared';
 import { SessionNotResumableError } from './backend/errors.js';
 import { notInConfigLine, resolveMcpEndpoints } from './backend/mcp-config.js';
+import {
+  type ClaudeCodeAuthProbe,
+  claudeCodeAuthFailureMessage,
+  probeClaudeCodeAuth,
+} from './claude-code-auth.js';
 import { clearCredentials, pushCredential } from './credentials.js';
 import { githubRepoRefOf, probeGithubPr } from './github-probe.js';
 import { type StepJournal, TranscriptBuffer } from './journal.js';
@@ -91,6 +97,11 @@ export interface RunStepDeps {
   stopRequests?: Map<string, StopRequest>;
   /** heartbeat 节奏 [设计]（r3 未采具体值；presence 同族 ~30s）。 */
   heartbeatIntervalMs?: number;
+  /** 本机机器名（#867 T6：缺凭据失败文案的「哪台机器」位；缺省 os.hostname()）。 */
+  machineName?: string;
+  /** claude-code 凭据预检（#867 T6；缺省 = 真探针 `claude auth status`，
+   * machine-loop 不覆写，单测注入固定三态）。 */
+  claudeCodeAuthProbe?: () => Promise<ClaudeCodeAuthProbe>;
   now?: () => number;
 }
 
@@ -414,6 +425,25 @@ export async function runStep(
         `Agent 未获「${missing.join('」「')}」授权（Agent 详情页权限 tab），合并步拒绝执行`,
       );
       return;
+    }
+  }
+  // —— #867 T6 跨机凭据预检（machine-execution-plane §4-9）：runtime 身份步
+  // 认证 = 机器本地（A4 零凭据通道），daemon 无可注入面——机器没登录时 CLI
+  // 把「Not logged in」当普通回答回给会话，result 帧 subtype 仍是 success。
+  // 在开工作区/开会话之前探一次：明确未登录 → 步前显式失败（点名哪台机器 +
+  // 缺哪类凭据 + 怎么补），不烧检出也不烧模型回合。探针说不清（CLI 不在
+  // PATH / 超时 / 输出不可解析）不拦步——预检的假阳性会拦掉本可跑的任务，
+  // 代价高于漏放，故 fail-open 落诊断行，运行期兜底见 backend/claude-code 的
+  // result 分支（is_error 显式失败）。——
+  if (runtimeId !== null) {
+    const auth = await (deps.claudeCodeAuthProbe ?? probeClaudeCodeAuth)();
+    if (auth.state === 'not-logged-in') {
+      clearCredentials(creds);
+      await failStep(deps, stepId, claudeCodeAuthFailureMessage(deps.machineName ?? hostname()));
+      return;
+    }
+    if (auth.state === 'unknown') {
+      logger.step(`claude-code auth probe inconclusive: ${auth.reason} (continuing)`);
     }
   }
   // canon 行（r3 §1.5）：runtime 步 = `claude-code/<modelId>`（inert 占位的

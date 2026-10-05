@@ -24,7 +24,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { existsSync, realpathSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, hostname } from 'node:os';
 import { join } from 'node:path';
 import {
   createSdkMcpServer,
@@ -53,6 +53,7 @@ import type {
   ToolCallRecord,
 } from '@pacman/shared';
 import { z } from 'zod';
+import { claudeCodeAuthFailureMessage } from '../claude-code-auth.js';
 import { SessionNotResumableError } from './errors.js';
 import { appendSkillsCatalog, buildSkillsCatalog } from './pi.js';
 
@@ -96,15 +97,25 @@ export interface ClaudeMapState {
   sessionId: string | null;
   /** modelUsage 缺席时的单行合成键（SessionOpts.modelId 兜底）。 */
   modelId?: string;
+  /** auth 类失败已在流里出现（assistant 帧 `error:'authentication_failed'`）——
+   * 终局 result 的文案换成显式失败文案（#867 T6；CLI 原文只写「Not logged
+   * in」，不点名机器也不说补法）。 */
+  authFailed?: boolean;
+  /** 本机机器名（auth 失败文案的「哪台机器」位；缺省 = 不点名，仍出文案）。 */
+  machineName?: string;
 }
 
-export function createClaudeMapState(opts?: { modelId?: string }): ClaudeMapState {
+export function createClaudeMapState(opts?: {
+  modelId?: string;
+  machineName?: string;
+}): ClaudeMapState {
   return {
     calls: new Map(),
     interrupted: false,
     usage: [],
     sessionId: null,
     ...(opts?.modelId !== undefined ? { modelId: opts.modelId } : {}),
+    ...(opts?.machineName !== undefined ? { machineName: opts.machineName } : {}),
   };
 }
 
@@ -177,6 +188,12 @@ export function mapClaudeMessage(msg: SDKMessage, state: ClaudeMapState): StepEv
     case 'assistant': {
       const content = (msg as { message?: { role?: string; content?: unknown[] } }).message
         ?.content;
+      // 结构化错误类（SDKAssistantMessageError）：auth 类留痕，供终局 result
+      // 换显式文案（#867 T6）。识别只认这一档——其它错误类（model_not_found
+      // 等）照 CLI 原文上浮，不替它们编话术。
+      if ((msg as { error?: unknown }).error === 'authentication_failed') {
+        state.authFailed = true;
+      }
       if (!Array.isArray(content)) return [];
       const out: StepEvent[] = [];
       for (const block of content) {
@@ -259,11 +276,27 @@ export function mapClaudeMessage(msg: SDKMessage, state: ClaudeMapState): StepEv
       }
       const rows = toUsageRows(msg as Parameters<typeof toUsageRows>[0], state.modelId);
       state.usage = rows;
-      if (subtype === 'success') {
+      // 终局真话 = is_error（SDK 明示：API 出错时 subtype 仍是 success，错误
+      // 文本在 result 字段）。只看 subtype 会把「未登录 / 模型不存在」这类
+      // 零 token 的拒绝折成正常收工（#867 T6 实测：跑在无凭据机器上的步
+      // 静默 success、零产出、无错误面）。
+      const isError = (msg as { is_error?: boolean }).is_error === true;
+      if (subtype === 'success' && !isError) {
         return [{ type: 'done', usage: rows }];
       }
       const errors = (msg as { errors?: string[] }).errors ?? [];
-      const message = errors.length > 0 ? errors.join('; ') : (subtype ?? 'unknown error');
+      const resultText = (msg as { result?: unknown }).result;
+      const cliMessage =
+        errors.length > 0
+          ? errors.join('; ')
+          : typeof resultText === 'string' && resultText !== ''
+            ? resultText
+            : (subtype ?? 'unknown error');
+      // 缺凭据是跨机派发的头号故障（#867 T6）：CLI 原文只说「未登录」，不说
+      // 哪台机器、怎么补——换成显式文案（机器名由宿主注入）。
+      const message = state.authFailed
+        ? claudeCodeAuthFailureMessage(state.machineName ?? hostname())
+        : cliMessage;
       if (state.interrupted) {
         // interrupt 终态（stop()/watchdog abort）：流被停止语义（词表
         // message_stop），非失败——stopped 收尾归 runner stopRequests 判定。
@@ -687,6 +720,8 @@ export interface ClaudeCodeBackendOpts {
   skills?: { skillsDir: string; cwd: string };
   /** `[skills]` 诊断行出口（machine-loop 接 logger.skills，与 pi 同型）。 */
   onSkillsLog?: (msg: string) => void;
+  /** 本机机器名（#867 T6：缺凭据失败文案的「哪台机器」位；缺省 = os.hostname()）。 */
+  machineName?: string;
 }
 
 export class ClaudeCodeBackend implements AgentBackend {
@@ -766,7 +801,10 @@ export class ClaudeCodeBackend implements AgentBackend {
       ...(resumeId !== null ? { resume: resumeId } : { sessionId }),
       abortController: abort,
     };
-    const state = createClaudeMapState({ modelId: opts.modelId });
+    const state = createClaudeMapState({
+      modelId: opts.modelId,
+      machineName: this.opts.machineName ?? hostname(),
+    });
     // 流输入队列（query 消费面 = 同一实例）：首轮任务文本先入队（02 §4.2
     // createSession = 首条用户消息；缺省 = 开会话不发轮，队列空但保持打开）。
     // #730：promptImages 随首轮用户消息内联（块数组形）。

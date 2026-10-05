@@ -20,6 +20,10 @@
 //      in-process MCP server，chief 词表全量到达执行面）
 //   9. pi worker 步同载荷 → remoteTools/executeRemoteTool/localTools 照常
 //      进 sessionOpts（与 runtime 步同形，两后端工具面无分叉）
+//  10. runtime 步 + 预检「未登录」→ 工作区/会话之前失败，errorMessage 点名
+//      机器 + 凭据类 + 补法（#867 T6）
+//  11. runtime 步 + 预检「说不清」（CLI 缺失/超时）→ 不拦步，落诊断行照跑
+//  12. pi 步 → 预检一次都不发（零凭据通道只属 runtime 身份）
 
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -37,6 +41,7 @@ import type {
 } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
 import { PI_CAPABILITIES } from '../src/backend/pi.js';
+import type { ClaudeCodeAuthProbe } from '../src/claude-code-auth.js';
 import { StepJournal } from '../src/journal.js';
 import type { DaemonLogger } from '../src/log.js';
 import type { MachineApi } from '../src/machine-client.js';
@@ -185,7 +190,22 @@ function recordingBackend(): {
   return { backend, sessions, resumed };
 }
 
-async function setup(claimed: ClaimedStep, opts: { tokenProvider?: ProviderConfig | null } = {}) {
+/** 预检默认桩：已登录（#867 T6 起 runtime 步先过机器本地凭据预检；不注入
+ * 就会发真 CLI，CI 上必然探成「未登录」）。 */
+const LOGGED_IN_PROBE = async (): Promise<ClaudeCodeAuthProbe> => ({
+  state: 'logged-in',
+  method: 'oauth_token',
+  provider: 'firstParty',
+});
+
+async function setup(
+  claimed: ClaimedStep,
+  opts: {
+    tokenProvider?: ProviderConfig | null;
+    probe?: () => Promise<ClaudeCodeAuthProbe>;
+    machineName?: string;
+  } = {},
+) {
   const home = mkdtempSync(join(tmpdir(), 'pacman-runner-runtime-'));
   const paths = statePaths(home, join(home, 'workspaces'));
   const { logger, lines } = captureLogger();
@@ -193,6 +213,8 @@ async function setup(claimed: ClaimedStep, opts: { tokenProvider?: ProviderConfi
   const journal = new StepJournal(paths.outboxDir);
   const { backend, sessions } = recordingBackend();
   const resolved: (string | null | undefined)[] = [];
+  const probeCalls: number[] = [];
+  const probe = opts.probe ?? LOGGED_IN_PROBE;
   const deps = {
     client,
     journal,
@@ -205,9 +227,14 @@ async function setup(claimed: ClaimedStep, opts: { tokenProvider?: ProviderConfi
     workspacesDir: join(home, 'workspaces'),
     mcpConfigPath: join(home, 'claude.json'),
     heartbeatIntervalMs: 60_000,
+    machineName: opts.machineName ?? 'daemon-test',
+    claudeCodeAuthProbe: () => {
+      probeCalls.push(1);
+      return probe();
+    },
   };
   await runStep(deps, claimed);
-  return { client, lines, sessions, resolved, paths };
+  return { client, lines, sessions, resolved, paths, probeCalls };
 }
 
 describe('runner runtime 身份分支（spec 17 A3/A4）', () => {
@@ -287,6 +314,46 @@ describe('runner runtime 身份分支（spec 17 A3/A4）', () => {
   });
 });
 
+describe('runner runtime 步凭据预检（#867 T6 跨机凭据预检）', () => {
+  test('失败方式 10：预检未登录 → 步前失败，文案点名机器 + 凭据类 + 补法', async () => {
+    const { client, sessions, probeCalls } = await setup(
+      claimedStep({ provider: 'claude-code', modelId: 'claude-sonnet-4-5' }),
+      {
+        machineName: 'daemon-mea',
+        probe: async () => ({ state: 'not-logged-in', provider: 'firstParty' }),
+      },
+    );
+    expect(probeCalls).toHaveLength(1); // 预检真的发了，不是绕过
+    expect(sessions).toHaveLength(0); // 会话未开（拦在开工作区之前）
+    expect(client.doneBodies[0]?.body.status).toBe('failed');
+    const msg = client.doneBodies[0]?.body.errorMessage ?? '';
+    expect(msg).toContain('daemon-mea');
+    expect(msg).toContain('ANTHROPIC_API_KEY');
+    expect(msg).toContain('/login');
+  });
+
+  test('失败方式 11：预检说不清（CLI 缺失/超时）→ 不拦步，落诊断行', async () => {
+    const { client, lines, sessions, probeCalls } = await setup(
+      claimedStep({ provider: 'claude-code', modelId: 'claude-sonnet-4-5' }),
+      { probe: async () => ({ state: 'unknown', reason: 'spawn claude ENOENT' }) },
+    );
+    expect(probeCalls).toHaveLength(1);
+    expect(sessions).toHaveLength(1);
+    expect(client.doneBodies[0]?.body.status).toBe('success');
+    expect(lines.some((l) => l.includes('auth probe inconclusive') && l.includes('ENOENT'))).toBe(
+      true,
+    );
+  });
+
+  test('失败方式 12：pi 步 → 预检零调用（零凭据通道只属 runtime 身份）', async () => {
+    const { client, probeCalls } = await setup(
+      claimedStep({ provider: 'stub-gw', modelId: 'stub-model' }),
+    );
+    expect(probeCalls).toHaveLength(0);
+    expect(client.doneBodies[0]?.body.status).toBe('success');
+  });
+});
+
 describe('runner runtime 步续会话（spec 17 A7）', () => {
   test('session.action=continue → backendFor 解析后走 continueSession', async () => {
     const claimed = {
@@ -309,6 +376,7 @@ describe('runner runtime 步续会话（spec 17 A7）', () => {
         workspacesDir: join(home, 'workspaces'),
         mcpConfigPath: join(home, 'claude.json'),
         heartbeatIntervalMs: 60_000,
+        claudeCodeAuthProbe: LOGGED_IN_PROBE,
       },
       claimed,
     );
