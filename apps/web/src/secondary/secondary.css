@@ -372,6 +372,14 @@
    不是静态卡面——a3 审计的「卡表面非控件」归类（report-pages.md:88）就此
    推翻。几何逐值不动，只补 a 元素重置与 link 反馈态（原版有点得进的卡，
    无捕获的 hover 形，取壳内其它可点卡的 hover 语言：边框亮一档）。 */
+/* #886：卡底色 --surface → --surface-secondary。secondary 壳的画布就是
+   --surface，旧值让卡与画布同色（实测两主题对比度恒 1.0，边界只剩一条
+   1.05:1 的发丝线——用户原话「没有界限的存在」）。改后卡吃背景梯度上一档，
+   统一到 res-card 族配方（机器/模型服务/技能页的分组卡同款：底色抬一档 +
+   1px --card-border 发丝线），即参考产品「bg step + 1px border, not
+   elevation」的既定语言（docs/design/todos.dev.md Taste DNA），不自造新样式。
+   虚线创建槽是另一原语（.res-add 同族的 add-slot 形），两族在各资源页本就
+   同屏成对，此页照此配对。 */
 .team-agent-card {
   display: flex;
   align-items: center;
@@ -380,7 +388,7 @@
   padding: 0 16px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-popover);
-  background: var(--surface);
+  background: var(--surface-secondary);
   color: inherit;
   text-decoration: none;
   transition: border-color 150ms ease;

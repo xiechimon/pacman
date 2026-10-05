@@ -546,6 +546,16 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(toggle).toHaveAccessibleName('展开实时步骤');
     await expect(presence.locator('.chief-turn-tools')).toHaveCount(0);
+    // #885（WCAG 2.5.8）：活行命中盒 24px。21px 自然行 + 上下 1.5px 内边距，
+    // margin-block 负值等量抵掉——命中区长到 24，墨迹纹丝不动（ink 距盒顶
+    // 恰为那 1.5px 补偿量）。
+    const hit = await toggle.boundingBox();
+    expect(hit?.height).toBe(24);
+    const inkInset = await toggle.evaluate((el) => {
+      const label = el.querySelector('.chief-streaming-label')!.getBoundingClientRect();
+      return Number((label.y - el.getBoundingClientRect().y).toFixed(1));
+    });
+    expect(inkInset).toBe(1.5);
 
     // 点开展示全程：正在调用的工具 + 本轮已落库的工具行。
     await toggle.click();
