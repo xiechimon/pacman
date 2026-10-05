@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="apps/web/public/logo.svg" alt="pacman 应用图标" width="128" height="128">
+</div>
+
 # pacman
 
 自托管、开源的 **agent workspace**：一块任务看板——你写任务，AI agent 在你自己的机器上把它们做出来。
