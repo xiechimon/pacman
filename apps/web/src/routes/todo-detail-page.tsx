@@ -306,9 +306,19 @@ export function TodoDetailPage() {
   );
 
   // live transcript：conversation stream 订阅 + text_delta 打字缓冲。
-  const liveText = useSyncExternalStore(liveTextStore.subscribe, () =>
-    buildId != null ? liveTextStore.get(buildId) : '',
+  // #857 收敛交接（chief use-chief-surface 同律）：终稿事件只记 handoff，
+  // 读数走 getVisible，落盘走 prune effect——重取在飞时打字面不闪清。
+  const detailMessagesData = messagesQ.data;
+  const knownDetailIds = useMemo(
+    () => new Set((detailMessagesData?.messages ?? []).map((m) => m.id)),
+    [detailMessagesData],
   );
+  const liveText = useSyncExternalStore(liveTextStore.subscribe, () =>
+    buildId != null ? liveTextStore.getVisible(buildId, knownDetailIds) : '',
+  );
+  useEffect(() => {
+    if (buildId != null) liveTextStore.prune(buildId, knownDetailIds);
+  }, [buildId, knownDetailIds]);
   const streamHandlers = useMemo(
     () => ({
       // todo/phase 面由 team stream 驱动失效；此处兜底本页 todo 键。走收敛缝

@@ -459,6 +459,58 @@ test.describe('chief drawer 流式面（live mock，#651）', () => {
     await expect(final.locator('strong', { hasText: '全部通过' })).toHaveCount(1);
   });
 
+  test('F-R16: 轮中事件不闪清（#857）——工具行/文本行事件后重取在飞时打字面保留，收敛后落库行接管', async ({
+    page,
+  }) => {
+    await stubEventSource(page);
+    await stubDicebear(page);
+    await stubCdnAvatar(page);
+    const state: Parameters<typeof mockChiefLiveApi>[1] = { final: false };
+    await mockChiefLiveApi(page, state);
+    await page.goto('/app?chief=chief-bbb');
+
+    const drawer = page.locator('.chief-drawer');
+    await expect(drawer).toBeVisible();
+    const es = await chiefStream(page);
+
+    // 第一轮文本流出 → 打字面上屏。
+    await es.emit({ type: 'text_delta', text: '先看任务现状和失败原因' });
+    const tail = drawer.locator('.chief-msg').last();
+    await expect(tail.locator('.chat-para')).toContainText('先看任务现状和失败原因');
+
+    // 轮中工具行落库（message 事件，重取在飞、messages 仍是 [USER_ROW]）：
+    // 打字面保留，已显示文本不闪清。
+    await es.emit({
+      type: 'message',
+      message: {
+        id: 'm-tool-1',
+        role: 'assistant',
+        content: {
+          kind: 'toolcall',
+          call: { id: 'c-m-tool-1', name: 'todo_write', arguments: {}, startedAt: 3, endedAt: 5 },
+        },
+        createdAt: 5,
+      },
+    });
+    await expect(drawer.locator('.chief-msg').last().locator('.chat-para')).toContainText(
+      '先看任务现状和失败原因',
+    );
+
+    // 第一轮终稿行落库 + messages 重取收敛 → 打字面退场，落库行接管，文本恰一条。
+    const ROUND1 = {
+      id: 'm-round1',
+      role: 'assistant',
+      content: '先看任务现状和失败原因',
+      createdAt: 6,
+    };
+    state.messages = [USER_ROW, ROUND1];
+    await es.emit({ type: 'message', message: ROUND1 });
+    await expect(
+      drawer.locator('.chief-msg', { hasText: '先看任务现状和失败原因' }),
+    ).toHaveCount(1);
+    await expect(drawer.locator('.chief-streaming')).toHaveCount(0);
+  });
+
   test('F-R18: 在飞存在行可展开（#822）——点箭头看实时步骤，typing 接管不泄漏', async ({
     page,
   }) => {

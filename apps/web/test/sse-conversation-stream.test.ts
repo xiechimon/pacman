@@ -5,8 +5,8 @@
 // 1. 双份文本：进场前残留的旧缓冲未清 → 补发后 = 旧 + 补发（双份）。
 // 2. 断线重连：重建流时旧缓冲未清 → 补发 + 断线前文本叠加（双份）。
 // 3. 接缝：补发（快照）与后续 live 增量必须精确拼接——不重不断。
-// 4. 既有面保持：message 事件仍清缓冲 + 失效重取；step 事件失效重取不动
-//    缓冲；重连 resync 仍全量失效重取（#462）。
+// 4. 既有面保持：assistant 文本行事件记 handoff 不清缓冲（#857；工具行不记）
+//    + 失效重取；step 终态清缓冲；重连 resync 仍全量失效重取（#462）。
 // 服务端半（hub 缓冲/补发/清空点）见 apps/server/test/conv-stream-catchup.test.ts。
 
 import { QueryClient } from '@tanstack/react-query';
@@ -118,8 +118,8 @@ describe('接缝：补发快照 + live 增量（失败方式 3）', () => {
   });
 });
 
-describe('既有面保持（失败方式 4）', () => {
-  it('message 事件：清缓冲 + messages/plans 失效重取', () => {
+describe('既有面保持（失败方式 4；#857 收敛交接改写清语义）', () => {
+  it('message 事件（assistant 文本行）：记 handoff 不清缓冲 + messages/plans 失效重取', () => {
     const qc = freshClient();
     const invalidate = vi.spyOn(qc, 'invalidateQueries');
     const es = startStream(qc);
@@ -128,10 +128,32 @@ describe('既有面保持（失败方式 4）', () => {
       type: 'message',
       message: { id: 'm1', role: 'assistant', content: '终稿', createdAt: 1 },
     });
-    expect(liveTextStore.get(CONV)).toBe('');
+    // 重取在飞：缓冲保留（打字面不闪清）。
+    expect(liveTextStore.get(CONV)).toBe('段');
+    // 收敛前读数 = 全缓冲；收敛（messages 含 m1）后 = 空（落库行接管）。
+    expect(liveTextStore.getVisible(CONV, new Set())).toBe('段');
+    expect(liveTextStore.getVisible(CONV, new Set(['m1']))).toBe('');
     const keys = invalidate.mock.calls.map(([filters]) => filters as { queryKey?: string[] });
     expect(keys.some((f) => f.queryKey?.[0] === 'messages')).toBe(true);
     expect(keys.some((f) => f.queryKey?.[0] === 'plans')).toBe(true);
+  });
+
+  it('message 事件（工具行）：不记 handoff，缓冲保留', () => {
+    const qc = freshClient();
+    const es = startStream(qc);
+    es.push({ type: 'text_delta', text: '段' });
+    es.push({
+      type: 'message',
+      message: {
+        id: 'm-tool',
+        role: 'assistant',
+        content: { kind: 'toolcall', call: { id: 'c1', name: 'todo_write', arguments: {} } },
+        createdAt: 1,
+      },
+    });
+    // 前缀尚无落库行覆盖：即使 messages 已含该工具行，文本仍保留。
+    expect(liveTextStore.get(CONV)).toBe('段');
+    expect(liveTextStore.getVisible(CONV, new Set(['m-tool']))).toBe('段');
   });
 
   it('step 事件：失效重取、不动缓冲', () => {
