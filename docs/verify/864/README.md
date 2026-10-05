@@ -8,6 +8,22 @@
 
 探针脚本：`.claude/verify-shots/864/drive-pin-offline.mjs`（lane 本地，未进仓）。
 
+## before 基线（同一世界的 origin/main 对照）
+
+一次性 `origin/main` worktree（`/tmp/pacman-864-before`，绝对路径）+ 独立端口栈
+（`:8796` / `:5278`）跑**同一世界**：钉一台永不连接的机器，团队里另有一台**在线**
+旁观机器，步 createdAt 回拨到宽限外——跑 40 秒（≈2 个 scheduler tick）后
+（`result-before.json` 7/7，`before-01-still-waiting.png`）：
+
+- 步仍 `pending`、todo 仍 `building`、`build.errorMessage` 为 `null`——
+  **改动前这条步没有任何收尾**（无限等待）；
+- UI 上只有「（等待机器上线）」一个标注，什么都不发生。
+
+⚠️ 对照世界的**前提必须带在线旁观机器**：只给一台离线机器时，main 的 ① 分支
+（团队零在线机器，120 秒）照样会收尾——那样测到的是 ①，测不到 T3 的缺口。首次
+对照跑就踩了这个（另一坑：一个 API key 只绑一台机器，同 key 重 enroll 返回同一
+`machineId`，旁观机器要另开一把 key）。
+
 ## 票面三问的答案（本票裁决）
 
 1. **等多久** — 钉选机器离线的 pending 步等 `PIN_OFFLINE_GRACE_MS = 10 分钟`
