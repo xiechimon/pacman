@@ -1367,6 +1367,15 @@ a.chief-identity {
   outline: none;
 }
 
+/* #855：框内 input 进 Input 原语后的中性护栏——底座 focus-visible 环
+   （ring/box-shadow）与本面「皮肤在容器行、框内零装饰」冲突，unlayered
+   位直接并掉，不赌 utility 同层排序。 */
+.chief-pick-input:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border-color: transparent;
+}
+
 .chief-pick-list {
   display: flex;
   flex-direction: column;

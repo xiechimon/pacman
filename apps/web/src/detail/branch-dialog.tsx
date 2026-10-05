@@ -164,6 +164,9 @@ export function BranchSyncFields({
           </div>
         </div>
         <label className="dlg-toggle" data-on={force}>
+          {/* deliberate-native（#855）：原生 checkbox 是自定义拨杆之下的无障碍
+              交互层（键盘/读屏语义白送，opacity:0 覆盖全 track）；Switch 原语几何
+              不同（28×16 vs 32×18.4），换皮属另一票范围。 */}
           <input
             type="checkbox"
             aria-label={t('强制同步')}
