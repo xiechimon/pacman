@@ -46,10 +46,10 @@ async function openAccept(page: Page) {
 /** spec 11 §A6：picker 面进自定义端点表单，Bearer 复选默认 on（r3 §2）。 */
 async function openProviderForm(page: Page) {
   await page.goto('/app/resources/providers?scenario=01');
-  await page.locator('.res-new').click();
+  await page.getByRole('button', { name: '新建', exact: true }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
-  await dialog.locator('.dlg-provider-custom').click();
+  await dialog.getByRole('button', { name: '自定义端点' }).click();
   await expect(dialog.locator('#dlg-provider-id')).toBeVisible();
   // #677 wired tw-animate-css: same enter-animation settle as openAccept so
   // evidence shots and geometry never ride a transient scale.
@@ -144,9 +144,11 @@ test('provider: 未选中态不露白勾（#dlg-provider-authheader id 存活）
   const input = dialog.locator('#dlg-provider-authheader');
   await expect(input).toBeChecked();
   await evidenceShot(page, 'provider-checked.png');
-  await dialog.locator('.dlg-provider-authrow .ui-checkbox-tile').click();
+  // #944/#910 载体：.dlg-provider-authrow 类名钩退役 → ui-checkbox 件类
+  // （components 自有类，非域别名）直取。
+  await dialog.locator('.ui-checkbox-tile').click();
   await expect(input).not.toBeChecked();
-  await expect(dialog.locator('.dlg-provider-authrow label svg')).toHaveCount(0);
+  await expect(dialog.locator('label.ui-checkbox svg')).toHaveCount(0);
   await evidenceShot(page, 'provider-unchecked.png');
 });
 

@@ -14,6 +14,11 @@ import { expect, type Locator, test } from '@playwright/test';
 //    验证封顶后同步钮钉底;body 溢出
 // 9. history 重跑 footer(57f)→ 重跑钮在视口
 // 10. accept(34)→ 取消/完成在视口
+// #944/#910 载体（仅 resources 面）：.res-new/.res-add → role+文案；
+// .dlg-provider-custom/-model-add/-create → getByRole(button)；
+// .dlg-enroll-toggle → getByRole(button 文案)；.dlg-enroll-apikey/-keylink →
+// link 文案一级。其余面（agent/chief/branch/accept 的 .dlg-* 别名）属
+// #945/#950/#952，原样不动。
 
 test.use({ viewport: { width: 800, height: 500 } });
 
@@ -39,22 +44,22 @@ async function expectBodyOverflows(dialog: Locator) {
 
 test('provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移', async ({ page }) => {
   await page.goto('/app/resources/providers?scenario=01');
-  await page.locator('.res-new').click();
+  await page.getByRole('button', { name: '新建', exact: true }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   // #355 picker 面(无 footer):38 行必然溢出,面板仍封顶
   await expectBodyOverflows(dialog);
   await expectShellCapped(dialog);
   // 表单字段在「自定义端点」入口后的 form 视图
-  await dialog.locator('.dlg-provider-custom').click();
-  const addModel = dialog.locator('.dlg-provider-model-add');
+  await dialog.getByRole('button', { name: '自定义端点' }).click();
+  const addModel = dialog.getByRole('button', { name: '添加模型', exact: true });
   await addModel.click();
   await addModel.click();
   await addModel.click();
   await expect(dialog.locator('[aria-label="模型 ID"]')).toHaveCount(3);
   await expectBodyOverflows(dialog);
   await expectShellCapped(dialog);
-  const submit = dialog.locator('.dlg-provider-create');
+  const submit = dialog.getByRole('button', { name: '添加模型服务' });
   await expect(submit).toBeInViewport();
   // 内容区滚到底,钉底钮位置不动(滚动不推挤按钮区)
   const before = await submit.boundingBox();
@@ -68,7 +73,7 @@ test('provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移', asy
 
 test('secret: 静态表单面 submit 在视口', async ({ page }) => {
   await page.goto('/app/resources/secrets?scenario=01');
-  await page.locator('.res-new').click();
+  await page.getByRole('button', { name: '新建', exact: true }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   await expectShellCapped(dialog);
@@ -78,13 +83,14 @@ test('secret: 静态表单面 submit 在视口', async ({ page }) => {
 
 test('machine: disclosure 展开(最高内容态)底部链接在视口', async ({ page }) => {
   await page.goto('/app/resources/machines?scenario=06');
-  await page.locator('.res-add').click();
+  await page.getByRole('button', { name: '添加机器' }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
-  await dialog.locator('.dlg-enroll-toggle').click();
-  await expect(dialog.locator('.dlg-enroll-apikey')).toBeVisible();
+  await dialog.getByRole('button', { name: '在云服务器上运行？改用 API key 注册' }).click();
+  const keylink = dialog.getByRole('link', { name: '获取 API key →' });
+  await expect(keylink).toBeVisible();
   await expectShellCapped(dialog);
-  await expect(dialog.locator('.dlg-enroll-keylink')).toBeInViewport();
+  await expect(keylink).toBeInViewport();
 });
 
 test('create-agent: submit 在视口', async ({ page }) => {

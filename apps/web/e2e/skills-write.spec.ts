@@ -10,6 +10,11 @@ import { expect, type Page, test } from '@playwright/test';
 // 4. live 编辑：行点击 → GET 入口文件预填（frontmatter 拆回表单）→ PUT 200 → 列表回读一致；
 // 5. live 编辑预填读 404：表单让位错误块 + 列表失效重取；
 // 6. 客户端预检：非法名/引号描述不落请求（server 0 调用）。
+// #944/#910 载体：.res-new/.res-empty .res-primary → role+文案一级；
+// .res-rowcard → resource-row testid；.dlg-skill-submit → dialog 内
+// getByRole(button)；.dlg-skill-error → role=alert；#dlg-skill-* id 是
+// getByLabel 依赖的语义资产（#942 §5.6），原样保留；壳级 .dlg/.dlg-title
+// 属 #952，不动。
 
 const SKILLS = '/app/resources/skills';
 
@@ -106,18 +111,18 @@ async function stubSkillStore(page: Page, seed: SkillRow[] = []) {
 
 test('fixture 新建弹窗：字段集 + 提交闸 + accept 律提交即关', async ({ page }) => {
   await page.goto(`${SKILLS}?scenario=01`);
-  await page.locator('.res-empty .res-primary').click();
+  await page.getByTestId('resource-empty').getByRole('button', { name: '新建技能' }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('.dlg-title')).toHaveText('新建技能');
   await expect(dialog.locator('#dlg-skill-name')).toHaveAttribute('placeholder', 'deploy-to-prod');
   await expect(dialog.locator('#dlg-skill-body')).toBeVisible();
 
-  const submit = dialog.locator('.dlg-skill-submit');
+  const submit = dialog.getByRole('button', { name: '新建技能' });
   await expect(submit).toBeDisabled(); // 空名 + 空描述
   await dialog.locator('#dlg-skill-name').fill('my skill!');
   await expect(submit).toBeDisabled(); // 非法名（空格/叹号）
-  await expect(dialog.locator('.dlg-skill-error')).toContainText('名称须以字母或数字开头');
+  await expect(dialog.getByRole('alert')).toContainText('名称须以字母或数字开头');
   await dialog.locator('#dlg-skill-name').fill('my-skill');
   await expect(submit).toBeDisabled(); // 仍缺描述
   await dialog.locator('#dlg-skill-desc').fill('演示技能');
@@ -132,17 +137,17 @@ test('live 新建：201 后弹窗关、列表即现，frontmatter 由表单组�
   const { store, calls } = await stubSkillStore(page);
   await page.goto(SKILLS);
   // 空态主钮 = 双入口之一
-  await page.locator('.res-empty .res-primary').click();
+  await page.getByTestId('resource-empty').getByRole('button', { name: '新建技能' }).click();
   const dialog = page.locator('.dlg');
   await dialog.locator('#dlg-skill-name').fill('deploy');
   await dialog.locator('#dlg-skill-desc').fill('部署流程手册');
   await dialog.locator('#dlg-skill-body').fill('# 步骤\n\n1. 构建');
-  await dialog.locator('.dlg-skill-submit').click();
+  await dialog.getByRole('button', { name: '新建技能' }).click();
 
   await expect(dialog).toBeHidden();
-  await expect(page.locator('.res-rowcard')).toHaveCount(1); // 失效重取即现
-  await expect(page.locator('.res-rowcard').first()).toContainText('deploy');
-  await expect(page.locator('.res-rowcard').first()).toContainText('部署流程手册');
+  await expect(page.getByTestId('resource-row')).toHaveCount(1); // 失效重取即现
+  await expect(page.getByTestId('resource-row').first()).toContainText('deploy');
+  await expect(page.getByTestId('resource-row').first()).toContainText('部署流程手册');
   expect(store).toHaveLength(1);
 
   // 组装对拍：单个 SKILL.md，frontmatter 与表单逐字一致
@@ -161,19 +166,17 @@ test('live 新建撞同名 409：弹窗不关，错误行 headline + server 原�
     { id: 'deploy', teamId: 'team-1', name: 'deploy', description: '既有技能' },
   ]);
   await page.goto(SKILLS);
-  await expect(page.locator('.res-rowcard')).toHaveCount(1);
-  await page.locator('.res-new').click(); // topbar 入口
+  await expect(page.getByTestId('resource-row')).toHaveCount(1);
+  await page.getByRole('button', { name: '新建', exact: true }).click(); // topbar 入口
   const dialog = page.locator('.dlg');
   await dialog.locator('#dlg-skill-name').fill('deploy');
   await dialog.locator('#dlg-skill-desc').fill('再来一份');
-  await dialog.locator('.dlg-skill-submit').click();
+  await dialog.getByRole('button', { name: '新建技能' }).click();
 
   await expect(dialog).toBeVisible(); // 弹窗不关
-  const error = dialog.locator('.dlg-skill-error');
+  const error = dialog.getByRole('alert');
   await expect(error).toContainText('同名技能已存在');
-  await expect(error.locator('.dlg-skill-error-detail')).toContainText(
-    'skill directory deploy already exists',
-  );
+  await expect(error.locator('span')).toContainText('skill directory deploy already exists');
 });
 
 test('live 编辑：行点击预填 frontmatter 拆分，PUT 后列表回读一致', async ({ page }) => {
@@ -184,7 +187,7 @@ test('live 编辑：行点击预填 frontmatter 拆分，PUT 后列表回读一�
   files.set('deploy', '---\nname: deploy\ndescription: 旧描述\n---\n\n旧正文\n');
   await page.goto(SKILLS);
 
-  await page.locator('.res-rowcard').first().click();
+  await page.getByTestId('resource-row').first().click();
   const dialog = page.locator('.dlg');
   await expect(dialog.locator('.dlg-title')).toHaveText('编辑技能');
   // 预填：frontmatter 拆回表单字段，正文进 textarea
@@ -193,10 +196,10 @@ test('live 编辑：行点击预填 frontmatter 拆分，PUT 后列表回读一�
   await expect(dialog.locator('#dlg-skill-body')).toHaveValue('旧正文\n');
 
   await dialog.locator('#dlg-skill-desc').fill('新描述');
-  await dialog.locator('.dlg-skill-submit').click();
+  await dialog.getByRole('button', { name: '保存' }).click();
 
   await expect(dialog).toBeHidden();
-  await expect(page.locator('.res-rowcard').first()).toContainText('新描述'); // 回读一致
+  await expect(page.getByTestId('resource-row').first()).toContainText('新描述'); // 回读一致
   const put = calls.find((c) => c.method === 'PUT');
   expect(put?.url).toContain('/api/teams/team-1/skills/deploy');
   const body = put?.body as { files: { content: string }[] };
@@ -219,12 +222,12 @@ test('live 编辑预填读 404：表单让位错误块，列表失效重取', as
     });
   });
   await page.goto(SKILLS);
-  await page.locator('.res-rowcard').first().click();
+  await page.getByTestId('resource-row').first().click();
 
   const dialog = page.locator('.dlg');
-  await expect(dialog.locator('.dlg-skill-error')).toContainText('该技能已不存在');
+  await expect(dialog.getByRole('alert')).toContainText('该技能已不存在');
   await expect(dialog.locator('#dlg-skill-name')).toHaveCount(0); // 表单让位
-  await expect(dialog.locator('.dlg-skill-submit')).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: '保存' })).toBeDisabled();
   expect(lists.length).toBeGreaterThanOrEqual(2); // 404 触发列表失效重取
 });
 
@@ -232,19 +235,20 @@ test('客户端预检：非法名与引号描述不发请求', async ({ page }) 
   await stubBoot(page);
   const { calls } = await stubSkillStore(page);
   await page.goto(SKILLS);
-  await page.locator('.res-new').click();
+  await page.getByRole('button', { name: '新建', exact: true }).click();
   const dialog = page.locator('.dlg');
 
   await dialog.locator('#dlg-skill-name').fill('bad/name');
   await dialog.locator('#dlg-skill-desc').fill('正常描述');
-  await expect(dialog.locator('.dlg-skill-submit')).toBeDisabled();
-  await expect(dialog.locator('.dlg-skill-error')).toContainText('名称须以字母或数字开头');
+  const submit = dialog.getByRole('button', { name: '新建技能' });
+  await expect(submit).toBeDisabled();
+  await expect(dialog.getByRole('alert')).toContainText('名称须以字母或数字开头');
 
   // 引号包裹描述：round-trip 对拍失守 → 专条提示 + 提交禁用
   await dialog.locator('#dlg-skill-name').fill('ok-name');
   await dialog.locator('#dlg-skill-desc').fill('"被引号包裹"');
-  await expect(dialog.locator('.dlg-skill-error')).toContainText('不要用引号整体包裹');
-  await expect(dialog.locator('.dlg-skill-submit')).toBeDisabled();
+  await expect(dialog.getByRole('alert')).toContainText('不要用引号整体包裹');
+  await expect(submit).toBeDisabled();
 
   expect(calls).toHaveLength(0); // 两道预检都没落到 server
 });

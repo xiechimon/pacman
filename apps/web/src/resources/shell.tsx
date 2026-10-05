@@ -69,13 +69,16 @@ export function ResourceShell({
   children,
 }: ResourceShellProps) {
   const { t } = useI18n();
+  // data-testid="resource-new" = #910 二级载体：title-band hit-test 律
+  // （#133）的探针要在 elementFromPoint 后按 CSS 选择器认领元素，role 定位
+  // 表达不了；行为面（点击开弹窗）一律走 getByRole('button', {name:'新建'})。
   const newAction = hideNew ? null : newHref != null ? (
-    <a className={RES_NEW_ANCHOR_CLS} href={newHref}>
+    <a className={RES_NEW_ANCHOR_CLS} href={newHref} data-testid="resource-new">
       <Plus width={13} height={13} />
       {t('新建')}
     </a>
   ) : (
-    <Button variant="link" className={RES_NEW_CLS} onClick={onNew}>
+    <Button variant="link" className={RES_NEW_CLS} onClick={onNew} data-testid="resource-new">
       <Plus width={13} height={13} />
       {t('新建')}
     </Button>

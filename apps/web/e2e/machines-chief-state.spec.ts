@@ -12,15 +12,18 @@
 // 5. 行高契约破坏：标注把 60px 行高顶破 → res-grow 行高契约必须保持。
 // live 全链真值（PATCH 设主力机 → 徽标 → 离线 → 等待 → 宽限失败）归
 // verify 证据（docs/verify/865/，PR body raw 永久链）。
+// #944/#910 载体：.res-grow → div[data-kind]；.mach-orchestration* →
+// [data-orchestration] 状态属性（host/running/waiting，容器类退役）；
+// .res-dot → [data-on]；.res-grow--divided → [data-divided]。
 
 import { expect, test } from '@playwright/test';
 
 const CHIEF_STATE = '/app/resources/machines?scenario=machines-chief-state';
 const CANON = '/app/resources/machines?scenario=06';
 const SHELL = '[data-route="/app/resources/machines"]';
-const ROW = `${SHELL} .res-grow[data-machine-id]`;
+const ROW = `${SHELL} div[data-kind]`;
 const HOST_ROW = `${ROW}[data-kind="local"]`;
-const ORCH = `${ROW} .mach-orchestration`;
+const ORCH = `${ROW} [data-orchestration]`;
 
 test('总管主机徽标：钉在 host 行（data-orchestration=host + 文案）', async ({ page }) => {
   await page.goto(CHIEF_STATE);
@@ -41,8 +44,8 @@ test('总管等待机器：waiting 状态行在离线远端行（与离线灰点
   const row = page.locator(ROW).filter({ hasText: 'vps-relay' });
   const waiting = row.locator('[data-orchestration="waiting"]');
   await expect(waiting).toHaveText('总管等待机器');
-  // 同行的机器在线位仍由 res-dot 承载（灰）——两事实正交，不互相顶替。
-  await expect(row.locator('.res-dot')).toHaveAttribute('data-on', 'false');
+  // 同行的机器在线位仍由在线点承载（灰）——两事实正交，不互相顶替。
+  await expect(row.locator('[data-on]')).toHaveAttribute('data-on', 'false');
 });
 
 test('读态零控件：标注容器内零 button / 零 menu 语义（死钮纪律保持）', async ({ page }) => {
@@ -50,6 +53,8 @@ test('读态零控件：标注容器内零 button / 零 menu 语义（死钮纪�
   await expect(page.locator(ORCH).first()).toBeVisible();
   await expect(page.locator(`${ORCH} button`)).toHaveCount(0);
   await expect(page.locator(`${ORCH} [role="menu"]`)).toHaveCount(0);
+  // 标注本体也不得是控件（容器类退役后按状态属性逐个钉）。
+  await expect(page.locator(`${SHELL} [data-orchestration][role="button"]`)).toHaveCount(0);
   // 行内控件面仍 = shell 闸恰一个（XMON-113 律不被标注破坏）。
   await expect(page.locator(`${ROW} [role="switch"]`)).toHaveCount(3);
 });
@@ -57,16 +62,16 @@ test('读态零控件：标注容器内零 button / 零 menu 语义（死钮纪�
 test('存量零漂移：无标注数据（06 canon 面）不长任何标注节点', async ({ page }) => {
   await page.goto(CANON);
   await expect(page.locator(ROW).first()).toBeVisible();
-  await expect(page.locator(`${SHELL} .mach-orchestration`)).toHaveCount(0);
+  await expect(page.locator(`${SHELL} [data-orchestration]`)).toHaveCount(0);
 });
 
-test('行高契约保持：标注行不破 res-grow 行高（首行 60 / 分隔行 59+1px）', async ({ page }) => {
+test('行高契约保持：标注行不破行高（首行 60 / 分隔行 59+1px）', async ({ page }) => {
   await page.goto(CHIEF_STATE);
   const rows = page.locator(ROW);
   await expect(rows).toHaveCount(3);
   const first = await rows.first().evaluate((el) => el.getBoundingClientRect().height);
   expect(first).toBe(60);
-  for (const row of await rows.locator('~ .res-grow--divided').all()) {
+  for (const row of await rows.locator('~ [data-divided]').all()) {
     const geo = await row.evaluate((el) => {
       const r = el.getBoundingClientRect();
       return { height: r.height, borderTop: parseFloat(getComputedStyle(el).borderTopWidth) };

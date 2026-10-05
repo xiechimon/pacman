@@ -49,9 +49,10 @@ test('team right-slot action owns its hit area (设置 slot under the same band)
 });
 
 // resources family (r7 06–10, one shared fixture set): the band law covers
-// .res-back and, where present, .res-new (machines hide it; skills is
-// read-only since spec 13 #367 — no .res-new at all, pinned in
-// skills-readonly.spec.ts); every route's back really navigates.
+// the back chevron and, where present, the 新建 action (machines/mcp hide
+// it). #944/#910 载体：.res-back → aria-label 一级；.res-new →
+// resource-new testid（hit-test 探针按 CSS 选择器认领元素，role 定位表达
+// 不了——二级载体的正当位）；every route's back really navigates.
 for (const [route, scenario, backTo] of [
   ['/app/resources/skills', '06', '/app'],
   ['/app/resources/mcp-servers', '07', '/app'],
@@ -61,11 +62,11 @@ for (const [route, scenario, backTo] of [
 ] as const) {
   test(`resources topbar actions own their hit areas, back navigates — ${route}`, async ({ page }) => {
     await page.goto(`${route}?scenario=${scenario}`);
-    await expectOwnsCenter(page, '.res-back');
-    if (await page.locator('.res-new').count()) {
-      await expectOwnsCenter(page, '.res-new');
+    await expectOwnsCenter(page, '[aria-label="返回"]');
+    if (await page.locator('[data-testid="resource-new"]').count()) {
+      await expectOwnsCenter(page, '[data-testid="resource-new"]');
     }
-    await page.locator('.res-back').click();
+    await page.locator('[aria-label="返回"]').click();
     await expect(page).toHaveURL(backTo);
   });
 }

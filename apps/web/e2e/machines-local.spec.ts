@@ -11,12 +11,18 @@
 // 6. 本机行不可删（行内无删除类控件，负向）
 // 7. 行无 chevron 可点感装饰（A7 负向）
 // 开关的读写/回滚行为面（live 打桩）在 machines-shell-switch.spec.ts。
+// #944/#910 载体：.res-grow → div[data-kind]（行 div 的既有契约句柄；
+// Switch 也带 data-machine-id，元素名限定防串）；.mach-runtime →
+// [data-runtime]；.mach-mark → 其内 svg；.mach-runtime--on 状态类 →
+// data-enabled 属性（裁定 3：状态断言载体走 data-*）；.mach-shell-switch →
+// role=switch；.res-row-title/-desc → 文案一级；.res-row-more/-chev 负向 →
+// 行内 menu 触发/可点语义计数 0。.res-main = chief docking 跨域句柄（#950）。
 
 import { expect, test } from '@playwright/test';
 
 const MACHINES = '/app/resources/machines?scenario=06';
 const SHELL = '[data-route="/app/resources/machines"]';
-const ROW = `${SHELL} .res-grow[data-machine-id]`;
+const ROW = `${SHELL} div[data-kind]`;
 const LOCAL_ROW = `${ROW}[data-kind="local"]`;
 // fixture canon（fixtures.ts RESOURCES.machines）：本机行 = MACHINE_NAME /
 // MACHINE_ID，enabledRuntimes ['pi']（pi 开 / Claude Code 关两态展示）。
@@ -29,7 +35,7 @@ test('本机行钉列表首：data-kind=local + id 句柄 + hostname canon', asy
   await expect(first).toBeVisible();
   await expect(first).toHaveAttribute('data-kind', 'local');
   await expect(first).toHaveAttribute('data-machine-id', LOCAL_ID);
-  await expect(first.locator('.res-row-title')).toHaveText(LOCAL_NAME);
+  await expect(first.getByText(LOCAL_NAME)).toHaveText(LOCAL_NAME);
 });
 
 test('托管 facade 行已除（spec 11 A8 负向）', async ({ page }) => {
@@ -42,22 +48,22 @@ test('托管 facade 行已除（spec 11 A8 负向）', async ({ page }) => {
 // 与 title（悬停提示）——三者一个都不许缺，否则等于把名字删没了。
 test('per-runtime 品牌 mark：两个在位 + 亮度分态 = enabledRuntimes canon', async ({ page }) => {
   await page.goto(MACHINES);
-  const pi = page.locator(`${LOCAL_ROW} .mach-runtime[data-runtime="pi"]`);
-  const cc = page.locator(`${LOCAL_ROW} .mach-runtime[data-runtime="claude-code"]`);
+  const pi = page.locator(`${LOCAL_ROW} [data-runtime="pi"]`);
+  const cc = page.locator(`${LOCAL_ROW} [data-runtime="claude-code"]`);
   await expect(pi).toBeVisible();
   await expect(cc).toBeVisible();
-  await expect(pi.locator('.mach-mark')).toBeVisible();
-  await expect(cc.locator('.mach-mark')).toBeVisible();
-  // 文字名不再上屏；可读名走无障碍面（引擎真值，不是属性复读）。
-  await expect(pi.locator('.mach-runtime-label')).toHaveCount(0);
-  await expect(cc.locator('.mach-runtime-label')).toHaveCount(0);
+  await expect(pi.locator('svg')).toBeVisible();
+  await expect(cc.locator('svg')).toBeVisible();
+  // 文字名不再上屏（容器文本为空）；可读名走无障碍面（引擎真值，不是属性复读）。
+  await expect(pi).toHaveText('');
+  await expect(cc).toHaveText('');
   await expect(pi).toHaveAccessibleName('pi');
   await expect(cc).toHaveAccessibleName('Claude Code');
   await expect(pi).toHaveAttribute('title', 'pi');
   await expect(cc).toHaveAttribute('title', 'Claude Code');
   // 亮度分态 canon：pi 开（实色）/ Claude Code 关（35% 透明）。
-  await expect(pi).toHaveClass(/mach-runtime--on/);
-  await expect(cc).not.toHaveClass(/mach-runtime--on/);
+  await expect(pi).toHaveAttribute('data-enabled', 'true');
+  await expect(cc).toHaveAttribute('data-enabled', 'false');
 });
 
 // XMON-113：行内控件面自 #503 的「零控件」改成「恰一个活控件」= 机器层 shell
@@ -68,33 +74,36 @@ test('per-runtime 品牌 mark：两个在位 + 亮度分态 = enabledRuntimes ca
 test('行内控件面 = 机器 shell 开关恰一个（XMON-113；其余仍无）', async ({ page }) => {
   await page.goto(MACHINES);
   await expect(page.locator(`${LOCAL_ROW} [role="switch"]`)).toHaveCount(1);
-  await expect(page.locator(`${LOCAL_ROW} .mach-shell-switch`)).toHaveCount(1);
   await expect(page.locator(`${LOCAL_ROW} button`)).toHaveCount(0);
   // per-runtime 位仍是 mark 展示面，不是控件（#503 负向）。
-  await expect(page.locator(`${LOCAL_ROW} .mach-runtime [role="switch"]`)).toHaveCount(0);
+  await expect(page.locator(`${LOCAL_ROW} [data-runtime] [role="switch"]`)).toHaveCount(0);
 });
 
 // 副行仍只承载「这一个控件是什么」：id 尾巴与并发上限行不许回来。文案走
 // {tool} 插值（shared AGENT_TOOL_SHELL 单源），故断言按插值后的成品串钉。
 test('副行只剩 shell 开关说明（#503 的 id 尾巴 / 并发上限不许回来）', async ({ page }) => {
   await page.goto(MACHINES);
-  await expect(page.locator(`${LOCAL_ROW} .res-row-desc`)).toHaveCount(1);
-  await expect(page.locator(`${LOCAL_ROW} .res-row-desc`)).toHaveText(
+  const desc = page.locator(LOCAL_ROW).getByText(
     '已授权「远程 shell」的 Agent 可在该机器上执行命令。',
   );
+  await expect(desc).toHaveCount(1);
+  await expect(desc).toHaveText('已授权「远程 shell」的 Agent 可在该机器上执行命令。');
   await expect(page.locator(LOCAL_ROW)).not.toContainText('· max');
 });
 
 test('本机行不可删：行内无删除类控件（负向）', async ({ page }) => {
   await page.goto(MACHINES);
   await expect(page.locator(`${LOCAL_ROW} button[aria-label*="删除"]`)).toHaveCount(0);
-  await expect(page.locator(`${LOCAL_ROW} .res-row-more`)).toHaveCount(0);
+  await expect(page.locator(`${LOCAL_ROW} [aria-haspopup="menu"]`)).toHaveCount(0);
 });
 
 test('行无 chevron 可点感装饰（spec 11 A7 负向）', async ({ page }) => {
   await page.goto(MACHINES);
   await expect(page.locator(LOCAL_ROW)).toBeVisible();
-  await expect(page.locator(`${SHELL} .res-row-chev`)).toHaveCount(0);
+  // A7 语义 = 行不可点：行本体无 button 语义/链接（chevron 装饰类已退役，
+  // 断言从「装饰不在」改钉「可点语义不在」）。
+  await expect(page.locator(`${SHELL} [data-kind][role="button"]`)).toHaveCount(0);
+  await expect(page.locator(`${SHELL} [data-kind] a`)).toHaveCount(0);
 });
 
 // 钉扎四面之视觉几何断言面：mach-runtime 族硬契约（16×16 官方 mark；on/off
@@ -106,9 +115,9 @@ test('mark 几何：16×16 mark，on/off 透明度分离，行高契约不破', 
   const m = await page.evaluate(
     ({ sel }) => {
       const read = (runtime: string) => {
-        const wrap = document.querySelector(`${sel} .mach-runtime[data-runtime="${runtime}"]`);
+        const wrap = document.querySelector(`${sel} [data-runtime="${runtime}"]`);
         if (!wrap) throw new Error(`runtime missing: ${runtime}`);
-        const mark = wrap.querySelector('.mach-mark');
+        const mark = wrap.querySelector('svg');
         if (!mark) throw new Error('mark missing');
         const r = mark.getBoundingClientRect();
         const wr = wrap.getBoundingClientRect();
@@ -136,5 +145,5 @@ test('mark 几何：16×16 mark，on/off 透明度分离，行高契约不破', 
   expect(m.on.opacity).toBe('1'); // on：品牌原色
   expect(m.off.opacity).toBe('0.35'); // off：35% 透明
   expect(m.off.wrapLeft - m.on.wrapRight).toBe(16); // 同屏两图标间距不塌
-  expect(m.rowHeight).toBe(60); // res-grow 行高契约不破
+  expect(m.rowHeight).toBe(60); // 行高契约不破（div[data-kind] 行盒）
 });

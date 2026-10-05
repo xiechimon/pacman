@@ -280,9 +280,13 @@ export function CreateProviderDialog({
           />
           {/* #231 错误行：authorize 失败原文 / callback 落地 reason 三译
               （providers-page 喂入）。列表前渲染——着陆重开即可见。
-              配方 = 仓内错误文本族（12px/16px/--danger）。 */}
+              配方 = 仓内错误文本族（12px/16px/--danger）；role=alert 是
+              错误行的一级载体（原 .dlg-provider-oauth-error 类名钩退役，
+              #910/#944，与 dlg-skill-error 同律）。 */}
           {connectError != null && connectError !== '' && (
-            <div className="text-xs leading-4 text-(--danger)">{connectError}</div>
+            <div className="text-xs leading-4 text-(--danger)" role="alert">
+              {connectError}
+            </div>
           )}
           <div className="flex flex-col gap-1">
             {rows.map((row) => (

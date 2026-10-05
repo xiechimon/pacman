@@ -131,7 +131,7 @@ test.describe('sidebar seam + full-width divider (dogfood 裁决 v2)', () => {
 
       const m = await page.evaluate(() => {
         const sidebar = document.querySelector('.board-sidebar')!;
-        const topbar = document.querySelector('.res-topbar')!;
+        const topbar = document.querySelector('[data-testid="resource-topbar"]')!;
         const nav = document.querySelector('.sidebar-nav')!;
         return {
           seamColor: getComputedStyle(sidebar).borderRightColor,

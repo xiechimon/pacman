@@ -178,12 +178,14 @@ export function MachinesPage() {
                       // role="img" + aria-label 给读屏报名字，title 给悬停提示。
                       // mark 仍是装饰（aria-hidden）；on/off 两态由 mark 的
                       // 实色/35% 透明承载（enabledRuntimes 全仓只写不读，#503），
-                      // data-on 是状态断言载体（原 .mach-runtime--on 修饰类）。
+                      // data-enabled 是状态断言载体（原 .mach-runtime--on 修饰类；
+                      // 不叫 data-on——那是行内在线点 OnlineDot 的既有载体，
+                      // 两者同屏，名字撞了选择器就分不开）。
                       <span
                         className="flex items-center"
                         key={runtime}
                         data-runtime={runtime}
-                        data-on={on}
+                        data-enabled={on}
                         role="img"
                         aria-label={RUNTIME_LABELS[runtime]}
                         title={RUNTIME_LABELS[runtime]}
