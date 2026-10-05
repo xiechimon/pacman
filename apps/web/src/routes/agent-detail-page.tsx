@@ -771,7 +771,10 @@ function NameRow({ value, onCommit }: { value: string; onCommit: (next: string) 
       labelClassName="agent-field-label"
       valueClassName="profile-value--grow"
     >
-      <input
+      {/* #855：名称编辑进 Input 原语。几何/皮肤仍由 .agent-name-input
+          per-face（unlayered 压底座同名位）；focus 行为收敛底座环（#849 方向），
+          不再是 UA 默认 outline。 */}
+      <Input
         id="agent-name-input"
         ref={inputRef}
         className="agent-name-input"

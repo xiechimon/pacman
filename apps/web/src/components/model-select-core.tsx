@@ -18,6 +18,7 @@ import type { ChiefCompactionModel } from '@pacman/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ModelOption } from '../fixtures/records.js';
 import { Check, Search } from '../icons/index.js';
+import { Input } from './ui/input.js';
 
 /** 模型维槽值：对象形 {provider, modelId}（chiefCompactionModelSchema 同构；
  *  agent 面的两字段拼成同形传入）。modelId null = 槽未设；provider null 仅
@@ -249,7 +250,10 @@ export function ModelPickList({
       {searchOpen && (
         <div className="chief-pick-search">
           <Search width={14} height={14} />
-          <input
+          {/* #855：typeahead 搜索框进 Input 原语。可见皮肤挂容器行
+              （.chief-pick-search 36px 框），框内 input 须保持视觉中性——
+              中性类 + chief.css 的 :focus-visible 护栏把底座的环并掉。 */}
+          <Input
             ref={inputRef}
             className={SEARCH_INPUT_CLASS}
             value={query}

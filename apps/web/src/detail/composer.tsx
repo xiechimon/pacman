@@ -250,6 +250,9 @@ export function Composer({
         <ComposerChips draft={draft} files={mentionFiles} suspended={inlineOpen || slashOpen} />
         <AttachmentStrip draft={draft} pending={pendingAttachments} />
       </div>
+      {/* deliberate-native（#855）：隐藏的文件选择触发器（display:none，
+          编程式打开），可见皮肤在附件 Button 上；Input 原语是可见输入框皮肤，
+          此处无可收编之物。 */}
       <input
         ref={fileInputRef}
         type="file"
