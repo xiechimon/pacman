@@ -26,7 +26,7 @@ input.tsx
 
 （上面这段是机器门读的冻结名单：`src/ui/` 里出现名单外的新件即报错——迁移期的删除不报错。）
 
-## 二、新轨原语（23）
+## 二、新轨原语（25）
 
 <!-- inventory:new-track -->
 ```text
@@ -49,14 +49,16 @@ panel.tsx                # 静息内容容器消解（Panel/PanelHead/PanelRow/P
 popover.tsx
 seeded-avatar.tsx        # dicebear 种子头像适配层（src 覆盖 > name 种子 > 兜底换图，img 常驻 DOM）；头像一律用它
 select.tsx               # 单选下拉（触发钮 + FloatingShell 弹层 + role=listbox）；**别再用原生 `<select>`**——它弹的是系统菜单，跟自制弹层并排就是两套弹窗
+status-chip.tsx          # 任务状态五态 chip（idle/plan/confirm/done/failed，皮肤 = --chip-* token 对）；落在 badge.tsx 上，状态载体 data-tone；替旧轨 ui/chip.tsx（正典表 spec/22 §5.2，#942）
 switch.tsx               # 仓内偏离：thumbClassName 适配口
 tag-chip.tsx             # 用户数据色标签 chip（tag.color 走 inline style 白字）；落在 badge.tsx 上，别新建皮肤件
 tabs.tsx
+textarea.tsx             # 多行输入（registry base-nova；仓内偏离：rounded-none 方角与 input.tsx 同语言）；**别摆裸 `<textarea>`**——老 .dlg-form-textarea 族已退役（spec/22 §5.3）
 toaster.tsx              # toast 原语（sonner，shadcn 官方配方；#631）：App 根挂一次 <Toaster />，任意处 imperative `toast.*`；**失败反馈别再造静默 catch**——异常/toast 一律走它
 ```
 <!-- /inventory:new-track -->
 
-**上游重拉纪律**：`button.tsx`（#414/#423/#425 三处偏离）与 `switch.tsx`（#423 一处）记了仓内偏离，重拉 shadcn 上游时**勿丢**——丢一处就顶掉 focus 环或 per-face 几何契约，视觉 e2e 会红。
+**上游重拉纪律**：`button.tsx`（#414/#423/#425 三处偏离）、`switch.tsx`（#423 一处）与 `textarea.tsx`（#942 一处：rounded-none）记了仓内偏离，重拉 shadcn 上游时**勿丢**——丢一处就顶掉 focus 环或 per-face 几何契约，视觉 e2e 会红。
 
 ## 三、什么时候用哪个
 
@@ -64,6 +66,8 @@ toaster.tsx              # toast 原语（sonner，shadcn 官方配方；#631）
 |---|---|---|
 | 按钮 / 图标按钮 | `components/ui/button.tsx` | 别新写 `<button>` + 自造类 |
 | 输入框 | `components/ui/input.tsx` | 别沿用旧轨 `ui/input.tsx` 新起消费点 |
+| 多行输入 | `components/ui/textarea.tsx` | 别摆裸 `<textarea>` / 别沿用 `.dlg-form-textarea` 老类 |
+| 任务状态 chip（五态） | `components/ui/status-chip.tsx`（退役正典表 = spec/22 §5，#942） | 旧轨 `chip.tsx` 退役中，别加新消费 |
 | 开关 | `components/ui/switch.tsx` | — |
 | 标签页 | `components/ui/tabs.tsx` | — |
 | 计数 / 标签 pill | `components/ui/badge.tsx`（状态色族） | 旧轨 `chip.tsx` 待退役，别加新消费 |
