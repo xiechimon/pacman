@@ -9,6 +9,8 @@
 export * from './agent-backend.js';
 export * from './attachment-token.js';
 export * from './brand.js';
+// #958：运行简报落 worktree 上下文文件的词表与落点判定（spec 24）。
+export * from './brief-file.js';
 export * from './git-ops.js';
 export * from './phase.js';
 export * from './protocol/index.js';
