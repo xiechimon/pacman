@@ -27,6 +27,10 @@ import { expect, test } from '@playwright/test';
 //    skills 排序接真 / account-swap wontfix / transcript 折叠接真）。
 // 15. #318 桩群校准（更多菜单完成·关闭 / 开始任务统一面 / 查看方案 /
 //    任务行导航 / 未保存闸）。
+// 16. 详情 transcript 恢复死形移除（#884）：捕获里 copy 旁的 restore 图形
+//    无 build 级 rewind 对象面（checkpoint 数据源 per-step、相位机无反向
+//    边、daemon restore 无 server 发起派发通道；参考站点击行为未实测
+//    r3 §3.5）——#634 律形不带义即 bug，图形与数据字段一并移除，本册钉死。
 // 第 5 项（skills 添加技能主钮）已随 spec 13（#367）整体退役——技能改本地
 // 目录只读投影，空态主钮不再存在（出账断言并入第 9 项，导航面钉在
 // skills-readonly.spec.ts；XMON-114 写面回摆后改名 skills-page.spec.ts）。
@@ -534,4 +538,33 @@ test('new-task dialog gates unsaved closes and resets on discard (#318)', async 
   await expect(dialog).toBeHidden();
   await page.locator('.sidebar-new-task').click();
   await expect(dialog.locator('.new-task-spec')).toHaveValue('');
+});
+
+// —— 16. 详情 transcript 恢复死形移除（#884）————————————————————————
+
+// The captures (r7 17/28, r8 63/65) show a restore glyph beside the footer
+// copy. This product has no build-level rewind object surface to hang it
+// on: the checkpoint data source is per-step (step.checkpointCommit, the
+// merge step's landing key), the phase machine carries no reverse edge,
+// the daemon's reset --hard + clean -fd restore has no server-initiated
+// dispatch path, and the reference's own click behavior was never observed
+// (r3 §3.5 / 02 §4.2 both mark it [推断]). #634 law: a shape without
+// semantics is the bug — the glyph and its data field are gone. The chief
+// drawer's 恢复到此处 keeps its wired chat-rewind semantics (pinned in
+// chief-drawer-model.spec.ts).
+test('detail transcript action rows carry no restore glyph (#884)', async ({ page }) => {
+  await page.goto('/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=36');
+  // Positive control: the action-row family still renders and the copy is
+  // still the real button (#634) — the absence assertions below must not
+  // pass vacuously on a page that failed to render.
+  await expect(page.locator('.chat-row-icons .chat-copy').first()).toBeVisible();
+  // The dead shape is gone from every action row of the transcript column,
+  // identified by the Restore glyph's own outline (icons/Restore.tsx).
+  await expect(page.locator('.chat-col path[d^="M3 12a9"]')).toHaveCount(0);
+  // The user row's action row is exactly the copy button: one glyph, and
+  // it sits inside its button (the task-start bubble row carries a
+  // taskline between the bubble and the action row).
+  const userRow = page.locator('.chat-row:has(.chat-bubble) ~ .chat-row-icons').first();
+  await expect(userRow.locator('svg')).toHaveCount(1);
+  await expect(userRow.locator('button svg')).toHaveCount(1);
 });

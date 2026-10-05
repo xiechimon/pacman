@@ -2,8 +2,8 @@
 // states and in #75 for the r8 dynamic states): centered run stamps and
 // dim note lines, the scheduled marker, user bubbles with optional
 // taskline, robot paragraphs with mono code chips / quote blocks /
-// numbered findings, message action rows (copy + optional restore +
-// optional `| 完成 Ns` + optional chevron, r7 17/28 + r8 63/65/73), the
+// numbered findings, message action rows (copy + optional `| 完成 Ns` +
+// optional chevron, r7 17/28 + r8 63/65/73), the
 // chief-origin marker, the failed-run message (r8 54/73), the collapsed
 // plan card, the live streaming row and the tool-call group. Row geometry
 // from the r7 16/17/26/27/28/36/38 and r8 54–77 captures; CONTEXT.md canon
@@ -25,7 +25,6 @@ import {
   Copy,
   ExternalLink,
   FileTab,
-  Restore,
   Terminal,
 } from '../icons/index.js';
 import { ChatMarkdown } from './chat-markdown.js';
@@ -65,11 +64,10 @@ function formatElapsed(seconds: number, t: TFunc): string {
 }
 
 /** Message action row (r7 17/28, r8 63/65/73, #634 follow-up re-measured
- *  2026-10-02): optional copy button, optional restore icon, then the
- *  optional `| 完成 Ns` elapsed tail. Every footer variant observed is a
- *  subset of this one row. With `toggle` the elapsed tail + chevron render
- *  as the tool group's expand/collapse button (#306) instead of static
- *  nodes.
+ *  2026-10-02): optional copy button, then the optional `| 完成 Ns` elapsed
+ *  tail. Every footer variant observed is a subset of this one row. With
+ *  `toggle` the elapsed tail + chevron render as the tool group's
+ *  expand/collapse button (#306) instead of static nodes.
  *
  *  #634 follow-up: the reference footer's copy is a REAL button (measured:
  *  robot row copies the message markdown, the user row copies the todo
@@ -78,16 +76,25 @@ function formatElapsed(seconds: number, t: TFunc): string {
  *  decoration on every row and the robot/plan footers carried an inert
  *  `›`: shape without semantics. Now `copy` carries the row's human
  *  readable text (absent = no copy affordance at all) and the chevron
- *  renders only where `toggle` gives it something to expand. */
+ *  renders only where `toggle` gives it something to expand.
+ *
+ *  #884: the captures also show a restore glyph beside the copy (reference
+ *  hover button, r3 §3.5). It renders here no more: this product has no
+ *  build-level rewind object surface to hang it on — the checkpoint data
+ *  source is per-step (`step.checkpointCommit`, the merge step's landing
+ *  key), the phase machine carries no reverse edge, the daemon's
+ *  `reset --hard + clean -fd` restore has no server-initiated dispatch
+ *  path, and the reference's own click behavior was never observed (r3
+ *  §3.5 / 02 §4.2 both mark it [推断]). Same law as #634: a shape without
+ *  semantics is the bug, so the glyph and its data field are gone. The
+ *  chief drawer's 恢复到此处 keeps its wired chat-rewind semantics. */
 function ActionRow({
-  restore,
   seconds,
   bare,
   copy,
   t,
   toggle,
 }: {
-  restore?: boolean;
   seconds?: number;
   /** `完成` with no seconds (reused-plan card, r8 76). */
   bare?: boolean;
@@ -131,7 +138,6 @@ function ActionRow({
           <Copy width={13} height={13} />
         </Button>
       )}
-      {restore === true && <Restore width={13} height={13} />}
       {toggle == null ? (
         tail
       ) : (
@@ -285,7 +291,7 @@ function Row({
           {/* #634 follow-up: the user row's copy is real too — the bubble's
               own text (the reference copies its todo markdown link here;
               our share surface for that is the 更多 menu's 复制链接). */}
-          <ActionRow restore copy={item.markdown ?? item.text} t={t} />
+          <ActionRow copy={item.markdown ?? item.text} t={t} />
         </>
       );
     case 'robot':
@@ -306,12 +312,7 @@ function Row({
             )}
           </span>
           {item.footer != null && (
-            <ActionRow
-              restore={item.footer.restore}
-              seconds={item.footer.seconds}
-              copy={robotCopyText(item)}
-              t={t}
-            />
+            <ActionRow seconds={item.footer.seconds} copy={robotCopyText(item)} t={t} />
           )}
         </div>
       );
