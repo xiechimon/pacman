@@ -79,7 +79,12 @@ export function useChatFollow({ ref, dep, reversed, active = true, resetDep }: C
       };
       el.addEventListener('scroll', onScroll, { passive: true });
       bound.current = { el, onScroll };
-      onScroll();
+      // A scroller that just appeared opens on its newest row, so this is a
+      // reset rather than a read: syncing `stick` from a first paint that has
+      // not been positioned yet would read "scrolled back" on a fresh mount
+      // and leave the conversation parked at its oldest row.
+      stick.current = true;
+      scrollToNewest(el, reversed);
     }
     return el;
   }, [ref, reversed]);
