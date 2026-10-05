@@ -1,0 +1,170 @@
+/* PROTOTYPE base sheet (#909). Mirrors the real app's cascade contract:
+   tailwindcss + tw-animate-css first (TW4 only honors @theme in the sheet
+   that imports tailwindcss), then the token layers, then the three candidate
+   theme files (generated — see scripts/gen-palettes.mjs). */
+
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./fonts.css";
+@import "./motion.css";
+@import "./dialog.css";
+@import "../themes/a.css";
+@import "../themes/b.css";
+@import "../themes/c.css";
+
+/* pacman inversion convention (#106): dark = :root default, light = .light
+   on the root element; dark:* compiles against :not(.light). */
+@custom-variant dark (&:where(:not(.light):not(.light *)));
+
+@theme inline {
+  /* official shadcn semantic slots */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-column: var(--column);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  /* P0 semantic slots (#787 architecture, reused verbatim) */
+  --color-spot-soft: var(--spot-soft);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger-soft: var(--danger-soft);
+  --color-spot-text-on-tint: var(--spot-text-on-tint);
+  --color-spot-disabled: var(--spot-disabled);
+  --color-spot-disabled-fg: var(--spot-disabled-fg);
+  /* repo supplement family aliases (app.css parity) */
+  --color-content: var(--text-primary);
+  --color-content-secondary: var(--text-secondary);
+  --color-content-tertiary: var(--text-tertiary);
+  --color-content-dim: var(--text-dim);
+  --color-line: var(--border-default);
+  --color-line-strong: var(--border-strong);
+  --color-surface: var(--surface);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-surface-tertiary: var(--surface-tertiary);
+  --color-surface-inset: var(--surface-inset);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
+  --color-card-bg: var(--card-bg);
+  --color-card-border: var(--card-border);
+  --color-col-bg: var(--col-bg);
+  --color-col-head-text: var(--col-head-text);
+  /* radius family (official multiplier shape, #412) */
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+@layer base {
+  [data-slot] {
+    border-color: var(--border);
+  }
+}
+
+/* non-color token layer (tokens.css parity, minus what the variant themes
+   carry: radius/shadows/drop-tint live per-variant) */
+:root {
+  --dur-fast: 150ms;
+  --dur-overlay: 200ms;
+  --dur-drawer: 300ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0.2, 1);
+  --ease-pop: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --z-docked: 10;
+  --z-backdrop-low: 20;
+  --z-panel-low: 21;
+  --z-catcher: 29;
+  --z-popover: 30;
+  --z-confirm: 31;
+  --z-hint: 40;
+  --z-modal-scrim: 40;
+  --z-modal: 41;
+  --z-dialog: 50;
+  --z-gate: 60;
+  --z-picker: 80;
+
+  --font-sans:
+    var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+  --font-mono: ui-monospace, "JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, monospace;
+
+  --surface-inset: var(--background);
+  --card-bg: var(--card);
+  --popover-bg: var(--popover);
+  --text-primary: var(--foreground);
+  --code-bg: var(--muted);
+  --danger: var(--destructive);
+  --card-border: var(--border-default);
+
+  --edge-ring: inset 0 0 0 1px var(--border-default);
+  --fab-shadow: var(--edge-shadow);
+  --chief-shadow: 0 4px 24px rgb(0 0 0 / 0.35);
+  --drag-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  --board-col-min: 280px;
+  color-scheme: dark light;
+}
+
+.light {
+  --chief-shadow: 0 4px 24px rgb(28 25 23 / 0.16);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+svg {
+  display: block;
+}
+
+/* #388 global focus ring canon */
+:where(button, a, [role="button"], summary, input, select, textarea):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+:where(button, a, [role="button"], summary, input, select, textarea):focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ClickCatcher (overlays/dismiss stub) */
+.overlay-click-catcher {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-catcher);
+  background: transparent;
+  border: 0;
+  padding: 0;
+}

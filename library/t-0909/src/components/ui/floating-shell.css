@@ -1,0 +1,22 @@
+/* FloatingShell 锚定 pop 族的退场 visibility 桥（#656）。面板退场由
+   group-data-closed/fshell:animate-out 承载，但 Base UI 只在 Popup 本体有进行中
+   动画时才延迟卸载（getAnimations 不看子树），故壳挂一条零视觉的 visibility 延迟
+   过渡撑住卸载窗（--dur-fast = 150ms ≥ 面板 duration-100），让面板 animate-out
+   播完再卸。各锚定面共用本类（FloatingShell className 叠 anchored-pop-shell）；
+   已有各自壳类的老面（more-menu-shell / mention-picker-shell /
+   ui-select-shell）配方同此。 */
+.anchored-pop-shell {
+  transition: visibility 0s linear var(--dur-fast);
+}
+
+.anchored-pop-shell[data-ending-style] {
+  visibility: hidden;
+}
+
+/* 200ms 面（duration-200 的 fade 族：sched-form scrim / new-task discard，
+   沿旧 --dur-overlay 时序）用本变体撑满退场窗——桥短于面板会把 fade 拦腰
+   截断。与基类叠用（anchored-pop-shell anchored-pop-shell--slow），同特异性
+   后位胜出。 */
+.anchored-pop-shell--slow {
+  transition: visibility 0s linear var(--dur-overlay);
+}

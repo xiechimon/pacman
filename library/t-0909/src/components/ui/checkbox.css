@@ -1,0 +1,96 @@
+/* 复选原语（XMON-75 建、XMON-72 收口、#690 迁 Base UI 官方件、#789 P2 落 V2
+   骨架与手作动效）：全仓复选形态的唯一持值文件——16px 方角 tile、圆角 0、
+   开态 --card-button 实底 + 主题色勾（--text-on-accent 经 currentColor 进勾，
+   亮白字 / 暗深字）；关态透明底 + 1px --border-strong 内描边。新复选面一律
+   消费本件，不另写 tile CSS。tile 本体 = Checkbox.Root 的 span
+   （role=checkbox），状态样式走官方 data-checked / data-unchecked 钩子；
+   隐藏 input 的定位与遮蔽由官方件内联样式持有，本文件不再垫 input。
+   手作动效（base-ui-theme §1.2，同面单机制：本面无 animate-in/keyframe，
+   grep 可复核）：勾选 = 底色 100ms ease-out 反相 + 勾 scale .5→1 微
+   overshoot 140ms（cubic-bezier(0.34, 1.4, 0.64, 1)）；取消 = 勾缩退 90ms +
+   底色回翻 100ms；复选行 press = tile 缩 0.92，80ms ease-out。 */
+
+.ui-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.ui-checkbox-tile {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 0;
+  background: var(--card-button);
+  color: var(--text-on-accent);
+  transition:
+    background-color 100ms ease-out,
+    box-shadow 100ms ease-out,
+    transform 80ms ease-out;
+}
+
+.ui-checkbox-tile[data-unchecked] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border-strong);
+}
+
+/* hover 未勾选框描边提示可点（原型 L342）：墨线框换主题色，只在细指针上
+   加（与 motion.css #73 的 hover 门同律，粗指针无 hover 态）。 */
+@media (hover: hover) and (pointer: fine) {
+  .ui-checkbox:hover .ui-checkbox-tile[data-unchecked] {
+    box-shadow: inset 0 0 0 1px var(--card-button);
+  }
+}
+
+/* 复选行 press：tile 缩 0.92（原型 L330），transition 见 tile 本体 80ms 档。 */
+.ui-checkbox:active .ui-checkbox-tile {
+  transform: scale(0.92);
+}
+
+/* Indicator 层 display:flex（官方示例同款）：inline 布局下 svg 会吃基线
+   缝隙，勾将偏离 tile 几何中心。进场 140ms 微 overshoot / 退场 90ms ease-out
+   缩退：transition 取目的态的值——进场目的态是基类（140ms overshoot），
+   退场目的态是 [data-ending-style]（90ms ease-out），故两档各写一处。 */
+.ui-checkbox-indicator {
+  display: flex;
+  transition:
+    opacity 140ms cubic-bezier(0.34, 1.4, 0.64, 1),
+    transform 140ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.ui-checkbox-indicator[data-starting-style] {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+/* #771 的 display:none 已退役：当时无退出动效，ending 帧里透明底 tile 上还
+   画着勾就是“关闭闪一下”；#789 起退场是 90ms 真动效，ending 帧即动效本身，
+   藏掉它等于删掉取消动效。 */
+.ui-checkbox-indicator[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.6);
+  transition:
+    opacity 90ms ease-out,
+    transform 90ms ease-out;
+}
+
+/* 仓级 focus 环 canon（#388）：2px 实线 --focus-ring + offset 2。#690 起
+   焦点落在 Root 本体（tabIndex=0 的 span），环直接画在 tile 上。 */
+.ui-checkbox-tile:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+/* D4：勾选微动效在 prefers-reduced-motion 下静止（motion.css 全局 reset 只
+   管 keyframe，transition 各文件自理——tab pill 先例同此）。 */
+@media (prefers-reduced-motion: reduce) {
+  .ui-checkbox-tile,
+  .ui-checkbox-indicator,
+  .ui-checkbox-indicator[data-ending-style] {
+    transition: none;
+  }
+}
