@@ -26,7 +26,10 @@
    0/1) stay scoped inside this plane. */
 .chief-drawer {
   flex: none;
-  width: 418px;
+  /* #932: the docked panel is the detail shell's fourth fixed column; below
+     the same 768px fold the shell degrades to one column, and a 418px panel
+     would re-introduce the clip this fold removes (detail-narrow N4). */
+  width: min(418px, 100%);
   background: var(--surface);
   border-left: 1px solid var(--border-default);
   display: flex;
