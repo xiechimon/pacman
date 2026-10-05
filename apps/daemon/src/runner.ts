@@ -674,6 +674,36 @@ export async function runStep(
     });
   }
 
+  // —— #931 返工轮的 git 半边：fresh session 步（restart 复用 PR build 的
+  // 首步；plan 交接缺失强制轮同判据族）在 reused worktree 上回退到分支头——
+  // 上一失败轮的未提交残渣（失败步不 commit，残渣只可能来自半途失败）不带入
+  // 新会话轮（「只复用分支、上下文真空」的完整语义：会话真空之外工作区也
+  // 回到分支已提交态，返工从原 PR 的 HEAD 继续）。review 步有自身的收尾回退
+  // 护栏（下方 checkout rewind），不进本面；fresh worktree（孤儿回收后重建）
+  // 本就来自 origin/<branch>，无需回退。——
+  if (
+    ws !== null &&
+    deps.workspace &&
+    claimed.session.action === 'new' &&
+    !isReview &&
+    ws.reused &&
+    headAtStart !== null
+  ) {
+    try {
+      await deps.workspace.restoreCheckpoint(ws.cwd, headAtStart);
+      logger.workspace('返工新会话：工作区回退到分支头');
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      logger.step(`fresh-session worktree reset failed: ${reason}`);
+      transcript.upsert({
+        id: `fresh-reset-${stepId}`,
+        role: 'system',
+        content: `新会话轮未能回退工作区到分支头（${reason}）——上一轮未提交的改动可能带入本轮`,
+        createdAt: now(),
+      });
+    }
+  }
+
   // heartbeat 续活（失败不打断执行——与 presence 同纪律 [推断]）。
   const heartbeat = setInterval(() => {
     client.heartbeat(stepId).catch(() => {});

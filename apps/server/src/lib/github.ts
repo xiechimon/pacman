@@ -87,6 +87,46 @@ async function readJson(
   return (await readJsonFull(fetchImpl, url, headers)).data;
 }
 
+/** PR 状态探测结果（#931 restart 复用判定的 merged/closed 面）：
+ * state = GitHub PR `state` 字段（open/closed）；merged = `merged` 布尔。 */
+export interface GithubPullState {
+  state: 'open' | 'closed';
+  merged: boolean;
+}
+
+/** 单条 PR 状态只读探测（#931）：GET /repos/{o}/{r}/pulls/{n}。null = 未知
+ * （网络/404/限流/响应形坏不区分——「查不到」不构成新分支的依据，fail-open
+ * 语义归调用方）。token 可空（匿名梯，公开仓可达；私仓 404 = 未知）。单次
+ * 尝试、FETCH_TIMEOUT_MS 上界，不重试——readJsonFull 的 HttpError 映射在
+ * 这里收敛为 null（探测是判定的辅助面，不是用户请求的主错误面）。 */
+export async function githubPullState(
+  fetchImpl: FetchLike,
+  token: string | null,
+  owner: string,
+  repo: string,
+  prNumber: number,
+): Promise<GithubPullState | null> {
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`;
+  let data: unknown;
+  try {
+    const res = await fetchImpl(url, {
+      headers: {
+        ...API_HEADERS,
+        ...(token !== null ? { authorization: `Bearer ${token}` } : {}),
+      },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+    data = await res.json();
+  } catch {
+    return null;
+  }
+  if (typeof data !== 'object' || data === null) return null;
+  const { state, merged } = data as { state?: unknown; merged?: unknown };
+  if (state !== 'open' && state !== 'closed') return null;
+  return { state, merged: merged === true };
+}
+
 function mapFetchThrow(url: string, err: unknown): HttpError {
   if (err instanceof DOMException && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
     return new HttpError(502, `github fetch timeout after ${FETCH_TIMEOUT_MS}ms: ${url}`);

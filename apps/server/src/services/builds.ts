@@ -14,6 +14,7 @@ import type {
   Phase,
   ReviewGate,
   ReviewVerdict,
+  SecretBox,
   StepJournalRow,
   StepRecord,
   TriggerSource,
@@ -27,13 +28,16 @@ import {
   buildRestartPrompt,
   buildReviewRejectPrompt,
   buildReviewStepPrompt,
+  buildReworkNewBranchNote,
+  buildReworkReuseNote,
+  conversationBranch,
   hasBlockingFinding,
   MERGE_ANNOUNCEMENT,
   REVIEW_ANNOUNCEMENT,
   REVIEW_VERDICT_KIND,
   STOP_MESSAGE,
 } from '@pacman/shared';
-import { and, asc, eq, inArray, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, ne, or } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
   agent,
@@ -48,6 +52,7 @@ import {
   todo,
 } from '../db/schema.js';
 import { HttpError } from '../lib/errors.js';
+import { type FetchLike, githubPullState } from '../lib/github.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
 import { agentForStep, runtimeGatePasses, stepRuntimeFor } from './dispatch-eligibility.js';
 import {
@@ -60,6 +65,7 @@ import {
 } from './dispatch-timeouts.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { hasRepoBinding, readBuildChanges } from './git.js';
+import { openGithubToken } from './github-connection.js';
 import type { MachineWakeHub } from './machines.js';
 import { assertPhaseTransition, canTransitionPhase } from './phase.js';
 import { getTodo, setTodoPhase } from './todos.js';
@@ -78,6 +84,12 @@ export interface BuildDeps {
   /** 托管 bare repo 根（#511 审核关口变更材料 = readBuildChanges 的计算位；
    * 缺省 = 无变更面（读不到 = 材料如实写「无改动」）。 */
   reposDir?: string;
+  /** #931 返工复用判定：github PR 状态探测的 token 解密位
+   * （openGithubToken 同族）；缺省 = 匿名探测（公开仓可达）。 */
+  box?: SecretBox;
+  /** #931：GitHub 出站注入位（AppContext.githubFetch 同族；缺省
+   * globalThis.fetch，测试注入 mock——零真实出站）。 */
+  githubFetch?: FetchLike;
 }
 
 type BuildRow = typeof build.$inferSelect;
@@ -289,6 +301,10 @@ function enqueueStep(
   /** [内部] 续轮指令（step.prompt）：驳回 feedback 注入重规划轮（r5 §4「v2
    * 忠实执行反馈」的宿主等价物）；claim 载荷 instruction 位透出。 */
   prompt?: string,
+  /** [内部] #931 返工轮边界：本步强制新引擎会话（claim session.action='new'
+   * + 会话亲和闸放行）。置位 = restart 复用 PR build 的首步；后续步照常续接
+   * 本轮新开的会话。 */
+  freshSession?: boolean,
 ): StepRecord {
   const id = newRecordId(); // base64 样 21 字符（r5 §3.1 claim step=…）
   const createdAt = nowMs();
@@ -301,6 +317,7 @@ function enqueueStep(
       machineId: null,
       status: 'pending',
       prompt: prompt ?? null,
+      freshSession: freshSession === true,
       createdAt,
     })
     .run();
@@ -409,6 +426,61 @@ export function startBuilds(
   return created;
 }
 
+// —— #931 返工目标判定（restart 分支消费）———————————————————————————
+
+/** todo 最新的「产过 PR 的 build」（prUrl/prNumber 任一非空 = daemon 步收尾
+ * 探测回填在位，github 形态独有）。更旧的 PR build 属被取代分支（存量收敛
+ * 规则 = spec 23）；无 → null（返工走现行新 build 路）。 */
+function latestPrBuild(db: Db, todoId: string): BuildRow | null {
+  return (
+    db
+      .select()
+      .from(build)
+      .where(and(eq(build.todoId, todoId), or(isNotNull(build.prUrl), isNotNull(build.prNumber))))
+      .orderBy(desc(build.createdAt))
+      .all()
+      .at(0) ?? null
+  );
+}
+
+/** 复用目标的 PR 状态判定（#931 失败方式 3）：open / 探测不到 → null（复用
+ * ——探测失败时盲开新分支会把本票的 bug 原样带回来，而误复用已合并分支只是
+ * 提交落旧分支〔可见、可收拾〕，代价不对称）；closed → 'merged' | 'closed'
+ * （允许新分支，判定经 note 可见）。探测只对 github 形态项目出站（hosted/
+ * local 生产不落 PR 字段，探测无从下手——直插/存量形态 fail-open 复用）；
+ * prNumber 缺位的存量形（仅 prUrl）不猜号，fail-open 复用。 */
+async function probeReworkTargetPr(
+  deps: BuildDeps,
+  target: BuildRow,
+  todo: { projectId: string; teamId: string },
+): Promise<'merged' | 'closed' | null> {
+  if (target.prNumber === null) return null;
+  const projRow = deps.db.select().from(project).where(eq(project.id, todo.projectId)).get();
+  if (projRow?.repoKind !== 'github' || projRow.githubRepo === null) return null;
+  const slash = projRow.githubRepo.indexOf('/');
+  const owner = projRow.githubRepo.slice(0, slash);
+  const repo = projRow.githubRepo.slice(slash + 1);
+  // token 阶梯：github_connection（已连接）→ 匿名（公开仓可达）。密文损坏/
+  // box 缺席按未连接处理（探测是辅助面，不把 restart 请求 500 掉）。
+  let token: string | null = null;
+  if (deps.box) {
+    try {
+      token = openGithubToken({ db: deps.db, box: deps.box }, projRow.teamId);
+    } catch {
+      token = null;
+    }
+  }
+  const state = await githubPullState(
+    deps.githubFetch ?? fetch,
+    token,
+    owner,
+    repo,
+    target.prNumber,
+  );
+  if (state === null || state.state === 'open') return null;
+  return state.merged ? 'merged' : 'closed';
+}
+
 /** 确认回路（02 §4.2，r5 §4 实走）：POST /api/builds/{id}/steps
  * - {action:"confirm"} → confirm→building + 入队执行步（直执行时 building 中
  *   的再确认不适用，409 由流转表兜底）。
@@ -426,7 +498,10 @@ export function startBuilds(
  *   读取，异常经 Promise 拒绝上浮，调用方必须 await。
  * - {action:"restart", feedback, clientMessageId} → 失败面带反馈重启（#320，
  *   r9 §3.3 实测：原站 failed 态发消息触发新一轮，消息随新轮入会话，非
- *   steer 409 语义）：新 build（withPlan 承接失败轮）+ 反馈行落新 conv +
+ *   steer 409 语义）：#931 起 todo 已有产过 PR 的 build 时返工回该 build
+ *   （同 conv 同分支同 PR，首步 freshSession 强制新会话——用户裁定「只复用
+ *   分支、上下文真空」；原 PR 已合并/已关闭才另起新分支 + 判定 note 可见），
+ *   无 PR build 保持现行新 build（withPlan 承接失败轮）+ 反馈行落新 conv +
  *   首步入队（instruction 携反馈，#720 起 daemon 以「任务文本 + 指令」组合
  *   串真投进会话；空白反馈 = 纯重启轮，无反馈行无 instruction）+ failed→queued
  *   漏斗。
@@ -458,6 +533,79 @@ export async function applyBuildStepAction(
     // 钉的旧值不带入），回落 #682 的任务级 todo.machineId（任务默认机器是新
     // 轮的合理起点）。
     const assignment = todoRecord.assignment ?? { plan: null, build: null };
+    // #720 负例守卫：空白反馈（'  '——schema min(1) 拦不住空串以外的空白，
+    // UI composer 的 text!=='' 同拦不住）不成发送：不落空白用户行、不注入
+    // 「用户反馈：「」」空壳指令——纯重启轮（首步 prompt = null，daemon
+    // #720 投递纯任务文本）。
+    const feedbackText = body.feedback.trim() === '' ? null : body.feedback;
+    // —— #931 返工目标判定：todo 已有产过 PR 的 build 时，返工回该 build 的
+    // 分支/PR 继续（buildId ≡ conversationId ≡ 分支名，复用即原 PR 就地更新；
+    // 用户裁定 2026-10-05「一 todo 至多一 open PR」）。目标 = 最新 PR build
+    // （更旧的 PR 属被取代分支，存量收敛规则见 spec 23）。原 PR 已合并/已
+    // 关闭时才允许另起新分支——显式且可见的判定（票面失败方式 3）。——
+    const reworkTarget = latestPrBuild(deps.db, row.todoId);
+    const prClosed: 'merged' | 'closed' | null =
+      reworkTarget !== null ? await probeReworkTargetPr(deps, reworkTarget, todoRecord) : null;
+    if (reworkTarget !== null && prClosed === null) {
+      // —— 复用路：不建新 build——同 conversationId = 同分支 = 原 PR。——
+      const now = nowMs();
+      // 消息先于首步入队（transcript 排序 + machine wake 后置）：反馈行（用户
+      // 话语）+ 轮界 note（system → web note 面：去向 + 被清空 errorMessage 的
+      // 失败原因承接，原因不随轮界蒸发）。
+      if (feedbackText !== null) {
+        insertMessageRow(deps, reworkTarget.id, {
+          id: newRecordId(),
+          role: 'user',
+          content: feedbackText,
+          createdAt: now,
+        });
+      }
+      insertMessageRow(deps, reworkTarget.id, {
+        id: newRecordId(),
+        role: 'system',
+        content: buildReworkReuseNote({
+          prNumber: reworkTarget.prNumber,
+          prUrl: reworkTarget.prUrl,
+          failureReason: reworkTarget.errorMessage,
+        }),
+        createdAt: now,
+      });
+      // 文本单源 = shared buildRestartPrompt（#612/#720 同律）；freshSession =
+      // 返工轮边界（用户裁定「只复用分支、上下文真空」：claim 强制 new
+      // session，daemon 以「任务全文 + 指令」组合串开全新会话）。
+      const restartPrompt = feedbackText !== null ? buildRestartPrompt(feedbackText) : undefined;
+      enqueueStep(
+        deps,
+        reworkTarget.id,
+        reworkTarget.withPlan ? 'plan' : 'build',
+        todoRecord.teamId,
+        restartPrompt,
+        true,
+      );
+      // build 行收尾：errorMessage 清空（原因已进 note）、prevPhase=failed（本
+      // 轮起点）、pin 回落 todo 值（#682 缺省链——失败轮的 pin 不继承，钉选
+      // 语义与新 build 路一致）。
+      deps.db
+        .update(build)
+        .set({
+          errorMessage: null,
+          prevPhase: 'failed',
+          pinnedMachineId: todoRecord.machineId ?? null,
+        })
+        .where(eq(build.id, reworkTarget.id))
+        .run();
+      setTodoPhase(deps, todoRecord.id, 'queued', {
+        assignment,
+        latestBuildId: reworkTarget.id,
+        lastRunAt: now,
+      });
+      const reusedRow = deps.db.select().from(build).where(eq(build.id, reworkTarget.id)).get();
+      if (!reusedRow) throw new Error('build missing after update');
+      publishBuild(deps, reusedRow);
+      return;
+    }
+    // —— 新建路：无 PR build（现行行为，逐字节保持）或原 PR 已合并/已关闭
+    // （prClosed 在位）——新 conversationId = 新分支。——
     const newId = newUuidv7();
     const createdAt = nowMs();
     deps.db
@@ -478,11 +626,6 @@ export async function applyBuildStepAction(
         createdAt,
       })
       .run();
-    // #720 负例守卫：空白反馈（'  '——schema min(1) 拦不住空串以外的空白，
-    // UI composer 的 text!=='' 同拦不住）不成发送：不落空白用户行、不注入
-    // 「用户反馈：「」」空壳指令——纯重启轮（首步 prompt = null，daemon
-    // #720 投递纯任务文本）。
-    const feedbackText = body.feedback.trim() === '' ? null : body.feedback;
     // 消息先于首步入队：transcript 按 createdAt 排序（反馈行在运行行之上），
     // 且 machine wake（enqueueStep 内）发生在消息落库之后。
     if (feedbackText !== null) {
@@ -490,6 +633,21 @@ export async function applyBuildStepAction(
         id: newRecordId(),
         role: 'user',
         content: feedbackText,
+        createdAt,
+      });
+    }
+    // #931 判定可见（票面失败方式 3 /验收 4）：原 PR 已合并/已关闭 → 新 conv
+    // 落 system note 点名旧 PR 与新分支——用户能看出「为什么这次是新 PR」。
+    if (prClosed !== null && reworkTarget !== null) {
+      insertMessageRow(deps, newId, {
+        id: newRecordId(),
+        role: 'system',
+        content: buildReworkNewBranchNote({
+          prNumber: reworkTarget.prNumber,
+          prUrl: reworkTarget.prUrl,
+          branch: conversationBranch(newId),
+          outcome: prClosed,
+        }),
         createdAt,
       });
     }

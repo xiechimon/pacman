@@ -179,6 +179,11 @@ export const step = sqliteTable('step', {
    * （r5 §4「v2 内容忠实执行反馈」宿主等价物）、chief 回合任务文本/wake 事实
    * （r5 §3.1/§3.5）。claim 载荷 `instruction` 位透出。 */
   prompt: text('prompt'),
+  /** [内部] #931 返工轮边界：本步必须开新引擎会话（claim session.action
+   * 强制 'new'，会话亲和闸不挡）。置位 = restart 复用 PR build 的首步（用户
+   * 裁定「只复用分支、上下文真空」——分支继续、会话全新）；后续步照常续接
+   * 本轮新开的会话。 */
+  freshSession: bool('freshSession').notNull().default(false),
   createdAt: epochMs('createdAt').notNull(),
 });
 
