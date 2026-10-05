@@ -200,7 +200,11 @@ export function TeamPage() {
                     {agent.model}
                     {agent.isDefault ? t(' · 默认') : ''}
                   </span>
-                  <span className="text-xs leading-4 text-(--text-dim)">
+                  {/* 职责行墨 --text-dim → --text-tertiary（#947 实测换槽，
+                      #908 裁决 2）：dim×surface-secondary 亮模 2.73 低于 12px
+                      文本 floor 4.5（drive-947 E 面），tertiary 同对实测
+                      5.98/6.55；token 值零改动。 */}
+                  <span className="text-xs leading-4 text-(--text-tertiary)">
                     {agent.role ?? t('未设置职责')}
                   </span>
                 </span>

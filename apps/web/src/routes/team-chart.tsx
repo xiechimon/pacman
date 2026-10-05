@@ -128,8 +128,11 @@ function ChartNode({ agent, crown }: { agent: TeamAgentCard; crown?: boolean }) 
               <ProviderGlyph />
             </span>
           ) : null}
+          {/* 模型行墨 --text-dim → --text-tertiary（#947 实测换槽，#908
+              裁决 2）：dim×surface 亮模 2.89 低于 10px 文本 floor 4.5，
+              tertiary 同对实测 ~6.3/7.6（卡面模型行同墨，域内一致）。 */}
           <span
-            className="truncate font-mono text-[10px] text-(--text-dim)"
+            className="truncate font-mono text-[10px] text-(--text-tertiary)"
             data-testid="team-chart-model"
           >
             {agent.model}
@@ -186,7 +189,7 @@ export function TeamChart({
               即件默认 font-medium，不归零。 */}
           <Button
             variant="ghost"
-            className={`${NODE_CLS} cursor-pointer justify-start border-dashed text-left text-xs font-medium text-(--text-dim) leading-[inherit] hover:bg-(--surface-secondary) hover:text-(--text-dim) dark:hover:bg-(--surface-secondary) aria-expanded:bg-(--surface) aria-expanded:text-(--text-dim) active:not-aria-[haspopup]:translate-y-0`}
+            className={`${NODE_CLS} cursor-pointer justify-start border-dashed text-left text-xs font-medium text-(--text-tertiary) leading-[inherit] hover:bg-(--surface-secondary) hover:text-(--text-tertiary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-(--surface) aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0`}
             onClick={onCreate}
           >
             <span className="flex size-6 flex-none items-center justify-center rounded-full border border-dashed border-(--border-strong)">

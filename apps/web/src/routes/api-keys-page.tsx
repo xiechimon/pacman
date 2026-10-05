@@ -125,7 +125,10 @@ export function ApiKeysPage() {
                     <span className="font-mono text-xs text-(--text-tertiary)">{key.masked}</span>
                   )}
                 </span>
-                <span className="text-(--text-dim)">
+                {/* 箭头墨 --text-dim → --text-tertiary（#947 实测换槽，
+                    #908 裁决 2）：dim×surface-secondary 亮模 2.73 低于非文本
+                    floor 3.0，tertiary 同对实测 5.98/6.55（行内 icon 同墨）。 */}
+                <span className="text-(--text-tertiary)">
                   <ChevronRight width={16} height={16} />
                 </span>
               </div>

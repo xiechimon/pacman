@@ -82,7 +82,7 @@ export function SecondaryShell({
                 a ReactNode slot (a future dropdown trigger rides it) —
                 interactive children opt back in, the detail.css none+auto
                 pattern. */}
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1.5 text-sm font-medium text-(--text-primary) [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_svg]:text-(--text-dim)">
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1.5 text-sm font-medium text-(--text-primary) [&_a]:pointer-events-auto [&_button]:pointer-events-auto [&_svg]:text-(--text-tertiary)">
               {title}
             </div>
             {right != null && (
