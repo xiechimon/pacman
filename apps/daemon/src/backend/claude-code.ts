@@ -43,6 +43,7 @@ import type {
   AgentBackendCapabilities,
   AgentSessionHandle,
   AgentTokenUsage,
+  BriefChannel,
   DeliveredImage,
   LocalToolDef,
   McpEndpoint,
@@ -55,7 +56,7 @@ import type {
 import { z } from 'zod';
 import { claudeCodeAuthFailureMessage } from '../claude-code-auth.js';
 import { SessionNotResumableError } from './errors.js';
-import { appendSkillsCatalog, buildSkillsCatalog } from './pi.js';
+import { composeSkillsSection } from './pi.js';
 
 /** spec 17 :108 能力面。thinkingLevels = SDK effort 五档（pi 七档里
  *  off/minimal 无 SDK 对应——不发 effort 即缺省，见 toEffort）。 */
@@ -727,6 +728,15 @@ export interface ClaudeCodeBackendOpts {
 export class ClaudeCodeBackend implements AgentBackend {
   readonly capabilities = CLAUDE_CODE_CAPABILITIES;
 
+  /** 简报文件通道（#958）：SDK 只在 `settingSources` 含 `'project'` 时读
+   * worktree 的 CLAUDE.md，而该选项缺省即"全部加载"——**这是承重位**：把它显式
+   * 声明成 `[]` 或不含 `'project'`，简报会零报错地消失（#917 口径 3 落地时必须
+   * 保住这一档，见 spec 24）。AGENTS.md 一概不读。 */
+  readonly brief: BriefChannel = {
+    backendId: 'claude-code',
+    composeSections: (opts) => composeSkillsSection(this.opts.skills, opts, this.opts.onSkillsLog),
+  };
+
   constructor(private readonly opts: ClaudeCodeBackendOpts) {}
 
   async createSession(opts: SessionOpts): Promise<AgentSessionHandle> {
@@ -769,18 +779,12 @@ export class ClaudeCodeBackend implements AgentBackend {
     // A13 thinkingLevel → effort：域内透传；off/minimal 缺省不发（SDK 无对应
     // 档）；域外 fail-closed 不猜。
     const effort = toEffort(opts.thinkingLevel);
-    // A9 skills catalog 追加 systemPrompt（pi 同律通道；不采 workdir
-    // CLAUDE.md 写入法——pacman worktree 纪律不容 git status 污染）。
-    const skillsCatalog = this.opts.skills
-      ? buildSkillsCatalog({
-          skillsDir: this.opts.skills.skillsDir,
-          cwd: this.opts.skills.cwd,
-          ...(opts.skillsAllowlist !== undefined ? { allowlist: opts.skillsAllowlist } : {}),
-          ...(opts.teamSkillsDir !== undefined ? { teamSkillsDir: opts.teamSkillsDir } : {}),
-          ...(this.opts.onSkillsLog ? { log: this.opts.onSkillsLog } : {}),
-        })
-      : '';
-    const append = appendSkillsCatalog(opts.systemPrompt, skillsCatalog);
+    // skills catalog 的落点自 #958 起归简报文件通道（见 this.brief）：目录内容由
+    // `composeSections` 产出、runner 写进 worktree 的 CLAUDE.md，SDK 经
+    // `settingSources` 的 'project' 档原生读取（缺省即含 'project'，不得被关）。
+    // 这里只透传 runner 给的 systemPrompt——**只有**不具备简报通道的后端才拿得到
+    // 非空值。
+    const append = opts.systemPrompt;
     // A4 零凭据：不消费 opts.provider（inert 占位）；A11 model verbatim；
     // A13 bypassPermissions + disallowedTools（readOnly 收 Edit/Write；
     // AskUserQuestion 恒拒 = 非交互 daemon 面）。
