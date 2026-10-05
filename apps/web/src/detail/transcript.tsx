@@ -350,7 +350,9 @@ function Row({
             label={item.label}
             startedAt={item.startedAt}
             seconds={item.seconds}
-            disclosure={liveStep != null ? { expand: '展开本步', collapse: '收起本步' } : null}
+            disclosure={
+              liveStep != null ? { expand: '展开实时步骤', collapse: '收起实时步骤' } : null
+            }
           >
             {liveStep != null && (
               <div className="chat-live-panel">
