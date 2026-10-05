@@ -6,8 +6,9 @@
 //      （🎉 时间线 + main 落地真值）。#640：「保存并开始」入口已改直发总管
 //      编排回合，脊柱改走 API 起 build 以保确定性（见 createAndStart 注）；
 //      编排入口覆盖归 server orchestration-source 测 + live verify-pacman。
-//   ② 驳回支线：confirm 关口 composer 发送 feedback → 规划中 → plan v2 →
-//      版本 chip v2 → 确认 → 执行 → 审核（r5 §4 回路 UI 实走）。
+//   ② 驳回支线：confirm 关口 composer 发送 feedback → 服务端重规划（DB 修订步
+//      为证，#880：亚秒 planning 瞬态不做 chip oracle）→ plan v2 → 版本 chip
+//      v2 → 确认 → 执行 → 审核（r5 §4 回路 UI 实走）。
 //   ③ 定时轮停 review：UI 建 once 定时 → scheduler.tick 触发 → 直执行新
 //      build → 停审核关口 + 「由定时发起」时间线标记（r3 §9/02 §9.2）。
 // SSE 断言：build 会话流并行采集 text_delta/message/step 三类事件（02 §1.2
@@ -445,11 +446,19 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     await page.locator('.composer-input').fill('标题去掉项目名后缀');
     // 真实 click：#347 修复后发送钮不再被总管 FAB 遮挡（遮挡回归时这里超时）。
     await page.locator('.composer-send').click();
-    await waitChip(/规划中/);
 
-    // v2 落回 confirm 关口：plan 卡 v2 + 版本 chip v2 + 用户驳回气泡。
-    // （30s 预算同上一处注释——confirm 相位 chip 与会话面不同链。）
-    await waitChip(/确认/);
+    // #880：「规划中」不做 UI oracle。相位 chip 是采样面（S8 canon：SSE 事件只是
+    // 失效提示，chip 文案 = todo 查询快照的 PHASE_UI 映射），而 stub 下修订步
+    // 创建 → v2 落库的 planning 窗口实测仅 175~375ms（2026-10-05 三份 CI dump，
+    // docs/verify/880/）；2vCPU 负载下 SSE→invalidate→refetch 往返恒超窗，每次
+    // 采样都在相位翻回 confirm 之后构建，chip 从未渲染过「规划中」——150s×303
+    // 次轮询全见「确认」（#717 判因同源：亚秒瞬态在采样式架构下不可观察，
+    // #767「留待裁决 1」选项 a）。改钉持久证据：驳回气泡（发送即落库）→
+    // plan 卡 v2 → 版本 chip v2；「相位确实重入规划」由下方 DB 修订步断言钉住
+    // （服务端真值，不依赖瞬态渲染）。30s 预算 = 本文件跨进程断言统一口径。
+    await pexpect(page.locator('.chat-bubble', { hasText: '标题去掉项目名后缀' })).toBeVisible({
+      timeout: 30_000,
+    });
     await withDiagnostics('plan 卡 v2 上屏', () =>
       pexpect(page.locator('.chat-plan-title').last()).toHaveText('方案 · v2', {
         timeout: 30_000,
@@ -458,9 +467,9 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     await pexpect(page.locator('.doc-pane-select').nth(1)).toHaveText(/v2/, {
       timeout: 30_000,
     });
-    await pexpect(page.locator('.chat-bubble', { hasText: '标题去掉项目名后缀' })).toBeVisible();
 
-    // server 真值：plan 两版，v2 内容忠实执行反馈（r5 §4 口径）。
+    // server 真值：plan 两版，v2 内容忠实执行反馈（r5 §4 口径）；第二个 plan
+    // 步（修订步）= 相位重入规划过的持久证据（#880，替代瞬态 chip oracle）。
     const plans = server.db
       .select()
       .from(planTable)
@@ -469,6 +478,12 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
     expect(plans).toHaveLength(2);
     expect(plans[1]!.version).toBe(2);
     expect(plans[1]!.content).toContain('标题去掉项目名后缀-adjusted');
+    const rejectSteps = server.db
+      .select()
+      .from(stepTable)
+      .where(eq(stepTable.buildId, rejectBuildId))
+      .all();
+    expect(rejectSteps.filter((s) => s.kind === 'plan')).toHaveLength(2);
 
     // 版本对比面：下拉 → 与其他版本对比 → 上一版本 = v1 → v2 unified diff。
     // 行集 = v2 + v1 + 对比入口行（reject-chain spec 同款计数口径）。
