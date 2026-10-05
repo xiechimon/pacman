@@ -82,11 +82,12 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 - [skills 执行面注入(daemon)](./skills-injection.md) PACMAN_SKILLS_DIR 扫描→`<available_skills>` catalog 追加进 systemPrompt→agent read SKILL.md 按需加载(#371,spec 14)。daemon 侧无 UI 面,canonical 证据 = integration 真栈探针(skills-inject-e2e)。
 - [Agent 详情编辑面](./agent-detail.md) 团队页 Agent 卡(链接)→ `/app/resources/agents/<id>` 三 tab(概览/记忆/权限)；概览名称行内编辑 + 职责 + 模型选择器落 `PATCH agents/{aid}`，权限 6 开关 + 密钥 + MCP 勾选同路径；创建弹窗两态(有服务商 = 内联模型槽，无 = 告警 + 外链)；定制 probe `scripts/drive-agent-detail.mjs`(#485)。**证实 live 21/21 PASS，证据 docs/verify/485/**。
 - [快捷键组(新任务 C + 空格呼出总管)](./hotkeys.md) 侧栏「新任务」行 C 角标 + 全局 C 开 dialog(board/project 自有面,其余路由 AppSidebar 全局 dialog 同 live save 路径;XMON-41 起 N → C) + Space 呼出抽屉草稿框持焦 + 输入态/按钮态守卫负向 + 抽屉开态裸 N = 新主题(#645,钮载 N 悬浮提示 + aria-keyshortcuts);定制 probe `scripts/drive-hotkeys.mjs`(#389)、键位专测 `scripts/drive-newtask-key.mjs`(XMON-41) 与 `scripts/drive-chief-new-thread-key.mjs`(#645)。fixture 面回归 = e2e hotkeys.spec。
+- [主力机:单机编排默认策略](./chief-primary-machine.md) chief 设置 Agent tab「机器」槽(ChiefMachineSelect,listbox 族沿 new-task 机器 chip;live 写 = PATCH /chief machineId 槽)+ machines 页三态读标注(总管主机/回合进行中/等待机器,orchestration 块 join,零控件)+ 新线程钉选缺省链(todo → chief.machineId → null)+ 未钉线程会话亲和闸(T2 对称)+ 离线超宽限失败文案含主力机出口;定制 probe `scripts/drive-895-primary-machine.mjs`(spec 21 / #895)。**2026-10-05 live 验 14/14 PASS,证据 docs/verify/865/**。
 
 ## 已知未入图面(验到这些别声称 map 覆盖)
 
 - 任务详情页(`/app/todo/:id`)——live 面已铺:3-pane 结构与右 pane 四视图(detail-right-pane)、停止链(stop-button)、AI 审核发起(review-modal)、@提及(mentions)、附件(attachments)、分支同步(branch-sync,#366 起右 pane section 入口)、失败面发送(failed-send)。未铺:plan/changes/diff 文档面内容渲染、transcript 流渲染、编辑分配弹层。
-- 总管抽屉/设置(`.chief-fab` 有 live wiring,数据面未铺)。
+- 总管抽屉/设置(`.chief-fab` 有 live wiring;设置 Agent tab「机器」槽 + 主力机链已入图 = chief-primary-machine.md,其余数据面未铺)。
 - 团队密钥管理页(routes 均在,fixture e2e 有覆盖,live 配方未铺)。技能页已入图 = skills-page.md；MCP 页已入图 = mcp-servers.md(#368)；机器/模型服务两页已铺三面(#354 先行地图:providers-tabs/machines-local-row/provider-picker——spec 11 实现票落地前红态,配方见各 feature 文件)。
 - 看板拖拽改相(`PATCH /api/todos/:id`,#160)——fixture e2e 有 board-dnd 覆盖。
 - 定时(schedules)增删改、项目设置页——fixture e2e/dead-buttons 覆盖,live 配方未铺。

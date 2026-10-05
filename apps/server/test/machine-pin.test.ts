@@ -12,6 +12,8 @@
 //    领不到 chief 步
 // 7. run_builds machineId：显式覆盖；缺省继承 todo 值；null 形 400
 // 8. 0022 回填：存量 [] 机器行 → ['pi']；已开 claude-code 的行不动；SQL 幂等
+// #895 单机编排默认策略（spec 21，主力机缺省链四态 + PATCH 机器槽三态 +
+// orchestration 封套投影）：失败方式 A–H 分列对应 describe 块内注释。
 
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -462,6 +464,230 @@ describe('#682 chief 线程机器亲和', () => {
     await expect(
       relay({ todoIds: [todo3], assignment: { build: { agentId: AGENT_ID } }, machineId: null }),
     ).rejects.toThrow(/machineId must be a machine id or omitted/);
+  });
+});
+
+// —— #895 单机编排默认策略（spec 21）：主力机 chief.machineId 缺省链 +
+// PATCH /chief 机器槽 + GET /chief orchestration 封套 ——————————————————
+
+describe('#895 主力机缺省链（todo 钉 > chief.machineId > null，spec 21 A3）', () => {
+  /** 直插带主力机的 chief 行（PATCH 面另行覆盖；缺省链测试绕开写面）。 */
+  async function bindChiefWithMachine(w: World, machineId: string | null): Promise<string> {
+    const chiefId = `chief-${w.s.user.id}-${w.s.team.id}`;
+    w.s.db
+      .insert(chiefTable)
+      .values({
+        id: chiefId,
+        userId: w.s.user.id,
+        teamId: w.s.team.id,
+        agentId: AGENT_ID,
+        charter: '',
+        createdAt: nowMs(),
+        machineId,
+      })
+      .run();
+    return chiefId;
+  }
+
+  function threadPin(s: TestServer, threadId: string): string | null {
+    return s.db
+      .select({ pin: chiefThreadTable.pinnedMachineId })
+      .from(chiefThreadTable)
+      .where(eq(chiefThreadTable.id, threadId))
+      .get()!.pin;
+  }
+
+  test('失败方式 A：todo 钉选盖过主力机——两边都设时线程落 todo 的机器', async () => {
+    const w = await setupWorld();
+    await bindChiefWithMachine(w, w.machineBId);
+    const todoId = await createTodo(w.s, w.projectId, w.machineAId);
+    const res = await req(w.s.app, 'POST', `/api/todos/${todoId}/orchestrate`, {});
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { thread: { id: string } };
+    expect(threadPin(w.s, body.thread.id)).toBe(w.machineAId);
+  });
+
+  test('失败方式 B：todo 未钉 + 主力机设 → orchestrate 线程与抽屉新主题同落主力机', async () => {
+    const w = await setupWorld();
+    await bindChiefWithMachine(w, w.machineAId);
+    // orchestrate 入口（缺省链第二级接管）。
+    const todoId = await createTodo(w.s, w.projectId);
+    const res = await req(w.s.app, 'POST', `/api/todos/${todoId}/orchestrate`, {});
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { thread: { id: string } };
+    expect(threadPin(w.s, body.thread.id)).toBe(w.machineAId);
+    // 抽屉新主题（POST /chief/threads，同一条缺省链）。
+    const res2 = await req(w.s.app, 'POST', `/api/teams/${w.s.team.id}/chief/threads`, {
+      content: '帮我看看现在的任务',
+    });
+    expect(res2.status).toBe(201);
+    const body2 = (await res2.json()) as { thread: { id: string } };
+    expect(threadPin(w.s, body2.thread.id)).toBe(w.machineAId);
+  });
+
+  test('失败方式 C：双未设 → 线程 pin null（回归红线：与 main 逐语义等价）', async () => {
+    const w = await setupWorld();
+    await bindChiefWithMachine(w, null);
+    const todoId = await createTodo(w.s, w.projectId);
+    const res = await req(w.s.app, 'POST', `/api/todos/${todoId}/orchestrate`, {});
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { thread: { id: string } };
+    expect(threadPin(w.s, body.thread.id)).toBeNull();
+  });
+
+  test('失败方式 D：既有线程不回写——主力机后设，旧未钉线程续消息 pin 仍 null', async () => {
+    const w = await setupWorld();
+    await bindChiefWithMachine(w, null);
+    const first = await req(w.s.app, 'POST', `/api/teams/${w.s.team.id}/chief/threads`, {
+      content: '第一轮',
+    });
+    const { thread } = (await first.json()) as { thread: { id: string } };
+    // 主力机中途落下（PATCH 写面）——既有线程不被重钉（N7：中途换机丢会话
+    // 上下文，creation-time 语义保持）。
+    const patch = await req(w.s.app, 'PATCH', `/api/teams/${w.s.team.id}/chief`, {
+      machineId: w.machineAId,
+    });
+    expect(patch.status).toBe(200);
+    const second = await req(w.s.app, 'POST', `/api/conversations/${thread.id}/messages`, {
+      content: '第二轮',
+    });
+    expect(second.status).toBe(201);
+    expect(threadPin(w.s, thread.id)).toBeNull();
+  });
+});
+
+describe('#895 PATCH /chief machineId 槽（spec 21 A7）', () => {
+  async function patchMachine(
+    w: World,
+    body: Record<string, unknown>,
+  ): Promise<{ status: number; json: () => Promise<unknown> }> {
+    return req(w.s.app, 'PATCH', `/api/teams/${w.s.team.id}/chief`, body);
+  }
+
+  function envelopeMachineId(res: unknown): string | null {
+    const body = res as { chief: { machineId: string | null } };
+    return body.chief.machineId;
+  }
+
+  test('失败方式 E：界外机器 400（todos 同律）；合法 id 落库并经封套透出', async () => {
+    const w = await setupWorld();
+    const bad = await patchMachine(w, { machineId: 'machine-not-in-team' });
+    expect(bad.status).toBe(400);
+
+    const ok = await patchMachine(w, { machineId: w.machineAId });
+    expect(ok.status).toBe(200);
+    expect(envelopeMachineId(await ok.json())).toBe(w.machineAId);
+  });
+
+  test('失败方式 F：null 清回自动；undefined 不动（charter PATCH 不碰 machineId）', async () => {
+    const w = await setupWorld();
+    await patchMachine(w, { machineId: w.machineAId });
+    const cleared = await patchMachine(w, { machineId: null });
+    expect(cleared.status).toBe(200);
+    expect(envelopeMachineId(await cleared.json())).toBeNull();
+
+    // 重设后走「槽缺席」路径：PATCH charter 不带 machineId → 值不动。
+    await patchMachine(w, { machineId: w.machineBId });
+    const untouched = await patchMachine(w, { charter: '优先本机执行。' });
+    expect(untouched.status).toBe(200);
+    expect(envelopeMachineId(await untouched.json())).toBe(w.machineBId);
+  });
+});
+
+describe('#895 GET /chief orchestration 封套（spec 21 A5）', () => {
+  interface OrchestrationBlock {
+    orchestration: {
+      defaultMachineId: string | null;
+      activity: { machineId: string; running: number; waiting: number }[];
+    };
+  }
+
+  async function getEnvelope(w: World): Promise<OrchestrationBlock> {
+    const res = await req(w.s.app, 'GET', `/api/teams/${w.s.team.id}/chief`);
+    expect(res.status).toBe(200);
+    return (await res.json()) as OrchestrationBlock;
+  }
+
+  /** 改写 POST 已入队的 chief 步（封套计数的事实源——每线程恰好一步，不
+   *  另插行以免重复计数）。 */
+  function setChiefStep(
+    s: TestServer,
+    threadId: string,
+    opts: { status: 'claimed' | 'pending'; machineId?: string | null },
+  ): void {
+    const row = s.db.select().from(stepTable).where(eq(stepTable.buildId, threadId)).get()!;
+    s.db
+      .update(stepTable)
+      .set({ status: opts.status, machineId: opts.machineId ?? null })
+      .where(eq(stepTable.id, row.id))
+      .run();
+  }
+
+  test('失败方式 G：投影——defaultMachineId + running（claimed）/ waiting（pending 被钉且不可执行）计数', async () => {
+    const w = await setupWorld();
+    await req(w.s.app, 'PATCH', `/api/teams/${w.s.team.id}/chief`, {
+      agent: { agentId: AGENT_ID, thinkingLevel: null },
+      machineId: w.machineAId,
+    });
+    // running：A 上一个 claimed chief 步。
+    const t1 = await req(w.s.app, 'POST', `/api/teams/${w.s.team.id}/chief/threads`, {
+      content: '回合一',
+    });
+    const thread1 = ((await t1.json()) as { thread: { id: string } }).thread.id;
+    setChiefStep(w.s, thread1, { status: 'claimed', machineId: w.machineAId });
+    // waiting：线程钉 B（pending）且 B 离线（enroll 不置在线）。
+    const t2 = await req(w.s.app, 'POST', `/api/teams/${w.s.team.id}/chief/threads`, {
+      content: '回合二',
+    });
+    const thread2 = ((await t2.json()) as { thread: { id: string } }).thread.id;
+    w.s.db
+      .update(chiefThreadTable)
+      .set({ pinnedMachineId: w.machineBId })
+      .where(eq(chiefThreadTable.id, thread2))
+      .run();
+
+    const body = await getEnvelope(w);
+    expect(body.orchestration.defaultMachineId).toBe(w.machineAId);
+    const activityA = body.orchestration.activity.find((a) => a.machineId === w.machineAId);
+    const activityB = body.orchestration.activity.find((a) => a.machineId === w.machineBId);
+    expect(activityA?.running).toBe(1);
+    expect(activityB?.waiting).toBe(1);
+  });
+
+  test('失败方式 H：waiting 判据——机器在线但 runtime 闸关也计入（T3 缝隙可见性）', async () => {
+    const w = await setupWorld();
+    await req(w.s.app, 'PATCH', `/api/teams/${w.s.team.id}/chief`, {
+      agent: { agentId: AGENT_ID, thinkingLevel: null },
+    });
+    // B 在线但只开 claude-code；chief 绑定 agent = stub-gw → pi 档。
+    await req(w.s.app, 'PATCH', `/api/machines/${w.machineBId}`, {
+      enabledRuntimes: ['claude-code'],
+    });
+    w.s.db
+      .update(machineTable)
+      .set({ online: true })
+      .where(eq(machineTable.id, w.machineBId))
+      .run();
+    const t = await req(w.s.app, 'POST', `/api/teams/${w.s.team.id}/chief/threads`, {
+      content: '回合',
+    });
+    const threadId = ((await t.json()) as { thread: { id: string } }).thread.id;
+    w.s.db
+      .update(chiefThreadTable)
+      .set({ pinnedMachineId: w.machineBId })
+      .where(eq(chiefThreadTable.id, threadId))
+      .run();
+
+    const body = await getEnvelope(w);
+    const activityB = body.orchestration.activity.find((a) => a.machineId === w.machineBId);
+    expect(activityB?.waiting).toBe(1);
+  });
+
+  test('回归红线：未设主力机 + 无 chief 步 → defaultMachineId null + activity 空', async () => {
+    const w = await setupWorld();
+    const body = await getEnvelope(w);
+    expect(body.orchestration.defaultMachineId).toBeNull();
+    expect(body.orchestration.activity).toEqual([]);
   });
 });
 

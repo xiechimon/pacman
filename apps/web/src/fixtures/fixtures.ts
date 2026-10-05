@@ -1571,6 +1571,21 @@ export const chiefSettingsStaleModel: FixtureSet = {
   },
 };
 
+/** #895 主力机槽命名场景（无 capture，101-stale-model 先例）：settings
+ *  Agent tab + resources 两机（在线本机 + 离线远端，boardMachinePicker 同
+ *  行集）+ 槽值钉本机——e2e 钉机器 chip 的回显/清单/accept 律。 */
+export const chiefSettingsMachines: FixtureSet = {
+  ...chiefSettings('agent'),
+  resources: boardMachinePicker.resources,
+  chief: {
+    view: 'settings',
+    tab: 'agent',
+    bound: false,
+    threadTitle: '新主题',
+    machineId: MACHINE_ID,
+  },
+};
+
 /** Default drawer content for a FAB-opened drawer on a scenario without a
  *  chief surface (dev interactivity; fixture rows always carry a set). */
 export const chiefDefault: ChiefContent = {
@@ -2259,6 +2274,36 @@ export const resourcesCcMissing: FixtureSet = {
   resources: {
     ...RESOURCES,
     providerSources: [PROVIDER_SOURCE_PI, { ...PROVIDER_SOURCE_CC, installed: false, models: [] }],
+  },
+};
+
+/** #895 机器页三态读标注命名场景（无 capture，newtask-machines 先例）：
+ *  resourcesDefault 面 + 三机行集——本机（主力机徽标）+ 在线远端（回合
+ *  进行中）+ 离线远端（等待机器）。e2e 钉三态标注的展示形与「标注零
+ *  控件」纪律；live 全链真值归 verify 证据（docs/verify/865/）。 */
+export const machinesChiefState: FixtureSet = {
+  ...resourcesDefault,
+  resources: {
+    ...RESOURCES,
+    machines: [
+      {
+        id: MACHINE_ID,
+        kind: 'local',
+        name: MACHINE_NAME,
+        online: true,
+        enabledRuntimes: ['pi'],
+        shellEnabled: false,
+        chiefHost: true,
+      },
+      { id: 'mea-wsl-online', kind: 'remote', name: 'mea-wsl', online: true, chiefRunning: true },
+      {
+        id: 'vps-relay-offline',
+        kind: 'remote',
+        name: 'vps-relay',
+        online: false,
+        chiefWaiting: true,
+      },
+    ],
   },
 };
 

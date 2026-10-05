@@ -303,6 +303,27 @@ describe('#684 chief 失联超时兜底（failAbandonedChiefSteps）', () => {
     expect(row.status).toBe('pending');
   });
 
+  // #895 失败文案路由（spec 21 §与 T3 的关系）：主力机缺省链把「显式钉选」
+  // 的失败路径从 todo 钉选来源扩到 chief.machineId 来源——出口必须指向真实
+  // 存在的出口（T6 律：报机器 + 报修法）。
+  test('#895 钉选机离线超宽限的失败文案带主力机出口（改 chief 设置 / 清回自动）', async () => {
+    const w = await sendChiefTurn();
+    await enrollMachine(w.s, w.teamId);
+    const pinnedId = w.s.db.select().from(machineTable).limit(1).all()[0]!.id;
+    w.s.db
+      .update(chiefThread)
+      .set({ pinnedMachineId: pinnedId })
+      .where(eq(chiefThread.id, w.threadId))
+      .run();
+
+    failAbandonedChiefSteps(w.s.svc, stepRowOf(w).createdAt + PIN_OFFLINE_GRACE_MS + 1);
+
+    expect(stepRowOf(w).status).toBe('failed');
+    const message = turnErrorMessage(w);
+    expect(message).toContain('改 chief 设置的主力机');
+    expect(message).toContain('清回自动');
+  });
+
   test('scheduler tick 接线：tick(now) 驱动 sweep（真实宿主路径）', async () => {
     const w = await sendChiefTurn();
     const scheduler = createScheduler(w.s.svc, { tickMs: 60_000 });

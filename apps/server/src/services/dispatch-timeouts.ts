@@ -45,5 +45,9 @@ export function pinOfflineReason(machineName: string | null, hint: string): stri
 export const WORKER_PIN_OFFLINE_HINT =
   '请让它上线后重跑，或把任务的机器改为其它在线机器（重跑沿用任务的钉选）。';
 
-/** chief 回合的尾注：回合同律，动作面是「重发」。 */
-export const CHIEF_PIN_OFFLINE_HINT = '请让它上线后重发，或把任务的机器改为其它在线机器。';
+/** chief 回合的尾注：回合同律，动作面是「重发」。#895 起「钉选来源」从
+ *  todo 机器扩到 chief 主力机（缺省链第二级），出口文案必须同时指向两处
+ *  设置面 + 自动档（T6 律：失败信息指向真实存在的出口）——改 chief 设置
+ *  的主力机、清回自动，或（todo 钉选来源的线程）把任务的机器改掉。 */
+export const CHIEF_PIN_OFFLINE_HINT =
+  '请让它上线后重发，或改 chief 设置的主力机，或清回自动（任务钉了机器时，把任务的机器改为其它在线机器）。';

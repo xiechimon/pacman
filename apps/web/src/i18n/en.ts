@@ -727,6 +727,14 @@ export const EN: Record<string, string> = {
   // AGENT_TOOL_SHELL 的 en 值，两层开关共用同一词）。
   '已授权「{tool}」的 Agent 可在该机器上执行命令。':
     'Agents you have granted {tool} to can run commands on this machine.',
+  // #895 机器页三态读标注（spec 21 A8；orchestration 块 join 行集）+ chief
+  // 设置 Agent tab「机器」槽的描述（A6）。徽标/状态 = 机器与总管编排的
+  // 关系面，非机器自身状态。
+  总管主机: 'Chief host',
+  总管回合进行中: 'Chief turn in progress',
+  总管等待机器: 'Chief waiting for machine',
+  '总管回合默认在哪台机器上执行。选「自动」时由在线机器认领，并粘住持有会话的那台。':
+    'Which machine runs chief turns by default. With Auto, any online machine can claim a turn, sticking to the one that holds the session.',
   '暂无 MCP 服务器。': 'No MCP servers yet.',
   团队密钥: 'Team secrets',
   // shared canon（packages/shared/src/records/agent.ts、memory.ts），经 t()

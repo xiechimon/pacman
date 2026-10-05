@@ -13,6 +13,9 @@ import { evidencePanelShot } from './evidence';
 //    fixture 面清单 = 默认行 + canon 单行(claude-code/claude-sonnet-5;#770 起
 //    providers 段已除,canon 行取 runtime 源形),选定 =
 //    accept 律关面。live PATCH 写读回归归 live 真机验。
+// 4. #895 主力机槽(spec 21 A6):Agent tab「机器」行 ChiefMachineSelect
+//    (行形态沿 new-task 机器 chip 的 listbox 族);live PATCH machineId 槽
+//    写读回归归 live 真机验(docs/verify/865/)。
 
 const AGENT_TAB = '/app?scenario=101';
 
@@ -349,4 +352,79 @@ test('压缩模型 stale preset value (#358): 裸串兜底回显 + 菜单无选�
   await expect(page.locator('.chief-model-menu')).toBeHidden();
   // fixture 面无 mutation:兜底裸串回显保持。
   await expect(select).toContainText('anthropic/claude-3-5-haiku-20241022');
+});
+
+// —— #895 主力机槽（spec 21 A6）:Agent tab「机器」行 ChiefMachineSelect ——
+// 失败方式(先于实现固化):
+// 1. 槽缺位:主力机没有设定入口 → Agent tab 必须有「机器」行(标题 + 描述
+//    + chip);
+// 2. 回显缺位/悬空崩:值 = null 显示「自动」,命中行集显示机器名(离线机器
+//    如实显示灰点,不空白不崩);
+// 3. 清单缺位:popover 必须有「自动」行 + 机器行(listbox 语义),选中行
+//    aria-selected;
+// 4. accept 律破坏:fixture 选定 = 关面(无 mutation,回显不变);
+// 5. 双选择器互扰:机器 chip 独立类名,不与压缩模型 chief-select 撞 strict
+//    mode 选择器。
+// live PATCH 写读回归归 live 真机验(docs/verify/865/)。
+
+async function openMachineMenu(page: Page, scenario: string) {
+  await page.goto(`/app?scenario=${scenario}`);
+  const chip = page.locator('button.chief-host-select');
+  await expect(chip).toBeVisible();
+  await chip.click();
+  const menu = page.locator('.chief-host-menu');
+  await expect(menu).toBeVisible();
+  return { chip, menu };
+}
+
+test('机器槽在位:Agent tab 有「机器」标题 + 描述 + chip(值 null = 自动)', async ({ page }) => {
+  await page.goto(AGENT_TAB);
+  const block = page.locator('.chief-host');
+  await expect(block).toBeVisible();
+  await expect(block.locator('h3')).toHaveText('机器');
+  await expect(block.locator('p')).toContainText('总管回合默认在哪台机器上执行');
+  await expect(page.locator('button.chief-host-select')).toContainText('自动');
+  // 互扰负向:压缩模型选择器仍是唯一 button.chief-select(strict mode 钉)。
+  await expect(page.locator('button.chief-select')).toHaveCount(1);
+});
+
+test('机器 chip 开 popover:「自动」行 + 机器行 + listbox 语义 + 选中态', async ({ page }) => {
+  const { chip, menu } = await openMachineMenu(page, '101-machines');
+  await expect(chip).toContainText('xmonsMac-3574.local');
+  // listbox 语义随清单容器（菜单壳只承几何，压缩模型 picker 同律）。
+  await expect(menu.locator('.chief-host-list')).toHaveAttribute('role', 'listbox');
+  await expect(menu.locator('.chief-host-row')).toHaveCount(3);
+  // 首行 = 自动(未选中,因为值钉了本机);机器行命中 = 选中。
+  await expect(menu.locator('[data-testid="chief-host-auto"]')).toHaveAttribute('aria-selected', 'false');
+  const selected = menu.locator('.chief-host-row[aria-selected="true"]');
+  await expect(selected).toHaveCount(1);
+  await expect(selected).toContainText('xmonsMac-3574.local');
+  // 离线远端行照常可选 + 如实灰点(钉选 = 等它上线语义,UI 不替用户挡)。
+  const offline = menu.locator('[data-testid="chief-host-row"]').filter({ hasText: 'mea-wsl' });
+  await expect(offline).toHaveAttribute('aria-selected', 'false');
+  await expect(offline.locator('.chief-host-dot')).toHaveAttribute('data-on', 'false');
+});
+
+test('机器 popover family law: Escape / outside click dismiss', async ({ page }) => {
+  let menu = (await openMachineMenu(page, '101-machines')).menu;
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+
+  menu = (await openMachineMenu(page, '101-machines')).menu;
+  await page.mouse.click(20, 20);
+  await expect(menu).toBeHidden();
+});
+
+test('机器 chip fixture pick = accept 律:选择即关 + 回显不变(无 mutation)', async ({ page }) => {
+  const { chip, menu } = await openMachineMenu(page, '101-machines');
+  await menu.locator('[data-testid="chief-host-auto"]').click();
+  await expect(page.locator('.chief-host-menu')).toBeHidden();
+  // fixture 面无 mutation:回显保持 canon 钉选值。
+  await expect(chip).toContainText('xmonsMac-3574.local');
+});
+
+test('机器槽默认面(101):无 resources → 清单仅「自动」行且选中', async ({ page }) => {
+  const { menu } = await openMachineMenu(page, '101');
+  await expect(menu.locator('.chief-host-row')).toHaveCount(1);
+  await expect(menu.locator('[data-testid="chief-host-auto"]')).toHaveAttribute('aria-selected', 'true');
 });

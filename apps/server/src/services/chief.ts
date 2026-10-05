@@ -34,10 +34,11 @@ import {
   CHIEF_WATCH_REASON_DISPATCH,
   chiefIdFormat,
   chiefThreadTitle,
+  isBackendRuntimeId,
   newChiefThreadId,
   resolveChiefModelFallback,
 } from '@pacman/shared';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import {
   agent,
@@ -107,6 +108,7 @@ export function ensureChief(deps: ChiefDeps, teamId: string): ChiefRow {
       thinkingLevel: null,
       compactionModel: null, // 默认「与 Chief 相同」（#203）
       model: null, // 默认继承绑定 Agent 模型（#615）
+      machineId: null, // #895 默认「自动」（系统不预填，A2）
       charter: '', // raw 观测默认空串（chief-record-testA.json 一手）
       watches: [],
       wakes: [],
@@ -129,6 +131,8 @@ function toChiefRecord(row: ChiefRow): ChiefGetResponse['chief'] {
     charter: row.charter,
     compactionModel: row.compactionModel,
     model: row.model,
+    // #895 spec 21 A1：主力机（null = 自动）。
+    machineId: row.machineId ?? null,
     lastTurnAt: row.lastTurnAt,
     createdAt: row.createdAt,
     tz: row.tz,
@@ -184,7 +188,81 @@ function chiefContext(deps: ChiefDeps): { tokens: number; contextWindow: number 
   return { tokens, contextWindow: 128_000 };
 }
 
-/** GET /api/teams/{id}/chief 响应封套（r5 §3.6 API 原样）。 */
+/** chief 步 runtime 闸镜像（#895 封套 waiting 位）：与 machines.ts 的
+ * runtimeGatePasses 同律——isBackendRuntimeId 单源在 shared；chief.ts →
+ * machines.ts 值 import 会撞既有环（machines.ts → chief.ts 单向，同
+ * dispatch-timeouts.ts 建叶的由），故本地镜像两行。 */
+function chiefRuntimeGatePasses(
+  machineRow: { enabledRuntimes: string[] },
+  agentProvider: string | null | undefined,
+): boolean {
+  const runtime = isBackendRuntimeId(agentProvider) ? 'claude-code' : 'pi';
+  return machineRow.enabledRuntimes.includes(runtime);
+}
+
+/** orchestration 块（#895 spec 21 A5）：machines 页三态读标注的数据源。
+ *  defaultMachineId = 请求者主力机（chief.machineId，null = 自动）；
+ *  activity = team 域 chief 步计数（machines 页是团队面，多用户已知边界）：
+ *  running = 该机 claimed chief 步数（回合进行中）；waiting = 被钉到该机且
+ *  pending 的 chief 步数 × 该机当前不可执行（离线，或 runtime 闸关 = 在线
+ *  但开不了 chief 步所需 runtime——T3 已知缝隙「在线但闸关 = 无界等待」的
+ *  可见性面）。闸判 provider = 请求者 chief 绑定 Agent（未绑定 = 闸判缺席，
+ *  只看离线）；零计数机器不进清单（页面 join machines 查询行集）。 */
+function chiefOrchestration(
+  deps: ChiefDeps,
+  teamId: string,
+  row: ChiefRow,
+): ChiefGetResponse['orchestration'] {
+  const steps = deps.db
+    .select({ machineId: step.machineId, status: step.status, pin: chiefThread.pinnedMachineId })
+    .from(step)
+    .innerJoin(chiefThread, eq(step.buildId, chiefThread.id))
+    .where(
+      and(
+        eq(step.kind, 'chief'),
+        eq(chiefThread.teamId, teamId),
+        inArray(step.status, ['pending', 'claimed']),
+      ),
+    )
+    .all();
+  const agentRow = row.agentId
+    ? deps.db.select().from(agent).where(eq(agent.id, row.agentId)).get()
+    : undefined;
+  const counts = new Map<string, { running: number; waiting: number }>();
+  const bump = (machineId: string): { running: number; waiting: number } => {
+    let entry = counts.get(machineId);
+    if (entry === undefined) {
+      entry = { running: 0, waiting: 0 };
+      counts.set(machineId, entry);
+    }
+    return entry;
+  };
+  for (const s of steps) {
+    if (s.status === 'claimed') {
+      // claimed 步的 machineId 恒非空（claim 即落位）；防御位缺 = 不计。
+      if (s.machineId !== null) bump(s.machineId).running += 1;
+      continue;
+    }
+    // pending：只数「被钉且钉的机器当前不可执行」的（未钉 = FIFO 排队，
+    // 不指向任何机器）。
+    if (s.pin === null) continue;
+    const machineRow = deps.db.select().from(machine).where(eq(machine.id, s.pin)).get();
+    const offline = machineRow === undefined || !machineRow.online;
+    if (!offline && chiefRuntimeGatePasses(machineRow, agentRow?.provider)) continue;
+    bump(s.pin).waiting += 1;
+  }
+  return {
+    defaultMachineId: row.machineId ?? null,
+    activity: [...counts.entries()].map(([machineId, { running, waiting }]) => ({
+      machineId,
+      running,
+      waiting,
+    })),
+  };
+}
+
+/** GET /api/teams/{id}/chief 响应封套（r5 §3.6 API 原样 + #895 orchestration
+ *  块）。 */
 export function getChiefEnvelope(deps: ChiefDeps, teamId: string): ChiefGetResponse {
   const row = ensureChief(deps, teamId);
   const agentRow = row.agentId
@@ -196,6 +274,7 @@ export function getChiefEnvelope(deps: ChiefDeps, teamId: string): ChiefGetRespo
     context: chiefContext(deps),
     watches: refreshWatches(deps, row.watches),
     wakes: row.wakes,
+    orchestration: chiefOrchestration(deps, teamId, row),
   };
 }
 
@@ -230,6 +309,20 @@ export function patchChief(
   if (body.compactionModel !== undefined) sets.compactionModel = body.compactionModel;
   // #615 主模型覆盖槽：undefined = 不动，null = 清空回绑定 Agent 继承。
   if (body.model !== undefined) sets.model = body.model;
+  // #895 spec 21 A7 主力机槽：undefined = 不动，null = 清回自动；值限本团队
+  // 机器集（队外 400，todos machineId 同律边界防御）。机器后续被删 = 残值
+  // 语义同钉选（claim 过滤自然不命中，T3 离线失败路径点名机器），不级联。
+  if (body.machineId !== undefined) {
+    if (body.machineId !== null) {
+      const machineRow = deps.db
+        .select({ id: machine.id })
+        .from(machine)
+        .where(and(eq(machine.id, body.machineId), eq(machine.teamId, teamId)))
+        .get();
+      if (!machineRow) throw new HttpError(400, `machine ${body.machineId} not in team`);
+    }
+    sets.machineId = body.machineId;
+  }
   if (Object.keys(sets).length > 0) {
     deps.db.update(chief).set(sets).where(eq(chief.id, row.id)).run();
   }
@@ -354,10 +447,12 @@ export function sendChiefMessage(
         sessionId: '', // 引擎会话未开——首轮 new session（done 回传后落值）
         sessionOpenedAt: now,
         pendingSessionResumeAt: null,
-        // #682 机器亲和：编排入口落（chief 会话文件是执行机本地资产，轮换
-        // 认领降级 new session——claim 按 thread 钉机器）。既有线程不回写：
-        // 会话在哪台机器续跑由线程创建时刻决定，中途换机丢上下文。
-        pinnedMachineId: body.pinnedMachineId ?? null,
+        // #682/#895 机器亲和钉选缺省链（spec 21 A3）：编排入口的 todo 钉选
+        // （body.pinnedMachineId，现状第一级）→ chief 主力机（chiefRow.
+        // machineId，新第二级）→ null。既有线程不回写：会话在哪台机器续跑
+        // 由线程创建时刻决定，中途换机丢上下文（N7；未钉存量线程由 A4 会话
+        // 亲和粘住当前会话机）。
+        pinnedMachineId: body.pinnedMachineId ?? chiefRow.machineId ?? null,
         toolDefHashes: chiefToolDefHashes(),
         toolResultHashes: {},
         activeRun: null,

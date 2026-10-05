@@ -377,6 +377,15 @@ export interface MachineRow {
   /** 机器层 shell 访问闸（XMON-113 R3 起是行内真控件；契约单源 =
    *  shared machineRecordSchema.shellEnabled）。 */
   shellEnabled?: boolean;
+  /** #895 三态读标注（spec 21 A8；live = GET /chief 封套 orchestration 块
+   *  join useMachines 行集）：chiefHost = 总管主机徽标行（defaultMachineId
+   *  命中）；chiefRunning = 总管回合进行中（activity.running > 0）；
+   *  chiefWaiting = 总管等待机器（activity.waiting > 0，被钉 pending 回合
+   *  等该机上线/开闸）。fixture 静态投影同一语义；absent = 无标注（存量
+   *  capture 零漂移）。 */
+  chiefHost?: boolean;
+  chiefRunning?: boolean;
+  chiefWaiting?: boolean;
 }
 
 /** The six resource surfaces' row sets (issue #69). */
@@ -779,6 +788,10 @@ export interface ChiefContent {
   /** #204 压缩模型槽值(settings Agent tab 选择器回显位,wire 形随 server
    *  #203);缺省/null = 默认（与 Chief 相同）。 */
   compactionModel?: { provider: string; modelId: string } | null;
+  /** #895 主力机槽值（settings Agent tab 机器选择器回显位；live = GET
+   *  chief 封套 chief.machineId 投影）。缺省/null = 自动；值 = resources
+   *  machines 行 id（命中行集才回显机器名，悬空 = 裸串回显）。 */
+  machineId?: string | null;
   /** Model slot line when bound (`claude-sonnet-5 · 默认`); `n/a` else. */
   modelSlot?: string;
   /** #444 绑定 Agent 的头像位（总管 FAB 图标源）：语义走 Avatar 原语

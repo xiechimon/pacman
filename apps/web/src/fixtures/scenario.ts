@@ -41,6 +41,7 @@ import {
   chiefMarkdown,
   chiefReady,
   chiefSettings,
+  chiefSettingsMachines,
   chiefSettingsStaleModel,
   chiefStreaming,
   chiefThread,
@@ -67,6 +68,7 @@ import {
   diffV2V3,
   history12,
   history15,
+  machinesChiefState,
   mdToolout,
   planOpenReview,
   projectFixture,
@@ -324,6 +326,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #356 未安装分支（spec 11 §A4）：claude-code settings.json 缺失 →
       // header 未安装指引态的 fixture 钉
       '10-cc-missing': resourcesCcMissing,
+      // #895 机器页三态读标注（spec 21 A8）：主力机徽标 / 回合进行中 /
+      // 等待机器——machines 路由用（06 同面，命名场景手法同 newtask-machines）
+      'machines-chief-state': machinesChiefState,
       // r8 overlay batch (#66): the dark capture set; ids carry the r8 batch
       // prefix like the r2/r3 rows (numbering continues after #64's 54–77)
       'r8-78': boardR8Overlay,
@@ -342,6 +347,9 @@ export const SCENARIOS: Record<string, FixtureSet> = SCENARIOS_ENABLED
       // #358 AC2（spec 11 §A10）：compactionModel 仍引用已废 preset →
       // 裸串兜底回显的 fixture 钉（合成 scenario，10-cc-missing 先例）
       '101-stale-model': chiefSettingsStaleModel,
+      // #895 主力机槽（spec 21 A6）：Agent tab 机器 chip 的回显/清单钉面
+      //（合成 scenario，101-stale-model 先例；live PATCH 写读归 verify 证据）
+      '101-machines': chiefSettingsMachines,
       '111': chiefReady,
       // #624 r5 113 流式面（回合进行中）：composer 占位 = steer canon 的钉面
       // （running 位；命名场景手法循 #499/#444 先例，流内容 [推断] 拼装）。
