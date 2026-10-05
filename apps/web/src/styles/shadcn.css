@@ -1,22 +1,27 @@
-/* 值正本（#435 落地 #412 P2b 裁定，#788 落 §2 全表翻转）：全站颜色 token 的
-   唯一持值文件——shadcn 官方语义词表 + 仓内补位族并存，值取 Herdr H 两档
-   （正本 docs/spec/base-ui-theme.md §2）。tokens.css 退为别名 + 非颜色层：
-   并流/归并的 generic 名在那边落别名直引本文件，消费方引用零改动；motion /
-   字体栈 / 阴影 / 圆角等非颜色 token 仍由 tokens.css 持有（§2.7 收编属后
-   续面票，本票不动）。逐名归属与取数见 docs/research/412-token-mapping.md。
+/* 值正本（#915 落地 #912 正本表 docs/spec/22-色彩与几何token-scale正本表.md）：
+   全站颜色 token 的唯一持值文件——shadcn 官方语义词表 + 仓内补位族并存，值取
+   C · 纸兰定版色板（正本 library/t-0909/src/themes/c.css @ 7340d0ab，#909 用户
+   实审定版：暖纸骨架 hue 82 + orchid 品牌色）。槽架构沿 #787/#813「先加槽后
+   翻值」继承律零改动——111 槽 1:1 纯值替换，0 新增槽名 0 退役（spec/22
+   §1.1；.light 侧补齐 --project-avatar-bg/fg 的亮模镜像声明，且
+   --surface-tertiary/--surface-press 脱离 secondary 别名自持值——均为
+   §1.8 的翻值行，槽名不变）。
+   tokens.css 退为别名 + 非颜色层：并流/归并的 generic 名在那边落别名直引本
+   文件，消费方引用零改动；motion / 字体栈 / 阴影 / 圆角 / 密度几何等非颜色
+   token 仍由 tokens.css 持有。
    主题机制沿用 pacman 反相规约（#106）：:root = dark 默认，.light = 浅色
    镜像——与 shadcn 文档的 :root=light/.dark=dark 相反，有意为之；app.css
    的 @custom-variant dark 已是「dark = 非 .light」，shadcn 组件内的 dark:
    工具类在本仓恰好命中暗色默认态。
-   记法用 hex/rgb（官方文档给的是 oklch，此处换 sRGB 等价值）——e2e 值探针
-   按 rgb 字符串解析，oklch 会被正则读错。
-   并流六名（#412 D1，官方 1:1 对口处并流，pacman 实测值为正本）：
+   记法用 hex/rgb，禁 oklch（ADR 0010 D5.4，spec/22 §3.2）——e2e 值探针按
+   rgb 字符串解析，oklch 会被正则读错；color-mix(in srgb) 允许（渲染期解析
+   成 rgb，探针正常读）。每槽对比度实测（WCAG 2.1，双模 AA 门控 0 未过）见
+   spec/22 §1.5–§1.8；机器可读实测 library/t-0909/reports/token-scale-912.json。
+   并流六名（#412 D1，官方 1:1 对口处并流，别名落 tokens.css）：
    --surface-inset→--background、--card-bg→--card、--popover-bg→--popover、
    --text-primary→--foreground、--code-bg→--muted、--danger→--destructive。
-   indigo 整族已随 #788 按 §2.5/§4 回 spot 族并删槽（消费方同 PR 切完，
-   无悬空引用）；--primary 保官方 neutral（V2 无对应、非品牌槽）；
-   --border / --input / --ring 取 Herdr line 系 solid 值（#412 D2 的 alpha
-   默认已作废）；surface 余档按三档压缩（§2.2，多余阶做别名）。 */
+   --primary 保官方 neutral（非品牌槽）；--border / --input / --ring 取实色
+   线档；surface 余档按三档压缩（多余阶做别名）。 */
 
 @theme inline {
   --color-background: var(--background);
@@ -49,9 +54,10 @@
   --color-spot-disabled: var(--spot-disabled);
   --color-spot-disabled-fg: var(--spot-disabled-fg);
   /* 半径族对齐官方乘数形态（#412「对齐 shadcn」裁定 + #410 的 Base UI 代数
-     接口）：官方现行 @theme inline 是乘数族。旧 ±px 写法的四档与乘数前四档
-     数值全等（--radius = 10px 时 6/8/10/14px），几何零漂移；2xl/3xl/4xl 是
-     乘数族自带的新档。 */
+     接口）：--radius 是半径基，定版 0.875rem = 14px（spec/22 §2.1，C · 纸兰
+     大圆角语言），翻基值一档带动全族——sm 8.4 / md 11.2 / lg 14 / xl 19.6 /
+     2xl 25.2 / 3xl 30.8 / 4xl 36.4px。件圆角不逐件改，同心圆角律（外 = 内 +
+     padding）随乘数族自动成立。 */
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -72,326 +78,333 @@
 }
 
 :root {
-  --radius: 0.625rem;
-  /* ---- 官方语义槽：并流六名持 pacman 实测值，其余取 Herdr H 暗档 ---- */
+  /* 半径基（spec/22 §2.1 定版 14px） */
+  --radius: 0.875rem;
+  /* ---- 官方语义槽：并流六名持 pacman 实测值，其余取定版暖纸暗档 ---- */
   /* canvas/页面底色（DESIGN.md 画布层级第一档）；并流自 --surface-inset，
      ramp 里唯一与官方 background 值等价的一档 */
-  --background: #17171a;
+  --background: #1e1b16;
   /* 主文字色；并流自 --text-primary（文字族首位，全仓最高消费面） */
-  --foreground: #eae8ee;
-  /* 卡片底；并流自 --card-bg（board palette，r7 capture 采样） */
-  --card: #1e1e22;
-  --card-foreground: #eae8ee;
-  /* 浮层底；并流自 --popover-bg（detail palette，r7 23/16/17 capture） */
-  --popover: #1e1e22;
-  --popover-foreground: #eae8ee;
-  --primary: #e5e5e5;
-  --primary-foreground: #171717;
-  --secondary: #26262b;
-  --secondary-foreground: #eae8ee;
-  /* 嵌入/代码块底；并流自 --code-bg（detail palette，r7 23/16/17） */
-  --muted: #26262b;
-  --muted-foreground: #b0afb6;
-  --accent: #26262b;
-  --accent-foreground: #eae8ee;
-  /* 破坏性动作色；并流自 --danger（H 暗红 #e05a5a，§2.1 真值） */
-  --destructive: #e05a5a;
-  --destructive-foreground: #17171a;
-  --border: #26262b;
-  --input: #35353d;
-  --ring: #908f96;
-  /* ---- 仓内补位族（官方词表无对口的域内色，#412 D1–D4，#788 取 H 值） ---- */
-  /* 看板列容器：§2.2 与 background 同值，保持现行关系 */
+  --foreground: #ede9e1;
+  /* 卡片底；并流自 --card-bg */
+  --card: #25221d;
+  --card-foreground: #ede9e1;
+  /* 浮层底；并流自 --popover-bg */
+  --popover: #25221d;
+  --popover-foreground: #ede9e1;
+  --primary: #ede9e1;
+  --primary-foreground: #1e1b16;
+  --secondary: #2d2a24;
+  --secondary-foreground: #ede9e1;
+  /* 嵌入/代码块底；并流自 --code-bg */
+  --muted: #2d2a24;
+  --muted-foreground: #b3afa8;
+  --accent: #2d2a24;
+  --accent-foreground: #ede9e1;
+  /* 破坏性动作色；并流自 --danger（定版暗侧走高明度粉档，深字配对，
+     7.52:1，spec/22 §1.7） */
+  --destructive: #ffaab9;
+  --destructive-foreground: #47242b;
+  --border: #2d2a24;
+  --input: #3f3c36;
+  --ring: #928f88;
+  /* ---- 仓内补位族（官方词表无对口的域内色，#412 D1–D4，值取 c.css） ---- */
+  /* 看板列容器：与 background 同值，保持现行关系 */
   --column: var(--background);
-  /* 侧栏行 pill 梯（#128，claude.ai cds 参照）：hover / selected 两档走 cds
-     alpha 梯 5% / 10%（neutral-900 梯，dark 反相到白梯）；本文件为唯一正本。
+  /* 侧栏行 pill 梯（#128）：hover / selected 两档走 alpha 梯 5% / 10%，
+     暗侧暖白梯（定版纸面暖调）；本文件为唯一正本。
      记法保持 rgba——e2e 值探针按 rgba 字符串比对，oklch 会假红 */
-  --sidebar-hover: rgb(255 255 255 / 0.05);
-  --sidebar-active: rgb(255 255 255 / 0.1);
-  /* surface 族（§2.2：三档 + 别名压缩，不许自创第四档灰）：主面板底 →
+  --sidebar-hover: rgb(255 252 248 / 0.05);
+  --sidebar-active: rgb(255 252 248 / 0.1);
+  /* surface 族（三档 + 别名压缩，不许自创第四档灰）：主面板底 →
      卡片/弹层底 → 嵌入控件底；elevated 是 surface 的别名；hover/press 取
      原型 hover/active 两值 */
-  --surface: #1e1e22;
-  --surface-secondary: #26262b;
-  --surface-tertiary: #35353d;
+  --surface: #25221d;
+  --surface-secondary: #2d2a24;
+  --surface-tertiary: #3f3c36;
   --surface-elevated: var(--surface);
-  --surface-hover: #26262b;
-  /* #629 板面卡按压档（参考站 2026-10-02 实测：dark 侧卡底 =
-     surface-secondary，按压 active:bg-surface-tertiary = 深一档） */
+  --surface-hover: #2d2a24;
+  /* #629 板面卡按压档：暗侧卡底 = surface-secondary，按压
+     active:bg-surface-tertiary = 深一档 */
   --surface-press: var(--surface-tertiary);
-  /* text 族（§2.4 暗侧采用 herdr 全套）：次级 dim / 三级 faint /
-     最暗 faint2（仅装饰：时间戳/占位/非活动图标，沿 XMON-55 口径） */
-  --text-secondary: #cdccd2;
-  --text-tertiary: #b0afb6;
-  --text-dim: #908f96;
+  /* text 族：次级 secondary / 三级 tertiary / 最暗 dim（dim 仅装饰：
+     时间戳/占位/非活动图标，沿 XMON-55 口径；3.75:1 过 UI 3 门） */
+  --text-secondary: #d3cfc7;
+  --text-tertiary: #b3afa8;
+  --text-dim: #79756f;
   /* 缝线实色（#412 D2：不并流官方 alpha --border——实色在任意底上恒定，是
      跨 shell 接缝契约 #139/#390）：--border-default 为正本，tokens.css 的
-     --card-border 降为它的别名；--border-strong 自持强描边档 */
-  --border-default: #26262b;
-  --border-strong: #35353d;
-  /* 品牌槽（§2.3/§2.5/§4：indigo 整族已删，品牌只走 spot 两档 H 真值）：
+     --card-border 降为它的别名；--border-strong 自持强描边档。
+     软分隔线族是定版有意的低对比结构暗示（1.5 门控的可辨边界由
+     --border-strong/--input 承担，spec/22 §1.3） */
+  --border-default: #2d2a24;
+  --border-strong: #3f3c36;
+  /* 品牌槽（spec/22 §1.7：品牌只走 spot 族，orchid 定版）：
      --card-button = 卡片按钮实心底色；--focus-ring = 全局 :focus-visible
      环色（#388 家族律：2px 实线 + offset 2，app.css 兜底 + 各面先例）。
-     官方 --ring 是 faint2 中性灰 #908f96，与 #388 不等价，故环色自立补位名。
-     两名都被 e2e 钉扎：brand-typo.spec.ts / overlay-focus.spec.ts */
-  --card-button: #cba6f7;
-  --focus-ring: #cba6f7;
+     官方 --ring 是中性灰 faint 档，与 #388 不等价，故环色自立补位名。
+     两名都被 e2e 钉扎：accent-typo.spec.ts / overlay-focus.spec.ts */
+  --card-button: #d89cfc;
+  --focus-ring: #d89cfc;
   --col-bg: var(--background);
-  --col-head-text: #cdccd2;
+  --col-head-text: #d3cfc7;
   /* column dot family: one token per board column (#351 4-fold — 待开始 idle,
      执行中 building, 待处理 confirm, 已完成 done); planning/review dots retired
      with their columns */
-  --col-dot-idle: #9ea3ae;
-  --col-dot-confirm: #e9a23b;
-  --col-dot-building: #4e81ee;
-  --col-dot-done: #5ec26a;
-  /* 状态 badge 族：attention 橙两主题同值（board palette 族；todo-card 经
-     Tailwind 简写 bg-(--badge-attention) 消费，按简写口径非死） */
-  --badge-attention: #e9a23b;
-  --badge-done: #5ec26a;
-  /* fresh-card owner badge (r7 22/22d), same gray in both themes */
-  --badge-idle: #9ea3ae;
-  /* attention pill digit (#837: sidebar 工作台计数徽标；深字两主题同值，
-     8.26:1 on --badge-attention) */
-  --badge-attention-fg: #17171a;
-  /* project initial avatar (board card, sidebar, overlays), both themes */
-  --project-avatar-bg: #e97b35;
-  --project-avatar-fg: #ffffff;
-  /* team agent avatar disc：§2.6 与 chip-idle-bg 同值，关系保持 */
-  --agent-avatar-bg: #26262b;
+  --col-dot-idle: #c0b8aa;
+  --col-dot-confirm: #eea953;
+  --col-dot-building: #59c5ff;
+  --col-dot-done: #73d18f;
+  /* 状态 badge 族：attention 橙按主题各持值（todo-card 经 Tailwind 简写
+     bg-(--badge-attention) 消费） */
+  --badge-attention: #eea953;
+  --badge-done: #73d18f;
+  /* fresh-card owner badge (r7 22/22d) */
+  --badge-idle: #c0b8aa;
+  /* attention pill digit (#837: sidebar 工作台计数徽标；深字按主题各持值，
+     暗 6.59:1 / 亮 6.46:1，spec/22 §1.7/§1.8 实测） */
+  --badge-attention-fg: #422b0d;
+  /* project initial avatar (board card, sidebar, overlays)：暗侧亮橙底 +
+     深字（6.55:1），亮侧见 .light */
+  --project-avatar-bg: #ff9b78;
+  --project-avatar-fg: #47261a;
+  /* team agent avatar disc：与 chip-idle-bg 同值，关系保持 */
+  --agent-avatar-bg: #2d2a24;
   /* detail palette (#56)：chip 族五态中的 idle/plan/confirm/done 四对 bg+fg；
-     plan 回 spot 族（§2.5：选中底 + tint 字，命名含角色） */
-  --chip-idle-bg: #26262b;
-  --chip-idle-fg: #9ea3ae;
+     plan 回 spot 族（选中底 + tint 字，命名含角色） */
+  --chip-idle-bg: #2d2a24;
+  --chip-idle-fg: #b3afa8;
   --chip-plan-bg: var(--spot-soft);
   --chip-plan-fg: var(--spot-text-on-tint);
-  --chip-confirm-bg: #33221b;
-  --chip-confirm-fg: #f2c24b;
-  --chip-done-bg: #14291c;
-  --chip-done-fg: #5ec26a;
-  /* 分段控件族（#138）：active chip 与 group bg 分持；hover 走 cds alpha 梯
+  --chip-confirm-bg: #422b0d;
+  --chip-confirm-fg: #f4b973;
+  --chip-done-bg: #193822;
+  --chip-done-fg: #8ddba2;
+  /* 分段控件族（#138）：active chip 与 group bg 分持；hover 走 alpha 梯
      第一阶（unselected tint，与 --sidebar-hover 同值同形） */
-  --seg-active: #35353d;
+  --seg-active: #3f3c36;
   /* text-tab chip on the #71 secondary routes (r2 24b/24c probe: group bg
      is --surface-secondary in both themes, the active chip is not) */
-  --tab-chip-bg: #1e1e22;
-  --seg-hover: rgb(255 255 255 / 0.05);
-  /* 停止钮 danger 族（与 --destructive 并列的另一档红，两主题同值） */
-  --stop: #dd524c;
-  /* diff pane (r7 27d dark sample for the stat green; the expanded diff
-     surface was only captured light — dark add-bg is [推断], derived from
-     the chip-done family) */
-  --diff-add-bg: #16281d;
-  --diff-add-fg: #478266;
+  --tab-chip-bg: #25221d;
+  --seg-hover: rgb(255 252 248 / 0.05);
+  /* 停止钮 danger 族（与 --destructive 同值，两主题各自持） */
+  --stop: #ffaab9;
+  /* diff pane：stat 绿与删除行红随定版色板走 */
+  --diff-add-bg: #193822;
+  --diff-add-fg: #66c483;
   /* r8 dynamic states (#75): failed chip + fail message + del diff row +
-     rerun-dialog agent row + range chip. Light values sampled from the
-     r8 captures; the dark set is [推断] (r8 §5: dark 动态面未拍). */
-  --chip-failed-bg: #351c1a;
-  --chip-failed-fg: #dd524c;
-  --fail-fg: #d98b4a;
-  --diff-del-bg: #2e1c1a;
-  --dialog-row-bg: #26262b;
-  --range-chip-bg: #26262b;
-  --range-chip-border: #35353d;
-  /* modal dialogs (issue #68)：§2.6 panel/box 沿 panel + 边框，保持现行关系；
-     disabled 同步 + toggle track likewise. The #66 delete-confirm panel
-     rides the same fill (r8 79 probe) */
-  --dialog-bg: #1e1e22;
+     rerun-dialog agent row + range chip */
+  --chip-failed-bg: #47242b;
+  --chip-failed-fg: #ffaab9;
+  --fail-fg: #ffaf94;
+  --diff-del-bg: #47242b;
+  --dialog-row-bg: #2d2a24;
+  --range-chip-bg: #2d2a24;
+  --range-chip-border: #3f3c36;
+  /* modal dialogs (issue #68)：panel/box 沿 panel + 边框，保持现行关系；
+     disabled 同步。The #66 delete-confirm panel rides the same fill */
+  --dialog-bg: #25221d;
   /* dark box rides the panel fill with a border only (r8 79 scan) */
-  --dialog-box-bg: #1e1e22;
-  --toggle-track: #35353d;
-  --dialog-ring: #35353d;
-  /* resource surfaces (r7 06–10, #69)：§2.5 tile-indigo 回 spot 族，其余
-     保留；tile-orange 橙系是状态语义，与 spot 紫各表一意 */
-  --tile-orange-bg: #33221b;
-  --tile-orange-fg: #f2c24b;
+  --dialog-box-bg: #25221d;
+  /* 退役候选（spec/22 §1.6）：唯一消费点是 per-face 手搓 toggle
+     （detail/overlays.css .dlg-toggle、secondary.css .account-switch-knob），
+     随 #947/#951 迁 shadcn Switch 后删槽；施工期持定版值不缺档 */
+  --toggle-track: #3f3c36;
+  --dialog-ring: #3f3c36;
+  /* resource surfaces (r7 06–10, #69)：tile-indigo 回 spot 族，其余保留；
+     tile-orange 橙系是状态语义，与 spot 各表一意 */
+  --tile-orange-bg: #422b0d;
+  --tile-orange-fg: #f4b973;
   --tile-indigo-bg: var(--spot-soft);
   --tile-indigo-fg: var(--spot-text-on-tint);
-  --tile-hero-bg: #33221b;
-  --pill-idle-bg: #26262b;
-  --dash-border: #35353d;
-  /* disabled primary：§2.5 spot 按底色 mix 降级（P0 --spot-disabled 公式，
-     精确比 P5 面票实测钉死，失能态不按 4.5 验收但须可辨） */
+  --tile-hero-bg: #422b0d;
+  --pill-idle-bg: #2d2a24;
+  --dash-border: #3f3c36;
+  /* disabled primary：spot 按底色 mix 降级（P0 --spot-disabled 公式，
+     失能态不按 4.5 验收但须可辨，spec/22 §1.3） */
   --primary-disabled: var(--spot-disabled);
-  /* overlay batch B (issue #67)：§2.6 对齐到线与团块；select 块回 spot 族 */
-  --row-selected: #26262b;
-  --row-icon-bg: #35353d;
-  --overlay-divider: #26262b;
+  /* overlay batch B (issue #67)：对齐到线与团块；select 块回 spot 族 */
+  --row-selected: #2d2a24;
+  --row-icon-bg: #3f3c36;
+  --overlay-divider: #2d2a24;
   --overlay-select-indigo: var(--spot-soft);
-  /* 模型 picker 选中行（#751，§2.5 选中对 exact 值）：底 = spot 14% mix 于
-     panel，字 = spot 原色 #cba6f7（暗侧 6.19:1）。此前缺角色令牌、选中行名
-     借 --seg-active 当文字色——light 1.24:1 / dark 1.57:1，即用户报的
-     「灰色看不清」。 */
+  /* 模型 picker 选中行（#751）：底 = spot 14% mix 于面板（--spot-soft），
+     字 = --spot-text-on-tint 实值（暗 #e0afff 6.74:1，spec/22 §1.7 实测）。
+     角色令牌独立成名，不借 --seg-active 当文字色。 */
   --pick-selected-bg: var(--spot-soft);
   --pick-selected-fg: var(--spot-text-on-tint);
-  /* chief surfaces (r5 100–104, #72)：§2.6 对齐；strip/active pill 方向沿
-     现行（pill 深于 strip） */
-  --chief-tab-bg: #26262b;
-  --chief-tab-active: #35353d;
-  /* notification banner bell disc (#114)：§2.6 派生；其上字形走 spot
-     （--card-button，与暗 spot 同值，面票复测非文本 3:1） */
-  --notify-icon-bg: #35353d;
-  /* 更多 menu row 图标色（r8 78/56 probe） */
-  --menu-icon: #71717a;
-  /* on-accent 文字（DESIGN.md 轨 A #A2，§2.2/§2.3）：暗侧翻深字 #17171a
-     （§2.1 F2：白字压暗红只有 3.63:1，现行两主题同白字的惯例就此断裂）；
-     此前 31 处散写 #ffffff/#fff 全部收此单源 */
-  --text-on-accent: #17171a;
-  /* toggle 白圆点（轨 A #A2）: 开关 knob 的 12/16px 白盘（detail/secondary
-     两处散写同形），两主题同色 */
+  /* chief surfaces (r5 100–104, #72)：strip/active pill 方向沿现行
+     （pill 深于 strip） */
+  --chief-tab-bg: #2d2a24;
+  --chief-tab-active: #3f3c36;
+  /* notification banner bell disc (#114)：其上字形走 spot
+     （--card-button，面票复测非文本 3:1 过，spec/22 §1.7 5.28:1） */
+  --notify-icon-bg: #3f3c36;
+  /* 更多 menu row 图标色（r8 78/56 probe；3.46:1 过 UI 3 门） */
+  --menu-icon: #79756f;
+  /* on-accent 文字（DESIGN.md 轨 A #A2）：暗侧深字——定版 spot 是高明度档，
+     深字保 8.24:1（spec/22 §1.5 件面实测）；散写 #ffffff 全部收此单源 */
+  --text-on-accent: #1e1b16;
+  /* toggle 白圆点（轨 A #A2）: 开关 knob 的 12/16px 白盘，两主题同色；
+     退役候选，随 --toggle-track 同律（spec/22 §1.6） */
   --toggle-knob: #ffffff;
   /* 浮层遮罩（轨 A #A2）: modal / search / token-gate 全屏黑幕统一值，
-     此前 6 处各写 rgb(0 0 0 / 0.6) */
+     主题恒定 */
   --overlay-scrim: rgb(0 0 0 / 0.6);
   /* 罩上白字（#854 颜色逃逸收编）: 主题恒定的黑罩（attachment pending 徽标
      rgb(0 0 0 / 0.55)）上的白字，两主题同值——罩恒黑故白字恒过对比度 */
   --text-on-veil: #ffffff;
-  /* P0 语义槽（base-ui-theme §2.5/§1.1，#787）：P4 #791 起被行 hover 消费
+  /* P0 语义槽（base-ui-theme §2.5/§1.1，#787）：行 hover 消费
      （motion.css #73 家族吃 --accent-soft，删除行吃 --danger-soft）。
-     --spot-soft = 选中底实色（spot 14% mix 于面板，P1 落仓后暗 ≈#363140）；
+     --spot-soft = 选中底实色（spot 14% mix 于面板）；
      --accent-soft = 行 hover 淡 tint（spot 14% mix 于透明）；
-     --spot-text-on-tint = tint 底上的字（暗取 spot 原色 #cba6f7，6.19:1）；
-     --spot-disabled/-fg = 失能 mix 规则（spot 向底色降级，精确比 P5 面票
-     实测钉死，此处为暂定比）。mix 源统一取 --card-button——P1 翻转品牌值
-     时自动跟随，本票零改动。 */
+     --spot-text-on-tint = tint 底上的字（唯一持实值的 P0 槽，spec/22 §1.4：
+     翻值只翻它，公式槽零改）；
+     --spot-disabled/-fg = 失能 mix 规则（spot 向底色降级）。
+     mix 源统一取 --card-button——品牌值翻转时公式自动跟随（#787 公式继承）。 */
   --spot-soft: color-mix(in srgb, var(--card-button) 14%, var(--surface));
   --accent-soft: color-mix(in srgb, var(--card-button) 14%, transparent);
   /* danger 行 hover 淡 tint（base-ui-theme §1.1：删除行吃 danger 淡 tint，
-     与 accent-soft 同 14% 配方，源换 --destructive；P4 #791 落消费） */
+     与 accent-soft 同 14% 配方，源换 --destructive） */
   --danger-soft: color-mix(in srgb, var(--destructive) 14%, transparent);
-  --spot-text-on-tint: #cba6f7;
+  --spot-text-on-tint: #e0afff;
   --spot-disabled: color-mix(in srgb, var(--card-button) 60%, var(--surface));
   --spot-disabled-fg: color-mix(in srgb, var(--card-button) 65%, white);
 }
 
 .light {
-  --background: #efece5;
-  --foreground: #15140f;
-  /* --card light 取 H 真值 panel（卡片与纸面只差一档，跟 herdr 站房同取舍） */
-  --card: #e7e3da;
-  --card-foreground: #15140f;
-  --popover: #e7e3da;
-  --popover-foreground: #15140f;
-  --primary: #171717;
+  --background: #f4efe7;
+  --foreground: #120f09;
+  /* --card light 取定版纸面档（卡片与纸面只差一档） */
+  --card: #efe9e1;
+  --card-foreground: #120f09;
+  --popover: #efe9e1;
+  --popover-foreground: #120f09;
+  --primary: #120f09;
   --primary-foreground: #fafafa;
-  --secondary: #e7e3da;
-  --secondary-foreground: #15140f;
-  --muted: #ddd8cc;
-  --muted-foreground: #55534a;
-  --accent: #e2ded4;
-  --accent-foreground: #15140f;
-  --destructive: #c73e3e;
+  --secondary: #e8e3da;
+  --secondary-foreground: #120f09;
+  --muted: #e8e3da;
+  --muted-foreground: #35312a;
+  --accent: #e8e3da;
+  --accent-foreground: #120f09;
+  /* 亮模 destructive 走深档（solid 保高明度、文字走深档的 Radix 形随定版
+     色板入册，#915 票面施工边界；7.25:1，spec/22 §1.8） */
+  --destructive: #9d2c4c;
   --destructive-foreground: #ffffff;
-  --border: #e2ded4;
-  --input: #cbc5b6;
-  --ring: #86826f;
+  --border: #e8e3da;
+  --input: #c9c4bc;
+  --ring: #8d8980;
   --column: var(--background);
-  /* sidebar interaction ladder (#128), light side of the cds alpha ladder —
+  /* sidebar interaction ladder (#128), light side of the alpha ladder —
      warm-ink steps over the sidebar surface, hover 5% / selected 10% */
-  --sidebar-hover: rgb(28 25 23 / 0.05);
-  --sidebar-active: rgb(28 25 23 / 0.1);
-  --surface: #e7e3da;
-  --surface-secondary: #ddd8cc;
-  --surface-tertiary: var(--surface-secondary);
+  --sidebar-hover: rgb(28 25 20 / 0.05);
+  --sidebar-active: rgb(28 25 20 / 0.1);
+  --surface: #efe9e1;
+  --surface-secondary: #e8e3da;
+  /* 定版亮侧 tertiary 与 secondary 分档（不再别名压缩）：嵌入控件底深一档 */
+  --surface-tertiary: #e0dbd2;
   --surface-elevated: var(--surface);
-  --surface-hover: #e2ded4;
-  /* #629 板面卡按压档，light 侧：参考站卡底白、按压
-     active:bg-surface-secondary（实测 rgb 242,237,230 ≈ 本 token） */
-  --surface-press: var(--surface-secondary);
-  /* XMON-55 P4（§2.4 亮侧保留现行 warm ramp）：secondary / tertiary /
-     dim 全部通过且与纸面暖调同源，换 herdr dim（6.54:1）是降级，换 faint
-     是违规（F4）。dim 仍只做装饰：时间戳、非活动图标、占位规则。 */
-  --text-secondary: #44403c;
-  --text-tertiary: #57534e;
-  --text-dim: #a8a29e;
-  --border-default: #e2ded4;
-  --border-strong: #cbc5b6;
+  --surface-hover: #e8e3da;
+  /* #629 板面卡按压档，light 侧：按压 = tertiary 一档深 */
+  --surface-press: var(--surface-tertiary);
+  /* XMON-55 P4 亮侧文字族随定版暖纸 ramp 走：secondary / tertiary 过 4.5，
+     dim 过 UI 3 门（3.05:1）仍只做装饰：时间戳、非活动图标、占位规则。 */
+  --text-secondary: #35312a;
+  --text-tertiary: #57534c;
+  --text-dim: #8d8980;
+  --border-default: #e8e3da;
+  --border-strong: #c9c4bc;
   --col-bg: var(--background);
-  --card-button: #8839ef;
-  --focus-ring: #8839ef;
-  --col-head-text: #57534e;
-  --col-dot-idle: #9ea3ae;
-  --col-dot-confirm: #e9a23b;
-  --col-dot-building: #4e81ee;
-  --col-dot-done: #5ec26a;
-  --badge-attention: #e9a23b;
-  --badge-done: #5ec26a;
-  /* attention pill digit (#837: sidebar 工作台计数徽标；深字两主题同值，
-     8.26:1 on --badge-attention) */
-  --badge-attention-fg: #17171a;
-  --badge-idle: #9ea3ae;
-  --agent-avatar-bg: #e7e3da;
-  /* detail palette：plan 回 spot 族（§2.5），其余保留 */
-  --chip-idle-bg: #e7e3da;
-  --chip-idle-fg: #4d5562;
+  --card-button: #7f2da7;
+  --focus-ring: #7f2da7;
+  --col-head-text: #57534c;
+  --col-dot-idle: #645b4c;
+  --col-dot-confirm: #faab3f;
+  --col-dot-building: #00648c;
+  --col-dot-done: #006f36;
+  --badge-attention: #faab3f;
+  --badge-done: #006f36;
+  /* attention pill digit (#837: sidebar 工作台计数徽标；深字按主题各持值，
+     亮 6.46:1，spec/22 §1.8 实测） */
+  --badge-attention-fg: #4c2e00;
+  --badge-idle: #645b4c;
+  /* project initial avatar，亮侧深橙底 + 深字（4.5:1 恰过门，spec/22 §1.8） */
+  --project-avatar-bg: #cd5f37;
+  --project-avatar-fg: #310a00;
+  --agent-avatar-bg: #e8e3da;
+  /* detail palette：plan 回 spot 族，其余保留 */
+  --chip-idle-bg: #e8e3da;
+  --chip-idle-fg: #57534c;
   --chip-plan-bg: var(--spot-soft);
   --chip-plan-fg: var(--spot-text-on-tint);
-  --chip-confirm-bg: #fffbed;
-  --chip-confirm-fg: #a85923;
-  --chip-done-bg: #ecfdf3;
-  --chip-done-fg: #15803d;
-  --seg-active: #ddd8cc;
-  --tab-chip-bg: #e7e3da;
-  --seg-hover: rgb(28 25 23 / 0.05);
-  --stop: #dd524c;
-  /* diff pane：§2.6 对齐（add/del 行、stat 字保留语义） */
-  --diff-add-bg: #eaf1e8;
-  --diff-add-fg: #499771;
-  /* r8 dynamic states (#75)，§2.6 对齐：failed chip / fail title /
-     del row tint / rerun-dialog agent row / range chip */
-  --chip-failed-bg: #fcf3f2;
-  --chip-failed-fg: #ca3a32;
-  --fail-fg: #cc7c2e;
-  --diff-del-bg: #f8e6e4;
-  --dialog-row-bg: #ddd8cc;
-  --range-chip-bg: #e7e3da;
-  --range-chip-border: #cbc5b6;
-  /* modal dialogs (issue #68)：§2.6 panel/box 沿 panel + 边框 */
-  --dialog-bg: #e7e3da;
-  --dialog-box-bg: #e7e3da;
-  --toggle-track: #cbc5b6;
-  /* 运行历史 row ring：§2.6 line2 */
-  --dialog-ring: #cbc5b6;
-  /* resource surfaces：§2.5 tile-indigo 回 spot 族；tile-orange 保留 */
-  --tile-orange-bg: #f0e5d5;
-  --tile-orange-fg: #e9a23b;
+  --chip-confirm-bg: #ffe5c8;
+  --chip-confirm-fg: #825100;
+  --chip-done-bg: #c2f5ce;
+  --chip-done-fg: #004c23;
+  --seg-active: #e0dbd2;
+  --tab-chip-bg: #efe9e1;
+  --seg-hover: rgb(28 25 20 / 0.05);
+  --stop: #9d2c4c;
+  /* diff pane（add/del 行、stat 字保留语义，值随定版） */
+  --diff-add-bg: #c2f5ce;
+  --diff-add-fg: #005f2d;
+  /* r8 dynamic states (#75)：failed chip / fail title / del row tint /
+     rerun-dialog agent row / range chip */
+  --chip-failed-bg: #ffdce1;
+  --chip-failed-fg: #6b1f33;
+  --fail-fg: #833a1f;
+  --diff-del-bg: #ffdce1;
+  --dialog-row-bg: #e8e3da;
+  --range-chip-bg: #e8e3da;
+  --range-chip-border: #c9c4bc;
+  /* modal dialogs (issue #68)：panel/box 沿 panel + 边框 */
+  --dialog-bg: #efe9e1;
+  --dialog-box-bg: #efe9e1;
+  /* 退役候选（spec/22 §1.6），随暗侧同律 */
+  --toggle-track: #c9c4bc;
+  /* 运行历史 row ring：line2 */
+  --dialog-ring: #c9c4bc;
+  /* resource surfaces：tile-indigo 回 spot 族；tile-orange 保留 */
+  --tile-orange-bg: #ffe5c8;
+  --tile-orange-fg: #825100;
   --tile-indigo-bg: var(--spot-soft);
   --tile-indigo-fg: var(--spot-text-on-tint);
-  --tile-hero-bg: #f8ead8;
-  --pill-idle-bg: #ddd8cc;
-  --dash-border: #cbc5b6;
+  --tile-hero-bg: #ffd099;
+  --pill-idle-bg: #e8e3da;
+  --dash-border: #c9c4bc;
   --primary-disabled: var(--spot-disabled);
-  /* overlay batch B (issue #67)，§2.6 对齐：selected row tile /
-     result icon tile / popover hairline；indigo select 块回 spot 族 */
-  --row-selected: #e2ded4;
-  --row-icon-bg: #ddd8cc;
-  --overlay-divider: #e2ded4;
+  /* overlay batch B (issue #67)：selected row tile / result icon tile /
+     popover hairline；indigo select 块回 spot 族 */
+  --row-selected: #e8e3da;
+  --row-icon-bg: #e0dbd2;
+  --overlay-divider: #e8e3da;
   --overlay-select-indigo: var(--spot-soft);
-  /* 模型 picker 选中行（#751，§2.5 选中对 exact 值）：底 = spot 14% mix 于
-     panel，字取加深紫 #6d28d9（4.59:1）。亮侧若用 spot 原色做字只有
-     3.50:1（F3），加深一档是强制项。 */
+  /* 模型 picker 选中行（#751）：底 = spot 14% mix 于面板，字 = 加深紫档
+     --spot-text-on-tint（亮 #562071，7.64:1，spec/22 §1.8 实测——spot 原色
+     做字不达标，加深档是强制项） */
   --pick-selected-bg: var(--spot-soft);
   --pick-selected-fg: var(--spot-text-on-tint);
-  /* chief surfaces：§2.6 strip/active pill，方向沿现行（pill 浅于 strip） */
-  --chief-tab-bg: #ddd8cc;
-  --chief-tab-active: #e7e3da;
-  /* notification banner bell disc (#114)：§2.6 派生；字形走 spot 原色 */
+  /* chief surfaces：strip/active pill，方向沿现行（pill 深于 strip） */
+  --chief-tab-bg: #e8e3da;
+  --chief-tab-active: #e0dbd2;
+  /* notification banner bell disc (#114)：字形走 spot 原色 */
   --notify-icon-bg: var(--spot-soft);
-  --menu-icon: #1c1917;
+  --menu-icon: #120f09;
   /* 轨 A 家族（on-accent / knob / scrim）：.light 保持完整语义 token 面；
-     on-accent 亮侧白字（5.02:1，压亮红 #c73e3e） */
+     on-accent 亮侧白字压深紫 brand（7.41:1，spec/22 §1.5 件面实测） */
   --text-on-accent: #ffffff;
   --toggle-knob: #ffffff;
   --overlay-scrim: rgb(0 0 0 / 0.6);
   /* 罩上白字（#854 颜色逃逸收编）：.light 保持完整语义 token 面，同暗侧值 */
   --text-on-veil: #ffffff;
   /* P0 语义槽 light 镜像（#787）：公式与暗侧同形，唯 --spot-text-on-tint 取
-     加深紫 #6d28d9（spot 原色在亮 tint 上只有 3.50:1，加深档 4.59:1，强制项）；
+     加深紫 #562071（spec/22 §1.8：spot 原色在亮 tint 上不达标，加深档强制）；
      失能字沿既有 light 惯例取白（失能态不按 4.5 验收）。 */
   --spot-soft: color-mix(in srgb, var(--card-button) 14%, var(--surface));
   --accent-soft: color-mix(in srgb, var(--card-button) 14%, transparent);
   --danger-soft: color-mix(in srgb, var(--destructive) 14%, transparent);
-  --spot-text-on-tint: #6d28d9;
+  --spot-text-on-tint: #562071;
   --spot-disabled: color-mix(in srgb, var(--card-button) 60%, var(--surface));
   --spot-disabled-fg: #ffffff;
 }

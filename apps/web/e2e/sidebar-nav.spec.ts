@@ -95,16 +95,16 @@ test('hover tints the row pill — dark default + light theme', async ({ page })
 
   expect(await pillBg(row)).toBe('rgba(0, 0, 0, 0)');
   await row.hover();
-  // --sidebar-hover dark = 5% white over the sidebar layer (#128), reached
-  // over the 150ms color step
-  await expect.poll(() => pillBg(row)).toBe('rgba(255, 255, 255, 0.05)');
+  // --sidebar-hover dark = 5% warm white over the sidebar layer (#128),
+  // reached over the 150ms color step
+  await expect.poll(() => pillBg(row)).toBe('rgba(255, 252, 248, 0.05)');
 
   await page.addInitScript(() => localStorage.setItem('pacman-theme', 'light'));
   await page.goto('/app?scenario=01');
   const lightRow = page.locator('.sidebar-row', { hasText: '定时' });
   await lightRow.hover();
   // --sidebar-hover light = 5% warm ink
-  await expect.poll(() => pillBg(lightRow)).toBe('rgba(28, 25, 23, 0.05)');
+  await expect.poll(() => pillBg(lightRow)).toBe('rgba(28, 25, 20, 0.05)');
 });
 
 test('rail hover tints the 24px pill', async ({ page }) => {
@@ -114,7 +114,7 @@ test('rail hover tints the 24px pill', async ({ page }) => {
 
   expect(await pillBg(row)).toBe('rgba(0, 0, 0, 0)');
   await row.hover();
-  await expect.poll(() => pillBg(row)).toBe('rgba(255, 255, 255, 0.05)');
+  await expect.poll(() => pillBg(row)).toBe('rgba(255, 252, 248, 0.05)');
 });
 
 test('selected row keeps its own pill under hover', async ({ page }) => {
@@ -127,6 +127,6 @@ test('selected row keeps its own pill under hover', async ({ page }) => {
   // (--sidebar-active, #128) — hover must not wash it back to the hover
   // step
   await page.waitForTimeout(250);
-  expect(await pillBg(board)).toBe('rgba(255, 255, 255, 0.1)');
+  expect(await pillBg(board)).toBe('rgba(255, 252, 248, 0.1)');
   await expect(board).toHaveClass(/sidebar-row--selected/);
 });
