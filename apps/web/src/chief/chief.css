@@ -227,7 +227,10 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  padding: 7px 8px;
+  /* #872 整行铺满：横向内衬归基类 .model-pick-row（单源），本面只留纵向
+     7px；--model-pick-ink 补回本面原有的 8px 行内衬，字墨位不动。 */
+  padding-block: 7px;
+  --model-pick-ink: 8px;
   border: none;
   border-radius: 0;
   background: transparent;
@@ -974,8 +977,10 @@ a.chief-identity {
   right: 0;
   top: calc(100% + 8px);
   min-width: 220px;
-  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px。 */
-  padding: 12px;
+  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px。
+     #872：横向内边距移交给行（.model-pick-row 单源），选中/hover 底色因此
+     铺满弹层整宽；本壳只管纵向 12px。 */
+  padding: 12px 0;
   display: flex;
   flex-direction: column;
   background: var(--popover-bg);
@@ -1017,8 +1022,9 @@ a.chief-identity {
   gap: 8px;
   width: 100%;
   height: 32px;
-  /* 壳垫 12px 后行内横缩清零——字墨 inset 仍是 12（原 4+8）。 */
-  padding: 0;
+  /* #872：横向内衬归基类 .model-pick-row（本面 --model-pick-ink 缺省 0，
+     字墨 inset 仍是 12）；本面只声明零纵向内衬，行高由 height 钉 32。 */
+  padding-block: 0;
   border: none;
   border-radius: 0;
   background: transparent;
@@ -1063,6 +1069,25 @@ a.chief-identity {
   min-height: 0;
 }
 
+/* #872 整行铺满：横向内衬单源在本层——弹层壳只留纵向 12px（.chief-model-pop
+   / .chief-model-menu 的 padding: 12px 0），行自带等量横向内衬，选中/hover
+   底色因此伸到弹层内缘（用户报「中间还有间隙，要全覆盖的」；参考站 todos.dev
+   同面也是壳零横垫 + 行自垫）。--model-pick-ink 是该面在壳垫之外原有的行内
+   衬（抽屉面 8px，设置面 0），补回后字墨与行尾勾零位移。 */
+.model-pick-row {
+  --model-pick-gutter: 12px;
+  padding-inline: calc(var(--model-pick-gutter) + var(--model-pick-ink, 0px));
+}
+
+/* 壳垫移交后，壳内另外两块各自补回原位：搜索框（输入面，贴边没有整行底色的
+   理由）取回 12px 横缩。选择器钉在两个模型 picker 壳上——.chief-pick-search
+   是共享类，agent 对话框那一份骑在 .chief-pick 自己的 16px 垫上，不许被本
+   改动二次内缩。空态文本居中，盒子变宽不位移，无需补。 */
+.chief-model-pop .chief-pick-search,
+.chief-model-menu .chief-pick-search {
+  margin-inline: 12px;
+}
+
 /* #751 选中行单源：chief 两个 picker 面（抽屉头主模型弹层 + 设置面压缩
    模型弹层）都经 ModelPickRow 渲染，选中态 therefore 落在基类钩子上而不是
    各面 skin——令牌对 --pick-selected-bg/-fg 承载此前缺失的角色（选中行
@@ -1096,8 +1121,10 @@ a.chief-identity {
   left: 0;
   top: calc(100% + 8px);
   width: 280px;
-  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px。 */
-  padding: 12px;
+  /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px。
+     #872：横向内边距移交给行（.model-pick-row 单源），选中/hover 底色因此
+     铺满弹层整宽；本壳只管纵向 12px。 */
+  padding: 12px 0;
   display: flex;
   flex-direction: column;
   background: var(--popover);

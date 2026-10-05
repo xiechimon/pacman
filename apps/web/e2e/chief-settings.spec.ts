@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { evidencePanelShot } from './evidence';
 
 // Issue #182 acceptance: chief 设置面三死钮接线(#180 裁决落账)。
 // 1. agent 行 → 选择总管 Agent dialog(DialogShell 家族律):搜索框 + Agent
@@ -43,6 +44,24 @@ test('agent row opens the 选择总管 Agent dialog with search + canon default 
   await expect(dialog.locator('.chief-pick-input')).toHaveAttribute('placeholder', '搜索 Agent…');
   await expect(dialog.locator('.chief-pick-row')).toHaveCount(1);
   await expect(dialog.locator('.chief-pick-name')).toHaveText('r3-builder');
+});
+
+// #872 反向钉：.chief-pick-search 是共享类，agent 对话框那一份骑在
+// .chief-pick 自己的 16px 垫上。模型 picker 的壳垫移交不许顺着共享类漏进来
+// （第一次实现就是全局加 margin-inline: 12px —— 这一面会变 28px）。
+test('agent dialog search keeps its own 16px inset (#872 blast radius)', async ({ page }) => {
+  const dialog = await openAgentDialog(page);
+  const shell = dialog.locator('.chief-pick');
+  // .dlg 的进场是 zoom-in-95 缩放（100ms）——缩放着量到的不是落定几何。
+  await dialog.evaluate((el) =>
+    Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined),
+  );
+  const inset = await dialog.locator('.chief-pick-search').evaluate((el) => {
+    const box = el.closest('.chief-pick') as HTMLElement;
+    return el.getBoundingClientRect().left - box.getBoundingClientRect().left;
+  });
+  await expect(shell).toBeVisible();
+  expect(inset).toBeCloseTo(16, 1);
 });
 
 test('agent dialog family law: X, Escape and backdrop dismiss; panel clicks do not', async ({
@@ -147,6 +166,78 @@ test('压缩模型 interactive (#204): button opens the anchored model menu', as
   await expect(menu.locator('.chief-model-row').nth(0)).toHaveAttribute('aria-selected', 'true');
   await expect(menu.locator('.chief-model-row').nth(1)).toContainText('claude-sonnet-5');
   await expect(menu.locator('.chief-model-row-provider')).toHaveText('Claude Code');
+});
+
+// #872: 设置面 picker 与抽屉面共用 ModelPickRow —— 整行铺满的失败方式同上；
+// 这一面多钉两条：未选中行不许跟着上底色；搜索框的 12px 内缩是壳垫迁走后
+// 由行/搜索框各自承担的，不许跟着塌掉。
+test('压缩模型 selected row fill bleeds to the menu edges (#872)', async ({ page }) => {
+  // 用户报的就是这一面（压缩模型 picker）的亮面截图——证据帧与它同面。
+  await page.addInitScript(() => localStorage.setItem('pacman-theme', 'light'));
+  const { menu } = await openModelMenu(page);
+  await menu.evaluate((el) =>
+    Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined),
+  );
+  const selected = menu.locator('.chief-model-row[aria-selected="true"]');
+  await expect(selected).toHaveCount(1);
+  // 证据帧（PACMAN_E2E_EVIDENCE 未设时零写入）：这一面有选中 + 未选中两行，
+  // 正是用户报的那张图（设置面压缩模型 picker）。
+  await evidencePanelShot(page, '872-settings-picker.png', menu);
+
+  const geo = await selected.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const panelEl = el.closest('.chief-model-menu') as HTMLElement;
+    const p = panelEl.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    const pcs = getComputedStyle(panelEl);
+    const name = el.querySelector('.model-pick-name') as HTMLElement;
+    const check = el.querySelector('.model-pick-check') as HTMLElement;
+    return {
+      fillLeft: r.left - p.left,
+      fillRight: p.right - r.right,
+      panelBorder: parseFloat(pcs.borderLeftWidth),
+      bg: cs.backgroundColor,
+      padLeft: parseFloat(cs.paddingLeft),
+      padRight: parseFloat(cs.paddingRight),
+      nameInset: name.getBoundingClientRect().left - r.left,
+      checkInset: r.right - check.getBoundingClientRect().right,
+    };
+  });
+  expect(geo.bg).not.toBe('rgba(0, 0, 0, 0)');
+  expect(geo.fillLeft).toBeCloseTo(geo.panelBorder, 1);
+  expect(geo.fillRight).toBeCloseTo(geo.panelBorder, 1);
+  expect(geo.nameInset).toBeCloseTo(geo.padLeft, 1);
+  expect(geo.checkInset).toBeCloseTo(geo.padRight, 1);
+
+  // 未选中行不受影响：零底色 + 零横向溢出（清单是滚动容器）
+  expect(
+    await menu.locator('.chief-model-row').nth(1).evaluate((el) => getComputedStyle(el).backgroundColor),
+  ).toBe('rgba(0, 0, 0, 0)');
+  const scroll = await menu
+    .locator('.chief-model-pick-list')
+    .evaluate((el) => ({ sw: el.scrollWidth, cw: el.clientWidth }));
+  expect(scroll.sw).toBe(scroll.cw);
+
+  // 搜索框现形后仍与弹层内缘保持 12px
+  await page.waitForFunction(
+    (sel) => {
+      const el = document.querySelector(sel);
+      return el != null && el.contains(document.activeElement);
+    },
+    '.chief-model-menu',
+  );
+  await page.keyboard.press('x');
+  const search = menu.locator('.chief-pick-search');
+  await expect(search).toBeVisible();
+  const searchInset = await search.evaluate((el) => {
+    const panelEl = el.closest('.chief-model-menu') as HTMLElement;
+    return (
+      el.getBoundingClientRect().left -
+      panelEl.getBoundingClientRect().left -
+      parseFloat(getComputedStyle(panelEl).borderLeftWidth)
+    );
+  });
+  expect(searchInset).toBeCloseTo(12, 1);
 });
 
 test('压缩模型 search is typeahead-only, same contract as the drawer picker (#756 续)', async ({
