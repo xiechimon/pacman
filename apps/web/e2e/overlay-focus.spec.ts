@@ -44,8 +44,9 @@ test.describe('#15 focus ring收编', () => {
     // （负载下渲染端输入处理可滞后于断言读，关层监听挂被动 effect）。
     for (let attempt = 0; attempt < 6; attempt += 1) {
       await page.keyboard.press('Escape');
+      // #948 载体重钉（#910 裁定 1）：dialog 类名锚换 role+name 一级载体。
       const closed = await page
-        .locator('.new-task-dialog')
+        .getByRole('dialog', { name: '新建任务' })
         .waitFor({ state: 'hidden', timeout: 1000 })
         .then(() => true)
         .catch(() => false);

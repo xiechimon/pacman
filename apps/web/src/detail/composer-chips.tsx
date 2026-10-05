@@ -14,6 +14,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n/provider.js';
+// #948：chip 家族皮肤单源迁 overlay/mention-chip.ts（原 mention-picker.css），
+// 类名钩子（mention-chip--*）与 fresh 动效类原样保留。
+import { mentionChipClass } from '../overlay/mention-chip.js';
 import {
   type DraftChip,
   type FileMentionEntry,
@@ -62,7 +65,7 @@ export function ComposerChips({ draft, files, suspended }: ComposerChipsProps) {
       {keyed.map(({ chip, key }) => (
         <span
           key={key}
-          className={`mention-chip mention-chip--${chip.kind}${
+          className={`${mentionChipClass(chip.kind)}${
             freshKeys.has(key)
               ? ' composer-chip--fresh animate-in fade-in-0 zoom-in-98 duration-100'
               : ''

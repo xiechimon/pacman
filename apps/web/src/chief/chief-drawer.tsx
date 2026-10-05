@@ -934,7 +934,9 @@ export function ChiefDrawer({
               )}
             </div>
 
-            <div className="chief-composer">
+            {/* #948：strip 的流内垫规则自 attachment-strip.css 迁入（该文件
+                退役）——composer 卡在流内，strip 垫 8px 骑在输入与工具栏之间。 */}
+            <div className="chief-composer [&>.attachment-strip]:mt-2">
               {/* #624：占位双态随回合态（r5 §3.6，截图 113）——活动线程 activeRun
               在位（chief.running，mapChief 单点投影）= steer canon「执行过程中
               即可送达」，空闲 / 新主题 / 回合收尾 = 空闲 canon。两值经 t() 消费

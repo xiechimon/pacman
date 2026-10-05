@@ -111,7 +111,10 @@ test('开着的层不被重渲染重挂 Escape 接线：URL 写回后单次 Esca
 // 本钉因此钉根因侧（开层期接线稳定），并同断用户可见律（单次 Escape 收层）。
 
 const DETAIL = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27';
-const confirmDialog = (page: Page) => page.locator('.delete-confirm');
+// #948 载体重钉（#910 裁定 1）：确认层 = getByRole('alertdialog')（壳自带
+// role + aria-label）；删除行 = getByRole('menuitem', { name })。.detail-head-icon--more
+// 是 detail 域残留别名（#945 面），.search-panel/.board-* 归 overlays/board，均不动。
+const confirmDialog = (page: Page) => page.getByRole('alertdialog');
 const searchPanel = (page: Page) => page.locator('.search-panel');
 
 /** ⌘K toggle 走 search-focus 重试律：送达的一按翻转面板态即出环，丢失的
@@ -133,7 +136,7 @@ test('确认弹层不被根组件重渲染重挂 Escape 接线：⌘K 往返后�
 }) => {
   await page.goto(DETAIL);
   await page.locator('.detail-head-icon--more').click();
-  await page.locator('.more-menu-item[data-action="delete"]').click();
+  await page.getByRole('menuitem', { name: '删除' }).click();
   await expect(confirmDialog(page)).toBeVisible();
   await installEscapeTap(page);
   // 根组件级重渲染往返：⌘K 开搜索面板（commit 1）、⌘K 关（commit 2）——

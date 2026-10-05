@@ -10,6 +10,11 @@ import { expect, type Page, test } from '@playwright/test';
 // 3. the fixture card lands without the derived first-line title
 // 4. a >50-char first line isn't truncated with the ellipsis
 // 5. autofocus leaves the spec textarea
+//
+// #948 载体重钉（#910 裁定 1/2）：dialog = role+name，正文框 = dialog scope
+// getByRole('textbox')（唯一 textbox）；.new-task-input/-tags/-tag-add 三条
+// 负钉（toHaveCount(0)）保留类名形态——它们钉的就是「退役结构不许回」，
+// 类名即断言对象。.sidebar-new-task / .todo-card-title 是 board 域载体，不动。
 
 const BOARD = '/app?scenario=01';
 
@@ -17,7 +22,7 @@ async function openDialog(page: Page) {
   await page.goto(BOARD);
   // #445：顶栏「+ 任务」撤除——opener = 侧栏「新任务」行（C 热键同解析）
   await page.locator('.sidebar-new-task').click();
-  const dialog = page.locator('.new-task-dialog');
+  const dialog = page.getByRole('dialog', { name: '新建任务' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -27,7 +32,7 @@ test('the dialog has no title input and no tag UI', async ({ page }) => {
   await expect(dialog.locator('.new-task-input')).toHaveCount(0);
   await expect(dialog.locator('.new-task-tags')).toHaveCount(0);
   await expect(dialog.locator('.new-task-tag-add')).toHaveCount(0);
-  await expect(dialog.locator('.new-task-spec')).toBeVisible();
+  await expect(dialog.getByRole('textbox')).toBeVisible();
 });
 
 test('save buttons gate on the spec body, not a title', async ({ page }) => {
@@ -36,14 +41,14 @@ test('save buttons gate on the spec body, not a title', async ({ page }) => {
   const start = dialog.getByRole('button', { name: '保存并开始' });
   await expect(save).toBeDisabled();
   await expect(start).toBeDisabled();
-  await dialog.locator('.new-task-spec').fill('修支付回调');
+  await dialog.getByRole('textbox').fill('修支付回调');
   await expect(save).toBeEnabled();
   await expect(start).toBeEnabled();
 });
 
 test('fixture 保存 lands a card titled by the first line', async ({ page }) => {
   const dialog = await openDialog(page);
-  await dialog.locator('.new-task-spec').fill('给登录页加验证码\n\n现在的情况：无');
+  await dialog.getByRole('textbox').fill('给登录页加验证码\n\n现在的情况：无');
   await dialog.getByRole('button', { name: '保存', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   const card = page.locator('[data-column="todo"] .todo-card', { hasText: '给登录页加验证码' });
@@ -54,7 +59,7 @@ test('fixture 保存 lands a card titled by the first line', async ({ page }) =>
 
 test('a >50-char first line is truncated with an ellipsis', async ({ page }) => {
   const dialog = await openDialog(page);
-  await dialog.locator('.new-task-spec').fill('长'.repeat(60));
+  await dialog.getByRole('textbox').fill('长'.repeat(60));
   await dialog.getByRole('button', { name: '保存', exact: true }).click();
   const title = page.locator('[data-column="todo"] .todo-card .todo-card-title').last();
   await expect(title).toHaveText(`${'长'.repeat(50)}…`);
@@ -62,7 +67,7 @@ test('a >50-char first line is truncated with an ellipsis', async ({ page }) => 
 
 test('autofocus lands on the spec textarea', async ({ page }) => {
   const dialog = await openDialog(page);
-  await expect(dialog.locator('.new-task-spec')).toBeFocused();
+  await expect(dialog.getByRole('textbox')).toBeFocused();
 });
 
 test('Esc close returns focus to the invoking button (#388 族律；#445 触发位 = 侧栏行)', async ({

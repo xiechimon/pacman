@@ -245,8 +245,17 @@ export function Composer({
       )}
       {/* #757 附件 strip + #812 提及 strip：同一浮列挂盒外上方（盒底沿
           min-84 起随内容增高，浮列与 listbox 同锚无布局位移）。共列即天然上下叠放，
-          两面永不互盖；各 strip 空时零节点，列空即零高度不绘制。 */}
-      <div className="composer-float">
+          两面永不互盖；各 strip 空时零节点，列空即零高度不绘制。
+          #948：浮列定位规则自 attachment-strip.css 迁入（该文件退役）——
+          局部 z30 沿旧值（composer 内部层级，#688 阶梯外）；chips 的 static
+          覆写带 !：detail.css 的 .composer-chips{position:absolute} 是
+          unlayered 规则，layered utility 常态压不过（#688 层序教训），过渡期
+          用 important 顶住，detail.css 清零（#945）后 `!` 可降级；strip 的
+          pointer-events auto 复原预览点击（列本身永不拦截）。 */}
+      <div
+        data-testid="composer-float"
+        className="composer-float pointer-events-none absolute inset-x-0 bottom-[calc(100%+6px)] z-30 flex flex-col gap-1.5 [&>.attachment-strip]:pointer-events-auto [&>.composer-chips]:static!"
+      >
         <ComposerChips draft={draft} files={mentionFiles} suspended={inlineOpen || slashOpen} />
         <AttachmentStrip draft={draft} pending={pendingAttachments} />
       </div>

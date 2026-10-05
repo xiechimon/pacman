@@ -8,6 +8,9 @@ import { evidenceShot } from './evidence';
 // verbatim, so pinning the card pins the whole chain. Fixture mode
 // (?scenario=01) drives the REAL localTodo derivation — no stub stands in
 // for the title (newtask-single-field.spec discipline).
+//
+// #948 载体重钉（#910 裁定 1/2）：dialog = role+name，正文框 = dialog scope
+// getByRole('textbox')；board 域载体（.sidebar-new-task / .todo-card*）不动。
 
 const BOARD = '/app?scenario=01';
 const TOKEN = '![pasted-image-1.png](attachment:team-1/att-1.png)';
@@ -15,9 +18,9 @@ const TOKEN = '![pasted-image-1.png](attachment:team-1/att-1.png)';
 async function saveSpec(page: Page, spec: string) {
   await page.goto(BOARD);
   await page.locator('.sidebar-new-task').click();
-  const dialog = page.locator('.new-task-dialog');
+  const dialog = page.getByRole('dialog', { name: '新建任务' });
   await expect(dialog).toBeVisible();
-  await page.locator('.new-task-spec').fill(spec);
+  await dialog.getByRole('textbox').fill(spec);
   await dialog.getByRole('button', { name: '保存', exact: true }).click();
   const card = page.locator('[data-column="todo"] .todo-card').last();
   await expect(card).toBeVisible();
