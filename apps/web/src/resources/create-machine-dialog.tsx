@@ -93,7 +93,7 @@ export function CreateMachineDialog({ open, onClose, teamName, teamId }: CreateM
             贴左、无框、secondary 墨）；hover/展开态底色由件承载（D2）。 */}
         <Button
           variant="ghost"
-          className={`${INLINE_ACTION_CLS} px-0 text-(--text-secondary)`}
+          className={`${INLINE_ACTION_CLS} px-0 text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-secondary) dark:hover:bg-transparent font-normal active:not-aria-[haspopup]:translate-y-0`}
           aria-expanded={apiKeyOpen}
           onClick={() => setApiKeyOpen((value) => !value)}
         >

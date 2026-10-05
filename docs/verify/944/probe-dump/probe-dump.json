@@ -2,8 +2,8 @@
   "meta": {
     "tool": "probe-dump",
     "ticket": 921,
-    "date": "2026-10-05T19:01:13.317Z",
-    "commit": "4c9149d6",
+    "date": "2026-10-05T20:01:04.570Z",
+    "commit": "87b9480a",
     "port": 8400,
     "specs": [
       "skills-page",
@@ -785,6 +785,19 @@
     },
     {
       "k": "p",
+      "p": "style",
+      "cls": "Page",
+      "f": "accent-typo.spec.ts",
+      "l": 109,
+      "v": {
+        "bg": "rgba(0, 0, 0, 0)",
+        "shadow": "none",
+        "color": "rgb(53, 49, 42)"
+      },
+      "tt": "the sidebar collapse toggle shows no hover face (light)"
+    },
+    {
+      "k": "p",
       "p": "box",
       "cls": "Locator",
       "f": "checkbox-unified.spec.ts",
@@ -797,19 +810,6 @@
         "height": 18.5625
       },
       "tt": "accept: tile 几何 = 16×16 / 圆角 0 / 与文字 gap 8 / 文字 13px"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Page",
-      "f": "accent-typo.spec.ts",
-      "l": 109,
-      "v": {
-        "bg": "rgba(0, 0, 0, 0)",
-        "shadow": "none",
-        "color": "rgb(53, 49, 42)"
-      },
-      "tt": "the sidebar collapse toggle shows no hover face (light)"
     },
     {
       "k": "p",
@@ -1327,6 +1327,21 @@
     },
     {
       "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "chief-panel.spec.ts",
+      "l": 194,
+      "loc": ".page-main-col",
+      "v": {
+        "x": 240,
+        "y": 0,
+        "width": 1200,
+        "height": 732
+      },
+      "tt": "pages: the main column narrows by 418 while docked and restores on close"
+    },
+    {
+      "k": "p",
       "p": "style",
       "cls": "Page",
       "f": "accent-typo.spec.ts",
@@ -1342,21 +1357,6 @@
       "l": 211,
       "v": "rgb(255, 255, 255)",
       "tt": "P5 danger pair: destructive bg + fg resolve and pass 4.5 (light)"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "chief-panel.spec.ts",
-      "l": 194,
-      "loc": ".page-main-col",
-      "v": {
-        "x": 240,
-        "y": 0,
-        "width": 1200,
-        "height": 732
-      },
-      "tt": "pages: the main column narrows by 418 while docked and restores on close"
     },
     {
       "k": "p",
@@ -1537,6 +1537,21 @@
     },
     {
       "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "chief-panel.spec.ts",
+      "l": 194,
+      "loc": ".secondary-main-col",
+      "v": {
+        "x": 240,
+        "y": 0,
+        "width": 1200,
+        "height": 732
+      },
+      "tt": "secondary: the main column narrows by 418 while docked and restores on close"
+    },
+    {
+      "k": "p",
       "p": "style",
       "cls": "Page",
       "f": "accent-typo.spec.ts",
@@ -1552,21 +1567,6 @@
       "l": 211,
       "v": "color(srgb 1 0.666667 0.72549 / 0.14)",
       "tt": "P4 row hover rides accent-soft, delete row rides danger-soft (dark)"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "chief-panel.spec.ts",
-      "l": 194,
-      "loc": ".secondary-main-col",
-      "v": {
-        "x": 240,
-        "y": 0,
-        "width": 1200,
-        "height": 732
-      },
-      "tt": "secondary: the main column narrows by 418 while docked and restores on close"
     },
     {
       "k": "p",
@@ -1651,10 +1651,10 @@
       "l": 29,
       "loc": ".dlg",
       "v": {
-        "x": 184.7244873046875,
-        "y": 32.80238342285156,
-        "width": 430.551025390625,
-        "height": 434.39524841308594
+        "x": 186.40701293945312,
+        "y": 34.49993896484375,
+        "width": 427.1859436035156,
+        "height": 431.0001220703125
       },
       "tt": "provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移"
     },
@@ -1750,6 +1750,21 @@
     },
     {
       "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "dialog-viewport.spec.ts",
+      "l": 29,
+      "loc": ".dlg",
+      "v": {
+        "x": 186.41688537597656,
+        "y": 104.59185028076172,
+        "width": 427.16624450683594,
+        "height": 290.81629180908203
+      },
+      "tt": "create-agent: submit 在视口"
+    },
+    {
+      "k": "p",
       "p": "style",
       "cls": "Locator",
       "f": "agent-detail.spec.ts",
@@ -1768,16 +1783,36 @@
       "k": "p",
       "p": "box",
       "cls": "Locator",
-      "f": "dialog-viewport.spec.ts",
-      "l": 29,
-      "loc": ".dlg",
+      "f": "chief-panel.spec.ts",
+      "l": 273,
+      "loc": ".chief-composer-input",
       "v": {
-        "x": 186.40687561035156,
-        "y": 104.58503723144531,
-        "width": 427.18626403808594,
-        "height": 290.82994079589844
+        "x": 1052,
+        "y": 610,
+        "width": 359,
+        "height": 60
       },
-      "tt": "create-agent: submit 在视口"
+      "tt": "composer keeps one fixed size whether or not a draft is restored (XMON-102)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-panel.spec.ts",
+      "l": 277,
+      "loc": ".chief-composer-input",
+      "v": "60px",
+      "tt": "composer keeps one fixed size whether or not a draft is restored (XMON-102)"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Locator",
+      "f": "chief-panel.spec.ts",
+      "l": 278,
+      "loc": ".chief-composer-input",
+      "v": "auto",
+      "tt": "composer keeps one fixed size whether or not a draft is restored (XMON-102)"
     },
     {
       "k": "p",
@@ -1831,49 +1866,14 @@
       "k": "p",
       "p": "box",
       "cls": "Locator",
-      "f": "chief-panel.spec.ts",
-      "l": 273,
-      "loc": ".chief-composer-input",
-      "v": {
-        "x": 1052,
-        "y": 610,
-        "width": 359,
-        "height": 60
-      },
-      "tt": "composer keeps one fixed size whether or not a draft is restored (XMON-102)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-panel.spec.ts",
-      "l": 277,
-      "loc": ".chief-composer-input",
-      "v": "60px",
-      "tt": "composer keeps one fixed size whether or not a draft is restored (XMON-102)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Locator",
-      "f": "chief-panel.spec.ts",
-      "l": 278,
-      "loc": ".chief-composer-input",
-      "v": "auto",
-      "tt": "composer keeps one fixed size whether or not a draft is restored (XMON-102)"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
       "f": "dialog-viewport.spec.ts",
       "l": 29,
       "loc": ".dlg",
       "v": {
-        "x": 186.40687561035156,
-        "y": 133.66802978515625,
-        "width": 427.18626403808594,
-        "height": 232.6639404296875
+        "x": 186.409423828125,
+        "y": 133.66941833496094,
+        "width": 427.18115234375,
+        "height": 232.66114807128906
       },
       "tt": "charter: 取消/保存章程在视口"
     },
@@ -1904,21 +1904,6 @@
     },
     {
       "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "dialog-viewport.spec.ts",
-      "l": 29,
-      "loc": ".dlg",
-      "v": {
-        "x": 186.40687561035156,
-        "y": 169.90257263183594,
-        "width": 427.18626403808594,
-        "height": 160.19483947753906
-      },
-      "tt": "chief-agent 列表态(无按钮读面)面板整体不越视口"
-    },
-    {
-      "k": "p",
       "p": "style",
       "cls": "Locator",
       "f": "chief-panel.spec.ts",
@@ -1932,13 +1917,28 @@
       "p": "box",
       "cls": "Locator",
       "f": "dialog-viewport.spec.ts",
+      "l": 29,
+      "loc": ".dlg",
+      "v": {
+        "x": 186.40191650390625,
+        "y": 169.90072631835938,
+        "width": 427.1961669921875,
+        "height": 160.19854736328125
+      },
+      "tt": "chief-agent 列表态(无按钮读面)面板整体不越视口"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "dialog-viewport.spec.ts",
       "l": 133,
       "loc": ".dlg",
       "v": {
-        "x": 186.4143524169922,
-        "y": 31.252851486206055,
-        "width": 427.17127990722656,
-        "height": 297.4943103790283
+        "x": 186.40687561035156,
+        "y": 31.247644424438477,
+        "width": 427.18626403808594,
+        "height": 297.50470542907715
       },
       "tt": "branch sync tab: 视口压过内容高,同步钮钉底,body 溢出;git tab 正常"
     },
@@ -1980,10 +1980,10 @@
       "l": 29,
       "loc": ".dlg",
       "v": {
-        "x": 180.74700927734375,
-        "y": 180.22933959960938,
-        "width": 438.5059814453125,
-        "height": 139.54132080078125
+        "x": 180.7404327392578,
+        "y": 180.2272491455078,
+        "width": 438.51914978027344,
+        "height": 139.54551696777344
       },
       "tt": "accept(34): 取消/完成在视口"
     },
@@ -2274,6 +2274,20 @@
     },
     {
       "k": "p",
+      "p": "style",
+      "cls": "Page",
+      "f": "sidebar-seam.spec.ts",
+      "l": 111,
+      "v": {
+        "seamColor": "rgb(45, 42, 36)",
+        "topbarColor": "rgb(45, 42, 36)",
+        "navTop": 43,
+        "topbarH": 44
+      },
+      "tt": "pages shell: the divider runs full width on schedules too (dark)"
+    },
+    {
+      "k": "p",
       "p": "box",
       "cls": "Locator",
       "f": "skills-page.spec.ts",
@@ -2317,14 +2331,14 @@
       "p": "style",
       "cls": "Page",
       "f": "sidebar-seam.spec.ts",
-      "l": 111,
+      "l": 132,
       "v": {
         "seamColor": "rgb(45, 42, 36)",
         "topbarColor": "rgb(45, 42, 36)",
-        "navTop": 43,
-        "topbarH": 44
+        "navColor": "rgb(45, 42, 36)",
+        "navTop": 43
       },
-      "tt": "pages shell: the divider runs full width on schedules too (dark)"
+      "tt": "resources: the full-width line reads one color across the seam (dark)"
     },
     {
       "k": "p",
@@ -2370,20 +2384,6 @@
         "height": 44
       },
       "tt": "回归 #486/#494：技能列表可由滚轮到达，且滚动条贴面板右缘"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Page",
-      "f": "sidebar-seam.spec.ts",
-      "l": 132,
-      "v": {
-        "seamColor": "rgb(45, 42, 36)",
-        "topbarColor": "rgb(45, 42, 36)",
-        "navColor": "rgb(45, 42, 36)",
-        "navTop": 43
-      },
-      "tt": "resources: the full-width line reads one color across the seam (dark)"
     },
     {
       "k": "p",
@@ -5412,14 +5412,14 @@
       "source": "expect(box.height).toBeLessThanOrEqual(CAP + 0.5);",
       "testTitle": "provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移",
       "old": "≤ 452.5",
-      "new": "434.39524841308594",
+      "new": "431.0001220703125",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         452.5
       ],
-      "rawNew": 434.39524841308594
+      "rawNew": 431.0001220703125
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5463,14 +5463,14 @@
       "source": "expect(box.height).toBeLessThanOrEqual(CAP + 0.5);",
       "testTitle": "create-agent: submit 在视口",
       "old": "≤ 452.5",
-      "new": "290.82994079589844",
+      "new": "290.81629180908203",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         452.5
       ],
-      "rawNew": 290.82994079589844
+      "rawNew": 290.81629180908203
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5480,14 +5480,14 @@
       "source": "expect(box.height).toBeLessThanOrEqual(CAP + 0.5);",
       "testTitle": "charter: 取消/保存章程在视口",
       "old": "≤ 452.5",
-      "new": "232.6639404296875",
+      "new": "232.66114807128906",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         452.5
       ],
-      "rawNew": 232.6639404296875
+      "rawNew": 232.66114807128906
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5497,14 +5497,14 @@
       "source": "expect(box.height).toBeLessThanOrEqual(CAP + 0.5);",
       "testTitle": "chief-agent 列表态(无按钮读面)面板整体不越视口",
       "old": "≤ 452.5",
-      "new": "160.19483947753906",
+      "new": "160.19854736328125",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         452.5
       ],
-      "rawNew": 160.19483947753906
+      "rawNew": 160.19854736328125
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5514,14 +5514,14 @@
       "source": "expect(box.height).toBeLessThanOrEqual(CAP + 0.5);",
       "testTitle": "accept(34): 取消/完成在视口",
       "old": "≤ 452.5",
-      "new": "139.54132080078125",
+      "new": "139.54551696777344",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         452.5
       ],
-      "rawNew": 139.54132080078125
+      "rawNew": 139.54551696777344
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5531,14 +5531,14 @@
       "source": "expect(box.y).toBeGreaterThanOrEqual(0);",
       "testTitle": "provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移",
       "old": "≥ 0",
-      "new": "32.80238342285156",
+      "new": "34.49993896484375",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         0
       ],
-      "rawNew": 32.80238342285156
+      "rawNew": 34.49993896484375
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5582,14 +5582,14 @@
       "source": "expect(box.y).toBeGreaterThanOrEqual(0);",
       "testTitle": "create-agent: submit 在视口",
       "old": "≥ 0",
-      "new": "104.58503723144531",
+      "new": "104.59185028076172",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         0
       ],
-      "rawNew": 104.58503723144531
+      "rawNew": 104.59185028076172
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5599,14 +5599,14 @@
       "source": "expect(box.y).toBeGreaterThanOrEqual(0);",
       "testTitle": "charter: 取消/保存章程在视口",
       "old": "≥ 0",
-      "new": "133.66802978515625",
+      "new": "133.66941833496094",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         0
       ],
-      "rawNew": 133.66802978515625
+      "rawNew": 133.66941833496094
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5616,14 +5616,14 @@
       "source": "expect(box.y).toBeGreaterThanOrEqual(0);",
       "testTitle": "chief-agent 列表态(无按钮读面)面板整体不越视口",
       "old": "≥ 0",
-      "new": "169.90257263183594",
+      "new": "169.90072631835938",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         0
       ],
-      "rawNew": 169.90257263183594
+      "rawNew": 169.90072631835938
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5633,14 +5633,14 @@
       "source": "expect(box.y).toBeGreaterThanOrEqual(0);",
       "testTitle": "accept(34): 取消/完成在视口",
       "old": "≥ 0",
-      "new": "180.22933959960938",
+      "new": "180.2272491455078",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         0
       ],
-      "rawNew": 180.22933959960938
+      "rawNew": 180.2272491455078
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5650,14 +5650,14 @@
       "source": "expect(box.y + box.height).toBeLessThanOrEqual(500.5);",
       "testTitle": "provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移",
       "old": "≤ 500.5",
-      "new": "467.1976318359375",
+      "new": "465.50006103515625",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         500.5
       ],
-      "rawNew": 467.1976318359375
+      "rawNew": 465.50006103515625
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5701,14 +5701,14 @@
       "source": "expect(box.y + box.height).toBeLessThanOrEqual(500.5);",
       "testTitle": "create-agent: submit 在视口",
       "old": "≤ 500.5",
-      "new": "395.41497802734375",
+      "new": "395.40814208984375",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         500.5
       ],
-      "rawNew": 395.41497802734375
+      "rawNew": 395.40814208984375
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5718,14 +5718,14 @@
       "source": "expect(box.y + box.height).toBeLessThanOrEqual(500.5);",
       "testTitle": "charter: 取消/保存章程在视口",
       "old": "≤ 500.5",
-      "new": "366.33197021484375",
+      "new": "366.33056640625",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         500.5
       ],
-      "rawNew": 366.33197021484375
+      "rawNew": 366.33056640625
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5735,14 +5735,14 @@
       "source": "expect(box.y + box.height).toBeLessThanOrEqual(500.5);",
       "testTitle": "chief-agent 列表态(无按钮读面)面板整体不越视口",
       "old": "≤ 500.5",
-      "new": "330.097412109375",
+      "new": "330.0992736816406",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         500.5
       ],
-      "rawNew": 330.097412109375
+      "rawNew": 330.0992736816406
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5752,14 +5752,14 @@
       "source": "expect(box.y + box.height).toBeLessThanOrEqual(500.5);",
       "testTitle": "accept(34): 取消/完成在视口",
       "old": "≤ 500.5",
-      "new": "319.7706604003906",
+      "new": "319.77276611328125",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         500.5
       ],
-      "rawNew": 319.7706604003906
+      "rawNew": 319.77276611328125
     },
     {
       "file": "dialog-viewport.spec.ts",
@@ -5830,14 +5830,14 @@
       "source": "expect(box.height).toBeLessThanOrEqual(360 - 48 + 0.5);",
       "testTitle": "branch sync tab: 视口压过内容高,同步钮钉底,body 溢出;git tab 正常",
       "old": "≤ 312.5",
-      "new": "297.4943103790283",
+      "new": "297.50470542907715",
       "status": "KEPT",
       "violation": null,
       "note": null,
       "rawOld": [
         312.5
       ],
-      "rawNew": 297.4943103790283
+      "rawNew": 297.50470542907715
     },
     {
       "file": "machine-add-dialog.spec.ts",

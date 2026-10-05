@@ -344,7 +344,7 @@ export function CreateProviderDialog({
               墨）；12px chevron 是消费点既有尺寸，svg 档就地并掉。 */}
           <Button
             variant="ghost"
-            className="self-start px-0 text-(--text-secondary) [&_svg:not([class*='size-'])]:size-3"
+            className="self-start px-0 text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-secondary) dark:hover:bg-transparent font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3"
             onClick={() => setView('picker')}
           >
             <ChevronLeft width={12} height={12} />
@@ -436,7 +436,7 @@ export function CreateProviderDialog({
           ))}
           <Button
             variant="ghost"
-            className="self-start px-0 text-(--text-secondary) [&_svg:not([class*='size-'])]:size-3"
+            className="self-start px-0 text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-secondary) dark:hover:bg-transparent font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3"
             onClick={() => setModelIds((rows) => [...rows, ''])}
           >
             <PlusSmall width={12} height={12} />

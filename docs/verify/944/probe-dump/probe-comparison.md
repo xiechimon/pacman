@@ -1,6 +1,6 @@
 # Probe dump — old baseline → new measured (#921)
 
-Run 2026-10-05T19:01:13.317Z · commit `4c9149d6` · port 8400 · playwright 1.63.0 · workers 4
+Run 2026-10-05T20:01:04.570Z · commit `87b9480a` · port 8400 · playwright 1.63.0 · workers 4
 
 Specs: skills-page skills-write provider-add-dialog provider-oauth providers-tabs secret-add-dialog machine-add-dialog machines-chief-state machines-local machines-shell-switch dialog-viewport dead-buttons accent-typo title-band-clicks shell-consistency chief-panel sidebar-seam checkbox-unified agent-detail (20 files) · tests 217 passed / 0 failed
 
@@ -156,31 +156,31 @@ Review procedure (#910 裁定 5): every DRIFT row is either expected drift (the 
 | dead-buttons.spec.ts | 505 | toBeLessThan | < 1.5 | 0 | — | new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt) |
 | dead-buttons.spec.ts | 506 | toBeCloseTo | 28 ±0.5 | 28 | — | new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt) |
 | dead-buttons.spec.ts | 507 | toBeCloseTo | 28 ±0.5 | 28 | — | new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt) |
-| dialog-viewport.spec.ts | 32 | toBeLessThanOrEqual | ≤ 452.5 | 434.39524841308594 | — | provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移 |
+| dialog-viewport.spec.ts | 32 | toBeLessThanOrEqual | ≤ 452.5 | 431.0001220703125 | — | provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移 |
 | dialog-viewport.spec.ts | 32 | toBeLessThanOrEqual | ≤ 452.5 | 424.33039474487305 | — | secret: 静态表单面 submit 在视口 |
 | dialog-viewport.spec.ts | 32 | toBeLessThanOrEqual | ≤ 452.5 | 452 | — | machine: disclosure 展开(最高内容态)底部链接在视口 |
-| dialog-viewport.spec.ts | 32 | toBeLessThanOrEqual | ≤ 452.5 | 290.82994079589844 | — | create-agent: submit 在视口 |
-| dialog-viewport.spec.ts | 32 | toBeLessThanOrEqual | ≤ 452.5 | 232.6639404296875 | — | charter: 取消/保存章程在视口 |
-| dialog-viewport.spec.ts | 32 | toBeLessThanOrEqual | ≤ 452.5 | 160.19483947753906 | — | chief-agent 列表态(无按钮读面)面板整体不越视口 |
-| dialog-viewport.spec.ts | 32 | toBeLessThanOrEqual | ≤ 452.5 | 139.54132080078125 | — | accept(34): 取消/完成在视口 |
-| dialog-viewport.spec.ts | 33 | toBeGreaterThanOrEqual | ≥ 0 | 32.80238342285156 | — | provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移 |
+| dialog-viewport.spec.ts | 32 | toBeLessThanOrEqual | ≤ 452.5 | 290.81629180908203 | — | create-agent: submit 在视口 |
+| dialog-viewport.spec.ts | 32 | toBeLessThanOrEqual | ≤ 452.5 | 232.66114807128906 | — | charter: 取消/保存章程在视口 |
+| dialog-viewport.spec.ts | 32 | toBeLessThanOrEqual | ≤ 452.5 | 160.19854736328125 | — | chief-agent 列表态(无按钮读面)面板整体不越视口 |
+| dialog-viewport.spec.ts | 32 | toBeLessThanOrEqual | ≤ 452.5 | 139.54551696777344 | — | accept(34): 取消/完成在视口 |
+| dialog-viewport.spec.ts | 33 | toBeGreaterThanOrEqual | ≥ 0 | 34.49993896484375 | — | provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移 |
 | dialog-viewport.spec.ts | 33 | toBeGreaterThanOrEqual | ≥ 0 | 37.83479690551758 | — | secret: 静态表单面 submit 在视口 |
 | dialog-viewport.spec.ts | 33 | toBeGreaterThanOrEqual | ≥ 0 | 24 | — | machine: disclosure 展开(最高内容态)底部链接在视口 |
-| dialog-viewport.spec.ts | 33 | toBeGreaterThanOrEqual | ≥ 0 | 104.58503723144531 | — | create-agent: submit 在视口 |
-| dialog-viewport.spec.ts | 33 | toBeGreaterThanOrEqual | ≥ 0 | 133.66802978515625 | — | charter: 取消/保存章程在视口 |
-| dialog-viewport.spec.ts | 33 | toBeGreaterThanOrEqual | ≥ 0 | 169.90257263183594 | — | chief-agent 列表态(无按钮读面)面板整体不越视口 |
-| dialog-viewport.spec.ts | 33 | toBeGreaterThanOrEqual | ≥ 0 | 180.22933959960938 | — | accept(34): 取消/完成在视口 |
-| dialog-viewport.spec.ts | 34 | toBeLessThanOrEqual | ≤ 500.5 | 467.1976318359375 | — | provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移 |
+| dialog-viewport.spec.ts | 33 | toBeGreaterThanOrEqual | ≥ 0 | 104.59185028076172 | — | create-agent: submit 在视口 |
+| dialog-viewport.spec.ts | 33 | toBeGreaterThanOrEqual | ≥ 0 | 133.66941833496094 | — | charter: 取消/保存章程在视口 |
+| dialog-viewport.spec.ts | 33 | toBeGreaterThanOrEqual | ≥ 0 | 169.90072631835938 | — | chief-agent 列表态(无按钮读面)面板整体不越视口 |
+| dialog-viewport.spec.ts | 33 | toBeGreaterThanOrEqual | ≥ 0 | 180.2272491455078 | — | accept(34): 取消/完成在视口 |
+| dialog-viewport.spec.ts | 34 | toBeLessThanOrEqual | ≤ 500.5 | 465.50006103515625 | — | provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移 |
 | dialog-viewport.spec.ts | 34 | toBeLessThanOrEqual | ≤ 500.5 | 462.1651916503906 | — | secret: 静态表单面 submit 在视口 |
 | dialog-viewport.spec.ts | 34 | toBeLessThanOrEqual | ≤ 500.5 | 476 | — | machine: disclosure 展开(最高内容态)底部链接在视口 |
-| dialog-viewport.spec.ts | 34 | toBeLessThanOrEqual | ≤ 500.5 | 395.41497802734375 | — | create-agent: submit 在视口 |
-| dialog-viewport.spec.ts | 34 | toBeLessThanOrEqual | ≤ 500.5 | 366.33197021484375 | — | charter: 取消/保存章程在视口 |
-| dialog-viewport.spec.ts | 34 | toBeLessThanOrEqual | ≤ 500.5 | 330.097412109375 | — | chief-agent 列表态(无按钮读面)面板整体不越视口 |
-| dialog-viewport.spec.ts | 34 | toBeLessThanOrEqual | ≤ 500.5 | 319.7706604003906 | — | accept(34): 取消/完成在视口 |
+| dialog-viewport.spec.ts | 34 | toBeLessThanOrEqual | ≤ 500.5 | 395.40814208984375 | — | create-agent: submit 在视口 |
+| dialog-viewport.spec.ts | 34 | toBeLessThanOrEqual | ≤ 500.5 | 366.33056640625 | — | charter: 取消/保存章程在视口 |
+| dialog-viewport.spec.ts | 34 | toBeLessThanOrEqual | ≤ 500.5 | 330.0992736816406 | — | chief-agent 列表态(无按钮读面)面板整体不越视口 |
+| dialog-viewport.spec.ts | 34 | toBeLessThanOrEqual | ≤ 500.5 | 319.77276611328125 | — | accept(34): 取消/完成在视口 |
 | dialog-viewport.spec.ts | 42 | toBeGreaterThan | > 404 | 1480 | — | provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移 |
 | dialog-viewport.spec.ts | 42 | toBeGreaterThan | > 210 | 308 | — | branch sync tab: 视口压过内容高,同步钮钉底,body 溢出;git tab 正常 |
 | dialog-viewport.spec.ts | 70 | toEqual | {"x":192,"y":428,"width":416,"height":32} | {"x":192,"y":428,"width":416,"height":32} | — | provider: 3 模型行把 body 撑溢,submit 钉底且滚动不位移 |
-| dialog-viewport.spec.ts | 136 | toBeLessThanOrEqual | ≤ 312.5 | 297.4943103790283 | — | branch sync tab: 视口压过内容高,同步钮钉底,body 溢出;git tab 正常 |
+| dialog-viewport.spec.ts | 136 | toBeLessThanOrEqual | ≤ 312.5 | 297.50470542907715 | — | branch sync tab: 视口压过内容高,同步钮钉底,body 溢出;git tab 正常 |
 | machines-chief-state.spec.ts | 73 | toBe | 60 | 60 | — | 行高契约保持：标注行不破行高（首行 60 / 分隔行 59+1px） |
 | machines-chief-state.spec.ts | 80 | toBe | 59 | 59 | — | 行高契约保持：标注行不破行高（首行 60 / 分隔行 59+1px） |
 | machines-chief-state.spec.ts | 81 | toBe | 1 | 1 | — | 行高契约保持：标注行不破行高（首行 60 / 分隔行 59+1px） |

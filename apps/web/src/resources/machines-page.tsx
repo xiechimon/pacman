@@ -218,7 +218,7 @@ export function MachinesPage() {
                   )}
                   {chief.running && (
                     <span
-                      className="inline-flex items-center gap-1.5 text-xs leading-4 whitespace-nowrap text-(--text-dim) before:block before:size-1.5 before:rounded-full before:bg-(--col-dot-done) before:content-['']"
+                      className="inline-flex items-center gap-1.5 text-xs leading-4 whitespace-nowrap text-(--text-tertiary) before:block before:size-1.5 before:rounded-full before:bg-(--col-dot-done) before:content-['']"
                       data-orchestration="running"
                     >
                       {t('总管回合进行中')}
@@ -226,7 +226,7 @@ export function MachinesPage() {
                   )}
                   {chief.waiting && (
                     <span
-                      className="inline-flex items-center gap-1.5 text-xs leading-4 whitespace-nowrap text-(--text-dim) before:block before:size-1.5 before:rounded-full before:bg-(--col-dot-idle) before:content-['']"
+                      className="inline-flex items-center gap-1.5 text-xs leading-4 whitespace-nowrap text-(--text-tertiary) before:block before:size-1.5 before:rounded-full before:bg-(--col-dot-idle) before:content-['']"
                       data-orchestration="waiting"
                     >
                       {t('总管等待机器')}
@@ -246,7 +246,7 @@ export function MachinesPage() {
                   machine.kind === 'local' || machine.pill != null ? 'ml-5' : 'ml-auto',
                 )}
               >
-                <span className="text-xs leading-4 whitespace-nowrap text-(--text-dim)">
+                <span className="text-xs leading-4 whitespace-nowrap text-(--text-tertiary)">
                   {t(AGENT_TOOL_SHELL)}
                 </span>
                 <Switch
@@ -265,7 +265,7 @@ export function MachinesPage() {
           件默认的 hover 底色就地并掉（原形无 hover 态）。 */}
       <Button
         variant="ghost"
-        className="mt-4 h-[46px] w-full gap-2 border-dashed border-(--dash-border) text-[13px] leading-4 font-normal text-(--text-dim) hover:bg-transparent hover:text-(--text-dim) dark:hover:bg-transparent [&_svg:not([class*='size-'])]:size-3.5"
+        className="mt-4 h-[46px] w-full gap-2 border-dashed border-(--dash-border) text-[13px] leading-4 font-normal text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5"
         onClick={() => setAddOpen(true)}
       >
         <ServerThin width={14} height={14} />

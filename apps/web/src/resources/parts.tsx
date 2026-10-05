@@ -45,10 +45,19 @@ export const RES_SEARCH_INPUT_CLS =
 /** 排序钮的定位包裹（弹层锚点）。 */
 export const RES_SORT_WRAP_CLS = 'relative flex';
 
+/** ghost 档「行形钮」七通道中和（#908 comment-6001887439 裁决 1，#943
+ *  ROW_BTN 同形）：hover bg（含 dark:）· aria-expanded bg+text · hover text ·
+ *  press translate（同变体链 active:not-aria-[haspopup]）· gap/px ·
+ *  font-weight · border。漏任一通道会被 accent-typo 族 computed 探针抓红。
+ *  文字色通道随各钮自己的墨色重复（此处 secondary）。 */
+export const GHOST_ROW_BTN_CLS =
+  'font-normal hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+
 /** 排序触发钮（Button ghost 底座）：32px 高、88px 宽由消费点补
- *  （记忆 tab 是内容宽）；皮肤等值迁移，件默认的 hover/尺寸/svg 档就地并掉。 */
+ *  （记忆 tab 是内容宽）；皮肤等值迁移，件默认档按七通道律就地并掉
+ *  （本钮是带框盒形：hover/aria-expanded 回到 surface 皮肤而非透明）。 */
 export const RES_SORT_TRIGGER_CLS =
-  "h-8 flex-none cursor-pointer justify-start gap-0 rounded-none border border-(--card-border) bg-(--surface) px-[11px] text-[13px] font-normal leading-4 text-(--text-secondary) hover:bg-(--surface) hover:text-(--text-secondary) [&>span]:ml-2 [&>span]:flex-none [&>span]:whitespace-nowrap [&_svg:last-of-type]:ml-1 [&_svg:not([class*='size-'])]:size-auto";
+  "h-8 flex-none cursor-pointer justify-start gap-0 rounded-none border border-(--card-border) bg-(--surface) px-[11px] text-[13px] font-normal leading-4 text-(--text-secondary) hover:bg-(--surface) hover:text-(--text-secondary) aria-expanded:bg-(--surface) aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&>span]:ml-2 [&>span]:flex-none [&>span]:whitespace-nowrap [&_svg:last-of-type]:ml-1 [&_svg:not([class*='size-'])]:size-auto";
 
 /** 排序盘（DropdownMenuContent）：V2 弹层壳（#790 P3——最小宽 220 / 12px
  *  内边距 / 1px 墨线框 / 直角 / plate-shadow）+ 上指锚边右上的描边 Arrow
@@ -219,7 +228,7 @@ export function RowDesc({
   return (
     <span
       className={cn(
-        'truncate text-xs leading-4 text-(--text-dim)',
+        'truncate text-xs leading-4 text-(--text-tertiary)',
         strong && 'text-[13px] leading-5 text-(--text-secondary)',
         className,
       )}
@@ -229,15 +238,20 @@ export function RowDesc({
   );
 }
 
-/** 行内 kind 注记（mcp 行类型标签，12px dim）。 */
+/** 行内 kind 注记（mcp 行类型标签，12px tertiary——原 dim 档实测不过
+ *  4.5，#908 裁决 2 授权消费面换槽）。 */
 export function RowKind({ className, children }: { className?: string; children: ReactNode }) {
-  return <span className={cn('text-xs leading-4 text-(--text-dim)', className)}>{children}</span>;
+  return (
+    <span className={cn('text-xs leading-4 text-(--text-tertiary)', className)}>{children}</span>
+  );
 }
 
 /** 行右缘相对时间（mcp 行，12px dim，margin-left auto 撑到行尾）。 */
 export function RowAgo({ className, children }: { className?: string; children: ReactNode }) {
   return (
-    <span className={cn('ml-auto text-xs leading-4 text-(--text-dim)', className)}>{children}</span>
+    <span className={cn('ml-auto text-xs leading-4 text-(--text-tertiary)', className)}>
+      {children}
+    </span>
   );
 }
 
@@ -249,7 +263,7 @@ export function StatusPill({ label }: { label: string }) {
   return (
     <Badge
       variant="secondary"
-      className="ml-auto h-5 flex-none rounded-[4px] border-none bg-(--pill-idle-bg) px-[5px] text-[11px] font-normal leading-4 text-(--text-dim)"
+      className="ml-auto h-5 flex-none rounded-[4px] border-none bg-(--pill-idle-bg) px-[5px] text-[11px] font-normal leading-4 text-(--text-tertiary)"
     >
       {t(label)}
     </Badge>
@@ -259,7 +273,7 @@ export function StatusPill({ label }: { label: string }) {
 /** Row-end `>` chevron (r7 06–10 row right edge). */
 export function RowChevron() {
   return (
-    <span className="ml-auto flex text-(--text-dim)">
+    <span className="ml-auto flex text-(--text-tertiary)">
       <ChevronRight width={13} height={13} />
     </span>
   );
@@ -347,7 +361,7 @@ export function EmptyState({
         </div>
       )}
       {hint != null && (
-        <p className="mt-[18px] flex items-center gap-[7px] text-[13px] leading-[18px] text-(--text-dim)">
+        <p className="mt-[18px] flex items-center gap-[7px] text-[13px] leading-[18px] text-(--text-tertiary)">
           <Lock width={11} height={11} />
           {t(hint)}
         </p>

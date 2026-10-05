@@ -79,7 +79,7 @@ function RuntimeHead({ source }: { source: ModelSource }) {
           {RUNTIME_LABELS[source.runtime]}
         </span>
         {source.installed ? (
-          <span className="text-xs leading-4 text-(--text-dim)">
+          <span className="text-xs leading-4 text-(--text-tertiary)">
             {t('已安装在 {hostname}', { hostname: source.hostname })}
           </span>
         ) : (
@@ -90,7 +90,7 @@ function RuntimeHead({ source }: { source: ModelSource }) {
         {t(RUNTIME_DESCRIPTIONS[source.runtime])}
       </p>
       {!source.installed && (
-        <p className="mt-1.5 mb-0 text-xs leading-4 text-(--text-dim)">
+        <p className="mt-1.5 mb-0 text-xs leading-4 text-(--text-tertiary)">
           {t('安装 Claude Code 并完成一次登录后，此处自动展示其模型槽。')}
         </p>
       )}
