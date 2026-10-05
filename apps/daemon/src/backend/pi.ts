@@ -23,6 +23,8 @@ import { join } from 'node:path';
 import {
   type AgentSession,
   createAgentSession,
+  createBashToolDefinition,
+  createLocalBashOperations,
   DefaultResourceLoader,
   defineTool,
   formatSkillsForPrompt,
@@ -47,6 +49,7 @@ import type {
   ToolCallRecord,
 } from '@pacman/shared';
 import { ENV_VARS, THINKING_LEVELS } from '@pacman/shared';
+import { buildGatedBashOperations } from './command-gate.js';
 import { SessionNotResumableError } from './errors.js';
 import { connectFailedLine, connectMcpBridge } from './mcp-bridge.js';
 
@@ -639,6 +642,9 @@ export interface PiBackendOpts {
   skills?: { skillsDir: string; cwd: string };
   /** `[skills]` 诊断行出口（machine-loop 接 logger.skills，与 onMcpLog 同型）。 */
   onSkillsLog?: (msg: string) => void;
+  /** `[gate]` 裁决行出口（#866 T5 命令闸：machine-loop 接 logger.gate；只记
+   * 非放行裁决，allow 静默）。缺省 = 仍门控，只是不落行。 */
+  onGateLog?: (msg: string) => void;
 }
 
 export class PiBackend implements AgentBackend {
@@ -795,6 +801,20 @@ export class PiBackend implements AgentBackend {
         },
       }),
     );
+    // 命令闸（#866 T5）：门控 bash 以同名 customTool 覆盖内建 bash（pi 注册
+    // 表按名后写胜出，执行/定义/提示面一致走覆盖后；定义仍是 pi 自家的
+    // createBashToolDefinition——描述/schema/流式/截断/超时/exit 码文案与内建
+    // 同一，只把 operations.exec 换成门控版）。defineTool 包一层保参数推断
+    // （与 remoteTools/localTools 同形，customTools 数组元素类型统一）。
+    // 放行命令行为零差；ask/reject 抛拒绝进 tool error 结果（agent 可见改道
+    // 文案）+ [gate] 行（allow 静默）。
+    const gatedBash = defineTool(
+      createBashToolDefinition(opts.cwd, {
+        operations: buildGatedBashOperations(createLocalBashOperations(), {
+          ...(this.opts.onGateLog ? { log: this.opts.onGateLog } : {}),
+        }),
+      }),
+    );
     const { session } = await createAgentSession({
       cwd: opts.cwd,
       agentDir: this.opts.agentDir,
@@ -822,8 +842,8 @@ export class PiBackend implements AgentBackend {
         localTools: localTools.map((t) => t.name),
       }),
       ...(customTools.length > 0 || mcpTools.length > 0 || localTools.length > 0
-        ? { customTools: [...customTools, ...localTools, ...mcpTools] }
-        : {}),
+        ? { customTools: [gatedBash, ...customTools, ...localTools, ...mcpTools] }
+        : { customTools: [gatedBash] }),
     });
     this.opts.onSession?.(session.sessionId, session.sessionFile);
     const handle = new PiSessionHandle(session, model, () => {
