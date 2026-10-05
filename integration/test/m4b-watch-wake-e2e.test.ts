@@ -13,7 +13,7 @@
 // stub 脚本按全局消费序编排（daemon 串行领活保证轮序）；动态参数
 // （todoId/buildId）在对应轮消费前填入（responses 数组闭包活引用）。
 
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { CHIEF_WATCH_REASON_DISPATCH } from '@pacman/shared';
@@ -22,7 +22,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { loadDaemonConfig } from '../../apps/daemon/src/config.js';
 import { createDaemonLogger } from '../../apps/daemon/src/log.js';
 import { type MachineHandle, runMachine } from '../../apps/daemon/src/machine-loop.js';
-import { type StatePaths, statePaths } from '../../apps/daemon/src/state.js';
+import { resolveSessionFile, type StatePaths, statePaths } from '../../apps/daemon/src/state.js';
 import {
   build as buildTable,
   chiefMessage,
@@ -52,6 +52,10 @@ let todo2Id = '';
 let threadId = '';
 let build1 = '';
 
+/** 轮结束后仍在磁盘上的引擎会话（首轮定格，次轮对拍身份不变）。 */
+let chiefSessionId = '';
+let chiefSessionFile = '';
+
 function logLines(): string[] {
   return daemonLogLines(paths.daemonLog);
 }
@@ -74,6 +78,23 @@ function threadMessages(): string {
   return JSON.stringify(
     server.db.select().from(chiefMessage).where(eq(chiefMessage.threadId, threadId)).all(),
   );
+}
+
+/** 会话耐久面断言（本轮补钉）：轮结束后引擎会话**不随步回收**——
+ * thread.sessionId 非空、chat-sessions 索引可解析、文件真在执行机磁盘上。
+ * 这是下一轮 continue session 能接回对话前缀（缓存复用）的物理前提；
+ * 收尾释放的是进程内句柄（sessionHandles.delete + session.dispose），
+ * 碰不到这个文件。断言必须落在步已 done / activeRun 已清之后，否则测的
+ * 是「轮内还活着」而不是「轮后仍留在磁盘」。 */
+function expectSessionDurable(): string {
+  const th = server.db.select().from(chiefThread).where(eq(chiefThread.id, threadId)).get();
+  expect(th).toBeDefined();
+  expect(th!.activeRun).toBeNull();
+  expect(th!.sessionId).not.toBe('');
+  const file = resolveSessionFile(paths, th!.sessionId);
+  expect(file).not.toBeNull();
+  expect(existsSync(file!)).toBe(true);
+  return file!;
 }
 
 async function waitThreadIdle(): Promise<void> {
@@ -260,6 +281,16 @@ describe('M4b watch/wake 三触发 E2E（r5 §3.5 对照实跑）', () => {
     expect(threadMessages()).toContain('停在 review 等待确认');
     // gate 后 watch 仍在（settle/failed 才解除）。
     expect(chiefWatches().map((w) => w.todoId)).toContain(world.todoId);
+
+    // 会话耐久：本轮（gate wake）已 done、activeRun 已清 = 一次真实的句柄
+    // 回收点，会话文件必须仍留在执行机磁盘上且索引解得回来。
+    await waitThreadIdle();
+    chiefSessionFile = expectSessionDurable();
+    chiefSessionId = server.db
+      .select()
+      .from(chiefThread)
+      .where(eq(chiefThread.id, threadId))
+      .get()!.sessionId;
   }, 150_000);
 
   test('settle wake：合并两阶段汇报（委派已受理 → 结果已确认）+ watch 自动解除', async () => {
@@ -289,6 +320,14 @@ describe('M4b watch/wake 三触发 E2E（r5 §3.5 对照实跑）', () => {
 
     // watch 生命周期：settle 后自动解除（r5「watches: []」）。
     await waitFor(() => !chiefWatches().some((w) => w.todoId === world.todoId), 60_000);
+
+    // 跨轮续用（本轮补钉）：settle 轮跑完仍解回同一个会话文件、会话身份不变
+    // ——未换机时每轮都是同一条会话续接，这正是缓存前缀能命中的物理依据。
+    await waitThreadIdle();
+    expect(expectSessionDurable()).toBe(chiefSessionFile);
+    expect(
+      server.db.select().from(chiefThread).where(eq(chiefThread.id, threadId)).get()!.sessionId,
+    ).toBe(chiefSessionId);
   }, 150_000);
 
   test('failed wake：步 failed → chief 先调 machines 再产法证式汇报 + watch 解除', async () => {
