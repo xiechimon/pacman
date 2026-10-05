@@ -1,6 +1,6 @@
 {
   "frozenFrom": {
-    "sha": "b38e70d75435cd35f2da26dfd320956444296fd2",
+    "sha": "4c9149d6f20455af15870b38eaf01987923603ad",
     "date": "2026-10-05"
   },
   "scope": "apps/web/src; per-face css = *.css minus the ui-debt-gate.mjs WHITELIST (carrier layer); bare controls = <button|<input|<select|<textarea occurrences in *.tsx minus components/ui/",
@@ -19,7 +19,6 @@
     "overlay/slash-menu.css": 117,
     "overlays/overlays.css": 541,
     "pages/pages.css": 2058,
-    "resources/resources.css": 806,
     "routes/agent-detail.css": 396,
     "secondary/secondary.css": 850,
     "ui/chip.css": 42,
@@ -27,7 +26,7 @@
     "ui/input.css": 17
   },
   "rawControls": {
-    "total": 76,
+    "total": 59,
     "files": {
       "board/filter-panel.tsx": 7,
       "board/sidebar.tsx": 9,
@@ -49,13 +48,6 @@
       "overlays/dismiss.tsx": 1,
       "overlays/search-panel.tsx": 4,
       "pages/project-new-page.tsx": 1,
-      "resources/create-machine-dialog.tsx": 4,
-      "resources/create-provider-dialog.tsx": 6,
-      "resources/create-secret-dialog.tsx": 2,
-      "resources/machines-page.tsx": 1,
-      "resources/shell.tsx": 1,
-      "resources/skill-dialog.tsx": 2,
-      "resources/skills-page.tsx": 1,
       "routes/agent-detail-page.tsx": 2,
       "routes/api-key-create-dialog.tsx": 1,
       "ui/input.tsx": 1
