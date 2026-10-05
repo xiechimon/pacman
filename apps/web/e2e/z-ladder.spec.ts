@@ -26,8 +26,10 @@ import { expect, type Page, test } from '@playwright/test';
 //      not steal focus back): visible while the dialog is open, still open
 //      after the dialog closes, focus in the dialog and typing works.
 
+// #948 载体重钉（#910 裁定 1）：dialog/关闭钮/正文框换 role+name 一级载体；
+// .chief-drawer 是 chief 域残留别名（#950 面），data-slot scrim 钉原样。
 const drawer = (page: Page) => page.locator('.chief-drawer');
-const dialog = (page: Page) => page.locator('.new-task-dialog');
+const dialog = (page: Page) => page.getByRole('dialog', { name: '新建任务' });
 
 async function openDialogOverDrawer(page: Page) {
   await page.goto('/app?scenario=111');
@@ -79,7 +81,7 @@ test.describe('z ladder: active surfaces above the docked drawer (#688)', () => 
     await openDialogOverDrawer(page);
     // unforced: Playwright's actionability check retries and fails if the
     // drawer (or anything else) intercepts pointer events at the button
-    await dialog(page).locator('.new-task-close').click();
+    await dialog(page).getByRole('button', { name: '关闭' }).click();
     await expect(dialog(page)).toBeHidden();
     // the drawer survives the whole round trip and stays open (ruling #688)
     await expect(drawer(page)).toBeVisible();
@@ -88,10 +90,10 @@ test.describe('z ladder: active surfaces above the docked drawer (#688)', () => 
   test('focus lands in the dialog and typing reaches it', async ({ page }) => {
     await openDialogOverDrawer(page);
     const focused = await page.evaluate(
-      () => document.activeElement?.closest('.new-task-dialog') != null,
+      () => document.activeElement?.closest('[aria-label="新建任务"]') != null,
     );
     expect(focused).toBe(true);
     await page.keyboard.type('layering probe');
-    await expect(dialog(page).locator('.new-task-spec')).toHaveValue('layering probe');
+    await expect(dialog(page).getByRole('textbox')).toHaveValue('layering probe');
   });
 });

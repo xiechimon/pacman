@@ -68,6 +68,13 @@ describe('segments mention 导航缝（#741）', () => {
 
   test('F-U5: 成链后 chip 类名家族保 accent（mention-chip mention-chip--agent）', () => {
     const markup = render([mention('agent', 'a1')]);
-    expect(markup).toContain('class="mention-chip mention-chip--agent"');
+    // #948/#910 裁定 3：class 属性逐字串是表现类断言，按新正典整条重钉——
+    // 家族钩子类（mention-chip / mention-chip--agent）、身份色槽 utility
+    // （mention-chip.ts 的 agent 对）与可点 cursor 逐项断言，不再钉类串的
+    // 字节级拼接顺序（utility 皮肤下类序是 cn 合成产物，无语义）。
+    expect(markup).toMatch(/class="[^"]*\bmention-chip\b[^"]*"/);
+    expect(markup).toMatch(/class="[^"]*\bmention-chip--agent\b[^"]*"/);
+    expect(markup).toContain('text-(--chip-done-fg)');
+    expect(markup).toContain('cursor-pointer');
   });
 });

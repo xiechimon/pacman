@@ -207,14 +207,16 @@ test('composer toolbar drops the 语音输入 button, keeps attachment + mention
 test('new-task dialog tools drop the 语音输入 button, keep two live tools', async ({ page }) => {
   await page.goto('/app?scenario=01');
   await page.locator('.sidebar-new-task').click();
-  const tools = page.locator('.new-task-tools');
+  // #948/#910 载体：工具簇容器 = data-testid（结构钩子，无 role 可表达）；
+  // 钮面 = role+aria-label 一级载体。断言语义逐字不动。
+  const tools = page.getByTestId('new-task-tools');
   await expect(tools).toBeVisible();
   // #304（08 册 C5）：同律——语音钮不渲染，工具条收窄为附件+提及两钮
   // （wontfix 注记在 new-task-dialog.tsx 实现位）。
-  await expect(tools.locator('button[aria-label="语音输入"]')).toHaveCount(0);
-  await expect(tools.locator('button')).toHaveCount(2);
-  await expect(tools.locator('button[aria-label="添加附件"]')).toBeVisible();
-  await expect(tools.locator('button[aria-label="提及"]')).toBeVisible();
+  await expect(tools.getByRole('button', { name: '语音输入' })).toHaveCount(0);
+  await expect(tools.getByRole('button')).toHaveCount(2);
+  await expect(tools.getByRole('button', { name: '添加附件' })).toBeVisible();
+  await expect(tools.getByRole('button', { name: '提及' })).toBeVisible();
 });
 
 // —— 9. #307 档 4 外链型 wontfix 出账 ————————————————————————————
@@ -331,11 +333,13 @@ test('sched card 更多 opens a menu and deletes the row through the confirm (#3
   await more.click();
   await expect(menu).toBeVisible();
   await menu.locator('.sched-card-menu-row').click();
-  const confirm = page.locator('.delete-confirm');
+  // #948/#910 载体：确认层 = role alertdialog（AlertDialogShell 自带
+  // role+aria-label）；删除钮 = role+文案一级。
+  const confirm = page.getByRole('alertdialog');
   await expect(confirm).toBeVisible();
   await expect(confirm).toContainText('确定删除该定时？此操作不可撤销。');
   await expect(confirm).toContainText('#1');
-  await confirm.locator('.delete-confirm-delete').click();
+  await confirm.getByRole('button', { name: '删除' }).click();
   await expect(confirm).toBeHidden();
   await expect(page.locator('.sched-card')).toHaveCount(0);
   // 空态浮现（r7 11 面）
@@ -409,9 +413,10 @@ const REVIEW_DETAIL = '/app/todo/7ve0iOkQ-JBpSL98zSiGc?scenario=27';
 test('more menu 完成 opens the accept dialog on the review surface (#318)', async ({ page }) => {
   await page.goto(REVIEW_DETAIL);
   await page.locator('.detail-head-icon--more').click();
-  const menu = page.locator('.more-menu');
+  // #948/#910 载体：菜单 = role+name（aria-label 更多），行 = menuitem+文案。
+  const menu = page.getByRole('menu', { name: '更多' });
   await expect(menu).toBeVisible();
-  const complete = menu.locator('.more-menu-item', { hasText: '完成' });
+  const complete = menu.getByRole('menuitem', { name: '完成' });
   await expect(complete).toBeEnabled();
   await complete.click();
   // 完成 = 相位适配动作:review 走既有 accept→merge 链(弹层开、菜单收)
@@ -423,14 +428,14 @@ test('more menu 关闭 is phase-gated by the server funnel edges (#318)', async 
   // review 面:review→closed 漏斗无边(归 W3 server 票)→ disabled
   await page.goto(REVIEW_DETAIL);
   await page.locator('.detail-head-icon--more').click();
-  await expect(page.locator('.more-menu-item', { hasText: '关闭' })).toBeDisabled();
+  await expect(page.getByRole('menuitem', { name: '关闭' })).toBeDisabled();
   // failed 面:failed→closed 现有边 → 放行,点毕回看板(卡片立即隐藏语义)
   await page.goto('/app/todo/r8-12?scenario=54');
   await page.locator('.detail-head-icon--more').click();
-  const closeRow = page.locator('.more-menu-item', { hasText: '关闭' });
+  const closeRow = page.getByRole('menuitem', { name: '关闭' });
   await expect(closeRow).toBeEnabled();
   // failed 无完成语义(confirm-and-merge 仅 confirm/review)→ disabled
-  await expect(page.locator('.more-menu-item', { hasText: '完成' })).toBeDisabled();
+  await expect(page.getByRole('menuitem', { name: '完成' })).toBeDisabled();
   await closeRow.click();
   await expect(page).toHaveURL('/app');
 });
@@ -495,14 +500,14 @@ test('new-task dialog: the close control anchors to the head’s right edge (#57
   page,
 }) => {
   await page.goto('/app?scenario=01');
-  const dialog = page.locator('.new-task-dialog');
+  const dialog = page.getByRole('dialog', { name: '新建任务' });
   await page.locator('.sidebar-new-task').click();
   await expect(dialog).toBeVisible();
   // #656: settle the .dlg enter animation (tw-animate-css zoom-in-95) before the
   // head/close right-edge geometry is measured off the laid-out box.
   await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
-  const hb = await dialog.locator('.new-task-head').boundingBox();
-  const cb = await dialog.locator('.new-task-close').boundingBox();
+  const hb = await dialog.getByTestId('new-task-head').boundingBox();
+  const cb = await dialog.getByRole('button', { name: '关闭' }).boundingBox();
   if (hb === null || cb === null) throw new Error('head / close not laid out');
   // head 的右内垫是 4px（padding: 0 4px 0 12px），叉号靠 margin-left:auto 贴右缘。
   // #574 把 Button 换到 components/ui/Button 时没重钉选择器（那条写的是
@@ -515,26 +520,26 @@ test('new-task dialog: the close control anchors to the head’s right edge (#57
 
 test('new-task dialog gates unsaved closes and resets on discard (#318)', async ({ page }) => {
   await page.goto('/app?scenario=01');
-  const dialog = page.locator('.new-task-dialog');
-  const discard = page.locator('.new-task-discard');
+  const dialog = page.getByRole('dialog', { name: '新建任务' });
+  const discard = page.getByRole('alertdialog', { name: '放弃新建任务？未保存的内容将丢失。' });
   // 净表单:X 直关不闸
   await page.locator('.sidebar-new-task').click();
   await expect(dialog).toBeVisible();
-  await dialog.locator('.new-task-close').click();
+  await dialog.getByRole('button', { name: '关闭' }).click();
   await expect(dialog).toBeHidden();
   await expect(discard).toHaveCount(0);
   // 正文非空 → X 先过「放弃新建任务？」确认(r9 §3.4 copy 逐字)
   // (#394：标题位移除,dirty = 正文单字段)
   await page.locator('.sidebar-new-task').click();
-  await dialog.locator('.new-task-spec').fill('未保存探针');
-  await dialog.locator('.new-task-close').click();
+  await dialog.getByRole('textbox').fill('未保存探针');
+  await dialog.getByRole('button', { name: '关闭' }).click();
   await expect(discard).toBeVisible();
   await expect(discard).toContainText('放弃新建任务？未保存的内容将丢失。');
   // 继续编辑 = 只收确认层,草稿保留
-  await discard.locator('.new-task-discard-keep').click();
+  await discard.getByRole('button', { name: '继续编辑' }).click();
   await expect(discard).toBeHidden();
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('.new-task-spec')).toHaveValue('未保存探针');
+  await expect(dialog.getByRole('textbox')).toHaveValue('未保存探针');
   // Esc 关闸同律;确认层上 Esc = 内层优先(只收确认层)。#656 起确认层 =
   // FloatingShell sibling root:入焦是异步的(Base UI initialFocus 缺省送焦点
   // 入层内首个 tabbable = 继续编辑钮),而 sibling root 的 Esc 路由依赖焦点在
@@ -542,16 +547,16 @@ test('new-task dialog gates unsaved closes and resets on discard (#318)', async 
   // 重开本层,确认层关不掉;CI 分片 runner 上该竞态实测咬人,本地串行恒赢)。
   await page.keyboard.press('Escape');
   await expect(discard).toBeVisible();
-  await expect(discard.locator('.new-task-discard-keep')).toBeFocused();
+  await expect(discard.getByRole('button', { name: '继续编辑' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(discard).toBeHidden();
   await expect(dialog).toBeVisible();
   // 放弃并关闭 = 关 dialog + 表单重置(重开净面)
-  await dialog.locator('.new-task-close').click();
-  await discard.locator('.new-task-discard-drop').click();
+  await dialog.getByRole('button', { name: '关闭' }).click();
+  await discard.getByRole('button', { name: '放弃并关闭' }).click();
   await expect(dialog).toBeHidden();
   await page.locator('.sidebar-new-task').click();
-  await expect(dialog.locator('.new-task-spec')).toHaveValue('');
+  await expect(dialog.getByRole('textbox')).toHaveValue('');
 });
 
 // —— 16. 详情 transcript 恢复死形移除（#884）————————————————————————

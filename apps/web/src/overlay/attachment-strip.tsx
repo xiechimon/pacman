@@ -20,17 +20,20 @@
 //     and dir-browser have no image viewer either. The lightbox below is new.
 // Placement: the strip itself is in-flow static; each face positions it —
 // detail composer floats it below its fixed 76px box (the above-box slot is
-// the #812 mention strip's), chief and new-task take it in flow. All rules
-// live in ./attachment-strip.css, imported here so they load on every face
-// (detail.css never reaches the board page, overlay.css never reaches the
-// detail page — a per-face stylesheet cannot cover this component).
+// the #812 mention strip's), chief and new-task take it in flow.
+// #948 per-face 清零：attachment-strip.css 退役——本件自带的基础行规则迁
+// 本文件 utility；三个宿主面的定位规则迁到各自消费点（detail composer 的
+// .composer-float 列、chief 抽屉的 .chief-composer 流内垫、new-task body 的
+// 停靠垫），卡片几何仍由 .spec-chip 家族（detail.css，#945 面）单源承载，
+// 占位/落定两卡 boundingBox 全等（attachment-strip.spec 钉）不靠本文件复制
+// 任何 chip 几何，只补 40px 退化尺寸下限与 preview 钮的 UA chrome 清零。
 
 import { useMemo, useState } from 'react';
+import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { AttachmentChip } from '../detail/chat-markdown.js';
 import { useI18n } from '../i18n/provider.js';
 import { type PendingAttachment, parseAttachmentTokens } from './attachment-paste.js';
-import './attachment-strip.css';
 
 interface PreviewTarget {
   name: string;
@@ -59,14 +62,18 @@ export function AttachmentPreview({
       width={640}
       className="attachment-preview"
     >
-      <div className="attachment-preview-body">
+      {/* 原 .attachment-preview-body：图片 contain 进面板、永不撑爆——面板宽
+          随 DialogShell（640），高图滚 dlg-body（100vh−48px 封顶律）。 */}
+      <div className="attachment-preview-body flex items-center justify-center p-3">
         {broken ? (
-          <div className="attachment-preview-broken">{name}</div>
+          <div className="attachment-preview-broken px-4 py-8 text-[13px] text-(--text-secondary)">
+            {name}
+          </div>
         ) : (
           <img
             src={src}
             alt={name}
-            className="attachment-preview-img"
+            className="attachment-preview-img max-h-[60vh] max-w-full rounded-[4px] object-contain"
             onError={() => setBroken(true)}
           />
         )}
@@ -74,6 +81,20 @@ export function AttachmentPreview({
     </DialogShell>
   );
 }
+
+/** 占位卡（在途文件）：皮肤 = .spec-chip 家族单源（detail.css，unlayered
+ *  恒压 utility——正是「落定换牌零位移」要的：两卡共享同一份 chip 几何）。
+ *  Button 件配方在此面逐位中和（#908 裁决 3 七通道）：h-auto（旧卡高随
+ *  内容，不吃件 size 档 32px）、font-normal、press 位移禁掉；appearance
+ *  清零沿旧 .spec-chip--preview（UA 按钮 chrome 不许漏进 chip 面）。 */
+const PENDING_CARD_CLS =
+  'spec-chip spec-chip--image spec-chip--preview attachment-pending relative h-auto cursor-pointer appearance-none font-normal hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+
+/** 在途角标（原 .attachment-pending-badge）：黑 veil 55% 是无 token 槽的
+ *  一次性字面量（--overlay-scrim 是 60% 的模态 scrim，值不同不混用）；墨色
+ *  --text-on-veil 正典槽。静止 veil、无假进度（#757）。 */
+const PENDING_BADGE_CLS =
+  'attachment-pending-badge absolute bottom-1 left-1 rounded-[4px] bg-[rgb(0_0_0/0.55)] px-1.5 py-px text-[11px] leading-4 whitespace-nowrap text-(--text-on-veil)';
 
 export function AttachmentStrip({
   draft,
@@ -89,25 +110,39 @@ export function AttachmentStrip({
   const [preview, setPreview] = useState<PreviewTarget | null>(null);
   if (pending.length === 0 && settled.length === 0) return null;
   return (
-    <div className="attachment-strip" role="status" aria-label={t('附件')}>
+    // 原 .attachment-strip 基础行 + 退化尺寸下限（1px 追踪 gif / 裸 ICO 也
+    // 画出可点卡：min 对占位与落定同时生效，落定换牌不动布局）。
+    <div
+      className="attachment-strip flex flex-wrap gap-1.5 [&_.spec-chip-img]:min-h-10 [&_.spec-chip-img]:min-w-10"
+      role="status"
+      aria-label={t('附件')}
+    >
       {pending.map((entry) =>
         entry.url !== null ? (
-          <button
+          <Button
             key={entry.uid}
-            type="button"
-            className="spec-chip spec-chip--image spec-chip--preview attachment-pending"
+            variant="ghost"
+            className={PENDING_CARD_CLS}
+            // #910 二级载体：在途占位卡有 button/span 双形（图片/非图片），
+            // role 不恒——testid 是两形的共同锚（attachment-strip.spec 钉）。
+            data-testid="attachment-pending"
             title={entry.name}
             onClick={() => {
               if (entry.url !== null) setPreview({ name: entry.name, src: entry.url });
             }}
           >
             <img src={entry.url} alt={entry.name} className="spec-chip-img" />
-            <span className="attachment-pending-badge">{t('上传中')}</span>
-          </button>
+            <span className={PENDING_BADGE_CLS}>{t('上传中')}</span>
+          </Button>
         ) : (
-          <span key={entry.uid} className="spec-chip attachment-pending" title={entry.name}>
+          <span
+            key={entry.uid}
+            className="spec-chip attachment-pending relative"
+            data-testid="attachment-pending"
+            title={entry.name}
+          >
             <span className="composer-chip-label">{entry.name}</span>
-            <span className="attachment-pending-badge">{t('上传中')}</span>
+            <span className={PENDING_BADGE_CLS}>{t('上传中')}</span>
           </span>
         ),
       )}

@@ -31,6 +31,15 @@ import { evidenceShot } from './evidence';
 // thumbnail and the preview image read stub returns real PNG bytes so the
 // <img> elements actually paint (naturalWidth > 0) instead of asserting on
 // broken-image boxes.
+//
+// #948 载体重钉（#910 裁定 1/2）：per-face 类名 locator 换语义载体——strip =
+// getByRole('status', { name: '附件' })，占位卡 = data-testid
+// "attachment-pending"（button/span 双形无恒 role，二级载体），预览 =
+// getByRole('dialog', { name })，缩略/预览图 = getByRole('img', { name })；
+// 浮列锚 = data-testid "composer-float"（结构钩子）。pastePng 的 querySelector
+// 靶换 [data-testid=new-task-spec]（原生 textarea 断言原样 = 行为断言语义不动）。
+// 跨域面锚（.composer-input / .chief-* / .sidebar-new-task）是各自域的残留
+// 别名，随各自域票重钉，本 spec 不动。
 
 const TEAM_ID = 'team-1';
 const USER = { id: 'user-1', displayName: '我', avatarUrl: null };
@@ -274,12 +283,14 @@ test('detail face: paste paints a placeholder, landing swaps it for a chip with 
 
   // FM1: the in-flight card is already there — blob thumbnail + 上传中 —
   // while the draft holds no token yet.
-  const strip = page.locator('.composer-float > .attachment-strip');
+  const strip = page.getByTestId('composer-float').getByRole('status', { name: '附件' });
   await expect(strip).toBeVisible();
-  const placeholder = strip.locator('.attachment-pending');
+  const placeholder = strip.getByTestId('attachment-pending');
   await expect(placeholder).toBeVisible();
-  await expect(placeholder.locator('.attachment-pending-badge')).toContainText('上传中');
-  const thumb = placeholder.locator('img.spec-chip-img');
+  await expect(placeholder.getByText('上传中')).toHaveText('上传中');
+  // 粘贴文件名走 #729 counter 重命名（pasted-image-N.png），非 dispatch 的
+  // 原始 name——名称锚取落定 token 同源的 canonical 名。
+  const thumb = placeholder.getByRole('img', { name: 'pasted-image-1.png' });
   await expect
     .poll(() => thumb.evaluate((el) => (el as HTMLImageElement).naturalWidth))
     .toBe(CARD_W);
@@ -296,9 +307,9 @@ test('detail face: paste paints a placeholder, landing swaps it for a chip with 
 
   // FM2: the settled chip replaces the placeholder at the identical box.
   await expect(placeholder).toHaveCount(0);
-  const chip = strip.locator('button.spec-chip--preview');
+  const chip = strip.getByRole('button', { name: 'pasted-image-1.png' });
   await expect(chip).toBeVisible();
-  const chipImg = chip.locator('img.spec-chip-img');
+  const chipImg = chip.getByRole('img', { name: 'pasted-image-1.png' });
   await expect
     .poll(() => chipImg.evaluate((el) => (el as HTMLImageElement).naturalWidth))
     .toBe(CARD_W);
@@ -323,12 +334,14 @@ test('detail face: clicking the settled chip opens the image preview; Esc closes
   await expect(input).toHaveValue(`${TOKEN_1}\n`);
 
   // FM4: preview opens on the settled chip, paints the image, Esc closes.
-  const chip = page.locator('.composer-float > .attachment-strip button.spec-chip--preview');
+  const chip = page
+    .getByTestId('composer-float')
+    .getByRole('button', { name: 'pasted-image-1.png' });
   await chip.click();
-  const preview = page.locator('.attachment-preview');
+  const preview = page.getByRole('dialog', { name: 'pasted-image-1.png' });
   await expect(preview).toBeVisible();
   await expect(preview).toContainText('pasted-image-1.png');
-  const view = preview.locator('img.attachment-preview-img');
+  const view = preview.getByRole('img', { name: 'pasted-image-1.png' });
   await expect.poll(() => view.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(
     CARD_W,
   );
@@ -349,15 +362,15 @@ test('detail face: clicking the in-flight placeholder previews the local bytes',
   art.b64 = await renderTestCard(page);
 
   await pastePng(page, COMPOSER, art.b64);
-  const placeholder = page.locator('.composer-float > .attachment-strip .attachment-pending');
+  const placeholder = page.getByTestId('composer-float').getByTestId('attachment-pending');
   await expect(placeholder).toBeVisible();
 
   // FM5: no server round trip has completed (grant still held) — the preview
   // paints the pasted bytes straight from the blob URL.
   await placeholder.click();
-  const preview = page.locator('.attachment-preview');
+  const preview = page.getByRole('dialog', { name: 'pasted-image-1.png' });
   await expect(preview).toBeVisible();
-  const view = preview.locator('img.attachment-preview-img');
+  const view = preview.getByRole('img', { name: 'pasted-image-1.png' });
   await expect.poll(() => view.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(
     CARD_W,
   );
@@ -395,8 +408,8 @@ test('detail face: a failed upload clears the placeholder, toasts, keeps the dra
   await pastePng(page, COMPOSER, PNG_1PX);
 
   // The placeholder paints while the grant is held…
-  const strip = page.locator('.composer-float > .attachment-strip');
-  await expect(strip.locator('.attachment-pending')).toBeVisible();
+  const strip = page.getByTestId('composer-float').getByRole('status', { name: '附件' });
+  await expect(strip.getByTestId('attachment-pending')).toBeVisible();
 
   // …then FM3: the grant fails — toast names it, the card leaves, draft whole.
   await expect.poll(() => held.length).toBe(1);
@@ -412,16 +425,16 @@ test('detail face: a failed upload clears the placeholder, toasts, keeps the dra
 
 // —— new-task face ————
 
-const SPEC = '.new-task-spec';
+const SPEC = '[data-testid="new-task-spec"]';
 
 async function bootNewTask(page: Page, art: TestArt) {
   await stubBoot(page, art);
   await page.route('**/api/projects?*', (route) => route.fulfill({ json: [PROJECT] }));
   await page.goto('/app');
   await page.locator('.sidebar-new-task').click();
-  const dialog = page.locator('.new-task-dialog');
+  const dialog = page.getByRole('dialog', { name: '新建任务' });
   await expect(dialog).toBeVisible();
-  const spec = page.locator(SPEC);
+  const spec = dialog.getByRole('textbox');
   await expect(spec).toBeVisible();
   return { dialog, spec };
 }
@@ -429,16 +442,16 @@ async function bootNewTask(page: Page, art: TestArt) {
 test('new-task face: placeholder → settled chip → preview', async ({ page }) => {
   const deferred = await deferUploads(page);
   const art: TestArt = { b64: PNG_1PX };
-  const { spec } = await bootNewTask(page, art);
+  const { dialog, spec } = await bootNewTask(page, art);
   art.b64 = await renderTestCard(page);
 
   await pastePng(page, SPEC, art.b64);
 
-  const strip = page.locator('.new-task-body > .attachment-strip');
+  const strip = dialog.getByRole('status', { name: '附件' });
   await expect(strip).toBeVisible();
-  const placeholder = strip.locator('.attachment-pending');
+  const placeholder = strip.getByTestId('attachment-pending');
   await expect(placeholder).toBeVisible();
-  await expect(placeholder.locator('.attachment-pending-badge')).toContainText('上传中');
+  await expect(placeholder.getByText('上传中')).toHaveText('上传中');
   await evidenceShot(page, 'strip-newtask-placeholder.png');
 
   await expect.poll(() => deferred.held.length).toBe(1);
@@ -447,12 +460,12 @@ test('new-task face: placeholder → settled chip → preview', async ({ page })
   await deferred.releaseAll(); // upload
   await expect(spec).toHaveValue(`${TOKEN_1}\n`);
 
-  const chip = strip.locator('button.spec-chip--preview');
+  const chip = strip.getByRole('button', { name: 'pasted-image-1.png' });
   await expect(chip).toBeVisible();
   await chip.click();
-  const preview = page.locator('.attachment-preview');
+  const preview = page.getByRole('dialog', { name: 'pasted-image-1.png' });
   await expect(preview).toBeVisible();
-  const view = preview.locator('img.attachment-preview-img');
+  const view = preview.getByRole('img', { name: 'pasted-image-1.png' });
   await expect.poll(() => view.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(
     CARD_W,
   );
@@ -505,14 +518,14 @@ async function openChief(page: Page, art: TestArt) {
 test('chief face: placeholder → settled chip → preview', async ({ page }) => {
   const deferred = await deferUploads(page);
   const art: TestArt = { b64: PNG_1PX };
-  const { input } = await openChief(page, art);
+  const { drawer, input } = await openChief(page, art);
   art.b64 = await renderTestCard(page);
 
   await pastePng(page, '.chief-composer-input', art.b64);
 
-  const strip = page.locator('.chief-composer > .attachment-strip');
+  const strip = drawer.getByRole('status', { name: '附件' });
   await expect(strip).toBeVisible();
-  await expect(strip.locator('.attachment-pending')).toBeVisible();
+  await expect(strip.getByTestId('attachment-pending')).toBeVisible();
   await evidenceShot(page, 'strip-chief-placeholder.png');
 
   await expect.poll(() => deferred.held.length).toBe(1);
@@ -521,12 +534,12 @@ test('chief face: placeholder → settled chip → preview', async ({ page }) =>
   await deferred.releaseAll(); // upload
   await expect(input).toHaveValue(`${TOKEN_1}\n`);
 
-  const chip = strip.locator('button.spec-chip--preview');
+  const chip = strip.getByRole('button', { name: 'pasted-image-1.png' });
   await expect(chip).toBeVisible();
   await chip.click();
-  const preview = page.locator('.attachment-preview');
+  const preview = page.getByRole('dialog', { name: 'pasted-image-1.png' });
   await expect(preview).toBeVisible();
-  const view = preview.locator('img.attachment-preview-img');
+  const view = preview.getByRole('img', { name: 'pasted-image-1.png' });
   await expect.poll(() => view.evaluate((el) => (el as HTMLImageElement).naturalWidth)).toBe(
     CARD_W,
   );

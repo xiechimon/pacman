@@ -95,3 +95,14 @@
     outline: none;
   }
 }
+
+/* #948（overlay/ per-face 清零）：确认面（AlertDialogShell 族）背板的 z 档。
+   .overlay-backdrop 类由 components/ui/alert-dialog-shell.tsx（冻结共享件）
+   输出，其皮肤 utility（fixed inset-0 bg-black/60 ≡ --overlay-scrim 值）已在
+   件上，唯 z-index 无 utility 承载——原规则住 overlay.css，文件退役后本条是
+   #688 阶梯的机制残段（--z-modal-scrim 40，压常驻抽屉族），随阶梯文档落
+   carrier 层（motion.css 的 body 级状态钩同族先例，#943）。件侧摘类归
+   #952（components/ui 授权票）。 */
+.overlay-backdrop {
+  z-index: var(--z-modal-scrim);
+}
