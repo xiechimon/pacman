@@ -2,7 +2,7 @@
 // that opens over a scrim. Top layer = five category rows (任务 / 技能 /
 // Agents / 项目 / 机器) with counts; clicking a row drills in to a
 // second layer with a search box and the row list. Selection is
-// multi-select cumulative (no checkbox glyph per r9 §3.2 — the
+// multi-select cumulative (no checkbox glyph per r9 §2.2 — the
 // `插入 (N)` footer count is the only indicator); the footer offers
 // 取消 / 插入 (N) with the count driving button state.
 //
@@ -17,6 +17,15 @@
 // MentionGroups in. This mirrors search-panel's `server` prop
 // pattern (#286): fixture mode keeps DOM-stable; live mode wires the
 // real entity endpoints.
+//
+// #948 per-face 清零：mention-picker.css 规则 1:1 迁 utility。面板居中不借
+// transform（负 margin——transform 归动画层独占，#448/#656 律，
+// mention-picker-center.spec 钉 computed transform='none' + width=400 +
+// 居中 ±1px）；z 档 --z-picker（#688 阶梯顶档，嵌套压过 dialog 族）。
+// 行钮收编 components/ui Button（ghost 七通道中和，#908 裁决 3；本族行不在
+// motion.css hover 家族名单——「提及/下拉选中行 hover 即选中语义」是家族律
+// 的登记例外，故 hover 底中和为透明，高亮只走 --selected/--active 类）。
+// kind 身份色 tile/chip 走 mention-chip.ts 的槽映射（暂定正典，见该文件头注）。
 
 import { type Ref, useEffect, useMemo, useState } from 'react';
 import { Button } from '../components/ui/button.js';
@@ -34,8 +43,8 @@ import {
   X,
 } from '../icons/index.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
+import { mentionIconClass } from './mention-chip.js';
 import type { InlineCompletionRow, MentionKind, MentionToken } from './mention-token.js';
-import './mention-picker.css';
 
 /** One entity row inside a drilled-in category. The picker renders the
  *  `label` chip verbatim; for todo rows the label carries the seq
@@ -71,13 +80,31 @@ type Layer = 'top' | MentionKind;
 
 /** Category header config (label + icon). Order is the panel order
  *  (r9 §2.2 first-layer scan). */
-const CATEGORIES: { kind: MentionKind; Icon: typeof FileCheck; iconClass: string }[] = [
-  { kind: 'todo', Icon: FileCheck, iconClass: 'mention-icon--todo' },
-  { kind: 'skill', Icon: Puzzle, iconClass: 'mention-icon--skill' },
-  { kind: 'agent', Icon: Users, iconClass: 'mention-icon--agent' },
-  { kind: 'project', Icon: Layers, iconClass: 'mention-icon--project' },
-  { kind: 'machine', Icon: Server, iconClass: 'mention-icon--machine' },
+const CATEGORIES: { kind: MentionKind; Icon: typeof FileCheck }[] = [
+  { kind: 'todo', Icon: FileCheck },
+  { kind: 'skill', Icon: Puzzle },
+  { kind: 'agent', Icon: Users },
+  { kind: 'project', Icon: Layers },
+  { kind: 'machine', Icon: Server },
 ];
+
+/** 壳退场桥（#656 配方，原 .mention-picker-shell 规则）。 */
+const SHELL_CLS =
+  'mention-picker-shell [transition:visibility_0s_linear_var(--dur-fast)] data-[ending-style]:invisible';
+
+/** 面板（原 .mention-picker）：400 宽居中（负 margin，transform 留给动画
+ *  层）、70vh 封顶、picker 顶档 z。投影为无 token 槽的一次性字面量。 */
+const PANEL_CLS =
+  'mention-picker fixed top-[228px] left-1/2 z-(--z-picker) ml-[-200px] flex max-h-[70vh] w-[400px] flex-col overflow-hidden rounded-[12px] border border-(--border-default) bg-(--popover-bg) shadow-[0_18px_48px_rgb(0_0_0/0.22)]';
+
+/** 类目/实体行基底（原 .mention-row，Button ghost 七通道中和）。 */
+const ROW_CLS =
+  'mention-row flex w-full cursor-pointer items-center justify-start gap-2.5 rounded-none border-0 bg-transparent px-3.5 py-0 text-left text-sm font-normal text-(--text-primary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:cursor-default';
+
+/** head 返回/关闭钮（原 .mention-picker-back/-close：22px 方钮、6px 圆角、
+ *  tertiary 墨，hover 吃 #73 家族同值 --accent-soft tint + primary 墨）。 */
+const HEAD_BTN_CLS =
+  'size-[22px] cursor-pointer rounded-[6px] border-none bg-transparent text-(--text-tertiary) font-normal hover:bg-(--accent-soft) hover:text-(--text-primary) dark:hover:bg-(--accent-soft) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0';
 
 /** r9 §2.2 first layer uses a 28px icon glyph + label + count chip on
  *  the right. Each row is 44 tall, pitch 45 — implemented as 44 + 1
@@ -85,33 +112,32 @@ const CATEGORIES: { kind: MentionKind; Icon: typeof FileCheck; iconClass: string
 function TopRow({
   kind,
   Icon,
-  iconClass,
   count,
   onClick,
 }: {
   kind: MentionKind;
   Icon: typeof FileCheck;
-  iconClass: string;
   count: number;
   onClick: () => void;
 }) {
   const { t } = useI18n();
   return (
-    <button
+    <Button
+      variant="ghost"
       type="button"
-      className="mention-row mention-row--top"
+      className={`${ROW_CLS} mention-row--top h-11 disabled:opacity-50`}
       onClick={onClick}
       // Empty categories stay focusable so ⌘K-style screen-reader
       // navigation works — the click is a no-op when count is 0.
       disabled={count === 0}
       aria-label={`${labelFor(t, kind)} (${count})`}
     >
-      <span className={`mention-row-icon ${iconClass}`}>
+      <span className={mentionIconClass(kind)}>
         <Icon width={16} height={16} />
       </span>
-      <span className="mention-row-label">{labelFor(t, kind)}</span>
-      <span className="mention-row-count">{count}</span>
-    </button>
+      <span className="mention-row-label flex-1 text-[13px] font-medium">{labelFor(t, kind)}</span>
+      <span className="mention-row-count text-xs text-(--text-tertiary) tabular-nums">{count}</span>
+    </Button>
   );
 }
 
@@ -223,35 +249,35 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
   };
 
   return (
-    // #425 B1：壳换 FloatingShell（Base UI 非模态 Dialog）；mention-picker-shell
-    // 类只为退场 CSS 钩子（见 mention-picker.css 尾段），别名锚类逐字保留。
-    <FloatingShell open={open} onClose={onClose} className="mention-picker-shell">
+    // #425 B1：壳换 FloatingShell（Base UI 非模态 Dialog）；壳类只余退场桥
+    // utility（原 CSS 钩子规则已随 mention-picker.css 退役），别名锚类逐字保留。
+    <FloatingShell open={open} onClose={onClose} className={SHELL_CLS}>
       <ClickCatcher onClose={onClose} />
       <div
-        className={`mention-picker ${FLOATING_POP_ANIM}`}
+        className={`${PANEL_CLS} ${FLOATING_POP_ANIM}`}
         role="dialog"
         aria-modal="true"
         aria-label={t('提及')}
       >
-        <div className="mention-picker-head">
+        <div className="mention-picker-head flex items-center gap-2 border-b border-(--border-default) px-4 pt-3.5 pb-2.5">
           {layer !== 'top' ? (
             <Button
               variant="ghost"
               size="icon-xs"
-              className="mention-picker-back font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+              className={`mention-picker-back ${HEAD_BTN_CLS} [&_svg:not([class*='size-'])]:size-auto`}
               aria-label={t('返回')}
               onClick={() => setLayer('top')}
             >
               <ChevronLeft width={14} height={14} />
             </Button>
           ) : null}
-          <div className="mention-picker-title">
+          <div className="mention-picker-title flex-1 text-[13px] font-medium text-(--text-primary)">
             {layer === 'top' ? t('提及') : `${labelFor(t, layer)} · ${counts[layer]}`}
           </div>
           <Button
             variant="ghost"
             size="icon-xs"
-            className="mention-picker-close font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            className={`mention-picker-close ${HEAD_BTN_CLS} [&_svg:not([class*='size-'])]:size-auto`}
             aria-label={t('关闭')}
             onClick={onClose}
           >
@@ -259,13 +285,12 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
           </Button>
         </div>
         {layer === 'top' ? (
-          <div className="mention-picker-list">
-            {CATEGORIES.map(({ kind, Icon, iconClass }) => (
+          <div className="mention-picker-list flex-1 overflow-auto py-1.5">
+            {CATEGORIES.map(({ kind, Icon }) => (
               <TopRow
                 key={kind}
                 kind={kind}
                 Icon={Icon}
-                iconClass={iconClass}
                 count={counts[kind]}
                 onClick={() => setLayer(kind)}
               />
@@ -273,18 +298,18 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
           </div>
         ) : (
           <>
-            <div className="mention-picker-search">
+            <div className="mention-picker-search border-b border-(--border-default) px-3.5 pt-2.5 pb-1.5">
               <Input
                 type="text"
-                className="mention-picker-search-input"
+                className="mention-picker-search-input h-7 rounded-none border-(--border-default) bg-(--surface-inset) px-2.5 py-0 text-xs text-(--text-primary) dark:bg-(--surface-inset) md:text-xs"
                 placeholder={t('搜索…')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
             </div>
-            <div className="mention-picker-list">
+            <div className="mention-picker-list flex-1 overflow-auto py-1.5">
               {filteredEntries.length === 0 ? (
-                <div className="mention-picker-empty">
+                <div className="mention-picker-empty px-3.5 py-[22px] text-center text-xs text-(--text-tertiary)">
                   {drilledQuery === ''
                     ? t('没有可引用的对象')
                     : t('没有与"{query}"匹配的结果', { query: drilledQuery })}
@@ -293,30 +318,37 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
                 filteredEntries.map((entry) => {
                   const isSelected = selected[layer].has(entry.id);
                   return (
-                    <button
+                    <Button
                       key={entry.id}
+                      variant="ghost"
                       type="button"
-                      className={`mention-row mention-row--entry${isSelected ? ' mention-row--selected' : ''}`}
+                      className={`${ROW_CLS} mention-row--entry h-[50px]${
+                        isSelected ? ' mention-row--selected bg-(--surface-hover)' : ''
+                      }`}
                       onClick={() => toggle(layer, entry.id)}
                     >
-                      <span className="mention-row-main">
-                        <span className="mention-row-title">{entry.label}</span>
+                      <span className="mention-row-main flex min-w-0 flex-1 flex-col gap-0.5">
+                        <span className="mention-row-title truncate text-[13px] font-medium">
+                          {entry.label}
+                        </span>
                         {entry.subtitle != null && (
-                          <span className="mention-row-sub">{entry.subtitle}</span>
+                          <span className="mention-row-sub truncate text-[11px] text-(--text-tertiary)">
+                            {entry.subtitle}
+                          </span>
                         )}
                       </span>
-                    </button>
+                    </Button>
                   );
                 })
               )}
             </div>
           </>
         )}
-        <div className="mention-picker-foot">
+        <div className="mention-picker-foot flex items-center justify-end gap-3.5 border-t border-(--border-default) bg-(--popover-bg) px-4 py-3">
           <Button
             variant="ghost"
             size="default"
-            className="mention-picker-cancel h-auto rounded-none justify-start gap-0 font-normal active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent [&_svg:not([class*='size-'])]:size-auto"
+            className="mention-picker-cancel h-auto cursor-pointer rounded-none justify-start gap-0 px-1.5 py-1 text-xs font-normal text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto"
             onClick={onClose}
           >
             {t('取消')}
@@ -324,7 +356,7 @@ export function MentionPicker({ open, onClose, onInsert, groups }: MentionPicker
           <Button
             variant="ghost"
             size="default"
-            className="mention-picker-insert h-auto rounded-none justify-start gap-0 active:not-aria-[haspopup]:translate-y-0 hover:bg-transparent [&_svg:not([class*='size-'])]:size-auto"
+            className="mention-picker-insert h-auto cursor-pointer rounded-none justify-start gap-0 px-1.5 py-1 text-xs font-medium text-(--card-button) transition-[filter] duration-(--dur-fast) ease-(--ease-standard) hover:bg-transparent hover:brightness-[1.07] dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--card-button) disabled:cursor-default disabled:text-(--text-tertiary) disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             disabled={allSelected.length === 0}
             onClick={insert}
           >
@@ -389,6 +421,18 @@ function InlineKindIcon({ kind }: { kind: InlineCompletionRow['kind'] }) {
   }
 }
 
+/** 内联 listbox 面板（原 .mention-inline）：锚在 composer wrap 里，局部
+ *  z40（#688 阶梯外，绘制收编于宿主面 stacking context）；与 slash-menu
+ *  同锚同皮（r9 §2.2/§3.2）。 */
+const INLINE_PANEL_CLS =
+  'mention-inline absolute inset-x-0 bottom-[calc(100%+6px)] z-40 max-h-[220px] overflow-auto rounded-(--radius-popover) border border-(--border-default) bg-(--popover-bg) p-1 shadow-[0_12px_32px_rgb(0_0_0/0.18)]';
+
+/** 内联行（原 .mention-inline-row，Button ghost 中和）：hover/focus 与
+ *  JS 驱动的 --active 高亮共面（#728 combobox 律：箭头与 hover 一种视觉
+ *  语言，DOM 焦点恒在 textarea）。 */
+const INLINE_ROW_CLS =
+  'mention-inline-row flex h-[38px] w-full cursor-pointer items-center justify-start gap-2.5 rounded-[6px] border-0 bg-transparent px-2.5 text-left text-sm font-normal text-(--text-primary) hover:bg-(--surface-hover) hover:text-(--text-primary) focus:bg-(--surface-hover) dark:hover:bg-(--surface-hover) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+
 export function MentionInline({
   open,
   rows,
@@ -412,27 +456,27 @@ export function MentionInline({
     <div
       ref={listboxRef}
       id={listboxId}
-      className="mention-inline duration-100 ease-out animate-in fade-in-0 zoom-in-98"
+      className={`${INLINE_PANEL_CLS} duration-100 ease-out animate-in fade-in-0 zoom-in-98`}
       role="listbox"
       aria-label={t('提及')}
       data-caret={caret ?? ''}
     >
       {rows.length === 0 ? (
-        <div className="mention-inline-empty">
+        <div className="mention-inline-empty px-3 py-2.5 text-xs text-(--text-tertiary)">
           {query === ''
             ? t('没有可引用的对象')
             : t('没有与"{query}"匹配的结果', { query: `@${query}` })}
         </div>
       ) : (
         rows.map((row, index) => (
-          <button
+          <Button
             key={`${row.kind}:${row.id}`}
             id={`${listboxId}-opt-${index}`}
-            type="button"
+            variant="ghost"
             tabIndex={-1}
             role="option"
             aria-selected={index === highlight}
-            className={`mention-inline-row${index === highlight ? ' mention-inline-row--active' : ''}`}
+            className={`${INLINE_ROW_CLS}${index === highlight ? ' mention-inline-row--active bg-(--surface-hover)' : ''}`}
             // Keep the textarea focused: a row mousedown must not blur it
             // (focus loss = broken continuous typing + IME, failure mode 4).
             onMouseDown={(event) => event.preventDefault()}
@@ -440,17 +484,23 @@ export function MentionInline({
             onClick={() => onPick(row)}
           >
             {row.kind === 'agent' ? (
-              <span className="mention-inline-avatar">{row.label.charAt(0).toLowerCase()}</span>
+              <span className="mention-inline-avatar inline-flex size-6 items-center justify-center rounded-full bg-(--surface-tertiary) text-[11px] font-semibold text-(--text-primary)">
+                {row.label.charAt(0).toLowerCase()}
+              </span>
             ) : (
-              <span className="mention-inline-avatar mention-inline-avatar--file">
+              <span className="mention-inline-avatar mention-inline-avatar--file inline-flex size-6 items-center justify-center rounded-full bg-(--surface-tertiary) text-[11px] font-semibold text-(--text-primary)">
                 <InlineKindIcon kind={row.kind} />
               </span>
             )}
-            <span className="mention-inline-main">
-              <span className="mention-inline-title">{row.label}</span>
-              {row.subtitle != null && <span className="mention-inline-sub">{row.subtitle}</span>}
+            <span className="mention-inline-main flex min-w-0 flex-col gap-px">
+              <span className="mention-inline-title truncate text-xs font-medium">{row.label}</span>
+              {row.subtitle != null && (
+                <span className="mention-inline-sub truncate text-[11px] text-(--text-tertiary)">
+                  {row.subtitle}
+                </span>
+              )}
             </span>
-          </button>
+          </Button>
         ))
       )}
     </div>

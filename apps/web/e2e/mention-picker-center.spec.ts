@@ -9,10 +9,13 @@ import { expect, test } from '@playwright/test';
 // build --mode fixture + preview),dev 态永远照不出这个缺陷。
 // 钉死两条:终态 computed transform 不承载位移(=none,居中不借
 // transform,动画层独占该属性);几何 x = (视口宽 - 面板宽)/2。
+// #948 载体重钉（#910 裁定 1）：面板类名 locator 换 role+name 一级载体
+// （aria-label 提及在面上；transform/width/居中三条视觉断言的语义与数值
+// 一字不动——本次迁移面板居中仍走负 margin，不借 transform）。
 test('mention picker stays centered in the production bundle (#448)', async ({ page }) => {
   await page.goto('/app/todo/r8-15?scenario=chain');
-  await page.locator('.composer-toolbar button[aria-label="提及"]').click();
-  const panel = page.locator('.mention-picker');
+  await page.getByRole('button', { name: '提及' }).click();
+  const panel = page.getByRole('dialog', { name: '提及' });
   await expect(panel).toBeVisible();
   await page.waitForTimeout(300); // past the 150ms overlay-pop enter animation
   await expect(panel).toHaveCSS('transform', 'none');

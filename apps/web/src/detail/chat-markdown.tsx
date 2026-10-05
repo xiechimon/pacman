@@ -190,7 +190,10 @@ export function AttachmentChip({
     return (
       <button
         type="button"
-        className="spec-chip spec-chip--image spec-chip--preview"
+        // #948：.spec-chip--preview 的 UA chrome 清零自 attachment-strip.css
+        // 迁入（该文件退役）——preview 卡是 button 不是 link，appearance 归零
+        // 保住 .spec-chip 卡面，整卡可点。
+        className="spec-chip spec-chip--image spec-chip--preview cursor-pointer appearance-none"
         title={name}
         onClick={() => onPreview(name, href)}
       >

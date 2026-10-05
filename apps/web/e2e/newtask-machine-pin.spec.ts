@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // #682: the new-task dialog carries a machine chip (project-chip family) —
 // the task-level dispatch pin. Each test pins one failure mode:
@@ -10,6 +10,10 @@ import { expect, type Page, test } from '@playwright/test';
 //    remembered pin returns; picking 自动 clears it — the old "always reset
 //    to 自动" reset law predates the memory mechanism)
 // 6. a machine-selected save still lands the fixture card (save path intact)
+//
+// #948 载体重钉（#910 裁定 1/2）：dialog = role+name；chip/listbox/关闭钮/
+// 正文框换 getByTestId 与 getByRole 一级载体（属性选择器写法一并归一）。
+// 断言语义逐字不动。[data-column] .todo-card 是 board 域载体（#943 面），不动。
 
 // scenario=06 carries the resources set (machines row) — the board canon
 // scenario 01 has no resources block, so its machine rows are empty by design
@@ -20,13 +24,17 @@ const MACHINE = 'xmonsMac-3574.local';
 async function openDialog(page: Page) {
   await page.goto(BOARD);
   await page.locator('.sidebar-new-task').click();
-  const dialog = page.locator('.new-task-dialog');
+  const dialog = page.getByRole('dialog', { name: '新建任务' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
 
-function machineChip(dialog: ReturnType<Page['locator']>) {
-  return dialog.locator('[data-testid="new-task-machine-chip"]');
+function machineChip(dialog: Locator) {
+  return dialog.getByTestId('new-task-machine-chip');
+}
+
+function machineMenu(dialog: Locator) {
+  return dialog.getByRole('listbox', { name: '机器' });
 }
 
 test('the machine chip renders with the 自动 default label', async ({ page }) => {
@@ -38,7 +46,7 @@ test('the machine chip renders with the 自动 default label', async ({ page }) 
 test('the popover lists the 自动 row and the scenario machine row', async ({ page }) => {
   const dialog = await openDialog(page);
   await machineChip(dialog).click();
-  const menu = dialog.locator('[role="listbox"][aria-label="机器"]');
+  const menu = machineMenu(dialog);
   await expect(menu).toBeVisible();
   await expect(menu.getByRole('option', { name: '自动' })).toBeVisible();
   await expect(menu.getByRole('option', { name: MACHINE })).toBeVisible();
@@ -47,22 +55,16 @@ test('the popover lists the 自动 row and the scenario machine row', async ({ p
 test('selecting the machine row backfills the chip label', async ({ page }) => {
   const dialog = await openDialog(page);
   await machineChip(dialog).click();
-  await dialog
-    .locator('[role="listbox"][aria-label="机器"]')
-    .getByRole('option', { name: MACHINE })
-    .click();
+  await machineMenu(dialog).getByRole('option', { name: MACHINE }).click();
   await expect(machineChip(dialog)).toHaveText(MACHINE);
   // 重开 popover：选中态标记落在机器行（自动行不带选中）。
   await machineChip(dialog).click();
-  const menu = dialog.locator('[role="listbox"][aria-label="机器"]');
+  const menu = machineMenu(dialog);
   await expect(menu.getByRole('option', { name: MACHINE })).toHaveAttribute(
     'aria-selected',
     'true',
   );
-  await expect(menu.getByRole('option', { name: '自动' })).toHaveAttribute(
-    'aria-selected',
-    'false',
-  );
+  await expect(menu.getByRole('option', { name: '自动' })).toHaveAttribute('aria-selected', 'false');
   // 自动行选回 = chip 复位。
   await menu.getByRole('option', { name: '自动' }).click();
   await expect(machineChip(dialog)).toHaveText(/自动/);
@@ -71,9 +73,9 @@ test('selecting the machine row backfills the chip label', async ({ page }) => {
 test('Esc closes the machine popover only — the dialog stays open', async ({ page }) => {
   const dialog = await openDialog(page);
   await machineChip(dialog).click();
-  await expect(dialog.locator('[role="listbox"][aria-label="机器"]')).toBeVisible();
+  await expect(machineMenu(dialog)).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(dialog.locator('[role="listbox"][aria-label="机器"]')).not.toBeVisible();
+  await expect(machineMenu(dialog)).not.toBeVisible();
   await expect(dialog).toBeVisible();
 });
 
@@ -82,39 +84,30 @@ test('chip selection survives close and reopen via memory, 自动 clears it (#75
 }) => {
   const dialog = await openDialog(page);
   await machineChip(dialog).click();
-  await dialog
-    .locator('[role="listbox"][aria-label="机器"]')
-    .getByRole('option', { name: MACHINE })
-    .click();
+  await machineMenu(dialog).getByRole('option', { name: MACHINE }).click();
   await expect(machineChip(dialog)).toHaveText(MACHINE);
   // 净表单关闭（spec 空 = 无未保存闸）再开：重开净面 = 记忆面，chip 回
   // 上次钉的机器（#758；旧「恒回自动」的 reset 律已被记忆机制改掉）。
-  await dialog.locator('.new-task-close').click();
+  await dialog.getByRole('button', { name: '关闭' }).click();
   await expect(dialog).not.toBeVisible();
   await page.locator('.sidebar-new-task').click();
-  const reopened = page.locator('.new-task-dialog');
+  const reopened = page.getByRole('dialog', { name: '新建任务' });
   await expect(machineChip(reopened)).toHaveText(MACHINE);
   // 选「自动」清记忆位：再一轮关闭重开回自动。
   await machineChip(reopened).click();
-  await reopened
-    .locator('[role="listbox"][aria-label="机器"]')
-    .getByRole('option', { name: '自动' })
-    .click();
+  await reopened.getByRole('listbox', { name: '机器' }).getByRole('option', { name: '自动' }).click();
   await expect(machineChip(reopened)).toHaveText(/自动/);
-  await reopened.locator('.new-task-close').click();
+  await reopened.getByRole('button', { name: '关闭' }).click();
   await expect(reopened).not.toBeVisible();
   await page.locator('.sidebar-new-task').click();
-  await expect(machineChip(page.locator('.new-task-dialog'))).toHaveText(/自动/);
+  await expect(machineChip(page.getByRole('dialog', { name: '新建任务' }))).toHaveText(/自动/);
 });
 
 test('a machine-selected save still lands the fixture card', async ({ page }) => {
   const dialog = await openDialog(page);
   await machineChip(dialog).click();
-  await dialog
-    .locator('[role="listbox"][aria-label="机器"]')
-    .getByRole('option', { name: MACHINE })
-    .click();
-  await dialog.locator('.new-task-spec').fill('钉机器的探针任务');
+  await machineMenu(dialog).getByRole('option', { name: MACHINE }).click();
+  await dialog.getByRole('textbox').fill('钉机器的探针任务');
   await dialog.getByRole('button', { name: '保存', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   const card = page.locator('[data-column="todo"] .todo-card', { hasText: '钉机器的探针任务' });

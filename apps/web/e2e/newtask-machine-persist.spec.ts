@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // #758: the new-task dialog's machine chip was pure component state — every
 // open (and every reload) dropped the pin back to 自动, while the sibling
@@ -15,6 +15,11 @@ import { expect, type Page, test } from '@playwright/test';
 //    dot (no silent reassignment, #687 pin = wait-for-online semantics)
 // 4. picking 自动 clears the memory → reload stays on 自动
 // 5. nothing stored → 自动 (the pre-fix default, unchanged)
+//
+// #948 载体重钉（#910 裁定 1）：dialog = role+name；属性选择器写法归一
+// getByTestId / getByRole（chip 与 dot 走既有/新增 testid 二级载体，listbox
+// 走 role+name 一级载体）。data-on 属性断言语义逐字不动（#910 裁定 3：
+// 状态载体 = data-*）。
 
 const STORAGE_KEY = 'pacman.newTaskMachineId'; // mirrored: new-task-dialog.tsx
 // scenario=newtask-machines: boardDefault + two machines (fixtures.ts
@@ -35,21 +40,22 @@ function seedStoredMachine(page: Page, machineId: string) {
 
 async function openDialog(page: Page) {
   await page.locator('.sidebar-new-task').click();
-  const dialog = page.locator('.new-task-dialog');
+  const dialog = page.getByRole('dialog', { name: '新建任务' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
 
-function machineChip(dialog: ReturnType<Page['locator']>) {
-  return dialog.locator('[data-testid="new-task-machine-chip"]');
+function machineChip(dialog: Locator) {
+  return dialog.getByTestId('new-task-machine-chip');
 }
 
-async function pick(page: Page, dialog: ReturnType<Page['locator']>, name: string) {
+function machineMenu(dialog: Locator) {
+  return dialog.getByRole('listbox', { name: '机器' });
+}
+
+async function pick(page: Page, dialog: Locator, name: string) {
   await machineChip(dialog).click();
-  await dialog
-    .locator('[role="listbox"][aria-label="机器"]')
-    .getByRole('option', { name })
-    .click();
+  await machineMenu(dialog).getByRole('option', { name }).click();
   await expect(machineChip(dialog)).toHaveText(name);
 }
 
@@ -64,9 +70,10 @@ test('the picked machine survives a reload', async ({ page }) => {
   const reopened = await openDialog(page);
   await expect(machineChip(reopened)).toHaveText(MACHINE);
   await machineChip(reopened).click();
-  await expect(
-    reopened.locator('[role="listbox"][aria-label="机器"]').getByRole('option', { name: MACHINE }),
-  ).toHaveAttribute('aria-selected', 'true');
+  await expect(machineMenu(reopened).getByRole('option', { name: MACHINE })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
 });
 
 test('a remembered machine that is gone falls back to 自动 without a dangling pin', async ({
@@ -77,7 +84,7 @@ test('a remembered machine that is gone falls back to 自动 without a dangling 
   const dialog = await openDialog(page);
   await expect(machineChip(dialog)).toHaveText(/自动/);
   await machineChip(dialog).click();
-  const menu = dialog.locator('[role="listbox"][aria-label="机器"]');
+  const menu = machineMenu(dialog);
   // 显示面与提交面同吃 machinePin 解析值：悬空 id 落回自动行选中态。
   await expect(menu.getByRole('option', { name: '自动' })).toHaveAttribute('aria-selected', 'true');
   // 记忆位留着不动（行集可能只是还没加载，按缺省清记忆会误伤真值——项目
@@ -95,14 +102,15 @@ test('a remembered offline machine is kept and honestly shown offline', async ({
   const dialog = await openDialog(page);
   // 不静默改派：chip 显机器名（非自动），离线态如实落在 dot 上。
   await expect(machineChip(dialog)).toHaveText(OFFLINE);
-  await expect(machineChip(dialog).locator('.new-task-machine-dot')).toHaveAttribute(
+  await expect(machineChip(dialog).getByTestId('new-task-machine-dot')).toHaveAttribute(
     'data-on',
     'false',
   );
   await machineChip(dialog).click();
-  await expect(
-    dialog.locator('[role="listbox"][aria-label="机器"]').getByRole('option', { name: OFFLINE }),
-  ).toHaveAttribute('aria-selected', 'true');
+  await expect(machineMenu(dialog).getByRole('option', { name: OFFLINE })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
 });
 
 test('picking 自动 clears the memory and a reload stays on 自动', async ({ page }) => {
