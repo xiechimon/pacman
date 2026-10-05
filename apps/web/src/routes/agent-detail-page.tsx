@@ -77,6 +77,7 @@ import {
 import { Input } from '../components/ui/input.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Select } from '../components/ui/select.js';
+import { StatusChip } from '../components/ui/status-chip.js';
 import { Switch } from '../components/ui/switch.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { toastError } from '../components/ui/toaster.js';
@@ -88,7 +89,6 @@ import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { PHASE_UI } from '../phase.js';
 import { SECRETS_HREF } from '../resources/secrets-page.js';
 import { ResourceShell } from '../resources/shell.js';
-import { Chip } from '../ui/chip.js';
 import './agent-detail.css';
 import { AgentModelSelect, AgentRuntimeSelect } from './agent-model-select.js';
 
@@ -404,9 +404,9 @@ export function AgentDetailPage() {
                     >
                       <span className="agent-task-seq">#{row.todo.seqNum}</span>
                       <span className="agent-task-title">{row.todo.title}</span>
-                      <Chip variant={ui.tone} size="mini">
+                      <StatusChip tone={ui.tone} size="sm">
                         {t(ui.chip)}
-                      </Chip>
+                      </StatusChip>
                       <span className="agent-task-go" aria-hidden="true">
                         <ChevronRight width={12} height={12} />
                       </span>

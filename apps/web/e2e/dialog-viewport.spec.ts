@@ -72,7 +72,8 @@ test('secret: 静态表单面 submit 在视口', async ({ page }) => {
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   await expectShellCapped(dialog);
-  await expect(dialog.locator('.dlg-secret-create')).toBeInViewport();
+  // #942 正典表 §5.4：.dlg-secret-create 退役，载体 = getByRole 按钮文案一级
+  await expect(dialog.getByRole('button', { name: '添加密钥' })).toBeInViewport();
 });
 
 test('machine: disclosure 展开(最高内容态)底部链接在视口', async ({ page }) => {
