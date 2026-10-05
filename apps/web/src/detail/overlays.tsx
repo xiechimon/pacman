@@ -100,24 +100,47 @@ function PanelHead({
  *  降为 ghost 次钮。 */
 export function RerunDialog({
   reuse,
+  pin,
   onClose,
   onRerun,
   onReuse,
+  onUnpin,
 }: {
   reuse: boolean;
+  /** #864 T3：任务钉选的机器（todo.machineId 的反解）+ 它是否离线。重跑沿用
+   *  任务钉选（orchestrate 读 todo.machineId），钉着离线机就是再失败一轮——
+   *  所以离线时这一面给出「改为自动」这道显式出口。在线/未钉 = 不出现：
+   *  pin 是用户自己下的确定性约束，机器在时不该暗示去改掉它。 */
+  pin?: { machineName: string | null; offline: boolean } | null;
   /** #168: family close law — X / Esc / backdrop all dismiss. */
   onClose: () => void;
   /** live 面：重跑 = POST /todos/:id/orchestrate（总管编排回合）；缺省 =
    *  fixture 静态面（钮无 wire）。 */
   onRerun?: () => void;
   onReuse?: () => void;
+  /** live 面：清掉任务钉选（PATCH todo.machineId = null，之后新起的 build
+   *  才吃这次改动）；缺省 = 静态面（钮无 wire）。 */
+  onUnpin?: () => void;
 }) {
   const { t } = useI18n();
+  const pinOffline = pin != null && pin.offline;
   return (
     <Overlay onClose={onClose}>
       <PanelHead title={t('开始任务')} onClose={onClose} />
       <div className="overlay-body">
         <div className="rerun-info">{t('这张任务将交给总管重新编排。')}</div>
+        {pinOffline && onUnpin !== undefined && (
+          <div className="rerun-pin">
+            <span>
+              {t('钉选的机器「{machine}」当前离线，重跑仍会等它。', {
+                machine: pin.machineName ?? t('（已移除）'),
+              })}
+            </span>
+            <Button variant="ghost" className={OVERLAY_GHOST} onClick={onUnpin}>
+              {t('改为自动')}
+            </Button>
+          </div>
+        )}
         <div className="overlay-actions">
           <Button
             variant={reuse ? 'ghost' : 'brand'}

@@ -18,6 +18,7 @@ import {
   step as stepTable,
 } from '../src/db/schema.js';
 import { CHIEF_ABANDONED_STEP_MS, failAbandonedChiefSteps } from '../src/services/chief.js';
+import { PIN_OFFLINE_GRACE_MS } from '../src/services/dispatch-timeouts.js';
 import { createScheduler } from '../src/services/scheduler.js';
 import { bootServer, issueApiKey, type TestServer } from './helpers.js';
 
@@ -218,6 +219,67 @@ describe('#684 chief 失联超时兜底（failAbandonedChiefSteps）', () => {
       .run();
     failAbandonedChiefSteps(w.s.svc, heartbeatedAt + 30_000);
     expect(stepRowOf(w).status).toBe('claimed');
+    expect(turnErrorRow(w)).toBeUndefined();
+  });
+
+  test('#864 T3 钉选机器离线 + 别的机器在线 + 超宽限：回合按失败收尾，文案点名钉选机', async () => {
+    const w = await sendChiefTurn();
+    await enrollMachine(w.s, w.teamId); // 钉选机：注册但离线
+    const pinnedId = w.s.db.select().from(machineTable).limit(1).all()[0]!.id;
+    w.s.db
+      .update(chiefThread)
+      .set({ pinnedMachineId: pinnedId })
+      .where(eq(chiefThread.id, w.threadId))
+      .run();
+    // 团队里另有在线机器——判据必须是「钉的那台不在」，不是「团队没机器」。
+    await enrollMachine(w.s, w.teamId);
+    const otherId = w.s.db
+      .select()
+      .from(machineTable)
+      .all()
+      .find((m) => m.id !== pinnedId)!.id;
+    setMachineOnline(w.s, otherId, true);
+
+    failAbandonedChiefSteps(w.s.svc, stepRowOf(w).createdAt + PIN_OFFLINE_GRACE_MS + 1);
+
+    expect(stepRowOf(w).status).toBe('failed');
+    expect(threadRowOf(w).activeRun).toBeNull();
+    expect(threadRowOf(w).pinnedMachineId).toBe(pinnedId); // 不静默改派
+    const message = turnErrorMessage(w);
+    expect(message).toContain('钉选的机器「sweep-mbp」');
+    expect(message).toContain('离线超过 10 分钟');
+  });
+
+  test('#864 T3 钉选机器离线 + 未超宽限 → 不动（给机器回来的窗口）', async () => {
+    const w = await sendChiefTurn();
+    await enrollMachine(w.s, w.teamId);
+    const pinnedId = w.s.db.select().from(machineTable).limit(1).all()[0]!.id;
+    w.s.db
+      .update(chiefThread)
+      .set({ pinnedMachineId: pinnedId })
+      .where(eq(chiefThread.id, w.threadId))
+      .run();
+
+    failAbandonedChiefSteps(w.s.svc, stepRowOf(w).createdAt + 60_000);
+
+    expect(stepRowOf(w).status).toBe('pending');
+    expect(turnErrorRow(w)).toBeUndefined();
+  });
+
+  test('#864 T3 钉选机器在线 → 不动（回合等它认领）', async () => {
+    const w = await sendChiefTurn();
+    await enrollMachine(w.s, w.teamId);
+    const pinnedId = w.s.db.select().from(machineTable).limit(1).all()[0]!.id;
+    setMachineOnline(w.s, pinnedId, true);
+    w.s.db
+      .update(chiefThread)
+      .set({ pinnedMachineId: pinnedId })
+      .where(eq(chiefThread.id, w.threadId))
+      .run();
+
+    failAbandonedChiefSteps(w.s.svc, stepRowOf(w).createdAt + PIN_OFFLINE_GRACE_MS * 5);
+
+    expect(stepRowOf(w).status).toBe('pending');
     expect(turnErrorRow(w)).toBeUndefined();
   });
 

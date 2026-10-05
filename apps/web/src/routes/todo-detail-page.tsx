@@ -386,7 +386,12 @@ export function TodoDetailPage() {
     [machinesQ.data, buildQ.data?.pinnedMachineId],
   );
   const machineField = machineName ?? pinnedMachine?.name ?? null;
-  const machineWaiting = machineName == null && pinnedMachine != null && !pinnedMachine.online;
+  // #864 T3：等待标注只在「还在等」时成立。done/failed 会把右栏切到变更面
+  // （本块根本不挂），closed 是唯一还能看到本块的收尾相位——失败后被关掉的
+  // 任务不该继续自称「等待机器上线」（钉选机离线不再是它的阻塞原因，
+  // 而 #864 超时收尾后步已经是 failed）。
+  const machineWaiting =
+    machineName == null && pinnedMachine != null && !pinnedMachine.online && phase !== 'closed';
 
   const liveDetail: DetailContent | undefined = useMemo(() => {
     if (!live || !wireTodo || buildId == null) return undefined;
@@ -619,6 +624,28 @@ export function TodoDetailPage() {
     if (live && phase === 'confirm' && buildId != null)
       mutations.stepAction.mutate({ buildId, body: { action: 'confirm' } });
   };
+  // —— #864 T3：重跑面的钉选出口。重跑沿用任务钉选（orchestrate 读
+  // todo.machineId），钉着离线机 = 再失败一轮，所以失败面给「改为自动」。
+  // machines 读面未到时判「不知道」而不是「离线」（不把未取到错读成不在线）；
+  // 钉的机器行已不在（被删/换团队）= 服务端同离线语义，文案走「（已移除）」。
+  const pinnedTodoMachine =
+    wireTodo?.machineId != null && machinesQ.data != null
+      ? (machinesQ.data.find((m) => m.id === wireTodo.machineId) ?? null)
+      : undefined;
+  const rerunPin =
+    pinnedTodoMachine === undefined
+      ? null
+      : {
+          machineName: pinnedTodoMachine?.name ?? null,
+          offline: pinnedTodoMachine?.online !== true,
+        };
+  const unpinForRerun = () => {
+    mutations.patchTodo.mutate(
+      { id: todo.id, body: { machineId: null } },
+      { onError: (error) => toastError(t('改为自动失败，请重试。'), error) },
+    );
+  };
+
   const closeTask = () => {
     setMoreOpen(false);
     if (live) {
@@ -1221,6 +1248,7 @@ export function TodoDetailPage() {
            reuse（失败轮持有方案文档）保留 r8 §3.4 复用方案 家族。 */
         <RerunDialog
           reuse={todo.hasPlan}
+          pin={live ? rerunPin : null}
           onClose={closeOverlay}
           onRerun={
             live
@@ -1231,6 +1259,7 @@ export function TodoDetailPage() {
               : undefined
           }
           onReuse={() => setOverlay({ kind: 'reuse' })}
+          onUnpin={live ? unpinForRerun : undefined}
         />
       )}
       {overlay?.kind === 'reuse' && (

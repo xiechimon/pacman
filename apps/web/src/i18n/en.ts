@@ -793,6 +793,12 @@ export const EN: Record<string, string> = {
   来源: 'Source',
   总管编排会话: 'Chief orchestration session',
   '这张任务将交给总管重新编排。': 'The chief will re-orchestrate this task.',
+  // #864 T3 重跑面的钉选出口（钉选机离线时：重跑沿用任务钉选 = 再失败一轮）。
+  '钉选的机器「{machine}」当前离线，重跑仍会等它。':
+    'Pinned machine "{machine}" is offline — a rerun would wait for it again.',
+  '（已移除）': '(removed)',
+  改为自动: 'Switch to automatic',
+  '改为自动失败，请重试。': 'Could not switch to automatic. Try again.',
   已交给总管编排: 'Handed to the chief',
   '已保存，交给总管编排': 'Saved — handed to the chief',
   '总管将直接规划，并按活的类型派发执行。':
