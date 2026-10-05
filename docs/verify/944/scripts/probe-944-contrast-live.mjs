@@ -30,6 +30,15 @@ for (const theme of ['light','dark']) {
   const page = await browser.newPage({ viewport: { width: 1440, height: 732 } });
   await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
   await page.goto(`${BASE}/app/resources/providers`);
+  // vite dev compiles CSS on first request: never measure an unstyled frame
+  // (black-on-black ratio 1). Wait until the theme background is live.
+  await page.waitForFunction(
+    () => {
+      const bg = getComputedStyle(document.body).backgroundColor;
+      return bg !== '' && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'rgb(0, 0, 0)';
+    },
+    { timeout: 15000 },
+  );
   await page.waitForSelector('[data-testid="runtime-empty"]', { timeout: 15000 });
   for (const [label, sel] of [
     ['A3 runtime-empty text', '[data-testid="runtime-empty"] p'],

@@ -6,11 +6,11 @@
 
 - `prov-tablist` tablist = 恰两个 tab：`pi` / `Claude Code`（无「内置」字样；Codex 后续票再扩）。契约句柄：`[role="tablist"]` + `[role="tab"][data-runtime="pi"|"claude-code"]` + `aria-selected`，默认选中 pi。
 - `prov-tab-url` tab 状态同步 `?runtime=pi|claude-code` search param——刷新/分享可回定位，深链直落对应 tab。
-- `prov-runtime-head` 每 tab header 卡（`.res-runtime-head[data-runtime]`）：runtime 名 + 一行说明 + 安装态。claude-code 安装态 = 执行机上报（A4，#707 修订）：上报过的机器各一张 header 卡——有 settings 文件 → 「已安装在 \<上报 hostname\>」；无文件 → 「未安装」指引态，不空报不崩；从未上报的机器（旧 daemon）无卡、不下发假清单。
-- `prov-pi-models` pi tab 模型行 = custom providers `models[]` 投影（A3）。契约句柄：`.res-model-row[data-runtime][data-model-id]`，行文本含显示名与模型 id。
-- `prov-pi-empty` 无 custom provider 时 pi tab 空态（`.res-runtime-empty`）+ 引导钮开添加服务商 picker（A3；picker 面见 provider-picker.md）。
+- `prov-runtime-head` 每 tab header 卡（`[data-testid="runtime-head"][data-runtime]`）：runtime 名 + 一行说明 + 安装态。claude-code 安装态 = 执行机上报（A4，#707 修订）：上报过的机器各一张 header 卡——有 settings 文件 → 「已安装在 \<上报 hostname\>」；无文件 → 「未安装」指引态，不空报不崩；从未上报的机器（旧 daemon）无卡、不下发假清单。
+- `prov-pi-models` pi tab 模型行 = custom providers `models[]` 投影（A3）。契约句柄：`[data-model-id][data-runtime]`，行文本含显示名与模型 id。
+- `prov-pi-empty` 无 custom provider 时 pi tab 空态（`[data-testid="runtime-empty"]`）+ 引导钮开添加服务商 picker（A3；picker 面见 provider-picker.md）。
 - `prov-facade-gone` 「Pacman（内置）」facade 行已除（负向；现状残留 = 前端渲染的固定装饰行，非库内数据）。
-- `prov-no-affordance` 模型行纯展示无 handler → 不渲染 chevron/三点装饰（负向句柄 = 现状装饰类 `.res-row-chev` / `.res-row-more`，A7 行可点感收编落地后应消失）。
+- `prov-no-affordance` 模型行纯展示无 handler → 不渲染 chevron/三点装饰（负向句柄 = 行内 `[data-model-id] svg` / `[data-model-id] button` 计数 0——装饰类已随 #944 退役，A7 语义改钉「纯展示行无可点感」）。
 - `prov-model-sources-api` `GET /api/teams/:id/model-sources` → pi 首段 + 每台上报过的机器一段 claude-code（序固定：pi 首 + 按机器名），与 UI 双真值一致（数据契约单源在 shared）；封套元素形状 `{runtime, installed, hostname, models[{id, name, slot?}]}` 逐段钉死（机器无关面）。
 
 ## How to get to it (user POV)
@@ -33,7 +33,7 @@ Preconditions:
 ## Gotchas
 
 - **红态语义**：本 probe 先行于实现（A12「实现票消费之」）——红 ≠ harness 坏，别为了转绿改断言；实现与 map 冲突时先改 map（`/maintain-verification-skill`）再动 probe。
-- **契约句柄是 T0 定义的**：`data-runtime` 词表 = `'pi'|'claude-code'`（与 machine `enabledRuntimes` PATCH 词表同源，shared 常量单源）；`.res-runtime-head` / `.res-model-row` / `.res-runtime-empty` 类名以本文件为准，实现要改名先改 map；负向句柄 `.res-row-chev` / `.res-row-more` = 现状装饰类（A7 落地后在 providers 页应清零）。
+- **契约句柄是 T0 定义的**：`data-runtime` 词表 = `'pi'|'claude-code'`（与 machine `enabledRuntimes` PATCH 词表同源，shared 常量单源）；`[data-testid="runtime-head"]` / `[data-model-id]` / `[data-testid="runtime-empty"]` 载体以本文件为准，实现要改载体先改 map（**#944 载体迁移**：类名钩 → 语义/data-* 载体，原 `.res-runtime-head` / `.res-model-row` / `.res-runtime-empty` 类名退役，断言语义不变）；负向句柄 = 行内 svg/button 计数 0（原 `.res-row-chev` / `.res-row-more` 装饰类退役，A7 语义 = 纯展示行无可点感）。
 - 全新库次序：先 tabs 后 picker；跑反了 pi 空态断言假红（库内已有 picker e2e 建的 provider）。
 - claude-code header 两分支皆合法（installed true/false）——断言以 model-sources API 为分支依据，别写死「已安装」。
 - `?runtime=` 不翻 live 判定（live 面只看 `?scenario=`），live URL 可安全携带。

@@ -25,6 +25,12 @@
 // 前置 = server 启动 seed 路径（verify 栈无 daemon）；daemon loopback enroll
 // 落 kind='local' 是另一条路径，不在本 probe 覆盖（需真 daemon，属 stop-button
 // 家族配方）。
+// #944 载体迁移：类名钩 → 语义/data-* 载体，断言语义不变——.res-grow →
+// div[data-machine-id]、.mach-runtime/.mach-mark/.mach-runtime-label →
+// [data-runtime] 容器 + svg + aria-label 可读名、.mach-runtime--on →
+// data-enabled、.mach-shell-switch → role=switch、.res-row-desc → 文案一级、
+// .res-add → button:text-is(文案)、.res-row-chev/-more 负向 → 可点语义/menu
+// 触发计数 0；.res-main = chief docking 跨域句柄，不动（#950 面）。
 // 用法：node drive-machines-local.mjs
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -132,19 +138,21 @@ const pollUntil = async (fn, timeoutMs = 6000) => {
 
 const PAGE_PATH = '/app/resources/machines';
 const SHELL = `[data-route="${PAGE_PATH}"]`;
-const ROW = `${SHELL} .res-grow[data-machine-id]`;
+// #944 载体迁移：.res-grow → div[data-machine-id]（div 元素名限定防串——
+// shell 开关元素也带 data-machine-id；machines-local.spec 同锚）。
+const ROW = `${SHELL} div[data-machine-id]`;
 const LOCAL_ROW = `${ROW}[data-kind="local"]`;
 const HOST = hostname();
 const extra = { hostname: HOST };
 
-const runtimeSel = (runtime) => `${LOCAL_ROW} .mach-runtime[data-runtime="${runtime}"]`;
-/** mark 亮度分态读数（.mach-runtime--on = 启用，与 aria-checked 同义替换）。 */
+const runtimeSel = (runtime) => `${LOCAL_ROW} [data-runtime="${runtime}"]`;
+/** mark 亮度分态读数（data-enabled = 启用载体，#944 起替 .mach-runtime--on 修饰类）。 */
 const runtimeOn = async (page, runtime) =>
   page
     .evaluate(
       (sel) => {
         const el = document.querySelector(sel);
-        return el == null ? null : el.classList.contains('mach-runtime--on');
+        return el == null ? null : el.getAttribute('data-enabled') === 'true';
       },
       runtimeSel(runtime),
     )
@@ -224,7 +232,7 @@ try {
     firstRowKind === 'local' && localRowOk && localRowText.includes(HOST),
     localRowOk
       ? `本机行在列表首（data-kind=${firstRowKind}），行文本含 hostname "${HOST}"`
-      : `spec 11 A8：本机行（.res-grow[data-machine-id][data-kind="local"]）应钉列表首且显示 hostname——未实现（首行 data-kind=${firstRowKind ?? '无行'}）`,
+      : `spec 11 A8：本机行（div[data-machine-id][data-kind="local"]）应钉列表首且显示 hostname——未实现（首行 data-kind=${firstRowKind ?? '无行'}）`,
   );
   await shot(page, '02-local-row.png');
 
@@ -232,7 +240,7 @@ try {
   const deleteCtl = localRowOk
     ? await softCount(
         page,
-        `${LOCAL_ROW} button[aria-label*="删除"], ${LOCAL_ROW} .res-row-more`,
+        `${LOCAL_ROW} button[aria-label*="删除"], ${LOCAL_ROW} [aria-haspopup="menu"]`,
       )
     : -1;
   check(
@@ -243,18 +251,21 @@ try {
       : `spec 11 A8：本机行不可删——行内命中 ${deleteCtl} 个删除类控件${deleteCtl < 0 ? '（前置本机行缺失）' : ''}`,
   );
 
-  // 5) #503：per-runtime 品牌 mark = 行内两个 .mach-runtime（pi / claude-code），
-  //    各带 .mach-mark + 名称 label
-  const piMarkOk = await softVisible(page, `${runtimeSel('pi')} .mach-mark`);
-  const ccMarkOk = await softVisible(page, `${runtimeSel('claude-code')} .mach-mark`);
-  const piLabel = await softText(page, `${runtimeSel('pi')} .mach-runtime-label`);
-  const ccLabel = await softText(page, `${runtimeSel('claude-code')} .mach-runtime-label`);
+  // 5) #503/#887：per-runtime 品牌 mark = 行内两个 [data-runtime] 容器（pi /
+  //    claude-code）各带 svg；#887 图标独形后名称不上屏——可读名载体 =
+  //    容器 aria-label（+ title 悬停），此处钉 aria-label 真值。
+  const piMarkOk = await softVisible(page, `${runtimeSel('pi')} svg`);
+  const ccMarkOk = await softVisible(page, `${runtimeSel('claude-code')} svg`);
+  const piLabel = await page.getAttribute(runtimeSel('pi'), 'aria-label').catch(() => null);
+  const ccLabel = await page
+    .getAttribute(runtimeSel('claude-code'), 'aria-label')
+    .catch(() => null);
   check(
     'marks-present',
     piMarkOk && ccMarkOk && piLabel === 'pi' && ccLabel === 'Claude Code',
     piMarkOk && ccMarkOk && piLabel === 'pi' && ccLabel === 'Claude Code'
-      ? '本机行内 pi + Claude Code 两个品牌 mark 在位（mark + 名称）'
-      : `#503：本机行应带 per-runtime 品牌 mark（.mach-runtime[data-runtime] 内 .mach-mark + label）——实测 mark pi=${piMarkOk} cc=${ccMarkOk}，label pi="${piLabel}" cc="${ccLabel}"`,
+      ? '本机行内 pi + Claude Code 两个品牌 mark 在位（svg + aria-label 可读名）'
+      : `#503：本机行应带 per-runtime 品牌 mark（[data-runtime] 内 svg + aria-label 可读名）——实测 mark pi=${piMarkOk} cc=${ccMarkOk}，label pi="${piLabel}" cc="${ccLabel}"`,
   );
 
   // 6) UI=API 一致：mark 亮度分态 === enabledRuntimes.includes（幂等基线）
@@ -273,7 +284,7 @@ try {
   // 7) XMON-113：行内控件面 = 机器层 shell 开关**恰一个**。判据是「不许死
   //    控件」而非「不许有控件」——#503 摘除的 per-runtime 开关全仓只写不读
   //    （PR #507），shell 开关有消费方（XMON-108 R1 双闸 + 每命令预检）。
-  const SHELL_SW = `${LOCAL_ROW} .mach-shell-switch`;
+  const SHELL_SW = `${LOCAL_ROW} [role="switch"]`;
   const swCount = localRowOk ? await softCount(page, `${LOCAL_ROW} [role="switch"]`) : -1;
   const btnCount = localRowOk ? await softCount(page, `${LOCAL_ROW} button`) : -1;
   const swOnly = swCount === 1 && btnCount === 0;
@@ -281,7 +292,7 @@ try {
     'shell-switch-single',
     swOnly,
     swOnly
-      ? '本机行内恰一个控件 = .mach-shell-switch（无 button；per-runtime 位仍是 mark 展示）'
+      ? '本机行内恰一个控件 = [role="switch"]（无 button；per-runtime 位仍是 mark 展示）'
       : `XMON-113：本机行应恰有一个 role=switch（shell 开关）、零 button——实测 switch=${swCount} button=${btnCount}${swCount < 0 ? '（前置本机行缺失）' : ''}`,
   );
 
@@ -297,15 +308,17 @@ try {
       : `XMON-113：开关态应等于 GET machines 的 shellEnabled——API=${apiShell0} UI=${uiShell0}`,
   );
 
-  // 8) 副行只剩「这一个控件是什么」（#503 的 id 尾巴 / 并发上限仍负向）
-  const subText = localRowOk ? await softText(page, `${LOCAL_ROW} .res-row-desc`) : '';
+  // 8) 副行只剩「这一个控件是什么」（#503 的 id 尾巴 / 并发上限仍负向）。
+  //    #944 载体迁移：.res-row-desc 类名钩 → 文案一级（整句精确文本节点，
+  //    machines-local.spec 的 getByText 整句同 canon）。
+  const subText = localRowOk ? await softText(page, `${LOCAL_ROW} span:text-is("已授权「远程 shell」的 Agent 可在该机器上执行命令。")`) : '';
   const subOk = subText.includes('远程 shell') && !localRowText.includes('· max');
   check(
     'subline-shell-hint-only',
     subOk,
     subOk
       ? `副行 = shell 开关说明（「${oneLine(subText)}」）`
-      : `XMON-113：副行应只承载 shell 开关说明、且不含 id 尾巴 / 并发上限——实测 .res-row-desc「${oneLine(subText)}」，行文本「${oneLine(localRowText)}」`,
+      : `XMON-113：副行应只承载 shell 开关说明、且不含 id 尾巴 / 并发上限——实测副行文案载体「${oneLine(subText)}」，行文本「${oneLine(localRowText)}」`,
   );
   await shot(page, '03-marks.png');
 
@@ -436,11 +449,11 @@ try {
   );
   await shot(page, '04-after-reload.png');
 
-  // 11) A8：「添加机器」流程不变（.res-add → CLI 命令 dialog）
-  const addOk = await softVisible(page, `${SHELL} .res-add`);
+  // 11) A8：「添加机器」流程不变（button:text-is("添加机器") → CLI 命令 dialog）
+  const addOk = await softVisible(page, `${SHELL} button:text-is("添加机器")`);
   let addDialogOk = false;
   if (addOk) {
-    await page.click(`${SHELL} .res-add`).catch(() => {});
+    await page.click(`${SHELL} button:text-is("添加机器")`).catch(() => {});
     addDialogOk = await softVisible(page, '[role="dialog"]');
     if (addDialogOk) {
       const dlgText = (await softText(page, '[role="dialog"]')).toLowerCase();
@@ -457,15 +470,20 @@ try {
     addOk && addDialogOk,
     addOk && addDialogOk
       ? '「添加机器」钮开 CLI 命令 dialog（流程不变）'
-      : `spec 11 A8：添加机器流程应不变（.res-add → CLI 命令 dialog）——钮=${addOk} dialog=${addDialogOk}`,
+      : `spec 11 A8：添加机器流程应不变（button:text-is("添加机器") → CLI 命令 dialog）——钮=${addOk} dialog=${addDialogOk}`,
   );
 
-  // 12) A7 负向：行无 chevron 装饰
-  const chevCount = await softCount(page, `${SHELL} .res-row-chev`);
+  // 12) A7 负向：行无 chevron 装饰（#944 载体迁移：.res-row-chev 装饰类退役
+  //     ——断言改钉「行级可点语义不在」：行本体无 role=button、行内无链接，
+  //     machines-local.spec 同 canon）。
+  const chevCount = await softCount(
+    page,
+    `${SHELL} [data-kind][role="button"], ${SHELL} [data-kind] a`,
+  );
   check(
     'rows-no-affordance',
     chevCount === 0,
-    `spec 11 A7：无 handler 行不渲染 chevron——实测 ${chevCount} 个`,
+    `spec 11 A7：无 handler 行不渲染 chevron（行级 role=button / 行内链接计数 0）——实测 ${chevCount} 个`,
   );
   await shot(page, '06-final.png');
 } catch (err) {

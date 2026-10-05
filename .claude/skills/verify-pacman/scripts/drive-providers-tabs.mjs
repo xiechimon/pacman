@@ -19,6 +19,11 @@
 // .mjs 跑；重验 = 重 launch。claude-code 段数据源 = 执行机上报（#707，A4 修订）：
 // probe 经公开 machine wire 自铺底一台上报过的机器（建 API key → enroll 携
 // claudeCode 上报，无需真 daemon），断言 UI=API=上报值三方一致。
+// #944 载体迁移：类名钩 → 语义/data-* 载体，断言语义不变——.res-runtime-empty →
+// [data-testid="runtime-empty"]、.res-model-row → [data-model-id][data-runtime]、
+// .res-runtime-head → [data-testid="runtime-head"]、.dlg-picker-search →
+// input[aria-label="搜索服务商..."]、.res-row-chev/-more 负向 → 行内 svg/button
+// 计数 0；.res-main = chief docking 跨域句柄，不动（#950 面）。
 // 用法：node drive-providers-tabs.mjs
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -247,23 +252,23 @@ try {
   );
 
   // 3) A3：全新库 → pi 空态 + 引导钮开 picker
-  const emptyOk = await softVisible(page, `${SHELL} .res-runtime-empty`);
+  const emptyOk = await softVisible(page, `${SHELL} [data-testid="runtime-empty"]`);
   check(
     'pi-empty-state',
     emptyOk,
     emptyOk
       ? 'pi tab 空态在位（全新库无 custom provider）'
-      : 'spec 11 A3：pi tab 无 custom provider 时应渲染空态引导（.res-runtime-empty）——未实现',
+      : 'spec 11 A3：pi tab 无 custom provider 时应渲染空态引导（[data-testid="runtime-empty"]）——未实现',
   );
   await shot(page, '02-pi-empty.png');
   let pickerOpened = false;
   if (emptyOk) {
     await page
-      .locator(`${SHELL} .res-runtime-empty button, ${SHELL} .res-runtime-empty a`)
+      .locator(`${SHELL} [data-testid="runtime-empty"] button, ${SHELL} [data-testid="runtime-empty"] a`)
       .first()
       .click()
       .catch(() => {});
-    pickerOpened = await softVisible(page, '[role="dialog"] .dlg-picker-search');
+    pickerOpened = await softVisible(page, '[role="dialog"] input[aria-label="搜索服务商..."]');
     if (pickerOpened) {
       await page.click('[role="dialog"] .dlg-close').catch(() => {});
       await page
@@ -300,8 +305,10 @@ try {
   await page.reload();
   await page.waitForSelector(SHELL, { timeout: 15_000 }).catch(() => {});
 
-  const rowSelA = `${SHELL} .res-model-row[data-runtime="pi"][data-model-id="${seedProvider.models[0].id}"]`;
-  const rowSelB = `${SHELL} .res-model-row[data-runtime="pi"][data-model-id="${seedProvider.models[1].id}"]`;
+  // #944 载体迁移：.res-model-row 类名钩 → [data-model-id][data-runtime]
+  // 契约句柄（providers-tabs.spec 同锚）。
+  const rowSelA = `${SHELL} [data-model-id="${seedProvider.models[0].id}"][data-runtime="pi"]`;
+  const rowSelB = `${SHELL} [data-model-id="${seedProvider.models[1].id}"][data-runtime="pi"]`;
   const rowsOk = (await softVisible(page, rowSelA)) && (await softVisible(page, rowSelB));
   const rowAText = rowsOk ? await softText(page, rowSelA) : '';
   check(
@@ -309,17 +316,18 @@ try {
     rowsOk && rowAText.includes(seedProvider.models[0].name),
     rowsOk
       ? `pi tab 模型行命中铺底两模型，行文本含显示名（"${oneLine(rowAText)}"）`
-      : 'spec 11 A2/A3：pi tab 应渲染 custom provider models[] 的模型行（.res-model-row[data-runtime="pi"][data-model-id]，显示名 → 模型 id）——未命中',
+      : 'spec 11 A2/A3：pi tab 应渲染 custom provider models[] 的模型行（[data-model-id][data-runtime="pi"]，显示名 → 模型 id）——未命中',
   );
   await shot(page, '03-pi-model-rows.png');
 
-  // 5) A2/A7 负向：纯展示行无可点感装饰
-  const chevCount = await softCount(page, `${SHELL} .res-row-chev`);
-  const moreCount = await softCount(page, `${SHELL} .res-row-more`);
+  // 5) A2/A7 负向：纯展示行无可点感装饰（#944 载体迁移：.res-row-chev/-more
+  //    装饰类退役——断言改钉「行内零 svg 零 button」，providers-tabs.spec 同 canon）。
+  const chevCount = await softCount(page, `${SHELL} [data-model-id] svg`);
+  const moreCount = await softCount(page, `${SHELL} [data-model-id] button`);
   check(
     'rows-no-affordance',
     chevCount === 0 && moreCount === 0,
-    `spec 11 A7：无 handler 行不渲染 chevron/三点——实测 chev ${chevCount} 个 / 三点 ${moreCount} 个`,
+    `spec 11 A7：无 handler 行不渲染 chevron/三点（行内 svg/button 计数 0）——实测 svg ${chevCount} 个 / button ${moreCount} 个`,
   );
 
   // 6) A1：切 Claude Code tab → aria-selected 翻转 + ?runtime= 同步
@@ -419,7 +427,7 @@ try {
   extra.modelSources = sources;
 
   // 8) A2/A4（#707）：执行机 header 卡——上报过的机器各一张，文案为上报 hostname
-  const headSel = `${SHELL} .res-runtime-head[data-runtime="claude-code"]`;
+  const headSel = `${SHELL} [data-testid="runtime-head"][data-runtime="claude-code"]`;
   const headCount = await softCount(page, headSel);
   const headTexts = headCount > 0 ? await softText(page, headSel) : '';
   const headPass =
@@ -441,11 +449,11 @@ try {
   );
   const ccUiRows = await softCount(
     page,
-    `${SHELL} .res-model-row[data-runtime="claude-code"]:visible`,
+    `${SHELL} [data-model-id][data-runtime="claude-code"]:visible`,
   );
   const reportedRowOk = await softVisible(
     page,
-    `${SHELL} .res-model-row[data-runtime="claude-code"][data-model-id="${ccModelId}"]`,
+    `${SHELL} [data-model-id="${ccModelId}"][data-runtime="claude-code"]`,
   );
   check(
     'cc-model-rows-consistency',
