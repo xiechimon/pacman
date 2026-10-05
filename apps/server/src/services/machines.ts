@@ -923,6 +923,10 @@ function tryClaim(
     // 审核者与被审者常是不同的 Agent/模型，接续会让它继承执行轮的上下文，
     // 且 continue 路径会吃掉服务端注入的审核材料（daemon 侧 CONTINUE_PROMPTS
     // 只有一句占位文案，plan.md 全文/变更/diff 全在 step.prompt 里）。
+    // #931 freshSession（返工轮边界）：restart 复用 PR build 的首步恒开新会话
+    // ——用户裁定「只复用分支、上下文真空」；续接 prior session 反而会把失败
+    // 轮（典型：审核步之死）的会话语境带进返工轮。新会话无会话文件依赖，
+    // 亲和闸同样不消费（下方 sessionContinuing 的 !freshSession 位）。
     // #863 T2 会话亲和（machine-execution-plane §4-7，正确性项）：conv 会话
     // 文件是执行机本地资产——会续接 prior session 的步优先回「持有该会话的
     // 机器」（= 链尾 session 步的 machineId，与 continue 判定同源）。其机在
@@ -946,6 +950,7 @@ function tryClaim(
       priorSessionId !== null &&
       cand.stepRow.kind !== 'review' &&
       !planHandoffMissing &&
+      !cand.stepRow.freshSession &&
       cand.buildRow.pinnedMachineId === null;
     if (
       sessionContinuing &&
@@ -979,7 +984,7 @@ function tryClaim(
       setTodoPhase(deps, cand.todoRow.id, cand.stepRow.kind === 'plan' ? 'planning' : 'building');
     }
     const session =
-      planHandoffMissing || cand.stepRow.kind === 'review'
+      planHandoffMissing || cand.stepRow.kind === 'review' || cand.stepRow.freshSession
         ? { action: 'new' as const, sessionId: null }
         : {
             action: priorSessionId ? ('continue' as const) : ('new' as const),

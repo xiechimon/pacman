@@ -86,6 +86,38 @@ export function transcriptResumeNoteRowId(stepId: string): string {
   return `resume-note-${stepId}`;
 }
 
+/** #931 返工回原分支——复用轮边界 note（server restart 复用旧 build 时落旧
+ * conv 的 system 行；RESUME_FRESH_SESSION_NOTE 同族：纯文本、无花括号——花括
+ * 号会被呈现端当 machine_selected 同族 JSON 跳过）。文本单源：server 写侧
+ * （builds.ts restart 复用分支）与测试断言消费同一份。prNumber 在位点名 PR
+ * （原 PR 就地更新的事实），failureReason 承接被清空的 build.errorMessage
+ * 原文（失败原因不随轮界蒸发）。 */
+export function buildReworkReuseNote(input: {
+  prNumber: number | null;
+  prUrl: string | null;
+  failureReason: string | null;
+}): string {
+  const pr = input.prNumber !== null ? `，更新原 PR #${input.prNumber}` : '';
+  const reason = input.failureReason !== null ? `上一轮失败原因：${input.failureReason}。` : '';
+  return `返工回到本分支继续${pr}。${reason}`;
+}
+
+/** #931 返工另起新分支 note（原 PR 已合并/已关闭时 restart 新建 build，落新
+ * conv 的 system 行）：判定显式且可见——票面失败方式 3 /验收 4，用户能看出
+ * 「为什么这次是新 PR」。branch = 新 conversationId 的分支名
+ * （conversationBranch 单源同式）。 */
+export function buildReworkNewBranchNote(input: {
+  prNumber: number | null;
+  prUrl: string | null;
+  branch: string;
+  outcome: 'merged' | 'closed';
+}): string {
+  const pr = input.prNumber !== null ? `#${input.prNumber}` : (input.prUrl ?? '');
+  const tail =
+    input.outcome === 'merged' ? '已合并，返工在新分支上重启' : '已关闭，返工在新分支上重启';
+  return `原 PR ${pr} ${tail}（${input.branch}）。`;
+}
+
 /** GET /api/conversations/{id}/messages 响应封套（r5 §3.6 原样）。 */
 export const conversationMessagesResponseSchema = z.object({
   messages: z.array(transcriptRowSchema),

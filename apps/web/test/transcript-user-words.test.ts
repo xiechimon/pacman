@@ -31,6 +31,8 @@ import {
   buildPlanRewritePrompt,
   buildReplanPrompt,
   buildRestartPrompt,
+  buildReworkNewBranchNote,
+  buildReworkReuseNote,
   buildTaskPromptText,
 } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
@@ -255,5 +257,35 @@ describe('mapTranscript 合成 prompt 过滤（#612）', () => {
     const users = userItems(items);
     expect(users).toHaveLength(1);
     expect(users[0]?.text).toBe(text.trim());
+  });
+
+  // —— #931 返工轮界 note（system → note 路，RESUME_FRESH_SESSION_NOTE 同族）：
+  // 判定可见 = 两条 note 落进时间线成 dim note 行——「为什么这次是新 PR」
+  // 用户可辨；渲染成用户气泡或被 JSON/echo 过滤误杀都算失败。——
+  test('F14 #931 返工轮界 note：复用轮与新建轮的 system 行都渲染成 note（不冒名气泡）', () => {
+    const reuse = buildReworkReuseNote({
+      prNumber: 888,
+      prUrl: 'https://github.com/demo-owner/demo-repo/pull/888',
+      failureReason: '本轮无人认领：团队当前没有在线机器',
+    });
+    const newBranch = buildReworkNewBranchNote({
+      prNumber: 888,
+      prUrl: 'https://github.com/demo-owner/demo-repo/pull/888',
+      branch: 'pacman/conv-01a10c27-0000-0000-0000-000000000000',
+      outcome: 'merged',
+    });
+    const items = render({
+      messages: [
+        msg('user', '我要的是svg样式的', NOW - 50_000),
+        msg('system', reuse, NOW - 49_000),
+        msg('system', newBranch, NOW - 48_000),
+      ],
+    });
+    const notes = noteItems(items).map((n) => n.text);
+    expect(notes).toContain(reuse);
+    expect(notes).toContain(newBranch);
+    const users = userItems(items);
+    expect(users).toHaveLength(1);
+    expect(users[0]?.text).toBe('我要的是svg样式的');
   });
 });
