@@ -98,7 +98,7 @@ Every non-pass pair below is an equal-value carry-over of the pre-#944 per-face 
 ## Surfaces not measurable on the fixture stack
 
 - **StatusPill (`未启用`)** — no reachable consumer: `machine.pill` is set by no fixture scenario and no live mapper (dormant API). Token-declared pair (NOT a surface measurement): `--text-dim` on `--pill-idle-bg` = light #8d8980/#e8e3da ≈ 3.0:1, dark #79756f/#2d2a24 ≈ 3.2:1 — below 4.5 for its 11px text; folds into the `--text-dim` finding below.
-- **A3 runtime-empty action (brand sm button)** — fixture pi segment always carries models, so the 「尚未添加服务商」 block with its action never renders on fixture; the recipe is byte-identical to the measured `empty primary (brand sm)` row (same Button brand/sm + text override), and the live-stack run re-measures it (see live/contrast-live.json when present).
+- **A3 runtime-empty action (brand sm button)** — the fixture pi segment always carries models, so the 「尚未添加服务商」 block never renders on fixture; measured on the verify live stack instead (fresh server, no providers): `contrast-live.json` — light 7.41 / dark 8.24 PASS, same recipe as the `empty primary (brand sm)` row.
 
 ## Non-pass rows (detail)
 
