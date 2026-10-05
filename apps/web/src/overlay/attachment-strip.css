@@ -85,7 +85,7 @@
   padding: 1px 6px;
   border-radius: 4px;
   background: rgb(0 0 0 / 0.55);
-  color: #fff;
+  color: var(--text-on-veil);
   font-size: 11px;
   line-height: 16px;
   white-space: nowrap;

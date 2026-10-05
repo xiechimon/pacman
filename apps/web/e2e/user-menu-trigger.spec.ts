@@ -22,12 +22,22 @@ const THEME_KEY = 'pacman-theme'; // apps/web/src/theme.ts THEME_STORAGE_KEY
 
 const menu = (page: Page) => page.locator('.user-menu');
 
-/** #656: the menu now rides the tw enter keyframe (zoom-95 + bottom slide) —
- *  geometry/hit-test reads must wait for it to settle, otherwise they catch a
- *  mid-animation box (precedent: checkbox-unified / dead-buttons settle waits). */
+/** #656: the menu rides an enter keyframe (scale .98 + fade) — geometry/
+ *  hit-test reads must wait for it to settle, otherwise they catch a
+ *  mid-animation box (precedent: checkbox-unified / dead-buttons settle waits).
+ *  #854: the transition moved off the panel onto the primitive's Popup wrapper
+ *  (the panel is now its static child), so the wait has to watch the ancestor
+ *  that actually animates — reading the panel's own animations returns an empty
+ *  list and the sample lands mid-scale (measured 222.59 against the 224 box). */
 async function expectMenuSettled(page: Page) {
   await expect(menu(page)).toBeVisible();
-  await menu(page).evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+  await menu(page).evaluate((el) =>
+    Promise.all(
+      (el.closest('[data-slot="popover-content"]') ?? el)
+        .getAnimations({ subtree: true })
+        .map((a) => a.finished),
+    ),
+  );
 }
 
 /** The menu must own the hit-test at its own center — nothing (click

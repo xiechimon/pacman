@@ -253,9 +253,6 @@ export function ChiefDrawer({
       : undefined;
   const [threadsOpen, setThreadsOpen] = useState(chief.threadsOpen ?? false);
   const [modelOpen, setModelOpen] = useState(false);
-  // #751 B：模型 picker 锚定面——portal 挂进 wrap 保绝对定位几何（弹层贴
-  // 触发行底下，chief-model-select / FloatingShell container 同律）。
-  const [modelWrap, setModelWrap] = useState<HTMLSpanElement | null>(null);
   // #651 流式视口：.chief-body 是真滚动容器（overflow: hidden → auto，
   // chief.css）。打开/切线程落底（chat 面通行律：最新消息在底部；
   // retained-mount 节点常驻，open 翻 true 时 effect 即发）。
@@ -525,44 +522,42 @@ export function ChiefDrawer({
                     {/* #615 A/B：显示行翻控制件——行首 = 运行时标记（FAB /
                     消息流的 Agent 头像脸不受影响，XMON-105 律），点开 = 主模型
                     覆盖锚定弹层（#751：贴行底下，家族律见 ChiefModelPopover；
-                    live PATCH 落库回显）。wrap = 锚定包含块（FloatingShell
-                    container 律，chief-model-select 同律）。中和件同头部 chip
+                    live PATCH 落库回显）。wrap 只承布局（-4px 光学内缩），
+                    定位正本在 Popover Positioner。中和件同头部 chip
                     族：h-auto/leading-[inherit]/font-normal 防原语定值撑高
                     12px 行、svg size-auto（ChevronDown 12 属性尺寸）。 */}
-                    <span className="chief-model-pop-wrap" ref={setModelWrap}>
-                      <Button
-                        variant="ghost"
-                        className="chief-model-btn h-auto shrink leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
-                        aria-label={t('总管主模型')}
-                        aria-haspopup="listbox"
-                        aria-expanded={modelOpen}
-                        onClick={() => setModelOpen((v) => !v)}
-                      >
-                        {/* #615 返工（用户裁决）：行首 = 运行时标记，不是 Agent 头像
-                        ——标记正本 = 参考站 providers 运行时 tab 的 SVG（用户指认
-                        /app/resources/providers?runtime=pi 面，DOM 捕获入库）：
-                        pi = RuntimePi 块状 π，claude-code = RuntimeClaudeCode
-                        品牌星标（填色随捕获）。FAB / 消息流的 Agent 头像脸不受
-                        影响（XMON-105 律在其各自面继续生效）。 */}
-                        <span className="chief-model-mark">
-                          {(chief.modelProvider ?? 'pi') === 'claude-code' ? (
-                            <RuntimeClaudeCode width={12} height={12} />
-                          ) : (
-                            <RuntimePi width={12} height={12} />
-                          )}
-                        </span>
-                        <span className="chief-model-label">{chief.modelSlot}</span>
-                        <ChevronDown width={12} height={12} />
-                      </Button>
+                    <span className="chief-model-pop-wrap">
+                      <ChiefModelPopover
+                        open={modelOpen}
+                        onOpenChange={setModelOpen}
+                        value={modelValue}
+                        options={modelOptions}
+                        onPick={onPickModel}
+                        trigger={
+                          <Button
+                            variant="ghost"
+                            className="chief-model-btn h-auto shrink leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                            aria-label={t('总管主模型')}
+                          >
+                            {/* #615 返工（用户裁决）：行首 = 运行时标记，不是 Agent 头像
+                            ——标记正本 = 参考站 providers 运行时 tab 的 SVG（用户指认
+                            /app/resources/providers?runtime=pi 面，DOM 捕获入库）：
+                            pi = RuntimePi 块状 π，claude-code = RuntimeClaudeCode
+                            品牌星标（填色随捕获）。FAB / 消息流的 Agent 头像脸不受
+                            影响（XMON-105 律在其各自面继续生效）。 */}
+                            <span className="chief-model-mark">
+                              {(chief.modelProvider ?? 'pi') === 'claude-code' ? (
+                                <RuntimeClaudeCode width={12} height={12} />
+                              ) : (
+                                <RuntimePi width={12} height={12} />
+                              )}
+                            </span>
+                            <span className="chief-model-label">{chief.modelSlot}</span>
+                            <ChevronDown width={12} height={12} />
+                          </Button>
+                        }
+                      />
                     </span>
-                    <ChiefModelPopover
-                      open={modelOpen}
-                      onClose={() => setModelOpen(false)}
-                      value={modelValue}
-                      options={modelOptions}
-                      onPick={onPickModel}
-                      container={modelWrap}
-                    />
                   </>
                 ) : (
                   <span>n/a</span>

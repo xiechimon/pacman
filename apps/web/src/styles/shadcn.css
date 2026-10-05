@@ -243,6 +243,9 @@
   /* 浮层遮罩（轨 A #A2）: modal / search / token-gate 全屏黑幕统一值，
      此前 6 处各写 rgb(0 0 0 / 0.6) */
   --overlay-scrim: rgb(0 0 0 / 0.6);
+  /* 罩上白字（#854 颜色逃逸收编）: 主题恒定的黑罩（attachment pending 徽标
+     rgb(0 0 0 / 0.55)）上的白字，两主题同值——罩恒黑故白字恒过对比度 */
+  --text-on-veil: #ffffff;
   /* P0 语义槽（base-ui-theme §2.5/§1.1，#787）：P4 #791 起被行 hover 消费
      （motion.css #73 家族吃 --accent-soft，删除行吃 --danger-soft）。
      --spot-soft = 选中底实色（spot 14% mix 于面板，P1 落仓后暗 ≈#363140）；
@@ -380,6 +383,8 @@
   --text-on-accent: #ffffff;
   --toggle-knob: #ffffff;
   --overlay-scrim: rgb(0 0 0 / 0.6);
+  /* 罩上白字（#854 颜色逃逸收编）：.light 保持完整语义 token 面，同暗侧值 */
+  --text-on-veil: #ffffff;
   /* P0 语义槽 light 镜像（#787）：公式与暗侧同形，唯 --spot-text-on-tint 取
      加深紫 #6d28d9（spot 原色在亮 tint 上只有 3.50:1，加深档 4.59:1，强制项）；
      失能字沿既有 light 惯例取白（失能态不按 4.5 验收）。 */

@@ -1,0 +1,3 @@
+$ node scripts/ui-drift-gate.mjs   # allowlist entry dropped (#854 删掉 G2-ALLOW)
+[ui-drift-gate] PASS: no live .btn selectors, no hex escapes, 6 chip variants single-sourced (25 css files scanned).
+exit=0

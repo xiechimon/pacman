@@ -15,12 +15,17 @@ import { useSearchParams } from 'react-router';
 import { useSkills } from '../api/hooks.js';
 import { mapSkills } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
-import { FloatingShell } from '../components/ui/floating-shell.js';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu.js';
 import { Input } from '../components/ui/input.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
-import { ArrowUpDown, Check, ChevronDown, Puzzle, Search } from '../icons/index.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
+import { ArrowUpDown, ChevronDown, Puzzle, Search } from '../icons/index.js';
 import { EmptyState, RowCard, RowChevron, Tile } from './parts.js';
 import { ResourceShell } from './shell.js';
 import { SkillDialog, type SkillEditTarget } from './skill-dialog.js';
@@ -40,10 +45,7 @@ export function SkillsPage() {
   const { live, teamId } = useLiveData();
   const skillsQ = useSkills(teamId, live);
   const rows = live ? mapSkills(skillsQ.data ?? []) : (fixture.resources?.skills ?? []);
-  const [sortOpen, setSortOpen] = useState(false);
   const [sort, setSort] = useState<SortKind>('默认');
-  // #425 B1:wrap 锚定面——portal 挂进 wrap 保绝对定位几何;Esc 走 FloatingShell。
-  const [sortWrap, setSortWrap] = useState<HTMLSpanElement | null>(null);
   const skills = sort === '名称' ? [...rows].sort((a, b) => a.name.localeCompare(b.name)) : rows;
   // 弹窗态：null = 关；{skill?} 无 skill = 新建，有 = 编辑（XMON-114）。
   const [dialog, setDialog] = useState<{ skill?: SkillEditTarget } | null>(null);
@@ -88,47 +90,41 @@ export function SkillsPage() {
                 aria-label={t('搜索技能...')}
               />
             </div>
-            <span className="res-sort-wrap" ref={setSortWrap}>
-              <button
-                type="button"
-                className="res-sort"
-                aria-haspopup="listbox"
-                aria-expanded={sortOpen}
-                onClick={() => setSortOpen((v) => !v)}
-              >
-                <ArrowUpDown width={13} height={13} />
-                <span>{t('排序')}</span>
-                <ChevronDown width={12} height={12} />
-              </button>
-              <FloatingShell
-                open={sortOpen}
-                onClose={() => setSortOpen(false)}
-                container={sortWrap}
-              >
-                <ClickCatcher onClose={() => setSortOpen(false)} />
-                <div className="res-sort-menu" role="listbox" aria-label={t('排序')}>
-                  {SORT_OPTIONS.map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      className="res-sort-row"
-                      role="option"
-                      aria-selected={option === sort}
-                      onClick={() => {
-                        setSort(option);
-                        setSortOpen(false);
-                      }}
-                    >
-                      <span>{t(option)}</span>
-                      {option === sort && (
-                        <span className="res-sort-check">
-                          <Check width={14} height={14} />
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </FloatingShell>
+            {/* #854 收编 dropdown-menu（Base UI Menu RadioGroup，#714
+                playbook）：单选即关走显式 closeOnClick；勾形改由
+                RadioItemIndicator 原生槽承载；定位正本迁 Positioner 参数
+                （side=bottom align=end sideOffset=8）。 */}
+            <span className="res-sort-wrap">
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<button type="button" className="res-sort" />}>
+                  <ArrowUpDown width={13} height={13} />
+                  <span>{t('排序')}</span>
+                  <ChevronDown width={12} height={12} />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  side="bottom"
+                  sideOffset={8}
+                  aria-label={t('排序')}
+                  className="res-sort-menu"
+                >
+                  <DropdownMenuRadioGroup
+                    value={sort}
+                    onValueChange={(next) => setSort(next as SortKind)}
+                  >
+                    {SORT_OPTIONS.map((option) => (
+                      <DropdownMenuRadioItem
+                        key={option}
+                        value={option}
+                        closeOnClick
+                        className="res-sort-row [&_svg:not([class*='size-'])]:size-auto"
+                      >
+                        <span>{t(option)}</span>
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </span>
           </div>
           {skills.map((skill) => (

@@ -15,8 +15,8 @@ import { expect, type Page, test } from '@playwright/test';
 // Issue #161 acceptance (卡片阴影/边框统一): the small-card family (todo /
 // notify banner / column container) shares a tighter card-tier shadow
 // (--card-shadow) so the cards read as grounded instead of floating;
-// the account popover stays on the popover-tier (--edge-shadow) because it
-// opens over content and needs visible separation. Card, column and banner
+// the account popover rides the overlay-plate tier (--plate-shadow, #854)
+// because it opens over content and needs visible separation. Card, column and banner
 // share the edge ring + radius 0 — the seam between the banner and the column
 // container is visually continuous. The popover rides the V2 弹层壳
 // (#790 P3: 1px 墨线框 + 圆角 0, more-menu 同律) instead of the card family.
@@ -33,9 +33,18 @@ async function edgeContract(page: Page, selector: string) {
     cardShadowProbe.style.boxShadow = 'var(--card-shadow)';
     const edgeShadowProbe = document.createElement('div');
     edgeShadowProbe.style.boxShadow = 'var(--edge-shadow)';
+    const plateShadowProbe = document.createElement('div');
+    plateShadowProbe.style.boxShadow = 'var(--plate-shadow)';
     const borderTokenProbe = document.createElement('div');
     borderTokenProbe.style.backgroundColor = 'var(--border)';
-    document.body.append(ringProbe, colorProbe, cardShadowProbe, edgeShadowProbe, borderTokenProbe);
+    document.body.append(
+      ringProbe,
+      colorProbe,
+      cardShadowProbe,
+      edgeShadowProbe,
+      plateShadowProbe,
+      borderTokenProbe,
+    );
     const cs = getComputedStyle(el);
     const out = {
       shadow: cs.boxShadow,
@@ -45,6 +54,7 @@ async function edgeContract(page: Page, selector: string) {
       borderColorOwn: cs.borderTopColor,
       cardShadow: getComputedStyle(cardShadowProbe).boxShadow,
       edgeShadow: getComputedStyle(edgeShadowProbe).boxShadow,
+      plateShadow: getComputedStyle(plateShadowProbe).boxShadow,
       radius: cs.borderTopLeftRadius,
       border: cs.borderTopWidth,
     };
@@ -52,6 +62,7 @@ async function edgeContract(page: Page, selector: string) {
     colorProbe.remove();
     cardShadowProbe.remove();
     edgeShadowProbe.remove();
+    plateShadowProbe.remove();
     borderTokenProbe.remove();
     return out;
   });
@@ -107,7 +118,7 @@ for (const theme of ['light', 'dark'] as const) {
     expect(banner.shadow).toContain(banner.cardShadow);
   });
 
-  test(`account popover rides the V2 shell border, keeps popover-tier shadow (${theme})`, async ({
+  test(`account popover rides the V2 shell border, keeps the overlay-plate hard shadow (${theme})`, async ({
     page,
   }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
@@ -118,9 +129,11 @@ for (const theme of ['light', 'dark'] as const) {
     expect(menu.border).toBe('1px');
     expect(menu.radius).toBe('0px');
     expect(menu.borderColorOwn).toBe(menu.borderColor);
-    // #161: the popover opens over content and needs visible separation,
-    // so it stays on the heavier --edge-shadow tier — NOT --card-shadow
-    expect(menu.shadow).toContain(menu.edgeShadow);
+    // #161: the popover opens over content and needs visible separation — NOT
+    // --card-shadow. #854 换档：盘面投影正本从 --edge-shadow 的柔和档迁到
+    // --plate-shadow 的硬偏移档（用户 2026-10-05 取向，直角 + 1px 实线 +
+    // 硬投影三件套，Base UI 官方 menu hero 实测值）。
+    expect(menu.shadow).toContain(menu.plateShadow);
   });
 
   test(`sidebar shares the main-area surface, seam drawn in the divider token (${theme})`, async ({ page }) => {

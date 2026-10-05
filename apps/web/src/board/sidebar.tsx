@@ -6,8 +6,8 @@
 // All rows render; the collapse toggle persists like the theme.
 // #121: the nav rows (rail + expanded, team name and 新建项目 included) are
 // react-router Links — SPA hops carrying the live ?search= along.
-// #127: the avatar chips toggle the user-menu popover (FloatingShell +
-// ClickCatcher; Esc rides the Base UI layer stack since #656). #389: 新任务 row joins 搜索, sharing the global C
+// #127: the avatar chips toggle the user-menu popover (Base UI Popover;
+// Esc rides the Base UI layer stack since #656). #389: 新任务 row joins 搜索, sharing the global C
 // hotkey opener.
 // #414 (shadcn 试点): 视觉层切 B（neutral）token + tailwind 工具类，
 // sidebar.css 随之整件退役——行 pill 的 ::before 层译成 before: 工具类，
@@ -17,11 +17,18 @@
 // muted-foreground 族。
 
 import { BRAND } from '@pacman/shared';
-import { type ComponentType, type SVGProps, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  type ComponentType,
+  type ReactElement,
+  type SVGProps,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react';
 import { Link, useLocation } from 'react-router';
 import { useLiveData } from '../api/provider.js';
-import { FloatingShell } from '../components/ui/floating-shell.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
+import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { UserMenu } from '../detail/user-menu.js';
 import { isDeleted } from '../fixtures/deletions.js';
@@ -44,7 +51,6 @@ import {
   Search,
   Server,
 } from '../icons/index.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 import { readStoredTheme } from '../theme.js';
 
 /** Which sidebar row carries the active pill: a nav row (工作台 / 定时 /
@@ -219,13 +225,45 @@ const RAIL_ROW =
   'rail-row relative flex h-8 w-10 flex-none items-center justify-center text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-1 before:rounded-none before:content-[""] hover:before:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>svg]:relative [&>.project-avatar]:relative';
 const RAIL_SELECTED = 'rail-row--selected text-foreground before:bg-sidebar-active';
 
-/** #656 用户菜单进出场：同 FLOATING_POP_ANIM 的 V2 配方（base-ui-theme §1.2：
- *  duration-100 + ease-out + fade + zoom-98，无 slide），方向翻成 bottom——
- *  面板底锚在头像 chip 上方（#163 锚定律），origin 落底边。挂在 .user-menu
- *  面板本体（fixed 定位元素自身吃 keyframe transform 不换包含块；挂祖先
- *  才会）。 */
-const USER_MENU_POP_ANIM =
-  'duration-100 ease-out origin-bottom group-data-closed/fshell:fill-mode-forwards group-data-open/fshell:animate-in group-data-open/fshell:fade-in-0 group-data-open/fshell:zoom-in-98 group-data-closed/fshell:animate-out group-data-closed/fshell:fade-out-0 group-data-closed/fshell:zoom-out-98';
+/** 用户菜单 popover（#127：两侧栏 avatar chip 共用一开合态，分支各 render
+ *  自己的 Popover Root——同一时刻只挂载一支。#854 收编
+ *  components/ui/popover（Base UI Popover + Positioner）：开合 / Esc /
+ *  外点关 / 焦点归还全归原语；UserMenu（含 外观 分段与导航行）原样做面板
+ *  内容。定位正本迁 Positioner 参数（side=top align=start alignOffset=8
+ *  sideOffset=4 = 原 left:8 底边贴触发行顶 + 4px 家族基线间距，#163/#388/
+ *  #610 锚定律）；V2 进出场（scale .98 + fade 100ms）由原语 base 自带。
+ *
+ *  住模块层，不嵌在 BoardSidebar 里：嵌进去每次父 render 都换函数身份，
+ *  React 会把 Popover 子树整个卸载重挂——受控 open 被重挂时的关闭回调
+ *  打回 false，触发钮就点不开了。 */
+function UserMenuPopover({
+  open,
+  onOpenChange,
+  trigger,
+}: {
+  open: boolean;
+  /** 开合双向都归调用面（原语 onOpenChange 直通）：只接关闭会让触发钮点不
+   *  开——Base UI Trigger 不再自带 onClick，开面必须由这里落 open=true。 */
+  onOpenChange: (open: boolean) => void;
+  trigger: ReactElement;
+}) {
+  const { t } = useI18n();
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger render={trigger} />
+      <PopoverContent
+        side="top"
+        align="start"
+        alignOffset={8}
+        sideOffset={4}
+        aria-label={t('用户菜单')}
+        className="user-menu-popover"
+      >
+        <UserMenu floating theme={readStoredTheme(localStorage)} />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export function BoardSidebar({
   collapsed = false,
@@ -268,36 +306,9 @@ export function BoardSidebar({
   }, []);
   const toggleProjectGroup = useCallback(() => toggleGroup('project'), [toggleGroup]);
   const toggleResourceGroup = useCallback(() => toggleGroup('resource'), [toggleGroup]);
-  const closeUserMenu = useCallback(() => setUserMenuOpen(false), []);
-  const toggleUserMenu = useCallback(() => setUserMenuOpen((open) => !open), []);
-  // #656：OverlayMount/useEscapeClose → FloatingShell（Esc 归 Base UI layer 栈）。
-  // Portal container 指回 aside 本体：`.board-sidebar--collapsed
-  // .user-menu--floating` 的 53px 底边覆写靠后代选择器命中，portal 到 body
-  // 会丢这条几何；挂回原位则 DOM 树位与包含块都不变（fixed 面板不受 aside
-  // overflow 影响，#127 律原样成立）。
-  const dockRef = useRef<HTMLElement | null>(null);
-  const userMenuPopover = (
-    <FloatingShell
-      open={userMenuOpen}
-      onClose={closeUserMenu}
-      container={dockRef.current}
-      className="anchored-pop-shell"
-      // #666 律：toggle 面（头像 chip aria-expanded）焦点留触发位 + 外点归
-      // ClickCatcher（原生 outsidePress 只接得住键盘合成 click，与 toggle
-      // onClick 双写会把面「关不掉」）。
-      initialFocus={false}
-      disablePointerDismissal
-    >
-      <ClickCatcher onClose={closeUserMenu} />
-      <UserMenu floating className={USER_MENU_POP_ANIM} theme={readStoredTheme(localStorage)} />
-    </FloatingShell>
-  );
   if (collapsed) {
     return (
-      <aside
-        ref={dockRef}
-        className="board-sidebar board-sidebar--collapsed relative z-(--z-docked) flex w-10 flex-none flex-col border-r border-[var(--border-default)] bg-background"
-      >
+      <aside className="board-sidebar board-sidebar--collapsed relative z-(--z-docked) flex w-10 flex-none flex-col border-r border-[var(--border-default)] bg-background">
         {/* 展开钮的 hover 面是它骑 seam 行的本分（见展开态注释）；按压面与
             展开态折叠钮同律禁掉——同一个控件折叠前后的两张脸，按下去都只
             该是图标本身（XMON-69，律在 motion.css 的 sidebar toggles 段）。 */}
@@ -372,25 +383,29 @@ export function BoardSidebar({
             ))}
         </nav>
         <div className="sidebar-spacer flex-1" />
-        <button
-          type="button"
-          className="rail-user mb-[11px] flex h-[38px] w-10 flex-none cursor-pointer items-center justify-center border-none bg-transparent outline-none hover:rounded-none hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
-          aria-label={user.displayName}
-          aria-expanded={userMenuOpen}
-          onClick={toggleUserMenu}
-        >
-          <SeededAvatar name={user.displayName} src={user.avatarUrl} fallback="/avatar-user.png" />
-        </button>
-        {userMenuPopover}
+        <UserMenuPopover
+          open={userMenuOpen}
+          onOpenChange={setUserMenuOpen}
+          trigger={
+            <button
+              type="button"
+              className="rail-user mb-[11px] flex h-[38px] w-10 flex-none cursor-pointer items-center justify-center border-none bg-transparent outline-none hover:rounded-none hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+              aria-label={user.displayName}
+            >
+              <SeededAvatar
+                name={user.displayName}
+                src={user.avatarUrl}
+                fallback="/avatar-user.png"
+              />
+            </button>
+          }
+        />
       </aside>
     );
   }
 
   return (
-    <aside
-      ref={dockRef}
-      className="board-sidebar relative z-(--z-docked) flex w-60 flex-none flex-col overflow-hidden border-r border-[var(--border-default)] bg-background"
-    >
+    <aside className="board-sidebar relative z-(--z-docked) flex w-60 flex-none flex-col overflow-hidden border-r border-[var(--border-default)] bg-background">
       {/* 头部几何与选中态无关（dogfood 2026-09-30）：--active 只换底色，不搬
           内容。pill 的 mx-2 内缩 8px，pl 补 11 让图标仍落在 x19——与非选中态
           pl-[19px] 同一条线；名字间距恒 11px。r7 12 探针钉的是 pill 盒子
@@ -569,22 +584,29 @@ export function BoardSidebar({
 
       <div className="sidebar-spacer flex-1" />
 
-      <button
-        type="button"
-        className="sidebar-user flex h-11 flex-none cursor-pointer items-center border-0 border-t border-[var(--border-default)] bg-transparent px-2 hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
-        aria-label={user.displayName}
-        aria-expanded={userMenuOpen}
-        onClick={toggleUserMenu}
-      >
-        <SeededAvatar name={user.displayName} src={user.avatarUrl} fallback="/avatar-user.png" />
-        <span className="sidebar-user-name relative -top-px ml-[9px] text-sm leading-[14px] whitespace-nowrap text-muted-foreground">
-          {user.displayName}
-        </span>
-        <span className="sidebar-user-more ml-auto flex size-6 items-center justify-center text-muted-foreground">
-          <EllipsisVertical />
-        </span>
-      </button>
-      {userMenuPopover}
+      <UserMenuPopover
+        open={userMenuOpen}
+        onOpenChange={setUserMenuOpen}
+        trigger={
+          <button
+            type="button"
+            className="sidebar-user flex h-11 flex-none cursor-pointer items-center border-0 border-t border-[var(--border-default)] bg-transparent px-2 hover:bg-sidebar-hover focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&_img]:block [&_img]:size-6 [&_img]:rounded-full"
+            aria-label={user.displayName}
+          >
+            <SeededAvatar
+              name={user.displayName}
+              src={user.avatarUrl}
+              fallback="/avatar-user.png"
+            />
+            <span className="sidebar-user-name relative -top-px ml-[9px] text-sm leading-[14px] whitespace-nowrap text-muted-foreground">
+              {user.displayName}
+            </span>
+            <span className="sidebar-user-more ml-auto flex size-6 items-center justify-center text-muted-foreground">
+              <EllipsisVertical />
+            </span>
+          </button>
+        }
+      />
     </aside>
   );
 }

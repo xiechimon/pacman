@@ -338,9 +338,10 @@ test('skills 排序 opens the single-select listbox, picking an option closes it
   const menu = page.locator('.res-sort-menu');
   await expect(menu).toBeVisible();
   await expect(sort).toHaveAttribute('aria-expanded', 'true');
-  // 两行默认/名称，当前项默认 ✓
+  // 两行默认/名称，当前项默认 ✓（#854 收编 RadioItem：选中态走原生
+  // aria-checked，不再是手搓 aria-selected）
   await expect(menu.locator('.res-sort-row')).toHaveCount(2);
-  await expect(menu.locator('.res-sort-row[aria-selected="true"]')).toHaveText(/默认/);
+  await expect(menu.locator('.res-sort-row[aria-checked="true"]')).toHaveText(/默认/);
   // 行点击 = 选中即关（lang-dropdown 律）
   await menu.locator('.res-sort-row', { hasText: '名称' }).click();
   await expect(menu).toBeHidden();

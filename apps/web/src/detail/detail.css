@@ -1479,7 +1479,9 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   border: 1px solid var(--border-default);
   border-radius: 0;
   background: var(--popover-bg);
-  box-shadow: var(--edge-shadow);
+  /* #854 盘三件套（直角 + 1px 实线 + 硬偏移投影，用户 2026-10-05 取向）：
+     edge 柔和档换 --plate-shadow。冻结捕获变体与 live 变体共用本皮肤，同换。 */
+  box-shadow: var(--plate-shadow);
   display: flex;
   flex-direction: column;
   /* local（#688 阶梯外）：冻结捕获变体画在侧栏 rail 自己的 stacking
@@ -1510,30 +1512,32 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   clip-path: polygon(0 0, 50% 100%, 100% 0);
 }
 
-/* #127 live-trigger render (opened from the sidebar avatar chips): fixed
-   instead of absolute — the collapsed rail keeps overflow:hidden, which
-   would clip an absolutely-positioned panel to its 40px width, and the
-   popover rung (#688 ladder) stacks the menu above the family
-   click-catcher (--z-catcher, overlays.css). The shells sit at the
-   viewport origin and never scroll, so fixed ≡ the absolute capture
-   coords. Both variants render inside the sidebar rail, whose own
-   stacking context (z-(--z-docked), sidebar.tsx) scopes the painting —
-   the token keeps the family law, the rail's z carries the root order. */
+/* #127 live-trigger render (opened from the sidebar avatar chips): the
+   panel now rides Popover Positioner (portal to body, #854) instead of the
+   FloatingShell container hack — portal-to-body escapes the collapsed
+   rail's overflow:hidden where the old absolute panel would clip to 40px.
+   Positioner owns placement (side=top align=start, 4px family gap above
+   the trigger row, #163/#388/#610 锚定律）与层叠（z-50 isolate）；本规则只
+   留触发形态标记（floating = 侧栏触发，非冻结捕获），面板是 Positioner
+   的静态子级（relative 承 Arrow 伪元定位）。V2 壳（12px 内边距 / 墨线 /
+   圆角 0 / edge 投影）与底指 Arrow 照旧，皮肤单源仍是 .user-menu。 */
 .user-menu--floating {
-  position: fixed;
-  z-index: var(--z-popover);
-  /* #163: 底部锚定继承基规则。#139 的 min() 顶部钳制随冻结坐标一并删除
-     ——底边恒距视口底的面板在 zoom 收缩的 css viewport 下不会把底边框
-     推出屏外，zoom-probe 的 clipped 契约天然成立。 */
+  position: relative;
+  left: auto;
+  bottom: auto;
+  z-index: auto;
 }
 
-/* #610: rail 形态行顶距视口底 49px（.rail-user 38px + 11px 底距）——与
-   展开态同律：行盒顶 + 4px 家族基线间距（#388 原对 img 顶量，v3 改行顶）。
-   floating 菜单两分支都渲染在 aside 内（sidebar.tsx userMenuPopover），
-   形态类做后代选择器即可命中；冻结捕获变体（scenario 17，展开态 canon）
-   走基规则。 */
-.board-sidebar--collapsed .user-menu--floating {
-  bottom: 53px;
+/* #854: PopoverContent 包层——UserMenu 自带 .user-menu 面板皮肤（冻结捕获
+   变体共用），Content 只做透明定位包层：base 皮肤（bg-popover / p-2.5 /
+   rounded-lg / shadow-md / ring-1）全中和，unlayered 恒胜 utilities 层。 */
+.user-menu-popover {
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .user-menu-head {

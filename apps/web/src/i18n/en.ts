@@ -361,6 +361,8 @@ export const EN: Record<string, string> = {
   关注与提醒: 'Watches & reminders',
   未设置: 'Not set',
   压缩模型: 'Compaction model',
+  // #854 收编 popover 后用户菜单面板的 aria-label（原 FloatingShell 壳无标签）
+  用户菜单: 'User menu',
   '压缩上下文时用来生成摘要的模型，选更快的模型可缩短等待。需要 {cli} CLI 0.1.49 及以上版本。':
     'The model used to summarize context during compaction — a faster one shortens the wait. Requires {cli} CLI 0.1.49 or later.',
   '默认（与 Chief 相同）': 'Default (same as Chief)',

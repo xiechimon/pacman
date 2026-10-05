@@ -4,7 +4,7 @@ import { expect, type Page, test } from '@playwright/test';
 // row used to be a display-only `<span>` carrying a broken π trace — the
 // live loop (verify probe drive-chief-drawer) covers 显示→可改→落库→回显;
 // this spec pins the fixture-face half of the same contract:
-//   1. the model row is a control (button[aria-haspopup=listbox]) that opens
+//   1. the model row is a control (button.chief-model-btn) that opens
 //      the model popover anchored under the row (#751: the #615 centered
 //      DialogShell read as 「在中间出现」 against the switcher's under-trigger
 //      anchoring); geometry is asserted from live rects, and the selected
@@ -22,7 +22,7 @@ import { expect, type Page, test } from '@playwright/test';
 //      on the board settings view via the ?chief=settings deep link.
 
 const drawer = (page: Page) => page.locator('.chief-drawer');
-const modelBtn = (page: Page) => page.locator('.chief-model button[aria-haspopup="listbox"]');
+const modelBtn = (page: Page) => page.locator('.chief-model button.chief-model-btn');
 
 test.describe('chief drawer model row (#615)', () => {
   test('the model row is a control that opens the anchored model popover', async ({ page }) => {

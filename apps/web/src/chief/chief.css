@@ -921,8 +921,8 @@ a.chief-identity {
   color: var(--text-tertiary);
 }
 
-/* #204 压缩模型选择器:wrap = 锚点(new-task-project-wrap 同律),触发钮保
-   r5 101 捕获 select 形状;菜单 = anchored popover 家族几何语言。 */
+/* #204 压缩模型选择器:wrap = 布局锚点(new-task-project-wrap 同律),触发钮保
+   r5 101 捕获 select 形状;菜单 = Popover Positioner 锚定触发钮。 */
 .chief-model-wrap {
   margin-left: auto;
   position: relative;
@@ -967,9 +967,12 @@ a.chief-identity {
 }
 
 .chief-model-menu {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 8px);
+  /* #854 收编 popover（Base UI Popover + Positioner）：定位正本迁
+     Positioner 参数（side=bottom align=end sideOffset=8），本规则只留
+     皮肤/尺寸；面板是 Positioner 的静态子级（relative 承 Arrow 伪元
+     定位），层叠归 Positioner 的 z-50 isolate。抽屉 stacking context
+     收编不变（portal 回 body 后由层级保证，不再经 wrap 包含块）。 */
+  position: relative;
   min-width: 220px;
   /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px。 */
   padding: 12px;
@@ -978,11 +981,8 @@ a.chief-identity {
   background: var(--popover-bg);
   border: 1px solid var(--border-default);
   border-radius: 0;
-  box-shadow: var(--fab-shadow);
-  /* 家族层律（#688 阶梯 --z-popover 压 --z-catcher，见 overlays/dismiss.tsx）。
-     本菜单锚在抽屉内（FloatingShell container=wrap），实际绘制被抽屉自身的
-     stacking context 收编——消费家族令牌是层律对齐，不是根级参竞。 */
-  z-index: var(--z-popover);
+  /* #854 盘三件套（直角 + 1px 实线 + 硬偏移投影，用户 2026-10-05 取向）。 */
+  box-shadow: var(--plate-shadow);
 }
 
 /* V2 Arrow（描边 12×6，上指锚边右上）。 */
@@ -1075,12 +1075,8 @@ a.chief-identity {
   color: var(--pick-selected-fg);
 }
 
-/* #751 抽屉头主模型 picker：锚定弹层家族律（#67/#127：FloatingShell
-   container=wrap + ClickCatcher + Esc）——wrap 是包含块，菜单贴触发行底下
-   左对齐，与设置面 .chief-model-menu 贴其 select 同律；取代 #615 的居中
-   DialogShell（用户报「在中间出现，而不是在它底下」，对照 .chief-switcher
-   的贴底锚定）。光学内缩 -4px 自 .chief-model-btn 移到 wrap（菜单 left:0
-   才能与钮的视觉左缘齐）。 */
+/* #751 抽屉头主模型 picker：Popover Positioner 锚定触发钮（贴行底下），
+   wrap 只承布局（-4px 光学内缩：菜单 align=start 才能与钮的视觉左缘齐）。 */
 .chief-model-pop-wrap {
   position: relative;
   display: block;
@@ -1089,9 +1085,11 @@ a.chief-identity {
 }
 
 .chief-model-pop {
-  position: absolute;
-  left: 0;
-  top: calc(100% + 8px);
+  /* #854 收编 popover（Base UI Popover + Positioner）：定位正本迁
+     Positioner 参数（side=bottom align=start sideOffset=8），本规则只留
+     皮肤/尺寸；面板是 Positioner 的静态子级（relative 承 Arrow 伪元
+     定位），层叠归 Positioner 的 z-50 isolate。 */
+  position: relative;
   width: 280px;
   /* V2 弹层壳（#790 P3）：12px 内边距 / 1px 墨线框 / 圆角 0 / 顶部锚距 8px。 */
   padding: 12px;
@@ -1100,10 +1098,8 @@ a.chief-identity {
   background: var(--popover);
   border: 1px solid var(--border-default);
   border-radius: 0;
-  box-shadow: var(--fab-shadow);
-  /* 家族层律同 .chief-model-menu：消费 --z-popover 是层律对齐，实际绘制被
-     抽屉自身 stacking context 收编。 */
-  z-index: var(--z-popover);
+  /* #854 盘三件套（直角 + 1px 实线 + 硬偏移投影，用户 2026-10-05 取向）。 */
+  box-shadow: var(--plate-shadow);
 }
 
 /* V2 Arrow（描边 12×6，上指锚边左上）。 */
@@ -1129,27 +1125,8 @@ a.chief-identity {
   clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
-/* #656 退场（mention-picker 同款）：面板的退场改由 tw-animate-css 的
-   group-data-closed:animate-out 承载（FLOATING_POP_ANIM，挂在 .chief-model-menu
-   上、经壳的 group/fshell 读开闭态）。Base UI 只在 Popup 本体有进行中动画时才
-   延迟卸载（getAnimations 不看子树），故壳仍挂一条零视觉的 visibility 延迟过渡
-   撑住退场窗（--dur-fast = 150ms ≥ 面板 duration-100），让 animate-out 播完再卸。 */
-.chief-model-shell {
-  transition: visibility 0s linear var(--dur-fast);
-}
-
-.chief-model-shell[data-ending-style] {
-  visibility: hidden;
-}
-
-/* #751 抽屉头 picker 壳的同款退场窗（机理见 .chief-model-shell 注）。 */
-.chief-model-pop-shell {
-  transition: visibility 0s linear var(--dur-fast);
-}
-
-.chief-model-pop-shell[data-ending-style] {
-  visibility: hidden;
-}
+/* #656 退场窗已随 FloatingShell 退役（#854 收编 Popover：退场由原语
+   data-closed:animate-out 承载，base-ui-theme §1.2 生产形态）。 */
 
 .chief-charter-empty {
   display: grid;
