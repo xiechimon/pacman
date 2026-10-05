@@ -146,6 +146,8 @@ export const EN: Record<string, string> = {
   上: '', // tail of 运行在 <machine> 上 — the en template needs no tail
   由定时发起: 'Started by schedule',
   收起: 'Collapse',
+  // #933: the collapsed tool group's identity label (transcript action row).
+  工具过程: 'Tool process',
   尚无描述: 'No description yet',
   '{y}年{mo}月{d}日 {hh}:{mm} 创建': 'Created {monthShort} {d}, {y} {hh}:{mm}',
 

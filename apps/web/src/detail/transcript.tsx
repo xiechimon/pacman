@@ -94,6 +94,7 @@ function ActionRow({
   copy,
   t,
   toggle,
+  label,
 }: {
   seconds?: number;
   /** `完成` with no seconds (reused-plan card, r8 76). */
@@ -106,9 +107,19 @@ function ActionRow({
   /** #306: the tools group's footer doubles as the expander (collapsed
    *  r7 27 ↔ expanded 28 family, same law as 全部展开/全部收起). */
   toggle?: { expanded: boolean; onToggle: () => void };
+  /** #933: the row's identity — terminal glyph + name ahead of the elapsed
+   *  tail, so a collapsed group reads as a folded tool process instead of
+   *  a stray pill. Only the tools group passes one. */
+  label?: string;
 }) {
   const tail = (
     <>
+      {label != null && (
+        <span className="chat-foot-tools-label">
+          <Terminal width={12} height={12} />
+          {label}
+        </span>
+      )}
       {(seconds != null || bare === true) && (
         <span className="chat-foot-elapsed">
           {seconds != null ? formatElapsed(seconds, t) : t('完成')}
@@ -510,14 +521,19 @@ function toolsCopyText(item: Extract<TranscriptItem, { kind: 'tools' }>): string
  *  expansion is pure client state (#306 接真) — the fixture/live mapper
  *  freezes the arrival state, the collapsed footer row expands, the 收起
  *  link collapses. Row state rides the row instance (index-keyed like the
- *  rest of the transcript; live appends land after the group). */
+ *  rest of the transcript; live appends land after the group).
+ *  #933: the collapsed row used to be a zero-context bare pill — the footer
+ *  now names the group (工具过程 + terminal glyph, the #615 过程 word family)
+ *  and the copy affordance rides the expanded state only, where the text it
+ *  copies is actually on screen. */
 function ToolsRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'tools' }>; t: TFunc }) {
   const [expanded, setExpanded] = useState(item.expanded);
   return (
     <>
       <ActionRow
         seconds={item.seconds}
-        copy={toolsCopyText(item)}
+        copy={expanded ? toolsCopyText(item) : undefined}
+        label={t('工具过程')}
         t={t}
         toggle={{ expanded, onToggle: () => setExpanded((v) => !v) }}
       />

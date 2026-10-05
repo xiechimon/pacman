@@ -24,6 +24,41 @@
   --detail-pane-right: 418px;
 }
 
+/* #932: narrow-viewport degradation. The 3-pane shell is a fixed-pitch
+   instrument panel (240 | fluid | 488) with no narrow strategy of its own —
+   at 320px the sidebar kept its 240px, the 488px pane sat off-screen behind
+   this shell's overflow:hidden, and the thread column swallowed 133px of
+   content in a 35px box (#885 recorded it: clipped, zero disclosure). Below
+   768px — the reference's own fold (todos.dev ships `not all and
+   (width >= 768px)`, measured live 2026-10-05: sidebar off-canvas, thread
+   full width) — both fixed panes drop and the thread owns the viewport; the
+   head's back chevron stays the way out, exactly as on the reference. The
+   pane var zeroes so the composer-reject / FAB anchors stop skipping a slot
+   that no longer exists. 768px and above keep the frozen 1440 geometry
+   byte-identical (detail-3pane / detail-narrow N3 pin both sides). */
+@media (width < 768px) {
+  /* (0,2,0) so the fold beats both the shell's own base var and the
+     data-chief-open narrowing above it — below the fold there is no right
+     slot to skip, in either pane state */
+  .detail-shell,
+  .detail-shell[data-chief-open] {
+    --detail-pane-right: 0px;
+  }
+
+  /* (0,2,0) on the pane: the base `.detail-right` rule sits further down
+     this file, and a media query adds no specificity of its own */
+  .detail-shell > .board-sidebar,
+  .detail-body > .detail-right {
+    display: none;
+  }
+
+  /* the docked chief panel takes the full fold width, so the FAB has no
+     slot to skip into — and with the drawer open its opener is redundant */
+  .detail-shell[data-chief-open] .detail-fab {
+    display: none;
+  }
+}
+
 .detail-main {
   position: relative;
   flex: 1;
@@ -1703,6 +1738,21 @@ noDescendingSpecificity（高特异性规则不得排在前）。 */
   font-size: 12px;
   line-height: 15px;
   color: var(--text-dim);
+}
+
+/* #933: the tool group's identity ahead of the elapsed tail — terminal
+   glyph + name, the same 12px chrome voice and glyph pairing the expanded
+   pills carry, so collapsed and expanded read as one family. nowrap: the
+   name is two characters in zh and one word in en; wrapping it would grow
+   the 16px row pitch the #470 fence pins. */
+.chat-foot-tools-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
 }
 
 /* message action-row elapsed tail (r7 17/28, r8 63/65/73): `| 完成 Ns ›` */
