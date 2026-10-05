@@ -16,9 +16,9 @@ import { expect, test } from '@playwright/test';
 // - .res-back: hover 无背景变化 (现状即无 hover 面, 此处把律钉死防回潮);
 //   键盘 focus 环由 app.css 全局 :focus-visible 规则承载 (#388, 2px
 //   --focus-ring + offset 2)——本 spec 断言该环在 res-back 上双主题生效
-//   （暗 #cba6f7 / 亮 #8839ef）。
-// - P5 danger 对：--destructive 两值（暗 #e05a5a / 亮 #c73e3e）+ 暗侧深字
-//   翻转（--destructive-foreground 暗 #17171a / 亮 #ffffff），逐对拼
+//   （暗 #d89cfc / 亮 #7f2da7）。
+// - P5 danger 对：--destructive 两值（暗 #ffaab9 / 亮 #9d2c4c）+ 暗侧深字
+//   （--destructive-foreground 暗 #47242b / 亮 #ffffff），逐对拼
 //   对比度（文本 ≥4.5，§5.1 门）。
 // - P4 行 hover：more-menu 普通行 hover = --accent-soft，删除行 =
 //   --danger-soft（与 token 值探针逐值比对，不估算）。

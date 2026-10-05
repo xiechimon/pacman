@@ -2,7 +2,10 @@
    全站颜色 token 的唯一持值文件——shadcn 官方语义词表 + 仓内补位族并存，值取
    C · 纸兰定版色板（正本 library/t-0909/src/themes/c.css @ 7340d0ab，#909 用户
    实审定版：暖纸骨架 hue 82 + orchid 品牌色）。槽架构沿 #787/#813「先加槽后
-   翻值」继承律零改动——111 槽 1:1 纯值替换，0 新增 0 退役（spec/22 §1.1）。
+   翻值」继承律零改动——111 槽 1:1 纯值替换，0 新增槽名 0 退役（spec/22
+   §1.1；.light 侧补齐 --project-avatar-bg/fg 的亮模镜像声明，且
+   --surface-tertiary/--surface-press 脱离 secondary 别名自持值——均为
+   §1.8 的翻值行，槽名不变）。
    tokens.css 退为别名 + 非颜色层：并流/归并的 generic 名在那边落别名直引本
    文件，消费方引用零改动；motion / 字体栈 / 阴影 / 圆角 / 密度几何等非颜色
    token 仍由 tokens.css 持有。
