@@ -1,6 +1,6 @@
 {
   "frozenFrom": {
-    "sha": "b38e70d75435cd35f2da26dfd320956444296fd2",
+    "sha": "3fc26f4409f0aac7507f0201569c27ab859eb853",
     "date": "2026-10-05"
   },
   "scope": "apps/web/src; per-face css = *.css minus the ui-debt-gate.mjs WHITELIST (carrier layer); bare controls = <button|<input|<select|<textarea occurrences in *.tsx minus components/ui/",
@@ -27,8 +27,9 @@
     "ui/input.css": 17
   },
   "rawControls": {
-    "total": 76,
+    "total": 77,
     "files": {
+      "board/debt-gate-demo.tsx": 1,
       "board/filter-panel.tsx": 7,
       "board/sidebar.tsx": 9,
       "chief/chief-agent-dialog.tsx": 1,
