@@ -43,7 +43,7 @@ import { toast } from 'sonner';
 import { attachFile } from '../api/attachments.js';
 import { useMachines, useMembers, useProjects, useSkills, useTodos } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
-import { LiveRow } from '../components/chat/live-row.js';
+import { LiveRow, LiveSignal } from '../components/chat/live-row.js';
 import { useChatFollow } from '../components/chat/use-chat-follow.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
@@ -765,6 +765,7 @@ export function ChiefDrawer({
                             <LiveRow
                               variant="chief"
                               label={item.label}
+                              labelVars={item.labelVars}
                               disclosure={{ expand: '展开实时步骤', collapse: '收起实时步骤' }}
                             >
                               <div className="chief-turn-tools">
@@ -786,11 +787,27 @@ export function ChiefDrawer({
                                     )}
                                   </div>
                                 ))}
-                                {chief.runningTool == null && (item.tools?.length ?? 0) === 0 && (
+                                {/* 兜底行 = 零信号窗口的存在证明（#739）；
+                                    #905 活动信号在位时行首标签已给出相位，
+                                    兜底行退场避免语义重复（interface-review
+                                    收尾发现）。 */}
+                                {chief.runningTool == null &&
+                                  (item.tools?.length ?? 0) === 0 &&
+                                  item.signalAt == null && (
+                                    <div className="chief-turn-tool-row">
+                                      <span className="chief-turn-tool-name">
+                                        {t('等待 Agent 响应…')}
+                                      </span>
+                                    </div>
+                                  )}
+                                {/* #905：最近信号新鲜度与详情披露面同源
+                                    （LiveSignal 走表）；无信号不渲染该行。 */}
+                                {item.signalAt != null && (
                                   <div className="chief-turn-tool-row">
-                                    <span className="chief-turn-tool-name">
-                                      {t('等待 Agent 响应…')}
-                                    </span>
+                                    <LiveSignal
+                                      at={item.signalAt}
+                                      className="chief-turn-tool-name"
+                                    />
                                   </div>
                                 )}
                               </div>

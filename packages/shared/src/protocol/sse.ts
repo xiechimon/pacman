@@ -10,7 +10,7 @@ import { buildRecordSchema } from '../records/build.js';
 import { recordId } from '../records/common.js';
 import { transcriptRowSchema } from '../records/message.js';
 import { notificationRecordSchema } from '../records/notification.js';
-import { stepJournalRowSchema } from '../records/step.js';
+import { stepActivitySchema, stepJournalRowSchema } from '../records/step.js';
 import { todoRecordSchema } from '../records/todo.js';
 
 export const SSE_CHANNELS = [
@@ -130,10 +130,21 @@ export const conversationStepEventSchema = z.object({
 });
 export type ConversationStepEvent = z.infer<typeof conversationStepEventSchema>;
 
+/** activity 事件（#905 [设计]）：在跑步的「在做什么」相位（stepActivitySchema
+ * 单源，server 盖 stepId/at）。瞬态与 text_delta 同纪律——不落库，hub 只留
+ * 每会话最后一份供订阅进场补发；步终态即清。web 侧按 stepId 对在跑步消费，
+ * 陈旧步的活动不渲染。 */
+export const conversationActivityEventSchema = z.object({
+  type: z.literal('activity'),
+  activity: stepActivitySchema,
+});
+export type ConversationActivityEvent = z.infer<typeof conversationActivityEventSchema>;
+
 export const conversationStreamEventSchema = z.discriminatedUnion('type', [
   pingEventSchema,
   conversationMessageEventSchema,
   conversationTextDeltaEventSchema,
   conversationStepEventSchema,
+  conversationActivityEventSchema,
 ]);
 export type ConversationStreamEvent = z.infer<typeof conversationStreamEventSchema>;

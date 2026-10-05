@@ -90,3 +90,56 @@ export const buildStepActionBodySchema = z.discriminatedUnion('action', [
   }),
 ]);
 export type BuildStepActionBody = z.infer<typeof buildStepActionBodySchema>;
+
+// —— 步活动相位（#905 [设计]）————————————————————————————————————————————
+// 「在跑步此刻在做什么」的瞬态信号：daemon 从既有 StepEvent 流派生
+// （thinking_delta / text_delta / toolcall_end / auto_retry_* / compaction_*，
+// 词表零改动——01 §5 的 15 件 1:1 锁不碰），经 tool/{stepId} 第四形上报；
+// server 盖 {stepId, at} 后瞬态转发到会话流 activity 事件，**不落库**——
+// 与 text_delta 同纪律（02 §1.3 数据所有权不变，终稿 transcript 是内容正本）。
+// 安全面（docs/verify/905/baseline.md §B）：只暴露相位事实 + 工具名 + 重试
+// 轮次；thinking/text 的内容增量不走本通道。
+
+/** 相位词表 [设计]。语义 = daemon 侧最近一次流事件所指的进行态：
+ *  - preparing：claim 后、会话开启前（工作区 / 凭证 / 技能下发）；
+ *  - starting：会话开启中，等模型首个事件；
+ *  - thinking：思考流到达中（thinking_delta；内容不上 wire）；
+ *  - responding：正文流式输出中（text_delta；文本本身走打字面可见）；
+ *  - tool：调用块已流完、工具执行中（tool = 最近开始的工具名）；
+ *  - retrying：协议层自动重试（attempt = 第几轮，1 起）；
+ *  - compacting：上下文压缩中；
+ *  - awaiting_model：工具 / 压缩 / 重试收尾后，等模型下一个事件。 */
+export const STEP_ACTIVITY_PHASES = [
+  'preparing',
+  'starting',
+  'thinking',
+  'responding',
+  'tool',
+  'retrying',
+  'compacting',
+  'awaiting_model',
+] as const;
+export const stepActivityPhaseSchema = z.enum(STEP_ACTIVITY_PHASES);
+export type StepActivityPhase = z.infer<typeof stepActivityPhaseSchema>;
+
+/** daemon → server 上报形（machineActivityBodySchema 的载荷）。 */
+export const stepActivityReportSchema = z.object({
+  phase: stepActivityPhaseSchema,
+  /** phase='tool' 时在位：最近开始执行的工具名（并行工具 = 最后一个开始的；
+   *  终稿工具行仍经 message 事件落库，本字段只是进行态标签）。 */
+  tool: z.string().optional(),
+  /** phase='retrying' 时在位：auto_retry 轮次（1 起）。 */
+  attempt: z.number().int().optional(),
+});
+export type StepActivityReport = z.infer<typeof stepActivityReportSchema>;
+
+/** 会话流 activity 事件载荷（server 盖章形）。`at` = server 收到本次上报的
+ *  时刻；daemon 只在**相位变化或有新流事件到达**时上报（静默期不重发）——
+ *  于是浏览器端 `now − at` 的增长即「卡住」的诚实呈现（#471 律：没有新
+ *  信号就让数字涨，不伪造心跳）。时钟偏斜与既有 startedAt=step.createdAt
+ *  同类（server 盖章、浏览器走表），同机部署下秒级以内。 */
+export const stepActivitySchema = stepActivityReportSchema.extend({
+  stepId: recordId,
+  at: epochMs,
+});
+export type StepActivity = z.infer<typeof stepActivitySchema>;

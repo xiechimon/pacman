@@ -10,13 +10,19 @@
 // team 事件的失效键映射单缝在 sse-team-events.ts（#666），本文件负责挂流、
 // 消费映射并承载副作用（桌面通知 / liveTextStore / 透传回调）。
 
-import type { ConversationStepEvent, NotificationRecord, TranscriptRow } from '@pacman/shared';
+import type {
+  ConversationActivityEvent,
+  ConversationStepEvent,
+  NotificationRecord,
+  TranscriptRow,
+} from '@pacman/shared';
 import { isChiefConversationId } from '@pacman/shared';
 import { type QueryClient, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { EN } from '../i18n/en.js';
 import { readStoredLocale } from '../i18n/locale.js';
 import { translate } from '../i18n/translate.js';
+import { activityStore } from './activity.js';
 import { readStoredToken, useAuth } from './auth.js';
 import { invalidateConverged } from './invalidate.js';
 import { liveTextStore } from './live-text.js';
@@ -179,13 +185,16 @@ export function startConversationStream(
   const onMessage = handlers.onMessage;
   const onStep = handlers.onStep;
   liveTextStore.clear(conversationId);
+  activityStore.clear(conversationId);
   // resync（#462）：重连/看门狗重建即全量失效重取，补断线窗口内丢失的
   // message/step 事件（plan 卡/进度行停更的根治面）；#740 另加清缓冲——
   // 新订阅上服务端补发的是当前段全量快照（含断线窗口内流掉的增量）。
   // 全量失效走 #767 收敛缝（invalidateConverged，#717 根因：挂载取数在飞时
-  // 到达的提示会被 query-core 去重吞掉）。
+  // 到达的提示会被 query-core 去重吞掉）。活动单槽同清（#905 W2）——新订阅
+  // 的进场补发（hub lastActivity）接管，陈旧相位不跨连接残留。
   const resync = () => {
     liveTextStore.clear(conversationId);
+    activityStore.clear(conversationId);
     void invalidateConverged(qc);
   };
   return connect(
@@ -194,6 +203,10 @@ export function startConversationStream(
       switch (ev.type) {
         case 'text_delta':
           liveTextStore.append(conversationId, ev.text as string);
+          break;
+        case 'activity':
+          // #905：步活动相位（瞬态单槽；stepId 对在跑步的过滤在消费侧）。
+          activityStore.set(conversationId, (ev as ConversationActivityEvent).activity);
           break;
         case 'message': {
           const row = ev.message as TranscriptRow;
@@ -211,9 +224,11 @@ export function startConversationStream(
         case 'step': {
           // #857：步终态兜底清缓冲（hub 同律）——失败/停止无终稿行时 stale 不
           // 跨回合累积；正常收尾时 handoff 早已收敛交接，清即 no-op。
+          // #905：活动单槽同清（W2 死相位不跨步残留）。
           const step = (ev as ConversationStepEvent).step;
           if (step.status === 'done' || step.status === 'failed' || step.status === 'stopped') {
             liveTextStore.clear(conversationId);
+            activityStore.clear(conversationId);
           }
           void invalidateConverged(qc, { queryKey: ['steps', conversationId] });
           void invalidateConverged(qc, { queryKey: ['build', conversationId] });

@@ -25,6 +25,7 @@
 import { Atom } from 'loading-dev';
 import { type ReactNode, useEffect, useState } from 'react';
 import { useI18n } from '../../i18n/provider.js';
+import type { TVars } from '../../i18n/translate.js';
 import { ChevronDown, ChevronRight } from '../../icons/index.js';
 import { Button } from '../ui/button.js';
 
@@ -59,10 +60,23 @@ const SKIN = {
   },
 } as const;
 
+/** 「最近信号：Ns 前」（#905，两面共用的披露行）：对 activity 事件的 server
+ *  盖章时刻走 1s 表（useLiveSeconds 复用）——数字持续增长即「卡住」的诚实
+ *  呈现，daemon 只在真有流事件时上报，静默期无人推新（#471 律：没有真实
+ *  时刻就整行不渲染，绝不摆冻结数）。 */
+export function LiveSignal({ at, className }: { at?: number | null; className: string }) {
+  const { t } = useI18n();
+  const secs = useLiveSeconds(at ?? null);
+  if (secs == null) return null;
+  return <span className={className}>{t('最近信号：{n}s 前', { n: secs })}</span>;
+}
+
 export interface LiveRowProps {
   variant: keyof typeof SKIN;
   /** Already-translated row label (`处理中...` / `正在停止…` / …). */
   label: string;
+  /** t(label) 的插值参数（#905 活动标签 `正在执行工具：{n}` 等）。 */
+  labelVars?: TVars;
   /** Live start stamp — the row ticks `Ns` from it. Null/absent = no counter. */
   startedAt?: number | null;
   /** Static capture value (fixture records carry a frozen `3s`). Ignored when
@@ -79,6 +93,7 @@ export interface LiveRowProps {
 export function LiveRow({
   variant,
   label,
+  labelVars,
   startedAt,
   seconds,
   disclosure = null,
@@ -99,7 +114,7 @@ export function LiveRow({
         ) : (
           <ChevronRight width={10} height={10} />
         ))}
-      <span className={skin.label}>{t(label)}</span>
+      <span className={skin.label}>{t(label, labelVars)}</span>
     </>
   );
   return (

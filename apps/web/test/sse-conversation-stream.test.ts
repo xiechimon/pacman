@@ -11,6 +11,7 @@
 
 import { QueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { activityStore } from '../src/api/activity.js';
 import { liveTextStore } from '../src/api/live-text.js';
 import { startConversationStream } from '../src/api/sse.js';
 
@@ -61,12 +62,14 @@ beforeEach(() => {
   FakeEventSource.instances = [];
   vi.stubGlobal('EventSource', FakeEventSource);
   liveTextStore.clear(CONV);
+  activityStore.clear(CONV);
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
   liveTextStore.clear(CONV);
+  activityStore.clear(CONV);
 });
 
 describe('进场先清：补发即快照（失败方式 1）', () => {
@@ -189,5 +192,67 @@ describe('既有面保持（失败方式 4；#857 收敛交接改写清语义）
       expect.objectContaining({ id: 'm1', role: 'assistant' }),
     );
     expect(onStep).toHaveBeenCalledWith(expect.objectContaining({ id: 's1', status: 'done' }));
+  });
+});
+
+// —— #905 活动相位单槽（W2/W3 客户端半）————————————————————————————
+// 失败方式：
+//   1. activity 事件不入槽 → 活行永远黑盒（消费侧读不到）。
+//   2. 步终态（done/failed/stopped）不清槽 → 死相位跨步残留，下一跑步
+//      头上挂上一跑的「思考中」（消费侧 stepId 过滤是第二道防线，这里是
+//      第一道）。
+//   3. 流重建（resync）不清槽 → 陈旧相位在新订阅的 hub 补发到达前抢先呈现。
+describe('活动相位单槽（#905）', () => {
+  it('activity 事件入槽；后到覆盖先到（单槽语义）', () => {
+    const es = startStream(freshClient());
+    es.push({
+      type: 'activity',
+      activity: { stepId: 's1', phase: 'thinking', at: 100 },
+    });
+    expect(activityStore.get(CONV)).toEqual({ stepId: 's1', phase: 'thinking', at: 100 });
+    es.push({
+      type: 'activity',
+      activity: { stepId: 's1', phase: 'tool', tool: 'bash', at: 200 },
+    });
+    expect(activityStore.get(CONV)).toEqual({
+      stepId: 's1',
+      phase: 'tool',
+      tool: 'bash',
+      at: 200,
+    });
+  });
+
+  it('step 终态（done/failed/stopped）清槽；claimed 不清', () => {
+    for (const status of ['done', 'failed', 'stopped'] as const) {
+      activityStore.clear(CONV);
+      const es = startStream(freshClient());
+      es.push({ type: 'activity', activity: { stepId: 's1', phase: 'thinking', at: 100 } });
+      es.push({
+        type: 'step',
+        step: { id: 's1', buildId: CONV, kind: 'plan', machineId: null, createdAt: 1, status },
+      });
+      expect(activityStore.get(CONV)).toBeNull();
+    }
+    activityStore.clear(CONV);
+    const es = startStream(freshClient());
+    es.push({ type: 'activity', activity: { stepId: 's1', phase: 'thinking', at: 100 } });
+    es.push({
+      type: 'step',
+      step: { id: 's1', buildId: CONV, kind: 'plan', machineId: null, createdAt: 1, status: 'claimed' },
+    });
+    expect(activityStore.get(CONV)).not.toBeNull();
+  });
+
+  it('流重建即清槽：新订阅先作废旧相位，hub 补发接管', () => {
+    activityStore.set(CONV, { stepId: 's0', phase: 'thinking', at: 50 });
+    const qc = freshClient();
+    FakeEventSource.instances = [];
+    startConversationStream(CONV, qc, {});
+    expect(activityStore.get(CONV)).toBeNull();
+    // 补发到达即入槽（server hub 的 lastActivity 快照）。
+    const es = FakeEventSource.instances[0] as FakeEventSource;
+    es.fireOpen();
+    es.push({ type: 'activity', activity: { stepId: 's1', phase: 'tool', tool: 'read', at: 300 } });
+    expect(activityStore.get(CONV)).toMatchObject({ phase: 'tool', tool: 'read' });
   });
 });

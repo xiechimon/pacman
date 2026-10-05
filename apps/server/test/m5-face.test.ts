@@ -180,12 +180,36 @@ describe('conversation stream（02 §1.2 会话流，M5 live streaming 服务端
       });
       expect(emptyRes.status).toBe(200); // 收下但无事件（空增量静默）
 
-      // ⑤ 非本机 step 的 delta = 404（所有权校验与 tool 面同款）。
+      // ④b activity（第四形 [设计]，#905）→ activity 事件；server 盖
+      //     {stepId, at}（daemon 上报形不带这两字段）；相位词表外 = 400。
+      const actRes = await call(s.app, 'POST', `/api/machine/tool/${stepId}`, {
+        cred: token,
+        body: { kind: 'activity', activity: { phase: 'thinking' } },
+      });
+      expect(actRes.status).toBe(200);
+      const actEv = await stream.next((ev) => ev.type === 'activity');
+      const parsedAct = conversationStreamEventSchema.parse(actEv);
+      expect(parsedAct.type === 'activity' && parsedAct.activity.stepId).toBe(stepId);
+      expect(parsedAct.type === 'activity' && parsedAct.activity.phase).toBe('thinking');
+      expect(parsedAct.type === 'activity' && typeof parsedAct.activity.at).toBe('number');
+
+      const badPhase = await call(s.app, 'POST', `/api/machine/tool/${stepId}`, {
+        cred: token,
+        body: { kind: 'activity', activity: { phase: 'moonwalking' } },
+      });
+      expect(badPhase.status).toBe(400);
+
+      // ⑤ 非本机 step 的 delta/activity = 404（所有权校验与 tool 面同款）。
       const foreign = await call(s.app, 'POST', '/api/machine/tool/no-such-step', {
         cred: token,
         body: { kind: 'transcript_delta', text: 'x' },
       });
       expect(foreign.status).toBe(404);
+      const foreignAct = await call(s.app, 'POST', '/api/machine/tool/no-such-step', {
+        cred: token,
+        body: { kind: 'activity', activity: { phase: 'thinking' } },
+      });
+      expect(foreignAct.status).toBe(404);
 
       // ⑥ 步收尾 → step done 事件（finishStep 状态位透出）。
       const doneRes = await call(s.app, 'POST', `/api/machine/done/${stepId}`, {

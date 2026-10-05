@@ -22,6 +22,7 @@ import type {
   MachineTokenResponse,
   ProviderConfig,
   SecretBox,
+  StepActivityReport,
   StepRecord,
   ToolCallRecord,
   TranscriptUpload,
@@ -1134,6 +1135,21 @@ export function reportTranscriptDelta(
   const row = ownedStep(deps, machineId, stepId);
   if (text === '') return;
   deps.convHub?.publishTextDelta(row.buildId, text);
+}
+
+/** 步活动相位上报（machineToolBodySchema 第四形 [设计]，#905）：server 盖
+ *  {stepId, at=收到时刻} 后瞬态进 conversation stream——`at` 用 server 钟
+ *  （与 web 端 step.createdAt 走表同类偏斜，避免引入 daemon 钟第三源）。
+ *  不落库；chief 步与 worker 步同径（会话流键 = row.buildId，chief 会话即
+ *  threadId，upsertChiefRow 同律）。 */
+export function reportActivity(
+  deps: MachineDeps,
+  machineId: string,
+  stepId: string,
+  report: StepActivityReport,
+): void {
+  const row = ownedStep(deps, machineId, stepId);
+  deps.convHub?.publishActivity(row.buildId, { ...report, stepId, at: nowMs() });
 }
 
 /** remoteTools relay 执行（02 §4.3「服务端定义并执行」；r5 §3.1 bundle：POST

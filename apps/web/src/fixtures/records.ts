@@ -490,7 +490,18 @@ export type TranscriptItem =
    *  never a stale number). The capture's trailing `›` now renders only
    *  where the row has a panel behind it (#634「形必须带义」, the detail twin
    *  of #822): live rows disclose the running step, capture rows carry none. */
-  | { kind: 'streaming'; seconds?: number; startedAt?: number; label: string }
+  | {
+      kind: 'streaming';
+      seconds?: number;
+      startedAt?: number;
+      label: string;
+      /** #905：label 的 t() 插值参数（`正在执行工具：{n}` 的工具名等）。 */
+      labelVars?: Record<string, string | number>;
+      /** #905：最近一次活动相位信号的 server 盖章时刻——披露面「最近信号
+       *  Ns 前」的走表起点。缺省 = 无活动信号（fixture 捕获 / 旧 server /
+       *  静默窗口），该行不渲染（#471：缺席的数，不是冻结的数）。 */
+      signalAt?: number;
+    }
   /** Collapsed plan card: `方案 · v1` row, clamped preview, action row
    *  `完成 Ns` (r7 17). `seconds` absent renders the bare `完成`
    *  (reused-plan card, r8 76). The r8 captures' trailing `›` is gone:
@@ -743,7 +754,15 @@ export type ChiefStreamItem =
    *  #822：`tools` = 本轮已落库但尚未归属的工具行（user 行之后的 toolcall 投
    *  影，#615 robot 行 tools 折叠同族语义）——展开面工具表的数据源；缺省 =
    *  本轮暂无工具调用，面板走 fallback 行。 */
-  | { kind: 'streaming'; seconds?: number; label: string; tools?: ChiefToolRow[] };
+  | {
+      kind: 'streaming';
+      seconds?: number;
+      label: string;
+      tools?: ChiefToolRow[];
+      /** #905：详情页 streaming 行同族位——label 插值参数 + 活动信号时刻。 */
+      labelVars?: Record<string, string | number>;
+      signalAt?: number;
+    };
 
 /** 回合工具行（#615 返工折叠展开面；ToolCallRecord 的呈现投影）。 */
 export interface ChiefToolRow {
