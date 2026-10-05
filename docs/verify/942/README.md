@@ -19,6 +19,15 @@ input 36px 老族 → shadcn Input h-8、`ui/dialog.css` `.dlg-*` 逐条处置�
 | 老 `.chip`/`.chip--*` 类 token 清零（行内） | classList 扫描 0 命中 | `fixture/result.json` check `chip-legacy-zero` |
 | e2e 行为断言语义不变（映射无损） | agent-detail（data-tone 载体重钉）、secret-add-dialog（getByLabel/getByRole/getByText 重钉）、dialog-viewport（secret 提交钮载体重钉）+ 邻接面 dead-buttons、title-band-clicks 共 90 条全绿 | `e2e-run.log` |
 
+## Before 基线（`before/`）
+
+`origin/main` 一次性 detach worktree 的 fixture dist、同场景同视口重放
+（`scripts/shots-942-before.mjs`）。实测旧形：secret 输入 `h=36
+class="input dlg-form-input"`；agent 任务行 chip `h=14 class="chip
+chip--idle chip--mini"`。对照 after：32px `data-slot="input"`（§2.6-1）与
+16px `[data-tone="idle"][data-slot="badge"]`（§5.2）——两处几何差都是 D2
+授权的有意结果，行为断言语义不变（e2e-run.log 90 条全绿）。
+
 ## 复现
 
 ```sh
