@@ -7,6 +7,12 @@
 // 的形态不发请求）；server 仍是终闸——400/404/409 落内联错误行（headline
 // 按 status 分译，server 原文作 detail 行，消息子串不作契约）。
 // fixture 面 = accept 律（#148：提交即关），不发请求不读文件。
+// #944 正典表执行（spec/22 §5.3/§5.4）：.dlg-form* 族类 → utility 等值
+// 迁移、裸 button/textarea → Button brand / Textarea 件、Input 摘
+// .dlg-form-input 老类（I3——件已是 components/ui，几何即正典 h-8）。
+// SKILL.md 正文编辑框的 font-mono + min-h-[160px] 是消费面显式 override
+// （textarea.tsx 头注口径）：markdown/YAML 源码编辑要等宽，正文要多行空间
+// ——原 .dlg-skill-body 的行为理由原样承接。
 
 import {
   buildSkillEntry,
@@ -21,9 +27,25 @@ import { useEffect, useState } from 'react';
 import { ApiError } from '../api/client.js';
 import { useApiMutations, useSkillFile } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
+import { Textarea } from '../components/ui/textarea.js';
 import { useI18n } from '../i18n/provider.js';
+
+/** .dlg-form-label 退役后的等值 rhythm（正典表 §5.4，create-secret-dialog
+ *  同方）：9/8 外距 + 18 行盒；字号/字距 = c.css 定版 --label-size 12px /
+ *  --label-spacing 0.01em——token 落后改 text-(--label-size)
+ *  tracking-(--label-spacing)（§4-4）。 */
+const LABEL_CLS =
+  'mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--text-primary)';
+
+/** 表单容器（.dlg-form 等值，§5.4）：flex 列 gap 12、16/16/12 垫。 */
+const FORM_CLS = 'flex flex-col gap-3 px-4 pt-4 pb-3';
+
+/** 错误行（prj-new-error / dlg-provider-oauth-error 同族配方）：
+ *  12px/16px/--danger，role=alert 在元素侧；server 原文 detail 行次级色。 */
+const ERROR_CLS = 'text-xs leading-4 break-words text-(--danger)';
 
 /** 编辑目标（行数据投影）；undefined = 新建。 */
 export interface SkillEditTarget {
@@ -176,89 +198,84 @@ export function SkillDialog({
       onClose={onClose}
       width={560}
       footer={
-        <div className="dlg-form-foot">
-          <button
-            type="button"
-            className="dlg-form-primary dlg-skill-submit"
-            disabled={!submittable}
-            onClick={submit}
-          >
+        <div className="flex flex-col px-4 pb-4">
+          <Button variant="brand" className="w-full" disabled={!submittable} onClick={submit}>
             {editing ? t('保存') : t('新建技能')}
-          </button>
+          </Button>
         </div>
       }
     >
       {/* 编辑面（live）预填读失败 = 表单整体让位错误块——拿不到原 SKILL.md
           时绝不让用户盲写覆写（PUT 覆写语义，空表单提交会抹掉正文）。 */}
       {error !== null && fields === null ? (
-        <div className="dlg-form">
-          <div className="dlg-skill-error" role="alert">
+        <div className={FORM_CLS}>
+          <div className={ERROR_CLS} role="alert">
             {error.headline}
-            {error.detail !== '' && <span className="dlg-skill-error-detail">{error.detail}</span>}
+            {error.detail !== '' && (
+              <span className="mt-0.5 block text-(--text-tertiary)">{error.detail}</span>
+            )}
           </div>
         </div>
       ) : fields === null ? (
-        <div className="dlg-form">
-          <div className="dlg-form-note">{t('正在读取 SKILL.md…')}</div>
+        <div className={FORM_CLS}>
+          <p className="text-xs leading-4 text-(--text-tertiary)">{t('正在读取 SKILL.md…')}</p>
         </div>
       ) : (
-        <div className="dlg-form">
-          <label className="dlg-form-label" htmlFor="dlg-skill-name">
+        <div className={FORM_CLS}>
+          <label className={LABEL_CLS} htmlFor="dlg-skill-name">
             {t('名称')}
           </label>
           <Input
             id="dlg-skill-name"
-            className="dlg-form-input"
             value={fields?.name ?? ''}
             onChange={(event) => setFields((f) => f && { ...f, name: event.target.value })}
             placeholder="deploy-to-prod"
           />
           {nameBad && (
-            <div className="dlg-skill-error" role="alert">
+            <div className={ERROR_CLS} role="alert">
               {t('名称须以字母或数字开头，只能含字母、数字、点、横杠、下划线，最长 64 字符。')}
             </div>
           )}
-          <label className="dlg-form-label" htmlFor="dlg-skill-desc">
+          <label className={LABEL_CLS} htmlFor="dlg-skill-desc">
             {t('描述')}
           </label>
           <Input
             id="dlg-skill-desc"
-            className="dlg-form-input"
             value={fields?.description ?? ''}
             onChange={(event) => setFields((f) => f && { ...f, description: event.target.value })}
             placeholder={t('这个技能做什么、什么时候用它。')}
           />
           {roundTripBad && (
-            <div className="dlg-skill-error" role="alert">
+            <div className={ERROR_CLS} role="alert">
               {t('描述不要用引号整体包裹——写进 frontmatter 后引号会被剥去，与表单值不一致。')}
             </div>
           )}
-          <label className="dlg-form-label" htmlFor="dlg-skill-body">
+          <label className={LABEL_CLS} htmlFor="dlg-skill-body">
             {t('SKILL.md 正文')}
           </label>
-          <textarea
+          <Textarea
             id="dlg-skill-body"
-            className="dlg-form-textarea dlg-skill-body"
+            className="min-h-[160px] font-mono"
             value={fields?.body ?? ''}
             onChange={(event) => setFields((f) => f && { ...f, body: event.target.value })}
           />
-          <div className="dlg-form-note">
+          <p className="text-xs leading-4 text-(--text-tertiary)">
             {editing
               ? t('frontmatter（name/description）由上方表单生成；未在此编辑的文件保持原样。')
               : t('frontmatter（name/description）由上方表单生成，这里只写正文。')}
-          </div>
+          </p>
           {tooLarge && (
-            <div className="dlg-skill-error" role="alert">
+            <div className={ERROR_CLS} role="alert">
               {t('内容超出单文件上限（{limit} KB）。', {
                 limit: Math.round(MAX_SKILL_FILE_BYTES / 1000),
               })}
             </div>
           )}
           {error !== null && (
-            <div className="dlg-skill-error" role="alert">
+            <div className={ERROR_CLS} role="alert">
               {error.headline}
               {error.detail !== '' && (
-                <span className="dlg-skill-error-detail">{error.detail}</span>
+                <span className="mt-0.5 block text-(--text-tertiary)">{error.detail}</span>
               )}
             </div>
           )}

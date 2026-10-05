@@ -22,9 +22,11 @@
 //   只读行按读面呈现档位，选择器与 provider 写面的耦合仍不做。
 //
 // 承载结构 = components/ui/Button ghost（XMON-28/B3）：本面四处散写钮
-// （进行中行、记忆排序触发器与选项行、名称行内编辑）换底座，几何与配色正本
-// 仍住 agent-detail.css 与 resources.css 的 `.res-sort*`（域 css unlayered，
-// 压 utility 层），故契约面逐值不动。底座带进来的差额在消费点就地并掉：
+// （进行中行、记忆排序触发器与选项行、名称行内编辑）换底座。排序钮/盘的
+// 几何与配色正本原住 resources.css 的 `.res-sort*`，#944 起迁
+// resources/parts.tsx 的 RES_* utility 常量（与 skills 页单源）；其余钮的
+// 正本仍住 agent-detail.css（域 css unlayered，压 utility 层），契约面逐值
+// 不动。底座带进来的差额在消费点就地并掉：
 // `justify-start` / `gap-0`（散写形是 flex-start、无序间距）、`h-auto`（行钮
 // 没有定高，底座 h-8 会把 `进行中` 行与名称钮钉成 32px）、`rounded-none`
 // （`.agent-task-row` 无圆角，底座 rounded-lg 会让 hover 底色带弧）、
@@ -87,6 +89,15 @@ import { useI18n } from '../i18n/provider.js';
 import { ArrowUpDown, ChevronDown, ChevronRight, Search, SquarePen } from '../icons/index.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
 import { PHASE_UI } from '../phase.js';
+import {
+  RES_SEARCH_BOX_CLS,
+  RES_SEARCH_INPUT_CLS,
+  RES_SEARCH_ROW_CLS,
+  RES_SORT_MENU_CLS,
+  RES_SORT_ROW_CLS,
+  RES_SORT_TRIGGER_CLS,
+  RES_SORT_WRAP_CLS,
+} from '../resources/parts.js';
 import { SECRETS_HREF } from '../resources/secrets-page.js';
 import { ResourceShell } from '../resources/shell.js';
 import './agent-detail.css';
@@ -449,13 +460,15 @@ export function AgentDetailPage() {
             ) : (
               <>
                 {/* 搜索框 + 排序钮行：盒形与开合行为复用资源族既有面
-                    （resources.css 的 .res-search 与 .res-sort 族，#306 家族
-                    律），不另造一套。 */}
-                <div className="agent-memory-search res-searchrow">
-                  <div className="res-search">
+                    （#306 家族律；#944 起正本 = resources/parts.tsx 的
+                    RES_* utility 常量，resources.css 已退役），不另造一套。
+                    agent-memory-* 类名是本域句柄（agent-detail.css /
+                    agent-detail.spec 面，#952），原样保留。 */}
+                <div className={`agent-memory-search ${RES_SEARCH_ROW_CLS}`}>
+                  <div className={RES_SEARCH_BOX_CLS}>
                     <Search width={13} height={13} />
                     <Input
-                      className="res-search-input"
+                      className={RES_SEARCH_INPUT_CLS}
                       type="text"
                       placeholder={t(MEMORY_UI_COPY.searchPlaceholder)}
                       aria-label={t(MEMORY_UI_COPY.searchPlaceholder)}
@@ -463,19 +476,16 @@ export function AgentDetailPage() {
                       onChange={(event) => setMemoryQuery(event.target.value)}
                     />
                   </div>
-                  <span className="res-sort-wrap">
-                    {/* #854 收编：本面与 skills 排序共用同一组类名
-                        （.res-sort / .res-sort-menu / .res-sort-row，正本
-                        resources.css），原是一对同款手搓壳；盘面收编后
-                        定位归 Positioner，手搓 absolute 壳会被在流面板顶掉，
-                        故同 PR 一并收编到 components/ui/dropdown-menu——
-                        同一块盘只剩一种实现。 */}
+                  <span className={RES_SORT_WRAP_CLS}>
+                    {/* #854 收编：本面与 skills 排序共用同一组配方
+                        （RES_SORT_* 常量单源），原是一对同款手搓壳；盘面
+                        收编后定位归 Positioner，同一块盘只剩一种实现。 */}
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={
                           <Button
                             variant="ghost"
-                            className="res-sort agent-memory-sort justify-start gap-0 font-normal"
+                            className={`agent-memory-sort w-[88px] ${RES_SORT_TRIGGER_CLS}`}
                           />
                         }
                       >
@@ -488,7 +498,7 @@ export function AgentDetailPage() {
                         side="bottom"
                         sideOffset={8}
                         aria-label={t(MEMORY_UI_COPY.sort)}
-                        className="res-sort-menu agent-memory-sort-menu"
+                        className={`agent-memory-sort-menu ${RES_SORT_MENU_CLS}`}
                       >
                         <DropdownMenuRadioGroup
                           value={memorySort}
@@ -499,7 +509,7 @@ export function AgentDetailPage() {
                               key={option}
                               value={option}
                               closeOnClick
-                              className="res-sort-row [&_svg:not([class*='size-'])]:size-auto"
+                              className={RES_SORT_ROW_CLS}
                             >
                               <span>{t(option)}</span>
                             </DropdownMenuRadioItem>
