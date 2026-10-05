@@ -73,22 +73,24 @@
 
 ### 漂移闸
 
-闸脚本 `scripts/ui-drift-gate.mjs` 由 #856 落仓（本 PR 开时尚未合并）；
-本 PR 用**同版脚本 + 删掉 G2-ALLOW 条目**在本分支实跑，两面证据都在：
+闸脚本 `scripts/ui-drift-gate.mjs` 由 #856 落仓（本分支已 `merge main`
+取到）。#854 把 `HEX_ALLOWLIST` 清空（那条豁免是给这个颜色逃逸开的，
+逃逸关掉了它就死了），两面证据都在：
 
 - `gate-output.txt`：PASS（无 `.btn` 活选择器 / 无 hex 逃逸 / chip 变体单源）
 - `gate-negative-control.txt`：把 `color: #fff` 放回去，同一条闸在
   `overlay/attachment-strip.css:76` 转红 —— 证明 PASS 不是空跑
 
-## 未完成 / 需要协调者定
+## 需要协调者留意
 
-1. **G2-ALLOW 条目的正式删除落在 #856 的分支**：本分支没有该文件，
-   #854 不能凭空删它（两个 PR 同时新增同一文件会冲突）。#856 合入后，
-   删掉 `HEX_ALLOWLIST` 里 `overlay/attachment-strip.css` 那条即可。
-   顺带发现：#859（#855）**整份重写**了 `scripts/ui-drift-gate.mjs`，
-   把 G1/G2/G3 换成输入面闸——两条车道都在写同一文件，合并顺序会决定
-   最后一个版本是什么。这是协调问题，不在本票范围。
+1. **`scripts/ui-drift-gate.mjs` 有并发写者**：#859（#855）整份重写了这个
+   文件，把 G1/G2/G3 换成输入面闸（不再是同一套闸的加面）。两条车道都在
+   写同一文件且都已基于 main，合并顺序会决定最后一个版本是什么——先合
+   #859 会把本 PR 清空的 allowlist 连同 G2 一起抹掉。不在本票范围，但合并
+   顺序要人工判一次。
 2. **盘投影与 spec §2.7 的口径**：spec §2.7 写「暗：无投影，线框承重」，
    本票按用户 2026-10-05 取向取 Base UI hero 的硬偏移值并**两主题同值**
    （取向只给了一条值）。若用户要按 Base UI 原样（暗侧 `none`），改
    `tokens.css` 一处即可。
+3. **`.res-sort` 触发钮顺带归零圆角**（8px → 0）：取向里写了「trigger 同式」，
+   同排的 `.res-search` 已由 #852 收敛到 0，二者原本一个 0 一个 8。

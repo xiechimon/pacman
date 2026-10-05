@@ -40,6 +40,21 @@ async function expectMenuSettled(page: Page) {
   );
 }
 
+/** #854: the panel is positioned by the primitive's Positioner (JS +
+ *  autoUpdate) instead of by CSS, so a viewport change moves it a frame or two
+ *  later rather than synchronously with layout — reading straight after
+ *  `setViewportSize` catches the previous box (measured 343 against a required
+ *  ~293). Wait for the box to stop moving, then read. */
+async function expectMenuRepositioned(page: Page) {
+  let prev = await menu(page).boundingBox();
+  for (let i = 0; i < 40; i += 1) {
+    await page.waitForTimeout(16);
+    const next = await menu(page).boundingBox();
+    if (prev != null && next != null && prev.x === next.x && prev.y === next.y) return;
+    prev = next;
+  }
+}
+
 /** The menu must own the hit-test at its own center — nothing (click
  *  catcher, board content, rail clipping) may sit above the panel. */
 async function expectMenuOnTop(page: Page) {
@@ -149,6 +164,7 @@ test('#163 anchoring: bottom distance is viewport-invariant, the chip is never c
     // buried the chip — the anchored panel must ride the bottom instead
     for (const height of [600, 900, 550, 732]) {
       await page.setViewportSize({ width: 1440, height });
+      await expectMenuRepositioned(page);
       const distance = await expectAnchoredAboveChip(page, chipSel);
       // bottom-anchored: the distance does not depend on the viewport height
       expect(Math.abs(distance - anchorDistance)).toBeLessThanOrEqual(1);
