@@ -28,6 +28,9 @@ async function expectOwnsCenter(
 
 // secondary family (r7 12/13 + the named smoke scenarios): the back Link
 // rides the shell on every page and carries the scenario search home.
+// #947/#910 载体：.secondary-back → aria-label 一级（resources 家族同款）；
+// .secondary-head-right → 槽内的 设置 link 本体（aria-label 一级；hit-test
+// 探针按 CSS 选择器认领元素，link 即右槽里唯一可点物，语义等价且更准）。
 for (const [route, scenario] of [
   ['/app/team', '12'],
   ['/app/account', '13'],
@@ -35,17 +38,17 @@ for (const [route, scenario] of [
 ] as const) {
   test(`secondary back owns its hit area and navigates home — ${route}`, async ({ page }) => {
     await page.goto(`${route}?scenario=${scenario}`);
-    await expectOwnsCenter(page, '.secondary-back');
-    await page.locator('.secondary-back').click();
+    await expectOwnsCenter(page, '[aria-label="返回"]');
+    await page.locator('[aria-label="返回"]').click();
     await expect(page).toHaveURL(`/app?scenario=${scenario}`);
   });
 }
 
 test('team right-slot action owns its hit area (设置 slot under the same band)', async ({ page }) => {
   await page.goto('/app/team?scenario=12');
-  const right = page.locator('.secondary-head-right');
+  const right = page.locator('[aria-label="设置"]');
   expect(await right.count()).toBeGreaterThan(0);
-  await expectOwnsCenter(page, '.secondary-head-right');
+  await expectOwnsCenter(page, '[aria-label="设置"]');
 });
 
 // resources family (r7 06–10, one shared fixture set): the band law covers

@@ -15,6 +15,13 @@ import { expect, type Page, test } from '@playwright/test';
 //   Agent slot and renders the org chart instead (#490；此前它恒渲染
 //   暂无成员，与同数据下的 grid 自相矛盾。chart 的完整验收面在
 //   team-org-chart.spec.ts，此处只留 tablist 往返本身).
+// #947/#910 载体重钉：.account-switch → getByRole('switch')（aria-label
+// 推送通知）；.secondary-link → getByRole('link', {name:'设置'})；
+// .team-layout-tab → getByRole('tab')；.team-agent-card/.team-chart-node →
+// data-testid 二级；.team-members → 文案一级；.team-create-agent（grid 槽）
+// → team-agent-grid 容器（chart 布局整格退场）。.account-card/.account-avatar/
+// .profile-row = profile-card 共享模板家族锚，规则不住 secondary.css，保留。
+// 行为断言语义一字不动。
 
 declare global {
   interface Window {
@@ -71,7 +78,7 @@ test('account switch: default permission renders off; click requests and grants'
 }) => {
   await stubNotification(page, 'default', 'granted');
   await page.goto('/app/account');
-  const sw = page.locator('.account-switch');
+  const sw = page.getByRole('switch', { name: '推送通知' });
   await expect(sw).toHaveAttribute('aria-checked', 'false');
   await sw.click();
   await expect(sw).toHaveAttribute('aria-checked', 'true');
@@ -81,14 +88,17 @@ test('account switch: default permission renders off; click requests and grants'
 test('account switch: granted permission renders checked without a click', async ({ page }) => {
   await stubNotification(page, 'granted', 'granted');
   await page.goto('/app/account');
-  await expect(page.locator('.account-switch')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('switch', { name: '推送通知' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
   expect(await page.evaluate(() => window.__permCalls)).toBe(0);
 });
 
 test('account switch: denied stays off; a click settles without granting', async ({ page }) => {
   await stubNotification(page, 'denied', 'denied');
   await page.goto('/app/account');
-  const sw = page.locator('.account-switch');
+  const sw = page.getByRole('switch', { name: '推送通知' });
   await expect(sw).toHaveAttribute('aria-checked', 'false');
   await sw.click();
   await expect(sw).toHaveAttribute('aria-checked', 'false');
@@ -97,33 +107,33 @@ test('account switch: denied stays off; a click settles without granting', async
 
 test('team: 设置 routes to the account surface', async ({ page }) => {
   await page.goto('/app/team?scenario=12');
-  await page.locator('.secondary-link').click();
+  await page.getByRole('link', { name: '设置', exact: true }).click();
   await expect(page).toHaveURL(/\/app\/account/);
   await expect(page.locator('.account-card')).toBeVisible();
 });
 
 test('team: chart tab swaps to the org chart, persists, and returns', async ({ page }) => {
   await page.goto('/app/team?scenario=12');
-  const gridTab = page.locator('.team-layout-tab[aria-label="grid"]');
-  const chartTab = page.locator('.team-layout-tab[aria-label="chart"]');
-  await expect(page.locator('.team-agent-card').first()).toBeVisible();
+  const gridTab = page.getByRole('tab', { name: 'grid' });
+  const chartTab = page.getByRole('tab', { name: 'chart' });
+  await expect(page.getByTestId('team-agent-card').first()).toBeVisible();
 
   // scenario 12 的团队有 1 个成员 —— chart 渲染组织图，不是 暂无成员
   await chartTab.click();
-  await expect(page.locator('.team-chart-node')).toHaveCount(1);
-  await expect(page.locator('.team-chart-empty')).toHaveCount(0);
-  await expect(page.locator('.team-agent-card')).toHaveCount(0);
-  await expect(page.locator('.team-create-agent')).toHaveCount(0);
-  await expect(page.locator('.team-members')).toHaveCount(0);
+  await expect(page.getByTestId('team-chart-node')).toHaveCount(1);
+  await expect(page.getByText('暂无成员')).toHaveCount(0);
+  await expect(page.getByTestId('team-agent-card')).toHaveCount(0);
+  await expect(page.getByTestId('team-agent-grid')).toHaveCount(0);
+  await expect(page.getByText(/个成员/)).toHaveCount(0);
   await expect(chartTab).toHaveAttribute('aria-selected', 'true');
   await expect(gridTab).toHaveAttribute('aria-selected', 'false');
 
   // the choice survives a reload (pacman.teamMembersLayout)
   await page.reload();
-  await expect(page.locator('.team-chart-node')).toBeVisible();
+  await expect(page.getByTestId('team-chart-node')).toBeVisible();
 
   // and the tablist is the way back — no trap in chart layout
-  await page.locator('.team-layout-tab[aria-label="grid"]').click();
-  await expect(page.locator('.team-agent-card').first()).toBeVisible();
-  await expect(page.locator('.team-members')).toBeVisible();
+  await page.getByRole('tab', { name: 'grid' }).click();
+  await expect(page.getByTestId('team-agent-card').first()).toBeVisible();
+  await expect(page.getByText(/个成员/)).toBeVisible();
 });

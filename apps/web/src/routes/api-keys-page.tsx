@@ -6,9 +6,13 @@
 // plus the one-time plaintext block carrying the 02 §8 canon
 // 「请立即复制密钥，它仅显示一次。」. Row and one-time block shapes are
 // [推断] (no capture: r2 §9-12, r3 §6 图失); mask and copy are observed.
-// B2 · secondary 面（XMON-20）：页内按钮全走 components/ui/Button——空态新建 =
-// brand 档、一次性明文块的复制 = brand/sm 档；类名 alias 原样保留（#411 别名
-// 优先），per-face 几何仍住 secondary.css。
+// #947 per-face 清零：secondary.css 退役，空态/明文块/列表行几何改挂 token
+// utility（tile 44 = size-11、行高 62 与顶部节奏 41/21/11/22 是阶梯外
+// 一次性实测值，§3.1(a)；圆角走 --radius-popover 槽）。按钮全走
+// components/ui/Button brand——空态新建 = sm 档（30→28px 吸附控件高阶梯，
+// §2.6-1 同款 D2 授权；20px 横垫与 13px 字保留实测），一次性明文块的复制
+// = brand/sm。类名别名按 #910 裁定 1 退役，空态容器换 data-testid 二级
+// 载体（resource-empty 同款，无 role 纯结构钩）。
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useApiKeys, useApiMutations, useTodos } from '../api/hooks.js';
@@ -51,21 +55,24 @@ export function ApiKeysPage() {
       title={t('API 密钥')}
     >
       {keys.length === 0 ? (
-        <div className="keys-empty">
-          <div className="keys-empty-tile">
+        <div data-testid="keys-empty">
+          <div className="mt-[41px] flex size-11 items-center justify-center rounded-(--radius-popover) bg-(--surface-secondary) text-(--text-secondary) [&_svg]:size-5">
             <Key />
           </div>
-          <h2 className="keys-empty-title">{t('尚无 API 密钥。')}</h2>
-          <p className="keys-empty-desc">
+          <h2 className="mt-[21px] text-[15px] font-semibold text-(--text-primary)">
+            {t('尚无 API 密钥。')}
+          </h2>
+          <p className="mt-[11px] text-[13px] text-(--text-tertiary)">
             {t('API 密钥用于从命令行接入机器，也让 MCP 客户端能访问你的工作台。')}
           </p>
-          <div className="keys-empty-actions">
-            {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Button brand；
-                per-face 几何（30 高 / 0 20 内垫）仍住 secondary.css 的
-                .keys-create。差额并项——散写形字重 400、无按下位移。 */}
+          <div className="mt-[22px] flex items-center gap-4">
+            {/* 差额并项——散写形字重 400、无按下位移；border-0 压掉底座 1px
+                透明边（bg-clip-padding 会把实底下裁 padding box，钮面四周
+                透出 1px 缝）。 */}
             <Button
               variant="brand"
-              className="keys-create font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+              size="sm"
+              className="cursor-pointer border-0 px-5 text-[13px] leading-4 font-normal active:not-aria-[haspopup]:translate-y-0"
               onClick={live ? () => setCreateOpen(true) : undefined}
             >
               {t('新建密钥')}
@@ -79,16 +86,17 @@ export function ApiKeysPage() {
           {keys
             .filter((key) => key.plaintext != null)
             .map((key) => (
-              <div key={`once-${key.id}`} className="keys-once">
-                <code className="keys-once-value">{key.plaintext}</code>
-                {/* a3-pages 收编 → B2 · secondary 面（XMON-20）：Button brand/sm，per-face
-                    值（28 高 / 0 12 内垫 / 12px 字 / 字重 400）以工具类钉回，
-                    border-0 压掉底座 1px 透明边（bg-clip-padding 会把实底下裁
-                    padding box，钮面四周透出 1px 缝）。 */}
+              <div
+                key={`once-${key.id}`}
+                className="mt-6 flex flex-wrap items-center gap-3 rounded-(--radius-popover) border border-(--border-default) bg-(--surface-secondary) p-4"
+              >
+                <code className="font-mono text-[13px] text-(--text-primary)">{key.plaintext}</code>
+                {/* 差额并项（28 高 / 0 12 内垫 / 12px 字 / 字重 400 是 [推断]
+                    面的既有钉回值）：border-0 同上。 */}
                 <Button
                   variant="brand"
                   size="sm"
-                  className="keys-once-copy border-0 px-3 text-xs font-normal leading-[inherit] cursor-pointer active:not-aria-[haspopup]:translate-y-0"
+                  className="cursor-pointer border-0 px-3 text-xs leading-[inherit] font-normal active:not-aria-[haspopup]:translate-y-0"
                   onClick={
                     live
                       ? () => void navigator.clipboard?.writeText(key.plaintext ?? '')
@@ -97,20 +105,27 @@ export function ApiKeysPage() {
                 >
                   {t('复制')}
                 </Button>
-                <p className="keys-once-note">{t('请立即复制密钥，它仅显示一次。')}</p>
+                <p className="basis-full text-xs text-(--text-tertiary)">
+                  {t('请立即复制密钥，它仅显示一次。')}
+                </p>
               </div>
             ))}
-          <div className="keys-list">
+          <div className="mt-3 flex flex-col gap-2">
             {keys.map((key) => (
-              <div key={key.id} className="keys-row">
-                <span className="keys-row-icon">
+              <div
+                key={key.id}
+                className="flex h-[62px] items-center gap-3 rounded-(--radius-popover) bg-(--surface-secondary) px-4"
+              >
+                <span className="flex text-(--text-tertiary)">
                   <Key width={16} height={16} />
                 </span>
-                <span className="keys-row-text">
-                  <span className="keys-row-name">{key.name ?? key.masked}</span>
-                  {key.name != null && <span className="keys-row-mask">{key.masked}</span>}
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-sm text-(--text-primary)">{key.name ?? key.masked}</span>
+                  {key.name != null && (
+                    <span className="font-mono text-xs text-(--text-tertiary)">{key.masked}</span>
+                  )}
                 </span>
-                <span className="keys-row-chevron">
+                <span className="text-(--text-dim)">
                   <ChevronRight width={16} height={16} />
                 </span>
               </div>

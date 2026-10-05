@@ -96,7 +96,7 @@ async function stubLive(
 
 async function openDialog(page: Page, teamUrl: string) {
   await page.goto(teamUrl);
-  await page.locator('.team-create-agent').click();
+  await page.getByRole('button', { name: '创建 Agent' }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   return dialog;

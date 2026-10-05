@@ -88,12 +88,12 @@ test('确认删除 → 落团队页，被删卡消失、邻居卡还在', async 
   await dialog.locator('.delete-confirm-delete').click();
   await expect(page).toHaveURL(/\/app\/team/);
 
-  const cards = page.locator('.team-agent-card');
+  const cards = page.getByTestId('team-agent-card');
   await expect(cards).toHaveCount(1);
   await expect(cards.first()).toContainText('r3-qa');
-  await expect(page.locator('.team-agent-card', { hasText: 'r3-builder' })).toHaveCount(0);
+  await expect(cards.filter({ hasText: 'r3-builder' })).toHaveCount(0);
   // 创建槽仍在（删完还能建回来）
-  await expect(page.locator('.team-create-agent')).toBeVisible();
+  await expect(page.getByRole('button', { name: '创建 Agent' })).toBeVisible();
 });
 
 test('会话内回退到详情路由落「找不到该 Agent」态，不白屏', async ({ page }) => {

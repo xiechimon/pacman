@@ -95,7 +95,7 @@ test('machine: disclosure 展开(最高内容态)底部链接在视口', async (
 
 test('create-agent: submit 在视口', async ({ page }) => {
   await page.goto('/app/team?scenario=12');
-  await page.locator('.team-create-agent').click();
+  await page.getByRole('button', { name: '创建 Agent' }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   await expectShellCapped(dialog);

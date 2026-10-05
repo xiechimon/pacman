@@ -15,9 +15,15 @@
 // #114 banner (shared useNotificationPermission). Fixture mode freezes the
 // switch granted: r7 13 shows it on and the headless chromium
 // reports the real API as 'denied'.
-// B2 · secondary 面（XMON-20）：页内三处控件（语言触发器、语言选项行、推送通知
-// 开关）全部走 components/ui 件——前两者 Button ghost 档，开关走 Switch。类名
-// alias 原样留作 e2e 定位锚（#411 别名优先），per-face 几何仍住 secondary.css。
+// #947 per-face 清零：secondary.css 退役。三处控件的 per-face 皮肤改挂
+// token utility（语言触发器 = Button ghost 底座 + 七通道中和，#908
+// comment-6001887439 裁决 3）；推送通知开关落 components/ui/Switch 正典
+// 默认档（spec/22 §2.5 冻结几何：32×18.4 / thumb 16，track 吃 --input /
+// --primary，thumb 吃 --background——旧 29×16 手搓面与 --toggle-knob 消费
+// 随之退役；两槽的删槽动作不归本票，§4-2 既有裁定走散件票）。
+// `account-card` / `account-avatar` 别名保留 = profile-card 共享模板家族的
+// e2e 锚（profile-card.tsx 头注契约，规则住 components/profile-card.css，
+// 退役权归散件票）；其余类名别名按 #910 裁定 1 退役，载体 = role/text。
 //
 // #74: the 语言 row is live — it reads/writes the workspace locale
 // (zh-CN authoritative + en, 01 S6) through the i18n provider and persists
@@ -43,6 +49,27 @@ import { Check, ChevronDown, SquarePen } from '../icons/index.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
 import { SecondaryShell } from '../secondary/shell.js';
 
+/** 语言触发器（Button ghost 底座）：30px 带框盒形（r7 13 实测 box
+ *  x1120..1207，高是阶梯外一次性值 §3.1(a)）、12px 字、方角、surface 底 +
+ *  border-default 描边；chevron tertiary 墨 12px（走属性，件基类
+ *  [&_svg]:size-4 会盖过属性，故就地顶回同链 size-3）。件配方按七通道律
+ *  归零到带框皮肤：hover/aria-expanded 回 surface 底 + primary 墨（原形
+ *  无 hover、开态无换装），含 dark: 变体。 */
+const LANG_TRIGGER_CLS =
+  "h-[30px] cursor-pointer gap-1.5 rounded-none border border-(--border-default) bg-(--surface) px-2.5 text-xs font-normal leading-[inherit] text-(--text-primary) hover:bg-(--surface) hover:text-(--text-primary) dark:hover:bg-(--surface) aria-expanded:bg-(--surface) aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
+
+/** 语言盘（V2 弹层壳 #790 P3：最小宽 220 / 12px 内垫 / 1px 墨线框 / 直角 /
+ *  顶部锚距 8px / fab-shadow）+ 上指锚边右上的描边 Arrow（12×6 外三角压
+ *  10×5 内三角，clip-path utility 承载，RES_SORT_MENU_CLS 同配方）。 */
+const LANG_MENU_CLS =
+  "absolute right-0 top-[calc(100%+8px)] z-(--z-popover) flex min-w-[220px] flex-col rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--fab-shadow) before:absolute before:top-px before:right-4 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:right-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
+
+/** 语言盘选项行（Button ghost 底座）：32px 行 / 8px 圆角 / 12px 字
+ *  （壳垫 12px 后行内横缩 4，字墨 inset 落 16）。原形无 hover 态，件配方
+ *  按七通道律归零到透明。 */
+const LANG_ROW_CLS =
+  "h-8 w-full cursor-pointer justify-start gap-0 rounded-[8px] px-1 text-left text-xs leading-4 font-normal text-(--text-primary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5";
+
 export function AccountPage() {
   const { locale, setLocale, t } = useI18n();
   const [searchParams] = useSearchParams();
@@ -67,8 +94,10 @@ export function AccountPage() {
     <SecondaryShell route="account" fixture={fixture} sidebarSelected="team" title={t('帐号')}>
       {/* XMON-117：卡盒 / 头像头 / 行 / label / 值槽落 components/profile-card
           的模板件（本页正是模板的来源面）；`account-*` 类名原样留作 e2e
-          定位锚（#411 别名优先），几何正本随之搬到 profile-card.css。 */}
-      <ProfileCard className="account-card">
+          定位锚（profile-card 家族契约），几何正本住 profile-card.css。
+          卡的上边距是页面节奏（card top y60 = 头 44 + 16），归消费点，
+          #947 起以 mt-4 utility 承载（原 secondary.css .account-card 规则）。 */}
+      <ProfileCard className="account-card mt-4">
         <ProfileHead>
           <ProfileAvatar className="account-avatar">
             {/* XMON-105: the account head is the same identity avatar as the
@@ -86,15 +115,10 @@ export function AccountPage() {
           <SquarePen width={14} height={14} />
         </ProfileRow>
         <ProfileRow className="profile-row--tall" label={t('语言')}>
-          <span className="account-select-wrap" ref={setLangDock}>
-            {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Button，per-face
-                几何仍住 secondary.css 的 .account-select。差额并项——散写形字重
-                400（底座 font-medium）；chevron 走 width/height 属性 12px，底座
-                的 [&_svg]:size-4 会盖过属性，故就地顶回同一链的 size-3。
-                aria-haspopup 在位 = 底座的 active:translate-y-px 本就不触发。 */}
+          <span className="relative flex" ref={setLangDock}>
             <Button
               variant="ghost"
-              className="account-select font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3"
+              className={LANG_TRIGGER_CLS}
               aria-haspopup="listbox"
               aria-expanded={langOpen}
               onClick={() => setLangOpen((value) => !value)}
@@ -116,7 +140,7 @@ export function AccountPage() {
             >
               <ClickCatcher onClose={() => setLangOpen(false)} />
               <div
-                className={`lang-dropdown origin-top-right ${FLOATING_POP_ANIM}`}
+                className={`${LANG_MENU_CLS} origin-top-right ${FLOATING_POP_ANIM}`}
                 role="listbox"
                 aria-label={t('语言')}
               >
@@ -124,7 +148,7 @@ export function AccountPage() {
                   <Button
                     key={code}
                     variant="ghost"
-                    className="lang-dropdown-row justify-start gap-0 text-left font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5"
+                    className={LANG_ROW_CLS}
                     role="option"
                     aria-selected={code === locale}
                     onClick={() => {
@@ -134,7 +158,7 @@ export function AccountPage() {
                   >
                     {LOCALE_NAMES[code]}
                     {code === locale && (
-                      <span className="lang-dropdown-check">
+                      <span className="ml-auto flex text-(--card-button)">
                         <Check width={14} height={14} />
                       </span>
                     )}
@@ -145,13 +169,13 @@ export function AccountPage() {
           </span>
         </ProfileRow>
         <ProfileRow label={t('推送通知')}>
-          {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Switch（role/aria-checked
-              由底座透出，per-face 几何仍住 secondary.css 的 .account-switch*）。
-              差额并项走 thumbClassName——底座默认的 checked 位移会与域 css 的
-              left/right 定位叠加成双重位移（switch.tsx 记的那处仓内偏离口）。 */}
+          {/* #947：Switch 正典默认档（spec/22 §2.5 冻结几何），role=switch 与
+              aria-checked 由底座透出，e2e 载体 = getByRole('switch')。皮肤
+              不再 per-face：track --input（off）/--primary（on），thumb
+              --background——§4-1 记的亮模 thumb 1.52:1 是正典已知打磨项
+              （状态可辨由 track 翻转 11.03:1 满足，WCAG 1.4.11），处置权在
+              视觉方向票，本票不加描边/投影。 */}
           <Switch
-            className="account-switch"
-            thumbClassName="account-switch-knob group-data-[size=default]/switch:data-checked:translate-x-0"
             aria-label={t('推送通知')}
             checked={notifyOn}
             onCheckedChange={(checked) => {

@@ -306,7 +306,7 @@ test.describe('chief drawer model row (#615)', () => {
 
   test('the gear reaches board settings from a wake surface', async ({ page }) => {
     await page.goto('/app/team?scenario=12');
-    await page.locator('.secondary-fab').click();
+    await page.locator('button[aria-label="总管"]').click();
     await expect(drawer(page)).toBeVisible();
     const gear = drawer(page).locator('button[aria-label="总管设置"]');
     await expect(gear).toBeVisible();
