@@ -1,6 +1,6 @@
 {
   "frozenFrom": {
-    "sha": "cafa9e1197984120319f5417d639e2522d7a0d12",
+    "sha": "034bf7d58491bb12a5cbbc686b1a5e261d088cc5",
     "date": "2026-10-05"
   },
   "scope": "apps/web/src; per-face css = *.css minus the ui-debt-gate.mjs WHITELIST (carrier layer); bare controls = <button|<input|<select|<textarea occurrences in *.tsx minus components/ui/",
@@ -19,13 +19,12 @@
     "overlays/overlays.css": 541,
     "pages/pages.css": 2058,
     "routes/agent-detail.css": 396,
-    "secondary/secondary.css": 850,
     "ui/chip.css": 42,
     "ui/dialog.css": 240,
     "ui/input.css": 17
   },
   "rawControls": {
-    "total": 43,
+    "total": 42,
     "files": {
       "chief/chief-agent-dialog.tsx": 1,
       "chief/chief-drawer.tsx": 3,
@@ -46,7 +45,6 @@
       "overlays/search-panel.tsx": 4,
       "pages/project-new-page.tsx": 1,
       "routes/agent-detail-page.tsx": 2,
-      "routes/api-key-create-dialog.tsx": 1,
       "ui/input.tsx": 1
     }
   }

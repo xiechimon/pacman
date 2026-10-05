@@ -12,9 +12,12 @@
 // itself stays in both layouts — 17c shows it absent, but a toggle with no
 // way back is a trap (divergence noted, 01 册 §8).
 //
-// B2 · secondary 面（XMON-20）：页内控件（布局切换片、创建 Agent 槽）全部走
-// components/ui/Button 底座，per-face 几何仍住 secondary.css（域 css unlayered
-// 压 utility 的仓律），类名 alias 原样保留（#411 别名优先）。
+// #947 per-face 清零：secondary.css 退役，页内几何改挂 token utility（原值
+// 等值迁移：卡 76px = h-[76px]、网格 gap 12 = gap-3、toprow 18/28 与卡片
+// 766 版心同属阶梯外一次性实测值走 §3.1(a) arbitrary）。控件全部走
+// components/ui 件（Button ghost 底座 + 七通道中和，#908
+// comment-6001887439 裁决 3）；类名别名按 #910 裁定 1 退役，e2e 载体换
+// role/text 一级 + data-testid 二级（agent 卡 = 计数锚，见卡位注）。
 //
 // #490: chart 此前是把 17c 捕获到的空态当成了唯一状态 —— 那份捕获的团队是
 // 0 个成员，于是 chart 分支写死 暂无成员 字面量，同一份数据下与 grid 自相
@@ -51,20 +54,22 @@ export const TEAM_LAYOUT_STORAGE_KEY = 'pacman.teamMembersLayout';
 
 type TeamLayout = 'grid' | 'chart';
 
-/** B2 · secondary 面（XMON-20）：页内控件全走 components/ui 件，几何仍由
- *  secondary.css 的 per-face 规则承载（域 css unlayered 压 utility 的仓律），
- *  类名 alias（#411 别名优先）原样留在元素上。下面这条工具类只并掉底座与
- *  散写形的差额——Button 自带 active:translate-y-px 的按下位移，散写形没有。
+/** 差额并项：散写形字重 400（底座 font-medium）、无按下位移、无内垫。
  *  `not-aria-[haspopup]` 与底座同链，故 tailwind-merge 能直接顶掉它。 */
 const BASE_DELTA = 'active:not-aria-[haspopup]:translate-y-0 font-normal px-0 leading-[inherit]';
 
-/** 布局切换片的两个 chip（XMON-103）：底座 = components/ui/tabs 的分段档，
- *  几何/配色/过渡全部由 pages.css 的 `.page-tabs-group` / `.page-tab` 与 #138
- *  家族规则承载（与模型服务页 runtime tab、topbar「任务|文件」同一份规则，
- *  secondary.css 不再有本页私写的盒模型与 hover 覆盖）。两个 chip 因此共享
- *  一条尺寸规格和一条缓动。别名类（#411 别名优先）原样留在元素上，作 e2e /
- *  语义定位用。 */
-const tabClass = (active: boolean) => `team-layout-tab${active ? ' team-layout-tab--active' : ''}`;
+/** 创建 Agent 槽（grid 布局）：76px 全宽虚线钮，几何是 r7 12 实测的一次性
+ *  值（§3.1(a)）；ghost 件配方按七通道律就地归零（原形无 hover、方角族
+ *  8px 圆角随虚线卡语言保留，与 chart 布局的虚线创建卡同族）。 */
+const CREATE_SLOT_CLS =
+  'h-[76px] cursor-pointer gap-2 rounded-[8px] border border-dashed border-(--border-strong) bg-transparent text-[13px] text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary)';
+
+/** Agent 卡（#485：进详情面的链接）：76px 卡盒 + radius-popover 圆角 +
+ *  surface-secondary 底（#886 卡底抬档配方），hover 边框亮一档——旧规则引
+ *  未定义槽 --card-border-hover 的 fallback（= --text-tertiary），等值迁移
+ *  取实算值。过渡沿旧形 150ms（= --dur-fast）border-color。 */
+const AGENT_CARD_CLS =
+  'flex h-[76px] items-center gap-3 rounded-(--radius-popover) border border-(--border-default) bg-(--surface-secondary) px-4 text-inherit no-underline transition-[border-color] duration-(--dur-fast) ease-[ease] hover:border-(--text-tertiary)';
 
 function readStoredLayout(storage: Storage): TeamLayout {
   return storage.getItem(TEAM_LAYOUT_STORAGE_KEY) === 'chart' ? 'chart' : 'grid';
@@ -120,44 +125,55 @@ export function TeamPage() {
         </>
       }
       right={
-        <Link className="secondary-link" to={{ pathname: '/app/account', search }}>
+        <Link
+          className="cursor-pointer border-0 bg-transparent p-0 text-[13px] text-(--card-button)"
+          to={{ pathname: '/app/account', search }}
+          aria-label={t('设置')}
+        >
           {t('设置')}
         </Link>
       }
     >
-      <div className={`team-toprow${layout === 'chart' ? ' team-toprow--chart' : ''}`}>
+      <div className="mt-[18px] flex h-7 items-center justify-between">
         {layout === 'grid' && (
-          <div className="team-stats">
-            <span className="team-members">{t('{n} 个成员', { n: team.members })}</span>
+          <div className="flex items-center">
+            <span className="mr-1.5 text-xs text-(--text-secondary)">
+              {t('{n} 个成员', { n: team.members })}
+            </span>
           </div>
         )}
         {/* XMON-103：分段控制器正本 = components/ui/tabs 的 segmented 档
             （pages.css `.page-tabs-group`/`.page-tab`）。受控 value/onValueChange
             落回 switchLayout（照旧写 localStorage），role=tablist/tab 与
-            aria-selected 由 Base UI 承载，别名类 .team-layout-tabs /
-            .team-layout-tab 原样透出。 */}
+            aria-selected 由 Base UI 承载。#947：别名类退役，e2e 载体 =
+            role=tab + aria-label（grid/chart）；chart 布局下 stats bar 退场，
+            ml-auto 把 tablist 顶回 r7 12 的右缘（旧 --chart 后代选择器
+            的等值迁移）。 */}
         <Tabs
           value={layout}
           onValueChange={(value) => switchLayout(value as TeamLayout)}
-          className="team-layout-tabs-root"
+          className={layout === 'chart' ? 'ml-auto' : undefined}
         >
-          <TabsList variant="segmented" className="team-layout-tabs">
-            <TabsTrigger value="grid" className={tabClass(layout === 'grid')} aria-label="grid">
+          <TabsList variant="segmented">
+            <TabsTrigger value="grid" aria-label="grid">
               <Grid2x2 />
             </TabsTrigger>
-            <TabsTrigger value="chart" className={tabClass(layout === 'chart')} aria-label="chart">
+            <TabsTrigger value="chart" aria-label="chart">
               <ChartNetwork />
             </TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
       {layout === 'grid' ? (
-        <div className="team-grid">
+        <div className="mt-[9px] grid grid-cols-2 gap-3" data-testid="team-agent-grid">
           {/* #485: 卡是进 Agent 详情编辑面的入口（r3 §4「团队页点 Agent 卡
               进入」）。卡片由 div 改 Link —— 推翻 a3 审计把它归类为「卡表面
               非控件」（report-pages.md:88）的裁决：原版点得进，本仓此前点不
-              进，Agent 建出来就再也够不着编辑面。link 反馈态见 secondary.css
-              的 .team-agent-card:hover。scenario 随行（#121 Link 律）。 */}
+              进，Agent 建出来就再也够不着编辑面。link 反馈态 = 边框亮一档
+              （AGENT_CARD_CLS）。scenario 随行（#121 Link 律）。
+              data-testid="team-agent-card" = #910 二级载体（resource-row
+              同款）：卡的计数锚——页面上 role=link 还有侧栏/头部动作，
+              计数与按名过滤需要域内锚。 */}
           {/* fixture 删除覆面（#66 deletions，#207 侧栏项目行先例）：删掉的 Agent 卡
               随行隐去，reload 还原；live 面名单 = invalidateAll 重取 members 真值。 */}
           {team.agents
@@ -165,35 +181,43 @@ export function TeamPage() {
             .map((agent) => (
               <Link
                 key={agent.id}
-                className="team-agent-card"
+                className={AGENT_CARD_CLS}
+                data-testid="team-agent-card"
                 to={{ pathname: `${AGENTS_HREF}/${agent.id}`, search }}
               >
-                <span className="team-agent-avatar">
+                <span className="flex size-[52px] flex-none items-center justify-center overflow-hidden rounded-full bg-(--agent-avatar-bg) [&_img]:size-[52px]">
                   <SeededAvatar
                     name={agent.displayName}
                     src={agent.avatarUrl}
                     fallback="/avatar-robot-1.svg"
                   />
                 </span>
-                <span className="team-agent-text">
-                  <span className="team-agent-name">{agent.displayName}</span>
-                  <span className="team-agent-model">
+                <span className="flex min-w-0 flex-col">
+                  <span className="text-sm leading-[18px] font-medium text-(--text-primary)">
+                    {agent.displayName}
+                  </span>
+                  <span className="text-[11px] leading-[18px] text-(--text-tertiary)">
                     {agent.model}
                     {agent.isDefault ? t(' · 默认') : ''}
                   </span>
-                  <span className="team-agent-role">{agent.role ?? t('未设置职责')}</span>
+                  {/* 职责行墨 --text-dim → --text-tertiary（#947 实测换槽，
+                      #908 裁决 2）：dim×surface-secondary 亮模 2.73 低于 12px
+                      文本 floor 4.5（drive-947 E 面），tertiary 同对实测
+                      5.98/6.55；token 值零改动。 */}
+                  <span className="text-xs leading-4 text-(--text-tertiary)">
+                    {agent.role ?? t('未设置职责')}
+                  </span>
                 </span>
               </Link>
             ))}
           {/* #170: the dialog family form (r2 §8.1 capture 20) lives in
               create-agent-dialog.tsx — DialogShell law, POST agents on live. */}
-          {/* 差额并项：散写形字重 400（底座 font-medium）、无按下位移。 */}
           <Button
             variant="ghost"
-            className={`team-create-agent ${BASE_DELTA}`}
+            className={`${CREATE_SLOT_CLS} ${BASE_DELTA}`}
             onClick={() => setCreateOpen(true)}
           >
-            <span className="team-create-icon">
+            <span className="flex size-5 items-center justify-center rounded-full border border-current [&_svg]:size-3">
               <PlusSmall />
             </span>
             {t('创建 Agent')}

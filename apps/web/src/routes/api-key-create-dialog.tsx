@@ -7,6 +7,13 @@
 // 提交走页面注入的 onCreate（POST /api/teams/{id}/api-keys——server 全表单
 // 在位，body schema = createApiKeyBodySchema）。live-only（fixture 面按钮
 // 保持无操作）。
+// #947 per-face 清零：secondary.css 退役，表单族几何改挂 token utility
+// （min-w 320 / 工具盘 max-h 264 是 [推断] 面的既有实测值，§3.1(a)）。
+// 名称输入落 components/ui/Input 正典默认档（spec/22 §5.3：h-8 32px /
+// rounded-none / border-input / 件自带 focus 环——旧 36px 盒与 2px outline
+// 环覆写按 §2.6-1 退役，36px 不以别名/utility/size 档任何形式存续）。
+// 底部双钮走 Button brand/ghost 件档（旧 py-8 散写高吸附 h-8 控件高正本），
+// ghost 取消钮与两枚快捷钮按七通道律归零（#908 comment-6001887439 裁决 3）。
 
 import { CHIEF_REMOTE_TOOLS } from '@pacman/shared';
 import { useState } from 'react';
@@ -19,6 +26,12 @@ import { useI18n } from '../i18n/provider.js';
 /** 权限位可选集 = remote tools 51 词表（grants 白名单消费面 =
  * services/mcp-face.ts）。 */
 const TOOL_NAMES = CHIEF_REMOTE_TOOLS.map((tool) => tool.name);
+
+/** 快捷钮（授予全部/清空）：text 档实测形（无框 / 0 内垫 / tertiary 墨 /
+ *  12px 字 / 字重 400 / 无 hover 变化）——ghost 件配方按七通道律逐位归零，
+ *  border-0 压掉底座 1px 透明边（有边即宽 2px，右对齐排会位移）。 */
+const QUICK_BTN_CLS =
+  'border-0 cursor-pointer px-0 text-xs leading-[inherit] font-normal bg-transparent text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0';
 
 export interface ApiKeyCreateBody {
   name: string | null;
@@ -75,22 +88,18 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
       title={t('新建密钥')}
       open={open}
       onClose={onClose}
-      // B2 · secondary 面（XMON-20）：底座 = components/ui/Button（创建 brand 档 /
-      // 取消 ghost 档）。per-face 值（8 16 内垫 / 13px 字 / 8px 圆角 / 实底色）
-      // 仍住 secondary.css；差额并项——h-auto 保散写形的内垫撑高（底座 h-8
-      // 是定高 32）、取消字重 400、两者均无按下位移。
       footer={
-        <div className="apikey-form-footer">
+        <div className="flex gap-2 px-4 py-3">
           <Button
             variant="brand"
-            className="apikey-form-create h-auto leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+            className="border-0 px-4 text-[13px] leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
             onClick={submit}
           >
             {t('创建')}
           </Button>
           <Button
             variant="ghost"
-            className="apikey-form-cancel h-auto font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+            className="border-0 px-4 text-[13px] leading-[inherit] font-normal text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0"
             onClick={onClose}
           >
             {t('取消')}
@@ -98,29 +107,27 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
         </div>
       }
     >
-      <div className="apikey-form">
-        <label className="apikey-form-label" htmlFor="apikey-name-input">
+      <div className="flex min-w-[320px] flex-col gap-2.5">
+        <label className="text-xs text-(--text-tertiary)" htmlFor="apikey-name-input">
           {t('名称（可选）')}
         </label>
-        {/* a3-pages 收编 → B2 · secondary 面（XMON-20）：Input 走 components/ui
-            件，per-face 值（36px 盒 / 0 圆角 / card-border 描边 / surface 底 /
-            0 12 内垫 / 14px 字）以工具类钉回，不取底座默认档。聚焦环按仓级 #388
-            canon（2px --focus-ring + offset 2，与 B2 门页输入同配方）；过渡窄写
-            压掉 TW 的 transition-colors（属性表含 outline-color，会吞掉环的初值）。
-            类名留作 e2e/语义定位别名。 */}
+        {/* #947：Input 正典默认档（§5.3）——h-8 / rounded-none / border-input，
+            focus 环走件自带 border-ring + ring 档；旧 36px 盒、card-border
+            描边与 2px outline 环覆写全部退役。id/htmlFor 配对是语义资产
+            （getByLabel 一级载体），保留不动。 */}
         <Input
           id="apikey-name-input"
-          className="apikey-form-input h-9 rounded-none border-(--card-border) bg-(--surface) px-3 py-0 text-sm text-foreground placeholder:text-current/50 transition-[color,background-color,border-color] focus-visible:border-(--card-border) focus-visible:ring-0 focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 dark:bg-(--surface)"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder={t('如：笔记本、CI 机器')}
         />
-        {/* XMON-75：这两行与下面的读写位此前是裸 `<input type="checkbox">`，
-            画出来是浏览器自带的方框，跟仓内 .dlg-accept-check 那一族的复选
-            tile 不同形。改用 components/ui/checkbox.tsx 统一形态。 */}
-        <div className="apikey-form-toggles">
+        {/* XMON-75：这两行与下面的读写位此前是裸 checkbox 原生控件，画出来
+            是浏览器自带的方框，跟仓内 .dlg-accept-check 那一族的复选 tile
+            不同形。改用 components/ui/checkbox.tsx 统一形态（行盒布局由
+            件内 .ui-checkbox 承载，此处只并字体档）。 */}
+        <div className="flex flex-col gap-1.5">
           <Checkbox
-            className="apikey-form-toggle"
+            className="text-[13px] text-(--text-secondary)"
             checked={gitAccess}
             onCheckedChange={setGitAccess}
             label={t('Git 读写（托管仓库 push/pull）')}
@@ -128,7 +135,7 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
             {t('Git 读写（托管仓库 push/pull）')}
           </Checkbox>
           <Checkbox
-            className="apikey-form-toggle"
+            className="text-[13px] text-(--text-secondary)"
             checked={mcpAccess}
             onCheckedChange={setMcpAccess}
             label={t('MCP 访问（MCP 客户端接入）')}
@@ -136,46 +143,34 @@ export function ApiKeyCreateDialog({ open, onClose, onCreate }: ApiKeyCreateDial
             {t('MCP 访问（MCP 客户端接入）')}
           </Checkbox>
         </div>
-        <div className="apikey-form-tools-head">
-          <span className="apikey-form-label">{t('工具权限位')}</span>
-          <span className="apikey-form-quick">
-            {/* a3-pages 收编 → B2 · secondary 面（XMON-20）：Button ghost 档 + per-face
-                工具类钉回 A3 text 档的实测形（无框 / 0 内垫 / tertiary 墨 / 12px 字 /
-                字重 400），并把 ghost 的 hover 档一并顶回原值——散写形无 hover 变化。
-                border-0 压掉底座 1px 透明边（有边即宽 2px，右对齐排会位移）。 */}
-            <Button
-              variant="ghost"
-              className="apikey-form-quickbtn border-0 cursor-pointer px-0 text-xs font-normal leading-[inherit] bg-transparent text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0"
-              onClick={grantAll}
-            >
+        <div className="flex items-baseline justify-between">
+          <span className="text-xs text-(--text-tertiary)">{t('工具权限位')}</span>
+          <span className="flex gap-2">
+            <Button variant="ghost" className={QUICK_BTN_CLS} onClick={grantAll}>
               {t('授予全部')}
             </Button>
-            <Button
-              variant="ghost"
-              className="apikey-form-quickbtn border-0 cursor-pointer px-0 text-xs font-normal leading-[inherit] bg-transparent text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0"
-              onClick={clearAll}
-            >
+            <Button variant="ghost" className={QUICK_BTN_CLS} onClick={clearAll}>
               {t('清空')}
             </Button>
           </span>
         </div>
-        <div className="apikey-form-tools">
-          <div className="apikey-form-toolrow apikey-form-toolrow--head">
-            <span className="apikey-form-toolname" />
-            <span className="apikey-form-toolcol">{t('读')}</span>
-            <span className="apikey-form-toolcol">{t('写')}</span>
+        <div className="max-h-[264px] overflow-y-auto rounded-none border border-(--border-default) px-2 py-1">
+          <div className="flex items-center gap-2 py-[3px] text-xs text-(--text-tertiary)">
+            <span className="flex-1" />
+            <span className="w-8 text-center">{t('读')}</span>
+            <span className="w-8 text-center">{t('写')}</span>
           </div>
           {TOOL_NAMES.map((tool) => (
-            <div key={tool} className="apikey-form-toolrow">
-              <span className="apikey-form-toolname">{tool}</span>
-              <span className="apikey-form-toolcol">
+            <div key={tool} className="flex items-center gap-2 py-[3px] text-xs">
+              <span className="flex-1 text-(--text-secondary)">{tool}</span>
+              <span className="w-8 text-center text-(--text-tertiary)">
                 <Checkbox
                   checked={read.has(tool)}
                   onCheckedChange={() => setRead((set) => toggle(set, tool))}
                   label={`${t('读')} ${tool}`}
                 />
               </span>
-              <span className="apikey-form-toolcol">
+              <span className="w-8 text-center text-(--text-tertiary)">
                 <Checkbox
                   checked={write.has(tool)}
                   onCheckedChange={() => setWrite((set) => toggle(set, tool))}

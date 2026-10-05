@@ -419,7 +419,7 @@ test('a wake-family FAB carries the same ⌘J hint (shared consumption point)', 
   page,
 }) => {
   await page.goto('/app/team?scenario=12');
-  const fab = page.locator('.secondary-fab');
+  const fab = page.locator('button[aria-label="总管"]');
   const hint = fab.locator('.kbd-hint');
   await expect(hint).toBeHidden();
   await fab.hover();

@@ -19,7 +19,7 @@ const TEAM = '/app/team?scenario=12';
 
 async function openDialog(page: Page) {
   await page.goto(TEAM);
-  await page.locator('.team-create-agent').click();
+  await page.getByRole('button', { name: '创建 Agent' }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   return dialog;
@@ -60,14 +60,15 @@ test('empty name keeps 创建 disabled; typing lifts it; fixture submit closes',
 
 test('chart layout drops the grid 创建 Agent slot for the org chart', async ({ page }) => {
   await page.goto(TEAM);
-  await page.locator('.team-layout-tab[aria-label="chart"]').click();
+  await page.getByRole('tab', { name: 'chart' }).click();
   // scenario 12 的团队有 1 个成员 —— chart 出组织图（#490），不再是恒定的
-  // 暂无成员。grid 的 创建 Agent 槽位在 chart 下不渲染，创建位改由组织图
-  // 子列末位的虚线节点承接。
-  await expect(page.locator('.team-chart-node')).toHaveCount(1);
-  await expect(page.locator('.team-chart-empty')).toHaveCount(0);
-  await expect(page.locator('.team-create-agent')).toHaveCount(0);
-  await expect(page.locator('.team-chart-create')).toBeVisible();
+  // 暂无成员。grid 的 创建 Agent 槽位在 chart 下不渲染（整格退场 =
+  // team-agent-grid 容器 0 计），创建位改由组织图子列末位的虚线节点承接
+  // （同名 创建 Agent 钮，#947/#910 载体）。
+  await expect(page.getByTestId('team-chart-node')).toHaveCount(1);
+  await expect(page.getByText('暂无成员')).toHaveCount(0);
+  await expect(page.getByTestId('team-agent-grid')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '创建 Agent' })).toBeVisible();
 });
 
 test('配置服务商 SPA-navigates to the providers route, scenario rides along', async ({ page }) => {

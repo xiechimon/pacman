@@ -2,8 +2,8 @@
    组件正本——头像头 + 行式字段。两处消费：`/app/account`（secondary 面，
    规则原住 secondary.css）与 `/app/resources/agents/[id]`（资源面）。
 
-   secondary.css 只留帐号面自己的档（语言 select、语言 dropdown、推送通知
-   开关）；本文件管模板**排版**本体：卡盒类名 / 头像头 / 行 / label / 值槽。
+   帐号面自己的档（语言 select、语言 dropdown、推送通知开关）原住
+   secondary.css（#947 已退役），现住消费点工具类；本文件管模板**排版**本体。
    卡盒的皮肤（描边 / 底色 / 圆角）在 components/ui/panel.tsx 的 outlined 档
    ——本文件不重复实现一套卡。颜色与圆角一律取既有 token，不新造。
 

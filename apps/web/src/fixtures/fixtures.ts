@@ -1881,8 +1881,9 @@ export const agentDelete: FixtureSet = {
 };
 
 /** #444 named scenario（无 capture，notify-banner 先例）：绑定 Agent 的
- *  头像骑上总管 FAB。一套内容同时供 board（.chief-fab）与 team
- *  （.secondary-fab）两个消费点（projectFixture 多路由单集先例）；
+ *  头像骑上总管 FAB。一套内容同时供 board（.chief-fab）与 team（secondary
+ *  壳的 总管 FAB，#947 起载体 = aria-label）两个消费点（projectFixture
+ *  多路由单集先例）；
  *  chiefUnread 2 钉角标与头像共存面。avatarUrl null = dicebear 按
  *  displayName 种子生成，e2e 钉图标来源切换（chief-fab.spec），非像素。 */
 const FAB_AVATAR_CHIEF: ChiefContent = {

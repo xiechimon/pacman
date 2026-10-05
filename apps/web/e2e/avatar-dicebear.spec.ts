@@ -55,8 +55,8 @@ test('team agent card seeds by agent displayName — user/agent srcs differ (不
 }) => {
   await stubDicebear(page);
   await page.goto('/app/team?scenario=12');
-  const card = page.locator('.team-agent-card', { hasText: 'r3-builder' });
-  await expect(card.locator('.team-agent-avatar img')).toHaveAttribute('src', AGENT_SRC);
+  const card = page.getByTestId('team-agent-card').filter({ hasText: 'r3-builder' });
+  await expect(card.locator('img')).toHaveAttribute('src', AGENT_SRC);
 });
 
 test('live members projection: two agents → two distinct seeded srcs; avatarUrl override wins', async ({
@@ -97,9 +97,9 @@ test('live members projection: two agents → two distinct seeded srcs; avatarUr
   );
   await page.goto('/app/team');
 
-  const alpha = page.locator('.team-agent-card', { hasText: 'Alpha' });
-  const beta = page.locator('.team-agent-card', { hasText: 'Beta' });
-  const gamma = page.locator('.team-agent-card', { hasText: 'Gamma' });
+  const alpha = page.getByTestId('team-agent-card').filter({ hasText: 'Alpha' });
+  const beta = page.getByTestId('team-agent-card').filter({ hasText: 'Beta' });
+  const gamma = page.getByTestId('team-agent-card').filter({ hasText: 'Gamma' });
   await expect(alpha.locator('img')).toHaveAttribute(
     'src',
     'https://api.dicebear.com/9.x/lorelei/svg?seed=Alpha',
@@ -148,7 +148,7 @@ test('create-agent dialog: empty name keeps the static asset; typing previews th
 }) => {
   await stubDicebear(page);
   await page.goto('/app/team?scenario=12');
-  await page.locator('.team-create-agent').click();
+  await page.getByRole('button', { name: '创建 Agent' }).click();
   const img = page.locator('.dlg-agent-avatar img');
   await expect(img).toHaveAttribute('src', '/avatar-robot-1.svg');
   await page.locator('#dlg-agent-name').fill('nova');

@@ -6,6 +6,14 @@
 // role / provider / modelId / description），所以根 = 总管绑定的 agent
 // （GET teams/{id}/chief 的 chief.agent.agentId），未绑定时退首个成员；其余
 // 成员按序落子列，末位接虚线「创建 Agent」卡。
+//
+// #947 per-face 清零：secondary.css 退役，chart 族几何改挂 token utility
+// （参考产品实测值等值迁移：节点卡 220×56 / 圆角 8 / 连接线 44×1 / 括号列
+// 28 宽、圆角 7 是阶梯外一次性尺寸，§3.1(a)）。类名别名按 #910 裁定 1
+// 退役——chart 内部全是无 role 的结构 div，e2e 载体走 data-testid 二级
+// （节点/名字/模型行/皇冠/服务商徽标/连接线/括号/子列），根节点身份由
+// 皇冠徽标承载（crown 只渲染在总管绑定 agent 上，即原 --root 修饰类的
+// 语义载体）。
 import type { SVGProps } from 'react';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
@@ -75,36 +83,58 @@ function PlusGlyph(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** 组织图节点卡：220×56 / 圆角 8 / 1px --border-default；32 圆头像 + 两行文本
- *  （名字 12px/500，第二行 = 服务商徽标胶囊 + 10px mono 模型行）。参考产品的
- *  节点可点开编辑（本仓那条交互归 #485，此处只落结构与外观）。 */
+/** 节点卡盒（成员卡与虚线创建卡同族）：220×56 / 圆角 8 / 1px
+ *  --border-default / surface 底 / 内垫 0 10（参考产品实测）。 */
+const NODE_CLS =
+  'flex h-14 w-[220px] items-center gap-2 rounded-[8px] border border-(--border-default) bg-(--surface) px-2.5';
+
+/** 组织图节点卡：32 圆头像 + 两行文本（名字 12px/500，第二行 = 服务商徽标
+ *  胶囊 + 10px mono 模型行）。参考产品的节点可点开编辑（本仓那条交互归
+ *  #485，此处只落结构与外观）。 */
 function ChartNode({ agent, crown }: { agent: TeamAgentCard; crown?: boolean }) {
   const { t } = useI18n();
   return (
-    <div className={`team-chart-node${crown ? ' team-chart-node--root' : ''}`}>
-      <span className="team-chart-avatar">
+    <div className={NODE_CLS} data-testid="team-chart-node">
+      <span className="flex size-8 flex-none items-center justify-center overflow-hidden rounded-full bg-(--agent-avatar-bg) [&_img]:size-8">
         <SeededAvatar
           name={agent.displayName}
           src={agent.avatarUrl}
           fallback="/avatar-robot-1.svg"
         />
       </span>
-      <span className="team-chart-text">
-        <span className="team-chart-row">
-          <span className="team-chart-name">{agent.displayName}</span>
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex h-[18px] min-w-0 items-center gap-1">
+          <span
+            className="truncate text-xs font-medium text-(--text-primary)"
+            data-testid="team-chart-name"
+          >
+            {agent.displayName}
+          </span>
           {crown && (
-            <span className="team-chart-crown">
+            <span
+              className="flex size-[18px] flex-none items-center justify-center rounded-full bg-(--spot-soft) text-(--card-button)"
+              data-testid="team-chart-crown"
+            >
               <CrownGlyph />
             </span>
           )}
         </span>
-        <span className="team-chart-row">
+        <span className="flex h-[18px] min-w-0 items-center gap-1">
           {agent.provider ? (
-            <span className="team-chart-provider">
+            <span
+              className="flex size-[18px] flex-none items-center justify-center rounded-full bg-(--surface-secondary) text-(--text-primary)"
+              data-testid="team-chart-provider"
+            >
               <ProviderGlyph />
             </span>
           ) : null}
-          <span className="team-chart-model">
+          {/* 模型行墨 --text-dim → --text-tertiary（#947 实测换槽，#908
+              裁决 2）：dim×surface 亮模 2.89 低于 10px 文本 floor 4.5，
+              tertiary 同对实测 ~6.3/7.6（卡面模型行同墨，域内一致）。 */}
+          <span
+            className="truncate font-mono text-[10px] text-(--text-tertiary)"
+            data-testid="team-chart-model"
+          >
             {agent.model}
             {agent.isDefault ? t(' · 默认') : ''}
           </span>
@@ -128,32 +158,41 @@ export function TeamChart({
   const { t } = useI18n();
   const root = agents.find((a) => a.id === chiefAgentId) ?? agents[0];
   if (!root) {
-    return <div className="team-chart-empty">{t('暂无成员')}</div>;
+    return (
+      <div className="mt-10 text-center text-[13px] text-(--text-tertiary)">{t('暂无成员')}</div>
+    );
   }
   return (
-    <div className="team-chart">
+    <div className="mt-[9px] flex items-center">
       <ChartNode agent={root} crown />
-      <div className="team-chart-link" />
-      <div className="team-chart-children">
-        <div className="team-chart-bracket-col">
-          <div className="team-chart-bracket" />
+      <div className="h-px w-11 flex-none bg-(--border-strong)" data-testid="team-chart-link" />
+      <div className="flex" data-testid="team-chart-children">
+        {/* 括号列本身不画东西，只给绝对定位的括号当坐标架：高度随子列撑满，
+            于是括号 top/bottom 各留半个卡片高（28），正好落在首/末子节点的
+            垂直中心上。 */}
+        <div className="relative w-7 flex-none">
+          <div
+            className="absolute bottom-7 left-0 top-7 w-7 rounded-l-[7px] border border-r-0 border-(--border-strong)"
+            data-testid="team-chart-bracket"
+          />
         </div>
-        <div className="team-chart-nodes">
+        <div className="flex flex-col gap-2" data-testid="team-chart-nodes">
           {agents
             .filter((a) => a.id !== root.id)
             .map((a) => (
               <ChartNode key={a.id} agent={a} />
             ))}
-          {/* B2 · secondary 面（XMON-20）：底座 = components/ui/Button，per-face
-              几何（220×56 / 虚线 / 内垫 10）仍住 secondary.css 的 .team-chart-create。
-              随底座带来的三处差额就地并掉——散写形是 flex-start 而非居中、文本
-              左对齐、且无按下位移。 */}
+          {/* 虚线创建卡：与成员卡同族盒模型（NODE_CLS），border-style 换
+              dashed、文本左对齐。ghost 件配方按七通道律归零到 surface 皮肤
+              （hover 抬 --surface-secondary 一档是旧 @media hover 规则的
+              等值迁移——TW v4 hover: 变体自带 hover:hover 门），字重 500
+              即件默认 font-medium，不归零。 */}
           <Button
             variant="ghost"
-            className="team-chart-create justify-start text-left leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+            className={`${NODE_CLS} cursor-pointer justify-start border-dashed text-left text-xs font-medium text-(--text-tertiary) leading-[inherit] hover:bg-(--surface-secondary) hover:text-(--text-tertiary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-(--surface) aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0`}
             onClick={onCreate}
           >
-            <span className="team-chart-create-icon">
+            <span className="flex size-6 flex-none items-center justify-center rounded-full border border-dashed border-(--border-strong)">
               <PlusGlyph />
             </span>
             {t('创建 Agent')}

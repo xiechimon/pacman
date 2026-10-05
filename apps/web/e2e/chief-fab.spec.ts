@@ -100,7 +100,9 @@ test.describe('FAB icon follows the bound agent (#444)', () => {
   test('bound: a ChiefWake family swaps at the shared consumption point', async ({ page }) => {
     await stubDicebear(page);
     await page.goto('/app/team?scenario=fab-avatar');
-    const fab = page.locator('.secondary-fab');
+    // button 限定：fab-avatar 场景抽屉开态即挂载，面板本体也带 aria-label
+    // 总管（chief-drawer.tsx）——裸属性选择器会双匹配（#947 重钉实测）。
+    const fab = page.locator('button[aria-label="总管"]');
     await expect(fab.locator('.fab-avatar img')).toHaveAttribute('src', R3_SRC);
     await expect(fab.locator('svg')).toHaveCount(0);
     await expect(fab.locator('.fab-badge')).toHaveText('2');
@@ -116,7 +118,7 @@ test.describe('FAB icon follows the bound agent (#444)', () => {
 
   test('unbound: the static glyph stays, no avatar face', async ({ page }) => {
     await page.goto('/app/team?scenario=12');
-    const fab = page.locator('.secondary-fab');
+    const fab = page.locator('button[aria-label="总管"]');
     await expect(fab.locator('svg')).toHaveCount(1);
     await expect(fab.locator('.fab-avatar')).toHaveCount(0);
   });

@@ -62,7 +62,7 @@ test.describe('chief panel docked form (#447)', () => {
     await page.goto('/app/team?scenario=12');
     await expect(drawer(page)).toHaveCount(0);
 
-    await page.locator('.secondary-fab').click();
+    await page.locator('button[aria-label="总管"]').click();
     await expect(drawer(page)).toBeVisible();
 
     await page.keyboard.press('Escape');
@@ -179,8 +179,8 @@ test.describe('chief panel docked form (#447)', () => {
     {
       name: 'secondary',
       route: '/app/team?scenario=12',
-      fab: '.secondary-fab',
-      col: '.secondary-main-col',
+      fab: 'button[aria-label="总管"]', // #947: .secondary-fab 类名钩退役 → aria-label 一级（button 限定，抽屉面板同 label）
+      col: '.secondary-main-col', // 零规则跨域钩（chief 域消费，spec/22 §5.0 残留律）
     },
   ] as const) {
     test(`${name}: the main column narrows by 418 while docked and restores on close`, async ({

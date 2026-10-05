@@ -189,8 +189,10 @@ test('branch-dialog seg: hover tints Git, click swaps the tab body', async ({ pa
 
 test('team layout toggle: official ring border + hover tint + chip token', async ({ page }) => {
   await themed(page, 'light', '/app/team?scenario=12');
+  // #947/#910 载体：.team-layout-tab(s) 别名退役 → role=tablist/tab 一级
+  // （规则正本仍住 pages.css 分段档，值零改动）。
   const ring = await page.evaluate(() => {
-    const group = document.querySelector('.team-layout-tabs')!;
+    const group = document.querySelector('[role="tablist"]')!;
     return {
       border: getComputedStyle(group).borderTopWidth,
       groupBg: getComputedStyle(group).backgroundColor,
@@ -198,9 +200,9 @@ test('team layout toggle: official ring border + hover tint + chip token', async
   });
   expect(ring.border).toBe('1px');
   expect(ring.groupBg).toBe(GROUP_LIGHT);
-  expect(await bg(page.locator('.team-layout-tab--active'))).toBe(CHIP_LIGHT);
+  expect(await bg(page.locator('[role="tab"][aria-selected="true"]'))).toBe(CHIP_LIGHT);
 
-  const chart = page.locator('.team-layout-tab').nth(1);
+  const chart = page.getByRole('tab', { name: 'chart' });
   await chart.hover();
   await expect.poll(() => bg(chart)).toBe(HOVER_LIGHT);
 });

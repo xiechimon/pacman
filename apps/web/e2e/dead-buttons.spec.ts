@@ -218,9 +218,12 @@ test('new-task dialog tools drop the 语音输入 button, keep two live tools', 
 
 test('api-keys empty state drops the 查看文档 button, keeps 新建密钥 (#307)', async ({ page }) => {
   await page.goto('/app/api-keys');
-  await expect(page.locator('.keys-empty')).toBeVisible();
-  await expect(page.locator('.keys-docs')).toHaveCount(0);
-  await expect(page.locator('.keys-create')).toBeVisible();
+  // #947/#910 载体：.keys-empty → keys-empty testid；.keys-docs 类名钩 →
+  // link 文案一级（resource-empty 同款）；.keys-create → 空态内 role=button。
+  const keysEmpty = page.getByTestId('keys-empty');
+  await expect(keysEmpty).toBeVisible();
+  await expect(page.getByRole('link', { name: '查看文档' })).toHaveCount(0);
+  await expect(keysEmpty.getByRole('button', { name: '新建密钥' })).toBeVisible();
 });
 
 test('resources empty state drops the 查看文档 link (#307); skills 空态主钮 = 新建技能弹窗 (XMON-114)', async ({
@@ -266,7 +269,7 @@ test('mcp page is read-only: 无新建入口、行无更多菜单 ink、空态�
 
 test('create-agent dialog drops the avatar 更换 ink (#307)', async ({ page }) => {
   await page.goto('/app/team?scenario=12');
-  await page.locator('.team-create-agent').click();
+  await page.getByRole('button', { name: '创建 Agent' }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('.dlg-agent-swap')).toHaveCount(0);

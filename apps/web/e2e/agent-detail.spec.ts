@@ -64,7 +64,8 @@ async function memoryTitles(page: Page): Promise<string[]> {
 
 test('团队页的 Agent 卡是链接，点击落到详情路由', async ({ page }) => {
   await page.goto(TEAM);
-  await page.locator('.team-agent-card', { hasText: 'r3-builder' }).click();
+  // #947/#910：.team-agent-card 类名钩退役 → team-agent-card testid 二级载体
+  await page.getByTestId('team-agent-card').filter({ hasText: 'r3-builder' }).click();
   await expect(page).toHaveURL(DETAIL);
   await expect(page.locator('.agent-detail')).toBeVisible();
 });

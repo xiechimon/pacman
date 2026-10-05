@@ -93,7 +93,12 @@ test.describe('chief FAB wakes on every shell family', () => {
       fab: '[aria-label="总管"]', // #944: .res-fab 类名钩退役 → aria-label 一级
       gear: true,
     },
-    { name: 'secondary', route: '/app/team?scenario=12', fab: '.secondary-fab', gear: true },
+    {
+      name: 'secondary',
+      route: '/app/team?scenario=12',
+      fab: 'button[aria-label="总管"]', // #947: .secondary-fab 类名钩退役 → aria-label 一级（button 限定）
+      gear: true,
+    },
     {
       name: 'detail',
       // #443: the detail FAB renders only with unread — the row rides the
