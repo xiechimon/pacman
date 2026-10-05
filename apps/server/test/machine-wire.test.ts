@@ -74,8 +74,13 @@ interface World {
   claim(): Promise<{ res: Response; body: { step: ClaimedStep | null } }>;
 }
 
-async function setupWorld(opts: { claimHoldMs?: number } = {}): Promise<World> {
-  const s = bootServer({ claimHoldMs: opts.claimHoldMs ?? 250, pingIntervalMs: 3_600_000 });
+async function setupWorld(
+  opts: { claimHoldMs?: number; pingIntervalMs?: number } = {},
+): Promise<World> {
+  const s = bootServer({
+    claimHoldMs: opts.claimHoldMs ?? 250,
+    pingIntervalMs: opts.pingIntervalMs ?? 3_600_000,
+  });
   // 机器注册 key 走 M2c 发行端点（一次性明文，02 §8/r3 §6）。
   const key = { plain: await issueApiKey(s) };
   // custom provider（r3 §2 记录形状；无 key 网关可留空 = apiKeyCipher null）。
@@ -342,6 +347,43 @@ describe('claim/wake 时序（r3 §1.5 对照：~75s 长轮询节奏 + wake 低�
     const ev = await readWake;
     ctrl.abort();
     expect(machineStreamEventSchema.parse(ev)).toEqual({ type: 'wake' });
+  });
+
+  test('#863 机器通道保活：SSE 注释帧按 pingInterval 心跳（无事件机器的流不再被客户端 bodyTimeout 静默掐断 → machine.online 不闪断 → 会话亲和闸的判据不误放行）', async () => {
+    const w = await setupWorld({ claimHoldMs: 200, pingIntervalMs: 80 });
+    const ctrl = new AbortController();
+    const res = await w.s.app.request('/api/machine/stream', {
+      headers: { authorization: `Bearer ${w.token}` },
+      signal: ctrl.signal,
+    });
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    // 物理故障形态（#863 实跑撞上）：机器 SSE 无事件可发时连接零字节，undici
+    // bodyTimeout（默认 300s，按 body 数据间隔计）掐流 → server onAbort
+    // markOffline → online 闪断至下一次 presence（≤30s）。会话亲和闸按
+    // online 即时判定，闪断窗口内把他机放行 = 无谓换机。修法 = 注释帧保活
+    // （SSE 规范注释行；daemon 帧解析只认 data: 前缀行，注释行零解析面）。
+    let buf = '';
+    let sawComment = false;
+    const deadline = Date.now() + 5_000;
+    read: for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx = buf.indexOf('\n\n');
+      while (idx >= 0) {
+        const frame = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        if (frame.split('\n').some((line) => line.startsWith(':'))) {
+          sawComment = true;
+          break read;
+        }
+        idx = buf.indexOf('\n\n');
+      }
+      if (Date.now() > deadline) break;
+    }
+    ctrl.abort();
+    expect(sawComment).toBe(true);
   });
 });
 

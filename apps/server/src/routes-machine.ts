@@ -242,11 +242,23 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
       const unsubscribe = ctx.machineHub.subscribeMachine(row.teamId, row.id, (ev) => {
         void stream.writeSSE({ data: JSON.stringify(ev) });
       });
+      // #863 机器通道保活：无事件机器的流零字节输出，客户端侧 bodyTimeout
+      // （undici 默认 300s 按 body 数据间隔计）会把 SSE 静默掐断 → onAbort
+      // markOffline → online 闪断到下一次 presence（≤30s）。会话亲和闸（#
+      // 863 tryClaim）按 online 即时判会话机在位与否，闪断窗口内会把他机
+      // 误放行 = 无谓换机（machine-execution-plane §4-7 会话丢失）。修法 =
+      // team/conv 通道同节奏（ctx.pingIntervalMs）的 SSE 注释帧保活；注释行
+      // （`:` 前缀）是 SSE 规范的 keep-alive 形态，daemon 帧解析只认 `data:`
+      // 前缀行（machine-client.ts），注释行零解析面、零 wire 契约变化。
+      const pingTimer = setInterval(() => {
+        void stream.write(': ping\n\n').catch(() => {});
+      }, ctx.pingIntervalMs);
       let release: () => void = () => {};
       const held = new Promise<void>((resolve) => {
         release = resolve;
       });
       stream.onAbort(() => {
+        clearInterval(pingTimer);
         unsubscribe();
         // 推送通道断 = 机器下线 [设计]（daemon 停机即断连；重连窗口内
         // presence 会重新置 online）。
