@@ -1110,6 +1110,128 @@ a.chief-identity {
   color: var(--pick-selected-fg);
 }
 
+/* —— #895 主力机槽（spec 21 A6）：Agent tab「机器」行 + ChiefMachineSelect ———— */
+
+/* 槽块 = 压缩模型块同形（surface 块 / 16 垫 / min-height 62；#772 同律
+   min-height 保英文描述换行时长高）。 */
+.chief-host {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 62px;
+  margin-top: 17px;
+  padding: 8px 16px;
+  background: var(--surface-secondary);
+}
+
+/* wrap = 布局锚点 + 触发钮钉右缘（chief-model-wrap 同律）。 */
+.chief-host-wrap {
+  position: relative;
+  margin-left: auto;
+  flex: none;
+}
+
+/* 触发钮 = chief-select 同形（30 高 / 13px 字 / 1px 墨线框 / 圆角 0）+
+   行首 online dot（new-task machine chip 同族）。类名独立 chief-host-select
+   家族：e2e 的 button.chief-select 选择器钉单元素（strict mode），共类名
+   会打红压缩模型面。 */
+.chief-host-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  height: 30px;
+  min-width: 140px;
+  max-width: 200px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: 0;
+  background: var(--surface);
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.chief-host-select svg {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+/* #772 同律：值单行截断（min-width:0 是省略号触发的前提）。 */
+.chief-host-select-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* online dot（new-task-machine-dot 同族同值：6px / 在线绿 / 离线灰；
+   灰点只表状态，不禁用——钉离线机器 = 等它上线的合法语义）。 */
+.chief-host-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--col-dot-done);
+}
+
+.chief-host-dot[data-on="false"] {
+  background: var(--col-dot-idle);
+}
+
+/* 菜单壳 = chief-model-menu 同形（V2 弹层壳 12 纵垫 + 1px 墨线 + 硬偏移
+   投影；行自带横向内衬铺满选中底色，#872 律）。 */
+.chief-host-menu {
+  position: relative;
+  min-width: 200px;
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--popover-bg);
+  border: 1px solid var(--border-default);
+  border-radius: 0;
+  box-shadow: var(--plate-shadow);
+}
+
+/* 行 = chief-model-row 同形（32 高 / 12px 字 / 行内衬 12）+ 行首 dot。 */
+.chief-host-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.chief-host-row:hover {
+  background: var(--surface-secondary);
+}
+
+.chief-host-row-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chief-host-check {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-tertiary);
+}
+
 /* #751 抽屉头主模型 picker：Popover Positioner 锚定触发钮（贴行底下），
    wrap 只承布局（-4px 光学内缩：菜单 align=start 才能与钮的视觉左缘齐）。 */
 .chief-model-pop-wrap {

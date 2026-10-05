@@ -506,6 +506,62 @@
   white-space: nowrap;
 }
 
+/* #895 三态读标注（spec 21 A8）——读态零控件（行内活控件仍只有 shell 闸）。
+   host 徽标 = 身份标（谁是默认主力机，defaultMachineId 命中行）；running /
+   waiting = 状态行（chief 回合计数投影）。数据 live = GET /chief 封套
+   orchestration 块，fixture = 行字段；无标注 = 零节点（存量 capture 零漂移）。
+   margin-left:auto 同 res-pill 律：本地行 runtimes 已吃 auto 时贴其右，
+   远端行自己撑到行右。 */
+.mach-orchestration {
+  margin-left: auto;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mach-orchestration-host {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  background: var(--surface-secondary);
+  font-size: 11px;
+  line-height: 20px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.mach-orchestration-running,
+.mach-orchestration-waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* 状态行行首点（res-dot 同值域）：进行中绿 / 等待灰。点只作装饰（aria 语义
+   在文案），等待灰点与离线灰点同色——「在等谁」与「机器在不在线」是两个
+   正交事实，别用颜色再表达一遍。 */
+.mach-orchestration-running::before,
+.mach-orchestration-waiting::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--col-dot-done);
+}
+
+.mach-orchestration-waiting::before {
+  background: var(--col-dot-idle);
+}
+
 /* 保存失败行（XMON-80/P2 同律的机器页位）：12px danger，落在机器卡上方——
    开关回滚了，这行是「为什么弹回去了」的唯一说明。 */
 .mach-error {

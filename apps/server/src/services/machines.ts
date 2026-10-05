@@ -732,6 +732,46 @@ function claimLocalTools(
   return tools;
 }
 
+/** #895 A4：chief 绑定 Agent 的 provider（亲和闸判与 buildChiefClaim 内闸
+ * 同源——会话机开不了 chief 步所需 runtime = 它不是有效候选人）。 */
+function chiefAgentProviderOf(deps: MachineDeps, chiefId: string): string | null {
+  const chiefRow = deps.db.select().from(chief).where(eq(chief.id, chiefId)).get();
+  const agentRow = chiefRow?.agentId
+    ? deps.db.select().from(agent).where(eq(agent.id, chiefRow.agentId)).get()
+    : undefined;
+  return agentRow?.provider ?? null;
+}
+
+/** #895 A4 chief 会话亲和（T2 对称，spec 21 机制总图）：未钉线程 + 会话已开
+ * 时，持有链尾会话文件的机器（= 链尾 session 步的 machineId，查询与 worker
+ * T2 prior 查询同型）若在线且 runtime 闸开 → 本机跳过该候选（步留 pending
+ * 等会话机领；跳过只作用于当前候选，不挡同机领其它线程的步——每机可见性
+ * 语义，无队头阻塞）。会话机离线/被删/闸关/归属空 → 放行本机（换机 =
+ * daemon SessionNotResumable 回退新会话 + RESUME_FRESH_SESSION_NOTE 显式
+ * 降级，#862 T1 契约不预判；亲和是软偏好，机器消失即刻放行，不等 T3 宽限
+ * ——未钉线程不因亲和产生新的无界等待）。钉选线程（pinnedMachineId 非空，
+ * 含主力机来源）不亲和：钉选 SQL 过滤下唯有钉选机可见，亲和再挡 = 唯一
+ * 可见者被挡死；钉选 = 用户显式选择，盖过软偏好。 */
+function chiefAffinityHeldByOther(
+  deps: MachineDeps,
+  threadRow: typeof chiefThread.$inferSelect,
+  machineId: string,
+): boolean {
+  if (threadRow.pinnedMachineId !== null) return false;
+  if (threadRow.sessionId === '') return false; // 首轮：无会话文件依赖
+  const prior = deps.db
+    .select({ sessionId: step.sessionId, machineId: step.machineId })
+    .from(step)
+    .where(and(eq(step.buildId, threadRow.id), sql`${step.sessionId} is not null`))
+    .orderBy(asc(step.createdAt))
+    .all();
+  const owner = prior.length > 0 ? (prior[prior.length - 1] ?? null) : null;
+  if (owner === null || owner.machineId === null || owner.machineId === machineId) return false;
+  const ownerRow = deps.db.select().from(machine).where(eq(machine.id, owner.machineId)).get();
+  if (ownerRow === undefined || !ownerRow.online) return false;
+  return runtimeGatePasses(ownerRow, chiefAgentProviderOf(deps, threadRow.chiefId));
+}
+
 function buildChiefClaim(
   deps: MachineDeps,
   machineId: string,
@@ -844,6 +884,8 @@ function tryClaim(
   const earliestWorker = workerCands[0]?.stepRow.createdAt ?? Number.POSITIVE_INFINITY;
   for (const cand of chiefCands) {
     if (cand.stepRow.createdAt > earliestWorker) break; // worker 更早 → 先走 worker
+    // #895 A4：会话机持有本候选（在线且闸开）→ 让给它（见函数头注释）。
+    if (chiefAffinityHeldByOther(deps, cand.threadRow, machineId)) continue;
     const claimed = buildChiefClaim(deps, machineId, cand.stepRow, cand.threadRow, machineRow);
     if (claimed) {
       publishStepStatus(deps, claimed.step.id);

@@ -90,6 +90,11 @@ export const chiefRecordSchema = z.object({
    * 显示）。值形同 compactionModel（model id 只在 provider 内有意义）；
    * null = 继承绑定 Agent 模型（抽屉行尾 `· 默认` 徽标语义）。 */
   model: chiefCompactionModelSchema.nullable().optional(),
+  /** 主力机（#895 spec 21 A1 [设计]，加法契约：老 web 忽略即退化现状）：
+   *  chief 的默认执行机器，null = 自动。新线程钉选缺省链第二级
+   *  （todo.machineId → 本槽 → null）；钉选律同 todo.machineId（确定性、
+   *  无自动回退、解除归用户）。 */
+  machineId: recordId.nullable().optional(),
   lastTurnAt: epochMs.nullable(),
   createdAt: epochMs,
   /** 用户时区（raw chief-record-testA.json 一手 `tz:"Asia/Shanghai"`；
@@ -130,6 +135,18 @@ export const activeRunSchema = z
   .nullable();
 export type ActiveRun = z.infer<typeof activeRunSchema>;
 
+/** per 机编排活动计数（#895 spec 21 A5 [设计]）：machines 页三态读标注的
+ * 数据源。running = 该机上 status='claimed' 的 chief 步数（总管回合正在该机
+ * 执行）；waiting = 被钉到该机且 status='pending' 的 chief 步数 × 该机当前
+ * 不可执行（离线或 runtime 闸关——T3 已知缝隙「在线但闸关 = 无界等待」
+ * 借此获得可见性）。只出有计数的机器行（零计数码不进清单）。 */
+export const chiefOrchestrationActivitySchema = z.object({
+  machineId: recordId,
+  running: z.number().int(),
+  waiting: z.number().int(),
+});
+export type ChiefOrchestrationActivity = z.infer<typeof chiefOrchestrationActivitySchema>;
+
 /** GET /api/teams/{id}/chief 响应封套（r5 §3.6 API 原样）。 */
 export const chiefGetResponseSchema = z.object({
   chief: chiefRecordSchema,
@@ -145,6 +162,18 @@ export const chiefGetResponseSchema = z.object({
   watches: z.array(chiefWatchSchema),
   /** wakes[] 非空形态未实测（r5 §10：set_wake 实走遗留）[推断]，开放条目。 */
   wakes: z.array(z.record(z.string(), z.unknown())),
+  /** 编排状态块（#895 spec 21 A5 [设计]，加法契约——optional：老封套/老
+   *  web 不带它仍可 parse，忽略即退化现状，machineId 槽同律）：defaultMachineId =
+   *  请求者主力机（chief.machineId，null = 自动）；activity = per 机
+   *  running/waiting 计数（team 域 chief 步计数——machines 页是团队面）。
+   *  消费方 = machines 页三态读标注（A8：join useMachines，行内零控件）。
+   *  server 恒发全块（getChiefEnvelope）；缺省仅出现在旧响应/旧客户端面。 */
+  orchestration: z
+    .object({
+      defaultMachineId: recordId.nullable(),
+      activity: z.array(chiefOrchestrationActivitySchema),
+    })
+    .optional(),
 });
 export type ChiefGetResponse = z.infer<typeof chiefGetResponseSchema>;
 
@@ -186,7 +215,9 @@ export const CHIEF_ENTITY_REF_SCHEMES = ['agent', 'todo'] as const;
  * 槽 = 章程 tab 保存面（保存 wire 未采 [推断]，同径 PATCH 最小逼近，04 §3
  * 不判负）；`compactionModel` 槽 = 压缩模型长槽（#203 [设计]，undefined =
  * 不动 / null = 清空回默认）；`model` 槽 = 主模型覆盖长槽（#615 [设计]，
- * undefined = 不动 / null = 清空回绑定 Agent 继承）。四槽至少一位。 */
+ * undefined = 不动 / null = 清空回绑定 Agent 继承）；`machineId` 槽 =
+ * 主力机（#895 spec 21 A7 [设计]，undefined = 不动 / null = 清回自动）。
+ * 五槽至少一位。 */
 export const patchChiefBodySchema = z
   .object({
     agent: z
@@ -198,15 +229,19 @@ export const patchChiefBodySchema = z
     charter: z.string().nullish(),
     compactionModel: chiefCompactionModelSchema.nullish(),
     model: chiefCompactionModelSchema.nullish(),
+    /** 主力机槽（#895 spec 21 A7 [设计]）：undefined = 不动，null = 清回
+     *  自动；值 = 本团队机器 id（队外 400，todos machineId 同律）。 */
+    machineId: recordId.nullish(),
   })
   .refine(
     (b) =>
       b.agent !== undefined ||
       b.charter !== undefined ||
       b.compactionModel !== undefined ||
-      b.model !== undefined,
+      b.model !== undefined ||
+      b.machineId !== undefined,
     {
-      message: 'expected agent and/or charter and/or compactionModel and/or model',
+      message: 'expected agent and/or charter and/or compactionModel and/or model and/or machineId',
     },
   );
 export type PatchChiefBody = z.infer<typeof patchChiefBodySchema>;

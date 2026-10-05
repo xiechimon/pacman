@@ -589,7 +589,12 @@ export function BoardPage() {
         onNewTask={openNewTask}
       />
       {chiefView === 'settings' ? (
-        <ChiefSettings chief={chiefData} onBack={() => setChiefView('drawer')} />
+        <ChiefSettings
+          chief={chiefData}
+          onBack={() => setChiefView('drawer')}
+          // #895 fixture 面机器行集（live 面组件自取 useMachines 不吃它）
+          machines={fixture.resources?.machines}
+        />
       ) : (
         <BoardSurface
           fixture={fixtureWithTodos}

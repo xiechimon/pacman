@@ -9,7 +9,9 @@
 // 无模型槽;server #203 落 compactionModel 可空 JSON 槽 + PATCH 第三槽后
 // 启用)= ChiefModelSelect anchored popover,#358 数据源(model-sources 非 pi
 // 段;#770 起 providers 段已除,spec 11 §A10)落账口径见 chief-model-select.tsx
-// 文件头。
+// 文件头。#895 主力机槽(spec 21 A6) = Agent tab 新「机器」行
+// ChiefMachineSelect:live 选定 → PATCH chief machineId 槽(null = 清回
+// 自动),行形态沿 new-task 机器 chip 的 listbox 族。
 
 import {
   BRAND,
@@ -21,6 +23,7 @@ import { useState } from 'react';
 import {
   useApiMutations,
   useChief,
+  useMachines,
   useMembers,
   useMemories,
   useModelSources,
@@ -30,10 +33,16 @@ import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Tabs, TabsIndicator, TabsList, TabsTrigger } from '../components/ui/tabs.js';
-import type { ChiefContent, ChiefSettingsTab, ModelOption } from '../fixtures/records.js';
+import type {
+  ChiefContent,
+  ChiefSettingsTab,
+  MachineRow,
+  ModelOption,
+} from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronLeft, ChevronRight, ChiefFaceDashed } from '../icons/index.js';
 import { ChiefAgentDialog, type ChiefAgentOption } from './chief-agent-dialog.js';
+import { type ChiefMachineOption, ChiefMachineSelect } from './chief-machine-select.js';
 import { ChiefModelSelect } from './chief-model-select.js';
 import './chief.css';
 import { EditCharterDialog } from './edit-charter-dialog.js';
@@ -45,7 +54,17 @@ const TABS: { id: ChiefSettingsTab; label: string }[] = [
   { id: 'watches', label: '关注与提醒' },
 ];
 
-export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: () => void }) {
+export function ChiefSettings({
+  chief,
+  onBack,
+  machines,
+}: {
+  chief: ChiefContent;
+  onBack: () => void;
+  /** #895 fixture 面的机器行集（resources machines 投影；live 面本组件
+   *  自取 useMachines，不吃本 prop）。 */
+  machines?: MachineRow[];
+}) {
   const { t } = useI18n();
   const [tab, setTab] = useState<ChiefSettingsTab>(chief.tab ?? 'agent');
   // #182 live 数据面(查询 enabled=live,fixture 面全惰性,零请求
@@ -55,6 +74,7 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
   const chiefQ = useChief(teamId, live);
   const membersQ = useMembers(teamId, live);
   const modelSourcesQ = useModelSources(teamId, live);
+  const machinesQ = useMachines(teamId, live);
   const mutations = useApiMutations(teamId);
   const charter = live ? (chiefQ.data?.chief.charter ?? '') : '';
   const boundAgent =
@@ -116,6 +136,20 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
   const pickModel = live
     ? (value: ChiefCompactionModel | null) =>
         mutations.patchChief.mutate({ compactionModel: value })
+    : undefined;
+  // #895 spec 21 A6 主力机槽（值/行集/写面三段,compactionModel 槽同构）:
+  // live 值 = chief 封套 chief.machineId(null = 自动);行集 = machines 读面
+  // 最小投影;选定 = PATCH chief machineId 槽(null 清回自动),invalidateAll
+  // 重取回显,无本地乐观态。fixture 面 = ChiefContent.machineId 回显 +
+  // resources machines 行集,无 mutation(accept 律)。
+  const machineOptions: ChiefMachineOption[] = live
+    ? (machinesQ.data ?? []).map((m) => ({ id: m.id, name: m.name, online: m.online }))
+    : (machines ?? []).flatMap((m) =>
+        m.id != null ? [{ id: m.id, name: m.name, online: m.online }] : [],
+      );
+  const machineValue = live ? (chiefQ.data?.chief.machineId ?? null) : (chief.machineId ?? null);
+  const pickMachine = live
+    ? (machineId: string | null) => mutations.patchChief.mutate({ machineId })
     : undefined;
   return (
     <div className="chief-settings">
@@ -209,6 +243,23 @@ export function ChiefSettings({ chief, onBack }: { chief: ChiefContent; onBack: 
               {/* #204 翻回交互(server #203 槽就位,见文件头):ChiefModelSelect
                   保 r5 101 捕获 select 形状(button + chevron)。 */}
               <ChiefModelSelect value={compaction} options={modelOptions} onPick={pickModel} />
+            </div>
+            {/* #895 spec 21 A6「机器」槽：主力机（chief 的默认执行机器，决策
+                面与绑定 Agent / 模型同层，N6——machines 页只有读态徽标）。 */}
+            <div className="chief-host">
+              <div className="chief-compress-text">
+                <h3>{t('机器')}</h3>
+                <p>
+                  {t(
+                    '总管回合默认在哪台机器上执行。选「自动」时由在线机器认领，并粘住持有会话的那台。',
+                  )}
+                </p>
+              </div>
+              <ChiefMachineSelect
+                value={machineValue}
+                machines={machineOptions}
+                onPick={pickMachine}
+              />
             </div>
           </>
         )}

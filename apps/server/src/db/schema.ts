@@ -519,6 +519,12 @@ export const chief = sqliteTable('chief', {
   /** 主模型覆盖长槽（#615 [设计]，r5 107/108 独立「模型」选择器的落库面；
    * 值形同 compactionModel，null = 继承绑定 Agent 模型）；JSON 列。 */
   model: json<ChiefCompactionModel>('model'),
+  /** 主力机（#895 spec 21 A1）：chief 级执行机器缺省，null = 自动（未钉 =
+   *  任何在线机器 FIFO + A4 会话亲和兜正确性）。新线程钉选缺省链第二级
+   *  （todo.machineId → 本列 → null）；既有线程不回写（creation-time 语义，
+   *  N7）。钉选律镜像 todo.machineId（todo 表注释同律）：确定性、无自动
+   *  回退，解除归用户。存量行不回填。 */
+  machineId: text('machineId'),
   /** 章程 = 常设指示（r5 §2 章程 tab；raw 默认空串）。 */
   charter: text('charter').notNull().default(''),
   /** watch 条目集（records/chief.ts chiefWatchSchema[]；派工即建、settle/failed

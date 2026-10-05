@@ -486,6 +486,32 @@ describe('chief (02 §4.3, r5 §2/§3 实测)', () => {
       ],
       wakes: [],
     };
+    // r5 原样封套不带 orchestration（#895 加法契约：optional——老封套/老
+    // web 忽略即退化现状，不以 fixture 补键糊成破坏性契约）。
+    expect(chiefGetResponseSchema.parse(sample)).toEqual(sample);
+  });
+
+  it('parses the chief GET envelope with the orchestration block (#895)', () => {
+    const sample = {
+      chief: {
+        id: 'chief-usr_mon-BoZYfvqKSGanlxsXVbXSa',
+        userId: 'usr_mon',
+        teamId: 'BoZYfvqKSGanlxsXVbXSa',
+        agent: { agentId: 'TVv0DxUu3jTIhYpeWh6mn' },
+        charter: null,
+        machineId: 'mach_895',
+        lastTurnAt: 1758532000000,
+        createdAt: 1758531000000,
+      },
+      agentActor: null,
+      context: null,
+      watches: [],
+      wakes: [],
+      orchestration: {
+        defaultMachineId: 'mach_895',
+        activity: [{ machineId: 'mach_895', running: 1, waiting: 0 }],
+      },
+    };
     expect(chiefGetResponseSchema.parse(sample)).toEqual(sample);
   });
 

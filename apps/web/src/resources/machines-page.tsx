@@ -13,12 +13,18 @@
 // （machine.shellEnabled，消费方 = claim 组装 localTools 双闸 + 每命令预检，
 // XMON-108 R1）。行内控件面自此 = 这一个开关，死钮纪律（删除 / chevron /
 // per-runtime 开关）原样由 e2e 负向把守。
+// #895 三态读标注（spec 21 A8，全读态零控件）：「总管主机」徽标（谁是默认
+// 主力机）、「总管回合进行中」（该机正在执行 chief 步）、「总管等待机器」
+// （被钉的 pending 回合等该机上线/开闸）。live 数据 = GET /chief 封套
+// orchestration 块（defaultMachineId + per 机 activity 计数）join 本页行集；
+// fixture = MachineRow chief* 字段静态投影。主力机的设定面在 chief 设置
+// （N6），本页只有观测——「关电脑前确认编排已落在常开机器上」的观测面。
 
 import { AGENT_TOOL_SHELL, MACHINE_RUNTIMES, type MachineRuntime } from '@pacman/shared';
 import { cn } from 'cn';
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { useApiMutations, useMachines, useTeams } from '../api/hooks.js';
+import { useApiMutations, useChief, useMachines, useTeams } from '../api/hooks.js';
 import { mapMachines } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
 import { ClaudeMark, PiMark } from '../components/brand-marks.js';
@@ -62,6 +68,27 @@ export function MachinesPage() {
   const { live, teamId } = useLiveData();
   const machinesQ = useMachines(teamId, live);
   const machines = live ? mapMachines(machinesQ.data ?? []) : (fixture.resources?.machines ?? []);
+  // #895 orchestration 读面：live = chief 封套块（无效数据 = 无标注，页面
+  // 不等 chief 查询——标注是增量信息，查询未决时行照常渲染）；fixture = 行
+  // 字段（chiefHost / chiefRunning / chiefWaiting）静态投影。
+  const chiefQ = useChief(teamId, live);
+  const orchestration = live ? chiefQ.data?.orchestration : undefined;
+  const activityOf = (machineId?: string) =>
+    orchestration?.activity.find((a) => a.machineId === machineId);
+  const chiefState = (
+    machine: MachineRow,
+  ): { host: boolean; running: boolean; waiting: boolean } =>
+    live
+      ? {
+          host: orchestration?.defaultMachineId === machine.id,
+          running: (activityOf(machine.id)?.running ?? 0) > 0,
+          waiting: (activityOf(machine.id)?.waiting ?? 0) > 0,
+        }
+      : {
+          host: machine.chiefHost === true,
+          running: machine.chiefRunning === true,
+          waiting: machine.chiefWaiting === true,
+        };
   // wayfinder #181: res-add 钮开 添加机器 dialog（r2 11b CLI 两步表单，
   // #179 裁决）；团队名插值同 team-page 律（live = GET /api/teams，
   // fixture = TEAM_NAME 常量），teamId 内嵌 API key 命令
@@ -108,70 +135,94 @@ export function MachinesPage() {
         </p>
       )}
       <GroupCard>
-        {machines.map((machine, i) => (
-          <div
-            className={`res-grow${i > 0 ? ' res-grow--divided' : ''}`}
-            key={rowKey(machine)}
-            data-machine-id={machine.id}
-            data-kind={machine.kind ?? 'remote'}
-          >
-            <Tile Icon={Monitor} size="lg" tone="orange" />
-            <span className="res-row-text">
-              <span className="res-row-line">
-                <span className="res-row-title">{t(machine.name)}</span>
-                {/* online 读 machine.online（与 new-task-machine-dot /
+        {machines.map((machine, i) => {
+          const chief = chiefState(machine);
+          return (
+            <div
+              className={`res-grow${i > 0 ? ' res-grow--divided' : ''}`}
+              key={rowKey(machine)}
+              data-machine-id={machine.id}
+              data-kind={machine.kind ?? 'remote'}
+            >
+              <Tile Icon={Monitor} size="lg" tone="orange" />
+              <span className="res-row-text">
+                <span className="res-row-line">
+                  <span className="res-row-title">{t(machine.name)}</span>
+                  {/* online 读 machine.online（与 new-task-machine-dot /
                     dlg-machine-dot 同族语义）：在线绿点，离线灰点——离线行
                     此前无任何表示，daemon 死后机器页看不出。undefined（无该
                     字段的旧 fixture）保持不渲染，存量 capture 零漂移。 */}
-                {machine.online !== undefined && (
-                  <span className="res-dot" data-on={machine.online !== false} />
-                )}
+                  {machine.online !== undefined && (
+                    <span className="res-dot" data-on={machine.online !== false} />
+                  )}
+                </span>
+                <span className="res-row-desc">
+                  {t(MACHINE_SHELL_HINT, { tool: t(AGENT_TOOL_SHELL) })}
+                </span>
               </span>
-              <span className="res-row-desc">
-                {t(MACHINE_SHELL_HINT, { tool: t(AGENT_TOOL_SHELL) })}
-              </span>
-            </span>
-            {machine.kind === 'local' ? (
-              <span className="mach-runtimes">
-                {MACHINE_RUNTIMES.map((runtime) => {
-                  const on = (machine.enabledRuntimes ?? []).includes(runtime);
-                  const Mark = RUNTIME_MARKS[runtime];
-                  return (
-                    // #887 图标独形：文字名撤下，可辨识性不跟着删——容器
-                    // role="img" + aria-label 给读屏报名字，title 给悬停提示。
-                    // mark 仍是装饰（aria-hidden）；on/off 两态仍由 mark 的
-                    // 实色/35% 透明承载（enabledRuntimes 全仓只写不读，#503）。
-                    <span
-                      className={cn('mach-runtime', on && 'mach-runtime--on')}
-                      key={runtime}
-                      data-runtime={runtime}
-                      role="img"
-                      aria-label={RUNTIME_LABELS[runtime]}
-                      title={RUNTIME_LABELS[runtime]}
-                    >
-                      <Mark className="mach-mark" />
+              {machine.kind === 'local' ? (
+                <span className="mach-runtimes">
+                  {MACHINE_RUNTIMES.map((runtime) => {
+                    const on = (machine.enabledRuntimes ?? []).includes(runtime);
+                    const Mark = RUNTIME_MARKS[runtime];
+                    return (
+                      // #887 图标独形：文字名撤下，可辨识性不跟着删——容器
+                      // role="img" + aria-label 给读屏报名字，title 给悬停提示。
+                      // mark 仍是装饰（aria-hidden）；on/off 两态仍由 mark 的
+                      // 实色/35% 透明承载（enabledRuntimes 全仓只写不读，#503）。
+                      <span
+                        className={cn('mach-runtime', on && 'mach-runtime--on')}
+                        key={runtime}
+                        data-runtime={runtime}
+                        role="img"
+                        aria-label={RUNTIME_LABELS[runtime]}
+                        title={RUNTIME_LABELS[runtime]}
+                      >
+                        <Mark className="mach-mark" />
+                      </span>
+                    );
+                  })}
+                </span>
+              ) : (
+                machine.pill != null && <StatusPill label={machine.pill} />
+              )}
+              {/* #895 三态读标注（A8）：纯文本/badge 读态——无 handler、无
+                button、无 menu（行内活控件纪律仍 = shell 闸恰一个）。 */}
+              {(chief.host || chief.running || chief.waiting) && (
+                <span className="mach-orchestration">
+                  {chief.host && (
+                    <span className="mach-orchestration-host" data-orchestration="host">
+                      {t('总管主机')}
                     </span>
-                  );
-                })}
-              </span>
-            ) : (
-              machine.pill != null && <StatusPill label={machine.pill} />
-            )}
-            {/* 机器层 shell 闸（XMON-113）：唯一行内控件。label 与副文案同
+                  )}
+                  {chief.running && (
+                    <span className="mach-orchestration-running" data-orchestration="running">
+                      {t('总管回合进行中')}
+                    </span>
+                  )}
+                  {chief.waiting && (
+                    <span className="mach-orchestration-waiting" data-orchestration="waiting">
+                      {t('总管等待机器')}
+                    </span>
+                  )}
+                </span>
+              )}
+              {/* 机器层 shell 闸（XMON-113）：唯一行内控件。label 与副文案同
                 词（AGENT_TOOL_SHELL）——两层授权共用一套词汇，用户在 Agent
                 权限 tab 看到的是同一个词。 */}
-            <span className="mach-shell">
-              <span className="mach-shell-label">{t(AGENT_TOOL_SHELL)}</span>
-              <Switch
-                className="mach-shell-switch"
-                data-machine-id={machine.id}
-                aria-label={t(AGENT_TOOL_SHELL)}
-                checked={shellOn(machine)}
-                onCheckedChange={(on) => toggleShell(machine, on)}
-              />
-            </span>
-          </div>
-        ))}
+              <span className="mach-shell">
+                <span className="mach-shell-label">{t(AGENT_TOOL_SHELL)}</span>
+                <Switch
+                  className="mach-shell-switch"
+                  data-machine-id={machine.id}
+                  aria-label={t(AGENT_TOOL_SHELL)}
+                  checked={shellOn(machine)}
+                  onCheckedChange={(on) => toggleShell(machine, on)}
+                />
+              </span>
+            </div>
+          );
+        })}
       </GroupCard>
       <button type="button" className="res-add" onClick={() => setAddOpen(true)}>
         <ServerThin width={14} height={14} />
