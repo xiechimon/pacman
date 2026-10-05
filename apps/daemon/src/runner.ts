@@ -36,10 +36,12 @@ import {
   PLAN_FILE_NAME,
   parseReviewPromptMeta,
   REMOTE_TOOL_RETRY_DELAYS_MS,
+  RESUME_FRESH_SESSION_NOTE,
   type ReviewGate,
   STREAM_TIMEOUTS_MS,
   stepTakesSecrets,
   transcriptPromptRowId,
+  transcriptResumeNoteRowId,
 } from '@pacman/shared';
 import { SessionNotResumableError } from './backend/errors.js';
 import { notInConfigLine, resolveMcpEndpoints } from './backend/mcp-config.js';
@@ -726,6 +728,16 @@ export async function runStep(
       if (!(err instanceof SessionNotResumableError)) throw err;
       logger.step(`continue session unavailable (${continueId}) — falling back to new session`);
       resumed = false;
+      // #862 T1 跨机续跑显式标记：续接失败的事实点在 daemon（server 只知
+      // continue 载荷下发，不知对端有无会话文件）。注记进 transcript 终稿
+      // system 行（shared 单源 canon；web 既有纯文本 system→note 路渲染），
+      // id deterministic per step，重传覆盖不叠行。
+      transcript.upsert({
+        id: transcriptResumeNoteRowId(stepId),
+        role: 'system',
+        content: RESUME_FRESH_SESSION_NOTE,
+        createdAt: now(),
+      });
       return backend.createSession(sessionOpts);
     });
   };

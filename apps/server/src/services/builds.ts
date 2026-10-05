@@ -743,29 +743,33 @@ export function applyStepFailure(
   }
 }
 
-// —— #706 build 步失联扫尾（B-C7；#684 chief 扫尾的同型推广）—————————————
+// —— #706 build 步失联扫尾 + #862 T1 跨机续跑释放（B-C7；#684 chief 扫尾的同型）——
 
-/** 失联判定阈值：与 #684 同节奏（CHIEF_ABANDONED_STEP_MS），不自造新节奏——
- * 2 分钟 = 机器重启/重连窗口之上（presence ~30s、步心跳 ~30s、daemon 冷启
- * 秒级）。 */
 export const BUILD_ABANDONED_STEP_MS = 120_000;
 
-/** worker 步（plan/build/merge/review）失联扫尾（scheduler tick 驱动，#706）：
- * 把三类「永不失败也就永不可见」的永挂收进 #631 失败闭环——落账单源 =
- * applyStepFailure（step failed + build.errorMessage + todo → failed，与机器
- * 报失败同一条漏斗），事件面 = build 文档 + 会话流 step 事件（web 失败行 +
- * 相位翻「失败」与报失败同形，不另起通知面）。
- * ① pending 无人认领且团队零在线机器（daemon 全灭/未注册：步永不 claim）；
- * ② claimed 心跳停更超阈值且机器离线/失踪（daemon 步中途死亡）；
+/** worker 步（plan/build/merge/review）失联 sweep（scheduler tick 驱动）：
+ * 失联 claimed 步**释放回 pending**供他机认领续跑（#862 T1 tracer），只有
+ * 「pending 且团队零在线机器」仍按失败收尾（等谁来跑都不确定，归 T3 定超时
+ * 策略；本票不动）：
+ * ① pending 无人认领且团队零在线机器（daemon 全灭/未注册）→ 失败收尾；
+ * ② claimed 心跳停更超阈值且机器离线/失踪（daemon 步中途死亡）→ 释放；
  * ③ claimed 自领取后零心跳进展超阈值（B-C7 claim 移交竞态：server 标 claimed
  *    但机器侧零执行——claim 把 lastHeartbeatAt 置为 claimedAt，故「零进展」
- *    即 heartbeat 从未推进；机器在线也命中）。
+ *    即 heartbeat 从未推进；机器在线也命中）→ 释放。
  * 不动：心跳新鲜的 claimed 步（心跳年龄是活判据，不是墙）；团队有在线机器
  * 的 pending 步（合法排队，含 #682 钉选离线机器的等待语义）；在线机器上曾
  * 有心跳后停更的 claimed 步（执行/推送通道部分存活的歧义态，等 presence 过
- * 期走 ②）。chief 步不在本面（chief.ts 扫尾）。幂等：只扫 pending/claimed，
- * 终态步天然跳过；daemon 迟到 done 落终态步被忽略（machines 收尾终态幂等）。 */
-export function failAbandonedBuildSteps(deps: BuildDeps, now: number = nowMs()): void {
+ * 期走 ②）。chief 步不在本面（chief.ts 扫尾）。
+ * 释放语义：status → pending + machineId 清空（认领原子位复位，他机/同机可
+ * 重领）；pinnedMachineId 保留（钉选过滤重算，钉选机才能接）；claimedAt/
+ * lastHeartbeatAt 保留作死亡时刻审计（重领即覆写）；createdAt 不动（FIFO
+ * 序 + pending 扫尾宽限语义不变）；todo 相位不动（building + pending 步 =
+ * 合法排队）；build.errorMessage 不写（非失败）；会话流 step 事件（pending
+ * 态）+ 团队 wake（他机 75s 长轮询不等满）。new-session 降级标记归 daemon
+ * 侧（续接失败回退即插 transcript 注记）。
+ * 幂等：只扫 pending/claimed，终态步天然跳过。已知缝（归 T2/T3）：释放后仍
+ * 无在线机器 → 下一轮命中 ① 按失败收尾（释放不是无期等待）。 */
+export function sweepAbandonedBuildSteps(deps: BuildDeps, now: number = nowMs()): void {
   const candidates = deps.db
     .select()
     .from(step)
@@ -802,9 +806,11 @@ export function failAbandonedBuildSteps(deps: BuildDeps, now: number = nowMs()):
         const progressed =
           row.lastHeartbeatAt !== null && row.lastHeartbeatAt > (row.claimedAt ?? row.createdAt);
         if (machineRow === undefined || !machineRow.online) {
-          reason = `执行机器失联（构建步心跳停更超过 ${Math.round(BUILD_ABANDONED_STEP_MS / 1000)} 秒且机器已离线）。请检查执行机 daemon 状态后重跑。`;
+          releaseClaimedStep(deps, row, todoRow);
+          continue;
         } else if (!progressed) {
-          reason = `构建步领取后无进展（领取超过 ${Math.round(BUILD_ABANDONED_STEP_MS / 1000)} 秒仍无心跳，机器侧可能未实际执行）。请检查执行机 daemon 状态后重跑。`;
+          releaseClaimedStep(deps, row, todoRow);
+          continue;
         }
       }
     }
@@ -825,6 +831,31 @@ export function failAbandonedBuildSteps(deps: BuildDeps, now: number = nowMs()):
       });
     }
   }
+}
+
+/** 失联 claimed 步释放（#862 T1 跨机续跑的 server 半）：认领原子位复位，他机
+ * 经 claimCandidates（含钉选过滤）重领。调用方已取 todo 行，透传免重查。 */
+function releaseClaimedStep(
+  deps: BuildDeps,
+  row: typeof step.$inferSelect,
+  todoRow: typeof todo.$inferSelect,
+): void {
+  deps.db.update(step).set({ status: 'pending', machineId: null }).where(eq(step.id, row.id)).run();
+  const released = deps.db.select().from(step).where(eq(step.id, row.id)).get();
+  if (released) {
+    deps.convHub?.publishStep(row.buildId, {
+      id: released.id,
+      buildId: released.buildId,
+      kind: released.kind,
+      machineId: released.machineId,
+      createdAt: released.createdAt,
+      status: released.status,
+      checkpointCommit: released.checkpointCommit,
+    });
+  }
+  // 他机 75s 长轮询不等满：释放即 wake，同队等待者立即重认领（machineHub 缺省
+  // = M2a 编排测试形态，无机器面可唤醒）。
+  deps.machineHub?.wake(todoRow.teamId);
 }
 
 /** #703 产物闸（B-C10/B-C11/B-C14）：两道闸各自有物可看，无物即无闸（spec 18
