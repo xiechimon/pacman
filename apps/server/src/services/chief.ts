@@ -55,10 +55,13 @@ import {
 import { sha256Hex } from '../lib/crypto.js';
 import { HttpError } from '../lib/errors.js';
 import { newRecordId, newUuidv7, nowMs } from '../lib/ids.js';
+import { runtimeGatePasses, stepRuntimeFor } from './dispatch-eligibility.js';
 import {
   CHIEF_PIN_OFFLINE_HINT,
+  CHIEF_PIN_RUNTIME_HINT,
   PIN_OFFLINE_GRACE_MS,
   pinOfflineReason,
+  pinRuntimeBlockedReason,
   stepActivityAt,
 } from './dispatch-timeouts.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
@@ -821,10 +824,13 @@ export const CHIEF_ABANDONED_STEP_MS = 120_000;
  * ③ #864 T3：pending 且**线程钉选的机器不在线**（#682 chief 亲和的镜像面：
  *    钉了离线的机器 = 别机领不走，回合永挂）× 步最后活动已过 PIN_OFFLINE_
  *    GRACE_MS → 失败收尾（与 worker 步同政策同阈值，见 dispatch-timeouts.ts）。
+ * ③b #881：pending 且钉选的机器**在线但 enabledRuntimes 闸挡住绑定 Agent
+ *    的 runtime**（钉选过滤令唯有该机可见 + buildChiefClaim 闸恒 false =
+ *    回合无期 pending）× 同宽限 → 失败收尾，文案点名机器与 runtime。
  * 失败收尾 = finishStep chief 分支同语义：step 标 failed + finishChiefTurn
  * 清 activeRun + chief_turn_error system 行（会话流 message 事件即时推送 →
- * web toast + 失败行，#631 链原样消费）。机器在线时一律不动（busy 排队合
- * 法）；非 chief 步不在本面（build 卡 building 归 #682）。幂等：行键 =
+ * web toast + 失败行，#631 链原样消费）。机器在线且闸开时一律不动（busy
+ * 排队合法）；非 chief 步不在本面（build 卡 building 归 #682）。幂等：行键 =
  * chief-err-<stepId>（upsert），步状态翻转后不再进候选集。 */
 export function failAbandonedChiefSteps(
   deps: { db: Db; convHub?: ConversationStreamHub },
@@ -855,6 +861,30 @@ export function failAbandonedChiefSteps(
         now - stepActivityAt(row) > PIN_OFFLINE_GRACE_MS
       ) {
         reason = pinOfflineReason(pinnedRow?.name ?? null, CHIEF_PIN_OFFLINE_HINT);
+      }
+      // #881 ④b：钉选机在线但 runtime 闸挡（#864 登记缝的 chief 半边）。判据
+      // 镜像 buildChiefClaim 的闸——**绑定 Agent 的 provider**（模型覆盖
+      // provider+modelId 但不改闸判，两处须同源，漂移 = sweep 误杀 claim 能领
+      // 的回合）；闸判原语单源 = dispatch-eligibility。未绑定 Agent / 无模型位
+      // = 无人可领的另一族缝，不进本判。
+      if (
+        reason === null &&
+        pinnedId !== null &&
+        pinnedRow !== undefined &&
+        pinnedRow.online &&
+        now - stepActivityAt(row) > PIN_OFFLINE_GRACE_MS
+      ) {
+        const chiefRow = deps.db.select().from(chief).where(eq(chief.id, thread.chiefId)).get();
+        const agentRow = chiefRow?.agentId
+          ? deps.db.select().from(agent).where(eq(agent.id, chiefRow.agentId)).get()
+          : undefined;
+        if (agentRow?.modelId != null && !runtimeGatePasses(pinnedRow, agentRow.provider)) {
+          reason = pinRuntimeBlockedReason(
+            pinnedRow.name,
+            stepRuntimeFor(agentRow.provider),
+            CHIEF_PIN_RUNTIME_HINT,
+          );
+        }
       }
       if (reason === null) {
         const online = deps.db

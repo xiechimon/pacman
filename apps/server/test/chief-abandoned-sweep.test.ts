@@ -55,8 +55,9 @@ interface World {
   sentAt: number;
 }
 
-/** 绑定 Agent + 发一条 chief 消息 → 线程 + pending 步（机器面全部缺席）。 */
-async function sendChiefTurn(content = '你好'): Promise<World> {
+/** 绑定 Agent + 发一条 chief 消息 → 线程 + pending 步（机器面全部缺席）。
+ *  #881：provider 可覆写（'claude-code' = runtime 闸判的反例位）。 */
+async function sendChiefTurn(content = '你好', provider = 'stub-gw'): Promise<World> {
   const s = bootServer();
   disposables.push(() => s.dispose());
   const teamId = s.team.id;
@@ -68,7 +69,7 @@ async function sendChiefTurn(content = '你好'): Promise<World> {
       displayName: 'sweep-agent',
       description: '调度',
       modelId: 'stub-model',
-      provider: 'stub-gw',
+      provider,
     })
     .run();
   const patchRes = await call(s.app, 'PATCH', `/api/teams/${teamId}/chief`, {
@@ -309,5 +310,85 @@ describe('#684 chief 失联超时兜底（failAbandonedChiefSteps）', () => {
     scheduler.tick(stepRowOf(w).createdAt + CHIEF_ABANDONED_STEP_MS + 1);
     expect(stepRowOf(w).status).toBe('failed');
     expect(turnErrorRow(w)).toBeDefined();
+  });
+});
+
+describe('#881 钉选机器在线但 runtime 闸挡（failAbandonedChiefSteps 的钉选分支）', () => {
+  // 失败方式（先于实现固化）：chief 线程钉到在线机器、但该机 enabledRuntimes
+  // 不含绑定 Agent 的 runtime → buildChiefClaim 的 runtime 闸恒 false + 钉选
+  // 过滤令唯有该机可见 → 回合无期 pending。#864 只收了「离线」半边。
+
+  test('钉选在线 + 闸挡（claude-code 档 × 只开 pi 的机器）+ 超宽限：回合按失败收尾，文案点名机器与 runtime', async () => {
+    const w = await sendChiefTurn('你好', 'claude-code');
+    await enrollMachine(w.s, w.teamId); // 钉选机：enroll 缺省只开 pi
+    const pinnedId = w.s.db.select().from(machineTable).limit(1).all()[0]!.id;
+    setMachineOnline(w.s, pinnedId, true);
+    w.s.db
+      .update(chiefThread)
+      .set({ pinnedMachineId: pinnedId })
+      .where(eq(chiefThread.id, w.threadId))
+      .run();
+    // 团队里另有能跑 claude-code 的在线机器——判据是「钉的那台开不了」。
+    await enrollMachine(w.s, w.teamId);
+    const otherRow = w.s.db
+      .select()
+      .from(machineTable)
+      .all()
+      .find((m) => m.id !== pinnedId)!;
+    setMachineOnline(w.s, otherRow.id, true);
+    w.s.db
+      .update(machineTable)
+      .set({ enabledRuntimes: ['pi', 'claude-code'] })
+      .where(eq(machineTable.id, otherRow.id))
+      .run();
+
+    failAbandonedChiefSteps(w.s.svc, stepRowOf(w).createdAt + PIN_OFFLINE_GRACE_MS + 1);
+
+    expect(stepRowOf(w).status).toBe('failed');
+    expect(threadRowOf(w).activeRun).toBeNull();
+    expect(threadRowOf(w).pinnedMachineId).toBe(pinnedId); // 不静默改派
+    const message = turnErrorMessage(w);
+    expect(message).toContain('钉选的机器「sweep-mbp」');
+    expect(message).toContain('claude-code');
+    expect(message).toContain('改为其它在线机器');
+  });
+
+  test('钉选在线 + 闸挡 + 宽限内：不动（给「正在开 runtime」留窗口）', async () => {
+    const w = await sendChiefTurn('你好', 'claude-code');
+    await enrollMachine(w.s, w.teamId);
+    const pinnedId = w.s.db.select().from(machineTable).limit(1).all()[0]!.id;
+    setMachineOnline(w.s, pinnedId, true);
+    w.s.db
+      .update(chiefThread)
+      .set({ pinnedMachineId: pinnedId })
+      .where(eq(chiefThread.id, w.threadId))
+      .run();
+
+    failAbandonedChiefSteps(w.s.svc, stepRowOf(w).createdAt + 60_000);
+
+    expect(stepRowOf(w).status).toBe('pending');
+    expect(turnErrorRow(w)).toBeUndefined();
+  });
+
+  test('钉选在线 + runtime 开：不动（回合等它认领，闸判负例）', async () => {
+    const w = await sendChiefTurn('你好', 'claude-code');
+    await enrollMachine(w.s, w.teamId);
+    const pinnedId = w.s.db.select().from(machineTable).limit(1).all()[0]!.id;
+    setMachineOnline(w.s, pinnedId, true);
+    w.s.db
+      .update(machineTable)
+      .set({ enabledRuntimes: ['pi', 'claude-code'] })
+      .where(eq(machineTable.id, pinnedId))
+      .run();
+    w.s.db
+      .update(chiefThread)
+      .set({ pinnedMachineId: pinnedId })
+      .where(eq(chiefThread.id, w.threadId))
+      .run();
+
+    failAbandonedChiefSteps(w.s.svc, stepRowOf(w).createdAt + PIN_OFFLINE_GRACE_MS * 5);
+
+    expect(stepRowOf(w).status).toBe('pending');
+    expect(turnErrorRow(w)).toBeUndefined();
   });
 });

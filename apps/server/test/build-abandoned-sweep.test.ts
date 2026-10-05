@@ -47,6 +47,11 @@ function makeWorld(step: {
   heartbeatAgo?: number | null;
   machineOnline?: boolean;
   withAgent?: boolean;
+  /** #881：Agent provider（缺省 null = pi 档；'claude-code' = 闸判用的
+   *  runtime 反例位——机器没开对应 runtime 才构成「钉选在线但被挡」）。 */
+  agentProvider?: string;
+  /** #881：本机 enabledRuntimes 覆写（缺省维持 withAgent ? ['pi'] : 列缺省）。 */
+  machineRuntimes?: string[];
   /** #864 钉选（build.pinnedMachineId）：'self' = 上面的机器、'ghost' = 团队
    *  里不存在的 id、其它字符串 = 原样落列。缺省 = 未钉（自动）。 */
   pin?: 'self' | 'ghost' | (string & {});
@@ -64,7 +69,13 @@ function makeWorld(step: {
   if (agentId !== null) {
     s.db
       .insert(agentTable)
-      .values({ id: agentId, teamId, displayName: 'sweep-agent', modelId: 'stub-model' })
+      .values({
+        id: agentId,
+        teamId,
+        displayName: 'sweep-agent',
+        modelId: 'stub-model',
+        ...(step.agentProvider !== undefined ? { provider: step.agentProvider } : {}),
+      })
       .run();
   }
   s.db
@@ -105,7 +116,11 @@ function makeWorld(step: {
       teamId,
       name: 'sweep-box',
       online: step.machineOnline ?? false,
-      ...(step.withAgent ? { enabledRuntimes: ['pi'] } : {}),
+      ...(step.machineRuntimes !== undefined
+        ? { enabledRuntimes: step.machineRuntimes }
+        : step.withAgent
+          ? { enabledRuntimes: ['pi'] }
+          : {}),
     })
     .run();
   const createdAt = base - step.createdAgo;
@@ -549,5 +564,131 @@ describe('#864 T3 钉选离线超时（sweepAbandonedBuildSteps 的钉选分支�
 
   test('宽限是单一来源的定值（10 分钟：够 daemon 重启/笔记本唤醒，仍是有界等待）', () => {
     expect(PIN_OFFLINE_GRACE_MS).toBe(600_000);
+  });
+});
+
+describe('#881 钉选机器在线但 runtime 闸挡（sweepAbandonedBuildSteps 的钉选分支）', () => {
+  // 失败方式（先于实现固化）：钉选机在线但 enabledRuntimes 不含本步 runtime
+  // → claim 侧 runtimeGatePasses 恒 false + 钉选 SQL 过滤令唯有该机可见 →
+  // 步无期 pending（机器在、也永远轮不到它领）。#864 只收了「离线」半边。
+
+  test('钉选在线 + 闸挡（claude-code 步 × 只开 pi 的机器）+ 超宽限：按失败收尾，文案点名机器与 runtime（不自动改派）', () => {
+    const w = makeWorld({
+      status: 'pending',
+      createdAgo: PIN_OFFLINE_GRACE_MS + 1_000,
+      machineOnline: true,
+      withAgent: true,
+      agentProvider: 'claude-code',
+      machineRuntimes: ['pi'],
+      pin: 'self',
+    });
+    // 团队里另有能跑 claude-code 的在线机器——判据是「钉的那台开不了」，不是
+    // 「团队没人能跑」。
+    const otherId = addOnlineMachine(w);
+    w.s.db
+      .update(machineTable)
+      .set({ enabledRuntimes: ['pi', 'claude-code'] })
+      .where(eq(machineTable.id, otherId))
+      .run();
+    const { events } = tapConvStream(w.s, w.buildId);
+
+    sweepAbandonedBuildSteps(w.s.svc, w.base);
+
+    const row = stepRowOf(w);
+    expect(row.status).toBe('failed');
+    // 钉选在位（pin 语义 = 确定性，静默换机违背它）。
+    expect(buildRowOf(w).pinnedMachineId).toBe(w.machineId);
+    const message = buildRowOf(w).errorMessage ?? '';
+    expect(message).toContain('钉选的机器「sweep-box」');
+    expect(message).toContain('claude-code');
+    expect(message).toContain('改为其它在线机器');
+    expect(todoRowOf(w).phase).toBe('failed');
+    expect(stepEventOf(events, w.stepId).status).toBe('failed');
+    // 幂等：终态步下一轮不再进候选。
+    sweepAbandonedBuildSteps(w.s.svc, w.base + 60_000);
+    expect(stepRowOf(w).status).toBe('failed');
+  });
+
+  test('钉选在线 + 闸挡 + 宽限内：不动（给「刚关错开关/正在开」留窗口）', () => {
+    const w = makeWorld({
+      status: 'pending',
+      createdAgo: 90_000,
+      machineOnline: true,
+      withAgent: true,
+      agentProvider: 'claude-code',
+      machineRuntimes: ['pi'],
+      pin: 'self',
+    });
+    addOnlineMachine(w);
+
+    sweepAbandonedBuildSteps(w.s.svc, w.base);
+
+    expect(stepRowOf(w).status).toBe('pending');
+    expect(todoRowOf(w).phase).toBe('building');
+    expect(buildRowOf(w).errorMessage).toBeNull();
+  });
+
+  test('钉选在线 + runtime 开：不动（步等它认领，合法排队——闸判负例）', () => {
+    const w = makeWorld({
+      status: 'pending',
+      createdAgo: PIN_OFFLINE_GRACE_MS * 3,
+      machineOnline: true,
+      withAgent: true,
+      agentProvider: 'claude-code',
+      machineRuntimes: ['pi', 'claude-code'],
+      pin: 'self',
+    });
+
+    sweepAbandonedBuildSteps(w.s.svc, w.base);
+
+    expect(stepRowOf(w).status).toBe('pending');
+    expect(buildRowOf(w).errorMessage).toBeNull();
+  });
+
+  test('review 步同判（agentId 走 prompt meta 头行，provider 重算同源）：闸挡超宽限同样失败', () => {
+    const w = makeWorld({
+      status: 'pending',
+      kind: 'review',
+      createdAgo: PIN_OFFLINE_GRACE_MS + 1_000,
+      machineOnline: true,
+      withAgent: true,
+      agentProvider: 'claude-code',
+      machineRuntimes: ['pi'],
+      pin: 'self',
+    });
+    // review 步的 Agent 不走 assignment 槽，agentId 在 prompt meta 头行（M7 #330）。
+    w.s.db
+      .update(stepTable)
+      .set({ prompt: `{"kind":"review","agentId":"${w.agentId}","gate":"review"}\n审核任务` })
+      .where(eq(stepTable.id, w.stepId))
+      .run();
+    // assignment 槽清空：证明判据吃的是 review meta 而非 assignment。
+    w.s.db
+      .update(todoTable)
+      .set({ assignment: { plan: null, build: null } })
+      .where(eq(todoTable.id, w.todoId))
+      .run();
+
+    sweepAbandonedBuildSteps(w.s.svc, w.base);
+
+    expect(stepRowOf(w).status).toBe('failed');
+    expect(buildRowOf(w).errorMessage).toContain('claude-code');
+  });
+
+  test('未指派 Agent 的步不进本判（未指派 = 无人可领的另一族缝，不是闸挡）', () => {
+    const w = makeWorld({
+      status: 'pending',
+      createdAgo: PIN_OFFLINE_GRACE_MS * 2,
+      machineOnline: true,
+      machineRuntimes: ['pi'],
+      pin: 'self',
+    });
+    addOnlineMachine(w);
+
+    sweepAbandonedBuildSteps(w.s.svc, w.base);
+
+    // 钉选机在线 → 「零在线」判不中；无 Agent → runtime 判据无从计算 → 不动。
+    // （未指派步无人可领的缝另行登记，不在本票收口。）
+    expect(stepRowOf(w).status).toBe('pending');
   });
 });

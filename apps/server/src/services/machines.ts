@@ -47,7 +47,6 @@ import {
   MAX_SKILL_TOTAL_BYTES,
   MCP_MIN_CLI_VERSION,
   machineRecordSchema,
-  parseReviewPromptMeta,
   suggestSkillsForMessage,
   updateSkillToolParamsSchema,
   WORKER_REMOTE_TOOLS,
@@ -102,6 +101,12 @@ import {
   resolveStepCredentials,
   revokeStepGitCredential,
 } from './credentials.js';
+import {
+  agentForStep as agentForStepEligibility,
+  runtimeGatePasses,
+  stepRuntimeFor,
+} from './dispatch-eligibility.js';
+import { SESSION_WEDGE_GRACE_MS, stepActivityAt } from './dispatch-timeouts.js';
 import type { ConversationStreamHub, TeamStreamHub } from './events.js';
 import { parseUnifiedDiff, projectRepoRef, repoDirFor } from './git.js';
 import { openGithubToken } from './github-connection.js';
@@ -664,25 +669,11 @@ function agentForStep(
   deps: MachineDeps,
   todoRow: typeof todo.$inferSelect,
   kind: StepRecord['kind'],
-  /** review 步的 agentId 在 prompt meta header 里（M7 #330，step 表无
-   * agentId 列；测试已钉此口径，apps/server/test/review.test.ts）。其它步
-   * 类 = undefined 走 assignment 槽。 */
   prompt: string | null = null,
 ) {
-  // review 步：agentId 经 prompt meta header 透出（r8 §3.1：模态选 Agent
-  // 入队，不走 assignment 槽——执行/规划 Agent 不一定适合审核）。
-  if (kind === 'review') {
-    const meta = parseReviewPromptMeta(prompt);
-    const agentId = meta?.agentId ?? null;
-    if (!agentId) return null;
-    return deps.db.select().from(agent).where(eq(agent.id, agentId)).get() ?? null;
-  }
-  // assignment 双槽按步类取（02 §4.2/r5 §5）：规划步 → plan 槽；执行/合并步 →
-  // build 槽（合并轮复用执行轮会话，同 Agent）。
-  const slot = kind === 'plan' ? todoRow.assignment?.plan : todoRow.assignment?.build;
-  const agentId = slot?.agentId ?? null;
-  if (!agentId) return null;
-  return deps.db.select().from(agent).where(eq(agent.id, agentId)).get() ?? null;
+  // #881 起判定原语下沉 dispatch-eligibility（claim 与 sweep 单源），此处仅
+  // 适配 MachineDeps → db 形参。
+  return agentForStepEligibility(deps.db, todoRow, kind, prompt);
 }
 
 /** chief 步 claim 载荷组装（remoteTools 51 词表全量 + chief 块 + 会话续轮判定）。
@@ -739,23 +730,6 @@ function claimLocalTools(
     tools.push(LOCAL_TOOL_CREATE_TAG);
   }
   return tools;
-}
-
-/** #682 enabledRuntimes 真闸——步的 runtime 判定（与 daemon runner 的
- * backendFor 同律：agent provider ∈ BACKEND_RUNTIME_IDS → claude-code，
- * 其余（含 BYOK 自定义 provider）→ pi）。判定单源在此；claim 侧消费，
- * 机器侧开关 = machine.enabledRuntimes（PATCH 热写，秒级生效）。 */
-function stepRuntimeFor(agentProvider: string | null | undefined): 'pi' | 'claude-code' {
-  return isBackendRuntimeId(agentProvider) ? 'claude-code' : 'pi';
-}
-
-/** 机器未开步所需的 runtime = 不可领该步（步留 pending 给能跑的机器——
- * spec 11 A8「我可以决定本机跑 pi 还是 Claude Code 任务」的兑现位）。 */
-function runtimeGatePasses(
-  machineRow: { enabledRuntimes: string[] },
-  agentProvider: string | null | undefined,
-): boolean {
-  return machineRow.enabledRuntimes.includes(stepRuntimeFor(agentProvider));
 }
 
 function buildChiefClaim(
@@ -916,8 +890,15 @@ function tryClaim(
     // 显式降级标记，#862 T1 契约不替它预判）。恒新会话的步（review/交接缺
     // 失/首步）无会话文件依赖，不亲和。钉选 build（pinnedMachineId 非空）不
     // 亲和：钉选 SQL 过滤下唯有钉选机可见，亲和再挡 = 唯一可见者也被挡死；
-    // 且钉选 = 用户显式选择，盖过软偏好。会话机在线但不领（楔住）的等待上
-    // 界归 T3 离线钉选超时策略（#864），本票不做。
+    // 且钉选 = 用户显式选择，盖过软偏好。
+    // #881 楔住有界（#863 登记的已知缝）：让行不是无限期——步已等过
+    // SESSION_WEDGE_GRACE_MS 且会话机手上没有任何 claimed 步 → 判楔住，
+    // 放行本机（换机 + daemon 注记，与离线换机同一条降级路）。会话机持有
+    // claimed 步 = 忙（claim 主循环与 runStep 串行，忙 = 暂不领新步是正常，
+    // 等它跑完无损续接）→ 让行继续；忙步心跳停更的「部分存活歧义态」归属
+    // 既有 claimed 扫尾政策（等 presence 过期走释放），亲和不越过它抢先换机。
+    // 会话机自己从不受本闸挡（priorRow.machineId === machineId 时闸不进）：
+    // 楔住释放后它恢复即仍可无损认领。
     const sessionContinuing =
       priorSessionId !== null &&
       cand.stepRow.kind !== 'review' &&
@@ -931,7 +912,15 @@ function tryClaim(
     ) {
       const ownerRow = db.select().from(machine).where(eq(machine.id, priorRow.machineId)).get();
       if (ownerRow?.online && runtimeGatePasses(ownerRow, agentRow.provider)) {
-        continue;
+        const ownerBusy =
+          db
+            .select({ id: step.id })
+            .from(step)
+            .where(and(eq(step.machineId, ownerRow.id), eq(step.status, 'claimed')))
+            .get() !== undefined;
+        if (ownerBusy || nowMs() - stepActivityAt(cand.stepRow) <= SESSION_WEDGE_GRACE_MS) {
+          continue;
+        }
       }
     }
     // 原子领取：仅当仍 pending 时置 claimed（单进程 better-sqlite3 同步写）。
