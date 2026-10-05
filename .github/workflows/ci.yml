@@ -74,6 +74,12 @@ jobs:
       - name: Lint (biome ci)
         run: pnpm lint
 
+      # UI 漂移闸（#851）：单一样式只许一种实现——活 `.btn` 选择子、
+      # token 源之外的 hex 字面量、正典 chip 变体的异地重定义即红。
+      # 纯源码扫描，不需构建。
+      - name: UI drift gate (#851)
+        run: node scripts/ui-drift-gate.mjs
+
   # e2e 全量归 CI（#693 分层职责）：本地开发期只跑受影响面
   # （pnpm --filter @pacman/web e2e:affected），全量唯一执行点在这。
   # 4 分片并行（playwright --shard，按测试精确切分、并集 = 全量 83 spec，
