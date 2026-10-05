@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { evidencePanelShot } from './evidence';
 
 // Issue #615 (总管抽屉四连报 A/B/C 的 fixture 面回归): the drawer's model
 // row used to be a display-only `<span>` carrying a broken π trace — the
@@ -113,6 +114,60 @@ test.describe('chief drawer model row (#615)', () => {
       await page.keyboard.press('Escape');
       await expect(page.locator('.chief-model-pop')).toHaveCount(0);
     }
+  });
+
+  // #872: 选中行底色整行铺满（用户报「中间还有间隙，要全覆盖的」）。修法 = 把
+  // 弹层壳的横向内边距移到行上（壳 padding: 12px 0，行自带内衬），选中/hover
+  // 底色因此伸到弹层内缘。钉住的失败方式：① 底色仍内缩（壳还留着横垫）；② 行
+  // 盒被撑出行外（负外边距式修法的退化：清单作为滚动容器会长出横向溢出）；
+  // ③ 字墨与行尾勾的位置跟着挪（行内衬没补回壳垫的量）。
+  test('the selected row fill bleeds to the popover edges (#872)', async ({ page }) => {
+    // 用户报的是亮面（截图即亮面）——证据帧与它同面；几何本身与主题无关。
+    await page.addInitScript(() => localStorage.setItem('pacman-theme', 'light'));
+    await page.goto('/app?scenario=111');
+    await expect(drawer(page)).toBeVisible();
+    await modelBtn(page).click();
+    const menu = page.locator('.chief-model-pop');
+    await expect(menu).toBeVisible();
+    await menu.evaluate((el) =>
+      Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined),
+    );
+    const row = menu.locator('.chief-model-pick-row[aria-selected="true"]');
+    await expect(row).toHaveCount(1);
+    // 证据帧（PACMAN_E2E_EVIDENCE 未设时零写入）：整块弹层连底色到边一起拍
+    await evidencePanelShot(page, '872-drawer-picker.png', menu);
+
+    const geo = await row.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const panelEl = el.closest('.chief-model-pop') as HTMLElement;
+      const p = panelEl.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      const pcs = getComputedStyle(panelEl);
+      const name = el.querySelector('.model-pick-name') as HTMLElement;
+      const check = el.querySelector('.model-pick-check') as HTMLElement;
+      return {
+        fillLeft: r.left - p.left,
+        fillRight: p.right - r.right,
+        panelBorder: parseFloat(pcs.borderLeftWidth),
+        bg: cs.backgroundColor,
+        padLeft: parseFloat(cs.paddingLeft),
+        padRight: parseFloat(cs.paddingRight),
+        nameInset: name.getBoundingClientRect().left - r.left,
+        checkInset: r.right - check.getBoundingClientRect().right,
+      };
+    });
+    expect(geo.bg).not.toBe('rgba(0, 0, 0, 0)');
+    expect(geo.fillLeft).toBeCloseTo(geo.panelBorder, 1);
+    expect(geo.fillRight).toBeCloseTo(geo.panelBorder, 1);
+    // 字墨与勾仍骑在行的内衬上（壳垫移进行内后零位移）
+    expect(geo.nameInset).toBeCloseTo(geo.padLeft, 1);
+    expect(geo.checkInset).toBeCloseTo(geo.padRight, 1);
+
+    // 清单是滚动容器：铺满不许把内容撑成横向溢出
+    const scroll = await menu
+      .locator('.chief-model-pick-list')
+      .evaluate((el) => ({ sw: el.scrollWidth, cw: el.clientWidth }));
+    expect(scroll.sw).toBe(scroll.cw);
   });
 
   test('the picker search is typeahead-only: absent until a key, retracted on clear (#756)', async ({
