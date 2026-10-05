@@ -30,6 +30,7 @@ import {
   step as stepTable,
   todo as todoTable,
 } from '../src/db/schema.js';
+import { SESSION_WEDGE_GRACE_MS } from '../src/services/dispatch-timeouts.js';
 import { claimStep } from '../src/services/machines.js';
 import { bootServer, type TestServer } from './helpers.js';
 
@@ -65,6 +66,11 @@ interface WorldOpts {
   withPlan?: boolean;
   /** 历史会话链（缺省单条：A/sess-A）；按序插入 done 步。 */
   priorSessions?: { machineId: string | null; sessionId: string; kind?: 'build' | 'merge' }[];
+  /** #881：target 步入队年龄（缺省 60_000 = 宽限内；超宽限 = 楔住释放位）。 */
+  targetAgeMs?: number;
+  /** #881：会话机手上另持一条 claimed 步（= 忙，合法长跑；缺省 false = 空闲
+   *  楔住位）。步落在另一个 build 上（忙的是别的任务）。 */
+  ownerBusy?: boolean;
 }
 
 /** 直插 world：project + todo（assignment build 槽带模型 Agent）+ build + 会话机
@@ -169,9 +175,26 @@ function makeWorld(opts: WorldOpts = {}): AffinityWorld {
       ...(opts.reviewAgent
         ? { prompt: `{"kind":"review","agentId":"${agentId}","gate":"review"}\n审核任务` }
         : {}),
-      createdAt: base - 60_000,
+      createdAt: base - (opts.targetAgeMs ?? 60_000),
     })
     .run();
+  if (opts.ownerBusy) {
+    // 会话机忙位：另一条 build 的 claimed 步挂 A（claim 主循环与 runStep 串行，
+    // 忙 = 暂不领新步是正常，不是楔住）。
+    s.db
+      .insert(stepTable)
+      .values({
+        id: `step-busy-${suffix}`,
+        buildId: `build-busy-${suffix}`,
+        kind: 'build',
+        status: 'claimed',
+        machineId: machineAId,
+        createdAt: base - 300_000,
+        claimedAt: base - 300_000,
+        lastHeartbeatAt: base - 10_000,
+      })
+      .run();
+  }
   return { s, teamId, buildId, targetStepId, priorStepIds, machineAId, machineBId, agentId };
 }
 
@@ -352,5 +375,51 @@ describe('#863 T2 会话亲和（tryClaim worker 候选环）', () => {
     const got = await claimAs(w, w.machineBId);
     expect(got?.step.id).toBe(w.targetStepId);
     expect(got?.session).toEqual({ action: 'continue', sessionId: 'sess-B' });
+  });
+});
+
+describe('#881 会话机在线但楔住（tryClaim 亲和闸的有界化）', () => {
+  // 失败方式（先于实现固化，#863 已知缝）：会话机在线（presence 心跳鲜活）
+  // 但不领步——claim 主循环死/进程挂——亲和闸按「在线 + 闸开」永久让行，
+  // 步无期 pending。有界化：步等了 SESSION_WEDGE_GRACE_MS 仍无人领、且会话机
+  // 手上没有 claimed 步（忙 = 合法等待不误放）→ 闸放行，他机认领换机，降级
+  // 走 #862 T1 的 daemon 注记（server 不预判）。
+
+  test('楔住：会话机在线 + 手上无步 + 步超宽限 → 他机领到（等待有界）；载荷仍 continue（契约不破）', async () => {
+    const w = makeWorld({ targetAgeMs: SESSION_WEDGE_GRACE_MS + 60_000 });
+    const got = await claimAs(w, w.machineBId);
+    expect(got?.step.id).toBe(w.targetStepId);
+    expect(got?.step.machineId).toBe(w.machineBId);
+    // 换机降级的 #862 T1 契约原样：continue 载荷下发，daemon 续不上回退新会话。
+    expect(got?.session).toEqual({ action: 'continue', sessionId: 'sess-A' });
+  });
+
+  test('忙 = 合法等待：会话机在线 + 另持 claimed 步（心跳新鲜或停更）+ 步超宽限 → 他机仍空手', async () => {
+    // 心跳停更变体一并钉：claimed 步「部分存活歧义态」的归属面既有政策（等
+    // presence 过期走释放），亲和不得越过它抢先换机。
+    const w = makeWorld({
+      targetAgeMs: SESSION_WEDGE_GRACE_MS + 60_000,
+      ownerBusy: true,
+    });
+    expect(await claimAs(w, w.machineBId)).toBeNull();
+    expect(targetRow(w).status).toBe('pending');
+  });
+
+  test('宽限内楔住 → 仍让行（在线位准确时不急放，给 claim 长轮询节奏留量）', async () => {
+    const w = makeWorld({ targetAgeMs: 60_000 });
+    expect(await claimAs(w, w.machineBId)).toBeNull();
+    expect(targetRow(w).status).toBe('pending');
+  });
+
+  test('楔住释放后会话机自己仍可领（闸从不挡它自己——恢复即无损续接）', async () => {
+    const w = makeWorld({ targetAgeMs: SESSION_WEDGE_GRACE_MS + 60_000 });
+    const got = await claimAs(w, w.machineAId);
+    expect(got?.step.id).toBe(w.targetStepId);
+    expect(got?.step.machineId).toBe(w.machineAId);
+    expect(got?.session).toEqual({ action: 'continue', sessionId: 'sess-A' });
+  });
+
+  test('楔住宽限是单一来源的定值（10 分钟：盖过 claim 长轮询节奏与退避，仍是有界等待）', () => {
+    expect(SESSION_WEDGE_GRACE_MS).toBe(600_000);
   });
 });
