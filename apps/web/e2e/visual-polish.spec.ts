@@ -131,9 +131,14 @@ for (const theme of ['light', 'dark'] as const) {
     expect(menu.borderColorOwn).toBe(menu.borderColor);
     // #161: the popover opens over content and needs visible separation — NOT
     // --card-shadow. #854 换档：盘面投影正本从 --edge-shadow 的柔和档迁到
-    // --plate-shadow 的硬偏移档（用户 2026-10-05 取向，直角 + 1px 实线 +
-    // 硬投影三件套，Base UI 官方 menu hero 实测值）。
-    expect(menu.shadow).toContain(menu.plateShadow);
+    // --plate-shadow。亮侧 = 硬偏移档（Base UI 官方 menu hero 实测值，直角 +
+    // 1px 实线 + 硬投影三件套）；暗侧按 spec §2.7 + 用户 2026-10-05 裁定归
+    // none，1px 墨线独承（即 hero 自己的暗色分支）——故逐主题断言。
+    if (theme === 'dark') {
+      expect(menu.shadow).toBe('none');
+    } else {
+      expect(menu.shadow).toContain(menu.plateShadow);
+    }
   });
 
   test(`sidebar shares the main-area surface, seam drawn in the divider token (${theme})`, async ({ page }) => {

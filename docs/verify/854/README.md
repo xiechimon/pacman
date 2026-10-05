@@ -35,13 +35,19 @@
 ### 3. 盘三件套（用户 2026-10-05 取向）
 
 参考站截图 `uploads/menu-square-reference.png` + Base UI 官方 menu hero
-实测值：**直角 + 1px 实线 + 硬偏移投影**。五块盘统一：
+实测值：**直角 + 1px 实线**，投影分主题（见下）。五块盘统一：
 
 - `border-radius: 0`、`border: 1px solid var(--border-default)`（原已如此）
-- `box-shadow: var(--plate-shadow)` = `4px 4px 0 rgb(0 0 0 / 0.12)`
-  （新 token，`tokens.css` 两主题同值；原吃 `--fab-shadow` / `--edge-shadow`
-  的柔和档）
+- `box-shadow: var(--plate-shadow)`（新 token，原吃 `--fab-shadow` /
+  `--edge-shadow` 的柔和档）——**亮侧**取 hero 硬偏移值
+  `4px 4px 0 rgb(0 0 0 / 0.12)`；**暗侧 `none`**（用户 2026-10-05 裁定，
+  按 spec §2.7「暗：无投影，线框承重」，即 hero 自己的暗色分支）
 - 盘内选中行（`[data-checked]`）底色 = `--spot-soft`
+
+暗侧这一改有前后对照证据（见证据文件）：同一批盘、同一套开面动作，
+`PHASE=before` 时暗侧算出的 `box-shadow` 是
+`rgba(0, 0, 0, 0.12) 4px 4px 0px 0px`，`PHASE=after` 时是 `none`，
+边框/圆角/底色逐项不变。
 
 ### 4. 选中行高亮取色（截图实测）
 
@@ -58,7 +64,10 @@
   roving。跑法：fixture 构建 + `vite preview`，`E2E_PORT=<port> node
   docs/verify/854/probe-854-plates.mjs`。
 - `854-computed.json` —— 上探针的原始输出。
-- `854-<盘名>.png` ×5 —— 五个盘的元素截图。
+- `854-<盘名>.png` ×5 —— 五个盘的元素截图（亮侧）。
+- `probe-854-dark-plate-shadow.mjs` —— 暗侧同一批盘，`PHASE=` 控前后：
+  `854-dark-<盘名>-before.png` / `-after.png` ×5 + `854-dark-plate-shadow.json`
+  （两个 phase 的 `box-shadow` / border / radius / 底色原始值）。
 - `gate-output.txt` / `gate-negative-control.txt` —— 漂移闸正反两面。
 
 ## 检查
@@ -73,24 +82,20 @@
 
 ### 漂移闸
 
-闸脚本 `scripts/ui-drift-gate.mjs` 由 #856 落仓（本分支已 `merge main`
-取到）。#854 把 `HEX_ALLOWLIST` 清空（那条豁免是给这个颜色逃逸开的，
-逃逸关掉了它就死了），两面证据都在：
+闸脚本 `scripts/ui-drift-gate.mjs` 由 #856 落仓、#859 加了 G4 输入面闸
+（本分支已 `merge main` 取到，实测是**并集**：G1–G4 全在）。#854 把
+`HEX_ALLOWLIST` 清空（那条豁免是给这个颜色逃逸开的，逃逸关掉了它就死了），
+两面证据都在：
 
-- `gate-output.txt`：PASS（无 `.btn` 活选择器 / 无 hex 逃逸 / chip 变体单源）
+- `gate-output.txt`：PASS（无 `.btn` 活选择器 / 无 hex 逃逸 / chip 变体单源 /
+  bare `<input>` 5 处全 marked）
 - `gate-negative-control.txt`：把 `color: #fff` 放回去，同一条闸在
   `overlay/attachment-strip.css:76` 转红 —— 证明 PASS 不是空跑
 
-## 需要协调者留意
+## 本票的两处取舍
 
-1. **`scripts/ui-drift-gate.mjs` 有并发写者**：#859（#855）整份重写了这个
-   文件，把 G1/G2/G3 换成输入面闸（不再是同一套闸的加面）。两条车道都在
-   写同一文件且都已基于 main，合并顺序会决定最后一个版本是什么——先合
-   #859 会把本 PR 清空的 allowlist 连同 G2 一起抹掉。不在本票范围，但合并
-   顺序要人工判一次。
-2. **盘投影与 spec §2.7 的口径**：spec §2.7 写「暗：无投影，线框承重」，
-   本票按用户 2026-10-05 取向取 Base UI hero 的硬偏移值并**两主题同值**
-   （取向只给了一条值）。若用户要按 Base UI 原样（暗侧 `none`），改
-   `tokens.css` 一处即可。
-3. **`.res-sort` 触发钮顺带归零圆角**（8px → 0）：取向里写了「trigger 同式」，
+1. **盘投影分主题**：亮侧硬偏移（hero 实测值）、暗侧 `none`（spec §2.7 +
+   用户 2026-10-05 裁定，即 hero 自己的暗色分支）。第一版曾两主题同值，已按
+   裁定收回；暗侧前后对照证据见证据文件。
+2. **`.res-sort` 触发钮顺带归零圆角**（8px → 0）：取向里写了「trigger 同式」，
    同排的 `.res-search` 已由 #852 收敛到 0，二者原本一个 0 一个 8。
