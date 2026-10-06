@@ -141,7 +141,10 @@ test('branch sync tab: 视口压过内容高,同步钮钉底,body 溢出;git tab
   expect(box.height).toBeLessThanOrEqual(360 - 48 + 0.5);
   await expect(dialog.locator('.dlg-sync')).toBeInViewport();
   // git tab 无 footer,面板仍在视口内
-  await dialog.locator('.dlg-seg-tab', { hasText: 'Git' }).click();
+  // #945/#910 重钉：.dlg-seg-tab → role=tab 一级载体（正典表 §5.4，seg 迁
+  // Tabs 件 default 档）；.dlg-sync/.dlg-branch-body 属 detail/overlays.css
+  // （detail-b 批次），原样保留。
+  await dialog.getByRole('tab', { name: 'Git' }).click();
   await expect(dialog.locator('.dlg-sync')).toHaveCount(0);
   await expect(dialog.locator('.dlg-branch-body')).toBeInViewport();
 });

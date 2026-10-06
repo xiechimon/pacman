@@ -148,7 +148,9 @@ test('detail face: a rejected steer (409) keeps the draft word for word', async 
   });
 
   await page.goto(`/app/todo/${CARD_ID}`);
-  const input = page.locator('.composer-input');
+  // #945/#910 重钉：composer 输入面 = composer-card testid 域内的 textarea
+  // 元素载体（.composer-input 类名别名残留 DOM 至终账票）。
+  const input = page.locator('[data-testid="composer-card"] textarea');
   await expect(input).toBeVisible();
   await input.fill(DETAIL_DRAFT);
   await input.press('Enter');
@@ -171,7 +173,9 @@ test('detail face: an accepted steer clears the draft', async ({ page }) => {
   });
 
   await page.goto(`/app/todo/${CARD_ID}`);
-  const input = page.locator('.composer-input');
+  // #945/#910 重钉：composer 输入面 = composer-card testid 域内的 textarea
+  // 元素载体（.composer-input 类名别名残留 DOM 至终账票）。
+  const input = page.locator('[data-testid="composer-card"] textarea');
   await expect(input).toBeVisible();
   await input.fill(DETAIL_DRAFT);
   await input.press('Enter');

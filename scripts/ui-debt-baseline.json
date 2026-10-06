@@ -1,6 +1,6 @@
 {
   "frozenFrom": {
-    "sha": "26c0823dc1aa319c6438f45dc9584fc2d947d510",
+    "sha": "b0003125c168b20f0b7d8aac507ca1fff3d8a9af",
     "date": "2026-10-06"
   },
   "scope": "apps/web/src; per-face css = *.css minus the ui-debt-gate.mjs WHITELIST (carrier layer); bare controls = <button|<input|<select|<textarea occurrences in *.tsx minus components/ui/",
@@ -9,7 +9,6 @@
     "components/ui/checkbox.css": 96,
     "components/ui/floating-shell.css": 22,
     "components/ui/select.css": 121,
-    "detail/detail.css": 2147,
     "detail/overlays.css": 794,
     "routes/agent-detail.css": 396,
     "ui/chip.css": 42,
@@ -17,14 +16,11 @@
     "ui/input.css": 17
   },
   "rawControls": {
-    "total": 12,
+    "total": 7,
     "files": {
       "chief/chief-drawer.tsx": 1,
       "detail/branch-dialog.tsx": 1,
-      "detail/chat-markdown.tsx": 2,
-      "detail/composer.tsx": 2,
-      "detail/reject-dialog.tsx": 1,
-      "detail/review-dialog.tsx": 1,
+      "detail/composer.tsx": 1,
       "overlay/new-task-dialog.tsx": 1,
       "routes/agent-detail-page.tsx": 2,
       "ui/input.tsx": 1

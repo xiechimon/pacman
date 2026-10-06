@@ -14,6 +14,7 @@
 
 import type { BranchSyncRecord, BranchSyncStatus, MachineRecord } from '@pacman/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { cn } from 'cn';
 import { useState } from 'react';
 import { api } from '../api/client.js';
 import { useBuild, useMachines } from '../api/hooks.js';
@@ -21,11 +22,19 @@ import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { toastError } from '../components/ui/toaster.js';
 import type { BranchInfoContent } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, Copy } from '../icons/index.js';
 import './overlays.css';
+
+/** #945（正典表 §5.4，单源同 #944 的 RES_* 律）：.dlg-form-label 别名
+ *  退役——字段标签律 = r7 31 节奏（box→label 9、label→control 8、18px
+ *  行盒）+ c.css 定版 --label-size/--label-spacing token。branch-dialog
+ *  与 right-pane 两消费面共用。 */
+export const FIELD_LABEL =
+  'mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--text-primary)';
 
 interface BranchDialogProps {
   /** #73 retained-mount open flag. */
@@ -117,7 +126,7 @@ export function BranchSyncFields({
   return (
     <>
       <BranchBox info={info} />
-      <div className="dlg-form-label">{t('目标机器')}</div>
+      <div className={FIELD_LABEL}>{t('目标机器')}</div>
       {canSync ? (
         <MachinePicker
           machines={machines}
@@ -140,7 +149,7 @@ export function BranchSyncFields({
           <ChevronDown width={12} height={12} />
         </Button>
       )}
-      <div className="dlg-form-label">{t('同步目录')}</div>
+      <div className={FIELD_LABEL}>{t('同步目录')}</div>
       {canSync ? (
         // XMON-24：目录输入切 registry Input——几何/皮肤全在 .dlg-dir
         // per-face（h32/padding/border/mono12，unlayered 恒压底座）；老面
@@ -158,7 +167,10 @@ export function BranchSyncFields({
       )}
       <div className="dlg-force">
         <div className="dlg-force-text">
-          <div className="dlg-form-label">{t('强制同步')}</div>
+          {/* 老层叠里 overlays.css 的 .dlg-force-text .dlg-form-label 把本
+              label 的 margin 归零（detail-b 域规则）——m-0 是其终值等价形，
+              cn/twMerge 摘掉 FIELD_LABEL 的 mt/mb。 */}
+          <div className={cn(FIELD_LABEL, 'm-0')}>{t('强制同步')}</div>
           <div className="dlg-force-desc">
             {t('丢弃代码修改并删除非忽略的未跟踪文件；保留忽略内容。仅本次生效。')}
           </div>
@@ -232,31 +244,33 @@ export function BranchDialog({ info, buildId: buildIdProp, open, onClose }: Bran
   return (
     <DialogShell
       headerCenter={
-        <div className="dlg-form-seg" role="tablist" aria-label={t('分支与 PR')}>
-          {/* XMON-24：seg tab 切 shadcn ghost——皮肤/几何全在 .dlg-seg-tab
-              per-face（[data-active] 档同理，漆面压 hover/aria-expanded）；
-              role/aria-selected/data-active 直通 Base UI props 透传。 */}
-          <Button
-            variant="ghost"
-            role="tab"
-            aria-selected={tab === 'sync'}
-            className="dlg-seg-tab font-normal active:not-aria-[haspopup]:translate-y-0"
-            data-active={tab === 'sync'}
-            onClick={() => setTab('sync')}
-          >
-            {t('同步到机器')}
-          </Button>
-          <Button
-            variant="ghost"
-            role="tab"
-            aria-selected={tab === 'git'}
-            className="dlg-seg-tab font-normal active:not-aria-[haspopup]:translate-y-0"
-            data-active={tab === 'git'}
-            onClick={() => setTab('git')}
-          >
-            Git
-          </Button>
-        </div>
+        // #945（正典表 §5.4）：.dlg-form-seg/.dlg-seg-tab 退役 → Tabs 件
+        // default 档（registry 几何 rounded-lg bg-muted p-[3px] h-8 与旧
+        // 30px/3px/8px 族近同形，差值 D2 吸收）；inline 形态不加 w-full
+        // （block 形态是 provider seg 专属）。选中态载体 = role=tab +
+        // aria-selected + data-active（Base UI 自带）；#138 家族 hover tint
+        // 走消费端 utility（--seg-hover，未选中档专属——老 :not([data-
+        // active=true]):hover 律的组件侧等价形）。
+        <Tabs value={tab} onValueChange={(value) => setTab(value as 'sync' | 'git')}>
+          <TabsList aria-label={t('分支与 PR')}>
+            <TabsTrigger
+              value="sync"
+              className={
+                tab === 'sync' ? undefined : 'hover:bg-(--seg-hover) dark:hover:bg-(--seg-hover)'
+              }
+            >
+              {t('同步到机器')}
+            </TabsTrigger>
+            <TabsTrigger
+              value="git"
+              className={
+                tab === 'git' ? undefined : 'hover:bg-(--seg-hover) dark:hover:bg-(--seg-hover)'
+              }
+            >
+              Git
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       }
       open={open}
       onClose={onClose}
@@ -264,7 +278,8 @@ export function BranchDialog({ info, buildId: buildIdProp, open, onClose }: Bran
         // #193: the sync tab's 同步 button rides the pinned shell footer;
         // the git tab carries no action and no footer.
         tab === 'sync' ? (
-          <div className="dlg-form-foot">
+          // #945（正典表 §5.4）：.dlg-form-foot 别名退役，容器律走 utility。
+          <div className="flex flex-col px-4 pb-4">
             <SyncButton
               buildId={buildId}
               canSync={sync.canSync}
@@ -297,7 +312,7 @@ export function BranchDialog({ info, buildId: buildIdProp, open, onClose }: Bran
       ) : (
         <div className="dlg-branch-body">
           <BranchBox info={info} />
-          <div className="dlg-form-label">Pull Request</div>
+          <div className={FIELD_LABEL}>Pull Request</div>
           {pr !== null && prNumber != null ? (
             <a className="dlg-dir dlg-pr-link" href={pr} target="_blank" rel="noopener noreferrer">
               #{prNumber}

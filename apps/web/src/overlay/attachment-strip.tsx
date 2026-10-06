@@ -24,14 +24,21 @@
 // #948 per-face 清零：attachment-strip.css 退役——本件自带的基础行规则迁
 // 本文件 utility；三个宿主面的定位规则迁到各自消费点（detail composer 的
 // .composer-float 列、chief 抽屉的 .chief-composer 流内垫、new-task body 的
-// 停靠垫），卡片几何仍由 .spec-chip 家族（detail.css，#945 面）单源承载，
-// 占位/落定两卡 boundingBox 全等（attachment-strip.spec 钉）不靠本文件复制
-// 任何 chip 几何，只补 40px 退化尺寸下限与 preview 钮的 UA chrome 清零。
+// 停靠垫），卡片几何由 .spec-chip 家族单源承载（#945 起 = chat-markdown 的
+// SPEC_CHIP utility 常量，detail.css 已退役），占位/落定两卡 boundingBox
+// 全等（attachment-strip.spec 钉）不靠本文件复制任何 chip 几何，只补 40px
+// 退化尺寸下限与 preview 钮的 UA chrome 清零。
 
 import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
-import { AttachmentChip } from '../detail/chat-markdown.js';
+import {
+  AttachmentChip,
+  COMPOSER_CHIP_LABEL,
+  SPEC_CHIP,
+  SPEC_CHIP_IMAGE,
+  SPEC_CHIP_IMG,
+} from '../detail/chat-markdown.js';
 import { useI18n } from '../i18n/provider.js';
 import { type PendingAttachment, parseAttachmentTokens } from './attachment-paste.js';
 
@@ -122,7 +129,9 @@ export function AttachmentStrip({
           <Button
             key={entry.uid}
             variant="ghost"
-            className={PENDING_CARD_CLS}
+            // #945×#948 汇流：卡面皮肤单源 = chat-markdown 的 SPEC_CHIP 族
+            // 常量（detail.css 已退役），#948 的中和件/testid 原样叠加。
+            className={`${SPEC_CHIP} ${SPEC_CHIP_IMAGE} ${PENDING_CARD_CLS}`}
             // #910 二级载体：在途占位卡有 button/span 双形（图片/非图片），
             // role 不恒——testid 是两形的共同锚（attachment-strip.spec 钉）。
             data-testid="attachment-pending"
@@ -131,17 +140,17 @@ export function AttachmentStrip({
               if (entry.url !== null) setPreview({ name: entry.name, src: entry.url });
             }}
           >
-            <img src={entry.url} alt={entry.name} className="spec-chip-img" />
+            <img src={entry.url} alt={entry.name} className={`spec-chip-img ${SPEC_CHIP_IMG}`} />
             <span className={PENDING_BADGE_CLS}>{t('上传中')}</span>
           </Button>
         ) : (
           <span
             key={entry.uid}
-            className="spec-chip attachment-pending relative"
+            className={`spec-chip attachment-pending relative ${SPEC_CHIP}`}
             data-testid="attachment-pending"
             title={entry.name}
           >
-            <span className="composer-chip-label">{entry.name}</span>
+            <span className={COMPOSER_CHIP_LABEL}>{entry.name}</span>
             <span className={PENDING_BADGE_CLS}>{t('上传中')}</span>
           </span>
         ),
