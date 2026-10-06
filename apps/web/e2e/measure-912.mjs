@@ -31,7 +31,7 @@
 // Note: docs/spec/22 §1.5–1.8 froze the #912-era tables in place; post-seal
 // re-runs are evidence artifacts (docs/verify/<ticket>/), not re-splices.
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,6 +39,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..', '..', '..'); // repo root (apps/web/e2e → root)
 const outIdx = process.argv.indexOf('--out');
 const outDir = outIdx >= 0 && process.argv[outIdx + 1] ? process.argv[outIdx + 1] : process.cwd();
+mkdirSync(outDir, { recursive: true });
 const cCss = readFileSync(join(here, 'palette-c.css'), 'utf8');
 const shadcnCss = readFileSync(join(root, 'apps', 'web', 'src', 'styles', 'shadcn.css'), 'utf8');
 const tokensCss = readFileSync(join(root, 'apps', 'web', 'src', 'styles', 'tokens.css'), 'utf8');

@@ -1,15 +1,15 @@
 # 22 · 色彩与几何 token scale 正本表（#912）
 
-> 状态：**已裁决并生效**（2026-10-05，#912 wayfinder task 产出）。本册是逐域施工票的唯一取数正本——每个域批次（#913 批次表 v2）只消费、不自行裁定；色值翻转与双模封版（#915）、探针重钉（#921）均以本册 + `library/t-0909/src/themes/c.css` 为准。
+> 状态：**已裁决并生效**（2026-10-05，#912 wayfinder task 产出）。本册是逐域施工票的唯一取数正本——每个域批次（#913 批次表 v2）只消费、不自行裁定；色值翻转与双模封版（#915）、探针重钉（#921）均以本册 + #909 定版色板为准。色板正本现为冻结副本 `apps/web/e2e/palette-c.css`（t-0909 沙盒已按 #908 fog 规则由 #953 退役，见 §0）。
 > 上游正典：ADR 0010（D1 色相重选 / D2 几何自由重设计 / D5.4 hex/rgb 记法契约）、#909 决议（C · 纸兰定版，色板正本 c.css @ `7340d0ab`）、#910 决议（钉扎口径五项裁定）。
-> 取数源：色彩与几何值全取 `library/t-0909/src/themes/c.css`（定版色板）；对比度由 `library/t-0909/scripts/measure-912.mjs` 按 WCAG 2.1 亮度比逐对实测（非估计），算法与 `scripts/gen-palettes.mjs`（#909 正本生成器）逐字节同源，且与 `library/t-0909/reports/contrast.md` 逐对对账一致。机器可读实测落 `library/t-0909/reports/token-scale-912.json`。
+> 取数源：色彩与几何值全取 `apps/web/e2e/palette-c.css`（#909 定版色板的冻结字节级副本，sha1 `beb289f6…`，与 c.css @ `7340d0ab` 及 main 落地点 `144698cb` 逐字节一致）；对比度由 `apps/web/e2e/measure-912.mjs` 按 WCAG 2.1 亮度比逐对实测（非估计），算法与 #909 正本生成器 `gen-palettes.mjs` 逐字节同源，且与沙盒期 `reports/contrast.md` 逐对对账一致（对账记录 `docs/verify/915/`）。#912 期机器可读实测原件随沙盒存于 main 历史（`144698cb:library/t-0909/reports/token-scale-912.json`）；封版期复跑产物落 `docs/verify/953/`。
 
 ## 0. 落点与正典地位
 
 本册落 `docs/spec/22`，理由：
 
 - `docs/spec/` 是仓内唯一编号正典序列（00–21），token scale 正本表是被批次（#913）、值翻转（#915）、探针（#921）长期消费的引用正本，属正典序列而非沙盒产物。
-- `library/t-0909/` 是 #909 原型沙盒，退役时点已在 #908 fog 列明（各域施工票吸收定版后整体退役）。正本表须比沙盒长寿，故不落 t-0909；c.css 色板正本仍留 t-0909（ADR 0010 D1 钉其为取数源），本册以 `@ 7340d0ab` 锚定引用。
+- `library/t-0909/` 是 #909 原型沙盒，退役时点已在 #908 fog 列明（各域施工票吸收定版后整体退役）。**退役已由 #953 执行**：沙盒目录自工作树删除，全部 150 文件仍可按 main 历史取回（落地点 `144698cb`，含 gen-palettes.mjs 与 A/B 方向草稿——「换脸后悔」回退路 ADR 0010 据此仍成立；`7340d0ab` 本身是 squash 前的分支提交、非 main 祖先，内容以 `144698cb` 为准，两者 c.css 逐字节一致已核）。随身迁出两件套到永久工具面：`measure-912.mjs`（本附录规则）与 `palette-c.css`（c.css 冻结副本，ADR 0010 D1 的取数源由它继续承载）。
 - 编号按合并时点 main 尾部 +1（撞号纪律与 drizzle migration 同律）：若并行车道先落 22 册，本册重编号到新尾部，引用同步改。
 
 本册管「每个 token 的正本值与实测证据」，不管施工顺序（在 #913）、不管钉扎载体（在 #910 / ADR 0010 D5）。数值与 spec/16 旧口径冲突处以本册为准（spec/16 已标 superseded-in-part）。
@@ -578,13 +578,15 @@
 
 ## 附录：复现
 
+t-0909 沙盒退役（#953）已执行本册预定规则：`measure-912.mjs` 随迁到永久工具面（#921 探针 dump 工具同级，`apps/web/e2e/`），引用路径即下方现行形。
+
 ```sh
-cd library/t-0909
-node scripts/measure-912.mjs
+node apps/web/e2e/measure-912.mjs --out <目录>     # 缺省 --out = 当前目录
 # 产出:
-#   reports/token-scale-912.json          机器可读实测(全槽解析值 + 逐对对比度 + 组件件面)
-#   reports/token-scale-912-tables.md     人读完整报告(含汇总)
-#   reports/token-scale-912-fragment.md   本册 §1.5–1.8 表格片段(拼接用中间产物)
+#   token-scale-912.json          机器可读实测(全槽解析值 + 逐对对比度 + 组件件面)
+#   token-scale-912-tables.md     人读完整报告(含汇总)
+#   token-scale-912-fragment.md   本册 §1.5–1.8 表格片段(#912 拼接期中间产物；
+#                                 本册表格已冻结，封版后复跑只作证据归档，不回拼)
 ```
 
-取数源 `src/themes/c.css` 与 `apps/web/src/styles/{shadcn,tokens}.css`；算法与 `scripts/gen-palettes.mjs`（#909 正本生成器）同源，逐对与 `reports/contrast.md` 对账。t-0909 沙盒退役时（#908 fog），`measure-912.mjs` 应随迁到永久工具面（建议与 #921 探针 dump 工具同级归档进 e2e 工具面），本册引用路径同步改。
+取数源 `apps/web/e2e/palette-c.css`（冻结色板正本）与 `apps/web/src/styles/{shadcn,tokens}.css`；算法与 `gen-palettes.mjs`（#909 正本生成器，存于 main 历史 `144698cb`）同源。封版树的期望读数（#953 实测）：双模各 flip=0 / new=0 / retired=2（--toggle-track/--toggle-knob，#952 唯一解冻窗删除）/ unchanged=109，AA 门控 0 未过（暗 min 3.46 / 亮 min 3.05）——任何偏离即漂移，须先解释再动值。
