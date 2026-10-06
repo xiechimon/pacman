@@ -200,6 +200,33 @@ export const gitPrim = {
     await runGitOk(['add', '-A'], { cwd: dir, timeoutMs: META_TIMEOUT_MS });
   },
 
+  /** 暂存区里含指定**固定串**的文件，只在这些路径里找（#958 闸 5 的认标记扫描）。
+   * 限定路径集是有意的：全仓 grep 会拖慢每次提交，而候选名只有五个。无命中 =
+   * 空数组（`git grep` 的退出码 1 是「没匹配」，不是错）。 */
+  async stagedPathsContaining(
+    dir: string,
+    needle: string,
+    paths: readonly string[],
+  ): Promise<string[]> {
+    if (paths.length === 0) return [];
+    const r = await runGit(['grep', '--cached', '-l', '-F', '-e', needle, '--', ...paths], {
+      cwd: dir,
+      timeoutMs: META_TIMEOUT_MS,
+    });
+    if (r.code !== 0) return [];
+    return r.stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '');
+  },
+
+  /** 把某个路径移出暂存区（#958 闸 5：认标记剔除时用）。`reset --` 会把索引项
+   * 还原到 HEAD——跟踪文件 = 本轮对它的改动不随本次提交走（既定取舍，见
+   * docs/spec/24 闸 4）；未跟踪文件 = 从索引里摘掉。 */
+  async unstagePath(dir: string, path: string): Promise<void> {
+    await runGitOk(['reset', '-q', '--', path], { cwd: dir, timeoutMs: META_TIMEOUT_MS });
+  },
+
   /** commit；干净树（nothing to commit）= false 不抛。 */
   async commit(dir: string, message: string, identity: CommitIdentity): Promise<boolean> {
     const r = await runGit(['commit', '-m', message], {
