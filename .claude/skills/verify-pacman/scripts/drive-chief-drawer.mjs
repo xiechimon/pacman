@@ -78,13 +78,20 @@ async function settled(page) {
     .catch(() => {});
 }
 
-const FAB = '.chief-fab';
+// #950 载体迁移：chief per-face 类钩退役——FAB = aria-label 总管 钮、模型行
+// 触发钮 = aria-label 总管主模型、头部弹层 = dialog role + aria-label 模型
+// （行 = role=option）、设置视图 = h1「总管设置」、确认层 = dialog role +
+// aria-label。`.chief-drawer`（零规则机制钩）与 `.secondary-fab`（外域 CSS
+// 仍活）不动。
+const FAB = 'button[aria-label="总管"]';
 const WAKE_FAB = '.secondary-fab';
 const DRAWER = '.chief-drawer';
 const DRAWER_SEL = '.chief-drawer';
-const MODEL_BTN = '.chief-model button[aria-haspopup="dialog"]';
-const DIALOG = '.chief-model-pick';
+const MODEL_BTN = 'button[aria-label="总管主模型"]';
+const DIALOG = '[role="dialog"][aria-label="模型"]';
 const GEAR = 'button[aria-label="总管设置"]';
+const SETTINGS = 'h1:text-is("总管设置")';
+const REWIND_DIALOG = '[role="dialog"][aria-label="恢复到此处"]';
 
 const stamp = Date.now() % 100000;
 const prov = {
@@ -152,16 +159,17 @@ try {
   await page.click(WAKE_FAB);
   await page.waitForSelector(DRAWER, { state: 'visible', timeout: 8000 });
   await settled(page);
-  const gateBtn = page.locator(DRAWER + ' .chief-gate button');
+  // #950 载体：门控条 = 「请先为总管选择一个 Agent。」文案行 + 文本「设置」钮。
+  const gateBtn = page.locator(DRAWER + ' button:text-is("设置")');
   const gateVisible = await gateBtn.isVisible().catch(() => false);
   check('offboard-gate-rendered', gateVisible, gateVisible ? '非 board 门控条设置钮在' : '门控条设置钮缺失');
   if (gateVisible) {
     await gateBtn.click();
     await page
-      .waitForSelector('.chief-settings', { state: 'visible', timeout: 8000 })
+      .waitForSelector(SETTINGS, { state: 'visible', timeout: 8000 })
       .catch(() => {});
     // 深链参消费后即剥（XMON-106 律）——稳定契约是设置视图落地，不是 URL 中途态
-    const landed = await page.locator('.chief-settings').isVisible().catch(() => false);
+    const landed = await page.locator(SETTINGS).isVisible().catch(() => false);
     check(
       'offboard-gate-reaches-settings',
       landed,
@@ -194,13 +202,13 @@ try {
   await page.click(FAB);
   await page.waitForSelector(DRAWER, { state: 'visible', timeout: 8000 });
   await settled(page);
-  // dicebear 头像外部加载慢（实测 ~8s 才 200）——截图前等 naturalWidth 落地，
-  // 离线环境等不到就照截（不 hang）。
+  // #615 返工后模型行无外链头像（行首 = 运行时标记 svg）——截图前只等标记
+  // svg 落定；等不到就照截（不 hang，防御律沿旧）。
   await page
     .waitForFunction(
       () => {
-        const img = document.querySelector('.chief-model-avatar img');
-        return img != null && img.complete && img.naturalWidth > 0;
+        const btn = document.querySelector('button[aria-label="总管主模型"]');
+        return btn != null && btn.querySelector('span > svg') != null;
       },
       null,
       { timeout: 10000 },
@@ -213,9 +221,10 @@ try {
     btnVisible,
     btnVisible ? '模型行 = button[aria-haspopup=dialog]' : '模型行仍非控制件（纯显示）',
   );
-  // #615 返工裁决：行首 = 运行时标记（π 字形 svg），不是 Agent 头像 img
-  const markSvg = btnVisible ? await modelBtn.locator('.chief-model-mark svg').count() : 0;
-  const markImg = btnVisible ? await modelBtn.locator('.chief-model-mark img').count() : 0;
+  // #615 返工裁决：行首 = 运行时标记（π 字形 svg），不是 Agent 头像 img。
+  // #950 载体：行首槽 = 触发钮的首个 span（.chief-model-mark 类退役）。
+  const markSvg = btnVisible ? await modelBtn.locator('> span:first-child svg').count() : 0;
+  const markImg = btnVisible ? await modelBtn.locator('> span:first-child img').count() : 0;
   check(
     'model-row-carries-runtime-mark',
     markSvg === 1 && markImg === 0,
@@ -224,7 +233,8 @@ try {
       : '行首标记 svg=' + markSvg + ' img=' + markImg,
   );
   await shot(page, '02-bound-model-row.png');
-    await page.locator('.chief-head').screenshot({ path: join(EVIDENCE, '06-drawer-head.png') });
+    // #950 载体：头部区 = 抽屉内唯一 header 元素（.chief-head 类退役）。
+    await page.locator(DRAWER + ' header').screenshot({ path: join(EVIDENCE, '06-drawer-head.png') });
     artifacts.push('06-drawer-head.png');
 
   // —— dialog 开：候选含铺底模型 + 默认行（#615 A）——
@@ -246,12 +256,12 @@ try {
 
     // —— 选定 → 落库 → 回显（GET 封套 + SQLite 双真值）——
     const target = prov.models[1];
-    await page.locator(DIALOG + ' .chief-model-pick-row', { hasText: target.name }).click();
+    await page.locator(DIALOG + ' [role="option"]', { hasText: target.name }).click();
     await page.waitForSelector(DIALOG, { state: 'detached', timeout: 8000 }).catch(() => {});
     await page
       .waitForFunction(
         (want) => {
-          const btn = document.querySelector('.chief-model button');
+          const btn = document.querySelector('button[aria-label="总管主模型"]');
           return btn != null && (btn.textContent ?? '').includes(want);
         },
         target.name,
@@ -298,12 +308,12 @@ try {
     await page.locator(MODEL_BTN).click();
     await page.waitForSelector(DIALOG, { state: 'visible', timeout: 8000 }).catch(() => {});
     await page
-      .locator(DIALOG + ' .chief-model-pick-row', { hasText: '默认（与绑定 Agent 相同）' })
+      .locator(DIALOG + ' [role="option"]', { hasText: '默认（与绑定 Agent 相同）' })
       .click();
     await page
       .waitForFunction(
         (agentModel) => {
-          const btn = document.querySelector('.chief-model button');
+          const btn = document.querySelector('button[aria-label="总管主模型"]');
           return btn != null && (btn.textContent ?? '').includes(agentModel + ' · 默认');
         },
         prov.models[0].id,
@@ -323,14 +333,15 @@ try {
     );
   }
 
-  // —— 消息行复制钮 + 死 glyph 出账（#615 C）——
-  await page.locator('.chief-composer-input').fill('验证复制钮的一句话。');
+  // —— 消息行复制钮 + 死 glyph 出账（#615 C；#950 载体：msg 工具容器 =
+  // data-testid chief-msg-tools/chief-msg-foot）——
+  await page.locator('[data-testid="chief-composer-input"]').fill('验证复制钮的一句话。');
   await page.keyboard.press('Enter');
-  await page.waitForSelector(DRAWER + ' .chief-msg-tools button[aria-label="复制"]', {
+  await page.waitForSelector(DRAWER + ' [data-testid="chief-msg-tools"] button[aria-label="复制"]', {
     state: 'visible',
     timeout: 8000,
   }).catch(() => {});
-  const copyBtn = page.locator(DRAWER + ' .chief-msg-tools button[aria-label="复制"]');
+  const copyBtn = page.locator(DRAWER + ' [data-testid="chief-msg-tools"] button[aria-label="复制"]');
   const copyVisible = await copyBtn.isVisible().catch(() => false);
   if (copyVisible) {
     await copyBtn.click();
@@ -341,26 +352,35 @@ try {
   }
   await settled(page);
   // —— 恢复到此处闭环（#615 返工）：发第二句 → 恢复到第一句 → 截断 + 重入队 ——
-  await page.locator('.chief-composer-input').fill('第二句供 rewind。');
+  await page.locator('[data-testid="chief-composer-input"]').fill('第二句供 rewind。');
   await page.keyboard.press('Enter');
   await page
     .waitForFunction(
-      () => document.querySelectorAll('.chief-msg-tools button[aria-label="恢复到此处"]').length >= 2,
+      () =>
+        document.querySelectorAll('[data-testid="chief-msg-tools"] button[aria-label="恢复到此处"]')
+          .length >= 2,
       null,
       { timeout: 8000 },
     )
     .catch(() => {});
-  const restoreBtns = page.locator(DRAWER + ' .chief-msg-tools button[aria-label="恢复到此处"]');
+  const restoreBtns = page.locator(
+    DRAWER + ' [data-testid="chief-msg-tools"] button[aria-label="恢复到此处"]',
+  );
   const nRestore = await restoreBtns.count();
   const threadsPre = await getJson(SERVER + '/api/teams/' + teamId + '/chief/threads');
   sqliteClearActiveRun(threadsPre?.[0]?.id ?? null);
   if (nRestore >= 2) {
     await restoreBtns.first().click();
-    await page.waitForSelector('.chief-pick-confirm', { state: 'visible', timeout: 8000 }).catch(() => {});
-    await page.locator('.chief-dlg-primary').click();
+    // #950 载体：确认层 = dialog role + aria-label「恢复到此处」（.chief-pick-
+    // confirm 文案钩退役）；确认钮 = 层内文本「恢复到此处」的 button（.chief-
+    // dlg-primary 退役；.dlg 壳级别名存活至 #952，但本断言改骑 role 载体）。
+    await page.waitForSelector(REWIND_DIALOG, { state: 'visible', timeout: 8000 }).catch(() => {});
+    await page.locator(REWIND_DIALOG + ' button:has-text("恢复到此处")').click();
     await page
       .waitForFunction(
-        () => document.querySelectorAll('.chief-msg-tools button[aria-label="恢复到此处"]').length === 1,
+        () =>
+          document.querySelectorAll('[data-testid="chief-msg-tools"] button[aria-label="恢复到此处"]')
+            .length === 1,
         null,
         { timeout: 8000 },
       )
@@ -386,8 +406,8 @@ try {
   await shot(page, '07-after-rewind.png');
 
   await settled(page);
-  const bareTools = await page.locator(DRAWER + ' .chief-msg-tools > svg').count();
-  const bareFoot = await page.locator(DRAWER + ' .chief-msg-foot > svg').count();
+  const bareTools = await page.locator(DRAWER + ' [data-testid="chief-msg-tools"] > svg').count();
+  const bareFoot = await page.locator(DRAWER + ' [data-testid="chief-msg-foot"] > svg').count();
   check('dead-glyphs-removed', bareTools === 0 && bareFoot === 0, '裸 svg：tools=' + bareTools + ' foot=' + bareFoot);
   await shot(page, '05-copy-feedback.png');
 } catch (err) {

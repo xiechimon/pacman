@@ -192,22 +192,26 @@ await page.route('**/api.dicebear.com/**', (route) =>
 );
 
 // N1 真用户路径设主力机：抽屉齿轮 → 设置 Agent tab「机器」槽选主力机。
+// #950 载体迁移：chief per-face 类钩退役——FAB = button[aria-label="总管"]、
+// 设置视图 = h1「总管设置」、机器槽触发钮 = button[aria-label="机器"]、菜单 =
+// [role="dialog"][aria-label="机器"]（行 = role=option，「自动」行含在内；
+// data-testid="chief-host-row" 只数机器行）。
 await page.goto(WEB + '/app');
-await page.locator('.chief-fab').click();
+await page.locator('button[aria-label="总管"]').click();
 await page.locator('.chief-drawer').waitFor({ state: 'visible', timeout: 8000 });
 await page.locator('button[aria-label="总管设置"]').click();
-await page.locator('.chief-settings').waitFor({ state: 'visible', timeout: 8000 });
-const chip = page.locator('button.chief-host-select');
+await page.locator('h1:text-is("总管设置")').waitFor({ state: 'visible', timeout: 8000 });
+const chip = page.locator('button[aria-label="机器"]');
 await chip.waitFor({ state: 'visible', timeout: 8000 });
 check('N1 设置 Agent tab「机器」槽在位（值 = 自动）', (await chip.textContent()).includes('自动'));
 await chip.click();
-const menu = page.locator('.chief-host-menu');
+const menu = page.locator('[role="dialog"][aria-label="机器"]');
 await menu.waitFor({ state: 'visible', timeout: 8000 });
 const row = menu.locator('[data-testid="chief-host-row"]').filter({ hasText: PRIMARY_NAME });
 // 机器行集是异步查询（useMachines）——先等主力机行落定再数总数，别在查询
 // 未决时数出 1/2 行的加载态。
 await row.waitFor({ state: 'visible', timeout: 8000 });
-const rowCount = await menu.locator('.chief-host-row').count();
+const rowCount = await menu.locator('[role="option"]').count();
 check(
   'N2 机器清单含双机行（自动 + server 本机 + 双机 = 4 行）',
   rowCount === 4,
@@ -218,7 +222,7 @@ await row.click();
 await menu.waitFor({ state: 'hidden', timeout: 8000 });
 // mutation 后 invalidateAll 重取回显（S8：无本地乐观态，等真值落定）。
 await page
-  .locator('button.chief-host-select')
+  .locator('button[aria-label="机器"]')
   .filter({ hasText: PRIMARY_NAME })
   .waitFor({ timeout: 8000 });
 check('N3 选定后 chip 回显机器名（PATCH → invalidateAll 重取）', true);
@@ -233,13 +237,13 @@ check(
 await saveJson('chief-envelope-after-patch.json', envAfter);
 
 // N5 抽屉新主题（真用户路径：返回抽屉 → composer 发新主题）。
-await page.locator('.chief-set-back').click();
+await page.locator('button[aria-label="返回"]').click();
 await page.locator('.chief-drawer').waitFor({ state: 'visible', timeout: 8000 });
-const composer = page.locator('.chief-composer-input');
+const composer = page.locator('[data-testid="chief-composer-input"]');
 await composer.waitFor({ timeout: 8000 });
 await composer.fill('主力机链路验证：编排回合请求');
 await page.keyboard.press('Enter');
-await page.locator('.chief-stream .chief-msg').first().waitFor({ timeout: 8000 });
+await page.locator('[data-testid="chief-stream"] [data-testid="chief-msg"]').first().waitFor({ timeout: 8000 });
 
 // N6 行级真值：chief_thread.pinnedMachineId 落主力机（缺省链第二级接管）。
 // SQLite 列名 = drizzle 定义的 camelCase（epochMs('createdAt') 等），SQL 里
@@ -342,7 +346,9 @@ await saveJson('conversation-failure-messages.json', msgsFinal);
 // N12 抽屉失败行可见（真用户路径：#631 链 → toast + 失败行）。
 await page.goto(WEB + '/app?chief=' + threadId);
 await page.locator('.chief-drawer').waitFor({ state: 'visible', timeout: 8000 });
-const errorReason = page.locator('.chief-error-reason');
+// #950 载体：失败行 = role=alert（原因文案在其内层 span；scope 到抽屉，
+// 排除同页 toast 面）。
+const errorReason = page.locator('.chief-drawer [role="alert"] span');
 await errorReason.waitFor({ state: 'visible', timeout: 8000 });
 check(
   'N12 抽屉失败行含机器名 + 主力机出口',

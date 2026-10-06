@@ -74,10 +74,13 @@ async function settled(page) {
     .catch(() => {});
 }
 
-const FAB = '.chief-fab';
-const COMPOSER = '.chief-composer-input';
+// #950 载体迁移：FAB = aria-label 总管 钮、composer = data-testid、头部 chip
+// 标题 = aria-label 主题 钮内唯一 span（.chief-chip-title 类退役）。
+const FAB = 'button[aria-label="总管"]';
+const COMPOSER = '[data-testid="chief-composer-input"]';
 const NEW_THREAD_BTN = DRAWER + ' button[aria-label="新主题"]';
-const CHIP_TITLE = DRAWER + ' .chief-chip-title';
+const CHIP_BTN = DRAWER + ' button[aria-label="主题"]';
+const CHIP_TITLE = CHIP_BTN + ' span';
 
 const stamp = Date.now() % 100000;
 const prov = {
@@ -124,7 +127,7 @@ try {
   // —— 输入态守卫（触发不可观测态）：n 落进草稿，不是触发 ——
   await page.keyboard.press('n');
   const draftAfterGuard = await page.locator(COMPOSER).inputValue();
-  const heroBeforeThread = await page.locator(DRAWER + ' .chief-examples').isVisible().catch(() => false);
+  const heroBeforeThread = await page.locator(DRAWER + ' [data-testid="chief-examples"]').isVisible().catch(() => false);
   check(
     'composer-focus-n-types',
     draftAfterGuard === 'n' && heroBeforeThread,
@@ -160,8 +163,8 @@ try {
   // —— 建线程：composer 发送 → 线程视图落地 ——
   await page.locator(COMPOSER).fill('第一句建线程。');
   await page.keyboard.press('Enter');
-  await page.waitForSelector(DRAWER + ' .chief-stream', { state: 'visible', timeout: 8000 }).catch(() => {});
-  const streamVisible = await page.locator(DRAWER + ' .chief-stream').isVisible().catch(() => false);
+  await page.waitForSelector(DRAWER + ' [data-testid="chief-stream"]', { state: 'visible', timeout: 8000 }).catch(() => {});
+  const streamVisible = await page.locator(DRAWER + ' [data-testid="chief-stream"]').isVisible().catch(() => false);
   const chipInThread = ((await page.locator(CHIP_TITLE).textContent().catch(() => '')) ?? '').trim();
   check(
     'send-lands-thread-view',
@@ -198,7 +201,7 @@ try {
   await page.locator(COMPOSER).click();
   await page.keyboard.press('n');
   const draftInThread = await page.locator(COMPOSER).inputValue();
-  const streamStill = await page.locator(DRAWER + ' .chief-stream').isVisible().catch(() => false);
+  const streamStill = await page.locator(DRAWER + ' [data-testid="chief-stream"]').isVisible().catch(() => false);
   check(
     'thread-view-composer-n-types',
     draftInThread === 'n' && streamStill,
@@ -209,9 +212,9 @@ try {
 
   // —— 触发：裸 N → 新主题视图（stream 收、hero 出、chip 回「新主题」）——
   await page.keyboard.press('n');
-  await page.waitForSelector(DRAWER + ' .chief-examples', { state: 'visible', timeout: 8000 }).catch(() => {});
-  const heroAfter = await page.locator(DRAWER + ' .chief-examples').isVisible().catch(() => false);
-  const streamAfter = await page.locator(DRAWER + ' .chief-stream').isVisible().catch(() => false);
+  await page.waitForSelector(DRAWER + ' [data-testid="chief-examples"]', { state: 'visible', timeout: 8000 }).catch(() => {});
+  const heroAfter = await page.locator(DRAWER + ' [data-testid="chief-examples"]').isVisible().catch(() => false);
+  const streamAfter = await page.locator(DRAWER + ' [data-testid="chief-stream"]').isVisible().catch(() => false);
   const chipAfter = ((await page.locator(CHIP_TITLE).textContent().catch(() => '')) ?? '').trim();
   check(
     'n-fires-new-thread-view',
@@ -222,11 +225,13 @@ try {
   await shot(page, '03-after-n-hero.png');
 
   // —— 触发与钮同语义：切换器 popover 开着时 N 一并收掉 ——
-  await page.locator(DRAWER + ' .chief-head-row button').first().click();
-  const popoverOpen = await page.locator(DRAWER + ' .chief-switcher').isVisible().catch(() => false);
+  // #950 载体：切换器开关 = 头部 chip 钮（aria-label 主题）；popover 本体 =
+  // role=menu（.chief-switcher 类退役，非 portal、住抽屉 header 内）。
+  await page.locator(CHIP_BTN).click();
+  const popoverOpen = await page.locator(DRAWER + ' [role="menu"]').isVisible().catch(() => false);
   await page.keyboard.press('n');
   await page.waitForTimeout(300);
-  const popoverAfter = await page.locator(DRAWER + ' .chief-switcher').count();
+  const popoverAfter = await page.locator(DRAWER + ' [role="menu"]').count();
   check(
     'n-closes-switcher-popover',
     popoverOpen && popoverAfter === 0,

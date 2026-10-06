@@ -3,18 +3,22 @@
 // （spec 11 §A10，#358）。
 //
 // 真用户路径：/app（board）→ 总管 FAB 开 drawer → gear（总管设置）换内容区
-// → Agent tab → 压缩模型选择器 button.chief-select → 展开 .chief-model-menu。
+// → Agent tab → 压缩模型选择器 button[aria-label="压缩模型"] → 展开
+// [role="dialog"][aria-label="压缩模型"]（#950 载体：旧 button.chief-select /
+// .chief-model-menu 类钩退役）。
 //
-// 验 #358 的 live 面（fixture e2e 覆盖不到的「hook → mapper → DOM」段）：
-//   AC1 选择器行内容随 providers 配置变化 —— API POST 铺底 custom provider
-//       后重载，行集合随之变；再铺第二个 provider，行再变（delta 纯由
-//       providers 驱动，claude-code 段同机恒定）。
+// 验 #358 的 live 面（fixture e2e 覆盖不到的「hook → mapper → DOM」段），
+// 数据契约按 #770 用户裁决后的现行形（正本 api/mappers.ts toModelOptions）：
+//   #770 排除裁决 —— custom providers 不再进 picker 候选；选项清单 =
+//       GET model-sources 非 pi 段投影。铺底 provider 的模型仍会出现在
+//       model-sources 输出里（pi 段，数据通路活着），但**不得**进选择器行。
+//   #707 机器跟随 —— claude-code 段 = 执行机 daemon 上报；未注册 daemon 的
+//       verify 栈上非 pi 段恒空，选择器只有默认行，这是预期真值不是故障。
 //   并集一致性 —— 选择器非默认行 (providerLabel, modelName) 集合 ==
-//       toModelOptions(GET providers, GET model-sources) 的期望投影
-//       （driver 内复刻 mapper 逻辑做 UI=API 双真值对拍）。
-//   claude-code 段数据源 = 本机 ~/.claude/settings.json（server homedir 直读，
-//       A4）——机器相关，只断言 UI=API 一致，不断言具体清单（drive-providers
-//       -tabs cc-model-rows-consistency 同律）。
+//       toModelOptions(GET model-sources) 的期望投影（driver 内复刻现行
+//       mapper 逻辑做 UI=API 双真值对拍）。
+//   原「铺 provider → 行随之变」的 AC1 行变化腿随 #770 裁决退役（该数据
+//       通道已不供 picker）；行变化面由 fixture e2e 的 options 面承接。
 //
 // 铺底走公开 REST POST /api/teams/:id/providers（非被测路径，drive.mjs search
 // probe 铺底律）。依赖全新库：重验 = 重 launch。
@@ -73,11 +77,10 @@ async function postJson(url, body) {
   return res.json();
 }
 
-// driver 内复刻 api/mappers.ts toModelOptions（#358）做 UI=API 对拍：
-// custom providers models[]（带 providerId/label 归属；pi 段卫生：空 id 跳过、
-// 空 name 回退 id）∪ 非 pi runtime 段（provider = runtime 词表值），同
-// (provider, modelId) 去重 first-wins。
-function expectedOptions(providers, sources) {
+// driver 内复刻 api/mappers.ts toModelOptions（#358；#770 起 providers 段已除）
+// 做 UI=API 对拍：只剩非 pi runtime 段（provider 位 = runtime 词表值；段卫生：
+// 空 id 跳过），同 (provider, modelId) 去重 first-wins。
+function expectedOptions(sources) {
   const out = [];
   const seen = new Set();
   function push(o) {
@@ -86,21 +89,11 @@ function expectedOptions(providers, sources) {
     seen.add(k);
     out.push(o);
   }
-  for (const p of providers) {
-    for (const m of p.models ?? []) {
-      if (m.id === '') continue;
-      push({
-        provider: p.providerId,
-        providerLabel: p.label,
-        modelId: m.id,
-        modelName: m.name !== '' ? m.name : m.id,
-      });
-    }
-  }
   for (const s of sources) {
     if (s.runtime === 'pi') continue;
     const providerLabel = s.runtime === 'claude-code' ? 'Claude Code' : s.runtime;
     for (const m of s.models ?? []) {
+      if (m.id === '') continue;
       push({ provider: s.runtime, providerLabel, modelId: m.id, modelName: m.name });
     }
   }
@@ -114,35 +107,43 @@ function sortedKeys(list) {
 }
 
 const PAGE_PATH = '/app';
-const FAB = '.chief-fab';
+const FAB = 'button[aria-label="总管"]';
 const GEAR = 'button[aria-label="总管设置"]';
-const SETTINGS = '.chief-settings';
-const SELECT_BTN = 'button.chief-select';
-const MENU = '.chief-model-menu';
+const SETTINGS = 'h1:text-is("总管设置")';
+const SELECT_BTN = 'button[aria-label="压缩模型"]';
+const MENU = '[role="dialog"][aria-label="压缩模型"]';
 
 // 从 board 走到压缩模型选择器并展开菜单（真用户路径：FAB → gear → select）。
+// 行读取不与取数竞态：进面后等 model-sources 响应落地再开菜单（未发请求 =
+// 缓存命中，等待超时吞掉不阻塞）。
 async function openModelMenu(page) {
+  const sourcesFetched = page
+    .waitForResponse((res) => res.url().includes('/model-sources'), { timeout: 8000 })
+    .catch(() => {});
   await page.goto(WEB + PAGE_PATH);
   await page.waitForSelector(FAB, { timeout: 15000 });
   await page.click(FAB);
   await page.waitForSelector(GEAR, { state: 'visible', timeout: 8000 });
   await page.click(GEAR);
   await page.waitForSelector(SETTINGS, { timeout: 8000 });
+  await sourcesFetched;
   await page.waitForSelector(SELECT_BTN, { timeout: 8000 });
   await page.click(SELECT_BTN);
   await page.waitForSelector(MENU, { state: 'visible', timeout: 8000 });
 }
 
-// 读菜单里的行：默认行（无 provider 徽标）+ 模型行（有 .chief-model-row-provider）。
+// 读菜单里的行：默认行（无 provider 副题）+ 模型行（有 provider 副题 span）。
+// #950 载体：行 = role=option；名 = data-testid="model-pick-name"；副题 =
+// 行内唯一无 data-testid 的 span（check 勾形也带 testid，不误中）。
 async function readMenuRows(page) {
   return page.evaluate((menuSel) => {
     const menu = document.querySelector(menuSel);
     if (menu == null) return { total: 0, model: [] };
-    const rows = [...menu.querySelectorAll('.chief-model-row')];
+    const rows = [...menu.querySelectorAll('[role="option"]')];
     const model = rows
       .map((r) => {
-        const name = r.querySelector('.chief-model-row-name');
-        const prov = r.querySelector('.chief-model-row-provider');
+        const name = r.querySelector('[data-testid="model-pick-name"]');
+        const prov = r.querySelector('span:not([data-testid])');
         return {
           modelName: name ? (name.textContent ?? '').trim() : '',
           providerLabel: prov ? (prov.textContent ?? '').trim() : '',
@@ -190,22 +191,20 @@ async function seedProvider(teamId, prov) {
   }
 }
 async function apiTruth(teamId) {
-  const provEnv = await getJson(SERVER + '/api/teams/' + teamId + '/providers');
   const msEnv = await getJson(SERVER + '/api/teams/' + teamId + '/model-sources');
-  return expectedOptions(provEnv.providers ?? [], msEnv.sources ?? []);
+  return { expected: expectedOptions(msEnv.sources ?? []), sources: msEnv.sources ?? [] };
 }
-async function waitMenuHasNames(page, names) {
-  await page
-    .waitForFunction(
-      (want) => {
-        const menu = document.querySelector('.chief-model-menu');
-        const text = menu ? (menu.textContent ?? '') : '';
-        return want.every((n) => text.includes(n));
-      },
-      names,
-      { timeout: 8000 },
-    )
-    .catch(() => {});
+
+// 铺底模型是否抵达 model-sources 输出（任意段——数据通路活着的实证；
+// #770 后它们落在 pi 段，picker 投影天然排除）。
+function sourcesContainModels(sources, models) {
+  const flat = (sources ?? []).flatMap((s) => (s.models ?? []).map((m) => m.id));
+  return models.every((m) => flat.includes(m.id));
+}
+// #770 排除裁决腿：铺底模型不得出现在选择器行里。
+function pickerExcludes(rows, models) {
+  const names = new Set(models.map((m) => m.name));
+  return rows.every((r) => !names.has(r.modelName));
 }
 
 try {
@@ -217,90 +216,106 @@ try {
     teamId != null ? 'GET /api/teams teamId=' + teamId : '取 teamId 失败',
   );
 
-  // 基线：全新库无 custom provider → 选择器行只含默认 + 本机 claude-code 段
+  // 基线：全新库 + 未注册 daemon → 非 pi 段恒空，选择器只有默认行；
+  // UI=API 对拍从基线就开始（不是「空对空」的摆设——若本机有 daemon 上报过
+  // claude-code 段，基线期望投影会带上它，UI 必须同现）。
   await openModelMenu(page);
   const baseline = await readMenuRows(page);
   await shot(page, '01-baseline.png');
+  const truth0 = teamId != null ? await apiTruth(teamId) : { expected: [], sources: [] };
   extra.baselineRows = baseline.model;
+  extra.expectedBaseline = truth0.expected;
+  const same0 =
+    JSON.stringify(sortedKeys(baseline.model)) === JSON.stringify(sortedKeys(truth0.expected));
+  check(
+    'baseline-union',
+    same0,
+    same0
+      ? '基线 UI==API：非默认行 ' + baseline.model.length + ' == 期望投影 ' + truth0.expected.length
+      : '基线 UI≠API：UI ' +
+        JSON.stringify(sortedKeys(baseline.model)) +
+        ' vs 期望 ' +
+        JSON.stringify(sortedKeys(truth0.expected)),
+  );
 
-  // 铺底 provider A（2 模型）→ 重载走真路径 → 两模型应进行
+  // 铺底 provider A（2 模型）→ 重载走真路径 → #770 裁决：模型抵达
+  // model-sources（pi 段）但不进选择器行。
   const seedA = teamId != null ? await seedProvider(teamId, provA) : { ok: false, error: '无 teamId' };
   check(
     'seed-provider-a',
     seedA.ok,
     seedA.ok ? 'POST provider A（' + provA.models.length + ' 模型）' : '铺底 A 失败：' + seedA.error,
   );
-  await openModelMenu(page);
-  await waitMenuHasNames(
-    page,
-    provA.models.map((m) => m.name),
+  const truthA = teamId != null ? await apiTruth(teamId) : { expected: [], sources: [] };
+  check(
+    'a-models-reach-sources',
+    sourcesContainModels(truthA.sources, provA.models),
+    'A 模型出现在 GET model-sources（数据通路活）',
   );
+  await openModelMenu(page);
   const afterA = await readMenuRows(page);
   await shot(page, '02-provider-a.png');
-  const aPresent = provA.models.every((m) =>
-    afterA.model.some((r) => r.modelName === m.name && r.providerLabel === provA.label),
-  );
+  const aExcluded = pickerExcludes(afterA.model, provA.models);
   check(
-    'ac1-provider-a-rows',
-    aPresent,
-    aPresent
-      ? 'AC1：选择器行含 provider A 两模型（providerLabel=' + provA.label + '）'
-      : 'spec 11 A10/AC1：铺底 provider A 后其 models[] 应进选择器行——实测 ' +
+    'ruling-770-exclusion-a',
+    aExcluded,
+    aExcluded
+      ? '#770 裁决：provider A 模型不进选择器行（非默认行 ' + afterA.model.length + '）'
+      : '#770 裁决被破坏：custom provider 模型出现在 picker——实测 ' +
         JSON.stringify(afterA.model.slice(0, 6)),
   );
-  // UI=API 双真值：非默认行集合 == toModelOptions 期望投影
-  const expectedA = teamId != null ? await apiTruth(teamId) : [];
-  extra.expectedAfterA = expectedA;
+  extra.expectedAfterA = truthA.expected;
   extra.uiAfterA = afterA.model;
-  const sameA = JSON.stringify(sortedKeys(afterA.model)) === JSON.stringify(sortedKeys(expectedA));
+  const sameA =
+    JSON.stringify(sortedKeys(afterA.model)) === JSON.stringify(sortedKeys(truthA.expected));
   check(
     'union-consistency-a',
     sameA,
     sameA
-      ? '并集一致：选择器行集合 == 期望投影（' + expectedA.length + ' 行，含 claude-code 段）'
+      ? '并集一致：选择器行集合 == toModelOptions(sources) 期望投影（' + truthA.expected.length + ' 行）'
       : 'UI≠API：UI ' +
         JSON.stringify(sortedKeys(afterA.model)) +
         ' vs 期望 ' +
-        JSON.stringify(sortedKeys(expectedA)),
+        JSON.stringify(sortedKeys(truthA.expected)),
   );
-  // 铺底 provider B（1 模型）→ 重载 → 行数增长且 B 模型进行（AC1：随配置变）
+  // 铺底 provider B（1 模型）→ 重载 → 同律：抵达 sources、被 picker 排除、
+  // 并集仍一致（delta 驱动 = 配置变化，断言面 = 排除 + 一致）。
   const seedB = teamId != null ? await seedProvider(teamId, provB) : { ok: false, error: '无 teamId' };
   check(
     'seed-provider-b',
     seedB.ok,
     seedB.ok ? 'POST provider B（1 模型）' : '铺底 B 失败：' + seedB.error,
   );
+  const truthB = teamId != null ? await apiTruth(teamId) : { expected: [], sources: [] };
+  check(
+    'b-models-reach-sources',
+    sourcesContainModels(truthB.sources, provB.models),
+    'B 模型出现在 GET model-sources（数据通路活）',
+  );
   await openModelMenu(page);
-  await waitMenuHasNames(page, [provB.models[0].name]);
   const afterB = await readMenuRows(page);
   await shot(page, '03-provider-b-added.png');
-  const bPresent = afterB.model.some(
-    (r) => r.modelName === provB.models[0].name && r.providerLabel === provB.label,
-  );
-  const grew = afterB.model.length === afterA.model.length + provB.models.length;
+  const bExcluded = pickerExcludes(afterB.model, provB.models);
   check(
-    'ac1-config-changes-rows',
-    bPresent && grew,
-    (bPresent ? 'provider B 模型进行' : 'B 模型未进行') +
-      '；模型行数 ' +
+    'ruling-770-exclusion-b',
+    bExcluded,
+    (bExcluded ? 'B 模型不进选择器行' : 'B 模型漏进 picker') +
+      '；非默认行数 ' +
       afterA.model.length +
       '→' +
-      afterB.model.length +
-      '（期望 +' +
-      provB.models.length +
-      '）',
+      afterB.model.length,
   );
-  const expectedB = teamId != null ? await apiTruth(teamId) : [];
-  const sameB = JSON.stringify(sortedKeys(afterB.model)) === JSON.stringify(sortedKeys(expectedB));
+  const sameB =
+    JSON.stringify(sortedKeys(afterB.model)) === JSON.stringify(sortedKeys(truthB.expected));
   check(
     'union-consistency-b',
     sameB,
     sameB
-      ? 'B 加入后行集合仍 == 期望投影（' + expectedB.length + ' 行）'
+      ? 'B 加入后行集合仍 == 期望投影（' + truthB.expected.length + ' 行）'
       : 'B 后 UI≠API：UI ' +
         JSON.stringify(sortedKeys(afterB.model)) +
         ' vs 期望 ' +
-        JSON.stringify(sortedKeys(expectedB)),
+        JSON.stringify(sortedKeys(truthB.expected)),
   );
   extra.providerA = { providerId: provA.providerId, label: provA.label, models: provA.models };
   extra.providerB = { providerId: provB.providerId, label: provB.label, models: provB.models };
