@@ -1,14 +1,16 @@
 // Inline segment renderer shared by the doc pane (doc-code chips) and the
 // transcript (chat-code chips): one shape, the chip class is the only
 // parameter (issue #57 — code review dedup). Mention segments (issue
-// #311) render with the per-kind accent color defined in
-// mention-picker.css so the chip family stays consistent with the
-// composer overlay.
+// #311) render with the per-kind accent color of the mention-chip family
+// so the chip face stays consistent with the composer overlay.
+// #948：家族皮肤单源迁 overlay/mention-chip.ts（原 mention-picker.css 规则
+// 1:1 utility 化 + kind→实测槽映射，头注即正典注记）；本文件与
+// composer-chips.tsx 共吃同一 helper，类名钩子（mention-chip--*）原样保留。
 
 import { Link } from 'react-router';
 
 import type { DocSegment } from '../fixtures/records.js';
-import '../overlay/mention-picker.css';
+import { mentionChipClass } from '../overlay/mention-chip.js';
 import { AGENTS_HREF } from '../routes/agent-detail-page.js';
 
 interface SegmentsProps {
@@ -16,13 +18,6 @@ interface SegmentsProps {
   /** Chip class for `code` segments: `doc-code` (doc pane) or
    *  `chat-code` (transcript). */
   codeClassName: string;
-}
-
-/** Mention chip — accent color comes from the entity kind (r9 §2.4 token
- *  family). The chip class lives in mention-picker.css so the picker overlay
- *  + transcript chip share one rule. */
-function chipClass(kind: DocSegment['mentionKind']): string {
-  return kind != null ? `mention-chip mention-chip--${kind}` : 'mention-chip';
 }
 
 /** Mention wire kinds whose chip navigates — reference-measured behaviors
@@ -43,12 +38,14 @@ function mentionHref(seg: DocSegment): string | null {
 }
 
 /** One mention segment: navigable kinds render a router Link, the rest an
- *  inert span — same chip face either way (class family above). */
+ *  inert span — same chip face either way (mention-chip.ts helper)。
+ *  #741：可点 chip（Link 形）整卡 cursor-pointer——旧 `a.mention-chip--agent`
+ *  元素限定选择器的 utility 等价形（无 id 的 inert span 永不装作可点）。 */
 function MentionChip({ seg }: { seg: DocSegment }) {
   const href = mentionHref(seg);
-  const className = chipClass(seg.mentionKind);
+  const className = mentionChipClass(seg.mentionKind);
   return href != null ? (
-    <Link className={className} to={href}>
+    <Link className={`${className} cursor-pointer`} to={href}>
       {seg.text}
     </Link>
   ) : (

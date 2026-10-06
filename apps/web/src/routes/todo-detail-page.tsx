@@ -1166,7 +1166,7 @@ export function TodoDetailPage() {
         title={t('确定删除该任务？此操作不可撤销。')}
         summary={
           <>
-            <span className="delete-confirm-seq">#{todo.seqNum}</span>
+            <span className="delete-confirm-seq text-(--text-tertiary)">#{todo.seqNum}</span>
             {todo.title}
           </>
         }

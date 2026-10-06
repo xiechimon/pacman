@@ -516,7 +516,9 @@ export function SchedulesPage() {
         summary={
           deleteTarget != null ? (
             <>
-              <span className="delete-confirm-seq">#{deleteTarget.todo.seqNum}</span>
+              <span className="delete-confirm-seq text-(--text-tertiary)">
+                #{deleteTarget.todo.seqNum}
+              </span>
               {deleteTarget.todo.title}
             </>
           ) : null
