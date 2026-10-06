@@ -43,6 +43,12 @@ import { TEAM_NAME, TEAM_R7 } from '../fixtures/fixtures.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChartNetwork, ChevronDown, Grid2x2, PlusSmall } from '../icons/index.js';
+import {
+  SEG_GROUP_CLS,
+  SEG_TAB_ACTIVE_CLS,
+  SEG_TAB_CLS,
+  SEG_TAB_IDLE_CLS,
+} from '../pages/parts.js';
 import { SecondaryShell } from '../secondary/shell.js';
 import { AGENTS_HREF } from './agent-detail-page.js';
 import { CreateAgentDialog } from './create-agent-dialog.js';
@@ -70,6 +76,14 @@ const CREATE_SLOT_CLS =
  *  取实算值。过渡沿旧形 150ms（= --dur-fast）border-color。 */
 const AGENT_CARD_CLS =
   'flex h-[76px] items-center gap-3 rounded-(--radius-popover) border border-(--border-default) bg-(--surface-secondary) px-4 text-inherit no-underline transition-[border-color] duration-(--dur-fast) ease-[ease] hover:border-(--text-tertiary)';
+
+/** 布局切换片的两个 chip（XMON-103）：底座 = components/ui/tabs 的分段档；
+ *  #946：皮肤正本 = pages/parts 的 SEG_* 配方（原 pages.css
+ *  `.page-tabs-group`/`.page-tab` 规则的 utility 等值——pages.css 清零后
+ *  分段档皮肤由消费点配方承载，收敛进件归 #952）。#947：别名类退役，
+ *  e2e 载体 = role=tab + aria-label（grid/chart）。 */
+const tabClass = (active: boolean) =>
+  `${SEG_TAB_CLS} ${active ? SEG_TAB_ACTIVE_CLS : SEG_TAB_IDLE_CLS}`;
 
 function readStoredLayout(storage: Storage): TeamLayout {
   return storage.getItem(TEAM_LAYOUT_STORAGE_KEY) === 'chart' ? 'chart' : 'grid';
@@ -142,23 +156,24 @@ export function TeamPage() {
             </span>
           </div>
         )}
-        {/* XMON-103：分段控制器正本 = components/ui/tabs 的 segmented 档
-            （pages.css `.page-tabs-group`/`.page-tab`）。受控 value/onValueChange
-            落回 switchLayout（照旧写 localStorage），role=tablist/tab 与
-            aria-selected 由 Base UI 承载。#947：别名类退役，e2e 载体 =
-            role=tab + aria-label（grid/chart）；chart 布局下 stats bar 退场，
-            ml-auto 把 tablist 顶回 r7 12 的右缘（旧 --chart 后代选择器
-            的等值迁移）。 */}
+        {/* XMON-103：分段控制器正本 = components/ui/tabs 的 segmented 档；
+            #946 起皮肤 = pages/parts 的 SEG_* 配方（原 pages.css
+            `.page-tabs-group`/`.page-tab` 规则的 utility 等值，值零改动）。
+            受控 value/onValueChange 落回 switchLayout（照旧写
+            localStorage），role=tablist/tab 与 aria-selected 由 Base UI
+            承载。#947：别名类退役，e2e 载体 = role=tab + aria-label
+            （grid/chart）；chart 布局下 stats bar 退场，ml-auto 把 tablist
+            顶回 r7 12 的右缘（旧 --chart 后代选择器的等值迁移）。 */}
         <Tabs
           value={layout}
           onValueChange={(value) => switchLayout(value as TeamLayout)}
           className={layout === 'chart' ? 'ml-auto' : undefined}
         >
-          <TabsList variant="segmented">
-            <TabsTrigger value="grid" aria-label="grid">
+          <TabsList variant="segmented" className={SEG_GROUP_CLS}>
+            <TabsTrigger value="grid" className={tabClass(layout === 'grid')} aria-label="grid">
               <Grid2x2 />
             </TabsTrigger>
-            <TabsTrigger value="chart" aria-label="chart">
+            <TabsTrigger value="chart" className={tabClass(layout === 'chart')} aria-label="chart">
               <ChartNetwork />
             </TabsTrigger>
           </TabsList>

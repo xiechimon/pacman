@@ -88,6 +88,12 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import { ArrowUpDown, ChevronDown, ChevronRight, Search, SquarePen } from '../icons/index.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
+import {
+  SEG_GROUP_CLS,
+  SEG_TAB_ACTIVE_CLS,
+  SEG_TAB_CLS,
+  SEG_TAB_IDLE_CLS,
+} from '../pages/parts.js';
 import { PHASE_UI } from '../phase.js';
 import {
   RES_SEARCH_BOX_CLS,
@@ -292,9 +298,19 @@ export function AgentDetailPage() {
     >
       <div className="agent-detail">
         <Tabs value={tab} onValueChange={(value) => setTab(value as AgentTab)}>
-          <TabsList variant="segmented" className="agent-tabs" aria-label={t('Agent')}>
+          <TabsList
+            variant="segmented"
+            className={`agent-tabs ${SEG_GROUP_CLS}`}
+            aria-label={t('Agent')}
+          >
             {TAB_LABELS.map((item) => (
-              <TabsTrigger key={item.id} value={item.id} className="agent-tab">
+              <TabsTrigger
+                key={item.id}
+                value={item.id}
+                className={`agent-tab ${SEG_TAB_CLS} ${
+                  item.id === tab ? SEG_TAB_ACTIVE_CLS : SEG_TAB_IDLE_CLS
+                }`}
+              >
                 {t(item.label)}
               </TabsTrigger>
             ))}

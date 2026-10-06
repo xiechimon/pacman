@@ -30,6 +30,12 @@ import { toastError } from '../components/ui/toaster.js';
 import { resolveScenario } from '../fixtures/scenario.js';
 import { oauthReasonCopy } from '../i18n/oauth-reason.js';
 import { useI18n } from '../i18n/provider.js';
+import {
+  SEG_GROUP_CLS,
+  SEG_TAB_ACTIVE_CLS,
+  SEG_TAB_CLS,
+  SEG_TAB_IDLE_CLS,
+} from '../pages/parts.js';
 import { CreateProviderDialog } from './create-provider-dialog.js';
 import { GroupCard, RowDesc, RowLine, RowText, RowTitle } from './parts.js';
 import { ResourceShell } from './shell.js';
@@ -158,19 +164,27 @@ export function ProvidersPage() {
           回退键可用），role=tablist/tab 与 aria-selected 由 Base UI 承载，
           data-runtime 句柄原样透出（.res-tabs/.res-tab 类名句柄随 #944
           per-face 清零退役——spec 载体 = role/文案/data-runtime）。
-          XMON-73：形态 = 分段控制器，配色/几何正本在 pages.css 的
-          .page-tabs-group/.page-tab（与 topbar「任务|文件」同一份规则，
-          #946 面），本域不持有它的皮肤。两 tab 前置各自品牌 mark
+          XMON-73：形态 = 分段控制器；#946 起皮肤正本 = pages/parts 的
+          SEG_* 配方（原 pages.css .page-tabs-group/.page-tab 规则的
+          utility 等值，与 topbar「任务|文件」同一份），本域不持有它。
+          两 tab 前置各自品牌 mark
           （components/brand-marks.tsx，机器行 #503 同源消费；尺寸走
           tabs.tsx 基类的 size-4，此处只补 8px 的 mark/名间距）。mark
           aria-hidden，文案照常渲染——可访问名 = RUNTIME_LABELS，读屏与
           e2e 的 toHaveText('pi'/'Claude Code') 都不受影响。 */}
       <Tabs value={runtime} onValueChange={(value) => selectRuntime(value as ModelSourceRuntime)}>
-        <TabsList variant="segmented" aria-label={t('模型服务')}>
+        <TabsList variant="segmented" aria-label={t('模型服务')} className={SEG_GROUP_CLS}>
           {MODEL_SOURCE_RUNTIMES.map((rt) => {
             const Mark = RUNTIME_MARKS[rt];
             return (
-              <TabsTrigger key={rt} value={rt} data-runtime={rt}>
+              <TabsTrigger
+                key={rt}
+                value={rt}
+                data-runtime={rt}
+                className={`${SEG_TAB_CLS} ${
+                  rt === runtime ? SEG_TAB_ACTIVE_CLS : SEG_TAB_IDLE_CLS
+                }`}
+              >
                 <Mark className="mr-2 block flex-none" />
                 {RUNTIME_LABELS[rt]}
               </TabsTrigger>

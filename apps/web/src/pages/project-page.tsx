@@ -49,8 +49,58 @@ import {
 } from '../icons/index.js';
 import { type NewTaskSurfaceApi, NewTaskSurfaceRoot } from '../overlay/new-task-surface-root.js';
 import { GithubIssuesDialog } from './github-issues-dialog.js';
+import {
+  GHOST_SEG_BTN_CLS,
+  SEG_GROUP_CLS,
+  SEG_TAB_ACTIVE_CLS,
+  SEG_TAB_CLS,
+  SEG_TAB_IDLE_CLS,
+} from './parts.js';
 import { PageShell } from './shell.js';
-import './pages.css';
+
+/* #946 per-face 清零：原 pages.css 的 prj-* 规则组等值迁 utility 配方。
+   类名留存原则——跨域 spec 的定位别名（dead-buttons / segmented-controls /
+   avatar-dicebear 钉 .prj-file-row / .prj-history-row / .prj-files-seg-tab
+   (+--active) / .prj-branch-chip / .prj-task-row|-card|-link /
+   .prj-tasks-view-btn / .prj-files / .prj-task-avatar）原样透传，皮肤已全部
+   由 utility 承载；本域 spec 已重钉语义载体，其余类名摘除归 #952/#953 终账。 */
+
+/** 筛选/排序触发钮与 issue 入口共用的 chip 盒形（原 .prj-tasks-filter）：
+ *  28 高带框、13 字号、secondary 墨，末位 chevron tertiary（#946
+ *  better-colors 实测换槽：--text-dim 亮模在抬升面 2.73–2.89 < 3，见
+ *  docs/verify/946/contrast-946.md）；ghost 七通道中和 +
+ *  aria-expanded 通道（触发钮有 haspopup 面，底色/墨色钉回静息值）。 */
+const TOOLBAR_CHIP_CLS =
+  "h-7 cursor-pointer gap-1.5 rounded-none border border-(--border-default) bg-transparent px-3 text-[13px] font-normal leading-[inherit] text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:last-of-type]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-auto";
+
+/** 菜单盘（原 .prj-tasks-menu，plan-dropdown family plate）：shrink-to-fit
+ *  ≥148（w-auto 中和 base 的 w-(--anchor-width)）、popover 底、radius 12、
+ *  fab 影；勾色品牌紫走 indicator 槽选择器（#944 RES_SORT_ROW_CLS 同形）。 */
+const TASKS_MENU_CLS =
+  'w-auto min-w-[148px] rounded-(--radius-popover) bg-(--popover-bg) p-1 shadow-(--fab-shadow) ring-0 [&_[data-slot=dropdown-menu-radio-item-indicator]]:text-(--card-button)';
+
+/** 菜单行（原 .prj-tasks-menu-row）：28 高 / 12 字 / 透明底——行面无 hover
+ *  涂底（focus:bg 中和回透明，与收编前一致）；键盘 roving focus 的可见环按
+ *  #388 同配方补钉（行是 div[role=menuitemradio]，不在全局环名单）。 */
+const TASKS_MENU_ROW_CLS =
+  'h-7 w-full cursor-pointer rounded-[8px] py-0 pr-2 pl-3 text-left text-xs leading-4 text-(--text-primary) focus:bg-transparent focus:text-(--text-primary) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring)';
+
+/** 视图切换钮（原 .prj-tasks-view-btn，#138 seg 家族成员）：28×24 图标盒，
+ *  选中 = tab-chip 填充 + primary 墨（载体 aria-selected），未选 hover =
+ *  seg-hover 淡 tint。 */
+const VIEW_BTN_CLS =
+  "h-6 w-7 cursor-pointer rounded-none border-none bg-transparent px-0 text-(--text-tertiary) transition-[background-color] duration-(--dur-fast) ease-(--ease-standard) font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+const VIEW_BTN_IDLE_CLS =
+  'hover:bg-(--seg-hover) hover:text-(--text-tertiary) dark:hover:bg-(--seg-hover)';
+const VIEW_BTN_ACTIVE_CLS =
+  'bg-(--tab-chip-bg) text-(--text-primary) hover:bg-(--tab-chip-bg) hover:text-(--text-primary) dark:hover:bg-(--tab-chip-bg)';
+
+/** 文件树行钮（原 .prj-file-row）：30 高透明行，选中 = surface-hover 填充
+ *  （载体 aria-current；--active 类名留存 = dead-buttons 跨域别名）。 */
+const FILE_ROW_CLS =
+  'h-[30px] w-full cursor-pointer justify-start gap-2 rounded-none border-none bg-transparent px-1 font-normal leading-[inherit] hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg]:flex-none [&_svg]:text-(--text-tertiary)';
+const FILE_ROW_ACTIVE_CLS =
+  'bg-(--surface-hover) hover:bg-(--surface-hover) dark:hover:bg-(--surface-hover)';
 
 function FilesPane({
   branch,
@@ -74,25 +124,26 @@ function FilesPane({
 }) {
   const { t } = useI18n();
   return (
-    <div className="prj-files-pane">
-      <div className="prj-files-head">
+    <div className="flex w-[276px] flex-none flex-col border-r border-(--border-default) py-2 pr-2 pl-4">
+      <div className="flex items-center justify-between pr-2">
         {/* 分支 chip = 静态展示（#149 裁决，[设计]）：托管 repo 读面固定
             defaultBranch（tree?ref=main），无切分支行为预期；chevron 保
             r2 07e 捕获形状。非交互元素——不再是死钮。 */}
-        <span className="prj-branch-chip">
+        <span className="prj-branch-chip flex h-7 items-center gap-1.5 rounded-[6px] bg-(--surface-secondary) px-2.5 font-mono text-xs text-(--text-secondary) [&_svg]:text-(--text-tertiary)">
           {branch}
           <ChevronDown width={12} height={12} />
         </span>
         {/* 「导出」钮全除（#149 wontfix）：无导出后端面，local-first 裁决
             （#129 先例），台账 #136 勾兑登记。 */}
       </div>
-      <div className="prj-files-seg">
-        {/* XMON-25 收编：ghost；13/24 字体与几何正本在 per-face，--active
-            chip 与 seg-hover 媒体块 unlayered 恒胜 base 的 hover 档。 */}
+      <div className={`mt-2 w-fit ${SEG_GROUP_CLS}`}>
+        {/* XMON-25 收编：ghost；#946：13/24 字体与几何迁 SEG_* 配方（发丝环
+            家族 #138），--active 类名留存（dead-buttons / segmented-controls
+            跨域别名），选中皮肤 = tab-chip 填充 utility。 */}
         <Button
           variant="ghost"
-          className={`prj-files-seg-tab font-normal active:not-aria-[haspopup]:translate-y-0${
-            seg === 'files' ? ' prj-files-seg-tab--active' : ''
+          className={`prj-files-seg-tab ${SEG_TAB_CLS} ${GHOST_SEG_BTN_CLS} ${
+            seg === 'files' ? `prj-files-seg-tab--active ${SEG_TAB_ACTIVE_CLS}` : SEG_TAB_IDLE_CLS
           }`}
           onClick={() => onSeg('files')}
         >
@@ -100,8 +151,8 @@ function FilesPane({
         </Button>
         <Button
           variant="ghost"
-          className={`prj-files-seg-tab font-normal active:not-aria-[haspopup]:translate-y-0${
-            seg === 'history' ? ' prj-files-seg-tab--active' : ''
+          className={`prj-files-seg-tab ${SEG_TAB_CLS} ${GHOST_SEG_BTN_CLS} ${
+            seg === 'history' ? `prj-files-seg-tab--active ${SEG_TAB_ACTIVE_CLS}` : SEG_TAB_IDLE_CLS
           }`}
           onClick={() => onSeg('history')}
         >
@@ -109,40 +160,49 @@ function FilesPane({
         </Button>
       </div>
       {seg === 'files' ? (
-        <div className="prj-files-list">
+        <div className="mt-3">
           {files.map((f) => (
-            // XMON-25 收编：ghost；justify-start = 行左对齐位，size-auto 保
-            // FileTab 的 14px 属性尺寸（base 会强制 16）。
+            // XMON-25 收编：ghost；#946：行皮肤迁 FILE_ROW_CLS 配方，选中态
+            // 载体 = aria-current（#910 裁定 3），size-auto 保 FileTab 的
+            // 14px 属性尺寸（base 会强制 16）。
             <Button
               key={f}
               variant="ghost"
-              className={`prj-file-row justify-start font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto${
-                selectedFile === f ? ' prj-file-row--active' : ''
+              aria-current={selectedFile === f ? 'true' : undefined}
+              className={`prj-file-row ${FILE_ROW_CLS} [&_svg:not([class*='size-'])]:size-auto${
+                selectedFile === f ? ` ${FILE_ROW_ACTIVE_CLS}` : ''
               }`}
               onClick={() => onSelectFile(f)}
             >
               <FileTab width={14} height={14} />
-              <span className="prj-file-name">{f}</span>
+              <span className="font-mono text-xs text-(--text-secondary)">{f}</span>
             </Button>
           ))}
         </div>
       ) : commits.length === 0 ? (
-        <div className="prj-history-empty">{t('尚无提交历史。')}</div>
+        <div className="mt-3 px-1 py-6 text-center text-xs text-(--text-tertiary)">
+          {t('尚无提交历史。')}
+        </div>
       ) : (
         // 历史行形 [设计]（官方历史面无捕获）：git log 最小投影，新→旧
-        <div className="prj-history-list">
+        <ul className="mt-3">
           {commits.map((c) => (
-            <div className="prj-history-row" key={c.id}>
+            <li
+              className="prj-history-row flex w-full items-center gap-2 px-1 py-[5px] [&_svg]:flex-none [&_svg]:text-(--text-tertiary)"
+              key={c.id}
+            >
               <GitCommit width={14} height={14} />
-              <span className="prj-history-text">
-                <span className="prj-history-msg">{c.message}</span>
-                <span className="prj-history-meta">
+              <span className="flex min-w-0 flex-col gap-px">
+                <span className="truncate text-xs leading-4 text-(--text-primary)">
+                  {c.message}
+                </span>
+                <span className="font-mono text-[11px] leading-[14px] text-(--text-tertiary)">
                   {c.authorName} · {relativeTime(c.at, now, t)} · {c.shortSha}
                 </span>
               </span>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
     </div>
   );
@@ -254,7 +314,7 @@ function TasksMenu<T extends string>({
           key={option.id}
           value={option.id}
           closeOnClick
-          className="prj-tasks-menu-row [&_svg:not([class*='size-'])]:size-auto"
+          className={`${TASKS_MENU_ROW_CLS} [&_svg:not([class*='size-'])]:size-auto`}
         >
           {t(option.label)}
         </DropdownMenuRadioItem>
@@ -289,21 +349,14 @@ function TasksMenuButton<T extends string>({
   const { t } = useI18n();
   return (
     <DropdownMenu>
-      <span className="prj-tasks-menu-wrap">
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="ghost"
-              className="prj-tasks-filter font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-auto"
-            />
-          }
-        >
+      <span className="relative flex">
+        <DropdownMenuTrigger render={<Button variant="ghost" className={TOOLBAR_CHIP_CLS} />}>
           {icon}
           {t(label)}
           <ChevronDown width={12} height={12} />
         </DropdownMenuTrigger>
       </span>
-      <DropdownMenuContent sideOffset={6} aria-label={t(label)} className="prj-tasks-menu w-auto">
+      <DropdownMenuContent sideOffset={6} aria-label={t(label)} className={TASKS_MENU_CLS}>
         <TasksMenu options={options} value={value} onSelect={onSelect} />
       </DropdownMenuContent>
     </DropdownMenu>
@@ -350,19 +403,19 @@ function TasksPane({
     return sortTodos(rows, sort);
   }, [todos, query, filter, sort]);
   return (
-    <div className="prj-tasks-pane">
-      <div className="prj-tasks-toolbar">
-        <div className="prj-tasks-search">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-none items-center gap-3 px-4 py-3">
+        <div className="flex h-7 flex-1 items-center gap-2 rounded-none border border-(--border-default) px-2.5 text-(--text-tertiary)">
           <Search width={14} height={14} />
-          {/* XMON-25 收编：Input 原语；本面 focus 皮肤正本 = per-face
-              `outline: none`（无环面，#388 前的既有行为，unlayered 恒胜），
-              故只需 ring-0 掐掉原语 focus ring、h-auto + leading-[inherit]
-              保内容高——preflight 对裸 input 置 line-height: inherit，
-              inherit 逐位复刻老面（text-sm 的比例行高会抬高）；
-              padding 1px 2px 是 UA 隐式值的收编（pages.css）。 */}
+          {/* XMON-25 收编：Input 原语；#946：本面 focus 皮肤 = 无环面
+              （#388 前的既有行为）——件基类 outline-none + ring-0 掐掉
+              focus ring、border-none 使 border-ring 档不可见；h-auto +
+              leading-[inherit] 保内容高——preflight 对裸 input 置
+              line-height: inherit，inherit 逐位复刻老面（text-sm 的比例
+              行高会抬高）；p-0 钉零内距（盒形由外层搜索盒承载）。 */}
           <Input
             type="text"
-            className="h-auto rounded-none leading-[inherit] md:leading-[inherit] focus-visible:ring-0"
+            className="h-auto min-w-0 flex-1 rounded-none border-none bg-transparent p-0 text-[13px] leading-[inherit] text-(--text-primary) placeholder:text-(--text-tertiary) focus-visible:ring-0 dark:bg-transparent md:leading-[inherit]"
             placeholder={t('搜索任务…')}
             aria-label={t('搜索任务')}
             value={query}
@@ -384,25 +437,23 @@ function TasksPane({
           onSelect={setSort}
         />
         {onOpenGithubIssues !== undefined && (
-          // XMON-25 收编：ghost 复用 .prj-tasks-filter chip 形（类名对不变）。
-          <Button
-            variant="ghost"
-            className="prj-tasks-filter prj-issues-entry font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
-            onClick={onOpenGithubIssues}
-          >
+          // XMON-25 收编：ghost 复用工具条 chip 盒形（TOOLBAR_CHIP_CLS 同源）。
+          <Button variant="ghost" className={TOOLBAR_CHIP_CLS} onClick={onOpenGithubIssues}>
             {t('从 GitHub issue 建任务')}
           </Button>
         )}
-        <div className="prj-tasks-view" role="tablist">
-          {/* XMON-25 收编：ghost；px-0 保 28×24 图标盒无内边距，size-auto 保
-              ListLines 16 / Grid2x2 14 属性尺寸；role=tab + aria-selected
-              由原语透传。 */}
+        <div className={SEG_GROUP_CLS} role="tablist">
+          {/* XMON-25 收编：ghost；#946：28×24 图标盒迁 VIEW_BTN 配方（#138
+              seg 家族发丝环），size-auto 保 ListLines 16 / Grid2x2 14 属性
+              尺寸；role=tab + aria-selected 由原语透传（选中态一级载体）。
+              prj-tasks-view-btn 类名留存 = segmented-controls/dead-buttons
+              跨域别名。 */}
           <Button
             variant="ghost"
             role="tab"
             aria-selected={layout === 'list'}
-            className={`prj-tasks-view-btn px-0 font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto${
-              layout === 'list' ? ' prj-tasks-view-btn--active' : ''
+            className={`prj-tasks-view-btn ${VIEW_BTN_CLS} ${
+              layout === 'list' ? VIEW_BTN_ACTIVE_CLS : VIEW_BTN_IDLE_CLS
             }`}
             aria-label={t('列表视图')}
             onClick={() => switchLayout('list')}
@@ -413,8 +464,8 @@ function TasksPane({
             variant="ghost"
             role="tab"
             aria-selected={layout === 'grid'}
-            className={`prj-tasks-view-btn px-0 font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto${
-              layout === 'grid' ? ' prj-tasks-view-btn--active' : ''
+            className={`prj-tasks-view-btn ${VIEW_BTN_CLS} ${
+              layout === 'grid' ? VIEW_BTN_ACTIVE_CLS : VIEW_BTN_IDLE_CLS
             }`}
             aria-label={t('网格视图')}
             onClick={() => switchLayout('grid')}
@@ -424,18 +475,23 @@ function TasksPane({
         </div>
       </div>
       {todos.length === 0 ? (
-        <div className="prj-tasks-empty">
-          <div className="prj-tasks-empty-tile">
+        <div className="flex flex-1 flex-col items-center justify-center">
+          <div className="flex size-12 items-center justify-center rounded-none bg-(--surface-secondary) text-(--text-secondary)">
             <ListLines width={20} height={20} />
           </div>
-          <div className="prj-tasks-empty-title">{t('暂无内容')}</div>
-          <div className="prj-tasks-empty-desc">{t('创建第一个任务以开始使用。')}</div>
+          <div className="mt-4 text-sm font-semibold leading-5 text-(--text-primary)">
+            {t('暂无内容')}
+          </div>
+          <div className="mt-1 text-xs leading-4 text-(--text-tertiary)">
+            {t('创建第一个任务以开始使用。')}
+          </div>
           {/* XMON-25 收编：老 ui/Button primary/compact → brand 变体（等价
               迁移位）；compact 几何（28 高/12 内边距/13 字号）与 cursor 下沉
               per-face .prj-tasks-empty-new；size-auto 保 PlusSmall 12px。 */}
           <Button
             variant="brand"
-            className="prj-tasks-empty-new font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            aria-label={t('新建任务')}
+            className="mt-4 h-7 cursor-pointer gap-1 rounded-none border-none px-3 text-[13px] font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
             onClick={onNewTask}
           >
             <PlusSmall width={12} height={12} />
@@ -445,22 +501,33 @@ function TasksPane({
       ) : visible.length === 0 ? (
         // 筛选/搜索清空 ≠ 项目无任务：给匹配空态一行，不误用 r2 24b 的
         // 「创建第一个任务」空态（那是无 todo 项目的 canon）
-        <div className="prj-tasks-nomatch">{t('没有匹配的任务')}</div>
+        <div className="px-4 py-6 text-[13px] leading-4 text-(--text-tertiary)">
+          {t('没有匹配的任务')}
+        </div>
       ) : layout === 'list' ? (
-        <div className="prj-tasks-list">
+        <div className="space-y-2 px-4">
           {visible.map((todo) => (
-            <div key={todo.id} className="prj-task-row">
-              <span className="prj-task-check" aria-hidden="true" />
-              {/* #318: 标题是真 <a>,::after 拉伸盖满整行 = 点行开详情
+            <div
+              key={todo.id}
+              data-testid="task-row"
+              className="prj-task-row relative flex h-9 items-center gap-3 rounded-none bg-(--surface-secondary) px-3"
+            >
+              <span
+                className="size-4 flex-none rounded-none border border-(--border-strong)"
+                aria-hidden="true"
+              />
+              {/* #318: 标题是真 <a>,after: 拉伸盖满整行 = 点行开详情
                   (todo-card-link #58 同款,行内无其它交互件无需抬 z) */}
               <Link
-                className="prj-task-title prj-task-link"
+                className="prj-task-title prj-task-link min-w-0 flex-1 truncate text-[13px] leading-5 text-(--text-primary) no-underline after:absolute after:inset-0 after:content-['']"
                 to={{ pathname: `/app/todo/${todo.id}`, search }}
               >
                 {todo.title}
               </Link>
-              <span className="prj-task-time">{relativeTime(todo.phaseAt, now, t)}</span>
-              <span className="prj-task-avatar">
+              <span className="flex-none text-xs text-(--text-tertiary)">
+                {relativeTime(todo.phaseAt, now, t)}
+              </span>
+              <span className="prj-task-avatar relative size-5 flex-none [&_img]:size-5 [&_img]:rounded-full after:absolute after:-right-px after:-bottom-px after:size-[7px] after:rounded-full after:border-[1.5px] after:border-(--surface) after:bg-(--badge-idle) after:content-['']">
                 <SeededAvatar
                   name={user.displayName}
                   src={user.avatarUrl}
@@ -473,12 +540,19 @@ function TasksPane({
       ) : (
         // 网格形 [设计]（票面注记：官方无捕获）——卡语言贴 team-agent-card
         // （surface tile + 标题）＋本行原子（勾选圈/相对时间/头像）
-        <div className="prj-tasks-grid">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(224px,1fr))] gap-2 px-4">
           {visible.map((todo) => (
-            <div key={todo.id} className="prj-task-card">
-              <div className="prj-task-card-head">
-                <span className="prj-task-check" aria-hidden="true" />
-                <span className="prj-task-avatar">
+            <div
+              key={todo.id}
+              data-testid="task-card"
+              className="prj-task-card relative flex flex-col items-start gap-2 rounded-none bg-(--surface-secondary) p-3"
+            >
+              <div className="flex items-center justify-between self-stretch">
+                <span
+                  className="size-4 flex-none rounded-none border border-(--border-strong)"
+                  aria-hidden="true"
+                />
+                <span className="prj-task-avatar relative size-5 flex-none [&_img]:size-5 [&_img]:rounded-full after:absolute after:-right-px after:-bottom-px after:size-[7px] after:rounded-full after:border-[1.5px] after:border-(--surface) after:bg-(--badge-idle) after:content-['']">
                   <SeededAvatar
                     name={user.displayName}
                     src={user.avatarUrl}
@@ -486,14 +560,17 @@ function TasksPane({
                   />
                 </span>
               </div>
-              {/* #318: 同列表行——标题 <a> 的 ::after 拉伸盖满整卡 */}
+              {/* #318: 同列表行——标题 <a> 的 after: 拉伸盖满整卡；两行截断 =
+                  max-height 40 idiom（detail.css chat-preview 注同源）。 */}
               <Link
-                className="prj-task-card-title prj-task-link"
+                className="prj-task-card-title prj-task-link max-h-10 overflow-hidden text-[13px] leading-5 text-(--text-primary) no-underline after:absolute after:inset-0 after:content-['']"
                 to={{ pathname: `/app/todo/${todo.id}`, search }}
               >
                 {todo.title}
               </Link>
-              <span className="prj-task-card-time">{relativeTime(todo.phaseAt, now, t)}</span>
+              <span className="text-xs text-(--text-tertiary)">
+                {relativeTime(todo.phaseAt, now, t)}
+              </span>
             </div>
           ))}
         </div>
@@ -643,13 +720,19 @@ export function ProjectPage() {
       onTab={(next) => setTab(next === 'tasks' ? 'tasks' : 'files')}
     >
       {tab === 'files' && isLocalRepo ? (
-        <div className="prj-files-disabled">{t('本地仓库项目暂不支持在线浏览文件')}</div>
+        <div className="flex min-h-0 flex-1 items-center justify-center gap-3 text-[13px] text-(--text-tertiary)">
+          {t('本地仓库项目暂不支持在线浏览文件')}
+        </div>
       ) : tab === 'files' && isGithubRepoEntry ? (
-        <div className="prj-files-disabled">
+        <div className="flex min-h-0 flex-1 items-center justify-center gap-3 text-[13px] text-(--text-tertiary)">
           <span>{t('GitHub 仓库项目的文件在 GitHub 上查看')}</span>
           {githubFilesUrl != null && (
+            /* #946 better-colors 实测换槽：原规则引 --accent（软分隔线族，
+               on surface ≈1.1:1 不可读）——「链接用主题色」的设计意图落品牌槽
+               --card-button（#908 裁决 2：配对未过可换消费面槽引用，token
+               值不动；实测数字在 PR body）。 */
             <a
-              className="prj-files-github-link"
+              className="text-(--card-button) underline"
               href={githubFilesUrl}
               target="_blank"
               rel="noopener noreferrer"
@@ -659,7 +742,7 @@ export function ProjectPage() {
           )}
         </div>
       ) : tab === 'files' ? (
-        <div className="prj-files">
+        <div className="prj-files flex min-h-0 flex-1">
           <FilesPane
             branch={project?.branch ?? 'main'}
             files={project?.files ?? []}
@@ -671,11 +754,13 @@ export function ProjectPage() {
             onSelectFile={(name) => setFileSel({ projectId: id ?? '', path: name })}
           />
           {fileView.kind === 'text' ? (
-            <div className="prj-files-viewer prj-files-viewer--text">
-              <pre className="prj-file-content">{fileView.content}</pre>
+            <div className="block min-w-0 flex-1 overflow-auto px-4 py-3 text-[13px] text-(--text-tertiary)">
+              <pre className="m-0 font-mono text-xs leading-[18px] whitespace-pre text-(--text-primary)">
+                {fileView.content}
+              </pre>
             </div>
           ) : (
-            <div className="prj-files-viewer">
+            <div className="flex flex-1 items-center justify-center text-[13px] text-(--text-tertiary)">
               {fileView.kind === 'loading'
                 ? t('加载中…')
                 : fileView.kind === 'error'

@@ -157,12 +157,20 @@ async function stubWorld(page: Page, opts: { connected?: boolean } = {}) {
   return { issueQueries, importBodies };
 }
 
+// #946/#910 载体：入口/弹层/过滤/翻页 = role+文案一级载体（弹层 =
+// role=dialog，可及名 = 标题）；issue 行 = 含 #编号 文案的 button（行面
+// 唯一形态）；标签 chip 无 role（TagChip = Badge 皮肤件），走 exact text。
+// 详情落地面（.fresh-title / .fresh-tag-chip / .spec-block）是 detail 域
+// 的跨域别名，重钉权归 #945（本 spec 只消费、不重钉）。
+const issueRows = (scope: ReturnType<Page['getByRole']>) =>
+  scope.getByRole('button', { name: /#\d+/ });
+
 async function openDialog(page: Page) {
   await page.goto('/app/project/proj-gh?tab=tasks');
-  const entry = page.locator('.prj-issues-entry');
+  const entry = page.getByRole('button', { name: '从 GitHub issue 建任务' });
   await expect(entry).toBeVisible();
   await entry.click();
-  const dialog = page.locator('.dlg-ghissues');
+  const dialog = page.getByRole('dialog', { name: '从 GitHub issue 建任务' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -173,10 +181,18 @@ test('1. 已连接 github 项目：入口 → 弹层 → 点选导入 → 详情
   const { importBodies } = await stubWorld(page);
   const dialog = await openDialog(page);
   // 列表面：两行 issue，label chips 全渲染（#7 两枚 + #9 一枚）
-  await expect(dialog.locator('.prj-issues-row')).toHaveCount(2);
-  await expect(dialog.locator('.prj-issues-tag')).toHaveText(['bug', 'area:auth', 'bug']);
+  const rows = issueRows(dialog);
+  await expect(rows).toHaveCount(2);
+  await expect(dialog.getByText('bug', { exact: true })).toHaveCount(2);
+  await expect(dialog.getByText('area:auth', { exact: true })).toHaveCount(1);
+  await expect(rows.filter({ hasText: ISSUE_TITLE }).getByText('bug', { exact: true })).toHaveCount(
+    1,
+  );
+  await expect(
+    rows.filter({ hasText: ISSUE_TITLE }).getByText('area:auth', { exact: true }),
+  ).toHaveCount(1);
   // 点选导入 → POST body {number} → 导航任务详情
-  await dialog.locator('.prj-issues-row', { hasText: ISSUE_TITLE }).click();
+  await rows.filter({ hasText: ISSUE_TITLE }).click();
   await expect(page).toHaveURL(/\/app\/todo\/todo-gh-1/);
   await expect(page.locator('.fresh-title')).toHaveText(ISSUE_TITLE);
   await expect(page.locator('.fresh-tag-chip')).toHaveText(['bug', 'area:auth']);
@@ -187,40 +203,42 @@ test('1. 已连接 github 项目：入口 → 弹层 → 点选导入 → 详情
 test('2. local 项目：入口不渲染', async ({ page }) => {
   await stubWorld(page);
   await page.goto('/app/project/proj-local?tab=tasks');
-  await expect(page.locator('.prj-tasks-toolbar')).toBeVisible();
-  await expect(page.locator('.prj-issues-entry')).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: '搜索任务' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '从 GitHub issue 建任务' })).toHaveCount(0);
 });
 
 test('3. 未连接 github 项目：入口不渲染，任务面正常不空白', async ({ page }) => {
   await stubWorld(page, { connected: false });
   await page.goto('/app/project/proj-gh?tab=tasks');
-  await expect(page.locator('.prj-tasks-toolbar')).toBeVisible();
-  await expect(page.locator('.prj-issues-entry')).toHaveCount(0);
-  await expect(page.locator('.dlg-ghissues')).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: '搜索任务' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '从 GitHub issue 建任务' })).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: '从 GitHub issue 建任务' })).toHaveCount(0);
 });
 
 test('4. 状态过滤与分页参数直达请求面；hasMore=false 下一页禁用', async ({ page }) => {
   const { issueQueries } = await stubWorld(page);
   const dialog = await openDialog(page);
+  const rows = issueRows(dialog);
+  const next = dialog.getByRole('button', { name: '下一页' });
   expect(issueQueries).toEqual(['state=open&page=1']);
-  await expect(dialog.locator('.prj-issues-next')).toBeEnabled();
+  await expect(next).toBeEnabled();
   // 已关闭过滤：state=closed 直达；hasMore=false → 下一页禁用
-  await dialog.locator('.prj-issues-filter', { hasText: '已关闭' }).click();
-  await expect(dialog.locator('.prj-issues-row')).toHaveCount(1);
-  await expect(dialog.locator('.prj-issues-row')).toContainText('closed issue');
+  await dialog.getByRole('button', { name: '已关闭' }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText('closed issue');
   expect(issueQueries).toEqual(['state=open&page=1', 'state=closed&page=1']);
-  await expect(dialog.locator('.prj-issues-next')).toBeDisabled();
+  await expect(next).toBeDisabled();
   // 回「打开」翻到第 2 页：page=2 直达，行集换页。回切「打开」不重发
   // open&page=1（TanStack staleTime 缓存命中，键含 state/page）。
-  await dialog.locator('.prj-issues-filter', { hasText: '打开' }).click();
-  await dialog.locator('.prj-issues-next').click();
-  await expect(dialog.locator('.prj-issues-row')).toHaveCount(1);
-  await expect(dialog.locator('.prj-issues-row')).toContainText('third issue');
+  await dialog.getByRole('button', { name: '打开' }).click();
+  await next.click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText('third issue');
   expect(issueQueries).toEqual([
     'state=open&page=1',
     'state=closed&page=1',
     'state=open&page=2',
   ]);
-  await expect(dialog.locator('.prj-issues-page')).toHaveText('第 2 页');
-  await expect(dialog.locator('.prj-issues-next')).toBeDisabled();
+  await expect(dialog.getByText('第 2 页')).toHaveText('第 2 页');
+  await expect(next).toBeDisabled();
 });

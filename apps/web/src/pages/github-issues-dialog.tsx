@@ -3,8 +3,9 @@
 // + 行点选即导入建任务。只读面：不在 GitHub 留任何痕迹（写向 = ADR 0006
 // 另票）。数据面 = useGithubIssues / importGithubIssue（hooks 单源）；导入
 // 成功由父面收弹层并导航任务详情（票面 e2e 真用户路径的落点）。
-// 弹层家族律（#68 DialogShell 448 宽 + Esc/背板关闭；per-face 类名
-// dlg-ghissues / prj-issues-* 作 e2e 定位别名）。
+// 弹层家族律（#68 DialogShell 448 宽 + Esc/背板关闭）。#946：per-face 类
+// （dlg-ghissues / prj-issues-*）退役——皮肤迁 token utility 等值，e2e 载体
+// 迁语义位（role=dialog/menu、按钮文案、aria-pressed、文本）。
 
 import type { GithubIssueState, TodoRecord } from '@pacman/shared';
 import { useEffect, useState } from 'react';
@@ -19,6 +20,24 @@ const STATE_FILTERS: { id: GithubIssueState; label: string }[] = [
   { id: 'closed', label: '已关闭' },
   { id: 'all', label: '全部' },
 ];
+
+/** 过滤 chip（原 .prj-issues-filter）：24 高带框盒形，ghost 件配方按七通道
+ *  律中和（hover 无涂底面——旧 per-face bg 简写恒压 hover 档）。选中态
+ *  （原 --active）= 品牌描边 + tab-chip 填充，载体 aria-pressed。 */
+const FILTER_CLS =
+  'h-6 cursor-pointer rounded-none border border-(--border-default) bg-transparent px-2.5 text-xs font-normal leading-[inherit] text-(--text-secondary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0';
+const FILTER_ACTIVE_CLS =
+  'border-(--card-button) bg-(--tab-chip-bg) text-(--text-primary) hover:bg-(--tab-chip-bg) hover:text-(--text-primary) dark:hover:bg-(--tab-chip-bg)';
+
+/** 翻页钮（原 .prj-issues-prev/-next，老 ui/Button quiet 皮肤）：零内距 /
+ *  无边框 / 透明底 / 13 字号 / 弱化墨；禁用态无降档（quiet 无
+ *  :disabled 规则）→ opacity-100 + pointer-events-auto 保「禁用仍画 pointer
+ *  光标」的现行为。leading-[inherit] = 应用内 preflight 对 button 置
+ *  line-height: inherit，老面继承 foot 行高（13px×1.4286≈18.57）；base
+ *  text-sm 的比例行高与 normal 都凑不齐该值，inherit 逐位对齐（像素对拍
+ *  实测 normal 会把 foot 压矮 0.56px）。 */
+const PAGER_BTN_CLS =
+  'h-auto cursor-pointer rounded-none border-none bg-transparent p-0 text-[13px] font-normal leading-[inherit] text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:opacity-100';
 
 interface GithubIssuesDialogProps {
   /** #73 retained-mount open flag（DialogShell 家族律）。 */
@@ -67,29 +86,22 @@ export function GithubIssuesDialog({
       open={open}
       onClose={onClose}
       title={t('从 GitHub issue 建任务')}
-      className="dlg-ghissues"
       footer={
-        <div className="prj-issues-foot">
-          {/* XMON-25 收编：老 ui/Button quiet 的皮肤（padding 0 / text-dim /
-              13px）下沉 per-face .prj-issues-prev,.prj-issues-next 新规则；
-              禁用态原本无降档（quiet 无 :disabled 规则）→ opacity-100 +
-              pointer-events-auto 保「禁用仍画 pointer 光标」的现行为。
-              leading-[inherit] = 应用内 preflight 对 button 置
-              line-height: inherit，老面继承 foot 行高（13px×1.4286≈18.57）；
-              base text-sm 的比例行高与 normal 都凑不齐该值，inherit 逐位对
-              齐（像素对拍实测 normal 会把 foot 压矮 0.56px）。 */}
+        <div className="flex w-full items-center justify-between gap-3">
           <Button
             variant="ghost"
-            className="prj-issues-prev h-auto font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:opacity-100"
+            className={PAGER_BTN_CLS}
             disabled={page <= 1 || pending}
             onClick={() => setPage((p) => p - 1)}
           >
             {t('上一页')}
           </Button>
-          <span className="prj-issues-page">{t('第 {page} 页', { page })}</span>
+          <span className="text-xs text-(--text-tertiary) tabular-nums">
+            {t('第 {page} 页', { page })}
+          </span>
           <Button
             variant="ghost"
-            className="prj-issues-next h-auto font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0 disabled:pointer-events-auto disabled:opacity-100"
+            className={PAGER_BTN_CLS}
             disabled={data?.hasMore !== true || pending}
             onClick={() => setPage((p) => p + 1)}
           >
@@ -98,16 +110,12 @@ export function GithubIssuesDialog({
         </div>
       }
     >
-      <div className="prj-issues-filters">
+      <div className="flex gap-2 px-4 pt-3">
         {STATE_FILTERS.map((filter) => (
-          // XMON-25 收编：ghost；--active 选中态正本在 per-face（unlayered）；
-          // leading-[inherit] 对齐 preflight 继承行高（同 prev/next 注释）。
           <Button
             key={filter.id}
             variant="ghost"
-            className={`prj-issues-filter font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0${
-              state === filter.id ? ' prj-issues-filter--active' : ''
-            }`}
+            className={`${FILTER_CLS} ${state === filter.id ? FILTER_ACTIVE_CLS : ''}`}
             aria-pressed={state === filter.id}
             onClick={() => {
               setState(filter.id);
@@ -119,35 +127,44 @@ export function GithubIssuesDialog({
         ))}
       </div>
       {issuesQ.isError ? (
-        <div className="prj-issues-empty">{t('issue 列表加载失败')}</div>
+        <div className="px-4 py-6 text-center text-[13px] leading-4 text-(--text-tertiary)">
+          {t('issue 列表加载失败')}
+        </div>
       ) : data === undefined ? (
-        <div className="prj-issues-empty">{t('加载中…')}</div>
+        <div className="px-4 py-6 text-center text-[13px] leading-4 text-(--text-tertiary)">
+          {t('加载中…')}
+        </div>
       ) : data.issues.length === 0 ? (
-        <div className="prj-issues-empty">{t('这个状态下没有 issue')}</div>
+        <div className="px-4 py-6 text-center text-[13px] leading-4 text-(--text-tertiary)">
+          {t('这个状态下没有 issue')}
+        </div>
       ) : (
-        <div className="prj-issues-list">
+        <div className="flex max-h-80 flex-col overflow-y-auto p-2">
           {data.issues.map((issue) => (
-            // XMON-25 收编：ghost；per-face font:inherit 简写已压掉 base 的
-            // text-sm/font-medium/行高（无需字体中和位）。justify-start =
-            // text-align:left 的 flex 等价位；whitespace-normal 恢复标题
-            // 双行换行（base whitespace-nowrap 会禁掉 wrap 面的 overflow-wrap）；
-            // h-auto 保内容高——base h-8 钉 32px，双行行（60px）会溢出盒外。
+            // 行（原 .prj-issues-row）：ghost 底座，font:inherit 简写旧形由
+            // text/leading inherit 等值承接；justify-start = text-align:left
+            // 的 flex 等价位；whitespace-normal 恢复标题双行换行（base
+            // whitespace-nowrap 会禁掉 wrap 面的 overflow-wrap）；h-auto 保
+            // 内容高——base h-8 钉 32px，双行行（60px）会溢出盒外。
             <Button
               key={issue.number}
               variant="ghost"
-              className="prj-issues-row h-auto justify-start whitespace-normal active:not-aria-[haspopup]:translate-y-0"
+              className="h-auto w-full cursor-pointer items-baseline justify-start gap-1.5 whitespace-normal rounded-none border-none bg-transparent p-2 text-left font-normal text-[length:inherit] leading-[inherit] hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
               disabled={pending}
               onClick={() => importIssue(issue.number)}
             >
-              <span className="prj-issues-num">#{issue.number}</span>
-              <span className="prj-issues-title">{issue.title}</span>
+              <span className="flex-none text-xs text-(--text-tertiary) tabular-nums">
+                #{issue.number}
+              </span>
+              <span className="min-w-0 text-[13px] leading-[18px] text-(--text-primary) [overflow-wrap:anywhere]">
+                {issue.title}
+              </span>
               {issue.labels.length > 0 && (
-                <span className="prj-issues-labels">
+                <span className="flex w-full flex-wrap gap-1">
                   {issue.labels.map((label) => (
                     <TagChip
                       key={label.name}
                       tag={{ id: label.name, name: label.name, color: label.color }}
-                      className="prj-issues-tag"
                     />
                   ))}
                 </span>
@@ -156,7 +173,7 @@ export function GithubIssuesDialog({
           ))}
         </div>
       )}
-      {error !== null && <div className="prj-issues-error">{error}</div>}
+      {error !== null && <div className="mx-4 mb-3 text-xs leading-4 text-(--danger)">{error}</div>}
     </DialogShell>
   );
 }
