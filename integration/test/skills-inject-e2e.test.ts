@@ -5,7 +5,7 @@
 // marker 落库即证路径可达）。白名单面：授权 skill 在位、同目录未授权 skill
 // 不出现（#372 验收一）。
 
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { eq } from 'drizzle-orm';
@@ -182,5 +182,16 @@ describe('spec 14 skills 执行面注入 E2E', () => {
     // ③ [skills] 日志行族落 daemon.log（loaded 态 + filtered 行，#372）。
     expect(logLines().some((l) => l.startsWith('[skills] loaded: 1 skills from'))).toBe(true);
     expect(logLines()).toContain('[skills] filtered: extra-skill not in agent allowlist');
+
+    // ④ #958：①那条目录断言现在走的是**完全不同**的投递路径——简报不再进
+    //    systemPrompt，而是落进任务 worktree 的上下文文件，由 pi 原生加载成
+    //    上下文段。这里钉真 daemon 的落盘面与擦除面：写入行在位、擦除行在位、
+    //    且步收尾后 worktree 里不留文件（残留会被下一次复用同一 worktree 的步
+    //    的 `git add -A` 扫进提交——闸 1 的延迟污染）。
+    expect(logLines().some((l) => l.includes('brief written:') && l.includes('(create)'))).toBe(
+      true,
+    );
+    expect(logLines().some((l) => l.includes('brief removed'))).toBe(true);
+    expect(existsSync(join(paths.workspacesDir, buildId, 'AGENTS.md'))).toBe(false);
   }, 150_000);
 });
