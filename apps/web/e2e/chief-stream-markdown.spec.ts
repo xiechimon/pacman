@@ -794,4 +794,37 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
     await expect(toolRow.locator('span.tabular-nums')).toHaveText(/^[3-9]s$/);
     await expect(drawer.locator('.chief-turn-tools')).toHaveCount(0);
   });
+
+  test('F-R20: 在飞工具行带出具体命令（不是裸工具名）', async ({ page }) => {
+    // 失败方式（先列后写）：一排 `正在调用 Bash` 读不出到底跑了什么。渲染面
+    // 本来就有位置，丢的是投影——所以这条钉在**渲染出的文本**上，改回裸名即红。
+    const state: Parameters<typeof mockChiefLiveApi>[1] = {
+      final: false,
+      messages: [
+        USER_ROW,
+        {
+          id: 'c-tool-2',
+          role: 'assistant',
+          content: {
+            kind: 'toolcall',
+            call: {
+              id: 'c-tool-2',
+              name: 'Bash',
+              arguments: { command: 'ls -la', description: '列目录' },
+              startedAt: 3,
+            },
+          },
+          createdAt: 5,
+        },
+      ],
+    };
+    await mockChiefLiveApi(page, state);
+    await page.goto('/app?chief=chief-bbb');
+
+    const drawer = page.locator('.chief-drawer');
+    const bashRow = drawer.locator('.chief-msg', { hasText: '正在调用 Bash' });
+    await expect(bashRow).toHaveCount(1);
+    // 裸名 `正在调用 Bash` 是改前的形态；这里要求命令同行可见。
+    await expect(bashRow).toContainText('正在调用 Bash ls -la');
+  });
 });

@@ -259,7 +259,7 @@ describe('mapChiefStream markdown 槽（#650 F-A5/A6）', () => {
     ]);
     const robots = robotItems(items);
     expect(robots).toHaveLength(1);
-    expect(robots[0]?.tools).toEqual([{ name: 'create_todo', seconds: 2 }]);
+    expect(robots[0]?.tools).toEqual([{ label: 'create_todo', seconds: 2 }]);
   });
 
   test('F-A5 user 行 / chief_turn_error 行投影不变（回归钉）', () => {

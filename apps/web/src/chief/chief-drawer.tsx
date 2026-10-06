@@ -912,7 +912,7 @@ export function ChiefDrawer({
                           <span className="w-6 shrink-0" aria-hidden="true" />
                           <div className="chief-msg-col">
                             <ToolActivityRow
-                              name={item.name}
+                              name={item.label}
                               {...(item.startedAt !== undefined
                                 ? { startedAt: item.startedAt }
                                 : {})}
@@ -966,7 +966,7 @@ export function ChiefDrawer({
                                 )}
                                 {item.tools?.map((tool, k) => (
                                   <div key={k} className={TURN_TOOL_ROW_CLS}>
-                                    <span className={TURN_TOOL_NAME_CLS}>{tool.name}</span>
+                                    <span className={TURN_TOOL_NAME_CLS}>{tool.label}</span>
                                     {tool.seconds !== undefined && (
                                       <span className="flex-none">{tool.seconds}s</span>
                                     )}
@@ -1119,7 +1119,7 @@ export function ChiefDrawer({
                             <div className={TURN_TOOLS_CLS} data-testid="chief-turn-tools">
                               {item.tools?.map((tool, k) => (
                                 <div key={k} className={TURN_TOOL_ROW_CLS}>
-                                  <span className={TURN_TOOL_NAME_CLS}>{tool.name}</span>
+                                  <span className={TURN_TOOL_NAME_CLS}>{tool.label}</span>
                                   {tool.seconds !== undefined && (
                                     <span className="flex-none">{tool.seconds}s</span>
                                   )}

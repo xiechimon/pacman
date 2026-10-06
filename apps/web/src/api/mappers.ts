@@ -1096,7 +1096,10 @@ function collectChiefStream(
     const call = toolCallOfContent(m.content);
     if (call !== null) {
       pendingTools.push({
-        name: call.name,
+        // #958 后续：行文本走 pillOf 单源（`bash <命令>` 族）——只留工具名会
+        // 让一排 Bash 读不出跑了什么，而 command/file_path/path 本来就在
+        // ToolCallRecord.arguments 里，与详情页工具 pill 是同一份数据。
+        label: pillOf(call),
         ...(call.startedAt !== undefined && call.endedAt !== undefined
           ? { seconds: Math.max(0, Math.round((call.endedAt - call.startedAt) / 1000)) }
           : {}),
@@ -1107,7 +1110,7 @@ function collectChiefStream(
       if (inlineTools) {
         items.push({
           kind: 'tool',
-          name: call.name,
+          label: pillOf(call),
           ...(call.startedAt !== undefined ? { startedAt: call.startedAt } : {}),
           ...(call.startedAt !== undefined && call.endedAt !== undefined
             ? { seconds: Math.max(0, Math.round((call.endedAt - call.startedAt) / 1000)) }

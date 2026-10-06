@@ -58,8 +58,8 @@ describe('段行投影（F1..F6）', () => {
       ],
       true,
     );
-    expect(items[0]).toEqual({ kind: 'tool', name: 'bash', startedAt: 1000, running: true });
-    expect(items[1]).toEqual({ kind: 'tool', name: 'read', startedAt: 1000, seconds: 2 });
+    expect(items[0]).toEqual({ kind: 'tool', label: 'bash', startedAt: 1000, running: true });
+    expect(items[1]).toEqual({ kind: 'tool', label: 'read', startedAt: 1000, seconds: 2 });
   });
 
   test('F3 回合收口后工具回到 robot 行的 tools 折叠面，不再平铺', () => {
@@ -71,7 +71,7 @@ describe('段行投影（F1..F6）', () => {
     expect(inFlight.map((i) => i.kind)).toEqual(['tool', 'robot']);
     const settled = mapChiefStream(messages, false);
     expect(settled.map((i) => i.kind)).toEqual(['robot']);
-    expect(settled[0]).toMatchObject({ kind: 'robot', tools: [{ name: 'bash', seconds: 2 }] });
+    expect(settled[0]).toMatchObject({ kind: 'robot', tools: [{ label: 'bash', seconds: 2 }] });
   });
 
   test('F4 无正文的 thinking 行出 thinking 项', () => {
@@ -95,6 +95,6 @@ describe('段行投影（F1..F6）', () => {
     ]);
     expect(items.map((i) => i.kind)).toEqual(['robot', 'robot']);
     expect(items[0]).toEqual({ kind: 'robot', markdown: '甲', seconds: '' });
-    expect(items[1]).toMatchObject({ kind: 'robot', markdown: '乙', tools: [{ name: 'bash' }] });
+    expect(items[1]).toMatchObject({ kind: 'robot', markdown: '乙', tools: [{ label: 'bash' }] });
   });
 });

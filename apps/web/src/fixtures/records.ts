@@ -765,7 +765,10 @@ export type ChiefStreamItem =
    *  （r5 canon 的落库形）。 */
   | {
       kind: 'tool';
-      name: string;
+      /** 行文本 = `pillOf(call)` 的产物（`bash <命令>` 族），与折叠面的
+       *  `ChiefToolRow.label` 同一份投影——两处都只写工具名的话，在飞与收口
+       *  两个形态会各差一截信息。 */
+      label: string;
       /** 调用起点（进行中秒数的锚；缺省不挂秒数——#471 律）。 */
       startedAt?: number;
       /** 已完结调用的执行秒数（startedAt/endedAt 投影）。 */
@@ -785,7 +788,10 @@ export type ChiefStreamItem =
 
 /** 回合工具行（#615 返工折叠展开面；ToolCallRecord 的呈现投影）。 */
 export interface ChiefToolRow {
-  name: string;
+  /** 行文本 = `pillOf(call)` 的产物，**不是裸工具名**——`bash <命令>` /
+   *  `edit <路径>` 族（mappers.ts 单源，与详情页工具 pill 同一份投影）。
+   *  只写工具名会让「一排 Bash」读不出到底跑了什么。 */
+  label: string;
   /** 执行秒数（startedAt/endedAt 投影；缺省不呈现）。 */
   seconds?: number;
   /** isError 投影（行尾错误徽标）。 */
