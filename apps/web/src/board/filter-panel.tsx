@@ -39,9 +39,9 @@
 // （批次键不再挂标题行）。「仅此」hover 现形，与计数共右端槽（静息计数、
 // hover 仅此）——两控件位置都稳定，不随选集大小推移。
 
-import { Checkbox as CheckboxPrimitive } from '@base-ui/react/checkbox';
 import { useMemo, useState } from 'react';
 import { Button } from '../components/ui/button.js';
+import { Checkbox } from '../components/ui/checkbox.js';
 import { EmptyDescription } from '../components/ui/empty.js';
 import { Input } from '../components/ui/input.js';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
@@ -82,8 +82,6 @@ export interface FilterChip {
   label: string;
   onClear: () => void;
 }
-
-const FOCUS = 'focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2';
 
 /** 行首勾选框（参考站实测形）：16px 方角。off = 控制边框空盒；on = 品牌
  *  实底勾；mixed = 品牌边框 + 横杠（全选行的部分选中态）。槽位恒在，
@@ -210,39 +208,22 @@ function DimensionSection({
               = 清本维——段内清除钮撤除后，「清」由本行满选态 / 反选 / 顶栏
               生效筛选条三路承接，功能不丢。反选挂该行右端（参考站位置与文案）。 */}
           <div className="filter-dimension-allrow flex items-center">
-            {/* deliberate-official（#855 → #943 裸控件收编）：三态改走 Base UI
-                官方 Checkbox Root（components/ui/checkbox 共享件包的同一底座，
-                indeterminate 是官方一等 prop——aria-checked="mixed" 与隐藏
-                原生 input 的键盘/表单/读屏语义白送）。共享件 API 现未透出
-                indeterminate（checked: boolean），扩共享件属 #908 单裁决面，
-                故本行直接消费 Root——先例 = chief-drawer 直消费 DialogPrimitive；
-                皮肤零 CSS 纯工具类（关态 border-input 空盒 / 开态 --card-button
-                实底白勾 / mixed 品牌边框 + 横杠，逐值沿 #855 自绘皮肤），勾形
-                与横杠仍是 tile 之上的指针穿透覆层。整行包 label，点文案即
-                toggle（官方合成：tile 直点由 Root preventDefault 接管，不经
-                label 二次翻转）。 */}
-            {/* biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime (official composition); the static check cannot see through the component. */}
-            <label className="flex h-7 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft">
-              <span className="relative flex size-4 flex-none">
-                <CheckboxPrimitive.Root
-                  checked={allSelected}
-                  indeterminate={someSelected && !allSelected}
-                  onCheckedChange={() =>
-                    allSelected ? dimension.onClear() : dimension.onSelectAll()
-                  }
-                  className={`filter-dimension-all ${FOCUS} size-4 cursor-pointer rounded-none border transition-colors ${
-                    allSelected || someSelected ? 'border-(--card-button)' : 'border-input'
-                  } ${allSelected ? 'bg-(--card-button)' : 'bg-transparent'}`}
-                />
-                {allSelected && (
-                  <Check className="pointer-events-none absolute inset-0 m-auto size-3 text-primary-foreground" />
-                )}
-                {someSelected && !allSelected && (
-                  <span className="pointer-events-none absolute inset-0 m-auto h-0.5 w-2 rounded-full bg-(--card-button)" />
-                )}
-              </span>
+            {/* #952 回收（#943 deliberate-official 直消费 Root 的收口，#908
+                comment-6001887439 裁决 1②）：三态走共享 Checkbox 件——
+                indeterminate 官方一等 prop 已在件上透出（aria-checked="mixed"
+                与隐藏原生 input 的键盘/表单/读屏语义白送），皮肤回件上单源
+                （关态 --border-strong 内描边空盒 / 开态与 mixed --card-button
+                实底 + currentColor 勾/横杠），不再自绘第二套。整行可点 =
+                件契约（label 包裹，点文案即 toggle）。 */}
+            <Checkbox
+              checked={allSelected}
+              indeterminate={someSelected && !allSelected}
+              onCheckedChange={() => (allSelected ? dimension.onClear() : dimension.onSelectAll())}
+              label={t('全选')}
+              className="h-7 min-w-0 flex-1 rounded-md px-2 text-xs text-foreground transition-colors hover:bg-accent-soft"
+            >
               <span className="min-w-0 flex-1 truncate text-left">{t('全选')}</span>
-            </label>
+            </Checkbox>
             <Button
               variant="link"
               className="filter-dimension-invert mr-2 h-auto shrink-0 rounded border-none px-1 text-xs font-normal text-(--card-button) active:not-aria-[haspopup]:translate-y-0"

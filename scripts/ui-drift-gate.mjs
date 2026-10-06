@@ -13,11 +13,11 @@
 //   G2  No hex color literals in declaration lines outside the token source
 //       (`styles/shadcn.css` holds the values by design; `tokens.css` holds
 //       aliases). Hex inside comments is stripped, not flagged.
-//   G3  The canonical `.chip--*` variants are defined exactly once, in
-//       `ui/chip.css`. Per-face chip families (search-row-chip--*,
-//       mention-chip--*, detail-chip--*) are separate skins with their own
-//       收编 tickets — this gate only pins the canonical six against
-//       redefinition elsewhere.
+//   G3  No `.chip--*` selector is defined anywhere. The canonical five-state
+//       chip is components/ui/status-chip.tsx (data-tone + --chip-* token
+//       utilities, spec/22 5.2); the old ui/chip.css primitive retired with
+//       the src/ui/ directory (#952). Any `.chip--` rule reappearing in a
+//       stylesheet is a second implementation of the canon.
 //   G4  Every bare `<input` in apps/web/src either lives in an Input
 //       primitive itself or carries a `deliberate-native` marker comment
 //       within the 12 lines above it (#855, parent #851). Text-like inputs
@@ -46,14 +46,13 @@ const HEX_SOURCE = join(WEB_SRC, 'styles/shadcn.css');
 // G2-ALLOW: file-relative + selector + reason. Empty since #854: every color
 // value lives in the token source again (see header).
 const HEX_ALLOWLIST = [];
-// G3: canonical chip variants, single home.
-const CHIP_HOME_REL = rel(join(WEB_SRC, 'ui/chip.css'));
-const CHIP_VARIANTS = ['idle', 'plan', 'confirm', 'done', 'failed', 'mini'];
+// G3: the canonical chip lives in status-chip.tsx utilities — no CSS may
+// define `.chip--*` selectors any more (ui/chip.css retired, #952).
 // G4: bare `<input>` marker discipline.
 const INPUT_MARKER = 'deliberate-native';
 const INPUT_MARKER_WINDOW_LINES = 12;
 // Files that ARE the primitive: bare <input> is the implementation there.
-const INPUT_PRIMITIVE_FILES = new Set(['ui/input.tsx', 'components/ui/input.tsx']);
+const INPUT_PRIMITIVE_FILES = new Set(['components/ui/input.tsx']);
 
 const failures = [];
 
@@ -127,26 +126,17 @@ for (const file of cssFiles) {
   });
 }
 
-// --- G3: canonical chip variants defined once, at home -----------------------
-const chipDefs = new Map();
+// --- G3: no `.chip--*` selector definitions anywhere --------------------------
 for (const file of cssFiles) {
   const text = stripCssComments(readFileSync(file, 'utf8'));
   text.split('\n').forEach((line, i) => {
     const m = line.match(/^\s*\.chip--([a-z]+)\b/);
     if (m) {
-      const key = m[1];
-      if (!chipDefs.has(key)) chipDefs.set(key, []);
-      chipDefs.get(key).push(`${rel(file)}:${i + 1}`);
+      failures.push(
+        `G3 ${rel(file)}:${i + 1}: .chip--${m[1]} selector defined — canonical chip is components/ui/status-chip.tsx (data-tone + token utilities)`,
+      );
     }
   });
-}
-for (const variant of CHIP_VARIANTS) {
-  const sites = chipDefs.get(variant) ?? [];
-  if (sites.length !== 1 || !sites[0].startsWith(`${CHIP_HOME_REL}:`)) {
-    failures.push(
-      `G3 .chip--${variant}: expected exactly one definition in ui/chip.css, found [${sites.join(', ') || 'none'}]`,
-    );
-  }
 }
 
 // --- G4: bare <input> sites (input facet, #855) ------------------------------
@@ -178,7 +168,7 @@ for (const file of tsxFiles) {
 // --- verdict -----------------------------------------------------------------
 if (failures.length === 0) {
   console.log(
-    `[ui-drift-gate] PASS: no live .btn selectors, no hex escapes, ${CHIP_VARIANTS.length} chip variants single-sourced (${cssFiles.length} css files scanned); ${inputSites} bare <input> site(s), ${deliberateInputs} deliberate-native.`,
+    `[ui-drift-gate] PASS: no live .btn selectors, no hex escapes, no .chip--* redefinitions (${cssFiles.length} css files scanned); ${inputSites} bare <input> site(s), ${deliberateInputs} deliberate-native.`,
   );
   process.exit(0);
 }

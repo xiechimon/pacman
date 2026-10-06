@@ -21,7 +21,21 @@
 
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import type { CSSProperties, ReactNode } from 'react';
-import './floating-shell.css';
+
+/** 锚定 pop 族的退场 visibility 桥（#656；floating-shell.css 退役后机制即
+ *  utility，#952）：面板退场由 group-data-closed/fshell:animate-out 承载，但
+ *  Base UI 只在 Popup 本体有进行中动画时才延迟卸载（getAnimations 不看子树），
+ *  故壳挂一条零视觉的 visibility 延迟过渡撑住卸载窗（--dur-fast = 150ms ≥
+ *  面板 duration-100），让面板 animate-out 播完再卸。消费面经 FloatingShell
+ *  className 叠上（opt-in：不带面板动画的面不需要桥）。 */
+export const EXIT_BRIDGE_CLS =
+  '[transition:visibility_0s_linear_var(--dur-fast)] data-[ending-style]:invisible';
+
+/** 200ms 面（duration-200 的 fade 族：sched-form scrim / new-task discard，
+ *  沿旧 --dur-overlay 时序）用本变体撑满退场窗——桥短于面板会把 fade 拦腰
+ *  截断。自含整条机制，不与 EXIT_BRIDGE_CLS 叠用。 */
+export const EXIT_BRIDGE_SLOW_CLS =
+  '[transition:visibility_0s_linear_var(--dur-overlay)] data-[ending-style]:invisible';
 
 /** 锚定 pop 族的进出场（V2 覆写，base-ui-theme §1.2/原型 L371：scale .98 +
  *  fade、100ms ease-out、origin 随锚位——替代 ADR 0009 D3 的 slide -8px。

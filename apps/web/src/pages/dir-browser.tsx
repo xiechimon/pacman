@@ -24,7 +24,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ApiError } from '../api/client.js';
 import { useFsList } from '../api/hooks.js';
 import { Button } from '../components/ui/button.js';
-import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
+import {
+  EXIT_BRIDGE_CLS,
+  FLOATING_POP_ANIM,
+  FloatingShell,
+} from '../components/ui/floating-shell.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronRight, GitCommit } from '../icons/index.js';
 import { ClickCatcher } from '../overlays/dismiss.js';
@@ -160,12 +164,7 @@ export function DirBrowser({
     <>
       <span ref={anchorRef} hidden aria-hidden="true" />
       {dockEl !== null && (
-        <FloatingShell
-          open={open}
-          onClose={onClose}
-          container={dockEl}
-          className="anchored-pop-shell"
-        >
+        <FloatingShell open={open} onClose={onClose} container={dockEl} className={EXIT_BRIDGE_CLS}>
           <ClickCatcher onClose={onClose} />
           <div
             className={`${PLATE_CLS} ${FLOATING_POP_ANIM}`}

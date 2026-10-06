@@ -192,7 +192,10 @@ export function TeamChart({
             className={`${NODE_CLS} cursor-pointer justify-start border-dashed text-left text-xs font-medium text-(--text-tertiary) leading-[inherit] hover:bg-(--surface-secondary) hover:text-(--text-tertiary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-(--surface) aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0`}
             onClick={onCreate}
           >
-            <span className="flex size-6 flex-none items-center justify-center rounded-full border border-dashed border-(--border-strong)">
+            {/* [&_svg]:size-3 顶回 12px：件基类 [&_svg:not([class*='size-'])]:size-4
+                会盖过字形自带的 12 属性（旧 unlayered .team-chart-create-icon svg
+                规则压住它，工具类层压不住——grid 创建槽同款并项）。 */}
+            <span className="flex size-6 flex-none items-center justify-center rounded-full border border-dashed border-(--border-strong) [&_svg]:size-3">
               <PlusGlyph />
             </span>
             {t('创建 Agent')}

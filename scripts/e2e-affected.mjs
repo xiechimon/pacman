@@ -108,7 +108,6 @@ const FILE_RULES = new Map([
   ['apps/web/src/routes/todo-detail-page.tsx', DETAIL],
   ['apps/web/src/routes/account-page.tsx', ['account-team-cleanse', 'user-menu-']],
   ['apps/web/src/routes/agent-detail-page.tsx', AGENT],
-  ['apps/web/src/routes/agent-detail.css', AGENT],
   ['apps/web/src/routes/agent-model-select.tsx', AGENT],
   ['apps/web/src/routes/api-key-create-dialog.tsx', ['user-menu-']],
   ['apps/web/src/routes/api-keys-page.tsx', ['user-menu-']],

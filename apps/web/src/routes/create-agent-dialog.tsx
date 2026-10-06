@@ -10,8 +10,10 @@
 // ticket).
 //
 // B2 · secondary 面（XMON-20）：弹窗内两件控件（提交钮、名称输入）全走
-// components/ui 件；几何仍由 ui/dialog.css 的 .dlg-agent-create / .dlg-form-input
-// 承载（域 css unlayered 压 utility），类名 alias 原样保留（#411 别名优先）。
+// components/ui 件。#952（正典表 §5.3/§5.4，ui/dialog.css 退役）：.dlg-form*
+// 族类 → utility 等值迁移（单源同 #944 的 LABEL_CLS 律）、.dlg-form-input 摘类
+// （几何即件正典 h-8，36px 不存续）、.dlg-agent-create → Button brand + w-full
+// （§2.6-3 迁移位；散写形差额并项——字重 400、无按下位移——原样承接）。
 //
 // #485 模型槽两态（原版两处实测：r2 §8.1 capture 20 = 尚未配置服务商时的
 // 告警行 + `配置服务商` 外链；r3 §2 = 服务商配好后同一弹窗的「模型」下拉）：
@@ -31,7 +33,20 @@ import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { PROVIDERS_HREF } from '../resources/providers-page.js';
-import { AgentModelSelect, AgentRuntimeSelect } from './agent-model-select.js';
+import {
+  AGENT_SELECT_MENU_NARROW_CLS,
+  AgentModelSelect,
+  AgentRuntimeSelect,
+  DLG_AGENT_SELECT_MENU_CLS,
+  DLG_AGENT_SELECT_TRIGGER_CLS,
+} from './agent-model-select.js';
+
+/** .dlg-form-label 退役后的等值 rhythm（正典表 §5.4，#944 的 LABEL_CLS 同律）：
+ *  9/8 外距 + 18 行盒；字号/字距 = c.css 定版 --label-size 12px /
+ *  --label-spacing 0.01em——#915 落 token 后改 text-(--label-size)
+ *  tracking-(--label-spacing)（§4-4）。 */
+const LABEL_CLS =
+  'mt-[9px] mb-2 text-[12px] leading-[18px] tracking-[0.01em] text-(--text-primary)';
 
 /** POST agents body 的创建面字段（reason = 词表最小形 + #485 的模型槽）。 */
 export interface CreateAgentInput {
@@ -87,15 +102,14 @@ export function CreateAgentDialog({
       title={t('创建 agent')}
       open={open}
       onClose={onClose}
-      // B2 · secondary 面（XMON-20）：底座 = components/ui/Button brand 档，与
-      // ui/dialog.css 的 .dlg-agent-create 同形（--card-button 实底 + on-accent 字、
-      // 禁用换 --spot-disabled）；per-face 几何仍住 dialog.css（域 css
-      // unlayered 压 utility）。差额并项——散写形字重 400、无按下位移。
+      // 底座 = components/ui/Button brand 档（--card-button 实底 + on-accent 字、
+      // 禁用换 --spot-disabled，原 .dlg-agent-create 同形）；w-full = 钉底独占
+      // （§5.4）。差额并项——散写形字重 400、无按下位移。
       footer={
-        <div className="dlg-form-foot">
+        <div className="flex flex-col px-4 pb-4">
           <Button
             variant="brand"
-            className="dlg-agent-create px-0 font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
+            className="w-full px-0 font-normal leading-[inherit] active:not-aria-[haspopup]:translate-y-0"
             disabled={name.trim() === ''}
             onClick={submit}
           >
@@ -104,7 +118,7 @@ export function CreateAgentDialog({
         </div>
       }
     >
-      <div className="dlg-form">
+      <div className="flex flex-col gap-3 px-4 pt-4 pb-3">
         {/* #951（detail/overlays.css 清零）：.dlg-agent-avatar 律等值迁
             utility——行 12 gap；img 40×40 圆（per-face 容器是 img 几何正本，
             SeededAvatar 契约）。testid = 二级载体（img 在 loaded 前被 registry
@@ -120,12 +134,12 @@ export function CreateAgentDialog({
             className="[&_img]:size-10 [&_img]:rounded-full"
           />
         </div>
-        <label className="dlg-form-label" htmlFor="dlg-agent-name">
+        <label className={LABEL_CLS} htmlFor="dlg-agent-name">
           {t('名称')}
         </label>
         <Input
           id="dlg-agent-name"
-          className="dlg-form-input placeholder:text-current/50"
+          className="placeholder:text-current/50"
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder={t('输入 Agent 名称')}
@@ -135,9 +149,10 @@ export function CreateAgentDialog({
         {modelOptions.length > 0 ? (
           <>
             {/* #951：.dlg-agent-slot-row 律等值迁 utility（标签与选择器纵向
-                排布，6 gap）；选择器本体几何仍住 routes/agent-detail.css。 */}
+                排布，6 gap）；#952：选择器本体几何走 DLG_AGENT_SELECT_* 常量
+                （agent-model-select.tsx 单源，agent-detail.css 退役）。 */}
             <div className="flex flex-col gap-1.5">
-              <span className="dlg-form-label">{t('运行时')}</span>
+              <span className={LABEL_CLS}>{t('运行时')}</span>
               <AgentRuntimeSelect
                 value={provider}
                 options={modelOptions}
@@ -146,16 +161,20 @@ export function CreateAgentDialog({
                   setProvider(next);
                 }}
                 prefix="dlg-agent-runtime"
+                triggerClassName={DLG_AGENT_SELECT_TRIGGER_CLS}
+                menuClassName={`${DLG_AGENT_SELECT_MENU_CLS} ${AGENT_SELECT_MENU_NARROW_CLS}`}
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <span className="dlg-form-label">{t('模型')}</span>
+              <span className={LABEL_CLS}>{t('模型')}</span>
               <AgentModelSelect
                 provider={provider}
                 modelId={modelId}
                 options={modelOptions}
                 onPick={setModelId}
                 prefix="dlg-agent-model"
+                triggerClassName={DLG_AGENT_SELECT_TRIGGER_CLS}
+                menuClassName={DLG_AGENT_SELECT_MENU_CLS}
               />
             </div>
           </>

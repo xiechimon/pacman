@@ -22,8 +22,9 @@
 // --primary，thumb 吃 --background——旧 29×16 手搓面与 --toggle-knob 消费
 // 随之退役；两槽的删槽动作不归本票，§4-2 既有裁定走散件票）。
 // `account-card` / `account-avatar` 别名保留 = profile-card 共享模板家族的
-// e2e 锚（profile-card.tsx 头注契约，规则住 components/profile-card.css，
-// 退役权归散件票）；其余类名别名按 #910 裁定 1 退役，载体 = role/text。
+// e2e 锚（profile-card.tsx 头注契约；#952 起模板几何住件上 PROFILE_* utility
+// 常量，profile-card.css 已退役）；其余类名别名按 #910 裁定 1 退役，载体 =
+// role/text。
 //
 // #74: the 语言 row is live — it reads/writes the workspace locale
 // (zh-CN authoritative + en, 01 S6) through the i18n provider and persists
@@ -36,9 +37,20 @@ import { useSearchParams } from 'react-router';
 import { useSession } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
 import { useNotificationPermission } from '../board/notify-banner.js';
-import { ProfileAvatar, ProfileCard, ProfileHead, ProfileRow } from '../components/profile-card.js';
+import {
+  PROFILE_ROW_NAME_CLS,
+  PROFILE_ROW_TALL_CLS,
+  ProfileAvatar,
+  ProfileCard,
+  ProfileHead,
+  ProfileRow,
+} from '../components/profile-card.js';
 import { Button } from '../components/ui/button.js';
-import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
+import {
+  EXIT_BRIDGE_CLS,
+  FLOATING_POP_ANIM,
+  FloatingShell,
+} from '../components/ui/floating-shell.js';
 import { SeededAvatar } from '../components/ui/seeded-avatar.js';
 import { Switch } from '../components/ui/switch.js';
 import { USER_NAME } from '../fixtures/fixtures.js';
@@ -68,7 +80,7 @@ const LANG_MENU_CLS =
  *  （壳垫 12px 后行内横缩 4，字墨 inset 落 16）。原形无 hover 态，件配方
  *  按七通道律归零到透明。 */
 const LANG_ROW_CLS =
-  "h-8 w-full cursor-pointer justify-start gap-0 rounded-[8px] px-1 text-left text-xs leading-4 font-normal text-(--text-primary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5";
+  "h-8 w-full cursor-pointer justify-start gap-0 rounded-[8px] border-0 px-1 text-left text-xs leading-4 font-normal text-(--text-primary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3.5";
 
 export function AccountPage() {
   const { locale, setLocale, t } = useI18n();
@@ -94,7 +106,7 @@ export function AccountPage() {
     <SecondaryShell route="account" fixture={fixture} sidebarSelected="team" title={t('帐号')}>
       {/* XMON-117：卡盒 / 头像头 / 行 / label / 值槽落 components/profile-card
           的模板件（本页正是模板的来源面）；`account-*` 类名原样留作 e2e
-          定位锚（profile-card 家族契约），几何正本住 profile-card.css。
+          定位锚（profile-card 家族契约），几何正本住件上 PROFILE_* 常量。
           卡的上边距是页面节奏（card top y60 = 头 44 + 16），归消费点，
           #947 起以 mt-4 utility 承载（原 secondary.css .account-card 规则）。 */}
       <ProfileCard className="account-card mt-4">
@@ -110,11 +122,11 @@ export function AccountPage() {
             />
           </ProfileAvatar>
         </ProfileHead>
-        <ProfileRow className="profile-row--name" label={t('名称')}>
+        <ProfileRow className={PROFILE_ROW_NAME_CLS} label={t('名称')}>
           {userName}
           <SquarePen width={14} height={14} />
         </ProfileRow>
-        <ProfileRow className="profile-row--tall" label={t('语言')}>
+        <ProfileRow className={PROFILE_ROW_TALL_CLS} label={t('语言')}>
           <span className="relative flex" ref={setLangDock}>
             <Button
               variant="ghost"
@@ -134,7 +146,7 @@ export function AccountPage() {
               open={langOpen}
               onClose={() => setLangOpen(false)}
               container={langDock}
-              className="anchored-pop-shell"
+              className={EXIT_BRIDGE_CLS}
               initialFocus={false}
               disablePointerDismissal
             >

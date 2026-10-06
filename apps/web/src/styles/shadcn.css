@@ -206,10 +206,9 @@
   --dialog-bg: #25221d;
   /* dark box rides the panel fill with a border only (r8 79 scan) */
   --dialog-box-bg: #25221d;
-  /* 退役候选（spec/22 §1.6）：唯一消费点是 per-face 手搓 toggle
-     （detail/overlays.css .dlg-toggle、secondary.css .account-switch-knob），
-     随 #947/#951 迁 shadcn Switch 后删槽；施工期持定版值不缺档 */
-  --toggle-track: #3f3c36;
+  /* --toggle-track 已删（#952，spec/22 §1.6/§4-2 退役裁定执行）：唯一消费点
+     是随 D3 清零的 per-face 手搓 toggle（detail/overlays.css .dlg-toggle、
+     secondary.css），#947/#951 迁 shadcn Switch 后孤儿化。 */
   --dialog-ring: #3f3c36;
   /* resource surfaces (r7 06–10, #69)：tile-indigo 回 spot 族，其余保留；
      tile-orange 橙系是状态语义，与 spot 各表一意 */
@@ -245,9 +244,7 @@
   /* on-accent 文字（DESIGN.md 轨 A #A2）：暗侧深字——定版 spot 是高明度档，
      深字保 8.24:1（spec/22 §1.5 件面实测）；散写 #ffffff 全部收此单源 */
   --text-on-accent: #1e1b16;
-  /* toggle 白圆点（轨 A #A2）: 开关 knob 的 12/16px 白盘，两主题同色；
-     退役候选，随 --toggle-track 同律（spec/22 §1.6） */
-  --toggle-knob: #ffffff;
+  /* --toggle-knob 已删（#952，随 --toggle-track 同律，spec/22 §1.6）。 */
   /* 浮层遮罩（轨 A #A2）: modal / search / token-gate 全屏黑幕统一值，
      主题恒定 */
   --overlay-scrim: rgb(0 0 0 / 0.6);
@@ -361,8 +358,7 @@
   /* modal dialogs (issue #68)：panel/box 沿 panel + 边框 */
   --dialog-bg: #efe9e1;
   --dialog-box-bg: #efe9e1;
-  /* 退役候选（spec/22 §1.6），随暗侧同律 */
-  --toggle-track: #c9c4bc;
+  /* --toggle-track 已删（#952，随暗侧同律，spec/22 §1.6/§4-2） */
   /* 运行历史 row ring：line2 */
   --dialog-ring: #c9c4bc;
   /* resource surfaces：tile-indigo 回 spot 族；tile-orange 保留 */
@@ -391,10 +387,10 @@
   /* notification banner bell disc (#114)：字形走 spot 原色 */
   --notify-icon-bg: var(--spot-soft);
   --menu-icon: #120f09;
-  /* 轨 A 家族（on-accent / knob / scrim）：.light 保持完整语义 token 面；
-     on-accent 亮侧白字压深紫 brand（7.41:1，spec/22 §1.5 件面实测） */
+  /* 轨 A 家族（on-accent / scrim）：.light 保持完整语义 token 面；on-accent
+     亮侧白字压深紫 brand（7.41:1，spec/22 §1.5 件面实测）。--toggle-knob
+     已删（#952，随 --toggle-track 同律，spec/22 §1.6）。 */
   --text-on-accent: #ffffff;
-  --toggle-knob: #ffffff;
   --overlay-scrim: rgb(0 0 0 / 0.6);
   /* 罩上白字（#854 颜色逃逸收编）：.light 保持完整语义 token 面，同暗侧值 */
   --text-on-veil: #ffffff;

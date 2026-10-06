@@ -9,23 +9,37 @@
 // - #193 三段律：panel = 封顶 flex 列（head 固定 / body 自滚 / foot 钉底），
 //   高表单挤不出提交钮——几何与旧壳逐值对齐（max-h = 100vh - 48px）；
 // - #389 焦点回陷：开时记住触发位，关时归还（finalFocus），不经 Base UI 的
-//   trigger 推定（仓内触发钮多在 dialog 树外）；
-// - 壳类别名（.dlg / .dlg-backdrop / .dlg-head / .dlg-title / .dlg-close /
-//   .dlg-body / .dlg-foot）原样输出——三面钉扎零改动（#411 别名优先政策）；
-// - per-face 类（.dlg-secret-create 等）经 className 透传，规则仍在 dialog.css。
+//   trigger 推定（仓内触发钮多在 dialog 树外）。
+//
+// 载体（#952，spec/22 §5.4/§5.5 正典表执行；ui/dialog.css 已退役删除）：
+// - 面板 = role=dialog + aria-label=title（一级）；壳级 .dlg* 别名类不再输出；
+// - 结构钩子 = dialog-head / dialog-body / dialog-foot 三个 testid（二级，
+//   §5.5 kebab-case 无前缀律）——几何断言（封顶律 / body 溢出 / 钉底不位移）
+//   需要结构盒，role-scope 隔离不出滚动容器；
+// - 退场机制内联为 utility（§5.4 机制行）：壳 = visibility 延迟过渡撑 Base UI
+//   卸载窗（--dur-overlay），视口根 = --dur-fast 档 + pointer-events 管道。
 //
 // #453 视口根变体（`viewportRoot`）：给视口根定位的面（⌘K search-panel）用同一台
 // 行为机器，只是不吃面板几何——容器铺满视口但自身不吃点击（外点落回 Backdrop
 // 位的 scrim），面内容经 className 自带 fixed 几何。容器 z-index 抬到背板之上
 // （fixed + z-index 自建 stacking context，否则遮罩反盖面板、行点不中）；退场
-// 不做布局动画（D4 等价语义）。规则见 dialog.css 的 .dlg-viewport。
+// 不做布局动画（D4 等价语义）。
 
 import { Dialog as DialogPrimitive } from '@base-ui/react/dialog';
 import { type ReactNode, useCallback, useEffect, useRef } from 'react';
 import { useI18n } from '../../i18n/provider.js';
 import { X } from '../../icons/index.js';
-// 表单族（.dlg-form-* 等 per-face 规则）仍在 dialog.css；壳级规则已随本适配层退役
-import '../../ui/dialog.css';
+
+/** 退场 visibility 桥（§5.4 机制内联，原 .dlg-shell 配方）：零视觉的
+ *  visibility 延迟过渡撑住 Base UI 的卸载窗，让面板 animate-out 播完再卸。 */
+const SHELL_EXIT_BRIDGE_CLS =
+  '[transition:visibility_0s_linear_var(--dur-overlay)] data-[ending-style]:invisible';
+
+/** 视口根容器的机制（§5.4 机制内联，原 .dlg-viewport 配方）：铺满视口但不吃
+ *  点击（外点落回 scrim），子级经 `> *` 收回点击；visibility 桥走 --dur-fast
+ *  档（视口根面板的进场是 100ms 的 VIEWPORT_POP_ANIM）。 */
+const VIEWPORT_MECHANISM_CLS =
+  'fixed inset-0 pointer-events-none [&>*]:pointer-events-auto [transition:visibility_0s_linear_var(--dur-fast)] data-[ending-style]:invisible';
 
 /** 视口根面（viewportRoot）面板的进场（V2 覆写，base-ui-theme §1.2：
  *  scale .98 + fade、100ms ease-out——替代 ADR 0009 D3 的 slide -8px）。
@@ -50,8 +64,8 @@ interface DialogShellProps {
   /** #193: pinned below the body scroll region — submit/cancel rides here so
    *  a tall form scrolls the fields, never the buttons. */
   footer?: ReactNode;
-  /** #309: face class on the .dlg panel — per-face geometry/CSS and the
-   *  class-locator discipline (e2e pins) without touching the family base. */
+  /** #309: face class on the panel — per-face utility recipes and the e2e
+   *  handle discipline without touching the family base. */
   className?: string;
   /** Panel width in px (defaults to 448 = family law #68); M7 #312 review
    *  dialog uses 560. */
@@ -132,7 +146,7 @@ export function DialogShell({
   // 只视口根态吃 backdropClassName：默认态的类串因此逐字不动（11 个消费点）。
   const backdropClass = viewportRoot
     ? `fixed inset-0${backdropClassName == null ? '' : ` ${backdropClassName}`}`
-    : 'dlg-backdrop fixed inset-0 flex items-center justify-center bg-black/60 duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0';
+    : 'fixed inset-0 flex items-center justify-center bg-black/60 duration-200 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0';
   return (
     <DialogPrimitive.Root
       open={open}
@@ -166,8 +180,8 @@ export function DialogShell({
             viewportRoot
               ? // 具名 group：视口根面板经 group-data-open/closed/dlgvp 读本 Popup
                 // 的开闭态（VIEWPORT_POP_ANIM）；transform 不上包装层（#656）。
-                `dlg-viewport group/dlgvp${className != null ? ` ${className}` : ''}`
-              : `dlg dlg-shell${className != null ? ` ${className}` : ''} fixed top-1/2 left-1/2 flex max-h-[calc(100vh-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-popover text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`
+                `${VIEWPORT_MECHANISM_CLS} group/dlgvp${className != null ? ` ${className}` : ''}`
+              : `${SHELL_EXIT_BRIDGE_CLS}${className != null ? ` ${className}` : ''} fixed top-1/2 left-1/2 flex max-h-[calc(100vh-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-popover text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`
           }
           style={
             viewportRoot ? { zIndex } : { width, zIndex, ...(height == null ? {} : { height }) }
@@ -185,24 +199,31 @@ export function DialogShell({
           ) : (
             <>
               <div
-                className={`dlg-head relative flex h-12 flex-none items-center border-b border-border px-4${
-                  headerCenter != null ? ' dlg-head--plain justify-center border-b-0' : ''
+                data-testid="dialog-head"
+                className={`relative flex h-12 flex-none items-center border-b border-border px-4${
+                  headerCenter != null ? ' justify-center border-b-0' : ''
                 }`}
               >
                 {title != null && (
-                  <span className="dlg-title text-sm font-medium text-foreground">{title}</span>
+                  <span className="text-sm font-medium text-foreground">{title}</span>
                 )}
                 {headerCenter}
                 <DialogPrimitive.Close
-                  className="dlg-close absolute right-3 flex size-6 items-center justify-center rounded-md text-muted-foreground"
+                  className="absolute right-3 flex size-6 items-center justify-center rounded-md text-muted-foreground"
                   aria-label={t('关闭')}
                   onClick={onClose}
                 >
                   <X width={16} height={16} />
                 </DialogPrimitive.Close>
               </div>
-              <div className="dlg-body min-h-0 flex-1 overflow-y-auto">{children}</div>
-              {footer != null && <div className="dlg-foot flex-none">{footer}</div>}
+              <div data-testid="dialog-body" className="min-h-0 flex-1 overflow-y-auto">
+                {children}
+              </div>
+              {footer != null && (
+                <div data-testid="dialog-foot" className="flex-none">
+                  {footer}
+                </div>
+              )}
             </>
           )}
         </DialogPrimitive.Popup>

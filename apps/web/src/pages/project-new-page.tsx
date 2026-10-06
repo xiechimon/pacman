@@ -50,7 +50,11 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu.js';
-import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
+import {
+  EXIT_BRIDGE_CLS,
+  FLOATING_POP_ANIM,
+  FloatingShell,
+} from '../components/ui/floating-shell.js';
 import { Input } from '../components/ui/input.js';
 import { toastError } from '../components/ui/toaster.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -408,7 +412,7 @@ export function ProjectNewPage() {
   }, [pickerVisible, hits, githubRepo]);
   // 关面焦点归还：交回 #prj-new-repo（该时点的续作控件：picker 触发钮 /
   // 手动兜底 input / 认证钮，menu 原语的焦点归还同律）。壳退场保活期
-  // （visibility 桥 150ms，floating-shell.css）里不立刻掉焦——焦点滞留在
+  // （visibility 桥 150ms，EXIT_BRIDGE_CLS）里不立刻掉焦——焦点滞留在
   // 关面中的行上，故按「active 在 picker 面板子树内（含保活期）或已掉
   // body」判定有界重试（30 帧 > 保活窗，也覆盖分支切换时续作控件晚一帧就位）；
   // 焦点在面板外稳位（触发钮 toggle 关面 / 用户已移焦）不抢。
@@ -729,7 +733,7 @@ export function ProjectNewPage() {
               open={pickerVisible}
               onClose={closePicker}
               container={repoFieldWrap}
-              className="anchored-pop-shell"
+              className={EXIT_BRIDGE_CLS}
               initialFocus={false}
               disablePointerDismissal
             >
