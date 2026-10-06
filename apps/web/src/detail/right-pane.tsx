@@ -18,9 +18,14 @@ import type { BuildOverlayContent, PaneView, RunHistoryRow } from '../fixtures/r
 import { useI18n } from '../i18n/provider.js';
 import { BarChart3, Check, Download, History, X } from '../icons/index.js';
 import { type DocTypeLabel, PaneTypeSelect } from '../overlays/plan-dropdown.js';
-import { BranchSyncFields, FIELD_LABEL, SyncButton, useBranchSyncState } from './branch-dialog.js';
+import {
+  BranchSyncFields,
+  DIR_BOX,
+  FIELD_LABEL,
+  SyncButton,
+  useBranchSyncState,
+} from './branch-dialog.js';
 import { PANE_HEAD } from './docpane.js';
-import './overlays.css';
 
 /** Type-select props every section head shares (the ✓ row + row set are
  *  derived from the active view and payload availability). */
@@ -47,12 +52,17 @@ function SectionHead({ icon, select }: { icon: ReactNode; select: PaneSelectProp
   );
 }
 
-/** Row glyph per run status (r7 32 ring; r8 80 × / check). */
+/** Row glyph per run status (r7 32 ring; r8 80 × / check).
+ *  #951（overlays.css 清零）：ring/glyph 律等值迁 utility——14px glyph +
+ *  1px 左距；ring 12px / 1.5px dialog-ring 描边圆。 */
 function RunGlyph({ status }: { status: RunHistoryRow['status'] }) {
-  if (status === 'current') return <span className="dlg-history-ring" />;
+  if (status === 'current')
+    return (
+      <span className="ml-px size-3 flex-none rounded-full border-[1.5px] border-(--dialog-ring)" />
+    );
   if (status === 'failed' || status === 'failed-current')
-    return <X width={14} height={14} className="dlg-history-glyph dlg-history-glyph--failed" />;
-  return <Check width={14} height={14} className="dlg-history-glyph dlg-history-glyph--done" />;
+    return <X width={14} height={14} className="ml-px size-3.5 flex-none text-(--stop)" />;
+  return <Check width={14} height={14} className="ml-px size-3.5 flex-none text-(--badge-done)" />;
 }
 
 function TokenSection({
@@ -75,19 +85,28 @@ function TokenSection({
     <section className="pane-section flex min-h-0 flex-1 flex-col">
       <SectionHead icon={<BarChart3 width={14} height={14} />} select={select} />
       <div className="pane-section-body min-h-0 flex-1 overflow-y-auto">
-        <div className="dlg-token-total">
-          <span className="dlg-token-num">{stats.total}</span>
-          <span className="dlg-token-unit">tokens</span>
+        {/* #951（overlays.css 清零）：token 用量面（r7 30 实测 60/38/27 行族）
+            律等值迁 utility——total 行 61 高（60 内容 + 1 缝线，border-box 会
+            吃掉缝线故钉 61）baseline 两端；model 行 39 高 mono 12；stat 行
+            27 高 12px。 */}
+        <div className="flex h-[61px] items-baseline justify-between border-b border-b-(--card-border) px-4">
+          <span className="text-[length:24px] font-semibold tracking-[-0.3px] text-(--text-primary)">
+            {stats.total}
+          </span>
+          <span className="text-[length:12px] text-(--text-tertiary)">tokens</span>
         </div>
-        <div className="dlg-token-model">
-          <span className="dlg-token-model-name">{stats.model}</span>
-          <span className="dlg-token-model-total">{stats.modelTotal}</span>
+        <div className="flex h-[39px] items-center justify-between border-b border-b-(--card-border) px-4 font-mono text-[length:12px]">
+          <span className="text-(--text-secondary)">{stats.model}</span>
+          <span className="text-(--text-tertiary)">{stats.modelTotal}</span>
         </div>
-        <div className="dlg-token-rows">
+        <div>
           {rows.map(([label, value]) => (
-            <div key={label} className="dlg-token-row">
-              <span className="dlg-token-label">{t(label)}</span>
-              <span className="dlg-token-value">{value}</span>
+            <div
+              key={label}
+              className="flex h-[27px] items-center justify-between px-4 text-[length:12px]"
+            >
+              <span className="text-(--text-tertiary)">{t(label)}</span>
+              <span className="text-(--text-primary)">{value}</span>
             </div>
           ))}
         </div>
@@ -111,18 +130,35 @@ function HistorySection({
     <section className="pane-section flex min-h-0 flex-1 flex-col">
       <SectionHead icon={<History width={14} height={14} />} select={select} />
       <div className="pane-section-body min-h-0 flex-1 overflow-y-auto">
-        <div className="dlg-history">
-          {content.runs.map((run) => (
-            <div key={run.label} className="dlg-history-row">
+        {/* #951（overlays.css 清零）：运行历史面（r7 32 / r8 80）律等值迁
+            utility——容器 24/16/26 垫；行 11 gap，多行形 52 节距（35 内容 +
+            8 + 缝线 + 8，原 `row + row` 兄弟律的 map 等价形）；「当前」chip
+            18 高 code-bg 底（同名不同族，非五态原语，§5.2 划界）。行 testid =
+            二级载体（无 role 的计数结构钩，detail-3pane 的 toHaveCount 钉，
+            #910 裁定 1）。 */}
+        <div className="px-4 pt-6 pb-[26px]">
+          {content.runs.map((run, index) => (
+            <div
+              key={run.label}
+              data-testid="history-row"
+              className={cn(
+                'flex items-center gap-[11px]',
+                index > 0 && 'mt-2 border-t border-t-(--card-border) pt-2',
+              )}
+            >
               <RunGlyph status={run.status} />
-              <div className="dlg-history-text">
-                <div className="dlg-history-line">
-                  <span className="dlg-history-label">{t(run.label)}</span>
+              <div>
+                <div className="flex h-[18px] items-center gap-2">
+                  <span className="text-[13px] text-(--text-primary)">{t(run.label)}</span>
                   {(run.status === 'current' || run.status === 'failed-current') && (
-                    <span className="dlg-history-chip">{t('当前')}</span>
+                    <span className="h-[18px] rounded-[4px] bg-(--code-bg) px-[5px] text-[11px] leading-[18px] text-(--text-tertiary)">
+                      {t('当前')}
+                    </span>
                   )}
                 </div>
-                <div className="dlg-history-meta">{t(run.meta)}</div>
+                <div className="h-[17px] text-[length:12px] text-(--text-tertiary)">
+                  {t(run.meta)}
+                </div>
               </div>
             </div>
           ))}
@@ -156,7 +192,7 @@ function BranchSection({
     <section className="pane-section flex min-h-0 flex-1 flex-col">
       <SectionHead icon={<Download width={14} height={14} />} select={select} />
       <div className="pane-section-body min-h-0 flex-1 overflow-y-auto">
-        <div className="dlg-branch-body">
+        <div className="p-4">
           <BranchSyncFields
             info={info}
             canSync={sync.canSync}
@@ -173,11 +209,17 @@ function BranchSection({
               section tail — one static column, no sub-tabs. */}
           <div className={cn('pane-branch-pr', FIELD_LABEL, 'mt-4')}>Pull Request</div>
           {pr !== null && prNumber != null ? (
-            <a className="dlg-dir dlg-pr-link" href={pr} target="_blank" rel="noopener noreferrer">
+            // #704 PR 槽回填态：同 box 形，链接色 + 下划线（原 .dlg-pr-link）。
+            <a
+              className={cn(DIR_BOX, 'block text-(--accent) underline')}
+              href={pr}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               #{prNumber}
             </a>
           ) : (
-            <div className="dlg-dir">{t('未创建')}</div>
+            <div className={DIR_BOX}>{t('未创建')}</div>
           )}
           <div className="pane-branch-foot mt-4">
             <SyncButton

@@ -20,7 +20,10 @@ import { expect, type Locator, test } from '@playwright/test';
 // link 文案一级。#950：chief 两面（charter / chief-agent）迁 role 载体——
 // .chief-edit-btn/.chief-dlg-ghost/-primary/.chief-agent-row/.chief-pick-list
 // 随 chief.css 退役（.dlg 壳级别名存活至 #952，壳层探针原样）。其余面
-// （agent/branch/accept 的 .dlg-* 别名）属 #945/#952，原样不动。
+// （agent 的 .dlg-* 别名）属 #945/#952，原样不动。#951/#910 重钉：
+// branch/accept 面 .dlg-sync → getByRole(button 同步)、.dlg-branch-body →
+// 行标签文案一级、.dlg-accept-cancel/-done → getByRole(button 取消/完成)
+// ——均 dialog scope（detail/overlays.css 清零，类名钩退役）。
 
 test.use({ viewport: { width: 800, height: 500 } });
 
@@ -139,14 +142,14 @@ test('branch sync tab: 视口压过内容高,同步钮钉底,body 溢出;git tab
   expect(box).not.toBeNull();
   if (box == null) return;
   expect(box.height).toBeLessThanOrEqual(360 - 48 + 0.5);
-  await expect(dialog.locator('.dlg-sync')).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: '同步', exact: true })).toBeInViewport();
   // git tab 无 footer,面板仍在视口内
   // #945/#910 重钉：.dlg-seg-tab → role=tab 一级载体（正典表 §5.4，seg 迁
-  // Tabs 件 default 档）；.dlg-sync/.dlg-branch-body 属 detail/overlays.css
-  // （detail-b 批次），原样保留。
+  // Tabs 件 default 档）。#951：同步钮缺席 = button 同步 count 0；git tab
+  // 内容在场 = 分支字段行标签文案一级。
   await dialog.getByRole('tab', { name: 'Git' }).click();
-  await expect(dialog.locator('.dlg-sync')).toHaveCount(0);
-  await expect(dialog.locator('.dlg-branch-body')).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: '同步', exact: true })).toHaveCount(0);
+  await expect(dialog.getByText('构建分支')).toBeInViewport();
 });
 
 test('accept(34): 取消/完成在视口', async ({ page }) => {
@@ -154,6 +157,6 @@ test('accept(34): 取消/完成在视口', async ({ page }) => {
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   await expectShellCapped(dialog);
-  await expect(dialog.locator('.dlg-accept-cancel')).toBeInViewport();
-  await expect(dialog.locator('.dlg-accept-done')).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: '取消' })).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: '完成' })).toBeInViewport();
 });

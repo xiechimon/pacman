@@ -11,7 +11,8 @@ import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Textarea } from '../components/ui/textarea.js';
 import { useI18n } from '../i18n/provider.js';
-import './overlays.css';
+import { ACCEPT_NOTE_LINE } from './accept-dialog.js';
+import { FOCUS_ROW, FOCUS_TEXTAREA } from './review-dialog.js';
 
 interface RejectDialogProps {
   /** #73 retained-mount open flag。 */
@@ -33,11 +34,13 @@ export function RejectDialog({ open, onClose, onConfirm, rejectReason }: RejectD
   const trimmed = feedback.trim();
   const label = t('需要修改什么？打回后任务回到规划中，按反馈重新出方案。');
   return (
+    // #951：dlg-reject / reject-confirm / reject-feedback-input 类名钩退役
+    // （零规则死类；review-reject.spec 载体换 role=dialog 可及名 +
+    // getByRole(button/textbox)，同 PR 重钉）。
     <DialogShell
       title={t('请求修改')}
       open={open}
       onClose={onClose}
-      className="dlg-reject"
       footer={
         // #945（正典表 §5.4，ReviewDialog 同款）：foot/actions 别名退役走
         // utility；取消钮 chief-dlg-ghost → Button outline 档。
@@ -52,7 +55,7 @@ export function RejectDialog({ open, onClose, onConfirm, rejectReason }: RejectD
             </Button>
             <Button
               variant="brand"
-              className="reject-confirm h-7 border-none px-3 text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
+              className="h-7 border-none px-3 text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
               disabled={trimmed === ''}
               onClick={() => onConfirm?.(trimmed)}
             >
@@ -62,17 +65,17 @@ export function RejectDialog({ open, onClose, onConfirm, rejectReason }: RejectD
         </div>
       }
     >
-      <div className="review-focus-row">
+      <div className={FOCUS_ROW}>
         {/* #945（正典表 §5.4）：.dlg-form-label 别名退役——标签律 =
             --label-size/--label-spacing 定版 token utility。 */}
         <span className="mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--text-primary)">
           {label}
         </span>
-        {/* #945（#851 裸控件账）：裸 textarea 收编 components/ui Textarea
-            （ReviewDialog focus 面同款中和串；皮肤正本 detail/overlays.css
-            属 detail-b，unlayered 恒压件底座）。 */}
+        {/* #945（#851 裸控件账）：裸 textarea 收编 components/ui Textarea；
+            #951：皮肤正本随 overlays.css 清零等值迁 FOCUS_TEXTAREA（与
+            ReviewDialog focus 面同一单源）。 */}
         <Textarea
-          className="review-focus-input reject-feedback-input field-sizing-fixed transition-none placeholder:text-[color:revert] focus:border-(--focus-ring) focus-visible:ring-0"
+          className={FOCUS_TEXTAREA}
           value={feedback}
           onChange={(event) => setFeedback(event.target.value)}
           rows={3}
@@ -80,7 +83,7 @@ export function RejectDialog({ open, onClose, onConfirm, rejectReason }: RejectD
         />
       </div>
       {rejectReason != null && (
-        <p className="dlg-accept-reject" role="alert">
+        <p className={`${ACCEPT_NOTE_LINE} text-(--danger)`} role="alert">
           {rejectReason}
         </p>
       )}

@@ -8,7 +8,7 @@
 - `review-dialog-opens` 点击开 560 宽模态(`.dlg-shell` 含 `style.width=560px`),标题「AI 审核」、副标题、搜索行、Agent 行列表、可选 focus textarea、「开始审核」primary 钮居中。
 - `agent-list-source` Agent 行 = members 读面 `memberType:"agent"` 行,头像 = initials(无 actor 头像面),副标题 = `modelId ?? '默认'`。
 - `selected-row-style` 选中行 `data-on="true"` 套 bg-indigo-500/10(r8 §2.5 实测)。
-- `focus-textarea-optional` focus textarea 可空(`.review-focus-input`),空字符串被 server 视为未填(REV-票-A focus trim 语义)。
+- `focus-textarea-optional` focus textarea 可空(dialog scope `getByRole('textbox')`;#951 起 `.review-focus-input` 类钩退役),空字符串被 server 视为未填(REV-票-A focus trim 语义)。
 - `review-submitted` 点击「开始审核」→ POST `/api/builds/{id}/steps {action:'review', agentId, focus?}` → 模态关闭 → composer placeholder 替为「AI 审核进行中…」→ transcript 顶部出现 `REVIEW_ANNOUNCEMENT` 行 + step 表入队 `kind:'review'` 步 + phase 不动。
 - `phase-guard-409` 非 confirm/review phase 调该端点 → 409(`todo/queued/planning/building/done/failed/closed` 一律拒)。
 

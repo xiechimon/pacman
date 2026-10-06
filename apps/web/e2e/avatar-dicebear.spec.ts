@@ -151,7 +151,9 @@ test('create-agent dialog: empty name keeps the static asset; typing previews th
   await stubDicebear(page);
   await page.goto('/app/team?scenario=12');
   await page.getByRole('button', { name: '创建 Agent' }).click();
-  const img = page.locator('.dlg-agent-avatar img');
+  // #951/#910 重钉：.dlg-agent-avatar img → agent-avatar testid（二级载体，
+  // img loaded 前 aria-hidden；overlays.css 清零）。
+  const img = page.getByTestId('agent-avatar').locator('img');
   await expect(img).toHaveAttribute('src', '/avatar-robot-1.svg');
   await page.locator('#dlg-agent-name').fill('nova');
   await expect(img).toHaveAttribute(

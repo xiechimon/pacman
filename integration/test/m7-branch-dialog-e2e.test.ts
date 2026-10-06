@@ -10,10 +10,15 @@
 // server 的 wire.test.ts，CI 全绿而功能不可达。
 //
 // 判别式（live vs fixture 占位，两处互斥分支）：
-//   live    → `.dlg-machine-picker` 在场 + 目录是 `<input class="dlg-dir
-//             dlg-dir--input">`
-//   fixture → `.dlg-machine`（disabled 占位钮）+ 目录是 `<div class="dlg-dir">`
-// 所以「`.dlg-dir--input` 在场」即等价于「调用点传了 buildId」。
+//   live    → 机器 picker 钮（可及名「选择机器」，零在线机器时）在场且可点
+//             + 目录是可填 input（aria-label「同步目录」）
+//   fixture → disabled 占位钮 + 目录是只读 div
+// 所以「同步目录 input 在场」即等价于「调用点传了 buildId」。
+// #951/#910 重钉：.dlg-machine-picker/.dlg-machine[disabled]/.dlg-dir--input/
+// .dlg-machine-menu/.dlg-branch-value 类名钩随 detail/overlays.css 清零退役
+// ——载体换 role+可及名（picker 与占位钮是同一 ternary 的互斥分支，
+// 「picker 可点」即「占位缺席」）、getByLabel（目录 input 补 aria-label）、
+// role=listbox（菜单缺席）与分支名文案一级。
 //
 // 本用例不覆盖真同步执行（需 daemon 在线机器）——那一面由 verify-pacman 的
 // `drive-branch-sync.mjs` 探针真栈跑（配方与验证状态见
@@ -97,22 +102,23 @@ describe('分支同步面 buildId 接线（#346 回归钉）', () => {
     await page.getByRole('menuitemradio', { name: '分支与 PR' }).click();
 
     // 判别式：live 面 = 机器 picker + 可编辑目录输入（section 内）。
-    await pexpect(page.locator('.detail-right .dlg-machine-picker')).toBeVisible({
-      timeout: 15_000,
-    });
-    await pexpect(page.locator('.dlg-dir--input')).toBeVisible();
-    // fixture 占位面（buildId 漏传时的落点）两个特征都不得出现。
-    await pexpect(page.locator('.dlg-machine[disabled]')).toHaveCount(0);
-    await pexpect(page.locator('.dlg-machine-menu')).toHaveCount(0); // 未展开时菜单不开
+    const right = page.locator('.detail-right');
+    const picker = right.getByRole('button', { name: '选择机器' });
+    await pexpect(picker).toBeVisible({ timeout: 15_000 });
+    const dirInput = page.getByLabel('同步目录');
+    await pexpect(dirInput).toBeVisible();
+    // fixture 占位面（buildId 漏传时的落点）特征不得出现：占位钮与 picker
+    // 是同一 ternary 的互斥分支，picker 可点（非 disabled 占位）即占位缺席。
+    await pexpect(picker).toBeEnabled();
+    await pexpect(right.getByRole('listbox')).toHaveCount(0); // 未展开时菜单不开
 
     // 背景信息：section 头部渲染的分支名由 buildId 推出（brand.conversationBranch）
-    // ——与 live 面同源，可交叉印证 buildId 确实非空。
-    await pexpect(page.locator('.dlg-branch-value').first()).toHaveText(
-      new RegExp(`conv-${todoFace.latestBuildId}$`),
-    );
+    // ——与 live 面同源，可交叉印证 buildId 确实非空（文案一级载体）。
+    await pexpect(
+      right.getByText(new RegExp(`conv-${todoFace.latestBuildId}$`)).first(),
+    ).toBeVisible();
 
     // 同步目录是可编辑 input：填一个值应能落住（fixture 面是只读 div，填不进去）。
-    const dirInput = page.locator('.dlg-dir--input');
     await dirInput.fill('/tmp/branch-dialog-it-probe');
     await pexpect(dirInput).toHaveValue('/tmp/branch-dialog-it-probe');
   }, 180_000);

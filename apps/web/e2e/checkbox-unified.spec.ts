@@ -30,6 +30,11 @@ import { evidenceShot } from './evidence';
 // 证据截图走 evidenceShot（默认不落盘；要为本票 PR 再生证据时设
 // PACMAN_E2E_EVIDENCE=docs/verify/<ticket> 再跑，见 e2e/evidence.ts）。
 // 历史证据 = 已提交的 docs/verify/XMON-72/，回归跑不许再重写它。
+//
+// #951/#910 重钉：.dlg-accept 行容器 / .dlg-accept-label 随
+// detail/overlays.css 清零退役——容器 scope 直接落 dialog（accept 弹层内
+// 唯一复选行），label 换文案一级 getByText；.ui-checkbox* 是 components
+// 自有件类（非域别名，#944 provider 面同款判例），直取。
 
 /** r7 34：accept 弹层冻开在看板面上，merge 默认勾选。 */
 async function openAccept(page: Page) {
@@ -59,7 +64,7 @@ async function openProviderForm(page: Page) {
 
 test('accept: 原生 input 走官方遮蔽（不画 Mac 复选框）', async ({ page }) => {
   const dialog = await openAccept(page);
-  const input = dialog.locator('.dlg-accept input[type="checkbox"]');
+  const input = dialog.locator('.ui-checkbox input[type="checkbox"]');
   await expect(input).toBeChecked();
   // 官方 visually-hidden = 1×1 + clip-path inset(50%)（内联样式；覆盖层时代的
   // opacity 0 手法随真 input 一起退役）。
@@ -74,20 +79,21 @@ test('accept: 原生 input 走官方遮蔽（不画 Mac 复选框）', async ({ 
 
 test('accept: 未选中态不露勾', async ({ page }) => {
   const dialog = await openAccept(page);
-  const input = dialog.locator('.dlg-accept input[type="checkbox"]');
-  const tile = dialog.locator('.dlg-accept .ui-checkbox-tile');
+  const input = dialog.locator('.ui-checkbox input[type="checkbox"]');
+  const tile = dialog.locator('.ui-checkbox-tile');
   await tile.click();
   await expect(input).not.toBeChecked();
-  await expect(dialog.locator('.dlg-accept label svg')).toHaveCount(0);
+  await expect(dialog.locator('label.ui-checkbox svg')).toHaveCount(0);
   await evidenceShot(page, 'accept-unchecked.png');
 });
 
 test('accept: 整行可点（文字也是点击目标）', async ({ page }) => {
   const dialog = await openAccept(page);
-  const input = dialog.locator('.dlg-accept input[type="checkbox"]');
-  await dialog.locator('.dlg-accept-label').click();
+  const input = dialog.locator('.ui-checkbox input[type="checkbox"]');
+  const label = dialog.getByText('将改动合并到默认分支');
+  await label.click();
   await expect(input).not.toBeChecked();
-  await dialog.locator('.dlg-accept-label').click();
+  await label.click();
   await expect(input).toBeChecked();
 });
 
@@ -104,7 +110,7 @@ test('accept: tile 几何 = 16×16 / 圆角 0 / 与文字 gap 8 / 文字 13px', 
   expect(box.height).toBeGreaterThan(15.5);
   expect(box.height).toBeLessThan(16.5);
   await expect(tile).toHaveCSS('border-radius', '0px');
-  const label = dialog.locator('.dlg-accept-label');
+  const label = dialog.getByText('将改动合并到默认分支');
   await expect(label).toHaveCSS('font-size', '13px');
   const lb = await label.boundingBox();
   expect(lb).not.toBeNull();
@@ -118,7 +124,7 @@ test('accept: 手作三值 = tile 底色 100ms / 勾进场 140ms overshoot / 勾
   page,
 }) => {
   const dialog = await openAccept(page);
-  const tile = dialog.locator('.dlg-accept .ui-checkbox-tile');
+  const tile = dialog.locator('.ui-checkbox-tile');
   // 进场目的态 = 基类：tile 底色 100ms ease-out（含描边与 press 两档）。
   const tileTransition = await tile.evaluate(
     (el) =>
@@ -128,7 +134,7 @@ test('accept: 手作三值 = tile 底色 100ms / 勾进场 140ms overshoot / 勾
   expect(tileTransition).toContain('0.1s');
   expect(tileTransition).toContain('0.08s');
   // 勾进场 140ms 微 overshoot（目的态 = indicator 基类）。
-  const indicator = dialog.locator('.dlg-accept .ui-checkbox-indicator');
+  const indicator = dialog.locator('.ui-checkbox-indicator');
   const enterTransition = await indicator.evaluate(
     (el) =>
       `${getComputedStyle(el).transitionDuration} | ${getComputedStyle(el).transitionTimingFunction}`,
@@ -154,8 +160,8 @@ test('provider: 未选中态不露白勾（#dlg-provider-authheader id 存活）
 
 test('accept: 键盘 Space 切换（焦点落在 Root 本体）', async ({ page }) => {
   const dialog = await openAccept(page);
-  const input = dialog.locator('.dlg-accept input[type="checkbox"]');
-  const tile = dialog.locator('.dlg-accept .ui-checkbox-tile');
+  const input = dialog.locator('.ui-checkbox input[type="checkbox"]');
+  const tile = dialog.locator('.ui-checkbox-tile');
   await tile.focus();
   await page.keyboard.press('Space');
   await expect(input).not.toBeChecked();

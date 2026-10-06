@@ -96,14 +96,19 @@ export function DetailHead({
         {/* XMON-24 wrapper 钮 shadcn ghost 底座不变；#945 皮肤从
             .detail-chip per-face 迁 utilities（七通道中和：hover/
             aria-expanded 底清零、墨色走 inherit 保持老「无 color 规则」的
-            继承形；h-auto/gap-0/字号继承清底座差额）。detail-chip 基类保留
-            ——detail-b spec 与 integration 按它定位。 */}
+            继承形；h-auto/gap-0/字号继承清底座差额）。#951：detail-b 两 spec
+            （reject-chain/review-reject）重钉到 phase-chip testid——断言目标
+            就是这个钮的文案（相位词随链路翻动），按 name 定位即循环，属
+            #910 裁定 1 的真盲区二级载体。detail-chip 基类保留至 #953 终账
+            ——chip-assign/chip-hotzone 与 integration m5/web-plans 仍按它
+            定位（其批次已收官，类名钩零规则存活）。 */}
         {/* #634: the chevron rides INSIDE the trigger — the whole chip
             (pill + arrow + the space between) is one hit target; it used to
             be a sibling span, so the arrow side of the cluster was dead.
             gap-0 keeps the chevron's own 5px margin as the only spacing. */}
         <Button
           variant="ghost"
+          data-testid="phase-chip"
           className="detail-chip ml-2 flex h-auto flex-none cursor-pointer items-center gap-0 rounded-none border-none bg-transparent p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit aria-expanded:bg-transparent aria-expanded:text-inherit active:not-aria-[haspopup]:translate-y-0"
           aria-expanded={popover}
           onClick={() => setPopover((value) => !value)}

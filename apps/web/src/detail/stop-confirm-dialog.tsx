@@ -9,7 +9,13 @@ import { Button } from '../components/ui/button.js';
 import { Checkbox } from '../components/ui/checkbox.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
-import './overlays.css';
+import {
+  ACCEPT_CANCEL_BTN,
+  ACCEPT_DONE_SIZE,
+  ACCEPT_FOOTER,
+  ACCEPT_LABEL,
+  ACCEPT_ROW,
+} from './accept-dialog.js';
 
 interface StopConfirmDialogProps {
   /** #73 retained-mount open flag. */
@@ -29,20 +35,16 @@ export function StopConfirmDialog({ open, onClose, onConfirm }: StopConfirmDialo
       open={open}
       onClose={onClose}
       footer={
-        <div className="dlg-accept-footer">
-          {/* XMON-24：两钮切 shadcn ghost。取消皮肤在 .dlg-accept-cancel
-              per-face；停止原本就是 preflight 复位的裸钮（透明/无边框/
+        <div className={ACCEPT_FOOTER}>
+          {/* XMON-24：两钮切 shadcn ghost；#951：族律走 accept-dialog 单源
+              常量。停止原本就是 preflight 复位的裸钮（透明/无边框/
               font:inherit + scoped 50 宽），utilities 逐条还原该形态。 */}
-          <Button
-            variant="ghost"
-            className="dlg-accept-cancel h-auto rounded-none p-0 text-[13px] font-normal hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
-            onClick={onClose}
-          >
+          <Button variant="ghost" className={ACCEPT_CANCEL_BTN} onClick={onClose}>
             {t('取消')}
           </Button>
           <Button
             variant="ghost"
-            className="dlg-accept-done h-auto rounded-none p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit active:not-aria-[haspopup]:translate-y-0"
+            className={`${ACCEPT_DONE_SIZE} h-auto rounded-none text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-inherit active:not-aria-[haspopup]:translate-y-0`}
             onClick={() => onConfirm(discard)}
           >
             {t('停止')}
@@ -50,7 +52,7 @@ export function StopConfirmDialog({ open, onClose, onConfirm }: StopConfirmDialo
         </div>
       }
     >
-      <div className="dlg-accept">
+      <div className={ACCEPT_ROW}>
         {/* XMON-72：与 accept-dialog 同族同病（.dlg-accept-check 不藏 input），
             一并收口 components/ui/checkbox 原语。 */}
         <Checkbox
@@ -58,7 +60,7 @@ export function StopConfirmDialog({ open, onClose, onConfirm }: StopConfirmDialo
           onCheckedChange={setDiscard}
           label={t('丢弃本轮修改——方案和代码回到上一个版本')}
         >
-          <span className="dlg-accept-label">{t('丢弃本轮修改——方案和代码回到上一个版本')}</span>
+          <span className={ACCEPT_LABEL}>{t('丢弃本轮修改——方案和代码回到上一个版本')}</span>
         </Checkbox>
       </div>
     </DialogShell>

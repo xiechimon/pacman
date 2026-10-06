@@ -259,7 +259,8 @@ try {
   await page.waitForSelector('.dlg', { timeout: 5_000 });
   await page.screenshot({ path: join(EVIDENCE, '03-todoA-accept-dialog.png') });
   check('ui-accept-dialog-opened', (await page.locator('.dlg-title').textContent()) === '完成任务', '验收确认弹层打开');
-  await page.click('.dlg-accept-done');
+  // #951/#910 载体：.dlg-accept-done 类钩退役 → dialog scope role+文案一级。
+  await page.locator('.dlg').getByRole('button', { name: '完成' }).click();
   const mergeResponse = await mergeResponseP;
   check('api-merge-from-failed-202', mergeResponse.status() === 202,
     `POST /builds/{id}/merge from failed = ${mergeResponse.status()}（修前 409 illegal phase transition）`);

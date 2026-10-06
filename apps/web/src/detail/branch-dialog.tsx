@@ -22,12 +22,12 @@ import { useLiveData } from '../api/provider.js';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
+import { Switch } from '../components/ui/switch.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
 import { toastError } from '../components/ui/toaster.js';
 import type { BranchInfoContent } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown, Copy } from '../icons/index.js';
-import './overlays.css';
 
 /** #945（正典表 §5.4，单源同 #944 的 RES_* 律）：.dlg-form-label 别名
  *  退役——字段标签律 = r7 31 节奏（box→label 9、label→control 8、18px
@@ -35,6 +35,24 @@ import './overlays.css';
  *  与 right-pane 两消费面共用。 */
 export const FIELD_LABEL =
   'mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--text-primary)';
+
+/** #951（detail/overlays.css 清零）：只读目录/PR 槽 box 律（原 .dlg-dir，
+ *  r7 31 实测 32 高 / 16 横垫 / card-border 描边 / surface 底 / mono 12
+ *  tertiary 墨；line-height 32 垂直居中）。div / anchor / live Input 三形
+ *  共用；branch-dialog 与 right-pane 两消费面。 */
+export const DIR_BOX =
+  'h-8 rounded-none border border-(--card-border) bg-(--surface) px-4 font-mono text-xs leading-8 text-(--text-tertiary) dark:bg-(--surface)';
+
+/** #951：机器 pill 律（原 .dlg-machine，r7 31 实测 30 高 / 11+14 横垫 /
+ *  8 gap / card-border 描边方角 / surface 漆底 / 13px primary 墨）。漆底
+ *  恒压 hover 与 aria-expanded 档（ghost 七通道中和，#908 裁决 3）；chevron
+ *  走 tertiary（原 .dlg-machine svg 律）。fixture 占位与 live picker 共用。 */
+export const MACHINE_PILL =
+  'h-[30px] cursor-pointer gap-2 rounded-none border border-(--card-border) bg-(--surface) pl-[11px] pr-[14px] text-[13px] leading-[calc(20/14)] font-normal text-(--text-primary) hover:bg-(--surface) hover:text-(--text-primary) dark:hover:bg-(--surface) dark:hover:text-(--text-primary) aria-expanded:bg-(--surface) aria-expanded:text-(--text-primary) [&_svg]:text-(--text-tertiary) [&_svg:not([class*=size-])]:size-auto';
+
+/** #951：机器状态点（原 .dlg-machine-dot，6px 圆 / done 绿）。data-on 是
+ *  在线态行为载体（无 CSS 消费，读面语义保留）。 */
+export const MACHINE_DOT = 'size-1.5 flex-none rounded-full bg-(--badge-done)';
 
 interface BranchDialogProps {
   /** #73 retained-mount open flag. */
@@ -62,12 +80,13 @@ function CopyButton({ value }: { value: string }) {
   return (
     // XMON-24：icon 钮切 shadcn ghost/icon 档——老 ui/Button icon 变体皮肤
     // （透明底 tertiary 墨、hover 增亮 secondary、零内边距）逐值搬
-    // utilities；24×24 几何留 overlays.css .dlg-copy per-face（选择器已去
-    // .btn 前缀）。Copy 属性 14px，svg 免底座强制 16px。
+    // utilities。#951：24×24 per-face 几何（原 .dlg-copy）随 overlays.css
+    // 清零并入 size-6 flex-none（size-8 底座差额，等值）。Copy 属性 14px，
+    // svg 免底座强制 16px。
     <Button
       variant="ghost"
       size="icon"
-      className="dlg-copy text-(--text-tertiary) hover:bg-transparent dark:hover:bg-transparent hover:text-(--text-secondary) cursor-pointer active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+      className="size-6 flex-none text-(--text-tertiary) hover:bg-transparent dark:hover:bg-transparent hover:text-(--text-secondary) cursor-pointer active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
       aria-label={t('复制')}
       onClick={copy}
     >
@@ -80,16 +99,23 @@ function CopyButton({ value }: { value: string }) {
  *  section（#366）共用。 */
 export function BranchBox({ info }: { info: BranchInfoContent }) {
   const { t } = useI18n();
+  // #951（overlays.css 清零）：box/行/标签/值四律等值迁 utility——box =
+  // card-border 描边方角 + dialog-box-bg 底；行 42 高 / 15+12 横垫，第二行
+  // 顶部缝线（原 `row + row` 兄弟选择器的静态等价形）；标签 76 定宽
+  // tertiary；值 mono 12 primary 省略号。
+  const row = 'flex h-[42px] items-center pr-3 pl-[15px]';
+  const label = 'w-[76px] flex-none text-[length:12px] text-(--text-tertiary)';
+  const value = 'min-w-0 flex-1 truncate font-mono text-[length:12px] text-(--text-primary)';
   return (
-    <div className="dlg-branch-box">
-      <div className="dlg-branch-row">
-        <span className="dlg-branch-label">{t('构建分支')}</span>
-        <span className="dlg-branch-value">{info.branch}</span>
+    <div className="rounded-none border border-(--card-border) bg-(--dialog-box-bg)">
+      <div className={row}>
+        <span className={label}>{t('构建分支')}</span>
+        <span className={value}>{info.branch}</span>
         <CopyButton value={info.branch} />
       </div>
-      <div className="dlg-branch-row">
-        <span className="dlg-branch-label">{t('目标提交')}</span>
-        <span className="dlg-branch-value">{info.commit}</span>
+      <div className={`${row} border-t border-t-(--card-border)`}>
+        <span className={label}>{t('目标提交')}</span>
+        <span className={value}>{info.commit}</span>
         <CopyButton value={info.commit} />
       </div>
     </div>
@@ -136,57 +162,65 @@ export function BranchSyncFields({
         />
       ) : (
         // fixture / fixture 路径占位（r7 31 原始捕获面）
-        // XMON-24：切 shadcn ghost——几何/皮肤全在 .dlg-machine per-face
-        // （漆底压 hover）；恒 disabled 且老面无禁用降档 → opacity/
+        // XMON-24：切 shadcn ghost；#951：.dlg-machine per-face 律等值迁
+        // MACHINE_PILL utility。恒 disabled 且老面无禁用降档 → opacity/
         // pointer-events 双双中性化。ChevronDown 属性 12px，svg 免底座 16px。
         <Button
           variant="ghost"
-          className="dlg-machine font-normal disabled:opacity-100 disabled:pointer-events-auto [&_svg:not([class*='size-'])]:size-auto"
+          className={cn(MACHINE_PILL, 'disabled:opacity-100 disabled:pointer-events-auto')}
           disabled
         >
-          <span className="dlg-machine-dot" />
-          <span className="dlg-machine-name">{info.machine}</span>
+          <span className={MACHINE_DOT} />
+          <span>{info.machine}</span>
           <ChevronDown width={12} height={12} />
         </Button>
       )}
       <div className={FIELD_LABEL}>{t('同步目录')}</div>
       {canSync ? (
-        // XMON-24：目录输入切 registry Input——几何/皮肤全在 .dlg-dir
-        // per-face（h32/padding/border/mono12，unlayered 恒压底座）；老面
-        // 是 UA 裸 input：固有宽度（w-auto 还原）、focus 时 UA outline 环
-        // （outline:auto 复刻，底座的 ring/border 变色清零）。
+        // XMON-24：目录输入切 registry Input；#951：.dlg-dir per-face 律
+        // （h32/padding/border/mono12）等值迁 DIR_BOX utility（原 unlayered
+        // 恒压底座，迁移后同层冲突类并掉 base 的 px/py/border-input/dark 底）。
+        // 老面是 UA 裸 input：固有宽度（w-auto 还原）、focus 时 UA outline 环
+        // （outline:auto 复刻，底座的 ring/border 变色清零——border 恒 card-border，
+        // 原 unlayered 律下 focus 也不变色，focus-visible:border-(--card-border)
+        // 是其等值形）。aria-label = e2e/读屏一级载体（m7 集成钉，#910 裁定 1）。
         <Input
           type="text"
-          className="dlg-dir dlg-dir--input w-auto focus-visible:ring-0 focus-visible:border-transparent focus-visible:[outline:auto]"
+          aria-label={t('同步目录')}
+          className={cn(
+            DIR_BOX,
+            'w-auto py-0 focus-visible:border-(--card-border) focus-visible:ring-0 focus-visible:[outline:auto]',
+          )}
           value={directory}
           onChange={(event) => onDirectory(event.target.value)}
           spellCheck={false}
         />
       ) : (
-        <div className="dlg-dir">{info.directory}</div>
+        <div className={DIR_BOX}>{info.directory}</div>
       )}
-      <div className="dlg-force">
-        <div className="dlg-force-text">
+      <div className="mt-[10px] flex items-start gap-3">
+        <div className="flex-1">
           {/* 老层叠里 overlays.css 的 .dlg-force-text .dlg-form-label 把本
-              label 的 margin 归零（detail-b 域规则）——m-0 是其终值等价形，
-              cn/twMerge 摘掉 FIELD_LABEL 的 mt/mb。 */}
+              label 的 margin 归零——m-0 是其终值等价形，cn/twMerge 摘掉
+              FIELD_LABEL 的 mt/mb。 */}
           <div className={cn(FIELD_LABEL, 'm-0')}>{t('强制同步')}</div>
-          <div className="dlg-force-desc">
+          <div className="text-xs leading-[18px] text-(--text-tertiary)">
             {t('丢弃代码修改并删除非忽略的未跟踪文件；保留忽略内容。仅本次生效。')}
           </div>
         </div>
-        <label className="dlg-toggle" data-on={force}>
-          {/* deliberate-native（#855）：原生 checkbox 是自定义拨杆之下的无障碍
-              交互层（键盘/读屏语义白送，opacity:0 覆盖全 track）；Switch 原语几何
-              不同（28×16 vs 32×18.4），换皮属另一票范围。 */}
-          <input
-            type="checkbox"
-            aria-label={t('强制同步')}
-            checked={force}
-            onChange={(event) => onForce(event.target.checked)}
-          />
-          <span className="dlg-toggle-knob" />
-        </label>
+        {/* #951（票面注 + spec/22 §1.6/§4-2）：手搓 28×16 拨杆（原生 checkbox
+            + opacity:0 覆盖层，#855 deliberate-native）→ components/ui Switch
+            正典默认档（§2.5 冻结几何 32×18.4，D2 授权增长；role=switch +
+            aria-checked 底座透出）。--toggle-track/--toggle-knob 两槽就此
+            孤儿化（槽删除归 #915/散件票，token 值本票不动）。mt-4 = 老
+            margin-top:17px 的光学等值：track 中心对齐 desc 首行（老 25px，
+            新 16+9.2=25.2px）。 */}
+        <Switch
+          className="mt-4 flex-none cursor-pointer"
+          aria-label={t('强制同步')}
+          checked={force}
+          onCheckedChange={onForce}
+        />
       </div>
       {canSync && buildId !== null ? <ResultCard buildId={buildId} t={t} /> : null}
     </>
@@ -295,7 +329,9 @@ export function BranchDialog({ info, buildId: buildIdProp, open, onClose }: Bran
       }
     >
       {tab === 'sync' ? (
-        <div className="dlg-branch-body dlg-branch-body--foot">
+        // #951：.dlg-branch-body(--foot) 律等值迁 utility——16 垫；#193 sync
+        // tab 底垫 10（钉底同步钮接管原 margin-top）。
+        <div className="px-4 pt-4 pb-[10px]">
           <BranchSyncFields
             info={info}
             canSync={sync.canSync}
@@ -310,15 +346,21 @@ export function BranchDialog({ info, buildId: buildIdProp, open, onClose }: Bran
           />
         </div>
       ) : (
-        <div className="dlg-branch-body">
+        <div className="p-4">
           <BranchBox info={info} />
           <div className={FIELD_LABEL}>Pull Request</div>
           {pr !== null && prNumber != null ? (
-            <a className="dlg-dir dlg-pr-link" href={pr} target="_blank" rel="noopener noreferrer">
+            // #704 PR 槽回填态：同 box 形，链接色 + 下划线（原 .dlg-pr-link）。
+            <a
+              className={cn(DIR_BOX, 'block text-(--accent) underline')}
+              href={pr}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               #{prNumber}
             </a>
           ) : (
-            <div className="dlg-dir">{t('未创建')}</div>
+            <div className={DIR_BOX}>{t('未创建')}</div>
           )}
         </div>
       )}
@@ -340,26 +382,28 @@ function MachinePicker({
   const [open, setOpen] = useState(false);
   const cur = machines.find((m) => m.id === selected);
   const list = machines.filter((m) => m.online);
+  // #951：picker/menu/empty/opt 类名钩退役（零规则死类；e2e 载体换
+  // role+可及名与 role=listbox，m7 集成钉同 PR 重钉）。
   return (
-    <div className="dlg-machine-picker">
-      {/* XMON-24：机器 pill 切 shadcn ghost——皮肤全在 .dlg-machine
-          per-face（漆底压 hover/aria-expanded 底）；aria-haspopup 命中底座
+    <div>
+      {/* XMON-24：机器 pill 切 shadcn ghost；#951：皮肤律等值迁 MACHINE_PILL
+          utility（漆底压 hover/aria-expanded 底）；aria-haspopup 命中底座
           active 位移豁免，无需中性化。ChevronDown 12px 免底座 16px。 */}
       <Button
         variant="ghost"
-        className="dlg-machine font-normal [&_svg:not([class*='size-'])]:size-auto"
+        className={MACHINE_PILL}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <span className="dlg-machine-dot" data-on={cur?.online ?? false} />
-        <span className="dlg-machine-name">{cur?.name ?? t('选择机器')}</span>
+        <span className={MACHINE_DOT} data-on={cur?.online ?? false} />
+        <span>{cur?.name ?? t('选择机器')}</span>
         <ChevronDown width={12} height={12} />
       </Button>
       {open ? (
-        <div className="dlg-machine-menu" role="listbox">
+        <div role="listbox">
           {list.length === 0 ? (
-            <div className="dlg-machine-empty">{t('暂无在线机器')}</div>
+            <div>{t('暂无在线机器')}</div>
           ) : (
             list.map((m) => (
               <div key={m.id}>
@@ -370,14 +414,14 @@ function MachinePicker({
                     inline 空白间距（≈3.5px，PR body 声明近似）。 */}
                 <Button
                   variant="ghost"
-                  className="dlg-machine-opt h-auto rounded-none gap-1 p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent dark:hover:bg-transparent hover:text-inherit active:not-aria-[haspopup]:translate-y-0"
+                  className="h-auto rounded-none gap-1 p-0 text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent dark:hover:bg-transparent hover:text-inherit active:not-aria-[haspopup]:translate-y-0"
                   data-active={m.id === selected}
                   onClick={() => {
                     onSelect(m.id);
                     setOpen(false);
                   }}
                 >
-                  <span className="dlg-machine-dot" data-on={m.online} />
+                  <span className={MACHINE_DOT} data-on={m.online} />
                   <span>{m.name}</span>
                 </Button>
               </div>
@@ -437,13 +481,13 @@ export function SyncButton({
   });
   const live = canSync && buildId !== null && machineId !== null;
   return (
-    // XMON-24：同步钮切 shadcn ghost——漆底/几何全在 .dlg-sync per-face
-    // （w100% h38 --spot-disabled 漆面压 hover；cursor:default 与底座
-    // disabled:pointer-events-none 的箭头光标同效）；老面无 :disabled
-    // 降档 → opacity 中性化。
+    // XMON-24：同步钮切 shadcn ghost；#951：.dlg-sync per-face 律等值迁
+    // utility（w100% h38 圆角 8 / --spot-disabled 漆面恒压 hover——老面
+    // enabled 态同漆面，无 :disabled 降档 → opacity 中性化；cursor:default
+    // 与底座 disabled:pointer-events-none 的箭头光标同效）。
     <Button
       variant="ghost"
-      className="dlg-sync font-normal disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0"
+      className="h-[38px] w-full cursor-default rounded-[8px] border-none bg-(--spot-disabled) text-[13px] leading-[calc(20/14)] font-normal text-(--spot-disabled-fg) hover:bg-(--spot-disabled) hover:text-(--spot-disabled-fg) dark:hover:bg-(--spot-disabled) dark:hover:text-(--spot-disabled-fg) disabled:opacity-100 active:not-aria-[haspopup]:translate-y-0"
       disabled={!live || disabled || mut.isPending}
       onClick={() => {
         if (!live || buildId === null || machineId === null) return;
@@ -476,13 +520,15 @@ function ResultCardBody({ record, t }: { record: BranchSyncRecord; t: (k: string
     synced: t('已同步'),
     failed: t('同步失败'),
   };
+  // #951：result 卡类名钩退役（全仓零规则零 pin 的死类）；data-status 是
+  // 状态行为载体，保留。
   return (
-    <div className="dlg-sync-result" data-status={record.status}>
-      <div className="dlg-sync-result-state">{statusLabel[record.status]}</div>
+    <div data-status={record.status}>
+      <div>{statusLabel[record.status]}</div>
       {record.errorMessage !== null && record.status === 'failed' ? (
-        <div className="dlg-sync-result-error">{record.errorMessage}</div>
+        <div>{record.errorMessage}</div>
       ) : null}
-      <div className="dlg-sync-result-meta">
+      <div>
         {record.commit.slice(0, 12)} · {record.directory}
       </div>
     </div>

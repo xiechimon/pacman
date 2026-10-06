@@ -9,7 +9,33 @@ import { Button } from '../components/ui/button.js';
 import { Checkbox } from '../components/ui/checkbox.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { useI18n } from '../i18n/provider.js';
-import './overlays.css';
+
+/** #951（detail/overlays.css 清零）：accept 同族（accept / stop-confirm /
+ *  reset-confirm）的行容器、footer 与文字钮律等值迁 utility，三消费面共用
+ *  单源（原 .dlg-accept / .dlg-accept-footer / .dlg-accept-cancel 族，r7 34
+ *  实测值）。 */
+
+/** 勾选行容器：17px 顶垫 + 16 横垫，行内 8 gap。 */
+export const ACCEPT_ROW = 'flex items-center gap-2 px-4 pt-[17px]';
+
+/** footer 动作行：右对齐 8 gap，17/16/14 垫。 */
+export const ACCEPT_FOOTER = 'flex items-center justify-end gap-2 px-4 pt-[17px] pb-[14px]';
+
+/** 取消/文字钮皮肤（ghost 底座中和，XMON-24 律 + 原 .dlg-accept-cancel
+ *  的透明底/tertiary 墨/13px）：hover 底与墨双钉回（漆面恒压，含 dark 档）。 */
+export const ACCEPT_CANCEL_BTN =
+  'h-auto cursor-pointer rounded-none border-none bg-transparent p-0 text-[13px] font-normal text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0';
+
+/** 50×28 冻结几何（XMON-24 scoped 钉，原 `.dlg-accept-footer .dlg-accept-done`
+ *  (0,2,0) 选择器的 utility 等价形）。 */
+export const ACCEPT_DONE_SIZE = 'w-[50px] p-0';
+
+/** 勾选行文字：13px primary（原 .dlg-accept-label）。 */
+export const ACCEPT_LABEL = 'text-[13px] text-(--text-primary)';
+
+/** 勾选行下方说明行（XMON-89 缺项/拒绝行共用形：10px 顶距 + 16 横缩、
+ *  12/16；墨色由消费面给——缺项 tertiary、server 拒绝 --danger）。 */
+export const ACCEPT_NOTE_LINE = 'mx-4 mt-[10px] text-xs leading-4';
 
 interface AcceptDialogProps {
   /** #73 retained-mount open flag. */
@@ -44,20 +70,15 @@ export function AcceptDialog({
       open={open}
       onClose={onClose}
       footer={
-        <div className="dlg-accept-footer">
-          {/* XMON-24：裸钮切 shadcn ghost——皮肤全在 .dlg-accept-cancel
-              per-face（unlayered 压底座），utilities 只清 h-8/text-sm/
-              active 位移这些底座差额。 */}
-          <Button
-            variant="ghost"
-            className="dlg-accept-cancel h-auto rounded-none p-0 text-[13px] font-normal hover:bg-transparent active:not-aria-[haspopup]:translate-y-0"
-            onClick={onClose}
-          >
+        <div className={ACCEPT_FOOTER}>
+          {/* XMON-24：裸钮切 shadcn ghost；#951：.dlg-accept-cancel per-face
+              律等值迁 ACCEPT_CANCEL_BTN（unlayered 压底座 → 同层中和串）。 */}
+          <Button variant="ghost" className={ACCEPT_CANCEL_BTN} onClick={onClose}>
             {t('取消')}
           </Button>
           <Button
             variant="brand"
-            className="dlg-accept-done h-7 border-none text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
+            className={`${ACCEPT_DONE_SIZE} h-7 border-none text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0`}
             disabled={blocked}
             onClick={() => {
               if (onConfirm) onConfirm();
@@ -69,22 +90,25 @@ export function AcceptDialog({
         </div>
       }
     >
-      <div className="dlg-accept">
+      <div className={ACCEPT_ROW}>
         {/* XMON-72：复选行收口 components/ui/checkbox 原语。改之前 .dlg-accept-check
             从无隐藏 input 的规则，18px tile 里骑着 Mac 原生复选框、白勾被挤成 0 宽。 */}
         <Checkbox checked={merge} onCheckedChange={setMerge} label={t('将改动合并到默认分支')}>
-          <span className="dlg-accept-label">{t('将改动合并到默认分支')}</span>
+          <span className={ACCEPT_LABEL}>{t('将改动合并到默认分支')}</span>
         </Checkbox>
       </div>
       {blocked && (
-        <p className="dlg-accept-block">
+        // XMON-89 缺项行：禁用态由 brand disabled 档承载，本行只说「缺什么」。
+        <p className={`${ACCEPT_NOTE_LINE} text-(--text-tertiary)`}>
           {t('缺少「{tools}」授权，无法合并。请在该 Agent 的权限里开启。', {
             tools: (missingTools ?? []).join('、'),
           })}
         </p>
       )}
       {rejectReason != null && (
-        <p className="dlg-accept-reject" role="alert">
+        // XMON-89 server 拒绝行：--danger 与其余面级错误文案同色；role=alert
+        // 是 e2e/读屏一级载体（#910 裁定 1）。
+        <p className={`${ACCEPT_NOTE_LINE} text-(--danger)`} role="alert">
           {rejectReason}
         </p>
       )}

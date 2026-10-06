@@ -28,7 +28,7 @@ Preconditions:
 1. `launch.mjs` 起隔离栈,`doctor.mjs` 全 PASS。**不需要 daemon**——结构面与步执行无关(无 daemon 时 build 停 queued,足够驱动全部视图)。
 
 - **跑法。** `node <skill>/scripts/drive-detail-pane.mjs`(自含 seed:API 直建 provider/agent/project/todo,验完 fresh 面再 POST build 验 thread 面)。
-- **真值。** checks 全绿:fresh 面左中贴合 + 右栏不渲染 + 头部单图标、thread 面三栏几何(240/488/贴合)、tab 组非存在、4 行 listbox、分支 section live 判别式(`.dlg-machine-picker` + `.dlg-dir--input` + 分支名 conv-<buildId>)、全程 `.dlg` 模态零出现、API `todo.latestBuildId` + SQLite todo/build 行双真值;截图 01–06。
+- **真值。** checks 全绿:fresh 面左中贴合 + 右栏不渲染 + 头部单图标、thread 面三栏几何(240/488/贴合)、tab 组非存在、4 行 listbox、分支 section live 判别式(`button[aria-haspopup=listbox]` picker + `getByLabel('同步目录')` + 分支名 conv-<buildId>;#951 起 .dlg-machine-picker/.dlg-dir--input 类钩退役)、全程 `.dlg` 模态零出现、API `todo.latestBuildId` + SQLite todo/build 行双真值;截图 01–06。
 - **fixture 面**(r7-16/17b/23 等场景冻结面 + composer 卡片几何)归 apps/web e2e `detail-3pane.spec.ts`,不走本 harness。
 
 ## Gotchas

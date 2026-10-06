@@ -5,22 +5,28 @@ import { expect, test } from '@playwright/test';
 // composer send opens the replan round (r8 67), the new plan version
 // lands (r8 68), the version dropdown / compare submenu open the
 // plan-version diff (r8 63–65), and the header 确认 starts the next round.
+//
+// #951/#910 重钉：.detail-chip → phase-chip testid（断言目标即触发钮文案，
+// 按 name 定位即循环——#910 裁定 1 二级载体）。其余跨批次类载体
+// （.doc-pane-select/.composer-send/.chat-*/.version-*/.doc-*/.diff-*/
+// .detail-head-action）是 #945/#949 退役后的零规则别名钩，其终账归
+// #952/#953，本 spec 原样保留。
 test('reject loop: 请求修改 → v2 → diff → 确认', async ({ page }) => {
   await page.goto('/app/todo/r8-15?scenario=chain');
 
   // confirm v1 surface
-  await expect(page.locator('.detail-chip')).toHaveText(/确认/);
+  await expect(page.getByTestId('phase-chip')).toHaveText(/确认/);
   await expect(page.locator('.doc-pane-select').nth(1)).toHaveText(/v1/);
 
   // 请求修改 → replan streaming (r8 67). Real click: #347 让总管 FAB 在
   // composer 在场时上移，发送钮不再被遮挡——这条 click 即该修复的回归钉
   // （遮挡回归时这里会超时）。
   await page.locator('.composer-send').click();
-  await expect(page.locator('.detail-chip')).toHaveText(/规划中/);
+  await expect(page.getByTestId('phase-chip')).toHaveText(/规划中/);
   await expect(page.locator('.chat-streaming-label')).toHaveText('处理中...');
 
   // v2 lands (r8 68)
-  await expect(page.locator('.detail-chip')).toHaveText(/确认/, { timeout: 5000 });
+  await expect(page.getByTestId('phase-chip')).toHaveText(/确认/, { timeout: 5000 });
   await expect(page.locator('.chat-plan-title').last()).toHaveText('方案 · v2');
 
   // version dropdown (r8 63)
@@ -42,6 +48,6 @@ test('reject loop: 请求修改 → v2 → diff → 确认', async ({ page }) =>
 
   // 确认 closes the chain into the execution round
   await page.locator('.detail-head-action').click();
-  await expect(page.locator('.detail-chip')).toHaveText(/执行中/);
+  await expect(page.getByTestId('phase-chip')).toHaveText(/执行中/);
   await expect(page.locator('.chat-streaming-label').last()).toHaveText('处理中...');
 });

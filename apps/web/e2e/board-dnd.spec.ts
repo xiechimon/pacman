@@ -1,5 +1,9 @@
 import { expect, type Page, test } from '@playwright/test';
 
+/** #951/#910 载体：重置确认弹层 = role=dialog + 可及名一级（原 .dlg-reset
+ *  类名钩随 detail/overlays.css 清零退役）。 */
+const resetDialog = (page: Page) => page.getByRole('dialog', { name: '把任务重置回待开始？' });
+
 // Issue #616 → #753 acceptance: the board drag is the reference product's
 // drag (todos.dev, 2026-10-03/04 live 重测——推翻 2026-10-02 旧测的两条:
 // 「待处理/已完成卡不可拖」与「待处理永不作落点」）— a pure cross-column
@@ -33,8 +37,11 @@ import { expect, type Page, test } from '@playwright/test';
 // 属性载体）、浮层 = data-testid="drag-overlay"、列计数 =
 // data-testid="column-count"（二级：裸数字无 role）、手势态 =
 // body[data-board-dragging]（裁定 3：状态载体改 data-*）、动作钮 =
-// role+name 一级。.dlg-reset / .overlay-title 属 detail 域（规则住址
-// detail/overlays.css、detail.css），留待 #945/#951 批次。视觉断言值不动
+// role+name 一级。#951/#910 重钉：.dlg-reset → role=dialog 可及名
+// 「把任务重置回待开始？」一级（detail/overlays.css 清零，类名钩退役）。
+// .overlay-title 缺席钉保留原类载体：它是 rerun/reuse 浮层的零规则别名钩
+// （皮律早已迁 utility），活体 pin 在 dead-buttons/rerun-close-family
+// （已收官批次），终账归 #953。视觉断言值不动
 // （--drag-shadow / --drop-tint-* / 0.4 / 0.92 / rotate(2deg) 零改动——
 // board.css 规则原值迁工具类与 motion.css）。
 
@@ -399,15 +406,15 @@ test('待处理(confirm，有历史） → 待开始：开重置确认闸，不�
   await settleDrop(page);
   // dm-confirm 自带方案历史（hasPlan）= started：落位开重置 dialog，
   // 卡片停在源列，计数不动（#755 以前这里是静默改相，旧断言随正典更替改写）。
-  await expect(page.locator('.dlg-reset')).toBeVisible();
+  await expect(resetDialog(page)).toBeVisible();
   await expect(
     page.locator('[data-column="pending"] [data-todo-id="dm-confirm"]'),
   ).toBeVisible();
   await expect(page.locator('[data-column="todo"]').getByTestId('column-count')).toHaveText('1');
   await expect(page.locator('[data-column="pending"]').getByTestId('column-count')).toHaveText('3');
   // 取消 = 零提交：弹层关，卡片不动，计数不动。
-  await page.locator('.dlg-reset').getByRole('button', { name: '取消' }).click();
-  await expect(page.locator('.dlg-reset')).toBeHidden();
+  await resetDialog(page).getByRole('button', { name: '取消' }).click();
+  await expect(resetDialog(page)).toBeHidden();
   await expect(
     page.locator('[data-column="pending"] [data-todo-id="dm-confirm"]'),
   ).toBeVisible();
@@ -430,10 +437,10 @@ test('执行中 → 待开始：开重置确认闸 — gesture 只开闸，不�
   await settleDrop(page);
   // #753 留下的「静默改相」断言作废：dm-building 有构建历史 = started，
   // 落位必须先经重置确认闸（中断构建 + 清空对话/方案/改动），确认前零提交。
-  await expect(page.locator('.dlg-reset')).toBeVisible();
-  await expect(page.locator('.dlg-reset').getByText('清空对话记录')).toBeVisible();
-  await expect(page.locator('.dlg-reset').getByText('清空方案版本')).toBeVisible();
-  await expect(page.locator('.dlg-reset').getByText('清空改动记录')).toBeVisible();
+  await expect(resetDialog(page)).toBeVisible();
+  await expect(resetDialog(page).getByText('清空对话记录')).toBeVisible();
+  await expect(resetDialog(page).getByText('清空方案版本')).toBeVisible();
+  await expect(resetDialog(page).getByText('清空改动记录')).toBeVisible();
   await expect(
     page.locator('[data-column="building"] [data-todo-id="dm-building"]'),
   ).toBeVisible();
@@ -458,9 +465,9 @@ test('重置闸·确认：started 卡确认后落待开始（fixture 本地重�
   await settleDrag(page);
   await page.mouse.up();
   await settleDrop(page);
-  await expect(page.locator('.dlg-reset')).toBeVisible();
-  await page.locator('.dlg-reset').getByRole('button', { name: '确认重置' }).click();
-  await expect(page.locator('.dlg-reset')).toBeHidden();
+  await expect(resetDialog(page)).toBeVisible();
+  await resetDialog(page).getByRole('button', { name: '确认重置' }).click();
+  await expect(resetDialog(page)).toBeHidden();
   await expect(
     page.locator('[data-column="todo"] [data-todo-id="rg-building"]'),
   ).toBeVisible();
@@ -485,9 +492,9 @@ test('重置闸·取消：零提交（卡片不动、计数不动、无请求发
   await settleDrag(page);
   await page.mouse.up();
   await settleDrop(page);
-  await expect(page.locator('.dlg-reset')).toBeVisible();
-  await page.locator('.dlg-reset').getByRole('button', { name: '取消' }).click();
-  await expect(page.locator('.dlg-reset')).toBeHidden();
+  await expect(resetDialog(page)).toBeVisible();
+  await resetDialog(page).getByRole('button', { name: '取消' }).click();
+  await expect(resetDialog(page)).toBeHidden();
   await expect(
     page.locator('[data-column="done"] [data-todo-id="rg-done-history"]'),
   ).toBeVisible();
@@ -508,7 +515,7 @@ test('重置闸·静默：零历史卡拖回待开始不设闸 (#755)', async ({
   await settleDrag(page);
   await page.mouse.up();
   await settleDrop(page);
-  await expect(page.locator('.dlg-reset')).toBeHidden();
+  await expect(resetDialog(page)).toBeHidden();
   await expect(
     page.locator('[data-column="todo"] [data-todo-id="rg-done-fresh"]'),
   ).toBeVisible();

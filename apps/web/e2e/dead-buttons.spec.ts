@@ -279,7 +279,9 @@ test('create-agent dialog drops the avatar 更换 ink (#307)', async ({ page }) 
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('.dlg-agent-swap')).toHaveCount(0);
   // 头像行仍在（静态机器人资产），名称输入与创建主钮不受影响
-  await expect(dialog.locator('.dlg-agent-avatar img')).toBeVisible();
+  // #951/#910 重钉：.dlg-agent-avatar img → agent-avatar testid（img 在
+  // loaded 前 aria-hidden，role 钉不到——二级载体；overlays.css 清零）。
+  await expect(dialog.getByTestId('agent-avatar').locator('img')).toBeVisible();
   await expect(dialog.locator('#dlg-agent-name')).toBeVisible();
 });
 

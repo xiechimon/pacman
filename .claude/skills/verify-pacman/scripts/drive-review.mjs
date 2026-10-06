@@ -92,7 +92,7 @@ try {
     el instanceof HTMLElement ? el.style.width : '',
   );
   const titleText = await page.$eval('.dlg-title', (el) => el.textContent ?? '');
-  const agentRows = await page.$$('.review-agent-row');
+  const agentRows = await page.$$('[role="dialog"][aria-label="AI 审核"] [role="option"]');
   await page.waitForTimeout(200);
   await page.screenshot({ path: join(EVIDENCE, '02-review-dialog-560-wide.png') });
   check(
@@ -111,12 +111,13 @@ try {
   // 一下让 data-on="true" 落 DOM 以便断言）——
   await agentRows[0].click();
   await page.waitForTimeout(150);
-  const selectedCount = await page.$$eval('.review-agent-row[data-on="true"]', (rows) => rows.length);
+  const selectedCount = await page.$$eval('[role="dialog"][aria-label="AI 审核"] [role="option"][aria-selected="true"]', (rows) => rows.length);
   await page.screenshot({ path: join(EVIDENCE, '03-agent-selected.png') });
   check('agent-row-selected', selectedCount === 1, `selected rows=${selectedCount}`);
 
   // —— 4. 点「开始审核」→ 模态关闭 + composer placeholder 切换 ——
-  await page.click('.review-start');
+  // #951/#910 载体：.review-start 类钩退役 → dialog scope role+文案一级。
+  await page.locator('[role="dialog"][aria-label="AI 审核"]').getByRole('button', { name: '开始审核' }).click();
   await page.waitForSelector('.dlg', { state: 'detached', timeout: 5_000 });
   // composer 是 live editable 态：textarea 元素，class 含 composer-input
   await page.waitForFunction(

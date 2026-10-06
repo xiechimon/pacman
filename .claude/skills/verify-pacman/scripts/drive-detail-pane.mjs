@@ -207,21 +207,29 @@ try {
   await shot(page, '02-thread-doc.png');
 
   await page.click('.detail-right .doc-select-wrap .doc-pane-select');
-  await page.waitForSelector('.plan-dropdown', { timeout: 5000 });
-  const rows = await page.locator('.plan-dropdown-row').count();
+  // #949/#910 载体：.plan-dropdown/.plan-dropdown-row 类钉已随 overlays.css 清零
+  // 退役 → role=menu / menuitemradio（本脚本 #951 维护轮补迁）。
+  await page.waitForSelector('[role="menu"]', { timeout: 5000 });
+  const rows = await page.locator('[role="menuitemradio"]').count();
   check(rows === 4, `型选 listbox 4 行(文档 + 三 section;实测 ${rows})`);
   await shot(page, '03-pane-dropdown.png');
 
   // —— 3. 分支与 PR section:live 判别式(机器 picker + 可编辑目录)—————
-  await page.locator('.plan-dropdown-row', { hasText: '分支与 PR' }).click();
-  await page.waitForSelector('.detail-right .dlg-machine-picker', { timeout: 15_000 });
+  await page.locator('[role="menuitemradio"]', { hasText: '分支与 PR' }).click();
+  // #951/#910 载体：.dlg-machine-picker/.dlg-dir--input/.dlg-machine[disabled]/
+  // .dlg-branch-value 类钩退役 → aria-haspopup 钮 + getByLabel(同步目录) +
+  // 互斥分支判别（picker 在场即占位缺席，同一 ternary）+ 结构位取分支值。
+  await page.waitForSelector('.detail-right button[aria-haspopup="listbox"]', { timeout: 15_000 });
   check(
-    (await page.locator('.detail-right .dlg-dir--input').count()) === 1 &&
-      (await page.locator('.dlg-machine[disabled]').count()) === 0,
+    (await page.locator('.detail-right').getByLabel('同步目录').count()) === 1 &&
+      (await page.locator('.detail-right button[aria-haspopup="listbox"]').count()) === 1,
     '分支 section 走 live 面(buildId 接线在位,非 fixture 占位)',
   );
   check((await page.locator('.dlg').count()) === 0, '分支面为静止 section,无模态弹层');
-  const branchValue = await page.locator('.dlg-branch-value').first().textContent();
+  const branchValue = await page
+    .locator('.detail-right .pane-section-body > div > div:nth-of-type(1) > div:nth-child(1) > span:nth-child(2)')
+    .first()
+    .textContent();
   check(
     buildId != null && (branchValue ?? '').endsWith(`conv-${buildId}`),
     `分支名与 buildId 同源(${branchValue})`,
@@ -230,20 +238,20 @@ try {
 
   // —— 4. Token 用量 / 运行历史 section + 切回文档 ————————————————
   await page.click('.detail-right .doc-select-wrap .doc-pane-select');
-  await page.locator('.plan-dropdown-row', { hasText: 'Token 用量' }).click();
-  await page.waitForSelector('.detail-right .dlg-token-total', { timeout: 5000 });
+  await page.locator('[role="menuitemradio"]', { hasText: 'Token 用量' }).click();
+  await page.locator('.detail-right').getByText('tokens', { exact: true }).waitFor({ timeout: 5000 });
   check(true, 'Token 用量 section 静止渲染');
   await shot(page, '05-token-section.png');
 
   await page.click('.detail-right .doc-select-wrap .doc-pane-select');
-  await page.locator('.plan-dropdown-row', { hasText: '运行历史' }).click();
-  await page.waitForSelector('.detail-right .dlg-history-row', { timeout: 5000 });
-  const historyRows = await page.locator('.detail-right .dlg-history-row').count();
+  await page.locator('[role="menuitemradio"]', { hasText: '运行历史' }).click();
+  await page.waitForSelector('.detail-right [data-testid="history-row"]', { timeout: 5000 });
+  const historyRows = await page.locator('.detail-right [data-testid="history-row"]').count();
   check(historyRows >= 1, `运行历史 section 行渲染(${historyRows} 行)`);
   await shot(page, '06-history-section.png');
 
   await page.click('.detail-right .doc-select-wrap .doc-pane-select');
-  await page.locator('.plan-dropdown-row').first().click();
+  await page.locator('[role="menuitemradio"]').first().click();
   await page.waitForSelector('.detail-right .doc-pane', { timeout: 5000 });
   check(true, '文档行切回 DocPane 视图');
 

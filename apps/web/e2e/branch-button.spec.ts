@@ -5,8 +5,9 @@ import { expect, test } from '@playwright/test';
 // live 面走 latestBuildId 有无——可见即点得开。分支 glyph 用 circle
 // 计数钉形（git-branch = 1 path + 2 circle，旧下载箭头零 circle）。
 // #945/#910 重钉：.dlg 壳别名 → role=dialog 一级（§5.5，重钉可先行、
-// DOM 别名残留至 #952）；.todo-card-branch 属 board/motion 载体面、
-// .dlg-branch-box 属 detail/overlays.css（detail-b 批次），均原样保留。
+// DOM 别名残留至 #952）；.todo-card-branch 属 board/motion 载体面，原样
+// 保留。#951/#910 重钉：.dlg-branch-box → 行标签文案一级 getByText
+// （box 可见的语义 = 分支字段行在场）。
 
 test('有分支卡：分支钮可见且为分支 glyph，点开分支与 PR 弹层', async ({ page }) => {
   await page.goto('/app?scenario=01');
@@ -16,7 +17,7 @@ test('有分支卡：分支钮可见且为分支 glyph，点开分支与 PR 弹�
   await buttons.first().click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('.dlg-branch-box')).toBeVisible();
+  await expect(dialog.getByText('构建分支')).toBeVisible();
 });
 
 test('无分支卡：分支钮不渲染', async ({ page }) => {
