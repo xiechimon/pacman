@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-// Feature map generator (#894). Writes docs/spec/22-功能地图.md — the living
+// Feature map generator (#894). Writes docs/spec/25-功能地图.md — the living
 // register of what exists, at which tier, in which state, anchored to which
 // verification artifact. Every cell is extracted; nothing is hand-edited on
 // either side. To change the map, change the rules below and re-run.
@@ -42,7 +42,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
 const REPO_ROOT = resolve(import.meta.dirname, '..');
-const DOC_NAME = '22-功能地图.md';
+const DOC_NAME = '25-功能地图.md';
 const DOC_REL = join('docs', 'spec', DOC_NAME);
 const DOC_PATH = join(REPO_ROOT, DOC_REL);
 
@@ -311,7 +311,7 @@ rows.sort((a, b) => TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier) || b
 // ---------------------------------------------------------------------------
 
 const out = [];
-out.push('# 22 · 功能地图（当前状态活册）');
+out.push('# 25 · 功能地图（当前状态活册）');
 out.push('');
 out.push(
   '> 本册由 `scripts/generate-feature-map.mjs` 机械抽取生成，勿手改；改口径 = 改脚本后重跑（#894 立首版规则）。',
@@ -321,6 +321,9 @@ out.push(
 );
 out.push('> 前置：`gh` 已登录、api.github.com 可达。');
 out.push('> 与 03 册分工：03-ROADMAP = 构建顺序历史册；本册 = 当前状态活册。');
+out.push(
+  '> 编号注：原落 22 号，与先合占号的《22-色彩与几何token-scale正本表》撞号；按该册 §0 撞号纪律重编到尾部 25（#952）。',
+);
 out.push('');
 out.push('## 0. 抽取口径');
 out.push('');

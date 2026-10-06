@@ -13,22 +13,23 @@ import { expect, type Page, test } from '@playwright/test';
 // #944/#910 载体:.res-add → getByRole(button 添加机器);.dlg-enroll-* 族 →
 // 文案/role 一级(lead/desc → getByText,toggle/copy → getByRole button,
 // keylink/browserlink → getByRole link,apikey 容器 → 其内 code/link 的
-// 存在性);.dlg-enroll-cmd code → dialog 内 code 元素序。壳级 .dlg/.dlg-title/
-// .dlg-close 属 #952,不动。
+// 存在性);.dlg-enroll-cmd code → dialog 内 code 元素序。
+// #952/#910 重钉：壳级 .dlg/.dlg-title/.dlg-close → getByRole(dialog) 可及名 /
+// getByRole(button 关闭)（dialog-shell 别名摘除，§5.5）。
 
 const MACHINES = '/app/resources/machines?scenario=06';
 
 async function openDialog(page: Page) {
   await page.goto(MACHINES);
   await page.getByRole('button', { name: '添加机器' }).click();
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '添加机器' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
 
 test('添加机器 button opens the dialog with the two-step command blocks', async ({ page }) => {
   const dialog = await openDialog(page);
-  await expect(dialog.locator('.dlg-title')).toHaveText('添加机器');
+  await expect(dialog).toHaveAccessibleName('添加机器');
   await expect(dialog.getByText('有条件时优先使用云主机')).toContainText('有条件时优先使用云主机');
   // fixture 团队名插值 = TEAM_NAME 常量(team-page 同律)
   await expect(dialog.getByText("授权团队 Xmon Dai's team 后机器即可上线")).toContainText(
@@ -47,18 +48,18 @@ test('添加机器 button opens the dialog with the two-step command blocks', as
 
 test('family law: X, Escape and backdrop dismiss; panel clicks do not', async ({ page }) => {
   let dialog = await openDialog(page);
-  await dialog.locator('.dlg-close').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('button', { name: '关闭' }).click();
+  await expect(page.getByRole('dialog', { name: '添加机器' })).toBeHidden();
 
   dialog = await openDialog(page);
   await page.keyboard.press('Escape');
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '添加机器' })).toBeHidden();
 
   dialog = await openDialog(page);
-  await dialog.locator('.dlg-title').click();
-  await expect(page.locator('.dlg')).toBeVisible();
+  await dialog.getByTestId('dialog-head').click();
+  await expect(page.getByRole('dialog', { name: '添加机器' })).toBeVisible();
   await page.mouse.click(20, 20);
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '添加机器' })).toBeHidden();
 });
 
 test('API key disclosure expands the key command and the api-keys link', async ({ page }) => {

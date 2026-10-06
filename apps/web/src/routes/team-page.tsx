@@ -232,8 +232,11 @@ export function TeamPage() {
             className={`${CREATE_SLOT_CLS} ${BASE_DELTA}`}
             onClick={() => setCreateOpen(true)}
           >
-            <span className="flex size-5 items-center justify-center rounded-full border border-current [&_svg]:size-3">
-              <PlusSmall />
+            <span className="flex size-5 items-center justify-center rounded-full border border-current">
+              {/* size-3 挂字形本体（件基类 [&_svg:not([class*='size-'])]:size-4
+                  的 :not 守卫让位给自带 size-* 类的 svg；wrapper 档特异性不够，
+                  #952 实测 16px 后与 chart 创建槽同轮修正）。 */}
+              <PlusSmall className="size-3" />
             </span>
             {t('创建 Agent')}
           </Button>

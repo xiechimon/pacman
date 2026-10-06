@@ -100,13 +100,13 @@ try {
 
   // —— 2. 发起审核 ——
   await page.click('.composer-tool[aria-label="AI 审核"]');
-  await page.waitForSelector('.dlg', { timeout: 5_000 });
+  await page.waitForSelector('[role="dialog"]', { timeout: 5_000 });
   const agentRows = await page.$$('[role="dialog"][aria-label="AI 审核"] [role="option"]');
   await agentRows[0].click();
   await page.waitForTimeout(150);
   // #951/#910 载体：.review-start 类钩退役 → dialog scope role+文案一级。
   await page.locator('[role="dialog"][aria-label="AI 审核"]').getByRole('button', { name: '开始审核' }).click();
-  await page.waitForSelector('.dlg', { state: 'detached', timeout: 5_000 });
+  await page.waitForSelector('[role="dialog"]', { state: 'detached', timeout: 5_000 });
   // composer placeholder 切换证明审核入队
   await page.waitForFunction(
     () => {

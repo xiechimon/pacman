@@ -192,8 +192,12 @@ export function TeamChart({
             className={`${NODE_CLS} cursor-pointer justify-start border-dashed text-left text-xs font-medium text-(--text-tertiary) leading-[inherit] hover:bg-(--surface-secondary) hover:text-(--text-tertiary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-(--surface) aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0`}
             onClick={onCreate}
           >
+            {/* size-3 挂字形本体顶回 12px：件基类 [&_svg:not([class*='size-'])]:size-4
+                的 :not 守卫就是让位给自带 size-* 类的 svg（wrapper 上的
+                [&_svg]:size-3 特异性低于基类选择器，压不住——#952 实测 16px
+                后改挂字形本体；grid 创建槽同款并项）。 */}
             <span className="flex size-6 flex-none items-center justify-center rounded-full border border-dashed border-(--border-strong)">
-              <PlusGlyph />
+              <PlusGlyph className="size-3" />
             </span>
             {t('创建 Agent')}
           </Button>

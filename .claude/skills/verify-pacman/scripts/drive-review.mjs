@@ -86,12 +86,13 @@ try {
 
   // —— 2. 点击开 560 宽模态 ——
   await page.click('.composer-tool[aria-label="AI 审核"]');
-  await page.waitForSelector('.dlg', { timeout: 5_000 });
+  await page.waitForSelector('[role="dialog"]', { timeout: 5_000 });
   // DialogShell 把 width={560} 内联到 .dlg 元素（r8 §2.5：审核模态 560 族）
-  const dialogWidth = await page.$eval('.dlg', (el) =>
+  const dialogWidth = await page.$eval('[role="dialog"]', (el) =>
     el instanceof HTMLElement ? el.style.width : '',
   );
-  const titleText = await page.$eval('.dlg-title', (el) => el.textContent ?? '');
+  // #952/#910：.dlg-title 退役 → dialog 可及名（aria-label = title）载体。
+  const titleText = await page.$eval('[role="dialog"]', (el) => el.getAttribute('aria-label') ?? '');
   const agentRows = await page.$$('[role="dialog"][aria-label="AI 审核"] [role="option"]');
   await page.waitForTimeout(200);
   await page.screenshot({ path: join(EVIDENCE, '02-review-dialog-560-wide.png') });
@@ -118,7 +119,7 @@ try {
   // —— 4. 点「开始审核」→ 模态关闭 + composer placeholder 切换 ——
   // #951/#910 载体：.review-start 类钩退役 → dialog scope role+文案一级。
   await page.locator('[role="dialog"][aria-label="AI 审核"]').getByRole('button', { name: '开始审核' }).click();
-  await page.waitForSelector('.dlg', { state: 'detached', timeout: 5_000 });
+  await page.waitForSelector('[role="dialog"]', { state: 'detached', timeout: 5_000 });
   // composer 是 live editable 态：textarea 元素，class 含 composer-input
   await page.waitForFunction(
     () => {

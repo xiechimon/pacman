@@ -22,7 +22,7 @@
 
 - **翻值**：暗 107 槽、亮 103 槽取新值（含 `--surface-inset`/`--card-bg`/`--popover-bg`/`--text-primary`/`--code-bg`/`--danger` 六个并流别名槽，值随其直引的正本槽一起翻）。
 - **不变**：暗 2 槽、亮 6 槽——主题恒定值（`--overlay-scrim` `rgb(0 0 0 / 0.6)`、`--text-on-veil` 白；亮侧另有 `--primary-foreground`/`--destructive-foreground`/`--text-on-accent`/`--spot-disabled-fg` 恰与现行同值）。不变 ≠ 不需翻，是定版值恰等于现行值。
-- **退役候选**：2 槽（`--toggle-track`/`--toggle-knob`）——名字级 diff 看不见（两文件都在），但其唯一消费点是随 D3 清零的 per-face CSS 手搓 toggle（见 §1.6）。
+- **退役候选**：2 槽（`--toggle-track`/`--toggle-knob`）——名字级 diff 看不见（两文件都在），但其唯一消费点是随 D3 清零的 per-face CSS 手搓 toggle（见 §1.6）。**已退役**：#952 把两槽从 shadcn.css 删除（§4-2 裁定的执行点）。
 
 ### 1.2 度量方法
 
@@ -68,10 +68,12 @@
 | Input — border on page bg | `--input on --background` | 1.52:1 | 1.5 | PASS | field boundary hairline (state also carried by focus ring) |
 | Button brand — label on fill | `--text-on-accent on --card-button` | 7.41:1 | 4.5 | PASS | brand solid-fill label |
 
-### 1.6 退役候选（名字级 diff 看不见，消费点随 D3 per-face 清零而孤儿化）
+### 1.6 退役候选（名字级 diff 看不见，消费点随 D3 per-face 清零而孤儿化）——已退役（#952 删槽）
 
 - `--toggle-track`：only consumer = detail/overlays.css .dlg-toggle (per-face, D3-zeroed) → shadcn Switch
 - `--toggle-knob`：only consumers = .dlg-toggle-knob + secondary.css (per-face, D3-zeroed) → shadcn Switch
+
+执行记录：两槽已于 #952 从 `shadcn.css` 暗/亮两段删除（全库 grep 消费点 = 0，docs/verify 的历史证据档除外）；§1.7/§1.8 表内「退役候选」状态位是 #915 翻值时点的实测记录，保留原样。
 
 ### 1.7 暗模 (dark) 逐槽映射与实测
 
@@ -454,7 +456,7 @@
 本册与 #909 定版原型整体一致（色板、几何 token、件几何均取自 c.css 与冻结件）。以下几处需施工期注意或回调视觉方向票（#909）/ 值翻转票（#915）：
 
 1. **亮模 Switch unchecked thumb 对比度偏软**（实测发现，非门控失败）：shadcn Switch 亮模 OFF 态 thumb（`bg-background` #f4efe7）压 track（`bg-input` #c9c4bc）= **1.52:1**，低于 UI 组件 3:1。但状态载体是 track 色翻转（OFF `--input` → ON `--primary` = **11.03:1**，见 §1.5）+ thumb 位置，WCAG 1.4.11 的「状态可辨」由 track 翻转满足；thumb 低对比是亮模软发丝线语言下的一致性打磨项，非 AA 门控失败。**处置**：不改色板（better-colors report-not-repaint + 色板已 #909 封版）；#915/批次若判 OFF 态 thumb 过弱，可给 thumb 加 1px 描边或投影（件级，不动 token 值），但须回视觉方向票补裁，不自行加。
-2. **`--toggle-track`/`--toggle-knob` 退役**（需 #915 执行）：两槽唯一消费点是随 D3 清零的 per-face 手搓 toggle（`detail/overlays.css` `.dlg-toggle`、`secondary.css`），迁 shadcn Switch 后孤儿化。**处置**：#915 翻值时把两槽从 shadcn.css/tokens.css 删除（不搬进新色板）；本册已标「退役候选」。
+2. **`--toggle-track`/`--toggle-knob` 退役**（已由 #952 执行完毕）：两槽唯一消费点是随 D3 清零的 per-face 手搓 toggle（`detail/overlays.css` `.dlg-toggle`、`secondary.css`），迁 shadcn Switch 后孤儿化。**处置**：把两槽从 shadcn.css 删除（不搬进新色板）——#915 翻值期未动（施工冻结），#952 的全局删槽窗口执行落地（tokens.css 本就不持两槽）。
 3. **Input 方角无 inline 理由**（§2.6 override 6）：`rounded-none` 沿旧语言但件内无注释记录行为理由。批次若要圆角输入框，回视觉方向票补裁。
 4. **几何 token 落点**：`--pad-card`/`--pad-page`/`--row-h`/`--label-*`/`--title-*` 是定版新增的具名 token（现行 apps/web 无）。#915/首批落地时须决定这些新几何 token 落哪个文件——本册给值与用途，落点随 #915 值翻转票的非颜色层口径（tokens.css 现持非颜色 token，是自然落点）。
 
@@ -469,6 +471,7 @@
 - **时序**（#913 裁决 3）：消费面迁移 = 各域票随改（#910 裁定 2，同 PR 完成类退役 + spec 重钉）；`ui/` 目录终删 + dialog-shell 壳级别名摘除 + `.dlg-shell`/`.dlg-viewport` 机制内联 = #952（唯一持有 `components/ui/` 既有件改动授权的票）；终态核账 = #953。
 - **载体与替换类同 PR 落地**：语义载体（role/label/text，#910 一级）不依赖任何新属性，域票可先行重钉；需要新增载体（`data-tone`、testid）的点，载体随 StatusChip 件/执行票落 DOM，钉它的 spec 在同一个 PR 里重钉——两票永不同刻改同一 spec。
 - **别名类残留合法**：类名从 CSS 规则退役 ≠ 立刻从 DOM 摘除。执行域完成 per-face 清零前，别名类（`detail-chip--*`、`search-row-chip` 等）可经 className 透传存活；#952 删 `ui/` 目录前 grep 消费点 = 0 的既有核过律不变。
+- **ghost 档行形钮中和 = 七通道**（#908 comment-6001887439 裁决 3；形态参考 #943 的 `ROW_BTN`/`RAIL_BTN`、resources/parts.tsx 的 `GHOST_ROW_BTN_CLS`）：行形钮落 Button ghost 底座时七通道一次中和齐——hover bg（含 `dark:` 变体）· `aria-expanded` bg + text · hover text · press translate（同变体链 `active:not-aria-[haspopup]:translate-y-0`）· gap/px · font-weight · border。漏 hover-text 通道会被 accent-typo 族的 computed-color 探针抓红（#943 实证）。
 
 ### 5.1 消费面逐点总账（grep 复核 @ b38e70d7）
 

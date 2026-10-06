@@ -107,7 +107,8 @@ try {
   // —— 1. 团队页卡是链接，点进详情路由 ──────────────────────────────────
   await page.goto(`${WEB}/app/team`);
   await page.waitForSelector('[data-route="team"]', { timeout: 15_000 });
-  const card = page.locator('.team-agent-card', { hasText: AGENT_NAME });
+  // #952 维护：.team-agent-card 类名钩已随 #947 退役 → testid 二级载体。
+const card = page.locator('[data-testid="team-agent-card"]', { hasText: AGENT_NAME });
   await card.waitFor({ state: 'visible', timeout: 15_000 });
   check('team-card-is-link', (await card.evaluate((el) => el.tagName)) === 'A', '卡元素是 a');
   await card.click();
@@ -145,11 +146,13 @@ try {
   const statusRowCount = await page.locator('.agent-status').count();
   check('overview-no-status-row', statusRowCount === 0, `status=${statusRowCount}`);
   // 运行时档 = provider 位派生（本场景 provider = verify-485-gw 这个 custom
-  // provider，故直接出 id；内置 pi 时出「内置 (pi)」）。
+  // provider，故直接出 id；内置 pi 时出「内置 (pi)」）。t-0024 起是选择器
+  // 触发钮（.agent-runtime-select 句柄，只读 span .agent-runtime 已退役）。
   check(
     'overview-runtime-derived',
-    (await page.locator('.agent-runtime').textContent())?.trim() === 'verify-485-gw',
-    await page.locator('.agent-runtime').textContent(),
+    (await page.locator('.agent-runtime-select').textContent())?.includes('verify-485-gw') ===
+      true,
+    await page.locator('.agent-runtime-select').textContent(),
   );
 
   // —— 2b. 思考强度档位来自能力读面（XMON-16 / #499 B3）────────────────
@@ -207,26 +210,24 @@ try {
   await page.waitForSelector('.agent-model-menu');
   await page.locator('.agent-model-menu').waitFor({ state: 'visible' });
   await shot(page, '03-model-menu.png');
+  // t-0024 两级化 + #770 后：模型候选投影 = model-sources 非 pi 段（providers
+  // 段已除）。本栈零机器零 runtime 源 → 菜单恒只有「未设置模型」清空行一条；
+  // 清空只清 modelId、provider 留在一级（两级语义）。有候选时的重选路径 =
+  // fixture 面 agent-detail.spec / agent-create-model.spec（stub model-sources）
+  // 承载，live 面不伪造 runtime 段。
   check(
-    'model-menu-has-provider-row',
-    (await page.locator('.agent-model-row', { hasText: 'verify-485-gw' }).count()) === 1,
+    'model-menu-unset-row-only',
+    (await page.locator('.agent-model-row').count()) === 1 &&
+      ((await page.locator('.agent-model-row').first().textContent()) ?? '').includes('未设置模型'),
+    `rows=${await page.locator('.agent-model-row').count()}`,
   );
   await page.locator('.agent-model-row', { hasText: '未设置模型' }).click();
   await page.waitForTimeout(400);
   const afterClear = await getJson(agentUrl(agentId));
   check(
-    'model-cleared',
-    afterClear.provider === null && afterClear.modelId === null,
+    'model-cleared-keeps-provider',
+    afterClear.provider === 'verify-485-gw' && afterClear.modelId === null,
     `${afterClear.provider}/${afterClear.modelId}`,
-  );
-  await page.locator('.agent-model-select').click();
-  await page.locator('.agent-model-row', { hasText: 'verify-485-gw' }).click();
-  await page.waitForTimeout(400);
-  const afterPick = await getJson(agentUrl(agentId));
-  check(
-    'model-persisted',
-    afterPick.provider === 'verify-485-gw' && afterPick.modelId === 'claude-sonnet-5',
-    `${afterPick.provider}/${afterPick.modelId}`,
   );
 
   // —— 6. 权限：工具开关 → server tools[] 变 ────────────────────────────
@@ -234,10 +235,21 @@ try {
   await page.waitForSelector('.agent-perms');
   const switches = page.locator('.agent-tool-switch');
   check('perm-six-switches', (await switches.count()) === 6, `${await switches.count()} 个`);
+  // XMON-84 B4 后新建 Agent 自带默认工具集（推送分支）——断言取对称差翻转，
+  // 不再假设全集恰一。
+  const firstLabel = await switches.first().getAttribute('aria-label');
+  const toolsBefore = (await getJson(agentUrl(agentId))).tools;
   await switches.first().click();
   await page.waitForTimeout(400);
   const afterTool = await getJson(agentUrl(agentId));
-  check('tool-persisted', afterTool.tools.length === 1, JSON.stringify(afterTool.tools));
+  const toolsExpected = toolsBefore.includes(firstLabel)
+    ? toolsBefore.filter((tool) => tool !== firstLabel)
+    : [...toolsBefore, firstLabel];
+  check(
+    'tool-persisted',
+    JSON.stringify([...afterTool.tools].sort()) === JSON.stringify([...toolsExpected].sort()),
+    `${JSON.stringify(toolsBefore)} → ${JSON.stringify(afterTool.tools)}`,
+  );
   await shot(page, '04-permissions.png');
 
   // —— 6b. 密钥区：一行聚合总开关 → server secrets[] = 团队全 id 集 ────────
@@ -291,29 +303,35 @@ try {
       '尚无记忆。Agent 会在工作中将值得沉淀的经验存入此处。',
   );
 
-  // —— 8. 创建弹窗：有服务商 → 弹窗内选模型 → POST 落库 ─────────────────
+  // —— 8. 创建弹窗（#770/t-0024 后形态）：本栈零机器 → model-sources 无非 pi
+  // 段 → 弹窗出告警行 + 配置服务商外链（不出模型选择器）；仅名称也能创建落库
+  // （provider/modelId 落 null）。有 runtime 候选时的两级选择路径 = fixture 面
+  // agent-create-model.spec（stub model-sources）承载，live 面不伪造。
+  // #952/#910 载体：.team-create-agent 类钩退役（#947）→ role=button 文案一级；
+  // 壳 scope = getByRole(dialog) 可及名「创建 agent」；名称输入 = getByLabel。
   await page.goto(`${WEB}/app/team`);
   await page.waitForSelector('[data-route="team"]', { timeout: 15_000 });
-  await page.locator('.team-create-agent').click();
-  await page.waitForSelector('.dlg-agent-model-select', { timeout: 15_000 });
-  check('create-dialog-model-slot', true, '有服务商时弹窗内出模型选择器');
-  // #951/#910 载体：.dlg-agent-warn 类钩退役 → 告警行文案一级。
-  check('create-dialog-no-warn', (await page.getByText('尚未配置模型服务商').count()) === 0);
-  await page.locator('#dlg-agent-name').fill('verify-485-created');
-  await page.locator('.dlg-agent-model-select').click();
-  await page.waitForSelector('.dlg-agent-model-menu');
-  await shot(page, '06-create-model-menu.png');
-  await page.locator('.dlg-agent-model-row', { hasText: 'verify-485-gw' }).click();
-  await page.locator('.dlg-agent-create').click();
-  await page.waitForSelector('.dlg', { state: 'hidden', timeout: 15_000 });
+  await page.getByRole('button', { name: '创建 Agent' }).first().click();
+  const createDialog = page.getByRole('dialog', { name: '创建 agent' });
+  await createDialog.waitFor({ timeout: 15_000 });
+  await createDialog.getByText('尚未配置模型服务商').waitFor({ timeout: 5_000 });
+  check('create-dialog-warn-row', true, '零 runtime 源时出告警行（不出模型选择器）');
+  check(
+    'create-dialog-configure-link',
+    (await createDialog.getByRole('link', { name: '配置服务商' }).count()) === 1,
+  );
+  await shot(page, '06-create-dialog-warn.png');
+  await createDialog.getByLabel('名称').fill('verify-485-created');
+  await createDialog.getByRole('button', { name: '创建', exact: true }).click();
+  await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 15_000 });
   const members = await getJson(`${SERVER}/api/teams/${teamId}/members`);
   const fresh = members
     .filter((m) => m.memberType === 'agent')
     .map((m) => m.actor)
     .find((a) => a.displayName === 'verify-485-created');
   check(
-    'create-with-model-persisted',
-    fresh?.provider === 'verify-485-gw' && fresh?.modelId === 'claude-sonnet-5',
+    'create-name-only-persisted',
+    fresh != null && fresh.provider === null && fresh.modelId === null,
     `${fresh?.provider}/${fresh?.modelId}`,
   );
   await shot(page, '07-team-after-create.png');
@@ -322,7 +340,7 @@ try {
   // 真值面三件：GET agent → 404（行真没了）；members 名单里该 Agent 消失而
   // 邻居留存；复删仍 404（DELETE_FACE 族律）。取消路径单独钉：确认层可关且
   // server 行毫发无损（误删通道）。
-  const doomed = page.locator('.team-agent-card', { hasText: RENAMED });
+  const doomed = page.locator('[data-testid="team-agent-card"]', { hasText: RENAMED });
   await doomed.click();
   await page.waitForSelector('.agent-overview', { timeout: 15_000 });
   await page.locator('.agent-delete').click();
@@ -381,7 +399,7 @@ try {
     namesAfter.includes('verify-485-created'),
     JSON.stringify(namesAfter),
   );
-  const cardsAfter = await page.locator('.team-agent-card').count();
+  const cardsAfter = await page.locator('[data-testid="team-agent-card"]').count();
   check(
     'delete-roster-count-matches-server',
     cardsAfter === namesAfter.length,

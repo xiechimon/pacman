@@ -31,15 +31,53 @@
 // pacman 是本地 BYOK，没有这个数据源，不编造；provider 位升去一级后二级行内
 // 也不再重复徽标。
 //
-// 几何正本仍是 agent-detail.css 的 `.agent-model-*` / `.dlg-agent-model-*` 与
-// 新增的 `.agent-runtime-*` / `.dlg-agent-runtime-*`（域 css unlayered，压
-// utility 层），两处消费各带自己的前缀：概览 tab = `agent-model` /
-// `agent-runtime`，创建弹窗 = `dlg-agent-model` / `dlg-agent-runtime`。
+// 几何正本（#952，agent-detail.css 退役）：触发钮皮肤与菜单锚边/封顶是本文件
+// 的 AGENT_/DLG_AGENT_ SELECT_* utility 常量（原 `.agent-*-select` /
+// `.dlg-agent-*-select` 与 `.ui-select-menu.<prefix>-menu` 复合覆盖的等值迁移），
+// 经 Select 的 triggerClassName/menuClassName 位注入；e2e 句柄仍走 prefix：
+// 概览 tab = `agent-model` / `agent-runtime`，创建弹窗 = `dlg-agent-model` /
+// `dlg-agent-runtime`。
 
 import { modelEchoLabel, providerEchoLabel } from '../components/model-select-core.js';
 import { Select, type SelectOption } from '../components/ui/select.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
+
+/** 概览 tab 触发钮（原 .agent-model-select / .agent-runtime-select /
+ *  .agent-skill-select 三选择器同值）：32 高带框盒形（card-border 描边 +
+ *  surface 底 + 13px 字 + 6 gap + 10px 横垫）。ghost 底座七通道中和
+ *  （spec/22 §5.0）：本钮是带框盒形，hover/aria-expanded 回 surface 皮肤
+ *  而非透明（RES_SORT_TRIGGER_CLS 同律），无按下位移。 */
+export const AGENT_SELECT_TRIGGER_CLS =
+  'h-8 cursor-pointer gap-1.5 rounded-none border border-(--card-border) bg-(--surface) px-2.5 text-[13px] text-(--text-primary) hover:bg-(--surface) hover:text-(--text-primary) dark:hover:bg-(--surface) aria-expanded:bg-(--surface) aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0';
+
+/** 创建弹窗触发钮（原 .dlg-agent-model-select / .dlg-agent-runtime-select）：
+ *  36 高、撑满行宽、文案贴左值贴右（space-between）、12px 横垫；皮肤与中和
+ *  同概览档。 */
+export const DLG_AGENT_SELECT_TRIGGER_CLS =
+  'h-9 w-full cursor-pointer justify-between gap-1.5 rounded-none border border-(--card-border) bg-(--surface) px-3 text-[13px] text-(--text-primary) hover:bg-(--surface) hover:text-(--text-primary) dark:hover:bg-(--surface) aria-expanded:bg-(--surface) aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0';
+
+/** 概览 tab 菜单锚边（原 `.ui-select-menu.agent-*-menu { left:auto; right:0 }`）：
+ *  触发钮在模板行的值槽位（行右缘），贴右缘向下展开——锚错边菜单就往**外**长，
+ *  越过 `.res-col` 的横向裁切被切掉一截（#486/#494 前车）。 */
+export const AGENT_SELECT_MENU_CLS = 'left-auto right-0';
+
+/** 创建弹窗菜单锚位（原 `.ui-select-menu.dlg-agent-*-menu`）：模型槽是表单最后
+ *  一个字段，下方紧贴底栏——向下展开必被压住（实测只剩首行露出来），故向上
+ *  展开：底边贴触发钮上缘（4px 锚距），横向仍左锚（触发钮撑满行宽，右锚会往
+ *  左冒出行左缘；左锚冒的是弹窗体自己的 16px 内垫）。封顶 192：菜单的
+ *  containing block（触发钮 wrap）在 dialog-body 这个 overflow-y:auto 滚动盒里，
+ *  触发钮上缘到 body 上缘实测 200~202px，192 留 ≥8px 余量整块落在盒内，超出的
+ *  行交给菜单自滚（XMON-39：44 行候选时 300 壳档顶进裁剪带，前几行既画不出来
+ *  也点不中）。改这条前先量触发钮上缘与 body 上缘之差，封顶值不得越过去——
+ *  agent-create-model.spec 的几何断言钉着它。 */
+export const DLG_AGENT_SELECT_MENU_CLS = 'top-auto bottom-[calc(100%+4px)] max-h-[192px]';
+
+/** 运行时/skill 菜单最小宽（原 `.ui-select-menu.agent-runtime-menu` /
+ *  `.agent-skill-menu` / `.dlg-agent-runtime-menu` 的 180）：候选都是短标识
+ *  （r3-gw / Claude Code / agent-reach），180 够装；模型菜单吃壳默认 220
+ *  （模型名长度随 provider 自定，比触发钮宽才装得下）。 */
+export const AGENT_SELECT_MENU_NARROW_CLS = 'min-w-[180px]';
 
 /** 内置 (pi) 的显示词（provider null/'pi' 的读回形）：一级选择器的清空行与
  *  触发钮回读同词，与 #499 只读行时期的运行时档文案逐字一致（原 agent-detail
@@ -67,13 +105,24 @@ interface AgentRuntimeSelectProps {
   options: ModelOption[];
   /** 选定回调；级联清二级的决定权在调用面（存值形态各面不同）。 */
   onPick?: (provider: string | null) => void;
-  /** 类名前缀——两个消费点的 e2e 各自钉自己的钩子，几何也各归各的域 CSS。 */
+  /** 类名前缀——两个消费点的 e2e 各自钉自己的钩子（零规则句柄类）。 */
   prefix: string;
+  /** 触发钮皮肤位（AGENT_/DLG_AGENT_ SELECT_TRIGGER_CLS，消费面选档）。 */
+  triggerClassName?: string;
+  /** 菜单几何位（锚边/封顶/最小宽，消费面拼档）。 */
+  menuClassName?: string;
 }
 
 /** 一级：运行时/服务商。行 = provider 分组名（custom provider 的 label /
  *  runtime 段品牌名 `Claude Code`），首行恒是「内置 (pi)」清空档。 */
-export function AgentRuntimeSelect({ value, options, onPick, prefix }: AgentRuntimeSelectProps) {
+export function AgentRuntimeSelect({
+  value,
+  options,
+  onPick,
+  prefix,
+  triggerClassName,
+  menuClassName,
+}: AgentRuntimeSelectProps) {
   const { t } = useI18n();
   const groups = providerGroups(options);
   const rows: SelectOption[] = groups.map((group) => ({
@@ -93,6 +142,8 @@ export function AgentRuntimeSelect({ value, options, onPick, prefix }: AgentRunt
       label={label}
       unsetLabel={unset}
       menuLabel={t('运行时')}
+      triggerClassName={triggerClassName}
+      menuClassName={menuClassName}
       onPick={(next) => onPick?.(next)}
     />
   );
@@ -107,6 +158,10 @@ interface AgentModelSelectProps {
   onPick?: (modelId: string | null) => void;
   /** 类名前缀——同 AgentRuntimeSelect。 */
   prefix: string;
+  /** 触发钮皮肤位——同 AgentRuntimeSelect。 */
+  triggerClassName?: string;
+  /** 菜单几何位——同 AgentRuntimeSelect。 */
+  menuClassName?: string;
 }
 
 /** 二级：当前运行时/服务商名下的具体模型。 */
@@ -116,6 +171,8 @@ export function AgentModelSelect({
   options,
   onPick,
   prefix,
+  triggerClassName,
+  menuClassName,
 }: AgentModelSelectProps) {
   const { t } = useI18n();
   const rows: SelectOption[] = options
@@ -135,6 +192,8 @@ export function AgentModelSelect({
       unsetLabel={unset}
       menuLabel={t('模型')}
       disabled={provider === null}
+      triggerClassName={triggerClassName}
+      menuClassName={menuClassName}
       onPick={(next) => onPick?.(next)}
     />
   );

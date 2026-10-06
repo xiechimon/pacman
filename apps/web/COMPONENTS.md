@@ -2,29 +2,22 @@
 
 > 这份文件只回答一个问题：**要写一个新的 UI 件之前，先看这里——已有的能不能直接用。**
 > 「长什么样」（颜色 / 字号 / 圆角 / 阴影 / 动效 / 各件的视觉规格）在 [DESIGN.md](./DESIGN.md)；本文件管「**有哪些、在哪、该复用谁**」。
-> 三条机器门钉住它不腐烂（`test/ui-reuse-inventory.test.ts`）：新轨每件必须登记、清单里的件必须真实存在、旧轨冻结不许加件。
+> 三条机器门钉住它不腐烂（`test/ui-reuse-inventory.test.ts`）：新轨每件必须登记、清单里的件必须真实存在、旧轨终态（`src/ui/` 目录不得复活）。
 
-## 一、迁移期双轨（先看这条）
+## 一、单轨（旧轨已退役）
 
 | 轨 | 位置 | 状态 |
 |---|---|---|
-| **新轨** | `src/components/ui/` | **新代码一律落这里。** shadcn 件 + Base UI 基（#410 裁决），带仓内偏离记录 |
-| **旧轨** | `src/ui/` | 待退役的手工件（现存 `chip` / `dialog` / `input`，各带 `.css`；`avatar` / `kbd-hint` / `tag-chip` 已迁新轨，#535；`card` 已删——消费点全数迁 `components/ui/card.js`，#658；`button` 已删——消费点全数迁 `components/ui/button.js`，#670）。**只许删、不许加**（#417 裁决，机器门钉住） |
+| **唯一轨** | `src/components/ui/` | **新代码一律落这里。** shadcn 件 + Base UI 基（#410 裁决），带仓内偏离记录 |
+| ~~旧轨~~ | ~~`src/ui/`~~ | **已整目录删除（#952，spec/22 §5 退役正典表执行完毕）**：`chip`→`status-chip.tsx`（#942）、`input`→`components/ui/input.tsx`（#944）、`dialog.css` 表单族→utility 等值迁移 + `dialog-shell.tsx` 机制内联（#952）。机器门钉住目录不得复活 |
 | 弹层族 | `src/overlay/` + `src/overlays/` | 挂在共享壳上（见第三节），**不自己手搓 OverlayMount + useEscClose** |
-
-规矩一句话：**改已有消费点时才碰旧轨；写新件进新轨。**
 
 <!-- inventory:old-track-frozen -->
 ```text
-chip.css
-chip.tsx
-dialog.css
-input.css
-input.tsx
 ```
 <!-- /inventory:old-track-frozen -->
 
-（上面这段是机器门读的冻结名单：`src/ui/` 里出现名单外的新件即报错——迁移期的删除不报错。）
+（上面这段是机器门读的终态名单：旧轨已删空，名单恒空；`src/ui/` 目录重新出现即报错。）
 
 ## 二、新轨原语（25）
 
@@ -36,8 +29,8 @@ avatar.tsx               # shadcn Avatar 三件套（Root/Image/Fallback，底�
 badge.tsx                # 计数 / 标签 pill；任务状态语义色族见 DESIGN.md
 button.tsx               # 三态 Primary/Ghost/Icon；仓内偏离：focus 环走仓级 #388 canon
 card.tsx
-checkbox.tsx             # 复选（原生 input + 自制 tile）；**别直接摆裸 `<input type="checkbox">`**——浏览器自带方框与仓内复选行不同族
-dialog-shell.tsx         # 对话框共用底座（11 个消费点，API 与旧轨逐字相同）
+checkbox.tsx             # 复选（Base UI 官方件 + 件上 utility 皮肤；三态 `indeterminate` 一等 prop，#952）；**别直接摆裸 `<input type="checkbox">`**——浏览器自带方框与仓内复选行不同族
+dialog-shell.tsx         # 对话框共用底座（e2e 载体 = role=dialog 可及名 + dialog-head/-body/-foot testid，spec/22 §5.5）
 dialog.tsx
 dropdown-menu.tsx
 empty.tsx
@@ -48,7 +41,7 @@ kbd.tsx                  # 按键角标原语（文档正文里的 ⌘K 角标�
 panel.tsx                # 静息内容容器消解（Panel/PanelHead/PanelRow/PanelLabel/PanelValue）：贴在页面里的方框一律用它；皮肤档 quiet/outlined，per-face 数值留属地 css
 popover.tsx
 seeded-avatar.tsx        # dicebear 种子头像适配层（src 覆盖 > name 种子 > 兜底换图，img 常驻 DOM）；头像一律用它
-select.tsx               # 单选下拉（触发钮 + FloatingShell 弹层 + role=listbox）；**别再用原生 `<select>`**——它弹的是系统菜单，跟自制弹层并排就是两套弹窗
+select.tsx               # 单选下拉（触发钮 + FloatingShell 弹层 + role=listbox；面几何走 triggerClassName/menuClassName 两位，#952）；**别再用原生 `<select>`**——它弹的是系统菜单，跟自制弹层并排就是两套弹窗
 status-chip.tsx          # 任务状态五态 chip（idle/plan/confirm/done/failed，皮肤 = --chip-* token 对）；落在 badge.tsx 上，状态载体 data-tone；替旧轨 ui/chip.tsx（正典表 spec/22 §5.2，#942）
 switch.tsx               # 仓内偏离：thumbClassName 适配口
 tag-chip.tsx             # 用户数据色标签 chip（tag.color 走 inline style 白字）；落在 badge.tsx 上，别新建皮肤件
@@ -65,12 +58,12 @@ toaster.tsx              # toast 原语（sonner，shadcn 官方配方；#631）
 | 要做的面 | 用什么 | 别做什么 |
 |---|---|---|
 | 按钮 / 图标按钮 | `components/ui/button.tsx` | 别新写 `<button>` + 自造类 |
-| 输入框 | `components/ui/input.tsx` | 别沿用旧轨 `ui/input.tsx` 新起消费点 |
+| 输入框 | `components/ui/input.tsx` | 别摆裸 `<input>`（deliberate-native 标记除外） |
 | 多行输入 | `components/ui/textarea.tsx` | 别摆裸 `<textarea>` / 别沿用 `.dlg-form-textarea` 老类 |
-| 任务状态 chip（五态） | `components/ui/status-chip.tsx`（退役正典表 = spec/22 §5，#942） | 旧轨 `chip.tsx` 退役中，别加新消费 |
+| 任务状态 chip（五态） | `components/ui/status-chip.tsx`（退役正典表 = spec/22 §5，#942） | 别新写 `.chip--*` 类族（ui-drift-gate G3 钉） |
 | 开关 | `components/ui/switch.tsx` | — |
 | 标签页 | `components/ui/tabs.tsx` | — |
-| 计数 / 标签 pill | `components/ui/badge.tsx`（状态色族） | 旧轨 `chip.tsx` 待退役，别加新消费 |
+| 计数 / 标签 pill | `components/ui/badge.tsx`（状态色族） | 状态五态走 `status-chip.tsx`，别混两种载体 |
 | 空态 | `components/ui/empty.tsx` | 别每处自写空态文案块 |
 | 确认对话框 | `components/ui/alert-dialog-shell.tsx` | 别手搓 `OverlayMount` + `useEscClose` |
 | 普通对话框 | `components/ui/dialog-shell.tsx` | 消费点只改 import 路径即可（API 逐字相同） |

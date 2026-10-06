@@ -270,7 +270,7 @@ try {
       .catch(() => {});
     pickerOpened = await softVisible(page, '[role="dialog"] input[aria-label="搜索服务商..."]');
     if (pickerOpened) {
-      await page.click('[role="dialog"] .dlg-close').catch(() => {});
+      await page.click('[role="dialog"] button[aria-label="关闭"]').catch(() => {});
       await page
         .waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 })
         .catch(() => {});

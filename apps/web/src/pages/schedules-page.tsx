@@ -22,7 +22,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu.js';
-import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
+import { EXIT_BRIDGE_SLOW_CLS, FloatingShell } from '../components/ui/floating-shell.js';
+import { Select } from '../components/ui/select.js';
 import { toastError } from '../components/ui/toaster.js';
 import { markDeleted, withoutDeleted } from '../fixtures/deletions.js';
 import type { FixtureSet, ScheduleRecord } from '../fixtures/records.js';
@@ -30,8 +31,6 @@ import { resolveScenario } from '../fixtures/scenario.js';
 import { useI18n } from '../i18n/provider.js';
 import type { TFunc } from '../i18n/translate.js';
 import {
-  Check,
-  ChevronDown,
   ChevronRight,
   Clock,
   EllipsisVertical,
@@ -42,7 +41,6 @@ import {
   X,
 } from '../icons/index.js';
 import { DeleteConfirm } from '../overlay/delete-confirm.js';
-import { ClickCatcher } from '../overlays/dismiss.js';
 import { PHASE_UI } from '../phase.js';
 import {
   GHOST_SEG_BTN_CLS,
@@ -131,24 +129,16 @@ const CHIP_TONE_CLS: Record<'idle' | 'plan' | 'confirm' | 'done' | 'failed', str
 const ICON_BTN_24_CLS =
   'size-6 cursor-pointer rounded-none border-none bg-transparent p-0 text-(--text-tertiary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) aria-expanded:hover:text-(--text-secondary) font-normal leading-none active:not-aria-[haspopup]:translate-y-0';
 
-/** 时/分/日期选择盒（#946）：Select 件无 className 透传位，本面几何
- *  （fit-content 触发盒 / 菜单贴盒宽 / 32 高带框）无法经 utility 类上件——
- *  按 #908 comment-6001887439 的共享件 API 缺口出路，就地消费 Select 同款
- *  底座三件（Button + FloatingShell + ClickCatcher）+ 零 CSS 工具类皮肤，
- *  components/ui/ 一字不动。语义面与 XMON-75 件契约逐项等同：触发钮
- *  aria-haspopup=listbox + aria-expanded、弹层 role=listbox + aria-label、
- *  行 role=option + aria-selected、选中即关面、Esc/外点关归 FloatingShell
- *  家族律——integration 面的语义钩子（button[aria-label=时|分] +
- *  [role=listbox][aria-label] + option 名）零漂移。皮肤 = 原
- *  .sched-form-select 触发盒 + select.css 共用盘/行外观 + 本面
- *  min-width:100% 覆写的等值 utility。收敛动作（Select 加 className 位后
- *  回收本面）报 #908 归 #952。 */
+/** 时/分/日期选择盒（#946 建局部壳；#952 回收进共享 Select 件——className
+ *  透传位已落件上，本面几何走 triggerClassName/menuClassName 两位）：皮肤 =
+ *  原 .sched-form-select 触发盒（fit-content / 32 高带框）等值 utility + 件
+ *  共用盘/行外观（select.tsx SELECT_* 单源）+ 本面 min-width:100% 覆写。
+ *  语义面（aria-haspopup/expanded、role=listbox/option、aria-selected、选中
+ *  即关、Esc/外点关归 FloatingShell 家族律）全由件契约承载，integration 面的
+ *  语义钩子（button[aria-label=时|分] + [role=listbox][aria-label] + option
+ *  名）零漂移。 */
 const SEL_TRIGGER_CLS =
   "h-8 w-fit min-w-14 cursor-pointer justify-start gap-1.5 rounded-none border border-(--border-default) bg-transparent px-2 text-[13px] font-normal leading-[inherit] text-(--text-primary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0 [&_svg]:text-(--text-tertiary) [&_svg:not([class*='size-'])]:size-3";
-const SEL_MENU_CLS =
-  "absolute top-[calc(100%+8px)] left-0 z-(--z-popover) flex max-h-[300px] w-max min-w-full max-w-[360px] flex-col overflow-y-auto rounded-none border border-(--border-default) bg-(--popover-bg) p-3 shadow-(--edge-shadow) before:absolute before:top-px before:left-4 before:h-1.5 before:w-3 before:bg-(--border-default) before:[clip-path:polygon(0_100%,50%_0,100%_100%)] before:content-[''] after:absolute after:top-0.5 after:left-[17px] after:h-[5px] after:w-2.5 after:bg-(--popover-bg) after:[clip-path:polygon(0_100%,50%_0,100%_100%)] after:content-['']";
-const SEL_ROW_CLS =
-  'h-auto w-full cursor-pointer justify-start gap-2 rounded-[6px] border-none bg-transparent px-0 py-1.5 text-left text-[13px] font-normal leading-[inherit] text-(--text-primary) hover:bg-(--surface-secondary) hover:text-(--text-primary) dark:hover:bg-(--surface-secondary) active:not-aria-[haspopup]:translate-y-0';
 
 function SchedSelect({
   value,
@@ -168,57 +158,20 @@ function SchedSelect({
   triggerLabel: string;
   onPick: (value: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [wrap, setWrap] = useState<HTMLSpanElement | null>(null);
-  const pick = (next: string) => {
-    setOpen(false); // accept 律：选择即关
-    onPick(next);
-  };
   return (
-    <span className="relative inline-flex w-fit" ref={setWrap}>
-      <Button
-        variant="ghost"
-        className={SEL_TRIGGER_CLS}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={triggerLabel}
-        onClick={() => setOpen((prev) => !prev)}
-      >
-        <span className="min-w-0 truncate">{label}</span>
-        <ChevronDown width={12} height={12} />
-      </Button>
-      <FloatingShell
-        open={open}
-        onClose={() => setOpen(false)}
-        container={wrap}
-        className="anchored-pop-shell"
-      >
-        <ClickCatcher onClose={() => setOpen(false)} />
-        <div
-          className={`${SEL_MENU_CLS} ${FLOATING_POP_ANIM}`}
-          role="listbox"
-          aria-label={menuLabel}
-        >
-          {options.map((row) => (
-            <Button
-              key={row.value}
-              variant="ghost"
-              className={SEL_ROW_CLS}
-              role="option"
-              aria-selected={row.value === value}
-              onClick={() => pick(row.value)}
-            >
-              <span className="min-w-0 flex-1 truncate">{row.label}</span>
-              {row.value === value && (
-                <span className="inline-flex">
-                  <Check width={14} height={14} />
-                </span>
-              )}
-            </Button>
-          ))}
-        </div>
-      </FloatingShell>
-    </span>
+    <Select
+      value={value}
+      options={options}
+      label={label}
+      menuLabel={menuLabel}
+      triggerLabel={triggerLabel}
+      triggerClassName={SEL_TRIGGER_CLS}
+      menuClassName="min-w-full"
+      onPick={(next) => {
+        // 本面词表无清空档（unsetLabel 缺省）：null 不可达，窄回 string。
+        if (next !== null) onPick(next);
+      }}
+    />
   );
 }
 
@@ -355,11 +308,7 @@ function ScheduleForm({
   const todo = live ? live.todo : fixture.todos[0];
   const repo = live ? live.repo : (fixture.project?.repoName ?? '');
   return (
-    <FloatingShell
-      open={open}
-      onClose={onClose}
-      className="anchored-pop-shell anchored-pop-shell--slow"
-    >
+    <FloatingShell open={open} onClose={onClose} className={EXIT_BRIDGE_SLOW_CLS}>
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: Esc closes — see comment */}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop is a click-to-dismiss surface */}
       <div

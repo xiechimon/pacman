@@ -25,8 +25,8 @@
 // （进行中行、记忆排序触发器与选项行、名称行内编辑）换底座。排序钮/盘的
 // 几何与配色正本原住 resources.css 的 `.res-sort*`，#944 起迁
 // resources/parts.tsx 的 RES_* utility 常量（与 skills 页单源）；其余钮的
-// 正本仍住 agent-detail.css（域 css unlayered，压 utility 层），契约面逐值
-// 不动。底座带进来的差额在消费点就地并掉：
+// 正本原住 agent-detail.css，#952 起迁本文件的 AGENT_* utility 常量（等值
+// 迁移，契约面逐值不动）。底座带进来的差额在消费点就地并掉：
 // `justify-start` / `gap-0`（散写形是 flex-start、无序间距）、`h-auto`（行钮
 // 没有定高，底座 h-8 会把 `进行中` 行与名称钮钉成 32px）、`rounded-none`
 // （`.agent-task-row` 无圆角，底座 rounded-lg 会让 hover 底色带弧）、
@@ -52,6 +52,7 @@ import {
   type PatchAgentBody,
   THINKING_LEVELS,
 } from '@pacman/shared';
+import { cn } from 'cn';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import {
@@ -67,7 +68,17 @@ import {
 } from '../api/hooks.js';
 import { toModelOptions, toThinkingLevelDisplay } from '../api/mappers.js';
 import { useLiveData } from '../api/provider.js';
-import { ProfileAvatar, ProfileCard, ProfileHead, ProfileRow } from '../components/profile-card.js';
+import {
+  PROFILE_HINT_CLS,
+  PROFILE_ROW_AUTO_CLS,
+  PROFILE_ROW_NAME_CLS,
+  PROFILE_VALUE_EDITOR_CLS,
+  PROFILE_VALUE_GROW_CLS,
+  ProfileAvatar,
+  ProfileCard,
+  ProfileHead,
+  ProfileRow,
+} from '../components/profile-card.js';
 import { Button } from '../components/ui/button.js';
 import {
   DropdownMenu,
@@ -82,6 +93,7 @@ import { Select } from '../components/ui/select.js';
 import { StatusChip } from '../components/ui/status-chip.js';
 import { Switch } from '../components/ui/switch.js';
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs.js';
+import { Textarea } from '../components/ui/textarea.js';
 import { toastError } from '../components/ui/toaster.js';
 import { isDeleted, markDeleted } from '../fixtures/deletions.js';
 import { resolveScenario } from '../fixtures/scenario.js';
@@ -106,12 +118,52 @@ import {
 } from '../resources/parts.js';
 import { SECRETS_HREF } from '../resources/secrets-page.js';
 import { ResourceShell } from '../resources/shell.js';
-import './agent-detail.css';
-import { AgentModelSelect, AgentRuntimeSelect } from './agent-model-select.js';
+import {
+  AGENT_SELECT_MENU_CLS,
+  AGENT_SELECT_MENU_NARROW_CLS,
+  AGENT_SELECT_TRIGGER_CLS,
+  AgentModelSelect,
+  AgentRuntimeSelect,
+} from './agent-model-select.js';
 
 /** 资源族根路径（非侧栏行——原版命令面板「前往」清单里没有 Agents 行，
  *  r2 §8.4；本面只从团队页的卡进入）。 */
 export const AGENTS_HREF = '/app/resources/agents';
+
+/* —— #952 面配方（agent-detail.css 退役，spec/22 §3.1 等值迁移）——
+   几何/皮肤逐值取原 per-face 规则；ghost 底座差额按七通道律中和
+   （spec/22 §5.0，#908 comment-6001887439 裁决 3）。类名句柄原样输出
+   （agent-detail.spec 的 e2e 锚，零规则）。 */
+
+/** 名称值钮（原 .agent-name 两律 + ghost 差额并项）：15px 值墨，hover 换
+ *  主题色（原形真换墨，不是中和到自身）。 */
+const AGENT_NAME_CLS =
+  'agent-name h-auto cursor-pointer justify-start gap-0 rounded-none border-none bg-transparent p-0 text-left text-[15px] font-normal leading-[inherit] text-(--text-primary) hover:bg-transparent hover:text-(--card-button) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0';
+
+/** 图标编辑钮（原 .agent-name-edit / .agent-role-edit 两律 + 中和）：
+ *  tertiary 墨，hover 回 primary；只留 padding 盒（size-7 由 icon-sm 底座给，
+ *  图标-only 钮不吃底座字号）。 */
+const AGENT_ICON_EDIT_CLS =
+  'p-0 text-(--text-tertiary) hover:bg-transparent hover:text-(--text-primary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-primary) active:not-aria-[haspopup]:translate-y-0';
+
+/** 名称编辑器（原 .agent-name-input）：32 高带框盒（件底座 h-8/w-full/
+ *  rounded-none/px-2.5 即原值，只补皮肤差）；15px 值墨同显示态。focus 环走
+ *  件底座（#855 收敛律）。 */
+const AGENT_NAME_INPUT_CLS =
+  'agent-name-input border-(--card-border) bg-(--surface) text-[15px] text-(--text-primary) md:text-[15px] dark:bg-(--surface)';
+
+/** 职责编辑器（原 .agent-role-input，裸 textarea 收编 Textarea 件）：13px 墨
+ *  + card-border/surface 皮肤；min-h 64 / 8+10 垫 / 方角即件正典（min-h-16 /
+ *  py-2 px-2.5 / rounded-none）。旧 resize:vertical 随件退役——
+ *  field-sizing-content 自增长替代手动拖拽（spec/22 §5.3 同律）。 */
+const AGENT_ROLE_INPUT_CLS =
+  'agent-role-input border-(--card-border) bg-(--surface) text-[13px] text-(--text-primary) md:text-[13px] dark:bg-(--surface)';
+
+/** 进行中任务行（原 .agent-task-row 两律 + 既有差额并项）：整块行钮，
+ *  hover 跟主题色（P4 #791，base-ui-theme §1.1）；行高由内容定（h-auto），
+ *  方角（rounded-none）免 hover 底色带弧。 */
+const AGENT_TASK_ROW_CLS =
+  "agent-task-row h-auto w-full cursor-pointer justify-start gap-2 rounded-none border-none bg-transparent px-4 py-2.5 text-left font-normal leading-[inherit] text-inherit hover:bg-(--accent-soft) hover:text-inherit dark:hover:bg-(--accent-soft) aria-expanded:bg-transparent aria-expanded:text-inherit active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-3";
 
 type AgentTab = 'overview' | 'memory' | 'permissions';
 
@@ -259,8 +311,10 @@ export function AgentDetailPage() {
         hideNew
         fixture={fixture}
       >
-        <div className="agent-detail">
-          <p className="agent-missing">{t('找不到该 Agent。它可能已被删除。')}</p>
+        <div className="agent-detail flex flex-col gap-4">
+          <p className="agent-missing text-[13px] text-(--text-tertiary)">
+            {t('找不到该 Agent。它可能已被删除。')}
+          </p>
         </div>
       </ResourceShell>
     );
@@ -296,7 +350,7 @@ export function AgentDetailPage() {
       hideNew
       fixture={fixture}
     >
-      <div className="agent-detail">
+      <div className="agent-detail flex flex-col gap-4">
         <Tabs value={tab} onValueChange={(value) => setTab(value as AgentTab)}>
           <TabsList
             variant="segmented"
@@ -318,7 +372,7 @@ export function AgentDetailPage() {
         </Tabs>
 
         {tab === 'overview' && (
-          <div className="agent-overview">
+          <div className="agent-overview flex flex-col gap-3.5">
             {/* XMON-117：概览按 `/app/account` 的个人页模板复刻——原来是一列
                 各自带 label 的散块，现在是**一张** profile 卡：居中头像头 +
                 行式字段（label 左、值槽右，行间 1px 分隔线）。
@@ -349,12 +403,14 @@ export function AgentDetailPage() {
                 hint={t(AGENT_PERMISSION_COPY.defaultSkill)}
                 labelClassName="agent-field-label"
               >
-                {/* XMON-75：这一格此前是裸 `<select>`，弹的是 macOS 系统菜单——
+                {/* XMON-75：这一格此前是裸 select 控件，弹的是 macOS 系统菜单——
                     与紧邻的模型选择器（自制弹层）并排就是两套弹窗。换成同一个
                     Select 壳后两格同形。值回显同模型面：候选里没有的值（技能已
                     被删除）出裸 id，不空白。 */}
                 <Select
                   prefix="agent-skill"
+                  triggerClassName={AGENT_SELECT_TRIGGER_CLS}
+                  menuClassName={`${AGENT_SELECT_MENU_CLS} ${AGENT_SELECT_MENU_NARROW_CLS}`}
                   value={defaultSkill}
                   options={skillOptions.map((skill) => ({ value: skill.id, label: skill.name }))}
                   label={
@@ -384,6 +440,8 @@ export function AgentDetailPage() {
                     patch({ provider: next, modelId: null });
                   }}
                   prefix="agent-runtime"
+                  triggerClassName={AGENT_SELECT_TRIGGER_CLS}
+                  menuClassName={`${AGENT_SELECT_MENU_CLS} ${AGENT_SELECT_MENU_NARROW_CLS}`}
                 />
               </ProfileRow>
               <ProfileRow label={t('模型')} labelClassName="agent-field-label">
@@ -393,12 +451,16 @@ export function AgentDetailPage() {
                   options={modelOptions}
                   onPick={(next) => patch({ modelId: next })}
                   prefix="agent-model"
+                  triggerClassName={AGENT_SELECT_TRIGGER_CLS}
+                  menuClassName={AGENT_SELECT_MENU_CLS}
                 />
               </ProfileRow>
               <ProfileRow label={t('思考强度')} labelClassName="agent-field-label">
                 {/* 只读值行（B1 裁「保持只读」）：值经能力读面词表解析，不直接
                     透出存值——引擎没有的档位不呈现（#499 B3 / XMON-16）。 */}
-                <span className="agent-thinking">{thinkingLevel ?? t('默认')}</span>
+                <span className="agent-thinking text-[13px] text-(--text-primary)">
+                  {thinkingLevel ?? t('默认')}
+                </span>
               </ProfileRow>
             </ProfileCard>
             {/* 进行中（原版概览最后一段；r3 53 截图拍到的是空态
@@ -409,13 +471,15 @@ export function AgentDetailPage() {
                 按钮，落点 = 任务详情（原件 TaskRow onPress 走 todo.id）。
                 行间不画分隔线——原件 Agent 详情这一处没传 `divided`（机器详情
                 的同款列表才传），照抄。 */}
-            <div className="agent-tasks">
-              <p className="agent-tasks-head">
+            <div className="agent-tasks overflow-hidden rounded-[10px] border border-(--border-default) bg-(--surface-secondary) py-1.5">
+              <p className="agent-tasks-head m-0 px-4 pb-0.5 pt-1 text-[11px] font-medium leading-4 text-(--text-tertiary)">
                 {t('进行中')}
                 {agentTasks.length > 0 ? ` · ${agentTasks.length}` : ''}
               </p>
               {agentTasksPending ? null : agentTasks.length === 0 ? (
-                <p className="agent-tasks-empty">{t('暂无进行中的任务')}</p>
+                <p className="agent-tasks-empty m-0 px-4 py-1.5 text-xs leading-4 text-(--text-tertiary)">
+                  {t('暂无进行中的任务')}
+                </p>
               ) : (
                 agentTasks.map((row) => {
                   // `state === 'waiting'`（build 已建、尚无机器领取）落
@@ -426,15 +490,22 @@ export function AgentDetailPage() {
                     <Button
                       key={row.buildId}
                       variant="ghost"
-                      className="agent-task-row justify-start h-auto rounded-none font-normal leading-[inherit] [&_svg:not([class*='size-'])]:size-3"
+                      className={AGENT_TASK_ROW_CLS}
                       onClick={() => navigate(`/app/todo/${row.todo.id}`)}
                     >
-                      <span className="agent-task-seq">#{row.todo.seqNum}</span>
-                      <span className="agent-task-title">{row.todo.title}</span>
+                      <span className="agent-task-seq flex-none text-xs text-(--text-tertiary)">
+                        #{row.todo.seqNum}
+                      </span>
+                      <span className="agent-task-title min-w-0 flex-[1_1_auto] truncate text-[13px] text-(--text-primary)">
+                        {row.todo.title}
+                      </span>
                       <StatusChip tone={ui.tone} size="sm">
                         {t(ui.chip)}
                       </StatusChip>
-                      <span className="agent-task-go" aria-hidden="true">
+                      <span
+                        className="agent-task-go inline-flex flex-none text-(--text-tertiary)"
+                        aria-hidden="true"
+                      >
                         <ChevronRight width={12} height={12} />
                       </span>
                     </Button>
@@ -444,7 +515,7 @@ export function AgentDetailPage() {
             </div>
             {/* 删除入口（r3 §4：概览页脚「删除 Agent」，在状态行之下）。按
                 钮文案 = 原版语料 agent_modal.remove 原文。 */}
-            <div className="agent-danger">
+            <div className="agent-danger mt-1.5 flex">
               <Button
                 variant="destructive"
                 size="sm"
@@ -458,11 +529,11 @@ export function AgentDetailPage() {
         )}
 
         {tab === 'memory' && (
-          <div className="agent-memories">
+          <div className="agent-memories flex flex-col gap-2">
             {/* 配额头（r5 §6 原文 `记忆 · 1 / 100`）。n = 存量条数——配额记的
                 是 Agent 上存了多少，不随搜索收窄；上限取 shared 单源常量，
                 不在这写死 100（server 的超限 409 走同一个常量）。 */}
-            <p className="agent-memory-head">
+            <p className="agent-memory-head m-0 text-xs text-(--text-tertiary)">
               {t('记忆 · {n} / {max}', {
                 n: memories.length,
                 max: MEMORY_QUOTA_PER_AGENT,
@@ -472,15 +543,17 @@ export function AgentDetailPage() {
               /* 空态文案 = shared MEMORY_EMPTY_COPY（02 §4.4/r5 §6 canon，总管
                  设置记忆 tab 同文），经 t() 消费、不作字面量出现。空列表不摆
                  搜索/排序控件（skills-page 先例：空态顶掉工具行）。 */
-              <p className="agent-memory-empty">{t(MEMORY_EMPTY_COPY)}</p>
+              <p className="agent-memory-empty m-0 text-[13px] text-(--text-tertiary)">
+                {t(MEMORY_EMPTY_COPY)}
+              </p>
             ) : (
               <>
                 {/* 搜索框 + 排序钮行：盒形与开合行为复用资源族既有面
                     （#306 家族律；#944 起正本 = resources/parts.tsx 的
                     RES_* utility 常量，resources.css 已退役），不另造一套。
-                    agent-memory-* 类名是本域句柄（agent-detail.css /
-                    agent-detail.spec 面，#952），原样保留。 */}
-                <div className={`agent-memory-search ${RES_SEARCH_ROW_CLS}`}>
+                    agent-memory-* 类名是本域句柄（agent-detail.spec 面，
+                    零规则），原样保留。 */}
+                <div className={`agent-memory-search flex-none ${RES_SEARCH_ROW_CLS}`}>
                   <div className={RES_SEARCH_BOX_CLS}>
                     <Search width={13} height={13} />
                     <Input
@@ -538,7 +611,9 @@ export function AgentDetailPage() {
                 {visibleMemories.length === 0 ? (
                   /* 搜不到 ≠ 没有记忆：canon 空态说的是「一条都没存过」，
                      [设计] 另起一行，不改用 MEMORY_EMPTY_COPY。 */
-                  <p className="agent-memory-no-match">{t('没有匹配的记忆。')}</p>
+                  <p className="agent-memory-no-match m-0 text-[13px] text-(--text-tertiary)">
+                    {t('没有匹配的记忆。')}
+                  </p>
                 ) : (
                   /* XMON-117：记忆行落进同一张模板卡（一卡多行、行间分隔线），
                      不再一条一张描边卡。行不是 label/值对（没有左侧字段名），
@@ -547,11 +622,15 @@ export function AgentDetailPage() {
                     {visibleMemories.map((memory) => (
                       <div
                         key={memory.id}
-                        className="profile-row profile-row--auto agent-memory-row"
+                        className={cn(PROFILE_ROW_AUTO_CLS, 'agent-memory-row items-start gap-3')}
                       >
-                        <span className="agent-memory-text">
-                          <span className="agent-memory-title">{memory.title}</span>
-                          <span className="agent-memory-content">{memory.content}</span>
+                        <span className="agent-memory-text flex flex-1 flex-col gap-0.5">
+                          <span className="agent-memory-title text-[13px] text-(--text-primary)">
+                            {memory.title}
+                          </span>
+                          <span className="agent-memory-content text-[12px] leading-[1.5] text-(--text-secondary)">
+                            {memory.content}
+                          </span>
                         </span>
                         <Button
                           variant="ghost"
@@ -583,22 +662,24 @@ export function AgentDetailPage() {
         )}
 
         {tab === 'permissions' && (
-          <div className="agent-perms">
+          <div className="agent-perms flex flex-col gap-[18px]">
             {/* XMON-80/P2：保存失败的显式反馈。本面无乐观更新——开关由服务端
                 值驱动，失败时控件压根没动过，所以「什么都不说」在用户侧 = 点了
                 没反应（XMON-78 实测）。文案是固定句，不透传 server / statusText
                 原文：500 的 body 对用户不可操作，且网络级失败的原文是英文串，
                 混进中文面反而更糊（todo-detail 的被拒提示行同律）。 */}
             {permSaveFailed && (
-              <p className="agent-perm-error" role="alert">
+              <p className="agent-perm-error m-0 text-xs leading-4 text-(--danger)" role="alert">
                 {t('保存失败，请重试。')}
               </p>
             )}
             {/* XMON-117：三组各落一张模板卡（个人页那张卡的同一套行盒）——组名
                 留作段头，行 = label（+ 说明副文案）左、开关右，与个人页的
                 推送通知行同形。 */}
-            <section className="agent-perm-group">
-              <h3 className="agent-perm-title">{t('工具')}</h3>
+            <section className="agent-perm-group flex flex-col gap-2">
+              <h3 className="agent-perm-title m-0 text-[13px] font-medium text-(--text-primary)">
+                {t('工具')}
+              </h3>
               <ProfileCard className="agent-perm-card">
                 {AGENT_TOOL_SWITCHES.map((label) => (
                   <ProfileRow
@@ -622,8 +703,10 @@ export function AgentDetailPage() {
               </ProfileCard>
             </section>
 
-            <section className="agent-perm-group">
-              <h3 className="agent-perm-title">{t('密钥')}</h3>
+            <section className="agent-perm-group flex flex-col gap-2">
+              <h3 className="agent-perm-title m-0 text-[13px] font-medium text-(--text-primary)">
+                {t('密钥')}
+              </h3>
               {/* 授权粒度 = 原版的「全有全无」（#510）：一行「团队密钥 + 总
                   说明 + 单个 switch」。原版 Agent 权限 tab 不展开逐个密钥行
                   （2026-09-30 直读参考产品确认），密钥页的行菜单也只有编辑/
@@ -637,9 +720,19 @@ export function AgentDetailPage() {
                 // parts.tsx 同法），生产 build 里 scenario 参数本就被编译期
                 // 折叠、不参与路由。
                 <ProfileCard className="agent-perm-card">
-                  <div className="profile-row profile-row--auto agent-perm-empty-row">
-                    <p className="agent-perm-empty">{t('暂无团队密钥。')}</p>
-                    <Link className="agent-secret-add" to={{ pathname: SECRETS_HREF, search }}>
+                  <div
+                    className={cn(
+                      PROFILE_ROW_AUTO_CLS,
+                      'agent-perm-empty-row items-baseline gap-2',
+                    )}
+                  >
+                    <p className="agent-perm-empty m-0 text-[13px] text-(--text-tertiary)">
+                      {t('暂无团队密钥。')}
+                    </p>
+                    <Link
+                      className="agent-secret-add text-xs leading-4 text-(--chip-plan-fg) no-underline hover:underline"
+                      to={{ pathname: SECRETS_HREF, search }}
+                    >
                       {t('去添加密钥')}
                     </Link>
                   </div>
@@ -667,15 +760,24 @@ export function AgentDetailPage() {
               )}
             </section>
 
-            <section className="agent-perm-group">
+            <section className="agent-perm-group flex flex-col gap-2">
               {/* 段级说明（整组共用一句，不挂在单行上——挂哪一行都是任选），
                   形随模板的副文案档（12px 三级色）。 */}
-              <h3 className="agent-perm-title">{t('MCP 服务器')}</h3>
-              <p className="profile-hint">{t(AGENT_PERMISSION_COPY.mcpServers)}</p>
+              <h3 className="agent-perm-title m-0 text-[13px] font-medium text-(--text-primary)">
+                {t('MCP 服务器')}
+              </h3>
+              <p className={PROFILE_HINT_CLS}>{t(AGENT_PERMISSION_COPY.mcpServers)}</p>
               {mcpOptions.length === 0 ? (
                 <ProfileCard className="agent-perm-card">
-                  <div className="profile-row profile-row--auto agent-perm-empty-row">
-                    <p className="agent-perm-empty">{t('暂无 MCP 服务器。')}</p>
+                  <div
+                    className={cn(
+                      PROFILE_ROW_AUTO_CLS,
+                      'agent-perm-empty-row items-baseline gap-2',
+                    )}
+                  >
+                    <p className="agent-perm-empty m-0 text-[13px] text-(--text-tertiary)">
+                      {t('暂无 MCP 服务器。')}
+                    </p>
                   </div>
                 </ProfileCard>
               ) : (
@@ -758,21 +860,17 @@ function NameRow({ value, onCommit }: { value: string; onCommit: (next: string) 
     // 行高 49 = 个人页的名称行（r7 13 探测值，模板里唯一加高的一档）
     return (
       <ProfileRow
-        className="profile-row--name"
+        className={PROFILE_ROW_NAME_CLS}
         label={t('名称')}
         labelClassName="agent-field-label"
       >
-        <Button
-          variant="ghost"
-          className="agent-name justify-start h-auto gap-0 rounded-none font-normal leading-[inherit]"
-          onClick={() => setDraft(value)}
-        >
+        <Button variant="ghost" className={AGENT_NAME_CLS} onClick={() => setDraft(value)}>
           {value}
         </Button>
         <Button
           variant="ghost"
           size="icon-sm"
-          className="agent-name-edit"
+          className={`agent-name-edit ${AGENT_ICON_EDIT_CLS}`}
           aria-label={t('编辑')}
           onClick={() => setDraft(value)}
         >
@@ -788,18 +886,18 @@ function NameRow({ value, onCommit }: { value: string; onCommit: (next: string) 
   };
   return (
     <ProfileRow
-      className="profile-row--name"
+      className={PROFILE_ROW_NAME_CLS}
       label={t('名称')}
       labelClassName="agent-field-label"
-      valueClassName="profile-value--grow"
+      valueClassName={PROFILE_VALUE_GROW_CLS}
     >
-      {/* #855：名称编辑进 Input 原语。几何/皮肤仍由 .agent-name-input
-          per-face（unlayered 压底座同名位）；focus 行为收敛底座环（#849 方向），
+      {/* #855：名称编辑进 Input 原语；#952：几何/皮肤改 AGENT_NAME_INPUT_CLS
+          utility（agent-detail.css 退役）；focus 行为收敛底座环（#849 方向），
           不再是 UA 默认 outline。 */}
       <Input
         id="agent-name-input"
         ref={inputRef}
-        className="agent-name-input"
+        className={AGENT_NAME_INPUT_CLS}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onBlur={commit}
@@ -831,18 +929,20 @@ function RoleRow({
       label={t('职责')}
       hint={t(AGENT_PERMISSION_COPY.responsibility)}
       labelClassName="agent-field-label"
-      valueClassName={draft === null ? undefined : 'profile-value--editor'}
+      valueClassName={draft === null ? undefined : PROFILE_VALUE_EDITOR_CLS}
     >
       {draft === null ? (
         <>
-          <span className="agent-role-text">{value ?? t('未设置职责')}</span>
-          <div className="agent-role-actions">
+          <span className="agent-role-text text-[13px] text-(--text-primary)">
+            {value ?? t('未设置职责')}
+          </span>
+          <div className="agent-role-actions flex justify-end gap-2">
             {/* r3 §4 实测：职责行带编辑图标（点击进编辑态）。图标-only 钮，
                 可访问名走 aria-label；文字钮的可点感靠图标补。 */}
             <Button
               variant="ghost"
               size="icon-sm"
-              className="agent-role-edit"
+              className={`agent-role-edit ${AGENT_ICON_EDIT_CLS}`}
               aria-label={t('编辑')}
               onClick={() => setDraft(value ?? '')}
             >
@@ -852,14 +952,14 @@ function RoleRow({
         </>
       ) : (
         <>
-          <textarea
+          <Textarea
             id="agent-role-input"
             ref={inputRef}
-            className="agent-role-input"
+            className={AGENT_ROLE_INPUT_CLS}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
           />
-          <div className="agent-role-actions">
+          <div className="agent-role-actions flex justify-end gap-2">
             <Button
               variant="brand"
               size="sm"

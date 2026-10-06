@@ -8,8 +8,9 @@
 // Popup 上挂 Escape、Backdrop 上挂外点——语义仍是 alertdialog（role + 焦点
 // 圈定 + 不可误触的默认），只是把"可关"这一条接回来。
 //
-// 别名类原样输出（.delete-confirm 族 / .overlay-backdrop / .dlg-* 不涉），
-// 三面钉扎零改动（#411 别名优先政策）。
+// .delete-confirm 族 / .overlay-backdrop 类名原样输出（零规则的 e2e 句柄）；
+// 原 .dlg-shell 的退场 visibility 桥随 ui/dialog.css 退役内联成 utility
+// （#952，dialog-shell.tsx 的 SHELL_EXIT_BRIDGE_CLS 同款配方）。
 
 import { AlertDialog as AlertDialogPrimitive } from '@base-ui/react/alert-dialog';
 import type { ReactNode } from 'react';
@@ -64,7 +65,7 @@ export function AlertDialogShell({
         <AlertDialogPrimitive.Popup
           role="alertdialog"
           data-slot="alert-dialog-content"
-          className={`delete-confirm dlg-shell${className != null ? ` ${className}` : ''} fixed top-1/2 left-1/2 z-(--z-dialog) flex max-h-[calc(100vh-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-popover text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`}
+          className={`delete-confirm [transition:visibility_0s_linear_var(--dur-overlay)] data-[ending-style]:invisible${className != null ? ` ${className}` : ''} fixed top-1/2 left-1/2 z-(--z-dialog) flex max-h-[calc(100vh-48px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[12px] bg-popover text-sm text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-200 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95`}
           style={{ width }}
           aria-label={ariaLabel}
         >

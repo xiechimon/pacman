@@ -48,7 +48,12 @@ import type { ClipboardEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
-import { FLOATING_POP_ANIM, FloatingShell } from '../components/ui/floating-shell.js';
+import {
+  EXIT_BRIDGE_CLS,
+  EXIT_BRIDGE_SLOW_CLS,
+  FLOATING_POP_ANIM,
+  FloatingShell,
+} from '../components/ui/floating-shell.js';
 import { Kbd } from '../components/ui/kbd.js';
 import { KbdHint } from '../components/ui/kbd-hint.js';
 import { Textarea } from '../components/ui/textarea.js';
@@ -683,7 +688,7 @@ export function NewTaskDialog({
               open={projectOpen && rows.length > 0}
               onClose={() => setProjectOpen(false)}
               container={projectWrapRef.current}
-              className="anchored-pop-shell"
+              className={EXIT_BRIDGE_CLS}
               initialFocus={false}
               disablePointerDismissal
             >
@@ -852,7 +857,7 @@ export function NewTaskDialog({
                 open={machineOpen}
                 onClose={() => setMachineOpen(false)}
                 container={machineWrapRef.current}
-                className="anchored-pop-shell"
+                className={EXIT_BRIDGE_CLS}
                 initialFocus={false}
                 disablePointerDismissal
               >
@@ -975,7 +980,7 @@ export function NewTaskDialog({
       <FloatingShell
         open={discardOpen}
         onClose={closeDiscard}
-        className="anchored-pop-shell anchored-pop-shell--slow"
+        className={EXIT_BRIDGE_SLOW_CLS}
         disablePointerDismissal
       >
         <ClickCatcher onClose={closeDiscard} />

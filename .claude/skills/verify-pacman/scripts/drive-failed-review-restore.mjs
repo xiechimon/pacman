@@ -256,15 +256,15 @@ try {
     { timeout: 10_000 },
   );
   await completeRow.click();
-  await page.waitForSelector('.dlg', { timeout: 5_000 });
+  await page.waitForSelector('[role="dialog"]', { timeout: 5_000 });
   await page.screenshot({ path: join(EVIDENCE, '03-todoA-accept-dialog.png') });
-  check('ui-accept-dialog-opened', (await page.locator('.dlg-title').textContent()) === '完成任务', '验收确认弹层打开');
+  check('ui-accept-dialog-opened', (await page.locator('[role="dialog"]').getAttribute('aria-label')) === '完成任务', '验收确认弹层打开（可及名载体，#952）');
   // #951/#910 载体：.dlg-accept-done 类钩退役 → dialog scope role+文案一级。
-  await page.locator('.dlg').getByRole('button', { name: '完成' }).click();
+  await page.locator('[role="dialog"]').getByRole('button', { name: '完成' }).click();
   const mergeResponse = await mergeResponseP;
   check('api-merge-from-failed-202', mergeResponse.status() === 202,
     `POST /builds/{id}/merge from failed = ${mergeResponse.status()}（修前 409 illegal phase transition）`);
-  await page.waitForSelector('.dlg', { state: 'detached', timeout: 5_000 });
+  await page.waitForSelector('[role="dialog"]', { state: 'detached', timeout: 5_000 });
 
   // 恢复盘面真值：相位 review（恢复 ≠ done）+ 合并步入队。
   const restored = await jget(`/api/todos/${todoA.body.id}`);

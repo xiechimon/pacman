@@ -1,24 +1,61 @@
 // 复选原语（XMON-75 建、XMON-72 收口、#690 迁 Base UI 官方件、#789 P2 落 V2
-// 骨架与手作动效）：Root 渲染 span[role=checkbox] + 官方隐藏原生 input（键盘、
-// 表单语义、屏幕阅读器都由官方件承载，indeterminate 成为一等 prop），视觉
-// tile 就骑在 Root 本体上——16px 方角、圆角 0、开态 --card-button 实底 +
-// 主题色勾（Check 走 currentColor，tile 的 --text-on-accent 进勾：亮底白勾 /
-// 暗底深勾，硬编码白勾在暗紫底上只有约 1.7:1）；关态透明底 + 1px
-// --border-strong 内描边，状态钩子走官方 data-checked / data-unchecked。
-// 勾只随 checked 渲染——未选中态不露勾是复选语义的一部分（Indicator 默认不
-// 挂载，进退场动效见 checkbox.css）。整行可点靠 label 包裹：点文字走 label
-// 激活行为转发到隐藏 input；点 tile 由 Root 接管（preventDefault 后自行派发，
-// 不会经 label 二次翻转）。id 落在隐藏 input 上（官方契约），e2e 定位与
-// checked 断言照旧可用。
+// 骨架与手作动效；#952 扩三态并把 checkbox.css 退役成件上 utility）：Root 渲染
+// span[role=checkbox] + 官方隐藏原生 input（键盘、表单语义、屏幕阅读器都由官方
+// 件承载），视觉 tile 就骑在 Root 本体上——16px 方角、圆角 0、开态
+// --card-button 实底 + 主题色勾（Check 走 currentColor，tile 的
+// --text-on-accent 进勾：亮底白勾 / 暗底深勾，硬编码白勾在暗紫底上只有约
+// 1.7:1）；关态透明底 + 1px --border-strong 内描边，状态钩子走官方
+// data-checked / data-unchecked。勾只随 checked 渲染——未选中态不露勾是复选
+// 语义的一部分（Indicator 默认不挂载，进退场动效见件上 transition 配方）。
+// 整行可点靠 label 包裹：点文字走 label 激活行为转发到隐藏 input；点 tile 由
+// Root 接管（preventDefault 后自行派发，不会经 label 二次翻转）。id 落在隐藏
+// input 上（官方契约），e2e 定位与 checked 断言照旧可用。
+//
+// 三态（#952，#908 comment-6001887439 裁决 1②）：`indeterminate` 直通官方一等
+// prop（aria-checked="mixed" 与隐藏 input 的读屏/表单语义白送）；视觉 = 实底
+// tile + 横杠（与开态同一皮肤语言，横杠走 currentColor 同勾）。board 筛选全选
+// 行的直消费 Root 形态随本扩展回收进本件。
+//
+// 手作动效（base-ui-theme §1.2，同面单机制：本面无 animate-in/keyframe，grep
+// 可复核）：勾选 = 底色 100ms ease-out 反相 + 勾 scale .5→1 微 overshoot
+// 140ms（cubic-bezier(0.34, 1.4, 0.64, 1)）；取消 = 勾缩退 90ms + 底色回翻
+// 100ms；复选行 press = tile 缩 0.92，80ms ease-out。transition 取目的态的值
+// ——进场目的态是基类（140ms overshoot），退场目的态是 data-[ending-style]
+// （90ms ease-out），故两档各写一处；transform 走 arbitrary property utility
+// （TW 的 scale-* 落独立 `scale` 属性，transition-property: transform 盖不
+// 到）。reduced-motion 下静止（D4；motion.css 全局 reset 只管 keyframe，
+// transition 各件自理）。
 
 import { Checkbox as CheckboxPrimitive } from '@base-ui/react/checkbox';
 import { cn } from 'cn';
 import type { ReactNode } from 'react';
 import { Check } from '../../icons/index.js';
-import './checkbox.css';
+
+/** tile 基底（原 .ui-checkbox-tile）：16px 方角实底盒 + 三属性 transition
+ *  （底色/描边 100ms ease-out，press 缩放 80ms）。 */
+const TILE_BASE_CLS =
+  'ui-checkbox-tile flex size-4 flex-none items-center justify-center rounded-none bg-(--card-button) text-(--text-on-accent) [transition:background-color_100ms_ease-out,box-shadow_100ms_ease-out,transform_80ms_ease-out] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) motion-reduce:[transition:none] group-active/ckbox:[transform:scale(0.92)]';
+
+/** 二态皮肤（原 [data-unchecked] 两律 + hover 描边提示，原型 L342）：关态
+ *  透明底 + 1px --border-strong 内描边；hover 未勾选框换主题色描边——只在
+ *  (hover:hover) 且细指针上加（motion.css #73 的 hover 门同律，粗指针无
+ *  hover 态）。三态 indeterminate 不挂本组（实底即皮肤，TSX 里分支）。 */
+const TILE_UNCHECKED_CLS =
+  'data-unchecked:bg-transparent data-unchecked:shadow-[inset_0_0_0_1px_var(--border-strong)] [@media(hover:hover)_and_(pointer:fine)]:group-hover/ckbox:data-unchecked:shadow-[inset_0_0_0_1px_var(--card-button)]';
+
+/** 勾/横杠覆层的进退场（原 .ui-checkbox-indicator 三律）：进场 140ms 微
+ *  overshoot（目的态 = 基类），退场 90ms ease-out 缩退（目的态 =
+ *  data-[ending-style]）；display:flex 官方示例同款——inline 布局下 svg 会吃
+ *  基线缝隙，勾将偏离 tile 几何中心。#771 的 display:none 已退役：退场是
+ *  90ms 真动效，ending 帧即动效本身，藏掉它等于删掉取消动效。 */
+const INDICATOR_CLS =
+  'ui-checkbox-indicator flex [transition:opacity_140ms_cubic-bezier(0.34,1.4,0.64,1),transform_140ms_cubic-bezier(0.34,1.4,0.64,1)] data-[starting-style]:[transform:scale(0.5)] data-[starting-style]:opacity-0 data-[ending-style]:[transform:scale(0.6)] data-[ending-style]:opacity-0 data-[ending-style]:[transition:opacity_90ms_ease-out,transform_90ms_ease-out] motion-reduce:[transition:none] motion-reduce:data-[ending-style]:[transition:none]';
 
 interface CheckboxProps {
   checked: boolean;
+  /** 三态中段（部分选中）：aria-checked="mixed" + 实底横杠视觉。点击回调
+   *  仍走 onCheckedChange（官方语义：mixed → true）。 */
+  indeterminate?: boolean;
   onCheckedChange: (checked: boolean) => void;
   /** 可访问名。整行文字在本件 children 里时它是兜底，缺了文字就只有它。 */
   label: string;
@@ -31,6 +68,7 @@ interface CheckboxProps {
 
 export function Checkbox({
   checked,
+  indeterminate = false,
   onCheckedChange,
   label,
   id,
@@ -39,16 +77,26 @@ export function Checkbox({
 }: CheckboxProps) {
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: Base UI Checkbox.Root renders its hidden native input inside this label at runtime (official composition); the static check cannot see through the component.
-    <label className={cn('ui-checkbox', className)}>
+    <label
+      className={cn(
+        'ui-checkbox group/ckbox inline-flex cursor-pointer items-center gap-2',
+        className,
+      )}
+    >
       <CheckboxPrimitive.Root
-        className="ui-checkbox-tile"
+        className={cn(TILE_BASE_CLS, !indeterminate && TILE_UNCHECKED_CLS)}
         id={id}
         checked={checked}
+        indeterminate={indeterminate}
         onCheckedChange={onCheckedChange}
         aria-label={label}
       >
-        <CheckboxPrimitive.Indicator className="ui-checkbox-indicator">
-          <Check width={12} height={12} />
+        <CheckboxPrimitive.Indicator className={INDICATOR_CLS}>
+          {indeterminate ? (
+            <span aria-hidden="true" className="block h-0.5 w-2 rounded-full bg-current" />
+          ) : (
+            <Check width={12} height={12} />
+          )}
         </CheckboxPrimitive.Indicator>
       </CheckboxPrimitive.Root>
       {children}

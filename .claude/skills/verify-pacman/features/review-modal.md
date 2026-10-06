@@ -5,7 +5,7 @@
 ## Sub-features
 
 - `review-button-visible` confirm/review phase 时 `.composer-ai-review` 渲染可点;其余 phase 不渲染。
-- `review-dialog-opens` 点击开 560 宽模态(`.dlg-shell` 含 `style.width=560px`),标题「AI 审核」、副标题、搜索行、Agent 行列表、可选 focus textarea、「开始审核」primary 钮居中。
+- `review-dialog-opens` 点击开 560 宽模态(`[role="dialog"]` 面板含 `style.width=560px`；#952 起 `.dlg-shell` 类名退役，退场 visibility 桥内联成件上 utility),标题「AI 审核」、副标题、搜索行、Agent 行列表、可选 focus textarea、「开始审核」primary 钮居中。
 - `agent-list-source` Agent 行 = members 读面 `memberType:"agent"` 行,头像 = initials(无 actor 头像面),副标题 = `modelId ?? '默认'`。
 - `selected-row-style` 选中行 `data-on="true"` 套 bg-indigo-500/10(r8 §2.5 实测)。
 - `focus-textarea-optional` focus textarea 可空(dialog scope `getByRole('textbox')`;#951 起 `.review-focus-input` 类钩退役),空字符串被 server 视为未填(REV-票-A focus trim 语义)。
