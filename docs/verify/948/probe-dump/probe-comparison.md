@@ -1,6 +1,6 @@
 # Probe dump — old baseline → new measured (#921)
 
-Run 2026-10-05T23:38:45.537Z · commit `034bf7d5` · port 8401 · playwright 1.63.0 · workers 4
+Run 2026-10-06T00:00:23.318Z · commit `ffe9e34e` · port 8401 · playwright 1.63.0 · workers 4
 
 Specs: overlay-focus mention-picker-center attachment-strip attachment-title dead-buttons newtask-machine-persist newtask-machine-pin newtask-project-persist newtask-project-select newtask-single-field z-ladder escape-wiring agent-delete (14 files) · tests 84 passed / 0 failed
 
@@ -43,12 +43,12 @@ Review procedure (#910 裁定 5): every DRIFT row is either expected drift (the 
 | attachment-strip.spec.ts | 531 | toBe | 1 | {"__fn":"() => deferred.held.length"} | — | chief face: placeholder → settled chip → preview |
 | attachment-strip.spec.ts | 533 | toBe | 1 | {"__fn":"() => deferred.held.length"} | — | chief face: placeholder → settled chip → preview |
 | attachment-strip.spec.ts | 543 | toBe | 120 | {"__fn":"() => view.evaluate(el => el.naturalWidth)"} | — | chief face: placeholder → settled chip → preview |
-| dead-buttons.spec.ts | 510 | toBeLessThan | < 1.5 | 0 | — | new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt) |
-| dead-buttons.spec.ts | 511 | toBeCloseTo | 28 ±0.5 | 28 | — | new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt) |
-| dead-buttons.spec.ts | 512 | toBeCloseTo | 28 ±0.5 | 28 | — | new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt) |
+| dead-buttons.spec.ts | 516 | toBeLessThan | < 1.5 | 0 | — | new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt) |
+| dead-buttons.spec.ts | 517 | toBeCloseTo | 28 ±0.5 | 28 | — | new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt) |
+| dead-buttons.spec.ts | 518 | toBeCloseTo | 28 ±0.5 | 28 | — | new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt) |
 | escape-wiring.spec.ts | 89 | toEqual | {"winAdds":0,"winRems":0,"docAdds":0,"docRems":0} | {"winAdds":0,"winRems":0,"docAdds":0,"docRems":0} | — | 开着的层不被重渲染重挂 Escape 接线：URL 写回后单次 Escape 仍收层 |
-| escape-wiring.spec.ts | 156 | toEqual | {"winAdds":0,"winRems":0} | {"winAdds":0,"winRems":0} | — | 确认弹层不被根组件重渲染重挂 Escape 接线：⌘K 往返后单次 Escape 仍收层 |
-| escape-wiring.spec.ts | 157 | toBe | 6 | 6 | — | 确认弹层不被根组件重渲染重挂 Escape 接线：⌘K 往返后单次 Escape 仍收层 |
+| escape-wiring.spec.ts | 157 | toEqual | {"winAdds":0,"winRems":0} | {"winAdds":0,"winRems":0} | — | 确认弹层不被根组件重渲染重挂 Escape 接线：⌘K 往返后单次 Escape 仍收层 |
+| escape-wiring.spec.ts | 158 | toBe | 6 | 6 | — | 确认弹层不被根组件重渲染重挂 Escape 接线：⌘K 往返后单次 Escape 仍收层 |
 | mention-picker-center.spec.ts | 21 | toHaveCSS | transform: none | none | — | mention picker stays centered in the production bundle (#448) |
 | mention-picker-center.spec.ts | 26 | toBe | 400 | 400 | — | mention picker stays centered in the production bundle (#448) |
 | mention-picker-center.spec.ts | 28 | toBeLessThanOrEqual | ≤ 1 | 0 | — | mention picker stays centered in the production bundle (#448) |

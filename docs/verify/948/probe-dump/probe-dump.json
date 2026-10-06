@@ -2,8 +2,8 @@
   "meta": {
     "tool": "probe-dump",
     "ticket": 921,
-    "date": "2026-10-05T23:38:45.537Z",
-    "commit": "034bf7d5",
+    "date": "2026-10-06T00:00:23.318Z",
+    "commit": "ffe9e34e",
     "port": 8401,
     "specs": [
       "overlay-focus",
@@ -69,13 +69,13 @@
     },
     {
       "file": "dead-buttons.spec.ts",
-      "line": 503,
+      "line": 509,
       "kind": "box",
       "api": "boundingBox"
     },
     {
       "file": "dead-buttons.spec.ts",
-      "line": 504,
+      "line": 510,
       "kind": "box",
       "api": "boundingBox"
     },
@@ -183,6 +183,36 @@
     },
     {
       "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "dead-buttons.spec.ts",
+      "l": 509,
+      "loc": "internal:role=dialog[name=\"新建任务\"i] >> internal:testid=[data-testid=\"new-task-head\"s]",
+      "v": {
+        "x": 384,
+        "y": 146.5,
+        "width": 672,
+        "height": 44
+      },
+      "tt": "new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt)"
+    },
+    {
+      "k": "p",
+      "p": "box",
+      "cls": "Locator",
+      "f": "dead-buttons.spec.ts",
+      "l": 510,
+      "loc": "internal:role=dialog[name=\"新建任务\"i] >> internal:role=button[name=\"关闭\"i]",
+      "v": {
+        "x": 1024,
+        "y": 154,
+        "width": 28,
+        "height": 28
+      },
+      "tt": "new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt)"
+    },
+    {
+      "k": "p",
       "p": "style",
       "cls": "Page",
       "f": "overlay-focus.spec.ts",
@@ -195,6 +225,21 @@
         "focusVisible": true
       },
       "tt": "click + key on 新建任务/topbar buttons: never the UA blue box"
+    },
+    {
+      "k": "p",
+      "p": "style",
+      "cls": "Page",
+      "f": "overlay-focus.spec.ts",
+      "l": 20,
+      "v": {
+        "cls": "group/button border border-transparent bg-clip-padding whitespace-nowrap transition-[color,background-color,border-color,filter] duration-150 select-none disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 aria-expanded:bg-muted aria-expanded:text-foreground px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 sidebar-row sidebar-new-task relative flex w-full flex-none items-center text-left text-[13px] leading-4 text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-[2px] before:rounded-none before:content-[\"\"] focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>span:not(.sidebar-kbd):not(.sidebar-online-dot)]:relative hover:before:bg-sidebar-hover justify-start gap-0 rounded-none border-none pr-0 font-normal hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 h-9 cursor-pointer pl-[18px]",
+        "style": "solid",
+        "width": "2px",
+        "color": "rgb(216, 156, 252)",
+        "focusVisible": true
+      },
+      "tt": "Tab focus keeps the brand ring (keyboard reachability preserved)"
     },
     {
       "k": "p",
@@ -216,55 +261,10 @@
       "k": "p",
       "p": "style",
       "cls": "Page",
-      "f": "overlay-focus.spec.ts",
-      "l": 20,
-      "v": {
-        "cls": "group/button border border-transparent bg-clip-padding whitespace-nowrap transition-[color,background-color,border-color,filter] duration-150 select-none disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 aria-expanded:bg-muted aria-expanded:text-foreground px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 sidebar-row sidebar-new-task relative flex w-full flex-none items-center text-left text-[13px] leading-4 text-muted-foreground no-underline outline-none before:absolute before:inset-x-2 before:inset-y-[2px] before:rounded-none before:content-[\"\"] focus-visible:[outline:2px_solid_var(--focus-ring)] focus-visible:outline-offset-2 [&>span:not(.sidebar-kbd):not(.sidebar-online-dot)]:relative hover:before:bg-sidebar-hover justify-start gap-0 rounded-none border-none pr-0 font-normal hover:bg-transparent hover:text-muted-foreground dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 h-9 cursor-pointer pl-[18px]",
-        "style": "solid",
-        "width": "2px",
-        "color": "rgb(216, 156, 252)",
-        "focusVisible": true
-      },
-      "tt": "Tab focus keeps the brand ring (keyboard reachability preserved)"
-    },
-    {
-      "k": "p",
-      "p": "style",
-      "cls": "Page",
       "f": "z-ladder.spec.ts",
       "l": 69,
       "v": "dialog-overlay",
       "tt": "the modal scrim covers the drawer while the dialog is open"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "dead-buttons.spec.ts",
-      "l": 503,
-      "loc": "internal:role=dialog[name=\"新建任务\"i] >> internal:testid=[data-testid=\"new-task-head\"s]",
-      "v": {
-        "x": 384,
-        "y": 146.5,
-        "width": 672,
-        "height": 44
-      },
-      "tt": "new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt)"
-    },
-    {
-      "k": "p",
-      "p": "box",
-      "cls": "Locator",
-      "f": "dead-buttons.spec.ts",
-      "l": 504,
-      "loc": "internal:role=dialog[name=\"新建任务\"i] >> internal:role=button[name=\"关闭\"i]",
-      "v": {
-        "x": 1024,
-        "y": 154,
-        "width": 28,
-        "height": 28
-      },
-      "tt": "new-task dialog: the close control anchors to the head’s right edge (#574 re-key debt)"
     }
   ],
   "assertions": [
@@ -685,7 +685,7 @@
     },
     {
       "file": "dead-buttons.spec.ts",
-      "line": 510,
+      "line": 516,
       "matcher": "toBeLessThan",
       "negated": false,
       "source": "expect(Math.abs(hb.x + hb.width - (cb.x + cb.width) - 4)).toBeLessThan(1.5);",
@@ -702,7 +702,7 @@
     },
     {
       "file": "dead-buttons.spec.ts",
-      "line": 511,
+      "line": 517,
       "matcher": "toBeCloseTo",
       "negated": false,
       "source": "expect(cb.width).toBeCloseTo(28, 0);",
@@ -720,7 +720,7 @@
     },
     {
       "file": "dead-buttons.spec.ts",
-      "line": 512,
+      "line": 518,
       "matcher": "toBeCloseTo",
       "negated": false,
       "source": "expect(cb.height).toBeCloseTo(28, 0);",
@@ -765,7 +765,7 @@
     },
     {
       "file": "escape-wiring.spec.ts",
-      "line": 156,
+      "line": 157,
       "matcher": "toEqual",
       "negated": false,
       "source": "expect({ winAdds: tap.winAdds, winRems: tap.winRems }).toEqual({ winAdds: 0, winRems: 0 });",
@@ -788,7 +788,7 @@
     },
     {
       "file": "escape-wiring.spec.ts",
-      "line": 157,
+      "line": 158,
       "matcher": "toBe",
       "negated": false,
       "source": "expect(tap.docAdds).toBe(tap.docRems);",
