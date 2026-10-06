@@ -13,7 +13,7 @@ vite dev `:5277`，`PACMAN_HOME` = `.claude/verify-run/home` scratch，全新库
 | `live-chief-model-select/` | 迁移后 verify-pacman 探针复跑（一）：`drive-chief-model-select.mjs`——#910 新载体（role=dialog/option + model-pick-name testid）+ 数据契约腿修到 #770 裁决后现行形（custom provider 模型抵达 model-sources 但被 picker 排除的裁决钉 + `toModelOptions(sources)` UI=API 并集一致；原「铺 provider → 行随之变」AC1 腿随 #770 退役，stale 先于本票） | **9/9 PASS**，`live-chief-model-select/result.json` 逐条 |
 | `live-agent-identity/` | 迁移后 verify-pacman 探针复跑（二）：`drive-agent-identity.mjs`——#741 身份 chip live 闭环全链走新载体（REST 铺底 + 假机器认领回合步，N1–N8 渲染/href/hover/导航/键盘/提及 chip 八面） | **9/9 PASS**，`live-agent-identity/result.json` 逐条 |
 | `scripts/drive-950-chief.mjs` | 上行探针源（归档随 PR；跑法见文件头） | — |
-| `build-artifact-grep.txt` | 机制生效实物判据：编译产物 CSS grep——chief per-face 选择器 16 组全 0 命中；迁移 utility 机制（418 dock 宽 / z-docked / spinner-breathe / clip-path 箭头 / aria-current / data-on / --active-tab-* / 四元 transition / important 覆盖 / edge-ring+card-shadow / field-sizing / pointer-fine）逐条在位；两枚零规则钩子类无规则块（.chief-composer 的 1 块 = overlay 域 attachment-strip.css 外域规则，钩子因此存活） | 全部符合声称 |
+| `build-artifact-grep.txt` | 机制生效实物判据：编译产物 CSS grep（合并 origin/main #946–949 后的 fixture bundle 重生成）——chief per-face 选择器 16 组全 0 命中；迁移 utility 机制（418 dock 宽 / z-docked / spinner-breathe / clip-path 箭头 / aria-current / data-on / --active-tab-* / 四元 transition / important 覆盖 / edge-ring+card-shadow / field-sizing / pointer-fine）逐条在位；两枚零规则钩子类均无规则块（.chief-composer 原有的 1 块 overlay 外域规则已随 #948 内联进宿主 div utility，余下消费者 = spec 容器 scope） | 全部符合声称 |
 
 复验：
 
