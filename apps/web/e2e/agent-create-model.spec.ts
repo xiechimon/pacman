@@ -104,15 +104,17 @@ async function openDialog(page: Page, teamUrl: string) {
 
 test('无候选：报告警行并给「配置服务商」外链，两级选择器都不出', async ({ page }) => {
   const dialog = await openDialog(page, TEAM_NO_SOURCES);
-  await expect(dialog.locator('.dlg-agent-warn')).toBeVisible();
-  await expect(dialog.locator('.dlg-agent-configure')).toBeVisible();
+  // #951/#910 重钉：.dlg-agent-warn → 告警行文案一级；.dlg-agent-configure
+  // → getByRole(link 配置服务商)（detail/overlays.css 清零，类名钩退役）。
+  await expect(dialog.getByText('尚未配置模型服务商')).toBeVisible();
+  await expect(dialog.getByRole('link', { name: '配置服务商' })).toBeVisible();
   await expect(dialog.locator('.dlg-agent-model-select')).toHaveCount(0);
   await expect(dialog.locator('.dlg-agent-runtime-select')).toHaveCount(0);
 });
 
 test('有候选：不出告警行，出两级选择器且模型级先禁用', async ({ page }) => {
   const dialog = await openDialog(page, TEAM_WITH_SOURCES);
-  await expect(dialog.locator('.dlg-agent-warn')).toHaveCount(0);
+  await expect(dialog.getByText('尚未配置模型服务商')).toHaveCount(0);
   await expect(dialog.locator('.dlg-agent-runtime-select')).toBeVisible();
   // 未选运行时模型级不可点——两级退成一级就是「候选又混回一列」的退形。
   await expect(dialog.locator('.dlg-agent-model-select')).toBeDisabled();

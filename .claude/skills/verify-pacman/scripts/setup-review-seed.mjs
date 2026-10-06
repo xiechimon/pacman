@@ -118,7 +118,10 @@ const enroll = await jpost('/api/machine/enroll', {
 if (enroll.status !== 200) throw new Error(`enroll status=${enroll.status} body=${JSON.stringify(enroll.body)}`);
 const machineToken = enroll.body?.token ?? enroll.body?.machine?.token;
 
-// 9. claim plan step
+// 9. claim plan step（#951 维护轮：claim 前先打 presence 拍——假机器不发
+// 心跳，enroll 的 online 窗过期后 claimed 步会被释放扫尾摘走；见
+// drive-review-reject.mjs machineClaimDone 同注。）
+await jpost('/api/machine/presence', {}, machineToken);
 const claim = await jpost('/api/machine/tasks/claim', {}, machineToken);
 // 响应形状:{step:{step:{id,kind,...},conversationId,session,todo,project,agent,remoteTools}}
 const planStep = claim.body?.step?.step ?? claim.body?.step;

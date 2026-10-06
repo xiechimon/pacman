@@ -297,7 +297,8 @@ try {
   await page.locator('.team-create-agent').click();
   await page.waitForSelector('.dlg-agent-model-select', { timeout: 15_000 });
   check('create-dialog-model-slot', true, '有服务商时弹窗内出模型选择器');
-  check('create-dialog-no-warn', (await page.locator('.dlg-agent-warn').count()) === 0);
+  // #951/#910 载体：.dlg-agent-warn 类钩退役 → 告警行文案一级。
+  check('create-dialog-no-warn', (await page.getByText('尚未配置模型服务商').count()) === 0);
   await page.locator('#dlg-agent-name').fill('verify-485-created');
   await page.locator('.dlg-agent-model-select').click();
   await page.waitForSelector('.dlg-agent-model-menu');

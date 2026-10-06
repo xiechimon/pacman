@@ -21,8 +21,11 @@ const RUN_DIR = process.env.VERIFY_RUN_DIR ?? join(REPO, '.claude/verify-run');
 const ports = existsSync(join(RUN_DIR, 'ports.json'))
   ? JSON.parse(readFileSync(join(RUN_DIR, 'ports.json'), 'utf8'))
   : {};
-const SERVER = `http://127.0.0.1:${ports.server ?? process.env.VERIFY_PORT ?? 8791}`;
-const WEB = `http://127.0.0.1:${ports.web ?? process.env.VERIFY_WEB_PORT ?? 5273}`;
+// #951 维护轮修 stale：launch.mjs 写 ports.json 的键是 serverPort/webPort
+// （本脚本旧读 ports.server/ports.web 恒 undefined → 静默回落 8791/5273，
+// 换端口车道会打到别人的栈——2026-10-06 实测踩中）。两种键名都认。
+const SERVER = `http://127.0.0.1:${ports.serverPort ?? ports.server ?? process.env.VERIFY_PORT ?? 8791}`;
+const WEB = `http://127.0.0.1:${ports.webPort ?? ports.web ?? process.env.VERIFY_WEB_PORT ?? 5273}`;
 const todoId = process.argv[2];
 if (!todoId) {
   process.stderr.write('usage: node drive-stop.mjs <todoId>\n');
@@ -74,8 +77,9 @@ try {
   await page.click('.composer-stop');
   await page.waitForSelector('.dlg-title:has-text("停止当前这一轮？")', { timeout: 5_000 });
   // XMON-72：复选行收口 components/ui/checkbox 原语，真 input = .ui-checkbox-input
-  const checked = await page.$eval('.dlg-accept .ui-checkbox-input', (el) => el.checked);
-  const label = await page.$eval('.dlg-accept-label', (el) => el.textContent);
+  // #951/#910 载体：.dlg-accept 行容器类退役 → .ui-checkbox 件类直取（#944 provider 判例）。
+  const checked = await page.$eval('.dlg .ui-checkbox input[type="checkbox"]', (el) => el.checked);
+  const label = await page.$eval('.dlg .ui-checkbox > span:last-of-type', (el) => el.textContent);
   await page.screenshot({ path: join(EVIDENCE, '02-stop-confirm-dialog.png') });
   check('dialog-default-checked', checked === true, `checkbox checked=${checked}`);
   check(
@@ -85,7 +89,7 @@ try {
   );
 
   // —— 确认停止 → 「正在停止…」过渡（窗口 = abort→done(stopped)→SSE 重取）——
-  await page.click('.dlg-foot .dlg-accept-done');
+  await page.locator('.dlg-foot').getByRole('button', { name: '停止' }).click();
   let sawStopping = false;
   try {
     await page.waitForSelector('.chat-streaming-label:has-text("正在停止…")', { timeout: 4_000 });

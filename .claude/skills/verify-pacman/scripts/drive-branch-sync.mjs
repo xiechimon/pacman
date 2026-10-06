@@ -100,9 +100,13 @@ try {
   await page.goto(`${WEB}/app/todo/${todoId}`, { waitUntil: 'networkidle' });
   // #366：右 pane 型选钮开 pane 视图 listbox →「分支与 PR」行切静止 section
   await page.click('.doc-select-wrap .doc-pane-select');
-  await page.waitForSelector('.plan-dropdown', { timeout: 10_000 });
-  await page.locator('.plan-dropdown-row', { hasText: '分支与 PR' }).click();
-  await page.waitForSelector('.dlg-machine-picker', { timeout: 10_000 });
+  // #949/#910 载体：.plan-dropdown* 类钉退役 → role=menu / menuitemradio。
+  await page.waitForSelector('[role="menu"]', { timeout: 10_000 });
+  await page.locator('[role="menuitemradio"]', { hasText: '分支与 PR' }).click();
+  // #951/#910 载体：.dlg-machine-*/.dlg-dir--input/.dlg-toggle/.dlg-sync/
+  // .dlg-sync-result* 类钩退役 → aria-haspopup 钮、role=listbox、
+  // getByLabel(同步目录)、role=switch、role=button 文案、data-status 状态载体。
+  await page.waitForSelector('button[aria-haspopup="listbox"]', { timeout: 10_000 });
   check('pane-section-open', true, '右 pane「分支与 PR」section 打开');
   await shot(page, '01-branch-section.png');
 
@@ -110,33 +114,33 @@ try {
   check('sync-section-live', true, '同步面接真（机器 pill 走真值，非 fixture 占位）');
 
   // 机器 pill：展开菜单，取首批在线机器
-  await page.locator('.dlg-machine').first().click();
-  await page.waitForSelector('.dlg-machine-menu', { timeout: 5000 });
-  const opts = page.locator('.dlg-machine-opt');
+  await page.locator('button[aria-haspopup="listbox"]').first().click();
+  await page.waitForSelector('[role="listbox"]', { timeout: 5000 });
+  const opts = page.locator('[role="listbox"] button');
   const optCount = await opts.count();
   check('machine-online', optCount >= 1, `机器 pill 列出在线机器(${optCount} 台)`);
   await shot(page, '02-machine-menu.png');
   if (optCount >= 1) await opts.first().click();
 
   // 同步目录：改成本次 seed 造的真 git 现场
-  await page.fill('.dlg-dir--input', directory);
-  const dirValue = await page.locator('.dlg-dir--input').inputValue();
+  await page.getByLabel('同步目录').fill(directory);
+  const dirValue = await page.getByLabel('同步目录').inputValue();
   check('directory-filled', dirValue === directory, `同步目录填入(${dirValue})`);
 
   // 强制同步：清未跟踪文件要靠它，脚本显式打开
-  await page.locator('.dlg-toggle input[type=checkbox]').check();
-  const forceOn = await page.locator('.dlg-toggle input[type=checkbox]').isChecked();
+  await page.locator('[role="switch"]').check();
+  const forceOn = await page.locator('[role="switch"]').isChecked();
   check('force-on', forceOn, '强制同步开关打开（force 语义：清未跟踪文件）');
   await shot(page, '03-sync-form-ready.png');
 
-  await page.click('.dlg-sync');
+  await page.getByRole('button', { name: '同步', exact: true }).click();
   check('sync-posted', true, '「同步」钮点击');
 
   // 结果卡四态迁移：等终态（synced / failed）
   await page
     .waitForFunction(
       () => {
-        const el = document.querySelector('.dlg-sync-result');
+        const el = document.querySelector('[data-status]');
         const s = el?.getAttribute('data-status');
         return s === 'synced' || s === 'failed';
       },
@@ -144,9 +148,9 @@ try {
       { timeout: 60_000 },
     )
     .catch(() => {});
-  const status = await page.locator('.dlg-sync-result').getAttribute('data-status').catch(() => null);
-  const stateText = await page.locator('.dlg-sync-result-state').textContent().catch(() => null);
-  const errText = await page.locator('.dlg-sync-result-error').textContent().catch(() => null);
+  const status = await page.locator('[data-status]').getAttribute('data-status').catch(() => null);
+  const stateText = await page.locator('[data-status] > div:nth-child(1)').textContent().catch(() => null);
+  const errText = await page.locator('[data-status="failed"] > div:nth-child(2)').textContent().catch(() => null);
   check('result-terminal', status === 'synced', `结果卡终态(${status ?? '无卡'} / ${stateText ?? '-'}${errText ? ` / ${errText}` : ''})`);
   await shot(page, '04-result-card.png');
 

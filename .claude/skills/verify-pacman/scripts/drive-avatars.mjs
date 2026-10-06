@@ -120,8 +120,10 @@ try {
   await page.goto(`${WEB}/app/team`);
   await page.waitForSelector('.team-create-agent', { timeout: 15_000 });
   await page.click('.team-create-agent');
-  await page.waitForSelector('.dlg-agent-avatar img', { timeout: 5000 });
-  const emptySrc = await imgSrc(page.locator('.dlg-agent-avatar img'));
+  // #951/#910 载体：.dlg-agent-avatar 类钩退役 → agent-avatar testid（img 在
+  // loaded 前 aria-hidden，role 钉不到——二级载体）。
+  await page.waitForSelector('[data-testid="agent-avatar"] img', { timeout: 5000 });
+  const emptySrc = await imgSrc(page.locator('[data-testid="agent-avatar"] img'));
   check(
     'dialog-empty-fallback',
     emptySrc === '/avatar-robot-1.svg',
@@ -129,11 +131,11 @@ try {
   );
   await page.fill('#dlg-agent-name', AGENT_A);
   await page.waitForFunction(
-    (prefix) => document.querySelector('.dlg-agent-avatar img')?.getAttribute('src')?.startsWith(prefix),
+    (prefix) => document.querySelector('[data-testid="agent-avatar"] img')?.getAttribute('src')?.startsWith(prefix),
     DICEBEAR_PREFIX,
     { timeout: 5000 },
   );
-  const previewSrc = await imgSrc(page.locator('.dlg-agent-avatar img'));
+  const previewSrc = await imgSrc(page.locator('[data-testid="agent-avatar"] img'));
   check(
     'dialog-live-preview',
     previewSrc === dicebearUrl(AGENT_A),

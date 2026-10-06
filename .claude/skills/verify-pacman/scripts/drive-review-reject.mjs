@@ -83,6 +83,12 @@ async function jpost(path, body, token) {
 /** 机器 wire 等价直驱：claim 下一 pending 步 → done success。plan 步不上传
  *  新 plan.md（v1 已在库，completeStep 判产物在即放行 confirm）。 */
 async function machineClaimDone(expectKind) {
+  // #951 维护轮：假机器不发心跳——enroll 的 online 窗（~90s）过期后，claim
+  // 虽可命中但随即被 presence 过期释放扫尾摘走（machineId 归 null → 120s
+  // 无人认领 sweep 失败步），且失联扫尾按「团队无在线机器」口径行事。每次
+  // claim 前先打一拍 presence 把机器置回 online（markPresence，真 daemon
+  // 30s 节拍的等价形）。2026-10-06 实测：无此拍 = build claim 恒 null。
+  await jpost('/api/machine/presence', {}, MACHINE_TOKEN);
   const claimRes = await jpost('/api/machine/tasks/claim', {}, MACHINE_TOKEN);
   const claimed = claimRes.body?.step?.step ?? claimRes.body?.step;
   if (claimed?.kind !== expectKind) {
@@ -203,13 +209,15 @@ try {
   await page.waitForTimeout(400);
   await page.screenshot({ path: join(EVIDENCE, '02-more-menu-reject-entry.png') });
   await rejectItem.click();
-  await page.waitForSelector('.dlg-reject', { timeout: 5_000 });
-  const confirmDisabledEmpty = await page.locator('.reject-confirm').isDisabled();
+  // #951/#910 载体：.dlg-reject/.reject-confirm/.reject-feedback-input 类钩退役 →
+  // role=dialog 可及名 + role=button 文案 + role=textbox 一级。
+  await page.waitForSelector('[role="dialog"][aria-label="请求修改"]', { timeout: 5_000 });
+  const confirmDisabledEmpty = await page.locator('[role="dialog"][aria-label="请求修改"]').getByRole('button', { name: '请求修改' }).isDisabled();
   check('ui-reject-dialog-empty-blocked', confirmDisabledEmpty, '空稿确认钮禁用');
-  await page.fill('.reject-feedback-input', FEEDBACK_A);
+  await page.locator('[role="dialog"][aria-label="请求修改"]').getByRole('textbox').fill(FEEDBACK_A);
   await page.waitForTimeout(300);
   await page.screenshot({ path: join(EVIDENCE, '03-reject-dialog-filled.png') });
-  await page.click('.reject-confirm');
+  await page.locator('[role="dialog"][aria-label="请求修改"]').getByRole('button', { name: '请求修改' }).click();
 
   // chip 即时翻「规划中」= 真 SSE 失效键路径（不 reload）。
   await waitChip(page, /规划中/);

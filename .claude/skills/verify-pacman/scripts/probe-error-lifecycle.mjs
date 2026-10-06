@@ -27,8 +27,9 @@ const RUN_DIR = process.env.VERIFY_RUN_DIR ?? join(REPO, '.claude/verify-run');
 const ports = existsSync(join(RUN_DIR, 'ports.json'))
   ? JSON.parse(readFileSync(join(RUN_DIR, 'ports.json'), 'utf8'))
   : {};
-const SERVER = `http://127.0.0.1:${ports.server ?? process.env.VERIFY_PORT ?? 8791}`;
-const WEB = `http://127.0.0.1:${ports.web ?? process.env.VERIFY_WEB_PORT ?? 5273}`;
+// #951 维护轮修 stale（drive-stop 同款）：ports.json 键 = serverPort/webPort。
+const SERVER = `http://127.0.0.1:${ports.serverPort ?? ports.server ?? process.env.VERIFY_PORT ?? 8791}`;
+const WEB = `http://127.0.0.1:${ports.webPort ?? ports.web ?? process.env.VERIFY_WEB_PORT ?? 5273}`;
 const MOCK_PORT = Number(process.env.MOCK_PORT ?? 8799);
 const ts = new Date().toISOString().replace(/[:.]/g, '-');
 const EVIDENCE =

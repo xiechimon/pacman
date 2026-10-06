@@ -105,11 +105,20 @@ export function CreateAgentDialog({
       }
     >
       <div className="dlg-form">
-        <div className="dlg-agent-avatar">
+        {/* #951（detail/overlays.css 清零）：.dlg-agent-avatar 律等值迁
+            utility——行 12 gap；img 40×40 圆（per-face 容器是 img 几何正本，
+            SeededAvatar 契约）。testid = 二级载体（img 在 loaded 前被 registry
+            keepMounted 置 aria-hidden，role 钉不到；dead-buttons /
+            avatar-dicebear 的定位面，#910 裁定 1）。 */}
+        <div className="flex items-center gap-3" data-testid="agent-avatar">
           {/* #387: 头像行 = 名称种子的 dicebear 预览——随输入即所得（创建后
               同名恒同像）；空名退回静态机器人资产。「更换」钮全除（#307
               wontfix）：栈内无上传面。 */}
-          <SeededAvatar name={name.trim()} fallback="/avatar-robot-1.svg" />
+          <SeededAvatar
+            name={name.trim()}
+            fallback="/avatar-robot-1.svg"
+            className="[&_img]:size-10 [&_img]:rounded-full"
+          />
         </div>
         <label className="dlg-form-label" htmlFor="dlg-agent-name">
           {t('名称')}
@@ -125,7 +134,9 @@ export function CreateAgentDialog({
             不跳页）；无服务商 → 告警行 + 配置外链（capture 20 原样）。 */}
         {modelOptions.length > 0 ? (
           <>
-            <div className="dlg-agent-slot-row">
+            {/* #951：.dlg-agent-slot-row 律等值迁 utility（标签与选择器纵向
+                排布，6 gap）；选择器本体几何仍住 routes/agent-detail.css。 */}
+            <div className="flex flex-col gap-1.5">
               <span className="dlg-form-label">{t('运行时')}</span>
               <AgentRuntimeSelect
                 value={provider}
@@ -137,7 +148,7 @@ export function CreateAgentDialog({
                 prefix="dlg-agent-runtime"
               />
             </div>
-            <div className="dlg-agent-slot-row">
+            <div className="flex flex-col gap-1.5">
               <span className="dlg-form-label">{t('模型')}</span>
               <AgentModelSelect
                 provider={provider}
@@ -149,9 +160,16 @@ export function CreateAgentDialog({
             </div>
           </>
         ) : (
-          <div className="dlg-agent-warn">
+          // #951：.dlg-agent-warn/-configure 律等值迁 utility——告警行 8 圆角
+          // card-border 描边 surface 底 8/12 垫 13/16 secondary 墨；外链
+          // ml-auto 右锚（spec 载体 = link 文案一级，agent-create-model /
+          // team-create-agent 同 PR 重钉）。
+          <div className="flex items-center gap-2 rounded-[8px] border border-(--card-border) bg-(--surface) px-3 py-2 text-[13px] leading-4 text-(--text-secondary)">
             <span>{t('尚未配置模型服务商')}</span>
-            <Link className="dlg-agent-configure" to={{ pathname: PROVIDERS_HREF, search }}>
+            <Link
+              className="ml-auto text-[13px] leading-4"
+              to={{ pathname: PROVIDERS_HREF, search }}
+            >
               {t('配置服务商')}
             </Link>
           </div>

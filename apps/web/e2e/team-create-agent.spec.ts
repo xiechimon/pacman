@@ -29,7 +29,8 @@ test('the 创建 Agent slot opens the dialog', async ({ page }) => {
   const dialog = await openDialog(page);
   await expect(dialog.locator('.dlg-title')).toHaveText('创建 agent');
   await expect(dialog.locator('#dlg-agent-name')).toBeVisible();
-  await expect(dialog.locator('.dlg-agent-warn')).toBeVisible();
+  // #951/#910 重钉：.dlg-agent-warn → 告警行文案一级（overlays.css 清零）。
+  await expect(dialog.getByText('尚未配置模型服务商')).toBeVisible();
 });
 
 test('family law: X, Escape and backdrop dismiss; panel clicks do not', async ({ page }) => {
@@ -76,7 +77,7 @@ test('配置服务商 SPA-navigates to the providers route, scenario rides along
   await page.evaluate(() => {
     (window as unknown as Record<string, unknown>).__spaMarker = 'alive';
   });
-  await dialog.locator('.dlg-agent-configure').click();
+  await dialog.getByRole('link', { name: '配置服务商' }).click();
   await expect(page).toHaveURL('/app/resources/providers?scenario=12');
   expect(await page.evaluate(() => (window as unknown as Record<string, unknown>).__spaMarker)).toBe(
     'alive',

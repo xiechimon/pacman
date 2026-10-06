@@ -15,6 +15,13 @@ import { evidenceShot } from './evidence';
 //
 // 数据面 = live 面打桩（composer-wire-reject.spec 同纪律）：无 ?scenario=
 // 即真 API 分支，被测面自带桩，其余 GET 落到 app 已容忍的 500。
+//
+// #951/#910 重钉：.detail-chip → phase-chip testid（断言目标即触发钮文案，
+// 二级载体）；.dlg-reject → role=dialog 可及名「请求修改」一级；
+// .reject-confirm → dialog scope getByRole(button 请求修改)；
+// .reject-feedback-input → dialog scope getByRole(textbox)（唯一 textbox）。
+// 跨批次别名钩（.composer-input/.composer-reject/.detail-head-icon--more/
+// .more-menu*）终账归 #952/#953，原样保留。
 
 const TEAM_ID = 'team-1';
 const USER = { id: 'user-1', displayName: '我', avatarUrl: null };
@@ -150,7 +157,7 @@ test('FM1/FM2: 静息 review 发送 = steps revision 动作面，draft 清空、
   });
 
   await page.goto(`/app/todo/${CARD_ID}`);
-  await expect(page.locator('.detail-chip')).toHaveText(/审核/);
+  await expect(page.getByTestId('phase-chip')).toHaveText(/审核/);
   const input = page.locator('.composer-input');
   await expect(input).toBeVisible();
   await input.fill(DRAFT);
@@ -164,7 +171,7 @@ test('FM1/FM2: 静息 review 发送 = steps revision 动作面，draft 清空、
   // 发送成功 = 清稿（可填即可发，不再吞字）。
   await expect(input).toHaveValue('');
   // 相位经失效键重取即时翻（chip 规划中）。
-  await expect(page.locator('.detail-chip')).toHaveText(/规划中/);
+  await expect(page.getByTestId('phase-chip')).toHaveText(/规划中/);
   await evidenceShot(page, 'review-reject-composer-flip.png');
 });
 
@@ -188,16 +195,17 @@ test('FM3: 更多菜单出现「请求修改」入口，弹层收反馈后走同
   await expect(rejectItem).toBeVisible();
   await rejectItem.click();
   // 弹层收反馈：必填，空稿不放行。
-  const dialog = page.locator('.dlg-reject');
+  const dialog = page.getByRole('dialog', { name: '请求修改' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('.reject-confirm')).toBeDisabled();
-  await dialog.locator('.reject-feedback-input').fill(DRAFT);
-  await dialog.locator('.reject-confirm').click();
+  const confirm = dialog.getByRole('button', { name: '请求修改' });
+  await expect(confirm).toBeDisabled();
+  await dialog.getByRole('textbox').fill(DRAFT);
+  await confirm.click();
 
   await expect.poll(() => stepPosts).toBe(1);
   expect(lastBody).toMatchObject({ action: 'revision', side: 'plan', feedback: DRAFT });
-  await expect(page.locator('.dlg-reject')).toBeHidden();
-  await expect(page.locator('.detail-chip')).toHaveText(/规划中/);
+  await expect(page.getByRole('dialog', { name: '请求修改' })).toBeHidden();
+  await expect(page.getByTestId('phase-chip')).toHaveText(/规划中/);
   await evidenceShot(page, 'review-reject-menu-dialog.png');
 });
 

@@ -31,6 +31,13 @@ const PROJECT_ID = 'proj-1';
 // 证据截图走 evidenceShot（默认不落盘；要为本票 PR 再生证据时设
 // PACMAN_E2E_EVIDENCE=docs/verify/<ticket> 再跑，见 e2e/evidence.ts）。
 // 历史证据 = 已提交的 docs/verify/XMON-89/，回归跑不许再重写它。
+//
+// #951/#910 重钉：.dlg-accept 容器 → role=dialog 可及名「完成任务」一级
+// （容器可见/缺席断言的语义 = 弹层开/关，dialog role 即其一级载体）；
+// .dlg-accept-done → dialog scope getByRole(button 完成)；.dlg-accept-block
+// → 文案一级 getByText(/授权，无法合并/)（toHaveText 全文断言原样）；
+// .dlg-accept-reject → role=alert（组件自带，一级）。跨批次别名钩
+// （.todo-card*/.detail-head-action）终账归 #952/#953，原样保留。
 
 const TEAM = { id: TEAM_ID, name: 'Team', createdAt: 0, plan: 'free', avatarStyle: null };
 const USER = { id: 'user-1', displayName: '我', avatarUrl: null };
@@ -163,7 +170,7 @@ async function openBoardAccept(page: Page, tools: string[]) {
   const card = page.locator(`.todo-card[data-todo-id="${CARD_ID}"]`);
   await expect(card).toBeVisible();
   await card.locator('.todo-card-action').click();
-  return page.locator('.dlg-accept');
+  return page.getByRole('dialog', { name: '完成任务' });
 }
 
 /** 详情入口：头部的 phase 主钮（review 态 = 完成）开同一弹层。 */
@@ -174,30 +181,32 @@ async function openDetailAccept(page: Page, tools: string[]) {
   const action = page.locator('.detail-head-action');
   await expect(action).toBeVisible();
   await action.click();
-  return page.locator('.dlg-accept');
+  return page.getByRole('dialog', { name: '完成任务' });
 }
 
 const BLOCK_COPY = '缺少「推送分支」授权，无法合并。请在该 Agent 的权限里开启。';
+// 缺项行文案一级载体的稳定片段（两种缺项组合共用的谓词部分）。
+const BLOCK_NOTE = /授权，无法合并/;
 
 test('看板入口：执行 Agent 缺「推送分支」时完成钮禁用并点名缺项', async ({ page }) => {
   const dialog = await openBoardAccept(page, ['合并分支']);
   await expect(dialog).toBeVisible();
-  await expect(page.locator('.dlg-accept-done')).toBeDisabled();
-  await expect(page.locator('.dlg-accept-block')).toHaveText(BLOCK_COPY);
+  await expect(dialog.getByRole('button', { name: '完成' })).toBeDisabled();
+  await expect(page.getByText(BLOCK_NOTE)).toHaveText(BLOCK_COPY);
   await evidenceShot(page, 'XMON-89-board-blocked.png');
 });
 
 test('详情入口：同一 Agent 在同一弹层上禁用并点名缺项', async ({ page }) => {
   const dialog = await openDetailAccept(page, ['合并分支']);
   await expect(dialog).toBeVisible();
-  await expect(page.locator('.dlg-accept-done')).toBeDisabled();
-  await expect(page.locator('.dlg-accept-block')).toHaveText(BLOCK_COPY);
+  await expect(dialog.getByRole('button', { name: '完成' })).toBeDisabled();
+  await expect(page.getByText(BLOCK_NOTE)).toHaveText(BLOCK_COPY);
   await evidenceShot(page, 'XMON-89-detail-blocked.png');
 });
 
 test('非空授权集里两项都缺时，两处开关都被点名', async ({ page }) => {
   await openBoardAccept(page, ['远程 shell']);
-  await expect(page.locator('.dlg-accept-block')).toHaveText(
+  await expect(page.getByText(BLOCK_NOTE)).toHaveText(
     '缺少「合并分支、推送分支」授权，无法合并。请在该 Agent 的权限里开启。',
   );
 });
@@ -206,21 +215,21 @@ test('空授权集放行（存量豁免）：从未保存过权限 tab 的 Agent
   // 库里 agent.tools 是 notNull().default('[]')，「从未保存」与「显式全关」同值。
   // 判空集为缺 = 把所有存量 Agent 一刀切成禁按（PR #579 CI 红即此因）。
   // 两个入口各钉一次：豁免是本轮新开的支，只测一个入口等于放纵另一处漏接。
-  await openBoardAccept(page, []);
-  await expect(page.locator('.dlg-accept-done')).toBeEnabled();
-  await expect(page.locator('.dlg-accept-block')).toHaveCount(0);
+  const board = await openBoardAccept(page, []);
+  await expect(board.getByRole('button', { name: '完成' })).toBeEnabled();
+  await expect(page.getByText(BLOCK_NOTE)).toHaveCount(0);
   await evidenceShot(page, 'XMON-89-board-exempt.png');
 
-  await openDetailAccept(page, []);
-  await expect(page.locator('.dlg-accept-done')).toBeEnabled();
-  await expect(page.locator('.dlg-accept-block')).toHaveCount(0);
+  const detail = await openDetailAccept(page, []);
+  await expect(detail.getByRole('button', { name: '完成' })).toBeEnabled();
+  await expect(page.getByText(BLOCK_NOTE)).toHaveCount(0);
   await evidenceShot(page, 'XMON-89-detail-exempt.png');
 });
 
 test('两项都开时不拦：完成钮可点，无缺项提示', async ({ page }) => {
-  await openBoardAccept(page, ['合并分支', '推送分支']);
-  await expect(page.locator('.dlg-accept-done')).toBeEnabled();
-  await expect(page.locator('.dlg-accept-block')).toHaveCount(0);
+  const dialog = await openBoardAccept(page, ['合并分支', '推送分支']);
+  await expect(dialog.getByRole('button', { name: '完成' })).toBeEnabled();
+  await expect(page.getByText(BLOCK_NOTE)).toHaveCount(0);
 });
 
 test('看板入口：server 真拒（403）时弹层不关，server 文案原样显出', async ({ page }) => {
@@ -232,11 +241,12 @@ test('看板入口：server 真拒（403）时弹层不关，server 文案原样
     return route.fulfill({ status: 403, json: { error: reject } });
   });
 
-  await page.locator('.dlg-accept-done').click();
+  const dialog = page.getByRole('dialog', { name: '完成任务' });
+  await dialog.getByRole('button', { name: '完成' }).click();
   // 前提守卫：请求真发出去了（否则「弹层没关」测的是别的东西）。
   await expect.poll(() => merges).toBe(1);
-  await expect(page.locator('.dlg-accept')).toBeVisible();
-  await expect(page.locator('.dlg-accept-reject')).toHaveText(reject);
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('alert')).toHaveText(reject);
   await evidenceShot(page, 'XMON-89-board-403.png');
 });
 
@@ -248,8 +258,9 @@ test('合并成功（202）时弹层照常关，不留错误行', async ({ page 
     return route.fulfill({ status: 202, json: { delegated: true } });
   });
 
-  await page.locator('.dlg-accept-done').click();
+  const dialog = page.getByRole('dialog', { name: '完成任务' });
+  await dialog.getByRole('button', { name: '完成' }).click();
   await expect.poll(() => merges).toBe(1);
-  await expect(page.locator('.dlg-accept')).toHaveCount(0);
-  await expect(page.locator('.dlg-accept-reject')).toHaveCount(0);
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('alert')).toHaveCount(0);
 });

@@ -400,8 +400,12 @@ describe('M5 web E2E：主时序全链（01 §7.4 脊柱，UI 零 reload）', ()
 
     // 审核 → 验收弹层 → 完成（merge 202 delegated → 合并步 → done）。
     await page.locator('.detail-head-action').click();
-    await pexpect(page.locator('.dlg-accept-done')).toBeVisible();
-    await page.locator('.dlg-accept-done').click();
+    // #951/#910 重钉：.dlg-accept-done → dialog scope getByRole(button 完成)
+    // （accept 弹层可及名「完成任务」；detail-head-action 是 #945 留存别名钩，
+    // 终账 #952/#953）。
+    const accept = page.getByRole('dialog', { name: '完成任务' });
+    await pexpect(accept.getByRole('button', { name: '完成' })).toBeVisible();
+    await accept.getByRole('button', { name: '完成' }).click();
     await waitChip(/已完成/);
 
     // 时间线 canon：发起了合并 + 🎉（server 落库行经 SSE→invalidate 上屏）。

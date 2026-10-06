@@ -235,28 +235,28 @@ test('right pane type select switches between the doc surface and the three sect
   await expect(dropdown).toBeHidden();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(right.getByTestId('doc-pane')).toHaveCount(0);
-  await expect(right.locator('.dlg-token-total')).toBeVisible();
+  await expect(right.getByText('tokens', { exact: true })).toBeVisible();
 
   // the section head carries the same select — switch back to the doc view
   await page.locator('.doc-select-wrap .doc-pane-select').click();
   await page.getByRole('menuitemradio', { name: '变更' }).click();
   await expect(right.getByTestId('doc-pane')).toBeVisible();
-  await expect(page.locator('.dlg-token-total')).toHaveCount(0);
+  await expect(right.getByText('tokens', { exact: true })).toHaveCount(0);
 });
 
 test('scenarios 30/31/32 freeze the pane view instead of popping dialogs', async ({ page }) => {
   const right = page.getByTestId('detail-right');
   await page.goto(`${DETAIL_ROUTE}?scenario=30`);
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(right.locator('.dlg-token-total')).toBeVisible();
+  await expect(right.getByText('tokens', { exact: true })).toBeVisible();
 
   await page.goto(`${DETAIL_ROUTE}?scenario=31`);
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(right.locator('.dlg-branch-box')).toBeVisible();
+  await expect(right.getByText('构建分支')).toBeVisible();
 
   await page.goto(`${DETAIL_ROUTE}?scenario=32`);
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(right.locator('.dlg-history-row')).toHaveCount(1);
+  await expect(right.getByTestId('history-row')).toHaveCount(1);
 });
 
 test('plan card activation in the thread opens the plan doc in the right pane', async ({
