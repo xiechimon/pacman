@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../components/ui/button.js';
 import { DialogShell } from '../components/ui/dialog-shell.js';
 import { Input } from '../components/ui/input.js';
+import { Textarea } from '../components/ui/textarea.js';
 import { useI18n } from '../i18n/provider.js';
 import { classifyReviewChoice } from './review-default.js';
 
@@ -108,19 +109,23 @@ export function ReviewDialog({
       onClose={onClose}
       width={560}
       footer={
-        <div className="dlg-form-foot">
-          <div className="dlg-form-actions">
-            {/* XMON-24：取消钮切 shadcn ghost——皮肤全在 .chief-dlg-ghost
-                per-face（dialog.css 共享件，漆底灭 hover）；开始审核切
-                brand——老 primary/compact（h28 px12 @13px 漆面）逐值搬
-                utilities，brand 的 disabled 漆档与老 primary:disabled 同律。 */}
+        // #945（正典表 §5.4）：.dlg-form-foot/.dlg-form-actions 别名退役，
+        // 容器律走 utility（foot = flex-col px-4 pb-4，actions = 右对齐
+        // gap-2）；取消钮 .chief-dlg-ghost → Button outline 档（§5.4 正典
+        // 迁移位：旧 card-border 描边 + surface 底 ≈ outline 档
+        // border-border/bg-background，#915 翻值后自动对齐新色板）。
+        <div className="flex flex-col px-4 pb-4">
+          <div className="flex justify-end gap-2">
             <Button
-              variant="ghost"
-              className="chief-dlg-ghost font-normal active:not-aria-[haspopup]:translate-y-0"
+              variant="outline"
+              className="cursor-pointer active:not-aria-[haspopup]:translate-y-0"
               onClick={onClose}
             >
               {t('取消')}
             </Button>
+            {/* 开始审核 = brand（老 primary/compact h28 px12 @13px 漆面逐值
+                utilities，XMON-24 原样）；review-start 皮肤别名保留
+                （detail/overlays.css 规则，detail-b 批次处置）。 */}
             <Button
               variant="brand"
               className="review-start h-7 border-none px-3 text-[13px] font-normal cursor-pointer active:not-aria-[haspopup]:translate-y-0"
@@ -195,9 +200,18 @@ export function ReviewDialog({
           </div>
         )}
         <div className="review-focus-row">
-          <span className="dlg-form-label">{t('希望 Agent 审核时重点关注什么？（可选）')}</span>
-          <textarea
-            className="review-focus-input"
+          {/* #945（正典表 §5.4）：.dlg-form-label 别名退役——标签律 =
+              --label-size/--label-spacing 定版 token utility。 */}
+          <span className="mt-[9px] mb-2 text-(length:--label-size) leading-[18px] tracking-(--label-spacing) text-(--text-primary)">
+            {t('希望 Agent 审核时重点关注什么？（可选）')}
+          </span>
+          {/* #945（#851 裸控件账）：裸 textarea 收编 components/ui
+              Textarea——.review-focus-input 皮肤正本在 detail/overlays.css
+              （detail-b 域，unlayered 恒压件底座，几何零漂移）；件底座差额
+              中和：field-sizing 回 fixed（rows=3 律）、过渡/ring 清零、
+              占位墨回 UA 值、:focus 缝色对齐老 --focus-ring 律。 */}
+          <Textarea
+            className="review-focus-input field-sizing-fixed transition-none placeholder:text-[color:revert] focus:border-(--focus-ring) focus-visible:ring-0"
             value={focus}
             onChange={(event) => setFocus(event.target.value)}
             rows={3}

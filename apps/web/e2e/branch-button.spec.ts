@@ -4,6 +4,9 @@ import { expect, test } from '@playwright/test';
 // fixture 面的可见性谓词与弹层可开性是同一函数（overlayContent 有无），
 // live 面走 latestBuildId 有无——可见即点得开。分支 glyph 用 circle
 // 计数钉形（git-branch = 1 path + 2 circle，旧下载箭头零 circle）。
+// #945/#910 重钉：.dlg 壳别名 → role=dialog 一级（§5.5，重钉可先行、
+// DOM 别名残留至 #952）；.todo-card-branch 属 board/motion 载体面、
+// .dlg-branch-box 属 detail/overlays.css（detail-b 批次），均原样保留。
 
 test('有分支卡：分支钮可见且为分支 glyph，点开分支与 PR 弹层', async ({ page }) => {
   await page.goto('/app?scenario=01');
@@ -11,7 +14,7 @@ test('有分支卡：分支钮可见且为分支 glyph，点开分支与 PR 弹�
   await expect(buttons.first()).toBeVisible();
   await expect(buttons.first().locator('svg circle')).toHaveCount(2);
   await buttons.first().click();
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('.dlg-branch-box')).toBeVisible();
 });

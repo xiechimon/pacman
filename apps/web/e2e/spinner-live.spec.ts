@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
 
 // Issue #672: the transcript's live cues — the loading-dev pilot. The #471
 // braille reel (todos.dev replica, 10 frames × 90ms) is retired by user
@@ -34,8 +34,18 @@ import { expect, test } from '@playwright/test';
 //      the spot solid, #821 — the chain, not the value, is pinned here)
 // Mapper-side modes (phantom/duplicate tails) live in
 // test/transcript-quiescent.test.ts.
+//
+// #945/#910 重钉：detail.css 退役——live 行 = live-row testid（无 role
+// 结构位，二级）；spinner 根 = 行内 aria-hidden 库根（loading-dev Atom 的
+// props 是封闭集，无 data-* 透传——aria-hidden 是库契约属性，L6 本身就钉
+// 它）；ld-atom-* 内部件类 = 库契约面（探针工具面全盘继承 #411/#910 裁定
+// 4，非本仓 per-face，保留）；label/秒数 = 文本一级；头 chip = head 内
+// aria-expanded 按钮。
 
 const DETAIL = '/app/todo/7ve0iOkQ-JBpSL98zSiGc';
+
+const row = (page: Page) => page.getByTestId('live-row');
+const spinner = (page: Page) => row(page).locator('[aria-hidden="true"]').first();
 
 test.describe('streaming row loading indicator (scenario 26)', () => {
   test.beforeEach(async ({ page }) => {
@@ -45,7 +55,7 @@ test.describe('streaming row loading indicator (scenario 26)', () => {
   test('Atom mounts: stylesheet injected, shell + 3 tilted orbits, staggered 900ms spin', async ({
     page,
   }) => {
-    const root = page.locator('.chat-spinner');
+    const root: Locator = spinner(page);
     await expect(root).toHaveClass(/ld-atom/); // L1
     // React 19 hoists the library's <style href precedence> into the head
     // and renders the props as data-href / data-precedence
@@ -92,7 +102,7 @@ test.describe('streaming row loading indicator (scenario 26)', () => {
   });
 
   test('root is a 16px square, shell a 16px circle, row keeps 20px', async ({ page }) => {
-    const root = await page.locator('.chat-spinner').evaluate((el) => {
+    const root = await spinner(page).evaluate((el) => {
       const cs = getComputedStyle(el);
       return { width: cs.width, height: cs.height, position: cs.position };
     });
@@ -102,28 +112,33 @@ test.describe('streaming row loading indicator (scenario 26)', () => {
     // L2 geometry is the layout box: offsetWidth/Height ignore the
     // breathe pulse (a paint-time scale on the root, #821), while
     // getBoundingClientRect would sample wherever the pulse happens to be.
-    const shell = await page.locator('.ld-atom-shell').evaluate((el) => {
-      const cs = getComputedStyle(el);
-      return { w: el.offsetWidth, h: el.offsetHeight, radius: cs.borderRadius, stroke: cs.borderTopWidth };
-    });
+    const shell = await spinner(page)
+      .locator('.ld-atom-shell')
+      .evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return {
+          w: el.offsetWidth,
+          h: el.offsetHeight,
+          radius: cs.borderRadius,
+          stroke: cs.borderTopWidth,
+        };
+      });
     expect(shell.w).toBe(16); // L2
     expect(shell.h).toBe(16);
     expect(shell.radius).toBe('9999px'); // circle
     // L2: the sheet specifies 0.055 × 16 = 0.88px; at the e2e config's
     // deviceScaleFactor 1 Chrome snaps border widths to the 1px used value
     expect(shell.stroke).toBe('1px');
-    const rowHeight = await page
-      .locator('.chat-streaming')
-      .evaluate((el) => getComputedStyle(el).height);
+    const rowHeight = await row(page).evaluate((el) => getComputedStyle(el).height);
     expect(rowHeight).toBe('20px'); // L3: row geometry unchanged
   });
 
   test('root is aria-hidden and shell/ring strokes ride currentColor; label stays the cue', async ({
     page,
   }) => {
-    await expect(page.locator('.chat-spinner')).toHaveAttribute('aria-hidden', 'true'); // L6
-    await expect(page.locator('.chat-streaming-label')).toHaveText('处理中...');
-    const colors = await page.locator('.chat-spinner').evaluate((el) => {
+    await expect(spinner(page)).toHaveAttribute('aria-hidden', 'true'); // L6
+    await expect(row(page).getByText('处理中...')).toBeVisible();
+    const colors = await spinner(page).evaluate((el) => {
       const root = getComputedStyle(el).color;
       const shell = getComputedStyle(el.querySelector('.ld-atom-shell')!).borderTopColor;
       const rings = [...el.querySelectorAll('.ld-atom-ring')].map(
@@ -137,7 +152,7 @@ test.describe('streaming row loading indicator (scenario 26)', () => {
   });
 
   test('elapsed seconds ride tabular figures', async ({ page }) => {
-    const secs = page.locator('.chat-streaming-secs');
+    const secs = row(page).getByText(/^\d+s$/);
     await expect(secs).toHaveText('3s');
     const fvn = await secs.evaluate((el) => getComputedStyle(el).fontVariantNumeric);
     expect(fvn).toContain('tabular-nums'); // L7
@@ -148,7 +163,7 @@ test.describe('streaming row loading indicator (scenario 26)', () => {
   }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(`${DETAIL}?scenario=26`);
-    const state = await page.locator('.chat-spinner').evaluate((el) => {
+    const state = await spinner(page).evaluate((el) => {
       const spins = [...el.querySelectorAll('.ld-atom-spin')];
       return {
         running: el.getAnimations({ subtree: true }).length,
@@ -157,7 +172,7 @@ test.describe('streaming row loading indicator (scenario 26)', () => {
       };
     });
     expect(state.running).toBe(0); // L5: nothing animates under the freeze law
-    expect(state.names).toHaveLength(3); // L5: the spins exist — no vacuous pass
+    expect(state.names).toHaveLength(3); // L5: the spins exist — not a vacuous pass
     for (const name of state.names) expect(name).toBe('none'); // L5
     for (const t of state.transforms) expect(t).not.toBe('none'); // L5: static rotate(60deg) settle
   });
@@ -171,16 +186,17 @@ test.describe('quiescent building gap (scenario spinner-quiescent)', () => {
   test('one live row: spinning indicator + static 执行中... label, no seconds', async ({
     page,
   }) => {
-    const row = page.locator('.chat-streaming');
-    await expect(row).toHaveCount(1);
-    await expect(page.locator('.chat-spinner')).toHaveCount(1);
-    await expect(page.locator('.ld-atom-spin')).toHaveCount(3); // L2
-    await expect(page.locator('.chat-streaming-label')).toHaveText('执行中...');
-    await expect(page.locator('.chat-streaming-secs')).toHaveCount(0);
-    await expect(row).not.toContainText('undefined'); // L8
-    await expect(row).not.toContainText(/(^|[^.\w])s([^.\w]|$)/); // no bare "s" tail
+    await expect(row(page)).toHaveCount(1);
+    await expect(spinner(page)).toHaveCount(1);
+    await expect(spinner(page).locator('.ld-atom-spin')).toHaveCount(3); // L2
+    await expect(row(page).getByText('执行中...')).toBeVisible();
+    await expect(row(page).getByText(/^\d+s$/)).toHaveCount(0);
+    await expect(row(page)).not.toContainText('undefined'); // L8
+    await expect(row(page)).not.toContainText(/(^|[^.\w])s([^.\w]|$)/); // no bare "s" tail
     // the header chip and the transcript row agree — the row is the
     // conversation-side echo of the same phase
-    await expect(page.locator('.detail-chip')).toHaveText(/执行中/);
+    await expect(
+      page.getByTestId('detail-head').locator('button[aria-expanded]'),
+    ).toHaveText(/执行中/);
   });
 });

@@ -22,6 +22,7 @@
 
 import { useMemo } from 'react';
 import { inlineSegments } from '../api/mappers.js';
+import { Button } from '../components/ui/button.js';
 import type { DocSegment } from '../fixtures/records.js';
 import { ATTACHMENT_LINE } from '../overlay/attachment-paste.js';
 import { Segments } from './segments.js';
@@ -151,11 +152,26 @@ export function parseChatMarkdown(text: string): ChatBlock[] {
   return blocks;
 }
 
+// #945（detail.css 清零）：md 块族皮肤迁 token utilities。ATX 标题 = 真
+// <h2>/<h3>/… 元素，一档压过 13px 正文、不抢 doc pane 的 16px 方案标题；
+// 尺寸阶梯 --1..--6 = 18/16/14/13/13/13px（老 chat-md-head--N 规则同值，
+// arbitrary 字号不带 text-* 档的随行高——行高单源 leading-[1.35]）。
+const HEAD_SIZE: Record<number, string> = {
+  1: 'text-[18px]',
+  2: 'text-[16px]',
+  3: 'text-[14px]',
+  4: 'text-[13px]',
+  5: 'text-[13px]',
+  6: 'text-[13px]',
+};
+
 function HeadingTag({ level, segments }: { level: number; segments: DocSegment[] }) {
   const clamped = Math.min(6, Math.max(1, level));
   const Tag = `h${clamped}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
   return (
-    <Tag className={`chat-md-head chat-md-head--${clamped}`}>
+    <Tag
+      className={`chat-md-head chat-md-head--${clamped} mt-3 mb-1 leading-[1.35] font-semibold text-(--text-primary) first:mt-0 ${HEAD_SIZE[clamped] ?? 'text-[13px]'}`}
+    >
       <Segments segments={segments} codeClassName="chat-code" />
     </Tag>
   );
@@ -170,11 +186,26 @@ function attachmentIdFromKey(key: string): string {
   return dot > 0 ? tail.slice(0, dot) : tail;
 }
 
+// #945（detail.css 清零）：附件 chip 皮肤迁 utilities。形 = chat-taskline-seq
+// chip 同族（code-bg 底 + --border-default 缝线 + 次级字色），文件名是阅读
+// 文本给 12px 一档；图片 chip 2px 内衬 + 4px 内圆角（同心圆角：外 6 = 内 4
+// + 内衬 2），缩略高度 cap 160px ≈ 6 行正文。hover 只动 color/border-color
+// 两属性、150ms 标准档（motion registry #73）。spec-chip--preview 的皮肤
+// 正本在 overlay/attachment-strip.css（overlay 域），类名照挂。
+export const SPEC_CHIP =
+  'inline-flex max-w-full items-center rounded-[6px] border border-(--border-default) bg-(--code-bg) px-2 py-[3px] text-xs leading-4 text-(--text-secondary) no-underline transition-[color,border-color] duration-(--dur-fast) ease-(--ease-standard) hover:border-(--border-strong) hover:text-(--text-primary)';
+export const SPEC_CHIP_IMAGE = 'border-none bg-transparent p-0.5 hover:bg-transparent';
+export const SPEC_CHIP_IMG = 'block max-h-40 max-w-full rounded-[4px]';
+
 /** 附件 chip（#310 契约 / #612 起有样式）：image/* → 内联缩略 <img>（src 直
  *  指 GET /api/attachments/{id}），其它类型 → 文件名链接新标签打开
  *  （content-type 由浏览器原生处理）。
- *  #757 onPreview：composer strip 面传入后 image chip 改走 <button>（同类名，
- *  点开预览浮层而非新标签）；不传 = transcript 旧链形，字节不变。 */
+ *  #757 onPreview：composer strip 面传入后 image chip 改走 Button 件（同类名，
+ *  点开预览浮层而非新标签；#945 裸钮收编——ghost 底座 + 七通道中和钉回
+ *  老 chip 形）；不传 = transcript 旧链形，字节不变。 */
+/** 长路径截断（composer/附件两 strip 共用）：label 收进内 span，省略号不断 chip 框。 */
+export const COMPOSER_CHIP_LABEL = 'composer-chip-label block min-w-0 max-w-[260px] truncate';
+
 export function AttachmentChip({
   name,
   attachmentKey,
@@ -188,34 +219,40 @@ export function AttachmentChip({
   const isImage = /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(attachmentKey);
   if (isImage && onPreview !== undefined) {
     return (
-      <button
-        type="button"
-        // #948：.spec-chip--preview 的 UA chrome 清零自 attachment-strip.css
-        // 迁入（该文件退役）——preview 卡是 button 不是 link，appearance 归零
-        // 保住 .spec-chip 卡面，整卡可点。
-        className="spec-chip spec-chip--image spec-chip--preview cursor-pointer appearance-none"
+      // #945×#948 汇流：preview 卡收编 Button 件（#851 裸控件账，本票），
+      // 皮肤 = SPEC_CHIP utilities（detail.css 退役）；#948 的 appearance
+      // 归零由 TW preflight 对 button 元素的复位承接，无需显式 utility。
+      <Button
+        variant="ghost"
+        className={`spec-chip spec-chip--image spec-chip--preview ${SPEC_CHIP} ${SPEC_CHIP_IMAGE} h-auto cursor-pointer rounded-[6px] whitespace-normal font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto`}
         title={name}
         onClick={() => onPreview(name, href)}
       >
-        <img src={href} alt={name} className="spec-chip-img" />
-      </button>
+        <img src={href} alt={name} className={`spec-chip-img ${SPEC_CHIP_IMG}`} />
+      </Button>
     );
   }
   if (isImage) {
     return (
       <a
-        className="spec-chip spec-chip--image"
+        className={`spec-chip spec-chip--image ${SPEC_CHIP} ${SPEC_CHIP_IMAGE}`}
         href={href}
         target="_blank"
         rel="noopener noreferrer"
         title={name}
       >
-        <img src={href} alt={name} className="spec-chip-img" />
+        <img src={href} alt={name} className={`spec-chip-img ${SPEC_CHIP_IMG}`} />
       </a>
     );
   }
   return (
-    <a className="spec-chip" href={href} target="_blank" rel="noopener noreferrer" title={name}>
+    <a
+      className={`spec-chip ${SPEC_CHIP}`}
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={name}
+    >
       {name}
     </a>
   );
@@ -236,14 +273,26 @@ export function ChatMarkdown({ text }: { text: string }) {
             );
           case 'ordered':
             return (
+              // 列表行 = 悬挂 marker 列 + 内容；嵌套缩进走 inline
+              // margin-left（DEPTH_PX）。baseline 对齐（#814 返工）：序号跟
+              // 内容首行走，即使那行带更高的 inline 盒（code chip）。行距
+              // 2px、首块归零（老 :first-child 规则的渲染序等价形）。
               <div
                 key={i}
-                className="chat-md-item chat-md-item--ordered"
+                className={`chat-md-item chat-md-item--ordered flex items-baseline gap-[7px] ${
+                  i === 0 ? 'mt-0' : 'mt-0.5'
+                }`}
+                data-testid="md-item-ordered"
                 data-depth={block.depth}
                 style={{ marginLeft: block.depth * DEPTH_PX }}
               >
-                <span className="chat-md-ordinal">{block.ordinal}.</span>
-                <span className="chat-md-content">
+                <span
+                  className="chat-md-ordinal min-w-[3ch] flex-none text-right text-(--text-tertiary) tabular-nums"
+                  data-testid="md-ordinal"
+                >
+                  {block.ordinal}.
+                </span>
+                <span className="chat-md-content min-w-0">
                   <Segments segments={block.segments} codeClassName="chat-code" />
                 </span>
               </div>
@@ -252,31 +301,43 @@ export function ChatMarkdown({ text }: { text: string }) {
             return (
               <div
                 key={i}
-                className="chat-md-item chat-md-item--bullet"
+                className={`chat-md-item chat-md-item--bullet flex items-baseline gap-[7px] ${
+                  i === 0 ? 'mt-0' : 'mt-0.5'
+                }`}
+                data-testid="md-item-bullet"
                 data-depth={block.depth}
                 style={{ marginLeft: block.depth * DEPTH_PX }}
               >
-                <span className="chat-md-marker">•</span>
-                <span className="chat-md-content">
+                <span className="chat-md-marker min-w-[14px] flex-none text-left text-(--text-tertiary) tabular-nums">
+                  •
+                </span>
+                <span className="chat-md-content min-w-0">
                   <Segments segments={block.segments} codeClassName="chat-code" />
                 </span>
               </div>
             );
           case 'code':
             return (
-              <pre key={i} className="chat-md-code" data-lang={block.lang ?? ''}>
+              // 围栏块 = .chat-code 的块级孪生：mono、正常对比度、自带底 +
+              // 缝线，短行折行不横滚、长块 320px 封顶内滚。
+              <pre
+                key={i}
+                className="chat-md-code my-2 max-h-80 overflow-auto rounded-[4px] border border-(--border-default) bg-(--code-bg) px-2.5 py-2 font-mono text-[11px] leading-4 break-words whitespace-pre-wrap text-(--text-primary) [word-break:break-word]"
+                data-lang={block.lang ?? ''}
+                data-testid="md-code"
+              >
                 {block.text}
               </pre>
             );
           case 'attachment':
             return (
-              <div key={i} className="chat-md-attachment">
+              <div key={i} className="chat-md-attachment my-2">
                 <AttachmentChip name={block.name} attachmentKey={block.key} />
               </div>
             );
           case 'para':
             return (
-              <p key={i} className="chat-para">
+              <p key={i} className="chat-para m-0">
                 <Segments segments={block.segments} codeClassName="chat-code" />
               </p>
             );

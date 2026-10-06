@@ -11,13 +11,15 @@
 // has no build payload, so the page does not mount this pane at all — the
 // 488px goes to the fresh block's task brief instead of a placeholder.
 
+import { cn } from 'cn';
 import type { ReactNode } from 'react';
 import { useBuild } from '../api/hooks.js';
 import type { BuildOverlayContent, PaneView, RunHistoryRow } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { BarChart3, Check, Download, History, X } from '../icons/index.js';
 import { type DocTypeLabel, PaneTypeSelect } from '../overlays/plan-dropdown.js';
-import { BranchSyncFields, SyncButton, useBranchSyncState } from './branch-dialog.js';
+import { BranchSyncFields, FIELD_LABEL, SyncButton, useBranchSyncState } from './branch-dialog.js';
+import { PANE_HEAD } from './docpane.js';
 import './overlays.css';
 
 /** Type-select props every section head shares (the ✓ row + row set are
@@ -33,7 +35,7 @@ interface PaneSelectProps {
 
 function SectionHead({ icon, select }: { icon: ReactNode; select: PaneSelectProps }) {
   return (
-    <header className="doc-pane-head">
+    <header className={PANE_HEAD}>
       {icon}
       <PaneTypeSelect
         view={select.view}
@@ -70,9 +72,9 @@ function TokenSection({
     ['缓存命中率', stats.cacheHitRate],
   ];
   return (
-    <section className="pane-section">
+    <section className="pane-section flex min-h-0 flex-1 flex-col">
       <SectionHead icon={<BarChart3 width={14} height={14} />} select={select} />
-      <div className="pane-section-body">
+      <div className="pane-section-body min-h-0 flex-1 overflow-y-auto">
         <div className="dlg-token-total">
           <span className="dlg-token-num">{stats.total}</span>
           <span className="dlg-token-unit">tokens</span>
@@ -106,9 +108,9 @@ function HistorySection({
   // section has nothing to close, and the failed phase's header 重跑
   // primary already carries the real action, so the section lists rows only.
   return (
-    <section className="pane-section">
+    <section className="pane-section flex min-h-0 flex-1 flex-col">
       <SectionHead icon={<History width={14} height={14} />} select={select} />
-      <div className="pane-section-body">
+      <div className="pane-section-body min-h-0 flex-1 overflow-y-auto">
         <div className="dlg-history">
           {content.runs.map((run) => (
             <div key={run.label} className="dlg-history-row">
@@ -151,9 +153,9 @@ function BranchSection({
   const pr = buildQ.data?.prUrl ?? null;
   const prNumber = buildQ.data?.prNumber ?? null;
   return (
-    <section className="pane-section">
+    <section className="pane-section flex min-h-0 flex-1 flex-col">
       <SectionHead icon={<Download width={14} height={14} />} select={select} />
-      <div className="pane-section-body">
+      <div className="pane-section-body min-h-0 flex-1 overflow-y-auto">
         <div className="dlg-branch-body">
           <BranchSyncFields
             info={info}
@@ -169,7 +171,7 @@ function BranchSection({
           />
           {/* The dialog's Git tab ([推断] minimal PR surface) folds into the
               section tail — one static column, no sub-tabs. */}
-          <div className="dlg-form-label pane-branch-pr">Pull Request</div>
+          <div className={cn('pane-branch-pr', FIELD_LABEL, 'mt-4')}>Pull Request</div>
           {pr !== null && prNumber != null ? (
             <a className="dlg-dir dlg-pr-link" href={pr} target="_blank" rel="noopener noreferrer">
               #{prNumber}
@@ -177,7 +179,7 @@ function BranchSection({
           ) : (
             <div className="dlg-dir">{t('未创建')}</div>
           )}
-          <div className="pane-branch-foot">
+          <div className="pane-branch-foot mt-4">
             <SyncButton
               buildId={buildId}
               canSync={sync.canSync}
@@ -212,7 +214,10 @@ export function RightPane({ view, docLabel, onView, content, buildId, children }
     onView,
   });
   return (
-    <aside className="detail-right">
+    <aside
+      className="detail-right flex w-(--detail-pane-right) min-h-0 flex-none flex-col border-l border-(--border-default) max-md:hidden"
+      data-testid="detail-right"
+    >
       {content == null || view === 'doc' ? (
         children
       ) : view === 'branch' ? (

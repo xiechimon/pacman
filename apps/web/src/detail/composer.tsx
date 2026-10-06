@@ -33,6 +33,7 @@
 // derived from either live REST hooks or the fixture set.
 
 import { Button } from '../components/ui/button.js';
+import { Textarea } from '../components/ui/textarea.js';
 import { useI18n } from '../i18n/provider.js';
 import { ArrowUp, Grid2x2, Paperclip, SearchPlus } from '../icons/index.js';
 import { AttachmentStrip } from '../overlay/attachment-strip.js';
@@ -41,6 +42,34 @@ import { type MentionGroups, MentionInline, MentionPicker } from '../overlay/men
 import type { FileMentionEntry } from '../overlay/mention-token.js';
 import { SlashHelp, SlashMenu } from '../overlay/slash-menu.js';
 import { ComposerChips } from './composer-chips.js';
+
+// #945（detail.css 清零）：composer 卡皮肤迁 token utilities——中心列唯一
+// 卡（One Card Per Screen，#366）：min-h84 + 方角 + 1px 缝线 +
+// --surface-secondary 底 + --card-shadow 卡级抬升（#775 阴影管层次），
+// 16px 侧/底 margin = 列 inset 律（#472 in-flow）。
+const COMPOSER_CARD =
+  'composer relative mx-4 mb-4 flex-none rounded-none border border-(--border-default) bg-(--surface-secondary) shadow-(--card-shadow) transition-shadow duration-(--dur-fast) ease-(--ease-out)';
+// 占位行/输入行共用几何：13px/15px 内衬 + 14px/16px 墨（#470：一档压正文
+// 15px）。min-h-[84px] 走卡片本体。
+const COMPOSER_PLACEHOLDER = 'px-[15px] pt-[13px] text-[14px] leading-4';
+// 真输入面（M5 live）：48px 基高（3×16 行盒，#860）向 96px wire cap 自增
+// （grow 由 useComposerWire 的 inline height 承载），内部滚动。老
+// textarea.composer-input 的自定义字体栈（--font-inter + Inter/system-ui/
+// PingFang SC 后备列）逐项保留——caret/镜像几何依赖它。Textarea 件底座
+// 差额逐条中和：方角已同形，field-sizing 回 fixed（JS grow 律），边框/
+// focus 环/暗底/过渡清零到老 UA 裸面形。
+const COMPOSER_INPUT =
+  "field-sizing-fixed h-12 min-h-0 max-h-24 overflow-y-auto resize-none border-none bg-transparent px-[15px] pt-[13px] pb-0 [font-family:var(--font-inter),Inter,system-ui,-apple-system,'PingFang_SC','Microsoft_YaHei',sans-serif] text-[14px] leading-4 text-(--text-primary) tabular-nums transition-none outline-none placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent";
+// 工具钮（30px 盒，XMON-55 P5 光学左缘 10px 由 toolbar 锚承载）：ghost
+// 七通道中和 + #860 hover 增亮律（tertiary → secondary，只动墨色）。
+const COMPOSER_TOOL =
+  'flex size-[30px] cursor-pointer items-center justify-center border-none bg-transparent p-0 text-(--text-tertiary) hover:bg-transparent hover:text-(--text-secondary) dark:hover:bg-transparent dark:hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0';
+// 发送/停止（XMON-55 P5 同胞对：32×32、同底、同轴、8px 间隔）共享的定位/
+// 盒形串——漆面（bg/text/hover）不进本串：tailwind-merge 后写者胜，共享串
+// 排消费端漆面之后会压掉 --ready 态的品牌实底。idle 底 --seg-active
+// （#860），停止的红只住 10px glyph。
+const COMPOSER_SQUARE =
+  'absolute bottom-3 flex size-8 cursor-pointer items-center justify-center rounded-none border-none p-0 active:not-aria-[haspopup]:translate-y-0';
 
 interface ComposerProps {
   placeholder: string;
@@ -164,7 +193,10 @@ export function Composer({
   });
 
   return (
-    <div className="composer composer--with-mention">
+    <div
+      className={`${COMPOSER_CARD} composer--with-mention min-h-[84px]`}
+      data-testid="composer-card"
+    >
       {editable ? (
         <div className="composer-input-wrap">
           {/* #728 combobox wiring: while the inline listbox is open the
@@ -172,10 +204,13 @@ export function Composer({
               aria-activedescendant at the highlighted row — it keeps DOM
               focus the whole time (the listbox rows are non-focusable).
               keyup/click/select re-judge the token after caret-only moves
-              (a change event never fires for those). */}
-          <textarea
+              (a change event never fires for those).
+              #945：裸 textarea 收编 components/ui Textarea（#851 账）——
+              皮肤差额全在 COMPOSER_INPUT 中和串，wire 的 ref/grow/键盘链
+              原样直通。 */}
+          <Textarea
             ref={textareaRef}
-            className="composer-placeholder composer-input"
+            className={`composer-placeholder composer-input ${COMPOSER_INPUT}`}
             placeholder={t(placeholder)}
             value={draft}
             onChange={handleChange}
@@ -241,7 +276,12 @@ export function Composer({
           />
         </div>
       ) : (
-        <div className="composer-placeholder">{t(placeholder)}</div>
+        <div
+          className={`composer-placeholder ${COMPOSER_PLACEHOLDER} text-(--text-tertiary)`}
+          data-testid="composer-placeholder"
+        >
+          {t(placeholder)}
+        </div>
       )}
       {/* #757 附件 strip + #812 提及 strip：同一浮列挂盒外上方（盒底沿
           min-84 起随内容增高，浮列与 listbox 同锚无布局位移）。共列即天然上下叠放，
@@ -272,16 +312,22 @@ export function Composer({
         // hint，用户 OS 文件选择器仍可给其他类型，最终由 server 强拒兜底。
         accept="text/*,image/*,application/json,application/pdf,application/xml"
       />
-      <div className="composer-toolbar">
+      {/* XMON-55 P5 光学左缘 10px（纸夹墨迹对齐 placeholder 首字符）；
+          bottom 12 与 send/stop 同轴（cy 687）。 */}
+      <div
+        className="composer-toolbar absolute bottom-3 left-2.5 flex items-center"
+        data-testid="composer-toolbar"
+      >
         {/* #304 C5 裁决:语音输入功能不做(local-first 无语音面)——原站
             首钮移除不渲染,不留死钮;添加附件/AI 审核/提及原样。
-            XMON-24：三工具钮切 shadcn ghost——皮肤全在 .composer-tool
-            per-face；附件钮可 disabled，老面无禁用降档（无 :disabled
-            规则）→ opacity/pointer-events 双双中性化；svg 免底座强制
-            16px（图标默认 18px 属性）。 */}
+            XMON-24 三工具钮 shadcn ghost 底座不变；#945 皮肤从
+            .composer-tool per-face 迁 COMPOSER_TOOL 中和串；附件钮可
+            disabled，老面无禁用降档（无 :disabled 规则）→ opacity/
+            pointer-events 双双中性化；svg 免底座强制 16px（图标默认
+            18px 属性）。 */}
         <Button
           variant="ghost"
-          className="composer-tool font-normal disabled:opacity-100 disabled:pointer-events-auto active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+          className={`composer-tool ${COMPOSER_TOOL} mr-1.5 font-normal disabled:pointer-events-auto disabled:opacity-100 [&_svg:not([class*='size-'])]:size-auto`}
           aria-label={t('添加附件')}
           disabled={attaching || !onAttachment}
           onClick={openFilePicker}
@@ -291,7 +337,7 @@ export function Composer({
         {aiReview && (
           <Button
             variant="ghost"
-            className="composer-tool font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+            className={`composer-tool ${COMPOSER_TOOL} mr-1.5 font-normal [&_svg:not([class*='size-'])]:size-auto`}
             aria-label={t('AI 审核')}
             onClick={onReview}
           >
@@ -300,7 +346,7 @@ export function Composer({
         )}
         <Button
           variant="ghost"
-          className="composer-tool font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+          className={`composer-tool ${COMPOSER_TOOL} mr-1.5 font-normal [&_svg:not([class*='size-'])]:size-auto`}
           aria-label={t('提及')}
           onClick={togglePicker}
         >
@@ -308,22 +354,30 @@ export function Composer({
         </Button>
       </div>
       {streaming && (
-        // XMON-24：停止钮切 shadcn ghost——漆底/定位/尺寸全在
-        // .composer-stop per-face（漆面压过 hover:bg-muted）；只清 active 位移。
+        // XMON-24 停止钮 shadcn ghost 底座不变；#945 漆底/定位/尺寸迁
+        // utilities（right 53 = send right 13 + width 32 + gap 8，XMON-55
+        // P5 同胞律）；红只住 10px glyph（--stop 墨）。
         <Button
           variant="ghost"
-          className="composer-stop active:not-aria-[haspopup]:translate-y-0"
+          className={`composer-stop ${COMPOSER_SQUARE} right-[53px] bg-(--seg-active) text-(--stop) hover:bg-(--seg-active) hover:text-(--stop) dark:hover:bg-(--seg-active) dark:hover:text-(--stop) [&_svg:not([class*='size-'])]:size-auto`}
           aria-label={t('停止')}
           onClick={onStop}
         >
-          <span className="composer-stop-glyph" />
+          <span className="composer-stop-glyph size-2.5 rounded-[2px] bg-current" />
         </Button>
       )}
-      {/* XMON-24：发送钮切 shadcn ghost——漆底/过渡钉全在 .composer-send
-          (--ready) per-face；ArrowUp 属性 14px，svg 免底座强制 16px。 */}
+      {/* XMON-24 发送钮 shadcn ghost 底座不变；#945 漆底/过渡钉迁
+          utilities——过渡只动 bg/color 两属性、150ms cubic-bezier(0.2,0,
+          0,1)（逐键状态不抢注意力，better-ui 动效克制）；draft 在场翻
+          --card-button 品牌实底（XMON-55 P5「有东西可发」可见化）。
+          ArrowUp 属性 14px，svg 免底座强制 16px。 */}
       <Button
         variant="ghost"
-        className={`${draft.trim() === '' ? 'composer-send' : 'composer-send composer-send--ready'} active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto`}
+        className={`composer-send ${COMPOSER_SQUARE} right-[13px] transition-[background-color,color] duration-(--dur-fast) ease-[cubic-bezier(0.2,0,0,1)] ${
+          draft.trim() === ''
+            ? 'bg-(--seg-active) text-(--text-tertiary) hover:bg-(--seg-active) hover:text-(--text-tertiary) dark:hover:bg-(--seg-active) dark:hover:text-(--text-tertiary)'
+            : 'composer-send--ready bg-(--card-button) text-(--text-on-accent) hover:bg-(--card-button) hover:text-(--text-on-accent) dark:hover:bg-(--card-button) dark:hover:text-(--text-on-accent)'
+        } [&_svg:not([class*='size-'])]:size-auto`}
         aria-label={t('发送')}
         onClick={send}
       >

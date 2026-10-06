@@ -45,26 +45,47 @@ export function useLiveSeconds(startedAt: number | null | undefined): number | n
 }
 
 /** Per-surface skin. The row skeleton and every behaviour stay shared.
- *  detail 面仍走类名（detail.css，#945 清零面）；chief 面 #950 清零后 =
- *  token utility（旧 .chief-streaming 族等值）。headBtn = 仅 Button 形态
- *  （disclosure 在位）追加的行钮中和：#885 靶高律（自然内容高 21px 的
- *  font:inherit 行框 = text-sm leading-normal，+2×1.5px 内边距 = 24px 命中
- *  盒，纵向内边距被等量负 margin 抵掉、墨迹零位移）+ ghost 件配方七通道
- *  归零（旧 button.chief-streaming 的 background:none/border:none unlayered
- *  恒压件层——迁移后逐通道显式钉回：无 hover 涂底、无 hover/expanded 墨变、
- *  tertiary 墨常驻）。detail 面 headBtn 留空：其 per-face CSS 自有同款律。 */
+ *  #945（detail.css 清零）：detail 皮肤从 per-face 规则迁到 token
+ *  utilities——类名保留为惰性别名（detail-b 票的 spec 与 integration 仍按
+ *  它定位）。值 = 老 computed 逐项同形：行 20px / 12px 墨 / tertiary
+ *  标签（--text-dim 在非 background 面 light 模实测 < 槽地板 3，#908
+ *  裁决 2 换槽 --text-tertiary，token 值不动）/ spinner 走 spot 实底 +
+ *  spinner-breathe 脉冲（keyframes 正本在 motion.css carrier 层，
+ *  reduced-motion 冻结走 motion-reduce 变体）。
+ *  chief 皮肤 #950 清零后 = token utility（旧 .chief-streaming 族等值，
+ *  类名别名已退役）。headBtn = 仅 Button 形态（disclosure 在位）追加的
+ *  行钮中和：#885 靶高律（纵向内边距被等量负 margin 抵掉、墨迹零位移）+
+ *  ghost 件配方七通道归零（旧 unlayered background:none/border:none 恒压
+ *  件层——迁移后逐通道显式钉回：无 hover 涂底、无 hover/expanded 墨变、
+ *  墨常驻）。两侧各自携带完整中和串，Button 不再铺共享尾串——detail 的
+ *  h-6 与旧共享尾串的 h-auto 同 twMerge 轴、后写者胜会砸 #885 命中盒。 */
 const SKIN = {
   detail: {
-    head: 'chat-streaming',
-    headBtn: '',
-    spinner: 'chat-spinner',
-    secs: 'chat-streaming-secs',
-    label: 'chat-streaming-label',
+    head: 'chat-streaming ml-[15px] flex h-5 max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs leading-4 text-(--text-tertiary)',
+    /** #873/#885 disclosure 钮形态：命中盒 20→24px（WCAG 2.5.8），纵向
+     *  +2px 内边距被等量负 margin 抵掉，content box 仍 20px、相邻行零位移。
+     *  ghost 七通道中和（#908 裁决 3）：hover/aria-expanded 底与墨、字重、
+     *  边框、gap·px、press 位移全数钉回老 per-face 的透明形态。 */
+    headBtn:
+      "h-6 -my-0.5 cursor-pointer rounded-none justify-start border-none bg-transparent py-0.5 text-left text-[length:inherit] leading-[inherit] font-normal hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto",
+    spinner:
+      'chat-spinner flex-none text-(--card-button) animate-[spinner-breathe_1800ms_var(--ease-standard)_infinite] motion-reduce:animate-none',
+    secs: 'chat-streaming-secs tabular-nums',
+    /** #910 二级载体：live 行是无 role 结构位；spinner 是库件封闭 props
+     *  （loading-dev SpinnerProps 无 data-* 透传），spec 按 row scope +
+     *  aria-hidden 库根载体定位，不另铺钩。 */
+    rowTestid: 'live-row',
+    label: 'chat-streaming-label truncate text-(--text-tertiary)',
   },
   chief: {
+    rowTestid: undefined,
     head: 'flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap text-xs leading-4 text-(--text-tertiary)',
+    /** #950：chief 面等值迁 utility（旧规则原住 chief.css，类名别名随
+     *  清零退役）。尾段 = 原 Button 共享尾串（h-auto / rounded-none /
+     *  justify-start / font-normal / press 位移 / svg 尺寸豁免）并入本
+     *  皮肤——两侧形态一致，Button 处只做拼接。 */
     headBtn:
-      '-my-[1.5px] cursor-pointer border-none bg-transparent py-[1.5px] text-left text-sm leading-normal hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary)',
+      "-my-[1.5px] h-auto cursor-pointer rounded-none justify-start border-none bg-transparent py-[1.5px] text-left text-sm leading-normal font-normal hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto",
     spinner:
       'flex-none animate-[spinner-breathe_1800ms_var(--ease-standard)_infinite] text-(--card-button) motion-reduce:animate-none',
     secs: 'tabular-nums',
@@ -132,11 +153,14 @@ export function LiveRow({
   return (
     <>
       {disclosure == null ? (
-        <span className={skin.head}>{body}</span>
+        <span className={skin.head} data-testid={skin.rowTestid}>
+          {body}
+        </span>
       ) : (
         <Button
           variant="ghost"
-          className={`${skin.head} ${skin.headBtn} h-auto rounded-none justify-start font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto`}
+          className={`${skin.head} ${skin.headBtn}`}
+          data-testid={skin.rowTestid}
           aria-label={t(expanded ? disclosure.collapse : disclosure.expand)}
           aria-expanded={expanded}
           onClick={() => setExpanded((v) => !v)}
