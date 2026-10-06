@@ -87,7 +87,7 @@ map 不写实现细节,只写用户路径、稳定句柄、必要状态、命令
 ## 已知未入图面(验到这些别声称 map 覆盖)
 
 - 任务详情页(`/app/todo/:id`)——live 面已铺:3-pane 结构与右 pane 四视图(detail-right-pane)、停止链(stop-button)、AI 审核发起(review-modal)、@提及(mentions)、附件(attachments)、分支同步(branch-sync,#366 起右 pane section 入口)、失败面发送(failed-send)。未铺:plan/changes/diff 文档面内容渲染、transcript 流渲染、编辑分配弹层。
-- 总管抽屉/设置(`.chief-fab` 有 live wiring;设置 Agent tab「机器」槽 + 主力机链已入图 = chief-primary-machine.md,其余数据面未铺)。
+- 总管抽屉/设置(`button[aria-label="总管"]` FAB 有 live wiring;设置 Agent tab「机器」槽 + 主力机链已入图 = chief-primary-machine.md,其余数据面未铺)。
 - 团队密钥管理页(routes 均在,fixture e2e 有覆盖,live 配方未铺)。技能页已入图 = skills-page.md；MCP 页已入图 = mcp-servers.md(#368)；机器/模型服务两页已铺三面(#354 先行地图:providers-tabs/machines-local-row/provider-picker——spec 11 实现票落地前红态,配方见各 feature 文件)。
 - 看板拖拽改相(`PATCH /api/todos/:id`,#160)——fixture e2e 有 board-dnd 覆盖。
 - 定时(schedules)增删改、项目设置页——fixture e2e/dead-buttons 覆盖,live 配方未铺。

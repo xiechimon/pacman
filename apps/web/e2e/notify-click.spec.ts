@@ -425,7 +425,9 @@ test.describe('推送通知点击闭环（XMON-106）', () => {
 
     const drawer = page.locator('.chief-drawer');
     await expect(drawer).toBeVisible();
-    await expect(drawer.locator('.chief-chip-title')).toHaveText('线程乙');
+    // #950 载体：.chief-chip-title → 主题 chip 钮（aria-label 主题）内唯一 span。
+    const chip = drawer.getByRole('button', { name: '主题', exact: true });
+    await expect(chip.locator('span')).toHaveText('线程乙');
     // 参数已剥离（replace，不积历史），其余面不受影响。
     await expect.poll(() => page.url()).not.toContain('chief=');
     expect(page.url()).toContain('/app');

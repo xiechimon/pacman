@@ -17,8 +17,10 @@ import { expect, type Locator, test } from '@playwright/test';
 // #944/#910 载体（仅 resources 面）：.res-new/.res-add → role+文案；
 // .dlg-provider-custom/-model-add/-create → getByRole(button)；
 // .dlg-enroll-toggle → getByRole(button 文案)；.dlg-enroll-apikey/-keylink →
-// link 文案一级。其余面（agent/chief/branch/accept 的 .dlg-* 别名）属
-// #945/#950/#952，原样不动。
+// link 文案一级。#950：chief 两面（charter / chief-agent）迁 role 载体——
+// .chief-edit-btn/.chief-dlg-ghost/-primary/.chief-agent-row/.chief-pick-list
+// 随 chief.css 退役（.dlg 壳级别名存活至 #952，壳层探针原样）。其余面
+// （agent/branch/accept 的 .dlg-* 别名）属 #945/#952，原样不动。
 
 test.use({ viewport: { width: 800, height: 500 } });
 
@@ -104,21 +106,24 @@ test('create-agent: submit 在视口', async ({ page }) => {
 
 test('charter: 取消/保存章程在视口', async ({ page }) => {
   await page.goto('/app?scenario=102');
-  await page.locator('.chief-edit-btn').click();
+  // #950: .chief-edit-btn/.chief-dlg-ghost/-primary 随 chief.css 退役 → role 载体。
+  await page.getByRole('button', { name: '编辑' }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   await expectShellCapped(dialog);
-  await expect(dialog.locator('.chief-dlg-ghost')).toBeInViewport();
-  await expect(dialog.locator('.chief-dlg-primary')).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: '取消' })).toBeInViewport();
+  await expect(dialog.getByRole('button', { name: '保存章程' })).toBeInViewport();
 });
 
 test('chief-agent 列表态(无按钮读面)面板整体不越视口', async ({ page }) => {
   await page.goto('/app?scenario=101');
-  await page.locator('.chief-agent-row').click();
+  // #950: .chief-agent-row → 绑定 Agent 行钮(未绑定时可及名「未设置」);
+  // .chief-pick-list → role=listbox。
+  await page.getByRole('button', { name: '未设置' }).click();
   const dialog = page.locator('.dlg');
   await expect(dialog).toBeVisible();
   await expectShellCapped(dialog);
-  await expect(dialog.locator('.chief-pick-list')).toBeInViewport();
+  await expect(dialog.getByRole('listbox')).toBeInViewport();
 });
 
 test('branch sync tab: 视口压过内容高,同步钮钉底,body 溢出;git tab 正常', async ({ page }) => {

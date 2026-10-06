@@ -15,9 +15,11 @@
 // 各调用面的 t()，默认行/未设槽文案一律作参数传入。
 
 import type { ChiefCompactionModel } from '@pacman/shared';
+import { cn } from 'cn';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ModelOption } from '../fixtures/records.js';
 import { Check, Search } from '../icons/index.js';
+import { Button } from './ui/button.js';
 import { Input } from './ui/input.js';
 
 /** 模型维槽值：对象形 {provider, modelId}（chiefCompactionModelSchema 同构；
@@ -120,9 +122,10 @@ export function toModelRows(
   }));
 }
 
-/** flat 行面钩子类名组：几何正本在各面域 CSS（chief.css），核心只保证节点
- *  结构。col 缺省 = name/provider 直挂行下（#204 popover 面）；给了 = 包一
- *  层列容器（r5 108 dialog 面）。 */
+/** flat 行面钩子类名组（#950 per-face 清零后 = token utility 串，spec/22
+ *  §3.1）：几何/皮肤正本在各面传入的 utility，核心只保证节点结构与选中律。
+ *  col 缺省 = name/provider 直挂行下（#204 popover 面）；给了 = 包一层列
+ *  容器（r5 108 dialog 面）。 */
 export interface ModelRowSkin {
   row: string;
   col?: string;
@@ -130,6 +133,15 @@ export interface ModelRowSkin {
   provider: string;
   check: string;
 }
+
+/** 行钮基底（#950 裸控件收编 Button ghost）：ghost 件配方按七通道律归零
+ *  （#908 comment-6001887439 裁决 3——hover bg 含 dark: / aria-expanded
+ *  bg+text / hover text / press translate / gap·px / font-weight / border），
+ *  hover 底 = 旧行皮 --surface-secondary 等值；选中态载体 = aria-selected
+ *  （#910 裁定 3 状态类归行为）：行底 --pick-selected-bg、名/勾墨
+ *  --pick-selected-fg（#751 单源律随基底走，skin 只做各面几何）。 */
+export const PICK_ROW_BTN_CLS =
+  "w-full cursor-pointer justify-start rounded-none border-none bg-transparent text-left font-normal whitespace-nowrap hover:bg-(--surface-secondary) hover:text-(--text-primary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-transparent aria-expanded:text-(--text-primary) aria-selected:bg-(--pick-selected-bg) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
 
 interface ModelPickRowProps {
   skin: ModelRowSkin;
@@ -143,19 +155,25 @@ interface ModelPickRowProps {
   onPick: () => void;
 }
 
-/** chief 两面共用的 flat 行（button[role=option] + 名 + 副题 + 选中 check）
+/** chief 两面共用的 flat 行（Button[role=option] + 名 + 副题 + 选中 check）
  *  单源。行序、搜索过滤、空态归各面壳；本件只出一行。 */
 export function ModelPickRow({ skin, selected, label, providerLabel, onPick }: ModelPickRowProps) {
-  // 基类钩子（#751）：选中态是行渲染律的一部分，不是各面皮肤的一部分——
-  // model-pick-* 基类承载选中行底色/墨色单源（chief.css），skin 类继续做
-  // 各面几何与 e2e 别名钉扎（#411 别名优先）。
-  const name = <span className={`${skin.name} model-pick-name`}>{label}</span>;
+  // name/check 的 data-testid = #910 二级结构载体（#751/#872 的对比度与
+  // 内衬探针钉这两个 span 的 computed 值；无 role 可表达）。
+  const name = (
+    <span
+      data-testid="model-pick-name"
+      className={cn(skin.name, 'group-aria-selected:text-(--pick-selected-fg)')}
+    >
+      {label}
+    </span>
+  );
   const provider =
     providerLabel == null ? null : <span className={skin.provider}>{providerLabel}</span>;
   return (
-    <button
-      type="button"
-      className={`${skin.row} model-pick-row`}
+    <Button
+      variant="ghost"
+      className={cn('group', PICK_ROW_BTN_CLS, skin.row)}
       role="option"
       aria-selected={selected}
       onClick={onPick}
@@ -172,18 +190,30 @@ export function ModelPickRow({ skin, selected, label, providerLabel, onPick }: M
         </span>
       )}
       {selected && (
-        <span className={`${skin.check} model-pick-check`}>
+        <span
+          data-testid="model-pick-check"
+          className={cn(skin.check, 'group-aria-selected:text-(--pick-selected-fg)')}
+        >
           <Check width={14} height={14} />
         </span>
       )}
-    </button>
+    </Button>
   );
 }
 
+/** 搜索盒容器（#950 清零：旧 .chief-pick-search 等值迁移，控制高随件正典
+ *  36→32，§2.6-1 D2 吸收）：card-border 描边 + surface 底 + tertiary 图标墨。
+ *  两面同形单源在此；宿内横向缩进归各消费点（弹层壳行铺满律 #872：菜单壳
+ *  零横垫、盒自带 mx-3；dialog 面骑自己的 p-4，不另缩）。 */
+export const SEARCH_BOX_CLS =
+  'flex h-8 items-center gap-2 border border-(--card-border) bg-(--surface) px-3 text-(--text-tertiary)';
+
 /** typeahead 搜索框 input 中和件单源（#756 续：用户裁决框不常驻、打字才
- *  现形）：两面同形，故与搜索框皮肤类一并钉在本层，调用面只传文案。 */
-const SEARCH_INPUT_CLASS =
-  'chief-pick-input h-auto rounded-none border-none bg-transparent p-0 leading-5 placeholder:text-current/50 focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent';
+ *  现形）：框形由 SEARCH_BOX_CLS 承载，input 本体零装饰；focus 环走 #388
+ *  家族律（RES_SEARCH_INPUT_CLS 同配方，#944 先例）——旧 #855「环清零」
+ *  护栏随 per-face 退役，键盘可见环由全局律承接。 */
+export const SEARCH_INPUT_CLASS =
+  'h-auto min-w-0 flex-1 rounded-none border-none bg-transparent p-0 text-sm leading-5 text-(--text-primary) shadow-none placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) focus-visible:ring-0 dark:bg-transparent';
 
 export interface ModelPickListProps {
   skin: ModelRowSkin;
@@ -246,13 +276,13 @@ export function ModelPickList({
   }, [options, query, value]);
 
   return (
-    <div className="model-pick-list-shell">
+    <div className="flex min-h-0 flex-col gap-1">
       {searchOpen && (
-        <div className="chief-pick-search">
+        <div className={cn(SEARCH_BOX_CLS, 'mx-3')}>
           <Search width={14} height={14} />
           {/* #855：typeahead 搜索框进 Input 原语。可见皮肤挂容器行
-              （.chief-pick-search 36px 框），框内 input 须保持视觉中性——
-              中性类 + chief.css 的 :focus-visible 护栏把底座的环并掉。 */}
+              （SEARCH_BOX_CLS 32px 框，#950 随件正典收缩），框内 input 保持
+              视觉中性——中性类单源 SEARCH_INPUT_CLASS。 */}
           <Input
             ref={inputRef}
             className={SEARCH_INPUT_CLASS}
@@ -274,7 +304,7 @@ export function ModelPickList({
       )}
       <div
         ref={listRef}
-        className="chief-model-pick-list"
+        className="max-h-80 overflow-y-auto"
         role="listbox"
         aria-label={listLabel}
         tabIndex={-1}
@@ -310,7 +340,9 @@ export function ModelPickList({
           />
         ))}
         {searchOpen && query.trim() !== '' && rows.length === 0 && emptyLabel != null && (
-          <div className="chief-pick-empty">{emptyLabel}</div>
+          <div className="px-2 py-4 text-center text-[13px] text-(--text-tertiary)">
+            {emptyLabel}
+          </div>
         )}
       </div>
     </div>

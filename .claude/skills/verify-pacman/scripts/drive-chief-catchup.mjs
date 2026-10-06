@@ -306,17 +306,19 @@ await page.route('**/api.dicebear.com/**', (route) =>
   }),
 );
 
+// #950 载体迁移：.chief-stream/.chief-msg 类钩退役 → data-testid 同名载体
+// （.chief-drawer 是零规则机制钩子，存活不动）。
 await page.goto(WEB + '/app?chief=' + threadId);
 const drawer = page.locator('.chief-drawer');
 await drawer.waitFor({ state: 'visible', timeout: 8000 });
-await page.locator('.chief-stream .chief-msg').first().waitFor({ timeout: 8000 });
+await page.locator('[data-testid="chief-stream"] [data-testid="chief-msg"]').first().waitFor({ timeout: 8000 });
 await drawer.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished))).catch(() => {});
 
-const streamText = () => page.locator('.chief-stream').innerText();
+const streamText = () => page.locator('[data-testid="chief-stream"]').innerText();
 const tailText = async () => {
-  const n = await page.locator('.chief-stream .chief-msg').count();
+  const n = await page.locator('[data-testid="chief-stream"] [data-testid="chief-msg"]').count();
   if (n === 0) return '';
-  return page.locator('.chief-stream .chief-msg').last().innerText();
+  return page.locator('[data-testid="chief-stream"] [data-testid="chief-msg"]').last().innerText();
 };
 const hasPrefix = await waitFor(async () => (await streamText()).includes(PREFIX), 5000, 'prefix');
 if (!EXPECT_OLD) {

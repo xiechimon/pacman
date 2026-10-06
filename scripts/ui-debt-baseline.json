@@ -1,11 +1,10 @@
 {
   "frozenFrom": {
-    "sha": "7f90b261a17736010590b1fe973f8e3e918983ba",
+    "sha": "26c0823dc1aa319c6438f45dc9584fc2d947d510",
     "date": "2026-10-06"
   },
   "scope": "apps/web/src; per-face css = *.css minus the ui-debt-gate.mjs WHITELIST (carrier layer); bare controls = <button|<input|<select|<textarea occurrences in *.tsx minus components/ui/",
   "perFaceCss": {
-    "chief/chief.css": 1621,
     "components/profile-card.css": 150,
     "components/ui/checkbox.css": 96,
     "components/ui/floating-shell.css": 22,
@@ -18,13 +17,9 @@
     "ui/input.css": 17
   },
   "rawControls": {
-    "total": 19,
+    "total": 12,
     "files": {
-      "chief/chief-agent-dialog.tsx": 1,
-      "chief/chief-drawer.tsx": 3,
-      "chief/chief-machine-select.tsx": 2,
-      "chief/edit-charter-dialog.tsx": 1,
-      "components/model-select-core.tsx": 1,
+      "chief/chief-drawer.tsx": 1,
       "detail/branch-dialog.tsx": 1,
       "detail/chat-markdown.tsx": 2,
       "detail/composer.tsx": 2,

@@ -197,28 +197,31 @@ await page.route('**/api.dicebear.com/**', (route) =>
 async function ensureDrawer() {
   const drawer = page.locator('.chief-drawer');
   if (!(await drawer.isVisible().catch(() => false))) {
-    await page.locator('.chief-fab').click();
+    await page.locator('button[aria-label="总管"]').click();
     await drawer.waitFor({ state: 'visible', timeout: 8000 });
   }
-  if ((await page.locator('.chief-stream .chief-msg').count()) === 0) {
+  if ((await page.locator('[data-testid="chief-stream"] [data-testid="chief-msg"]').count()) === 0) {
     await page.goto(WEB + '/app?chief=' + threadId);
     await drawer.waitFor({ state: 'visible', timeout: 8000 });
   }
-  await page.locator('.chief-stream .chief-msg').first().waitFor({ timeout: 8000 });
+  await page.locator('[data-testid="chief-stream"] [data-testid="chief-msg"]').first().waitFor({ timeout: 8000 });
   await drawer.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished))).catch(() => {});
 }
 
 await page.goto(WEB + '/app');
 await ensureDrawer();
 
-const chip = page.locator('.chief-msg a.chief-identity');
-const mention = page.locator('.chief-stream .mention-chip--agent');
+// #950 载体迁移：身份 chip = robot 行的行级直子 anchor（.chief-identity 类
+// 退役；mention chip 是气泡 markdown 深层的 a.mention-chip--agent，直子位
+// 不撞）；名字载体 = link 文本（.chief-identity-name 退役）。
+const chip = page.locator('[data-testid="chief-msg"] > a');
+const mention = page.locator('[data-testid="chief-stream"] .mention-chip--agent');
 
 if (!EXPECT_OLD) {
   // N1 身份 chip：头像+名字并排，整块 anchor。
   await chip.waitFor({ state: 'visible', timeout: 8000 });
   check('N1 身份 chip 渲染（头像 img + 名字）', (await chip.locator('img').count()) === 1 &&
-    (await chip.locator('.chief-identity-name').textContent()) === AGENT_NAME);
+    ((await chip.textContent()) ?? '').trim() === AGENT_NAME);
   check('N2 身份 chip href 指 Agent 设置页',
     (await chip.getAttribute('href')) === '/app/resources/agents/' + AGENT_ID,
     'href=' + (await chip.getAttribute('href')));
@@ -271,11 +274,13 @@ if (!EXPECT_OLD) {
     (await page.locator('body').textContent()).includes(AGENT_NAME));
   await shot(page, '05-mention-landing.png');
 } else {
-  // O1 robot 行头像不可点、无名字：身份 chip 零出现，头像仍是惰性 span。
+  // O1 robot 行头像不可点、无名字：身份 chip 零出现，头像仍是惰性槽。
+  // #950 载体：身份 link = 行级直子 anchor、名字 = link 内 span、头像 =
+  // 行级 img（.chief-identity*/.chief-avatar--img 类退役）。
   check('O1 身份 chip 不存在（旧态：头像惰性、无名字）',
-    (await page.locator('.chief-identity').count()) === 0 &&
-    (await page.locator('.chief-identity-name').count()) === 0 &&
-    (await page.locator('.chief-msg span.chief-avatar--img').count()) >= 1);
+    (await page.locator('[data-testid="chief-msg"] > a').count()) === 0 &&
+    (await page.locator('[data-testid="chief-msg"] > a span').count()) === 0 &&
+    (await page.locator('[data-testid="chief-msg"] img').count()) >= 1);
   // O2 提及 chip 是死 span：无 href，点击零导航。
   await mention.waitFor({ state: 'visible', timeout: 8000 });
   const tag = await mention.evaluate((el) => el.tagName);

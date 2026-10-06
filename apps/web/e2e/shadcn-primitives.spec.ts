@@ -8,8 +8,8 @@ import { expect, type Page, test } from '@playwright/test';
 // 每条用例钉一个失败方式：
 // 1. 某个消费面漏切，仍渲染旧原语（没有 [data-slot=avatar]）
 // 2. 落点在 img 与 per-face 容器之间插了一个定尺盒（display 不是 contents）
-//    ——48×48 FAB / 24×24 侧栏 chip / `.fab-avatar img{height:100%}` 的百分比
-//    链会一起裂
+//    ——48×48 FAB / 24×24 侧栏 chip / FAB 头像槽 `[&_img]:size-full` 的百分比
+//    链（chief-fab-icon.tsx，#950 utility 化）会一起裂
 // 3. 成功路径上多渲染一个 fallback 元素（相对旧原语多一个可见节点）
 // 4. kbd 落点没接上 registry（data-slot=kbd 缺失）或静息没隐藏
 // 5. tag-chip 落点没接上 registry Badge（data-slot=badge 缺失）或几何漂移
@@ -73,11 +73,13 @@ test('avatar 落点不生成盒：img 的 containing block 仍是 per-face 容�
 
 test('kbd 落点：悬浮提示是 registry Kbd，静息隐藏 / 悬浮浮出不变', async ({ page }) => {
   await page.goto('/app?scenario=01');
-  const hint = page.locator('.chief-fab .kbd-hint');
+  // #950 载体：.chief-fab → aria-label 总管钮（board inline FAB）。
+  const fab = page.getByRole('button', { name: '总管', exact: true });
+  const hint = fab.locator('.kbd-hint');
   await expect(hint).toHaveCount(1);
   await expect(hint).toHaveAttribute('data-slot', 'kbd');
   await expect(hint).toBeHidden();
-  await page.locator('.chief-fab').hover();
+  await fab.hover();
   await expect(hint).toBeVisible();
   await expect(hint).toHaveText('⌘J');
 });

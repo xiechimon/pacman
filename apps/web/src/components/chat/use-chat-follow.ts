@@ -1,7 +1,7 @@
 // Shared chat-follow rule (#873): one source for how every chat scroller
 // tracks new rows — the detail transcript column (`.chat-col`, a
-// `column-reverse` scroller) and the chief drawer body (`.chief-body`, a
-// normal one). Before this, the chief had a bespoke effect and the detail
+// `column-reverse` scroller) and the chief drawer body (a normal one).
+// Before this, the chief had a bespoke effect and the detail
 // relied on the reversed layout alone, so the two surfaces answered "does
 // the view follow?" differently.
 //

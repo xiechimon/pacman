@@ -136,10 +136,11 @@ async function openChief(page: Page) {
   );
   await page.goto('/app');
   await membersLoaded;
-  await page.locator('.chief-fab').click();
+  // #950: .chief-fab → aria-label 载体(resources 家族 #944 同款)。
+  await page.getByRole('button', { name: '总管' }).click();
   const drawer = page.locator('.chief-drawer');
   await expect(drawer).toBeVisible();
-  const input = page.locator('.chief-composer-input');
+  const input = page.getByTestId('chief-composer-input');
   await expect(input).toBeVisible();
   await expect(input).toBeEditable();
   const listbox = drawer.locator('.mention-inline');
@@ -212,7 +213,9 @@ async function deferUploads(page: Page) {
   };
 }
 
-const COMPOSER = '.chief-composer-input';
+// #950: .chief-composer-input → data-testid(evaluate 内 querySelector 用属性
+// 选择器;locator 面一律 getByTestId)。
+const COMPOSER = '[data-testid="chief-composer-input"]';
 const TOKEN_1 = '![pasted-image-1.png](attachment:team-1/att-1.png)';
 
 async function pasteFiles(page: Page, selector: string, files: { name: string; type: string }[]) {
@@ -317,7 +320,11 @@ test('geometry: the listbox anchors above the composer wrap inside the drawer (F
   await page.waitForTimeout(300);
 
   const lb = await listbox.boundingBox();
-  const wrap = await page.locator('.chief-composer-input-wrap').boundingBox();
+  // #950: the wrap anchor migrated to the textarea box — the
+  // .chief-composer-input-wrap class died with chief.css, and its only in-flow
+  // child was the textarea (the listboxes are absolutely positioned), so the
+  // textarea's box is the same in-flow geometry the wrap carried.
+  const wrap = await input.boundingBox();
   expect(lb).not.toBeNull();
   expect(wrap).not.toBeNull();
   const l = lb as { x: number; y: number; width: number; height: number };
@@ -345,9 +352,10 @@ test('Esc closes the listbox and the drawer survives (#146 ladder, FM9)', async 
 test('the mention button opens the popover with live group counts and inserts a token (FM1)', async ({
   page,
 }) => {
-  const { input } = await openChief(page);
+  const { drawer, input } = await openChief(page);
 
-  await page.locator('.chief-composer-bar button[aria-label="提及"]').click();
+  // #950: .chief-composer-bar 容器类退役 → drawer 内 role+aria-label。
+  await drawer.getByRole('button', { name: '提及' }).click();
   const picker = page.locator('.mention-picker');
   await expect(picker).toBeVisible();
   // Counts come from the live hooks (one todo / one skill / three agents /
@@ -371,7 +379,7 @@ test('the mention button opens the popover with live group counts and inserts a 
 test('Esc with the popover open closes the popover, not the drawer (FM9)', async ({ page }) => {
   const { drawer } = await openChief(page);
 
-  await page.locator('.chief-composer-bar button[aria-label="提及"]').click();
+  await drawer.getByRole('button', { name: '提及' }).click();
   const picker = page.locator('.mention-picker');
   await expect(picker).toBeVisible();
   await page.keyboard.press('Escape');
@@ -386,8 +394,8 @@ test('a mid-line image paste lands the token whole-line at the caret (FM6)', asy
   const uploads = await stubUploads(page);
   await stubMentionSources(page);
   await page.goto('/app');
-  await page.locator('.chief-fab').click();
-  const input = page.locator(COMPOSER);
+  await page.getByRole('button', { name: '总管' }).click();
+  const input = page.getByTestId('chief-composer-input');
   await expect(input).toBeEditable();
 
   await input.fill('hello world');
@@ -414,8 +422,8 @@ test('Enter during the upload does not send; after it lands Enter sends the toke
   await stubMentionSources(page);
   const deferred = await deferUploads(page);
   await page.goto('/app');
-  await page.locator('.chief-fab').click();
-  const input = page.locator(COMPOSER);
+  await page.getByRole('button', { name: '总管' }).click();
+  const input = page.getByTestId('chief-composer-input');
   await expect(input).toBeEditable();
   const sent = await countChiefSends(page);
 
@@ -528,8 +536,9 @@ test('transcript: mention and attachment tokens in a user row render as chips, n
   page,
 }) => {
   const drawer = await openChiefThread(page);
-  const bubble = drawer.locator('.chief-bubble').first();
-  await expect(bubble).toHaveClass(/chief-bubble--md/);
+  // #950: .chief-bubble → data-testid;.chief-bubble--md(渲染路径态)→ data-md。
+  const bubble = drawer.getByTestId('chief-bubble').first();
+  await expect(bubble).toHaveAttribute('data-md', '');
 
   const mention = bubble.locator('.mention-chip--agent');
   await expect(mention).toHaveCount(1);
@@ -551,7 +560,7 @@ test.describe('fixture face stays inert (#732 FM3)', () => {
     await page.goto('/app?scenario=111');
     const drawer = page.locator('.chief-drawer');
     await expect(drawer).toBeVisible();
-    const input = page.locator(COMPOSER);
+    const input = page.getByTestId('chief-composer-input');
     await expect(input).toHaveAttribute('readonly', '');
 
     // Typing into the read-only textarea never arms the completion.
@@ -561,10 +570,11 @@ test.describe('fixture face stays inert (#732 FM3)', () => {
 
     // The attach button renders (canon composer bar) but is inert without
     // an upload delegate.
-    await expect(page.locator('.chief-composer-bar button[aria-label="添加附件"]')).toBeDisabled();
+    // #950: .chief-composer-bar 容器类退役 → drawer 内 role+aria-label。
+    await expect(drawer.getByRole('button', { name: '添加附件' })).toBeDisabled();
 
     // The popover opens on the capture face with zero counts (no live hooks).
-    await page.locator('.chief-composer-bar button[aria-label="提及"]').click();
+    await drawer.getByRole('button', { name: '提及' }).click();
     const picker = page.locator('.mention-picker');
     await expect(picker).toBeVisible();
     await expect(picker.locator('.mention-row--top[aria-label="Agents (0)"]')).toBeVisible();

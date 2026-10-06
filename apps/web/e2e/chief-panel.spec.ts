@@ -72,10 +72,11 @@ test.describe('chief panel docked form (#447)', () => {
   test('Esc layers: the open thread switcher closes first, the drawer second', async ({ page }) => {
     await page.goto('/app?scenario=116');
     await expect(drawer(page)).toBeVisible();
-    await expect(page.locator('.chief-switcher')).toBeVisible();
+    // #950: 切换器容器载体 = role menu（.chief-switcher 类退役）。
+    await expect(page.getByRole('menu')).toBeVisible();
 
     await page.keyboard.press('Escape');
-    await expect(page.locator('.chief-switcher')).toHaveCount(0);
+    await expect(page.getByRole('menu')).toHaveCount(0);
     await expect(drawer(page)).toBeVisible();
 
     await page.keyboard.press('Escape');
@@ -84,7 +85,9 @@ test.describe('chief panel docked form (#447)', () => {
 
   test('composer bar carries the attach + mention tools and the send button', async ({ page }) => {
     await page.goto('/app?scenario=111');
-    const bar = page.locator('.chief-composer-bar');
+    // #950: .chief-composer-bar 容器类退役；scope 走存活的 .chief-composer
+    // 零规则钩子（composer 内按钮 = 工具条三钮，语义等价）。
+    const bar = page.locator('.chief-composer');
     // #732（裁决变更，#146 旧隐藏裁决翻案）：附件/提及开闸渲染，与 detail
     // 面同一套交互；语音维持 wontfix 不渲染（#304 C5，本票不含）。
     await expect(bar.locator('button[aria-label="语音输入"]')).toHaveCount(0);
@@ -243,7 +246,9 @@ test.describe('chief panel docked form (#447)', () => {
     page,
   }) => {
     await page.goto('/app?scenario=111');
-    const cards = page.locator('.chief-example');
+    // #950: 网格容器 = 二级 testid（结构盲区），卡 = 容器内 role button。
+    const examples = page.getByTestId('chief-examples');
+    const cards = examples.getByRole('button');
     await expect(cards).toHaveCount(4);
     await expect(cards.nth(0)).toContainText('帮我组建 Agent 团队');
     await expect(cards.nth(1)).toContainText('帮我创建一个新项目');
@@ -254,8 +259,8 @@ test.describe('chief panel docked form (#447)', () => {
     // not swap the hero for a thread view or crash the surface
     await cards.nth(0).click();
     await expect(drawer(page)).toBeVisible();
-    await expect(page.locator('.chief-examples')).toBeVisible();
-    await expect(page.locator('.chief-stream')).toHaveCount(0);
+    await expect(examples).toBeVisible();
+    await expect(page.getByTestId('chief-stream')).toHaveCount(0);
   });
 
   test('composer keeps one fixed size whether or not a draft is restored (XMON-102)', async ({
@@ -268,7 +273,7 @@ test.describe('chief panel docked form (#447)', () => {
     const measureComposer = async (url: string) => {
       await page.goto(url);
       await settled(page);
-      const composer = page.locator('.chief-composer-input');
+      const composer = page.getByTestId('chief-composer-input');
       await expect(composer).toBeVisible();
       const box = await composer.boundingBox();
       if (box === null) throw new Error(`composer box missing at ${url}`);
@@ -301,7 +306,7 @@ test.describe('chief panel docked form (#447)', () => {
     // (CHIEF_INPUT_PLACEHOLDER / CHIEF_INPUT_PLACEHOLDER_STEERING).
     const placeholderAt = async (scenario: string) => {
       await page.goto(`/app?scenario=${scenario}`);
-      const composer = page.locator('.chief-composer-input');
+      const composer = page.getByTestId('chief-composer-input');
       await expect(composer).toBeVisible();
       return composer.getAttribute('placeholder');
     };
@@ -314,7 +319,9 @@ test.describe('chief panel docked form (#447)', () => {
   test('the open state does not persist across a reload (D9)', async ({ page }) => {
     await page.goto('/app?scenario=01');
     await expect(drawer(page)).toHaveCount(0);
-    await page.locator('.chief-fab').click();
+    // #950: FAB 载体 = role + aria-label（.chief-fab 类退役；resources 家族
+    // #944 同款一级载体）。
+    await page.getByRole('button', { name: '总管', exact: true }).click();
     await expect(drawer(page)).toBeVisible();
     await page.reload();
     await expect(drawer(page)).toHaveCount(0);

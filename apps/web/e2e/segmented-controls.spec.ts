@@ -211,11 +211,13 @@ test('team layout toggle: official ring border + hover tint + chip token', async
 // 出账；chief tabs 半保留。
 test('chief tabs: hover tints, click swaps the view', async ({ page }) => {
   await themed(page, 'light', '/app?scenario=101');
-  const charter = page.locator('.chief-tab', { hasText: '章程' });
+  // #950 载体：chip = role tab（.chief-tab 类退役）；选中态 = aria-selected
+  // （#910 裁定 3，.is-active 类退役）。
+  const charter = page.getByRole('tab', { name: '章程' });
   await charter.hover();
   await expect.poll(() => bg(charter)).toBe(HOVER_LIGHT);
   await charter.click();
-  await expect(charter).toHaveClass(/is-active/);
+  await expect(charter).toHaveAttribute('aria-selected', 'true');
 });
 
 // #644: the chief-tab selected fill moved off the chip onto a sliding pill
@@ -229,9 +231,9 @@ test('chief tabs: indicator pill slides between chips — 150ms ease on left/top
   page,
 }) => {
   await themed(page, 'light', '/app?scenario=101');
-  const pill = page.locator('.chief-tab-indicator');
-  const agent = page.locator('.chief-tab', { hasText: 'Agent' });
-  const charter = page.locator('.chief-tab', { hasText: '章程' });
+  const pill = page.getByTestId('chief-tab-indicator');
+  const agent = page.getByRole('tab', { name: 'Agent' });
+  const charter = page.getByRole('tab', { name: '章程' });
 
   const box = (loc: Locator) =>
     loc.evaluate((el) => {
@@ -250,7 +252,7 @@ test('chief tabs: indicator pill slides between chips — 150ms ease on left/top
   expect(await bg(agent)).toBe('rgba(0, 0, 0, 0)');
   const layering = await pill.evaluate((el) => {
     const cs = getComputedStyle(el);
-    const tabCs = getComputedStyle(document.querySelector('.chief-tab')!);
+    const tabCs = getComputedStyle(document.querySelector('[role="tab"]')!);
     return { pillZ: cs.zIndex, pillPe: cs.pointerEvents, tabZ: tabCs.zIndex };
   });
   expect(layering).toEqual({ pillZ: '0', pillPe: 'none', tabZ: '1' });
@@ -275,7 +277,7 @@ test('chief tabs: indicator pill slides between chips — 150ms ease on left/top
       'transitionrun',
       (e) => {
         const el = e.target as HTMLElement;
-        if (el.classList?.contains('chief-tab-indicator')) {
+        if (el.getAttribute?.('data-testid') === 'chief-tab-indicator') {
           (window as unknown as Record<string, string[]>).__pillRuns.push(
             (e as TransitionEvent).propertyName,
           );
@@ -292,7 +294,7 @@ test('chief tabs: indicator pill slides between chips — 150ms ease on left/top
       ),
     )
     .toEqual(['left', 'width']);
-  await expect(charter).toHaveClass(/is-active/);
+  await expect(charter).toHaveAttribute('aria-selected', 'true');
   // 落位核对要等 150ms 滑行动画跑完——poll 到 pill 与新激活 chip 重合。
   await expect
     .poll(async () => {
@@ -311,7 +313,7 @@ test('chief tabs: reduced motion freezes the pill slide (#644)', async ({ page }
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await themed(page, 'light', '/app?scenario=101');
   const dur = await page
-    .locator('.chief-tab-indicator')
+    .getByTestId('chief-tab-indicator')
     .evaluate((el) => getComputedStyle(el).transitionDuration);
   expect(dur.split(', ').every((d) => d === '0s')).toBe(true);
 });

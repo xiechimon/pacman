@@ -14,6 +14,19 @@ import { Button } from '../components/ui/button.js';
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import { useI18n } from '../i18n/provider.js';
 import { Check, ChevronDown } from '../icons/index.js';
+import {
+  HOST_ROW_BTN_CLS,
+  MENU_ARROW_RIGHT_CLS,
+  MENU_SHELL_CLS,
+  SELECT_TRIGGER_CLS,
+  SELECT_VALUE_CLS,
+} from './recipes.js';
+
+/** online dot（#950 清零，旧 .chief-host-dot 等值：new-task-machine-dot 同族
+ *  同值——6px / 在线绿 --col-dot-done / 离线灰 --col-dot-idle；灰点只表状态
+ *  不禁用，钉离线机器 = 等它上线的合法语义）。 */
+const HOST_DOT_CLS =
+  'size-1.5 flex-none rounded-full bg-(--col-dot-done) data-[on=false]:bg-(--col-dot-idle)';
 
 /** 机器行最小投影（new-task-dialog MachineOption 同形；live = useMachines
  *  行投影，fixture = resources machines 行集）。 */
@@ -49,64 +62,70 @@ export function ChiefMachineSelect({ value, machines, onPick }: ChiefMachineSele
   };
 
   return (
-    <span className="chief-host-wrap">
+    <span className="relative ml-auto flex-none">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
             <Button
               variant="ghost"
-              className="chief-host-select font-normal [&_svg:not([class*='size-'])]:size-auto"
+              className={`${SELECT_TRIGGER_CLS} min-w-35`}
+              // #950: aria-label = e2e 一级载体（旧 button.chief-host-select
+              // 类 locator 退役；独立命名防撞压缩模型面，strict-mode 律随迁）。
               // #772 同律：长机器名截断后全称走 title 悬停可达。
+              aria-label={t('机器')}
               title={label}
             />
           }
         >
-          <span className="chief-host-dot" data-on={selected?.online ?? true} aria-hidden="true" />
-          <span className="chief-host-select-value">{label}</span>
-          <ChevronDown width={12} height={12} />
+          <span className={HOST_DOT_CLS} data-on={selected?.online ?? true} aria-hidden="true" />
+          <span className={SELECT_VALUE_CLS}>{label}</span>
+          <ChevronDown width={12} height={12} className="flex-none text-(--text-tertiary)" />
         </PopoverTrigger>
         <PopoverContent
           align="end"
           side="bottom"
           sideOffset={8}
           aria-label={t('机器')}
-          className="chief-host-menu w-auto"
+          className={`${MENU_SHELL_CLS} ${MENU_ARROW_RIGHT_CLS} min-w-[200px]`}
         >
-          <div className="chief-host-list" role="listbox" aria-label={t('机器')}>
-            <button
-              type="button"
-              className="chief-host-row"
+          <div role="listbox" aria-label={t('机器')}>
+            {/* #950 裸控件收编：行钮 = Button ghost + HOST_ROW_BTN_CLS 七通道
+                中和（recipes.ts）；选中态载体 = aria-selected（#910 裁定 3，
+                本族不出选中底色只出 Check 勾，new-task chip 同律）。 */}
+            <Button
+              variant="ghost"
+              className={HOST_ROW_BTN_CLS}
               role="option"
               aria-selected={value === null}
               data-testid="chief-host-auto"
               onClick={() => pick(null)}
             >
-              <span className="chief-host-dot" data-on={true} aria-hidden="true" />
-              <span className="chief-host-row-name">{t('自动')}</span>
+              <span className={HOST_DOT_CLS} data-on={true} aria-hidden="true" />
+              <span className="min-w-0 flex-auto truncate">{t('自动')}</span>
               {value === null && (
-                <span className="chief-host-check">
+                <span className="inline-flex flex-none text-(--text-tertiary)">
                   <Check width={14} height={14} />
                 </span>
               )}
-            </button>
+            </Button>
             {rows.map((row) => (
-              <button
+              <Button
                 key={row.id}
-                type="button"
-                className="chief-host-row"
+                variant="ghost"
+                className={HOST_ROW_BTN_CLS}
                 role="option"
                 aria-selected={row.id === value}
                 data-testid="chief-host-row"
                 onClick={() => pick(row.id)}
               >
-                <span className="chief-host-dot" data-on={row.online ?? true} aria-hidden="true" />
-                <span className="chief-host-row-name">{row.name}</span>
+                <span className={HOST_DOT_CLS} data-on={row.online ?? true} aria-hidden="true" />
+                <span className="min-w-0 flex-auto truncate">{row.name}</span>
                 {row.id === value && (
-                  <span className="chief-host-check">
+                  <span className="inline-flex flex-none text-(--text-tertiary)">
                     <Check width={14} height={14} />
                   </span>
                 )}
-              </button>
+              </Button>
             ))}
           </div>
         </PopoverContent>
