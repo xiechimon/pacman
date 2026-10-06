@@ -8,6 +8,8 @@
 //   F-E4 上轮工具行（user 行之前）→ 归属上轮 robot 行，不进 streaming.tools（回合边界）
 //   F-E5 空闲（activeRun null）→ 无 streaming 行、无 runningTool（现状锁）
 //   F-E6 打字窗口（liveText 非空）→ typing 行，无 streaming 行（#651/#739 F1 互斥锁）
+//   F-E7 工具行文本 = pillOf 投影（`bash <命令>` 族），不是裸工具名——一排
+//        「Bash」读不出跑了什么；裸名只在无 command/file_path/path 时出现
 
 import type { ChiefGetResponse, ChiefThread } from '@pacman/shared';
 import { describe, expect, test } from 'vitest';
@@ -20,10 +22,10 @@ function row(id: string, role: MessageRow['role'], content: unknown, at = NOW): 
   return { id, role, content, createdAt: at };
 }
 
-function toolMsg(id: string, name: string, at = NOW) {
+function toolMsg(id: string, name: string, at = NOW, args: Record<string, unknown> = {}) {
   return row(id, 'assistant', {
     kind: 'toolcall',
-    call: { id: `c-${id}`, name, arguments: {}, startedAt: at, endedAt: at + 2000 },
+    call: { id: `c-${id}`, name, arguments: args, startedAt: at, endedAt: at + 2000 },
   });
 }
 
@@ -110,8 +112,25 @@ describe('mapChief 在飞展开面投影（#822 F-E1..E6）', () => {
       messages: [USER, toolMsg('m5', 'todo_write')],
     });
     expect(streaming).toHaveLength(1);
-    expect(streaming[0]?.tools?.map((t) => t.name)).toEqual(['todo_write']);
+    expect(streaming[0]?.tools?.map((t) => t.label)).toEqual(['todo_write']);
     expect(streaming[0]?.tools?.[0]?.seconds).toBe(2);
+  });
+
+  test('F-E7 工具行文本带命令（pillOf 投影），不是裸工具名', () => {
+    const { streaming } = streamingOf({
+      activeRun: { phase: 'chief' },
+      messages: [
+        USER,
+        toolMsg('m7', 'Bash', NOW, { command: 'ls -la', description: '列目录' }),
+        toolMsg('m8', 'Edit', NOW, { file_path: 'README.md' }),
+        toolMsg('m9', 'todo_write'),
+      ],
+    });
+    expect(streaming[0]?.tools?.map((t) => t.label)).toEqual([
+      'Bash ls -la',
+      'Edit README.md',
+      'todo_write',
+    ]);
   });
 
   test('F-E4 上轮工具行（user 行之前）→ 归属上轮 robot 行，不进 streaming.tools', () => {
@@ -126,7 +145,7 @@ describe('mapChief 在飞展开面投影（#822 F-E1..E6）', () => {
     expect(streaming).toHaveLength(1);
     expect(streaming[0]?.tools ?? []).toHaveLength(0);
     const robots = (chief.stream ?? []).filter((i) => i.kind === 'robot');
-    expect(robots[0]?.tools?.map((t) => t.name)).toEqual(['todo_write']);
+    expect(robots[0]?.tools?.map((t) => t.label)).toEqual(['todo_write']);
   });
 
   test('F-E5 空闲（activeRun null）→ 无 streaming 行、无 runningTool', () => {
