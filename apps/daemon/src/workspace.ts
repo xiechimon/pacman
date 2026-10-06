@@ -15,6 +15,8 @@
 import { existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import {
+  BRIEF_MARKER_BEGIN,
+  BRIEF_RECONCILE_FILENAMES,
   conversationBranch,
   type GitCredentials,
   ORPHAN_WORKTREE_TTL_MS,
@@ -115,6 +117,18 @@ export class WorkspaceManager implements WorktreeOps {
 
   async commitAll(cwd: string, message: string, identity: { name: string; email: string }) {
     await gitPrim.addAll(cwd);
+    // —— #958 闸 5：认标记剔除（纵深防御，主机制是 runner 的步收尾擦除）——
+    // 为什么认**内容**而不是认文件名：按名排除（.git/info/exclude 那条路）会把
+    // agent 合法产出的 CLAUDE.md（「给这仓库加个 CLAUDE.md」是完全合理的任务）
+    // 从 `git add -A` 里静默吞掉——隐形丢活。标记是我们自己的串，误伤面为零。
+    // 这一层抓的是擦除漏网与 agent 自己 `git add` 的残留，作用域就是本次提交。
+    const leaked = await gitPrim.stagedPathsContaining(cwd, BRIEF_MARKER_BEGIN, [
+      ...BRIEF_RECONCILE_FILENAMES,
+    ]);
+    for (const path of leaked) {
+      await gitPrim.unstagePath(cwd, path);
+      this.logger.workspace(`brief marker dropped from commit: ${path}`);
+    }
     const committed = await gitPrim.commit(cwd, message, identity);
     const head = await gitPrim.head(cwd);
     return { committed, head };

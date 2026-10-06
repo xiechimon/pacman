@@ -40,6 +40,7 @@ import type {
   AgentBackendCapabilities,
   AgentSessionHandle,
   AgentTokenUsage,
+  BriefChannel,
   DeliveredImage,
   ModelUsage,
   ProviderCompat,
@@ -242,6 +243,26 @@ export function appendSkillsCatalog(base: string | undefined, catalog: string): 
   if (catalog === '') return base;
   if (base === undefined || base === '') return catalog.replace(/^\n+/, '');
   return base + catalog;
+}
+
+/** 后端简报通道共用的技能目录构造（#958）。pi 与 claude-code 的 skills 注入面
+ * 同形（claude-code.ts 直接从本模块导入本函数族），抽出来是因为简报改由 runner
+ * 组装——而目录构造吃的是**后端私有**的 skillsDir 与 cwd（spec 14 §49：cwd 用
+ * daemon home 而非任务 worktree，避免 project 级解析随 worktree 切换跳变），
+ * runner 侧面拿不到这份配置。 */
+export function composeSkillsSection(
+  skills: { skillsDir: string; cwd: string } | undefined,
+  opts: { skillsAllowlist?: string[]; teamSkillsDir?: string },
+  log?: (msg: string) => void,
+): string {
+  if (!skills) return '';
+  return buildSkillsCatalog({
+    skillsDir: skills.skillsDir,
+    cwd: skills.cwd,
+    ...(opts.skillsAllowlist !== undefined ? { allowlist: opts.skillsAllowlist } : {}),
+    ...(opts.teamSkillsDir !== undefined ? { teamSkillsDir: opts.teamSkillsDir } : {}),
+    ...(log ? { log } : {}),
+  });
 }
 
 /** models.json custom provider 占位 key（真 key 走 setRuntimeApiKey 内存态）。 */
@@ -674,6 +695,19 @@ export interface PiBackendOpts {
 export class PiBackend implements AgentBackend {
   readonly capabilities = PI_CAPABILITIES;
 
+  /** 简报文件通道（#958）：pi 的 resource-loader 原生就读 cwd 的上下文文件
+   * （候选序 `AGENTS.override.md > AGENTS.md > AGENTS.MD > CLAUDE.md > CLAUDE.MD`，
+   * first-wins），且 `systemPromptOverride` 只替换 customPrompt、不抑制这条加载。
+   * 故简报写进那个文件即被引擎读到，无需任何后端侧改动。 */
+  readonly brief: BriefChannel = {
+    backendId: 'pi',
+    composeBody: (opts, base) =>
+      appendSkillsCatalog(
+        base,
+        composeSkillsSection(this.opts.skills, opts, this.opts.onSkillsLog),
+      ) ?? '',
+  };
+
   constructor(private readonly opts: PiBackendOpts) {
     mkdirSync(opts.agentDir, { recursive: true });
     mkdirSync(opts.sessionDir, { recursive: true });
@@ -732,25 +766,16 @@ export class PiBackend implements AgentBackend {
           : { machineName: hostname() }),
         ...(opts.provider.baseUrl !== undefined ? { providerBaseUrl: opts.provider.baseUrl } : {}),
       });
-    // skills catalog 注入（spec 14/#371）：每次会话创建扫描一次；catalog 追加
-    // 到 systemPrompt 末尾（不覆盖既有段）；空 skills 集 = systemPrompt 原样。
-    // skillsAllowlist（#372）：per-agent 白名单过滤，undefined = 全量直通。
-    const skillsCatalog = this.opts.skills
-      ? buildSkillsCatalog({
-          skillsDir: this.opts.skills.skillsDir,
-          cwd: this.opts.skills.cwd,
-          ...(opts.skillsAllowlist !== undefined ? { allowlist: opts.skillsAllowlist } : {}),
-          ...(opts.teamSkillsDir !== undefined ? { teamSkillsDir: opts.teamSkillsDir } : {}),
-          ...(this.opts.onSkillsLog ? { log: this.opts.onSkillsLog } : {}),
-        })
-      : '';
-    const systemPrompt = appendSkillsCatalog(opts.systemPrompt, skillsCatalog);
+    // skills catalog 的落点自 #958 起归简报文件通道（见 this.brief）：目录内容由
+    // `composeSections` 产出、runner 写进 worktree 的上下文文件，不再追加进
+    // systemPrompt。这里只透传 runner 给的 systemPrompt——**只有**不具备简报
+    // 通道的后端才会拿到非空值。空集 = 不覆盖引擎自身的 system prompt。
     const settingsManager = SettingsManager.inMemory({ compaction: { enabled: true } });
     const loader = new DefaultResourceLoader({
       cwd: opts.cwd,
       agentDir: this.opts.agentDir,
       settingsManager,
-      ...(systemPrompt !== undefined ? { systemPromptOverride: () => systemPrompt } : {}),
+      ...(opts.systemPrompt !== undefined ? { systemPromptOverride: () => opts.systemPrompt } : {}),
     });
     await loader.reload();
     const sessionManager = resumeFile

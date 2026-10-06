@@ -8,6 +8,9 @@
 // 本文件零依赖 pi——shared 零反向（01 §3）。
 
 import { z } from 'zod';
+// 类型-only（编译期擦除）：brief-file.ts 反向依赖本模块的 isBackendRuntimeId，
+// 值导入会成环。
+import type { BriefBackendId } from './brief-file.js';
 import { epochMs, recordId } from './records/common.js';
 import { messageRecordSchema } from './records/message.js';
 import {
@@ -242,8 +245,29 @@ export interface AgentSessionHandle {
   usage(): AgentTokenUsage;
 }
 
+/** 简报文件通道（#958，可选能力位）。
+ *
+ * 在位 = 本后端**原生会读**任务 worktree 里的上下文文件，每一步的简报改落那个
+ * 文件、systemPrompt 通道清空；缺席 = 本后端不读，runner 保留 inline
+ * systemPrompt 通道（未来第三个后端的逃生口，Multica 的 prompt-only mode 同律）。 */
+export interface BriefChannel {
+  /** 落点用哪套候选序与新建名（`@pacman/shared` brief-file.ts 的 BriefBackendId）。
+   * 这不是装饰——写错文件 = 简报完全不被读，且全搬之后没有回退通道。 */
+  readonly backendId: BriefBackendId;
+  /** 完整简报正文 = 后端贡献（技能目录等）接在 `base`（runner 侧的 systemPrompt
+   * 正文）之后。整段由 runner 写进 worktree 文件。
+   *
+   * 把「拼接」也放在后端而不是只返回增量：目录构造吃的是**后端私有**的
+   * skillsDir 与 cwd（spec 14 §49 刻意用 daemon home 而非 worktree），而拼接函数
+   * （appendSkillsCatalog）住在 backend/pi.ts——runner 去 import 它会破坏缝纪律
+   * （runner 不消费 @earendil-works 那一层）。返回空串 = 本后端无贡献。 */
+  composeBody(opts: SessionOpts, base: string | undefined): string;
+}
+
 export interface AgentBackend {
   readonly capabilities: AgentBackendCapabilities;
+  /** 简报文件通道（#958）。见 BriefChannel；缺席 = inline systemPrompt。 */
+  readonly brief?: BriefChannel;
   /** new session <convId>（02 §5.7 步骤生命周期行）。 */
   createSession(opts: SessionOpts): Promise<AgentSessionHandle>;
   /** continue session <convId>（02 §5.7；id = 会话持久化标识，实现自定——

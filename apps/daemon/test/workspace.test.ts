@@ -140,6 +140,28 @@ describe('worktree 契约（02 §5.5 / r3 §1.4）', () => {
     expect(await ws.countAhead(prepared.cwd, prepared.defaultBranch)).toBe(1);
   }, 30_000);
 
+  test('#958 闸 5：带简报标记的文件被剔出提交，无标记的同名文件照常提交', async () => {
+    const prepared = await ws.prepare(prepareInput(CONV_A));
+    // ① 漏网的简报文件（agent 自己 git add 过 / 擦除失败留下的形态）。
+    writeFileSync(
+      join(prepared.cwd, 'AGENTS.md'),
+      `<!-- BEGIN PACMAN-RUNTIME (auto-managed; do not edit) -->\n简报\n<!-- END PACMAN-RUNTIME -->\n`,
+    );
+    // ② agent 合法产出的普通文件——必须照常进提交（认内容不认名的理由）。
+    writeFileSync(join(prepared.cwd, 'NOTES.md'), 'agent 的产物\n');
+    const first = await ws.commitAll(prepared.cwd, 'build: marker scan', IDENTITY);
+    expect(first.committed).toBe(true);
+    const listed = await runGit(['show', '--name-only', '--pretty=format:', first.head ?? 'HEAD'], {
+      cwd: prepared.cwd,
+    });
+    expect(listed.stdout).toContain('NOTES.md');
+    expect(listed.stdout).not.toContain('AGENTS.md');
+    // 剔除行进了 workspace 日志（可观测面）。
+    expect(logger.lines.some((l) => l.includes('brief marker dropped from commit'))).toBe(true);
+    // 文件仍在盘上（剔除的是提交，不是删除工作区内容——擦除归 runner）。
+    expect(existsSync(join(prepared.cwd, 'AGENTS.md'))).toBe(true);
+  }, 30_000);
+
   test('checkpoint 恢复：reset --hard + clean -fd → Worktree restored（r3 §1.4/§3.5）', async () => {
     const prepared = await ws.prepare(prepareInput(CONV_A));
     const checkpoint = (await ws.commitAll(prepared.cwd, 'plan: v1', IDENTITY)).head;
