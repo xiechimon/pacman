@@ -1,6 +1,6 @@
 // Chat column transcript (issue #56, extended in #57 for the deep
 // states and in #75 for the r8 dynamic states): centered run stamps and
-// dim note lines, the scheduled marker, user bubbles with optional
+// quiet note lines, the scheduled marker, user bubbles with optional
 // taskline, robot paragraphs with mono code chips / quote blocks /
 // numbered findings, message action rows (copy + optional `| 完成 Ns` +
 // optional chevron, r7 17/28 + r8 63/65/73), the
@@ -167,22 +167,30 @@ function ActionRow({
       )}
       {toggle != null &&
         (toggle.expanded ? (
-          <ChevronDown width={10} height={10} className="chat-foot-chevron text-(--text-dim)" />
+          <ChevronDown
+            width={10}
+            height={10}
+            className="chat-foot-chevron text-(--text-tertiary)"
+          />
         ) : (
-          <ChevronRight width={10} height={10} className="chat-foot-chevron text-(--text-dim)" />
+          <ChevronRight
+            width={10}
+            height={10}
+            className="chat-foot-chevron text-(--text-tertiary)"
+          />
         ))}
     </>
   );
   return (
     <div
-      className="chat-row-icons mt-5 flex items-center gap-3.5 pl-[31px] text-(--text-dim)"
+      className="chat-row-icons mt-5 flex items-center gap-3.5 pl-[31px] text-(--text-tertiary)"
       data-testid="msg-actions"
     >
       {copy != null && (
         // p-0 keeps the 13px icon box the inert span carried, so the row
         // geometry the #470 fence pins does not move. #945：.chat-copy 的
         // 无边框透明底迁 utilities（ghost hover 底双档中和，墨色走 inherit
-        // = 行的 dim；老面无 cursor 规则，不加 cursor-pointer）。
+        // = 行的 tertiary；老面无 cursor 规则，不加 cursor-pointer）。
         <Button
           variant="ghost"
           className="chat-copy h-auto justify-start rounded-none border-none bg-transparent p-0 hover:bg-transparent hover:text-inherit dark:hover:bg-transparent dark:hover:text-inherit active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
@@ -293,10 +301,10 @@ function Row({
   switch (item.kind) {
     case 'run':
       return (
-        <div className="chat-stamp flex-none text-center text-xs leading-4 text-(--text-dim)">
+        <div className="chat-stamp flex-none text-center text-xs leading-4 text-(--text-tertiary)">
           {item.at != null && <div>{item.at}</div>}
           {item.machine != null && (
-            <div className="chat-stamp-machine mt-1 text-[11px] leading-3 text-(--text-dim) [&_span]:underline">
+            <div className="chat-stamp-machine mt-1 text-[11px] leading-3 text-(--text-tertiary) [&_span]:underline">
               {t('运行在 {m} 上', { m: item.machine ?? '' })
                 .split(item.machine ?? '')
                 .map((part, i) =>
@@ -325,7 +333,7 @@ function Row({
       // #470：68ch 行宽 cap + auto 侧 margin（宽列下居中不 mid-token 折行）。
       return (
         <div
-          className="chat-note mx-auto mt-5 max-w-[68ch] text-center text-xs leading-4 text-(--text-dim)"
+          className="chat-note mx-auto mt-5 max-w-[68ch] text-center text-xs leading-4 text-(--text-tertiary)"
           data-testid="transcript-note"
         >
           {t(item.text)}
@@ -442,7 +450,7 @@ function Row({
             {/* 老相邻律：links 行同为 .chat-para 兄弟，7px 行距压过自身
                 margin:0（(0,2,0) > (0,1,0)），迁移显式带上。 */}
             <p
-              className={`${PARA} ${PARA_GAP} chat-fail-links flex gap-3 text-xs leading-[15px] text-(--text-dim)`}
+              className={`${PARA} ${PARA_GAP} chat-fail-links flex gap-3 text-xs leading-[15px] text-(--text-tertiary)`}
             >
               {item.links.map((link) => (
                 <span key={link} className="chat-fail-link">
@@ -507,12 +515,12 @@ function Row({
             <span className="chat-plan-title ml-1.5">{item.title}</span>
             {onOpenPlan != null ? (
               // XMON-24 打开方案钮 shadcn ghost 底座不变；#945 皮肤迁
-              // utilities（透明底 + dim 墨 + 七通道中和）。字号/行高还原
+              // utilities（透明底 + tertiary 墨 + 七通道中和）。字号/行高还原
               // 裸钮 preflight 的 font:inherit，svg 免底座强制 16（属性
               // 12px）。span 态不在此列。
               <Button
                 variant="ghost"
-                className="chat-plan-open ml-auto mr-1.5 flex h-auto cursor-pointer justify-start rounded-none border-none bg-transparent p-0 text-[length:inherit] leading-[inherit] font-normal text-(--text-dim) hover:bg-transparent hover:text-(--text-dim) dark:hover:bg-transparent dark:hover:text-(--text-dim) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+                className="chat-plan-open ml-auto mr-1.5 flex h-auto cursor-pointer justify-start rounded-none border-none bg-transparent p-0 text-[length:inherit] leading-[inherit] font-normal text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent dark:hover:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
                 aria-label={t('打开方案')}
                 onClick={onOpenPlan}
               >
@@ -698,7 +706,7 @@ function ToolsRow({ item, t }: { item: Extract<TranscriptItem, { kind: 'tools' }
               return (
                 <div key={`${i}-${pill}`} className="chat-tool flex min-w-0 flex-col gap-1">
                   <div
-                    className="chat-tool-pill flex h-[18px] items-center gap-2 overflow-hidden rounded-[3px] border border-(--border-default) bg-(--surface-secondary) pl-2.5 font-mono text-[11px] leading-4 whitespace-nowrap text-(--text-dim) [&_svg]:flex-none"
+                    className="chat-tool-pill flex h-[18px] items-center gap-2 overflow-hidden rounded-[3px] border border-(--border-default) bg-(--surface-secondary) pl-2.5 font-mono text-[11px] leading-4 whitespace-nowrap text-(--text-tertiary) [&_svg]:flex-none"
                     data-testid="tool-pill"
                   >
                     <Terminal width={12} height={12} />

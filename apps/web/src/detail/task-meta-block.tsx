@@ -103,7 +103,9 @@ export function TaskMetaBlock({ meta, now }: { meta: TaskMetaFields; now: number
         <>
           {meta.machine}
           {meta.machineWaiting && (
-            <span className="task-meta-waiting text-(--text-dim)">{t('（等待机器上线）')}</span>
+            <span className="task-meta-waiting text-(--text-tertiary)">
+              {t('（等待机器上线）')}
+            </span>
           )}
         </>
       ),
@@ -125,7 +127,7 @@ export function TaskMetaBlock({ meta, now }: { meta: TaskMetaFields; now: number
           {row.content}
         </Row>
       ))}
-      <div className="task-meta-foot mt-6 text-xs leading-4 text-(--text-dim)">
+      <div className="task-meta-foot mt-6 text-xs leading-4 text-(--text-tertiary)">
         {t('方案产出后显示于此')}
       </div>
     </div>

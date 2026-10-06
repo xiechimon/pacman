@@ -277,7 +277,7 @@ export function Composer({
         </div>
       ) : (
         <div
-          className={`composer-placeholder ${COMPOSER_PLACEHOLDER} text-(--text-dim)`}
+          className={`composer-placeholder ${COMPOSER_PLACEHOLDER} text-(--text-tertiary)`}
           data-testid="composer-placeholder"
         >
           {t(placeholder)}
@@ -375,7 +375,7 @@ export function Composer({
         variant="ghost"
         className={`composer-send ${COMPOSER_SQUARE} right-[13px] transition-[background-color,color] duration-(--dur-fast) ease-[cubic-bezier(0.2,0,0,1)] ${
           draft.trim() === ''
-            ? 'bg-(--seg-active) text-(--text-dim) hover:bg-(--seg-active) hover:text-(--text-dim) dark:hover:bg-(--seg-active) dark:hover:text-(--text-dim)'
+            ? 'bg-(--seg-active) text-(--text-tertiary) hover:bg-(--seg-active) hover:text-(--text-tertiary) dark:hover:bg-(--seg-active) dark:hover:text-(--text-tertiary)'
             : 'composer-send--ready bg-(--card-button) text-(--text-on-accent) hover:bg-(--card-button) hover:text-(--text-on-accent) dark:hover:bg-(--card-button) dark:hover:text-(--text-on-accent)'
         } [&_svg:not([class*='size-'])]:size-auto`}
         aria-label={t('发送')}

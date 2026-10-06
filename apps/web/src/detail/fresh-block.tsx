@@ -74,7 +74,7 @@ export function FreshBlock({ todo, tags, action, onAction, hasSpec }: FreshBlock
       </h2>
       {/* #394：chips 只读，无标签时整行不渲染（原静态添加 affordance 移除） */}
       {(tags ?? []).length > 0 && (
-        <div className="fresh-tags mt-4 flex items-center gap-[15px] text-(--text-dim)">
+        <div className="fresh-tags mt-4 flex items-center gap-[15px] text-(--text-tertiary)">
           {(tags ?? []).map((tag) => (
             <TagChip key={tag.id} tag={tag} className="fresh-tag-chip" />
           ))}

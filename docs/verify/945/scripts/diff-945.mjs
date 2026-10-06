@@ -71,7 +71,10 @@ const CHIP_CHAIN = {
     rect: true,
     style: ['height', 'width', 'inline-size', 'block-size'],
   },
-  '.detail-chip-chevron': { rect: true },
+  // #949（main 邻道，84f2a82d）把 chevron 类载体退役成 data-testid=
+  // chip-chevron + utility 皮肤——before 基线（034bf7d5）还有该类，合并后
+  // 的 after 采集里元素随类名退场。跨车道授权改动，非本车道迁移漂移。
+  '.detail-chip-chevron': { rect: true, nullOk: true },
   '.detail-title': { rect: true, style: ['width', 'inline-size'] },
 };
 // TW shadow 合成：shadow utility 计算值带 4 个透明 ring 占位层 + 真投影层，
@@ -83,6 +86,20 @@ const SPINNER_PHASE = {
   style: ['opacity', 'transform'],
   rect: true,
 };
+// #908 裁决 2 消费面槽换（#946/#947「--text-dim 消费面同律」判例）：
+// --text-dim 在非 background 抬升面 light 模实测 2.4–2.89，低于槽地板 3
+// （canon 门控对是 dim × background）→ detail-a 全部 dim 消费面换引
+// --text-tertiary（token 值冻结不动，只换消费面槽引用）。豁免按精确值对
+// 机械判定：before = dim computed 值且 after = tertiary computed 值，
+// light/dark 各一对；outline-color 计算值跟随 currentColor 同步漂移。
+// 任何其它颜色漂移照常 DRIFT。
+const DIM_SWAP_PAIRS = new Set([
+  'color|rgb(141, 137, 128)|rgb(87, 83, 76)', // light #8d8980 → #57534c
+  'color|rgb(121, 117, 111)|rgb(179, 175, 168)', // dark #79756f → #b3afa8
+  'outline-color|rgb(141, 137, 128)|rgb(87, 83, 76)',
+  'outline-color|rgb(121, 117, 111)|rgb(179, 175, 168)',
+]);
+
 const ALLOW = {
   'review-17b': {
     ...CHIP_CHAIN,
@@ -188,6 +205,13 @@ for (const theme of ['light', 'dark']) {
         if (be.style[p] === af.style[p]) continue;
         if (!VISUAL.has(p)) {
           skippedInternal += 1;
+          continue;
+        }
+        if (DIM_SWAP_PAIRS.has(`${p}|${be.style[p]}|${af.style[p]}`)) {
+          allowedCount += 1;
+          console.log(
+            `ALLOWED [${theme}] ${scene} ${sel} ${p}: dim→tertiary slot swap (ruling 2)`,
+          );
           continue;
         }
         // unpaintable border color/style on a zero-width side (both captures)

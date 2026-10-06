@@ -47,8 +47,10 @@ export function useLiveSeconds(startedAt: number | null | undefined): number | n
 /** Per-surface skin. The row skeleton and every behaviour stay shared.
  *  #945（detail.css 清零）：detail 皮肤从 per-face 规则迁到 token
  *  utilities——类名保留为惰性别名（detail-b 票的 spec 与 integration 仍按
- *  它定位）。值 = 老 computed 逐项同形：行 20px / 12px 墨 / dim 标签 /
- *  spinner 走 spot 实底 + spinner-breathe 脉冲（keyframes 正本在
+ *  它定位）。值 = 老 computed 逐项同形：行 20px / 12px 墨 / tertiary
+ *  标签（--text-dim 在非 background 面 light 模实测 < 槽地板 3，#908
+ *  裁决 2 换槽 --text-tertiary，token 值不动）/ spinner 走 spot 实底 +
+ *  spinner-breathe 脉冲（keyframes 正本在
  *  motion.css carrier 层，reduced-motion 冻结走 motion-reduce 变体）。 */
 const SKIN = {
   detail: {
@@ -66,7 +68,7 @@ const SKIN = {
      *  （loading-dev SpinnerProps 无 data-* 透传），spec 按 row scope +
      *  aria-hidden 库根载体定位，不另铺钩。 */
     rowTestid: 'live-row',
-    label: 'chat-streaming-label truncate text-(--text-dim)',
+    label: 'chat-streaming-label truncate text-(--text-tertiary)',
   },
   chief: {
     rowTestid: undefined,

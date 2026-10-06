@@ -103,11 +103,11 @@ const PANE_SELECT =
 const DIFF_LINE = 'flex items-center font-mono text-[11px] leading-[17px] text-(--text-secondary)';
 // gutter 老/新行号格右对齐；宽度差 1px 是 r7 27b 捕获原值（old 列尾 x255、
 // new 列尾 x274）。
-const DIFF_NO = 'flex-none pr-[3px] text-right text-(--text-dim)';
+const DIFF_NO = 'flex-none pr-[3px] text-right text-(--text-tertiary)';
 const DIFF_KIND_SKIN: Record<string, string> = {
   add: 'bg-(--diff-add-bg)',
   del: 'bg-(--diff-del-bg)',
-  marker: 'bg-transparent text-(--text-dim)',
+  marker: 'bg-transparent text-(--text-tertiary)',
   context: '',
 };
 
@@ -172,7 +172,7 @@ function DiffFileBlock({
         )}
         <FileText width={14} height={14} />
         {file.path}
-        <span className="doc-file-eye flex text-(--text-dim)">
+        <span className="doc-file-eye flex text-(--text-tertiary)">
           <Eye width={14} height={14} />
         </span>
         <span className="doc-file-add ml-auto pr-[17px] font-mono text-xs leading-4 text-(--diff-add-fg)">
@@ -187,7 +187,7 @@ function DiffFileBlock({
           {full.kind === 'hidden' &&
             file.hunks.map((hunk) => (
               <div key={hunk.header} className="diff-hunk">
-                <div className="diff-hunk-head border-y border-(--border-default) bg-(--surface-secondary) pl-[53px] font-mono text-[11px] leading-[22px] text-(--text-dim)">
+                <div className="diff-hunk-head border-y border-(--border-default) bg-(--surface-secondary) pl-[53px] font-mono text-[11px] leading-[22px] text-(--text-tertiary)">
                   {hunk.header}
                 </div>
                 {hunk.lines.map((line, i) => (
@@ -237,8 +237,8 @@ function DiffFileBlock({
           )}
           {(full.kind === 'loading' || full.kind === 'error' || full.kind === 'binary') && (
             // #225 全文态占位：loading/error/binary 在 hunk 区同槽，左对齐
-            // hunk 头文本位（53px），dim mono 同 hunk 头族。
-            <div className="diff-full diff-full--state py-2 pr-[13px] pl-[53px] font-mono text-[11px] leading-[17px] text-(--text-dim)">
+            // hunk 头文本位（53px），tertiary mono 同 hunk 头族。
+            <div className="diff-full diff-full--state py-2 pr-[13px] pl-[53px] font-mono text-[11px] leading-[17px] text-(--text-tertiary)">
               {full.kind === 'loading'
                 ? t('加载中…')
                 : full.kind === 'error'
@@ -295,7 +295,7 @@ function VersionMenu({
   // （单引号）——twMerge 按字面识别冲突组。菜单盘：212 宽右对齐 chip
   // （r8 §2.7），--radius-popover + edge 投影（0 8 24 @14%）。
   const ROW_BASE =
-    "version-menu-row flex h-[37px] w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-(--border-default) bg-transparent text-left text-xs leading-4 font-normal last:border-b-0 hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto [&_svg]:text-(--text-dim)";
+    "version-menu-row flex h-[37px] w-full cursor-pointer items-center justify-between gap-3 border-0 border-b border-(--border-default) bg-transparent text-left text-xs leading-4 font-normal last:border-b-0 hover:bg-transparent dark:hover:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto [&_svg]:text-(--text-tertiary)";
   const rowClass = `${ROW_BASE} px-[7px] text-(--text-primary) hover:text-(--text-primary) dark:hover:text-(--text-primary)`;
   // 子菜单行（与其他版本对比 ▸ 上一版本）：8px 侧衬 + secondary 墨。
   const subRowClass = `${ROW_BASE} px-2 text-(--text-secondary) hover:text-(--text-secondary) dark:hover:text-(--text-secondary)`;
@@ -520,7 +520,7 @@ export function DocPane({
         ) : (
           // changes-empty 占位（r7 38）：整 pane 居中、头上无 band——
           // --full 变体把 .doc-empty 的绝对居中改回 static flex 项。
-          <div className="doc-empty doc-empty--full static flex flex-1 items-center justify-center text-xs leading-4 text-(--text-dim)">
+          <div className="doc-empty doc-empty--full static flex flex-1 items-center justify-center text-xs leading-4 text-(--text-tertiary)">
             {t('暂无可显示的变更')}
           </div>
         )}
@@ -553,7 +553,7 @@ export function DocPane({
           ? // #476：live 空态由任务元信息块承接（顶对齐、随 doc-pane-body
             // 既有滚动）；fixture 面 emptyMeta 缺省 → 居中占位原样。
             (emptyMeta ?? (
-              <div className="doc-empty absolute inset-0 flex items-center justify-center text-xs leading-4 text-(--text-dim)">
+              <div className="doc-empty absolute inset-0 flex items-center justify-center text-xs leading-4 text-(--text-tertiary)">
                 {t('暂无方案')}
               </div>
             ))
