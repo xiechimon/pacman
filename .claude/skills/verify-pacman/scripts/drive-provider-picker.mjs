@@ -374,11 +374,11 @@ try {
   // 8) DialogShell 律：X 关窗
   const closedOk = dlgOk
     ? await page
-        .click(`${DLG} .dlg-close`)
+        .click(`${DLG} button[aria-label="关闭"]`)
         .then(() => softHidden(page, DLG))
         .catch(() => false)
     : false;
-  check('keyform-closes', closedOk === true, closedOk ? '.dlg-close 关窗（#68 family law）' : '关窗失败/dialog 未开');
+  check('keyform-closes', closedOk === true, closedOk ? '关闭钮关窗（#68 family law，aria-label 载体）' : '关窗失败/dialog 未开');
 
   // 8b) A6 正向：xai 的 oauthLabel 在其密钥表单内展示（spec 11 名单注；行不带
   //     '(OAuth)' 后缀的负向已在 oauth-badge-wired-only 钉）。无外网请求。
@@ -400,7 +400,7 @@ try {
       : 'spec 11 A6/名单注：xai 的 oauthLabel 应在其密钥表单内展示——未命中（或 preset 行缺失，前置未达）',
   );
   if (xaiReopen) {
-    await page.click(`${DLG} .dlg-close`).catch(() => {});
+    await page.click(`${DLG} button[aria-label="关闭"]`).catch(() => {});
     await softHidden(page, DLG);
   }
 

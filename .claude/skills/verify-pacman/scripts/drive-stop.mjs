@@ -75,11 +75,11 @@ try {
 
   // —— 停止钮 → 确认弹层（默认勾选丢弃，r9 §2.3）——
   await page.click('.composer-stop');
-  await page.waitForSelector('.dlg-title:has-text("停止当前这一轮？")', { timeout: 5_000 });
+  await page.waitForSelector('[role="dialog"][aria-label="停止当前这一轮？"]', { timeout: 5_000 });
   // XMON-72：复选行收口 components/ui/checkbox 原语，真 input = .ui-checkbox-input
   // #951/#910 载体：.dlg-accept 行容器类退役 → .ui-checkbox 件类直取（#944 provider 判例）。
-  const checked = await page.$eval('.dlg .ui-checkbox input[type="checkbox"]', (el) => el.checked);
-  const label = await page.$eval('.dlg .ui-checkbox > span:last-of-type', (el) => el.textContent);
+  const checked = await page.$eval('[role="dialog"] .ui-checkbox input[type="checkbox"]', (el) => el.checked);
+  const label = await page.$eval('[role="dialog"] .ui-checkbox > span:last-of-type', (el) => el.textContent);
   await page.screenshot({ path: join(EVIDENCE, '02-stop-confirm-dialog.png') });
   check('dialog-default-checked', checked === true, `checkbox checked=${checked}`);
   check(
@@ -89,7 +89,7 @@ try {
   );
 
   // —— 确认停止 → 「正在停止…」过渡（窗口 = abort→done(stopped)→SSE 重取）——
-  await page.locator('.dlg-foot').getByRole('button', { name: '停止' }).click();
+  await page.locator('[data-testid="dialog-foot"]').getByRole('button', { name: '停止' }).click();
   let sawStopping = false;
   try {
     await page.waitForSelector('.chat-streaming-label:has-text("正在停止…")', { timeout: 4_000 });

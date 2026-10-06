@@ -22,7 +22,7 @@ async function openAssignDialog(page: Page) {
   const popover = page.getByRole('dialog', { name: '任务分配' });
   await expect(popover).toBeVisible();
   await popover.getByRole('button', { name: '编辑分配' }).click();
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '选择执行 Agent' });
   await expect(dialog).toBeVisible();
   await expect(popover).toBeHidden();
   return dialog;
@@ -30,7 +30,7 @@ async function openAssignDialog(page: Page) {
 
 test('编辑分配 opens the agent pick dialog with search + bound row checked', async ({ page }) => {
   const dialog = await openAssignDialog(page);
-  await expect(dialog.locator('.dlg-title')).toHaveText('选择执行 Agent');
+  await expect(dialog).toHaveAccessibleName('选择执行 Agent');
   // #950: .chief-pick-input → getByPlaceholder（placeholder 语义由 locator 承载）；
   // .chief-pick-row/-name → role=option + option 内文本。
   await expect(dialog.getByPlaceholder('搜索 Agent…')).toBeVisible();
@@ -44,7 +44,7 @@ test('编辑分配 opens the agent pick dialog with search + bound row checked',
 test('fixture pick closes the dialog (accept 律); popover row echo unchanged', async ({ page }) => {
   const dialog = await openAssignDialog(page);
   await dialog.getByRole('option').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '选择执行 Agent' })).toBeHidden();
   // 回显基线:重开 popover,执行对话行仍是绑定 agent(fixture 不写数据)
   await page.locator('.detail-chip').click();
   const popover = page.getByRole('dialog', { name: '任务分配' });
@@ -57,18 +57,18 @@ test('assign dialog family law: X, Escape and backdrop dismiss; panel clicks do 
   page,
 }) => {
   let dialog = await openAssignDialog(page);
-  await dialog.locator('.dlg-close').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('button', { name: '关闭' }).click();
+  await expect(page.getByRole('dialog', { name: '选择执行 Agent' })).toBeHidden();
 
   dialog = await openAssignDialog(page);
   await page.keyboard.press('Escape');
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '选择执行 Agent' })).toBeHidden();
 
   dialog = await openAssignDialog(page);
-  await dialog.locator('.dlg-title').click();
-  await expect(page.locator('.dlg')).toBeVisible();
+  await dialog.getByTestId('dialog-head').click();
+  await expect(page.getByRole('dialog', { name: '选择执行 Agent' })).toBeVisible();
   await page.mouse.click(20, 20);
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '选择执行 Agent' })).toBeHidden();
 });
 
 test('assign dialog search filters the list; no match shows the empty row', async ({ page }) => {

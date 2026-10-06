@@ -268,21 +268,22 @@ test('mcp page is read-only: 无新建入口、行无更多菜单 ink、空态�
   await page.goto('/app/resources/mcp-servers?scenario=07');
   await expect(page.locator('[data-testid="resource-row"][data-mcp]')).toHaveCount(1);
   await expect(page.locator('[data-testid="resource-row"] button')).toHaveCount(0);
-  await expect(page.locator('.dlg')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('button', { name: '新建', exact: true })).toHaveCount(0);
 });
 
 test('create-agent dialog drops the avatar 更换 ink (#307)', async ({ page }) => {
   await page.goto('/app/team?scenario=12');
   await page.getByRole('button', { name: '创建 Agent' }).click();
-  const dialog = page.locator('.dlg');
+  // #952/#910 重钉：壳级 .dlg → getByRole(dialog) + 可及名（§5.5）。
+  const dialog = page.getByRole('dialog', { name: '创建 agent' });
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('.dlg-agent-swap')).toHaveCount(0);
   // 头像行仍在（静态机器人资产），名称输入与创建主钮不受影响
   // #951/#910 重钉：.dlg-agent-avatar img → agent-avatar testid（img 在
   // loaded 前 aria-hidden，role 钉不到——二级载体；overlays.css 清零）。
   await expect(dialog.getByTestId('agent-avatar').locator('img')).toBeVisible();
-  await expect(dialog.locator('#dlg-agent-name')).toBeVisible();
+  await expect(dialog.getByLabel('名称')).toBeVisible();
 });
 
 test('project settings drops the avatar 更换 ink (#307, supersedes the #177 chrome verdict)', async ({
@@ -429,7 +430,7 @@ test('more menu 完成 opens the accept dialog on the review surface (#318)', as
   await complete.click();
   // 完成 = 相位适配动作:review 走既有 accept→merge 链(弹层开、菜单收)
   await expect(menu).toBeHidden();
-  await expect(page.locator('.dlg-title')).toHaveText('完成任务');
+  await expect(page.getByRole('dialog', { name: '完成任务' })).toBeVisible();
 });
 
 test('more menu 关闭 is phase-gated by the server funnel edges (#318)', async ({ page }) => {
@@ -511,7 +512,7 @@ test('new-task dialog: the close control anchors to the head’s right edge (#57
   const dialog = page.getByRole('dialog', { name: '新建任务' });
   await page.locator('.sidebar-new-task').click();
   await expect(dialog).toBeVisible();
-  // #656: settle the .dlg enter animation (tw-animate-css zoom-in-95) before the
+  // #656: settle the dialog enter animation (tw-animate-css zoom-in-95) before the
   // head/close right-edge geometry is measured off the laid-out box.
   await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
   const hb = await dialog.getByTestId('new-task-head').boundingBox();

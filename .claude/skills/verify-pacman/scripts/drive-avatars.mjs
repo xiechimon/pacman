@@ -142,15 +142,15 @@ try {
     `输入即时预览种子(src=${previewSrc ?? '无'})`,
   );
   await shot(page, '02-create-dialog-preview.png');
-  await page.click('.dlg-agent-create');
-  await page.waitForSelector('.dlg', { state: 'hidden', timeout: 5000 });
+  await page.getByRole('button', { name: '创建', exact: true }).click();
+  await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 });
 
   // 第二个不同名 Agent
   await page.click('.team-create-agent');
   await page.waitForSelector('#dlg-agent-name', { timeout: 5000 });
   await page.fill('#dlg-agent-name', AGENT_B);
-  await page.click('.dlg-agent-create');
-  await page.waitForSelector('.dlg', { state: 'hidden', timeout: 5000 });
+  await page.getByRole('button', { name: '创建', exact: true }).click();
+  await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 });
 
   await page.waitForFunction(
     (name) => [...document.querySelectorAll('.team-agent-name')].some((el) => el.textContent === name),

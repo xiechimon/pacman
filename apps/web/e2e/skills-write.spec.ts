@@ -13,8 +13,8 @@ import { expect, type Page, test } from '@playwright/test';
 // #944/#910 载体：.res-new/.res-empty .res-primary → role+文案一级；
 // .res-rowcard → resource-row testid；.dlg-skill-submit → dialog 内
 // getByRole(button)；.dlg-skill-error → role=alert；#dlg-skill-* id 是
-// getByLabel 依赖的语义资产（#942 §5.6），原样保留；壳级 .dlg/.dlg-title
-// 属 #952，不动。
+// getByLabel 依赖的语义资产（#942 §5.6），原样保留。#952/#910 重钉：壳级
+// .dlg/.dlg-title → getByRole(dialog) 可及名（§5.5，dialog-shell 别名摘除）。
 
 const SKILLS = '/app/resources/skills';
 
@@ -112,9 +112,9 @@ async function stubSkillStore(page: Page, seed: SkillRow[] = []) {
 test('fixture 新建弹窗：字段集 + 提交闸 + accept 律提交即关', async ({ page }) => {
   await page.goto(`${SKILLS}?scenario=01`);
   await page.getByTestId('resource-empty').getByRole('button', { name: '新建技能' }).click();
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '新建技能' });
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator('.dlg-title')).toHaveText('新建技能');
+  await expect(dialog).toHaveAccessibleName('新建技能');
   await expect(dialog.locator('#dlg-skill-name')).toHaveAttribute('placeholder', 'deploy-to-prod');
   await expect(dialog.locator('#dlg-skill-body')).toBeVisible();
 
@@ -129,7 +129,7 @@ test('fixture 新建弹窗：字段集 + 提交闸 + accept 律提交即关', as
   await expect(submit).toBeEnabled();
 
   await submit.click();
-  await expect(page.locator('.dlg')).toBeHidden(); // fixture accept 律
+  await expect(page.getByRole('dialog', { name: '新建技能' })).toBeHidden(); // fixture accept 律
 });
 
 test('live 新建：201 后弹窗关、列表即现，frontmatter 由表单组装', async ({ page }) => {
@@ -138,7 +138,7 @@ test('live 新建：201 后弹窗关、列表即现，frontmatter 由表单组�
   await page.goto(SKILLS);
   // 空态主钮 = 双入口之一
   await page.getByTestId('resource-empty').getByRole('button', { name: '新建技能' }).click();
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '新建技能' });
   await dialog.locator('#dlg-skill-name').fill('deploy');
   await dialog.locator('#dlg-skill-desc').fill('部署流程手册');
   await dialog.locator('#dlg-skill-body').fill('# 步骤\n\n1. 构建');
@@ -168,7 +168,7 @@ test('live 新建撞同名 409：弹窗不关，错误行 headline + server 原�
   await page.goto(SKILLS);
   await expect(page.getByTestId('resource-row')).toHaveCount(1);
   await page.getByRole('button', { name: '新建', exact: true }).click(); // topbar 入口
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '新建技能' });
   await dialog.locator('#dlg-skill-name').fill('deploy');
   await dialog.locator('#dlg-skill-desc').fill('再来一份');
   await dialog.getByRole('button', { name: '新建技能' }).click();
@@ -188,8 +188,8 @@ test('live 编辑：行点击预填 frontmatter 拆分，PUT 后列表回读一�
   await page.goto(SKILLS);
 
   await page.getByTestId('resource-row').first().click();
-  const dialog = page.locator('.dlg');
-  await expect(dialog.locator('.dlg-title')).toHaveText('编辑技能');
+  const dialog = page.getByRole('dialog', { name: '编辑技能' });
+  await expect(dialog).toHaveAccessibleName('编辑技能');
   // 预填：frontmatter 拆回表单字段，正文进 textarea
   await expect(dialog.locator('#dlg-skill-name')).toHaveValue('deploy');
   await expect(dialog.locator('#dlg-skill-desc')).toHaveValue('旧描述');
@@ -224,7 +224,7 @@ test('live 编辑预填读 404：表单让位错误块，列表失效重取', as
   await page.goto(SKILLS);
   await page.getByTestId('resource-row').first().click();
 
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '编辑技能' });
   await expect(dialog.getByRole('alert')).toContainText('该技能已不存在');
   await expect(dialog.locator('#dlg-skill-name')).toHaveCount(0); // 表单让位
   await expect(dialog.getByRole('button', { name: '保存' })).toBeDisabled();
@@ -236,7 +236,7 @@ test('客户端预检：非法名与引号描述不发请求', async ({ page }) 
   const { calls } = await stubSkillStore(page);
   await page.goto(SKILLS);
   await page.getByRole('button', { name: '新建', exact: true }).click();
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '新建技能' });
 
   await dialog.locator('#dlg-skill-name').fill('bad/name');
   await dialog.locator('#dlg-skill-desc').fill('正常描述');

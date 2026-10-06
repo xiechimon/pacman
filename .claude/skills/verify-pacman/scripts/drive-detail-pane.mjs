@@ -225,7 +225,7 @@ try {
       (await page.locator('.detail-right button[aria-haspopup="listbox"]').count()) === 1,
     '分支 section 走 live 面(buildId 接线在位,非 fixture 占位)',
   );
-  check((await page.locator('.dlg').count()) === 0, '分支面为静止 section,无模态弹层');
+  check((await page.locator('[role="dialog"]').count()) === 0, '分支面为静止 section,无模态弹层');
   const branchValue = await page
     .locator('.detail-right .pane-section-body > div > div:nth-of-type(1) > div:nth-child(1) > span:nth-child(2)')
     .first()

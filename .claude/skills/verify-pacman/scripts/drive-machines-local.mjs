@@ -459,7 +459,7 @@ try {
       const dlgText = (await softText(page, '[role="dialog"]')).toLowerCase();
       addDialogOk = dlgText.includes('pacman');
       await shot(page, '05-add-machine-dialog.png');
-      await page.click('[role="dialog"] .dlg-close').catch(() => {});
+      await page.click('[role="dialog"] button[aria-label="关闭"]').catch(() => {});
       await page
         .waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 })
         .catch(() => {});

@@ -24,7 +24,7 @@ const PROVIDERS = '/app/resources/providers?scenario=01';
 async function openDialog(page: Page) {
   await page.goto(PROVIDERS);
   await page.getByRole('button', { name: '新建', exact: true }).click();
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '添加模型服务' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -55,7 +55,7 @@ test('codex 未接线行点击零动作:不关窗、不进表单', async ({ page
   const dialog = await openDialog(page);
   const codex = dialog.locator('[data-preset-id]', { hasText: 'OpenAI Codex' });
   await codex.click({ force: true });
-  await expect(page.locator('.dlg')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '添加模型服务' })).toBeVisible();
   await expect(dialog.locator('#dlg-provider-id')).toHaveCount(0);
   await expect(codex).toBeDisabled();
 });
@@ -63,7 +63,7 @@ test('codex 未接线行点击零动作:不关窗、不进表单', async ({ page
 test('fixture 面点已接线徽标行 = accept 律(关窗),重开列表仍在', async ({ page }) => {
   const dialog = await openDialog(page);
   await dialog.locator('[data-preset-id]', { hasText: 'GitHub Copilot' }).click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '添加模型服务' })).toBeHidden();
   const again = await openDialog(page);
   await expect(again.getByText('(OAuth)')).toHaveCount(1);
   await expect(again.getByRole('alert')).toHaveCount(0);
@@ -71,25 +71,27 @@ test('fixture 面点已接线徽标行 = accept 律(关窗),重开列表仍在',
 
 test('着陆参 oauth=error&reason=denied 自动重开弹窗 + 文案 + 清参', async ({ page }) => {
   await page.goto(`${PROVIDERS}&oauth=error&reason=denied`);
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '添加模型服务' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('alert')).toHaveText('授权已被取消。');
   // 清参后刷新不重放
   await expect(page).toHaveURL((url) => !url.searchParams.has('oauth'));
   await page.reload();
-  await expect(page.locator('.dlg')).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: '添加模型服务' })).toHaveCount(0);
 });
 
 test('着陆参 oauth=error&reason=exchange 走交换失败文案', async ({ page }) => {
   await page.goto(`${PROVIDERS}&oauth=error&reason=exchange`);
-  await expect(page.locator('.dlg').getByRole('alert')).toHaveText('令牌交换失败，请稍后重试。');
+  const dialog = page.getByRole('dialog', { name: '添加模型服务' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('alert')).toHaveText('令牌交换失败，请稍后重试。');
 });
 
 // #243：state 缺/过期 callback 改 302 着陆（不再裸 400）——reason=state 走
 // 过期文案 + 自动重开弹窗，用户可原地重试。
 test('着陆参 oauth=error&reason=state 走过期文案 + 重开弹窗', async ({ page }) => {
   await page.goto(`${PROVIDERS}&oauth=error&reason=state`);
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '添加模型服务' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('alert')).toHaveText('连接已过期，请重新发起。');
 });
@@ -97,6 +99,6 @@ test('着陆参 oauth=error&reason=state 走过期文案 + 重开弹窗', async 
 test('着陆参 oauth=connected 静默：不弹窗、无错误行', async ({ page }) => {
   await page.goto(`${PROVIDERS}&oauth=connected&provider=github-copilot`);
   await page.waitForLoadState('networkidle');
-  await expect(page.locator('.dlg')).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: '添加模型服务' })).toHaveCount(0);
   await expect(page).toHaveURL((url) => !url.searchParams.has('oauth'));
 });

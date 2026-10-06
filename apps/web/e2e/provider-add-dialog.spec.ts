@@ -23,14 +23,15 @@ import { expect, type Page, test } from '@playwright/test';
 // -create/-back/-model-add → getByRole(button)+文案(exact 防「添加模型」
 // 前缀吞「添加模型服务」);.dlg-provider-seg-tab → role=tab(aria-selected
 // 断言语义不动,正典表 §5.4);.dlg-provider-badge/-note → 文案一级;
-// #dlg-provider-* id 与壳级 .dlg/.dlg-title/.dlg-close 原样保留(§5.6/#952)。
+// #dlg-provider-* id 原样保留(§5.6)。#952/#910 重钉：壳级 .dlg/.dlg-title/
+// .dlg-close → getByRole(dialog) 可及名 / getByRole(button 关闭)（§5.5）。
 
 const PROVIDERS = '/app/resources/providers?scenario=01';
 
 async function openPicker(page: Page) {
   await page.goto(PROVIDERS);
   await page.getByRole('button', { name: '新建', exact: true }).click();
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '添加模型服务' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -46,7 +47,7 @@ test('topbar 新建 opens the picker: 38 preset rows, search, 自定义端点 en
   page,
 }) => {
   const dialog = await openPicker(page);
-  await expect(dialog.locator('.dlg-title')).toHaveText('添加模型服务');
+  await expect(dialog).toHaveAccessibleName('添加模型服务');
   await expect(dialog.getByLabel('搜索服务商...')).toBeVisible();
   await expect(dialog.locator('[data-preset-id]')).toHaveCount(38);
   await expect(dialog.getByRole('button', { name: '自定义端点' })).toHaveText('自定义端点');
@@ -135,18 +136,18 @@ test('api_key row enters its preset key form prefilled; xai form shows the oauth
 
 test('family law: X, Escape and backdrop dismiss; panel clicks do not', async ({ page }) => {
   let dialog = await openPicker(page);
-  await dialog.locator('.dlg-close').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('button', { name: '关闭' }).click();
+  await expect(page.getByRole('dialog', { name: '添加模型服务' })).toBeHidden();
 
   dialog = await openPicker(page);
   await page.keyboard.press('Escape');
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '添加模型服务' })).toBeHidden();
 
   dialog = await openPicker(page);
-  await dialog.locator('.dlg-title').click();
-  await expect(page.locator('.dlg')).toBeVisible();
+  await dialog.getByTestId('dialog-head').click();
+  await expect(page.getByRole('dialog', { name: '添加模型服务' })).toBeVisible();
   await page.mouse.click(20, 20);
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '添加模型服务' })).toBeHidden();
 });
 
 test('providerId/label/baseUrl gate the submit; protocol segment swaps', async ({ page }) => {
@@ -177,7 +178,7 @@ test('fixture submit closes the dialog (accept 律) and reopens a clean picker',
   await dialog.locator('#dlg-provider-label').fill('R 355 网关');
   await dialog.locator('#dlg-provider-baseurl').fill('https://relay-355.example.com/v1');
   await dialog.getByRole('button', { name: '添加模型服务' }).click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '添加模型服务' })).toBeHidden();
   // reopen: picker 面全量列表 + 空搜索;表单字段随 open→false 边全重置
   const again = await openPicker(page);
   await expect(again.locator('[data-preset-id]')).toHaveCount(38);
@@ -201,9 +202,9 @@ test('model rows keep the submit reachable (dialog body scrolls)', async ({ page
   await addModel.click();
   await expect(dialog.locator('[aria-label="模型 ID"]')).toHaveCount(3);
   const submit = dialog.getByRole('button', { name: '添加模型服务' });
-  // .dlg is overflow:hidden with no max-height — the body must scroll so a
+  // the panel is overflow:hidden with no max-height — the body must scroll so a
   // tall form never pushes the submit out of the viewport (live finding)
   await expect(submit).toBeInViewport();
   await submit.click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '添加模型服务' })).toBeHidden();
 });

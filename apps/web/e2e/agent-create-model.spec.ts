@@ -97,7 +97,9 @@ async function stubLive(
 async function openDialog(page: Page, teamUrl: string) {
   await page.goto(teamUrl);
   await page.getByRole('button', { name: '创建 Agent' }).click();
-  const dialog = page.locator('.dlg');
+  // #952/#910 重钉：壳级 .dlg → getByRole(dialog) + 可及名（dialog-shell 别名
+  // 摘除，spec/22 §5.5）；带名消歧——弹窗内两级 select 的浮层同为 role=dialog。
+  const dialog = page.getByRole('dialog', { name: '创建 agent' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -164,8 +166,10 @@ test('模型行只出模型名：不带 provider 徽标、不编造上下文窗�
 // 裁剪盒（存在性断言看不出被压住；XMON-39 前车）。
 test('创建弹窗：两级菜单不被底栏压住、不越出弹窗体（几何）', async ({ page }) => {
   const dialog = await openDialog(page, TEAM_WITH_SOURCES);
-  const body = await dialog.locator('.dlg-body').boundingBox();
-  const foot = await dialog.locator('.dlg-form-foot').boundingBox();
+  // #952：结构盒 → dialog-body/dialog-foot testid（§5.5 二级载体，几何断言
+  // 需要结构钩子；.dlg-form-foot 的规则已随 dialog.css 退役成 utility）。
+  const body = await dialog.getByTestId('dialog-body').boundingBox();
+  const foot = await dialog.getByTestId('dialog-foot').boundingBox();
   expect(body).not.toBeNull();
   expect(foot).not.toBeNull();
   if (body === null || foot === null) return;
@@ -222,7 +226,7 @@ test('模型很多：选过运行时后菜单不越出裁剪盒，首行可点�
   await expect(menu).toBeVisible();
 
   const mb = await menu.boundingBox();
-  const bb = await dialog.locator('.dlg-body').boundingBox();
+  const bb = await dialog.getByTestId('dialog-body').boundingBox();
   expect(mb).not.toBeNull();
   expect(bb).not.toBeNull();
   if (mb === null || bb === null) return;
@@ -248,13 +252,13 @@ test('选齐运行时与模型后提交，POST body 带 provider 与 modelId', a
   const bodies: unknown[] = [];
   await stubLive(page, { hasSources: true, bodies });
   const dialog = await openDialog(page, '/app/team');
-  await dialog.locator('#dlg-agent-name').fill('带模型的 agent');
+  await dialog.getByLabel('名称').fill('带模型的 agent');
   await dialog.locator('.dlg-agent-runtime-select').click();
   await dialog.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
   await dialog.locator('.dlg-agent-model-select').click();
   await dialog.locator('.dlg-agent-model-row', { hasText: 'claude-sonnet-5' }).click();
-  await dialog.locator('.dlg-agent-create').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('button', { name: '创建', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '创建 agent' })).toBeHidden();
   expect(bodies).toHaveLength(1);
   expect(bodies[0]).toMatchObject({
     displayName: '带模型的 agent',
@@ -267,11 +271,11 @@ test('只选运行时提交：body 带 provider、modelId 为 null（半态不�
   const bodies: unknown[] = [];
   await stubLive(page, { hasSources: true, bodies });
   const dialog = await openDialog(page, '/app/team');
-  await dialog.locator('#dlg-agent-name').fill('半态 agent');
+  await dialog.getByLabel('名称').fill('半态 agent');
   await dialog.locator('.dlg-agent-runtime-select').click();
   await dialog.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
-  await dialog.locator('.dlg-agent-create').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('button', { name: '创建', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '创建 agent' })).toBeHidden();
   expect(bodies).toHaveLength(1);
   expect(bodies[0]).toMatchObject({ displayName: '半态 agent', provider: 'claude-code', modelId: null });
 });
@@ -280,7 +284,7 @@ test('切换运行时清掉旧模型：body 不带跨 provider 的脏 modelId', 
   const bodies: unknown[] = [];
   await stubLive(page, { hasSources: true, bodies });
   const dialog = await openDialog(page, '/app/team');
-  await dialog.locator('#dlg-agent-name').fill('换运行时 agent');
+  await dialog.getByLabel('名称').fill('换运行时 agent');
   await dialog.locator('.dlg-agent-runtime-select').click();
   await dialog.locator('.dlg-agent-runtime-row', { hasText: 'Claude Code' }).click();
   await dialog.locator('.dlg-agent-model-select').click();
@@ -290,8 +294,8 @@ test('切换运行时清掉旧模型：body 不带跨 provider 的脏 modelId', 
   await dialog.locator('.dlg-agent-runtime-select').click();
   await dialog.locator('.dlg-agent-runtime-row', { hasText: '内置 (pi)' }).click();
   await expect(dialog.locator('.dlg-agent-model-select')).not.toContainText('claude-sonnet-5');
-  await dialog.locator('.dlg-agent-create').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('button', { name: '创建', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '创建 agent' })).toBeHidden();
   expect(bodies).toHaveLength(1);
   expect(bodies[0]).toMatchObject({ provider: null, modelId: null });
 });

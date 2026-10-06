@@ -5,7 +5,7 @@
 ## Sub-features
 
 - `stop-button-visible` streaming(有 claimed/pending 步)时 `.composer-stop` 渲染可点;非运行面不渲染。
-- `stop-confirm-dialog` 点击开确认弹层(DialogShell 448 族):标题 + 复选行(components/ui/checkbox 原语,`.dlg .ui-checkbox input[type="checkbox"]` 默认勾选,discard 位;XMON-72 收口;#951 起 `.dlg-accept` 行容器类钩退役,件类直取)+ 取消/停止。
+- `stop-confirm-dialog` 点击开确认弹层(DialogShell 448 族):标题 + 复选行(components/ui/checkbox 原语,`[role="dialog"] .ui-checkbox input[type="checkbox"]` 默认勾选,discard 位;XMON-72 收口;#951 起 `.dlg-accept` 行容器类钩退役,件类直取;#952 起壳级 `.dlg*` 别名退役——dialog scope 走 `[role="dialog"][aria-label=…]`,底栏走 `[data-testid="dialog-foot"]`)+ 取消/停止。
 - `stopping-transition` 确认后 streaming 行标签转「正在停止…」(本地乐观态,持续到步终态经 SSE 重取回显)。
 - `cancelled-run-row` 落账后 transcript 顶部运行行出现 `.chat-stamp-cancelled`「已取消」。
 - `gate-fallback` todo phase 回落:本 build 无 done 步 → prevPhase(fresh 任务 = todo,开始钮回位);有 done 步 → 其 gate(plan done → confirm,build done → review)。chip/主按钮随 phase 面自动迁移。

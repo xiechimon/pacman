@@ -4,7 +4,7 @@
 
 ## Sub-features
 
-- `card-link` — 团队页 `.team-agent-card` 是 `<a>`，点击落 `/app/resources/agents/<id>`，`?scenario=` 随行。
+- `card-link` — 团队页 agent 卡（`[data-testid="team-agent-card"]`，#947 起类名钩退役）是 `<a>`，点击落 `/app/resources/agents/<id>`，`?scenario=` 随行。
 - `overview-fields` — 名称（行内编辑）、职责、默认 skill、模型选择器，各自提交后 server 记录随之变。
 - `overview-readonly` — 运行时 / 思考强度是只读值行（无按钮）：运行时 = provider 位派生（原版那档是选择器，本仓 wire 无独立 runtime 字段，语义裁决见 #499）；思考强度档位词表经能力读面 `GET /api/capabilities` 到 web（XMON-16 / #499 B3 裁决 A），只读行按该词表呈现档位——存值不在词表内落「默认」（B1 裁「保持只读」：读面 ≠ 写面，选择器仍不出）。**XMON-18 裁决（2026-10-01）撤掉 `状态` 行**（`agentStatusSchema` 只有 active 一个取值，零信息量；判据是「页面里不存在」，不是换文案）。同一裁决里 `创建于 …` 也不做——它**从来没渲染过**（此前缺口是「DB 无 createdAt 列」），所以是继续不做、不是撤行；`main` 上不会加这一列。
 - `memory-tab` — 条目列表 + 删除；空态文案 = shared `MEMORY_EMPTY_COPY` canon。

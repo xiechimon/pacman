@@ -39,9 +39,10 @@ import { evidenceShot } from './evidence';
 /** r7 34：accept 弹层冻开在看板面上，merge 默认勾选。 */
 async function openAccept(page: Page) {
   await page.goto('/app?scenario=34');
-  const dialog = page.locator('.dlg');
+  // #952/#910 重钉：壳级 .dlg → getByRole(dialog) + 可及名（§5.5）。
+  const dialog = page.getByRole('dialog', { name: '完成任务' });
   await expect(dialog).toBeVisible();
-  // #656: the .dlg enter animation (tw-animate-css zoom-in-95) scales the panel
+  // #656: the dialog enter animation (tw-animate-css zoom-in-95) scales the panel
   // from 0.95 — settle it so interior-geometry measures ride the laid-out box
   // (the same getAnimations().finished wait the drawer specs use).
   await dialog.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
@@ -52,7 +53,7 @@ async function openAccept(page: Page) {
 async function openProviderForm(page: Page) {
   await page.goto('/app/resources/providers?scenario=01');
   await page.getByRole('button', { name: '新建', exact: true }).click();
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '添加模型服务' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: '自定义端点' }).click();
   await expect(dialog.locator('#dlg-provider-id')).toBeVisible();

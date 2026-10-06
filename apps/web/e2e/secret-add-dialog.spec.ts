@@ -16,14 +16,14 @@ const SECRETS = '/app/resources/secrets?scenario=01';
 async function openDialog(page: Page) {
   await page.goto(SECRETS);
   await page.getByRole('button', { name: '新建', exact: true }).click();
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '添加密钥' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
 
 test('topbar 新建 opens the 添加密钥 dialog with the captured fields', async ({ page }) => {
   const dialog = await openDialog(page);
-  await expect(dialog.locator('.dlg-title')).toHaveText('添加密钥');
+  await expect(dialog).toHaveAccessibleName('添加密钥');
   // #942 正典表 §5.3/§5.4 载体：表单输入 getByLabel 一级、note 一级 text、
   // 提交钮 getByRole——行为断言语义与原 id/类名 locator 版一字不动。
   await expect(dialog.getByLabel('名称（环境变量名）')).toHaveAttribute(
@@ -37,18 +37,18 @@ test('topbar 新建 opens the 添加密钥 dialog with the captured fields', asy
 
 test('family law: X, Escape and backdrop dismiss; panel clicks do not', async ({ page }) => {
   let dialog = await openDialog(page);
-  await dialog.locator('.dlg-close').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('button', { name: '关闭' }).click();
+  await expect(page.getByRole('dialog', { name: '添加密钥' })).toBeHidden();
 
   dialog = await openDialog(page);
   await page.keyboard.press('Escape');
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '添加密钥' })).toBeHidden();
 
   dialog = await openDialog(page);
-  await dialog.locator('.dlg-title').click();
-  await expect(page.locator('.dlg')).toBeVisible();
+  await dialog.getByTestId('dialog-head').click();
+  await expect(page.getByRole('dialog', { name: '添加密钥' })).toBeVisible();
   await page.mouse.click(20, 20);
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '添加密钥' })).toBeHidden();
 });
 
 test('empty name or value keeps the submit disabled; filling lifts it', async ({ page }) => {
@@ -66,5 +66,5 @@ test('fixture submit closes the dialog (accept 律)', async ({ page }) => {
   await dialog.getByLabel('名称（环境变量名）').fill('STRIPE_API_KEY');
   await dialog.getByLabel('值').fill('sk-test-170');
   await dialog.getByRole('button', { name: '添加密钥' }).click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '添加密钥' })).toBeHidden();
 });

@@ -7,8 +7,8 @@
 //   1. 新轨（src/components/ui/）每新增一个原语，必须在 COMPONENTS.md 登记；
 //      —— 这条的副作用才是真正的复用门：作者被迫在读清单时看一眼「是不是已经有能用的」。
 //   2. 清单里列的新轨件必须真实存在（防 doc 写成幽灵路径）。
-//   3. 旧轨（src/ui/）已按 #417 裁决冻结：只许删、不许加新件；
-//      新增 UI 件一律落新轨。删旧件不报错（迁移就是要删），往旧轨加件报错。
+//   3. 旧轨（src/ui/）已整目录退役（#952，spec/22 §5 执行完毕）：目录不得
+//      复活，COMPONENTS.md 的 old-track-frozen 终态名单恒空。
 //
 // 迁移期背景见 #417（全站铺开 shadcn/ui）+ #409（散件分级盘点）：试点 PR #416 已合并，
 // primitives 基 = Base UI（@base-ui/react，#410 裁决）。
@@ -44,7 +44,7 @@ const md = existsSync(DOC) ? readFileSync(DOC, 'utf8') : '';
 const listedNew = section(md, 'new-track');
 const listedFrozen = section(md, 'old-track-frozen');
 const onDiskNew = files(NEW_TRACK_DIR, /\.tsx$/);
-const onDiskOld = files(OLD_TRACK_DIR, /\.(tsx|css)$/);
+const onDiskOld = existsSync(OLD_TRACK_DIR) ? files(OLD_TRACK_DIR, /\.(tsx|css)$/) : [];
 
 describe('复用清单与源码同步（apps/web/COMPONENTS.md）', () => {
   it('清单文件存在', () => {
@@ -68,12 +68,13 @@ describe('复用清单与源码同步（apps/web/COMPONENTS.md）', () => {
     expect(ghost, `COMPONENTS.md 列了不存在的文件:\n  ${ghost.join('\n  ')}`).toEqual([]);
   });
 
-  it('旧轨已冻结：只许删不许加（#417 裁决，新件落新轨）', () => {
-    const added = onDiskOld.filter((f) => !listedFrozen.includes(f));
+  it('旧轨已整目录退役：src/ui/ 不得复活（#952 终态，新件一律落新轨）', () => {
     expect(
-      added,
-      `src/ui/ 是待退役的手工轨，按 #417 已冻结，不得新增:\n  ${added.join('\n  ')}\n` +
-        `新件请落 src/components/ui/（shadcn + Base UI 基）；确需留在旧轨，就在 COMPONENTS.md 的 old-track-frozen 段补一行并说明理由。`,
-    ).toEqual([]);
+      existsSync(OLD_TRACK_DIR),
+      'src/ui/ 已随 #952 整目录删除（chip/input/dialog 消费点清零，spec/22 §5 退役正典表执行完毕）。' +
+        '目录不得复活——新件一律落 src/components/ui/（shadcn + Base UI 基）。',
+    ).toBe(false);
+    const added = onDiskOld.filter((f) => !listedFrozen.includes(f));
+    expect(added, `src/ui/ 出现终态名单外的件:\n  ${added.join('\n  ')}`).toEqual([]);
   });
 });

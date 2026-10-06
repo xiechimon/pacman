@@ -20,43 +20,43 @@ const TEAM = '/app/team?scenario=12';
 async function openDialog(page: Page) {
   await page.goto(TEAM);
   await page.getByRole('button', { name: '创建 Agent' }).click();
-  const dialog = page.locator('.dlg');
+  const dialog = page.getByRole('dialog', { name: '创建 agent' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
 
 test('the 创建 Agent slot opens the dialog', async ({ page }) => {
   const dialog = await openDialog(page);
-  await expect(dialog.locator('.dlg-title')).toHaveText('创建 agent');
-  await expect(dialog.locator('#dlg-agent-name')).toBeVisible();
+  await expect(dialog).toHaveAccessibleName('创建 agent');
+  await expect(dialog.getByLabel('名称')).toBeVisible();
   // #951/#910 重钉：.dlg-agent-warn → 告警行文案一级（overlays.css 清零）。
   await expect(dialog.getByText('尚未配置模型服务商')).toBeVisible();
 });
 
 test('family law: X, Escape and backdrop dismiss; panel clicks do not', async ({ page }) => {
   let dialog = await openDialog(page);
-  await dialog.locator('.dlg-close').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('button', { name: '关闭' }).click();
+  await expect(page.getByRole('dialog', { name: '创建 agent' })).toBeHidden();
 
   dialog = await openDialog(page);
   await page.keyboard.press('Escape');
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '创建 agent' })).toBeHidden();
 
   dialog = await openDialog(page);
-  await dialog.locator('.dlg-title').click();
-  await expect(page.locator('.dlg')).toBeVisible();
+  await dialog.getByTestId('dialog-head').click();
+  await expect(page.getByRole('dialog', { name: '创建 agent' })).toBeVisible();
   await page.mouse.click(20, 20);
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '创建 agent' })).toBeHidden();
 });
 
 test('empty name keeps 创建 disabled; typing lifts it; fixture submit closes', async ({ page }) => {
   const dialog = await openDialog(page);
-  const create = dialog.locator('.dlg-agent-create');
+  const create = dialog.getByRole('button', { name: '创建', exact: true });
   await expect(create).toBeDisabled();
-  await dialog.locator('#dlg-agent-name').fill('r7 probe agent');
+  await dialog.getByLabel('名称').fill('r7 probe agent');
   await expect(create).toBeEnabled();
   await create.click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(page.getByRole('dialog', { name: '创建 agent' })).toBeHidden();
 });
 
 test('chart layout drops the grid 创建 Agent slot for the org chart', async ({ page }) => {
