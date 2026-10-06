@@ -235,7 +235,7 @@ export function ChiefAgentDialog({
                   </span>
                   <span>{row.name}</span>
                   {row.model != null && row.model !== '' && (
-                    <span className="text-xs text-(--text-dim)">{row.model}</span>
+                    <span className="text-xs text-(--text-tertiary)">{row.model}</span>
                   )}
                   {row.id === boundAgentId && (
                     <span className="ml-auto flex flex-none text-(--text-tertiary)">

@@ -276,7 +276,7 @@ export function ChiefSettings({
                 <ChiefFaceDashed width={24} height={24} />
               )}
               <span>{boundAgent != null ? boundAgent.name : t('未设置')}</span>
-              <ChevronRight width={14} height={14} className="ml-auto text-(--text-dim)" />
+              <ChevronRight width={14} height={14} className="ml-auto text-(--text-tertiary)" />
             </Button>
             <div className={CARD_CLS}>
               <div>

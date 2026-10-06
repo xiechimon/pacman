@@ -68,7 +68,7 @@ const SKIN = {
     spinner:
       'flex-none animate-[spinner-breathe_1800ms_var(--ease-standard)_infinite] text-(--card-button) motion-reduce:animate-none',
     secs: 'tabular-nums',
-    label: 'truncate text-(--text-dim)',
+    label: 'truncate text-(--text-tertiary)',
   },
 } as const;
 

@@ -117,22 +117,26 @@ const DRAWER_CLOSED_CLS =
 const HEAD_ICON_BTN_CLS =
   "size-5 cursor-pointer justify-center rounded-none border-none bg-transparent p-0 text-(--text-tertiary) hover:bg-transparent hover:text-(--text-tertiary) dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
 
-/** 消息行 20×20 工具钮（旧 .chief-msg-tool 等值：dim 墨，hover 升
- *  surface-secondary 底 + secondary 墨；aria-expanded 墨钉回 dim——旧
- *  unlayered color 恒压件配方，expanded 涂底保留件行为）。 */
+/** 消息行 20×20 工具钮（旧 .chief-msg-tool 几何等值；hover 升
+ *  surface-secondary 底 + secondary 墨；aria-expanded 涂底保留件行为、墨
+ *  钉回基墨）。墨槽 dim→tertiary：#950 better-colors 实测 dim 在本面底上
+ *  light 2.89:1 低于正典对 --text-dim 槽自钉的 3:1 下限（spec/22 §1.8），
+ *  按 #908 裁决 2 换消费面槽引用（token 值不动）。 */
 const MSG_TOOL_BTN_CLS =
-  "size-5 cursor-pointer rounded-none border-none bg-transparent text-(--text-dim) hover:bg-(--surface-secondary) hover:text-(--text-secondary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-muted aria-expanded:text-(--text-dim) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+  "size-5 cursor-pointer rounded-none border-none bg-transparent text-(--text-tertiary) hover:bg-(--surface-secondary) hover:text-(--text-secondary) dark:hover:bg-(--surface-secondary) aria-expanded:bg-muted aria-expanded:text-(--text-tertiary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
 
-/** composer 工具钮（旧 .chief-tool 等值：20×20 / dim 墨 / hover 只升墨
- *  ——底色 hover 是 ghost 件既有行为，旧面未覆写，保留；圆角随件档）。 */
+/** composer 工具钮（旧 .chief-tool 几何等值：20×20 / hover 只升墨——底色
+ *  hover 是 ghost 件既有行为，旧面未覆写，保留；圆角随件档）。墨槽
+ *  dim→tertiary 同 MSG_TOOL_BTN_CLS 注（light 2.73:1 < 3）。 */
 const TOOL_BTN_CLS =
-  "size-5 cursor-pointer text-(--text-dim) hover:text-(--text-secondary) dark:hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
+  "size-5 cursor-pointer text-(--text-tertiary) hover:text-(--text-secondary) dark:hover:text-(--text-secondary) active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto";
 
-/** 发送钮双态（旧 .chief-send / .is-on 等值：歇态 seg-active 底 + dim 墨、
- *  hover 升 secondary 墨不换底；有草稿 = card-button 实底 + on-accent 墨，
- *  hover 不动。is-on 状态类退役，双态随 draft 条件类切换）。 */
+/** 发送钮双态（旧 .chief-send / .is-on 等值：歇态 seg-active 底、hover 升
+ *  secondary 墨不换底；有草稿 = card-button 实底 + on-accent 墨，hover 不动。
+ *  is-on 状态类退役，双态随 draft 条件类切换）。歇态墨 dim→tertiary：dim 压
+ *  seg-active 双主题皆低于 3:1（light 2.53 / dark 2.4），#950 实测换槽。 */
 const SEND_BTN_CLS =
-  'ml-auto cursor-pointer rounded-md border-0 bg-(--seg-active) text-(--text-dim) hover:bg-(--seg-active) hover:text-(--text-secondary) dark:hover:bg-(--seg-active) aria-expanded:bg-(--seg-active) active:not-aria-[haspopup]:translate-y-0';
+  'ml-auto cursor-pointer rounded-md border-0 bg-(--seg-active) text-(--text-tertiary) hover:bg-(--seg-active) hover:text-(--text-secondary) dark:hover:bg-(--seg-active) aria-expanded:bg-(--seg-active) active:not-aria-[haspopup]:translate-y-0';
 const SEND_ON_CLS =
   'bg-(--card-button) text-(--text-on-accent) hover:bg-(--card-button) hover:text-(--text-on-accent)';
 
@@ -687,7 +691,11 @@ export function ChiefDrawer({
                           : undefined
                       }
                     >
-                      <ChiefHash width={11} height={11} className="flex-none text-(--text-dim)" />
+                      <ChiefHash
+                        width={11}
+                        height={11}
+                        className="flex-none text-(--text-tertiary)"
+                      />
                       <span className="truncate">{t(thread.title)}</span>
                     </Button>
                   ))}
@@ -786,7 +794,7 @@ export function ChiefDrawer({
                       );
                     if (item.kind === 'note')
                       return (
-                        <div key={i} className="my-2.5 text-center text-xs text-(--text-dim)">
+                        <div key={i} className="my-2.5 text-center text-xs text-(--text-tertiary)">
                           {t(item.text)}
                           {item.machineName && (
                             <>
@@ -838,7 +846,7 @@ export function ChiefDrawer({
                               )}
                             </div>
                             <div
-                              className="mt-[7px] flex gap-2.5 text-(--text-dim)"
+                              className="mt-[7px] flex gap-2.5 text-(--text-tertiary)"
                               data-testid="chief-msg-tools"
                             >
                               {/* #615 C：复制翻真 clipboard 钮（local-first 面存在）。 */}
@@ -1014,7 +1022,7 @@ export function ChiefDrawer({
                           折叠）只属定稿行，打字行不渲染。 */}
                           {item.typing !== true && (
                             <div
-                              className="mt-[9px] flex items-center gap-[7px] text-xs text-(--text-dim)"
+                              className="mt-[9px] flex items-center gap-[7px] text-xs text-(--text-tertiary)"
                               data-testid="chief-msg-foot"
                             >
                               <Button

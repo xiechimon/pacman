@@ -213,7 +213,7 @@ export const SEARCH_BOX_CLS =
  *  家族律（RES_SEARCH_INPUT_CLS 同配方，#944 先例）——旧 #855「环清零」
  *  护栏随 per-face 退役，键盘可见环由全局律承接。 */
 export const SEARCH_INPUT_CLASS =
-  'h-auto min-w-0 flex-1 rounded-none border-none bg-transparent p-0 text-sm leading-5 text-(--text-primary) shadow-none placeholder:text-current/50 focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) focus-visible:ring-0 dark:bg-transparent';
+  'h-auto min-w-0 flex-1 rounded-none border-none bg-transparent p-0 text-sm leading-5 text-(--text-primary) shadow-none placeholder:text-(--text-tertiary) focus-visible:border-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) focus-visible:ring-0 dark:bg-transparent';
 
 export interface ModelPickListProps {
   skin: ModelRowSkin;
