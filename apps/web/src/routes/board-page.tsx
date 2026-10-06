@@ -660,14 +660,16 @@ export function BoardPage() {
         opts={{ fixtureTodos, eager: true, onFixtureSave }}
         apiRef={newTaskApiRef}
       />
-      {/* XMON-23 收编：ghost/icon 原语 + chief-fab per-face（48×48 圆、
-          surface 底、fab-shadow）。中和件同 ChiefWakeFab：font-normal
-          （badge 10px 字）、active 位移、svg size-auto（ChiefFab 30.8
-          属性尺寸）。board 内联钮与 ChiefWakeFab 保持同配方。 */}
+      {/* XMON-23→#950：ghost/icon 原语 + FAB 皮肤 utility（旧 .chief-fab
+          等值：48×48 圆、surface 底、fab-shadow、右下 16 锚位；hover 涂底
+          钉回 surface——旧 unlayered 恒压件配方无反馈）。中和件同
+          ChiefWakeFab：font-normal（badge 10px 字）、active 位移、svg
+          size-auto（ChiefFab 30.8 属性尺寸）。board 内联钮与各族 wake FAB
+          （*-fab 类，几何住各域）保持同配方。 */}
       <Button
         variant="ghost"
         size="icon"
-        className="chief-fab font-normal active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
+        className="absolute right-4 bottom-4 size-12 cursor-pointer rounded-full border-none bg-(--surface) font-normal shadow-(--fab-shadow) hover:bg-(--surface) dark:hover:bg-(--surface) aria-expanded:bg-transparent active:not-aria-[haspopup]:translate-y-0 [&_svg:not([class*='size-'])]:size-auto"
         aria-label={t('总管')}
         onClick={() => setChiefView('drawer')}
       >

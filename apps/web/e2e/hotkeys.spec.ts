@@ -253,7 +253,7 @@ test('Space no longer opens the drawer; ⌘J does, composer focused, default con
   await expect(drawer(page)).toHaveCount(0);
 
   await pressUntil(page, 'Meta+j', drawer(page));
-  await expect(page.locator('.chief-composer-input')).toBeFocused();
+  await expect(page.getByTestId('chief-composer-input')).toBeFocused();
   await escapeUntilHidden(page, drawer(page));
   await expect(drawer(page)).toHaveCount(0);
 
@@ -285,7 +285,7 @@ test('⌘J wakes the chief drawer on a non-board route', async ({ page }) => {
   await page.goto(SCHEDULES);
   await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'Meta+j', drawer(page));
-  await expect(page.locator('.chief-composer-input')).toBeFocused();
+  await expect(page.getByTestId('chief-composer-input')).toBeFocused();
   await expect(page).toHaveURL(/\/app\/schedules/);
   await escapeUntilHidden(page, drawer(page));
   await expect(drawer(page)).toHaveCount(0);
@@ -312,7 +312,7 @@ test('editable focus swallows C and ⌘J — the c lands IN the input', async ({
 test('textarea focus (chief composer) swallows C', async ({ page }) => {
   await page.goto(BOARD);
   await pressUntil(page, 'Meta+j', drawer(page));
-  const composer = page.locator('.chief-composer-input');
+  const composer = page.getByTestId('chief-composer-input');
   await expect(composer).toBeFocused();
   // fixture composer is readOnly — focus holds but typing lands nowhere;
   // the guard must keep C from opening the dialog behind the drawer
@@ -353,7 +353,7 @@ test('Space on a focused button activates it natively; ⌘J fires past button fo
   await expect(page.getByRole('dialog', { name: '搜索' })).toBeHidden();
   await searchRow.focus();
   await pressUntil(page, 'Meta+j', drawer(page));
-  await expect(page.locator('.chief-composer-input')).toBeFocused();
+  await expect(page.getByTestId('chief-composer-input')).toBeFocused();
   await escapeUntilHidden(page, drawer(page));
   await expect(drawer(page)).toHaveCount(0);
 });
@@ -364,7 +364,7 @@ test('⌘J toggles: the second press closes the drawer from its own composer foc
   await page.goto(BOARD);
   await expect(page.getByRole('complementary')).toBeVisible();
   await pressUntil(page, 'Meta+j', drawer(page));
-  await expect(page.locator('.chief-composer-input')).toBeFocused();
+  await expect(page.getByTestId('chief-composer-input')).toBeFocused();
   // The drawer-interior exemption law (#468): the composer is an editable
   // target, but the chord that owns this surface must close it — without
   // the exemption the editable guard swallows the closing press and this

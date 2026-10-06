@@ -10,7 +10,10 @@ import { ChiefFab } from '../icons/index.js';
 
 export function ChiefFabIcon({ chief }: { chief: ChiefContent }) {
   return chief.agent ? (
-    <span className="fab-avatar">
+    // #444/#950：头像铺满 FAB 圆（字形的内边距不适用于头像面），尺寸由本
+    // 槽钉死——Avatar 加载失败退静态资产时盒子不变，无布局跳动。utility
+    // 单源在此，五族 FAB（board inline + 四个 wake 壳）同配方。
+    <span className="block size-full overflow-hidden rounded-full [&_img]:block [&_img]:size-full [&_img]:object-cover">
       <SeededAvatar
         name={chief.agent.displayName}
         src={chief.agent.avatarUrl}

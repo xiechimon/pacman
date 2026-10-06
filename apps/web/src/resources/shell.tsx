@@ -92,10 +92,10 @@ export function ResourceShell({
           本容器保持 relative 锚（FAB 与绝对定位子级的 containing block）。
           `res-main`/`res-main-col` 类名 = 跨域句柄残留（spec/22 §5.0 残留
           律）：chief-drawer 的 DOCK_ROWS 走 classList.contains 找 dock 行、
-          chief.css 有 `.res-main > [data-base-ui-portal]` 布局规则、
-          chief-panel.spec 钉 .res-main-col 的 docking 几何——三处消费点都
-          住 chief 域（#950/#952 面），本票不动共享 JS/CSS，类名以零规则
-          钩子形态存活，摘除归 chief 域票统一裁。 */}
+          chief-panel.spec 钉 .res-main-col 的 docking 几何——消费点住 chief
+          域（#952 终账面），类名以零规则钩子形态存活（#950 已裁：原
+          chief.css 的 Portal 包装层 display:contents 规则收归 chief-drawer
+          自己的 Portal className，不再借宿本行选择器），摘除归终账统一裁。 */}
       <div className="res-main relative flex min-w-0 flex-1">
         <div className="res-main-col flex min-w-0 flex-1 flex-col">
           <header

@@ -22,19 +22,25 @@ const AGENT_TAB = '/app?scenario=101';
 // #811: 返回钮可点——标题覆盖层曾拦截点选（.chief-set-title 全宽绝对
 // 定位盖住按钮），点返回应回到总管抽屉。Playwright 的 actionability 即回归
 // 钉：覆盖重现时 click 在此超时。
+// #950 载体：设置面 = heading「总管设置」（.chief-settings/.chief-set-* 类
+// 退役）；返回钮 = role + aria-label。
+const settingsView = (page: Page) => page.getByRole('heading', { name: '总管设置' });
+
 test('返回按钮可用：点击回到总管抽屉 (#811)', async ({ page }) => {
   await page.goto(AGENT_TAB);
-  await expect(page.locator('.chief-settings')).toBeVisible();
-  await page.locator('.chief-set-back').click();
-  await expect(page.locator('.chief-settings')).toBeHidden();
+  await expect(settingsView(page)).toBeVisible();
+  await page.getByRole('button', { name: '返回' }).click();
+  await expect(settingsView(page)).toBeHidden();
   await expect(page.getByRole('dialog', { name: '总管' })).toBeVisible();
 });
 const CHARTER_TAB = '/app?scenario=102';
 
 async function openAgentDialog(page: Page) {
   await page.goto(AGENT_TAB);
-  await page.locator('.chief-agent-row').click();
-  const dialog = page.locator('.dlg');
+  // #950 载体：agent 行 = role button（可及名 = 绑定态文案）；dialog =
+  // role + 可及名（.dlg 壳级别名重钉先行，§5.5——DOM 别名存活至 #952）。
+  await page.getByRole('button', { name: '未设置' }).click();
+  const dialog = page.getByRole('dialog', { name: '选择总管 Agent' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -43,25 +49,31 @@ test('agent row opens the 选择总管 Agent dialog with search + canon default 
   page,
 }) => {
   const dialog = await openAgentDialog(page);
-  await expect(dialog.locator('.dlg-title')).toHaveText('选择总管 Agent');
-  await expect(dialog.locator('.chief-pick-input')).toHaveAttribute('placeholder', '搜索 Agent…');
-  await expect(dialog.locator('.chief-pick-row')).toHaveCount(1);
-  await expect(dialog.locator('.chief-pick-name')).toHaveText('r3-builder');
+  await expect(dialog).toHaveAttribute('aria-label', '选择总管 Agent');
+  await expect(dialog.getByPlaceholder('搜索 Agent…')).toHaveAttribute(
+    'placeholder',
+    '搜索 Agent…',
+  );
+  await expect(dialog.getByRole('option')).toHaveCount(1);
+  await expect(dialog.getByRole('option')).toHaveText('r3-builder');
 });
 
-// #872 反向钉：.chief-pick-search 是共享类，agent 对话框那一份骑在
-// .chief-pick 自己的 16px 垫上。模型 picker 的壳垫移交不许顺着共享类漏进来
-// （第一次实现就是全局加 margin-inline: 12px —— 这一面会变 28px）。
+// #872 反向钉：搜索盒是共享配方（SEARCH_BOX_CLS），agent 对话框那一份骑在
+// 自己的 16px 容器垫上。模型 picker 的壳垫移交（盒自带 mx-3）不许漏进这一
+// 面（第一次实现就是全局加 margin-inline: 12px —— 这一面会变 28px）。
 test('agent dialog search keeps its own 16px inset (#872 blast radius)', async ({ page }) => {
   const dialog = await openAgentDialog(page);
-  const shell = dialog.locator('.chief-pick');
+  // #950 载体：壳 = 搜索盒的父容器（.chief-pick/.chief-pick-search 类退役；
+  // 盒 = placeholder input 的父）。
+  const shell = dialog.getByPlaceholder('搜索 Agent…').locator('xpath=../..');
   // .dlg 的进场是 zoom-in-95 缩放（100ms）——缩放着量到的不是落定几何。
   await dialog.evaluate((el) =>
     Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined),
   );
-  const inset = await dialog.locator('.chief-pick-search').evaluate((el) => {
-    const box = el.closest('.chief-pick') as HTMLElement;
-    return el.getBoundingClientRect().left - box.getBoundingClientRect().left;
+  const inset = await dialog.getByPlaceholder('搜索 Agent…').evaluate((el) => {
+    const box = el.parentElement as HTMLElement;
+    const shell = box.parentElement as HTMLElement;
+    return box.getBoundingClientRect().left - shell.getBoundingClientRect().left;
   });
   await expect(shell).toBeVisible();
   expect(inset).toBeCloseTo(16, 1);
@@ -71,104 +83,112 @@ test('agent dialog family law: X, Escape and backdrop dismiss; panel clicks do n
   page,
 }) => {
   let dialog = await openAgentDialog(page);
-  await dialog.locator('.dlg-close').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('button', { name: '关闭' }).click();
+  await expect(dialog).toBeHidden();
 
   dialog = await openAgentDialog(page);
   await page.keyboard.press('Escape');
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(dialog).toBeHidden();
 
   dialog = await openAgentDialog(page);
-  await dialog.locator('.dlg-title').click();
-  await expect(page.locator('.dlg')).toBeVisible();
+  await dialog.getByText('选择总管 Agent').click();
+  await expect(dialog).toBeVisible();
   await page.mouse.click(20, 20);
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(dialog).toBeHidden();
 });
 
 test('agent dialog search filters the list; no match shows the empty row', async ({ page }) => {
   const dialog = await openAgentDialog(page);
-  await dialog.locator('.chief-pick-input').fill('不存在');
-  await expect(dialog.locator('.chief-pick-row')).toHaveCount(0);
-  await expect(dialog.locator('.chief-pick-empty')).toHaveText('没有匹配的 Agent');
-  await dialog.locator('.chief-pick-input').fill('r3');
-  await expect(dialog.locator('.chief-pick-row')).toHaveCount(1);
+  await dialog.getByPlaceholder('搜索 Agent…').fill('不存在');
+  await expect(dialog.getByRole('option')).toHaveCount(0);
+  await expect(dialog.getByText('没有匹配的 Agent')).toHaveText('没有匹配的 Agent');
+  await dialog.getByPlaceholder('搜索 Agent…').fill('r3');
+  await expect(dialog.getByRole('option')).toHaveCount(1);
 });
 
 test('fixture agent pick closes the dialog (accept 律)', async ({ page }) => {
   const dialog = await openAgentDialog(page);
-  await dialog.locator('.chief-pick-row').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('option').click();
+  await expect(dialog).toBeHidden();
 });
 
 async function openCharterDialog(page: Page) {
   await page.goto(CHARTER_TAB);
-  await page.locator('.chief-edit-btn').click();
-  const dialog = page.locator('.dlg');
+  await page.getByRole('button', { name: '编辑' }).click();
+  const dialog = page.getByRole('dialog', { name: '编辑章程' });
   await expect(dialog).toBeVisible();
   return dialog;
 }
 
 test('charter 编辑 opens the DialogShell editor with the r5 captured fields', async ({ page }) => {
   const dialog = await openCharterDialog(page);
-  await expect(dialog.locator('.dlg-title')).toHaveText('编辑章程');
-  await expect(dialog.locator('.chief-dlg-charter-input')).toHaveAttribute(
+  await expect(dialog).toHaveAttribute('aria-label', '编辑章程');
+  // §5.3 正典：charter textarea 载体 = dialog scope getByRole('textbox')。
+  await expect(dialog.getByRole('textbox')).toHaveAttribute(
     'placeholder',
     '长期指令：模型路由规则（何种任务使用何种模型）、优先级、偏好…',
   );
-  await expect(dialog.locator('.chief-dlg-ghost')).toHaveText('取消');
-  await expect(dialog.locator('.chief-dlg-primary')).toHaveText('保存章程');
+  await expect(dialog.getByRole('button', { name: '取消' })).toHaveText('取消');
+  await expect(dialog.getByRole('button', { name: '保存章程' })).toHaveText('保存章程');
 });
 
 test('charter dialog family law: X, Escape, 取消 and backdrop dismiss', async ({ page }) => {
   let dialog = await openCharterDialog(page);
-  await dialog.locator('.dlg-close').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('button', { name: '关闭' }).click();
+  await expect(dialog).toBeHidden();
 
   dialog = await openCharterDialog(page);
   await page.keyboard.press('Escape');
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(dialog).toBeHidden();
 
   dialog = await openCharterDialog(page);
-  await dialog.locator('.chief-dlg-ghost').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('button', { name: '取消' }).click();
+  await expect(dialog).toBeHidden();
 
   dialog = await openCharterDialog(page);
-  await dialog.locator('.dlg-title').click();
-  await expect(page.locator('.dlg')).toBeVisible();
+  await dialog.getByText('编辑章程').click();
+  await expect(dialog).toBeVisible();
   await page.mouse.click(20, 20);
-  await expect(page.locator('.dlg')).toBeHidden();
+  await expect(dialog).toBeHidden();
 });
 
 test('fixture charter save closes the dialog (accept 律)', async ({ page }) => {
   const dialog = await openCharterDialog(page);
-  await dialog.locator('.chief-dlg-charter-input').fill('优先派给 r3-builder。');
-  await dialog.locator('.chief-dlg-primary').click();
-  await expect(page.locator('.dlg')).toBeHidden();
+  await dialog.getByRole('textbox').fill('优先派给 r3-builder。');
+  await dialog.getByRole('button', { name: '保存章程' }).click();
+  await expect(dialog).toBeHidden();
 });
+
+// #950 载体：触发钮 = role + aria-label「压缩模型」（旧 button.chief-select
+// 类 locator 退役；aria-label 与弹层同词、role 区分）；菜单 = dialog role +
+// 可及名。
+const modelSelect = (page: Page) => page.getByRole('button', { name: '压缩模型' });
+const modelMenu = (page: Page) => page.getByRole('dialog', { name: '压缩模型' });
 
 async function openModelMenu(page: Page) {
   await page.goto(AGENT_TAB);
-  const select = page.locator('button.chief-select');
+  const select = modelSelect(page);
   await expect(select).toBeVisible();
   await expect(select).toContainText('默认（与 Chief 相同）');
   await select.click();
-  const menu = page.locator('.chief-model-menu');
+  const menu = modelMenu(page);
   await expect(menu).toBeVisible();
   return { select, menu };
 }
 
 test('压缩模型 interactive (#204): button opens the anchored model menu', async ({ page }) => {
   const { menu } = await openModelMenu(page);
-  // span 静态化已翻回(button 才是选择器);清单 = 默认行 + fixture canon 单行。
-  await expect(page.locator('span.chief-select')).toHaveCount(0);
+  // span 静态化已翻回(button 才是选择器——#204 律的载体即 role=button 本身);
+  // 清单 = 默认行 + fixture canon 单行。
+  await expect(page.locator('span[aria-label="压缩模型"]')).toHaveCount(0);
   // #756 续：listbox 语义随 ModelPickList 的清单容器（搜索框现形态在
   // listbox 外），菜单壳只承几何。
-  await expect(menu.locator('.chief-model-pick-list')).toHaveAttribute('role', 'listbox');
-  await expect(menu.locator('.chief-model-row')).toHaveCount(2);
-  await expect(menu.locator('.chief-model-row').nth(0)).toContainText('默认（与 Chief 相同）');
-  await expect(menu.locator('.chief-model-row').nth(0)).toHaveAttribute('aria-selected', 'true');
-  await expect(menu.locator('.chief-model-row').nth(1)).toContainText('claude-sonnet-5');
-  await expect(menu.locator('.chief-model-row-provider')).toHaveText('Claude Code');
+  await expect(menu.getByRole('listbox')).toBeVisible();
+  await expect(menu.getByRole('option')).toHaveCount(2);
+  await expect(menu.getByRole('option').nth(0)).toContainText('默认（与 Chief 相同）');
+  await expect(menu.getByRole('option').nth(0)).toHaveAttribute('aria-selected', 'true');
+  await expect(menu.getByRole('option').nth(1)).toContainText('claude-sonnet-5');
+  await expect(menu.getByText('Claude Code')).toHaveText('Claude Code');
 });
 
 // #872: 设置面 picker 与抽屉面共用 ModelPickRow —— 整行铺满的失败方式同上；
@@ -181,7 +201,7 @@ test('压缩模型 selected row fill bleeds to the menu edges (#872)', async ({ 
   await menu.evaluate((el) =>
     Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined),
   );
-  const selected = menu.locator('.chief-model-row[aria-selected="true"]');
+  const selected = menu.getByRole('option', { selected: true });
   await expect(selected).toHaveCount(1);
   // 证据帧（PACMAN_E2E_EVIDENCE 未设时零写入）：这一面有选中 + 未选中两行，
   // 正是用户报的那张图（设置面压缩模型 picker）。
@@ -189,12 +209,12 @@ test('压缩模型 selected row fill bleeds to the menu edges (#872)', async ({ 
 
   const geo = await selected.evaluate((el) => {
     const r = el.getBoundingClientRect();
-    const panelEl = el.closest('.chief-model-menu') as HTMLElement;
+    const panelEl = el.closest('[role="dialog"]') as HTMLElement;
     const p = panelEl.getBoundingClientRect();
     const cs = getComputedStyle(el);
     const pcs = getComputedStyle(panelEl);
-    const name = el.querySelector('.model-pick-name') as HTMLElement;
-    const check = el.querySelector('.model-pick-check') as HTMLElement;
+    const name = el.querySelector('[data-testid="model-pick-name"]') as HTMLElement;
+    const check = el.querySelector('[data-testid="model-pick-check"]') as HTMLElement;
     return {
       fillLeft: r.left - p.left,
       fillRight: p.right - r.right,
@@ -214,10 +234,13 @@ test('压缩模型 selected row fill bleeds to the menu edges (#872)', async ({ 
 
   // 未选中行不受影响：零底色 + 零横向溢出（清单是滚动容器）
   expect(
-    await menu.locator('.chief-model-row').nth(1).evaluate((el) => getComputedStyle(el).backgroundColor),
+    await menu
+      .getByRole('option')
+      .nth(1)
+      .evaluate((el) => getComputedStyle(el).backgroundColor),
   ).toBe('rgba(0, 0, 0, 0)');
   const scroll = await menu
-    .locator('.chief-model-pick-list')
+    .getByRole('listbox')
     .evaluate((el) => ({ sw: el.scrollWidth, cw: el.clientWidth }));
   expect(scroll.sw).toBe(scroll.cw);
 
@@ -227,15 +250,17 @@ test('压缩模型 selected row fill bleeds to the menu edges (#872)', async ({ 
       const el = document.querySelector(sel);
       return el != null && el.contains(document.activeElement);
     },
-    '.chief-model-menu',
+    '[role="dialog"][aria-label="压缩模型"]',
   );
   await page.keyboard.press('x');
-  const search = menu.locator('.chief-pick-search');
+  // #950 载体：搜索盒 = placeholder input 的父（.chief-pick-search 类退役）。
+  const search = menu.getByPlaceholder('搜索模型…');
   await expect(search).toBeVisible();
   const searchInset = await search.evaluate((el) => {
-    const panelEl = el.closest('.chief-model-menu') as HTMLElement;
+    const box = el.parentElement as HTMLElement;
+    const panelEl = box.closest('[role="dialog"]') as HTMLElement;
     return (
-      el.getBoundingClientRect().left -
+      box.getBoundingClientRect().left -
       panelEl.getBoundingClientRect().left -
       parseFloat(getComputedStyle(panelEl).borderLeftWidth)
     );
@@ -248,28 +273,28 @@ test('压缩模型 search is typeahead-only, same contract as the drawer picker 
 }) => {
   const { menu } = await openModelMenu(page);
   // 开面零搜索占位（不渲染，非透明）——与抽屉头 picker 同形单源
-  await expect(menu.locator('.chief-pick-search')).toHaveCount(0);
+  await expect(menu.getByPlaceholder('搜索模型…')).toHaveCount(0);
   // 同抽屉面：等焦点落进面再打字（FloatingShell 移焦点是异步的）
   await page.waitForFunction(
     (sel) => {
       const el = document.querySelector(sel);
       return el != null && el.contains(document.activeElement);
     },
-    '.chief-model-menu',
+    '[role="dialog"][aria-label="压缩模型"]',
   );
   // 可打印字符被面吃掉：框现形、预填该字符、焦点进 input、即刻过滤
   await page.keyboard.press('x');
-  const search = menu.locator('.chief-pick-search input');
+  const search = menu.getByPlaceholder('搜索模型…');
   await expect(search).toBeVisible();
   await expect(search).toHaveValue('x');
   await expect(search).toBeFocused();
   // x 命中不了 canon 行与 provider → 默认行 + 空态
-  await expect(menu.locator('.chief-model-row')).toHaveCount(1);
-  await expect(menu.locator('.chief-pick-empty')).toBeVisible();
+  await expect(menu.getByRole('option')).toHaveCount(1);
+  await expect(menu.getByText('没有匹配的模型')).toBeVisible();
   // 收回律：清空 = 框收回、清单回全量
   await search.fill('');
-  await expect(menu.locator('.chief-pick-search')).toHaveCount(0);
-  await expect(menu.locator('.chief-model-row')).toHaveCount(2);
+  await expect(menu.getByPlaceholder('搜索模型…')).toHaveCount(0);
+  await expect(menu.getByRole('option')).toHaveCount(2);
 });
 
 test('压缩模型 menu family law (#204): Escape and outside click dismiss', async ({ page }) => {
@@ -284,8 +309,8 @@ test('压缩模型 menu family law (#204): Escape and outside click dismiss', as
 
 test('压缩模型 fixture pick = accept 律:选择即关 (#204)', async ({ page }) => {
   const { select, menu } = await openModelMenu(page);
-  await menu.locator('.chief-model-row').nth(1).click();
-  await expect(page.locator('.chief-model-menu')).toBeHidden();
+  await menu.getByRole('option').nth(1).click();
+  await expect(modelMenu(page)).toBeHidden();
   // fixture 面无 mutation:select 回显保持 canon 默认文案。
   await expect(select).toContainText('默认（与 Chief 相同）');
 });
@@ -298,13 +323,14 @@ for (const theme of ['dark', 'light'] as const) {
   }) => {
     await page.addInitScript((t) => localStorage.setItem('pacman-theme', t), theme);
     await page.goto('/app?scenario=101-stale-model');
-    const select = page.locator('button.chief-select');
+    const select = modelSelect(page);
     await expect(select).toContainText('anthropic/claude-3-5-haiku-20241022');
     await expect(select).toHaveAttribute('title', 'anthropic/claude-3-5-haiku-20241022');
     const box = await select.boundingBox();
     expect(box!.width).toBeLessThanOrEqual(202);
+    // #950 载体：值 span = 触发钮内唯一 span（chevron 是 svg）。
     const clipped = await select
-      .locator('.chief-select-value')
+      .locator('span')
       .evaluate((el) => el.scrollWidth > el.clientWidth);
     expect(clipped).toBe(true);
   });
@@ -318,9 +344,14 @@ test('空态卡 centered and growth-proof: memo matches watches (#772)', async (
     localStorage.setItem('pacman-locale', 'en');
     localStorage.setItem('pacman-theme', 'light');
   });
-  for (const [scenario, sel] of [['103', '.chief-memo'], ['104', '.chief-watches']] as const) {
+  // #950 载体：空态卡 = 卡内文案本身（en locale 面；.chief-memo/.chief-watches
+  // 类退役，文本直挂卡 div）。
+  for (const [scenario, copy] of [
+    ['103', /No Agent selected yet/],
+    ['104', /Nothing being watched yet/],
+  ] as const) {
     await page.goto(`/app?scenario=${scenario}`);
-    const card = page.locator(sel);
+    const card = page.getByText(copy);
     await expect(card).toBeVisible();
     const geo = await card.evaluate((el) => {
       const r = el.getBoundingClientRect();
@@ -341,15 +372,15 @@ test('空态卡 centered and growth-proof: memo matches watches (#772)', async (
 // 仍走 accept 律。
 test('压缩模型 stale preset value (#358): 裸串兜底回显 + 菜单无选中行', async ({ page }) => {
   await page.goto('/app?scenario=101-stale-model');
-  const select = page.locator('button.chief-select');
+  const select = modelSelect(page);
   await expect(select).toContainText('anthropic/claude-3-5-haiku-20241022');
   await select.click();
-  const menu = page.locator('.chief-model-menu');
+  const menu = modelMenu(page);
   await expect(menu).toBeVisible();
-  await expect(menu.locator('.chief-model-row')).toHaveCount(2);
-  await expect(menu.locator('.chief-model-row[aria-selected="true"]')).toHaveCount(0);
-  await menu.locator('.chief-model-row').nth(1).click();
-  await expect(page.locator('.chief-model-menu')).toBeHidden();
+  await expect(menu.getByRole('option')).toHaveCount(2);
+  await expect(menu.getByRole('option', { selected: true })).toHaveCount(0);
+  await menu.getByRole('option').nth(1).click();
+  await expect(modelMenu(page)).toBeHidden();
   // fixture 面无 mutation:兜底裸串回显保持。
   await expect(select).toContainText('anthropic/claude-3-5-haiku-20241022');
 });
@@ -363,46 +394,53 @@ test('压缩模型 stale preset value (#358): 裸串兜底回显 + 菜单无选�
 // 3. 清单缺位:popover 必须有「自动」行 + 机器行(listbox 语义),选中行
 //    aria-selected;
 // 4. accept 律破坏:fixture 选定 = 关面(无 mutation,回显不变);
-// 5. 双选择器互扰:机器 chip 独立类名,不与压缩模型 chief-select 撞 strict
-//    mode 选择器。
+// 5. 双选择器互扰:机器 chip 独立 aria-label,不与压缩模型触发钮撞 strict
+//    mode 选择器（#950 前是独立类名，律随载体迁移）。
 // live PATCH 写读回归归 live 真机验(docs/verify/865/)。
+
+// #950 载体：机器触发钮 = role + aria-label「机器」；菜单 = dialog + 可及名。
+const machineSelect = (page: Page) => page.getByRole('button', { name: '机器' });
+const machineMenu = (page: Page) => page.getByRole('dialog', { name: '机器' });
 
 async function openMachineMenu(page: Page, scenario: string) {
   await page.goto(`/app?scenario=${scenario}`);
-  const chip = page.locator('button.chief-host-select');
+  const chip = machineSelect(page);
   await expect(chip).toBeVisible();
   await chip.click();
-  const menu = page.locator('.chief-host-menu');
+  const menu = machineMenu(page);
   await expect(menu).toBeVisible();
   return { chip, menu };
 }
 
 test('机器槽在位:Agent tab 有「机器」标题 + 描述 + chip(值 null = 自动)', async ({ page }) => {
   await page.goto(AGENT_TAB);
-  const block = page.locator('.chief-host');
-  await expect(block).toBeVisible();
-  await expect(block.locator('h3')).toHaveText('机器');
-  await expect(block.locator('p')).toContainText('总管回合默认在哪台机器上执行');
-  await expect(page.locator('button.chief-host-select')).toContainText('自动');
-  // 互扰负向:压缩模型选择器仍是唯一 button.chief-select(strict mode 钉)。
-  await expect(page.locator('button.chief-select')).toHaveCount(1);
+  // #950 载体：卡 = heading「机器」；描述/触发钮各自语义载体。
+  const head = page.getByRole('heading', { name: '机器' });
+  await expect(head).toBeVisible();
+  await expect(page.getByText('总管回合默认在哪台机器上执行')).toContainText(
+    '总管回合默认在哪台机器上执行',
+  );
+  await expect(machineSelect(page)).toContainText('自动');
+  // 互扰负向:压缩模型选择器仍是唯一「压缩模型」钮(strict mode 钉)。
+  await expect(modelSelect(page)).toHaveCount(1);
 });
 
 test('机器 chip 开 popover:「自动」行 + 机器行 + listbox 语义 + 选中态', async ({ page }) => {
   const { chip, menu } = await openMachineMenu(page, '101-machines');
   await expect(chip).toContainText('xmonsMac-3574.local');
   // listbox 语义随清单容器（菜单壳只承几何，压缩模型 picker 同律）。
-  await expect(menu.locator('.chief-host-list')).toHaveAttribute('role', 'listbox');
-  await expect(menu.locator('.chief-host-row')).toHaveCount(3);
+  await expect(menu.getByRole('listbox')).toBeVisible();
+  await expect(menu.getByRole('option')).toHaveCount(3);
   // 首行 = 自动(未选中,因为值钉了本机);机器行命中 = 选中。
   await expect(menu.locator('[data-testid="chief-host-auto"]')).toHaveAttribute('aria-selected', 'false');
-  const selected = menu.locator('.chief-host-row[aria-selected="true"]');
+  const selected = menu.getByRole('option', { selected: true });
   await expect(selected).toHaveCount(1);
   await expect(selected).toContainText('xmonsMac-3574.local');
-  // 离线远端行照常可选 + 如实灰点(钉选 = 等它上线语义,UI 不替用户挡)。
+  // 离线远端行照常可选 + 如实灰点(钉选 = 等它上线语义,UI 不替用户挡;
+  // data-on 属性载体随迁存活)。
   const offline = menu.locator('[data-testid="chief-host-row"]').filter({ hasText: 'mea-wsl' });
   await expect(offline).toHaveAttribute('aria-selected', 'false');
-  await expect(offline.locator('.chief-host-dot')).toHaveAttribute('data-on', 'false');
+  await expect(offline.locator('[data-on]')).toHaveAttribute('data-on', 'false');
 });
 
 test('机器 popover family law: Escape / outside click dismiss', async ({ page }) => {
@@ -418,13 +456,13 @@ test('机器 popover family law: Escape / outside click dismiss', async ({ page 
 test('机器 chip fixture pick = accept 律:选择即关 + 回显不变(无 mutation)', async ({ page }) => {
   const { chip, menu } = await openMachineMenu(page, '101-machines');
   await menu.locator('[data-testid="chief-host-auto"]').click();
-  await expect(page.locator('.chief-host-menu')).toBeHidden();
+  await expect(machineMenu(page)).toBeHidden();
   // fixture 面无 mutation:回显保持 canon 钉选值。
   await expect(chip).toContainText('xmonsMac-3574.local');
 });
 
 test('机器槽默认面(101):无 resources → 清单仅「自动」行且选中', async ({ page }) => {
   const { menu } = await openMachineMenu(page, '101');
-  await expect(menu.locator('.chief-host-row')).toHaveCount(1);
+  await expect(menu.getByRole('option')).toHaveCount(1);
   await expect(menu.locator('[data-testid="chief-host-auto"]')).toHaveAttribute('aria-selected', 'true');
 });

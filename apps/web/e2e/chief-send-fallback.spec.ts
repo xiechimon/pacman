@@ -121,12 +121,17 @@ async function stubFallbackSurface(
 
 async function openDrawer(page: Page) {
   await page.goto('/app');
-  await page.locator('.chief-fab').click();
-  const input = page.locator('.chief-composer-input');
+  // #950 载体：.chief-fab → aria-label 总管钮；.chief-composer-input → testid。
+  await page.getByRole('button', { name: '总管', exact: true }).click();
+  const input = page.getByTestId('chief-composer-input');
   await expect(input).toBeVisible();
   await expect(input).toBeEditable();
   return input;
 }
+
+/** 模型行文本载体（#950：.chief-model 行容器类退役，行文本 = 触发钮内容）。 */
+const modelRow = (page: Page) =>
+  page.getByRole('button', { name: '总管主模型', exact: true });
 
 test('stale slot: send goes out, fallback toast names it, row heals to 默认', async ({
   page,
@@ -135,7 +140,7 @@ test('stale slot: send goes out, fallback toast names it, row heals to 默认', 
   const input = await openDrawer(page);
 
   // Guard: the setup really is stale — the row shows the bare id, no 默认 badge.
-  const row = page.locator('.chief-model');
+  const row = modelRow(page);
   await expect(row).toContainText('old-model');
   await expect(row).not.toContainText('默认');
 
@@ -164,7 +169,7 @@ test('fresh slot: send goes out with no fallback toast', async ({ page }) => {
   const wire = await stubFallbackSurface(page, { slot: null, echoFallback: false });
   const input = await openDrawer(page);
 
-  await expect(page.locator('.chief-model')).toContainText('· 默认');
+  await expect(modelRow(page)).toContainText('· 默认');
 
   // Listener before send (waitForResponse-after-the-fact races the
   // invalidateAll refetch and times out): every GET chief body from here on.

@@ -5,7 +5,7 @@
 ## Sub-features
 
 - `hotkeys-new-task` C 开 `.new-task-dialog`：board 走本页 dialog（fixture 保存落本地卡），project 页走本页 dialog（保存锚路由项目，PageShell `onNewTask` 透传），其余路由走 AppSidebar 内部全局 dialog（`useNewTaskSurface` 同一 live save 路径）。侧栏行点击 = 同一 opener。
-- `hotkeys-chief-wake` `⌘J` 开 `.chief-drawer` + `.chief-composer-input` 持焦；Esc 关（#146 既有；#442 起 Space 不再是呼出键）。
+- `hotkeys-chief-wake` `⌘J` 开 `.chief-drawer` + `[data-testid="chief-composer-input"]` 持焦；Esc 关（#146 既有；#442 起 Space 不再是呼出键）。
 - `hotkeys-kbd-hint`（#468）FAB 的 `⌘J` 悬浮提示 chip（`.kbd-hint`，XMON-14 起落在 `components/ui` 的 kbd 落点上）：静息 `visibility:hidden`，父控件 hover/focus-visible 浮出；契约 `[data-slot="kbd"]`。落位三变体：above（FAB 族）/ right（rail 行）/ below（#645 抽屉头部行——头部贴视口顶，above 会落屏外）。
 - `hotkeys-chief-new-thread`（#645）抽屉开态裸 `N` = 头部 + 新主题（与钮同 handler：触发 + 收切换器 popover）。作用域门 = `useHotkey` 的 enabled 参（抽屉关态监听器不在 window 上）；守卫 = _plain_ 输入态律（**不带** ⌘J 的 drawer 内豁免：开抽屉的 autofocus 落 composer，聚焦时 n 归打字员）。钮载 `KbdHint` 的 N 悬浮提示（below）+ `aria-keyshortcuts="N"`。
 - `hotkeys-guards` 输入态/交互态负向：搜索面板输入框持焦时 C/Space 不误触且字符照常入框；按钮持焦时 Space 原生激活按钮（不劫持）。

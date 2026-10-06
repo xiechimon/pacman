@@ -14,7 +14,7 @@
 //
 // 行渲染 / 行投影 / 回显兜底 / 选中律 / pick 律单源 =
 // components/model-select-core(#626 收敛);本面只留壳(ghost Button +
-// Popover 原语)与几何钩子(chief-model-row* 类名组,正本 chief.css)。
+// Popover 原语)与皮肤 utility(#950 清零后正本 = recipes.ts + ROW_SKIN)。
 
 import type { ChiefCompactionModel } from '@pacman/shared';
 import { useState } from 'react';
@@ -29,6 +29,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popove
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
 import { ChevronDown } from '../icons/index.js';
+import {
+  MENU_ARROW_RIGHT_CLS,
+  MENU_SHELL_CLS,
+  SELECT_TRIGGER_CLS,
+  SELECT_VALUE_CLS,
+} from './recipes.js';
 
 /** fixture 面候选兜底（#770 起 providers 段已除：canon 行取 runtime 源形——
  *  provider 位 = runtime 词表值 `claude-code`，与 live 投影同形；此前 r3-gw
@@ -42,12 +48,14 @@ const DEFAULT_OPTIONS: ModelOption[] = [
   },
 ];
 
-/** #204 popover 面的类名组:name/provider 直挂行下(无 col 列容器)。 */
+/** #204 popover 面的皮肤组（#950 清零后 = token utility，旧 .chief-model-row
+ *  族等值：32 行 / 12px 字 16 行盒 / px-12 / name 弹性截断 / provider 与
+ *  check 钉右缘）。name/provider 直挂行下(无 col 列容器)。 */
 const ROW_SKIN: ModelRowSkin = {
-  row: 'chief-model-row',
-  name: 'chief-model-row-name',
-  provider: 'chief-model-row-provider',
-  check: 'chief-model-check',
+  row: 'h-8 gap-2 px-3 text-xs leading-4 text-(--text-primary)',
+  name: 'min-w-0 flex-auto truncate',
+  provider: 'flex-none text-(--text-tertiary)',
+  check: 'inline-flex flex-none text-(--text-tertiary)',
 };
 
 interface ChiefModelSelectProps {
@@ -72,38 +80,39 @@ export function ChiefModelSelect({ value, options, onPick }: ChiefModelSelectPro
   const pick = createModelPicker({ value, close: () => setOpen(false), onPick });
 
   return (
-    <span className="chief-model-wrap">
+    <span className="relative ml-auto flex-none">
       {/* #854 收编 components/ui/popover（Base UI Popover + Positioner）：
           开合 / Esc / 外点关 / 焦点归还全归原语；ModelPickList（含 typeahead
           搜索 + 选中律）原样做面板内容。定位正本迁 Positioner 参数
           （side=bottom align=end sideOffset=8 = 原 top:calc(100%+8px)
-          right:0）；面板宽正本 = shrink-to-fit ≥ 220（w-auto 中和 base 的
-          w-72）。XMON-23 收编注释照旧：ghost 原语 + chief-select per-face、
-          font-normal 中和字重、svg size-auto 保 ChevronDown 12px 属性尺寸。
-          active 位移豁免（原语 :not([aria-haspopup]) 条件）照旧，无需中和。 */}
+          right:0）。#950 清零：触发钮/弹层壳皮肤改挂 token utility
+          （recipes.ts 单源）；面板宽正本 = shrink-to-fit ≥ 220。 */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={
             <Button
               variant="ghost"
-              className="chief-select font-normal [&_svg:not([class*='size-'])]:size-auto"
-              // #772: 长值截断后全称走 title 悬停可达（better-typography 截断律）。
+              className={`${SELECT_TRIGGER_CLS} min-w-40`}
+              // #950: aria-label = e2e 一级载体（旧 button.chief-select 类
+              // locator 退役；与弹层/listbox 同词，role 区分）。#772: 长值
+              // 截断后全称走 title 悬停可达（better-typography 截断律）。
+              aria-label={t('压缩模型')}
               title={label}
             />
           }
         >
-          {/* #772: 值单行截断（chief-select-value 担 min-width:0 收缩 +
+          {/* #772: 值单行截断（SELECT_VALUE_CLS 担 min-width:0 收缩 +
               ellipsis；裸 span 在 flex 下 min-width:auto 永不收缩，省略号
-              永不触发——见 chief.css）。 */}
-          <span className="chief-select-value">{label}</span>
-          <ChevronDown width={12} height={12} />
+              永不触发）。 */}
+          <span className={SELECT_VALUE_CLS}>{label}</span>
+          <ChevronDown width={12} height={12} className="flex-none text-(--text-tertiary)" />
         </PopoverTrigger>
         <PopoverContent
           align="end"
           side="bottom"
           sideOffset={8}
           aria-label={t('压缩模型')}
-          className="chief-model-menu w-auto"
+          className={`${MENU_SHELL_CLS} ${MENU_ARROW_RIGHT_CLS} min-w-[220px]`}
         >
           {/* #756 续:行清单 + typeahead 搜索单源归 ModelPickList(与抽屉头
               picker 同形:开面零搜索占位、打字现形吃字、清空收回);listbox

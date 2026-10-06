@@ -128,7 +128,9 @@ try {
 
   // 3b. FAB 的 ⌘J 悬浮提示（#468）在 XMON-14 后由 components/ui 的 kbd 落点
   // 承载：registry 数据属性契约 + 静息隐藏 / 父控件悬浮浮出两条可见性律。
-  const hint = page.locator('.chief-fab .kbd-hint');
+  // #950 载体：board FAB = aria-label 总管 钮（.chief-fab 类退役；.kbd-hint
+  // 住 components/ui，存活）。
+  const hint = page.locator('button[aria-label="总管"] .kbd-hint');
   const hintCount = await hint.count();
   const hintSlot = hintCount > 0 ? await hint.first().getAttribute('data-slot') : null;
   const hintHiddenAtRest = hintCount > 0 ? !(await hint.first().isVisible()) : false;
@@ -137,7 +139,7 @@ try {
     hintCount === 1 && hintSlot === 'kbd' && hintHiddenAtRest,
     `⌘J 提示 n=${hintCount} data-slot=${hintSlot ?? '缺失'} 静息隐藏=${hintHiddenAtRest}`,
   );
-  await page.locator('.chief-fab').hover();
+  await page.locator('button[aria-label="总管"]').hover();
   await hint
     .first()
     .waitFor({ state: 'visible', timeout: 3000 })
@@ -166,8 +168,10 @@ try {
 
   // 5. ⌘J 呼出总管抽屉，焦点在草稿框；Esc 关（#442 起 ⌘J 取代 Space）
   await pressUntil(page, 'Meta+j', '.chief-drawer');
+  // #950 载体：草稿框焦点判定改 data-testid（旧 chief-composer-input 类退役，
+  // Textarea 件上只有 data-testid="chief-composer-input"）。
   const composerFocused = await page.evaluate(
-    () => document.activeElement?.classList.contains('chief-composer-input') ?? false,
+    () => document.activeElement?.getAttribute('data-testid') === 'chief-composer-input',
   );
   check('cmdj-wakes-focused', composerFocused, '⌘J 开抽屉且草稿框持焦');
   await shot(page, '03-chief-drawer.png');

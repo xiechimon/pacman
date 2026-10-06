@@ -5,8 +5,9 @@
 // 全部保留。
 // #756 续（用户裁决）：搜索框不常驻——行清单 + typeahead 搜索单源归
 // components/model-select-core 的 ModelPickList（开面零占位、打字现形吃字、
-// 清空收回），本面只留壳与几何钩子（chief-model-pop* 类名组，正本
-// chief.css）。选中行可见态单源在 model-pick-* 基类（chief.css #751 段）。
+// 清空收回），本面只留壳与皮肤 utility（#950 清零后正本 = recipes.ts +
+// ROW_SKIN）。选中行可见态单源在 PICK_ROW_BTN_CLS 基底（model-select-core，
+// --pick-selected-bg/-fg 令牌对，#751 律随迁）。
 
 import type { ChiefCompactionModel } from '@pacman/shared';
 import type { ReactElement } from 'react';
@@ -18,14 +19,18 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover.js';
 import type { ModelOption } from '../fixtures/records.js';
 import { useI18n } from '../i18n/provider.js';
+import { MENU_ARROW_LEFT_CLS, MENU_SHELL_CLS } from './recipes.js';
 
-/** r5 108 行形的类名组：比压缩弹层面多一层 col 列容器（名 + 副题纵排）。 */
+/** r5 108 行形的皮肤组（#950 清零后 = token utility，旧 .chief-model-pick-*
+ *  族等值：纵向 7px + 横向 20px（#872 壳垫 12 + 本面墨衬 8）/ gap 8 /
+ *  name 13px 截断 / provider 11px tertiary）；比压缩弹层面多一层 col 列
+ *  容器（名 + 副题纵排）。 */
 const ROW_SKIN: ModelRowSkin = {
-  row: 'chief-model-pick-row',
-  col: 'chief-model-pick-col',
-  name: 'chief-model-pick-name',
-  provider: 'chief-model-pick-provider',
-  check: 'chief-model-check',
+  row: 'h-auto gap-2 px-5 py-[7px]',
+  col: 'flex min-w-0 flex-auto flex-col',
+  name: 'truncate text-[13px] text-(--text-primary)',
+  provider: 'text-[11px] text-(--text-tertiary)',
+  check: 'inline-flex flex-none text-(--text-tertiary)',
 };
 
 interface ChiefModelPopoverProps {
@@ -69,7 +74,7 @@ export function ChiefModelPopover({
         side="bottom"
         sideOffset={8}
         aria-label={t('模型')}
-        className="chief-model-pop"
+        className={`${MENU_SHELL_CLS} ${MENU_ARROW_LEFT_CLS} w-[280px]`}
       >
         <ModelPickList
           skin={ROW_SKIN}

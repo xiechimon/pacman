@@ -85,7 +85,12 @@ const headContentX = (page: Page) =>
 
 test.describe('chief FAB wakes on every shell family', () => {
   const families = [
-    { name: 'board', route: '/app?scenario=01', fab: '.chief-fab', gear: true },
+    {
+      name: 'board',
+      route: '/app?scenario=01',
+      fab: '[aria-label="总管"]', // #950: .chief-fab 类名钩退役 → aria-label 一级
+      gear: true,
+    },
     { name: 'pages', route: '/app/schedules?scenario=11', fab: '.page-fab', gear: true },
     {
       name: 'resources',
