@@ -49,7 +49,7 @@ daemon 在创建 agent session 前，**显式扫描** pacman 配置的 skills �
   1. `loadSkills({ cwd: config.home, agentDir: '<不存在的 pi 默认路径>', skillPaths: [skillsDir], includeDefaults: false })` → `{ skills, diagnostics }`（**`cwd` 用 daemon home 不依赖任务 worktree**——避免 worktree 切换导致 project-level skills 解析跳变）
   2. catalog size 闸：skills 总数 > 50 时只取前 50 + `[skills] cap: total=<N> truncated=50` 日志；单 description > 200 字符截断 + 末尾 `…` + `[skills] cap: description truncated for <name>` 日志（具体阈值 lane 内可微调，原则是 catalog 不能无限增长）
   3. `formatSkillsForPrompt(skills, fileReadTool)` → catalog XML 串
-  4. 把 catalog 拼到 `SessionOpts.systemPrompt` 末尾（用 `\n\n` 分隔；与现有 systemPrompt 拼接而非覆盖——零回归风险）
+  4. ~~把 catalog 拼到 `SessionOpts.systemPrompt` 末尾~~ → **落点改归简报文件通道**（spec 24 / #958）：catalog 内容仍由本步骤产出，但由 runner 写进任务 worktree 的上下文文件（pi: `AGENTS.md` 系；claude-code: `CLAUDE.md`），靠 CLI 原生记忆机制加载，systemPrompt 通道对这类后端清空。拼接语义不变（`\n\n` 分隔、与 runner 给的正文拼接而非覆盖）。**注意别把这两件事读成矛盾**：上面第 1 条的「`cwd` 用 daemon home」说的是**技能目录的扫描位**（不随 worktree 切换跳变），本条的「写进 worktree」说的是**简报文件的落点**——扫描位不动，落点变了
   5. `diagnostics` 经 `logger.skills` 透传「`[skills] <type>: <msg>`」族
 - `agentDir` 怎么填「非 pi 默认」：传 `join(homedir(), '.pacman-no-such', 'agent')` 之类绝对不存在的值，强制 pi 跳过 user 默认扫描；或读 pi 源码确认是否有「只关 user 默认不关 project 默认」的旗标——若没有就用不存在路径兜底。
 - **read 工具可达路径集扩 skills 根目录**：`apps/daemon/src/runner.ts` 现有的 read 工具 path 白名单（per-task worktree 边界）须包含 `skillsDir`，否则 agent 在 description 匹配时调 `read SKILL.md` 会被 sandbox 拒绝——**spec 14 通路打不通的硬阻塞点，不修本 spec 不可发车**。
