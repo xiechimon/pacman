@@ -1,7 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
 
 // Issue #178: the project 任务 toolbar joins the living controls — the
-// prj-tasks-view-btn list|grid toggle persists through the registered
+// list|grid view toggle (role=tab, aria-selected carrier) persists through the registered
 // client-state key (pacman.projectTasksLayout, teamMembersLayout twin), the
 // 筛选/排序 buttons open anchored popovers (family law #67/#127: Escape,
 // click-catcher, retained-mount exit) whose options client-side filter and
@@ -24,43 +24,46 @@ const LAYOUT_KEY = 'pacman.projectTasksLayout';
 const REVIEW_TITLE = '在 README.md 末尾追加一行「r3 lifecycle probe」';
 const DONE_TITLE = '在 README.md 末尾追加一行「r3 lifecycle probe2」';
 
+// #946/#910 载体：菜单盘 = role=menu（aria-label 随触发钮文案），行 =
+// menuitemradio；任务行/卡 = task-row / task-card testid（无 role 的结构
+// 容器，二级载体）；标题 = 行内真链接（role=link）。
 async function pickOption(page: Page, label: string) {
-  const menu = page.locator('.prj-tasks-menu');
+  const menu = page.getByRole('menu');
   await expect(menu).toBeVisible();
-  await menu.locator('.prj-tasks-menu-row', { hasText: label }).click();
+  await menu.getByRole('menuitemradio', { name: label }).click();
   await expect(menu).not.toBeVisible();
 }
 
 test('view toggle swaps rows for grid cards and persists', async ({ page }) => {
   await page.goto(TASKS);
-  const gridBtn = page.locator('.prj-tasks-view-btn[aria-label="网格视图"]');
-  const listBtn = page.locator('.prj-tasks-view-btn[aria-label="列表视图"]');
-  await expect(page.locator('.prj-task-row')).toHaveCount(2);
+  const gridBtn = page.getByRole('tab', { name: '网格视图' });
+  const listBtn = page.getByRole('tab', { name: '列表视图' });
+  await expect(page.getByTestId('task-row')).toHaveCount(2);
   await expect(listBtn).toHaveAttribute('aria-selected', 'true');
 
   await gridBtn.click();
-  await expect(page.locator('.prj-task-row')).toHaveCount(0);
-  await expect(page.locator('.prj-task-card')).toHaveCount(2);
+  await expect(page.getByTestId('task-row')).toHaveCount(0);
+  await expect(page.getByTestId('task-card')).toHaveCount(2);
   await expect(gridBtn).toHaveAttribute('aria-selected', 'true');
   await expect(listBtn).toHaveAttribute('aria-selected', 'false');
   expect(await page.evaluate((k) => localStorage.getItem(k), LAYOUT_KEY)).toBe('grid');
 
   // the choice survives a reload (pacman.projectTasksLayout)
   await page.reload();
-  await expect(page.locator('.prj-task-card')).toHaveCount(2);
-  await expect(page.locator('.prj-task-row')).toHaveCount(0);
+  await expect(page.getByTestId('task-card')).toHaveCount(2);
+  await expect(page.getByTestId('task-row')).toHaveCount(0);
 
   // and the tablist is the way back — no trap in the grid layout
   await listBtn.click();
-  await expect(page.locator('.prj-task-row')).toHaveCount(2);
+  await expect(page.getByTestId('task-row')).toHaveCount(2);
   expect(await page.evaluate((k) => localStorage.getItem(k), LAYOUT_KEY)).toBe('list');
 });
 
 test('a seeded grid key boots the grid without a gesture', async ({ page }) => {
   await page.addInitScript((k) => localStorage.setItem(k, 'grid'), LAYOUT_KEY);
   await page.goto(TASKS);
-  await expect(page.locator('.prj-task-card')).toHaveCount(2);
-  await expect(page.locator('.prj-tasks-view-btn[aria-label="网格视图"]')).toHaveAttribute(
+  await expect(page.getByTestId('task-card')).toHaveCount(2);
+  await expect(page.getByRole('tab', { name: '网格视图' })).toHaveAttribute(
     'aria-selected',
     'true',
   );
@@ -68,19 +71,17 @@ test('a seeded grid key boots the grid without a gesture', async ({ page }) => {
 
 test('filter menu options cut the list and close on select', async ({ page }) => {
   await page.goto(TASKS);
-  const filterBtn = page.locator('.prj-tasks-filter', { hasText: '筛选' });
-  const titles = page.locator('.prj-task-row .prj-task-title');
+  const filterBtn = page.getByRole('button', { name: '筛选' });
+  const titles = page.getByTestId('task-row').getByRole('link');
 
   await filterBtn.click();
-  await expect(page.locator('.prj-tasks-menu')).toBeVisible();
-  await expect(page.locator('.prj-tasks-menu-row')).toHaveCount(3);
+  const menu = page.getByRole('menu');
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole('menuitemradio')).toHaveCount(3);
   // 全部 is the selected default (t-0070: menu radio item = aria-checked)
-  await expect(page.locator('.prj-tasks-menu-row').first()).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
-  await page.locator('.prj-tasks-menu-row', { hasText: '全部' }).click();
-  await expect(page.locator('.prj-tasks-menu')).not.toBeVisible();
+  await expect(menu.getByRole('menuitemradio').first()).toHaveAttribute('aria-checked', 'true');
+  await menu.getByRole('menuitemradio', { name: '全部' }).click();
+  await expect(menu).not.toBeVisible();
   await expect(titles).toHaveCount(2);
 
   // 已完成 keeps only the done row
@@ -103,8 +104,8 @@ test('filter menu options cut the list and close on select', async ({ page }) =>
 
 test('family law: Escape, outside click and re-click all close the menu', async ({ page }) => {
   await page.goto(TASKS);
-  const filterBtn = page.locator('.prj-tasks-filter', { hasText: '筛选' });
-  const menu = page.locator('.prj-tasks-menu');
+  const filterBtn = page.getByRole('button', { name: '筛选' });
+  const menu = page.getByRole('menu');
 
   await filterBtn.click();
   await expect(menu).toBeVisible();
@@ -127,8 +128,8 @@ test('family law: Escape, outside click and re-click all close the menu', async 
 
 test('sort orders: 默认 source order, 最近更新 newest first, 标题 ascending', async ({ page }) => {
   await page.goto(TASKS);
-  const titles = page.locator('.prj-task-row .prj-task-title');
-  const sortBtn = page.locator('.prj-tasks-filter', { hasText: '排序' });
+  const titles = page.getByTestId('task-row').getByRole('link');
+  const sortBtn = page.getByRole('button', { name: '排序' });
 
   // 默认 = source order: review row first
   await expect(titles.nth(0)).toHaveText(REVIEW_TITLE);
@@ -154,8 +155,8 @@ test('sort orders: 默认 source order, 最近更新 newest first, 标题 ascend
 
 test('search filters by title; no-match shows the match line, not 暂无内容', async ({ page }) => {
   await page.goto(TASKS);
-  const search = page.locator('.prj-tasks-search input');
-  const titles = page.locator('.prj-task-row .prj-task-title');
+  const search = page.getByRole('textbox', { name: '搜索任务' });
+  const titles = page.getByTestId('task-row').getByRole('link');
 
   await search.fill('probe2');
   await expect(titles).toHaveCount(1);
@@ -164,8 +165,8 @@ test('search filters by title; no-match shows the match line, not 暂无内容',
   // no match = the toolbar-empty line, never the create-first-task state
   await search.fill('zzz');
   await expect(titles).toHaveCount(0);
-  await expect(page.locator('.prj-tasks-nomatch')).toBeVisible();
-  await expect(page.locator('.prj-tasks-empty')).toHaveCount(0);
+  await expect(page.getByText('没有匹配的任务')).toBeVisible();
+  await expect(page.getByText('暂无内容')).toHaveCount(0);
 
   // clearing restores the full list
   await search.fill('');
@@ -173,22 +174,22 @@ test('search filters by title; no-match shows the match line, not 暂无内容',
 
   // a project without todos keeps the r2 24b 暂无内容 state
   await page.goto('/app/project/ZAQczKCu0MOAzC1ZqcFlX?scenario=r2-24b');
-  await expect(page.locator('.prj-tasks-empty')).toBeVisible();
-  await expect(page.locator('.prj-tasks-nomatch')).toHaveCount(0);
+  await expect(page.getByText('暂无内容')).toBeVisible();
+  await expect(page.getByText('没有匹配的任务')).toHaveCount(0);
 });
 
 test('filter and search compose', async ({ page }) => {
   await page.goto(TASKS);
-  await page.locator('.prj-tasks-search input').fill('probe');
-  await expect(page.locator('.prj-task-row')).toHaveCount(2);
+  await page.getByRole('textbox', { name: '搜索任务' }).fill('probe');
+  await expect(page.getByTestId('task-row')).toHaveCount(2);
 
   // 进行中 × probe leaves only the review row
-  await page.locator('.prj-tasks-filter', { hasText: '筛选' }).click();
+  await page.getByRole('button', { name: '筛选' }).click();
   await pickOption(page, '进行中');
-  await expect(page.locator('.prj-task-row .prj-task-title')).toHaveText(REVIEW_TITLE);
+  await expect(page.getByTestId('task-row').getByRole('link')).toHaveText(REVIEW_TITLE);
 
   // 进行中 × probe2 matches nothing
-  await page.locator('.prj-tasks-search input').fill('probe2');
-  await expect(page.locator('.prj-task-row')).toHaveCount(0);
-  await expect(page.locator('.prj-tasks-nomatch')).toBeVisible();
+  await page.getByRole('textbox', { name: '搜索任务' }).fill('probe2');
+  await expect(page.getByTestId('task-row')).toHaveCount(0);
+  await expect(page.getByText('没有匹配的任务')).toBeVisible();
 });
