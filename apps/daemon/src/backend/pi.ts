@@ -701,7 +701,11 @@ export class PiBackend implements AgentBackend {
    * 故简报写进那个文件即被引擎读到，无需任何后端侧改动。 */
   readonly brief: BriefChannel = {
     backendId: 'pi',
-    composeSections: (opts) => composeSkillsSection(this.opts.skills, opts, this.opts.onSkillsLog),
+    composeBody: (opts, base) =>
+      appendSkillsCatalog(
+        base,
+        composeSkillsSection(this.opts.skills, opts, this.opts.onSkillsLog),
+      ) ?? '',
   };
 
   constructor(private readonly opts: PiBackendOpts) {

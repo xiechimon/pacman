@@ -56,7 +56,7 @@ import type {
 import { z } from 'zod';
 import { claudeCodeAuthFailureMessage } from '../claude-code-auth.js';
 import { SessionNotResumableError } from './errors.js';
-import { composeSkillsSection } from './pi.js';
+import { appendSkillsCatalog, composeSkillsSection } from './pi.js';
 
 /** spec 17 :108 能力面。thinkingLevels = SDK effort 五档（pi 七档里
  *  off/minimal 无 SDK 对应——不发 effort 即缺省，见 toEffort）。 */
@@ -734,7 +734,11 @@ export class ClaudeCodeBackend implements AgentBackend {
    * 保住这一档，见 spec 24）。AGENTS.md 一概不读。 */
   readonly brief: BriefChannel = {
     backendId: 'claude-code',
-    composeSections: (opts) => composeSkillsSection(this.opts.skills, opts, this.opts.onSkillsLog),
+    composeBody: (opts, base) =>
+      appendSkillsCatalog(
+        base,
+        composeSkillsSection(this.opts.skills, opts, this.opts.onSkillsLog),
+      ) ?? '',
   };
 
   constructor(private readonly opts: ClaudeCodeBackendOpts) {}

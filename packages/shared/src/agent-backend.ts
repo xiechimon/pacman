@@ -254,10 +254,14 @@ export interface BriefChannel {
   /** 落点用哪套候选序与新建名（`@pacman/shared` brief-file.ts 的 BriefBackendId）。
    * 这不是装饰——写错文件 = 简报完全不被读，且全搬之后没有回退通道。 */
   readonly backendId: BriefBackendId;
-  /** 本后端对简报正文的贡献（技能目录等）。runner 把它接在 systemPrompt 正文
-   * 之后整段写进文件。抽到这里的原因：目录构造吃的是**后端私有**的 skillsDir 与
-   * cwd（spec 14 §49 刻意用 daemon home 而非 worktree），runner 独自组不出来。 */
-  composeSections(opts: SessionOpts): string;
+  /** 完整简报正文 = 后端贡献（技能目录等）接在 `base`（runner 侧的 systemPrompt
+   * 正文）之后。整段由 runner 写进 worktree 文件。
+   *
+   * 把「拼接」也放在后端而不是只返回增量：目录构造吃的是**后端私有**的
+   * skillsDir 与 cwd（spec 14 §49 刻意用 daemon home 而非 worktree），而拼接函数
+   * （appendSkillsCatalog）住在 backend/pi.ts——runner 去 import 它会破坏缝纪律
+   * （runner 不消费 @earendil-works 那一层）。返回空串 = 本后端无贡献。 */
+  composeBody(opts: SessionOpts, base: string | undefined): string;
 }
 
 export interface AgentBackend {

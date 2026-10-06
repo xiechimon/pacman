@@ -47,6 +47,7 @@ import {
 import { createActivityTracker } from './activity.js';
 import { SessionNotResumableError } from './backend/errors.js';
 import { notInConfigLine, resolveMcpEndpoints } from './backend/mcp-config.js';
+import { type BriefHandle, caseInsensitiveFsFor, cleanupBrief, writeBrief } from './brief-file.js';
 import {
   type ClaudeCodeAuthProbe,
   claudeCodeAuthFailureMessage,
@@ -625,7 +626,9 @@ export async function runStep(
     provider,
     modelId: agent.modelId,
     ...(agent.thinkingLevel ? { thinkingLevel: agent.thinkingLevel } : {}),
-    ...(systemPrompt ? { systemPrompt } : {}),
+    // 简报通道在位（#958）= 简报落 worktree 上下文文件（见下方写盘点），
+    // systemPrompt 通道必须**清空**——两条通道同时开着，模型会看到两份重复清单。
+    ...(systemPrompt && backend.brief === undefined ? { systemPrompt } : {}),
     cwd,
     ...(deliveryPrompt !== null ? { prompt: deliveryPrompt } : {}),
     ...(promptImages !== undefined ? { promptImages } : {}),
@@ -701,6 +704,60 @@ export async function runStep(
         content: `新会话轮未能回退工作区到分支头（${reason}）——上一轮未提交的改动可能带入本轮`,
         createdAt: now(),
       });
+    }
+  }
+
+  // —— 简报落盘（#958 闸 1/2，spec 24）——
+  // 写进 worktree 里引擎**原生会读**的上下文文件（pi: AGENTS.md 系；
+  // claude-code: CLAUDE.md），靠 CLI 自己的记忆机制加载，systemPrompt 通道对
+  // 这类后端已在上方清空。两个位置约束：
+  // ① 落点必须在上面那段返工回退**之后**——它会 `reset --hard` + `clean -fd`，
+  //    在其之前写的东西会被删掉；
+  // ② 提到下面的 pass 循环**之外**——compat 回落第二轮看到的是同一份盘上文件，
+  //    不必重写（写本身仍幂等，因为崩溃恢复会在可能含上个进程残留的 worktree
+  //    上重入本函数）。
+  // 写失败即 fail-closed：全搬之后没有回退通道，「带着空简报开会话」比这一步
+  // 失败更糟（形状照上方 claude-code 凭据预检）。
+  let briefHandle: BriefHandle | null = null;
+  let briefCleanupFailed = false;
+  /** 擦除简报（幂等）。写后每个出口都要走一次——漏一个就是「残留被下一步的
+   * `git add -A` 扫进提交推到用户分支」的延迟污染：本步失败会跳过本步提交，
+   * 文件留在 worktree，而下一次复用同一 worktree 的步（典型是合并轮，走
+   * continue、**不触发**返工回退）会把它一起提交。 */
+  const cleanupBriefOnce = (): void => {
+    if (briefHandle === null) return;
+    const h = briefHandle;
+    briefHandle = null;
+    try {
+      logger.step(`brief ${cleanupBrief(h)} (${h.file})`);
+    } catch (err) {
+      briefCleanupFailed = true;
+      const reason = err instanceof Error ? err.message : String(err);
+      logger.step(`brief cleanup failed: ${reason}`);
+      transcript.upsert({
+        id: `brief-cleanup-${stepId}`,
+        role: 'system',
+        content: `运行简报未能从工作区擦除（${reason}，文件 ${h.file}）——本轮不提交不推送，以免它被当作改动带进分支`,
+        createdAt: now(),
+      });
+    }
+  };
+  if (backend.brief !== undefined) {
+    try {
+      briefHandle = writeBrief({
+        cwd,
+        backendId: backend.brief.backendId,
+        content: backend.brief.composeBody(sessionOpts, systemPrompt),
+        caseInsensitiveFs: caseInsensitiveFsFor(process.platform),
+      });
+      logger.step(`brief written: ${briefHandle.file} (${briefHandle.mode})`);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      logger.step(`brief write failed: ${reason}`);
+      cleanupBriefOnce();
+      clearCredentials(creds);
+      await failStep(deps, stepId, `运行简报写入失败（${reason}）`);
+      return;
     }
   }
 
@@ -843,6 +900,7 @@ export async function runStep(
     } catch (err) {
       clearInterval(heartbeat);
       flushDeltas();
+      cleanupBriefOnce();
       clearCredentials(creds);
       await failStep(deps, stepId, err instanceof Error ? err.message : String(err));
       return;
@@ -986,6 +1044,7 @@ export async function runStep(
       if (bodyTimeout) clearTimeout(bodyTimeout);
       if (durationCap) clearTimeout(durationCap);
       flushDeltas();
+      cleanupBriefOnce();
       clearCredentials(creds);
       await failStep(deps, stepId, err instanceof Error ? err.message : String(err));
       return;
@@ -1071,6 +1130,14 @@ export async function runStep(
   // token 记账不因中断丢失）。
   if (!sawDone) usage = handle.usage();
 
+  // —— 简报擦除的主出口（#958 闸 1）——
+  // 位置刻意选在此处：定时器已清、终态错误已归并，而在 `stopped` 分支与两处
+  // rewind **之前**、commitAll 之前。与 rewind 的先后其实两可（`reset --hard`
+  // 会还原被追加的跟踪文件、`clean -fd` 会删掉创建的文件，之后擦除即空操作），
+  // 但擦除在先能让 rewind 当兜底，且与 Multica 的 LIFO「cleanup 先于 Finalize 的
+  // add -A」同构。
+  cleanupBriefOnce();
+
   /** worktree 回退到步起点（stop/discard 与审核步只读收尾共用一处护栏）；
    * 返回失败原因，null = 回退成功或不适用（无检出/无起点）。回退失败意味着
    * 本轮写入可能残留——调用方按各自语义报出去，不静默。 */
@@ -1128,7 +1195,17 @@ export async function runStep(
   // 审核步不产改动（#511）：它跑 bash 跑验证命令会被 CHANGE_TOOLS 记为「写过」，
   // 但那不是本轮的变更——如实报 false（server 侧同样不计入 todo.hasChanges）。
   let hasChanges = isReview ? false : sawChangeTool; // 未绑 repo 退化形 = transcript 写类工具行 [推断骨架]
-  if (ws !== null && deps.workspace && lastError === null && !stopped && !isReview) {
+  // 简报擦除失败即挡住提交（#958 闸 1）：有仓库的 worktree 里擦不干净不可存活
+  // ——提交闸一旦放行，`git add -A` 会把残留扫进提交并推送（Multica daemon.go
+  // 的 AbortWithReason 同律）。擦除失败已在 cleanupBriefOnce 里落过 transcript 行。
+  if (
+    ws !== null &&
+    deps.workspace &&
+    lastError === null &&
+    !stopped &&
+    !isReview &&
+    !briefCleanupFailed
+  ) {
     const git = deps.workspace;
     try {
       const committed = await git.commitAll(
@@ -1184,6 +1261,12 @@ export async function runStep(
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
     }
+  }
+
+  // 简报擦除失败即便没有别的错也要按 failed 收尾（#958 闸 1）：本轮没提交没推送，
+  // 报 success 会让用户以为交接物已产出。transcript 行已在 cleanupBriefOnce 里落过。
+  if (briefCleanupFailed && lastError === null) {
+    lastError = '运行简报未能从工作区擦除——本轮未提交未推送（详见 transcript 的简报行）';
   }
 
   const status = stopped ? 'stopped' : lastError === null ? 'success' : 'failed';
