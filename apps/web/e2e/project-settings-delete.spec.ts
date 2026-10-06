@@ -13,41 +13,40 @@ import { expect, type Page, test } from '@playwright/test';
 
 const SETTINGS = '/app/project/ZAQczKCu0MOAzC1ZqcFlX/settings?scenario=r2-24c';
 const PROJECT_NAME = 'r3-lifecycle';
-const PROJECT_ROW = 'a.sidebar-subrow[href*="/app/project/ZAQczKCu0MOAzC1ZqcFlX"]';
+// 侧栏项目行 = board 域跨域别名（#943 面），href 语义位已足——类名段摘除。
+const PROJECT_ROW = 'a[href*="/app/project/ZAQczKCu0MOAzC1ZqcFlX"]';
 
+// #946/#910 载体：确认层 = role=alertdialog（AlertDialogShell 自带），
+// 面内控件全部 role+文案 / 唯一 textbox；危险区文案 = 一级 text。
 async function openConfirm(page: Page) {
   await page.goto(SETTINGS);
-  await page.locator('.prj-set-delete').click();
-  const dialog = page.locator('.delete-confirm--project');
+  await page.getByRole('button', { name: '删除', exact: true }).click();
+  const dialog = page.getByRole('alertdialog');
   await expect(dialog).toBeVisible();
   return dialog;
 }
 
 test('danger card renders and opens the project delete confirm', async ({ page }) => {
   await page.goto(SETTINGS);
-  await expect(page.locator('.prj-set-danger-label')).toHaveText('危险操作');
-  await expect(page.locator('.prj-set-danger-title')).toHaveText('删除项目');
+  await expect(page.getByText('危险操作')).toHaveText('危险操作');
+  await expect(page.getByText('删除项目', { exact: true })).toHaveText('删除项目');
   const dialog = await openConfirm(page);
   await expect(dialog).toHaveAttribute('role', 'alertdialog');
-  await expect(dialog.locator('.delete-confirm-title')).toHaveText(
-    '确定删除该项目？此操作不可撤销。',
-  );
-  await expect(dialog.locator('.delete-confirm-summary')).toHaveText(PROJECT_NAME);
-  await expect(dialog.locator('.delete-confirm-prompt')).toHaveText(
-    `输入 ${PROJECT_NAME} 以确认删除`,
-  );
+  await expect(dialog.getByText('确定删除该项目？此操作不可撤销。')).toBeVisible();
+  await expect(dialog.getByText(PROJECT_NAME, { exact: true })).toHaveText(PROJECT_NAME);
+  await expect(dialog.getByText(`输入 ${PROJECT_NAME} 以确认删除`)).toBeVisible();
 });
 
 test('family-law close: 取消 / X / Esc / backdrop — nothing deleted, no navigation', async ({
   page,
 }) => {
   let dialog = await openConfirm(page);
-  await dialog.locator('.delete-confirm-cancel').click();
+  await dialog.getByRole('button', { name: '取消' }).click();
   await expect(dialog).toBeHidden();
   await expect(page).toHaveURL(/\/settings/);
 
   dialog = await openConfirm(page);
-  await dialog.locator('.delete-confirm-close').click();
+  await dialog.getByRole('button', { name: '关闭' }).click();
   await expect(dialog).toBeHidden();
 
   dialog = await openConfirm(page);
@@ -67,8 +66,8 @@ test('confirm input gates the delete button — mismatch disables, exact match e
   page,
 }) => {
   const dialog = await openConfirm(page);
-  const del = dialog.locator('.delete-confirm-delete');
-  const input = dialog.locator('.delete-confirm-input');
+  const del = dialog.getByRole('button', { name: '删除' });
+  const input = dialog.getByRole('textbox');
   await expect(del).toBeDisabled();
   await input.fill('not-the-project');
   await expect(del).toBeDisabled();
@@ -81,8 +80,8 @@ test('confirm input gates the delete button — mismatch disables, exact match e
 
 test('confirm deletes and lands on the board with the project row gone', async ({ page }) => {
   const dialog = await openConfirm(page);
-  await dialog.locator('.delete-confirm-input').fill(PROJECT_NAME);
-  await dialog.locator('.delete-confirm-delete').click();
+  await dialog.getByRole('textbox').fill(PROJECT_NAME);
+  await dialog.getByRole('button', { name: '删除' }).click();
   await expect(page).toHaveURL('/app');
   // 列表消失:侧栏项目组不再有该项目行(#66 fixture 删除覆面同律)
   await expect(page.locator(PROJECT_ROW)).toHaveCount(0);

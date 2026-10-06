@@ -17,12 +17,14 @@ import { expect, type Page, test } from '@playwright/test';
 const EMPTY_TASKS = '/app/project/ZAQczKCu0MOAzC1ZqcFlX?scenario=r2-24b&tab=tasks';
 const TITLE = '空项目第一个任务';
 
+// #946/#910 载体：空态 = 一级 text（暂无内容）；空态入口钮带 aria-label
+// 新建任务（与 topbar 任务 tab 的文案区分）；dialog/正文/项目 chip 走
+// overlay 域的语义位（role=dialog、dialog 内唯一 textbox、chip 文案）。
 async function openDialog(page: Page) {
   await page.goto(EMPTY_TASKS);
-  const empty = page.locator('.prj-tasks-empty');
-  await expect(empty).toBeVisible();
-  await empty.locator('.prj-tasks-empty-new').click();
-  const dialog = page.locator('.new-task-dialog');
+  await expect(page.getByText('暂无内容')).toBeVisible();
+  await page.getByRole('button', { name: '新建任务' }).click();
+  const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -33,19 +35,19 @@ test('the empty-state 新建任务 button opens the new-task dialog', async ({ p
 
 test('the dialog preselects the route project on its chip', async ({ page }) => {
   const dialog = await openDialog(page);
-  await expect(dialog.locator('.new-task-project-name')).toHaveText('r3-lifecycle');
+  await expect(dialog.getByText('r3-lifecycle', { exact: true })).toBeVisible();
 });
 
 test('fixture 保存 lands the first task row with the 刚刚 label', async ({ page }) => {
   const dialog = await openDialog(page);
   // spec 15 #394：单字段正文；占位标题 = 首行（此处单行原文 = 标题）
-  await dialog.locator('.new-task-spec').fill(TITLE);
+  await dialog.getByRole('textbox').fill(TITLE);
   await dialog.getByRole('button', { name: '保存', exact: true }).click();
-  await expect(page.locator('.new-task-dialog')).not.toBeVisible();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
   // the empty state is gone; the row carries the title + 刚刚 (r2 §4.2
   // count coupling, board's #66 fixture law)
-  await expect(page.locator('.prj-tasks-empty')).toHaveCount(0);
-  const row = page.locator('.prj-task-row', { hasText: TITLE });
+  await expect(page.getByText('暂无内容')).toHaveCount(0);
+  const row = page.getByTestId('task-row').filter({ hasText: TITLE });
   await expect(row).toBeVisible();
   await expect(row).toContainText('刚刚');
 });
