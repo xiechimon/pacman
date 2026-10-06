@@ -741,4 +741,57 @@ test.describe('chief drawer 用户气泡 markdown 面（live mock，#742）', ()
     await expect(bubble).not.toHaveAttribute('data-md', '');
     await expect(bubble.locator('.chat-para, .chat-md-item, .chat-md-code')).toHaveCount(0);
   });
+
+  test('F-R19: 段行投影（#955）——思考行单列、在飞工具行平铺并挂真实秒数', async ({ page }) => {
+    await stubEventSource(page);
+    await stubDicebear(page);
+    await stubCdnAvatar(page);
+    // 起点取真实过去时刻：秒数必须由「真实锚 + 走表」得出（#471 律），
+    // 摆冻结数或没有锚的假数都会让这条断言红。
+    const startedAt = Date.now() - 3000;
+    const state: Parameters<typeof mockChiefLiveApi>[1] = {
+      final: false,
+      messages: [
+        USER_ROW,
+        {
+          id: 'msg-seg-1',
+          role: 'assistant',
+          content: [{ type: 'thinking', thinking: '先把凭证面捋一遍' }],
+          createdAt: 2,
+        },
+        {
+          id: 'msg-seg-2',
+          role: 'assistant',
+          content: [{ type: 'text', text: '先看现状' }],
+          createdAt: 4,
+        },
+        {
+          id: 'c-tool-1',
+          role: 'assistant',
+          content: {
+            kind: 'toolcall',
+            call: { id: 'c-tool-1', name: 'todo_write', arguments: {}, startedAt },
+          },
+          createdAt: 5,
+        },
+      ],
+    };
+    await mockChiefLiveApi(page, state);
+    await page.goto('/app?chief=chief-bbb');
+
+    const drawer = page.locator('.chief-drawer');
+    await expect(drawer).toBeVisible();
+    // 思考段单列一行，折叠态只渲染预览（全文不在 DOM）。既有 fixture 捕获面
+    // 从不产出此行，故本断言同时钉住「fixture 零漂移」的反面。
+    const thinking = drawer.locator('.chief-msg', { hasText: '先把凭证面捋一遍' });
+    await expect(thinking).toHaveCount(1);
+    await expect(thinking.locator('pre')).toHaveCount(0);
+    await thinking.getByRole('button', { name: '展开思考' }).click();
+    await expect(thinking.locator('pre')).toHaveText('先把凭证面捋一遍');
+    // 在飞工具行平铺进主呈现（不走披露），进行态标签 + 真实锚走出的秒数。
+    const toolRow = drawer.locator('.chief-msg', { hasText: '正在调用 todo_write' });
+    await expect(toolRow).toHaveCount(1);
+    await expect(toolRow.locator('span.tabular-nums')).toHaveText(/^[3-9]s$/);
+    await expect(drawer.locator('.chief-turn-tools')).toHaveCount(0);
+  });
 });

@@ -23,6 +23,7 @@ import {
   machineToolBodySchema,
   machineToolRelayBodySchema,
   machineTranscriptDeltaBodySchema,
+  machineTranscriptRowBodySchema,
   machineUploadUrlsBodySchema,
   PLAN_FILE_NAME,
   transcriptUploadSchema,
@@ -58,6 +59,7 @@ import {
   reportShellResult,
   reportTool,
   reportTranscriptDelta,
+  reportTranscriptRow,
   stepToken,
   toMachineRecord,
 } from './services/machines.js';
@@ -66,6 +68,18 @@ import {
  * remoteTools 执行；toolCallRecord（有 id/arguments）= live transcript 回传。 */
 function isRelayBody(raw: unknown): boolean {
   return raw !== null && typeof raw === 'object' && 'params' in raw && !('id' in raw);
+}
+
+/** 段行判别（第五形 [设计]，#955 / ADR 0011 D2）：kind 判别位。段行是**落库
+ * 形**（先落库再广播），与第三形（瞬态增量）不同径——判别必须先于 relay 的
+ * 「有 params 无 id」形状判（段行有 row、无 params）。 */
+function isTranscriptRowBody(raw: unknown): boolean {
+  return (
+    raw !== null &&
+    typeof raw === 'object' &&
+    'kind' in raw &&
+    (raw as { kind: unknown }).kind === 'transcript_row'
+  );
 }
 
 /** transcript delta 判别（第三形 [设计]，M5 live streaming）：kind 判别位。 */
@@ -307,7 +321,8 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
   });
 
   // —— POST /api/machine/tool/{stepId}（同径双形，r5 §3.1 bundle 提取；增量
-  // 第三形 transcript delta [设计]、第四形 activity [#905]）：
+  // 第三形 transcript delta [设计]、第四形 activity [#905]、第五形 transcript
+  // row [#955/ADR 0011]）：
   // ① remoteTools relay 执行 {name, params} → {text}（chief 步服务端工具）；
   // ② live transcript 工具行回传 toolCallRecord → {ok:true}（worker 步内建工具）。
   // 分流判别：kind = delta/activity；有 params 无 id = relay（machineToolBodySchema union）。———
@@ -322,6 +337,11 @@ export function registerMachineRoutes(app: Hono, ctx: AppContext): void {
     if (isActivityBody(raw)) {
       const act = parseWith(machineActivityBodySchema, raw, 'body');
       reportActivity(deps, row.id, c.req.param('stepId'), act.activity);
+      return c.json({ ok: true as const });
+    }
+    if (isTranscriptRowBody(raw)) {
+      const seg = parseWith(machineTranscriptRowBodySchema, raw, 'body');
+      reportTranscriptRow(deps, row.id, c.req.param('stepId'), seg.row);
       return c.json({ ok: true as const });
     }
     if (isRelayBody(raw)) {

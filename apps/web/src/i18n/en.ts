@@ -216,6 +216,9 @@ export const EN: Record<string, string> = {
     'API keys connect machines from the command line and let MCP clients reach your workbench.',
   新建密钥: 'New key',
   复制: 'Copy',
+  思考: 'Thinking',
+  展开思考: 'Expand thinking',
+  收起思考: 'Collapse thinking',
   '请立即复制密钥，它仅显示一次。': 'Copy the key now — it is shown only once.',
 
   // —— resources routes (r7 06–10, r2 §6) ——

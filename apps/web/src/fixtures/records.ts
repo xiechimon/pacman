@@ -544,7 +544,9 @@ export type TranscriptItem =
    * system message），web mapper 拆出 verdict 形状渲染。#700：extractionError
    * 在位 = daemon verdict 提取失败（findingsError 原因）——审核面渲染
    * 「判定提取失败」行（区别于「审核未返回结论」兜底）。 */
-  | { kind: 'review'; conclusion: string; findings: ReviewFinding[]; extractionError?: string };
+  | { kind: 'review'; conclusion: string; findings: ReviewFinding[]; extractionError?: string }
+  /** #955 思考段行（详情页与总管抽屉共用同一张脸）：模型内部推理按段单列。 */
+  | { kind: 'thinking'; text: string };
 
 /** AI 审核 finding 显示形态（M7 #330，r8 §3.1）：严重度 + 标题 + 描述 +
  * 引用位（文件:行）+ 可选建议。dataSource = server verdict message 解出
@@ -754,6 +756,23 @@ export type ChiefStreamItem =
    *  #822：`tools` = 本轮已落库但尚未归属的工具行（user 行之后的 toolcall 投
    *  影，#615 robot 行 tools 折叠同族语义）——展开面工具表的数据源；缺省 =
    *  本轮暂无工具调用，面板走 fallback 行。 */
+  /** #955 段行（思考）：模型内部推理按段单列一行——折叠态一行预览、展开看
+   *  全文（形态照 Multica 的 ThinkingRow）。默认折叠：思考是过程不是结论。 */
+  | { kind: 'thinking'; text: string }
+  /** #955 段行（工具，仅流式期）：`activeRun` 在飞时工具行平铺进主呈现、与
+   *  文本段按序交错；`running` 位 = 该次调用尚无结果（进行中，渲染层走表补
+   *  秒数）。回合收口后不再产出此类行——工具退回 robot 行的 `tools` 折叠面
+   *  （r5 canon 的落库形）。 */
+  | {
+      kind: 'tool';
+      name: string;
+      /** 调用起点（进行中秒数的锚；缺省不挂秒数——#471 律）。 */
+      startedAt?: number;
+      /** 已完结调用的执行秒数（startedAt/endedAt 投影）。 */
+      seconds?: number;
+      running?: boolean;
+      error?: boolean;
+    }
   | {
       kind: 'streaming';
       seconds?: number;

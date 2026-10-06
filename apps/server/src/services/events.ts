@@ -157,9 +157,11 @@ export class ConversationStreamHub {
 
   /** transcript 行落库推送（live 工具行 / 终稿行 / 用户行同事件）。 */
   publishMessage(conversationId: string, message: TranscriptRow): void {
-    // 镜像收敛律：任何落库行都终结当前打字段（web liveTextStore 同事件即清），
-    // 缓冲不清则补发与已落库行双份呈现。
-    this.clearConversationBuffer(conversationId);
+    // 段界律（#955 / ADR 0011 D7）：**只有 assistant 文本行**终结当前打字段。
+    // 旧律「任何落库行都清」在工具行上会出事——工具行的上报带 500ms/2000ms
+    // 重试链，可能迟到，一次迟到就把正在流的下一段抹掉；且 web 侧 #857 起已
+    // 是只认 assistant 文本行的 handoff，两侧改到同律镜像才重新成立。
+    if (endsLiveTextBuffer(message)) this.clearConversationBuffer(conversationId);
     this.publish(conversationId, { type: 'message', message });
   }
 
@@ -216,6 +218,38 @@ export class ConversationStreamHub {
       void conn.send(payload);
     }
   }
+}
+
+/** 落库行是否终结在飞文本缓冲（#955 / ADR 0011 D7）。**只排除两种行**：
+ *  工具行——它的上报带 500ms/2000ms 重试链、可能迟到，一次迟到就把正在流的
+ *  下一段抹掉；仅思考行——思考内容从不进文本缓冲，清它只会误伤同窗的正文。
+ *  其余（用户行、assistant 文本行、system 行）照旧终结缓冲：用户行是回合
+ *  边界（也是 #740 那条「终态缺失的死回合由下一回合用户行兜底清」的守卫），
+ *  assistant 文本行是段界。 */
+function endsLiveTextBuffer(message: TranscriptRow): boolean {
+  return !isToolCallRow(message.content) && !isThinkingOnlyRow(message.content);
+}
+
+/** content 是否为 live 工具行（`{kind:'toolcall', call}`）。 */
+function isToolCallRow(content: unknown): boolean {
+  return (
+    content !== null &&
+    typeof content === 'object' &&
+    !Array.isArray(content) &&
+    (content as { kind?: unknown }).kind === 'toolcall'
+  );
+}
+
+/** content 是否为「仅思考」块数组（#955 段行形；存量原始块数组若混了 text
+ *  则不算——那行走正文面，缓冲该清）。 */
+function isThinkingOnlyRow(content: unknown): boolean {
+  if (!Array.isArray(content) || content.length === 0) return false;
+  return content.every(
+    (block) =>
+      block !== null &&
+      typeof block === 'object' &&
+      (block as { type?: string }).type === 'thinking',
+  );
 }
 
 /** 保尾弃头截断：取字节上限内的最长尾部后缀（二分后缀长；截断边界可能劈裂

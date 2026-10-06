@@ -70,4 +70,5 @@ _Avoid_：**Workspace** —— 它不是领域实体，仅指执行机本地的�
 | 定时 | Schedule | `schedule` | 按周期或单次自动重跑某 todo，每轮触发一个新 build，到确认/审核关口暂停。 |
 | 通知 | Notification | `notification` | 桌面浏览器推送 + 站内未读的统称；一个概念、多种投递渠道。 |
 | 记录流 | Transcript | `transcript` | build 的有序消息与工具调用记录；是 build 的一面（facet），非独立可操作实体。 |
+| 段 | Segment | `segment`（行形 `msg-<stepId>-<n>`） | 一次回合内模型输出的**一段连续同类型增量**（`text` 或 `thinking`）。工具调用是独立记录，不是段。段在**写入端**封口（类型变化 / 工具到达 / 消息结束 / 步收尾），流式期与落库期同源——同一个段既是流式期即时出现的那条行，也是终稿里的那条行。 |
 | Token 用量 | Token usage | `tokenUsage` | 按「build × model × 输入/输出/缓存读/缓存写」统计的记账读数；值对象，无自身生命周期。 |

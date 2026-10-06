@@ -508,7 +508,9 @@ describe('步执行全链（02 §5.7 生命周期行 + journal 端点词表）',
     const upload = api.uploads[0];
     expect(upload?.url).toBe('http://server/up/1');
     const ids = upload?.body.messages.map((m) => m.id);
-    expect(ids).toEqual(['user-s1', 'call-1', 'msg-s1-1']);
+    // #955 段序：正文段先落、工具行随后——封口在工具到达那一刻发生，段行必须
+    // 排在它之后的工具行**之前**（否则流式期工具会显示在自己前导文本的上方）。
+    expect(ids).toEqual(['user-s1', 'msg-s1-1', 'call-1']);
     expect(api.doneBodies[0]?.body).toMatchObject({
       status: 'success',
       sessionId: 'pi-sess-1',

@@ -41,6 +41,7 @@ import {
   type StepActivityReport,
   type StepRecord,
   type ToolCallRecord,
+  type TranscriptRow,
   type TranscriptUpload,
 } from '@pacman/shared';
 
@@ -80,6 +81,10 @@ export interface MachineApi {
    * streaming）：pi text_delta 节流批量转发，server 侧瞬态进 conversation
    * stream；失败不重试（终稿经 transcript 上传兜底）。 */
   transcriptDelta(stepId: string, text: string): Promise<void>;
+  /** 段行实时上报（machineToolBodySchema 第五形 [设计]，#955 / ADR 0011）：
+   *  写入端封段后即时上报该行，server 先落库再广播；与终稿 upload-urls 按同
+   *  id 幂等去重。可选成员 = 单测桩缺省不实现（与 activity 缺省同律）。 */
+  transcriptRow?(stepId: string, row: TranscriptRow): Promise<void>;
   /** 步活动相位上报（machineToolBodySchema 第四形 [设计]，#905）：相位变化 /
    * 新流事件到达时节流重发，server 侧瞬态进 conversation stream activity
    * 事件；失败不重试（活动是呈现信号，丢了下一拍会再来）。可选成员 =
@@ -283,6 +288,13 @@ export class MachineClient implements MachineApi {
   async transcriptDelta(stepId: string, text: string): Promise<void> {
     await this.request('POST', `/api/machine/tool/${stepId}`, {
       body: { kind: 'transcript_delta' as const, text },
+      parse: (raw) => machineOkResponseSchema.parse(raw),
+    });
+  }
+
+  async transcriptRow(stepId: string, row: TranscriptRow): Promise<void> {
+    await this.request('POST', `/api/machine/tool/${stepId}`, {
+      body: { kind: 'transcript_row' as const, row },
       parse: (raw) => machineOkResponseSchema.parse(raw),
     });
   }

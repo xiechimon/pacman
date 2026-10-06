@@ -88,6 +88,7 @@ node .../scripts/drive-hotkeys.mjs             # C/Space 快捷键(#389,hotkeys.
 node .../scripts/drive-newtask-key.mjs         # 新任务键位正负成对(XMON-41,hotkeys.md)
 node .../scripts/drive-chief-model-select.mjs  # 总管压缩模型选择器(#358;选择器族)
 node .../scripts/drive-agent-identity.mjs      # agent 身份可点进设置(#741;--expect=old 取 before 基线)
+node .../scripts/drive-chief-segments.mjs      # 段行封口(#955/ADR 0011;按封口后的真 wire 序推帧 + 抽屉在飞态;三个探针坑见 docs/verify/955/README.md)
 node .../scripts/drive-detail-pane.mjs         # 详情页 3-pane(#366,detail-right-pane.md)
 node .../scripts/drive-mcp.mjs                 # MCP 只读本地 config 面(spec 13/#368,mcp-servers.md)
 node .../scripts/drive-project-new-form.mjs    # 新建项目表单(spec 12/#360,project-new-form.md)

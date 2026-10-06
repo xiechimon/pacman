@@ -43,6 +43,7 @@ import { toast } from 'sonner';
 import { attachFile } from '../api/attachments.js';
 import { useMachines, useMembers, useProjects, useSkills, useTodos } from '../api/hooks.js';
 import { useLiveData } from '../api/provider.js';
+import { ThinkingRow, ToolActivityRow } from '../components/chat/agent-rows.js';
 import { LiveRow, LiveSignal } from '../components/chat/live-row.js';
 import { useChatFollow } from '../components/chat/use-chat-follow.js';
 import { Button } from '../components/ui/button.js';
@@ -879,6 +880,46 @@ export function ChiefDrawer({
                                 <Restore width={13} height={13} />
                               </Button>
                             </div>
+                          </div>
+                        </div>
+                      );
+                    // #955 思考段行：与 robot 行同槽（绑定身份脸 / 未绑定虚线 chief 字形）+
+                    // 折叠式思考体，无 foot（思考不参与复制/恢复）。
+                    if (item.kind === 'thinking')
+                      return (
+                        <div key={i} className="chief-msg">
+                          {chief.bound && chief.agent ? (
+                            <span className="chief-avatar chief-avatar--img">
+                              <SeededAvatar
+                                name={chief.agent.displayName}
+                                src={chief.agent.avatarUrl}
+                                fallback="/avatar-robot-1.svg"
+                              />
+                            </span>
+                          ) : (
+                            <ChiefFaceDashed width={24} height={24} className="chief-avatar" />
+                          )}
+                          <div className="chief-msg-col">
+                            <ThinkingRow text={item.text} />
+                          </div>
+                        </div>
+                      );
+                    // #955 流式期工具行：mapper 只在回合在飞（activeRun 非空）时
+                    // 产出，与文本段按序交错；收口后回到 robot 行的折叠面。
+                    if (item.kind === 'tool')
+                      return (
+                        <div key={i} className="chief-msg">
+                          <span className="w-6 shrink-0" aria-hidden="true" />
+                          <div className="chief-msg-col">
+                            <ToolActivityRow
+                              name={item.name}
+                              {...(item.startedAt !== undefined
+                                ? { startedAt: item.startedAt }
+                                : {})}
+                              {...(item.seconds !== undefined ? { seconds: item.seconds } : {})}
+                              {...(item.running !== undefined ? { running: item.running } : {})}
+                              {...(item.error !== undefined ? { error: item.error } : {})}
+                            />
                           </div>
                         </div>
                       );
